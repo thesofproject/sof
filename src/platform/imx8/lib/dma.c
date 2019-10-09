@@ -29,7 +29,7 @@ struct dma dma[PLATFORM_NUM_DMACS] = {
 {
 	.plat_data = {
 		.id		= DMA_ID_HOST,
-		.dir		= DMA_DIR_MEM_TO_MEM,
+		.dir		= DMA_DIR_HMEM_TO_LMEM | DMA_DIR_LMEM_TO_HMEM,
 		.devs		= DMA_DEV_HOST,
 		.channels	= 32,
 	},

@@ -3,38 +3,285 @@
 // Copyright 2019 NXP
 //
 // Author: Daniel Baluta <daniel.baluta@nxp.com>
+// Author: Paul Olaru <paul.olaru@nxp.com>
 
+/* Dummy DMA driver (software-based DMA controller)
+ *
+ * This driver is usable on all platforms where the DSP can directly access
+ * all of the host physical memory (or at least the host buffers).
+ *
+ * The way this driver works is that it simply performs the copies
+ * synchronously within the dma_start() and dma_copy() calls.
+ *
+ * One of the drawbacks of this driver is that it doesn't actually have a true
+ * IRQ context, as the copy is done synchronously and the IRQ callbacks are
+ * called in process context.
+ *
+ * An actual hardware DMA driver may be preferable because of the above
+ * drawback which comes from a software implementation. But if there isn't any
+ * hardware DMA controller dedicated for the host this driver can be used.
+ *
+ * This driver requires physical addresses in the elems. This assumption only
+ * holds if you have CONFIG_HOST_PTABLE enabled, at least currently.
+ */
+
+#include <sof/atomic.h>
+#include <sof/audio/component.h>
+#include <sof/drivers/timer.h>
+#include <sof/lib/alloc.h>
 #include <sof/lib/dma.h>
+#include <sof/platform.h>
+#include <sof/spinlock.h>
+#include <sof/string.h>
+#include <sof/trace/trace.h>
+#include <ipc/topology.h>
+#include <user/trace.h>
+#include <config.h>
+#include <errno.h>
+#include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 
-/* allocate next free DMA channel */
+#define trace_dummydma(__e, ...) \
+	trace_event(TRACE_CLASS_DMA, __e, ##__VA_ARGS__)
+#define tracev_dummydma(__e, ...) \
+	tracev_event(TRACE_CLASS_DMA, __e, ##__VA_ARGS__)
+#define trace_dummydma_error(__e, ...) \
+	trace_error(TRACE_CLASS_DMA, __e, ##__VA_ARGS__)
+
+struct dma_chan_pdata {
+	struct dma_sg_elem_array *elems;
+	int sg_elem_curr_idx;
+	uintptr_t r_pos;
+	uintptr_t w_pos;
+	uintptr_t elem_progress;
+	bool cyclic;
+};
+
+/**
+ * \brief Copy the currently-in-progress DMA SG elem
+ * \param[in,out] pdata: Private data structure for this DMA channel
+ * \param[in] bytes: The amount of data requested for copying
+ * \return How many bytes have been copied, or -ENODATA if nothing can be
+ *	   copied. Will return 0 quickly if 0 bytes are requested.
+ *
+ * Perform the individual copy of the in-progress DMA SG elem. To copy more
+ * data, one should call this function repeatedly.
+ */
+static size_t dummy_dma_copy_crt_elem(struct dma_chan_pdata *pdata,
+				      int bytes)
+{
+	int ret;
+	uintptr_t rptr, wptr;
+	size_t orig_size, remaining_size, copy_size;
+
+	if (bytes == 0)
+		return 0;
+
+	/* Quick check, do we have a valid elem? */
+	if (pdata->sg_elem_curr_idx >= pdata->elems->count)
+		return -ENODATA;
+
+	/* We should copy whatever is left of the element, unless we have
+	 * too little remaining for that to happen
+	 */
+
+	/* Compute copy size and pointers */
+	rptr = pdata->elems->elems[pdata->sg_elem_curr_idx].src;
+	wptr = pdata->elems->elems[pdata->sg_elem_curr_idx].dest;
+	orig_size = pdata->elems->elems[pdata->sg_elem_curr_idx].size;
+	remaining_size = orig_size - pdata->elem_progress;
+	copy_size = MIN(remaining_size, bytes);
+
+	/* Perform the copy, being careful if we overflow the elem */
+	ret = memcpy_s((void *)wptr, remaining_size, (void *)rptr, copy_size);
+	assert(!ret);
+
+	pdata->elem_progress += copy_size;
+
+	if (remaining_size == copy_size) {
+		/* Advance to next elem, if we can */
+		pdata->sg_elem_curr_idx++;
+		pdata->elem_progress = 0;
+		/* Support cyclic copying */
+		if (pdata->cyclic &&
+		    pdata->sg_elem_curr_idx == pdata->elems->count)
+			pdata->sg_elem_curr_idx = 0;
+	}
+
+	return copy_size;
+}
+
+static size_t dummy_dma_comp_avail_data_cyclic(struct dma_chan_pdata *pdata)
+{
+	/* Simple: just sum up all of the elements */
+	size_t size = 0;
+	int i;
+
+	for (i = 0; i < pdata->elems->count; i++)
+		size += pdata->elems->elems[i].size;
+
+	return size;
+}
+
+static size_t dummy_dma_comp_avail_data_noncyclic(struct dma_chan_pdata *pdata)
+{
+	/* Slightly harder, take remainder of the current element plus
+	 * all of the data in future elements
+	 */
+	size_t size = 0;
+	int i;
+
+	for (i = pdata->sg_elem_curr_idx; i < pdata->elems->count; i++)
+		size += pdata->elems->elems[i].size;
+
+	/* Account for partially copied current elem */
+	size -= pdata->elem_progress;
+
+	return size;
+}
+
+/**
+ * \brief Compute how much data is available for copying at this point
+ * \param[in] pdata: Private data structure for this DMA channel
+ * \return Number of available/free bytes for copying, possibly 0
+ *
+ * Returns how many bytes can be copied with one dma_copy() call.
+ */
+static size_t dummy_dma_compute_avail_data(struct dma_chan_pdata *pdata)
+{
+	if (pdata->cyclic)
+		return dummy_dma_comp_avail_data_cyclic(pdata);
+	else
+		return dummy_dma_comp_avail_data_noncyclic(pdata);
+}
+
+/**
+ * \brief Copy as many elems as required to copy @bytes bytes
+ * \param[in,out] pdata: Private data structure for this DMA channel
+ * \param[in] bytes: The amount of data requested for copying
+ * \return How many bytes have been copied, or -ENODATA if nothing can be
+ *	   copied.
+ *
+ * Perform as many elem copies as required to fulfill the request for copying
+ * @bytes bytes of data. Will copy exactly this much data if possible, however
+ * it will stop short if you try to copy more data than available.
+ */
+static size_t dummy_dma_do_copies(struct dma_chan_pdata *pdata, int bytes)
+{
+	size_t avail = dummy_dma_compute_avail_data(pdata);
+	size_t copied = 0;
+	size_t crt_copied;
+
+	if (!avail)
+		return -ENODATA;
+
+	while (bytes) {
+		crt_copied = dummy_dma_copy_crt_elem(pdata, bytes);
+		if (crt_copied <= 0) {
+			if (copied > 0)
+				return copied;
+			else
+				return crt_copied;
+		}
+		bytes -= crt_copied;
+		copied += crt_copied;
+	}
+
+	return copied;
+}
+
+/**
+ * \brief Allocate next free DMA channel
+ * \param[in] dma: DMA controller
+ * \param[in] req_chan: Ignored, would have been a preference for a particular
+ *			channel
+ * \return A structure to be used with the other callbacks in this driver,
+ * or NULL in case no channel could be allocated.
+ *
+ * This function allocates a DMA channel for actual usage by any SOF client
+ * code.
+ */
 static struct dma_chan_data *dummy_dma_channel_get(struct dma *dma,
 						   unsigned int req_chan)
 {
+	uint32_t flags;
+	int i;
+
+	spin_lock_irq(dma->lock, flags);
+	for (i = 0; i < dma->plat_data.channels; i++) {
+		/* use channel if it's free */
+		if (dma->chan[i].status == COMP_STATE_INIT) {
+			dma->chan[i].status = COMP_STATE_READY;
+
+			atomic_add(&dma->num_channels_busy, 1);
+
+			/* return channel */
+			spin_unlock_irq(dma->lock, flags);
+			return &dma->chan[i];
+		}
+	}
+	spin_unlock_irq(dma->lock, flags);
+	trace_dummydma_error("dummy-dmac: %d no free channel",
+			     dma->plat_data.id);
 	return NULL;
 }
 
-/* channel must not be running when this is called */
-static void dummy_dma_channel_put(struct dma_chan_data *channel)
+static void dummy_dma_channel_put_unlocked(struct dma_chan_data *channel)
 {
+	struct dma_chan_pdata *ch = dma_chan_get_data(channel);
+
+	/* Reset channel state */
+	channel->cb = NULL;
+	channel->cb_type = 0;
+	channel->cb_data = NULL;
+
+	ch->elems = NULL;
+	channel->desc_count = 0;
+	ch->sg_elem_curr_idx = 0;
+
+	ch->r_pos = 0;
+	ch->w_pos = 0;
+
+	channel->status = COMP_STATE_INIT;
+	atomic_sub(&channel->dma->num_channels_busy, 1);
 }
 
+/**
+ * \brief Free a DMA channel
+ * \param[in] channel: DMA channel
+ *
+ * Once a DMA channel is no longer needed it should be freed by calling this
+ * function.
+ */
+static void dummy_dma_channel_put(struct dma_chan_data *channel)
+{
+	uint32_t flags;
+
+	spin_lock_irq(channel->dma->lock, flags);
+	dummy_dma_channel_put_unlocked(channel);
+	spin_unlock_irq(channel->dma->lock, flags);
+}
+
+/* Since copies are synchronous, the triggers do nothing */
 static int dummy_dma_start(struct dma_chan_data *channel)
 {
 	return 0;
 }
 
-
+/* Since copies are synchronous, the triggers do nothing */
 static int dummy_dma_release(struct dma_chan_data *channel)
 {
 	return 0;
 }
 
+/* Since copies are synchronous, the triggers do nothing */
 static int dummy_dma_pause(struct dma_chan_data *channel)
 {
 	return 0;
 }
 
+/* Since copies are synchronous, the triggers do nothing */
 static int dummy_dma_stop(struct dma_chan_data *channel)
 {
 	return 0;
@@ -45,25 +292,77 @@ static int dummy_dma_status(struct dma_chan_data *channel,
 			    struct dma_chan_status *status,
 			    uint8_t direction)
 {
+	struct dma_chan_pdata *ch = dma_chan_get_data(channel);
+
+	status->state = channel->status;
+	status->flags = 0; /* TODO What flags should be put here? */
+	status->r_pos = ch->r_pos;
+	status->w_pos = ch->w_pos;
+
+	status->timestamp = timer_get_system(platform_timer);
 	return 0;
 }
 
-/* set the DMA channel configuration, source/target address, buffer sizes */
+/**
+ * \brief Set channel configuration
+ * \param[in] channel: The channel to configure
+ * \param[in] config: Configuration data
+ * \return 0 on success, -EINVAL if the config is invalid or unsupported.
+ *
+ * Sets the channel configuration. For this particular driver the config means
+ * the direction and the actual SG elems for copying.
+ */
 static int dummy_dma_set_config(struct dma_chan_data *channel,
 				struct dma_sg_config *config)
 {
-	return 0;
+	struct dma_chan_pdata *ch = dma_chan_get_data(channel);
+	uint32_t flags;
+	int ret = 0;
+
+	spin_lock_irq(channel->dma->lock, flags);
+
+	if (!config->elem_array.count) {
+		trace_dummydma_error("dummy-dmac: %d channel %d no DMA descriptors",
+				     channel->dma->plat_data.id,
+				     channel->index);
+
+		ret = -EINVAL;
+		goto out;
+	}
+
+	channel->direction = config->direction;
+
+	if (config->direction != DMA_DIR_HMEM_TO_LMEM &&
+	    config->direction != DMA_DIR_LMEM_TO_HMEM) {
+		/* Shouldn't even happen though */
+		trace_dummydma_error("dummy-dmac: %d channel %d invalid direction %d",
+				     channel->dma->plat_data.id, channel->index,
+				     config->direction);
+		ret = -EINVAL;
+		goto out;
+	}
+	channel->desc_count = config->elem_array.count;
+	ch->elems = &config->elem_array;
+	ch->sg_elem_curr_idx = 0;
+	ch->cyclic = config->cyclic;
+
+	channel->status = COMP_STATE_PREPARE;
+out:
+	spin_unlock_irq(channel->dma->lock, flags);
+	return ret;
 }
 
 /* restore DMA context after leaving D3 */
 static int dummy_dma_pm_context_restore(struct dma *dma)
 {
+	/* Virtual device, no hardware registers */
 	return 0;
 }
 
 /* store DMA context after leaving D3 */
 static int dummy_dma_pm_context_store(struct dma *dma)
 {
+	/* Virtual device, no hardware registers */
 	return 0;
 }
 
@@ -71,34 +370,162 @@ static int dummy_dma_set_cb(struct dma_chan_data *channel, int type,
 		void (*cb)(void *data, uint32_t type, struct dma_cb_data *next),
 		void *data)
 {
+	channel->cb = cb;
+	channel->cb_data = data;
+	channel->cb_type = type;
 	return 0;
 }
 
+/**
+ * \brief Perform the DMA copy itself
+ * \param[in] channel The channel to do the copying
+ * \param[in] bytes How many bytes are requested to be copied
+ * \param[in] flags Flags which may alter the copying (this driver ignores them)
+ * \return 0 on success (this driver always succeeds)
+ *
+ * The copying must be done synchronously within this function, then SOF (the
+ * host component) is notified via the callback that this number of bytes is
+ * available.
+ */
 static int dummy_dma_copy(struct dma_chan_data *channel, int bytes,
 			  uint32_t flags)
 {
+	struct dma_cb_data next;
+	struct dma_chan_pdata *pdata = dma_chan_get_data(channel);
+
+	//next.elem.size = do_copy(channel, bytes);
+	next.elem.size = dummy_dma_do_copies(pdata, bytes);
+
+	/* Let the user of the driver know how much we copied */
+	if (channel->cb_type & DMA_CB_TYPE_COPY)
+		channel->cb(channel->cb_data, DMA_CB_TYPE_COPY, &next);
+
 	return 0;
 }
 
+/**
+ * \brief Initialize the driver
+ * \param[in] The preallocated DMA controller structure
+ * \return 0 on success, a negative value on error
+ *
+ * This function must be called before any other will work. Calling functions
+ * such as dma_channel_get() without a successful dma_probe() is undefined
+ * behavior.
+ */
 static int dummy_dma_probe(struct dma *dma)
 {
+	struct dma_chan_pdata *chanp;
+	int i;
+
+	if (dma->chan) {
+		trace_dummydma_error("dummy-dmac %d already created!",
+				     dma->plat_data.id);
+		return -EEXIST; /* already created */
+	}
+
+	dma->chan = rzalloc(RZONE_SYS_RUNTIME | RZONE_FLAG_UNCACHED,
+			    SOF_MEM_CAPS_RAM,
+			    dma->plat_data.channels * sizeof(dma->chan[0]));
+	if (!dma->chan) {
+		trace_dummydma_error("dummy-dmac %d: Out of memory!",
+				     dma->plat_data.id);
+		return -ENOMEM;
+	}
+
+	chanp = rzalloc(RZONE_SYS_RUNTIME | RZONE_FLAG_UNCACHED,
+			SOF_MEM_CAPS_RAM,
+			dma->plat_data.channels * sizeof(chanp[0]));
+	if (!chanp) {
+		rfree(dma->chan);
+		trace_dummydma_error("dummy-dmac %d: Out of memory!",
+				     dma->plat_data.id);
+		dma->chan = NULL;
+		return -ENOMEM;
+	}
+
+	for (i = 0; i < dma->plat_data.channels; i++) {
+		dma->chan[i].dma = dma;
+		dma->chan[i].index = i;
+		dma->chan[i].status = COMP_STATE_INIT;
+		dma->chan[i].private = &chanp[i];
+	}
+
+	atomic_init(&dma->num_channels_busy, 0);
+
 	return 0;
 }
 
+/**
+ * \brief Free up all memory and resources used by this driver
+ * \param[in] dma The DMA controller structure belonging to this driver
+ *
+ * This function undoes everything that probe() did. All channels that were
+ * returned via dma_channel_get() become invalid and further usage of them is
+ * undefined behavior. dma_channel_put() is automatically called on all
+ * channels.
+ *
+ * This function is idempotent, and safe to call multiple times in a row.
+ */
 static int dummy_dma_remove(struct dma *dma)
 {
+	tracev_dummydma("dummy_dma %d -> remove", dma->plat_data.id);
+	if (!dma->chan)
+		return 0;
+
+	rfree(dma_chan_get_data(&dma->chan[0]));
+	rfree(dma->chan);
+	dma->chan = NULL;
 	return 0;
 }
 
+/**
+ * \brief Get DMA copy data sizes
+ * \param[in] channel DMA channel on which we're interested of the sizes
+ * \param[out] avail How much data the channel can deliver if copy() is called
+ *		     now
+ * \param[out] free How much data can be copied to the host via this channel
+ *		    without going over the buffer size
+ * \return 0 on success, -EINVAL if a configuration error is detected
+ */
 static int dummy_dma_get_data_size(struct dma_chan_data *channel,
 				   uint32_t *avail, uint32_t *free)
 {
+	struct dma_chan_pdata *pdata = dma_chan_get_data(channel);
+	uint32_t size = dummy_dma_compute_avail_data(pdata);
+
+	switch (channel->direction) {
+	case DMA_DIR_HMEM_TO_LMEM:
+		*avail = size;
+		break;
+	case DMA_DIR_LMEM_TO_HMEM:
+		*free = size;
+		break;
+	default:
+		trace_dummydma_error("get_data_size direction: %d",
+				     channel->direction);
+		return -EINVAL;
+	}
 	return 0;
 }
 
 static int dummy_dma_interrupt(struct dma_chan_data *channel,
 			       enum dma_irq_cmd cmd)
 {
+	/* Software DMA doesn't need any interrupts */
+	return 0;
+}
+
+static int dummy_dma_get_attribute(struct dma *dma, uint32_t type,
+				   uint32_t *value)
+{
+	switch (type) {
+	case DMA_ATTR_BUFFER_ALIGNMENT:
+	case DMA_ATTR_COPY_ALIGNMENT:
+		*value = sizeof(void *);
+		break;
+	default:
+		return -ENOENT; /* Attribute not found */
+	}
 	return 0;
 }
 
@@ -119,4 +546,5 @@ const struct dma_ops dummy_dma_ops = {
 	.remove		= dummy_dma_remove,
 	.get_data_size	= dummy_dma_get_data_size,
 	.interrupt	= dummy_dma_interrupt,
+	.get_attribute	= dummy_dma_get_attribute,
 };
