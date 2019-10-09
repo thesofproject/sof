@@ -79,6 +79,8 @@ static void kpb_copy_samples(struct comp_buffer *sink,
 			     size_t sample_width);
 static void kpb_drain_samples(void *source, struct comp_buffer *sink,
 			      size_t size, size_t sample_width);
+static void kpb_buffer_samples(struct comp_buffer *source, uint32_t start,
+			       void *sink, size_t size, size_t sample_width);
 static void kpb_reset_history_buffer(struct hb *buff);
 static inline bool validate_host_params(size_t host_period_size,
 					size_t host_buffer_size);
@@ -664,11 +666,12 @@ static int kpb_buffer_data(struct comp_dev *dev, struct comp_buffer *source,
 	size_t space_avail;
 	struct comp_data *kpb = comp_get_drvdata(dev);
 	struct hb *buff = kpb->history_buffer;
-	void *read_ptr = source->r_ptr;
+	uint32_t offset = 0;
 	uint64_t timeout = 0;
 	uint64_t current_time = 0;
 	enum kpb_state state_preserved = kpb->state;
 	struct dd *draining_data = &kpb->draining_task_data;
+	size_t sample_width = kpb->config.sampling_width;
 
 	tracev_kpb("kpb_buffer_data()");
 
@@ -711,22 +714,22 @@ static int kpb_buffer_data(struct comp_dev *dev, struct comp_buffer *source,
 			 * in this buffer, copy what's available and continue
 			 * with next buffer.
 			 */
-			assert(!memcpy_s(buff->w_ptr, space_avail, read_ptr,
-					 space_avail));
+			kpb_buffer_samples(source, offset, buff->w_ptr,
+					   space_avail, sample_width);
 			/* Update write pointer & requested copy size */
 			buff->w_ptr += space_avail;
 			size_to_copy = size_to_copy - space_avail;
-			/* Update sink read pointer before continuing
+			/* Update read pointer's offset before continuing
 			 * with next buffer.
 			 */
-			read_ptr += space_avail;
+			offset += space_avail;
 		} else {
 			/* Requested size is smaller or equal to the space
 			 * available in this buffer. In this scenario simply
 			 * copy what was requested.
 			 */
-			assert(!memcpy_s(buff->w_ptr, size_to_copy, read_ptr,
-					 size_to_copy));
+			kpb_buffer_samples(source, offset, buff->w_ptr,
+					   size_to_copy, sample_width);
 			/* Update write pointer & requested copy size */
 			buff->w_ptr += size_to_copy;
 			/* Reset requested copy size */
@@ -1153,6 +1156,45 @@ static void kpb_drain_samples(void *source, struct comp_buffer *sink,
 				dst = buffer_write_frag_s32(sink, j);
 				*((int32_t *)dst) = *((int32_t *)src);
 				src = ((int32_t *)src) + 1;
+			} else {
+				trace_kpb_error("KPB: An attempt to copy "
+						"not supported format!");
+				return;
+			}
+			j++;
+		}
+	}
+}
+
+/**
+ * \brief Buffers data samples safe, according to configuration.
+ * \param[in,out] source Pointer to source buffer.
+ * \param[in] start Start offset of source buffer in bytes.
+ * \param[in,out] sink Pointer to sink buffer.
+ * \param[in] size Requested copy size in bytes.
+ * \param[in] sample_width Sample size.
+ */
+static void kpb_buffer_samples(struct comp_buffer *source, uint32_t start,
+			       void *sink, size_t size, size_t sample_width)
+{
+	void *src;
+	void *dst = sink;
+	size_t i;
+	size_t j = start /
+		(sample_width == 16 ? sizeof(int16_t) : sizeof(int32_t));
+	size_t channel;
+	size_t frames = KPB_BYTES_TO_FRAMES(size, sample_width);
+
+	for (i = 0; i < frames; i++) {
+		for (channel = 0; channel < KPB_NR_OF_CHANNELS; channel++) {
+			if (sample_width == 16) {
+				src = buffer_read_frag_s16(source, j);
+				*((int16_t *)dst) = *((int16_t *)src);
+				dst = ((int16_t *)dst) + 1;
+			} else if (sample_width == 32 || sample_width == 24) {
+				src = buffer_read_frag_s32(source, j);
+				*((int32_t *)dst) = *((int32_t *)src);
+				dst = ((int32_t *)dst) + 1;
 			} else {
 				trace_kpb_error("KPB: An attempt to copy "
 						"not supported format!");
