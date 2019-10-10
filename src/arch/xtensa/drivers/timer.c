@@ -133,5 +133,5 @@ int64_t arch_timer_set(struct timer *timer, uint64_t ticks)
 	xthal_set_ccompare(timer->id, time);
 
 	arch_interrupt_global_enable(flags);
-	return 0;
+	return ticks;
 }
