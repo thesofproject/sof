@@ -9,6 +9,7 @@
 #ifndef __SOF_SCHEDULE_SCHEDULE_H__
 #define __SOF_SCHEDULE_SCHEDULE_H__
 
+#include <sof/bit.h>
 #include <sof/common.h>
 #include <sof/list.h>
 #include <sof/schedule/task.h>
@@ -44,10 +45,7 @@ enum {
 };
 
 /* Scheduler flags */
-/* Sync/Async only supported by ll scheduler atm */
-#define SOF_SCHEDULE_FLAG_ASYNC (0 << 0) /* task scheduled asynchronously */
-#define SOF_SCHEDULE_FLAG_SYNC	(1 << 0) /* task scheduled synchronously */
-#define SOF_SCHEDULE_FLAG_IDLE  (2 << 0)
+#define SOF_SCHEDULE_FLAG_IDLE	BIT(0)
 
 struct scheduler_ops {
 	void (*schedule_task)(void *data, struct task *task, uint64_t start,
