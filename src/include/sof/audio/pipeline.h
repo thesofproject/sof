@@ -9,7 +9,6 @@
 #define __SOF_AUDIO_PIPELINE_H__
 
 #include <sof/lib/cpu.h>
-#include <sof/schedule/task.h>
 #include <sof/trace/trace.h>
 #include <ipc/topology.h>
 #include <user/trace.h>
@@ -18,10 +17,11 @@
 
 struct comp_buffer;
 struct comp_dev;
+struct ipc;
 struct sof_ipc_buffer;
 struct sof_ipc_pcm_params;
 struct sof_ipc_stream_posn;
-struct ipc;
+struct task;
 
 /*
  * This flag disables firmware-side xrun recovery.
@@ -158,8 +158,6 @@ void pipeline_schedule_cancel(struct pipeline *p);
 /* get time pipeline timestamps from host to dai */
 void pipeline_get_timestamp(struct pipeline *p, struct comp_dev *host_dev,
 			    struct sof_ipc_stream_posn *posn);
-
-void pipeline_schedule(void *arg);
 
 /* notify host that we have XRUN */
 void pipeline_xrun(struct pipeline *p, struct comp_dev *dev, int32_t bytes);
