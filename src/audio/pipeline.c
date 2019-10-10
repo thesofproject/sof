@@ -352,20 +352,22 @@ int pipeline_params(struct pipeline *p, struct comp_dev *host,
 static struct task *pipeline_task_init(struct pipeline *p, uint32_t type,
 				       enum task_state (*func)(void *data))
 {
-	struct task *task = NULL;
+	struct pipeline_task *task = NULL;
 
 	task = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*task));
-
 	if (!task)
 		return NULL;
 
-	if (schedule_task_init(task, type, p->ipc_pipe.priority, func,
+	if (schedule_task_init(&task->task, type, p->ipc_pipe.priority, func,
 			       NULL, p, p->ipc_pipe.core, 0) < 0) {
 		rfree(task);
-		task = NULL;
+		return NULL;
 	}
 
-	return task;
+	task->sched_comp = p->sched_comp;
+	task->registrable = p == p->sched_comp->pipeline;
+
+	return &task->task;
 }
 
 static int pipeline_comp_task_init(struct pipeline *p)
@@ -485,7 +487,8 @@ void pipeline_cache(struct pipeline *p, struct comp_dev *dev, int cmd)
 	/* pipeline needs to be invalidated before usage */
 	if (cmd == CACHE_INVALIDATE) {
 		dcache_invalidate_region(p, sizeof(*p));
-		dcache_invalidate_region(p->pipe_task, sizeof(*p->pipe_task));
+		dcache_invalidate_region(p->pipe_task,
+					 sizeof(struct pipeline_task));
 	}
 
 	trace_pipe_with_ids(p, "pipeline_cache()");
@@ -500,8 +503,8 @@ void pipeline_cache(struct pipeline *p, struct comp_dev *dev, int cmd)
 
 	/* pipeline needs to be flushed after usage */
 	if (cmd == CACHE_WRITEBACK_INV) {
-		dcache_writeback_invalidate_region(p->pipe_task,
-						   sizeof(*p->pipe_task));
+		dcache_writeback_invalidate_region
+				(p->pipe_task, sizeof(struct pipeline_task));
 		dcache_writeback_invalidate_region(p, sizeof(*p));
 	}
 
