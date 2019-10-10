@@ -30,7 +30,7 @@ struct ll_schedule_domain_ops {
 			       uint64_t period, struct task *task,
 			       void (*handler)(void *arg), void *arg);
 	void (*domain_unregister)(struct ll_schedule_domain *domain,
-				  uint32_t num_tasks);
+				  struct task *task, uint32_t num_tasks);
 	void (*domain_enable)(struct ll_schedule_domain *domain, int core);
 	void (*domain_disable)(struct ll_schedule_domain *domain, int core);
 	void (*domain_set)(struct ll_schedule_domain *domain, uint64_t start);
@@ -85,11 +85,11 @@ static inline int domain_register(struct ll_schedule_domain *domain,
 }
 
 static inline void domain_unregister(struct ll_schedule_domain *domain,
-				     uint32_t num_tasks)
+				     struct task *task, uint32_t num_tasks)
 {
 	assert(domain->ops->domain_unregister);
 
-	domain->ops->domain_unregister(domain, num_tasks);
+	domain->ops->domain_unregister(domain, task, num_tasks);
 }
 
 static inline void domain_enable(struct ll_schedule_domain *domain, int core)

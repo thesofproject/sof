@@ -56,7 +56,7 @@ static int timer_domain_register(struct ll_schedule_domain *domain,
 }
 
 static void timer_domain_unregister(struct ll_schedule_domain *domain,
-				    uint32_t num_tasks)
+				    struct task *task, uint32_t num_tasks)
 {
 	struct timer_domain *timer_domain = ll_sch_domain_get_pdata(domain);
 	int core = cpu_get_id();
