@@ -181,6 +181,7 @@ static int dma_single_chan_domain_register(struct ll_schedule_domain *domain,
 					   void *arg)
 {
 	struct dma_domain *dma_domain = ll_sch_domain_get_pdata(domain);
+	struct pipeline_task *pipe_task = pipeline_task_get(task);
 	int core = cpu_get_id();
 	struct dma_domain_data *data = &dma_domain->data[core];
 	struct dma_chan_data *channel;
@@ -188,6 +189,10 @@ static int dma_single_chan_domain_register(struct ll_schedule_domain *domain,
 	int ret;
 
 	trace_ll("dma_single_chan_domain_register()");
+
+	/* check if task should be registered */
+	if (!pipe_task->registrable)
+		return 0;
 
 	/* get running channel with min period */
 	channel = dma_chan_min_period(dma_domain);
@@ -341,11 +346,16 @@ static void dma_single_chan_domain_unregister(struct ll_schedule_domain *domain,
 					      uint32_t num_tasks)
 {
 	struct dma_domain *dma_domain = ll_sch_domain_get_pdata(domain);
+	struct pipeline_task *pipe_task = pipeline_task_get(task);
 	struct dma *dmas = dma_domain->dma_array;
 	int core = cpu_get_id();
 	struct dma_domain_data *data = &dma_domain->data[core];
 
 	trace_ll("dma_single_chan_domain_unregister()");
+
+	/* check if task should be unregistered */
+	if (!pipe_task->registrable)
+		return;
 
 	/* channel not registered */
 	if (!data->channel)
@@ -377,6 +387,10 @@ static void dma_single_chan_domain_enable(struct ll_schedule_domain *domain,
 	struct dma_domain *dma_domain = ll_sch_domain_get_pdata(domain);
 	struct dma_domain_data *data = &dma_domain->data[core];
 
+	/* channel not registered */
+	if (!data->channel)
+		return;
+
 	dma_interrupt(data->channel, DMA_IRQ_UNMASK);
 
 	interrupt_unmask(data->irq, core);
@@ -393,6 +407,10 @@ static void dma_single_chan_domain_disable(struct ll_schedule_domain *domain,
 	struct dma_domain *dma_domain = ll_sch_domain_get_pdata(domain);
 	struct dma_domain_data *data = &dma_domain->data[core];
 
+	/* channel not registered */
+	if (!data->channel)
+		return;
+
 	interrupt_mask(data->irq, core);
 }
 
@@ -407,6 +425,10 @@ static void dma_single_chan_domain_set(struct ll_schedule_domain *domain,
 	struct dma_domain *dma_domain = ll_sch_domain_get_pdata(domain);
 	struct dma_domain_data *data = &dma_domain->data[cpu_get_id()];
 	uint64_t ticks;
+
+	/* channel not registered */
+	if (!data->channel)
+		return;
 
 	if (dma_domain->channel_changed) {
 		domain->last_tick = platform_timer_get(platform_timer);
@@ -428,6 +450,10 @@ static void dma_single_chan_domain_clear(struct ll_schedule_domain *domain)
 {
 	struct dma_domain *dma_domain = ll_sch_domain_get_pdata(domain);
 	struct dma_domain_data *data = &dma_domain->data[cpu_get_id()];
+
+	/* channel not registered */
+	if (!data->channel)
+		return;
 
 	dma_interrupt(data->channel, DMA_IRQ_CLEAR);
 }
