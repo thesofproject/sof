@@ -191,7 +191,8 @@ static int schedule_ll_domain_set(struct ll_schedule_data *sch,
 	return 0;
 }
 
-static void schedule_ll_domain_clear(struct ll_schedule_data *sch)
+static void schedule_ll_domain_clear(struct ll_schedule_data *sch,
+				     struct task *task)
 {
 	spin_lock(sch->domain->lock);
 
@@ -212,7 +213,7 @@ static void schedule_ll_domain_clear(struct ll_schedule_data *sch)
 
 	spin_unlock(sch->domain->lock);
 
-	domain_unregister(sch->domain, atomic_read(&sch->num_tasks));
+	domain_unregister(sch->domain, task, atomic_read(&sch->num_tasks));
 }
 
 static void schedule_ll_task_insert(struct task *task, struct list_item *tasks)
@@ -339,7 +340,7 @@ static void schedule_ll_task_cancel(void *data, struct task *task)
 
 		/* found it */
 		if (curr_task == task) {
-			schedule_ll_domain_clear(sch);
+			schedule_ll_domain_clear(sch, task);
 			break;
 		}
 	}
