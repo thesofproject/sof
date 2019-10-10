@@ -164,7 +164,17 @@
 	(SHIM_CLKCTL_OCS_HP_RING | SHIM_CLKCTL_LMCS_DIV4 | \
 	SHIM_CLKCTL_HMCS_DIV4)
 
+/** \brief Clock status */
 #define SHIM_CLKSTS		0x7C
+
+/** \brief HP RING Oscillator Clock Status */
+#define SHIM_CLKSTS_HROSCCS	BIT(31)
+
+/** \brief XTAL Oscillator Clock Status */
+#define SHIM_CLKSTS_XOSCCS	BIT(30)
+
+/** \brief LP RING Oscillator Clock Status */
+#define SHIM_CLKSTS_LROSCCS	BIT(29)
 
 #define SHIM_PWRCTL		0x90
 #define SHIM_PWRCTL_TCPDSPPG(x)	BIT(x)
