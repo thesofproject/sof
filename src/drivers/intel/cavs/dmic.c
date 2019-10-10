@@ -1533,8 +1533,7 @@ static int dmic_probe(struct dai *dai)
 
 	/* Initialize start sequence handler */
 	schedule_task_init(&dmic->dmicwork, SOF_SCHEDULE_LL_TIMER,
-			   SOF_TASK_PRI_MED, dmic_work, NULL, dai, 0,
-			   SOF_SCHEDULE_FLAG_ASYNC);
+			   SOF_TASK_PRI_MED, dmic_work, NULL, dai, 0, 0);
 
 	/* Enable DMIC power */
 	pm_runtime_get_sync(DMIC_POW, dai->index);
