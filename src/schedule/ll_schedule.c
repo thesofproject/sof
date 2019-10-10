@@ -64,7 +64,7 @@ static void schedule_ll_task_update_start(struct ll_schedule_data *sch,
 
 	next = sch->domain->ticks_per_ms * pdata->period / 1000;
 
-	if (task->flags & SOF_SCHEDULE_FLAG_SYNC)
+	if (sch->domain->synchronous)
 		task->start += next;
 	else
 		task->start = next + last_tick;
@@ -275,7 +275,7 @@ static void schedule_ll_task(void *data, struct task *task, uint64_t start,
 
 	task->start = sch->domain->ticks_per_ms * start / 1000;
 
-	if (task->flags & SOF_SCHEDULE_FLAG_SYNC)
+	if (sch->domain->synchronous)
 		task->start += platform_timer_get(platform_timer);
 	else
 		task->start += sch->domain->last_tick;
@@ -362,7 +362,7 @@ static void reschedule_ll_task(void *data, struct task *task, uint64_t start)
 
 	time = sch->domain->ticks_per_ms * start / 1000;
 
-	if (task->flags & SOF_SCHEDULE_FLAG_SYNC)
+	if (sch->domain->synchronous)
 		time += platform_timer_get(platform_timer);
 	else
 		time += sch->domain->last_tick;

@@ -57,8 +57,9 @@ struct ll_schedule_domain {
 
 #define ll_sch_domain_get_pdata(domain) ((domain)->private)
 
-static inline struct ll_schedule_domain *domain_init(int type, int clk,
-				const struct ll_schedule_domain_ops *ops)
+static inline struct ll_schedule_domain *domain_init
+				(int type, int clk, bool synchronous,
+				 const struct ll_schedule_domain_ops *ops)
 {
 	struct ll_schedule_domain *domain;
 
@@ -66,6 +67,7 @@ static inline struct ll_schedule_domain *domain_init(int type, int clk,
 			 sizeof(*domain));
 	domain->type = type;
 	domain->clk = clk;
+	domain->synchronous = synchronous;
 	domain->ticks_per_ms = clock_ms_to_ticks(clk, 1);
 	domain->ops = ops;
 

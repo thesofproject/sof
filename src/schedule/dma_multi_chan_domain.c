@@ -289,7 +289,7 @@ struct ll_schedule_domain *dma_multi_chan_domain_init(struct dma *dma_array,
 	trace_ll("dma_multi_chan_domain_init(): num_dma %d, clk %d, "
 		 "aggregated_irq %d", num_dma, clk, aggregated_irq);
 
-	domain = domain_init(SOF_SCHEDULE_LL_DMA, clk,
+	domain = domain_init(SOF_SCHEDULE_LL_DMA, clk, true,
 			     &dma_multi_chan_domain_ops);
 
 	dma_domain = rzalloc(RZONE_SYS | RZONE_FLAG_UNCACHED, SOF_MEM_CAPS_RAM,

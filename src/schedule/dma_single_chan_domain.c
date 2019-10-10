@@ -494,7 +494,7 @@ struct ll_schedule_domain *dma_single_chan_domain_init(struct dma *dma_array,
 	trace_ll("dma_single_chan_domain_init(): num_dma %d, clk %d", num_dma,
 		 clk);
 
-	domain = domain_init(SOF_SCHEDULE_LL_DMA, clk,
+	domain = domain_init(SOF_SCHEDULE_LL_DMA, clk, false,
 			     &dma_single_chan_domain_ops);
 
 	dma_domain = rzalloc(RZONE_SYS | RZONE_FLAG_UNCACHED, SOF_MEM_CAPS_RAM,
