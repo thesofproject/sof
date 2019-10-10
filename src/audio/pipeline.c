@@ -514,8 +514,11 @@ void pipeline_cache(struct pipeline *p, struct comp_dev *dev, int cmd)
 static void pipeline_comp_trigger_sched_comp(struct pipeline *p,
 					     struct comp_dev *comp, int cmd)
 {
-	/* only required by the scheduling component */
-	if (p->sched_comp != comp)
+	/* only required by the scheduling component or sink component
+	 * on pipeline without one
+	 */
+	if (p->sched_comp != comp &&
+	    (p == p->sched_comp->pipeline || p->sink_comp != comp))
 		return;
 
 	switch (cmd) {
@@ -748,14 +751,12 @@ static int pipeline_comp_copy(struct comp_dev *current, void *data, int dir)
 {
 	struct pipeline_data *ppl_data = data;
 	int is_single_ppl = comp_is_single_pipeline(current, ppl_data->start);
-	int is_same_sched =
-		pipeline_is_same_sched_comp(current->pipeline, ppl_data->p);
 	int err;
 
 	tracev_pipe("pipeline_comp_copy(), current->comp.id = %u, dir = %u",
 		    current->comp.id, dir);
 
-	if (!is_single_ppl && !is_same_sched) {
+	if (!is_single_ppl) {
 		tracev_pipe("pipeline_comp_copy(), current is from another "
 			    "pipeline and can't be scheduled together");
 		return 0;
@@ -951,8 +952,7 @@ static int pipeline_xrun_recover(struct pipeline *p)
 /* notify pipeline that this component requires buffers emptied/filled */
 void pipeline_schedule_copy(struct pipeline *p, uint64_t start)
 {
-	if (p->sched_comp->state == COMP_STATE_ACTIVE)
-		schedule_task(p->pipe_task, start, p->ipc_pipe.period);
+	schedule_task(p->pipe_task, start, p->ipc_pipe.period);
 }
 
 void pipeline_schedule_cancel(struct pipeline *p)
