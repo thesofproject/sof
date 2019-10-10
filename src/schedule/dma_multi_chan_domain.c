@@ -7,9 +7,11 @@
 #include <sof/audio/component.h>
 #include <sof/bit.h>
 #include <sof/drivers/interrupt.h>
+#include <sof/drivers/timer.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/cpu.h>
 #include <sof/lib/dma.h>
+#include <sof/platform.h>
 #include <sof/schedule/ll_schedule.h>
 #include <sof/schedule/ll_schedule_domain.h>
 #include <sof/schedule/schedule.h>
@@ -21,7 +23,7 @@
 
 struct dma_domain_data {
 	int irq;
-	struct task *task;
+	struct pipeline_task *task;
 	void (*handler)(void *arg);
 	void *arg;
 };
@@ -96,6 +98,7 @@ static int dma_multi_chan_domain_register(struct ll_schedule_domain *domain,
 					  void (*handler)(void *arg), void *arg)
 {
 	struct dma_domain *dma_domain = ll_sch_domain_get_pdata(domain);
+	struct pipeline_task *pipe_task = pipeline_task_get(task);
 	struct dma *dmas = dma_domain->dma_array;
 	int core = cpu_get_id();
 	int ret;
@@ -103,6 +106,10 @@ static int dma_multi_chan_domain_register(struct ll_schedule_domain *domain,
 	int j;
 
 	trace_ll("dma_multi_chan_domain_register()");
+
+	/* check if task should be registered */
+	if (!pipe_task->registrable)
+		return 0;
 
 	for (i = 0; i < dma_domain->num_dma; ++i) {
 		for (j = 0; j < dmas[i].plat_data.channels; ++j) {
@@ -146,7 +153,7 @@ static int dma_multi_chan_domain_register(struct ll_schedule_domain *domain,
 
 			dma_interrupt(&dmas[i].chan[j], DMA_IRQ_UNMASK);
 
-			dma_domain->data[i][j].task = task;
+			dma_domain->data[i][j].task = pipe_task;
 			dma_domain->channel_mask[i][core] |= BIT(j);
 
 			return 0;
@@ -180,12 +187,17 @@ static void dma_multi_chan_domain_unregister(struct ll_schedule_domain *domain,
 					     uint32_t num_tasks)
 {
 	struct dma_domain *dma_domain = ll_sch_domain_get_pdata(domain);
+	struct pipeline_task *pipe_task = pipeline_task_get(task);
 	struct dma *dmas = dma_domain->dma_array;
 	int core = cpu_get_id();
 	int i;
 	int j;
 
 	trace_ll("dma_multi_chan_domain_unregister()");
+
+	/* check if task should be unregistered */
+	if (!pipe_task->registrable)
+		return;
 
 	for (i = 0; i < dma_domain->num_dma; ++i) {
 		for (j = 0; j < dmas[i].plat_data.channels; ++j) {
@@ -236,6 +248,7 @@ static bool dma_multi_chan_domain_is_pending(struct ll_schedule_domain *domain,
 					     struct task *task)
 {
 	struct dma_domain *dma_domain = ll_sch_domain_get_pdata(domain);
+	struct pipeline_task *pipe_task = pipeline_task_get(task);
 	struct dma *dmas = dma_domain->dma_array;
 	uint32_t status;
 	int i;
@@ -248,8 +261,15 @@ static bool dma_multi_chan_domain_is_pending(struct ll_schedule_domain *domain,
 			if (!status)
 				continue;
 
-			/* not this task */
-			if (dma_domain->data[i][j].task != task)
+			/* not the same scheduling component */
+			if (dma_domain->data[i][j].task->sched_comp !=
+			    pipe_task->sched_comp)
+				continue;
+
+			/* it's too soon for this task */
+			if (!pipe_task->registrable &&
+			    pipe_task->task.start >
+			    platform_timer_get(platform_timer))
 				continue;
 
 			/* execute callback if exists */
@@ -257,9 +277,11 @@ static bool dma_multi_chan_domain_is_pending(struct ll_schedule_domain *domain,
 				dmas[i].chan[j].irq_callback(&dmas[i].chan[j]);
 
 			/* clear interrupt */
-			dma_interrupt(&dmas[i].chan[j], DMA_IRQ_CLEAR);
-			interrupt_clear_mask(dma_domain->data[i][j].irq,
-					     BIT(j));
+			if (pipe_task->registrable) {
+				dma_interrupt(&dmas[i].chan[j], DMA_IRQ_CLEAR);
+				interrupt_clear_mask(dma_domain->data[i][j].irq,
+						     BIT(j));
+			}
 
 			return true;
 		}
