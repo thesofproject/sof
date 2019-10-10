@@ -113,9 +113,6 @@
 /** \brief Clock control */
 #define SHIM_CLKCTL		0x78
 
-/** \brief Clock status */
-#define SHIM_CLKSTS		0x7C
-
 /** \brief Request HP RING Oscillator Clock */
 #define SHIM_CLKCTL_RHROSCC	BIT(31)
 
@@ -146,6 +143,18 @@
 /** \brief HP Memory Clock Select */
 #define SHIM_CLKCTL_HMCS_DIV2	0
 #define SHIM_CLKCTL_HMCS_DIV4	BIT(0)
+
+/** \brief Clock status */
+#define SHIM_CLKSTS		0x7C
+
+/** \brief HP RING Oscillator Clock Status */
+#define SHIM_CLKSTS_HROSCCS	BIT(31)
+
+/** \brief XTAL Oscillator Clock Status */
+#define SHIM_CLKSTS_XOSCCS	BIT(30)
+
+/** \brief LP RING Oscillator Clock Status */
+#define SHIM_CLKSTS_LROSCCS	BIT(29)
 
 #define SHIM_PWRCTL		0x90
 #define SHIM_PWRCTL_TCPDSPPG(x)	BIT(x)
