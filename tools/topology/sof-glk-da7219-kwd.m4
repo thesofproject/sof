@@ -181,7 +181,7 @@ dnl     sched_comp, time_domain,
 dnl     pcm_min_rate, pcm_max_rate, pipeline_rate)
 PIPELINE_ADD(sof/pipe-detect.m4,
 	     9, 2, s16le,
-	     KWD_PIPE_SCH_DEADLINE_US, 0, 0,
+	     KWD_PIPE_SCH_DEADLINE_US, 1, 0,
 	     PIPELINE_SCHED_COMP_8, SCHEDULE_TIME_DOMAIN_TIMER,
 	     16000, 16000, 16000)
 

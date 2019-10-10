@@ -85,7 +85,7 @@ W_DAI_IN(SSP, 5, SSP5-Codec, s24le, 3, 0)
 # Capture pipeline 5 from demux on PCM 5 using max 2 channels of s32le.
 PIPELINE_PCM_ADD(sof/pipe-passthrough-capture-sched.m4,
 	5, 4, 2, s32le,
-	1000, 0, 0,
+	1000, 1, 0,
 	48000, 48000, 48000,
 	SCHEDULE_TIME_DOMAIN_TIMER,
 	PIPELINE_PLAYBACK_SCHED_COMP_1)

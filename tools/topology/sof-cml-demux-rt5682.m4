@@ -113,7 +113,7 @@ DAI_ADD(sof/pipe-dai-capture.m4,
 # Capture pipeline 5 on PCM 5 using max 2 channels of s32le.
 PIPELINE_PCM_ADD(sof/pipe-passthrough-capture-sched.m4,
 	5, 5, 2, s32le,
-	1000, 0, 0,
+	1000, 1, 0,
 	48000, 48000, 48000,
 	SCHEDULE_TIME_DOMAIN_TIMER)
 

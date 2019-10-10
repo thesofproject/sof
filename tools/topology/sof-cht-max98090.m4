@@ -28,10 +28,10 @@ include(`platform/intel/cht.m4')
 #
 
 # Low Latency playback pipeline 1 on PCM 0 using max 2 channels of s32le.
-# 1000us deadline on core 0 with priority 0
+# 1000us deadline on core 0 with priority 1
 PIPELINE_PCM_ADD(sof/pipe-low-latency-playback.m4,
 	1, 0, 2, s32le,
-	1000, 0, 0,
+	1000, 1, 0,
 	48000, 48000, 48000)
 
 # Low Latency capture pipeline 2 on PCM 0 using max 2 channels of s32le.
@@ -48,17 +48,17 @@ PIPELINE_PCM_ADD(sof/pipe-low-latency-capture.m4,
 #
 
 # playback DAI is SSP2 using 2 periods
-# Buffers use s16le format, 1000us deadline on core 0 with priority 0
+# Buffers use s16le format, 1000us deadline on core 0 with priority 1
 DAI_ADD(sof/pipe-dai-playback.m4,
 	1, SSP, 2, SSP2-Codec,
 	PIPELINE_SOURCE_1, 2, s16le,
-	1000, 0, 0)
+	1000, 1, 0)
 
 # PCM Media Playback pipeline 3 on PCM 1 using max 2 channels of s32le.
-# 4000us deadline on core 0 with priority 1
+# 4000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-pcm-media.m4,
 	3, 1, 2, s32le,
-	1000, 1, 0,
+	1000, 0, 0,
 	8000, 48000, 48000,
 	0, PIPELINE_PLAYBACK_SCHED_COMP_1)
 
