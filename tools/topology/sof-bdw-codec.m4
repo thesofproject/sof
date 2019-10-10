@@ -32,10 +32,10 @@ define(PIPE_NAME, ifelse(CODEC, `RT5640', pipe-bdw-rt5640,
 #
 
 # Low Latency playback pipeline 1 on PCM 0 using max 2 channels of s32le.
-# 1000us deadline on core 0 with priority 0
+# 1000us deadline on core 0 with priority 1
 PIPELINE_PCM_ADD(sof/pipe-low-latency-playback.m4,
 	1, 0, 2, s32le,
-	1000, 0, 0,
+	1000, 1, 0,
 	48000, 48000, 48000)
 
 # Low Latency capture pipeline 2 on PCM 0 using max 2 channels of s32le.
@@ -46,10 +46,10 @@ PIPELINE_PCM_ADD(sof/pipe-low-latency-capture.m4,
 	48000, 48000, 48000)
 
 # PCM Media Playback pipeline 3 on PCM 1 using max 2 channels of s32le.
-# 2000us deadline on core 0 with priority 1
+# 2000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-pcm-media.m4,
 	3, 1, 2, s32le,
-	2000, 1, 0,
+	2000, 0, 0,
 	8000, 96000, 48000)
 
 # Connect pipelines together
@@ -69,11 +69,11 @@ SectionGraph."PIPE_NAME" {
 #
 
 # playback DAI is SSP0 using 2 periods
-# Buffers use s24le format, 1000us deadline on core 0 with priority 0
+# Buffers use s24le format, 1000us deadline on core 0 with priority 1
 DAI_ADD(sof/pipe-dai-playback.m4,
 	1, SSP, 0, Codec,
 	PIPELINE_SOURCE_1, 2, s24le,
-	1000, 0, 0)
+	1000, 1, 0)
 
 # capture DAI is SSP0 using 2 periods
 # Buffers use s24le format, 1000us deadline on core 0 with priority 0
