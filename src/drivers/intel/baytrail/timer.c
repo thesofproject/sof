@@ -106,7 +106,7 @@ int64_t platform_timer_set(struct timer *timer, uint64_t ticks)
 
 	arch_interrupt_global_enable(flags);
 
-	return 0;
+	return ticks;
 }
 
 void platform_timer_clear(struct timer *timer)
