@@ -10,8 +10,10 @@
 
 #include <arch/schedule/task.h>
 #include <sof/list.h>
+#include <stdbool.h>
 #include <stdint.h>
 
+struct comp_dev;
 struct sof;
 
 #define SOF_TASK_PRI_HIGH	0	/* priority level 0 - high */
@@ -52,6 +54,15 @@ struct task {
 	struct list_item list;
 	void *private;
 };
+
+/** \brief Task type registered by pipelines. */
+struct pipeline_task {
+	struct task task;		/**< parent structure */
+	bool registrable;		/**< should task be registered on irq */
+	struct comp_dev *sched_comp;	/**< pipeline scheduling component */
+};
+
+#define pipeline_task_get(task) ((struct pipeline_task *)(task))
 
 enum task_state task_main_master_core(void *data);
 
