@@ -47,6 +47,7 @@ struct ll_schedule_domain {
 	uint32_t ticks_per_ms;		/**< number of clock ticks per ms */
 	int type;			/**< domain type */
 	int clk;			/**< source clock */
+	bool synchronous;		/**< are tasks should be synchronous */
 	void *private;			/**< pointer to private data */
 	bool registered[PLATFORM_CORE_COUNT];		/**< registered cores */
 	const struct ll_schedule_domain_ops *ops;	/**< domain ops */
