@@ -40,16 +40,16 @@ struct ll_schedule_domain_ops {
 };
 
 struct ll_schedule_domain {
-	uint64_t last_tick;
-	spinlock_t *lock;
-	atomic_t total_num_tasks;
-	atomic_t num_clients;
-	bool registered[PLATFORM_CORE_COUNT];
-	uint32_t ticks_per_ms;
-	int type;
-	int clk;
-	const struct ll_schedule_domain_ops *ops;
-	void *private;
+	uint64_t last_tick;		/**< timestamp of last run */
+	spinlock_t *lock;		/**< standard lock */
+	atomic_t total_num_tasks;	/**< total number of registered tasks */
+	atomic_t num_clients;		/**< number of registered cores */
+	uint32_t ticks_per_ms;		/**< number of clock ticks per ms */
+	int type;			/**< domain type */
+	int clk;			/**< source clock */
+	void *private;			/**< pointer to private data */
+	bool registered[PLATFORM_CORE_COUNT];		/**< registered cores */
+	const struct ll_schedule_domain_ops *ops;	/**< domain ops */
 };
 
 #define ll_sch_domain_set_pdata(domain, data) ((domain)->private = (data))
