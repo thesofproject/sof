@@ -4,6 +4,12 @@
 
 Zephyr folder contains a west [module](https://docs.zephyrproject.org/latest/guides/modules.html)
 
+### Sources in 'zephyr/sof-wrapper'
+
+This directory contains wrapped implementations of generic SOF OS services,
+implementing the public SOF interface, but using Zephyr OS for 
+the implementation.
+
 ### Porting
 
 At current stage this effort is not trying to reconsile APIs from Zephyr with
