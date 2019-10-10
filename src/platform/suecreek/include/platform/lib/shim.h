@@ -110,19 +110,29 @@
 #define SHIM_DSPWCTCS_T1A	(0x1 << 1) /* Timer 1 armed */
 #define SHIM_DSPWCTCS_T0A	(0x1 << 0) /* Timer 0 armed */
 
+/** \brief Clock control */
 #define SHIM_CLKCTL		0x78
-#define SHIM_CLKSTS		0x7C
 
-#define SHIM_PWRCTL		0x90
-#define SHIM_PWRCTL_TCPDSPPG(x)	BIT(x)
-#define SHIM_PWRCTL_TCPCTLPG	BIT(4)
+/** \brief Request HP RING Oscillator Clock */
+#define SHIM_CLKCTL_RHROSCC	BIT(31)
 
-#define SHIM_PWRSTS		0x92
+/** \brief Request XTAL Oscillator Clock */
+#define SHIM_CLKCTL_RXOSCC	BIT(30)
 
-#define SHIM_LPSCTL		0x94
-#define SHIM_LPSCTL_BID		BIT(7)
-#define SHIM_LPSCTL_FDSPRUN	BIT(9)
-#define SHIM_LPSCTL_BATTR_0	BIT(12)
+/** \brief Request LP RING Oscillator Clock */
+#define SHIM_CLKCTL_RLROSCC	BIT(29)
+
+/** \brief Oscillator Clock Select*/
+#define SHIM_CLKCTL_OCS_HP_RING		BIT(2)
+#define SHIM_CLKCTL_OCS_LP_RING		0
+
+/** \brief LP Memory Clock Select */
+#define SHIM_CLKCTL_LMCS_DIV2	0
+#define SHIM_CLKCTL_LMCS_DIV4	BIT(1)
+
+/** \brief HP Memory Clock Select */
+#define SHIM_CLKCTL_HMCS_DIV2	0
+#define SHIM_CLKCTL_HMCS_DIV4	BIT(0)
 
 /* LP GPDMA Force Dynamic Clock Gating bits, 0--enable */
 #define SHIM_CLKCTL_TCPLCG(x)		(0x1 << (16 + x))
@@ -141,6 +151,31 @@
 
 /* HP memory clock PLL divisor */
 #define SHIM_CLKCTL_HPMPCS	(0x1 << 0)
+
+/** \brief Mask for requesting clock
+ */
+#define SHIM_CLKCTL_OSC_REQUEST_MASK \
+	(SHIM_CLKCTL_RHROSCC | SHIM_CLKCTL_RXOSCC | \
+	SHIM_CLKCTL_RLROSCC)
+
+/** \brief Mask for setting previously requested clock
+ */
+#define SHIM_CLKCTL_OSC_SOURCE_MASK \
+	(SHIM_CLKCTL_OCS_HP_RING | SHIM_CLKCTL_LMCS_DIV4 | \
+	SHIM_CLKCTL_HMCS_DIV4)
+
+#define SHIM_CLKSTS		0x7C
+
+#define SHIM_PWRCTL		0x90
+#define SHIM_PWRCTL_TCPDSPPG(x)	BIT(x)
+#define SHIM_PWRCTL_TCPCTLPG	BIT(4)
+
+#define SHIM_PWRSTS		0x92
+
+#define SHIM_LPSCTL		0x94
+#define SHIM_LPSCTL_BID		BIT(7)
+#define SHIM_LPSCTL_FDSPRUN	BIT(9)
+#define SHIM_LPSCTL_BATTR_0	BIT(12)
 
 /** \brief GPDMA shim registers Control */
 #define SHIM_GPDMA_BASE_OFFSET	0x6500
