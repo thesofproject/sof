@@ -136,6 +136,16 @@ static const struct sof_ipc_window sram_window = {
 };
 #endif
 
+#if CONFIG_CANNONLAKE
+#if CONFIG_CAVS_LPRO
+#define CNL_DEFAULT_RO		SHIM_CLKCTL_RLROSCC
+#define CNL_DEFAULT_RO_FOR_MEM	SHIM_CLKCTL_OCS_LP_RING
+#else
+#define CNL_DEFAULT_RO		SHIM_CLKCTL_RHROSCC
+#define CNL_DEFAULT_RO_FOR_MEM	SHIM_CLKCTL_OCS_HP_RING
+#endif
+#endif
+
 #if CONFIG_DW_GPIO
 
 #include <sof/drivers/gpio.h>
@@ -391,11 +401,17 @@ int platform_init(struct sof *sof)
 #elif CONFIG_CANNONLAKE
 
 	/* initialize PM for boot */
+
+	/* request configured ring oscillator and wait for status ready */
+	shim_write(SHIM_CLKCTL, shim_read(SHIM_CLKCTL) | CNL_DEFAULT_RO);
+	while (!(shim_read(SHIM_CLKSTS) & CNL_DEFAULT_RO))
+		idelay(16);
+
 	shim_write(SHIM_CLKCTL,
-		   SHIM_CLKCTL_RHROSCC | /* Request High Performance RING Osc */
-		   SHIM_CLKCTL_OCS_HP_RING | /* Select HP RING Oscillator Clk
-					      * for memory
-					      */
+		   CNL_DEFAULT_RO | /* Request configured RING Osc */
+		   CNL_DEFAULT_RO_FOR_MEM | /* Select configured
+					     * RING Oscillator Clk for memory
+					     */
 		   SHIM_CLKCTL_HMCS_DIV2 | /* HP mem clock div by 2 */
 		   SHIM_CLKCTL_LMCS_DIV4 | /* LP mem clock div by 4 */
 		   SHIM_CLKCTL_TCPLCG_DIS(0) | /* Allow Local Clk Gating */
