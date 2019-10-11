@@ -241,6 +241,10 @@ static bool dma_multi_chan_domain_is_pending(struct ll_schedule_domain *domain,
 			if (dma_domain->data[i][j].task != task)
 				continue;
 
+			/* execute callback if exists */
+			if (dmas[i].chan[j].irq_callback)
+				dmas[i].chan[j].irq_callback(&dmas[i].chan[j]);
+
 			/* clear interrupt */
 			dma_interrupt(&dmas[i].chan[j], DMA_IRQ_CLEAR);
 			interrupt_clear_mask(dma_domain->data[i][j].irq,

@@ -220,6 +220,11 @@ struct dma_chan_data {
 	/* callback type */
 	int cb_type;
 
+	/* called by the DMA domain right after receiving an interrupt,
+	 * so should execute very time-sensitive operations
+	 */
+	void (*irq_callback)(struct dma_chan_data *channel);
+
 	void *private;
 };
 
