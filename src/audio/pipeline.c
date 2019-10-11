@@ -350,6 +350,62 @@ int pipeline_params(struct pipeline *p, struct comp_dev *host,
 	return ret;
 }
 
+static struct task *pipeline_task_init(struct pipeline *p, uint32_t type,
+				       enum task_state (*func)(void *data))
+{
+	struct task *task = NULL;
+
+	task = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*task));
+
+	if (task)
+		schedule_task_init(task, type, p->ipc_pipe.priority, func, NULL,
+				   p, p->ipc_pipe.core, 0);
+
+	return task;
+}
+
+static int pipeline_comp_task_init(struct pipeline *p)
+{
+	uint32_t type;
+
+	/* pipeline preload needed only for playback streams without active
+	 * sink component (it can be active for e.g. mixer pipelines)
+	 */
+	p->preload =
+		p->sink_comp->params.direction == SOF_IPC_STREAM_PLAYBACK &&
+		p->sink_comp->state != COMP_STATE_ACTIVE;
+
+	/* initialize task if necessary */
+	if (!p->pipe_task) {
+		/* right now we always consider pipeline as a low latency
+		 * component, but it may change in the future
+		 */
+		type = pipeline_is_timer_driven(p) ? SOF_SCHEDULE_LL_TIMER :
+			SOF_SCHEDULE_LL_DMA;
+
+		p->pipe_task = pipeline_task_init(p, type, pipeline_task);
+		if (!p->pipe_task) {
+			trace_pipe_error("pipeline_prepare() error: task init "
+					 "failed");
+			return -ENOMEM;
+		}
+	}
+
+	/* initialize preload task if necessary */
+	if (p->preload && !p->preload_task) {
+		/* preload task is always EDF as it guarantees scheduling */
+		p->preload_task = pipeline_task_init(p, SOF_SCHEDULE_EDF,
+						     pipeline_preload_task);
+		if (!p->preload_task) {
+			trace_pipe_error("pipeline_prepare() error: preload "
+					 "task init failed");
+			return -ENOMEM;
+		}
+	}
+
+	return 0;
+}
+
 static int pipeline_comp_prepare(struct comp_dev *current, void *data, int dir)
 {
 	int err = 0;
@@ -381,6 +437,10 @@ static int pipeline_comp_prepare(struct comp_dev *current, void *data, int dir)
 		}
 	}
 
+	err = pipeline_comp_task_init(current->pipeline);
+	if (err < 0)
+		return err;
+
 	err = comp_prepare(current);
 	if (err < 0 || err == PPL_STATUS_PATH_STOP)
 		return err;
@@ -389,25 +449,10 @@ static int pipeline_comp_prepare(struct comp_dev *current, void *data, int dir)
 				      &buffer_reset_pos, dir);
 }
 
-static struct task *pipeline_task_init(struct pipeline *p, uint32_t type,
-				       enum task_state (*func)(void *data))
-{
-	struct task *task = NULL;
-
-	task = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*task));
-
-	if (task)
-		schedule_task_init(task, type, p->ipc_pipe.priority, func, NULL,
-				   p, p->ipc_pipe.core, 0);
-
-	return task;
-}
-
 /* prepare the pipeline for usage - preload host buffers here */
 int pipeline_prepare(struct pipeline *p, struct comp_dev *dev)
 {
 	struct pipeline_data ppl_data;
-	uint32_t type;
 	int ret = 0;
 
 	trace_pipe_with_ids(p, "pipeline_prepare()");
@@ -419,40 +464,6 @@ int pipeline_prepare(struct pipeline *p, struct comp_dev *dev)
 		trace_pipe_error("pipeline_prepare() error: ret = %d,"
 				 "dev->comp.id = %u", ret, dev->comp.id);
 		return ret;
-	}
-
-	/* pipeline preload needed only for playback streams without active
-	 * sink component (it can be active for e.g. mixer pipelines)
-	 */
-	p->preload = dev->params.direction == SOF_IPC_STREAM_PLAYBACK &&
-		p->sink_comp->state != COMP_STATE_ACTIVE;
-
-	/* initialize task if necessary */
-	if (!p->pipe_task) {
-		/* right now we always consider pipeline as a low latency
-		 * component, but it may change in the future
-		 */
-		type = pipeline_is_timer_driven(p) ? SOF_SCHEDULE_LL_TIMER :
-			SOF_SCHEDULE_LL_DMA;
-
-		p->pipe_task = pipeline_task_init(p, type, pipeline_task);
-		if (!p->pipe_task) {
-			trace_pipe_error("pipeline_prepare() error: task init "
-					 "failed");
-			return -ENOMEM;
-		}
-	}
-
-	/* initialize preload task if necessary */
-	if (p->preload && !p->preload_task) {
-		/* preload task is always EDF as it guarantees scheduling */
-		p->preload_task = pipeline_task_init(p, SOF_SCHEDULE_EDF,
-						     pipeline_preload_task);
-		if (!p->preload_task) {
-			trace_pipe_error("pipeline_prepare() error: preload "
-					 "task init failed");
-			return -ENOMEM;
-		}
 	}
 
 	p->status = COMP_STATE_PREPARE;
