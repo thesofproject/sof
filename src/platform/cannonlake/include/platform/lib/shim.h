@@ -123,7 +123,7 @@
 #define SHIM_CLKCTL_RXOSCC	BIT(30)
 
 /** \brief Request LP RING Oscillator Clock */
-#define SHIM_CLTCTL_RLROSCC	BIT(29)
+#define SHIM_CLKCTL_RLROSCC	BIT(29)
 
 /** \brief Tensilica Core Prevent Local Clock Gating */
 #define SHIM_CLKCTL_TCPLCG_EN(x)	BIT(16 + x)
