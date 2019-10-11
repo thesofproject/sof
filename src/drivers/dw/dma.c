@@ -770,6 +770,14 @@ static inline void dw_dma_chan_reload_lli(struct dma_chan_data *channel)
 		return;
 	}
 
+	/* channel not active */
+	if (channel->status != COMP_STATE_ACTIVE)
+		return;
+
+	/* channel still transferring previous lli */
+	if (dma_reg_read(dma, DW_DMA_CHAN_EN) & DW_CHAN(channel->index))
+		return;
+
 	/* get current and next block pointers */
 	lli = (struct dw_lli *)lli->llp;
 	dw_chan->lli_current = lli;
@@ -815,8 +823,7 @@ static void dw_dma_verify_transfer(struct dma_chan_data *channel,
 	}
 #else
 	/* check for reload channel:
-	 * next->status is DMA_CB_STATUS_END, stop this dma copy;
-	 * otherwise, reload lli
+	 * next->status is DMA_CB_STATUS_END, stop this dma copy.
 	 */
 	switch (next->status) {
 	case DMA_CB_STATUS_END:
@@ -825,7 +832,6 @@ static void dw_dma_verify_transfer(struct dma_chan_data *channel,
 			(struct dw_lli *)dw_chan->lli_current->llp;
 		break;
 	default:
-		dw_dma_chan_reload_lli(channel);
 		break;
 	}
 #endif
@@ -954,6 +960,9 @@ static int dw_dma_probe(struct dma *dma)
 		chan->dma = dma;
 		chan->index = i;
 		chan->core = DMA_CORE_INVALID;
+#if !CONFIG_HW_LLI
+		chan->irq_callback = dw_dma_chan_reload_lli;
+#endif
 
 		dw_chan = rzalloc(RZONE_SYS_RUNTIME | RZONE_FLAG_UNCACHED,
 				  SOF_MEM_CAPS_RAM, sizeof(*dw_chan));
@@ -1004,11 +1013,7 @@ static int dw_dma_avail_data_size(struct dma_chan_data *channel)
 {
 	struct dw_dma_chan_data *dw_chan = dma_chan_get_data(channel);
 	int32_t read_ptr = dw_chan->ptr_data.current_ptr;
-#if CONFIG_HW_LLI
 	int32_t write_ptr = dma_reg_read(channel->dma, DW_DAR(channel->index));
-#else
-	int32_t write_ptr = ((struct dw_lli *)dw_chan->lli_current->llp)->dar;
-#endif
 	int size;
 
 	size = write_ptr - read_ptr;
@@ -1026,11 +1031,7 @@ static int dw_dma_avail_data_size(struct dma_chan_data *channel)
 static int dw_dma_free_data_size(struct dma_chan_data *channel)
 {
 	struct dw_dma_chan_data *dw_chan = dma_chan_get_data(channel);
-#if CONFIG_HW_LLI
 	int32_t read_ptr = dma_reg_read(channel->dma, DW_SAR(channel->index));
-#else
-	int32_t read_ptr = ((struct dw_lli *)dw_chan->lli_current->llp)->sar;
-#endif
 	int32_t write_ptr = dw_chan->ptr_data.current_ptr;
 	int size;
 
