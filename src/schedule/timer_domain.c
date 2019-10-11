@@ -8,6 +8,7 @@
 #include <sof/lib/alloc.h>
 #include <sof/lib/cpu.h>
 #include <sof/platform.h>
+#include <sof/schedule/ll_schedule.h>
 #include <sof/schedule/ll_schedule_domain.h>
 #include <sof/schedule/schedule.h>
 #include <sof/schedule/task.h>
@@ -29,9 +30,8 @@ static inline void timer_report_delay(int id, uint64_t delay)
 	uint32_t ll_delay_us = (delay * 1000) /
 				clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1);
 
-	trace_schedule_error("timer_report_delay(): timer %d "
-			     "delayed by %d uS %d ticks", id, ll_delay_us,
-			     delay);
+	trace_ll_error("timer_report_delay(): timer %d delayed by %d uS %d "
+		       "ticks", id, ll_delay_us, delay);
 }
 
 static int timer_domain_register(struct ll_schedule_domain *domain,
@@ -40,6 +40,8 @@ static int timer_domain_register(struct ll_schedule_domain *domain,
 {
 	struct timer_domain *timer_domain = ll_sch_domain_get_pdata(domain);
 	int core = cpu_get_id();
+
+	trace_ll("timer_domain_register()");
 
 	/* tasks already registered on this core */
 	if (timer_domain->arg[core])
@@ -55,6 +57,8 @@ static void timer_domain_unregister(struct ll_schedule_domain *domain,
 {
 	struct timer_domain *timer_domain = ll_sch_domain_get_pdata(domain);
 	int core = cpu_get_id();
+
+	trace_ll("timer_domain_unregister()");
 
 	/* tasks still registered on this core */
 	if (!timer_domain->arg[core] || num_tasks)
@@ -116,6 +120,8 @@ struct ll_schedule_domain *timer_domain_init(struct timer *timer, int clk,
 {
 	struct ll_schedule_domain *domain;
 	struct timer_domain *timer_domain;
+
+	trace_ll("timer_domain_init(): clk %d, timeout %u", clk, timeout);
 
 	domain = domain_init(SOF_SCHEDULE_LL_TIMER, clk, &timer_domain_ops);
 
