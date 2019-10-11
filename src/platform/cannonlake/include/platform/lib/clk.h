@@ -16,7 +16,11 @@
 
 #define CLK_MAX_CPU_HZ	400000000
 
+#if CONFIG_CAVS_LPRO
+#define CPU_DEFAULT_IDX	0
+#else
 #define CPU_DEFAULT_IDX	1
+#endif
 
 #define SSP_DEFAULT_IDX	0
 

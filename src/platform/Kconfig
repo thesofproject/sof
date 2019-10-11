@@ -219,6 +219,14 @@ config CONFIG_CHERRYTRAIL_EXTRA_DW_DMA
 	  Select if you need support for all 3 DMACs versus the default 2 used
 	  in baytrail.
 
+config CAVS_LPRO
+	bool "Enable low power ring oscillator as the default clock"
+	default n if !CANNONLAKE
+	depends on CANNONLAKE
+	help
+	  Select if you want to use 120MHz LPRO as the DSP clock source.
+	  This option is required to support S0ix/D0ix mode.
+
 # TODO: it should just take manifest version and offsets
 config FIRMWARE_SHORT_NAME
 	string "Rimage firmware name"
