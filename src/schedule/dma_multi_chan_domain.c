@@ -10,6 +10,7 @@
 #include <sof/lib/alloc.h>
 #include <sof/lib/cpu.h>
 #include <sof/lib/dma.h>
+#include <sof/schedule/ll_schedule.h>
 #include <sof/schedule/ll_schedule_domain.h>
 #include <sof/schedule/schedule.h>
 #include <sof/schedule/task.h>
@@ -63,6 +64,8 @@ static int dma_multi_chan_domain_irq_register(struct dma_domain_data *data,
 {
 	int ret;
 
+	trace_ll("dma_multi_chan_domain_irq_register()");
+
 	/* always go through dma_multi_chan_domain_irq_handler,
 	 * so we have different arg registered for every channel
 	 */
@@ -98,6 +101,8 @@ static int dma_multi_chan_domain_register(struct ll_schedule_domain *domain,
 	int ret;
 	int i;
 	int j;
+
+	trace_ll("dma_multi_chan_domain_register()");
 
 	for (i = 0; i < dma_domain->num_dma; ++i) {
 		for (j = 0; j < dmas[i].plat_data.channels; ++j) {
@@ -157,6 +162,8 @@ static int dma_multi_chan_domain_register(struct ll_schedule_domain *domain,
  */
 static void dma_multi_chan_domain_irq_unregister(struct dma_domain_data *data)
 {
+	trace_ll("dma_multi_chan_domain_irq_unregister()");
+
 	interrupt_disable(data->irq, data);
 
 	interrupt_unregister(data->irq, data);
@@ -175,6 +182,8 @@ static void dma_multi_chan_domain_unregister(struct ll_schedule_domain *domain,
 	int core = cpu_get_id();
 	int i;
 	int j;
+
+	trace_ll("dma_multi_chan_domain_unregister()");
 
 	for (i = 0; i < dma_domain->num_dma; ++i) {
 		for (j = 0; j < dmas[i].plat_data.channels; ++j) {
@@ -270,6 +279,9 @@ struct ll_schedule_domain *dma_multi_chan_domain_init(struct dma *dma_array,
 	struct dma *dma;
 	int i;
 	int j;
+
+	trace_ll("dma_multi_chan_domain_init(): num_dma %d, clk %d, "
+		 "aggregated_irq %d", num_dma, clk, aggregated_irq);
 
 	domain = domain_init(SOF_SCHEDULE_LL_DMA, clk,
 			     &dma_multi_chan_domain_ops);
