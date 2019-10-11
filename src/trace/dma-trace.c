@@ -159,26 +159,30 @@ int dma_trace_host_buffer(struct dma_trace_data *d,
 static int dma_trace_buffer_init(struct dma_trace_data *d)
 {
 	struct dma_trace_buf *buffer = &d->dmatb;
+	void *buf;
+	unsigned int flags;
 
 	/* allocate new buffer */
-	buffer->addr = rballoc(RZONE_BUFFER,
-			       SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_DMA,
-			       DMA_TRACE_LOCAL_SIZE);
-	if (!buffer->addr) {
-		trace_buffer_error("dma_trace_buffer_init() error: "
-				   "alloc failed");
+	buf = rballoc(RZONE_BUFFER,
+		      SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_DMA,
+		      DMA_TRACE_LOCAL_SIZE);
+	if (!buf)
 		return -ENOMEM;
-	}
 
-	bzero(buffer->addr, DMA_TRACE_LOCAL_SIZE);
-	dcache_writeback_region(buffer->addr, DMA_TRACE_LOCAL_SIZE);
+	bzero(buf, DMA_TRACE_LOCAL_SIZE);
+	dcache_writeback_region(buf, DMA_TRACE_LOCAL_SIZE);
 
-	/* initialise the DMA buffer */
+	/* initialise the DMA buffer, whole sequence in section */
+	spin_lock_irq(d->lock, flags);
+
+	buffer->addr  = buf;
 	buffer->size = DMA_TRACE_LOCAL_SIZE;
 	buffer->w_ptr = buffer->addr;
 	buffer->r_ptr = buffer->addr;
 	buffer->end_addr = buffer->addr + buffer->size;
 	buffer->avail = 0;
+
+	spin_unlock_irq(d->lock, flags);
 
 	return 0;
 }
