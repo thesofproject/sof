@@ -355,6 +355,16 @@ static void platform_init_hw(void)
 }
 #endif
 
+#if CONFIG_CANNONLAKE
+static inline void short_spin(void)
+{
+	int i;
+
+	for (i = 0; i < 16; i++)
+		asm volatile("nop");
+}
+#endif
+
 int platform_init(struct sof *sof)
 {
 #if CONFIG_DW_SPI
@@ -433,9 +443,15 @@ int platform_init(struct sof *sof)
 #elif CONFIG_CANNONLAKE
 
 	/* initialize PM for boot */
+
+	/* request LP ring oscillator and wait for status ready */
+	shim_write(SHIM_CLKCTL, shim_read(SHIM_CLKCTL) | SHIM_CLKCTL_RLROSCC);
+	while (!(shim_read(SHIM_CLKSTS) & SHIM_CLKCTL_RLROSCC))
+		short_spin();
+
 	shim_write(SHIM_CLKCTL,
-		   SHIM_CLKCTL_RHROSCC | /* Request High Performance RING Osc */
-		   SHIM_CLKCTL_OCS_HP_RING | /* Select HP RING Oscillator Clk
+		   SHIM_CLKCTL_RLROSCC | /* Request Low Performance RING Osc */
+		   SHIM_CLKCTL_OCS_LP_RING | /* Select LP RING Oscillator Clk
 					      * for memory
 					      */
 		   SHIM_CLKCTL_HMCS_DIV2 | /* HP mem clock div by 2 */
