@@ -65,6 +65,7 @@
 /* DGMBS align value */
 #define HDA_DMA_BUFFER_ALIGNMENT	0x20
 #define HDA_DMA_COPY_ALIGNMENT		0x20
+#define HDA_DMA_BUFFER_ADDRESS_ALIGNMENT 0x80
 
 /* DMA host transfer timeout in microseconds */
 #define HDA_DMA_TIMEOUT	200
@@ -878,6 +879,9 @@ static int hda_dma_get_attribute(struct dma *dma, uint32_t type,
 		break;
 	case DMA_ATTR_COPY_ALIGNMENT:
 		*value = HDA_DMA_COPY_ALIGNMENT;
+		break;
+	case DMA_ATTR_BUFFER_ADDRESS_ALIGNMENT:
+		*value = HDA_DMA_BUFFER_ADDRESS_ALIGNMENT;
 		break;
 	default:
 		ret = -EINVAL;
