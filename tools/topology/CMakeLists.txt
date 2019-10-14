@@ -25,9 +25,7 @@ set(TPLGS
 	"sof-hda-generic\;sof-hda-generic\;-DCHANNELS=0"
 	"sof-hda-generic\;sof-hda-generic-2ch\;-DCHANNELS=2"
 	"sof-hda-generic\;sof-hda-generic-4ch\;-DCHANNELS=4"
-	"sof-hda-generic-idisp\;sof-hda-generic-idisp\;-DCHANNELS=0"
-	"sof-hda-generic-idisp\;sof-hda-generic-idisp-2ch\;-DCHANNELS=2"
-	"sof-hda-generic-idisp\;sof-hda-generic-idisp-4ch\;-DCHANNELS=4"
+	"sof-hda-generic-idisp\;sof-hda-generic-idisp"
 	"sof-apl-nocodec\;sof-apl-nocodec"
 	"sof-apl-keyword-detect\;sof-apl-keyword-detect"
 	"sof-bdw-codec\;sof-bdw-rt286\;-DCODEC=RT286"
@@ -85,6 +83,8 @@ set(TPLGS
 	"sof-tgl-rt711-rt1308\;sof-tgl-rt711-rt1308-nohdmi"
 	"sof-imx8qxp-nocodec\;sof-imx8qxp-nocodec"
 	"sof-imx8qxp-cs42888\;sof-imx8qxp-cs42888"
+	"sof-dmic-generic\;sof-dmic-generic-2ch\;-DCHANNELS=2"
+	"sof-dmic-generic\;sof-dmic-generic-4ch\;-DCHANNELS=4"
 )
 
 add_custom_target(topologies ALL)
