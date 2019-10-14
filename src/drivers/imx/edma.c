@@ -471,10 +471,14 @@ static int edma_get_attribute(struct dma *dma, uint32_t type, uint32_t *value)
 		 * size of the elementary copy).
 		 */
 		*value = 4;
-		return 0;
+		break;
+	case DMA_ATTR_BUFFER_ADDRESS_ALIGNMENT:
+		*value = PLATFORM_DCACHE_ALIGN;
+		break;
 	default:
 		return -ENOENT; /* Attribute not found */
 	}
+	return 0;
 }
 
 static int edma_get_data_size(struct dma_chan_data *channel,

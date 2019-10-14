@@ -518,6 +518,23 @@ static void host_buffer_cb(void *data, uint32_t bytes)
 	} while (hd->split_value);
 }
 
+static void realign_buffer(struct host_data *hd)
+{
+	uint32_t buffer_alignment;
+
+	dma_get_attribute(hd->dma, DMA_ATTR_BUFFER_ADDRESS_ALIGNMENT,
+			  &buffer_alignment);
+
+	if ((uintptr_t)hd->dma_buffer->addr % buffer_alignment) {
+		hd->dma_buffer->addr =
+			rbrealloc_align(hd->dma_buffer->addr, RZONE_BUFFER,
+					SOF_MEM_CAPS_DMA,
+					hd->dma_buffer->alloc_size,
+					buffer_alignment);
+		buffer_init(hd->dma_buffer, hd->dma_buffer->alloc_size);
+	}
+}
+
 /* configure the DMA params and descriptors for host buffer IO */
 static int host_params(struct comp_dev *dev)
 {
@@ -548,6 +565,8 @@ static int host_params(struct comp_dev *dev)
 		hd->dma_buffer = list_first_item(&dev->bsink_list,
 			struct comp_buffer, source_list);
 
+		realign_buffer(hd);
+
 		/* set callback on buffer consume */
 		buffer_set_cb(hd->dma_buffer, &host_buffer_cb, dev,
 			      BUFF_CB_TYPE_CONSUME);
@@ -569,6 +588,8 @@ static int host_params(struct comp_dev *dev)
 	} else {
 		hd->dma_buffer = list_first_item(&dev->bsource_list,
 			struct comp_buffer, sink_list);
+
+		realign_buffer(hd);
 
 		/* set callback on buffer produce */
 		buffer_set_cb(hd->dma_buffer, &host_buffer_cb, dev,
