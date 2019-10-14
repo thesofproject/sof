@@ -27,7 +27,7 @@ dnl     pipeline_rate, time_domain)
 ifelse(SOF_ABI_VERSION_3_9_OR_GRT, `1',
 `PIPELINE_PCM_DAI_ADD(sof/pipe-volume-playback.m4,
         7, 5, 2, s32le,
-        1000, 0, 0, SSP, 1, s16le, 3,
+        1000, 0, 0, SSP, 1, s24le, 3,
         48000, 48000, 48000)',
 `PIPELINE_PCM_DAI_ADD(sof/pipe-src-volume-playback.m4,
         7, 5, 2, s32le,
