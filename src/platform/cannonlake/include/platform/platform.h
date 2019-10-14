@@ -60,8 +60,6 @@ struct timer;
 #define PLATFORM_SCHEDULE_IRQ	IRQ_NUM_SOFTWARE2
 #define PLATFORM_SCHEDULE_IRQ_NAME	NULL
 
-#define PLATFORM_SCHEDULE_COST	200
-
 /* maximum preload pipeline depth */
 #define MAX_PRELOAD_SIZE	20
 
