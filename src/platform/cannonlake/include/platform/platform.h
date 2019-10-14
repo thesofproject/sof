@@ -60,9 +60,6 @@ struct timer;
 #define PLATFORM_SCHEDULE_IRQ	IRQ_NUM_SOFTWARE2
 #define PLATFORM_SCHEDULE_IRQ_NAME	NULL
 
-/* maximum preload pipeline depth */
-#define MAX_PRELOAD_SIZE	20
-
 /* DMA treats PHY addresses as host address unless within DSP region */
 #define PLATFORM_HOST_DMA_MASK	0x00000000
 
