@@ -523,6 +523,9 @@ static int dummy_dma_get_attribute(struct dma *dma, uint32_t type,
 	case DMA_ATTR_COPY_ALIGNMENT:
 		*value = sizeof(void *);
 		break;
+	case DMA_ATTR_BUFFER_ADDRESS_ALIGNMENT:
+		*value = PLATFORM_DCACHE_ALIGN;
+		break;
 	default:
 		return -ENOENT; /* Attribute not found */
 	}
