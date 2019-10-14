@@ -23,6 +23,9 @@
 /* index of the first DW-DMAC in the array */
 #define PLATFORM_DW_DMA_INDEX	0
 
+/* DMA treats PHY addresses as host address unless within DSP region */
+#define PLATFORM_DW_DMA_HOST_MASK	0xFF000000
+
 /* CTL_HI */
 #define DW_CTLH_CLASS(x)	SET_BITS(31, 29, x)
 #define DW_CTLH_WEIGHT(x)	SET_BITS(28, 18, x)
