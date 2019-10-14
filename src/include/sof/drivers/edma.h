@@ -91,4 +91,15 @@ int edma_init(void);
 #define trace_edma_error(format, ...) trace_error(TRACE_CLASS_DMA,\
 						  format, ##__VA_ARGS__)
 
+#define EDMA0_ESAI_CHAN_RX	6
+#define EDMA0_ESAI_CHAN_TX	7
+#define EDMA0_SAI_CHAN_RX	14
+#define EDMA0_SAI_CHAN_TX	15
+#define EDMA0_CHAN_MAX		32
+
+#define EDMA0_ESAI_CHAN_RX_IRQ	442
+#define EDMA0_ESAI_CHAN_TX_IRQ	442
+#define EDMA0_SAI_CHAN_RX_IRQ	349
+#define EDMA0_SAI_CHAN_TX_IRQ	349
+
 #endif /* __SOF_DRIVERS_EDMA_H__ */

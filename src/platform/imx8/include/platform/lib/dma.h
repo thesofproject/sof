@@ -18,18 +18,9 @@
 #define DMA_ID_EDMA0	0
 #define DMA_ID_HOST	1
 
-/*
- * IRQ line 442 (ESAI0_DMA_INT) groups
- *	- DMA#0 interrupt #6, ESAI0 receive channel
- *	- DMA#0 interrupt #7, ESAI0 transmit channel
- * Converting this to internal SOF irq representation we get
- *	- irq = 442 % 64 = 58
- *	- irq_name = irq_name_irqsteer[442 / 64] = "irqsteer6"
- *
- * TODO: Remove hardcoded values and add generic implementation
- */
-#define dma_chan_irq(dma, chan) 58
-#define dma_chan_irq_name(dma, chan) "irqsteer6"
+#define dma_chan_irq(dma, chan) \
+	irqstr_get_sof_int(((int *)dma->plat_data.drv_plat_data)[chan])
+#define dma_chan_irq_name(dma, chan) dma_irq_name(dma)
 
 int dmac_init(void);
 
