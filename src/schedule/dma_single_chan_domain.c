@@ -13,6 +13,7 @@
 #include <sof/lib/dma.h>
 #include <sof/lib/notifier.h>
 #include <sof/platform.h>
+#include <sof/schedule/ll_schedule.h>
 #include <sof/schedule/ll_schedule_domain.h>
 #include <sof/schedule/schedule.h>
 #include <sof/schedule/task.h>
@@ -98,6 +99,8 @@ static void dma_domain_notify_change(struct dma_chan_data *channel)
 {
 	struct notify_data notify_data;
 
+	trace_ll("dma_domain_notify_change()");
+
 	notify_data.id = NOTIFIER_ID_DMA_DOMAIN_CHANGE;
 	notify_data.target_core_mask =
 		NOTIFIER_TARGET_CORE_ALL_MASK & ~BIT(cpu_get_id());
@@ -122,6 +125,8 @@ static int dma_single_chan_domain_irq_register(struct dma_chan_data *channel,
 {
 	int irq = dma_chan_irq(channel->dma, channel->index);
 	int ret;
+
+	trace_ll("dma_single_chan_domain_irq_register()");
 
 	data->irq = interrupt_get_irq(irq, dma_irq_name(channel->dma));
 	if (data->irq < 0)
@@ -148,6 +153,8 @@ static int dma_single_chan_domain_irq_register(struct dma_chan_data *channel,
  */
 static void dma_single_chan_domain_irq_unregister(struct dma_domain_data *data)
 {
+	trace_ll("dma_single_chan_domain_irq_unregister()");
+
 	interrupt_disable(data->irq, data->arg);
 
 	interrupt_unregister(data->irq, data->arg);
@@ -180,6 +187,8 @@ static int dma_single_chan_domain_register(struct ll_schedule_domain *domain,
 	bool register_needed = true;
 	int ret;
 
+	trace_ll("dma_single_chan_domain_register()");
+
 	/* get running channel with min period */
 	channel = dma_chan_min_period(dma_domain);
 	if (!channel)
@@ -189,6 +198,9 @@ static int dma_single_chan_domain_register(struct ll_schedule_domain *domain,
 		/* channel with min period already registered */
 		if (data->channel->period == channel->period)
 			return 0;
+
+		trace_ll("dma_single_chan_domain_register(): "
+			 "lower period detected, registering again");
 
 		/* unregister from current channel */
 		dma_single_chan_domain_irq_unregister(data);
@@ -200,6 +212,9 @@ static int dma_single_chan_domain_register(struct ll_schedule_domain *domain,
 		/* already registered */
 		register_needed = false;
 	}
+
+	trace_ll("dma_single_chan_domain_register(): "
+		 "registering on channel with period %u", channel->period);
 
 	/* register for interrupt */
 	ret = dma_single_chan_domain_irq_register(channel, data, handler, arg);
@@ -276,6 +291,8 @@ static void dma_domain_unregister_owner(struct ll_schedule_domain *domain,
 	struct dma_chan_data *channel;
 	int core = cpu_get_id();
 
+	trace_ll("dma_domain_unregister_owner()");
+
 	/* transfers still scheduled on this channel */
 	if (data->channel->status == COMP_STATE_ACTIVE)
 		return;
@@ -301,6 +318,9 @@ static void dma_domain_unregister_owner(struct ll_schedule_domain *domain,
 
 	/* check if there is another channel running */
 	if (dma_chan_is_any_running(dmas, dma_domain->num_dma)) {
+		trace_ll("dma_domain_unregister_owner(): "
+			 "some channel is still running, registering again");
+
 		/* register again and enable */
 		dma_single_chan_domain_irq_register(channel, data,
 						    data->handler, data->arg);
@@ -322,6 +342,8 @@ static void dma_single_chan_domain_unregister(struct ll_schedule_domain *domain,
 	struct dma *dmas = dma_domain->dma_array;
 	int core = cpu_get_id();
 	struct dma_domain_data *data = &dma_domain->data[core];
+
+	trace_ll("dma_single_chan_domain_unregister()");
 
 	/* channel not registered */
 	if (!data->channel)
@@ -433,6 +455,8 @@ static void dma_domain_changed(int message, void *data, void *event_data)
 	int core = cpu_get_id();
 	struct dma_domain_data *domain_data = &dma_domain->data[core];
 
+	trace_ll("dma_domain_changed()");
+
 	/* unregister from current DMA channel */
 	dma_single_chan_domain_irq_unregister(domain_data);
 
@@ -464,6 +488,9 @@ struct ll_schedule_domain *dma_single_chan_domain_init(struct dma *dma_array,
 	struct ll_schedule_domain *domain;
 	struct dma_domain *dma_domain;
 	int i;
+
+	trace_ll("dma_single_chan_domain_init(): num_dma %d, clk %d", num_dma,
+		 clk);
 
 	domain = domain_init(SOF_SCHEDULE_LL_DMA, clk,
 			     &dma_single_chan_domain_ops);
