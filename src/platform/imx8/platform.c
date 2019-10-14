@@ -118,6 +118,7 @@ struct timer timer = {
 struct timer *platform_timer = &timer;
 
 struct ll_schedule_domain *platform_timer_domain;
+struct ll_schedule_domain *platform_dma_domain;
 
 int platform_boot_complete(uint32_t boot_message)
 {
@@ -151,6 +152,15 @@ int platform_init(struct sof *sof)
 		timer_domain_init(platform_timer, PLATFORM_DEFAULT_CLOCK,
 				  PLATFORM_LL_DEFAULT_TIMEOUT);
 	scheduler_init_ll(platform_timer_domain);
+
+	/* Init EDMA platform domain */
+	platform_dma_domain =
+		dma_multi_chan_domain_init(
+		    &dma[0],
+		    1,
+		    PLATFORM_DEFAULT_CLOCK,
+		    false);
+	scheduler_init_ll(platform_dma_domain);
 
 	platform_timer_start(platform_timer);
 	sa_init(sof);
