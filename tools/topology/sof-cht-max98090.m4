@@ -58,7 +58,7 @@ DAI_ADD(sof/pipe-dai-playback.m4,
 # 4000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-pcm-media.m4,
 	3, 1, 2, s32le,
-	1000, 0, 0,
+	4000, 0, 0,
 	8000, 48000, 48000,
 	0, PIPELINE_PLAYBACK_SCHED_COMP_1)
 
