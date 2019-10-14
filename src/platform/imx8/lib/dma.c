@@ -14,6 +14,13 @@
 extern struct dma_ops dummy_dma_ops;
 extern struct dma_ops edma_ops;
 
+static int edma0_ints[EDMA0_CHAN_MAX] = {
+	[EDMA0_ESAI_CHAN_RX] = EDMA0_ESAI_CHAN_RX_IRQ,
+	[EDMA0_ESAI_CHAN_TX] = EDMA0_ESAI_CHAN_TX_IRQ,
+	[EDMA0_SAI_CHAN_RX] = EDMA0_SAI_CHAN_RX_IRQ,
+	[EDMA0_SAI_CHAN_TX] = EDMA0_SAI_CHAN_TX_IRQ,
+};
+
 struct dma dma[PLATFORM_NUM_DMACS] = {
 {
 	.plat_data = {
@@ -23,6 +30,7 @@ struct dma dma[PLATFORM_NUM_DMACS] = {
 		.base		= EDMA0_BASE,
 		.chan_size	= EDMA0_SIZE,
 		.channels	= 32,
+		.drv_plat_data	= edma0_ints,
 	},
 	.ops	= &edma_ops,
 },
