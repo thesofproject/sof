@@ -88,8 +88,9 @@ enum dma_irq_cmd {
 #define DMA_CORE_INVALID	0xFFFFFFFF
 
 /* DMA attributes */
-#define DMA_ATTR_BUFFER_ALIGNMENT	0
-#define DMA_ATTR_COPY_ALIGNMENT		1
+#define DMA_ATTR_BUFFER_ALIGNMENT		0
+#define DMA_ATTR_COPY_ALIGNMENT			1
+#define DMA_ATTR_BUFFER_ADDRESS_ALIGNMENT	2
 
 struct dma;
 
