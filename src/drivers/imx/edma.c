@@ -331,6 +331,8 @@ static int edma_set_config(struct dma_chan_data *channel,
 
 	trace_edma("EDMA: set config");
 
+	channel->is_scheduling_source = config->is_scheduling_source;
+
 	switch (config->direction) {
 	case DMA_DIR_MEM_TO_DEV:
 		soff = config->src_width;
