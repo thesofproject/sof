@@ -421,15 +421,15 @@ static void dw_dma_mask_address(struct dma_sg_elem *sg_elem, uint32_t *sar,
 	switch (direction) {
 	case DMA_DIR_LMEM_TO_HMEM:
 	case DMA_DIR_MEM_TO_DEV:
-		*sar |= PLATFORM_HOST_DMA_MASK;
+		*sar |= PLATFORM_DW_DMA_HOST_MASK;
 		break;
 	case DMA_DIR_HMEM_TO_LMEM:
 	case DMA_DIR_DEV_TO_MEM:
-		*dar |= PLATFORM_HOST_DMA_MASK;
+		*dar |= PLATFORM_DW_DMA_HOST_MASK;
 		break;
 	case DMA_DIR_MEM_TO_MEM:
-		*sar |= PLATFORM_HOST_DMA_MASK;
-		*dar |= PLATFORM_HOST_DMA_MASK;
+		*sar |= PLATFORM_DW_DMA_HOST_MASK;
+		*dar |= PLATFORM_DW_DMA_HOST_MASK;
 		break;
 	default:
 		break;
