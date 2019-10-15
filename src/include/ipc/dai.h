@@ -83,6 +83,7 @@ struct sof_ipc_dai_config {
 		struct sof_ipc_dai_hda_params hda;
 		struct sof_ipc_dai_alh_params alh;
 		struct sof_ipc_dai_esai_params esai;
+		struct sof_ipc_dai_sai_params sai;
 	};
 } __attribute__((packed));
 
