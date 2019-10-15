@@ -441,6 +441,13 @@ static int dai_prepare(struct comp_dev *dev)
 
 	dev->position = 0;
 
+	if (!dd->chan) {
+		trace_dai_error_with_ids(dev, "dai_prepare() error: Missing "
+					 "dd->chan.");
+		comp_set_state(dev, COMP_TRIGGER_RESET);
+		return -EINVAL;
+	}
+
 	if (!dd->config.elem_array.elems) {
 		trace_dai_error_with_ids(dev, "dai_prepare() error: Missing "
 					 "dd->config.elem_array.elems.");
