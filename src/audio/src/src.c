@@ -803,31 +803,6 @@ static int src_prepare(struct comp_dev *dev)
 	if (ret == COMP_STATUS_STATE_ALREADY_SET)
 		return PPL_STATUS_PATH_STOP;
 
-	/* SRC supports S16_LE, S24_4LE and S32_LE formats */
-	switch (dev->params.frame_fmt) {
-	case SOF_IPC_FRAME_S16_LE:
-		cd->data_shift = 0;
-		cd->polyphase_func = src_polyphase_stage_cir_s16;
-		/* Copy function is set by default in params() for 32 bit
-		 * data. Change it to 16 bit version here if source and sink
-		 * rates are equal.
-		 */
-		if (cd->source_rate == cd->sink_rate)
-			cd->src_func = src_copy_s16;
-		break;
-	case SOF_IPC_FRAME_S24_4LE:
-		cd->data_shift = 8;
-		cd->polyphase_func = src_polyphase_stage_cir;
-		break;
-	case SOF_IPC_FRAME_S32_LE:
-		cd->data_shift = 0;
-		cd->polyphase_func = src_polyphase_stage_cir;
-		break;
-	default:
-		trace_src_error("src_prepare() error: invalid dev->frame_fmt");
-		return -EINVAL;
-	}
-
 	/* SRC component will only ever have 1 source and 1 sink buffer */
 	sourceb = list_first_item(&dev->bsource_list,
 				  struct comp_buffer, sink_list);
@@ -867,6 +842,41 @@ static int src_prepare(struct comp_dev *dev)
 	if (!source_period_bytes) {
 		trace_src_error("src_prepare() error: "
 				"source_period_bytes = 0");
+		ret = -EINVAL;
+		goto err;
+	}
+
+	/* SRC supports S16_LE, S24_4LE and S32_LE formats */
+	if (cd->source_format != cd->sink_format) {
+		trace_src_error("src_prepare() error: "
+				"Source fmt %d and sink fmt %d are different.",
+				cd->source_format, cd->sink_format);
+		ret = -EINVAL;
+		goto err;
+	}
+
+	switch (cd->source_format) {
+	case SOF_IPC_FRAME_S16_LE:
+		cd->data_shift = 0;
+		cd->polyphase_func = src_polyphase_stage_cir_s16;
+		/* Copy function is set by default in params() for 32 bit
+		 * data. Change it to 16 bit version here if source and sink
+		 * rates are equal.
+		 */
+		if (cd->source_rate == cd->sink_rate)
+			cd->src_func = src_copy_s16;
+		break;
+	case SOF_IPC_FRAME_S24_4LE:
+		cd->data_shift = 8;
+		cd->polyphase_func = src_polyphase_stage_cir;
+		break;
+	case SOF_IPC_FRAME_S32_LE:
+		cd->data_shift = 0;
+		cd->polyphase_func = src_polyphase_stage_cir;
+		break;
+	default:
+		trace_src_error("src_prepare() error: invalid format %d",
+				cd->source_format);
 		ret = -EINVAL;
 		goto err;
 	}
