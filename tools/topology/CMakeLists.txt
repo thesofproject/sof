@@ -87,6 +87,7 @@ set(TPLGS
 	"sof-tgl-rt711-rt1308\;sof-tgl-rt711-rt1308-nohdmi"
 	"sof-imx8qxp-nocodec\;sof-imx8qxp-nocodec"
 	"sof-imx8qxp-cs42888\;sof-imx8qxp-cs42888"
+	"sof-imx8qxp-nocodec-sai\;sof-imx8qxp-nocodec-sai"
 )
 
 add_custom_target(topologies ALL)
