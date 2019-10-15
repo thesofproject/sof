@@ -1,48 +1,58 @@
-# Low Latency Passthrough with volume Pipeline and PCM
+# Capture pipeline with SRC and PCM
 #
 # Pipeline Endpoints for connection are :-
 #
-#  host PCM_P --> SRC --> sink DAI0
+#  host PCM_C <-- B0 <-- SRC <-- B1 <-- sink DAI0
 
 # Include topology builder
+include(`pipeline.m4')
+include(`buffer.m4')
 include(`utils.m4')
 include(`src.m4')
-include(`buffer.m4')
 include(`pcm.m4')
 include(`dai.m4')
-include(`pipeline.m4')
+
+#
+# Controls
+#
 
 #
 # Components and Buffers
 #
 
 # Host "Passthrough Capture" PCM
-# with 4 sink and 0 source periods
-W_PCM_CAPTURE(PCM_ID, Passthrough Capture, 4, 0)
+# with 0 sink and 3 source periods
+W_PCM_CAPTURE(PCM_ID, SRC Capture, 0, 3)
 
 #
 # SRC Configuration
 #
 
-W_VENDORTUPLES(media_src_tokens, sof_src_tokens, LIST(`		', `SOF_TKN_SRC_RATE_IN	"PIPELINE_RATE"'))
+# Create unique names for data to allow several different input rate instances
+define(MY_SRC_TOKENS, concat(`src_tokens_', PIPELINE_ID))
+define(MY_SRC_CONF, concat(`src_conf_', PIPELINE_ID))
+W_VENDORTUPLES(MY_SRC_TOKENS, sof_src_tokens,
+	LIST(`		', `SOF_TKN_SRC_RATE_IN	"PIPELINE_RATE"'))
 
-W_DATA(media_src_conf, media_src_tokens)
+W_DATA(MY_SRC_CONF, MY_SRC_TOKENS)
 
-# "SRC" has 4 source and 4 sink periods
-W_SRC(0, PIPELINE_FORMAT, 4, 4, media_src_conf)
+# "SRC" has x source and 3 sink periods
+W_SRC(0, PIPELINE_FORMAT, DAI_PERIODS, 3, MY_SRC_CONF)
 
 # Capture Buffers
-W_BUFFER(0, COMP_BUFFER_SIZE(4,
-	COMP_SAMPLE_SIZE(PIPELINE_FORMAT), PIPELINE_CHANNELS, COMP_PERIOD_FRAMES(PCM_MAX_RATE, SCHEDULE_PERIOD)),
+W_BUFFER(0, COMP_BUFFER_SIZE(3,
+	COMP_SAMPLE_SIZE(PIPELINE_FORMAT),
+	PIPELINE_CHANNELS, COMP_PERIOD_FRAMES(PCM_MAX_RATE, SCHEDULE_PERIOD)),
 	PLATFORM_HOST_MEM_CAP)
-W_BUFFER(1, COMP_BUFFER_SIZE(4,
-	COMP_SAMPLE_SIZE(PIPELINE_FORMAT), PIPELINE_CHANNELS, COMP_PERIOD_FRAMES(PCM_MAX_RATE, SCHEDULE_PERIOD)),
+W_BUFFER(1, COMP_BUFFER_SIZE(DAI_PERIODS,
+	COMP_SAMPLE_SIZE(PIPELINE_FORMAT), PIPELINE_CHANNELS,
+	COMP_PERIOD_FRAMES(PCM_MAX_RATE, SCHEDULE_PERIOD)),
 	PLATFORM_DAI_MEM_CAP)
 
 #
 # Pipeline Graph
 #
-#  host PCM_P <-- B0 <-- SRC 0 <-- B1 <-- sink DAI0
+#  host PCM_C <-- B0 <-- SRC <-- B1 <-- sink DAI0
 
 P_GRAPH(pipe-pass-src-capture-PIPELINE_ID, PIPELINE_ID,
 	LIST(`		',
@@ -54,10 +64,16 @@ P_GRAPH(pipe-pass-src-capture-PIPELINE_ID, PIPELINE_ID,
 # Pipeline Source and Sinks
 #
 indir(`define', concat(`PIPELINE_SINK_', PIPELINE_ID), N_BUFFER(1))
-indir(`define', concat(`PIPELINE_PCM_', PIPELINE_ID), Passthrough Capture PCM_ID)
+indir(`define', concat(`PIPELINE_PCM_', PIPELINE_ID),
+	SRC Capture PCM_ID)
 
 #
 # PCM Configuration
 #
 
-PCM_CAPABILITIES(Passthrough Capture PCM_ID, `S32_LE,S24_LE,S16_LE', PCM_MIN_RATE, PCM_MAX_RATE, 2, PIPELINE_CHANNELS, 2, 16, 192, 16384, 65536, 65536)
+PCM_CAPABILITIES(SRC Capture PCM_ID, `S32_LE,S24_LE,S16_LE',
+	PCM_MIN_RATE, PCM_MAX_RATE, 2, PIPELINE_CHANNELS,
+	2, 16, 192, 16384, 65536, 65536)
+
+undefine(`MY_SRC_TOKENS')
+undefine(`MY_SRC_CONF')
