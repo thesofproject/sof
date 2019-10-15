@@ -54,7 +54,7 @@ dnl     deadline, priority, core, time_domain)
 DAI_ADD(sof/pipe-dai-playback.m4,
 	1, SSP, 5, SSP5-Codec,
 	PIPELINE_SOURCE_1, 3, s24le,
-	1000, 0, 0)
+	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # PCM, id 0
 dnl PCM_PLAYBACK_ADD(name, pcm_id, playback)

@@ -84,7 +84,7 @@ dnl     deadline, priority, core, time_domain)
 DAI_ADD(sof/pipe-dai-playback.m4,
 	1, SSP, 5, SSP5-Codec,
 	PIPELINE_SOURCE_1, 3, s24le,
-	1000, 0, 0)
+	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # currently this dai is here as "virtual" capture backend
 W_DAI_IN(SSP, 5, SSP5-Codec, s24le, 3, 0)
@@ -94,7 +94,8 @@ PIPELINE_PCM_ADD(sof/pipe-passthrough-capture-sched.m4,
 	5, 4, 2, s32le,
 	1000, 0, 0,
 	48000, 48000, 48000,
-	0, PIPELINE_PLAYBACK_SCHED_COMP_1)
+	SCHEDULE_TIME_DOMAIN_TIMER,
+	PIPELINE_PLAYBACK_SCHED_COMP_1)
 
 # Connect demux to capture
 SectionGraph."PIPE_CAP" {
