@@ -60,7 +60,9 @@
 
 /* 32 HW interrupts + 8 IRQ_STEER lines each with 64 interrupts */
 #define PLATFORM_IRQ_HW_NUM	XCHAL_NUM_INTERRUPTS
-#define PLATFORM_IRQ_CHILDREN	64
+#define PLATFORM_IRQ_CHILDREN	64 /* Each cascaded struct covers 64 IRQs */
+/* IMX: Covered steer IRQs are modulo-64 aligned. */
+#define PLATFORM_IRQ_FIRST_CHILD  0
 
 /* irqstr_get_sof_int() - Convert IRQ_STEER interrupt to SOF logical
  * interrupt
