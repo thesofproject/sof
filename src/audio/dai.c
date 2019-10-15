@@ -66,6 +66,7 @@ struct dai_data {
 	int xrun;		/* true if we are doing xrun recovery */
 
 	uint32_t dai_pos_blks;	/* position in bytes (nearest block) */
+	uint64_t start_position;	/* position on start */
 
 	/* host can read back this value without IPC */
 	uint64_t *dai_pos;
@@ -485,6 +486,17 @@ static int dai_reset(struct comp_dev *dev)
 	return 0;
 }
 
+static void dai_update_start_position(struct comp_dev *dev)
+{
+	struct dai_data *dd = comp_get_drvdata(dev);
+
+	/* update starting wallclock */
+	platform_dai_wallclock(dev, &dd->wallclock);
+
+	/* update start position */
+	dd->start_position = dev->position;
+}
+
 /* used to pass standard and bespoke command (with data) to component */
 static int dai_comp_trigger(struct comp_dev *dev, int cmd)
 {
@@ -518,8 +530,7 @@ static int dai_comp_trigger(struct comp_dev *dev, int cmd)
 			dd->xrun = 0;
 		}
 
-		/* update starting wallclock */
-		platform_dai_wallclock(dev, &dd->wallclock);
+		dai_update_start_position(dev);
 		break;
 	case COMP_TRIGGER_RELEASE:
 		/* before release, we clear the buffer data to 0s,
@@ -545,8 +556,7 @@ static int dai_comp_trigger(struct comp_dev *dev, int cmd)
 			dd->xrun = 0;
 		}
 
-		/* update starting wallclock */
-		platform_dai_wallclock(dev, &dd->wallclock);
+		dai_update_start_position(dev);
 		break;
 	case COMP_TRIGGER_XRUN:
 		trace_dai_with_ids(dev, "dai_comp_trigger(), XRUN");
@@ -576,7 +586,7 @@ static int dai_check_for_xrun(struct comp_dev *dev, uint32_t copy_bytes)
 		return 0;
 
 	/* no data yet, we're just starting */
-	if (!dev->position)
+	if (dd->start_position == dev->position)
 		return PPL_STATUS_PATH_STOP;
 
 	/* xrun occurred */
@@ -614,7 +624,7 @@ static int dai_copy(struct comp_dev *dev)
 		ret = dma_start(dd->chan);
 		if (ret < 0)
 			return ret;
-		platform_dai_wallclock(dev, &dd->wallclock);
+		dai_update_start_position(dev);
 
 		return 0;
 	}
