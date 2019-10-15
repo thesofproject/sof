@@ -6,13 +6,20 @@
 // Author: Adrian Bonislawski <adrian.bonislawski@linux.intel.com>
 
 #include <config.h>
+#include <sof/audio/buffer.h>
+#include <sof/audio/component.h>
 #include <sof/probe/probe.h>
 #include <sof/trace/trace.h>
 #include <user/trace.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/dma.h>
+#include <sof/lib/notifier.h>
 #include <ipc/topology.h>
 #include <sof/drivers/ipc.h>
+#include <sof/drivers/timer.h>
+#include <sof/schedule/ll_schedule.h>
+#include <sof/schedule/schedule.h>
+#include <sof/schedule/task.h>
 
 #define trace_probe(__e, ...) \
 	trace_event(TRACE_CLASS_PROBE, __e, ##__VA_ARGS__)
@@ -57,6 +64,8 @@ struct probe_pdata {
 	struct probe_dma_ext ext_dma;				  /**< extraction DMA */
 	struct probe_dma_ext inject_dma[CONFIG_PROBE_DMA_MAX];	  /**< injection DMA */
 	struct probe_point probe_points[CONFIG_PROBE_POINTS_MAX]; /**< probe points */
+	struct probe_data_packet header;			  /**< data packet header */
+	struct task dmap_work;					  /**< probe task */
 };
 
 static struct probe_pdata *_probe;
@@ -170,6 +179,7 @@ static int probe_dma_deinit(struct probe_dma_ext *dma)
 	}
 
 	dma_channel_put(dma->dc.chan);
+	dma_put(dma->dc.dmac);
 
 	rfree((void *)dma->dmapb.addr);
 	dma->dmapb.addr = 0;
@@ -177,6 +187,36 @@ static int probe_dma_deinit(struct probe_dma_ext *dma)
 	dma->stream_tag = PROBE_DMA_INVALID;
 
 	return 0;
+}
+
+/*
+ * \brief Probe task for extraction.
+ *
+ * Copy extraction probes data to host if available.
+ * Return err if dma copy failed.
+ */
+static enum task_state probe_task(void *data)
+{
+	int err;
+
+	if (_probe->ext_dma.dmapb.avail > 0)
+		err = dma_copy_to_host_nowait(&_probe->ext_dma.dc,
+					      &_probe->ext_dma.config, 0,
+					       (void *)_probe->ext_dma.dmapb.r_ptr,
+					       _probe->ext_dma.dmapb.avail);
+	else
+		return SOF_TASK_STATE_RESCHEDULE;
+
+	if (err < 0) {
+		trace_probe_error("probe_task() error: dma_copy_to_host_nowait() failed.");
+		return err;
+	}
+
+	/* buffer data sent, set read pointer and clear avail bytes */
+	_probe->ext_dma.dmapb.r_ptr = _probe->ext_dma.dmapb.w_ptr;
+	_probe->ext_dma.dmapb.avail = 0;
+
+	return SOF_TASK_STATE_RESCHEDULE;
 }
 
 int probe_init(struct probe_dma *probe_dma)
@@ -214,6 +254,9 @@ int probe_init(struct probe_dma *probe_dma)
 			_probe->ext_dma.stream_tag = PROBE_DMA_INVALID;
 			return err;
 		}
+		/* init task for extraction probes */
+		schedule_task_init_ll(&_probe->dmap_work, SOF_SCHEDULE_LL_TIMER,
+				      SOF_TASK_PRI_LOW, probe_task, _probe, 0, 0);
 	} else {
 		tracev_probe("\tno extraction DMA setup");
 
@@ -423,6 +466,280 @@ int probe_dma_remove(uint32_t count, uint32_t *stream_tag)
 	return 0;
 }
 
+/**
+ * \brief Copy data to probe buffer and update buffer pointers.
+ * \param[out] probe DMA buffer.
+ * \param[in] data pointer.
+ * \param[in] size.
+ * \return 0 on success, error code otherwise.
+ */
+static int copy_to_pbuffer(struct probe_dma_buf *pbuf, void *data, uint32_t bytes)
+{
+	uint32_t head;
+	uint32_t tail;
+
+	if (bytes == 0)
+		return 0;
+
+	/* check if it will not exceed end_addr */
+	if ((char *)pbuf->end_addr - (char *)pbuf->w_ptr < bytes) {
+		head = (char *)pbuf->end_addr - (char *)pbuf->w_ptr;
+		tail = bytes - head;
+	} else {
+		head = bytes;
+		tail = 0;
+	}
+
+	/* copy data to probe buffer */
+	if (memcpy_s((void *)pbuf->w_ptr, pbuf->end_addr - pbuf->w_ptr, data, head)) {
+		trace_probe_error("copy_to_pbuffer() error: memcpy_s() failed");
+		return -EINVAL;
+	}
+	dcache_writeback_region((void *)pbuf->w_ptr, head);
+
+	/* buffer ended so needs to do a second copy */
+	if (tail) {
+		pbuf->w_ptr = pbuf->addr;
+		if (memcpy_s((void *)pbuf->w_ptr, (char *)pbuf->end_addr - (char *)pbuf->w_ptr,
+			     (char *)data + head, tail)) {
+			trace_probe_error("copy_to_pbuffer() error: memcpy_s() failed");
+			return -EINVAL;
+		}
+		dcache_writeback_region((void *)pbuf->w_ptr, tail);
+		pbuf->w_ptr = pbuf->w_ptr + tail;
+	} else {
+		pbuf->w_ptr = pbuf->w_ptr + head;
+	}
+
+	pbuf->avail = (uintptr_t)pbuf->avail + bytes;
+
+	return 0;
+}
+
+/**
+ * \brief Generate probe data packet header, update timestamp, calc crc
+ *	  and copy data to probe buffer.
+ * \param[in] component buffer pointer.
+ * \param[in] data size.
+ * \param[in] audio format.
+ * \return 0 on success, error code otherwise.
+ */
+static int probe_gen_header(struct comp_buffer *buffer, uint32_t size, uint32_t format)
+{
+	struct probe_data_packet *header;
+	uint64_t timestamp;
+	uint32_t crc;
+
+	header = &_probe->header;
+	timestamp = platform_timer_get(timer_get());
+
+	header->sync_word = PROBE_EXTRACT_SYNC_WORD;
+	header->buffer_id = buffer->id;
+	header->format = format;
+	header->timestamp_low = (uint32_t)timestamp;
+	header->timestamp_high = (uint32_t)(timestamp >> 32);
+	header->checksum = 0;
+	header->data_size_bytes = size;
+
+	/* calc crc to check validation by probe parse app */
+	crc = crc32(0, header, sizeof(*header));
+	header->checksum = crc;
+
+	dcache_writeback_region(header, sizeof(*header));
+
+	return copy_to_pbuffer(&_probe->ext_dma.dmapb, header,
+			       sizeof(struct probe_data_packet));
+}
+
+/**
+ * \brief Generate description of audio format for extraction probes.
+ * \param[in] frame_fmt.
+ * \param[in] sample rate.
+ * \param[in] channels num.
+ * \return format.
+ */
+static uint32_t probe_gen_format(uint32_t frame_fmt, uint32_t rate, uint32_t channels)
+{
+	uint32_t format = 0;
+	uint32_t sample_rate;
+	uint32_t valid_bytes;
+	uint32_t container_bytes;
+	uint32_t float_fmt = 0;
+
+	switch (frame_fmt) {
+	case SOF_IPC_FRAME_S16_LE:
+		valid_bytes = 2;
+		container_bytes = 2;
+		break;
+	case SOF_IPC_FRAME_S24_4LE:
+		valid_bytes = 3;
+		container_bytes = 4;
+		break;
+	case SOF_IPC_FRAME_S32_LE:
+		valid_bytes = 4;
+		container_bytes = 4;
+		break;
+	case SOF_IPC_FRAME_FLOAT:
+		valid_bytes = 4;
+		container_bytes = 4;
+		float_fmt = 1;
+		break;
+	default:
+		trace_probe_error("probe_gen_format() error: Invalid frame format specified = 0x%08x",
+				  frame_fmt);
+		assert(false);
+	}
+
+	switch (rate) {
+	case 8000:
+		sample_rate = 0;
+		break;
+	case 11025:
+		sample_rate = 1;
+		break;
+	case 12000:
+		sample_rate = 2;
+		break;
+	case 16000:
+		sample_rate = 3;
+		break;
+	case 22050:
+		sample_rate = 4;
+		break;
+	case 24000:
+		sample_rate = 5;
+		break;
+	case 32000:
+		sample_rate = 6;
+		break;
+	case 44100:
+		sample_rate = 7;
+		break;
+	case 48000:
+		sample_rate = 8;
+		break;
+	case 64000:
+		sample_rate = 9;
+		break;
+	case 88200:
+		sample_rate = 10;
+		break;
+	case 96000:
+		sample_rate = 11;
+		break;
+	case 128000:
+		sample_rate = 12;
+		break;
+	case 176400:
+		sample_rate = 13;
+		break;
+	case 192000:
+		sample_rate = 14;
+		break;
+	default:
+		sample_rate = 15;
+	}
+
+	format |= (1 << PROBE_SHIFT_FMT_TYPE) & PROBE_MASK_FMT_TYPE;
+	format |= (sample_rate << PROBE_SHIFT_SAMPLE_RATE) & PROBE_MASK_SAMPLE_RATE;
+	format |= ((channels - 1) << PROBE_SHIFT_NB_CHANNELS) & PROBE_MASK_NB_CHANNELS;
+	format |= ((valid_bytes - 1) << PROBE_SHIFT_SAMPLE_SIZE) & PROBE_MASK_SAMPLE_SIZE;
+	format |= ((container_bytes - 1) << PROBE_SHIFT_CONTAINER_SIZE) & PROBE_MASK_CONTAINER_SIZE;
+	format |= (float_fmt << PROBE_SHIFT_SAMPLE_FMT) & PROBE_MASK_SAMPLE_FMT;
+	format |= (1 << PROBE_SHIFT_INTERLEAVING_ST) & PROBE_MASK_INTERLEAVING_ST;
+
+	return format;
+}
+
+/**
+ * \brief General extraction probe callback, called from buffer produce.
+ *	  It will search for probe point connected to this buffer.
+ *	  For extraction probe: generate format, header and copy data to probe buffer.
+ * \param[in] arg pointer (not used).
+ * \param[in] type of notify.
+ * \param[in] data pointer.
+ */
+static void probe_cb_produce(void *arg, enum notify_id type, void *data)
+{
+	struct buffer_cb_transact *cb_data = data;
+	struct comp_buffer *buffer = cb_data->buffer;
+	uint32_t buffer_id;
+	uint32_t head, tail;
+	uint32_t ret, i;
+	uint32_t format;
+
+	buffer_id = buffer->id;
+
+	/* search for probe point connected to this buffer */
+	for (i = 0; i < CONFIG_PROBE_POINTS_MAX; i++)
+		if (_probe->probe_points[i].buffer_id == buffer_id)
+			break;
+
+	if (i == CONFIG_PROBE_POINTS_MAX) {
+		trace_probe_error("probe_cb_produce() error: probe not found for buffer id: %d",
+				  buffer_id);
+		return;
+	}
+
+	if (_probe->probe_points[i].purpose == PROBE_PURPOSE_EXTRACTION) {
+		format = probe_gen_format(buffer->stream.frame_fmt,
+					  buffer->stream.rate,
+					  buffer->stream.channels);
+		ret = probe_gen_header(buffer,
+				       cb_data->transaction_amount,
+				       format);
+		if (ret < 0)
+			goto err;
+
+		/* check if transaction amount exceeds component buffer end addr */
+		/* if yes: divide copying into two stages, head and tail */
+		if ((char *)cb_data->transaction_begin_address +
+		    cb_data->transaction_amount > (char *)buffer->stream.end_addr) {
+			head = (uintptr_t)buffer->stream.end_addr -
+			       (uintptr_t)cb_data->transaction_begin_address;
+			tail = (uintptr_t)cb_data->transaction_amount - head;
+			ret = copy_to_pbuffer(&_probe->ext_dma.dmapb,
+					      cb_data->transaction_begin_address,
+					      head);
+			if (ret < 0)
+				goto err;
+
+			ret = copy_to_pbuffer(&_probe->ext_dma.dmapb,
+					      buffer->stream.addr, tail);
+			if (ret < 0)
+				goto err;
+		} else {
+			ret = copy_to_pbuffer(&_probe->ext_dma.dmapb,
+					      cb_data->transaction_begin_address,
+					      cb_data->transaction_amount);
+			if (ret < 0)
+				goto err;
+		}
+	}
+	return;
+err:
+	trace_probe_error("probe_cb_produce() error: failed to generate probe data");
+}
+
+/**
+ * \brief Callback for buffer free, it will remove probe point.
+ * \param[in] arg pointer (not used).
+ * \param[in] type of notify.
+ * \param[in] data pointer.
+ */
+static void probe_cb_free(void *arg, enum notify_id type, void *data)
+{
+	struct buffer_cb_free *cb_data = data;
+	uint32_t buffer_id = cb_data->buffer->id;
+	uint32_t ret;
+
+	tracev_probe("probe_cb_free() buffer_id = %u", buffer_id);
+
+	ret = probe_point_remove(1, &buffer_id);
+	if (ret < 0)
+		trace_probe_error("probe_cb_free() error: probe_point_remove() failed");
+}
+
 int probe_point_add(uint32_t count, struct probe_point *probe)
 {
 	uint32_t i;
@@ -520,6 +837,16 @@ int probe_point_add(uint32_t count, struct probe_point *probe)
 
 				return -EINVAL;
 			}
+		} else if (probe[i].purpose == PROBE_PURPOSE_EXTRACTION) {
+			for (j = 0; j < CONFIG_PROBE_POINTS_MAX; j++) {
+				if (_probe->probe_points[j].stream_tag != PROBE_DMA_INVALID &&
+				    _probe->probe_points[j].purpose == PROBE_PURPOSE_EXTRACTION)
+					break;
+			}
+			if (j == CONFIG_PROBE_POINTS_MAX) {
+				tracev_probe("probe_point_add(): start probe task");
+				schedule_task(&_probe->dmap_work, 1000, 1000);
+			}
 		}
 
 		/* probe point valid, save it */
@@ -528,7 +855,10 @@ int probe_point_add(uint32_t count, struct probe_point *probe)
 		_probe->probe_points[first_free].stream_tag =
 			probe[i].stream_tag;
 
-		/* TODO: Hook up callbacks to buffer (dev->cb) and DMA */
+		notifier_register(_probe, dev->cb, NOTIFIER_ID_BUFFER_PRODUCE,
+				  &probe_cb_produce);
+		notifier_register(_probe, dev->cb, NOTIFIER_ID_BUFFER_FREE,
+				  &probe_cb_free);
 	}
 
 	return 0;
@@ -570,6 +900,7 @@ int probe_point_info(struct sof_ipc_probe_info_params *data, uint32_t max_size)
 
 int probe_point_remove(uint32_t count, uint32_t *buffer_id)
 {
+	struct ipc_comp_dev *dev;
 	uint32_t i;
 	uint32_t j;
 
@@ -577,7 +908,6 @@ int probe_point_remove(uint32_t count, uint32_t *buffer_id)
 
 	if (!_probe) {
 		trace_probe_error("probe_point_remove() error: Not initialized.");
-
 		return -EINVAL;
 	}
 	/* remove each requested probe point */
@@ -585,13 +915,29 @@ int probe_point_remove(uint32_t count, uint32_t *buffer_id)
 		tracev_probe("\tbuffer_id[%u] = %u", i, buffer_id[i]);
 
 		for (j = 0; j < CONFIG_PROBE_POINTS_MAX; j++) {
-			if (_probe->probe_points[j].buffer_id == buffer_id[i]) {
-				/* TODO: Remove callbacks from buffer and DMA */
+			if (_probe->probe_points[j].stream_tag != PROBE_POINT_INVALID &&
+			    _probe->probe_points[j].buffer_id == buffer_id[i]) {
+				dev = ipc_get_comp_by_id(ipc_get(), buffer_id[i]);
+				if (dev) {
+					notifier_unregister(_probe, dev->cb,
+							    NOTIFIER_ID_BUFFER_PRODUCE);
+					notifier_unregister(_probe, dev->cb,
+							    NOTIFIER_ID_BUFFER_FREE);
+				}
 
 				_probe->probe_points[j].stream_tag =
 					PROBE_POINT_INVALID;
 			}
 		}
+	}
+	for (j = 0; j < CONFIG_PROBE_POINTS_MAX; j++) {
+		if (_probe->probe_points[j].stream_tag != PROBE_DMA_INVALID &&
+		    _probe->probe_points[j].purpose == PROBE_PURPOSE_EXTRACTION)
+			break;
+	}
+	if (j == CONFIG_PROBE_POINTS_MAX) {
+		tracev_probe("probe_point_remove(): cancel probe task");
+		schedule_task_cancel(&_probe->dmap_work);
 	}
 
 	return 0;
