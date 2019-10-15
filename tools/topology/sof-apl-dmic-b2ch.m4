@@ -55,7 +55,7 @@ dnl     deadline, priority, core, time_domain)
 DAI_ADD(sof/pipe-dai-capture.m4,
 	7, DMIC, 1, NoCodec-7,
 	PIPELINE_SINK_7, 3, s32le,
-	1000, 0, 0)
+	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 
 dnl PCM_DUPLEX_ADD(name, pcm_id, playback, capture)

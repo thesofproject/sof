@@ -100,49 +100,49 @@ dnl     deadline, priority, core, time_domain)
 DAI_ADD(sof/pipe-dai-playback.m4,
 	1, SSP, 0, NoCodec-0,
 	PIPELINE_SOURCE_1, 3, s16le,
-	1000, 0, 0)
+	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # capture DAI is SSP0 using 3 periods
 # Buffers use s16le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
 	2, SSP, 0, NoCodec-0,
 	PIPELINE_SINK_2, 3, s16le,
-	1000, 0, 0)
+	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # playback DAI is SSP1 using 3 periods
 # Buffers use s16le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
 	3, SSP, 1, NoCodec-1,
 	PIPELINE_SOURCE_3, 3, s16le,
-	1000, 0, 0)
+	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # capture DAI is SSP1 using 3 periods
 # Buffers use s16le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
 	4, SSP, 1, NoCodec-1,
 	PIPELINE_SINK_4, 3, s16le,
-	1000, 0, 0)
+	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # playback DAI is SSP2 using 3 periods
 # Buffers use s16le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
 	5, SSP, 2, NoCodec-2,
 	PIPELINE_SOURCE_5, 3, s16le,
-	1000, 0, 0)
+	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # capture DAI is SSP2 using 3 periods
 # Buffers use s16le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
 	6, SSP, 2, NoCodec-2,
 	PIPELINE_SINK_6, 3, s16le,
-	1000, 0, 0)
+	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # capture DAI is DMIC 0 using 3 periods
 # Buffers use s32le format, 1000us deadline on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
 	13, DMIC, 0, NoCodec-6,
 	PIPELINE_SINK_13, 3, s32le,
-	1000, 0, 0)
+	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 dnl PCM_DUPLEX_ADD(name, pcm_id, playback, capture)
 PCM_DUPLEX_ADD(Port0, 0, PIPELINE_PCM_1, PIPELINE_PCM_2)

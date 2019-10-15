@@ -100,21 +100,21 @@ dnl     deadline, priority, core, time_domain)
 DAI_ADD(sof/pipe-dai-playback.m4,
 	1, SSP, 1, SSP1-Codec,
 	PIPELINE_SOURCE_1, 3, s24le,
-	1000, 0, 0)
+	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # capture DAI is SSP1 using 3 periods
 # Buffers use s24le format, 1000us deadline on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
 	2, SSP, 1, SSP1-Codec,
 	PIPELINE_SINK_2, 3, s24le,
-	1000, 0, 0)
+	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # capture DAI is DMIC01 using 3 periods
 # Buffers use s32le format, 1000us deadline on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
 	3, DMIC, 0, dmic01,
 	PIPELINE_SINK_3, 3, s32le,
-	1000, 0, 0)
+	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # playback DAI is iDisp1 using 2 periods
 # Buffers use s32le format, 1000us deadline on core 0 with priority 0

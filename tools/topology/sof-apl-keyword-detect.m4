@@ -57,7 +57,7 @@ DAI_ADD(sof/pipe-dai-capture.m4,
 	1, DMIC, 1, NoCodec-6,
 	PIPELINE_SINK_1, 3, s16le,
 	KWD_PIPE_SCH_DEADLINE_US,
-	0, 0)
+	0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # keyword detector pipe
 dnl PIPELINE_ADD(pipeline,
@@ -68,7 +68,8 @@ dnl     pcm_min_rate, pcm_max_rate, pipeline_rate)
 PIPELINE_ADD(sof/pipe-detect.m4,
 	2, 2, s16le,
 	KWD_PIPE_SCH_DEADLINE_US, 0, 0,
-	PIPELINE_SCHED_COMP_1, 0,
+	PIPELINE_SCHED_COMP_1,
+	SCHEDULE_TIME_DOMAIN_TIMER,
 	16000, 16000, 16000)
 
 # Connect pipelines together

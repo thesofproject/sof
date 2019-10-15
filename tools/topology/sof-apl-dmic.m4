@@ -62,14 +62,14 @@ dnl     deadline, priority, core, time_domain)
 DAI_ADD(sof/pipe-dai-capture.m4,
 	6, DMIC, 0, NoCodec-6,
 	PIPELINE_SINK_6, 3, s32le,
-	1000, 0, 0)
+	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # capture DAI is DMIC 1 using 3 periods
 # Buffers use s16le format, 1000us deadline on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
 	7, DMIC, 1, NoCodec-7,
 	PIPELINE_SINK_7, 3, s16le,
-	1000, 0, 0)
+	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 
 dnl PCM_DUPLEX_ADD(name, pcm_id, playback, capture)

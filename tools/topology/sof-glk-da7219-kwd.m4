@@ -110,28 +110,28 @@ dnl     deadline, priority, core, time_domain)
 DAI_ADD(sof/pipe-dai-playback.m4,
 	1, SSP, 1, SSP1-Codec,
 	PIPELINE_SOURCE_1, 3, s16le,
-	1000, 0, 0)
+	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # playback DAI is SSP2 using 3 periods
 # Buffers use s16le format, 1000us deadline on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
 	2, SSP, 2, SSP2-Codec,
 	PIPELINE_SOURCE_2, 3, s16le,
-	1000, 0, 0)
+	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # capture DAI is SSP2 using 3 periods
 # Buffers use s16le format, 1000us deadline on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
 	3, SSP, 2, SSP2-Codec,
 	PIPELINE_SINK_3, 3, s16le,
-	1000, 0, 0)
+	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # capture DAI is DMIC0 using 3 periods
 # Buffers use s32le format, 1000us deadline on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
 	4, DMIC, 0, dmic01,
 	PIPELINE_SINK_4, 3, s16le,
-	1000, 0, 0)
+	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # playback DAI is iDisp1 using 2 periods
 # Buffers use s32le format, 1000us deadline on core 0 with priority 0
@@ -170,7 +170,8 @@ PIPELINE_PCM_DAI_ADD(sof/pipe-kfbm-capture.m4,
 DAI_ADD(sof/pipe-dai-capture.m4,
 	8, DMIC, 1, dmic16k,
 	PIPELINE_SINK_8, 3, s16le,
-	KWD_PIPE_SCH_DEADLINE_US, 0, 0)
+	KWD_PIPE_SCH_DEADLINE_US, 0, 0,
+	SCHEDULE_TIME_DOMAIN_TIMER)
 
 PCM_PLAYBACK_ADD(Speakers, 0, PIPELINE_PCM_1)
 PCM_DUPLEX_ADD(Headset, 1, PIPELINE_PCM_2, PIPELINE_PCM_3)
@@ -188,7 +189,7 @@ dnl     pcm_min_rate, pcm_max_rate, pipeline_rate)
 PIPELINE_ADD(sof/pipe-detect.m4,
 	     9, 2, s16le,
 	     KWD_PIPE_SCH_DEADLINE_US, 0, 0,
-	     PIPELINE_SCHED_COMP_8, 0,
+	     PIPELINE_SCHED_COMP_8, SCHEDULE_TIME_DOMAIN_TIMER,
 	     16000, 16000, 16000))
 
 # Connect pipelines together

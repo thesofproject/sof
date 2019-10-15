@@ -83,7 +83,7 @@ dnl     deadline, priority, core, time_domain)
 DAI_ADD(sof/pipe-dai-playback.m4,
 	1, SSP, 5, SSP5-Codec,
 	PIPELINE_SOURCE_1, 3, s24le,
-	1000, 0, 0)
+	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # Media playback pipeline 5 on PCM 4 using max 2 channels of s16le.
 # Set 1000us deadline on core 0 with priority 0
@@ -91,7 +91,8 @@ PIPELINE_PCM_ADD(sof/pipe-pcm-media.m4,
 	5, 4, 2, s16le,
 	1000, 0, 0,
 	8000, 96000, 48000,
-	0, PIPELINE_PLAYBACK_SCHED_COMP_1)
+	SCHEDULE_TIME_DOMAIN_TIMER,
+	PIPELINE_PLAYBACK_SCHED_COMP_1)
 
 # Connect pipelines together
 SectionGraph."media-pipeline" {
