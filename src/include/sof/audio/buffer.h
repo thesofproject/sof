@@ -82,6 +82,10 @@ struct buffer_cb_transact {
 	void *transaction_begin_address;
 };
 
+struct buffer_cb_free {
+	struct comp_buffer *buffer;
+};
+
 #define buffer_comp_list(buffer, dir) \
 	((dir) == PPL_DIR_DOWNSTREAM ? &buffer->source_list : \
 	 &buffer->sink_list)
