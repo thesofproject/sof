@@ -52,6 +52,7 @@ set(TPLGS
 	"sof-icl-nocodec\;sof-icl-nocodec"
 	"sof-apl-eq-pcm512x\;sof-apl-eq-pcm512x"
 	"sof-apl-eq-dmic\;sof-apl-eq-dmic"
+	"sof-apl-src-dmic\;sof-apl-src-dmic"
 	"sof-apl-dmic-a2ch\;sof-apl-dmic-a2ch"
 	"sof-apl-dmic-b2ch\;sof-apl-dmic-b2ch"
 	"sof-apl-dmic-a2ch-b2ch\;sof-apl-dmic-a2ch-b2ch"
