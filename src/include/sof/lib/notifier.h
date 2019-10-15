@@ -15,7 +15,8 @@
 struct sof;
 
 /* notifier target core masks */
-#define NOTIFIER_TARGET_CORE_MASK(x)	(1 << x)
+#define NOTIFIER_TARGET_CORE_MASK(x)	(1 << (x))
+#define NOTIFIER_TARGET_CORE_LOCAL	NOTIFIER_TARGET_CORE_MASK(cpu_get_id())
 #define NOTIFIER_TARGET_CORE_ALL_MASK	0xFFFFFFFF
 
 enum notify_id {
@@ -23,6 +24,8 @@ enum notify_id {
 	NOTIFIER_ID_SSP_FREQ,			/* struct clock_notify_data * */
 	NOTIFIER_ID_KPB_CLIENT_EVT,		/* struct kpb_event_data * */
 	NOTIFIER_ID_DMA_DOMAIN_CHANGE,		/* struct dma_chan_data * */
+	NOTIFIER_ID_BUFFER_PRODUCE,		/* struct buffer_cb_transact* */
+	NOTIFIER_ID_BUFFER_CONSUME,		/* struct buffer_cb_transact* */
 	NOTIFIER_ID_COUNT
 };
 

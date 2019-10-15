@@ -68,17 +68,18 @@ struct comp_buffer {
 	struct list_item source_list;	/* list in comp buffers */
 	struct list_item sink_list;	/* list in comp buffers */
 
-	/* callbacks */
-	void (*cb)(void *data, uint32_t bytes);
-	void *cb_data;
-	int cb_type;
-
 	/* runtime stream params */
 	uint32_t frame_fmt;	/**< enum sof_ipc_frame */
 	uint32_t buffer_fmt;	/**< enum sof_ipc_buffer_format */
 	uint32_t rate;
 	uint16_t channels;
 	uint16_t chmap[SOF_IPC_MAX_CHANNELS];	/**< channel map - SOF_CHMAP_ */
+};
+
+struct buffer_cb_transact {
+	struct comp_buffer *buffer;
+	uint32_t transaction_amount;
+	void *transaction_begin_address;
 };
 
 #define buffer_comp_list(buffer, dir) \

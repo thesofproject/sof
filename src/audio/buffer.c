@@ -11,6 +11,7 @@
 #include <sof/lib/alloc.h>
 #include <sof/lib/cache.h>
 #include <sof/lib/memory.h>
+#include <sof/lib/notifier.h>
 #include <sof/list.h>
 #include <ipc/topology.h>
 #include <errno.h>
@@ -118,6 +119,11 @@ void buffer_free(struct comp_buffer *buffer)
 void comp_update_buffer_produce(struct comp_buffer *buffer, uint32_t bytes)
 {
 	uint32_t flags;
+	struct buffer_cb_transact cb_data = {
+		.buffer = buffer,
+		.transaction_amount = bytes,
+		.transaction_begin_address = buffer->w_ptr,
+	};
 
 	/* return if no bytes */
 	if (!bytes) {
@@ -155,8 +161,8 @@ void comp_update_buffer_produce(struct comp_buffer *buffer, uint32_t bytes)
 	/* calculate free bytes */
 	buffer->free = buffer->size - buffer->avail;
 
-	if (buffer->cb && buffer->cb_type & BUFF_CB_TYPE_PRODUCE)
-		buffer->cb(buffer->cb_data, bytes);
+	notifier_event(buffer, NOTIFIER_ID_BUFFER_PRODUCE,
+		       NOTIFIER_TARGET_CORE_LOCAL, &cb_data, sizeof(cb_data));
 
 	irq_local_enable(flags);
 
@@ -174,6 +180,11 @@ void comp_update_buffer_produce(struct comp_buffer *buffer, uint32_t bytes)
 void comp_update_buffer_consume(struct comp_buffer *buffer, uint32_t bytes)
 {
 	uint32_t flags;
+	struct buffer_cb_transact cb_data = {
+		.buffer = buffer,
+		.transaction_amount = bytes,
+		.transaction_begin_address = buffer->r_ptr,
+	};
 
 	/* return if no bytes */
 	if (!bytes) {
@@ -207,8 +218,8 @@ void comp_update_buffer_consume(struct comp_buffer *buffer, uint32_t bytes)
 	/* calculate free bytes */
 	buffer->free = buffer->size - buffer->avail;
 
-	if (buffer->cb && buffer->cb_type & BUFF_CB_TYPE_CONSUME)
-		buffer->cb(buffer->cb_data, bytes);
+	notifier_event(buffer, NOTIFIER_ID_BUFFER_CONSUME,
+		       NOTIFIER_TARGET_CORE_LOCAL, &cb_data, sizeof(cb_data));
 
 	irq_local_enable(flags);
 
