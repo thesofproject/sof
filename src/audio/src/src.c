@@ -128,8 +128,8 @@ int src_buffer_lengths(struct src_param *a, int fs_in, int fs_out, int nch,
 	/* Check from stage1 parameter for a deleted in/out rate combination.*/
 	if (stage1->filter_length < 1) {
 		trace_src_error("src_buffer_lengths() error: "
-				"stage1->filter_length <"
-				" 1, fs_in: %u, fs_out: %u", fs_in, fs_out);
+				"Non-supported combination "
+				"fs_in = %d, fs_out = %d", fs_in, fs_out);
 		return -EINVAL;
 	}
 
@@ -602,9 +602,6 @@ static int src_params(struct comp_dev *dev)
 				"failed");
 		return err;
 	}
-
-	trace_src("src_params(), blk_in = %u, blk_out = %u",
-		  cd->param.blk_in, cd->param.blk_out);
 
 	delay_lines_size = sizeof(int32_t) * cd->param.total;
 	if (delay_lines_size == 0) {
