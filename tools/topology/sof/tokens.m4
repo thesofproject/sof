@@ -93,6 +93,10 @@ SectionVendorTokens."sof_process_tokens" {
 	SOF_TKN_PROCESS_TYPE			"900"
 }
 
+SectionVendorTokens."sof_sai_tokens" {
+	SOF_TKN_IMX_SAI_MCLK_ID			"1000"
+}
+
 SectionVendorTokens."sof_esai_tokens" {
 	SOF_TKN_IMX_ESAI_MCLK_ID		"1100"
 }
