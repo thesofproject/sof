@@ -60,9 +60,6 @@ struct timer;
 #define PLATFORM_MAX_CHANNELS	4
 #define PLATFORM_MAX_STREAMS	5
 
-/* Host finish work schedule delay in microseconds */
-#define PLATFORM_HOST_FINISH_DELAY	100
-
 /* Host finish work(drain from host to dai) timeout in microseconds */
 #define PLATFORM_HOST_FINISH_TIMEOUT	50000
 
