@@ -61,10 +61,6 @@ struct comp_buffer;
 #define DMA_ACCESS_EXCLUSIVE	1
 #define DMA_ACCESS_SHARED	0
 
-/* DMA callback types */
-#define DMA_CB_TYPE_IRQ		BIT(0)
-#define DMA_CB_TYPE_COPY	BIT(1)
-
 /* DMA copy flags */
 #define DMA_COPY_BLOCKING	BIT(0)
 #define DMA_COPY_ONE_SHOT	BIT(1)
@@ -109,6 +105,7 @@ struct dma_sg_elem {
  *  \brief Data used in DMA callbacks.
  */
 struct dma_cb_data {
+	struct dma_chan_data *channel;
 	struct dma_sg_elem elem;
 	enum dma_cb_status status;
 };
@@ -164,10 +161,6 @@ struct dma_ops {
 	int (*set_config)(struct dma_chan_data *channel,
 			  struct dma_sg_config *config);
 
-	int (*set_cb)(struct dma_chan_data *channel, int type,
-		void (*cb)(void *data, uint32_t type, struct dma_cb_data *next),
-		void *data);
-
 	int (*pm_context_restore)(struct dma *dma);
 	int (*pm_context_store)(struct dma *dma);
 
@@ -217,13 +210,6 @@ struct dma_chan_data {
 	uint64_t period;	/* DMA channel's transfer period */
 	/* true if this DMA channel is the scheduling source */
 	bool is_scheduling_source;
-
-	/* client callback function */
-	void (*cb)(void *data, uint32_t type, struct dma_cb_data *next);
-	/* client callback data */
-	void *cb_data;
-	/* callback type */
-	int cb_type;
 
 	/* called by the DMA domain right after receiving an interrupt,
 	 * so should execute very time-sensitive operations
@@ -285,7 +271,7 @@ void dma_put(struct dma *dma);
  * Programming flow is :-
  *
  * 1) dma_channel_get()
- * 2) dma_set_cb()
+ * 2) notifier_register()
  * 3) dma_set_config()
  * 4) dma_start()
  *   ... DMA now running ...
@@ -302,13 +288,6 @@ static inline struct dma_chan_data *dma_channel_get(struct dma *dma,
 static inline void dma_channel_put(struct dma_chan_data *channel)
 {
 	channel->dma->ops->channel_put(channel);
-}
-
-static inline int dma_set_cb(struct dma_chan_data *channel, int type,
-	void (*cb)(void *data, uint32_t type, struct dma_cb_data *next),
-	void *data)
-{
-	return channel->dma->ops->set_cb(channel, type, cb, data);
 }
 
 static inline int dma_start(struct dma_chan_data *channel)

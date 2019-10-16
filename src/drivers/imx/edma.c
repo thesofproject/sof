@@ -11,6 +11,7 @@
 #include <sof/lib/alloc.h>
 #include <sof/lib/dma.h>
 #include <sof/lib/io.h>
+#include <sof/lib/notifier.h>
 #include <sof/math/numbers.h>
 #include <sof/platform.h>
 #include <errno.h>
@@ -116,6 +117,8 @@ static void edma_channel_put(struct dma_chan_data *channel)
 	 */
 	trace_edma("EDMA: channel_put(%d)", channel->index);
 
+	notifier_unregister_all(NULL, channel);
+
 	spin_lock_irq(dma->lock, flags);
 	channel->status = COMP_STATE_INIT;
 	atomic_sub(&channel->dma->num_channels_busy, 1);
@@ -195,10 +198,14 @@ static int edma_stop(struct dma_chan_data *channel)
 
 static int edma_copy(struct dma_chan_data *channel, int bytes, uint32_t flags)
 {
-	struct dma_cb_data next = { .elem.size = bytes };
+	struct dma_cb_data next = {
+		.channel = channel,
+		.elem.size = bytes,
+	};
 
-	if (channel->cb && channel->cb_type & DMA_CB_TYPE_COPY)
-		channel->cb(channel->cb_data, DMA_CB_TYPE_COPY, &next);
+	notifier_event(channel, NOTIFIER_ID_DMA_COPY,
+		       NOTIFIER_TARGET_CORE_LOCAL, &next, sizeof(next));
+
 	return 0;
 }
 
@@ -392,17 +399,6 @@ static int edma_pm_context_store(struct dma *dma)
 	return 0;
 }
 
-static int edma_set_cb(struct dma_chan_data *channel, int type,
-		void (*cb)(void *data, uint32_t type, struct dma_cb_data *next),
-		void *data)
-{
-	channel->cb = cb;
-	channel->cb_type = type;
-	channel->cb_data = data;
-
-	return 0;
-}
-
 static int edma_probe(struct dma *dma)
 {
 	int channel;
@@ -551,7 +547,6 @@ const struct dma_ops edma_ops = {
 	.copy		= edma_copy,
 	.status		= edma_status,
 	.set_config	= edma_set_config,
-	.set_cb		= edma_set_cb,
 	.pm_context_restore	= edma_pm_context_restore,
 	.pm_context_store	= edma_pm_context_store,
 	.probe		= edma_probe,

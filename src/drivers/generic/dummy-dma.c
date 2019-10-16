@@ -31,6 +31,7 @@
 #include <sof/lib/alloc.h>
 #include <sof/lib/cache.h>
 #include <sof/lib/dma.h>
+#include <sof/lib/notifier.h>
 #include <sof/platform.h>
 #include <sof/spinlock.h>
 #include <sof/string.h>
@@ -248,9 +249,7 @@ static void dummy_dma_channel_put_unlocked(struct dma_chan_data *channel)
 	struct dma_chan_pdata *ch = dma_chan_get_data(channel);
 
 	/* Reset channel state */
-	channel->cb = NULL;
-	channel->cb_type = 0;
-	channel->cb_data = NULL;
+	notifier_unregister_all(NULL, channel);
 
 	ch->elems = NULL;
 	channel->desc_count = 0;
@@ -382,16 +381,6 @@ static int dummy_dma_pm_context_store(struct dma *dma)
 	return 0;
 }
 
-static int dummy_dma_set_cb(struct dma_chan_data *channel, int type,
-		void (*cb)(void *data, uint32_t type, struct dma_cb_data *next),
-		void *data)
-{
-	channel->cb = cb;
-	channel->cb_data = data;
-	channel->cb_type = type;
-	return 0;
-}
-
 /**
  * \brief Perform the DMA copy itself
  * \param[in] channel The channel to do the copying
@@ -406,15 +395,17 @@ static int dummy_dma_set_cb(struct dma_chan_data *channel, int type,
 static int dummy_dma_copy(struct dma_chan_data *channel, int bytes,
 			  uint32_t flags)
 {
-	struct dma_cb_data next;
+	struct dma_cb_data next = {
+		.channel = channel,
+	};
 	struct dma_chan_pdata *pdata = dma_chan_get_data(channel);
 
 	//next.elem.size = do_copy(channel, bytes);
 	next.elem.size = dummy_dma_do_copies(pdata, bytes);
 
 	/* Let the user of the driver know how much we copied */
-	if (channel->cb_type & DMA_CB_TYPE_COPY)
-		channel->cb(channel->cb_data, DMA_CB_TYPE_COPY, &next);
+	notifier_event(channel, NOTIFIER_ID_DMA_COPY,
+		       NOTIFIER_TARGET_CORE_LOCAL, &next, sizeof(next));
 
 	return 0;
 }
@@ -561,7 +552,6 @@ const struct dma_ops dummy_dma_ops = {
 	.copy		= dummy_dma_copy,
 	.status		= dummy_dma_status,
 	.set_config	= dummy_dma_set_config,
-	.set_cb		= dummy_dma_set_cb,
 	.pm_context_restore		= dummy_dma_pm_context_restore,
 	.pm_context_store		= dummy_dma_pm_context_store,
 	.probe		= dummy_dma_probe,

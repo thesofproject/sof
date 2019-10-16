@@ -33,6 +33,7 @@
 #include <sof/lib/memory.h>
 #include <sof/lib/pm_runtime.h>
 #include <sof/lib/wait.h>
+#include <sof/lib/notifier.h>
 #include <sof/platform.h>
 #include <sof/spinlock.h>
 #include <ipc/topology.h>
@@ -174,9 +175,10 @@ static void dw_dma_channel_put_unlocked(struct dma_chan_data *channel)
 		dw_chan->lli = NULL;
 	}
 
+	notifier_unregister_all(NULL, channel);
+
 	/* set new state */
 	channel->status = COMP_STATE_INIT;
-	channel->cb = NULL;
 	channel->desc_count = 0;
 	dw_chan->ptr_data.current_ptr = 0;
 	dw_chan->ptr_data.start_ptr = 0;
@@ -283,7 +285,10 @@ out:
 static int dw_dma_release(struct dma_chan_data *channel)
 {
 	struct dw_dma_chan_data *dw_chan = dma_chan_get_data(channel);
-	struct dma_cb_data next = { .status = DMA_CB_STATUS_RELOAD };
+	struct dma_cb_data next = {
+		.channel = channel,
+		.status = DMA_CB_STATUS_RELOAD,
+	};
 	uint32_t next_ptr;
 	uint32_t bytes_left;
 	uint32_t flags;
@@ -307,10 +312,9 @@ static int dw_dma_release(struct dma_chan_data *channel)
 			(next_ptr - dw_chan->ptr_data.start_ptr);
 
 	/* perform copy if callback exists */
-	if (channel->cb && channel->cb_type & DMA_CB_TYPE_COPY) {
-		next.elem.size = bytes_left;
-		channel->cb(channel->cb_data, DMA_CB_TYPE_COPY, &next);
-	}
+	next.elem.size = bytes_left;
+	notifier_event(channel, NOTIFIER_ID_DMA_COPY,
+		       NOTIFIER_TARGET_CORE_LOCAL, &next, sizeof(next));
 
 	/* increment pointer */
 	dw_dma_increment_pointer(dw_chan, bytes_left);
@@ -756,22 +760,6 @@ static int dw_dma_pm_context_store(struct dma *dma)
 	return 0;
 }
 
-static int dw_dma_set_cb(struct dma_chan_data *channel, int type,
-			 void (*cb)(void *data, uint32_t type,
-				    struct dma_cb_data *next),
-			 void *data)
-{
-	uint32_t flags;
-
-	irq_local_disable(flags);
-	channel->cb = cb;
-	channel->cb_data = data;
-	channel->cb_type = type;
-	irq_local_enable(flags);
-
-	return 0;
-}
-
 #if !CONFIG_HW_LLI
 /* reload using LLI data */
 static inline void dw_dma_chan_reload_lli(struct dma_chan_data *channel)
@@ -859,15 +847,16 @@ static int dw_dma_copy(struct dma_chan_data *channel, int bytes,
 	struct dw_dma_chan_data *dw_chan = dma_chan_get_data(channel);
 	int ret = 0;
 	struct dma_cb_data next = {
+		.channel = channel,
 		.elem = { .size = bytes },
-		.status = DMA_CB_STATUS_END
+		.status = DMA_CB_STATUS_END,
 	};
 
 	tracev_dwdma("dw_dma_copy(): dma %d channel %d copy",
 		     channel->dma->plat_data.id, channel->index);
 
-	if (channel->cb && channel->cb_type & DMA_CB_TYPE_COPY)
-		channel->cb(channel->cb_data, DMA_CB_TYPE_COPY, &next);
+	notifier_event(channel, NOTIFIER_ID_DMA_COPY,
+		       NOTIFIER_TARGET_CORE_LOCAL, &next, sizeof(next));
 
 	if (flags & DMA_COPY_ONE_SHOT) {
 		/* for one shot copy start the DMA */
@@ -1152,7 +1141,6 @@ const struct dma_ops dw_dma_ops = {
 	.copy			= dw_dma_copy,
 	.status			= dw_dma_status,
 	.set_config		= dw_dma_set_config,
-	.set_cb			= dw_dma_set_cb,
 	.pm_context_restore	= dw_dma_pm_context_restore,
 	.pm_context_store	= dw_dma_pm_context_store,
 	.probe			= dw_dma_probe,
