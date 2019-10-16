@@ -80,7 +80,7 @@ struct ipc_msg {
 	uint32_t rx_size;	/* payload size in bytes */
 	uint8_t rx_data[SOF_IPC_MSG_MAX_SIZE];	/* pointer to payload data */
 	struct list_item list;
-	void (*cb)(void *cb_data, void *mailbox_data);
+	void (*cb)(void *cb_data);
 	void *cb_data;
 };
 
