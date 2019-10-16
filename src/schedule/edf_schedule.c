@@ -267,7 +267,7 @@ int scheduler_init_edf(struct sof *sof)
 
 	edf_sch = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(*edf_sch));
 	list_init(&edf_sch->list);
-	edf_sch->clock = PLATFORM_SCHED_CLOCK;
+	edf_sch->clock = PLATFORM_DEFAULT_CLOCK;
 
 	scheduler_init(SOF_SCHEDULE_EDF, &schedule_edf_ops, edf_sch);
 
