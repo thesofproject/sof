@@ -31,11 +31,18 @@ static struct dai sai[] = {
 		.base = SAI_1_BASE,
 		.fifo[SOF_IPC_STREAM_PLAYBACK] = {
 			.offset		= SAI_1_BASE + REG_SAI_TDR0,
+			/* use depth to model the HW FIFO size:
+			 * each channel includes a 64 x 32 bit FIFO
+			 * that can be accessed using Transmit or
+			 * Receive Data Registers
+			 */
+			.depth		= 64,  /* in 4 bytes words */
 			.handshake	= EDMA_HANDSHAKE(EDMA0_SAI_CHAN_TX_IRQ,
 							 EDMA0_SAI_CHAN_TX),
 		},
 		.fifo[SOF_IPC_STREAM_CAPTURE] = {
 			.offset		= SAI_1_BASE + REG_SAI_RDR0,
+			.depth		= 64,  /* in 4 bytes words */
 			.handshake	= EDMA_HANDSHAKE(EDMA0_SAI_CHAN_RX_IRQ,
 							 EDMA0_SAI_CHAN_RX),
 		},

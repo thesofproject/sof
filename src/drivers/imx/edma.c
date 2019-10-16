@@ -260,10 +260,10 @@ static int edma_validate_nonsg_config(struct dma_sg_elem_array *sgelems,
 static int edma_setup_tcd(struct dma_chan_data *channel, uint16_t soff,
 			  uint16_t doff, bool cyclic, bool sg, bool irqoff,
 			  struct dma_sg_elem_array *sgelems, int src_width,
-			  int dest_width)
+			  int dest_width, uint32_t burst_elems)
 {
 	int rc;
-	uint32_t sbase, dbase, total_size, elem_count, elem_size;
+	uint32_t sbase, dbase, total_size, elem_count, elem_size, size;
 
 	assert(!sg);
 	assert(cyclic);
@@ -293,6 +293,13 @@ static int edma_setup_tcd(struct dma_chan_data *channel, uint16_t soff,
 	elem_count = 2;
 	elem_size = total_size / elem_count;
 
+	size = MIN(elem_size, burst_elems);
+	while (size >= 4U) {
+		if ((elem_size % size) == 0UL)
+			break;
+		size -= 1U;
+	}
+	assert(size >= 4U);
 	rc = edma_encode_tcd_attr(src_width, dest_width);
 	if (rc < 0)
 		return rc;
@@ -301,14 +308,14 @@ static int edma_setup_tcd(struct dma_chan_data *channel, uint16_t soff,
 	dma_chan_reg_write(channel, EDMA_TCD_SADDR, sbase);
 	dma_chan_reg_write16(channel, EDMA_TCD_SOFF, soff);
 	dma_chan_reg_write16(channel, EDMA_TCD_ATTR, rc);
-	dma_chan_reg_write(channel, EDMA_TCD_NBYTES, elem_size);
+	dma_chan_reg_write(channel, EDMA_TCD_NBYTES, size);
 	dma_chan_reg_write(channel, EDMA_TCD_SLAST, -total_size * SGN(soff));
 	dma_chan_reg_write(channel, EDMA_TCD_DADDR, dbase);
 	dma_chan_reg_write16(channel, EDMA_TCD_DOFF, doff);
-	dma_chan_reg_write16(channel, EDMA_TCD_CITER, elem_count);
+	dma_chan_reg_write16(channel, EDMA_TCD_CITER, total_size / size);
 	dma_chan_reg_write(channel, EDMA_TCD_DLAST_SGA,
 			   -total_size * SGN(doff));
-	dma_chan_reg_write16(channel, EDMA_TCD_BITER, elem_count);
+	dma_chan_reg_write16(channel, EDMA_TCD_BITER, total_size / size);
 	dma_chan_reg_write16(channel, EDMA_TCD_CSR, 0);
 
 	channel->status = COMP_STATE_PREPARE;
@@ -361,7 +368,7 @@ static int edma_set_config(struct dma_chan_data *channel,
 	return edma_setup_tcd(channel, soff, doff, config->cyclic,
 			      config->scatter, config->irq_disabled,
 			      &config->elem_array, config->src_width,
-			      config->dest_width);
+			      config->dest_width, config->burst_elems);
 }
 
 /* restore DMA context after leaving D3 */
