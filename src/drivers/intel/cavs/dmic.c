@@ -151,22 +151,6 @@ static const uint32_t coef_base_b[4] = {PDM0_COEFFICIENT_B, PDM1_COEFFICIENT_B,
 static struct sof_ipc_dai_dmic_params *dmic_prm[DMIC_HW_FIFOS];
 static int dmic_active_fifos;
 
-static void dmic_write(struct dai *dai, uint32_t reg, uint32_t value)
-{
-	dai_write(dai, reg, value);
-}
-
-static uint32_t dmic_read(struct dai *dai, uint32_t reg)
-{
-	return dai_read(dai, reg);
-}
-
-static void dmic_update_bits(struct dai *dai, uint32_t reg, uint32_t mask,
-			     uint32_t value)
-{
-	dai_update_bits(dai, reg, mask, value);
-}
-
 /* this ramps volume changes over time */
 static enum task_state dmic_work(void *data)
 {
@@ -204,31 +188,31 @@ static enum task_state dmic_work(void *data)
 			continue;
 
 		if (dmic->startcount == DMIC_UNMUTE_CIC)
-			dmic_update_bits(dai, base[i] + CIC_CONTROL,
-					 CIC_CONTROL_MIC_MUTE_BIT, 0);
+			dai_update_bits(dai, base[i] + CIC_CONTROL,
+					CIC_CONTROL_MIC_MUTE_BIT, 0);
 
 		if (dmic->startcount == DMIC_UNMUTE_FIR) {
 			switch (dai->index) {
 			case 0:
-				dmic_update_bits(dai, base[i] + FIR_CONTROL_A,
-						 FIR_CONTROL_A_MUTE_BIT, 0);
+				dai_update_bits(dai, base[i] + FIR_CONTROL_A,
+						FIR_CONTROL_A_MUTE_BIT, 0);
 				break;
 			case 1:
-				dmic_update_bits(dai, base[i] + FIR_CONTROL_B,
-						 FIR_CONTROL_B_MUTE_BIT, 0);
+				dai_update_bits(dai, base[i] + FIR_CONTROL_B,
+						FIR_CONTROL_B_MUTE_BIT, 0);
 				break;
 			}
 		}
 		switch (dai->index) {
 		case 0:
 			val = OUT_GAIN_LEFT_A_GAIN(gval);
-			dmic_write(dai, base[i] + OUT_GAIN_LEFT_A, val);
-			dmic_write(dai, base[i] + OUT_GAIN_RIGHT_A, val);
+			dai_write(dai, base[i] + OUT_GAIN_LEFT_A, val);
+			dai_write(dai, base[i] + OUT_GAIN_RIGHT_A, val);
 			break;
 		case 1:
 			val = OUT_GAIN_LEFT_B_GAIN(gval);
-			dmic_write(dai, base[i] + OUT_GAIN_LEFT_B, val);
-			dmic_write(dai, base[i] + OUT_GAIN_RIGHT_B, val);
+			dai_write(dai, base[i] + OUT_GAIN_LEFT_B, val);
+			dai_write(dai, base[i] + OUT_GAIN_RIGHT_B, val);
 			break;
 		}
 	}
@@ -859,7 +843,7 @@ static int configure_registers(struct dai *dai,
 		OUTCONTROL0_OF(of0) |
 		OUTCONTROL0_IPM(ipm) |
 		OUTCONTROL0_TH(th);
-	dmic_write(dai, OUTCONTROL0, val);
+	dai_write(dai, OUTCONTROL0, val);
 	trace_dmic("configure_registers(), OUTCONTROL0 = %u", val);
 
 	ipm_helper1(&ipm, 1);
@@ -871,7 +855,7 @@ static int configure_registers(struct dai *dai,
 		OUTCONTROL1_OF(of1) |
 		OUTCONTROL1_IPM(ipm) |
 		OUTCONTROL1_TH(th);
-	dmic_write(dai, OUTCONTROL1, val);
+	dai_write(dai, OUTCONTROL1, val);
 	trace_dmic("configure_registers(), OUTCONTROL1 = %u", val);
 #endif
 
@@ -889,7 +873,7 @@ static int configure_registers(struct dai *dai,
 		OUTCONTROL0_IPM_SOURCE_3(source[2]) |
 		OUTCONTROL0_IPM_SOURCE_4(source[3]) |
 		OUTCONTROL0_TH(th);
-	dmic_write(dai, OUTCONTROL0, val);
+	dai_write(dai, OUTCONTROL0, val);
 	trace_dmic("configure_registers(), OUTCONTROL0 = %u", val);
 
 	ipm_helper2(source, &ipm, 1);
@@ -905,7 +889,7 @@ static int configure_registers(struct dai *dai,
 		OUTCONTROL1_IPM_SOURCE_3(source[2]) |
 		OUTCONTROL1_IPM_SOURCE_4(source[3]) |
 		OUTCONTROL1_TH(th);
-	dmic_write(dai, OUTCONTROL1, val);
+	dai_write(dai, OUTCONTROL1, val);
 	trace_dmic("configure_registers(), OUTCONTROL1 = %u", val);
 #endif
 
@@ -932,12 +916,12 @@ static int configure_registers(struct dai *dai,
 	CIC_CONTROL_MIC_A_POLARITY(dmic_prm[di]->pdm[i].polarity_mic_b) |
 			CIC_CONTROL_MIC_MUTE(cic_mute) |
 			CIC_CONTROL_STEREO_MODE(stereo[i]);
-		dmic_write(dai, base[i] + CIC_CONTROL, val);
+		dai_write(dai, base[i] + CIC_CONTROL, val);
 		trace_dmic("configure_registers(), CIC_CONTROL = %u", val);
 
 		val = CIC_CONFIG_CIC_SHIFT(cfg->cic_shift + 8) |
 			CIC_CONFIG_COMB_COUNT(cfg->mcic - 1);
-		dmic_write(dai, base[i] + CIC_CONFIG, val);
+		dai_write(dai, base[i] + CIC_CONFIG, val);
 		trace_dmic("configure_registers(), CIC_CONFIG = %u", val);
 
 		/* Mono right channel mic usage requires swap of PDM channels
@@ -953,7 +937,7 @@ static int configure_registers(struct dai *dai,
 			MIC_CONTROL_CLK_EDGE(edge) |
 			MIC_CONTROL_PDM_EN_B(cic_start_b) |
 			MIC_CONTROL_PDM_EN_A(cic_start_a);
-		dmic_write(dai, base[i] + MIC_CONTROL, val);
+		dai_write(dai, base[i] + MIC_CONTROL, val);
 		trace_dmic("configure_registers(), MIC_CONTROL = %u", val);
 
 		/* FIR A */
@@ -964,31 +948,31 @@ static int configure_registers(struct dai *dai,
 			FIR_CONTROL_A_DCCOMP(dccomp) |
 			FIR_CONTROL_A_MUTE(fir_mute) |
 			FIR_CONTROL_A_STEREO(stereo[i]);
-		dmic_write(dai, base[i] + FIR_CONTROL_A, val);
+		dai_write(dai, base[i] + FIR_CONTROL_A, val);
 		trace_dmic("configure_registers(), FIR_CONTROL_A = %u", val);
 
 		val = FIR_CONFIG_A_FIR_DECIMATION(fir_decim) |
 			FIR_CONFIG_A_FIR_SHIFT(cfg->fir_a_shift) |
 			FIR_CONFIG_A_FIR_LENGTH(fir_length);
-		dmic_write(dai, base[i] + FIR_CONFIG_A, val);
+		dai_write(dai, base[i] + FIR_CONFIG_A, val);
 		trace_dmic("configure_registers(), FIR_CONFIG_A = %u", val);
 
 		val = DC_OFFSET_LEFT_A_DC_OFFS(DCCOMP_TC0);
-		dmic_write(dai, base[i] + DC_OFFSET_LEFT_A, val);
+		dai_write(dai, base[i] + DC_OFFSET_LEFT_A, val);
 		trace_dmic("configure_registers(), DC_OFFSET_LEFT_A = %u",
 			   val);
 
 		val = DC_OFFSET_RIGHT_A_DC_OFFS(DCCOMP_TC0);
-		dmic_write(dai, base[i] + DC_OFFSET_RIGHT_A, val);
+		dai_write(dai, base[i] + DC_OFFSET_RIGHT_A, val);
 		trace_dmic("configure_registers(), DC_OFFSET_RIGHT_A = %u",
 			   val);
 
 		val = OUT_GAIN_LEFT_A_GAIN(0);
-		dmic_write(dai, base[i] + OUT_GAIN_LEFT_A, val);
+		dai_write(dai, base[i] + OUT_GAIN_LEFT_A, val);
 		trace_dmic("configure_registers(), OUT_GAIN_LEFT_A = %u", val);
 
 		val = OUT_GAIN_RIGHT_A_GAIN(0);
-		dmic_write(dai, base[i] + OUT_GAIN_RIGHT_A, val);
+		dai_write(dai, base[i] + OUT_GAIN_RIGHT_A, val);
 		trace_dmic("configure_registers(), OUT_GAIN_RIGHT_A = %u", val);
 
 		/* FIR B */
@@ -999,30 +983,30 @@ static int configure_registers(struct dai *dai,
 			FIR_CONTROL_B_DCCOMP(dccomp) |
 			FIR_CONTROL_B_MUTE(fir_mute) |
 			FIR_CONTROL_B_STEREO(stereo[i]);
-		dmic_write(dai, base[i] + FIR_CONTROL_B, val);
+		dai_write(dai, base[i] + FIR_CONTROL_B, val);
 		trace_dmic("configure_registers(), FIR_CONTROL_B = %u", val);
 
 		val = FIR_CONFIG_B_FIR_DECIMATION(fir_decim) |
 			FIR_CONFIG_B_FIR_SHIFT(cfg->fir_b_shift) |
 			FIR_CONFIG_B_FIR_LENGTH(fir_length);
-		dmic_write(dai, base[i] + FIR_CONFIG_B, val);
+		dai_write(dai, base[i] + FIR_CONFIG_B, val);
 		trace_dmic("configure_registers(), FIR_CONFIG_B = %u", val);
 
 		val = DC_OFFSET_LEFT_B_DC_OFFS(DCCOMP_TC0);
-		dmic_write(dai, base[i] + DC_OFFSET_LEFT_B, val);
+		dai_write(dai, base[i] + DC_OFFSET_LEFT_B, val);
 		trace_dmic("configure_registers(), DC_OFFSET_LEFT_B = %u", val);
 
 		val = DC_OFFSET_RIGHT_B_DC_OFFS(DCCOMP_TC0);
-		dmic_write(dai, base[i] + DC_OFFSET_RIGHT_B, val);
+		dai_write(dai, base[i] + DC_OFFSET_RIGHT_B, val);
 		trace_dmic("configure_registers(), DC_OFFSET_RIGHT_B = %u",
 			   val);
 
 		val = OUT_GAIN_LEFT_B_GAIN(0);
-		dmic_write(dai, base[i] + OUT_GAIN_LEFT_B, val);
+		dai_write(dai, base[i] + OUT_GAIN_LEFT_B, val);
 		trace_dmic("configure_registers(), OUT_GAIN_LEFT_B = %u", val);
 
 		val = OUT_GAIN_RIGHT_B_GAIN(0);
-		dmic_write(dai, base[i] + OUT_GAIN_RIGHT_B, val);
+		dai_write(dai, base[i] + OUT_GAIN_RIGHT_B, val);
 		trace_dmic("configure_registers(), OUT_GAIN_RIGHT_B = %u", val);
 
 		/* Write coef RAM A with scaled coefficient in reverse order */
@@ -1032,7 +1016,7 @@ static int configure_registers(struct dai *dai,
 				(int64_t)cfg->fir_a->coef[j], cfg->fir_a_scale,
 				31, DMIC_FIR_SCALE_Q, DMIC_HW_FIR_COEF_Q);
 			cu = FIR_COEF_A(ci);
-			dmic_write(dai, coef_base_a[i]
+			dai_write(dai, coef_base_a[i]
 				   + ((length - j - 1) << 2), cu);
 		}
 
@@ -1043,7 +1027,7 @@ static int configure_registers(struct dai *dai,
 				(int64_t)cfg->fir_b->coef[j], cfg->fir_b_scale,
 				31, DMIC_FIR_SCALE_Q, DMIC_HW_FIR_COEF_Q);
 			cu = FIR_COEF_B(ci);
-			dmic_write(dai, coef_base_b[i]
+			dai_write(dai, coef_base_b[i]
 				   + ((length - j - 1) << 2), cu);
 		}
 	}
@@ -1253,18 +1237,18 @@ static void dmic_start(struct dai *dai)
 		/*  Clear FIFO A initialize, Enable interrupts to DSP,
 		 *  Start FIFO A packer.
 		 */
-		dmic_update_bits(dai, OUTCONTROL0,
-				 OUTCONTROL0_FINIT_BIT | OUTCONTROL0_SIP_BIT,
-				 OUTCONTROL0_SIP_BIT);
+		dai_update_bits(dai, OUTCONTROL0,
+				OUTCONTROL0_FINIT_BIT | OUTCONTROL0_SIP_BIT,
+				OUTCONTROL0_SIP_BIT);
 		break;
 	case 1:
 		trace_dmic("dmic_start(), dmic->fifo_b");
 		/*  Clear FIFO B initialize, Enable interrupts to DSP,
 		 *  Start FIFO B packer.
 		 */
-		dmic_update_bits(dai, OUTCONTROL1,
-				 OUTCONTROL1_FINIT_BIT | OUTCONTROL1_SIP_BIT,
-				 OUTCONTROL1_SIP_BIT);
+		dai_update_bits(dai, OUTCONTROL1,
+				OUTCONTROL1_FINIT_BIT | OUTCONTROL1_SIP_BIT,
+				OUTCONTROL1_SIP_BIT);
 	}
 
 	for (i = 0; i < DMIC_HW_CONTROLLERS; i++) {
@@ -1293,42 +1277,42 @@ static void dmic_start(struct dai *dai)
 		 * This makes sure we do not clear start/en for another DAI.
 		 */
 		if (mic_a && mic_b) {
-			dmic_update_bits(dai, base[i] + CIC_CONTROL,
-					 CIC_CONTROL_CIC_START_A_BIT |
-					 CIC_CONTROL_CIC_START_B_BIT,
-					 CIC_CONTROL_CIC_START_A(1) |
-					 CIC_CONTROL_CIC_START_B(1));
-			dmic_update_bits(dai, base[i] + MIC_CONTROL,
-					 MIC_CONTROL_PDM_EN_A_BIT |
-					 MIC_CONTROL_PDM_EN_B_BIT,
-					 MIC_CONTROL_PDM_EN_A(1) |
-					 MIC_CONTROL_PDM_EN_B(1));
+			dai_update_bits(dai, base[i] + CIC_CONTROL,
+					CIC_CONTROL_CIC_START_A_BIT |
+					CIC_CONTROL_CIC_START_B_BIT,
+					CIC_CONTROL_CIC_START_A(1) |
+					CIC_CONTROL_CIC_START_B(1));
+			dai_update_bits(dai, base[i] + MIC_CONTROL,
+					MIC_CONTROL_PDM_EN_A_BIT |
+					MIC_CONTROL_PDM_EN_B_BIT,
+					MIC_CONTROL_PDM_EN_A(1) |
+					MIC_CONTROL_PDM_EN_B(1));
 		} else if (mic_a) {
-			dmic_update_bits(dai, base[i] + CIC_CONTROL,
-					 CIC_CONTROL_CIC_START_A_BIT,
-					 CIC_CONTROL_CIC_START_A(1));
-			dmic_update_bits(dai, base[i] + MIC_CONTROL,
-					 MIC_CONTROL_PDM_EN_A_BIT,
-					 MIC_CONTROL_PDM_EN_A(1));
+			dai_update_bits(dai, base[i] + CIC_CONTROL,
+					CIC_CONTROL_CIC_START_A_BIT,
+					CIC_CONTROL_CIC_START_A(1));
+			dai_update_bits(dai, base[i] + MIC_CONTROL,
+					MIC_CONTROL_PDM_EN_A_BIT,
+					MIC_CONTROL_PDM_EN_A(1));
 		} else if (mic_b) {
-			dmic_update_bits(dai, base[i] + CIC_CONTROL,
-					 CIC_CONTROL_CIC_START_B_BIT,
-					 CIC_CONTROL_CIC_START_B(1));
-			dmic_update_bits(dai, base[i] + MIC_CONTROL,
-					 MIC_CONTROL_PDM_EN_B_BIT,
-					 MIC_CONTROL_PDM_EN_B(1));
+			dai_update_bits(dai, base[i] + CIC_CONTROL,
+					CIC_CONTROL_CIC_START_B_BIT,
+					CIC_CONTROL_CIC_START_B(1));
+			dai_update_bits(dai, base[i] + MIC_CONTROL,
+					MIC_CONTROL_PDM_EN_B_BIT,
+					MIC_CONTROL_PDM_EN_B(1));
 		}
 
 		switch (dai->index) {
 		case 0:
-			dmic_update_bits(dai, base[i] + FIR_CONTROL_A,
-					 FIR_CONTROL_A_START_BIT,
-					 FIR_CONTROL_A_START(fir_a));
+			dai_update_bits(dai, base[i] + FIR_CONTROL_A,
+					FIR_CONTROL_A_START_BIT,
+					FIR_CONTROL_A_START(fir_a));
 			break;
 		case 1:
-			dmic_update_bits(dai, base[i] + FIR_CONTROL_B,
-					 FIR_CONTROL_B_START_BIT,
-					 FIR_CONTROL_B_START(fir_b));
+			dai_update_bits(dai, base[i] + FIR_CONTROL_B,
+					FIR_CONTROL_B_START_BIT,
+					FIR_CONTROL_B_START(fir_b));
 			break;
 		}
 	}
@@ -1337,8 +1321,8 @@ static void dmic_start(struct dai *dai)
 	 * start capture in sync.
 	 */
 	for (i = 0; i < DMIC_HW_CONTROLLERS; i++) {
-		dmic_update_bits(dai, base[i] + CIC_CONTROL,
-				 CIC_CONTROL_SOFT_RESET_BIT, 0);
+		dai_update_bits(dai, base[i] + CIC_CONTROL,
+				CIC_CONTROL_SOFT_RESET_BIT, 0);
 	}
 
 	dmic_active_fifos++;
@@ -1377,14 +1361,14 @@ static void dmic_stop(struct dai *dai)
 	/* Stop FIFO packers and set FIFO initialize bits */
 	switch (dai->index) {
 	case 0:
-		dmic_update_bits(dai, OUTCONTROL0,
-				 OUTCONTROL0_SIP_BIT | OUTCONTROL0_FINIT_BIT,
-				 OUTCONTROL0_FINIT_BIT);
+		dai_update_bits(dai, OUTCONTROL0,
+				OUTCONTROL0_SIP_BIT | OUTCONTROL0_FINIT_BIT,
+				OUTCONTROL0_FINIT_BIT);
 		break;
 	case 1:
-		dmic_update_bits(dai, OUTCONTROL1,
-				 OUTCONTROL1_SIP_BIT | OUTCONTROL1_FINIT_BIT,
-				 OUTCONTROL1_FINIT_BIT);
+		dai_update_bits(dai, OUTCONTROL1,
+				OUTCONTROL1_SIP_BIT | OUTCONTROL1_FINIT_BIT,
+				OUTCONTROL1_FINIT_BIT);
 		break;
 	}
 
@@ -1395,22 +1379,22 @@ static void dmic_stop(struct dai *dai)
 	for (i = 0; i < DMIC_HW_CONTROLLERS; i++) {
 		/* Don't stop CIC yet if both FIFOs were active */
 		if (dmic_active_fifos == 1) {
-			dmic_update_bits(dai, base[i] + CIC_CONTROL,
-					 CIC_CONTROL_SOFT_RESET_BIT |
-					 CIC_CONTROL_MIC_MUTE_BIT,
-					 CIC_CONTROL_SOFT_RESET_BIT |
-					 CIC_CONTROL_MIC_MUTE_BIT);
+			dai_update_bits(dai, base[i] + CIC_CONTROL,
+					CIC_CONTROL_SOFT_RESET_BIT |
+					CIC_CONTROL_MIC_MUTE_BIT,
+					CIC_CONTROL_SOFT_RESET_BIT |
+					CIC_CONTROL_MIC_MUTE_BIT);
 		}
 		switch (dai->index) {
 		case 0:
-			dmic_update_bits(dai, base[i] + FIR_CONTROL_A,
-					 FIR_CONTROL_A_MUTE_BIT,
-					 FIR_CONTROL_A_MUTE_BIT);
+			dai_update_bits(dai, base[i] + FIR_CONTROL_A,
+					FIR_CONTROL_A_MUTE_BIT,
+					FIR_CONTROL_A_MUTE_BIT);
 			break;
 		case 1:
-			dmic_update_bits(dai, base[i] + FIR_CONTROL_B,
-					 FIR_CONTROL_B_MUTE_BIT,
-					 FIR_CONTROL_B_MUTE_BIT);
+			dai_update_bits(dai, base[i] + FIR_CONTROL_B,
+					FIR_CONTROL_B_MUTE_BIT,
+					FIR_CONTROL_B_MUTE_BIT);
 			break;
 		}
 	}
@@ -1493,8 +1477,8 @@ static void dmic_irq_handler(void *data)
 	uint32_t val1;
 
 	/* Trace OUTSTAT0 register */
-	val0 = dmic_read(dai, OUTSTAT0);
-	val1 = dmic_read(dai, OUTSTAT1);
+	val0 = dai_read(dai, OUTSTAT0);
+	val1 = dai_read(dai, OUTSTAT1);
 	trace_dmic("dmic_irq_handler(), OUTSTAT0 = %u", val0);
 	trace_dmic("dmic_irq_handler(), OUTSTAT1 = %u", val1);
 
