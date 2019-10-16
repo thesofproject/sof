@@ -397,7 +397,7 @@ int ipc_comp_dai_config(struct ipc *ipc, struct sof_ipc_dai_config *config)
 	struct ipc_comp_dev *icd;
 	struct list_item *clist;
 	struct comp_dev *dev;
-	int ret = 0;
+	int ret = -ENODEV;
 
 	/* for each component */
 	list_for_item(clist, &ipc->shared_ctx->comp_list) {
