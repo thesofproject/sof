@@ -64,9 +64,6 @@ struct timer;
 #define PLATFORM_MAX_CHANNELS	8
 #define PLATFORM_MAX_STREAMS	16
 
-/* DMA host transfer timeouts in microseconds */
-#define PLATFORM_HOST_DMA_TIMEOUT	200
-
 /* Host finish work schedule delay in microseconds */
 #define PLATFORM_HOST_FINISH_DELAY	100
 
