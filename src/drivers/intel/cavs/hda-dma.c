@@ -16,6 +16,7 @@
 #include <sof/lib/cpu.h>
 #include <sof/lib/dma.h>
 #include <sof/lib/pm_runtime.h>
+#include <sof/lib/notifier.h>
 #include <sof/platform.h>
 #include <sof/spinlock.h>
 #include <sof/trace/trace.h>
@@ -272,10 +273,13 @@ static int hda_dma_wait_for_buffer_empty(struct dma_chan_data *chan)
 
 static void hda_dma_post_copy(struct dma_chan_data *chan, int bytes)
 {
-	struct dma_cb_data next = { .elem = { .size = bytes } };
+	struct dma_cb_data next = {
+		.channel = chan,
+		.elem = { .size = bytes },
+	};
 
-	if (chan->cb)
-		chan->cb(chan->cb_data, DMA_CB_TYPE_COPY, &next);
+	notifier_event(chan, NOTIFIER_ID_DMA_COPY,
+		       NOTIFIER_TARGET_CORE_LOCAL, &next, sizeof(next));
 
 	if (chan->direction == DMA_DIR_HMEM_TO_LMEM ||
 	    chan->direction == DMA_DIR_LMEM_TO_HMEM) {
@@ -426,9 +430,9 @@ static void hda_dma_channel_put_unlocked(struct dma_chan_data *channel)
 	hda_chan->state = 0;
 	hda_chan->period_bytes = 0;
 	hda_chan->buffer_bytes = 0;
-	channel->cb = NULL;
-	channel->cb_type = 0;
-	channel->cb_data = NULL;
+
+	/* Make sure that all callbacks to this channel are freed */
+	notifier_unregister_all(NULL, channel);
 }
 
 /* channel must not be running when this is called */
@@ -697,21 +701,6 @@ static int hda_dma_pm_context_store(struct dma *dma)
 	return 0;
 }
 
-static int hda_dma_set_cb(struct dma_chan_data *channel, int type,
-	void (*cb)(void *data, uint32_t type, struct dma_cb_data *next),
-	void *data)
-{
-	uint32_t flags;
-
-	irq_local_disable(flags);
-	channel->cb = cb;
-	channel->cb_data = data;
-	channel->cb_type = type;
-	irq_local_enable(flags);
-
-	return 0;
-}
-
 static int hda_dma_probe(struct dma *dma)
 {
 	struct hda_chan_data *hda_chan;
@@ -926,7 +915,6 @@ const struct dma_ops hda_host_dma_ops = {
 	.release		= hda_dma_release,
 	.status			= hda_dma_status,
 	.set_config		= hda_dma_set_config,
-	.set_cb			= hda_dma_set_cb,
 	.pm_context_restore	= hda_dma_pm_context_restore,
 	.pm_context_store	= hda_dma_pm_context_store,
 	.probe			= hda_dma_probe,
@@ -946,7 +934,6 @@ const struct dma_ops hda_link_dma_ops = {
 	.release		= hda_dma_release,
 	.status			= hda_dma_status,
 	.set_config		= hda_dma_set_config,
-	.set_cb			= hda_dma_set_cb,
 	.pm_context_restore	= hda_dma_pm_context_restore,
 	.pm_context_store	= hda_dma_pm_context_store,
 	.probe			= hda_dma_probe,

@@ -15,6 +15,7 @@
 #include <sof/lib/alloc.h>
 #include <sof/lib/cache.h>
 #include <sof/lib/dma.h>
+#include <sof/lib/notifier.h>
 #include <sof/list.h>
 #include <sof/math/numbers.h>
 #include <sof/string.h>
@@ -224,9 +225,10 @@ static void host_one_shot_cb(struct comp_dev *dev, uint32_t bytes)
 /* This is called by DMA driver every time when DMA completes its current
  * transfer between host and DSP.
  */
-static void host_dma_cb(void *data, uint32_t type, struct dma_cb_data *next)
+static void host_dma_cb(void *arg, enum notify_id type, void *data)
 {
-	struct comp_dev *dev = (struct comp_dev *)data;
+	struct dma_cb_data *next = data;
+	struct comp_dev *dev = arg;
 	struct host_data *hd = comp_get_drvdata(dev);
 	uint32_t bytes = next->elem.size;
 
@@ -304,6 +306,10 @@ static int host_trigger(struct comp_dev *dev, int cmd)
 		ret = PPL_STATUS_PATH_STOP;
 		return ret;
 	}
+
+	/* set up callback */
+	notifier_unregister(dev, hd->chan, NOTIFIER_ID_DMA_COPY);
+	notifier_register(dev, hd->chan, NOTIFIER_ID_DMA_COPY, host_dma_cb);
 
 	/* we should ignore any trigger commands besides start
 	 * when doing one shot, because transfers will stop automatically
@@ -596,9 +602,6 @@ static int host_params(struct comp_dev *dev,
 
 		return err;
 	}
-
-	/* set up callback */
-	dma_set_cb(hd->chan, DMA_CB_TYPE_COPY, host_dma_cb, dev);
 
 	/* set processing function */
 	hd->process = pcm_get_conversion_function(hd->local_buffer->frame_fmt,

@@ -19,6 +19,7 @@
 #include <sof/lib/cache.h>
 #include <sof/lib/dai.h>
 #include <sof/lib/dma.h>
+#include <sof/lib/notifier.h>
 #include <sof/list.h>
 #include <sof/string.h>
 #include <sof/trace/trace.h>
@@ -76,9 +77,10 @@ struct dai_data {
 };
 
 /* this is called by DMA driver every time descriptor has completed */
-static void dai_dma_cb(void *data, uint32_t type, struct dma_cb_data *next)
+static void dai_dma_cb(void *arg, enum notify_id type, void *data)
 {
-	struct comp_dev *dev = (struct comp_dev *)data;
+	struct dma_cb_data *next = data;
+	struct comp_dev *dev = arg;
 	struct dai_data *dd = comp_get_drvdata(dev);
 	uint32_t bytes = next->elem.size;
 	uint32_t samples = bytes / sample_bytes(dd->frame_fmt);
@@ -540,6 +542,11 @@ static int dai_comp_trigger(struct comp_dev *dev, int cmd)
 	if (ret == COMP_STATUS_STATE_ALREADY_SET)
 		return PPL_STATUS_PATH_STOP;
 
+	/* setup callback */
+	notifier_unregister(dev, dd->chan, NOTIFIER_ID_DMA_COPY);
+	notifier_register(dev, dd->chan, NOTIFIER_ID_DMA_COPY,
+			  dai_dma_cb);
+
 	switch (cmd) {
 	case COMP_TRIGGER_START:
 		trace_dai_with_ids(dev, "dai_comp_trigger(), START");
@@ -786,9 +793,6 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 			dd->chan = NULL;
 			return -EIO;
 		}
-
-		/* set up callback */
-		dma_set_cb(dd->chan, DMA_CB_TYPE_COPY, dai_dma_cb, dev);
 	}
 
 	return 0;
