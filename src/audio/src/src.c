@@ -578,19 +578,17 @@ static int src_params(struct comp_dev *dev)
 		cd->sink_rate = src->sink_rate;
 		/* re-write our params with output rate for next component */
 		params->rate = cd->sink_rate;
-		cd->source_frames = dev->frames * cd->source_rate /
-			cd->sink_rate;
-		cd->sink_frames = dev->frames;
 	} else {
 		/* params rate is sink rate */
 		cd->source_rate = src->source_rate;
 		cd->sink_rate = params->rate;
 		/* re-write our params with output rate for next component */
 		params->rate = cd->source_rate;
-		cd->source_frames = dev->frames;
-		cd->sink_frames = dev->frames * cd->sink_rate /
-			cd->source_rate;
 	}
+
+	cd->source_frames = dev->frames * cd->source_rate /
+		cd->sink_rate;
+	cd->sink_frames = dev->frames;
 
 	/* Allocate needed memory for delay lines */
 	trace_src("src_params(), source_rate = %u, sink_rate = %u",
