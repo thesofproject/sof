@@ -46,9 +46,6 @@ struct timer;
 #define PLATFORM_MAX_CHANNELS	4
 #define PLATFORM_MAX_STREAMS	5
 
-/* DMA channel drain timeout in microseconds - TODO: caclulate based on topology */
-#define PLATFORM_DMA_TIMEOUT	1333
-
 /* DMA host transfer timeouts in microseconds */
 #define PLATFORM_HOST_DMA_TIMEOUT	50
 

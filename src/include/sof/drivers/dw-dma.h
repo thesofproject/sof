@@ -117,6 +117,9 @@
 /* number of tries to wait for reset */
 #define DW_DMA_CFG_TRIES	10000
 
+/* channel drain timeout in microseconds */
+#define DW_DMA_TIMEOUT	1333
+
 /* min number of elems for config with irq disabled */
 #define DW_DMA_CFG_NO_IRQ_MIN_ELEMS	3
 

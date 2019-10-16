@@ -369,7 +369,7 @@ static int dw_dma_stop(struct dma_chan_data *channel)
 					DW_CFG_LOW(channel->index),
 				      DW_CFGL_FIFO_EMPTY,
 				      DW_CFGL_FIFO_EMPTY,
-				      PLATFORM_DMA_TIMEOUT);
+				      DW_DMA_TIMEOUT);
 	if (ret < 0)
 		trace_dwdma_error("dw_dma_stop() error: dma %d channel %d "
 				  "timeout", dma->plat_data.id, channel->index);
@@ -856,7 +856,7 @@ static int dw_dma_copy(struct dma_chan_data *channel, int bytes,
 		ret = poll_for_register_delay(dma_base(channel->dma) +
 					      DW_DMA_CHAN_EN,
 					      DW_CHAN(channel->index), 0,
-					      PLATFORM_DMA_TIMEOUT);
+					      DW_DMA_TIMEOUT);
 		if (ret < 0)
 			return ret;
 	}
