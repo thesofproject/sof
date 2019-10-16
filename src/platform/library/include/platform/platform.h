@@ -38,9 +38,6 @@ struct timer;
 #define PLATFORM_MAX_CHANNELS	8
 #define PLATFORM_MAX_STREAMS	16
 
-/* DMA channel drain timeout in microseconds */
-#define PLATFORM_DMA_TIMEOUT	1333
-
 /* IPC page data copy timeout */
 #define PLATFORM_IPC_DMA_TIMEOUT 2000
 
