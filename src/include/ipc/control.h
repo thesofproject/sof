@@ -164,10 +164,12 @@ struct sof_ipc_comp_event {
 	uint32_t src_comp_id;	/**< source component id */
 	uint32_t event_type;	/**< event type - SOF_CTRL_EVENT_* */
 	uint32_t num_elems;	/**< in array elems or bytes for data type */
-
+	/* Callbacks */
+	void (*cb)(void *data);
+	void *cb_data;
 	/* reserved for future use */
-	uint32_t reserved[8];
-	
+	uint32_t reserved[6];
+
 	/* control data - add new types if needed */
 	union {
 		/* data can be used by binary controls */
