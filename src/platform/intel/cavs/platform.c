@@ -415,9 +415,9 @@ int platform_init(struct sof *sof)
 				IS_ENABLED(CONFIG_DW_DMA_AGGREGATED_IRQ));
 	scheduler_init_ll(platform_dma_domain);
 
-	/* init the system agent */
-	trace_point(TRACE_BOOT_PLATFORM_AGENT);
-	sa_init(sof, CONFIG_SYSTICK_PERIOD);
+	/* FIXME: do not init the system agent until long running tasks are
+	 * scheduled from the timer can can be pre-empted.
+	 */
 
 	/* Set CPU to max frequency for booting (single shim_write below) */
 	trace_point(TRACE_BOOT_PLATFORM_CPU_FREQ);
