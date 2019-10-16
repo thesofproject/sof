@@ -435,6 +435,9 @@ static int edma_remove(struct dma *dma)
 
 static int edma_interrupt(struct dma_chan_data *channel, enum dma_irq_cmd cmd)
 {
+	if (channel->status != COMP_STATE_INIT)
+		return 0;
+
 	switch (cmd) {
 	case DMA_IRQ_STATUS_GET:
 		return dma_chan_reg_read(channel, EDMA_CH_INT);
