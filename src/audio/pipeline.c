@@ -357,9 +357,14 @@ static struct task *pipeline_task_init(struct pipeline *p, uint32_t type,
 
 	task = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*task));
 
-	if (task)
-		schedule_task_init(task, type, p->ipc_pipe.priority, func, NULL,
-				   p, p->ipc_pipe.core, 0);
+	if (!task)
+		return NULL;
+
+	if (schedule_task_init(task, type, p->ipc_pipe.priority, func,
+			       NULL, p, p->ipc_pipe.core, 0) < 0) {
+		rfree(task);
+		task = NULL;
+	}
 
 	return task;
 }
