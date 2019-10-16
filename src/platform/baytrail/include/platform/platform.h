@@ -61,9 +61,6 @@ struct timer;
 #define PLATFORM_MAX_CHANNELS	4
 #define PLATFORM_MAX_STREAMS	5
 
-/* DMA host transfer timeouts in microseconds */
-#define PLATFORM_HOST_DMA_TIMEOUT	200
-
 /* local buffer size of DMA tracing */
 #define DMA_TRACE_LOCAL_SIZE	HOST_PAGE_SIZE
 

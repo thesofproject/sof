@@ -56,9 +56,6 @@ struct timer;
 #define PLATFORM_MAX_CHANNELS	8
 #define PLATFORM_MAX_STREAMS	16
 
-/* DMA host transfer timeouts in microseconds */
-#define PLATFORM_HOST_DMA_TIMEOUT	200
-
 /*! \def PLATFORM_LL_DEFAULT_TIMEOUT
  *  \brief low latency scheduler default timeout in microseconds
  */

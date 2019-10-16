@@ -66,6 +66,9 @@
 #define HDA_DMA_BUFFER_ALIGNMENT	0x20
 #define HDA_DMA_COPY_ALIGNMENT		0x20
 
+/* DMA host transfer timeout in microseconds */
+#define HDA_DMA_TIMEOUT	200
+
 /*
  * DMA Pointer Trace
  *
@@ -219,7 +222,7 @@ static int hda_dma_wait_for_buffer_full(struct dma_chan_data *chan)
 {
 	uint64_t deadline = platform_timer_get(platform_timer) +
 		clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1) *
-		PLATFORM_HOST_DMA_TIMEOUT / 1000;
+		HDA_DMA_TIMEOUT / 1000;
 
 	while (!hda_dma_is_buffer_full(chan)) {
 		if (deadline < platform_timer_get(platform_timer)) {
@@ -243,7 +246,7 @@ static int hda_dma_wait_for_buffer_empty(struct dma_chan_data *chan)
 {
 	uint64_t deadline = platform_timer_get(platform_timer) +
 		clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1) *
-		PLATFORM_HOST_DMA_TIMEOUT / 1000;
+		HDA_DMA_TIMEOUT / 1000;
 
 	while (!hda_dma_is_buffer_empty(chan)) {
 		if (deadline < platform_timer_get(platform_timer)) {
