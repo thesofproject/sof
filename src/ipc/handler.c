@@ -1282,6 +1282,12 @@ int ipc_queue_host_message(struct ipc *ipc, uint32_t header, void *tx_data,
 	msg->header = header;
 	msg->tx_size = tx_bytes;
 
+	/* If event message copy callback data further */
+	if (tx_bytes == sizeof(struct sof_ipc_comp_event)) {
+		msg->cb = ((struct sof_ipc_comp_event *)tx_data)->cb;
+		msg->cb_data = ((struct sof_ipc_comp_event *)tx_data)->cb_data;
+	}
+
 	/* copy mailbox data to message */
 	if (tx_bytes > 0 && tx_bytes < SOF_IPC_MSG_MAX_SIZE)
 		assert(!memcpy_s(msg->tx_data, msg->tx_size, tx_data,

@@ -270,6 +270,13 @@ void ipc_platform_send_msg(struct ipc *ipc)
 	ipc_write(IPC_DIPCIDR, 0x80000000 | msg->header);
 #endif
 
+	/* Call registered callbacks */
+	if (msg->cb) {
+		msg->cb(msg->cb_data);
+		/* Clear callback afterward */
+		msg->cb = NULL;
+	}
+
 	list_item_append(&msg->list, &ipc->shared_ctx->empty_list);
 
 out:
