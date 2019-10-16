@@ -64,9 +64,6 @@ struct timer;
 #define PLATFORM_MAX_CHANNELS	8
 #define PLATFORM_MAX_STREAMS	16
 
-/* Host finish work(drain from host to dai) timeout in microseconds */
-#define PLATFORM_HOST_FINISH_TIMEOUT	50000
-
 /* local buffer size of DMA tracing */
 #define DMA_TRACE_LOCAL_SIZE	(HOST_PAGE_SIZE * 2)
 
