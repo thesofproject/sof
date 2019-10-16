@@ -61,9 +61,6 @@ struct timer;
  */
 #define PLATFORM_LL_DEFAULT_TIMEOUT	1000
 
-/* Host finish work(drain from host to dai) timeout in microseconds */
-#define PLATFORM_HOST_FINISH_TIMEOUT	50000
-
 /* local buffer size of DMA tracing */
 #define DMA_TRACE_LOCAL_SIZE	(HOST_PAGE_SIZE * 2)
 
