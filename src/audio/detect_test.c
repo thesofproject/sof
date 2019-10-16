@@ -97,20 +97,9 @@ static inline bool detector_is_sample_width_supported(enum sof_ipc_frame sf)
 	return ret;
 }
 
-static void notify_host(struct comp_dev *dev)
+static void notify_kpb(void *data)
 {
-	struct sof_ipc_comp_event event;
-
-	trace_keyword("notify_host()");
-
-	event.event_type = SOF_CTRL_EVENT_KD;
-	event.num_elems = 0;
-
-	ipc_send_comp_notification(dev, &event);
-}
-
-static void notify_kpb(struct comp_dev *dev)
-{
+	struct comp_dev *dev = (struct comp_dev *)data;
 	struct comp_data *cd = comp_get_drvdata(dev);
 
 	trace_keyword("notify_kpb(), preamble: %u", cd->detect_preamble);
@@ -132,10 +121,23 @@ static void notify_kpb(struct comp_dev *dev)
 	notifier_event(&cd->event);
 }
 
+static void notify_host(struct comp_dev *dev)
+{
+	struct sof_ipc_comp_event event;
+
+	trace_keyword("notify_host()");
+
+	event.event_type = SOF_CTRL_EVENT_KD;
+	event.num_elems = 0;
+	event.cb = notify_kpb;
+	event.cb_data = dev;
+
+	ipc_send_comp_notification(dev, &event);
+}
+
 static void detect_test_notify(struct comp_dev *dev)
 {
 	notify_host(dev);
-	notify_kpb(dev);
 }
 
 static void default_detect_test(struct comp_dev *dev,
