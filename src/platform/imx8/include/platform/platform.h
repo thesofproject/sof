@@ -46,9 +46,6 @@ struct timer;
 #define PLATFORM_MAX_CHANNELS	4
 #define PLATFORM_MAX_STREAMS	5
 
-/* clock source used by scheduler for deadline calculations */
-#define PLATFORM_SCHED_CLOCK	PLATFORM_DEFAULT_CLOCK
-
 /* DMA channel drain timeout in microseconds - TODO: caclulate based on topology */
 #define PLATFORM_DMA_TIMEOUT	1333
 
