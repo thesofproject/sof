@@ -59,6 +59,8 @@ struct dma_chan_pdata {
 	bool cyclic;
 };
 
+#define DUMMY_DMA_BUFFER_PERIOD_COUNT	2
+
 /**
  * \brief Copy the currently-in-progress DMA SG elem
  * \param[in,out] pdata: Private data structure for this DMA channel
@@ -539,6 +541,9 @@ static int dummy_dma_get_attribute(struct dma *dma, uint32_t type,
 		break;
 	case DMA_ATTR_BUFFER_ADDRESS_ALIGNMENT:
 		*value = PLATFORM_DCACHE_ALIGN;
+		break;
+	case DMA_ATTR_BUFFER_PERIOD_COUNT:
+		*value = DUMMY_DMA_BUFFER_PERIOD_COUNT;
 		break;
 	default:
 		return -ENOENT; /* Attribute not found */
