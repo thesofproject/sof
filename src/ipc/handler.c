@@ -224,7 +224,7 @@ static int ipc_stream_pcm_params(uint32_t stream)
 	trace_ipc("ipc: comp %d -> params", pcm_params.comp_id);
 
 	/* get the pcm_dev */
-	pcm_dev = ipc_get_comp(_ipc, pcm_params.comp_id);
+	pcm_dev = ipc_get_comp_by_id(_ipc, pcm_params.comp_id);
 	if (pcm_dev == NULL) {
 		trace_ipc_error("ipc: comp %d not found", pcm_params.comp_id);
 		return -ENODEV;
@@ -344,7 +344,7 @@ static int ipc_stream_pcm_free(uint32_t header)
 	trace_ipc("ipc: comp %d -> free", free_req.comp_id);
 
 	/* get the pcm_dev */
-	pcm_dev = ipc_get_comp(_ipc, free_req.comp_id);
+	pcm_dev = ipc_get_comp_by_id(_ipc, free_req.comp_id);
 	if (pcm_dev == NULL) {
 		trace_ipc_error("ipc: comp %d not found", free_req.comp_id);
 		return -ENODEV;
@@ -376,7 +376,7 @@ static int ipc_stream_position(uint32_t header)
 	memset(&posn, 0, sizeof(posn));
 
 	/* get the pcm_dev */
-	pcm_dev = ipc_get_comp(_ipc, stream.comp_id);
+	pcm_dev = ipc_get_comp_by_id(_ipc, stream.comp_id);
 	if (pcm_dev == NULL) {
 		trace_ipc_error("ipc: comp %d not found", stream.comp_id);
 		return -ENODEV;
@@ -455,7 +455,7 @@ static int ipc_stream_trigger(uint32_t header)
 	trace_ipc("ipc: comp %d -> trigger cmd 0x%x", stream.comp_id, ipc_cmd);
 
 	/* get the pcm_dev */
-	pcm_dev = ipc_get_comp(_ipc, stream.comp_id);
+	pcm_dev = ipc_get_comp_by_id(_ipc, stream.comp_id);
 	if (pcm_dev == NULL) {
 		trace_ipc_error("ipc: comp %d not found", stream.comp_id);
 		return -ENODEV;
@@ -885,7 +885,7 @@ static int ipc_comp_value(uint32_t header, uint32_t cmd)
 	trace_ipc("ipc: comp %d -> cmd %d", data.comp_id, data.cmd);
 
 	/* get the component */
-	comp_dev = ipc_get_comp(_ipc, data.comp_id);
+	comp_dev = ipc_get_comp_by_id(_ipc, data.comp_id);
 	if (!comp_dev) {
 		trace_ipc_error("ipc: comp %d not found", data.comp_id);
 		return -ENODEV;
