@@ -531,7 +531,8 @@ static void realign_buffer(struct host_data *hd)
 					SOF_MEM_CAPS_DMA,
 					hd->dma_buffer->alloc_size,
 					buffer_alignment);
-		buffer_init(hd->dma_buffer, hd->dma_buffer->alloc_size);
+		buffer_init(hd->dma_buffer, hd->dma_buffer->alloc_size,
+			    SOF_MEM_CAPS_DMA);
 	}
 }
 
