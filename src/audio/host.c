@@ -487,7 +487,7 @@ static void host_buffer_cb(void *data, uint32_t bytes)
 	uint32_t flags = 0;
 	int ret;
 
-	tracev_host("host_buffer_cb(), copy_bytes = 0x%x", copy_bytes);
+	tracev_host("host_buffer_cb(), bytes = 0x%x", bytes);
 
 	if (hd->copy_type == COMP_COPY_BLOCKING)
 		flags |= DMA_COPY_BLOCKING;
