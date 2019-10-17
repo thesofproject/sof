@@ -75,6 +75,8 @@
 
 int edma_init(void);
 
+#define EDMA_BUFFER_PERIOD_COUNT	2
+
 #define EDMA_TCD_ALIGNMENT		32
 
 #define EDMA_HS_GET_IRQ(hs) (((hs) & MASK(8, 0)) >> 0)
