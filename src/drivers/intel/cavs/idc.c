@@ -176,7 +176,7 @@ static int idc_pipeline_trigger(uint32_t cmd)
 	dcache_invalidate_region(data, sizeof(*data));
 
 	/* check whether component exists */
-	pcm_dev = ipc_get_comp(ipc, data->comp_id);
+	pcm_dev = ipc_get_comp_by_id(ipc, data->comp_id);
 	if (!pcm_dev)
 		return -ENODEV;
 
@@ -246,7 +246,7 @@ static int idc_component_command(uint32_t cmd)
 				 data->rhdr.hdr.size - sizeof(*data));
 
 	/* check whether component exists */
-	comp_dev = ipc_get_comp(ipc, data->comp_id);
+	comp_dev = ipc_get_comp_by_id(ipc, data->comp_id);
 	if (!comp_dev)
 		return -ENODEV;
 
