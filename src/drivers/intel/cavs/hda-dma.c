@@ -70,6 +70,9 @@
 /* DMA host transfer timeout in microseconds */
 #define HDA_DMA_TIMEOUT	200
 
+/* DMA number of buffer periods */
+#define HDA_DMA_BUFFER_PERIOD_COUNT	2
+
 /*
  * DMA Pointer Trace
  *
@@ -882,6 +885,9 @@ static int hda_dma_get_attribute(struct dma *dma, uint32_t type,
 		break;
 	case DMA_ATTR_BUFFER_ADDRESS_ALIGNMENT:
 		*value = HDA_DMA_BUFFER_ADDRESS_ALIGNMENT;
+		break;
+	case DMA_ATTR_BUFFER_PERIOD_COUNT:
+		*value = HDA_DMA_BUFFER_PERIOD_COUNT;
 		break;
 	default:
 		ret = -EINVAL;
