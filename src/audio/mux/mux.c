@@ -228,7 +228,7 @@ static int demux_copy(struct comp_dev *dev)
 		sink = container_of(clist, struct comp_buffer, source_list);
 		if (sink->sink->state == dev->state) {
 			num_sinks++;
-			i = get_stream_index(cd, sink->ipc_buffer.comp.pipeline_id);
+			i = get_stream_index(cd, sink->pipeline_id);
 			sinks[i] = sink;
 		}
 	}
@@ -297,7 +297,7 @@ static int mux_copy(struct comp_dev *dev)
 		source = container_of(clist, struct comp_buffer, sink_list);
 		if (source->source->state == dev->state) {
 			num_sources++;
-			i = get_stream_index(cd, source->ipc_buffer.comp.pipeline_id);
+			i = get_stream_index(cd, source->pipeline_id);
 			sources[i] = source;
 		}
 	}

@@ -72,7 +72,7 @@ int pipeline_connect(struct comp_dev *comp, struct comp_buffer *buffer,
 	uint32_t flags;
 
 	trace_pipe("pipeline: connect comp %d and buffer %d",
-		   comp->comp.id, buffer->ipc_buffer.comp.id);
+		   comp->comp.id, buffer->id);
 
 	irq_local_disable(flags);
 	list_item_prepend(buffer_comp_list(buffer, dir),
