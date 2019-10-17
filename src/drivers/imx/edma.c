@@ -475,6 +475,9 @@ static int edma_get_attribute(struct dma *dma, uint32_t type, uint32_t *value)
 	case DMA_ATTR_BUFFER_ADDRESS_ALIGNMENT:
 		*value = PLATFORM_DCACHE_ALIGN;
 		break;
+	case DMA_ATTR_BUFFER_PERIOD_COUNT:
+		*value = EDMA_BUFFER_PERIOD_COUNT;
+		break;
 	default:
 		return -ENOENT; /* Attribute not found */
 	}

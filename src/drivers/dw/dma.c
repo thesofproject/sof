@@ -65,6 +65,12 @@ struct dw_dma_chan_data {
  */
 static const uint32_t burst_elems[] = {1, 2, 4, 8};
 
+#if CONFIG_HW_LLI
+#define DW_DMA_BUFFER_PERIOD_COUNT	3
+#else
+#define DW_DMA_BUFFER_PERIOD_COUNT	2
+#endif
+
 static void dw_dma_interrupt_mask(struct dma_chan_data *channel)
 {
 	/* mask block, transfer and error interrupts for channel */
@@ -1081,6 +1087,9 @@ static int dw_dma_get_attribute(struct dma *dma, uint32_t type,
 		break;
 	case DMA_ATTR_BUFFER_ADDRESS_ALIGNMENT:
 		*value = PLATFORM_DCACHE_ALIGN;
+		break;
+	case DMA_ATTR_BUFFER_PERIOD_COUNT:
+		*value = DW_DMA_BUFFER_PERIOD_COUNT;
 		break;
 	default:
 		ret = -EINVAL;

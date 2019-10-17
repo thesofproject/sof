@@ -91,6 +91,7 @@ enum dma_irq_cmd {
 #define DMA_ATTR_BUFFER_ALIGNMENT		0
 #define DMA_ATTR_COPY_ALIGNMENT			1
 #define DMA_ATTR_BUFFER_ADDRESS_ALIGNMENT	2
+#define DMA_ATTR_BUFFER_PERIOD_COUNT		3
 
 struct dma;
 
