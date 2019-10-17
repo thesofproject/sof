@@ -36,6 +36,12 @@ static void sai_start(struct dai *dai, int direction)
 			REG_SAI_CR1_RFW_MASK, SAI_FIFO_WORD_SIZE / 2);
 	dai_update_bits(dai, REG_SAI_XCR3(direction),
 			REG_SAI_CR3_TRCE_MASK, REG_SAI_CR3_TRCE(1));
+
+	/* add one word to FIFO after TRCE has been enabled */
+	if (direction == DAI_DIR_PLAYBACK)
+		dai_update_bits(dai, REG_SAI_TDR0, 0x0, 0x0);
+	else
+		dai_update_bits(dai, REG_SAI_RDR0, 0x0, 0x0);
 }
 
 static void sai_stop(struct dai *dai, int direction)
