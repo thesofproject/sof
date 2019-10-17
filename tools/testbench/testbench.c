@@ -217,13 +217,13 @@ int main(int argc, char **argv)
 	}
 
 	/* Get pointers to fileread and filewrite */
-	pcm_dev = ipc_get_comp(sof.ipc, fw_id);
+	pcm_dev = ipc_get_comp_by_id(sof.ipc, fw_id);
 	fwcd = comp_get_drvdata(pcm_dev->cd);
-	pcm_dev = ipc_get_comp(sof.ipc, fr_id);
+	pcm_dev = ipc_get_comp_by_id(sof.ipc, fr_id);
 	frcd = comp_get_drvdata(pcm_dev->cd);
 
 	/* Run pipeline until EOF from fileread */
-	pcm_dev = ipc_get_comp(sof.ipc, sched_id);
+	pcm_dev = ipc_get_comp_by_id(sof.ipc, sched_id);
 	p = pcm_dev->cd->pipeline;
 	ipc_pipe = &p->ipc_pipe;
 

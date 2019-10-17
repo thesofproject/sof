@@ -38,7 +38,7 @@
  * more than 1 list may need to be searched for the corresponding component.
  */
 
-struct ipc_comp_dev *ipc_get_comp(struct ipc *ipc, uint32_t id)
+struct ipc_comp_dev *ipc_get_comp_by_id(struct ipc *ipc, uint32_t id)
 {
 	struct ipc_comp_dev *icd;
 	struct list_item *clist;
@@ -129,7 +129,7 @@ int ipc_comp_new(struct ipc *ipc, struct sof_ipc_comp *comp)
 	int ret = 0;
 
 	/* check whether component already exists */
-	icd = ipc_get_comp(ipc, comp->id);
+	icd = ipc_get_comp_by_id(ipc, comp->id);
 	if (icd != NULL) {
 		trace_ipc_error("ipc_comp_new() error: comp->id = %u",
 				comp->id);
@@ -164,7 +164,7 @@ int ipc_comp_free(struct ipc *ipc, uint32_t comp_id)
 	struct ipc_comp_dev *icd;
 
 	/* check whether component exists */
-	icd = ipc_get_comp(ipc, comp_id);
+	icd = ipc_get_comp_by_id(ipc, comp_id);
 	if (icd == NULL)
 		return -ENODEV;
 
@@ -196,7 +196,7 @@ int ipc_buffer_new(struct ipc *ipc, struct sof_ipc_buffer *desc)
 	int ret = 0;
 
 	/* check whether buffer already exists */
-	ibd = ipc_get_comp(ipc, desc->comp.id);
+	ibd = ipc_get_comp_by_id(ipc, desc->comp.id);
 	if (ibd != NULL) {
 		trace_ipc_error("ipc_buffer_new() error: "
 				"buffer already exists, desc->comp.id = %u",
@@ -231,7 +231,7 @@ int ipc_buffer_free(struct ipc *ipc, uint32_t buffer_id)
 	struct ipc_comp_dev *ibd;
 
 	/* check whether buffer exists */
-	ibd = ipc_get_comp(ipc, buffer_id);
+	ibd = ipc_get_comp_by_id(ipc, buffer_id);
 	if (ibd == NULL)
 		return -ENODEV;
 
@@ -250,7 +250,7 @@ int ipc_comp_connect(struct ipc *ipc,
 	struct ipc_comp_dev *icd_sink;
 
 	/* check whether the components already exist */
-	icd_source = ipc_get_comp(ipc, connect->source_id);
+	icd_source = ipc_get_comp_by_id(ipc, connect->source_id);
 	if (icd_source == NULL) {
 		trace_ipc_error("ipc_comp_connect() error: components already"
 				" exist, connect->source_id = %u",
@@ -258,7 +258,7 @@ int ipc_comp_connect(struct ipc *ipc,
 		return -EINVAL;
 	}
 
-	icd_sink = ipc_get_comp(ipc, connect->sink_id);
+	icd_sink = ipc_get_comp_by_id(ipc, connect->sink_id);
 	if (icd_sink == NULL) {
 		trace_ipc_error("ipc_comp_connect() error: components already"
 				" exist, connect->sink_id = %u",
@@ -293,7 +293,7 @@ int ipc_pipeline_new(struct ipc *ipc,
 	struct ipc_comp_dev *icd;
 
 	/* check whether the pipeline already exists */
-	ipc_pipe = ipc_get_comp(ipc, pipe_desc->comp_id);
+	ipc_pipe = ipc_get_comp_by_id(ipc, pipe_desc->comp_id);
 	if (ipc_pipe != NULL) {
 		trace_ipc_error("ipc_pipeline_new() error: pipeline already"
 				" exists, pipe_desc->comp_id = %u",
@@ -302,7 +302,7 @@ int ipc_pipeline_new(struct ipc *ipc,
 	}
 
 	/* find the scheduling component */
-	icd = ipc_get_comp(ipc, pipe_desc->sched_id);
+	icd = ipc_get_comp_by_id(ipc, pipe_desc->sched_id);
 	if (icd == NULL) {
 		trace_ipc_error("ipc_pipeline_new() error: cannot find the "
 				"scheduling component, pipe_desc->sched_id"
@@ -345,7 +345,7 @@ int ipc_pipeline_free(struct ipc *ipc, uint32_t comp_id)
 	int ret;
 
 	/* check whether pipeline exists */
-	ipc_pipe = ipc_get_comp(ipc, comp_id);
+	ipc_pipe = ipc_get_comp_by_id(ipc, comp_id);
 	if (ipc_pipe == NULL)
 		return -ENODEV;
 
@@ -371,7 +371,7 @@ int ipc_pipeline_complete(struct ipc *ipc, uint32_t comp_id)
 	struct ipc_comp_dev *ipc_ppl_sink;
 
 	/* check whether pipeline exists */
-	ipc_pipe = ipc_get_comp(ipc, comp_id);
+	ipc_pipe = ipc_get_comp_by_id(ipc, comp_id);
 	if (!ipc_pipe)
 		return -EINVAL;
 
