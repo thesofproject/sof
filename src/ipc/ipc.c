@@ -66,6 +66,36 @@ struct ipc_comp_dev *ipc_get_comp_by_id(struct ipc *ipc, uint32_t id)
 	return NULL;
 }
 
+struct ipc_comp_dev *ipc_get_comp_by_ppl_id(struct ipc *ipc, uint16_t type,
+					    uint32_t ppl_id)
+{
+	struct ipc_comp_dev *icd;
+	struct list_item *clist;
+
+	list_for_item(clist, &ipc->shared_ctx->comp_list) {
+		icd = container_of(clist, struct ipc_comp_dev, list);
+		if (icd->type != type)
+			continue;
+
+		switch (icd->type) {
+		case COMP_TYPE_COMPONENT:
+			if (icd->cd->comp.pipeline_id == ppl_id)
+				return icd;
+			break;
+		case COMP_TYPE_BUFFER:
+			if (icd->cb->ipc_buffer.comp.pipeline_id == ppl_id)
+				return icd;
+			break;
+		case COMP_TYPE_PIPELINE:
+			if (icd->pipeline->ipc_pipe.pipeline_id == ppl_id)
+				return icd;
+			break;
+		}
+	}
+
+	return NULL;
+}
+
 static struct ipc_comp_dev *ipc_get_ppl_comp(struct ipc *ipc,
 					     uint32_t pipeline_id, int dir)
 {
@@ -298,6 +328,16 @@ int ipc_pipeline_new(struct ipc *ipc,
 		trace_ipc_error("ipc_pipeline_new() error: pipeline already"
 				" exists, pipe_desc->comp_id = %u",
 				pipe_desc->comp_id);
+		return -EINVAL;
+	}
+
+	/* check whether pipeline id is already taken */
+	ipc_pipe = ipc_get_comp_by_ppl_id(ipc, COMP_TYPE_PIPELINE,
+					  pipe_desc->pipeline_id);
+	if (ipc_pipe) {
+		trace_ipc_error("ipc_pipeline_new() error: pipeline id is "
+				"already taken, pipe_desc->pipeline_id = %u",
+				pipe_desc->pipeline_id);
 		return -EINVAL;
 	}
 
