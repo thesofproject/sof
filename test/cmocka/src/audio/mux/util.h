@@ -29,7 +29,7 @@ static inline struct comp_buffer *create_test_sink(struct comp_dev *dev,
 	buffer->sink->params.channels = channels;
 	buffer->free = 0;
 	buffer->avail = 0;
-	buffer->ipc_buffer.comp.pipeline_id = pipeline_id;
+	buffer->pipeline_id = pipeline_id;
 
 	return buffer;
 }
@@ -57,7 +57,7 @@ static inline struct comp_buffer *create_test_source(struct comp_dev *dev,
 	buffer->source->params.channels = channels;
 	buffer->free = 0;
 	buffer->avail = 0;
-	buffer->ipc_buffer.comp.pipeline_id = pipeline_id;
+	buffer->pipeline_id = pipeline_id;
 
 	return buffer;
 }
