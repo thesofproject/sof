@@ -7,13 +7,11 @@
 
 #include <sof/audio/buffer.h>
 #include <sof/audio/component.h>
-#include <sof/debug/panic.h>
 #include <sof/drivers/interrupt.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/cache.h>
 #include <sof/lib/memory.h>
 #include <sof/list.h>
-#include <sof/string.h>
 #include <ipc/topology.h>
 #include <errno.h>
 #include <stddef.h>
@@ -51,10 +49,10 @@ struct comp_buffer *buffer_new(struct sof_ipc_buffer *desc)
 		return NULL;
 	}
 
-	assert(!memcpy_s(&buffer->ipc_buffer, sizeof(buffer->ipc_buffer),
-		       desc, sizeof(*desc)));
+	buffer_init(buffer, desc->size, desc->caps);
 
-	buffer_init(buffer, desc->size);
+	buffer->id = desc->comp.id;
+	buffer->pipeline_id = desc->comp.pipeline_id;
 
 	return buffer;
 }
@@ -62,7 +60,6 @@ struct comp_buffer *buffer_new(struct sof_ipc_buffer *desc)
 int buffer_set_size(struct comp_buffer *buffer, uint32_t size)
 {
 	void *new_ptr = NULL;
-	struct sof_ipc_buffer *desc = NULL;
 
 	/* validate request */
 	if (size == 0 || size > HEAP_BUFFER_SIZE) {
@@ -70,21 +67,15 @@ int buffer_set_size(struct comp_buffer *buffer, uint32_t size)
 		return -EINVAL;
 	}
 
-	desc = &buffer->ipc_buffer;
-	if (!desc) {
-		trace_buffer_error("resize error: invalid buffer desc");
-		return -EINVAL;
-	}
-
-	if (size == desc->size)
+	if (size == buffer->size)
 		return 0;
 
-	new_ptr = rbrealloc(buffer->addr, RZONE_BUFFER, desc->caps, size);
+	new_ptr = rbrealloc(buffer->addr, RZONE_BUFFER, buffer->caps, size);
 
 	/* we couldn't allocate bigger chunk */
-	if (!new_ptr && size > desc->size) {
+	if (!new_ptr && size > buffer->size) {
 		trace_buffer_error("resize error: can't alloc %u bytes type %u",
-				   desc->size, desc->caps);
+				   buffer->size, buffer->caps);
 		return -ENOMEM;
 	}
 
@@ -92,9 +83,7 @@ int buffer_set_size(struct comp_buffer *buffer, uint32_t size)
 	if (new_ptr)
 		buffer->addr = new_ptr;
 
-	desc->size = size;
-
-	buffer_init(buffer, desc->size);
+	buffer_init(buffer, size, buffer->caps);
 
 	return 0;
 }
@@ -184,10 +173,10 @@ void comp_update_buffer_produce(struct comp_buffer *buffer, uint32_t bytes)
 	irq_local_enable(flags);
 
 	tracev_buffer("comp_update_buffer_produce(), ((buffer->avail << 16) | "
-		      "buffer->free) = %08x, ((buffer->ipc_buffer.comp.id << "
-		      "16) | buffer->size) = %08x",
+		      "buffer->free) = %08x, ((buffer->id << 16) | "
+		      "buffer->size) = %08x",
 		      (buffer->avail << 16) | buffer->free,
-		      (buffer->ipc_buffer.comp.id << 16) | buffer->size);
+		      (buffer->id << 16) | buffer->size);
 	tracev_buffer("comp_update_buffer_produce(), ((buffer->r_ptr - buffer"
 		      "->addr) << 16 | (buffer->w_ptr - buffer->addr)) = %08x",
 		      (buffer->r_ptr - buffer->addr) << 16 |
@@ -240,11 +229,11 @@ void comp_update_buffer_consume(struct comp_buffer *buffer, uint32_t bytes)
 
 	tracev_buffer("comp_update_buffer_consume(), "
 		      "(buffer->avail << 16) | buffer->free = %08x, "
-		      "(buffer->ipc_buffer.comp.id << 16) | buffer->size = "
-		      " %08x, (buffer->r_ptr - buffer->addr) << 16 | "
+		      "(buffer->id << 16) | buffer->size = %08x, "
+		      "(buffer->r_ptr - buffer->addr) << 16 | "
 		      "(buffer->w_ptr - buffer->addr)) = %08x",
 		      (buffer->avail << 16) | buffer->free,
-		      (buffer->ipc_buffer.comp.id << 16) | buffer->size,
+		      (buffer->id << 16) | buffer->size,
 		      (buffer->r_ptr - buffer->addr) << 16 |
 		      (buffer->w_ptr - buffer->addr));
 }
