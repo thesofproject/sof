@@ -195,7 +195,7 @@ void rfree(void *ptr);
 	} while (0);					\
 	_ptr; })
 
-#define rballoc(zone, caps, bytes, alignment)			\
+#define rballoc_align(zone, caps, bytes, alignment)			\
 	({void *_ptr;					\
 	do {						\
 		_ptr = _balloc(zone, caps, bytes, alignment);	\
