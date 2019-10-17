@@ -64,7 +64,7 @@ int tb_pipeline_start(struct ipc *ipc, int nch,
 	}
 
 	/* Get IPC component device for pipeline */
-	pcm_dev = ipc_get_comp(ipc, ipc_pipe->sched_id);
+	pcm_dev = ipc_get_comp_by_id(ipc, ipc_pipe->sched_id);
 	if (!pcm_dev) {
 		fprintf(stderr, "error: ipc get comp\n");
 		return -EINVAL;
@@ -136,7 +136,7 @@ int tb_pipeline_params(struct ipc *ipc, int nch,
 	}
 
 	/* get scheduling component device for pipeline*/
-	pcm_dev = ipc_get_comp(ipc, ipc_pipe->sched_id);
+	pcm_dev = ipc_get_comp_by_id(ipc, ipc_pipe->sched_id);
 	if (!pcm_dev) {
 		fprintf(stderr, "error: ipc get comp\n");
 		return -EINVAL;
