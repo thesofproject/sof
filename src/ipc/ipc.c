@@ -51,7 +51,7 @@ struct ipc_comp_dev *ipc_get_comp(struct ipc *ipc, uint32_t id)
 				return icd;
 			break;
 		case COMP_TYPE_BUFFER:
-			if (icd->cb->ipc_buffer.comp.id == id)
+			if (icd->cb->id == id)
 				return icd;
 			break;
 		case COMP_TYPE_PIPELINE:
