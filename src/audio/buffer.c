@@ -17,6 +17,45 @@
 #include <stddef.h>
 #include <stdint.h>
 
+struct comp_buffer *buffer_alloc(uint32_t size, uint32_t caps, uint32_t align)
+{
+	struct comp_buffer *buffer;
+
+	trace_buffer("buffer_alloc()");
+
+	/* validate request */
+	if (size == 0 || size > HEAP_BUFFER_SIZE) {
+		trace_buffer_error("buffer_alloc() error: "
+				   "new size = %u is invalid", size);
+		return NULL;
+	}
+
+	/* allocate new buffer */
+	buffer = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*buffer));
+	if (!buffer) {
+		trace_buffer_error("buffer_alloc() error: "
+				   "could not alloc structure");
+		return NULL;
+	}
+
+	buffer->addr = rballoc_align(RZONE_BUFFER, caps, size, align);
+	if (!buffer->addr) {
+		rfree(buffer);
+		trace_buffer_error("buffer_alloc() error: "
+				   "could not alloc size = %u "
+				   "bytes of type = %u",
+				   size, caps);
+		return NULL;
+	}
+
+	buffer_init(buffer, size, caps);
+
+	list_init(&buffer->source_list);
+	list_init(&buffer->sink_list);
+
+	return buffer;
+}
+
 /* create a new component in the pipeline */
 struct comp_buffer *buffer_new(struct sof_ipc_buffer *desc)
 {
@@ -24,35 +63,12 @@ struct comp_buffer *buffer_new(struct sof_ipc_buffer *desc)
 
 	trace_buffer("buffer_new()");
 
-	/* validate request */
-	if (desc->size == 0 || desc->size > HEAP_BUFFER_SIZE) {
-		trace_buffer_error("buffer_new() error: "
-				   "new size = %u is invalid", desc->size);
-		return NULL;
+	/* allocate buffer */
+	buffer = buffer_alloc(desc->size, desc->caps, PLATFORM_DCACHE_ALIGN);
+	if (buffer) {
+		buffer->id = desc->comp.id;
+		buffer->pipeline_id = desc->comp.pipeline_id;
 	}
-
-	/* allocate new buffer */
-	buffer = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*buffer));
-	if (!buffer) {
-		trace_buffer_error("buffer_new() error: "
-				   "could not alloc structure");
-		return NULL;
-	}
-
-	buffer->addr = rballoc(RZONE_BUFFER, desc->caps, desc->size);
-	if (!buffer->addr) {
-		rfree(buffer);
-		trace_buffer_error("buffer_new() error: "
-				   "could not alloc size = %u "
-				   "bytes of type = %u",
-				   desc->size, desc->caps);
-		return NULL;
-	}
-
-	buffer_init(buffer, desc->size, desc->caps);
-
-	buffer->id = desc->comp.id;
-	buffer->pipeline_id = desc->comp.pipeline_id;
 
 	return buffer;
 }

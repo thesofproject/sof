@@ -116,6 +116,7 @@ struct comp_buffer {
 typedef void (*cache_buff_op)(struct comp_buffer *);
 
 /* pipeline buffer creation and destruction */
+struct comp_buffer *buffer_alloc(uint32_t size, uint32_t caps, uint32_t align);
 struct comp_buffer *buffer_new(struct sof_ipc_buffer *desc);
 int buffer_set_size(struct comp_buffer *buffer, uint32_t size);
 void buffer_free(struct comp_buffer *buffer);
