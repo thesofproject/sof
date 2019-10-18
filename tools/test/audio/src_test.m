@@ -44,7 +44,7 @@ end
 %  of point Fs/2 to test. The stopband of kaiser FIR is not equiripple
 %  and there's sufficient amount of attnuation at higher frequencies to
 %  meet THD+N requirement.
-t.g_db_tol = 0.1;
+t.g_db_tol = 1.1;
 t.thdnf_db_max = -80;
 t.thdnf_db_16b = -60;
 t.dr_db_min = 100;
