@@ -26,6 +26,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+struct comp_buffer;
+
 /** \addtogroup sof_dma_drivers DMA Drivers
  *  DMA Drivers API specification.
  *  @{
@@ -501,6 +503,16 @@ static inline uint32_t dma_sg_get_size(struct dma_sg_elem_array *ea)
 
 	return size;
 }
+
+/* copies data from DMA buffer using provided processing function */
+void dma_buffer_copy_from(struct comp_buffer *source, struct comp_buffer *sink,
+	void (*process)(struct comp_buffer *, struct comp_buffer *, uint32_t),
+	uint32_t bytes);
+
+/* copies data to DMA buffer using provided processing function */
+void dma_buffer_copy_to(struct comp_buffer *source, struct comp_buffer *sink,
+	void (*process)(struct comp_buffer *, struct comp_buffer *, uint32_t),
+	uint32_t bytes);
 
 /* generic DMA DSP <-> Host copier */
 
