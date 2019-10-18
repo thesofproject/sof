@@ -11,6 +11,7 @@
 #include <sof/lib/alloc.h>
 #include <sof/lib/dma.h>
 #include <sof/lib/io.h>
+#include <sof/math/numbers.h>
 #include <sof/platform.h>
 #include <errno.h>
 #include <stddef.h>
@@ -502,19 +503,23 @@ static int edma_get_data_size(struct dma_chan_data *channel,
 	 *
 	 * get_data_size() and copy() are run exactly once per
 	 * interrupt, and currently we have the elem size stored
-	 * directly in the hardware register NBYTES so we can just
-	 * return it.
+	 * directly in the hardware register EDMA_TCD_SLAST
+	 * as negative offset divided by 2
 	 *
 	 * TODO If we support multiple DMA transfers per SOF elem, we
 	 * need to adjust for that and copy the whole required data per
 	 * interrupt.
 	 */
+	int32_t data_size;
+
+	data_size = (int32_t)dma_chan_reg_read(channel, EDMA_TCD_SLAST);
+
 	switch (channel->direction) {
 	case SOF_IPC_STREAM_PLAYBACK:
-		*free = dma_chan_reg_read(channel, EDMA_TCD_NBYTES);
+		*free = ABS(data_size) / 2;
 		break;
 	case SOF_IPC_STREAM_CAPTURE:
-		*avail = dma_chan_reg_read(channel, EDMA_TCD_NBYTES);
+		*avail = ABS(data_size) / 2;
 		break;
 	default:
 		trace_edma_error("edma_get_data_size() unsupported direction %d",
