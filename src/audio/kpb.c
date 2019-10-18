@@ -83,7 +83,8 @@ static void kpb_buffer_samples(struct comp_buffer *source, uint32_t start,
 			       void *sink, size_t size, size_t sample_width);
 static void kpb_reset_history_buffer(struct hb *buff);
 static inline bool validate_host_params(size_t host_period_size,
-					size_t host_buffer_size);
+					size_t host_buffer_size,
+					size_t bytes_per_ms);
 static inline void kpb_change_state(struct comp_data *kpb,
 				    enum kpb_state state);
 
@@ -897,7 +898,8 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 		trace_kpb_error("kpb_init_draining() error: "
 				"not enough data in history buffer");
 	} else if (!validate_host_params(host_period_size,
-					 host_buffer_size)) {
+					 host_buffer_size,
+					 bytes_per_ms)) {
 		trace_kpb_error("kpb_init_draining() error: "
 				"wrong host params.");
 	} else {
@@ -962,10 +964,11 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 		 */
 		drain_interval = (host_period_size / bytes_per_ms) *
 				 ticks_per_ms;
-		/* In draining intervals we fill only half of host buffer.
-		 * This was we are safe to not overflow it.
+		/* In draining intervals we will fill only two periods
+		 * and give host time to read it.
+		 * This way we are safe to not overflow host buffer.
 		 */
-		period_bytes_limit = host_buffer_size / 2;
+		period_bytes_limit = host_period_size * 2;
 
 		trace_kpb("kpb_init_draining(), schedule draining task");
 
@@ -1321,25 +1324,25 @@ static void kpb_reset_history_buffer(struct hb *buff)
 }
 
 static inline bool validate_host_params(size_t host_period_size,
-					size_t host_buffer_size)
+					size_t host_buffer_size,
+					size_t bytes_per_ms)
 {
-	size_t drained_per_interval;
-
-	if (host_period_size == 0 || host_buffer_size == 0)
-		return false;
-
-	drained_per_interval = host_buffer_size / 2;
-
 	/* Check host period size sanity.
 	 * Here we check if host period size (which defines interval
 	 * time) will allow us to drain more data then the interval
 	 * takes - as only such condition guarantees draining will end.
 	 * The formula:
 	 *	drained_data_in_one_interval_ms > interval_break_ms
-	 * more
+	 * where:
+	 * drained_data_in_one_interval_ms = (host_period_size * 2) [ms]
+	 * interval_break_ms = host_period_size / bytes_per_ms [ms]
 	 */
 
-	return (drained_per_interval > host_period_size) ? true : false;
+	if (host_period_size < bytes_per_ms || /* Out of control */
+	    host_period_size >= (host_buffer_size / 2)) /* XRUN */
+		return false;
+
+	return true;
 }
 
 /**
