@@ -13,8 +13,11 @@ include(`common/tlv.m4')
 # Include Token library
 include(`sof/tokens.m4')
 
-# Include ICL DSP configuration
-include(`platform/intel/icl.m4')
+ifelse(PLATFORM, `icl', include(`platform/intel/icl.m4'),
+	ifelse(PLATFORM, `cml-mono', include(`platform/intel/cnl.m4'),
+		ifelse(PLATFORM, `cml', include(`platform/intel/cnl.m4'), `')))
+
+ifelse(PLATFORM, `cml-mono', `define(`MONO', `')', `')
 
 DEBUG_START
 
@@ -24,7 +27,8 @@ DEBUG_START
 # PCM0 ---> volume ----> ALH 2 BE dailink 0
 # PCM1 <--- volume <---- ALH 3 BE dailink 1
 # PCM2 ---> volume ----> ALH 2 BE dailink 2
-# PCM3 ---> volume ----> ALH 2 BE dailink 3
+ifdef(`MONO', `',
+`# PCM3 ---> volume ----> ALH 2 BE dailink 3')
 # PCM4 <--- volume <---- ALH 2 BE dailink 4
 # PCM5 ---> volume <---- iDisp1
 # PCM6 ---> volume <---- iDisp2
@@ -57,12 +61,13 @@ PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
 	1000, 0, 0,
 	48000, 48000, 48000)
 
-# Low Latency playback pipeline 4 on PCM 3 using max 2 channels of s32le.
+ifdef(`MONO', `',
+`# Low Latency playback pipeline 4 on PCM 3 using max 2 channels of s32le.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
 	4, 3, 2, s32le,
 	1000, 0, 0,
-	48000, 48000, 48000)
+	48000, 48000, 48000)')
 
 # Low Latency capture pipeline 5 on PCM 4 using max 2 channels of s32le.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
@@ -122,12 +127,13 @@ DAI_ADD(sof/pipe-dai-playback.m4,
 	PIPELINE_SOURCE_3, 2, s32le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
-# playback DAI is ALH(SDW2 PIN2) using 2 periods
+ifdef(`MONO', `',
+`# playback DAI is ALH(SDW2 PIN2) using 2 periods
 # Buffers use s32le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
 	4, ALH, 0x202, SDW2-Playback,
 	PIPELINE_SOURCE_4, 2, s32le,
-	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
+	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)')
 
 # capture DAI is ALH(SDW3 PIN2) using 2 periods
 # Buffers use s32le format, with 48 frame per 1000us on core 0 with priority 0
@@ -162,7 +168,7 @@ dnl PCM_PLAYBACK_ADD(name, pcm_id, playback)
 PCM_PLAYBACK_ADD(SDW0-speakers, 0, PIPELINE_PCM_1)
 PCM_CAPTURE_ADD(SDW0-mics, 1, PIPELINE_PCM_2)
 PCM_PLAYBACK_ADD(SDW1-speakers, 2, PIPELINE_PCM_3)
-PCM_PLAYBACK_ADD(SDW2-speakers, 3, PIPELINE_PCM_4)
+ifdef(`MONO', `', `PCM_PLAYBACK_ADD(SDW2-speakers, 3, PIPELINE_PCM_4)')
 PCM_CAPTURE_ADD(SDW3-mics, 4, PIPELINE_PCM_5)
 PCM_PLAYBACK_ADD(HDMI1, 5, PIPELINE_PCM_6)
 PCM_PLAYBACK_ADD(HDMI2, 6, PIPELINE_PCM_7)
@@ -183,7 +189,7 @@ DAI_CONFIG(ALH, 3, 1, SDW0-Capture)
 DAI_CONFIG(ALH, 0x102, 2, SDW1-Playback)
 
 #ALH SDW2 Pin2 (ID: 3)
-DAI_CONFIG(ALH, 0x202, 3, SDW2-Playback)
+ifdef(`MONO', `', `DAI_CONFIG(ALH, 0x202, 3, SDW2-Playback)')
 
 #ALH SDW3 Pin2 (ID: 4)
 DAI_CONFIG(ALH, 0x302, 4, SDW3-Capture)
