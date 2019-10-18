@@ -70,4 +70,7 @@ struct sof_ipc_pm_gate {
 /** \brief Prevent clock gating (0 - cg allowed, 1 - DSP clock always on) */
 #define SOF_PM_PCG		BIT(3)
 
+/** \brief Disable DMA tracing (0 - keep tracing, 1 - to disable DMA trace) */
+#define SOF_PM_NO_TRACE		BIT(4)
+
 #endif /* __IPC_PM_H__ */

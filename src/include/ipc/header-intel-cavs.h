@@ -76,7 +76,10 @@
  */
 
 /** \brief Valid bits for SetD0ix */
-#define CAVS_IPC_MOD_SETD0IX_BIT_MASK	MASK(3, 0)
+#define CAVS_IPC_MOD_SETD0IX_BIT_MASK	MASK(7, 0)
+
+/** \brief Disable DMA tracing (0 - keep tracing, 1 - to disable DMA trace) */
+#define CAVS_IPC_MOD_SETD0IX_NO_TRACE		BIT(4)
 
 /** \brief Prevent clock gating (0 - cg allowed, 1 - DSP clock always on) */
 #define CAVS_IPC_MOD_SETD0IX_PCG	BIT(3)

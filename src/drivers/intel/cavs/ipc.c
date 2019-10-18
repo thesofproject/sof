@@ -140,7 +140,7 @@ static struct sof_ipc_cmd_hdr *ipc_cavs_read_set_d0ix(uint32_t dr, uint32_t dd)
 	return &cmd->hdr;
 }
 
-static struct sof_ipc_cmd_hdr *ipc_cavs_read_msg(void)
+static struct sof_ipc_cmd_hdr *ipc_compact_read_msg(void)
 {
 	struct sof_ipc_cmd_hdr *hdr;
 	uint32_t dr;
@@ -176,7 +176,7 @@ static enum task_state ipc_platform_do_cmd(void *data)
 	struct sof_ipc_reply reply;
 
 #if CAVS_VERSION >= CAVS_VERSION_1_8
-	hdr = ipc_cavs_read_msg();
+	hdr = ipc_compact_read_msg();
 #else
 	hdr = mailbox_validate();
 #endif
