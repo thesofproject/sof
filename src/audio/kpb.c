@@ -618,7 +618,6 @@ static int kpb_copy(struct comp_dev *dev)
 		comp_update_buffer_produce(sink, copy_bytes);
 		comp_update_buffer_consume(source, copy_bytes);
 
-		ret = PPL_STATUS_PATH_STOP;
 		break;
 	case KPB_STATE_DRAINING:
 		/* In draining state we only buffer data in internal,
@@ -1083,8 +1082,10 @@ static enum task_state kpb_draining_task(void *arg)
 			move_buffer = false;
 		}
 
-		if (size_to_copy)
+		if (size_to_copy) {
 			comp_update_buffer_produce(sink, size_to_copy);
+			comp_copy(sink->sink);
+		}
 
 		if (period_bytes >= period_bytes_limit) {
 			current_time = platform_timer_get(platform_timer);
