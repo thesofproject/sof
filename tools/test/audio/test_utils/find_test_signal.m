@@ -34,8 +34,10 @@ n_seek = round(test.fs*(test.idle_t + test.mark_t));
 n = min(max(round(test.fs*test.sm), n_seek), nx);
 y = x(1:n);
 [r, lags] = xcorr(y, s);
-[r_max, idx] = max(r);
-d_start = lags(idx);
+r2 = r.^2;
+r2_thr = 0.1 * max(r2);
+idx = find(r2 > r2_thr);
+d_start = lags(idx(1));
 
 %% Find end marker
 fprintf('Finding test end marker...\n');
@@ -44,8 +46,10 @@ n_seek = round(test.fs*(test.idle_t + test.mark_t));
 n = min(max(round(test.fs*test.em),n_seek), nx);
 y = x(end-n+1:end);
 [r, lags] = xcorr(y, s);
-[r_max, idx] = max(r);
-d_end = nx-n+lags(idx);
+r2 = r.^2;
+r2_thr = 0.1 * max(r2);
+idx = find(r2 > r2_thr);
+d_end = nx-n+lags(idx(end));
 
 %% Check correct length of signal
 len = d_end-d_start;
