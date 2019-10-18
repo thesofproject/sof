@@ -373,12 +373,7 @@ static int pipeline_comp_task_init(struct pipeline *p)
 {
 	uint32_t type;
 
-	/* pipeline preload needed only for playback streams without active
-	 * sink component (it can be active for e.g. mixer pipelines)
-	 */
-	p->preload =
-		p->sink_comp->params.direction == SOF_IPC_STREAM_PLAYBACK &&
-		p->sink_comp->state != COMP_STATE_ACTIVE;
+	p->preload = false;
 
 	/* initialize task if necessary */
 	if (!p->pipe_task) {
@@ -829,21 +824,6 @@ static int pipeline_copy(struct pipeline *p)
 	if (p->source_comp->params.direction == SOF_IPC_STREAM_PLAYBACK) {
 		dir = PPL_DIR_UPSTREAM;
 		start = p->sink_comp;
-
-		/* if not pipeline preload then copy sink comp first */
-		if (!p->preload && comp_is_active(start)) {
-			ret = comp_copy(start);
-			if (ret < 0) {
-				trace_pipe_error("pipeline_copy() error: "
-						 "ret = %d", ret);
-				return ret;
-			}
-
-			start = comp_get_previous(start, dir);
-			if (!start)
-				/* nothing else to do */
-				return ret;
-		}
 	} else {
 		dir = PPL_DIR_DOWNSTREAM;
 		start = p->source_comp;

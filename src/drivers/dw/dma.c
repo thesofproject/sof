@@ -847,12 +847,21 @@ static int dw_dma_copy(struct dma_chan_data *channel, int bytes,
 		.status = DMA_CB_STATUS_END
 	};
 
-	/* for preload and one shot copy just start the DMA and wait */
-	if (flags & (DMA_COPY_PRELOAD | DMA_COPY_ONE_SHOT)) {
+	tracev_dwdma("dw_dma_copy(): dma %d channel %d copy",
+		     channel->dma->plat_data.id, channel->index);
+
+	if (channel->cb && channel->cb_type & DMA_CB_TYPE_COPY)
+		channel->cb(channel->cb_data, DMA_CB_TYPE_COPY, &next);
+
+	if (flags & DMA_COPY_ONE_SHOT) {
+		/* for one shot copy start the DMA */
 		ret = dw_dma_start(channel);
 		if (ret < 0)
 			return ret;
+	}
 
+	if (flags & DMA_COPY_BLOCKING) {
+		/* wait for transfer finish */
 		ret = poll_for_register_delay(dma_base(channel->dma) +
 					      DW_DMA_CHAN_EN,
 					      DW_CHAN(channel->index), 0,
@@ -860,12 +869,6 @@ static int dw_dma_copy(struct dma_chan_data *channel, int bytes,
 		if (ret < 0)
 			return ret;
 	}
-
-	tracev_dwdma("dw_dma_copy(): dma %d channel %d copy",
-		     channel->dma->plat_data.id, channel->index);
-
-	if (channel->cb && channel->cb_type & DMA_CB_TYPE_COPY)
-		channel->cb(channel->cb_data, DMA_CB_TYPE_COPY, &next);
 
 	dw_dma_verify_transfer(channel, &next);
 

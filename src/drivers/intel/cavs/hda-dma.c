@@ -274,10 +274,22 @@ static void hda_dma_post_copy(struct dma_chan_data *chan, int bytes)
 	if (chan->cb)
 		chan->cb(chan->cb_data, DMA_CB_TYPE_COPY, &next);
 
-	/* Force Host DMA to exit L1 */
 	if (chan->direction == DMA_DIR_HMEM_TO_LMEM ||
-	    chan->direction == DMA_DIR_LMEM_TO_HMEM)
+	    chan->direction == DMA_DIR_LMEM_TO_HMEM) {
+		/* set BFPI to let host gateway know we have read size,
+		 * which will trigger next copy start.
+		 */
+		hda_dma_inc_fp(chan, bytes);
+
+		/* Force Host DMA to exit L1 */
 		pm_runtime_put(PM_RUNTIME_HOST_DMA_L1, 0);
+	} else {
+		/*
+		 * set BFPI to let link gateway know we have read size,
+		 * which will trigger next copy start.
+		 */
+		hda_dma_inc_link_fp(chan, bytes);
+	}
 }
 
 static int hda_dma_link_copy_ch(struct dma_chan_data *chan, int bytes)
@@ -295,11 +307,6 @@ static int hda_dma_link_copy_ch(struct dma_chan_data *chan, int bytes)
 	if (dgcs & DGCS_BOR)
 		dma_chan_reg_update_bits(chan, DGCS, DGCS_BOR, DGCS_BOR);
 
-	/*
-	 * set BFPI to let link gateway know we have read size,
-	 * which will trigger next copy start.
-	 */
-	hda_dma_inc_link_fp(chan, bytes);
 	hda_dma_post_copy(chan, bytes);
 
 	hda_dma_get_dbg_vals(chan, HDA_DBG_POST, HDA_DBG_LINK);
@@ -367,11 +374,6 @@ static int hda_dma_host_copy(struct dma_chan_data *channel, int bytes,
 			hda_dma_is_buffer_empty(channel);
 		if (!ret)
 			return -ENODATA;
-	} else {
-		/* set BFPI to let host gateway know we have read size,
-		 * which will trigger next copy start.
-		 */
-		hda_dma_inc_fp(channel, bytes);
 	}
 
 	/* blocking mode copy */
