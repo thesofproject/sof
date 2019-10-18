@@ -112,7 +112,8 @@ int dma_copy_to_host_nowait(struct dma_copy *dc, struct dma_sg_config *host_sg,
 	if (err < 0)
 		return err;
 
-	err = dma_copy(dc->chan, local_sg_elem.size, DMA_COPY_ONE_SHOT);
+	err = dma_copy(dc->chan, local_sg_elem.size,
+		       DMA_COPY_ONE_SHOT | DMA_COPY_BLOCKING);
 	if (err < 0)
 		return err;
 
