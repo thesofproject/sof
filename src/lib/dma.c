@@ -5,7 +5,9 @@
 // Author: Ranjani Sridharan <ranjani.sridharan@linux.intel.com>
 
 #include <sof/atomic.h>
+#include <sof/audio/buffer.h>
 #include <sof/lib/alloc.h>
+#include <sof/lib/cache.h>
 #include <sof/lib/dma.h>
 #include <sof/spinlock.h>
 #include <sof/trace/trace.h>
@@ -185,4 +187,64 @@ void dma_sg_free(struct dma_sg_elem_array *elem_array)
 {
 	rfree(elem_array->elems);
 	dma_sg_init(elem_array);
+}
+
+void dma_buffer_copy_from(struct comp_buffer *source, struct comp_buffer *sink,
+	void (*process)(struct comp_buffer *, struct comp_buffer *, uint32_t),
+	uint32_t bytes)
+{
+	uint32_t head = bytes;
+	uint32_t tail = 0;
+
+	/* source buffer contains data copied by DMA */
+	if (source->r_ptr + bytes > source->end_addr) {
+		head = source->end_addr - source->r_ptr;
+		tail = bytes - head;
+	}
+
+	dcache_invalidate_region(source->r_ptr, head);
+	if (tail)
+		dcache_invalidate_region(source->addr, tail);
+
+	/* process data */
+	process(source, sink, bytes);
+
+	source->r_ptr += bytes;
+
+	/* check for pointer wrap */
+	if (source->r_ptr >= source->end_addr)
+		source->r_ptr = source->addr +
+			(source->r_ptr - source->end_addr);
+
+	comp_update_buffer_produce(sink, bytes);
+}
+
+void dma_buffer_copy_to(struct comp_buffer *source, struct comp_buffer *sink,
+	void (*process)(struct comp_buffer *, struct comp_buffer *, uint32_t),
+	uint32_t bytes)
+{
+	uint32_t head = bytes;
+	uint32_t tail = 0;
+
+	/* process data */
+	process(source, sink, bytes);
+
+	/* sink buffer contains data meant to copied to DMA */
+	if (sink->w_ptr + bytes > sink->end_addr) {
+		head = sink->end_addr - sink->w_ptr;
+		tail = bytes - head;
+	}
+
+	dcache_writeback_region(sink->w_ptr, head);
+	if (tail)
+		dcache_writeback_region(sink->addr, tail);
+
+	sink->w_ptr += bytes;
+
+	/* check for pointer wrap */
+	if (source->r_ptr >= sink->end_addr)
+		sink->w_ptr = sink->addr +
+			(sink->w_ptr - sink->end_addr);
+
+	comp_update_buffer_consume(source, bytes);
 }
