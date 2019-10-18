@@ -120,7 +120,7 @@ static int ipc_get_page_descriptors(struct dma *dmac, uint8_t *page_table,
 	}
 
 	/* start the copy of page table to DSP */
-	ret = dma_copy(chan, elem.size, DMA_COPY_ONE_SHOT);
+	ret = dma_copy(chan, elem.size, DMA_COPY_ONE_SHOT | DMA_COPY_BLOCKING);
 	if (ret < 0) {
 		trace_ipc_error("ipc_get_page_descriptors() error: "
 				"dma_start() failed");

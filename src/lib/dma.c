@@ -242,7 +242,7 @@ void dma_buffer_copy_to(struct comp_buffer *source, struct comp_buffer *sink,
 	sink->w_ptr += bytes;
 
 	/* check for pointer wrap */
-	if (source->r_ptr >= sink->end_addr)
+	if (sink->w_ptr >= sink->end_addr)
 		sink->w_ptr = sink->addr +
 			(sink->w_ptr - sink->end_addr);
 
