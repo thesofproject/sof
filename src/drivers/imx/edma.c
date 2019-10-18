@@ -293,6 +293,11 @@ static int edma_setup_tcd(struct dma_chan_data *channel, uint16_t soff,
 	elem_count = 2;
 	elem_size = total_size / elem_count;
 
+	/* burst_elems is in words translate it in bytes and divide by two
+	 * to fill the FIFO to half its size
+	 */
+	burst_elems = burst_elems * 4U / 2U;
+
 	size = MIN(elem_size, burst_elems);
 	while (size >= 4U) {
 		if ((elem_size % size) == 0UL)
