@@ -227,4 +227,41 @@ static inline void buffer_init(struct comp_buffer *buffer, uint32_t size,
 	buffer->avail = 0;
 	buffer_zero(buffer);
 }
+
+static inline void buffer_copy_s16(struct comp_buffer *source,
+				   struct comp_buffer *sink, uint32_t bytes)
+{
+	uint32_t frames = bytes / sizeof(int16_t);
+	uint32_t buff_frag = 0;
+	int16_t *src;
+	int16_t *dst;
+	uint32_t i;
+
+	for (i = 0; i < frames; i++) {
+		src = buffer_read_frag_s16(source, buff_frag);
+		dst = buffer_write_frag_s16(sink, buff_frag);
+		*dst = *src;
+
+		buff_frag++;
+	}
+}
+
+static inline void buffer_copy_s32(struct comp_buffer *source,
+				   struct comp_buffer *sink, uint32_t bytes)
+{
+	uint32_t frames = bytes / sizeof(int32_t);
+	uint32_t buff_frag = 0;
+	int32_t *src;
+	int32_t *dst;
+	uint32_t i;
+
+	for (i = 0; i < frames; i++) {
+		src = buffer_read_frag_s32(source, buff_frag);
+		dst = buffer_write_frag_s32(sink, buff_frag);
+		*dst = *src;
+
+		buff_frag++;
+	}
+}
+
 #endif /* __SOF_AUDIO_BUFFER_H__ */
