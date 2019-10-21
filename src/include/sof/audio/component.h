@@ -233,7 +233,6 @@ struct comp_dev {
 
 	/* runtime */
 	uint16_t state;		   /**< COMP_STATE_ */
-	uint16_t is_dma_connected; /**< component is connected to DMA */
 	uint64_t position;	   /**< component rendering position */
 	uint32_t frames;	   /**< number of frames we copy to sink */
 	uint32_t output_rate;      /**< 0 means all output rates are fine */
