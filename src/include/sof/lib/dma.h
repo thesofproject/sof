@@ -66,9 +66,8 @@ struct comp_buffer;
 #define DMA_CB_TYPE_COPY	BIT(1)
 
 /* DMA copy flags */
-#define DMA_COPY_PRELOAD	BIT(0)
-#define DMA_COPY_BLOCKING	BIT(1)
-#define DMA_COPY_ONE_SHOT	BIT(2)
+#define DMA_COPY_BLOCKING	BIT(0)
+#define DMA_COPY_ONE_SHOT	BIT(1)
 
 /* We will use this enum in cb handler to inform dma what
  * action we need to perform.
