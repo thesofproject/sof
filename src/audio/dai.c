@@ -533,11 +533,8 @@ static int dai_comp_trigger(struct comp_dev *dev, int cmd)
 	case COMP_TRIGGER_START:
 		trace_dai_with_ids(dev, "dai_comp_trigger(), START");
 
-		/* only start the DAI if we are not XRUN handling
-		 * and the pipeline is not preloaded as in this
-		 * case start is deferred to the first copy call
-		 */
-		if (dd->xrun == 0 && !pipeline_is_preload(dev->pipeline)) {
+		/* only start the DAI if we are not XRUN handling */
+		if (dd->xrun == 0) {
 			/* start the DAI */
 			dai_trigger(dd->dai, cmd, dev->params.direction);
 			ret = dma_start(dd->chan);
@@ -638,19 +635,6 @@ static int dai_copy(struct comp_dev *dev)
 	int ret = 0;
 
 	tracev_dai_with_ids(dev, "dai_copy()");
-
-	/* start DMA on preload */
-	if (pipeline_is_preload(dev->pipeline)) {
-		/* start the DAI */
-		dai_trigger(dd->dai, COMP_TRIGGER_START,
-			    dev->params.direction);
-		ret = dma_start(dd->chan);
-		if (ret < 0)
-			return ret;
-		dai_update_start_position(dev);
-
-		return 0;
-	}
 
 	/* get data sizes from DMA */
 	ret = dma_get_data_size(dd->chan, &avail_bytes, &free_bytes);
