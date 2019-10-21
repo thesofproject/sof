@@ -367,15 +367,6 @@ static int hda_dma_host_copy(struct dma_chan_data *channel, int bytes,
 
 	hda_dma_get_dbg_vals(channel, HDA_DBG_PRE, HDA_DBG_HOST);
 
-	if (flags & DMA_COPY_PRELOAD) {
-		/* report lack of data if preload is not yet finished */
-		ret = channel->direction == DMA_DIR_HMEM_TO_LMEM ?
-			hda_dma_is_buffer_full(channel) :
-			hda_dma_is_buffer_empty(channel);
-		if (!ret)
-			return -ENODATA;
-	}
-
 	/* blocking mode copy */
 	if (flags & DMA_COPY_BLOCKING) {
 		ret = channel->direction == DMA_DIR_HMEM_TO_LMEM ?
