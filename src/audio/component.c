@@ -98,33 +98,6 @@ void comp_unregister(struct comp_driver *drv)
 	irq_local_enable(flags);
 }
 
-int comp_set_sink_buffer(struct comp_dev *dev, uint32_t period_bytes,
-			 uint32_t periods)
-{
-	struct comp_buffer *sinkb;
-	int ret = 0;
-
-	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
-				source_list);
-
-	/* components connected to dma configure buffer independently */
-	if (!sinkb->sink->is_dma_connected) {
-		ret = buffer_set_size(sinkb, period_bytes * periods);
-		if (ret < 0) {
-			trace_comp_error("comp_set_sink_buffer() error: "
-					 "buffer_set_size() failed");
-			return ret;
-		}
-	} else if (sinkb->size < period_bytes * periods) {
-		trace_comp_error("comp_set_sink_buffer() error: "
-				 "sink buffer size is not sufficient");
-		ret = -EINVAL;
-		return ret;
-	}
-
-	return ret;
-}
-
 int comp_set_state(struct comp_dev *dev, int cmd)
 {
 	int requested_state = comp_get_requested_state(cmd);

@@ -778,12 +778,10 @@ static int eq_iir_prepare(struct comp_dev *dev)
 	else
 		dev->params.frame_fmt = cd->sink_format;
 
-	/* set downstream buffer size */
-	ret = comp_set_sink_buffer(dev, sink_period_bytes,
-				   config->periods_sink);
-	if (ret < 0) {
+	if (sinkb->size < config->periods_sink * sink_period_bytes) {
 		trace_eq_error("eq_iir_prepare() error: "
-			       "comp_set_sink_buffer() failed");
+			       "sink buffer size is insufficient");
+		ret = -ENOMEM;
 		goto err;
 	}
 

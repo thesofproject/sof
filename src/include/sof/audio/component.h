@@ -380,15 +380,6 @@ static inline void comp_free(struct comp_dev *dev)
 int comp_set_state(struct comp_dev *dev, int cmd);
 
 /**
- * Set component's sink buffer size
- * @param dev Component device.
- * @param period_bytes Amount of bytes in one period.
- * @param periods Amount of periods.
- */
-int comp_set_sink_buffer(struct comp_dev *dev, uint32_t period_bytes,
-			 uint32_t periods);
-
-/**
  * Component parameter init.
  * @param dev Component device.
  * @return 0 if succeeded, error code otherwise.
