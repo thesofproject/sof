@@ -380,12 +380,10 @@ static int selector_prepare(struct comp_dev *dev)
 	trace_selector("selector_prepare(): sink->params.channels = %u",
 		       sinkb->sink->params.channels);
 
-	/* set downstream buffer size */
-	ret = comp_set_sink_buffer(dev, cd->sink_period_bytes,
-				   config->periods_sink);
-	if (ret < 0) {
+	if (sinkb->size < config->periods_sink * cd->sink_period_bytes) {
 		trace_selector_error("selector_prepare() error: "
-				     "comp_set_sink_buffer() failed");
+				     "sink buffer size is insufficient");
+		ret = -ENOMEM;
 		goto err;
 	}
 
