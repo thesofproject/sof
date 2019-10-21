@@ -168,8 +168,6 @@ static int idc_pipeline_trigger(uint32_t cmd)
 	struct ipc *ipc = cache_to_uncache(_ipc);
 	struct sof_ipc_stream *data = ipc->comp_data;
 	struct ipc_comp_dev *pcm_dev;
-	struct edf_task_pdata *edf_pdata;
-	struct task *task;
 	int ret;
 
 	/* invalidate stream data */
@@ -187,17 +185,6 @@ static int idc_pipeline_trigger(uint32_t cmd)
 
 		pipeline_cache(pcm_dev->cd->pipeline,
 			       pcm_dev->cd, CACHE_INVALIDATE);
-
-		/* TODO: Temporary W/A for task sharing between cores.
-		 * Should be removed after changing memory management for
-		 * slave cores.
-		 */
-		if (pcm_dev->cd->pipeline->preload_task) {
-			task = pcm_dev->cd->pipeline->preload_task;
-			edf_pdata = edf_sch_get_pdata(task);
-			dcache_invalidate_region(edf_pdata, sizeof(*edf_pdata));
-			task_context_cache(edf_pdata->ctx, CACHE_INVALIDATE);
-		}
 	}
 
 	/* check whether we are executing from the right core */
@@ -208,22 +195,9 @@ static int idc_pipeline_trigger(uint32_t cmd)
 	ret = pipeline_trigger(pcm_dev->cd->pipeline, pcm_dev->cd, cmd);
 
 	/* writeback pipeline on stop */
-	if (cmd == COMP_TRIGGER_STOP) {
-		/* TODO: Temporary W/A for task sharing between cores.
-		 * Should be removed after changing memory management for
-		 * slave cores.
-		 */
-		if (pcm_dev->cd->pipeline->preload_task) {
-			task = pcm_dev->cd->pipeline->preload_task;
-			edf_pdata = edf_sch_get_pdata(task);
-			task_context_cache(edf_pdata->ctx, CACHE_WRITEBACK_INV);
-			dcache_writeback_invalidate_region(edf_pdata,
-							   sizeof(*edf_pdata));
-		}
-
+	if (cmd == COMP_TRIGGER_STOP)
 		pipeline_cache(pcm_dev->cd->pipeline,
 			       pcm_dev->cd, CACHE_WRITEBACK_INV);
-	}
 
 	return ret;
 }

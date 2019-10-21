@@ -75,11 +75,9 @@ struct pipeline {
 	/* runtime status */
 	int32_t xrun_bytes;		/* last xrun length */
 	uint32_t status;		/* pipeline status */
-	bool preload;			/* is pipeline preload needed */
 
 	/* scheduling */
 	struct task *pipe_task;		/* pipeline processing task */
-	struct task *preload_task;	/* pipeline preload task */
 
 	/* component that drives scheduling in this pipe */
 	struct comp_dev *sched_comp;
@@ -100,12 +98,6 @@ static inline bool pipeline_is_same_sched_comp(struct pipeline *current,
 					       struct pipeline *previous)
 {
 	return current->sched_comp == previous->sched_comp;
-}
-
-/* checks if pipeline is in preload phase */
-static inline bool pipeline_is_preload(struct pipeline *p)
-{
-	return p->preload;
 }
 
 /* checks if pipeline is scheduled with timer */

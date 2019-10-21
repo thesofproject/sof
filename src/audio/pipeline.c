@@ -38,8 +38,6 @@ struct pipeline_data {
 };
 
 static enum task_state pipeline_task(void *arg);
-static enum task_state pipeline_preload_task(void *arg);
-static void pipeline_schedule_preload(struct pipeline *p);
 
 /* create new pipeline - returns pipeline id or negative error */
 struct pipeline *pipeline_new(struct sof_ipc_pipe_new *pipe_desc,
@@ -234,9 +232,6 @@ int pipeline_free(struct pipeline *p)
 	if (p->pipe_task)
 		schedule_task_free(p->pipe_task);
 
-	if (p->preload_task)
-		schedule_task_free(p->preload_task);
-
 	/* now free the pipeline */
 	rfree(p);
 
@@ -373,8 +368,6 @@ static int pipeline_comp_task_init(struct pipeline *p)
 {
 	uint32_t type;
 
-	p->preload = false;
-
 	/* initialize task if necessary */
 	if (!p->pipe_task) {
 		/* right now we always consider pipeline as a low latency
@@ -387,18 +380,6 @@ static int pipeline_comp_task_init(struct pipeline *p)
 		if (!p->pipe_task) {
 			trace_pipe_error("pipeline_prepare() error: task init "
 					 "failed");
-			return -ENOMEM;
-		}
-	}
-
-	/* initialize preload task if necessary */
-	if (p->preload && !p->preload_task) {
-		/* preload task is always EDF as it guarantees scheduling */
-		p->preload_task = pipeline_task_init(p, SOF_SCHEDULE_EDF,
-						     pipeline_preload_task);
-		if (!p->preload_task) {
-			trace_pipe_error("pipeline_prepare() error: preload "
-					 "task init failed");
 			return -ENOMEM;
 		}
 	}
@@ -449,7 +430,7 @@ static int pipeline_comp_prepare(struct comp_dev *current, void *data, int dir)
 				      &buffer_reset_pos, dir);
 }
 
-/* prepare the pipeline for usage - preload host buffers here */
+/* prepare the pipeline for usage */
 int pipeline_prepare(struct pipeline *p, struct comp_dev *dev)
 {
 	struct pipeline_data ppl_data;
@@ -501,8 +482,6 @@ void pipeline_cache(struct pipeline *p, struct comp_dev *dev, int cmd)
 	if (cmd == CACHE_INVALIDATE) {
 		dcache_invalidate_region(p, sizeof(*p));
 		dcache_invalidate_region(p->pipe_task, sizeof(*p->pipe_task));
-		dcache_invalidate_region(p->preload_task,
-					 sizeof(*p->preload_task));
 	}
 
 	trace_pipe_with_ids(p, "pipeline_cache()");
@@ -519,8 +498,6 @@ void pipeline_cache(struct pipeline *p, struct comp_dev *dev, int cmd)
 	if (cmd == CACHE_WRITEBACK_INV) {
 		dcache_writeback_invalidate_region(p->pipe_task,
 						   sizeof(*p->pipe_task));
-		dcache_writeback_invalidate_region(p->preload_task,
-						   sizeof(*p->preload_task));
 		dcache_writeback_invalidate_region(p, sizeof(*p));
 	}
 
@@ -543,15 +520,8 @@ static void pipeline_comp_trigger_sched_comp(struct pipeline *p,
 		break;
 	case COMP_TRIGGER_RELEASE:
 	case COMP_TRIGGER_START:
+		pipeline_schedule_copy(p, 0);
 		p->xrun_bytes = 0;
-
-		/* schedule preload if pipeline is not timer driven */
-		if (p->preload && !pipeline_is_timer_driven(p))
-			/* schedule pipeline preload */
-			pipeline_schedule_preload(p);
-		else
-			pipeline_schedule_copy(p, 0);
-
 		p->status = COMP_STATE_ACTIVE;
 		break;
 	case COMP_TRIGGER_SUSPEND:
@@ -809,10 +779,8 @@ static int pipeline_comp_copy(struct comp_dev *current, void *data, int dir)
 
 /* Copy data across all pipeline components.
  * For capture pipelines it always starts from source component
- * and continues downstream. For playback pipelines there are two
- * possibilities: for preload it starts from sink component and
- * continues upstream and if not preload, then it first copies
- * sink component itself and then goes upstream.
+ * and continues downstream and for playback pipelines it first
+ * copies sink component itself and then goes upstream.
  */
 static int pipeline_copy(struct pipeline *p)
 {
@@ -837,12 +805,6 @@ static int pipeline_copy(struct pipeline *p)
 		trace_pipe_error("pipeline_copy() error: ret = %d, start"
 				 "->comp.id = %u, dir = %u", ret,
 				 start->comp.id, dir);
-
-	/* stop preload only after full walkthrough */
-	if (ret != PPL_STATUS_PATH_STOP && p->preload) {
-		p->preload = false;
-		pipeline_schedule_copy(p, 0);
-	}
 
 	return ret;
 }
@@ -991,11 +953,6 @@ void pipeline_schedule_cancel(struct pipeline *p)
 	schedule_task_cancel(p->pipe_task);
 }
 
-static void pipeline_schedule_preload(struct pipeline *p)
-{
-	schedule_task(p->preload_task, 0, p->ipc_pipe.period);
-}
-
 static enum task_state pipeline_task(void *arg)
 {
 	struct pipeline *p = arg;
@@ -1028,18 +985,4 @@ static enum task_state pipeline_task(void *arg)
 	tracev_pipe("pipeline_task() sched");
 
 	return SOF_TASK_STATE_RESCHEDULE;
-}
-
-static enum task_state pipeline_preload_task(void *arg)
-{
-	struct pipeline *p = arg;
-
-	if (pipeline_copy(p) < 0) {
-		trace_pipe_error_with_ids(p, "pipeline_preload_task(): preload "
-					  "has failed");
-		return SOF_TASK_STATE_COMPLETED;
-	}
-
-	return p->preload ? SOF_TASK_STATE_RESCHEDULE :
-		SOF_TASK_STATE_COMPLETED;
 }
