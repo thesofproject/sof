@@ -154,8 +154,8 @@ static void mixer_free(struct comp_dev *dev)
 static int mixer_params(struct comp_dev *dev)
 {
 	struct sof_ipc_comp_config *config = COMP_GET_CONFIG(dev);
+	struct comp_buffer *sinkb;
 	uint32_t period_bytes;
-	int ret;
 
 	trace_mixer("mixer_params()");
 
@@ -166,13 +166,13 @@ static int mixer_params(struct comp_dev *dev)
 		return -EINVAL;
 	}
 
-	/* set downstream buffer size */
-	ret = comp_set_sink_buffer(dev, period_bytes,
-				   config->periods_sink);
-	if (ret < 0) {
+	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
+				source_list);
+
+	if (sinkb->size < config->periods_sink * period_bytes) {
 		trace_mixer_error("mixer_params() error: "
-				  "comp_set_sink_buffer() failed");
-		return ret;
+				  "sink buffer size is insufficient");
+		return -ENOMEM;
 	}
 
 	return 0;
