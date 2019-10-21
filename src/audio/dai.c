@@ -596,13 +596,9 @@ static int dai_check_for_xrun(struct comp_dev *dev, uint32_t copy_bytes)
 	struct dai_data *dd = comp_get_drvdata(dev);
 	struct comp_buffer *local_buffer;
 
-	/* data available for copy */
-	if (copy_bytes)
+	/* data available for copy or just starting */
+	if (copy_bytes || dd->start_position == dev->position)
 		return 0;
-
-	/* no data yet, we're just starting */
-	if (dd->start_position == dev->position)
-		return PPL_STATUS_PATH_STOP;
 
 	/* xrun occurred */
 	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK) {
@@ -656,7 +652,7 @@ static int dai_copy(struct comp_dev *dev)
 
 	/* check for underrun or overrun */
 	ret = dai_check_for_xrun(dev, copy_bytes);
-	if (ret < 0 || ret == PPL_STATUS_PATH_STOP)
+	if (ret < 0)
 		return ret;
 
 	ret = dma_copy(dd->chan, copy_bytes, 0);
