@@ -182,7 +182,7 @@ void rfree(void *ptr);
 	} while (0);					\
 	_ptr; })
 
-#define rbrealloc_a(ptr, zone, caps, bytes, alignment)		\
+#define rbrealloc_align(ptr, zone, caps, bytes, alignment)		\
 	({void *_ptr;					\
 	do {						\
 		_ptr = _brealloc(ptr, zone, caps, bytes, alignment);	\
