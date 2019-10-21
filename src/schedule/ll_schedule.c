@@ -57,7 +57,7 @@ static bool schedule_ll_is_pending(struct ll_schedule_data *sch)
 }
 
 static void schedule_ll_task_update_start(struct ll_schedule_data *sch,
-					  struct task *task)
+					  struct task *task, uint64_t last_tick)
 {
 	struct ll_task_pdata *pdata = ll_sch_get_pdata(task);
 	uint64_t next;
@@ -67,10 +67,11 @@ static void schedule_ll_task_update_start(struct ll_schedule_data *sch,
 	if (task->flags & SOF_SCHEDULE_FLAG_SYNC)
 		task->start += next;
 	else
-		task->start = next + sch->domain->last_tick;
+		task->start = next + last_tick;
 }
 
-static void schedule_ll_tasks_execute(struct ll_schedule_data *sch)
+static void schedule_ll_tasks_execute(struct ll_schedule_data *sch,
+				      uint64_t last_tick)
 {
 	struct list_item *wlist;
 	struct list_item *tlist;
@@ -95,7 +96,8 @@ static void schedule_ll_tasks_execute(struct ll_schedule_data *sch)
 					sch->domain->registered[cpu] = false;
 			} else {
 				/* update task's start time */
-				schedule_ll_task_update_start(sch, task);
+				schedule_ll_task_update_start(sch, task,
+							      last_tick);
 			}
 		}
 	}
@@ -126,6 +128,7 @@ static void schedule_ll_tasks_run(void *data)
 {
 	struct ll_schedule_data *sch = data;
 	uint32_t num_clients;
+	uint64_t last_tick;
 	uint32_t flags;
 
 	domain_disable(sch->domain, cpu_get_id());
@@ -133,6 +136,8 @@ static void schedule_ll_tasks_run(void *data)
 	irq_local_disable(flags);
 
 	spin_lock(sch->domain->lock);
+
+	last_tick = sch->domain->last_tick;
 
 	/* clear domain only if all clients are done */
 	num_clients = atomic_sub(&sch->domain->num_clients, 1);
@@ -143,7 +148,7 @@ static void schedule_ll_tasks_run(void *data)
 
 	/* run tasks if there are any pending */
 	if (schedule_ll_is_pending(sch))
-		schedule_ll_tasks_execute(sch);
+		schedule_ll_tasks_execute(sch, last_tick);
 
 	spin_lock(sch->domain->lock);
 
