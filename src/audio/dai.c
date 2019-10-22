@@ -10,6 +10,7 @@
 #include <sof/audio/pipeline.h>
 #include <sof/common.h>
 #include <sof/debug/panic.h>
+#include <sof/drivers/edma.h>
 #include <sof/drivers/ipc.h>
 #include <sof/drivers/timer.h>
 #include <sof/lib/alloc.h>
@@ -681,6 +682,7 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 	struct dai_data *dd = comp_get_drvdata(dev);
 	int channel = 0;
 	int i;
+	int handshake = dai_get_handshake(dd->dai, dev->params.direction, dd->stream_id);
 
 	trace_dai("config comp %d pipe %d dai %d type %d", dev->comp.id,
 		  dev->comp.pipeline_id, config->dai_index, config->type);
@@ -797,6 +799,24 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 				   channel);
 		break;
 	case SOF_DAI_IMX_SAI:
+		dd->config.burst_elems =
+			dd->dai->plat_data.fifo[dev->params.direction].depth;
+		break;
+	case SOF_DAI_IMX_ESAI:
+		channel = EDMA_HS_GET_CHAN(handshake);
+
+		switch (dev->params.frame_fmt) {
+		case SOF_IPC_FRAME_S16_LE:
+			dd->frame_bytes = 2;
+			break;
+		case SOF_IPC_FRAME_S24_4LE:
+		case SOF_IPC_FRAME_S32_LE:
+			dd->frame_bytes = 4;
+			break;
+		default:
+			trace_dai_error_with_ids(dev, "dai_config() unsupported frame_fmt");
+		}
+
 		dd->config.burst_elems =
 			dd->dai->plat_data.fifo[dev->params.direction].depth;
 		break;
