@@ -204,9 +204,16 @@ void trace_flush(void)
 	dma_trace_flush((void *)t);
 }
 
+void trace_on(void)
+{
+	trace->enable = 1;
+	dma_trace_on();
+}
+
 void trace_off(void)
 {
 	trace->enable = 0;
+	dma_trace_off();
 }
 
 void trace_init(struct sof *sof)

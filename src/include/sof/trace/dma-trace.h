@@ -51,6 +51,8 @@ int dma_trace_host_buffer(struct dma_trace_data *d,
 			  uint32_t host_size);
 int dma_trace_enable(struct dma_trace_data *d);
 void dma_trace_flush(void *t);
+void dma_trace_on(void);
+void dma_trace_off(void);
 
 void dtrace_event(const char *e, uint32_t size);
 void dtrace_event_atomic(const char *e, uint32_t length);
