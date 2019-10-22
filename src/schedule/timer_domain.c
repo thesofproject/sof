@@ -32,6 +32,9 @@ static inline void timer_report_delay(int id, uint64_t delay)
 
 	trace_ll_error("timer_report_delay(): timer %d delayed by %d uS %d "
 		       "ticks", id, ll_delay_us, delay);
+
+	/* Fix compile error when traces are disabled */
+	(void)ll_delay_us;
 }
 
 static int timer_domain_register(struct ll_schedule_domain *domain,
