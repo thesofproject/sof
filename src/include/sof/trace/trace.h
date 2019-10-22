@@ -160,6 +160,7 @@ _TRACE_EVENT_NTH_DECLARE_GROUP(4)
 #define _TRACE_EVENT_MAX_ARGUMENT_COUNT 4
 
 void trace_flush(void);
+void trace_on(void);
 void trace_off(void);
 void trace_init(struct sof *sof);
 
