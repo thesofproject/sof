@@ -51,6 +51,7 @@ set(TPLGS
 	"sof-glk-rt5682\;sof-glk-rt5682"
 	"sof-icl-nocodec\;sof-icl-nocodec"
 	"sof-apl-eq-pcm512x\;sof-apl-eq-pcm512x"
+	"sof-apl-smart-amp-pcm512x\;sof-apl-smart-amp-pcm512x"
 	"sof-apl-eq-dmic\;sof-apl-eq-dmic"
 	"sof-apl-src-dmic\;sof-apl-src-dmic"
 	"sof-apl-dmic-a2ch\;sof-apl-dmic-a2ch"
