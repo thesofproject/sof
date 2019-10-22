@@ -12,26 +12,25 @@ define(DMIC_DAI_LINK_16k_ID, `7')
 # Define the pipelines
 #
 
-dnl PIPELINE_PCM_DAI_ADD(pipeline,
+dnl PIPELINE_PCM_ADD(pipeline,
 dnl     pipe id, pcm, max channels, format,
 dnl     period, priority, core,
-dnl     dai type, dai_index, dai format,
-dnl     dai periods, pcm_min_rate, pcm_max_rate,
-dnl     pipeline_rate, time_domain)
+dnl     pcm_min_rate, pcm_max_rate, pipeline_rate,
+dnl     time_domain, sched_comp)
 
 # Passthrough capture pipeline using max channels defined by CHANNELS.
 
 # Set 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_DAI_ADD(sof/pipe-eq-capture.m4,
+PIPELINE_PCM_ADD(sof/pipe-eq-capture.m4,
 	DMIC_PIPELINE_48k_ID, DMIC_DAI_LINK_48k_ID, CHANNELS, s32le,
-	1000, 0, 0, DMIC, 0, s32le, 3, 48000, 48000, 48000)
+	1000, 0, 0, 48000, 48000, 48000)
 
 # Passthrough capture pipeline using max channels defined by CHANNELS.
 
 # Schedule with 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_DAI_ADD(sof/pipe-eq-capture-16khz.m4,
+PIPELINE_PCM_ADD(sof/pipe-eq-capture-16khz.m4,
 	DMIC_PIPELINE_16k_ID, DMIC_DAI_LINK_16k_ID, CHANNELS, s32le,
-	1000, 0, 0, DMIC, 1, s32le, 3, 16000, 16000, 16000)
+	1000, 0, 0, 16000, 16000, 16000)
 
 #
 # DAIs configuration
@@ -42,18 +41,18 @@ dnl     pipe id, dai type, dai_index, dai_be,
 dnl     buffer, periods, format,
 dnl     deadline, priority, core, time_domain)
 
-# capture DAI is DMIC 0 using 3 periods
+# capture DAI is DMIC 0 using 2 periods
 # Buffers use s32le format, 1000us deadline on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
 	DMIC_PIPELINE_48k_ID, DMIC, 0, dmic01,
-	concat(`PIPELINE_SINK_', DMIC_PIPELINE_48k_ID), 3, s32le,
+	concat(`PIPELINE_SINK_', DMIC_PIPELINE_48k_ID), 2, s32le,
 	1000, 0, 0, 48000, 48000, 48000)
 
-# capture DAI is DMIC 1 using 3 periods
+# capture DAI is DMIC 1 using 2 periods
 # Buffers use s32le format, with 16 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
 	DMIC_PIPELINE_16k_ID, DMIC, 1, dmic16k,
-	concat(`PIPELINE_SINK_', DMIC_PIPELINE_16k_ID), 3, s32le,
+	concat(`PIPELINE_SINK_', DMIC_PIPELINE_16k_ID), 2, s32le,
 	1000, 0, 0, 16000, 16000, 16000)
 
 dnl PCM_DUPLEX_ADD(name, pcm_id, playback, capture)

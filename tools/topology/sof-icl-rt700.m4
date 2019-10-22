@@ -31,46 +31,39 @@ DEBUG_START
 # PCM6 ----> volume -----> iDisp3 (HDMI/DP playback, BE link 6)
 #
 
-dnl PIPELINE_PCM_DAI_ADD(pipeline,
-dnl     pipe id, pcm, max channels, format,
-dnl     period, priority, core,
-dnl     dai type, dai_index, dai format,
-dnl     dai periods, pcm_min_rate, pcm_max_rate,
-dnl     pipeline_rate, time_domain)
-
-# Low Latency playback pipeline 1 on PCM 0 using max 2 channels of s32le.
-# Schedule 48 frames per 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_DAI_ADD(sof/pipe-volume-playback.m4,
-	1, 0, 2, s24le,
-	1000, 0, 0, ALH, 2, s24le, 3,
-	48000, 48000, 48000)
-
-# Low Latency capture pipeline 2 on PCM 1 using max 2 channels of s32le.
-# Schedule 48 frames per 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_DAI_ADD(sof/pipe-volume-capture.m4,
-	2, 1, 2, s24le,
-	1000, 0, 0, ALH, 3, s24le, 3,
-	48000, 48000, 48000)
-
-# Passthrough capture pipeline 3 on PCM 2 using max 4 channels.
-# Schedule 48 frames per 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_DAI_ADD(sof/pipe-passthrough-capture.m4,
-	3, 2, 4, s32le,
-	1000, 0, 0, DMIC, 0, s32le, 3,
-	48000, 48000, 48000)
-
-# Passthrough capture pipeline 4 on PCM 3 using max 2 channels.
-# Schedule 16 frames per 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_DAI_ADD(sof/pipe-passthrough-capture.m4,
-	4, 3, 2, s16le,
-	1000, 0, 0, DMIC, 1, s16le, 3,
-	16000, 16000, 16000)
-
 dnl PIPELINE_PCM_ADD(pipeline,
 dnl     pipe id, pcm, max channels, format,
 dnl     period, priority, core,
 dnl     pcm_min_rate, pcm_max_rate, pipeline_rate,
 dnl     time_domain, sched_comp)
+
+# Low Latency playback pipeline 1 on PCM 0 using max 2 channels of s32le.
+# Schedule 48 frames per 1000us deadline on core 0 with priority 0
+PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
+	1, 0, 2, s24le,
+	1000, 0, 0,
+	48000, 48000, 48000)
+
+# Low Latency capture pipeline 2 on PCM 1 using max 2 channels of s32le.
+# Schedule 48 frames per 1000us deadline on core 0 with priority 0
+PIPELINE_PCM_ADD(sof/pipe-volume-capture.m4,
+	2, 1, 2, s24le,
+	1000, 0, 0,
+	48000, 48000, 48000)
+
+# Passthrough capture pipeline 3 on PCM 2 using max 4 channels.
+# Schedule 48 frames per 1000us deadline on core 0 with priority 0
+PIPELINE_PCM_ADD(sof/pipe-passthrough-capture.m4,
+	3, 2, 4, s32le,
+	1000, 0, 0,
+	48000, 48000, 48000)
+
+# Passthrough capture pipeline 4 on PCM 3 using max 2 channels.
+# Schedule 16 frames per 1000us deadline on core 0 with priority 0
+PIPELINE_PCM_ADD(sof/pipe-passthrough-capture.m4,
+	4, 3, 2, s16le,
+	1000, 0, 0,
+	16000, 16000, 16000)
 
 # Low Latency playback pipeline 5 on PCM 4 using max 2 channels of s32le.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
@@ -102,32 +95,32 @@ dnl     pipe id, dai type, dai_index, dai_be,
 dnl     buffer, periods, format,
 dnl     deadline, priority, core, time_domain)
 
-# playback DAI is ALH(SDW0 PIN2) using 3 periods
+# playback DAI is ALH(SDW0 PIN2) using 2 periods
 # Buffers use s32le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
 	1, ALH, 2, SDW0-Playback,
-	PIPELINE_SOURCE_1, 3, s24le,
+	PIPELINE_SOURCE_1, 2, s24le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
-# capture DAI is ALH(SDW0 PIN2) using 3 periods
+# capture DAI is ALH(SDW0 PIN2) using 2 periods
 # Buffers use s32le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
 	2, ALH, 3, SDW0-Capture,
-	PIPELINE_SINK_2, 3, s24le,
+	PIPELINE_SINK_2, 2, s24le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
-# capture DAI is DMIC01 using 3 periods
+# capture DAI is DMIC01 using 2 periods
 # Buffers use s32le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
 	3, DMIC, 0, dmic01,
-	PIPELINE_SINK_3, 3, s32le,
+	PIPELINE_SINK_3, 2, s32le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
-# capture DAI is DMIC16k using 3 periods
+# capture DAI is DMIC16k using 2 periods
 # Buffers use s16le format, with 16 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
 	4, DMIC, 1, dmic16k,
-	PIPELINE_SINK_4, 3, s16le,
+	PIPELINE_SINK_4, 2, s16le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # playback DAI is iDisp1 using 2 periods
