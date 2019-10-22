@@ -23,25 +23,24 @@ include(`platform/intel/icl.m4')
 # PCM0 <---> Volume <---> SSP0 (NoCodec)
 #
 
-dnl PIPELINE_PCM_DAI_ADD(pipeline,
+dnl PIPELINE_PCM_ADD(pipeline,
 dnl     pipe id, pcm, max channels, format,
 dnl     period, priority, core,
-dnl     dai type, dai_index, dai format,
-dnl     dai periods, pcm_min_rate, pcm_max_rate,
-dnl     pipeline_rate, time_domain)
+dnl     pcm_min_rate, pcm_max_rate, pipeline_rate,
+dnl     time_domain, sched_comp)
 
 # Low Latency playback pipeline 1 on PCM 0 using max 2 channels of s24le.
 # 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_DAI_ADD(sof/pipe-volume-playback.m4,
+PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
 	1, 0, 2, s24le,
-	1000, 0, 0, SSP, 0, s24le, 3,
+	1000, 0, 0,
 	48000, 48000, 48000)
 
 # Low Latency capture pipeline 2 on PCM 0 using max 2 channels of s24le.
 # 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_DAI_ADD(sof/pipe-volume-capture.m4,
+PIPELINE_PCM_ADD(sof/pipe-volume-capture.m4,
 	2, 0, 2, s24le,
-	1000, 0, 0, SSP, 0, s24le, 3,
+	1000, 0, 0,
 	48000, 48000, 48000)
 
 #
@@ -55,18 +54,18 @@ dnl     pipe id, dai type, dai_index, dai_be,
 dnl     buffer, periods, format,
 dnl     deadline, priority, core, time_domain)
 
-# playback DAI is SSP0 using 3 periods
+# playback DAI is SSP0 using 2 periods
 # Buffers use s24le format, 1000us deadline on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
 	1, SSP, 0, NoCodec-0,
-	PIPELINE_SOURCE_1, 3, s24le,
+	PIPELINE_SOURCE_1, 2, s24le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
-# capture DAI is SSP0 using 3 periods
+# capture DAI is SSP0 using 2 periods
 # Buffers use s24le format, 1000us deadline on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
 	2, SSP, 0, NoCodec-0,
-	PIPELINE_SINK_2, 3, s24le,
+	PIPELINE_SINK_2, 2, s24le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # PCM Low Latency

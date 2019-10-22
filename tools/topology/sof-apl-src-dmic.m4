@@ -30,25 +30,24 @@ DEBUG_START
 # PCM7 <--- Volume <--- SRC <--- DMIC7 (DMIC16k)
 #
 
-dnl PIPELINE_PCM_DAI_ADD(pipeline,
+dnl PIPELINE_PCM_ADD(pipeline,
 dnl     pipe id, pcm, max channels, format,
 dnl     period, priority, core,
-dnl     dai type, dai_index, dai format,
-dnl     dai periods, pcm_min_rate, pcm_max_rate,
-dnl     pipeline_rate, time_domain)
+dnl     pcm_min_rate, pcm_max_rate, pipeline_rate,
+dnl     time_domain, sched_comp)
 
 # SRC capture pipeline 6 on PCM 6 using max channels 2.
 # Set 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_DAI_ADD(sof/pipe-src-volume-capture.m4,
+PIPELINE_PCM_ADD(sof/pipe-src-volume-capture.m4,
 	6, 6, 2, s32le,
-	1000, 0, 0, DMIC, 0, s32le, 3,
+	1000, 0, 0,
 	8000, 48000, 48000)
 
 # SRC capture pipeline 7 on PCM 7 using max channels 2.
 # Set 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_DAI_ADD(sof/pipe-src-volume-capture.m4,
+PIPELINE_PCM_ADD(sof/pipe-src-volume-capture.m4,
 	7, 7, 2, s32le,
-	1000, 0, 0, DMIC, 1, s32le, 3,
+	1000, 0, 0,
 	8000, 48000, 16000)
 
 #
@@ -60,18 +59,18 @@ dnl     pipe id, dai type, dai_index, dai_be,
 dnl     buffer, periods, format,
 dnl     deadline, priority, core, time_domain)
 
-# capture DAI is DMIC 0 using 3 periods
+# capture DAI is DMIC 0 using 2 periods
 # Buffers use s32le format, 1000us deadline on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
 	6, DMIC, 0, NoCodec-6,
-	PIPELINE_SINK_6, 3, s32le,
+	PIPELINE_SINK_6, 2, s32le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
-# capture DAI is DMIC 1 using 3 periods
+# capture DAI is DMIC 1 using 2 periods
 # Buffers use s32le format, 1000us deadline on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
 	7, DMIC, 1, NoCodec-7,
-	PIPELINE_SINK_7, 3, s32le,
+	PIPELINE_SINK_7, 2, s32le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 dnl PCM_DUPLEX_ADD(name, pcm_id, playback, capture)

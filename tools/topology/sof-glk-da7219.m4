@@ -29,47 +29,40 @@ include(`platform/intel/dmic.m4')
 # PCM7  ----> volume (pipe 7)   -----> iDisp3 (HDMI/DP playback, BE link 5)
 #
 
-dnl PIPELINE_PCM_DAI_ADD(pipeline,
-dnl     pipe id, pcm, max channels, format,
-dnl     period, priority, core,
-dnl     dai type, dai_index, dai format,
-dnl     dai periods, pcm_min_rate, pcm_max_rate,
-dnl     pipeline_rate, time_domain)
-
-# Low Latency playback pipeline 1 on PCM 0 using max 2 channels of s32le.
-# 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_DAI_ADD(sof/pipe-volume-playback.m4,
-	1, 0, 2, s32le,
-	1000, 0, 0, SSP, 1, s16le, 3,
-	48000, 48000, 48000)
-
-# Low Latency playback pipeline 2 on PCM 1 using max 2 channels of s32le.
-# 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_DAI_ADD(sof/pipe-volume-playback.m4,
-	2, 1, 2, s32le,
-	1000, 0, 0, SSP, 2, s16le, 3,
-	48000, 48000, 48000)
-
-# Low Latency capture pipeline 3 on PCM 1 using max 2 channels of s32le.
-# 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_DAI_ADD(sof/pipe-volume-capture.m4,
-	3, 1, 2, s32le,
-	1000, 0, 0, SSP, 2, s16le, 3,
-	48000, 48000, 48000)
-
-# Low Latency capture pipeline 4 on PCM 99 using max 4 channels of s32le.
-# 1000us deadline on core 0 with priority 0
-#PIPELINE_PCM_ADD(sof/pipe-volume-capture.m4,
-PIPELINE_PCM_DAI_ADD(sof/pipe-passthrough-capture.m4,
-	4, 99, 4, s16le,
-	1000, 0, 0, DMIC, 0, s16le, 3,
-	48000, 48000, 48000)
-
 dnl PIPELINE_PCM_ADD(pipeline,
 dnl     pipe id, pcm, max channels, format,
 dnl     period, priority, core,
 dnl     pcm_min_rate, pcm_max_rate, pipeline_rate,
 dnl     time_domain, sched_comp)
+
+# Low Latency playback pipeline 1 on PCM 0 using max 2 channels of s32le.
+# 1000us deadline on core 0 with priority 0
+PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
+	1, 0, 2, s32le,
+	1000, 0, 0,
+	48000, 48000, 48000)
+
+# Low Latency playback pipeline 2 on PCM 1 using max 2 channels of s32le.
+# 1000us deadline on core 0 with priority 0
+PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
+	2, 1, 2, s32le,
+	1000, 0, 0,
+	48000, 48000, 48000)
+
+# Low Latency capture pipeline 3 on PCM 1 using max 2 channels of s32le.
+# 1000us deadline on core 0 with priority 0
+PIPELINE_PCM_ADD(sof/pipe-volume-capture.m4,
+	3, 1, 2, s32le,
+	1000, 0, 0,
+	48000, 48000, 48000)
+
+# Low Latency capture pipeline 4 on PCM 99 using max 4 channels of s32le.
+# 1000us deadline on core 0 with priority 0
+#PIPELINE_PCM_ADD(sof/pipe-volume-capture.m4,
+PIPELINE_PCM_ADD(sof/pipe-passthrough-capture.m4,
+	4, 99, 4, s16le,
+	1000, 0, 0,
+	48000, 48000, 48000)
 
 # Low Latency playback pipeline 5 on PCM 5 using max 2 channels of s32le.
 # 1000us deadline on core 0 with priority 0
@@ -104,32 +97,32 @@ dnl     pipe id, dai type, dai_index, dai_be,
 dnl     buffer, periods, format,
 dnl     deadline, priority, core, time_domain)
 
-# playback DAI is SSP1 using 3 periods
+# playback DAI is SSP1 using 2 periods
 # Buffers use s16le format, 1000us deadline on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
 	1, SSP, 1, SSP1-Codec,
-	PIPELINE_SOURCE_1, 3, s16le,
+	PIPELINE_SOURCE_1, 2, s16le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
-# playback DAI is SSP2 using 3 periods
+# playback DAI is SSP2 using 2 periods
 # Buffers use s16le format, 1000us deadline on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
 	2, SSP, 2, SSP2-Codec,
-	PIPELINE_SOURCE_2, 3, s16le,
+	PIPELINE_SOURCE_2, 2, s16le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
-# capture DAI is SSP2 using 3 periods
+# capture DAI is SSP2 using 2 periods
 # Buffers use s16le format, 1000us deadline on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
 	3, SSP, 2, SSP2-Codec,
-	PIPELINE_SINK_3, 3, s16le,
+	PIPELINE_SINK_3, 2, s16le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
-# capture DAI is DMIC0 using 3 periods
+# capture DAI is DMIC0 using 2 periods
 # Buffers use s32le format, 1000us deadline on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
 	4, DMIC, 0, dmic01,
-	PIPELINE_SINK_4, 3, s16le,
+	PIPELINE_SINK_4, 2, s16le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # playback DAI is iDisp1 using 2 periods
