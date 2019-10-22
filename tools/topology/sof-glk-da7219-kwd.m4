@@ -193,7 +193,7 @@ PIPELINE_ADD(sof/pipe-detect.m4,
 	     16000, 16000, 16000)
 
 # Connect pipelines together
-SectionGraph."pipe-sof-apl-keyword-detect" {
+SectionGraph."pipe-sof-glk-keyword-detect" {
         index "0"
 
         lines [
