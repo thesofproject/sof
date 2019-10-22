@@ -758,6 +758,22 @@ error:
 	return err;
 }
 
+static int ipc_dma_trace_trigger(uint32_t header)
+{
+	switch (iCS(header)) {
+	case SOF_IPC_TRACE_DMA_TRIG_ON:
+		trace_on();
+		break;
+	case SOF_IPC_TRACE_DMA_TRIG_OFF:
+		trace_off();
+		break;
+	default:
+		trace_ipc_error("ipc: unknown dma trace cmd 0x%x", header);
+		return -EINVAL;
+	}
+	return 0;
+}
+
 /* send DMA trace host buffer position to host */
 int ipc_dma_trace_send_position(void)
 {
@@ -783,6 +799,9 @@ static int ipc_glb_debug_message(uint32_t header)
 	case SOF_IPC_TRACE_DMA_PARAMS:
 	case SOF_IPC_TRACE_DMA_PARAMS_EXT:
 		return ipc_dma_trace_config(header);
+	case SOF_IPC_TRACE_DMA_TRIG_ON:
+	case SOF_IPC_TRACE_DMA_TRIG_OFF:
+		return ipc_dma_trace_trigger(header);
 	default:
 		trace_ipc_error("ipc: unknown debug cmd 0x%x", cmd);
 		return -EINVAL;
