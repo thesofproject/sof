@@ -1120,6 +1120,11 @@ out:
 		  (draining_time_end - draining_time_start)
 		  / clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1));
 
+	/* If traces are disabled, prevent compile error from unused
+	 * variables.
+	 */
+	(void)(draining_time_end - draining_time_start);
+
 	/* Enable system agent back */
 	sa_enable();
 
