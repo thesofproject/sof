@@ -355,6 +355,23 @@ void dma_trace_flush(void *t)
 	dcache_writeback_region((void *)t, size);
 }
 
+void dma_trace_on(void)
+{
+	if (trace_data->enabled)
+		return;
+	trace_data->enabled = 1;
+	schedule_task(&trace_data->dmat_work, DMA_TRACE_PERIOD,
+		      DMA_TRACE_PERIOD);
+}
+
+void dma_trace_off(void)
+{
+	if (!trace_data->enabled)
+		return;
+	schedule_task_cancel(&trace_data->dmat_work);
+	trace_data->enabled = 0;
+}
+
 static int dtrace_calc_buf_overflow(struct dma_trace_buf *buffer,
 				    uint32_t length)
 {
