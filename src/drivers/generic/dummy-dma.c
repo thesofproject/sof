@@ -29,6 +29,7 @@
 #include <sof/audio/component.h>
 #include <sof/drivers/timer.h>
 #include <sof/lib/alloc.h>
+#include <sof/lib/cache.h>
 #include <sof/lib/dma.h>
 #include <sof/platform.h>
 #include <sof/spinlock.h>
@@ -93,9 +94,22 @@ static size_t dummy_dma_copy_crt_elem(struct dma_chan_pdata *pdata,
 	remaining_size = orig_size - pdata->elem_progress;
 	copy_size = MIN(remaining_size, bytes);
 
+	/* On playback, invalidate host buffer (it may lie in a cached area).
+	 * Otherwise we could be playing stale data.
+	 * On capture this should be safe as host.c does a writeback before
+	 * triggering the DMA.
+	 */
+	dcache_invalidate_region((void *)rptr, copy_size);
+
 	/* Perform the copy, being careful if we overflow the elem */
 	ret = memcpy_s((void *)wptr, remaining_size, (void *)rptr, copy_size);
 	assert(!ret);
+
+	/* On capture, writeback the host buffer (it may lie in a cached area).
+	 * On playback, also writeback because host.c does an invalidate to
+	 * be able to use the data transferred by the DMA.
+	 */
+	dcache_writeback_region((void *)wptr, copy_size);
 
 	pdata->elem_progress += copy_size;
 
