@@ -161,7 +161,7 @@ target_include_directories(bootloader PUBLIC
 	${SOC_DIR}/${ARCH}/${SOC_PATH}/include
 	)
 
-set(xtensa_build_path $ENV{XTOOLS_TOOLCHAIN_PATH})
+set(zephyr_sdk $ENV{ZEPHYR_SDK_INSTALL_DIR})
 
 set_source_files_properties(../src/arch/xtensa/up/xtos/_vectors.S PROPERTIES COMPILE_FLAGS -DASSEMBLY)
 set_source_files_properties(../src/arch/xtensa/boot_entry.S PROPERTIES COMPILE_FLAGS -DASSEMBLY)
@@ -170,7 +170,7 @@ set_source_files_properties(../src/arch/xtensa/up/xtos/reset-vector.S PROPERTIES
 target_compile_options(bootloader PUBLIC -fno-inline-functions -mlongcalls -mtext-section-literals -DCONFIG_BOOT_LOADER -DCONFIG_APOLLOLAKE -DCONFIG_BUILD_VM_ROM)
 
 target_link_libraries(bootloader PUBLIC -Wl,--no-check-sections -ucall_user_start -Wl,-static -nostdlib)
-target_link_libraries(bootloader PRIVATE -lhal -L${xtensa_build_path}/xtensa/intel_apl_adsp/xtensa-zephyr-elf/lib)
+target_link_libraries(bootloader PRIVATE -lhal -L${zephyr_sdk}/xtensa/intel_apl_adsp/xtensa-zephyr-elf/lib)
 target_link_libraries(bootloader PRIVATE -T${sof_module}/zephyr/boot_ldr.x)
 
 endif()

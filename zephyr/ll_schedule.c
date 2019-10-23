@@ -31,9 +31,9 @@ static void ll_work_handler(struct k_work *work)
 static void schedule_ll_task(struct task *task, uint64_t start,
 			      uint64_t deadline, uint32_t flags)
 {
-	k_delayed_work_submit_to_queue_us(&ll_workq,
-					  &task->z_delayed_work,
-					  start);
+	k_delayed_work_submit_to_queue(&ll_workq,
+				       &task->z_delayed_work,
+				       start / USEC_PER_MSEC);
 
 	task->state = SOF_TASK_STATE_QUEUED;
 }
