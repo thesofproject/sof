@@ -148,7 +148,8 @@ _memmap_cacheattr_bp_strict = 0x22F22FFF;
 _memmap_cacheattr_wb_allvalid = 0x44224222;
 _memmap_cacheattr_wt_allvalid = 0x11221222;
 _memmap_cacheattr_bp_allvalid = 0x22222222;
-PROVIDE(_memmap_cacheattr_reset = _memmap_cacheattr_wbna_trapnull);
+_memmap_cacheattr_imx8_wt_allvalid = 0x22212222;
+PROVIDE(_memmap_cacheattr_reset = _memmap_cacheattr_imx8_wt_allvalid);
 
 SECTIONS
 {
