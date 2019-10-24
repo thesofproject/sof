@@ -199,10 +199,10 @@ do
 	then
 		PLATFORM="cannonlake"
 		ARCH="xtensa-smp"
-		XTENSA_CORE="X6H3CNL_2016_4_linux"
+		XTENSA_CORE="X6H3CNL_2017_8"
 		ROOT="$pwd/../xtensa-root/xtensa-cnl-elf"
 		HOST="xtensa-cnl-elf"
-		XTENSA_TOOLS_VERSION="RF-2016.4-linux"
+		XTENSA_TOOLS_VERSION="RG-2017.8-linux"
 		HAVE_ROM='yes'
 	fi
 	if [ $j == "sue" ]
