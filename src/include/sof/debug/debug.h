@@ -140,6 +140,8 @@ static inline uint32_t dump_stack(uint32_t p, void *addr, size_t offset,
 		sizeof(void *);
 	uintptr_t stack_top = (uintptr_t)arch_get_stack_ptr() + offset;
 	size_t size = stack_bottom - stack_top;
+	int ret;
+
 	*stack_ptr = stack_top;
 
 	/* is stack smashed ? */
@@ -154,8 +156,8 @@ static inline uint32_t dump_stack(uint32_t p, void *addr, size_t offset,
 		size = limit;
 
 	/* copy stack contents and writeback */
-	assert(!memcpy_s(addr, limit,
-			 (void *)stack_top, size - sizeof(void *)));
+	ret = memcpy_s(addr, limit, (void *)stack_top, size - sizeof(void *));
+	assert(!ret);
 	dcache_writeback_region(addr, size - sizeof(void *));
 
 	return p;

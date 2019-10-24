@@ -50,6 +50,7 @@ struct comp_dev *comp_new(struct sof_ipc_comp *comp)
 {
 	struct comp_dev *cdev;
 	struct comp_driver *drv;
+	int ret;
 
 	/* find the driver for our new component */
 	drv = get_drv(comp->type);
@@ -68,8 +69,9 @@ struct comp_dev *comp_new(struct sof_ipc_comp *comp)
 	}
 
 	/* init component */
-	assert(!memcpy_s(&cdev->comp, sizeof(cdev->comp),
-		comp, sizeof(*comp)));
+	ret = memcpy_s(&cdev->comp, sizeof(cdev->comp),
+		       comp, sizeof(*comp));
+	assert(!ret);
 
 	cdev->drv = drv;
 	list_init(&cdev->bsource_list);

@@ -100,6 +100,7 @@ static struct comp_dev *kpb_new(struct sof_ipc_comp *comp)
 	size_t bs = ipc_process->size;
 	struct comp_dev *dev;
 	struct comp_data *kpb;
+	int ret;
 
 	trace_kpb("kpb_new()");
 
@@ -114,8 +115,9 @@ static struct comp_dev *kpb_new(struct sof_ipc_comp *comp)
 	if (!dev)
 		return NULL;
 
-	assert(!memcpy_s(&dev->comp, sizeof(struct sof_ipc_comp_process),
-			 comp, sizeof(struct sof_ipc_comp_process)));
+	ret = memcpy_s(&dev->comp, sizeof(struct sof_ipc_comp_process),
+		       comp, sizeof(struct sof_ipc_comp_process));
+	assert(!ret);
 
 	kpb = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*kpb));
 	if (!kpb) {
@@ -125,8 +127,9 @@ static struct comp_dev *kpb_new(struct sof_ipc_comp *comp)
 
 	comp_set_drvdata(dev, kpb);
 
-	assert(!memcpy_s(&kpb->config, sizeof(kpb->config), ipc_process->data,
-			 bs));
+	ret = memcpy_s(&kpb->config, sizeof(kpb->config), ipc_process->data,
+		       bs);
+	assert(!ret);
 
 	if (!kpb_is_sample_width_supported(kpb->config.sampling_width)) {
 		trace_kpb_error("kpb_new() error: "

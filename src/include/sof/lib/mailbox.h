@@ -48,8 +48,10 @@
 static inline
 void mailbox_dspbox_write(size_t offset, const void *src, size_t bytes)
 {
-	assert(!memcpy_s((void *)(MAILBOX_DSPBOX_BASE + offset),
-			 MAILBOX_DSPBOX_SIZE - offset, src, bytes));
+	int ret = memcpy_s((void *)(MAILBOX_DSPBOX_BASE + offset),
+			   MAILBOX_DSPBOX_SIZE - offset, src, bytes);
+
+	assert(!ret);
 	dcache_writeback_region((void *)(MAILBOX_DSPBOX_BASE + offset), bytes);
 }
 
@@ -57,18 +59,22 @@ static inline
 void mailbox_dspbox_read(void *dest, size_t dest_size,
 			 size_t offset, size_t bytes)
 {
+	int ret;
+
 	dcache_invalidate_region((void *)(MAILBOX_DSPBOX_BASE + offset),
 				 bytes);
-	assert(!memcpy_s(dest, dest_size,
-			 (void *)(MAILBOX_DSPBOX_BASE + offset),
-			 bytes));
+	ret = memcpy_s(dest, dest_size,
+		       (void *)(MAILBOX_DSPBOX_BASE + offset), bytes);
+	assert(!ret);
 }
 
 static inline
 void mailbox_hostbox_write(size_t offset, const void *src, size_t bytes)
 {
-	assert(!memcpy_s((void *)(MAILBOX_HOSTBOX_BASE + offset),
-			 MAILBOX_HOSTBOX_SIZE - offset, src, bytes));
+	int ret = memcpy_s((void *)(MAILBOX_HOSTBOX_BASE + offset),
+			   MAILBOX_HOSTBOX_SIZE - offset, src, bytes);
+
+	assert(!ret);
 	dcache_writeback_region((void *)(MAILBOX_HOSTBOX_BASE + offset), bytes);
 }
 
@@ -76,18 +82,22 @@ static inline
 void mailbox_hostbox_read(void *dest, size_t dest_size,
 			  size_t offset, size_t bytes)
 {
+	int ret;
+
 	dcache_invalidate_region((void *)(MAILBOX_HOSTBOX_BASE + offset),
 				 bytes);
-	assert(!memcpy_s(dest, dest_size,
-			 (void *)(MAILBOX_HOSTBOX_BASE + offset),
-			 bytes));
+	ret = memcpy_s(dest, dest_size,
+		       (void *)(MAILBOX_HOSTBOX_BASE + offset), bytes);
+	assert(!ret);
 }
 
 static inline
 void mailbox_stream_write(size_t offset, const void *src, size_t bytes)
 {
-	assert(!memcpy_s((void *)(MAILBOX_STREAM_BASE + offset),
-			 MAILBOX_STREAM_SIZE - offset, src, bytes));
+	int ret = memcpy_s((void *)(MAILBOX_STREAM_BASE + offset),
+			   MAILBOX_STREAM_SIZE - offset, src, bytes);
+
+	assert(!ret);
 	dcache_writeback_region((void *)(MAILBOX_STREAM_BASE + offset),
 				bytes);
 }

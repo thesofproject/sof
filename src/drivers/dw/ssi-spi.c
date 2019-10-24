@@ -350,7 +350,8 @@ int spi_push(struct spi *spi, const void *data, size_t size)
 	spi->ipc_status = IPC_WRITE;
 
 	/* Actually we have to send IPC messages in one go */
-	assert(!memcpy_s(config->src_buf, config->buffer_size, data, size));
+	ret = memcpy_s(config->src_buf, config->buffer_size, data, size);
+	assert(!ret);
 
 	dcache_writeback_region(config->src_buf, size);
 

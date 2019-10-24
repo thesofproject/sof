@@ -344,6 +344,7 @@ static struct comp_dev *host_new(struct sof_ipc_comp *comp)
 	struct comp_dev *dev;
 	struct host_data *hd;
 	uint32_t dir;
+	int ret;
 
 	trace_host("host_new()");
 
@@ -358,8 +359,9 @@ static struct comp_dev *host_new(struct sof_ipc_comp *comp)
 		return NULL;
 
 	host = (struct sof_ipc_comp_host *)&dev->comp;
-	assert(!memcpy_s(host, sizeof(*host),
-			 ipc_host, sizeof(struct sof_ipc_comp_host)));
+	ret = memcpy_s(host, sizeof(*host),
+		       ipc_host, sizeof(struct sof_ipc_comp_host));
+	assert(!ret);
 
 	hd = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*hd));
 	if (!hd) {

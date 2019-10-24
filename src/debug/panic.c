@@ -19,10 +19,14 @@
 
 void dump_panicinfo(void *addr, struct sof_ipc_panic_info *panic_info)
 {
+	int ret;
+
 	if (!panic_info)
 		return;
-	assert(!memcpy_s(addr, sizeof(struct sof_ipc_panic_info), panic_info,
-			 sizeof(struct sof_ipc_panic_info)));
+	ret = memcpy_s(addr, sizeof(struct sof_ipc_panic_info), panic_info,
+		       sizeof(struct sof_ipc_panic_info));
+	/* TODO are asserts even safe in this context? */
+	assert(!ret);
 	dcache_writeback_region(addr, sizeof(struct sof_ipc_panic_info));
 }
 
@@ -71,21 +75,27 @@ void __panic(uint32_t p, char *filename, uint32_t linenum)
 {
 	struct sof_ipc_panic_info panicinfo = { .linenum = linenum };
 	int strlen;
+	int ret;
 
 	strlen = rstrlen(filename);
 
 	if (strlen >= SOF_TRACE_FILENAME_SIZE) {
-		assert(!memcpy_s(panicinfo.filename,
-				 sizeof(panicinfo.filename),
-				 filename + strlen - SOF_TRACE_FILENAME_SIZE,
-				 SOF_TRACE_FILENAME_SIZE));
-		assert(!memcpy_s(panicinfo.filename,
-				 sizeof(panicinfo.filename),
-				 "...", 3));
+		ret = memcpy_s(panicinfo.filename,
+			       sizeof(panicinfo.filename),
+			       filename + strlen - SOF_TRACE_FILENAME_SIZE,
+			       SOF_TRACE_FILENAME_SIZE);
+		/* TODO are asserts safe in this context? */
+		assert(!ret);
+
+		ret = memcpy_s(panicinfo.filename,
+			       sizeof(panicinfo.filename),
+			       "...", 3);
+		assert(!ret);
 	} else {
-		assert(!memcpy_s(panicinfo.filename,
-				 sizeof(panicinfo.filename),
-				 filename, strlen + 1));
+		ret = memcpy_s(panicinfo.filename,
+			       sizeof(panicinfo.filename),
+			       filename, strlen + 1);
+		assert(!ret);
 	}
 
 	/* To distinguish regular panic() calls from exceptions, we will

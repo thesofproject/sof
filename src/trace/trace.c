@@ -47,6 +47,7 @@ static void put_header(uint32_t *dst, uint32_t id_0, uint32_t id_1,
 		       uint32_t entry, uint64_t timestamp)
 {
 	struct log_entry_header header;
+	int ret;
 
 	header.id_0 = id_0 & TRACE_ID_MASK;
 	header.id_1 = id_1 & TRACE_ID_MASK;
@@ -54,7 +55,8 @@ static void put_header(uint32_t *dst, uint32_t id_0, uint32_t id_1,
 	header.timestamp = timestamp + platform_timer->delta;
 	header.log_entry_address = entry;
 
-	assert(!memcpy_s(dst, sizeof(header), &header, sizeof(header)));
+	ret = memcpy_s(dst, sizeof(header), &header, sizeof(header));
+	assert(!ret);
 }
 
 static void mtrace_event(const char *data, uint32_t length)

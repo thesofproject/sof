@@ -108,8 +108,9 @@ static struct comp_dev *selector_new(struct sof_ipc_comp *comp)
 	if (!dev)
 		return NULL;
 
-	assert(!memcpy_s(&dev->comp, sizeof(struct sof_ipc_comp_process), comp,
-			 sizeof(struct sof_ipc_comp_process)));
+	ret = memcpy_s(&dev->comp, sizeof(struct sof_ipc_comp_process), comp,
+		       sizeof(struct sof_ipc_comp_process));
+	assert(!ret);
 
 	cd = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*cd));
 	if (!cd) {
@@ -119,8 +120,8 @@ static struct comp_dev *selector_new(struct sof_ipc_comp *comp)
 
 	comp_set_drvdata(dev, cd);
 
-	assert(!memcpy_s(&cd->config, sizeof(cd->config), ipc_process->data,
-			 bs));
+	ret = memcpy_s(&cd->config, sizeof(cd->config), ipc_process->data, bs);
+	assert(!ret);
 
 	/* verification of initial parameters */
 	ret = sel_set_channel_values(cd, cd->config.in_channels_count,
@@ -224,9 +225,10 @@ static int selector_ctrl_get_data(struct comp_dev *dev,
 		trace_selector("selector_ctrl_get_data(), SOF_CTRL_CMD_BINARY");
 
 		/* Copy back to user space */
-		assert(!memcpy_s(cdata->data->data, ((struct sof_abi_hdr *)
-				 (cdata->data))->size, &cd->config,
-				 sizeof(cd->config)));
+		ret = memcpy_s(cdata->data->data, ((struct sof_abi_hdr *)
+			       (cdata->data))->size, &cd->config,
+			       sizeof(cd->config));
+		assert(!ret);
 
 		cdata->data->abi = SOF_ABI_VERSION;
 		cdata->data->size = sizeof(cd->config);
