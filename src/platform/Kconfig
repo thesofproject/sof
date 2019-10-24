@@ -245,4 +245,12 @@ config SYSTICK_PERIOD
 	  as a timeout check value for system agent.
 	  Value should be provided in microseconds.
 
+config HAVE_AGENT
+	bool "Enable system agent"
+	default y
+	help
+	  Enables system agent. It can be disabled on systems
+	  which are still unstable and cannot assure that
+	  system agent will always execute on time.
+
 endmenu

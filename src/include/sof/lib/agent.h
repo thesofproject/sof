@@ -9,6 +9,7 @@
 #define __SOF_LIB_AGENT_H__
 
 #include <sof/schedule/task.h>
+#include <config.h>
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -22,6 +23,14 @@ struct sa {
 	struct task work;
 };
 
+#if CONFIG_HAVE_AGENT
+
 void sa_init(struct sof *sof, uint64_t timeout);
+
+#else
+
+static inline void sa_init(struct sof *sof, uint64_t timeout) { }
+
+#endif
 
 #endif /* __SOF_LIB_AGENT_H__ */
