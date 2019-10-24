@@ -8,73 +8,57 @@ git:
 services:
   - docker
 stages:
-  - compile
   - test
-  - deploy
+  - qemutest
 
 before_install:
   - docker pull thesofproject/sof && docker tag thesofproject/sof sof
-  - docker pull thesofproject/sofqemu && docker tag thesofproject/sofqemu sofqemu
+
+env:
+  - PLATFORM=byt
+  - PLATFORM=cht
+  - PLATFORM=bdw
+  - PLATFORM=hsw
+  - PLATFORM=apl
+  - PLATFORM=skl
+  - PLATFORM=kbl
+  - PLATFORM=cnl
+  - PLATFORM=sue
+  - PLATFORM=icl
+  - PLATFORM=imx8
+
+script: ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -j $PLATFORM
 
 jobs:
   include:
-    - stage: compile
-      name: "Tools Build"
+    - stage: test
       script: ./scripts/docker-run.sh ./scripts/build-tools.sh
-    - stage: compile
-      name: "BYT Build"
-      script: ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -l byt
-    - stage: compile
-      name: "CHT Build"
-      script: ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -l cht
-    - stage: compile
-      name: "BDW Build"
-      script: ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -l bdw
-    - stage: compile
-      name: "HSW Build"
-      script: ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -l hsw
-    - stage: compile
-      name: "APL Build"
-      script: ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -l apl
-    - stage: compile
-      name: "CNL Build"
-      script: ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -l cnl
-    - stage: compile
-      name: "SUE Build"
-      script: ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -l sue
-    - stage: compile
-      name: "ICL Build"
-      script: ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -l icl
-    - stage: compile
-      name: "IMX8 Build"
-      script: ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -l imx8
-    - stage: compile
-      name: "Host Build"
-      script: ./scripts/docker-run.sh ./scripts/host-build-all.sh -l
-    - stage: test
-      name: "BYT Boot Test"
-      script: ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -l byt && ./scripts/docker-qemu.sh ../sof.git/scripts/qemu-check.sh byt
-    - stage: test
-      name: "CHT Boot Test"
-      script: ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -l cht && ./scripts/docker-qemu.sh ../sof.git/scripts/qemu-check.sh cht
-    - stage: test
-      name: "BDW Boot Test"
-      script: ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -l bdw && ./scripts/docker-qemu.sh ../sof.git/scripts/qemu-check.sh bdw
-    - stage: test
-      name: "HSW Boot Test"
-      script: ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -l hsw && ./scripts/docker-qemu.sh ../sof.git/scripts/qemu-check.sh hsw
-    - stage: test
-      name: "APL Boot Test"
-      script: ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -l -r apl && ./scripts/docker-qemu.sh ../sof.git/scripts/qemu-check.sh apl
-    - stage: test
-      name: "SKL Boot Test"
-      script: ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -l -r skl && ./scripts/docker-qemu.sh ../sof.git/scripts/qemu-check.sh skl
-    - stage: test
-      name: "KBL Boot Test"
-      script: ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -l -r kbl && ./scripts/docker-qemu.sh ../sof.git/scripts/qemu-check.sh kbl
-    - stage: test
-      name: "CNL Boot Test"
-      script: ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -l -r cnl && ./scripts/docker-qemu.sh ../sof.git/scripts/qemu-check.sh cnl
-    - stage: test
-      name: "ICL Boot Test"
-      script: ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -l -r icl && ./scripts/docker-qemu.sh ../sof.git/scripts/qemu-check.sh icl
+      env: PLATFORM=tools
+      # Matrix hack: Declare the same stage name multiple times to test multiple
+      # versions. Use a YAML alias to prevent redundancy.
+    - &qemuboottest
+      stage: qemutest
+      script:
+        - sed -i $(($(grep "config SYSTICK_PERIOD" -n src/platform/Kconfig | cut -f1 -d:)+2))"s/1000/10000/" src/platform/Kconfig
+        - ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -r -j $PLATFORM
+        - ./scripts/docker-qemu.sh ../sof.git/scripts/qemu-check.sh $PLATFORM
+      env: PLATFORM=byt
+      before_install:
+        - docker pull thesofproject/sof && docker tag thesofproject/sof sof
+        - docker pull thesofproject/sofqemu && docker tag thesofproject/sofqemu sofqemu
+    - <<: *qemuboottest
+      env: PLATFORM=cht
+    - <<: *qemuboottest
+      env: PLATFORM=bdw
+    - <<: *qemuboottest
+      env: PLATFORM=hsw
+    - <<: *qemuboottest
+      env: PLATFORM=apl
+    - <<: *qemuboottest
+      env: PLATFORM=skl
+    - <<: *qemuboottest
+      env: PLATFORM=kbl
+    - <<: *qemuboottest
+      env: PLATFORM=cnl
+    - <<: *qemuboottest
+      env: PLATFORM=icl
