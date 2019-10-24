@@ -189,17 +189,19 @@ void dma_sg_free(struct dma_sg_elem_array *elem_array)
 	dma_sg_init(elem_array);
 }
 
-void dma_buffer_copy_from(struct comp_buffer *source, struct comp_buffer *sink,
-	void (*process)(struct comp_buffer *, struct comp_buffer *, uint32_t),
-	uint32_t bytes)
+void dma_buffer_copy_from(struct comp_buffer *source, uint32_t source_bytes,
+			  struct comp_buffer *sink, uint32_t sink_bytes,
+			  void (*process)(struct comp_buffer *,
+					  struct comp_buffer *, uint32_t),
+			  uint32_t samples)
 {
-	uint32_t head = bytes;
+	uint32_t head = source_bytes;
 	uint32_t tail = 0;
 
 	/* source buffer contains data copied by DMA */
-	if ((char *)source->r_ptr + bytes > (char *)source->end_addr) {
+	if ((char *)source->r_ptr + source_bytes > (char *)source->end_addr) {
 		head = (char *)source->end_addr - (char *)source->r_ptr;
-		tail = bytes - head;
+		tail = source_bytes - head;
 	}
 
 	dcache_invalidate_region(source->r_ptr, head);
@@ -207,44 +209,46 @@ void dma_buffer_copy_from(struct comp_buffer *source, struct comp_buffer *sink,
 		dcache_invalidate_region(source->addr, tail);
 
 	/* process data */
-	process(source, sink, bytes);
+	process(source, sink, samples);
 
-	source->r_ptr = (char *)source->r_ptr + bytes;
+	source->r_ptr = (char *)source->r_ptr + source_bytes;
 
 	/* check for pointer wrap */
 	if (source->r_ptr >= source->end_addr)
 		source->r_ptr = (char *)source->addr +
 			((char *)source->r_ptr - (char *)source->end_addr);
 
-	comp_update_buffer_produce(sink, bytes);
+	comp_update_buffer_produce(sink, sink_bytes);
 }
 
-void dma_buffer_copy_to(struct comp_buffer *source, struct comp_buffer *sink,
-	void (*process)(struct comp_buffer *, struct comp_buffer *, uint32_t),
-	uint32_t bytes)
+void dma_buffer_copy_to(struct comp_buffer *source, uint32_t source_bytes,
+			struct comp_buffer *sink, uint32_t sink_bytes,
+			void (*process)(struct comp_buffer *,
+					struct comp_buffer *, uint32_t),
+			uint32_t samples)
 {
-	uint32_t head = bytes;
+	uint32_t head = sink_bytes;
 	uint32_t tail = 0;
 
 	/* process data */
-	process(source, sink, bytes);
+	process(source, sink, samples);
 
 	/* sink buffer contains data meant to copied to DMA */
-	if ((char *)sink->w_ptr + bytes > (char *)sink->end_addr) {
+	if ((char *)sink->w_ptr + sink_bytes > (char *)sink->end_addr) {
 		head = (char *)sink->end_addr - (char *)sink->w_ptr;
-		tail = bytes - head;
+		tail = sink_bytes - head;
 	}
 
 	dcache_writeback_region(sink->w_ptr, head);
 	if (tail)
 		dcache_writeback_region(sink->addr, tail);
 
-	sink->w_ptr = (char *)sink->w_ptr + bytes;
+	sink->w_ptr = (char *)sink->w_ptr + sink_bytes;
 
 	/* check for pointer wrap */
 	if (sink->w_ptr >= sink->end_addr)
 		sink->w_ptr = (char *)sink->addr +
 			((char *)sink->w_ptr - (char *)sink->end_addr);
 
-	comp_update_buffer_consume(source, bytes);
+	comp_update_buffer_consume(source, source_bytes);
 }

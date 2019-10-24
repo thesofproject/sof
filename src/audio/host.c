@@ -141,13 +141,14 @@ static void host_update_position(struct comp_dev *dev, uint32_t bytes)
 	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK) {
 		local_buffer = list_first_item(&dev->bsink_list,
 					       struct comp_buffer, source_list);
-		dma_buffer_copy_from(hd->dma_buffer, local_buffer, hd->process,
-				     bytes);
+		dma_buffer_copy_from(hd->dma_buffer, bytes, local_buffer, bytes,
+				     hd->process,
+				     bytes / comp_sample_bytes(dev));
 	} else {
 		local_buffer = list_first_item(&dev->bsource_list,
 					       struct comp_buffer, sink_list);
-		dma_buffer_copy_to(local_buffer, hd->dma_buffer, hd->process,
-				   bytes);
+		dma_buffer_copy_to(local_buffer, bytes, hd->dma_buffer, bytes,
+				   hd->process, bytes / comp_sample_bytes(dev));
 	}
 
 	dev->position += bytes;
