@@ -57,6 +57,7 @@ if(NOT BUILD_LIBRARY)
 			detect_test.c
 		)
 	endif()
+	add_subdirectory(pcm_converter)
 	return()
 endif()
 
