@@ -509,14 +509,18 @@ static inline uint32_t dma_sg_get_size(struct dma_sg_elem_array *ea)
 }
 
 /* copies data from DMA buffer using provided processing function */
-void dma_buffer_copy_from(struct comp_buffer *source, struct comp_buffer *sink,
-	void (*process)(struct comp_buffer *, struct comp_buffer *, uint32_t),
-	uint32_t bytes);
+void dma_buffer_copy_from(struct comp_buffer *source, uint32_t source_bytes,
+			  struct comp_buffer *sink, uint32_t sink_bytes,
+			  void (*process)(struct comp_buffer *,
+					  struct comp_buffer *, uint32_t),
+			  uint32_t samples);
 
 /* copies data to DMA buffer using provided processing function */
-void dma_buffer_copy_to(struct comp_buffer *source, struct comp_buffer *sink,
-	void (*process)(struct comp_buffer *, struct comp_buffer *, uint32_t),
-	uint32_t bytes);
+void dma_buffer_copy_to(struct comp_buffer *source, uint32_t source_bytes,
+			struct comp_buffer *sink, uint32_t sink_bytes,
+			void (*process)(struct comp_buffer *,
+					struct comp_buffer *, uint32_t),
+			uint32_t samples);
 
 /* generic DMA DSP <-> Host copier */
 

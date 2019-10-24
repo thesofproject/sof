@@ -108,16 +108,17 @@ static void dai_dma_cb(void *data, uint32_t type, struct dma_cb_data *next)
 		local_buffer = list_first_item(&dev->bsource_list,
 					       struct comp_buffer, sink_list);
 
-		dma_buffer_copy_to(local_buffer, dd->dma_buffer, dd->process,
-				   bytes);
+		dma_buffer_copy_to(local_buffer, bytes, dd->dma_buffer, bytes,
+				   dd->process, bytes / comp_sample_bytes(dev));
 
 		buffer_ptr = local_buffer->r_ptr;
 	} else {
 		local_buffer = list_first_item(&dev->bsink_list,
 					       struct comp_buffer, source_list);
 
-		dma_buffer_copy_from(dd->dma_buffer, local_buffer, dd->process,
-				     bytes);
+		dma_buffer_copy_from(dd->dma_buffer, bytes, local_buffer, bytes,
+				     dd->process,
+				     bytes / comp_sample_bytes(dev));
 
 		buffer_ptr = local_buffer->w_ptr;
 	}
