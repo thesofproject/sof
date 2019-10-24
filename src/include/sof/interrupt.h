@@ -12,6 +12,7 @@
 #include <arch/interrupt.h>
 #include <platform/interrupt.h>
 #include <sof/drivers/interrupt.h>
+#include <sof/interrupt-map.h>
 #include <sof/trace.h>
 #include <sof/debug.h>
 #include <sof/lock.h>
