@@ -232,9 +232,11 @@ static int test_keyword_apply_config(struct comp_dev *dev,
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	uint16_t sample_width;
+	int ret;
 
-	assert(!memcpy_s(&cd->config, sizeof(cd->config), cfg,
-			 sizeof(struct sof_detect_test_config)));
+	ret = memcpy_s(&cd->config, sizeof(cd->config), cfg,
+		       sizeof(struct sof_detect_test_config));
+	assert(!ret);
 
 	sample_width = cd->config.sample_width;
 
@@ -274,8 +276,9 @@ static struct comp_dev *test_keyword_new(struct sof_ipc_comp *comp)
 		return NULL;
 
 	keyword = (struct sof_ipc_comp_process *)&dev->comp;
-	assert(!memcpy_s(keyword, sizeof(*keyword), ipc_keyword,
-		 sizeof(struct sof_ipc_comp_process)));
+	ret = memcpy_s(keyword, sizeof(*keyword), ipc_keyword,
+		       sizeof(struct sof_ipc_comp_process));
+	assert(!ret);
 
 	cd = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*cd));
 
@@ -432,9 +435,10 @@ static int test_keyword_set_model(struct comp_dev *dev,
 		return -EINVAL;
 	}
 
-	assert(!memcpy_s(cd->model.data + cd->model.data_pos,
-			 cd->model.data_size - cd->model.data_pos,
-			 cdata->data->data, cdata->num_elems));
+	ret = memcpy_s(cd->model.data + cd->model.data_pos,
+		       cd->model.data_size - cd->model.data_pos,
+		       cdata->data->data, cdata->num_elems);
+	assert(!ret);
 
 	cd->model.data_pos += cdata->num_elems;
 
@@ -528,7 +532,9 @@ static int test_keyword_get_config(struct comp_dev *dev,
 	if (bs == 0 || bs > size)
 		return -EINVAL;
 
-	assert(!memcpy_s(cdata->data->data, size, &cd->config, bs));
+	ret = memcpy_s(cdata->data->data, size, &cd->config, bs);
+	assert(!ret);
+
 	cdata->data->abi = SOF_ABI_VERSION;
 	cdata->data->size = bs;
 
@@ -564,8 +570,10 @@ static int test_keyword_get_model(struct comp_dev *dev,
 			return -EINVAL;
 		}
 
-		assert(!memcpy_s(cdata->data->data, size,
-				 cd->model.data + cd->model.data_pos, bs));
+		ret = memcpy_s(cdata->data->data, size,
+			       cd->model.data + cd->model.data_pos, bs);
+		assert(!ret);
+
 		cdata->data->abi = SOF_ABI_VERSION;
 		cdata->data->size = cd->model.data_size;
 		cd->model.data_pos += bs;

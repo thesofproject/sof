@@ -44,6 +44,7 @@ struct pipeline *pipeline_new(struct sof_ipc_pipe_new *pipe_desc,
 			      struct comp_dev *cd)
 {
 	struct pipeline *p;
+	int ret;
 
 	trace_pipe("pipeline_new()");
 
@@ -58,8 +59,9 @@ struct pipeline *pipeline_new(struct sof_ipc_pipe_new *pipe_desc,
 	p->sched_comp = cd;
 	p->status = COMP_STATE_INIT;
 
-	assert(!memcpy_s(&p->ipc_pipe, sizeof(p->ipc_pipe),
-	   pipe_desc, sizeof(*pipe_desc)));
+	ret = memcpy_s(&p->ipc_pipe, sizeof(p->ipc_pipe),
+		       pipe_desc, sizeof(*pipe_desc));
+	assert(!ret);
 
 	return p;
 }

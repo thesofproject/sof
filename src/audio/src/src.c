@@ -435,6 +435,7 @@ static void src_copy_s32(struct comp_dev *dev,
 	int n_wrap_snk;
 	int n_wrap_min;
 	int n_copy;
+	int ret;
 
 	n = frames * dev->params.channels;
 	while (n > 0) {
@@ -443,8 +444,9 @@ static void src_copy_s32(struct comp_dev *dev,
 		n_wrap_min = (n_wrap_src < n_wrap_snk) ?
 			n_wrap_src : n_wrap_snk;
 		n_copy = (n < n_wrap_min) ? n : n_wrap_min;
-		assert(!memcpy_s(snk, n_copy * sizeof(int32_t), src,
-				 n_copy * sizeof(int32_t)));
+		ret = memcpy_s(snk, n_copy * sizeof(int32_t), src,
+			       n_copy * sizeof(int32_t));
+		assert(!ret);
 
 		/* Update and check both source and destination for wrap */
 		n -= n_copy;
@@ -470,6 +472,7 @@ static void src_copy_s16(struct comp_dev *dev,
 	int n_wrap_snk;
 	int n_wrap_min;
 	int n_copy;
+	int ret;
 
 	n = frames * dev->params.channels;
 	while (n > 0) {
@@ -478,8 +481,9 @@ static void src_copy_s16(struct comp_dev *dev,
 		n_wrap_min = (n_wrap_src < n_wrap_snk) ?
 			n_wrap_src : n_wrap_snk;
 		n_copy = (n < n_wrap_min) ? n : n_wrap_min;
-		assert(!memcpy_s(snk, n_copy * sizeof(int16_t), src,
-				 n_copy * sizeof(int16_t)));
+		ret = memcpy_s(snk, n_copy * sizeof(int16_t), src,
+			       n_copy * sizeof(int16_t));
+		assert(!ret);
 
 		/* Update and check both source and destination for wrap */
 		n -= n_copy;
@@ -498,6 +502,7 @@ static struct comp_dev *src_new(struct sof_ipc_comp *comp)
 	struct sof_ipc_comp_src *src;
 	struct sof_ipc_comp_src *ipc_src = (struct sof_ipc_comp_src *)comp;
 	struct comp_data *cd;
+	int ret;
 
 	trace_src("src_new()");
 
@@ -520,8 +525,9 @@ static struct comp_dev *src_new(struct sof_ipc_comp *comp)
 
 	src = (struct sof_ipc_comp_src *)&dev->comp;
 
-	assert(!memcpy_s(src, sizeof(*src), ipc_src,
-			 sizeof(struct sof_ipc_comp_src)));
+	ret = memcpy_s(src, sizeof(*src), ipc_src,
+		       sizeof(struct sof_ipc_comp_src));
+	assert(!ret);
 
 	cd = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*cd));
 	if (!cd) {

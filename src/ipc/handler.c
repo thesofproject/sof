@@ -87,18 +87,22 @@
 
 #define _IPC_COPY_CMD(rx, tx, rx_size)					\
 	do {								\
+		int ___ret;						\
 		if (rx_size > tx->size) {				\
-			assert(!memcpy_s(rx, rx_size, tx, tx->size));	\
+			___ret = memcpy_s(rx, rx_size, tx, tx->size);	\
+			assert(!___ret);				\
 			bzero((void *)rx + tx->size, rx_size - tx->size);\
 			trace_ipc("ipc: hdr 0x%x rx (%d) > tx (%d)",	\
 				  rx->cmd, rx_size, tx->size);		\
 		} else if (tx->size > rx_size) {			\
-			assert(!memcpy_s(rx, rx_size, tx, rx_size));	\
+			___ret = memcpy_s(rx, rx_size, tx, rx_size);	\
+			assert(!___ret);				\
 			trace_ipc("ipc: hdr 0x%x tx (%d) > rx (%d)",	\
 				  rx->cmd, tx->size, rx_size);		\
-		} else							\
-			assert(!memcpy_s(rx, rx_size, tx, rx_size));	\
-									\
+		} else	{						\
+			___ret = memcpy_s(rx, rx_size, tx, rx_size);	\
+			assert(!___ret);				\
+		}							\
 	} while (0)
 
 /* copies whole message from Tx to Rx, follows above ABI rules */
@@ -1267,9 +1271,10 @@ int ipc_queue_host_message(struct ipc *ipc, uint32_t header, void *tx_data,
 	msg->tx_size = tx_bytes;
 
 	/* copy mailbox data to message */
-	if (tx_bytes > 0 && tx_bytes < SOF_IPC_MSG_MAX_SIZE)
-		assert(!memcpy_s(msg->tx_data, msg->tx_size, tx_data,
-				 tx_bytes));
+	if (tx_bytes > 0 && tx_bytes < SOF_IPC_MSG_MAX_SIZE) {
+		ret = memcpy_s(msg->tx_data, msg->tx_size, tx_data, tx_bytes);
+		assert(!ret);
+	}
 
 	if (!found) {
 		/* now queue the message */

@@ -379,6 +379,7 @@ static struct comp_dev *eq_fir_new(struct sof_ipc_comp *comp)
 		= (struct sof_ipc_comp_process *)comp;
 	size_t bs = ipc_fir->size;
 	int i;
+	int ret;
 
 	trace_eq("eq_fir_new()");
 
@@ -402,8 +403,9 @@ static struct comp_dev *eq_fir_new(struct sof_ipc_comp *comp)
 		return NULL;
 
 	fir = (struct sof_ipc_comp_process *)&dev->comp;
-	assert(!memcpy_s(fir, sizeof(*fir), ipc_fir,
-			 sizeof(struct sof_ipc_comp_process)));
+	ret = memcpy_s(fir, sizeof(*fir), ipc_fir,
+		       sizeof(struct sof_ipc_comp_process));
+	assert(!ret);
 
 	cd = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*cd));
 	if (!cd) {
@@ -428,7 +430,8 @@ static struct comp_dev *eq_fir_new(struct sof_ipc_comp *comp)
 			return NULL;
 		}
 
-		assert(!memcpy_s(cd->config, bs, ipc_fir->data, bs));
+		ret = memcpy_s(cd->config, bs, ipc_fir->data, bs);
+		assert(!ret);
 	}
 
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
@@ -495,9 +498,11 @@ static int fir_cmd_get_data(struct comp_dev *dev,
 			trace_eq("fir_cmd_get_data(), blob size %zu "
 				 "msg index %u max size %u offset %zu", bs,
 				 cdata->msg_index, max_size, offset);
-			assert(!memcpy_s(dst, ((struct sof_abi_hdr *)
-					 (cdata->data))->size, src + offset,
-					 bs));
+			ret = memcpy_s(dst, ((struct sof_abi_hdr *)
+				       (cdata->data))->size, src + offset,
+				       bs);
+			assert(!ret);
+
 			cdata->data->abi = SOF_ABI_VERSION;
 			cdata->data->size = bs;
 		} else {
@@ -602,9 +607,10 @@ static int fir_cmd_set_data(struct comp_dev *dev,
 		/* Just copy the configuration. The EQ will be initialized in
 		 * prepare().
 		 */
-		assert(!memcpy_s(dst + offset, cdata->num_elems +
-				 cdata->elems_remaining - offset, src,
-				 cdata->num_elems));
+		ret = memcpy_s(dst + offset, cdata->num_elems +
+			       cdata->elems_remaining - offset, src,
+			       cdata->num_elems);
+		assert(!ret);
 
 		/* we can check data when elems_remaining == 0 */
 		break;

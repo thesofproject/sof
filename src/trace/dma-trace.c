@@ -321,6 +321,7 @@ void dma_trace_flush(void *t)
 	uint32_t avail;
 	int32_t size;
 	int32_t wrap_count;
+	int ret;
 
 	if (!trace_data || !trace_data->dmatb.addr)
 		return;
@@ -346,12 +347,15 @@ void dma_trace_flush(void *t)
 	/* check for buffer wrap */
 	if (buffer->w_ptr - size < buffer->addr) {
 		wrap_count = buffer->w_ptr - buffer->addr;
-		assert(!memcpy_s(t, size - wrap_count, buffer->end_addr -
-				 (size - wrap_count), size - wrap_count));
-		assert(!memcpy_s(t + (size - wrap_count), wrap_count,
-				 buffer->addr, wrap_count));
+		ret = memcpy_s(t, size - wrap_count, buffer->end_addr -
+			       (size - wrap_count), size - wrap_count);
+		assert(!ret);
+		ret = memcpy_s(t + (size - wrap_count), wrap_count,
+			       buffer->addr, wrap_count);
+		assert(!ret);
 	} else {
-		assert(!memcpy_s(t, size, buffer->w_ptr - size, size));
+		ret = memcpy_s(t, size, buffer->w_ptr - size, size);
+		assert(!ret);
 	}
 
 	/* writeback trace data */
@@ -401,6 +405,7 @@ static void dtrace_add_event(const char *e, uint32_t length)
 	struct dma_trace_buf *buffer = &trace_data->dmatb;
 	uint32_t margin;
 	uint32_t overflow = 0;
+	int ret;
 
 	margin = dtrace_calc_buf_margin(buffer);
 	overflow = dtrace_calc_buf_overflow(buffer, length);
@@ -434,20 +439,23 @@ static void dtrace_add_event(const char *e, uint32_t length)
 		if (margin > length) {
 			/* no wrap */
 			dcache_invalidate_region(buffer->w_ptr, length);
-			assert(!memcpy_s(buffer->w_ptr, length, e, length));
+			ret = memcpy_s(buffer->w_ptr, length, e, length);
+			assert(!ret);
 			dcache_writeback_region(buffer->w_ptr, length);
 			buffer->w_ptr += length;
 		} else {
 			/* data is bigger than remaining margin so we wrap */
 			dcache_invalidate_region(buffer->w_ptr, margin);
-			assert(!memcpy_s(buffer->w_ptr, margin, e, margin));
+			ret = memcpy_s(buffer->w_ptr, margin, e, margin);
+			assert(!ret);
 			dcache_writeback_region(buffer->w_ptr, margin);
 			buffer->w_ptr = buffer->addr;
 
 			dcache_invalidate_region(buffer->w_ptr,
 						 length - margin);
-			assert(!memcpy_s(buffer->w_ptr, length - margin,
-					 e + margin, length - margin));
+			ret = memcpy_s(buffer->w_ptr, length - margin,
+				       e + margin, length - margin);
+			assert(!ret);
 			dcache_writeback_region(buffer->w_ptr,
 						length - margin);
 			buffer->w_ptr += length - margin;
