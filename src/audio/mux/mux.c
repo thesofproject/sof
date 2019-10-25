@@ -179,6 +179,39 @@ static int mux_ctrl_set_cmd(struct comp_dev *dev,
 	return ret;
 }
 
+static int mux_ctrl_get_cmd(struct comp_dev *dev,
+			    struct sof_ipc_ctrl_data *cdata, int size)
+{
+	struct comp_data *cd = comp_get_drvdata(dev);
+	struct sof_mux_config *cfg = &cd->config;
+	uint32_t reply_size;
+	int ret = 0;
+
+	trace_mux("mux_ctrl_get_cmd(), cdata->cmd = 0x%08x", cdata->cmd);
+
+	switch (cdata->cmd) {
+	case SOF_CTRL_CMD_BINARY:
+		/* calculate config size */
+		reply_size = sizeof(struct sof_mux_config) + cfg->num_streams *
+			sizeof(struct mux_stream_data);
+
+		/* copy back to user space */
+		assert(!memcpy_s(cdata->data->data, ((struct sof_abi_hdr *)
+				 (cdata->data))->size, cfg, reply_size));
+
+		cdata->data->abi = SOF_ABI_VERSION;
+		cdata->data->size = reply_size;
+		break;
+	default:
+		trace_mux_error("mux_ctrl_set_cmd() error: invalid cdata->cmd ="
+				" 0x%08x", cdata->cmd);
+		ret = -EINVAL;
+		break;
+	}
+
+	return ret;
+}
+
 /* used to pass standard and bespoke commands (with data) to component */
 static int mux_cmd(struct comp_dev *dev, int cmd, void *data,
 		   int max_data_size)
@@ -190,6 +223,8 @@ static int mux_cmd(struct comp_dev *dev, int cmd, void *data,
 	switch (cmd) {
 	case COMP_CMD_SET_DATA:
 		return mux_ctrl_set_cmd(dev, cdata);
+	case COMP_CMD_GET_DATA:
+		return mux_ctrl_get_cmd(dev, cdata, max_data_size);
 	default:
 		return -EINVAL;
 	}
