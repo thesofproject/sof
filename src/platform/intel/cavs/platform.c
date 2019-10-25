@@ -8,6 +8,9 @@
 //         Janusz Jankowski <janusz.jankowski@linux.intel.com>
 
 #include <cavs/version.h>
+#if (CONFIG_CAVS_LPS)
+#include <cavs/lps_wait.h>
+#endif
 #include <cavs/mem_window.h>
 #include <sof/common.h>
 #include <sof/debug/debug.h>
@@ -475,6 +478,12 @@ int platform_init(struct sof *sof)
 
 void platform_wait_for_interrupt(int level)
 {
-	/* TODO: go to LPS flow if pm-runtime is enabled for DSP */
+#if (CONFIG_CAVS_LPS)
+	if (pm_runtime_is_active(PM_RUNTIME_DSP, PLATFORM_MASTER_CORE_ID))
+		arch_wait_for_interrupt(level);
+	else
+		lps_wait_for_interrupt(level);
+#else
 	arch_wait_for_interrupt(level);
+#endif
 }
