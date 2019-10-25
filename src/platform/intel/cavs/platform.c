@@ -8,6 +8,7 @@
 //         Janusz Jankowski <janusz.jankowski@linux.intel.com>
 
 #include <cavs/version.h>
+#include <cavs/mem_window.h>
 #include <sof/common.h>
 #include <sof/debug/debug.h>
 #include <sof/drivers/dw-dma.h>
@@ -290,41 +291,6 @@ int platform_boot_complete(uint32_t boot_message)
 
 #endif
 
-#if CONFIG_MEM_WND
-static void platform_memory_windows_init(void)
-{
-	/* window0, for fw status & outbox/uplink mbox */
-	io_reg_write(DMWLO(0), HP_SRAM_WIN0_SIZE | 0x7);
-	io_reg_write(DMWBA(0), HP_SRAM_WIN0_BASE
-		| DMWBA_READONLY | DMWBA_ENABLE);
-	bzero((void *)(HP_SRAM_WIN0_BASE + SRAM_REG_FW_END),
-	      HP_SRAM_WIN0_SIZE - SRAM_REG_FW_END);
-	dcache_writeback_region((void *)(HP_SRAM_WIN0_BASE + SRAM_REG_FW_END),
-				HP_SRAM_WIN0_SIZE - SRAM_REG_FW_END);
-
-	/* window1, for inbox/downlink mbox */
-	io_reg_write(DMWLO(1), HP_SRAM_WIN1_SIZE | 0x7);
-	io_reg_write(DMWBA(1), HP_SRAM_WIN1_BASE
-		| DMWBA_ENABLE);
-	bzero((void *)HP_SRAM_WIN1_BASE, HP_SRAM_WIN1_SIZE);
-	dcache_writeback_region((void *)HP_SRAM_WIN1_BASE, HP_SRAM_WIN1_SIZE);
-
-	/* window2, for debug */
-	io_reg_write(DMWLO(2), HP_SRAM_WIN2_SIZE | 0x7);
-	io_reg_write(DMWBA(2), HP_SRAM_WIN2_BASE
-		| DMWBA_ENABLE);
-	bzero((void *)HP_SRAM_WIN2_BASE, HP_SRAM_WIN2_SIZE);
-	dcache_writeback_region((void *)HP_SRAM_WIN2_BASE, HP_SRAM_WIN2_SIZE);
-
-	/* window3, for trace
-	 * zeroed by trace initialization
-	 */
-	io_reg_write(DMWLO(3), HP_SRAM_WIN3_SIZE | 0x7);
-	io_reg_write(DMWBA(3), HP_SRAM_WIN3_BASE
-		| DMWBA_READONLY | DMWBA_ENABLE);
-}
-#endif
-
 #if CAVS_VERSION >= CAVS_VERSION_1_8
 /* init HW  */
 static void platform_init_hw(void)
@@ -367,7 +333,7 @@ int platform_init(struct sof *sof)
 
 #if CONFIG_MEM_WND
 	trace_point(TRACE_BOOT_PLATFORM_MBOX);
-	platform_memory_windows_init();
+	platform_memory_windows_init(MEM_WND_INIT_CLEAR);
 #endif
 
 	/* init timers, clocks and schedulers */
