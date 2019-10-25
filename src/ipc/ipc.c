@@ -453,15 +453,17 @@ int ipc_comp_dai_config(struct ipc *ipc, struct sof_ipc_dai_config *config)
 			 * config dai_index.
 			 */
 			if (dai->dai_index == config->dai_index &&
-			    dai->type == config->type)
+			    dai->type == config->type) {
 				ret = comp_dai_config(icd->cd, config);
+				if (ret < 0)
+					break;
+			}
 		}
 	}
 
-	if (ret < 0) {
+	if (ret < 0)
 		trace_ipc_error("ipc_comp_dai_config() error: "
 				"comp_dai_config() failed");
-	}
 
 	return ret;
 }
