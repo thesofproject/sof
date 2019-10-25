@@ -110,8 +110,6 @@ struct comp_data {
 	int32_t vol_min;			/**< minimum volume */
 	int32_t vol_max;			/**< maximum volume */
 	int32_t	vol_ramp_range;			/**< max ramp transition */
-	enum sof_ipc_frame source_format;	/**< source frame format */
-	enum sof_ipc_frame sink_format;		/**< sink frame format */
 	/**< volume processing function */
 	void (*scale_vol)(struct comp_dev *dev, struct comp_buffer *sink,
 			  struct comp_buffer *source, uint32_t frames);
@@ -119,8 +117,7 @@ struct comp_data {
 
 /** \brief Volume processing functions map. */
 struct comp_func_map {
-	uint16_t source;			/**< source frame format */
-	uint16_t sink;				/**< sink frame format */
+	uint16_t frame_fmt;	/**< frame format */
 	/**< volume processing function */
 	void (*func)(struct comp_dev *dev, struct comp_buffer *sink,
 		     struct comp_buffer *source, uint32_t frames);
@@ -141,14 +138,11 @@ typedef void (*scale_vol)(struct comp_dev *, struct comp_buffer *,
  */
 static inline scale_vol vol_get_processing_function(struct comp_dev *dev)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
 	int i;
 
 	/* map the volume function for source and sink buffers */
 	for (i = 0; i < func_count; i++) {
-		if (cd->source_format != func_map[i].source)
-			continue;
-		if (cd->sink_format != func_map[i].sink)
+		if (dev->params.frame_fmt != func_map[i].frame_fmt)
 			continue;
 
 		return func_map[i].func;

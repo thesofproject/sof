@@ -838,11 +838,11 @@ static int src_prepare(struct comp_dev *dev)
 				struct comp_buffer, source_list);
 
 	/* get source data format and period bytes */
-	cd->source_format = comp_frame_fmt(sourceb->source);
+	cd->source_format = sourceb->source->params.frame_fmt;
 	source_period_bytes = comp_period_bytes(sourceb->source, dev->frames);
 
 	/* get sink data format and period bytes */
-	cd->sink_format = comp_frame_fmt(sinkb->sink);
+	cd->sink_format = sinkb->sink->params.frame_fmt;
 	sink_period_bytes = comp_period_bytes(sinkb->sink, dev->frames);
 
 	/* Rewrite params format for this component to match the host side. */

@@ -32,59 +32,9 @@ static void vol_setup_circular(struct comp_buffer *buffer)
 	AE_SETCEND0(buffer->end_addr);
 }
 
-#if CONFIG_FORMAT_S16LE
-/**
- * \brief HiFi3 enabled volume processing from 16 bit to 16 bit.
- * \param[in,out] dev Volume base component device.
- * \param[in,out] sink Destination buffer.
- * \param[in,out] source Source buffer.
- * \param[in] frames Number of frames to process.
- */
-static void vol_s16_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
-			   struct comp_buffer *source, uint32_t frames)
-{
-	struct comp_data *cd = comp_get_drvdata(dev);
-	ae_f64 mult;
-	ae_f32x2 volume;
-	ae_f32x2 out_sample;
-	ae_f16x4 in_sample = AE_ZERO16();
-	size_t channel;
-	int i;
-	ae_int16 *in = (ae_int16 *)source->r_ptr;
-	ae_int16 *out = (ae_int16 *)sink->w_ptr;
+#if 0
 
-	/* Main processing loop */
-	for (i = 0; i < frames; i++) {
-		/* Processing per channel */
-		for (channel = 0; channel < dev->params.channels; channel++) {
-			/* Set source as circular buffer */
-			vol_setup_circular(source);
-
-			/* Load the input sample */
-			AE_L16_XC(in_sample, in, sizeof(ae_int16));
-
-			/* Load volume */
-			volume = (ae_f32x2)cd->volume[channel];
-
-			/* Multiply the input sample */
-			mult = AE_MULF32X16_L0(volume, in_sample);
-
-			/* Multiply of Q1.31 x Q1.15 gives Q1.47. Multiply of
-			 * Q8.16 x Q1.15 gives Q8.32, so need to shift left
-			 * by 31 to get Q1.63. Sample is Q1.31.
-			 */
-			out_sample = AE_ROUND32F64SSYM(AE_SLAI64S(mult, 31));
-
-			/* Set sink as circular buffer */
-			vol_setup_circular(sink);
-
-			/* Round to Q1.15 and store the output sample */
-			AE_S16_0_XC(AE_ROUND16X4F32SSYM(out_sample, out_sample),
-				    out, sizeof(ae_int16));
-		}
-	}
-}
-#endif /* CONFIG_FORMAT_S16LE */
+/* Currently unused, but may come in handy in the future */
 
 #if CONFIG_FORMAT_S16LE && (CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE)
 /**
@@ -210,6 +160,8 @@ static void vol_sX_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
 }
 #endif /* CONFIG_FORMAT_S16LE && (CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE) */
 
+#endif
+
 #if CONFIG_FORMAT_S24LE
 /**
  * \brief HiFi3 enabled volume processing from 24/32 bit to 24/32 or 32 bit.
@@ -228,13 +180,9 @@ static void vol_s24_to_s24_s32(struct comp_dev *dev, struct comp_buffer *sink,
 	ae_f32x2 volume;
 	size_t channel;
 	int i;
-	int shift = 0;
+	int shift = 8;
 	ae_int32 *in = (ae_int32 *)source->r_ptr;
 	ae_int32 *out = (ae_int32 *)sink->w_ptr;
-
-	/* Get value of shift left */
-	if (cd->sink_format == SOF_IPC_FRAME_S24_4LE)
-		shift = 8;
 
 	/* Main processing loop */
 	for (i = 0; i < frames; i++) {
@@ -296,10 +244,6 @@ static void vol_s32_to_s24_s32(struct comp_dev *dev, struct comp_buffer *sink,
 	ae_int32 *in = (ae_int32 *)source->r_ptr;
 	ae_int32 *out = (ae_int32 *)sink->w_ptr;
 
-	/* Get value of shift right */
-	if (cd->sink_format == SOF_IPC_FRAME_S24_4LE)
-		shift = 8;
-
 	/* Main processing loop */
 	for (i = 0; i < frames; i++) {
 		/* Processing per channel */
@@ -338,28 +282,70 @@ static void vol_s32_to_s24_s32(struct comp_dev *dev, struct comp_buffer *sink,
 }
 #endif /* CONFIG_FORMAT_S32LE */
 
+#if CONFIG_FORMAT_S16LE
+/**
+ * \brief HiFi3 enabled volume processing from 16 bit to 16 bit.
+ * \param[in,out] dev Volume base component device.
+ * \param[in,out] sink Destination buffer.
+ * \param[in,out] source Source buffer.
+ * \param[in] frames Number of frames to process.
+ */
+static void vol_s16_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
+			   struct comp_buffer *source, uint32_t frames)
+{
+	struct comp_data *cd = comp_get_drvdata(dev);
+	ae_f64 mult;
+	ae_f32x2 volume;
+	ae_f32x2 out_sample;
+	ae_f16x4 in_sample = AE_ZERO16();
+	size_t channel;
+	int i;
+	ae_int16 *in = (ae_int16 *)source->r_ptr;
+	ae_int16 *out = (ae_int16 *)sink->w_ptr;
+
+	/* Main processing loop */
+	for (i = 0; i < frames; i++) {
+		/* Processing per channel */
+		for (channel = 0; channel < dev->params.channels; channel++) {
+			/* Set source as circular buffer */
+			vol_setup_circular(source);
+
+			/* Load the input sample */
+			AE_L16_XC(in_sample, in, sizeof(ae_int16));
+
+			/* Load volume */
+			volume = (ae_f32x2)cd->volume[channel];
+
+			/* Multiply the input sample */
+			mult = AE_MULF32X16_L0(volume, in_sample);
+
+			/* Multiply of Q1.31 x Q1.15 gives Q1.47. Multiply of
+			 * Q8.16 x Q1.15 gives Q8.32, so need to shift left
+			 * by 31 to get Q1.63. Sample is Q1.31.
+			 */
+			out_sample = AE_ROUND32F64SSYM(AE_SLAI64S(mult, 31));
+
+			/* Set sink as circular buffer */
+			vol_setup_circular(sink);
+
+			/* Round to Q1.15 and store the output sample */
+			AE_S16_0_XC(AE_ROUND16X4F32SSYM(out_sample, out_sample),
+				    out, sizeof(ae_int16));
+		}
+	}
+}
+#endif /* CONFIG_FORMAT_S16LE */
+
 const struct comp_func_map func_map[] = {
 #if CONFIG_FORMAT_S16LE
-	{SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S16_LE, vol_s16_to_s16},
-#endif /* CONFIG_FORMAT_S16LE */
-#if CONFIG_FORMAT_S16LE && (CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE)
-	{SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S24_4LE, vol_s16_to_sX},
-	{SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S16_LE, vol_sX_to_s16},
-#endif /* CONFIG_FORMAT_S16LE && (CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE) */
-#if CONFIG_FORMAT_S16LE && CONFIG_FORMAT_S32LE
-	{SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S32_LE, vol_s16_to_sX},
-	{SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S16_LE, vol_sX_to_s16},
-#endif /* CONFIG_FORMAT_S16LE && CONFIG_FORMAT_S32LE */
+	{ SOF_IPC_FRAME_S16_LE, vol_s16_to_s16 },
+#endif
 #if CONFIG_FORMAT_S24LE
-	{SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S24_4LE, vol_s24_to_s24_s32},
-#endif /* CONFIG_FORMAT_S24LE */
-#if CONFIG_FORMAT_S24LE && CONFIG_FORMAT_S32LE
-	{SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S32_LE, vol_s24_to_s24_s32},
-	{SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S24_4LE, vol_s32_to_s24_s32},
-#endif /* CONFIG_FORMAT_S24LE && CONFIG_FORMAT_S32LE */
+	{ SOF_IPC_FRAME_S24_4LE, vol_s24_to_s24_s32 },
+#endif
 #if CONFIG_FORMAT_S32LE
-	{SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S32_LE, vol_s32_to_s24_s32},
-#endif /* CONFIG_FORMAT_S32LE */
+	{ SOF_IPC_FRAME_S32_LE, vol_s32_to_s24_s32 },
+#endif
 };
 
 const size_t func_count = ARRAY_SIZE(func_map);
