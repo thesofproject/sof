@@ -8,3 +8,7 @@ add_local_sources(sof
 	pm_memory.c
 	power_down.S
 )
+
+if(CONFIG_MEM_WND)
+	add_local_sources(sof mem_window.c)
+endif()
