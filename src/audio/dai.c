@@ -7,6 +7,8 @@
 
 #include <sof/audio/buffer.h>
 #include <sof/audio/component.h>
+#include <sof/audio/format.h>
+#include <sof/audio/pcm_converter.h>
 #include <sof/audio/pipeline.h>
 #include <sof/common.h>
 #include <sof/debug/panic.h>
@@ -57,6 +59,7 @@ struct dai_data {
 	struct dai *dai;
 	struct dma *dma;
 	uint32_t frame_bytes;
+	enum sof_ipc_frame frame_fmt;
 	int xrun;		/* true if we are doing xrun recovery */
 
 	/* processing function */
@@ -78,6 +81,7 @@ static void dai_dma_cb(void *data, uint32_t type, struct dma_cb_data *next)
 	struct comp_dev *dev = (struct comp_dev *)data;
 	struct dai_data *dd = comp_get_drvdata(dev);
 	uint32_t bytes = next->elem.size;
+	uint32_t samples = bytes / sample_bytes(dd->frame_fmt);
 	struct comp_buffer *local_buffer;
 	void *buffer_ptr;
 
@@ -108,17 +112,18 @@ static void dai_dma_cb(void *data, uint32_t type, struct dma_cb_data *next)
 		local_buffer = list_first_item(&dev->bsource_list,
 					       struct comp_buffer, sink_list);
 
-		dma_buffer_copy_to(local_buffer, bytes, dd->dma_buffer, bytes,
-				   dd->process, bytes / comp_sample_bytes(dev));
+		dma_buffer_copy_to(local_buffer,
+				   samples * comp_sample_bytes(dev),
+				   dd->dma_buffer, bytes, dd->process, samples);
 
 		buffer_ptr = local_buffer->r_ptr;
 	} else {
 		local_buffer = list_first_item(&dev->bsink_list,
 					       struct comp_buffer, source_list);
 
-		dma_buffer_copy_from(dd->dma_buffer, bytes, local_buffer, bytes,
-				     dd->process,
-				     bytes / comp_sample_bytes(dev));
+		dma_buffer_copy_from(dd->dma_buffer, bytes, local_buffer,
+				     samples * comp_sample_bytes(dev),
+				     dd->process, samples);
 
 		buffer_ptr = local_buffer->w_ptr;
 	}
@@ -226,10 +231,14 @@ static int dai_playback_params(struct comp_dev *dev, uint32_t period_bytes,
 	uint32_t fifo;
 	int err;
 
+	/* set processing function */
+	dd->process = pcm_get_conversion_function(dev->params.frame_fmt,
+						  dd->frame_fmt);
+
 	/* set up DMA configuration */
 	config->direction = DMA_DIR_MEM_TO_DEV;
-	config->src_width = comp_sample_bytes(dev);
-	config->dest_width = comp_sample_bytes(dev);
+	config->src_width = sample_bytes(dd->frame_fmt);
+	config->dest_width = sample_bytes(dd->frame_fmt);
 	config->cyclic = 1;
 	config->irq_disabled = pipeline_is_timer_driven(dev->pipeline);
 	config->dest_dev = dai_get_handshake(dd->dai, dev->params.direction,
@@ -275,6 +284,10 @@ static int dai_capture_params(struct comp_dev *dev, uint32_t period_bytes,
 	uint32_t fifo;
 	int err;
 
+	/* set processing function */
+	dd->process = pcm_get_conversion_function(dd->frame_fmt,
+						  dev->params.frame_fmt);
+
 	/* set up DMA configuration */
 	config->direction = DMA_DIR_DEV_TO_MEM;
 	config->cyclic = 1;
@@ -293,8 +306,8 @@ static int dai_capture_params(struct comp_dev *dev, uint32_t period_bytes,
 		config->src_width = 4;
 		config->dest_width = 4;
 	} else {
-		config->src_width = comp_sample_bytes(dev);
-		config->dest_width = comp_sample_bytes(dev);
+		config->src_width = sample_bytes(dd->frame_fmt);
+		config->dest_width = sample_bytes(dd->frame_fmt);
 	}
 
 	trace_dai_with_ids(dev, "dai_capture_params() "
@@ -329,8 +342,8 @@ static int dai_capture_params(struct comp_dev *dev, uint32_t period_bytes,
 
 static int dai_params(struct comp_dev *dev)
 {
-	struct dai_data *dd = comp_get_drvdata(dev);
 	struct sof_ipc_comp_config *dconfig = COMP_GET_CONFIG(dev);
+	struct dai_data *dd = comp_get_drvdata(dev);
 	uint32_t period_count;
 	uint32_t period_bytes;
 	uint32_t buffer_size;
@@ -351,23 +364,6 @@ static int dai_params(struct comp_dev *dev)
 	if (dev->state != COMP_STATE_READY) {
 		trace_dai_error_with_ids(dev, "dai_params() error: Component"
 					 " is not in init state.");
-		return -EINVAL;
-	}
-
-	/* for DAI, we should configure its frame_fmt from topology */
-	dev->params.frame_fmt = dconfig->frame_fmt;
-
-	/* set processing function */
-	if (dev->params.frame_fmt == SOF_IPC_FRAME_S16_LE)
-		dd->process = buffer_copy_s16;
-	else
-		dd->process = buffer_copy_s32;
-
-	/* calculate period size based on config */
-	dd->frame_bytes = comp_frame_bytes(dev);
-	if (!dd->frame_bytes) {
-		trace_dai_error_with_ids(dev, "dai_params() error: "
-					 "comp_frame_bytes() returned 0.");
 		return -EINVAL;
 	}
 
@@ -398,6 +394,12 @@ static int dai_params(struct comp_dev *dev)
 		return -EINVAL;
 	}
 
+	dd->frame_fmt = dconfig->frame_fmt;
+
+	/* calculate frame size */
+	dd->frame_bytes = frame_bytes(dd->frame_fmt, dev->params.channels);
+
+	/* calculate period size */
 	period_bytes = dev->frames * dd->frame_bytes;
 	if (!period_bytes) {
 		trace_dai_error_with_ids(dev, "dai_params() error: invalid "
@@ -622,6 +624,8 @@ static int dai_copy(struct comp_dev *dev)
 	uint32_t avail_bytes = 0;
 	uint32_t free_bytes = 0;
 	uint32_t copy_bytes = 0;
+	uint32_t src_samples;
+	uint32_t sink_samples;
 	int ret = 0;
 
 	tracev_dai_with_ids(dev, "dai_copy()");
@@ -637,11 +641,17 @@ static int dai_copy(struct comp_dev *dev)
 	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK) {
 		local_buffer = list_first_item(&dev->bsource_list,
 					       struct comp_buffer, sink_list);
-		copy_bytes = MIN(local_buffer->avail, free_bytes);
+		src_samples = local_buffer->avail / comp_sample_bytes(dev);
+		sink_samples = free_bytes / sample_bytes(dd->frame_fmt);
+		copy_bytes = MIN(src_samples, sink_samples) *
+			sample_bytes(dd->frame_fmt);
 	} else {
 		local_buffer = list_first_item(&dev->bsink_list,
 					       struct comp_buffer, source_list);
-		copy_bytes = MIN(avail_bytes, local_buffer->free);
+		src_samples = avail_bytes / sample_bytes(dd->frame_fmt);
+		sink_samples = local_buffer->free / comp_sample_bytes(dev);
+		copy_bytes = MIN(src_samples, sink_samples) *
+			sample_bytes(dd->frame_fmt);
 	}
 
 	tracev_dai_with_ids(dev, "dai_copy(), copy_bytes = 0x%x", copy_bytes);

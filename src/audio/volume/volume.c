@@ -598,9 +598,7 @@ static int volume_prepare(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *sinkb;
-	struct comp_buffer *sourceb;
 	struct sof_ipc_comp_config *config = COMP_GET_CONFIG(dev);
-	uint32_t source_period_bytes;
 	uint32_t sink_period_bytes;
 	int i;
 	int ret;
@@ -614,25 +612,12 @@ static int volume_prepare(struct comp_dev *dev)
 	if (ret == COMP_STATUS_STATE_ALREADY_SET)
 		return PPL_STATUS_PATH_STOP;
 
-	/* volume components will only ever have 1 source and 1 sink buffer */
-	sourceb = list_first_item(&dev->bsource_list,
-				  struct comp_buffer, sink_list);
+	/* volume component will only ever have 1 sink buffer */
 	sinkb = list_first_item(&dev->bsink_list,
 				struct comp_buffer, source_list);
 
-	/* get source data format and period bytes */
-	cd->source_format = comp_frame_fmt(sourceb->source);
-	source_period_bytes = comp_period_bytes(sourceb->source, dev->frames);
-
-	/* get sink data format and period bytes */
-	cd->sink_format = comp_frame_fmt(sinkb->sink);
+	/* get sink period bytes */
 	sink_period_bytes = comp_period_bytes(sinkb->sink, dev->frames);
-
-	/* Rewrite params format for this component to match the host side. */
-	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK)
-		dev->params.frame_fmt = cd->source_format;
-	else
-		dev->params.frame_fmt = cd->sink_format;
 
 	if (sinkb->size < config->periods_sink * sink_period_bytes) {
 		trace_volume_error_with_ids(dev, "volume_prepare() error: "
@@ -641,31 +626,12 @@ static int volume_prepare(struct comp_dev *dev)
 		goto err;
 	}
 
-	/* validate */
-	if (!sink_period_bytes) {
-		trace_volume_error_with_ids(dev, "volume_prepare() error: "
-					    "sink_period_bytes = 0, "
-					    "dev->frames = %u", dev->frames);
-		ret = -EINVAL;
-		goto err;
-	}
-	if (!source_period_bytes) {
-		trace_volume_error_with_ids(dev, "volume_prepare() error: "
-				   "source_period_bytes = 0, "
-				   "dev->frames = %u", dev->frames);
-		ret = -EINVAL;
-		goto err;
-	}
-
 	cd->scale_vol = vol_get_processing_function(dev);
 	if (!cd->scale_vol) {
-		trace_volume_error_with_ids(dev, "volume_prepare() error: "
-					    "invalid cd->scale_vol, "
-					    "cd->source_format = %u, "
-					    "cd->sink_format = %u, "
-					    "dev->params.channels = %u",
-					    cd->source_format, cd->sink_format,
-					    dev->params.channels);
+		trace_volume_error_with_ids
+			(dev,
+			 "volume_prepare() error: invalid cd->scale_vol, dev->params.frame_fmt = %u, dev->params.channels = %u",
+			 dev->params.frame_fmt, dev->params.channels);
 		ret = -EINVAL;
 		goto err;
 	}

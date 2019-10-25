@@ -646,32 +646,6 @@ static inline uint32_t comp_avail_frames(struct comp_buffer *source,
 }
 
 /**
- * Returns frame format based on component device's type.
- * @param dev Component device.
- * @return Frame format.
- */
-static inline enum sof_ipc_frame comp_frame_fmt(struct comp_dev *dev)
-{
-	struct sof_ipc_comp_config *sconfig;
-	enum sof_ipc_frame frame_fmt;
-
-	switch (dev->comp.type) {
-	case SOF_COMP_DAI:
-	case SOF_COMP_SG_DAI:
-		/* format comes from DAI/comp config */
-		sconfig = COMP_GET_CONFIG(dev);
-		frame_fmt = sconfig->frame_fmt;
-		break;
-	default:
-		/* format comes from IPC params */
-		frame_fmt = dev->params.frame_fmt;
-		break;
-	}
-
-	return frame_fmt;
-}
-
-/**
  * Returns component state based on requested command.
  * @param cmd Request command.
  * @return Component state.
