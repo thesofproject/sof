@@ -598,34 +598,24 @@ static int dai_comp_trigger(struct comp_dev *dev, int cmd)
 	return ret;
 }
 
-/* check if xrun occurred */
-static int dai_check_for_xrun(struct comp_dev *dev, uint32_t copy_bytes)
+/* report xrun occurrence */
+static void dai_report_xrun(struct comp_dev *dev, uint32_t bytes)
 {
-	struct dai_data *dd = comp_get_drvdata(dev);
 	struct comp_buffer *local_buffer;
 
-	/* data available for copy or just starting */
-	if (copy_bytes || dd->start_position == dev->position)
-		return 0;
-
-	/* xrun occurred */
 	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK) {
-		trace_dai_error_with_ids(dev, "dai_check_for_xrun() "
-					 "error: underrun due to no data "
-					 "available");
+		trace_dai_error_with_ids(dev, "dai_report_xrun() error: "
+					 "underrun due to no data available");
 		local_buffer = list_first_item(&dev->bsource_list,
 					       struct comp_buffer, sink_list);
-		comp_underrun(dev, local_buffer, copy_bytes);
+		comp_underrun(dev, local_buffer, bytes);
 	} else {
-		trace_dai_error_with_ids(dev, "dai_check_for_xrun() "
-					 "error: overrun due to no data "
-					 "available");
+		trace_dai_error_with_ids(dev, "dai_report_xrun() error: "
+					 "overrun due to no data available");
 		local_buffer = list_first_item(&dev->bsink_list,
 					       struct comp_buffer, source_list);
-		comp_overrun(dev, local_buffer, copy_bytes);
+		comp_overrun(dev, local_buffer, bytes);
 	}
-
-	return -ENODATA;
 }
 
 /* copy and process stream data from source to sink buffers */
@@ -642,8 +632,10 @@ static int dai_copy(struct comp_dev *dev)
 
 	/* get data sizes from DMA */
 	ret = dma_get_data_size(dd->chan, &avail_bytes, &free_bytes);
-	if (ret < 0)
+	if (ret < 0) {
+		dai_report_xrun(dev, 0);
 		return ret;
+	}
 
 	/* calculate minimum size to copy */
 	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK) {
@@ -658,14 +650,15 @@ static int dai_copy(struct comp_dev *dev)
 
 	tracev_dai_with_ids(dev, "dai_copy(), copy_bytes = 0x%x", copy_bytes);
 
-	/* check for underrun or overrun */
-	ret = dai_check_for_xrun(dev, copy_bytes);
-	if (ret < 0)
-		return ret;
+	/* return if it's not stream start */
+	if (!copy_bytes && dd->start_position != dev->position)
+		return 0;
 
 	ret = dma_copy(dd->chan, copy_bytes, 0);
-	if (ret < 0)
-		trace_dai_error("dai_copy() error: ret = %u", ret);
+	if (ret < 0) {
+		dai_report_xrun(dev, copy_bytes);
+		return ret;
+	}
 
 	return ret;
 }
