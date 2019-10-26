@@ -297,18 +297,12 @@ static void hda_dma_post_copy(struct dma_chan_data *chan, int bytes)
 
 static int hda_dma_link_copy_ch(struct dma_chan_data *chan, int bytes)
 {
-	uint32_t dgcs = 0;
 	int ret = 0;
 
 	tracev_hddma("hda-dmac: %d channel %d -> copy 0x%x bytes",
 		     chan->dma->plat_data.id, chan->index, bytes);
 
 	hda_dma_get_dbg_vals(chan, HDA_DBG_PRE, HDA_DBG_LINK);
-
-	/* clear link xruns */
-	dgcs = dma_chan_reg_read(chan, DGCS);
-	if (dgcs & DGCS_BOR)
-		dma_chan_reg_update_bits(chan, DGCS, DGCS_BOR, DGCS_BOR);
 
 	hda_dma_post_copy(chan, bytes);
 
@@ -791,6 +785,26 @@ static int hda_dma_remove(struct dma *dma)
 	return 0;
 }
 
+static int hda_dma_link_check_xrun(struct dma_chan_data *chan)
+{
+	uint32_t dgcs;
+
+	if (chan->direction == DMA_DIR_MEM_TO_DEV ||
+	    chan->direction == DMA_DIR_DEV_TO_MEM) {
+		/* check for link xruns */
+		dgcs = dma_chan_reg_read(chan, DGCS);
+		if (dgcs & DGCS_BOR) {
+			trace_hddma_error("hda_dma_link_check_xrun() error: "
+					  "xrun detected");
+			dma_chan_reg_update_bits(chan, DGCS, DGCS_BOR,
+						 DGCS_BOR);
+			return -ENODATA;
+		}
+	}
+
+	return 0;
+}
+
 static int hda_dma_avail_data_size(struct dma_chan_data *chan)
 {
 	struct hda_chan_data *hda_chan = dma_chan_get_data(chan);
@@ -847,11 +861,16 @@ static int hda_dma_data_size(struct dma_chan_data *channel,
 			     uint32_t *avail, uint32_t *free)
 {
 	uint32_t flags;
+	int ret = 0;
 
 	tracev_hddma("hda-dmac: %d channel %d -> get_data_size",
 		     channel->dma->plat_data.id, channel->index);
 
 	irq_local_disable(flags);
+
+	ret = hda_dma_link_check_xrun(channel);
+	if (ret < 0)
+		return ret;
 
 	if (channel->direction == DMA_DIR_HMEM_TO_LMEM ||
 	    channel->direction == DMA_DIR_DEV_TO_MEM)
@@ -861,7 +880,7 @@ static int hda_dma_data_size(struct dma_chan_data *channel,
 
 	irq_local_enable(flags);
 
-	return 0;
+	return ret;
 }
 
 static int hda_dma_get_attribute(struct dma *dma, uint32_t type,
