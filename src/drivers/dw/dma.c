@@ -1030,10 +1030,8 @@ static int dw_dma_avail_data_size(struct dma_chan_data *channel)
 		size += dw_chan->ptr_data.buffer_bytes;
 
 	if (!size)
-		trace_dwdma("dw_dma_avail_data_size() "
-			    "size is 0! Channel enable = %d.",
-			    (dma_reg_read(channel->dma, DW_DMA_CHAN_EN) &
-			     DW_CHAN(channel->index)) ? 1 : 0);
+		trace_dwdma("dw_dma_avail_data_size() size is 0!");
+
 	return size;
 }
 
@@ -1049,10 +1047,8 @@ static int dw_dma_free_data_size(struct dma_chan_data *channel)
 		size += dw_chan->ptr_data.buffer_bytes;
 
 	if (!size)
-		trace_dwdma("dw_dma_free_data_size() "
-			    "size is 0! Channel enable = %d.",
-			    (dma_reg_read(channel->dma, DW_DMA_CHAN_EN) &
-			     DW_CHAN(channel->index)) ? 1 : 0);
+		trace_dwdma("dw_dma_free_data_size() size is 0!");
+
 	return size;
 }
 
@@ -1060,11 +1056,21 @@ static int dw_dma_get_data_size(struct dma_chan_data *channel,
 				uint32_t *avail, uint32_t *free)
 {
 	uint32_t flags;
+	int ret = 0;
 
 	tracev_dwdma("dw_dma_get_data_size(): dma %d channel %d get data size",
 		     channel->dma->plat_data.id, channel->index);
 
 	irq_local_disable(flags);
+
+#if CONFIG_HW_LLI
+	if (!(dma_reg_read(channel->dma, DW_DMA_CHAN_EN) &
+	      DW_CHAN(channel->index))) {
+		trace_dwdma_error("dw_dma_get_data_size() error: "
+				  "xrun detected");
+		return -ENODATA;
+	}
+#endif
 
 	if (channel->direction == DMA_DIR_HMEM_TO_LMEM ||
 	    channel->direction == DMA_DIR_DEV_TO_MEM)
@@ -1074,7 +1080,7 @@ static int dw_dma_get_data_size(struct dma_chan_data *channel,
 
 	irq_local_enable(flags);
 
-	return 0;
+	return ret;
 }
 
 static int dw_dma_get_attribute(struct dma *dma, uint32_t type,
