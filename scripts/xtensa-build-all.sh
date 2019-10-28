@@ -5,6 +5,7 @@
 SUPPORTED_PLATFORMS=(byt cht bdw hsw apl cnl sue icl skl kbl imx8)
 BUILD_ROM=no
 BUILD_DEBUG=no
+BUILD_QEMU=no
 BUILD_FORCE_UP=no
 BUILD_JOBS=$(nproc --all)
 BUILD_JOBS_NEXT=0
@@ -20,6 +21,7 @@ then
 	echo "       [-a] Build all platforms"
 	echo "       [-u] Force UP ARCH"
 	echo "       [-d] Enable debug build"
+	echo "       [-q] Enable QEMU build"
 	echo "       [-c] Configure defconfig"
 	echo "       [-k] Use private key"
 	echo "       [-j [n]] Set number of make build jobs." \
@@ -40,6 +42,10 @@ else
 		elif [[ "$args" == "-d" ]]
 			then
 			BUILD_DEBUG=yes
+
+		elif [[ "$args" == "-q" ]]
+			then
+			BUILD_QEMU=yes
 
 		elif [[ "$args" == "-j" ]]
 			then
@@ -291,6 +297,11 @@ do
 	if [[ "x$BUILD_DEBUG" == "xyes" ]]
 	then
 		echo "CONFIG_DEBUG=y" >> override.config
+	fi
+
+	if [[ "x$BUILD_QEMU" == "xyes" ]]
+	then
+		echo "CONFIG_QEMU=y" >> override.config
 	fi
 
 	if [[ "x$BUILD_ROM" == "xyes" && "x$HAVE_ROM" == "xyes" ]]
