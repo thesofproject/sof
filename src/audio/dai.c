@@ -686,8 +686,9 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 	int i;
 	int handshake = dai_get_handshake(dd->dai, dev->params.direction, dd->stream_id);
 
-	trace_dai("config comp %d pipe %d dai %d type %d", dev->comp.id,
-		  dev->comp.pipeline_id, config->dai_index, config->type);
+	trace_dai_with_ids(dev, "config comp %d pipe %d dai %d type %d",
+			   dev->comp.id, dev->comp.pipeline_id,
+			   config->dai_index, config->type);
 
 	/* cannot configure DAI while active */
 	if (dev->state == COMP_STATE_ACTIVE) {
