@@ -19,8 +19,9 @@
 	(type *)((char *)__memberptr - offsetof(type, member)); })
 
 /* Align the number to the nearest alignment value */
+#define IS_ALIGNED(size, alignment) ((size) % (alignment) == 0)
 #define ALIGN_UP(size, alignment) \
-	(((size) % (alignment) == 0) ? (size) : \
+	(IS_ALIGNED(size, alignment) ? (size) : \
 	((size) - ((size) % (alignment)) + (alignment)))
 #define ALIGN_DOWN(size, alignment) \
 	((size) - ((size) % (alignment)))
