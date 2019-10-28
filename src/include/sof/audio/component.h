@@ -143,10 +143,21 @@ struct sof_ipc_stream_posn;
  */
 #define trace_comp(__e, ...) \
 	trace_event(TRACE_CLASS_COMP, __e, ##__VA_ARGS__)
-#define trace_comp_error(__e, ...) \
-	trace_error(TRACE_CLASS_COMP, __e, ##__VA_ARGS__)
+#define trace_comp_with_ids(comp_ptr, __e, ...)			\
+	trace_event_comp(TRACE_CLASS_COMP, comp_ptr,		\
+			 __e, ##__VA_ARGS__)
+
 #define tracev_comp(__e, ...) \
 	tracev_event(TRACE_CLASS_COMP, __e, ##__VA_ARGS__)
+#define tracev_comp_with_ids(comp_ptr, __e, ...)		\
+	tracev_event_comp(TRACE_CLASS_COMP, comp_ptr,		\
+			  __e, ##__VA_ARGS__)
+
+#define trace_comp_error(__e, ...) \
+	trace_error(TRACE_CLASS_COMP, __e, ##__VA_ARGS__)
+#define trace_comp_error_with_ids(comp_ptr, __e, ...)		\
+	trace_error_comp(TRACE_CLASS_COMP, comp_ptr,		\
+			 __e, ##__VA_ARGS__)
 /** @}*/
 
 /* \brief Type of endpoint this component is connected to in a pipeline */
@@ -406,9 +417,10 @@ static inline int comp_cmd(struct comp_dev *dev, int cmd, void *data,
 	if (cmd == COMP_CMD_SET_DATA &&
 	    (cdata->data->magic != SOF_ABI_MAGIC ||
 	     SOF_ABI_VERSION_INCOMPATIBLE(SOF_ABI_VERSION, cdata->data->abi))) {
-		trace_comp_error("comp_cmd() error: invalid version, "
-				 "data->magic = %u, data->abi = %u",
-				 cdata->data->magic, cdata->data->abi);
+		trace_comp_error_with_ids(dev, "comp_cmd() error: "
+					  "invalid version, "
+					  "data->magic = %u, data->abi = %u",
+					  cdata->data->magic, cdata->data->abi);
 		return -EINVAL;
 	}
 
@@ -728,9 +740,13 @@ static inline void comp_underrun(struct comp_dev *dev,
 				 struct comp_buffer *source,
 				 uint32_t copy_bytes)
 {
-	trace_comp_error("comp_underrun() error: dev->comp.id = %u, "
-			 "source->avail = %u, copy_bytes = %u", dev->comp.id,
-			 source->avail, copy_bytes);
+	trace_comp_error_with_ids(dev, "comp_underrun() error: "
+				  "dev->comp.id = %u, "
+				  "source->avail = %u, "
+				  "copy_bytes = %u",
+				  dev->comp.id,
+				  source->avail,
+				  copy_bytes);
 
 	pipeline_xrun(dev->pipeline, dev, (int32_t)source->avail - copy_bytes);
 }
