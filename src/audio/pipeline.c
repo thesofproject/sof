@@ -229,8 +229,10 @@ int pipeline_free(struct pipeline *p)
 	}
 
 	/* remove from any scheduling */
-	if (p->pipe_task)
+	if (p->pipe_task) {
 		schedule_task_free(p->pipe_task);
+		rfree(p->pipe_task);
+	}
 
 	/* now free the pipeline */
 	rfree(p);
