@@ -248,6 +248,7 @@ config SYSTICK_PERIOD
 config HAVE_AGENT
 	bool "Enable system agent"
 	default y
+	depends on !QEMU
 	help
 	  Enables system agent. It can be disabled on systems
 	  which are still unstable and cannot assure that
