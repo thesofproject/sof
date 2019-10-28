@@ -196,6 +196,14 @@ void trace_init(struct sof *sof);
 	_trace_event_atomic_with_ids(class, id_0, id_1, 1, format,	\
 				     ##__VA_ARGS__)
 
+/* component tracing builder macro */
+#define _trace_comp_build(fun, class, comp_ptr, format, ...)		\
+		fun(class, comp_ptr->comp.pipeline_id,			\
+		    comp_ptr->comp.id, format, ##__VA_ARGS__)
+
+#define trace_event_comp(...) _trace_comp_build(trace_event_with_ids,	\
+						##__VA_ARGS__)
+
 #if CONFIG_TRACEM
 /* send all trace to mbox and local trace buffer */
 #define __mbox _mbox
@@ -222,6 +230,8 @@ void trace_init(struct sof *sof);
 #define tracev_event_atomic(...) trace_event_atomic(__VA_ARGS__)
 #define tracev_event_atomic_with_ids(...) trace_event_atomic_with_ids(__VA_ARGS__)
 
+#define tracev_event_comp(...) _trace_comp_build(tracev_event_with_ids,	\
+						 ##__VA_ARGS__)
 #define tracev_value(x)	trace_value(x)
 #define tracev_value_atomic(x)	trace_value_atomic(x)
 #else
@@ -230,6 +240,7 @@ void trace_init(struct sof *sof);
 #define tracev_event_atomic(...) do {} while (0)
 #define tracev_event_atomic_with_ids(...) do {} while (0)
 
+#define tracev_event_comp(...) do {} while (0)
 #define tracev_value(x) do {} while (0)
 #define tracev_value_atomic(x) do {} while (0)
 #endif
@@ -245,6 +256,8 @@ void trace_init(struct sof *sof);
 	_trace_error_with_ids(class, id_0, id_1, 1, format, ##__VA_ARGS__)
 #define trace_error_atomic(...) trace_error(__VA_ARGS__)
 #define trace_error_atomic_with_ids(...) trace_error_with_ids(__VA_ARGS__)
+#define trace_error_comp(...) _trace_comp_build(trace_error_with_ids,	\
+						##__VA_ARGS__)
 /* write back error value to mbox */
 #define trace_error_value(x)		trace_error(0, "value %u", x)
 #define trace_error_value_atomic(...)	trace_error_value(__VA_ARGS__)
@@ -253,8 +266,11 @@ void trace_init(struct sof *sof);
 #define trace_error_with_ids(...) trace_event_with_ids(__VA_ARGS__)
 #define trace_error_atomic(...) trace_event_atomic(__VA_ARGS__)
 #define trace_error_atomic_with_ids(...) trace_event_atomic_with_ids(__VA_ARGS__)
+#define trace_error_comp(...) _trace_comp_build(trace_error_with_ids,	\
+						##__VA_ARGS__)
 #define trace_error_value(x) trace_value(x)
 #define trace_error_value_atomic(x) trace_value_atomic(x)
+
 #endif
 
 #ifndef CONFIG_LIBRARY
