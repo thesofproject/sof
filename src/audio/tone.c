@@ -30,12 +30,24 @@
 #include <stddef.h>
 #include <stdint.h>
 
+/* mixer tracing */
 #define trace_tone(__e, ...) \
 	trace_event(TRACE_CLASS_TONE, __e, ##__VA_ARGS__)
+#define trace_tone_with_ids(comp_ptr, __e, ...)			\
+	trace_event_comp(TRACE_CLASS_TONE, comp_ptr,		\
+			 __e, ##__VA_ARGS__)
+
 #define tracev_tone(__e, ...) \
 	tracev_event(TRACE_CLASS_TONE, __e, ##__VA_ARGS__)
+#define tracev_tone_with_ids(comp_ptr, __e, ...)		\
+	tracev_event_comp(TRACE_CLASS_TONE, comp_ptr,		\
+			  __e, ##__VA_ARGS__)
+
 #define trace_tone_error(__e, ...) \
 	trace_error(TRACE_CLASS_TONE, __e, ##__VA_ARGS__)
+#define trace_tone_error_with_ids(comp_ptr, __e, ...)		\
+	trace_error_comp(TRACE_CLASS_TONE, comp_ptr,		\
+			 __e, ##__VA_ARGS__)
 
 /* Convert float frequency in Hz to Q16.16 fractional format */
 #define TONE_FREQ(f) Q_CONVERT_FLOAT(f, 16)
@@ -420,7 +432,7 @@ static void tone_free(struct comp_dev *dev)
 {
 	struct tone_data *td = comp_get_drvdata(dev);
 
-	trace_tone("tone_free()");
+	trace_tone_with_ids(dev, "tone_free()");
 
 	rfree(td);
 	rfree(dev);
@@ -432,7 +444,8 @@ static int tone_params(struct comp_dev *dev)
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct sof_ipc_comp_config *config = COMP_GET_CONFIG(dev);
 
-	trace_tone("tone_params(), config->frame_fmt = %u", config->frame_fmt);
+	trace_tone_with_ids(dev, "tone_params(), config->frame_fmt = %u",
+			    config->frame_fmt);
 
 	/* Tone supports only S32_LE PCM format atm */
 	if (config->frame_fmt != SOF_IPC_FRAME_S32_LE)
@@ -452,15 +465,15 @@ static int tone_cmd_get_value(struct comp_dev *dev,
 	struct comp_data *cd = comp_get_drvdata(dev);
 	int j;
 
-	trace_tone("tone_cmd_get_value()");
+	trace_tone_with_ids(dev, "tone_cmd_get_value()");
 
 	if (cdata->cmd == SOF_CTRL_CMD_SWITCH) {
 		for (j = 0; j < cdata->num_elems; j++) {
 			cdata->chanv[j].channel = j;
 			cdata->chanv[j].value = !cd->sg[j].mute;
-			trace_tone("tone_cmd_get_value(), "
-				   "j = %u, cd->sg[j].mute = %u",
-				   j, cd->sg[j].mute);
+			trace_tone_with_ids(dev, "tone_cmd_get_value(), "
+					    "j = %u, cd->sg[j].mute = %u",
+					    j, cd->sg[j].mute);
 		}
 	}
 	return 0;
@@ -475,15 +488,18 @@ static int tone_cmd_set_value(struct comp_dev *dev,
 	bool val;
 
 	if (cdata->cmd == SOF_CTRL_CMD_SWITCH) {
-		trace_tone("tone_cmd_set_value(), SOF_CTRL_CMD_SWITCH");
+		trace_tone_with_ids(dev, "tone_cmd_set_value(), "
+				    "SOF_CTRL_CMD_SWITCH");
 		for (j = 0; j < cdata->num_elems; j++) {
 			ch = cdata->chanv[j].channel;
 			val = cdata->chanv[j].value;
-			trace_tone("tone_cmd_set_value(), SOF_CTRL_CMD_SWITCH,"
-				   " ch = %u, val = %u", ch, val);
+			trace_tone_with_ids(dev, "tone_cmd_set_value(), "
+					    "SOF_CTRL_CMD_SWITCH,"
+					    " ch = %u, val = %u", ch, val);
 			if (ch >= PLATFORM_MAX_CHANNELS) {
-				trace_tone_error("tone_cmd_set_value() error: "
-						 "ch >= PLATFORM_MAX_CHANNELS");
+				trace_tone_error_with_ids(dev,
+							  "tone_cmd_set_value() error: "
+							  "ch >= PLATFORM_MAX_CHANNELS");
 				return -EINVAL;
 			}
 
@@ -494,8 +510,8 @@ static int tone_cmd_set_value(struct comp_dev *dev,
 
 		}
 	} else {
-		trace_tone_error("tone_cmd_set_value() error: "
-				 "invalid cdata->cmd");
+		trace_tone_error_with_ids(dev, "tone_cmd_set_value() error: "
+					  "invalid cdata->cmd");
 		return -EINVAL;
 	}
 
@@ -511,70 +527,72 @@ static int tone_cmd_set_data(struct comp_dev *dev,
 	uint32_t ch;
 	uint32_t val;
 
-	trace_tone("tone_cmd_set_data()");
+	trace_tone_with_ids(dev, "tone_cmd_set_data()");
 
 	switch (cdata->cmd) {
 	case SOF_CTRL_CMD_ENUM:
-		trace_tone("tone_cmd_set_data(), "
-			   "SOF_CTRL_CMD_ENUM, cdata->index = %u",
-			   cdata->index);
+		trace_tone_with_ids(dev, "tone_cmd_set_data(), "
+				    "SOF_CTRL_CMD_ENUM, cdata->index = %u",
+				    cdata->index);
 		compv = (struct sof_ipc_ctrl_value_comp *)cdata->data->data;
 		for (i = 0; i < (int)cdata->num_elems; i++) {
 			ch = compv[i].index;
 			val = compv[i].svalue;
-			trace_tone("tone_cmd_set_data(), SOF_CTRL_CMD_ENUM, "
-				   "ch = %u, val = %u", ch, val);
+			trace_tone_with_ids(dev, "tone_cmd_set_data(), "
+					    "SOF_CTRL_CMD_ENUM, "
+					    "ch = %u, val = %u", ch, val);
 			switch (cdata->index) {
 			case SOF_TONE_IDX_FREQUENCY:
-				trace_tone("tone_cmd_set_data(), "
-					   "SOF_TONE_IDX_FREQUENCY");
+				trace_tone_with_ids(dev, "tone_cmd_set_data(), "
+						    "SOF_TONE_IDX_FREQUENCY");
 				tonegen_update_f(&cd->sg[ch], val);
 				break;
 			case SOF_TONE_IDX_AMPLITUDE:
-				trace_tone("tone_cmd_set_data(), "
-					   "SOF_TONE_IDX_AMPLITUDE");
+				trace_tone_with_ids(dev, "tone_cmd_set_data(), "
+						    "SOF_TONE_IDX_AMPLITUDE");
 				tonegen_set_a(&cd->sg[ch], val);
 				break;
 			case SOF_TONE_IDX_FREQ_MULT:
-				trace_tone("tone_cmd_set_data(), "
-					   "SOF_TONE_IDX_FREQ_MULT");
+				trace_tone_with_ids(dev, "tone_cmd_set_data(), "
+						    "SOF_TONE_IDX_FREQ_MULT");
 				tonegen_set_freq_mult(&cd->sg[ch], val);
 				break;
 			case SOF_TONE_IDX_AMPL_MULT:
-				trace_tone("tone_cmd_set_data(), "
-					   "SOF_TONE_IDX_AMPL_MULT");
+				trace_tone_with_ids(dev, "tone_cmd_set_data(), "
+						    "SOF_TONE_IDX_AMPL_MULT");
 				tonegen_set_ampl_mult(&cd->sg[ch], val);
 				break;
 			case SOF_TONE_IDX_LENGTH:
-				trace_tone("tone_cmd_set_data(), "
-					   "SOF_TONE_IDX_LENGTH");
+				trace_tone_with_ids(dev, "tone_cmd_set_data(), "
+						    "SOF_TONE_IDX_LENGTH");
 				tonegen_set_length(&cd->sg[ch], val);
 				break;
 			case SOF_TONE_IDX_PERIOD:
-				trace_tone("tone_cmd_set_data(), "
-					   "SOF_TONE_IDX_PERIOD");
+				trace_tone_with_ids(dev, "tone_cmd_set_data(), "
+						    "SOF_TONE_IDX_PERIOD");
 				tonegen_set_period(&cd->sg[ch], val);
 				break;
 			case SOF_TONE_IDX_REPEATS:
-				trace_tone("tone_cmd_set_data(), "
-					   "SOF_TONE_IDX_REPEATS");
+				trace_tone_with_ids(dev, "tone_cmd_set_data(), "
+						    "SOF_TONE_IDX_REPEATS");
 				tonegen_set_repeats(&cd->sg[ch], val);
 				break;
 			case SOF_TONE_IDX_LIN_RAMP_STEP:
-				trace_tone("tone_cmd_set_data(), "
-					   "SOF_TONE_IDX_LIN_RAMP_STEP");
+				trace_tone_with_ids(dev, "tone_cmd_set_data(), "
+						    "SOF_TONE_IDX_LIN_RAMP_STEP");
 				tonegen_set_linramp(&cd->sg[ch], val);
 				break;
 			default:
-				trace_tone_error("tone_cmd_set_data() error: "
-						 "invalid cdata->index");
+				trace_tone_error_with_ids(dev,
+							  "tone_cmd_set_data() error: "
+							  "invalid cdata->index");
 				return -EINVAL;
 			}
 		}
 		break;
 	default:
-		trace_tone_error("tone_cmd_set_data() error: "
-				 "invalid cdata->cmd");
+		trace_tone_error_with_ids(dev, "tone_cmd_set_data() error: "
+					  "invalid cdata->cmd");
 		return -EINVAL;
 	}
 
@@ -588,7 +606,7 @@ static int tone_cmd(struct comp_dev *dev, int cmd, void *data,
 	struct sof_ipc_ctrl_data *cdata = data;
 	int ret = 0;
 
-	trace_tone("tone_cmd()");
+	trace_tone_with_ids(dev, "tone_cmd()");
 
 	switch (cmd) {
 	case COMP_CMD_SET_DATA:
@@ -607,7 +625,7 @@ static int tone_cmd(struct comp_dev *dev, int cmd, void *data,
 
 static int tone_trigger(struct comp_dev *dev, int cmd)
 {
-	trace_tone("tone_trigger()");
+	trace_tone_with_ids(dev, "tone_trigger()");
 
 	return comp_set_state(dev, cmd);
 }
@@ -618,7 +636,7 @@ static int tone_copy(struct comp_dev *dev)
 	struct comp_buffer *sink;
 	struct comp_data *cd = comp_get_drvdata(dev);
 
-	tracev_comp("tone_copy()");
+	tracev_comp_with_ids(dev, "tone_copy()");
 
 	/* tone component sink buffer */
 	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
@@ -648,7 +666,7 @@ static int tone_prepare(struct comp_dev *dev)
 	int ret;
 	int i;
 
-	trace_tone("tone_prepare()");
+	trace_tone_with_ids(dev, "tone_prepare()");
 
 	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
 	if (ret < 0)
@@ -658,8 +676,10 @@ static int tone_prepare(struct comp_dev *dev)
 		return PPL_STATUS_PATH_STOP;
 
 	cd->channels = dev->params.channels;
-	trace_tone("tone_prepare(), cd->channels = %u, cd->rate = %u",
-		   cd->channels, cd->rate);
+	trace_tone_with_ids(dev, "tone_prepare(), "
+			    "cd->channels = %u, "
+			    "cd->rate = %u",
+			    cd->channels, cd->rate);
 
 	for (i = 0; i < cd->channels; i++) {
 		f = tonegen_get_f(&cd->sg[i]);
@@ -679,7 +699,7 @@ static int tone_reset(struct comp_dev *dev)
 	struct comp_data *cd = comp_get_drvdata(dev);
 	int i;
 
-	trace_tone("tone_reset()");
+	trace_tone_with_ids(dev, "tone_reset()");
 
 	/* Initialize with the defaults */
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
@@ -696,7 +716,7 @@ static void tone_cache(struct comp_dev *dev, int cmd)
 
 	switch (cmd) {
 	case CACHE_WRITEBACK_INV:
-		trace_tone("tone_cache(), CACHE_WRITEBACK_INV");
+		trace_tone_with_ids(dev, "tone_cache(), CACHE_WRITEBACK_INV");
 
 		cd = comp_get_drvdata(dev);
 
@@ -705,7 +725,7 @@ static void tone_cache(struct comp_dev *dev, int cmd)
 		break;
 
 	case CACHE_INVALIDATE:
-		trace_tone("tone_cache(), CACHE_INVALIDATE");
+		trace_tone_with_ids(dev, "tone_cache(), CACHE_INVALIDATE");
 
 		dcache_invalidate_region(dev, sizeof(*dev));
 
