@@ -132,19 +132,19 @@ static struct comp_dev *kpb_new(struct sof_ipc_comp *comp)
 	assert(!ret);
 
 	if (!kpb_is_sample_width_supported(kpb->config.sampling_width)) {
-		trace_kpb_error("kpb_new() error: "
+		trace_kpb_error_with_ids(dev, "kpb_new() error: "
 		"requested sampling width not supported");
 		return NULL;
 	}
 
 	if (kpb->config.no_channels > KPB_MAX_SUPPORTED_CHANNELS) {
-		trace_kpb_error("kpb_new() error: "
+		trace_kpb_error_with_ids(dev, "kpb_new() error: "
 		"no of channels exceeded the limit");
 		return NULL;
 	}
 
 	if (kpb->config.sampling_freq != KPB_SAMPLNG_FREQUENCY) {
-		trace_kpb_error("kpb_new() error: "
+		trace_kpb_error_with_ids(dev, "kpb_new() error: "
 		"requested sampling frequency not supported");
 		return NULL;
 	}
@@ -300,7 +300,7 @@ static void kpb_free(struct comp_dev *dev)
 {
 	struct comp_data *kpb = comp_get_drvdata(dev);
 
-	trace_kpb("kpb_free()");
+	trace_kpb_with_ids(dev, "kpb_free()");
 
 	/* Unregister KPB from async notification */
 	notifier_unregister(&kpb->kpb_events);
@@ -322,7 +322,7 @@ static void kpb_free(struct comp_dev *dev)
  */
 static int kpb_trigger(struct comp_dev *dev, int cmd)
 {
-	trace_kpb("kpb_trigger()");
+	trace_kpb_with_ids(dev, "kpb_trigger()");
 
 	return comp_set_state(dev, cmd);
 }
@@ -344,13 +344,14 @@ static int kpb_prepare(struct comp_dev *dev)
 	struct comp_buffer *sink;
 	size_t allocated_size;
 
-	trace_kpb("kpb_prepare()");
+	trace_kpb_with_ids(dev, "kpb_prepare()");
 
 	if (kpb->state == KPB_STATE_RESETTING ||
 	    kpb->state == KPB_STATE_RESET_FINISHING) {
-		trace_kpb_error("kpb_prepare() error: can not prepare KPB "
-				"due to ongoing reset, state log %d",
-				kpb->state_log);
+		trace_kpb_error_with_ids(dev, "kpb_prepare() error: "
+					 "can not prepare KPB "
+					 "due to ongoing reset, state log %d",
+					 kpb->state_log);
 		return -EBUSY;
 	}
 
@@ -378,8 +379,8 @@ static int kpb_prepare(struct comp_dev *dev)
 
 		/* Have we allocated what we requested? */
 		if (allocated_size < kpb->kpb_buffer_size) {
-			trace_kpb_error("Failed to allocate space for "
-					"KPB buffer/s");
+			trace_kpb_error_with_ids(dev, "Failed to allocate "
+						 "space for KPB buffer/s");
 			kpb_free_history_buffer(kpb->history_buffer);
 			kpb->history_buffer = NULL;
 			return -EINVAL;
@@ -433,9 +434,10 @@ static int kpb_prepare(struct comp_dev *dev)
 	}
 
 	if (!kpb->sel_sink || !kpb->host_sink) {
-		trace_kpb("kpb_prepare() error: could not find "
-			  "sinks: sel_sink %d host_sink %d",
-			  (uint32_t)kpb->sel_sink, (uint32_t)kpb->host_sink);
+		trace_kpb_with_ids(dev, "kpb_prepare() error: could not find "
+				   "sinks: sel_sink %d host_sink %d",
+				   (uint32_t)kpb->sel_sink,
+				   (uint32_t)kpb->host_sink);
 		ret = -EIO;
 	}
 
@@ -474,8 +476,8 @@ static int kpb_reset(struct comp_dev *dev)
 	struct comp_data *kpb = comp_get_drvdata(dev);
 	int ret = 0;
 
-	trace_kpb("kpb_reset(): resetting from state %d, state log %d",
-		  kpb->state, kpb->state_log);
+	trace_kpb_with_ids(dev, "kpb_reset(): resetting from state %d, "
+			   "state log %d", kpb->state, kpb->state_log);
 
 	switch (kpb->state) {
 	case KPB_STATE_BUFFERING:
@@ -534,7 +536,7 @@ static int kpb_copy(struct comp_dev *dev)
 	size_t copy_bytes = 0;
 	size_t sample_width = kpb->config.sampling_width;
 
-	tracev_kpb("kpb_copy()");
+	tracev_kpb_with_ids(dev, "kpb_copy()");
 
 	/* Get source and sink buffers */
 	source = list_first_item(&dev->bsource_list, struct comp_buffer,
@@ -542,7 +544,8 @@ static int kpb_copy(struct comp_dev *dev)
 
 	/* Validate source */
 	if (!source || !source->r_ptr) {
-		trace_kpb_error("kpb_copy(): invalid source pointers.");
+		trace_kpb_error_with_ids(dev, "kpb_copy(): "
+					 "invalid source pointers.");
 		ret = -EINVAL;
 		goto out;
 	}
@@ -554,17 +557,19 @@ static int kpb_copy(struct comp_dev *dev)
 
 		/* Validate sink */
 		if (!sink || !sink->w_ptr) {
-			trace_kpb_error("kpb_copy(): invalid selector "
-					"sink pointers.");
+			trace_kpb_error_with_ids(dev, "kpb_copy(): invalid "
+						 "selector sink pointers.");
 			ret = -EINVAL;
 			goto out;
 		}
 
 		copy_bytes = MIN(sink->free, source->avail);
 		if (!copy_bytes) {
-			trace_kpb_error("kpb_copy() error: nothing to copy "
-					"sink->free %d source->avail %d",
-					sink->free, source->avail);
+			trace_kpb_error_with_ids(dev, "kpb_copy() error: "
+						 "nothing to copy "
+						 "sink->free %d "
+						 "source->avail %d",
+						 sink->free, source->avail);
 			ret = PPL_STATUS_PATH_STOP;
 			goto out;
 		}
@@ -577,8 +582,9 @@ static int kpb_copy(struct comp_dev *dev)
 		if (source->avail <= kpb->kpb_buffer_size) {
 			ret = kpb_buffer_data(dev, source, copy_bytes);
 			if (ret) {
-				trace_kpb_error("kpb_copy(): internal "
-						"buffering failed.");
+				trace_kpb_error_with_ids(dev, "kpb_copy(): "
+							 "internal buffering "
+							 "failed.");
 				goto out;
 			}
 			if (kpb->buffered_data < kpb->kpb_buffer_size)
@@ -586,7 +592,8 @@ static int kpb_copy(struct comp_dev *dev)
 			else
 				kpb->is_internal_buffer_full = true;
 		} else {
-			trace_kpb_error("kpb_copy(): too much data to buffer.");
+			trace_kpb_error_with_ids(dev, "kpb_copy(): "
+						 "too much data to buffer.");
 		}
 
 		comp_update_buffer_produce(sink, copy_bytes);
@@ -600,17 +607,19 @@ static int kpb_copy(struct comp_dev *dev)
 
 		/* Validate sink */
 		if (!sink || !sink->w_ptr) {
-			trace_kpb_error("kpb_copy(): invalid host "
-					"sink pointers.");
+			trace_kpb_error_with_ids(dev, "kpb_copy(): "
+						 "invalid host sink pointers.");
 			ret = -EINVAL;
 			goto out;
 		}
 
 		copy_bytes = MIN(sink->free, source->avail);
 		if (!copy_bytes) {
-			trace_kpb_error("kpb_copy() error: nothing to copy "
-					"sink->free %d source->avail %d",
-					sink->free, source->avail);
+			trace_kpb_error_with_ids(dev, "kpb_copy() error: "
+						 "nothing to copy "
+						 "sink->free %d "
+						 "source->avail %d",
+						 sink->free, source->avail);
 			ret = PPL_STATUS_PATH_STOP;
 			goto out;
 		}
@@ -628,22 +637,25 @@ static int kpb_copy(struct comp_dev *dev)
 		if (source->avail <= kpb->kpb_buffer_size) {
 			ret = kpb_buffer_data(dev, source, source->avail);
 			if (ret) {
-				trace_kpb_error("kpb_copy(): internal "
-						"buffering failed.");
+				trace_kpb_error_with_ids(dev, "kpb_copy(): "
+							 "internal buffering "
+							 "failed.");
 				goto out;
 			}
 
 			comp_update_buffer_consume(source, source->avail);
 		} else {
-			trace_kpb_error("kpb_copy(): too much data to buffer.");
+			trace_kpb_error_with_ids(dev, "kpb_copy(): "
+						 "too much data to buffer.");
 		}
 
 		ret = PPL_STATUS_PATH_STOP;
 		break;
 	default:
-		trace_kpb_error("kpb_copy(): wrong state, copy forbidden. "
-				"(state %d, state log %d)",
-				kpb->state, kpb->state_log);
+		trace_kpb_error_with_ids(dev, "kpb_copy(): wrong state, "
+					 "copy forbidden. "
+					 "(state %d, state log %d)",
+					 kpb->state, kpb->state_log);
 		ret = -EIO;
 		break;
 	}
@@ -675,7 +687,7 @@ static int kpb_buffer_data(struct comp_dev *dev, struct comp_buffer *source,
 	struct dd *draining_data = &kpb->draining_task_data;
 	size_t sample_width = kpb->config.sampling_width;
 
-	tracev_kpb("kpb_buffer_data()");
+	tracev_kpb_with_ids(dev, "kpb_buffer_data()");
 
 	if (kpb->state != KPB_STATE_RUN && kpb->state != KPB_STATE_DRAINING)
 		return PPL_STATUS_PATH_STOP;
@@ -701,10 +713,11 @@ static int kpb_buffer_data(struct comp_dev *dev, struct comp_buffer *source,
 		/* Are we stuck in buffering? */
 		current_time = platform_timer_get(platform_timer);
 		if (timeout < current_time) {
-			trace_kpb_error("kpb_buffer_data(): timeout of %d [ms] "
+			trace_kpb_error_with_ids(dev, "kpb_buffer_data(): "
+					"timeout of %d [ms] "
 					"(current state %d, state log %d)",
-					(current_time - timeout), kpb->state,
-					kpb->state_log);
+					(current_time - timeout),
+					kpb->state, kpb->state_log);
 			return -ETIME;
 		}
 
@@ -782,8 +795,9 @@ static void kpb_event_handler(int message, void *cb_data, void *event_data)
 	struct kpb_event_data *evd = (struct kpb_event_data *)event_data;
 	struct kpb_client *cli = (struct kpb_client *)evd->client_data;
 
-	trace_kpb("kpb_event_handler(): received event with ID: %d ",
-		  evd->event_id);
+	trace_kpb_with_ids(dev, "kpb_event_handler(): "
+			   "received event with ID: %d ",
+			   evd->event_id);
 
 	switch (evd->event_id) {
 	case KPB_EVENT_REGISTER_CLIENT:
@@ -799,7 +813,7 @@ static void kpb_event_handler(int message, void *cb_data, void *event_data)
 		/*TODO*/
 		break;
 	default:
-		trace_kpb_error("kpb_cmd() error: "
+		trace_kpb_error_with_ids(dev, "kpb_cmd() error: "
 				"unsupported command");
 		break;
 	}
@@ -881,28 +895,29 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 			      kpb->config.no_channels;
 	size_t period_bytes_limit = 0;
 
-	trace_kpb("kpb_init_draining(): requested draining of %d [ms] from "
-		  "history buffer", cli->history_depth);
+	trace_kpb_with_ids(dev, "kpb_init_draining(): requested draining "
+			   "of %d [ms] from history buffer",
+			   cli->history_depth);
 
 	if (kpb->state != KPB_STATE_RUN) {
-		trace_kpb_error("kpb_init_draining() error: "
-				"wrong KPB state");
+		trace_kpb_error_with_ids(dev, "kpb_init_draining() error: "
+					 "wrong KPB state");
 	} else if (cli->id > KPB_MAX_NO_OF_CLIENTS) {
-		trace_kpb_error("kpb_init_draining() error: "
-				"wrong client id");
+		trace_kpb_error_with_ids(dev, "kpb_init_draining() error: "
+					 "wrong client id");
 	/* TODO: check also if client is registered */
 	} else if (!is_sink_ready) {
-		trace_kpb_error("kpb_init_draining() error: "
-				"sink not ready for draining");
+		trace_kpb_error_with_ids(dev, "kpb_init_draining() error: "
+					 "sink not ready for draining");
 	} else if (kpb->buffered_data < history_depth ||
 		   kpb->kpb_buffer_size < history_depth) {
-		trace_kpb_error("kpb_init_draining() error: "
-				"not enough data in history buffer");
+		trace_kpb_error_with_ids(dev, "kpb_init_draining() error: "
+					 "not enough data in history buffer");
 	} else if (!validate_host_params(host_period_size,
 					 host_buffer_size,
 					 bytes_per_ms)) {
-		trace_kpb_error("kpb_init_draining() error: "
-				"wrong host params.");
+		trace_kpb_error_with_ids(dev, "kpb_init_draining() error: "
+					 "wrong host params.");
 	} else {
 		/* Draining accepted, find proper buffer to start reading
 		 * At this point we are guaranteed that there is enough data
@@ -924,8 +939,11 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 						 (uint32_t)buff->start_addr;
 				buffered += local_buffered;
 			} else {
-				trace_kpb_error("kpb_init_draining() error: "
-						"incorrect buffer label");
+				trace_kpb_error_with_ids(dev,
+							 "kpb_init_draining() "
+							 "error: "
+							 "incorrect buffer "
+							 "label");
 			}
 			/* Check if this is already sufficient to start draining
 			 * if not, go to previous buffer and continue
@@ -971,7 +989,8 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 		 */
 		period_bytes_limit = host_period_size * 2;
 
-		trace_kpb("kpb_init_draining(), schedule draining task");
+		trace_kpb_with_ids(dev, "kpb_init_draining(), "
+				   "schedule draining task");
 
 		/* Add one-time draining task into the scheduler. */
 		kpb->draining_task_data.sink = kpb->host_sink;
