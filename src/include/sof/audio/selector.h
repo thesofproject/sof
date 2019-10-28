@@ -26,14 +26,23 @@ struct comp_dev;
 /** \brief Selector trace function. */
 #define trace_selector(__e, ...) \
 	trace_event(TRACE_CLASS_SELECTOR, __e, ##__VA_ARGS__)
+#define trace_selector_with_ids(comp_ptr, __e, ...)		\
+	trace_event_comp(TRACE_CLASS_SELECTOR, comp_ptr,	\
+			 __e, ##__VA_ARGS__)
 
 /** \brief Selector trace verbose function. */
 #define tracev_selector(__e, ...) \
 	tracev_event(TRACE_CLASS_SELECTOR, __e, ##__VA_ARGS__)
+#define tracev_selector_with_ids(comp_ptr, __e, ...)		\
+	tracev_event_comp(TRACE_CLASS_SELECTOR, comp_ptr,	\
+			  __e, ##__VA_ARGS__)
 
 /** \brief Selector trace error function. */
 #define trace_selector_error(__e, ...) \
 	trace_error(TRACE_CLASS_SELECTOR, __e, ##__VA_ARGS__)
+#define trace_selector_error_with_ids(comp_ptr, __e, ...)	\
+	trace_error_comp(TRACE_CLASS_SELECTOR, comp_ptr,	\
+			 __e, ##__VA_ARGS__)
 
 /** \brief Supported channel count on input. */
 #define SEL_SOURCE_2CH 2
