@@ -40,7 +40,7 @@ jobs:
       stage: qemutest
       script:
         - sed -i $(($(grep "config HAVE_AGENT" -n src/platform/Kconfig | cut -f1 -d:)+2))"s/default y/default n/" src/platform/Kconfig
-        - ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -r -j $PLATFORM
+        - ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -q -r -j $PLATFORM
         - ./scripts/docker-qemu.sh ../sof.git/scripts/qemu-check.sh $PLATFORM
       env: PLATFORM=byt
       before_install:
