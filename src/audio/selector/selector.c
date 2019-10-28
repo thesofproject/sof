@@ -145,7 +145,7 @@ static void selector_free(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 
-	trace_selector("selector_free()");
+	trace_selector_with_ids(dev, "selector_free()");
 
 	rfree(cd);
 	rfree(dev);
@@ -162,7 +162,7 @@ static int selector_params(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 
-	trace_selector("selector_params()");
+	trace_selector_with_ids(dev, "selector_params()");
 
 	/* rewrite channels number for other components */
 	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK)
@@ -188,7 +188,8 @@ static int selector_ctrl_set_data(struct comp_dev *dev,
 
 	switch (cdata->cmd) {
 	case SOF_CTRL_CMD_BINARY:
-		trace_selector("selector_ctrl_set_data(), SOF_CTRL_CMD_BINARY");
+		trace_selector_with_ids(dev, "selector_ctrl_set_data(), "
+					"SOF_CTRL_CMD_BINARY");
 
 		cfg = (struct sof_sel_config *)cdata->data->data;
 		/* Just copy the configuration & verify input params.*/
@@ -197,8 +198,9 @@ static int selector_ctrl_set_data(struct comp_dev *dev,
 					     cfg->sel_channel);
 		break;
 	default:
-		trace_selector_error("selector_ctrl_set_cmd() error: "
-				     "invalid cdata->cmd = %u", cdata->cmd);
+		trace_selector_error_with_ids(dev, "selector_ctrl_set_cmd() "
+					      "error: invalid cdata->cmd = %u",
+					      cdata->cmd);
 		ret = -EINVAL;
 		break;
 	}
@@ -222,7 +224,8 @@ static int selector_ctrl_get_data(struct comp_dev *dev,
 
 	switch (cdata->cmd) {
 	case SOF_CTRL_CMD_BINARY:
-		trace_selector("selector_ctrl_get_data(), SOF_CTRL_CMD_BINARY");
+		trace_selector_with_ids(dev, "selector_ctrl_get_data(), "
+					"SOF_CTRL_CMD_BINARY");
 
 		/* Copy back to user space */
 		ret = memcpy_s(cdata->data->data, ((struct sof_abi_hdr *)
@@ -235,8 +238,8 @@ static int selector_ctrl_get_data(struct comp_dev *dev,
 		break;
 
 	default:
-		trace_selector_error("selector_ctrl_get_data() error:"
-				     "invalid cdata->cmd");
+		trace_selector_error_with_ids(dev, "selector_ctrl_get_data() "
+					      "error: invalid cdata->cmd");
 		ret = -EINVAL;
 		break;
 	}
@@ -258,7 +261,7 @@ static int selector_cmd(struct comp_dev *dev, int cmd, void *data,
 	struct sof_ipc_ctrl_data *cdata = data;
 	int ret = 0;
 
-	trace_selector("selector_cmd()");
+	trace_selector_with_ids(dev, "selector_cmd()");
 
 	switch (cmd) {
 	case COMP_CMD_SET_DATA:
@@ -268,13 +271,16 @@ static int selector_cmd(struct comp_dev *dev, int cmd, void *data,
 		ret = selector_ctrl_get_data(dev, cdata, max_data_size);
 		break;
 	case COMP_CMD_SET_VALUE:
-		trace_selector("selector_cmd(), COMP_CMD_SET_VALUE");
+		trace_selector_with_ids(dev,
+					"selector_cmd(), COMP_CMD_SET_VALUE");
 		break;
 	case COMP_CMD_GET_VALUE:
-		trace_selector("selector_cmd(), COMP_CMD_GET_VALUE");
+		trace_selector_with_ids(dev,
+					"selector_cmd(), COMP_CMD_GET_VALUE");
 		break;
 	default:
-		trace_selector_error("selector_cmd() error: invalid command");
+		trace_selector_error_with_ids(dev, "selector_cmd() error: "
+					      "invalid command");
 		ret = -EINVAL;
 	}
 
@@ -291,7 +297,7 @@ static int selector_trigger(struct comp_dev *dev, int cmd)
 {
 	int ret;
 
-	trace_selector("selector_trigger()");
+	trace_selector_with_ids(dev, "selector_trigger()");
 
 	ret = comp_set_state(dev, cmd);
 	return ret == 0 ? PPL_STATUS_PATH_STOP : ret;
@@ -311,7 +317,7 @@ static int selector_copy(struct comp_dev *dev)
 	uint32_t source_bytes;
 	uint32_t sink_bytes;
 
-	tracev_selector("selector_copy()");
+	tracev_selector_with_ids(dev, "selector_copy()");
 
 	/* selector component will have 1 source and 1 sink buffer */
 	source = list_first_item(&dev->bsource_list, struct comp_buffer,
@@ -323,8 +329,10 @@ static int selector_copy(struct comp_dev *dev)
 	source_bytes = frames * comp_frame_bytes(source->source);
 	sink_bytes = frames * comp_frame_bytes(sink->sink);
 
-	tracev_selector("selector_copy(), source_bytes = 0x%x, sink_bytes = "
-			"0x%x", source_bytes, sink_bytes);
+	tracev_selector_with_ids(dev, "selector_copy(), "
+				 "source_bytes = 0x%x, "
+				 "sink_bytes = 0x%x",
+				 source_bytes, sink_bytes);
 
 	/* copy selected channels from in to out */
 	cd->sel_func(dev, sink, source, frames);
@@ -349,7 +357,7 @@ static int selector_prepare(struct comp_dev *dev)
 	struct sof_ipc_comp_config *config = COMP_GET_CONFIG(dev);
 	int ret;
 
-	trace_selector("selector_prepare()");
+	trace_selector_with_ids(dev, "selector_prepare()");
 
 	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
 	if (ret < 0)
@@ -377,21 +385,23 @@ static int selector_prepare(struct comp_dev *dev)
 	 * proper number of channels [1] for selector to actually
 	 * reduce channel count between source and sink
 	 */
-	trace_selector("selector_prepare(): source->params.channels = %u",
-		       sourceb->sink->params.channels);
-	trace_selector("selector_prepare(): sink->params.channels = %u",
-		       sinkb->sink->params.channels);
+	trace_selector_with_ids(dev, "selector_prepare(): "
+				"source->params.channels = %u",
+				sourceb->sink->params.channels);
+	trace_selector_with_ids(dev, "selector_prepare(): "
+				"sink->params.channels = %u",
+				sinkb->sink->params.channels);
 
 	if (sinkb->size < config->periods_sink * cd->sink_period_bytes) {
-		trace_selector_error("selector_prepare() error: "
-				     "sink buffer size is insufficient");
+		trace_selector_error_with_ids(dev, "selector_prepare() error: "
+					      "sink buffer size is insufficient");
 		ret = -ENOMEM;
 		goto err;
 	}
 
 	/* validate */
 	if (cd->sink_period_bytes == 0) {
-		trace_selector_error("selector_prepare() error: "
+		trace_selector_error_with_ids(dev, "selector_prepare() error: "
 				     "cd->sink_period_bytes = 0, dev->frames ="
 				     " %u", dev->frames);
 		ret = -EINVAL;
@@ -399,7 +409,7 @@ static int selector_prepare(struct comp_dev *dev)
 	}
 
 	if (cd->source_period_bytes == 0) {
-		trace_selector_error("selector_prepare() error: "
+		trace_selector_error_with_ids(dev, "selector_prepare() error: "
 				     "cd->source_period_bytes = 0, "
 				     "dev->frames = %u", dev->frames);
 		ret = -EINVAL;
@@ -408,7 +418,7 @@ static int selector_prepare(struct comp_dev *dev)
 
 	cd->sel_func = sel_get_processing_function(dev);
 	if (!cd->sel_func) {
-		trace_selector_error("selector_prepare() error: "
+		trace_selector_error_with_ids(dev, "selector_prepare() error: "
 				     "invalid cd->sel_func, "
 				     "cd->source_format = %u, "
 				     "cd->sink_format = %u, "
@@ -435,7 +445,7 @@ static int selector_reset(struct comp_dev *dev)
 {
 	int ret;
 
-	trace_selector("selector_reset()");
+	trace_selector_with_ids(dev, "selector_reset()");
 
 	ret = comp_set_state(dev, COMP_TRIGGER_RESET);
 	return ret == 0 ? PPL_STATUS_PATH_STOP : ret;
@@ -452,7 +462,8 @@ static void selector_cache(struct comp_dev *dev, int cmd)
 
 	switch (cmd) {
 	case CACHE_WRITEBACK_INV:
-		trace_selector("selector_cache(), CACHE_WRITEBACK_INV");
+		trace_selector_with_ids(dev, "selector_cache(), "
+					"CACHE_WRITEBACK_INV");
 
 		cd = comp_get_drvdata(dev);
 
@@ -461,7 +472,8 @@ static void selector_cache(struct comp_dev *dev, int cmd)
 		break;
 
 	case CACHE_INVALIDATE:
-		trace_selector("selector_cache(), CACHE_INVALIDATE");
+		trace_selector_with_ids(dev, "selector_cache(), "
+					"CACHE_INVALIDATE");
 
 		dcache_invalidate_region(dev, sizeof(*dev));
 
