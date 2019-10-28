@@ -58,7 +58,6 @@ struct dai_data {
 
 	struct dai *dai;
 	struct dma *dma;
-	uint32_t frame_bytes;
 	enum sof_ipc_frame frame_fmt;
 	int xrun;		/* true if we are doing xrun recovery */
 
@@ -344,6 +343,7 @@ static int dai_params(struct comp_dev *dev)
 {
 	struct sof_ipc_comp_config *dconfig = COMP_GET_CONFIG(dev);
 	struct dai_data *dd = comp_get_drvdata(dev);
+	uint32_t frame_size;
 	uint32_t period_count;
 	uint32_t period_bytes;
 	uint32_t buffer_size;
@@ -397,10 +397,10 @@ static int dai_params(struct comp_dev *dev)
 	dd->frame_fmt = dconfig->frame_fmt;
 
 	/* calculate frame size */
-	dd->frame_bytes = frame_bytes(dd->frame_fmt, dev->params.channels);
+	frame_size = frame_bytes(dd->frame_fmt, dev->params.channels);
 
 	/* calculate period size */
-	period_bytes = dev->frames * dd->frame_bytes;
+	period_bytes = dev->frames * frame_size;
 	if (!period_bytes) {
 		trace_dai_error_with_ids(dev, "dai_params() error: invalid "
 					 "period_bytes.");
@@ -688,7 +688,6 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 	struct dai_data *dd = comp_get_drvdata(dev);
 	struct sof_ipc_comp_dai *dai = (struct sof_ipc_comp_dai *)&dev->comp;
 	int channel = 0;
-	int i;
 	int handshake;
 
 	trace_dai_with_ids(dev, "config comp %d pipe %d dai %d type %d",
@@ -706,71 +705,21 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 	case SOF_DAI_INTEL_SSP:
 		/* set dma burst elems to slot number */
 		dd->config.burst_elems = config->ssp.tdm_slots;
-
-		/* calc frame bytes */
-		switch (config->ssp.sample_valid_bits) {
-		case 16:
-			dd->frame_bytes = 2 * config->ssp.tdm_slots;
-			break;
-		case 17 ... 32:
-			dd->frame_bytes = 4 * config->ssp.tdm_slots;
-			break;
-		default:
-			break;
-		}
 		break;
 	case SOF_DAI_INTEL_DMIC:
-		/* The frame bytes setting follows only FIFO A setting in
-		 * this DMIC driver version.
-		 */
 		trace_dai_with_ids(dev, "dai_config(), config->type = "
 				   "SOF_DAI_INTEL_DMIC");
 
 		/* We can use always the largest burst length. */
 		dd->config.burst_elems = 8;
 
-		/* Set frame size in bytes to match the configuration. The
-		 * actual width of FIFO appears in IPC always in fifo_bits_a
-		 * for both FIFOs A and B.
-		 */
 		trace_dai_with_ids(dev, "dai_config(), "
 				   "config->dmic.fifo_bits = %u; "
 				   "config->dmic.num_pdm_active = %u;",
 				   config->dmic.fifo_bits,
 				   config->dmic.num_pdm_active);
-		dd->frame_bytes = 0;
-		for (i = 0; i < config->dmic.num_pdm_active; i++) {
-			trace_dai_with_ids(dev, "dai_config, "
-				"config->dmic.pdm[%u].enable_mic_a = %u; ",
-				config->dmic.pdm[i].id,
-				config->dmic.pdm[i].enable_mic_a);
-			trace_dai_with_ids(dev, "dai_config, "
-				"config->dmic.pdm[%u].enable_mic_b = %u; ",
-				config->dmic.pdm[i].id,
-				config->dmic.pdm[i].enable_mic_b);
-			dd->frame_bytes += (config->dmic.fifo_bits >> 3) *
-				(config->dmic.pdm[i].enable_mic_a +
-				 config->dmic.pdm[i].enable_mic_b);
-		}
-
-		/* Packing of mono streams from several PDM controllers is not
-		 * supported. In such cases the stream needs to be two
-		 * channels.
-		 */
-		if (config->dmic.num_pdm_active > 1) {
-			dd->frame_bytes = 2 * config->dmic.num_pdm_active *
-				(config->dmic.fifo_bits >> 3);
-		}
-
-		trace_dai_with_ids(dev, "dai_config(), dd->frame_bytes = %u",
-				   dd->frame_bytes);
 		break;
 	case SOF_DAI_INTEL_HDA:
-		/* set to some non-zero value to satisfy the condition below,
-		 * it is recalculated in dai_params() later
-		 * this is temp until dai/hda model is changed.
-		 */
-		dd->frame_bytes = 4;
 		channel = config->hda.link_dma_ch;
 		trace_dai_with_ids(dev, "dai_config(), channel = %d",
 				   channel);
@@ -788,11 +737,6 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 		}
 		break;
 	case SOF_DAI_INTEL_ALH:
-		/* set to some non-zero value to satisfy the condition below,
-		 * it is recalculated in dai_params() later
-		 */
-		dd->frame_bytes = 4;
-
 		/* SDW HW FIFO always requires 32bit MSB aligned sample data for
 		 * all formats, such as 8/16/24/32 bits.
 		 */
@@ -811,18 +755,6 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 					      dd->stream_id);
 		channel = EDMA_HS_GET_CHAN(handshake);
 
-		switch (dev->params.frame_fmt) {
-		case SOF_IPC_FRAME_S16_LE:
-			dd->frame_bytes = 2;
-			break;
-		case SOF_IPC_FRAME_S24_4LE:
-		case SOF_IPC_FRAME_S32_LE:
-			dd->frame_bytes = 4;
-			break;
-		default:
-			return -EINVAL;
-		}
-
 		dd->config.burst_elems =
 			dd->dai->plat_data.fifo[dai->direction].depth;
 		break;
@@ -830,26 +762,6 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 		handshake = dai_get_handshake(dd->dai, dai->direction,
 					      dd->stream_id);
 		channel = EDMA_HS_GET_CHAN(handshake);
-
-		switch (dev->params.frame_fmt) {
-#if CONFIG_FORMAT_S16LE
-		case SOF_IPC_FRAME_S16_LE:
-			dd->frame_bytes = 2;
-			break;
-#endif /* CONFIG_FORMAT_S16LE */
-#if CONFIG_FORMAT_S24LE
-		case SOF_IPC_FRAME_S24_4LE:
-			dd->frame_bytes = 4;
-			break;
-#endif /* CONFIG_FORMAT_S24LE */
-#if CONFIG_FORMAT_S32LE
-		case SOF_IPC_FRAME_S32_LE:
-			dd->frame_bytes = 4;
-			break;
-#endif /* CONFIG_FORMAT_S32LE */
-		default:
-			trace_dai_error_with_ids(dev, "dai_config() unsupported frame_fmt");
-		}
 
 		dd->config.burst_elems =
 			dd->dai->plat_data.fifo[dai->direction].depth;
@@ -863,12 +775,6 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 					 "SOF_DAI_INTEL_HDA is not handled for "
 					 "now.");
 		break;
-	}
-
-	if (!dd->frame_bytes) {
-		trace_dai_error_with_ids(dev, "dai_config() error: "
-					 "dd->frame_bytes == 0");
-		return -EINVAL;
 	}
 
 	if (channel != DMA_CHAN_INVALID) {
