@@ -20,6 +20,21 @@
 
 struct comp_buffer;
 
+#define PCM_CONVERTER_GENERIC
+
+#if __XCC__
+
+#include <xtensa/config/core-isa.h>
+
+#if XCHAL_HAVE_HIFI3
+
+#undef PCM_CONVERTER_GENERIC
+#define PCM_CONVERTER_HIFI3
+
+#endif
+
+#endif
+
 /** \brief PCM conversion functions map. */
 struct pcm_func_map {
 	enum sof_ipc_frame source;	/**< source frame format */
