@@ -16,9 +16,21 @@ struct comp_buffer;
 
 /* KPB tracing */
 #define trace_kpb(__e, ...) trace_event(TRACE_CLASS_KPB, __e, ##__VA_ARGS__)
+#define trace_kpb_with_ids(comp_ptr, __e, ...)			\
+	trace_event_comp(TRACE_CLASS_KPB, comp_ptr,		\
+			 __e, ##__VA_ARGS__)
+
+#define tracev_kpb(__e, ...) tracev_event(TRACE_CLASS_KPB, __e, ##__VA_ARGS__)
+#define tracev_kpb_with_ids(comp_ptr, __e, ...)			\
+	tracev_event_comp(TRACE_CLASS_KPB, comp_ptr,		\
+			  __e, ##__VA_ARGS__)
+
 #define trace_kpb_error(__e, ...) trace_error(TRACE_CLASS_KPB, __e, \
 					      ##__VA_ARGS__)
-#define tracev_kpb(__e, ...) tracev_event(TRACE_CLASS_KPB, __e, ##__VA_ARGS__)
+#define trace_kpb_error_with_ids(comp_ptr, __e, ...)		\
+	trace_error_comp(TRACE_CLASS_KPB, comp_ptr,		\
+			 __e, ##__VA_ARGS__)
+
 /* KPB internal defines */
 #define KPB_MAX_BUFF_TIME 2100 /**< time of buffering in miliseconds */
 #define KPB_MAX_SUPPORTED_CHANNELS 2
