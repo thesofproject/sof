@@ -10,9 +10,12 @@
  * \authors Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */
 
+#include <sof/audio/pcm_converter.h>
+
+#ifdef PCM_CONVERTER_GENERIC
+
 #include <sof/audio/buffer.h>
 #include <sof/audio/format.h>
-#include <sof/audio/pcm_converter.h>
 #include <sof/common.h>
 #include <ipc/stream.h>
 #include <config.h>
@@ -152,3 +155,5 @@ const struct pcm_func_map pcm_func_map[] = {
 };
 
 const size_t pcm_func_count = ARRAY_SIZE(pcm_func_map);
+
+#endif
