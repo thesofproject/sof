@@ -29,30 +29,23 @@
 #include <stdint.h>
 
 /* tracing */
-#define trace_dai(format, ...) trace_event(TRACE_CLASS_DAI, format,	\
-					   ##__VA_ARGS__)
-#define trace_dai_with_ids(comp_ptr, format, ...)	\
-	trace_event_with_ids(TRACE_CLASS_DAI,		\
-			     comp_ptr->comp.pipeline_id,\
-			     comp_ptr->comp.id,		\
-			     format, ##__VA_ARGS__)
+#define trace_dai(__e, ...)					\
+	trace_event(TRACE_CLASS_DAI, __e, ##__VA_ARGS__)
+#define trace_dai_with_ids(comp_ptr, __e, ...)			\
+	trace_event_comp(TRACE_CLASS_DAI, comp_ptr,		\
+			 __e, ##__VA_ARGS__)
 
-#define trace_dai_error(format, ...) trace_error(TRACE_CLASS_DAI, format, \
-						 ##__VA_ARGS__)
+#define tracev_dai(__e, ...)					\
+	tracev_event(TRACE_CLASS_DAI, __e, ##__VA_ARGS__)
+#define tracev_dai_with_ids(comp_ptr, __e, ...)			\
+	tracev_event_comp(TRACE_CLASS_DAI, comp_ptr,		\
+			  __e, ##__VA_ARGS__)
 
-#define trace_dai_error_with_ids(comp_ptr, format, ...)	\
-	trace_error_with_ids(TRACE_CLASS_DAI,		\
-			     comp_ptr->comp.pipeline_id,\
-			     comp_ptr->comp.id,		\
-			     format, ##__VA_ARGS__)
-
-#define tracev_dai(format, ...) tracev_event(TRACE_CLASS_DAI, format,	\
-					     ##__VA_ARGS__)
-#define tracev_dai_with_ids(comp_ptr, format, ...)	\
-	tracev_event_with_ids(TRACE_CLASS_DAI,		\
-			     comp_ptr->comp.pipeline_id,\
-			     comp_ptr->comp.id,		\
-			     format, ##__VA_ARGS__)
+#define trace_dai_error(__e, ...)				\
+	trace_error(TRACE_CLASS_DAI, __e, ##__VA_ARGS__)
+#define trace_dai_error_with_ids(comp_ptr, __e, ...)		\
+	trace_error_comp(TRACE_CLASS_DAI, comp_ptr,		\
+			 __e, ##__VA_ARGS__)
 
 struct dai_data {
 	/* local DMA config */
