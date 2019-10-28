@@ -74,6 +74,8 @@ char *get_trace_class(uint32_t trace_class);
 #define _log_message(mbox, atomic, level, comp_class, id_0, id_1,	\
 		     has_ids, format, ...)				\
 do {									\
+	(void)id_0;							\
+	(void)id_1;							\
 	if (test_bench_trace) {						\
 		char *msg = "%s " format;				\
 		fprintf(stderr, msg, get_trace_class(comp_class),	\
