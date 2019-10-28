@@ -177,8 +177,10 @@ static struct comp_dev *volume_new(struct sof_ipc_comp *comp)
 		if (vol->min_value < VOL_MIN) {
 			/* Use VOL_MIN instead, no need to stop new(). */
 			cd->vol_min = VOL_MIN;
-			trace_volume_error("volume_new(): vol->min_value "
-					   "was limited to VOL_MIN.");
+			trace_volume_error_with_ids(dev,
+						    "volume_new(): "
+						    "vol->min_value was "
+						    "limited to VOL_MIN.");
 		} else {
 			cd->vol_min = vol->min_value;
 		}
@@ -186,8 +188,10 @@ static struct comp_dev *volume_new(struct sof_ipc_comp *comp)
 		if (vol->max_value > VOL_MAX) {
 			/* Use VOL_MAX instead, no need to stop new(). */
 			cd->vol_max = VOL_MAX;
-			trace_volume_error("volume_new(): vol->max_value "
-					   "was limited to VOL_MAX.");
+			trace_volume_error_with_ids(dev,
+						    "volume_new(): "
+						    "vol->max_value was "
+						    "limited to VOL_MAX.");
 		} else {
 			cd->vol_max = vol->max_value;
 		}
@@ -211,10 +215,11 @@ static struct comp_dev *volume_new(struct sof_ipc_comp *comp)
 		cd->tvolume[i] =  cd->volume[i];
 	}
 
-	trace_volume("vol->initial_ramp = %d, vol->ramp = %d, "
-		     "vol->min_value = %d, vol->max_value = %d",
-		     vol->initial_ramp, vol->ramp,
-		     vol->min_value, vol->max_value);
+	trace_volume_with_ids(dev,
+			      "vol->initial_ramp = %d, vol->ramp = %d, "
+			      "vol->min_value = %d, vol->max_value = %d",
+			      vol->initial_ramp, vol->ramp,
+			      vol->min_value, vol->max_value);
 
 	dev->state = COMP_STATE_READY;
 	return dev;
@@ -228,7 +233,7 @@ static void volume_free(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 
-	trace_volume("volume_free()");
+	trace_volume_with_ids(dev, "volume_free()");
 
 	/* remove scheduling */
 	schedule_task_free(&cd->volwork);
@@ -246,7 +251,7 @@ static void volume_free(struct comp_dev *dev)
  */
 static int volume_params(struct comp_dev *dev)
 {
-	trace_volume("volume_params()");
+	trace_volume_with_ids(dev, "volume_params()");
 
 	return 0;
 }
@@ -275,15 +280,15 @@ static inline int volume_set_chan(struct comp_dev *dev, int chan, uint32_t vol)
 	 */
 	if (v <= VOL_MIN) {
 		/* No need to fail, just trace the event. */
-		trace_volume_error("volume_set_chan: Limited request %d to "
-				   "VOL_MIN.", v);
+		trace_volume_error_with_ids(dev, "volume_set_chan: Limited "
+						 "request %d to VOL_MIN.", v);
 		v = VOL_MIN;
 	}
 
 	if (v > VOL_MAX) {
 		/* No need to fail, just trace the event. */
-		trace_volume_error("volume_set_chan: Limited request %d to "
-				   "VOL_MAX.", v);
+		trace_volume_error_with_ids(dev, "volume_set_chan: Limited "
+						 "request %d to VOL_MAX.", v);
 		v = VOL_MAX;
 	}
 
@@ -330,15 +335,15 @@ static inline int volume_set_chan(struct comp_dev *dev, int chan, uint32_t vol)
 			inc = -inc;
 
 		cd->ramp_increment[chan] = inc;
-		tracev_volume("cd->ramp_increment[%d] = %d", chan,
-			      cd->ramp_increment[chan]);
+		tracev_volume_with_ids(dev, "cd->ramp_increment[%d] = %d", chan,
+				       cd->ramp_increment[chan]);
 		break;
 	case SOF_VOLUME_LOG:
 	case SOF_VOLUME_LINEAR_ZC:
 	case SOF_VOLUME_LOG_ZC:
 	default:
-		trace_volume_error("volume_set_chan() error: "
-				   "invalid ramp type %d", pga->ramp);
+		trace_volume_error_with_ids(dev, "volume_set_chan() error: "
+					    "invalid ramp type %d", pga->ramp);
 		return -EINVAL;
 	}
 
@@ -390,30 +395,34 @@ static int volume_ctrl_set_cmd(struct comp_dev *dev,
 
 	/* validate */
 	if (cdata->num_elems == 0 || cdata->num_elems > SOF_IPC_MAX_CHANNELS) {
-		trace_volume_error("volume_ctrl_set_cmd() error: "
-				   "invalid cdata->num_elems");
+		trace_volume_error_with_ids(dev, "volume_ctrl_set_cmd() error: "
+					    "invalid cdata->num_elems");
 		return -EINVAL;
 	}
 
 	switch (cdata->cmd) {
 	case SOF_CTRL_CMD_VOLUME:
-		trace_volume("volume_ctrl_set_cmd(), SOF_CTRL_CMD_VOLUME, "
-			     "cdata->comp_id = %u", cdata->comp_id);
+		trace_volume_with_ids(dev, "volume_ctrl_set_cmd(), "
+				      "SOF_CTRL_CMD_VOLUME, "
+				      "cdata->comp_id = %u",
+				      cdata->comp_id);
 		for (j = 0; j < cdata->num_elems; j++) {
-			trace_volume("volume_ctrl_set_cmd(), "
-				     "SOF_CTRL_CMD_VOLUME, "
-				     "channel = %u, value = %u",
-				     cdata->chanv[j].channel,
-				     cdata->chanv[j].value);
+			trace_volume_with_ids(dev, "volume_ctrl_set_cmd(), "
+					      "SOF_CTRL_CMD_VOLUME, "
+					      "channel = %u, value = %u",
+					      cdata->chanv[j].channel,
+					      cdata->chanv[j].value);
 			i = cdata->chanv[j].channel;
 			if (i >= 0 && i < SOF_IPC_MAX_CHANNELS) {
 				ret = volume_set_chan(dev, i,
 						      cdata->chanv[j].value);
 			} else {
-				trace_volume_error("volume_ctrl_set_cmd() "
-						   "error: "
-						   "SOF_CTRL_CMD_VOLUME, "
-						   "invalid i = %u", i);
+				trace_volume_error_with_ids(dev,
+							    "volume_ctrl_set_cmd() "
+							    "error: "
+							    "SOF_CTRL_CMD_VOLUME, "
+							    "invalid i = %u",
+							    i);
 			}
 			if (ret)
 				return ret;
@@ -424,14 +433,15 @@ static int volume_ctrl_set_cmd(struct comp_dev *dev,
 		break;
 
 	case SOF_CTRL_CMD_SWITCH:
-		trace_volume("volume_ctrl_set_cmd(), SOF_CTRL_CMD_SWITCH, "
-			     "cdata->comp_id = %u", cdata->comp_id);
+		trace_volume_with_ids(dev, "volume_ctrl_set_cmd(), "
+				      "SOF_CTRL_CMD_SWITCH, "
+				      "cdata->comp_id = %u", cdata->comp_id);
 		for (j = 0; j < cdata->num_elems; j++) {
-			trace_volume("volume_ctrl_set_cmd(), "
-				     "SOF_CTRL_CMD_SWITCH, "
-				     "channel = %u, value = %u",
-				     cdata->chanv[j].channel,
-				     cdata->chanv[j].value);
+			trace_volume_with_ids(dev, "volume_ctrl_set_cmd(), "
+					      "SOF_CTRL_CMD_SWITCH, "
+					      "channel = %u, value = %u",
+					      cdata->chanv[j].channel,
+					      cdata->chanv[j].value);
 			i = cdata->chanv[j].channel;
 			if (i >= 0 && i < SOF_IPC_MAX_CHANNELS) {
 				if (cdata->chanv[j].value)
@@ -439,10 +449,10 @@ static int volume_ctrl_set_cmd(struct comp_dev *dev,
 				else
 					volume_set_chan_mute(dev, i);
 			} else {
-				trace_volume_error("volume_ctrl_set_cmd() "
-						   "error: "
-						   "SOF_CTRL_CMD_SWITCH, "
-						   "invalid i = %u", i);
+				trace_volume_error_with_ids(dev,
+							    "volume_ctrl_set_cmd() error: "
+							    "SOF_CTRL_CMD_SWITCH, invalid i = %u",
+							     i);
 			}
 		}
 
@@ -451,8 +461,8 @@ static int volume_ctrl_set_cmd(struct comp_dev *dev,
 		break;
 
 	default:
-		trace_volume_error("volume_ctrl_set_cmd() error: "
-				   "invalid cdata->cmd");
+		trace_volume_error_with_ids(dev, "volume_ctrl_set_cmd() error: "
+					    "invalid cdata->cmd");
 		return -EINVAL;
 	}
 
@@ -473,28 +483,30 @@ static int volume_ctrl_get_cmd(struct comp_dev *dev,
 
 	/* validate */
 	if (cdata->num_elems == 0 || cdata->num_elems > SOF_IPC_MAX_CHANNELS) {
-		trace_volume_error("volume_ctrl_get_cmd() error: "
-				   "invalid cdata->num_elems %u",
-				   cdata->num_elems);
+		trace_volume_error_with_ids(dev, "volume_ctrl_get_cmd() error: "
+					    "invalid cdata->num_elems %u",
+					    cdata->num_elems);
 		return -EINVAL;
 	}
 
 	if (cdata->cmd == SOF_CTRL_CMD_VOLUME ||
 	    cdata->cmd ==  SOF_CTRL_CMD_SWITCH) {
-		trace_volume("volume_ctrl_get_cmd(), SOF_CTRL_CMD_VOLUME / "
-			    "SOF_CTRL_CMD_SWITCH, cdata->comp_id = %u",
-			    cdata->comp_id);
+		trace_volume_with_ids(dev, "volume_ctrl_get_cmd(), "
+				      "SOF_CTRL_CMD_VOLUME / "
+				      "SOF_CTRL_CMD_SWITCH, "
+				      "cdata->comp_id = %u",
+				      cdata->comp_id);
 		for (j = 0; j < cdata->num_elems; j++) {
 			cdata->chanv[j].channel = j;
 			cdata->chanv[j].value = cd->tvolume[j];
-			trace_volume("volume_ctrl_get_cmd(), "
-				     "channel = %u, value = %u",
-				     cdata->chanv[j].channel,
-				     cdata->chanv[j].value);
+			trace_volume_with_ids(dev, "volume_ctrl_get_cmd(), "
+					      "channel = %u, value = %u",
+					      cdata->chanv[j].channel,
+					      cdata->chanv[j].value);
 		}
 	} else {
-		trace_volume_error("volume_ctrl_get_cmd() error: "
-				   "invalid cdata->cmd");
+		trace_volume_error_with_ids(dev, "volume_ctrl_get_cmd() error: "
+					    "invalid cdata->cmd");
 		return -EINVAL;
 	}
 
@@ -513,7 +525,7 @@ static int volume_cmd(struct comp_dev *dev, int cmd, void *data,
 {
 	struct sof_ipc_ctrl_data *cdata = data;
 
-	trace_volume("volume_cmd()");
+	trace_volume_with_ids(dev, "volume_cmd()");
 
 	switch (cmd) {
 	case COMP_CMD_SET_VALUE:
@@ -533,7 +545,7 @@ static int volume_cmd(struct comp_dev *dev, int cmd, void *data,
  */
 static int volume_trigger(struct comp_dev *dev, int cmd)
 {
-	trace_volume("volume_trigger()");
+	trace_volume_with_ids(dev, "volume_trigger()");
 
 	return comp_set_state(dev, cmd);
 }
@@ -549,18 +561,20 @@ static int volume_copy(struct comp_dev *dev)
 	struct comp_data *cd = comp_get_drvdata(dev);
 	int ret;
 
-	tracev_volume("volume_copy()");
+	tracev_volume_with_ids(dev, "volume_copy()");
 
 	/* Get source, sink, number of frames etc. to process. */
 	ret = comp_get_copy_limits(dev, &c);
 	if (ret < 0) {
-		trace_volume_error("volume_copy(): "
+		trace_volume_error_with_ids(dev, "volume_copy(): "
 				   "Failed comp_get_copy_limits()");
 		return ret;
 	}
 
-	tracev_volume("volume_copy(), source_bytes = 0x%x, sink_bytes = 0x%x",
-		      c.source_bytes, c.sink_bytes);
+	tracev_volume_with_ids(dev, "volume_copy(), "
+			       "source_bytes = 0x%x, "
+			       "sink_bytes = 0x%x",
+			       c.source_bytes, c.sink_bytes);
 
 	/* copy and scale volume */
 	cd->scale_vol(dev, c.sink, c.source, c.frames);
@@ -591,7 +605,7 @@ static int volume_prepare(struct comp_dev *dev)
 	int i;
 	int ret;
 
-	trace_volume("volume_prepare()");
+	trace_volume_with_ids(dev, "volume_prepare()");
 
 	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
 	if (ret < 0)
@@ -621,22 +635,22 @@ static int volume_prepare(struct comp_dev *dev)
 		dev->params.frame_fmt = cd->sink_format;
 
 	if (sinkb->size < config->periods_sink * sink_period_bytes) {
-		trace_volume_error("volume_prepare() error: "
-				  "sink buffer size is insufficient");
+		trace_volume_error_with_ids(dev, "volume_prepare() error: "
+					    "sink buffer size is insufficient");
 		ret = -ENOMEM;
 		goto err;
 	}
 
 	/* validate */
 	if (!sink_period_bytes) {
-		trace_volume_error("volume_prepare() error: "
-				   "sink_period_bytes = 0, dev->frames ="
-				   " %u", dev->frames);
+		trace_volume_error_with_ids(dev, "volume_prepare() error: "
+					    "sink_period_bytes = 0, "
+					    "dev->frames = %u", dev->frames);
 		ret = -EINVAL;
 		goto err;
 	}
 	if (!source_period_bytes) {
-		trace_volume_error("volume_prepare() error: "
+		trace_volume_error_with_ids(dev, "volume_prepare() error: "
 				   "source_period_bytes = 0, "
 				   "dev->frames = %u", dev->frames);
 		ret = -EINVAL;
@@ -645,13 +659,13 @@ static int volume_prepare(struct comp_dev *dev)
 
 	cd->scale_vol = vol_get_processing_function(dev);
 	if (!cd->scale_vol) {
-		trace_volume_error("volume_prepare() error: "
-				   "invalid cd->scale_vol, "
-				   "cd->source_format = %u, "
-				   "cd->sink_format = %u, "
-				   "dev->params.channels = %u",
-				   cd->source_format, cd->sink_format,
-				   dev->params.channels);
+		trace_volume_error_with_ids(dev, "volume_prepare() error: "
+					    "invalid cd->scale_vol, "
+					    "cd->source_format = %u, "
+					    "cd->sink_format = %u, "
+					    "dev->params.channels = %u",
+					    cd->source_format, cd->sink_format,
+					    dev->params.channels);
 		ret = -EINVAL;
 		goto err;
 	}
@@ -673,7 +687,7 @@ err:
  */
 static int volume_reset(struct comp_dev *dev)
 {
-	trace_volume("volume_reset()");
+	trace_volume_with_ids(dev, "volume_reset()");
 
 	comp_set_state(dev, COMP_TRIGGER_RESET);
 	return 0;
@@ -690,7 +704,8 @@ static void volume_cache(struct comp_dev *dev, int cmd)
 
 	switch (cmd) {
 	case CACHE_WRITEBACK_INV:
-		trace_volume("volume_cache(), CACHE_WRITEBACK_INV");
+		trace_volume_with_ids(dev, "volume_cache(), "
+				      "CACHE_WRITEBACK_INV");
 
 		cd = comp_get_drvdata(dev);
 
@@ -699,7 +714,7 @@ static void volume_cache(struct comp_dev *dev, int cmd)
 		break;
 
 	case CACHE_INVALIDATE:
-		trace_volume("volume_cache(), CACHE_INVALIDATE");
+		trace_volume_with_ids(dev, "volume_cache(), CACHE_INVALIDATE");
 
 		dcache_invalidate_region(dev, sizeof(*dev));
 
