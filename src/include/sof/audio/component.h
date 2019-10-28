@@ -17,6 +17,7 @@
 #define __SOF_AUDIO_COMPONENT_H__
 
 #include <sof/audio/buffer.h>
+#include <sof/audio/format.h>
 #include <sof/audio/pipeline.h>
 #include <sof/debug/panic.h>
 #include <sof/list.h>
@@ -611,17 +612,7 @@ static inline struct comp_dev *comp_get_previous(struct comp_dev *dev, int dir)
  */
 static inline uint32_t comp_frame_bytes(struct comp_dev *dev)
 {
-	/* calculate period size based on params */
-	switch (dev->params.frame_fmt) {
-	case SOF_IPC_FRAME_S16_LE:
-		return 2 * dev->params.channels;
-	case SOF_IPC_FRAME_S24_4LE:
-	case SOF_IPC_FRAME_S32_LE:
-	case SOF_IPC_FRAME_FLOAT:
-		return 4 * dev->params.channels;
-	default:
-		return 0;
-	}
+	return frame_bytes(dev->params.frame_fmt, dev->params.channels);
 }
 
 /**
@@ -631,17 +622,7 @@ static inline uint32_t comp_frame_bytes(struct comp_dev *dev)
  */
 static inline uint32_t comp_sample_bytes(struct comp_dev *dev)
 {
-	/* calculate period size based on params */
-	switch (dev->params.frame_fmt) {
-	case SOF_IPC_FRAME_S16_LE:
-		return 2;
-	case SOF_IPC_FRAME_S24_4LE:
-	case SOF_IPC_FRAME_S32_LE:
-	case SOF_IPC_FRAME_FLOAT:
-		return 4;
-	default:
-		return 0;
-	}
+	return sample_bytes(dev->params.frame_fmt);
 }
 
 /**
