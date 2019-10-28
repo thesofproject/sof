@@ -202,6 +202,15 @@ config DEBUG_LOCKS_VERBOSE
 	  In addition to DEBUG_LOCKS it also adds spinlock traces
 	  every time the lock is acquired.
 
+config QEMU
+	bool "Build for QEMU"
+	default n
+	help
+	  Select if you want to build for QEMU.
+	  QEMU is different than real hardware, usually it has
+	  lower performance, but also for some platforms not all
+	  features are applicable or may be not yet implemented.
+
 config BUILD_VM_ROM
 	bool "Build VM ROM"
 	default n
