@@ -10,6 +10,7 @@
 #ifndef __SOF_AUDIO_FORMAT_H__
 #define __SOF_AUDIO_FORMAT_H__
 
+#include <ipc/stream.h>
 #include <stdint.h>
 
 /* Maximum and minimum values for 24 bit */
@@ -158,6 +159,16 @@ static inline int16_t q_multsr_sat_16x16(int16_t x, int32_t y,
 static inline int32_t sign_extend_s24(int32_t x)
 {
 	return (x << 8) >> 8;
+}
+
+static inline uint32_t sample_bytes(enum sof_ipc_frame fmt)
+{
+	return fmt == SOF_IPC_FRAME_S16_LE ? 2 : 4;
+}
+
+static inline uint32_t frame_bytes(enum sof_ipc_frame fmt, uint32_t channels)
+{
+	return sample_bytes(fmt) * channels;
 }
 
 #endif /* __SOF_AUDIO_FORMAT_H__ */
