@@ -134,7 +134,7 @@ static void mux_free(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 
-	trace_mux("mux_free()");
+	trace_mux_with_ids(dev, "mux_free()");
 
 	rfree(cd);
 	rfree(dev);
@@ -145,7 +145,7 @@ static int mux_params(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 
-	trace_mux("mux_params()");
+	trace_mux_with_ids(dev, "mux_params() Karol");
 
 	cd->config.num_channels = dev->params.channels;
 	cd->config.frame_format = dev->params.frame_fmt;
@@ -160,7 +160,8 @@ static int mux_ctrl_set_cmd(struct comp_dev *dev,
 	struct sof_mux_config *cfg;
 	int ret = 0;
 
-	trace_mux("mux_ctrl_set_cmd(), cdata->cmd = 0x%08x", cdata->cmd);
+	trace_mux_with_ids(dev, "mux_ctrl_set_cmd(), cdata->cmd = 0x%08x",
+			   cdata->cmd);
 
 	switch (cdata->cmd) {
 	case SOF_CTRL_CMD_BINARY:
@@ -169,8 +170,8 @@ static int mux_ctrl_set_cmd(struct comp_dev *dev,
 		ret = mux_set_values(cd, cfg);
 		break;
 	default:
-		trace_mux_error("mux_ctrl_set_cmd() error: invalid cdata->cmd ="
-				" 0x%08x", cdata->cmd);
+		trace_mux_error_with_ids(dev, "mux_ctrl_set_cmd() error: "
+				"invalid cdata->cmd = 0x%08x", cdata->cmd);
 		ret = -EINVAL;
 		break;
 	}
@@ -184,7 +185,7 @@ static int mux_cmd(struct comp_dev *dev, int cmd, void *data,
 {
 	struct sof_ipc_ctrl_data *cdata = data;
 
-	trace_mux("mux_cmd() cmd = 0x%08x", cmd);
+	trace_mux_with_ids(dev, "mux_cmd() cmd = 0x%08x", cmd);
 
 	switch (cmd) {
 	case COMP_CMD_SET_DATA:
@@ -221,7 +222,7 @@ static int demux_copy(struct comp_dev *dev)
 	uint32_t source_bytes;
 	uint32_t sinks_bytes[MUX_MAX_STREAMS] = { 0 };
 
-	tracev_mux("demux_copy()");
+	tracev_mux_with_ids(dev, "demux_copy()");
 
 	// align sink streams with their respective configurations
 	list_for_item(clist, &dev->bsink_list) {
@@ -290,7 +291,7 @@ static int mux_copy(struct comp_dev *dev)
 	uint32_t sources_bytes[MUX_MAX_STREAMS] = { 0 };
 	uint32_t sink_bytes;
 
-	tracev_mux("mux_copy()");
+	tracev_mux_with_ids(dev, "mux_copy()");
 
 	/* align source streams with their respective configurations */
 	list_for_item(clist, &dev->bsource_list) {
@@ -343,7 +344,7 @@ static int mux_copy(struct comp_dev *dev)
 
 static int mux_reset(struct comp_dev *dev)
 {
-	trace_mux("mux_reset()");
+	trace_mux_with_ids(dev, "mux_reset()");
 
 	return comp_set_state(dev, COMP_TRIGGER_RESET);
 }
@@ -353,18 +354,20 @@ static int mux_prepare(struct comp_dev *dev)
 	struct comp_data *cd = comp_get_drvdata(dev);
 	int ret;
 
-	trace_mux("mux_prepare()");
+	trace_mux_with_ids(dev, "mux_prepare()");
 
 	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
 	if (ret) {
-		trace_mux("mux_prepare() comp_set_state() returned non-zero.");
+		trace_mux_with_ids(dev, "mux_prepare() comp_set_state() "
+					"returned non-zero.");
 		return ret;
 	}
 
 	cd->mux = mux_get_processing_function(dev);
 	if (!cd->mux) {
-		trace_mux_error("mux_prepare() error: couldn't find appropriate"
-				" mux processing function for component.");
+		trace_mux_error_with_ids(dev, "mux_prepare() error: couldn't "
+				"find appropriate mux processing function for "
+				"component.");
 		ret = -EINVAL;
 		goto err;
 	}
@@ -381,19 +384,20 @@ static int demux_prepare(struct comp_dev *dev)
 	struct comp_data *cd = comp_get_drvdata(dev);
 	int ret;
 
-	trace_mux("demux_prepare()");
+	trace_mux_with_ids(dev, "demux_prepare()");
 
 	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
 	if (ret) {
-		trace_mux("demux_prepare() comp_set_state() returned non-zero");
+		trace_mux_with_ids(dev, "demux_prepare() comp_set_state() "
+					"returned non-zero");
 		return ret;
 	}
 
 	cd->demux = demux_get_processing_function(dev);
 	if (!cd->demux) {
-		trace_mux_error("demux_prepare() error: couldn't find "
-				"appropriate demux processing function for "
-				"component.");
+		trace_mux_error_with_ids(dev, "demux_prepare() error: couldn't "
+				"find appropriate demux processing function "
+				"for component.");
 		ret = -EINVAL;
 		goto err;
 	}
@@ -409,7 +413,7 @@ static int mux_trigger(struct comp_dev *dev, int cmd)
 {
 	int ret = 0;
 
-	trace_mux("mux_trigger(), command = %u", cmd);
+	trace_mux_with_ids(dev, "mux_trigger(), command = %u", cmd);
 
 	ret = comp_set_state(dev, cmd);
 
