@@ -106,8 +106,8 @@ int comp_set_state(struct comp_dev *dev, int cmd)
 	int ret = 0;
 
 	if (dev->state == requested_state) {
-		trace_comp("comp_set_state(), state already set to %u",
-			   dev->state);
+		trace_comp_with_ids(dev, "comp_set_state(), "
+				    "state already set to %u", dev->state);
 		return COMP_STATUS_STATE_ALREADY_SET;
 	}
 
@@ -116,9 +116,10 @@ int comp_set_state(struct comp_dev *dev, int cmd)
 		if (dev->state == COMP_STATE_PREPARE) {
 			dev->state = COMP_STATE_ACTIVE;
 		} else {
-			trace_comp_error("comp_set_state() error: "
-					 "wrong state = %u, "
-					 "COMP_TRIGGER_START", dev->state);
+			trace_comp_error_with_ids(dev, "comp_set_state() error: "
+						  "wrong state = %u, "
+						  "COMP_TRIGGER_START",
+						  dev->state);
 			ret = -EINVAL;
 		}
 		break;
@@ -126,9 +127,10 @@ int comp_set_state(struct comp_dev *dev, int cmd)
 		if (dev->state == COMP_STATE_PAUSED) {
 			dev->state = COMP_STATE_ACTIVE;
 		} else {
-			trace_comp_error("comp_set_state() error: "
-					 "wrong state = %u, "
-					 "COMP_TRIGGER_RELEASE", dev->state);
+			trace_comp_error_with_ids(dev, "comp_set_state() error: "
+						  "wrong state = %u, "
+						  "COMP_TRIGGER_RELEASE",
+						  dev->state);
 			ret = -EINVAL;
 		}
 		break;
@@ -137,9 +139,10 @@ int comp_set_state(struct comp_dev *dev, int cmd)
 		    dev->state == COMP_STATE_PAUSED) {
 			dev->state = COMP_STATE_PREPARE;
 		} else {
-			trace_comp_error("comp_set_state() error: "
-					 "wrong state = %u, "
-					 "COMP_TRIGGER_STOP", dev->state);
+			trace_comp_error_with_ids(dev, "comp_set_state() error: "
+						  "wrong state = %u, "
+						  "COMP_TRIGGER_STOP",
+						  dev->state);
 			ret = -EINVAL;
 		}
 		break;
@@ -152,9 +155,10 @@ int comp_set_state(struct comp_dev *dev, int cmd)
 		if (dev->state == COMP_STATE_ACTIVE) {
 			dev->state = COMP_STATE_PAUSED;
 		} else {
-			trace_comp_error("comp_set_state() error: "
-					 "wrong state = %u, "
-					 "COMP_TRIGGER_PAUSE", dev->state);
+			trace_comp_error_with_ids(dev, "comp_set_state() error: "
+						  "wrong state = %u, "
+						  "COMP_TRIGGER_PAUSE",
+						  dev->state);
 			ret = -EINVAL;
 		}
 		break;
@@ -162,9 +166,10 @@ int comp_set_state(struct comp_dev *dev, int cmd)
 		/* reset always succeeds */
 		if (dev->state == COMP_STATE_ACTIVE ||
 		    dev->state == COMP_STATE_PAUSED) {
-			trace_comp_error("comp_set_state() error: "
-					 "wrong state = %u, "
-					 "COMP_TRIGGER_RESET", dev->state);
+			trace_comp_error_with_ids(dev, "comp_set_state() error: "
+						  "wrong state = %u, "
+						  "COMP_TRIGGER_RESET",
+						  dev->state);
 			ret = 0;
 		}
 		dev->state = COMP_STATE_READY;
@@ -173,9 +178,10 @@ int comp_set_state(struct comp_dev *dev, int cmd)
 		if (dev->state == COMP_STATE_READY) {
 			dev->state = COMP_STATE_PREPARE;
 		} else {
-			trace_comp_error("comp_set_state() error: "
-					 "wrong state = %u, "
-					 "COMP_TRIGGER_PREPARE", dev->state);
+			trace_comp_error_with_ids(dev, "comp_set_state() error: "
+						  "wrong state = %u, "
+						  "COMP_TRIGGER_PREPARE",
+						  dev->state);
 			ret = -EINVAL;
 		}
 		break;
