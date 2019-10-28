@@ -27,12 +27,24 @@
 #include <stddef.h>
 #include <stdint.h>
 
+/* mixer tracing */
 #define trace_mixer(__e, ...) \
 	trace_event(TRACE_CLASS_MIXER, __e, ##__VA_ARGS__)
+#define trace_mixer_with_ids(comp_ptr, __e, ...)		\
+	trace_event_comp(TRACE_CLASS_MIXER, comp_ptr,		\
+			 __e, ##__VA_ARGS__)
+
 #define tracev_mixer(__e, ...) \
 	tracev_event(TRACE_CLASS_MIXER, __e, ##__VA_ARGS__)
+#define tracev_mixer_with_ids(comp_ptr, __e, ...)		\
+	tracev_event_comp(TRACE_CLASS_MIXER, comp_ptr,		\
+			  __e, ##__VA_ARGS__)
+
 #define trace_mixer_error(__e, ...) \
 	trace_error(TRACE_CLASS_MIXER, __e, ##__VA_ARGS__)
+#define trace_mixer_error_with_ids(comp_ptr, __e, ...)		\
+	trace_error_comp(TRACE_CLASS_MIXER, comp_ptr,		\
+			 __e, ##__VA_ARGS__)
 
 /* mixer component private data */
 struct mixer_data {
@@ -146,7 +158,7 @@ static void mixer_free(struct comp_dev *dev)
 {
 	struct mixer_data *md = comp_get_drvdata(dev);
 
-	trace_mixer("mixer_free()");
+	trace_mixer_with_ids(dev, "mixer_free()");
 
 	rfree(md);
 	rfree(dev);
@@ -159,12 +171,13 @@ static int mixer_params(struct comp_dev *dev)
 	struct comp_buffer *sinkb;
 	uint32_t period_bytes;
 
-	trace_mixer("mixer_params()");
+	trace_mixer_with_ids(dev, "mixer_params()");
 
 	/* calculate period size based on config */
 	period_bytes = dev->frames * comp_frame_bytes(dev);
 	if (period_bytes == 0) {
-		trace_mixer_error("mixer_params() error: period_bytes = 0");
+		trace_mixer_error_with_ids(dev, "mixer_params() error: "
+					   "period_bytes = 0");
 		return -EINVAL;
 	}
 
@@ -172,8 +185,8 @@ static int mixer_params(struct comp_dev *dev)
 				source_list);
 
 	if (sinkb->size < config->periods_sink * period_bytes) {
-		trace_mixer_error("mixer_params() error: "
-				  "sink buffer size is insufficient");
+		trace_mixer_error_with_ids(dev, "mixer_params() error: "
+					   "sink buffer size is insufficient");
 		return -ENOMEM;
 	}
 
@@ -211,7 +224,7 @@ static int mixer_trigger(struct comp_dev *dev, int cmd)
 	int dir = dev->pipeline->source_comp->params.direction;
 	int ret;
 
-	trace_mixer("mixer_trigger()");
+	trace_mixer_with_ids(dev, "mixer_trigger()");
 
 	ret = comp_set_state(dev, cmd);
 	if (ret < 0)
@@ -260,7 +273,7 @@ static int mixer_copy(struct comp_dev *dev)
 	uint32_t source_bytes;
 	uint32_t sink_bytes;
 
-	tracev_mixer("mixer_copy()");
+	tracev_mixer_with_ids(dev, "mixer_copy()");
 
 	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
 			       source_list);
@@ -294,8 +307,8 @@ static int mixer_copy(struct comp_dev *dev)
 	source_bytes = frames * comp_frame_bytes(sources[0]->source);
 	sink_bytes = frames * comp_frame_bytes(sink->sink);
 
-	tracev_mixer("mixer_copy(), source_bytes = 0x%x, sink_bytes = 0x%x",
-		     source_bytes, sink_bytes);
+	tracev_mixer_with_ids(dev, "mixer_copy(), source_bytes = 0x%x, "
+			      "sink_bytes = 0x%x",  source_bytes, sink_bytes);
 
 	/* mix streams */
 	md->mix_func(dev, sink, sources, i, frames);
@@ -315,7 +328,7 @@ static int mixer_reset(struct comp_dev *dev)
 	struct list_item *blist;
 	struct comp_buffer *source;
 
-	trace_mixer("mixer_reset()");
+	trace_mixer_with_ids(dev, "mixer_reset()");
 
 	list_for_item(blist, &dev->bsource_list) {
 		source = container_of(blist, struct comp_buffer, sink_list);
@@ -345,7 +358,7 @@ static int mixer_prepare(struct comp_dev *dev)
 	int downstream = 0;
 	int ret;
 
-	trace_mixer("mixer_prepare()");
+	trace_mixer_with_ids(dev, "mixer_prepare()");
 
 	/* does mixer already have active source streams ? */
 	if (dev->state != COMP_STATE_ACTIVE) {
@@ -382,7 +395,7 @@ static void mixer_cache(struct comp_dev *dev, int cmd)
 
 	switch (cmd) {
 	case CACHE_WRITEBACK_INV:
-		trace_mixer("mixer_cache(), CACHE_WRITEBACK_INV");
+		trace_mixer_with_ids(dev, "mixer_cache(), CACHE_WRITEBACK_INV");
 
 		md = comp_get_drvdata(dev);
 
@@ -391,7 +404,7 @@ static void mixer_cache(struct comp_dev *dev, int cmd)
 		break;
 
 	case CACHE_INVALIDATE:
-		trace_mixer("mixer_cache(), CACHE_INVALIDATE");
+		trace_mixer_with_ids(dev, "mixer_cache(), CACHE_INVALIDATE");
 
 		dcache_invalidate_region(dev, sizeof(*dev));
 
