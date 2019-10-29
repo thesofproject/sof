@@ -15,6 +15,7 @@
 #include <sof/init.h>
 #include <sof/lib/cpu.h>
 #include <sof/sof.h>
+#include <sof/spinlock.h>
 #include <config.h>
 #include <xtensa/xtruntime-frames.h>
 #include <xtos-structs.h>

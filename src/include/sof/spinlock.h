@@ -15,6 +15,7 @@
 
 #include <arch/spinlock.h>
 #include <sof/drivers/interrupt.h>
+#include <sof/trace/trace.h>
 #include <config.h>
 
 /*
@@ -84,7 +85,7 @@ extern uint32_t lock_dbg_user[DBG_LOCK_USERS];
 #define spinlock_init(lock) \
 	do { \
 		arch_spinlock_init(lock); \
-		(lock)->user = __LINE__; \
+		(*lock)->user = __LINE__; \
 	} while (0)
 
 /* panic on deadlock */
