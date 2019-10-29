@@ -7,6 +7,7 @@
 
 #include <sof/audio/buffer.h>
 #include <sof/audio/component.h>
+#include <sof/audio/pcm_converter.h>
 #include <sof/audio/pipeline.h>
 #include <sof/common.h>
 #include <sof/debug/panic.h>
@@ -587,10 +588,8 @@ static int host_params(struct comp_dev *dev)
 	dma_set_cb(hd->chan, DMA_CB_TYPE_COPY, host_dma_cb, dev);
 
 	/* set processing function */
-	if (dev->params.frame_fmt == SOF_IPC_FRAME_S16_LE)
-		hd->process = buffer_copy_s16;
-	else
-		hd->process = buffer_copy_s32;
+	hd->process = pcm_get_conversion_function(dev->params.frame_fmt,
+						  dev->params.frame_fmt);
 
 	return 0;
 }
