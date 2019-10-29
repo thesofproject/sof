@@ -198,14 +198,6 @@ void trace_init(struct sof *sof);
 	_trace_event_atomic_with_ids(class, id_0, id_1, 1, format,	\
 				     ##__VA_ARGS__)
 
-/* component tracing builder macro */
-#define _trace_comp_build(fun, class, comp_ptr, format, ...)		\
-		fun(class, comp_ptr->comp.pipeline_id,			\
-		    comp_ptr->comp.id, format, ##__VA_ARGS__)
-
-#define trace_event_comp(...) _trace_comp_build(trace_event_with_ids,	\
-						##__VA_ARGS__)
-
 #if CONFIG_TRACEM
 /* send all trace to mbox and local trace buffer */
 #define __mbox _mbox
@@ -221,46 +213,6 @@ void trace_init(struct sof *sof);
 		     has_ids, format, ##__VA_ARGS__)
 
 #define trace_point(x) platform_trace_point(x)
-
-/* verbose tracing */
-#if CONFIG_TRACEV
-#define tracev_event(...) trace_event(__VA_ARGS__)
-#define tracev_event_with_ids(...) trace_event_with_ids(__VA_ARGS__)
-#define tracev_event_atomic(...) trace_event_atomic(__VA_ARGS__)
-#define tracev_event_atomic_with_ids(...) trace_event_atomic_with_ids(__VA_ARGS__)
-
-#define tracev_event_comp(...) _trace_comp_build(tracev_event_with_ids,	\
-						 ##__VA_ARGS__)
-#else
-#define tracev_event(...) do {} while (0)
-#define tracev_event_with_ids(...) do {} while (0)
-#define tracev_event_atomic(...) do {} while (0)
-#define tracev_event_atomic_with_ids(...) do {} while (0)
-
-#define tracev_event_comp(...) do {} while (0)
-#endif
-
-/* error tracing */
-#if CONFIG_TRACEE
-#define _trace_error_with_ids(class, id_0, id_1, has_ids, format, ...)	\
-	_log_message(_mbox, _atomic, LOG_LEVEL_CRITICAL, class, id_0,	\
-		     id_1, has_ids, format, ##__VA_ARGS__)
-#define trace_error(class, format, ...)					\
-	_trace_error_with_ids(class, -1, -1, 0, format, ##__VA_ARGS__)
-#define trace_error_with_ids(class, id_0, id_1, format, ...)	\
-	_trace_error_with_ids(class, id_0, id_1, 1, format, ##__VA_ARGS__)
-#define trace_error_atomic(...) trace_error(__VA_ARGS__)
-#define trace_error_atomic_with_ids(...) trace_error_with_ids(__VA_ARGS__)
-#define trace_error_comp(...) _trace_comp_build(trace_error_with_ids,	\
-						##__VA_ARGS__)
-#else
-#define trace_error(...) trace_event(__VA_ARGS__)
-#define trace_error_with_ids(...) trace_event_with_ids(__VA_ARGS__)
-#define trace_error_atomic(...) trace_event_atomic(__VA_ARGS__)
-#define trace_error_atomic_with_ids(...) trace_event_atomic_with_ids(__VA_ARGS__)
-#define trace_error_comp(...) _trace_comp_build(trace_error_with_ids,	\
-						##__VA_ARGS__)
-#endif
 
 #ifndef CONFIG_LIBRARY
 
@@ -348,18 +300,59 @@ do {									\
 #define trace_event_with_ids(...) do {} while (0)
 #define trace_event_atomic_with_ids(...) do {} while (0)
 
-#define trace_error_with_ids(...) do {} while (0)
-#define trace_error(...) do {} while (0)
-#define trace_error_atomic(...) do {} while (0)
-#define trace_error_atomic_with_ids(...) do {} while (0)
+#define trace_point(x)  do {} while (0)
 
-#define trace_point(x) do {} while (0)
+#endif
 
+/* verbose tracing */
+#if CONFIG_TRACEV
+#define tracev_event(...) trace_event(__VA_ARGS__)
+#define tracev_event_with_ids(...) trace_event_with_ids(__VA_ARGS__)
+#define tracev_event_atomic(...) trace_event_atomic(__VA_ARGS__)
+#define tracev_event_atomic_with_ids(...) \
+	trace_event_atomic_with_ids(__VA_ARGS__)
+#else
 #define tracev_event(...) do {} while (0)
 #define tracev_event_with_ids(...) do {} while (0)
 #define tracev_event_atomic(...) do {} while (0)
 #define tracev_event_atomic_with_ids(...) do {} while (0)
 
 #endif
+
+/* error tracing */
+#if CONFIG_TRACEE
+#define _trace_error_with_ids(class, id_0, id_1, has_ids, format, ...)	\
+	_log_message(_mbox, _atomic, LOG_LEVEL_CRITICAL, class, id_0,	\
+		     id_1, has_ids, format, ##__VA_ARGS__)
+#define trace_error(class, format, ...)					\
+	_trace_error_with_ids(class, -1, -1, 0, format, ##__VA_ARGS__)
+#define trace_error_with_ids(class, id_0, id_1, format, ...)	\
+	_trace_error_with_ids(class, id_0, id_1, 1, format, ##__VA_ARGS__)
+#define trace_error_atomic(...) trace_error(__VA_ARGS__)
+#define trace_error_atomic_with_ids(...) trace_error_with_ids(__VA_ARGS__)
+#elif CONFIG_TRACE
+#define trace_error(...) trace_event(__VA_ARGS__)
+#define trace_error_with_ids(...) trace_event_with_ids(__VA_ARGS__)
+#define trace_error_atomic(...) trace_event_atomic(__VA_ARGS__)
+#define trace_error_atomic_with_ids(...) \
+	trace_event_atomic_with_ids(__VA_ARGS__)
+#else
+#define trace_error(...) do {} while (0)
+#define trace_error_with_ids(...) do {} while (0)
+#define trace_error_atomic(...) do {} while (0)
+#define trace_error_atomic_with_ids(...) do {} while (0)
+#endif
+
+/* tracing from component */
+#define _trace_comp_build(fun, class, comp_ptr, format, ...)		\
+		fun(class, comp_ptr->comp.pipeline_id,			\
+		    comp_ptr->comp.id, format, ##__VA_ARGS__)
+
+#define trace_event_comp(...) _trace_comp_build(trace_event_with_ids,	\
+						##__VA_ARGS__)
+#define tracev_event_comp(...) _trace_comp_build(tracev_event_with_ids,	\
+						##__VA_ARGS__)
+#define trace_error_comp(...) _trace_comp_build(trace_error_with_ids,	\
+						##__VA_ARGS__)
 
 #endif /* __SOF_TRACE_TRACE_H__ */
