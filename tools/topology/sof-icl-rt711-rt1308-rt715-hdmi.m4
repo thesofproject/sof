@@ -107,39 +107,39 @@ dnl     buffer, periods, format,
 dnl     deadline, priority, core, time_domain)
 
 # playback DAI is ALH(SDW0 PIN2) using 2 periods
-# Buffers use s32le format, with 48 frame per 1000us on core 0 with priority 0
+# Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
 	1, ALH, 2, SDW0-Playback,
-	PIPELINE_SOURCE_1, 2, s32le,
+	PIPELINE_SOURCE_1, 2, s24le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # capture DAI is ALH(SDW0 PIN2) using 2 periods
-# Buffers use s32le format, with 48 frame per 1000us on core 0 with priority 0
+# Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
 	2, ALH, 3, SDW0-Capture,
-	PIPELINE_SINK_2, 2, s32le,
+	PIPELINE_SINK_2, 2, s24le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # playback DAI is ALH(SDW1 PIN2) using 2 periods
-# Buffers use s32le format, with 48 frame per 1000us on core 0 with priority 0
+# Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
 	3, ALH, 0x102, SDW1-Playback,
-	PIPELINE_SOURCE_3, 2, s32le,
+	PIPELINE_SOURCE_3, 2, s24le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 ifdef(`MONO', `',
 `# playback DAI is ALH(SDW2 PIN2) using 2 periods
-# Buffers use s32le format, with 48 frame per 1000us on core 0 with priority 0
+# Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
 	4, ALH, 0x202, SDW2-Playback,
-	PIPELINE_SOURCE_4, 2, s32le,
+	PIPELINE_SOURCE_4, 2, s24le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)')
 
 # capture DAI is ALH(SDW3 PIN2) using 2 periods
-# Buffers use s32le format, with 48 frame per 1000us on core 0 with priority 0
+# Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
 	5, ALH, 0x302, SDW3-Capture,
-	PIPELINE_SINK_5, 2, s32le,
+	PIPELINE_SINK_5, 2, s24le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # playback DAI is iDisp1 using 2 periods
