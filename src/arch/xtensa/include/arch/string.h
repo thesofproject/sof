@@ -47,8 +47,8 @@ static inline int arch_memcpy_s(void *dest, size_t dest_size,
 	if (!dest || !src)
 		return -EINVAL;
 
-	if ((dest >= src && dest < (src + src_size)) ||
-	    (src >= dest && src < (dest + dest_size)))
+	if ((dest >= src && (char *)dest < ((char *)src + src_size)) ||
+	    (src >= dest && (char *)src < ((char *)dest + dest_size)))
 		return -EINVAL;
 
 	if (src_size > dest_size)

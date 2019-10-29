@@ -34,21 +34,21 @@ void dump_panicinfo(void *addr, struct sof_ipc_panic_info *panic_info)
 void panic_rewind(uint32_t p, uint32_t stack_rewind_frames,
 		  struct sof_ipc_panic_info *panic_info, uintptr_t *data)
 {
-	void *ext_offset;
+	char *ext_offset;
 	size_t count;
 	uintptr_t stack_ptr;
 
 	/* disable all IRQs */
 	interrupt_global_disable();
 
-	ext_offset = (void *)mailbox_get_exception_base() + ARCH_OOPS_SIZE;
+	ext_offset = (char *)mailbox_get_exception_base() + ARCH_OOPS_SIZE;
 
 	/* dump panic info, filename ane linenum */
 	dump_panicinfo(ext_offset, panic_info);
 	ext_offset += sizeof(struct sof_ipc_panic_info);
 
 	count = MAILBOX_EXCEPTION_SIZE -
-		(size_t)(ext_offset - mailbox_get_exception_base());
+		(size_t)(ext_offset - (char *)mailbox_get_exception_base());
 
 	/* flush last trace messages */
 #if CONFIG_TRACE

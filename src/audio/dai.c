@@ -134,7 +134,7 @@ static void dai_dma_cb(void *data, uint32_t type, struct dma_cb_data *next)
 	if (dd->dai_pos) {
 		dd->dai_pos_blks += bytes;
 		*dd->dai_pos = dd->dai_pos_blks +
-			buffer_ptr - dd->dma_buffer->addr;
+			(char *)buffer_ptr - (char *)dd->dma_buffer->addr;
 	}
 }
 

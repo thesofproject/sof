@@ -435,7 +435,7 @@ static int test_keyword_set_model(struct comp_dev *dev,
 		return -EINVAL;
 	}
 
-	ret = memcpy_s(cd->model.data + cd->model.data_pos,
+	ret = memcpy_s((char *)cd->model.data + cd->model.data_pos,
 		       cd->model.data_size - cd->model.data_pos,
 		       cdata->data->data, cdata->num_elems);
 	assert(!ret);
@@ -571,7 +571,8 @@ static int test_keyword_get_model(struct comp_dev *dev,
 		}
 
 		ret = memcpy_s(cdata->data->data, size,
-			       cd->model.data + cd->model.data_pos, bs);
+			       (char *)cd->model.data + cd->model.data_pos,
+			       bs);
 		assert(!ret);
 
 		cdata->data->abi = SOF_ABI_VERSION;

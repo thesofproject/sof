@@ -205,11 +205,12 @@ static inline void buffer_reset_pos(struct comp_buffer *buffer)
 static inline void *buffer_get_frag(struct comp_buffer *buffer, void *ptr,
 				    uint32_t idx, uint32_t size)
 {
-	void *current = ptr + (idx * size);
+	void *current = (char *)ptr + (idx * size);
 
 	/* check for pointer wrap */
 	if (current >= buffer->end_addr)
-		current = buffer->addr + (current - buffer->end_addr);
+		current = (char *)buffer->addr +
+			((char *)current - (char *)buffer->end_addr);
 
 	return current;
 }
@@ -222,7 +223,7 @@ static inline void buffer_init(struct comp_buffer *buffer, uint32_t size,
 	buffer->caps = caps;
 	buffer->w_ptr = buffer->addr;
 	buffer->r_ptr = buffer->addr;
-	buffer->end_addr = buffer->addr + size;
+	buffer->end_addr = (char *)buffer->addr + size;
 	buffer->free = size;
 	buffer->avail = 0;
 	buffer_zero(buffer);

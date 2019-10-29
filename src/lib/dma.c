@@ -197,8 +197,8 @@ void dma_buffer_copy_from(struct comp_buffer *source, struct comp_buffer *sink,
 	uint32_t tail = 0;
 
 	/* source buffer contains data copied by DMA */
-	if (source->r_ptr + bytes > source->end_addr) {
-		head = source->end_addr - source->r_ptr;
+	if ((char *)source->r_ptr + bytes > (char *)source->end_addr) {
+		head = (char *)source->end_addr - (char *)source->r_ptr;
 		tail = bytes - head;
 	}
 
@@ -209,12 +209,12 @@ void dma_buffer_copy_from(struct comp_buffer *source, struct comp_buffer *sink,
 	/* process data */
 	process(source, sink, bytes);
 
-	source->r_ptr += bytes;
+	source->r_ptr = (char *)source->r_ptr + bytes;
 
 	/* check for pointer wrap */
 	if (source->r_ptr >= source->end_addr)
-		source->r_ptr = source->addr +
-			(source->r_ptr - source->end_addr);
+		source->r_ptr = (char *)source->addr +
+			((char *)source->r_ptr - (char *)source->end_addr);
 
 	comp_update_buffer_produce(sink, bytes);
 }
@@ -230,8 +230,8 @@ void dma_buffer_copy_to(struct comp_buffer *source, struct comp_buffer *sink,
 	process(source, sink, bytes);
 
 	/* sink buffer contains data meant to copied to DMA */
-	if (sink->w_ptr + bytes > sink->end_addr) {
-		head = sink->end_addr - sink->w_ptr;
+	if ((char *)sink->w_ptr + bytes > (char *)sink->end_addr) {
+		head = (char *)sink->end_addr - (char *)sink->w_ptr;
 		tail = bytes - head;
 	}
 
@@ -239,12 +239,12 @@ void dma_buffer_copy_to(struct comp_buffer *source, struct comp_buffer *sink,
 	if (tail)
 		dcache_writeback_region(sink->addr, tail);
 
-	sink->w_ptr += bytes;
+	sink->w_ptr = (char *)sink->w_ptr + bytes;
 
 	/* check for pointer wrap */
 	if (sink->w_ptr >= sink->end_addr)
-		sink->w_ptr = sink->addr +
-			(sink->w_ptr - sink->end_addr);
+		sink->w_ptr = (char *)sink->addr +
+			((char *)sink->w_ptr - (char *)sink->end_addr);
 
 	comp_update_buffer_consume(source, bytes);
 }

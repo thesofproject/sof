@@ -91,7 +91,7 @@
 		if (rx_size > tx->size) {				\
 			___ret = memcpy_s(rx, rx_size, tx, tx->size);	\
 			assert(!___ret);				\
-			bzero((void *)rx + tx->size, rx_size - tx->size);\
+			bzero((char *)rx + tx->size, rx_size - tx->size);\
 			trace_ipc("ipc: hdr 0x%x rx (%d) > tx (%d)",	\
 				  rx->cmd, rx_size, tx->size);		\
 		} else if (tx->size > rx_size) {			\

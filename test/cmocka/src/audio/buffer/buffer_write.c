@@ -39,7 +39,7 @@ static void test_audio_buffer_write_10_bytes_out_of_256_and_read_back
 
 	assert_int_equal(buf->avail, 10);
 	assert_int_equal(buf->free, 246);
-	assert_ptr_equal(buf->w_ptr, buf->r_ptr + 10);
+	assert_ptr_equal(buf->w_ptr, (char *)buf->r_ptr + 10);
 
 	assert_int_equal(memcmp(buf->r_ptr, &bytes, 10), 0);
 

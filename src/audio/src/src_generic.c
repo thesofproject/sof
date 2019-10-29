@@ -292,7 +292,7 @@ void src_polyphase_stage_cir(struct src_stage_prm *s)
 					   fir_delay, fir_end, fir_length,
 					   taps_x_nch, cfg->shift, nch);
 			wp += nch_x_odm;
-			cp += subfilter_size;
+			cp = (char *)cp + subfilter_size;
 			src_inc_wrap(&wp, out_delay_end, out_size);
 			rp -= nch_x_idm; /* Next sub-filter start */
 			src_dec_wrap(&rp, fir_delay, fir_size);
@@ -391,7 +391,7 @@ void src_polyphase_stage_cir_s16(struct src_stage_prm *s)
 					   fir_delay, fir_end, fir_length,
 					   taps_x_nch, cfg->shift, nch);
 			wp += nch_x_odm;
-			cp += subfilter_size;
+			cp = (char *)cp + subfilter_size;
 			src_inc_wrap(&wp, out_delay_end, out_size);
 			rp -= nch_x_idm; /* Next sub-filter start */
 			src_dec_wrap(&rp, fir_delay, fir_size);

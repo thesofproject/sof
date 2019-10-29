@@ -132,12 +132,12 @@ void comp_update_buffer_produce(struct comp_buffer *buffer, uint32_t bytes)
 
 	irq_local_disable(flags);
 
-	buffer->w_ptr += bytes;
+	buffer->w_ptr = (char *)buffer->w_ptr + bytes;
 
 	/* check for pointer wrap */
 	if (buffer->w_ptr >= buffer->end_addr)
-		buffer->w_ptr = buffer->addr +
-			(buffer->w_ptr - buffer->end_addr);
+		buffer->w_ptr = (char *)buffer->addr +
+			((char *)buffer->w_ptr - (char *)buffer->end_addr);
 
 	/* "overwrite" old data in circular wrap case */
 	if (bytes > buffer->free)
@@ -145,11 +145,12 @@ void comp_update_buffer_produce(struct comp_buffer *buffer, uint32_t bytes)
 
 	/* calculate available bytes */
 	if (buffer->r_ptr < buffer->w_ptr)
-		buffer->avail = buffer->w_ptr - buffer->r_ptr;
+		buffer->avail = (char *)buffer->w_ptr - (char *)buffer->r_ptr;
 	else if (buffer->r_ptr == buffer->w_ptr)
 		buffer->avail = buffer->size; /* full */
 	else
-		buffer->avail = buffer->size - (buffer->r_ptr - buffer->w_ptr);
+		buffer->avail = buffer->size -
+			((char *)buffer->r_ptr - (char *)buffer->w_ptr);
 
 	/* calculate free bytes */
 	buffer->free = buffer->size - buffer->avail;
@@ -187,20 +188,21 @@ void comp_update_buffer_consume(struct comp_buffer *buffer, uint32_t bytes)
 
 	irq_local_disable(flags);
 
-	buffer->r_ptr += bytes;
+	buffer->r_ptr = (char *)buffer->r_ptr + bytes;
 
 	/* check for pointer wrap */
 	if (buffer->r_ptr >= buffer->end_addr)
-		buffer->r_ptr = buffer->addr +
-			(buffer->r_ptr - buffer->end_addr);
+		buffer->r_ptr = (char *)buffer->addr +
+			((char *)buffer->r_ptr - (char *)buffer->end_addr);
 
 	/* calculate available bytes */
 	if (buffer->r_ptr < buffer->w_ptr)
-		buffer->avail = buffer->w_ptr - buffer->r_ptr;
+		buffer->avail = (char *)buffer->w_ptr - (char *)buffer->r_ptr;
 	else if (buffer->r_ptr == buffer->w_ptr)
 		buffer->avail = 0; /* empty */
 	else
-		buffer->avail = buffer->size - (buffer->r_ptr - buffer->w_ptr);
+		buffer->avail = buffer->size -
+			((char *)buffer->r_ptr - (char *)buffer->w_ptr);
 
 	/* calculate free bytes */
 	buffer->free = buffer->size - buffer->avail;
