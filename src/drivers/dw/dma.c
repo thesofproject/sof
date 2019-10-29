@@ -956,8 +956,6 @@ static int dw_dma_probe(struct dma *dma)
 		goto out;
 	}
 
-	spinlock_init(&dma->lock);
-
 	ret = dw_dma_setup(dma);
 	if (ret < 0)
 		return ret;
