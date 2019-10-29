@@ -122,13 +122,13 @@
 	(IS_ENABLED(CONFIG_GDB_DEBUG) ? SOF_IPC_INFO_GDB : 0)		\
 )
 
-#define dbg()
-#define dbg_at(__x)
-#define dbg_val(__v)
-#define dbg_val_at(__v, __x)
-#define dump(addr, count)
-#define dump_object(__o)
-#define dump_object_ptr(__o)
+#define dbg() do {} while (0)
+#define dbg_at(__x) do {} while (0)
+#define dbg_val(__v) do {} while (0)
+#define dbg_val_at(__v, __x) do {} while (0)
+#define dump(addr, count) do {} while (0)
+#define dump_object(__o) do {} while (0)
+#define dump_object_ptr(__o) do {} while (0)
 #endif
 
 /* dump stack as part of panic */

@@ -175,8 +175,8 @@ extern uint32_t lock_dbg_user[DBG_LOCK_USERS];
 #define trace_lock(__e) do {} while (0)
 #define tracev_lock(__e) do {} while (0)
 
-#define spin_lock_dbg()
-#define spin_unlock_dbg()
+#define spin_lock_dbg() do {} while (0)
+#define spin_unlock_dbg() do {} while (0)
 
 /* all SMP spinlocks need init, nothing todo on UP */
 #define spinlock_init(lock) \
