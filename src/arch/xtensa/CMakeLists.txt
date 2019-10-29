@@ -77,7 +77,7 @@ target_compile_options(sof_options INTERFACE ${stdlib_flag} -fno-inline-function
 #      better to have set of default flags and change it only for special cases
 #   3) custom function that is used instead of target_sources and sets flags
 #      for each added source based on file extension
-target_compile_options(sof_options INTERFACE $<$<COMPILE_LANGUAGE:C>:-O2 -g -Wall -Werror -Wl,-EL -Wmissing-prototypes -mtext-section-literals>)
+target_compile_options(sof_options INTERFACE $<$<COMPILE_LANGUAGE:C>:-O2 -g -Wall -Werror -Wl,-EL -Wmissing-prototypes -Wpointer-arith -mtext-section-literals>)
 
 if(BUILD_UNIT_TESTS)
 	# rest of this file is not needed for unit tests

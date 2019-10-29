@@ -59,7 +59,7 @@ void dtrace_event_atomic(const char *e, uint32_t length);
 
 static inline uint32_t dtrace_calc_buf_margin(struct dma_trace_buf *buffer)
 {
-	return buffer->end_addr - buffer->w_ptr;
+	return (char *)buffer->end_addr - (char *)buffer->w_ptr;
 }
 
 #endif /* __SOF_TRACE_DMA_TRACE_H__ */

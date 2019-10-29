@@ -92,7 +92,8 @@ int task_context_init(void *task_ctx, void *entry, void *arg0, void *arg1,
 	bzero(ctx->stack_base, ctx->stack_size);
 
 	/* set initial stack pointer */
-	sp = ctx->stack_base + ctx->stack_size - sizeof(UserFrame);
+	sp = (UserFrame *)((char *)ctx->stack_base + ctx->stack_size -
+			   sizeof(UserFrame));
 
 	/* entry point */
 	sp->pc = (uint32_t)entry;

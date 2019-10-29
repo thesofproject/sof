@@ -385,7 +385,7 @@ void src_polyphase_stage_cir(struct src_stage_prm *s)
 		for (i = 0; i < cfg->num_of_subfilters; i++) {
 			fir_filter(rp, cp, wp, taps_div_4, cfg->shift, nch);
 			wp += nch_x_odm;
-			cp += subfilter_size;
+			cp = (char *)cp + subfilter_size;
 			src_inc_wrap((int32_t **)&wp, out_delay_end, out_size);
 
 			/* Circular advance pointer rp by number of
@@ -510,7 +510,7 @@ void src_polyphase_stage_cir_s16(struct src_stage_prm *s)
 		for (i = 0; i < cfg->num_of_subfilters; i++) {
 			fir_filter(rp, cp, wp, taps_div_4, cfg->shift, nch);
 			wp += nch_x_odm;
-			cp += subfilter_size;
+			cp = (char *)cp + subfilter_size;
 			src_inc_wrap((int32_t **)&wp, out_delay_end, out_size);
 
 			/* Circular advance pointer rp by number of

@@ -271,7 +271,7 @@ static inline void cavs_pm_runtime_core_dis_memory(uint32_t index)
 	/* Address is calculated for index (0 for the master core) minus one
 	 * since _sof_core_s_start is first slave core stack address
 	 */
-	core_memory_ptr = (void *)&_sof_core_s_start
+	core_memory_ptr = (char *)&_sof_core_s_start
 		+ (index - 1) * SOF_CORE_S_SIZE;
 
 	set_power_gate_for_memory_address_range(core_memory_ptr,
@@ -289,7 +289,7 @@ static inline void cavs_pm_runtime_core_en_memory(uint32_t index)
 	/* Address is calculated for index (0 for the master core) minus one
 	 * since _sof_core_s_start is first slave core stack address
 	 */
-	core_memory_ptr = (void *)&_sof_core_s_start
+	core_memory_ptr = (char *)&_sof_core_s_start
 		+ (index - 1) * SOF_CORE_S_SIZE;
 
 	set_power_gate_for_memory_address_range(core_memory_ptr,

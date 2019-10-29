@@ -217,7 +217,7 @@ static void *align_ptr(struct mm_heap *heap, uint32_t alignment,
 		mod_align = alignment - ((uintptr_t)ptr % alignment);
 
 	/* Calculate aligned pointer */
-	ptr = ptr + mod_align;
+	ptr = (char *)ptr + mod_align;
 
 	return ptr;
 }
@@ -845,7 +845,7 @@ static void _rfree_unlocked(void *ptr)
 
 	/* panic if pointer is from system heap */
 	if (ptr >= (void *)cpu_heap->heap &&
-	    ptr < (void *)cpu_heap->heap + cpu_heap->size) {
+	    (char *)ptr < (char *)cpu_heap->heap + cpu_heap->size) {
 		trace_error(TRACE_CLASS_MEM, "rfree() error: "
 			   "attempt to free system heap = %p, cpu = %d",
 			    (uintptr_t)ptr, cpu_get_id());

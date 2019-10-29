@@ -222,7 +222,8 @@ static size_t kpb_allocate_history_buffer(struct comp_data *kpb)
 			trace_kpb("kpb new memory block: %d", ca_size);
 			allocated_size += ca_size;
 			history_buffer->start_addr = new_mem_block;
-			history_buffer->end_addr = new_mem_block + ca_size;
+			history_buffer->end_addr = (char *)new_mem_block +
+				ca_size;
 			history_buffer->w_ptr = new_mem_block;
 			history_buffer->r_ptr = new_mem_block;
 			history_buffer->state = KPB_BUFFER_FREE;
@@ -734,7 +735,7 @@ static int kpb_buffer_data(struct comp_dev *dev, struct comp_buffer *source,
 			kpb_buffer_samples(source, offset, buff->w_ptr,
 					   space_avail, sample_width);
 			/* Update write pointer & requested copy size */
-			buff->w_ptr += space_avail;
+			buff->w_ptr = (char *)buff->w_ptr + space_avail;
 			size_to_copy = size_to_copy - space_avail;
 			/* Update read pointer's offset before continuing
 			 * with next buffer.
@@ -748,7 +749,7 @@ static int kpb_buffer_data(struct comp_dev *dev, struct comp_buffer *source,
 			kpb_buffer_samples(source, offset, buff->w_ptr,
 					   size_to_copy, sample_width);
 			/* Update write pointer & requested copy size */
-			buff->w_ptr += size_to_copy;
+			buff->w_ptr = (char *)buff->w_ptr + size_to_copy;
 			/* Reset requested copy size */
 			size_to_copy = 0;
 		}
@@ -963,8 +964,8 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 					buff = buff->prev;
 					buffered += (uint32_t)buff->end_addr -
 						    (uint32_t)buff->w_ptr;
-					buff->r_ptr = buff->w_ptr + (buffered -
-						      history_depth);
+					buff->r_ptr = (char *)buff->w_ptr +
+						      (buffered - history_depth);
 					break;
 				}
 				buff = buff->prev;
@@ -972,7 +973,7 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 				buff->r_ptr = buff->start_addr;
 				break;
 			} else {
-				buff->r_ptr = buff->start_addr +
+				buff->r_ptr = (char *)buff->start_addr +
 					      (buffered - history_depth);
 				break;
 			}
@@ -1091,7 +1092,7 @@ static enum task_state kpb_draining_task(void *arg)
 		kpb_drain_samples(buff->r_ptr, sink, size_to_copy,
 				  sample_width);
 
-		buff->r_ptr += (uint32_t)size_to_copy;
+		buff->r_ptr = (char *)buff->r_ptr + (uint32_t)size_to_copy;
 		history_depth -= size_to_copy;
 		drained += size_to_copy;
 		period_bytes += size_to_copy;

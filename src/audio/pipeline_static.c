@@ -383,7 +383,8 @@ int init_static_pipeline(struct ipc *ipc)
 					goto error;
 
 				/* next component - sizes not constant */
-				c = (void *)c + c->hdr.size;
+				c = (struct sof_ipc_comp *)
+				     ((char *)c + c->hdr.size);
 			}
 		}
 

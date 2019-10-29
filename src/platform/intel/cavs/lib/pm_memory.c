@@ -170,7 +170,7 @@ void set_power_gate_for_memory_address_range(void *ptr,
 {
 	uint32_t start_bank_id;
 	uint32_t ending_bank_id;
-	void *end_ptr = ptr + size;
+	void *end_ptr = (char *)ptr + size;
 
 	/* if ptr is not aligned to bank size change it to
 	 * closest possible memory address at the start of bank
@@ -183,7 +183,7 @@ void set_power_gate_for_memory_address_range(void *ptr,
 		end_ptr = (void *)ALIGN_DOWN((uintptr_t)ptr, SRAM_BANK_SIZE);
 
 	/* return if no full bank could be found for enabled gate control */
-	if (end_ptr - ptr < SRAM_BANK_SIZE) {
+	if ((char *)end_ptr - (char *)ptr < SRAM_BANK_SIZE) {
 		trace_mem_pm("Could not find full bank "
 			"to perform gating operation");
 		return;
