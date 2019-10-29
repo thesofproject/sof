@@ -225,13 +225,13 @@ void trace_init(struct sof *sof);
 #define tracev_value(x)	trace_value(x)
 #define tracev_value_atomic(x)	trace_value_atomic(x)
 #else
-#define tracev_event(...)
-#define tracev_event_with_ids(...)
-#define tracev_event_atomic(...)
-#define tracev_event_atomic_with_ids(...)
+#define tracev_event(...) do {} while (0)
+#define tracev_event_with_ids(...) do {} while (0)
+#define tracev_event_atomic(...) do {} while (0)
+#define tracev_event_atomic_with_ids(...) do {} while (0)
 
-#define tracev_value(x)
-#define tracev_value_atomic(x)
+#define tracev_value(x) do {} while (0)
+#define tracev_value_atomic(x) do {} while (0)
 #endif
 
 /* error tracing */
@@ -338,30 +338,30 @@ do {									\
 #endif
 #else
 
-#define	trace_event(...)
-#define	trace_event_atomic(...)
-#define trace_event_with_ids(...)
-#define trace_event_atomic_with_ids(...)
+#define	trace_event(...) do {} while (0)
+#define	trace_event_atomic(...) do {} while (0)
+#define trace_event_with_ids(...) do {} while (0)
+#define trace_event_atomic_with_ids(...) do {} while (0)
 
-#define trace_error_with_ids(...)
-#define trace_error(...)
-#define trace_error_atomic(...)
-#define trace_error_atomic_with_ids(...)
+#define trace_error_with_ids(...) do {} while (0)
+#define trace_error(...) do {} while (0)
+#define trace_error_atomic(...) do {} while (0)
+#define trace_error_atomic_with_ids(...) do {} while (0)
 
-#define trace_error_value(x)
-#define trace_error_value_atomic(x)
+#define trace_error_value(x) do {} while (0)
+#define trace_error_value_atomic(x) do {} while (0)
 
-#define trace_value(x)
-#define trace_value_atomic(x)
+#define trace_value(x) do {} while (0)
+#define trace_value_atomic(x) do {} while (0)
 
-#define trace_point(x)
+#define trace_point(x) do {} while (0)
 
-#define tracev_event(...)
-#define tracev_event_with_ids(...)
-#define tracev_event_atomic(...)
-#define tracev_event_atomic_with_ids(...)
-#define tracev_value(x)
-#define tracev_value_atomic(x)
+#define tracev_event(...) do {} while (0)
+#define tracev_event_with_ids(...) do {} while (0)
+#define tracev_event_atomic(...) do {} while (0)
+#define tracev_event_atomic_with_ids(...) do {} while (0)
+#define tracev_value(x) do {} while (0)
+#define tracev_value_atomic(x) do {} while (0)
 
 #endif
 

@@ -172,8 +172,8 @@ extern uint32_t lock_dbg_user[DBG_LOCK_USERS];
 
 #else
 
-#define trace_lock(__e)
-#define tracev_lock(__e)
+#define trace_lock(__e) do {} while (0)
+#define tracev_lock(__e) do {} while (0)
 
 #define spin_lock_dbg()
 #define spin_unlock_dbg()
