@@ -62,6 +62,7 @@ struct comp_data {
 	size_t buffer_size;
 	size_t host_buffer_size;
 	size_t host_period_size;
+	bool sync_draining_mode;
 };
 
 /*! KPB private functions */
@@ -84,9 +85,9 @@ static void kpb_buffer_samples(const struct audio_stream *source,
 			       uint32_t start, void *sink, size_t size,
 			       size_t sample_width);
 static void kpb_reset_history_buffer(struct hb *buff);
-static inline bool validate_host_params(size_t host_period_size,
-					size_t host_buffer_size,
-					size_t bytes_per_ms);
+static inline bool validate_host_params(struct comp_dev *dev,
+					size_t host_period_size,
+					size_t host_buffer_size);
 static inline void kpb_change_state(struct comp_data *kpb,
 				    enum kpb_state state);
 
@@ -465,6 +466,9 @@ static int kpb_prepare(struct comp_dev *dev)
 				   (uint32_t)kpb->host_sink);
 		ret = -EIO;
 	}
+
+	/* Disallow sync_draining_mode for now */
+	kpb->sync_draining_mode = false;
 
 	kpb_change_state(kpb, KPB_STATE_RUN);
 
@@ -933,11 +937,10 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 	} else if (kpb->buffered_data < history_depth ||
 		   kpb->buffer_size < history_depth) {
 		trace_kpb_error("kpb_init_draining() error: not enough data in history buffer");
-	} else if (!validate_host_params(host_period_size,
-					 host_buffer_size,
-					 bytes_per_ms)) {
-		trace_kpb_error_with_ids(dev, "kpb_init_draining() error: "
-					 "wrong host params.");
+	} else if (!validate_host_params(dev,
+					 host_period_size,
+					 host_buffer_size)) {
+		trace_kpb_error("kpb_init_draining() error: wrong host params.");
 	} else {
 		/* Draining accepted, find proper buffer to start reading
 		 * At this point we are guaranteed that there is enough data
@@ -1397,24 +1400,50 @@ static void kpb_reset_history_buffer(struct hb *buff)
 	} while (buff != first_buff);
 }
 
-static inline bool validate_host_params(size_t host_period_size,
-					size_t host_buffer_size,
-					size_t bytes_per_ms)
+static inline bool validate_host_params(struct comp_dev *dev,
+					size_t host_period_size,
+					size_t host_buffer_size)
 {
-	/* Check host period size sanity.
-	 * Here we check if host period size (which defines interval
-	 * time) will allow us to drain more data then the interval
-	 * takes - as only such condition guarantees draining will end.
-	 * The formula:
-	 *	drained_data_in_one_interval_ms > interval_break_ms
-	 * where:
-	 * drained_data_in_one_interval_ms = (host_period_size * 2) [ms]
-	 * interval_break_ms = host_period_size / bytes_per_ms [ms]
+	/* The aim of this function is to perform basic check of host params
+	 * and reject them if they won't allow for stable draining.
+	 * Note however that this is highly recommended for host buffer to
+	 * be at least twice the history buffer size. This will quarantee
+	 * "safe" draining.
+	 * By safe we mean no XRUNs(host was unable to read data on time),
+	 * or loss of data due to host delayed read. The later condition
+	 * is very likely after wake up from power state like d0ix.
 	 */
+	struct comp_data *kpb = comp_get_drvdata(dev);
+	size_t sample_width = kpb->config.sampling_width;
+	size_t bytes_per_ms = KPB_SAMPLES_PER_MS *
+			      (KPB_SAMPLE_CONTAINER_SIZE(sample_width) / 8) *
+			      kpb->config.channels;
+	size_t pipeline_period_size = (dev->pipeline->ipc_pipe.period / 1000)
+					* bytes_per_ms;
 
-	if (host_period_size < bytes_per_ms || /* Out of control */
-	    host_period_size >= (host_buffer_size / 2)) /* XRUN */
+	if (!host_period_size || !host_buffer_size) {
+		/* Wrong host params */
 		return false;
+	} else if (HOST_BUFFER_MIN_SIZE(kpb->buffer_size) >
+		   host_buffer_size) {
+		/* Host buffer size is too small - history data
+		 * may get overwritten.
+		 */
+		return false;
+	} else if (kpb->sync_draining_mode) {
+		/* Sync draining allowed. Check if we can perform draining
+		 * with current settings.
+		 * In this mode we copy host period size to host
+		 * (to avoid overwrite of buffered data by real time stream
+		 * this period shall be bigger than pipeline period) and
+		 * give host some time to read it. Therefore, in worst
+		 * case scenario, we copy one period of real time data + some
+		 * of buffered data.
+		 */
+		if ((host_period_size / KPB_DRAIN_NUM_OF_PPL_PERIODS_AT_ONCE) <
+		    pipeline_period_size)
+			return false;
+	}
 
 	return true;
 }
