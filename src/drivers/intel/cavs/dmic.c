@@ -1050,12 +1050,6 @@ static int dmic_set_config(struct dai *dai, struct sof_ipc_dai_config *config)
 
 	trace_dmic("dmic_set_config(), dai->index = %d", di);
 
-	/* Initialize start sequence handler */
-	schedule_task_init(&dmic->dmicwork, SOF_SCHEDULE_LL_TIMER,
-			   SOF_TASK_PRI_MED, dmic_work, NULL, dai, 0,
-			   SOF_SCHEDULE_FLAG_ASYNC);
-
-
 	if (config->dmic.driver_ipc_version != DMIC_IPC_VERSION) {
 		trace_dmic_error("dmic_set_config() error: wrong ipc version");
 		return -EINVAL;
@@ -1529,6 +1523,11 @@ static int dmic_probe(struct dai *dai)
 		return ret;
 	}
 
+	/* Initialize start sequence handler */
+	schedule_task_init(&dmic->dmicwork, SOF_SCHEDULE_LL_TIMER,
+			   SOF_TASK_PRI_MED, dmic_work, NULL, dai, 0,
+			   SOF_SCHEDULE_FLAG_ASYNC);
+
 	/* Enable DMIC power */
 	pm_runtime_get_sync(DMIC_POW, dai->index);
 	/* Disable dynamic clock gating for dmic before touching any reg */
@@ -1552,6 +1551,9 @@ static int dmic_remove(struct dai *dai)
 	pm_runtime_put_sync(DMIC_CLK, dai->index);
 	/* Disable DMIC power */
 	pm_runtime_put_sync(DMIC_POW, dai->index);
+
+	/* remove scheduling */
+	schedule_task_free(&dmic->dmicwork);
 
 	rfree(dai_get_drvdata(dai));
 	dai_set_drvdata(dai, NULL);
