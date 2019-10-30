@@ -108,6 +108,7 @@ struct dd {
 	size_t drain_interval;
 	size_t pb_limit; /**< Period bytes limit */
 	struct comp_dev *dev;
+	bool sync_mode_on;
 };
 
 #ifdef UNIT_TEST
