@@ -187,6 +187,7 @@ extern const struct adsp machine_bdw;
 extern const struct adsp machine_apl;
 extern const struct adsp machine_cnl;
 extern const struct adsp machine_icl;
+extern const struct adsp machine_jsl;
 extern const struct adsp machine_tgl;
 extern const struct adsp machine_sue;
 extern const struct adsp machine_skl;
