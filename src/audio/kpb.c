@@ -46,7 +46,6 @@ struct comp_data {
 	enum kpb_state state; /**< current state of KPB component */
 	uint32_t kpb_no_of_clients; /**< number of registered clients */
 	struct kpb_client clients[KPB_MAX_NO_OF_CLIENTS];
-	struct notifier kpb_events; /**< KPB events object */
 	struct task draining_task;
 	uint32_t source_period_bytes; /**< source number of period bytes */
 	uint32_t sink_period_bytes; /**< sink number of period bytes */
@@ -63,7 +62,7 @@ struct comp_data {
 };
 
 /*! KPB private functions */
-static void kpb_event_handler(int message, void *cb_data, void *event_data);
+static void kpb_event_handler(void *arg, enum notify_id type, void *event_data);
 static int kpb_register_client(struct comp_data *kpb, struct kpb_client *cli);
 static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli);
 static enum task_state kpb_draining_task(void *arg);
@@ -312,8 +311,8 @@ static void kpb_free(struct comp_dev *dev)
 
 	trace_kpb_with_ids(dev, "kpb_free()");
 
-	/* Unregister KPB from async notification */
-	notifier_unregister(&kpb->kpb_events);
+	/* Unregister KPB from notifications */
+	notifier_unregister(dev, NULL, NOTIFIER_ID_KPB_CLIENT_EVT);
 
 	/* Reclaim memory occupied by history buffer */
 	kpb_free_history_buffer(kpb->history_buffer);
@@ -423,13 +422,14 @@ static int kpb_prepare(struct comp_dev *dev)
 		kpb->clients[i].r_ptr = NULL;
 	}
 
-	/* Initialize KPB events */
-	kpb->kpb_events.id = NOTIFIER_ID_KPB_CLIENT_EVT;
-	kpb->kpb_events.cb_data = dev;
-	kpb->kpb_events.cb = kpb_event_handler;
-
-	/* Register KPB for async notification */
-	notifier_register(&kpb->kpb_events);
+	/* Register KPB for notification */
+	ret = notifier_register(dev, NULL, NOTIFIER_ID_KPB_CLIENT_EVT,
+				kpb_event_handler);
+	if (ret < 0) {
+		kpb_free_history_buffer(kpb->history_buffer);
+		kpb->history_buffer = NULL;
+		return -ENOMEM;
+	}
 
 	/* Search for KPB related sinks.
 	 * NOTE! We assume here that channel selector component device
@@ -522,8 +522,8 @@ static int kpb_reset(struct comp_dev *dev)
 			kpb_reset_history_buffer(kpb->history_buffer);
 		}
 
-		/* Unregister KPB for async notification */
-		notifier_unregister(&kpb->kpb_events);
+		/* Unregister KPB from notifications */
+		notifier_unregister(dev, NULL, NOTIFIER_ID_KPB_CLIENT_EVT);
 		/* Finally KPB is ready after reset */
 		kpb_change_state(kpb, KPB_STATE_PREPARING);
 
@@ -800,18 +800,17 @@ static int kpb_buffer_data(struct comp_dev *dev, struct comp_buffer *source,
 
 /**
  * \brief Main event dispatcher.
- * \param[in] message - not used.
- * \param[in] cb_data - KPB component internal data.
+ * \param[in] arg - KPB component internal data.
+ * \param[in] type - notification type
  * \param[in] event_data - event specific data.
  * \return none.
  */
-static void kpb_event_handler(int message, void *cb_data, void *event_data)
+static void kpb_event_handler(void *arg, enum notify_id type, void *event_data)
 {
-	(void)message;
-	struct comp_dev *dev = (struct comp_dev *)cb_data;
+	struct comp_dev *dev = arg;
 	struct comp_data *kpb = comp_get_drvdata(dev);
-	struct kpb_event_data *evd = (struct kpb_event_data *)event_data;
-	struct kpb_client *cli = (struct kpb_client *)evd->client_data;
+	struct kpb_event_data *evd = event_data;
+	struct kpb_client *cli = evd->client_data;
 
 	trace_kpb_with_ids(dev, "kpb_event_handler(): "
 			   "received event with ID: %d ",

@@ -36,7 +36,6 @@ struct comp_data {
 	enum kpb_state state; /**< current state of KPB component */
 	uint32_t kpb_no_of_clients; /**< number of registered clients */
 	struct kpb_client clients[KPB_MAX_NO_OF_CLIENTS];
-	struct notifier kpb_events; /**< KPB events object */
 	struct task draining_task;
 	uint32_t source_period_bytes; /**< source number of period bytes */
 	uint32_t sink_period_bytes; /**< sink number of period bytes */
@@ -170,8 +169,6 @@ static struct comp_buffer *mock_comp_buffer(void **state,
 		buffer->w_ptr = sink_data;
 		break;
 	}
-
-	buffer->cb = NULL;
 
 	return buffer;
 }

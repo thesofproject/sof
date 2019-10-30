@@ -1,7 +1,9 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 if(BUILD_LIBRARY)
-	add_local_sources(sof lib.c )
+	add_local_sources(sof
+		lib.c
+		notifier.c)
 	return()
 endif()
 

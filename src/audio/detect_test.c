@@ -81,8 +81,6 @@ struct comp_data {
 	uint32_t history_depth; /** defines draining size in bytes. */
 
 	uint16_t sample_valid_bytes;
-
-	struct notify_data event;
 	struct kpb_event_data event_data;
 	struct kpb_client client_data;
 
@@ -146,11 +144,9 @@ static void notify_kpb(struct comp_dev *dev)
 	cd->event_data.event_id = KPB_EVENT_BEGIN_DRAINING;
 	cd->event_data.client_data = &cd->client_data;
 
-	cd->event.id = NOTIFIER_ID_KPB_CLIENT_EVT;
-	cd->event.target_core_mask = NOTIFIER_TARGET_CORE_ALL_MASK;
-	cd->event.data = &cd->event_data;
-
-	notifier_event(&cd->event);
+	notifier_event(dev, NOTIFIER_ID_KPB_CLIENT_EVT,
+		       NOTIFIER_TARGET_CORE_ALL_MASK, &cd->event_data,
+		       sizeof(cd->event_data));
 }
 
 static void detect_test_notify(struct comp_dev *dev)

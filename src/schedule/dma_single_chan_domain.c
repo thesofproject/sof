@@ -26,7 +26,6 @@
 #define DMA_DOMAIN_OWNER_INVALID	0xFFFFFFFF
 
 struct dma_domain_data {
-	struct notifier notifier;
 	int irq;
 	struct dma_chan_data *channel;
 	void (*handler)(void *arg);
@@ -47,6 +46,7 @@ struct ll_schedule_domain_ops dma_single_chan_domain_ops;
 
 static void dma_single_chan_domain_enable(struct ll_schedule_domain *domain,
 					  int core);
+static void dma_domain_changed(void *arg, enum notify_id type, void *data);
 
 /**
  * \brief Retrieves DMA channel with lowest period.
@@ -97,17 +97,11 @@ static struct dma_chan_data *dma_chan_min_period(struct dma_domain *dma_domain)
  */
 static void dma_domain_notify_change(struct dma_chan_data *channel)
 {
-	struct notify_data notify_data;
-
 	trace_ll("dma_domain_notify_change()");
 
-	notify_data.id = NOTIFIER_ID_DMA_DOMAIN_CHANGE;
-	notify_data.target_core_mask =
-		NOTIFIER_TARGET_CORE_ALL_MASK & ~BIT(cpu_get_id());
-	notify_data.data_size = sizeof(*channel);
-	notify_data.data = channel;
-
-	notifier_event(&notify_data);
+	notifier_event(channel, NOTIFIER_ID_DMA_DOMAIN_CHANGE,
+		       NOTIFIER_TARGET_CORE_ALL_MASK & ~BIT(cpu_get_id()),
+		       channel, sizeof(*channel));
 }
 
 /**
@@ -239,7 +233,8 @@ static int dma_single_chan_domain_register(struct ll_schedule_domain *domain,
 
 	/* register for source change notifications */
 	if (register_needed)
-		notifier_register(&data->notifier);
+		notifier_register(domain, NULL, NOTIFIER_ID_DMA_DOMAIN_CHANGE,
+				  dma_domain_changed);
 
 	dma_domain->owner = channel->core;
 
@@ -310,7 +305,8 @@ static void dma_domain_unregister_owner(struct ll_schedule_domain *domain,
 	channel = dma_chan_min_period(dma_domain);
 	if (!channel) {
 		dma_domain->owner = DMA_DOMAIN_OWNER_INVALID;
-		notifier_unregister(&data->notifier);
+		notifier_unregister(domain, NULL,
+				    NOTIFIER_ID_DMA_DOMAIN_CHANGE);
 
 		return;
 	}
@@ -373,7 +369,7 @@ static void dma_single_chan_domain_unregister(struct ll_schedule_domain *domain,
 	dma_single_chan_domain_irq_unregister(data);
 	data->channel = NULL;
 
-	notifier_unregister(&data->notifier);
+	notifier_unregister(domain, NULL, NOTIFIER_ID_DMA_DOMAIN_CHANGE);
 }
 
 /**
@@ -472,13 +468,13 @@ static bool dma_single_chan_domain_is_pending(struct ll_schedule_domain *domain,
 
 /**
  * \brief Scheduling DMA channel change notification handling.
- * \param[in] message Id of the notification.
- * \param[in,out] data Pointer to notification data.
- * \param[in,out] event_data Pointer to notification event data.
+ * \param[in,out] arg Pointer to self.
+ * \param[in] type Id of the notification.
+ * \param[in,out] data Pointer to notification event data.
  */
-static void dma_domain_changed(int message, void *data, void *event_data)
+static void dma_domain_changed(void *arg, enum notify_id type, void *data)
 {
-	struct ll_schedule_domain *domain = data;
+	struct ll_schedule_domain *domain = arg;
 	struct dma_domain *dma_domain = ll_sch_domain_get_pdata(domain);
 	int core = cpu_get_id();
 	struct dma_domain_data *domain_data = &dma_domain->data[core];
@@ -494,7 +490,7 @@ static void dma_domain_changed(int message, void *data, void *event_data)
 	}
 
 	/* register to the new DMA channel */
-	if (dma_single_chan_domain_irq_register(event_data, domain_data,
+	if (dma_single_chan_domain_irq_register(data, domain_data,
 						domain_data->handler,
 						domain_data->arg) < 0)
 		return;
@@ -515,7 +511,6 @@ struct ll_schedule_domain *dma_single_chan_domain_init(struct dma *dma_array,
 {
 	struct ll_schedule_domain *domain;
 	struct dma_domain *dma_domain;
-	int i;
 
 	trace_ll("dma_single_chan_domain_init(): num_dma %d, clk %d", num_dma,
 		 clk);
@@ -528,13 +523,6 @@ struct ll_schedule_domain *dma_single_chan_domain_init(struct dma *dma_array,
 	dma_domain->dma_array = dma_array;
 	dma_domain->num_dma = num_dma;
 	dma_domain->owner = DMA_DOMAIN_OWNER_INVALID;
-
-	/* register notifiers */
-	for (i = 0; i < PLATFORM_CORE_COUNT; ++i) {
-		dma_domain->data[i].notifier.cb = dma_domain_changed;
-		dma_domain->data[i].notifier.cb_data = domain;
-		dma_domain->data[i].notifier.id = NOTIFIER_ID_DMA_DOMAIN_CHANGE;
-	}
 
 	ll_sch_domain_set_pdata(domain, dma_domain);
 

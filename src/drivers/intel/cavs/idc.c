@@ -260,7 +260,7 @@ static void idc_cmd(struct idc_msg *msg)
 		idc_component_command(msg->extension);
 		break;
 	case iTS(IDC_MSG_NOTIFY):
-		notifier_notify();
+		notifier_notify_remote();
 		break;
 	default:
 		trace_idc_error("idc_cmd() error: invalid msg->header = %u",

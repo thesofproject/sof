@@ -31,7 +31,6 @@
 struct ll_schedule_data {
 	struct list_item tasks;			/* list of ll tasks */
 	atomic_t num_tasks;			/* number of ll tasks */
-	struct notifier notifier;		/* notify frequency changes */
 	struct ll_schedule_domain *domain;	/* scheduling domain */
 };
 
@@ -393,7 +392,8 @@ static void scheduler_free_ll(void *data)
 
 	irq_local_disable(flags);
 
-	notifier_unregister(&sch->notifier);
+	notifier_unregister(sch, NULL,
+			    NOTIFIER_CLK_CHANGE_ID(sch->domain->clk));
 
 	list_item_del(&sch->tasks);
 
@@ -419,16 +419,16 @@ static void ll_scheduler_recalculate_tasks(struct ll_schedule_data *sch,
 	}
 }
 
-static void ll_scheduler_notify(int message, void *data, void *event_data)
+static void ll_scheduler_notify(void *arg, enum notify_id type, void *data)
 {
-	struct ll_schedule_data *sch = data;
-	struct clock_notify_data *clk_data = event_data;
+	struct ll_schedule_data *sch = arg;
+	struct clock_notify_data *clk_data = data;
 	uint32_t flags;
 
 	irq_local_disable(flags);
 
 	/* we need to recalculate tasks when clock frequency changes */
-	if (message == CLOCK_NOTIFY_POST) {
+	if (clk_data->message == CLOCK_NOTIFY_POST) {
 		sch->domain->ticks_per_ms = clock_ms_to_ticks(sch->domain->clk,
 							      1);
 		ll_scheduler_recalculate_tasks(sch, clk_data);
@@ -448,10 +448,8 @@ int scheduler_init_ll(struct ll_schedule_domain *domain)
 	sch->domain = domain;
 
 	/* notification of clock changes */
-	sch->notifier.cb = ll_scheduler_notify;
-	sch->notifier.cb_data = sch;
-	sch->notifier.id = NOTIFIER_CLK_CHANGE_ID(domain->clk);
-	notifier_register(&sch->notifier);
+	notifier_register(sch, NULL, NOTIFIER_CLK_CHANGE_ID(domain->clk),
+			  ll_scheduler_notify);
 
 	scheduler_init(domain->type, &schedule_ll_ops, sch);
 
