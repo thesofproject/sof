@@ -230,6 +230,9 @@ static void volume_free(struct comp_dev *dev)
 
 	trace_volume("volume_free()");
 
+	/* remove scheduling */
+	schedule_task_free(&cd->volwork);
+
 	rfree(cd);
 	rfree(dev);
 }
