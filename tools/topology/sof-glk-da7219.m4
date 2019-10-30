@@ -59,7 +59,7 @@ PIPELINE_PCM_ADD(sof/pipe-volume-capture.m4,
 # Low Latency capture pipeline 4 on PCM 99 using max 4 channels of s32le.
 # 1000us deadline on core 0 with priority 0
 #PIPELINE_PCM_ADD(sof/pipe-volume-capture.m4,
-PIPELINE_PCM_ADD(sof/pipe-passthrough-capture.m4,
+PIPELINE_PCM_ADD(sof/pipe-volume-capture.m4,
 	4, 99, 4, s16le,
 	1000, 0, 0,
 	48000, 48000, 48000)
