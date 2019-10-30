@@ -1283,6 +1283,30 @@ const struct adsp machine_icl = {
 	.man_v1_8 = &cnl_manifest, // use the same as CNL
 };
 
+const struct adsp machine_jsl = {
+	.name = "jsl",
+	.mem_zones = {
+		[SOF_FW_BLK_TYPE_ROM] = {
+			.base = ADSP_ICL_DSP_ROM_BASE,
+			.size = ADSP_ICL_DSP_ROM_SIZE,
+		},
+		[SOF_FW_BLK_TYPE_IMR] = {
+			.base = ICL_DSP_IMR_BASE_ENTRY,
+			.size = 0x100000,
+		},
+		[SOF_FW_BLK_TYPE_SRAM] = {
+			.base = ICL_DSP_HP_BASE_ENTRY,
+			.size = 0x100000,
+		},
+	},
+	.image_size = 0x100000,
+	.dram_offset = 0,
+	.machine_id = MACHINE_ICELAKE,
+	.write_firmware = man_write_fw_v1_8,
+	.write_firmware_meu = man_write_fw_meu_v1_8,
+	.man_v1_8 = &cnl_manifest, // use the same as CNL
+};
+
 const struct adsp machine_tgl = {
 	.name = "tgl",
 	.mem_zones = {
