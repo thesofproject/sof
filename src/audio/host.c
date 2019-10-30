@@ -800,6 +800,8 @@ static void host_cache(struct comp_dev *dev, int cmd)
 		dma_sg_cache_wb_inv(&hd->config.elem_array);
 		dma_sg_cache_wb_inv(&hd->local.elem_array);
 
+		dcache_writeback_invalidate_region(hd->dma_buffer,
+						   sizeof(*hd->dma_buffer));
 		dcache_writeback_invalidate_region(hd->dma, sizeof(*hd->dma));
 		dcache_writeback_invalidate_region(hd, sizeof(*hd));
 		dcache_writeback_invalidate_region(dev, sizeof(*dev));
@@ -814,6 +816,8 @@ static void host_cache(struct comp_dev *dev, int cmd)
 
 		dcache_invalidate_region(hd, sizeof(*hd));
 		dcache_invalidate_region(hd->dma, sizeof(*hd->dma));
+		dcache_invalidate_region(hd->dma_buffer,
+					 sizeof(*hd->dma_buffer));
 
 		dma_sg_cache_inv(&hd->local.elem_array);
 		dma_sg_cache_inv(&hd->config.elem_array);

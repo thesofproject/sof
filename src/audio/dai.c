@@ -870,6 +870,8 @@ static void dai_cache(struct comp_dev *dev, int cmd)
 
 		dma_sg_cache_wb_inv(&dd->config.elem_array);
 
+		dcache_writeback_invalidate_region(dd->dma_buffer,
+						   sizeof(*dd->dma_buffer));
 		dcache_writeback_invalidate_region(dd->dai, sizeof(*dd->dai));
 		dcache_writeback_invalidate_region(dd->dma, sizeof(*dd->dma));
 		dcache_writeback_invalidate_region(dd, sizeof(*dd));
@@ -885,6 +887,8 @@ static void dai_cache(struct comp_dev *dev, int cmd)
 		dcache_invalidate_region(dd, sizeof(*dd));
 		dcache_invalidate_region(dd->dma, sizeof(*dd->dma));
 		dcache_invalidate_region(dd->dai, sizeof(*dd->dai));
+		dcache_invalidate_region(dd->dma_buffer,
+					 sizeof(*dd->dma_buffer));
 
 		dma_sg_cache_inv(&dd->config.elem_array);
 		break;
