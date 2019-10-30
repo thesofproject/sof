@@ -22,6 +22,7 @@ struct clock_notify_data {
 	uint32_t old_ticks_per_msec;
 	uint32_t freq;
 	uint32_t ticks_per_msec;
+	uint32_t message;
 };
 
 struct freq_table {

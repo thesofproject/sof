@@ -19,30 +19,16 @@ struct sof;
 #define NOTIFIER_TARGET_CORE_ALL_MASK	0xFFFFFFFF
 
 enum notify_id {
-	NOTIFIER_ID_CPU_FREQ = 0,
-	NOTIFIER_ID_SSP_FREQ,
-	NOTIFIER_ID_KPB_CLIENT_EVT,
-	NOTIFIER_ID_DMA_DOMAIN_CHANGE,
+	NOTIFIER_ID_CPU_FREQ = 0,		/* struct clock_notify_data * */
+	NOTIFIER_ID_SSP_FREQ,			/* struct clock_notify_data * */
+	NOTIFIER_ID_KPB_CLIENT_EVT,		/* struct kpb_event_data * */
+	NOTIFIER_ID_DMA_DOMAIN_CHANGE,		/* struct dma_chan_data * */
+	NOTIFIER_ID_COUNT
 };
 
 struct notify {
 	spinlock_t *lock;	/* notifier lock */
-	struct list_item list;	/* list of notifiers */
-};
-
-struct notify_data {
-	enum notify_id id;
-	uint32_t message;
-	uint32_t target_core_mask;
-	uint32_t data_size;
-	void *data;
-};
-
-struct notifier {
-	enum notify_id id;
-	struct list_item list;
-	void *cb_data;
-	void (*cb)(int message, void *cb_data, void *event_data);
+	struct list_item list[NOTIFIER_ID_COUNT]; /* list of callback handles */
 };
 
 #ifdef CLK_SSP
@@ -54,11 +40,14 @@ struct notifier {
 
 struct notify **arch_notify_get(void);
 
-void notifier_register(struct notifier *notifier);
-void notifier_unregister(struct notifier *notifier);
+int notifier_register(void *receiver, void *caller, enum notify_id type,
+		void (*cb)(void *arg, enum notify_id type, void *data));
+void notifier_unregister(void *receiver, void *caller, enum notify_id type);
+void notifier_unregister_all(void *receiver, void *caller);
 
-void notifier_notify(void);
-void notifier_event(struct notify_data *notify_data);
+void notifier_notify_remote(void);
+void notifier_event(void *caller, enum notify_id type, uint32_t core_mask,
+		    void *data, uint32_t data_size);
 
 void init_system_notify(struct sof *sof);
 

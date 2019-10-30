@@ -37,6 +37,7 @@ struct clk_data {
 
 struct clk_pdata {
 	struct clk_data clk[NUM_CLOCKS];
+	struct clock_notify_data clk_notify_data;
 };
 
 static struct clk_pdata *clk_pdata;
@@ -63,33 +64,28 @@ uint32_t clock_get_freq(int clock)
 
 void clock_set_freq(int clock, uint32_t hz)
 {
-	struct notify_data notify_data;
-	struct clock_notify_data clk_notify_data;
+	struct clock_notify_data *clk_notify_data = &clk_pdata->clk_notify_data;
 	struct clock_info *clk_info = &clocks[clock];
 	uint32_t idx;
 	uint32_t flags;
 
-	notify_data.data_size = sizeof(clk_notify_data);
-	notify_data.data = &clk_notify_data;
-
-	clk_notify_data.old_freq = clk_pdata->clk[clock].freq;
-	clk_notify_data.old_ticks_per_msec =
+	clk_notify_data->old_freq = clk_pdata->clk[clock].freq;
+	clk_notify_data->old_ticks_per_msec =
 		clk_pdata->clk[clock].ticks_per_msec;
 
 	/* atomic context for changing clocks */
 	spin_lock_irq(clk_pdata->clk[clock].lock, flags);
 
-	notify_data.id = clk_info->notification_id;
-	notify_data.target_core_mask = clk_info->notification_mask;
-
 	/* get nearest frequency that is >= requested Hz */
 	idx = clock_get_nearest_freq_idx(clk_info->freqs, clk_info->freqs_num,
 					 hz);
-	clk_notify_data.freq = clk_info->freqs[idx].freq;
+	clk_notify_data->freq = clk_info->freqs[idx].freq;
 
 	/* tell anyone interested we are about to change freq */
-	notify_data.message = CLOCK_NOTIFY_PRE;
-	notifier_event(&notify_data);
+	clk_pdata->clk_notify_data.message = CLOCK_NOTIFY_PRE;
+	notifier_event(&clk_pdata->clk[clock], clk_info->notification_id,
+		       clk_info->notification_mask, &clk_pdata->clk_notify_data,
+		       sizeof(clk_pdata->clk_notify_data));
 
 	if (!clk_info->set_freq ||
 	    clk_info->set_freq(clock, idx) == 0) {
@@ -100,8 +96,10 @@ void clock_set_freq(int clock, uint32_t hz)
 	}
 
 	/* tell anyone interested we have now changed freq */
-	notify_data.message = CLOCK_NOTIFY_POST;
-	notifier_event(&notify_data);
+	clk_pdata->clk_notify_data.message = CLOCK_NOTIFY_POST;
+	notifier_event(&clk_pdata->clk[clock], clk_info->notification_id,
+		       clk_info->notification_mask, &clk_pdata->clk_notify_data,
+		       sizeof(clk_pdata->clk_notify_data));
 
 	spin_unlock_irq(clk_pdata->clk[clock].lock, flags);
 }
