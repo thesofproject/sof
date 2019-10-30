@@ -62,6 +62,7 @@ struct system_time {
 #define TRACE_CLASS_KEYWORD	(33 << 24)
 #define TRACE_CLASS_CHMAP	(34 << 24)
 #define TRACE_CLASS_ASRC	(35 << 24)
+#define TRACE_CLASS_NOTIFIER	(36 << 24)
 
 #define LOG_ENABLE		1  /* Enable logging */
 #define LOG_DISABLE		0  /* Disable logging */
