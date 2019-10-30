@@ -102,6 +102,7 @@ static const char * get_component_name(uint32_t component_id) {
 		CASE(KEYWORD);
 		CASE(CHMAP);
 		CASE(ASRC);
+		CASE(NOTIFIER);
 	default: return "unknown";
 	}
 }
