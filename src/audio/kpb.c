@@ -409,6 +409,11 @@ static int kpb_prepare(struct comp_dev *dev)
 	kpb->sel_sink = NULL;
 	kpb->host_sink = NULL;
 
+	if (!validate_host_params(dev, kpb->host_period_size,
+				  kpb->host_buffer_size)) {
+		trace_kpb_error("kpb_prepare() error: wrong host params.");
+		return -EINVAL;
+	}
 	if (!kpb->history_buffer) {
 		/* Allocate history buffer */
 		allocated_size = kpb_allocate_history_buffer(kpb);
@@ -936,10 +941,6 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 	} else if (kpb->buffered_data < history_depth ||
 		   kpb->buffer_size < history_depth) {
 		trace_kpb_error("kpb_init_draining() error: not enough data in history buffer");
-	} else if (!validate_host_params(dev,
-					 host_period_size,
-					 host_buffer_size)) {
-		trace_kpb_error("kpb_init_draining() error: wrong host params.");
 	} else {
 		/* Draining accepted, find proper buffer to start reading
 		 * At this point we are guaranteed that there is enough data
