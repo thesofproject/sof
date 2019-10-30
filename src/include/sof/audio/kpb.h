@@ -49,6 +49,10 @@ struct comp_buffer;
 #define KPB_BYTES_TO_FRAMES(bytes, sample_width) \
 	(bytes / ((KPB_SAMPLE_CONTAINER_SIZE(sample_width) / 8) * \
 	KPB_NUM_OF_CHANNELS))
+/**< Defines how much faster draining is in comparison to pipeline copy. */
+#define KPB_DRAIN_NUM_OF_PPL_PERIODS_AT_ONCE 2
+/**< Host buffer shall be at least two times bigger than history buffer. */
+#define HOST_BUFFER_MIN_SIZE(hb) (hb * 2)
 
 enum kpb_state {
 	KPB_STATE_DISABLED = 0,
