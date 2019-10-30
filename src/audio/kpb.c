@@ -913,7 +913,6 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 	enum comp_copy_type copy_type = COMP_COPY_NORMAL;
 	size_t drain_interval = 0;
 	size_t host_period_size = kpb->host_period_size;
-	size_t host_buffer_size = kpb->host_buffer_size;
 	size_t ticks_per_ms = clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1);
 	size_t bytes_per_ms = KPB_SAMPLES_PER_MS *
 			      (KPB_SAMPLE_CONTAINER_SIZE(sample_width) / 8) *
@@ -1000,18 +999,26 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 
 		} while (buff != first_buff);
 
-		/* Calculate time in clock ticks each draining event shall
-		 * take place. This time will be used to synchronize us with
-		 * an end application interrupts.
+		/* Should we drain in synchronized mode (sync_draining_mode)?
+		 * Note! We have already verified host params during
+		 * kpb_prepare().
 		 */
-
-		drain_interval = (host_period_size / bytes_per_ms) *
-				 ticks_per_ms;
-		/* In draining intervals we will fill only two periods
-		 * and give host time to read it.
-		 * This way we are safe to not overflow host buffer.
-		 */
-		period_bytes_limit = host_period_size * 2;
+		if (kpb->sync_draining_mode) {
+			/* Calculate time in clock ticks each draining event
+			 * shall take place. This time will be used to
+			 * synchronize us with application interrupts.
+			 */
+			drain_interval = ((host_period_size / bytes_per_ms) *
+					 ticks_per_ms) /
+					 KPB_DRAIN_NUM_OF_PPL_PERIODS_AT_ONCE;
+			period_bytes_limit = host_period_size;
+			trace_kpb_with_ids(dev, "kpb_init_draining(): sync_draining_mode selected with interval %d [uS].", drain_interval * 1000 / ticks_per_ms);
+		} else {
+			/* Unlimited draining */
+			drain_interval = 0;
+			period_bytes_limit = 0;
+			trace_kpb_with_ids(dev, "kpb_init_draining: unlimited draining speed selected.");
+		}
 
 		trace_kpb_with_ids(dev, "kpb_init_draining(), "
 				   "schedule draining task");
@@ -1024,6 +1031,7 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 		kpb->draining_task_data.drain_interval = drain_interval;
 		kpb->draining_task_data.pb_limit = period_bytes_limit;
 		kpb->draining_task_data.dev = dev;
+		kpb->draining_task_data.sync_mode_on = kpb->sync_draining_mode;
 
 		/* Set host-sink copy mode to blocking */
 		comp_set_attribute(kpb->host_sink->sink, COMP_ATTR_COPY_TYPE,
@@ -1069,6 +1077,7 @@ static enum task_state kpb_draining_task(void *arg)
 	size_t time_taken = 0;
 	size_t *rt_stream_update = &draining_data->buffered_while_draining;
 	struct comp_data *kpb = comp_get_drvdata(draining_data->dev);
+	bool sync_mode_on = &draining_data->sync_mode_on;
 
 	trace_kpb("kpb_draining_task(), start.");
 
@@ -1089,7 +1098,8 @@ static enum task_state kpb_draining_task(void *arg)
 		/* Are we ready to drain further or host still need some time
 		 * to read the data already provided?
 		 */
-		if (next_copy_time > platform_timer_get(timer)) {
+		if (sync_mode_on &&
+		    next_copy_time > platform_timer_get(timer)) {
 			period_bytes = 0;
 			period_copy_start = platform_timer_get(timer);
 			continue;
@@ -1132,7 +1142,7 @@ static enum task_state kpb_draining_task(void *arg)
 			comp_copy(sink->sink);
 		}
 
-		if (period_bytes >= period_bytes_limit) {
+		if (sync_mode_on && period_bytes >= period_bytes_limit) {
 			current_time = platform_timer_get(timer);
 			time_taken = current_time - period_copy_start;
 			next_copy_time = current_time + drain_interval -
