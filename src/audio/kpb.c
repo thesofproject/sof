@@ -149,6 +149,15 @@ static struct comp_dev *kpb_new(struct sof_ipc_comp *comp)
 		return NULL;
 	}
 
+	/* Initialize draining task */
+	schedule_task_init(&kpb->draining_task, /* task structure */
+			   SOF_SCHEDULE_EDF, /* utilize EDF scheduler */
+			   SOF_TASK_PRI_ALMOST_IDLE, /* almost idle priority */
+			   kpb_draining_task, /* task function */
+			   NULL, /* no complete function */
+			   &kpb->draining_task_data, /* task private data */
+			   0, /* core on which we should run */
+			   SOF_SCHEDULE_FLAG_IDLE);
 
 	/* Init basic component data */
 	kpb->history_buffer = NULL;
@@ -309,6 +318,9 @@ static void kpb_free(struct comp_dev *dev)
 	kpb_free_history_buffer(kpb->history_buffer);
 	kpb->history_buffer = NULL;
 
+	/* remove scheduling */
+	schedule_task_free(&kpb->draining_task);
+
 	/* Free KPB */
 	rfree(kpb);
 	rfree(dev);
@@ -401,16 +413,6 @@ static int kpb_prepare(struct comp_dev *dev)
 
 	/* Register KPB for async notification */
 	notifier_register(&kpb->kpb_events);
-
-	/* Initialize draining task */
-	schedule_task_init(&kpb->draining_task, /* task structure */
-			   SOF_SCHEDULE_EDF, /* utilize EDF scheduler */
-			   SOF_TASK_PRI_ALMOST_IDLE, /* almost idle priority */
-			   kpb_draining_task, /* task function */
-			   NULL, /* no complete function */
-			   &kpb->draining_task_data, /* task private data */
-			   0, /* core on which we should run */
-			   SOF_SCHEDULE_FLAG_IDLE);
 
 	/* Search for KPB related sinks.
 	 * NOTE! We assume here that channel selector component device
