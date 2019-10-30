@@ -67,14 +67,14 @@ PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
 
 # Passthrough capture pipeline 4 on PCM 3 using max 4 channels.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_ADD(sof/pipe-passthrough-capture.m4,
+PIPELINE_PCM_ADD(sof/pipe-volume-capture.m4,
 	4, 3, 4, s32le,
 	1000, 0, 0,
 	48000, 48000, 48000)
 
 # Passthrough capture pipeline 5 on PCM 4 using max 4 channels.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_ADD(sof/pipe-passthrough-capture.m4,
+PIPELINE_PCM_ADD(sof/pipe-volume-capture-16khz.m4,
 	5, 4, 4, s16le,
 	1000, 0, 0,
 	16000, 16000, 16000)
