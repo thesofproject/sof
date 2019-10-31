@@ -761,9 +761,11 @@ static int dw_dma_pm_context_store(struct dma *dma)
 }
 
 #if !CONFIG_HW_LLI
-/* reload using LLI data */
-static inline void dw_dma_chan_reload_lli(struct dma_chan_data *channel)
+/* reload using LLI data from DMA IRQ cb */
+static inline void dw_dma_chan_reload_lli_cb(void *arg, enum notify_id type,
+					     void *data)
 {
+	struct dma_chan_data *channel = data;
 	struct dma *dma = channel->dma;
 	struct dw_dma_chan_data *dw_chan = dma_chan_get_data(channel);
 	struct dw_lli *lli = dw_chan->lli_current;
@@ -967,7 +969,8 @@ static int dw_dma_probe(struct dma *dma)
 		chan->index = i;
 		chan->core = DMA_CORE_INVALID;
 #if !CONFIG_HW_LLI
-		chan->irq_callback = dw_dma_chan_reload_lli;
+		notifier_register(chan, chan, NOTIFIER_ID_DMA_IRQ,
+				  dw_dma_chan_reload_lli_cb);
 #endif
 
 		dw_chan = rzalloc(RZONE_SYS_RUNTIME | RZONE_FLAG_UNCACHED,

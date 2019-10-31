@@ -211,11 +211,6 @@ struct dma_chan_data {
 	/* true if this DMA channel is the scheduling source */
 	bool is_scheduling_source;
 
-	/* called by the DMA domain right after receiving an interrupt,
-	 * so should execute very time-sensitive operations
-	 */
-	void (*irq_callback)(struct dma_chan_data *channel);
-
 	void *private;
 };
 
