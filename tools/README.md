@@ -31,7 +31,7 @@ sof-logger works by reading entry parameters value and entries addresses from
 FW dma_trace mechanism and searching suitable entry in *.ldc file by its
 address.
 
-```bash
+```
 Usage sof-logger <option(s)> <file(s)>
 			Display mailbox contents
 -h			help
@@ -114,7 +114,7 @@ to the core dump including DSP registers and function calls.
 It outputs unwrapped gdb command function call addresses to human readable
 function call format either to a file or stdout.
 
-```bash
+```
 Usage sof-coredump-reader.py [-h] [-a ARCH] [-c] [-l COLUMNCOUNT] [-v]
 				(--stdout | -o OUTFILE) [--stdin | -i INFILE]
 
