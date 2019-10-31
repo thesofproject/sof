@@ -28,6 +28,7 @@ enum notify_id {
 	NOTIFIER_ID_BUFFER_CONSUME,		/* struct buffer_cb_transact* */
 	NOTIFIER_ID_BUFFER_FREE,		/* struct buffer_cb_free* */
 	NOTIFIER_ID_DMA_COPY,			/* struct dma_cb_data* */
+	NOTIFIER_ID_DMA_IRQ,			/* struct dma_chan_data * */
 	NOTIFIER_ID_COUNT
 };
 
