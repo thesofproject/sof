@@ -795,6 +795,7 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 				   channel);
 		break;
 	case SOF_DAI_IMX_SAI:
+		channel = EDMA_HS_GET_CHAN(handshake);
 		dd->config.burst_elems =
 			dd->dai->plat_data.fifo[dev->params.direction].depth;
 		break;
