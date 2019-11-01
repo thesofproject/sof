@@ -677,7 +677,7 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 	struct dai_data *dd = comp_get_drvdata(dev);
 	int channel = 0;
 	int i;
-	int handshake = dai_get_handshake(dd->dai, dev->params.direction, dd->stream_id);
+	int handshake;
 
 	trace_dai_with_ids(dev, "config comp %d pipe %d dai %d type %d",
 			   dev->comp.id, dev->comp.pipeline_id,
@@ -795,11 +795,15 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 				   channel);
 		break;
 	case SOF_DAI_IMX_SAI:
+		handshake = dai_get_handshake(dd->dai, dev->params.direction,
+					      dd->stream_id);
 		channel = EDMA_HS_GET_CHAN(handshake);
 		dd->config.burst_elems =
 			dd->dai->plat_data.fifo[dev->params.direction].depth;
 		break;
 	case SOF_DAI_IMX_ESAI:
+		handshake = dai_get_handshake(dd->dai, dev->params.direction,
+					      dd->stream_id);
 		channel = EDMA_HS_GET_CHAN(handshake);
 
 		switch (dev->params.frame_fmt) {
