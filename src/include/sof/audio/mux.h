@@ -36,7 +36,7 @@ struct comp_dev;
 
 #define tracev_mux(__e, ...) \
 	tracev_event(TRACE_CLASS_MUX, __e, ##__VA_ARGS__)
-#define tracev_mux_with_ids(comp_ptr, format, ...)		\
+#define tracev_mux_with_ids(comp_ptr, __e, ...)			\
 	tracev_event_comp(TRACE_CLASS_MUX, comp_ptr,		\
 			  __e, ##__VA_ARGS__)
 
