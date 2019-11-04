@@ -166,6 +166,9 @@ void trace_on(void);
 void trace_off(void);
 void trace_init(struct sof *sof);
 
+#define trace_unused(class, id_0, id_1, format, ...) \
+	UNUSED(id_0, id_1, ##__VA_ARGS__)
+
 #if CONFIG_TRACE
 
 /*
@@ -295,10 +298,14 @@ do {									\
 #endif
 #else
 
-#define	trace_event(...) do {} while (0)
-#define trace_event_with_ids(...) do {} while (0)
-#define	trace_event_atomic(...) do {} while (0)
-#define trace_event_atomic_with_ids(...) do {} while (0)
+#define	trace_event(class, format, ...) \
+	trace_unused(class, -1, -1, format, ##__VA_ARGS__)
+#define trace_event_with_ids(class, id_0, id_1, format, ...) \
+	trace_unused(class, id_0, id_1, format, ##__VA_ARGS__)
+#define	trace_event_atomic(class, format, ...) \
+	trace_unused(class, -1, -1, format, ##__VA_ARGS__)
+#define trace_event_atomic_with_ids(class, id_0, id_1, format, ...) \
+	trace_unused(class, id_0, id_1, format, ##__VA_ARGS__)
 
 #define trace_point(x)  do {} while (0)
 
@@ -312,10 +319,14 @@ do {									\
 #define tracev_event_atomic_with_ids(...) \
 	trace_event_atomic_with_ids(__VA_ARGS__)
 #else
-#define tracev_event(...) do {} while (0)
-#define tracev_event_with_ids(...) do {} while (0)
-#define tracev_event_atomic(...) do {} while (0)
-#define tracev_event_atomic_with_ids(...) do {} while (0)
+#define tracev_event(class, format, ...) \
+	trace_unused(class, -1, -1, format, ##__VA_ARGS__)
+#define tracev_event_with_ids(class, id_0, id_1, format, ...) \
+	trace_unused(class, id_0, id_1, format, ##__VA_ARGS__)
+#define tracev_event_atomic(class, format, ...) \
+	trace_unused(class, -1, -1, format, ##__VA_ARGS__)
+#define tracev_event_atomic_with_ids(class, id_0, id_1, format, ...) \
+	trace_unused(class, id_0, id_1, format, ##__VA_ARGS__)
 
 #endif
 
@@ -337,10 +348,14 @@ do {									\
 #define trace_error_atomic_with_ids(...) \
 	trace_event_atomic_with_ids(__VA_ARGS__)
 #else
-#define trace_error(...) do {} while (0)
-#define trace_error_with_ids(...) do {} while (0)
-#define trace_error_atomic(...) do {} while (0)
-#define trace_error_atomic_with_ids(...) do {} while (0)
+#define trace_error(class, format, ...) \
+	trace_unused(class, -1, -1, format, ##__VA_ARGS__)
+#define trace_error_with_ids(class, id_0, id_1, format, ...) \
+	trace_unused(class, id_0, id_1, format, ##__VA_ARGS__)
+#define trace_error_atomic(class, format, ...) \
+	trace_unused(class, -1, -1, format, ##__VA_ARGS__)
+#define trace_error_atomic_with_ids(class, id_0, id_1, format, ...) \
+	trace_unused(class, id_0, id_1, format, ##__VA_ARGS__)
 #endif
 
 /* tracing from component */
