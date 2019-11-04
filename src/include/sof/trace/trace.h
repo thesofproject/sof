@@ -296,8 +296,8 @@ do {									\
 #else
 
 #define	trace_event(...) do {} while (0)
-#define	trace_event_atomic(...) do {} while (0)
 #define trace_event_with_ids(...) do {} while (0)
+#define	trace_event_atomic(...) do {} while (0)
 #define trace_event_atomic_with_ids(...) do {} while (0)
 
 #define trace_point(x)  do {} while (0)
