@@ -5952,7 +5952,8 @@ sub process {
 		}
 
 # check for c99 types like uint8_t used outside of uapi/ and tools/
-		if ($realfile !~ m@\binclude/uapi/@ &&
+		if (!$SOF &&
+		    $realfile !~ m@\binclude/uapi/@ &&
 		    $realfile !~ m@\btools/@ &&
 		    $line =~ /\b($Declare)\s*$Ident\s*[=;,\[]/) {
 			my $type = $1;
