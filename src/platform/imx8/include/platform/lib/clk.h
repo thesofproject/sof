@@ -21,7 +21,7 @@
 #define CLK_DEFAULT_CPU_HZ	666000000
 #define CLK_MAX_CPU_HZ		666000000
 
-#define NUM_CLOCKS	1
+#define NUM_CLOCKS	2
 
 #define NUM_CPU_FREQ	1
 #define NUM_SSP_FREQ	2
