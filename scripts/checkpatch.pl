@@ -22,6 +22,7 @@ my $V = '0.32';
 
 use Getopt::Long qw(:config no_auto_abbrev);
 
+my $SOF = 1; # enables SOF-specific behaviour
 my $quiet = 0;
 my $tree = 1;
 my $chk_signoff = 1;
@@ -2618,9 +2619,10 @@ sub process {
 
 # Check if ABI is being updated.  If so, there's probably no need to
 # emit the "does ABI need updating?" message on file add/move/delete
-		if ($line =~ /#define SOF_ABI_MAJOR*/ ||
-		    $line =~ /#define SOF_ABI_MINOR*/ ||
-		    $line =~ /#define SOF_ABI_PATCH*/) {
+		if ($SOF &&
+		    ($line =~ /#define SOF_ABI_MAJOR*/ ||
+		     $line =~ /#define SOF_ABI_MINOR*/ ||
+		     $line =~ /#define SOF_ABI_PATCH*/)) {
 			$reported_abi_update = 1;
 		}
 
@@ -3291,7 +3293,8 @@ sub process {
 		}
 
 # UAPI ABI version
-		if ($realfile =~ m@^(src/include/ipc/|src/include/kernel/|src/include/user/)@ &&
+		if ($SOF &&
+		    $realfile =~ m@^(src/include/ipc/|src/include/kernel/|src/include/user/)@ &&
 		    $rawline =~ /^\+/ &&
 		    !$reported_abi_update) {
 			WARN("ABI update ??",
@@ -6009,7 +6012,7 @@ sub process {
 		}
 
 # check for memcpy uses that should be memcpy_s
-		if ($line =~ /memcpy\s*\(.*/) {
+		if ($SOF && ($line =~ /memcpy\s*\(.*/)) {
 			my $fmt = get_quoted_string($line, $rawline);
 			$fmt =~ s/%%//g;
 			if ($fmt !~ /%/) {
