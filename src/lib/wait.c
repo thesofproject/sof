@@ -17,6 +17,7 @@
 #include <user/trace.h>
 #include <errno.h>
 #include <stdint.h>
+#include <inttypes.h>
 
 #define DEFAULT_TRY_TIMES 8
 
@@ -41,8 +42,8 @@ int wait_for_completion_timeout(completion_t *comp)
 	}
 
 	/* timeout */
-	trace_error_value(c->timeout);
-	trace_error_value(c->complete);
+	trace_error(TRACE_CLASS_WAIT, "wait_for_completion_timeout, timeout: "
+		    PRIu64 " complete: %d", c->timeout, c->complete);
 
 	return -ETIME;
 }

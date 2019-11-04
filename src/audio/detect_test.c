@@ -544,7 +544,7 @@ static int test_keyword_get_config(struct comp_dev *dev,
 
 	/* Copy back to user space */
 	bs = cd->config.size;
-	trace_value(bs);
+	trace_keyword_with_ids(dev, "value of block size: %u", bs);
 
 	if (bs == 0 || bs > size)
 		return -EINVAL;

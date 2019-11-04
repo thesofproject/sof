@@ -220,9 +220,6 @@ void trace_init(struct sof *sof);
 	_log_message(__mbox, _atomic, LOG_LEVEL_VERBOSE, class, id_0, id_1,  \
 		     has_ids, format, ##__VA_ARGS__)
 
-#define trace_value(x)		trace_event(0, "value %u", x)
-#define trace_value_atomic(x)	trace_event_atomic(0, "value %u", x)
-
 #define trace_point(x) platform_trace_point(x)
 
 /* verbose tracing */
@@ -234,8 +231,6 @@ void trace_init(struct sof *sof);
 
 #define tracev_event_comp(...) _trace_comp_build(tracev_event_with_ids,	\
 						 ##__VA_ARGS__)
-#define tracev_value(x)	trace_value(x)
-#define tracev_value_atomic(x)	trace_value_atomic(x)
 #else
 #define tracev_event(...) do {} while (0)
 #define tracev_event_with_ids(...) do {} while (0)
@@ -243,8 +238,6 @@ void trace_init(struct sof *sof);
 #define tracev_event_atomic_with_ids(...) do {} while (0)
 
 #define tracev_event_comp(...) do {} while (0)
-#define tracev_value(x) do {} while (0)
-#define tracev_value_atomic(x) do {} while (0)
 #endif
 
 /* error tracing */
@@ -260,9 +253,6 @@ void trace_init(struct sof *sof);
 #define trace_error_atomic_with_ids(...) trace_error_with_ids(__VA_ARGS__)
 #define trace_error_comp(...) _trace_comp_build(trace_error_with_ids,	\
 						##__VA_ARGS__)
-/* write back error value to mbox */
-#define trace_error_value(x)		trace_error(0, "value %u", x)
-#define trace_error_value_atomic(...)	trace_error_value(__VA_ARGS__)
 #else
 #define trace_error(...) trace_event(__VA_ARGS__)
 #define trace_error_with_ids(...) trace_event_with_ids(__VA_ARGS__)
@@ -270,9 +260,6 @@ void trace_init(struct sof *sof);
 #define trace_error_atomic_with_ids(...) trace_event_atomic_with_ids(__VA_ARGS__)
 #define trace_error_comp(...) _trace_comp_build(trace_error_with_ids,	\
 						##__VA_ARGS__)
-#define trace_error_value(x) trace_value(x)
-#define trace_error_value_atomic(x) trace_value_atomic(x)
-
 #endif
 
 #ifndef CONFIG_LIBRARY
@@ -366,20 +353,12 @@ do {									\
 #define trace_error_atomic(...) do {} while (0)
 #define trace_error_atomic_with_ids(...) do {} while (0)
 
-#define trace_error_value(x) do {} while (0)
-#define trace_error_value_atomic(x) do {} while (0)
-
-#define trace_value(x) do {} while (0)
-#define trace_value_atomic(x) do {} while (0)
-
 #define trace_point(x) do {} while (0)
 
 #define tracev_event(...) do {} while (0)
 #define tracev_event_with_ids(...) do {} while (0)
 #define tracev_event_atomic(...) do {} while (0)
 #define tracev_event_atomic_with_ids(...) do {} while (0)
-#define tracev_value(x) do {} while (0)
-#define tracev_value_atomic(x) do {} while (0)
 
 #endif
 
