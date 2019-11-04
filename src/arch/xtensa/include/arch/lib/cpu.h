@@ -74,6 +74,51 @@ static inline int cpu_read_threadptr(void)
 	return threadptr;
 }
 
+static inline int cpu_read_vecbase(void)
+{
+	int vecbase;
+
+	__asm__ __volatile__("rsr.vecbase %0"
+		: "=a"(vecbase));
+	return vecbase;
+}
+
+static inline int cpu_read_excsave2(void)
+{
+	int excsave2;
+
+	__asm__ __volatile__("rsr.excsave2 %0"
+		: "=a"(excsave2));
+	return excsave2;
+}
+
+static inline int cpu_read_excsave3(void)
+{
+	int excsave3;
+
+	__asm__ __volatile__("rsr.excsave3 %0"
+		: "=a"(excsave3));
+	return excsave3;
+}
+
+static inline int cpu_read_excsave4(void)
+{
+	int excsave4;
+
+	__asm__ __volatile__("rsr.excsave4 %0"
+		: "=a"(excsave4));
+	return excsave4;
+}
+
+static inline int cpu_read_excsave5(void)
+{
+	int excsave5;
+
+	__asm__ __volatile__("rsr.excsave5 %0"
+		: "=a"(excsave5));
+	return excsave5;
+}
+
 #endif /* __ARCH_LIB_CPU_H__ */
 
 #else
