@@ -234,6 +234,10 @@
 #define _META_CONCAT_DELIM(delim, x, y) META_CONCAT(META_CONCAT(x, delim),y)
 #define _META_CONCAT_DELIM_(x, y) _META_CONCAT_DELIM(_, x, y)
 
+/* UNUSED private macros */
+#define _META_VOID(x) (void)(x)
+#define _META_VOID2(x, y) x; _META_VOID(y)
+
 #endif /* __SOF_TRACE_PREPROC_PRIVATE_H__ */
 #else
 	#error \
