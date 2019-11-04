@@ -141,14 +141,19 @@ static void mux_free(struct comp_dev *dev)
 }
 
 /* set component audio stream parameters */
-static int mux_params(struct comp_dev *dev)
+static int mux_params(struct comp_dev *dev,
+		      struct sof_ipc_stream_params *params)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
+	struct comp_buffer *sourceb;
 
 	trace_mux_with_ids(dev, "mux_params() Karol");
 
-	cd->config.num_channels = dev->params.channels;
-	cd->config.frame_format = dev->params.frame_fmt;
+	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer,
+				  sink_list);
+
+	cd->config.num_channels = sourceb->channels;
+	cd->config.frame_format = sourceb->frame_fmt;
 
 	return 0;
 }
@@ -283,14 +288,14 @@ static int demux_copy(struct comp_dev *dev)
 	for (i = 0; i < MUX_MAX_STREAMS; i++) {
 		if (!sinks[i])
 			continue;
-		frames = MIN(frames, comp_avail_frames(source, sinks[i]));
+		frames = MIN(frames, buffer_avail_frames(source, sinks[i]));
 	}
 
-	source_bytes = frames * comp_frame_bytes(source->source);
+	source_bytes = frames * buffer_frame_bytes(source);
 	for (i = 0; i < MUX_MAX_STREAMS; i++) {
 		if (!sinks[i])
 			continue;
-		sinks_bytes[i] = frames * comp_frame_bytes(sinks[i]->sink);
+		sinks_bytes[i] = frames * buffer_frame_bytes(sinks[i]);
 	}
 
 	/* produce output, one sink at a time */
@@ -352,16 +357,16 @@ static int mux_copy(struct comp_dev *dev)
 	for (i = 0; i < MUX_MAX_STREAMS; i++) {
 		if (!sources[i])
 			continue;
-		frames = MIN(frames, comp_avail_frames(sources[i], sink));
+		frames = MIN(frames, buffer_avail_frames(sources[i], sink));
 	}
 
 	for (i = 0; i < MUX_MAX_STREAMS; i++) {
 		if (!sources[i])
 			continue;
 		sources_bytes[i] = frames *
-				   comp_frame_bytes(sources[i]->source);
+				   buffer_frame_bytes(sources[i]);
 	}
-	sink_bytes = frames * comp_frame_bytes(sink->sink);
+	sink_bytes = frames * buffer_frame_bytes(sink);
 
 	/* produce output */
 	cd->mux(dev, sink, &sources[0], frames, &cd->config.streams[0]);

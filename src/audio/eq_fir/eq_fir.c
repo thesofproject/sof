@@ -155,8 +155,12 @@ static inline void set_s32_fir(struct comp_data *cd)
 static inline int set_fir_func(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
+	struct comp_buffer *sourceb;
 
-	switch (dev->params.frame_fmt) {
+	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer,
+				  sink_list);
+
+	switch (sourceb->frame_fmt) {
 #if CONFIG_FORMAT_S16LE
 	case SOF_IPC_FRAME_S16_LE:
 		trace_eq_with_ids(dev, "set_fir_func(), SOF_IPC_FRAME_S16_LE");
@@ -211,8 +215,12 @@ static void eq_fir_s32_passthrough(struct fir_state_32x16 fir[],
 static inline int set_pass_func(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
+	struct comp_buffer *sourceb;
 
-	switch (dev->params.frame_fmt) {
+	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer,
+				  sink_list);
+
+	switch (sourceb->frame_fmt) {
 #if CONFIG_FORMAT_S16LE
 	case SOF_IPC_FRAME_S16_LE:
 		trace_eq_with_ids(dev, "set_pass_func(), SOF_IPC_FRAME_S16_LE");
@@ -476,7 +484,8 @@ static void eq_fir_free(struct comp_dev *dev)
 }
 
 /* set component audio stream parameters */
-static int eq_fir_params(struct comp_dev *dev)
+static int eq_fir_params(struct comp_dev *dev,
+			 struct sof_ipc_stream_params *params)
 {
 	trace_eq_with_ids(dev, "eq_fir_params()");
 
@@ -705,12 +714,14 @@ static int eq_fir_copy(struct comp_dev *dev)
 	struct comp_copy_limits cl;
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct fir_state_32x16 *fir = cd->fir;
-	int nch = dev->params.channels;
+	int nch;
 
 	tracev_eq_with_ids(dev, "eq_fir_copy()");
 
 	/* Get source, sink, number of frames etc. to process. */
 	comp_get_copy_limits(dev, &cl);
+
+	nch = cl.source->channels;
 
 	/* Check if number of frames to process if it is odd. The
 	 * optimized FIR function to process even number of frames
@@ -766,17 +777,17 @@ static int eq_fir_prepare(struct comp_dev *dev)
 				struct comp_buffer, source_list);
 
 	/* get source data format */
-	cd->source_format = sourceb->source->params.frame_fmt;
+	cd->source_format = sourceb->frame_fmt;
 
 	/* get sink data format and period bytes */
-	cd->sink_format = sinkb->sink->params.frame_fmt;
-	sink_period_bytes = comp_period_bytes(sinkb->sink, dev->frames);
+	cd->sink_format = sinkb->frame_fmt;
+	sink_period_bytes = buffer_period_bytes(sinkb, dev->frames);
 
 	/* Rewrite params format for this component to match the host side. */
-	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK)
-		dev->params.frame_fmt = cd->source_format;
+	if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
+		sourceb->frame_fmt = cd->source_format;
 	else
-		dev->params.frame_fmt = cd->sink_format;
+		sinkb->frame_fmt = cd->sink_format;
 
 	if (sinkb->size < config->periods_sink * sink_period_bytes) {
 		trace_eq_error_with_ids(dev, "eq_fir_prepare() error: "
@@ -787,7 +798,7 @@ static int eq_fir_prepare(struct comp_dev *dev)
 
 	/* Initialize EQ */
 	if (cd->config) {
-		ret = eq_fir_setup(cd, dev->params.channels);
+		ret = eq_fir_setup(cd, sourceb->channels);
 		if (ret < 0) {
 			trace_eq_error_with_ids(dev, "eq_fir_prepare() error: "
 						"eq_fir_setup failed.");

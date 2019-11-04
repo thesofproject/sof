@@ -80,6 +80,8 @@ struct comp_data {
 	uint32_t keyphrase_samples; /**< keyphrase length in samples */
 	uint32_t history_depth; /** defines draining size in bytes. */
 
+	uint16_t sample_valid_bytes;
+
 	struct notify_data event;
 	struct kpb_event_data event_data;
 	struct kpb_client client_data;
@@ -165,7 +167,7 @@ static void default_detect_test(struct comp_dev *dev,
 	int32_t diff;
 	uint32_t count = frames; /**< Assuming single channel */
 	uint32_t sample;
-	uint16_t valid_bits = dev->params.sample_valid_bytes * 8;
+	uint16_t valid_bits = cd->sample_valid_bytes * 8;
 	const int32_t activation_threshold = cd->config.activation_threshold;
 
 	/* synthetic load */
@@ -372,21 +374,29 @@ static void test_keyword_free(struct comp_dev *dev)
 }
 
 /* set component audio stream parameters */
-static int test_keyword_params(struct comp_dev *dev)
+static int test_keyword_params(struct comp_dev *dev,
+			       struct sof_ipc_stream_params *params)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
+	struct comp_buffer *sourceb;
+
+	cd->sample_valid_bytes = params->sample_valid_bytes;
+
+	/* keyword components will only ever have 1 source */
+	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer,
+				  sink_list);
 
 	/* TODO: remove in the future */
-	dev->params.channels = 1;
+	sourceb->channels = 1;
 
-	if (dev->params.channels != 1) {
+	if (sourceb->channels != 1) {
 		trace_keyword_error_with_ids(dev, "test_keyword_params() "
 					     "error: only single-channel "
 					     "supported");
 		return -EINVAL;
 	}
 
-	if (!detector_is_sample_width_supported(dev->params.frame_fmt)) {
+	if (!detector_is_sample_width_supported(sourceb->frame_fmt)) {
 		trace_keyword_error_with_ids(dev, "test_keyword_params() "
 					     "error: only 16-bit format "
 					     "supported");
@@ -396,7 +406,7 @@ static int test_keyword_params(struct comp_dev *dev)
 	/* calculate the length of the preamble */
 	if (cd->config.preamble_time) {
 		cd->keyphrase_samples = cd->config.preamble_time *
-					(dev->params.rate / 1000);
+					(sourceb->rate / 1000);
 	} else {
 		cd->keyphrase_samples = KEYPHRASE_DEFAULT_PREAMBLE_LENGTH;
 	}
@@ -732,7 +742,7 @@ static int test_keyword_copy(struct comp_dev *dev)
 
 	/* copy and perform detection */
 	cd->detect_func(dev, source,
-			source->avail / comp_frame_bytes(dev));
+			source->avail / buffer_frame_bytes(source));
 
 	/* calc new available */
 	comp_update_buffer_consume(source, source->avail);
@@ -756,7 +766,7 @@ static int test_keyword_reset(struct comp_dev *dev)
 static int test_keyword_prepare(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	uint16_t valid_bits = dev->params.sample_valid_bytes * 8;
+	uint16_t valid_bits = cd->sample_valid_bytes * 8;
 	uint16_t sample_width = cd->config.sample_width;
 
 	trace_keyword_with_ids(dev, "test_keyword_prepare()");

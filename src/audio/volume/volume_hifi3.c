@@ -65,7 +65,7 @@ static void vol_s16_to_sX(struct comp_dev *dev, struct comp_buffer *sink,
 	/* Main processing loop */
 	for (i = 0; i < frames; i++) {
 		/* Processing per channel */
-		for (channel = 0; channel < dev->params.channels; channel++) {
+		for (channel = 0; channel < sink->channels; channel++) {
 			/* Set source as circular buffer */
 			vol_setup_circular(source);
 
@@ -126,7 +126,7 @@ static void vol_sX_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
 	/* Main processing loop */
 	for (i = 0; i < frames; i++) {
 		/* Processing per channel */
-		for (channel = 0; channel < dev->params.channels; channel++) {
+		for (channel = 0; channel < sink->channels; channel++) {
 			/* Set source as circular buffer */
 			vol_setup_circular(source);
 
@@ -187,7 +187,7 @@ static void vol_s24_to_s24_s32(struct comp_dev *dev, struct comp_buffer *sink,
 	/* Main processing loop */
 	for (i = 0; i < frames; i++) {
 		/* Processing per channel */
-		for (channel = 0; channel < dev->params.channels; channel++) {
+		for (channel = 0; channel < sink->channels; channel++) {
 			/* Set source as circular buffer */
 			vol_setup_circular(source);
 
@@ -247,7 +247,7 @@ static void vol_s32_to_s24_s32(struct comp_dev *dev, struct comp_buffer *sink,
 	/* Main processing loop */
 	for (i = 0; i < frames; i++) {
 		/* Processing per channel */
-		for (channel = 0; channel < dev->params.channels; channel++) {
+		for (channel = 0; channel < sink->channels; channel++) {
 			/* Set source as circular buffer */
 			vol_setup_circular(source);
 
@@ -306,7 +306,7 @@ static void vol_s16_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
 	/* Main processing loop */
 	for (i = 0; i < frames; i++) {
 		/* Processing per channel */
-		for (channel = 0; channel < dev->params.channels; channel++) {
+		for (channel = 0; channel < sink->channels; channel++) {
 			/* Set source as circular buffer */
 			vol_setup_circular(source);
 

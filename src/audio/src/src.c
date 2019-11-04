@@ -75,6 +75,7 @@ struct comp_data {
 	int data_shift;
 	int source_frames;
 	int sink_frames;
+	int sample_container_bytes;
 	void (*src_func)(struct comp_dev *dev,
 			 struct comp_buffer *source,
 			 struct comp_buffer *sink,
@@ -326,11 +327,11 @@ static void src_2s(struct comp_dev *dev,
 	void *sbuf_addr = cd->delay_lines;
 	void *sbuf_end_addr = &cd->delay_lines[cd->param.sbuf_length];
 	size_t sbuf_size = cd->param.sbuf_length * sizeof(int32_t);
-	int nch = dev->params.channels;
+	int nch = source->channels;
 	int sbuf_free = cd->param.sbuf_length - cd->sbuf_avail;
 	int avail_b = source->avail;
 	int free_b = sink->free;
-	int sz = dev->params.sample_container_bytes;
+	int sz = cd->sample_container_bytes;
 
 	*n_read = 0;
 	*n_written = 0;
@@ -424,7 +425,7 @@ static void src_1s(struct comp_dev *dev,
 	s1.y_size = sink->size;
 	s1.state = &cd->src.state1;
 	s1.stage = cd->src.stage1;
-	s1.nch = dev->params.channels;
+	s1.nch = source->channels;
 	s1.shift = cd->data_shift;
 
 	cd->polyphase_func(&s1);
@@ -441,7 +442,7 @@ static void src_copy_s32(struct comp_dev *dev,
 	struct comp_data *cd = comp_get_drvdata(dev);
 	int frames = cd->param.blk_in;
 
-	buffer_copy_s32(source, sink, frames * dev->params.channels);
+	buffer_copy_s32(source, sink, frames * source->channels);
 
 	*n_read = frames;
 	*n_written = frames;
@@ -455,7 +456,7 @@ static void src_copy_s16(struct comp_dev *dev,
 	struct comp_data *cd = comp_get_drvdata(dev);
 	int frames = cd->param.blk_in;
 
-	buffer_copy_s16(source, sink, frames * dev->params.channels);
+	buffer_copy_s16(source, sink, frames * source->channels);
 
 	*n_read = frames;
 	*n_written = frames;
@@ -529,11 +530,13 @@ static void src_free(struct comp_dev *dev)
 }
 
 /* set component audio stream parameters */
-static int src_params(struct comp_dev *dev)
+static int src_params(struct comp_dev *dev,
+		      struct sof_ipc_stream_params *params)
 {
-	struct sof_ipc_stream_params *params = &dev->params;
 	struct sof_ipc_comp_src *src = COMP_GET_IPC(dev, sof_ipc_comp_src);
 	struct comp_data *cd = comp_get_drvdata(dev);
+	struct comp_buffer *sinkb;
+	struct comp_buffer *sourceb;
 	size_t delay_lines_size;
 	int32_t *buffer_start;
 	int n = 0;
@@ -541,21 +544,32 @@ static int src_params(struct comp_dev *dev)
 
 	trace_src_with_ids(dev, "src_params()");
 
+	cd->sample_container_bytes = params->sample_container_bytes;
+
+	/* src components will only ever have 1 source and 1 sink buffer */
+	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer,
+				  sink_list);
+	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
+				source_list);
+
+	trace_src("src_params(): src->source_rate: %d", src->source_rate);
+	trace_src("src_params(): src->sink_rate: %d", src->sink_rate);
+
 	/* Calculate source and sink rates, one rate will come from IPC new
 	 * and the other from params.
 	 */
 	if (src->source_rate == 0) {
 		/* params rate is source rate */
-		cd->source_rate = params->rate;
+		cd->source_rate = sourceb->rate;
 		cd->sink_rate = src->sink_rate;
 		/* re-write our params with output rate for next component */
-		params->rate = cd->sink_rate;
+		sinkb->rate = cd->sink_rate;
 	} else {
 		/* params rate is sink rate */
 		cd->source_rate = src->source_rate;
-		cd->sink_rate = params->rate;
+		cd->sink_rate = sinkb->rate;
 		/* re-write our params with output rate for next component */
-		params->rate = cd->source_rate;
+		sourceb->rate = cd->source_rate;
 	}
 
 	cd->source_frames = dev->frames * cd->source_rate /
@@ -563,13 +577,14 @@ static int src_params(struct comp_dev *dev)
 	cd->sink_frames = dev->frames;
 
 	/* Allocate needed memory for delay lines */
-	trace_src_with_ids(dev, "src_params(), "
-			   "source_rate = %u, sink_rate = %u",
+	trace_src_with_ids(dev,
+			   "src_params(), source_rate = %u, sink_rate = %u",
 			   cd->source_rate, cd->sink_rate);
-	trace_src_with_ids(dev, "src_params(), params->channels = %u, "
-			   "dev->frames = %u", params->channels, dev->frames);
+	trace_src_with_ids(dev,
+			   "src_params(), sourceb->channels = %u, sinkb->channels = %u, dev->frames = %u",
+			   sourceb->channels, sinkb->channels, dev->frames);
 	err = src_buffer_lengths(&cd->param, cd->source_rate, cd->sink_rate,
-				 params->channels, cd->source_frames);
+				 sourceb->channels, cd->source_frames);
 	if (err < 0) {
 		trace_src_error_with_ids(dev, "src_params() error: "
 					 "src_buffer_lengths() failed");
@@ -689,20 +704,20 @@ static int src_get_copy_limits(struct comp_data *cd,
 	 */
 	if (s2->filter_length > 1) {
 		/* Two polyphase filters case */
-		frames_snk = sink->free / comp_frame_bytes(sink->sink);
+		frames_snk = sink->free / buffer_frame_bytes(sink);
 		frames_snk = MIN(frames_snk, cd->sink_frames + s2->blk_out);
 		sp->stage2_times = frames_snk / s2->blk_out;
-		frames_src = source->avail / comp_frame_bytes(source->source);
+		frames_src = source->avail / buffer_frame_bytes(source);
 		frames_src = MIN(frames_src, cd->source_frames + s1->blk_in);
 		sp->stage1_times = frames_src / s1->blk_in;
 		sp->blk_in = sp->stage1_times * s1->blk_in;
 		sp->blk_out = sp->stage2_times * s2->blk_out;
 	} else {
 		/* Single polyphase filter case */
-		frames_snk = sink->free / comp_frame_bytes(sink->sink);
+		frames_snk = sink->free / buffer_frame_bytes(sink);
 		frames_snk = MIN(frames_snk, cd->sink_frames + s1->blk_out);
 		sp->stage1_times = frames_snk / s1->blk_out;
-		frames_src = source->avail / comp_frame_bytes(source->source);
+		frames_src = source->avail / buffer_frame_bytes(source);
 		frames_snk = MIN(frames_src, cd->source_frames + s1->blk_in);
 		sp->stage1_times = MIN(sp->stage1_times,
 				       frames_src / s1->blk_in);
@@ -754,11 +769,11 @@ static int src_copy(struct comp_dev *dev)
 	 */
 	if (consumed > 0)
 		comp_update_buffer_consume(source, consumed *
-					   comp_frame_bytes(source->source));
+					   buffer_frame_bytes(source));
 
 	if (produced > 0)
 		comp_update_buffer_produce(sink, produced *
-					   comp_frame_bytes(sink->sink));
+					   buffer_frame_bytes(sink));
 
 	/* produced no data */
 	return 0;
@@ -790,18 +805,12 @@ static int src_prepare(struct comp_dev *dev)
 				struct comp_buffer, source_list);
 
 	/* get source data format and period bytes */
-	cd->source_format = sourceb->source->params.frame_fmt;
-	source_period_bytes = comp_period_bytes(sourceb->source, dev->frames);
+	cd->source_format = sourceb->frame_fmt;
+	source_period_bytes = buffer_period_bytes(sourceb, dev->frames);
 
 	/* get sink data format and period bytes */
-	cd->sink_format = sinkb->sink->params.frame_fmt;
-	sink_period_bytes = comp_period_bytes(sinkb->sink, dev->frames);
-
-	/* Rewrite params format for this component to match the host side. */
-	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK)
-		dev->params.frame_fmt = cd->source_format;
-	else
-		dev->params.frame_fmt = cd->sink_format;
+	cd->sink_format = sinkb->frame_fmt;
+	sink_period_bytes = buffer_period_bytes(sinkb, dev->frames);
 
 	if (sinkb->size < config->periods_sink * sink_period_bytes) {
 		trace_src_error_with_ids(dev, "src_prepare() error: "

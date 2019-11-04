@@ -249,7 +249,8 @@ static void volume_free(struct comp_dev *dev)
  *
  * All done in prepare() since we need to know source and sink component params.
  */
-static int volume_params(struct comp_dev *dev)
+static int volume_params(struct comp_dev *dev,
+			 struct sof_ipc_stream_params *params)
 {
 	trace_volume_with_ids(dev, "volume_params()");
 
@@ -617,7 +618,7 @@ static int volume_prepare(struct comp_dev *dev)
 				struct comp_buffer, source_list);
 
 	/* get sink period bytes */
-	sink_period_bytes = comp_period_bytes(sinkb->sink, dev->frames);
+	sink_period_bytes = buffer_period_bytes(sinkb, dev->frames);
 
 	if (sinkb->size < config->periods_sink * sink_period_bytes) {
 		trace_volume_error_with_ids(dev, "volume_prepare() error: "
@@ -630,8 +631,8 @@ static int volume_prepare(struct comp_dev *dev)
 	if (!cd->scale_vol) {
 		trace_volume_error_with_ids
 			(dev,
-			 "volume_prepare() error: invalid cd->scale_vol, dev->params.frame_fmt = %u, dev->params.channels = %u",
-			 dev->params.frame_fmt, dev->params.channels);
+			 "volume_prepare() error: invalid cd->scale_vol");
+
 		ret = -EINVAL;
 		goto err;
 	}

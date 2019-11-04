@@ -55,6 +55,7 @@ struct dai_data {
 	uint32_t stream_id;
 	struct dma_sg_config config;
 	struct comp_buffer *dma_buffer;
+	struct comp_buffer *local_buffer;
 
 	struct dai *dai;
 	struct dma *dma;
@@ -81,7 +82,6 @@ static void dai_dma_cb(void *data, uint32_t type, struct dma_cb_data *next)
 	struct dai_data *dd = comp_get_drvdata(dev);
 	uint32_t bytes = next->elem.size;
 	uint32_t samples = bytes / sample_bytes(dd->frame_fmt);
-	struct comp_buffer *local_buffer;
 	void *buffer_ptr;
 
 	tracev_dai_with_ids(dev, "dai_dma_cb()");
@@ -91,7 +91,7 @@ static void dai_dma_cb(void *data, uint32_t type, struct dma_cb_data *next)
 	/* stop dma copy for pause/stop/xrun */
 	if (dev->state != COMP_STATE_ACTIVE || dd->xrun) {
 		/* stop the DAI */
-		dai_trigger(dd->dai, COMP_TRIGGER_STOP, dev->params.direction);
+		dai_trigger(dd->dai, COMP_TRIGGER_STOP, dev->direction);
 
 		/* tell DMA not to reload */
 		next->status = DMA_CB_STATUS_END;
@@ -100,31 +100,26 @@ static void dai_dma_cb(void *data, uint32_t type, struct dma_cb_data *next)
 	/* is our pipeline handling an XRUN ? */
 	if (dd->xrun) {
 		/* make sure we only playback silence during an XRUN */
-		if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK)
+		if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
 			/* fill buffer with silence */
 			buffer_zero(dd->dma_buffer);
 
 		return;
 	}
 
-	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK) {
-		local_buffer = list_first_item(&dev->bsource_list,
-					       struct comp_buffer, sink_list);
-
-		dma_buffer_copy_to(local_buffer,
-				   samples * comp_sample_bytes(dev),
+	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
+		dma_buffer_copy_to(dd->local_buffer, samples *
+				   buffer_sample_bytes(dd->local_buffer),
 				   dd->dma_buffer, bytes, dd->process, samples);
 
-		buffer_ptr = local_buffer->r_ptr;
+		buffer_ptr = dd->local_buffer->r_ptr;
 	} else {
-		local_buffer = list_first_item(&dev->bsink_list,
-					       struct comp_buffer, source_list);
-
-		dma_buffer_copy_from(dd->dma_buffer, bytes, local_buffer,
-				     samples * comp_sample_bytes(dev),
+		dma_buffer_copy_from(dd->dma_buffer, bytes, dd->local_buffer,
+				     samples *
+				     buffer_sample_bytes(dd->local_buffer),
 				     dd->process, samples);
 
-		buffer_ptr = local_buffer->w_ptr;
+		buffer_ptr = dd->local_buffer->w_ptr;
 	}
 
 	/* update host position (in bytes offset) for drivers */
@@ -231,7 +226,7 @@ static int dai_playback_params(struct comp_dev *dev, uint32_t period_bytes,
 	int err;
 
 	/* set processing function */
-	dd->process = pcm_get_conversion_function(dev->params.frame_fmt,
+	dd->process = pcm_get_conversion_function(dd->local_buffer->frame_fmt,
 						  dd->frame_fmt);
 
 	/* set up DMA configuration */
@@ -240,7 +235,7 @@ static int dai_playback_params(struct comp_dev *dev, uint32_t period_bytes,
 	config->dest_width = sample_bytes(dd->frame_fmt);
 	config->cyclic = 1;
 	config->irq_disabled = pipeline_is_timer_driven(dev->pipeline);
-	config->dest_dev = dai_get_handshake(dd->dai, dev->params.direction,
+	config->dest_dev = dai_get_handshake(dd->dai, dev->direction,
 					     dd->stream_id);
 	config->is_scheduling_source = comp_is_scheduling_source(dev);
 	config->period = dev->pipeline->ipc_pipe.period;
@@ -252,7 +247,7 @@ static int dai_playback_params(struct comp_dev *dev, uint32_t period_bytes,
 			   config->src_width, config->dest_width);
 
 	if (!config->elem_array.elems) {
-		fifo = dai_get_fifo(dd->dai, dev->params.direction,
+		fifo = dai_get_fifo(dd->dai, dev->direction,
 				    dd->stream_id);
 
 		trace_dai_with_ids(dev, "dai_playback_params() "
@@ -285,13 +280,13 @@ static int dai_capture_params(struct comp_dev *dev, uint32_t period_bytes,
 
 	/* set processing function */
 	dd->process = pcm_get_conversion_function(dd->frame_fmt,
-						  dev->params.frame_fmt);
+						  dd->local_buffer->frame_fmt);
 
 	/* set up DMA configuration */
 	config->direction = DMA_DIR_DEV_TO_MEM;
 	config->cyclic = 1;
 	config->irq_disabled = pipeline_is_timer_driven(dev->pipeline);
-	config->src_dev = dai_get_handshake(dd->dai, dev->params.direction,
+	config->src_dev = dai_get_handshake(dd->dai, dev->direction,
 					    dd->stream_id);
 	config->is_scheduling_source = comp_is_scheduling_source(dev);
 	config->period = dev->pipeline->ipc_pipe.period;
@@ -316,7 +311,7 @@ static int dai_capture_params(struct comp_dev *dev, uint32_t period_bytes,
 			   config->src_width, config->dest_width);
 
 	if (!config->elem_array.elems) {
-		fifo = dai_get_fifo(dd->dai, dev->params.direction,
+		fifo = dai_get_fifo(dd->dai, dev->direction,
 				    dd->stream_id);
 
 		trace_dai_with_ids(dev, "dai_capture_params() "
@@ -339,7 +334,8 @@ static int dai_capture_params(struct comp_dev *dev, uint32_t period_bytes,
 	return 0;
 }
 
-static int dai_params(struct comp_dev *dev)
+static int dai_params(struct comp_dev *dev,
+		      struct sof_ipc_stream_params *params)
 {
 	struct sof_ipc_comp_config *dconfig = COMP_GET_CONFIG(dev);
 	struct dai_data *dd = comp_get_drvdata(dev);
@@ -352,6 +348,15 @@ static int dai_params(struct comp_dev *dev)
 	int err;
 
 	trace_dai_with_ids(dev, "dai_params()");
+
+	if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
+		dd->local_buffer = list_first_item(&dev->bsource_list,
+						   struct comp_buffer,
+						   sink_list);
+	else
+		dd->local_buffer = list_first_item(&dev->bsink_list,
+						   struct comp_buffer,
+						   source_list);
 
 	/* check if already configured */
 	if (dev->state == COMP_STATE_PREPARE) {
@@ -397,7 +402,7 @@ static int dai_params(struct comp_dev *dev)
 	dd->frame_fmt = dconfig->frame_fmt;
 
 	/* calculate frame size */
-	frame_size = frame_bytes(dd->frame_fmt, dev->params.channels);
+	frame_size = frame_bytes(dd->frame_fmt, dd->local_buffer->channels);
 
 	/* calculate period size */
 	period_bytes = dev->frames * frame_size;
@@ -430,7 +435,7 @@ static int dai_params(struct comp_dev *dev)
 		}
 	}
 
-	return dev->params.direction == SOF_IPC_STREAM_PLAYBACK ?
+	return dev->direction == SOF_IPC_STREAM_PLAYBACK ?
 		dai_playback_params(dev, period_bytes, period_count) :
 		dai_capture_params(dev, period_bytes, period_count);
 }
@@ -542,7 +547,7 @@ static int dai_comp_trigger(struct comp_dev *dev, int cmd)
 		/* only start the DAI if we are not XRUN handling */
 		if (dd->xrun == 0) {
 			/* start the DAI */
-			dai_trigger(dd->dai, cmd, dev->params.direction);
+			dai_trigger(dd->dai, cmd, dev->direction);
 			ret = dma_start(dd->chan);
 			if (ret < 0)
 				return ret;
@@ -557,7 +562,7 @@ static int dai_comp_trigger(struct comp_dev *dev, int cmd)
 		 * then there is no history data sent out after release.
 		 * this is only supported at capture mode.
 		 */
-		if (dev->params.direction == SOF_IPC_STREAM_CAPTURE)
+		if (dev->direction == SOF_IPC_STREAM_CAPTURE)
 			buffer_zero(dd->dma_buffer);
 
 		/* only start the DAI if we are not XRUN handling */
@@ -568,7 +573,7 @@ static int dai_comp_trigger(struct comp_dev *dev, int cmd)
 				return ret;
 
 			/* start the DAI */
-			dai_trigger(dd->dai, cmd, dev->params.direction);
+			dai_trigger(dd->dai, cmd, dev->direction);
 			ret = dma_start(dd->chan);
 			if (ret < 0)
 				return ret;
@@ -587,7 +592,7 @@ static int dai_comp_trigger(struct comp_dev *dev, int cmd)
 	case COMP_TRIGGER_STOP:
 		trace_dai_with_ids(dev, "dai_comp_trigger(), PAUSE/STOP");
 		ret = dma_stop(dd->chan);
-		dai_trigger(dd->dai, COMP_TRIGGER_STOP, dev->params.direction);
+		dai_trigger(dd->dai, COMP_TRIGGER_STOP, dev->direction);
 		break;
 	default:
 		break;
@@ -599,20 +604,16 @@ static int dai_comp_trigger(struct comp_dev *dev, int cmd)
 /* report xrun occurrence */
 static void dai_report_xrun(struct comp_dev *dev, uint32_t bytes)
 {
-	struct comp_buffer *local_buffer;
+	struct dai_data *dd = comp_get_drvdata(dev);
 
-	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK) {
+	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
 		trace_dai_error_with_ids(dev, "dai_report_xrun() error: "
 					 "underrun due to no data available");
-		local_buffer = list_first_item(&dev->bsource_list,
-					       struct comp_buffer, sink_list);
-		comp_underrun(dev, local_buffer, bytes);
+		comp_underrun(dev, dd->local_buffer, bytes);
 	} else {
 		trace_dai_error_with_ids(dev, "dai_report_xrun() error: "
 					 "overrun due to no data available");
-		local_buffer = list_first_item(&dev->bsink_list,
-					       struct comp_buffer, source_list);
-		comp_overrun(dev, local_buffer, bytes);
+		comp_overrun(dev, dd->local_buffer, bytes);
 	}
 }
 
@@ -620,7 +621,6 @@ static void dai_report_xrun(struct comp_dev *dev, uint32_t bytes)
 static int dai_copy(struct comp_dev *dev)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
-	struct comp_buffer *local_buffer;
 	uint32_t avail_bytes = 0;
 	uint32_t free_bytes = 0;
 	uint32_t copy_bytes = 0;
@@ -638,18 +638,16 @@ static int dai_copy(struct comp_dev *dev)
 	}
 
 	/* calculate minimum size to copy */
-	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK) {
-		local_buffer = list_first_item(&dev->bsource_list,
-					       struct comp_buffer, sink_list);
-		src_samples = local_buffer->avail / comp_sample_bytes(dev);
+	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
+		src_samples = dd->local_buffer->avail /
+			buffer_sample_bytes(dd->local_buffer);
 		sink_samples = free_bytes / sample_bytes(dd->frame_fmt);
 		copy_bytes = MIN(src_samples, sink_samples) *
 			sample_bytes(dd->frame_fmt);
 	} else {
-		local_buffer = list_first_item(&dev->bsink_list,
-					       struct comp_buffer, source_list);
 		src_samples = avail_bytes / sample_bytes(dd->frame_fmt);
-		sink_samples = local_buffer->free / comp_sample_bytes(dev);
+		sink_samples = dd->local_buffer->free /
+			buffer_sample_bytes(dd->local_buffer);
 		copy_bytes = MIN(src_samples, sink_samples) *
 			sample_bytes(dd->frame_fmt);
 	}

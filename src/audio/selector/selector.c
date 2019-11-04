@@ -158,17 +158,25 @@ static void selector_free(struct comp_dev *dev)
  *
  * All done in prepare since we need to know source and sink component params.
  */
-static int selector_params(struct comp_dev *dev)
+static int selector_params(struct comp_dev *dev,
+			   struct sof_ipc_stream_params *params)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
+	struct comp_buffer *sinkb;
+	struct comp_buffer *sourceb;
 
 	trace_selector_with_ids(dev, "selector_params()");
 
+	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer,
+				  sink_list);
+	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
+				source_list);
+
 	/* rewrite channels number for other components */
-	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK)
-		dev->params.channels = cd->config.out_channels_count;
+	if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
+		sinkb->channels = cd->config.out_channels_count;
 	else
-		dev->params.channels = cd->config.in_channels_count;
+		sourceb->channels = cd->config.in_channels_count;
 
 	return PPL_STATUS_PATH_STOP;
 }
@@ -325,9 +333,9 @@ static int selector_copy(struct comp_dev *dev)
 	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
 			       source_list);
 
-	frames = comp_avail_frames(source, sink);
-	source_bytes = frames * comp_frame_bytes(source->source);
-	sink_bytes = frames * comp_frame_bytes(sink->sink);
+	frames = buffer_avail_frames(source, sink);
+	source_bytes = frames * buffer_frame_bytes(source);
+	sink_bytes = frames * buffer_frame_bytes(sink);
 
 	tracev_selector_with_ids(dev, "selector_copy(), "
 				 "source_bytes = 0x%x, "
@@ -373,24 +381,23 @@ static int selector_prepare(struct comp_dev *dev)
 				source_list);
 
 	/* get source data format and period bytes */
-	cd->source_format = sourceb->source->params.frame_fmt;
-	cd->source_period_bytes = comp_period_bytes(sourceb->source,
-						    dev->frames);
+	cd->source_format = sourceb->frame_fmt;
+	cd->source_period_bytes = buffer_period_bytes(sourceb, dev->frames);
 
 	/* get sink data format and period bytes */
-	cd->sink_format = sinkb->sink->params.frame_fmt;
-	cd->sink_period_bytes = comp_period_bytes(sinkb->sink, dev->frames);
+	cd->sink_format = sinkb->frame_fmt;
+	cd->sink_period_bytes = buffer_period_bytes(sinkb, dev->frames);
 
 	/* There is an assumption that sink component will report out
 	 * proper number of channels [1] for selector to actually
 	 * reduce channel count between source and sink
 	 */
-	trace_selector_with_ids(dev, "selector_prepare(): "
-				"source->params.channels = %u",
-				sourceb->sink->params.channels);
-	trace_selector_with_ids(dev, "selector_prepare(): "
-				"sink->params.channels = %u",
-				sinkb->sink->params.channels);
+	trace_selector_with_ids(dev,
+				"selector_prepare(): sourceb->schannels = %u",
+				sourceb->channels);
+	trace_selector_with_ids(dev,
+				"selector_prepare(): sinkb->channels = %u",
+				sinkb->channels);
 
 	if (sinkb->size < config->periods_sink * cd->sink_period_bytes) {
 		trace_selector_error_with_ids(dev, "selector_prepare() error: "

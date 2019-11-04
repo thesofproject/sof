@@ -67,7 +67,7 @@ static void mix_n_s16(struct comp_dev *dev, struct comp_buffer *sink,
 	uint32_t frag = 0;
 
 	for (i = 0; i < frames; i++) {
-		for (channel = 0; channel < dev->params.channels; channel++) {
+		for (channel = 0; channel < sink->channels; channel++) {
 			val = 0;
 
 			for (j = 0; j < num_sources; j++) {
@@ -101,7 +101,7 @@ static void mix_n_s32(struct comp_dev *dev, struct comp_buffer *sink,
 	uint32_t frag = 0;
 
 	for (i = 0; i < frames; i++) {
-		for (channel = 0; channel < dev->params.channels; channel++) {
+		for (channel = 0; channel < sink->channels; channel++) {
 			val = 0;
 
 			for (j = 0; j < num_sources; j++) {
@@ -169,16 +169,21 @@ static void mixer_free(struct comp_dev *dev)
 }
 
 /* set component audio stream parameters */
-static int mixer_params(struct comp_dev *dev)
+static int mixer_params(struct comp_dev *dev,
+			struct sof_ipc_stream_params *params)
 {
 	struct sof_ipc_comp_config *config = COMP_GET_CONFIG(dev);
 	struct comp_buffer *sinkb;
+	struct comp_buffer *sourceb;
 	uint32_t period_bytes;
 
 	trace_mixer_with_ids(dev, "mixer_params()");
 
+	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer,
+				  sink_list);
+
 	/* calculate period size based on config */
-	period_bytes = dev->frames * comp_frame_bytes(dev);
+	period_bytes = dev->frames * buffer_frame_bytes(sourceb);
 	if (period_bytes == 0) {
 		trace_mixer_error_with_ids(dev, "mixer_params() error: "
 					   "period_bytes = 0");
@@ -225,7 +230,7 @@ static inline int mixer_sink_status(struct comp_dev *mixer)
 /* used to pass standard and bespoke commands (with data) to component */
 static int mixer_trigger(struct comp_dev *dev, int cmd)
 {
-	int dir = dev->pipeline->source_comp->params.direction;
+	int dir = dev->pipeline->source_comp->direction;
 	int ret;
 
 	trace_mixer_with_ids(dev, "mixer_trigger()");
@@ -303,13 +308,13 @@ static int mixer_copy(struct comp_dev *dev)
 
 	/* check for underruns */
 	for (i = 0; i < num_mix_sources; i++)
-		frames = MIN(frames, comp_avail_frames(sources[i], sink));
+		frames = MIN(frames, buffer_avail_frames(sources[i], sink));
 
 	/* Every source has the same format, so calculate bytes based
 	 * on the first one.
 	 */
-	source_bytes = frames * comp_frame_bytes(sources[0]->source);
-	sink_bytes = frames * comp_frame_bytes(sink->sink);
+	source_bytes = frames * buffer_frame_bytes(sources[0]);
+	sink_bytes = frames * buffer_frame_bytes(sink);
 
 	tracev_mixer_with_ids(dev, "mixer_copy(), source_bytes = 0x%x, "
 			      "sink_bytes = 0x%x",  source_bytes, sink_bytes);
@@ -359,15 +364,19 @@ static int mixer_prepare(struct comp_dev *dev)
 	struct mixer_data *md = comp_get_drvdata(dev);
 	struct list_item *blist;
 	struct comp_buffer *source;
+	struct comp_buffer *sink;
 	int downstream = 0;
 	int ret;
 
 	trace_mixer_with_ids(dev, "mixer_prepare()");
 
+	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
+			       source_list);
+
 	/* does mixer already have active source streams ? */
 	if (dev->state != COMP_STATE_ACTIVE) {
 		/* currently inactive so setup mixer */
-		switch (dev->params.frame_fmt) {
+		switch (sink->frame_fmt) {
 #if CONFIG_FORMAT_S16LE
 		case SOF_IPC_FRAME_S16_LE:
 			md->mix_func = mix_n_s16;

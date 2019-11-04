@@ -89,7 +89,9 @@ int pipeline_connect(struct comp_dev *comp, struct comp_buffer *buffer,
 static int pipeline_for_each_comp(struct comp_dev *current,
 				  int (*func)(struct comp_dev *, void *, int),
 				  void *data,
-				  void (*buff_func)(struct comp_buffer *),
+				  void (*buff_func)(struct comp_buffer *,
+						    void *),
+				  void *buff_data,
 				  int dir)
 {
 	struct list_item *buffer_list = comp_buffer_list(current, dir);
@@ -104,7 +106,7 @@ static int pipeline_for_each_comp(struct comp_dev *current,
 
 		/* execute operation on buffer */
 		if (buff_func)
-			buff_func(buffer);
+			buff_func(buffer, buff_data);
 
 		buffer_comp = buffer_get_comp(buffer, dir);
 
@@ -142,7 +144,7 @@ static int pipeline_comp_complete(struct comp_dev *current, void *data,
 	current->pipeline = ppl_data->p;
 
 	pipeline_for_each_comp(current, &pipeline_comp_complete, data,
-			       NULL, dir);
+			       NULL, NULL, dir);
 
 	return 0;
 }
@@ -197,7 +199,7 @@ static int pipeline_comp_free(struct comp_dev *current, void *data, int dir)
 	current->pipeline = NULL;
 
 	pipeline_for_each_comp(current, &pipeline_comp_free, data,
-			       NULL, dir);
+			       NULL, NULL, dir);
 
 	/* disconnect source from buffer */
 	irq_local_disable(flags);
@@ -245,7 +247,8 @@ int pipeline_free(struct pipeline *p)
 	return 0;
 }
 
-static int pipeline_comp_period_frames(struct comp_dev *current)
+static void pipeline_comp_period_frames(struct comp_dev *current,
+					uint32_t rate)
 {
 	int samplerate;
 	int period;
@@ -255,13 +258,58 @@ static int pipeline_comp_period_frames(struct comp_dev *current)
 	if (current->output_rate)
 		samplerate = current->output_rate;
 	else
-		samplerate = current->params.rate;
+		samplerate = rate;
+
 
 	/* Samplerate is in kHz and period in microseconds.
 	 * As we don't have floats use scale divider 1000000.
 	 * Also integer round up the result.
 	 */
-	return ceil_divide(samplerate * period, 1000000);
+	current->frames = ceil_divide(samplerate * period, 1000000);
+}
+
+/* save params changes made by component */
+static void pipeline_update_buffer_pcm_params(struct comp_buffer *buffer,
+					      void *data)
+{
+	struct sof_ipc_stream_params *params;
+	int i;
+
+	params = data;
+
+	params->frame_fmt = buffer->frame_fmt;
+	params->buffer_fmt = buffer->buffer_fmt;
+	params->rate = buffer->rate;
+	params->channels = buffer->channels;
+	for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
+		params->chmap[i] = buffer->chmap[i];
+}
+
+static void pipeline_set_params(struct comp_dev *comp,
+				struct sof_ipc_pcm_params *params,
+				int dir)
+{
+	struct list_item *buffer_list;
+	struct list_item *clist;
+	struct comp_buffer *buffer;
+	int i;
+
+	/* set comp params */
+	comp->direction = params->params.direction;
+
+	/* set buffer params */
+	buffer_list = comp_buffer_list(comp, dir);
+
+	list_for_item(clist, buffer_list) {
+		buffer = buffer_from_list(clist, struct comp_buffer, dir);
+
+		buffer->frame_fmt = params->params.frame_fmt;
+		buffer->buffer_fmt = params->params.buffer_fmt;
+		buffer->rate = params->params.rate;
+		buffer->channels = params->params.channels;
+		for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
+			buffer->chmap[i] = params->params.chmap[i];
+	}
 }
 
 static int pipeline_comp_params(struct comp_dev *current, void *data, int dir)
@@ -301,20 +349,19 @@ static int pipeline_comp_params(struct comp_dev *current, void *data, int dir)
 		return 0;
 
 	/* send current params to the component */
-	current->params = ppl_data->params->params;
+	pipeline_set_params(current, ppl_data->params, dir);
 
 	/* set frames from samplerate/period */
-	current->frames = pipeline_comp_period_frames(current);
+	pipeline_comp_period_frames(current, ppl_data->params->params.rate);
 
-	err = comp_params(current);
+	err = comp_params(current, &ppl_data->params->params);
 	if (err < 0 || err == PPL_STATUS_PATH_STOP)
 		return err;
 
-	/* save params changes made by component */
-	ppl_data->params->params = current->params;
-
 	return pipeline_for_each_comp(current, &pipeline_comp_params, data,
-				      NULL, dir);
+				      &pipeline_update_buffer_pcm_params,
+				      &ppl_data->params->params,
+				      dir);
 }
 
 /* Send pipeline component params from host to endpoints.
@@ -340,7 +387,7 @@ int pipeline_params(struct pipeline *p, struct comp_dev *host,
 	data.params = params;
 	data.start = host;
 
-	ret = pipeline_comp_params(host, &data, host->params.direction);
+	ret = pipeline_comp_params(host, &data, params->params.direction);
 	if (ret < 0) {
 		trace_pipe_error("pipeline_params() error: ret = %d, host->"
 				 "comp.id = %u", ret, host->comp.id);
@@ -397,7 +444,7 @@ static int pipeline_comp_prepare(struct comp_dev *current, void *data, int dir)
 {
 	int err = 0;
 	struct pipeline_data *ppl_data = data;
-	int stream_direction = ppl_data->start->params.direction;
+	int stream_direction = dir;
 	int end_type;
 
 	tracev_pipe("pipeline_comp_prepare(), current->comp.id = %u, dir = %u",
@@ -433,7 +480,7 @@ static int pipeline_comp_prepare(struct comp_dev *current, void *data, int dir)
 		return err;
 
 	return pipeline_for_each_comp(current, &pipeline_comp_prepare, data,
-				      &buffer_reset_pos, dir);
+				      &buffer_reset_pos, NULL, dir);
 }
 
 /* prepare the pipeline for usage */
@@ -446,7 +493,7 @@ int pipeline_prepare(struct pipeline *p, struct comp_dev *dev)
 
 	ppl_data.start = dev;
 
-	ret = pipeline_comp_prepare(dev, &ppl_data, dev->params.direction);
+	ret = pipeline_comp_prepare(dev, &ppl_data, dev->direction);
 	if (ret < 0) {
 		trace_pipe_error("pipeline_prepare() error: ret = %d,"
 				 "dev->comp.id = %u", ret, dev->comp.id);
@@ -475,7 +522,7 @@ static int pipeline_comp_cache(struct comp_dev *current, void *data, int dir)
 
 	return pipeline_for_each_comp(current, &pipeline_comp_cache, data,
 				      comp_buffer_cache_op(ppl_data->cmd),
-				      dir);
+				      NULL, dir);
 }
 
 /* execute cache operation on pipeline */
@@ -499,7 +546,7 @@ void pipeline_cache(struct pipeline *p, struct comp_dev *dev, int cmd)
 	irq_local_disable(flags);
 
 	/* execute cache operation on components and buffers */
-	pipeline_comp_cache(dev, &data, dev->params.direction);
+	pipeline_comp_cache(dev, &data, dev->direction);
 
 	/* pipeline needs to be flushed after usage */
 	if (cmd == CACHE_WRITEBACK_INV) {
@@ -571,7 +618,7 @@ static int pipeline_comp_trigger(struct comp_dev *current, void *data, int dir)
 					 ppl_data->cmd);
 
 	return pipeline_for_each_comp(current, &pipeline_comp_trigger, data,
-				      NULL, dir);
+				      NULL, NULL, dir);
 }
 
 /* trigger pipeline on slave core */
@@ -682,7 +729,7 @@ int pipeline_trigger(struct pipeline *p, struct comp_dev *host, int cmd)
 	data.start = host;
 	data.cmd = cmd;
 
-	ret = pipeline_comp_trigger(host, &data, host->params.direction);
+	ret = pipeline_comp_trigger(host, &data, host->direction);
 	if (ret < 0) {
 		trace_ipc_error("pipeline_trigger() error: ret = %d, host->"
 				"comp.id = %u, cmd = %d", ret, host->comp.id,
@@ -695,7 +742,7 @@ int pipeline_trigger(struct pipeline *p, struct comp_dev *host, int cmd)
 static int pipeline_comp_reset(struct comp_dev *current, void *data, int dir)
 {
 	struct pipeline *p = data;
-	int stream_direction = p->source_comp->params.direction;
+	int stream_direction = dir;
 	int end_type;
 	int err = 0;
 
@@ -728,7 +775,7 @@ static int pipeline_comp_reset(struct comp_dev *current, void *data, int dir)
 		return err;
 
 	return pipeline_for_each_comp(current, &pipeline_comp_reset, data,
-				      NULL, dir);
+				      NULL, NULL, dir);
 }
 
 /* reset the whole pipeline */
@@ -738,7 +785,7 @@ int pipeline_reset(struct pipeline *p, struct comp_dev *host)
 
 	trace_pipe_with_ids(p, "pipeline_reset()");
 
-	ret = pipeline_comp_reset(host, p, host->params.direction);
+	ret = pipeline_comp_reset(host, p, host->direction);
 	if (ret < 0) {
 		trace_pipe_error("pipeline_reset() error: ret = %d, host->comp."
 				 "id = %u", ret, host->comp.id);
@@ -775,7 +822,7 @@ static int pipeline_comp_copy(struct comp_dev *current, void *data, int dir)
 	}
 
 	err = pipeline_for_each_comp(current, &pipeline_comp_copy,
-				     data, NULL, dir);
+				     data, NULL, NULL, dir);
 	if (err < 0 || err == PPL_STATUS_PATH_STOP)
 		return err;
 
@@ -797,7 +844,7 @@ static int pipeline_copy(struct pipeline *p)
 	uint32_t dir;
 	int ret = 0;
 
-	if (p->source_comp->params.direction == SOF_IPC_STREAM_PLAYBACK) {
+	if (p->source_comp->direction == SOF_IPC_STREAM_PLAYBACK) {
 		dir = PPL_DIR_UPSTREAM;
 		start = p->sink_comp;
 	} else {
@@ -840,7 +887,7 @@ static int pipeline_comp_timestamp(struct comp_dev *current, void *data,
 	}
 
 	return pipeline_for_each_comp(current, &pipeline_comp_timestamp, data,
-				      NULL, dir);
+				      NULL, NULL, dir);
 }
 
 /* Get the timestamps for host and first active DAI found. */
@@ -854,7 +901,7 @@ void pipeline_get_timestamp(struct pipeline *p, struct comp_dev *host,
 	data.start = host;
 	data.posn = posn;
 
-	pipeline_comp_timestamp(host, &data, host->params.direction);
+	pipeline_comp_timestamp(host, &data, host->direction);
 
 	/* set timestamp resolution */
 	posn->timestamp_ns = p->ipc_pipe.period * 1000;
@@ -874,7 +921,7 @@ static int pipeline_comp_xrun(struct comp_dev *current, void *data, int dir)
 	}
 
 	return pipeline_for_each_comp(current, &pipeline_comp_xrun, data, NULL,
-				      dir);
+				      NULL, dir);
 }
 
 /* Send an XRUN to each host for this component. */
@@ -906,7 +953,7 @@ void pipeline_xrun(struct pipeline *p, struct comp_dev *dev,
 	posn.xrun_comp_id = dev->comp.id;
 	data.posn = &posn;
 
-	pipeline_comp_xrun(dev, &data, dev->params.direction);
+	pipeline_comp_xrun(dev, &data, dev->direction);
 }
 
 #if NO_XRUN_RECOVERY

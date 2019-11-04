@@ -341,6 +341,24 @@ static int kpb_trigger(struct comp_dev *dev, int cmd)
 }
 
 /**
+ * \brief KPB params.
+ * \param[in] dev - component device pointer.
+ * \param[in] params - pcm params.
+ * \return none.
+ */
+static int kpb_params(struct comp_dev *dev,
+		      struct sof_ipc_stream_params *params)
+{
+	struct comp_data *kpb = comp_get_drvdata(dev);
+
+	kpb->host_buffer_size = params->buffer.size;
+	kpb->host_period_size = params->host_period_bytes;
+	kpb->config.sampling_width = params->sample_container_bytes * 8;
+
+	return 0;
+}
+
+/**
  * \brief Prepare key phrase buffer.
  * \param[in] dev - kpb component device pointer.
  *
@@ -379,9 +397,6 @@ static int kpb_prepare(struct comp_dev *dev)
 	kpb_change_state(kpb, KPB_STATE_PREPARING);
 	kpb->kpb_no_of_clients = 0;
 	kpb->buffered_data = 0;
-	kpb->host_buffer_size = dev->params.buffer.size;
-	kpb->host_period_size = dev->params.host_period_bytes;
-	kpb->config.sampling_width = dev->params.sample_container_bytes * 8;
 	kpb->kpb_buffer_size = KPB_MAX_BUFFER_SIZE(kpb->config.sampling_width);
 	kpb->sel_sink = NULL;
 	kpb->host_sink = NULL;
@@ -1422,7 +1437,7 @@ struct comp_driver comp_kpb = {
 		.prepare = kpb_prepare,
 		.reset = kpb_reset,
 		.cache = kpb_cache,
-		.params = NULL,
+		.params = kpb_params,
 	},
 };
 

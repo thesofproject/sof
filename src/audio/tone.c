@@ -439,10 +439,19 @@ static void tone_free(struct comp_dev *dev)
 }
 
 /* set component audio stream parameters */
-static int tone_params(struct comp_dev *dev)
+static int tone_params(struct comp_dev *dev,
+		       struct sof_ipc_stream_params *params)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct sof_ipc_comp_config *config = COMP_GET_CONFIG(dev);
+	struct comp_buffer *sourceb;
+	struct comp_buffer *sinkb;
+
+	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer,
+				  sink_list);
+
+	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
+				source_list);
 
 	trace_tone_with_ids(dev, "tone_params(), config->frame_fmt = %u",
 			    config->frame_fmt);
@@ -451,10 +460,11 @@ static int tone_params(struct comp_dev *dev)
 	if (config->frame_fmt != SOF_IPC_FRAME_S32_LE)
 		return -EINVAL;
 
-	dev->params.frame_fmt = config->frame_fmt;
+	sourceb->frame_fmt = config->frame_fmt;
+	sinkb->frame_fmt = config->frame_fmt;
 
 	/* calculate period size based on config */
-	cd->period_bytes = dev->frames * comp_frame_bytes(dev);
+	cd->period_bytes = dev->frames * buffer_frame_bytes(sourceb);
 
 	return 0;
 }
@@ -661,6 +671,7 @@ static int tone_copy(struct comp_dev *dev)
 static int tone_prepare(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
+	struct comp_buffer *sourceb;
 	int32_t f;
 	int32_t a;
 	int ret;
@@ -675,7 +686,10 @@ static int tone_prepare(struct comp_dev *dev)
 	if (ret == COMP_STATUS_STATE_ALREADY_SET)
 		return PPL_STATUS_PATH_STOP;
 
-	cd->channels = dev->params.channels;
+	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer,
+				  sink_list);
+
+	cd->channels = sourceb->channels;
 	trace_tone_with_ids(dev, "tone_prepare(), "
 			    "cd->channels = %u, "
 			    "cd->rate = %u",

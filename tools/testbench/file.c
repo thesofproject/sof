@@ -305,7 +305,7 @@ static int file_s32_default(struct comp_dev *dev, struct comp_buffer *sink,
 			    struct comp_buffer *source, uint32_t frames)
 {
 	struct file_comp_data *cd = comp_get_drvdata(dev);
-	int nch = dev->params.channels;
+	int nch = source->channels;
 	int n_samples = 0;
 
 	switch (cd->fs.mode) {
@@ -333,7 +333,7 @@ static int file_s16(struct comp_dev *dev, struct comp_buffer *sink,
 		    struct comp_buffer *source, uint32_t frames)
 {
 	struct file_comp_data *cd = comp_get_drvdata(dev);
-	int nch = dev->params.channels;
+	int nch = source->channels;
 	int n_samples = 0;
 
 	switch (cd->fs.mode) {
@@ -359,7 +359,7 @@ static int file_s24(struct comp_dev *dev, struct comp_buffer *sink,
 		    struct comp_buffer *source, uint32_t frames)
 {
 	struct file_comp_data *cd = comp_get_drvdata(dev);
-	int nch = dev->params.channels;
+	int nch = source->channels;
 	int n_samples = 0;
 
 	switch (cd->fs.mode) {
@@ -485,23 +485,29 @@ static void file_free(struct comp_dev *dev)
 }
 
 /* set component audio stream parameters */
-static int file_params(struct comp_dev *dev)
+static int file_params(struct comp_dev *dev,
+		       struct sof_ipc_stream_params *params)
 {
 	struct file_comp_data *cd = comp_get_drvdata(dev);
 	struct sof_ipc_comp_config *config = COMP_GET_CONFIG(dev);
+	struct comp_buffer *sourceb;
+
+	/* file component source buffer */
+	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer,
+				  sink_list);
 
 	/* for file endpoint set the following from topology config */
 	if (cd->fs.mode == FILE_WRITE) {
-		dev->params.frame_fmt = config->frame_fmt;
-		if (dev->params.frame_fmt == SOF_IPC_FRAME_S16_LE)
-			dev->params.sample_container_bytes = 2;
+		sourceb->frame_fmt = config->frame_fmt;
+		if (sourceb->frame_fmt == SOF_IPC_FRAME_S16_LE)
+			cd->sample_container_bytes = 2;
 		else
-			dev->params.sample_container_bytes = 4;
+			cd->sample_container_bytes = 4;
 	}
 
 	/* calculate period size based on config */
-	cd->period_bytes = dev->frames * dev->params.sample_container_bytes *
-		dev->params.channels;
+	cd->period_bytes = dev->frames * cd->sample_container_bytes *
+		sourceb->channels;
 
 	/* File to sink supports only S32_LE/S16_LE/S24_4LE PCM formats */
 	if (config->frame_fmt != SOF_IPC_FRAME_S32_LE &&
@@ -559,13 +565,13 @@ static int file_copy(struct comp_dev *dev)
 					 source_list);
 
 		/* test sink has enough free frames */
-		snk_frames = buffer->free / comp_frame_bytes(buffer->sink);
+		snk_frames = buffer->free / buffer_frame_bytes(buffer);
 		if (snk_frames > 0 && !cd->fs.reached_eof) {
 			/* read PCM samples from file */
 			ret = cd->file_func(dev, buffer, NULL, snk_frames);
 
 			/* update sink buffer pointers */
-			bytes = dev->params.sample_container_bytes;
+			bytes = cd->sample_container_bytes;
 			if (ret > 0)
 				comp_update_buffer_produce(buffer,
 							   ret * bytes);
@@ -577,13 +583,13 @@ static int file_copy(struct comp_dev *dev)
 					 struct comp_buffer, sink_list);
 
 		/* test source has enough free frames */
-		src_frames = buffer->avail / comp_frame_bytes(buffer->source);
+		src_frames = buffer->avail / buffer_frame_bytes(buffer);
 		if (src_frames > 0) {
 			/* write PCM samples into file */
 			ret = cd->file_func(dev, NULL, buffer, src_frames);
 
 			/* update source buffer pointers */
-			bytes = dev->params.sample_container_bytes;
+			bytes = cd->sample_container_bytes;
 			if (ret > 0)
 				comp_update_buffer_consume(buffer,
 							   ret * bytes);
@@ -630,36 +636,36 @@ static int file_prepare(struct comp_dev *dev)
 	switch (config->frame_fmt) {
 	case(SOF_IPC_FRAME_S16_LE):
 		ret = buffer_set_size(buffer, dev->frames * 2 *
-			periods * dev->params.channels);
+			periods * buffer->channels);
 		if (ret < 0) {
 			fprintf(stderr, "error: file buffer size set\n");
 			return ret;
 		}
-		buffer_reset_pos(buffer);
+		buffer_reset_pos(buffer, NULL);
 
 		/* set file function */
 		cd->file_func = file_s16;
 		break;
 	case(SOF_IPC_FRAME_S24_4LE):
 		ret = buffer_set_size(buffer, dev->frames * 4 *
-			periods * dev->params.channels);
+			periods * buffer->channels);
 		if (ret < 0) {
 			fprintf(stderr, "error: file buffer size set\n");
 			return ret;
 		}
-		buffer_reset_pos(buffer);
+		buffer_reset_pos(buffer, NULL);
 
 		/* set file function */
 		cd->file_func = file_s24;
 		break;
 	case(SOF_IPC_FRAME_S32_LE):
 		ret = buffer_set_size(buffer, dev->frames * 4 *
-			periods * dev->params.channels);
+			periods * buffer->channels);
 		if (ret < 0) {
 			fprintf(stderr, "error: file buffer size set\n");
 			return ret;
 		}
-		buffer_reset_pos(buffer);
+		buffer_reset_pos(buffer, NULL);
 		break;
 	default:
 		return -EINVAL;
