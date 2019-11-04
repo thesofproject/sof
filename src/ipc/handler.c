@@ -215,11 +215,11 @@ static int ipc_stream_pcm_params(uint32_t stream)
 	struct dma_sg_elem_array elem_array;
 	uint32_t ring_size;
 	enum comp_copy_type copy_type = COMP_COPY_ONE_SHOT;
+	struct comp_dev *cd;
 #endif
 	struct sof_ipc_pcm_params pcm_params;
 	struct sof_ipc_pcm_params_reply reply;
 	struct ipc_comp_dev *pcm_dev;
-	struct comp_dev *cd;
 	int err, reset_err, posn_offset;
 
 	/* copy message with ABI safe method */
@@ -241,15 +241,13 @@ static int ipc_stream_pcm_params(uint32_t stream)
 		return -EINVAL;
 	}
 
-	/* set params component params */
-	cd = pcm_dev->cd;
 	if (IPC_IS_SIZE_INVALID(pcm_params.params)) {
 		IPC_SIZE_ERROR_TRACE(TRACE_CLASS_IPC, pcm_params.params);
 		return -EINVAL;
 	}
-	cd->params = pcm_params.params;
 
 #if CONFIG_HOST_PTABLE
+	cd = pcm_dev->cd;
 
 	/*
 	 * walk in both directions to check if the pipeline is hostless

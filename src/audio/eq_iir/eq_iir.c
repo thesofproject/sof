@@ -81,7 +81,7 @@ static void eq_iir_s16_default(struct comp_dev *dev,
 	int ch;
 	int i;
 	int idx;
-	int nch = dev->params.channels;
+	int nch = source->channels;
 
 	for (ch = 0; ch < nch; ch++) {
 		filter = &cd->iir[ch];
@@ -112,7 +112,7 @@ static void eq_iir_s24_default(struct comp_dev *dev,
 	int idx;
 	int ch;
 	int i;
-	int nch = dev->params.channels;
+	int nch = source->channels;
 
 	for (ch = 0; ch < nch; ch++) {
 		filter = &cd->iir[ch];
@@ -142,7 +142,7 @@ static void eq_iir_s32_default(struct comp_dev *dev,
 	int idx;
 	int ch;
 	int i;
-	int nch = dev->params.channels;
+	int nch = source->channels;
 
 	for (ch = 0; ch < nch; ch++) {
 		filter = &cd->iir[ch];
@@ -172,7 +172,7 @@ static void eq_iir_s32_16_default(struct comp_dev *dev,
 	int idx;
 	int ch;
 	int i;
-	int nch = dev->params.channels;
+	int nch = source->channels;
 
 	for (ch = 0; ch < nch; ch++) {
 		filter = &cd->iir[ch];
@@ -203,7 +203,7 @@ static void eq_iir_s32_24_default(struct comp_dev *dev,
 	int idx;
 	int ch;
 	int i;
-	int nch = dev->params.channels;
+	int nch = source->channels;
 
 	for (ch = 0; ch < nch; ch++) {
 		filter = &cd->iir[ch];
@@ -225,7 +225,7 @@ static void eq_iir_s16_pass(struct comp_dev *dev,
 			    struct comp_buffer *sink,
 			    uint32_t frames)
 {
-	buffer_copy_s16(source, sink, frames * dev->params.channels);
+	buffer_copy_s16(source, sink, frames * source->channels);
 }
 #endif /* CONFIG_FORMAT_S16LE */
 
@@ -235,7 +235,7 @@ static void eq_iir_s32_pass(struct comp_dev *dev,
 			    struct comp_buffer *sink,
 			    uint32_t frames)
 {
-	buffer_copy_s32(source, sink, frames * dev->params.channels);
+	buffer_copy_s32(source, sink, frames * source->channels);
 }
 #endif /* CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE */
 
@@ -248,7 +248,7 @@ static void eq_iir_s32_s16_pass(struct comp_dev *dev,
 	int32_t *x;
 	int16_t *y;
 	int i;
-	int n = frames * dev->params.channels;
+	int n = frames * source->channels;
 
 	for (i = 0; i < n; i++) {
 		x = buffer_read_frag_s32(source, i);
@@ -267,7 +267,7 @@ static void eq_iir_s32_s24_pass(struct comp_dev *dev,
 	int32_t *x;
 	int32_t *y;
 	int i;
-	int n = frames * dev->params.channels;
+	int n = frames * source->channels;
 
 	for (i = 0; i < n; i++) {
 		x = buffer_read_frag_s32(source, i);
@@ -596,7 +596,8 @@ static void eq_iir_free(struct comp_dev *dev)
 }
 
 /* set component audio stream parameters */
-static int eq_iir_params(struct comp_dev *dev)
+static int eq_iir_params(struct comp_dev *dev,
+			 struct sof_ipc_stream_params *params)
 {
 	trace_eq_with_ids(dev, "eq_iir_params()");
 
@@ -750,16 +751,20 @@ static int eq_iir_copy(struct comp_dev *dev)
 {
 	struct comp_copy_limits cl;
 	struct comp_data *cd = comp_get_drvdata(dev);
+	struct comp_buffer *sourceb;
 	int ret;
 
 	tracev_eq_with_ids(dev, "eq_iir_copy()");
+
+	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer,
+				  sink_list);
 
 	/* Check for changed configuration */
 	if (cd->config_new) {
 		eq_iir_free_parameters(&cd->config);
 		cd->config = cd->config_new;
 		cd->config_new = NULL;
-		ret = eq_iir_setup(cd, dev->params.channels);
+		ret = eq_iir_setup(cd, sourceb->channels);
 		if (ret < 0) {
 			trace_eq_error_with_ids(dev, "eq_iir_copy(), failed IIR setup");
 			return ret;
@@ -808,17 +813,17 @@ static int eq_iir_prepare(struct comp_dev *dev)
 				struct comp_buffer, source_list);
 
 	/* get source data format */
-	cd->source_format = sourceb->source->params.frame_fmt;
+	cd->source_format = sourceb->frame_fmt;
 
 	/* get sink data format and period bytes */
-	cd->sink_format = sinkb->sink->params.frame_fmt;
-	sink_period_bytes = comp_period_bytes(sinkb->sink, dev->frames);
+	cd->sink_format = sinkb->frame_fmt;
+	sink_period_bytes = buffer_period_bytes(sinkb, dev->frames);
 
 	/* Rewrite params format for this component to match the host side. */
-	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK)
-		dev->params.frame_fmt = cd->source_format;
+	if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
+		sourceb->frame_fmt = cd->source_format;
 	else
-		dev->params.frame_fmt = cd->sink_format;
+		sinkb->frame_fmt = cd->sink_format;
 
 	if (sinkb->size < config->periods_sink * sink_period_bytes) {
 		trace_eq_error_with_ids(dev, "eq_iir_prepare(), sink buffer size %d"
@@ -831,7 +836,7 @@ static int eq_iir_prepare(struct comp_dev *dev)
 	trace_eq_with_ids(dev, "eq_iir_prepare(), source_format=%d, sink_format=%d",
 			  cd->source_format, cd->sink_format);
 	if (cd->config) {
-		ret = eq_iir_setup(cd, dev->params.channels);
+		ret = eq_iir_setup(cd, sourceb->channels);
 		if (ret < 0) {
 			trace_eq_error_with_ids(dev, "eq_iir_prepare(), setup failed.");
 			goto err;

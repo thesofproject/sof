@@ -107,7 +107,7 @@ static void src_copy_s32(struct comp_dev *dev,
 
 	/* Copy input data from source */
 	buf = (int32_t *)cd->ibuf[0];
-	n = cd->source_frames * dev->params.channels;
+	n = cd->source_frames * source->channels;
 	while (n > 0) {
 		n_wrap_src = (int32_t *)source->end_addr - src;
 		n_copy = (n < n_wrap_src) ? n : n_wrap_src;
@@ -126,7 +126,7 @@ static void src_copy_s32(struct comp_dev *dev,
 	if (ret)
 		trace_asrc_error_with_ids(dev, "src_copy_s32(), error %d", ret);
 
-	n = outframes * dev->params.channels;
+	n = outframes * sink->channels;
 	buf = (int32_t *)cd->obuf[0];
 	while (n > 0) {
 		n_wrap_snk = (int32_t *)sink->end_addr - snk;
@@ -164,7 +164,7 @@ static void src_copy_s16(struct comp_dev *dev,
 
 	/* Copy input data from source */
 	buf = (int16_t *)cd->ibuf[0];
-	n = cd->source_frames * dev->params.channels;
+	n = cd->source_frames * source->channels;
 	while (n > 0) {
 		n_wrap_src = (int16_t *)source->end_addr - src;
 		n_copy = (n < n_wrap_src) ? n : n_wrap_src;
@@ -186,7 +186,7 @@ static void src_copy_s16(struct comp_dev *dev,
 	if (ret)
 		trace_asrc_error_with_ids(dev, "src_copy_s16(), error %d", ret);
 
-	n = outframes * dev->params.channels;
+	n = outframes * sink->channels;
 	buf = (int16_t *)cd->obuf[0];
 	while (n > 0) {
 		n_wrap_snk = (int16_t *)sink->end_addr - snk;
@@ -304,9 +304,10 @@ static int asrc_trigger(struct comp_dev *dev, int cmd)
 }
 
 /* set component audio stream parameters */
-static int asrc_params(struct comp_dev *dev)
+static int asrc_params(struct comp_dev *dev,
+		       struct sof_ipc_stream_params *pcm_params)
 {
-	struct sof_ipc_stream_params *params = &dev->params;
+	struct sof_ipc_stream_params *params = pcm_params;
 	struct sof_ipc_comp_asrc *asrc = COMP_GET_IPC(dev, sof_ipc_comp_asrc);
 	struct comp_data *cd = comp_get_drvdata(dev);
 
@@ -383,19 +384,12 @@ static int asrc_prepare(struct comp_dev *dev)
 				struct comp_buffer, source_list);
 
 	/* get source data format and period bytes */
-	cd->source_format = sourceb->source->params.frame_fmt;
-	source_period_bytes = comp_period_bytes(sourceb->source,
-						cd->source_frames);
+	cd->source_format = sourceb->frame_fmt;
+	source_period_bytes = buffer_period_bytes(sourceb, cd->source_frames);
 
 	/* get sink data format and period bytes */
-	cd->sink_format = sinkb->sink->params.frame_fmt;
-	sink_period_bytes = comp_period_bytes(sinkb->sink, cd->sink_frames);
-
-	/* Rewrite params format for this component to match the host side. */
-	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK)
-		dev->params.frame_fmt = cd->source_format;
-	else
-		dev->params.frame_fmt = cd->sink_format;
+	cd->sink_format = sinkb->frame_fmt;
+	sink_period_bytes = buffer_period_bytes(sinkb, cd->sink_frames);
 
 	if (sinkb->size < config->periods_sink * sink_period_bytes) {
 		trace_asrc_error_with_ids(dev, "asrc_prepare(), sink size=%d"
@@ -420,7 +414,7 @@ static int asrc_prepare(struct comp_dev *dev)
 	}
 
 	/* ASRC supports S16_LE, S24_4LE and S32_LE formats */
-	switch (dev->params.frame_fmt) {
+	switch (sourceb->frame_fmt) {
 	case SOF_IPC_FRAME_S16_LE:
 		cd->asrc_func = src_copy_s16;
 		break;
@@ -440,7 +434,7 @@ static int asrc_prepare(struct comp_dev *dev)
 	/*
 	 * Allocate input and output data buffer
 	 */
-	frame_bytes = comp_frame_bytes(sourceb->source);
+	frame_bytes = buffer_frame_bytes(sourceb);
 	cd->buf_size = (cd->source_frames_max + cd->sink_frames_max) *
 		frame_bytes;
 
@@ -453,8 +447,8 @@ static int asrc_prepare(struct comp_dev *dev)
 		goto err;
 	}
 
-	sample_bytes = frame_bytes / dev->params.channels;
-	for (i = 0; i < dev->params.channels; i++) {
+	sample_bytes = frame_bytes / sourceb->channels;
+	for (i = 0; i < sourceb->channels; i++) {
 		cd->ibuf[i] = cd->buf + i * sample_bytes;
 		cd->obuf[i] = cd->ibuf[i] + cd->source_frames_max * frame_bytes;
 	}
@@ -463,7 +457,7 @@ static int asrc_prepare(struct comp_dev *dev)
 	 * Get required size and allocate memory for ASRC
 	 */
 	sample_bits = sample_bytes * 8;
-	ret = asrc_get_required_size(&cd->asrc_size, dev->params.channels,
+	ret = asrc_get_required_size(&cd->asrc_size, sourceb->channels,
 				     sample_bits);
 	if (ret) {
 		trace_asrc_error_with_ids(dev, "asrc_prepare(), get_required_size_bytes failed");
@@ -482,7 +476,7 @@ static int asrc_prepare(struct comp_dev *dev)
 	/*
 	 * Initialize ASRC
 	 */
-	ret = asrc_initialise(cd->asrc_obj, dev->params.channels,
+	ret = asrc_initialise(cd->asrc_obj, sourceb->channels,
 			      cd->source_rate, cd->sink_rate,
 			      ASRC_IOF_INTERLEAVED, ASRC_IOF_INTERLEAVED,
 			      ASRC_BM_LINEAR, cd->frames, sample_bits,
@@ -532,8 +526,8 @@ static int asrc_copy(struct comp_dev *dev)
 	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
 			       source_list);
 
-	frames_src = source->avail / comp_frame_bytes(source->source);
-	frames_snk = sink->free / comp_frame_bytes(sink->sink);
+	frames_src = source->avail / buffer_frame_bytes(source);
+	frames_snk = sink->free / buffer_frame_bytes(sink);
 
 	cd->source_frames = MIN(frames_src, cd->source_frames_max);
 	cd->sink_frames = ceil_divide(cd->source_frames * cd->sink_rate,
@@ -562,11 +556,11 @@ static int asrc_copy(struct comp_dev *dev)
 	 */
 	if (consumed > 0)
 		comp_update_buffer_consume(source, consumed *
-					   comp_frame_bytes(source->source));
+					   buffer_frame_bytes(source));
 
 	if (produced > 0)
 		comp_update_buffer_produce(sink, produced *
-					   comp_frame_bytes(sink->sink));
+					   buffer_frame_bytes(sink));
 
 	return 0;
 }

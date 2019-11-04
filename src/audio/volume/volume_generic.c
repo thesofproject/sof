@@ -80,7 +80,7 @@ static void vol_s16_to_s24(struct comp_dev *dev, struct comp_buffer *sink,
 
 	/* Samples are Q1.15 and volume is Q8.16 */
 	for (i = 0; i < frames; i++) {
-		for (channel = 0; channel < dev->params.channels; channel++) {
+		for (channel = 0; channel < sink->channels; channel++) {
 			src = buffer_read_frag_s16(source, buff_frag);
 			dest = buffer_write_frag_s32(sink, buff_frag);
 
@@ -113,7 +113,7 @@ static void vol_s24_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
 
 	/* Samples are Q1.23 --> Q1.15 and volume is Q8.16 */
 	for (i = 0; i < frames; i++) {
-		for (channel = 0; channel < dev->params.channels; channel++) {
+		for (channel = 0; channel < sink->channels; channel++) {
 			src = buffer_read_frag_s32(source, buff_frag);
 			dest = buffer_write_frag_s32(sink, buff_frag);
 
@@ -162,7 +162,7 @@ static void vol_s16_to_s32(struct comp_dev *dev, struct comp_buffer *sink,
 
 	/* Samples are Q1.15 --> Q1.31 and volume is Q8.16 */
 	for (i = 0; i < frames; i++) {
-		for (channel = 0; channel < dev->params.channels; channel++) {
+		for (channel = 0; channel < sink->channels; channel++) {
 			src = buffer_read_frag_s16(source, buff_frag);
 			dest = buffer_write_frag_s32(sink, buff_frag);
 			*dest = q_multsr_sat_32x32
@@ -196,7 +196,7 @@ static void vol_s32_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
 
 	/* Samples are Q1.31 --> Q1.15 and volume is Q8.16 */
 	for (i = 0; i < frames; i++) {
-		for (channel = 0; channel < dev->params.channels; channel++) {
+		for (channel = 0; channel < sink->channels; channel++) {
 			src = buffer_read_frag_s32(source, buff_frag);
 			dest = buffer_write_frag_s16(sink, buff_frag);
 
@@ -244,7 +244,7 @@ static void vol_s32_to_s24(struct comp_dev *dev, struct comp_buffer *sink,
 
 	/* Samples are Q1.31 --> Q1.23 and volume is Q8.16 */
 	for (i = 0; i < frames; i++) {
-		for (channel = 0; channel < dev->params.channels; channel++) {
+		for (channel = 0; channel < sink->channels; channel++) {
 			src = buffer_read_frag_s32(source, buff_frag);
 			dest = buffer_write_frag_s32(sink, buff_frag);
 
@@ -277,7 +277,7 @@ static void vol_s24_to_s32(struct comp_dev *dev, struct comp_buffer *sink,
 
 	/* Samples are Q1.23 --> Q1.31 and volume is Q8.16 */
 	for (i = 0; i < frames; i++) {
-		for (channel = 0; channel < dev->params.channels; channel++) {
+		for (channel = 0; channel < sink->channels; channel++) {
 			src = buffer_read_frag_s32(source, buff_frag);
 			dest = buffer_write_frag_s32(sink, buff_frag);
 
@@ -331,7 +331,7 @@ static void vol_s24_to_s24(struct comp_dev *dev, struct comp_buffer *sink,
 
 	/* Samples are Q1.23 --> Q1.23 and volume is Q8.16 */
 	for (i = 0; i < frames; i++) {
-		for (channel = 0; channel < dev->params.channels; channel++) {
+		for (channel = 0; channel < sink->channels; channel++) {
 			src = buffer_read_frag_s32(source, buff_frag);
 			dest = buffer_write_frag_s32(sink, buff_frag);
 
@@ -366,7 +366,7 @@ static void vol_s32_to_s32(struct comp_dev *dev, struct comp_buffer *sink,
 
 	/* Samples are Q1.31 --> Q1.31 and volume is Q8.16 */
 	for (i = 0; i < frames; i++) {
-		for (channel = 0; channel < dev->params.channels; channel++) {
+		for (channel = 0; channel < sink->channels; channel++) {
 			src = buffer_read_frag_s32(source, buff_frag);
 			dest = buffer_write_frag_s32(sink, buff_frag);
 
@@ -403,7 +403,7 @@ static void vol_s16_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
 
 	/* Samples are Q1.15 --> Q1.15 and volume is Q8.16 */
 	for (i = 0; i < frames; i++) {
-		for (channel = 0; channel < dev->params.channels; channel++) {
+		for (channel = 0; channel < sink->channels; channel++) {
 			src = buffer_read_frag_s16(source, buff_frag);
 			dest = buffer_write_frag_s16(sink, buff_frag);
 

@@ -138,11 +138,15 @@ typedef void (*scale_vol)(struct comp_dev *, struct comp_buffer *,
  */
 static inline scale_vol vol_get_processing_function(struct comp_dev *dev)
 {
+	struct comp_buffer *sinkb;
 	int i;
+
+	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
+				source_list);
 
 	/* map the volume function for source and sink buffers */
 	for (i = 0; i < func_count; i++) {
-		if (dev->params.frame_fmt != func_map[i].frame_fmt)
+		if (sinkb->frame_fmt != func_map[i].frame_fmt)
 			continue;
 
 		return func_map[i].func;

@@ -11,7 +11,6 @@
 #include <stdint.h>
 #include <malloc.h>
 #include <cmocka.h>
-
 #include <sof/list.h>
 #include <sof/drivers/ipc.h>
 #include <sof/audio/buffer.h>
@@ -96,7 +95,7 @@ static struct sof_ipc_comp mock_comp = {
 };
 
 static struct comp_dev *create_comp(struct sof_ipc_comp *comp,
-				    struct comp_driver *drv, int num_chans)
+				    struct comp_driver *drv)
 {
 	struct comp_dev *cd = drv->ops.new(comp);
 
@@ -107,15 +106,18 @@ static struct comp_dev *create_comp(struct sof_ipc_comp *comp,
 	list_init(&cd->bsource_list);
 	list_init(&cd->bsink_list);
 
-	cd->params.channels = num_chans;
-	cd->params.frame_fmt = SOF_IPC_FRAME_S32_LE;
-
 	return cd;
 }
 
 static void destroy_comp(struct comp_driver *drv, struct comp_dev *dev)
 {
 	drv->ops.free(dev);
+}
+
+static void init_buffer_pcm_params(struct comp_buffer *buf, int num_chans)
+{
+	buf->channels = num_chans;
+	buf->frame_fmt = SOF_IPC_FRAME_S32_LE;
 }
 
 static void create_sources(struct mix_test_case *tc)
@@ -132,8 +134,9 @@ static void create_sources(struct mix_test_case *tc)
 				tc->num_chans
 		};
 
-		src->comp = create_comp(&mock_comp, &drv_mock, tc->num_chans);
+		src->comp = create_comp(&mock_comp, &drv_mock);
 		src->buf = buffer_new(&buf);
+		init_buffer_pcm_params(src->buf, tc->num_chans);
 
 		src->buf->source = src->comp;
 		src->buf->sink = mixer_dev_mock;
@@ -187,7 +190,7 @@ static int test_setup(void **state)
 	};
 
 	mixer_dev_mock = create_comp((struct sof_ipc_comp *)&mixer,
-				     &mixer_drv_mock, 0);
+				     &mixer_drv_mock);
 
 	struct mix_test_case *tc = *((struct mix_test_case **)state);
 
@@ -200,20 +203,21 @@ static int test_setup(void **state)
 		post_mixer_buf = buffer_new(&buf);
 
 		create_sources(tc);
-		post_mixer_comp = create_comp(&mock_comp, &drv_mock,
-					      tc->num_chans);
-
-		activate_periph_comps(tc);
-		mixer_drv_mock.ops.prepare(mixer_dev_mock);
-
-		mixer_dev_mock->state = COMP_STATE_ACTIVE;
+		post_mixer_comp = create_comp(&mock_comp, &drv_mock);
 
 		post_mixer_buf->source = mixer_dev_mock;
 		post_mixer_buf->sink = post_mixer_comp;
+		init_buffer_pcm_params(post_mixer_buf, tc->num_chans);
+
 		list_item_prepend(&post_mixer_buf->source_list,
 				  &mixer_dev_mock->bsink_list);
 		list_item_prepend(&post_mixer_buf->sink_list,
 				  &post_mixer_comp->bsource_list);
+
+		mixer_drv_mock.ops.prepare(mixer_dev_mock);
+
+		mixer_dev_mock->state = COMP_STATE_ACTIVE;
+		activate_periph_comps(tc);
 
 		mixer_dev_mock->frames = MIX_TEST_SAMPLES;
 	}
@@ -256,8 +260,6 @@ static void test_audio_mixer_copy(void **state)
 	int src_idx;
 	int smp;
 	struct mix_test_case *tc = *((struct mix_test_case **)state);
-
-	mixer_dev_mock->params.channels = tc->num_chans;
 
 	for (src_idx = 0; src_idx < tc->num_sources; ++src_idx) {
 		uint32_t *samples = tc->sources[src_idx].buf->addr;

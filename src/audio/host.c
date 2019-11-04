@@ -78,11 +78,15 @@ struct host_data {
 	struct dma_chan_data *chan;
 	struct dma_sg_config config;
 	struct comp_buffer *dma_buffer;
+	struct comp_buffer *local_buffer;
 
 	/* host position reporting related */
 	uint32_t host_size;	/**< Host buffer size (in bytes) */
 	uint32_t report_pos;	/**< Position in current report period */
 	uint32_t local_pos;	/**< Local position in host buffer */
+	uint32_t host_period_bytes;
+	uint16_t stream_tag;
+	uint16_t no_stream_position; /**< 1 means don't send stream position */
 
 	/* host component attributes */
 	enum comp_copy_type copy_type;	/**< Current host copy type */
@@ -137,20 +141,16 @@ static uint32_t host_dma_get_split(struct host_data *hd, uint32_t bytes)
 static void host_update_position(struct comp_dev *dev, uint32_t bytes)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
-	struct comp_buffer *local_buffer;
+	uint32_t samples;
 
-	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK) {
-		local_buffer = list_first_item(&dev->bsink_list,
-					       struct comp_buffer, source_list);
-		dma_buffer_copy_from(hd->dma_buffer, bytes, local_buffer, bytes,
-				     hd->process,
-				     bytes / comp_sample_bytes(dev));
-	} else {
-		local_buffer = list_first_item(&dev->bsource_list,
-					       struct comp_buffer, sink_list);
-		dma_buffer_copy_to(local_buffer, bytes, hd->dma_buffer, bytes,
-				   hd->process, bytes / comp_sample_bytes(dev));
-	}
+	samples = bytes / buffer_sample_bytes(hd->local_buffer);
+
+	if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
+		dma_buffer_copy_from(hd->dma_buffer, bytes, hd->local_buffer,
+				     bytes, hd->process, samples);
+	else
+		dma_buffer_copy_to(hd->local_buffer, bytes, hd->dma_buffer,
+				   bytes, hd->process, samples);
 
 	dev->position += bytes;
 
@@ -164,15 +164,15 @@ static void host_update_position(struct comp_dev *dev, uint32_t bytes)
 		hd->local_pos = 0;
 
 	/* Don't send stream position if no_stream_position == 1 */
-	if (!dev->params.no_stream_position) {
+	if (!hd->no_stream_position) {
 		hd->report_pos += bytes;
 
 		/* host_period_bytes is set to zero to disable position update
 		 * by IPC for FW version before 3.11, so send IPC message to
 		 * driver according to this condition and report_pos.
 		 */
-		if (dev->params.host_period_bytes != 0 &&
-		    hd->report_pos >= dev->params.host_period_bytes) {
+		if (hd->host_period_bytes != 0 &&
+		    hd->report_pos >= hd->host_period_bytes) {
 			hd->report_pos = 0;
 
 			/* send timestamped position to host
@@ -248,7 +248,7 @@ static int create_local_elems(struct comp_dev *dev, uint32_t buffer_count,
 	uint32_t dir;
 	int err;
 
-	dir = dev->params.direction == SOF_IPC_STREAM_PLAYBACK ?
+	dir = dev->direction == SOF_IPC_STREAM_PLAYBACK ?
 		DMA_DIR_HMEM_TO_LMEM : DMA_DIR_LMEM_TO_HMEM;
 
 	/* if host buffer set we need to allocate local buffer */
@@ -437,7 +437,7 @@ static int host_elements_reset(struct comp_dev *dev)
 		local_elem = hd->config.elem_array.elems;
 		local_elem->dest = sink_elem->dest;
 		local_elem->size =
-			dev->params.direction == SOF_IPC_STREAM_PLAYBACK ?
+			dev->direction == SOF_IPC_STREAM_PLAYBACK ?
 			sink_elem->size : source_elem->size;
 		local_elem->src = source_elem->src;
 	}
@@ -446,7 +446,8 @@ static int host_elements_reset(struct comp_dev *dev)
 }
 
 /* configure the DMA params and descriptors for host buffer IO */
-static int host_params(struct comp_dev *dev)
+static int host_params(struct comp_dev *dev,
+		       struct sof_ipc_stream_params *params)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
 	struct dma_sg_config *config = &hd->config;
@@ -460,7 +461,10 @@ static int host_params(struct comp_dev *dev)
 	trace_host_with_ids(dev, "host_params()");
 
 	/* host params always installed by pipeline IPC */
-	hd->host_size = dev->params.buffer.size;
+	hd->host_size = params->buffer.size;
+	hd->stream_tag = params->stream_tag;
+	hd->no_stream_position = params->no_stream_position;
+	hd->host_period_bytes = params->host_period_bytes;
 
 	/* retrieve DMA buffer address alignment */
 	err = dma_get_attribute(hd->dma, DMA_ATTR_BUFFER_ADDRESS_ALIGNMENT,
@@ -492,7 +496,16 @@ static int host_params(struct comp_dev *dev)
 		return -EINVAL;
 	}
 
-	period_bytes = dev->frames * comp_frame_bytes(dev);
+	if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
+		hd->local_buffer = list_first_item(&dev->bsink_list,
+						   struct comp_buffer,
+						   source_list);
+	else
+		hd->local_buffer = list_first_item(&dev->bsource_list,
+						   struct comp_buffer,
+						   sink_list);
+
+	period_bytes = dev->frames * buffer_frame_bytes(hd->local_buffer);
 	if (!period_bytes) {
 		trace_host_error_with_ids(dev, "host_params() error: invalid "
 					  "period_bytes");
@@ -500,7 +513,7 @@ static int host_params(struct comp_dev *dev)
 	}
 
 	/* determine source and sink buffer elements */
-	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK) {
+	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
 		config->direction = DMA_DIR_HMEM_TO_LMEM;
 		hd->source = &hd->host;
 		hd->sink = &hd->local;
@@ -545,8 +558,8 @@ static int host_params(struct comp_dev *dev)
 		return err;
 
 	/* set up DMA configuration - copy in sample bytes. */
-	config->src_width = comp_sample_bytes(dev);
-	config->dest_width = comp_sample_bytes(dev);
+	config->src_width = buffer_sample_bytes(hd->local_buffer);
+	config->dest_width = buffer_sample_bytes(hd->local_buffer);
 	config->cyclic = 0;
 	config->irq_disabled = pipeline_is_timer_driven(dev->pipeline);
 	config->is_scheduling_source = comp_is_scheduling_source(dev);
@@ -554,11 +567,11 @@ static int host_params(struct comp_dev *dev)
 
 	host_elements_reset(dev);
 
-	dev->params.stream_tag -= 1;
+	hd->stream_tag -= 1;
 	/* get DMA channel from DMAC
 	 * note: stream_tag is ignored by dw-dma
 	 */
-	hd->chan = dma_channel_get(hd->dma, dev->params.stream_tag);
+	hd->chan = dma_channel_get(hd->dma, hd->stream_tag);
 	if (!hd->chan) {
 		trace_host_error_with_ids(dev, "host_params() error: "
 					  "hd->chan is NULL");
@@ -588,8 +601,8 @@ static int host_params(struct comp_dev *dev)
 	dma_set_cb(hd->chan, DMA_CB_TYPE_COPY, host_dma_cb, dev);
 
 	/* set processing function */
-	hd->process = pcm_get_conversion_function(dev->params.frame_fmt,
-						  dev->params.frame_fmt);
+	hd->process = pcm_get_conversion_function(hd->local_buffer->frame_fmt,
+						  hd->local_buffer->frame_fmt);
 
 	return 0;
 }
@@ -674,7 +687,6 @@ static uint32_t host_buffer_get_copy_bytes(struct comp_dev *dev)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
 	struct dma_sg_elem *local_elem = hd->config.elem_array.elems;
-	struct comp_buffer *local_buffer;
 	uint32_t avail_bytes = 0;
 	uint32_t free_bytes = 0;
 	uint32_t copy_bytes = 0;
@@ -683,17 +695,10 @@ static uint32_t host_buffer_get_copy_bytes(struct comp_dev *dev)
 
 	if (hd->copy_type == COMP_COPY_ONE_SHOT) {
 		/* calculate minimum size to copy */
-		if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK) {
-			local_buffer = list_first_item(&dev->bsink_list,
-						       struct comp_buffer,
-						       source_list);
-			copy_bytes = local_buffer->free;
-		} else {
-			local_buffer = list_first_item(&dev->bsource_list,
-						       struct comp_buffer,
-						       sink_list);
-			copy_bytes = local_buffer->avail;
-		}
+		if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
+			copy_bytes = hd->local_buffer->free;
+		else
+			copy_bytes = hd->local_buffer->avail;
 
 		/* copy_bytes should be aligned to minimum possible chunk of
 		 * data to be copied by dma.
@@ -717,17 +722,10 @@ static uint32_t host_buffer_get_copy_bytes(struct comp_dev *dev)
 		}
 
 		/* calculate minimum size to copy */
-		if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK) {
-			local_buffer = list_first_item(&dev->bsink_list,
-						       struct comp_buffer,
-						       source_list);
-			copy_bytes = MIN(avail_bytes, local_buffer->free);
-		} else {
-			local_buffer = list_first_item(&dev->bsource_list,
-						       struct comp_buffer,
-						       sink_list);
-			copy_bytes = MIN(local_buffer->avail, free_bytes);
-		}
+		if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
+			copy_bytes = MIN(avail_bytes, hd->local_buffer->free);
+		else
+			copy_bytes = MIN(hd->local_buffer->avail, free_bytes);
 
 		/* copy_bytes should be aligned to minimum possible chunk of
 		 * data to be copied by dma.

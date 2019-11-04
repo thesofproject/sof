@@ -66,30 +66,43 @@ static int setup(void **state)
 
 	/* allocate and set new device */
 	vol_state->dev = test_malloc(COMP_SIZE(struct sof_ipc_comp_volume));
-	vol_state->dev->params.channels = parameters->channels;
-	vol_state->dev->params.frame_fmt = parameters->sink_format;
 	vol_state->dev->frames = parameters->frames;
 
 	/* allocate and set new data */
 	cd = test_malloc(sizeof(*cd));
 	comp_set_drvdata(vol_state->dev, cd);
-	cd->scale_vol = vol_get_processing_function(vol_state->dev);
-	set_volume(cd->volume, parameters->volume, parameters->channels);
+
+	list_init(&vol_state->dev->bsource_list);
+	list_init(&vol_state->dev->bsink_list);
 
 	/* allocate new sink buffer */
 	vol_state->sink = test_malloc(sizeof(*vol_state->sink));
-	size = parameters->frames * comp_frame_bytes(vol_state->dev);
-	vol_state->sink->w_ptr = test_calloc(parameters->buffer_size_ms,
-					     size);
-	vol_state->sink->size = parameters->buffer_size_ms * size;
+	vol_state->sink->frame_fmt = parameters->sink_format;
+	vol_state->sink->channels = parameters->channels;
+	size = parameters->frames * buffer_frame_bytes(vol_state->sink);
+
+	vol_state->sink->addr = test_calloc(parameters->buffer_size_ms,
+					    size);
+	buffer_init(vol_state->sink, parameters->buffer_size_ms * size, 0);
+
+	list_item_prepend(&vol_state->sink->source_list,
+			  &vol_state->dev->bsink_list);
 
 	/* allocate new source buffer */
 	vol_state->source = test_malloc(sizeof(*vol_state->source));
-	vol_state->dev->params.frame_fmt = parameters->source_format;
-	size = parameters->frames * comp_frame_bytes(vol_state->dev);
-	vol_state->source->r_ptr = test_calloc(parameters->buffer_size_ms,
-					       size);
-	vol_state->source->size = parameters->buffer_size_ms * size;
+	vol_state->source->frame_fmt = parameters->source_format;
+	vol_state->source->channels = parameters->channels;
+	size = parameters->frames * buffer_frame_bytes(vol_state->source);
+	vol_state->source->addr = test_calloc(parameters->buffer_size_ms,
+					      size);
+	buffer_init(vol_state->source, parameters->buffer_size_ms * size, 0);
+
+	list_item_prepend(&vol_state->source->sink_list,
+			  &vol_state->dev->bsource_list);
+
+	/* set processing function and volume */
+	cd->scale_vol = vol_get_processing_function(vol_state->dev);
+	set_volume(cd->volume, parameters->volume, parameters->channels);
 
 	/* assigns verification function */
 	vol_state->verify = parameters->verify;
@@ -108,9 +121,9 @@ static int teardown(void **state)
 	/* free everything */
 	test_free(cd);
 	test_free(vol_state->dev);
-	test_free(vol_state->sink->w_ptr);
+	test_free(vol_state->sink->addr);
 	test_free(vol_state->sink);
-	test_free(vol_state->source->r_ptr);
+	test_free(vol_state->source->addr);
 	test_free(vol_state->source);
 	test_free(vol_state);
 
@@ -140,7 +153,7 @@ static void verify_s16_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
 	const int16_t *src = (int16_t *)source->r_ptr;
 	const int16_t *dst = (int16_t *)sink->w_ptr;
 	double processed;
-	int channels = dev->params.channels;
+	int channels = sink->channels;
 	int channel;
 	int delta;
 	int i;
@@ -192,7 +205,7 @@ static void verify_s24_to_s24_s32(struct comp_dev *dev,
 	double processed;
 	int32_t dst_sample;
 	int32_t sample;
-	int channels = dev->params.channels;
+	int channels = sink->channels;
 	int channel;
 	int delta;
 	int i;
@@ -249,7 +262,7 @@ static void verify_s32_to_s24_s32(struct comp_dev *dev,
 	const int32_t *dst = (int32_t *)sink->w_ptr;
 	int32_t dst_sample;
 	int32_t sample;
-	int channels = dev->params.channels;
+	int channels = sink->channels;
 	int channel;
 	int delta;
 	int i;
@@ -292,7 +305,7 @@ static void verify_s16_to_sX(struct comp_dev *dev, struct comp_buffer *sink,
 	double processed;
 	int32_t dst_sample;
 	int32_t sample;
-	int channels = dev->params.channels;
+	int channels = sink->channels;
 	int channel;
 	int delta;
 	int i;
@@ -374,7 +387,7 @@ static void test_audio_vol(void **state)
 	struct vol_test_state *vol_state = *state;
 	struct comp_data *cd = comp_get_drvdata(vol_state->dev);
 
-	switch (vol_state->dev->params.frame_fmt) {
+	switch (vol_state->sink->frame_fmt) {
 	case SOF_IPC_FRAME_S16_LE:
 		fill_source_s16(vol_state);
 		break;

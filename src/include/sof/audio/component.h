@@ -37,6 +37,7 @@
 struct comp_dev;
 struct sof_ipc_dai_config;
 struct sof_ipc_stream_posn;
+struct dai_hw_params;
 
 /** \addtogroup component_api Component API
  *  Component API specification.
@@ -189,7 +190,8 @@ struct comp_ops {
 	void (*free)(struct comp_dev *dev);
 
 	/** set component audio stream parameters */
-	int (*params)(struct comp_dev *dev);
+	int (*params)(struct comp_dev *dev,
+		      struct sof_ipc_stream_params *params);
 
 	/** set component audio stream parameters */
 	int (*dai_config)(struct comp_dev *dev,
@@ -260,7 +262,7 @@ struct comp_dev {
 				     */
 
 	/** common runtime configuration for downstream/upstream */
-	struct sof_ipc_stream_params params;
+	uint32_t direction;	/**< enum sof_ipc_stream_direction */
 
 	/** driver */
 	struct comp_driver *drv;
@@ -406,10 +408,11 @@ int comp_set_state(struct comp_dev *dev, int cmd);
  * @param dev Component device.
  * @return 0 if succeeded, error code otherwise.
  */
-static inline int comp_params(struct comp_dev *dev)
+static inline int comp_params(struct comp_dev *dev,
+			      struct sof_ipc_stream_params *params)
 {
 	if (dev->drv->ops.params)
-		return dev->drv->ops.params(dev);
+		return dev->drv->ops.params(dev, params);
 	return 0;
 }
 
@@ -603,46 +606,6 @@ static inline struct comp_dev *comp_get_previous(struct comp_dev *dev, int dir)
 	}
 
 	return prev;
-}
-
-/**
- * Calculates period size in bytes based on component device's parameters.
- * @param dev Component device.
- * @return Period size in bytes.
- */
-static inline uint32_t comp_frame_bytes(struct comp_dev *dev)
-{
-	return frame_bytes(dev->params.frame_fmt, dev->params.channels);
-}
-
-/**
- * Calculates sample size in bytes based on component device's parameters.
- * @param dev Component device.
- * @return Size of sample in bytes.
- */
-static inline uint32_t comp_sample_bytes(struct comp_dev *dev)
-{
-	return sample_bytes(dev->params.frame_fmt);
-}
-
-/**
- * Calculates period size in bytes based on component device's parameters.
- * @param dev Component device.
- * @param frames Number of processing frames.
- * @return Period size in bytes.
- */
-static inline uint32_t comp_period_bytes(struct comp_dev *dev, uint32_t frames)
-{
-	return frames * comp_frame_bytes(dev);
-}
-
-static inline uint32_t comp_avail_frames(struct comp_buffer *source,
-					 struct comp_buffer *sink)
-{
-	uint32_t src_frames = source->avail / comp_frame_bytes(source->source);
-	uint32_t sink_frames = sink->free / comp_frame_bytes(sink->sink);
-
-	return MIN(src_frames, sink_frames);
 }
 
 /**

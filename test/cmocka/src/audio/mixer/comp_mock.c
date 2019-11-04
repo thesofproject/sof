@@ -23,7 +23,8 @@ static void mock_comp_free(struct comp_dev *dev)
 	free(dev);
 }
 
-static int mock_comp_params(struct comp_dev *dev)
+static int mock_comp_params(struct comp_dev *dev,
+			    struct sof_ipc_stream_params *params)
 {
 	return 0;
 }

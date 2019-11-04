@@ -9,6 +9,7 @@
 #define __SOF_AUDIO_BUFFER_H__
 
 #include <sof/audio/pipeline.h>
+#include <sof/math/numbers.h>
 #include <sof/common.h>
 #include <sof/debug/panic.h>
 #include <sof/lib/alloc.h>
@@ -17,8 +18,10 @@
 #include <sof/math/numbers.h>
 #include <sof/string.h>
 #include <sof/trace/trace.h>
+#include <ipc/stream.h>
 #include <ipc/topology.h>
 #include <user/trace.h>
+#include <sof/audio/format.h>
 #include <config.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -69,6 +72,13 @@ struct comp_buffer {
 	void (*cb)(void *data, uint32_t bytes);
 	void *cb_data;
 	int cb_type;
+
+	/* runtime stream params */
+	uint32_t frame_fmt;	/**< enum sof_ipc_frame */
+	uint32_t buffer_fmt;	/**< enum sof_ipc_buffer_format */
+	uint32_t rate;
+	uint16_t channels;
+	uint16_t chmap[SOF_IPC_MAX_CHANNELS];	/**< channel map - SOF_CHMAP_ */
 };
 
 #define buffer_comp_list(buffer, dir) \
@@ -117,7 +127,7 @@ struct comp_buffer {
 #define buffer_write_frag_s32(buffer, idx) \
 	buffer_get_frag(buffer, buffer->w_ptr, idx, sizeof(int32_t))
 
-typedef void (*cache_buff_op)(struct comp_buffer *);
+typedef void (*cache_buff_op)(struct comp_buffer *, void *);
 
 /* pipeline buffer creation and destruction */
 struct comp_buffer *buffer_alloc(uint32_t size, uint32_t caps, uint32_t align);
@@ -166,12 +176,13 @@ static inline uint32_t comp_buffer_get_copy_bytes(struct comp_buffer *source,
 		return source->avail;
 }
 
-static inline void comp_buffer_cache_wtb_inv(struct comp_buffer *buffer)
+static inline void comp_buffer_cache_wtb_inv(struct comp_buffer *buffer,
+					     void *data)
 {
 	dcache_writeback_invalidate_region(buffer, sizeof(*buffer));
 }
 
-static inline void comp_buffer_cache_inv(struct comp_buffer *buffer)
+static inline void comp_buffer_cache_inv(struct comp_buffer *buffer, void *data)
 {
 	dcache_invalidate_region(buffer, sizeof(*buffer));
 }
@@ -190,7 +201,7 @@ static inline cache_buff_op comp_buffer_cache_op(int cmd)
 	}
 }
 
-static inline void buffer_reset_pos(struct comp_buffer *buffer)
+static inline void buffer_reset_pos(struct comp_buffer *buffer, void *data)
 {
 	/* reset read and write pointer to buffer bas */
 	buffer->w_ptr = buffer->addr;
@@ -217,6 +228,57 @@ static inline void *buffer_get_frag(struct comp_buffer *buffer, void *ptr,
 			((char *)current - (char *)buffer->end_addr);
 
 	return current;
+}
+
+/**
+ * Calculates period size in bytes based on component buffer's parameters.
+ * @param buf Component buffer.
+ * @return Period size in bytes.
+ */
+static inline uint32_t buffer_frame_bytes(struct comp_buffer *buf)
+{
+	return frame_bytes(buf->frame_fmt, buf->channels);
+}
+
+/**
+ * Calculates sample size in bytes based on component buffer's parameters.
+ * @param dev Component buffer.
+ * @return Size of sample in bytes.
+ */
+static inline uint32_t buffer_sample_bytes(struct comp_buffer *buf)
+{
+	return sample_bytes(buf->frame_fmt);
+}
+
+/**
+ * Calculates period size in bytes based on component buffer's parameters.
+ * @param dev Component buffer.
+ * @param frames Number of processing frames.
+ * @return Period size in bytes.
+ */
+static inline uint32_t buffer_period_bytes(struct comp_buffer *buf,
+					   uint32_t frames)
+{
+	return frames * buffer_frame_bytes(buf);
+}
+
+static inline uint32_t buffer_avail_frames(struct comp_buffer *source,
+					   struct comp_buffer *sink)
+{
+	uint32_t src_frames = source->avail / buffer_frame_bytes(source);
+	uint32_t sink_frames = sink->free / buffer_frame_bytes(sink);
+
+	return MIN(src_frames, sink_frames);
+}
+
+/**
+ * Returns frame format based on component device's type.
+ * @param dev Component device.
+ * @return Frame format.
+ */
+static inline enum sof_ipc_frame buffer_frame_fmt(struct comp_buffer *buf)
+{
+	return buf->frame_fmt;
 }
 
 static inline void buffer_init(struct comp_buffer *buffer, uint32_t size,

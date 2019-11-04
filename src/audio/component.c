@@ -206,9 +206,9 @@ int comp_get_copy_limits(struct comp_dev *dev, struct comp_copy_limits *cl)
 	cl->sink = list_first_item(&dev->bsink_list, struct comp_buffer,
 				   source_list);
 
-	cl->frames = comp_avail_frames(cl->source, cl->sink);
-	cl->source_frame_bytes = comp_frame_bytes(cl->source->source);
-	cl->sink_frame_bytes = comp_frame_bytes(cl->sink->sink);
+	cl->frames = buffer_avail_frames(cl->source, cl->sink);
+	cl->source_frame_bytes = buffer_frame_bytes(cl->source);
+	cl->sink_frame_bytes = buffer_frame_bytes(cl->sink);
 	cl->source_bytes = cl->frames * cl->source_frame_bytes;
 	cl->sink_bytes = cl->frames * cl->sink_frame_bytes;
 
