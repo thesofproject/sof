@@ -76,7 +76,6 @@
 #define trace_lock(__e)		trace_error_atomic(TRACE_CLASS_LOCK, __e)
 #define tracev_lock(__e)	tracev_event_atomic(TRACE_CLASS_LOCK, __e)
 #define trace_lock_error(__e)	trace_error_atomic(TRACE_CLASS_LOCK, __e)
-#define trace_lock_value(__e)	trace_error_value_atomic(__e)
 
 extern uint32_t lock_dbg_atomic;
 extern uint32_t lock_dbg_user[DBG_LOCK_USERS];

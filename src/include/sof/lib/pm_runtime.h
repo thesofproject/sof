@@ -32,9 +32,6 @@
 #define tracev_pm(__e, ...) \
 	tracev_event(TRACE_CLASS_POWER, __e, ##__VA_ARGS__)
 
-/** \brief Power management trace value function. */
-#define tracev_pm_value(__e)	tracev_value(__e)
-
 /* PM runtime flags */
 
 #define RPM_ASYNC		0x01	/**< Request is asynchronous */
