@@ -250,12 +250,12 @@
 #define SOF_TEXT_BASE		(SOF_FW_START)
 
 /* Heap section sizes for system runtime heap for master core */
-#define HEAP_SYS_RT_0_COUNT64		72
+#define HEAP_SYS_RT_0_COUNT64		128
 #define HEAP_SYS_RT_0_COUNT512		16
 #define HEAP_SYS_RT_0_COUNT1024		4
 
 /* Heap section sizes for system runtime heap for slave core */
-#define HEAP_SYS_RT_X_COUNT64		32
+#define HEAP_SYS_RT_X_COUNT64		64
 #define HEAP_SYS_RT_X_COUNT512		8
 #define HEAP_SYS_RT_X_COUNT1024		4
 
