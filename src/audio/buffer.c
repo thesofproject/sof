@@ -38,7 +38,7 @@ struct comp_buffer *buffer_alloc(uint32_t size, uint32_t caps, uint32_t align)
 		return NULL;
 	}
 
-	buffer->addr = rballoc_align(RZONE_BUFFER, caps, size, align);
+	buffer->addr = rballoc_align(RZONE_BUFFER, caps, size, align, false);
 	if (!buffer->addr) {
 		rfree(buffer);
 		trace_buffer_error("buffer_alloc() error: "
@@ -86,7 +86,8 @@ int buffer_set_size(struct comp_buffer *buffer, uint32_t size)
 	if (size == buffer->size)
 		return 0;
 
-	new_ptr = rbrealloc(buffer->addr, RZONE_BUFFER, buffer->caps, size);
+	new_ptr = rbrealloc(buffer->addr, RZONE_BUFFER, buffer->caps, size,
+			    false);
 
 	/* we couldn't allocate bigger chunk */
 	if (!new_ptr && size > buffer->size) {

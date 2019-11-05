@@ -637,7 +637,7 @@ static int src_params(struct comp_dev *dev)
 		rfree(cd->delay_lines);
 
 	cd->delay_lines = rballoc(RZONE_BUFFER, SOF_MEM_CAPS_RAM,
-				  delay_lines_size);
+				  delay_lines_size, false);
 	if (!cd->delay_lines) {
 		trace_src_error_with_ids(dev, "src_params() error: "
 					 "failed to alloc cd->delay_lines, "

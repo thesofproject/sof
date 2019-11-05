@@ -165,7 +165,7 @@ static int dma_trace_buffer_init(struct dma_trace_data *d)
 	/* allocate new buffer */
 	buf = rballoc(RZONE_BUFFER,
 		      SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_DMA,
-		      DMA_TRACE_LOCAL_SIZE);
+		      DMA_TRACE_LOCAL_SIZE, false);
 	if (!buf) {
 		trace_buffer_error("dma_trace_buffer_init() error: "
 				   "alloc failed");

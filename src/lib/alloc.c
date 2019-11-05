@@ -263,7 +263,7 @@ static void *alloc_block(struct mm_heap *heap, int level,
 
 /* allocates continuous blocks */
 static void *alloc_cont_blocks(struct mm_heap *heap, int level,
-	uint32_t caps, size_t bytes, uint32_t alignment)
+	uint32_t caps, size_t bytes, uint32_t alignment, bool can_fail)
 {
 	struct block_map *map = &heap->map[level];
 	struct block_hdr *hdr;
@@ -292,9 +292,16 @@ static void *alloc_cont_blocks(struct mm_heap *heap, int level,
 	}
 
 	if (count > map->count || remaining < count) {
-		trace_mem_error("error: %d blocks needed for allocation "
-				"but only %d blocks are remaining",
-				count, remaining);
+		if (can_fail)
+			trace_mem_error("Error: %d blocks needed for "
+					"allocation of %d bytes but only %d "
+					"blocks are remaining", count, bytes,
+					 remaining);
+		else
+			trace_mem_init("Warning! Not enough free blocks to "
+				       "satisfy request of %d bytes. "
+				       "Available blocks %d, needed %d",
+					bytes, count, remaining);
 		return NULL;
 	}
 
@@ -717,7 +724,7 @@ void *rzalloc_core_sys(int core, size_t bytes)
 
 /* allocates continuous buffers - not for direct use, clients use rballoc() */
 static void *alloc_heap_buffer(struct mm_heap *heap, int zone, uint32_t caps,
-			       size_t bytes, uint32_t alignment)
+			       size_t bytes, uint32_t alignment, bool can_fail)
 {
 	struct block_map *map;
 	int i, temp_bytes = bytes;
@@ -770,7 +777,8 @@ static void *alloc_heap_buffer(struct mm_heap *heap, int zone, uint32_t caps,
 			/* allocate if block size is smaller than request */
 			if (heap->size >= bytes	&& map->block_size < bytes) {
 				ptr = alloc_cont_blocks(heap, i, caps,
-							bytes, alignment);
+							bytes, alignment,
+							can_fail);
 				if (ptr)
 					break;
 			}
@@ -789,7 +797,7 @@ static void *alloc_heap_buffer(struct mm_heap *heap, int zone, uint32_t caps,
 }
 
 static void *_balloc_unlocked(int zone, uint32_t caps, size_t bytes,
-			      uint32_t alignment)
+			      uint32_t alignment, bool can_fail)
 {
 	struct mm_heap *heap;
 	unsigned int i, n;
@@ -803,7 +811,8 @@ static void *_balloc_unlocked(int zone, uint32_t caps, size_t bytes,
 		if (!heap)
 			break;
 
-		ptr = alloc_heap_buffer(heap, zone, caps, bytes, alignment);
+		ptr = alloc_heap_buffer(heap, zone, caps, bytes, alignment,
+					can_fail);
 		if (ptr)
 			break;
 
@@ -814,14 +823,15 @@ static void *_balloc_unlocked(int zone, uint32_t caps, size_t bytes,
 }
 
 /* allocates continuous buffers - not for direct use, clients use rballoc() */
-void *_balloc(int zone, uint32_t caps, size_t bytes, uint32_t alignment)
+void *_balloc(int zone, uint32_t caps, size_t bytes, uint32_t alignment,
+	      bool can_fail)
 {
 	void *ptr = NULL;
 	uint32_t flags;
 
 	spin_lock_irq(memmap.lock, flags);
 
-	ptr = _balloc_unlocked(zone, caps, bytes, alignment);
+	ptr = _balloc_unlocked(zone, caps, bytes, alignment, can_fail);
 
 	spin_unlock_irq(memmap.lock, flags);
 
@@ -891,7 +901,7 @@ void *_realloc(void *ptr, int zone, uint32_t caps, size_t bytes)
 }
 
 void *_brealloc(void *ptr, int zone, uint32_t caps, size_t bytes,
-		uint32_t alignment)
+		uint32_t alignment, bool can_fail)
 {
 	void *new_ptr = NULL;
 	uint32_t flags;
@@ -901,7 +911,7 @@ void *_brealloc(void *ptr, int zone, uint32_t caps, size_t bytes,
 
 	spin_lock_irq(memmap.lock, flags);
 
-	new_ptr = _balloc_unlocked(zone, caps, bytes, alignment);
+	new_ptr = _balloc_unlocked(zone, caps, bytes, alignment, can_fail);
 
 	if (new_ptr && ptr)
 		memcpy_s(new_ptr, bytes, ptr, bytes);

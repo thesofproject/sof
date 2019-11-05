@@ -106,10 +106,11 @@ struct mm {
 /* heap allocation and free */
 void *_malloc(int zone, uint32_t caps, size_t bytes);
 void *_zalloc(int zone, uint32_t caps, size_t bytes);
-void *_balloc(int zone, uint32_t caps, size_t bytes, uint32_t alignment);
+void *_balloc(int zone, uint32_t caps, size_t bytes, uint32_t alignment,
+	      bool can_fail);
 void *_realloc(void *ptr, int zone, uint32_t caps, size_t bytes);
 void *_brealloc(void *ptr, int zone, uint32_t caps, size_t bytes,
-		uint32_t alignment);
+		uint32_t alignment, bool can_fail);
 void rfree(void *ptr);
 
 #if CONFIG_DEBUG_HEAP
@@ -142,10 +143,11 @@ void rfree(void *ptr);
 	} while (0);					\
 	_ptr; })
 
-#define rballoc(zone, caps, bytes)			\
+#define rballoc(zone, caps, bytes, can_fail)			\
 	({void *_ptr;					\
 	do {						\
-		_ptr = _balloc(zone, caps, bytes, PLATFORM_DCACHE_ALIGN);\
+		_ptr = _balloc(zone, caps, bytes, PLATFORM_DCACHE_ALIGN, \
+			       can_fail);\
 		if (!_ptr) {				\
 			trace_error(TRACE_CLASS_MEM,	\
 				   "failed to alloc 0x%x bytes caps 0x%x", \
@@ -168,11 +170,11 @@ void rfree(void *ptr);
 	} while (0);					\
 	_ptr; })
 
-#define rbrealloc(ptr, zone, caps, bytes)		\
+#define rbrealloc(ptr, zone, caps, bytes, can_fail)		\
 	({void *_ptr;					\
 	do {						\
 		_ptr = _brealloc(ptr, zone, caps, bytes,\
-				 PLATFORM_DCACHE_ALIGN);\
+				 PLATFORM_DCACHE_ALIGN, can_fail);\
 		if (!_ptr) {				\
 			trace_error(TRACE_CLASS_MEM,	\
 				   "failed to alloc 0x%x bytes caps 0x%x", \
@@ -182,10 +184,11 @@ void rfree(void *ptr);
 	} while (0);					\
 	_ptr; })
 
-#define rbrealloc_align(ptr, zone, caps, bytes, alignment)		\
+#define rbrealloc_align(ptr, zone, caps, bytes, alignment, can_fail) \
 	({void *_ptr;					\
 	do {						\
-		_ptr = _brealloc(ptr, zone, caps, bytes, alignment);	\
+		_ptr = _brealloc(ptr, zone, caps, bytes, alignment, \
+				 can_fail); \
 		if (!_ptr) {				\
 			trace_error(TRACE_CLASS_MEM,	\
 				   "failed to alloc 0x%x bytes caps 0x%x", \
@@ -195,10 +198,10 @@ void rfree(void *ptr);
 	} while (0);					\
 	_ptr; })
 
-#define rballoc_align(zone, caps, bytes, alignment)			\
+#define rballoc_align(zone, caps, bytes, alignment, can_fail) \
 	({void *_ptr;					\
 	do {						\
-		_ptr = _balloc(zone, caps, bytes, alignment);	\
+		_ptr = _balloc(zone, caps, bytes, alignment, can_fail);	\
 		if (!_ptr) {				\
 			trace_error(TRACE_CLASS_MEM,	\
 				   "failed to alloc 0x%x bytes caps 0x%x", \
@@ -215,16 +218,16 @@ void alloc_trace_buffer_heap(int zone, uint32_t caps, size_t bytes);
 
 #define rmalloc(zone, caps, bytes)	_malloc(zone, caps, bytes)
 #define rzalloc(zone, caps, bytes)	_zalloc(zone, caps, bytes)
-#define rballoc(zone, caps, bytes)	\
-	_balloc(zone, caps, bytes, PLATFORM_DCACHE_ALIGN)
-#define rballoc_align(zone, caps, bytes, alignment)	\
-	_balloc(zone, caps, bytes, alignment)
+#define rballoc(zone, caps, bytes, can_fail)	\
+	_balloc(zone, caps, bytes, PLATFORM_DCACHE_ALIGN, can_fail)
+#define rballoc_align(zone, caps, bytes, alignment, can_fail)	\
+	_balloc(zone, caps, bytes, alignment, can_fail)
 #define rrealloc(ptr, zone, caps, bytes)	\
 	_realloc(ptr, zone, caps, bytes)
-#define rbrealloc(ptr, zone, caps, bytes)	\
-	_brealloc(ptr, zone, caps, bytes, PLATFORM_DCACHE_ALIGN)
-#define rbrealloc_align(ptr, zone, caps, bytes, alignment)	\
-	_brealloc(ptr, zone, caps, bytes, alignment)
+#define rbrealloc(ptr, zone, caps, bytes, can_fail)	\
+	_brealloc(ptr, zone, caps, bytes, PLATFORM_DCACHE_ALIGN, can_fail)
+#define rbrealloc_align(ptr, zone, caps, bytes, alignment, can_fail)	\
+	_brealloc(ptr, zone, caps, bytes, alignment, can_fail)
 
 #endif
 

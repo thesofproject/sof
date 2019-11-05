@@ -83,7 +83,7 @@ int task_context_init(void *task_ctx, void *entry, void *arg0, void *arg1,
 		ctx->stack_size = stack_size;
 	} else {
 		ctx->stack_base = rballoc(RZONE_BUFFER, SOF_MEM_CAPS_RAM,
-					  SOF_TASK_DEFAULT_STACK_SIZE);
+					  SOF_TASK_DEFAULT_STACK_SIZE, false);
 		if (!ctx->stack_base)
 			return -ENOMEM;
 		ctx->stack_size = SOF_TASK_DEFAULT_STACK_SIZE;
