@@ -157,6 +157,40 @@ config INTERRUPT_LEVEL_5
 
 source "src/Kconfig"
 
+choice
+	prompt "Optimization"
+	default OPTIMIZE_FOR_PERFORMANCE
+	help
+	  Controls how compiler should optimize binary.
+	  This config should affect only compiler settings and is
+	  not meant to be used for conditional compilation of code.
+
+config OPTIMIZE_FOR_PERFORMANCE
+	bool "Optimize for performance"
+	help
+	  Apply compiler optimizations prioritizing performance.
+	  It means -O2 for GCC or equivalent for other compilers.
+
+config OPTIMIZE_FOR_SIZE
+	bool "Optimize for size"
+	help
+	  Apply compiler optimizations prioritizing binary size.
+	  It means -Os for GCC or equivalent for other compilers.
+
+config OPTIMIZE_FOR_DEBUG
+	bool "Optimize for debug"
+	help
+	  Apply compiler optimizations prioritizing debugging experience.
+	  It means -Og for GCC or equivalent for other compilers.
+
+config OPTIMIZE_FOR_NONE
+	bool "Don't optimize"
+	help
+	  Apply no compiler optimizations.
+	  It means -O0 for GCC or equivalent for other compilers.
+
+endchoice
+
 menu "Debug"
 
 config DEBUG
