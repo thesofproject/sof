@@ -76,3 +76,31 @@ config COMP_TEST_KEYPHRASE
 	  Provides basic functionality for use in testing of keyphrase detection pipelines.
 
 endmenu
+
+menu "Data formats"
+
+config FORMAT_S16LE
+	bool "Support S16LE"
+	default y
+	help
+	  Support 16 bit processing data format with sign and in little endian format 
+
+config FORMAT_S24LE
+	bool "Support S24LE"
+	default y
+	help
+	  Support 24 bit processing data format with sign and in little endian format 
+
+config FORMAT_S32LE
+	bool "Support S32LE"
+	default y
+	help
+	  Support 32 bit processing data format with sign and in little endian format 
+
+config FORMAT_FLOAT
+	bool "Support float"
+	default y
+	help
+	  Support floating point processing data format
+
+endmenu
