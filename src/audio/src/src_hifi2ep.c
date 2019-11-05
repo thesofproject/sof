@@ -314,7 +314,7 @@ void src_polyphase_stage_cir(struct src_stage_prm *s)
 	struct src_stage *cfg = s->stage;
 	int32_t *fir_end = &fir->fir_delay[fir->fir_delay_size];
 	int32_t *out_delay_end = &fir->out_delay[fir->out_delay_size];
-	const void *cp; /* Can be int32_t or int16_t */
+	const char *cp; /* Can be int32_t or int16_t */
 	const size_t out_size = fir->out_delay_size * sizeof(int32_t);
 	const int nch = s->nch;
 	const int nch_x_odm = cfg->odm * nch;
@@ -438,7 +438,7 @@ void src_polyphase_stage_cir_s16(struct src_stage_prm *s)
 	struct src_stage *cfg = s->stage;
 	int32_t *fir_end = &fir->fir_delay[fir->fir_delay_size];
 	int32_t *out_delay_end = &fir->out_delay[fir->out_delay_size];
-	const void *cp; /* Can be int32_t or int16_t */
+	const char *cp; /* Can be int32_t or int16_t */
 	const size_t out_size = fir->out_delay_size * sizeof(int32_t);
 	const int nch = s->nch;
 	const int nch_x_odm = cfg->odm * nch;
