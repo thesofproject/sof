@@ -437,7 +437,7 @@ static void *get_ptr_from_heap(struct mm_heap *heap, int zone, uint32_t caps,
 static void free_block(void *ptr)
 {
 	struct mm_heap *heap;
-	struct block_map *block_map;
+	struct block_map *block_map = NULL;
 	struct block_hdr *hdr;
 	int i;
 	int block;
