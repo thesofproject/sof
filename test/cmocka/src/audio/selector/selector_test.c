@@ -106,6 +106,7 @@ static int teardown(void **state)
 	return 0;
 }
 
+#if CONFIG_FORMAT_S16LE
 static void fill_source_s16(struct sel_test_state *sel_state)
 {
 	int16_t *src = (int16_t *)sel_state->source->r_ptr;
@@ -114,15 +115,6 @@ static void fill_source_s16(struct sel_test_state *sel_state)
 	for (i = 0; i < sel_state->source->size / sizeof(int16_t); i++)
 		src[i] = i;
 
-}
-
-static void fill_source_s32(struct sel_test_state *sel_state)
-{
-	int32_t *src = (int32_t *)sel_state->source->r_ptr;
-	int i;
-
-	for (i = 0; i < sel_state->source->size / sizeof(int32_t); i++)
-		src[i] = i << 16;
 }
 
 static void verify_s16le_Xch_to_1ch(struct comp_dev *dev, struct comp_buffer *sink,
@@ -148,31 +140,6 @@ static void verify_s16le_Xch_to_1ch(struct comp_dev *dev, struct comp_buffer *si
 		}
 	}
 }
-
-static void verify_s32le_Xch_to_1ch(struct comp_dev *dev, struct comp_buffer *sink,
-			      struct comp_buffer *source)
-{
-	struct comp_data *cd = comp_get_drvdata(dev);
-	const uint32_t *src = (uint32_t *)source->r_ptr;
-	const uint32_t *dst = (uint32_t *)sink->w_ptr;
-	uint32_t in_channels = cd->config.in_channels_count;
-	uint32_t channel;
-	uint32_t i;
-	uint32_t j = 0;
-	uint16_t source_in;
-	uint16_t destination;
-
-	for (i = 0; i < source->size / sizeof(uint32_t); i += in_channels) {
-		for (channel = 0; channel < in_channels; channel++) {
-			if (channel == cd->config.sel_channel) {
-				source_in = src[i + cd->config.sel_channel];
-				destination = dst[j++];
-				assert_int_equal(source_in, destination);
-			}
-		}
-	}
-}
-
 
 static void verify_s16le_2ch_to_2ch(struct comp_dev *dev, struct comp_buffer *sink,
 			      struct comp_buffer *source)
@@ -206,6 +173,42 @@ static void verify_s16le_4ch_to_4ch(struct comp_dev *dev, struct comp_buffer *si
 		for (channel = 0; channel < channels; channel++) {
 			processed = src[i + channel];
 			assert_int_equal(dst[i + channel], processed);
+		}
+	}
+}
+
+#endif /* CONFIG_FORMAT_S16LE */
+
+#if CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE
+static void fill_source_s32(struct sel_test_state *sel_state)
+{
+	int32_t *src = (int32_t *)sel_state->source->r_ptr;
+	int i;
+
+	for (i = 0; i < sel_state->source->size / sizeof(int32_t); i++)
+		src[i] = i << 16;
+}
+
+static void verify_s32le_Xch_to_1ch(struct comp_dev *dev, struct comp_buffer *sink,
+			      struct comp_buffer *source)
+{
+	struct comp_data *cd = comp_get_drvdata(dev);
+	const uint32_t *src = (uint32_t *)source->r_ptr;
+	const uint32_t *dst = (uint32_t *)sink->w_ptr;
+	uint32_t in_channels = cd->config.in_channels_count;
+	uint32_t channel;
+	uint32_t i;
+	uint32_t j = 0;
+	uint16_t source_in;
+	uint16_t destination;
+
+	for (i = 0; i < source->size / sizeof(uint32_t); i += in_channels) {
+		for (channel = 0; channel < in_channels; channel++) {
+			if (channel == cd->config.sel_channel) {
+				source_in = src[i + cd->config.sel_channel];
+				destination = dst[j++];
+				assert_int_equal(source_in, destination);
+			}
 		}
 	}
 }
@@ -245,6 +248,7 @@ static void verify_s32le_4ch_to_4ch(struct comp_dev *dev, struct comp_buffer *si
 		}
 	}
 }
+#endif /* CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE */
 
 static void test_audio_sel(void **state)
 {
@@ -252,14 +256,18 @@ static void test_audio_sel(void **state)
 	struct comp_data *cd = comp_get_drvdata(sel_state->dev);
 
 	switch (cd->source_format) {
+#if CONFIG_FORMAT_S16LE
 	case SOF_IPC_FRAME_S16_LE:
 		fill_source_s16(sel_state);
 		break;
+#endif /* CONFIG_FORMAT_S16LE */
+#if CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE
 	case SOF_IPC_FRAME_S24_4LE:
 	case SOF_IPC_FRAME_S32_LE:
 	case SOF_IPC_FRAME_FLOAT:
 		fill_source_s32(sel_state);
 		break;
+#endif /* CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE */
 	}
 
 	cd->sel_func(sel_state->dev, sel_state->sink, sel_state->source,
@@ -270,6 +278,7 @@ static void test_audio_sel(void **state)
 
 
 static struct sel_test_parameters parameters[] = {
+#if CONFIG_FORMAT_S16LE
 	{ 2, 1, 0, 16, 1, SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S16_LE, verify_s16le_Xch_to_1ch },
 	{ 2, 1, 1, 16, 1, SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S16_LE, verify_s16le_Xch_to_1ch },
 	{ 2, 1, 0, 48, 1, SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S16_LE, verify_s16le_Xch_to_1ch },
@@ -278,7 +287,8 @@ static struct sel_test_parameters parameters[] = {
 	{ 4, 4, 0, 48, 1, SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S16_LE, verify_s16le_4ch_to_4ch },
 	{ 2, 1, 0, 48, 1, SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S16_LE, verify_s16le_Xch_to_1ch },
 	{ 4, 1, 0, 48, 1, SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S16_LE, verify_s16le_Xch_to_1ch },
-
+#endif /* CONFIG_FORMAT_S16LE */
+#if CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE
 	{ 2, 1, 0, 16, 1, SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S24_4LE, verify_s32le_Xch_to_1ch },
 	{ 2, 1, 1, 16, 1, SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S24_4LE, verify_s32le_Xch_to_1ch },
 	{ 2, 1, 0, 48, 1, SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S24_4LE, verify_s32le_Xch_to_1ch },
@@ -287,6 +297,7 @@ static struct sel_test_parameters parameters[] = {
 	{ 4, 4, 0, 48, 1, SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S24_4LE, verify_s32le_4ch_to_4ch },
 	{ 2, 1, 0, 48, 1, SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S24_4LE, verify_s32le_Xch_to_1ch },
 	{ 4, 1, 0, 48, 1, SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S24_4LE, verify_s32le_Xch_to_1ch },
+#endif /* CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE */
 };
 
 int main(void)
