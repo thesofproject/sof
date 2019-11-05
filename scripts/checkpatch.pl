@@ -2403,6 +2403,16 @@ sub process {
 			# simplify matching -- only bother with positive lines.
 			$line = sanitise_line($rawline);
 		}
+
+		# Check if ABI is being updated.  If so, there's probably no need to
+		# emit the "does ABI need updating?" message on file add/move/delete
+		if ($SOF &&
+		    ($line =~ /\+#define SOF_ABI_MAJOR*/ ||
+		     $line =~ /\+#define SOF_ABI_MINOR*/ ||
+		     $line =~ /\+#define SOF_ABI_PATCH*/)) {
+			$reported_abi_update = 1;
+		}
+
 		push(@lines, $line);
 
 		if ($realcnt > 1) {
@@ -2617,14 +2627,6 @@ sub process {
 			}
 		}
 
-# Check if ABI is being updated.  If so, there's probably no need to
-# emit the "does ABI need updating?" message on file add/move/delete
-		if ($SOF &&
-		    ($line =~ /#define SOF_ABI_MAJOR*/ ||
-		     $line =~ /#define SOF_ABI_MINOR*/ ||
-		     $line =~ /#define SOF_ABI_PATCH*/)) {
-			$reported_abi_update = 1;
-		}
 
 # Check if MAINTAINERS is being updated.  If so, there's probably no need to
 # emit the "does MAINTAINERS need updating?" message on file add/move/delete
