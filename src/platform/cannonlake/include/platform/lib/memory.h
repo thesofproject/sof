@@ -237,7 +237,7 @@
 #define HEAP_SYS_RT_0_COUNT1024		4
 
 /* Heap section sizes for system runtime heap for slave core */
-#define HEAP_SYS_RT_X_COUNT64		32
+#define HEAP_SYS_RT_X_COUNT64		64
 #define HEAP_SYS_RT_X_COUNT512		8
 #define HEAP_SYS_RT_X_COUNT1024		4
 
