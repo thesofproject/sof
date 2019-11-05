@@ -167,8 +167,8 @@ void comp_update_buffer_produce(struct comp_buffer *buffer, uint32_t bytes)
 		      (buffer->id << 16) | buffer->size);
 	tracev_buffer("comp_update_buffer_produce(), ((buffer->r_ptr - buffer"
 		      "->addr) << 16 | (buffer->w_ptr - buffer->addr)) = %08x",
-		      (buffer->r_ptr - buffer->addr) << 16 |
-		      (buffer->w_ptr - buffer->addr));
+		      ((char *)buffer->r_ptr - (char *)buffer->addr) << 16 |
+		      ((char *)buffer->w_ptr - (char *)buffer->addr));
 }
 
 void comp_update_buffer_consume(struct comp_buffer *buffer, uint32_t bytes)
@@ -219,6 +219,6 @@ void comp_update_buffer_consume(struct comp_buffer *buffer, uint32_t bytes)
 		      "(buffer->w_ptr - buffer->addr)) = %08x",
 		      (buffer->avail << 16) | buffer->free,
 		      (buffer->id << 16) | buffer->size,
-		      (buffer->r_ptr - buffer->addr) << 16 |
-		      (buffer->w_ptr - buffer->addr));
+		      ((char *)buffer->r_ptr - (char *)buffer->addr) << 16 |
+		      ((char *)buffer->w_ptr - (char *)buffer->addr));
 }
