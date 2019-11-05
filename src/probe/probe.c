@@ -105,9 +105,10 @@ static int probe_dma_buffer_init(struct probe_dma_buf *buffer, uint32_t size, ui
  * \brief Request DMA and initialize DMA for probes with correct alignment,
  *	  size and specific channel.
  * \param[out] probe DMA.
+ * \param[in] direction.
  * \return 0 on success, error code otherwise.
  */
-static int probe_dma_init(struct probe_dma_ext *dma)
+static int probe_dma_init(struct probe_dma_ext *dma, uint32_t direction)
 {
 	struct dma_sg_config config;
 	uint32_t elem_addr, addr_align;
@@ -116,7 +117,7 @@ static int probe_dma_init(struct probe_dma_ext *dma)
 	int err = 0;
 
 	/* request DMA in the dir LMEM->HMEM with shared access */
-	dma->dc.dmac = dma_get(DMA_DIR_LMEM_TO_HMEM, 0, DMA_DEV_HOST,
+	dma->dc.dmac = dma_get(direction, 0, DMA_DEV_HOST,
 			       DMA_ACCESS_SHARED);
 	if (!dma->dc.dmac) {
 		trace_probe_error("probe_dma_init() error: dma->dc.dmac = NULL");
@@ -140,7 +141,7 @@ static int probe_dma_init(struct probe_dma_ext *dma)
 
 	elem_addr = (uint32_t)dma->dmapb.addr;
 
-	config.direction = DMA_DIR_LMEM_TO_HMEM;
+	config.direction = direction;
 	config.src_width = sizeof(uint32_t);
 	config.dest_width = sizeof(uint32_t);
 	config.cyclic = 0;
@@ -156,9 +157,6 @@ static int probe_dma_init(struct probe_dma_ext *dma)
 
 	dma_sg_free(&config.elem_array);
 
-	err = dma_start(dma->dc.chan);
-	if (err < 0)
-		return err;
 
 	return 0;
 }
@@ -248,11 +246,18 @@ int probe_init(struct probe_dma *probe_dma)
 		_probe->ext_dma.stream_tag = probe_dma->stream_tag;
 		_probe->ext_dma.dma_buffer_size = probe_dma->dma_buffer_size;
 
-		err = probe_dma_init(&_probe->ext_dma);
+		err = probe_dma_init(&_probe->ext_dma, DMA_DIR_LMEM_TO_HMEM);
 		if (err < 0) {
 			trace_probe_error("probe_init() error: probe_dma_init() failed");
 			_probe->ext_dma.stream_tag = PROBE_DMA_INVALID;
 			return err;
+		}
+
+		err = dma_start(_probe->ext_dma.dc.chan);
+		if (err < 0) {
+			trace_probe_error("probe_init() error: failed to start extraction dma");
+
+			return -EBUSY;
 		}
 		/* init task for extraction probes */
 		schedule_task_init_ll(&_probe->dmap_work, SOF_SCHEDULE_LL_TIMER,
@@ -369,7 +374,8 @@ int probe_dma_add(uint32_t count, struct probe_dma *probe_dma)
 		_probe->inject_dma[first_free].dma_buffer_size =
 			probe_dma[i].dma_buffer_size;
 
-		err = probe_dma_init(&_probe->inject_dma[first_free]);
+		err = probe_dma_init(&_probe->inject_dma[first_free],
+				     DMA_DIR_HMEM_TO_LMEM);
 		if (err < 0) {
 			trace_probe_error("probe_dma_add() error: probe_dma_init() failed");
 			_probe->inject_dma[first_free].stream_tag =
@@ -517,6 +523,62 @@ static int copy_to_pbuffer(struct probe_dma_buf *pbuf, void *data, uint32_t byte
 }
 
 /**
+ * \brief Copy data from probe buffer and update buffer pointers.
+ * \param[out] probe DMA buffer.
+ * \param[out] data pointer.
+ * \param[in] size.
+ * \return 0 on success, error code otherwise.
+ */
+static int copy_from_pbuffer(struct probe_dma_buf *pbuf, void *data, uint32_t bytes)
+{
+	uint32_t head;
+	uint32_t tail;
+
+	if (bytes == 0)
+		return 0;
+	/* not enough data available so set it to 0 */
+	if (pbuf->avail < bytes) {
+		memset(data, 0, bytes);
+		return 0;
+	}
+
+	/* check if memcpy needs to be divided into two stages */
+	if (pbuf->end_addr - pbuf->r_ptr < bytes) {
+		head = pbuf->end_addr - pbuf->r_ptr;
+		tail = bytes - head;
+	} else {
+		head = bytes;
+		tail = 0;
+	}
+
+	/* data from DMA so invalidate it */
+	dcache_invalidate_region((void *)pbuf->r_ptr, head);
+	if (memcpy_s(data, bytes, (void *)pbuf->r_ptr, head)) {
+		trace_probe_error("copy_from_pbuffer() error: memcpy_s() failed");
+		return -EINVAL;
+	}
+
+	/* second stage copy */
+	if (tail) {
+		/* starting from the beginning of the buffer */
+		pbuf->r_ptr = pbuf->addr;
+		dcache_invalidate_region((void *)pbuf->r_ptr, tail);
+		if (memcpy_s((char *)data + head, tail, (void *)pbuf->r_ptr, tail)) {
+			trace_probe_error("copy_from_pbuffer() error: memcpy_s() failed");
+			return -EINVAL;
+		}
+		pbuf->r_ptr = pbuf->r_ptr + tail;
+	} else {
+		pbuf->r_ptr = pbuf->r_ptr + head;
+	}
+
+	/* subtract used bytes */
+	pbuf->avail -= bytes;
+
+	return 0;
+}
+
+/**
  * \brief Generate probe data packet header, update timestamp, calc crc
  *	  and copy data to probe buffer.
  * \param[in] component buffer pointer.
@@ -654,7 +716,9 @@ static uint32_t probe_gen_format(uint32_t frame_fmt, uint32_t rate, uint32_t cha
 /**
  * \brief General extraction probe callback, called from buffer produce.
  *	  It will search for probe point connected to this buffer.
- *	  For extraction probe: generate format, header and copy data to probe buffer.
+ *	  Extraction probe: generate format, header and copy data to probe buffer.
+ *	  Injection probe: find corresponding DMA, check avail data, copy data,
+ *	  update pointers and request more data from host if needed.
  * \param[in] arg pointer (not used).
  * \param[in] type of notify.
  * \param[in] data pointer.
@@ -663,9 +727,12 @@ static void probe_cb_produce(void *arg, enum notify_id type, void *data)
 {
 	struct buffer_cb_transact *cb_data = data;
 	struct comp_buffer *buffer = cb_data->buffer;
+	struct probe_dma_ext *dma;
 	uint32_t buffer_id;
 	uint32_t head, tail;
-	uint32_t ret, i;
+	uint32_t free_bytes = 0;
+	int32_t copy_bytes = 0;
+	uint32_t ret, i, j;
 	uint32_t format;
 
 	buffer_id = buffer->id;
@@ -714,6 +781,78 @@ static void probe_cb_produce(void *arg, enum notify_id type, void *data)
 					      cb_data->transaction_amount);
 			if (ret < 0)
 				goto err;
+		}
+	} else {
+		/* search for DMA used by this probe point */
+		for (j = 0; j < CONFIG_PROBE_DMA_MAX; j++) {
+			if (_probe->inject_dma[j].stream_tag !=
+			    PROBE_DMA_INVALID &&
+			    _probe->inject_dma[j].stream_tag ==
+			    _probe->probe_points[i].stream_tag) {
+				break;
+			}
+		}
+		if (j == CONFIG_PROBE_DMA_MAX) {
+			trace_probe_error("probe_cb_produce() error: dma not found");
+			return;
+		}
+		dma = &_probe->inject_dma[j];
+		/* get avail data info */
+		ret = dma_get_data_size(dma->dc.chan,
+					&dma->dmapb.avail,
+					&free_bytes);
+		if (ret < 0) {
+			trace_probe_error("probe_cb_produce() error: dma_get_data_size() failed, ret = %u",
+					  ret);
+			goto err;
+		}
+
+		/* check if transaction amount exceeds component buffer end addr */
+		/* if yes: divide copying into two stages, head and tail */
+		if ((char *)cb_data->transaction_begin_address +
+			cb_data->transaction_amount > (char *)cb_data->buffer->stream.end_addr) {
+			head = (char *)cb_data->buffer->stream.end_addr -
+				(char *)cb_data->transaction_begin_address;
+			tail = cb_data->transaction_amount - head;
+
+			ret = copy_from_pbuffer(&dma->dmapb,
+						cb_data->transaction_begin_address, head);
+			if (ret < 0)
+				goto err;
+
+			ret = copy_from_pbuffer(&dma->dmapb,
+						cb_data->buffer->stream.addr, tail);
+			if (ret < 0)
+				goto err;
+		} else {
+			ret = copy_from_pbuffer(&dma->dmapb,
+						cb_data->transaction_begin_address,
+						cb_data->transaction_amount);
+			if (ret < 0)
+				goto err;
+		}
+
+		/* calc how many data can be requested */
+		copy_bytes = dma->dmapb.r_ptr - dma->dmapb.w_ptr;
+		if (copy_bytes < 0)
+			copy_bytes += dma->dmapb.size;
+
+		/* align down to request at least 32 */
+		copy_bytes = ALIGN_DOWN(copy_bytes, 32);
+
+		/* check if copy_bytes is still valid for dma copy */
+		if (copy_bytes > 0) {
+			ret = dma_copy_to_host_nowait(&dma->dc,
+						      &dma->config, 0,
+						      (void *)dma->dmapb.r_ptr,
+						      copy_bytes);
+			if (ret < 0)
+				goto err;
+
+			/* update pointers */
+			dma->dmapb.w_ptr = dma->dmapb.w_ptr + copy_bytes;
+			if (dma->dmapb.w_ptr > dma->dmapb.end_addr)
+				dma->dmapb.w_ptr = dma->dmapb.w_ptr - dma->dmapb.size;
 		}
 	}
 	return;
@@ -836,6 +975,11 @@ int probe_point_add(uint32_t count, struct probe_point *probe)
 						  probe[i].stream_tag);
 
 				return -EINVAL;
+			}
+			if (dma_start(_probe->inject_dma[j].dc.chan) < 0) {
+				trace_probe_error("probe_point_add() error: failed to start dma");
+
+				return -EBUSY;
 			}
 		} else if (probe[i].purpose == PROBE_PURPOSE_EXTRACTION) {
 			for (j = 0; j < CONFIG_PROBE_POINTS_MAX; j++) {
