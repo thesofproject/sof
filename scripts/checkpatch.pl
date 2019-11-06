@@ -5498,7 +5498,8 @@ sub process {
 # This does not work very well for -f --file checking as it depends on patch
 # context providing the function name or a single line form for in-file
 # function declarations
-		if ($line =~ /^\+.*$String/ &&
+		if (!$SOF &&
+		    $line =~ /^\+.*$String/ &&
 		    defined($context_function) &&
 		    get_quoted_string($line, $rawline) =~ /\b$context_function\b/ &&
 		    length(get_quoted_string($line, $rawline)) != (length($context_function) + 2)) {
