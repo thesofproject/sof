@@ -61,6 +61,7 @@ struct comp_data {
 			    uint32_t frames);
 };
 
+#if CONFIG_FORMAT_S16LE
 /*
  * EQ IIR algorithm code
  */
@@ -93,7 +94,9 @@ static void eq_iir_s16_default(struct comp_dev *dev,
 		}
 	}
 }
+#endif /* CONFIG_FORMAT_S16LE */
 
+#if CONFIG_FORMAT_S24LE
 static void eq_iir_s24_default(struct comp_dev *dev,
 			       struct comp_buffer *source,
 			       struct comp_buffer *sink,
@@ -122,7 +125,9 @@ static void eq_iir_s24_default(struct comp_dev *dev,
 		}
 	}
 }
+#endif /* CONFIG_FORMAT_S24LE */
 
+#if CONFIG_FORMAT_S32LE
 static void eq_iir_s32_default(struct comp_dev *dev,
 			       struct comp_buffer *source,
 			       struct comp_buffer *sink,
@@ -149,7 +154,9 @@ static void eq_iir_s32_default(struct comp_dev *dev,
 		}
 	}
 }
+#endif /* CONFIG_FORMAT_S32LE */
 
+#if CONFIG_FORMAT_S32LE && CONFIG_FORMAT_S16LE
 static void eq_iir_s32_16_default(struct comp_dev *dev,
 				  struct comp_buffer *source,
 				  struct comp_buffer *sink,
@@ -178,7 +185,9 @@ static void eq_iir_s32_16_default(struct comp_dev *dev,
 		}
 	}
 }
+#endif /* CONFIG_FORMAT_S32LE && CONFIG_FORMAT_S16LE */
 
+#if CONFIG_FORMAT_S32LE && CONFIG_FORMAT_S24LE
 static void eq_iir_s32_24_default(struct comp_dev *dev,
 				  struct comp_buffer *source,
 				  struct comp_buffer *sink,
@@ -207,7 +216,9 @@ static void eq_iir_s32_24_default(struct comp_dev *dev,
 		}
 	}
 }
+#endif /* CONFIG_FORMAT_S32LE && CONFIG_FORMAT_S24LE */
 
+#if CONFIG_FORMAT_S16LE
 static void eq_iir_s16_pass(struct comp_dev *dev,
 			    struct comp_buffer *source,
 			    struct comp_buffer *sink,
@@ -224,7 +235,9 @@ static void eq_iir_s16_pass(struct comp_dev *dev,
 		*y = *x;
 	}
 }
+#endif /* CONFIG_FORMAT_S16LE */
 
+#if CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE
 static void eq_iir_s32_pass(struct comp_dev *dev,
 			    struct comp_buffer *source,
 			    struct comp_buffer *sink,
@@ -241,7 +254,9 @@ static void eq_iir_s32_pass(struct comp_dev *dev,
 		*y = *x;
 	}
 }
+#endif /* CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE */
 
+#if CONFIG_FORMAT_S16LE && CONFIG_FORMAT_S32LE
 static void eq_iir_s32_s16_pass(struct comp_dev *dev,
 				struct comp_buffer *source,
 				struct comp_buffer *sink,
@@ -258,7 +273,9 @@ static void eq_iir_s32_s16_pass(struct comp_dev *dev,
 		*y = sat_int16(Q_SHIFT_RND(*x, 31, 15));
 	}
 }
+#endif /* CONFIG_FORMAT_S16LE && CONFIG_FORMAT_S32LE */
 
+#if CONFIG_FORMAT_S24LE && CONFIG_FORMAT_S32LE
 static void eq_iir_s32_s24_pass(struct comp_dev *dev,
 				struct comp_buffer *source,
 				struct comp_buffer *sink,
@@ -275,29 +292,56 @@ static void eq_iir_s32_s24_pass(struct comp_dev *dev,
 		*y = sat_int24(Q_SHIFT_RND(*x, 31, 23));
 	}
 }
+#endif /* CONFIG_FORMAT_S24LE && CONFIG_FORMAT_S32LE */
 
 const struct eq_iir_func_map fm_configured[] = {
+#if CONFIG_FORMAT_S16LE
 	{SOF_IPC_FRAME_S16_LE,  SOF_IPC_FRAME_S16_LE,  eq_iir_s16_default},
+#endif /* CONFIG_FORMAT_S16LE */
+#if CONFIG_FORMAT_S16LE && CONFIG_FORMAT_S24LE
 	{SOF_IPC_FRAME_S16_LE,  SOF_IPC_FRAME_S24_4LE, NULL},
 	{SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S16_LE,  NULL},
+
+#endif /* CONFIG_FORMAT_S16LE && CONFIG_FORMAT_S24LE */
+#if CONFIG_FORMAT_S16LE && CONFIG_FORMAT_S32LE
 	{SOF_IPC_FRAME_S16_LE,  SOF_IPC_FRAME_S32_LE,  NULL},
 	{SOF_IPC_FRAME_S32_LE,  SOF_IPC_FRAME_S16_LE,  eq_iir_s32_16_default},
+#endif /* CONFIG_FORMAT_S16LE && CONFIG_FORMAT_S32LE */
+#if CONFIG_FORMAT_S24LE
 	{SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S24_4LE, eq_iir_s24_default},
+#endif /* CONFIG_FORMAT_S24LE */
+#if CONFIG_FORMAT_S24LE && CONFIG_FORMAT_S32LE
 	{SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S32_LE,  NULL},
 	{SOF_IPC_FRAME_S32_LE,  SOF_IPC_FRAME_S24_4LE, eq_iir_s32_24_default},
+#endif /* CONFIG_FORMAT_S24LE && CONFIG_FORMAT_S32LE */
+#if CONFIG_FORMAT_S32LE
 	{SOF_IPC_FRAME_S32_LE,  SOF_IPC_FRAME_S32_LE,  eq_iir_s32_default},
+#endif /* CONFIG_FORMAT_S32LE */
 };
 
 const struct eq_iir_func_map fm_passthrough[] = {
+#if CONFIG_FORMAT_S16LE
 	{SOF_IPC_FRAME_S16_LE,  SOF_IPC_FRAME_S16_LE,  eq_iir_s16_pass},
+#endif /* CONFIG_FORMAT_S16LE */
+#if CONFIG_FORMAT_S16LE && CONFIG_FORMAT_S24LE
 	{SOF_IPC_FRAME_S16_LE,  SOF_IPC_FRAME_S24_4LE, NULL},
 	{SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S16_LE,  NULL},
+
+#endif /* CONFIG_FORMAT_S16LE && CONFIG_FORMAT_S24LE*/
+#if CONFIG_FORMAT_S16LE && CONFIG_FORMAT_S32LE
 	{SOF_IPC_FRAME_S16_LE,  SOF_IPC_FRAME_S32_LE,  NULL},
 	{SOF_IPC_FRAME_S32_LE,  SOF_IPC_FRAME_S16_LE,  eq_iir_s32_s16_pass},
+#endif /* CONFIG_FORMAT_S16LE && CONFIG_FORMAT_S32LE*/
+#if CONFIG_FORMAT_S24LE
 	{SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S24_4LE, eq_iir_s32_pass},
+#endif /* CONFIG_FORMAT_S24LE */
+#if CONFIG_FORMAT_S24LE && CONFIG_FORMAT_S32LE
 	{SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S32_LE,  NULL},
 	{SOF_IPC_FRAME_S32_LE,  SOF_IPC_FRAME_S24_4LE, eq_iir_s32_s24_pass},
+#endif /* CONFIG_FORMAT_S24LE */
+#if CONFIG_FORMAT_S32LE
 	{SOF_IPC_FRAME_S32_LE,  SOF_IPC_FRAME_S32_LE,  eq_iir_s32_pass},
+#endif /* CONFIG_FORMAT_S32LE */
 };
 
 static eq_iir_func eq_iir_find_func(struct comp_data *cd,
@@ -515,7 +559,7 @@ static struct comp_dev *eq_iir_new(struct sof_ipc_comp *comp)
 
 	comp_set_drvdata(dev, cd);
 
-	cd->eq_iir_func = eq_iir_s32_pass;
+	cd->eq_iir_func = NULL;
 	cd->iir_delay = NULL;
 	cd->iir_delay_size = 0;
 	cd->config = NULL;
@@ -734,7 +778,11 @@ static int eq_iir_cmd(struct comp_dev *dev, int cmd, void *data,
 
 static int eq_iir_trigger(struct comp_dev *dev, int cmd)
 {
+	struct comp_data *cd = comp_get_drvdata(dev);
 	trace_eq_with_ids(dev, "eq_iir_trigger()");
+
+	if (cmd == COMP_TRIGGER_START || cmd == COMP_TRIGGER_RELEASE)
+		assert(cd->eq_iir_func);
 
 	return comp_set_state(dev, cmd);
 }
@@ -827,7 +875,6 @@ static int eq_iir_prepare(struct comp_dev *dev)
 						"No processing function "
 						"available, for configured "
 						"mode.");
-			cd->eq_iir_func = eq_iir_s32_pass;
 			ret = -EINVAL;
 			goto err;
 		}
@@ -840,7 +887,6 @@ static int eq_iir_prepare(struct comp_dev *dev)
 						"No processing function "
 						"available, for pass-through "
 						"mode.");
-			cd->eq_iir_func = eq_iir_s32_pass;
 			ret = -EINVAL;
 			goto err;
 		}
@@ -862,7 +908,7 @@ static int eq_iir_reset(struct comp_dev *dev)
 
 	eq_iir_free_delaylines(cd);
 
-	cd->eq_iir_func = eq_iir_s32_default;
+	cd->eq_iir_func = NULL;
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
 		iir_reset_df2t(&cd->iir[i]);
 
