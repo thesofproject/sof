@@ -39,19 +39,19 @@ void fir_init_delay(struct fir_state_32x16 *fir, int32_t **data);
 void eq_fir_s16_hifi3(struct fir_state_32x16 *fir, struct comp_buffer *source,
 		      struct comp_buffer *sink, int frames, int nch);
 
-void eq_fir_s24_hifi3(struct fir_state_32x16 *fir, struct comp_buffer *source,
-		      struct comp_buffer *sink, int frames, int nch);
-
-void eq_fir_s32_hifi3(struct fir_state_32x16 *fir, struct comp_buffer *source,
-		      struct comp_buffer *sink, int frames, int nch);
-
 void eq_fir_2x_s16_hifi3(struct fir_state_32x16 *fir,
 			 struct comp_buffer *source, struct comp_buffer *sink,
 			 int frames, int nch);
 
+void eq_fir_s24_hifi3(struct fir_state_32x16 *fir, struct comp_buffer *source,
+		      struct comp_buffer *sink, int frames, int nch);
+
 void eq_fir_2x_s24_hifi3(struct fir_state_32x16 *fir,
 			 struct comp_buffer *source, struct comp_buffer *sink,
 			 int frames, int nch);
+
+void eq_fir_s32_hifi3(struct fir_state_32x16 *fir, struct comp_buffer *source,
+		      struct comp_buffer *sink, int frames, int nch);
 
 void eq_fir_2x_s32_hifi3(struct fir_state_32x16 *fir,
 			 struct comp_buffer *source, struct comp_buffer *sink,
