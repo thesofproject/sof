@@ -31,6 +31,26 @@ add_custom_target(
 	USES_TERMINAL
 )
 
+file(GLOB_RECURSE KCONFIG_FILES "${SOF_ROOT_SOURCE_DIRECTORY}/Kconfig")
+
+if(EXISTS ${DOT_CONFIG_PATH})
+	# Update with olddefconfig only if config was previously generated
+	add_custom_command(
+		OUTPUT ${DOT_CONFIG_PATH}
+		COMMAND ${CMAKE_COMMAND} -E env
+			srctree=${PROJECT_SOURCE_DIR}
+			CC_VERSION_TEXT=${CC_VERSION_TEXT}
+			ARCH=${ARCH}
+			${PYTHON3} ${PROJECT_SOURCE_DIR}/scripts/kconfig/olddefconfig.py
+			${PROJECT_SOURCE_DIR}/Kconfig
+		DEPENDS ${KCONFIG_FILES}
+		WORKING_DIRECTORY ${GENERATED_DIRECTORY}
+		COMMENT "Regenerating .config with olddefconfig"
+		VERBATIM
+		USES_TERMINAL
+	)
+endif()
+
 add_custom_command(
 	OUTPUT ${CONFIG_H_PATH}
 	COMMAND ${CMAKE_COMMAND} -E env
