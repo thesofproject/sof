@@ -83,60 +83,73 @@ struct comp_data {
  */
 
 #if FIR_HIFI3
+#if CONFIG_FORMAT_S16LE
 static inline void set_s16_fir(struct comp_data *cd)
 {
 	cd->eq_fir_func_even = eq_fir_2x_s16_hifi3;
 	cd->eq_fir_func = eq_fir_s16_hifi3;
 }
-
+#endif /* CONFIG_FORMAT_S16LE */
+#if CONFIG_FORMAT_S24LE
 static inline void set_s24_fir(struct comp_data *cd)
 {
 	cd->eq_fir_func_even = eq_fir_2x_s24_hifi3;
 	cd->eq_fir_func = eq_fir_s24_hifi3;
 }
-
+#endif /* CONFIG_FORMAT_S24LE */
+#if CONFIG_FORMAT_S32LE
 static inline void set_s32_fir(struct comp_data *cd)
 {
 	cd->eq_fir_func_even = eq_fir_2x_s32_hifi3;
 	cd->eq_fir_func = eq_fir_s32_hifi3;
 }
+#endif /* CONFIG_FORMAT_S32LE */
+
 #elif FIR_HIFIEP
+#if CONFIG_FORMAT_S16LE
 static inline void set_s16_fir(struct comp_data *cd)
 {
 	cd->eq_fir_func_even = eq_fir_2x_s16_hifiep;
 	cd->eq_fir_func = eq_fir_s16_hifiep;
 }
-
+#endif /* CONFIG_FORMAT_S16LE */
+#if CONFIG_FORMAT_S24LE
 static inline void set_s24_fir(struct comp_data *cd)
 {
 	cd->eq_fir_func_even = eq_fir_2x_s24_hifiep;
 	cd->eq_fir_func = eq_fir_s24_hifiep;
 }
-
+#endif /* CONFIG_FORMAT_S24LE */
+#if CONFIG_FORMAT_S32LE
 static inline void set_s32_fir(struct comp_data *cd)
 {
 	cd->eq_fir_func_even = eq_fir_2x_s32_hifiep;
 	cd->eq_fir_func = eq_fir_s32_hifiep;
 }
+#endif /* CONFIG_FORMAT_S32LE */
 #else
 /* FIR_GENERIC */
+#if CONFIG_FORMAT_S16LE
 static inline void set_s16_fir(struct comp_data *cd)
 {
 	cd->eq_fir_func_even = eq_fir_s16;
 	cd->eq_fir_func = eq_fir_s16;
 }
-
+#endif /* CONFIG_FORMAT_S16LE */
+#if CONFIG_FORMAT_S24LE
 static inline void set_s24_fir(struct comp_data *cd)
 {
 	cd->eq_fir_func_even = eq_fir_s24;
 	cd->eq_fir_func = eq_fir_s24;
 }
-
+#endif /* CONFIG_FORMAT_S24LE */
+#if CONFIG_FORMAT_S32LE
 static inline void set_s32_fir(struct comp_data *cd)
 {
 	cd->eq_fir_func_even = eq_fir_s32;
 	cd->eq_fir_func = eq_fir_s32;
 }
+#endif /* CONFIG_FORMAT_S32LE */
 #endif
 
 static inline int set_fir_func(struct comp_dev *dev)
@@ -144,18 +157,24 @@ static inline int set_fir_func(struct comp_dev *dev)
 	struct comp_data *cd = comp_get_drvdata(dev);
 
 	switch (dev->params.frame_fmt) {
+#if CONFIG_FORMAT_S16LE
 	case SOF_IPC_FRAME_S16_LE:
 		trace_eq_with_ids(dev, "set_fir_func(), SOF_IPC_FRAME_S16_LE");
 		set_s16_fir(cd);
 		break;
+#endif /* CONFIG_FORMAT_S16LE */
+#if CONFIG_FORMAT_S24LE
 	case SOF_IPC_FRAME_S24_4LE:
 		trace_eq_with_ids(dev, "set_fir_func(), SOF_IPC_FRAME_S24_4LE");
 		set_s24_fir(cd);
 		break;
+#endif /* CONFIG_FORMAT_S24LE */
+#if CONFIG_FORMAT_S32LE
 	case SOF_IPC_FRAME_S32_LE:
 		trace_eq_with_ids(dev, "set_fir_func(), SOF_IPC_FRAME_S32_LE");
 		set_s32_fir(cd);
 		break;
+#endif /* CONFIG_FORMAT_S32LE */
 	default:
 		trace_eq_error_with_ids(dev, "set_fir_func(), invalid frame_fmt");
 		return -EINVAL;
@@ -167,6 +186,7 @@ static inline int set_fir_func(struct comp_dev *dev)
  * response.
  */
 
+#if CONFIG_FORMAT_S16LE
 static void eq_fir_s16_passthrough(struct fir_state_32x16 fir[],
 				   struct comp_buffer *source,
 				   struct comp_buffer *sink,
@@ -183,7 +203,9 @@ static void eq_fir_s16_passthrough(struct fir_state_32x16 fir[],
 		*y = *x;
 	}
 }
+#endif /* CONFIG_FORMAT_S16LE */
 
+#if CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE
 static void eq_fir_s32_passthrough(struct fir_state_32x16 fir[],
 				   struct comp_buffer *source,
 				   struct comp_buffer *sink,
@@ -200,6 +222,7 @@ static void eq_fir_s32_passthrough(struct fir_state_32x16 fir[],
 		*y = *x;
 	}
 }
+#endif /* CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE */
 
 /* Function to select pass-trough depending on PCM format */
 
@@ -208,17 +231,21 @@ static inline int set_pass_func(struct comp_dev *dev)
 	struct comp_data *cd = comp_get_drvdata(dev);
 
 	switch (dev->params.frame_fmt) {
+#if CONFIG_FORMAT_S16LE
 	case SOF_IPC_FRAME_S16_LE:
 		trace_eq_with_ids(dev, "set_pass_func(), SOF_IPC_FRAME_S16_LE");
 		cd->eq_fir_func_even = eq_fir_s16_passthrough;
 		cd->eq_fir_func = eq_fir_s16_passthrough;
 		break;
+#endif /* CONFIG_FORMAT_S32LE */
+#if CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE
 	case SOF_IPC_FRAME_S24_4LE:
 	case SOF_IPC_FRAME_S32_LE:
 		trace_eq_with_ids(dev, "set_pass_func(), SOF_IPC_FRAME_S32_LE");
 		cd->eq_fir_func_even = eq_fir_s32_passthrough;
 		cd->eq_fir_func = eq_fir_s32_passthrough;
 		break;
+#endif /* CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE */
 	default:
 		trace_eq_error_with_ids(dev, "set_pass_func() error: "
 					"invalid dev->params.frame_fmt");
@@ -427,8 +454,8 @@ static struct comp_dev *eq_fir_new(struct sof_ipc_comp *comp)
 
 	comp_set_drvdata(dev, cd);
 
-	cd->eq_fir_func_even = eq_fir_s32_passthrough;
-	cd->eq_fir_func = eq_fir_s32_passthrough;
+	cd->eq_fir_func_even = NULL;
+	cd->eq_fir_func = NULL;
 	cd->config = NULL;
 
 	/* Allocate and make a copy of the coefficients blob and reset FIR. If
@@ -679,7 +706,13 @@ static int eq_fir_cmd(struct comp_dev *dev, int cmd, void *data,
 
 static int eq_fir_trigger(struct comp_dev *dev, int cmd)
 {
+	struct comp_data *cd = comp_get_drvdata(dev);
 	trace_eq_with_ids(dev, "eq_fir_trigger()");
+
+	if (cmd == COMP_TRIGGER_START || cmd == COMP_TRIGGER_RELEASE) {
+		assert(cd->eq_fir_func);
+		assert(cd->eq_fir_func_even);
+	}
 
 	return comp_set_state(dev, cmd);
 }
@@ -800,8 +833,8 @@ static int eq_fir_reset(struct comp_dev *dev)
 
 	eq_fir_free_delaylines(cd);
 
-	cd->eq_fir_func_even = eq_fir_s32_passthrough;
-	cd->eq_fir_func = eq_fir_s32_passthrough;
+	cd->eq_fir_func_even = NULL;
+	cd->eq_fir_func = NULL;
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
 		fir_reset(&cd->fir[i]);
 
