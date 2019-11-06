@@ -74,6 +74,7 @@ void fir_get_lrshifts(struct fir_state_32x16 *fir, int *lshift,
 	*rshift = (fir->out_shift > 0) ? fir->out_shift : 0;
 }
 
+#if CONFIG_FORMAT_S32LE
 /* For even frame lengths use FIR filter that processes two sequential
  * sample per call.
  */
@@ -151,7 +152,9 @@ void eq_fir_s32_hifiep(struct fir_state_32x16 fir[], struct comp_buffer *source,
 		}
 	}
 }
+#endif /* CONFIG_FORMAT_S32LE */
 
+#if CONFIG_FORMAT_S24LE
 void eq_fir_2x_s24_hifiep(struct fir_state_32x16 fir[],
 			  struct comp_buffer *source,
 			  struct comp_buffer *sink,
@@ -232,7 +235,9 @@ void eq_fir_s24_hifiep(struct fir_state_32x16 fir[], struct comp_buffer *source,
 		}
 	}
 }
+#endif /* CONFIG_FORMAT_S24LE */
 
+#if CONFIG_FORMAT_S16LE
 void eq_fir_2x_s16_hifiep(struct fir_state_32x16 fir[],
 			  struct comp_buffer *source,
 			  struct comp_buffer *sink,
@@ -313,5 +318,6 @@ void eq_fir_s16_hifiep(struct fir_state_32x16 fir[], struct comp_buffer *source,
 		}
 	}
 }
+#endif /* CONFIG_FORMAT_S16LE */
 
 #endif
