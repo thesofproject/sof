@@ -249,6 +249,15 @@ struct comp_dev {
 	uint32_t output_rate;      /**< 0 means all output rates are fine */
 	struct pipeline *pipeline; /**< pipeline we belong to */
 
+	uint32_t min_sink_bytes;   /**< min free sink buffer size measured in
+				     *  bytes required to run component's
+				     *  processing
+				     */
+	uint32_t min_source_bytes; /**< amount of data measured in bytes
+				     *  available at source buffer required
+				     *  to run component's processing
+				     */
+
 	/** common runtime configuration for downstream/upstream */
 	struct sof_ipc_stream_params params;
 
