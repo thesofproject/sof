@@ -225,7 +225,11 @@
 #define SAI_FLAG_PMQOS   BIT(0)
 
 #define SAI_FIFO_WORD_SIZE	64
-#define SAI_CLOCK_DIV		0x3
+/* Divides down the audio master clock to generate the bit clock when
+ * configured for an internal bit clock.
+ * The division value is (DIV + 1) * 2.
+ */
+#define SAI_CLOCK_DIV		0x7
 #define SAI_TDM_SLOTS		2
 
 extern const struct dai_driver sai_driver;
