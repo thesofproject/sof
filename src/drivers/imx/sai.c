@@ -176,24 +176,30 @@ static inline int sai_set_config(struct dai *dai,
 	/* DAI clock master masks */
 	switch (config->format & SOF_DAI_FMT_MASTER_MASK) {
 	case SOF_DAI_FMT_CBS_CFS:
-		break;
-	case SOF_DAI_FMT_CBM_CFM:
+		trace_sai("SAI: codec is slave");
 		val_cr2 |= REG_SAI_CR2_MSEL_MCLK1;
 		val_cr2 |= REG_SAI_CR2_BCD_MSTR;
+		val_cr2 |= SAI_CLOCK_DIV; /* TODO: determine dynamically.*/
 		val_cr4 |= REG_SAI_CR4_FSD_MSTR;
+		break;
+	case SOF_DAI_FMT_CBM_CFM:
+		trace_sai("SAI: codec is master");
+		/*
+		 * fields CR2_DIV and CR2_MSEL not relevant in slave mode.
+		 * fields CR2_BCD and CR4_MFSD already at 0
+		 */
 		break;
 	case SOF_DAI_FMT_CBS_CFM:
-		val_cr4 |= REG_SAI_CR4_FSD_MSTR;
+		val_cr2 |= REG_SAI_CR2_BCD_MSTR;
+		val_cr2 |= SAI_CLOCK_DIV; /* TODO: determine dynamically.*/
 		break;
 	case SOF_DAI_FMT_CBM_CFS:
-		val_cr2 |= REG_SAI_CR2_BCD_MSTR;
+		val_cr4 |= REG_SAI_CR4_FSD_MSTR;
+		val_cr2 |= SAI_CLOCK_DIV; /* TODO: determine dynamically.*/
 		break;
 	default:
 		return -EINVAL;
 	}
-
-	/* set clock divider as (DIV + 1) * 2 */
-	val_cr2 |= SAI_CLOCK_DIV;
 
 	/* TODO: set number of slots from config */
 	val_cr4 |= REG_SAI_CR4_FRSZ(SAI_TDM_SLOTS);
