@@ -134,36 +134,6 @@ static void fill_source_s16(struct vol_test_state *vol_state)
 	}
 }
 
-static void fill_source_s24(struct vol_test_state *vol_state)
-{
-	int64_t val;
-	int32_t *src = (int32_t *)vol_state->source->r_ptr;
-	int i;
-	int sign = 1;
-
-	for (i = 0; i < vol_state->source->size / sizeof(int32_t); i++) {
-		val = (INT24_MIN + (i >> 1)) * sign;
-		val = (val > INT24_MAX) ? INT24_MAX : val;
-		src[i] = (int32_t)val;
-		sign = -sign;
-	}
-}
-
-static void fill_source_s32(struct vol_test_state *vol_state)
-{
-	int64_t val;
-	int32_t *src = (int32_t *)vol_state->source->r_ptr;
-	int i;
-	int sign = 1;
-
-	for (i = 0; i < vol_state->source->size / sizeof(int32_t); i++) {
-		val = (INT32_MIN + (i >> 1)) * sign;
-		val = (val > INT32_MAX) ? INT32_MAX : val;
-		src[i] = (int32_t)val;
-		sign = -sign;
-	}
-}
-
 static void verify_s16_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
 			      struct comp_buffer *source)
 {
@@ -279,6 +249,21 @@ static void verify_sX_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
 	}
 }
 
+static void fill_source_s24(struct vol_test_state *vol_state)
+{
+	int64_t val;
+	int32_t *src = (int32_t *)vol_state->source->r_ptr;
+	int i;
+	int sign = 1;
+
+	for (i = 0; i < vol_state->source->size / sizeof(int32_t); i++) {
+		val = (INT24_MIN + (i >> 1)) * sign;
+		val = (val > INT24_MAX) ? INT24_MAX : val;
+		src[i] = (int32_t)val;
+		sign = -sign;
+	}
+}
+
 static void verify_s24_to_s24_s32(struct comp_dev *dev,
 				  struct comp_buffer *sink,
 				  struct comp_buffer *source)
@@ -320,6 +305,21 @@ static void verify_s24_to_s24_s32(struct comp_dev *dev,
 				      dst_sample > INT24_MAX))
 				assert_int_equal(dst_sample, sample);
 		}
+	}
+}
+
+static void fill_source_s32(struct vol_test_state *vol_state)
+{
+	int64_t val;
+	int32_t *src = (int32_t *)vol_state->source->r_ptr;
+	int i;
+	int sign = 1;
+
+	for (i = 0; i < vol_state->source->size / sizeof(int32_t); i++) {
+		val = (INT32_MIN + (i >> 1)) * sign;
+		val = (val > INT32_MAX) ? INT32_MAX : val;
+		src[i] = (int32_t)val;
+		sign = -sign;
 	}
 }
 
@@ -398,56 +398,59 @@ static struct vol_test_parameters parameters[] = {
 		SOF_IPC_FRAME_S16_LE,   verify_s16_to_s16 }, /* 2 */
 	{ VOL_MINUS_80DB, 2, 48, 1, SOF_IPC_FRAME_S16_LE,
 		SOF_IPC_FRAME_S16_LE,   verify_s16_to_s16 }, /* 3 */
-	{ VOL_MAX,        2, 48, 1, SOF_IPC_FRAME_S16_LE,
-		SOF_IPC_FRAME_S24_4LE,  verify_s16_to_sX }, /* 4 */
-	{ VOL_ZERO_DB,    2, 48, 1, SOF_IPC_FRAME_S16_LE,
-		SOF_IPC_FRAME_S24_4LE,  verify_s16_to_sX }, /* 5 */
-	{ VOL_MINUS_80DB, 2, 48, 1, SOF_IPC_FRAME_S16_LE,
-		SOF_IPC_FRAME_S24_4LE,  verify_s16_to_sX }, /* 6 */
-	{ VOL_MAX,        2, 48, 1, SOF_IPC_FRAME_S16_LE,
-		SOF_IPC_FRAME_S32_LE,   verify_s16_to_sX }, /* 7 */
-	{ VOL_ZERO_DB,    2, 48, 1, SOF_IPC_FRAME_S16_LE,
-		SOF_IPC_FRAME_S32_LE,   verify_s16_to_sX }, /* 8 */
-	{ VOL_MINUS_80DB, 2, 48, 1, SOF_IPC_FRAME_S16_LE,
-		SOF_IPC_FRAME_S32_LE,   verify_s16_to_sX }, /* 9 */
 
+	{ VOL_MAX,        2, 48, 1, SOF_IPC_FRAME_S24_4LE,
+		SOF_IPC_FRAME_S24_4LE, verify_s24_to_s24_s32 }, /* 4 */
+	{ VOL_ZERO_DB,    2, 48, 1, SOF_IPC_FRAME_S24_4LE,
+		SOF_IPC_FRAME_S24_4LE, verify_s24_to_s24_s32 }, /* 5 */
+	{ VOL_MINUS_80DB, 2, 48, 1, SOF_IPC_FRAME_S24_4LE,
+		SOF_IPC_FRAME_S24_4LE, verify_s24_to_s24_s32 }, /* 6 */
+
+	{ VOL_MAX,        2, 48, 1, SOF_IPC_FRAME_S16_LE,
+		SOF_IPC_FRAME_S24_4LE,  verify_s16_to_sX }, /* 7 */
+	{ VOL_ZERO_DB,    2, 48, 1, SOF_IPC_FRAME_S16_LE,
+		SOF_IPC_FRAME_S24_4LE,  verify_s16_to_sX }, /* 8 */
+	{ VOL_MINUS_80DB, 2, 48, 1, SOF_IPC_FRAME_S16_LE,
+		SOF_IPC_FRAME_S24_4LE,  verify_s16_to_sX }, /* 9 */
 	{ VOL_MAX,        2, 48, 1, SOF_IPC_FRAME_S24_4LE,
 		SOF_IPC_FRAME_S16_LE,  verify_sX_to_s16 }, /* 10 */
 	{ VOL_ZERO_DB,    2, 48, 1, SOF_IPC_FRAME_S24_4LE,
 		SOF_IPC_FRAME_S16_LE,  verify_sX_to_s16 }, /* 11 */
 	{ VOL_MINUS_80DB, 2, 48, 1, SOF_IPC_FRAME_S24_4LE,
 		SOF_IPC_FRAME_S16_LE,  verify_sX_to_s16 }, /* 12 */
-	{ VOL_MAX,        2, 48, 1, SOF_IPC_FRAME_S24_4LE,
-		SOF_IPC_FRAME_S24_4LE, verify_s24_to_s24_s32 }, /* 13 */
-	{ VOL_ZERO_DB,    2, 48, 1, SOF_IPC_FRAME_S24_4LE,
-		SOF_IPC_FRAME_S24_4LE, verify_s24_to_s24_s32 }, /* 14 */
-	{ VOL_MINUS_80DB, 2, 48, 1, SOF_IPC_FRAME_S24_4LE,
-		SOF_IPC_FRAME_S24_4LE, verify_s24_to_s24_s32 }, /* 15 */
-	{ VOL_MAX,        2, 48, 1, SOF_IPC_FRAME_S24_4LE,
-		SOF_IPC_FRAME_S32_LE,  verify_s24_to_s24_s32 }, /* 16 */
-	{ VOL_ZERO_DB,    2, 48, 1, SOF_IPC_FRAME_S24_4LE,
-		SOF_IPC_FRAME_S32_LE,  verify_s24_to_s24_s32 }, /* 17 */
-	{ VOL_MINUS_80DB, 2, 48, 1, SOF_IPC_FRAME_S24_4LE,
-		SOF_IPC_FRAME_S32_LE,  verify_s24_to_s24_s32 }, /* 18 */
 
+	{ VOL_MAX,        2, 48, 1, SOF_IPC_FRAME_S32_LE,
+		SOF_IPC_FRAME_S32_LE,   verify_s32_to_s24_s32 }, /* 13 */
+	{ VOL_ZERO_DB,    2, 48, 1, SOF_IPC_FRAME_S32_LE,
+		SOF_IPC_FRAME_S32_LE,   verify_s32_to_s24_s32 }, /* 14 */
+	{ VOL_MINUS_80DB, 2, 48, 1, SOF_IPC_FRAME_S32_LE,
+		SOF_IPC_FRAME_S32_LE,   verify_s32_to_s24_s32 }, /* 15 */
+
+	{ VOL_MAX,        2, 48, 1, SOF_IPC_FRAME_S16_LE,
+		SOF_IPC_FRAME_S32_LE,   verify_s16_to_sX }, /* 16 */
+	{ VOL_ZERO_DB,    2, 48, 1, SOF_IPC_FRAME_S16_LE,
+		SOF_IPC_FRAME_S32_LE,   verify_s16_to_sX }, /* 17 */
+	{ VOL_MINUS_80DB, 2, 48, 1, SOF_IPC_FRAME_S16_LE,
+		SOF_IPC_FRAME_S32_LE,   verify_s16_to_sX }, /* 18 */
 	{ VOL_MAX,        2, 48, 1, SOF_IPC_FRAME_S32_LE,
 		SOF_IPC_FRAME_S16_LE,   verify_sX_to_s16 }, /* 19 */
 	{ VOL_ZERO_DB,    2, 48, 1, SOF_IPC_FRAME_S32_LE,
 		SOF_IPC_FRAME_S16_LE,   verify_sX_to_s16 }, /* 20 */
 	{ VOL_MINUS_80DB, 2, 48, 1, SOF_IPC_FRAME_S32_LE,
 		SOF_IPC_FRAME_S16_LE,   verify_sX_to_s16 }, /* 21 */
+
+	{ VOL_MAX,        2, 48, 1, SOF_IPC_FRAME_S24_4LE,
+		SOF_IPC_FRAME_S32_LE,  verify_s24_to_s24_s32 }, /* 22 */
+	{ VOL_ZERO_DB,    2, 48, 1, SOF_IPC_FRAME_S24_4LE,
+		SOF_IPC_FRAME_S32_LE,  verify_s24_to_s24_s32 }, /* 23 */
+	{ VOL_MINUS_80DB, 2, 48, 1, SOF_IPC_FRAME_S24_4LE,
+		SOF_IPC_FRAME_S32_LE,  verify_s24_to_s24_s32 }, /* 24 */
 	{ VOL_MAX,        2, 48, 1, SOF_IPC_FRAME_S32_LE,
-		SOF_IPC_FRAME_S24_4LE,  verify_s32_to_s24_s32 }, /* 22 */
+		SOF_IPC_FRAME_S24_4LE,  verify_s32_to_s24_s32 }, /* 25 */
 	{ VOL_ZERO_DB,    2, 48, 1, SOF_IPC_FRAME_S32_LE,
-		SOF_IPC_FRAME_S24_4LE,  verify_s32_to_s24_s32 }, /* 23 */
+		SOF_IPC_FRAME_S24_4LE,  verify_s32_to_s24_s32 }, /* 26 */
 	{ VOL_MINUS_80DB, 2, 48, 1, SOF_IPC_FRAME_S32_LE,
-		SOF_IPC_FRAME_S24_4LE,  verify_s32_to_s24_s32 }, /* 24 */
-	{ VOL_MAX,        2, 48, 1, SOF_IPC_FRAME_S32_LE,
-		SOF_IPC_FRAME_S32_LE,   verify_s32_to_s24_s32 }, /* 25 */
-	{ VOL_ZERO_DB,    2, 48, 1, SOF_IPC_FRAME_S32_LE,
-		SOF_IPC_FRAME_S32_LE,   verify_s32_to_s24_s32 }, /* 26 */
-	{ VOL_MINUS_80DB, 2, 48, 1, SOF_IPC_FRAME_S32_LE,
-		SOF_IPC_FRAME_S32_LE,   verify_s32_to_s24_s32 }, /* 27 */
+		SOF_IPC_FRAME_S24_4LE,  verify_s32_to_s24_s32 }, /* 27 */
 };
 
 int main(void)
