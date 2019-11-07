@@ -18,6 +18,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#if CONFIG_FORMAT_S16LE
 /*
  * \brief Fetch 16b samples from source buffer and perform routing operations
  *	  based on mask provided.
@@ -130,7 +131,9 @@ static void mux_s16le(struct comp_dev *dev, struct comp_buffer *sink,
 		}
 	}
 }
+#endif /* CONFIG_FORMAT_S16LE */
 
+#if CONFIG_FORMAT_S24LE
 /*
  * \brief Fetch 24b samples from source buffer and perform routing operations
  *	  based on mask provided.
@@ -242,7 +245,9 @@ static void mux_s24le(struct comp_dev *dev, struct comp_buffer *sink,
 		}
 	}
 }
+#endif /* CONFIG_FORMAT_S24LE */
 
+#if CONFIG_FORMAT_S32LE
 /*
  * \brief Fetch 32b samples from source buffer and perform routing operations
  *	  based on mask provided.
@@ -355,10 +360,18 @@ static void mux_s32le(struct comp_dev *dev, struct comp_buffer *sink,
 	}
 }
 
+#endif /* CONFIG_FORMAT_S32LE */
+
 const struct comp_func_map mux_func_map[] = {
+#if CONFIG_FORMAT_S16LE
 	{ SOF_IPC_FRAME_S16_LE, &mux_s16le, &demux_s16le },
+#endif
+#if CONFIG_FORMAT_S24LE
 	{ SOF_IPC_FRAME_S24_4LE, &mux_s24le, &demux_s24le },
+#endif
+#if CONFIG_FORMAT_S32LE
 	{ SOF_IPC_FRAME_S32_LE, &mux_s32le, &demux_s32le },
+#endif
 };
 
 mux_func mux_get_processing_function(struct comp_dev *dev)
