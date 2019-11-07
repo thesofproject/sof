@@ -26,6 +26,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#if CONFIG_FORMAT_S16LE && CONFIG_FORMAT_S24LE
 /**
  * \brief Volume gain function
  * \param[in] x   input sample.
@@ -118,7 +119,9 @@ static void vol_s24_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
 		}
 	}
 }
+#endif /* CONFIG_FORMAT_S16LE && CONFIG_FORMAT_S24LE */
 
+#if CONFIG_FORMAT_S16LE && CONFIG_FORMAT_S32LE
 /**
  * \brief Volume s32 to s16 multiply function
  * \param[in] x   input sample.
@@ -199,7 +202,9 @@ static void vol_s32_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
 		}
 	}
 }
+#endif /* CONFIG_FORMAT_S16LE && CONFIG_FORMAT_S32LE */
 
+#if CONFIG_FORMAT_S24LE
 /**
  * \brief Volume s24 to s24 multiply function
  * \param[in] x   input sample.
@@ -246,7 +251,9 @@ static void vol_s24_to_s24(struct comp_dev *dev, struct comp_buffer *sink,
 		}
 	}
 }
+#endif /* CONFIG_FORMAT_S24LE */
 
+#if CONFIG_FORMAT_S24LE && CONFIG_FORMAT_S32LE
 /**
  * \brief Volume s32 to s24 multiply function
  * \param[in] x   input sample.
@@ -328,6 +335,9 @@ static void vol_s24_to_s32(struct comp_dev *dev, struct comp_buffer *sink,
 	}
 }
 
+#endif /* CONFIG_FORMAT_S24LE && CONFIG_FORMAT_S32LE */
+
+#if CONFIG_FORMAT_S32LE
 /**
  * \brief Volume processing from 32 bit to 32 bit.
  * \param[in,out] dev Volume base component device.
@@ -362,7 +372,9 @@ static void vol_s32_to_s32(struct comp_dev *dev, struct comp_buffer *sink,
 		}
 	}
 }
+#endif /* CONFIG_FORMAT_S32LE */
 
+#if CONFIG_FORMAT_S16LE
 /**
  * \brief Volume processing from 16 bit to 16 bit.
  * \param[in,out] dev Volume base component device.
@@ -397,17 +409,31 @@ static void vol_s16_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
 		}
 	}
 }
+#endif /* CONFIG_FORMAT_S16LE */
+
 
 const struct comp_func_map func_map[] = {
+#if CONFIG_FORMAT_S16LE
 	{SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S16_LE, vol_s16_to_s16},
+#endif /* CONFIG_FORMAT_S16LE */
+#if CONFIG_FORMAT_S16LE && CONFIG_FORMAT_S24LE
 	{SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S24_4LE, vol_s16_to_s24},
 	{SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S16_LE, vol_s24_to_s16},
+#endif /* CONFIG_FORMAT_S16LE && CONFIG_FORMAT_S24LE */
+#if CONFIG_FORMAT_S16LE && CONFIG_FORMAT_S32LE
 	{SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S32_LE, vol_s16_to_s32},
 	{SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S16_LE, vol_s32_to_s16},
+#endif /* CONFIG_FORMAT_S16LE && CONFIG_FORMAT_S32LE */
+#if CONFIG_FORMAT_S24LE
 	{SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S24_4LE, vol_s24_to_s24},
+#endif /* CONFIG_FORMAT_S24LE */
+#if CONFIG_FORMAT_S24LE && CONFIG_FORMAT_S32LE
 	{SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S24_4LE, vol_s32_to_s24},
 	{SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S32_LE, vol_s24_to_s32},
+#endif /* CONFIG_FORMAT_S24LE && CONFIG_FORMAT_S32LE */
+#if CONFIG_FORMAT_S32LE
 	{SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S32_LE, vol_s32_to_s32},
+#endif /* CONFIG_FORMAT_S32LE */
 };
 
 const size_t func_count = ARRAY_SIZE(func_map);
