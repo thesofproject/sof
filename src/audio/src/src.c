@@ -471,6 +471,7 @@ static void src_copy_s32(struct comp_dev *dev,
 	*n_written = frames;
 }
 
+#if CONFIG_FORMAT_S16LE
 static void src_copy_s16(struct comp_dev *dev,
 			 struct comp_buffer *source, struct comp_buffer *sink,
 			 int *n_read, int *n_written)
@@ -507,6 +508,7 @@ static void src_copy_s16(struct comp_dev *dev,
 	*n_read = frames;
 	*n_written = frames;
 }
+#endif /* CONFIG_FORMAT_S16LE */
 
 static struct comp_dev *src_new(struct sof_ipc_comp *comp)
 {
@@ -551,7 +553,7 @@ static struct comp_dev *src_new(struct sof_ipc_comp *comp)
 
 	cd->delay_lines = NULL;
 	cd->src_func = src_fallback;
-	cd->polyphase_func = src_polyphase_stage_cir;
+	cd->polyphase_func = NULL;
 	src_polyphase_reset(&cd->src);
 
 	dev->output_rate = ipc_src->sink_rate;
@@ -705,7 +707,12 @@ static int src_cmd(struct comp_dev *dev, int cmd, void *data,
 
 static int src_trigger(struct comp_dev *dev, int cmd)
 {
+	struct comp_data *cd = comp_get_drvdata(dev);
+
 	trace_src_with_ids(dev, "src_trigger()");
+
+	if (cmd == COMP_TRIGGER_START || cmd == COMP_TRIGGER_RELEASE)
+		assert(cd->polyphase_func);
 
 	return comp_set_state(dev, cmd);
 }
@@ -875,6 +882,7 @@ static int src_prepare(struct comp_dev *dev)
 	}
 
 	switch (cd->source_format) {
+#if CONFIG_FORMAT_S16LE
 	case SOF_IPC_FRAME_S16_LE:
 		cd->data_shift = 0;
 		cd->polyphase_func = src_polyphase_stage_cir_s16;
@@ -885,14 +893,19 @@ static int src_prepare(struct comp_dev *dev)
 		if (cd->source_rate == cd->sink_rate)
 			cd->src_func = src_copy_s16;
 		break;
+#endif /* CONFIG_FORMAT_S16LE */
+#if CONFIG_FORMAT_S24LE
 	case SOF_IPC_FRAME_S24_4LE:
 		cd->data_shift = 8;
 		cd->polyphase_func = src_polyphase_stage_cir;
 		break;
+#endif /* CONFIG_FORMAT_S24LE */
+#if CONFIG_FORMAT_S32LE
 	case SOF_IPC_FRAME_S32_LE:
 		cd->data_shift = 0;
 		cd->polyphase_func = src_polyphase_stage_cir;
 		break;
+#endif /* CONFIG_FORMAT_S32LE */
 	default:
 		trace_src_error("src_prepare() error: invalid format %d",
 				cd->source_format);

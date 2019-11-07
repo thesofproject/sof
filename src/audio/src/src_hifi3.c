@@ -299,6 +299,7 @@ static inline void fir_filter(ae_f32 *rp, const void *cp, ae_f32 *wp0,
 
 #endif /* 32bit coefficients version */
 
+#if CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE
 void src_polyphase_stage_cir(struct src_stage_prm *s)
 {
 	/* This function uses
@@ -421,7 +422,9 @@ void src_polyphase_stage_cir(struct src_stage_prm *s)
 	s->x_rptr = x_rptr;
 	s->y_wptr = y_wptr;
 }
+#endif /* CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE */
 
+#if CONFIG_FORMAT_S16LE
 void src_polyphase_stage_cir_s16(struct src_stage_prm *s)
 {
 	/* This function uses
@@ -551,5 +554,6 @@ void src_polyphase_stage_cir_s16(struct src_stage_prm *s)
 	s->x_rptr = x_rptr;
 	s->y_wptr = y_wptr;
 }
+#endif /* CONFIG_FORMAT_S16LE */
 
 #endif
