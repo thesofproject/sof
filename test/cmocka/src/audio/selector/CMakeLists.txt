@@ -12,6 +12,7 @@ add_library(audio_for_selector STATIC
 	${PROJECT_SOURCE_DIR}/src/audio/selector/selector.c
 	${PROJECT_SOURCE_DIR}/src/audio/selector/selector_generic.c
 )
+sof_append_relative_path_definitions(audio_for_selector)
 
 target_link_libraries(audio_for_selector PRIVATE sof_options)
 

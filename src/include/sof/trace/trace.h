@@ -10,6 +10,11 @@
 #ifndef __SOF_TRACE_TRACE_H__
 #define __SOF_TRACE_TRACE_H__
 
+#ifndef RELATIVE_FILE
+#error "This file requires RELATIVE_FILE to be defined. " \
+	"Add it to CMake's target with sof_append_relative_path_definitions."
+#endif
+
 #if CONFIG_TRACE
 #include <platform/trace/trace.h>
 #endif
@@ -229,7 +234,7 @@ void trace_init(struct sof *sof);
 		uint32_t line_idx;				\
 		uint32_t file_name_len;				\
 		uint32_t text_len;				\
-		const char file_name[sizeof(__FILE__)];		\
+		const char file_name[sizeof(RELATIVE_FILE)];	\
 		const char text[sizeof(format)];		\
 	} log_entry = {						\
 		lvl,						\
@@ -237,9 +242,9 @@ void trace_init(struct sof *sof);
 		ids,						\
 		params,						\
 		__LINE__,					\
-		sizeof(__FILE__),				\
+		sizeof(RELATIVE_FILE),				\
 		sizeof(format),					\
-		__FILE__,					\
+		RELATIVE_FILE,					\
 		format						\
 	}
 
@@ -282,7 +287,7 @@ do {									\
 		uint32_t line_idx;				\
 		uint32_t file_name_len;				\
 		uint32_t text_len;				\
-		const char file_name[sizeof(__FILE__)];		\
+		const char file_name[sizeof(RELATIVE_FILE)];		\
 		const char text[sizeof(format)];		\
 	} log_entry = {						\
 		lvl,						\
@@ -290,9 +295,9 @@ do {									\
 		ids,						\
 		params,						\
 		__LINE__,					\
-		sizeof(__FILE__),				\
+		sizeof(RELATIVE_FILE),				\
 		sizeof(format),					\
-		__FILE__,					\
+		RELATIVE_FILE,					\
 		format						\
 	}
 #endif

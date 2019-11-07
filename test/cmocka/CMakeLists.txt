@@ -57,6 +57,7 @@ SET(arch_src ${PROJECT_SOURCE_DIR}/src/arch/xtensa/idc.c)
 add_library(universal_mock STATIC ${PROJECT_SOURCE_DIR}/test/cmocka/src/universal_mocks.c)
 target_link_libraries(universal_mock PRIVATE sof_options)
 link_libraries(universal_mock)
+sof_append_relative_path_definitions(universal_mock)
 
 # creates exectuable for new test and adds it as test for ctest
 function(cmocka_test test_name)
@@ -74,6 +75,8 @@ function(cmocka_test test_name)
 	target_compile_definitions(${test_name} PRIVATE -D_UINTPTR_T_DEFINED)
 
 	add_test(NAME ${test_name} COMMAND xt-run --exit_with_target_code ${test_name})
+
+	sof_append_relative_path_definitions(${test_name})
 endfunction()
 
 add_subdirectory(src)
