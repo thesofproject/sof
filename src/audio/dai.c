@@ -807,13 +807,21 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 		channel = EDMA_HS_GET_CHAN(handshake);
 
 		switch (dev->params.frame_fmt) {
+#if CONFIG_FORMAT_S16LE
 		case SOF_IPC_FRAME_S16_LE:
 			dd->frame_bytes = 2;
 			break;
+#endif /* CONFIG_FORMAT_S16LE */
+#if CONFIG_FORMAT_S24LE
 		case SOF_IPC_FRAME_S24_4LE:
+			dd->frame_bytes = 4;
+			break;
+#endif /* CONFIG_FORMAT_S24LE */
+#if CONFIG_FORMAT_S32LE
 		case SOF_IPC_FRAME_S32_LE:
 			dd->frame_bytes = 4;
 			break;
+#endif /* CONFIG_FORMAT_S32LE */
 		default:
 			trace_dai_error_with_ids(dev, "dai_config() unsupported frame_fmt");
 		}
