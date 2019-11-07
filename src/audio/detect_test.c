@@ -93,11 +93,18 @@ static inline bool detector_is_sample_width_supported(enum sof_ipc_frame sf)
 	bool ret;
 
 	switch (sf) {
+#if CONFIG_FORMAT_S16LE
 	case SOF_IPC_FRAME_S16_LE:
 		/* FALLTHRU */
+#endif /* CONFIG_FORMAT_S16LE */
+#if CONFIG_FORMAT_S24LE
 	case SOF_IPC_FRAME_S24_4LE:
 		/* FALLTHRU */
+#endif /* CONFIG_FORMAT_S24LE */
+#if CONFIG_FORMAT_S32LE
 	case SOF_IPC_FRAME_S32_LE:
+		/* FALLTHRU */
+#endif /* CONFIG_FORMAT_S32LE */
 		ret = true;
 		break;
 	default:
@@ -239,6 +246,24 @@ static int alloc_mem_load(struct comp_data *cd, uint32_t size)
 	return 0;
 }
 
+static int test_keyword_get_threshold(struct comp_dev *dev, int sample_width)
+{
+	switch (sample_width) {
+#if CONFIG_FORMAT_S16LE
+	case 16:
+		return ACTIVATION_DEFAULT_THRESHOLD_S16;
+#endif /* CONFIG_FORMAT_S16LE */
+#if CONFIG_FORMAT_S24LE
+	case 24:
+		return ACTIVATION_DEFAULT_THRESHOLD_S24;
+#endif /* CONFIG_FORMAT_S24LE */
+	default:
+		trace_keyword_error_with_ids(dev, "test_keyword_get_threshold(), unsupported sample width: %d",
+					     sample_width);
+		return -EINVAL;
+	}
+}
+
 static int test_keyword_apply_config(struct comp_dev *dev,
 				     struct sof_detect_test_config *cfg)
 {
@@ -256,9 +281,8 @@ static int test_keyword_apply_config(struct comp_dev *dev,
 		cd->config.activation_shift = ACTIVATION_DEFAULT_SHIFT;
 
 	if (!cd->config.activation_threshold) {
-		cd->config.activation_threshold = (sample_width > 16U) ?
-			ACTIVATION_DEFAULT_THRESHOLD_S24 :
-			ACTIVATION_DEFAULT_THRESHOLD_S16;
+		cd->config.activation_threshold =
+			test_keyword_get_threshold(dev, sample_width);
 	}
 
 	return 0;
@@ -741,9 +765,8 @@ static int test_keyword_prepare(struct comp_dev *dev)
 		/* Default threshold value has to be changed
 		 * according to host new format.
 		 */
-		cd->config.activation_threshold = (valid_bits > 16U) ?
-					ACTIVATION_DEFAULT_THRESHOLD_S24 :
-					ACTIVATION_DEFAULT_THRESHOLD_S16;
+		cd->config.activation_threshold =
+			test_keyword_get_threshold(dev, sample_width);
 	}
 
 	return comp_set_state(dev, COMP_TRIGGER_PREPARE);
