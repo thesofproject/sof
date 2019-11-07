@@ -4,6 +4,8 @@ cmake_minimum_required(VERSION 3.10)
 
 project(SOF_TESTBENCH C)
 
+include(../../scripts/cmake/misc.cmake)
+
 add_executable(testbench
 	testbench.c
 	alloc.c
@@ -17,6 +19,8 @@ add_executable(testbench
 	topology.c
 	trace.c
 )
+
+sof_append_relative_path_definitions(testbench)
 
 target_include_directories(testbench PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 

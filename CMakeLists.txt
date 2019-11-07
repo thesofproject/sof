@@ -126,6 +126,8 @@ if(BUILD_LIBRARY)
 
 	add_subdirectory(src)
 
+	sof_append_relative_path_definitions(sof)
+
 	get_target_property(incdirs sof_public_headers INTERFACE_INCLUDE_DIRECTORIES)
 
 	# we append slash at the end to make CMake copy contents of directories
@@ -176,3 +178,5 @@ target_link_libraries(sof PRIVATE sof_static_libraries)
 sof_add_build_counter_rule()
 
 add_subdirectory(src)
+
+sof_append_relative_path_definitions(sof)

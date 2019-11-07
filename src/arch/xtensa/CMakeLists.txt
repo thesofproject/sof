@@ -231,6 +231,7 @@ if(build_bootloader)
 	target_link_libraries(bootloader PRIVATE "-lgcc")
 	target_link_libraries(bootloader PRIVATE "-T${PROJECT_BINARY_DIR}/${platform_bootldr_ld_script}")
 	sof_add_ld_script(bootloader ${platform_bootldr_ld_script})
+	sof_append_relative_path_definitions(bootloader)
 
 	add_custom_target(
 		bootloader_dump

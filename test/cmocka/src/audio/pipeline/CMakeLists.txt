@@ -10,6 +10,7 @@ if(CONFIG_SMP)
 	link_libraries(-Wl,--gc-sections)
 
 	add_library(pipeline_lib STATIC ${arch_src})
+	sof_append_relative_path_definitions(pipeline_lib)
 
 	target_link_libraries(pipeline_lib PRIVATE sof_options)
 

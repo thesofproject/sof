@@ -21,6 +21,11 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#ifndef RELATIVE_FILE
+#error "This file requires RELATIVE_FILE to be defined. " \
+	"Add it to CMake's target with sof_append_relative_path_definitions."
+#endif
+
 #if CONFIG_DEBUG
 
 #include <sof/lib/mailbox.h>
@@ -37,8 +42,9 @@
 #define dbg() \
 	do { \
 		volatile uint32_t *__m = (uint32_t *)mailbox_get_debug_base(); \
-		*(__m++) = (__FILE__[0] << 24) + (__FILE__[1] << 16) +\
-			 (__FILE__[2] << 8) + (__FILE__[3]); \
+		*(__m++) = (RELATIVE_FILE[0] << 24) + \
+			   (RELATIVE_FILE[1] << 16) + \
+			   (RELATIVE_FILE[2] << 8) + (RELATIVE_FILE[3]); \
 		*(__m++) = (__func__[0] << 24) + (__func__[1] << 16) + \
 			(__func__[2] << 8) + (__func__[3]); \
 		*__m = __LINE__; \
@@ -49,8 +55,9 @@
 	do { \
 		volatile uint32_t *__m = \
 			(uint32_t *)mailbox_get_debug_base() + __x; \
-		*(__m++) = (__FILE__[0] << 24) + (__FILE__[1] << 16) +\
-			 (__FILE__[2] << 8) + (__FILE__[3]); \
+		*(__m++) = (RELATIVE_FILE[0] << 24) + \
+			   (RELATIVE_FILE[1] << 16) + \
+			   (RELATIVE_FILE[2] << 8) + (RELATIVE_FILE[3]); \
 		*(__m++) = (__func__[0] << 24) + (__func__[1] << 16) + \
 			(__func__[2] << 8) + (__func__[3]); \
 		*__m = __LINE__; \

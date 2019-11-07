@@ -74,6 +74,7 @@ function(sof_audio_add_module lib_name compile_flags)
 	target_link_libraries(${lib_name} PRIVATE -Wl,--export-dynamic)
 	target_compile_options(${lib_name} PRIVATE ${compile_flags})
 	add_local_sources(${lib_name} ${ARGN})
+	sof_append_relative_path_definitions(${lib_name})
 	install(TARGETS ${lib_name} DESTINATION lib)
 endfunction()
 

@@ -42,7 +42,7 @@ static void test_debugability_macros_declare_log_entry(void **state)
 			"uint32_t line_idx; "
 			"uint32_t file_name_len; "
 			"uint32_t text_len; "
-			"const char file_name[sizeof(\"" __FILE__ "\")]; "
+			"const char file_name[sizeof(\"" RELATIVE_FILE "\")]; "
 			"const char text[sizeof(\"Message\")]; "
 		"} log_entry = { "
 			"1"
@@ -50,9 +50,9 @@ static void test_debugability_macros_declare_log_entry(void **state)
 			"1"
 			"1"
 			"32"
-			"sizeof(\"" __FILE__ "\")"
+			"sizeof(\"" RELATIVE_FILE "\")"
 			"sizeof(\"Message\")"
-			"\"" __FILE__ "\""
+			"\"" RELATIVE_FILE "\""
 			"\"Message\" "
 		"}";
 	(void)state;
