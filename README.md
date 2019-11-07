@@ -1,5 +1,7 @@
 # Sound Open Firmware
 
+TEST for RFC WIP.
+
 ### Status
 [![Build Status](https://travis-ci.org/thesofproject/sof.svg?branch=master)](https://travis-ci.org/thesofproject/sof)
 
