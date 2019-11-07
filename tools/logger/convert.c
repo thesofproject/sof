@@ -305,17 +305,19 @@ static int serial_read(const struct convert_config *config,
 {
 	struct log_entry_header dma_log;
 	size_t len;
-	uint32_t *n;
+	uint8_t *n;
 	int ret;
 
-	for (len = 0, n = (uint32_t *)&dma_log; len < sizeof(dma_log); n++) {
-		ret = read(config->serial_fd, n, sizeof(*n));
+	for (len = 0, n = (uint8_t *)&dma_log; len < sizeof(dma_log);
+		n += sizeof(uint32_t)) {
+
+		ret = read(config->serial_fd, n, sizeof(*n) * sizeof(uint32_t));
 		if (ret < 0)
 			return -errno;
 
 		/* In the beginning we read 1 spurious byte */
-		if (ret < sizeof(*n))
-			n--;
+		if (ret < sizeof(*n) * sizeof(uint32_t))
+			n -= sizeof(uint32_t);
 		else
 			len += ret;
 	}
