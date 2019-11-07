@@ -1175,15 +1175,23 @@ static void kpb_drain_samples(void *source, struct comp_buffer *sink,
 
 	for (i = 0; i < frames; i++) {
 		for (channel = 0; channel < KPB_NR_OF_CHANNELS; channel++) {
-			if (sample_width == 16) {
+			switch (sample_width) {
+#if CONFIG_FORMAT_S16LE
+			case 16:
 				dst = buffer_write_frag_s16(sink, j);
 				*((int16_t *)dst) = *((int16_t *)src);
 				src = ((int16_t *)src) + 1;
-			} else if (sample_width == 32 || sample_width == 24) {
+				break;
+#endif /* CONFIG_FORMAT_S16LE */
+#if CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE
+			case 24:
+			case 32:
 				dst = buffer_write_frag_s32(sink, j);
 				*((int32_t *)dst) = *((int32_t *)src);
 				src = ((int32_t *)src) + 1;
-			} else {
+				break;
+#endif /* CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE */
+			default:
 				trace_kpb_error("KPB: An attempt to copy "
 						"not supported format!");
 				return;
@@ -1214,15 +1222,21 @@ static void kpb_buffer_samples(struct comp_buffer *source, uint32_t start,
 
 	for (i = 0; i < frames; i++) {
 		for (channel = 0; channel < KPB_NR_OF_CHANNELS; channel++) {
-			if (sample_width == 16) {
+			switch (sample_width) {
+			case 16:
 				src = buffer_read_frag_s16(source, j);
 				*((int16_t *)dst) = *((int16_t *)src);
 				dst = ((int16_t *)dst) + 1;
-			} else if (sample_width == 32 || sample_width == 24) {
+				break;
+#if CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE
+			case 24:
+			case 32:
 				src = buffer_read_frag_s32(source, j);
 				*((int32_t *)dst) = *((int32_t *)src);
 				dst = ((int32_t *)dst) + 1;
-			} else {
+				break;
+#endif /* CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE*/
+			default:
 				trace_kpb_error("KPB: An attempt to copy "
 						"not supported format!");
 				return;
@@ -1261,9 +1275,17 @@ static inline bool kpb_is_sample_width_supported(uint32_t sampling_width)
 	bool ret;
 
 	switch (sampling_width) {
+#if CONFIG_FORMAT_S16LE
 	case 16:
-	/* FALLTHRU */
+	/* FALLTHROUGH */
+#endif /* CONFIG_FORMAT_S16LE */
+#if CONFIG_FORMAT_S24LE
 	case 24:
+	/* FALLTHROUGH */
+#endif /* CONFIG_FORMAT_S24LE */
+#if CONFIG_FORMAT_S32LE
+	case 32:
+#endif /* CONFIG_FORMAT_S32LE */
 		ret = true;
 		break;
 	default:
@@ -1297,15 +1319,24 @@ static void kpb_copy_samples(struct comp_buffer *sink,
 
 	for (i = 0; i < frames; i++) {
 		for (channel = 0; channel < KPB_NR_OF_CHANNELS; channel++) {
-			if (sample_width == 16) {
+			switch (sample_width) {
+#if CONFIG_FORMAT_S16LE
+			case 16:
 				dst = buffer_write_frag_s16(sink, j);
 				src = buffer_read_frag_s16(source, j);
 				*((int16_t *)dst) = *((int16_t *)src);
-			} else if (sample_width == 32 || sample_width == 24) {
+				break;
+#endif /* CONFIG_FORMAT_S16LE */
+#if CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE
+			case 24:
+				/* FALLTHROUGH */
+			case 32:
 				dst = buffer_write_frag_s32(sink, j);
 				src = buffer_read_frag_s32(source, j);
 				*((int32_t *)dst) = *((int32_t *)src);
-			} else {
+				break;
+#endif /* CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE*/
+			default:
 				trace_kpb_error("KPB: An attempt to copy "
 						"not supported format!");
 				return;
