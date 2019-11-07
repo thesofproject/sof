@@ -119,6 +119,7 @@ static int teardown(void **state)
 	return 0;
 }
 
+#if CONFIG_FORMAT_S16LE
 static void fill_source_s16(struct vol_test_state *vol_state)
 {
 	int64_t val;
@@ -165,7 +166,9 @@ static void verify_s16_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
 		}
 	}
 }
+#endif /* CONFIG_FORMAT_S16LE */
 
+#if CONFIG_FORMAT_S16LE && (CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE)
 static void verify_s16_to_sX(struct comp_dev *dev, struct comp_buffer *sink,
 			     struct comp_buffer *source)
 {
@@ -248,7 +251,9 @@ static void verify_sX_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
 		}
 	}
 }
+#endif /* CONFIG_FORMAT_S16LE && (CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE) */
 
+#if CONFIG_FORMAT_S24LE
 static void fill_source_s24(struct vol_test_state *vol_state)
 {
 	int64_t val;
@@ -307,7 +312,9 @@ static void verify_s24_to_s24_s32(struct comp_dev *dev,
 		}
 	}
 }
+#endif /* CONFIG_FORMAT_S24LE */
 
+#if CONFIG_FORMAT_S32LE
 static void fill_source_s32(struct vol_test_state *vol_state)
 {
 	int64_t val;
@@ -366,6 +373,7 @@ static void verify_s32_to_s24_s32(struct comp_dev *dev,
 		}
 	}
 }
+#endif /* CONFIG_FORMAT_S32LE */
 
 static void test_audio_vol(void **state)
 {
@@ -392,20 +400,25 @@ static void test_audio_vol(void **state)
 }
 
 static struct vol_test_parameters parameters[] = {
+#if CONFIG_FORMAT_S16LE
 	{ VOL_MAX,        2, 48, 1, SOF_IPC_FRAME_S16_LE,
 		SOF_IPC_FRAME_S16_LE,   verify_s16_to_s16 }, /* 1 */
 	{ VOL_ZERO_DB,    2, 48, 1, SOF_IPC_FRAME_S16_LE,
 		SOF_IPC_FRAME_S16_LE,   verify_s16_to_s16 }, /* 2 */
 	{ VOL_MINUS_80DB, 2, 48, 1, SOF_IPC_FRAME_S16_LE,
 		SOF_IPC_FRAME_S16_LE,   verify_s16_to_s16 }, /* 3 */
+#endif /* CONFIG_FORMAT_S16LE */
 
+#if CONFIG_FORMAT_S24LE
 	{ VOL_MAX,        2, 48, 1, SOF_IPC_FRAME_S24_4LE,
 		SOF_IPC_FRAME_S24_4LE, verify_s24_to_s24_s32 }, /* 4 */
 	{ VOL_ZERO_DB,    2, 48, 1, SOF_IPC_FRAME_S24_4LE,
 		SOF_IPC_FRAME_S24_4LE, verify_s24_to_s24_s32 }, /* 5 */
 	{ VOL_MINUS_80DB, 2, 48, 1, SOF_IPC_FRAME_S24_4LE,
 		SOF_IPC_FRAME_S24_4LE, verify_s24_to_s24_s32 }, /* 6 */
+#endif /* CONFIG_FORMAT_S24LE */
 
+#if CONFIG_FORMAT_S24LE && CONFIG_FORMAT_S16LE
 	{ VOL_MAX,        2, 48, 1, SOF_IPC_FRAME_S16_LE,
 		SOF_IPC_FRAME_S24_4LE,  verify_s16_to_sX }, /* 7 */
 	{ VOL_ZERO_DB,    2, 48, 1, SOF_IPC_FRAME_S16_LE,
@@ -418,14 +431,18 @@ static struct vol_test_parameters parameters[] = {
 		SOF_IPC_FRAME_S16_LE,  verify_sX_to_s16 }, /* 11 */
 	{ VOL_MINUS_80DB, 2, 48, 1, SOF_IPC_FRAME_S24_4LE,
 		SOF_IPC_FRAME_S16_LE,  verify_sX_to_s16 }, /* 12 */
+#endif /* CONFIG_FORMAT_S24LE && CONFIG_FORMAT_S16LE */
 
+#if CONFIG_FORMAT_S32LE
 	{ VOL_MAX,        2, 48, 1, SOF_IPC_FRAME_S32_LE,
 		SOF_IPC_FRAME_S32_LE,   verify_s32_to_s24_s32 }, /* 13 */
 	{ VOL_ZERO_DB,    2, 48, 1, SOF_IPC_FRAME_S32_LE,
 		SOF_IPC_FRAME_S32_LE,   verify_s32_to_s24_s32 }, /* 14 */
 	{ VOL_MINUS_80DB, 2, 48, 1, SOF_IPC_FRAME_S32_LE,
 		SOF_IPC_FRAME_S32_LE,   verify_s32_to_s24_s32 }, /* 15 */
+#endif /* CONFIG_FORMAT_S32LE */
 
+#if CONFIG_FORMAT_S32LE && CONFIG_FORMAT_S16LE
 	{ VOL_MAX,        2, 48, 1, SOF_IPC_FRAME_S16_LE,
 		SOF_IPC_FRAME_S32_LE,   verify_s16_to_sX }, /* 16 */
 	{ VOL_ZERO_DB,    2, 48, 1, SOF_IPC_FRAME_S16_LE,
@@ -438,7 +455,9 @@ static struct vol_test_parameters parameters[] = {
 		SOF_IPC_FRAME_S16_LE,   verify_sX_to_s16 }, /* 20 */
 	{ VOL_MINUS_80DB, 2, 48, 1, SOF_IPC_FRAME_S32_LE,
 		SOF_IPC_FRAME_S16_LE,   verify_sX_to_s16 }, /* 21 */
+#endif /* CONFIG_FORMAT_S32LE && CONFIG_FORMAT_S16LE */
 
+#if CONFIG_FORMAT_S32LE && CONFIG_FORMAT_S24LE
 	{ VOL_MAX,        2, 48, 1, SOF_IPC_FRAME_S24_4LE,
 		SOF_IPC_FRAME_S32_LE,  verify_s24_to_s24_s32 }, /* 22 */
 	{ VOL_ZERO_DB,    2, 48, 1, SOF_IPC_FRAME_S24_4LE,
@@ -451,6 +470,7 @@ static struct vol_test_parameters parameters[] = {
 		SOF_IPC_FRAME_S24_4LE,  verify_s32_to_s24_s32 }, /* 26 */
 	{ VOL_MINUS_80DB, 2, 48, 1, SOF_IPC_FRAME_S32_LE,
 		SOF_IPC_FRAME_S24_4LE,  verify_s32_to_s24_s32 }, /* 27 */
+#endif /* CONFIG_FORMAT_S32LE && CONFIG_FORMAT_S16LE */
 };
 
 int main(void)
