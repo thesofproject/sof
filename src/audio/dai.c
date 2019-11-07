@@ -798,6 +798,19 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 		handshake = dai_get_handshake(dd->dai, dev->params.direction,
 					      dd->stream_id);
 		channel = EDMA_HS_GET_CHAN(handshake);
+
+		switch (dev->params.frame_fmt) {
+		case SOF_IPC_FRAME_S16_LE:
+			dd->frame_bytes = 2;
+			break;
+		case SOF_IPC_FRAME_S24_4LE:
+		case SOF_IPC_FRAME_S32_LE:
+			dd->frame_bytes = 4;
+			break;
+		default:
+			return -EINVAL;
+		}
+
 		dd->config.burst_elems =
 			dd->dai->plat_data.fifo[dev->params.direction].depth;
 		break;
