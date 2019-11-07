@@ -18,6 +18,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#if CONFIG_FORMAT_S16LE
 /**
  * \brief Channel selection for 16 bit, 1 channel data format.
  * \param[in,out] dev Selector base component device.
@@ -69,7 +70,9 @@ static void sel_s16le_nch(struct comp_dev *dev, struct comp_buffer *sink,
 		}
 	}
 }
+#endif /* CONFIG_FORMAT_S16LE */
 
+#if CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE
 /**
  * \brief Channel selection for 32 bit, 1 channel data format.
  * \param[in,out] dev Selector base component device.
@@ -121,17 +124,24 @@ static void sel_s32le_nch(struct comp_dev *dev, struct comp_buffer *sink,
 		}
 	}
 }
+#endif /* CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE */
 
 const struct comp_func_map func_table[] = {
+#if CONFIG_FORMAT_S16LE
 	{SOF_IPC_FRAME_S16_LE, 1, sel_s16le_1ch},
 	{SOF_IPC_FRAME_S16_LE, 2, sel_s16le_nch},
 	{SOF_IPC_FRAME_S16_LE, 4, sel_s16le_nch},
+#endif /* CONFIG_FORMAT_S16LE */
+#if CONFIG_FORMAT_S24LE
 	{SOF_IPC_FRAME_S24_4LE, 1, sel_s32le_1ch},
 	{SOF_IPC_FRAME_S24_4LE, 2, sel_s32le_nch},
 	{SOF_IPC_FRAME_S24_4LE, 4, sel_s32le_nch},
+#endif /* CONFIG_FORMAT_S24LE */
+#if CONFIG_FORMAT_S32LE
 	{SOF_IPC_FRAME_S32_LE, 1, sel_s32le_1ch},
 	{SOF_IPC_FRAME_S32_LE, 2, sel_s32le_nch},
 	{SOF_IPC_FRAME_S32_LE, 4, sel_s32le_nch},
+#endif /* CONFIG_FORMAT_S32LE */
 };
 
 sel_func sel_get_processing_function(struct comp_dev *dev)
