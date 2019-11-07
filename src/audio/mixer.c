@@ -52,6 +52,7 @@ struct mixer_data {
 		struct comp_buffer **sources, uint32_t count, uint32_t frames);
 };
 
+#if CONFIG_FORMAT_S16LE
 /* Mix n 16 bit PCM source streams to one sink stream */
 static void mix_n_s16(struct comp_dev *dev, struct comp_buffer *sink,
 		      struct comp_buffer **sources, uint32_t num_sources,
@@ -83,7 +84,9 @@ static void mix_n_s16(struct comp_dev *dev, struct comp_buffer *sink,
 		}
 	}
 }
+#endif /* CONFIG_FORMAT_S16LE */
 
+#if CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE
 /* Mix n 32 bit PCM source streams to one sink stream */
 static void mix_n_s32(struct comp_dev *dev, struct comp_buffer *sink,
 		      struct comp_buffer **sources, uint32_t num_sources,
@@ -115,6 +118,7 @@ static void mix_n_s32(struct comp_dev *dev, struct comp_buffer *sink,
 		}
 	}
 }
+#endif /* CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE */
 
 static struct comp_dev *mixer_new(struct sof_ipc_comp *comp)
 {
@@ -363,8 +367,26 @@ static int mixer_prepare(struct comp_dev *dev)
 	/* does mixer already have active source streams ? */
 	if (dev->state != COMP_STATE_ACTIVE) {
 		/* currently inactive so setup mixer */
-		md->mix_func = dev->params.frame_fmt == SOF_IPC_FRAME_S16_LE ?
-			mix_n_s16 : mix_n_s32;
+		switch (dev->params.frame_fmt) {
+#if CONFIG_FORMAT_S16LE
+		case SOF_IPC_FRAME_S16_LE:
+			md->mix_func = mix_n_s16;
+			break;
+#endif /* CONFIG_FORMAT_S16LE */
+#if CONFIG_FORMAT_S24LE
+		case SOF_IPC_FRAME_S24_4LE:
+			md->mix_func = mix_n_s32;
+			break;
+#endif /* CONFIG_FORMAT_S24LE */
+#if CONFIG_FORMAT_S32LE
+		case SOF_IPC_FRAME_S32_LE:
+			md->mix_func = mix_n_s32;
+			break;
+#endif /* CONFIG_FORMAT_S32LE */
+		default:
+			trace_mixer_error_with_ids(dev, "unsupported data format");
+			return -EINVAL;
+		}
 
 		ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
 		if (ret < 0)
