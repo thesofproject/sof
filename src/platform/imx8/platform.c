@@ -141,7 +141,6 @@ int platform_boot_complete(uint32_t boot_message)
 int platform_init(struct sof *sof)
 {
 	int ret;
-	struct dai *esai;
 
 	platform_interrupt_init();
 	clock_init();
@@ -178,12 +177,6 @@ int platform_init(struct sof *sof)
 	ret = dai_init();
 	if (ret < 0)
 		return -ENODEV;
-
-	esai = dai_get(SOF_DAI_IMX_ESAI, 0, DAI_CREAT);
-	if (!esai)
-		return -ENODEV;
-
-	dai_probe(esai);
 
 	return 0;
 }
