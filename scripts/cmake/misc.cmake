@@ -59,3 +59,22 @@ function(sof_add_static_library lib_name lib_path)
 	set_target_properties(${lib_name} PROPERTIES IMPORTED_LOCATION ${lib_abs_path})
 	target_link_libraries(sof_static_libraries INTERFACE ${lib_name})
 endfunction()
+
+# Appends literal with path of the source file relative to the project root
+# It is useful if sources in given target need deterministic relative path
+# to the actually compiled file.
+# __FILE is not always suitable as C standard states that __FILE__ expands to
+# input file name, that usually is absolute path what will cause f.e. .rodata
+# size to be dependent on where project is physically located on the disk.
+function(sof_append_relative_path_definitions target)
+	get_target_property(sources ${target} SOURCES)
+	foreach(src ${sources})
+		get_filename_component(ABS_PATH ${src} ABSOLUTE)
+		file(RELATIVE_PATH rel ${PROJECT_SOURCE_DIR} ${ABS_PATH})
+		set_property(
+			SOURCE ${src}
+			APPEND
+			PROPERTY COMPILE_DEFINITIONS
+			RELATIVE_FILE="${rel}")
+	endforeach()
+endfunction()
