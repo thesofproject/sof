@@ -22,7 +22,7 @@ include(`platform/imx/imx8qxp.m4')
 #
 # Define the pipelines
 #
-# PCM0 ----> volume -----> ESAI0 (cs42888)
+# PCM0 <----> volume <-----> ESAI0 (cs42888)
 #
 
 dnl PIPELINE_PCM_ADD(pipeline,
@@ -35,6 +35,13 @@ dnl     time_domain, sched_comp)
 # Set 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
 	1, 0, 2, s24le,
+	1000, 0, 0,
+	48000, 48000, 48000)
+
+# Low Latency capture pipeline 2 on PCM 0 using max 2 channels of s24le.
+# Set 1000us deadline on core 0 with priority 0
+PIPELINE_PCM_ADD(sof/pipe-volume-capture.m4,
+	2, 0, 2, s24le,
 	1000, 0, 0,
 	48000, 48000, 48000)
 
@@ -54,10 +61,17 @@ DAI_ADD(sof/pipe-dai-playback.m4,
 	PIPELINE_SOURCE_1, 2, s24le,
 	1000, 0, 0)
 
+# capture DAI is ESAI0 using 2 periods
+# Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
+DAI_ADD(sof/pipe-dai-capture.m4,
+	2, ESAI, 0, ESAI0-Codec,
+	PIPELINE_SINK_2, 2, s24le,
+	1000, 0, 0)
+
 # PCM Low Latency, id 0
 
-dnl PCM_PLAYBACK_ADD(name, pcm_id, playback)
-PCM_PLAYBACK_ADD(Port0, 0, PIPELINE_PCM_1)
+dnl PCM_DUPLEX_ADD(name, pcm_id, playback, capture)
+PCM_DUPLEX_ADD(Port0, 0, PIPELINE_PCM_1, PIPELINE_PCM_2)
 
 dnl DAI_CONFIG(type, idx, link_id, name, esai_config)
 DAI_CONFIG(ESAI, 0, 0, ESAI0-Codec,
