@@ -1417,6 +1417,7 @@ static void dmic_stop(struct dai *dai)
 
 	dmic_active_fifos--;
 
+	schedule_task_cancel(&dmic->dmicwork);
 out:
 	spin_unlock(dai->lock);
 }
