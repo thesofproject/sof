@@ -675,6 +675,7 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 {
 	struct sof_ipc_comp_config *dconfig = COMP_GET_CONFIG(dev);
 	struct dai_data *dd = comp_get_drvdata(dev);
+	struct sof_ipc_comp_dai *dai = (struct sof_ipc_comp_dai *)&dev->comp;
 	int channel = 0;
 	int i;
 	int handshake;
@@ -795,7 +796,7 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 				   channel);
 		break;
 	case SOF_DAI_IMX_SAI:
-		handshake = dai_get_handshake(dd->dai, dev->params.direction,
+		handshake = dai_get_handshake(dd->dai, dai->direction,
 					      dd->stream_id);
 		channel = EDMA_HS_GET_CHAN(handshake);
 
@@ -812,10 +813,10 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 		}
 
 		dd->config.burst_elems =
-			dd->dai->plat_data.fifo[dev->params.direction].depth;
+			dd->dai->plat_data.fifo[dai->direction].depth;
 		break;
 	case SOF_DAI_IMX_ESAI:
-		handshake = dai_get_handshake(dd->dai, dev->params.direction,
+		handshake = dai_get_handshake(dd->dai, dai->direction,
 					      dd->stream_id);
 		channel = EDMA_HS_GET_CHAN(handshake);
 
@@ -840,7 +841,7 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 		}
 
 		dd->config.burst_elems =
-			dd->dai->plat_data.fifo[dev->params.direction].depth;
+			dd->dai->plat_data.fifo[dai->direction].depth;
 		break;
 	default:
 		/* other types of DAIs not handled for now */
