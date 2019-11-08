@@ -175,9 +175,16 @@ static enum task_state dmic_work(void *data)
 	int32_t gval;
 	uint32_t val;
 	int i;
+	int ret;
 
 	tracev_dmic("dmic_work()");
-	spin_lock(dai->lock);
+
+	spin_try_lock(dai->lock, ret);
+	if (!ret) {
+		tracev_dmic("dmic_work(): spin_try_lock(dai->lock, ret)"
+			    "failed: RESCHEDULE");
+		return SOF_TASK_STATE_RESCHEDULE;
+	}
 
 	/* Increment gain with logarithmic step.
 	 * Gain is Q2.30 and gain modifier is Q12.20.
