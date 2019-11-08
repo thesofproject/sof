@@ -181,7 +181,7 @@ struct sof_ipc_comp_process {
 	struct sof_ipc_comp comp;
 	struct sof_ipc_comp_config config;
 	uint32_t size;	/**< size of bespoke data section in bytes */
-	uint32_t type;	/**< sof_ipc_effect_type */
+	uint32_t type;	/**< sof_ipc_process_type */
 
 	/* reserved for future use */
 	uint32_t reserved[7];
