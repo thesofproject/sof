@@ -290,18 +290,24 @@ int main(void)
 				 masks[j], sizeof(masks[0]));
 
 			switch (td->format) {
+#if CONFIG_FORMAT_S16LE
 			case SOF_IPC_FRAME_S16_LE:
 				tests[ti].name = get_test_name(j, "s16le");
 				tests[ti].test_func = test_demux_copy_proc_16;
 				break;
+#endif /* CONFIG_FORMAT_S16LE */
+#if CONFIG_FORMAT_S24LE
 			case SOF_IPC_FRAME_S24_4LE:
 				tests[ti].name = get_test_name(j, "s24_4le");
 				tests[ti].test_func = test_demux_copy_proc_24;
 				break;
+#endif /* CONFIG_FORMAT_S24LE */
+#if CONFIG_FORMAT_S32LE
 			case SOF_IPC_FRAME_S32_LE:
 				tests[ti].name = get_test_name(j, "s32le");
 				tests[ti].test_func = test_demux_copy_proc_32;
 				break;
+#endif /* CONFIG_FORMAT_S32LE */
 			default:
 				return -EINVAL;
 			}
