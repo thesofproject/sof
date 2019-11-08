@@ -66,6 +66,7 @@ static int teardown_test_case(void **state)
 	return 0;
 }
 
+#if CONFIG_FORMAT_FLOAT
 static void test_mux_prepare_invalid_float(void **state)
 {
 	struct test_data *td = *state;
@@ -75,7 +76,9 @@ static void test_mux_prepare_invalid_float(void **state)
 
 	assert_int_equal(comp_prepare(td->dev), -EINVAL);
 }
+#endif /* CONFIG_FORMAT_FLOAT */
 
+#if CONFIG_FORMAT_S16LE
 static void test_mux_prepare_valid_s16le(void **state)
 {
 	struct test_data *td = *state;
@@ -84,7 +87,9 @@ static void test_mux_prepare_valid_s16le(void **state)
 
 	assert_int_equal(comp_prepare(td->dev), 0);
 }
+#endif /* CONFIG_FORMAT_S16LE */
 
+#if CONFIG_FORMAT_S24LE
 static void test_mux_prepare_valid_s24_4le(void **state)
 {
 	struct test_data *td = *state;
@@ -93,7 +98,9 @@ static void test_mux_prepare_valid_s24_4le(void **state)
 
 	assert_int_equal(comp_prepare(td->dev), 0);
 }
+#endif /* CONFIG_FORMAT_S24LE */
 
+#if CONFIG_FORMAT_S32LE
 static void test_mux_prepare_valid_s32le(void **state)
 {
 	struct test_data *td = *state;
@@ -102,6 +109,7 @@ static void test_mux_prepare_valid_s32le(void **state)
 
 	assert_int_equal(comp_prepare(td->dev), 0);
 }
+#endif /* CONFIG_FORMAT_S32LE */
 
 #define TEST_CASE(name) \
 	cmocka_unit_test_setup_teardown(name, \
@@ -111,10 +119,18 @@ static void test_mux_prepare_valid_s32le(void **state)
 int main(void)
 {
 	const struct CMUnitTest tests[] = {
+#if CONFIG_FORMAT_FLOAT
 		TEST_CASE(test_mux_prepare_invalid_float),
+#endif /* CONFIG_FORMAT_FLOAT */
+#if CONFIG_FORMAT_S16LE
 		TEST_CASE(test_mux_prepare_valid_s16le),
+#endif /* CONFIG_FORMAT_S16LE */
+#if CONFIG_FORMAT_S24LE
 		TEST_CASE(test_mux_prepare_valid_s24_4le),
+#endif /* CONFIG_FORMAT_S24LE */
+#if CONFIG_FORMAT_S32LE
 		TEST_CASE(test_mux_prepare_valid_s32le),
+#endif /* CONFIG_FORMAT_S32LE */
 	};
 
 	cmocka_set_message_output(CM_OUTPUT_TAP);
