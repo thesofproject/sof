@@ -41,7 +41,7 @@
 	tracev_event_comp(TRACE_CLASS_EQ_IIR, comp_ptr,		\
 			  __e, ##__VA_ARGS__)
 
-#define trace_eq_error(__e, ...) \
+#define trace_eq_error(__e, ...)				\
 	trace_error(TRACE_CLASS_EQ_IIR, __e, ##__VA_ARGS__)
 #define trace_eq_error_with_ids(comp_ptr, __e, ...)		\
 	trace_error_comp(TRACE_CLASS_EQ_IIR, comp_ptr,		\
@@ -419,8 +419,6 @@ static int eq_iir_init_coef(struct sof_eq_iir_config *config,
 	coef_data = &config->data[config->channels_in_config];
 	for (i = 0; i < SOF_EQ_IIR_MAX_RESPONSES; i++) {
 		if (i < config->number_of_responses) {
-			trace_eq("eq_iir_setup(), "
-				 "index of respose start position = %u", j);
 			eq = (struct sof_eq_iir_header_df2t *)&coef_data[j];
 			lookup[i] = eq;
 			j += SOF_EQ_IIR_NHEADER_DF2T
@@ -445,12 +443,17 @@ static int eq_iir_init_coef(struct sof_eq_iir_config *config,
 			/* Initialize EQ channel to bypass and continue with
 			 * next channel response.
 			 */
+			trace_eq("eq_iir_init_coef(), ch %d is set to bypass",
+				 i);
 			iir_reset_df2t(&iir[i]);
 			continue;
 		}
 
-		if (resp >= config->number_of_responses)
+		if (resp >= config->number_of_responses) {
+			trace_eq("eq_iir_init_coef(), requested response %d"
+				 " exceeds defined", resp);
 			return -EINVAL;
+		}
 
 		/* Initialize EQ coefficients */
 		eq = lookup[resp];
@@ -458,6 +461,8 @@ static int eq_iir_init_coef(struct sof_eq_iir_config *config,
 		if (s > 0) {
 			size_sum += s;
 		} else {
+			trace_eq("eq_iir_init_coef(), sections count %d"
+				 " exceeds max", eq->num_sections);
 			return -EINVAL;
 		}
 
@@ -543,8 +548,8 @@ static struct comp_dev *eq_iir_new(struct sof_ipc_comp *comp)
 	 * blob size is sane.
 	 */
 	if (bs > SOF_EQ_IIR_MAX_SIZE) {
-		trace_eq_error("eq_iir_new() error: coefficients"
-			       " blob size = %u > SOF_EQ_IIR_MAX_SIZE", bs);
+		trace_eq_error("eq_iir_new(), coefficients blob size %u "
+			       "exceeds maximum", bs);
 		return NULL;
 	}
 
@@ -632,27 +637,25 @@ static int iir_cmd_get_data(struct comp_dev *dev,
 		/* Copy back to user space */
 		if (cd->config) {
 			bs = cd->config->size;
-			trace_eq_with_ids(dev, "value of block size: %u", bs);
+			trace_eq_with_ids(dev, "iir_cmd_set_data(), size %u",
+					  bs);
 			if (bs > SOF_EQ_IIR_MAX_SIZE || bs == 0 ||
 			    bs > max_size)
 				return -EINVAL;
 			ret = memcpy_s(cdata->data->data,
 				       ((struct sof_abi_hdr *)
-				       (cdata->data))->size, cd->config,
-				       bs);
+				       (cdata->data))->size, cd->config, bs);
 			assert(!ret);
 
 			cdata->data->abi = SOF_ABI_VERSION;
 			cdata->data->size = bs;
 		} else {
-			trace_eq_error_with_ids(dev, "iir_cmd_get_data() error: "
-						"invalid cd->config");
+			trace_eq_error_with_ids(dev, "iir_cmd_get_data(), no config");
 			ret = -EINVAL;
 		}
 		break;
 	default:
-		trace_eq_error_with_ids(dev, "iir_cmd_get_data() error: "
-					"invalid cdata->cmd");
+		trace_eq_error_with_ids(dev, "iir_cmd_get_data(), invalid command");
 		ret = -EINVAL;
 		break;
 	}
@@ -675,8 +678,8 @@ static int iir_cmd_set_data(struct comp_dev *dev,
 		request = (struct sof_eq_iir_config *)cdata->data->data;
 		bs = request->size;
 		if (bs > SOF_EQ_IIR_MAX_SIZE || bs == 0) {
-			trace_eq_error_with_ids(dev, "iir_cmd_set_data() error: "
-						"invalid blob size");
+			trace_eq_error_with_ids(dev, "iir_cmd_set_data(), size %d"
+						" is invalid", bs);
 			return -EINVAL;
 		}
 
@@ -717,8 +720,7 @@ static int iir_cmd_set_data(struct comp_dev *dev,
 
 		break;
 	default:
-		trace_eq_error_with_ids(dev, "iir_cmd_set_data() error: "
-					"invalid cdata->cmd");
+		trace_eq_error_with_ids(dev, "iir_cmd_set_data(), invalid command");
 		ret = -EINVAL;
 		break;
 	}
@@ -743,8 +745,7 @@ static int eq_iir_cmd(struct comp_dev *dev, int cmd, void *data,
 		ret = iir_cmd_get_data(dev, cdata, max_data_size);
 		break;
 	default:
-		trace_eq_error_with_ids(dev, "eq_iir_cmd() error: "
-					"invalid command");
+		trace_eq_error_with_ids(dev, "eq_iir_cmd(), invalid command");
 		ret = -EINVAL;
 	}
 
@@ -786,8 +787,7 @@ static int eq_iir_copy(struct comp_dev *dev)
 	/* Get source, sink, number of frames etc. to process. */
 	ret = comp_get_copy_limits(dev, &cl);
 	if (ret < 0) {
-		trace_eq_error_with_ids(dev, "eq_iir_copy(): "
-					"Failed comp_copy_helper()");
+		trace_eq_error_with_ids(dev, "eq_iir_copy(), failed comp_get_copy_limits()");
 		return ret;
 	}
 
@@ -839,29 +839,25 @@ static int eq_iir_prepare(struct comp_dev *dev)
 		dev->params.frame_fmt = cd->sink_format;
 
 	if (sinkb->size < config->periods_sink * sink_period_bytes) {
-		trace_eq_error_with_ids(dev, "eq_iir_prepare() error: "
-					"sink buffer size is insufficient");
+		trace_eq_error_with_ids(dev, "eq_iir_prepare(), sink buffer size %d"
+					" is insufficient", sinkb->size);
 		ret = -ENOMEM;
 		goto err;
 	}
 
 	/* Initialize EQ */
-	trace_eq_with_ids(dev, "eq_iir_prepare(), source_format=%d, "
-			  "sink_format=%d", cd->source_format, cd->sink_format);
+	trace_eq_with_ids(dev, "eq_iir_prepare(), source_format=%d, sink_format=%d",
+			  cd->source_format, cd->sink_format);
 	if (cd->config) {
 		ret = eq_iir_setup(cd, dev->params.channels);
 		if (ret < 0) {
-			trace_eq_error_with_ids(dev, "eq_iir_prepare() error: "
-						"eq_iir_setup failed.");
+			trace_eq_error_with_ids(dev, "eq_iir_prepare(), setup failed.");
 			goto err;
 		}
 		cd->eq_iir_func = eq_iir_find_func(cd, fm_configured,
 						   ARRAY_SIZE(fm_configured));
 		if (!cd->eq_iir_func) {
-			trace_eq_error_with_ids(dev, "eq_iir_prepare() error: "
-						"No processing function "
-						"available, for configured "
-						"mode.");
+			trace_eq_error_with_ids(dev, "eq_iir_prepare(), No proc func");
 			ret = -EINVAL;
 			goto err;
 		}
@@ -870,10 +866,7 @@ static int eq_iir_prepare(struct comp_dev *dev)
 		cd->eq_iir_func = eq_iir_find_func(cd, fm_passthrough,
 						   ARRAY_SIZE(fm_passthrough));
 		if (!cd->eq_iir_func) {
-			trace_eq_error_with_ids(dev, "eq_iir_prepare() error: "
-						"No processing function "
-						"available, for pass-through "
-						"mode.");
+			trace_eq_error_with_ids(dev, "eq_iir_prepare(), No pass func");
 			ret = -EINVAL;
 			goto err;
 		}
