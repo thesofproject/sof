@@ -50,11 +50,12 @@
 /* IIR component private data */
 struct comp_data {
 	struct iir_state_df2t iir[PLATFORM_MAX_CHANNELS]; /**< filters state */
-	struct sof_eq_iir_config *config;   /**< pointer to setup blob */
-	enum sof_ipc_frame source_format;   /**< source frame format */
-	enum sof_ipc_frame sink_format;     /**< sink frame format */
-	int64_t *iir_delay;		    /**< pointer to allocated RAM */
-	size_t iir_delay_size;		    /**< allocated size */
+	struct sof_eq_iir_config *config;	/**< pointer to setup blob */
+	struct sof_eq_iir_config *config_new;	/**< pointer to new setup */
+	enum sof_ipc_frame source_format;	/**< source frame format */
+	enum sof_ipc_frame sink_format;		/**< sink frame format */
+	int64_t *iir_delay;			/**< pointer to allocated RAM */
+	size_t iir_delay_size;			/**< allocated size */
 	void (*eq_iir_func)(struct comp_dev *dev,
 			    struct comp_buffer *source,
 			    struct comp_buffer *sink,
@@ -383,38 +384,32 @@ static void eq_iir_free_delaylines(struct comp_data *cd)
 		iir[i].delay = NULL;
 }
 
-static int eq_iir_setup(struct comp_data *cd, int nch)
+static int eq_iir_init_coef(struct sof_eq_iir_config *config,
+			    struct iir_state_df2t *iir, int nch)
 {
-	struct iir_state_df2t *iir = cd->iir;
-	struct sof_eq_iir_config *config = cd->config;
 	struct sof_eq_iir_header_df2t *lookup[SOF_EQ_IIR_MAX_RESPONSES];
 	struct sof_eq_iir_header_df2t *eq;
-	int64_t *iir_delay;
-	int32_t *coef_data, *assign_response;
-	size_t s;
-	size_t size_sum = 0;
+	int32_t *assign_response;
+	int32_t *coef_data;
+	int size_sum = 0;
+	int resp = 0;
 	int i;
 	int j;
-	int resp;
+	int s;
 
-	/* Free existing IIR channels data if it was allocated */
-	eq_iir_free_delaylines(cd);
-
-	trace_eq("eq_iir_setup(), "
-		 "channels_in_config = %u, number_of_responses = %u",
-		 config->channels_in_config, config->number_of_responses);
+	trace_eq("eq_iir_init_coef(), response assign for %u channels, "
+		 "%u responses", config->channels_in_config,
+		 config->number_of_responses);
 
 	/* Sanity checks */
 	if (nch > PLATFORM_MAX_CHANNELS ||
 	    config->channels_in_config > PLATFORM_MAX_CHANNELS ||
 	    !config->channels_in_config) {
-		trace_eq_error("eq_iir_setup() error: "
-			       "invalid nch or channels_in_config");
+		trace_eq_error("eq_iir_init_coef(), invalid channels count");
 		return -EINVAL;
 	}
 	if (config->number_of_responses > SOF_EQ_IIR_MAX_RESPONSES) {
-		trace_eq_error("eq_iir_setup() error: number_of_responses"
-			       " > SOF_EQ_IIR_MAX_RESPONSES");
+		trace_eq_error("eq_iir_init_coef(), # of resp exceeds max");
 		return -EINVAL;
 	}
 
@@ -438,15 +433,13 @@ static int eq_iir_setup(struct comp_data *cd, int nch)
 	/* Initialize 1st phase */
 	for (i = 0; i < nch; i++) {
 		/* Check for not reading past blob response to channel assign
-		 * map. If the blob has smaller channel map then apply for
-		 * additional channels the response that was used for the first
-		 * channel. This allows to use mono blobs to setup multi
-		 * channel equalization without stopping to an error.
+		 * map. The previous channel response is assigned for any
+		 * additional channels in the stream. It allows to use single
+		 * channel configuration to setup multi channel equalization
+		 * with the same response.
 		 */
 		if (i < config->channels_in_config)
 			resp = assign_response[i];
-		else
-			resp = assign_response[0];
 
 		if (resp < 0) {
 			/* Initialize EQ channel to bypass and continue with
@@ -461,52 +454,66 @@ static int eq_iir_setup(struct comp_data *cd, int nch)
 
 		/* Initialize EQ coefficients */
 		eq = lookup[resp];
-		s = iir_init_coef_df2t(&iir[i], eq);
-		if (s > 0)
+		s = iir_delay_size_df2t(eq);
+		if (s > 0) {
 			size_sum += s;
-		else
+		} else {
 			return -EINVAL;
+		}
 
-		trace_eq("eq_iir_setup(), "
-			 "ch = %d initialized to response = %d", i, resp);
+		iir_init_coef_df2t(&iir[i], eq);
+		trace_eq("eq_iir_init_coef(), ch %d is set to response %d",
+			 i, resp);
 	}
+
+	return size_sum;
+}
+
+static void eq_iir_init_delay(struct iir_state_df2t *iir,
+			      int64_t *delay_start, int nch)
+{
+	int64_t *delay = delay_start;
+	int i;
+
+	/* Initialize second phase to set EQ delay lines pointers. A
+	 * bypass mode filter is indicated by biquads count of zero.
+	 */
+	for (i = 0; i < nch; i++) {
+		if (iir[i].biquads > 0)
+			iir_init_delay_df2t(&iir[i], &delay);
+	}
+}
+
+static int eq_iir_setup(struct comp_data *cd, int nch)
+{
+	int delay_size;
+
+	/* Free existing IIR channels data if it was allocated */
+	eq_iir_free_delaylines(cd);
+
+	/* Set coefficients for each channel EQ from coefficient blob */
+	delay_size = eq_iir_init_coef(cd->config, cd->iir, nch);
+	if (delay_size < 0)
+		return delay_size; /* Contains error code */
 
 	/* If all channels were set to bypass there's no need to
 	 * allocate delay. Just return with success.
 	 */
-	cd->iir_delay = NULL;
-	cd->iir_delay_size = size_sum;
-	if (!size_sum)
+	if (!delay_size)
 		return 0;
+
 	/* Allocate all IIR channels data in a big chunk and clear it */
-	cd->iir_delay = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, size_sum);
-	if (!cd->iir_delay)
+	cd->iir_delay = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, delay_size);
+	if (!cd->iir_delay) {
+		trace_eq_error("eq_iir_setup(), delay allocation fail");
 		return -ENOMEM;
-
-	memset(cd->iir_delay, 0, size_sum);
-
-	/* Initialize 2nd phase to set EQ delay lines pointers */
-	iir_delay = cd->iir_delay;
-	for (i = 0; i < nch; i++) {
-		resp = assign_response[i];
-		if (resp >= 0)
-			iir_init_delay_df2t(&iir[i], &iir_delay);
 	}
-	return 0;
-}
 
-static int eq_iir_switch_store(struct iir_state_df2t iir[],
-			       struct sof_eq_iir_config *config,
-			       uint32_t ch, int32_t response)
-{
-	/* Copy assign response from update. The EQ is initialized later
-	 * when all channels have been updated.
-	 */
-	if (!config || ch >= config->channels_in_config)
-		return -EINVAL;
+	memset(cd->iir_delay, 0, delay_size);
+	cd->iir_delay_size = delay_size;
 
-	config->data[ch] = response;
-
+	/* Assign delay line to each channel EQ */
+	eq_iir_init_delay(cd->iir, cd->iir_delay, nch);
 	return 0;
 }
 
@@ -563,6 +570,7 @@ static struct comp_dev *eq_iir_new(struct sof_ipc_comp *comp)
 	cd->iir_delay = NULL;
 	cd->iir_delay_size = 0;
 	cd->config = NULL;
+	cd->config_new = NULL;
 
 	/* Allocate and make a copy of the coefficients blob and reset IIR. If
 	 * the EQ is configured later in run-time the size is zero.
@@ -594,6 +602,7 @@ static void eq_iir_free(struct comp_dev *dev)
 
 	eq_iir_free_delaylines(cd);
 	eq_iir_free_parameters(&cd->config);
+	eq_iir_free_parameters(&cd->config_new);
 
 	rfree(cd);
 	rfree(dev);
@@ -654,86 +663,58 @@ static int iir_cmd_set_data(struct comp_dev *dev,
 			    struct sof_ipc_ctrl_data *cdata)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	struct sof_ipc_ctrl_value_comp *compv;
-	struct sof_eq_iir_config *cfg;
+	struct sof_eq_iir_config *request;
 	size_t bs;
-	int i;
 	int ret = 0;
 
 	switch (cdata->cmd) {
-	case SOF_CTRL_CMD_ENUM:
-		trace_eq_with_ids(dev, "iir_cmd_set_data(), SOF_CTRL_CMD_ENUM");
-		compv = (struct sof_ipc_ctrl_value_comp *)cdata->data->data;
-		if (cdata->index == SOF_EQ_IIR_IDX_SWITCH) {
-			for (i = 0; i < (int)cdata->num_elems; i++) {
-				trace_eq_with_ids(dev, "iir_cmd_set_data(),"
-						  "SOF_EQ_IIR_IDX_SWITCH, "
-						  "compv index = %u, "
-						  "svalue = %u",
-						  compv[i].index,
-						  compv[i].svalue);
-				ret = eq_iir_switch_store(cd->iir,
-							  cd->config,
-							  compv[i].index,
-							  compv[i].svalue);
-				if (ret < 0) {
-					trace_eq_error_with_ids(dev,
-								"iir_cmd_set_data() "
-								"error:"
-								"eq_iir_switch_store()"
-								" failed");
-					return -EINVAL;
-				}
-			}
-		} else {
-			trace_eq_error_with_ids(dev, "iir_cmd_set_data() error:"
-						"invalid cdata->index = %u",
-						cdata->index);
-			return -EINVAL;
-		}
-		break;
 	case SOF_CTRL_CMD_BINARY:
 		trace_eq_with_ids(dev, "iir_cmd_set_data(), SOF_CTRL_CMD_BINARY");
 
-		if (dev->state != COMP_STATE_READY) {
-			/* It is a valid request but currently this is not
-			 * supported during playback/capture. The driver will
-			 * re-send data in next resume when idle and the new
-			 * EQ configuration will be used when playback/capture
-			 * starts.
-			 */
-			trace_eq_error_with_ids(dev, "iir_cmd_set_data() error: "
-						"driver is busy");
-			return -EBUSY;
-		}
-
-		/* Check and free old config */
-		eq_iir_free_parameters(&cd->config);
-
-		/* Copy new config, find size from header */
-		cfg = (struct sof_eq_iir_config *)cdata->data->data;
-		bs = cfg->size;
-		trace_eq_with_ids(dev, "iir_cmd_set_data(), blob size = %u",
-				  bs);
+		/* Find size from header */
+		request = (struct sof_eq_iir_config *)cdata->data->data;
+		bs = request->size;
 		if (bs > SOF_EQ_IIR_MAX_SIZE || bs == 0) {
 			trace_eq_error_with_ids(dev, "iir_cmd_set_data() error: "
 						"invalid blob size");
 			return -EINVAL;
 		}
 
+		/* Check that there is no work-in-progress previous request */
+		if (cd->config_new) {
+			trace_eq_error_with_ids(dev, "iir_cmd_set_data(), busy with previous");
+			return -EBUSY;
+		}
+
 		/* Allocate and make a copy of the blob and setup IIR */
-		cd->config = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, bs);
-		if (!cd->config) {
-			trace_eq_error_with_ids(dev, "iir_cmd_set_data() error: "
-						"alloc failed");
+		cd->config_new = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, bs);
+		if (!cd->config_new) {
+			trace_eq_error_with_ids(dev, "iir_cmd_set_data(), alloc fail");
 			return -EINVAL;
 		}
 
-		/* Just copy the configurate. The EQ will be initialized in
-		 * prepare().
+		/* Copy the configuration. If the component state is ready
+		 * the EQ will initialize in prepare().
 		 */
-		ret = memcpy_s(cd->config, bs, cdata->data->data, bs);
+		ret = memcpy_s(cd->config_new, bs, cdata->data->data, bs);
 		assert(!ret);
+
+		/* If component state is READY we can omit old configuration
+		 * immediately. When in playback/capture the new configuration
+		 * presence is checked in copy().
+		 */
+		if (dev->state ==  COMP_STATE_READY)
+			eq_iir_free_parameters(&cd->config);
+
+		/* If there is no existing configuration the received can
+		 * be set to current immediately. It will be applied in
+		 * prepare() when streaming starts.
+		 */
+		if (!cd->config) {
+			cd->config = cd->config_new;
+			cd->config_new = NULL;
+		}
+
 		break;
 	default:
 		trace_eq_error_with_ids(dev, "iir_cmd_set_data() error: "
@@ -760,12 +741,6 @@ static int eq_iir_cmd(struct comp_dev *dev, int cmd, void *data,
 		break;
 	case COMP_CMD_GET_DATA:
 		ret = iir_cmd_get_data(dev, cdata, max_data_size);
-		break;
-	case COMP_CMD_SET_VALUE:
-		trace_eq_with_ids(dev, "eq_iir_cmd(), COMP_CMD_SET_VALUE");
-		break;
-	case COMP_CMD_GET_VALUE:
-		trace_eq_with_ids(dev, "eq_iir_cmd(), COMP_CMD_GET_VALUE");
 		break;
 	default:
 		trace_eq_error_with_ids(dev, "eq_iir_cmd() error: "
@@ -795,6 +770,18 @@ static int eq_iir_copy(struct comp_dev *dev)
 	int ret;
 
 	tracev_eq_with_ids(dev, "eq_iir_copy()");
+
+	/* Check for changed configuration */
+	if (cd->config_new) {
+		eq_iir_free_parameters(&cd->config);
+		cd->config = cd->config_new;
+		cd->config_new = NULL;
+		ret = eq_iir_setup(cd, dev->params.channels);
+		if (ret < 0) {
+			trace_eq_error_with_ids(dev, "eq_iir_copy(), failed IIR setup");
+			return ret;
+		}
+	}
 
 	/* Get source, sink, number of frames etc. to process. */
 	ret = comp_get_copy_limits(dev, &cl);
@@ -919,12 +906,18 @@ static int eq_iir_reset(struct comp_dev *dev)
 static void eq_iir_cache(struct comp_dev *dev, int cmd)
 {
 	struct comp_data *cd;
+	struct sof_eq_iir_config *cn;
 
 	switch (cmd) {
 	case CACHE_WRITEBACK_INV:
 		trace_eq_with_ids(dev, "eq_iir_cache(), CACHE_WRITEBACK_INV");
 
 		cd = comp_get_drvdata(dev);
+		if (cd->config_new) {
+			cn = cd->config_new;
+			dcache_writeback_invalidate_region(cn, cn->size);
+		}
+
 		if (cd->config)
 			dcache_writeback_invalidate_region(cd->config,
 							   cd->config->size);
@@ -955,6 +948,9 @@ static void eq_iir_cache(struct comp_dev *dev, int cmd)
 		if (cd->config)
 			dcache_invalidate_region(cd->config,
 						 cd->config->size);
+		if (cd->config_new)
+			dcache_invalidate_region(cd->config_new,
+						 cd->config_new->size);
 		break;
 	}
 }

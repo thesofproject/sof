@@ -13,112 +13,24 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#if IIR_GENERIC
-
-/*
- * Direct form II transposed second order filter block (biquad)
- *
- *              +----+                         +---+    +-------+
- * X(z) ---o--->| b0 |---> + -------------o--->| g |--->| shift |---> Y(z)
- *         |    +----+     ^              |    +---+    +-------+
- *         |               |              |
- *         |            +------+          |
- *         |            | z^-1 |          |
- *         |            +------+          |
- *         |               ^              |
- *         |    +----+     |     +----+   |
- *         o--->| b1 |---> + <---| a1 |---o
- *         |    +----+     ^     +----+   |
- *         |               |              |
- *         |            +------+          |
- *         |            | z^-1 |          |
- *         |            +------+          |
- *         |               ^              |
- *         |    +----+     |     +----+   |
- *         o--->| b2 |---> + <---| a2 |---+
- *              +----+           +----+
- *
- */
-
-/* Series DF2T IIR */
-
-/* 32 bit data, 32 bit coefficients and 64 bit state variables */
-
-int32_t iir_df2t(struct iir_state_df2t *iir, int32_t x)
+int iir_delay_size_df2t(struct sof_eq_iir_header_df2t *config)
 {
-	int32_t in;
-	int32_t tmp;
-	int64_t acc;
-	int32_t out = 0;
-	int i;
-	int j;
-	int d = 0; /* Index to delays */
-	int c = 0; /* Index to coefficient a2 */
+	int n = config->num_sections; /* One section uses two unit delays */
 
-	/* Bypass is set with number of biquads set to zero. */
-	if (!iir->biquads)
-		return x;
+	if (n > SOF_EQ_IIR_DF2T_BIQUADS_MAX || n < 1)
+		return -EINVAL;
 
-	/* Coefficients order in coef[] is {a2, a1, b2, b1, b0, shift, gain} */
-	in = x;
-	for (j = 0; j < iir->biquads; j += iir->biquads_in_series) {
-		for (i = 0; i < iir->biquads_in_series; i++) {
-			/* Compute output: Delay is Q3.61
-			 * Q2.30 x Q1.31 -> Q3.61
-			 * Shift Q3.61 to Q3.31 with rounding
-			 */
-			acc = ((int64_t)iir->coef[c + 4]) * in + iir->delay[d];
-			tmp = (int32_t)Q_SHIFT_RND(acc, 61, 31);
-
-			/* Compute 1st delay */
-			acc = iir->delay[d + 1];
-			acc += ((int64_t)iir->coef[c + 3]) * in; /* Coef  b1 */
-			acc += ((int64_t)iir->coef[c + 1]) * tmp; /* Coef a1 */
-			iir->delay[d] = acc;
-
-			/* Compute 2nd delay */
-			acc = ((int64_t)iir->coef[c + 2]) * in; /* Coef  b2 */
-			acc += ((int64_t)iir->coef[c]) * tmp; /* Coef a2 */
-			iir->delay[d + 1] = acc;
-
-			/* Apply gain Q2.14 x Q1.31 -> Q3.45 */
-			acc = ((int64_t)iir->coef[c + 6]) * tmp; /* Gain */
-
-			/* Apply biquad output shift right parameter
-			 * simultaneously with Q3.45 to Q3.31 conversion. Then
-			 * saturate to 32 bits Q1.31 and prepare for next
-			 * biquad.
-			 */
-			acc = Q_SHIFT_RND(acc, 45 + iir->coef[c + 5], 31);
-			in = sat_int32(acc);
-
-			/* Proceed to next biquad coefficients and delay
-			 * lines.
-			 */
-			c += SOF_EQ_IIR_NBIQUAD_DF2T;
-			d += IIR_DF2T_NUM_DELAYS;
-		}
-		/* Output of previous section is in variable in */
-		out = sat_int32((int64_t)out + in);
-	}
-	return out;
+	return 2 * n * sizeof(int64_t);
 }
 
-size_t iir_init_coef_df2t(struct iir_state_df2t *iir,
-			  struct sof_eq_iir_header_df2t *config)
+int iir_init_coef_df2t(struct iir_state_df2t *iir,
+		       struct sof_eq_iir_header_df2t *config)
 {
 	iir->biquads = config->num_sections;
 	iir->biquads_in_series = config->num_sections_in_series;
 	iir->coef = config->biquads;
-	iir->delay = NULL;
 
-	if (iir->biquads > SOF_EQ_IIR_DF2T_BIQUADS_MAX ||
-	    iir->biquads == 0) {
-		iir_reset_df2t(iir);
-		return -EINVAL;
-	}
-
-	return 2 * iir->biquads * sizeof(int64_t); /* Needed delay line size */
+	return 0;
 }
 
 void iir_init_delay_df2t(struct iir_state_df2t *iir, int64_t **delay)
@@ -141,6 +53,4 @@ void iir_reset_df2t(struct iir_state_df2t *iir)
 	 * omitting setting iir->delay to NULL.
 	 */
 }
-
-#endif
 

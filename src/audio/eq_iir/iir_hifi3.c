@@ -131,42 +131,4 @@ int32_t iir_df2t(struct iir_state_df2t *iir, int32_t x)
 	return out;
 }
 
-size_t iir_init_coef_df2t(struct iir_state_df2t *iir,
-			  struct sof_eq_iir_header_df2t *config)
-{
-	iir->biquads = config->num_sections;
-	iir->biquads_in_series = config->num_sections_in_series;
-	iir->coef = config->biquads;
-	iir->delay = NULL;
-
-	if (iir->biquads > SOF_EQ_IIR_DF2T_BIQUADS_MAX ||
-	    iir->biquads == 0) {
-		iir_reset_df2t(iir);
-		return -EINVAL;
-	}
-
-	return 2 * iir->biquads * sizeof(int64_t); /* Needed delay line size */
-}
-
-void iir_init_delay_df2t(struct iir_state_df2t *iir, int64_t **delay)
-{
-	/* Set delay line of this IIR */
-	iir->delay = *delay;
-
-	/* Point to next IIR delay line start. The DF2T biquad uses two
-	 * memory elements.
-	 */
-	*delay += 2 * iir->biquads;
-}
-
-void iir_reset_df2t(struct iir_state_df2t *iir)
-{
-	iir->biquads = 0;
-	iir->biquads_in_series = 0;
-	iir->coef = NULL;
-	/* Note: May need to know the beginning of dynamic allocation after so
-	 * omitting setting iir->delay to NULL.
-	 */
-}
-
 #endif
