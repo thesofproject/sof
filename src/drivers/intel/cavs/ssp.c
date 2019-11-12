@@ -376,69 +376,58 @@ static int ssp_set_config(struct dai *dai,
 		goto out;
 	}
 
-	/* MCLK config */
-	/* searching the smallest possible mclk source */
-	for (i = MAX_SSP_FREQ_INDEX; i >= 0; i--) {
-		if (config->ssp.mclk_rate > ssp_freq[i].freq)
-			break;
+	clk_index = -1;
 
-		if (ssp_freq[i].freq % config->ssp.mclk_rate == 0)
+	/* Searching for common smallest possible source for MCLK and BCLK */
+	for (i = 0; i < MAX_SSP_FREQ_INDEX; i++) {
+		/* MCLK config */
+		if (config->ssp.mclk_rate > ssp_freq[i].freq)
+			continue;
+
+		if (!(ssp_freq[i].freq % config->ssp.mclk_rate))
 			clk_index = i;
+		else
+			continue;
+
+		/* BCLK config */
+		if (ssp_freq[i].freq % config->ssp.bclk_rate) {
+			clk_index = -1;
+		} else {
+			mdivc |= MNDSS(ssp_freq[clk_index].enc);
+			mdiv = ssp_freq[clk_index].freq / config->ssp.bclk_rate;
+
+			/* select M/N output for bclk in case of Audio Cardinal
+			 * or PLL Fixed clock.
+			 */
+			if (ssp_freq[clk_index].enc !=
+				CLOCK_SSP_XTAL_OSCILLATOR)
+				sscr0 |= SSCR0_ECS;
+			break;
+		}
+
+		/* check if we can get target BCLK with M/N */
+		if (find_mn(ssp_freq[i].freq, config->ssp.bclk_rate,
+			    &mdiv, &i2s_m, &i2s_n)) {
+			clk_index = i;
+			mdivc |= MNDSS(ssp_freq[clk_index].enc);
+			trace_ssp("ssp_set_config(), M = %d, N = %d",
+				  i2s_m, i2s_n);
+
+			/* M/N requires external clock to be selected */
+			sscr0 |= SSCR0_ECS;
+			break;
+		}
 	}
 
 	if (clk_index >= 0) {
+		trace_ssp("ssp_set_config() clk_index %d", clk_index);
 		mdivc |= MCDSS(ssp_freq[clk_index].enc);
 		mdivr_val = ssp_freq[clk_index].freq / config->ssp.mclk_rate;
 	} else {
-		trace_ssp_error("ssp_set_config() error: MCLK %d",
-				config->ssp.mclk_rate);
+		trace_ssp_error("ssp_set_config() error: MCLK %d BCLK %d",
+				config->ssp.mclk_rate, config->ssp.bclk_rate);
 		ret = -EINVAL;
 		goto out;
-	}
-
-	/* BCLK config */
-	/* searching the smallest possible bclk source */
-	clk_index = -1;
-	for (i = MAX_SSP_FREQ_INDEX; i >= 0; i--) {
-		if (config->ssp.bclk_rate > ssp_freq[i].freq)
-			break;
-
-		if (ssp_freq[i].freq % config->ssp.bclk_rate == 0)
-			clk_index = i;
-	}
-
-	if (clk_index >= 0) {
-		mdivc |= MNDSS(ssp_freq[clk_index].enc);
-		mdiv = ssp_freq[clk_index].freq / config->ssp.bclk_rate;
-
-		/* select M/N output for bclk in case of Audio Cardinal
-		 * or PLL Fixed clock.
-		 */
-		if (ssp_freq[clk_index].enc != CLOCK_SSP_XTAL_OSCILLATOR)
-			sscr0 |= SSCR0_ECS;
-	} else {
-		/* check if we can get target BCLK with M/N */
-		for (i = 0; i <= MAX_SSP_FREQ_INDEX; i++) {
-			if (find_mn(ssp_freq[i].freq, config->ssp.bclk_rate,
-				    &mdiv, &i2s_m, &i2s_n)) {
-				clk_index = i;
-				break;
-			}
-		}
-
-		if (clk_index < 0) {
-			trace_ssp_error("ssp_set_config() error: BCLK %d",
-					config->ssp.bclk_rate);
-			ret = -EINVAL;
-			goto out;
-		}
-
-		trace_ssp("ssp_set_config(), M = %d, N = %d", i2s_m, i2s_n);
-
-		mdivc |= MNDSS(ssp_freq[clk_index].enc);
-
-		/* M/N requires external clock to be selected */
-		sscr0 |= SSCR0_ECS;
 	}
 
 	switch (mdivr_val) {
