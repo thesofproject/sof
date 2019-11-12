@@ -94,6 +94,7 @@ remove_module snd_hda_ext_core
 remove_module soundwire_intel_init
 remove_module soundwire_intel
 remove_module soundwire_cadence
+remove_module soundwire_generic_allocation
 remove_module regmap_sdw
 remove_module soundwire_bus
 
