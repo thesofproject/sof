@@ -12,7 +12,6 @@
 #include <sof/sof.h>
 #include <config.h>
 #include <sof/mailbox.h>
-#include <sof/cpu.h>
 #include <platform/platform.h>
 #include <platform/memory.h>
 #include <stdint.h>
