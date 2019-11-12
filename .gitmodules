@@ -1,0 +1,4 @@
+[submodule "rimage"]
+	path = rimage
+	url = https://github.com/thesofproject/rimage.git
+	branch = master
