@@ -194,8 +194,13 @@ static inline int esai_set_config(struct dai *dai,
 
 	xccr |= ESAI_xCCR_xHCKD; /* Set the HCKT pin as an output */
 
-	dai_update_bits(dai, REG_ESAI_TCCR, mask, xccr); /* rx */
-	dai_update_bits(dai, REG_ESAI_RCCR, mask, xccr); /* tx */
+	dai_update_bits(dai, REG_ESAI_TCCR, mask, xccr);
+	/* There is a hardware limitation which prevents tx and rx to be
+	 * simultaneously master or simultaneously slave. As a workaround,
+	 * we will leave tx as master and set rx as slave.
+	 */
+	xccr &= ~(ESAI_xCCR_xCKD | ESAI_xCCR_xFSD);
+	dai_update_bits(dai, REG_ESAI_RCCR, mask, xccr);
 
 	mask = ESAI_xCR_xFSL | ESAI_xCR_xFSR | ESAI_xCR_xWA |
 		ESAI_xCR_xMOD_MASK | ESAI_xCR_xSWS_MASK | ESAI_xCR_PADC |
@@ -212,23 +217,25 @@ static inline int esai_set_config(struct dai *dai,
 	dai_write(dai, REG_ESAI_RSMA, 0);
 	dai_write(dai, REG_ESAI_RSMB, 0);
 
-	/* Program FIFOs -- rx only reset them
-	 * TODO: When we will support recording this needs to be adjusted.
-	 */
-	dai_update_bits(dai, REG_ESAI_RFCR, ESAI_xFCR_xFR, ESAI_xFCR_xFR);
+	/* Program FIFOs */
 	dai_update_bits(dai, REG_ESAI_RFCR, ESAI_xFCR_xFR, 0);
 
 	/* Reset transmit FIFO */
 	dai_update_bits(dai, REG_ESAI_TFCR,
 			ESAI_xFCR_xFR_MASK,
 			ESAI_xFCR_xFR);
+	/* Reset receive FIFO */
+	dai_update_bits(dai, REG_ESAI_RFCR,
+			ESAI_xFCR_xFR_MASK,
+			ESAI_xFCR_xFR);
 
 	/* Set transmit fifo configuration register
-	 * xWA(24): 24-bit samples as input. Must agree with xSWS above.
+	 * xWA(24): 24-bit samples as input/output. Must agree with xSWS above.
 	 *	    TODO get sample width from topology.
 	 * xFWM(96): Trigger next DMA transfer when at least 96 (of the 128)
-	 *	     slots are empty.
+	 *	     slots are empty (or full for capture).
 	 * TE(1): Enable 1 transmitter.
+	 * RE(1): Enable 1 receiver.
 	 * TIEN: Transmitter initialization enable. This will pull the initial
 	 *       samples from the FIFO in the transmit registers. The
 	 *       alternative would have been to manually initialize the
@@ -241,6 +248,12 @@ static inline int esai_set_config(struct dai *dai,
 			| ESAI_xFCR_TIEN,
 			ESAI_xFCR_xWA(24) | ESAI_xFCR_xFWM(96)
 			| ESAI_xFCR_TE(1) | ESAI_xFCR_TIEN);
+
+	dai_update_bits(dai, REG_ESAI_RFCR,
+			ESAI_xFCR_xFR_MASK | ESAI_xFCR_xWA_MASK |
+			ESAI_xFCR_xFWM_MASK | ESAI_xFCR_RE_MASK,
+			ESAI_xFCR_xWA(24) | ESAI_xFCR_xFWM(96) |
+			ESAI_xFCR_RE(1));
 
 	/* Set the clock divider to divide EXTAL by 16 (DIV8 from PSR,
 	 * plus a divide by 2 which is mandatory overall)
@@ -257,7 +270,11 @@ static inline int esai_set_config(struct dai *dai,
 	 */
 	dai_update_bits(dai, REG_ESAI_TCCR, ESAI_xCCR_xFP_MASK,
 			ESAI_xCCR_xFP(1));
+	dai_update_bits(dai, REG_ESAI_RCCR, ESAI_xCCR_xFP_MASK,
+			ESAI_xCCR_xFP(1));
 	dai_update_bits(dai, REG_ESAI_TCCR, ESAI_xCCR_xPSR_MASK,
+			ESAI_xCCR_xPSR_DIV8);
+	dai_update_bits(dai, REG_ESAI_RCCR, ESAI_xCCR_xPSR_MASK,
 			ESAI_xCCR_xPSR_DIV8);
 
 	/* Remove ESAI personal reset */
