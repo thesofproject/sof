@@ -209,6 +209,8 @@ static inline int esai_set_config(struct dai *dai,
 	xcr |= ESAI_xCR_xPR;
 
 	dai_update_bits(dai, REG_ESAI_TCR, mask, xcr);
+	/* rx doesn't have any PADC bit, remove it from the mask */
+	mask &= ~ESAI_xCR_PADC;
 	dai_update_bits(dai, REG_ESAI_RCR, mask, xcr);
 
 	/* Disable transmission by disabling all slots */
