@@ -512,22 +512,26 @@ static int edma_get_data_size(struct dma_chan_data *channel,
 	 * get_data_size() and copy() are run exactly once per
 	 * interrupt, and currently we have the elem size stored
 	 * directly in the hardware register EDMA_TCD_SLAST
-	 * as negative offset divided by 2
+	 * as negative offset divided by 2 for playback and, similarly,
+	 * in EDMA_TCD_DLAST_SGA for capture.
 	 *
 	 * TODO If we support multiple DMA transfers per SOF elem, we
 	 * need to adjust for that and copy the whole required data per
 	 * interrupt.
 	 */
-	int32_t data_size;
+	int32_t playback_data_size, capture_data_size;
 
-	data_size = (int32_t)dma_chan_reg_read(channel, EDMA_TCD_SLAST);
+	playback_data_size = (int32_t)dma_chan_reg_read(channel,
+		EDMA_TCD_SLAST);
+	capture_data_size = (int32_t)dma_chan_reg_read(channel,
+		EDMA_TCD_DLAST_SGA);
 
 	switch (channel->direction) {
-	case SOF_IPC_STREAM_PLAYBACK:
-		*free = ABS(data_size) / 2;
+	case DMA_DIR_MEM_TO_DEV:
+		*free = ABS(playback_data_size) / 2;
 		break;
-	case SOF_IPC_STREAM_CAPTURE:
-		*avail = ABS(data_size) / 2;
+	case DMA_DIR_DEV_TO_MEM:
+		*avail = ABS(capture_data_size) / 2;
 		break;
 	default:
 		trace_edma_error("edma_get_data_size() unsupported direction %d",
