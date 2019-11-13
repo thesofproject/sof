@@ -208,8 +208,8 @@ static inline int esai_set_config(struct dai *dai,
 	/* Personal reset, suspend the actual TX/RX for now */
 	xcr |= ESAI_xCR_xPR;
 
-	dai_update_bits(dai, REG_ESAI_TCR, mask, xcr); /* rx */
-	dai_update_bits(dai, REG_ESAI_RCR, mask, xcr); /* tx */
+	dai_update_bits(dai, REG_ESAI_TCR, mask, xcr);
+	dai_update_bits(dai, REG_ESAI_RCR, mask, xcr);
 
 	/* Disable transmission by disabling all slots */
 	dai_write(dai, REG_ESAI_TSMA, 0);
@@ -243,11 +243,11 @@ static inline int esai_set_config(struct dai *dai,
 	 *       complex to implement.
 	 */
 	dai_update_bits(dai, REG_ESAI_TFCR,
-			ESAI_xFCR_xFR_MASK | ESAI_xFCR_xWA_MASK
-			| ESAI_xFCR_xFWM_MASK | ESAI_xFCR_TE_MASK
-			| ESAI_xFCR_TIEN,
-			ESAI_xFCR_xWA(24) | ESAI_xFCR_xFWM(96)
-			| ESAI_xFCR_TE(1) | ESAI_xFCR_TIEN);
+			ESAI_xFCR_xFR_MASK | ESAI_xFCR_xWA_MASK |
+			ESAI_xFCR_xFWM_MASK | ESAI_xFCR_TE_MASK |
+			ESAI_xFCR_TIEN,
+			ESAI_xFCR_xWA(24) | ESAI_xFCR_xFWM(96) |
+			ESAI_xFCR_TE(1) | ESAI_xFCR_TIEN);
 
 	dai_update_bits(dai, REG_ESAI_RFCR,
 			ESAI_xFCR_xFR_MASK | ESAI_xFCR_xWA_MASK |
@@ -315,10 +315,10 @@ static void esai_start(struct dai *dai, int direction)
 	/* Configure time slot registers, enable two time slots for two
 	 * channels.
 	 *
-	 * This actually begins playback/record.
+	 * This actually begins playback/capture.
 	 *
 	 * The order of setting xSMB first and xSMA second is required to
-	 * correctly start playback/record; setting them in reverse order may
+	 * correctly start playback/capture; setting them in reverse order may
 	 * cause significant channel swap issues when using more than 16
 	 * channels.
 	 */
