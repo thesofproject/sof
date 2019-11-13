@@ -76,26 +76,26 @@ struct src_stage_prm {
 static inline void src_inc_wrap(int32_t **ptr, int32_t *end, size_t size)
 {
 	if (*ptr >= end)
-		*ptr = (int32_t *)((size_t)*ptr - size);
+		*ptr = (int32_t *)((uint8_t *)*ptr - size);
 }
 
 static inline void src_dec_wrap(int32_t **ptr, int32_t *addr, size_t size)
 {
 	if (*ptr < addr)
-		*ptr = (int32_t *)((size_t)*ptr + size);
+		*ptr = (int32_t *)((uint8_t *)*ptr + size);
 }
 
 #if CONFIG_FORMAT_S16LE
 static inline void src_inc_wrap_s16(int16_t **ptr, int16_t *end, size_t size)
 {
 	if (*ptr >= end)
-		*ptr = (int16_t *)((size_t)*ptr - size);
+		*ptr = (int16_t *)((uint8_t *)*ptr - size);
 }
 
 static inline void src_dec_wrap_s16(int16_t **ptr, int16_t *addr, size_t size)
 {
 	if (*ptr < addr)
-		*ptr = (int16_t *)((size_t)*ptr + size);
+		*ptr = (int16_t *)((uint8_t *)*ptr + size);
 }
 #endif /* CONFIG_FORMAT_S16LE */
 
