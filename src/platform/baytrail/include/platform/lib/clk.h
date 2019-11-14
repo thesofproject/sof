@@ -34,22 +34,6 @@
 #define NUM_CPU_FREQ	8
 #define NUM_SSP_FREQ	2
 
-static inline int clock_platform_set_cpu_freq(uint32_t cpu_freq_enc)
-{
-	/* set CPU frequency request for CCU */
-	io_reg_update_bits(SHIM_BASE + SHIM_FR_LAT_REQ, SHIM_FR_LAT_CLK_MASK,
-			   cpu_freq_enc);
-
-	/* send freq request to SC */
-	return ipc_pmc_send_msg(PMC_SET_LPECLK);
-}
-
-static inline int clock_platform_set_ssp_freq(uint32_t ssp_freq_enc)
-{
-	/* send SSP freq request to SC */
-	return ipc_pmc_send_msg(ssp_freq_enc);
-}
-
 #endif /* __PLATFORM_LIB_CLK_H__ */
 
 #else

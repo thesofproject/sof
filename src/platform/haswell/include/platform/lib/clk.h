@@ -28,20 +28,6 @@
 #define NUM_CPU_FREQ	6
 #define NUM_SSP_FREQ	1
 
-static inline int clock_platform_set_cpu_freq(uint32_t cpu_freq_enc)
-{
-	/* set CPU frequency request for CCU */
-	io_reg_update_bits(SHIM_BASE + SHIM_CSR, SHIM_CSR_DCS_MASK,
-			   cpu_freq_enc);
-
-	return 0;
-}
-
-static inline int clock_platform_set_ssp_freq(uint32_t ssp_freq_enc)
-{
-	return 0;
-}
-
 #endif /* __PLATFORM_LIB_CLK_H__ */
 
 #else
