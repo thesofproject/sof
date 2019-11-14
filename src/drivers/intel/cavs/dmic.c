@@ -163,7 +163,7 @@ static enum task_state dmic_work(void *data)
 
 	tracev_dmic("dmic_work()");
 
-	spin_try_lock(dai->lock, ret);
+	ret = spin_try_lock(dai->lock);
 	if (!ret) {
 		tracev_dmic("dmic_work(): spin_try_lock(dai->lock, ret)"
 			    "failed: RESCHEDULE");

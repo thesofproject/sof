@@ -189,11 +189,11 @@ extern uint32_t lock_dbg_user[DBG_LOCK_USERS];
 		arch_spin_lock(lock); \
 	} while (0)
 
-#define spin_try_lock(lock, ret) \
-	do { \
+#define spin_try_lock(lock) \
+	({ \
 		spin_lock_dbg(); \
-		ret = arch_try_lock(lock); \
-	} while (0)
+		arch_try_lock(lock); \
+	})
 
 #define spin_unlock(lock) \
 	do { \
