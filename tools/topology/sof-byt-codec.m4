@@ -1,10 +1,4 @@
-#
-ifelse(CODEC, `RT5682', `# Topology for generic Baytrail board with RT5682.', `')
-ifelse(CODEC, `RT5651', `# Topology for generic Baytrail board with RT5651.', `')
-ifelse(CODEC, `RT5640', `# Topology for generic Baytrail board with RT5640.', `')
-ifelse(CODEC, `RT5645', `# Topology for generic Baytrail board with RT5645.', `')
-ifelse(CODEC, `DA7213', `# Topology for generic Baytrail board with DA7213.', `')
-#
+`# Topology for generic' PLATFORM `board with' CODEC `on SSP' SSP_NUM
 
 # Include topology builder
 include(`utils.m4')
@@ -18,14 +12,11 @@ include(`common/tlv.m4')
 # Include Token library
 include(`sof/tokens.m4')
 
-# Include Baytrail DSP configuration
-include(`platform/intel/byt.m4')
+# Include DSP configuration
+ifelse(PLATFORM, `cht', include(`platform/intel/cht.m4'),
+	ifelse(PLATFORM, `byt', include(`platform/intel/byt.m4'), `'))
 
-define(PIPE_NAME, ifelse(CODEC, `RT5682', pipe-byt-rt5682,
-	ifelse(CODEC, `RT5651', pipe-byt-rt5651,
-		ifelse(CODEC, `RT5640', pipe-byt-rt5640,
-			ifelse(CODEC, `RT5645', pipe-byt-rt5645,
-				ifelse(CODEC, `DA7213', pip-byt-da7213, `'))))))
+define(PIPE_NAME, pipe-`'PLATFORM`'-`'CODEC`')
 
 #
 # Define the pipelines
@@ -60,7 +51,7 @@ PIPELINE_PCM_ADD(sof/pipe-low-latency-capture.m4,
 # playback DAI is SSP2 using 2 periods
 # Buffers use s24le format, 1000us deadline on core 0 with priority 1
 DAI_ADD(sof/pipe-dai-playback.m4,
-	1, SSP, 2, SSP2-Codec,
+	1, SSP, SSP_NUM, SSP2-Codec,
 	PIPELINE_SOURCE_1, 2, s24le,
 	1000, 1, 0, SCHEDULE_TIME_DOMAIN_DMA)
 
@@ -86,7 +77,7 @@ SectionGraph."PIPE_NAME" {
 # capture DAI is SSP2 using 2 periods
 # Buffers use s24le format, 1000us deadline on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
-	2, SSP, 2, SSP2-Codec,
+	2, SSP, SSP_NUM, SSP2-Codec,
 	PIPELINE_SINK_2, 2, s24le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_DMA)
 
@@ -96,12 +87,16 @@ PCM_DUPLEX_ADD(Low Latency, 0, PIPELINE_PCM_1, PIPELINE_PCM_2)
 #
 # BE configurations - overrides config in ACPI if present
 #
-DAI_CONFIG(SSP, 2, 0, SSP2-Codec,
+DAI_CONFIG(SSP, SSP_NUM, 0, SSP2-Codec,
 	   SSP_CONFIG(I2S, SSP_CLOCK(mclk, 19200000, codec_mclk_in),
 		      SSP_CLOCK(bclk, 2400000, codec_slave),
 		      SSP_CLOCK(fsync, 48000, codec_slave),
 		      SSP_TDM(2, 25, 3, 3),
-		      SSP_CONFIG_DATA(SSP, 2, 24)))
+		      SSP_CONFIG_DATA(SSP, SSP_NUM, 24)))
 
 VIRTUAL_WIDGET(ssp2 Rx, out_drv, 1)
 VIRTUAL_WIDGET(ssp2 Tx, out_drv, 2)
+VIRTUAL_WIDGET(ssp0 Tx, out_drv, 3)
+VIRTUAL_WIDGET(ssp0 Rx, out_drv, 4)
+VIRTUAL_DAPM_ROUTE_IN(modem_in, SSP, 0, IN, 0)
+VIRTUAL_DAPM_ROUTE_OUT(modem_out, SSP, 0, OUT, 1)
