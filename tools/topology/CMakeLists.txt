@@ -19,6 +19,7 @@ add_custom_target(abi
 set(TPLGS
 	"sof-cht-nocodec\;sof-cht-nocodec\;-DPLATFORM=cht"
 	"sof-cht-nocodec\;sof-byt-nocodec\;-DPLATFORM=byt"
+	"sof-bdw-nocodec\;sof-bdw-nocodec"
 	"sof-cht-max98090\;sof-cht-max98090"
 	"sof-cht-rt5682\;sof-cht-rt5682"
 	"sof-cht-src-50khz-pcm512x\;sof-cht-src-50khz-pcm512x"
