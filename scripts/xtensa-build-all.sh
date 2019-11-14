@@ -106,6 +106,7 @@ WORKDIR="$pwd"
 for j in ${PLATFORMS[@]}
 do
 	HAVE_ROM='no'
+	DEFCONFIG_PATCH=''
 	if [ $j == "byt" ]
 	then
 		PLATFORM="baytrail"
@@ -128,15 +129,19 @@ do
 	then
 		PLATFORM="broadwell"
 		ARCH="xtensa"
+		XTENSA_CORE="LX4_langwell_audio_17_8"
 		ROOT="$pwd/../xtensa-root/xtensa-hsw-elf"
 		HOST="xtensa-hsw-elf"
+		XTENSA_TOOLS_VERSION="RG-2017.8-linux"
 	fi
 	if [ $j == "hsw" ]
 	then
 		PLATFORM="haswell"
 		ARCH="xtensa"
+		XTENSA_CORE="LX4_langwell_audio_17_8"
 		ROOT="$pwd/../xtensa-root/xtensa-hsw-elf"
 		HOST="xtensa-hsw-elf"
+		XTENSA_TOOLS_VERSION="RG-2017.8-linux"
 	fi
 	if [ $j == "apl" ]
 	then
@@ -207,22 +212,22 @@ do
 	fi
 	if [ $j == "sue" ]
         then
-                PLATFORM="suecreek"
+		PLATFORM="suecreek"
 		ARCH="xtensa"
-                XTENSA_CORE="X6H3CNL_2016_4_linux"
-                ROOT="$pwd/../xtensa-root/xtensa-cnl-elf"
-                HOST="xtensa-cnl-elf"
-                XTENSA_TOOLS_VERSION="RF-2016.4-linux"
+		XTENSA_CORE="X6H3CNL_2017_8"
+		ROOT="$pwd/../xtensa-root/xtensa-cnl-elf"
+		HOST="xtensa-cnl-elf"
+		XTENSA_TOOLS_VERSION="RG-2017.8-linux"
 		HAVE_ROM='yes'
         fi
 	if [ $j == "icl" ]
 	then
 		PLATFORM="icelake"
 		ARCH="xtensa-smp"
-		XTENSA_CORE="X6H3CNL_2016_4_linux"
+		XTENSA_CORE="X6H3CNL_2017_8"
 		ROOT="$pwd/../xtensa-root/xtensa-cnl-elf"
 		HOST="xtensa-cnl-elf"
-		XTENSA_TOOLS_VERSION="RF-2016.4-linux"
+		XTENSA_TOOLS_VERSION="RG-2017.8-linux"
 		HAVE_ROM='yes'
 	fi
 	if [ $j == "jsl" ]
@@ -269,6 +274,11 @@ do
 		export XTENSA_SYSTEM=$XTENSA_BUILDS_DIR/$XTENSA_CORE/config
 		PATH=$XTENSA_TOOLS_DIR/XtensaTools/bin:$OLDPATH
 		COMPILER="xcc"
+
+		if [ $j == "byt" ] || [ $j == "cht" ] || [ $j == "sue" ]
+		then
+			DEFCONFIG_PATCH="_xcc"
+		fi
 	else
 		TOOLCHAIN=$HOST
 		PATH=$pwd/../$HOST/bin:$OLDPATH
@@ -289,7 +299,7 @@ do
 		${PRIVATE_KEY_OPTION} \
 		..
 
-	make ${PLATFORM}_defconfig
+	make ${PLATFORM}${DEFCONFIG_PATCH}_defconfig
 
 	if [[ "x$MAKE_MENUCONFIG" == "xyes" ]]
 	then
