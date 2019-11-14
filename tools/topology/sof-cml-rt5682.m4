@@ -159,7 +159,7 @@ DAI_ADD(sof/pipe-dai-playback.m4,
 DAI_ADD(sof/pipe-dai-capture.m4,
 	8, DMIC, 1, dmic16k,
 	PIPELINE_SINK_8, 2, s32le,
-	16, 1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
+	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 
 # PCM Low Latency, id 0
