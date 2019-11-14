@@ -3,6 +3,7 @@
  * Copyright(c) 2016 Intel Corporation. All rights reserved.
  *
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
+ *         Janusz Jankowski <janusz.jankowski@linux.intel.com>
  */
 
 #ifndef __SOF_LIB_CLK_H__
@@ -16,10 +17,6 @@ struct timer;
 #define CLOCK_NOTIFY_PRE	0
 #define CLOCK_NOTIFY_POST	1
 
-#define CLOCK_SSP_XTAL_OSCILLATOR		0x0
-#define CLOCK_SSP_AUDIO_CARDINAL		0x1
-#define CLOCK_SSP_PLL_FIXED			0x2
-
 struct clock_notify_data {
 	uint32_t old_freq;
 	uint32_t old_ticks_per_msec;
@@ -30,12 +27,18 @@ struct clock_notify_data {
 struct freq_table {
 	uint32_t freq;
 	uint32_t ticks_per_msec;
-	uint32_t enc;
 };
 
-extern struct freq_table *cpu_freq;
+struct clock_info {
+	uint32_t freqs_num;
+	struct freq_table *freqs;
+	uint32_t default_freq_idx;
+	uint32_t notification_id;
+	uint32_t notification_mask;
+	int (*set_freq)(int clock, int freq_idx);
+};
 
-extern struct freq_table *ssp_freq;
+extern struct clock_info *clocks;
 
 uint32_t clock_get_freq(int clock);
 

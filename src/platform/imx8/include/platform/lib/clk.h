@@ -26,17 +26,7 @@
 #define NUM_CPU_FREQ	1
 #define NUM_SSP_FREQ	2
 
-static inline int clock_platform_set_cpu_freq(uint32_t cpu_freq_enc)
-{
-	return 0;
-}
-
-/* FIXME: compile out clock_platform_set_ssp_freq */
-static inline int clock_platform_set_ssp_freq(uint32_t ssp_freq_enc)
-{
-	/* we don't even have SSP */
-	return 0;
-}
+void platform_clock_init(void);
 
 #endif /* __PLATFORM_LIB_CLK_H__ */
 

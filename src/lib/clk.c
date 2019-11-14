@@ -28,8 +28,6 @@
 #define trace_clk_error(__e, ...) \
 	trace_error(TRACE_CLASS_CLK, __e, ##__VA_ARGS__)
 
-typedef int (*set_frequency)(uint32_t);
-
 struct clk_data {
 	uint32_t freq;
 	uint32_t ticks_per_msec;
@@ -67,9 +65,7 @@ void clock_set_freq(int clock, uint32_t hz)
 {
 	struct notify_data notify_data;
 	struct clock_notify_data clk_notify_data;
-	set_frequency set_freq = NULL;
-	const struct freq_table *freq_table = NULL;
-	uint32_t freq_table_size = 0;
+	struct clock_info *clk_info = &clocks[clock];
 	uint32_t idx;
 	uint32_t flags;
 
@@ -83,47 +79,30 @@ void clock_set_freq(int clock, uint32_t hz)
 	/* atomic context for changing clocks */
 	spin_lock_irq(clk_pdata->clk[clock].lock, flags);
 
-	switch (clock) {
-	case CLK_CPU(0) ... CLK_CPU(PLATFORM_CORE_COUNT - 1):
-		set_freq = &clock_platform_set_cpu_freq;
-		freq_table = cpu_freq;
-		freq_table_size = NUM_CPU_FREQ;
-		notify_data.id = NOTIFIER_ID_CPU_FREQ;
-		notify_data.target_core_mask =
-			NOTIFIER_TARGET_CORE_MASK(cpu_get_id());
-		break;
-	case CLK_SSP:
-		set_freq = &clock_platform_set_ssp_freq;
-		freq_table = ssp_freq;
-		freq_table_size = NUM_SSP_FREQ;
-		notify_data.id = NOTIFIER_ID_SSP_FREQ;
-		notify_data.target_core_mask = NOTIFIER_TARGET_CORE_ALL_MASK;
-		break;
-	default:
-		trace_clk_error("clk: invalid clock type %d", clock);
-		goto out;
-	}
+	notify_data.id = clk_info->notification_id;
+	notify_data.target_core_mask = clk_info->notification_mask;
 
 	/* get nearest frequency that is >= requested Hz */
-	idx = clock_get_nearest_freq_idx(freq_table, freq_table_size, hz);
-	clk_notify_data.freq = freq_table[idx].freq;
+	idx = clock_get_nearest_freq_idx(clk_info->freqs, clk_info->freqs_num,
+					 hz);
+	clk_notify_data.freq = clk_info->freqs[idx].freq;
 
 	/* tell anyone interested we are about to change freq */
 	notify_data.message = CLOCK_NOTIFY_PRE;
 	notifier_event(&notify_data);
 
-	if (set_freq(freq_table[idx].enc) == 0) {
+	if (!clk_info->set_freq ||
+	    clk_info->set_freq(clock, idx) == 0) {
 		/* update clock frequency */
-		clk_pdata->clk[clock].freq = freq_table[idx].freq;
+		clk_pdata->clk[clock].freq = clk_info->freqs[idx].freq;
 		clk_pdata->clk[clock].ticks_per_msec =
-			freq_table[idx].ticks_per_msec;
+			clk_info->freqs[idx].ticks_per_msec;
 	}
 
 	/* tell anyone interested we have now changed freq */
 	notify_data.message = CLOCK_NOTIFY_POST;
 	notifier_event(&notify_data);
 
-out:
 	spin_unlock_irq(clk_pdata->clk[clock].lock, flags);
 }
 
@@ -144,20 +123,17 @@ void platform_timer_set_delta(struct timer *timer, uint64_t ns)
 void clock_init(void)
 {
 	int i = 0;
+	uint32_t def;
 
 	clk_pdata = rmalloc(RZONE_SYS | RZONE_FLAG_UNCACHED, SOF_MEM_CAPS_RAM,
 			    sizeof(*clk_pdata));
 
 	/* set defaults */
-	for (i = 0; i < PLATFORM_CORE_COUNT; i++) {
-		clk_pdata->clk[i].freq = cpu_freq[CPU_DEFAULT_IDX].freq;
+	for (i = 0; i < NUM_CLOCKS; i++) {
+		def = clocks[i].default_freq_idx;
+		clk_pdata->clk[i].freq = clocks[i].freqs[def].freq;
 		clk_pdata->clk[i].ticks_per_msec =
-			cpu_freq[CPU_DEFAULT_IDX].ticks_per_msec;
+			clocks[i].freqs[def].ticks_per_msec;
 		spinlock_init(&clk_pdata->clk[i].lock);
 	}
-
-	clk_pdata->clk[CLK_SSP].freq = ssp_freq[SSP_DEFAULT_IDX].freq;
-	clk_pdata->clk[CLK_SSP].ticks_per_msec =
-			ssp_freq[SSP_DEFAULT_IDX].ticks_per_msec;
-	spinlock_init(&clk_pdata->clk[CLK_SSP].lock);
 }

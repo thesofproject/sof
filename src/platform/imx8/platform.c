@@ -144,6 +144,7 @@ int platform_init(struct sof *sof)
 	struct dai *esai;
 
 	platform_interrupt_init();
+	platform_clock_init();
 	clock_init();
 	scheduler_init_edf();
 

@@ -3,14 +3,22 @@
 // Copyright(c) 2019 Intel Corporation. All rights reserved.
 //
 // Author: Tomasz Lauda <tomasz.lauda@linux.intel.com>
+//         Janusz Jankowski <janusz.jankowski@linux.intel.com>
 
 #include <sof/common.h>
+#include <sof/drivers/ssp.h>
 #include <sof/lib/clk.h>
 
 static struct freq_table platform_cpu_freq[] = {
-	{ 100000000, 100000, 0x3 },
-	{ 200000000, 200000, 0x1 },
-	{ CLK_MAX_CPU_HZ, 400000, 0x0 }, /* the default one */
+	{ 100000000, 100000 },
+	{ 200000000, 200000 },
+	{ CLK_MAX_CPU_HZ, 400000 },
+};
+
+uint32_t cpu_freq_enc[] = {
+	0x3,
+	0x1,
+	0x0,
 };
 
 STATIC_ASSERT(NUM_CPU_FREQ == ARRAY_SIZE(platform_cpu_freq),
@@ -22,12 +30,19 @@ struct freq_table *cpu_freq = platform_cpu_freq;
  * (regarding to .freq field)
  */
 static struct freq_table platform_ssp_freq[] = {
-	{ 19200000, 19200, CLOCK_SSP_XTAL_OSCILLATOR }, /* the default one */
-	{ 24576000, 24576, CLOCK_SSP_AUDIO_CARDINAL },
-	{ 96000000, 96000, CLOCK_SSP_PLL_FIXED },
+	{ 19200000, 19200 },
+	{ 24576000, 24576 },
+	{ 96000000, 96000 },
+};
+
+static uint32_t platform_ssp_freq_sources[] = {
+	SSP_CLOCK_XTAL_OSCILLATOR,
+	SSP_CLOCK_AUDIO_CARDINAL,
+	SSP_CLOCK_PLL_FIXED,
 };
 
 STATIC_ASSERT(NUM_SSP_FREQ == ARRAY_SIZE(platform_ssp_freq),
 	      invalid_number_of_ssp_frequencies);
 
 struct freq_table *ssp_freq = platform_ssp_freq;
+uint32_t *ssp_freq_sources = platform_ssp_freq_sources;

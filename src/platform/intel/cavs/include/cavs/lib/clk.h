@@ -35,23 +35,10 @@
 /** \brief Total number of clocks */
 #define NUM_CLOCKS	(CLK_SSP + 1)
 
-static inline int clock_platform_set_cpu_freq(uint32_t cpu_freq_enc)
-{
-	/* set CPU frequency request for CCU */
-#if CAVS_VERSION == CAVS_VERSION_1_5
-	io_reg_update_bits(SHIM_BASE + SHIM_CLKCTL, SHIM_CLKCTL_HDCS, 0);
-#endif
-	io_reg_update_bits(SHIM_BASE + SHIM_CLKCTL,
-			   SHIM_CLKCTL_DPCS_MASK(cpu_get_id()),
-			   cpu_freq_enc);
+extern struct freq_table *cpu_freq;
+extern uint32_t cpu_freq_enc[];
 
-	return 0;
-}
-
-static inline int clock_platform_set_ssp_freq(uint32_t ssp_freq_enc)
-{
-	return 0;
-}
+void platform_clock_init(void);
 
 #endif /* __CAVS_LIB_CLK_H__ */
 

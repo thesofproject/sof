@@ -341,6 +341,7 @@ int platform_init(struct sof *sof)
 	platform_timer_start(platform_timer);
 
 	trace_point(TRACE_BOOT_PLATFORM_CLOCK);
+	platform_clock_init();
 	clock_init();
 
 	trace_point(TRACE_BOOT_PLATFORM_SCHED);

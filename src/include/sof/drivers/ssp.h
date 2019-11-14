@@ -9,6 +9,7 @@
 #define __SOF_DRIVERS_SSP_H__
 
 #include <sof/bit.h>
+#include <sof/lib/clk.h>
 #include <sof/lib/dai.h>
 #include <sof/lib/wait.h>
 #include <sof/trace/trace.h>
@@ -18,11 +19,12 @@
 #include <config.h>
 #include <stdint.h>
 
-#define SSP_CLK_AUDIO	0
-#define SSP_CLK_NET_PLL	1
-#define SSP_CLK_EXT	2
-#define SSP_CLK_NET	3
-#define SSP_CLK_DEFAULT        4
+#define SSP_CLOCK_XTAL_OSCILLATOR	0x0
+#define SSP_CLOCK_AUDIO_CARDINAL	0x1
+#define SSP_CLOCK_PLL_FIXED		0x2
+
+extern struct freq_table *ssp_freq;
+extern uint32_t *ssp_freq_sources;
 
 /* SSP register offsets */
 #define SSCR0		0x00
