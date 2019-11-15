@@ -52,7 +52,7 @@ PIPELINE_PCM_ADD(sof/pipe-low-latency-capture.m4,
 DAI_ADD(sof/pipe-dai-playback.m4,
 	1, SSP, 2, SSP2-Codec,
 	PIPELINE_SOURCE_1, 2, s16le,
-	1000, 1, 0)
+	1000, 1, 0, SCHEDULE_TIME_DOMAIN_DMA)
 
 # PCM Media Playback pipeline 3 on PCM 1 using max 2 channels of s32le.
 # 4000us deadline on core 0 with priority 0
@@ -77,7 +77,7 @@ SectionGraph."pipe-cht-max98090" {
 DAI_ADD(sof/pipe-dai-capture.m4,
 	2, SSP, 2, SSP2-Codec,
 	PIPELINE_SINK_2, 2, s16le,
-	1000, 0, 0)
+	1000, 0, 0, SCHEDULE_TIME_DOMAIN_DMA)
 
 # PCM Low Latency
 PCM_DUPLEX_ADD(Low Latency, 0, PIPELINE_PCM_1, PIPELINE_PCM_2)
