@@ -46,14 +46,14 @@ dnl     deadline, priority, core, time_domain)
 DAI_ADD(sof/pipe-dai-capture.m4,
 	DMIC_PIPELINE_48k_ID, DMIC, 0, dmic01,
 	concat(`PIPELINE_SINK_', DMIC_PIPELINE_48k_ID), 2, s32le,
-	1000, 0, 0, 48000, 48000, 48000)
+	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # capture DAI is DMIC 1 using 2 periods
 # Buffers use s32le format, with 16 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
 	DMIC_PIPELINE_16k_ID, DMIC, 1, dmic16k,
 	concat(`PIPELINE_SINK_', DMIC_PIPELINE_16k_ID), 2, s32le,
-	1000, 0, 0, 16000, 16000, 16000)
+	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 dnl PCM_DUPLEX_ADD(name, pcm_id, playback, capture)
 dnl PCM_CAPTURE_ADD(name, pipeline, capture)
