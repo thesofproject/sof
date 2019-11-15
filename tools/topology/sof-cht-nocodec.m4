@@ -56,7 +56,7 @@ PIPELINE_PCM_ADD(sof/pipe-low-latency-capture.m4,
 DAI_ADD(sof/pipe-dai-playback.m4,
 	1, SSP, 2, NoCodec-2,
 	PIPELINE_SOURCE_1, 2, s24le,
-	1000, 1, 0)
+	1000, 1, 0, SCHEDULE_TIME_DOMAIN_DMA)
 
 # PCM Media Playback pipeline 3 on PCM 1 using max 2 channels of s32le.
 # 4000us deadline on core 0 with priority 0
@@ -64,7 +64,7 @@ PIPELINE_PCM_ADD(sof/pipe-pcm-media.m4,
 	3, 1, 2, s32le,
 	4000, 0, 0,
 	8000, 48000, 48000,
-	0, PIPELINE_PLAYBACK_SCHED_COMP_1)
+	SCHEDULE_TIME_DOMAIN_DMA, PIPELINE_PLAYBACK_SCHED_COMP_1)
 
 # Connect pipelines together
 SectionGraph."media-pipe" {
@@ -81,7 +81,7 @@ SectionGraph."media-pipe" {
 DAI_ADD(sof/pipe-dai-capture.m4,
 	2, SSP, 2, NoCodec-2,
 	PIPELINE_SINK_2, 2, s24le,
-	1000, 0, 0)
+	1000, 0, 0, SCHEDULE_TIME_DOMAIN_DMA)
 
 # PCM Low Latency
 PCM_DUPLEX_ADD(Low Latency, 0, PIPELINE_PCM_1, PIPELINE_PCM_2)
