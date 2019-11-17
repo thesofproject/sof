@@ -108,6 +108,7 @@ set(TPLGS
 	"sof-imx8qxp-cs42888\;sof-imx8qxp-cs42888"
 	"sof-imx8qxp-nocodec-sai\;sof-imx8qxp-nocodec-sai"
 	"sof-imx8qxp-wm8960\;sof-imx8qxp-wm8960"
+	"sof-tgl-max98357a-rt5682\;sof-tgl-max98357a-rt5682"
 )
 
 add_custom_target(topologies ALL)
