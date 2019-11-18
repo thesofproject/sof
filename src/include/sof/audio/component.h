@@ -323,6 +323,8 @@ struct comp_copy_limits {
 	((dir) == PPL_DIR_DOWNSTREAM ? &comp->bsink_list : \
 	 &comp->bsource_list)
 
+/** @}*/
+
 /** \name Declare module macro
  *  \brief Usage at the end of an independent module file:
  *         DECLARE_MODULE(sys_*_init);
