@@ -351,7 +351,7 @@ static const struct irq_cascade_ops irq_ops = {
 /* IRQ_STEER interrupts */
 #define IRQSTR_CASCADE_TMPL_DECL(n) \
 	{ \
-		.name = irq_name_irqsteer[n], \
+		.name = "irqsteer" #n, \
 		.irq = IRQ_NUM_IRQSTR_DSP##n, \
 		.handler = irqstr_irqhandler_##n, \
 		.ops = &irq_ops, \
