@@ -22,7 +22,7 @@ include(`platform/imx/imx8qxp.m4')
 #
 # Define the pipelines
 #
-# PCM0 ----> volume -----> SAI1 (wm8960)
+# PCM0 <----> volume <-----> SAI1 (wm8960)
 #
 
 dnl PIPELINE_PCM_ADD(pipeline,
@@ -38,6 +38,12 @@ PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
 	1000, 0, 0,
 	48000, 48000, 48000)
 
+# Low Latency capture pipeline 2 on PCM 0 using max 2 channels of s24le.
+# Set 1000us deadline on core 0 with priority 0
+PIPELINE_PCM_ADD(sof/pipe-volume-capture.m4,
+	2, 0, 2, s24le,
+	1000, 0, 0,
+	48000, 48000, 48000)
 #
 # DAIs configuration
 #
@@ -54,10 +60,18 @@ DAI_ADD(sof/pipe-dai-playback.m4,
 	PIPELINE_SOURCE_1, 2, s24le,
 	1000, 0, 0)
 
+# capture DAI is SAI1 using 2 periods
+# Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
+DAI_ADD(sof/pipe-dai-capture.m4,
+	2, SAI, 1, be.wm8960-hifi,
+	PIPELINE_SINK_2, 2, s24le,
+	1000, 0, 0)
+
+
 # PCM Low Latency, id 0
 
-dnl PCM_PLAYBACK_ADD(name, pcm_id, playback)
-PCM_PLAYBACK_ADD(Port0, 0, PIPELINE_PCM_1)
+dnl PCM_DUPLEX_ADD(name, pcm_id, playback, capture)
+PCM_DUPLEX_ADD(Port0, 0, PIPELINE_PCM_1, PIPELINE_PCM_2)
 
 dnl DAI_CONFIG(type, idx, link_id, name, sai_config)
 DAI_CONFIG(SAI, 1, 0, be.wm8960-hifi,
