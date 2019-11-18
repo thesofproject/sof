@@ -1,0 +1,9 @@
+config.h
+config.log
+config.status
+Makefile
+stamp-h1
+.deps/
+src/*.o
+src/Makefile
+src/rimage
