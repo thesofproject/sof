@@ -55,9 +55,6 @@ out:
 
 	/* clear DONE bit - tell Host we have completed */
 	shim_write(SHIM_IPCDH, shim_read(SHIM_IPCDH) & ~SHIM_IPCDH_DONE);
-
-	/* unmask Done interrupt */
-	shim_write(SHIM_IMRD, shim_read(SHIM_IMRD) & ~SHIM_IMRD_DONE);
 }
 
 static void irq_handler(void *arg)
@@ -150,6 +147,9 @@ void ipc_platform_send_msg(struct ipc *ipc)
 	ipc->shared_ctx->dsp_msg = msg;
 	tracev_ipc("ipc: msg tx -> 0x%x", msg->header);
 
+	/* Unmask Done interrupts first to receive ack */
+	shim_write(SHIM_IMRD, shim_read(SHIM_IMRD) & ~SHIM_IMRD_DONE);
+
 	/* now interrupt host to tell it we have message sent */
 	shim_write(SHIM_IPCDL, msg->header);
 	shim_write(SHIM_IPCDH, SHIM_IPCDH_BUSY);
@@ -202,9 +202,10 @@ int platform_ipc_init(struct ipc *ipc)
 	interrupt_register(PLATFORM_IPC_INTERRUPT, irq_handler, ipc);
 	interrupt_enable(PLATFORM_IPC_INTERRUPT, ipc);
 
-	/* Unmask Busy and Done interrupts */
+	/* Unmask Busy and mask Done interrupts */
 	imrd = shim_read(SHIM_IMRD);
-	imrd &= ~(SHIM_IMRD_BUSY | SHIM_IMRD_DONE);
+	imrd &= ~SHIM_IMRD_BUSY;
+	imrd |= SHIM_IMRD_DONE;
 	shim_write(SHIM_IMRD, imrd);
 
 	return 0;
