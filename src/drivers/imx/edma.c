@@ -258,8 +258,8 @@ static int edma_validate_nonsg_config(struct dma_sg_elem_array *sgelems,
  * scatter-gather situation, it also allocates and computes the
  * additional TCDs, one for each of the input elems.
  */
-static int edma_setup_tcd(struct dma_chan_data *channel, uint16_t soff,
-			  uint16_t doff, bool cyclic, bool sg, bool irqoff,
+static int edma_setup_tcd(struct dma_chan_data *channel, int16_t soff,
+			  int16_t doff, bool cyclic, bool sg, bool irqoff,
 			  struct dma_sg_elem_array *sgelems, int src_width,
 			  int dest_width, uint32_t burst_elems)
 {
@@ -333,8 +333,8 @@ static int edma_set_config(struct dma_chan_data *channel,
 			   struct dma_sg_config *config)
 {
 	int handshake, irq;
-	uint16_t soff = 0;
-	uint16_t doff = 0;
+	int16_t soff = 0;
+	int16_t doff = 0;
 
 	/* We may need to pass some data through the handshake in the
 	 * future, so we just have them here, even if unused for now
