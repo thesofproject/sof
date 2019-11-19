@@ -12,6 +12,11 @@
 
 #include <sof/bit.h>
 #include <config.h>
+#include <stdint.h>
+
+struct dma;
+struct dma_chan_data;
+
 
 /* number of supported DW-DMACs */
 #if CONFIG_CHERRYTRAIL_EXTRA_DW_DMA
@@ -47,6 +52,16 @@
 
 #define platform_dw_dma_set_transfer_size(chan, lli, size) \
 	(lli->ctrl_hi |= (size & DW_CTLH_BLOCK_TS_MASK))
+
+static inline void platform_dw_dma_llp_config(struct dma *dma,
+					      struct dma_chan_data *chan,
+					      uint32_t config) { }
+
+static inline void platform_dw_dma_llp_enable(struct dma *dma,
+					      struct dma_chan_data *chan) { }
+
+static inline void platform_dw_dma_llp_disable(struct dma *dma,
+					       struct dma_chan_data *chan) { }
 
 #endif /* __PLATFORM_DRIVERS_DW_DMA_H__ */
 

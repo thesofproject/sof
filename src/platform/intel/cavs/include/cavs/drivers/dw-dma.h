@@ -11,7 +11,10 @@
 #define __CAVS_LIB_DW_DMA_H__
 
 #include <sof/bit.h>
+#include <sof/lib/dma.h>
+#include <sof/lib/shim.h>
 #include <config.h>
+#include <stdint.h>
 
 /* number of supported DW-DMACs */
 #if CONFIG_SUECREEK
@@ -51,11 +54,36 @@
 #define DW_CFG_LOW_DEF		0x3
 #define DW_CFG_HIGH_DEF		0x0
 
+/* LLPC address */
+#define DW_CHLLPC(dma, chan) \
+	SHIM_GPDMA_CHLLPC((dma)->plat_data.id, (chan)->index)
+
 #define platform_dw_dma_set_class(chan, lli, class) \
 	(lli->ctrl_hi |= DW_CTLH_CLASS(class))
 
 #define platform_dw_dma_set_transfer_size(chan, lli, size) \
 	(lli->ctrl_hi |= (size & DW_CTLH_BLOCK_TS_MASK))
+
+static inline void platform_dw_dma_llp_config(struct dma *dma,
+					      struct dma_chan_data *chan,
+					      uint32_t config)
+{
+	shim_write(DW_CHLLPC(dma, chan), SHIM_GPDMA_CHLLPC_DHRS(config));
+}
+
+static inline void platform_dw_dma_llp_enable(struct dma *dma,
+					      struct dma_chan_data *chan)
+{
+	shim_write(DW_CHLLPC(dma, chan),
+		   shim_read(DW_CHLLPC(dma, chan)) | SHIM_GPDMA_CHLLPC_EN);
+}
+
+static inline void platform_dw_dma_llp_disable(struct dma *dma,
+					       struct dma_chan_data *chan)
+{
+	shim_write(DW_CHLLPC(dma, chan),
+		   shim_read(DW_CHLLPC(dma, chan)) & ~SHIM_GPDMA_CHLLPC_EN);
+}
 
 #endif /* __CAVS_LIB_DW_DMA_H__ */
 

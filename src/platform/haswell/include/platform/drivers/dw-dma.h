@@ -11,6 +11,10 @@
 #define __PLATFORM_DRIVERS_DW_DMA_H__
 
 #include <sof/bit.h>
+#include <stdint.h>
+
+struct dma;
+struct dma_chan_data;
 
 /* number of supported DW-DMACs */
 #define PLATFORM_NUM_DW_DMACS	2
@@ -45,6 +49,16 @@
 	(lli->ctrl_hi |= ((size / (1 << ((lli->ctrl_lo & \
 		DW_CTLL_SRC_WIDTH_MASK) >> DW_CTLL_SRC_WIDTH_SHIFT))) & \
 		DW_CTLH_BLOCK_TS_MASK))
+
+static inline void platform_dw_dma_llp_config(struct dma *dma,
+					      struct dma_chan_data *chan,
+					      uint32_t config) { }
+
+static inline void platform_dw_dma_llp_enable(struct dma *dma,
+					      struct dma_chan_data *chan) { }
+
+static inline void platform_dw_dma_llp_disable(struct dma *dma,
+					       struct dma_chan_data *chan) { }
 
 #endif /* __PLATFORM_DRIVERS_DW_DMA_H__ */
 

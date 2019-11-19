@@ -267,6 +267,9 @@ static int dw_dma_start(struct dma_chan_data *channel)
 	/* assign core */
 	channel->core = cpu_get_id();
 
+	/* enable linear link position */
+	platform_dw_dma_llp_enable(dma, channel);
+
 	/* enable the channel */
 	channel->status = COMP_STATE_ACTIVE;
 	dma_reg_write(dma, DW_DMA_CHAN_EN, DW_CHAN_UNMASK(channel->index));
@@ -392,6 +395,9 @@ static int dw_dma_stop(struct dma_chan_data *channel)
 	dcache_writeback_region(dw_chan->lli,
 				sizeof(struct dw_lli) * channel->desc_count);
 #endif
+
+	/* disable linear link position */
+	platform_dw_dma_llp_disable(dma, channel);
 
 	channel->status = COMP_STATE_PREPARE;
 
@@ -633,6 +639,8 @@ static int dw_dma_set_config(struct dma_chan_data *channel,
 			dw_chan->cfg_lo |= DW_CFG_RELOAD_DST;
 #endif
 			dw_chan->cfg_hi |= DW_CFGH_DST(config->dest_dev);
+			platform_dw_dma_llp_config(channel->dma, channel,
+						   config->dest_dev);
 			break;
 		case DMA_DIR_DEV_TO_MEM:
 			lli_desc->ctrl_lo |= DW_CTLL_FC_P2M | DW_CTLL_SRC_FIX |
@@ -648,6 +656,8 @@ static int dw_dma_set_config(struct dma_chan_data *channel,
 			dw_chan->cfg_lo |= DW_CFG_RELOAD_SRC;
 #endif
 			dw_chan->cfg_hi |= DW_CFGH_SRC(config->src_dev);
+			platform_dw_dma_llp_config(channel->dma, channel,
+						   config->src_dev);
 			break;
 		case DMA_DIR_DEV_TO_DEV:
 			lli_desc->ctrl_lo |= DW_CTLL_FC_P2P | DW_CTLL_SRC_FIX |
