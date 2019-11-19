@@ -163,11 +163,16 @@
 /** \brief GPDMA shim registers Control */
 #define SHIM_GPDMA_BASE_OFFSET	0x6500
 #define SHIM_GPDMA_BASE(x)	(SHIM_GPDMA_BASE_OFFSET + (x) * 0x100)
+
 /** \brief GPDMA Clock Control */
 #define SHIM_GPDMA_CLKCTL(x)	(SHIM_GPDMA_BASE(x) + 0x4)
-
 /* LP GPDMA Force Dynamic Clock Gating bits, 0--enable */
 #define SHIM_CLKCTL_LPGPDMAFDCGB	BIT(0)
+
+/** \brief GPDMA Channel Linear Link Position Control */
+#define SHIM_GPDMA_CHLLPC(x, y)		(SHIM_GPDMA_BASE(x) + 0x10 + (y) * 0x10)
+#define SHIM_GPDMA_CHLLPC_EN		BIT(7)
+#define SHIM_GPDMA_CHLLPC_DHRS(x)	SET_BITS(6, 0, x)
 
 #define L2LMCAP			0x71D00
 #define L2MPAT			0x71D04

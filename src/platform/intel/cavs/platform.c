@@ -420,8 +420,8 @@ int platform_init(struct sof *sof)
 		SHIM_CLKCTL_TCPLCG(0));
 
 	/* prevent LP GPDMA 0&1 clock gating */
-	io_reg_write(GPDMA_CLKCTL(0), GPDMA_FDCGB);
-	io_reg_write(GPDMA_CLKCTL(1), GPDMA_FDCGB);
+	shim_write(SHIM_GPDMA_CLKCTL(0), SHIM_CLKCTL_LPGPDMAFDCGB);
+	shim_write(SHIM_GPDMA_CLKCTL(1), SHIM_CLKCTL_LPGPDMAFDCGB);
 
 	/* prevent DSP Common power gating */
 	pm_runtime_get(PM_RUNTIME_DSP, PLATFORM_MASTER_CORE_ID);
