@@ -30,11 +30,13 @@ include(`platform/intel/intel-generic-dmic.m4')
 #
 # Define the pipelines
 #
-# PCM0  <---> volume (pipe 1,2) <----> HDA Analog (HDA Analog playback/capture)
-# PCM1  <---> volume (pipe 3,4) <----> HDA Digital (HDA Digital playback/capture)
-# PCM3  ----> volume (pipe 7)   -----> iDisp1 (HDMI/DP playback, BE link 3)
-# PCM4  ----> Volume (pipe 8)   -----> iDisp2 (HDMI/DP playback, BE link 4)
-# PCM5  ----> volume (pipe 9)   -----> iDisp3 (HDMI/DP playback, BE link 5)
+# PCM0P --> volume     (pipe 1) --> HDA Analog (HDA Analog playback)
+# PCM0C <-- volume, EQ (pipe 2) <-- HDA Analog (HDA Analog capture)
+# PCM1P --> volume     (pipe 3) --> HDA Digital (HDA Digital playback)
+# PCM1C <-- volume, EQ (pipe 4) <-- HDA Digital (HDA Digital capture)
+# PCM3  ----> volume (pipe 7) ----> iDisp1 (HDMI/DP playback, BE link 3)
+# PCM4  ----> Volume (pipe 8) ----> iDisp2 (HDMI/DP playback, BE link 4)
+# PCM5  ----> volume (pipe 9) ----> iDisp3 (HDMI/DP playback, BE link 5)
 #
 
 # Low Latency playback pipeline 1 on PCM 0 using max 2 channels of s24le.
@@ -46,7 +48,7 @@ PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
 
 # Low Latency capture pipeline 2 on PCM 0 using max 2 channels of s24le.
 # 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_ADD(sof/pipe-volume-capture.m4,
+PIPELINE_PCM_ADD(sof/pipe-highpass-capture.m4,
 	2, 0, 2, s24le,
 	1000, 0, 0,
 	48000, 48000, 48000)
@@ -60,7 +62,7 @@ PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
 
 # Low Latency capture pipeline 4 on PCM 1 using max 2 channels of s24le.
 # 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_ADD(sof/pipe-volume-capture.m4,
+PIPELINE_PCM_ADD(sof/pipe-highpass-capture.m4,
 	4, 1, 2, s24le,
 	1000, 0, 0,
 	48000, 48000, 48000)

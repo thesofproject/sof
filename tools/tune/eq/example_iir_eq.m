@@ -116,37 +116,11 @@ bm = eq_iir_blob_merge(channels_in_config, ...
 bp = eq_iir_blob_pack(bm);
 eq_alsactl_write(alsa_fn, bp);
 
-%% ------------------------------------
-%% Example 4: 50 Hz high-pass with gain
-%% ------------------------------------
-tplg_fn = '../../topology/m4/eq_iir_coef_highpass_50hz_20db_48khz.m4';
-comment = '50 Hz second order high-pass and +20 dB gain';
-
-%% Design IIR high-pass
-eq_hp = hp_iir_eq(fs);
-
-%% Quantize and pack filter coefficients plus shifts etc.
-bq_hp = eq_iir_blob_quant(eq_hp.p_z, eq_hp.p_p, eq_hp.p_k);
-
-%% Build blob
-channels_in_config = 2;    % Setup max 2 channels EQ
-assign_response = [0 0];   % Switch to response #0
-num_responses = 1;         % One responses: hp
-bm = eq_iir_blob_merge(channels_in_config, ...
-		       num_responses, ...
-		       assign_response, ...
-		       bq_hp);
-
-%% Pack and write file. If there are several EQ instances need
-%% to have identifier string to get correct response to each
-%% instance (here _HP50HZ20dB48K) and refer to in topology.
-bp = eq_iir_blob_pack(bm);
-eq_tplg_write(tplg_fn, bp, 'IIR_HP50HZ20dB48K', comment);
 
 %% -------------------
-%% Example 5: Flat IIR
+%% Example 4: Flat IIR
 %% -------------------
-comment = 'Flat IIR EQ';
+comment = 'Flat IIR EQ, created with example_iir_eq.m';
 alsa_fn = '../../ctl/eq_iir_flat.txt';
 tplg_fn = '../../topology/m4/eq_iir_coef_flat.m4';
 
@@ -171,7 +145,7 @@ eq_alsactl_write(alsa_fn, bp);
 eq_tplg_write(tplg_fn, bp, 'IIR', comment);
 
 %% ---------------------------
-%% Example 6: Pass-through IIR
+%% Example 5: Pass-through IIR
 %% ------------------------------------
 alsa_fn = '../../ctl/eq_iir_pass.txt';
 
@@ -194,32 +168,54 @@ bm = eq_iir_blob_merge(channels_in_config, ...
 bp = eq_iir_blob_pack(bm);
 eq_alsactl_write(alsa_fn, bp);
 
-%% --------------------------------------------
-%% Example 7: 50 Hz high-pass with gain, 16 kHz
-%% --------------------------------------------
-tplg_fn = '../../topology/m4/eq_iir_coef_highpass_50hz_20db_16khz.m4';
-comment = '50 Hz second order high-pass and +20 dB gain';
+%% ------------------------------------
+%% Example 6: 20/30/40/50 Hz high-pass
+%% ------------------------------------
 
-%% Design IIR high-pass
-eq_hp = hp_iir_eq(16e3);
+tpath =  '../../topology/m4';
+cpath = '../../ctl';
+fs_list = [16e3 48e3];
+fc_list = [20 30 40 50];
+g_list = [0 20];
+for i = 1:length(fs_list)
+	for j = 1:length(fc_list);
+		for k = 1:length(g_list);
+			fs = fs_list(i);
+			fc = fc_list(j);
+			g = g_list(k);
+			fsk = round(fs/1e3);
+			tplg_fn = sprintf('%s/eq_iir_coef_highpass_%dhz_%ddb_%dkhz.m4', ...
+					  tpath, fc, g, fsk);
+			alsa_fn = sprintf('%s/eq_iir_highpass_%dhz_%ddb_%dkhz.txt', ...
+					  cpath, fc, g, fsk);
+			comment = sprintf('%d Hz second order high-pass, gain %d dB, created with example_iir_eq.m', ...
+					  fc, g);
+			tpid = sprintf('IIR_HP%dHZ%ddB%dK', fc, g, fsk);
 
-%% Quantize and pack filter coefficients plus shifts etc.
-bq_hp = eq_iir_blob_quant(eq_hp.p_z, eq_hp.p_p, eq_hp.p_k);
+			%% Design IIR high-pass
+			eq_hp = hp_iir_eq(fs, fc, 0);
 
-%% Build blob
-channels_in_config = 2;    % Setup max 2 channels EQ
-assign_response = [0 0];   % Switch to response #0
-num_responses = 1;         % One response: hp
-bm = eq_iir_blob_merge(channels_in_config, ...
-		       num_responses, ...
-		       assign_response, ...
-		       bq_hp);
+			%% Quantize and pack filter coefficients plus shifts etc.
+			bq_hp = eq_iir_blob_quant(eq_hp.p_z, eq_hp.p_p, eq_hp.p_k);
 
-%% Pack and write file. If there are several EQ instances need
-%% to have identifier string to get correct response to each
-%% instance (here _HP50HZ20dB16K) and refer to in topology.
-bp = eq_iir_blob_pack(bm);
-eq_tplg_write(tplg_fn, bp, 'IIR_HP50HZ20dB16K', comment);
+			%% Build blob
+			channels_in_config = 2;    % Setup max 2 channels EQ
+			assign_response = [0 0];   % Switch to response #0
+			num_responses = 1;         % One responses: hp
+			bm = eq_iir_blob_merge(channels_in_config, ...
+					       num_responses, ...
+					       assign_response, ...
+					       bq_hp);
+
+			%% Pack and write file. If there are several EQ instances need
+			%% to have identifier string to get correct response to each
+			%% instance (here _HP50HZ20dB48K) and refer to in topology.
+			bp = eq_iir_blob_pack(bm);
+			eq_tplg_write(tplg_fn, bp, tpid, comment);
+			eq_alsactl_write(alsa_fn, bp);
+		end
+	end
+end
 
 end
 
@@ -287,17 +283,17 @@ eq_plot(eq);
 
 end
 
-function eq = hp_iir_eq(fs)
+function eq = hp_iir_eq(fs, fc, gain_db)
 
 % Get defaults for equalizer design
 eq = eq_defaults();
 eq.fs = fs;
 eq.enable_iir = 1;
 eq.norm_type = '1k';
-eq.norm_offs_db = 20;
+eq.norm_offs_db = gain_db;
 
 % Design
-eq.peq = [ eq.PEQ_HP2 50 NaN NaN ];
+eq.peq = [ eq.PEQ_HP2 fc NaN NaN ];
 eq = eq_compute(eq);
 eq_plot(eq);
 
