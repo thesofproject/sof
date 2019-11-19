@@ -201,6 +201,15 @@
 
 #define SHIM_SPSREQ_RVNNP	(0x1 << 0)
 
+/** \brief GPDMA shim registers Control */
+#define SHIM_GPDMA_BASE_OFFSET	0xC00
+#define SHIM_GPDMA_BASE(x)	(SHIM_GPDMA_BASE_OFFSET + (x) * 0x80)
+
+/** \brief GPDMA Channel Linear Link Position Control */
+#define SHIM_GPDMA_CHLLPC(x, y)		(SHIM_GPDMA_BASE(x) + (y) * 0x10)
+#define SHIM_GPDMA_CHLLPC_EN		BIT(5)
+#define SHIM_GPDMA_CHLLPC_DHRS(x)	SET_BITS(4, 0, x)
+
 /** \brief LDO Control */
 #define SHIM_LDOCTL		0xA4
 #define SHIM_LDOCTL_HPSRAM_MASK	(3 << 0)

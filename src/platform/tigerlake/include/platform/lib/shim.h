@@ -125,7 +125,6 @@
 #define SHIM_LPSCTL_BATTR_0	BIT(12)
 
 /* LP GPDMA Force Dynamic Clock Gating bits, 0--enable */
-#define SHIM_CLKCTL_LPGPDMAFDCGB(x)	(0x1 << (26 + x))
 #define SHIM_CLKCTL_TCPLCG(x)		(0x1 << (16 + x))
 
 /* Core clock PLL divisor */
@@ -143,8 +142,19 @@
 /* HP memory clock PLL divisor */
 #define SHIM_CLKCTL_HPMPCS	(0x1 << 0)
 
-#define GPDMA_CLKCTL(x)		(0x78404 + x*0x100)
-#define GPDMA_FDCGB		(0x1 << 0)
+/** \brief GPDMA shim registers Control */
+#define SHIM_GPDMA_BASE_OFFSET	0x6500
+#define SHIM_GPDMA_BASE(x)	(SHIM_GPDMA_BASE_OFFSET + (x) * 0x100)
+
+/** \brief GPDMA Clock Control */
+#define SHIM_GPDMA_CLKCTL(x)	(SHIM_GPDMA_BASE(x) + 0x4)
+/* LP GPDMA Force Dynamic Clock Gating bits, 0--enable */
+#define SHIM_CLKCTL_LPGPDMAFDCGB	BIT(0)
+
+/** \brief GPDMA Channel Linear Link Position Control */
+#define SHIM_GPDMA_CHLLPC(x, y)		(SHIM_GPDMA_BASE(x) + 0x10 + (y) * 0x10)
+#define SHIM_GPDMA_CHLLPC_EN		BIT(7)
+#define SHIM_GPDMA_CHLLPC_DHRS(x)	SET_BITS(6, 0, x)
 
 /* I2S SHIM Registers */
 #define I2SLCTL			0x71C04
