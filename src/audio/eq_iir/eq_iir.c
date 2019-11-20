@@ -225,16 +225,7 @@ static void eq_iir_s16_pass(struct comp_dev *dev,
 			    struct comp_buffer *sink,
 			    uint32_t frames)
 {
-	int16_t *x;
-	int16_t *y;
-	int i;
-	int n = frames * dev->params.channels;
-
-	for (i = 0; i < n; i++) {
-		x = buffer_read_frag_s16(source, i);
-		y = buffer_write_frag_s16(sink, i);
-		*y = *x;
-	}
+	buffer_copy_s16(source, sink, frames * dev->params.channels);
 }
 #endif /* CONFIG_FORMAT_S16LE */
 
@@ -244,16 +235,7 @@ static void eq_iir_s32_pass(struct comp_dev *dev,
 			    struct comp_buffer *sink,
 			    uint32_t frames)
 {
-	int32_t *x;
-	int32_t *y;
-	int i;
-	int n = frames * dev->params.channels;
-
-	for (i = 0; i < n; i++) {
-		x = buffer_read_frag_s32(source, i);
-		y = buffer_write_frag_s32(sink, i);
-		*y = *x;
-	}
+	buffer_copy_s32(source, sink, frames * dev->params.channels);
 }
 #endif /* CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE */
 
