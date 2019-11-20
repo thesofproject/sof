@@ -16,6 +16,7 @@
 #include <sof/trace/trace.h>
 #include <ipc/topology.h>
 #include <user/trace.h>
+#include <config.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -229,6 +230,8 @@ static inline void buffer_init(struct comp_buffer *buffer, uint32_t size,
 	buffer_zero(buffer);
 }
 
+#if CONFIG_FORMAT_S16LE
+
 static inline void buffer_copy_s16(struct comp_buffer *source,
 				   struct comp_buffer *sink, uint32_t samples)
 {
@@ -246,6 +249,10 @@ static inline void buffer_copy_s16(struct comp_buffer *source,
 	}
 }
 
+#endif /* CONFIG_FORMAT_S16LE */
+
+#if CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE
+
 static inline void buffer_copy_s32(struct comp_buffer *source,
 				   struct comp_buffer *sink, uint32_t samples)
 {
@@ -262,5 +269,7 @@ static inline void buffer_copy_s32(struct comp_buffer *source,
 		buff_frag++;
 	}
 }
+
+#endif /* CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE */
 
 #endif /* __SOF_AUDIO_BUFFER_H__ */
