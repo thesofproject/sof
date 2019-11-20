@@ -439,34 +439,10 @@ static void src_copy_s32(struct comp_dev *dev,
 			 int *n_read, int *n_written)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	int32_t *src = (int32_t *)source->r_ptr;
-	int32_t *snk = (int32_t *)sink->w_ptr;
 	int frames = cd->param.blk_in;
-	int n;
-	int n_wrap_src;
-	int n_wrap_snk;
-	int n_wrap_min;
-	int n_copy;
-	int ret;
 
-	n = frames * dev->params.channels;
-	while (n > 0) {
-		n_wrap_src = (int32_t *)source->end_addr - src;
-		n_wrap_snk = (int32_t *)sink->end_addr - snk;
-		n_wrap_min = (n_wrap_src < n_wrap_snk) ?
-			n_wrap_src : n_wrap_snk;
-		n_copy = (n < n_wrap_min) ? n : n_wrap_min;
-		ret = memcpy_s(snk, n_copy * sizeof(int32_t), src,
-			       n_copy * sizeof(int32_t));
-		assert(!ret);
+	buffer_copy_s32(source, sink, frames * dev->params.channels);
 
-		/* Update and check both source and destination for wrap */
-		n -= n_copy;
-		src += n_copy;
-		snk += n_copy;
-		src_inc_wrap(&src, source->end_addr, source->size);
-		src_inc_wrap(&snk, sink->end_addr, sink->size);
-	}
 	*n_read = frames;
 	*n_written = frames;
 }
@@ -477,34 +453,10 @@ static void src_copy_s16(struct comp_dev *dev,
 			 int *n_read, int *n_written)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	int16_t *src = (int16_t *)source->r_ptr;
-	int16_t *snk = (int16_t *)sink->w_ptr;
 	int frames = cd->param.blk_in;
-	int n;
-	int n_wrap_src;
-	int n_wrap_snk;
-	int n_wrap_min;
-	int n_copy;
-	int ret;
 
-	n = frames * dev->params.channels;
-	while (n > 0) {
-		n_wrap_src = (int16_t *)source->end_addr - src;
-		n_wrap_snk = (int16_t *)sink->end_addr - snk;
-		n_wrap_min = (n_wrap_src < n_wrap_snk) ?
-			n_wrap_src : n_wrap_snk;
-		n_copy = (n < n_wrap_min) ? n : n_wrap_min;
-		ret = memcpy_s(snk, n_copy * sizeof(int16_t), src,
-			       n_copy * sizeof(int16_t));
-		assert(!ret);
+	buffer_copy_s16(source, sink, frames * dev->params.channels);
 
-		/* Update and check both source and destination for wrap */
-		n -= n_copy;
-		src += n_copy;
-		snk += n_copy;
-		src_inc_wrap_s16(&src, source->end_addr, source->size);
-		src_inc_wrap_s16(&snk, sink->end_addr, sink->size);
-	}
 	*n_read = frames;
 	*n_written = frames;
 }
