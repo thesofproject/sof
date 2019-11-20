@@ -166,6 +166,7 @@ config IMX8
 	select INTERRUPT_LEVEL_3
 	select HOST_PTABLE
 	select DUMMY_DMA
+	select WAITI_DELAY
 	help
 	  Select if your target platform is imx8-compatible
 
