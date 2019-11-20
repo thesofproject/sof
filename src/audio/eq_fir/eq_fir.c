@@ -192,16 +192,7 @@ static void eq_fir_s16_passthrough(struct fir_state_32x16 fir[],
 				   struct comp_buffer *sink,
 				   int frames, int nch)
 {
-	int16_t *x;
-	int16_t *y;
-	int i;
-	int n = frames * nch;
-
-	for (i = 0; i < n; i++) {
-		x = buffer_read_frag_s16(source, i);
-		y = buffer_write_frag_s16(sink, i);
-		*y = *x;
-	}
+	buffer_copy_s16(source, sink, frames * nch);
 }
 #endif /* CONFIG_FORMAT_S16LE */
 
@@ -211,16 +202,7 @@ static void eq_fir_s32_passthrough(struct fir_state_32x16 fir[],
 				   struct comp_buffer *sink,
 				   int frames, int nch)
 {
-	int32_t *x;
-	int32_t *y;
-	int i;
-	int n = frames * nch;
-
-	for (i = 0; i < n; i++) {
-		x = buffer_read_frag_s32(source, i);
-		y = buffer_write_frag_s32(sink, i);
-		*y = *x;
-	}
+	buffer_copy_s32(source, sink, frames * nch);
 }
 #endif /* CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE */
 
