@@ -10,9 +10,12 @@
 
 #include <sof/audio/pipeline.h>
 #include <sof/common.h>
+#include <sof/debug/panic.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/cache.h>
 #include <sof/list.h>
+#include <sof/math/numbers.h>
+#include <sof/string.h>
 #include <sof/trace/trace.h>
 #include <ipc/topology.h>
 #include <user/trace.h>
@@ -230,23 +233,44 @@ static inline void buffer_init(struct comp_buffer *buffer, uint32_t size,
 	buffer_zero(buffer);
 }
 
+static inline void buffer_copy(struct comp_buffer *source,
+			       struct comp_buffer *sink, uint32_t bytes)
+{
+	void *src = source->r_ptr;
+	void *snk = sink->w_ptr;
+	uint32_t bytes_src;
+	uint32_t bytes_snk;
+	uint32_t bytes_copied;
+	int ret;
+
+	while (bytes) {
+		bytes_src = (char *)source->end_addr - (char *)src;
+		bytes_snk = (char *)sink->end_addr - (char *)snk;
+		bytes_copied = MIN(bytes, MIN(bytes_src, bytes_snk));
+
+		ret = memcpy_s(snk, bytes_snk, src, bytes_copied);
+		assert(!ret);
+
+		bytes -= bytes_copied;
+		src = (char *)src + bytes_copied;
+		snk = (char *)snk + bytes_copied;
+
+		if (src >= source->end_addr)
+			src = (char *)source->addr +
+				((char *)src - (char *)source->end_addr);
+
+		if (snk >= sink->end_addr)
+			snk = (char *)sink->addr +
+				((char *)snk - (char *)sink->end_addr);
+	}
+}
+
 #if CONFIG_FORMAT_S16LE
 
 static inline void buffer_copy_s16(struct comp_buffer *source,
 				   struct comp_buffer *sink, uint32_t samples)
 {
-	uint32_t buff_frag = 0;
-	int16_t *src;
-	int16_t *dst;
-	uint32_t i;
-
-	for (i = 0; i < samples; i++) {
-		src = buffer_read_frag_s16(source, buff_frag);
-		dst = buffer_write_frag_s16(sink, buff_frag);
-		*dst = *src;
-
-		buff_frag++;
-	}
+	buffer_copy(source, sink, samples * sizeof(int16_t));
 }
 
 #endif /* CONFIG_FORMAT_S16LE */
@@ -256,18 +280,7 @@ static inline void buffer_copy_s16(struct comp_buffer *source,
 static inline void buffer_copy_s32(struct comp_buffer *source,
 				   struct comp_buffer *sink, uint32_t samples)
 {
-	uint32_t buff_frag = 0;
-	int32_t *src;
-	int32_t *dst;
-	uint32_t i;
-
-	for (i = 0; i < samples; i++) {
-		src = buffer_read_frag_s32(source, buff_frag);
-		dst = buffer_write_frag_s32(sink, buff_frag);
-		*dst = *src;
-
-		buff_frag++;
-	}
+	buffer_copy(source, sink, samples * sizeof(int32_t));
 }
 
 #endif /* CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE */
