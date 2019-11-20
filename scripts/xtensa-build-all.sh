@@ -239,8 +239,10 @@ do
 	then
 		PLATFORM="imx8"
 		ARCH="xtensa"
+		XTENSA_CORE="hifi4_nxp_v3_3_1_2_dev"
 		ROOT="$pwd/../xtensa-root/xtensa-imx-elf"
 		HOST="xtensa-imx-elf"
+		XTENSA_TOOLS_VERSION="RF-2016.4-linux"
 	fi
 	if [ $XTENSA_TOOLS_ROOT ]
 	then
