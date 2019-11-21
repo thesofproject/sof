@@ -105,7 +105,6 @@ static enum task_state ipc_platform_do_cmd(void *data)
 
 static void ipc_platform_complete_cmd(void *data)
 {
-	struct ipc *ipc = data;
 	uint32_t ipcxh;
 
 	/* clear BUSY bit and set DONE bit - accept new messages */
@@ -116,13 +115,6 @@ static void ipc_platform_complete_cmd(void *data)
 
 	/* unmask busy interrupt */
 	shim_write(SHIM_IMRD, shim_read(SHIM_IMRD) & ~SHIM_IMRD_BUSY);
-
-	// TODO: signal audio work to enter D3 in normal context
-	/* are we about to enter D3 ? */
-	if (ipc->pm_prepare_D3) {
-		while (1)
-			wait_for_interrupt(0);
-	}
 }
 
 void ipc_platform_send_msg(struct ipc *ipc)
