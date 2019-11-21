@@ -117,12 +117,14 @@ static void ipc_platform_complete_cmd(void *data)
 	/* unmask busy interrupt */
 	shim_write(SHIM_IMRD, shim_read(SHIM_IMRD) & ~SHIM_IMRD_BUSY);
 
-	// TODO: signal audio work to enter D3 in normal context
-	/* are we about to enter D3 ? */
-	if (ipc->pm_prepare_D3) {
+	/*
+	 * loop forever when we enter system suspend or runtime suspend.
+	 * The host driver will reset the DSP and boot the firmware upon
+	 * resuming.
+	 */
+	if (ipc->pm_prepare_D3)
 		while (1)
-			wait_for_interrupt(0);
-	}
+			;
 }
 
 void ipc_platform_send_msg(struct ipc *ipc)
