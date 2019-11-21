@@ -636,6 +636,8 @@ static int ipc_pm_context_restore(uint32_t header)
 
 	trace_ipc("ipc: pm -> restore");
 
+	_ipc->pm_prepare_D3 = 0;
+
 	/* restore context placeholder */
 	//mailbox_hostbox_write(0, pm_ctx, sizeof(*pm_ctx));
 
