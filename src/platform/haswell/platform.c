@@ -131,6 +131,9 @@ int platform_boot_complete(uint32_t boot_message)
 	mailbox_dspbox_write(sizeof(ready), &sram_window,
 			     sram_window.ext_hdr.hdr.size);
 
+	/* Unmask Done interrupts first to receive ack */
+	shim_write(SHIM_IMRD, shim_read(SHIM_IMRD) & ~SHIM_IMRD_DONE);
+
 	/* now interrupt host to tell it we are done booting */
 	shim_write(SHIM_IPCD, outbox | SHIM_IPCD_BUSY);
 
