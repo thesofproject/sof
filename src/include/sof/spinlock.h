@@ -73,9 +73,12 @@
 #define DBG_LOCK_USERS		8
 #define DBG_LOCK_TRIES		10000
 
-#define trace_lock(__e)		trace_error_atomic(TRACE_CLASS_LOCK, __e)
-#define tracev_lock(__e)	tracev_event_atomic(TRACE_CLASS_LOCK, __e)
-#define trace_lock_error(__e)	trace_error_atomic(TRACE_CLASS_LOCK, __e)
+#define trace_lock(__e, ...)		trace_error_atomic(TRACE_CLASS_LOCK,\
+						   __e, ##__VA_ARGS__)
+#define tracev_lock(__e, ...)		tracev_event_atomic(TRACE_CLASS_LOCK,\
+						    __e, ##__VA_ARGS__)
+#define trace_lock_error(__e, ...)	trace_error_atomic(TRACE_CLASS_LOCK, \
+						   __e, ##__VA_ARGS__)
 
 extern uint32_t lock_dbg_atomic;
 extern uint32_t lock_dbg_user[DBG_LOCK_USERS];
@@ -97,8 +100,8 @@ extern uint32_t lock_dbg_user[DBG_LOCK_USERS];
 		} \
 		if (__tries == 0) { \
 			trace_lock_error("DED"); \
-			trace_lock_value(__LINE__); \
-			trace_lock_value((lock)->user); \
+			trace_lock_error("line: %d", __LINE__); \
+			trace_lock_error("user: %d", (lock)->user); \
 			panic(SOF_IPC_PANIC_DEADLOCK); /* lock not acquired */ \
 		} \
 	} while (0)
@@ -111,11 +114,12 @@ extern uint32_t lock_dbg_user[DBG_LOCK_USERS];
 			int  __count = lock_dbg_atomic >= DBG_LOCK_USERS \
 				? DBG_LOCK_USERS : lock_dbg_atomic; \
 			trace_lock_error("eal"); \
-			trace_lock_value(__LINE__); \
-			trace_lock_value(lock_dbg_atomic); \
+			trace_lock_error("line: %d", __LINE__); \
+			trace_lock_error("dbg_atomic: %d", lock_dbg_atomic); \
 			for (__i = 0; __i < __count; __i++) { \
-				trace_lock_value((lock_dbg_atomic << 24) | \
-					lock_dbg_user[__i]); \
+				trace_lock_error("value: %d", \
+						 (lock_dbg_atomic << 24) | \
+						  lock_dbg_user[__i]); \
 			} \
 		} \
 	} while (0)
@@ -123,13 +127,13 @@ extern uint32_t lock_dbg_user[DBG_LOCK_USERS];
 #define spin_lock_dbg() \
 	do { \
 		trace_lock("LcE"); \
-		trace_lock_value(__LINE__); \
+		trace_lock("line: %d", __LINE__); \
 	} while (0)
 
 #define spin_unlock_dbg() \
 	do { \
 		trace_lock("LcX"); \
-		trace_lock_value(__LINE__); \
+		trace_lock("line: %d", __LINE__); \
 	} while (0)
 
 #else
