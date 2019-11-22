@@ -23,10 +23,16 @@
 
 	.section .text, "ax"
 	.align 64
-literals:
+power_down_literals:
 	.literal_position
+ipc_flag:
+	.word IPC_DIPCTDR_BUSY
+sram_dis_loop_cnt:
+	.word 4096
+
 	.global power_down
 	.type power_down, @function
+
 /**
  * Perform power down.
  *
@@ -52,7 +58,7 @@ power_down:
 	// xthal_dcache_region_lock(&literals, 128);
 	// xthal_dcache_region_lock(&powerdown, 256);
 	// xthal_dcache_region_lock(&pu32_hpsram_mask, 64);
-	movi pfl_reg, literals
+	movi pfl_reg, power_down_literals
 	dpfl pfl_reg, 0
 	dpfl pfl_reg, 64
 
@@ -72,7 +78,8 @@ _PD_DISABLE_LPSRAM:
  * }
  */
 	beqz b_enable_lpsram, _PD_DISABLE_HPSRAM
-	m_cavs_lpsram_power_down_entire temp_reg0, temp_reg1, temp_reg2
+	m_cavs_lpsram_power_down_entire temp_reg0, temp_reg1, temp_reg2,\
+					sram_dis_loop_cnt
 	j _PD_DISABLE_HPSRAM
 
 _PD_DISABLE_HPSRAM:
@@ -132,12 +139,12 @@ _PD_SEND_IPC:
  */
 	movi temp_reg0, IPC_HOST_BASE
 	l32i temp_reg1, temp_reg0, IPC_DIPCTDR
-	movi temp_reg2, IPC_DIPCTDR_BUSY
+	movi temp_reg2, ipc_flag
+	l32i temp_reg2, temp_reg2, 0
 	or temp_reg1, temp_reg1, temp_reg2
 	s32i temp_reg1, temp_reg0, IPC_DIPCTDR
 
 	l32i temp_reg1, temp_reg0, IPC_DIPCTDA
-	movi temp_reg2, IPC_DIPCTDA_DONE
 	or temp_reg1, temp_reg1, temp_reg2
 	s32i temp_reg1, temp_reg0, IPC_DIPCTDA
 
