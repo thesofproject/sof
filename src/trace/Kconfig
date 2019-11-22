@@ -10,13 +10,6 @@ config TRACE
 	help
 	  Enabling traces. All traces (normal and error) are sent by dma.
 
-config TRACEV
-	bool "Trace verbose"
-	depends on TRACE
-	default n
-	help
-	  Enabling verbose traces.
-
 config TRACEE
 	bool "Trace error"
 	depends on TRACE
@@ -30,5 +23,220 @@ config TRACEM
 	default n
 	help
 	  Sending all traces by mailbox additionally.
+
+config TRACEV
+	bool "Trace verbose"
+	depends on TRACE
+	default n
+	help
+	  Enabling verbose traces.
+
+if TRACEV
+
+config TRACE_VERBOSE_IRQ
+	bool "Trace verbose IRQ"
+	default n
+	help
+	  Enable verbose tracing of TRACE_CLASS_IRQ.
+
+config TRACE_VERBOSE_IPC
+	bool "Trace verbose IPC"
+	default n
+	help
+	  Enable verbose tracing of TRACE_CLASS_IPC.
+
+config TRACE_VERBOSE_PIPE
+	bool "Trace verbose PIPE"
+	default n
+	help
+	  Enable verbose tracing of TRACE_CLASS_PIPE.
+
+config TRACE_VERBOSE_HOST
+	bool "Trace verbose HOST"
+	default n
+	help
+	  Enable verbose tracing of TRACE_CLASS_HOST.
+
+config TRACE_VERBOSE_DAI
+	bool "Trace verbose DAI"
+	default n
+	help
+	  Enable verbose tracing of TRACE_CLASS_DAI.
+
+config TRACE_VERBOSE_DMA
+	bool "Trace verbose DMA"
+	default n
+	help
+	  Enable verbose tracing of TRACE_CLASS_DMA.
+
+config TRACE_VERBOSE_SSP
+	bool "Trace verbose SSP"
+	default n
+	help
+	  Enable verbose tracing of TRACE_CLASS_SSP.
+
+config TRACE_VERBOSE_COMP
+	bool "Trace verbose COMP"
+	default n
+	help
+	  Enable verbose tracing of TRACE_CLASS_COMP.
+
+config TRACE_VERBOSE_WAIT
+	bool "Trace verbose WAIT"
+	default n
+	help
+	  Enable verbose tracing of TRACE_CLASS_WAIT.
+
+config TRACE_VERBOSE_LOCK
+	bool "Trace verbose LOCK"
+	default n
+	help
+	  Enable verbose tracing of TRACE_CLASS_LOCK.
+
+config TRACE_VERBOSE_MEM
+	bool "Trace verbose MEM"
+	default n
+	help
+	  Enable verbose tracing of TRACE_CLASS_MEM.
+
+config TRACE_VERBOSE_MIXER
+	bool "Trace verbose MIXER"
+	default n
+	help
+	  Enable verbose tracing of TRACE_CLASS_MIXER.
+
+config TRACE_VERBOSE_BUFFER
+	bool "Trace verbose BUFFER"
+	default n
+	help
+	  Enable verbose tracing of TRACE_CLASS_BUFFER.
+
+config TRACE_VERBOSE_VOLUME
+	bool "Trace verbose VOLUME"
+	default n
+	help
+	  Enable verbose tracing of TRACE_CLASS_VOLUME.
+
+config TRACE_VERBOSE_SWITCH
+	bool "Trace verbose SWITCH"
+	default n
+	help
+	  Enable verbose tracing of TRACE_CLASS_SWITCH.
+
+config TRACE_VERBOSE_MUX
+	bool "Trace verbose MUX"
+	default n
+	help
+	  Enable verbose tracing of TRACE_CLASS_MUX.
+
+config TRACE_VERBOSE_SRC
+	bool "Trace verbose SRC"
+	default n
+	help
+	  Enable verbose tracing of TRACE_CLASS_SRC.
+
+config TRACE_VERBOSE_TONE
+	bool "Trace verbose TONE"
+	default n
+	help
+	  Enable verbose tracing of TRACE_CLASS_TONE.
+
+config TRACE_VERBOSE_EQ_FIR
+	bool "Trace verbose EQ_FIR"
+	default n
+	help
+	  Enable verbose tracing of TRACE_CLASS_EQ_FIR.
+
+config TRACE_VERBOSE_EQ_IIR
+	bool "Trace verbose EQ_IIR"
+	default n
+	help
+	  Enable verbose tracing of TRACE_CLASS_EQ_IIR.
+
+config TRACE_VERBOSE_SA
+	bool "Trace verbose SA"
+	default n
+	help
+	  Enable verbose tracing of TRACE_CLASS_SA.
+
+config TRACE_VERBOSE_DMIC
+	bool "Trace verbose DMIC"
+	default n
+	help
+	  Enable verbose tracing of TRACE_CLASS_DMIC.
+
+config TRACE_VERBOSE_POWER
+	bool "Trace verbose POWER"
+	default n
+	help
+	  Enable verbose tracing of TRACE_CLASS_POWER.
+
+config TRACE_VERBOSE_IDC
+	bool "Trace verbose IDC"
+	default n
+	help
+	  Enable verbose tracing of TRACE_CLASS_IDC.
+
+config TRACE_VERBOSE_CPU
+	bool "Trace verbose CPU"
+	default n
+	help
+	  Enable verbose tracing of TRACE_CLASS_CPU.
+
+config TRACE_VERBOSE_CLK
+	bool "Trace verbose CLK"
+	default n
+	help
+	  Enable verbose tracing of TRACE_CLASS_CLK.
+
+config TRACE_VERBOSE_EDF
+	bool "Trace verbose EDF"
+	default n
+	help
+	  Enable verbose tracing of TRACE_CLASS_EDF.
+
+config TRACE_VERBOSE_KPB
+	bool "Trace verbose KPB"
+	default n
+	help
+	  Enable verbose tracing of TRACE_CLASS_KPB.
+
+config TRACE_VERBOSE_SELECTOR
+	bool "Trace verbose SELECTOR"
+	default n
+	help
+	  Enable verbose tracing of TRACE_CLASS_SELECTOR.
+
+config TRACE_VERBOSE_SCHEDULE
+	bool "Trace verbose SCHEDULE"
+	default n
+	help
+	  Enable verbose tracing of TRACE_CLASS_SCHEDULE.
+
+config TRACE_VERBOSE_SCHEDULE_LL
+	bool "Trace verbose SCHEDULE_LL"
+	default n
+	help
+	  Enable verbose tracing of TRACE_CLASS_SCHEDULE_LL.
+
+config TRACE_VERBOSE_ALH
+	bool "Trace verbose ALH"
+	default n
+	help
+	  Enable verbose tracing of TRACE_CLASS_ALH.
+
+config TRACE_VERBOSE_KEYWORD
+	bool "Trace verbose KEYWORD"
+	default n
+	help
+	  Enable verbose tracing of TRACE_CLASS_KEYWORD.
+
+config TRACE_VERBOSE_CHMAP
+	bool "Trace verbose CHMAP"
+	default n
+	help
+	  Enable verbose tracing of TRACE_CLASS_CHMAP.
+
+endif # TRACEV
 
 endmenu

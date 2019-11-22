@@ -41,20 +41,17 @@
 #define trace_src(__e, ...) \
 	trace_event(TRACE_CLASS_SRC, __e, ##__VA_ARGS__)
 #define trace_src_with_ids(comp_ptr, __e, ...)			\
-	trace_event_comp(TRACE_CLASS_SRC, comp_ptr,		\
-			 __e, ##__VA_ARGS__)
+	trace_event_comp(SRC, comp_ptr, __e, ##__VA_ARGS__)
 
 #define tracev_src(__e, ...) \
 	tracev_event(TRACE_CLASS_SRC, __e, ##__VA_ARGS__)
 #define tracev_src_with_ids(comp_ptr, __e, ...)			\
-	tracev_event_comp(TRACE_CLASS_SRC, comp_ptr,		\
-			  __e, ##__VA_ARGS__)
+	tracev_event_comp(SRC, comp_ptr, __e, ##__VA_ARGS__)
 
 #define trace_src_error(__e, ...) \
 	trace_error(TRACE_CLASS_SRC, __e, ##__VA_ARGS__)
 #define trace_src_error_with_ids(comp_ptr, __e, ...)		\
-	trace_error_comp(TRACE_CLASS_SRC, comp_ptr,		\
-			 __e, ##__VA_ARGS__)
+	trace_error_comp(SRC, comp_ptr, __e, ##__VA_ARGS__)
 
 /* The FIR maximum lengths are per channel so need to multiply them */
 #define MAX_FIR_DELAY_SIZE_XNCH (PLATFORM_MAX_CHANNELS * MAX_FIR_DELAY_SIZE)

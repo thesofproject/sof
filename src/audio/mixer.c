@@ -31,20 +31,17 @@
 #define trace_mixer(__e, ...) \
 	trace_event(TRACE_CLASS_MIXER, __e, ##__VA_ARGS__)
 #define trace_mixer_with_ids(comp_ptr, __e, ...)		\
-	trace_event_comp(TRACE_CLASS_MIXER, comp_ptr,		\
-			 __e, ##__VA_ARGS__)
+	trace_event_comp(MIXER, comp_ptr, __e, ##__VA_ARGS__)
 
 #define tracev_mixer(__e, ...) \
 	tracev_event(TRACE_CLASS_MIXER, __e, ##__VA_ARGS__)
 #define tracev_mixer_with_ids(comp_ptr, __e, ...)		\
-	tracev_event_comp(TRACE_CLASS_MIXER, comp_ptr,		\
-			  __e, ##__VA_ARGS__)
+	tracev_event_comp(MIXER, comp_ptr, __e, ##__VA_ARGS__)
 
 #define trace_mixer_error(__e, ...) \
 	trace_error(TRACE_CLASS_MIXER, __e, ##__VA_ARGS__)
 #define trace_mixer_error_with_ids(comp_ptr, __e, ...)		\
-	trace_error_comp(TRACE_CLASS_MIXER, comp_ptr,		\
-			 __e, ##__VA_ARGS__)
+	trace_error_comp(MIXER, comp_ptr, __e, ##__VA_ARGS__)
 
 /* mixer component private data */
 struct mixer_data {

@@ -34,20 +34,17 @@
 #define trace_dai(__e, ...)					\
 	trace_event(TRACE_CLASS_DAI, __e, ##__VA_ARGS__)
 #define trace_dai_with_ids(comp_ptr, __e, ...)			\
-	trace_event_comp(TRACE_CLASS_DAI, comp_ptr,		\
-			 __e, ##__VA_ARGS__)
+	trace_event_comp(DAI, comp_ptr, __e, ##__VA_ARGS__)
 
 #define tracev_dai(__e, ...)					\
 	tracev_event(TRACE_CLASS_DAI, __e, ##__VA_ARGS__)
 #define tracev_dai_with_ids(comp_ptr, __e, ...)			\
-	tracev_event_comp(TRACE_CLASS_DAI, comp_ptr,		\
-			  __e, ##__VA_ARGS__)
+	tracev_event_comp(DAI, comp_ptr, __e, ##__VA_ARGS__)
 
 #define trace_dai_error(__e, ...)				\
 	trace_error(TRACE_CLASS_DAI, __e, ##__VA_ARGS__)
 #define trace_dai_error_with_ids(comp_ptr, __e, ...)		\
-	trace_error_comp(TRACE_CLASS_DAI, comp_ptr,		\
-			 __e, ##__VA_ARGS__)
+	trace_error_comp(DAI, comp_ptr, __e, ##__VA_ARGS__)
 
 struct dai_data {
 	/* local DMA config */

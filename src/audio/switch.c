@@ -15,20 +15,17 @@
 #define trace_switch(__e, ...) \
 	trace_event(TRACE_CLASS_SWITCH, __e, ##__VA_ARGS__)
 #define trace_switch_with_ids(comp_ptr, __e, ...)		\
-	trace_event_comp(TRACE_CLASS_SWITCH, comp_ptr,		\
-			 __e, ##__VA_ARGS__)
+	trace_event_comp(SWITCH, comp_ptr, __e, ##__VA_ARGS__)
 
 #define tracev_switch(__e, ...) \
 	tracev_event(TRACE_CLASS_SWITCH, __e, ##__VA_ARGS__)
 #define tracev_switch_with_ids(comp_ptr, __e, ...)		\
-	tracev_event_comp(TRACE_CLASS_SWITCH, comp_ptr,		\
-			  __e, ##__VA_ARGS__)
+	tracev_event_comp(SWITCH, comp_ptr, __e, ##__VA_ARGS__)
 
 #define trace_switch_error(__e, ...) \
 	trace_error(TRACE_CLASS_SWITCH, __e, ##__VA_ARGS__)
 #define trace_switch_error_with_ids(comp_ptr, __e, ...)		\
-	trace_error_comp(TRACE_CLASS_SWITCH, comp_ptr,		\
-			 __e, ##__VA_ARGS__)
+	trace_error_comp(SWITCH, comp_ptr, __e, ##__VA_ARGS__)
 
 
 static struct comp_dev *switch_new(struct sof_ipc_comp *comp)

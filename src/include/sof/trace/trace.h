@@ -19,8 +19,9 @@
 #include <platform/trace/trace.h>
 #endif
 #include <sof/common.h>
-#include <sof/trace/preproc.h>
 #include <config.h>
+#include <sof/trace/preproc.h>
+#include <sof/trace/trace-verbose-private.h>
 #include <stdint.h>
 #if CONFIG_LIBRARY
 #include <stdio.h>
@@ -287,7 +288,7 @@ do {									\
 		uint32_t line_idx;				\
 		uint32_t file_name_len;				\
 		uint32_t text_len;				\
-		const char file_name[sizeof(RELATIVE_FILE)];		\
+		const char file_name[sizeof(RELATIVE_FILE)];	\
 		const char text[sizeof(format)];		\
 	} log_entry = {						\
 		lvl,						\
@@ -318,11 +319,14 @@ do {									\
 
 /* verbose tracing */
 #if CONFIG_TRACEV
-#define tracev_event(...) trace_event(__VA_ARGS__)
-#define tracev_event_with_ids(...) trace_event_with_ids(__VA_ARGS__)
-#define tracev_event_atomic(...) trace_event_atomic(__VA_ARGS__)
-#define tracev_event_atomic_with_ids(...) \
-	trace_event_atomic_with_ids(__VA_ARGS__)
+#define tracev_event(class, ...)		\
+	tracev_##class(class, __VA_ARGS__)
+#define tracev_event_with_ids(class, ...)	\
+	tracev_ids_##class(class, __VA_ARGS__)
+#define tracev_event_atomic(class, ...)		\
+	tracev_atomic_##class(class, __VA_ARGS__)
+#define tracev_event_atomic_with_ids(class, ...)\
+	tracev_atomic_ids_##class(class, __VA_ARGS__)
 #else
 #define tracev_event(class, format, ...) \
 	trace_unused(class, -1, -1, format, ##__VA_ARGS__)
@@ -332,7 +336,6 @@ do {									\
 	trace_unused(class, -1, -1, format, ##__VA_ARGS__)
 #define tracev_event_atomic_with_ids(class, id_0, id_1, format, ...) \
 	trace_unused(class, id_0, id_1, format, ##__VA_ARGS__)
-
 #endif
 
 /* error tracing */
@@ -365,7 +368,7 @@ do {									\
 
 /* tracing from component */
 #define _trace_comp_build(fun, class, comp_ptr, format, ...)		\
-		fun(class, comp_ptr->comp.pipeline_id,			\
+		fun(TRACE_CLASS_##class, comp_ptr->comp.pipeline_id,	\
 		    comp_ptr->comp.id, format, ##__VA_ARGS__)
 
 #define trace_event_comp(...) _trace_comp_build(trace_event_with_ids,	\

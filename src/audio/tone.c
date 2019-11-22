@@ -34,20 +34,17 @@
 #define trace_tone(__e, ...) \
 	trace_event(TRACE_CLASS_TONE, __e, ##__VA_ARGS__)
 #define trace_tone_with_ids(comp_ptr, __e, ...)			\
-	trace_event_comp(TRACE_CLASS_TONE, comp_ptr,		\
-			 __e, ##__VA_ARGS__)
+	trace_event_comp(TONE, comp_ptr, __e, ##__VA_ARGS__)
 
 #define tracev_tone(__e, ...) \
 	tracev_event(TRACE_CLASS_TONE, __e, ##__VA_ARGS__)
 #define tracev_tone_with_ids(comp_ptr, __e, ...)		\
-	tracev_event_comp(TRACE_CLASS_TONE, comp_ptr,		\
-			  __e, ##__VA_ARGS__)
+	tracev_event_comp(TONE, comp_ptr, __e, ##__VA_ARGS__)
 
 #define trace_tone_error(__e, ...) \
 	trace_error(TRACE_CLASS_TONE, __e, ##__VA_ARGS__)
 #define trace_tone_error_with_ids(comp_ptr, __e, ...)		\
-	trace_error_comp(TRACE_CLASS_TONE, comp_ptr,		\
-			 __e, ##__VA_ARGS__)
+	trace_error_comp(TONE, comp_ptr, __e, ##__VA_ARGS__)
 
 /* Convert float frequency in Hz to Q16.16 fractional format */
 #define TONE_FREQ(f) Q_CONVERT_FLOAT(f, 16)

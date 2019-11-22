@@ -35,20 +35,17 @@
 #define trace_keyword(__e, ...) \
 	trace_event(TRACE_CLASS_KEYWORD, __e, ##__VA_ARGS__)
 #define trace_keyword_with_ids(comp_ptr, __e, ...)		\
-	trace_event_comp(TRACE_CLASS_KEYWORD, comp_ptr,		\
-			 __e, ##__VA_ARGS__)
+	trace_event_comp(KEYWORD, comp_ptr, __e, ##__VA_ARGS__)
 
 #define tracev_keyword(__e, ...) \
 	tracev_event(TRACE_CLASS_KEYWORD, __e, ##__VA_ARGS__)
 #define tracev_keyword_with_ids(comp_ptr, __e, ...)		\
-	tracev_event_comp(TRACE_CLASS_KEYWORD, comp_ptr,	\
-			  __e, ##__VA_ARGS__)
+	tracev_event_comp(KEYWORD, comp_ptr, __e, ##__VA_ARGS__)
 
 #define trace_keyword_error(__e, ...) \
 	trace_error(TRACE_CLASS_KEYWORD, __e, ##__VA_ARGS__)
 #define trace_keyword_error_with_ids(comp_ptr, __e, ...)	\
-	trace_error_comp(TRACE_CLASS_KEYWORD, comp_ptr,		\
-			 __e, ##__VA_ARGS__)
+	trace_error_comp(KEYWORD, comp_ptr, __e, ##__VA_ARGS__)
 
 #define ACTIVATION_DEFAULT_SHIFT 3
 #define ACTIVATION_DEFAULT_DIVIDER_S16 0.5

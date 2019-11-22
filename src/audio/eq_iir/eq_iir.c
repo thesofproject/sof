@@ -33,19 +33,16 @@
 /* tracing */
 #define trace_eq(__e, ...) trace_event(TRACE_CLASS_EQ_IIR, __e, ##__VA_ARGS__)
 #define trace_eq_with_ids(comp_ptr, __e, ...)			\
-	trace_event_comp(TRACE_CLASS_EQ_IIR, comp_ptr,		\
-			 __e, ##__VA_ARGS__)
+	trace_event_comp(EQ_IIR, comp_ptr, __e, ##__VA_ARGS__)
 
 #define tracev_eq(__e, ...) tracev_event(TRACE_CLASS_EQ_IIR, __e, ##__VA_ARGS__)
 #define tracev_eq_with_ids(comp_ptr, __e, ...)			\
-	tracev_event_comp(TRACE_CLASS_EQ_IIR, comp_ptr,		\
-			  __e, ##__VA_ARGS__)
+	tracev_event_comp(EQ_IIR, comp_ptr, __e, ##__VA_ARGS__)
 
 #define trace_eq_error(__e, ...)				\
 	trace_error(TRACE_CLASS_EQ_IIR, __e, ##__VA_ARGS__)
 #define trace_eq_error_with_ids(comp_ptr, __e, ...)		\
-	trace_error_comp(TRACE_CLASS_EQ_IIR, comp_ptr,		\
-			 __e, ##__VA_ARGS__)
+	trace_error_comp(EQ_IIR, comp_ptr, __e, ##__VA_ARGS__)
 
 /* IIR component private data */
 struct comp_data {

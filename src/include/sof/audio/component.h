@@ -146,20 +146,17 @@ struct dai_hw_params;
 #define trace_comp(__e, ...) \
 	trace_event(TRACE_CLASS_COMP, __e, ##__VA_ARGS__)
 #define trace_comp_with_ids(comp_ptr, __e, ...)			\
-	trace_event_comp(TRACE_CLASS_COMP, comp_ptr,		\
-			 __e, ##__VA_ARGS__)
+	trace_event_comp(COMP, comp_ptr, __e, ##__VA_ARGS__)
 
 #define tracev_comp(__e, ...) \
 	tracev_event(TRACE_CLASS_COMP, __e, ##__VA_ARGS__)
 #define tracev_comp_with_ids(comp_ptr, __e, ...)		\
-	tracev_event_comp(TRACE_CLASS_COMP, comp_ptr,		\
-			  __e, ##__VA_ARGS__)
+	tracev_event_comp(COMP, comp_ptr, __e, ##__VA_ARGS__)
 
 #define trace_comp_error(__e, ...) \
 	trace_error(TRACE_CLASS_COMP, __e, ##__VA_ARGS__)
 #define trace_comp_error_with_ids(comp_ptr, __e, ...)		\
-	trace_error_comp(TRACE_CLASS_COMP, comp_ptr,		\
-			 __e, ##__VA_ARGS__)
+	trace_error_comp(COMP, comp_ptr, __e, ##__VA_ARGS__)
 /** @}*/
 
 /* \brief Type of endpoint this component is connected to in a pipeline */
