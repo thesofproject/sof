@@ -154,8 +154,7 @@ loop:
     extw
     extw
     waiti 5
-    1:
-    j 1b
+    j _PD_SLEEP
 
 .size power_down , . - power_down
 
