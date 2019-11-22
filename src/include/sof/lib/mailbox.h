@@ -105,9 +105,11 @@ void mailbox_stream_write(size_t offset, const void *src, size_t bytes)
 static inline
 void mailbox_sw_reg_write(size_t offset, uint32_t src)
 {
-	*((volatile uint32_t*)(MAILBOX_SW_REG_BASE + offset)) = src;
-	dcache_writeback_region((void *)(MAILBOX_SW_REG_BASE + offset),
-				sizeof(src));
+	volatile uint32_t *ptr;
+
+	ptr = (volatile uint32_t *)(MAILBOX_SW_REG_BASE + offset);
+	ptr = cache_to_uncache(ptr);
+	*ptr = src;
 }
 
 #endif /* __SOF_LIB_MAILBOX_H__ */
