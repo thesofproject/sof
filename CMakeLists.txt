@@ -61,6 +61,8 @@ add_library(sof_options INTERFACE)
 
 target_link_libraries(sof_options INTERFACE sof_public_headers)
 
+add_library(sof_static_libraries INTERFACE)
+
 # get compiler name and version
 execute_process(
 	COMMAND ${CMAKE_C_COMPILER} --version
@@ -172,3 +174,4 @@ sof_add_build_counter_rule()
 add_subdirectory(src)
 
 target_link_libraries(sof sof_lib)
+target_link_libraries(sof sof_static_libraries)

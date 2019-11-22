@@ -63,14 +63,15 @@
 	bne \ax, \mask, 1b
 .endm
 
-.macro m_cavs_lpsram_power_down_entire ax, ay, az
+.macro m_cavs_lpsram_power_down_entire ax, ay, az, loop_cnt_addr
 	movi \az, LSPGISTS
 	movi \ax, LSPGCTL
 	movi \ay, LPSRAM_MASK()
 	s32i \ay, \ax, 0
 	memw
   // assumed that HDA shared dma buffer will be in LPSRAM
-	movi \ax, 4096
+	movi \ax, \loop_cnt_addr
+	l32i \ax, \ax, 0
 1 :
 	addi \ax, \ax, -1
 	bnez \ax, 1b
