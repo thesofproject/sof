@@ -23,6 +23,8 @@ static void sai_start(struct dai *dai, int direction)
 {
 	tracev_sai("SAI: sai_start");
 
+	uint32_t xcsr = 0U;
+
 	dai_update_bits(dai, REG_SAI_XCSR(direction),
 			REG_SAI_CSR_FRDE, REG_SAI_CSR_FRDE);
 	/* enable DMA requests */
@@ -36,6 +38,14 @@ static void sai_start(struct dai *dai, int direction)
 			REG_SAI_CR1_RFW_MASK, SAI_FIFO_WORD_SIZE / 2);
 	dai_update_bits(dai, REG_SAI_XCR3(direction),
 			REG_SAI_CR3_TRCE_MASK, REG_SAI_CR3_TRCE(1));
+
+	if (direction == DAI_DIR_CAPTURE) {
+		xcsr = dai_read(dai, REG_SAI_XCSR(DAI_DIR_PLAYBACK));
+		if (!(xcsr & REG_SAI_CSR_FRDE))
+			dai_update_bits(dai, REG_SAI_XCR3(DAI_DIR_PLAYBACK),
+					REG_SAI_CR3_TRCE_MASK,
+					REG_SAI_CR3_TRCE(1));
+	}
 
 	/* add one word to FIFO after TRCE has been enabled */
 	if (direction == DAI_DIR_PLAYBACK)
@@ -225,6 +235,8 @@ static inline int sai_set_config(struct dai *dai,
 	dai_update_bits(dai, REG_SAI_XMR(REG_TX_DIR),  REG_SAI_XMR_MASK,
 			~(BIT(0) | BIT(1)));
 
+	val_cr2 |= REG_SAI_CR2_SYNC;
+	mask_cr2 |= REG_SAI_CR2_SYNC_MASK;
 	dai_update_bits(dai, REG_SAI_XCR2(REG_RX_DIR), mask_cr2, val_cr2);
 	dai_update_bits(dai, REG_SAI_XCR4(REG_RX_DIR), mask_cr4, val_cr4);
 	dai_update_bits(dai, REG_SAI_XCR5(REG_RX_DIR), mask_cr5, val_cr5);
