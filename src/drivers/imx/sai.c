@@ -21,7 +21,7 @@
 
 static void sai_start(struct dai *dai, int direction)
 {
-	tracev_sai("SAI: sai_start");
+	trace_sai("SAI: sai_start");
 
 	dai_update_bits(dai, REG_SAI_XCSR(direction),
 			REG_SAI_CSR_FRDE, REG_SAI_CSR_FRDE);
