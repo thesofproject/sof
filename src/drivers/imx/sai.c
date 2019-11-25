@@ -21,7 +21,7 @@
 
 static void sai_start(struct dai *dai, int direction)
 {
-	tracev_sai("SAI: sai_start");
+	trace_sai("SAI: sai_start");
 
 	uint32_t xcsr = 0U;
 
