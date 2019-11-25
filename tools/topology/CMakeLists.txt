@@ -38,7 +38,6 @@ set(TPLGS
 	"sof-byt-codec\;sof-byt-rt5682\;-DCODEC=RT5682"
 	"sof-byt-codec\;sof-byt-da7213\;-DCODEC=DA7213"
 	"sof-cnl-rt274\;sof-cnl-rt274"
-	"sof-hsw-rt5640\;sof-hsw-rt5640"
 	"sof-apl-tdf8532\;sof-apl-tdf8532"
 	"sof-apl-pcm512x\;sof-apl-pcm512x"
 	"sof-apl-pcm512x-nohdmi\;sof-apl-pcm512x-nohdmi"
