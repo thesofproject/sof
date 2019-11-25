@@ -124,7 +124,8 @@
 #define REG_SAI_CR1_RFW_MASK	0x3f
 
 /* SAI Transmit and Receive Configuration 2 Register */
-#define REG_SAI_CR2_SYNC	BIT(30)
+#define REG_SAI_CR2_SYNC	SET_BITS(31, 30, 1)
+#define REG_SAI_CR2_SYNC_MASK	MASK(31, 30)
 #define REG_SAI_CR2_MSEL_MASK	MASK(27, 26)
 #define REG_SAI_CR2_MSEL_BUS	SET_BITS(27, 26, 0)
 #define REG_SAI_CR2_MSEL_MCLK1	SET_BITS(27, 26, 1)
