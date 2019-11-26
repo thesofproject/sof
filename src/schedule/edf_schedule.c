@@ -71,8 +71,7 @@ static void edf_scheduler_run(void *data)
 		task = container_of(tlist, struct task, list);
 
 		if (task->state != SOF_TASK_STATE_QUEUED &&
-		    task->state != SOF_TASK_STATE_RUNNING &&
-		    task->state != SOF_TASK_STATE_RESCHEDULE)
+		    task->state != SOF_TASK_STATE_RUNNING)
 			continue;
 
 		edf_pdata = edf_sch_get_pdata(task);
