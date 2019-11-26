@@ -45,7 +45,7 @@ struct notifier {
 	void (*cb)(int message, void *cb_data, void *event_data);
 };
 
-#if defined(CLK_SSP) && defined(NOTIFIER_ID_SSP_FREQ)
+#ifdef CLK_SSP
 #define NOTIFIER_CLK_CHANGE_ID(clk) \
 	((clk) == CLK_SSP ? NOTIFIER_ID_SSP_FREQ : NOTIFIER_ID_CPU_FREQ)
 #else
