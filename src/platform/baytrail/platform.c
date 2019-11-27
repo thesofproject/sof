@@ -250,6 +250,22 @@ int platform_init(struct sof *sof)
 	shim_write(SHIM_PIMRH, shim_read(SHIM_PIMRH) | 0x00000700);
 #endif
 
+	/* Reset M/N SSP clock dividers */
+	shim_write(SHIM_SSP0_DIVL, 1);
+	shim_write(SHIM_SSP0_DIVH, 0x80000001);
+	shim_write(SHIM_SSP1_DIVL, 1);
+	shim_write(SHIM_SSP1_DIVH, 0x80000001);
+	shim_write(SHIM_SSP2_DIVL, 1);
+	shim_write(SHIM_SSP2_DIVH, 0x80000001);
+#if defined CONFIG_CHERRYTRAIL
+	shim_write(SHIM_SSP3_DIVL, 1);
+	shim_write(SHIM_SSP3_DIVH, 0x80000001);
+	shim_write(SHIM_SSP4_DIVL, 1);
+	shim_write(SHIM_SSP4_DIVH, 0x80000001);
+	shim_write(SHIM_SSP5_DIVL, 1);
+	shim_write(SHIM_SSP5_DIVH, 0x80000001);
+#endif
+
 	/* init SSP ports */
 	trace_point(TRACE_BOOT_PLATFORM_SSP);
 	ssp0 = dai_get(SOF_DAI_INTEL_SSP, 0, DAI_CREAT);
