@@ -195,7 +195,7 @@ struct comp_ops {
 
 	/** set component audio stream parameters */
 	int (*dai_config)(struct comp_dev *dev,
-		struct sof_ipc_dai_config *dai_config);
+			  struct sof_ipc_dai_config *dai_config);
 
 	/** used to pass standard and bespoke commands (with optional data) */
 	int (*cmd)(struct comp_dev *dev, int cmd, void *data,
