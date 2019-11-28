@@ -9,6 +9,7 @@
 #include <sof/audio/pipeline.h>
 #include <sof/lib/clk.h>
 #include <sof/schedule/edf_schedule.h>
+#include <sof/schedule/ll_schedule.h>
 #include <sof/schedule/schedule.h>
 #include <stdarg.h>
 #include <stddef.h>

@@ -18,6 +18,7 @@
 #include <sof/lib/cpu.h>
 #include <sof/list.h>
 #include <sof/math/numbers.h>
+#include <sof/schedule/ll_schedule.h>
 #include <sof/schedule/schedule.h>
 #include <sof/schedule/task.h>
 #include <sof/spinlock.h>
@@ -407,8 +408,8 @@ static struct task *pipeline_task_init(struct pipeline *p, uint32_t type,
 	if (!task)
 		return NULL;
 
-	if (schedule_task_init(&task->task, type, p->ipc_pipe.priority, func,
-			       NULL, p, p->ipc_pipe.core, 0) < 0) {
+	if (schedule_task_init_ll(&task->task, type, p->ipc_pipe.priority, func,
+				  p, p->ipc_pipe.core, 0) < 0) {
 		rfree(task);
 		return NULL;
 	}

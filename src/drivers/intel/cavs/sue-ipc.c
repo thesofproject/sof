@@ -11,6 +11,7 @@
 #include <sof/lib/mailbox.h>
 #include <sof/lib/wait.h>
 #include <sof/list.h>
+#include <sof/schedule/edf_schedule.h>
 #include <sof/schedule/schedule.h>
 #include <sof/schedule/task.h>
 #include <sof/spinlock.h>
@@ -78,8 +79,8 @@ int platform_ipc_init(struct ipc *ipc)
 	ipc_set_drvdata(_ipc, NULL);
 
 	/* schedule */
-	schedule_task_init(&_ipc->ipc_task, SOF_SCHEDULE_EDF, SOF_TASK_PRI_MED,
-			   ipc_platform_do_cmd, NULL, _ipc, 0, 0);
+	schedule_task_init_edf(&_ipc->ipc_task, SOF_TASK_PRI_MED,
+			       ipc_platform_do_cmd, NULL, _ipc, 0, 0);
 
 	return 0;
 }

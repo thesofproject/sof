@@ -21,6 +21,7 @@
 #include <sof/lib/pm_runtime.h>
 #include <sof/math/decibels.h>
 #include <sof/math/numbers.h>
+#include <sof/schedule/ll_schedule.h>
 #include <sof/schedule/schedule.h>
 #include <sof/schedule/task.h>
 #include <sof/spinlock.h>
@@ -1532,8 +1533,8 @@ static int dmic_probe(struct dai *dai)
 	}
 
 	/* Initialize start sequence handler */
-	schedule_task_init(&dmic->dmicwork, SOF_SCHEDULE_LL_TIMER,
-			   SOF_TASK_PRI_MED, dmic_work, NULL, dai, 0, 0);
+	schedule_task_init_ll(&dmic->dmicwork, SOF_SCHEDULE_LL_TIMER,
+			      SOF_TASK_PRI_MED, dmic_work, dai, 0, 0);
 
 	/* Enable DMIC power */
 	pm_runtime_get_sync(DMIC_POW, dai->index);

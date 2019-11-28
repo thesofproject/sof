@@ -13,6 +13,7 @@
 #include <sof/lib/wait.h>
 #include <sof/list.h>
 #include <sof/platform.h>
+#include <sof/schedule/edf_schedule.h>
 #include <sof/schedule/schedule.h>
 #include <sof/schedule/task.h>
 #include <sof/spinlock.h>
@@ -154,9 +155,9 @@ int platform_ipc_init(struct ipc *ipc)
 	_ipc = ipc;
 
 	/* schedule */
-	schedule_task_init(&_ipc->ipc_task, SOF_SCHEDULE_EDF, SOF_TASK_PRI_IPC,
-			   ipc_platform_do_cmd, ipc_platform_complete_cmd, _ipc,
-			   0, 0);
+	schedule_task_init_edf(&_ipc->ipc_task, SOF_TASK_PRI_IPC,
+			       ipc_platform_do_cmd, ipc_platform_complete_cmd,
+			       _ipc, 0, 0);
 
 #if CONFIG_HOST_PTABLE
 	/* allocate page table buffer */

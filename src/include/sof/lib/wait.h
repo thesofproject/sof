@@ -15,6 +15,7 @@
 #include <arch/lib/wait.h>
 #include <sof/drivers/timer.h>
 #include <sof/platform.h>
+#include <sof/schedule/ll_schedule.h>
 #include <sof/schedule/schedule.h>
 #include <sof/schedule/task.h>
 #include <sof/spinlock.h>
@@ -70,8 +71,8 @@ static inline void wait_init(completion_t *comp)
 
 	c->complete = 0;
 
-	schedule_task_init(&comp->work, SOF_SCHEDULE_LL_TIMER, SOF_TASK_PRI_MED,
-			   _wait_cb, NULL, comp, 0, 0);
+	schedule_task_init_ll(&comp->work, SOF_SCHEDULE_LL_TIMER,
+			      SOF_TASK_PRI_MED, _wait_cb, comp, 0, 0);
 }
 
 static inline void wait_clear(completion_t *comp)

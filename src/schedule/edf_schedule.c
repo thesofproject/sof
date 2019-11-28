@@ -152,9 +152,18 @@ static void schedule_edf_task(void *data, struct task *task, uint64_t start,
 	schedule_edf(data);
 }
 
-static int schedule_edf_task_init(void *data, struct task *task)
+int schedule_task_init_edf(struct task *task, uint16_t priority,
+			   enum task_state (*run)(void *data),
+			   void (*complete)(void *data), void *data,
+			   uint16_t core, uint32_t flags)
 {
 	struct edf_task_pdata *edf_pdata = NULL;
+	int ret = 0;
+
+	ret = schedule_task_init(task, SOF_SCHEDULE_EDF, priority, run, data,
+				 core, flags);
+	if (ret < 0)
+		return ret;
 
 	if (edf_sch_get_pdata(task))
 		return -EEXIST;
@@ -162,17 +171,20 @@ static int schedule_edf_task_init(void *data, struct task *task)
 	edf_pdata = rzalloc(RZONE_SYS_RUNTIME, SOF_MEM_CAPS_RAM,
 			    sizeof(*edf_pdata));
 	if (!edf_pdata) {
-		trace_edf_sch_error("schedule_edf_task_init() error: alloc "
+		trace_edf_sch_error("schedule_task_init_edf() error: alloc "
 				    "failed");
 		return -ENOMEM;
 	}
 
 	edf_sch_set_pdata(task, edf_pdata);
 
+	task->complete = complete;
+
 	if (task_context_alloc(&edf_pdata->ctx) < 0)
 		goto error;
 	if (task_context_init(edf_pdata->ctx, &schedule_edf_task_run,
-			      task, data, task->core, NULL, 0) < 0)
+			      task, scheduler_get_data(SOF_SCHEDULE_EDF),
+			      task->core, NULL, 0) < 0)
 		goto error;
 
 	/* flush for slave core */
@@ -182,7 +194,7 @@ static int schedule_edf_task_init(void *data, struct task *task)
 	return 0;
 
 error:
-	trace_edf_sch_error("schedule_edf_task_init() error: init "
+	trace_edf_sch_error("schedule_task_init_edf() error: init "
 			    "context failed");
 	if (edf_pdata->ctx)
 		task_context_free(edf_pdata->ctx);
@@ -313,7 +325,6 @@ static void schedule_edf(void *data)
 
 const struct scheduler_ops schedule_edf_ops = {
 	.schedule_task		= schedule_edf_task,
-	.schedule_task_init	= schedule_edf_task_init,
 	.schedule_task_running	= schedule_edf_task_running,
 	.schedule_task_complete = schedule_edf_task_complete,
 	.reschedule_task	= NULL,
