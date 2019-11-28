@@ -18,6 +18,7 @@
 #include <sof/lib/memory.h>
 #include <sof/lib/wait.h>
 #include <sof/platform.h>
+#include <sof/schedule/ll_schedule.h>
 #include <sof/schedule/schedule.h>
 #include <sof/schedule/task.h>
 #include <sof/spinlock.h>
@@ -404,9 +405,9 @@ static int spi_slave_init(struct spi *spi)
 
 	spi->completion.private = NULL;
 
-	ret = schedule_task_init(&spi->completion, SOF_SCHEDULE_LL_DMA,
-				 SOF_TASK_PRI_MED, spi_completion_work, NULL,
-				 spi, 0, 0);
+	ret = schedule_task_init_ll(&spi->completion, SOF_SCHEDULE_LL_DMA,
+				    SOF_TASK_PRI_MED, spi_completion_work,
+				    spi, 0, 0);
 	if (ret < 0)
 		return ret;
 

@@ -283,9 +283,16 @@ out:
 	irq_local_enable(flags);
 }
 
-static int schedule_ll_task_init(void *data, struct task *task)
+int schedule_task_init_ll(struct task *task, uint16_t type, uint16_t priority,
+			  enum task_state (*run)(void *data), void *data,
+			  uint16_t core, uint32_t flags)
 {
 	struct ll_task_pdata *ll_pdata;
+	int ret = 0;
+
+	ret = schedule_task_init(task, type, priority, run, data, core, flags);
+	if (ret < 0)
+		return ret;
 
 	if (ll_sch_get_pdata(task))
 		return -EEXIST;
@@ -294,7 +301,7 @@ static int schedule_ll_task_init(void *data, struct task *task)
 			   sizeof(*ll_pdata));
 
 	if (!ll_pdata) {
-		trace_ll_error("schedule_ll_task_init() error: alloc failed");
+		trace_ll_error("schedule_task_init_ll() error: alloc failed");
 		return -ENOMEM;
 	}
 
@@ -458,7 +465,6 @@ int scheduler_init_ll(struct ll_schedule_domain *domain)
 
 const struct scheduler_ops schedule_ll_ops = {
 	.schedule_task		= schedule_ll_task,
-	.schedule_task_init	= schedule_ll_task_init,
 	.schedule_task_free	= schedule_ll_task_free,
 	.schedule_task_cancel	= schedule_ll_task_cancel,
 	.reschedule_task	= reschedule_ll_task,

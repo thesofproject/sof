@@ -21,19 +21,11 @@ struct schedulers **arch_schedulers_get(void)
 }
 
 int schedule_task_init(struct task *task, uint16_t type, uint16_t priority,
-		       enum task_state (*run)(void *data),
-		       void (*complete)(void *data), void *data, uint16_t core,
-		       uint32_t flags)
+		       enum task_state (*run)(void *data), void *data,
+		       uint16_t core, uint32_t flags)
 {
-	struct schedulers *schedulers = *arch_schedulers_get();
-	struct schedule_data *sch;
-	struct list_item *slist;
-	int ret = 0;
-
-	if (type >= SOF_SCHEDULE_COUNT) {
-		ret = -EINVAL;
-		goto out;
-	}
+	if (type >= SOF_SCHEDULE_COUNT)
+		return -EINVAL;
 
 	task->type = type;
 	task->priority = priority;
@@ -41,17 +33,9 @@ int schedule_task_init(struct task *task, uint16_t type, uint16_t priority,
 	task->flags = flags;
 	task->state = SOF_TASK_STATE_INIT;
 	task->run = run;
-	task->complete = complete;
 	task->data = data;
 
-	list_for_item(slist, &schedulers->list) {
-		sch = container_of(slist, struct schedule_data, list);
-		if (type == sch->type && sch->ops->schedule_task_init)
-			return sch->ops->schedule_task_init(sch->data, task);
-	}
-
-out:
-	return ret;
+	return 0;
 }
 
 static void scheduler_register(struct schedule_data *scheduler)

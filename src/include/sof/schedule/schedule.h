@@ -15,6 +15,7 @@
 #include <sof/schedule/task.h>
 #include <sof/trace/trace.h>
 #include <user/trace.h>
+#include <stddef.h>
 #include <stdint.h>
 
 /* schedule tracing */
@@ -50,7 +51,6 @@ enum {
 struct scheduler_ops {
 	void (*schedule_task)(void *data, struct task *task, uint64_t start,
 			      uint64_t period);
-	int (*schedule_task_init)(void *data, struct task *task);
 	void (*schedule_task_running)(void *data, struct task *task);
 	void (*schedule_task_complete)(void *data, struct task *task);
 	void (*reschedule_task)(void *data, struct task *task, uint64_t start);
@@ -72,6 +72,21 @@ struct schedulers {
 };
 
 struct schedulers **arch_schedulers_get(void);
+
+static inline void *scheduler_get_data(uint16_t type)
+{
+	struct schedulers *schedulers = *arch_schedulers_get();
+	struct schedule_data *sch;
+	struct list_item *slist;
+
+	list_for_item(slist, &schedulers->list) {
+		sch = container_of(slist, struct schedule_data, list);
+		if (type == sch->type)
+			return sch->data;
+	}
+
+	return NULL;
+}
 
 static inline void schedule_task_running(struct task *task)
 {
@@ -179,9 +194,9 @@ static inline void schedule(void)
 }
 
 int schedule_task_init(struct task *task, uint16_t type, uint16_t priority,
-		       enum task_state (*run)(void *data),
-		       void (*complete)(void *data), void *data, uint16_t core,
-		       uint32_t flags);
+		       enum task_state (*run)(void *data), void *data,
+		       uint16_t core, uint32_t flags);
+
 
 void scheduler_init(int type, const struct scheduler_ops *ops, void *data);
 

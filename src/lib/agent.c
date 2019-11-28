@@ -19,6 +19,7 @@
 #include <sof/lib/clk.h>
 #include <sof/debug/panic.h>
 #include <sof/platform.h>
+#include <sof/schedule/ll_schedule.h>
 #include <sof/schedule/schedule.h>
 #include <sof/schedule/task.h>
 #include <sof/sof.h>
@@ -80,8 +81,8 @@ void sa_init(struct sof *sof, uint64_t timeout)
 		 "sa->panic_timeout = %u", ticks, sa->warn_timeout,
 		 sa->panic_timeout);
 
-	schedule_task_init(&sa->work, SOF_SCHEDULE_LL_TIMER, SOF_TASK_PRI_HIGH,
-			   validate, NULL, sa, 0, 0);
+	schedule_task_init_ll(&sa->work, SOF_SCHEDULE_LL_TIMER,
+			      SOF_TASK_PRI_HIGH, validate, sa, 0, 0);
 
 	schedule_task(&sa->work, 0, timeout);
 

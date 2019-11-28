@@ -41,4 +41,8 @@ struct ll_task_pdata {
 
 int scheduler_init_ll(struct ll_schedule_domain *domain);
 
+int schedule_task_init_ll(struct task *task, uint16_t type, uint16_t priority,
+			  enum task_state (*run)(void *data), void *data,
+			  uint16_t core, uint32_t flags);
+
 #endif /* __SOF_SCHEDULE_LL_SCHEDULE_H__ */

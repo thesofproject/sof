@@ -15,6 +15,8 @@
 #include <sof/lib/notifier.h>
 #include <sof/audio/component.h>
 #include <sof/drivers/timer.h>
+#include <sof/schedule/edf_schedule.h>
+#include <sof/schedule/ll_schedule.h>
 #include <sof/schedule/schedule.h>
 #include <mock_trace.h>
 #include <sof/lib/clk.h>
@@ -62,9 +64,23 @@ int comp_set_state(struct comp_dev *dev, int cmd)
 }
 
 int schedule_task_init(struct task *task, uint16_t type, uint16_t priority,
-		       enum task_state (*run)(void *data),
-		       void (*complete)(void *data), void *data, uint16_t core,
-		       uint32_t xflags)
+		       enum task_state (*run)(void *data), void *data,
+		       uint16_t core, uint32_t flags)
+{
+	return 0;
+}
+
+int schedule_task_init_edf(struct task *task, uint16_t priority,
+			   enum task_state (*run)(void *data),
+			   void (*complete)(void *data), void *data,
+			   uint16_t core, uint32_t flags)
+{
+	return 0;
+}
+
+int schedule_task_init_ll(struct task *task, uint16_t type, uint16_t priority,
+			  enum task_state (*run)(void *data), void *data,
+			  uint16_t core, uint32_t flags)
 {
 	return 0;
 }

@@ -16,6 +16,7 @@
 #include <sof/lib/cpu.h>
 #include <sof/lib/wait.h>
 #include <sof/platform.h>
+#include <sof/schedule/edf_schedule.h>
 #include <sof/schedule/schedule.h>
 #include <sof/schedule/task.h>
 #include <sof/sof.h>
@@ -65,9 +66,8 @@ void task_main_init(void)
 
 	*main_task = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(**main_task));
 
-	ret = schedule_task_init(*main_task, SOF_SCHEDULE_EDF,
-				 SOF_TASK_PRI_IDLE, main_main, NULL, NULL,
-				 cpu, SOF_SCHEDULE_FLAG_IDLE);
+	ret = schedule_task_init_edf(*main_task, SOF_TASK_PRI_IDLE, main_main,
+				     NULL, NULL, cpu, SOF_SCHEDULE_FLAG_IDLE);
 	assert(!ret);
 }
 

@@ -13,6 +13,7 @@
 #include <sof/lib/cpu.h>
 #include <sof/lib/dma.h>
 #include <sof/platform.h>
+#include <sof/schedule/ll_schedule.h>
 #include <sof/schedule/schedule.h>
 #include <sof/schedule/task.h>
 #include <sof/sof.h>
@@ -138,8 +139,8 @@ int dma_trace_init_complete(struct dma_trace_data *d)
 		return ret;
 	}
 
-	schedule_task_init(&d->dmat_work, SOF_SCHEDULE_LL_TIMER,
-			   SOF_TASK_PRI_MED, trace_work, NULL, d, 0, 0);
+	schedule_task_init_ll(&d->dmat_work, SOF_SCHEDULE_LL_TIMER,
+			      SOF_TASK_PRI_MED, trace_work, d, 0, 0);
 
 	return 0;
 }

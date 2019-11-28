@@ -28,6 +28,7 @@
 #include <sof/list.h>
 #include <sof/math/numbers.h>
 #include <sof/platform.h>
+#include <sof/schedule/edf_schedule.h>
 #include <sof/schedule/schedule.h>
 #include <sof/schedule/task.h>
 #include <sof/string.h>
@@ -149,14 +150,14 @@ static struct comp_dev *kpb_new(struct sof_ipc_comp *comp)
 	}
 
 	/* Initialize draining task */
-	schedule_task_init(&kpb->draining_task, /* task structure */
-			   SOF_SCHEDULE_EDF, /* utilize EDF scheduler */
-			   SOF_TASK_PRI_ALMOST_IDLE, /* almost idle priority */
-			   kpb_draining_task, /* task function */
-			   NULL, /* no complete function */
-			   &kpb->draining_task_data, /* task private data */
-			   0, /* core on which we should run */
-			   SOF_SCHEDULE_FLAG_IDLE);
+	schedule_task_init_edf(&kpb->draining_task, /* task structure */
+			       /* almost idle priority */
+			       SOF_TASK_PRI_ALMOST_IDLE,
+			       kpb_draining_task, /* task function */
+			       NULL, /* no complete function */
+			       &kpb->draining_task_data, /* task private data */
+			       0, /* core on which we should run */
+			       SOF_SCHEDULE_FLAG_IDLE);
 
 	/* Init basic component data */
 	kpb->history_buffer = NULL;

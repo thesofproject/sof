@@ -13,6 +13,7 @@ add_executable(testbench
 	file.c
 	ipc.c
 	schedule.c
+	ll_schedule.c
 	edf_schedule.c
 	panic.c
 	timer.c

@@ -43,12 +43,23 @@ static void schedule_edf_task(void *data, struct task *task, uint64_t start,
 	schedule_edf_task_complete(task);
 }
 
-static int schedule_edf_task_init(void *data, struct task *task)
+int schedule_task_init_edf(struct task *task, uint16_t priority,
+			   enum task_state (*run)(void *data),
+			   void (*complete)(void *data), void *data,
+			   uint16_t core, uint32_t flags)
 {
 	struct edf_task_pdata *edf_pdata;
+	int ret = 0;
+
+	ret = schedule_task_init(task, SOF_SCHEDULE_EDF, priority, run, data,
+				 core, flags);
+	if (ret < 0)
+		return ret;
 
 	edf_pdata = malloc(sizeof(*edf_pdata));
 	edf_sch_set_pdata(task, edf_pdata);
+
+	task->complete = complete;
 
 	return 0;
 }
@@ -96,7 +107,6 @@ static void schedule_edf_task_free(void *data, struct task *task)
 
 struct scheduler_ops schedule_edf_ops = {
 	.schedule_task		= schedule_edf_task,
-	.schedule_task_init	= schedule_edf_task_init,
 	.schedule_task_running	= NULL,
 	.schedule_task_complete = NULL,
 	.reschedule_task	= NULL,
