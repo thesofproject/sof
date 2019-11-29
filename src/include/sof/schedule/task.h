@@ -9,6 +9,7 @@
 #define __SOF_SCHEDULE_TASK_H__
 
 #include <arch/schedule/task.h>
+#include <sof/debug/panic.h>
 #include <sof/list.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -41,6 +42,11 @@ enum task_state {
 	SOF_TASK_STATE_RESCHEDULE,
 };
 
+struct task_ops {
+	enum task_state (*run)(void *data);
+	void (*complete)(void *data);
+};
+
 struct task {
 	uint64_t start;
 	uint16_t type;
@@ -49,10 +55,9 @@ struct task {
 	uint16_t flags;
 	enum task_state state;
 	void *data;
-	enum task_state (*run)(void *data);
-	void (*complete)(void *data);
 	struct list_item list;
 	void *private;
+	struct task_ops ops;
 };
 
 /** \brief Task type registered by pipelines. */
@@ -63,6 +68,19 @@ struct pipeline_task {
 };
 
 #define pipeline_task_get(task) ((struct pipeline_task *)(task))
+
+static inline enum task_state task_run(struct task *task)
+{
+	assert(task->ops.run);
+
+	return task->ops.run(task->data);
+}
+
+static inline void task_complete(struct task *task)
+{
+	if (task->ops.complete)
+		task->ops.complete(task->data);
+}
 
 enum task_state task_main_master_core(void *data);
 

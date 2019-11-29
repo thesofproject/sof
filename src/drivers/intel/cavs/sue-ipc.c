@@ -22,7 +22,7 @@
 extern struct ipc *_ipc;
 
 /* No private data for IPC */
-static enum task_state ipc_platform_do_cmd(void *data)
+enum task_state ipc_platform_do_cmd(void *data)
 {
 	struct ipc *ipc = data;
 	struct sof_ipc_cmd_hdr *hdr;
@@ -44,6 +44,10 @@ static enum task_state ipc_platform_do_cmd(void *data)
 	}
 
 	return SOF_TASK_STATE_COMPLETED;
+}
+
+void ipc_platform_complete_cmd(void *data)
+{
 }
 
 void ipc_platform_send_msg(void)
@@ -79,8 +83,8 @@ int platform_ipc_init(struct ipc *ipc)
 	ipc_set_drvdata(_ipc, NULL);
 
 	/* schedule */
-	schedule_task_init_edf(&_ipc->ipc_task, SOF_TASK_PRI_MED,
-			       ipc_platform_do_cmd, NULL, _ipc, 0, 0);
+	schedule_task_init_edf(&_ipc->ipc_task, SOF_TASK_PRI_MED, &ipc_task_ops,
+			       _ipc, 0, 0);
 
 	return 0;
 }

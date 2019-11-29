@@ -481,3 +481,8 @@ int ipc_init(struct sof *sof)
 
 	return platform_ipc_init(sof->ipc);
 }
+
+struct task_ops ipc_task_ops = {
+	.run		= ipc_platform_do_cmd,
+	.complete	= ipc_platform_complete_cmd,
+};

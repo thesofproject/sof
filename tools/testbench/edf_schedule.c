@@ -37,29 +37,28 @@ static void schedule_edf_task(void *data, struct task *task, uint64_t start,
 	list_item_prepend(&task->list, &sch->list);
 	task->state = SOF_TASK_STATE_QUEUED;
 
-	if (task->run)
-		task->run(task->data);
+	if (task->ops.run)
+		task->ops.run(task->data);
 
 	schedule_edf_task_complete(task);
 }
 
 int schedule_task_init_edf(struct task *task, uint16_t priority,
-			   enum task_state (*run)(void *data),
-			   void (*complete)(void *data), void *data,
+			   const struct task_ops *ops, void *data,
 			   uint16_t core, uint32_t flags)
 {
 	struct edf_task_pdata *edf_pdata;
 	int ret = 0;
 
-	ret = schedule_task_init(task, SOF_SCHEDULE_EDF, priority, run, data,
-				 core, flags);
+	ret = schedule_task_init(task, SOF_SCHEDULE_EDF, priority, ops->run,
+				 data, core, flags);
 	if (ret < 0)
 		return ret;
 
 	edf_pdata = malloc(sizeof(*edf_pdata));
 	edf_sch_set_pdata(task, edf_pdata);
 
-	task->complete = complete;
+	task->ops.complete = ops->complete;
 
 	return 0;
 }
@@ -98,7 +97,7 @@ static void schedule_edf_task_cancel(void *data, struct task *task)
 static void schedule_edf_task_free(void *data, struct task *task)
 {
 	task->state = SOF_TASK_STATE_FREE;
-	task->run = NULL;
+	task->ops.run = NULL;
 	task->data = NULL;
 
 	free(edf_sch_get_pdata(task));

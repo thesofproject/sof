@@ -40,7 +40,7 @@ static void schedule_edf_task_run(struct task *task, void *data)
 		/* execute task run function and remove task from the list
 		 * only if completed
 		 */
-		if (task->run(task->data) == SOF_TASK_STATE_COMPLETED)
+		if (task_run(task) == SOF_TASK_STATE_COMPLETED)
 			schedule_edf_task_complete(data, task);
 
 		/* find new task for execution */
@@ -153,15 +153,14 @@ static void schedule_edf_task(void *data, struct task *task, uint64_t start,
 }
 
 int schedule_task_init_edf(struct task *task, uint16_t priority,
-			   enum task_state (*run)(void *data),
-			   void (*complete)(void *data), void *data,
+			   const struct task_ops *ops, void *data,
 			   uint16_t core, uint32_t flags)
 {
 	struct edf_task_pdata *edf_pdata = NULL;
 	int ret = 0;
 
-	ret = schedule_task_init(task, SOF_SCHEDULE_EDF, priority, run, data,
-				 core, flags);
+	ret = schedule_task_init(task, SOF_SCHEDULE_EDF, priority, ops->run,
+				 data, core, flags);
 	if (ret < 0)
 		return ret;
 
@@ -178,7 +177,7 @@ int schedule_task_init_edf(struct task *task, uint16_t priority,
 
 	edf_sch_set_pdata(task, edf_pdata);
 
-	task->complete = complete;
+	task->ops.complete = ops->complete;
 
 	if (task_context_alloc(&edf_pdata->ctx) < 0)
 		goto error;
@@ -226,9 +225,7 @@ static void schedule_edf_task_complete(void *data, struct task *task)
 
 	irq_local_disable(flags);
 
-	/* execute task complete function if exists */
-	if (task->complete)
-		task->complete(task->data);
+	task_complete(task);
 
 	task->state = SOF_TASK_STATE_COMPLETED;
 	list_item_del(&task->list);

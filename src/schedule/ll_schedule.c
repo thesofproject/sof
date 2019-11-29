@@ -83,7 +83,7 @@ static void schedule_ll_tasks_execute(struct ll_schedule_data *sch,
 
 		/* run task if its pending and remove from the list */
 		if (task->state == SOF_TASK_STATE_PENDING) {
-			task->state = task->run(task->data);
+			task->state = task_run(task);
 
 			/* do we need to reschedule this task */
 			if (task->state == SOF_TASK_STATE_COMPLETED) {
