@@ -75,8 +75,7 @@ void task_main_init(void)
 
 	*main_task = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(**main_task));
 
-	ret = schedule_task_init_edf(*main_task, &ops, NULL, cpu,
-				     SOF_SCHEDULE_FLAG_IDLE);
+	ret = schedule_task_init_edf(*main_task, &ops, NULL, cpu, 0);
 	assert(!ret);
 }
 

@@ -45,9 +45,6 @@ enum {
 	SOF_SCHEDULE_COUNT
 };
 
-/* Scheduler flags */
-#define SOF_SCHEDULE_FLAG_IDLE	BIT(0)
-
 struct scheduler_ops {
 	void (*schedule_task)(void *data, struct task *task, uint64_t start,
 			      uint64_t period);

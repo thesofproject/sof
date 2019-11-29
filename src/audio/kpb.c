@@ -163,7 +163,7 @@ static struct comp_dev *kpb_new(struct sof_ipc_comp *comp)
 			       &ops, /* task ops */
 			       &kpb->draining_task_data, /* task private data */
 			       0, /* core on which we should run */
-			       SOF_SCHEDULE_FLAG_IDLE);
+			       0); /* no flags */
 
 	/* Init basic component data */
 	kpb->history_buffer = NULL;
