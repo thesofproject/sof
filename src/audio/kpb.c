@@ -97,6 +97,7 @@ static struct comp_dev *kpb_new(struct sof_ipc_comp *comp)
 {
 	struct sof_ipc_comp_process *ipc_process =
 					(struct sof_ipc_comp_process *)comp;
+	struct task_ops ops = { .run = kpb_draining_task, };
 	size_t bs = ipc_process->size;
 	struct comp_dev *dev;
 	struct comp_data *kpb;
@@ -153,8 +154,7 @@ static struct comp_dev *kpb_new(struct sof_ipc_comp *comp)
 	schedule_task_init_edf(&kpb->draining_task, /* task structure */
 			       /* almost idle priority */
 			       SOF_TASK_PRI_ALMOST_IDLE,
-			       kpb_draining_task, /* task function */
-			       NULL, /* no complete function */
+			       &ops, /* task ops */
 			       &kpb->draining_task_data, /* task private data */
 			       0, /* core on which we should run */
 			       SOF_SCHEDULE_FLAG_IDLE);

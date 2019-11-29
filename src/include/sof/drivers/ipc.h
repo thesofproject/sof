@@ -112,6 +112,8 @@ struct ipc {
 #define ipc_get_drvdata(ipc) \
 	((ipc)->private)
 
+extern struct task_ops ipc_task_ops;
+
 
 int ipc_init(struct sof *sof);
 
@@ -130,6 +132,10 @@ int ipc_init(struct sof *sof);
  * ipc_get_drvdata().
  */
 int platform_ipc_init(struct ipc *ipc);
+
+enum task_state ipc_platform_do_cmd(void *data);
+
+void ipc_platform_complete_cmd(void *data);
 
 void ipc_free(struct ipc *ipc);
 

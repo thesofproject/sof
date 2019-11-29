@@ -65,7 +65,7 @@ static void irq_handler(void *arg)
 	}
 }
 
-static enum task_state ipc_platform_do_cmd(void *data)
+enum task_state ipc_platform_do_cmd(void *data)
 {
 	struct sof_ipc_cmd_hdr *hdr;
 	/* Use struct ipc_data *iipc = ipc_get_drvdata(ipc); if needed */
@@ -77,7 +77,7 @@ static enum task_state ipc_platform_do_cmd(void *data)
 	return SOF_TASK_STATE_COMPLETED;
 }
 
-static void ipc_platform_complete_cmd(void *data)
+void ipc_platform_complete_cmd(void *data)
 {
 	uint32_t ipcxh;
 
@@ -144,8 +144,7 @@ int platform_ipc_init(struct ipc *ipc)
 
 	/* schedule */
 	schedule_task_init_edf(&_ipc->ipc_task, SOF_TASK_PRI_IPC,
-			       ipc_platform_do_cmd, ipc_platform_complete_cmd,
-			       _ipc, 0, 0);
+			       &ipc_task_ops, _ipc, 0, 0);
 
 #if CONFIG_HOST_PTABLE
 	/* allocate page table buffer */

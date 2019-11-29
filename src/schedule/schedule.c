@@ -29,7 +29,7 @@ int schedule_task_init(struct task *task, uint16_t type, uint16_t priority,
 	task->core = core;
 	task->flags = flags;
 	task->state = SOF_TASK_STATE_INIT;
-	task->run = run;
+	task->ops.run = run;
 	task->data = data;
 
 	return 0;

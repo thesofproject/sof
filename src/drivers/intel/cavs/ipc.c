@@ -168,7 +168,7 @@ static struct sof_ipc_cmd_hdr *ipc_cavs_read_msg(void)
 }
 #endif
 
-static enum task_state ipc_platform_do_cmd(void *data)
+enum task_state ipc_platform_do_cmd(void *data)
 {
 #if !CONFIG_SUECREEK
 	struct ipc *ipc = data;
@@ -203,7 +203,7 @@ static enum task_state ipc_platform_do_cmd(void *data)
 	return SOF_TASK_STATE_COMPLETED;
 }
 
-static void ipc_platform_complete_cmd(void *data)
+void ipc_platform_complete_cmd(void *data)
 {
 #if CONFIG_SUECREEK
 	struct ipc *ipc = data;
@@ -284,8 +284,7 @@ int platform_ipc_init(struct ipc *ipc)
 
 	/* schedule */
 	schedule_task_init_edf(&_ipc->ipc_task, SOF_TASK_PRI_IPC,
-			       ipc_platform_do_cmd, ipc_platform_complete_cmd,
-			       _ipc, 0, 0);
+			       &ipc_task_ops, _ipc, 0, 0);
 
 	/* configure interrupt */
 	irq = interrupt_get_irq(PLATFORM_IPC_INTERRUPT,

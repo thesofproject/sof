@@ -19,6 +19,15 @@ struct ipc_data {
 	struct ipc_data_host_buffer dh_buffer;
 };
 
+enum task_state ipc_platform_do_cmd(void *data)
+{
+	return SOF_TASK_STATE_COMPLETED;
+}
+
+void ipc_platform_complete_cmd(void *data)
+{
+}
+
 int platform_ipc_init(struct ipc *ipc)
 {
 	struct ipc_data *iipc;
