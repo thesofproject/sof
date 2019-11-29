@@ -333,9 +333,12 @@ static uint32_t idc_get_done_bit_mask(int core)
  */
 int idc_init(void)
 {
-	struct task_ops ops = { .run = idc_do_cmd, };
 	int core = cpu_get_id();
 	int ret;
+	struct task_ops ops = {
+		.run = idc_do_cmd,
+		.get_deadline = ipc_task_deadline,
+	};
 
 	trace_idc("arch_idc_init()");
 

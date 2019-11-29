@@ -485,4 +485,5 @@ int ipc_init(struct sof *sof)
 struct task_ops ipc_task_ops = {
 	.run		= ipc_platform_do_cmd,
 	.complete	= ipc_platform_complete_cmd,
+	.get_deadline	= ipc_task_deadline,
 };

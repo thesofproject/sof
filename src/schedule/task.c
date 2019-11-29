@@ -42,6 +42,11 @@ static void sys_module_init(void)
 		((void(*)(void))(*module_init))();
 }
 
+static uint64_t task_main_deadline(void *data)
+{
+	return SOF_TASK_DEADLINE_IDLE;
+}
+
 enum task_state task_main_master_core(void *data)
 {
 	/* main audio processing loop */
@@ -63,7 +68,10 @@ void task_main_init(void)
 	int ret;
 	task_main main_main = cpu == PLATFORM_MASTER_CORE_ID ?
 		&task_main_master_core : &task_main_slave_core;
-	struct task_ops ops = { .run = main_main, };
+	struct task_ops ops = {
+		.run = main_main,
+		.get_deadline = task_main_deadline,
+	};
 
 	*main_task = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(**main_task));
 
