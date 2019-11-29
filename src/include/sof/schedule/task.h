@@ -26,6 +26,11 @@ struct sof;
 #define SOF_TASK_PRI_IPC	SOF_TASK_PRI_HIGH
 #define SOF_TASK_PRI_IDC	SOF_TASK_PRI_HIGH
 
+/* predefined EDF task deadlines */
+#define SOF_TASK_DEADLINE_IDLE		UINT64_MAX
+#define SOF_TASK_DEADLINE_ALMOST_IDLE	(SOF_TASK_DEADLINE_IDLE - 1)
+#define SOF_TASK_DEADLINE_NOW		0
+
 /* task default stack size in bytes */
 #define SOF_TASK_DEFAULT_STACK_SIZE	2048
 

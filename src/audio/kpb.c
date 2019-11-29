@@ -87,6 +87,11 @@ static inline bool validate_host_params(size_t host_period_size,
 static inline void kpb_change_state(struct comp_data *kpb,
 				    enum kpb_state state);
 
+static uint64_t kpb_task_deadline(void *data)
+{
+	return SOF_TASK_DEADLINE_ALMOST_IDLE;
+}
+
 /**
  * \brief Create a key phrase buffer component.
  * \param[in] comp - generic ipc component pointer.
@@ -97,7 +102,10 @@ static struct comp_dev *kpb_new(struct sof_ipc_comp *comp)
 {
 	struct sof_ipc_comp_process *ipc_process =
 					(struct sof_ipc_comp_process *)comp;
-	struct task_ops ops = { .run = kpb_draining_task, };
+	struct task_ops ops = {
+		.run = kpb_draining_task,
+		.get_deadline = kpb_task_deadline,
+	};
 	size_t bs = ipc_process->size;
 	struct comp_dev *dev;
 	struct comp_data *kpb;

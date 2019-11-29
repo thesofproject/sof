@@ -114,6 +114,16 @@ struct ipc {
 
 extern struct task_ops ipc_task_ops;
 
+static inline uint64_t ipc_task_deadline(void *data)
+{
+	/* TODO: Currently it's a workaround to execute IPC tasks ASAP.
+	 * In the future IPCs should have a cycle budget and deadline
+	 * should be calculated based on that value. This means every
+	 * IPC should have its own maximum number of cycles that is required
+	 * to finish processing. This will allow us to calculate task deadline.
+	 */
+	return SOF_TASK_DEADLINE_NOW;
+}
 
 int ipc_init(struct sof *sof);
 

@@ -29,7 +29,6 @@
 #define edf_sch_get_pdata(task) task->private
 
 struct edf_task_pdata {
-	uint64_t deadline;
 	void *ctx;
 };
 

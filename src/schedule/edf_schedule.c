@@ -51,15 +51,11 @@ static void schedule_edf_task_run(struct task *task, void *data)
 static void edf_scheduler_run(void *data)
 {
 	struct edf_schedule_data *edf_sch = data;
-	uint64_t current = platform_timer_get(platform_timer);
-	int priority_next = SOF_TASK_PRI_IDLE;
-	uint64_t delta_next = UINT64_MAX;
-	struct edf_task_pdata *edf_pdata;
+	uint64_t deadline_next = SOF_TASK_DEADLINE_IDLE;
 	struct task *task_next = NULL;
 	struct list_item *tlist;
 	struct task *task;
 	uint64_t deadline;
-	uint64_t delta;
 	uint32_t flags;
 
 	tracev_edf_sch("edf_scheduler_run()");
@@ -74,30 +70,18 @@ static void edf_scheduler_run(void *data)
 		    task->state != SOF_TASK_STATE_RUNNING)
 			continue;
 
-		edf_pdata = edf_sch_get_pdata(task);
+		deadline = task_get_deadline(task);
 
-		deadline = edf_pdata->deadline;
-
-		if (current >= deadline &&
-		    !(task->flags & SOF_SCHEDULE_FLAG_IDLE)) {
+		if (deadline == SOF_TASK_DEADLINE_NOW) {
 			/* task needs to be scheduled ASAP */
 			task_next = task;
 			break;
 		}
 
-		delta = deadline - current;
-
-		/* get highest priority */
-		if (task->priority < priority_next) {
-			priority_next = task->priority;
-			delta_next = delta;
+		/* get earliest deadline */
+		if (deadline <= deadline_next) {
+			deadline_next = deadline;
 			task_next = task;
-		} else if (task->priority == priority_next) {
-			/* get earliest deadline */
-			if (delta <= delta_next) {
-				delta_next = delta;
-				task_next = task;
-			}
 		}
 	}
 
@@ -113,19 +97,18 @@ static void schedule_edf_task(void *data, struct task *task, uint64_t start,
 			      uint64_t period)
 {
 	struct edf_schedule_data *edf_sch = data;
-	struct edf_task_pdata *edf_pdata = edf_sch_get_pdata(task);
-	uint32_t flags;
-	uint64_t current;
 	uint64_t ticks_per_ms;
+	uint64_t current;
+	uint32_t flags;
 
 	irq_local_disable(flags);
 
 	/* not enough MCPS to complete */
 	if (task->state == SOF_TASK_STATE_QUEUED ||
 	    task->state == SOF_TASK_STATE_RUNNING) {
-		trace_edf_sch_error("schedule_edf_task(), task already queued "
-				    "or running %d, deadline = %u ",
-				    task->state, edf_pdata->deadline);
+		trace_edf_sch_error
+			("schedule_edf_task(), task already queued or running %d",
+			 task->state);
 		irq_local_enable(flags);
 		return;
 	}
@@ -138,9 +121,6 @@ static void schedule_edf_task(void *data, struct task *task, uint64_t start,
 	/* calculate start time */
 	task->start = start ? task->start + ticks_per_ms * start / 1000 :
 		current;
-
-	/* calculate deadline */
-	edf_pdata->deadline = task->start + ticks_per_ms * period / 1000;
 
 	/* add task to the list */
 	list_item_append(&task->list, &edf_sch->list);
@@ -178,6 +158,7 @@ int schedule_task_init_edf(struct task *task, uint16_t priority,
 	edf_sch_set_pdata(task, edf_pdata);
 
 	task->ops.complete = ops->complete;
+	task->ops.get_deadline = ops->get_deadline;
 
 	if (task_context_alloc(&edf_pdata->ctx) < 0)
 		goto error;
