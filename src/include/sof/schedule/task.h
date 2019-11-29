@@ -45,6 +45,7 @@ enum task_state {
 struct task_ops {
 	enum task_state (*run)(void *data);
 	void (*complete)(void *data);
+	uint64_t (*get_deadline)(void *data);
 };
 
 struct task {
@@ -80,6 +81,13 @@ static inline void task_complete(struct task *task)
 {
 	if (task->ops.complete)
 		task->ops.complete(task->data);
+}
+
+static inline uint64_t task_get_deadline(struct task *task)
+{
+	assert(task->ops.get_deadline);
+
+	return task->ops.get_deadline(task->data);
 }
 
 enum task_state task_main_master_core(void *data);
