@@ -20,11 +20,6 @@ struct sof;
 #define SOF_TASK_PRI_HIGH	0	/* priority level 0 - high */
 #define SOF_TASK_PRI_MED	4	/* priority level 4 - medium */
 #define SOF_TASK_PRI_LOW	9	/* priority level 9 - low */
-#define SOF_TASK_PRI_IDLE	INT16_MAX	/* lowest possible priority */
-#define SOF_TASK_PRI_ALMOST_IDLE	(SOF_TASK_PRI_IDLE - 1)
-
-#define SOF_TASK_PRI_IPC	SOF_TASK_PRI_HIGH
-#define SOF_TASK_PRI_IDC	SOF_TASK_PRI_HIGH
 
 /* predefined EDF task deadlines */
 #define SOF_TASK_DEADLINE_IDLE		UINT64_MAX

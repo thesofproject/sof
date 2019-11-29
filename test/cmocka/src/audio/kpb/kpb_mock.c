@@ -70,9 +70,8 @@ int schedule_task_init(struct task *task, uint16_t type, uint16_t priority,
 	return 0;
 }
 
-int schedule_task_init_edf(struct task *task, uint16_t priority,
-			   const struct task_ops *ops, void *data,
-			   uint16_t core, uint32_t flags)
+int schedule_task_init_edf(struct task *task, const struct task_ops *ops,
+			   void *data, uint16_t core, uint32_t flags)
 {
 	return 0;
 }
