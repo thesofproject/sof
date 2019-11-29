@@ -283,8 +283,7 @@ int platform_ipc_init(struct ipc *ipc)
 	ipc_set_drvdata(_ipc, NULL);
 
 	/* schedule */
-	schedule_task_init_edf(&_ipc->ipc_task, SOF_TASK_PRI_IPC,
-			       &ipc_task_ops, _ipc, 0, 0);
+	schedule_task_init_edf(&_ipc->ipc_task, &ipc_task_ops, _ipc, 0, 0);
 
 	/* configure interrupt */
 	irq = interrupt_get_irq(PLATFORM_IPC_INTERRUPT,

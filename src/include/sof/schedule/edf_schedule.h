@@ -34,8 +34,7 @@ struct edf_task_pdata {
 
 int scheduler_init_edf(void);
 
-int schedule_task_init_edf(struct task *task, uint16_t priority,
-			   const struct task_ops *ops, void *data,
-			   uint16_t core, uint32_t flags);
+int schedule_task_init_edf(struct task *task, const struct task_ops *ops,
+			   void *data, uint16_t core, uint32_t flags);
 
 #endif /* __SOF_SCHEDULE_EDF_SCHEDULE_H__ */
