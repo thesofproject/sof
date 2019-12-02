@@ -174,24 +174,20 @@ static int mixer_params(struct comp_dev *dev,
 {
 	struct sof_ipc_comp_config *config = COMP_GET_CONFIG(dev);
 	struct comp_buffer *sinkb;
-	struct comp_buffer *sourceb;
 	uint32_t period_bytes;
 
 	trace_mixer_with_ids(dev, "mixer_params()");
 
-	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer,
-				  sink_list);
+	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
+							source_list);
 
 	/* calculate period size based on config */
-	period_bytes = dev->frames * buffer_frame_bytes(sourceb);
+	period_bytes = dev->frames * buffer_frame_bytes(sinkb);
 	if (period_bytes == 0) {
 		trace_mixer_error_with_ids(dev, "mixer_params() error: "
 					   "period_bytes = 0");
 		return -EINVAL;
 	}
-
-	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
-				source_list);
 
 	if (sinkb->size < config->periods_sink * period_bytes) {
 		trace_mixer_error_with_ids(dev, "mixer_params() error: "
