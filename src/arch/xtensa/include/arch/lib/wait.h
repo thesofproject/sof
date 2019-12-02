@@ -12,6 +12,7 @@
 
 #include <sof/debug/panic.h>
 #include <sof/drivers/interrupt.h>
+#include <sof/lib/clk.h>
 #include <sof/platform.h>
 #include <ipc/trace.h>
 #include <xtensa/xtruntime.h>
@@ -25,6 +26,9 @@ static inline void arch_wait_for_interrupt(int level)
 	/* can only enter WFI when at run level 0 i.e. not IRQ level */
 	if (arch_interrupt_get_level() > 0)
 		panic(SOF_IPC_PANIC_WFI);
+
+	/* while in waiti FW should use 120mHz clock on CNL platform */
+	clock_set_low_freq();
 
 	/* this sequence must be atomic on LX6 */
 	XTOS_SET_INTLEVEL(5);
@@ -48,6 +52,9 @@ static inline void arch_wait_for_interrupt(int level)
 	/* can only enter WFI when at run level 0 i.e. not IRQ level */
 	if (arch_interrupt_get_level() > 0)
 		panic(SOF_IPC_PANIC_WFI);
+
+	/* while in waiti FW should use 120mHz clock on CNL platform */
+	clock_set_low_freq();
 
 	asm volatile("waiti 0");
 }

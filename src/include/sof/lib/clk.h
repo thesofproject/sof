@@ -9,6 +9,7 @@
 #define __SOF_LIB_CLK_H__
 
 #include <platform/lib/clk.h>
+#include <xtensa/config/core-isa.h>
 #include <stdint.h>
 
 struct timer;
@@ -46,5 +47,9 @@ uint64_t clock_ms_to_ticks(int clock, uint64_t ms);
 void platform_timer_set_delta(struct timer *timer, uint64_t ns);
 
 void clock_init(void);
+
+void clock_set_high_freq(void);
+
+void clock_set_low_freq(void);
 
 #endif /* __SOF_LIB_CLK_H__ */
