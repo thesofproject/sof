@@ -169,10 +169,15 @@ static void default_detect_test(struct comp_dev *dev,
 	uint32_t sample;
 	uint16_t valid_bits = cd->sample_valid_bytes * 8;
 	const int32_t activation_threshold = cd->config.activation_threshold;
+	uint32_t cycles_per_frame; /**< Clock cycles required per frame */
 
 	/* synthetic load */
-	if (cd->config.load_mips)
-		idelay(cd->config.load_mips * 1000000);
+	if (cd->config.load_mips) {
+		/* assuming count is a processing frame size in samples */
+		cycles_per_frame = (cd->config.load_mips * 1000000 * count)
+				   / source->rate;
+		idelay(cycles_per_frame);
+	}
 
 	/* perform detection within current period */
 	for (sample = 0; sample < count && !cd->detected; ++sample) {
