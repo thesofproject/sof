@@ -17,19 +17,20 @@
 struct comp_dev;
 struct sof;
 
+/** \brief Predefined LL task priorities. */
 #define SOF_TASK_PRI_HIGH	0	/* priority level 0 - high */
 #define SOF_TASK_PRI_MED	4	/* priority level 4 - medium */
 #define SOF_TASK_PRI_LOW	9	/* priority level 9 - low */
 
-/* predefined EDF task deadlines */
+/** \brief Predefined EDF task deadlines. */
 #define SOF_TASK_DEADLINE_IDLE		UINT64_MAX
 #define SOF_TASK_DEADLINE_ALMOST_IDLE	(SOF_TASK_DEADLINE_IDLE - 1)
 #define SOF_TASK_DEADLINE_NOW		0
 
-/* task default stack size in bytes */
+/** \brief EDF task's default stack size in bytes. */
 #define SOF_TASK_DEFAULT_STACK_SIZE	2048
 
-/* task states */
+/** \brief Task states. */
 enum task_state {
 	SOF_TASK_STATE_INIT = 0,
 	SOF_TASK_STATE_QUEUED,
@@ -42,23 +43,25 @@ enum task_state {
 	SOF_TASK_STATE_RESCHEDULE,
 };
 
+/** \brief Task operations. */
 struct task_ops {
-	enum task_state (*run)(void *data);
-	void (*complete)(void *data);
-	uint64_t (*get_deadline)(void *data);
+	enum task_state (*run)(void *data);	/**< task's main operation */
+	void (*complete)(void *data);		/**< executed on completion */
+	uint64_t (*get_deadline)(void *data);	/**< returns current deadline */
 };
 
+/** \brief Task used by schedulers. */
 struct task {
-	uint64_t start;
-	uint16_t type;
-	uint16_t priority;
-	uint16_t core;
-	uint16_t flags;
-	enum task_state state;
-	void *data;
-	struct list_item list;
-	void *private;
-	struct task_ops ops;
+	uint64_t start;		/**< start time */
+	uint16_t type;		/**< type of the task (LL or EDF) */
+	uint16_t priority;	/**< priority of the task (used by LL) */
+	uint16_t core;		/**< execution core */
+	uint16_t flags;		/**< custom flags */
+	enum task_state state;	/**< current state */
+	void *data;		/**< custom data passed to all ops */
+	struct list_item list;	/**< used by schedulers to hold tasks */
+	void *private;		/**< task private data */
+	struct task_ops ops;	/**< task operations */
 };
 
 /** \brief Task type registered by pipelines. */
