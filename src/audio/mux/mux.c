@@ -147,7 +147,7 @@ static int mux_params(struct comp_dev *dev,
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *sourceb;
 
-	trace_mux_with_ids(dev, "mux_params() Karol");
+	trace_mux_with_ids(dev, "mux_params()");
 
 	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer,
 				  sink_list);
