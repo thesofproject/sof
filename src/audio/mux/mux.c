@@ -145,15 +145,15 @@ static int mux_params(struct comp_dev *dev,
 		      struct sof_ipc_stream_params *params)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	struct comp_buffer *sourceb;
+	struct comp_buffer *sinkb;
 
 	trace_mux_with_ids(dev, "mux_params()");
 
-	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer,
-				  sink_list);
+	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
+				  source_list);
 
-	cd->config.num_channels = sourceb->channels;
-	cd->config.frame_format = sourceb->frame_fmt;
+	cd->config.num_channels = sinkb->channels;
+	cd->config.frame_format = sinkb->frame_fmt;
 
 	return 0;
 }
