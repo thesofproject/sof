@@ -15,8 +15,15 @@ static struct freq_table platform_cpu_freq[] = {
 };
 
 uint32_t cpu_freq_enc[] = {
-	0x0,
-	0x4,
+	SHIM_CLKCTL_RLROSCC | SHIM_CLKCTL_OCS_LP_RING |
+		SHIM_CLKCTL_HMCS_DIV2 | SHIM_CLKCTL_LMCS_DIV4,
+	SHIM_CLKCTL_RHROSCC | SHIM_CLKCTL_OCS_HP_RING |
+		SHIM_CLKCTL_HMCS_DIV2 | SHIM_CLKCTL_LMCS_DIV4,
+};
+
+uint32_t cpu_freq_status_mask[] = {
+	SHIM_CLKSTS_LROSCCS,
+	SHIM_CLKSTS_HROSCCS,
 };
 
 STATIC_ASSERT(NUM_CPU_FREQ == ARRAY_SIZE(platform_cpu_freq),
