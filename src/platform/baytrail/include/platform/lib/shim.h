@@ -55,7 +55,16 @@
 #define SHIM_SSP5_DIVH		0x114
 
 #define SHIM_SHIM_BEGIN		SHIM_CSR
-#define SHIM_SHIM_END		SHIM_HDMC
+
+#if defined CONFIG_BAYTRAIL
+
+#define SHIM_SHIM_END		SHIM_SSP2_DIVH
+
+#elif defined CONFIG_CHERRYTRAIL
+
+#define SHIM_SHIM_END		SHIM_SSP5_DIVH
+
+#endif
 
 /* CSR 0x0 */
 #define SHIM_CSR_RST		(0x1 << 0)
