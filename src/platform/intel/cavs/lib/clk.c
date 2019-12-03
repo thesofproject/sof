@@ -20,11 +20,30 @@ static int clock_platform_set_cpu_freq(int clock, int freq_idx)
 	/* set CPU frequency request for CCU */
 #if CAVS_VERSION == CAVS_VERSION_1_5
 	io_reg_update_bits(SHIM_BASE + SHIM_CLKCTL, SHIM_CLKCTL_HDCS, 0);
-#endif
 	io_reg_update_bits(SHIM_BASE + SHIM_CLKCTL,
 			   SHIM_CLKCTL_DPCS_MASK(cpu_get_id()),
 			   enc);
+#else
+	uint32_t status_mask = cpu_freq_status_mask[freq_idx];
 
+	/* request clock */
+	io_reg_write(SHIM_BASE + SHIM_CLKCTL,
+		     io_reg_read(SHIM_BASE + SHIM_CLKCTL) | enc);
+
+	/* wait for requested clock to be on */
+	while ((io_reg_read(SHIM_BASE + SHIM_CLKSTS) &
+		status_mask) != status_mask)
+		idelay(PLATFORM_DEFAULT_DELAY);
+
+	/* switch to requested clock */
+	io_reg_update_bits(SHIM_BASE + SHIM_CLKCTL,
+			   SHIM_CLKCTL_OSC_SOURCE_MASK, enc);
+
+	/* release other clocks */
+	io_reg_write(SHIM_BASE + SHIM_CLKCTL,
+		     (io_reg_read(SHIM_BASE + SHIM_CLKCTL) &
+		     ~SHIM_CLKCTL_OSC_REQUEST_MASK) | enc);
+#endif
 	return 0;
 }
 

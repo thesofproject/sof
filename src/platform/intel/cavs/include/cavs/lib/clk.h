@@ -37,6 +37,7 @@
 
 extern struct freq_table *cpu_freq;
 extern uint32_t cpu_freq_enc[];
+extern uint32_t cpu_freq_status_mask[];
 
 void platform_clock_init(void);
 
