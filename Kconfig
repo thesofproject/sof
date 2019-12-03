@@ -32,13 +32,6 @@ config LP_SRAM
 	  memory for specific platform. Until this options is enabled firmware will
 	  not enable any of LPSRAM memory banks.
 
-config WAITI_DELAY
-	bool "Enable delay before WAITI instruction"
-	default n
-	help
-	  Some cAVS platforms may require additional delay to flush loads
-	  and stores before entering WAITI.
-
 config CAVS_LPS
 	bool "Intel cAVS Low Power Sequencer for Power Management"
 	depends on CAVS
@@ -49,6 +42,13 @@ config CAVS_LPS
 	  on cAVS platforms.
 
 endmenu
+
+config WAITI_DELAY
+	bool
+	default n
+	help
+	  LX6 Xtensa platforms may require additional delay to flush loads
+	  and stores before entering WAITI.
 
 config HOST_PTABLE
 	bool
