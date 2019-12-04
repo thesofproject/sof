@@ -64,3 +64,7 @@ doc/Makefile
 
 /tags
 /TAGS
+
+# cscope files
+cscope.*
+ncscope.*
