@@ -93,10 +93,3 @@ DAI_CONFIG(SSP, SSP_NUM, 0, SSP2-Codec,
 		      SSP_CLOCK(fsync, 48000, codec_slave),
 		      SSP_TDM(2, 25, 3, 3),
 		      SSP_CONFIG_DATA(SSP, SSP_NUM, 24)))
-
-VIRTUAL_WIDGET(ssp2 Rx, out_drv, 1)
-VIRTUAL_WIDGET(ssp2 Tx, out_drv, 2)
-VIRTUAL_WIDGET(ssp0 Tx, out_drv, 3)
-VIRTUAL_WIDGET(ssp0 Rx, out_drv, 4)
-VIRTUAL_DAPM_ROUTE_IN(modem_in, SSP, 0, IN, 0)
-VIRTUAL_DAPM_ROUTE_OUT(modem_out, SSP, 0, OUT, 1)
