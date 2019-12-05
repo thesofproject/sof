@@ -82,10 +82,24 @@ static enum task_state vol_work(void *data)
 	int again = 0;
 	int i;
 
-	cd->vol_ramp_active = true;
+	/* No need to ramp in idle state, jump volume to request. */
+	if (dev->state == COMP_STATE_READY) {
+		for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
+			cd->volume[i] = cd->tvolume[i];
 
-	/* inc/dec each volume if it's not at target */
-	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++) {
+		vol_sync_host(cd, PLATFORM_MAX_CHANNELS);
+		return SOF_TASK_STATE_COMPLETED;
+	}
+
+	/* The first is set and cleared to indicate ongoing ramp, the
+	 * latter is set once to enable self launched ramp only once
+	 * in stream start.
+	 */
+	cd->vol_ramp_active = true;
+	cd->ramp_started = true;
+
+	/* inc/dec each volume if it's not at target for active channels */
+	for (i = 0; i < cd->channels; i++) {
 		/* skip if target reached */
 		if (cd->volume[i] == cd->tvolume[i])
 			continue;
@@ -228,6 +242,8 @@ static struct comp_dev *volume_new(struct sof_ipc_comp *comp)
 	}
 
 	cd->vol_ramp_active = false;
+	cd->channels = 0; /* To be set in prepare() */
+
 	trace_volume_with_ids(dev,
 			      "vol->initial_ramp = %d, vol->ramp = %d, "
 			      "vol->min_value = %d, vol->max_value = %d",
@@ -275,8 +291,12 @@ static int volume_params(struct comp_dev *dev,
  * \param[in,out] dev Volume base component device.
  * \param[in] chan Channel number.
  * \param[in] vol Target volume.
+ * \param[in] constant_rate_ramp When true do a constant rate
+ *	      and variable time length ramp. When false do
+ *	      a fixed length and variable rate ramp.
  */
-static inline int volume_set_chan(struct comp_dev *dev, int chan, int32_t vol)
+static inline int volume_set_chan(struct comp_dev *dev, int chan,
+				  int32_t vol, bool constant_rate_ramp)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct sof_ipc_comp_volume *pga =
@@ -375,7 +395,7 @@ static inline void volume_set_chan_mute(struct comp_dev *dev, int chan)
 
 	if (!cd->muted[chan]) {
 		cd->mvolume[chan] = cd->tvolume[chan];
-		volume_set_chan(dev, chan, 0);
+		volume_set_chan(dev, chan, 0, true);
 		cd->muted[chan] = true;
 	}
 }
@@ -391,7 +411,7 @@ static inline void volume_set_chan_unmute(struct comp_dev *dev, int chan)
 
 	if (cd->muted[chan]) {
 		cd->muted[chan] = false;
-		volume_set_chan(dev, chan, cd->mvolume[chan]);
+		volume_set_chan(dev, chan, cd->mvolume[chan], true);
 	}
 }
 
@@ -438,7 +458,7 @@ static int volume_ctrl_set_cmd(struct comp_dev *dev,
 			if (cd->muted[ch]) {
 				cd->mvolume[ch] = val;
 			} else {
-				ret = volume_set_chan(dev, ch, val);
+				ret = volume_set_chan(dev, ch, val, true);
 				if (ret)
 					return ret;
 			}
@@ -579,6 +599,10 @@ static int volume_copy(struct comp_dev *dev)
 
 	tracev_volume_with_ids(dev, "volume_copy()");
 
+	if (!cd->ramp_started)
+		schedule_task(&cd->volwork, VOL_RAMP_UPDATE_US,
+			      VOL_RAMP_UPDATE_US);
+
 	/* Get source, sink, number of frames etc. to process. */
 	ret = comp_get_copy_limits(dev, &c);
 	if (ret < 0) {
@@ -654,6 +678,19 @@ static int volume_prepare(struct comp_dev *dev)
 
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
 		vol_sync_host(cd, i);
+
+	/* Set current volume to min to ensure ramp starts from minimum
+	 * to previous volume request. Copy() checks for ramp started
+	 * and schedules it if it has not yet started as result of
+	 * driver commands. Ramp is not constant rate to ensure it lasts
+	 * for entire topology specified time.
+	 */
+	cd->ramp_started = false;
+	cd->channels = sinkb->channels;
+	for (i = 0; i < cd->channels; i++) {
+		cd->volume[i] = cd->vol_min;
+		volume_set_chan(dev, i, cd->tvolume[i], false);
+	}
 
 	return 0;
 
