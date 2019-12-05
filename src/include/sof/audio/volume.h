@@ -75,12 +75,13 @@ struct sof_ipc_ctrl_value_chan;
 /**
  * \brief Macro for volume linear gain ramp step computation
  * Volume gain ramp step as Q1.16 is computed with equation
- * step = VOL_RAMP_STEP_CONST/ SOF_TKN_VOLUME_RAMP_STEP_MS. This
+ * step = VOL_RAMP_STEP_CONST / SOF_TKN_VOLUME_RAMP_STEP_MS. This
  * macro defines as Q1.16 value the constant term
- * (1000 / VOL_RAMP_UPDATE) for step calculation.
+ * VOL_RAMP_UPDATE / 1000.0 for step calculation. The value 1000
+ * is used to to convert microseconds to milliseconds.
  */
 #define VOL_RAMP_STEP_CONST \
-	Q_CONVERT_FLOAT(1000.0 / VOL_RAMP_UPDATE_US, VOL_QXY_Y)
+	Q_CONVERT_FLOAT(VOL_RAMP_UPDATE_US / 1000.0, VOL_QXY_Y)
 
 /**
  * \brief Volume maximum value.
