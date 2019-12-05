@@ -38,6 +38,9 @@
 #include <stddef.h>
 #include <stdint.h>
 
+/* Shift to use in volume fractional multiplications */
+#define Q_MUL_SHIFT Q_SHIFT_BITS_32(VOL_QXY_Y, VOL_QXY_Y, VOL_QXY_Y)
+
 /**
  * \brief Synchronize host mmap() volume with real value.
  * \param[in,out] cd Volume component private data.
@@ -304,7 +307,6 @@ static inline int volume_set_chan(struct comp_dev *dev, int chan,
 	int32_t delta;
 	int32_t delta_abs;
 	int32_t inc;
-	int32_t t_us;
 
 	/* Limit received volume gain to MIN..MAX range before applying it.
 	 * MAX is needed for now for the generic C gain arithmetics to prevent
@@ -330,38 +332,40 @@ static inline int volume_set_chan(struct comp_dev *dev, int chan,
 	/* Check ramp type */
 	switch (pga->ramp) {
 	case SOF_VOLUME_LINEAR:
-
-		/* Assume the ramp length (initial_ramp [ms]) describes
-		 * time of mute to 0 dB ramp. The actual volume scale min/max
-		 * is not known. If initial_ramp is zero (or negative) use
-		 * step size that reaches 0 dB gain in one step (VOL_ZERO_DB).
-		 */
-		if (pga->initial_ramp > 0)
-			inc = MAX(VOL_RAMP_STEP_CONST / pga->initial_ramp, 1);
-		else
-			inc = VOL_ZERO_DB;
-
-		/* Scale the increment with actual volume range if it was
-		 * passed via IPC.
-		 */
-		if (cd->vol_ramp_range)
-			inc = q_multsr_32x32(inc, cd->vol_ramp_range,
-					     Q_SHIFT_BITS_32(VOL_QXY_Y,
-							     VOL_QXY_Y,
-							     VOL_QXY_Y));
-
+		/* Get volume transition delta and absolute value */
 		delta = cd->tvolume[chan] - cd->volume[chan];
 		delta_abs = ABS(delta);
 
-		/* If the ramp completion would take longer than initial_ramp
-		 * increase the step size to make this ramp complete at
-		 * initial_ramp time. Calculate estimated ramp length [us].
+		/* The ramp length (initial_ramp [ms]) describes time of mute
+		 * to vol_max unmuting. Normally the volume ramp has a
+		 * constant linear slope defined this way and variable
+		 * completion time. However in streaming start it is feasible
+		 * to apply the entire topology defined ramp time to unmute to
+		 * any used volume. In this case the ramp rate is not constant.
+		 * Note also the legacy mode without known vol_ramp_range where
+		 * the volume transition always uses the topology defined time.
 		 */
-		t_us = delta_abs * VOL_RAMP_UPDATE_US / inc;
-		if (t_us > pga->initial_ramp * 1000) {
-			inc = (int32_t)((int64_t)inc * delta_abs / VOL_ZERO_DB);
-			inc = MAX(inc, 1);
+		if (pga->initial_ramp > 0) {
+			if (constant_rate_ramp && cd->vol_ramp_range > 0)
+				inc = q_multsr_32x32(cd->vol_ramp_range,
+						     VOL_RAMP_STEP_CONST,
+						     Q_MUL_SHIFT);
+			else
+				inc = q_multsr_32x32(delta_abs,
+						     VOL_RAMP_STEP_CONST,
+						     Q_MUL_SHIFT);
+
+			/* Divide and round to nearest. Note that there will
+			 * be some accumulated error in ramp time the longer
+			 * the ramp and the smaller the transition is.
+			 */
+			inc = (2 * inc / pga->initial_ramp + 1) >> 1;
+		} else {
+			inc = delta_abs;
 		}
+
+		/* Ensure inc is at least one */
+		inc = MAX(inc, 1);
 
 		/* Invert sign for volume down ramp step */
 		if (delta < 0)
