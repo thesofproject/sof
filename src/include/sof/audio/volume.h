@@ -111,8 +111,10 @@ struct comp_data {
 	int32_t vol_min;			/**< minimum volume */
 	int32_t vol_max;			/**< maximum volume */
 	int32_t	vol_ramp_range;			/**< max ramp transition */
+	unsigned int channels;			/**< current channels count */
 	bool muted[SOF_IPC_MAX_CHANNELS];	/**< set if channel is muted */
 	bool vol_ramp_active;			/**< set if volume is ramped */
+	bool ramp_started;			/**< control ramp launch */
 	/**< volume processing function */
 	void (*scale_vol)(struct comp_dev *dev, struct comp_buffer *sink,
 			  struct comp_buffer *source, uint32_t frames);
