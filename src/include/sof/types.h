@@ -43,4 +43,10 @@ struct timer;
 struct sof_eq_fir_coef_data;
 struct sof_eq_iir_header_df2t;
 
+/* Arch specific */
+struct _spinlock_t;
+
+/* Typedefs */
+typedef struct _spinlock_t spinlock_t;
+
 #endif /* __SOF_TYPES_H__ */

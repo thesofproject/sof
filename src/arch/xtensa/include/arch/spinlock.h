@@ -13,12 +13,14 @@
 #include <config.h>
 #include <stdint.h>
 
-typedef struct {
+struct _spinlock_t {
 	volatile uint32_t lock;
 #if CONFIG_DEBUG_LOCKS
 	uint32_t user;
 #endif
-} spinlock_t;
+};
+
+typedef struct _spinlock_t spinlock_t;
 
 static inline void arch_spin_lock(spinlock_t *lock)
 {
