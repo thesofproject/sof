@@ -44,30 +44,25 @@
 /**
  * \brief Synchronize host mmap() volume with real value.
  * \param[in,out] cd Volume component private data.
- * \param[in] chan Channel number.
+ * \param[in] num_channels Update channels 0 to num_channels -1.
  */
-static void vol_sync_host(struct comp_data *cd, uint32_t chan)
+static void vol_sync_host(struct comp_data *cd, unsigned int num_channels)
 {
-	if (!cd->hvol)
+	int n;
+
+	if (!cd->hvol) {
+		tracev_volume("vol_sync_host() Warning: null hvol, no update");
 		return;
-
-	if (chan < SOF_IPC_MAX_CHANNELS) {
-		cd->hvol[chan].value = cd->volume[chan];
-	} else {
-		trace_volume_error("vol_sync_host() error: "
-				   "chan = %u < SOF_IPC_MAX_CHANNELS", chan);
 	}
-}
 
-/**
- * \brief Update volume with target value.
- * \param[in,out] cd Volume component private data.
- * \param[in] chan Channel number.
- */
-static void vol_update(struct comp_data *cd, uint32_t chan)
-{
-	cd->volume[chan] = cd->tvolume[chan];
-	vol_sync_host(cd, chan);
+	if (num_channels < SOF_IPC_MAX_CHANNELS) {
+		for (n = 0; n < num_channels; n++)
+			cd->hvol[n].value = cd->volume[n];
+	} else {
+		trace_volume_error("vol_sync_host() error: channels count %d"
+				   " exceeds SOF_IPC_MAX_CHANNELS",
+				   num_channels);
+	}
 }
 
 /**
@@ -114,8 +109,8 @@ static enum task_state vol_work(void *data)
 		if (cd->volume[i] < cd->tvolume[i]) {
 			/* ramp up, check if ramp completed */
 			if (vol >= cd->tvolume[i] || vol >= cd->vol_max) {
-				vol_update(cd, i);
 				cd->ramp_increment[i] = 0;
+				cd->volume[i] = cd->tvolume[i];
 			} else {
 				cd->volume[i] = vol;
 				again = 1;
@@ -124,14 +119,14 @@ static enum task_state vol_work(void *data)
 			/* ramp down */
 			if (vol <= 0) {
 				/* cannot ramp down below 0 */
-				vol_update(cd, i);
 				cd->ramp_increment[i] = 0;
+				cd->volume[i] = cd->tvolume[i];
 			} else {
 				/* ramp completed ? */
 				if (vol <= cd->tvolume[i] ||
 				    vol <= cd->vol_min) {
-					vol_update(cd, i);
 					cd->ramp_increment[i] = 0;
+					cd->volume[i] = cd->tvolume[i];
 				} else {
 					cd->volume[i] = vol;
 					again = 1;
@@ -139,9 +134,10 @@ static enum task_state vol_work(void *data)
 			}
 		}
 
-		/* sync host with new value */
-		vol_sync_host(cd, i);
 	}
+
+	/* sync host with new value */
+	vol_sync_host(cd, cd->channels);
 
 	/* do we need to continue ramping */
 	if (again)
@@ -679,8 +675,7 @@ static int volume_prepare(struct comp_dev *dev)
 		goto err;
 	}
 
-	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
-		vol_sync_host(cd, i);
+	vol_sync_host(cd, PLATFORM_MAX_CHANNELS);
 
 	/* Set current volume to min to ensure ramp starts from minimum
 	 * to previous volume request. Copy() checks for ramp started
