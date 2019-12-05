@@ -9,8 +9,7 @@
 #ifndef __SOF_AUDIO_STREAM_H__
 #define __SOF_AUDIO_STREAM_H__
 
-struct sof_ipc_pcm_params;
-struct sof_ipc_vorbis_params;
+#include <sof/types.h>
 
 enum stream_type {
 	STREAM_TYPE_PCM		= 0,

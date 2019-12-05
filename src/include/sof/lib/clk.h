@@ -9,10 +9,9 @@
 #ifndef __SOF_LIB_CLK_H__
 #define __SOF_LIB_CLK_H__
 
+#include <sof/types.h>
 #include <platform/lib/clk.h>
 #include <stdint.h>
-
-struct timer;
 
 #define CLOCK_NOTIFY_PRE	0
 #define CLOCK_NOTIFY_POST	1

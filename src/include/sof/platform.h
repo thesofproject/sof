@@ -18,9 +18,8 @@
 
 #if !defined(__ASSEMBLER__) && !defined(LINKER)
 
+#include <sof/types.h>
 #include <stdint.h>
-
-struct sof;
 
 /** \addtogroup platform_api Platform API
  *  Platform API specification.

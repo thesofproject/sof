@@ -14,11 +14,10 @@
 #ifndef __SOF_AUDIO_PCM_CONVERTER_H__
 #define __SOF_AUDIO_PCM_CONVERTER_H__
 
+#include <sof/types.h>
 #include <ipc/stream.h>
 #include <stddef.h>
 #include <stdint.h>
-
-struct comp_buffer;
 
 #define PCM_CONVERTER_GENERIC
 

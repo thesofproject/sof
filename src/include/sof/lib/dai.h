@@ -20,12 +20,10 @@
 #include <sof/bit.h>
 #include <sof/lib/io.h>
 #include <sof/spinlock.h>
+#include <sof/types.h>
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
-
-struct dai;
-struct sof_ipc_dai_config;
 
 /** \addtogroup sof_dai_drivers DAI Drivers
  *  DAI Drivers API specification.

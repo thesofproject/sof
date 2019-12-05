@@ -23,6 +23,7 @@
 #include <sof/list.h>
 #include <sof/math/numbers.h>
 #include <sof/trace/trace.h>
+#include <sof/types.h>
 #include <ipc/control.h>
 #include <ipc/stream.h>
 #include <ipc/topology.h>
@@ -33,11 +34,6 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-
-struct comp_dev;
-struct sof_ipc_dai_config;
-struct sof_ipc_stream_posn;
-struct dai_hw_params;
 
 /** \addtogroup component_api Component API
  *  Component API specification.

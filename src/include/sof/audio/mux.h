@@ -21,12 +21,10 @@
 #include <sof/common.h>
 #include <sof/platform.h>
 #include <sof/trace/trace.h>
+#include <sof/types.h>
 #include <sof/ut.h>
 #include <user/trace.h>
 #include <stdint.h>
-
-struct comp_buffer;
-struct comp_dev;
 
  /* tracing */
 #define trace_mux(__e, ...) trace_event(TRACE_CLASS_MUX, __e, ##__VA_ARGS__)

@@ -22,11 +22,10 @@
 #include <sof/lib/cache.h>
 #include <sof/lib/io.h>
 #include <sof/spinlock.h>
+#include <sof/types.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-
-struct comp_buffer;
 
 /** \addtogroup sof_dma_drivers DMA Drivers
  *  DMA Drivers API specification.
@@ -93,8 +92,6 @@ enum dma_irq_cmd {
 #define DMA_ATTR_COPY_ALIGNMENT			1
 #define DMA_ATTR_BUFFER_ADDRESS_ALIGNMENT	2
 #define DMA_ATTR_BUFFER_PERIOD_COUNT		3
-
-struct dma;
 
 /**
  *  \brief Element of SG list (as array item).

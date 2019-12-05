@@ -10,9 +10,8 @@
 
 #include <sof/list.h>
 #include <sof/spinlock.h>
+#include <sof/types.h>
 #include <stdint.h>
-
-struct sof;
 
 /* notifier target core masks */
 #define NOTIFIER_TARGET_CORE_MASK(x)	(1 << x)

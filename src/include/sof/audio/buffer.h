@@ -18,6 +18,7 @@
 #include <sof/math/numbers.h>
 #include <sof/string.h>
 #include <sof/trace/trace.h>
+#include <sof/types.h>
 #include <ipc/stream.h>
 #include <ipc/topology.h>
 #include <user/trace.h>
@@ -25,8 +26,6 @@
 #include <config.h>
 #include <stddef.h>
 #include <stdint.h>
-
-struct comp_dev;
 
 /* buffer tracing */
 #define trace_buffer(__e, ...) \

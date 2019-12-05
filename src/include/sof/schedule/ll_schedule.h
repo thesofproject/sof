@@ -15,10 +15,9 @@
 
 #include <sof/schedule/task.h>
 #include <sof/trace/trace.h>
+#include <sof/types.h>
 #include <user/trace.h>
 #include <stdint.h>
-
-struct ll_schedule_domain;
 
 /* ll tracing */
 #define trace_ll(format, ...) \

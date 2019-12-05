@@ -16,11 +16,9 @@
 #include <sof/drivers/interrupt.h>
 #include <sof/lib/clk.h>
 #include <sof/lib/mailbox.h>
+#include <sof/types.h>
 #include <stddef.h>
 #include <stdint.h>
-
-struct ll_schedule_domain;
-struct timer;
 
 #define PLATFORM_DEFAULT_CLOCK CLK_CPU(0)
 #define LPSRAM_SIZE 16384

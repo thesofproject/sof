@@ -20,13 +20,11 @@
 #include <sof/bit.h>
 #include <sof/schedule/task.h>
 #include <sof/trace/trace.h>
+#include <sof/types.h>
 #include <ipc/stream.h>
 #include <user/trace.h>
 #include <stddef.h>
 #include <stdint.h>
-
-struct comp_buffer;
-struct sof_ipc_ctrl_value_chan;
 
 #define CONFIG_GENERIC
 

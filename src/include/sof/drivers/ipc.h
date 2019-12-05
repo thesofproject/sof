@@ -15,25 +15,10 @@
 #include <sof/spinlock.h>
 #include <sof/trace/dma-trace.h>
 #include <sof/trace/trace.h>
+#include <sof/types.h>
 #include <ipc/header.h>
 #include <user/trace.h>
 #include <stdint.h>
-
-struct comp_buffer;
-struct comp_dev;
-struct dai_config;
-struct dma;
-struct dma_sg_elem_array;
-struct pipeline;
-struct sof;
-struct sof_ipc_buffer;
-struct sof_ipc_comp;
-struct sof_ipc_comp_event;
-struct sof_ipc_dai_config;
-struct sof_ipc_host_buffer;
-struct sof_ipc_pipe_comp_connect;
-struct sof_ipc_pipe_new;
-struct sof_ipc_stream_posn;
 
 #define trace_ipc(format, ...) \
 	trace_event(TRACE_CLASS_IPC, format, ##__VA_ARGS__)

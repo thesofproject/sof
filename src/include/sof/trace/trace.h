@@ -20,13 +20,12 @@
 #endif
 #include <sof/common.h>
 #include <sof/trace/preproc.h>
+#include <sof/types.h>
 #include <config.h>
 #include <stdint.h>
 #if CONFIG_LIBRARY
 #include <stdio.h>
 #endif
-
-struct sof;
 
 /* bootloader trace values */
 #define TRACE_BOOT_LDR_ENTRY		0x100

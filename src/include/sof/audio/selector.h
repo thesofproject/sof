@@ -15,13 +15,11 @@
 #define __SOF_AUDIO_SELECTOR_H__
 
 #include <sof/trace/trace.h>
+#include <sof/types.h>
 #include <ipc/stream.h>
 #include <user/selector.h>
 #include <user/trace.h>
 #include <stdint.h>
-
-struct comp_buffer;
-struct comp_dev;
 
 /** \brief Selector trace function. */
 #define trace_selector(__e, ...) \

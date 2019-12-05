@@ -9,11 +9,10 @@
 #define __SOF_LIB_AGENT_H__
 
 #include <sof/schedule/task.h>
+#include <sof/types.h>
 #include <config.h>
 #include <stdbool.h>
 #include <stdint.h>
-
-struct sof;
 
 /* simple agent */
 struct sa {

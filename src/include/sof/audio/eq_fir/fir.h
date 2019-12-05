@@ -11,14 +11,12 @@
 #define __SOF_AUDIO_EQ_FIR_FIR_H__
 
 #include <sof/audio/eq_fir/fir_config.h>
+#include <sof/types.h>
 
 #if FIR_GENERIC
 
 #include <sof/audio/format.h>
 #include <stdint.h>
-
-struct comp_buffer;
-struct sof_eq_fir_coef_data;
 
 struct fir_state_32x16 {
 	int rwi; /* Circular read and write index */

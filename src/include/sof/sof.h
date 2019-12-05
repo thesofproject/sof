@@ -9,10 +9,7 @@
 #define __SOF_SOF_H__
 
 #include <arch/sof.h>
-
-struct dma_trace_data;
-struct ipc;
-struct sa;
+#include <sof/types.h>
 
 /* general firmware context */
 struct sof {

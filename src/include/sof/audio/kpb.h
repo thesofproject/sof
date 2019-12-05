@@ -9,10 +9,9 @@
 #define __SOF_AUDIO_KPB_H__
 
 #include <sof/trace/trace.h>
+#include <sof/types.h>
 #include <user/trace.h>
 #include <stdint.h>
-
-struct comp_buffer;
 
 /* KPB tracing */
 #define trace_kpb(__e, ...) trace_event(TRACE_CLASS_KPB, __e, ##__VA_ARGS__)

@@ -8,11 +8,9 @@
 #ifndef __SOF_DRIVERS_TIMER_H__
 #define __SOF_DRIVERS_TIMER_H__
 
+#include <sof/types.h>
 #include <arch/drivers/timer.h>
 #include <stdint.h>
-
-struct comp_dev;
-struct sof_ipc_stream_posn;
 
 #define TIMER0	0
 #define TIMER1	1

@@ -15,15 +15,11 @@
 #include <sof/lib/clk.h>
 #include <sof/spinlock.h>
 #include <sof/trace/trace.h>
+#include <sof/types.h>
 #include <ipc/topology.h>
 #include <user/trace.h>
 #include <stdbool.h>
 #include <stdint.h>
-
-struct dma;
-struct ll_schedule_domain;
-struct task;
-struct timer;
 
 struct ll_schedule_domain_ops {
 	int (*domain_register)(struct ll_schedule_domain *domain,

@@ -9,15 +9,13 @@
 #define __SOF_AUDIO_EQ_FIR_FIR_HIFI2EP_H__
 
 #include <sof/audio/eq_fir/fir_config.h>
+#include <sof/types.h>
 
 #if FIR_HIFIEP
 
 #include <xtensa/config/defs.h>
 #include <xtensa/tie/xt_hifi2.h>
 #include <stdint.h>
-
-struct comp_buffer;
-struct sof_eq_fir_coef_data;
 
 struct fir_state_32x16 {
 	ae_p24x2f *rwp; /* Circular read and write pointer */

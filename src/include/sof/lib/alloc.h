@@ -15,14 +15,11 @@
 #include <sof/lib/memory.h>
 #include <sof/spinlock.h>
 #include <sof/string.h>
+#include <sof/types.h>
 #include <user/trace.h>
 #include <config.h>
 #include <stddef.h>
 #include <stdint.h>
-
-struct dma_copy;
-struct dma_sg_config;
-struct sof;
 
 /* Heap Memory Zones
  *

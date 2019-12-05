@@ -11,9 +11,8 @@
 #include <sof/lib/dma.h>
 #include <sof/schedule/task.h>
 #include <sof/spinlock.h>
+#include <sof/types.h>
 #include <stdint.h>
-
-struct sof;
 
 struct dma_trace_buf {
 	void *w_ptr;		/* buffer write pointer */

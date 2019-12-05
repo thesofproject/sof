@@ -10,11 +10,9 @@
 
 #include <arch/schedule/task.h>
 #include <sof/list.h>
+#include <sof/types.h>
 #include <stdbool.h>
 #include <stdint.h>
-
-struct comp_dev;
-struct sof;
 
 #define SOF_TASK_PRI_HIGH	0	/* priority level 0 - high */
 #define SOF_TASK_PRI_MED	4	/* priority level 4 - medium */

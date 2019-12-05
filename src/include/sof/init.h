@@ -8,9 +8,8 @@
 #ifndef __SOF_INIT_H__
 #define __SOF_INIT_H__
 
+#include <sof/types.h>
 #include <arch/init.h>
-
-struct sof;
 
 /* main firmware entry point - argc and argv not currently used */
 int main(int argc, char *argv[]);

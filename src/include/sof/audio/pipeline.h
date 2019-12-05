@@ -10,18 +10,11 @@
 
 #include <sof/lib/cpu.h>
 #include <sof/trace/trace.h>
+#include <sof/types.h>
 #include <ipc/topology.h>
 #include <user/trace.h>
 #include <stdbool.h>
 #include <stdint.h>
-
-struct comp_buffer;
-struct comp_dev;
-struct ipc;
-struct sof_ipc_buffer;
-struct sof_ipc_pcm_params;
-struct sof_ipc_stream_posn;
-struct task;
 
 /*
  * This flag disables firmware-side xrun recovery.
