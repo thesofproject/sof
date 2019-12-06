@@ -90,10 +90,8 @@ struct dma *dma_get(uint32_t dir, uint32_t cap, uint32_t dev, uint32_t flags)
 		for (d = lib_dma.dma_array;
 		     d < lib_dma.dma_array + lib_dma.num_dmas;
 		     d++) {
-			trace_error(TRACE_CLASS_DMA, " DMAC ID %d users %d "
-				    "busy channels %d", d->plat_data.id,
-				    d->sref,
-				    atomic_read(&d->num_channels_busy));
+			trace_error(TRACE_CLASS_DMA, " DMAC ID %d users %d",
+				    d->plat_data.id, d->sref);
 			trace_error(TRACE_CLASS_DMA, "  caps 0x%x dev 0x%x",
 				    d->plat_data.caps, d->plat_data.devs);
 		}
@@ -123,9 +121,8 @@ struct dma *dma_get(uint32_t dir, uint32_t cap, uint32_t dev, uint32_t flags)
 	if (!ret)
 		dmin->sref++;
 
-	trace_event(TRACE_CLASS_DMA, "dma_get() ID %d sref = %d "
-		    "busy channels %d", dmin->plat_data.id, dmin->sref,
-		    atomic_read(&dmin->num_channels_busy));
+	trace_event(TRACE_CLASS_DMA, "dma_get() ID %d sref = %d",
+		    dmin->plat_data.id, dmin->sref);
 
 	spin_unlock(dmin->lock);
 	return !ret ? dmin : NULL;

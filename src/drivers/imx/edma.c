@@ -99,7 +99,6 @@ static struct dma_chan_data *edma_channel_get(struct dma *dma,
 		return NULL;
 	}
 
-	atomic_add(&dma->num_channels_busy, 1);
 	channel->status = COMP_STATE_READY;
 	spin_unlock_irq(dma->lock, flags);
 
@@ -118,7 +117,6 @@ static void edma_channel_put(struct dma_chan_data *channel)
 
 	spin_lock_irq(dma->lock, flags);
 	channel->status = COMP_STATE_INIT;
-	atomic_sub(&channel->dma->num_channels_busy, 1);
 	spin_unlock_irq(dma->lock, flags);
 }
 

@@ -146,8 +146,6 @@ static struct dma_chan_data *dw_dma_channel_get(struct dma *dma,
 
 		dma->chan[i].status = COMP_STATE_READY;
 
-		atomic_add(&dma->num_channels_busy, 1);
-
 		/* return channel */
 		spin_unlock_irq(dma->lock, flags);
 		return &dma->chan[i];
@@ -182,7 +180,6 @@ static void dw_dma_channel_put_unlocked(struct dma_chan_data *channel)
 	dw_chan->ptr_data.start_ptr = 0;
 	dw_chan->ptr_data.end_ptr = 0;
 	dw_chan->ptr_data.buffer_bytes = 0;
-	atomic_sub(&channel->dma->num_channels_busy, 1);
 }
 
 /* channel must not be running when this is called */
@@ -993,9 +990,6 @@ static int dw_dma_probe(struct dma *dma)
 
 		dma_chan_set_data(chan, dw_chan);
 	}
-
-	/* init number of channels draining */
-	atomic_init(&dma->num_channels_busy, 0);
 
 	return 0;
 

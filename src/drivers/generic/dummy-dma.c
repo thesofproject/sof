@@ -230,8 +230,6 @@ static struct dma_chan_data *dummy_dma_channel_get(struct dma *dma,
 		if (dma->chan[i].status == COMP_STATE_INIT) {
 			dma->chan[i].status = COMP_STATE_READY;
 
-			atomic_add(&dma->num_channels_busy, 1);
-
 			/* return channel */
 			spin_unlock_irq(dma->lock, flags);
 			return &dma->chan[i];
@@ -260,7 +258,6 @@ static void dummy_dma_channel_put_unlocked(struct dma_chan_data *channel)
 	ch->w_pos = 0;
 
 	channel->status = COMP_STATE_INIT;
-	atomic_sub(&channel->dma->num_channels_busy, 1);
 }
 
 /**
@@ -465,8 +462,6 @@ static int dummy_dma_probe(struct dma *dma)
 		dma->chan[i].status = COMP_STATE_INIT;
 		dma->chan[i].private = &chanp[i];
 	}
-
-	atomic_init(&dma->num_channels_busy, 0);
 
 	return 0;
 }

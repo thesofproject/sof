@@ -201,7 +201,6 @@ struct dma {
 	spinlock_t *lock;	/**< locking mechanism */
 	int sref;		/**< simple ref counter, guarded by lock */
 	const struct dma_ops *ops;
-	atomic_t num_channels_busy; /* number of busy channels */
 	struct dma_chan_data *chan; /* channels array */
 	void *private;
 };

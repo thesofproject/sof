@@ -402,8 +402,6 @@ static struct dma_chan_data *hda_dma_channel_get(struct dma *dma,
 	if (dma->chan[channel].status == COMP_STATE_INIT) {
 		dma->chan[channel].status = COMP_STATE_READY;
 
-		atomic_add(&dma->num_channels_busy, 1);
-
 		/* return channel */
 		spin_unlock_irq(dma->lock, flags);
 		return &dma->chan[channel];
@@ -440,8 +438,6 @@ static void hda_dma_channel_put(struct dma_chan_data *channel)
 	spin_lock_irq(dma->lock, flags);
 	hda_dma_channel_put_unlocked(channel);
 	spin_unlock_irq(dma->lock, flags);
-
-	atomic_sub(&dma->num_channels_busy, 1);
 }
 
 static int hda_dma_start(struct dma_chan_data *channel)
@@ -753,9 +749,6 @@ static int hda_dma_probe(struct dma *dma)
 
 		dma_chan_set_data(chan, hda_chan);
 	}
-
-	/* init number of channels draining */
-	atomic_init(&dma->num_channels_busy, 0);
 
 	return 0;
 
