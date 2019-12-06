@@ -8,10 +8,9 @@
 #include <sof/common.h>
 #include <sof/debug/panic.h>
 #include <sof/drivers/interrupt.h>
-#include <sof/lib/alloc.h>
+#include <sof/lib/cache.h>
 #include <sof/list.h>
 #include <sof/string.h>
-#include <ipc/topology.h>
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -20,7 +19,7 @@ struct comp_data {
 	struct list_item list;		/* list of components */
 };
 
-static struct comp_data *cd;
+static struct comp_data cd;
 
 static struct comp_driver *get_drv(uint32_t type)
 {
@@ -31,7 +30,7 @@ static struct comp_driver *get_drv(uint32_t type)
 	irq_local_disable(flags);
 
 	/* search driver list for driver type */
-	list_for_item(clist, &cd->list) {
+	list_for_item(clist, &cd.list) {
 
 		drv = container_of(clist, struct comp_driver, list);
 		if (drv->type == type)
@@ -85,7 +84,9 @@ int comp_register(struct comp_driver *drv)
 	uint32_t flags;
 
 	irq_local_disable(flags);
-	list_item_prepend(&drv->list, &cd->list);
+	dcache_invalidate_region(drv, sizeof(*drv));
+	list_item_prepend(&drv->list, &cd.list);
+	dcache_writeback_region(drv, sizeof(*drv));
 	irq_local_enable(flags);
 
 	return 0;
@@ -96,7 +97,9 @@ void comp_unregister(struct comp_driver *drv)
 	uint32_t flags;
 
 	irq_local_disable(flags);
+	dcache_invalidate_region(drv, sizeof(*drv));
 	list_item_del(&drv->list);
+	dcache_writeback_region(drv, sizeof(*drv));
 	irq_local_enable(flags);
 }
 
@@ -194,8 +197,7 @@ int comp_set_state(struct comp_dev *dev, int cmd)
 
 void sys_comp_init(void)
 {
-	cd = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(*cd));
-	list_init(&cd->list);
+	list_init(&cd.list);
 }
 
 int comp_get_copy_limits(struct comp_dev *dev, struct comp_copy_limits *cl)
