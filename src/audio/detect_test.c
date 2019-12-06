@@ -125,6 +125,11 @@ static void notify_host(struct comp_dev *dev)
 	event.num_elems = 0;
 
 	ipc_send_comp_notification(dev, &event);
+
+	/* Send queued IPC message right away to wake host up ASAP
+	 * NOTE! This will only send one IPC from the list!
+	 */
+	ipc_platform_send_msg();
 }
 
 static void notify_kpb(struct comp_dev *dev)
