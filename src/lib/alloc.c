@@ -195,8 +195,10 @@ static void *rmalloc_sys(int zone, int caps, int core, size_t bytes)
 		dcache_writeback_invalidate_region(cpu_heap,
 						   sizeof(*cpu_heap));
 
-	if ((zone & RZONE_FLAG_MASK) == RZONE_FLAG_UNCACHED)
+	if ((zone & RZONE_FLAG_MASK) == RZONE_FLAG_UNCACHED) {
+		dcache_invalidate_region(ptr, bytes);
 		ptr = cache_to_uncache(ptr);
+	}
 
 	return ptr;
 }
@@ -427,8 +429,10 @@ static void *get_ptr_from_heap(struct mm_heap *heap, int zone, uint32_t caps,
 		break;
 	}
 
-	if (ptr && (zone & RZONE_FLAG_MASK) == RZONE_FLAG_UNCACHED)
+	if (ptr && (zone & RZONE_FLAG_MASK) == RZONE_FLAG_UNCACHED) {
+		dcache_invalidate_region(ptr, bytes);
 		ptr = cache_to_uncache(ptr);
+	}
 
 	return ptr;
 }
@@ -777,8 +781,10 @@ static void *alloc_heap_buffer(struct mm_heap *heap, int zone, uint32_t caps,
 		}
 	}
 
-	if (ptr && ((zone & RZONE_FLAG_MASK) == RZONE_FLAG_UNCACHED))
+	if (ptr && ((zone & RZONE_FLAG_MASK) == RZONE_FLAG_UNCACHED)) {
+		dcache_invalidate_region(ptr, bytes);
 		ptr = cache_to_uncache(ptr);
+	}
 
 #if CONFIG_DEBUG_BLOCK_FREE
 	if (ptr)
