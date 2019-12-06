@@ -47,6 +47,8 @@ struct dma *dma_get(uint32_t dir, uint32_t cap, uint32_t dev, uint32_t flags)
 	/* find DMAC with free channels that matches request */
 	for (d = lib_dma.dma_array; d < lib_dma.dma_array + lib_dma.num_dmas;
 	     d++) {
+		dcache_invalidate_region(d, sizeof(*d));
+
 		/* skip if this DMAC does not support the requested dir */
 		if (dir && (d->plat_data.dir & dir) == 0)
 			continue;
@@ -90,6 +92,8 @@ struct dma *dma_get(uint32_t dir, uint32_t cap, uint32_t dev, uint32_t flags)
 		for (d = lib_dma.dma_array;
 		     d < lib_dma.dma_array + lib_dma.num_dmas;
 		     d++) {
+			dcache_invalidate_region(d, sizeof(*d));
+
 			trace_error(TRACE_CLASS_DMA, " DMAC ID %d users %d",
 				    d->plat_data.id, d->sref);
 			trace_error(TRACE_CLASS_DMA, "  caps 0x%x dev 0x%x",
@@ -124,6 +128,8 @@ struct dma *dma_get(uint32_t dir, uint32_t cap, uint32_t dev, uint32_t flags)
 	trace_event(TRACE_CLASS_DMA, "dma_get() ID %d sref = %d",
 		    dmin->plat_data.id, dmin->sref);
 
+	dcache_writeback_region(dmin, sizeof(*dmin));
+
 	spin_unlock(dmin->lock);
 	return !ret ? dmin : NULL;
 }
@@ -131,6 +137,8 @@ struct dma *dma_get(uint32_t dir, uint32_t cap, uint32_t dev, uint32_t flags)
 void dma_put(struct dma *dma)
 {
 	int ret;
+
+	dcache_invalidate_region(dma, sizeof(*dma));
 
 	spin_lock(dma->lock);
 	if (--dma->sref == 0) {
@@ -143,6 +151,9 @@ void dma_put(struct dma *dma)
 	}
 	trace_event(TRACE_CLASS_DMA, "dma_put(), dma = %p, sref = %d",
 		   (uintptr_t)dma, dma->sref);
+
+	dcache_writeback_region(dma, sizeof(*dma));
+
 	spin_unlock(dma->lock);
 }
 
