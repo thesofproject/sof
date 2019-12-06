@@ -4,6 +4,7 @@
 //
 // Author: Marcin Maka <marcin.maka@linux.intel.com>
 
+#include <sof/lib/cache.h>
 #include <sof/lib/dai.h>
 #include <sof/spinlock.h>
 #include <sof/trace/trace.h>
@@ -53,6 +54,8 @@ struct dai *dai_get(uint32_t type, uint32_t index, uint32_t flags)
 		return NULL; /* type not found */
 
 	for (d = dti->dai_array; d < dti->dai_array + dti->num_dais; d++) {
+		dcache_invalidate_region(d, sizeof(*d));
+
 		if (d->index != index)
 			continue;
 		/* device created? */
@@ -69,6 +72,8 @@ struct dai *dai_get(uint32_t type, uint32_t index, uint32_t flags)
 		trace_dai("dai_get(), d = %p, sref = %d",
 			  (uintptr_t)d, d->sref);
 
+		dcache_writeback_region(d, sizeof(*d));
+
 		spin_unlock(d->lock);
 
 		return !ret ? d : NULL;
@@ -82,6 +87,8 @@ void dai_put(struct dai *dai)
 {
 	int ret;
 
+	dcache_invalidate_region(dai, sizeof(*dai));
+
 	spin_lock(dai->lock);
 	if (--dai->sref == 0) {
 		ret = dai_remove(dai);
@@ -93,5 +100,8 @@ void dai_put(struct dai *dai)
 	}
 	trace_event(TRACE_CLASS_DAI, "dai_put(), dai = %p, sref = %d",
 		    (uintptr_t)dai, dai->sref);
+
+	dcache_writeback_region(dai, sizeof(*dai));
+
 	spin_unlock(dai->lock);
 }
