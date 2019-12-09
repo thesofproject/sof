@@ -30,4 +30,5 @@ const struct sof_ipc_cc_version cc_version = {
 	.major = CC_MAJOR,
 	CC_NAME_COPY(.name),
 	CC_OPTIM_COPY(.optim),
+	.desc = CC_DESC,
 };
