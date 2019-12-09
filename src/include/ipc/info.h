@@ -136,6 +136,7 @@ struct sof_ipc_cc_version {
 
 	char name[16]; /* null terminated compiler name */
 	char optim[4]; /* null terminated compiler -O flag value */
+	char desc[]; /* null terminated compiler description */
 } __attribute__((packed));
 
 extern const struct sof_ipc_cc_version cc_version;

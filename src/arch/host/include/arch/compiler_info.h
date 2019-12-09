@@ -21,5 +21,6 @@
 #define CC_MINOR __GNUC_MINOR__
 #define CC_MICRO __GNUC_PATCHLEVEL__
 #define CC_NAME "GCC"
+#define CC_DESC ""
 
 #endif /* __ARCH_COMPILER_INFO_H__ */
