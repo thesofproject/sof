@@ -56,7 +56,7 @@ struct comp_data {
 	bool is_internal_buffer_full;
 	size_t buffered_data;
 	struct dd draining_task_data;
-	size_t kpb_buffer_size;
+	size_t hb_buffer_size;
 	size_t host_buffer_size;
 	size_t host_period_size;
 };
@@ -181,7 +181,7 @@ static size_t kpb_allocate_history_buffer(struct comp_data *kpb)
 	struct hb *history_buffer;
 	struct hb *new_hb = NULL;
 	/*! Total allocation size */
-	size_t hb_size = kpb->kpb_buffer_size;
+	size_t hb_size = kpb->hb_buffer_size;
 	/*! Current allocation size */
 	size_t ca_size = hb_size;
 	/*! Memory caps priorites for history buffer */
@@ -396,7 +396,7 @@ static int kpb_prepare(struct comp_dev *dev)
 	kpb_change_state(kpb, KPB_STATE_PREPARING);
 	kpb->kpb_no_of_clients = 0;
 	kpb->buffered_data = 0;
-	kpb->kpb_buffer_size = KPB_MAX_BUFFER_SIZE(kpb->config.sampling_width);
+	kpb->hb_buffer_size = KPB_MAX_BUFFER_SIZE(kpb->config.sampling_width);
 	kpb->sel_sink = NULL;
 	kpb->host_sink = NULL;
 
@@ -405,9 +405,8 @@ static int kpb_prepare(struct comp_dev *dev)
 		allocated_size = kpb_allocate_history_buffer(kpb);
 
 		/* Have we allocated what we requested? */
-		if (allocated_size < kpb->kpb_buffer_size) {
-			trace_kpb_error_with_ids(dev, "Failed to allocate "
-						 "space for KPB buffer/s");
+		if (allocated_size < kpb->hb_buffer_size) {
+			trace_kpb_error("kpb_prepare() error: failed to allocate space for KPB buffer/s");
 			kpb_free_history_buffer(kpb->history_buffer);
 			kpb->history_buffer = NULL;
 			return -EINVAL;
@@ -597,7 +596,7 @@ static int kpb_copy(struct comp_dev *dev)
 		/* Buffer source data internally in history buffer for future
 		 * use by clients.
 		 */
-		if (source->avail <= kpb->kpb_buffer_size) {
+		if (source->avail <= kpb->hb_buffer_size) {
 			ret = kpb_buffer_data(dev, source, copy_bytes);
 			if (ret) {
 				trace_kpb_error_with_ids(dev, "kpb_copy(): "
@@ -605,7 +604,7 @@ static int kpb_copy(struct comp_dev *dev)
 							 "failed.");
 				goto out;
 			}
-			if (kpb->buffered_data < kpb->kpb_buffer_size)
+			if (kpb->buffered_data < kpb->hb_buffer_size)
 				kpb->buffered_data += copy_bytes;
 			else
 				kpb->is_internal_buffer_full = true;
@@ -652,7 +651,7 @@ static int kpb_copy(struct comp_dev *dev)
 		/* In draining state we only buffer data in internal,
 		 * history buffer.
 		 */
-		if (source->avail <= kpb->kpb_buffer_size) {
+		if (source->avail <= kpb->hb_buffer_size) {
 			ret = kpb_buffer_data(dev, source, source->avail);
 			if (ret) {
 				trace_kpb_error_with_ids(dev, "kpb_copy(): "
@@ -927,9 +926,8 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 		trace_kpb_error_with_ids(dev, "kpb_init_draining() error: "
 					 "sink not ready for draining");
 	} else if (kpb->buffered_data < history_depth ||
-		   kpb->kpb_buffer_size < history_depth) {
-		trace_kpb_error_with_ids(dev, "kpb_init_draining() error: "
-					 "not enough data in history buffer");
+		   kpb->hb_buffer_size < history_depth) {
+		trace_kpb_error("kpb_init_draining() error: not enough data in history buffer");
 	} else if (!validate_host_params(host_period_size,
 					 host_buffer_size,
 					 bytes_per_ms)) {
@@ -998,6 +996,7 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 		 * take place. This time will be used to synchronize us with
 		 * an end application interrupts.
 		 */
+
 		drain_interval = (host_period_size / bytes_per_ms) *
 				 ticks_per_ms;
 		/* In draining intervals we will fill only two periods
