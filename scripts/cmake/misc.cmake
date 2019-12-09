@@ -25,6 +25,19 @@ function(read_kconfig_config config_file)
 	endforeach()
 endfunction()
 
+# create optimization flags based on cmake variables set from Kconfig
+function(get_optimization_flag OUT_VAR)
+	if(CONFIG_OPTIMIZE_FOR_PERFORMANCE)
+		set(${OUT_VAR} "O2" PARENT_SCOPE)
+	elseif(CONFIG_OPTIMIZE_FOR_SIZE)
+		set(${OUT_VAR} "Os" PARENT_SCOPE)
+	elseif(CONFIG_OPTIMIZE_FOR_DEBUG)
+		set(${OUT_VAR} "Og" PARENT_SCOPE)
+	elseif(CONFIG_OPTIMIZE_FOR_NONE)
+		set(${OUT_VAR} "O0" PARENT_SCOPE)
+	endif()
+endfunction()
+
 # Adds sources to target like target_sources, but assumes that
 # paths are relative to subdirectory.
 # Works like:
