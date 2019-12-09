@@ -119,7 +119,7 @@ PCM_PLAYBACK_ADD(Headphone, 0, PIPELINE_PCM_1)
 PCM_CAPTURE_ADD(Headset mics, 1, PIPELINE_PCM_2)
 PCM_PLAYBACK_ADD(SDW1-speakers, 2, PIPELINE_PCM_3)
 PCM_PLAYBACK_ADD(SDW2-speakers, 3, PIPELINE_PCM_4)
-PCM_CAPTURE_ADD(DMIC, 4, PIPELINE_PCM_5)
+PCM_CAPTURE_ADD(Microphones, 4, PIPELINE_PCM_5)
 
 #
 # BE configurations - overrides config in ACPI if present

@@ -56,7 +56,7 @@ DAI_ADD(sof/pipe-dai-capture.m4,
 dnl PCM_DUPLEX_ADD(name, pcm_id, playback, capture)
 
 dnl PCM_CAPTURE_ADD(name, pipeline, capture)
-PCM_CAPTURE_ADD(DMIC01, 1, PIPELINE_PCM_1)
+PCM_CAPTURE_ADD(DMIC, 1, PIPELINE_PCM_1)
 
 #
 # BE configurations - overrides config in ACPI if present
