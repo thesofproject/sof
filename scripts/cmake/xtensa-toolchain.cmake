@@ -45,3 +45,21 @@ set(CMAKE_FIND_ROOT_PATH  ".")
 set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
 set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
 set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
+
+if(XCC)
+	# get compiler description
+	execute_process(
+		COMMAND ${CMAKE_C_COMPILER} --show-config=config
+		OUTPUT_VARIABLE cc_config_output
+		OUTPUT_STRIP_TRAILING_WHITESPACE
+		ERROR_QUIET
+	)
+
+	string(REGEX MATCH "[a-zA-Z]+-[0-9]+.[0-9]+-[a-zA-Z]*" XCC_TOOLS_VERSION "${cc_config_output}")
+	if(NOT XCC_TOOLS_VERSION)
+		message(WARNING "Couldn't get compiler description from '${cc_config_output}'")
+		set(XCC_TOOLS_VERSION "UNKNOWN-${CMAKE_SYSTEM_NAME}")
+	endif()
+else()
+	string(REGEX MATCH "([^\/\\]+)$" XCC_TOOLS_VERSION "${TOOLCHAIN}")
+endif()
