@@ -4,6 +4,7 @@
 //
 // Author: Daniel Baluta <daniel.baluta@nxp.com>
 
+#include <sof/compiler_info.h>
 #include <sof/debug/debug.h>
 #include <sof/drivers/edma.h>
 #include <sof/drivers/interrupt.h>
@@ -122,9 +123,18 @@ struct ll_schedule_domain *platform_dma_domain;
 
 int platform_boot_complete(uint32_t boot_message)
 {
-	mailbox_dspbox_write(0, &ready, sizeof(ready));
-	mailbox_dspbox_write(sizeof(ready), &sram_window,
+	uint32_t mb_offset = 0;
+
+	mailbox_dspbox_write(mb_offset, &ready, sizeof(ready));
+	mb_offset = mb_offset + sizeof(ready);
+
+	mailbox_dspbox_write(mb_offset, &sram_window,
 			     sram_window.ext_hdr.hdr.size);
+	mb_offset = mb_offset + sram_window.ext_hdr.hdr.size;
+
+	/* variable length compiler description is a last field of cc_version */
+	mailbox_dspbox_write(mb_offset, &cc_version,
+			     cc_version.ext_hdr.hdr.size);
 
 	/* now interrupt host to tell it we are done booting */
 	imx_mu_xcr_rmw(IMX_MU_xCR_GIRn(1), 0);

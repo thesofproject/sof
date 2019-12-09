@@ -13,6 +13,7 @@
 #endif
 #include <cavs/mem_window.h>
 #include <sof/common.h>
+#include <sof/compiler_info.h>
 #include <sof/debug/debug.h>
 #include <sof/drivers/dw-dma.h>
 #include <sof/drivers/idc.h>
@@ -275,11 +276,20 @@ int platform_boot_complete(uint32_t boot_message)
 
 int platform_boot_complete(uint32_t boot_message)
 {
-	mailbox_dspbox_write(0, &ready, sizeof(ready));
+	uint32_t mb_offset = 0;
+
+	mailbox_dspbox_write(mb_offset, &ready, sizeof(ready));
+	mb_offset = mb_offset + sizeof(ready);
+
 #if CONFIG_MEM_WND
-	mailbox_dspbox_write(sizeof(ready), &sram_window,
-		sram_window.ext_hdr.hdr.size);
+	mailbox_dspbox_write(mb_offset, &sram_window,
+			     sram_window.ext_hdr.hdr.size);
+	mb_offset = mb_offset + sram_window.ext_hdr.hdr.size;
 #endif
+
+	/* variable length compiler description is a last field of cc_version */
+	mailbox_dspbox_write(mb_offset, &cc_version,
+			     cc_version.ext_hdr.hdr.size);
 
 	/* tell host we are ready */
 #if CAVS_VERSION == CAVS_VERSION_1_5
