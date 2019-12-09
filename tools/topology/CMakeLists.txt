@@ -33,6 +33,7 @@ set(TPLGS
 	"sof-apl-keyword-detect\;sof-apl-keyword-detect"
 	"sof-bdw-codec\;sof-bdw-rt286\;-DCODEC=RT286"
 	"sof-bdw-codec\;sof-bdw-rt5640\;-DCODEC=RT5640"
+	"sof-bdw-codec\;sof-bdw-rt5677\;-DCODEC=RT5677"
 	"sof-byt-codec\;sof-byt-rt5640\;-DCODEC=RT5640\;-DPLATFORM=byt\;-DSSP_NUM=2"
 	"sof-byt-codec\;sof-byt-rt5645\;-DCODEC=RT5645\;-DPLATFORM=byt\;-DSSP_NUM=2"
 	"sof-byt-codec\;sof-byt-rt5651\;-DCODEC=RT5651\;-DPLATFORM=byt\;-DSSP_NUM=2"

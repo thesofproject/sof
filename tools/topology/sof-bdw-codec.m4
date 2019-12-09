@@ -1,6 +1,5 @@
 #
-ifelse(CODEC, `RT286', `# Topology for generic Broadwell board with RT286.', `')
-ifelse(CODEC, `RT5640', `# Topology for generic Broadwell board with RT5640.', `')
+`# Topology for generic bdw board with' CODEC
 #
 
 # Include topology builder
@@ -18,8 +17,8 @@ include(`sof/tokens.m4')
 # Include Broadwell DSP configuration
 include(`platform/intel/bdw.m4')
 
-define(PIPE_NAME, ifelse(CODEC, `RT5640', pipe-bdw-rt5640,
-	ifelse(CODEC, `RT286', pipe-bdw-rt286, `')))
+
+define(PIPE_NAME, pipe-bdw-`'CODEC`')
 
 #
 # Define the pipelines
@@ -35,7 +34,7 @@ define(PIPE_NAME, ifelse(CODEC, `RT5640', pipe-bdw-rt5640,
 # 1000us deadline on core 0 with priority 1
 PIPELINE_PCM_ADD(sof/pipe-low-latency-playback.m4,
 	1, 0, 2, s32le,
-	1000, 1, 0,
+	1000, 0, 0,
 	48000, 48000, 48000)
 
 # Low Latency capture pipeline 2 on PCM 0 using max 2 channels of s32le.
@@ -96,3 +95,9 @@ DAI_CONFIG(SSP, 0, 0, Codec,
 		      SSP_CLOCK(fsync, 48000, codec_slave),
 		      SSP_TDM(2, 25, 3, 3),
 		      SSP_CONFIG_DATA(SSP, 0, 24)))
+
+dnl CODEC is defined and will be expanded, need to undefine it before use
+undefine(`CODEC')
+VIRTUAL_WIDGET(SSP0 CODEC OUT, output, 0)
+VIRTUAL_WIDGET(SSP0 CODEC IN, input, 1)
+VIRTUAL_WIDGET(DSP Capture, input, 2)
