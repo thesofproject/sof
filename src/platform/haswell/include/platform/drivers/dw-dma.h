@@ -16,11 +16,11 @@
 struct dma;
 struct dma_chan_data;
 
-/* number of supported DW-DMACs */
-#define PLATFORM_NUM_DW_DMACS	2
+/* number of supported DW-DMACs (DMAC0 is not related with SSP)*/
+#define PLATFORM_NUM_DW_DMACS	1
 
-/* index of the first DW-DMAC in the array */
-#define PLATFORM_DW_DMA_INDEX	0
+/* index of the first DW-DMAC in the array (DMAC0 is not related with SSP)*/
+#define PLATFORM_DW_DMA_INDEX	1
 
 /* DMA treats PHY addresses as host address unless within DSP region */
 #define PLATFORM_DW_DMA_HOST_MASK	0xFFF00000
