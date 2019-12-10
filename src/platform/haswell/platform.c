@@ -211,9 +211,9 @@ int platform_init(struct sof *sof)
 	trace_point(TRACE_BOOT_PLATFORM_CPU_FREQ);
 	clock_set_freq(CLK_CPU(cpu_get_id()), CLK_MAX_CPU_HZ);
 
-	/* set SSP clock to 25M */
+	/* set SSP clock to 24M */
 	trace_point(TRACE_BOOT_PLATFORM_SSP_FREQ);
-	clock_set_freq(CLK_SSP, 25000000);
+	clock_set_freq(CLK_SSP, 24000000);
 
 	/* init DMACs */
 	trace_point(TRACE_BOOT_PLATFORM_DMA);
