@@ -282,7 +282,7 @@ do
 		COMPILER="gcc"
 
 		case $j in
-			byt|cht|sue) DEFCONFIG_PATCH="_gcc";;
+			byt|cht|cnl|sue) DEFCONFIG_PATCH="_gcc";;
 			*)	     DEFCONFIG_PATCH="";;
 		esac
 	fi
