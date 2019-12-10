@@ -17,6 +17,7 @@
 #include <sof/drivers/interrupt.h>
 #include <sof/trace/trace.h>
 #include <config.h>
+#include <stdint.h>
 
 /*
  * Lock debugging provides a simple interface to debug deadlocks. The rmbox
@@ -68,7 +69,6 @@
 #include <sof/trace/trace.h>
 #include <ipc/trace.h>
 #include <user/trace.h>
-#include <stdint.h>
 
 #define DBG_LOCK_USERS		8
 #define DBG_LOCK_TRIES		10000
@@ -83,15 +83,8 @@
 extern uint32_t lock_dbg_atomic;
 extern uint32_t lock_dbg_user[DBG_LOCK_USERS];
 
-/* all SMP spinlocks need init, nothing todo on UP */
-#define spinlock_init(lock) \
-	do { \
-		arch_spinlock_init(lock); \
-		(*lock)->user = __LINE__; \
-	} while (0)
-
 /* panic on deadlock */
-#define spin_try_lock_dbg(lock) \
+#define spin_try_lock_dbg(lock, line) \
 	do { \
 		int __tries; \
 		for (__tries = DBG_LOCK_TRIES;  __tries > 0; __tries--) { \
@@ -100,21 +93,21 @@ extern uint32_t lock_dbg_user[DBG_LOCK_USERS];
 		} \
 		if (__tries == 0) { \
 			trace_lock_error("DED"); \
-			trace_lock_error("line: %d", __LINE__); \
+			trace_lock_error("line: %d", line); \
 			trace_lock_error("user: %d", (lock)->user); \
 			panic(SOF_IPC_PANIC_DEADLOCK); /* lock not acquired */ \
 		} \
 	} while (0)
 
 #if CONFIG_DEBUG_LOCKS_VERBOSE
-#define spin_lock_log(lock) \
+#define spin_lock_log(lock, line) \
 	do { \
 		if (lock_dbg_atomic) { \
 			int __i = 0; \
 			int  __count = lock_dbg_atomic >= DBG_LOCK_USERS \
 				? DBG_LOCK_USERS : lock_dbg_atomic; \
 			trace_lock_error("eal"); \
-			trace_lock_error("line: %d", __LINE__); \
+			trace_lock_error("line: %d", line); \
 			trace_lock_error("dbg_atomic: %d", lock_dbg_atomic); \
 			for (__i = 0; __i < __count; __i++) { \
 				trace_lock_error("value: %d", \
@@ -124,101 +117,106 @@ extern uint32_t lock_dbg_user[DBG_LOCK_USERS];
 		} \
 	} while (0)
 
-#define spin_lock_dbg() \
+#define spin_lock_dbg(line) \
 	do { \
 		trace_lock("LcE"); \
-		trace_lock("line: %d", __LINE__); \
+		trace_lock("line: %d", line); \
 	} while (0)
 
-#define spin_unlock_dbg() \
+#define spin_unlock_dbg(line) \
 	do { \
 		trace_lock("LcX"); \
-		trace_lock("line: %d", __LINE__); \
+		trace_lock("line: %d", line); \
 	} while (0)
 
 #else
-#define spin_lock_log(lock)
-#define spin_lock_dbg()
-#define spin_unlock_dbg()
+#define spin_lock_log(lock, line) do {} while (0)
+#define spin_lock_dbg(line) do {} while (0)
+#define spin_unlock_dbg(line) do {} while (0)
 #endif
-
-/* does nothing on UP systems */
-#define spin_lock(lock) \
-	do { \
-		spin_lock_dbg(); \
-		spin_lock_log(lock); \
-		spin_try_lock_dbg(lock); \
-	} while (0)
-
-#define spin_unlock(lock) \
-	do { \
-		arch_spin_unlock(lock); \
-		spin_unlock_dbg(); \
-	} while (0)
-
-/* disables all IRQ sources and takes lock - enter atomic context */
-#define spin_lock_irq(lock, flags) \
-	do { \
-		flags = interrupt_global_disable(); \
-		lock_dbg_atomic++; \
-		spin_lock(lock); \
-		if (lock_dbg_atomic < DBG_LOCK_USERS) \
-			lock_dbg_user[lock_dbg_atomic - 1] = (lock)->user; \
-	} while (0)
-
-/* re-enables current IRQ sources and releases lock - leave atomic context */
-#define spin_unlock_irq(lock, flags) \
-	do { \
-		spin_unlock(lock); \
-		lock_dbg_atomic--; \
-		interrupt_global_enable(flags); \
-	} while (0)
 
 #else
 
 #define trace_lock(__e) do {} while (0)
 #define tracev_lock(__e) do {} while (0)
 
-#define spin_lock_dbg() do {} while (0)
-#define spin_unlock_dbg() do {} while (0)
+#define spin_lock_dbg(line) do {} while (0)
+#define spin_unlock_dbg(line) do {} while (0)
 
-/* all SMP spinlocks need init, nothing todo on UP */
-#define spinlock_init(lock) \
-	arch_spinlock_init(lock)
+static inline int _spin_try_lock(spinlock_t *lock, int line)
+{
+	spin_lock_dbg(line);
+	return arch_try_lock(lock);
+}
 
-/* does nothing on UP systems */
-#define spin_lock(lock) \
-	do { \
-		spin_lock_dbg(); \
-		arch_spin_lock(lock); \
-	} while (0)
-
-#define spin_try_lock(lock) \
-	({ \
-		spin_lock_dbg(); \
-		arch_try_lock(lock); \
-	})
-
-#define spin_unlock(lock) \
-	do { \
-		arch_spin_unlock(lock); \
-		spin_unlock_dbg(); \
-	} while (0)
-
-/* disables all IRQ sources and takes lock - enter atomic context */
-#define spin_lock_irq(lock, flags) \
-	do { \
-		flags = interrupt_global_disable(); \
-		spin_lock(lock); \
-	} while (0)
-
-/* re-enables current IRQ sources and releases lock - leave atomic context */
-#define spin_unlock_irq(lock, flags) \
-	do { \
-		spin_unlock(lock); \
-		interrupt_global_enable(flags); \
-	} while (0)
+#define spin_try_lock(lock) _spin_try_lock(lock, __LINE__)
 
 #endif
+
+/* all SMP spinlocks need init, nothing todo on UP */
+static inline void _spinlock_init(spinlock_t **lock, int line)
+{
+	arch_spinlock_init(lock);
+#if CONFIG_DEBUG_LOCKS
+	(*lock)->user = line;
+#endif
+}
+
+#define spinlock_init(lock) _spinlock_init(lock, __LINE__)
+
+/* does nothing on UP systems */
+static inline void _spin_lock(spinlock_t *lock, int line)
+{
+	spin_lock_dbg(line);
+#if CONFIG_DEBUG_LOCKS
+	spin_lock_log(lock, line);
+	spin_try_lock_dbg(lock, line);
+#else
+	arch_spin_lock(lock);
+#endif
+}
+
+#define spin_lock(lock) _spin_lock(lock, __LINE__)
+
+/* disables all IRQ sources and takes lock - enter atomic context */
+static inline uint32_t _spin_lock_irq(spinlock_t *lock)
+{
+	uint32_t flags;
+
+	flags = interrupt_global_disable();
+#if CONFIG_DEBUG_LOCKS
+	lock_dbg_atomic++;
+#endif
+	spin_lock(lock);
+#if CONFIG_DEBUG_LOCKS
+	if (lock_dbg_atomic < DBG_LOCK_USERS)
+		lock_dbg_user[lock_dbg_atomic - 1] = (lock)->user;
+#endif
+	return flags;
+}
+
+#define spin_lock_irq(lock, flags) (flags = _spin_lock_irq(lock))
+
+static inline void _spin_unlock(spinlock_t *lock, int line)
+{
+	arch_spin_unlock(lock);
+#if CONFIG_DEBUG_LOCKS
+	spin_unlock_dbg(line);
+#endif
+}
+
+#define spin_unlock(lock) _spin_unlock(lock, __LINE__)
+
+/* re-enables current IRQ sources and releases lock - leave atomic context */
+static inline void _spin_unlock_irq(spinlock_t *lock, uint32_t flags, int line)
+{
+	_spin_unlock(lock, line);
+#if CONFIG_DEBUG_LOCKS
+	lock_dbg_atomic--;
+#endif
+	interrupt_global_enable(flags);
+}
+
+#define spin_unlock_irq(lock, flags) _spin_unlock_irq(lock, flags, __LINE__)
 
 #endif /* __SOF_SPINLOCK_H__ */
