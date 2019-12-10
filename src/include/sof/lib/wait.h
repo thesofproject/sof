@@ -17,6 +17,7 @@
 #include <sof/platform.h>
 #include <sof/schedule/schedule.h>
 #include <sof/schedule/task.h>
+#include <sof/spinlock.h>
 #include <sof/trace/trace.h>
 #include <user/trace.h>
 #include <config.h>

@@ -15,6 +15,10 @@ struct spinlock {
 
 static inline void arch_spinlock_init(struct spinlock **lock) {}
 static inline void arch_spin_lock(struct spinlock *lock) {}
+static inline int arch_try_lock(struct spinlock *lock)
+{
+	return 1;
+}
 static inline void arch_spin_unlock(struct spinlock *lock) {}
 
 #endif /* __ARCH_SPINLOCK_H__ */
