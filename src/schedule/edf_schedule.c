@@ -28,7 +28,7 @@ struct edf_schedule_data {
 	int irq;
 };
 
-struct scheduler_ops schedule_edf_ops;
+const struct scheduler_ops schedule_edf_ops;
 
 static void schedule_edf_task_complete(void *data, struct task *task);
 static void schedule_edf_task_running(void *data, struct task *task);
@@ -312,7 +312,7 @@ static void schedule_edf(void *data)
 	interrupt_set(edf_sch->irq);
 }
 
-struct scheduler_ops schedule_edf_ops = {
+const struct scheduler_ops schedule_edf_ops = {
 	.schedule_task		= schedule_edf_task,
 	.schedule_task_init	= schedule_edf_task_init,
 	.schedule_task_running	= schedule_edf_task_running,

@@ -42,7 +42,7 @@ struct dma_domain {
 	struct dma_domain_data data[PLATFORM_NUM_DMACS][PLATFORM_MAX_DMA_CHAN];
 };
 
-struct ll_schedule_domain_ops dma_multi_chan_domain_ops;
+const struct ll_schedule_domain_ops dma_multi_chan_domain_ops;
 
 /**
  * \brief Generic DMA interrupt handler.
@@ -336,7 +336,7 @@ struct ll_schedule_domain *dma_multi_chan_domain_init(struct dma *dma_array,
 	return domain;
 }
 
-struct ll_schedule_domain_ops dma_multi_chan_domain_ops = {
+const struct ll_schedule_domain_ops dma_multi_chan_domain_ops = {
 	.domain_register	= dma_multi_chan_domain_register,
 	.domain_unregister	= dma_multi_chan_domain_unregister,
 	.domain_is_pending	= dma_multi_chan_domain_is_pending,

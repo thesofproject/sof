@@ -42,7 +42,7 @@ struct dma_domain {
 	struct dma_domain_data data[PLATFORM_CORE_COUNT];
 };
 
-struct ll_schedule_domain_ops dma_single_chan_domain_ops;
+const struct ll_schedule_domain_ops dma_single_chan_domain_ops;
 
 static void dma_single_chan_domain_enable(struct ll_schedule_domain *domain,
 					  int core);
@@ -529,7 +529,7 @@ struct ll_schedule_domain *dma_single_chan_domain_init(struct dma *dma_array,
 	return domain;
 }
 
-struct ll_schedule_domain_ops dma_single_chan_domain_ops = {
+const struct ll_schedule_domain_ops dma_single_chan_domain_ops = {
 	.domain_register	= dma_single_chan_domain_register,
 	.domain_unregister	= dma_single_chan_domain_unregister,
 	.domain_enable		= dma_single_chan_domain_enable,

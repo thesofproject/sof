@@ -23,7 +23,7 @@ struct timer_domain {
 	void *arg[PLATFORM_CORE_COUNT];
 };
 
-struct ll_schedule_domain_ops timer_domain_ops;
+const struct ll_schedule_domain_ops timer_domain_ops;
 
 static inline void timer_report_delay(int id, uint64_t delay)
 {
@@ -139,7 +139,7 @@ struct ll_schedule_domain *timer_domain_init(struct timer *timer, int clk,
 	return domain;
 }
 
-struct ll_schedule_domain_ops timer_domain_ops = {
+const struct ll_schedule_domain_ops timer_domain_ops = {
 	.domain_register	= timer_domain_register,
 	.domain_unregister	= timer_domain_unregister,
 	.domain_enable		= timer_domain_enable,
