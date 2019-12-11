@@ -149,7 +149,7 @@ static struct comp_dev *kpb_new(struct sof_ipc_comp *comp)
 		return NULL;
 	}
 
-	if (kpb->config.no_channels > KPB_MAX_SUPPORTED_CHANNELS) {
+	if (kpb->config.channels > KPB_MAX_SUPPORTED_CHANNELS) {
 		trace_kpb_error_with_ids(dev, "kpb_new() error: "
 		"no of channels exceeded the limit");
 		return NULL;
@@ -900,7 +900,7 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 	struct comp_data *kpb = comp_get_drvdata(dev);
 	bool is_sink_ready = (kpb->host_sink->sink->state == COMP_STATE_ACTIVE);
 	size_t sample_width = kpb->config.sampling_width;
-	size_t history_depth = cli->history_depth * kpb->config.no_channels *
+	size_t history_depth = cli->history_depth * kpb->config.channels *
 			       (kpb->config.sampling_freq / 1000) *
 			       (KPB_SAMPLE_CONTAINER_SIZE(sample_width) / 8);
 	struct hb *buff = kpb->history_buffer;
@@ -912,9 +912,9 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 	size_t host_period_size = kpb->host_period_size;
 	size_t host_buffer_size = kpb->host_buffer_size;
 	size_t ticks_per_ms = clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1);
-	size_t bytes_per_ms = KPB_SAMPLING_WIDTH *
+	size_t bytes_per_ms = KPB_SAMPLES_PER_MS *
 			      (KPB_SAMPLE_CONTAINER_SIZE(sample_width) / 8) *
-			      kpb->config.no_channels;
+			      kpb->config.channels;
 	size_t period_bytes_limit = 0;
 
 	trace_kpb_with_ids(dev, "kpb_init_draining(): requested draining "
@@ -1198,7 +1198,7 @@ static void kpb_drain_samples(void *source, struct audio_stream *sink,
 	size_t frames = KPB_BYTES_TO_FRAMES(size, sample_width);
 
 	for (i = 0; i < frames; i++) {
-		for (channel = 0; channel < KPB_NR_OF_CHANNELS; channel++) {
+		for (channel = 0; channel < KPB_NUM_OF_CHANNELS; channel++) {
 			switch (sample_width) {
 #if CONFIG_FORMAT_S16LE
 			case 16:
@@ -1246,7 +1246,7 @@ static void kpb_buffer_samples(const struct audio_stream *source,
 	size_t frames = KPB_BYTES_TO_FRAMES(size, sample_width);
 
 	for (i = 0; i < frames; i++) {
-		for (channel = 0; channel < KPB_NR_OF_CHANNELS; channel++) {
+		for (channel = 0; channel < KPB_NUM_OF_CHANNELS; channel++) {
 			switch (sample_width) {
 			case 16:
 				src = audio_stream_read_frag_s16(source, j);
@@ -1343,7 +1343,7 @@ static void kpb_copy_samples(struct audio_stream *sink,
 	size_t frames = KPB_BYTES_TO_FRAMES(size, sample_width);
 
 	for (i = 0; i < frames; i++) {
-		for (channel = 0; channel < KPB_NR_OF_CHANNELS; channel++) {
+		for (channel = 0; channel < KPB_NUM_OF_CHANNELS; channel++) {
 			switch (sample_width) {
 #if CONFIG_FORMAT_S16LE
 			case 16:
