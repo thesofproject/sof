@@ -35,7 +35,7 @@ struct ll_schedule_data {
 	struct ll_schedule_domain *domain;	/* scheduling domain */
 };
 
-struct scheduler_ops schedule_ll_ops;
+const struct scheduler_ops schedule_ll_ops;
 
 static bool schedule_ll_is_pending(struct ll_schedule_data *sch)
 {
@@ -458,7 +458,7 @@ int scheduler_init_ll(struct ll_schedule_domain *domain)
 	return 0;
 }
 
-struct scheduler_ops schedule_ll_ops = {
+const struct scheduler_ops schedule_ll_ops = {
 	.schedule_task		= schedule_ll_task,
 	.schedule_task_init	= schedule_ll_task_init,
 	.schedule_task_free	= schedule_ll_task_free,
