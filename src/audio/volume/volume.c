@@ -81,6 +81,8 @@ static enum task_state vol_work(void *data)
 	int again = 0;
 	int i;
 
+	cd->vol_ramp_active = true;
+
 	/* inc/dec each volume if it's not at target */
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++) {
 		/* skip if target reached */
@@ -96,6 +98,7 @@ static enum task_state vol_work(void *data)
 			/* ramp up, check if ramp completed */
 			if (vol >= cd->tvolume[i] || vol >= cd->vol_max) {
 				vol_update(cd, i);
+				cd->ramp_increment[i] = 0;
 			} else {
 				cd->volume[i] = vol;
 				again = 1;
@@ -105,11 +108,13 @@ static enum task_state vol_work(void *data)
 			if (vol <= 0) {
 				/* cannot ramp down below 0 */
 				vol_update(cd, i);
+				cd->ramp_increment[i] = 0;
 			} else {
 				/* ramp completed ? */
 				if (vol <= cd->tvolume[i] ||
 				    vol <= cd->vol_min) {
 					vol_update(cd, i);
+					cd->ramp_increment[i] = 0;
 				} else {
 					cd->volume[i] = vol;
 					again = 1;
@@ -122,7 +127,11 @@ static enum task_state vol_work(void *data)
 	}
 
 	/* do we need to continue ramping */
-	return again ? SOF_TASK_STATE_RESCHEDULE : SOF_TASK_STATE_COMPLETED;
+	if (again)
+		return SOF_TASK_STATE_RESCHEDULE;
+
+	cd->vol_ramp_active = 0;
+	return SOF_TASK_STATE_COMPLETED;
 }
 
 /**
@@ -212,9 +221,12 @@ static struct comp_dev *volume_new(struct sof_ipc_comp *comp)
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++) {
 		cd->volume[i]  =  MAX(MIN(cd->vol_max, VOL_ZERO_DB),
 				      cd->vol_min);
-		cd->tvolume[i] =  cd->volume[i];
+		cd->tvolume[i] = cd->volume[i];
+		cd->mvolume[i] = cd->volume[i];
+		cd->muted[i] = false;
 	}
 
+	cd->vol_ramp_active = false;
 	trace_volume_with_ids(dev,
 			      "vol->initial_ramp = %d, vol->ramp = %d, "
 			      "vol->min_value = %d, vol->max_value = %d",
@@ -359,10 +371,11 @@ static inline void volume_set_chan_mute(struct comp_dev *dev, int chan)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 
-	/* Check if not muted already */
-	if (cd->volume[chan] != 0)
-		cd->mvolume[chan] = cd->volume[chan];
-	cd->tvolume[chan] = 0;
+	if (!cd->muted[chan]) {
+		cd->mvolume[chan] = cd->tvolume[chan];
+		volume_set_chan(dev, chan, 0);
+		cd->muted[chan] = true;
+	}
 }
 
 /**
@@ -374,9 +387,10 @@ static inline void volume_set_chan_unmute(struct comp_dev *dev, int chan)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 
-	/* Check if muted */
-	if (cd->volume[chan] == 0)
-		cd->tvolume[chan] = cd->mvolume[chan];
+	if (cd->muted[chan]) {
+		cd->muted[chan] = false;
+		volume_set_chan(dev, chan, cd->mvolume[chan]);
+	}
 }
 
 /**
@@ -389,7 +403,8 @@ static int volume_ctrl_set_cmd(struct comp_dev *dev,
 			       struct sof_ipc_ctrl_data *cdata)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	int i;
+	uint32_t val;
+	int ch;
 	int j;
 	int ret = 0;
 
@@ -407,29 +422,29 @@ static int volume_ctrl_set_cmd(struct comp_dev *dev,
 				      "cdata->comp_id = %u",
 				      cdata->comp_id);
 		for (j = 0; j < cdata->num_elems; j++) {
-			trace_volume_with_ids(dev, "volume_ctrl_set_cmd(), "
-					      "SOF_CTRL_CMD_VOLUME, "
-					      "channel = %u, value = %u",
-					      cdata->chanv[j].channel,
-					      cdata->chanv[j].value);
-			i = cdata->chanv[j].channel;
-			if (i >= 0 && i < SOF_IPC_MAX_CHANNELS) {
-				ret = volume_set_chan(dev, i,
-						      cdata->chanv[j].value);
-			} else {
+			ch = cdata->chanv[j].channel;
+			val = cdata->chanv[j].value;
+			trace_volume_with_ids(dev, "volume_ctrl_set_cmd(), channel = %d"
+					      ", value = %u", ch, val);
+			if (ch < 0 || ch >= SOF_IPC_MAX_CHANNELS) {
 				trace_volume_error_with_ids(dev,
-							    "volume_ctrl_set_cmd() "
-							    "error: "
-							    "SOF_CTRL_CMD_VOLUME, "
-							    "invalid i = %u",
-							    i);
+							    "volume_ctrl_set_cmd(), illegal channel = %d",
+							    ch);
+				return -EINVAL;
 			}
-			if (ret)
-				return ret;
+
+			if (cd->muted[ch]) {
+				cd->mvolume[ch] = val;
+			} else {
+				ret = volume_set_chan(dev, ch, val);
+				if (ret)
+					return ret;
+			}
 		}
 
-		schedule_task(&cd->volwork, VOL_RAMP_UPDATE_US,
-			      VOL_RAMP_UPDATE_US);
+		if (!cd->vol_ramp_active)
+			schedule_task(&cd->volwork, VOL_RAMP_UPDATE_US,
+				      VOL_RAMP_UPDATE_US);
 		break;
 
 	case SOF_CTRL_CMD_SWITCH:
@@ -437,27 +452,26 @@ static int volume_ctrl_set_cmd(struct comp_dev *dev,
 				      "SOF_CTRL_CMD_SWITCH, "
 				      "cdata->comp_id = %u", cdata->comp_id);
 		for (j = 0; j < cdata->num_elems; j++) {
-			trace_volume_with_ids(dev, "volume_ctrl_set_cmd(), "
-					      "SOF_CTRL_CMD_SWITCH, "
-					      "channel = %u, value = %u",
-					      cdata->chanv[j].channel,
-					      cdata->chanv[j].value);
-			i = cdata->chanv[j].channel;
-			if (i >= 0 && i < SOF_IPC_MAX_CHANNELS) {
-				if (cdata->chanv[j].value)
-					volume_set_chan_unmute(dev, i);
-				else
-					volume_set_chan_mute(dev, i);
-			} else {
+			ch = cdata->chanv[j].channel;
+			val = cdata->chanv[j].value;
+			trace_volume_with_ids(dev, "volume_ctrl_set_cmd(), channel = %d"
+					      ", value = %u", ch, val);
+			if (ch < 0 || ch >= SOF_IPC_MAX_CHANNELS) {
 				trace_volume_error_with_ids(dev,
-							    "volume_ctrl_set_cmd() error: "
-							    "SOF_CTRL_CMD_SWITCH, invalid i = %u",
-							     i);
+							    "volume_ctrl_set_cmd(), illegal channel = %d",
+							    ch);
+				return -EINVAL;
 			}
+
+			if (val)
+				volume_set_chan_unmute(dev, ch);
+			else
+				volume_set_chan_mute(dev, ch);
 		}
 
-		schedule_task(&cd->volwork, VOL_RAMP_UPDATE_US,
-			      VOL_RAMP_UPDATE_US);
+		if (!cd->vol_ramp_active)
+			schedule_task(&cd->volwork, VOL_RAMP_UPDATE_US,
+				      VOL_RAMP_UPDATE_US);
 		break;
 
 	default:
