@@ -113,7 +113,7 @@ static int buffering_test_setup(void **state)
 	.size = sizeof(struct sof_kpb_config),
 	.no_channels = 2,
 	.sampling_freq = KPB_SAMPLNG_FREQUENCY,
-	.sampling_width = KPB_SAMPLING_WIDTH,
+	.sampling_width = KPB_SAMPLE_CONTAINER_SIZE(16),
 	};
 
 	/* Register KPB component to use its internal functions */
