@@ -34,6 +34,8 @@
 #define NUM_CPU_FREQ	8
 #define NUM_SSP_FREQ	2
 
+void platform_clock_init(void);
+
 #endif /* __PLATFORM_LIB_CLK_H__ */
 
 #else
