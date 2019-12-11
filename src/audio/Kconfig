@@ -236,4 +236,10 @@ config FORMAT_FLOAT
 	help
 	  Support floating point processing data format
 
+config FORMAT_CONVERT_HIFI3
+	bool "HIFI3 optimized conversion"
+	default n
+	help
+	  Use HIFI3 extensions for optimized format conversion (experimental).
+
 endmenu
