@@ -98,10 +98,9 @@ static void initialize_pointers_per_core(void)
 
 /**
  * \brief Initializes architecture.
- * \param[in,out] sof Firmware main context.
  * \return Error status.
  */
-int arch_init(struct sof *sof)
+int arch_init(void)
 {
 	initialize_pointers_per_core();
 	register_exceptions();
@@ -123,18 +122,18 @@ int arch_init(struct sof *sof)
 #include <sof/trace/trace.h>
 #include <ipc/trace.h>
 
-int slave_core_init(struct sof *sof)
+int slave_core_init(void)
 {
 	int err;
 
 	/* init architecture */
 	trace_point(TRACE_BOOT_ARCH);
-	err = arch_init(sof);
+	err = arch_init();
 	if (err < 0)
 		panic(SOF_IPC_PANIC_ARCH);
 
 	trace_point(TRACE_BOOT_SYS_NOTIFIER);
-	init_system_notify(sof);
+	init_system_notify();
 
 	/* interrupts need to be initialized before any usage */
 	trace_point(TRACE_BOOT_PLATFORM_IRQ);

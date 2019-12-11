@@ -12,8 +12,6 @@
 #include <sof/spinlock.h>
 #include <stdint.h>
 
-struct sof;
-
 /* notifier target core masks */
 #define NOTIFIER_TARGET_CORE_MASK(x)	(1 << x)
 #define NOTIFIER_TARGET_CORE_ALL_MASK	0xFFFFFFFF
@@ -60,7 +58,7 @@ void notifier_unregister(struct notifier *notifier);
 void notifier_notify(void);
 void notifier_event(struct notify_data *notify_data);
 
-void init_system_notify(struct sof *sof);
+void init_system_notify(void);
 
 void free_system_notify(void);
 

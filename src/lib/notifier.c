@@ -84,7 +84,7 @@ void notifier_event(struct notify_data *notify_data)
 	spin_unlock(notify->lock);
 }
 
-void init_system_notify(struct sof *sof)
+void init_system_notify(void)
 {
 	struct notify **notify = arch_notify_get();
 	*notify = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(**notify));
