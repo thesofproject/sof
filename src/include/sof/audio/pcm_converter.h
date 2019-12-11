@@ -28,8 +28,9 @@ struct comp_buffer;
 
 #if XCHAL_HAVE_HIFI3
 
-#undef PCM_CONVERTER_GENERIC
-#define PCM_CONVERTER_HIFI3
+/* WORKAROUND for cml-010-drop-stable, disable HIFI3 PCM conversion */
+// #undef PCM_CONVERTER_GENERIC
+// #define PCM_CONVERTER_HIFI3
 
 #endif
 
