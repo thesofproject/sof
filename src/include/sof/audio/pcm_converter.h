@@ -26,7 +26,7 @@ struct comp_buffer;
 
 #include <xtensa/config/core-isa.h>
 
-#if XCHAL_HAVE_HIFI3
+#if XCHAL_HAVE_HIFI3 && CONFIG_FORMAT_CONVERT_HIFI3
 
 #undef PCM_CONVERTER_GENERIC
 #define PCM_CONVERTER_HIFI3
