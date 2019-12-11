@@ -9,7 +9,7 @@
 #include <sof/lib/clk.h>
 #include <sof/lib/notifier.h>
 
-static struct freq_table platform_cpu_freq[] = {
+const struct freq_table platform_cpu_freq[] = {
 	{ 666000000, 666000 },
 };
 

@@ -23,8 +23,8 @@
 #define SSP_CLOCK_AUDIO_CARDINAL	0x1
 #define SSP_CLOCK_PLL_FIXED		0x2
 
-extern struct freq_table *ssp_freq;
-extern uint32_t *ssp_freq_sources;
+extern const struct freq_table *ssp_freq;
+extern const uint32_t *ssp_freq_sources;
 
 /* SSP register offsets */
 #define SSCR0		0x00
