@@ -407,8 +407,9 @@ static void *get_ptr_from_heap(struct mm_heap *heap, int zone, uint32_t caps,
 		 * we check if first free block is already aligned if not
 		 * we need to allocate bigger size for alignment
 		 */
-		if ((map->base + (map->block_size * map->first_free))
-		    % alignment)
+		if (alignment &&
+		    ((map->base + (map->block_size * map->first_free)) %
+		     alignment))
 			temp_bytes += alignment;
 
 		/* is block big enough */
