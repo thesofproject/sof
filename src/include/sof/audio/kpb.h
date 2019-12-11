@@ -21,21 +21,22 @@ struct comp_buffer;
 #define tracev_kpb(__e, ...) tracev_event(TRACE_CLASS_KPB, __e, ##__VA_ARGS__)
 /* KPB internal defines */
 #define KPB_MAX_BUFF_TIME 2100 /**< time of buffering in miliseconds */
-#define KPB_MAX_SUPPORTED_CHANNELS 2
-#define	KPB_SAMPLING_WIDTH 16 /**< number of bits */
-#define	KPB_SAMPLNG_FREQUENCY 16000 /* max sampling frequency in Hz */
-#define KPB_NR_OF_CHANNELS 2
+#define KPB_MAX_SUPPORTED_CHANNELS 2 /**< number of supported channels */
+/**< number of samples taken each milisecond */
+#define	KPB_SAMPLES_PER_MS (KPB_SAMPLNG_FREQUENCY / 1000)
+#define	KPB_SAMPLNG_FREQUENCY 16000 /**< supported sampling frequency in Hz */
+#define KPB_NUM_OF_CHANNELS 2
 #define KPB_SAMPLE_CONTAINER_SIZE(sw) ((sw == 16) ? 16 : 32)
 #define KPB_MAX_BUFFER_SIZE(sw) ((KPB_SAMPLNG_FREQUENCY / 1000) * \
 	(KPB_SAMPLE_CONTAINER_SIZE(sw) / 8) * KPB_MAX_BUFF_TIME * \
-	KPB_NR_OF_CHANNELS)
+	KPB_NUM_OF_CHANNELS)
 #define KPB_MAX_NO_OF_CLIENTS 2
 #define KPB_NO_OF_HISTORY_BUFFERS 2 /**< no of internal buffers */
 #define KPB_ALLOCATION_STEP 0x100
 #define KPB_NO_OF_MEM_POOLS 3
 #define KPB_BYTES_TO_FRAMES(bytes, sample_width) \
 	(bytes / ((KPB_SAMPLE_CONTAINER_SIZE(sample_width) / 8) * \
-	KPB_NR_OF_CHANNELS))
+	KPB_NUM_OF_CHANNELS))
 
 enum kpb_state {
 	KPB_STATE_DISABLED = 0,
