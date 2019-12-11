@@ -12,8 +12,6 @@
 #include <sof/spinlock.h>
 #include <stdint.h>
 
-struct sof;
-
 /* notifier target core masks */
 #define NOTIFIER_TARGET_CORE_MASK(x)	(1 << (x))
 #define NOTIFIER_TARGET_CORE_LOCAL	NOTIFIER_TARGET_CORE_MASK(cpu_get_id())
@@ -55,7 +53,7 @@ void notifier_notify_remote(void);
 void notifier_event(void *caller, enum notify_id type, uint32_t core_mask,
 		    void *data, uint32_t data_size);
 
-void init_system_notify(struct sof *sof);
+void init_system_notify(void);
 
 void free_system_notify(void);
 

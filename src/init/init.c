@@ -26,13 +26,17 @@
 /* main firmware context */
 static struct sof sof;
 
-int master_core_init(struct sof *sof)
+int master_core_init(int argc, char *argv[], struct sof *sof)
 {
 	int err, i;
 
+	/* setup context */
+	sof->argc = argc;
+	sof->argv = argv;
+
 	/* init architecture */
 	trace_point(TRACE_BOOT_ARCH);
-	err = arch_init(sof);
+	err = arch_init();
 	if (err < 0)
 		panic(SOF_IPC_PANIC_ARCH);
 
@@ -49,7 +53,7 @@ int master_core_init(struct sof *sof)
 #endif
 
 	trace_point(TRACE_BOOT_SYS_NOTIFIER);
-	init_system_notify(sof);
+	init_system_notify();
 
 	trace_point(TRACE_BOOT_SYS_POWER);
 	pm_runtime_init();
@@ -78,14 +82,10 @@ int main(int argc, char *argv[])
 
 	trace_point(TRACE_BOOT_START);
 
-	/* setup context */
-	sof.argc = argc;
-	sof.argv = argv;
-
 	if (cpu_get_id() == PLATFORM_MASTER_CORE_ID)
-		err = master_core_init(&sof);
+		err = master_core_init(argc, argv, &sof);
 	else
-		err = slave_core_init(&sof);
+		err = slave_core_init();
 
 	/* should never get here */
 	panic(SOF_IPC_PANIC_TASK);
