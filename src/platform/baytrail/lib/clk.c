@@ -12,7 +12,7 @@
 #include <config.h>
 
 #if CONFIG_BAYTRAIL
-static struct freq_table platform_cpu_freq[] = {
+const struct freq_table platform_cpu_freq[] = {
 	{ 25000000, 25000 },
 	{ 25000000, 25000 },
 	{ 50000000, 50000 },
@@ -23,7 +23,7 @@ static struct freq_table platform_cpu_freq[] = {
 	{ 343000000, 343000 },
 };
 #elif CONFIG_CHERRYTRAIL
-static struct freq_table platform_cpu_freq[] = {
+const struct freq_table platform_cpu_freq[] = {
 	{ 19200000, 19200 },
 	{ 19200000, 19200 },
 	{ 38400000, 38400 },
@@ -35,7 +35,7 @@ static struct freq_table platform_cpu_freq[] = {
 };
 #endif
 
-static uint32_t cpu_freq_enc[] = {
+const uint32_t cpu_freq_enc[] = {
 	0x0,
 	0x1,
 	0x2,
@@ -49,14 +49,14 @@ static uint32_t cpu_freq_enc[] = {
 STATIC_ASSERT(NUM_CPU_FREQ == ARRAY_SIZE(platform_cpu_freq),
 	      invalid_number_of_cpu_frequencies);
 
-struct freq_table *cpu_freq = platform_cpu_freq;
+const struct freq_table *cpu_freq = platform_cpu_freq;
 
-static struct freq_table platform_ssp_freq[] = {
+const struct freq_table platform_ssp_freq[] = {
 	{ 19200000, 19200 }, /* default */
 	{ 25000000, 25000 },
 };
 
-static uint32_t platform_ssp_freq_sources[] = {
+const uint32_t platform_ssp_freq_sources[] = {
 	PMC_SET_SSP_19M2,
 	PMC_SET_SSP_25M,
 };
@@ -64,8 +64,8 @@ static uint32_t platform_ssp_freq_sources[] = {
 STATIC_ASSERT(NUM_SSP_FREQ == ARRAY_SIZE(platform_ssp_freq),
 	      invalid_number_of_ssp_frequencies);
 
-struct freq_table *ssp_freq = platform_ssp_freq;
-uint32_t *ssp_freq_sources = platform_ssp_freq_sources;
+const struct freq_table *ssp_freq = platform_ssp_freq;
+const uint32_t *ssp_freq_sources = platform_ssp_freq_sources;
 
 static inline int clock_platform_set_cpu_freq(int clock, int freq_idx)
 {

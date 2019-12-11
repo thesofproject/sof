@@ -32,7 +32,7 @@ struct freq_table {
 
 struct clock_info {
 	uint32_t freqs_num;
-	struct freq_table *freqs;
+	const struct freq_table *freqs;
 	uint32_t default_freq_idx;
 	uint32_t notification_id;
 	uint32_t notification_mask;

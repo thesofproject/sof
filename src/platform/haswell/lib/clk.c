@@ -10,7 +10,7 @@
 #include <sof/lib/clk.h>
 #include <sof/lib/notifier.h>
 
-static struct freq_table platform_cpu_freq[] = {
+const struct freq_table platform_cpu_freq[] = {
 	{ 32000000, 32000 },
 	{ 80000000, 80000 },
 	{ 160000000, 160000 },
@@ -19,7 +19,7 @@ static struct freq_table platform_cpu_freq[] = {
 	{ 160000000, 160000 },
 };
 
-static uint32_t cpu_freq_enc[] = {
+const uint32_t cpu_freq_enc[] = {
 	0x6,
 	0x2,
 	0x1,
@@ -31,19 +31,19 @@ static uint32_t cpu_freq_enc[] = {
 STATIC_ASSERT(NUM_CPU_FREQ == ARRAY_SIZE(platform_cpu_freq),
 	      invalid_number_of_cpu_frequencies);
 
-static struct freq_table platform_ssp_freq[] = {
+const struct freq_table platform_ssp_freq[] = {
 	{ 24000000, 24000 },
 };
 
-static uint32_t platform_ssp_freq_sources[] = {
+const uint32_t platform_ssp_freq_sources[] = {
 	0,
 };
 
 STATIC_ASSERT(NUM_SSP_FREQ == ARRAY_SIZE(platform_ssp_freq),
 	      invalid_number_of_ssp_frequencies);
 
-struct freq_table *ssp_freq = platform_ssp_freq;
-uint32_t *ssp_freq_sources = platform_ssp_freq_sources;
+const struct freq_table *ssp_freq = platform_ssp_freq;
+const uint32_t *ssp_freq_sources = platform_ssp_freq_sources;
 
 static int clock_platform_set_cpu_freq(int clock, int freq_idx)
 {
