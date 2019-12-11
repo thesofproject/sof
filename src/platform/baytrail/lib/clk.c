@@ -9,6 +9,7 @@
 #include <sof/drivers/ssp.h>
 #include <sof/lib/clk.h>
 #include <sof/lib/notifier.h>
+#include <sof/spinlock.h>
 #include <config.h>
 
 #if CONFIG_BAYTRAIL
@@ -90,6 +91,7 @@ static struct clock_info platform_clocks_info[] = {
 		.freqs_num = NUM_CPU_FREQ,
 		.freqs = platform_cpu_freq,
 		.default_freq_idx = CPU_DEFAULT_IDX,
+		.current_freq_idx = CPU_DEFAULT_IDX,
 		.notification_id = NOTIFIER_ID_CPU_FREQ,
 		.notification_mask = NOTIFIER_TARGET_CORE_MASK(0),
 		.set_freq = clock_platform_set_cpu_freq,
@@ -98,6 +100,7 @@ static struct clock_info platform_clocks_info[] = {
 		.freqs_num = NUM_SSP_FREQ,
 		.freqs = platform_ssp_freq,
 		.default_freq_idx = SSP_DEFAULT_IDX,
+		.current_freq_idx = SSP_DEFAULT_IDX,
 		.notification_id = NOTIFIER_ID_SSP_FREQ,
 		.notification_mask = NOTIFIER_TARGET_CORE_ALL_MASK,
 		.set_freq = clock_platform_set_ssp_freq,
@@ -108,3 +111,11 @@ STATIC_ASSERT(ARRAY_SIZE(platform_clocks_info) == NUM_CLOCKS,
 	      invalid_number_of_clocks);
 
 struct clock_info *clocks = platform_clocks_info;
+
+void platform_clock_init(void)
+{
+	int i;
+
+	for (i = 0; i < NUM_CLOCKS; i++)
+		spinlock_init(&platform_clocks_info[i].lock);
+}

@@ -8,6 +8,7 @@
 #include <sof/common.h>
 #include <sof/lib/clk.h>
 #include <sof/lib/notifier.h>
+#include <sof/spinlock.h>
 
 const struct freq_table platform_cpu_freq[] = {
 	{ 666000000, 666000 },
@@ -29,9 +30,12 @@ void platform_clock_init(void)
 			.freqs_num = NUM_CPU_FREQ,
 			.freqs = platform_cpu_freq,
 			.default_freq_idx = CPU_DEFAULT_IDX,
+			.current_freq_idx = CPU_DEFAULT_IDX,
 			.notification_id = NOTIFIER_ID_CPU_FREQ,
 			.notification_mask = NOTIFIER_TARGET_CORE_MASK(i),
 			.set_freq = NULL,
 		};
+
+		spinlock_init(&platform_clocks_info[i].lock);
 	}
 }

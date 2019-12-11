@@ -8,6 +8,7 @@
 #include <sof/drivers/ssp.h>
 #include <sof/lib/clk.h>
 #include <sof/lib/notifier.h>
+#include <sof/spinlock.h>
 
 static struct clock_info platform_clocks_info[NUM_CLOCKS];
 
@@ -56,18 +57,24 @@ void platform_clock_init(void)
 			.freqs_num = NUM_CPU_FREQ,
 			.freqs = cpu_freq,
 			.default_freq_idx = CPU_DEFAULT_IDX,
+			.current_freq_idx = CPU_DEFAULT_IDX,
 			.notification_id = NOTIFIER_ID_CPU_FREQ,
 			.notification_mask = NOTIFIER_TARGET_CORE_MASK(i),
 			.set_freq = clock_platform_set_cpu_freq,
 		};
+
+		spinlock_init(&platform_clocks_info[i].lock);
 	}
 
 	platform_clocks_info[CLK_SSP] = (struct clock_info) {
 		.freqs_num = NUM_SSP_FREQ,
 		.freqs = ssp_freq,
 		.default_freq_idx = SSP_DEFAULT_IDX,
+		.current_freq_idx = SSP_DEFAULT_IDX,
 		.notification_id = NOTIFIER_ID_SSP_FREQ,
 		.notification_mask = NOTIFIER_TARGET_CORE_ALL_MASK,
 		.set_freq = NULL,
 	};
+
+	spinlock_init(&platform_clocks_info[CLK_SSP].lock);
 }
