@@ -101,6 +101,6 @@ void platform_timer_set_delta(struct timer *timer, uint64_t ns)
 		clk_info->freqs[clk_info->current_freq_idx].ticks_per_msec;
 	uint64_t ticks;
 
-	ticks = ticks_per_msec / 1000 * ns / 1000;
+	ticks = ticks_per_msec * ns / 1000000;
 	timer->delta = ticks - platform_timer_get(timer);
 }
