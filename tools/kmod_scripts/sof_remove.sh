@@ -43,6 +43,7 @@ remove_module snd_soc_sst_cht_bsw_nau8824
 remove_module snd_soc_sst_cht_bsw_rt5645
 remove_module snd_soc_sst_cht_bsw_rt5672
 remove_module snd_soc_sst_glk_rt5682_max98357a
+remove_module snd_soc_cml_rt1011_rt5682
 remove_module snd_soc_skl_hda_dsp
 remove_module snd_soc_sdw_rt700
 remove_module snd_soc_sdw_rt711_rt1308_rt715
