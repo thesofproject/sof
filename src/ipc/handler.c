@@ -1247,7 +1247,8 @@ int ipc_queue_host_message(struct ipc *ipc, uint32_t header, void *tx_data,
 			   size_t tx_bytes, bool replace)
 {
 	struct ipc_msg *msg = NULL;
-	uint32_t flags, found = 0;
+	bool found = false;
+	uint32_t flags;
 	int ret = 0;
 
 	ipc = cache_to_uncache(ipc);
@@ -1260,13 +1261,14 @@ int ipc_queue_host_message(struct ipc *ipc, uint32_t header, void *tx_data,
 
 	/* do we need to use a new empty message? */
 	if (msg)
-		found = 1;
+		found = true;
 	else
 		msg = msg_get_empty(ipc);
 
-	if (msg == NULL) {
-		trace_ipc_error("ipc: msg hdr for 0x%08x not found "
-				"replace %d", header, replace);
+	if (!msg) {
+		trace_ipc_error(
+			"ipc_queue_host_message() error: msg hdr for 0x%08x not found",
+			header);
 		ret = -EBUSY;
 		goto out;
 	}
@@ -1281,8 +1283,8 @@ int ipc_queue_host_message(struct ipc *ipc, uint32_t header, void *tx_data,
 		assert(!ret);
 	}
 
+	/* queue new message if it's not replacement */
 	if (!found)
-		/* now queue the message */
 		list_item_append(&msg->list, &ipc->shared_ctx->msg_list);
 
 out:
