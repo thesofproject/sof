@@ -1289,11 +1289,9 @@ int ipc_queue_host_message(struct ipc *ipc, uint32_t header, void *tx_data,
 		assert(!ret);
 	}
 
-	if (!found) {
+	if (!found)
 		/* now queue the message */
-		ipc->shared_ctx->dsp_pending = 1;
 		list_item_append(&msg->list, &ipc->shared_ctx->msg_list);
-	}
 
 out:
 	spin_unlock_irq(ipc->lock, flags);
@@ -1303,8 +1301,7 @@ out:
 /* process current message */
 int ipc_process_msg_queue(void)
 {
-	if (_ipc->shared_ctx->dsp_pending)
-		ipc_platform_send_msg();
+	ipc_platform_send_msg();
 	return 0;
 }
 

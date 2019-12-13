@@ -124,10 +124,8 @@ void ipc_platform_send_msg(void)
 	spin_lock_irq(_ipc->lock, flags);
 
 	/* any messages to send ? */
-	if (list_is_empty(&_ipc->shared_ctx->msg_list)) {
-		_ipc->shared_ctx->dsp_pending = 0;
+	if (list_is_empty(&_ipc->shared_ctx->msg_list))
 		goto out;
-	}
 
 	/* can't send nofication when one is in progress */
 	if (shim_read(SHIM_IPCD) & (SHIM_IPCD_BUSY | SHIM_IPCD_DONE))

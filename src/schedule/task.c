@@ -48,13 +48,8 @@ enum task_state task_main_master_core(void *data)
 		/* sleep until next IPC or DMA */
 		wait_for_interrupt(0);
 
-		/*
-		 * now process any IPC messages to host
-		 * if we're not entering runtime suspend.
-		 */
 		if (_ipc && !_ipc->pm_prepare_D3)
 			ipc_process_msg_queue();
-
 	}
 
 	return SOF_TASK_STATE_COMPLETED;
