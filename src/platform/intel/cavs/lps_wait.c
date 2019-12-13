@@ -91,7 +91,7 @@ static void platform_pg_task(void)
 	while (1) {
 		/* flush caches and handle int or pwr off */
 		xthal_dcache_all_writeback_inv();
-		arch_wait_for_interrupt(5);
+		arch_wait_for_interrupt(0);
 	}
 }
 

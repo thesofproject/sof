@@ -19,6 +19,7 @@
 #include <sof/lib/memory.h>
 #include <sof/lib/notifier.h>
 #include <sof/lib/pm_runtime.h>
+#include <sof/lib/wait.h>
 #include <sof/schedule/schedule.h>
 #include <sof/trace/trace.h>
 #include <user/trace.h>
@@ -142,5 +143,5 @@ void cpu_power_down_core(void)
 	 * Core will be put into reset by host anyway.
 	 */
 	while (1)
-		asm volatile("waiti 0");
+		arch_wait_for_interrupt(0);
 }
