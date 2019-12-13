@@ -449,6 +449,7 @@ int ipc_comp_dai_config(struct ipc *ipc, struct sof_ipc_dai_config *config)
 
 int ipc_init(struct sof *sof)
 {
+	struct ipc_msg *msg;
 	int i;
 
 	trace_ipc("ipc_init()");
@@ -471,9 +472,12 @@ int ipc_init(struct sof *sof)
 	list_init(&sof->ipc->shared_ctx->msg_list);
 	list_init(&sof->ipc->shared_ctx->comp_list);
 
-	for (i = 0; i < MSG_QUEUE_SIZE; i++)
-		list_item_prepend(&sof->ipc->shared_ctx->message[i].list,
+	for (i = 0; i < MSG_QUEUE_SIZE; i++) {
+		msg = rzalloc(RZONE_SYS | RZONE_FLAG_UNCACHED, SOF_MEM_CAPS_RAM,
+			      sizeof(*msg));
+		list_item_prepend(&msg->list,
 				  &sof->ipc->shared_ctx->empty_list);
+	}
 
 	return platform_ipc_init(sof->ipc);
 }

@@ -82,9 +82,8 @@ struct ipc_msg {
 };
 
 struct ipc_shared_context {
-	struct list_item msg_list;
-	struct list_item empty_list;
-	struct ipc_msg message[MSG_QUEUE_SIZE];
+	struct list_item msg_list;	/* queue of messages to be sent */
+	struct list_item empty_list;	/* queue of empty messages */
 
 	struct list_item comp_list;	/* list of component devices */
 };
