@@ -13,14 +13,14 @@
 #include <config.h>
 #include <stdint.h>
 
-typedef struct {
+struct spinlock {
 	volatile uint32_t lock;
 #if CONFIG_DEBUG_LOCKS
 	uint32_t user;
 #endif
-} spinlock_t;
+};
 
-static inline void arch_spin_lock(spinlock_t *lock)
+static inline void arch_spin_lock(struct spinlock *lock)
 {
 	uint32_t result;
 
@@ -35,7 +35,7 @@ static inline void arch_spin_lock(spinlock_t *lock)
 		: "memory");
 }
 
-static inline int arch_try_lock(spinlock_t *lock)
+static inline int arch_try_lock(struct spinlock *lock)
 {
 	uint32_t result;
 
@@ -52,7 +52,7 @@ static inline int arch_try_lock(spinlock_t *lock)
 	return result ? 0 : 1;
 }
 
-static inline void arch_spin_unlock(spinlock_t *lock)
+static inline void arch_spin_unlock(struct spinlock *lock)
 {
 	uint32_t result;
 
@@ -64,7 +64,7 @@ static inline void arch_spin_unlock(spinlock_t *lock)
 		: "memory");
 }
 
-void arch_spinlock_init(spinlock_t **lock);
+void arch_spinlock_init(struct spinlock **lock);
 
 #endif /* __ARCH_SPINLOCK_H__ */
 

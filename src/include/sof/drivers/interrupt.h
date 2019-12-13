@@ -12,7 +12,7 @@
 #include <platform/drivers/interrupt.h>
 #include <sof/lib/cpu.h>
 #include <sof/list.h>
-#include <sof/spinlock.h>
+#include <sof/spinlock_t.h>
 #include <sof/trace/trace.h>
 #include <user/trace.h>
 #include <stdbool.h>
