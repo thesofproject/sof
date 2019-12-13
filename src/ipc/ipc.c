@@ -131,27 +131,6 @@ static struct ipc_comp_dev *ipc_get_ppl_comp(struct ipc *ipc,
 	return NULL;
 }
 
-int ipc_get_posn_offset(struct ipc *ipc, struct pipeline *pipe)
-{
-	int i;
-	uint32_t posn_size = sizeof(struct sof_ipc_stream_posn);
-
-	for (i = 0; i < PLATFORM_MAX_STREAMS; i++) {
-		if (ipc->posn_map[i] == pipe)
-			return pipe->posn_offset;
-	}
-
-	for (i = 0; i < PLATFORM_MAX_STREAMS; i++) {
-		if (ipc->posn_map[i] == NULL) {
-			ipc->posn_map[i] = pipe;
-			pipe->posn_offset = i * posn_size;
-			return pipe->posn_offset;
-		}
-	}
-
-	return -EINVAL;
-}
-
 int ipc_comp_new(struct ipc *ipc, struct sof_ipc_comp *comp)
 {
 	struct comp_dev *cd;

@@ -103,9 +103,6 @@ struct ipc {
 	/* PM */
 	int pm_prepare_D3;	/* do we need to prepare for D3 */
 
-	/* mmap for posn_offset */
-	struct pipeline *posn_map[PLATFORM_MAX_STREAMS];
-
 	/* context shared between cores */
 	struct ipc_shared_context *shared_ctx;
 
@@ -234,9 +231,6 @@ int ipc_comp_dai_config(struct ipc *ipc, struct sof_ipc_dai_config *config);
 
 /* send DMA trace host buffer position to host */
 int ipc_dma_trace_send_position(void);
-
-/* get posn offset by pipeline. */
-int ipc_get_posn_offset(struct ipc *ipc, struct pipeline *pipe);
 
 struct sof_ipc_cmd_hdr *mailbox_validate(void);
 
