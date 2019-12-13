@@ -67,3 +67,20 @@ static inline void free_test_source(struct comp_buffer *buffer)
 	free(buffer->source);
 	free(buffer);
 }
+
+static inline size_t get_stream_map_size(uint8_t mask[][PLATFORM_MAX_CHANNELS])
+{
+	size_t size = 0;
+	int i, j;
+
+	/* Stream map size depends on ch_coeffs flexible array */
+	for (i = 0; i < MUX_MAX_STREAMS; ++i) {
+		for (j = 0; j < PLATFORM_MAX_CHANNELS; ++j) {
+			/* mask bit count describes flexible array size */
+			size += sizeof(struct sof_ipc_channel_map) +
+				(popcount(mask[i][j]) *
+				sizeof(((struct sof_ipc_channel_map *)0)->ch_coeffs[0]));
+		}
+	}
+	return sizeof(struct sof_ipc_stream_map) + size;
+}

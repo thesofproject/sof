@@ -18,6 +18,7 @@
 
 #if CONFIG_COMP_MUX
 
+#include <sof/audio/channel_map.h>
 #include <sof/common.h>
 #include <sof/platform.h>
 #include <sof/trace/trace.h>
@@ -55,10 +56,7 @@ STATIC_ASSERT(MUX_MAX_STREAMS < PLATFORM_MAX_STREAMS,
 
 struct mux_stream_data {
 	uint32_t pipeline_id;
-	uint8_t num_channels;
 	uint8_t mask[PLATFORM_MAX_CHANNELS];
-
-	uint8_t reserved[(20 - PLATFORM_MAX_CHANNELS - 1) % 4]; // padding to ensure proper alignment of following instances
 };
 
 typedef void(*demux_func)(struct comp_dev *dev, struct comp_buffer *sink,
@@ -68,23 +66,13 @@ typedef void(*mux_func)(struct comp_dev *dev, struct comp_buffer *sink,
 			  struct comp_buffer **sources, uint32_t frames,
 			  struct mux_stream_data *data);
 
-struct sof_mux_config {
-	uint16_t frame_format;
-	uint16_t num_channels;
-	uint16_t num_streams;
-
-	uint16_t reserved; // padding to ensure proper alignment
-
-	struct mux_stream_data streams[];
-};
-
 struct comp_data {
 	union {
 		mux_func mux;
 		demux_func demux;
 	};
 
-	struct sof_mux_config config;
+	struct mux_stream_data streams[MUX_MAX_STREAMS];
 };
 
 struct comp_func_map {

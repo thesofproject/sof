@@ -9,6 +9,7 @@
 
 #if CONFIG_COMP_MUX
 
+#include <sof/audio/channel_map.h>
 #include <sof/audio/component.h>
 #include <sof/audio/mux.h>
 #include <sof/common.h>
@@ -28,54 +29,58 @@
 #include <stddef.h>
 #include <stdint.h>
 
-static int mux_set_values(struct comp_data *cd, struct sof_mux_config *cfg)
+static int mux_set_values(struct comp_data *cd, struct sof_ipc_stream_map *cfg)
 {
-	uint8_t i;
-	uint8_t j;
+	struct mux_stream_data streams[MUX_MAX_STREAMS];
+	struct sof_ipc_channel_map *ch_map;
+	uint32_t used_streams = 0;
+	uint32_t i, j;
 
-	/* check if number of streams configured doesn't exceed maximum */
-	if (cfg->num_streams > MUX_MAX_STREAMS) {
-		trace_mux_error("mux_set_values() error: configured number of "
-				"streams (%u) exceeds maximum = "
-				META_QUOTE(MUX_MAX_STREAMS),
-				cfg->num_streams);
-		return -EINVAL;
+	memset(&streams, 0, sizeof(struct mux_stream_data) * MUX_MAX_STREAMS);
+
+	for (i = 0; i < cfg->num_ch_map; i++) {
+		ch_map = chmap_get(cfg, i);
+
+		/* check if there is already a stream for this ext_id */
+		for (j = 0; j < used_streams; j++)
+			if (ch_map->ext_id == streams[j].pipeline_id)
+				break;
+
+		if (j == used_streams)
+			used_streams++;
+
+		if (used_streams > MUX_MAX_STREAMS) {
+			trace_mux_error("mux_set_values() error: configured number of  streams (%u) exceeds maximum = "
+					META_QUOTE(MUX_MAX_STREAMS),
+					used_streams);
+			return -EINVAL;
+		}
+
+		/* for each stream */
+		streams[j].pipeline_id = ch_map->ext_id;
+		/* save channel mask for one in/out channel */
+		streams[j].mask[ch_map->ch_index] = ch_map->ch_mask;
 	}
 
 	/* check if all streams configured have distinct IDs */
-	for (i = 0; i < cfg->num_streams; i++) {
-		for (j = i + 1; j < cfg->num_streams; j++) {
-			if (cfg->streams[i].pipeline_id ==
-				cfg->streams[j].pipeline_id) {
+	for (i = 0; i < used_streams; i++) {
+		for (j = i + 1; j < used_streams; j++) {
+			if (streams[i].pipeline_id ==
+				streams[j].pipeline_id) {
 				trace_mux_error("mux_set_values() error: "
 						"multiple configured streams "
 						"have same pipeline ID = %u",
-						cfg->streams[i].pipeline_id);
+						streams[i].pipeline_id);
 				return -EINVAL;
 			}
 		}
 	}
 
-	/* check if number of channels per stream doesn't exceed maximum */
-	for (i = 0; i < cfg->num_streams; i++) {
-		if (cfg->streams[i].num_channels > PLATFORM_MAX_CHANNELS) {
-			trace_mux_error("mux_set_values() error: configured "
-					"number of channels for stream %u "
-					"exceeds platform maximum = "
-					META_QUOTE(PLATFORM_MAX_CHANNELS),
-					i);
-			return -EINVAL;
-		}
-	}
+	for (i = 0; i < used_streams; i++) {
+		cd->streams[i].pipeline_id = streams[i].pipeline_id;
 
-	cd->config.num_channels = cfg->num_channels;
-	cd->config.frame_format = cfg->frame_format;
-
-	for (i = 0; i < cfg->num_streams; i++) {
-		cd->config.streams[i].num_channels = cfg->streams[i].num_channels;
-		cd->config.streams[i].pipeline_id = cfg->streams[i].pipeline_id;
-		for (j = 0; j < cfg->streams[i].num_channels; j++)
-			cd->config.streams[i].mask[j] = cfg->streams[i].mask[j];
+		for (j = 0; j < PLATFORM_MAX_CHANNELS; j++)
+			cd->streams[i].mask[j] = streams[i].mask[j];
 	}
 
 	return 0;
@@ -103,9 +108,8 @@ static struct comp_dev *mux_new(struct sof_ipc_comp *comp)
 		return NULL;
 
 	memcpy(&dev->comp, comp, sizeof(struct sof_ipc_comp_process));
+	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
 
-	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
-		     sizeof(*cd) + MUX_MAX_STREAMS * sizeof(struct mux_stream_data));
 	if (!cd) {
 		rfree(dev);
 		return NULL;
@@ -113,17 +117,15 @@ static struct comp_dev *mux_new(struct sof_ipc_comp *comp)
 
 	comp_set_drvdata(dev, cd);
 
-	memcpy_s(&cd->config, sizeof(struct sof_mux_config) +
-		 MUX_MAX_STREAMS * sizeof(struct mux_stream_data),
-		 ipc_process->data, bs);
-
 	/* verification of initial parameters */
-	ret = mux_set_values(cd, &cd->config);
+	if (bs >= sizeof(struct sof_ipc_stream_map)) {
+		ret = mux_set_values(cd, (struct sof_ipc_stream_map *)&ipc_process->data);
 
-	if (ret < 0) {
-		rfree(cd);
-		rfree(dev);
-		return NULL;
+		if (ret < 0) {
+			rfree(cd);
+			rfree(dev);
+			return NULL;
+		}
 	}
 
 	dev->state = COMP_STATE_READY;
@@ -144,16 +146,7 @@ static void mux_free(struct comp_dev *dev)
 static int mux_params(struct comp_dev *dev,
 		      struct sof_ipc_stream_params *params)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
-	struct comp_buffer *sinkb;
-
 	trace_mux_with_ids(dev, "mux_params()");
-
-	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
-				  source_list);
-
-	cd->config.num_channels = sinkb->channels;
-	cd->config.frame_format = sinkb->frame_fmt;
 
 	return 0;
 }
@@ -162,7 +155,7 @@ static int mux_ctrl_set_cmd(struct comp_dev *dev,
 			    struct sof_ipc_ctrl_data *cdata)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	struct sof_mux_config *cfg;
+	struct sof_ipc_stream_map *cfg;
 	int ret = 0;
 
 	trace_mux_with_ids(dev, "mux_ctrl_set_cmd(), cdata->cmd = 0x%08x",
@@ -170,8 +163,7 @@ static int mux_ctrl_set_cmd(struct comp_dev *dev,
 
 	switch (cdata->cmd) {
 	case SOF_CTRL_CMD_BINARY:
-		cfg = (struct sof_mux_config *)cdata->data->data;
-
+		cfg = (struct sof_ipc_stream_map *)cdata->data->data;
 		ret = mux_set_values(cd, cfg);
 		break;
 	default:
@@ -188,7 +180,7 @@ static int mux_ctrl_get_cmd(struct comp_dev *dev,
 			    struct sof_ipc_ctrl_data *cdata, int size)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	struct sof_mux_config *cfg = &cd->config;
+	struct mux_stream_data *cfg = &cd->streams[0];
 	uint32_t reply_size;
 	int ret = 0;
 
@@ -197,8 +189,7 @@ static int mux_ctrl_get_cmd(struct comp_dev *dev,
 	switch (cdata->cmd) {
 	case SOF_CTRL_CMD_BINARY:
 		/* calculate config size */
-		reply_size = sizeof(struct sof_mux_config) + cfg->num_streams *
-			sizeof(struct mux_stream_data);
+		reply_size = sizeof(struct mux_stream_data) * MUX_MAX_STREAMS;
 
 		/* copy back to user space */
 		assert(!memcpy_s(cdata->data->data, ((struct sof_abi_hdr *)
@@ -240,7 +231,7 @@ static uint8_t get_stream_index(struct comp_data *cd, uint32_t pipe_id)
 	int i;
 
 	for (i = 0; i < MUX_MAX_STREAMS; i++) {
-		if (cd->config.streams[i].pipeline_id == pipe_id)
+		if (cd->streams[i].pipeline_id == pipe_id)
 			return i;
 	}
 	trace_mux_error("get_stream_index() error: couldn't find configuration "
@@ -303,7 +294,7 @@ static int demux_copy(struct comp_dev *dev)
 		if (!sinks[i])
 			continue;
 
-		cd->demux(dev, sinks[i], source, frames, &cd->config.streams[i]);
+		cd->demux(dev, sinks[i], source, frames, &cd->streams[i]);
 	}
 
 	/* update components */
@@ -369,7 +360,7 @@ static int mux_copy(struct comp_dev *dev)
 	sink_bytes = frames * buffer_frame_bytes(sink);
 
 	/* produce output */
-	cd->mux(dev, sink, &sources[0], frames, &cd->config.streams[0]);
+	cd->mux(dev, sink, &sources[0], frames, &cd->streams[0]);
 
 	/* update components */
 	comp_update_buffer_produce(sink, sink_bytes);

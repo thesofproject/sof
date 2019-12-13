@@ -5,6 +5,8 @@
 // Author: Daniel Bogdzia <danielx.bogdzia@linux.intel.com>
 //         Janusz Jankowski <janusz.jankowski@linux.intel.com>
 
+#include "util.h"
+
 #include <sof/audio/component.h>
 #include <sof/audio/mux.h>
 
@@ -18,6 +20,7 @@
 struct test_data {
 	struct comp_dev *dev;
 	struct comp_data *cd;
+	struct comp_buffer *sink;
 };
 
 static int setup_group(void **state)
@@ -60,6 +63,7 @@ static int teardown_test_case(void **state)
 {
 	struct test_data *td = *state;
 
+	free_test_sink(td->sink);
 	comp_free(td->dev);
 	free(td);
 
@@ -71,8 +75,10 @@ static void test_mux_prepare_invalid_float(void **state)
 {
 	struct test_data *td = *state;
 
-	/* set frame format value to unsupported value */
-	td->cd->config.frame_format = SOF_IPC_FRAME_FLOAT;
+	td->sink = create_test_sink(td->dev,
+				    MUX_MAX_STREAMS + 1,
+				    SOF_IPC_FRAME_FLOAT,
+				    PLATFORM_MAX_CHANNELS);
 
 	assert_int_equal(comp_prepare(td->dev), -EINVAL);
 }
@@ -83,7 +89,10 @@ static void test_mux_prepare_valid_s16le(void **state)
 {
 	struct test_data *td = *state;
 
-	td->cd->config.frame_format = SOF_IPC_FRAME_S16_LE;
+	td->sink = create_test_sink(td->dev,
+				    MUX_MAX_STREAMS + 1,
+				    SOF_IPC_FRAME_S16_LE,
+				    PLATFORM_MAX_CHANNELS);
 
 	assert_int_equal(comp_prepare(td->dev), 0);
 }
@@ -94,7 +103,10 @@ static void test_mux_prepare_valid_s24_4le(void **state)
 {
 	struct test_data *td = *state;
 
-	td->cd->config.frame_format = SOF_IPC_FRAME_S24_4LE;
+	td->sink = create_test_sink(td->dev,
+				    MUX_MAX_STREAMS + 1,
+				    SOF_IPC_FRAME_S24_4LE,
+				    PLATFORM_MAX_CHANNELS);
 
 	assert_int_equal(comp_prepare(td->dev), 0);
 }
@@ -105,7 +117,10 @@ static void test_mux_prepare_valid_s32le(void **state)
 {
 	struct test_data *td = *state;
 
-	td->cd->config.frame_format = SOF_IPC_FRAME_S32_LE;
+	td->sink = create_test_sink(td->dev,
+				    MUX_MAX_STREAMS + 1,
+				    SOF_IPC_FRAME_S32_LE,
+				    PLATFORM_MAX_CHANNELS);
 
 	assert_int_equal(comp_prepare(td->dev), 0);
 }

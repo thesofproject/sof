@@ -64,22 +64,21 @@ static void demux_s16le(struct comp_dev *dev, struct comp_buffer *sink,
 			struct comp_buffer *source, uint32_t frames,
 			struct mux_stream_data *data)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
 	int32_t sample;
 	int16_t *dst;
 	uint8_t i;
 	uint8_t out_ch;
 
 	for (i = 0; i < frames; i++) {
-		for (out_ch = 0; out_ch < data->num_channels; out_ch++) {
+		for (out_ch = 0; out_ch < sink->channels; out_ch++) {
 			sample = calc_sample_s16le(source,
-						   cd->config.num_channels,
-						   i * cd->config.num_channels,
+						   source->channels,
+						   i * source->channels,
 						   data->mask[out_ch]);
 
 			/* saturate to 16 bits */
 			dst = buffer_write_frag_s16(sink,
-				i * data->num_channels + out_ch);
+				i * sink->channels + out_ch);
 			*dst = sat_int16(sample);
 		}
 	}
@@ -103,7 +102,6 @@ static void mux_s16le(struct comp_dev *dev, struct comp_buffer *sink,
 		      struct comp_buffer **sources, uint32_t frames,
 		      struct mux_stream_data *data)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *source;
 	uint8_t i;
 	uint8_t j;
@@ -112,7 +110,7 @@ static void mux_s16le(struct comp_dev *dev, struct comp_buffer *sink,
 	int32_t sample;
 
 	for (i = 0; i < frames; i++) {
-		for (out_ch = 0; out_ch < cd->config.num_channels; out_ch++) {
+		for (out_ch = 0; out_ch < sink->channels; out_ch++) {
 			sample = 0;
 
 			for (j = 0; j < MUX_MAX_STREAMS; j++) {
@@ -121,12 +119,12 @@ static void mux_s16le(struct comp_dev *dev, struct comp_buffer *sink,
 					continue;
 
 				sample += calc_sample_s16le(source,
-						data[j].num_channels,
-						i * data[j].num_channels,
+						source->channels,
+						i * source->channels,
 						data[j].mask[out_ch]);
 			}
 			dst = buffer_write_frag_s16(sink,
-				i * data->num_channels + out_ch);
+				i * sink->channels + out_ch);
 			*dst = sat_int16(sample);
 		}
 	}
@@ -179,22 +177,21 @@ static void demux_s24le(struct comp_dev *dev, struct comp_buffer *sink,
 			struct comp_buffer *source, uint32_t frames,
 			struct mux_stream_data *data)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
 	int32_t sample;
 	int32_t *dst;
 	uint8_t i;
 	uint8_t out_ch;
 
 	for (i = 0; i < frames; i++) {
-		for (out_ch = 0; out_ch < data->num_channels; out_ch++) {
+		for (out_ch = 0; out_ch < sink->channels; out_ch++) {
 			sample = calc_sample_s24le(source,
-						   cd->config.num_channels,
-						   i * cd->config.num_channels,
+						   source->channels,
+						   i * source->channels,
 						   data->mask[out_ch]);
 
 			/* saturate to 24 bits */
 			dst = buffer_write_frag_s32(sink,
-				i * data->num_channels + out_ch);
+				i * sink->channels + out_ch);
 			*dst = sat_int24(sample);
 		}
 	}
@@ -218,7 +215,6 @@ static void mux_s24le(struct comp_dev *dev, struct comp_buffer *sink,
 		      struct comp_buffer **sources, uint32_t frames,
 		      struct mux_stream_data *data)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *source;
 	uint8_t i;
 	uint8_t j;
@@ -227,7 +223,7 @@ static void mux_s24le(struct comp_dev *dev, struct comp_buffer *sink,
 	int32_t sample;
 
 	for (i = 0; i < frames; i++) {
-		for (out_ch = 0; out_ch < cd->config.num_channels; out_ch++) {
+		for (out_ch = 0; out_ch < sink->channels; out_ch++) {
 			sample = 0;
 			for (j = 0; j < MUX_MAX_STREAMS; j++) {
 				source = sources[j];
@@ -235,12 +231,12 @@ static void mux_s24le(struct comp_dev *dev, struct comp_buffer *sink,
 					continue;
 
 				sample += calc_sample_s24le(source,
-						data[j].num_channels,
-						i * data[j].num_channels,
+						source->channels,
+						i * source->channels,
 						data[j].mask[out_ch]);
 			}
 			dst = buffer_write_frag_s32(sink,
-				i * data->num_channels + out_ch);
+				i * sink->channels + out_ch);
 			*dst = sat_int24(sample);
 		}
 	}
@@ -293,22 +289,21 @@ static void demux_s32le(struct comp_dev *dev, struct comp_buffer *sink,
 			struct comp_buffer *source, uint32_t frames,
 			struct mux_stream_data *data)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
 	int64_t sample;
 	int32_t *dst;
 	uint8_t i;
 	uint8_t out_ch;
 
 	for (i = 0; i < frames; i++) {
-		for (out_ch = 0; out_ch < data->num_channels; out_ch++) {
+		for (out_ch = 0; out_ch < sink->channels; out_ch++) {
 			sample = calc_sample_s32le(source,
-						   cd->config.num_channels,
-						   i * cd->config.num_channels,
+						   source->channels,
+						   i * source->channels,
 						   data->mask[out_ch]);
 
 			/* saturate to 32 bits */
 			dst = buffer_write_frag_s32(sink,
-				i * data->num_channels + out_ch);
+				i * sink->channels + out_ch);
 			*dst = sat_int32(sample);
 		}
 	}
@@ -332,7 +327,6 @@ static void mux_s32le(struct comp_dev *dev, struct comp_buffer *sink,
 		      struct comp_buffer **sources, uint32_t frames,
 		      struct mux_stream_data *data)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *source;
 	uint8_t i;
 	uint8_t j;
@@ -341,7 +335,7 @@ static void mux_s32le(struct comp_dev *dev, struct comp_buffer *sink,
 	int64_t sample;
 
 	for (i = 0; i < frames; i++) {
-		for (out_ch = 0; out_ch < cd->config.num_channels; out_ch++) {
+		for (out_ch = 0; out_ch < sink->channels; out_ch++) {
 			sample = 0;
 			for (j = 0; j < MUX_MAX_STREAMS; j++) {
 				source = sources[j];
@@ -349,12 +343,12 @@ static void mux_s32le(struct comp_dev *dev, struct comp_buffer *sink,
 					continue;
 
 				sample += calc_sample_s32le(source,
-						data[j].num_channels,
-						i * data[j].num_channels,
+						source->channels,
+						i * source->channels,
 						data[j].mask[out_ch]);
 			}
 			dst = buffer_write_frag_s32(sink,
-				i * data->num_channels + out_ch);
+				i * sink->channels + out_ch);
 			*dst = sat_int32(sample);
 		}
 	}
@@ -376,11 +370,14 @@ const struct comp_func_map mux_func_map[] = {
 
 mux_func mux_get_processing_function(struct comp_dev *dev)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
+	struct comp_buffer *sinkb;
 	uint8_t i;
 
+	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
+				source_list);
+
 	for (i = 0; i < ARRAY_SIZE(mux_func_map); i++) {
-		if (cd->config.frame_format == mux_func_map[i].frame_format)
+		if (sinkb->frame_fmt == mux_func_map[i].frame_format)
 			return mux_func_map[i].mux_proc_func;
 	}
 
@@ -389,11 +386,14 @@ mux_func mux_get_processing_function(struct comp_dev *dev)
 
 demux_func demux_get_processing_function(struct comp_dev *dev)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
+	struct comp_buffer *sinkb;
 	uint8_t i;
 
+	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
+				source_list);
+
 	for (i = 0; i < ARRAY_SIZE(mux_func_map); i++) {
-		if (cd->config.frame_format == mux_func_map[i].frame_format)
+		if (sinkb->frame_fmt == mux_func_map[i].frame_format)
 			return mux_func_map[i].demux_proc_func;
 	}
 

@@ -91,27 +91,35 @@ static int setup_group(void **state)
 static struct sof_ipc_comp_process *create_demux_comp_ipc(struct test_data *td)
 {
 	size_t ipc_size = sizeof(struct sof_ipc_comp_process);
-	size_t mux_size = sizeof(struct sof_mux_config)
-			  + MUX_MAX_STREAMS * sizeof(struct mux_stream_data);
+	size_t mux_size = get_stream_map_size(td->mask);
 	struct sof_ipc_comp_process *ipc = calloc(1, ipc_size + mux_size);
-	struct sof_mux_config *mux = (struct sof_mux_config *)&ipc->data;
+	struct sof_ipc_stream_map *stream_map = (struct sof_ipc_stream_map *)&ipc->data;
+	struct sof_ipc_channel_map *chmap;
+	char *w_ptr = (char *)&stream_map->ch_map;
 	int i, j;
+
+	stream_map->num_ch_map = 0;
+
+	/* for all streams */
+	for (i = 0; i < MUX_MAX_STREAMS; ++i) {
+		/* generate a channel map for each channel */
+		for (j = 0; j < PLATFORM_MAX_CHANNELS; ++j) {
+			chmap = (struct sof_ipc_channel_map *)w_ptr;
+
+			chmap->ch_index = j;
+			chmap->ext_id = i;
+			chmap->ch_mask = td->mask[i][j];
+
+			stream_map->num_ch_map++;
+			w_ptr += sizeof(*chmap) + (popcount(chmap->ch_mask) *
+				 sizeof(*chmap->ch_coeffs));
+		}
+	}
 
 	ipc->comp.hdr.size = sizeof(struct sof_ipc_comp_process);
 	ipc->comp.type = SOF_COMP_DEMUX;
 	ipc->config.hdr.size = sizeof(struct sof_ipc_comp_config);
-	ipc->size = mux_size;
-
-	mux->frame_format = td->format;
-	mux->num_channels = PLATFORM_MAX_CHANNELS;
-	mux->num_streams = MUX_MAX_STREAMS;
-
-	for (i = 0; i < MUX_MAX_STREAMS; ++i) {
-		mux->streams[i].pipeline_id = i;
-		mux->streams[i].num_channels = PLATFORM_MAX_CHANNELS;
-		for (j = 0; j < PLATFORM_MAX_CHANNELS; ++j)
-			mux->streams[i].mask[j] = td->mask[i][j];
-	}
+	ipc->size = w_ptr - (char *)stream_map;
 
 	return ipc;
 }

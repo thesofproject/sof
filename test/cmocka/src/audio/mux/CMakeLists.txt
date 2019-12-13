@@ -12,6 +12,7 @@ add_library(
 	${PROJECT_SOURCE_DIR}/src/audio/mux/mux.c
 	${PROJECT_SOURCE_DIR}/src/audio/mux/mux_generic.c
 	${PROJECT_SOURCE_DIR}/src/audio/component.c
+	${PROJECT_SOURCE_DIR}/src/audio/channel_map.c
 )
 sof_append_relative_path_definitions(audio_mux)
 
