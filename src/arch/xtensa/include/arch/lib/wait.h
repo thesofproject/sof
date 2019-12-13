@@ -21,7 +21,7 @@ static inline void arch_wait_for_interrupt(int level)
 	int i;
 
 	/* need to make sure the interrupt level won't be lowered */
-	if (arch_interrupt_get_level() > level)
+	if (level)
 		panic(SOF_IPC_PANIC_WFI);
 
 	/* this sequence must be atomic on LX6 */
@@ -44,7 +44,7 @@ static inline void arch_wait_for_interrupt(int level)
 static inline void arch_wait_for_interrupt(int level)
 {
 	/* need to make sure the interrupt level won't be lowered */
-	if (arch_interrupt_get_level() > level)
+	if (level)
 		panic(SOF_IPC_PANIC_WFI);
 
 	asm volatile("waiti 0");
