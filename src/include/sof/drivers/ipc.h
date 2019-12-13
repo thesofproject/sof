@@ -97,9 +97,6 @@ struct ipc {
 	spinlock_t *lock;	/* locking mechanism */
 	void *comp_data;
 
-	/* RX call back */
-	int (*cb)(struct ipc_msg *msg);
-
 	/* DMA for Trace*/
 	struct dma_trace_data *dmat;
 
