@@ -53,10 +53,8 @@ void ipc_platform_send_msg(void)
 	spin_lock_irq(_ipc->lock, flags);
 
 	/* any messages to send ? */
-	if (list_is_empty(&_ipc->shared_ctx->msg_list)) {
-		_ipc->shared_ctx->dsp_pending = 0;
+	if (list_is_empty(&_ipc->shared_ctx->msg_list))
 		goto out;
-	}
 
 	/* now send the message */
 	msg = list_first_item(&_ipc->shared_ctx->msg_list, struct ipc_msg,
