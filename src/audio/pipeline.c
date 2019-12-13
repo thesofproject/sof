@@ -57,6 +57,8 @@ struct pipeline *pipeline_new(struct sof_ipc_pipe_new *pipe_desc,
 
 	/* init pipeline */
 	p->sched_comp = cd;
+	p->posn_offset = pipe_desc->pipeline_id *
+		sizeof(struct sof_ipc_stream_posn);
 	p->status = COMP_STATE_INIT;
 
 	ret = memcpy_s(&p->ipc_pipe, sizeof(p->ipc_pipe),

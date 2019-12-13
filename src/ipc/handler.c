@@ -220,7 +220,7 @@ static int ipc_stream_pcm_params(uint32_t stream)
 	struct sof_ipc_pcm_params pcm_params;
 	struct sof_ipc_pcm_params_reply reply;
 	struct ipc_comp_dev *pcm_dev;
-	int err, reset_err, posn_offset;
+	int err, reset_err;
 
 	/* copy message with ABI safe method */
 	IPC_COPY_CMD(pcm_params, _ipc->comp_data);
@@ -308,20 +308,12 @@ pipe_params:
 		goto error;
 	}
 
-	posn_offset = ipc_get_posn_offset(_ipc, pcm_dev->cd->pipeline);
-	if (posn_offset < 0) {
-		err = posn_offset;
-		trace_ipc_error("ipc: pipe %d comp %d posn offset failed %d",
-				pcm_dev->cd->pipeline->ipc_pipe.pipeline_id,
-				pcm_params.comp_id, err);
-		goto error;
-	}
 	/* write component values to the outbox */
 	reply.rhdr.hdr.size = sizeof(reply);
 	reply.rhdr.hdr.cmd = stream;
 	reply.rhdr.error = 0;
 	reply.comp_id = pcm_params.comp_id;
-	reply.posn_offset = posn_offset;
+	reply.posn_offset = pcm_dev->cd->pipeline->posn_offset;
 	mailbox_hostbox_write(0, &reply, sizeof(reply));
 	return 1;
 
