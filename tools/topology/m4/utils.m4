@@ -49,9 +49,9 @@ define(`COMP_FORMAT_NAME',
 	$1, `float', `FLOAT_LE',
 	)')
 
-dnl P_GRAPH(name, CONNECTIONS)
+dnl P_GRAPH(NAME, PIPELINE_ID, CONNECTIONS)
 define(`P_GRAPH',
-`SectionGraph.STR($1) {'
+`SectionGraph.STR($1 $2) {'
 `	index STR($2)'
 `'
 `	lines ['
