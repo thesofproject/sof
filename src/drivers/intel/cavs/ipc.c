@@ -227,7 +227,7 @@ static void ipc_platform_complete_cmd(void *data)
 	if (ipc->pm_prepare_D3) {
 		//TODO: add support for Icelake
 		while (1)
-			wait_for_interrupt(5);
+			wait_for_interrupt(0);
 	}
 #endif
 }
