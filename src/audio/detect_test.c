@@ -495,7 +495,8 @@ static int test_keyword_set_model(struct comp_dev *dev,
 
 	if (done) {
 		/* Set model data done, update crc value */
-		cd->model.crc = crc32(cd->model.data, cd->model.data_size);
+		cd->model.crc = crc32(0, cd->model.data,
+				      cd->model.data_size);
 		trace_keyword_with_ids(dev, "keyword_ctrl_set_model() "
 				       "done, memory_size = 0x%x, crc = 0x%08x",
 				       cd->model.data_size, cd->model.crc);

@@ -113,9 +113,9 @@ int norm_int32(int32_t val)
  * https://en.wikipedia.org/wiki/Cyclic_redundancy_check#CRC-32_algorithm
  * 0xEDB88320 is the reversed polynomial representation
  */
-uint32_t crc32(const void *data, uint32_t bytes)
+uint32_t crc32(uint32_t base, const void *data, uint32_t bytes)
 {
-	uint32_t crc = 0xFFFFFFFF;
+	uint32_t crc = ~base;
 	uint32_t cur;
 	int i;
 	int j;
