@@ -169,6 +169,8 @@ no_context:
  * number and exception stack frame), then call the interrupt handler.
  * Note: The callx12 preserves the original user task's a4..a15.*/
 
+	call12 clock_set_high_freq
+
 #if CONFIG_SMP
 	xtos_addr_percore_add	a12, xtos_interrupt_table, MAPINT(SINGLE_INT_NUM)*XIE_SIZE
 #else
@@ -231,6 +233,9 @@ no_context:
 /* Loop to handle all pending interrupts. */
 
 LABEL(.L1,_loop0):
+
+	call12 clock_set_high_freq
+
 	neg	a12, a15
 	and	a12, a12, a15
 	wsr.intclear	a12	// clear if edge-trig or s/w or wr/err (else no effect)

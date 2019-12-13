@@ -71,3 +71,13 @@ void platform_clock_init(void)
 		.set_freq = NULL,
 	};
 }
+
+void clock_set_high_freq(void)
+{
+	clock_set_freq(CLK_CPU(cpu_get_id()), CLK_MAX_CPU_HZ);
+}
+
+void clock_set_low_freq(void)
+{
+	clock_set_freq(CLK_CPU(cpu_get_id()), 120000000);
+}
