@@ -467,7 +467,6 @@ int ipc_init(struct sof *sof)
 
 	dcache_writeback_region(sof->ipc, sizeof(*sof->ipc));
 
-	sof->ipc->shared_ctx->dsp_msg = NULL;
 	list_init(&sof->ipc->shared_ctx->empty_list);
 	list_init(&sof->ipc->shared_ctx->msg_list);
 	list_init(&sof->ipc->shared_ctx->comp_list);
