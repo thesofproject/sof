@@ -29,36 +29,6 @@ struct ipc_data {
 	struct ipc_data_host_buffer dh_buffer;
 };
 
-static void do_notify(void)
-{
-	uint32_t flags;
-	struct ipc_msg *msg;
-
-	spin_lock_irq(_ipc->lock, flags);
-	msg = _ipc->shared_ctx->dsp_msg;
-	if (msg == NULL)
-		goto out;
-
-	tracev_ipc("ipc: not rx -> 0x%x", msg->header);
-
-	/* copy the data returned from DSP */
-	if (msg->rx_size && msg->rx_size < SOF_IPC_MSG_MAX_SIZE)
-		mailbox_dspbox_read(msg->rx_data, SOF_IPC_MSG_MAX_SIZE,
-				    0, msg->rx_size);
-
-	/* any callback ? */
-	if (msg->cb)
-		msg->cb(msg->cb_data, msg->rx_data);
-
-	list_item_append(&msg->list, &_ipc->shared_ctx->empty_list);
-
-out:
-	spin_unlock_irq(_ipc->lock, flags);
-
-	/* unmask GP interrupt #1 */
-	imx_mu_xcr_rmw(IMX_MU_xCR_GIEn(1), 0);
-}
-
 static void irq_handler(void *arg)
 {
 	uint32_t status;
@@ -77,7 +47,9 @@ static void irq_handler(void *arg)
 		imx_mu_xsr_rmw(IMX_MU_xSR_GIPn(1), 0);
 
 		interrupt_clear(PLATFORM_IPC_INTERRUPT);
-		do_notify();
+
+		/* unmask GP interrupt #1 */
+		imx_mu_xcr_rmw(IMX_MU_xCR_GIEn(1), 0);
 	}
 
 	/* new message from host */
@@ -145,7 +117,6 @@ void ipc_platform_send_msg(void)
 			      list);
 	mailbox_dspbox_write(0, msg->tx_data, msg->tx_size);
 	list_item_del(&msg->list);
-	_ipc->shared_ctx->dsp_msg = msg;
 	tracev_ipc("ipc: msg tx -> 0x%x", msg->header);
 
 	/* now interrupt host to tell it we have sent a message */

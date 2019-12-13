@@ -27,39 +27,6 @@ struct ipc_data {
 	struct ipc_data_host_buffer dh_buffer;
 };
 
-static void do_notify(void)
-{
-	uint32_t flags;
-	struct ipc_msg *msg;
-
-	spin_lock_irq(_ipc->lock, flags);
-	msg = _ipc->shared_ctx->dsp_msg;
-	if (!msg)
-		goto out;
-
-	tracev_ipc("ipc: not rx -> 0x%x", msg->header);
-
-	/* copy the data returned from DSP */
-	if (msg->rx_size && msg->rx_size < SOF_IPC_MSG_MAX_SIZE)
-		mailbox_dspbox_read(msg->rx_data, SOF_IPC_MSG_MAX_SIZE,
-				    0, msg->rx_size);
-
-	/* any callback ? */
-	if (msg->cb)
-		msg->cb(msg->cb_data, msg->rx_data);
-
-	list_item_append(&msg->list, &_ipc->shared_ctx->empty_list);
-
-out:
-	spin_unlock_irq(_ipc->lock, flags);
-
-	/* clear DONE bit - tell Host we have completed */
-	shim_write(SHIM_IPCD, 0);
-
-	/* unmask Done interrupt */
-	shim_write(SHIM_IMRD, shim_read(SHIM_IMRD) & ~SHIM_IMRD_DONE);
-}
-
 static void irq_handler(void *arg)
 {
 	uint32_t isr, imrd;
@@ -74,7 +41,12 @@ static void irq_handler(void *arg)
 
 		/* Mask Done interrupt before return */
 		shim_write(SHIM_IMRD, shim_read(SHIM_IMRD) | SHIM_IMRD_DONE);
-		do_notify();
+
+		/* clear DONE bit - tell Host we have completed */
+		shim_write(SHIM_IPCD, 0);
+
+		/* unmask Done interrupt */
+		shim_write(SHIM_IMRD, shim_read(SHIM_IMRD) & ~SHIM_IMRD_DONE);
 	}
 
 	if (isr & SHIM_ISRD_BUSY && !(imrd & SHIM_IMRD_BUSY)) {
@@ -136,7 +108,6 @@ void ipc_platform_send_msg(void)
 			      list);
 	mailbox_dspbox_write(0, msg->tx_data, msg->tx_size);
 	list_item_del(&msg->list);
-	_ipc->shared_ctx->dsp_msg = msg;
 	tracev_ipc("ipc: msg tx -> 0x%x", msg->header);
 
 	/* now interrupt host to tell it we have message sent */

@@ -61,7 +61,6 @@ void ipc_platform_send_msg(void)
 			      list);
 	mailbox_dspbox_write(0, msg->tx_data, msg->tx_size);
 	list_item_del(&msg->list);
-	_ipc->shared_ctx->dsp_msg = msg;
 	tracev_ipc("ipc: msg tx -> 0x%x", msg->header);
 
 	/* now interrupt host to tell it we have message sent */
