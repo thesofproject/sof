@@ -10,12 +10,12 @@
 #ifndef __ARCH_SPINLOCK_H__
 #define __ARCH_SPINLOCK_H__
 
-typedef struct {
-} spinlock_t;
+struct spinlock {
+};
 
-static inline void arch_spinlock_init(spinlock_t **lock) {}
-static inline void arch_spin_lock(spinlock_t *lock) {}
-static inline void arch_spin_unlock(spinlock_t *lock) {}
+static inline void arch_spinlock_init(struct spinlock **lock) {}
+static inline void arch_spin_lock(struct spinlock *lock) {}
+static inline void arch_spin_unlock(struct spinlock *lock) {}
 
 #endif /* __ARCH_SPINLOCK_H__ */
 
