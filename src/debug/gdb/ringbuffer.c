@@ -10,9 +10,9 @@
 #define BUFFER_OFFSET 0x120
 
 volatile struct ring * const rx = (void *) SRAM_DEBUG_BASE;
-volatile struct ring * const tx = (void *) SRAM_DEBUG_BASE + BUFFER_OFFSET;
-volatile struct ring * const debug = (void *) SRAM_DEBUG_BASE +
-					      (2*BUFFER_OFFSET);
+volatile struct ring * const tx = (void *)(SRAM_DEBUG_BASE + BUFFER_OFFSET);
+volatile struct ring * const debug = (void *)(SRAM_DEBUG_BASE +
+					      (2 * BUFFER_OFFSET));
 
 void init_buffers(void)
 {
