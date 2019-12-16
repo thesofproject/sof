@@ -49,7 +49,7 @@ enum task_state task_main_master_core(void *data)
 		wait_for_interrupt(0);
 
 		if (_ipc && !_ipc->pm_prepare_D3)
-			ipc_process_msg_queue();
+			ipc_platform_send_msg();
 	}
 
 	return SOF_TASK_STATE_COMPLETED;
