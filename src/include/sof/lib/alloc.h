@@ -127,9 +127,8 @@ void rfree(void *ptr);
 	do {						\
 		_ptr = _malloc(zone, caps, bytes);	\
 		if (!_ptr) {				\
-			trace_error(TRACE_CLASS_MEM,	\
-				   "failed to alloc 0x%x bytes caps 0x%x", \
-				   bytes, caps);	\
+			trace_mem_error("failed to alloc 0x%x bytes caps 0x%x",\
+					bytes, caps);	\
 			alloc_trace_runtime_heap(zone, caps, bytes);	\
 		}					\
 	} while (0);					\
@@ -140,9 +139,8 @@ void rfree(void *ptr);
 	do {						\
 		_ptr = _zalloc(zone, caps, bytes);	\
 		if (!_ptr) {				\
-			trace_error(TRACE_CLASS_MEM,	\
-				   "failed to alloc 0x%x bytes caps 0x%x", \
-				   bytes, caps);	\
+			trace_mem_error("failed to alloc 0x%x bytes caps 0x%x",\
+					bytes, caps);	\
 			alloc_trace_runtime_heap(zone, caps, bytes);	\
 		}					\
 	} while (0);					\
@@ -153,9 +151,8 @@ void rfree(void *ptr);
 	do {						\
 		_ptr = _balloc(zone, caps, bytes, PLATFORM_DCACHE_ALIGN);\
 		if (!_ptr) {				\
-			trace_error(TRACE_CLASS_MEM,	\
-				   "failed to alloc 0x%x bytes caps 0x%x", \
-				   bytes, caps);	\
+			trace_mem_error("failed to alloc 0x%x bytes caps 0x%x",\
+					bytes, caps);	\
 			alloc_trace_buffer_heap(zone, caps, bytes);	\
 		}					\
 	} while (0);					\
@@ -166,9 +163,8 @@ void rfree(void *ptr);
 	do {						\
 		_ptr = _realloc(ptr, zone, caps, bytes);	\
 		if (!_ptr) {				\
-			trace_error(TRACE_CLASS_MEM,	\
-				   "failed to alloc 0x%x bytes caps 0x%x", \
-				   bytes, caps);	\
+			trace_mem_error("failed to alloc 0x%x bytes caps 0x%x",\
+					bytes, caps);	\
 			alloc_trace_buffer_heap(zone, caps, bytes);	\
 		}					\
 	} while (0);					\
@@ -180,9 +176,8 @@ void rfree(void *ptr);
 		_ptr = _brealloc(ptr, zone, caps, bytes,\
 				 PLATFORM_DCACHE_ALIGN);\
 		if (!_ptr) {				\
-			trace_error(TRACE_CLASS_MEM,	\
-				   "failed to alloc 0x%x bytes caps 0x%x", \
-				   bytes, caps);	\
+			trace_mem_error("failed to alloc 0x%x bytes caps 0x%x",\
+					bytes, caps);	\
 			alloc_trace_buffer_heap(zone, caps, bytes);	\
 		}					\
 	} while (0);					\
@@ -193,9 +188,8 @@ void rfree(void *ptr);
 	do {						\
 		_ptr = _brealloc(ptr, zone, caps, bytes, alignment);	\
 		if (!_ptr) {				\
-			trace_error(TRACE_CLASS_MEM,	\
-				   "failed to alloc 0x%x bytes caps 0x%x", \
-				   bytes, caps);	\
+			trace_mem_error("failed to alloc 0x%x bytes caps 0x%x",\
+					bytes, caps);	\
 			alloc_trace_buffer_heap(zone, caps, bytes);	\
 		}					\
 	} while (0);					\
@@ -206,9 +200,8 @@ void rfree(void *ptr);
 	do {						\
 		_ptr = _balloc(zone, caps, bytes, alignment);	\
 		if (!_ptr) {				\
-			trace_error(TRACE_CLASS_MEM,	\
-				   "failed to alloc 0x%x bytes caps 0x%x", \
-				   bytes, caps);	\
+			trace_mem_error("failed to alloc 0x%x bytes caps 0x%x",\
+					bytes, caps);	\
 			alloc_trace_buffer_heap(zone, caps, bytes);	\
 		}					\
 	} while (0);					\
