@@ -403,7 +403,7 @@ int ipc_stream_send_position(struct comp_dev *cdev,
 
 	mailbox_stream_write(cdev->pipeline->posn_offset, posn, sizeof(*posn));
 	return ipc_queue_host_message(_ipc, posn->rhdr.hdr.cmd, posn,
-				      sizeof(*posn), 0);
+				      sizeof(*posn), false);
 }
 
 /* send component notification */
@@ -417,7 +417,7 @@ int ipc_send_comp_notification(struct comp_dev *cdev,
 	event->src_comp_id = cdev->comp.id;
 
 	return ipc_queue_host_message(_ipc, event->rhdr.hdr.cmd, event,
-				      sizeof(*event), 0);
+				      sizeof(*event), false);
 }
 
 /* send stream position TODO: send compound message  */
@@ -432,7 +432,7 @@ int ipc_stream_send_xrun(struct comp_dev *cdev,
 
 	mailbox_stream_write(cdev->pipeline->posn_offset, posn, sizeof(*posn));
 	return ipc_queue_host_message(_ipc, posn->rhdr.hdr.cmd, posn,
-				      sizeof(*posn), 0);
+				      sizeof(*posn), false);
 }
 
 static int ipc_stream_trigger(uint32_t header)
@@ -763,7 +763,7 @@ int ipc_dma_trace_send_position(void)
 	posn.rhdr.hdr.size = sizeof(posn);
 
 	return ipc_queue_host_message(_ipc, posn.rhdr.hdr.cmd, &posn,
-				      sizeof(posn), 1);
+				      sizeof(posn), true);
 }
 
 static int ipc_glb_debug_message(uint32_t header)
@@ -1244,7 +1244,7 @@ static inline struct ipc_msg *msg_find(struct ipc *ipc, uint32_t header,
 }
 
 int ipc_queue_host_message(struct ipc *ipc, uint32_t header, void *tx_data,
-			   size_t tx_bytes, uint32_t replace)
+			   size_t tx_bytes, bool replace)
 {
 	struct ipc_msg *msg = NULL;
 	uint32_t flags, found = 0;

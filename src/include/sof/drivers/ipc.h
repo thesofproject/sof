@@ -17,6 +17,7 @@
 #include <sof/trace/trace.h>
 #include <ipc/header.h>
 #include <user/trace.h>
+#include <stdbool.h>
 #include <stdint.h>
 
 struct comp_buffer;
@@ -143,7 +144,7 @@ int ipc_stream_send_xrun(struct comp_dev *cdev,
 	struct sof_ipc_stream_posn *posn);
 
 int ipc_queue_host_message(struct ipc *ipc, uint32_t header, void *tx_data,
-			   size_t tx_bytes, uint32_t replace);
+			   size_t tx_bytes, bool replace);
 
 void ipc_platform_send_msg(void);
 
