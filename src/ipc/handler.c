@@ -1304,7 +1304,7 @@ out:
 int ipc_process_msg_queue(void)
 {
 	if (_ipc->shared_ctx->dsp_pending)
-		ipc_platform_send_msg(_ipc);
+		ipc_platform_send_msg();
 	return 0;
 }
 
