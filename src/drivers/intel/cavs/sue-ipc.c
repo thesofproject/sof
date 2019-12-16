@@ -45,33 +45,33 @@ static enum task_state ipc_platform_do_cmd(void *data)
 	return SOF_TASK_STATE_COMPLETED;
 }
 
-void ipc_platform_send_msg(struct ipc *ipc)
+void ipc_platform_send_msg(void)
 {
 	struct ipc_msg *msg;
 	uint32_t flags;
 
-	spin_lock_irq(ipc->lock, flags);
+	spin_lock_irq(_ipc->lock, flags);
 
 	/* any messages to send ? */
-	if (list_is_empty(&ipc->shared_ctx->msg_list)) {
-		ipc->shared_ctx->dsp_pending = 0;
+	if (list_is_empty(&_ipc->shared_ctx->msg_list)) {
+		_ipc->shared_ctx->dsp_pending = 0;
 		goto out;
 	}
 
 	/* now send the message */
-	msg = list_first_item(&ipc->shared_ctx->msg_list, struct ipc_msg,
+	msg = list_first_item(&_ipc->shared_ctx->msg_list, struct ipc_msg,
 			      list);
 	mailbox_dspbox_write(0, msg->tx_data, msg->tx_size);
 	list_item_del(&msg->list);
-	ipc->shared_ctx->dsp_msg = msg;
+	_ipc->shared_ctx->dsp_msg = msg;
 	tracev_ipc("ipc: msg tx -> 0x%x", msg->header);
 
 	/* now interrupt host to tell it we have message sent */
 
-	list_item_append(&msg->list, &ipc->shared_ctx->empty_list);
+	list_item_append(&msg->list, &_ipc->shared_ctx->empty_list);
 
 out:
-	spin_unlock_irq(ipc->lock, flags);
+	spin_unlock_irq(_ipc->lock, flags);
 }
 
 int platform_ipc_init(struct ipc *ipc)
