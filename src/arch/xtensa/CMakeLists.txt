@@ -162,6 +162,7 @@ add_subdirectory(xtos)
 add_local_sources(reset xtos/memctl_default.S xtos/reset-vector.S)
 
 add_local_sources(sof
+	interrupt.c
 	xtos/crt1-boards.S
 	xtos/_vectors.S
 	init.c

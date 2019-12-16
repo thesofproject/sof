@@ -20,11 +20,19 @@ extern char irq_name_level3[];
 extern char irq_name_level4[];
 extern char irq_name_level5[];
 
+void arch_interrupt_set_proxy(int irq,
+	void (*handler)(void *arg), void *arg);
+
 static inline int arch_interrupt_register(int irq,
 	void (*handler)(void *arg), void *arg)
 {
 	xthal_set_intclear(0x1 << irq);
-	_xtos_set_interrupt_handler_arg(irq, handler, arg);
+
+	if (irq >= XCHAL_NUM_INTERRUPTS || irq < 0)
+		_xtos_set_interrupt_handler_arg(irq, handler, arg);
+	else
+		arch_interrupt_set_proxy(irq, handler, arg);
+
 	return 0;
 }
 

@@ -137,3 +137,23 @@ void clock_init(void)
 		spinlock_init(&clk_pdata->clk[i].lock);
 	}
 }
+
+void clock_set_high_freq(void)
+{
+	uint32_t reg = io_reg_read(SHIM_BASE + SHIM_CLKCTL);
+
+	reg = reg & ~(SHIM_CLKCTL_OCS_LP_RING);
+	reg = reg | SHIM_CLKCTL_OCS_HP_RING;
+
+	io_reg_write(SHIM_BASE + SHIM_CLKCTL, reg);
+}
+
+void clock_set_low_freq(void)
+{
+	uint32_t reg = io_reg_read(SHIM_BASE + SHIM_CLKCTL);
+
+	reg = reg & ~(SHIM_CLKCTL_OCS_HP_RING);
+	reg = reg | SHIM_CLKCTL_OCS_LP_RING;
+
+	io_reg_write(SHIM_BASE + SHIM_CLKCTL, reg);
+}
