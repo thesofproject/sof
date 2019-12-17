@@ -41,7 +41,8 @@ static void scheduler_register(struct schedule_data *scheduler)
 
 	if (!*sch) {
 		/* init schedulers list */
-		*sch = rzalloc(RZONE_SYS, 0, SOF_MEM_CAPS_RAM, sizeof(**sch));
+		*sch = rzalloc(SOF_MEM_ZONE_SYS, 0, SOF_MEM_CAPS_RAM,
+			       sizeof(**sch));
 		list_init(&(*sch)->list);
 	}
 
@@ -52,7 +53,7 @@ void scheduler_init(int type, const struct scheduler_ops *ops, void *data)
 {
 	struct schedule_data *sch;
 
-	sch = rzalloc(RZONE_SYS, 0, SOF_MEM_CAPS_RAM, sizeof(*sch));
+	sch = rzalloc(SOF_MEM_ZONE_SYS, 0, SOF_MEM_CAPS_RAM, sizeof(*sch));
 	list_init(&sch->list);
 	sch->type = type;
 	sch->ops = ops;

@@ -258,7 +258,7 @@ static int create_local_elems(struct comp_dev *dev, uint32_t buffer_count,
 		elem_array = &hd->local.elem_array;
 
 		/* config buffer will be used as proxy */
-		err = dma_sg_alloc(&hd->config.elem_array, RZONE_RUNTIME,
+		err = dma_sg_alloc(&hd->config.elem_array, SOF_MEM_ZONE_RUNTIME,
 				   dir, 1, 0, 0, 0);
 		if (err < 0) {
 			trace_host_error_with_ids(dev, "create_local_elems() "
@@ -270,7 +270,7 @@ static int create_local_elems(struct comp_dev *dev, uint32_t buffer_count,
 		elem_array = &hd->config.elem_array;
 	}
 
-	err = dma_sg_alloc(elem_array, RZONE_RUNTIME, dir, buffer_count,
+	err = dma_sg_alloc(elem_array, SOF_MEM_ZONE_RUNTIME, dir, buffer_count,
 			   buffer_bytes, (uintptr_t)(hd->dma_buffer->addr), 0);
 	if (err < 0) {
 		trace_host_error_with_ids(dev, "create_local_elems() error: "
@@ -361,7 +361,7 @@ static struct comp_dev *host_new(struct sof_ipc_comp *comp)
 		return NULL;
 	}
 
-	dev = rzalloc(RZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+	dev = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
 		      COMP_SIZE(struct sof_ipc_comp_host));
 	if (!dev)
 		return NULL;
@@ -371,7 +371,7 @@ static struct comp_dev *host_new(struct sof_ipc_comp *comp)
 		       ipc_host, sizeof(struct sof_ipc_comp_host));
 	assert(!ret);
 
-	hd = rzalloc(RZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*hd));
+	hd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*hd));
 	if (!hd) {
 		rfree(dev);
 		return NULL;

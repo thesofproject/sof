@@ -207,7 +207,7 @@ void dma_put(struct dma *dma)
 }
 
 int dma_sg_alloc(struct dma_sg_elem_array *elem_array,
-		 int zone,
+		 enum mem_zone zone,
 		 uint32_t direction,
 		 uint32_t buffer_count, uint32_t buffer_bytes,
 		 uintptr_t dma_buffer_addr, uintptr_t external_addr)

@@ -64,7 +64,7 @@ void task_context_set(void *task_ctx)
 
 int task_context_alloc(void **task_ctx)
 {
-	*task_ctx = rzalloc(RZONE_SYS_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+	*task_ctx = rzalloc(SOF_MEM_ZONE_SYS_RUNTIME, 0, SOF_MEM_CAPS_RAM,
 			    sizeof(xtos_task_context));
 	if (!*task_ctx)
 		return -ENOMEM;

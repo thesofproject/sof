@@ -41,7 +41,7 @@ static int ipc_parse_page_descriptors(uint8_t *page_table,
 		return -EINVAL;
 	}
 
-	elem_array->elems = rzalloc(RZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+	elem_array->elems = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
 				    sizeof(struct dma_sg_elem) * ring->pages);
 	if (!elem_array->elems)
 		return -ENOMEM;

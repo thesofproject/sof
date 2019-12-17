@@ -158,7 +158,7 @@ static struct comp_dev *volume_new(struct sof_ipc_comp *comp)
 		return NULL;
 	}
 
-	dev = rzalloc(RZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+	dev = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
 		      COMP_SIZE(struct sof_ipc_comp_volume));
 	if (!dev)
 		return NULL;
@@ -168,7 +168,7 @@ static struct comp_dev *volume_new(struct sof_ipc_comp *comp)
 		       sizeof(struct sof_ipc_comp_volume));
 	assert(!ret);
 
-	cd = rzalloc(RZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
+	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
 	if (!cd) {
 		rfree(dev);
 		return NULL;

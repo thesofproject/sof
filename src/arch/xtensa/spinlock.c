@@ -11,7 +11,7 @@
 
 void arch_spinlock_init(spinlock_t **lock)
 {
-	*lock = rzalloc(RZONE_SYS, RZONE_FLAG_UNCACHED, SOF_MEM_CAPS_RAM,
+	*lock = rzalloc(SOF_MEM_ZONE_SYS, RZONE_FLAG_UNCACHED, SOF_MEM_CAPS_RAM,
 			sizeof(**lock));
 
 	assert(*lock);

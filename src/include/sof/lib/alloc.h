@@ -49,10 +49,12 @@ struct sof;
  */
 
 /* heap zone types */
-#define RZONE_SYS		BIT(0)
-#define RZONE_RUNTIME		BIT(1)
-#define RZONE_BUFFER		BIT(2)
-#define RZONE_SYS_RUNTIME	BIT(3)
+enum mem_zone {
+	SOF_MEM_ZONE_SYS = 0,
+	SOF_MEM_ZONE_SYS_RUNTIME,
+	SOF_MEM_ZONE_RUNTIME,
+	SOF_MEM_ZONE_BUFFER,
+};
 
 /* heap zone flags */
 #define RZONE_FLAG_UNCACHED	BIT(0)
@@ -107,10 +109,10 @@ struct mm {
 } __aligned(PLATFORM_DCACHE_ALIGN);
 
 /* heap allocation and free */
-void *_malloc(int zone, uint32_t flags, uint32_t caps, size_t bytes);
-void *_zalloc(int zone, uint32_t flags, uint32_t caps, size_t bytes);
+void *_malloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes);
+void *_zalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes);
 void *_balloc(uint32_t flags, uint32_t caps, size_t bytes, uint32_t alignment);
-void *_realloc(void *ptr, int zone, uint32_t flags, uint32_t caps,
+void *_realloc(void *ptr, enum mem_zone zone, uint32_t flags, uint32_t caps,
 	       size_t bytes);
 void *_brealloc(void *ptr, uint32_t flags, uint32_t caps, size_t bytes,
 		uint32_t alignment);
@@ -247,7 +249,7 @@ int mm_pm_context_restore(struct dma_copy *dc, struct dma_sg_config *sg);
 void init_heap(struct sof *sof);
 
 /* frees entire heap (supported for slave core system heap atm) */
-void free_heap(int zone);
+void free_heap(enum mem_zone zone);
 
 /* status */
 void heap_trace_all(int force);

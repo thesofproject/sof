@@ -105,8 +105,8 @@ out:
 
 int dma_trace_init_early(struct sof *sof)
 {
-	trace_data = rzalloc(RZONE_SYS, RZONE_FLAG_UNCACHED, SOF_MEM_CAPS_RAM,
-			     sizeof(*trace_data));
+	trace_data = rzalloc(SOF_MEM_ZONE_SYS, RZONE_FLAG_UNCACHED,
+			     SOF_MEM_CAPS_RAM, sizeof(*trace_data));
 
 	dma_sg_init(&trace_data->config.elem_array);
 	spinlock_init(&trace_data->lock);
@@ -216,7 +216,7 @@ static int dma_trace_start(struct dma_trace_data *d)
 	config.dest_width = sizeof(uint32_t);
 	config.cyclic = 0;
 
-	err = dma_sg_alloc(&config.elem_array, RZONE_SYS,
+	err = dma_sg_alloc(&config.elem_array, SOF_MEM_ZONE_SYS,
 			   config.direction,
 			   elem_num, elem_size, elem_addr, 0);
 	if (err < 0)

@@ -120,7 +120,7 @@ static struct comp_dev *kpb_new(struct sof_ipc_comp *comp)
 		return NULL;
 	}
 
-	dev = rzalloc(RZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+	dev = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
 		      COMP_SIZE(struct sof_ipc_comp_process));
 	if (!dev)
 		return NULL;
@@ -129,7 +129,7 @@ static struct comp_dev *kpb_new(struct sof_ipc_comp *comp)
 		       comp, sizeof(struct sof_ipc_comp_process));
 	assert(!ret);
 
-	kpb = rzalloc(RZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*kpb));
+	kpb = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*kpb));
 	if (!kpb) {
 		rfree(dev);
 		return NULL;
@@ -203,7 +203,7 @@ static size_t kpb_allocate_history_buffer(struct comp_data *kpb)
 	trace_kpb("kpb_allocate_history_buffer()");
 
 	/* Initialize history buffer */
-	kpb->history_buffer = rzalloc(RZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+	kpb->history_buffer = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
 				      sizeof(struct hb));
 	if (!kpb->history_buffer)
 		return 0;
@@ -241,7 +241,7 @@ static size_t kpb_allocate_history_buffer(struct comp_data *kpb)
 				/* Yes, we still need at least one more buffer.
 				 * Let's first create new container for it.
 				 */
-				new_hb = rzalloc(RZONE_RUNTIME, 0,
+				new_hb = rzalloc(SOF_MEM_ZONE_RUNTIME, 0,
 						 SOF_MEM_CAPS_RAM,
 						 sizeof(struct hb));
 				if (!new_hb)

@@ -149,7 +149,7 @@ static struct comp_dev *dai_new(struct sof_ipc_comp *comp)
 		return NULL;
 	}
 
-	dev = rzalloc(RZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+	dev = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
 		      COMP_SIZE(struct sof_ipc_comp_dai));
 	if (!dev)
 		return NULL;
@@ -159,7 +159,7 @@ static struct comp_dev *dai_new(struct sof_ipc_comp *comp)
 		       sizeof(struct sof_ipc_comp_dai));
 	assert(!ret);
 
-	dd = rzalloc(RZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*dd));
+	dd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*dd));
 	if (!dd) {
 		rfree(dev);
 		return NULL;
@@ -255,7 +255,7 @@ static int dai_playback_params(struct comp_dev *dev, uint32_t period_bytes,
 		trace_dai_with_ids(dev, "dai_playback_params() "
 				   "fifo %X", fifo);
 
-		err = dma_sg_alloc(&config->elem_array, RZONE_RUNTIME,
+		err = dma_sg_alloc(&config->elem_array, SOF_MEM_ZONE_RUNTIME,
 				   config->direction,
 				   period_count,
 				   period_bytes,
@@ -319,7 +319,7 @@ static int dai_capture_params(struct comp_dev *dev, uint32_t period_bytes,
 		trace_dai_with_ids(dev, "dai_capture_params() "
 				   "fifo %X", fifo);
 
-		err = dma_sg_alloc(&config->elem_array, RZONE_RUNTIME,
+		err = dma_sg_alloc(&config->elem_array, SOF_MEM_ZONE_RUNTIME,
 				   config->direction,
 				   period_count,
 				   period_bytes,

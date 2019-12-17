@@ -194,7 +194,7 @@ int comp_set_state(struct comp_dev *dev, int cmd)
 
 void sys_comp_init(void)
 {
-	cd = rzalloc(RZONE_SYS, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
+	cd = rzalloc(SOF_MEM_ZONE_SYS, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
 	list_init(&cd->list);
 }
 

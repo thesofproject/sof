@@ -67,7 +67,7 @@ void sa_init(struct sof *sof, uint64_t timeout)
 
 	trace_sa("sa_init(), timeout = %u", timeout);
 
-	sa = rzalloc(RZONE_SYS, 0, SOF_MEM_CAPS_RAM, sizeof(*sa));
+	sa = rzalloc(SOF_MEM_ZONE_SYS, 0, SOF_MEM_CAPS_RAM, sizeof(*sa));
 	sof->sa = sa;
 
 	/* set default timeouts */
