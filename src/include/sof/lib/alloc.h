@@ -15,6 +15,7 @@
 #include <sof/lib/memory.h>
 #include <sof/spinlock.h>
 #include <sof/string.h>
+#include <sof/trace/trace.h>
 #include <user/trace.h>
 #include <config.h>
 #include <stddef.h>
@@ -23,6 +24,11 @@
 struct dma_copy;
 struct dma_sg_config;
 struct sof;
+
+#define trace_mem_error(__e, ...) \
+	trace_error(TRACE_CLASS_MEM, __e, ##__VA_ARGS__)
+#define trace_mem_init(__e, ...) \
+	trace_event(TRACE_CLASS_MEM, __e, ##__VA_ARGS__)
 
 /* Heap Memory Zones
  *
