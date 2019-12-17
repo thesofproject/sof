@@ -153,8 +153,7 @@ static void init_heap_map(struct mm_heap *heap, int count)
 }
 
 /* allocate from system memory pool */
-static void *rmalloc_sys(int zone, uint32_t flags, int caps, int core,
-			 size_t bytes)
+static void *rmalloc_sys(uint32_t flags, int caps, int core, size_t bytes)
 {
 	void *ptr;
 	struct mm_heap *cpu_heap;
@@ -172,8 +171,8 @@ static void *rmalloc_sys(int zone, uint32_t flags, int caps, int core,
 
 	/* always succeeds or panics */
 	if (alignment + bytes > cpu_heap->info.free) {
-		trace_mem_error("rmalloc_sys() error: zone = %x, core = %d, bytes = %d",
-				zone, core, bytes);
+		trace_mem_error("rmalloc_sys() error: core = %d, bytes = %d",
+				core, bytes);
 		panic(SOF_IPC_PANIC_MEM);
 	}
 	cpu_heap->info.used += alignment;
@@ -380,7 +379,7 @@ static struct mm_heap *get_heap_from_caps(struct mm_heap *heap, int count,
 	return NULL;
 }
 
-static void *get_ptr_from_heap(struct mm_heap *heap, int zone, uint32_t flags,
+static void *get_ptr_from_heap(struct mm_heap *heap, uint32_t flags,
 			       uint32_t caps, size_t bytes, uint32_t alignment)
 {
 	struct block_map *map;
@@ -595,7 +594,7 @@ void alloc_trace_buffer_heap(int zone, uint32_t caps, size_t bytes)
 #endif
 
 /* allocate single block for system runtime */
-static void *rmalloc_sys_runtime(int zone, uint32_t flags, int caps, int core,
+static void *rmalloc_sys_runtime(uint32_t flags, int caps, int core,
 				 size_t bytes)
 {
 	struct mm_heap *cpu_heap;
@@ -606,7 +605,7 @@ static void *rmalloc_sys_runtime(int zone, uint32_t flags, int caps, int core,
 	if ((cpu_heap->caps & caps) != caps)
 		panic(SOF_IPC_PANIC_MEM);
 
-	ptr = get_ptr_from_heap(cpu_heap, zone, flags, caps, bytes,
+	ptr = get_ptr_from_heap(cpu_heap, flags, caps, bytes,
 				PLATFORM_DCACHE_ALIGN);
 
 	/* other core should have the latest value */
@@ -618,8 +617,7 @@ static void *rmalloc_sys_runtime(int zone, uint32_t flags, int caps, int core,
 }
 
 /* allocate single block for runtime */
-static void *rmalloc_runtime(int zone, uint32_t flags, uint32_t caps,
-			     size_t bytes)
+static void *rmalloc_runtime(uint32_t flags, uint32_t caps, size_t bytes)
 {
 	struct mm_heap *heap;
 
@@ -630,13 +628,13 @@ static void *rmalloc_runtime(int zone, uint32_t flags, uint32_t caps,
 		heap = get_heap_from_caps(memmap.buffer, PLATFORM_HEAP_BUFFER,
 					  caps);
 		if (!heap) {
-			trace_mem_error("rmalloc_runtime() error: zone = %d, caps = %x, bytes = %d",
-					zone, caps, bytes);
+			trace_mem_error("rmalloc_runtime() error: caps = %x, bytes = %d",
+					caps, bytes);
 
 			return NULL;
 		}
 	}
-	return get_ptr_from_heap(heap, zone, flags, caps, bytes,
+	return get_ptr_from_heap(heap, flags, caps, bytes,
 				 PLATFORM_DCACHE_ALIGN);
 }
 
@@ -647,14 +645,13 @@ static void *_malloc_unlocked(int zone, uint32_t flags, uint32_t caps,
 
 	switch (zone) {
 	case RZONE_SYS:
-		ptr = rmalloc_sys(zone, flags, caps, cpu_get_id(), bytes);
+		ptr = rmalloc_sys(flags, caps, cpu_get_id(), bytes);
 		break;
 	case RZONE_SYS_RUNTIME:
-		ptr = rmalloc_sys_runtime(zone, flags, caps, cpu_get_id(),
-					  bytes);
+		ptr = rmalloc_sys_runtime(flags, caps, cpu_get_id(), bytes);
 		break;
 	case RZONE_RUNTIME:
-		ptr = rmalloc_runtime(zone, flags, caps, bytes);
+		ptr = rmalloc_runtime(flags, caps, bytes);
 		break;
 	default:
 		trace_mem_error("rmalloc() error: invalid zone");
@@ -707,7 +704,7 @@ void *rzalloc_core_sys(int core, size_t bytes)
 
 	spin_lock_irq(memmap.lock, flags);
 
-	ptr = rmalloc_sys(RZONE_SYS, 0, 0, core, bytes);
+	ptr = rmalloc_sys(0, 0, core, bytes);
 	if (ptr)
 		bzero(ptr, bytes);
 
@@ -717,7 +714,7 @@ void *rzalloc_core_sys(int core, size_t bytes)
 }
 
 /* allocates continuous buffers - not for direct use, clients use rballoc() */
-static void *alloc_heap_buffer(struct mm_heap *heap, int zone, uint32_t flags,
+static void *alloc_heap_buffer(struct mm_heap *heap, uint32_t flags,
 			       uint32_t caps, size_t bytes, uint32_t alignment)
 {
 	struct block_map *map;
@@ -791,8 +788,8 @@ static void *alloc_heap_buffer(struct mm_heap *heap, int zone, uint32_t flags,
 	return ptr;
 }
 
-static void *_balloc_unlocked(int zone, uint32_t flags, uint32_t caps,
-			      size_t bytes, uint32_t alignment)
+static void *_balloc_unlocked(uint32_t flags, uint32_t caps, size_t bytes,
+			      uint32_t alignment)
 {
 	struct mm_heap *heap;
 	unsigned int i, n;
@@ -806,8 +803,7 @@ static void *_balloc_unlocked(int zone, uint32_t flags, uint32_t caps,
 		if (!heap)
 			break;
 
-		ptr = alloc_heap_buffer(heap, zone, flags, caps, bytes,
-					alignment);
+		ptr = alloc_heap_buffer(heap, flags, caps, bytes, alignment);
 		if (ptr)
 			break;
 
@@ -826,7 +822,7 @@ void *_balloc(int zone, uint32_t flags, uint32_t caps, size_t bytes,
 
 	spin_lock_irq(memmap.lock, lock_flags);
 
-	ptr = _balloc_unlocked(zone, flags, caps, bytes, alignment);
+	ptr = _balloc_unlocked(flags, caps, bytes, alignment);
 
 	spin_unlock_irq(memmap.lock, lock_flags);
 
@@ -905,7 +901,7 @@ void *_brealloc(void *ptr, int zone, uint32_t flags, uint32_t caps,
 
 	spin_lock_irq(memmap.lock, lock_flags);
 
-	new_ptr = _balloc_unlocked(zone, flags, caps, bytes, alignment);
+	new_ptr = _balloc_unlocked(flags, caps, bytes, alignment);
 
 	if (new_ptr && ptr)
 		memcpy_s(new_ptr, bytes, ptr, bytes);
