@@ -344,7 +344,7 @@ int idc_init(void)
 
 	/* initialize idc data */
 	struct idc **idc = idc_get();
-	*idc = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(**idc));
+	*idc = rzalloc(RZONE_SYS, 0, SOF_MEM_CAPS_RAM, sizeof(**idc));
 	(*idc)->busy_bit_mask = idc_get_busy_bit_mask(core);
 	(*idc)->done_bit_mask = idc_get_done_bit_mask(core);
 

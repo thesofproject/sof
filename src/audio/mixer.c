@@ -136,8 +136,8 @@ static struct comp_dev *mixer_new(struct sof_ipc_comp *comp)
 		return NULL;
 	}
 
-	dev = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM,
-		COMP_SIZE(struct sof_ipc_comp_mixer));
+	dev = rzalloc(RZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+		      COMP_SIZE(struct sof_ipc_comp_mixer));
 	if (!dev)
 		return NULL;
 
@@ -147,7 +147,7 @@ static struct comp_dev *mixer_new(struct sof_ipc_comp *comp)
 		       sizeof(struct sof_ipc_comp_mixer));
 	assert(!ret);
 
-	md = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*md));
+	md = rzalloc(RZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*md));
 	if (!md) {
 		rfree(dev);
 		return NULL;

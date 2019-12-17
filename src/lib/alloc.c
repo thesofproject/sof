@@ -152,7 +152,8 @@ static void init_heap_map(struct mm_heap *heap, int count)
 }
 
 /* allocate from system memory pool */
-static void *rmalloc_sys(int zone, int caps, int core, size_t bytes)
+static void *rmalloc_sys(int zone, uint32_t flags, int caps, int core,
+			 size_t bytes)
 {
 	void *ptr;
 	struct mm_heap *cpu_heap;
@@ -186,7 +187,7 @@ static void *rmalloc_sys(int zone, int caps, int core, size_t bytes)
 		dcache_writeback_invalidate_region(cpu_heap,
 						   sizeof(*cpu_heap));
 
-	if ((zone & RZONE_FLAG_MASK) == RZONE_FLAG_UNCACHED) {
+	if (flags & RZONE_FLAG_UNCACHED) {
 		dcache_invalidate_region(ptr, bytes);
 		ptr = cache_to_uncache(ptr);
 	}
@@ -378,8 +379,8 @@ static struct mm_heap *get_heap_from_caps(struct mm_heap *heap, int count,
 	return NULL;
 }
 
-static void *get_ptr_from_heap(struct mm_heap *heap, int zone, uint32_t caps,
-			       size_t bytes, uint32_t alignment)
+static void *get_ptr_from_heap(struct mm_heap *heap, int zone, uint32_t flags,
+			       uint32_t caps, size_t bytes, uint32_t alignment)
 {
 	struct block_map *map;
 	int i, temp_bytes = bytes;
@@ -421,7 +422,7 @@ static void *get_ptr_from_heap(struct mm_heap *heap, int zone, uint32_t caps,
 		break;
 	}
 
-	if (ptr && (zone & RZONE_FLAG_MASK) == RZONE_FLAG_UNCACHED) {
+	if (ptr && (flags & RZONE_FLAG_UNCACHED)) {
 		dcache_invalidate_region(ptr, bytes);
 		ptr = cache_to_uncache(ptr);
 	}
@@ -590,7 +591,8 @@ void alloc_trace_buffer_heap(int zone, uint32_t caps, size_t bytes)
 #endif
 
 /* allocate single block for system runtime */
-static void *rmalloc_sys_runtime(int zone, int caps, int core, size_t bytes)
+static void *rmalloc_sys_runtime(int zone, uint32_t flags, int caps, int core,
+				 size_t bytes)
 {
 	struct mm_heap *cpu_heap;
 	void *ptr;
@@ -600,7 +602,7 @@ static void *rmalloc_sys_runtime(int zone, int caps, int core, size_t bytes)
 	if ((cpu_heap->caps & caps) != caps)
 		panic(SOF_IPC_PANIC_MEM);
 
-	ptr = get_ptr_from_heap(cpu_heap, zone, caps, bytes,
+	ptr = get_ptr_from_heap(cpu_heap, zone, flags, caps, bytes,
 				PLATFORM_DCACHE_ALIGN);
 
 	/* other core should have the latest value */
@@ -612,7 +614,8 @@ static void *rmalloc_sys_runtime(int zone, int caps, int core, size_t bytes)
 }
 
 /* allocate single block for runtime */
-static void *rmalloc_runtime(int zone, uint32_t caps, size_t bytes)
+static void *rmalloc_runtime(int zone, uint32_t flags, uint32_t caps,
+			     size_t bytes)
 {
 	struct mm_heap *heap;
 
@@ -629,23 +632,25 @@ static void *rmalloc_runtime(int zone, uint32_t caps, size_t bytes)
 			return NULL;
 		}
 	}
-	return get_ptr_from_heap(heap, zone, caps, bytes,
+	return get_ptr_from_heap(heap, zone, flags, caps, bytes,
 				 PLATFORM_DCACHE_ALIGN);
 }
 
-static void *_malloc_unlocked(int zone, uint32_t caps, size_t bytes)
+static void *_malloc_unlocked(int zone, uint32_t flags, uint32_t caps,
+			      size_t bytes)
 {
 	void *ptr = NULL;
 
-	switch (zone & RZONE_TYPE_MASK) {
+	switch (zone) {
 	case RZONE_SYS:
-		ptr = rmalloc_sys(zone, caps, cpu_get_id(), bytes);
+		ptr = rmalloc_sys(zone, flags, caps, cpu_get_id(), bytes);
 		break;
 	case RZONE_SYS_RUNTIME:
-		ptr = rmalloc_sys_runtime(zone, caps, cpu_get_id(), bytes);
+		ptr = rmalloc_sys_runtime(zone, flags, caps, cpu_get_id(),
+					  bytes);
 		break;
 	case RZONE_RUNTIME:
-		ptr = rmalloc_runtime(zone, caps, bytes);
+		ptr = rmalloc_runtime(zone, flags, caps, bytes);
 		break;
 	default:
 		trace_mem_error("rmalloc() error: invalid zone");
@@ -665,26 +670,26 @@ static void *_malloc_unlocked(int zone, uint32_t caps, size_t bytes)
 }
 
 /* allocates memory - not for direct use, clients use rmalloc() */
-void *_malloc(int zone, uint32_t caps, size_t bytes)
+void *_malloc(int zone, uint32_t flags, uint32_t caps, size_t bytes)
 {
-	uint32_t flags;
+	uint32_t lock_flags;
 	void *ptr = NULL;
 
-	spin_lock_irq(memmap.lock, flags);
+	spin_lock_irq(memmap.lock, lock_flags);
 
-	ptr = _malloc_unlocked(zone, caps, bytes);
+	ptr = _malloc_unlocked(zone, flags, caps, bytes);
 
-	spin_unlock_irq(memmap.lock, flags);
+	spin_unlock_irq(memmap.lock, lock_flags);
 
 	return ptr;
 }
 
 /* allocates and clears memory - not for direct use, clients use rzalloc() */
-void *_zalloc(int zone, uint32_t caps, size_t bytes)
+void *_zalloc(int zone, uint32_t flags, uint32_t caps, size_t bytes)
 {
 	void *ptr;
 
-	ptr = _malloc(zone, caps, bytes);
+	ptr = _malloc(zone, flags, caps, bytes);
 	if (ptr)
 		bzero(ptr, bytes);
 
@@ -698,7 +703,7 @@ void *rzalloc_core_sys(int core, size_t bytes)
 
 	spin_lock_irq(memmap.lock, flags);
 
-	ptr = rmalloc_sys(RZONE_SYS, 0, core, bytes);
+	ptr = rmalloc_sys(RZONE_SYS, 0, 0, core, bytes);
 	if (ptr)
 		bzero(ptr, bytes);
 
@@ -708,8 +713,8 @@ void *rzalloc_core_sys(int core, size_t bytes)
 }
 
 /* allocates continuous buffers - not for direct use, clients use rballoc() */
-static void *alloc_heap_buffer(struct mm_heap *heap, int zone, uint32_t caps,
-			       size_t bytes, uint32_t alignment)
+static void *alloc_heap_buffer(struct mm_heap *heap, int zone, uint32_t flags,
+			       uint32_t caps, size_t bytes, uint32_t alignment)
 {
 	struct block_map *map;
 	int i, temp_bytes = bytes;
@@ -769,7 +774,7 @@ static void *alloc_heap_buffer(struct mm_heap *heap, int zone, uint32_t caps,
 		}
 	}
 
-	if (ptr && ((zone & RZONE_FLAG_MASK) == RZONE_FLAG_UNCACHED)) {
+	if (ptr && (flags & RZONE_FLAG_UNCACHED)) {
 		dcache_invalidate_region(ptr, bytes);
 		ptr = cache_to_uncache(ptr);
 	}
@@ -782,8 +787,8 @@ static void *alloc_heap_buffer(struct mm_heap *heap, int zone, uint32_t caps,
 	return ptr;
 }
 
-static void *_balloc_unlocked(int zone, uint32_t caps, size_t bytes,
-			      uint32_t alignment)
+static void *_balloc_unlocked(int zone, uint32_t flags, uint32_t caps,
+			      size_t bytes, uint32_t alignment)
 {
 	struct mm_heap *heap;
 	unsigned int i, n;
@@ -797,7 +802,8 @@ static void *_balloc_unlocked(int zone, uint32_t caps, size_t bytes,
 		if (!heap)
 			break;
 
-		ptr = alloc_heap_buffer(heap, zone, caps, bytes, alignment);
+		ptr = alloc_heap_buffer(heap, zone, flags, caps, bytes,
+					alignment);
 		if (ptr)
 			break;
 
@@ -808,16 +814,17 @@ static void *_balloc_unlocked(int zone, uint32_t caps, size_t bytes,
 }
 
 /* allocates continuous buffers - not for direct use, clients use rballoc() */
-void *_balloc(int zone, uint32_t caps, size_t bytes, uint32_t alignment)
+void *_balloc(int zone, uint32_t flags, uint32_t caps, size_t bytes,
+	      uint32_t alignment)
 {
 	void *ptr = NULL;
-	uint32_t flags;
+	uint32_t lock_flags;
 
-	spin_lock_irq(memmap.lock, flags);
+	spin_lock_irq(memmap.lock, lock_flags);
 
-	ptr = _balloc_unlocked(zone, caps, bytes, alignment);
+	ptr = _balloc_unlocked(zone, flags, caps, bytes, alignment);
 
-	spin_unlock_irq(memmap.lock, flags);
+	spin_unlock_irq(memmap.lock, lock_flags);
 
 	return ptr;
 }
@@ -860,17 +867,17 @@ void rfree(void *ptr)
 	spin_unlock_irq(memmap.lock, flags);
 }
 
-void *_realloc(void *ptr, int zone, uint32_t caps, size_t bytes)
+void *_realloc(void *ptr, int zone, uint32_t flags, uint32_t caps, size_t bytes)
 {
 	void *new_ptr = NULL;
-	uint32_t flags;
+	uint32_t lock_flags;
 
 	if (!bytes)
 		return new_ptr;
 
-	spin_lock_irq(memmap.lock, flags);
+	spin_lock_irq(memmap.lock, lock_flags);
 
-	new_ptr = _malloc_unlocked(zone, caps, bytes);
+	new_ptr = _malloc_unlocked(zone, flags, caps, bytes);
 
 	if (new_ptr && ptr)
 		memcpy_s(new_ptr, bytes, ptr, bytes);
@@ -878,23 +885,23 @@ void *_realloc(void *ptr, int zone, uint32_t caps, size_t bytes)
 	if (new_ptr)
 		_rfree_unlocked(ptr);
 
-	spin_unlock_irq(memmap.lock, flags);
+	spin_unlock_irq(memmap.lock, lock_flags);
 
 	return new_ptr;
 }
 
-void *_brealloc(void *ptr, int zone, uint32_t caps, size_t bytes,
-		uint32_t alignment)
+void *_brealloc(void *ptr, int zone, uint32_t flags, uint32_t caps,
+		size_t bytes, uint32_t alignment)
 {
 	void *new_ptr = NULL;
-	uint32_t flags;
+	uint32_t lock_flags;
 
 	if (!bytes)
 		return new_ptr;
 
-	spin_lock_irq(memmap.lock, flags);
+	spin_lock_irq(memmap.lock, lock_flags);
 
-	new_ptr = _balloc_unlocked(zone, caps, bytes, alignment);
+	new_ptr = _balloc_unlocked(zone, flags, caps, bytes, alignment);
 
 	if (new_ptr && ptr)
 		memcpy_s(new_ptr, bytes, ptr, bytes);
@@ -902,7 +909,7 @@ void *_brealloc(void *ptr, int zone, uint32_t caps, size_t bytes,
 	if (new_ptr)
 		_rfree_unlocked(ptr);
 
-	spin_unlock_irq(memmap.lock, flags);
+	spin_unlock_irq(memmap.lock, lock_flags);
 
 	return new_ptr;
 }
@@ -1031,7 +1038,7 @@ void init_heap(struct sof *sof)
 #endif
 
 	/* alloc manually to avoid deadlock */
-	memmap.lock = _malloc_unlocked(RZONE_SYS | RZONE_FLAG_UNCACHED,
+	memmap.lock = _malloc_unlocked(RZONE_SYS, RZONE_FLAG_UNCACHED,
 				       SOF_MEM_CAPS_RAM, sizeof(*memmap.lock));
 	if (!memmap.lock)
 		panic(SOF_IPC_PANIC_MEM);

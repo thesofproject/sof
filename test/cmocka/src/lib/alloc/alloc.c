@@ -229,9 +229,11 @@ static void *alloc(struct test_case *tc)
 	void *mem;
 
 	if (tc->alloc_zone == RZONE_BUFFER)
-		mem = rballoc(tc->alloc_zone, tc->alloc_caps, tc->alloc_size);
+		mem = rballoc(tc->alloc_zone, 0, tc->alloc_caps,
+			      tc->alloc_size);
 	else
-		mem = rmalloc(tc->alloc_zone, tc->alloc_caps, tc->alloc_size);
+		mem = rmalloc(tc->alloc_zone, 0, tc->alloc_caps,
+			      tc->alloc_size);
 
 	return mem;
 }
@@ -281,7 +283,7 @@ static void test_lib_alloc_zero(struct test_case *tc)
 	int i;
 
 	for (i = 0; i < tc->alloc_num; ++i) {
-		char *mem = rzalloc(tc->alloc_zone, tc->alloc_caps,
+		char *mem = rzalloc(tc->alloc_zone, 0, tc->alloc_caps,
 				    tc->alloc_size);
 		int j;
 

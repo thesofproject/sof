@@ -105,7 +105,7 @@ out:
 
 int dma_trace_init_early(struct sof *sof)
 {
-	trace_data = rzalloc(RZONE_SYS | RZONE_FLAG_UNCACHED, SOF_MEM_CAPS_RAM,
+	trace_data = rzalloc(RZONE_SYS, RZONE_FLAG_UNCACHED, SOF_MEM_CAPS_RAM,
 			     sizeof(*trace_data));
 
 	dma_sg_init(&trace_data->config.elem_array);
@@ -164,7 +164,7 @@ static int dma_trace_buffer_init(struct dma_trace_data *d)
 	unsigned int flags;
 
 	/* allocate new buffer */
-	buf = rballoc(RZONE_BUFFER,
+	buf = rballoc(RZONE_BUFFER, 0,
 		      SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_DMA,
 		      DMA_TRACE_LOCAL_SIZE);
 	if (!buf) {

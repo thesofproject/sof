@@ -235,7 +235,7 @@ static int alloc_mem_load(struct comp_data *cd, uint32_t size)
 
 	free_mem_load(cd);
 
-	cd->model.data = rballoc(RZONE_BUFFER, SOF_MEM_CAPS_RAM, size);
+	cd->model.data = rballoc(RZONE_BUFFER, 0, SOF_MEM_CAPS_RAM, size);
 
 	if (!cd->model.data) {
 		trace_keyword_error("alloc_mem_load() alloc failed");
@@ -309,7 +309,7 @@ static struct comp_dev *test_keyword_new(struct sof_ipc_comp *comp)
 		return NULL;
 	}
 
-	dev = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM,
+	dev = rzalloc(RZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
 		      COMP_SIZE(struct sof_ipc_comp_process));
 	if (!dev)
 		return NULL;
@@ -319,7 +319,7 @@ static struct comp_dev *test_keyword_new(struct sof_ipc_comp *comp)
 		       sizeof(struct sof_ipc_comp_process));
 	assert(!ret);
 
-	cd = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*cd));
+	cd = rzalloc(RZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
 
 	if (!cd)
 		goto fail;

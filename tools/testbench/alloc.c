@@ -16,12 +16,12 @@
 
 /* testbench mem alloc definition */
 
-void *_malloc(int zone, uint32_t caps, size_t bytes)
+void *_malloc(int zone, uint32_t flags, uint32_t caps, size_t bytes)
 {
 	return malloc(bytes);
 }
 
-void *_zalloc(int zone, uint32_t caps, size_t bytes)
+void *_zalloc(int zone, uint32_t flags, uint32_t caps, size_t bytes)
 {
 	return calloc(bytes, 1);
 }
@@ -31,19 +31,19 @@ void rfree(void *ptr)
 	free(ptr);
 }
 
-void *_balloc(int zone, uint32_t caps, size_t bytes,
+void *_balloc(int zone, uint32_t flags, uint32_t caps, size_t bytes,
 	      uint32_t alignment)
 {
 	return malloc(bytes);
 }
 
-void *_realloc(void *ptr, int zone, uint32_t caps, size_t bytes)
+void *_realloc(void *ptr, int zone, uint32_t flags, uint32_t caps, size_t bytes)
 {
 	return realloc(ptr, bytes);
 }
 
-void *_brealloc(void *ptr, int zone, uint32_t caps, size_t bytes,
-		uint32_t alignment)
+void *_brealloc(void *ptr, int zone, uint32_t flags, uint32_t caps,
+		size_t bytes, uint32_t alignment)
 {
 	return realloc(ptr, bytes);
 }

@@ -149,8 +149,8 @@ static struct comp_dev *dai_new(struct sof_ipc_comp *comp)
 		return NULL;
 	}
 
-	dev = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM,
-		COMP_SIZE(struct sof_ipc_comp_dai));
+	dev = rzalloc(RZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+		      COMP_SIZE(struct sof_ipc_comp_dai));
 	if (!dev)
 		return NULL;
 
@@ -159,7 +159,7 @@ static struct comp_dev *dai_new(struct sof_ipc_comp *comp)
 		       sizeof(struct sof_ipc_comp_dai));
 	assert(!ret);
 
-	dd = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*dd));
+	dd = rzalloc(RZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*dd));
 	if (!dd) {
 		rfree(dev);
 		return NULL;

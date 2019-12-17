@@ -912,7 +912,7 @@ static int ssp_probe(struct dai *dai)
 		return -EEXIST; /* already created */
 
 	/* allocate private data */
-	ssp = rzalloc(RZONE_SYS_RUNTIME | RZONE_FLAG_UNCACHED,
+	ssp = rzalloc(RZONE_SYS_RUNTIME, RZONE_FLAG_UNCACHED,
 		      SOF_MEM_CAPS_RAM, sizeof(*ssp));
 	if (!ssp) {
 		trace_error(TRACE_CLASS_DAI, "ssp_probe() error: "

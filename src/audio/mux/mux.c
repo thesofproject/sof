@@ -97,14 +97,14 @@ static struct comp_dev *mux_new(struct sof_ipc_comp *comp)
 		return NULL;
 	}
 
-	dev = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM,
+	dev = rzalloc(RZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
 		      COMP_SIZE(struct sof_ipc_comp_process));
 	if (!dev)
 		return NULL;
 
 	memcpy(&dev->comp, comp, sizeof(struct sof_ipc_comp_process));
 
-	cd = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM,
+	cd = rzalloc(RZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
 		     sizeof(*cd) + MUX_MAX_STREAMS * sizeof(struct mux_stream_data));
 	if (!cd) {
 		rfree(dev);

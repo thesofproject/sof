@@ -405,7 +405,7 @@ static struct comp_dev *file_new(struct sof_ipc_comp *comp)
 		return NULL;
 	}
 
-	dev = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM,
+	dev = rzalloc(RZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
 		      COMP_SIZE(struct sof_ipc_comp_file));
 	if (!dev)
 		return NULL;
@@ -415,7 +415,7 @@ static struct comp_dev *file_new(struct sof_ipc_comp *comp)
 		       sizeof(struct sof_ipc_comp_file)));
 
 	/* allocate  memory for file comp data */
-	cd = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*cd));
+	cd = rzalloc(RZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
 	if (!cd) {
 		free(dev);
 		return NULL;

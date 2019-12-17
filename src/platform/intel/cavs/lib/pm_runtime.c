@@ -352,7 +352,7 @@ void platform_pm_runtime_init(struct pm_runtime_data *prd)
 
 	_prd = prd;
 
-	pprd = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(*pprd));
+	pprd = rzalloc(RZONE_SYS, 0, SOF_MEM_CAPS_RAM, sizeof(*pprd));
 	_prd->platform_data = pprd;
 }
 

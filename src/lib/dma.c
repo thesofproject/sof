@@ -157,7 +157,7 @@ int dma_sg_alloc(struct dma_sg_elem_array *elem_array,
 {
 	int i;
 
-	elem_array->elems = rzalloc(zone, SOF_MEM_CAPS_RAM,
+	elem_array->elems = rzalloc(zone, 0, SOF_MEM_CAPS_RAM,
 				    sizeof(struct dma_sg_elem) * buffer_count);
 	if (!elem_array->elems)
 		return -ENOMEM;

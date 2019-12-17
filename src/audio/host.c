@@ -361,7 +361,7 @@ static struct comp_dev *host_new(struct sof_ipc_comp *comp)
 		return NULL;
 	}
 
-	dev = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM,
+	dev = rzalloc(RZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
 		      COMP_SIZE(struct sof_ipc_comp_host));
 	if (!dev)
 		return NULL;
@@ -371,7 +371,7 @@ static struct comp_dev *host_new(struct sof_ipc_comp *comp)
 		       ipc_host, sizeof(struct sof_ipc_comp_host));
 	assert(!ret);
 
-	hd = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*hd));
+	hd = rzalloc(RZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*hd));
 	if (!hd) {
 		rfree(dev);
 		return NULL;

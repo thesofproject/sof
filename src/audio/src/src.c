@@ -485,7 +485,7 @@ static struct comp_dev *src_new(struct sof_ipc_comp *comp)
 		return NULL;
 	}
 
-	dev = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM,
+	dev = rzalloc(RZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
 		      COMP_SIZE(struct sof_ipc_comp_src));
 	if (!dev)
 		return NULL;
@@ -496,7 +496,7 @@ static struct comp_dev *src_new(struct sof_ipc_comp *comp)
 		       sizeof(struct sof_ipc_comp_src));
 	assert(!ret);
 
-	cd = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*cd));
+	cd = rzalloc(RZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
 	if (!cd) {
 		rfree(dev);
 		return NULL;
@@ -605,7 +605,7 @@ static int src_params(struct comp_dev *dev,
 	if (cd->delay_lines)
 		rfree(cd->delay_lines);
 
-	cd->delay_lines = rballoc(RZONE_BUFFER, SOF_MEM_CAPS_RAM,
+	cd->delay_lines = rballoc(RZONE_BUFFER, 0, SOF_MEM_CAPS_RAM,
 				  delay_lines_size);
 	if (!cd->delay_lines) {
 		trace_src_error_with_ids(dev, "src_params() error: "

@@ -63,7 +63,7 @@ static inline struct ll_schedule_domain *domain_init
 {
 	struct ll_schedule_domain *domain;
 
-	domain = rzalloc(RZONE_SYS | RZONE_FLAG_UNCACHED, SOF_MEM_CAPS_RAM,
+	domain = rzalloc(RZONE_SYS, RZONE_FLAG_UNCACHED, SOF_MEM_CAPS_RAM,
 			 sizeof(*domain));
 	domain->type = type;
 	domain->clk = clk;

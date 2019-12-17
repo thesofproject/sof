@@ -146,7 +146,7 @@ int schedule_task_init_edf(struct task *task, const struct task_ops *ops,
 	if (edf_sch_get_pdata(task))
 		return -EEXIST;
 
-	edf_pdata = rzalloc(RZONE_SYS_RUNTIME, SOF_MEM_CAPS_RAM,
+	edf_pdata = rzalloc(RZONE_SYS_RUNTIME, 0, SOF_MEM_CAPS_RAM,
 			    sizeof(*edf_pdata));
 	if (!edf_pdata) {
 		trace_edf_sch_error("schedule_task_init_edf() error: alloc "
@@ -253,7 +253,7 @@ int scheduler_init_edf(void)
 
 	trace_edf_sch("edf_scheduler_init()");
 
-	edf_sch = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(*edf_sch));
+	edf_sch = rzalloc(RZONE_SYS, 0, SOF_MEM_CAPS_RAM, sizeof(*edf_sch));
 	list_init(&edf_sch->list);
 	edf_sch->clock = PLATFORM_DEFAULT_CLOCK;
 
