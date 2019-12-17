@@ -29,11 +29,6 @@
 #define DEBUG_BLOCK_FREE_VALUE_32BIT ((uint32_t) 0xa5a5a5a5)
 #endif
 
-#define trace_mem_error(__e, ...) \
-	trace_error(TRACE_CLASS_MEM, __e, ##__VA_ARGS__)
-#define trace_mem_init(__e, ...) \
-	trace_event(TRACE_CLASS_MEM, __e, ##__VA_ARGS__)
-
 extern struct mm memmap;
 
 /* We have 3 memory pools
