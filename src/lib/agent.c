@@ -51,8 +51,8 @@ static enum task_state validate(void *data)
 
 	/* warning timeout */
 	if (delta > sa->warn_timeout)
-		trace_sa_error("validate(), ll drift detected, delta = "
-			       "%u", delta);
+		trace_sa("validate(), ll drift detected, delta = "
+			 "%u", delta);
 
 	/* update last_check to current */
 	sa->last_check = current;
