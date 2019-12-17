@@ -273,6 +273,7 @@ static void eq_fir_free_delaylines(struct comp_data *cd)
 	 * each FIR channel delay line to NULL.
 	 */
 	rfree(cd->fir_delay);
+	cd->fir_delay = NULL;
 	cd->fir_delay_size = 0;
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
 		fir[i].delay = NULL;
