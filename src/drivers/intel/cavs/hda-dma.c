@@ -712,7 +712,7 @@ static int hda_dma_probe(struct dma *dma)
 	if (dma->chan)
 		return -EEXIST; /* already created */
 
-	dma->chan = rzalloc(RZONE_SYS_RUNTIME | RZONE_FLAG_UNCACHED,
+	dma->chan = rzalloc(RZONE_SYS_RUNTIME, RZONE_FLAG_UNCACHED,
 			    SOF_MEM_CAPS_RAM, sizeof(struct dma_chan_data) *
 			    dma->plat_data.channels);
 
@@ -731,7 +731,7 @@ static int hda_dma_probe(struct dma *dma)
 		chan->status = COMP_STATE_INIT;
 		chan->core = DMA_CORE_INVALID;
 
-		hda_chan = rzalloc(RZONE_SYS_RUNTIME | RZONE_FLAG_UNCACHED,
+		hda_chan = rzalloc(RZONE_SYS_RUNTIME, RZONE_FLAG_UNCACHED,
 				   SOF_MEM_CAPS_RAM,
 				   sizeof(struct hda_chan_data));
 		if (!hda_chan) {

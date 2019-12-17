@@ -133,7 +133,7 @@ int platform_ipc_pmc_init(void)
 	uint32_t imrlpesc;
 
 	/* init ipc data */
-	_pmc = rmalloc(RZONE_SYS, SOF_MEM_CAPS_RAM,
+	_pmc = rmalloc(RZONE_SYS, 0, SOF_MEM_CAPS_RAM,
 		       sizeof(struct intel_ipc_pmc_data));
 
 	/* configure interrupt */

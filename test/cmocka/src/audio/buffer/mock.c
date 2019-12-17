@@ -17,18 +17,20 @@ TRACE_IMPL()
 
 #if !CONFIG_LIBRARY
 
-void *_zalloc(int zone, uint32_t caps, size_t bytes)
+void *_zalloc(int zone, uint32_t flags, uint32_t caps, size_t bytes)
 {
 	(void)zone;
+	(void)flags;
 	(void)caps;
 
 	return malloc(bytes);
 }
 
-void *_balloc(int zone, uint32_t caps, size_t bytes,
+void *_balloc(int zone, uint32_t flags, uint32_t caps, size_t bytes,
 	      uint32_t alignment)
 {
 	(void)zone;
+	(void)flags;
 	(void)caps;
 
 	return malloc(bytes);
@@ -39,10 +41,11 @@ void rfree(void *ptr)
 	free(ptr);
 }
 
-void *_brealloc(void *ptr, int zone, uint32_t caps, size_t bytes,
-		uint32_t alignment)
+void *_brealloc(void *ptr, int zone, uint32_t flags, uint32_t caps,
+		size_t bytes, uint32_t alignment)
 {
 	(void)zone;
+	(void)flags;
 	(void)caps;
 
 	return realloc(ptr, bytes);

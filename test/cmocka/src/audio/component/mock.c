@@ -17,9 +17,10 @@ TRACE_IMPL()
 
 #if !CONFIG_LIBRARY
 
-void *_zalloc(int zone, uint32_t caps, size_t bytes)
+void *_zalloc(int zone, uint32_t flags, uint32_t caps, size_t bytes)
 {
 	(void)zone;
+	(void)flags;
 	(void)caps;
 
 	return calloc(bytes, 1);

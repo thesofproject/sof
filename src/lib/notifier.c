@@ -47,7 +47,8 @@ int notifier_register(void *receiver, void *caller, enum notify_id type,
 
 	assert(type >= NOTIFIER_ID_CPU_FREQ && type < NOTIFIER_ID_COUNT);
 
-	handle = rzalloc(RZONE_SYS_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*handle));
+	handle = rzalloc(RZONE_SYS_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+			 sizeof(*handle));
 
 	if (!handle) {
 		trace_notifier_error("notifier_register() error: callback "
@@ -175,7 +176,7 @@ void init_system_notify(void)
 {
 	struct notify **notify = arch_notify_get();
 	int i;
-	*notify = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(**notify));
+	*notify = rzalloc(RZONE_SYS, 0, SOF_MEM_CAPS_RAM, sizeof(**notify));
 
 	for (i = NOTIFIER_ID_CPU_FREQ; i < NOTIFIER_ID_COUNT; i++)
 		list_init(&(*notify)->list[i]);

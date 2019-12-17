@@ -222,7 +222,7 @@ void trace_init(struct sof *sof)
 {
 	dma_trace_init_early(sof);
 
-	trace = rzalloc(RZONE_SYS | RZONE_FLAG_UNCACHED, SOF_MEM_CAPS_RAM,
+	trace = rzalloc(RZONE_SYS, RZONE_FLAG_UNCACHED, SOF_MEM_CAPS_RAM,
 			sizeof(*trace));
 	trace->enable = 1;
 	trace->pos = 0;

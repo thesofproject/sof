@@ -372,7 +372,7 @@ static int eq_fir_setup(struct comp_data *cd, int nch)
 		return 0;
 
 	/* Allocate all FIR channels data in a big chunk and clear it */
-	cd->fir_delay = rballoc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, size_sum);
+	cd->fir_delay = rballoc(RZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, size_sum);
 	if (!cd->fir_delay) {
 		trace_eq_error("eq_fir_setup() error: alloc failed, size = %u",
 			       size_sum);
@@ -436,7 +436,7 @@ static struct comp_dev *eq_fir_new(struct sof_ipc_comp *comp)
 		return NULL;
 	}
 
-	dev = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM,
+	dev = rzalloc(RZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
 		      COMP_SIZE(struct sof_ipc_comp_process));
 	if (!dev)
 		return NULL;
@@ -446,7 +446,7 @@ static struct comp_dev *eq_fir_new(struct sof_ipc_comp *comp)
 		       sizeof(struct sof_ipc_comp_process));
 	assert(!ret);
 
-	cd = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*cd));
+	cd = rzalloc(RZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
 	if (!cd) {
 		rfree(dev);
 		return NULL;
@@ -462,7 +462,7 @@ static struct comp_dev *eq_fir_new(struct sof_ipc_comp *comp)
 	 * the EQ is configured later in run-time the size is zero.
 	 */
 	if (bs) {
-		cd->config = rballoc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, bs);
+		cd->config = rballoc(RZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, bs);
 		if (!cd->config) {
 			rfree(dev);
 			rfree(cd);
@@ -635,7 +635,7 @@ static int fir_cmd_set_data(struct comp_dev *dev,
 			eq_fir_free_parameters(&cd->config);
 
 			/* Allocate buffer for copy of the blob. */
-			cd->config = rballoc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM,
+			cd->config = rballoc(RZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
 					     cdata->num_elems +
 					     cdata->elems_remaining);
 

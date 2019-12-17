@@ -491,7 +491,7 @@ static int eq_iir_setup(struct comp_data *cd, int nch)
 		return 0;
 
 	/* Allocate all IIR channels data in a big chunk and clear it */
-	cd->iir_delay = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, delay_size);
+	cd->iir_delay = rzalloc(RZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, delay_size);
 	if (!cd->iir_delay) {
 		trace_eq_error("eq_iir_setup(), delay allocation fail");
 		return -ENOMEM;
@@ -536,7 +536,7 @@ static struct comp_dev *eq_iir_new(struct sof_ipc_comp *comp)
 		return NULL;
 	}
 
-	dev = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM,
+	dev = rzalloc(RZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
 		      COMP_SIZE(struct sof_ipc_comp_process));
 	if (!dev)
 		return NULL;
@@ -546,7 +546,7 @@ static struct comp_dev *eq_iir_new(struct sof_ipc_comp *comp)
 		       sizeof(struct sof_ipc_comp_process));
 	assert(!ret);
 
-	cd = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*cd));
+	cd = rzalloc(RZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
 	if (!cd) {
 		rfree(dev);
 		return NULL;
@@ -564,7 +564,7 @@ static struct comp_dev *eq_iir_new(struct sof_ipc_comp *comp)
 	 * the EQ is configured later in run-time the size is zero.
 	 */
 	if (bs) {
-		cd->config = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, bs);
+		cd->config = rzalloc(RZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, bs);
 		if (!cd->config) {
 			rfree(dev);
 			rfree(cd);
@@ -674,7 +674,8 @@ static int iir_cmd_set_data(struct comp_dev *dev,
 		}
 
 		/* Allocate and make a copy of the blob and setup IIR */
-		cd->config_new = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, bs);
+		cd->config_new = rzalloc(RZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+					 bs);
 		if (!cd->config_new) {
 			trace_eq_error_with_ids(dev, "iir_cmd_set_data(), alloc fail");
 			return -EINVAL;

@@ -558,7 +558,7 @@ static int dw_dma_set_config(struct dma_chan_data *channel,
 		if (dw_chan->lli)
 			rfree(dw_chan->lli);
 
-		dw_chan->lli = rzalloc(RZONE_SYS_RUNTIME, SOF_MEM_CAPS_RAM |
+		dw_chan->lli = rzalloc(RZONE_SYS_RUNTIME, 0, SOF_MEM_CAPS_RAM |
 				    SOF_MEM_CAPS_DMA, sizeof(struct dw_lli) *
 				    channel->desc_count);
 		if (!dw_chan->lli) {
@@ -952,7 +952,7 @@ static int dw_dma_probe(struct dma *dma)
 	pm_runtime_get_sync(DW_DMAC_CLK, dma->plat_data.id);
 
 	/* allocate dma channels */
-	dma->chan = rzalloc(RZONE_SYS_RUNTIME | RZONE_FLAG_UNCACHED,
+	dma->chan = rzalloc(RZONE_SYS_RUNTIME, RZONE_FLAG_UNCACHED,
 			    SOF_MEM_CAPS_RAM, sizeof(struct dma_chan_data) *
 			    dma->plat_data.channels);
 
@@ -974,7 +974,7 @@ static int dw_dma_probe(struct dma *dma)
 		chan->index = i;
 		chan->core = DMA_CORE_INVALID;
 
-		dw_chan = rzalloc(RZONE_SYS_RUNTIME | RZONE_FLAG_UNCACHED,
+		dw_chan = rzalloc(RZONE_SYS_RUNTIME, RZONE_FLAG_UNCACHED,
 				  SOF_MEM_CAPS_RAM, sizeof(*dw_chan));
 
 		if (!dw_chan) {

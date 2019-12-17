@@ -50,7 +50,7 @@ struct pipeline *pipeline_new(struct sof_ipc_pipe_new *pipe_desc,
 	trace_pipe("pipeline_new()");
 
 	/* allocate new pipeline */
-	p = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*p));
+	p = rzalloc(RZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*p));
 	if (!p) {
 		trace_pipe_error("pipeline_new() error: Out of Memory");
 		return NULL;
@@ -404,7 +404,7 @@ static struct task *pipeline_task_init(struct pipeline *p, uint32_t type,
 {
 	struct pipeline_task *task = NULL;
 
-	task = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*task));
+	task = rzalloc(RZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*task));
 	if (!task)
 		return NULL;
 
