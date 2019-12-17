@@ -361,6 +361,7 @@ static void eq_iir_free_delaylines(struct comp_data *cd)
 	 * each IIR channel delay line to NULL.
 	 */
 	rfree(cd->iir_delay);
+	cd->iir_delay = NULL;
 	cd->iir_delay_size = 0;
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
 		iir[i].delay = NULL;
