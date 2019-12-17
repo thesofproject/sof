@@ -220,10 +220,13 @@ static void schedule_ll_task_insert(struct task *task, struct list_item *tasks)
 	struct list_item *tlist;
 	struct task *curr_task;
 
-	/* tasks are added into the list in order */
+	/* tasks are added into the list from highest to lowest priority
+	 * and tasks with the same priority should be served on
+	 * a first-come-first-serve basis
+	 */
 	list_for_item(tlist, tasks) {
 		curr_task = container_of(tlist, struct task, list);
-		if (task->priority <= curr_task->priority) {
+		if (task->priority < curr_task->priority) {
 			list_item_append(&task->list, &curr_task->list);
 			return;
 		}
