@@ -232,7 +232,7 @@ static struct comp_dev *asrc_new(struct sof_ipc_comp *comp)
 		return NULL;
 	}
 
-	dev = rzalloc(RZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+	dev = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
 		      COMP_SIZE(struct sof_ipc_comp_asrc));
 	if (!dev)
 		return NULL;
@@ -242,7 +242,7 @@ static struct comp_dev *asrc_new(struct sof_ipc_comp *comp)
 		       sizeof(struct sof_ipc_comp_asrc));
 	assert(!err);
 
-	cd = rzalloc(RZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
+	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
 	if (!cd) {
 		rfree(dev);
 		return NULL;
@@ -438,7 +438,8 @@ static int asrc_prepare(struct comp_dev *dev)
 	cd->buf_size = (cd->source_frames_max + cd->sink_frames_max) *
 		frame_bytes;
 
-	cd->buf = rzalloc(RZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, cd->buf_size);
+	cd->buf = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+			  cd->buf_size);
 	if (!cd->buf) {
 		cd->buf_size = 0;
 		trace_asrc_error_with_ids(dev, "asrc_prepare(), allocation fail for size %d",
@@ -464,7 +465,7 @@ static int asrc_prepare(struct comp_dev *dev)
 		goto err_free_buf;
 	}
 
-	cd->asrc_obj = rzalloc(RZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+	cd->asrc_obj = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
 			       cd->asrc_size);
 	if (!cd->asrc_obj) {
 		trace_asrc_error_with_ids(dev, "asrc_prepare(), allocation fail for size %d",

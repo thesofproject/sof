@@ -129,7 +129,7 @@ struct ll_schedule_domain *timer_domain_init(struct timer *timer, int clk,
 	domain = domain_init(SOF_SCHEDULE_LL_TIMER, clk, false,
 			     &timer_domain_ops);
 
-	timer_domain = rzalloc(RZONE_SYS, RZONE_FLAG_UNCACHED,
+	timer_domain = rzalloc(SOF_MEM_ZONE_SYS, RZONE_FLAG_UNCACHED,
 			       SOF_MEM_CAPS_RAM, sizeof(*timer_domain));
 	timer_domain->timer = timer;
 	timer_domain->timeout = timeout;

@@ -32,7 +32,8 @@ struct comp_buffer *buffer_alloc(uint32_t size, uint32_t caps, uint32_t align)
 	}
 
 	/* allocate new buffer */
-	buffer = rzalloc(RZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*buffer));
+	buffer = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+			 sizeof(*buffer));
 	if (!buffer) {
 		trace_buffer_error("buffer_alloc() error: "
 				   "could not alloc structure");

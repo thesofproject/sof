@@ -23,7 +23,7 @@ void pm_runtime_init(void)
 {
 	trace_pm("pm_runtime_init()");
 
-	prd = rzalloc(RZONE_SYS, 0, SOF_MEM_CAPS_RAM, sizeof(*prd));
+	prd = rzalloc(SOF_MEM_ZONE_SYS, 0, SOF_MEM_CAPS_RAM, sizeof(*prd));
 	spinlock_init(&prd->lock);
 
 	platform_pm_runtime_init(prd);

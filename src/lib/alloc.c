@@ -543,7 +543,7 @@ static void trace_heap_blocks(struct mm_heap *heap)
 	}
 }
 
-static void alloc_trace_heap(int zone, uint32_t caps, size_t bytes,
+static void alloc_trace_heap(enum mem_zone zone, uint32_t caps, size_t bytes,
 			     struct mm_heap *heap_base,
 			     unsigned int heap_count)
 {
@@ -574,7 +574,7 @@ void alloc_trace_runtime_heap(uint32_t caps, size_t bytes)
 	/* check runtime heap for capabilities */
 	trace_mem_init("heap: using runtime");
 
-	alloc_trace_heap(RZONE_RUNTIME, caps, bytes, memmap.runtime,
+	alloc_trace_heap(SOF_MEM_ZONE_RUNTIME, caps, bytes, memmap.runtime,
 			 PLATFORM_HEAP_RUNTIME);
 }
 
@@ -634,19 +634,19 @@ static void *rmalloc_runtime(uint32_t flags, uint32_t caps, size_t bytes)
 				 PLATFORM_DCACHE_ALIGN);
 }
 
-static void *_malloc_unlocked(int zone, uint32_t flags, uint32_t caps,
+static void *_malloc_unlocked(enum mem_zone zone, uint32_t flags, uint32_t caps,
 			      size_t bytes)
 {
 	void *ptr = NULL;
 
 	switch (zone) {
-	case RZONE_SYS:
+	case SOF_MEM_ZONE_SYS:
 		ptr = rmalloc_sys(flags, caps, cpu_get_id(), bytes);
 		break;
-	case RZONE_SYS_RUNTIME:
+	case SOF_MEM_ZONE_SYS_RUNTIME:
 		ptr = rmalloc_sys_runtime(flags, caps, cpu_get_id(), bytes);
 		break;
-	case RZONE_RUNTIME:
+	case SOF_MEM_ZONE_RUNTIME:
 		ptr = rmalloc_runtime(flags, caps, bytes);
 		break;
 	default:
@@ -667,7 +667,7 @@ static void *_malloc_unlocked(int zone, uint32_t flags, uint32_t caps,
 }
 
 /* allocates memory - not for direct use, clients use rmalloc() */
-void *_malloc(int zone, uint32_t flags, uint32_t caps, size_t bytes)
+void *_malloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
 {
 	uint32_t lock_flags;
 	void *ptr = NULL;
@@ -682,7 +682,7 @@ void *_malloc(int zone, uint32_t flags, uint32_t caps, size_t bytes)
 }
 
 /* allocates and clears memory - not for direct use, clients use rzalloc() */
-void *_zalloc(int zone, uint32_t flags, uint32_t caps, size_t bytes)
+void *_zalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
 {
 	void *ptr;
 
@@ -862,7 +862,8 @@ void rfree(void *ptr)
 	spin_unlock_irq(memmap.lock, flags);
 }
 
-void *_realloc(void *ptr, int zone, uint32_t flags, uint32_t caps, size_t bytes)
+void *_realloc(void *ptr, enum mem_zone zone, uint32_t flags, uint32_t caps,
+	       size_t bytes)
 {
 	void *new_ptr = NULL;
 	uint32_t lock_flags;
@@ -934,7 +935,7 @@ int mm_pm_context_restore(struct dma_copy *dc, struct dma_sg_config *sg)
 	return -ENOTSUP;
 }
 
-void free_heap(int zone)
+void free_heap(enum mem_zone zone)
 {
 	struct mm_heap *cpu_heap;
 
@@ -942,7 +943,7 @@ void free_heap(int zone)
 	 * otherwise this is critical flow issue.
 	 */
 	if (cpu_get_id() == PLATFORM_MASTER_CORE_ID ||
-	    zone != RZONE_SYS) {
+	    zone != SOF_MEM_ZONE_SYS) {
 		trace_mem_error("free_heap() error: critical flow issue");
 		panic(SOF_IPC_PANIC_MEM);
 	}
@@ -1033,7 +1034,7 @@ void init_heap(struct sof *sof)
 #endif
 
 	/* alloc manually to avoid deadlock */
-	memmap.lock = _malloc_unlocked(RZONE_SYS, RZONE_FLAG_UNCACHED,
+	memmap.lock = _malloc_unlocked(SOF_MEM_ZONE_SYS, RZONE_FLAG_UNCACHED,
 				       SOF_MEM_CAPS_RAM, sizeof(*memmap.lock));
 	if (!memmap.lock)
 		panic(SOF_IPC_PANIC_MEM);

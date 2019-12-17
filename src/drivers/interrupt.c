@@ -55,8 +55,8 @@ int interrupt_cascade_register(const struct irq_cascade_tmpl *tmpl)
 		}
 	}
 
-	*cascade = rzalloc(RZONE_SYS, RZONE_FLAG_UNCACHED, SOF_MEM_CAPS_RAM,
-			   sizeof(**cascade));
+	*cascade = rzalloc(SOF_MEM_ZONE_SYS, RZONE_FLAG_UNCACHED,
+			   SOF_MEM_CAPS_RAM, sizeof(**cascade));
 
 	spinlock_init(&(*cascade)->lock);
 
@@ -178,7 +178,7 @@ static int irq_register_child(struct irq_cascade_desc *cascade, int irq,
 		/* init child from run-time, may be registered and unregistered
 		 * many times at run-time
 		 */
-		child = rzalloc(RZONE_SYS_RUNTIME, RZONE_FLAG_UNCACHED,
+		child = rzalloc(SOF_MEM_ZONE_SYS_RUNTIME, RZONE_FLAG_UNCACHED,
 				SOF_MEM_CAPS_RAM, sizeof(struct irq_desc));
 		if (!child)
 			return -ENOMEM;

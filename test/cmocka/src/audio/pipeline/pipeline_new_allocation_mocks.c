@@ -14,7 +14,7 @@
 #include <malloc.h>
 #include <cmocka.h>
 
-void *_zalloc(int zone, uint32_t flags, uint32_t caps, size_t bytes)
+void *_zalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
 {
 	check_expected(zone);
 	check_expected(flags);

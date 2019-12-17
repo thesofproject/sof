@@ -15,7 +15,7 @@
 #include <cmocka.h>
 #include <sof/lib/alloc.h>
 
-void *rzalloc(int zone, uint32_t flags, uint32_t caps, size_t bytes)
+void *rzalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
 {
 	(void)zone;
 	(void)flags;

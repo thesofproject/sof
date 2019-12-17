@@ -1092,7 +1092,8 @@ static int dmic_set_config(struct dai *dai, struct sof_ipc_dai_config *config)
 		size = sizeof(struct sof_ipc_dai_dmic_params)
 			+ DMIC_HW_CONTROLLERS
 			* sizeof(struct sof_ipc_dai_dmic_pdm_ctrl);
-		dmic_prm[0] = rzalloc(RZONE_SYS_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+		dmic_prm[0] = rzalloc(SOF_MEM_ZONE_SYS_RUNTIME, 0,
+				      SOF_MEM_CAPS_RAM,
 				      DMIC_HW_FIFOS * size);
 		if (!dmic_prm[0]) {
 			trace_dmic_error("dmic_set_config() error: "
@@ -1506,7 +1507,7 @@ static int dmic_probe(struct dai *dai)
 		return -EEXIST; /* already created */
 
 	/* allocate private data */
-	dmic = rzalloc(RZONE_SYS_RUNTIME, RZONE_FLAG_UNCACHED,
+	dmic = rzalloc(SOF_MEM_ZONE_SYS_RUNTIME, RZONE_FLAG_UNCACHED,
 		       SOF_MEM_CAPS_RAM, sizeof(*dmic));
 	if (!dmic) {
 		trace_dmic_error("dmic_probe() error: alloc failed");

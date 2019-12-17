@@ -129,7 +129,7 @@ void cpu_power_down_core(void)
 	free_system_notify();
 
 	/* free entire sys heap, an instance dedicated for this core */
-	free_heap(RZONE_SYS);
+	free_heap(SOF_MEM_ZONE_SYS);
 
 	dcache_writeback_invalidate_all();
 

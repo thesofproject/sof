@@ -29,7 +29,7 @@ void *_balloc(uint32_t flags, uint32_t caps, size_t bytes,
 	return malloc(bytes);
 }
 
-void *_zalloc(int zone, uint32_t flags, uint32_t caps, size_t bytes)
+void *_zalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
 {
 	(void)zone;
 	(void)flags;
