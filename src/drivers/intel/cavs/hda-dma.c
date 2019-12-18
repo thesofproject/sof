@@ -712,7 +712,7 @@ static int hda_dma_probe(struct dma *dma)
 	if (dma->chan)
 		return -EEXIST; /* already created */
 
-	dma->chan = rzalloc(SOF_MEM_ZONE_SYS_RUNTIME, RZONE_FLAG_UNCACHED,
+	dma->chan = rzalloc(SOF_MEM_ZONE_SYS_RUNTIME, SOF_MEM_FLAG_SHARED,
 			    SOF_MEM_CAPS_RAM, sizeof(struct dma_chan_data) *
 			    dma->plat_data.channels);
 
@@ -732,7 +732,7 @@ static int hda_dma_probe(struct dma *dma)
 		chan->core = DMA_CORE_INVALID;
 
 		hda_chan = rzalloc(SOF_MEM_ZONE_SYS_RUNTIME,
-				   RZONE_FLAG_UNCACHED, SOF_MEM_CAPS_RAM,
+				   SOF_MEM_FLAG_SHARED, SOF_MEM_CAPS_RAM,
 				   sizeof(struct hda_chan_data));
 		if (!hda_chan) {
 			trace_hddma_error("hda-dma: %d channel %d private data "

@@ -380,7 +380,7 @@ static int esai_probe(struct dai *dai)
 		trace_esai_error("ESAI: Repeated probe, skipping");
 		return -EEXIST;
 	}
-	pdata = rzalloc(SOF_MEM_ZONE_SYS_RUNTIME, RZONE_FLAG_UNCACHED,
+	pdata = rzalloc(SOF_MEM_ZONE_SYS_RUNTIME, SOF_MEM_FLAG_SHARED,
 			SOF_MEM_CAPS_RAM, sizeof(*pdata));
 	if (!pdata) {
 		trace_esai_error("ESAI probe failure, out of memory");

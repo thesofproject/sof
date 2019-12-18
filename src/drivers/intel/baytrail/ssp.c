@@ -604,7 +604,7 @@ static int ssp_probe(struct dai *dai)
 	struct ssp_pdata *ssp;
 
 	/* allocate private data */
-	ssp = rzalloc(SOF_MEM_ZONE_SYS, RZONE_FLAG_UNCACHED, SOF_MEM_CAPS_RAM,
+	ssp = rzalloc(SOF_MEM_ZONE_SYS, SOF_MEM_FLAG_SHARED, SOF_MEM_CAPS_RAM,
 		      sizeof(*ssp));
 	dai_set_drvdata(dai, ssp);
 

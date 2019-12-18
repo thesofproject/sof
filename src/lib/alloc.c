@@ -187,7 +187,7 @@ static void *rmalloc_sys(uint32_t flags, int caps, int core, size_t bytes)
 		dcache_writeback_invalidate_region(cpu_heap,
 						   sizeof(*cpu_heap));
 
-	if (flags & RZONE_FLAG_UNCACHED) {
+	if (flags & SOF_MEM_FLAG_SHARED) {
 		dcache_invalidate_region(ptr, bytes);
 		ptr = cache_to_uncache(ptr);
 	}
@@ -422,7 +422,7 @@ static void *get_ptr_from_heap(struct mm_heap *heap, uint32_t flags,
 		break;
 	}
 
-	if (ptr && (flags & RZONE_FLAG_UNCACHED)) {
+	if (ptr && (flags & SOF_MEM_FLAG_SHARED)) {
 		dcache_invalidate_region(ptr, bytes);
 		ptr = cache_to_uncache(ptr);
 	}
@@ -775,7 +775,7 @@ static void *alloc_heap_buffer(struct mm_heap *heap, uint32_t flags,
 		}
 	}
 
-	if (ptr && (flags & RZONE_FLAG_UNCACHED)) {
+	if (ptr && (flags & SOF_MEM_FLAG_SHARED)) {
 		dcache_invalidate_region(ptr, bytes);
 		ptr = cache_to_uncache(ptr);
 	}
@@ -1038,7 +1038,7 @@ void init_heap(struct sof *sof)
 #endif
 
 	/* alloc manually to avoid deadlock */
-	memmap.lock = _malloc_unlocked(SOF_MEM_ZONE_SYS, RZONE_FLAG_UNCACHED,
+	memmap.lock = _malloc_unlocked(SOF_MEM_ZONE_SYS, SOF_MEM_FLAG_SHARED,
 				       SOF_MEM_CAPS_RAM, sizeof(*memmap.lock));
 	if (!memmap.lock)
 		panic(SOF_IPC_PANIC_MEM);

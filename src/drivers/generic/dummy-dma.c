@@ -430,7 +430,7 @@ static int dummy_dma_probe(struct dma *dma)
 		return -EEXIST; /* already created */
 	}
 
-	dma->chan = rzalloc(SOF_MEM_ZONE_SYS_RUNTIME, RZONE_FLAG_UNCACHED,
+	dma->chan = rzalloc(SOF_MEM_ZONE_SYS_RUNTIME, SOF_MEM_FLAG_SHARED,
 			    SOF_MEM_CAPS_RAM,
 			    dma->plat_data.channels * sizeof(dma->chan[0]));
 	if (!dma->chan) {
@@ -439,7 +439,7 @@ static int dummy_dma_probe(struct dma *dma)
 		return -ENOMEM;
 	}
 
-	chanp = rzalloc(SOF_MEM_ZONE_SYS_RUNTIME, RZONE_FLAG_UNCACHED,
+	chanp = rzalloc(SOF_MEM_ZONE_SYS_RUNTIME, SOF_MEM_FLAG_SHARED,
 			SOF_MEM_CAPS_RAM,
 			dma->plat_data.channels * sizeof(chanp[0]));
 	if (!chanp) {
