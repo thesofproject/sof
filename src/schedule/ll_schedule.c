@@ -95,6 +95,10 @@ static void schedule_ll_tasks_execute(struct ll_schedule_data *sch,
 			/* don't enable irq, if no more tasks to do */
 			if (!atomic_sub(&sch->num_tasks, 1))
 				sch->domain->registered[cpu] = false;
+			trace_ll("task complete %p", (uintptr_t)task);
+			trace_ll("num_tasks %d total_num_tasks %d",
+				 atomic_read(&sch->num_tasks),
+				 atomic_read(&sch->domain->total_num_tasks));
 		} else {
 			/* update task's start time */
 			schedule_ll_task_update_start(sch, task, last_tick);
@@ -139,6 +143,9 @@ static void schedule_ll_tasks_run(void *data)
 	last_tick = sch->domain->last_tick;
 
 	/* clear domain only if all clients are done */
+	/* TODO: no need for atomic operations,
+	 * already protected by spin_lock
+	 */
 	num_clients = atomic_sub(&sch->domain->num_clients, 1);
 	if (!num_clients)
 		domain_clear(sch->domain);
@@ -169,8 +176,8 @@ static int schedule_ll_domain_set(struct ll_schedule_data *sch,
 	ret = domain_register(sch->domain, period, task, &schedule_ll_tasks_run,
 			      sch);
 	if (ret < 0) {
-		trace_ll_error("schedule_ll_domain_set() error: cannot "
-			       "register domain %d", ret);
+		trace_ll_error("schedule_ll_domain_set error: cannot register domain %d",
+			       ret);
 		return ret;
 	}
 
@@ -184,6 +191,10 @@ static int schedule_ll_domain_set(struct ll_schedule_data *sch,
 		atomic_add(&sch->domain->num_clients, 1);
 		domain_enable(sch->domain, core);
 	}
+
+	trace_ll("num_tasks %d total_num_tasks %d",
+		 atomic_read(&sch->num_tasks),
+		 atomic_read(&sch->domain->total_num_tasks));
 
 	spin_unlock(sch->domain->lock);
 
@@ -209,6 +220,10 @@ static void schedule_ll_domain_clear(struct ll_schedule_data *sch,
 			schedule_ll_clients_reschedule(sch);
 		}
 	}
+
+	trace_ll("num_tasks %d total_num_tasks %d",
+		 atomic_read(&sch->num_tasks),
+		 atomic_read(&sch->domain->total_num_tasks));
 
 	spin_unlock(sch->domain->lock);
 
@@ -263,6 +278,9 @@ static void schedule_ll_task(void *data, struct task *task, uint64_t start,
 	/* invalidate if slave core */
 	if (cpu_is_slave(task->core))
 		dcache_invalidate_region(pdata, sizeof(*pdata));
+
+	trace_ll("task add %p task->priority %d start %u period %u",
+		 (uintptr_t)task, task->priority, start, period);
 
 	pdata->period = period;
 
@@ -342,6 +360,8 @@ static void schedule_ll_task_cancel(void *data, struct task *task)
 	uint32_t flags;
 
 	irq_local_disable(flags);
+
+	trace_ll("task cancel %p", (uintptr_t)task);
 
 	/* check to see if we are scheduled */
 	list_for_item(tlist, &sch->tasks) {
