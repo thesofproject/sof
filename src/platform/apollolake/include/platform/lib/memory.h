@@ -160,7 +160,6 @@
 /* HP SRAM */
 
 #define HP_SRAM_BASE		0xBE000000
-#define HP_SRAM_MASK		0xFF000000
 
 /* HP SRAM windows */
 
@@ -214,8 +213,6 @@
 /* Apollolake HP-SRAM config */
 #if CONFIG_APOLLOLAKE && !(CONFIG_KABYLAKE || CONFIG_SKYLAKE)
 
-#define SRAM_ALIAS_OFFSET	0x20000000
-
 #define SRAM_WND_BASE		(HP_SRAM_BASE)
 
 #define HP_SRAM_VECBASE_RESET	(HP_SRAM_WIN0_BASE + HP_SRAM_WIN0_SIZE)
@@ -226,8 +223,6 @@
 
 /* Skylake or kabylake HP-SRAM config */
 #elif CONFIG_KABYLAKE || CONFIG_SKYLAKE
-
-#define SRAM_ALIAS_OFFSET	0x00000000
 
 #define SRAM_WND_BASE		0xBE058000
 
@@ -431,13 +426,6 @@
 
 /** \brief Manifest size (seems unused). */
 #define IMR_BOOT_LDR_MANIFEST_SIZE	0x6000
-
-#define uncache_to_cache(address) \
-	((__typeof__((address)))((uint32_t)((address)) + SRAM_ALIAS_OFFSET))
-#define cache_to_uncache(address) \
-	((__typeof__((address)))((uint32_t)((address)) - SRAM_ALIAS_OFFSET))
-#define is_uncached(address) \
-	(((uint32_t)(address) & HP_SRAM_MASK) != HP_SRAM_BASE)
 
 #endif /* __PLATFORM_LIB_MEMORY_H__ */
 
