@@ -20,10 +20,9 @@
 
 TRACE_IMPL()
 
-void *_balloc(int zone, uint32_t flags, uint32_t caps, size_t bytes,
+void *_balloc(uint32_t flags, uint32_t caps, size_t bytes,
 	      uint32_t alignment)
 {
-	(void)zone;
 	(void)flags;
 	(void)caps;
 
@@ -44,10 +43,9 @@ void rfree(void *ptr)
 	free(ptr);
 }
 
-void *_brealloc(void *ptr, int zone, uint32_t flags, uint32_t caps,
-		size_t bytes, uint32_t alignment)
+void *_brealloc(void *ptr, uint32_t flags, uint32_t caps, size_t bytes,
+		uint32_t alignment)
 {
-	(void)zone;
 	(void)flags;
 	(void)caps;
 
