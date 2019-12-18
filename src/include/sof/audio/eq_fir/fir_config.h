@@ -10,6 +10,17 @@
 #ifndef __SOF_AUDIO_EQ_FIR_FIR_CONFIG_H__
 #define __SOF_AUDIO_EQ_FIR_FIR_CONFIG_H__
 
+/* Prevent xtensa gcc built firmware to be configured for longer
+ * filter that it can process. This length limitation (# of taps) is for one
+ * channel, for stereo the channel specific limit is this divided by two,
+ * etc.
+ */
+#ifndef __XCC__
+#ifdef __XTENSA__
+#define FIR_MAX_LENGTH_BUILD_SPECIFIC	80
+#endif
+#endif
+
 /* If next defines are set to 1 the EQ is configured automatically. Setting
  * to zero temporarily is useful is for testing needs.
  * Setting EQ_FIR_AUTOARCH to 0 allows to manually set the code variant.

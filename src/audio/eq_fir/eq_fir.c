@@ -349,6 +349,15 @@ static int eq_fir_setup(struct comp_data *cd, int nch)
 		else
 			return -EINVAL;
 
+#if defined FIR_MAX_LENGTH_BUILD_SPECIFIC
+		if (fir[i].taps * nch > FIR_MAX_LENGTH_BUILD_SPECIFIC) {
+			trace_eq_error("Filter length %d"
+					" exceeds limitation for build.",
+					fir[i].length);
+			return -EINVAL;
+		}
+#endif
+
 		trace_eq("eq_fir_setup(), "
 			 "ch = %d initialized to response = %d", i, resp);
 	}

@@ -22,6 +22,7 @@ struct sof_eq_fir_coef_data;
 
 struct fir_state_32x16 {
 	int rwi; /* Circular read and write index */
+	int taps; /* Number of FIR taps */
 	int length; /* Number of FIR taps */
 	int out_shift; /* Amount of right shifts at output */
 	int16_t *coef; /* Pointer to FIR coefficients */
