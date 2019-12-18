@@ -38,6 +38,7 @@ size_t fir_init_coef(struct fir_state_32x16 *fir,
 {
 	fir->rwi = 0;
 	fir->length = (int)config->length;
+	fir->taps = fir->length; /* The same for generic C version */
 	fir->out_shift = (int)config->out_shift;
 	fir->coef = &config->coef[0];
 	fir->delay = NULL;
