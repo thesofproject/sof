@@ -53,62 +53,60 @@ void eq_fir_s32(struct fir_state_32x16 *fir, struct comp_buffer *source,
 
 /* The next functions are inlined to optmize execution speed */
 
-static inline void fir_part_32x16(int64_t *y, int taps, const int16_t c[],
-				  int *ic, int32_t d[], int *id)
-{
-	int n;
-
-	/* Data is Q8.24, coef is Q1.15, product is Q9.39 */
-	for (n = 0; n < taps; n++) {
-		*y += (int64_t)c[*ic] * d[*id];
-		(*ic)++;
-		(*id)--;
-	}
-}
-
 static inline int32_t fir_32x16(struct fir_state_32x16 *fir, int32_t x)
 {
 	int64_t y = 0;
+	int32_t *data = &fir->delay[fir->rwi];
+	int16_t *coef = &fir->coef[0];
 	int n1;
 	int n2;
-	int i = 0; /* Start from 1st tap */
-	int tmp_ri;
+	int n;
 
 	/* Bypass is set with length set to zero. */
 	if (!fir->length)
 		return x;
 
 	/* Write sample to delay */
-	fir->delay[fir->rwi] = x;
+	*data = x;
 
-	/* Start FIR calculation. Calculate first number of taps possible to
-	 * calculate before circular wrap need.
+	/* Advance write pointer and calculate into n1 max. number of taps
+	 * to process before circular wrap.
 	 */
-	n1 = fir->rwi + 1;
-	/* Point to newest sample and advance read index */
-	tmp_ri = (fir->rwi)++;
+	n1 = ++fir->rwi;
 	if (fir->rwi == fir->length)
 		fir->rwi = 0;
 
+	/* Check if no need to un-wrap FIR data. */
 	if (n1 > fir->length) {
-		/* No need to un-wrap fir read index, make sure ri
-		 * is >= 0 after FIR computation.
-		 */
-		fir_part_32x16(&y, fir->length, fir->coef, &i, fir->delay,
-			       &tmp_ri);
-	} else {
-		n2 = fir->length - n1;
-		/* Part 1, loop n1 times, fir_ri becomes -1 */
-		fir_part_32x16(&y, n1, fir->coef, &i, fir->delay, &tmp_ri);
+		/* Data is Q1.31, coef is Q1.15, product is Q2.46 */
+		for (n = 0; n < fir->length; n++) {
+			y += (int64_t)(*coef) * (*data);
+			coef++;
+			data--;
+		}
 
-		/* Part 2, unwrap fir_ri, continue rest of filter */
-		tmp_ri = fir->length - 1;
-		fir_part_32x16(&y, n2, fir->coef, &i, fir->delay, &tmp_ri);
+		/* Q2.46 -> Q2.31, saturate to Q1.31 */
+		return sat_int32(y >> (15 + fir->out_shift));
 	}
-	/* Q9.39 -> Q9.24, saturate to Q8.24 */
-	y = sat_int32(y >> (15 + fir->out_shift));
 
-	return (int32_t)y;
+	/* Part 1, loop n1 times */
+	for (n = 0; n < n1; n++) {
+		y += (int64_t)(*coef) * (*data);
+		coef++;
+		data--;
+	}
+
+	/* Part 2, un-wrap data, continue n2 times */
+	n2 = fir->length - n1;
+	data = &fir->delay[fir->length - 1];
+	for (n = 0; n < n2; n++) {
+		y += (int64_t)(*coef) * (*data);
+		coef++;
+		data--;
+	}
+
+	/* Q2.46 -> Q2.31, saturate to Q1.31 */
+	return sat_int32(y >> (15 + fir->out_shift));
 }
 
 #endif
