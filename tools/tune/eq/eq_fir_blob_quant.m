@@ -71,6 +71,7 @@ if mod4 > 0
 	fprintf(1,'Note: Filter length was %d, padded length into %d.\n', ...
 		nb, nnew);
 else
+	fprintf(1,'Note: Filter length is %d\n', nb);
 	nnew = nb;
 	bqp = bq;
 end
