@@ -11,6 +11,9 @@
 #define __CAVS_LIB_MEMORY_H__
 
 #include <sof/lib/cache.h>
+#if !defined(__ASSEMBLER__) && !defined(LINKER)
+#include <sof/lib/cpu.h>
+#endif
 #include <config.h>
 
 /* data cache line alignment */
@@ -86,8 +89,12 @@
  */
 static inline void *platform_shared_get(void *ptr, int bytes)
 {
+#if PLATFORM_CORE_COUNT > 1
 	dcache_invalidate_region(ptr, bytes);
 	return cache_to_uncache(ptr);
+#else
+	return ptr;
+#endif
 }
 
 void platform_init_memmap(void);
