@@ -84,6 +84,8 @@ static const uint8_t alh_handshake_map[64] = {
 	-1,	/* 63 - INVALID */
 };
 
+#define ALH_GPDMA_BURST_LENGTH	4
+
 #endif /* __PLATFORM_DRIVERS_ALH__ */
 
 #else
