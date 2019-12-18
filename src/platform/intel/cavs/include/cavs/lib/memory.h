@@ -97,6 +97,17 @@ static inline void *platform_shared_get(void *ptr, int bytes)
 #endif
 }
 
+/**
+ * \brief Transforms pointer if necessary before freeing the memory.
+ * \param[in,out] ptr Pointer to the allocated memory.
+ * \return Appropriate pointer to the memory ready to be freed.
+ */
+static inline void *platform_rfree_prepare(void *ptr)
+{
+	/* free should operate only on cached addresses */
+	return is_uncached(ptr) ? uncache_to_cache(ptr) : ptr;
+}
+
 void platform_init_memmap(void);
 
 #endif
