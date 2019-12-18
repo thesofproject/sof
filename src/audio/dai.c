@@ -747,6 +747,9 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 		 */
 		dconfig->frame_fmt = SOF_IPC_FRAME_S32_LE;
 
+		dd->config.burst_elems =
+			dd->dai->plat_data.fifo[dai->direction].depth;
+
 		/* As with HDA, the DMA channel is assigned in runtime,
 		 * not during topology parsing.
 		 */

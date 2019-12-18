@@ -156,6 +156,14 @@ int dai_init(void)
 		alh[i].index = (i / DAI_NUM_ALH_BI_DIR_LINKS_GROUP) << 8 |
 			(i % DAI_NUM_ALH_BI_DIR_LINKS_GROUP);
 		alh[i].drv = &alh_driver;
+
+		/* set burst length to align with DMAT value in the
+		 * Audio Link Hub.
+		 */
+		alh[i].plat_data.fifo[SOF_IPC_STREAM_PLAYBACK].depth =
+			ALH_GPDMA_BURST_LENGTH;
+		alh[i].plat_data.fifo[SOF_IPC_STREAM_CAPTURE].depth =
+			ALH_GPDMA_BURST_LENGTH;
 		spinlock_init(&alh[i].lock);
 	}
 #endif
