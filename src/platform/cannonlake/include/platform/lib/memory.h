@@ -166,9 +166,7 @@
  */
 
 /* HP SRAM */
-#define SRAM_ALIAS_OFFSET	0x20000000
 #define HP_SRAM_BASE		0xBE000000
-#define HP_SRAM_MASK		0xFF000000
 
 /* HP SRAM windows */
 /* window 0 */
@@ -414,13 +412,6 @@
 #define BOOT_LDR_STACK_BASE		(HP_SRAM_BASE + HP_SRAM_SIZE - \
 					SOF_STACK_TOTAL_SIZE)
 #define BOOT_LDR_STACK_SIZE		SOF_STACK_TOTAL_SIZE
-
-#define uncache_to_cache(address) \
-	((__typeof__((address)))((uint32_t)((address)) + SRAM_ALIAS_OFFSET))
-#define cache_to_uncache(address) \
-	((__typeof__((address)))((uint32_t)((address)) - SRAM_ALIAS_OFFSET))
-#define is_uncached(address) \
-	(((uint32_t)(address) & HP_SRAM_MASK) != HP_SRAM_BASE)
 
 #endif /* __PLATFORM_LIB_MEMORY_H__ */
 

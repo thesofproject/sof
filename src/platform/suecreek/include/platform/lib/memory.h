@@ -176,9 +176,7 @@
  */
 
 /* HP SRAM */
-#define SRAM_ALIAS_OFFSET	0x20000000
 #define HP_SRAM_BASE		0xBE000000
-#define HP_SRAM_MASK		0xFF000000
 
 /* Mailbox configuration */
 #define SRAM_OUTBOX_BASE	HP_SRAM_BASE
@@ -405,14 +403,6 @@
 
 /* code loader entry point for base fw */
 #define SRAM_VECBASE_RESET	(BOOT_LDR_BSS_BASE + BOOT_LDR_BSS_SIZE)
-
-//TODO: confirm mapping
-#define uncache_to_cache(address) \
-	((__typeof__((address)))((uint32_t)((address)) + SRAM_ALIAS_OFFSET))
-#define cache_to_uncache(address) \
-	((__typeof__((address)))((uint32_t)((address)) - SRAM_ALIAS_OFFSET))
-#define is_uncached(address) \
-	(((uint32_t)(address) & HP_SRAM_MASK) != HP_SRAM_BASE)
 
 #endif /* __PLATFORM_LIB_MEMORY_H__ */
 
