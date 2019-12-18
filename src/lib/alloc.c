@@ -569,21 +569,21 @@ static void alloc_trace_heap(int zone, uint32_t caps, size_t bytes,
 				"bytes 0x%x", zone, caps, bytes);
 }
 
-void alloc_trace_runtime_heap(int zone, uint32_t caps, size_t bytes)
+void alloc_trace_runtime_heap(uint32_t caps, size_t bytes)
 {
 	/* check runtime heap for capabilities */
 	trace_mem_init("heap: using runtime");
 
-	alloc_trace_heap(zone, caps, bytes, memmap.runtime,
+	alloc_trace_heap(RZONE_RUNTIME, caps, bytes, memmap.runtime,
 			 PLATFORM_HEAP_RUNTIME);
 }
 
-void alloc_trace_buffer_heap(int zone, uint32_t caps, size_t bytes)
+void alloc_trace_buffer_heap(uint32_t caps, size_t bytes)
 {
 	/* check buffer heap for capabilities */
 	trace_mem_init("heap: using buffer");
 
-	alloc_trace_heap(zone, caps, bytes, memmap.buffer,
+	alloc_trace_heap(RZONE_BUFFER, caps, bytes, memmap.buffer,
 			 PLATFORM_HEAP_BUFFER);
 }
 

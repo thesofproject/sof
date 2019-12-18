@@ -128,7 +128,7 @@ void rfree(void *ptr);
 		if (!_ptr) {						\
 			trace_mem_error("failed to alloc 0x%x bytes caps 0x%x flags 0x%x",\
 					bytes, caps, flags);		\
-			alloc_trace_runtime_heap(zone, caps, bytes);	\
+			alloc_trace_runtime_heap(caps, bytes);		\
 		}							\
 	} while (0);							\
 	_ptr; })
@@ -140,7 +140,7 @@ void rfree(void *ptr);
 		if (!_ptr) {						\
 			trace_mem_error("failed to alloc 0x%x bytes caps 0x%x flags 0x%x",\
 					bytes, caps, flags);		\
-			alloc_trace_runtime_heap(zone, caps, bytes);	\
+			alloc_trace_runtime_heap(caps, bytes);		\
 		}							\
 	} while (0);							\
 	_ptr; })
@@ -153,7 +153,7 @@ void rfree(void *ptr);
 		if (!_ptr) {						\
 			trace_mem_error("failed to alloc 0x%x bytes caps 0x%x flags 0x%x",\
 					bytes, caps, flags);		\
-			alloc_trace_buffer_heap(zone, caps, bytes); \
+			alloc_trace_buffer_heap(caps, bytes);		\
 		}							\
 	} while (0);							\
 	_ptr; })
@@ -165,7 +165,7 @@ void rfree(void *ptr);
 		if (!_ptr) {						\
 			trace_mem_error("failed to alloc 0x%x bytes caps 0x%x flags 0x%x",\
 					bytes, caps, flags);		\
-			alloc_trace_buffer_heap(zone, caps, bytes);	\
+			alloc_trace_buffer_heap(caps, bytes);		\
 		}							\
 	} while (0);							\
 	_ptr; })
@@ -178,7 +178,7 @@ void rfree(void *ptr);
 		if (!_ptr) {						\
 			trace_mem_error("failed to alloc 0x%x bytes caps 0x%x flags 0x%x",\
 					bytes, caps, flags);		\
-			alloc_trace_buffer_heap(zone, caps, bytes);	\
+			alloc_trace_buffer_heap(caps, bytes);		\
 		}							\
 	} while (0);							\
 	_ptr; })
@@ -190,7 +190,7 @@ void rfree(void *ptr);
 		if (!_ptr) {						\
 			trace_mem_error("failed to alloc 0x%x bytes caps 0x%x flags 0x%x",\
 					bytes, caps, flags);		\
-			alloc_trace_buffer_heap(zone, caps, bytes);	\
+			alloc_trace_buffer_heap(caps, bytes);		\
 		}							\
 	} while (0);							\
 	_ptr; })
@@ -202,13 +202,13 @@ void rfree(void *ptr);
 		if (!_ptr) {						\
 			trace_mem_error("failed to alloc 0x%x bytes caps 0x%x flags 0x%x",\
 					bytes, caps, flags);		\
-			alloc_trace_buffer_heap(zone, caps, bytes);	\
+			alloc_trace_buffer_heap(caps, bytes);		\
 		}							\
 	} while (0);							\
 	_ptr; })
 
-void alloc_trace_runtime_heap(int zone, uint32_t caps, size_t bytes);
-void alloc_trace_buffer_heap(int zone, uint32_t caps, size_t bytes);
+void alloc_trace_runtime_heap(uint32_t caps, size_t bytes);
+void alloc_trace_buffer_heap(uint32_t caps, size_t bytes);
 
 #else
 
