@@ -235,7 +235,7 @@ static int alloc_mem_load(struct comp_data *cd, uint32_t size)
 
 	free_mem_load(cd);
 
-	cd->model.data = rballoc(RZONE_BUFFER, 0, SOF_MEM_CAPS_RAM, size);
+	cd->model.data = rballoc(0, SOF_MEM_CAPS_RAM, size);
 
 	if (!cd->model.data) {
 		trace_keyword_error("alloc_mem_load() alloc failed");

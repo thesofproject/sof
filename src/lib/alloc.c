@@ -810,8 +810,7 @@ static void *_balloc_unlocked(uint32_t flags, uint32_t caps, size_t bytes,
 }
 
 /* allocates continuous buffers - not for direct use, clients use rballoc() */
-void *_balloc(int zone, uint32_t flags, uint32_t caps, size_t bytes,
-	      uint32_t alignment)
+void *_balloc(uint32_t flags, uint32_t caps, size_t bytes, uint32_t alignment)
 {
 	void *ptr = NULL;
 	uint32_t lock_flags;
@@ -886,8 +885,8 @@ void *_realloc(void *ptr, int zone, uint32_t flags, uint32_t caps, size_t bytes)
 	return new_ptr;
 }
 
-void *_brealloc(void *ptr, int zone, uint32_t flags, uint32_t caps,
-		size_t bytes, uint32_t alignment)
+void *_brealloc(void *ptr, uint32_t flags, uint32_t caps, size_t bytes,
+		uint32_t alignment)
 {
 	void *new_ptr = NULL;
 	uint32_t lock_flags;

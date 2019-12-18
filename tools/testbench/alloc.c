@@ -31,7 +31,7 @@ void rfree(void *ptr)
 	free(ptr);
 }
 
-void *_balloc(int zone, uint32_t flags, uint32_t caps, size_t bytes,
+void *_balloc(uint32_t flags, uint32_t caps, size_t bytes,
 	      uint32_t alignment)
 {
 	return malloc(bytes);
@@ -42,8 +42,8 @@ void *_realloc(void *ptr, int zone, uint32_t flags, uint32_t caps, size_t bytes)
 	return realloc(ptr, bytes);
 }
 
-void *_brealloc(void *ptr, int zone, uint32_t flags, uint32_t caps,
-		size_t bytes, uint32_t alignment)
+void *_brealloc(void *ptr, uint32_t flags, uint32_t caps, size_t bytes,
+		uint32_t alignment)
 {
 	return realloc(ptr, bytes);
 }

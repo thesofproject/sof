@@ -164,8 +164,7 @@ static int dma_trace_buffer_init(struct dma_trace_data *d)
 	unsigned int flags;
 
 	/* allocate new buffer */
-	buf = rballoc(RZONE_BUFFER, 0,
-		      SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_DMA,
+	buf = rballoc(0, SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_DMA,
 		      DMA_TRACE_LOCAL_SIZE);
 	if (!buf) {
 		trace_buffer_error("dma_trace_buffer_init() error: "

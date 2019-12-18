@@ -229,8 +229,7 @@ static void *alloc(struct test_case *tc)
 	void *mem;
 
 	if (tc->alloc_zone == RZONE_BUFFER)
-		mem = rballoc(tc->alloc_zone, 0, tc->alloc_caps,
-			      tc->alloc_size);
+		mem = rballoc(0, tc->alloc_caps, tc->alloc_size);
 	else
 		mem = rmalloc(tc->alloc_zone, 0, tc->alloc_caps,
 			      tc->alloc_size);
