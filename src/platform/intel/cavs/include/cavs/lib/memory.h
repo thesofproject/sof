@@ -74,6 +74,22 @@
 #define is_uncached(address) \
 	(((uint32_t)(address) & SRAM_ALIAS_MASK) == SRAM_ALIAS_BASE)
 
+/**
+ * \brief Returns pointer to the memory shared by multiple cores.
+ * \param[in,out] ptr Initial pointer to the allocated memory.
+ * \param[in] bytes Size of the allocated memory
+ * \return Appropriate pointer to the shared memory.
+ *
+ * This function is called only once right after allocation of shared memory.
+ * Platforms with uncached memory region should return aliased address.
+ * On platforms without such region simple invalidate is enough.
+ */
+static inline void *platform_shared_get(void *ptr, int bytes)
+{
+	dcache_invalidate_region(ptr, bytes);
+	return cache_to_uncache(ptr);
+}
+
 void platform_init_memmap(void);
 
 #endif
