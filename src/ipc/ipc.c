@@ -153,7 +153,7 @@ int ipc_comp_new(struct ipc *ipc, struct sof_ipc_comp *comp)
 	}
 
 	/* allocate the IPC component container */
-	icd = rzalloc(SOF_MEM_ZONE_RUNTIME, RZONE_FLAG_UNCACHED,
+	icd = rzalloc(SOF_MEM_ZONE_RUNTIME, SOF_MEM_FLAG_SHARED,
 		      SOF_MEM_CAPS_RAM, sizeof(struct ipc_comp_dev));
 	if (icd == NULL) {
 		trace_ipc_error("ipc_comp_new() error: alloc failed");
@@ -221,7 +221,7 @@ int ipc_buffer_new(struct ipc *ipc, struct sof_ipc_buffer *desc)
 		return -ENOMEM;
 	}
 
-	ibd = rzalloc(SOF_MEM_ZONE_RUNTIME, RZONE_FLAG_UNCACHED,
+	ibd = rzalloc(SOF_MEM_ZONE_RUNTIME, SOF_MEM_FLAG_SHARED,
 		      SOF_MEM_CAPS_RAM, sizeof(struct ipc_comp_dev));
 	if (ibd == NULL) {
 		rfree(buffer);
@@ -343,7 +343,7 @@ int ipc_pipeline_new(struct ipc *ipc,
 	}
 
 	/* allocate the IPC pipeline container */
-	ipc_pipe = rzalloc(SOF_MEM_ZONE_RUNTIME, RZONE_FLAG_UNCACHED,
+	ipc_pipe = rzalloc(SOF_MEM_ZONE_RUNTIME, SOF_MEM_FLAG_SHARED,
 			   SOF_MEM_CAPS_RAM, sizeof(struct ipc_comp_dev));
 	if (ipc_pipe == NULL) {
 		pipeline_free(pipe);
@@ -463,7 +463,7 @@ int ipc_init(struct sof *sof)
 
 	spinlock_init(&sof->ipc->lock);
 
-	sof->ipc->shared_ctx = rzalloc(SOF_MEM_ZONE_SYS, RZONE_FLAG_UNCACHED,
+	sof->ipc->shared_ctx = rzalloc(SOF_MEM_ZONE_SYS, SOF_MEM_FLAG_SHARED,
 				       SOF_MEM_CAPS_RAM,
 				       sizeof(*sof->ipc->shared_ctx));
 
@@ -474,7 +474,7 @@ int ipc_init(struct sof *sof)
 	list_init(&sof->ipc->shared_ctx->comp_list);
 
 	for (i = 0; i < MSG_QUEUE_SIZE; i++) {
-		msg = rzalloc(SOF_MEM_ZONE_SYS, RZONE_FLAG_UNCACHED,
+		msg = rzalloc(SOF_MEM_ZONE_SYS, SOF_MEM_FLAG_SHARED,
 			      SOF_MEM_CAPS_RAM, sizeof(*msg));
 		list_item_prepend(&msg->list,
 				  &sof->ipc->shared_ctx->empty_list);

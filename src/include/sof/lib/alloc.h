@@ -57,7 +57,7 @@ enum mem_zone {
 };
 
 /* heap zone flags */
-#define RZONE_FLAG_UNCACHED	BIT(0)
+#define SOF_MEM_FLAG_SHARED	BIT(0)
 
 struct mm_info {
 	uint32_t used;

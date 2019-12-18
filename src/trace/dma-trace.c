@@ -105,7 +105,7 @@ out:
 
 int dma_trace_init_early(struct sof *sof)
 {
-	trace_data = rzalloc(SOF_MEM_ZONE_SYS, RZONE_FLAG_UNCACHED,
+	trace_data = rzalloc(SOF_MEM_ZONE_SYS, SOF_MEM_FLAG_SHARED,
 			     SOF_MEM_CAPS_RAM, sizeof(*trace_data));
 
 	dma_sg_init(&trace_data->config.elem_array);
