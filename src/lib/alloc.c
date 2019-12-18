@@ -187,10 +187,8 @@ static void *rmalloc_sys(uint32_t flags, int caps, int core, size_t bytes)
 		dcache_writeback_invalidate_region(cpu_heap,
 						   sizeof(*cpu_heap));
 
-	if (flags & SOF_MEM_FLAG_SHARED) {
-		dcache_invalidate_region(ptr, bytes);
-		ptr = cache_to_uncache(ptr);
-	}
+	if (flags & SOF_MEM_FLAG_SHARED)
+		ptr = platform_shared_get(ptr, bytes);
 
 	return ptr;
 }
@@ -422,10 +420,8 @@ static void *get_ptr_from_heap(struct mm_heap *heap, uint32_t flags,
 		break;
 	}
 
-	if (ptr && (flags & SOF_MEM_FLAG_SHARED)) {
-		dcache_invalidate_region(ptr, bytes);
-		ptr = cache_to_uncache(ptr);
-	}
+	if (ptr && (flags & SOF_MEM_FLAG_SHARED))
+		ptr = platform_shared_get(ptr, bytes);
 
 	return ptr;
 }
@@ -775,10 +771,8 @@ static void *alloc_heap_buffer(struct mm_heap *heap, uint32_t flags,
 		}
 	}
 
-	if (ptr && (flags & SOF_MEM_FLAG_SHARED)) {
-		dcache_invalidate_region(ptr, bytes);
-		ptr = cache_to_uncache(ptr);
-	}
+	if (ptr && (flags & SOF_MEM_FLAG_SHARED))
+		ptr = platform_shared_get(ptr, bytes);
 
 #if CONFIG_DEBUG_BLOCK_FREE
 	if (ptr)

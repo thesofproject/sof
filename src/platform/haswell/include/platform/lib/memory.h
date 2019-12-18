@@ -13,7 +13,14 @@
 #include <config.h>
 
 #if !defined(__ASSEMBLER__) && !defined(LINKER)
+
 void platform_init_memmap(void);
+
+static inline void *platform_shared_get(void *ptr, int bytes)
+{
+	return ptr;
+}
+
 #endif
 
 /* data cache line alignment */
