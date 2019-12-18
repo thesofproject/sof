@@ -830,9 +830,8 @@ static void _rfree_unlocked(void *ptr)
 	if (!ptr)
 		return;
 
-	/* operate only on cached addresses */
-	if (is_uncached(ptr))
-		ptr = uncache_to_cache(ptr);
+	/* prepare pointer if it's platform requirement */
+	ptr = platform_rfree_prepare(ptr);
 
 	/* use the heap dedicated for the selected core */
 	cpu_heap = memmap.system + cpu_get_id();

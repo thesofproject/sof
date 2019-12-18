@@ -21,6 +21,11 @@ static inline void *platform_shared_get(void *ptr, int bytes)
 	return ptr;
 }
 
+static inline void *platform_rfree_prepare(void *ptr)
+{
+	return ptr;
+}
+
 #endif
 
 #define PLATFORM_DCACHE_ALIGN	sizeof(void *)

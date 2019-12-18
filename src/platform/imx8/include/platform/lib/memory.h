@@ -180,6 +180,11 @@ static inline void *platform_shared_get(void *ptr, int bytes)
 	return ptr;
 }
 
+static inline void *platform_rfree_prepare(void *ptr)
+{
+	return ptr;
+}
+
 #endif
 
 #endif /* __PLATFORM_LIB_MEMORY_H__ */
