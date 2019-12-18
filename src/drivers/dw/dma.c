@@ -126,6 +126,51 @@ static void dw_dma_increment_pointer(struct dw_dma_chan_data *chan, int bytes)
 			(chan->ptr_data.current_ptr - chan->ptr_data.end_ptr);
 }
 
+#if !CONFIG_HW_LLI
+/* reload using LLI data from DMA IRQ cb */
+static inline void dw_dma_chan_reload_lli_cb(void *arg, enum notify_id type,
+					     void *data)
+{
+	struct dma_chan_data *channel = data;
+	struct dma *dma = channel->dma;
+	struct dw_dma_chan_data *dw_chan = dma_chan_get_data(channel);
+	struct dw_lli *lli = dw_chan->lli_current;
+
+	/* only need to reload if this is a block transfer */
+	if (!lli || !lli->llp) {
+		channel->status = COMP_STATE_PREPARE;
+		return;
+	}
+
+	/* channel not active */
+	if (channel->status != COMP_STATE_ACTIVE)
+		return;
+
+	/* channel still transferring previous lli */
+	if (dma_reg_read(dma, DW_DMA_CHAN_EN) & DW_CHAN(channel->index))
+		return;
+
+	/* get current and next block pointers */
+	lli = (struct dw_lli *)lli->llp;
+	dw_chan->lli_current = lli;
+
+	/* channel needs to start from scratch, so write SAR and DAR */
+	dma_reg_write(dma, DW_SAR(channel->index), lli->sar);
+	dma_reg_write(dma, DW_DAR(channel->index), lli->dar);
+
+	/* program CTL_LO and CTL_HI */
+	dma_reg_write(dma, DW_CTRL_LOW(channel->index), lli->ctrl_lo);
+	dma_reg_write(dma, DW_CTRL_HIGH(channel->index), lli->ctrl_hi);
+
+	/* program CFG_LO and CFG_HI */
+	dma_reg_write(dma, DW_CFG_LOW(channel->index), dw_chan->cfg_lo);
+	dma_reg_write(dma, DW_CFG_HIGH(channel->index), dw_chan->cfg_hi);
+
+	/* enable the channel */
+	dma_reg_write(dma, DW_DMA_CHAN_EN, DW_CHAN_UNMASK(channel->index));
+}
+#endif
+
 /* allocate next free DMA channel */
 static struct dma_chan_data *dw_dma_channel_get(struct dma *dma,
 						unsigned int req_chan)
@@ -148,6 +193,10 @@ static struct dma_chan_data *dw_dma_channel_get(struct dma *dma,
 		dma->chan[i].status = COMP_STATE_READY;
 
 		atomic_add(&dma->num_channels_busy, 1);
+#if !CONFIG_HW_LLI
+		notifier_register(&dma->chan[i], &dma->chan[i],
+			NOTIFIER_ID_DMA_IRQ, dw_dma_chan_reload_lli_cb);
+#endif
 
 		/* return channel */
 		spin_unlock_irq(dma->lock, flags);
@@ -760,50 +809,6 @@ static int dw_dma_pm_context_store(struct dma *dma)
 	return 0;
 }
 
-#if !CONFIG_HW_LLI
-/* reload using LLI data from DMA IRQ cb */
-static inline void dw_dma_chan_reload_lli_cb(void *arg, enum notify_id type,
-					     void *data)
-{
-	struct dma_chan_data *channel = data;
-	struct dma *dma = channel->dma;
-	struct dw_dma_chan_data *dw_chan = dma_chan_get_data(channel);
-	struct dw_lli *lli = dw_chan->lli_current;
-
-	/* only need to reload if this is a block transfer */
-	if (!lli || !lli->llp) {
-		channel->status = COMP_STATE_PREPARE;
-		return;
-	}
-
-	/* channel not active */
-	if (channel->status != COMP_STATE_ACTIVE)
-		return;
-
-	/* channel still transferring previous lli */
-	if (dma_reg_read(dma, DW_DMA_CHAN_EN) & DW_CHAN(channel->index))
-		return;
-
-	/* get current and next block pointers */
-	lli = (struct dw_lli *)lli->llp;
-	dw_chan->lli_current = lli;
-
-	/* channel needs to start from scratch, so write SAR and DAR */
-	dma_reg_write(dma, DW_SAR(channel->index), lli->sar);
-	dma_reg_write(dma, DW_DAR(channel->index), lli->dar);
-
-	/* program CTL_LO and CTL_HI */
-	dma_reg_write(dma, DW_CTRL_LOW(channel->index), lli->ctrl_lo);
-	dma_reg_write(dma, DW_CTRL_HIGH(channel->index), lli->ctrl_hi);
-
-	/* program CFG_LO and CFG_HI */
-	dma_reg_write(dma, DW_CFG_LOW(channel->index), dw_chan->cfg_lo);
-	dma_reg_write(dma, DW_CFG_HIGH(channel->index), dw_chan->cfg_hi);
-
-	/* enable the channel */
-	dma_reg_write(dma, DW_DMA_CHAN_EN, DW_CHAN_UNMASK(channel->index));
-}
-#endif
 
 static void dw_dma_verify_transfer(struct dma_chan_data *channel,
 				   struct dma_cb_data *next)
@@ -968,10 +973,6 @@ static int dw_dma_probe(struct dma *dma)
 		chan->dma = dma;
 		chan->index = i;
 		chan->core = DMA_CORE_INVALID;
-#if !CONFIG_HW_LLI
-		notifier_register(chan, chan, NOTIFIER_ID_DMA_IRQ,
-				  dw_dma_chan_reload_lli_cb);
-#endif
 
 		dw_chan = rzalloc(RZONE_SYS_RUNTIME | RZONE_FLAG_UNCACHED,
 				  SOF_MEM_CAPS_RAM, sizeof(*dw_chan));
