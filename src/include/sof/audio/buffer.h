@@ -277,6 +277,64 @@ static inline uint32_t buffer_avail_frames(struct comp_buffer *source,
 }
 
 /**
+ * Returns the contiguous memory region which is available in this buffer.
+ * @param buf Component buffer
+ * @param[out] r_ptr Beginning of readable memory region
+ * @param[out] r_size Size (in bytes) of readable memory region
+ * @return 0 on success, -EINVAL if buf is NULL or both output parameters are
+ *         NULL
+ */
+static inline int buffer_get_contiguous_avail(struct comp_buffer *buf,
+	void **r_ptr, size_t *r_size)
+{
+	char *read;
+	size_t read_size;
+
+	if (!buf)
+		return -EINVAL;
+	if (!r_ptr && !r_size)
+		return -EINVAL;
+	read = buf->r_ptr;
+	read_size = buf->avail;
+	if (read + read_size > (char *)buf->end_addr)
+		read_size = (char *)buf->end_addr - read;
+	if (r_ptr)
+		*r_ptr = read;
+	if (r_size)
+		*r_size = read_size;
+	return 0;
+}
+
+/**
+ * Returns the contiguous memory region which is free in this buffer.
+ * @param buf Component buffer
+ * @param[out] w_ptr Beginning of writeable memory region
+ * @param[out] w_size Size (in bytes) of writeable memory region
+ * @return 0 on success, -EINVAL if buf is NULL or both output parameters are
+ *         NULL
+ */
+static inline int buffer_get_contiguous_free(struct comp_buffer *buf,
+	void **w_ptr, size_t *w_size)
+{
+	char *write;
+	size_t write_size;
+
+	if (!buf)
+		return -EINVAL;
+	if (!w_ptr && !w_size)
+		return -EINVAL;
+	write = buf->w_ptr;
+	write_size = buf->free;
+	if (write + write_size > (char *)buf->end_addr)
+		write_size = (char *)buf->end_addr - write;
+	if (w_ptr)
+		*w_ptr = write;
+	if (w_size)
+		*w_size = write_size;
+	return 0;
+}
+
+/**
  * Returns frame format based on component device's type.
  * @param dev Component device.
  * @return Frame format.
