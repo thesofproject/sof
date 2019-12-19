@@ -74,8 +74,6 @@ static inline void platform_wait_for_interrupt(int level)
 	arch_wait_for_interrupt(level);
 }
 
-extern struct ll_schedule_domain *platform_timer_domain;
-
 extern intptr_t _module_init_start;
 extern intptr_t _module_init_end;
 #endif

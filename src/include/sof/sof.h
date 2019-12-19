@@ -15,6 +15,7 @@
 struct clock_info;
 struct dma_trace_data;
 struct ipc;
+struct ll_schedule_domain;
 struct sa;
 struct timer;
 struct trace;
@@ -48,6 +49,12 @@ struct sof {
 
 	/* default platform timer */
 	struct timer *platform_timer;
+
+	/* timer domain for driving timer LL scheduler */
+	struct ll_schedule_domain *platform_timer_domain;
+
+	/* DMA domain for driving DMA LL scheduler */
+	struct ll_schedule_domain *platform_dma_domain;
 
 	__aligned(PLATFORM_DCACHE_ALIGN) int alignment[0];
 } __aligned(PLATFORM_DCACHE_ALIGN);

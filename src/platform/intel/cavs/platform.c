@@ -257,9 +257,6 @@ struct timer timer = {
 	.irq_name = irq_name_level2,
 };
 
-struct ll_schedule_domain *platform_timer_domain;
-struct ll_schedule_domain *platform_dma_domain;
-
 #if CONFIG_DW_SPI
 
 #include <sof/drivers/spi.h>
@@ -376,18 +373,18 @@ int platform_init(struct sof *sof)
 	scheduler_init_edf();
 
 	/* init low latency timer domain and scheduler */
-	platform_timer_domain =
+	sof->platform_timer_domain =
 		timer_domain_init(sof->platform_timer, PLATFORM_DEFAULT_CLOCK,
 				  CONFIG_SYSTICK_PERIOD);
-	scheduler_init_ll(platform_timer_domain);
+	scheduler_init_ll(sof->platform_timer_domain);
 
 	/* init low latency single channel DW-DMA domain and scheduler */
-	platform_dma_domain =
+	sof->platform_dma_domain =
 		dma_single_chan_domain_init
 			(&dma[PLATFORM_DW_DMA_INDEX],
 			 PLATFORM_NUM_DW_DMACS,
 			 PLATFORM_DEFAULT_CLOCK);
-	scheduler_init_ll(platform_dma_domain);
+	scheduler_init_ll(sof->platform_dma_domain);
 
 	/* init the system agent */
 	trace_point(TRACE_BOOT_PLATFORM_AGENT);

@@ -13,6 +13,7 @@
 #include <sof/lib/alloc.h>
 #include <sof/lib/cpu.h>
 #include <sof/lib/clk.h>
+#include <sof/sof.h>
 #include <sof/spinlock.h>
 #include <sof/trace/trace.h>
 #include <ipc/topology.h>
@@ -56,6 +57,16 @@ struct ll_schedule_domain {
 #define ll_sch_domain_set_pdata(domain, data) ((domain)->private = (data))
 
 #define ll_sch_domain_get_pdata(domain) ((domain)->private)
+
+static inline struct ll_schedule_domain *timer_domain_get(void)
+{
+	return sof_get()->platform_timer_domain;
+}
+
+static inline struct ll_schedule_domain *dma_domain_get(void)
+{
+	return sof_get()->platform_dma_domain;
+}
 
 static inline struct ll_schedule_domain *domain_init
 				(int type, int clk, bool synchronous,
