@@ -19,6 +19,8 @@
 #include <platform/trace/trace.h>
 #endif
 #include <sof/common.h>
+#include <sof/sof.h>
+#include <sof/spinlock_t.h>
 #include <sof/trace/preproc.h>
 #include <config.h>
 #include <stdint.h>
@@ -27,6 +29,12 @@
 #endif
 
 struct sof;
+
+struct trace {
+	uint32_t pos ;	/* trace position */
+	uint32_t enable;
+	spinlock_t *lock; /* locking mechanism */
+};
 
 /* bootloader trace values */
 #define TRACE_BOOT_LDR_ENTRY		0x100
@@ -170,6 +178,11 @@ void trace_flush(void);
 void trace_on(void);
 void trace_off(void);
 void trace_init(struct sof *sof);
+
+static inline struct trace *trace_get(void)
+{
+	return sof_get()->trace;
+}
 
 #define trace_unused(class, id_0, id_1, format, ...) \
 	UNUSED(id_0, id_1, ##__VA_ARGS__)
