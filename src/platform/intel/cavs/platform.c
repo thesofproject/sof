@@ -340,8 +340,14 @@ int platform_init(struct sof *sof)
 	struct spi *spi_dev;
 #endif
 	int ret;
+	int i;
 
 	sof->platform_timer = &timer;
+
+	/* Turn off memory for all unused cores */
+	for (i = 0; i < PLATFORM_CORE_COUNT; i++)
+		if (i != PLATFORM_MASTER_CORE_ID)
+			pm_runtime_put(CORE_MEMORY_POW, i);
 
 	/* pm runtime already initialized, request the DSP to stay in D0
 	 * until we are allowed to do full power gating (by the IPC req).
