@@ -12,6 +12,7 @@
 #include <sof/common.h>
 #include <sof/lib/memory.h>
 
+struct clock_info;
 struct dma_trace_data;
 struct ipc;
 struct sa;
@@ -40,6 +41,9 @@ struct sof {
 
 	/* generic trace structure */
 	struct trace *trace;
+
+	/* platform clock information */
+	struct clock_info *clocks;
 
 	__aligned(PLATFORM_DCACHE_ALIGN) int alignment[0];
 } __aligned(PLATFORM_DCACHE_ALIGN);
