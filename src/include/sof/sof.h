@@ -40,4 +40,6 @@ struct sof {
 	__aligned(PLATFORM_DCACHE_ALIGN) int alignment[0];
 } __aligned(PLATFORM_DCACHE_ALIGN);
 
+struct sof *sof_get(void);
+
 #endif /* __SOF_SOF_H__ */

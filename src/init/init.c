@@ -26,6 +26,11 @@
 /* main firmware context */
 static struct sof sof;
 
+struct sof *sof_get(void)
+{
+	return &sof;
+}
+
 int master_core_init(int argc, char *argv[], struct sof *sof)
 {
 	int err, i;

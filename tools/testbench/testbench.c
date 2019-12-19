@@ -33,6 +33,11 @@ static int sched_id; /* comp id for scheduling comp */
 /* compatible variables, not used */
 intptr_t _comp_init_start, _comp_init_end;
 
+struct sof *sof_get()
+{
+	return &sof;
+}
+
 /*
  * Parse shared library from user input
  * Currently only handles volume and src comp
