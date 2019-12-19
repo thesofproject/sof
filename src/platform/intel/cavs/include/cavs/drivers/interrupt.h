@@ -10,10 +10,10 @@
 #ifndef __CAVS_DRIVERS_INTERRUPT_H__
 #define __CAVS_DRIVERS_INTERRUPT_H__
 
-extern char irq_name_level2[];
-extern char irq_name_level3[];
-extern char irq_name_level4[];
-extern char irq_name_level5[];
+extern const char irq_name_level2[];
+extern const char irq_name_level3[];
+extern const char irq_name_level4[];
+extern const char irq_name_level5[];
 
 #endif /* __CAVS_DRIVERS_INTERRUPT_H__ */
 
