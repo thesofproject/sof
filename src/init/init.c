@@ -33,7 +33,7 @@ struct sof *sof_get(void)
 
 int master_core_init(int argc, char *argv[], struct sof *sof)
 {
-	int err, i;
+	int err;
 
 	/* setup context */
 	sof->argc = argc;
@@ -62,11 +62,6 @@ int master_core_init(int argc, char *argv[], struct sof *sof)
 
 	trace_point(TRACE_BOOT_SYS_POWER);
 	pm_runtime_init();
-
-	/* Turn off memory for all unused cores */
-	for (i = 0; i < PLATFORM_CORE_COUNT; i++)
-		if (i != PLATFORM_MASTER_CORE_ID)
-			pm_runtime_put(CORE_MEMORY_POW, i);
 
 	/* init the platform */
 	err = platform_init(sof);
