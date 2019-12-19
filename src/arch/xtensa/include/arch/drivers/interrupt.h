@@ -15,11 +15,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-extern char irq_name_level2[];
-extern char irq_name_level3[];
-extern char irq_name_level4[];
-extern char irq_name_level5[];
-
 static inline int arch_interrupt_register(int irq,
 	void (*handler)(void *arg), void *arg)
 {
