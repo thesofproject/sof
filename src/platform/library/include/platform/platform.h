@@ -51,8 +51,6 @@ static inline void platform_wait_for_interrupt(int level)
 	arch_wait_for_interrupt(level);
 }
 
-extern struct timer *platform_timer;
-
 #endif /* __PLATFORM_PLATFORM_H__ */
 
 #else

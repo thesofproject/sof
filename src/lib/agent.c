@@ -43,7 +43,7 @@ static enum task_state validate(void *data)
 	uint64_t current;
 	uint64_t delta;
 
-	current = platform_timer_get(platform_timer);
+	current = platform_timer_get(timer_get());
 	delta = current - sa->last_check;
 
 	/* panic timeout */
@@ -87,5 +87,5 @@ void sa_init(struct sof *sof, uint64_t timeout)
 	schedule_task(&sa->work, 0, timeout);
 
 	/* set last check time to now to give time for boot completion */
-	sa->last_check = platform_timer_get(platform_timer);
+	sa->last_check = platform_timer_get(timer_get());
 }

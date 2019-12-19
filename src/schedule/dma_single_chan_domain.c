@@ -427,7 +427,7 @@ static void dma_single_chan_domain_set(struct ll_schedule_domain *domain,
 		return;
 
 	if (dma_domain->channel_changed) {
-		domain->last_tick = platform_timer_get(platform_timer);
+		domain->last_tick = platform_timer_get(timer_get());
 
 		dma_domain->channel_changed = false;
 	} else {
@@ -463,7 +463,7 @@ static void dma_single_chan_domain_clear(struct ll_schedule_domain *domain)
 static bool dma_single_chan_domain_is_pending(struct ll_schedule_domain *domain,
 					      struct task *task)
 {
-	return task->start <= platform_timer_get(platform_timer);
+	return task->start <= platform_timer_get(timer_get());
 }
 
 /**

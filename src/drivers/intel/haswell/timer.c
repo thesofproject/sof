@@ -62,7 +62,7 @@ void platform_dai_timestamp(struct comp_dev *dai,
 		posn->flags |= SOF_TIME_DAI_VALID;
 
 	/* get SSP wallclock - DAI sets this to stream start value */
-	posn->wallclock = timer_get_system(platform_timer) - posn->wallclock;
+	posn->wallclock = timer_get_system(timer_get()) - posn->wallclock;
 	posn->wallclock_hz = clock_get_freq(PLATFORM_DEFAULT_CLOCK);
 	posn->flags |= SOF_TIME_WALL_VALID | SOF_TIME_WALL_64;
 }
@@ -71,7 +71,7 @@ void platform_dai_timestamp(struct comp_dev *dai,
 void platform_dai_wallclock(struct comp_dev *dai, uint64_t *wallclock)
 {
 	/* only 1 wallclock on HSW */
-	*wallclock = timer_get_system(platform_timer);
+	*wallclock = timer_get_system(timer_get());
 }
 
 int timer_register(struct timer *timer, void (*handler)(void *arg), void *arg)

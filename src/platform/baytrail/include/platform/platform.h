@@ -101,8 +101,6 @@ static inline void platform_wait_for_interrupt(int level)
 #define platform_trace_point(__x) \
 	shim_write(SHIM_IPCXL, (__x & 0x3fffffff))
 
-extern struct timer *platform_timer;
-
 extern struct ll_schedule_domain *platform_timer_domain;
 extern struct ll_schedule_domain *platform_dma_domain;
 

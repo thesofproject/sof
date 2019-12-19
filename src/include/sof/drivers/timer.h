@@ -9,6 +9,7 @@
 #define __SOF_DRIVERS_TIMER_H__
 
 #include <arch/drivers/timer.h>
+#include <sof/sof.h>
 #include <stdint.h>
 
 struct comp_dev;
@@ -24,6 +25,11 @@ int timer_register(struct timer *timer, void (*handler)(void *arg), void *arg);
 void timer_unregister(struct timer *timer, void *arg);
 void timer_enable(struct timer *timer, void *arg, int core);
 void timer_disable(struct timer *timer, void *arg, int core);
+
+static inline struct timer *timer_get(void)
+{
+	return sof_get()->platform_timer;
+}
 
 static inline int64_t timer_set(struct timer *timer, uint64_t ticks)
 {

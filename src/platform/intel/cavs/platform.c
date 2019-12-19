@@ -257,8 +257,6 @@ struct timer timer = {
 	.irq_name = irq_name_level2,
 };
 
-struct timer *platform_timer = &timer;
-
 struct ll_schedule_domain *platform_timer_domain;
 struct ll_schedule_domain *platform_dma_domain;
 
@@ -369,7 +367,7 @@ int platform_init(struct sof *sof)
 
 	/* init timers, clocks and schedulers */
 	trace_point(TRACE_BOOT_PLATFORM_TIMER);
-	platform_timer_start(platform_timer);
+	platform_timer_start(sof->platform_timer);
 
 	trace_point(TRACE_BOOT_PLATFORM_CLOCK);
 	platform_clock_init(sof);
@@ -379,7 +377,7 @@ int platform_init(struct sof *sof)
 
 	/* init low latency timer domain and scheduler */
 	platform_timer_domain =
-		timer_domain_init(platform_timer, PLATFORM_DEFAULT_CLOCK,
+		timer_domain_init(sof->platform_timer, PLATFORM_DEFAULT_CLOCK,
 				  CONFIG_SYSTICK_PERIOD);
 	scheduler_init_ll(platform_timer_domain);
 

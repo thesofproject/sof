@@ -45,7 +45,7 @@ static void put_header(uint32_t *dst, uint32_t id_0, uint32_t id_1,
 	header.id_0 = id_0 & TRACE_ID_MASK;
 	header.id_1 = id_1 & TRACE_ID_MASK;
 	header.core_id = cpu_get_id();
-	header.timestamp = timestamp + platform_timer->delta;
+	header.timestamp = timestamp + timer_get()->delta;
 	header.log_entry_address = entry;
 
 	ret = memcpy_s(dst, sizeof(header), &header, sizeof(header));
@@ -105,7 +105,7 @@ META_IF_ELSE(is_atomic)(_atomic)()					\
 		return;							\
 									\
 	put_header(dt, id_0, id_1, log_entry,				\
-		   platform_timer_get(platform_timer));			\
+		   platform_timer_get(timer_get()));			\
 									\
 	_TRACE_EVENT_NTH_PAYLOAD_IMPL(arg_count)			\
 	META_IF_ELSE(is_atomic)						\

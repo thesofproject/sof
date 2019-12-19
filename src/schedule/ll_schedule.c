@@ -180,7 +180,7 @@ static int schedule_ll_domain_set(struct ll_schedule_data *sch,
 		sch->domain->registered[core] = true;
 
 	if (atomic_add(&sch->domain->total_num_tasks, 1) == 1) {
-		domain_set(sch->domain, platform_timer_get(platform_timer));
+		domain_set(sch->domain, platform_timer_get(timer_get()));
 		atomic_add(&sch->domain->num_clients, 1);
 		domain_enable(sch->domain, core);
 	}
@@ -278,7 +278,7 @@ static void schedule_ll_task(void *data, struct task *task, uint64_t start,
 	task->start = sch->domain->ticks_per_ms * start / 1000;
 
 	if (sch->domain->synchronous)
-		task->start += platform_timer_get(platform_timer);
+		task->start += platform_timer_get(timer_get());
 	else
 		task->start += sch->domain->last_tick;
 
@@ -372,7 +372,7 @@ static void reschedule_ll_task(void *data, struct task *task, uint64_t start)
 	time = sch->domain->ticks_per_ms * start / 1000;
 
 	if (sch->domain->synchronous)
-		time += platform_timer_get(platform_timer);
+		time += platform_timer_get(timer_get());
 	else
 		time += sch->domain->last_tick;
 
@@ -413,7 +413,7 @@ static void scheduler_free_ll(void *data)
 static void ll_scheduler_recalculate_tasks(struct ll_schedule_data *sch,
 					   struct clock_notify_data *clk_data)
 {
-	uint64_t current = platform_timer_get(platform_timer);
+	uint64_t current = platform_timer_get(timer_get());
 	struct list_item *tlist;
 	struct task *task;
 	uint64_t delta_ms;

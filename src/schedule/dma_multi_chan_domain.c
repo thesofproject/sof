@@ -270,7 +270,7 @@ static bool dma_multi_chan_domain_is_pending(struct ll_schedule_domain *domain,
 			/* it's too soon for this task */
 			if (!pipe_task->registrable &&
 			    pipe_task->task.start >
-			    platform_timer_get(platform_timer))
+			    platform_timer_get(timer_get()))
 				continue;
 
 			notifier_event(&dmas[i].chan[j], NOTIFIER_ID_DMA_IRQ,

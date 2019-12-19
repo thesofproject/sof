@@ -124,6 +124,7 @@ static void idc_irq_handler(void *arg)
  */
 int idc_send_msg(struct idc_msg *msg, uint32_t mode)
 {
+	struct timer *timer = timer_get();
 	struct idc *idc = *idc_get();
 	int core = cpu_get_id();
 	uint64_t deadline;
@@ -136,12 +137,12 @@ int idc_send_msg(struct idc_msg *msg, uint32_t mode)
 	idc_write(IPC_IDCITC(msg->core), core, msg->header | IPC_IDCITC_BUSY);
 
 	if (mode == IDC_BLOCKING) {
-		deadline = platform_timer_get(platform_timer) +
+		deadline = platform_timer_get(timer) +
 			clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1) *
 			IDC_TIMEOUT / 1000;
 
 		while (!idc->msg_processed[msg->core]) {
-			if (deadline < platform_timer_get(platform_timer)) {
+			if (deadline < platform_timer_get(timer)) {
 				/* safe check in case we've got preempted
 				 * after read
 				 */

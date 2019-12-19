@@ -605,7 +605,7 @@ static int ipc_pm_context_save(uint32_t header)
 	/* TODO: clear any outstanding platform IRQs - TODO refine */
 
 	/* TODO: stop ALL timers */
-	platform_timer_stop(platform_timer);
+	platform_timer_stop(timer_get());
 
 	/* TODO: disable SSP and DMA HW */
 
@@ -706,15 +706,16 @@ static int ipc_dma_trace_config(uint32_t header)
 	uint32_t ring_size;
 #endif
 	struct sof_ipc_dma_trace_params_ext params;
+	struct timer *timer = timer_get();
 	int err;
 
 	/* copy message with ABI safe method */
 	IPC_COPY_CMD(params, _ipc->comp_data);
 
 	if (iCS(header) == SOF_IPC_TRACE_DMA_PARAMS_EXT)
-		platform_timer_set_delta(platform_timer, params.timestamp_ns);
+		platform_timer_set_delta(timer, params.timestamp_ns);
 	else
-		platform_timer->delta = 0;
+		timer->delta = 0;
 
 #if CONFIG_SUECREEK
 	return 0;
