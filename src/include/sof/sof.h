@@ -9,12 +9,20 @@
 #define __SOF_SOF_H__
 
 #include <arch/sof.h>
+#include <sof/common.h>
+#include <sof/lib/memory.h>
 
 struct dma_trace_data;
 struct ipc;
 struct sa;
 
-/* general firmware context */
+/**
+ * \brief General firmware context.
+ * This structure holds all the global pointers, which can potentially
+ * be accessed by SMP code, hence it should be aligned to platform's
+ * data cache line size. Alignments in the both beginning and end are needed
+ * to avoid potential before and after data evictions.
+ */
 struct sof {
 	/* init data */
 	int argc;
@@ -28,6 +36,8 @@ struct sof {
 
 	/* DMA for Trace*/
 	struct dma_trace_data *dmat;
-};
+
+	__aligned(PLATFORM_DCACHE_ALIGN) int alignment[0];
+} __aligned(PLATFORM_DCACHE_ALIGN);
 
 #endif /* __SOF_SOF_H__ */
