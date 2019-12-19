@@ -116,6 +116,7 @@ int arch_init(void)
 #include <sof/platform.h>
 #include <sof/schedule/edf_schedule.h>
 #include <sof/schedule/ll_schedule.h>
+#include <sof/schedule/ll_schedule_domain.h>
 #include <sof/schedule/schedule.h>
 #include <sof/schedule/task.h>
 #include <sof/spinlock.h>
@@ -141,8 +142,8 @@ int slave_core_init(void)
 
 	trace_point(TRACE_BOOT_PLATFORM_SCHED);
 	scheduler_init_edf();
-	scheduler_init_ll(platform_timer_domain);
-	scheduler_init_ll(platform_dma_domain);
+	scheduler_init_ll(timer_domain_get());
+	scheduler_init_ll(dma_domain_get());
 
 	/* initialize IDC mechanism */
 	trace_point(TRACE_BOOT_PLATFORM_IDC);
