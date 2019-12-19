@@ -225,12 +225,13 @@ static inline int hda_dma_is_buffer_empty(struct dma_chan_data *chan)
 
 static int hda_dma_wait_for_buffer_full(struct dma_chan_data *chan)
 {
-	uint64_t deadline = platform_timer_get(platform_timer) +
+	struct timer *timer = timer_get();
+	uint64_t deadline = platform_timer_get(timer) +
 		clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1) *
 		HDA_DMA_TIMEOUT / 1000;
 
 	while (!hda_dma_is_buffer_full(chan)) {
-		if (deadline < platform_timer_get(platform_timer)) {
+		if (deadline < platform_timer_get(timer)) {
 			/* safe check in case we've got preempted after read */
 			if (hda_dma_is_buffer_full(chan))
 				return 0;
@@ -249,12 +250,13 @@ static int hda_dma_wait_for_buffer_full(struct dma_chan_data *chan)
 
 static int hda_dma_wait_for_buffer_empty(struct dma_chan_data *chan)
 {
-	uint64_t deadline = platform_timer_get(platform_timer) +
+	struct timer *timer = timer_get();
+	uint64_t deadline = platform_timer_get(timer) +
 		clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1) *
 		HDA_DMA_TIMEOUT / 1000;
 
 	while (!hda_dma_is_buffer_empty(chan)) {
-		if (deadline < platform_timer_get(platform_timer)) {
+		if (deadline < platform_timer_get(timer)) {
 			/* safe check in case we've got preempted after read */
 			if (hda_dma_is_buffer_empty(chan))
 				return 0;
@@ -555,7 +557,7 @@ static int hda_dma_status(struct dma_chan_data *channel,
 	status->state = channel->status;
 	status->r_pos = dma_chan_reg_read(channel, DGBRP);
 	status->w_pos = dma_chan_reg_read(channel, DGBWP);
-	status->timestamp = timer_get_system(platform_timer);
+	status->timestamp = timer_get_system(timer_get());
 
 	return 0;
 }

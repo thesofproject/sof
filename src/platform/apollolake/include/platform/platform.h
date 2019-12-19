@@ -107,8 +107,6 @@ static inline void platform_panic(uint32_t p)
  */
 void platform_wait_for_interrupt(int level);
 
-extern struct timer *platform_timer;
-
 extern struct ll_schedule_domain *platform_timer_domain;
 extern struct ll_schedule_domain *platform_dma_domain;
 

@@ -114,7 +114,7 @@ static void schedule_edf_task(void *data, struct task *task, uint64_t start,
 	}
 
 	/* get current time */
-	current = platform_timer_get(platform_timer);
+	current = platform_timer_get(timer_get());
 
 	ticks_per_ms = clock_ms_to_ticks(edf_sch->clock, 1);
 

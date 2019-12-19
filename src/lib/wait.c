@@ -97,8 +97,9 @@ int poll_for_register_delay(uint32_t reg, uint32_t mask,
 
 void wait_delay(uint64_t number_of_clks)
 {
-	uint64_t current = platform_timer_get(platform_timer);
+	struct timer *timer = timer_get();
+	uint64_t current = platform_timer_get(timer);
 
-	while ((platform_timer_get(platform_timer) - current) < number_of_clks)
+	while ((platform_timer_get(timer) - current) < number_of_clks)
 		idelay(PLATFORM_DEFAULT_DELAY);
 }

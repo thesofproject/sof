@@ -314,7 +314,7 @@ static int dummy_dma_status(struct dma_chan_data *channel,
 	status->r_pos = ch->r_pos;
 	status->w_pos = ch->w_pos;
 
-	status->timestamp = timer_get_system(platform_timer);
+	status->timestamp = timer_get_system(timer_get());
 	return 0;
 }
 

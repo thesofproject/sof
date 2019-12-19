@@ -712,6 +712,7 @@ static int kpb_buffer_data(struct comp_dev *dev, struct comp_buffer *source,
 	enum kpb_state state_preserved = kpb->state;
 	struct dd *draining_data = &kpb->draining_task_data;
 	size_t sample_width = kpb->config.sampling_width;
+	struct timer *timer = timer_get();
 
 	tracev_kpb_with_ids(dev, "kpb_buffer_data()");
 
@@ -723,7 +724,7 @@ static int kpb_buffer_data(struct comp_dev *dev, struct comp_buffer *source,
 
 	kpb_change_state(kpb, KPB_STATE_BUFFERING);
 
-	timeout = platform_timer_get(platform_timer) +
+	timeout = platform_timer_get(timer) +
 		  clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1);
 	/* Let's store audio stream data in internal history buffer */
 	while (size_to_copy) {
@@ -737,7 +738,7 @@ static int kpb_buffer_data(struct comp_dev *dev, struct comp_buffer *source,
 		}
 
 		/* Are we stuck in buffering? */
-		current_time = platform_timer_get(platform_timer);
+		current_time = platform_timer_get(timer);
 		if (timeout < current_time) {
 			trace_kpb_error_with_ids(dev, "kpb_buffer_data(): "
 					"timeout of %d [ms] "
@@ -1065,7 +1066,8 @@ static enum task_state kpb_draining_task(void *arg)
 	uint64_t current_time = 0;
 	size_t period_bytes = 0;
 	size_t period_bytes_limit = draining_data->pb_limit;
-	size_t period_copy_start = platform_timer_get(platform_timer);
+	struct timer *timer = timer_get();
+	size_t period_copy_start = platform_timer_get(timer);
 	size_t time_taken = 0;
 	size_t *rt_stream_update = &draining_data->buffered_while_draining;
 	struct comp_data *kpb = comp_get_drvdata(draining_data->dev);
@@ -1077,7 +1079,7 @@ static enum task_state kpb_draining_task(void *arg)
 	/* Change KPB internal state to DRAINING */
 	kpb_change_state(kpb, KPB_STATE_DRAINING);
 
-	draining_time_start = platform_timer_get(platform_timer);
+	draining_time_start = platform_timer_get(timer);
 
 	while (history_depth > 0) {
 		/* Have we received reset request? */
@@ -1089,12 +1091,12 @@ static enum task_state kpb_draining_task(void *arg)
 		/* Are we ready to drain further or host still need some time
 		 * to read the data already provided?
 		 */
-		if (next_copy_time > platform_timer_get(platform_timer)) {
+		if (next_copy_time > platform_timer_get(timer)) {
 			period_bytes = 0;
-			period_copy_start = platform_timer_get(platform_timer);
+			period_copy_start = platform_timer_get(timer);
 			continue;
 		} else if (next_copy_time == 0) {
-			period_copy_start = platform_timer_get(platform_timer);
+			period_copy_start = platform_timer_get(timer);
 		}
 
 		size_to_read = (uint32_t)buff->end_addr - (uint32_t)buff->r_ptr;
@@ -1133,7 +1135,7 @@ static enum task_state kpb_draining_task(void *arg)
 		}
 
 		if (period_bytes >= period_bytes_limit) {
-			current_time = platform_timer_get(platform_timer);
+			current_time = platform_timer_get(timer);
 			time_taken = current_time - period_copy_start;
 			next_copy_time = current_time + drain_interval -
 					 time_taken;
@@ -1151,7 +1153,7 @@ static enum task_state kpb_draining_task(void *arg)
 		}
 	}
 out:
-	draining_time_end = platform_timer_get(platform_timer);
+	draining_time_end = platform_timer_get(timer);
 
 	/* Draining is done. Now switch KPB to copy real time stream
 	 * to client's sink. This state is called "draining on demand"

@@ -160,7 +160,7 @@ int platform_init(struct sof *sof)
 
 	/* init low latency domains and schedulers */
 	platform_timer_domain =
-		timer_domain_init(platform_timer, PLATFORM_DEFAULT_CLOCK,
+		timer_domain_init(sof->platform_timer, PLATFORM_DEFAULT_CLOCK,
 				  CONFIG_SYSTICK_PERIOD);
 	scheduler_init_ll(platform_timer_domain);
 
@@ -173,7 +173,7 @@ int platform_init(struct sof *sof)
 		    false);
 	scheduler_init_ll(platform_dma_domain);
 
-	platform_timer_start(platform_timer);
+	platform_timer_start(sof->platform_timer);
 	sa_init(sof, CONFIG_SYSTICK_PERIOD);
 
 	clock_set_freq(CLK_CPU(cpu_get_id()), CLK_MAX_CPU_HZ);
