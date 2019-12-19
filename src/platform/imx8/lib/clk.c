@@ -8,6 +8,7 @@
 #include <sof/common.h>
 #include <sof/lib/clk.h>
 #include <sof/lib/notifier.h>
+#include <sof/sof.h>
 #include <sof/spinlock.h>
 
 const struct freq_table platform_cpu_freq[] = {
@@ -21,7 +22,7 @@ static struct clock_info platform_clocks_info[NUM_CLOCKS];
 
 struct clock_info *clocks = platform_clocks_info;
 
-void platform_clock_init(void)
+void platform_clock_init(struct sof *sof)
 {
 	int i;
 

@@ -153,7 +153,7 @@ int platform_init(struct sof *sof)
 	int ret;
 
 	platform_interrupt_init();
-	platform_clock_init();
+	platform_clock_init(sof);
 	scheduler_init_edf();
 
 	/* init low latency domains and schedulers */

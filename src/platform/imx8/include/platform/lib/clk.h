@@ -12,6 +12,8 @@
 
 #include <stdint.h>
 
+struct sof;
+
 #define CLK_CPU(x)	(x)
 
 #define CPU_DEFAULT_IDX		0
@@ -23,7 +25,7 @@
 
 #define NUM_CPU_FREQ	1
 
-void platform_clock_init(void);
+void platform_clock_init(struct sof *sof);
 
 #endif /* __PLATFORM_LIB_CLK_H__ */
 

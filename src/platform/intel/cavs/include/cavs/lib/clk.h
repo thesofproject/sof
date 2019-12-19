@@ -24,6 +24,8 @@
 #include <sof/lib/shim.h>
 #include <stdint.h>
 
+struct sof;
+
 /** \brief Core(s) settings, up to PLATFORM_CORE_COUNT */
 #define CLK_CPU(x)	(x)
 
@@ -39,7 +41,7 @@ extern const struct freq_table *cpu_freq;
 extern const uint32_t cpu_freq_enc[];
 extern const uint32_t cpu_freq_status_mask[];
 
-void platform_clock_init(void);
+void platform_clock_init(struct sof *sof);
 
 #endif /* __CAVS_LIB_CLK_H__ */
 
