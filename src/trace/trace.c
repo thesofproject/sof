@@ -13,6 +13,7 @@
 #include <sof/lib/mailbox.h>
 #include <sof/platform.h>
 #include <sof/string.h>
+#include <sof/sof.h>
 #include <sof/spinlock.h>
 #include <sof/trace/dma-trace.h>
 #include <sof/trace/preproc.h>
@@ -20,14 +21,6 @@
 #include <ipc/topology.h>
 #include <user/trace.h>
 #include <stdint.h>
-
-struct trace {
-	uint32_t pos ;	/* trace position */
-	uint32_t enable;
-	spinlock_t *lock; /* locking mechanism */
-};
-
-static struct trace *trace;
 
 /* calculates total message size, both header and payload in bytes */
 #define MESSAGE_SIZE(args_num)	\
@@ -61,6 +54,7 @@ static void put_header(uint32_t *dst, uint32_t id_0, uint32_t id_1,
 
 static void mtrace_event(const char *data, uint32_t length)
 {
+	struct trace *trace = trace_get();
 	volatile char *t;
 	uint32_t i, available;
 
@@ -101,6 +95,7 @@ META_IF_ELSE(is_atomic)(_atomic)()					\
 ), arg_count)								\
 {									\
 	uint32_t dt[MESSAGE_SIZE_DWORDS(arg_count)];			\
+	struct trace *trace = trace_get();				\
 	META_IF_ELSE(is_mbox)						\
 	(								\
 		META_IF_ELSE(is_atomic)()(unsigned long flags;)		\
@@ -200,7 +195,7 @@ void trace_flush(void)
 	volatile uint64_t *t;
 
 	/* get mailbox position */
-	t = (volatile uint64_t *)(MAILBOX_TRACE_BASE + trace->pos);
+	t = (volatile uint64_t *)(MAILBOX_TRACE_BASE + trace_get()->pos);
 
 	/* flush dma trace messages */
 	dma_trace_flush((void *)t);
@@ -208,13 +203,13 @@ void trace_flush(void)
 
 void trace_on(void)
 {
-	trace->enable = 1;
+	trace_get()->enable = 1;
 	dma_trace_on();
 }
 
 void trace_off(void)
 {
-	trace->enable = 0;
+	trace_get()->enable = 0;
 	dma_trace_off();
 }
 
@@ -222,11 +217,11 @@ void trace_init(struct sof *sof)
 {
 	dma_trace_init_early(sof);
 
-	trace = rzalloc(SOF_MEM_ZONE_SYS, SOF_MEM_FLAG_SHARED, SOF_MEM_CAPS_RAM,
-			sizeof(*trace));
-	trace->enable = 1;
-	trace->pos = 0;
-	spinlock_init(&trace->lock);
+	sof->trace = rzalloc(SOF_MEM_ZONE_SYS, SOF_MEM_FLAG_SHARED,
+			     SOF_MEM_CAPS_RAM, sizeof(*sof->trace));
+	sof->trace->enable = 1;
+	sof->trace->pos = 0;
+	spinlock_init(&sof->trace->lock);
 
 	bzero((void *)MAILBOX_TRACE_BASE, MAILBOX_TRACE_SIZE);
 	dcache_writeback_invalidate_region((void *)MAILBOX_TRACE_BASE,

@@ -15,6 +15,7 @@
 struct dma_trace_data;
 struct ipc;
 struct sa;
+struct trace;
 
 /**
  * \brief General firmware context.
@@ -36,6 +37,9 @@ struct sof {
 
 	/* DMA for Trace*/
 	struct dma_trace_data *dmat;
+
+	/* generic trace structure */
+	struct trace *trace;
 
 	__aligned(PLATFORM_DCACHE_ALIGN) int alignment[0];
 } __aligned(PLATFORM_DCACHE_ALIGN);
