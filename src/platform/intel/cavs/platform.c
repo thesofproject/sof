@@ -341,6 +341,8 @@ int platform_init(struct sof *sof)
 #endif
 	int ret;
 
+	sof->platform_timer = &timer;
+
 	/* pm runtime already initialized, request the DSP to stay in D0
 	 * until we are allowed to do full power gating (by the IPC req).
 	 */

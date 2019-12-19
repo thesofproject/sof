@@ -152,6 +152,8 @@ int platform_init(struct sof *sof)
 {
 	int ret;
 
+	sof->platform_timer = &timer;
+
 	platform_interrupt_init();
 	platform_clock_init(sof);
 	scheduler_init_edf();
