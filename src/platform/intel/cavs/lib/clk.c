@@ -8,6 +8,7 @@
 #include <sof/drivers/ssp.h>
 #include <sof/lib/clk.h>
 #include <sof/lib/notifier.h>
+#include <sof/sof.h>
 #include <sof/spinlock.h>
 
 static struct clock_info platform_clocks_info[NUM_CLOCKS];
@@ -48,7 +49,7 @@ static int clock_platform_set_cpu_freq(int clock, int freq_idx)
 	return 0;
 }
 
-void platform_clock_init(void)
+void platform_clock_init(struct sof *sof)
 {
 	int i;
 

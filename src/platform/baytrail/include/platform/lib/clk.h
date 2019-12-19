@@ -15,6 +15,8 @@
 #include <sof/lib/shim.h>
 #include <stdint.h>
 
+struct sof;
+
 #define CLK_CPU(x)	(x)
 #define CLK_SSP		1
 
@@ -34,7 +36,7 @@
 #define NUM_CPU_FREQ	8
 #define NUM_SSP_FREQ	2
 
-void platform_clock_init(void);
+void platform_clock_init(struct sof *sof);
 
 #endif /* __PLATFORM_LIB_CLK_H__ */
 
