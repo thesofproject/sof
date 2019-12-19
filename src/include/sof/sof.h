@@ -16,6 +16,7 @@ struct clock_info;
 struct dma_trace_data;
 struct ipc;
 struct sa;
+struct timer;
 struct trace;
 
 /**
@@ -44,6 +45,9 @@ struct sof {
 
 	/* platform clock information */
 	struct clock_info *clocks;
+
+	/* default platform timer */
+	struct timer *platform_timer;
 
 	__aligned(PLATFORM_DCACHE_ALIGN) int alignment[0];
 } __aligned(PLATFORM_DCACHE_ALIGN);

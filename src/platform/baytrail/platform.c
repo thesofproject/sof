@@ -175,6 +175,8 @@ int platform_init(struct sof *sof)
 #endif
 	int ret;
 
+	sof->platform_timer = &timer;
+
 	/* clear mailbox for early trace and debug */
 	trace_point(TRACE_BOOT_PLATFORM_MBOX);
 	bzero((void *)MAILBOX_BASE, MAILBOX_SIZE);
