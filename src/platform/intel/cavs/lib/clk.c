@@ -78,4 +78,6 @@ void platform_clock_init(struct sof *sof)
 	};
 
 	spinlock_init(&platform_clocks_info[CLK_SSP].lock);
+
+	sof->clocks = clocks;
 }
