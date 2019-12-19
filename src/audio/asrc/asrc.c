@@ -567,7 +567,15 @@ static int asrc_copy(struct comp_dev *dev)
 
 static int asrc_reset(struct comp_dev *dev)
 {
+	struct comp_data *cd = comp_get_drvdata(dev);
+
 	trace_asrc_with_ids(dev, "asrc_reset()");
+
+	/* Free the allocations those were done in prepare() */
+	rfree(cd->asrc_obj);
+	rfree(cd->buf);
+	cd->asrc_obj = NULL;
+	cd->buf = NULL;
 
 	comp_set_state(dev, COMP_TRIGGER_RESET);
 	return 0;
