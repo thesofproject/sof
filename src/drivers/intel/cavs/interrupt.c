@@ -26,16 +26,16 @@
 #define LVL2_MAX_TRIES		1000
 
 #if CONFIG_INTERRUPT_LEVEL_2
-char irq_name_level2[] = "level2";
+const char irq_name_level2[] = "level2";
 #endif
 #if CONFIG_INTERRUPT_LEVEL_3
-char irq_name_level3[] = "level3";
+const char irq_name_level3[] = "level3";
 #endif
 #if CONFIG_INTERRUPT_LEVEL_4
-char irq_name_level4[] = "level4";
+const char irq_name_level4[] = "level4";
 #endif
 #if CONFIG_INTERRUPT_LEVEL_5
-char irq_name_level5[] = "level5";
+const char irq_name_level5[] = "level5";
 #endif
 
 /*
