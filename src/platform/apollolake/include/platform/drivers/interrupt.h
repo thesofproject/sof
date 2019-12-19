@@ -11,6 +11,7 @@
 #ifndef __PLATFORM_DRIVERS_INTERRUPT_H__
 #define __PLATFORM_DRIVERS_INTERRUPT_H__
 
+#include <cavs/drivers/interrupt.h>
 #include <sof/bit.h>
 #include <config.h>
 
