@@ -24,7 +24,12 @@ config COMP_FIR
 	bool "FIR component"
 	default y
 	help
-	  Select for FIR component
+	  Select for FIR component. FIR performance can differ between DSP
+	  ISA and compiler used. FIR will perform best when MAC instructions
+	  are available in ISA and are used by the compiler. i.e. xt-xcc on
+	  xtensa will generate MAC instructions but GCC on xtensa won't.
+	  Filter tap count can be severely restricted to reduce FIR cycles
+	  and FIR performance for DSP/compilers with no MAC support
 
 config COMP_IIR
 	bool "IIR component"
