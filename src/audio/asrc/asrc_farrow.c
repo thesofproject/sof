@@ -792,6 +792,9 @@ static enum asrc_error_code initialise_filter(struct asrc_farrow *src_obj)
 enum asrc_error_code asrc_update_drift(struct asrc_farrow *src_obj,
 				       uint32_t clock_skew)
 {
+	uint32_t fs_ratio;
+	uint32_t fs_ratio_inv;
+
 	/* check for parameter errors */
 	if (!src_obj) {
 		trace_asrc_error("asrc_update_drift(), null src_obj");
@@ -816,9 +819,9 @@ enum asrc_error_code asrc_update_drift(struct asrc_farrow *src_obj,
 	}
 
 	/* Update the fs ratios, result is Q5.27 */
-	uint32_t fs_ratio = ((uint64_t)ONE_Q27 * src_obj->fs_prim) /
+	fs_ratio = ((uint64_t)ONE_Q27 * src_obj->fs_prim) /
 		src_obj->fs_sec;
-	uint32_t fs_ratio_inv = ((uint64_t)ONE_Q27 * src_obj->fs_sec) /
+	fs_ratio_inv = ((uint64_t)ONE_Q27 * src_obj->fs_sec) /
 		src_obj->fs_prim;
 
 	/* Q5.27 x Q2.30 -> Q7.57, shift right by 30 to get Q5.27 */
@@ -1030,6 +1033,11 @@ enum asrc_error_code asrc_process_push16(struct asrc_farrow *src_obj,
 					src_obj->io_buffer_idx = 0;
 
 				(*output_num_frames)++;
+			} else {
+				trace_asrc_error("error onf=%d, max=%d",
+						 *output_num_frames,
+						 max_num_free_frames);
+				break;
 			}
 		} else {
 			/* Consume one input sample */
@@ -1053,16 +1061,15 @@ enum asrc_error_code asrc_process_push16(struct asrc_farrow *src_obj,
 		    src_obj->sec_num_frames >= src_obj->sec_num_frames_targ) {
 			if (src_obj->sec_num_frames !=
 			    src_obj->sec_num_frames_targ) {
-				tracev_asrc("process_push16(), Generated = %d"
-					    ", Target = %d",
-					    src_obj->sec_num_frames,
-					    src_obj->sec_num_frames_targ);
+				trace_asrc_error("process_push16(), Generated = %d, Target = %d",
+						 src_obj->sec_num_frames,
+						 src_obj->sec_num_frames_targ);
 				return ASRC_EC_FAILED_PUSH_MODE;
 			}
 
 			if (src_obj->time_value > TIME_VALUE_LIMIT) {
-				tracev_asrc("process_push16(), Time value = %d",
-					    src_obj->time_value);
+				trace_asrc_error("process_push16(), Time value = %d",
+						 src_obj->time_value);
 				return ASRC_EC_FAILED_PUSH_MODE;
 			}
 
@@ -1138,6 +1145,11 @@ enum asrc_error_code asrc_process_push32(struct asrc_farrow *src_obj,
 					src_obj->io_buffer_idx = 0;
 
 				(*output_num_frames)++;
+			} else {
+				trace_asrc_error("error onf=%d, max=%d",
+						 *output_num_frames,
+						 max_num_free_frames);
+				break;
 			}
 		} else {
 			/* Consume input sample */
