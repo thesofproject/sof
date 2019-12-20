@@ -107,6 +107,9 @@
 #define ALH_RXDA_OFFSET		0x000000500
 #define ALH_STREAM_OFFSET	0x000000004
 
+/* Timestamping */
+#define TIMESTAMP_BASE		0x00071800
+
 /* low power DMACs */
 #define LP_GP_DMA_SIZE		0x00001000
 #define LP_GP_DMA_BASE(x)	(0x0007C000 + x * LP_GP_DMA_SIZE)

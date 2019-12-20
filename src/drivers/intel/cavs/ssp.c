@@ -9,6 +9,7 @@
 #include <sof/audio/component.h>
 #include <sof/common.h>
 #include <sof/drivers/mn.h>
+#include <sof/drivers/timestamp.h>
 #include <sof/drivers/ssp.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/clk.h>
@@ -811,6 +812,160 @@ static int ssp_get_fifo(struct dai *dai, int direction, int stream_id)
 	return dai->plat_data.fifo[direction].offset;
 }
 
+/* Functions for HW timestamp */
+
+static inline uint32_t ssp_ts_local_tsctrl_addr(int index)
+{
+#if CONFIG_APOLLOLAKE
+	/* TSCTRL registers for SSP0, 1, 2, and 3 are in continuous
+	 * registers space while SSP4 and more are handled with other
+	 * macro.
+	 */
+	if (index < DAI_NUM_SSP_BASE)
+		return TIMESTAMP_BASE + TS_I2S_LOCAL_TSCTRL(index);
+	else
+		return TIMESTAMP_BASE + TS_I2SE_LOCAL_TSCTRL(index);
+#else
+	return TIMESTAMP_BASE + TS_I2S_LOCAL_TSCTRL(index);
+#endif
+}
+
+static inline uint32_t ssp_ts_local_offs_addr(int index)
+{
+#if CONFIG_APOLLOLAKE
+	if (index < DAI_NUM_SSP_BASE)
+		return TIMESTAMP_BASE + TS_I2S_LOCAL_OFFS(index);
+	else
+		return TIMESTAMP_BASE + TS_I2SE_LOCAL_OFFS(index);
+#else
+	return TIMESTAMP_BASE + TS_I2S_LOCAL_OFFS(index);
+#endif
+}
+
+static inline uint32_t ssp_ts_local_sample_addr(int index)
+{
+#if CONFIG_APOLLOLAKE
+	if (index < DAI_NUM_SSP_BASE)
+		return TIMESTAMP_BASE + TS_I2S_LOCAL_SAMPLE(index);
+	else
+		return TIMESTAMP_BASE + TS_I2SE_LOCAL_SAMPLE(index);
+#else
+	return TIMESTAMP_BASE + TS_I2S_LOCAL_SAMPLE(index);
+#endif
+}
+
+static inline uint32_t ssp_ts_local_walclk_addr(int index)
+{
+#if CONFIG_APOLLOLAKE
+	if (index < DAI_NUM_SSP_BASE)
+		return TIMESTAMP_BASE + TS_I2S_LOCAL_WALCLK(index);
+	else
+		return TIMESTAMP_BASE + TS_I2SE_LOCAL_WALCLK(index);
+#else
+	return TIMESTAMP_BASE + TS_I2S_LOCAL_WALCLK(index);
+#endif
+}
+
+static inline uint32_t ssp_ts_tscc_addr(int index)
+{
+#if CONFIG_APOLLOLAKE
+	if (index < DAI_NUM_SSP_BASE)
+		return TIMESTAMP_BASE + TS_I2S_TSCC(index);
+	else
+		return TIMESTAMP_BASE + TS_I2SE_TSCC(index);
+#else
+	return TIMESTAMP_BASE + TS_I2S_TSCC(index);
+#endif
+}
+
+static int ssp_ts_config(struct dai *dai, struct timestamp_cfg *cfg)
+{
+	int i;
+
+	if (cfg->type != SOF_DAI_INTEL_SSP) {
+		trace_ssp_error("ssp_ts_config(): Illegal DAI type");
+		return -EINVAL;
+	}
+
+	if (cfg->index > DAI_NUM_SSP_BASE + DAI_NUM_SSP_EXT - 1) {
+		trace_ssp_error("ssp_ts_config(): Illegal DAI index");
+		return -EINVAL;
+	}
+
+	cfg->walclk_rate = 0;
+	for (i = 0; i < NUM_SSP_FREQ; i++) {
+		if (ssp_freq_sources[i] == SSP_CLOCK_XTAL_OSCILLATOR)
+			cfg->walclk_rate = ssp_freq[i].freq;
+	}
+
+	if (!cfg->walclk_rate) {
+		trace_ssp_error("ssp_ts_config(): No XTAL frequency defined");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int ssp_ts_start(struct dai *dai, struct timestamp_cfg *cfg)
+{
+	uint32_t cdmas;
+	uint32_t addr = ssp_ts_local_tsctrl_addr(cfg->index);
+
+	/* Set SSP timestamp registers */
+	spin_lock(&dai->lock);
+
+	/* First point CDMAS to GPDMA channel that is used by this SSP,
+	 * also clear NTK to be sure there is no old timestamp.
+	 */
+	cdmas = TS_LOCAL_TSCTRL_CDMAS(cfg->dma_chan_index +
+		cfg->dma_chan_count * cfg->dma_id);
+	io_reg_write(addr, TS_LOCAL_TSCTRL_NTK_BIT | cdmas);
+
+	/* Request on demand timestamp */
+	io_reg_write(addr, TS_LOCAL_TSCTRL_ODTS_BIT | cdmas);
+
+	spin_unlock(&dai->lock);
+	return 0;
+}
+
+static int ssp_ts_stop(struct dai *dai, struct timestamp_cfg *cfg)
+{
+	/* Clear NTK and write zero to CDMAS */
+	io_reg_write(ssp_ts_local_tsctrl_addr(cfg->index),
+		     TS_LOCAL_TSCTRL_NTK_BIT);
+	return 0;
+}
+
+static int ssp_ts_get(struct dai *dai, struct timestamp_cfg *cfg,
+		      struct timestamp_data *tsd)
+{
+	uint32_t ntk;
+	uint32_t tsctrl = ssp_ts_local_tsctrl_addr(cfg->index);
+
+	/* Read SSP timestamp registers */
+	spin_lock(&dai->lock);
+	ntk = io_reg_read(tsctrl) & TS_LOCAL_TSCTRL_NTK_BIT;
+	if (!ntk)
+		goto out;
+
+	/* NTK was set, get wall clock */
+	tsd->walclk = io_reg_read_64(ssp_ts_local_walclk_addr(cfg->index));
+
+	/* Sample */
+	tsd->sample = io_reg_read_64(ssp_ts_local_sample_addr(cfg->index));
+
+	/* Clear NTK to enable successive timestamps */
+	io_reg_write(tsctrl, TS_LOCAL_TSCTRL_NTK_BIT);
+
+out:
+	spin_unlock(&dai->lock);
+	tsd->walclk_rate = cfg->walclk_rate;
+	if (!ntk)
+		return -ENODATA;
+
+	return 0;
+}
+
 const struct dai_driver ssp_driver = {
 	.type = SOF_DAI_INTEL_SSP,
 	.dma_caps = DMA_CAP_GP_LP | DMA_CAP_GP_HP,
@@ -824,5 +979,11 @@ const struct dai_driver ssp_driver = {
 		.get_fifo		= ssp_get_fifo,
 		.probe			= ssp_probe,
 		.remove			= ssp_remove,
+	},
+	.ts_ops = {
+		.ts_config		= ssp_ts_config,
+		.ts_start		= ssp_ts_start,
+		.ts_get			= ssp_ts_get,
+		.ts_stop		= ssp_ts_stop,
 	},
 };

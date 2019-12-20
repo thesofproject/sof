@@ -70,11 +70,36 @@ struct dai_ops {
 	int (*remove)(struct dai *dai);
 };
 
+struct timestamp_cfg {
+	uint32_t walclk_rate; /* Rate in Hz, e.g. 19200000 */
+	int type; /* SSP, DMIC, HDA, etc. */
+	int direction; /* Playback, capture */
+	int index; /* For SSPx to select correct timestamp register */
+	int dma_id; /* GPDMA id*/
+	int dma_chan_index; /* Used GPDMA channel */
+	int dma_chan_count; /* Channels in single GPDMA */
+};
+
+struct timestamp_data {
+	uint64_t walclk; /* Wall clock */
+	uint64_t sample; /* Sample count */
+	uint32_t walclk_rate; /* Rate in Hz, e.g. 19200000 */
+};
+
+struct timestamp_ops {
+	int (*ts_config)(struct dai *dai, struct timestamp_cfg *cfg);
+	int (*ts_start)(struct dai *dai, struct timestamp_cfg *cfg);
+	int (*ts_stop)(struct dai *dai, struct timestamp_cfg *cfg);
+	int (*ts_get)(struct dai *dai, struct timestamp_cfg *cfg,
+		      struct timestamp_data *tsd);
+};
+
 struct dai_driver {
 	uint32_t type;	/**< type, one of SOF_DAI_... */
 	uint32_t dma_caps;
 	uint32_t dma_dev;
 	struct dai_ops ops;
+	struct timestamp_ops ts_ops;
 };
 
 /**

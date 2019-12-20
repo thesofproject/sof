@@ -21,6 +21,7 @@
 #include <sof/audio/pipeline.h>
 #include <sof/debug/panic.h>
 #include <sof/list.h>
+#include <sof/lib/dai.h>
 #include <sof/math/numbers.h>
 #include <sof/sof.h>
 #include <sof/trace/trace.h>
@@ -221,6 +222,19 @@ struct comp_ops {
 	/** set attribute in component */
 	int (*set_attribute)(struct comp_dev *dev, uint32_t type,
 			     void *value);
+
+	/* Configure timestamping */
+	int (*dai_ts_config)(struct comp_dev *dev);
+
+	/* Start timestamping */
+	int (*dai_ts_start)(struct comp_dev *dev);
+
+	/* Stop timestamping */
+	int (*dai_ts_stop)(struct comp_dev *dev);
+
+	/* Get timestamp */
+	int (*dai_ts_get)(struct comp_dev *dev,
+			  struct timestamp_data *tsd);
 };
 
 
