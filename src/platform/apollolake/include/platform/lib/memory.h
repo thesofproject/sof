@@ -95,6 +95,9 @@
 #define SSP_SIZE		0x0000200
 #define SSP_BASE(x)		(0x00008000 + x * SSP_SIZE)
 
+/* Timestamp */
+#define TIMESTAMP_BASE		0x00001800
+
 /* low power DMACs */
 #define LP_GP_DMA_SIZE		0x00001000
 #define LP_GP_DMA_BASE(x)	(0x0000C000 + x * LP_GP_DMA_SIZE)

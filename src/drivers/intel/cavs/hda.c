@@ -5,9 +5,17 @@
 // Author: Marcin Maka <marcin.maka@linux.intel.com>
 
 #include <sof/drivers/hda.h>
+#include <sof/drivers/ssp.h>
+#include <sof/drivers/timestamp.h>
 #include <sof/lib/dai.h>
 #include <sof/lib/dma.h>
 #include <ipc/dai.h>
+
+/* tracing */
+#define trace_hda(__e, ...) \
+	trace_event(TRACE_CLASS_DAI, __e, ##__VA_ARGS__)
+#define trace_hda_error(__e, ...) \
+	trace_error(TRACE_CLASS_DAI, __e, ##__VA_ARGS__)
 
 static int hda_trigger(struct dai *dai, int cmd, int direction)
 {
@@ -35,6 +43,112 @@ static int hda_get_fifo(struct dai *dai, int direction, int stream_id)
 	return 0;
 }
 
+/* Functions for HW timestamp */
+
+static inline uint32_t hda_ts_local_tsctrl_addr(void)
+{
+	return TIMESTAMP_BASE + TS_HDA_LOCAL_TSCTRL;
+}
+
+static inline uint32_t hda_ts_local_offs_addr(void)
+{
+	return TIMESTAMP_BASE + TS_HDA_LOCAL_OFFS;
+}
+
+static inline uint32_t hda_ts_local_sample_addr(void)
+{
+	return TIMESTAMP_BASE + TS_HDA_LOCAL_SAMPLE;
+}
+
+static inline uint32_t hda_ts_local_walclk_addr(void)
+{
+	return TIMESTAMP_BASE + TS_HDA_LOCAL_WALCLK;
+}
+
+static inline uint32_t hda_ts_tscc_addr(void)
+{
+	return TIMESTAMP_BASE + TS_HDA_TSCC;
+}
+
+static int hda_ts_config(struct dai *dai, struct timestamp_cfg *cfg)
+{
+	int i;
+
+	if (cfg->type != SOF_DAI_INTEL_HDA) {
+		trace_hda_error("dmic_ts_config(): Illegal DAI type");
+		return -EINVAL;
+	}
+
+	cfg->walclk_rate = 0;
+	for (i = 0; i < NUM_SSP_FREQ; i++) {
+		if (ssp_freq_sources[i] == SSP_CLOCK_XTAL_OSCILLATOR)
+			cfg->walclk_rate = ssp_freq[i].freq;
+	}
+
+	return 0;
+}
+
+static int hda_ts_start(struct dai *dai, struct timestamp_cfg *cfg)
+{
+	/* Set HDA timestamp registers */
+	uint32_t cdmas;
+	uint32_t addr = hda_ts_local_tsctrl_addr();
+
+	/* Set DMIC timestamp registers */
+	spin_lock(&dai->lock);
+
+	/* Set CDMAS(4:0) to match DMA engine index and direction
+	 * also clear NTK to be sure there is no old timestamp.
+	 */
+	cdmas = TS_LOCAL_TSCTRL_CDMAS(cfg->dma_chan_index |
+		(cfg->direction == SOF_IPC_STREAM_PLAYBACK ? BIT(4) : 0));
+	io_reg_write(addr, TS_LOCAL_TSCTRL_NTK_BIT | cdmas);
+
+	/* Request on demand timestamp */
+	io_reg_write(addr, TS_LOCAL_TSCTRL_ODTS_BIT | cdmas);
+
+	spin_unlock(&dai->lock);
+	return 0;
+}
+
+static int hda_ts_stop(struct dai *dai, struct timestamp_cfg *cfg)
+{
+	/* Clear NTK and write zero to CDMAS */
+	io_reg_write(hda_ts_local_tsctrl_addr(), TS_LOCAL_TSCTRL_NTK_BIT);
+	return 0;
+}
+
+static int hda_ts_get(struct dai *dai, struct timestamp_cfg *cfg,
+		      struct timestamp_data *tsd)
+{
+	/* Read HDA timestamp registers */
+	uint32_t ntk;
+	uint32_t tsctrl = hda_ts_local_tsctrl_addr();
+
+	/* Read SSP timestamp registers */
+	spin_lock(&dai->lock);
+	ntk = io_reg_read(tsctrl) & TS_LOCAL_TSCTRL_NTK_BIT;
+	if (!ntk)
+		goto out;
+
+	/* NTK was set, get wall clock */
+	tsd->walclk = io_reg_read_64(hda_ts_local_walclk_addr());
+
+	/* Sample */
+	tsd->sample = io_reg_read_64(hda_ts_local_sample_addr());
+
+	/* Clear NTK to enable successive timestamps */
+	io_reg_write(tsctrl, TS_LOCAL_TSCTRL_NTK_BIT);
+
+out:
+	spin_unlock(&dai->lock);
+	tsd->walclk_rate = cfg->walclk_rate;
+	if (!ntk)
+		return -ENODATA;
+
+	return 0;
+}
+
 const struct dai_driver hda_driver = {
 	.type = SOF_DAI_INTEL_HDA,
 	.dma_caps = DMA_CAP_HDA,
@@ -48,5 +162,11 @@ const struct dai_driver hda_driver = {
 		.get_fifo		= hda_get_fifo,
 		.probe			= hda_dummy,
 		.remove			= hda_dummy,
+	},
+	.ts_ops = {
+		.ts_config		= hda_ts_config,
+		.ts_start		= hda_ts_start,
+		.ts_get			= hda_ts_get,
+		.ts_stop		= hda_ts_stop,
 	},
 };

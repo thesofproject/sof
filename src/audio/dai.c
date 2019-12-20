@@ -58,7 +58,7 @@ struct dai_data {
 	struct dma_sg_config config;
 	struct comp_buffer *dma_buffer;
 	struct comp_buffer *local_buffer;
-
+	struct timestamp_cfg ts_config;
 	struct dai *dai;
 	struct dma *dma;
 	enum sof_ipc_frame frame_fmt;
@@ -812,6 +812,58 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 	return dai_set_config(dd->dai, config);
 }
 
+static int dai_ts_config(struct comp_dev *dev)
+{
+	struct dai_data *dd = comp_get_drvdata(dev);
+	struct timestamp_cfg *cfg = &dd->ts_config;
+	struct sof_ipc_comp_dai *dai = (struct sof_ipc_comp_dai *)&dev->comp;
+
+	tracev_dai("dai_ts_config()");
+	cfg->type = dd->dai->drv->type;
+	cfg->direction = dai->direction;
+	cfg->index = dd->dai->index;
+	cfg->dma_id = dd->dma->plat_data.id;
+	cfg->dma_chan_index = dd->chan->index;
+	cfg->dma_chan_count = dd->dma->plat_data.channels;
+	if (!dd->dai->drv->ts_ops.ts_config)
+		return -ENXIO;
+
+	return dd->dai->drv->ts_ops.ts_config(dd->dai, cfg);
+}
+
+static int dai_ts_start(struct comp_dev *dev)
+{
+	struct dai_data *dd = comp_get_drvdata(dev);
+
+	tracev_dai("dai_ts_start()");
+	if (!dd->dai->drv->ts_ops.ts_start)
+		return -ENXIO;
+
+	return dd->dai->drv->ts_ops.ts_start(dd->dai, &dd->ts_config);
+}
+
+static int dai_ts_stop(struct comp_dev *dev)
+{
+	struct dai_data *dd = comp_get_drvdata(dev);
+
+	tracev_dai("dai_ts_stop()");
+	if (!dd->dai->drv->ts_ops.ts_stop)
+		return -ENXIO;
+
+	return dd->dai->drv->ts_ops.ts_stop(dd->dai, &dd->ts_config);
+}
+
+static int dai_ts_get(struct comp_dev *dev, struct timestamp_data *tsd)
+{
+	struct dai_data *dd = comp_get_drvdata(dev);
+
+	tracev_dai("dai_ts_get()");
+	if (!dd->dai->drv->ts_ops.ts_get)
+		return -ENXIO;
+
+	return dd->dai->drv->ts_ops.ts_get(dd->dai, &dd->ts_config, tsd);
+}
+
 static const struct comp_driver comp_dai = {
 	.type	= SOF_COMP_DAI,
 	.ops	= {
@@ -824,6 +876,10 @@ static const struct comp_driver comp_dai = {
 		.reset		= dai_reset,
 		.dai_config	= dai_config,
 		.position	= dai_position,
+		.dai_ts_config  = dai_ts_config,
+		.dai_ts_start   = dai_ts_start,
+		.dai_ts_stop	= dai_ts_stop,
+		.dai_ts_get     = dai_ts_get,
 	},
 };
 
