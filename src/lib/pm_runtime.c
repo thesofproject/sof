@@ -21,8 +21,6 @@ static struct pm_runtime_data *prd;
 
 void pm_runtime_init(void)
 {
-	trace_pm("pm_runtime_init()");
-
 	prd = rzalloc(SOF_MEM_ZONE_SYS, 0, SOF_MEM_CAPS_RAM, sizeof(*prd));
 	spinlock_init(&prd->lock);
 
