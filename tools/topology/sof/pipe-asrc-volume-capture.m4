@@ -55,7 +55,7 @@ define(MY_ASRC_TOKENS, concat(`asrc_tokens_', PIPELINE_ID))
 define(MY_ASRC_CONF, concat(`asrc_conf_', PIPELINE_ID))
 W_VENDORTUPLES(MY_ASRC_TOKENS, sof_asrc_tokens,
 LIST(`		', `SOF_TKN_ASRC_RATE_IN "PIPELINE_RATE"'
-     `		', `SOF_TKN_ASRC_ASYNCHRONOUS_MODE "0"'
+     `		', `SOF_TKN_ASRC_ASYNCHRONOUS_MODE "1"'
      `		', `SOF_TKN_ASRC_OPERATION_MODE "1"'))
 
 W_DATA(MY_ASRC_CONF, MY_ASRC_TOKENS)

@@ -1,5 +1,5 @@
 #
-# Topology for Apollolake UP^2 with pcm512x codec for testing ASRC
+# Topology for Apollolake UP^2 with wm8804 codec for testing ASRC
 #
 
 # Include topology builder
@@ -22,21 +22,21 @@ DEBUG_START
 #
 # Define the pipelines
 #
-# PCM0 --> ASRC --> Volume --> SSP5 (pcm512x)
+# PCM0 ----> volume -----> SSP5 (wm8804)
 #
 
 dnl PIPELINE_PCM_ADD(pipeline,
 dnl     pipe id, pcm, max channels, format,
 dnl     period, priority, core,
 dnl     pcm_min_rate, pcm_max_rate, pipeline_rate,
-dnl	time_domain, sched_comp)
+dnl     time_domain, sched_comp)
 
-# Playback pipeline 1 on PCM 0 using max 2 channels of s32le.
-# Set 1000us deadline on core 0 with priority 0
+# Low Latency playback pipeline 1 on PCM 0 using max 2 channels of s32le.
+# 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-asrc-volume-playback.m4,
 	1, 0, 2, s32le,
 	1000, 0, 0,
-	8000, 192000, 48000)
+	8000, 48000, 48000)
 
 #
 # DAIs configuration
@@ -54,19 +54,17 @@ DAI_ADD(sof/pipe-dai-playback.m4,
 	PIPELINE_SOURCE_1, 2, s24le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
-# PCM, id 0
-dnl PCM_PLAYBACK_ADD(name, pcm_id, playback)
+# PCM Low Latency, id 0
 PCM_PLAYBACK_ADD(Port5, 0, PIPELINE_PCM_1)
 
 #
 # BE configurations - overrides config in ACPI if present
 #
 
-#SSP 5 (ID: 0)
 DAI_CONFIG(SSP, 5, 0, SSP5-Codec,
 	SSP_CONFIG(I2S, SSP_CLOCK(mclk, 24576000, codec_mclk_in),
-		SSP_CLOCK(bclk, 3072000, codec_slave),
-		SSP_CLOCK(fsync, 48000, codec_slave),
+		SSP_CLOCK(bclk, 3072000, codec_master),
+		SSP_CLOCK(fsync, 48000, codec_master),
 		SSP_TDM(2, 32, 3, 3),
 		SSP_CONFIG_DATA(SSP, 5, 24)))
 

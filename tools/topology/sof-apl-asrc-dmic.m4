@@ -1,5 +1,5 @@
 #
-# Topology for Apollo Lake with direct attach digital microphones array
+# Topology for APL for testing ASRC with DMIC
 #
 
 # Capture configuration
