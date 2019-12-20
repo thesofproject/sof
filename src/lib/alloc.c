@@ -19,6 +19,7 @@
 #include <user/trace.h>
 #include <config.h>
 #include <errno.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -447,6 +448,7 @@ static void free_block(void *ptr)
 	int i;
 	int block;
 	int used_blocks;
+	bool heap_is_full;
 
 	heap = get_heap_from_ptr(ptr);
 	if (!heap) {
@@ -499,6 +501,8 @@ static void free_block(void *ptr)
 	if (block_map->base + block_map->block_size * block != (uint32_t)ptr)
 		panic(SOF_IPC_PANIC_MEM);
 
+	heap_is_full = !block_map->free_count;
+
 	/* free block header and continuous blocks */
 	used_blocks = block + hdr->size;
 
@@ -513,7 +517,7 @@ static void free_block(void *ptr)
 	}
 
 	/* set first free block */
-	if (block < block_map->first_free)
+	if (block < block_map->first_free || heap_is_full)
 		block_map->first_free = block;
 
 	writeback_block_map(block_map);
