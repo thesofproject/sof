@@ -380,8 +380,14 @@ def parse_mft_extension(reader, ext_id):
     ext_type = reader.read_dw()
     ext_len = reader.read_dw()
     if ext_type == 15:
+        begin_off = reader.get_offset()
         ext = PlatFwAuthExtension(ext_id, reader.get_offset()-8)
-        reader.ff_data(ext_len-8)
+        ext.add_a(Astring('name', reader.read_bytes(4).decode()))
+        ext.add_a(Auint('vcn', reader.read_dw()))
+        ext.add_a(Abytes('bitmap', reader.read_bytes(16), 'red'))
+        ext.add_a(Auint('svn', reader.read_dw()))
+        read_len = reader.get_offset() - begin_off
+        reader.ff_data(ext_len - read_len)
     elif ext_type == 17:
         ext = AdspMetadataFileExt(ext_id, reader.get_offset()-8)
         ext.add_a(Auint('adsp_imr_type', reader.read_dw(), 'red'))
@@ -650,17 +656,25 @@ class Adec(Attribute):
 class Abytes(Attribute):
     """ Attribute: array of bytes
     """
-    def __init__(self, name, val):
+    def __init__(self, name, val, color='none'):
         self.name = name
         self.val = val
+        self.color = color
 
     def __str__(self):
         length = len(self.val)
+        if Attribute.no_colors:
+            out = ''
+        else:
+            out = '{}'.format(change_color(self.color))
         if Attribute.full_bytes or length <= 16:
-            return ' '.join(['{:02x}'.format(b) for b in self.val])
-        out = ' '.join('{:02x}'.format(b) for b in self.val[:8])
-        out += ' ... '
-        out += ' '.join('{:02x}'.format(b) for b in self.val[length-8:length])
+            out += ' '.join(['{:02x}'.format(b) for b in self.val])
+        else:
+            out += ' '.join('{:02x}'.format(b) for b in self.val[:8])
+            out += ' ... '
+            out += ' '.join('{:02x}'.format(b) for b in self.val[length-8:length])
+        if not Attribute.no_colors:
+            out += '{}'.format(change_color('none'))
         return out
 
 class Adate(Attribute):
@@ -848,7 +862,12 @@ class PlatFwAuthExtension(MftExtension):
               self).__init__(ext_id, 'Plat Fw Auth Extension', offset)
 
     def dump_info(self, pref):
-        print('{}{}'.format(pref, self.name))
+        out = '{}{}'.format(pref, self.name)
+        out += ' name {}'.format(self.adir['name'])
+        out += ' vcn {}'.format(self.adir['vcn'])
+        out += ' bitmap {}'.format(self.adir['bitmap'])
+        out += ' svn {}'.format(self.adir['svn'])
+        print(out)
 
 class AdspMetadataFileExt(MftExtension):
     """ ADSP Metadata File Extension
