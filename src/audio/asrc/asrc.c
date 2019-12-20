@@ -25,6 +25,18 @@
 #include <stddef.h>
 #include <stdint.h>
 
+/* Simple count value to prevent first delta timestamp
+ * from being input to low-pass filter.
+ */
+#define TS_STABLE_DIFF_COUNT	2
+
+/* Low pass filter coefficient for measured drift factor,
+ * The low pass function is y(n) = c1 * x(n) + c2 * y(n -1)
+ * coefficient c2 needs to be 1 - c1.
+ */
+#define COEF_C1		Q_CONVERT_FLOAT(0.01, 30)
+#define COEF_C2		Q_CONVERT_FLOAT(0.99, 30)
+
 /* Tracing */
 #define trace_asrc(__e, ...)					\
 	trace_event(TRACE_CLASS_SRC, __e, ##__VA_ARGS__)
@@ -53,12 +65,18 @@ typedef void (*asrc_proc_func)(struct comp_dev *dev,
 /* asrc component private data */
 struct comp_data {
 	struct asrc_farrow *asrc_obj;	/* ASRC core data */
+	struct comp_dev *dai_dev;	/* Associated DAI component */
 	enum asrc_operation_mode mode;  /* Control for push or pull mode */
+	uint64_t ts;
 	uint32_t sink_rate;	/* Sample rate in Hz */
 	uint32_t source_rate;	/* Sample rate in Hz */
 	uint32_t sink_format;	/* For used PCM sample format */
 	uint32_t source_format;	/* For used PCM sample format */
-	int32_t drift;		/* Rate factor in Q2.30 */
+	uint32_t copy_count;	/* Count copy() operations  */
+	int32_t ts_prev;
+	int32_t sample_prev;
+	int32_t skew;		/* Rate factor in Q2.30 */
+	int ts_count;
 	int asrc_size;		/* ASRC object size */
 	int buf_size;		/* Samples buffer size */
 	int frames;		/* IO buffer length */
@@ -70,6 +88,7 @@ struct comp_data {
 	uint8_t *buf;		/* Samples buffer for input and output */
 	uint8_t *ibuf[PLATFORM_MAX_CHANNELS];	/* Input channels pointers */
 	uint8_t *obuf[PLATFORM_MAX_CHANNELS];	/* Output channels pointers */
+	bool track_drift;
 	asrc_proc_func asrc_func;		/* ASRC processing function */
 };
 
@@ -260,8 +279,12 @@ static struct comp_dev *asrc_new(struct sof_ipc_comp *comp)
 	 */
 	cd->mode = asrc->operation_mode;
 
-	/* Initialize drift to factor 1 */
-	cd->drift = Q_CONVERT_FLOAT(1.0, 30);
+	/* Use skew tracking for DAI if it was requested. The skew
+	 * is initialized here to zero. It is set later in prepare() to
+	 * to 1.0 if there is no filtered skew factor from previous run.
+	 */
+	cd->track_drift = asrc->asynchronous_mode;
+	cd->skew = 0;
 
 	dev->state = COMP_STATE_READY;
 	return dev;
@@ -358,6 +381,105 @@ static int asrc_params(struct comp_dev *dev,
 	return 0;
 }
 
+static int asrc_dai_find(struct comp_dev *dev,
+			 struct comp_data *cd,
+			 struct comp_buffer *sinkb,
+			 struct comp_buffer *sourceb)
+{
+	struct comp_dev *next_dev;
+	int pid;
+
+	/* Get current pipeline ID and walk to find the DAI */
+	pid = dev->comp.pipeline_id;
+	cd->dai_dev = NULL;
+	if (cd->mode == ASRC_OM_PUSH) {
+		/* In push mode check if sink component is DAI */
+		next_dev = sinkb->sink;
+		while (next_dev->comp.type != SOF_COMP_DAI) {
+			sinkb = list_first_item(&next_dev->bsink_list,
+						struct comp_buffer,
+						source_list);
+			next_dev = sinkb->sink;
+			if (!next_dev) {
+				trace_asrc_error("At end, no DAI found.");
+				return -EINVAL;
+			}
+
+			if (next_dev->comp.pipeline_id != pid) {
+				trace_asrc_error("No DAI sink in pipeline.");
+				return -EINVAL;
+			}
+		}
+	} else {
+		/* In pull mode check if source component is DAI */
+		next_dev = sourceb->source;
+		while (next_dev->comp.type != SOF_COMP_DAI) {
+			sourceb = list_first_item(&next_dev->bsource_list,
+						  struct comp_buffer,
+						  sink_list);
+			next_dev = sourceb->source;
+			if (!next_dev) {
+				trace_asrc_error("At beginning, no DAI found.");
+				return -EINVAL;
+			}
+
+			if (next_dev->comp.pipeline_id != pid) {
+				trace_asrc_error("No DAI source in pipeline.");
+				return -EINVAL;
+			}
+		}
+	}
+
+	/* Point dai_dev to found DAI */
+	cd->dai_dev = next_dev;
+	return 0;
+}
+
+static int asrc_dai_configure_timestamp(struct comp_data *cd)
+{
+	int ret;
+
+	if (cd->dai_dev)
+		ret = cd->dai_dev->drv->ops.dai_ts_config(cd->dai_dev);
+	else
+		return -EINVAL;
+
+	return ret;
+}
+
+static int asrc_dai_start_timestamp(struct comp_data *cd)
+{
+	int ret;
+
+	if (cd->dai_dev)
+		ret = cd->dai_dev->drv->ops.dai_ts_start(cd->dai_dev);
+	else
+		return -EINVAL;
+
+	return ret;
+}
+
+static int asrc_dai_stop_timestamp(struct comp_data *cd)
+{
+	int ret;
+
+	if (cd->dai_dev)
+		ret = cd->dai_dev->drv->ops.dai_ts_stop(cd->dai_dev);
+	else
+		return -EINVAL;
+
+	return ret;
+}
+
+static int asrc_dai_get_timestamp(struct comp_data *cd,
+				  struct timestamp_data *tsd)
+{
+	if (!cd->dai_dev)
+		return -EINVAL;
+
+	return cd->dai_dev->drv->ops.dai_ts_get(cd->dai_dev, tsd);
+}
+
 static int asrc_prepare(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
@@ -438,7 +560,7 @@ static int asrc_prepare(struct comp_dev *dev)
 	}
 
 	/*
-	 * Allocate input and output data buffer
+	 * Allocate input and output data buffer for ASRC processing
 	 */
 	frame_bytes = audio_stream_frame_bytes(&sourceb->stream);
 	cd->buf_size = (cd->source_frames_max + cd->sink_frames_max) *
@@ -451,7 +573,7 @@ static int asrc_prepare(struct comp_dev *dev)
 		trace_asrc_error_with_ids(dev, "asrc_prepare(), allocation fail for size %d",
 					  cd->buf_size);
 		ret = -ENOMEM;
-		goto err;
+		goto err_free_buf;
 	}
 
 	sample_bytes = frame_bytes / sourceb->stream.channels;
@@ -495,24 +617,117 @@ static int asrc_prepare(struct comp_dev *dev)
 		goto err_free_asrc;
 	}
 
-	ret = asrc_update_drift(cd->asrc_obj, cd->drift);
+	/* Prefer previous skew factor. If the component has not yet been
+	 * run the skew is zero from new(). In that case use factor 1.0
+	 * to start with.
+	 */
+	if (!cd->skew)
+		cd->skew = Q_CONVERT_FLOAT(1.0, 30);
+
+	trace_asrc_with_ids(dev, "asrc_prepare(), skew = %d", cd->skew);
+	ret = asrc_update_drift(cd->asrc_obj, cd->skew);
 	if (ret) {
 		trace_asrc_error_with_ids(dev, "asrc_update_drift(), error %d",
 					  ret);
 		goto err_free_asrc;
 	}
 
+	/* Enable timestamping in pipeline DAI */
+	if (cd->track_drift) {
+		ret = asrc_dai_find(dev, cd, sinkb, sourceb);
+		if (ret) {
+			trace_asrc_error_with_ids(dev, "No DAI found to track");
+			cd->track_drift = false;
+			goto err_free_asrc;
+		}
+
+		cd->ts_count = 0;
+		ret = asrc_dai_configure_timestamp(cd);
+		if (ret) {
+			trace_asrc_error_with_ids(dev, "No timestamp capability in DAI");
+			cd->track_drift = false;
+			goto err_free_asrc;
+		}
+	}
+
 	return 0;
 
 err_free_asrc:
 	rfree(cd->asrc_obj);
+	cd->asrc_obj = NULL;
 
 err_free_buf:
 	rfree(cd->buf);
+	cd->buf = NULL;
 
 err:
 	comp_set_state(dev, COMP_TRIGGER_RESET);
 	return ret;
+}
+
+static int asrc_control_loop(struct comp_data *cd)
+{
+	struct timestamp_data tsd;
+	int64_t tmp;
+	int32_t delta_sample;
+	int32_t delta_ts;
+	int32_t sample;
+	int32_t ts;
+	int32_t skew;
+	int32_t f_ds_dt;
+	int32_t f_ck_fs;
+	int ts_ret;
+
+	if (!cd->track_drift)
+		return 0;
+
+	if (!cd->ts_count) {
+		cd->ts_count++;
+		asrc_dai_start_timestamp(cd);
+		return 0;
+	}
+
+	ts_ret = asrc_dai_get_timestamp(cd, &tsd);
+	asrc_dai_start_timestamp(cd);
+	if (ts_ret)
+		return ts_ret;
+
+	ts = (int32_t)(tsd.walclk); /* Let it wrap, diff unwraps */
+	sample = (int32_t)(tsd.sample); /* Let it wrap, diff unwraps */
+	delta_ts = ts - cd->ts_prev;
+	delta_sample = sample - cd->sample_prev;
+	cd->ts_prev = ts;
+	cd->sample_prev = sample;
+	asrc_dai_start_timestamp(cd);
+
+	/* Avoid first delta timestamp(s) those can be off and
+	 * confuse the filter.
+	 */
+	if (cd->ts_count < TS_STABLE_DIFF_COUNT) {
+		cd->ts_count++;
+		return 0;
+	}
+
+	/* Prevent divide by zero */
+	if (delta_sample == 0 || tsd.walclk_rate == 0) {
+		trace_asrc_error("asrc_control_loop(), DAI timestamp failed");
+		return -EINVAL;
+	}
+
+	/* fraction f_ds_dt is Q20.12
+	 * fraction f_cd_fs is Q1.31
+	 * drift needs to be Q2.30
+	 */
+	f_ds_dt = (delta_ts << 12) / delta_sample;
+	f_ck_fs = ((int64_t)cd->asrc_obj->fs_sec << 31) / tsd.walclk_rate;
+	skew = q_multsr_sat_32x32(f_ds_dt, f_ck_fs, 13);
+
+	/* tmp is Q4.60, shift and round to Q2.30 */
+	tmp = ((int64_t)COEF_C1) * skew + ((int64_t)COEF_C2) * cd->skew;
+	cd->skew = sat_int32(Q_SHIFT_RND(tmp, 60, 30));
+	asrc_update_drift(cd->asrc_obj, cd->skew);
+	tracev_asrc("skew %d %d %d %d", delta_sample, delta_ts, skew, cd->skew);
+	return 0;
 }
 
 /* copy and process stream data from source to sink buffers */
@@ -525,8 +740,13 @@ static int asrc_copy(struct comp_dev *dev)
 	int produced = 0;
 	int frames_src;
 	int frames_snk;
+	int ret;
 
 	tracev_asrc_with_ids(dev, "asrc_copy()");
+
+	ret = asrc_control_loop(cd);
+	if (ret)
+		return ret;
 
 	/* asrc component needs 1 source and 1 sink buffer */
 	source = list_first_item(&dev->bsource_list, struct comp_buffer,
@@ -581,6 +801,10 @@ static int asrc_reset(struct comp_dev *dev)
 	struct comp_data *cd = comp_get_drvdata(dev);
 
 	trace_asrc_with_ids(dev, "asrc_reset()");
+
+	/* If any resources feasible to stop */
+	if (cd->track_drift)
+		asrc_dai_stop_timestamp(cd);
 
 	/* Free the allocations those were done in prepare() */
 	rfree(cd->asrc_obj);
