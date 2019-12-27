@@ -31,12 +31,23 @@ struct comp_dev;
 /* buffer tracing */
 #define trace_buffer(__e, ...) \
 	trace_event(TRACE_CLASS_BUFFER, __e, ##__VA_ARGS__)
-#define trace_buffer_error(__e, ...) \
-	trace_error(TRACE_CLASS_BUFFER, __e, ##__VA_ARGS__)
+#define trace_buffer_with_ids(buf_ptr, __e, ...) \
+	trace_event_with_ids(TRACE_CLASS_BUFFER, (buf_ptr)->pipeline_id, \
+			     (buf_ptr)->id, __e, ##__VA_ARGS__)
+
 #define tracev_buffer(__e, ...) \
 	tracev_event(TRACE_CLASS_BUFFER, __e, ##__VA_ARGS__)
+#define tracev_buffer_with_ids(buf_ptr, __e, ...) \
+	tracev_event_with_ids(TRACE_CLASS_BUFFER, (buf_ptr)->pipeline_id, \
+			      (buf_ptr)->id, __e, ##__VA_ARGS__)
+
+#define trace_buffer_error(__e, ...) \
+	trace_error(TRACE_CLASS_BUFFER, __e, ##__VA_ARGS__)
 #define trace_buffer_error_atomic(__e, ...) \
 	trace_error_atomic(TRACE_CLASS_BUFFER, __e, ##__VA_ARGS__)
+#define trace_buffer_error_with_ids(buf_ptr, __e, ...) \
+	trace_error_with_ids(TRACE_CLASS_BUFFER, (buf_ptr)->pipeline_id, \
+			     (buf_ptr)->id, __e, ##__VA_ARGS__)
 
 /* buffer callback types */
 #define BUFF_CB_TYPE_PRODUCE	BIT(0)
@@ -148,7 +159,7 @@ void comp_update_buffer_consume(struct comp_buffer *buffer, uint32_t bytes);
 
 static inline void buffer_zero(struct comp_buffer *buffer)
 {
-	tracev_buffer("buffer_zero()");
+	tracev_buffer_with_ids(buffer, "buffer_zero()");
 
 	bzero(buffer->addr, buffer->size);
 	if (buffer->caps & SOF_MEM_CAPS_DMA)
