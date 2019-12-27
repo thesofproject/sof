@@ -81,7 +81,8 @@ int buffer_set_size(struct comp_buffer *buffer, uint32_t size)
 
 	/* validate request */
 	if (size == 0 || size > HEAP_BUFFER_SIZE) {
-		trace_buffer_error("resize error: size = %u is invalid", size);
+		trace_buffer_error_with_ids(buffer, "resize error: size = %u is invalid",
+					    size);
 		return -EINVAL;
 	}
 
@@ -92,8 +93,8 @@ int buffer_set_size(struct comp_buffer *buffer, uint32_t size)
 
 	/* we couldn't allocate bigger chunk */
 	if (!new_ptr && size > buffer->size) {
-		trace_buffer_error("resize error: can't alloc %u bytes type %u",
-				   buffer->size, buffer->caps);
+		trace_buffer_error_with_ids(buffer, "resize error: can't alloc %u bytes type %u",
+					    buffer->size, buffer->caps);
 		return -ENOMEM;
 	}
 
@@ -113,7 +114,7 @@ void buffer_free(struct comp_buffer *buffer)
 		.buffer = buffer,
 	};
 
-	trace_buffer("buffer_free()");
+	trace_buffer_with_ids(buffer, "buffer_free()");
 
 	notifier_event(buffer, NOTIFIER_ID_BUFFER_FREE,
 		       NOTIFIER_TARGET_CORE_LOCAL, &cb_data, sizeof(cb_data));
@@ -138,12 +139,12 @@ void comp_update_buffer_produce(struct comp_buffer *buffer, uint32_t bytes)
 
 	/* return if no bytes */
 	if (!bytes) {
-		trace_buffer("comp_update_buffer_produce(), "
-			     "no bytes to produce, source->comp.id = %u, "
-			     "source->comp.type = %u, sink->comp.id = %u, "
-			     "sink->comp.type = %u", buffer->source->comp.id,
-			     buffer->source->comp.type, buffer->sink->comp.id,
-			     buffer->sink->comp.type);
+		trace_buffer_with_ids(buffer,
+				      "comp_update_buffer_produce(), no bytes to produce, source->comp.id = %u, source->comp.type = %u, sink->comp.id = %u, sink->comp.type = %u",
+				      buffer->source->comp.id,
+				      buffer->source->comp.type,
+				      buffer->sink->comp.id,
+				      buffer->sink->comp.type);
 		return;
 	}
 
@@ -177,15 +178,14 @@ void comp_update_buffer_produce(struct comp_buffer *buffer, uint32_t bytes)
 
 	irq_local_enable(flags);
 
-	tracev_buffer("comp_update_buffer_produce(), ((buffer->avail << 16) | "
-		      "buffer->free) = %08x, ((buffer->id << 16) | "
-		      "buffer->size) = %08x",
-		      (buffer->avail << 16) | buffer->free,
-		      (buffer->id << 16) | buffer->size);
-	tracev_buffer("comp_update_buffer_produce(), ((buffer->r_ptr - buffer"
-		      "->addr) << 16 | (buffer->w_ptr - buffer->addr)) = %08x",
-		      ((char *)buffer->r_ptr - (char *)buffer->addr) << 16 |
-		      ((char *)buffer->w_ptr - (char *)buffer->addr));
+	tracev_buffer_with_ids(buffer,
+			       "comp_update_buffer_produce(), ((buffer->avail << 16) | buffer->free) = %08x, ((buffer->id << 16) | buffer->size) = %08x",
+			       (buffer->avail << 16) | buffer->free,
+			       (buffer->id << 16) | buffer->size);
+	tracev_buffer_with_ids(buffer,
+			       "comp_update_buffer_produce(), ((buffer->r_ptr - buffer->addr) << 16 | (buffer->w_ptr - buffer->addr)) = %08x",
+			       ((char *)buffer->r_ptr - (char *)buffer->addr) << 16 |
+			       ((char *)buffer->w_ptr - (char *)buffer->addr));
 }
 
 void comp_update_buffer_consume(struct comp_buffer *buffer, uint32_t bytes)
@@ -199,12 +199,12 @@ void comp_update_buffer_consume(struct comp_buffer *buffer, uint32_t bytes)
 
 	/* return if no bytes */
 	if (!bytes) {
-		trace_buffer("comp_update_buffer_consume(), "
-			     "no bytes to consume, source->comp.id = %u, "
-			     "source->comp.type = %u, sink->comp.id = %u, "
-			     "sink->comp.type = %u", buffer->source->comp.id,
-			     buffer->source->comp.type, buffer->sink->comp.id,
-			     buffer->sink->comp.type);
+		trace_buffer_with_ids(buffer,
+				      "comp_update_buffer_consume(), no bytes to consume, source->comp.id = %u, source->comp.type = %u, sink->comp.id = %u, sink->comp.type = %u",
+				      buffer->source->comp.id,
+				      buffer->source->comp.type,
+				      buffer->sink->comp.id,
+				      buffer->sink->comp.type);
 		return;
 	}
 
@@ -234,13 +234,10 @@ void comp_update_buffer_consume(struct comp_buffer *buffer, uint32_t bytes)
 
 	irq_local_enable(flags);
 
-	tracev_buffer("comp_update_buffer_consume(), "
-		      "(buffer->avail << 16) | buffer->free = %08x, "
-		      "(buffer->id << 16) | buffer->size = %08x, "
-		      "(buffer->r_ptr - buffer->addr) << 16 | "
-		      "(buffer->w_ptr - buffer->addr)) = %08x",
-		      (buffer->avail << 16) | buffer->free,
-		      (buffer->id << 16) | buffer->size,
-		      ((char *)buffer->r_ptr - (char *)buffer->addr) << 16 |
-		      ((char *)buffer->w_ptr - (char *)buffer->addr));
+	tracev_buffer_with_ids(buffer,
+			       "comp_update_buffer_consume(), (buffer->avail << 16) | buffer->free = %08x, (buffer->id << 16) | buffer->size = %08x, (buffer->r_ptr - buffer->addr) << 16 | (buffer->w_ptr - buffer->addr)) = %08x",
+			       (buffer->avail << 16) | buffer->free,
+			       (buffer->id << 16) | buffer->size,
+			       ((char *)buffer->r_ptr - (char *)buffer->addr) << 16 |
+			       ((char *)buffer->w_ptr - (char *)buffer->addr));
 }
