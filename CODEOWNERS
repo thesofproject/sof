@@ -34,11 +34,13 @@ src/platform/baytrail/*			@xiulipan
 src/platform/haswell/*			@xiulipan @randerwang
 src/platform/suecreek/*			@lyakh
 src/arch/xtensa/gdb/*			@mrajwa
+src/platform/imx8/**			@dbaluta
 
 # drivers
 src/drivers/intel/cavs/dmic.c		@singalsu
 src/drivers/intel/cavs/sue-iomux.c	@lyakh
 src/drivers/intel/haswell/*		@randerwang
+src/drivers/imx/**			@dbaluta
 src/drivers/dw/*			@lyakh
 
 # other libs
