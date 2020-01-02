@@ -66,42 +66,34 @@ struct comp_data {
 	enum sof_ipc_frame sink_format;   /**< sink frame format */
 	int32_t *fir_delay;		  /**< pointer to allocated RAM */
 	size_t fir_delay_size;		  /**< allocated size */
-	void (*eq_fir_func_even)(struct fir_state_32x16 fir[],
-				 struct comp_buffer *source,
-				 struct comp_buffer *sink,
-				 int frames, int nch);
 	void (*eq_fir_func)(struct fir_state_32x16 fir[],
 			    struct comp_buffer *source,
 			    struct comp_buffer *sink,
 			    int frames, int nch);
 };
 
-/* The optimized FIR functions variants need to be updated into function
- * set_fir_func. The cd->eq_fir_func is a function that can process any
- * number of samples. The cd->eq_fir_func_even is for optimized version
- * that is guaranteed to be called with even samples number.
+/*
+ * The optimized FIR functions variants need to be updated into function
+ * set_fir_func.
  */
 
 #if FIR_HIFI3
 #if CONFIG_FORMAT_S16LE
 static inline void set_s16_fir(struct comp_data *cd)
 {
-	cd->eq_fir_func_even = eq_fir_2x_s16_hifi3;
-	cd->eq_fir_func = eq_fir_s16_hifi3;
+	cd->eq_fir_func = eq_fir_2x_s16_hifi3;
 }
 #endif /* CONFIG_FORMAT_S16LE */
 #if CONFIG_FORMAT_S24LE
 static inline void set_s24_fir(struct comp_data *cd)
 {
-	cd->eq_fir_func_even = eq_fir_2x_s24_hifi3;
-	cd->eq_fir_func = eq_fir_s24_hifi3;
+	cd->eq_fir_func = eq_fir_2x_s24_hifi3;
 }
 #endif /* CONFIG_FORMAT_S24LE */
 #if CONFIG_FORMAT_S32LE
 static inline void set_s32_fir(struct comp_data *cd)
 {
-	cd->eq_fir_func_even = eq_fir_2x_s32_hifi3;
-	cd->eq_fir_func = eq_fir_s32_hifi3;
+	cd->eq_fir_func = eq_fir_2x_s32_hifi3;
 }
 #endif /* CONFIG_FORMAT_S32LE */
 
@@ -109,22 +101,19 @@ static inline void set_s32_fir(struct comp_data *cd)
 #if CONFIG_FORMAT_S16LE
 static inline void set_s16_fir(struct comp_data *cd)
 {
-	cd->eq_fir_func_even = eq_fir_2x_s16_hifiep;
-	cd->eq_fir_func = eq_fir_s16_hifiep;
+	cd->eq_fir_func = eq_fir_2x_s16_hifiep;
 }
 #endif /* CONFIG_FORMAT_S16LE */
 #if CONFIG_FORMAT_S24LE
 static inline void set_s24_fir(struct comp_data *cd)
 {
-	cd->eq_fir_func_even = eq_fir_2x_s24_hifiep;
-	cd->eq_fir_func = eq_fir_s24_hifiep;
+	cd->eq_fir_func = eq_fir_2x_s24_hifiep;
 }
 #endif /* CONFIG_FORMAT_S24LE */
 #if CONFIG_FORMAT_S32LE
 static inline void set_s32_fir(struct comp_data *cd)
 {
-	cd->eq_fir_func_even = eq_fir_2x_s32_hifiep;
-	cd->eq_fir_func = eq_fir_s32_hifiep;
+	cd->eq_fir_func = eq_fir_2x_s32_hifiep;
 }
 #endif /* CONFIG_FORMAT_S32LE */
 #else
@@ -132,21 +121,18 @@ static inline void set_s32_fir(struct comp_data *cd)
 #if CONFIG_FORMAT_S16LE
 static inline void set_s16_fir(struct comp_data *cd)
 {
-	cd->eq_fir_func_even = eq_fir_s16;
 	cd->eq_fir_func = eq_fir_s16;
 }
 #endif /* CONFIG_FORMAT_S16LE */
 #if CONFIG_FORMAT_S24LE
 static inline void set_s24_fir(struct comp_data *cd)
 {
-	cd->eq_fir_func_even = eq_fir_s24;
 	cd->eq_fir_func = eq_fir_s24;
 }
 #endif /* CONFIG_FORMAT_S24LE */
 #if CONFIG_FORMAT_S32LE
 static inline void set_s32_fir(struct comp_data *cd)
 {
-	cd->eq_fir_func_even = eq_fir_s32;
 	cd->eq_fir_func = eq_fir_s32;
 }
 #endif /* CONFIG_FORMAT_S32LE */
@@ -224,7 +210,6 @@ static inline int set_pass_func(struct comp_dev *dev)
 #if CONFIG_FORMAT_S16LE
 	case SOF_IPC_FRAME_S16_LE:
 		trace_eq_with_ids(dev, "set_pass_func(), SOF_IPC_FRAME_S16_LE");
-		cd->eq_fir_func_even = eq_fir_s16_passthrough;
 		cd->eq_fir_func = eq_fir_s16_passthrough;
 		break;
 #endif /* CONFIG_FORMAT_S32LE */
@@ -232,7 +217,6 @@ static inline int set_pass_func(struct comp_dev *dev)
 	case SOF_IPC_FRAME_S24_4LE:
 	case SOF_IPC_FRAME_S32_LE:
 		trace_eq_with_ids(dev, "set_pass_func(), SOF_IPC_FRAME_S32_LE");
-		cd->eq_fir_func_even = eq_fir_s32_passthrough;
 		cd->eq_fir_func = eq_fir_s32_passthrough;
 		break;
 #endif /* CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE */
@@ -454,7 +438,6 @@ static struct comp_dev *eq_fir_new(struct sof_ipc_comp *comp)
 
 	comp_set_drvdata(dev, cd);
 
-	cd->eq_fir_func_even = NULL;
 	cd->eq_fir_func = NULL;
 	cd->config = NULL;
 
@@ -710,10 +693,8 @@ static int eq_fir_trigger(struct comp_dev *dev, int cmd)
 	struct comp_data *cd = comp_get_drvdata(dev);
 	trace_eq_with_ids(dev, "eq_fir_trigger()");
 
-	if (cmd == COMP_TRIGGER_START || cmd == COMP_TRIGGER_RELEASE) {
+	if (cmd == COMP_TRIGGER_START || cmd == COMP_TRIGGER_RELEASE)
 		assert(cd->eq_fir_func);
-		assert(cd->eq_fir_func_even);
-	}
 
 	return comp_set_state(dev, cmd);
 }
@@ -723,40 +704,32 @@ static int eq_fir_copy(struct comp_dev *dev)
 {
 	struct comp_copy_limits cl;
 	struct comp_data *cd = comp_get_drvdata(dev);
-	struct fir_state_32x16 *fir = cd->fir;
-	int nch;
+	int n;
 
 	tracev_eq_with_ids(dev, "eq_fir_copy()");
 
 	/* Get source, sink, number of frames etc. to process. */
 	comp_get_copy_limits(dev, &cl);
 
-	nch = cl.source->channels;
-
-	/* Check if number of frames to process if it is odd. The
-	 * optimized FIR function to process even number of frames
-	 * is lower load than generic version. In that case process
-	 * one frame with generic FIR and the rest with even frames
-	 * number FIR version.
+	/*
+	 * Process only even number of frames with the FIR function. The
+	 * optimized filter function loads the successive input samples from
+	 * internal delay line with a 64 bit load operation. The other odd
+	 * (or any) number of frames capable FIR version would permanently
+	 * break the delay line alignment if called with odd number of frames
+	 * so it can't be used here.
 	 */
-	if (cl.frames & 0x1) {
-		cl.frames--;
-		cl.source_bytes -= cl.source_frame_bytes;
-		cl.sink_bytes -= cl.sink_frame_bytes;
+	if (cl.frames >= 2) {
+		n = (cl.frames >> 1) << 1;
 
-		/* Run EQ for one frame and update pointers */
-		cd->eq_fir_func(fir, cl.source, cl.sink, 1, nch);
-		comp_update_buffer_consume(cl.source, cl.source_frame_bytes);
-		comp_update_buffer_produce(cl.sink, cl.sink_frame_bytes);
-	}
-
-	if (cl.frames > 1) {
 		/* Run EQ function */
-		cd->eq_fir_func_even(fir, cl.source, cl.sink, cl.frames, nch);
+		cd->eq_fir_func(cd->fir, cl.source, cl.sink, n,
+				cl.source->channels);
 
 		/* calc new free and available */
-		comp_update_buffer_consume(cl.source, cl.source_bytes);
-		comp_update_buffer_produce(cl.sink, cl.sink_bytes);
+		comp_update_buffer_consume(cl.source,
+					   n * cl.source_frame_bytes);
+		comp_update_buffer_produce(cl.sink, n * cl.sink_frame_bytes);
 	}
 
 	return 0;
@@ -836,7 +809,6 @@ static int eq_fir_reset(struct comp_dev *dev)
 
 	eq_fir_free_delaylines(cd);
 
-	cd->eq_fir_func_even = NULL;
 	cd->eq_fir_func = NULL;
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
 		fir_reset(&cd->fir[i]);
