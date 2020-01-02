@@ -6,6 +6,7 @@
 //         Keyon Jie <yang.jie@linux.intel.com>
 
 #include <sof/audio/component.h>
+#include <sof/common.h>
 #include <sof/drivers/ssp.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/dai.h>
@@ -28,19 +29,6 @@
 	trace_error(TRACE_CLASS_SSP, __e, ##__VA_ARGS__)
 #define tracev_ssp(__e, ...) \
 	tracev_event(TRACE_CLASS_SSP, __e, ##__VA_ARGS__)
-
-/* FIXME: move this to a helper and optimize */
-static int hweight_32(uint32_t mask)
-{
-	int i;
-	int count = 0;
-
-	for (i = 0; i < 32; i++) {
-		count += mask & 1;
-		mask >>= 1;
-	}
-	return count;
-}
 
 /* empty SSP receive FIFO */
 static void ssp_empty_rx_fifo(struct dai *dai)
@@ -429,8 +417,8 @@ static int ssp_set_config(struct dai *dai,
 			sscr4 |= SSCR4_TOT_FRM_PRD(config->ssp.tdm_slots *
 					   config->ssp.tdm_slot_width);
 
-		active_tx_slots = hweight_32(config->ssp.tx_slots);
-		active_rx_slots = hweight_32(config->ssp.rx_slots);
+		active_tx_slots = popcount(config->ssp.tx_slots);
+		active_rx_slots = popcount(config->ssp.rx_slots);
 
 		break;
 	case SOF_DAI_FMT_DSP_B:
@@ -457,8 +445,8 @@ static int ssp_set_config(struct dai *dai,
 			sscr4 |= SSCR4_TOT_FRM_PRD(config->ssp.tdm_slots *
 					   config->ssp.tdm_slot_width);
 
-		active_tx_slots = hweight_32(config->ssp.tx_slots);
-		active_rx_slots = hweight_32(config->ssp.rx_slots);
+		active_tx_slots = popcount(config->ssp.tx_slots);
+		active_rx_slots = popcount(config->ssp.rx_slots);
 
 		break;
 	default:

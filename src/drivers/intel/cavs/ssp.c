@@ -7,6 +7,7 @@
 //         Rander Wang <rander.wang@linux.intel.com>
 
 #include <sof/audio/component.h>
+#include <sof/common.h>
 #include <sof/drivers/ssp.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/clk.h>
@@ -34,19 +35,6 @@
 	trace_error(TRACE_CLASS_SSP, __e, ##__VA_ARGS__)
 #define tracev_ssp(__e, ...) \
 	tracev_event(TRACE_CLASS_SSP, __e, ##__VA_ARGS__)
-
-/* FIXME: move this to a helper and optimize */
-static int hweight_32(uint32_t mask)
-{
-	int i;
-	int count = 0;
-
-	for (i = 0; i < 32; i++) {
-		count += mask & 1;
-		mask >>= 1;
-	}
-	return count;
-}
 
 /**
  * \brief Finds valid M/(N * SCR) values for given frequencies.
@@ -678,8 +666,8 @@ static int ssp_set_config(struct dai *dai,
 		 */
 		sspsp |= SSPSP_SFRMP(!inverted_frame);
 
-		active_tx_slots = hweight_32(config->ssp.tx_slots);
-		active_rx_slots = hweight_32(config->ssp.rx_slots);
+		active_tx_slots = popcount(config->ssp.tx_slots);
+		active_rx_slots = popcount(config->ssp.rx_slots);
 
 		/*
 		 * handle TDM mode, TDM mode has padding at the end of
