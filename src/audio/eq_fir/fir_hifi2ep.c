@@ -33,30 +33,34 @@ void fir_reset(struct fir_state_32x16 *fir)
 	 */
 }
 
-size_t fir_init_coef(struct fir_state_32x16 *fir,
-		     struct sof_eq_fir_coef_data *config)
+int fir_delay_size(struct sof_eq_fir_coef_data *config)
+{
+	/* Check FIR tap count for implementation specific constraints */
+	if (config->length > SOF_EQ_FIR_MAX_LENGTH || config->length < 4)
+		return -EINVAL;
+
+	if (config->length & 0x3)
+		return -EINVAL;
+
+	/* The dual sample version needs one more delay entry. To preserve
+	 * align for 64 bits need to add two.
+	 */
+	return (config->length + 2) * sizeof(int32_t);
+}
+
+int fir_init_coef(struct fir_state_32x16 *fir,
+		  struct sof_eq_fir_coef_data *config)
 {
 	/* The length is taps plus two since the filter computes two
 	 * samples per call. Length plus one would be minimum but the add
 	 * must be even. The even length is needed for 64 bit loads from delay
 	 * lines with 32 bit samples.
 	 */
-	fir->rwp = NULL;
 	fir->taps = (int)config->length;
 	fir->length = fir->taps + 2;
 	fir->out_shift = (int)config->out_shift;
 	fir->coef = (ae_p16x2s *)&config->coef[0];
-	fir->delay = NULL;
-	fir->delay_end = NULL;
-
-	/* Check FIR tap count for implementation specific constraints */
-	if (fir->taps > SOF_EQ_FIR_MAX_LENGTH || fir->taps < 4)
-		return -EINVAL;
-
-	if (fir->taps & 3)
-		return -EINVAL;
-
-	return fir->length * sizeof(int32_t);
+	return 0;
 }
 
 void fir_init_delay(struct fir_state_32x16 *fir, int32_t **data)

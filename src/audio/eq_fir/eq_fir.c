@@ -61,11 +61,13 @@
 /* src component private data */
 struct comp_data {
 	struct fir_state_32x16 fir[PLATFORM_MAX_CHANNELS]; /**< filters state */
-	struct sof_eq_fir_config *config; /**< pointer to setup blob */
-	enum sof_ipc_frame source_format; /**< source frame format */
-	enum sof_ipc_frame sink_format;   /**< sink frame format */
-	int32_t *fir_delay;		  /**< pointer to allocated RAM */
-	size_t fir_delay_size;		  /**< allocated size */
+	struct sof_eq_fir_config *config;	/**< pointer to setup blob */
+	struct sof_eq_fir_config *config_new;	/**< pointer to new setup */
+	enum sof_ipc_frame source_format;	/**< source frame format */
+	enum sof_ipc_frame sink_format;		/**< sink frame format */
+	int32_t *fir_delay;			/**< pointer to allocated RAM */
+	size_t fir_delay_size;			/**< allocated size */
+	bool config_ready;			/**< set when fully received */
 	void (*eq_fir_func)(struct fir_state_32x16 fir[],
 			    struct comp_buffer *source,
 			    struct comp_buffer *sink,
@@ -253,36 +255,32 @@ static void eq_fir_free_delaylines(struct comp_data *cd)
 		fir[i].delay = NULL;
 }
 
-static int eq_fir_setup(struct comp_data *cd, int nch)
+static int eq_fir_init_coef(struct sof_eq_fir_config *config,
+			    struct fir_state_32x16 *fir, int nch)
 {
-	struct fir_state_32x16 *fir = cd->fir;
-	struct sof_eq_fir_config *config = cd->config;
 	struct sof_eq_fir_coef_data *lookup[SOF_EQ_FIR_MAX_RESPONSES];
 	struct sof_eq_fir_coef_data *eq;
-	int32_t *fir_delay;
-	int16_t *coef_data;
 	int16_t *assign_response;
-	int resp;
+	int16_t *coef_data;
+	size_t size_sum = 0;
+	int resp = 0;
 	int i;
 	int j;
-	size_t s;
-	size_t size_sum = 0;
+	int s;
 
-	trace_eq("eq_fir_setup(), "
-		 "channels_in_config = %u, number_of_responses = %u",
-		 config->channels_in_config, config->number_of_responses);
+	trace_eq("eq_fir_init_coef(), response assign for %u channels, %u"
+		 " responses", config->channels_in_config,
+		 config->number_of_responses);
 
 	/* Sanity checks */
 	if (nch > PLATFORM_MAX_CHANNELS ||
 	    config->channels_in_config > PLATFORM_MAX_CHANNELS ||
 	    !config->channels_in_config) {
-		trace_eq_error("eq_fir_setup() error: "
-			       "invalid channels_in_config");
+		trace_eq_error("eq_fir_init_coef(), invalid channels count");
 		return -EINVAL;
 	}
 	if (config->number_of_responses > SOF_EQ_FIR_MAX_RESPONSES) {
-		trace_eq_error("eq_fir_setup() error: number_of_responses > "
-			       "SOF_EQ_FIR_MAX_RESPONSES");
+		trace_eq_error("eq_fir_init_coef(), # of resp exceeds max");
 		return -EINVAL;
 	}
 
@@ -328,11 +326,14 @@ static int eq_fir_setup(struct comp_data *cd, int nch)
 
 		/* Initialize EQ coefficients. */
 		eq = lookup[resp];
-		s = fir_init_coef(&fir[i], eq);
-		if (s > 0)
+		s = fir_delay_size(eq);
+		if (s > 0) {
 			size_sum += s;
-		else
+		} else {
+			trace_eq("eq_fir_init_coef(), FIR length %d"
+				 " is invalid", eq->length);
 			return -EINVAL;
+		}
 
 #if defined FIR_MAX_LENGTH_BUILD_SPECIFIC
 		if (fir[i].taps * nch > FIR_MAX_LENGTH_BUILD_SPECIFIC) {
@@ -343,49 +344,58 @@ static int eq_fir_setup(struct comp_data *cd, int nch)
 		}
 #endif
 
-		trace_eq("eq_fir_setup(), "
-			 "ch = %d initialized to response = %d", i, resp);
+		fir_init_coef(&fir[i], eq);
+		trace_eq("eq_fir_init_coef(), ch %d is set to response = %d",
+			 i, resp);
 	}
+
+	return size_sum;
+}
+
+static void eq_fir_init_delay(struct fir_state_32x16 *fir,
+			      int32_t *delay_start, int nch)
+{
+	int32_t *fir_delay = delay_start;
+	int i;
+
+	/* Initialize 2nd phase to set EQ delay lines pointers */
+	for (i = 0; i < nch; i++) {
+		if (fir[i].length > 0)
+			fir_init_delay(&fir[i], &fir_delay);
+	}
+}
+
+static int eq_fir_setup(struct comp_data *cd, int nch)
+{
+	int delay_size;
+
+	/* Free existing FIR channels data if it was allocated */
+	eq_fir_free_delaylines(cd);
+
+	/* Set coefficients for each channel EQ from coefficient blob */
+	delay_size = eq_fir_init_coef(cd->config, cd->fir, nch);
+	if (delay_size < 0)
+		return delay_size; /* Contains error code */
 
 	/* If all channels were set to bypass there's no need to
 	 * allocate delay. Just return with success.
 	 */
-	cd->fir_delay = NULL;
-	cd->fir_delay_size = size_sum;
-	if (!size_sum)
+	if (!delay_size)
 		return 0;
 
 	/* Allocate all FIR channels data in a big chunk and clear it */
-	cd->fir_delay = rballoc(0, SOF_MEM_CAPS_RAM, size_sum);
+	cd->fir_delay = rballoc(0, SOF_MEM_CAPS_RAM, delay_size);
 	if (!cd->fir_delay) {
-		trace_eq_error("eq_fir_setup() error: alloc failed, size = %u",
-			       size_sum);
+		trace_eq_error("eq_fir_setup(), delay allocation failed for size %d",
+			       delay_size);
 		return -ENOMEM;
 	}
 
-	/* Initialize 2nd phase to set EQ delay lines pointers */
-	fir_delay = cd->fir_delay;
-	for (i = 0; i < nch; i++) {
-		resp = assign_response[i];
-		if (resp >= 0)
-			fir_init_delay(&fir[i], &fir_delay);
-	}
+	memset(cd->fir_delay, 0, delay_size);
+	cd->fir_delay_size = delay_size;
 
-	return 0;
-}
-
-static int eq_fir_switch_store(struct fir_state_32x16 fir[],
-			       struct sof_eq_fir_config *config,
-			       uint32_t ch, int32_t response)
-{
-	/* Copy assign response from update. The EQ is initialized later
-	 * when all channels have been updated.
-	 */
-	if (!config || ch >= config->channels_in_config)
-		return -EINVAL;
-
-	config->data[ch] = response;
-
+	/* Assign delay line to each channel EQ */
+	eq_fir_init_delay(cd->fir, cd->fir_delay, nch);
 	return 0;
 }
 
@@ -440,6 +450,10 @@ static struct comp_dev *eq_fir_new(struct sof_ipc_comp *comp)
 
 	cd->eq_fir_func = NULL;
 	cd->config = NULL;
+	cd->config_new = NULL;
+	cd->config_ready = false;
+	cd->fir_delay = NULL;
+	cd->fir_delay_size = 0;
 
 	/* Allocate and make a copy of the coefficients blob and reset FIR. If
 	 * the EQ is configured later in run-time the size is zero.
@@ -454,6 +468,7 @@ static struct comp_dev *eq_fir_new(struct sof_ipc_comp *comp)
 
 		ret = memcpy_s(cd->config, bs, ipc_fir->data, bs);
 		assert(!ret);
+		cd->config_ready = true;
 	}
 
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
@@ -471,6 +486,7 @@ static void eq_fir_free(struct comp_dev *dev)
 
 	eq_fir_free_delaylines(cd);
 	eq_fir_free_parameters(&cd->config);
+	eq_fir_free_parameters(&cd->config_new);
 
 	rfree(cd);
 	rfree(dev);
@@ -551,56 +567,17 @@ static int fir_cmd_set_data(struct comp_dev *dev,
 			    struct sof_ipc_ctrl_data *cdata)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	struct sof_ipc_ctrl_value_comp *compv;
 	unsigned char *dst, *src;
 	uint32_t offset;
-	int i;
 	int ret = 0;
 
 	switch (cdata->cmd) {
-	case SOF_CTRL_CMD_ENUM:
-		trace_eq_with_ids(dev, "fir_cmd_set_data(), SOF_CTRL_CMD_ENUM");
-		compv = (struct sof_ipc_ctrl_value_comp *)cdata->data->data;
-		if (cdata->index == SOF_EQ_FIR_IDX_SWITCH) {
-			for (i = 0; i < (int)cdata->num_elems; i++) {
-				trace_eq_with_ids(dev, "fir_cmd_set_data(), "
-						  "SOF_EQ_FIR_IDX_SWITCH, "
-						  "compv index = %u, "
-						  "svalue = %u",
-						  compv[i].index,
-						  compv[i].svalue);
-				ret = eq_fir_switch_store(cd->fir,
-							  cd->config,
-							  compv[i].index,
-							  compv[i].svalue);
-				if (ret < 0) {
-					trace_eq_error_with_ids(dev,
-								"fir_cmd_set_data() "
-								"error: "
-								"eq_fir_switch_store() "
-								"failed");
-					return -EINVAL;
-				}
-			}
-		} else {
-			trace_eq_error_with_ids(dev, "fir_cmd_set_data() error: "
-						"invalid cdata->index = %u",
-						cdata->index);
-			return -EINVAL;
-		}
-		break;
 	case SOF_CTRL_CMD_BINARY:
 		trace_eq_with_ids(dev, "fir_cmd_set_data(), SOF_CTRL_CMD_BINARY");
 
-		if (dev->state != COMP_STATE_READY) {
-			/* It is a valid request but currently this is not
-			 * supported during playback/capture. The driver will
-			 * re-send data in next resume when idle and the new
-			 * EQ configuration will be used when playback/capture
-			 * starts.
-			 */
-			trace_eq_error_with_ids(dev, "fir_cmd_set_data() error: "
-						"driver is busy");
+		/* Check that there is no work-in-progress previous request */
+		if (cd->config_new && cdata->msg_index == 0) {
+			trace_eq_error_with_ids(dev, "fir_cmd_set_data(), busy with previous request");
 			return -EBUSY;
 		}
 
@@ -614,27 +591,27 @@ static int fir_cmd_set_data(struct comp_dev *dev,
 			return -EINVAL;
 
 		if (cdata->msg_index == 0) {
-			/* Check and free old config */
-			eq_fir_free_parameters(&cd->config);
-
 			/* Allocate buffer for copy of the blob. */
-			cd->config = rballoc(0, SOF_MEM_CAPS_RAM,
-					     cdata->num_elems +
-					     cdata->elems_remaining);
+			cd->config_new = rballoc(0, SOF_MEM_CAPS_RAM,
+						 cdata->num_elems +
+						 cdata->elems_remaining);
 
-			if (!cd->config) {
+			if (!cd->config_new) {
 				trace_eq_error_with_ids(dev, "fir_cmd_set_data() "
 							"error: buffer "
 							"allocation failed");
 				return -EINVAL;
 			}
+
+			cd->config_ready = false;
 			offset = 0;
 		} else {
-			offset = cd->config->size - cdata->elems_remaining -
+			assert(cd->config_new);
+			offset = cd->config_new->size - cdata->elems_remaining -
 				cdata->num_elems;
 		}
 
-		dst = (unsigned char *)cd->config;
+		dst = (unsigned char *)cd->config_new;
 		src = (unsigned char *)cdata->data->data;
 
 		/* Just copy the configuration. The EQ will be initialized in
@@ -646,6 +623,26 @@ static int fir_cmd_set_data(struct comp_dev *dev,
 		assert(!ret);
 
 		/* we can check data when elems_remaining == 0 */
+		if (cdata->elems_remaining == 0) {
+			/* The new configuration is OK to be applied */
+			cd->config_ready = true;
+
+			/* If component state is READY we can omit old
+			 * configuration immediately. When in playback/capture
+			 * the new configuration presence is checked in copy().
+			 */
+			if (dev->state ==  COMP_STATE_READY)
+				eq_fir_free_parameters(&cd->config);
+
+			/* If there is no existing configuration the received
+			 * can be set to current immediately. It will be
+			 * applied in prepare() when streaming starts.
+			 */
+			if (!cd->config) {
+				cd->config = cd->config_new;
+				cd->config_new = NULL;
+			}
+		}
 		break;
 	default:
 		trace_eq_error_with_ids(dev, "fir_cmd_set_data() "
@@ -703,10 +700,27 @@ static int eq_fir_trigger(struct comp_dev *dev, int cmd)
 static int eq_fir_copy(struct comp_dev *dev)
 {
 	struct comp_copy_limits cl;
+	struct comp_buffer *sourceb;
 	struct comp_data *cd = comp_get_drvdata(dev);
+	int ret;
 	int n;
 
 	tracev_eq_with_ids(dev, "eq_fir_copy()");
+
+	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer,
+				  sink_list);
+
+	/* Check for changed configuration */
+	if (cd->config_new && cd->config_ready) {
+		eq_fir_free_parameters(&cd->config);
+		cd->config = cd->config_new;
+		cd->config_new = NULL;
+		ret = eq_fir_setup(cd, sourceb->channels);
+		if (ret < 0) {
+			trace_eq_error_with_ids(dev, "eq_fir_copy(), failed FIR setup");
+			return ret;
+		}
+	}
 
 	/* Get source, sink, number of frames etc. to process. */
 	comp_get_copy_limits(dev, &cl);
@@ -780,7 +794,7 @@ static int eq_fir_prepare(struct comp_dev *dev)
 	}
 
 	/* Initialize EQ */
-	if (cd->config) {
+	if (cd->config && cd->config_ready) {
 		ret = eq_fir_setup(cd, sourceb->channels);
 		if (ret < 0) {
 			trace_eq_error_with_ids(dev, "eq_fir_prepare() error: "
