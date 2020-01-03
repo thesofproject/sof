@@ -33,23 +33,26 @@ void fir_reset(struct fir_state_32x16 *fir)
 	 */
 }
 
-size_t fir_init_coef(struct fir_state_32x16 *fir,
-		     struct sof_eq_fir_coef_data *config)
+int fir_delay_size(struct sof_eq_fir_coef_data *config)
+{
+	/* Check for sane FIR length. The generic version does not
+	 * have other constraints.
+	 */
+	if (config->length > SOF_EQ_FIR_MAX_LENGTH || config->length < 1)
+		return -EINVAL;
+
+	return config->length * sizeof(int32_t);
+}
+
+int fir_init_coef(struct fir_state_32x16 *fir,
+		  struct sof_eq_fir_coef_data *config)
 {
 	fir->rwi = 0;
 	fir->length = (int)config->length;
 	fir->taps = fir->length; /* The same for generic C version */
 	fir->out_shift = (int)config->out_shift;
 	fir->coef = &config->coef[0];
-	fir->delay = NULL;
-
-	/* Check for sane FIR length. The length is constrained to be a
-	 * multiple of 4 for optimized code.
-	 */
-	if (fir->length > SOF_EQ_FIR_MAX_LENGTH || fir->length < 1)
-		return -EINVAL;
-
-	return fir->length * sizeof(int32_t);
+	return 0;
 }
 
 void fir_init_delay(struct fir_state_32x16 *fir, int32_t **data)
