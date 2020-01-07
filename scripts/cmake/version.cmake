@@ -21,7 +21,7 @@ if(EXISTS ${TARBALL_VERSION_SOURCE_PATH})
 	message(STATUS "Found ${TARBALL_VERSION_FILE_NAME}")
 	message(STATUS "Version: ${GIT_TAG} / ${GIT_LOG_HASH}")
 else()
-	execute_process(COMMAND git describe --abbrev=4
+	execute_process(COMMAND git describe --tags --abbrev=4
 		OUTPUT_VARIABLE GIT_TAG
 		OUTPUT_STRIP_TRAILING_WHITESPACE
 		ERROR_QUIET
