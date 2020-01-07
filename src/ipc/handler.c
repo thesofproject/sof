@@ -705,6 +705,7 @@ static int ipc_dma_trace_config(uint32_t header)
 	struct dma_sg_elem_array elem_array;
 	uint32_t ring_size;
 #endif
+	struct dma_trace_data *dmat = dma_trace_data_get();
 	struct sof_ipc_dma_trace_params_ext params;
 	struct timer *timer = timer_get();
 	int err;
@@ -729,7 +730,7 @@ static int ipc_dma_trace_config(uint32_t header)
 	if (err < 0)
 		goto error;
 
-	err = dma_trace_host_buffer(_ipc->dmat, &elem_array, ring_size);
+	err = dma_trace_host_buffer(dmat, &elem_array, ring_size);
 	if (err < 0) {
 		trace_ipc_error("ipc: trace failed to set host buffers %d",
 				err);
@@ -737,13 +738,13 @@ static int ipc_dma_trace_config(uint32_t header)
 	}
 #else
 	/* stream tag of capture stream for DMA trace */
-	_ipc->dmat->stream_tag = params.stream_tag;
+	dmat->stream_tag = params.stream_tag;
 
 	/* host buffer size for DMA trace */
-	_ipc->dmat->host_size = params.buffer.size;
+	dmat->host_size = params.buffer.size;
 #endif
 
-	err = dma_trace_enable(_ipc->dmat);
+	err = dma_trace_enable(dmat);
 	if (err < 0) {
 		trace_ipc_error("ipc: failed to enable trace %d", err);
 		goto error;
@@ -758,12 +759,13 @@ error:
 /* send DMA trace host buffer position to host */
 int ipc_dma_trace_send_position(void)
 {
+	struct dma_trace_data *dmat = dma_trace_data_get();
 	struct sof_ipc_dma_trace_posn posn;
 
 	posn.rhdr.hdr.cmd =  SOF_IPC_GLB_TRACE_MSG | SOF_IPC_TRACE_DMA_POSITION;
-	posn.host_offset = _ipc->dmat->host_offset;
-	posn.overflow = _ipc->dmat->overflow;
-	posn.messages = _ipc->dmat->messages;
+	posn.host_offset = dmat->host_offset;
+	posn.overflow = dmat->overflow;
+	posn.messages = dmat->messages;
 	posn.rhdr.hdr.size = sizeof(posn);
 
 	return ipc_queue_host_message(_ipc, posn.rhdr.hdr.cmd, &posn,
