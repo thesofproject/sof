@@ -35,8 +35,6 @@
 #define trace_sa_error(__e, ...) \
 	trace_error(TRACE_CLASS_SA, __e, ##__VA_ARGS__)
 
-struct sa *sa;
-
 static enum task_state validate(void *data)
 {
 	struct sa *sa = data;
@@ -67,25 +65,24 @@ void sa_init(struct sof *sof, uint64_t timeout)
 
 	trace_sa("sa_init(), timeout = %u", timeout);
 
-	sa = rzalloc(SOF_MEM_ZONE_SYS, 0, SOF_MEM_CAPS_RAM, sizeof(*sa));
-	sof->sa = sa;
+	sof->sa = rzalloc(SOF_MEM_ZONE_SYS, 0, SOF_MEM_CAPS_RAM,
+			  sizeof(*sof->sa));
 
 	/* set default timeouts */
 	ticks = clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1) * timeout / 1000;
 
 	/* TODO: change values after minimal drifts will be assured */
-	sa->panic_timeout = 2 * ticks;	/* 100% delay */
-	sa->warn_timeout = ticks + ticks / 20;	/* 5% delay */
+	sof->sa->panic_timeout = 2 * ticks;	/* 100% delay */
+	sof->sa->warn_timeout = ticks + ticks / 20;	/* 5% delay */
 
-	trace_sa("sa_init(), ticks = %u, sa->warn_timeout = %u, "
-		 "sa->panic_timeout = %u", ticks, sa->warn_timeout,
-		 sa->panic_timeout);
+	trace_sa("sa_init(), ticks = %u, sof->sa->warn_timeout = %u, sof->sa->panic_timeout = %u",
+		 ticks, sof->sa->warn_timeout, sof->sa->panic_timeout);
 
-	schedule_task_init_ll(&sa->work, SOF_SCHEDULE_LL_TIMER,
-			      SOF_TASK_PRI_HIGH, validate, sa, 0, 0);
+	schedule_task_init_ll(&sof->sa->work, SOF_SCHEDULE_LL_TIMER,
+			      SOF_TASK_PRI_HIGH, validate, sof->sa, 0, 0);
 
-	schedule_task(&sa->work, 0, timeout);
+	schedule_task(&sof->sa->work, 0, timeout);
 
 	/* set last check time to now to give time for boot completion */
-	sa->last_check = platform_timer_get(timer_get());
+	sof->sa->last_check = platform_timer_get(timer_get());
 }
