@@ -13,7 +13,6 @@
 #include <sof/platform.h>
 #include <sof/schedule/task.h>
 #include <sof/spinlock.h>
-#include <sof/trace/dma-trace.h>
 #include <sof/trace/trace.h>
 #include <ipc/header.h>
 #include <user/trace.h>
@@ -91,9 +90,6 @@ struct ipc_shared_context {
 struct ipc {
 	spinlock_t *lock;	/* locking mechanism */
 	void *comp_data;
-
-	/* DMA for Trace*/
-	struct dma_trace_data *dmat;
 
 	/* PM */
 	int pm_prepare_D3;	/* do we need to prepare for D3 */
