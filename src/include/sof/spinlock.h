@@ -143,6 +143,8 @@ extern uint32_t lock_dbg_user[DBG_LOCK_USERS];
 #define spin_lock_dbg(line) do {} while (0)
 #define spin_unlock_dbg(line) do {} while (0)
 
+#endif
+
 static inline int _spin_try_lock(spinlock_t *lock, int line)
 {
 	spin_lock_dbg(line);
@@ -150,8 +152,6 @@ static inline int _spin_try_lock(spinlock_t *lock, int line)
 }
 
 #define spin_try_lock(lock) _spin_try_lock(lock, __LINE__)
-
-#endif
 
 /* all SMP spinlocks need init, nothing todo on UP */
 static inline void _spinlock_init(spinlock_t **lock, int line)
