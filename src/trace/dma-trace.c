@@ -26,8 +26,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-static struct dma_trace_data *trace_data;
-
 static int dma_trace_get_avail_data(struct dma_trace_data *d,
 				    struct dma_trace_buf *buffer,
 				    int avail);
@@ -105,12 +103,10 @@ out:
 
 int dma_trace_init_early(struct sof *sof)
 {
-	trace_data = rzalloc(SOF_MEM_ZONE_SYS, SOF_MEM_FLAG_SHARED,
-			     SOF_MEM_CAPS_RAM, sizeof(*trace_data));
-
-	dma_sg_init(&trace_data->config.elem_array);
-	spinlock_init(&trace_data->lock);
-	sof->dmat = trace_data;
+	sof->dmat = rzalloc(SOF_MEM_ZONE_SYS, SOF_MEM_FLAG_SHARED,
+			    SOF_MEM_CAPS_RAM, sizeof(*sof->dmat));
+	dma_sg_init(&sof->dmat->config.elem_array);
+	spinlock_init(&sof->dmat->lock);
 
 	return 0;
 }
@@ -317,6 +313,7 @@ int dma_trace_enable(struct dma_trace_data *d)
 
 void dma_trace_flush(void *t)
 {
+	struct dma_trace_data *trace_data = dma_trace_data_get();
 	struct dma_trace_buf *buffer = NULL;
 	uint32_t avail;
 	int32_t size;
@@ -367,6 +364,8 @@ void dma_trace_flush(void *t)
 
 void dma_trace_on(void)
 {
+	struct dma_trace_data *trace_data = dma_trace_data_get();
+
 	if (trace_data->enabled)
 		return;
 	trace_data->enabled = 1;
@@ -376,6 +375,8 @@ void dma_trace_on(void)
 
 void dma_trace_off(void)
 {
+	struct dma_trace_data *trace_data = dma_trace_data_get();
+
 	if (!trace_data->enabled)
 		return;
 	schedule_task_cancel(&trace_data->dmat_work);
@@ -407,6 +408,7 @@ static int dtrace_calc_buf_overflow(struct dma_trace_buf *buffer,
 
 static void dtrace_add_event(const char *e, uint32_t length)
 {
+	struct dma_trace_data *trace_data = dma_trace_data_get();
 	struct dma_trace_buf *buffer = &trace_data->dmatb;
 	uint32_t margin;
 	uint32_t overflow = 0;
@@ -476,6 +478,7 @@ static void dtrace_add_event(const char *e, uint32_t length)
 
 void dtrace_event(const char *e, uint32_t length)
 {
+	struct dma_trace_data *trace_data = dma_trace_data_get();
 	struct dma_trace_buf *buffer = NULL;
 	unsigned long flags;
 
@@ -513,6 +516,8 @@ void dtrace_event(const char *e, uint32_t length)
 
 void dtrace_event_atomic(const char *e, uint32_t length)
 {
+	struct dma_trace_data *trace_data = dma_trace_data_get();
+
 	if (!trace_data || !trace_data->dmatb.addr ||
 	    length > DMA_TRACE_LOCAL_SIZE / 8 || length == 0)
 		return;

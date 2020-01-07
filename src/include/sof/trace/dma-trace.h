@@ -10,6 +10,7 @@
 
 #include <sof/lib/dma.h>
 #include <sof/schedule/task.h>
+#include <sof/sof.h>
 #include <sof/spinlock.h>
 #include <stdint.h>
 
@@ -56,6 +57,11 @@ void dma_trace_off(void);
 
 void dtrace_event(const char *e, uint32_t size);
 void dtrace_event_atomic(const char *e, uint32_t length);
+
+static inline struct dma_trace_data *dma_trace_data_get(void)
+{
+	return sof_get()->dmat;
+}
 
 static inline uint32_t dtrace_calc_buf_margin(struct dma_trace_buf *buffer)
 {
