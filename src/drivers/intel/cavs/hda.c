@@ -10,6 +10,7 @@
 #include <sof/lib/dai.h>
 #include <sof/lib/dma.h>
 #include <ipc/dai.h>
+#include <ipc/stream.h>
 
 static int hda_trigger(struct dai *dai, int cmd, int direction)
 {
@@ -19,6 +20,19 @@ static int hda_trigger(struct dai *dai, int cmd, int direction)
 static int hda_set_config(struct dai *dai,
 			  struct sof_ipc_dai_config *config)
 {
+	return 0;
+}
+
+/* get HDA hw params */
+static int hda_get_hw_params(struct dai *dai,
+			     struct sof_ipc_stream_params  *params)
+{
+	/* 0 means variable */
+	params->rate = 0;
+	params->channels = 0;
+	params->buffer_fmt = 0;
+	params->frame_fmt = 0;
+
 	return 0;
 }
 
@@ -152,6 +166,7 @@ const struct dai_driver hda_driver = {
 		.set_config		= hda_set_config,
 		.pm_context_store	= hda_dummy,
 		.pm_context_restore	= hda_dummy,
+		.get_hw_params		= hda_get_hw_params,
 		.get_handshake		= hda_get_handshake,
 		.get_fifo		= hda_get_fifo,
 		.probe			= hda_dummy,

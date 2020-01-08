@@ -30,6 +30,19 @@ static int alh_set_config(struct dai *dai, struct sof_ipc_dai_config *config)
 	return 0;
 }
 
+/* get ALH hw params */
+static int alh_get_hw_params(struct dai *dai,
+			     struct sof_ipc_stream_params  *params)
+{
+	/* 0 means variable */
+	params->rate = 0;
+	params->channels = 0;
+	params->buffer_fmt = 0;
+	params->frame_fmt = 0;
+
+	return 0;
+}
+
 static int alh_context_store(struct dai *dai)
 {
 	dai_info(dai, "alh_context_store()");
@@ -87,6 +100,7 @@ const struct dai_driver alh_driver = {
 		.set_config		= alh_set_config,
 		.pm_context_store	= alh_context_store,
 		.pm_context_restore	= alh_context_restore,
+		.get_hw_params		= alh_get_hw_params,
 		.get_handshake		= alh_get_handshake,
 		.get_fifo		= alh_get_fifo,
 		.probe			= alh_probe,

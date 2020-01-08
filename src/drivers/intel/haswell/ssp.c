@@ -388,6 +388,34 @@ out:
 	return ret;
 }
 
+/* get SSP hw params */
+static int ssp_get_hw_params(struct dai *dai,
+			     struct sof_ipc_stream_params  *params)
+{
+	struct ssp_pdata *ssp = dai_get_drvdata(dai);
+
+	params->rate = ssp->params.fsync_rate;
+	params->channels = ssp->params.tdm_slots;
+	params->buffer_fmt = 0;
+
+	switch (ssp->params.sample_valid_bits) {
+	case 16:
+		params->frame_fmt = SOF_IPC_FRAME_S16_LE;
+		break;
+	case 24:
+		params->frame_fmt = SOF_IPC_FRAME_S24_4LE;
+		break;
+	case 32:
+		params->frame_fmt = SOF_IPC_FRAME_S32_LE;
+		break;
+	default:
+		dai_err(dai, "ssp_get_hw_params(): not supported format");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 /* start the SSP for either playback or capture */
 static void ssp_start(struct dai *dai, int direction)
 {
@@ -523,6 +551,7 @@ const struct dai_driver ssp_driver = {
 		.set_config		= ssp_set_config,
 		.pm_context_store	= ssp_context_store,
 		.pm_context_restore	= ssp_context_restore,
+		.get_hw_params		= ssp_get_hw_params,
 		.get_handshake		= ssp_get_handshake,
 		.get_fifo		= ssp_get_fifo,
 		.probe			= ssp_probe,
