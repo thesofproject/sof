@@ -290,8 +290,6 @@ static int eq_fir_init_coef(struct sof_eq_fir_config *config,
 	coef_data = &config->data[config->channels_in_config];
 	for (i = 0; i < SOF_EQ_FIR_MAX_RESPONSES; i++) {
 		if (i < config->number_of_responses) {
-			trace_eq("eq_fir_setup(), "
-				 "index of respose start position = %u", j);
 			eq = (struct sof_eq_fir_coef_data *)&coef_data[j];
 			lookup[i] = eq;
 			j += SOF_EQ_FIR_COEF_NHEADER + coef_data[j];
@@ -315,12 +313,17 @@ static int eq_fir_init_coef(struct sof_eq_fir_config *config,
 			/* Initialize EQ channel to bypass and continue with
 			 * next channel response.
 			 */
+			trace_eq("eq_fir_init_coef(), ch %d is set to bypass",
+				 i);
 			fir_reset(&fir[i]);
 			continue;
 		}
 
-		if (resp >= config->number_of_responses)
+		if (resp >= config->number_of_responses) {
+			trace_eq_error("eq_fir_init_coef(), requested response %d"
+				 " exceeds what has been defined", resp);
 			return -EINVAL;
+		}
 
 		/* Initialize EQ coefficients. */
 		eq = lookup[resp];
