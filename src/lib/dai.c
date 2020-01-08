@@ -14,23 +14,13 @@
 
 #define trace_dai(__e, ...) trace_event(TRACE_CLASS_DAI, __e, ##__VA_ARGS__)
 
-static struct dai_info lib_dai = {
-	.dai_type_array = NULL,
-	.num_dai_types = 0
-};
-
-void dai_install(struct dai_type_info *dai_type_array, size_t num_dai_types)
-{
-	lib_dai.dai_type_array = dai_type_array;
-	lib_dai.num_dai_types = num_dai_types;
-}
-
 static inline struct dai_type_info *dai_find_type(uint32_t type)
 {
+	struct dai_info *info = dai_info_get();
 	struct dai_type_info *dti;
 
-	for (dti = lib_dai.dai_type_array;
-	     dti < lib_dai.dai_type_array + lib_dai.num_dai_types; dti++) {
+	for (dti = info->dai_type_array;
+	     dti < info->dai_type_array + info->num_dai_types; dti++) {
 		if (dti->type == type)
 			return dti;
 	}

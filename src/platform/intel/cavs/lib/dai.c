@@ -116,6 +116,11 @@ static struct dai_type_info dti[] = {
 #endif
 };
 
+static struct dai_info lib_dai = {
+	.dai_type_array = dti,
+	.num_dai_types = ARRAY_SIZE(dti)
+};
+
 int dai_init(struct sof *sof)
 {
 	int i;
@@ -161,6 +166,7 @@ int dai_init(struct sof *sof)
 	}
 #endif
 
-	dai_install(dti, ARRAY_SIZE(dti));
+	sof->dai_info = &lib_dai;
+
 	return 0;
 }

@@ -19,13 +19,13 @@
 #include <platform/lib/dai.h>
 #include <sof/bit.h>
 #include <sof/lib/io.h>
+#include <sof/sof.h>
 #include <sof/spinlock.h>
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
 
 struct dai;
-struct sof;
 struct sof_ipc_dai_config;
 
 /** \addtogroup sof_dai_drivers DAI Drivers
@@ -135,16 +135,6 @@ struct dai_info {
  * \param[in] sof Pointer to firmware main context.
  */
 int dai_init(struct sof *sof);
-
-/**
- * \brief Plugs platform specific DAI array once initialized into the lib.
- *
- * Lib serves the DAIs to other FW elements with dai_get()
- *
- * \param[in] dai_type_array Array of DAI arrays grouped by type.
- * \param[in] num_dai_types Number of elements in the dai_type_array.
- */
-void dai_install(struct dai_type_info *dai_type_array, size_t num_dai_types);
 
 /**
  * \brief API to request a platform DAI.
@@ -279,6 +269,11 @@ static inline void dai_update_bits(struct dai *dai, uint32_t reg,
 				   uint32_t mask, uint32_t value)
 {
 	io_reg_update_bits(dai_base(dai) + reg, mask, value);
+}
+
+static inline struct dai_info *dai_info_get(void)
+{
+	return sof_get()->dai_info;
 }
 
 /** @}*/
