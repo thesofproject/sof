@@ -14,11 +14,6 @@
 
 #define trace_dai(__e, ...) trace_event(TRACE_CLASS_DAI, __e, ##__VA_ARGS__)
 
-struct dai_info {
-	struct dai_type_info *dai_type_array;
-	size_t num_dai_types;
-};
-
 static struct dai_info lib_dai = {
 	.dai_type_array = NULL,
 	.num_dai_types = 0
