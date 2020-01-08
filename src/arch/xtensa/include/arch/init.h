@@ -24,6 +24,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+struct sof;
+
 /**
  * \brief Called in the case of exception.
  */
@@ -129,11 +131,11 @@ static inline void __memmap_init(void) { }
 
 #if CONFIG_SMP
 
-int slave_core_init(void);
+int slave_core_init(struct sof *sof);
 
 #else
 
-static inline int slave_core_init(void) { return 0; }
+static inline int slave_core_init(struct sof *sof) { return 0; }
 
 #endif /* CONFIG_SMP */
 
