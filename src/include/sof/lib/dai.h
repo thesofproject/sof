@@ -121,6 +121,11 @@ struct dai_type_info {
 };
 
 /**
+ * \brief API to initialize a platform DAI.
+ */
+int dai_init(void);
+
+/**
  * \brief Plugs platform specific DAI array once initialized into the lib.
  *
  * Lib serves the DAIs to other FW elements with dai_get()
