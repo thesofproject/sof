@@ -12,6 +12,7 @@
 #include <sof/lib/cpu.h>
 #include <sof/lib/notifier.h>
 #include <sof/list.h>
+#include <sof/sof.h>
 #include <sof/spinlock.h>
 #include <ipc/topology.h>
 
@@ -165,7 +166,7 @@ void notifier_event(void *caller, enum notify_id type, uint32_t core_mask,
 	}
 }
 
-void init_system_notify(void)
+void init_system_notify(struct sof *sof)
 {
 	struct notify **notify = arch_notify_get();
 	int i;
