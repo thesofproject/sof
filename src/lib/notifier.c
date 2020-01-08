@@ -22,13 +22,6 @@
 #define trace_notifier_error(__e, ...) \
 	trace_error(TRACE_CLASS_NOTIFIER, __e, ##__VA_ARGS__)
 
-struct notify_data {
-	void *caller;
-	enum notify_id type;
-	uint32_t data_size;
-	void *data;
-} __aligned(PLATFORM_DCACHE_ALIGN);
-
 static struct notify_data _notify_data[PLATFORM_CORE_COUNT]
 	__aligned(PLATFORM_DCACHE_ALIGN);
 
