@@ -203,6 +203,24 @@ static void dai_free(struct comp_dev *dev)
 	rfree(dev);
 }
 
+static int dai_comp_get_hw_params(struct comp_dev *dev,
+				  struct sof_ipc_stream_params *params)
+{
+	struct dai_data *dd = comp_get_drvdata(dev);
+	int ret = 0;
+
+	comp_info(dev, "dai_hw_params()");
+
+	/* fetching hw dai stream params */
+	ret = dai_get_hw_params(dd->dai, params);
+	if (ret < 0) {
+		comp_err(dev, "dai_comp_get_hw_params() error: dai_get_hw_params failed");
+		return ret;
+	}
+
+	return 0;
+}
+
 /* set component audio SSP and DMA configuration */
 static int dai_playback_params(struct comp_dev *dev, uint32_t period_bytes,
 			       uint32_t period_count)
@@ -816,6 +834,7 @@ static const struct comp_driver comp_dai = {
 		.new		= dai_new,
 		.free		= dai_free,
 		.params		= dai_params,
+		.dai_get_hw_params = dai_comp_get_hw_params,
 		.trigger	= dai_comp_trigger,
 		.copy		= dai_copy,
 		.prepare	= dai_prepare,
