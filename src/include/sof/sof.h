@@ -16,6 +16,7 @@ struct clock_info;
 struct dma_trace_data;
 struct ipc;
 struct ll_schedule_domain;
+struct mm;
 struct sa;
 struct timer;
 struct trace;
@@ -55,6 +56,9 @@ struct sof {
 
 	/* DMA domain for driving DMA LL scheduler */
 	struct ll_schedule_domain *platform_dma_domain;
+
+	/* memory map */
+	struct mm *memory_map;
 
 	__aligned(PLATFORM_DCACHE_ALIGN) int alignment[0];
 } __aligned(PLATFORM_DCACHE_ALIGN);

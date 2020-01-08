@@ -13,6 +13,7 @@
 #include <sof/common.h>
 #include <sof/lib/cache.h>
 #include <sof/lib/memory.h>
+#include <sof/sof.h>
 #include <sof/spinlock.h>
 #include <sof/string.h>
 #include <sof/trace/trace.h>
@@ -23,7 +24,6 @@
 
 struct dma_copy;
 struct dma_sg_config;
-struct sof;
 
 #define trace_mem_error(__e, ...) \
 	trace_error(TRACE_CLASS_MEM, __e, ##__VA_ARGS__)
@@ -254,5 +254,11 @@ void free_heap(enum mem_zone zone);
 /* status */
 void heap_trace_all(int force);
 void heap_trace(struct mm_heap *heap, int size);
+
+/* retrieve memory map pointer */
+static inline struct mm *memmap_get(void)
+{
+	return sof_get()->memory_map;
+}
 
 #endif /* __SOF_LIB_ALLOC_H__ */
