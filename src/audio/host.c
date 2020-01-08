@@ -418,6 +418,22 @@ static int host_elements_reset(struct comp_dev *dev)
 	return 0;
 }
 
+static int host_verify_params(struct comp_dev *dev,
+			      struct sof_ipc_stream_params *params)
+{
+	int ret;
+
+	comp_dbg(dev, "host_verify_params()");
+
+	ret = comp_verify_params(dev, 0, params);
+	if (ret < 0) {
+		comp_err(dev, "host_verify_params() error: comp_verify_params() failed");
+		return ret;
+	}
+
+	return 0;
+}
+
 /* configure the DMA params and descriptors for host buffer IO */
 static int host_params(struct comp_dev *dev,
 		       struct sof_ipc_stream_params *params)
@@ -432,6 +448,21 @@ static int host_params(struct comp_dev *dev,
 	int err;
 
 	comp_info(dev, "host_params()");
+
+	if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
+		hd->local_buffer = list_first_item(&dev->bsink_list,
+						   struct comp_buffer,
+						   source_list);
+	else
+		hd->local_buffer = list_first_item(&dev->bsource_list,
+						   struct comp_buffer,
+						   sink_list);
+
+	err = host_verify_params(dev, params);
+	if (err < 0) {
+		comp_err(dev, "host_params(): pcm params verification failed.");
+		return -EINVAL;
+	}
 
 	/* host params always installed by pipeline IPC */
 	hd->host_size = params->buffer.size;
@@ -465,17 +496,9 @@ static int host_params(struct comp_dev *dev,
 		return -EINVAL;
 	}
 
-	if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
-		hd->local_buffer = list_first_item(&dev->bsink_list,
-						   struct comp_buffer,
-						   source_list);
-	else
-		hd->local_buffer = list_first_item(&dev->bsource_list,
-						   struct comp_buffer,
-						   sink_list);
-
 	period_bytes = dev->frames *
-		       audio_stream_frame_bytes(&hd->local_buffer->stream);
+		audio_stream_frame_bytes(&hd->local_buffer->stream);
+
 	if (!period_bytes) {
 		comp_err(dev, "host_params() error: invalid period_bytes");
 		return -EINVAL;

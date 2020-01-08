@@ -296,6 +296,22 @@ static void volume_free(struct comp_dev *dev)
 	rfree(dev);
 }
 
+static int volume_verify_params(struct comp_dev *dev,
+				struct sof_ipc_stream_params *params)
+{
+	int ret;
+
+	comp_dbg(dev, "volume_verify_params()");
+
+	ret = comp_verify_params(dev, 0, params);
+	if (ret < 0) {
+		comp_err(dev, "volume_verify_params() error: comp_verify_params() failed.");
+		return ret;
+	}
+
+	return 0;
+}
+
 /**
  * \brief Sets volume component audio stream parameters.
  * \param[in,out] dev Volume base component device.
@@ -307,7 +323,15 @@ static void volume_free(struct comp_dev *dev)
 static int volume_params(struct comp_dev *dev,
 			 struct sof_ipc_stream_params *params)
 {
+	int err;
+
 	comp_dbg(dev, "volume_params()");
+
+	err = volume_verify_params(dev, params);
+	if (err < 0) {
+		comp_err(dev, "vol_params(): pcm params verification failed.");
+		return -EINVAL;
+	}
 
 	return 0;
 }

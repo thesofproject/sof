@@ -221,6 +221,35 @@ static int dai_comp_get_hw_params(struct comp_dev *dev,
 	return 0;
 }
 
+static int dai_verify_params(struct comp_dev *dev,
+			     struct sof_ipc_stream_params *params)
+{
+	struct sof_ipc_stream_params hw_params;
+
+	dai_comp_get_hw_params(dev, &hw_params);
+
+	/* checks whether pcm parameters match hardware DAI parameter set
+	 * during dai_set_config(). If hardware parameter is equal to 0, it
+	 * means that it can vary, so any value is acceptable. We do not check
+	 * format parameter, because DAI is able to change format using
+	 * pcm_converter functions.
+	 */
+	if (hw_params.rate && hw_params.rate != params->rate) {
+		comp_err(dev, "dai_verify_params() error: pcm rate parameter does not match hardware rate");
+		return -EINVAL;
+	}
+
+	if (hw_params.channels && hw_params.channels != params->channels) {
+		comp_err(dev, "dai_verify_params() error: pcm channels parameter does not match hardware channels");
+		return -EINVAL;
+	}
+
+	/* set component period frames */
+	component_set_period_frames(dev, params->rate);
+
+	return 0;
+}
+
 /* set component audio SSP and DMA configuration */
 static int dai_playback_params(struct comp_dev *dev, uint32_t period_bytes,
 			       uint32_t period_count)
@@ -345,6 +374,12 @@ static int dai_params(struct comp_dev *dev,
 	int err;
 
 	comp_info(dev, "dai_params()");
+
+	err = dai_verify_params(dev, params);
+	if (err < 0) {
+		comp_err(dev, "dai_params(): pcm params verification failed.");
+		return -EINVAL;
+	}
 
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
 		dd->local_buffer = list_first_item(&dev->bsource_list,

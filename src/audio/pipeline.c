@@ -248,34 +248,12 @@ int pipeline_free(struct pipeline *p)
 	return 0;
 }
 
-static void pipeline_comp_period_frames(struct comp_dev *current,
-					uint32_t rate)
-{
-	int samplerate;
-	int period;
-
-	period = current->pipeline->ipc_pipe.period;
-
-	if (current->output_rate)
-		samplerate = current->output_rate;
-	else
-		samplerate = rate;
-
-	/* Samplerate is in kHz and period in microseconds.
-	 * As we don't have floats use scale divider 1000000.
-	 * Also integer round up the result.
-	 */
-	current->frames = ceil_divide(samplerate * period, 1000000);
-}
-
 /* save params changes made by component */
 static void pipeline_update_buffer_pcm_params(struct comp_buffer *buffer,
 					      void *data)
 {
-	struct sof_ipc_stream_params *params;
+	struct sof_ipc_stream_params *params = data;
 	int i;
-
-	params = data;
 
 	params->buffer_fmt = buffer->buffer_fmt;
 	params->frame_fmt = buffer->stream.frame_fmt;
@@ -285,31 +263,38 @@ static void pipeline_update_buffer_pcm_params(struct comp_buffer *buffer,
 		params->chmap[i] = buffer->chmap[i];
 }
 
-static void pipeline_set_params(struct comp_dev *comp,
-				struct sof_ipc_pcm_params *params,
-				int dir)
+/* fetch hardware stream parameters from DAI and propagate them to the remaining
+ * buffers in pipeline.
+ */
+static int pipeline_comp_hw_params(struct comp_dev *current,
+				   struct comp_buffer *calling_buf, void *data,
+				   int dir)
 {
-	struct list_item *buffer_list;
-	struct list_item *clist;
-	struct comp_buffer *buffer;
-	int i;
+	struct pipeline_data *ppl_data = data;
+	int ret = 0;
 
-	/* set comp params */
-	comp->direction = params->params.direction;
+	pipe_cl_dbg("pipeline_comp_hw_params(), current->comp.id = %u, dir = %u",
+		    current->comp.id, dir);
 
-	/* set buffer params */
-	buffer_list = comp_buffer_list(comp, dir);
+	pipeline_for_each_comp(current, &pipeline_comp_hw_params, data, NULL,
+			       NULL, dir);
 
-	list_for_item(clist, buffer_list) {
-		buffer = buffer_from_list(clist, struct comp_buffer, dir);
-
-		buffer->buffer_fmt = params->params.buffer_fmt;
-		buffer->stream.frame_fmt = params->params.frame_fmt;
-		buffer->stream.rate = params->params.rate;
-		buffer->stream.channels = params->params.channels;
-		for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
-			buffer->chmap[i] = params->params.chmap[i];
+	/* Fetch hardware stream parameters from DAI component */
+	if (current->comp.type == SOF_COMP_DAI) {
+		ret = comp_dai_get_hw_params(current,
+					     &ppl_data->params->params);
+		if (ret < 0) {
+			pipe_cl_err("pipeline_find_dai_comp(): comp_dai_get_hw_params() error.");
+			return ret;
+		}
 	}
+
+	/* set buffer parameters */
+	if (calling_buf)
+		buffer_set_params(calling_buf, &ppl_data->params->params,
+				  BUFFER_UPDATE_IF_UNSET);
+
+	return ret;
 }
 
 static int pipeline_comp_params(struct comp_dev *current,
@@ -350,11 +335,8 @@ static int pipeline_comp_params(struct comp_dev *current,
 	if (current->state == COMP_STATE_ACTIVE)
 		return 0;
 
-	/* send current params to the component */
-	pipeline_set_params(current, ppl_data->params, dir);
-
-	/* set frames from samplerate/period */
-	pipeline_comp_period_frames(current, ppl_data->params->params.rate);
+	/* set comp direction */
+	current->direction = ppl_data->params->params.direction;
 
 	err = comp_params(current, &ppl_data->params->params);
 	if (err < 0 || err == PPL_STATUS_PATH_STOP)
@@ -381,11 +363,25 @@ static int pipeline_comp_params(struct comp_dev *current,
 int pipeline_params(struct pipeline *p, struct comp_dev *host,
 		    struct sof_ipc_pcm_params *params)
 {
+	struct sof_ipc_pcm_params hw_params;
 	struct pipeline_data data;
+	int dir = params->params.direction;
 	int ret;
 
 	pipe_info(p, "pipeline_params()");
 
+	/* settin hw params */
+	data.start = host;
+	data.params = &hw_params;
+
+	ret = pipeline_comp_hw_params(data.start, NULL, &data, dir);
+	if (ret < 0) {
+		pipe_cl_err("pipeline_prepare() error: ret = %d, dev->comp.id = %u"
+			    , ret, host->comp.id);
+		return ret;
+	}
+
+	/* setting pcm params */
 	data.params = params;
 	data.start = host;
 
@@ -684,7 +680,7 @@ static int pipeline_comp_reset(struct comp_dev *current,
 		return err;
 
 	return pipeline_for_each_comp(current, &pipeline_comp_reset, data,
-				      NULL, NULL, dir);
+				      buffer_reset_params, NULL, dir);
 }
 
 /* reset the whole pipeline */

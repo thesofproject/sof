@@ -355,6 +355,22 @@ static int kpb_trigger(struct comp_dev *dev, int cmd)
 	return comp_set_state(dev, cmd);
 }
 
+static int kbp_verify_params(struct comp_dev *dev,
+			     struct sof_ipc_stream_params *params)
+{
+	int ret;
+
+	comp_dbg(dev, "kbp_verify_params()");
+
+	ret = comp_verify_params(dev, 0, params);
+	if (ret < 0) {
+		comp_err(dev, "kpb_verify_params() error: comp_verify_params() failed");
+		return ret;
+	}
+
+	return 0;
+}
+
 /**
  * \brief KPB params.
  * \param[in] dev - component device pointer.
@@ -365,6 +381,18 @@ static int kpb_params(struct comp_dev *dev,
 		      struct sof_ipc_stream_params *params)
 {
 	struct comp_data *kpb = comp_get_drvdata(dev);
+	int err;
+
+	if (dev->state == COMP_STATE_PREPARE) {
+		comp_err(dev, "kpb_params(): kpb has been already configured.");
+		return PPL_STATUS_PATH_STOP;
+	}
+
+	err = kbp_verify_params(dev, params);
+	if (err < 0) {
+		comp_err(dev, "kpb_params(): pcm params verification failed");
+		return -EINVAL;
+	}
 
 	kpb->host_buffer_size = params->buffer.size;
 	kpb->host_period_size = params->host_period_bytes;

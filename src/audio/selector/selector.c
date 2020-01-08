@@ -36,54 +36,6 @@
 static const struct comp_driver comp_selector;
 
 /**
- * \brief Validates channel count and index and sets channel count.
- * \details If input data is not supported trace error is displayed and
- * \details input data is modified to safe values.
- * \param[in,out] cd Selector component private data.
- * \param[in] in_channels Number of input channels to the module.
- * \param[in] out_channels Number of output channels to the module.
- * \param[in] ch_idx Index of a channel to be provided on output.
- * \return Status.
- */
-static int sel_set_channel_values(struct comp_data *cd, uint32_t in_channels,
-				  uint32_t out_channels, uint32_t ch_idx)
-{
-	/* verify input channels */
-	if (in_channels != SEL_SOURCE_2CH && in_channels != SEL_SOURCE_4CH) {
-		comp_cl_err(&comp_selector, "sel_set_channel_values() error: in_channels = %u",
-			    in_channels);
-		return -EINVAL;
-	}
-
-	/* verify output channels */
-	if (out_channels != SEL_SINK_1CH && out_channels != SEL_SINK_2CH &&
-	    out_channels != SEL_SINK_4CH) {
-		comp_cl_err(&comp_selector, "sel_set_channel_values() error: out_channels = %u",
-			    out_channels);
-		return -EINVAL;
-	}
-
-	/* verify proper channels for passthrough mode */
-	if (out_channels != SEL_SINK_1CH && in_channels != out_channels) {
-		comp_cl_err(&comp_selector, "sel_set_channel_values() error: in_channels = %u, out_channels = %u",
-			    in_channels, out_channels);
-		return -EINVAL;
-	}
-
-	if (ch_idx > (SEL_SOURCE_4CH - 1)) {
-		comp_cl_err(&comp_selector, "sel_set_channel_values() error: ch_idx = %u",
-			    in_channels);
-		return -EINVAL;
-	}
-
-	cd->config.in_channels_count = in_channels;
-	cd->config.out_channels_count = out_channels;
-	cd->config.sel_channel = ch_idx;
-
-	return 0;
-}
-
-/**
  * \brief Creates selector component.
  * \param[in,out] data Selector base component device.
  * \return Pointer to selector base component device.
@@ -124,16 +76,6 @@ static struct comp_dev *selector_new(struct sof_ipc_comp *comp)
 	ret = memcpy_s(&cd->config, sizeof(cd->config), ipc_process->data, bs);
 	assert(!ret);
 
-	/* verification of initial parameters */
-	ret = sel_set_channel_values(cd, cd->config.in_channels_count,
-				     cd->config.out_channels_count,
-				     cd->config.sel_channel);
-	if (ret < 0) {
-		rfree(cd);
-		rfree(dev);
-		return NULL;
-	}
-
 	dev->state = COMP_STATE_READY;
 	return dev;
 }
@@ -152,6 +94,111 @@ static void selector_free(struct comp_dev *dev)
 	rfree(dev);
 }
 
+static int selector_verify_params(struct comp_dev *dev,
+				  struct sof_ipc_stream_params *params)
+{
+	struct comp_data *cd = comp_get_drvdata(dev);
+	struct comp_buffer *buffer;
+	struct comp_buffer *sinkb;
+	uint32_t in_channels;
+	uint32_t out_channels;
+
+	comp_dbg(dev, "selector_verify_params()");
+
+	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
+				source_list);
+
+	/* check whether params->channels (received from driver) are equal to
+	 * cd->config.in_channels_count (PLAYBACK) or
+	 * cd->config.out_channels_count (CAPTURE) set during creating selector
+	 * component in selector_new() or in selector_ctrl_set_data().
+	 * cd->config.in/out_channels_count = 0 means that it can vary.
+	 */
+	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
+		/* fetch sink buffer for playback */
+		buffer = list_first_item(&dev->bsink_list, struct comp_buffer,
+					 source_list);
+		if (cd->config.in_channels_count &&
+		    cd->config.in_channels_count != params->channels) {
+			comp_err(dev, "selector_verify_params() error: src in_channels_count does not match pcm channels");
+			return -EINVAL;
+		}
+		in_channels = cd->config.in_channels_count;
+
+		/* if cd->config.out_channels_count are equal to 0
+		 * (it can vary), we set params->channels to sink buffer
+		 * channels, which were previosly set in
+		 * pipeline_comp_hw_params()
+		 */
+		out_channels = cd->config.out_channels_count ?
+			cd->config.out_channels_count : buffer->stream.channels;
+		params->channels = out_channels;
+	} else {
+		/* fetch source buffer for capture */
+		buffer = list_first_item(&dev->bsource_list, struct comp_buffer,
+					 sink_list);
+		if (cd->config.out_channels_count &&
+		    cd->config.out_channels_count != params->channels) {
+			comp_err(dev, "selector_verify_params() error: src in_channels_count does not match pcm channels");
+			return -EINVAL;
+		}
+		out_channels = cd->config.out_channels_count;
+
+		/* if cd->config.in_channels_count are equal to 0
+		 * (it can vary), we set params->channels to source buffer
+		 * channels, which were previosly set in
+		 * pipeline_comp_hw_params()
+		 */
+		in_channels = cd->config.in_channels_count ?
+			cd->config.in_channels_count : buffer->stream.channels;
+		params->channels = in_channels;
+	}
+
+	/* Set buffer params */
+	buffer_set_params(buffer, params, BUFFER_UPDATE_FORCE);
+
+	/* set component period frames */
+	component_set_period_frames(dev, sinkb->stream.rate);
+
+	/* verify input channels */
+	switch (in_channels) {
+	case SEL_SOURCE_2CH:
+	case SEL_SOURCE_4CH:
+		break;
+	default:
+		comp_err(dev, "selector_verify_params() error: in_channels = %u"
+			 , in_channels);
+		return -EINVAL;
+	}
+
+	/* verify output channels */
+	switch (out_channels) {
+	case SEL_SINK_1CH:
+		break;
+	case SEL_SINK_2CH:
+	case SEL_SINK_4CH:
+		/* verify proper channels for passthrough mode */
+		if (in_channels != out_channels) {
+			comp_err(dev, "selector_verify_params() error: in_channels = %u, out_channels = %u"
+				 , in_channels, out_channels);
+			return -EINVAL;
+		}
+		break;
+	default:
+		comp_err(dev, "selector_verify_params() error: out_channels = %u"
+			 , out_channels);
+		return -EINVAL;
+	}
+
+	if (cd->config.sel_channel > (SEL_SOURCE_4CH - 1)) {
+		comp_err(dev, "selector_verify_params() error: ch_idx = %u"
+			 , cd->config.sel_channel);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 /**
  * \brief Sets selector component audio stream parameters.
  * \param[in,out] dev Selector base component device.
@@ -162,24 +209,17 @@ static void selector_free(struct comp_dev *dev)
 static int selector_params(struct comp_dev *dev,
 			   struct sof_ipc_stream_params *params)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
-	struct comp_buffer *sinkb;
-	struct comp_buffer *sourceb;
+	int err;
 
 	comp_info(dev, "selector_params()");
 
-	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer,
-				  sink_list);
-	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
-				source_list);
+	err = selector_verify_params(dev, params);
+	if (err < 0) {
+		comp_err(dev, "selector_params(): pcm params verification failed.");
+		return -EINVAL;
+	}
 
-	/* rewrite channels number for other components */
-	if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
-		sinkb->stream.channels = cd->config.out_channels_count;
-	else
-		sourceb->stream.channels = cd->config.in_channels_count;
-
-	return PPL_STATUS_PATH_STOP;
+	return 0;
 }
 
 /**
@@ -202,10 +242,10 @@ static int selector_ctrl_set_data(struct comp_dev *dev,
 		cfg = (struct sof_sel_config *)
 		      ASSUME_ALIGNED(cdata->data->data, 4);
 
-		/* Just copy the configuration & verify input params.*/
-		ret = sel_set_channel_values(cd, cfg->in_channels_count,
-					     cfg->out_channels_count,
-					     cfg->sel_channel);
+		/* Just set the configuration */
+		cd->config.in_channels_count = cfg->in_channels_count;
+		cd->config.out_channels_count = cfg->out_channels_count;
+		cd->config.sel_channel = cfg->sel_channel;
 		break;
 	default:
 		comp_err(dev, "selector_ctrl_set_cmd() error: invalid cdata->cmd = %u",
@@ -299,12 +339,22 @@ static int selector_cmd(struct comp_dev *dev, int cmd, void *data,
  */
 static int selector_trigger(struct comp_dev *dev, int cmd)
 {
+	struct comp_buffer *sourceb;
 	int ret;
 
 	comp_info(dev, "selector_trigger()");
 
+	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer,
+				  sink_list);
+
 	ret = comp_set_state(dev, cmd);
-	return ret == 0 ? PPL_STATUS_PATH_STOP : ret;
+
+	/* TODO: remove in the future after adding support for case when
+	 * kpb_init_draining() and kpb_draining_task() are interrupted by
+	 * new pipeline_task()
+	 */
+	return sourceb->source->comp.type == SOF_COMP_KPB ?
+		PPL_STATUS_PATH_STOP : ret;
 }
 
 /**
@@ -423,7 +473,7 @@ static int selector_prepare(struct comp_dev *dev)
 		goto err;
 	}
 
-	return PPL_STATUS_PATH_STOP;
+	return 0;
 
 err:
 	comp_set_state(dev, COMP_TRIGGER_RESET);
@@ -442,7 +492,8 @@ static int selector_reset(struct comp_dev *dev)
 	comp_info(dev, "selector_reset()");
 
 	ret = comp_set_state(dev, COMP_TRIGGER_RESET);
-	return ret == 0 ? PPL_STATUS_PATH_STOP : ret;
+
+	return ret;
 }
 
 /** \brief Selector component definition. */

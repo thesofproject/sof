@@ -13,9 +13,11 @@
 /** \brief Selector component configuration data. */
 struct sof_sel_config {
 	/* selector supports 1 input and 1 output */
-	uint32_t in_channels_count;	/**< accepted values 2 or 4 */
-	uint32_t out_channels_count;	/**< accepted values 1 or 2 or 4 */
-	/* note: if 2 or 4 output channels selected the component works in
+	uint32_t in_channels_count;	/**< accepted values 0, 2 or 4 */
+	uint32_t out_channels_count;	/**< accepted values 0, 1, 2 or 4 */
+	/* note: 0 for in_channels_count or out_channels_count means that
+	 * these are variable values and will be fetched from pcm params;
+	 * if 2 or 4 output channels selected the component works in
 	 * a passthrough mode
 	 */
 	uint32_t sel_channel;	/**< 0..3 */
