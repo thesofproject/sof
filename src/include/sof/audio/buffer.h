@@ -54,6 +54,9 @@ struct comp_dev;
 #define BUFF_CB_TYPE_PRODUCE	BIT(0)
 #define BUFF_CB_TYPE_CONSUME	BIT(1)
 
+#define BUFFER_UPDATE_IF_UNSET	0
+#define BUFFER_UPDATE_FORCE	1
+
 /* audio component buffer - connects 2 audio components together in pipeline */
 struct comp_buffer {
 	/* data buffer */
@@ -76,6 +79,8 @@ struct comp_buffer {
 	/* runtime stream params */
 	uint32_t buffer_fmt;	/**< enum sof_ipc_buffer_format */
 	uint16_t chmap[SOF_IPC_MAX_CHANNELS];	/**< channel map - SOF_CHMAP_ */
+
+	bool hw_params_configured; /**< indicates whether hw params were set */
 };
 
 struct buffer_cb_transact {
@@ -155,6 +160,41 @@ static inline void buffer_init(struct comp_buffer *buffer, uint32_t size,
 
 	/* addr should be set in alloc function */
 	audio_stream_init(&buffer->stream, buffer->stream.addr, size);
+}
+
+static inline void buffer_reset_params(struct comp_buffer *buffer, void *data)
+{
+	buffer->hw_params_configured = false;
+}
+
+static inline int buffer_set_params(struct comp_buffer *buffer,
+				    struct sof_ipc_stream_params *params,
+				    bool force_update)
+{
+	int ret;
+	int i;
+
+	if (!params) {
+		trace_buffer_error("buffer_set_params() error: !params");
+		return -EINVAL;
+	}
+
+	if (buffer->hw_params_configured && !force_update)
+		return 0;
+
+	ret = audio_stream_set_params(&buffer->stream, params);
+	if (ret < 0) {
+		trace_buffer_error("buffer_set_params() error: audio_stream_set_params failed");
+		return -EINVAL;
+	}
+
+	buffer->buffer_fmt = params->buffer_fmt;
+	for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
+		buffer->chmap[i] = params->chmap[i];
+
+	buffer->hw_params_configured = true;
+
+	return 0;
 }
 
 #endif /* __SOF_AUDIO_BUFFER_H__ */

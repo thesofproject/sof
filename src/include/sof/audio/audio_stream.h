@@ -62,6 +62,19 @@ struct audio_stream {
 #define audio_stream_get_frag(buffer, ptr, idx, sample_size) \
 	audio_stream_wrap(buffer, (char *)(ptr) + ((idx) * (sample_size)))
 
+static inline int audio_stream_set_params(struct audio_stream *buffer,
+					  struct sof_ipc_stream_params *params)
+{
+	if (!params)
+		return -EINVAL;
+
+	buffer->frame_fmt = params->frame_fmt;
+	buffer->rate = params->rate;
+	buffer->channels = params->channels;
+
+	return 0;
+}
+
 static inline void *audio_stream_wrap(const struct audio_stream *buffer,
 				      void *ptr)
 {
