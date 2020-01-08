@@ -58,7 +58,7 @@ int master_core_init(int argc, char *argv[], struct sof *sof)
 #endif
 
 	trace_point(TRACE_BOOT_SYS_NOTIFIER);
-	init_system_notify();
+	init_system_notify(sof);
 
 	trace_point(TRACE_BOOT_SYS_POWER);
 	pm_runtime_init(sof);
