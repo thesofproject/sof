@@ -21,6 +21,8 @@
 #include <user/trace.h>
 #include <stdint.h>
 
+struct sof;
+
 /** \addtogroup pm_runtime PM Runtime
  *  PM runtime specification.
  *  @{
@@ -57,7 +59,7 @@ struct pm_runtime_data {
 /**
  * \brief Initializes runtime power management.
  */
-void pm_runtime_init(void);
+void pm_runtime_init(struct sof *sof);
 
 /**
  * \brief Retrieves power management resource (async).

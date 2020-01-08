@@ -61,7 +61,7 @@ int master_core_init(int argc, char *argv[], struct sof *sof)
 	init_system_notify();
 
 	trace_point(TRACE_BOOT_SYS_POWER);
-	pm_runtime_init();
+	pm_runtime_init(sof);
 
 	/* init the platform */
 	err = platform_init(sof);

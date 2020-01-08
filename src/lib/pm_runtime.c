@@ -12,6 +12,7 @@
 
 #include <sof/lib/alloc.h>
 #include <sof/lib/pm_runtime.h>
+#include <sof/sof.h>
 #include <sof/spinlock.h>
 #include <ipc/topology.h>
 #include <stdint.h>
@@ -19,7 +20,7 @@
 /** \brief Runtime power management data pointer. */
 static struct pm_runtime_data *prd;
 
-void pm_runtime_init(void)
+void pm_runtime_init(struct sof *sof)
 {
 	prd = rzalloc(SOF_MEM_ZONE_SYS, 0, SOF_MEM_CAPS_RAM, sizeof(*prd));
 	spinlock_init(&prd->lock);
