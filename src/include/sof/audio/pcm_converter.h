@@ -15,6 +15,7 @@
 #define __SOF_AUDIO_PCM_CONVERTER_H__
 
 #include <ipc/stream.h>
+#include <config.h>
 #include <stddef.h>
 #include <stdint.h>
 
