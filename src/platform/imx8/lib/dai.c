@@ -10,6 +10,7 @@
 #include <sof/drivers/sai.h>
 #include <sof/lib/dai.h>
 #include <sof/lib/memory.h>
+#include <sof/sof.h>
 #include <sof/spinlock.h>
 #include <ipc/dai.h>
 #include <ipc/stream.h>
@@ -75,7 +76,7 @@ static struct dai_type_info dti[] = {
 	},
 };
 
-int dai_init(void)
+int dai_init(struct sof *sof)
 {
 	int i;
 

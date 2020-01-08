@@ -185,7 +185,7 @@ int platform_init(struct sof *sof)
 	/* initialize the host IPC mechanims */
 	ipc_init(sof);
 
-	ret = dai_init();
+	ret = dai_init(sof);
 	if (ret < 0)
 		return -ENODEV;
 

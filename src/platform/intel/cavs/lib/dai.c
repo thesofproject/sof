@@ -13,6 +13,7 @@
 #include <sof/lib/dai.h>
 #include <sof/lib/dma.h>
 #include <sof/lib/memory.h>
+#include <sof/sof.h>
 #include <sof/spinlock.h>
 #include <ipc/dai.h>
 #include <ipc/stream.h>
@@ -115,7 +116,7 @@ static struct dai_type_info dti[] = {
 #endif
 };
 
-int dai_init(void)
+int dai_init(struct sof *sof)
 {
 	int i;
 #if CONFIG_CAVS_SSP

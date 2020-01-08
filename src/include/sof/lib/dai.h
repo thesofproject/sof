@@ -25,6 +25,7 @@
 #include <stdint.h>
 
 struct dai;
+struct sof;
 struct sof_ipc_dai_config;
 
 /** \addtogroup sof_dai_drivers DAI Drivers
@@ -122,8 +123,10 @@ struct dai_type_info {
 
 /**
  * \brief API to initialize a platform DAI.
+ *
+ * \param[in] sof Pointer to firmware main context.
  */
-int dai_init(void);
+int dai_init(struct sof *sof);
 
 /**
  * \brief Plugs platform specific DAI array once initialized into the lib.
