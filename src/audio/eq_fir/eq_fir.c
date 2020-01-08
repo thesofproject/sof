@@ -303,15 +303,13 @@ static int eq_fir_init_coef(struct sof_eq_fir_config *config,
 	/* Initialize 1st phase */
 	for (i = 0; i < nch; i++) {
 		/* Check for not reading past blob response to channel assign
-		 * map. If the blob has smaller channel map then apply for
-		 * additional channels the response that was used for the first
-		 * channel. This allows to use mono blobs to setup multi
-		 * channel equalization without stopping to an error.
+		 * map. The previous channel response is assigned for any
+		 * additional channels in the stream. It allows to use single
+		 * channel configuration to setup multi channel equalization
+		 * with the same response.
 		 */
 		if (i < config->channels_in_config)
 			resp = assign_response[i];
-		else
-			resp = assign_response[0];
 
 		if (resp < 0) {
 			/* Initialize EQ channel to bypass and continue with
