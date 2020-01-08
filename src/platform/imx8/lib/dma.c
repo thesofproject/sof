@@ -46,6 +46,11 @@ struct dma dma[PLATFORM_NUM_DMACS] = {
 },
 };
 
+static struct dma_info lib_dma = {
+	.dma_array = dma,
+	.num_dmas = ARRAY_SIZE(dma)
+};
+
 int dmac_init(struct sof *sof)
 {
 	int i;
@@ -54,8 +59,7 @@ int dmac_init(struct sof *sof)
 	for (i = 0; i < ARRAY_SIZE(dma); i++)
 		spinlock_init(&dma[i].lock);
 
-	/* tell the lib DMAs are ready to use */
-	dma_install(dma, ARRAY_SIZE(dma));
+	sof->dma_info = &lib_dma;
 
 	return 0;
 }
