@@ -206,6 +206,10 @@ struct comp_ops {
 	int (*params)(struct comp_dev *dev,
 		      struct sof_ipc_stream_params *params);
 
+	/** get dai hw parameters */
+	int (*dai_get_hw_params)(struct comp_dev *dev,
+				 struct sof_ipc_stream_params *params);
+
 	/** set component audio stream parameters */
 	int (*dai_config)(struct comp_dev *dev,
 			  struct sof_ipc_dai_config *dai_config);
@@ -445,6 +449,20 @@ static inline int comp_params(struct comp_dev *dev,
 	if (dev->drv->ops.params)
 		return dev->drv->ops.params(dev, params);
 	return 0;
+}
+
+/**
+ * Fetch hardware stream parameters - only mandatory for DAI components.
+ * @param dev Component device.
+ * @param params hw parameters
+ * @return 0 if succeeded, error code otherwise.
+ */
+static inline int comp_dai_get_hw_params(struct comp_dev *dev,
+					 struct sof_ipc_stream_params *params)
+{
+	if (dev->drv->ops.dai_get_hw_params)
+		return dev->drv->ops.dai_get_hw_params(dev, params);
+	return -EINVAL;
 }
 
 /**
