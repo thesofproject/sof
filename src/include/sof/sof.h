@@ -17,6 +17,7 @@ struct dma_trace_data;
 struct ipc;
 struct ll_schedule_domain;
 struct mm;
+struct notify_data;
 struct pm_runtime_data;
 struct sa;
 struct timer;
@@ -63,6 +64,9 @@ struct sof {
 
 	/* runtime power management data */
 	struct pm_runtime_data *prd;
+
+	/* shared notifier data */
+	struct notify_data *notify_data;
 
 	__aligned(PLATFORM_DCACHE_ALIGN) int alignment[0];
 } __aligned(PLATFORM_DCACHE_ALIGN);

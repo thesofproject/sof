@@ -11,10 +11,9 @@
 #include <sof/common.h>
 #include <sof/lib/memory.h>
 #include <sof/list.h>
+#include <sof/sof.h>
 #include <sof/spinlock.h>
 #include <stdint.h>
-
-struct sof;
 
 /* notifier target core masks */
 #define NOTIFIER_TARGET_CORE_MASK(x)	(1 << (x))
@@ -67,5 +66,10 @@ void notifier_event(void *caller, enum notify_id type, uint32_t core_mask,
 void init_system_notify(struct sof *sof);
 
 void free_system_notify(void);
+
+static inline struct notify_data *notify_data_get(void)
+{
+	return sof_get()->notify_data;
+}
 
 #endif /* __SOF_LIB_NOTIFIER_H__ */

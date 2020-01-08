@@ -120,7 +120,7 @@ static void notifier_notify(void *caller, enum notify_id type, void *data)
 void notifier_notify_remote(void)
 {
 	struct notify *notify = *arch_notify_get();
-	struct notify_data *notify_data = &_notify_data[cpu_get_id()];
+	struct notify_data *notify_data = notify_data_get() + cpu_get_id();
 
 	dcache_invalidate_region(notify_data, sizeof(*notify_data));
 	if (!list_is_empty(&notify->list[notify_data->type])) {
@@ -145,7 +145,7 @@ void notifier_event(void *caller, enum notify_id type, uint32_t core_mask,
 				notifier_notify(caller, type, data);
 			} else if (cpu_is_core_enabled(i)) {
 				notify_msg.core = i;
-				notify_data = &_notify_data[i];
+				notify_data = notify_data_get() + i;
 				notify_data->caller = caller;
 				notify_data->type = type;
 
@@ -176,6 +176,9 @@ void init_system_notify(struct sof *sof)
 	for (i = NOTIFIER_ID_CPU_FREQ; i < NOTIFIER_ID_COUNT; i++)
 		list_init(&(*notify)->list[i]);
 	spinlock_init(&(*notify)->lock);
+
+	if (cpu_get_id() == PLATFORM_MASTER_CORE_ID)
+		sof->notify_data = _notify_data;
 }
 
 void free_system_notify(void)
