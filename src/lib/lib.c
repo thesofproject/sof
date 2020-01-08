@@ -9,32 +9,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#if 0 // TODO: only compile if no arch memcpy is available.
-
-void cmemcpy(void *dest, void *src, size_t size)
-{
-	uint32_t *d32;
-	uint32_t *s32;
-	uint8_t *d8;
-	uint8_t *s8;
-	int i;
-	int d = size / 4;
-	int r = size % 4;
-
-	/* copy word at a time */
-	d32 = dest;
-	s32 = src;
-	for (i = 0; i <	d; i++)
-		d32[i] = s32[i];
-
-	/* copy remaining bytes */
-	d8 = (uint8_t *)d32[i];
-	s8 = (uint8_t *)s32[i];
-	for (i = 0; i <	r; i++)
-		d8[i] = s8[i];
-}
-#endif
-
 #if !CONFIG_LIBRARY
 /* used by gcc - but uses arch_memcpy internally */
 void *memcpy(void *dest, const void *src, size_t n)
