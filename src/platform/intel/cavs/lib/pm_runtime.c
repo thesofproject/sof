@@ -38,17 +38,15 @@
 #include <cavs/lib/power_down.h>
 #endif
 
-/** \brief Runtime power management data pointer. */
-struct pm_runtime_data *_prd;
-
 /**
  * \brief Forces Host DMAs to exit L1.
  */
 static inline void cavs_pm_runtime_force_host_dma_l1_exit(void)
 {
+	struct pm_runtime_data *prd = pm_runtime_data_get();
 	uint32_t flags;
 
-	spin_lock_irq(_prd->lock, flags);
+	spin_lock_irq(prd->lock, flags);
 
 	if (!(shim_read(SHIM_SVCFG) & SHIM_SVCFG_FORCE_L1_EXIT)) {
 		shim_write(SHIM_SVCFG,
@@ -60,13 +58,14 @@ static inline void cavs_pm_runtime_force_host_dma_l1_exit(void)
 			   shim_read(SHIM_SVCFG) & ~(SHIM_SVCFG_FORCE_L1_EXIT));
 	}
 
-	spin_unlock_irq(_prd->lock, flags);
+	spin_unlock_irq(prd->lock, flags);
 }
 
 static inline void cavs_pm_runtime_enable_dsp(bool enable)
 {
 	uint32_t flags;
-	struct cavs_pm_runtime_data *pprd = _prd->platform_data;
+	struct cavs_pm_runtime_data *pprd =
+		pm_runtime_data_get()->platform_data;
 
 	/* request is always run on dsp0 and applies to dsp0,
 	 * so no global lock is required.
@@ -83,7 +82,7 @@ static inline void cavs_pm_runtime_enable_dsp(bool enable)
 static inline bool cavs_pm_runtime_is_active_dsp(void)
 {
 	struct cavs_pm_runtime_data *pprd =
-			(struct cavs_pm_runtime_data *)_prd->platform_data;
+		pm_runtime_data_get()->platform_data;
 	return pprd->dsp_d0_sref > 0;
 }
 
@@ -350,10 +349,8 @@ void platform_pm_runtime_init(struct pm_runtime_data *prd)
 {
 	struct cavs_pm_runtime_data *pprd;
 
-	_prd = prd;
-
 	pprd = rzalloc(SOF_MEM_ZONE_SYS, 0, SOF_MEM_CAPS_RAM, sizeof(*pprd));
-	_prd->platform_data = pprd;
+	prd->platform_data = pprd;
 }
 
 void platform_pm_runtime_get(enum pm_runtime_context context, uint32_t index,

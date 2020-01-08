@@ -17,6 +17,7 @@ struct dma_trace_data;
 struct ipc;
 struct ll_schedule_domain;
 struct mm;
+struct pm_runtime_data;
 struct sa;
 struct timer;
 struct trace;
@@ -59,6 +60,9 @@ struct sof {
 
 	/* memory map */
 	struct mm *memory_map;
+
+	/* runtime power management data */
+	struct pm_runtime_data *prd;
 
 	__aligned(PLATFORM_DCACHE_ALIGN) int alignment[0];
 } __aligned(PLATFORM_DCACHE_ALIGN);

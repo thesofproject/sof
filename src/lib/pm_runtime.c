@@ -17,15 +17,13 @@
 #include <ipc/topology.h>
 #include <stdint.h>
 
-/** \brief Runtime power management data pointer. */
-static struct pm_runtime_data *prd;
-
 void pm_runtime_init(struct sof *sof)
 {
-	prd = rzalloc(SOF_MEM_ZONE_SYS, 0, SOF_MEM_CAPS_RAM, sizeof(*prd));
-	spinlock_init(&prd->lock);
+	sof->prd = rzalloc(SOF_MEM_ZONE_SYS, 0, SOF_MEM_CAPS_RAM,
+			   sizeof(*sof->prd));
+	spinlock_init(&sof->prd->lock);
 
-	platform_pm_runtime_init(prd);
+	platform_pm_runtime_init(sof->prd);
 }
 
 void pm_runtime_get(enum pm_runtime_context context, uint32_t index)
