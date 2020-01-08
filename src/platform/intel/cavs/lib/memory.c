@@ -181,4 +181,6 @@ void platform_init_memmap(struct sof *sof)
 	memmap.total.free = HEAP_SYSTEM_T_SIZE + HEAP_SYS_RUNTIME_T_SIZE +
 		HEAP_RUNTIME_SIZE + HEAP_BUFFER_SIZE +
 		HEAP_LP_BUFFER_SIZE;
+
+	sof->memory_map = &memmap;
 }

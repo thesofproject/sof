@@ -27,8 +27,6 @@
 #define DEBUG_BLOCK_FREE_VALUE_32BIT ((uint32_t) 0xa5a5a5a5)
 #endif
 
-extern struct mm memmap;
-
 /* We have 3 memory pools
  *
  * 1) System memory pool does not have a map and it's size is fixed at build
@@ -160,7 +158,7 @@ static void *rmalloc_sys(uint32_t flags, int caps, int core, size_t bytes)
 	size_t alignment = 0;
 
 	/* use the heap dedicated for the selected core */
-	cpu_heap = memmap.system + core;
+	cpu_heap = memmap_get()->system + core;
 	if ((cpu_heap->caps & caps) != caps)
 		panic(SOF_IPC_PANIC_MEM);
 
@@ -328,17 +326,18 @@ static void *alloc_cont_blocks(struct mm_heap *heap, int level,
 
 static struct mm_heap *get_heap_from_ptr(void *ptr)
 {
+	struct mm *memmap = memmap_get();
 	struct mm_heap *heap;
 	int i;
 
 	/* find mm_heap that ptr belongs to */
-	heap = memmap.system_runtime + cpu_get_id();
+	heap = memmap->system_runtime + cpu_get_id();
 	if ((uint32_t)ptr >= heap->heap &&
 	    (uint32_t)ptr < heap->heap + heap->size)
 		return heap;
 
 	for (i = 0; i < PLATFORM_HEAP_RUNTIME; i++) {
-		heap = &memmap.runtime[i];
+		heap = &memmap->runtime[i];
 
 		dcache_invalidate_region(heap, sizeof(*heap));
 
@@ -348,7 +347,7 @@ static struct mm_heap *get_heap_from_ptr(void *ptr)
 	}
 
 	for (i = 0; i < PLATFORM_HEAP_BUFFER; i++) {
-		heap = &memmap.buffer[i];
+		heap = &memmap->buffer[i];
 
 		dcache_invalidate_region(heap, sizeof(*heap));
 
@@ -574,8 +573,8 @@ void alloc_trace_runtime_heap(uint32_t caps, size_t bytes)
 	/* check runtime heap for capabilities */
 	trace_mem_init("heap: using runtime");
 
-	alloc_trace_heap(SOF_MEM_ZONE_RUNTIME, caps, bytes, memmap.runtime,
-			 PLATFORM_HEAP_RUNTIME);
+	alloc_trace_heap(SOF_MEM_ZONE_RUNTIME, caps, bytes,
+			 memmap_get()->runtime, PLATFORM_HEAP_RUNTIME);
 }
 
 void alloc_trace_buffer_heap(uint32_t caps, size_t bytes)
@@ -583,7 +582,7 @@ void alloc_trace_buffer_heap(uint32_t caps, size_t bytes)
 	/* check buffer heap for capabilities */
 	trace_mem_init("heap: using buffer");
 
-	alloc_trace_heap(RZONE_BUFFER, caps, bytes, memmap.buffer,
+	alloc_trace_heap(RZONE_BUFFER, caps, bytes, memmap_get()->buffer,
 			 PLATFORM_HEAP_BUFFER);
 }
 
@@ -597,7 +596,7 @@ static void *rmalloc_sys_runtime(uint32_t flags, int caps, int core,
 	void *ptr;
 
 	/* use the heap dedicated for the selected core */
-	cpu_heap = memmap.system_runtime + core;
+	cpu_heap = memmap_get()->system_runtime + core;
 	if ((cpu_heap->caps & caps) != caps)
 		panic(SOF_IPC_PANIC_MEM);
 
@@ -615,13 +614,14 @@ static void *rmalloc_sys_runtime(uint32_t flags, int caps, int core,
 /* allocate single block for runtime */
 static void *rmalloc_runtime(uint32_t flags, uint32_t caps, size_t bytes)
 {
+	struct mm *memmap = memmap_get();
 	struct mm_heap *heap;
 
 	/* check runtime heap for capabilities */
-	heap = get_heap_from_caps(memmap.runtime, PLATFORM_HEAP_RUNTIME, caps);
+	heap = get_heap_from_caps(memmap->runtime, PLATFORM_HEAP_RUNTIME, caps);
 	if (!heap) {
 		/* next check buffer heap for capabilities */
-		heap = get_heap_from_caps(memmap.buffer, PLATFORM_HEAP_BUFFER,
+		heap = get_heap_from_caps(memmap->buffer, PLATFORM_HEAP_BUFFER,
 					  caps);
 		if (!heap) {
 			trace_mem_error("rmalloc_runtime() error: caps = %x, bytes = %d",
@@ -637,6 +637,7 @@ static void *rmalloc_runtime(uint32_t flags, uint32_t caps, size_t bytes)
 static void *_malloc_unlocked(enum mem_zone zone, uint32_t flags, uint32_t caps,
 			      size_t bytes)
 {
+	struct mm *memmap = memmap_get();
 	void *ptr = NULL;
 
 	switch (zone) {
@@ -660,8 +661,8 @@ static void *_malloc_unlocked(enum mem_zone zone, uint32_t flags, uint32_t caps,
 		bzero(ptr, bytes);
 #endif
 
-	memmap.heap_trace_updated = 1;
-	dcache_writeback_region(&memmap, sizeof(memmap));
+	memmap->heap_trace_updated = 1;
+	dcache_writeback_region(memmap, sizeof(*memmap));
 
 	return ptr;
 }
@@ -669,14 +670,15 @@ static void *_malloc_unlocked(enum mem_zone zone, uint32_t flags, uint32_t caps,
 /* allocates memory - not for direct use, clients use rmalloc() */
 void *_malloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
 {
+	struct mm *memmap = memmap_get();
 	uint32_t lock_flags;
 	void *ptr = NULL;
 
-	spin_lock_irq(memmap.lock, lock_flags);
+	spin_lock_irq(memmap->lock, lock_flags);
 
 	ptr = _malloc_unlocked(zone, flags, caps, bytes);
 
-	spin_unlock_irq(memmap.lock, lock_flags);
+	spin_unlock_irq(memmap->lock, lock_flags);
 
 	return ptr;
 }
@@ -695,16 +697,17 @@ void *_zalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
 
 void *rzalloc_core_sys(int core, size_t bytes)
 {
+	struct mm *memmap = memmap_get();
 	uint32_t flags;
 	void *ptr = NULL;
 
-	spin_lock_irq(memmap.lock, flags);
+	spin_lock_irq(memmap->lock, flags);
 
 	ptr = rmalloc_sys(0, 0, core, bytes);
 	if (ptr)
 		bzero(ptr, bytes);
 
-	spin_unlock_irq(memmap.lock, flags);
+	spin_unlock_irq(memmap->lock, flags);
 
 	return ptr;
 }
@@ -785,13 +788,14 @@ static void *alloc_heap_buffer(struct mm_heap *heap, uint32_t flags,
 static void *_balloc_unlocked(uint32_t flags, uint32_t caps, size_t bytes,
 			      uint32_t alignment)
 {
+	struct mm *memmap = memmap_get();
 	struct mm_heap *heap;
 	unsigned int i, n;
 	void *ptr = NULL;
 
-	for (i = 0, n = PLATFORM_HEAP_BUFFER, heap = memmap.buffer;
+	for (i = 0, n = PLATFORM_HEAP_BUFFER, heap = memmap->buffer;
 	     i < PLATFORM_HEAP_BUFFER;
-	     i = heap - memmap.buffer + 1, n = PLATFORM_HEAP_BUFFER - i,
+	     i = heap - memmap->buffer + 1, n = PLATFORM_HEAP_BUFFER - i,
 	     heap++) {
 		heap = get_heap_from_caps(heap, n, caps);
 		if (!heap)
@@ -810,20 +814,22 @@ static void *_balloc_unlocked(uint32_t flags, uint32_t caps, size_t bytes,
 /* allocates continuous buffers - not for direct use, clients use rballoc() */
 void *_balloc(uint32_t flags, uint32_t caps, size_t bytes, uint32_t alignment)
 {
+	struct mm *memmap = memmap_get();
 	void *ptr = NULL;
 	uint32_t lock_flags;
 
-	spin_lock_irq(memmap.lock, lock_flags);
+	spin_lock_irq(memmap->lock, lock_flags);
 
 	ptr = _balloc_unlocked(flags, caps, bytes, alignment);
 
-	spin_unlock_irq(memmap.lock, lock_flags);
+	spin_unlock_irq(memmap->lock, lock_flags);
 
 	return ptr;
 }
 
 static void _rfree_unlocked(void *ptr)
 {
+	struct mm *memmap = memmap_get();
 	struct mm_heap *cpu_heap;
 
 	/* sanity check - NULL ptrs are fine */
@@ -834,7 +840,7 @@ static void _rfree_unlocked(void *ptr)
 	ptr = platform_rfree_prepare(ptr);
 
 	/* use the heap dedicated for the selected core */
-	cpu_heap = memmap.system + cpu_get_id();
+	cpu_heap = memmap->system + cpu_get_id();
 
 	/* panic if pointer is from system heap */
 	if (ptr >= (void *)cpu_heap->heap &&
@@ -846,29 +852,31 @@ static void _rfree_unlocked(void *ptr)
 
 	/* free the block */
 	free_block(ptr);
-	memmap.heap_trace_updated = 1;
-	dcache_writeback_region(&memmap, sizeof(memmap));
+	memmap->heap_trace_updated = 1;
+	dcache_writeback_region(memmap, sizeof(*memmap));
 }
 
 void rfree(void *ptr)
 {
+	struct mm *memmap = memmap_get();
 	uint32_t flags;
 
-	spin_lock_irq(memmap.lock, flags);
+	spin_lock_irq(memmap->lock, flags);
 	_rfree_unlocked(ptr);
-	spin_unlock_irq(memmap.lock, flags);
+	spin_unlock_irq(memmap->lock, flags);
 }
 
 void *_realloc(void *ptr, enum mem_zone zone, uint32_t flags, uint32_t caps,
 	       size_t bytes)
 {
+	struct mm *memmap = memmap_get();
 	void *new_ptr = NULL;
 	uint32_t lock_flags;
 
 	if (!bytes)
 		return new_ptr;
 
-	spin_lock_irq(memmap.lock, lock_flags);
+	spin_lock_irq(memmap->lock, lock_flags);
 
 	new_ptr = _malloc_unlocked(zone, flags, caps, bytes);
 
@@ -878,7 +886,7 @@ void *_realloc(void *ptr, enum mem_zone zone, uint32_t flags, uint32_t caps,
 	if (new_ptr)
 		_rfree_unlocked(ptr);
 
-	spin_unlock_irq(memmap.lock, lock_flags);
+	spin_unlock_irq(memmap->lock, lock_flags);
 
 	return new_ptr;
 }
@@ -886,13 +894,14 @@ void *_realloc(void *ptr, enum mem_zone zone, uint32_t flags, uint32_t caps,
 void *_brealloc(void *ptr, uint32_t flags, uint32_t caps, size_t bytes,
 		uint32_t alignment)
 {
+	struct mm *memmap = memmap_get();
 	void *new_ptr = NULL;
 	uint32_t lock_flags;
 
 	if (!bytes)
 		return new_ptr;
 
-	spin_lock_irq(memmap.lock, lock_flags);
+	spin_lock_irq(memmap->lock, lock_flags);
 
 	new_ptr = _balloc_unlocked(flags, caps, bytes, alignment);
 
@@ -902,7 +911,7 @@ void *_brealloc(void *ptr, uint32_t flags, uint32_t caps, size_t bytes,
 	if (new_ptr)
 		_rfree_unlocked(ptr);
 
-	spin_unlock_irq(memmap.lock, lock_flags);
+	spin_unlock_irq(memmap->lock, lock_flags);
 
 	return new_ptr;
 }
@@ -945,7 +954,7 @@ void free_heap(enum mem_zone zone)
 		panic(SOF_IPC_PANIC_MEM);
 	}
 
-	cpu_heap = memmap.system + cpu_get_id();
+	cpu_heap = memmap_get()->system + cpu_get_id();
 	cpu_heap->info.used = 0;
 	cpu_heap->info.free = cpu_heap->size;
 
@@ -990,18 +999,20 @@ void heap_trace(struct mm_heap *heap, int size)
 
 void heap_trace_all(int force)
 {
-	dcache_invalidate_region(&memmap, sizeof(memmap));
+	struct mm *memmap = memmap_get();
+
+	dcache_invalidate_region(memmap, sizeof(*memmap));
 
 	/* has heap changed since last shown */
-	if (memmap.heap_trace_updated || force) {
+	if (memmap->heap_trace_updated || force) {
 		trace_mem_init("heap: buffer status");
-		heap_trace(memmap.buffer, PLATFORM_HEAP_BUFFER);
+		heap_trace(memmap->buffer, PLATFORM_HEAP_BUFFER);
 		trace_mem_init("heap: runtime status");
-		heap_trace(memmap.runtime, PLATFORM_HEAP_RUNTIME);
+		heap_trace(memmap->runtime, PLATFORM_HEAP_RUNTIME);
 	}
 
-	memmap.heap_trace_updated = 0;
-	dcache_writeback_region(&memmap, sizeof(memmap));
+	memmap->heap_trace_updated = 0;
+	dcache_writeback_region(memmap, sizeof(*memmap));
 }
 #else
 void heap_trace_all(int force) { }
@@ -1011,32 +1022,34 @@ void heap_trace(struct mm_heap *heap, int size) { }
 /* initialise map */
 void init_heap(struct sof *sof)
 {
+	struct mm *memmap = sof->memory_map;
 	extern uintptr_t _system_heap_start;
 
 	/* sanity check for malformed images or loader issues */
-	if (memmap.system[0].heap != (uintptr_t)&_system_heap_start)
+	if (memmap->system[0].heap != (uintptr_t)&_system_heap_start)
 		panic(SOF_IPC_PANIC_MEM);
 
-	init_heap_map(memmap.system_runtime, PLATFORM_HEAP_SYSTEM_RUNTIME);
+	init_heap_map(memmap->system_runtime, PLATFORM_HEAP_SYSTEM_RUNTIME);
 
-	init_heap_map(memmap.runtime, PLATFORM_HEAP_RUNTIME);
+	init_heap_map(memmap->runtime, PLATFORM_HEAP_RUNTIME);
 
-	init_heap_map(memmap.buffer, PLATFORM_HEAP_BUFFER);
+	init_heap_map(memmap->buffer, PLATFORM_HEAP_BUFFER);
 
 #if CONFIG_DEBUG_BLOCK_FREE
-	write_pattern((struct mm_heap *)&memmap.buffer, PLATFORM_HEAP_BUFFER,
-				  DEBUG_BLOCK_FREE_VALUE_8BIT);
-	write_pattern((struct mm_heap *)&memmap.runtime, PLATFORM_HEAP_RUNTIME,
-				  DEBUG_BLOCK_FREE_VALUE_8BIT);
+	write_pattern((struct mm_heap *)&memmap->buffer, PLATFORM_HEAP_BUFFER,
+		      DEBUG_BLOCK_FREE_VALUE_8BIT);
+	write_pattern((struct mm_heap *)&memmap->runtime, PLATFORM_HEAP_RUNTIME,
+		      DEBUG_BLOCK_FREE_VALUE_8BIT);
 #endif
 
 	/* alloc manually to avoid deadlock */
-	memmap.lock = _malloc_unlocked(SOF_MEM_ZONE_SYS, SOF_MEM_FLAG_SHARED,
-				       SOF_MEM_CAPS_RAM, sizeof(*memmap.lock));
-	if (!memmap.lock)
+	memmap->lock = _malloc_unlocked(SOF_MEM_ZONE_SYS, SOF_MEM_FLAG_SHARED,
+					SOF_MEM_CAPS_RAM,
+					sizeof(*memmap->lock));
+	if (!memmap->lock)
 		panic(SOF_IPC_PANIC_MEM);
 
-	bzero(memmap.lock, sizeof(*memmap.lock));
+	bzero(memmap->lock, sizeof(*memmap->lock));
 
-	dcache_writeback_region(&memmap, sizeof(memmap));
+	dcache_writeback_region(memmap, sizeof(*memmap));
 }

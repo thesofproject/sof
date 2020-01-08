@@ -16,10 +16,6 @@
 #include <ipc/header.h>
 #include <ipc/topology.h>
 
-extern struct mm memmap;
-
-static struct sof *sof;
-
 enum test_type {
 	TEST_BULK = 0,
 	TEST_ZERO,
@@ -216,26 +212,24 @@ static struct test_case test_cases[] = {
 
 static int setup(void **state)
 {
-	sof = malloc(sizeof(struct sof));
-	platform_init_memmap(sof);
-	init_heap(sof);
+	platform_init_memmap(sof_get());
+	init_heap(sof_get());
 
 	return 0;
 }
 
 static int teardown(void **state)
 {
-	free(sof);
-
 	return 0;
 }
 
 static int clear_sys(void **state)
 {
+	struct mm *memmap = memmap_get();
 	int sysheap_idx = 0;
 
-	for (; sysheap_idx < ARRAY_SIZE(memmap.system); ++sysheap_idx) {
-		struct mm_heap *cpu_heap = &memmap.system[sysheap_idx];
+	for (; sysheap_idx < ARRAY_SIZE(memmap->system); ++sysheap_idx) {
+		struct mm_heap *cpu_heap = &memmap->system[sysheap_idx];
 
 		cpu_heap->info.used = 0;
 		cpu_heap->info.free = cpu_heap->size;
