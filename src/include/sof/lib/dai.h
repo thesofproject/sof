@@ -29,6 +29,7 @@
 
 struct dai;
 struct sof_ipc_dai_config;
+struct sof_ipc_stream_params;
 
 /** \addtogroup sof_dai_drivers DAI Drivers
  *  DAI Drivers API specification.
@@ -65,6 +66,8 @@ struct dai_ops {
 	int (*trigger)(struct dai *dai, int cmd, int direction);
 	int (*pm_context_restore)(struct dai *dai);
 	int (*pm_context_store)(struct dai *dai);
+	int (*get_hw_params)(struct dai *dai,
+			     struct sof_ipc_stream_params *params);
 	int (*get_handshake)(struct dai *dai, int direction, int stream_id);
 	int (*get_fifo)(struct dai *dai, int direction, int stream_id);
 	int (*probe)(struct dai *dai);
@@ -262,6 +265,19 @@ static inline int dai_pm_context_store(struct dai *dai)
 static inline int dai_pm_context_restore(struct dai *dai)
 {
 	int ret = dai->drv->ops.pm_context_restore(dai);
+
+	platform_shared_commit(dai, sizeof(*dai));
+
+	return ret;
+}
+
+/**
+ * \brief Get Digital Audio interface stream parameters
+ */
+static inline int dai_get_hw_params(struct dai *dai,
+				    struct sof_ipc_stream_params *params)
+{
+	int ret = dai->drv->ops.get_hw_params(dai, params);
 
 	platform_shared_commit(dai, sizeof(*dai));
 
