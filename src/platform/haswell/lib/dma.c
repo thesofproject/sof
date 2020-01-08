@@ -114,6 +114,11 @@ struct dma dma[PLATFORM_NUM_DMACS] = {
 	.ops		= &dw_dma_ops,
 },};
 
+static struct dma_info lib_dma = {
+	.dma_array = dma,
+	.num_dmas = ARRAY_SIZE(dma)
+};
+
 /* Initialize all platform DMAC's */
 int dmac_init(struct sof *sof)
 {
@@ -133,8 +138,7 @@ int dmac_init(struct sof *sof)
 	io_reg_update_bits(SHIM_BASE + SHIM_IMRD,
 			   SHIM_IMRD_DMAC1, 0);
 
-	/* tell the lib DMAs are ready to use */
-	dma_install(dma, ARRAY_SIZE(dma));
+	sof->dma_info = &lib_dma;
 
 	return 0;
 }

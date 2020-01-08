@@ -22,13 +22,13 @@
 #include <sof/lib/alloc.h>
 #include <sof/lib/cache.h>
 #include <sof/lib/io.h>
+#include <sof/sof.h>
 #include <sof/spinlock.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
 struct comp_buffer;
-struct sof;
 
 /** \addtogroup sof_dma_drivers DMA Drivers
  *  DMA Drivers API specification.
@@ -229,16 +229,6 @@ extern struct dma dma[];
  * \param[in] sof Pointer to firmware main context.
  */
 int dmac_init(struct sof *sof);
-
-/**
- *  \brief Plugs platform specific DMA array once initialized into the lib.
- *
- *  Lib serves the DMAs to other FW elements by dma_get()
- *
- *  \param[in] dma_array Array of DMAs.
- *  \param[in] num_dmas Number of elements in dma_array.
- */
-void dma_install(struct dma *dma_array, size_t num_dmas);
 
 /**
  * \brief API to request a platform DMAC.
@@ -539,6 +529,11 @@ int dma_copy_to_host_nowait(struct dma_copy *dc, struct dma_sg_config *host_sg,
 	int32_t host_offset, void *local_ptr, int32_t size);
 
 int dma_copy_set_stream_tag(struct dma_copy *dc, uint32_t stream_tag);
+
+static inline struct dma_info *dma_info_get(void)
+{
+	return sof_get()->dma_info;
+}
 
 /** @}*/
 

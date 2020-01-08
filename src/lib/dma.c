@@ -17,30 +17,20 @@
 #include <stddef.h>
 #include <stdint.h>
 
-static struct dma_info lib_dma = {
-	.dma_array = NULL,
-	.num_dmas = 0
-};
-
-void dma_install(struct dma *dma_array, size_t num_dmas)
-{
-	lib_dma.dma_array = dma_array;
-	lib_dma.num_dmas = num_dmas;
-}
-
 struct dma *dma_get(uint32_t dir, uint32_t cap, uint32_t dev, uint32_t flags)
 {
+	struct dma_info *info = dma_info_get();
 	int users, ret;
 	int min_users = INT32_MAX;
 	struct dma *d = NULL, *dmin = NULL;
 
-	if (!lib_dma.num_dmas) {
+	if (!info->num_dmas) {
 		trace_error(TRACE_CLASS_DMA, "dma_get(): No DMACs installed");
 		return NULL;
 	}
 
 	/* find DMAC with free channels that matches request */
-	for (d = lib_dma.dma_array; d < lib_dma.dma_array + lib_dma.num_dmas;
+	for (d = info->dma_array; d < info->dma_array + info->num_dmas;
 	     d++) {
 		/* skip if this DMAC does not support the requested dir */
 		if (dir && (d->plat_data.dir & dir) == 0)
@@ -82,8 +72,8 @@ struct dma *dma_get(uint32_t dir, uint32_t cap, uint32_t dev, uint32_t flags)
 		trace_error(TRACE_CLASS_DMA, "No DMAC dir %d caps 0x%x "
 			    "dev 0x%x flags 0x%x", dir, cap, dev, flags);
 
-		for (d = lib_dma.dma_array;
-		     d < lib_dma.dma_array + lib_dma.num_dmas;
+		for (d = info->dma_array;
+		     d < info->dma_array + info->num_dmas;
 		     d++) {
 			trace_error(TRACE_CLASS_DMA, " DMAC ID %d users %d "
 				    "busy channels %d", d->plat_data.id,
