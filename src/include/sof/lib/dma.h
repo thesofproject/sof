@@ -28,6 +28,7 @@
 #include <stdint.h>
 
 struct comp_buffer;
+struct sof;
 
 /** \addtogroup sof_dma_drivers DMA Drivers
  *  DMA Drivers API specification.
@@ -219,8 +220,10 @@ extern struct dma dma[];
 
 /**
  * \brief API to initialize a platform DMA controllers.
+ *
+ * \param[in] sof Pointer to firmware main context.
  */
-int dmac_init(void);
+int dmac_init(struct sof *sof);
 
 /**
  *  \brief Plugs platform specific DMA array once initialized into the lib.

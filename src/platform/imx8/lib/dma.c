@@ -9,6 +9,7 @@
 #include <sof/drivers/interrupt.h>
 #include <sof/lib/dma.h>
 #include <sof/lib/memory.h>
+#include <sof/sof.h>
 #include <sof/spinlock.h>
 
 extern struct dma_ops dummy_dma_ops;
@@ -45,7 +46,7 @@ struct dma dma[PLATFORM_NUM_DMACS] = {
 },
 };
 
-int dmac_init(void)
+int dmac_init(struct sof *sof)
 {
 	int i;
 

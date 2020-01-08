@@ -11,6 +11,7 @@
 #include <sof/lib/io.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/shim.h>
+#include <sof/sof.h>
 #include <sof/spinlock.h>
 
 static struct dw_drv_plat_data dmac0 = {
@@ -114,7 +115,7 @@ struct dma dma[PLATFORM_NUM_DMACS] = {
 },};
 
 /* Initialize all platform DMAC's */
-int dmac_init(void)
+int dmac_init(struct sof *sof)
 {
 	int i;
 	/* no probing before first use */
