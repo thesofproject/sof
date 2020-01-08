@@ -124,6 +124,11 @@ static struct dai_type_info dti[] = {
 	}
 };
 
+static struct dai_info lib_dai = {
+	.dai_type_array = dti,
+	.num_dai_types = ARRAY_SIZE(dti)
+};
+
 int dai_init(struct sof *sof)
 {
 	int i;
@@ -132,6 +137,7 @@ int dai_init(struct sof *sof)
 	for (i = 0; i < ARRAY_SIZE(ssp); i++)
 		spinlock_init(&ssp[i].lock);
 
-	dai_install(dti, ARRAY_SIZE(dti));
+	sof->dai_info = &lib_dai;
+
 	return 0;
 }

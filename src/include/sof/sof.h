@@ -13,6 +13,7 @@
 #include <sof/lib/memory.h>
 
 struct clock_info;
+struct dai_info;
 struct dma_trace_data;
 struct ipc;
 struct ll_schedule_domain;
@@ -67,6 +68,9 @@ struct sof {
 
 	/* shared notifier data */
 	struct notify_data *notify_data;
+
+	/* platform dai information */
+	struct dai_info *dai_info;
 
 	__aligned(PLATFORM_DCACHE_ALIGN) int alignment[0];
 } __aligned(PLATFORM_DCACHE_ALIGN);
