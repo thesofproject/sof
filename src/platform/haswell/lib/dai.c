@@ -9,6 +9,7 @@
 #include <sof/drivers/ssp.h>
 #include <sof/lib/dai.h>
 #include <sof/lib/dma.h>
+#include <sof/sof.h>
 #include <ipc/dai.h>
 #include <ipc/stream.h>
 
@@ -55,7 +56,7 @@ static struct dai_type_info dti[] = {
 	}
 };
 
-int dai_init(void)
+int dai_init(struct sof *sof)
 {
 	int i;
 

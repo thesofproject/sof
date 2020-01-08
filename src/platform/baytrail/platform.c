@@ -237,7 +237,7 @@ int platform_init(struct sof *sof)
 	ipc_init(sof);
 
 	trace_point(TRACE_BOOT_PLATFORM_DAI);
-	ret = dai_init();
+	ret = dai_init(sof);
 	if (ret < 0)
 		return -ENODEV;
 
