@@ -670,12 +670,6 @@ static int eq_fir_cmd(struct comp_dev *dev, int cmd, void *data,
 	case COMP_CMD_GET_DATA:
 		ret = fir_cmd_get_data(dev, cdata, max_data_size);
 		break;
-	case COMP_CMD_SET_VALUE:
-		trace_eq_with_ids(dev, "eq_fir_cmd(), COMP_CMD_SET_VALUE");
-		break;
-	case COMP_CMD_GET_VALUE:
-		trace_eq_with_ids(dev, "eq_fir_cmd(), COMP_CMD_GET_VALUE");
-		break;
 	default:
 		trace_eq_error_with_ids(dev, "eq_fir_cmd() error: "
 					"invalid command");
