@@ -136,14 +136,51 @@ static void mux_free(struct comp_dev *dev)
 	rfree(dev);
 }
 
+static uint8_t get_stream_index(struct comp_data *cd, uint32_t pipe_id)
+{
+	int i;
+
+	for (i = 0; i < MUX_MAX_STREAMS; i++)
+		if (cd->config.streams[i].pipeline_id == pipe_id)
+			return i;
+
+	comp_cl_err(&comp_mux, "get_stream_index() error: couldn't find configuration for connected pipeline %u",
+		    pipe_id);
+
+	return 0;
+}
+
+static int mux_verify_params(struct comp_dev *dev,
+			     struct sof_ipc_stream_params *params)
+{
+	int ret;
+
+	comp_dbg(dev, "mux_verify_params()");
+
+	ret = comp_verify_params(dev, BUFF_PARAMS_CHANNELS, params);
+	if (ret < 0) {
+		comp_err(dev, "mux_verify_params() error: comp_verify_params() failed.");
+		return ret;
+	}
+
+	return 0;
+}
+
 /* set component audio stream parameters */
 static int mux_params(struct comp_dev *dev,
 		      struct sof_ipc_stream_params *params)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *sinkb;
+	int err;
 
 	comp_info(dev, "mux_params()");
+
+	err = mux_verify_params(dev, params);
+	if (err < 0) {
+		comp_err(dev, "mux_fir_params(): pcm params verification failed.");
+		return -EINVAL;
+	}
 
 	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
 				  source_list);
@@ -231,19 +268,6 @@ static int mux_cmd(struct comp_dev *dev, int cmd, void *data,
 	default:
 		return -EINVAL;
 	}
-}
-
-static uint8_t get_stream_index(struct comp_data *cd, uint32_t pipe_id)
-{
-	int i;
-
-	for (i = 0; i < MUX_MAX_STREAMS; i++) {
-		if (cd->config.streams[i].pipeline_id == pipe_id)
-			return i;
-	}
-	comp_cl_err(&comp_mux, "get_stream_index() error: couldn't find configuration for connected pipeline %u",
-		    pipe_id);
-	return 0;
 }
 
 /* process and copy stream data from source to sink buffers */

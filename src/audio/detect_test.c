@@ -365,21 +365,46 @@ static void test_keyword_free(struct comp_dev *dev)
 	rfree(dev);
 }
 
+static int test_keyword_verify_params(struct comp_dev *dev,
+				      struct sof_ipc_stream_params *params)
+{
+	int ret;
+
+	comp_dbg(dev, "test_keyword_verify_params()");
+
+	ret = comp_verify_params(dev, 0, params);
+	if (ret < 0) {
+		comp_err(dev, "test_keyword_verify_params() error: comp_verify_params() failed");
+		return ret;
+	}
+
+	return 0;
+}
+
 /* set component audio stream parameters */
 static int test_keyword_params(struct comp_dev *dev,
 			       struct sof_ipc_stream_params *params)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *sourceb;
+	int err;
+
+	/* Detector is used only in KPB topology. It always requires channels
+	 * parameter set to 1.
+	 */
+	params->channels = 1;
+
+	err = test_keyword_verify_params(dev, params);
+	if (err < 0) {
+		comp_err(dev, "test_keyword_params(): pcm params verification failed.");
+		return -EINVAL;
+	}
 
 	cd->sample_valid_bytes = params->sample_valid_bytes;
 
 	/* keyword components will only ever have 1 source */
 	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer,
 				  sink_list);
-
-	/* TODO: remove in the future */
-	sourceb->stream.channels = 1;
 
 	if (sourceb->stream.channels != 1) {
 		comp_err(dev, "test_keyword_params() error: only single-channel supported");

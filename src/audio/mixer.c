@@ -154,6 +154,21 @@ static void mixer_free(struct comp_dev *dev)
 	rfree(dev);
 }
 
+static int mixer_verify_params(struct comp_dev *dev,
+			       struct sof_ipc_stream_params *params)
+{
+	int ret;
+
+	comp_dbg(dev, "mixer_verify_params()");
+
+	ret = comp_verify_params(dev, BUFF_PARAMS_CHANNELS, params);
+	if (ret < 0) {
+		comp_err(dev, "mixer_verify_params() error: comp_verify_params() failed.");
+		return ret;
+	}
+
+	return 0;
+}
 /* set component audio stream parameters */
 static int mixer_params(struct comp_dev *dev,
 			struct sof_ipc_stream_params *params)
@@ -161,8 +176,15 @@ static int mixer_params(struct comp_dev *dev,
 	struct sof_ipc_comp_config *config = COMP_GET_CONFIG(dev);
 	struct comp_buffer *sinkb;
 	uint32_t period_bytes;
+	int err;
 
 	comp_info(dev, "mixer_params()");
+
+	err = mixer_verify_params(dev, params);
+	if (err < 0) {
+		comp_err(dev, "mixer_params(): pcm params verification failed.");
+		return -EINVAL;
+	}
 
 	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
 							source_list);

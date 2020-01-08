@@ -511,6 +511,42 @@ static void src_free(struct comp_dev *dev)
 	rfree(dev);
 }
 
+static int src_verify_params(struct comp_dev *dev,
+			     struct sof_ipc_stream_params *params)
+{
+	struct sof_ipc_comp_src *src = COMP_GET_IPC(dev, sof_ipc_comp_src);
+	int ret;
+
+	comp_dbg(dev, "src_verify_params()");
+
+	/* check whether params->rate (received from driver) are equal
+	 * to src->source_rate (PLAYBACK) or src->sink_rate (CAPTURE) set during
+	 * creating src component in src_new().
+	 * src->source/sink_rate = 0 means that source/sink rate can vary.
+	 */
+	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
+		if (src->source_rate && (params->rate != src->source_rate)) {
+			comp_err(dev, "src_verify_params(): error: runtime stream pcm rate does not match rate fetched from ipc.");
+			return -EINVAL;
+		}
+	} else {
+		if (src->sink_rate && (params->rate != src->sink_rate)) {
+			comp_err(dev, "src_verify_params(): error: runtime stream pcm rate does not match rate fetched from ipc.");
+			return -EINVAL;
+		}
+	}
+
+	/* update downstream (playback) or upstream (capture) buffer parameters
+	 */
+	ret = comp_verify_params(dev, BUFF_PARAMS_RATE, params);
+	if (ret < 0) {
+		comp_err(dev, "src_verify_params() error: comp_verify_params() failed.");
+		return ret;
+	}
+
+	return 0;
+}
+
 /* set component audio stream parameters */
 static int src_params(struct comp_dev *dev,
 		      struct sof_ipc_stream_params *params)
@@ -526,6 +562,12 @@ static int src_params(struct comp_dev *dev,
 
 	comp_info(dev, "src_params()");
 
+	err = src_verify_params(dev, params);
+	if (err < 0) {
+		comp_err(dev, "src_params(): pcm params verification failed.");
+		return -EINVAL;
+	}
+
 	cd->sample_container_bytes = params->sample_container_bytes;
 
 	/* src components will only ever have 1 source and 1 sink buffer */
@@ -537,25 +579,11 @@ static int src_params(struct comp_dev *dev,
 	comp_info(dev, "src_params(): src->source_rate: %d", src->source_rate);
 	comp_info(dev, "src_params(): src->sink_rate: %d", src->sink_rate);
 
-	/* Calculate source and sink rates, one rate will come from IPC new
-	 * and the other from params.
-	 */
-	if (src->source_rate == 0) {
-		/* params rate is source rate */
-		cd->source_rate = sourceb->stream.rate;
-		cd->sink_rate = src->sink_rate;
-		/* re-write our params with output rate for next component */
-		sinkb->stream.rate = cd->sink_rate;
-	} else {
-		/* params rate is sink rate */
-		cd->source_rate = src->source_rate;
-		cd->sink_rate = sinkb->stream.rate;
-		/* re-write our params with output rate for next component */
-		sourceb->stream.rate = cd->source_rate;
-	}
+	/* Set source/sink_rate/frames */
+	cd->source_rate = sourceb->stream.rate;
+	cd->sink_rate = sinkb->stream.rate;
 
-	cd->source_frames = dev->frames * cd->source_rate /
-		cd->sink_rate;
+	cd->source_frames = dev->frames * cd->source_rate / cd->sink_rate;
 	cd->sink_frames = dev->frames;
 
 	/* Allocate needed memory for delay lines */

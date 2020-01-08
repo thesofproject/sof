@@ -347,15 +347,50 @@ static int asrc_trigger(struct comp_dev *dev, int cmd)
 	return comp_set_state(dev, cmd);
 }
 
+static int asrc_verify_params(struct comp_dev *dev,
+			      struct sof_ipc_stream_params *params)
+{
+	struct sof_ipc_comp_asrc *asrc = COMP_GET_IPC(dev, sof_ipc_comp_asrc);
+	int ret;
+
+	comp_dbg(dev, "asrc_verify_params()");
+
+	/* check whether params->rate (received from driver) are equal
+	 * to asrc->source_rate (PLAYBACK) or asrc->sink_rate (CAPTURE) set
+	 * during creating src component in asrc_new().
+	 * src->source/sink_rate = 0 means that source/sink rate can vary.
+	 */
+	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
+		if (params->rate != asrc->source_rate && asrc->source_rate) {
+			comp_err(dev, "asrc_verify_params(): error: runtime stream pcm rate does not match rate fetched from ipc.");
+			return -EINVAL;
+		}
+	} else {
+		if (params->rate != asrc->sink_rate && asrc->sink_rate) {
+			comp_err(dev, "asrc_verify_params(): error: runtime stream pcm rate does not match rate fetched from ipc.");
+			return -EINVAL;
+		}
+	}
+
+	/* update downstream (playback) or upstream (capture) buffer parameters
+	 */
+	ret = comp_verify_params(dev, BUFF_PARAMS_RATE, params);
+	if (ret < 0) {
+		comp_err(dev, "asrc_verify_params() error: comp_verify_params() failed.");
+		return ret;
+	}
+
+	return 0;
+}
+
 /* set component audio stream parameters */
 static int asrc_params(struct comp_dev *dev,
 		       struct sof_ipc_stream_params *pcm_params)
 {
-	struct sof_ipc_stream_params *params = pcm_params;
-	struct sof_ipc_comp_asrc *asrc = COMP_GET_IPC(dev, sof_ipc_comp_asrc);
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *sinkb;
 	struct comp_buffer *sourceb;
+	int err;
 
 	comp_info(dev, "asrc_params()");
 
@@ -364,28 +399,23 @@ static int asrc_params(struct comp_dev *dev,
 	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
 				source_list);
 
-	/* Calculate source and sink rates, one rate will come from IPC new
-	 * and the other from params.
-	 */
-	if (asrc->source_rate) {
-		/* params rate is sink rate */
-		cd->source_rate = asrc->source_rate;
-		cd->sink_rate = params->rate;
-		cd->source_frames = ceil_divide(dev->frames * cd->source_rate,
-						cd->sink_rate);
-		cd->sink_frames = dev->frames;
-		/* re-write our params with output rate for next component */
-		sourceb->stream.rate = cd->source_rate;
-	} else {
-		/* params rate is source rate */
-		cd->source_rate = params->rate;
-		cd->sink_rate = asrc->sink_rate;
-		/* re-write our params with output rate for next component */
-		sinkb->stream.rate = cd->sink_rate;
-		cd->source_frames = dev->frames;
-		cd->sink_frames = ceil_divide(dev->frames * cd->sink_rate,
-					      cd->source_rate);
+	err = asrc_verify_params(dev, pcm_params);
+	if (err < 0) {
+		comp_err(dev, "src_params(): pcm params verification failed.");
+		return -EINVAL;
 	}
+
+	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer,
+				  sink_list);
+	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
+				source_list);
+
+	/* set source/sink_frames/rate */
+	cd->source_rate = sourceb->stream.rate;
+	cd->sink_rate = sinkb->stream.rate;
+	cd->sink_frames = dev->frames;
+	cd->source_frames = ceil_divide(dev->frames * cd->source_rate,
+					cd->sink_rate);
 
 	/* Use empirical add +10 for target frames number to avoid xruns and
 	 * distorted audio in beginning of streaming. It's slightly more than

@@ -477,11 +477,35 @@ static void eq_fir_free(struct comp_dev *dev)
 	rfree(dev);
 }
 
+static int eq_fir_verify_params(struct comp_dev *dev,
+				struct sof_ipc_stream_params *params)
+{
+	int ret;
+
+	comp_dbg(dev, "eq_fir_verify_params()");
+
+	ret = comp_verify_params(dev, BUFF_PARAMS_FRAME_FMT, params);
+	if (ret < 0) {
+		comp_err(dev, "eq_fir_verify_params() error: comp_verify_params() failed.");
+		return ret;
+	}
+
+	return 0;
+}
+
 /* set component audio stream parameters */
 static int eq_fir_params(struct comp_dev *dev,
 			 struct sof_ipc_stream_params *params)
 {
+	int err;
+
 	comp_info(dev, "eq_fir_params()");
+
+	err = eq_fir_verify_params(dev, params);
+	if (err < 0) {
+		comp_err(dev, "eq_fir_params(): pcm params verification failed.");
+		return -EINVAL;
+	}
 
 	/* All configuration work is postponed to prepare(). */
 	return 0;
