@@ -122,6 +122,14 @@ struct dai_type_info {
 };
 
 /**
+ * \brief Holds information about array of DAIs grouped by type.
+ */
+struct dai_info {
+	struct dai_type_info *dai_type_array;
+	size_t num_dai_types;
+};
+
+/**
  * \brief API to initialize a platform DAI.
  *
  * \param[in] sof Pointer to firmware main context.
