@@ -218,6 +218,11 @@ struct dma_chan_data {
 extern struct dma dma[];
 
 /**
+ * \brief API to initialize a platform DMA controllers.
+ */
+int dmac_init(void);
+
+/**
  *  \brief Plugs platform specific DMA array once initialized into the lib.
  *
  *  Lib serves the DMAs to other FW elements by dma_get()

@@ -46,8 +46,6 @@
 #define dma_chan_irq(dma, chan) dma_irq(dma)
 #define dma_chan_irq_name(dma, chan) dma_irq_name(dma)
 
-int dmac_init(void);
-
 #endif /* __PLATFORM_LIB_DMA_H__ */
 
 #else
