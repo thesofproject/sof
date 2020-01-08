@@ -47,7 +47,7 @@ int master_core_init(int argc, char *argv[], struct sof *sof)
 
 	/* initialise system services */
 	trace_point(TRACE_BOOT_SYS_HEAP);
-	platform_init_memmap();
+	platform_init_memmap(sof);
 	init_heap(sof);
 
 	interrupt_init();

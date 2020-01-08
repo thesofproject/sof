@@ -14,7 +14,9 @@
 
 #if !defined(__ASSEMBLER__) && !defined(LINKER)
 
-void platform_init_memmap(void);
+struct sof;
+
+void platform_init_memmap(struct sof *sof);
 
 static inline void *platform_shared_get(void *ptr, int bytes)
 {

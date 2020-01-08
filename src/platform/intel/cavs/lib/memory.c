@@ -11,6 +11,7 @@
 #include <sof/lib/cpu.h>
 #include <sof/lib/memory.h>
 #include <sof/platform.h>
+#include <sof/sof.h>
 #include <ipc/topology.h>
 #include <stdint.h>
 
@@ -105,7 +106,7 @@ static struct block_map lp_buf_heap_map[] = {
 
 struct mm memmap;
 
-void platform_init_memmap(void)
+void platform_init_memmap(struct sof *sof)
 {
 	int i;
 
