@@ -87,7 +87,9 @@ int pipeline_connect(struct comp_dev *comp, struct comp_buffer *buffer,
  * It requires function pointer for recursion.
  */
 static int pipeline_for_each_comp(struct comp_dev *current,
-				  int (*func)(struct comp_dev *, void *, int),
+				  int (*func)(struct comp_dev *,
+					      struct comp_buffer *, void *,
+					      int),
 				  void *data,
 				  void (*buff_func)(struct comp_buffer *,
 						    void *),
@@ -116,7 +118,7 @@ static int pipeline_for_each_comp(struct comp_dev *current,
 
 		/* continue further */
 		if (func) {
-			err = func(buffer_comp, data, dir);
+			err = func(buffer_comp, buffer, data, dir);
 			if (err < 0)
 				break;
 		}
@@ -125,7 +127,8 @@ static int pipeline_for_each_comp(struct comp_dev *current,
 	return err;
 }
 
-static int pipeline_comp_complete(struct comp_dev *current, void *data,
+static int pipeline_comp_complete(struct comp_dev *current,
+				  struct comp_buffer *calling_buf, void *data,
 				  int dir)
 {
 	struct pipeline_data *ppl_data = data;
@@ -166,7 +169,7 @@ int pipeline_complete(struct pipeline *p, struct comp_dev *source,
 	/* now walk downstream from source component and
 	 * complete component task and pipeline initialization
 	 */
-	pipeline_comp_complete(source, &data, PPL_DIR_DOWNSTREAM);
+	pipeline_comp_complete(source, NULL, &data, PPL_DIR_DOWNSTREAM);
 
 	p->source_comp = source;
 	p->sink_comp = sink;
@@ -178,7 +181,9 @@ int pipeline_complete(struct pipeline *p, struct comp_dev *source,
 	return 0;
 }
 
-static int pipeline_comp_free(struct comp_dev *current, void *data, int dir)
+static int pipeline_comp_free(struct comp_dev *current,
+			      struct comp_buffer *calling_buf, void *data,
+			      int dir)
 {
 	struct pipeline_data *ppl_data = data;
 	uint32_t flags;
@@ -224,7 +229,8 @@ int pipeline_free(struct pipeline *p)
 		data.start = p->source_comp;
 
 		/* disconnect components */
-		pipeline_comp_free(p->source_comp, &data, PPL_DIR_DOWNSTREAM);
+		pipeline_comp_free(p->source_comp, NULL, &data,
+				   PPL_DIR_DOWNSTREAM);
 	}
 
 	/* remove from any scheduling */
@@ -306,7 +312,9 @@ static void pipeline_set_params(struct comp_dev *comp,
 	}
 }
 
-static int pipeline_comp_params(struct comp_dev *current, void *data, int dir)
+static int pipeline_comp_params(struct comp_dev *current,
+				struct comp_buffer *calling_buf, void *data,
+				int dir)
 {
 	struct pipeline_data *ppl_data = data;
 	int stream_direction = ppl_data->params->params.direction;
@@ -381,7 +389,7 @@ int pipeline_params(struct pipeline *p, struct comp_dev *host,
 	data.params = params;
 	data.start = host;
 
-	ret = pipeline_comp_params(host, &data, params->params.direction);
+	ret = pipeline_comp_params(host, NULL, &data, params->params.direction);
 	if (ret < 0) {
 		pipe_cl_err("pipeline_params() error: ret = %d, host->comp.id = %u",
 			    ret, host->comp.id);
@@ -434,7 +442,9 @@ static int pipeline_comp_task_init(struct pipeline *p)
 	return 0;
 }
 
-static int pipeline_comp_prepare(struct comp_dev *current, void *data, int dir)
+static int pipeline_comp_prepare(struct comp_dev *current,
+				 struct comp_buffer *calling_buf, void *data,
+				 int dir)
 {
 	int err = 0;
 	struct pipeline_data *ppl_data = data;
@@ -487,7 +497,7 @@ int pipeline_prepare(struct pipeline *p, struct comp_dev *dev)
 
 	ppl_data.start = dev;
 
-	ret = pipeline_comp_prepare(dev, &ppl_data, dev->direction);
+	ret = pipeline_comp_prepare(dev, NULL, &ppl_data, dev->direction);
 	if (ret < 0) {
 		pipe_cl_err("pipeline_prepare() error: ret = %d, dev->comp.id = %u",
 			    ret, dev->comp.id);
@@ -529,7 +539,9 @@ static void pipeline_comp_trigger_sched_comp(struct pipeline *p,
 	}
 }
 
-static int pipeline_comp_trigger(struct comp_dev *current, void *data, int dir)
+static int pipeline_comp_trigger(struct comp_dev *current,
+				 struct comp_buffer *calling_buf, void *data,
+				 int dir)
 {
 	struct pipeline_data *ppl_data = data;
 	int is_single_ppl = comp_is_single_pipeline(current, ppl_data->start);
@@ -625,7 +637,7 @@ int pipeline_trigger(struct pipeline *p, struct comp_dev *host, int cmd)
 	data.start = host;
 	data.cmd = cmd;
 
-	ret = pipeline_comp_trigger(host, &data, host->direction);
+	ret = pipeline_comp_trigger(host, NULL, &data, host->direction);
 	if (ret < 0) {
 		pipe_cl_err("pipeline_trigger() error: ret = %d, host->comp.id = %u, cmd = %d",
 			    ret, host->comp.id, cmd);
@@ -634,7 +646,9 @@ int pipeline_trigger(struct pipeline *p, struct comp_dev *host, int cmd)
 	return ret;
 }
 
-static int pipeline_comp_reset(struct comp_dev *current, void *data, int dir)
+static int pipeline_comp_reset(struct comp_dev *current,
+			       struct comp_buffer *calling_buf, void *data,
+			       int dir)
 {
 	struct pipeline *p = data;
 	int stream_direction = dir;
@@ -680,7 +694,7 @@ int pipeline_reset(struct pipeline *p, struct comp_dev *host)
 
 	pipe_info(p, "pipeline_reset()");
 
-	ret = pipeline_comp_reset(host, p, host->direction);
+	ret = pipeline_comp_reset(host, NULL, p, host->direction);
 	if (ret < 0) {
 		pipe_cl_err("pipeline_reset() error: ret = %d, host->comp.id = %u",
 			    ret, host->comp.id);
@@ -689,7 +703,9 @@ int pipeline_reset(struct pipeline *p, struct comp_dev *host)
 	return ret;
 }
 
-static int pipeline_comp_copy(struct comp_dev *current, void *data, int dir)
+static int pipeline_comp_copy(struct comp_dev *current,
+			      struct comp_buffer *calling_buf, void *data,
+			      int dir)
 {
 	struct pipeline_data *ppl_data = data;
 	int is_single_ppl = comp_is_single_pipeline(current, ppl_data->start);
@@ -749,7 +765,7 @@ static int pipeline_copy(struct pipeline *p)
 	data.start = start;
 	data.p = p;
 
-	ret = pipeline_comp_copy(start, &data, dir);
+	ret = pipeline_comp_copy(start, NULL, &data, dir);
 	if (ret < 0)
 		pipe_cl_err("pipeline_copy() error: ret = %d, start->comp.id = %u, dir = %u",
 			    ret, start->comp.id, dir);
@@ -760,7 +776,8 @@ static int pipeline_copy(struct pipeline *p)
 /* Walk the graph to active components in any pipeline to find
  * the first active DAI and return it's timestamp.
  */
-static int pipeline_comp_timestamp(struct comp_dev *current, void *data,
+static int pipeline_comp_timestamp(struct comp_dev *current,
+				   struct comp_buffer *calling_buf, void *data,
 				   int dir)
 {
 	struct pipeline_data *ppl_data = data;
@@ -793,13 +810,15 @@ void pipeline_get_timestamp(struct pipeline *p, struct comp_dev *host,
 	data.start = host;
 	data.posn = posn;
 
-	pipeline_comp_timestamp(host, &data, host->direction);
+	pipeline_comp_timestamp(host, NULL, &data, host->direction);
 
 	/* set timestamp resolution */
 	posn->timestamp_ns = p->ipc_pipe.period * 1000;
 }
 
-static int pipeline_comp_xrun(struct comp_dev *current, void *data, int dir)
+static int pipeline_comp_xrun(struct comp_dev *current,
+			      struct comp_buffer *calling_buf, void *data,
+			      int dir)
 {
 	struct pipeline_data *ppl_data = data;
 
@@ -843,7 +862,7 @@ void pipeline_xrun(struct pipeline *p, struct comp_dev *dev,
 	posn.xrun_comp_id = dev->comp.id;
 	data.posn = &posn;
 
-	pipeline_comp_xrun(dev, &data, dev->direction);
+	pipeline_comp_xrun(dev, NULL, &data, dev->direction);
 }
 
 #if NO_XRUN_RECOVERY
