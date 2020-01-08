@@ -10,8 +10,6 @@
 #ifndef __PLATFORM_LIB_DAI_H__
 #define __PLATFORM_LIB_DAI_H__
 
-int dai_init(void);
-
 #endif /* __PLATFORM_LIB_DAI_H__ */
 
 #else

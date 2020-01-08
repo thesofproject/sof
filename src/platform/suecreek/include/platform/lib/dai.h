@@ -32,8 +32,6 @@
 /** \brief Number of HD/A Link Inputs */
 #define DAI_NUM_HDA_IN		7
 
-int dai_init(void);
-
 #endif /* __PLATFORM_LIB_DAI_H__ */
 
 #else
