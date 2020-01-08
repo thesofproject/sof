@@ -66,6 +66,8 @@
 
 #if !defined(__ASSEMBLER__) && !defined(LINKER)
 
+struct sof;
+
 #define SRAM_ALIAS_BASE		0x9E000000
 #define SRAM_ALIAS_MASK		0xFF000000
 #define SRAM_ALIAS_OFFSET	0x20000000
@@ -108,7 +110,7 @@ static inline void *platform_rfree_prepare(void *ptr)
 	return is_uncached(ptr) ? uncache_to_cache(ptr) : ptr;
 }
 
-void platform_init_memmap(void);
+void platform_init_memmap(struct sof *sof);
 
 #endif
 

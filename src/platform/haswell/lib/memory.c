@@ -7,6 +7,7 @@
 #include <sof/common.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/memory.h>
+#include <sof/sof.h>
 #include <ipc/topology.h>
 
 /* Heap blocks for system runtime */
@@ -88,7 +89,7 @@ struct mm memmap = {
 			HEAP_RUNTIME_SIZE + HEAP_BUFFER_SIZE,},
 };
 
-void platform_init_memmap(void)
+void platform_init_memmap(struct sof *sof)
 {
 	/*  memmap has been initialized statically as a part of .data */
 }
