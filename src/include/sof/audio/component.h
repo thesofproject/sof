@@ -668,6 +668,21 @@ static inline int comp_get_endpoint_type(struct comp_dev *dev)
 	}
 }
 
+/* \brief Set component period frames */
+static inline void component_set_period_frames(struct comp_dev *current,
+					       uint32_t rate)
+{
+	int period;
+
+	period = current->pipeline->ipc_pipe.period;
+
+	/* Samplerate is in Hz and period in microseconds.
+	 * As we don't have floats use scale divider 1000000.
+	 * Also integer round up the result.
+	 */
+	current->frames = ceil_divide(rate * period, 1000000);
+}
+
 /** @}*/
 
 /** \name XRUN handling.
