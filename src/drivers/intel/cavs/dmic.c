@@ -1046,6 +1046,42 @@ static int configure_registers(struct dai *dai,
 	return 0;
 }
 
+/* get DMIC hw params */
+static int dmic_get_hw_params(struct dai *dai,
+			      struct sof_ipc_stream_params  *params)
+{
+	int di = dai->index;
+
+	params->rate = dmic_prm[di]->fifo_fs;
+	params->buffer_fmt = 0;
+
+	switch (dmic_prm[di]->num_pdm_active) {
+	case 1:
+		params->channels = 2;
+		break;
+	case 2:
+		params->channels = 4;
+		break;
+	default:
+		dai_info(dai, "dmic_get_hw_params(): not supported channels amount");
+		return -EINVAL;
+	}
+
+	switch (dmic_prm[di]->fifo_bits) {
+	case 16:
+		params->frame_fmt = SOF_IPC_FRAME_S16_LE;
+		break;
+	case 32:
+		params->frame_fmt = SOF_IPC_FRAME_S32_LE;
+		break;
+	default:
+		dai_err(dai, "dmic_get_hw_params(): not supported format");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 static int dmic_set_config(struct dai *dai, struct sof_ipc_dai_config *config)
 {
 	struct dmic_pdata *dmic = dai_get_drvdata(dai);
@@ -1679,6 +1715,7 @@ const struct dai_driver dmic_driver = {
 	.ops = {
 		.trigger		= dmic_trigger,
 		.set_config		= dmic_set_config,
+		.get_hw_params		= dmic_get_hw_params,
 		.pm_context_store	= dmic_context_store,
 		.pm_context_restore	= dmic_context_restore,
 		.get_handshake		= dmic_get_handshake,
