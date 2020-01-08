@@ -216,7 +216,7 @@ int platform_init(struct sof *sof)
 
 	/* init DMACs */
 	trace_point(TRACE_BOOT_PLATFORM_DMA);
-	ret = dmac_init();
+	ret = dmac_init(sof);
 	if (ret < 0)
 		return -ENODEV;
 
