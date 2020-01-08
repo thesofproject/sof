@@ -216,6 +216,11 @@ struct dma_chan_data {
 	void *private;
 };
 
+struct dma_info {
+	struct dma *dma_array;
+	size_t num_dmas;
+};
+
 extern struct dma dma[];
 
 /**

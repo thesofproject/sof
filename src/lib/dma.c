@@ -17,11 +17,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-struct dma_info {
-	struct dma *dma_array;
-	size_t num_dmas;
-};
-
 static struct dma_info lib_dma = {
 	.dma_array = NULL,
 	.num_dmas = 0
