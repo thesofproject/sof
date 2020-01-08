@@ -123,7 +123,7 @@ int arch_init(void)
 #include <sof/trace/trace.h>
 #include <ipc/trace.h>
 
-int slave_core_init(void)
+int slave_core_init(struct sof *sof)
 {
 	int err;
 

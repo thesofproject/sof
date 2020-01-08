@@ -85,7 +85,7 @@ int main(int argc, char *argv[])
 	if (cpu_get_id() == PLATFORM_MASTER_CORE_ID)
 		err = master_core_init(argc, argv, &sof);
 	else
-		err = slave_core_init();
+		err = slave_core_init(&sof);
 
 	/* should never get here */
 	panic(SOF_IPC_PANIC_TASK);
