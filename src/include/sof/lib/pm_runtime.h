@@ -16,12 +16,11 @@
 #define __SOF_LIB_PM_RUNTIME_H__
 
 #include <platform/lib/pm_runtime.h>
+#include <sof/sof.h>
 #include <sof/spinlock.h>
 #include <sof/trace/trace.h>
 #include <user/trace.h>
 #include <stdint.h>
-
-struct sof;
 
 /** \addtogroup pm_runtime PM Runtime
  *  PM runtime specification.
@@ -118,6 +117,16 @@ void pm_runtime_disable(enum pm_runtime_context context, uint32_t index);
  * @return true if the resource is active or pm disabled, false otherwise.
  */
 bool pm_runtime_is_active(enum pm_runtime_context context, uint32_t index);
+
+/**
+ * \brief Retrieves pointer to runtime power management data.
+ *
+ * @return Runtime power management data pointer.
+ */
+static inline struct pm_runtime_data *pm_runtime_data_get(void)
+{
+	return sof_get()->prd;
+}
 
 /** @}*/
 
