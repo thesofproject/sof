@@ -45,7 +45,7 @@ struct dma dma[PLATFORM_NUM_DMACS] = {
 },
 };
 
-int edma_init(void)
+int dmac_init(void)
 {
 	int i;
 

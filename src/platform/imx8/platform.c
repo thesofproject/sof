@@ -178,7 +178,7 @@ int platform_init(struct sof *sof)
 	clock_set_freq(CLK_CPU(cpu_get_id()), CLK_MAX_CPU_HZ);
 
 	/* init DMA */
-	ret = edma_init();
+	ret = dmac_init();
 	if (ret < 0)
 		return -ENODEV;
 
