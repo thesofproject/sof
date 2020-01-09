@@ -10,6 +10,7 @@
 #define __SOF_LIB_CLK_H__
 
 #include <platform/lib/clk.h>
+#include <sof/sof.h>
 #include <sof/spinlock.h>
 #include <stdint.h>
 
@@ -42,8 +43,6 @@ struct clock_info {
 	int (*set_freq)(int clock, int freq_idx);
 };
 
-extern struct clock_info *clocks;
-
 uint32_t clock_get_freq(int clock);
 
 void clock_set_freq(int clock, uint32_t hz);
@@ -51,5 +50,10 @@ void clock_set_freq(int clock, uint32_t hz);
 uint64_t clock_ms_to_ticks(int clock, uint64_t ms);
 
 void platform_timer_set_delta(struct timer *timer, uint64_t ns);
+
+static inline struct clock_info *clocks_get(void)
+{
+	return sof_get()->clocks;
+}
 
 #endif /* __SOF_LIB_CLK_H__ */

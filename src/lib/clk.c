@@ -43,14 +43,14 @@ static inline uint32_t clock_get_nearest_freq_idx(const struct freq_table *tab,
 
 uint32_t clock_get_freq(int clock)
 {
-	struct clock_info *clk_info = &clocks[clock];
+	struct clock_info *clk_info = clocks_get() + clock;
 
 	return clk_info->freqs[clk_info->current_freq_idx].freq;
 }
 
 void clock_set_freq(int clock, uint32_t hz)
 {
-	struct clock_info *clk_info = &clocks[clock];
+	struct clock_info *clk_info = clocks_get() + clock;
 	uint32_t idx;
 	uint32_t flags;
 
@@ -89,14 +89,14 @@ void clock_set_freq(int clock, uint32_t hz)
 
 uint64_t clock_ms_to_ticks(int clock, uint64_t ms)
 {
-	struct clock_info *clk_info = &clocks[clock];
+	struct clock_info *clk_info = clocks_get() + clock;
 
 	return clk_info->freqs[clk_info->current_freq_idx].ticks_per_msec * ms;
 }
 
 void platform_timer_set_delta(struct timer *timer, uint64_t ns)
 {
-	struct clock_info *clk_info = &clocks[PLATFORM_DEFAULT_CLOCK];
+	struct clock_info *clk_info = clocks_get() + PLATFORM_DEFAULT_CLOCK;
 	uint32_t ticks_per_msec =
 		clk_info->freqs[clk_info->current_freq_idx].ticks_per_msec;
 	uint64_t ticks;
