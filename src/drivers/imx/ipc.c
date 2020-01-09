@@ -25,14 +25,13 @@
 #include <stddef.h>
 #include <stdint.h>
 
-extern struct ipc *_ipc;
-
 struct ipc_data {
 	struct ipc_data_host_buffer dh_buffer;
 };
 
 static void irq_handler(void *arg)
 {
+	struct ipc *ipc = arg;
 	uint32_t status;
 
 	/* Interrupt arrived, check src */
@@ -65,7 +64,7 @@ static void irq_handler(void *arg)
 
 		interrupt_clear(PLATFORM_IPC_INTERRUPT);
 
-		ipc_schedule_process(_ipc);
+		ipc_schedule_process(ipc);
 	}
 }
 
@@ -101,13 +100,14 @@ void ipc_platform_complete_cmd(void *data)
 
 void ipc_platform_send_msg(void)
 {
+	struct ipc *ipc = ipc_get();
 	struct ipc_msg *msg;
 	uint32_t flags;
 
-	spin_lock_irq(_ipc->lock, flags);
+	spin_lock_irq(ipc->lock, flags);
 
 	/* any messages to send ? */
-	if (list_is_empty(&_ipc->shared_ctx->msg_list))
+	if (list_is_empty(&ipc->shared_ctx->msg_list))
 		goto out;
 
 	/* can't send notification when one is in progress */
@@ -115,7 +115,7 @@ void ipc_platform_send_msg(void)
 		goto out;
 
 	/* now send the message */
-	msg = list_first_item(&_ipc->shared_ctx->msg_list, struct ipc_msg,
+	msg = list_first_item(&ipc->shared_ctx->msg_list, struct ipc_msg,
 			      list);
 	mailbox_dspbox_write(0, msg->tx_data, msg->tx_size);
 	list_item_del(&msg->list);
@@ -124,10 +124,10 @@ void ipc_platform_send_msg(void)
 	/* now interrupt host to tell it we have sent a message */
 	imx_mu_xcr_rmw(IMX_MU_xCR_GIRn(1), 0);
 
-	list_item_append(&msg->list, &_ipc->shared_ctx->empty_list);
+	list_item_append(&msg->list, &ipc->shared_ctx->empty_list);
 
 out:
-	spin_unlock_irq(_ipc->lock, flags);
+	spin_unlock_irq(ipc->lock, flags);
 }
 
 #if CONFIG_HOST_PTABLE
@@ -153,10 +153,9 @@ int platform_ipc_init(struct ipc *ipc)
 #else
 	ipc_set_drvdata(ipc, NULL);
 #endif
-	_ipc = ipc;
 
 	/* schedule */
-	schedule_task_init_edf(&_ipc->ipc_task, &ipc_task_ops, _ipc, 0, 0);
+	schedule_task_init_edf(&ipc->ipc_task, &ipc_task_ops, ipc, 0, 0);
 
 #if CONFIG_HOST_PTABLE
 	/* allocate page table buffer */
@@ -174,8 +173,8 @@ int platform_ipc_init(struct ipc *ipc)
 #endif
 
 	/* configure interrupt */
-	interrupt_register(PLATFORM_IPC_INTERRUPT, irq_handler, _ipc);
-	interrupt_enable(PLATFORM_IPC_INTERRUPT, _ipc);
+	interrupt_register(PLATFORM_IPC_INTERRUPT, irq_handler, ipc);
+	interrupt_enable(PLATFORM_IPC_INTERRUPT, ipc);
 
 	/* enable GP #0 for Host -> DSP message notification
 	 * enable GP #1 for DSP -> Host message notification

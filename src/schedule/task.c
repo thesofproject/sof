@@ -30,8 +30,6 @@
 #include <ipc/trace.h>
 #endif
 
-extern struct ipc *_ipc;
-
 typedef enum task_state (*task_main)(void *);
 
 static void sys_module_init(void)
@@ -54,7 +52,7 @@ enum task_state task_main_master_core(void *data)
 		/* sleep until next IPC or DMA */
 		wait_for_interrupt(0);
 
-		if (_ipc && !_ipc->pm_prepare_D3)
+		if (ipc_get() && !ipc_get()->pm_prepare_D3)
 			ipc_platform_send_msg();
 	}
 
