@@ -12,6 +12,7 @@
 #include <sof/list.h>
 #include <sof/platform.h>
 #include <sof/schedule/task.h>
+#include <sof/sof.h>
 #include <sof/spinlock.h>
 #include <sof/trace/trace.h>
 #include <ipc/header.h>
@@ -109,6 +110,11 @@ struct ipc {
 	((ipc)->private)
 
 extern struct task_ops ipc_task_ops;
+
+static inline struct ipc *ipc_get(void)
+{
+	return sof_get()->ipc;
+}
 
 static inline uint64_t ipc_task_deadline(void *data)
 {
