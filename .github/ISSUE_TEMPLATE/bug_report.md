@@ -10,7 +10,7 @@ assignees: ''
 **Describe the bug**
 A clear and concise description of what the bug is.
 What have you tried to diagnose or workaround this issue?
-Please also read https://thesofproject.github.io/latest/howtos/process/bug-tracking.html for further information on submitting bugs.
+Please also read https://thesofproject.github.io/latest/contribute/process/bug-tracking.html for further information on submitting bugs.
 
 **To Reproduce**
 Steps to reproduce the behavior: (e.g. list commands or actions used to reproduce the bug)
