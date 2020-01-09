@@ -22,14 +22,6 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-/* tracing */
-#define trace_ssp(__e, ...) \
-	trace_event(TRACE_CLASS_SSP, __e, ##__VA_ARGS__)
-#define trace_ssp_error(__e, ...) \
-	trace_error(TRACE_CLASS_SSP, __e, ##__VA_ARGS__)
-#define tracev_ssp(__e, ...) \
-	tracev_event(TRACE_CLASS_SSP, __e, ##__VA_ARGS__)
-
 /* save SSP context prior to entering D3 */
 static int ssp_context_store(struct dai *dai)
 {

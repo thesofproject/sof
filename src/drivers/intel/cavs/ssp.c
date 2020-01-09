@@ -28,14 +28,6 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-/* tracing */
-#define trace_ssp(__e, ...) \
-	trace_event(TRACE_CLASS_SSP, __e, ##__VA_ARGS__)
-#define trace_ssp_error(__e, ...) \
-	trace_error(TRACE_CLASS_SSP, __e, ##__VA_ARGS__)
-#define tracev_ssp(__e, ...) \
-	tracev_event(TRACE_CLASS_SSP, __e, ##__VA_ARGS__)
-
 /**
  * \brief Finds valid M/(N * SCR) values for given frequencies.
  * \param[in] freq SSP clock frequency.
