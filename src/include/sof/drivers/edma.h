@@ -73,8 +73,6 @@
 #define EDMA_TCD_ATTR_DSIZE_32BYTE	0x0005
 #define EDMA_TCD_ATTR_DSIZE_64BYTE	0x0006
 
-int edma_init(void);
-
 #define EDMA_BUFFER_PERIOD_COUNT	2
 
 #define EDMA_TCD_ALIGNMENT		32
