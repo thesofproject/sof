@@ -276,15 +276,15 @@ do
 		export XTENSA_SYSTEM=$XTENSA_BUILDS_DIR/$XTENSA_CORE/config
 		PATH=$XTENSA_TOOLS_DIR/XtensaTools/bin:$OLDPATH
 		COMPILER="xcc"
-
-		if [ $j == "byt" ] || [ $j == "cht" ] || [ $j == "sue" ]
-		then
-			DEFCONFIG_PATCH="_xcc"
-		fi
 	else
 		TOOLCHAIN=$HOST
 		PATH=$pwd/../$HOST/bin:$OLDPATH
 		COMPILER="gcc"
+
+		case $j in
+			byt|cht|sue) DEFCONFIG_PATCH="_gcc";;
+			*)	     DEFCONFIG_PATCH="";;
+		esac
 	fi
 
 	BUILD_DIR=build_${j}_${COMPILER}
