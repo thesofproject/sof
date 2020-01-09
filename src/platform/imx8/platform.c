@@ -15,12 +15,14 @@
 #include <sof/lib/clk.h>
 #include <sof/lib/cpu.h>
 #include <sof/lib/dai.h>
+#include <sof/lib/dma.h>
 #include <sof/lib/mailbox.h>
 #include <sof/platform.h>
 #include <sof/schedule/edf_schedule.h>
 #include <sof/schedule/ll_schedule.h>
 #include <sof/schedule/ll_schedule_domain.h>
 #include <sof/sof.h>
+#include <sof/trace/dma-trace.h>
 #include <ipc/dai.h>
 #include <ipc/header.h>
 #include <ipc/info.h>

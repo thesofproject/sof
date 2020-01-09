@@ -9,6 +9,7 @@
 #include <sof/drivers/ipc.h>
 #include <sof/drivers/mu.h>
 #include <sof/lib/alloc.h>
+#include <sof/lib/dma.h>
 #include <sof/lib/mailbox.h>
 #include <sof/lib/wait.h>
 #include <sof/list.h>
