@@ -19,8 +19,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-extern struct ipc *_ipc;
-
 /* No private data for IPC */
 enum task_state ipc_platform_do_cmd(void *data)
 {
@@ -52,17 +50,18 @@ void ipc_platform_complete_cmd(void *data)
 
 void ipc_platform_send_msg(void)
 {
+	struct ipc *ipc = ipc_get();
 	struct ipc_msg *msg;
 	uint32_t flags;
 
-	spin_lock_irq(_ipc->lock, flags);
+	spin_lock_irq(ipc->lock, flags);
 
 	/* any messages to send ? */
-	if (list_is_empty(&_ipc->shared_ctx->msg_list))
+	if (list_is_empty(&ipc->shared_ctx->msg_list))
 		goto out;
 
 	/* now send the message */
-	msg = list_first_item(&_ipc->shared_ctx->msg_list, struct ipc_msg,
+	msg = list_first_item(&ipc->shared_ctx->msg_list, struct ipc_msg,
 			      list);
 	mailbox_dspbox_write(0, msg->tx_data, msg->tx_size);
 	list_item_del(&msg->list);
@@ -70,20 +69,18 @@ void ipc_platform_send_msg(void)
 
 	/* now interrupt host to tell it we have message sent */
 
-	list_item_append(&msg->list, &_ipc->shared_ctx->empty_list);
+	list_item_append(&msg->list, &ipc->shared_ctx->empty_list);
 
 out:
-	spin_unlock_irq(_ipc->lock, flags);
+	spin_unlock_irq(ipc->lock, flags);
 }
 
 int platform_ipc_init(struct ipc *ipc)
 {
-	_ipc = ipc;
-
-	ipc_set_drvdata(_ipc, NULL);
+	ipc_set_drvdata(ipc, NULL);
 
 	/* schedule */
-	schedule_task_init_edf(&_ipc->ipc_task, &ipc_task_ops, _ipc, 0, 0);
+	schedule_task_init_edf(&ipc->ipc_task, &ipc_task_ops, ipc, 0, 0);
 
 	return 0;
 }

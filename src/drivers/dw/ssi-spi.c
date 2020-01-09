@@ -133,8 +133,6 @@ struct spi {
 #define spi_reg_write(spi, reg, val) \
 			io_reg_write(spi->plat_data->base + reg, val)
 
-extern struct ipc *_ipc;
-
 static void spi_start(struct spi *spi, int direction)
 {
 	/* disable SPI first before config */
@@ -304,7 +302,7 @@ static enum task_state spi_completion_work(void *data)
 		dcache_invalidate_region(spi->rx_buffer, SPI_BUFFER_SIZE);
 		mailbox_hostbox_write(0, spi->rx_buffer, hdr->size);
 
-		ipc_schedule_process(_ipc);
+		ipc_schedule_process(ipc_get());
 
 		break;
 	case IPC_WRITE:	/* DSP -> HOST */
