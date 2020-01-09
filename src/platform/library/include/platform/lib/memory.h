@@ -10,6 +10,8 @@
 #ifndef __PLATFORM_LIB_MEMORY_H__
 #define __PLATFORM_LIB_MEMORY_H__
 
+#define PLATFORM_DCACHE_ALIGN	sizeof(void *)
+
 #define HEAP_BUFFER_SIZE	(1024 * 128)
 #define SOF_STACK_SIZE		0x1000
 
