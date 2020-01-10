@@ -36,13 +36,20 @@ struct comp_buffer;
 
 #endif
 
+/**
+ * \brief PCM conversion function interface for data in circular buffer
+ * \param source buffer with samples to process, read pointer is not modified
+ * \param sink output buffer, write pointer is not modified
+ * \param samples number of samples to convert
+ */
+typedef void (*pcm_converter_func)(struct comp_buffer *source,
+				   struct comp_buffer *sink, uint32_t samples);
+
 /** \brief PCM conversion functions map. */
 struct pcm_func_map {
 	enum sof_ipc_frame source;	/**< source frame format */
 	enum sof_ipc_frame sink;	/**< sink frame format */
-	/**< PCM conversion function */
-	void (*func)(struct comp_buffer *source, struct comp_buffer *sink,
-		     uint32_t samples);
+	pcm_converter_func func; /**< PCM conversion function */
 };
 
 /** \brief Map of formats with dedicated conversion functions. */
@@ -51,16 +58,14 @@ extern const struct pcm_func_map pcm_func_map[];
 /** \brief Number of conversion functions. */
 extern const uint32_t pcm_func_count;
 
-typedef void (*conversion)(struct comp_buffer *, struct comp_buffer *,
-			   uint32_t);
-
 /**
  * \brief Retrieves PCM conversion function.
  * \param[in] in Source frame format.
  * \param[in] out Sink frame format.
  */
-static inline conversion pcm_get_conversion_function(enum sof_ipc_frame in,
-						     enum sof_ipc_frame out)
+static inline pcm_converter_func
+pcm_get_conversion_function(enum sof_ipc_frame in,
+			    enum sof_ipc_frame out)
 {
 	uint32_t i;
 

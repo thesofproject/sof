@@ -104,9 +104,7 @@ struct host_data {
 				   *  copied by dma connected to host
 				   */
 
-	/* processing function */
-	void (*process)(struct comp_buffer *source, struct comp_buffer *sink,
-			uint32_t bytes);
+	pcm_converter_func process;	/**< processing function */
 
 	/* stream info */
 	struct sof_ipc_stream_posn posn; /* TODO: update this */
