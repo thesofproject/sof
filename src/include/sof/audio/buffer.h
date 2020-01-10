@@ -233,8 +233,9 @@ static inline void buffer_reset_pos(struct comp_buffer *buffer, void *data)
 	buffer_zero(buffer);
 }
 
-static inline void *buffer_get_frag(struct comp_buffer *buffer, void *ptr,
-				    uint32_t idx, uint32_t size)
+static inline void *buffer_get_frag(const struct comp_buffer *buffer,
+				    const void *ptr, uint32_t idx,
+				    uint32_t size)
 {
 	void *current = (char *)ptr + (idx * size);
 
@@ -311,7 +312,7 @@ static inline void buffer_init(struct comp_buffer *buffer, uint32_t size,
 	buffer_zero(buffer);
 }
 
-static inline void buffer_copy(struct comp_buffer *source,
+static inline void buffer_copy(const struct comp_buffer *source,
 			       struct comp_buffer *sink, uint32_t bytes)
 {
 	void *src = source->r_ptr;
@@ -345,7 +346,7 @@ static inline void buffer_copy(struct comp_buffer *source,
 
 #if CONFIG_FORMAT_S16LE
 
-static inline void buffer_copy_s16(struct comp_buffer *source,
+static inline void buffer_copy_s16(const struct comp_buffer *source,
 				   struct comp_buffer *sink, uint32_t samples)
 {
 	buffer_copy(source, sink, samples * sizeof(int16_t));
@@ -355,7 +356,7 @@ static inline void buffer_copy_s16(struct comp_buffer *source,
 
 #if CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE
 
-static inline void buffer_copy_s32(struct comp_buffer *source,
+static inline void buffer_copy_s32(const struct comp_buffer *source,
 				   struct comp_buffer *sink, uint32_t samples)
 {
 	buffer_copy(source, sink, samples * sizeof(int32_t));

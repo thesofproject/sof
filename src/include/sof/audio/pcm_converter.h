@@ -42,7 +42,7 @@ struct comp_buffer;
  * \param sink output buffer, write pointer is not modified
  * \param samples number of samples to convert
  */
-typedef void (*pcm_converter_func)(struct comp_buffer *source,
+typedef void (*pcm_converter_func)(const struct comp_buffer *source,
 				   struct comp_buffer *sink, uint32_t samples);
 
 /** \brief PCM conversion functions map. */

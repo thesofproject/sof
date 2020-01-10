@@ -26,7 +26,7 @@
  * \brief Sets buffer to be circular using HiFi3 functions.
  * \param[in,out] buffer Circular buffer.
  */
-static void pcm_converter_setup_circular(struct comp_buffer *buffer)
+static void pcm_converter_setup_circular(const struct comp_buffer *buffer)
 {
 	AE_SETCBEGIN0(buffer->addr);
 	AE_SETCEND0(buffer->end_addr);
@@ -40,7 +40,7 @@ static void pcm_converter_setup_circular(struct comp_buffer *buffer)
  * \param[in,out] sink Destination buffer.
  * \param[in] samples Number of samples to process.
  */
-static void pcm_convert_s16_to_s24(struct comp_buffer *source,
+static void pcm_convert_s16_to_s24(const struct comp_buffer *source,
 				   struct comp_buffer *sink, uint32_t samples)
 {
 	ae_int16 *in = (ae_int16 *)source->r_ptr;
@@ -137,7 +137,7 @@ static ae_int32x2 pcm_shift_s24_to_s16(ae_int32x2 sample)
  * \param[in,out] sink Destination buffer.
  * \param[in] samples Number of samples to process.
  */
-static void pcm_convert_s24_to_s16(struct comp_buffer *source,
+static void pcm_convert_s24_to_s16(const struct comp_buffer *source,
 				   struct comp_buffer *sink, uint32_t samples)
 {
 	ae_int32x2 *in = (ae_int32x2 *)source->r_ptr;
@@ -239,7 +239,7 @@ static void pcm_convert_s24_to_s16(struct comp_buffer *source,
  * \param[in,out] sink Destination buffer.
  * \param[in] samples Number of samples to process.
  */
-static void pcm_convert_s16_to_s32(struct comp_buffer *source,
+static void pcm_convert_s16_to_s32(const struct comp_buffer *source,
 				   struct comp_buffer *sink, uint32_t samples)
 {
 	ae_int16 *in = (ae_int16 *)source->r_ptr;
@@ -316,7 +316,7 @@ static void pcm_convert_s16_to_s32(struct comp_buffer *source,
  * \param[in,out] sink Destination buffer.
  * \param[in] samples Number of samples to process.
  */
-static void pcm_convert_s32_to_s16(struct comp_buffer *source,
+static void pcm_convert_s32_to_s16(const struct comp_buffer *source,
 				   struct comp_buffer *sink, uint32_t samples)
 {
 	ae_int32x2 *in = (ae_int32x2 *)source->r_ptr;
@@ -414,7 +414,7 @@ static void pcm_convert_s32_to_s16(struct comp_buffer *source,
  * \param[in,out] sink Destination buffer.
  * \param[in] samples Number of samples to process.
  */
-static void pcm_convert_s24_to_s32(struct comp_buffer *source,
+static void pcm_convert_s24_to_s32(const struct comp_buffer *source,
 				   struct comp_buffer *sink, uint32_t samples)
 {
 	ae_int32x2 *in = (ae_int32x2 *)source->r_ptr;
@@ -497,7 +497,7 @@ static ae_int32x2 pcm_shift_s32_to_s24(ae_int32x2 sample)
  * \param[in,out] sink Destination buffer.
  * \param[in] samples Number of samples to process.
  */
-static void pcm_convert_s32_to_s24(struct comp_buffer *source,
+static void pcm_convert_s32_to_s24(const struct comp_buffer *source,
 				   struct comp_buffer *sink, uint32_t samples)
 {
 	ae_int32x2 *in = (ae_int32x2 *)source->r_ptr;

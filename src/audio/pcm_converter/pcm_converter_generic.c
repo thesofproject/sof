@@ -24,7 +24,7 @@
 
 #if CONFIG_FORMAT_S16LE && CONFIG_FORMAT_S24LE
 
-static void pcm_convert_s16_to_s24(struct comp_buffer *source,
+static void pcm_convert_s16_to_s24(const struct comp_buffer *source,
 				   struct comp_buffer *sink, uint32_t samples)
 {
 	uint32_t buff_frag = 0;
@@ -40,7 +40,7 @@ static void pcm_convert_s16_to_s24(struct comp_buffer *source,
 	}
 }
 
-static void pcm_convert_s24_to_s16(struct comp_buffer *source,
+static void pcm_convert_s24_to_s16(const struct comp_buffer *source,
 				   struct comp_buffer *sink, uint32_t samples)
 {
 	uint32_t buff_frag = 0;
@@ -60,7 +60,7 @@ static void pcm_convert_s24_to_s16(struct comp_buffer *source,
 
 #if CONFIG_FORMAT_S16LE && CONFIG_FORMAT_S32LE
 
-static void pcm_convert_s16_to_s32(struct comp_buffer *source,
+static void pcm_convert_s16_to_s32(const struct comp_buffer *source,
 				   struct comp_buffer *sink, uint32_t samples)
 {
 	uint32_t buff_frag = 0;
@@ -76,7 +76,7 @@ static void pcm_convert_s16_to_s32(struct comp_buffer *source,
 	}
 }
 
-static void pcm_convert_s32_to_s16(struct comp_buffer *source,
+static void pcm_convert_s32_to_s16(const struct comp_buffer *source,
 				   struct comp_buffer *sink, uint32_t samples)
 {
 	uint32_t buff_frag = 0;
@@ -96,7 +96,7 @@ static void pcm_convert_s32_to_s16(struct comp_buffer *source,
 
 #if CONFIG_FORMAT_S24LE && CONFIG_FORMAT_S32LE
 
-static void pcm_convert_s24_to_s32(struct comp_buffer *source,
+static void pcm_convert_s24_to_s32(const struct comp_buffer *source,
 				   struct comp_buffer *sink, uint32_t samples)
 {
 	uint32_t buff_frag = 0;
@@ -112,7 +112,7 @@ static void pcm_convert_s24_to_s32(struct comp_buffer *source,
 	}
 }
 
-static void pcm_convert_s32_to_s24(struct comp_buffer *source,
+static void pcm_convert_s32_to_s24(const struct comp_buffer *source,
 				   struct comp_buffer *sink, uint32_t samples)
 {
 	uint32_t buff_frag = 0;
