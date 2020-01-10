@@ -27,6 +27,11 @@
 #define MN_MDIV_N_VAL(x) (0x100 + (x) * 0x8 + 0x4)
 
 /**
+ * \brief Initializes MN driver.
+ */
+void mn_init(void);
+
+/**
  * \brief Finds and sets valid combination of MCLK source and divider to
  *	  achieve requested MCLK rate.
  *	  M value of M/N is not supported for MCLK, only divider can be used.
