@@ -34,6 +34,8 @@ static inline void *platform_shared_get(void *ptr, int bytes)
 	return ptr;
 }
 
+static inline void platform_shared_commit(void *ptr, int bytes) { }
+
 #endif /* __PLATFORM_LIB_MEMORY_H__ */
 
 #else

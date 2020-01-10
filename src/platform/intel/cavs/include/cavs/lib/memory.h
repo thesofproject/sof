@@ -112,6 +112,17 @@ static inline void *platform_shared_get(void *ptr, int bytes)
 }
 
 /**
+ * \brief Function for keeping shared data synchronized.
+ * It's used after usage of data shared by different cores.
+ * Such data is either statically marked with SHARED_DATA
+ * or dynamically allocated with SOF_MEM_FLAG_SHARED flag.
+ * cAVS platforms use uncached memory region, so no additional
+ * synchronization is needed, but for SMP platforms without uncache
+ * this macro should writeback and invalidate data.
+ */
+static inline void platform_shared_commit(void *ptr, int bytes) { }
+
+/**
  * \brief Transforms pointer if necessary before freeing the memory.
  * \param[in,out] ptr Pointer to the allocated memory.
  * \return Appropriate pointer to the memory ready to be freed.
