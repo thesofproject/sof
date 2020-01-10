@@ -780,6 +780,8 @@ static int ssp_remove(struct dai *dai)
 {
 	pm_runtime_put_sync(SSP_CLK, dai->index);
 
+	mn_release_bclk(dai->index);
+
 	/* Disable SSP power */
 	pm_runtime_put_sync(SSP_POW, dai->index);
 

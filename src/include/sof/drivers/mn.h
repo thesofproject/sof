@@ -28,15 +28,24 @@ int mn_set_mclk(uint16_t mclk_id, uint32_t mclk_rate);
 /**
  * \brief Finds and sets valid combination of BCLK source and M/N to
  *	  achieve requested BCLK rate.
+ *	  User should release clock when it is no longer needed to allow
+ *	  driver to change M/N source when user count drops to 0.
  * \param[in] dai_index DAI index (SSP port).
  * \param[in] bclk_rate Bit clock frequency.
  * \param[out] out_scr_div SCR divisor that should be set by caller to achieve
  *			   requested BCLK rate.
  * \param[out] out_need_ecs If set to true, the caller should configure ECS.
  * \return 0 on success otherwise a negative error code.
+ * \see mn_release_bclk()
  */
 int mn_set_bclk(uint32_t dai_index, uint32_t bclk_rate,
 		uint32_t *out_scr_div, bool *out_need_ecs);
+
+/**
+ * \brief Release previously requested BCLK for given DAI.
+ * \param[in] dai_index DAI index (SSP port).
+ */
+void mn_release_bclk(uint32_t dai_index);
 
 /**
  * \brief Resets M & N values of M/N divider for given DAI index.
