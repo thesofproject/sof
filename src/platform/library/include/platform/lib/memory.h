@@ -27,6 +27,8 @@
 #define PLATFORM_HEAP_RUNTIME		1
 #define PLATFORM_HEAP_BUFFER		3
 
+#define SHARED_DATA
+
 static inline void *platform_shared_get(void *ptr, int bytes)
 {
 	return ptr;

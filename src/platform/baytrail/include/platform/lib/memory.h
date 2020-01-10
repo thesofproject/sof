@@ -16,6 +16,12 @@
 
 struct sof;
 
+/**
+ * \brief Data shared between different cores.
+ * Does nothing, since BYT doesn't support SMP.
+ */
+#define SHARED_DATA
+
 void platform_init_memmap(struct sof *sof);
 
 static inline void *platform_shared_get(void *ptr, int bytes)
