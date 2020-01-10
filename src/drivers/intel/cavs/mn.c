@@ -8,6 +8,7 @@
 #include <sof/drivers/ssp.h>
 #include <sof/lib/shim.h>
 #include <sof/math/numbers.h>
+#include <sof/spinlock.h>
 #include <sof/trace/trace.h>
 
 /* tracing */
@@ -18,18 +19,29 @@
 #define tracev_mn(__e, ...) \
 	tracev_event(TRACE_CLASS_MN, __e, ##__VA_ARGS__)
 
+static spinlock_t mn_lock;
+
+void mn_init(void)
+{
+	spinlock_init(&mn_lock);
+}
+
 int mn_set_mclk(uint16_t mclk_id, uint32_t mclk_rate)
 {
 	uint32_t mdivr;
 	uint32_t mdivr_val;
-	uint32_t mdivc = mn_reg_read(MN_MDIVCTRL);
+	uint32_t mdivc;
 	int i;
 	int clk_index = -1;
+	int ret = 0;
 
 	if (mclk_id > 1) {
 		trace_mn_error("error: mclk ID (%d) > 1", mclk_id);
 		return -EINVAL;
 	}
+
+	spin_lock(&mn_lock);
+	mdivc = mn_reg_read(MN_MDIVCTRL);
 
 	/* Enable MCLK Divider */
 	mdivc |= MN_MDIVCTRL_M_DIV_ENABLE;
@@ -47,7 +59,8 @@ int mn_set_mclk(uint16_t mclk_id, uint32_t mclk_rate)
 		mdivc |= MCDSS(ssp_freq_sources[clk_index]);
 	} else {
 		trace_mn_error("error: MCLK %d", mclk_rate);
-		return -EINVAL;
+		ret = -EINVAL;
+		goto out;
 	}
 
 	mdivr_val = ssp_freq[clk_index].freq / mclk_rate;
@@ -67,13 +80,17 @@ int mn_set_mclk(uint16_t mclk_id, uint32_t mclk_rate)
 		break;
 	default:
 		trace_mn_error("error: invalid mdivr_val %d", mdivr_val);
-		return -EINVAL;
+		ret = -EINVAL;
+		goto out;
 	}
 
 	mn_reg_write(MN_MDIVCTRL, mdivc);
 	mn_reg_write(MN_MDIVR(mclk_id), mdivr);
 
-	return 0;
+out:
+	spin_unlock(&mn_lock);
+
+	return ret;
 }
 
 /**
@@ -130,11 +147,15 @@ int mn_set_bclk(uint32_t dai_index, uint32_t bclk_rate,
 {
 	uint32_t i2s_m = 1;
 	uint32_t i2s_n = 1;
-	uint32_t mdivc = mn_reg_read(MN_MDIVCTRL);
+	uint32_t mdivc;
 	int i;
 	int clk_index = -1;
+	int ret = 0;
 
 	*out_need_ecs = false;
+
+	spin_lock(&mn_lock);
+	mdivc = mn_reg_read(MN_MDIVCTRL);
 
 	/* searching the smallest possible bclk source */
 	for (i = MAX_SSP_FREQ_INDEX; i >= 0; i--) {
@@ -166,7 +187,8 @@ int mn_set_bclk(uint32_t dai_index, uint32_t bclk_rate,
 
 		if (clk_index < 0) {
 			trace_mn_error("error: BCLK %d", bclk_rate);
-			return -EINVAL;
+			ret = -EINVAL;
+			goto out;
 		}
 
 		trace_mn("M = %d, N = %d", i2s_m, i2s_n);
@@ -181,11 +203,16 @@ int mn_set_bclk(uint32_t dai_index, uint32_t bclk_rate,
 	mn_reg_write(MN_MDIV_M_VAL(dai_index), i2s_m);
 	mn_reg_write(MN_MDIV_N_VAL(dai_index), i2s_n);
 
-	return 0;
+out:
+	spin_unlock(&mn_lock);
+
+	return ret;
 }
 
 void mn_reset_bclk_divider(uint32_t dai_index)
 {
+	spin_lock(&mn_lock);
 	mn_reg_write(MN_MDIV_M_VAL(dai_index), 1);
 	mn_reg_write(MN_MDIV_N_VAL(dai_index), 1);
+	spin_unlock(&mn_lock);
 }

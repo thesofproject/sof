@@ -10,6 +10,7 @@
 #include <sof/common.h>
 #include <sof/drivers/hda.h>
 #include <sof/drivers/interrupt.h>
+#include <sof/drivers/mn.h>
 #include <sof/lib/dai.h>
 #include <sof/lib/dma.h>
 #include <sof/lib/memory.h>
@@ -151,6 +152,10 @@ int dai_init(struct sof *sof)
 	}
 
 	platform_shared_commit(dai, sizeof(*dai) * ARRAY_SIZE(ssp));
+#endif
+
+#if CONFIG_CAVS_MN
+	mn_init();
 #endif
 
 	dai = cache_to_uncache((struct dai *)hda);
