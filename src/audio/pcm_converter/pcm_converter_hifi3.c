@@ -589,4 +589,4 @@ const struct pcm_func_map pcm_func_map[] = {
 
 const size_t pcm_func_count = ARRAY_SIZE(pcm_func_map);
 
-#endif
+#endif /* PCM_CONVERTER_HIFI3 */
