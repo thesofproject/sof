@@ -392,6 +392,14 @@ SECTIONS
     _module_init_end = ABSOLUTE(.);
   } >sof_fw :sof_fw_phdr
 
+  .shared_data : ALIGN(PLATFORM_DCACHE_ALIGN)
+  {
+    _shared_data_start = ABSOLUTE(.);
+    *(*.shared_data)
+    _shared_data_end = ABSOLUTE(.);
+    . = ALIGN(PLATFORM_DCACHE_ALIGN);
+  } >sof_fw :sof_fw_phdr
+
   .data : ALIGN(4)
   {
     _data_start = ABSOLUTE(.);
