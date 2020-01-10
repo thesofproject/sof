@@ -276,7 +276,7 @@ static int volume_params(struct comp_dev *dev,
  * \param[in] chan Channel number.
  * \param[in] vol Target volume.
  */
-static inline int volume_set_chan(struct comp_dev *dev, int chan, uint32_t vol)
+static inline int volume_set_chan(struct comp_dev *dev, int chan, int32_t vol)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct sof_ipc_comp_volume *pga =
@@ -292,17 +292,17 @@ static inline int volume_set_chan(struct comp_dev *dev, int chan, uint32_t vol)
 	 * multiplication overflow with the 32 bit value. Non-zero MIN option
 	 * can be useful to prevent totally muted small volume gain.
 	 */
-	if (v <= VOL_MIN) {
+	if (v < VOL_MIN) {
 		/* No need to fail, just trace the event. */
-		trace_volume_error_with_ids(dev, "volume_set_chan: Limited "
-						 "request %d to VOL_MIN.", v);
+		trace_volume_error_with_ids(dev, "volume_set_chan: Limited request %d"
+					    " to min. %d", v, VOL_MIN);
 		v = VOL_MIN;
 	}
 
 	if (v > VOL_MAX) {
 		/* No need to fail, just trace the event. */
-		trace_volume_error_with_ids(dev, "volume_set_chan: Limited "
-						 "request %d to VOL_MAX.", v);
+		trace_volume_error_with_ids(dev, "volume_set_chan: Limited request %d"
+					    " to max. %d", v, VOL_MAX);
 		v = VOL_MAX;
 	}
 
