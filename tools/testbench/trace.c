@@ -57,6 +57,7 @@ char *get_trace_class(uint32_t trace_class)
 		CASE(CHMAP);
 		CASE(ASRC);
 		CASE(NOTIFIER);
+		CASE(MN);
 	default: return "unknown";
 	}
 }
