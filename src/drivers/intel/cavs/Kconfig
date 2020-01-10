@@ -96,9 +96,17 @@ endmenu # "Decimation factors"
 
 endif # CAVS_DMIC
 
+config CAVS_MN
+	bool
+	depends on CAVS
+	default n
+	help
+	  Select this to enable driver for Intel M/N divider.
+
 config CAVS_SSP
 	bool "Intel cAVS SSP driver"
 	depends on CAVS
+	select CAVS_MN
 	default n
 	help
 	  Select this to enable Intel cAVS Synchronous Serial Port (SSP) driver.
