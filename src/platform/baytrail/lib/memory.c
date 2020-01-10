@@ -11,28 +11,28 @@
 #include <ipc/topology.h>
 
 /* Heap blocks for system runtime */
-static struct block_hdr sys_rt_block64[HEAP_SYS_RT_COUNT64];
-static struct block_hdr sys_rt_block512[HEAP_SYS_RT_COUNT512];
-static struct block_hdr sys_rt_block1024[HEAP_SYS_RT_COUNT1024];
+static SHARED_DATA struct block_hdr sys_rt_block64[HEAP_SYS_RT_COUNT64];
+static SHARED_DATA struct block_hdr sys_rt_block512[HEAP_SYS_RT_COUNT512];
+static SHARED_DATA struct block_hdr sys_rt_block1024[HEAP_SYS_RT_COUNT1024];
 
 /* Heap memory for system runtime */
-static struct block_map sys_rt_heap_map[] = {
+static SHARED_DATA struct block_map sys_rt_heap_map[] = {
 	BLOCK_DEF(64, HEAP_SYS_RT_COUNT64, sys_rt_block64),
 	BLOCK_DEF(512, HEAP_SYS_RT_COUNT512, sys_rt_block512),
 	BLOCK_DEF(1024, HEAP_SYS_RT_COUNT1024, sys_rt_block1024),
 };
 
 /* Heap blocks for modules */
-static struct block_hdr mod_block16[HEAP_RT_COUNT16];
-static struct block_hdr mod_block32[HEAP_RT_COUNT32];
-static struct block_hdr mod_block64[HEAP_RT_COUNT64];
-static struct block_hdr mod_block128[HEAP_RT_COUNT128];
-static struct block_hdr mod_block256[HEAP_RT_COUNT256];
-static struct block_hdr mod_block512[HEAP_RT_COUNT512];
-static struct block_hdr mod_block1024[HEAP_RT_COUNT1024];
+static SHARED_DATA struct block_hdr mod_block16[HEAP_RT_COUNT16];
+static SHARED_DATA struct block_hdr mod_block32[HEAP_RT_COUNT32];
+static SHARED_DATA struct block_hdr mod_block64[HEAP_RT_COUNT64];
+static SHARED_DATA struct block_hdr mod_block128[HEAP_RT_COUNT128];
+static SHARED_DATA struct block_hdr mod_block256[HEAP_RT_COUNT256];
+static SHARED_DATA struct block_hdr mod_block512[HEAP_RT_COUNT512];
+static SHARED_DATA struct block_hdr mod_block1024[HEAP_RT_COUNT1024];
 
 /* Heap memory map for modules */
-static struct block_map rt_heap_map[] = {
+static SHARED_DATA struct block_map rt_heap_map[] = {
 	BLOCK_DEF(16, HEAP_RT_COUNT16, mod_block16),
 	BLOCK_DEF(32, HEAP_RT_COUNT32, mod_block32),
 	BLOCK_DEF(64, HEAP_RT_COUNT64, mod_block64),
@@ -43,14 +43,14 @@ static struct block_map rt_heap_map[] = {
 };
 
 /* Heap blocks for buffers */
-static struct block_hdr buf_block[HEAP_BUFFER_COUNT];
+static SHARED_DATA struct block_hdr buf_block[HEAP_BUFFER_COUNT];
 
 /* Heap memory map for buffers */
-static struct block_map buf_heap_map[] = {
+static SHARED_DATA struct block_map buf_heap_map[] = {
 	BLOCK_DEF(HEAP_BUFFER_BLOCK_SIZE, HEAP_BUFFER_COUNT, buf_block),
 };
 
-struct mm memmap = {
+static SHARED_DATA struct mm memmap = {
 	.system[0] = {
 		.heap = HEAP_SYSTEM_BASE,
 		.size = HEAP_SYSTEM_SIZE,
