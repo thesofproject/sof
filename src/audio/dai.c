@@ -63,9 +63,7 @@ struct dai_data {
 	enum sof_ipc_frame frame_fmt;
 	int xrun;		/* true if we are doing xrun recovery */
 
-	/* processing function */
-	void (*process)(struct comp_buffer *source, struct comp_buffer *sink,
-			uint32_t bytes);
+	pcm_converter_func process;	/* processing function */
 
 	uint32_t dai_pos_blks;	/* position in bytes (nearest block) */
 	uint64_t start_position;	/* position on start */
