@@ -137,8 +137,7 @@ static struct comp_dev *kpb_new(struct sof_ipc_comp *comp)
 	}
 
 	if (kpb->config.channels > KPB_MAX_SUPPORTED_CHANNELS) {
-		trace_kpb_error_with_ids(dev, "kpb_new() error: "
-		"no of channels exceeded the limit");
+		trace_kpb_error("kpb_new() error: no of channels exceeded the limit");
 		return NULL;
 	}
 
@@ -976,13 +975,13 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 			drain_interval = (host_period_size / bytes_per_ms) *
 					 ticks_per_ms;
 			period_bytes_limit = host_period_size;
-			trace_kpb_with_ids(dev, "kpb_init_draining(): sync_draining_mode selected with interval %d [uS].",
-					   drain_interval * 1000 / ticks_per_ms);
+			trace_kpb("kpb_init_draining(): sync_draining_mode selected with interval %d [uS].",
+				  drain_interval * 1000 / ticks_per_ms);
 		} else {
 			/* Unlimited draining */
 			drain_interval = 0;
 			period_bytes_limit = 0;
-			trace_kpb_with_ids(dev, "kpb_init_draining: unlimited draining speed selected.");
+			trace_kpb("kpb_init_draining: unlimited draining speed selected.");
 		}
 
 		trace_kpb("kpb_init_draining(), schedule draining task");
