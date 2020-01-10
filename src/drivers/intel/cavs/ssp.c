@@ -8,6 +8,7 @@
 
 #include <sof/audio/component.h>
 #include <sof/common.h>
+#include <sof/drivers/mn.h>
 #include <sof/drivers/ssp.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/clk.h>
@@ -16,7 +17,6 @@
 #include <sof/lib/memory.h>
 #include <sof/lib/pm_runtime.h>
 #include <sof/lib/wait.h>
-#include <sof/math/numbers.h>
 #include <sof/platform.h>
 #include <sof/spinlock.h>
 #include <sof/trace/trace.h>
@@ -28,55 +28,6 @@
 #include <errno.h>
 #include <stdbool.h>
 #include <stdint.h>
-
-/**
- * \brief Finds valid M/(N * SCR) values for given frequencies.
- * \param[in] freq SSP clock frequency.
- * \param[in] bclk Bit clock frequency.
- * \param[out] out_scr_div SCR divisor.
- * \param[out] out_m M value of M/N divider.
- * \param[out] out_n N value of M/N divider.
- * \return true if found suitable values, false otherwise.
- */
-static bool find_mn(uint32_t freq, uint32_t bclk,
-		    uint32_t *out_scr_div, uint32_t *out_m, uint32_t *out_n)
-{
-	uint32_t m, n, mn_div;
-	uint32_t scr_div;
-
-	/* M/(N * scr_div) has to be less than 1/2 */
-	if ((bclk * 2) >= freq)
-		return false;
-
-	scr_div = freq / bclk;
-
-	/* odd SCR gives lower duty cycle */
-	if (scr_div > 1 && scr_div % 2 != 0)
-		--scr_div;
-
-	/* clamp to valid SCR range */
-	scr_div = MIN(scr_div, (SSCR0_SCR_MASK >> 8) + 1);
-
-	/* find highest even divisor */
-	while (scr_div > 1 && freq % scr_div != 0)
-		scr_div -= 2;
-
-	/* compute M/N with smallest dividend and divisor */
-	mn_div = gcd(bclk, freq / scr_div);
-
-	m = bclk / mn_div;
-	n = freq / scr_div / mn_div;
-
-	/* M/N values can be up to 24 bits */
-	if (n & (~0xffffff))
-		return false;
-
-	*out_scr_div = scr_div;
-	*out_m = m;
-	*out_n = n;
-
-	return true;
-}
 
 /* empty SSP transmit FIFO */
 static void ssp_empty_tx_fifo(struct dai *dai)
@@ -155,11 +106,6 @@ static int ssp_set_config(struct dai *dai,
 	uint32_t ssioc;
 	uint32_t mdiv;
 	uint32_t bdiv;
-	uint32_t mdivc;
-	uint32_t mdivr;
-	uint32_t mdivr_val;
-	uint32_t i2s_m;
-	uint32_t i2s_n;
 	uint32_t data_size;
 	uint32_t frame_end_padding;
 	uint32_t slot_end_padding;
@@ -175,9 +121,8 @@ static int ssp_set_config(struct dai *dai,
 	bool inverted_frame = false;
 	bool cfs = false;
 	bool start_delay = false;
+	bool need_ecs;
 
-	int i;
-	int clk_index = -1;
 	int ret = 0;
 
 	spin_lock(&dai->lock);
@@ -221,12 +166,6 @@ static int ssp_set_config(struct dai *dai,
 
 	/* ssioc dynamic setting is SFCR */
 	ssioc = SSIOC_SCOE;
-
-	/* i2s_m M divider setting, default 1 */
-	i2s_m = 0x1;
-
-	/* i2s_n N divider setting, default 1 */
-	i2s_n = 0x1;
 
 	/* ssto no dynamic setting */
 	ssto = 0x0;
@@ -295,9 +234,6 @@ static int ssp_set_config(struct dai *dai,
 
 	sscr0 |= SSCR0_MOD | SSCR0_ACS;
 
-	mdivc = mn_reg_read(0x0);
-	mdivc |= 0x1;
-
 	/* Additional hardware settings */
 
 	/* Receiver Time-out Interrupt Disabled/Enabled */
@@ -358,96 +294,24 @@ static int ssp_set_config(struct dai *dai,
 	}
 
 	/* MCLK config */
-	/* searching the smallest possible mclk source */
-	for (i = MAX_SSP_FREQ_INDEX; i >= 0; i--) {
-		if (config->ssp.mclk_rate > ssp_freq[i].freq)
-			break;
-
-		if (ssp_freq[i].freq % config->ssp.mclk_rate == 0)
-			clk_index = i;
-	}
-
-	if (clk_index >= 0) {
-		mdivc |= MCDSS(ssp_freq_sources[clk_index]);
-		mdivr_val = ssp_freq[clk_index].freq / config->ssp.mclk_rate;
-	} else {
-		trace_ssp_error("ssp_set_config() error: MCLK %d",
-				config->ssp.mclk_rate);
-		ret = -EINVAL;
+	ret = mn_set_mclk(config->ssp.mclk_id, config->ssp.mclk_rate);
+	if (ret < 0) {
+		trace_ssp_error("error: invalid mclk_rate = %d for mclk_id = %d",
+				config->ssp.mclk_id, config->ssp.mclk_rate);
 		goto out;
 	}
 
 	/* BCLK config */
-	/* searching the smallest possible bclk source */
-	clk_index = -1;
-	for (i = MAX_SSP_FREQ_INDEX; i >= 0; i--) {
-		if (config->ssp.bclk_rate > ssp_freq[i].freq)
-			break;
-
-		if (ssp_freq[i].freq % config->ssp.bclk_rate == 0)
-			clk_index = i;
+	ret = mn_set_bclk(config->dai_index, config->ssp.bclk_rate,
+			  &mdiv, &need_ecs);
+	if (ret < 0) {
+		trace_ssp_error("error: invalid bclk_rate = %d for dai_index = %d",
+				config->ssp.bclk_rate, config->dai_index);
+		goto out;
 	}
 
-	if (clk_index >= 0) {
-		mdivc |= MNDSS(ssp_freq_sources[clk_index]);
-		mdiv = ssp_freq[clk_index].freq / config->ssp.bclk_rate;
-
-		/* select M/N output for bclk in case of Audio Cardinal
-		 * or PLL Fixed clock.
-		 */
-		if (ssp_freq_sources[clk_index] != SSP_CLOCK_XTAL_OSCILLATOR)
-			sscr0 |= SSCR0_ECS;
-	} else {
-		/* check if we can get target BCLK with M/N */
-		for (i = 0; i <= MAX_SSP_FREQ_INDEX; i++) {
-			if (find_mn(ssp_freq[i].freq, config->ssp.bclk_rate,
-				    &mdiv, &i2s_m, &i2s_n)) {
-				clk_index = i;
-				break;
-			}
-		}
-
-		if (clk_index < 0) {
-			trace_ssp_error("ssp_set_config() error: BCLK %d",
-					config->ssp.bclk_rate);
-			ret = -EINVAL;
-			goto out;
-		}
-
-		trace_ssp("ssp_set_config(), M = %d, N = %d", i2s_m, i2s_n);
-
-		mdivc |= MNDSS(ssp_freq_sources[clk_index]);
-
-		/* M/N requires external clock to be selected */
+	if (need_ecs)
 		sscr0 |= SSCR0_ECS;
-	}
-
-	switch (mdivr_val) {
-	case 1:
-		mdivr = 0x00000fff; /* bypass divider for MCLK */
-		break;
-	case 2:
-		mdivr = 0x0; /* 1/2 */
-		break;
-	case 4:
-		mdivr = 0x2; /* 1/4 */
-		break;
-	case 8:
-		mdivr = 0x6; /* 1/8 */
-		break;
-	default:
-		trace_ssp_error("ssp_set_config() error: invalid mdivr_val %d",
-				mdivr_val);
-		ret = -EINVAL;
-		goto out;
-	}
-
-	if (config->ssp.mclk_id > 1) {
-		trace_ssp_error("ssp_set_config() error: mclk ID (%d) > 1",
-				config->ssp.mclk_id);
-		ret = -EINVAL;
-		goto out;
-	}
 
 	/* clock divisor is SCR + 1 */
 	mdiv -= 1;
@@ -758,12 +622,6 @@ static int ssp_set_config(struct dai *dai,
 	trace_ssp("ssp_set_config(), ssrsa = 0x%08x, sstsa = 0x%08x", ssrsa,
 		  sstsa);
 
-	/* TODO: move this into M/N driver */
-	mn_reg_write(0x0, mdivc);
-	mn_reg_write(0x80 + config->ssp.mclk_id * 0x4, mdivr);
-	mn_reg_write(0x100 + config->dai_index * 0x8 + 0x0, i2s_m);
-	mn_reg_write(0x100 + config->dai_index * 0x8 + 0x4, i2s_n);
-
 	ssp->state[DAI_DIR_PLAYBACK] = COMP_STATE_PREPARE;
 	ssp->state[DAI_DIR_CAPTURE] = COMP_STATE_PREPARE;
 
@@ -910,8 +768,7 @@ static int ssp_probe(struct dai *dai)
 	ssp->state[DAI_DIR_CAPTURE] = COMP_STATE_READY;
 
 	/* Reset M/N, power-gating functions need it */
-	mn_reg_write(0x100 + dai->index * 0x8 + 0x0, 1);
-	mn_reg_write(0x100 + dai->index * 0x8 + 0x4, 1);
+	mn_reset_bclk_divider(dai->index);
 
 	/* Enable SSP power */
 	pm_runtime_get_sync(SSP_POW, dai->index);
