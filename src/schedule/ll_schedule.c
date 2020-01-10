@@ -15,6 +15,7 @@
 #include <sof/lib/clk.h>
 #include <sof/lib/cpu.h>
 #include <sof/lib/notifier.h>
+#include <sof/lib/perf_cnt.h>
 #include <sof/list.h>
 #include <sof/platform.h>
 #include <sof/schedule/ll_schedule.h>
@@ -23,14 +24,19 @@
 #include <sof/schedule/task.h>
 #include <sof/spinlock.h>
 #include <ipc/topology.h>
+#include <config.h>
 #include <errno.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
+/* one instance of data allocated per core */
 struct ll_schedule_data {
 	struct list_item tasks;			/* list of ll tasks */
 	atomic_t num_tasks;			/* number of ll tasks */
+#if CONFIG_PERFORMANCE_COUNTERS
+	struct perf_cnt_data pcd;
+#endif
 	struct ll_schedule_domain *domain;	/* scheduling domain */
 };
 
@@ -145,9 +151,13 @@ static void schedule_ll_tasks_run(void *data)
 
 	spin_unlock(sch->domain->lock);
 
+	perf_cnt_init(&sch->pcd);
+
 	/* run tasks if there are any pending */
 	if (schedule_ll_is_pending(sch))
 		schedule_ll_tasks_execute(sch, last_tick);
+
+	perf_cnt_stamp(TRACE_CLASS_SCHEDULE_LL, &sch->pcd, true);
 
 	spin_lock(sch->domain->lock);
 
