@@ -12,6 +12,11 @@
 #include <stdint.h>
 
 /**
+ * \brief Initializes MN driver.
+ */
+void mn_init(void);
+
+/**
  * \brief Finds and sets valid combination of MCLK source and divider to
  *	  achieve requested MCLK rate.
  * \param[in] mclk_id id of master clock for which rate should be set.
