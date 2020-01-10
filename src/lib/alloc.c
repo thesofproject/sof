@@ -66,26 +66,15 @@ static void validate_memory(void *ptr, size_t size)
 }
 #endif
 
-/* flush block map from cache to sram */
-static inline void writeback_block_map(struct block_map *map)
-{
-	dcache_writeback_region(map->block, sizeof(*map->block) * map->count);
-	dcache_writeback_region(map, sizeof(*map));
-}
-
-/* invalidate blocks of block map */
-static inline void invalidate_blocks(struct block_map *map)
-{
-	dcache_invalidate_region(map->block, sizeof(*map->block) * map->count);
-}
-
 /* total size of block */
 static inline uint32_t block_get_size(struct block_map *map)
 {
-	dcache_invalidate_region(map, sizeof(*map));
-
-	return sizeof(*map) + map->count *
+	uint32_t size = sizeof(*map) + map->count *
 		(map->block_size + sizeof(struct block_hdr));
+
+	platform_shared_commit(map, sizeof(*map));
+
+	return size;
 }
 
 /* total size of heap */
@@ -94,17 +83,17 @@ static inline uint32_t heap_get_size(struct mm_heap *heap)
 	uint32_t size = sizeof(struct mm_heap);
 	int i;
 
-	dcache_invalidate_region(heap, sizeof(*heap));
-
 	for (i = 0; i < heap->blocks; i++)
 		size += block_get_size(&heap->map[i]);
+
+	platform_shared_commit(heap, sizeof(*heap));
 
 	return size;
 }
 
 #if CONFIG_DEBUG_BLOCK_FREE
 static void write_pattern(struct mm_heap *heap_map, int heap_depth,
-						  uint8_t pattern)
+			  uint8_t pattern)
 {
 	struct mm_heap *heap;
 	struct block_map *current_map;
@@ -118,7 +107,11 @@ static void write_pattern(struct mm_heap *heap_map, int heap_depth,
 			memset(
 				(void *)current_map->base, pattern,
 				current_map->count * current_map->block_size);
+			platform_shared_commit(current_map,
+					       sizeof(*current_map));
 		}
+
+		platform_shared_commit(heap, sizeof(*heap));
 	}
 }
 #endif
@@ -134,7 +127,7 @@ static void init_heap_map(struct mm_heap *heap, int count)
 		/* init the map[0] */
 		current_map = &heap[i].map[0];
 		current_map->base = heap[i].heap;
-		writeback_block_map(current_map);
+		platform_shared_commit(current_map, sizeof(*current_map));
 
 		/* map[j]'s base is calculated based on map[j-1] */
 		for (j = 1; j < heap[i].blocks; j++) {
@@ -142,23 +135,27 @@ static void init_heap_map(struct mm_heap *heap, int count)
 			next_map->base = current_map->base +
 				current_map->block_size *
 				current_map->count;
+			platform_shared_commit(next_map, sizeof(*next_map));
+			platform_shared_commit(current_map,
+					       sizeof(*current_map));
+
 			current_map = &heap[i].map[j];
-			writeback_block_map(current_map);
 		}
 
-		dcache_writeback_region(&heap[i], sizeof(heap[i]));
+		platform_shared_commit(&heap[i], sizeof(heap[i]));
 	}
 }
 
 /* allocate from system memory pool */
 static void *rmalloc_sys(uint32_t flags, int caps, int core, size_t bytes)
 {
+	struct mm *memmap = memmap_get();
 	void *ptr;
 	struct mm_heap *cpu_heap;
 	size_t alignment = 0;
 
 	/* use the heap dedicated for the selected core */
-	cpu_heap = memmap_get()->system + core;
+	cpu_heap = memmap->system + core;
 	if ((cpu_heap->caps & caps) != caps)
 		panic(SOF_IPC_PANIC_MEM);
 
@@ -180,13 +177,11 @@ static void *rmalloc_sys(uint32_t flags, int caps, int core, size_t bytes)
 	cpu_heap->info.used += bytes;
 	cpu_heap->info.free -= alignment + bytes;
 
-	/* other core should have the latest value */
-	if (core != cpu_get_id())
-		dcache_writeback_invalidate_region(cpu_heap,
-						   sizeof(*cpu_heap));
-
 	if (flags & SOF_MEM_FLAG_SHARED)
 		ptr = platform_shared_get(ptr, bytes);
+
+	platform_shared_commit(cpu_heap, sizeof(*cpu_heap));
+	platform_shared_commit(memmap, sizeof(*memmap));
 
 	return ptr;
 }
@@ -221,8 +216,6 @@ static void *alloc_block(struct mm_heap *heap, int level,
 	void *ptr;
 	int i;
 
-	invalidate_blocks(map);
-
 	hdr = &map->block[map->first_free];
 
 	map->free_count--;
@@ -245,8 +238,9 @@ static void *alloc_block(struct mm_heap *heap, int level,
 		}
 	}
 
-	writeback_block_map(map);
-	dcache_writeback_region(heap, sizeof(*heap));
+	platform_shared_commit(map->block, sizeof(*map->block) * map->count);
+	platform_shared_commit(map, sizeof(*map));
+	platform_shared_commit(heap, sizeof(*heap));
 
 	return ptr;
 }
@@ -257,7 +251,8 @@ static void *alloc_cont_blocks(struct mm_heap *heap, int level,
 {
 	struct block_map *map = &heap->map[level];
 	struct block_hdr *hdr;
-	void *ptr, *unaligned_ptr;
+	void *ptr = NULL;
+	void *unaligned_ptr;
 	unsigned int start = map->first_free;
 	unsigned int current;
 	unsigned int count = bytes / map->block_size;
@@ -265,8 +260,6 @@ static void *alloc_cont_blocks(struct mm_heap *heap, int level,
 
 	if (bytes % map->block_size)
 		count++;
-
-	invalidate_blocks(map);
 
 	/* check if we have enough consecutive blocks for requested
 	 * allocation size.
@@ -285,7 +278,7 @@ static void *alloc_cont_blocks(struct mm_heap *heap, int level,
 		trace_mem_error("error: %d blocks needed for allocation "
 				"but only %d blocks are remaining",
 				count, remaining);
-		return NULL;
+		goto out;
 	}
 
 	/* we found enough space, let's allocate it */
@@ -318,8 +311,10 @@ static void *alloc_cont_blocks(struct mm_heap *heap, int level,
 		hdr->unaligned_ptr = unaligned_ptr;
 	}
 
-	writeback_block_map(map);
-	dcache_writeback_region(heap, sizeof(*heap));
+out:
+	platform_shared_commit(map->block, sizeof(*map->block) * map->count);
+	platform_shared_commit(map, sizeof(*map));
+	platform_shared_commit(heap, sizeof(*heap));
 
 	return ptr;
 }
@@ -334,29 +329,39 @@ static struct mm_heap *get_heap_from_ptr(void *ptr)
 	heap = memmap->system_runtime + cpu_get_id();
 	if ((uint32_t)ptr >= heap->heap &&
 	    (uint32_t)ptr < heap->heap + heap->size)
-		return heap;
+		goto out;
+
+	platform_shared_commit(heap, sizeof(*heap));
 
 	for (i = 0; i < PLATFORM_HEAP_RUNTIME; i++) {
 		heap = &memmap->runtime[i];
 
-		dcache_invalidate_region(heap, sizeof(*heap));
-
 		if ((uint32_t)ptr >= heap->heap &&
 		    (uint32_t)ptr < heap->heap + heap->size)
-			return heap;
+			goto out;
+
+		platform_shared_commit(heap, sizeof(*heap));
 	}
 
 	for (i = 0; i < PLATFORM_HEAP_BUFFER; i++) {
 		heap = &memmap->buffer[i];
 
-		dcache_invalidate_region(heap, sizeof(*heap));
-
 		if ((uint32_t)ptr >= heap->heap &&
 		    (uint32_t)ptr < heap->heap + heap->size)
-			return heap;
+			goto out;
+
+		platform_shared_commit(heap, sizeof(*heap));
 	}
 
+	platform_shared_commit(memmap, sizeof(*memmap));
+
 	return NULL;
+
+out:
+	platform_shared_commit(heap, sizeof(*heap));
+	platform_shared_commit(memmap, sizeof(*memmap));
+
+	return heap;
 }
 
 static struct mm_heap *get_heap_from_caps(struct mm_heap *heap, int count,
@@ -367,8 +372,8 @@ static struct mm_heap *get_heap_from_caps(struct mm_heap *heap, int count,
 
 	/* find first heap that support type */
 	for (i = 0; i < count; i++) {
-		dcache_invalidate_region(&heap[i], sizeof(heap[i]));
 		mask = heap[i].caps & caps;
+		platform_shared_commit(&heap[i], sizeof(heap[i]));
 		if (mask == caps)
 			return &heap[i];
 	}
@@ -390,8 +395,6 @@ static void *get_ptr_from_heap(struct mm_heap *heap, uint32_t flags,
 	for (i = 0; i < heap->blocks; i++) {
 		map = &heap->map[i];
 
-		dcache_invalidate_region(map, sizeof(*map));
-
 		/* size of requested buffer is adjusted for alignment purposes
 		 * we check if first free block is already aligned if not
 		 * we need to allocate bigger size for alignment
@@ -403,18 +406,22 @@ static void *get_ptr_from_heap(struct mm_heap *heap, uint32_t flags,
 
 		/* is block big enough */
 		if (map->block_size < temp_bytes) {
+			platform_shared_commit(map, sizeof(*map));
 			temp_bytes = bytes;
 			continue;
 		}
 
 		/* does block have free space */
 		if (map->free_count == 0) {
+			platform_shared_commit(map, sizeof(*map));
 			temp_bytes = bytes;
 			continue;
 		}
 
 		/* free block space exists */
 		ptr = alloc_block(heap, i, caps, alignment);
+
+		platform_shared_commit(map, sizeof(*map));
 
 		break;
 	}
@@ -447,15 +454,17 @@ static void free_block(void *ptr)
 	for (i = 0; i < heap->blocks; i++) {
 		block_map = &heap->map[i];
 
-		dcache_invalidate_region(block_map, sizeof(*block_map));
-
 		/* is ptr in this block */
 		if ((uint32_t)ptr < (block_map->base +
 		    (block_map->block_size * block_map->count)))
 			break;
+
+		platform_shared_commit(block_map, sizeof(*block_map));
 	}
 
 	if (i == heap->blocks) {
+		platform_shared_commit(heap, sizeof(*heap));
+
 		/* not found */
 		trace_mem_error("free_block() error: invalid ptr = %p cpu = %d",
 				(uintptr_t)ptr, cpu_get_id());
@@ -464,8 +473,6 @@ static void free_block(void *ptr)
 
 	/* calculate block header */
 	block = ((uint32_t)ptr - block_map->base) / block_map->block_size;
-
-	invalidate_blocks(block_map);
 
 	hdr = &block_map->block[block];
 
@@ -504,9 +511,6 @@ static void free_block(void *ptr)
 	if (block < block_map->first_free || heap_is_full)
 		block_map->first_free = block;
 
-	writeback_block_map(block_map);
-	dcache_writeback_region(heap, sizeof(*heap));
-
 #if CONFIG_DEBUG_BLOCK_FREE
 	/* memset the whole block in case of unaligned ptr */
 	validate_memory(
@@ -517,6 +521,11 @@ static void free_block(void *ptr)
 		DEBUG_BLOCK_FREE_VALUE_8BIT, block_map->block_size *
 		(i - block));
 #endif
+
+	platform_shared_commit(block_map->block, sizeof(*block_map->block) *
+			       block_map->count);
+	platform_shared_commit(block_map, sizeof(*block_map));
+	platform_shared_commit(heap, sizeof(*heap));
 }
 
 #if CONFIG_DEBUG_HEAP
@@ -539,7 +548,11 @@ static void trace_heap_blocks(struct mm_heap *heap)
 				block_map->count);
 		trace_mem_error("  free %d first at %d",
 				block_map->free_count, block_map->first_free);
+
+		platform_shared_commit(block_map, sizeof(*block_map));
 	}
+
+	platform_shared_commit(heap, sizeof(*heap));
 }
 
 static void alloc_trace_heap(enum mem_zone zone, uint32_t caps, size_t bytes,
@@ -570,20 +583,28 @@ static void alloc_trace_heap(enum mem_zone zone, uint32_t caps, size_t bytes,
 
 void alloc_trace_runtime_heap(uint32_t caps, size_t bytes)
 {
+	struct mm *memmap = memmap_get();
+
 	/* check runtime heap for capabilities */
 	trace_mem_init("heap: using runtime");
 
 	alloc_trace_heap(SOF_MEM_ZONE_RUNTIME, caps, bytes,
-			 memmap_get()->runtime, PLATFORM_HEAP_RUNTIME);
+			 memmap->runtime, PLATFORM_HEAP_RUNTIME);
+
+	platform_shared_commit(memmap, sizeof(*memmap));
 }
 
 void alloc_trace_buffer_heap(uint32_t caps, size_t bytes)
 {
+	struct mm *memmap = memmap_get();
+
 	/* check buffer heap for capabilities */
 	trace_mem_init("heap: using buffer");
 
-	alloc_trace_heap(RZONE_BUFFER, caps, bytes, memmap_get()->buffer,
+	alloc_trace_heap(RZONE_BUFFER, caps, bytes, memmap->buffer,
 			 PLATFORM_HEAP_BUFFER);
+
+	platform_shared_commit(memmap, sizeof(*memmap));
 }
 
 #endif
@@ -592,21 +613,20 @@ void alloc_trace_buffer_heap(uint32_t caps, size_t bytes)
 static void *rmalloc_sys_runtime(uint32_t flags, int caps, int core,
 				 size_t bytes)
 {
+	struct mm *memmap = memmap_get();
 	struct mm_heap *cpu_heap;
 	void *ptr;
 
 	/* use the heap dedicated for the selected core */
-	cpu_heap = memmap_get()->system_runtime + core;
+	cpu_heap = memmap->system_runtime + core;
 	if ((cpu_heap->caps & caps) != caps)
 		panic(SOF_IPC_PANIC_MEM);
 
 	ptr = get_ptr_from_heap(cpu_heap, flags, caps, bytes,
 				PLATFORM_DCACHE_ALIGN);
 
-	/* other core should have the latest value */
-	if (core != cpu_get_id())
-		dcache_writeback_invalidate_region(cpu_heap,
-						   sizeof(*cpu_heap));
+	platform_shared_commit(cpu_heap, sizeof(*cpu_heap));
+	platform_shared_commit(memmap, sizeof(*memmap));
 
 	return ptr;
 }
@@ -624,12 +644,17 @@ static void *rmalloc_runtime(uint32_t flags, uint32_t caps, size_t bytes)
 		heap = get_heap_from_caps(memmap->buffer, PLATFORM_HEAP_BUFFER,
 					  caps);
 		if (!heap) {
+			platform_shared_commit(memmap, sizeof(*memmap));
+
 			trace_mem_error("rmalloc_runtime() error: caps = %x, bytes = %d",
 					caps, bytes);
 
 			return NULL;
 		}
 	}
+
+	platform_shared_commit(memmap, sizeof(*memmap));
+
 	return get_ptr_from_heap(heap, flags, caps, bytes,
 				 PLATFORM_DCACHE_ALIGN);
 }
@@ -662,7 +687,8 @@ static void *_malloc_unlocked(enum mem_zone zone, uint32_t flags, uint32_t caps,
 #endif
 
 	memmap->heap_trace_updated = 1;
-	dcache_writeback_region(memmap, sizeof(*memmap));
+
+	platform_shared_commit(memmap, sizeof(*memmap));
 
 	return ptr;
 }
@@ -728,8 +754,6 @@ static void *alloc_heap_buffer(struct mm_heap *heap, uint32_t flags,
 	for (i = 0; i < heap->blocks; i++) {
 		map = &heap->map[i];
 
-		dcache_invalidate_region(map, sizeof(*map));
-
 		/* size of requested buffer is adjusted for alignment purposes
 		 * we check if first free block is already aligned if not
 		 * we need to allocate bigger size for alignment
@@ -740,12 +764,15 @@ static void *alloc_heap_buffer(struct mm_heap *heap, uint32_t flags,
 
 		/* Check if blocks are big enough and at least one is free */
 		if (map->block_size >= temp_bytes && map->free_count) {
-			/* found: grab a block */
+			platform_shared_commit(map, sizeof(*map));
 
+			/* found: grab a block */
 			ptr = alloc_block(heap, i, caps, alignment);
 			break;
 		}
 		temp_bytes = bytes;
+
+		platform_shared_commit(map, sizeof(*map));
 	}
 
 	/* size of requested buffer is adjusted for alignment purposes
@@ -762,15 +789,18 @@ static void *alloc_heap_buffer(struct mm_heap *heap, uint32_t flags,
 		for (i = heap->blocks - 1; i >= 0; i--) {
 			map = &heap->map[i];
 
-			dcache_invalidate_region(map, sizeof(*map));
-
 			/* allocate if block size is smaller than request */
 			if (heap->size >= bytes	&& map->block_size < bytes) {
 				ptr = alloc_cont_blocks(heap, i, caps,
 							bytes, alignment);
-				if (ptr)
+				if (ptr) {
+					platform_shared_commit(map,
+							       sizeof(*map));
 					break;
+				}
 			}
+
+			platform_shared_commit(map, sizeof(*map));
 		}
 	}
 
@@ -781,6 +811,8 @@ static void *alloc_heap_buffer(struct mm_heap *heap, uint32_t flags,
 	if (ptr)
 		bzero(ptr, temp_bytes);
 #endif
+
+	platform_shared_commit(heap, sizeof(*heap));
 
 	return ptr;
 }
@@ -807,6 +839,8 @@ static void *_balloc_unlocked(uint32_t flags, uint32_t caps, size_t bytes,
 
 		/* Continue from the next heap */
 	}
+
+	platform_shared_commit(memmap, sizeof(*memmap));
 
 	return ptr;
 }
@@ -853,7 +887,9 @@ static void _rfree_unlocked(void *ptr)
 	/* free the block */
 	free_block(ptr);
 	memmap->heap_trace_updated = 1;
-	dcache_writeback_region(memmap, sizeof(*memmap));
+
+	platform_shared_commit(cpu_heap, sizeof(*cpu_heap));
+	platform_shared_commit(memmap, sizeof(*memmap));
 }
 
 void rfree(void *ptr)
@@ -943,6 +979,7 @@ int mm_pm_context_restore(struct dma_copy *dc, struct dma_sg_config *sg)
 
 void free_heap(enum mem_zone zone)
 {
+	struct mm *memmap = memmap_get();
 	struct mm_heap *cpu_heap;
 
 	/* to be called by slave cores only for sys heap,
@@ -954,11 +991,12 @@ void free_heap(enum mem_zone zone)
 		panic(SOF_IPC_PANIC_MEM);
 	}
 
-	cpu_heap = memmap_get()->system + cpu_get_id();
+	cpu_heap = memmap->system + cpu_get_id();
 	cpu_heap->info.used = 0;
 	cpu_heap->info.free = cpu_heap->size;
 
-	dcache_writeback_region(cpu_heap, sizeof(*cpu_heap));
+	platform_shared_commit(cpu_heap, sizeof(*cpu_heap));
+	platform_shared_commit(memmap, sizeof(*memmap));
 }
 
 #if CONFIG_TRACE
@@ -967,8 +1005,6 @@ void heap_trace(struct mm_heap *heap, int size)
 	struct block_map *current_map;
 	int i;
 	int j;
-
-	dcache_invalidate_region(heap, sizeof(*heap));
 
 	for (i = 0; i < size; i++) {
 
@@ -982,16 +1018,18 @@ void heap_trace(struct mm_heap *heap, int size)
 		for (j = 1; j < heap->blocks; j++) {
 			current_map = &heap->map[j];
 
-			dcache_invalidate_region(current_map,
-						 sizeof(*current_map));
-
 			trace_mem_init("  block %d base 0x%x size %d",
 				       j, current_map->base,
 				       current_map->block_size);
 			trace_mem_init("   count %d free %d",
 				       current_map->count,
 				       current_map->free_count);
+
+			platform_shared_commit(current_map,
+					       sizeof(*current_map));
 		}
+
+		platform_shared_commit(heap, sizeof(*heap));
 
 		heap++;
 	}
@@ -1000,8 +1038,6 @@ void heap_trace(struct mm_heap *heap, int size)
 void heap_trace_all(int force)
 {
 	struct mm *memmap = memmap_get();
-
-	dcache_invalidate_region(memmap, sizeof(*memmap));
 
 	/* has heap changed since last shown */
 	if (memmap->heap_trace_updated || force) {
@@ -1012,7 +1048,8 @@ void heap_trace_all(int force)
 	}
 
 	memmap->heap_trace_updated = 0;
-	dcache_writeback_region(memmap, sizeof(*memmap));
+
+	platform_shared_commit(memmap, sizeof(*memmap));
 }
 #else
 void heap_trace_all(int force) { }
@@ -1051,5 +1088,5 @@ void init_heap(struct sof *sof)
 
 	bzero(memmap->lock, sizeof(*memmap->lock));
 
-	dcache_writeback_region(memmap, sizeof(*memmap));
+	platform_shared_commit(memmap, sizeof(*memmap));
 }
