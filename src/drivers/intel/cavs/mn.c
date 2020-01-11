@@ -19,6 +19,11 @@
 #define tracev_mn(__e, ...) \
 	tracev_event(TRACE_CLASS_MN, __e, ##__VA_ARGS__)
 
+enum mclk_source {
+	MN_MCLK_SOURCE_NONE = 0,
+	MN_MCLK_SOURCE_MN,
+};
+
 enum bclk_source {
 	MN_BCLK_SOURCE_NONE = 0,
 	MN_BCLK_SOURCE_MN,
@@ -26,6 +31,10 @@ enum bclk_source {
 };
 
 static spinlock_t *mn_lock;
+
+/* Keep track of MCLKs sources to know when it's safe to change shared clock. */
+static enum mclk_source mclk_sources[DAI_NUM_SSP_MCLK];
+static int mclk_source_clock;
 
 /* BCLKs can be driven by multiple sources - M/N or XTAL directly, but input
  * for source is shared by all outputs coming from that source and once it's
@@ -46,6 +55,21 @@ void mn_init(void)
 	spinlock_init(&mn_lock);
 }
 
+/**
+ * \brief Checks if given clock is used as source for any MCLK.
+ * \param[in] clk_src MCLK source.
+ * \return true if any port use given clock source, false otherwise.
+ */
+static inline bool is_mclk_source_in_use(void)
+{
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(mclk_sources); i++)
+		if (mclk_sources[i] == MN_MCLK_SOURCE_MN)
+			return true;
+	return false;
+}
+
 int mn_set_mclk(uint16_t mclk_id, uint32_t mclk_rate)
 {
 	uint32_t mdivr;
@@ -61,27 +85,48 @@ int mn_set_mclk(uint16_t mclk_id, uint32_t mclk_rate)
 	}
 
 	spin_lock(mn_lock);
-	mdivc = mn_reg_read(0x0);
 
-	/* Enable MCLK Divider */
-	mdivc |= 0x1;
+	mclk_sources[mclk_id] = MN_MCLK_SOURCE_NONE;
 
-	/* searching the smallest possible mclk source */
-	for (i = MAX_SSP_FREQ_INDEX; i >= 0; i--) {
-		if (mclk_rate > ssp_freq[i].freq)
-			break;
+	if (is_mclk_source_in_use()) {
+		clk_index = mclk_source_clock;
 
-		if (ssp_freq[i].freq % mclk_rate == 0)
-			clk_index = i;
-	}
-
-	if (clk_index >= 0) {
-		mdivc |= MCDSS(ssp_freq_sources[clk_index]);
+		if (ssp_freq[clk_index].freq % mclk_rate != 0) {
+			trace_mn_error("error: MCLK %d, no valid configuration for already selected source = %d",
+				       mclk_rate, mclk_source_clock);
+			ret = -EINVAL;
+			goto out;
+		}
 	} else {
-		trace_mn_error("error: MCLK %d", mclk_rate);
-		ret = -EINVAL;
-		goto out;
+		/* searching the smallest possible mclk source */
+		for (i = MAX_SSP_FREQ_INDEX; i >= 0; i--) {
+			if (mclk_rate > ssp_freq[i].freq)
+				break;
+
+			if (ssp_freq[i].freq % mclk_rate == 0)
+				clk_index = i;
+		}
+
+		if (clk_index < 0) {
+			trace_mn_error("error: MCLK %d, no valid source",
+				       mclk_rate);
+			ret = -EINVAL;
+			goto out;
+		}
+
+		mclk_source_clock = clk_index;
+		mdivc = mn_reg_read(0x0);
+
+		/* enable MCLK divider */
+		mdivc |= 0x1;
+
+		/* select source clock */
+		mdivc |= MCDSS(ssp_freq_sources[clk_index]);
+
+		mn_reg_write(0x0, mdivc);
 	}
+
+	mclk_sources[mclk_id] = MN_MCLK_SOURCE_MN;
 
 	mdivr_val = ssp_freq[clk_index].freq / mclk_rate;
 
@@ -104,13 +149,19 @@ int mn_set_mclk(uint16_t mclk_id, uint32_t mclk_rate)
 		goto out;
 	}
 
-	mn_reg_write(0x0, mdivc);
 	mn_reg_write(0x80 + mclk_id * 0x4, mdivr);
 
 out:
 	spin_unlock(mn_lock);
 
 	return ret;
+}
+
+void mn_release_mclk(uint32_t mclk_id)
+{
+	spin_lock(mn_lock);
+	mclk_sources[mclk_id] = MN_MCLK_SOURCE_NONE;
+	spin_unlock(mn_lock);
 }
 
 /**
@@ -317,6 +368,8 @@ int mn_set_bclk(uint32_t dai_index, uint32_t bclk_rate,
 	bool mn_in_use;
 
 	spin_lock(mn_lock);
+
+	bclk_sources[dai_index] = MN_BCLK_SOURCE_NONE;
 
 	mn_in_use = is_bclk_source_in_use(MN_BCLK_SOURCE_MN);
 

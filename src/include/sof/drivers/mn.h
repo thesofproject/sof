@@ -19,11 +19,19 @@ void mn_init(void);
 /**
  * \brief Finds and sets valid combination of MCLK source and divider to
  *	  achieve requested MCLK rate.
+ *	  User should release clock when it is no longer needed to allow
+ *	  driver to change MCLK M/N source when user count drops to 0.
  * \param[in] mclk_id id of master clock for which rate should be set.
  * \param[in] mclk_rate master clock frequency.
  * \return 0 on success otherwise a negative error code.
  */
 int mn_set_mclk(uint16_t mclk_id, uint32_t mclk_rate);
+
+/**
+ * \brief Release previously requested MCLK for given MCLK ID.
+ * \param[in] mclk_id id of master clock.
+ */
+void mn_release_mclk(uint32_t mclk_id);
 
 /**
  * \brief Finds and sets valid combination of BCLK source and M/N to
