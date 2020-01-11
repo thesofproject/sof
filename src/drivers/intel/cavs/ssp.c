@@ -785,8 +785,11 @@ static int ssp_probe(struct dai *dai)
 
 static int ssp_remove(struct dai *dai)
 {
+	struct ssp_pdata *ssp = dai_get_drvdata(dai);
+
 	pm_runtime_put_sync(SSP_CLK, dai->index);
 
+	mn_release_mclk(ssp->config.ssp.mclk_id);
 	mn_release_bclk(dai->index);
 
 	/* Disable SSP power */

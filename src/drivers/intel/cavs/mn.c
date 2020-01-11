@@ -38,6 +38,12 @@ enum bclk_source {
 
 static spinlock_t mn_lock;
 
+/* Keep track of which MCLKs are in use to know when it's safe to change
+ * shared clock.
+ */
+static bool mclk_sources_used[DAI_NUM_SSP_MCLK];
+static int mclk_source_clock;
+
 static enum bclk_source bclk_sources[(DAI_NUM_SSP_BASE + DAI_NUM_SSP_EXT)];
 static int bclk_source_mn_clock;
 
@@ -51,26 +57,33 @@ void mn_init(void)
 	spinlock_init(&mn_lock);
 }
 
-int mn_set_mclk(uint16_t mclk_id, uint32_t mclk_rate)
+/**
+ * \brief Checks if given clock is used as source for any MCLK.
+ * \param[in] clk_src MCLK source.
+ * \return true if any port use given clock source, false otherwise.
+ */
+static inline bool is_mclk_source_in_use(void)
 {
-	uint32_t mdivr;
-	uint32_t mdivr_val;
-	uint32_t mdivc;
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(mclk_sources_used); i++)
+		if (mclk_sources_used[i])
+			return true;
+	return false;
+}
+
+/**
+ * \brief Configures source clock for MCLK.
+ *	  All MCLKs share the same source, so it should be changed
+ *	  only if there are no other ports using it already.
+ * \param[in] mclk_rate master clock frequency.
+ * \return 0 on success, error code otherwise.
+ */
+static inline int setup_initial_mclk_source(uint32_t mclk_rate)
+{
 	int i;
 	int clk_index = -1;
-	int ret = 0;
-
-	if (mclk_id >= DAI_NUM_SSP_MCLK) {
-		trace_mn_error("error: mclk ID (%d) >= %d",
-			       mclk_id, DAI_NUM_SSP_MCLK);
-		return -EINVAL;
-	}
-
-	spin_lock(&mn_lock);
-	mdivc = mn_reg_read(MN_MDIVCTRL);
-
-	/* Enable MCLK Divider */
-	mdivc |= MN_MDIVCTRL_M_DIV_ENABLE;
+	uint32_t mdivc = mn_reg_read(MN_MDIVCTRL);
 
 	/* searching the smallest possible mclk source */
 	for (i = MAX_SSP_FREQ_INDEX; i >= 0; i--) {
@@ -81,15 +94,48 @@ int mn_set_mclk(uint16_t mclk_id, uint32_t mclk_rate)
 			clk_index = i;
 	}
 
-	if (clk_index >= 0) {
-		mdivc |= MCDSS(ssp_freq_sources[clk_index]);
-	} else {
-		trace_mn_error("error: MCLK %d", mclk_rate);
-		ret = -EINVAL;
-		goto out;
+	if (clk_index < 0) {
+		trace_mn_error("error: MCLK %d, no valid source",
+			       mclk_rate);
+		return -EINVAL;
 	}
 
-	mdivr_val = ssp_freq[clk_index].freq / mclk_rate;
+	mclk_source_clock = clk_index;
+
+	/* enable MCLK divider */
+	mdivc |= MN_MDIVCTRL_M_DIV_ENABLE;
+
+	/* select source clock */
+	mdivc |= MCDSS(ssp_freq_sources[clk_index]);
+
+	mn_reg_write(MN_MDIVCTRL, mdivc);
+	return 0;
+}
+
+/**
+ * \brief Checks if requested MCLK can be achieved with current source.
+ * \param[in] mclk_rate master clock frequency.
+ * \return 0 on success, error code otherwise.
+ */
+static inline int check_current_mclk_source(uint32_t mclk_rate)
+{
+	if (ssp_freq[mclk_source_clock].freq % mclk_rate != 0) {
+		trace_mn_error("error: MCLK %d, no valid configuration for already selected source = %d",
+			       mclk_rate, mclk_source_clock);
+		return -EINVAL;
+	}
+	return 0;
+}
+
+/**
+ * \brief Sets MCLK divider to given value.
+ * \param[in] mclk_id ID of MCLK.
+ * \param[in] mdivr_val divider value.
+ * \return 0 on success, error code otherwise.
+ */
+static inline int set_mclk_divider(uint16_t mclk_id, uint32_t mdivr_val)
+{
+	uint32_t mdivr;
 
 	switch (mdivr_val) {
 	case 1:
@@ -106,17 +152,51 @@ int mn_set_mclk(uint16_t mclk_id, uint32_t mclk_rate)
 		break;
 	default:
 		trace_mn_error("error: invalid mdivr_val %d", mdivr_val);
-		ret = -EINVAL;
-		goto out;
+		return -EINVAL;
 	}
 
-	mn_reg_write(MN_MDIVCTRL, mdivc);
 	mn_reg_write(MN_MDIVR(mclk_id), mdivr);
+	return 0;
+}
+
+int mn_set_mclk(uint16_t mclk_id, uint32_t mclk_rate)
+{
+	int ret = 0;
+
+	if (mclk_id >= DAI_NUM_SSP_MCLK) {
+		trace_mn_error("error: mclk ID (%d) >= %d",
+			       mclk_id, DAI_NUM_SSP_MCLK);
+		return -EINVAL;
+	}
+
+	spin_lock(&mn_lock);
+
+	mclk_sources_used[mclk_id] = false;
+
+	if (is_mclk_source_in_use())
+		ret = check_current_mclk_source(mclk_rate);
+	else
+		ret = setup_initial_mclk_source(mclk_rate);
+
+	if (ret < 0)
+		goto out;
+
+	mclk_sources_used[mclk_id] = true;
+
+	ret = set_mclk_divider(mclk_id,
+			       ssp_freq[mclk_source_clock].freq / mclk_rate);
 
 out:
 	spin_unlock(&mn_lock);
 
 	return ret;
+}
+
+void mn_release_mclk(uint32_t mclk_id)
+{
+	spin_lock(&mn_lock);
+	mclk_sources_used[mclk_id] = false;
+	spin_unlock(&mn_lock);
 }
 
 /**
