@@ -26,6 +26,9 @@
 /** \brief Number of 'extended' SSP ports available */
 #define DAI_NUM_SSP_EXT		2
 
+/** \brief Number of SSP MCLKs available */
+#define DAI_NUM_SSP_MCLK	2
+
 /* HD/A */
 
 /** \brief Number of HD/A Link Outputs */
