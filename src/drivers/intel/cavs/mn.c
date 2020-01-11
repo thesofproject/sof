@@ -55,7 +55,7 @@ int mn_set_mclk(uint16_t mclk_id, uint32_t mclk_rate)
 	int clk_index = -1;
 	int ret = 0;
 
-	if (mclk_id > 1) {
+	if (mclk_id >= DAI_NUM_SSP_MCLK) {
 		trace_mn_error("error: mclk ID (%d) > 1", mclk_id);
 		return -EINVAL;
 	}
