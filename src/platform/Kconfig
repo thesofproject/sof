@@ -167,6 +167,7 @@ config IMX8
 	select HOST_PTABLE
 	select DUMMY_DMA
 	select WAITI_DELAY
+	select IMX
 	help
 	  Select if your target platform is imx8-compatible
 
@@ -178,6 +179,13 @@ config INTEL
 	help
 	  This has to be selected for every Intel platform.
 	  It enables Intel platforms-specific features.
+
+config IMX
+	bool
+	default n
+	help
+	  This has to be selected for every i.MX NXP platform.
+	  It enables NXP platforms-specific features.
 
 config CAVS
 	bool

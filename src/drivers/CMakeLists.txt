@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
-if(CONFIG_IMX8)
+if(CONFIG_IMX)
 	add_subdirectory(imx)
 endif()
 
