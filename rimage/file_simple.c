@@ -568,3 +568,26 @@ const struct adsp machine_imx8 = {
 	.machine_id = MACHINE_IMX8,
 	.write_firmware = simple_write_firmware,
 };
+
+const struct adsp machine_imx8x = {
+	.name = "imx8x",
+	.mem_zones = {
+		[SOF_FW_BLK_TYPE_IRAM] = {
+			.base = IMX8_IRAM_BASE,
+			.size = IMX8_IRAM_SIZE,
+			.host_offset = IMX8_IRAM_HOST_OFFSET,
+		},
+		[SOF_FW_BLK_TYPE_DRAM] = {
+			.base = IMX8_DRAM_BASE,
+			.size = IMX8_DRAM_SIZE,
+			.host_offset = 0,
+		},
+		[SOF_FW_BLK_TYPE_SRAM] = {
+			.base = IMX8_SRAM_BASE,
+			.size = IMX8_SRAM_SIZE,
+			.host_offset = 0,
+		},
+	},
+	.machine_id = MACHINE_IMX8X,
+	.write_firmware = simple_write_firmware,
+};
