@@ -25,6 +25,8 @@ elseif(CONFIG_TIGERLAKE)
 	endif()
 elseif(CONFIG_IMX8)
 	set(platform_folder imx8)
+elseif(CONFIG_IMX8X)
+	set(platform_folder imx8)
 endif()
 
 set(fw_name ${CONFIG_FIRMWARE_SHORT_NAME})

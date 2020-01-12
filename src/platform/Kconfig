@@ -171,6 +171,19 @@ config IMX8
 	help
 	  Select if your target platform is imx8-compatible
 
+config IMX8X
+	bool "Build for NXP i.MX8X"
+	select HAVE_RESET_VECTOR_ROM
+	select INTERRUPT_LEVEL_1
+	select INTERRUPT_LEVEL_2
+	select INTERRUPT_LEVEL_3
+	select HOST_PTABLE
+	select DUMMY_DMA
+	select WAITI_DELAY
+	select IMX
+	help
+	  Select if your target platform is imx8x-compatible
+
 endchoice
 
 config INTEL
@@ -247,6 +260,7 @@ config FIRMWARE_SHORT_NAME
 	default "icl" if ICELAKE
 	default "tgl" if TIGERLAKE
 	default "imx8" if IMX8
+	default "imx8x" if IMX8X
 	default ""
 	help
 	  3-characters long firmware identifer
