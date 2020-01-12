@@ -69,8 +69,13 @@
  * usage in this driver.
  */
 
-#define IRQSTR_BASE_ADDR_QXP	0x51080000
-#define IRQSTR_BASE_ADDR	IRQSTR_BASE_ADDR_QXP
+#if defined CONFIG_IMX8
+#define IRQSTR_BASE_ADDR	0x510A0000
+#endif
+
+#if defined CONFIG_IMX8X
+#define IRQSTR_BASE_ADDR	0x51080000
+#endif
 
 /* The MASK, SET (unused) and STATUS registers are 512-bit registers
  * split into 16 32-bit registers that we can directly access.
