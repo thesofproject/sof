@@ -20,7 +20,7 @@
 #endif
 #include <sof/common.h>
 #include <sof/sof.h>
-#include <sof/spinlock_t.h>
+#include <sof/spinlock.h>
 #include <sof/trace/preproc.h>
 #include <config.h>
 #include <stdint.h>
@@ -33,7 +33,7 @@ struct sof;
 struct trace {
 	uint32_t pos ;	/* trace position */
 	uint32_t enable;
-	spinlock_t *lock; /* locking mechanism */
+	spinlock_t lock; /* locking mechanism */
 };
 
 /* bootloader trace values */

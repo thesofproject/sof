@@ -251,7 +251,7 @@ static inline void handle_irq_batch(struct irq_cascade_desc *cascade,
 		handled = false;
 		status &= ~(1ull << bit); /* Release interrupt */
 
-		spin_lock(cascade->lock);
+		spin_lock(&cascade->lock);
 
 		/* Get child if any and run handler */
 		list_for_item(clist, &cascade->child[bit].list) {
@@ -259,9 +259,9 @@ static inline void handle_irq_batch(struct irq_cascade_desc *cascade,
 
 			if (child->handler && (child->cpu_mask & 1 << core)) {
 				/* run handler in non atomic context */
-				spin_unlock(cascade->lock);
+				spin_unlock(&cascade->lock);
 				child->handler(child->handler_arg);
-				spin_lock(cascade->lock);
+				spin_lock(&cascade->lock);
 
 				handled = true;
 			}
@@ -271,7 +271,7 @@ static inline void handle_irq_batch(struct irq_cascade_desc *cascade,
 
 		platform_shared_commit(cascade, sizeof(*cascade));
 
-		spin_unlock(cascade->lock);
+		spin_unlock(&cascade->lock);
 
 		if (!handled) {
 			trace_irq_error("irq_handler(): nobody cared, bit %d",

@@ -246,7 +246,7 @@ void ipc_platform_send_msg(void)
 	struct ipc_msg *msg;
 	uint32_t flags;
 
-	spin_lock_irq(ipc->lock, flags);
+	spin_lock_irq(&ipc->lock, flags);
 
 	/* any messages to send ? */
 	if (list_is_empty(&ipc->msg_list))
@@ -283,7 +283,7 @@ void ipc_platform_send_msg(void)
 out:
 	platform_shared_commit(ipc, sizeof(*ipc));
 
-	spin_unlock_irq(ipc->lock, flags);
+	spin_unlock_irq(&ipc->lock, flags);
 }
 
 int platform_ipc_init(struct ipc *ipc)

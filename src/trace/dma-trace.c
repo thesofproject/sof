@@ -85,7 +85,7 @@ static enum task_state trace_work(void *data)
 		buffer->r_ptr = (char *)buffer->r_ptr - DMA_TRACE_LOCAL_SIZE;
 
 out:
-	spin_lock_irq(d->lock, flags);
+	spin_lock_irq(&d->lock, flags);
 
 	/* disregard any old messages and don't resend them if we overflow */
 	if (size > 0) {
@@ -100,7 +100,7 @@ out:
 
 	platform_shared_commit(d, sizeof(*d));
 
-	spin_unlock_irq(d->lock, flags);
+	spin_unlock_irq(&d->lock, flags);
 
 	/* reschedule the trace copying work */
 	return SOF_TASK_STATE_RESCHEDULE;
@@ -184,7 +184,7 @@ static int dma_trace_buffer_init(struct dma_trace_data *d)
 	dcache_writeback_region(buf, DMA_TRACE_LOCAL_SIZE);
 
 	/* initialise the DMA buffer, whole sequence in section */
-	spin_lock_irq(d->lock, flags);
+	spin_lock_irq(&d->lock, flags);
 
 	buffer->addr  = buf;
 	buffer->size = DMA_TRACE_LOCAL_SIZE;
@@ -193,7 +193,7 @@ static int dma_trace_buffer_init(struct dma_trace_data *d)
 	buffer->end_addr = (char *)buffer->addr + buffer->size;
 	buffer->avail = 0;
 
-	spin_unlock_irq(d->lock, flags);
+	spin_unlock_irq(&d->lock, flags);
 
 	return 0;
 }
@@ -522,7 +522,7 @@ void dtrace_event(const char *e, uint32_t length)
 
 	buffer = &trace_data->dmatb;
 
-	spin_lock_irq(trace_data->lock, flags);
+	spin_lock_irq(&trace_data->lock, flags);
 	dtrace_add_event(e, length);
 
 	/* if DMA trace copying is working or slave core
@@ -531,11 +531,11 @@ void dtrace_event(const char *e, uint32_t length)
 	if (trace_data->copy_in_progress ||
 	    cpu_get_id() != PLATFORM_MASTER_CORE_ID) {
 		platform_shared_commit(trace_data, sizeof(*trace_data));
-		spin_unlock_irq(trace_data->lock, flags);
+		spin_unlock_irq(&trace_data->lock, flags);
 		return;
 	}
 
-	spin_unlock_irq(trace_data->lock, flags);
+	spin_unlock_irq(&trace_data->lock, flags);
 
 	/* schedule copy now if buffer > 50% full */
 	if (trace_data->enabled &&

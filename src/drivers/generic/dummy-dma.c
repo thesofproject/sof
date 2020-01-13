@@ -225,7 +225,7 @@ static struct dma_chan_data *dummy_dma_channel_get(struct dma *dma,
 	uint32_t flags;
 	int i;
 
-	spin_lock_irq(dma->lock, flags);
+	spin_lock_irq(&dma->lock, flags);
 	for (i = 0; i < dma->plat_data.channels; i++) {
 		/* use channel if it's free */
 		if (dma->chan[i].status == COMP_STATE_INIT) {
@@ -234,11 +234,11 @@ static struct dma_chan_data *dummy_dma_channel_get(struct dma *dma,
 			atomic_add(&dma->num_channels_busy, 1);
 
 			/* return channel */
-			spin_unlock_irq(dma->lock, flags);
+			spin_unlock_irq(&dma->lock, flags);
 			return &dma->chan[i];
 		}
 	}
-	spin_unlock_irq(dma->lock, flags);
+	spin_unlock_irq(&dma->lock, flags);
 	trace_dummydma_error("dummy-dmac: %d no free channel",
 			     dma->plat_data.id);
 	return NULL;
@@ -273,9 +273,9 @@ static void dummy_dma_channel_put(struct dma_chan_data *channel)
 {
 	uint32_t flags;
 
-	spin_lock_irq(channel->dma->lock, flags);
+	spin_lock_irq(&channel->dma->lock, flags);
 	dummy_dma_channel_put_unlocked(channel);
-	spin_unlock_irq(channel->dma->lock, flags);
+	spin_unlock_irq(&channel->dma->lock, flags);
 }
 
 /* Since copies are synchronous, the triggers do nothing */
@@ -334,7 +334,7 @@ static int dummy_dma_set_config(struct dma_chan_data *channel,
 	uint32_t flags;
 	int ret = 0;
 
-	spin_lock_irq(channel->dma->lock, flags);
+	spin_lock_irq(&channel->dma->lock, flags);
 
 	if (!config->elem_array.count) {
 		trace_dummydma_error("dummy-dmac: %d channel %d no DMA descriptors",
@@ -363,7 +363,7 @@ static int dummy_dma_set_config(struct dma_chan_data *channel,
 
 	channel->status = COMP_STATE_PREPARE;
 out:
-	spin_unlock_irq(channel->dma->lock, flags);
+	spin_unlock_irq(&channel->dma->lock, flags);
 	return ret;
 }
 

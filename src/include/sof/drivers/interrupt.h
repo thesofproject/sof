@@ -13,7 +13,7 @@
 #include <sof/lib/cpu.h>
 #include <sof/list.h>
 #include <sof/sof.h>
-#include <sof/spinlock_t.h>
+#include <sof/spinlock.h>
 #include <sof/trace/trace.h>
 #include <user/trace.h>
 #include <stdbool.h>
@@ -83,7 +83,7 @@ struct irq_cascade_desc {
 							  * cannot mask input
 							  * interrupts per core
 							  */
-	spinlock_t *lock;				/**< protect child
+	spinlock_t lock;				/**< protect child
 							  * lists, enable and
 							  * child counters
 							  */
@@ -111,7 +111,7 @@ struct irq_cascade_tmpl {
  * \brief Cascading interrupt controller root.
  */
 struct cascade_root {
-	spinlock_t *lock;		/**< locking mechanism */
+	spinlock_t lock;		/**< locking mechanism */
 	struct irq_cascade_desc *list;	/**< list of child cascade irqs */
 	int last_irq;			/**< last registered cascade irq */
 };

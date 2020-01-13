@@ -1294,7 +1294,7 @@ int ipc_queue_host_message(struct ipc *ipc, uint32_t header, void *tx_data,
 	uint32_t flags;
 	int ret = 0;
 
-	spin_lock_irq(ipc->lock, flags);
+	spin_lock_irq(&ipc->lock, flags);
 
 	/* do we need to replace an existing message? */
 	if (replace)
@@ -1331,7 +1331,7 @@ int ipc_queue_host_message(struct ipc *ipc, uint32_t header, void *tx_data,
 	platform_shared_commit(msg, sizeof(*msg));
 
 out:
-	spin_unlock_irq(ipc->lock, flags);
+	spin_unlock_irq(&ipc->lock, flags);
 	return ret;
 }
 

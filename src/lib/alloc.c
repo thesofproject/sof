@@ -700,11 +700,11 @@ void *_malloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
 	uint32_t lock_flags;
 	void *ptr = NULL;
 
-	spin_lock_irq(memmap->lock, lock_flags);
+	spin_lock_irq(&memmap->lock, lock_flags);
 
 	ptr = _malloc_unlocked(zone, flags, caps, bytes);
 
-	spin_unlock_irq(memmap->lock, lock_flags);
+	spin_unlock_irq(&memmap->lock, lock_flags);
 
 	return ptr;
 }
@@ -727,13 +727,13 @@ void *rzalloc_core_sys(int core, size_t bytes)
 	uint32_t flags;
 	void *ptr = NULL;
 
-	spin_lock_irq(memmap->lock, flags);
+	spin_lock_irq(&memmap->lock, flags);
 
 	ptr = rmalloc_sys(0, 0, core, bytes);
 	if (ptr)
 		bzero(ptr, bytes);
 
-	spin_unlock_irq(memmap->lock, flags);
+	spin_unlock_irq(&memmap->lock, flags);
 
 	return ptr;
 }
@@ -852,11 +852,11 @@ void *_balloc(uint32_t flags, uint32_t caps, size_t bytes, uint32_t alignment)
 	void *ptr = NULL;
 	uint32_t lock_flags;
 
-	spin_lock_irq(memmap->lock, lock_flags);
+	spin_lock_irq(&memmap->lock, lock_flags);
 
 	ptr = _balloc_unlocked(flags, caps, bytes, alignment);
 
-	spin_unlock_irq(memmap->lock, lock_flags);
+	spin_unlock_irq(&memmap->lock, lock_flags);
 
 	return ptr;
 }
@@ -897,9 +897,9 @@ void rfree(void *ptr)
 	struct mm *memmap = memmap_get();
 	uint32_t flags;
 
-	spin_lock_irq(memmap->lock, flags);
+	spin_lock_irq(&memmap->lock, flags);
 	_rfree_unlocked(ptr);
-	spin_unlock_irq(memmap->lock, flags);
+	spin_unlock_irq(&memmap->lock, flags);
 }
 
 void *_realloc(void *ptr, enum mem_zone zone, uint32_t flags, uint32_t caps,
@@ -912,7 +912,7 @@ void *_realloc(void *ptr, enum mem_zone zone, uint32_t flags, uint32_t caps,
 	if (!bytes)
 		return new_ptr;
 
-	spin_lock_irq(memmap->lock, lock_flags);
+	spin_lock_irq(&memmap->lock, lock_flags);
 
 	new_ptr = _malloc_unlocked(zone, flags, caps, bytes);
 
@@ -922,7 +922,7 @@ void *_realloc(void *ptr, enum mem_zone zone, uint32_t flags, uint32_t caps,
 	if (new_ptr)
 		_rfree_unlocked(ptr);
 
-	spin_unlock_irq(memmap->lock, lock_flags);
+	spin_unlock_irq(&memmap->lock, lock_flags);
 
 	return new_ptr;
 }
@@ -937,7 +937,7 @@ void *_brealloc(void *ptr, uint32_t flags, uint32_t caps, size_t bytes,
 	if (!bytes)
 		return new_ptr;
 
-	spin_lock_irq(memmap->lock, lock_flags);
+	spin_lock_irq(&memmap->lock, lock_flags);
 
 	new_ptr = _balloc_unlocked(flags, caps, bytes, alignment);
 
@@ -947,7 +947,7 @@ void *_brealloc(void *ptr, uint32_t flags, uint32_t caps, size_t bytes,
 	if (new_ptr)
 		_rfree_unlocked(ptr);
 
-	spin_unlock_irq(memmap->lock, lock_flags);
+	spin_unlock_irq(&memmap->lock, lock_flags);
 
 	return new_ptr;
 }
@@ -1079,14 +1079,7 @@ void init_heap(struct sof *sof)
 		      DEBUG_BLOCK_FREE_VALUE_8BIT);
 #endif
 
-	/* alloc manually to avoid deadlock */
-	memmap->lock = _malloc_unlocked(SOF_MEM_ZONE_SYS, SOF_MEM_FLAG_SHARED,
-					SOF_MEM_CAPS_RAM,
-					sizeof(*memmap->lock));
-	if (!memmap->lock)
-		panic(SOF_IPC_PANIC_MEM);
-
-	bzero(memmap->lock, sizeof(*memmap->lock));
+	spinlock_init(&memmap->lock);
 
 	platform_shared_commit(memmap, sizeof(*memmap));
 }

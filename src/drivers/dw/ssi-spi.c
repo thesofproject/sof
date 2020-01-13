@@ -469,7 +469,7 @@ int spi_probe(struct spi *spi)
 }
 
 /* lock */
-spinlock_t *spi_lock;
+spinlock_t spi_lock;
 static struct spi *spi_devices;
 static unsigned int n_spi_devices;
 
@@ -478,13 +478,13 @@ struct spi *spi_get(enum spi_type type)
 	struct spi *spi;
 	unsigned int i, flags;
 
-	spin_lock_irq(spi_lock, flags);
+	spin_lock_irq(&spi_lock, flags);
 
 	for (i = 0, spi = spi_devices; i < n_spi_devices; i++, spi++)
 		if (spi->plat_data->type == type)
 			break;
 
-	spin_unlock_irq(spi_lock, flags);
+	spin_unlock_irq(&spi_lock, flags);
 
 	return i < n_spi_devices ? spi : NULL;
 }
@@ -495,7 +495,7 @@ int spi_install(const struct spi_platform_data *plat, size_t n)
 	unsigned int i, flags;
 	int ret;
 
-	spin_lock_irq(spi_lock, flags);
+	spin_lock_irq(&spi_lock, flags);
 
 	if (spi_devices) {
 		ret = -EBUSY;
@@ -518,7 +518,7 @@ int spi_install(const struct spi_platform_data *plat, size_t n)
 	}
 
 unlock:
-	spin_unlock_irq(spi_lock, flags);
+	spin_unlock_irq(&spi_lock, flags);
 
 	return ret;
 }

@@ -124,11 +124,11 @@ META_IF_ELSE(is_atomic)(_atomic)()					\
 	META_IF_ELSE(is_mbox)						\
 	(								\
 		META_IF_ELSE(is_atomic)()(				\
-			spin_lock_irq(trace->lock, flags);		\
+			spin_lock_irq(&trace->lock, flags);		\
 		)							\
 		mtrace_event((const char *)dt, MESSAGE_SIZE(arg_count));\
 									\
-		META_IF_ELSE(is_atomic)()(spin_unlock_irq(trace->lock,	\
+		META_IF_ELSE(is_atomic)()(spin_unlock_irq(&trace->lock,	\
 							  flags);)	\
 	)()								\
 }
@@ -204,7 +204,7 @@ void trace_flush(void)
 	volatile uint64_t *t;
 	uint32_t flags;
 
-	spin_lock_irq(trace->lock, flags);
+	spin_lock_irq(&trace->lock, flags);
 
 	/* get mailbox position */
 	t = (volatile uint64_t *)(MAILBOX_TRACE_BASE + trace->pos);
@@ -214,7 +214,7 @@ void trace_flush(void)
 
 	platform_shared_commit(trace, sizeof(*trace));
 
-	spin_unlock_irq(trace->lock, flags);
+	spin_unlock_irq(&trace->lock, flags);
 }
 
 void trace_on(void)
@@ -222,14 +222,14 @@ void trace_on(void)
 	struct trace *trace = trace_get();
 	uint32_t flags;
 
-	spin_lock_irq(trace->lock, flags);
+	spin_lock_irq(&trace->lock, flags);
 
 	trace->enable = 1;
 	dma_trace_on();
 
 	platform_shared_commit(trace, sizeof(*trace));
 
-	spin_unlock_irq(trace->lock, flags);
+	spin_unlock_irq(&trace->lock, flags);
 }
 
 void trace_off(void)
@@ -237,14 +237,14 @@ void trace_off(void)
 	struct trace *trace = trace_get();
 	uint32_t flags;
 
-	spin_lock_irq(trace->lock, flags);
+	spin_lock_irq(&trace->lock, flags);
 
 	trace->enable = 0;
 	dma_trace_off();
 
 	platform_shared_commit(trace, sizeof(*trace));
 
-	spin_unlock_irq(trace->lock, flags);
+	spin_unlock_irq(&trace->lock, flags);
 }
 
 void trace_init(struct sof *sof)

@@ -14,7 +14,6 @@
 #define __SOF_SPINLOCK_H__
 
 #include <arch/spinlock.h>
-#include <sof/drivers/interrupt.h>
 #include <sof/trace/trace.h>
 #include <config.h>
 #include <stdint.h>
@@ -154,11 +153,11 @@ static inline int _spin_try_lock(spinlock_t *lock, int line)
 #define spin_try_lock(lock) _spin_try_lock(lock, __LINE__)
 
 /* all SMP spinlocks need init, nothing todo on UP */
-static inline void _spinlock_init(spinlock_t **lock, int line)
+static inline void _spinlock_init(spinlock_t *lock, int line)
 {
 	arch_spinlock_init(lock);
 #if CONFIG_DEBUG_LOCKS
-	(*lock)->user = line;
+	lock->user = line;
 #endif
 }
 
@@ -179,21 +178,7 @@ static inline void _spin_lock(spinlock_t *lock, int line)
 #define spin_lock(lock) _spin_lock(lock, __LINE__)
 
 /* disables all IRQ sources and takes lock - enter atomic context */
-static inline uint32_t _spin_lock_irq(spinlock_t *lock)
-{
-	uint32_t flags;
-
-	flags = interrupt_global_disable();
-#if CONFIG_DEBUG_LOCKS
-	lock_dbg_atomic++;
-#endif
-	spin_lock(lock);
-#if CONFIG_DEBUG_LOCKS
-	if (lock_dbg_atomic < DBG_LOCK_USERS)
-		lock_dbg_user[lock_dbg_atomic - 1] = (lock)->user;
-#endif
-	return flags;
-}
+uint32_t _spin_lock_irq(spinlock_t *lock);
 
 #define spin_lock_irq(lock, flags) (flags = _spin_lock_irq(lock))
 
@@ -208,14 +193,7 @@ static inline void _spin_unlock(spinlock_t *lock, int line)
 #define spin_unlock(lock) _spin_unlock(lock, __LINE__)
 
 /* re-enables current IRQ sources and releases lock - leave atomic context */
-static inline void _spin_unlock_irq(spinlock_t *lock, uint32_t flags, int line)
-{
-	_spin_unlock(lock, line);
-#if CONFIG_DEBUG_LOCKS
-	lock_dbg_atomic--;
-#endif
-	interrupt_global_enable(flags);
-}
+void _spin_unlock_irq(spinlock_t *lock, uint32_t flags, int line);
 
 #define spin_unlock_irq(lock, flags) _spin_unlock_irq(lock, flags, __LINE__)
 
