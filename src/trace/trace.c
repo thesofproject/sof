@@ -11,6 +11,7 @@
 #include <sof/lib/cache.h>
 #include <sof/lib/cpu.h>
 #include <sof/lib/mailbox.h>
+#include <sof/lib/memory.h>
 #include <sof/platform.h>
 #include <sof/string.h>
 #include <sof/sof.h>
@@ -77,6 +78,8 @@ static void mtrace_event(const char *data, uint32_t length)
 		dcache_writeback_region((void *)t, i);
 		trace->pos = i;
 	}
+
+	platform_shared_commit(trace, sizeof(*trace));
 }
 
 #define _TRACE_EVENT_NTH_IMPL_PAYLOAD_STEP(i, _)	\
@@ -101,8 +104,10 @@ META_IF_ELSE(is_atomic)(_atomic)()					\
 		META_IF_ELSE(is_atomic)()(unsigned long flags;)		\
 	)()								\
 									\
-	if (!trace->enable)						\
+	if (!trace->enable) {						\
+		platform_shared_commit(trace, sizeof(*trace));		\
 		return;							\
+	}								\
 									\
 	put_header(dt, id_0, id_1, log_entry,				\
 		   platform_timer_get(timer_get()));			\
@@ -204,6 +209,8 @@ void trace_flush(void)
 	/* flush dma trace messages */
 	dma_trace_flush((void *)t);
 
+	platform_shared_commit(trace, sizeof(*trace));
+
 	spin_unlock_irq(trace->lock, flags);
 }
 
@@ -216,6 +223,8 @@ void trace_on(void)
 
 	trace->enable = 1;
 	dma_trace_on();
+
+	platform_shared_commit(trace, sizeof(*trace));
 
 	spin_unlock_irq(trace->lock, flags);
 }
@@ -230,6 +239,8 @@ void trace_off(void)
 	trace->enable = 0;
 	dma_trace_off();
 
+	platform_shared_commit(trace, sizeof(*trace));
+
 	spin_unlock_irq(trace->lock, flags);
 }
 
@@ -242,6 +253,8 @@ void trace_init(struct sof *sof)
 	sof->trace->enable = 1;
 	sof->trace->pos = 0;
 	spinlock_init(&sof->trace->lock);
+
+	platform_shared_commit(sof->trace, sizeof(*sof->trace));
 
 	bzero((void *)MAILBOX_TRACE_BASE, MAILBOX_TRACE_SIZE);
 	dcache_writeback_invalidate_region((void *)MAILBOX_TRACE_BASE,
