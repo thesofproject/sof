@@ -789,7 +789,7 @@ static int test_keyword_prepare(struct comp_dev *dev)
 		 * according to host new format.
 		 */
 		cd->config.activation_threshold =
-			test_keyword_get_threshold(dev, sample_width);
+			test_keyword_get_threshold(dev, valid_bits);
 	}
 
 	return comp_set_state(dev, COMP_TRIGGER_PREPARE);
