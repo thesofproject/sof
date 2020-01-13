@@ -192,25 +192,45 @@ _TRACE_EVENT_NTH_IMPL_GROUP(4)
 
 void trace_flush(void)
 {
+	struct trace *trace = trace_get();
 	volatile uint64_t *t;
+	uint32_t flags;
+
+	spin_lock_irq(trace->lock, flags);
 
 	/* get mailbox position */
-	t = (volatile uint64_t *)(MAILBOX_TRACE_BASE + trace_get()->pos);
+	t = (volatile uint64_t *)(MAILBOX_TRACE_BASE + trace->pos);
 
 	/* flush dma trace messages */
 	dma_trace_flush((void *)t);
+
+	spin_unlock_irq(trace->lock, flags);
 }
 
 void trace_on(void)
 {
-	trace_get()->enable = 1;
+	struct trace *trace = trace_get();
+	uint32_t flags;
+
+	spin_lock_irq(trace->lock, flags);
+
+	trace->enable = 1;
 	dma_trace_on();
+
+	spin_unlock_irq(trace->lock, flags);
 }
 
 void trace_off(void)
 {
-	trace_get()->enable = 0;
+	struct trace *trace = trace_get();
+	uint32_t flags;
+
+	spin_lock_irq(trace->lock, flags);
+
+	trace->enable = 0;
 	dma_trace_off();
+
+	spin_unlock_irq(trace->lock, flags);
 }
 
 void trace_init(struct sof *sof)
