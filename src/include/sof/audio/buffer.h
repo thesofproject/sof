@@ -58,7 +58,6 @@ struct comp_buffer {
 
 	/* runtime data */
 	uint32_t size;	/* runtime buffer size in bytes (period multiple) */
-	uint32_t alloc_size;	/* allocated size in bytes */
 	uint32_t avail;		/* available bytes for reading */
 	uint32_t free;		/* free bytes for writing */
 	void *w_ptr;		/* buffer write pointer */
@@ -301,7 +300,6 @@ static inline enum sof_ipc_frame buffer_frame_fmt(struct comp_buffer *buf)
 static inline void buffer_init(struct comp_buffer *buffer, uint32_t size,
 			       uint32_t caps)
 {
-	buffer->alloc_size = size;
 	buffer->size = size;
 	buffer->caps = caps;
 	buffer->w_ptr = buffer->addr;
