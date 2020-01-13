@@ -19,7 +19,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-struct comp_buffer;
+struct audio_stream;
 
 #define PCM_CONVERTER_GENERIC
 
@@ -42,8 +42,8 @@ struct comp_buffer;
  * \param sink output buffer, write pointer is not modified
  * \param samples number of samples to convert
  */
-typedef void (*pcm_converter_func)(const struct comp_buffer *source,
-				   struct comp_buffer *sink, uint32_t samples);
+typedef void (*pcm_converter_func)(const struct audio_stream *source,
+				   struct audio_stream *sink, uint32_t samples);
 
 /** \brief PCM conversion functions map. */
 struct pcm_func_map {

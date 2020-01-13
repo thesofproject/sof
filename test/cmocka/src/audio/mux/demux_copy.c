@@ -125,9 +125,9 @@ static void prepare_sinks(struct test_data *td, size_t sample_size)
 						i,
 						td->format,
 						PLATFORM_MAX_CHANNELS);
-		td->sinks[i]->free = sample_size * PLATFORM_MAX_CHANNELS;
+		td->sinks[i]->stream.free = sample_size * PLATFORM_MAX_CHANNELS;
 		td->outputs[i] = malloc(sample_size * PLATFORM_MAX_CHANNELS);
-		td->sinks[i]->w_ptr = td->outputs[i];
+		td->sinks[i]->stream.w_ptr = td->outputs[i];
 	}
 }
 
@@ -137,12 +137,12 @@ static void prepare_source(struct test_data *td, size_t sample_size)
 					MUX_MAX_STREAMS + 1,
 					td->format,
 					PLATFORM_MAX_CHANNELS);
-	td->source->avail = sample_size * PLATFORM_MAX_CHANNELS;
+	td->source->stream.avail = sample_size * PLATFORM_MAX_CHANNELS;
 
 	if (td->format == SOF_IPC_FRAME_S16_LE)
-		td->source->r_ptr = input_16b;
+		td->source->stream.r_ptr = input_16b;
 	else
-		td->source->r_ptr = input_32b;
+		td->source->stream.r_ptr = input_32b;
 }
 
 static int setup_test_case(void **state)

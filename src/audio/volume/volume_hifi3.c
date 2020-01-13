@@ -26,7 +26,7 @@
  * \brief Sets buffer to be circular using HiFi3 functions.
  * \param[in,out] buffer Circular buffer.
  */
-static void vol_setup_circular(const struct comp_buffer *buffer)
+static void vol_setup_circular(const struct audio_stream *buffer)
 {
 	AE_SETCBEGIN0(buffer->addr);
 	AE_SETCEND0(buffer->end_addr);
@@ -40,8 +40,8 @@ static void vol_setup_circular(const struct comp_buffer *buffer)
  * \param[in,out] source Source buffer.
  * \param[in] frames Number of frames to process.
  */
-static void vol_s24_to_s24_s32(struct comp_dev *dev, struct comp_buffer *sink,
-			       const struct comp_buffer *source,
+static void vol_s24_to_s24_s32(struct comp_dev *dev, struct audio_stream *sink,
+			       const struct audio_stream *source,
 			       uint32_t frames)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
@@ -101,8 +101,8 @@ static void vol_s24_to_s24_s32(struct comp_dev *dev, struct comp_buffer *sink,
  * \param[in,out] source Source buffer.
  * \param[in] frames Number of frames to process.
  */
-static void vol_s32_to_s24_s32(struct comp_dev *dev, struct comp_buffer *sink,
-			       const struct comp_buffer *source,
+static void vol_s32_to_s24_s32(struct comp_dev *dev, struct audio_stream *sink,
+			       const struct audio_stream *source,
 			       uint32_t frames)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
@@ -162,8 +162,8 @@ static void vol_s32_to_s24_s32(struct comp_dev *dev, struct comp_buffer *sink,
  * \param[in,out] source Source buffer.
  * \param[in] frames Number of frames to process.
  */
-static void vol_s16_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
-			   const struct comp_buffer *source, uint32_t frames)
+static void vol_s16_to_s16(struct comp_dev *dev, struct audio_stream *sink,
+			   const struct audio_stream *source, uint32_t frames)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	ae_f64 mult;

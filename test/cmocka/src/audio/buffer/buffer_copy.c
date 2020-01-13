@@ -18,6 +18,8 @@
 
 static void test_audio_buffer_copy_underrun(void **state)
 {
+	int copy_bytes;
+
 	(void)state;
 
 	struct sof_ipc_buffer test_buf_desc = {
@@ -31,9 +33,11 @@ static void test_audio_buffer_copy_underrun(void **state)
 	assert_non_null(snk);
 
 	comp_update_buffer_produce(src, 10);
+	copy_bytes =
+		audio_stream_can_copy_bytes(&src->stream, &snk->stream, 16);
 
-	assert_int_equal(src->avail, 10);
-	assert_int_equal(comp_buffer_can_copy_bytes(src, snk, 16), -1);
+	assert_int_equal(src->stream.avail, 10);
+	assert_int_equal(copy_bytes, -1);
 
 	buffer_free(src);
 	buffer_free(snk);
@@ -41,6 +45,8 @@ static void test_audio_buffer_copy_underrun(void **state)
 
 static void test_audio_buffer_copy_overrun(void **state)
 {
+	int copy_bytes;
+
 	(void)state;
 
 	struct sof_ipc_buffer test_buf_desc = {
@@ -55,10 +61,12 @@ static void test_audio_buffer_copy_overrun(void **state)
 
 	comp_update_buffer_produce(src, 16);
 	comp_update_buffer_produce(snk, 246);
+	copy_bytes =
+		audio_stream_can_copy_bytes(&src->stream, &snk->stream, 16);
 
-	assert_int_equal(src->avail, 16);
-	assert_int_equal(snk->free, 10);
-	assert_int_equal(comp_buffer_can_copy_bytes(src, snk, 16), 1);
+	assert_int_equal(src->stream.avail, 16);
+	assert_int_equal(snk->stream.free, 10);
+	assert_int_equal(copy_bytes, 1);
 
 	buffer_free(src);
 	buffer_free(snk);
@@ -66,6 +74,8 @@ static void test_audio_buffer_copy_overrun(void **state)
 
 static void test_audio_buffer_copy_success(void **state)
 {
+	int copy_bytes;
+
 	(void)state;
 
 	struct sof_ipc_buffer test_buf_desc = {
@@ -79,9 +89,10 @@ static void test_audio_buffer_copy_success(void **state)
 	assert_non_null(snk);
 
 	comp_update_buffer_produce(src, 10);
+	copy_bytes = audio_stream_can_copy_bytes(&src->stream, &snk->stream, 0);
 
-	assert_int_equal(src->avail, 10);
-	assert_int_equal(comp_buffer_can_copy_bytes(src, snk, 0), 0);
+	assert_int_equal(src->stream.avail, 10);
+	assert_int_equal(copy_bytes, 0);
 
 	buffer_free(src);
 	buffer_free(snk);
@@ -89,6 +100,8 @@ static void test_audio_buffer_copy_success(void **state)
 
 static void test_audio_buffer_copy_fit_space_constraint(void **state)
 {
+	int copy_bytes;
+
 	(void)state;
 
 	struct sof_ipc_buffer test_buf_desc = {
@@ -103,10 +116,11 @@ static void test_audio_buffer_copy_fit_space_constraint(void **state)
 
 	comp_update_buffer_produce(src, 16);
 	comp_update_buffer_produce(snk, 246);
+	copy_bytes = audio_stream_get_copy_bytes(&src->stream, &snk->stream);
 
-	assert_int_equal(src->avail, 16);
-	assert_int_equal(snk->free, 10);
-	assert_int_equal(comp_buffer_get_copy_bytes(src, snk), 10);
+	assert_int_equal(src->stream.avail, 16);
+	assert_int_equal(snk->stream.free, 10);
+	assert_int_equal(copy_bytes, 10);
 
 	buffer_free(src);
 	buffer_free(snk);
@@ -114,6 +128,8 @@ static void test_audio_buffer_copy_fit_space_constraint(void **state)
 
 static void test_audio_buffer_copy_fit_no_space_constraint(void **state)
 {
+	int copy_bytes;
+
 	(void)state;
 
 	struct sof_ipc_buffer test_buf_desc = {
@@ -127,9 +143,10 @@ static void test_audio_buffer_copy_fit_no_space_constraint(void **state)
 	assert_non_null(snk);
 
 	comp_update_buffer_produce(src, 16);
+	copy_bytes = audio_stream_get_copy_bytes(&src->stream, &snk->stream);
 
-	assert_int_equal(src->avail, 16);
-	assert_int_equal(comp_buffer_get_copy_bytes(src, snk), 16);
+	assert_int_equal(src->stream.avail, 16);
+	assert_int_equal(copy_bytes, 16);
 
 	buffer_free(src);
 	buffer_free(snk);

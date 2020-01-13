@@ -27,7 +27,7 @@
  * \param[in] offset Offset in source buffer.
  * \param[in] mask Routing bitmask for calculating output sample.
  */
-UT_STATIC inline int32_t calc_sample_s16le(const struct comp_buffer *source,
+UT_STATIC inline int32_t calc_sample_s16le(const struct audio_stream *source,
 					   uint8_t num_ch, uint32_t offset,
 					   uint8_t mask)
 {
@@ -40,7 +40,8 @@ UT_STATIC inline int32_t calc_sample_s16le(const struct comp_buffer *source,
 
 	for (in_ch = 0; in_ch < num_ch; in_ch++) {
 		if (mask & BIT(in_ch)) {
-			src = buffer_read_frag_s16(source, offset + in_ch);
+			src = audio_stream_read_frag_s16(source,
+							 offset + in_ch);
 			sample += *src;
 		}
 	}
@@ -60,13 +61,14 @@ UT_STATIC inline int32_t calc_sample_s16le(const struct comp_buffer *source,
  * \param[in] frames Number of frames to process.
  * \param[in] data Parameters describing channel count and routing.
  */
-static void demux_s16le(struct comp_dev *dev, struct comp_buffer *sink,
-			const struct comp_buffer *source, uint32_t frames,
+static void demux_s16le(const struct comp_dev *dev, struct audio_stream *sink,
+			const struct audio_stream *source, uint32_t frames,
 			struct mux_stream_data *data)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	int32_t sample;
 	int16_t *dst;
+	uint32_t dst_idx;
 	uint8_t i;
 	uint8_t out_ch;
 
@@ -78,8 +80,8 @@ static void demux_s16le(struct comp_dev *dev, struct comp_buffer *sink,
 						   data->mask[out_ch]);
 
 			/* saturate to 16 bits */
-			dst = buffer_write_frag_s16(sink,
-				i * data->num_channels + out_ch);
+			dst_idx = i * data->num_channels + out_ch;
+			dst = audio_stream_write_frag_s16(sink, dst_idx);
 			*dst = sat_int16(sample);
 		}
 	}
@@ -99,16 +101,17 @@ static void demux_s16le(struct comp_dev *dev, struct comp_buffer *sink,
  * \param[in] data Array of parameters describing channel count and routing for
  *		   each stream.
  */
-static void mux_s16le(struct comp_dev *dev, struct comp_buffer *sink,
-		      const struct comp_buffer **sources, uint32_t frames,
+static void mux_s16le(const struct comp_dev *dev, struct audio_stream *sink,
+		      const struct audio_stream **sources, uint32_t frames,
 		      struct mux_stream_data *data)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	const struct comp_buffer *source;
+	const struct audio_stream *source;
 	uint8_t i;
 	uint8_t j;
 	uint8_t out_ch;
 	int16_t *dst;
+	uint32_t dst_idx;
 	int32_t sample;
 
 	for (i = 0; i < frames; i++) {
@@ -125,8 +128,8 @@ static void mux_s16le(struct comp_dev *dev, struct comp_buffer *sink,
 						i * data[j].num_channels,
 						data[j].mask[out_ch]);
 			}
-			dst = buffer_write_frag_s16(sink,
-				i * data->num_channels + out_ch);
+			dst_idx = i * data->num_channels + out_ch;
+			dst = audio_stream_write_frag_s16(sink, dst_idx);
 			*dst = sat_int16(sample);
 		}
 	}
@@ -142,7 +145,7 @@ static void mux_s16le(struct comp_dev *dev, struct comp_buffer *sink,
  * \param[in] offset Offset in source buffer.
  * \param[in] mask Routing bitmask for calculating output sample.
  */
-UT_STATIC inline int32_t calc_sample_s24le(const struct comp_buffer *source,
+UT_STATIC inline int32_t calc_sample_s24le(const struct audio_stream *source,
 					   uint8_t num_ch, uint32_t offset,
 					   uint8_t mask)
 {
@@ -155,7 +158,8 @@ UT_STATIC inline int32_t calc_sample_s24le(const struct comp_buffer *source,
 
 	for (in_ch = 0; in_ch < num_ch; in_ch++) {
 		if (mask & BIT(in_ch)) {
-			src = buffer_read_frag_s32(source, offset + in_ch);
+			src = audio_stream_read_frag_s32(source,
+							 offset + in_ch);
 			sample += sign_extend_s24(*src);
 		}
 	}
@@ -175,13 +179,14 @@ UT_STATIC inline int32_t calc_sample_s24le(const struct comp_buffer *source,
  * \param[in] frames Number of frames to process.
  * \param[in] data Parameters describing channel count and routing.
  */
-static void demux_s24le(struct comp_dev *dev, struct comp_buffer *sink,
-			const struct comp_buffer *source, uint32_t frames,
+static void demux_s24le(const struct comp_dev *dev, struct audio_stream *sink,
+			const struct audio_stream *source, uint32_t frames,
 			struct mux_stream_data *data)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	int32_t sample;
 	int32_t *dst;
+	uint32_t dst_idx;
 	uint8_t i;
 	uint8_t out_ch;
 
@@ -193,8 +198,8 @@ static void demux_s24le(struct comp_dev *dev, struct comp_buffer *sink,
 						   data->mask[out_ch]);
 
 			/* saturate to 24 bits */
-			dst = buffer_write_frag_s32(sink,
-				i * data->num_channels + out_ch);
+			dst_idx = i * data->num_channels + out_ch;
+			dst = audio_stream_write_frag_s32(sink, dst_idx);
 			*dst = sat_int24(sample);
 		}
 	}
@@ -214,16 +219,17 @@ static void demux_s24le(struct comp_dev *dev, struct comp_buffer *sink,
  * \param[in] data Array of parameters describing channel count and routing for
  *		   each stream.
  */
-static void mux_s24le(struct comp_dev *dev, struct comp_buffer *sink,
-		      const struct comp_buffer **sources, uint32_t frames,
+static void mux_s24le(const struct comp_dev *dev, struct audio_stream *sink,
+		      const struct audio_stream **sources, uint32_t frames,
 		      struct mux_stream_data *data)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	const struct comp_buffer *source;
+	const struct audio_stream *source;
 	uint8_t i;
 	uint8_t j;
 	uint8_t out_ch;
 	int32_t *dst;
+	uint32_t dst_idx;
 	int32_t sample;
 
 	for (i = 0; i < frames; i++) {
@@ -239,8 +245,8 @@ static void mux_s24le(struct comp_dev *dev, struct comp_buffer *sink,
 						i * data[j].num_channels,
 						data[j].mask[out_ch]);
 			}
-			dst = buffer_write_frag_s32(sink,
-				i * data->num_channels + out_ch);
+			dst_idx = i * data->num_channels + out_ch;
+			dst = audio_stream_write_frag_s32(sink, dst_idx);
 			*dst = sat_int24(sample);
 		}
 	}
@@ -256,7 +262,7 @@ static void mux_s24le(struct comp_dev *dev, struct comp_buffer *sink,
  * \param[in] offset Offset in source buffer.
  * \param[in] mask Routing bitmask for calculating output sample.
  */
-UT_STATIC inline int64_t calc_sample_s32le(const struct comp_buffer *source,
+UT_STATIC inline int64_t calc_sample_s32le(const struct audio_stream *source,
 					   uint8_t num_ch, uint32_t offset,
 					   uint8_t mask)
 {
@@ -269,7 +275,8 @@ UT_STATIC inline int64_t calc_sample_s32le(const struct comp_buffer *source,
 
 	for (in_ch = 0; in_ch < num_ch; in_ch++) {
 		if (mask & BIT(in_ch)) {
-			src = buffer_read_frag_s32(source, offset + in_ch);
+			src = audio_stream_read_frag_s32(source,
+							 offset + in_ch);
 			sample += *src;
 		}
 	}
@@ -289,13 +296,14 @@ UT_STATIC inline int64_t calc_sample_s32le(const struct comp_buffer *source,
  * \param[in] frames Number of frames to process.
  * \param[in] data Parameters describing channel count and routing.
  */
-static void demux_s32le(struct comp_dev *dev, struct comp_buffer *sink,
-			const struct comp_buffer *source, uint32_t frames,
+static void demux_s32le(const struct comp_dev *dev, struct audio_stream *sink,
+			const struct audio_stream *source, uint32_t frames,
 			struct mux_stream_data *data)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	int64_t sample;
 	int32_t *dst;
+	uint32_t dst_idx;
 	uint8_t i;
 	uint8_t out_ch;
 
@@ -307,8 +315,8 @@ static void demux_s32le(struct comp_dev *dev, struct comp_buffer *sink,
 						   data->mask[out_ch]);
 
 			/* saturate to 32 bits */
-			dst = buffer_write_frag_s32(sink,
-				i * data->num_channels + out_ch);
+			dst_idx = i * data->num_channels + out_ch;
+			dst = audio_stream_write_frag_s32(sink, dst_idx);
 			*dst = sat_int32(sample);
 		}
 	}
@@ -328,16 +336,17 @@ static void demux_s32le(struct comp_dev *dev, struct comp_buffer *sink,
  * \param[in] data Array of parameters describing channel count and routing for
  *		   each stream.
  */
-static void mux_s32le(struct comp_dev *dev, struct comp_buffer *sink,
-		      const struct comp_buffer **sources, uint32_t frames,
+static void mux_s32le(const struct comp_dev *dev, struct audio_stream *sink,
+		      const struct audio_stream **sources, uint32_t frames,
 		      struct mux_stream_data *data)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	const struct comp_buffer *source;
+	const struct audio_stream *source;
 	uint8_t i;
 	uint8_t j;
 	uint8_t out_ch;
 	int32_t *dst;
+	uint32_t dst_idx;
 	int64_t sample;
 
 	for (i = 0; i < frames; i++) {
@@ -353,8 +362,8 @@ static void mux_s32le(struct comp_dev *dev, struct comp_buffer *sink,
 						i * data[j].num_channels,
 						data[j].mask[out_ch]);
 			}
-			dst = buffer_write_frag_s32(sink,
-				i * data->num_channels + out_ch);
+			dst_idx = i * data->num_channels + out_ch;
+			dst = audio_stream_write_frag_s32(sink, dst_idx);
 			*dst = sat_int32(sample);
 		}
 	}

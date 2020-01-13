@@ -618,7 +618,7 @@ static int volume_copy(struct comp_dev *dev)
 			       c.source_bytes, c.sink_bytes);
 
 	/* copy and scale volume */
-	cd->scale_vol(dev, c.sink, c.source, c.frames);
+	cd->scale_vol(dev, &c.sink->stream, &c.source->stream, c.frames);
 
 	/* calculate new free and available */
 	comp_update_buffer_produce(c.sink, c.sink_bytes);
@@ -658,9 +658,10 @@ static int volume_prepare(struct comp_dev *dev)
 				struct comp_buffer, source_list);
 
 	/* get sink period bytes */
-	sink_period_bytes = buffer_period_bytes(sinkb, dev->frames);
+	sink_period_bytes = audio_stream_period_bytes(&sinkb->stream,
+						      dev->frames);
 
-	if (sinkb->size < config->periods_sink * sink_period_bytes) {
+	if (sinkb->stream.size < config->periods_sink * sink_period_bytes) {
 		trace_volume_error_with_ids(dev, "volume_prepare() error: "
 					    "sink buffer size is insufficient");
 		ret = -ENOMEM;
@@ -686,7 +687,7 @@ static int volume_prepare(struct comp_dev *dev)
 	 * for entire topology specified time.
 	 */
 	cd->ramp_started = false;
-	cd->channels = sinkb->channels;
+	cd->channels = sinkb->stream.channels;
 	for (i = 0; i < cd->channels; i++) {
 		cd->volume[i] = cd->vol_min;
 		volume_set_chan(dev, i, cd->tvolume[i], false);

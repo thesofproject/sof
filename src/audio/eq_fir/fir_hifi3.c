@@ -83,9 +83,8 @@ void fir_get_lrshifts(struct fir_state_32x16 *fir, int *lshift,
  * sample per call.
  */
 void eq_fir_2x_s32_hifi3(struct fir_state_32x16 fir[],
-			 const struct comp_buffer *source,
-			 struct comp_buffer *sink,
-			 int frames, int nch)
+			 const struct audio_stream *source,
+			 struct audio_stream *sink, int frames, int nch)
 {
 	struct fir_state_32x16 *f;
 	ae_int32x2 d0 = 0;
@@ -144,8 +143,8 @@ void eq_fir_2x_s32_hifi3(struct fir_state_32x16 fir[],
 
 /* FIR for any number of frames */
 void eq_fir_s32_hifi3(struct fir_state_32x16 fir[],
-		      const struct comp_buffer *source,
-		      struct comp_buffer *sink, int frames, int nch)
+		      const struct audio_stream *source,
+		      struct audio_stream *sink, int frames, int nch)
 {
 	struct fir_state_32x16 *f;
 	ae_int32x2 in = 0;
@@ -202,9 +201,8 @@ void eq_fir_s32_hifi3(struct fir_state_32x16 fir[],
 
 #if CONFIG_FORMAT_S24LE
 void eq_fir_2x_s24_hifi3(struct fir_state_32x16 fir[],
-			 const struct comp_buffer *source,
-			 struct comp_buffer *sink,
-			 int frames, int nch)
+			 const struct audio_stream *source,
+			 struct audio_stream *sink, int frames, int nch)
 {
 	struct fir_state_32x16 *f;
 	ae_int32x2 d0 = 0;
@@ -268,8 +266,8 @@ void eq_fir_2x_s24_hifi3(struct fir_state_32x16 fir[],
 }
 
 void eq_fir_s24_hifi3(struct fir_state_32x16 fir[],
-		      const struct comp_buffer *source,
-		      struct comp_buffer *sink, int frames, int nch)
+		      const struct audio_stream *source,
+		      struct audio_stream *sink, int frames, int nch)
 {
 	struct fir_state_32x16 *f;
 	ae_int32 in;
@@ -331,9 +329,8 @@ void eq_fir_s24_hifi3(struct fir_state_32x16 fir[],
 
 #if CONFIG_FORMAT_S16LE
 void eq_fir_2x_s16_hifi3(struct fir_state_32x16 fir[],
-			 const struct comp_buffer *source,
-			 struct comp_buffer *sink,
-			 int frames, int nch)
+			 const struct audio_stream *source,
+			 struct audio_stream *sink, int frames, int nch)
 {
 	struct fir_state_32x16 *f;
 	ae_int16x4 d0 = AE_ZERO16();
@@ -401,8 +398,8 @@ void eq_fir_2x_s16_hifi3(struct fir_state_32x16 fir[],
 }
 
 void eq_fir_s16_hifi3(struct fir_state_32x16 fir[],
-		      const struct comp_buffer *source,
-		      struct comp_buffer *sink, int frames, int nch)
+		      const struct audio_stream *source,
+		      struct audio_stream *sink, int frames, int nch)
 {
 	struct fir_state_32x16 *f;
 	ae_f16x4 d = AE_ZERO16();

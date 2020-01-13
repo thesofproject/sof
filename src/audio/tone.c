@@ -101,7 +101,7 @@ struct comp_data {
 	uint32_t frame_bytes;
 	uint32_t rate;
 	struct tone_state sg[PLATFORM_MAX_CHANNELS];
-	void (*tone_func)(struct comp_dev *dev, struct comp_buffer *sink,
+	void (*tone_func)(struct comp_dev *dev, struct audio_stream *sink,
 			  uint32_t frames);
 };
 
@@ -119,7 +119,7 @@ static inline void tone_circ_inc_wrap(int32_t **ptr, int32_t *end, size_t size)
 		*ptr = (int32_t *)((size_t)*ptr - size);
 }
 
-static void tone_s32_default(struct comp_dev *dev, struct comp_buffer *sink,
+static void tone_s32_default(struct comp_dev *dev, struct audio_stream *sink,
 			     uint32_t frames)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
@@ -461,11 +461,12 @@ static int tone_params(struct comp_dev *dev,
 	if (config->frame_fmt != SOF_IPC_FRAME_S32_LE)
 		return -EINVAL;
 
-	sourceb->frame_fmt = config->frame_fmt;
-	sinkb->frame_fmt = config->frame_fmt;
+	sourceb->stream.frame_fmt = config->frame_fmt;
+	sinkb->stream.frame_fmt = config->frame_fmt;
 
 	/* calculate period size based on config */
-	cd->period_bytes = dev->frames * buffer_frame_bytes(sourceb);
+	cd->period_bytes = dev->frames *
+			   audio_stream_frame_bytes(&sourceb->stream);
 
 	return 0;
 }
@@ -656,9 +657,9 @@ static int tone_copy(struct comp_dev *dev)
 	/* Test that sink has enough free frames. Then run once to maintain
 	 * low latency and steady load for tones.
 	 */
-	if (sink->free >= cd->period_bytes) {
+	if (sink->stream.free >= cd->period_bytes) {
 		/* create tone */
-		cd->tone_func(dev, sink, dev->frames);
+		cd->tone_func(dev, &sink->stream, dev->frames);
 
 		/* calc new free and available */
 		comp_update_buffer_produce(sink, cd->period_bytes);
@@ -690,7 +691,7 @@ static int tone_prepare(struct comp_dev *dev)
 	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer,
 				  sink_list);
 
-	cd->channels = sourceb->channels;
+	cd->channels = sourceb->stream.channels;
 	trace_tone_with_ids(dev, "tone_prepare(), "
 			    "cd->channels = %u, "
 			    "cd->rate = %u",

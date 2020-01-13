@@ -90,7 +90,8 @@ static inline void src_inc_wrap_s16(int16_t **ptr, int16_t *end, size_t size)
 
 /* A fast copy function for same in and out rate */
 static void src_copy_s32(struct comp_dev *dev,
-			 struct comp_buffer *source, struct comp_buffer *sink,
+			 const struct audio_stream *source,
+			 struct audio_stream *sink,
 			 int *n_read, int *n_written)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
@@ -147,7 +148,8 @@ static void src_copy_s32(struct comp_dev *dev,
 }
 
 static void src_copy_s16(struct comp_dev *dev,
-			 struct comp_buffer *source, struct comp_buffer *sink,
+			 const struct audio_stream *source,
+			 struct audio_stream *sink,
 			 int *n_read, int *n_written)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
@@ -387,17 +389,19 @@ static int asrc_prepare(struct comp_dev *dev)
 				struct comp_buffer, source_list);
 
 	/* get source data format and period bytes */
-	cd->source_format = sourceb->frame_fmt;
-	source_period_bytes = buffer_period_bytes(sourceb, cd->source_frames);
+	cd->source_format = sourceb->stream.frame_fmt;
+	source_period_bytes = audio_stream_period_bytes(&sourceb->stream,
+							cd->source_frames);
 
 	/* get sink data format and period bytes */
-	cd->sink_format = sinkb->frame_fmt;
-	sink_period_bytes = buffer_period_bytes(sinkb, cd->sink_frames);
+	cd->sink_format = sinkb->stream.frame_fmt;
+	sink_period_bytes = audio_stream_period_bytes(&sinkb->stream,
+						      cd->sink_frames);
 
-	if (sinkb->size < config->periods_sink * sink_period_bytes) {
-		trace_asrc_error_with_ids(dev, "asrc_prepare(), sink size=%d"
-					  " is insufficient, when periods=%d"
-					  ", period_bytes=%d", sinkb->size,
+	if (sinkb->stream.size < config->periods_sink * sink_period_bytes) {
+		trace_asrc_error_with_ids(dev,
+					  "asrc_prepare(), sink size=%d is insufficient, when periods=%d, period_bytes=%d",
+					  sinkb->stream.size,
 					  config->periods_sink,
 					  sink_period_bytes);
 		ret = -ENOMEM;
@@ -417,7 +421,7 @@ static int asrc_prepare(struct comp_dev *dev)
 	}
 
 	/* ASRC supports S16_LE, S24_4LE and S32_LE formats */
-	switch (sourceb->frame_fmt) {
+	switch (sourceb->stream.frame_fmt) {
 	case SOF_IPC_FRAME_S16_LE:
 		cd->asrc_func = src_copy_s16;
 		break;
@@ -437,7 +441,7 @@ static int asrc_prepare(struct comp_dev *dev)
 	/*
 	 * Allocate input and output data buffer
 	 */
-	frame_bytes = buffer_frame_bytes(sourceb);
+	frame_bytes = audio_stream_frame_bytes(&sourceb->stream);
 	cd->buf_size = (cd->source_frames_max + cd->sink_frames_max) *
 		frame_bytes;
 
@@ -451,8 +455,8 @@ static int asrc_prepare(struct comp_dev *dev)
 		goto err;
 	}
 
-	sample_bytes = frame_bytes / sourceb->channels;
-	for (i = 0; i < sourceb->channels; i++) {
+	sample_bytes = frame_bytes / sourceb->stream.channels;
+	for (i = 0; i < sourceb->stream.channels; i++) {
 		cd->ibuf[i] = cd->buf + i * sample_bytes;
 		cd->obuf[i] = cd->ibuf[i] + cd->source_frames_max * frame_bytes;
 	}
@@ -461,7 +465,7 @@ static int asrc_prepare(struct comp_dev *dev)
 	 * Get required size and allocate memory for ASRC
 	 */
 	sample_bits = sample_bytes * 8;
-	ret = asrc_get_required_size(&cd->asrc_size, sourceb->channels,
+	ret = asrc_get_required_size(&cd->asrc_size, sourceb->stream.channels,
 				     sample_bits);
 	if (ret) {
 		trace_asrc_error_with_ids(dev, "asrc_prepare(), get_required_size_bytes failed");
@@ -481,7 +485,7 @@ static int asrc_prepare(struct comp_dev *dev)
 	/*
 	 * Initialize ASRC
 	 */
-	ret = asrc_initialise(cd->asrc_obj, sourceb->channels,
+	ret = asrc_initialise(cd->asrc_obj, sourceb->stream.channels,
 			      cd->source_rate, cd->sink_rate,
 			      ASRC_IOF_INTERLEAVED, ASRC_IOF_INTERLEAVED,
 			      ASRC_BM_LINEAR, cd->frames, sample_bits,
@@ -531,8 +535,10 @@ static int asrc_copy(struct comp_dev *dev)
 	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
 			       source_list);
 
-	frames_src = source->avail / buffer_frame_bytes(source);
-	frames_snk = sink->free / buffer_frame_bytes(sink);
+	frames_src = source->stream.avail /
+		     audio_stream_frame_bytes(&source->stream);
+	frames_snk = sink->stream.free /
+		     audio_stream_frame_bytes(&sink->stream);
 
 	cd->source_frames = MIN(frames_src, cd->source_frames_max);
 	cd->sink_frames = ceil_divide(cd->source_frames * cd->sink_rate,
@@ -551,7 +557,8 @@ static int asrc_copy(struct comp_dev *dev)
 	}
 
 	if (cd->source_frames && cd->sink_frames)
-		cd->asrc_func(dev, source, sink, &consumed, &produced);
+		cd->asrc_func(dev, &source->stream, &sink->stream, &consumed,
+			      &produced);
 
 	tracev_asrc_with_ids(dev, "asrc_copy(), consumed = %u,  produced = %u",
 			     consumed, produced);
@@ -561,11 +568,11 @@ static int asrc_copy(struct comp_dev *dev)
 	 */
 	if (consumed > 0)
 		comp_update_buffer_consume(source, consumed *
-					   buffer_frame_bytes(source));
+				audio_stream_frame_bytes(&source->stream));
 
 	if (produced > 0)
 		comp_update_buffer_produce(sink, produced *
-					   buffer_frame_bytes(sink));
+				audio_stream_frame_bytes(&sink->stream));
 
 	return 0;
 }

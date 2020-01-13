@@ -70,8 +70,8 @@ struct comp_data {
 	size_t fir_delay_size;			/**< allocated size */
 	bool config_ready;			/**< set when fully received */
 	void (*eq_fir_func)(struct fir_state_32x16 fir[],
-			    const struct comp_buffer *source,
-			    struct comp_buffer *sink,
+			    const struct audio_stream *source,
+			    struct audio_stream *sink,
 			    int frames, int nch);
 };
 
@@ -149,7 +149,7 @@ static inline int set_fir_func(struct comp_dev *dev)
 	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer,
 				  sink_list);
 
-	switch (sourceb->frame_fmt) {
+	switch (sourceb->stream.frame_fmt) {
 #if CONFIG_FORMAT_S16LE
 	case SOF_IPC_FRAME_S16_LE:
 		trace_eq_with_ids(dev, "set_fir_func(), SOF_IPC_FRAME_S16_LE");
@@ -181,21 +181,21 @@ static inline int set_fir_func(struct comp_dev *dev)
 
 #if CONFIG_FORMAT_S16LE
 static void eq_fir_s16_passthrough(struct fir_state_32x16 fir[],
-				   const struct comp_buffer *source,
-				   struct comp_buffer *sink,
+				   const struct audio_stream *source,
+				   struct audio_stream *sink,
 				   int frames, int nch)
 {
-	buffer_copy_s16(source, sink, frames * nch);
+	audio_stream_copy_s16(source, sink, frames * nch);
 }
 #endif /* CONFIG_FORMAT_S16LE */
 
 #if CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE
 static void eq_fir_s32_passthrough(struct fir_state_32x16 fir[],
-				   const struct comp_buffer *source,
-				   struct comp_buffer *sink,
+				   const struct audio_stream *source,
+				   struct audio_stream *sink,
 				   int frames, int nch)
 {
-	buffer_copy_s32(source, sink, frames * nch);
+	audio_stream_copy_s32(source, sink, frames * nch);
 }
 #endif /* CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE */
 
@@ -209,7 +209,7 @@ static inline int set_pass_func(struct comp_dev *dev)
 	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer,
 				  sink_list);
 
-	switch (sourceb->frame_fmt) {
+	switch (sourceb->stream.frame_fmt) {
 #if CONFIG_FORMAT_S16LE
 	case SOF_IPC_FRAME_S16_LE:
 		trace_eq_with_ids(dev, "set_pass_func(), SOF_IPC_FRAME_S16_LE");
@@ -711,7 +711,7 @@ static int eq_fir_copy(struct comp_dev *dev)
 		eq_fir_free_parameters(&cd->config);
 		cd->config = cd->config_new;
 		cd->config_new = NULL;
-		ret = eq_fir_setup(cd, sourceb->channels);
+		ret = eq_fir_setup(cd, sourceb->stream.channels);
 		if (ret < 0) {
 			trace_eq_error_with_ids(dev, "eq_fir_copy(), failed FIR setup");
 			return ret;
@@ -733,8 +733,8 @@ static int eq_fir_copy(struct comp_dev *dev)
 		n = (cl.frames >> 1) << 1;
 
 		/* Run EQ function */
-		cd->eq_fir_func(cd->fir, cl.source, cl.sink, n,
-				cl.source->channels);
+		cd->eq_fir_func(cd->fir, &cl.source->stream, &cl.sink->stream,
+				n, cl.source->stream.channels);
 
 		/* calc new free and available */
 		comp_update_buffer_consume(cl.source,
@@ -770,19 +770,20 @@ static int eq_fir_prepare(struct comp_dev *dev)
 				struct comp_buffer, source_list);
 
 	/* get source data format */
-	cd->source_format = sourceb->frame_fmt;
+	cd->source_format = sourceb->stream.frame_fmt;
 
 	/* get sink data format and period bytes */
-	cd->sink_format = sinkb->frame_fmt;
-	sink_period_bytes = buffer_period_bytes(sinkb, dev->frames);
+	cd->sink_format = sinkb->stream.frame_fmt;
+	sink_period_bytes = audio_stream_period_bytes(&sinkb->stream,
+						      dev->frames);
 
 	/* Rewrite params format for this component to match the host side. */
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
-		sourceb->frame_fmt = cd->source_format;
+		sourceb->stream.frame_fmt = cd->source_format;
 	else
-		sinkb->frame_fmt = cd->sink_format;
+		sinkb->stream.frame_fmt = cd->sink_format;
 
-	if (sinkb->size < config->periods_sink * sink_period_bytes) {
+	if (sinkb->stream.size < config->periods_sink * sink_period_bytes) {
 		trace_eq_error_with_ids(dev, "eq_fir_prepare() error: "
 					"sink buffer size is insufficient");
 		ret = -ENOMEM;
@@ -791,7 +792,7 @@ static int eq_fir_prepare(struct comp_dev *dev)
 
 	/* Initialize EQ */
 	if (cd->config && cd->config_ready) {
-		ret = eq_fir_setup(cd, sourceb->channels);
+		ret = eq_fir_setup(cd, sourceb->stream.channels);
 		if (ret < 0) {
 			trace_eq_error_with_ids(dev, "eq_fir_prepare() error: "
 						"eq_fir_setup failed.");

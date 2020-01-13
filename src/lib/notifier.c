@@ -95,7 +95,7 @@ void notifier_unregister_all(void *receiver, void *caller)
 		notifier_unregister(receiver, caller, i);
 }
 
-static void notifier_notify(void *caller, enum notify_id type, void *data)
+static void notifier_notify(const void *caller, enum notify_id type, void *data)
 {
 	struct notify *notify = *arch_notify_get();
 	struct list_item *wlist;
@@ -127,7 +127,7 @@ void notifier_notify_remote(void)
 	platform_shared_commit(notify_data, sizeof(*notify_data));
 }
 
-void notifier_event(void *caller, enum notify_id type, uint32_t core_mask,
+void notifier_event(const void *caller, enum notify_id type, uint32_t core_mask,
 		    void *data, uint32_t data_size)
 {
 	struct notify_data *notify_data;

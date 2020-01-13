@@ -5,6 +5,7 @@
 // Author: Ranjani Sridharan <ranjani.sridharan@linux.intel.com>
 
 #include <sof/atomic.h>
+#include <sof/audio/audio_stream.h>
 #include <sof/audio/buffer.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/cache.h>
@@ -191,26 +192,27 @@ void dma_buffer_copy_from(struct comp_buffer *source, uint32_t source_bytes,
 {
 	uint32_t head = source_bytes;
 	uint32_t tail = 0;
+	struct audio_stream *istream = &source->stream;
 
 	/* source buffer contains data copied by DMA */
-	if ((char *)source->r_ptr + source_bytes > (char *)source->end_addr) {
-		head = (char *)source->end_addr - (char *)source->r_ptr;
+	if ((char *)istream->r_ptr + source_bytes > (char *)istream->end_addr) {
+		head = (char *)istream->end_addr - (char *)istream->r_ptr;
 		tail = source_bytes - head;
 	}
 
-	dcache_invalidate_region(source->r_ptr, head);
+	dcache_invalidate_region(istream->r_ptr, head);
 	if (tail)
-		dcache_invalidate_region(source->addr, tail);
+		dcache_invalidate_region(istream->addr, tail);
 
 	/* process data */
-	process(source, sink, samples);
+	process(istream, &sink->stream, samples);
 
-	source->r_ptr = (char *)source->r_ptr + source_bytes;
+	istream->r_ptr = (char *)istream->r_ptr + source_bytes;
 
 	/* check for pointer wrap */
-	if (source->r_ptr >= source->end_addr)
-		source->r_ptr = (char *)source->addr +
-			((char *)source->r_ptr - (char *)source->end_addr);
+	if (istream->r_ptr >= istream->end_addr)
+		istream->r_ptr = (char *)istream->addr +
+			((char *)istream->r_ptr - (char *)istream->end_addr);
 
 	comp_update_buffer_produce(sink, sink_bytes);
 }
@@ -221,26 +223,27 @@ void dma_buffer_copy_to(struct comp_buffer *source, uint32_t source_bytes,
 {
 	uint32_t head = sink_bytes;
 	uint32_t tail = 0;
+	struct audio_stream *ostream = &sink->stream;
 
 	/* process data */
-	process(source, sink, samples);
+	process(&source->stream, ostream, samples);
 
 	/* sink buffer contains data meant to copied to DMA */
-	if ((char *)sink->w_ptr + sink_bytes > (char *)sink->end_addr) {
-		head = (char *)sink->end_addr - (char *)sink->w_ptr;
+	if ((char *)ostream->w_ptr + sink_bytes > (char *)ostream->end_addr) {
+		head = (char *)ostream->end_addr - (char *)ostream->w_ptr;
 		tail = sink_bytes - head;
 	}
 
-	dcache_writeback_region(sink->w_ptr, head);
+	dcache_writeback_region(ostream->w_ptr, head);
 	if (tail)
-		dcache_writeback_region(sink->addr, tail);
+		dcache_writeback_region(ostream->addr, tail);
 
-	sink->w_ptr = (char *)sink->w_ptr + sink_bytes;
+	ostream->w_ptr = (char *)ostream->w_ptr + sink_bytes;
 
 	/* check for pointer wrap */
-	if (sink->w_ptr >= sink->end_addr)
-		sink->w_ptr = (char *)sink->addr +
-			((char *)sink->w_ptr - (char *)sink->end_addr);
+	if (ostream->w_ptr >= ostream->end_addr)
+		ostream->w_ptr = (char *)ostream->addr +
+			((char *)ostream->w_ptr - (char *)ostream->end_addr);
 
 	comp_update_buffer_consume(source, source_bytes);
 }

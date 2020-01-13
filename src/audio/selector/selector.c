@@ -175,9 +175,9 @@ static int selector_params(struct comp_dev *dev,
 
 	/* rewrite channels number for other components */
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
-		sinkb->channels = cd->config.out_channels_count;
+		sinkb->stream.channels = cd->config.out_channels_count;
 	else
-		sourceb->channels = cd->config.in_channels_count;
+		sourceb->stream.channels = cd->config.in_channels_count;
 
 	return PPL_STATUS_PATH_STOP;
 }
@@ -334,9 +334,9 @@ static int selector_copy(struct comp_dev *dev)
 	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
 			       source_list);
 
-	frames = buffer_avail_frames(source, sink);
-	source_bytes = frames * buffer_frame_bytes(source);
-	sink_bytes = frames * buffer_frame_bytes(sink);
+	frames = audio_stream_avail_frames(&source->stream, &sink->stream);
+	source_bytes = frames * audio_stream_frame_bytes(&source->stream);
+	sink_bytes = frames * audio_stream_frame_bytes(&sink->stream);
 
 	tracev_selector_with_ids(dev, "selector_copy(), "
 				 "source_bytes = 0x%x, "
@@ -344,7 +344,7 @@ static int selector_copy(struct comp_dev *dev)
 				 source_bytes, sink_bytes);
 
 	/* copy selected channels from in to out */
-	cd->sel_func(dev, sink, source, frames);
+	cd->sel_func(dev, &sink->stream, &source->stream, frames);
 
 	/* calculate new free and available */
 	comp_update_buffer_produce(sink, sink_bytes);
@@ -382,12 +382,14 @@ static int selector_prepare(struct comp_dev *dev)
 				source_list);
 
 	/* get source data format and period bytes */
-	cd->source_format = sourceb->frame_fmt;
-	cd->source_period_bytes = buffer_period_bytes(sourceb, dev->frames);
+	cd->source_format = sourceb->stream.frame_fmt;
+	cd->source_period_bytes =
+		audio_stream_period_bytes(&sourceb->stream, dev->frames);
 
 	/* get sink data format and period bytes */
-	cd->sink_format = sinkb->frame_fmt;
-	cd->sink_period_bytes = buffer_period_bytes(sinkb, dev->frames);
+	cd->sink_format = sinkb->stream.frame_fmt;
+	cd->sink_period_bytes =
+		audio_stream_period_bytes(&sinkb->stream, dev->frames);
 
 	/* There is an assumption that sink component will report out
 	 * proper number of channels [1] for selector to actually
@@ -395,12 +397,12 @@ static int selector_prepare(struct comp_dev *dev)
 	 */
 	trace_selector_with_ids(dev,
 				"selector_prepare(): sourceb->schannels = %u",
-				sourceb->channels);
+				sourceb->stream.channels);
 	trace_selector_with_ids(dev,
 				"selector_prepare(): sinkb->channels = %u",
-				sinkb->channels);
+				sinkb->stream.channels);
 
-	if (sinkb->size < config->periods_sink * cd->sink_period_bytes) {
+	if (sinkb->stream.size < config->periods_sink * cd->sink_period_bytes) {
 		trace_selector_error_with_ids(dev, "selector_prepare() error: "
 					      "sink buffer size is insufficient");
 		ret = -ENOMEM;

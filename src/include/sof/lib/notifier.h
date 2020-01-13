@@ -35,7 +35,7 @@ struct notify {
 };
 
 struct notify_data {
-	void *caller;
+	const void *caller;
 	enum notify_id type;
 	uint32_t data_size;
 	void *data;
@@ -56,7 +56,7 @@ void notifier_unregister(void *receiver, void *caller, enum notify_id type);
 void notifier_unregister_all(void *receiver, void *caller);
 
 void notifier_notify_remote(void);
-void notifier_event(void *caller, enum notify_id type, uint32_t core_mask,
+void notifier_event(const void *caller, enum notify_id type, uint32_t core_mask,
 		    void *data, uint32_t data_size);
 
 void init_system_notify(struct sof *sof);

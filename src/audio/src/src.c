@@ -78,8 +78,8 @@ struct comp_data {
 	int sink_frames;
 	int sample_container_bytes;
 	void (*src_func)(struct comp_dev *dev,
-			 const struct comp_buffer *source,
-			 struct comp_buffer *sink,
+			 const struct audio_stream *source,
+			 struct audio_stream *sink,
 			 int *consumed,
 			 int *produced);
 	void (*polyphase_func)(struct src_stage_prm *s);
@@ -306,17 +306,17 @@ int src_polyphase_init(struct polyphase_src *src, struct src_param *p,
 }
 
 /* Fallback function */
-static void src_fallback(struct comp_dev *dev, const struct comp_buffer *source,
-			 struct comp_buffer *sink, int *n_read, int *n_written)
+static void src_fallback(struct comp_dev *dev,
+			 const struct audio_stream *source,
+			 struct audio_stream *sink, int *n_read, int *n_written)
 {
 	*n_read = 0;
 	*n_written = 0;
 }
 
 /* Normal 2 stage SRC */
-static void src_2s(struct comp_dev *dev,
-		   const struct comp_buffer *source, struct comp_buffer *sink,
-		   int *n_read, int *n_written)
+static void src_2s(struct comp_dev *dev, const struct audio_stream *source,
+		   struct audio_stream *sink, int *n_read, int *n_written)
 {
 	struct src_stage_prm s1;
 	struct src_stage_prm s2;
@@ -410,9 +410,8 @@ static void src_2s(struct comp_dev *dev,
 }
 
 /* 1 stage SRC for simple conversions */
-static void src_1s(struct comp_dev *dev,
-		   const struct comp_buffer *source, struct comp_buffer *sink,
-		   int *n_read, int *n_written)
+static void src_1s(struct comp_dev *dev, const struct audio_stream *source,
+		   struct audio_stream *sink, int *n_read, int *n_written)
 {
 	struct src_stage_prm s1;
 	struct comp_data *cd = comp_get_drvdata(dev);
@@ -437,14 +436,14 @@ static void src_1s(struct comp_dev *dev,
 
 /* A fast copy function for same in and out rate */
 static void src_copy_s32(struct comp_dev *dev,
-			 const struct comp_buffer *source,
-			 struct comp_buffer *sink,
+			 const struct audio_stream *source,
+			 struct audio_stream *sink,
 			 int *n_read, int *n_written)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	int frames = cd->param.blk_in;
 
-	buffer_copy_s32(source, sink, frames * source->channels);
+	audio_stream_copy_s32(source, sink, frames * source->channels);
 
 	*n_read = frames;
 	*n_written = frames;
@@ -452,14 +451,14 @@ static void src_copy_s32(struct comp_dev *dev,
 
 #if CONFIG_FORMAT_S16LE
 static void src_copy_s16(struct comp_dev *dev,
-			 const struct comp_buffer *source,
-			 struct comp_buffer *sink,
+			 const struct audio_stream *source,
+			 struct audio_stream *sink,
 			 int *n_read, int *n_written)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	int frames = cd->param.blk_in;
 
-	buffer_copy_s16(source, sink, frames * source->channels);
+	audio_stream_copy_s16(source, sink, frames * source->channels);
 
 	*n_read = frames;
 	*n_written = frames;
@@ -563,16 +562,16 @@ static int src_params(struct comp_dev *dev,
 	 */
 	if (src->source_rate == 0) {
 		/* params rate is source rate */
-		cd->source_rate = sourceb->rate;
+		cd->source_rate = sourceb->stream.rate;
 		cd->sink_rate = src->sink_rate;
 		/* re-write our params with output rate for next component */
-		sinkb->rate = cd->sink_rate;
+		sinkb->stream.rate = cd->sink_rate;
 	} else {
 		/* params rate is sink rate */
 		cd->source_rate = src->source_rate;
-		cd->sink_rate = sinkb->rate;
+		cd->sink_rate = sinkb->stream.rate;
 		/* re-write our params with output rate for next component */
-		sourceb->rate = cd->source_rate;
+		sourceb->stream.rate = cd->source_rate;
 	}
 
 	cd->source_frames = dev->frames * cd->source_rate /
@@ -585,9 +584,10 @@ static int src_params(struct comp_dev *dev,
 			   cd->source_rate, cd->sink_rate);
 	trace_src_with_ids(dev,
 			   "src_params(), sourceb->channels = %u, sinkb->channels = %u, dev->frames = %u",
-			   sourceb->channels, sinkb->channels, dev->frames);
+			   sourceb->stream.channels,
+			   sinkb->stream.channels, dev->frames);
 	err = src_buffer_lengths(&cd->param, cd->source_rate, cd->sink_rate,
-				 sourceb->channels, cd->source_frames);
+				 sourceb->stream.channels, cd->source_frames);
 	if (err < 0) {
 		trace_src_error_with_ids(dev, "src_params() error: "
 					 "src_buffer_lengths() failed");
@@ -706,20 +706,24 @@ static int src_get_copy_limits(struct comp_data *cd,
 	 */
 	if (s2->filter_length > 1) {
 		/* Two polyphase filters case */
-		frames_snk = sink->free / buffer_frame_bytes(sink);
+		frames_snk = sink->stream.free /
+			     audio_stream_frame_bytes(&sink->stream);
 		frames_snk = MIN(frames_snk, cd->sink_frames + s2->blk_out);
 		sp->stage2_times = frames_snk / s2->blk_out;
-		frames_src = source->avail / buffer_frame_bytes(source);
+		frames_src = source->stream.avail /
+			     audio_stream_frame_bytes(&source->stream);
 		frames_src = MIN(frames_src, cd->source_frames + s1->blk_in);
 		sp->stage1_times = frames_src / s1->blk_in;
 		sp->blk_in = sp->stage1_times * s1->blk_in;
 		sp->blk_out = sp->stage2_times * s2->blk_out;
 	} else {
 		/* Single polyphase filter case */
-		frames_snk = sink->free / buffer_frame_bytes(sink);
+		frames_snk = sink->stream.free /
+			     audio_stream_frame_bytes(&sink->stream);
 		frames_snk = MIN(frames_snk, cd->sink_frames + s1->blk_out);
 		sp->stage1_times = frames_snk / s1->blk_out;
-		frames_src = source->avail / buffer_frame_bytes(source);
+		frames_src = source->stream.avail /
+			     audio_stream_frame_bytes(&source->stream);
 		frames_snk = MIN(frames_src, cd->source_frames + s1->blk_in);
 		sp->stage1_times = MIN(sp->stage1_times,
 				       frames_src / s1->blk_in);
@@ -761,7 +765,7 @@ static int src_copy(struct comp_dev *dev)
 		return PPL_STATUS_PATH_STOP;
 	}
 
-	cd->src_func(dev, source, sink, &consumed, &produced);
+	cd->src_func(dev, &source->stream, &sink->stream, &consumed, &produced);
 
 	tracev_src_with_ids(dev, "src_copy(), consumed = %u,  produced = %u",
 			    consumed, produced);
@@ -770,12 +774,12 @@ static int src_copy(struct comp_dev *dev)
 	 * functions must not be called with 0 consumed/produced.
 	 */
 	if (consumed > 0)
-		comp_update_buffer_consume(source, consumed *
-					   buffer_frame_bytes(source));
+		comp_update_buffer_consume(source,
+			consumed * audio_stream_frame_bytes(&source->stream));
 
 	if (produced > 0)
-		comp_update_buffer_produce(sink, produced *
-					   buffer_frame_bytes(sink));
+		comp_update_buffer_produce(sink,
+			produced * audio_stream_frame_bytes(&sink->stream));
 
 	/* produced no data */
 	return 0;
@@ -807,14 +811,16 @@ static int src_prepare(struct comp_dev *dev)
 				struct comp_buffer, source_list);
 
 	/* get source data format and period bytes */
-	cd->source_format = sourceb->frame_fmt;
-	source_period_bytes = buffer_period_bytes(sourceb, dev->frames);
+	cd->source_format = sourceb->stream.frame_fmt;
+	source_period_bytes = audio_stream_period_bytes(&sourceb->stream,
+							dev->frames);
 
 	/* get sink data format and period bytes */
-	cd->sink_format = sinkb->frame_fmt;
-	sink_period_bytes = buffer_period_bytes(sinkb, dev->frames);
+	cd->sink_format = sinkb->stream.frame_fmt;
+	sink_period_bytes = audio_stream_period_bytes(&sinkb->stream,
+						      dev->frames);
 
-	if (sinkb->size < config->periods_sink * sink_period_bytes) {
+	if (sinkb->stream.size < config->periods_sink * sink_period_bytes) {
 		trace_src_error_with_ids(dev, "src_prepare() error: "
 					  "sink buffer size is insufficient");
 		ret = -ENOMEM;

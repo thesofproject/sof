@@ -57,10 +57,7 @@ struct comp_data {
 	enum sof_ipc_frame sink_format;		/**< sink frame format */
 	int64_t *iir_delay;			/**< pointer to allocated RAM */
 	size_t iir_delay_size;			/**< allocated size */
-	void (*eq_iir_func)(struct comp_dev *dev,
-			    struct comp_buffer *source,
-			    struct comp_buffer *sink,
-			    uint32_t frames);
+	eq_iir_func eq_iir_func;		/**< processing function */
 };
 
 #if CONFIG_FORMAT_S16LE
@@ -68,9 +65,9 @@ struct comp_data {
  * EQ IIR algorithm code
  */
 
-static void eq_iir_s16_default(struct comp_dev *dev,
-			       struct comp_buffer *source,
-			       struct comp_buffer *sink,
+static void eq_iir_s16_default(const struct comp_dev *dev,
+			       const struct audio_stream *source,
+			       struct audio_stream *sink,
 			       uint32_t frames)
 
 {
@@ -88,8 +85,8 @@ static void eq_iir_s16_default(struct comp_dev *dev,
 		filter = &cd->iir[ch];
 		idx = ch;
 		for (i = 0; i < frames; i++) {
-			x = buffer_read_frag_s16(source, idx);
-			y = buffer_write_frag_s16(sink, idx);
+			x = audio_stream_read_frag_s16(source, idx);
+			y = audio_stream_write_frag_s16(sink, idx);
 			z = iir_df2t(filter, *x << 16);
 			*y = sat_int16(Q_SHIFT_RND(z, 31, 15));
 			idx += nch;
@@ -99,9 +96,9 @@ static void eq_iir_s16_default(struct comp_dev *dev,
 #endif /* CONFIG_FORMAT_S16LE */
 
 #if CONFIG_FORMAT_S24LE
-static void eq_iir_s24_default(struct comp_dev *dev,
-			       struct comp_buffer *source,
-			       struct comp_buffer *sink,
+static void eq_iir_s24_default(const struct comp_dev *dev,
+			       const struct audio_stream *source,
+			       struct audio_stream *sink,
 			       uint32_t frames)
 
 {
@@ -119,8 +116,8 @@ static void eq_iir_s24_default(struct comp_dev *dev,
 		filter = &cd->iir[ch];
 		idx = ch;
 		for (i = 0; i < frames; i++) {
-			x = buffer_read_frag_s32(source, idx);
-			y = buffer_write_frag_s32(sink, idx);
+			x = audio_stream_read_frag_s32(source, idx);
+			y = audio_stream_write_frag_s32(sink, idx);
 			z = iir_df2t(filter, *x << 8);
 			*y = sat_int24(Q_SHIFT_RND(z, 31, 23));
 			idx += nch;
@@ -130,9 +127,9 @@ static void eq_iir_s24_default(struct comp_dev *dev,
 #endif /* CONFIG_FORMAT_S24LE */
 
 #if CONFIG_FORMAT_S32LE
-static void eq_iir_s32_default(struct comp_dev *dev,
-			       struct comp_buffer *source,
-			       struct comp_buffer *sink,
+static void eq_iir_s32_default(const struct comp_dev *dev,
+			       const struct audio_stream *source,
+			       struct audio_stream *sink,
 			       uint32_t frames)
 
 {
@@ -149,8 +146,8 @@ static void eq_iir_s32_default(struct comp_dev *dev,
 		filter = &cd->iir[ch];
 		idx = ch;
 		for (i = 0; i < frames; i++) {
-			x = buffer_read_frag_s32(source, idx);
-			y = buffer_write_frag_s32(sink, idx);
+			x = audio_stream_read_frag_s32(source, idx);
+			y = audio_stream_write_frag_s32(sink, idx);
 			*y = iir_df2t(filter, *x);
 			idx += nch;
 		}
@@ -159,9 +156,9 @@ static void eq_iir_s32_default(struct comp_dev *dev,
 #endif /* CONFIG_FORMAT_S32LE */
 
 #if CONFIG_FORMAT_S32LE && CONFIG_FORMAT_S16LE
-static void eq_iir_s32_16_default(struct comp_dev *dev,
-				  struct comp_buffer *source,
-				  struct comp_buffer *sink,
+static void eq_iir_s32_16_default(const struct comp_dev *dev,
+				  const struct audio_stream *source,
+				  struct audio_stream *sink,
 				  uint32_t frames)
 
 {
@@ -179,8 +176,8 @@ static void eq_iir_s32_16_default(struct comp_dev *dev,
 		filter = &cd->iir[ch];
 		idx = ch;
 		for (i = 0; i < frames; i++) {
-			x = buffer_read_frag_s32(source, idx);
-			y = buffer_write_frag_s16(sink, idx);
+			x = audio_stream_read_frag_s32(source, idx);
+			y = audio_stream_write_frag_s16(sink, idx);
 			z = iir_df2t(filter, *x);
 			*y = sat_int16(Q_SHIFT_RND(z, 31, 15));
 			idx += nch;
@@ -190,9 +187,9 @@ static void eq_iir_s32_16_default(struct comp_dev *dev,
 #endif /* CONFIG_FORMAT_S32LE && CONFIG_FORMAT_S16LE */
 
 #if CONFIG_FORMAT_S32LE && CONFIG_FORMAT_S24LE
-static void eq_iir_s32_24_default(struct comp_dev *dev,
-				  struct comp_buffer *source,
-				  struct comp_buffer *sink,
+static void eq_iir_s32_24_default(const struct comp_dev *dev,
+				  const struct audio_stream *source,
+				  struct audio_stream *sink,
 				  uint32_t frames)
 
 {
@@ -210,8 +207,8 @@ static void eq_iir_s32_24_default(struct comp_dev *dev,
 		filter = &cd->iir[ch];
 		idx = ch;
 		for (i = 0; i < frames; i++) {
-			x = buffer_read_frag_s32(source, idx);
-			y = buffer_write_frag_s32(sink, idx);
+			x = audio_stream_read_frag_s32(source, idx);
+			y = audio_stream_write_frag_s32(sink, idx);
 			z = iir_df2t(filter, *x);
 			*y = sat_int24(Q_SHIFT_RND(z, 31, 23));
 			idx += nch;
@@ -221,29 +218,29 @@ static void eq_iir_s32_24_default(struct comp_dev *dev,
 #endif /* CONFIG_FORMAT_S32LE && CONFIG_FORMAT_S24LE */
 
 #if CONFIG_FORMAT_S16LE
-static void eq_iir_s16_pass(struct comp_dev *dev,
-			    struct comp_buffer *source,
-			    struct comp_buffer *sink,
+static void eq_iir_s16_pass(const struct comp_dev *dev,
+			    const struct audio_stream *source,
+			    struct audio_stream *sink,
 			    uint32_t frames)
 {
-	buffer_copy_s16(source, sink, frames * source->channels);
+	audio_stream_copy_s16(source, sink, frames * source->channels);
 }
 #endif /* CONFIG_FORMAT_S16LE */
 
 #if CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE
-static void eq_iir_s32_pass(struct comp_dev *dev,
-			    struct comp_buffer *source,
-			    struct comp_buffer *sink,
+static void eq_iir_s32_pass(const struct comp_dev *dev,
+			    const struct audio_stream *source,
+			    struct audio_stream *sink,
 			    uint32_t frames)
 {
-	buffer_copy_s32(source, sink, frames * source->channels);
+	audio_stream_copy_s32(source, sink, frames * source->channels);
 }
 #endif /* CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE */
 
 #if CONFIG_FORMAT_S16LE && CONFIG_FORMAT_S32LE
-static void eq_iir_s32_s16_pass(struct comp_dev *dev,
-				struct comp_buffer *source,
-				struct comp_buffer *sink,
+static void eq_iir_s32_s16_pass(const struct comp_dev *dev,
+				const struct audio_stream *source,
+				struct audio_stream *sink,
 				uint32_t frames)
 {
 	int32_t *x;
@@ -252,17 +249,17 @@ static void eq_iir_s32_s16_pass(struct comp_dev *dev,
 	int n = frames * source->channels;
 
 	for (i = 0; i < n; i++) {
-		x = buffer_read_frag_s32(source, i);
-		y = buffer_write_frag_s16(sink, i);
+		x = audio_stream_read_frag_s32(source, i);
+		y = audio_stream_write_frag_s16(sink, i);
 		*y = sat_int16(Q_SHIFT_RND(*x, 31, 15));
 	}
 }
 #endif /* CONFIG_FORMAT_S16LE && CONFIG_FORMAT_S32LE */
 
 #if CONFIG_FORMAT_S24LE && CONFIG_FORMAT_S32LE
-static void eq_iir_s32_s24_pass(struct comp_dev *dev,
-				struct comp_buffer *source,
-				struct comp_buffer *sink,
+static void eq_iir_s32_s24_pass(const struct comp_dev *dev,
+				const struct audio_stream *source,
+				struct audio_stream *sink,
 				uint32_t frames)
 {
 	int32_t *x;
@@ -271,8 +268,8 @@ static void eq_iir_s32_s24_pass(struct comp_dev *dev,
 	int n = frames * source->channels;
 
 	for (i = 0; i < n; i++) {
-		x = buffer_read_frag_s32(source, i);
-		y = buffer_write_frag_s16(sink, i);
+		x = audio_stream_read_frag_s32(source, i);
+		y = audio_stream_write_frag_s16(sink, i);
 		*y = sat_int24(Q_SHIFT_RND(*x, 31, 23));
 	}
 }
@@ -769,7 +766,7 @@ static int eq_iir_copy(struct comp_dev *dev)
 		eq_iir_free_parameters(&cd->config);
 		cd->config = cd->config_new;
 		cd->config_new = NULL;
-		ret = eq_iir_setup(cd, sourceb->channels);
+		ret = eq_iir_setup(cd, sourceb->stream.channels);
 		if (ret < 0) {
 			trace_eq_error_with_ids(dev, "eq_iir_copy(), failed IIR setup");
 			return ret;
@@ -784,7 +781,7 @@ static int eq_iir_copy(struct comp_dev *dev)
 	}
 
 	/* Run EQ function */
-	cd->eq_iir_func(dev, cl.source, cl.sink, cl.frames);
+	cd->eq_iir_func(dev, &cl.source->stream, &cl.sink->stream, cl.frames);
 
 	/* calc new free and available */
 	comp_update_buffer_consume(cl.source, cl.source_bytes);
@@ -818,21 +815,22 @@ static int eq_iir_prepare(struct comp_dev *dev)
 				struct comp_buffer, source_list);
 
 	/* get source data format */
-	cd->source_format = sourceb->frame_fmt;
+	cd->source_format = sourceb->stream.frame_fmt;
 
 	/* get sink data format and period bytes */
-	cd->sink_format = sinkb->frame_fmt;
-	sink_period_bytes = buffer_period_bytes(sinkb, dev->frames);
+	cd->sink_format = sinkb->stream.frame_fmt;
+	sink_period_bytes = audio_stream_period_bytes(&sinkb->stream,
+						      dev->frames);
 
 	/* Rewrite params format for this component to match the host side. */
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
-		sourceb->frame_fmt = cd->source_format;
+		sourceb->stream.frame_fmt = cd->source_format;
 	else
-		sinkb->frame_fmt = cd->sink_format;
+		sinkb->stream.frame_fmt = cd->sink_format;
 
-	if (sinkb->size < config->periods_sink * sink_period_bytes) {
-		trace_eq_error_with_ids(dev, "eq_iir_prepare(), sink buffer size %d"
-					" is insufficient", sinkb->size);
+	if (sinkb->stream.size < config->periods_sink * sink_period_bytes) {
+		trace_eq_error_with_ids(dev, "eq_iir_prepare(), sink buffer size %d is insufficient",
+					sinkb->stream.size);
 		ret = -ENOMEM;
 		goto err;
 	}
@@ -841,7 +839,7 @@ static int eq_iir_prepare(struct comp_dev *dev)
 	trace_eq_with_ids(dev, "eq_iir_prepare(), source_format=%d, sink_format=%d",
 			  cd->source_format, cd->sink_format);
 	if (cd->config) {
-		ret = eq_iir_setup(cd, sourceb->channels);
+		ret = eq_iir_setup(cd, sourceb->stream.channels);
 		if (ret < 0) {
 			trace_eq_error_with_ids(dev, "eq_iir_prepare(), setup failed.");
 			goto err;

@@ -215,9 +215,10 @@ int comp_get_copy_limits(struct comp_dev *dev, struct comp_copy_limits *cl)
 	cl->sink = list_first_item(&dev->bsink_list, struct comp_buffer,
 				   source_list);
 
-	cl->frames = buffer_avail_frames(cl->source, cl->sink);
-	cl->source_frame_bytes = buffer_frame_bytes(cl->source);
-	cl->sink_frame_bytes = buffer_frame_bytes(cl->sink);
+	cl->frames = audio_stream_avail_frames(&cl->source->stream,
+					       &cl->sink->stream);
+	cl->source_frame_bytes = audio_stream_frame_bytes(&cl->source->stream);
+	cl->sink_frame_bytes = audio_stream_frame_bytes(&cl->sink->stream);
 	cl->source_bytes = cl->frames * cl->source_frame_bytes;
 	cl->sink_bytes = cl->frames * cl->sink_frame_bytes;
 
