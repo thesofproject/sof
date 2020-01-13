@@ -55,6 +55,9 @@ struct sof {
 	/* default platform timer */
 	struct timer *platform_timer;
 
+	/* cpu (arch) timer */
+	struct timer *cpu_timer;
+
 	/* timer domain for driving timer LL scheduler */
 	struct ll_schedule_domain *platform_timer_domain;
 
