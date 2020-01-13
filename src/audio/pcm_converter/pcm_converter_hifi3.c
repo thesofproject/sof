@@ -26,10 +26,10 @@
  * \brief Sets buffer to be circular using HiFi3 functions.
  * \param[in,out] buffer Circular buffer.
  */
-static void pcm_converter_setup_circular(const struct comp_buffer *buffer)
+static void pcm_converter_setup_circular(const struct comp_buffer *source)
 {
-	AE_SETCBEGIN0(buffer->addr);
-	AE_SETCEND0(buffer->end_addr);
+	AE_SETCBEGIN0(source->addr);
+	AE_SETCEND0(source->end_addr);
 }
 
 #if CONFIG_FORMAT_S16LE && CONFIG_FORMAT_S24LE
