@@ -58,6 +58,8 @@
 	((int16_t)((INT16_MAX) * (ACTIVATION_DEFAULT_DIVIDER_S16)))
 #define ACTIVATION_DEFAULT_THRESHOLD_S24 \
 	((int32_t)((INT24_MAXVALUE) * (ACTIVATION_DEFAULT_DIVIDER_S24)))
+#define ACTIVATION_DEFAULT_THRESHOLD_S32 \
+	ACTIVATION_DEFAULT_THRESHOLD_S24
 
 #define INITIAL_MODEL_DATA_SIZE 64
 
@@ -265,6 +267,10 @@ static int test_keyword_get_threshold(struct comp_dev *dev, int sample_width)
 	case 24:
 		return ACTIVATION_DEFAULT_THRESHOLD_S24;
 #endif /* CONFIG_FORMAT_S24LE */
+#if CONFIG_FORMAT_S32LE
+	case 32:
+		return ACTIVATION_DEFAULT_THRESHOLD_S32;
+#endif /* CONFIG_FORMAT_S32LE */
 	default:
 		trace_keyword_error_with_ids(dev, "test_keyword_get_threshold(), unsupported sample width: %d",
 					     sample_width);
