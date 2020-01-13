@@ -259,4 +259,16 @@ config DEBUG_IPC_COUNTERS
 	help
 	  Select for enabling tracing IPC counter in SRAM_REG mailbox
 
+config PERFORMANCE_COUNTERS
+	bool "Performance counters"
+	default n
+	help
+	  Enables tracing of simple performance measurements.
+	  A basic use case is to measure number of platform & cpu clock ticks
+	  passed between two checkpoints (init() and stamp()), for example
+	  total time spent on running low latency scheduler tasks.
+	  Platforms that gate cpu clock in wait-for-interrupt calls may also
+	  use the stamp() macro periodically to find out how long the cpu
+	  was in active/sleep state between the calls and estimate the cpu load.
+
 endmenu
