@@ -101,6 +101,13 @@ uint64_t platform_timer_get(struct timer *timer)
 	return 0;
 }
 
+uint64_t arch_timer_get_system(struct timer *timer)
+{
+	(void)timer;
+
+	return 0;
+}
+
 uint64_t clock_ms_to_ticks(int clock, uint64_t ms)
 {
 	(void)clock;
