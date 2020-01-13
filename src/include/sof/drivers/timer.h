@@ -31,6 +31,11 @@ static inline struct timer *timer_get(void)
 	return sof_get()->platform_timer;
 }
 
+static inline struct timer *cpu_timer_get(void)
+{
+	return sof_get()->cpu_timer;
+}
+
 static inline int64_t timer_set(struct timer *timer, uint64_t ticks)
 {
 	return arch_timer_set(timer, ticks);

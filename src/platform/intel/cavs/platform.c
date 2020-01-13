@@ -257,6 +257,11 @@ struct timer timer = {
 	.irq_name = irq_name_level2,
 };
 
+struct timer arch_timer = {
+	.id = TIMER1, /* internal timer */
+	.irq = IRQ_NUM_TIMER2,
+};
+
 #if CONFIG_DW_SPI
 
 #include <sof/drivers/spi.h>
@@ -338,6 +343,7 @@ int platform_init(struct sof *sof)
 	int i;
 
 	sof->platform_timer = &timer;
+	sof->cpu_timer = &arch_timer;
 
 	/* Turn off memory for all unused cores */
 	for (i = 0; i < PLATFORM_CORE_COUNT; i++)
