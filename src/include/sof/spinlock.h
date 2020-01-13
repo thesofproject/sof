@@ -14,6 +14,7 @@
 #define __SOF_SPINLOCK_H__
 
 #include <arch/spinlock.h>
+#include <sof/lib/memory.h>
 #include <sof/trace/trace.h>
 #include <config.h>
 #include <stdint.h>
@@ -173,6 +174,9 @@ static inline void _spin_lock(spinlock_t *lock, int line)
 #else
 	arch_spin_lock(lock);
 #endif
+
+	/* spinlock has to be in a shared memory */
+	platform_shared_commit(lock, sizeof(*lock));
 }
 
 #define spin_lock(lock) _spin_lock(lock, __LINE__)
@@ -188,6 +192,9 @@ static inline void _spin_unlock(spinlock_t *lock, int line)
 #if CONFIG_DEBUG_LOCKS
 	spin_unlock_dbg(line);
 #endif
+
+	/* spinlock has to be in a shared memory */
+	platform_shared_commit(lock, sizeof(*lock));
 }
 
 #define spin_unlock(lock) _spin_unlock(lock, __LINE__)
