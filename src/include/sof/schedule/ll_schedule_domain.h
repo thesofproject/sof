@@ -13,6 +13,7 @@
 #include <sof/lib/alloc.h>
 #include <sof/lib/cpu.h>
 #include <sof/lib/clk.h>
+#include <sof/lib/memory.h>
 #include <sof/sof.h>
 #include <sof/spinlock.h>
 #include <sof/trace/trace.h>
@@ -86,6 +87,8 @@ static inline struct ll_schedule_domain *domain_init
 	atomic_init(&domain->total_num_tasks, 0);
 	atomic_init(&domain->num_clients, 0);
 
+	platform_shared_commit(domain, sizeof(*domain));
+
 	return domain;
 }
 
@@ -93,9 +96,15 @@ static inline int domain_register(struct ll_schedule_domain *domain,
 				  uint64_t period, struct task *task,
 				  void (*handler)(void *arg), void *arg)
 {
+	int ret;
+
 	assert(domain->ops->domain_register);
 
-	return domain->ops->domain_register(domain, period, task, handler, arg);
+	ret = domain->ops->domain_register(domain, period, task, handler, arg);
+
+	platform_shared_commit(domain, sizeof(*domain));
+
+	return ret;
 }
 
 static inline void domain_unregister(struct ll_schedule_domain *domain,
@@ -104,38 +113,54 @@ static inline void domain_unregister(struct ll_schedule_domain *domain,
 	assert(domain->ops->domain_unregister);
 
 	domain->ops->domain_unregister(domain, task, num_tasks);
+
+	platform_shared_commit(domain, sizeof(*domain));
 }
 
 static inline void domain_enable(struct ll_schedule_domain *domain, int core)
 {
 	if (domain->ops->domain_enable)
 		domain->ops->domain_enable(domain, core);
+
+	platform_shared_commit(domain, sizeof(*domain));
 }
 
 static inline void domain_disable(struct ll_schedule_domain *domain, int core)
 {
 	if (domain->ops->domain_disable)
 		domain->ops->domain_disable(domain, core);
+
+	platform_shared_commit(domain, sizeof(*domain));
 }
 
 static inline void domain_set(struct ll_schedule_domain *domain, uint64_t start)
 {
 	if (domain->ops->domain_set)
 		domain->ops->domain_set(domain, start);
+
+	platform_shared_commit(domain, sizeof(*domain));
 }
 
 static inline void domain_clear(struct ll_schedule_domain *domain)
 {
 	if (domain->ops->domain_clear)
 		domain->ops->domain_clear(domain);
+
+	platform_shared_commit(domain, sizeof(*domain));
 }
 
 static inline bool domain_is_pending(struct ll_schedule_domain *domain,
 				     struct task *task)
 {
+	bool ret;
+
 	assert(domain->ops->domain_is_pending);
 
-	return domain->ops->domain_is_pending(domain, task);
+	ret = domain->ops->domain_is_pending(domain, task);
+
+	platform_shared_commit(domain, sizeof(*domain));
+
+	return ret;
 }
 
 struct ll_schedule_domain *timer_domain_init(struct timer *timer, int clk,

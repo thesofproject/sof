@@ -7,6 +7,7 @@
 #include <sof/drivers/timer.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/cpu.h>
+#include <sof/lib/memory.h>
 #include <sof/platform.h>
 #include <sof/schedule/ll_schedule.h>
 #include <sof/schedule/ll_schedule_domain.h>
@@ -43,19 +44,25 @@ static int timer_domain_register(struct ll_schedule_domain *domain,
 {
 	struct timer_domain *timer_domain = ll_sch_domain_get_pdata(domain);
 	int core = cpu_get_id();
+	int ret = 0;
 
 	tracev_ll("timer_domain_register()");
 
 	/* tasks already registered on this core */
 	if (timer_domain->arg[core])
-		return 0;
+		goto out;
 
 	trace_ll("timer_domain_register domain->type %d domain->clk %d domain->ticks_per_ms %d period %d",
 		 domain->type, domain->clk, domain->ticks_per_ms, period);
 
 	timer_domain->arg[core] = arg;
 
-	return timer_register(timer_domain->timer, handler, arg);
+	ret = timer_register(timer_domain->timer, handler, arg);
+
+out:
+	platform_shared_commit(timer_domain, sizeof(*timer_domain));
+
+	return ret;
 }
 
 static void timer_domain_unregister(struct ll_schedule_domain *domain,
@@ -68,7 +75,7 @@ static void timer_domain_unregister(struct ll_schedule_domain *domain,
 
 	/* tasks still registered on this core */
 	if (!timer_domain->arg[core] || num_tasks)
-		return;
+		goto out;
 
 	trace_ll("timer_domain_unregister domain->type %d domain->clk %d",
 		 domain->type, domain->clk);
@@ -76,6 +83,9 @@ static void timer_domain_unregister(struct ll_schedule_domain *domain,
 	timer_unregister(timer_domain->timer, timer_domain->arg[core]);
 
 	timer_domain->arg[core] = NULL;
+
+out:
+	platform_shared_commit(timer_domain, sizeof(*timer_domain));
 }
 
 static void timer_domain_enable(struct ll_schedule_domain *domain, int core)
@@ -83,6 +93,8 @@ static void timer_domain_enable(struct ll_schedule_domain *domain, int core)
 	struct timer_domain *timer_domain = ll_sch_domain_get_pdata(domain);
 
 	timer_enable(timer_domain->timer, timer_domain->arg[core], core);
+
+	platform_shared_commit(timer_domain, sizeof(*timer_domain));
 }
 
 static void timer_domain_disable(struct ll_schedule_domain *domain, int core)
@@ -90,6 +102,8 @@ static void timer_domain_disable(struct ll_schedule_domain *domain, int core)
 	struct timer_domain *timer_domain = ll_sch_domain_get_pdata(domain);
 
 	timer_disable(timer_domain->timer, timer_domain->arg[core], core);
+
+	platform_shared_commit(timer_domain, sizeof(*timer_domain));
 }
 
 static void timer_domain_set(struct ll_schedule_domain *domain, uint64_t start)
@@ -109,6 +123,8 @@ static void timer_domain_set(struct ll_schedule_domain *domain, uint64_t start)
 				   ticks_set - ticks_req);
 
 	domain->last_tick = ticks_set;
+
+	platform_shared_commit(timer_domain, sizeof(*timer_domain));
 }
 
 static void timer_domain_clear(struct ll_schedule_domain *domain)
@@ -116,6 +132,8 @@ static void timer_domain_clear(struct ll_schedule_domain *domain)
 	struct timer_domain *timer_domain = ll_sch_domain_get_pdata(domain);
 
 	platform_timer_clear(timer_domain->timer);
+
+	platform_shared_commit(timer_domain, sizeof(*timer_domain));
 }
 
 static bool timer_domain_is_pending(struct ll_schedule_domain *domain,
@@ -141,6 +159,9 @@ struct ll_schedule_domain *timer_domain_init(struct timer *timer, int clk,
 	timer_domain->timeout = timeout;
 
 	ll_sch_domain_set_pdata(domain, timer_domain);
+
+	platform_shared_commit(domain, sizeof(*domain));
+	platform_shared_commit(timer_domain, sizeof(*timer_domain));
 
 	return domain;
 }
