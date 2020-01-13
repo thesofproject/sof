@@ -28,7 +28,6 @@
 #include <sof/schedule/task.h>
 #include <sof/spinlock.h>
 #include <sof/string.h>
-#include <sof/trace/trace.h>
 #include <ipc/dai.h>
 #include <ipc/dai-intel.h>
 #include <ipc/topology.h>
@@ -138,10 +137,21 @@ struct pdm_controllers_configuration {
 /* tracing */
 #define trace_dmic(__e, ...) \
 	trace_event(TRACE_CLASS_DMIC, __e, ##__VA_ARGS__)
-#define trace_dmic_error(__e, ...) \
+
+#define trace_dmic_id(dmic_ptr, format, ...) \
+	trace_dai_with_ids(TRACE_CLASS_DMIC, dmic_ptr, format, ##__VA_ARGS__)
+
+#define trace_error_dmic(__e, ...) \
 	trace_error(TRACE_CLASS_DMIC, __e, ##__VA_ARGS__)
+
+#define trace_error_dmic_id(dmic_ptr, format, ...) \
+	trace_dai_error_with_ids(TRACE_CLASS_DMIC, dmic_ptr, \
+				 format, ##__VA_ARGS__)
 #define tracev_dmic(__e, ...) \
 	tracev_event(TRACE_CLASS_DMIC, __e, ##__VA_ARGS__)
+
+#define tracev_dmic_id(dmic_ptr, format, ...) \
+	tracev_dai_with_ids(TRACE_CLASS_DMIC, dmic_ptr, format, ##__VA_ARGS__)
 
 /* Base addresses (in PDM scope) of 2ch PDM controllers and coefficient RAM. */
 static const uint32_t base[4] = {PDM0, PDM1, PDM2, PDM3};
@@ -164,13 +174,12 @@ static enum task_state dmic_work(void *data)
 	int i;
 	int ret;
 
-	tracev_dmic("dmic_work()");
+	tracev_dmic_id(dai, "dmic_work()");
 
 	ret = spin_try_lock(&dai->lock);
 	if (!ret) {
 		platform_shared_commit(dai, sizeof(*dai));
-		tracev_dmic("dmic_work(): spin_try_lock(dai->lock, ret)"
-			    "failed: RESCHEDULE");
+		tracev_dmic_id(dai, "dmic_work(): spin_try_lock(dai->lock, ret) failed: RESCHEDULE");
 		return SOF_TASK_STATE_RESCHEDULE;
 	}
 
@@ -276,33 +285,28 @@ static void find_modes(struct decim_modes *modes, uint32_t fs, int di)
 	/* Check for sane pdm clock, min 100 kHz, max ioclk/2 */
 	if (dmic_prm[di]->pdmclk_max < DMIC_HW_PDM_CLK_MIN ||
 	    dmic_prm[di]->pdmclk_max > DMIC_HW_IOCLK / 2) {
-		trace_dmic_error("find_modes() error: "
-				 "pdm clock max not in range");
+		trace_error_dmic("find_modes() error:  pdm clock max not in range");
 		return;
 	}
 	if (dmic_prm[di]->pdmclk_min < DMIC_HW_PDM_CLK_MIN ||
 	    dmic_prm[di]->pdmclk_min > dmic_prm[di]->pdmclk_max) {
-		trace_dmic_error("find_modes() error: "
-				 "pdm clock min not in range");
+		trace_error_dmic("find_modes() error:  pdm clock min not in range");
 		return;
 	}
 
 	/* Check for sane duty cycle */
 	if (dmic_prm[di]->duty_min > dmic_prm[di]->duty_max) {
-		trace_dmic_error("find_modes() error: "
-				 "duty cycle min > max");
+		trace_error_dmic("find_modes() error: duty cycle min > max");
 		return;
 	}
 	if (dmic_prm[di]->duty_min < DMIC_HW_DUTY_MIN ||
 	    dmic_prm[di]->duty_min > DMIC_HW_DUTY_MAX) {
-		trace_dmic_error("find_modes() error: "
-				 "pdm clock min not in range");
+		trace_error_dmic("find_modes() error:  pdm clock min not in range");
 		return;
 	}
 	if (dmic_prm[di]->duty_max < DMIC_HW_DUTY_MIN ||
 	    dmic_prm[di]->duty_max > DMIC_HW_DUTY_MAX) {
-		trace_dmic_error("find_modes() error: "
-				 "pdm clock max not in range");
+		trace_error_dmic("find_modes() error: pdm clock max not in range");
 		return;
 	}
 
@@ -566,7 +570,7 @@ static int select_mode(struct dmic_configuration *cfg,
 	 * the candidates should be sufficient.
 	 */
 	if (modes->num_of_modes == 0) {
-		trace_dmic_error("select_mode() error: no modes available");
+		trace_error_dmic("select_mode() error: no modes available");
 		return -EINVAL;
 	}
 
@@ -599,8 +603,7 @@ static int select_mode(struct dmic_configuration *cfg,
 	if (cfg->mfir_a > 0) {
 		cfg->fir_a = get_fir(cfg, cfg->mfir_a);
 		if (!cfg->fir_a) {
-			trace_dmic_error("select_mode() error: cannot find "
-					 "FIR coefficients, mfir_a = %u",
+			trace_error_dmic("select_mode() error: cannot find FIR coefficients, mfir_a = %u",
 					 cfg->mfir_a);
 			return -EINVAL;
 		}
@@ -609,8 +612,7 @@ static int select_mode(struct dmic_configuration *cfg,
 	if (cfg->mfir_b > 0) {
 		cfg->fir_b = get_fir(cfg, cfg->mfir_b);
 		if (!cfg->fir_b) {
-			trace_dmic_error("select_mode() error: cannot find "
-					 "FIR coefficients, mfir_b = %u",
+			trace_error_dmic("select_mode() error: cannot find FIR coefficients, mfir_b = %u",
 					 cfg->mfir_b);
 			return -EINVAL;
 		}
@@ -623,8 +625,7 @@ static int select_mode(struct dmic_configuration *cfg,
 	g_cic = mcic * mcic * mcic * mcic * mcic;
 	if (g_cic < 0) {
 		/* Erroneous decimation factor and CIC gain */
-		trace_dmic_error("select_mode() error: erroneous decimation "
-				 "factor and CIC gain");
+		trace_error_dmic("select_mode() error: erroneous decimation factor and CIC gain");
 		return -EINVAL;
 	}
 
@@ -651,8 +652,7 @@ static int select_mode(struct dmic_configuration *cfg,
 				     cfg->fir_a->length, gain_to_fir);
 		if (ret < 0) {
 			/* Invalid coefficient set found, should not happen. */
-			trace_dmic_error("select_mode() error: "
-					 "invalid coefficient set found");
+			trace_error_dmic("select_mode() error: invalid coefficient set found");
 			return -EINVAL;
 		}
 	} else {
@@ -668,8 +668,7 @@ static int select_mode(struct dmic_configuration *cfg,
 				     cfg->fir_b->length, gain_to_fir);
 		if (ret < 0) {
 			/* Invalid coefficient set found, should not happen. */
-			trace_dmic_error("select_mode() error: "
-					 "invalid coefficient set found");
+			trace_error_dmic("select_mode() error: invalid coefficient set found");
 			return -EINVAL;
 		}
 	} else {
@@ -834,9 +833,11 @@ static int configure_registers(struct dai *dai,
 
 	/* pdata is set by dmic_probe(), error if it has not been set */
 	if (!pdata) {
-		trace_dmic_error("configure_registers() error: pdata not set");
+		trace_error_dmic_id(dai, "configure_registers() error: pdata not set");
 		return -EINVAL;
 	}
+
+	trace_dmic_id(dai, "configuring registers");
 
 	/* OUTCONTROL0 and OUTCONTROL1 */
 	of0 = (dmic_prm[0]->fifo_bits == 32) ? 2 : 0;
@@ -858,7 +859,7 @@ static int configure_registers(struct dai *dai,
 		OUTCONTROL0_IPM(ipm) |
 		OUTCONTROL0_TH(th);
 	dai_write(dai, OUTCONTROL0, val);
-	trace_dmic("configure_registers(), OUTCONTROL0 = %u", val);
+	tracev_dmic_id(dai, "configure_registers(), OUTCONTROL0 = %u", val);
 
 	ipm_helper1(&ipm, 1);
 	val = OUTCONTROL1_TIE(0) |
@@ -870,7 +871,7 @@ static int configure_registers(struct dai *dai,
 		OUTCONTROL1_IPM(ipm) |
 		OUTCONTROL1_TH(th);
 	dai_write(dai, OUTCONTROL1, val);
-	trace_dmic("configure_registers(), OUTCONTROL1 = %u", val);
+	tracev_dmic_id(dai, "configure_registers(), OUTCONTROL1 = %u", val);
 #endif
 
 #if DMIC_HW_VERSION == 2 && DMIC_HW_CONTROLLERS > 2
@@ -888,7 +889,7 @@ static int configure_registers(struct dai *dai,
 		OUTCONTROL0_IPM_SOURCE_4(source[3]) |
 		OUTCONTROL0_TH(th);
 	dai_write(dai, OUTCONTROL0, val);
-	trace_dmic("configure_registers(), OUTCONTROL0 = %u", val);
+	tracev_dmic_id(dai, "configure_registers(), OUTCONTROL0 = %u", val);
 
 	ipm_helper2(source, &ipm, 1);
 	val = OUTCONTROL1_TIE(0) |
@@ -904,7 +905,7 @@ static int configure_registers(struct dai *dai,
 		OUTCONTROL1_IPM_SOURCE_4(source[3]) |
 		OUTCONTROL1_TH(th);
 	dai_write(dai, OUTCONTROL1, val);
-	trace_dmic("configure_registers(), OUTCONTROL1 = %u", val);
+	tracev_dmic_id(dai, "configure_registers(), OUTCONTROL1 = %u", val);
 #endif
 
 	/* Mark enabled microphones into private data to be later used
@@ -917,7 +918,7 @@ static int configure_registers(struct dai *dai,
 
 	ret = stereo_helper(stereo, swap);
 	if (ret < 0) {
-		trace_dmic_error("configure_registers(): Mic enable conflict");
+		trace_error_dmic_id(dai, "configure_registers(): enable conflict");
 		return ret;
 	}
 
@@ -931,12 +932,14 @@ static int configure_registers(struct dai *dai,
 			CIC_CONTROL_MIC_MUTE(cic_mute) |
 			CIC_CONTROL_STEREO_MODE(stereo[i]);
 		dai_write(dai, base[i] + CIC_CONTROL, val);
-		trace_dmic("configure_registers(), CIC_CONTROL = %u", val);
+		tracev_dmic_id(dai, "configure_registers(), CIC_CONTROL = %u",
+			       val);
 
 		val = CIC_CONFIG_CIC_SHIFT(cfg->cic_shift + 8) |
 			CIC_CONFIG_COMB_COUNT(cfg->mcic - 1);
 		dai_write(dai, base[i] + CIC_CONFIG, val);
-		trace_dmic("configure_registers(), CIC_CONFIG = %u", val);
+		tracev_dmic_id(dai, "configure_registers(), CIC_CONFIG = %u",
+			       val);
 
 		/* Mono right channel mic usage requires swap of PDM channels
 		 * since the mono decimation is done with only left channel
@@ -952,7 +955,8 @@ static int configure_registers(struct dai *dai,
 			MIC_CONTROL_PDM_EN_B(cic_start_b) |
 			MIC_CONTROL_PDM_EN_A(cic_start_a);
 		dai_write(dai, base[i] + MIC_CONTROL, val);
-		trace_dmic("configure_registers(), MIC_CONTROL = %u", val);
+		tracev_dmic_id(dai, "configure_registers(), MIC_CONTROL = %u",
+			       val);
 
 		/* FIR A */
 		fir_decim = MAX(cfg->mfir_a - 1, 0);
@@ -963,31 +967,35 @@ static int configure_registers(struct dai *dai,
 			FIR_CONTROL_A_MUTE(fir_mute) |
 			FIR_CONTROL_A_STEREO(stereo[i]);
 		dai_write(dai, base[i] + FIR_CONTROL_A, val);
-		trace_dmic("configure_registers(), FIR_CONTROL_A = %u", val);
+		tracev_dmic_id(dai, "configure_registers(), FIR_CONTROL_A = %u",
+			       val);
 
 		val = FIR_CONFIG_A_FIR_DECIMATION(fir_decim) |
 			FIR_CONFIG_A_FIR_SHIFT(cfg->fir_a_shift) |
 			FIR_CONFIG_A_FIR_LENGTH(fir_length);
 		dai_write(dai, base[i] + FIR_CONFIG_A, val);
-		trace_dmic("configure_registers(), FIR_CONFIG_A = %u", val);
+		tracev_dmic_id(dai, "configure_registers(), FIR_CONFIG_A = %u",
+			       val);
 
 		val = DC_OFFSET_LEFT_A_DC_OFFS(DCCOMP_TC0);
 		dai_write(dai, base[i] + DC_OFFSET_LEFT_A, val);
-		trace_dmic("configure_registers(), DC_OFFSET_LEFT_A = %u",
-			   val);
+		tracev_dmic_id(dai, "configure_registers(), DC_OFFSET_LEFT_A = %u",
+			       val);
 
 		val = DC_OFFSET_RIGHT_A_DC_OFFS(DCCOMP_TC0);
 		dai_write(dai, base[i] + DC_OFFSET_RIGHT_A, val);
-		trace_dmic("configure_registers(), DC_OFFSET_RIGHT_A = %u",
-			   val);
+		tracev_dmic_id(dai, "configure_registers(), DC_OFFSET_RIGHT_A = %u",
+			       val);
 
 		val = OUT_GAIN_LEFT_A_GAIN(0);
 		dai_write(dai, base[i] + OUT_GAIN_LEFT_A, val);
-		trace_dmic("configure_registers(), OUT_GAIN_LEFT_A = %u", val);
+		tracev_dmic_id(dai, "configure_registers(), OUT_GAIN_LEFT_A = %u",
+			       val);
 
 		val = OUT_GAIN_RIGHT_A_GAIN(0);
 		dai_write(dai, base[i] + OUT_GAIN_RIGHT_A, val);
-		trace_dmic("configure_registers(), OUT_GAIN_RIGHT_A = %u", val);
+		tracev_dmic_id(dai, "configure_registers(), OUT_GAIN_RIGHT_A = %u",
+			       val);
 
 		/* FIR B */
 		fir_decim = MAX(cfg->mfir_b - 1, 0);
@@ -998,30 +1006,35 @@ static int configure_registers(struct dai *dai,
 			FIR_CONTROL_B_MUTE(fir_mute) |
 			FIR_CONTROL_B_STEREO(stereo[i]);
 		dai_write(dai, base[i] + FIR_CONTROL_B, val);
-		trace_dmic("configure_registers(), FIR_CONTROL_B = %u", val);
+		tracev_dmic_id(dai, "configure_registers(), FIR_CONTROL_B = %u",
+			       val);
 
 		val = FIR_CONFIG_B_FIR_DECIMATION(fir_decim) |
 			FIR_CONFIG_B_FIR_SHIFT(cfg->fir_b_shift) |
 			FIR_CONFIG_B_FIR_LENGTH(fir_length);
 		dai_write(dai, base[i] + FIR_CONFIG_B, val);
-		trace_dmic("configure_registers(), FIR_CONFIG_B = %u", val);
+		tracev_dmic_id(dai, "configure_registers(), FIR_CONFIG_B = %u",
+			       val);
 
 		val = DC_OFFSET_LEFT_B_DC_OFFS(DCCOMP_TC0);
 		dai_write(dai, base[i] + DC_OFFSET_LEFT_B, val);
-		trace_dmic("configure_registers(), DC_OFFSET_LEFT_B = %u", val);
+		tracev_dmic_id(dai, "configure_registers(), DC_OFFSET_LEFT_B = %u",
+			       val);
 
 		val = DC_OFFSET_RIGHT_B_DC_OFFS(DCCOMP_TC0);
 		dai_write(dai, base[i] + DC_OFFSET_RIGHT_B, val);
-		trace_dmic("configure_registers(), DC_OFFSET_RIGHT_B = %u",
-			   val);
+		tracev_dmic_id(dai, "configure_registers(), DC_OFFSET_RIGHT_B = %u",
+			       val);
 
 		val = OUT_GAIN_LEFT_B_GAIN(0);
 		dai_write(dai, base[i] + OUT_GAIN_LEFT_B, val);
-		trace_dmic("configure_registers(), OUT_GAIN_LEFT_B = %u", val);
+		tracev_dmic_id(dai, "configure_registers(), OUT_GAIN_LEFT_B = %u",
+			       val);
 
 		val = OUT_GAIN_RIGHT_B_GAIN(0);
 		dai_write(dai, base[i] + OUT_GAIN_RIGHT_B, val);
-		trace_dmic("configure_registers(), OUT_GAIN_RIGHT_B = %u", val);
+		tracev_dmic_id(dai, "configure_registers(), OUT_GAIN_RIGHT_B = %u",
+			       val);
 
 		/* Write coef RAM A with scaled coefficient in reverse order */
 		length = cfg->fir_a_length;
@@ -1062,10 +1075,10 @@ static int dmic_set_config(struct dai *dai, struct sof_ipc_dai_config *config)
 	int i, j, ret = 0;
 	int di = dai->index;
 
-	trace_dmic("dmic_set_config(), dai->index = %d", di);
+	trace_dmic_id(dai, "dmic_set_config()");
 
 	if (config->dmic.driver_ipc_version != DMIC_IPC_VERSION) {
-		trace_dmic_error("dmic_set_config() error: wrong ipc version");
+		trace_error_dmic_id(dai, "dmic_set_config() error: wrong ipc version");
 		return -EINVAL;
 	}
 
@@ -1079,15 +1092,15 @@ static int dmic_set_config(struct dai *dai, struct sof_ipc_dai_config *config)
 
 	if (unmute_ramp_time_ms < LOGRAMP_TIME_MIN_MS ||
 	    unmute_ramp_time_ms > LOGRAMP_TIME_MAX_MS) {
-		trace_dmic_error("dmic_set_config(): Illegal ramp time = %d",
-				 unmute_ramp_time_ms);
+		trace_error_dmic_id(dai, "dmic_set_config(): Illegal ramp time = %d",
+				    unmute_ramp_time_ms);
 		return -EINVAL;
 	}
 
 	step_db = LOGRAMP_CONST_TERM / unmute_ramp_time_ms;
 	dmic->gain_coef = db2lin_fixed(step_db);
-	trace_dmic("dmic_set_config(): unmute_ramp_time_ms = %d",
-		   unmute_ramp_time_ms);
+	trace_dmic_id(dai, "dmic_set_config(): unmute_ramp_time_ms = %d",
+		      unmute_ramp_time_ms);
 
 	/*
 	 * "config" might contain pdm controller params for only
@@ -1102,8 +1115,7 @@ static int dmic_set_config(struct dai *dai, struct sof_ipc_dai_config *config)
 				      SOF_MEM_CAPS_RAM,
 				      DMIC_HW_FIFOS * size);
 		if (!dmic_prm[0]) {
-			trace_dmic_error("dmic_set_config() error: "
-					 "prm not initialized");
+			trace_error_dmic_id(dai, "dmic_set_config() error: prm not initialized");
 			return -ENOMEM;
 		}
 		for (i = 1; i < DMIC_HW_FIFOS; i++)
@@ -1112,8 +1124,7 @@ static int dmic_set_config(struct dai *dai, struct sof_ipc_dai_config *config)
 	}
 
 	if (di >= DMIC_HW_FIFOS) {
-		trace_dmic_error("dmic_set_config() error: "
-				 "dai->index exceeds number of FIFOs");
+		trace_error_dmic_id(dai, "dmic_set_config() error: dai->index exceeds number of FIFOs");
 		return -EINVAL;
 	}
 
@@ -1125,9 +1136,7 @@ static int dmic_set_config(struct dai *dai, struct sof_ipc_dai_config *config)
 	assert(!ret);
 
 	if (config->dmic.num_pdm_active > DMIC_HW_CONTROLLERS) {
-		trace_dmic_error("dmic_set_config() error: the requested "
-				 "PDM controllers count exceeds platform "
-				 "capability");
+		trace_error_dmic_id(dai, "dmic_set_config() error: the requested PDM controllers count exceeds platform capability");
 		return -EINVAL;
 	}
 
@@ -1147,15 +1156,14 @@ static int dmic_set_config(struct dai *dai, struct sof_ipc_dai_config *config)
 		}
 	}
 
-	trace_dmic("dmic_set_config(), prm "
-		   "config->dmic.num_pdm_active = %u",
-		   config->dmic.num_pdm_active);
-	trace_dmic("dmic_set_config(), prm pdmclk_min = %u, pdmclk_max = %u",
-		   dmic_prm[di]->pdmclk_min, dmic_prm[di]->pdmclk_max);
-	trace_dmic("dmic_set_config(), prm duty_min = %u, duty_max = %u",
-		   dmic_prm[di]->duty_min, dmic_prm[di]->duty_max);
-	trace_dmic("dmic_set_config(), prm fifo_fs = %u, fifo_bits = %u",
-		   dmic_prm[di]->fifo_fs, dmic_prm[di]->fifo_bits);
+	trace_dmic_id(dai, "dmic_set_config(), prm config->dmic.num_pdm_active = %u",
+		      config->dmic.num_pdm_active);
+	trace_dmic_id(dai, "dmic_set_config(), prm pdmclk_min = %u, pdmclk_max = %u",
+		      dmic_prm[di]->pdmclk_min, dmic_prm[di]->pdmclk_max);
+	trace_dmic_id(dai, "dmic_set_config(), prm duty_min = %u, duty_max = %u",
+		      dmic_prm[di]->duty_min, dmic_prm[di]->duty_max);
+	trace_dmic_id(dai, "dmic_set_config(), prm fifo_fs = %u, fifo_bits = %u",
+		      dmic_prm[di]->fifo_fs, dmic_prm[di]->fifo_bits);
 
 	switch (dmic_prm[di]->fifo_bits) {
 	case 0:
@@ -1163,8 +1171,7 @@ static int dmic_set_config(struct dai *dai, struct sof_ipc_dai_config *config)
 	case 32:
 		break;
 	default:
-		trace_dmic_error("dmic_set_config() error: "
-				 "fifo_bits EINVAL");
+		trace_error_dmic_id(dai, "dmic_set_config() error: fifo_bits EINVAL");
 		return -EINVAL;
 	}
 
@@ -1176,35 +1183,33 @@ static int dmic_set_config(struct dai *dai, struct sof_ipc_dai_config *config)
 	 */
 	find_modes(&modes_a, dmic_prm[0]->fifo_fs, di);
 	if (modes_a.num_of_modes == 0 && dmic_prm[0]->fifo_fs > 0) {
-		trace_dmic_error("dmic_set_config() error: "
-				 "No modes found found for FIFO A");
+		trace_error_dmic_id(dai, "dmic_set_config() error: No modes found found for FIFO A");
 		return -EINVAL;
 	}
 
 	find_modes(&modes_b, dmic_prm[1]->fifo_fs, di);
 	if (modes_b.num_of_modes == 0 && dmic_prm[1]->fifo_fs > 0) {
-		trace_dmic_error("dmic_set_config() error: "
-				 "No modes found for FIFO B");
+		trace_error_dmic_id(dai, "dmic_set_config() error: No modes found for FIFO B");
 		return -EINVAL;
 	}
 
 	match_modes(&modes_ab, &modes_a, &modes_b);
 	ret = select_mode(&cfg, &modes_ab);
 	if (ret < 0) {
-		trace_dmic_error("dmic_set_config() error: "
-				 "select_mode() failed");
+		trace_error_dmic_id(dai, "dmic_set_config() error: select_mode() failed");
 		return -EINVAL;
 	}
 
-	trace_dmic("dmic_set_config(), cfg clkdiv = %u, mcic = %u",
-		   cfg.clkdiv, cfg.mcic);
-	trace_dmic("dmic_set_config(), cfg mfir_a = %u, mfir_b = %u",
-		   cfg.mfir_a, cfg.mfir_b);
-	trace_dmic("dmic_set_config(), cfg cic_shift = %u", cfg.cic_shift);
-	trace_dmic("dmic_set_config(), cfg fir_a_shift = %u, "
-		   "cfg.fir_b_shift = %u", cfg.fir_a_shift, cfg.fir_b_shift);
-	trace_dmic("dmic_set_config(), cfg fir_a_length = %u, "
-		   "fir_b_length = %u", cfg.fir_a_length, cfg.fir_b_length);
+	trace_dmic_id(dai, "dmic_set_config(), cfg clkdiv = %u, mcic = %u",
+		      cfg.clkdiv, cfg.mcic);
+	trace_dmic_id(dai, "dmic_set_config(), cfg mfir_a = %u, mfir_b = %u",
+		      cfg.mfir_a, cfg.mfir_b);
+	trace_dmic_id(dai, "dmic_set_config(), cfg cic_shift = %u",
+		      cfg.cic_shift);
+	trace_dmic_id(dai, "dmic_set_config(), cfg fir_a_shift = %u, cfg.fir_b_shift = %u",
+		      cfg.fir_a_shift, cfg.fir_b_shift);
+	trace_dmic_id(dai, "dmic_set_config(), cfg fir_a_length = %u, fir_b_length = %u",
+		      cfg.fir_a_length, cfg.fir_b_length);
 
 	/* Struct reg contains a mirror of actual HW registers. Determine
 	 * register bits configuration from decimator configuration and the
@@ -1212,8 +1217,7 @@ static int dmic_set_config(struct dai *dai, struct sof_ipc_dai_config *config)
 	 */
 	ret = configure_registers(dai, &cfg);
 	if (ret < 0) {
-		trace_dmic_error("dmic_set_config() error: "
-				 "cannot configure registers");
+		trace_error_dmic_id(dai, "dmic_set_config() error: cannot configure registers");
 		return -EINVAL;
 	}
 
@@ -1234,7 +1238,7 @@ static void dmic_start(struct dai *dai)
 
 	/* enable port */
 	spin_lock(&dai->lock);
-	trace_dmic("dmic_start()");
+	tracev_dmic_id(dai, "dmic_start()");
 	dmic->state = COMP_STATE_ACTIVE;
 	dmic->startcount = 0;
 
@@ -1243,7 +1247,7 @@ static void dmic_start(struct dai *dai)
 
 	switch (dai->index) {
 	case 0:
-		trace_dmic("dmic_start(), dmic->fifo_a");
+		trace_dmic_id(dai, "dmic_start(), dmic->fifo_a");
 		/*  Clear FIFO A initialize, Enable interrupts to DSP,
 		 *  Start FIFO A packer.
 		 */
@@ -1252,7 +1256,7 @@ static void dmic_start(struct dai *dai)
 				OUTCONTROL0_SIP_BIT);
 		break;
 	case 1:
-		trace_dmic("dmic_start(), dmic->fifo_b");
+		trace_dmic_id(dai, "dmic_start(), dmic->fifo_b");
 		/*  Clear FIFO B initialize, Enable interrupts to DSP,
 		 *  Start FIFO B packer.
 		 */
@@ -1277,9 +1281,8 @@ static void dmic_start(struct dai *dai)
 #else
 		fir_b = 0;
 #endif
-		trace_dmic("dmic_start(), "
-			   "mic_a = %u, mic_b = %u, fir_a = %u, fir_b = %u",
-			   mic_a, mic_b, fir_a, fir_b);
+		trace_dmic_id(dai, "dmic_start(), mic_a = %u, mic_b = %u, fir_a = %u, fir_b = %u",
+			      mic_a, mic_b, fir_a, fir_b);
 
 		/* If both microphones are needed start them simultaneously
 		 * to start them in sync. The reset may be cleared for another
@@ -1336,7 +1339,6 @@ static void dmic_start(struct dai *dai)
 	}
 
 	dmic_active_fifos++;
-	trace_dmic("dmic_start(), dmic_active_fifos = %d", dmic_active_fifos);
 
 	spin_unlock(&dai->lock);
 
@@ -1349,7 +1351,8 @@ static void dmic_start(struct dai *dai)
 	schedule_task(&dmic->dmicwork, DMIC_UNMUTE_RAMP_US,
 		      DMIC_UNMUTE_RAMP_US);
 
-	trace_dmic("dmic_start(), done");
+	trace_dmic_id(dai, "dmic_start(), done active_fifos = %d",
+		      dmic_active_fifos);
 }
 
 /* stop the DMIC for capture */
@@ -1358,11 +1361,11 @@ static void dmic_stop(struct dai *dai)
 	struct dmic_pdata *dmic = dai_get_drvdata(dai);
 	int i;
 
-	trace_dmic("dmic_stop()");
+	tracev_dmic_id(dai, "dmic_stop()");
 	spin_lock(&dai->lock);
 
 	if (dmic->state != COMP_STATE_ACTIVE) {
-		trace_dmic("dmic_stop(), already stopped");
+		trace_dmic_id(dai, "dmic_stop(), already stopped");
 		goto out;
 	}
 
@@ -1384,7 +1387,8 @@ static void dmic_stop(struct dai *dai)
 
 	/* Set soft reset and mute on for all PDM controllers.
 	 */
-	trace_dmic("dmic_stop(), dmic_active_fifos = %d", dmic_active_fifos);
+	trace_dmic_id(dai, "dmic_stop(), dmic_active_fifos = %d",
+		      dmic_active_fifos);
 
 	for (i = 0; i < DMIC_HW_CONTROLLERS; i++) {
 		/* Don't stop CIC yet if both FIFOs were active */
@@ -1434,17 +1438,16 @@ static int dmic_trigger(struct dai *dai, int cmd, int direction)
 {
 	struct dmic_pdata *dmic = dai_get_drvdata(dai);
 
-	trace_dmic("dmic_trigger()");
+	tracev_dmic_id(dai, "dmic_trigger()");
 
 	/* dai private is set in dmic_probe(), error if not set */
 	if (!dmic) {
-		trace_dmic_error("dmic_trigger() error: dai not set");
+		trace_error_dmic_id(dai, "dmic_trigger() error: dai not set");
 		return -EINVAL;
 	}
 
 	if (direction != DAI_DIR_CAPTURE) {
-		trace_dmic_error("dmic_trigger() error: "
-				 "direction != DAI_DIR_CAPTURE");
+		trace_error_dmic_id(dai, "dmic_trigger() error: direction != DAI_DIR_CAPTURE");
 		return -EINVAL;
 	}
 
@@ -1455,10 +1458,8 @@ static int dmic_trigger(struct dai *dai, int cmd, int direction)
 		    dmic->state == COMP_STATE_PAUSED) {
 			dmic_start(dai);
 		} else {
-			trace_dmic_error("dmic_trigger() error: "
-					 "state is not prepare or paused, "
-					 "dmic->state = %u",
-					 dmic->state);
+			trace_error_dmic_id(dai, "dmic_trigger() error: state is not prepare or paused, dmic->state = %u",
+					    dmic->state);
 		}
 		break;
 	case COMP_TRIGGER_STOP:
@@ -1490,15 +1491,13 @@ static void dmic_irq_handler(void *data)
 	/* Trace OUTSTAT0 register */
 	val0 = dai_read(dai, OUTSTAT0);
 	val1 = dai_read(dai, OUTSTAT1);
-	trace_dmic("dmic_irq_handler(), OUTSTAT0 = %u", val0);
-	trace_dmic("dmic_irq_handler(), OUTSTAT1 = %u", val1);
+	trace_dmic_id(dai, "dmic_irq_handler(), OUTSTAT0 = %u", val0);
+	trace_dmic_id(dai, "dmic_irq_handler(), OUTSTAT1 = %u", val1);
 
 	if (val0 & OUTSTAT0_ROR_BIT)
-		trace_dmic_error("dmic_irq_handler() error: "
-				 "full fifo A or PDM overrrun");
+		trace_error_dmic_id(dai, "dmic_irq_handler() error: full fifo A or PDM overrrun");
 	if (val1 & OUTSTAT1_ROR_BIT)
-		trace_dmic_error("dmic_irq_handler() error: "
-				 "full fifo B or PDM overrrun");
+		trace_error_dmic_id(dai, "dmic_irq_handler() error: full fifo B or PDM overrrun");
 }
 
 static int dmic_probe(struct dai *dai)
@@ -1507,7 +1506,7 @@ static int dmic_probe(struct dai *dai)
 	struct dmic_pdata *dmic;
 	int ret;
 
-	trace_dmic("dmic_probe()");
+	trace_dmic_id(dai, "dmic_probe()");
 
 	if (dai_get_drvdata(dai))
 		return -EEXIST; /* already created */
@@ -1516,7 +1515,7 @@ static int dmic_probe(struct dai *dai)
 	dmic = rzalloc(SOF_MEM_ZONE_SYS_RUNTIME, 0, SOF_MEM_CAPS_RAM,
 		       sizeof(*dmic));
 	if (!dmic) {
-		trace_dmic_error("dmic_probe() error: alloc failed");
+		trace_error_dmic_id(dai, "dmic_probe() error: alloc failed");
 		return -ENOMEM;
 	}
 	dai_set_drvdata(dai, dmic);
@@ -1534,7 +1533,7 @@ static int dmic_probe(struct dai *dai)
 
 	ret = interrupt_register(dmic->irq, dmic_irq_handler, dai);
 	if (ret < 0) {
-		trace_dmic_error("dmic failed to allocate IRQ");
+		trace_error_dmic_id(dai, "dmic failed to allocate IRQ");
 		rfree(dmic);
 		return ret;
 	}
@@ -1620,7 +1619,7 @@ static inline uint32_t dmic_ts_tscc_addr(void)
 static int dmic_ts_config(struct dai *dai, struct timestamp_cfg *cfg)
 {
 	if (cfg->type != SOF_DAI_INTEL_DMIC) {
-		trace_dmic_error("dmic_ts_config(): Illegal DAI type");
+		trace_error_dmic_id(dai, "dmic_ts_config(): Illegal DAI type");
 		return -EINVAL;
 	}
 
