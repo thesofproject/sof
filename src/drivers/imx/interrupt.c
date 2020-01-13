@@ -78,6 +78,10 @@
 #define IRQSTR_BASE_ADDR	0x51080000
 #endif
 
+#if defined CONFIG_IMX8M
+#define IRQSTR_BASE_ADDR	0x30A80000
+#endif
+
 /* The MASK, SET (unused) and STATUS registers are 512-bit registers
  * split into 16 32-bit registers that we can directly access.
  *
