@@ -88,7 +88,7 @@ struct comp_data {
 	struct kpb_client client_data;
 
 	void (*detect_func)(struct comp_dev *dev,
-			    const struct comp_buffer *source, uint32_t frames);
+			    const struct audio_stream *source, uint32_t frames);
 };
 
 static inline bool detector_is_sample_width_supported(enum sof_ipc_frame sf)
@@ -118,7 +118,7 @@ static inline bool detector_is_sample_width_supported(enum sof_ipc_frame sf)
 	return ret;
 }
 
-static void notify_host(struct comp_dev *dev)
+static void notify_host(const struct comp_dev *dev)
 {
 	struct sof_ipc_comp_event event;
 
@@ -135,7 +135,7 @@ static void notify_host(struct comp_dev *dev)
 	ipc_platform_send_msg();
 }
 
-static void notify_kpb(struct comp_dev *dev)
+static void notify_kpb(const struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 
@@ -157,14 +157,14 @@ static void notify_kpb(struct comp_dev *dev)
 		       sizeof(cd->event_data));
 }
 
-static void detect_test_notify(struct comp_dev *dev)
+static void detect_test_notify(const struct comp_dev *dev)
 {
 	notify_host(dev);
 	notify_kpb(dev);
 }
 
 static void default_detect_test(struct comp_dev *dev,
-				const struct comp_buffer *source,
+				const struct audio_stream *source,
 				uint32_t frames)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
@@ -187,8 +187,8 @@ static void default_detect_test(struct comp_dev *dev,
 	/* perform detection within current period */
 	for (sample = 0; sample < count && !cd->detected; ++sample) {
 		src = (valid_bits == 16U) ?
-		      buffer_read_frag_s16(source, sample) :
-		      buffer_read_frag_s32(source, sample);
+		      audio_stream_read_frag_s16(source, sample) :
+		      audio_stream_read_frag_s32(source, sample);
 		if (valid_bits > 16U) {
 			diff = abs(*(int32_t *)src) - abs(cd->activation);
 		} else {
@@ -401,16 +401,16 @@ static int test_keyword_params(struct comp_dev *dev,
 				  sink_list);
 
 	/* TODO: remove in the future */
-	sourceb->channels = 1;
+	sourceb->stream.channels = 1;
 
-	if (sourceb->channels != 1) {
+	if (sourceb->stream.channels != 1) {
 		trace_keyword_error_with_ids(dev, "test_keyword_params() "
 					     "error: only single-channel "
 					     "supported");
 		return -EINVAL;
 	}
 
-	if (!detector_is_sample_width_supported(sourceb->frame_fmt)) {
+	if (!detector_is_sample_width_supported(sourceb->stream.frame_fmt)) {
 		trace_keyword_error_with_ids(dev, "test_keyword_params() "
 					     "error: only 16-bit format "
 					     "supported");
@@ -420,7 +420,7 @@ static int test_keyword_params(struct comp_dev *dev,
 	/* calculate the length of the preamble */
 	if (cd->config.preamble_time) {
 		cd->keyphrase_samples = cd->config.preamble_time *
-					(sourceb->rate / 1000);
+					(sourceb->stream.rate / 1000);
 	} else {
 		cd->keyphrase_samples = KEYPHRASE_DEFAULT_PREAMBLE_LENGTH;
 	}
@@ -756,11 +756,12 @@ static int test_keyword_copy(struct comp_dev *dev)
 				 struct comp_buffer, sink_list);
 
 	/* copy and perform detection */
-	cd->detect_func(dev, source,
-			source->avail / buffer_frame_bytes(source));
+	cd->detect_func(dev, &source->stream,
+			source->stream.avail /
+			audio_stream_frame_bytes(&source->stream));
 
 	/* calc new available */
-	comp_update_buffer_consume(source, source->avail);
+	comp_update_buffer_consume(source, source->stream.avail);
 
 	return 0;
 }

@@ -137,7 +137,7 @@ static int buffering_test_setup(void **state)
 	sink = mock_comp_buffer(state, KPB_SINK_BUFFER);
 
 	/* Fiil source buffer with test data */
-	r_ptr = (unsigned char *)source->r_ptr;
+	r_ptr = (unsigned char *)source->stream.r_ptr;
 	for (i = 0; i < test_case_data->history_buffer_size; i++)
 		(*r_ptr++) = pattern;
 
@@ -161,12 +161,12 @@ static struct comp_buffer *mock_comp_buffer(void **state,
 
 	switch (buff_type) {
 	case KPB_SOURCE_BUFFER:
-		buffer->avail = test_case_data->period_bytes;
-		buffer->r_ptr = source_data;
+		buffer->stream.avail = test_case_data->period_bytes;
+		buffer->stream.r_ptr = source_data;
 		break;
 	case KPB_SINK_BUFFER:
-		buffer->free = test_case_data->period_bytes;
-		buffer->w_ptr = sink_data;
+		buffer->stream.free = test_case_data->period_bytes;
+		buffer->stream.w_ptr = sink_data;
 		break;
 	}
 

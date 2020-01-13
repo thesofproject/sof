@@ -109,18 +109,20 @@ static void dai_dma_cb(void *arg, enum notify_id type, void *data)
 		return;
 	}
 
-	sink_bytes = samples * buffer_sample_bytes(dd->local_buffer);
+	sink_bytes = samples *
+		     audio_stream_sample_bytes(&dd->local_buffer->stream);
 
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
 		dma_buffer_copy_to(dd->local_buffer, sink_bytes,
-				   dd->dma_buffer, bytes, dd->process, samples);
+				   dd->dma_buffer, bytes,
+				   dd->process, samples);
 
-		buffer_ptr = dd->local_buffer->r_ptr;
+		buffer_ptr = dd->local_buffer->stream.r_ptr;
 	} else {
 		dma_buffer_copy_from(dd->dma_buffer, bytes, dd->local_buffer,
 				     sink_bytes, dd->process, samples);
 
-		buffer_ptr = dd->local_buffer->w_ptr;
+		buffer_ptr = dd->local_buffer->stream.w_ptr;
 	}
 
 	/* update host position (in bytes offset) for drivers */
@@ -128,7 +130,8 @@ static void dai_dma_cb(void *arg, enum notify_id type, void *data)
 	if (dd->dai_pos) {
 		dd->dai_pos_blks += bytes;
 		*dd->dai_pos = dd->dai_pos_blks +
-			(char *)buffer_ptr - (char *)dd->dma_buffer->addr;
+			       (char *)buffer_ptr -
+			       (char *)dd->dma_buffer->stream.addr;
 	}
 }
 
@@ -223,7 +226,7 @@ static int dai_playback_params(struct comp_dev *dev, uint32_t period_bytes,
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
 	struct dma_sg_config *config = &dd->config;
-	uint32_t local_fmt = dd->local_buffer->frame_fmt;
+	uint32_t local_fmt = dd->local_buffer->stream.frame_fmt;
 	uint32_t fifo;
 	int err;
 
@@ -258,7 +261,7 @@ static int dai_playback_params(struct comp_dev *dev, uint32_t period_bytes,
 				   config->direction,
 				   period_count,
 				   period_bytes,
-				   (uintptr_t)(dd->dma_buffer->addr),
+				   (uintptr_t)(dd->dma_buffer->stream.addr),
 				   fifo);
 		if (err < 0) {
 			trace_dai_error_with_ids(dev, "dai_playback_params() "
@@ -276,7 +279,7 @@ static int dai_capture_params(struct comp_dev *dev, uint32_t period_bytes,
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
 	struct dma_sg_config *config = &dd->config;
-	uint32_t local_fmt = dd->local_buffer->frame_fmt;
+	uint32_t local_fmt = dd->local_buffer->stream.frame_fmt;
 	uint32_t fifo;
 	int err;
 
@@ -322,7 +325,7 @@ static int dai_capture_params(struct comp_dev *dev, uint32_t period_bytes,
 				   config->direction,
 				   period_count,
 				   period_bytes,
-				   (uintptr_t)(dd->dma_buffer->addr),
+				   (uintptr_t)(dd->dma_buffer->stream.addr),
 				   fifo);
 		if (err < 0) {
 			trace_dai_error_with_ids(dev, "dai_capture_params() "
@@ -403,7 +406,8 @@ static int dai_params(struct comp_dev *dev,
 	dd->frame_fmt = dconfig->frame_fmt;
 
 	/* calculate frame size */
-	frame_size = frame_bytes(dd->frame_fmt, dd->local_buffer->channels);
+	frame_size = frame_bytes(dd->frame_fmt,
+				 dd->local_buffer->stream.channels);
 
 	/* calculate period size */
 	period_bytes = dev->frames * frame_size;
@@ -473,7 +477,8 @@ static int dai_prepare(struct comp_dev *dev)
 
 	/* TODO: not sure what this wb is for? */
 	/* write back buffer contents from cache */
-	dcache_writeback_region(dd->dma_buffer->addr, dd->dma_buffer->size);
+	dcache_writeback_region(dd->dma_buffer->stream.addr,
+				dd->dma_buffer->stream.size);
 
 	/* dma reconfig not required if XRUN handling */
 	if (dd->xrun) {
@@ -645,15 +650,15 @@ static int dai_copy(struct comp_dev *dev)
 
 	/* calculate minimum size to copy */
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
-		src_samples = dd->local_buffer->avail /
-			buffer_sample_bytes(dd->local_buffer);
+		src_samples = dd->local_buffer->stream.avail /
+			audio_stream_sample_bytes(&dd->local_buffer->stream);
 		sink_samples = free_bytes / sample_bytes(dd->frame_fmt);
 		copy_bytes = MIN(src_samples, sink_samples) *
 			sample_bytes(dd->frame_fmt);
 	} else {
 		src_samples = avail_bytes / sample_bytes(dd->frame_fmt);
-		sink_samples = dd->local_buffer->free /
-			buffer_sample_bytes(dd->local_buffer);
+		sink_samples = dd->local_buffer->stream.free /
+			audio_stream_sample_bytes(&dd->local_buffer->stream);
 		copy_bytes = MIN(src_samples, sink_samples) *
 			sample_bytes(dd->frame_fmt);
 	}

@@ -15,10 +15,10 @@
 
 struct sel_test_state {
 	struct comp_dev *dev;
-	struct comp_buffer *sink;
-	struct comp_buffer *source;
-	void (*verify)(struct comp_dev *dev, struct comp_buffer *sink,
-		       struct comp_buffer *source);
+	struct audio_stream *sink;
+	struct audio_stream *source;
+	void (*verify)(struct comp_dev *dev, struct audio_stream *sink,
+		       struct audio_stream *source);
 };
 
 struct sel_test_parameters {
@@ -29,8 +29,8 @@ struct sel_test_parameters {
 	uint32_t buffer_size_ms;
 	uint32_t source_format;
 	uint32_t sink_format;
-	void (*verify)(struct comp_dev *dev, struct comp_buffer *sink,
-		       struct comp_buffer *source);
+	void (*verify)(struct comp_dev *dev, struct audio_stream *sink,
+		       struct audio_stream *source);
 };
 
 static int setup(void **state)
@@ -39,6 +39,7 @@ static int setup(void **state)
 	struct sel_test_state *sel_state;
 	struct comp_data *cd;
 	uint32_t size = 0;
+	void *pbuff;
 
 	/* allocate new state */
 	sel_state = test_malloc(sizeof(*sel_state));
@@ -64,20 +65,19 @@ static int setup(void **state)
 	sel_state->sink = test_malloc(sizeof(*sel_state->sink));
 	sel_state->sink->frame_fmt = parameters->sink_format;
 	sel_state->sink->channels = parameters->out_channels;
-	size = parameters->frames * buffer_frame_bytes(sel_state->sink);
-
-	sel_state->sink->addr = test_calloc(parameters->buffer_size_ms,
-					    size);
-	buffer_init(sel_state->sink, parameters->buffer_size_ms * size, 0);
+	size = parameters->frames * audio_stream_frame_bytes(sel_state->sink);
+	pbuff = test_calloc(parameters->buffer_size_ms, size);
+	audio_stream_init(sel_state->sink, pbuff,
+			  parameters->buffer_size_ms * size);
 
 	/* allocate new source buffer */
 	sel_state->source = test_malloc(sizeof(*sel_state->source));
 	sel_state->source->frame_fmt = parameters->source_format;
 	sel_state->source->channels = parameters->in_channels;
-	size = parameters->frames * buffer_frame_bytes(sel_state->source);
-	sel_state->source->addr = test_calloc(parameters->buffer_size_ms,
-					      size);
-	buffer_init(sel_state->source, parameters->buffer_size_ms * size, 0);
+	size = parameters->frames * audio_stream_frame_bytes(sel_state->source);
+	pbuff = test_calloc(parameters->buffer_size_ms, size);
+	audio_stream_init(sel_state->source, pbuff,
+			  parameters->buffer_size_ms * size);
 
 	/* assigns verification function */
 	sel_state->verify = parameters->verify;
@@ -116,8 +116,9 @@ static void fill_source_s16(struct sel_test_state *sel_state)
 
 }
 
-static void verify_s16le_Xch_to_1ch(struct comp_dev *dev, struct comp_buffer *sink,
-			      struct comp_buffer *source)
+static void verify_s16le_Xch_to_1ch(struct comp_dev *dev,
+				    struct audio_stream *sink,
+				    struct audio_stream *source)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	const uint16_t *src = (uint16_t *)source->r_ptr;
@@ -140,8 +141,9 @@ static void verify_s16le_Xch_to_1ch(struct comp_dev *dev, struct comp_buffer *si
 	}
 }
 
-static void verify_s16le_2ch_to_2ch(struct comp_dev *dev, struct comp_buffer *sink,
-			      struct comp_buffer *source)
+static void verify_s16le_2ch_to_2ch(struct comp_dev *dev,
+				    struct audio_stream *sink,
+				    struct audio_stream *source)
 {
 	const uint16_t *src = (uint16_t *)source->r_ptr;
 	const uint16_t *dst = (uint16_t *)sink->w_ptr;
@@ -158,8 +160,9 @@ static void verify_s16le_2ch_to_2ch(struct comp_dev *dev, struct comp_buffer *si
 	}
 }
 
-static void verify_s16le_4ch_to_4ch(struct comp_dev *dev, struct comp_buffer *sink,
-			      struct comp_buffer *source)
+static void verify_s16le_4ch_to_4ch(struct comp_dev *dev,
+				    struct audio_stream *sink,
+				    struct audio_stream *source)
 {
 	const uint16_t *src = (uint16_t *)source->r_ptr;
 	const uint16_t *dst = (uint16_t *)sink->w_ptr;
@@ -188,8 +191,9 @@ static void fill_source_s32(struct sel_test_state *sel_state)
 		src[i] = i << 16;
 }
 
-static void verify_s32le_Xch_to_1ch(struct comp_dev *dev, struct comp_buffer *sink,
-			      struct comp_buffer *source)
+static void verify_s32le_Xch_to_1ch(struct comp_dev *dev,
+				    struct audio_stream *sink,
+				    struct audio_stream *source)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	const uint32_t *src = (uint32_t *)source->r_ptr;
@@ -212,8 +216,9 @@ static void verify_s32le_Xch_to_1ch(struct comp_dev *dev, struct comp_buffer *si
 	}
 }
 
-static void verify_s32le_2ch_to_2ch(struct comp_dev *dev, struct comp_buffer *sink,
-			      struct comp_buffer *source)
+static void verify_s32le_2ch_to_2ch(struct comp_dev *dev,
+				    struct audio_stream *sink,
+				    struct audio_stream *source)
 {
 	const uint32_t *src = (uint32_t *)source->r_ptr;
 	const uint32_t *dst = (uint32_t *)sink->w_ptr;
@@ -230,8 +235,9 @@ static void verify_s32le_2ch_to_2ch(struct comp_dev *dev, struct comp_buffer *si
 	}
 }
 
-static void verify_s32le_4ch_to_4ch(struct comp_dev *dev, struct comp_buffer *sink,
-			      struct comp_buffer *source)
+static void verify_s32le_4ch_to_4ch(struct comp_dev *dev,
+				    struct audio_stream *sink,
+				    struct audio_stream *source)
 {
 	const uint32_t *src = (uint32_t *)source->r_ptr;
 	const uint32_t *dst = (uint32_t *)sink->w_ptr;

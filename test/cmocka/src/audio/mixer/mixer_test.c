@@ -116,8 +116,8 @@ static void destroy_comp(struct comp_driver *drv, struct comp_dev *dev)
 
 static void init_buffer_pcm_params(struct comp_buffer *buf, int num_chans)
 {
-	buf->channels = num_chans;
-	buf->frame_fmt = SOF_IPC_FRAME_S32_LE;
+	buf->stream.channels = num_chans;
+	buf->stream.frame_fmt = SOF_IPC_FRAME_S32_LE;
 }
 
 static void create_sources(struct mix_test_case *tc)
@@ -262,7 +262,7 @@ static void test_audio_mixer_copy(void **state)
 	struct mix_test_case *tc = *((struct mix_test_case **)state);
 
 	for (src_idx = 0; src_idx < tc->num_sources; ++src_idx) {
-		uint32_t *samples = tc->sources[src_idx].buf->addr;
+		uint32_t *samples = tc->sources[src_idx].buf->stream.addr;
 
 		for (smp = 0; smp < MIX_TEST_SAMPLES; ++smp) {
 			double rad = M_PI / (180.0 / (smp * (src_idx + 1)));
@@ -270,8 +270,8 @@ static void test_audio_mixer_copy(void **state)
 			samples[smp] = ((sin(rad) + 1) / 2) * (0xFFFFFFFF / 2);
 		}
 
-		tc->sources[src_idx].buf->avail =
-			tc->sources[src_idx].buf->size;
+		tc->sources[src_idx].buf->stream.avail =
+			tc->sources[src_idx].buf->stream.size;
 	}
 
 	mixer_drv_mock.ops.copy(mixer_dev_mock);
@@ -282,14 +282,15 @@ static void test_audio_mixer_copy(void **state)
 		for (src_idx = 0; src_idx < tc->num_sources; ++src_idx) {
 			assert_non_null(tc->sources[src_idx].buf);
 
-			uint32_t *samples = tc->sources[src_idx].buf->addr;
+			uint32_t *samples =
+				tc->sources[src_idx].buf->stream.addr;
 
 			sum += samples[smp];
 		}
 
 		sum = sat_int32(sum);
 
-		uint32_t *out_samples = post_mixer_buf->addr;
+		uint32_t *out_samples = post_mixer_buf->stream.addr;
 
 		assert_int_equal(out_samples[smp], sum);
 	}

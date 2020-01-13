@@ -222,8 +222,9 @@ struct dma_info {
 	size_t num_dmas;
 };
 
-typedef void (*dma_process_func)(const struct comp_buffer *source,
-				 struct comp_buffer *sink, uint32_t frames);
+struct audio_stream;
+typedef void (*dma_process_func)(const struct audio_stream *source,
+				 struct audio_stream *sink, uint32_t frames);
 
 /**
  * \brief API to initialize a platform DMA controllers.
@@ -609,6 +610,10 @@ static inline uint32_t dma_sg_get_size(struct dma_sg_elem_array *ea)
 
 	return size;
 }
+
+struct audio_stream;
+typedef void (*dma_process)(const struct audio_stream *,
+			    struct audio_stream *, uint32_t);
 
 /* copies data from DMA buffer using provided processing function */
 void dma_buffer_copy_from(struct comp_buffer *source, uint32_t source_bytes,

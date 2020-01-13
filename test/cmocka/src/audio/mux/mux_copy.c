@@ -134,9 +134,9 @@ static void prepare_sink(struct test_data *td, size_t sample_size)
 				    MUX_MAX_STREAMS + 1,
 				    td->format,
 				    PLATFORM_MAX_CHANNELS);
-	td->sink->free = sample_size * PLATFORM_MAX_CHANNELS;
+	td->sink->stream.free = sample_size * PLATFORM_MAX_CHANNELS;
 	td->output = malloc(sample_size * PLATFORM_MAX_CHANNELS);
-	td->sink->w_ptr = td->output;
+	td->sink->stream.w_ptr = td->output;
 }
 
 static void prepare_sources(struct test_data *td, size_t sample_size)
@@ -148,12 +148,13 @@ static void prepare_sources(struct test_data *td, size_t sample_size)
 						    i,
 						    td->format,
 						    PLATFORM_MAX_CHANNELS);
-		td->sources[i]->avail = sample_size * PLATFORM_MAX_CHANNELS;
+		td->sources[i]->stream.avail = sample_size *
+					       PLATFORM_MAX_CHANNELS;
 
 		if (td->format == SOF_IPC_FRAME_S16_LE)
-			td->sources[i]->r_ptr = input_16b[i];
+			td->sources[i]->stream.r_ptr = input_16b[i];
 		else
-			td->sources[i]->r_ptr = input_32b[i];
+			td->sources[i]->stream.r_ptr = input_32b[i];
 	}
 }
 

@@ -27,33 +27,33 @@ static void test_audio_buffer_write_fill_10_bytes_and_write_5(void **state)
 	struct comp_buffer *buf = buffer_new(&test_buf_desc);
 
 	assert_non_null(buf);
-	assert_int_equal(buf->avail, 0);
-	assert_int_equal(buf->free, 10);
-	assert_ptr_equal(buf->w_ptr, buf->r_ptr);
+	assert_int_equal(buf->stream.avail, 0);
+	assert_int_equal(buf->stream.free, 10);
+	assert_ptr_equal(buf->stream.w_ptr, buf->stream.r_ptr);
 
 	uint8_t bytes[10] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
 
-	memcpy(buf->w_ptr, &bytes, 10);
+	memcpy(buf->stream.w_ptr, &bytes, 10);
 	comp_update_buffer_produce(buf, 10);
 
-	assert_int_equal(buf->avail, 10);
-	assert_int_equal(buf->free, 0);
-	assert_ptr_equal(buf->w_ptr, buf->r_ptr);
+	assert_int_equal(buf->stream.avail, 10);
+	assert_int_equal(buf->stream.free, 0);
+	assert_ptr_equal(buf->stream.w_ptr, buf->stream.r_ptr);
 
 	uint8_t more_bytes[5] = {10, 11, 12, 13, 14};
 
-	memcpy(buf->w_ptr, &more_bytes, 5);
+	memcpy(buf->stream.w_ptr, &more_bytes, 5);
 	comp_update_buffer_produce(buf, 5);
 
 	uint8_t ref_1[5] = {5, 6, 7, 8, 9};
 	uint8_t ref_2[5] = {10, 11, 12, 13, 14};
 
-	assert_int_equal(buf->avail, 10);
-	assert_int_equal(buf->free, 0);
-	assert_ptr_equal(buf->w_ptr, buf->r_ptr);
-	assert_int_equal(memcmp(buf->r_ptr, &ref_1, 5), 0);
+	assert_int_equal(buf->stream.avail, 10);
+	assert_int_equal(buf->stream.free, 0);
+	assert_ptr_equal(buf->stream.w_ptr, buf->stream.r_ptr);
+	assert_int_equal(memcmp(buf->stream.r_ptr, &ref_1, 5), 0);
 	comp_update_buffer_consume(buf, 5);
-	assert_int_equal(memcmp(buf->r_ptr, &ref_2, 5), 0);
+	assert_int_equal(memcmp(buf->stream.r_ptr, &ref_2, 5), 0);
 
 	buffer_free(buf);
 }

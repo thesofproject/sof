@@ -39,7 +39,8 @@ static inline void buffer_check_wrap_16(int16_t **ptr, int16_t *end,
  * Read 32-bit samples from file
  * currently only supports txt files
  */
-static int read_samples_32(struct comp_dev *dev, struct comp_buffer *sink,
+static int read_samples_32(struct comp_dev *dev,
+			   const struct audio_stream *sink,
 			   int n, int fmt, int nch)
 {
 	struct file_comp_data *cd = comp_get_drvdata(dev);
@@ -117,7 +118,8 @@ quit:
  * Read 16-bit samples from file
  * currently only supports txt files
  */
-static int read_samples_16(struct comp_dev *dev, struct comp_buffer *sink,
+static int read_samples_16(struct comp_dev *dev,
+			   const struct audio_stream *sink,
 			   int n, int nch)
 {
 	struct file_comp_data *cd = comp_get_drvdata(dev);
@@ -175,7 +177,7 @@ quit:
  * Write 16-bit samples from file
  * currently only supports txt files
  */
-static int write_samples_16(struct comp_dev *dev, struct comp_buffer *source,
+static int write_samples_16(struct comp_dev *dev, struct audio_stream *source,
 			    int n, int nch)
 {
 	struct file_comp_data *cd = comp_get_drvdata(dev);
@@ -230,7 +232,7 @@ quit:
  * Write 32-bit samples from file
  * currently only supports txt files
  */
-static int write_samples_32(struct comp_dev *dev, struct comp_buffer *source,
+static int write_samples_32(struct comp_dev *dev, struct audio_stream *source,
 			    int n, int fmt, int nch)
 {
 	struct file_comp_data *cd = comp_get_drvdata(dev);
@@ -301,8 +303,8 @@ quit:
 }
 
 /* function for processing 32-bit samples */
-static int file_s32_default(struct comp_dev *dev, struct comp_buffer *sink,
-			    struct comp_buffer *source, uint32_t frames)
+static int file_s32_default(struct comp_dev *dev, struct audio_stream *sink,
+			    struct audio_stream *source, uint32_t frames)
 {
 	struct file_comp_data *cd = comp_get_drvdata(dev);
 	int nch = source->channels;
@@ -329,8 +331,8 @@ static int file_s32_default(struct comp_dev *dev, struct comp_buffer *sink,
 }
 
 /* function for processing 16-bit samples */
-static int file_s16(struct comp_dev *dev, struct comp_buffer *sink,
-		    struct comp_buffer *source, uint32_t frames)
+static int file_s16(struct comp_dev *dev, struct audio_stream *sink,
+		    struct audio_stream *source, uint32_t frames)
 {
 	struct file_comp_data *cd = comp_get_drvdata(dev);
 	int nch = source->channels;
@@ -355,8 +357,8 @@ static int file_s16(struct comp_dev *dev, struct comp_buffer *sink,
 }
 
 /* function for processing 24-bit samples */
-static int file_s24(struct comp_dev *dev, struct comp_buffer *sink,
-		    struct comp_buffer *source, uint32_t frames)
+static int file_s24(struct comp_dev *dev, struct audio_stream *sink,
+		    struct audio_stream *source, uint32_t frames)
 {
 	struct file_comp_data *cd = comp_get_drvdata(dev);
 	int nch = source->channels;
@@ -490,11 +492,11 @@ static int file_params(struct comp_dev *dev,
 {
 	struct file_comp_data *cd = comp_get_drvdata(dev);
 	struct sof_ipc_comp_config *config = COMP_GET_CONFIG(dev);
-	struct comp_buffer *sourceb;
+	struct audio_stream *sourceb;
 
 	/* file component source buffer */
-	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer,
-				  sink_list);
+	sourceb = &list_first_item(&dev->bsource_list, struct comp_buffer,
+				  sink_list)->stream;
 
 	/* for file endpoint set the following from topology config */
 	if (cd->fs.mode == FILE_WRITE) {
@@ -565,10 +567,12 @@ static int file_copy(struct comp_dev *dev)
 					 source_list);
 
 		/* test sink has enough free frames */
-		snk_frames = buffer->free / buffer_frame_bytes(buffer);
+		snk_frames = buffer->stream.free /
+			     audio_stream_frame_bytes(&buffer->stream);
 		if (snk_frames > 0 && !cd->fs.reached_eof) {
 			/* read PCM samples from file */
-			ret = cd->file_func(dev, buffer, NULL, snk_frames);
+			ret = cd->file_func(dev, &buffer->stream, NULL,
+					    snk_frames);
 
 			/* update sink buffer pointers */
 			bytes = cd->sample_container_bytes;
@@ -583,10 +587,12 @@ static int file_copy(struct comp_dev *dev)
 					 struct comp_buffer, sink_list);
 
 		/* test source has enough free frames */
-		src_frames = buffer->avail / buffer_frame_bytes(buffer);
+		src_frames = buffer->stream.avail /
+			     audio_stream_frame_bytes(&buffer->stream);
 		if (src_frames > 0) {
 			/* write PCM samples into file */
-			ret = cd->file_func(dev, NULL, buffer, src_frames);
+			ret = cd->file_func(dev, NULL, &buffer->stream,
+					    src_frames);
 
 			/* update source buffer pointers */
 			bytes = cd->sample_container_bytes;
@@ -636,7 +642,7 @@ static int file_prepare(struct comp_dev *dev)
 	switch (config->frame_fmt) {
 	case(SOF_IPC_FRAME_S16_LE):
 		ret = buffer_set_size(buffer, dev->frames * 2 *
-			periods * buffer->channels);
+			periods * buffer->stream.channels);
 		if (ret < 0) {
 			fprintf(stderr, "error: file buffer size set\n");
 			return ret;
@@ -648,7 +654,7 @@ static int file_prepare(struct comp_dev *dev)
 		break;
 	case(SOF_IPC_FRAME_S24_4LE):
 		ret = buffer_set_size(buffer, dev->frames * 4 *
-			periods * buffer->channels);
+			periods * buffer->stream.channels);
 		if (ret < 0) {
 			fprintf(stderr, "error: file buffer size set\n");
 			return ret;
@@ -660,7 +666,7 @@ static int file_prepare(struct comp_dev *dev)
 		break;
 	case(SOF_IPC_FRAME_S32_LE):
 		ret = buffer_set_size(buffer, dev->frames * 4 *
-			periods * buffer->channels);
+			periods * buffer->stream.channels);
 		if (ret < 0) {
 			fprintf(stderr, "error: file buffer size set\n");
 			return ret;

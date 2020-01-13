@@ -110,7 +110,7 @@ static void free_comps(void)
 			rfree(icd);
 			break;
 		case COMP_TYPE_BUFFER:
-			rfree(icd->cb->addr);
+			rfree(icd->cb->stream.addr);
 			rfree(icd->cb);
 			list_item_del(&icd->list);
 			rfree(icd);

@@ -13,7 +13,7 @@
 
 struct callback_handle {
 	void *receiver;
-	void *caller;
+	const void *caller;
 	void (*cb)(void *arg, enum notify_id, void *data);
 	struct list_item list;
 };
@@ -34,7 +34,7 @@ struct notify **arch_notify_get(void)
 	return &_notify;
 }
 
-void notifier_event(void *caller, enum notify_id type, uint32_t core_mask,
+void notifier_event(const void *caller, enum notify_id type, uint32_t core_mask,
 		    void *data, uint32_t data_size)
 {
 	struct notify *notify = *arch_notify_get();

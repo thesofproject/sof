@@ -49,15 +49,15 @@
 
 /* mixer component private data */
 struct mixer_data {
-	void (*mix_func)(struct comp_dev *dev, struct comp_buffer *sink,
-			 const struct comp_buffer **sources, uint32_t count,
+	void (*mix_func)(struct comp_dev *dev, struct audio_stream *sink,
+			 const struct audio_stream **sources, uint32_t count,
 			 uint32_t frames);
 };
 
 #if CONFIG_FORMAT_S16LE
 /* Mix n 16 bit PCM source streams to one sink stream */
-static void mix_n_s16(struct comp_dev *dev, struct comp_buffer *sink,
-		      const struct comp_buffer **sources, uint32_t num_sources,
+static void mix_n_s16(struct comp_dev *dev, struct audio_stream *sink,
+		      const struct audio_stream **sources, uint32_t num_sources,
 		      uint32_t frames)
 {
 	int16_t *src;
@@ -73,11 +73,12 @@ static void mix_n_s16(struct comp_dev *dev, struct comp_buffer *sink,
 			val = 0;
 
 			for (j = 0; j < num_sources; j++) {
-				src = buffer_read_frag_s16(sources[j], frag);
+				src = audio_stream_read_frag_s16(sources[j],
+								 frag);
 				val += *src;
 			}
 
-			dest = buffer_write_frag_s16(sink, frag);
+			dest = audio_stream_write_frag_s16(sink, frag);
 
 			/* Saturate to 16 bits */
 			*dest = sat_int16(val);
@@ -90,8 +91,8 @@ static void mix_n_s16(struct comp_dev *dev, struct comp_buffer *sink,
 
 #if CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE
 /* Mix n 32 bit PCM source streams to one sink stream */
-static void mix_n_s32(struct comp_dev *dev, struct comp_buffer *sink,
-		      const struct comp_buffer **sources, uint32_t num_sources,
+static void mix_n_s32(struct comp_dev *dev, struct audio_stream *sink,
+		      const struct audio_stream **sources, uint32_t num_sources,
 		      uint32_t frames)
 {
 	int32_t *src;
@@ -107,11 +108,12 @@ static void mix_n_s32(struct comp_dev *dev, struct comp_buffer *sink,
 			val = 0;
 
 			for (j = 0; j < num_sources; j++) {
-				src = buffer_read_frag_s32(sources[j], frag);
+				src = audio_stream_read_frag_s32(sources[j],
+								 frag);
 				val += *src;
 			}
 
-			dest = buffer_write_frag_s32(sink, frag);
+			dest = audio_stream_write_frag_s32(sink, frag);
 
 			/* Saturate to 32 bits */
 			*dest = sat_int32(val);
@@ -184,14 +186,14 @@ static int mixer_params(struct comp_dev *dev,
 							source_list);
 
 	/* calculate period size based on config */
-	period_bytes = dev->frames * buffer_frame_bytes(sinkb);
+	period_bytes = dev->frames * audio_stream_frame_bytes(&sinkb->stream);
 	if (period_bytes == 0) {
 		trace_mixer_error_with_ids(dev, "mixer_params() error: "
 					   "period_bytes = 0");
 		return -EINVAL;
 	}
 
-	if (sinkb->size < config->periods_sink * period_bytes) {
+	if (sinkb->stream.size < config->periods_sink * period_bytes) {
 		trace_mixer_error_with_ids(dev, "mixer_params() error: "
 					   "sink buffer size is insufficient");
 		return -ENOMEM;
@@ -272,6 +274,7 @@ static int mixer_copy(struct comp_dev *dev)
 	struct mixer_data *md = comp_get_drvdata(dev);
 	struct comp_buffer *sink;
 	struct comp_buffer *sources[PLATFORM_MAX_STREAMS];
+	const struct audio_stream *sources_stream[PLATFORM_MAX_STREAMS];
 	struct comp_buffer *source;
 	struct list_item *blist;
 	int32_t i = 0;
@@ -292,8 +295,11 @@ static int mixer_copy(struct comp_dev *dev)
 		source = container_of(blist, struct comp_buffer, sink_list);
 
 		/* only mix the sources with the same state with mixer */
-		if (source->source->state == dev->state)
-			sources[num_mix_sources++] = source;
+		if (source->source->state == dev->state) {
+			sources[num_mix_sources] = source;
+			sources_stream[num_mix_sources] = &source->stream;
+			num_mix_sources++;
+		}
 
 		/* too many sources ? */
 		if (num_mix_sources == PLATFORM_MAX_STREAMS - 1)
@@ -306,20 +312,21 @@ static int mixer_copy(struct comp_dev *dev)
 
 	/* check for underruns */
 	for (i = 0; i < num_mix_sources; i++)
-		frames = MIN(frames, buffer_avail_frames(sources[i], sink));
+		frames = MIN(frames,
+			     audio_stream_avail_frames(sources_stream[i],
+						       &sink->stream));
 
 	/* Every source has the same format, so calculate bytes based
 	 * on the first one.
 	 */
-	source_bytes = frames * buffer_frame_bytes(sources[0]);
-	sink_bytes = frames * buffer_frame_bytes(sink);
+	source_bytes = frames * audio_stream_frame_bytes(sources_stream[0]);
+	sink_bytes = frames * audio_stream_frame_bytes(&sink->stream);
 
 	tracev_mixer_with_ids(dev, "mixer_copy(), source_bytes = 0x%x, "
 			      "sink_bytes = 0x%x",  source_bytes, sink_bytes);
 
 	/* mix streams */
-	md->mix_func(dev, sink, (const struct comp_buffer **)sources, i,
-		     frames);
+	md->mix_func(dev, &sink->stream, sources_stream, i, frames);
 
 	/* update source buffer pointers */
 	for (i = --num_mix_sources; i >= 0; i--)
@@ -375,7 +382,7 @@ static int mixer_prepare(struct comp_dev *dev)
 	/* does mixer already have active source streams ? */
 	if (dev->state != COMP_STATE_ACTIVE) {
 		/* currently inactive so setup mixer */
-		switch (sink->frame_fmt) {
+		switch (sink->stream.frame_fmt) {
 #if CONFIG_FORMAT_S16LE
 		case SOF_IPC_FRAME_S16_LE:
 			md->mix_func = mix_n_s16;

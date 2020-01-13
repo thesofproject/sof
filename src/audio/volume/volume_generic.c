@@ -51,8 +51,8 @@ static inline int32_t vol_mult_s24_to_s24(int32_t x, int32_t vol)
  * Copy and scale volume from 24/32 bit source buffer
  * to 24/32 bit destination buffer.
  */
-static void vol_s24_to_s24(struct comp_dev *dev, struct comp_buffer *sink,
-			   const struct comp_buffer *source, uint32_t frames)
+static void vol_s24_to_s24(struct comp_dev *dev, struct audio_stream *sink,
+			   const struct audio_stream *source, uint32_t frames)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	int32_t *src;
@@ -64,8 +64,8 @@ static void vol_s24_to_s24(struct comp_dev *dev, struct comp_buffer *sink,
 	/* Samples are Q1.23 --> Q1.23 and volume is Q8.16 */
 	for (i = 0; i < frames; i++) {
 		for (channel = 0; channel < sink->channels; channel++) {
-			src = buffer_read_frag_s32(source, buff_frag);
-			dest = buffer_write_frag_s32(sink, buff_frag);
+			src = audio_stream_read_frag_s32(source, buff_frag);
+			dest = audio_stream_write_frag_s32(sink, buff_frag);
 
 			*dest = vol_mult_s24_to_s24(*src, cd->volume[channel]);
 
@@ -86,8 +86,8 @@ static void vol_s24_to_s24(struct comp_dev *dev, struct comp_buffer *sink,
  * Copy and scale volume from 32 bit source buffer
  * to 32 bit destination buffer.
  */
-static void vol_s32_to_s32(struct comp_dev *dev, struct comp_buffer *sink,
-			   const struct comp_buffer *source, uint32_t frames)
+static void vol_s32_to_s32(struct comp_dev *dev, struct audio_stream *sink,
+			   const struct audio_stream *source, uint32_t frames)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	int32_t *src;
@@ -99,8 +99,8 @@ static void vol_s32_to_s32(struct comp_dev *dev, struct comp_buffer *sink,
 	/* Samples are Q1.31 --> Q1.31 and volume is Q8.16 */
 	for (i = 0; i < frames; i++) {
 		for (channel = 0; channel < sink->channels; channel++) {
-			src = buffer_read_frag_s32(source, buff_frag);
-			dest = buffer_write_frag_s32(sink, buff_frag);
+			src = audio_stream_read_frag_s32(source, buff_frag);
+			dest = audio_stream_write_frag_s32(sink, buff_frag);
 
 			*dest = q_multsr_sat_32x32
 				(*src, cd->volume[channel],
@@ -123,8 +123,8 @@ static void vol_s32_to_s32(struct comp_dev *dev, struct comp_buffer *sink,
  * Copy and scale volume from 16 bit source buffer
  * to 16 bit destination buffer.
  */
-static void vol_s16_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
-			   const struct comp_buffer *source, uint32_t frames)
+static void vol_s16_to_s16(struct comp_dev *dev, struct audio_stream *sink,
+			   const struct audio_stream *source, uint32_t frames)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	int16_t *src;
@@ -136,8 +136,8 @@ static void vol_s16_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
 	/* Samples are Q1.15 --> Q1.15 and volume is Q8.16 */
 	for (i = 0; i < frames; i++) {
 		for (channel = 0; channel < sink->channels; channel++) {
-			src = buffer_read_frag_s16(source, buff_frag);
-			dest = buffer_write_frag_s16(sink, buff_frag);
+			src = audio_stream_read_frag_s16(source, buff_frag);
+			dest = audio_stream_write_frag_s16(sink, buff_frag);
 
 			*dest = q_multsr_sat_32x32_16
 				(*src, cd->volume[channel],

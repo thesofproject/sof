@@ -77,12 +77,13 @@ static int setup(void **state)
 
 	/* allocate new sink buffer */
 	vol_state->sink = test_malloc(sizeof(*vol_state->sink));
-	vol_state->sink->frame_fmt = parameters->sink_format;
-	vol_state->sink->channels = parameters->channels;
-	size = parameters->frames * buffer_frame_bytes(vol_state->sink);
+	vol_state->sink->stream.frame_fmt = parameters->sink_format;
+	vol_state->sink->stream.channels = parameters->channels;
+	size = parameters->frames *
+	       audio_stream_frame_bytes(&vol_state->sink->stream);
 
-	vol_state->sink->addr = test_calloc(parameters->buffer_size_ms,
-					    size);
+	vol_state->sink->stream.addr = test_calloc(parameters->buffer_size_ms,
+						   size);
 	buffer_init(vol_state->sink, parameters->buffer_size_ms * size, 0);
 
 	list_item_prepend(&vol_state->sink->source_list,
@@ -90,11 +91,12 @@ static int setup(void **state)
 
 	/* allocate new source buffer */
 	vol_state->source = test_malloc(sizeof(*vol_state->source));
-	vol_state->source->frame_fmt = parameters->source_format;
-	vol_state->source->channels = parameters->channels;
-	size = parameters->frames * buffer_frame_bytes(vol_state->source);
-	vol_state->source->addr = test_calloc(parameters->buffer_size_ms,
-					      size);
+	vol_state->source->stream.frame_fmt = parameters->source_format;
+	vol_state->source->stream.channels = parameters->channels;
+	size = parameters->frames *
+	       audio_stream_frame_bytes(&vol_state->source->stream);
+	vol_state->source->stream.addr = test_calloc(parameters->buffer_size_ms,
+						     size);
 	buffer_init(vol_state->source, parameters->buffer_size_ms * size, 0);
 
 	list_item_prepend(&vol_state->source->sink_list,
@@ -121,9 +123,9 @@ static int teardown(void **state)
 	/* free everything */
 	test_free(cd);
 	test_free(vol_state->dev);
-	test_free(vol_state->sink->addr);
+	test_free(vol_state->sink->stream.addr);
 	test_free(vol_state->sink);
-	test_free(vol_state->source->addr);
+	test_free(vol_state->source->stream.addr);
 	test_free(vol_state->source);
 	test_free(vol_state);
 
@@ -134,11 +136,11 @@ static int teardown(void **state)
 static void fill_source_s16(struct vol_test_state *vol_state)
 {
 	int64_t val;
-	int16_t *src = (int16_t *)vol_state->source->r_ptr;
+	int16_t *src = (int16_t *)vol_state->source->stream.r_ptr;
 	int i;
 	int sign = 1;
 
-	for (i = 0; i < vol_state->source->size / sizeof(int16_t); i++) {
+	for (i = 0; i < vol_state->source->stream.size / sizeof(int16_t); i++) {
 		val = (INT16_MIN + (i >> 1)) * sign;
 		val = (val > INT16_MAX) ? INT16_MAX : val;
 		src[i] = (int16_t)val;
@@ -150,16 +152,16 @@ static void verify_s16_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
 			      struct comp_buffer *source)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	const int16_t *src = (int16_t *)source->r_ptr;
-	const int16_t *dst = (int16_t *)sink->w_ptr;
+	const int16_t *src = (int16_t *)source->stream.r_ptr;
+	const int16_t *dst = (int16_t *)sink->stream.w_ptr;
 	double processed;
-	int channels = sink->channels;
+	int channels = sink->stream.channels;
 	int channel;
 	int delta;
 	int i;
 	int16_t sample;
 
-	for (i = 0; i < sink->size / sizeof(uint16_t); i += channels) {
+	for (i = 0; i < sink->stream.size / sizeof(uint16_t); i += channels) {
 		for (channel = 0; channel < channels; channel++) {
 			processed = src[i + channel] *
 				(double)cd->volume[channel] /
@@ -183,11 +185,11 @@ static void verify_s16_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
 static void fill_source_s24(struct vol_test_state *vol_state)
 {
 	int64_t val;
-	int32_t *src = (int32_t *)vol_state->source->r_ptr;
+	int32_t *src = (int32_t *)vol_state->source->stream.r_ptr;
 	int i;
 	int sign = 1;
 
-	for (i = 0; i < vol_state->source->size / sizeof(int32_t); i++) {
+	for (i = 0; i < vol_state->source->stream.size / sizeof(int32_t); i++) {
 		val = (INT24_MIN + (i >> 1)) * sign;
 		val = (val > INT24_MAX) ? INT24_MAX : val;
 		src[i] = (int32_t)val;
@@ -200,18 +202,18 @@ static void verify_s24_to_s24_s32(struct comp_dev *dev,
 				  struct comp_buffer *source)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	const int32_t *src = (int32_t *)source->r_ptr;
-	const int32_t *dst = (int32_t *)sink->w_ptr;
+	const int32_t *src = (int32_t *)source->stream.r_ptr;
+	const int32_t *dst = (int32_t *)sink->stream.w_ptr;
 	double processed;
 	int32_t dst_sample;
 	int32_t sample;
-	int channels = sink->channels;
+	int channels = sink->stream.channels;
 	int channel;
 	int delta;
 	int i;
 	int shift = 8;
 
-	for (i = 0; i < sink->size / sizeof(uint32_t); i += channels) {
+	for (i = 0; i < sink->stream.size / sizeof(uint32_t); i += channels) {
 		for (channel = 0; channel < channels; channel++) {
 			processed = (src[i + channel] << 8) *
 				(double)cd->volume[channel] /
@@ -240,11 +242,11 @@ static void verify_s24_to_s24_s32(struct comp_dev *dev,
 static void fill_source_s32(struct vol_test_state *vol_state)
 {
 	int64_t val;
-	int32_t *src = (int32_t *)vol_state->source->r_ptr;
+	int32_t *src = (int32_t *)vol_state->source->stream.r_ptr;
 	int i;
 	int sign = 1;
 
-	for (i = 0; i < vol_state->source->size / sizeof(int32_t); i++) {
+	for (i = 0; i < vol_state->source->stream.size / sizeof(int32_t); i++) {
 		val = (INT32_MIN + (i >> 1)) * sign;
 		val = (val > INT32_MAX) ? INT32_MAX : val;
 		src[i] = (int32_t)val;
@@ -258,17 +260,17 @@ static void verify_s32_to_s24_s32(struct comp_dev *dev,
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	double processed;
-	const int32_t *src = (int32_t *)source->r_ptr;
-	const int32_t *dst = (int32_t *)sink->w_ptr;
+	const int32_t *src = (int32_t *)source->stream.r_ptr;
+	const int32_t *dst = (int32_t *)sink->stream.w_ptr;
 	int32_t dst_sample;
 	int32_t sample;
-	int channels = sink->channels;
+	int channels = sink->stream.channels;
 	int channel;
 	int delta;
 	int i;
 	int shift = 0;
 
-	for (i = 0; i < sink->size / sizeof(uint32_t); i += channels) {
+	for (i = 0; i < sink->stream.size / sizeof(uint32_t); i += channels) {
 		for (channel = 0; channel < channels; channel++) {
 			processed = src[i + channel] *
 				    (double)cd->volume[channel] /
@@ -387,7 +389,7 @@ static void test_audio_vol(void **state)
 	struct vol_test_state *vol_state = *state;
 	struct comp_data *cd = comp_get_drvdata(vol_state->dev);
 
-	switch (vol_state->sink->frame_fmt) {
+	switch (vol_state->sink->stream.frame_fmt) {
 	case SOF_IPC_FRAME_S16_LE:
 		fill_source_s16(vol_state);
 		break;
@@ -400,8 +402,8 @@ static void test_audio_vol(void **state)
 		break;
 	}
 
-	cd->scale_vol(vol_state->dev, vol_state->sink, vol_state->source,
-		      vol_state->dev->frames);
+	cd->scale_vol(vol_state->dev, &vol_state->sink->stream,
+		      &vol_state->source->stream, vol_state->dev->frames);
 
 	vol_state->verify(vol_state->dev, vol_state->sink, vol_state->source);
 }

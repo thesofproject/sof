@@ -54,8 +54,8 @@ struct comp_dev;
 #define SEL_SINK_4CH 4
 
 /** \brief selector processing function interface */
-typedef void (*sel_func)(struct comp_dev *dev, struct comp_buffer *sink,
-			 const struct comp_buffer *source, uint32_t frames);
+typedef void (*sel_func)(struct comp_dev *dev, struct audio_stream *sink,
+			 const struct audio_stream *source, uint32_t frames);
 
 /** \brief Selector component private data. */
 struct comp_data {

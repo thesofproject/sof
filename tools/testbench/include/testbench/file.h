@@ -41,8 +41,8 @@ struct file_comp_data {
 	uint32_t rate;
 	struct file_state fs;
 	int sample_container_bytes;
-	int (*file_func)(struct comp_dev *dev, struct comp_buffer *sink,
-			 struct comp_buffer *source, uint32_t frames);
+	int (*file_func)(struct comp_dev *dev, struct audio_stream *sink,
+			 struct audio_stream *source, uint32_t frames);
 
 };
 

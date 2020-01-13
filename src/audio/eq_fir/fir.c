@@ -62,8 +62,8 @@ void fir_init_delay(struct fir_state_32x16 *fir, int32_t **data)
 }
 
 #if CONFIG_FORMAT_S16LE
-void eq_fir_s16(struct fir_state_32x16 fir[], struct comp_buffer *source,
-		struct comp_buffer *sink, int frames, int nch)
+void eq_fir_s16(struct fir_state_32x16 fir[], const struct audio_stream *source,
+		struct audio_stream *sink, int frames, int nch)
 {
 	struct fir_state_32x16 *filter;
 	int16_t *x;
@@ -77,8 +77,8 @@ void eq_fir_s16(struct fir_state_32x16 fir[], struct comp_buffer *source,
 		filter = &fir[ch];
 		idx = ch;
 		for (i = 0; i < frames; i++) {
-			x = buffer_read_frag_s16(source, idx);
-			y = buffer_write_frag_s16(sink, idx);
+			x = audio_stream_read_frag_s16(source, idx);
+			y = audio_stream_write_frag_s16(sink, idx);
 			z = fir_32x16(filter, *x << 16);
 			*y = sat_int16(Q_SHIFT_RND(z, 31, 15));
 			idx += nch;
@@ -88,8 +88,8 @@ void eq_fir_s16(struct fir_state_32x16 fir[], struct comp_buffer *source,
 #endif /* CONFIG_FORMAT_S16LE */
 
 #if CONFIG_FORMAT_S24LE
-void eq_fir_s24(struct fir_state_32x16 fir[], struct comp_buffer *source,
-		struct comp_buffer *sink, int frames, int nch)
+void eq_fir_s24(struct fir_state_32x16 fir[], const struct audio_stream *source,
+		struct audio_stream *sink, int frames, int nch)
 {
 	struct fir_state_32x16 *filter;
 	int32_t *x;
@@ -103,8 +103,8 @@ void eq_fir_s24(struct fir_state_32x16 fir[], struct comp_buffer *source,
 		filter = &fir[ch];
 		idx = ch;
 		for (i = 0; i < frames; i++) {
-			x = buffer_read_frag_s32(source, idx);
-			y = buffer_write_frag_s32(sink, idx);
+			x = audio_stream_read_frag_s32(source, idx);
+			y = audio_stream_write_frag_s32(sink, idx);
 			z = fir_32x16(filter, *x << 8);
 			*y = sat_int24(Q_SHIFT_RND(z, 31, 23));
 			idx += nch;
@@ -114,8 +114,8 @@ void eq_fir_s24(struct fir_state_32x16 fir[], struct comp_buffer *source,
 #endif /* CONFIG_FORMAT_S24LE */
 
 #if CONFIG_FORMAT_S32LE
-void eq_fir_s32(struct fir_state_32x16 fir[], struct comp_buffer *source,
-		struct comp_buffer *sink, int frames, int nch)
+void eq_fir_s32(struct fir_state_32x16 fir[], const struct audio_stream *source,
+		struct audio_stream *sink, int frames, int nch)
 {
 	struct fir_state_32x16 *filter;
 	int32_t *x;
@@ -128,8 +128,8 @@ void eq_fir_s32(struct fir_state_32x16 fir[], struct comp_buffer *source,
 		filter = &fir[ch];
 		idx = ch;
 		for (i = 0; i < frames; i++) {
-			x = buffer_read_frag_s32(source, idx);
-			y = buffer_write_frag_s32(sink, idx);
+			x = audio_stream_read_frag_s32(source, idx);
+			y = audio_stream_write_frag_s32(sink, idx);
 			*y = fir_32x16(filter, *x);
 			idx += nch;
 		}

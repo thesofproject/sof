@@ -416,7 +416,7 @@ int ipc_stream_send_position(struct comp_dev *cdev,
 }
 
 /* send component notification */
-int ipc_send_comp_notification(struct comp_dev *cdev,
+int ipc_send_comp_notification(const struct comp_dev *cdev,
 			       struct sof_ipc_comp_event *event)
 {
 	event->rhdr.hdr.cmd = SOF_IPC_GLB_COMP_MSG |

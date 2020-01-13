@@ -153,8 +153,8 @@ static int mux_params(struct comp_dev *dev,
 	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
 				  source_list);
 
-	cd->config.num_channels = sinkb->channels;
-	cd->config.frame_format = sinkb->frame_fmt;
+	cd->config.num_channels = sinkb->stream.channels;
+	cd->config.frame_format = sinkb->stream.frame_fmt;
 
 	return 0;
 }
@@ -261,6 +261,7 @@ static int demux_copy(struct comp_dev *dev)
 	uint32_t i = 0;
 	uint32_t frames = -1;
 	uint32_t source_bytes;
+	uint32_t avail;
 	uint32_t sinks_bytes[MUX_MAX_STREAMS] = { 0 };
 
 	tracev_mux_with_ids(dev, "demux_copy()");
@@ -289,14 +290,17 @@ static int demux_copy(struct comp_dev *dev)
 	for (i = 0; i < MUX_MAX_STREAMS; i++) {
 		if (!sinks[i])
 			continue;
-		frames = MIN(frames, buffer_avail_frames(source, sinks[i]));
+		avail = audio_stream_avail_frames(&source->stream,
+						  &sinks[i]->stream);
+		frames = MIN(frames, avail);
 	}
 
-	source_bytes = frames * buffer_frame_bytes(source);
+	source_bytes = frames * audio_stream_frame_bytes(&source->stream);
 	for (i = 0; i < MUX_MAX_STREAMS; i++) {
 		if (!sinks[i])
 			continue;
-		sinks_bytes[i] = frames * buffer_frame_bytes(sinks[i]);
+		sinks_bytes[i] = frames *
+				 audio_stream_frame_bytes(&sinks[i]->stream);
 	}
 
 	/* produce output, one sink at a time */
@@ -304,7 +308,8 @@ static int demux_copy(struct comp_dev *dev)
 		if (!sinks[i])
 			continue;
 
-		cd->demux(dev, sinks[i], source, frames, &cd->config.streams[i]);
+		cd->demux(dev, &sinks[i]->stream, &source->stream, frames,
+			  &cd->config.streams[i]);
 	}
 
 	/* update components */
@@ -325,6 +330,7 @@ static int mux_copy(struct comp_dev *dev)
 	struct comp_buffer *sink;
 	struct comp_buffer *source;
 	struct comp_buffer *sources[MUX_MAX_STREAMS] = { NULL };
+	const struct audio_stream *sources_stream[MUX_MAX_STREAMS] = { NULL };
 	struct list_item *clist;
 	uint32_t num_sources = 0;
 	uint32_t i = 0;
@@ -341,6 +347,7 @@ static int mux_copy(struct comp_dev *dev)
 			num_sources++;
 			i = get_stream_index(cd, source->pipeline_id);
 			sources[i] = source;
+			sources_stream[i] = &source->stream;
 		}
 	}
 
@@ -358,20 +365,22 @@ static int mux_copy(struct comp_dev *dev)
 	for (i = 0; i < MUX_MAX_STREAMS; i++) {
 		if (!sources[i])
 			continue;
-		frames = MIN(frames, buffer_avail_frames(sources[i], sink));
+		frames = MIN(frames,
+			     audio_stream_avail_frames(sources_stream[i],
+						       &sink->stream));
 	}
 
 	for (i = 0; i < MUX_MAX_STREAMS; i++) {
 		if (!sources[i])
 			continue;
 		sources_bytes[i] = frames *
-				   buffer_frame_bytes(sources[i]);
+				   audio_stream_frame_bytes(sources_stream[i]);
 	}
-	sink_bytes = frames * buffer_frame_bytes(sink);
+	sink_bytes = frames * audio_stream_frame_bytes(&sink->stream);
 
 	/* produce output */
-	cd->mux(dev, sink, (const struct comp_buffer **)&sources[0],
-		frames, &cd->config.streams[0]);
+	cd->mux(dev, &sink->stream, &sources_stream[0], frames,
+		&cd->config.streams[0]);
 
 	/* update components */
 	comp_update_buffer_produce(sink, sink_bytes);

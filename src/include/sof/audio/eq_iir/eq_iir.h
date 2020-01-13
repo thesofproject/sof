@@ -12,23 +12,20 @@
 
 #include <stdint.h>
 
-struct comp_buffer;
+struct audio_stream;
 struct comp_dev;
+
+/** \brief Type definition for processing function select return value. */
+typedef void (*eq_iir_func)(const struct comp_dev *dev,
+			    const struct audio_stream *source,
+			    struct audio_stream *sink,
+			    uint32_t frames);
 
 /** \brief IIR EQ processing functions map item. */
 struct eq_iir_func_map {
 	uint8_t source;				/**< source frame format */
 	uint8_t sink;				/**< sink frame format */
-	void (*func)(struct comp_dev *dev,	/**< EQ processing function */
-		     struct comp_buffer *source,
-		     struct comp_buffer *sink,
-		     uint32_t frames);
+	eq_iir_func func;			/**< processing function */
 };
-
-/** \brief Type definition for processing function select return value. */
-typedef void (*eq_iir_func)(struct comp_dev *dev,
-			    struct comp_buffer *source,
-			    struct comp_buffer *sink,
-			    uint32_t frames);
 
 #endif /* __SOF_AUDIO_EQ_IIR_EQ_IIR_H__ */
