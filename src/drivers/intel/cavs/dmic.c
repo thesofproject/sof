@@ -1097,6 +1097,16 @@ static int dmic_set_config(struct dai *dai, struct sof_ipc_dai_config *config)
 		return -EINVAL;
 	}
 
+	if (di >= DMIC_HW_FIFOS) {
+		trace_error_dmic_id(dai, "dmic_set_config() error: dai->index exceeds number of FIFOs");
+		return -EINVAL;
+	}
+
+	if (config->dmic.num_pdm_active > DMIC_HW_CONTROLLERS) {
+		trace_error_dmic_id(dai, "dmic_set_config() error: the requested PDM controllers count exceeds platform capability");
+		return -EINVAL;
+	}
+
 	step_db = LOGRAMP_CONST_TERM / unmute_ramp_time_ms;
 	dmic->gain_coef = db2lin_fixed(step_db);
 	trace_dmic_id(dai, "dmic_set_config(): unmute_ramp_time_ms = %d",
@@ -1123,22 +1133,12 @@ static int dmic_set_config(struct dai *dai, struct sof_ipc_dai_config *config)
 				((uint8_t *)dmic_prm[i - 1] + size);
 	}
 
-	if (di >= DMIC_HW_FIFOS) {
-		trace_error_dmic_id(dai, "dmic_set_config() error: dai->index exceeds number of FIFOs");
-		return -EINVAL;
-	}
-
 	/* Copy the new DMIC params to persistent.  The last request
 	 * determines the parameters.
 	 */
 	ret = memcpy_s(dmic_prm[di], sizeof(*dmic_prm[di]), &config->dmic,
 		       sizeof(struct sof_ipc_dai_dmic_params));
 	assert(!ret);
-
-	if (config->dmic.num_pdm_active > DMIC_HW_CONTROLLERS) {
-		trace_error_dmic_id(dai, "dmic_set_config() error: the requested PDM controllers count exceeds platform capability");
-		return -EINVAL;
-	}
 
 	/* copy the pdm controller params from ipc */
 	for (i = 0; i < DMIC_HW_CONTROLLERS; i++) {
