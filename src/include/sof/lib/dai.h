@@ -22,6 +22,7 @@
 #include <sof/lib/memory.h>
 #include <sof/sof.h>
 #include <sof/spinlock.h>
+#include <sof/trace/trace.h>
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -146,6 +147,24 @@ struct dai_type_info {
 	struct dai *dai_array;	/**< Array of DAIs */
 	size_t num_dais;	/**< Number of elements in dai_array */
 };
+
+#define trace_dai_with_ids(klass, dai_ptr, format, ...) \
+	trace_event_with_ids(klass,			\
+			     dai_ptr->drv->type,	\
+			     dai_ptr->index,		\
+			     format, ##__VA_ARGS__)
+
+#define trace_dai_error_with_ids(klass, dai_ptr, format, ...)	\
+	trace_error_with_ids(klass,				\
+			     dai_ptr->drv->type,		\
+			     dai_ptr->index,			\
+			     format, ##__VA_ARGS__)
+
+#define tracev_dai_with_ids(klass, dai_ptr, format, ...)	\
+	tracev_event_with_ids(klass,				\
+			      dai_ptr->drv->type,		\
+			      dai_ptr->index,			\
+			      format, ##__VA_ARGS__)
 
 /**
  * \brief Holds information about array of DAIs grouped by type.
