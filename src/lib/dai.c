@@ -44,7 +44,7 @@ struct dai *dai_get(uint32_t type, uint32_t index, uint32_t flags)
 			continue;
 		}
 		/* device created? */
-		spin_lock(d->lock);
+		spin_lock(&d->lock);
 		if (d->sref == 0) {
 			if (flags & DAI_CREAT)
 				ret = dai_probe(d);
@@ -59,7 +59,7 @@ struct dai *dai_get(uint32_t type, uint32_t index, uint32_t flags)
 
 		platform_shared_commit(d, sizeof(*d));
 
-		spin_unlock(d->lock);
+		spin_unlock(&d->lock);
 
 		return !ret ? d : NULL;
 	}
@@ -72,7 +72,7 @@ void dai_put(struct dai *dai)
 {
 	int ret;
 
-	spin_lock(dai->lock);
+	spin_lock(&dai->lock);
 	if (--dai->sref == 0) {
 		ret = dai_remove(dai);
 		if (ret < 0) {
@@ -84,5 +84,5 @@ void dai_put(struct dai *dai)
 	trace_event(TRACE_CLASS_DAI, "dai_put(), dai = %p, sref = %d",
 		    (uintptr_t)dai, dai->sref);
 	platform_shared_commit(dai, sizeof(*dai));
-	spin_unlock(dai->lock);
+	spin_unlock(&dai->lock);
 }

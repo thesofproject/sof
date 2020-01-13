@@ -180,7 +180,7 @@ static int ssp_set_config(struct dai *dai,
 	int clk_index = -1;
 	int ret = 0;
 
-	spin_lock(dai->lock);
+	spin_lock(&dai->lock);
 
 	/* is playback/capture already running */
 	if (ssp->state[DAI_DIR_PLAYBACK] == COMP_STATE_ACTIVE ||
@@ -770,7 +770,7 @@ static int ssp_set_config(struct dai *dai,
 out:
 	platform_shared_commit(ssp, sizeof(*ssp));
 
-	spin_unlock(dai->lock);
+	spin_unlock(&dai->lock);
 
 	return ret;
 }
@@ -780,7 +780,7 @@ static void ssp_start(struct dai *dai, int direction)
 {
 	struct ssp_pdata *ssp = dai_get_drvdata(dai);
 
-	spin_lock(dai->lock);
+	spin_lock(&dai->lock);
 
 	/* enable port */
 	ssp_update_bits(dai, SSCR0, SSCR0_SSE, SSCR0_SSE);
@@ -808,7 +808,7 @@ static void ssp_start(struct dai *dai, int direction)
 	/* wait to get valid fifo status */
 	wait_delay(PLATFORM_SSP_DELAY);
 
-	spin_unlock(dai->lock);
+	spin_unlock(&dai->lock);
 }
 
 /* stop the SSP for either playback or capture */
@@ -816,7 +816,7 @@ static void ssp_stop(struct dai *dai, int direction)
 {
 	struct ssp_pdata *ssp = dai_get_drvdata(dai);
 
-	spin_lock(dai->lock);
+	spin_lock(&dai->lock);
 
 	/* wait to get valid fifo status */
 	wait_delay(PLATFORM_SSP_DELAY);
@@ -850,7 +850,7 @@ static void ssp_stop(struct dai *dai, int direction)
 		trace_ssp("ssp_stop(), SSP port disabled");
 	}
 
-	spin_unlock(dai->lock);
+	spin_unlock(&dai->lock);
 }
 
 static int ssp_trigger(struct dai *dai, int cmd, int direction)

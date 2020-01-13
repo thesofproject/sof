@@ -399,7 +399,7 @@ static struct dma_chan_data *hda_dma_channel_get(struct dma *dma,
 		return NULL;
 	}
 
-	spin_lock_irq(dma->lock, flags);
+	spin_lock_irq(&dma->lock, flags);
 
 	trace_hddma("hda-dmac: %d channel %d -> get", dma->plat_data.id,
 		    channel);
@@ -411,12 +411,12 @@ static struct dma_chan_data *hda_dma_channel_get(struct dma *dma,
 		atomic_add(&dma->num_channels_busy, 1);
 
 		/* return channel */
-		spin_unlock_irq(dma->lock, flags);
+		spin_unlock_irq(&dma->lock, flags);
 		return &dma->chan[channel];
 	}
 
 	/* DMAC has no free channels */
-	spin_unlock_irq(dma->lock, flags);
+	spin_unlock_irq(&dma->lock, flags);
 	trace_hddma_error("hda-dmac: %d no free channel %d", dma->plat_data.id,
 			  channel);
 	return NULL;
@@ -443,9 +443,9 @@ static void hda_dma_channel_put(struct dma_chan_data *channel)
 	struct dma *dma = channel->dma;
 	uint32_t flags;
 
-	spin_lock_irq(dma->lock, flags);
+	spin_lock_irq(&dma->lock, flags);
 	hda_dma_channel_put_unlocked(channel);
-	spin_unlock_irq(dma->lock, flags);
+	spin_unlock_irq(&dma->lock, flags);
 
 	atomic_sub(&dma->num_channels_busy, 1);
 }

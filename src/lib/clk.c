@@ -64,7 +64,7 @@ void clock_set_freq(int clock, uint32_t hz)
 		clk_info->freqs[clk_info->current_freq_idx].ticks_per_msec;
 
 	/* atomic context for changing clocks */
-	spin_lock_irq(clk_info->lock, flags);
+	spin_lock_irq(&clk_info->lock, flags);
 
 	/* get nearest frequency that is >= requested Hz */
 	idx = clock_get_nearest_freq_idx(clk_info->freqs, clk_info->freqs_num,
@@ -90,7 +90,7 @@ void clock_set_freq(int clock, uint32_t hz)
 
 	platform_shared_commit(clk_info, sizeof(*clk_info));
 
-	spin_unlock_irq(clk_info->lock, flags);
+	spin_unlock_irq(&clk_info->lock, flags);
 }
 
 uint64_t clock_ms_to_ticks(int clock, uint64_t ms)

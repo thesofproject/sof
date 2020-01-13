@@ -105,7 +105,7 @@ struct mm {
 
 	struct mm_info total;
 	uint32_t heap_trace_updated;	/* updates that can be presented */
-	spinlock_t *lock;	/* all allocs and frees are atomic */
+	spinlock_t lock;	/* all allocs and frees are atomic */
 };
 
 /* heap allocation and free */

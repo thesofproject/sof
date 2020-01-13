@@ -86,23 +86,23 @@ static struct dma_chan_data *edma_channel_get(struct dma *dma,
 
 	tracev_edma("EDMA: channel_get(%d)", req_chan);
 
-	spin_lock_irq(dma->lock, flags);
+	spin_lock_irq(&dma->lock, flags);
 	if (req_chan >= dma->plat_data.channels) {
-		spin_unlock_irq(dma->lock, flags);
+		spin_unlock_irq(&dma->lock, flags);
 		trace_edma_error("EDMA: Channel %d out of range", req_chan);
 		return NULL;
 	}
 
 	channel = &dma->chan[req_chan];
 	if (channel->status != COMP_STATE_INIT) {
-		spin_unlock_irq(dma->lock, flags);
+		spin_unlock_irq(&dma->lock, flags);
 		trace_edma_error("EDMA: Cannot reuse channel %d", req_chan);
 		return NULL;
 	}
 
 	atomic_add(&dma->num_channels_busy, 1);
 	channel->status = COMP_STATE_READY;
-	spin_unlock_irq(dma->lock, flags);
+	spin_unlock_irq(&dma->lock, flags);
 
 	return channel;
 }
@@ -119,10 +119,10 @@ static void edma_channel_put(struct dma_chan_data *channel)
 
 	notifier_unregister_all(NULL, channel);
 
-	spin_lock_irq(dma->lock, flags);
+	spin_lock_irq(&dma->lock, flags);
 	channel->status = COMP_STATE_INIT;
 	atomic_sub(&channel->dma->num_channels_busy, 1);
-	spin_unlock_irq(dma->lock, flags);
+	spin_unlock_irq(&dma->lock, flags);
 }
 
 static int edma_start(struct dma_chan_data *channel)

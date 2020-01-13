@@ -101,7 +101,7 @@ struct dma *dma_get(uint32_t dir, uint32_t cap, uint32_t dev, uint32_t flags)
 	 * may be requested many times, let the probe()
 	 * do on-first-use initialization.
 	 */
-	spin_lock(dmin->lock);
+	spin_lock(&dmin->lock);
 
 	ret = 0;
 	if (!dmin->sref) {
@@ -122,7 +122,7 @@ struct dma *dma_get(uint32_t dir, uint32_t cap, uint32_t dev, uint32_t flags)
 
 	platform_shared_commit(dmin, sizeof(*dmin));
 
-	spin_unlock(dmin->lock);
+	spin_unlock(&dmin->lock);
 	return !ret ? dmin : NULL;
 }
 
@@ -130,7 +130,7 @@ void dma_put(struct dma *dma)
 {
 	int ret;
 
-	spin_lock(dma->lock);
+	spin_lock(&dma->lock);
 	if (--dma->sref == 0) {
 		ret = dma_remove(dma);
 		if (ret < 0) {
@@ -142,7 +142,7 @@ void dma_put(struct dma *dma)
 	trace_event(TRACE_CLASS_DMA, "dma_put(), dma = %p, sref = %d",
 		   (uintptr_t)dma, dma->sref);
 	platform_shared_commit(dma, sizeof(*dma));
-	spin_unlock(dma->lock);
+	spin_unlock(&dma->lock);
 }
 
 int dma_sg_alloc(struct dma_sg_elem_array *elem_array,

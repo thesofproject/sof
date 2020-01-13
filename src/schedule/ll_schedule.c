@@ -149,7 +149,7 @@ static void schedule_ll_tasks_run(void *data)
 
 	irq_local_disable(flags);
 
-	spin_lock(sch->domain->lock);
+	spin_lock(&sch->domain->lock);
 
 	last_tick = sch->domain->last_tick;
 
@@ -163,7 +163,7 @@ static void schedule_ll_tasks_run(void *data)
 
 	platform_shared_commit(sch->domain, sizeof(*sch->domain));
 
-	spin_unlock(sch->domain->lock);
+	spin_unlock(&sch->domain->lock);
 
 	perf_cnt_init(&sch->pcd);
 
@@ -173,13 +173,13 @@ static void schedule_ll_tasks_run(void *data)
 
 	perf_cnt_stamp(TRACE_CLASS_SCHEDULE_LL, &sch->pcd, true);
 
-	spin_lock(sch->domain->lock);
+	spin_lock(&sch->domain->lock);
 
 	/* reschedule only if all clients are done */
 	if (!num_clients)
 		schedule_ll_clients_reschedule(sch);
 
-	spin_unlock(sch->domain->lock);
+	spin_unlock(&sch->domain->lock);
 
 	irq_local_enable(flags);
 }
@@ -198,7 +198,7 @@ static int schedule_ll_domain_set(struct ll_schedule_data *sch,
 		return ret;
 	}
 
-	spin_lock(sch->domain->lock);
+	spin_lock(&sch->domain->lock);
 
 	if (atomic_add(&sch->num_tasks, 1) == 1)
 		sch->domain->registered[core] = true;
@@ -215,7 +215,7 @@ static int schedule_ll_domain_set(struct ll_schedule_data *sch,
 
 	platform_shared_commit(sch->domain, sizeof(*sch->domain));
 
-	spin_unlock(sch->domain->lock);
+	spin_unlock(&sch->domain->lock);
 
 	return 0;
 }
@@ -223,7 +223,7 @@ static int schedule_ll_domain_set(struct ll_schedule_data *sch,
 static void schedule_ll_domain_clear(struct ll_schedule_data *sch,
 				     struct task *task)
 {
-	spin_lock(sch->domain->lock);
+	spin_lock(&sch->domain->lock);
 
 	if (!atomic_sub(&sch->domain->total_num_tasks, 1)) {
 		domain_clear(sch->domain);
@@ -246,7 +246,7 @@ static void schedule_ll_domain_clear(struct ll_schedule_data *sch,
 
 	platform_shared_commit(sch->domain, sizeof(*sch->domain));
 
-	spin_unlock(sch->domain->lock);
+	spin_unlock(&sch->domain->lock);
 
 	domain_unregister(sch->domain, task, atomic_read(&sch->num_tasks));
 }

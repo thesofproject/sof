@@ -82,7 +82,7 @@ struct ipc_msg {
 };
 
 struct ipc {
-	spinlock_t *lock;	/* locking mechanism */
+	spinlock_t lock;	/* locking mechanism */
 	void *comp_data;
 
 	/* PM */

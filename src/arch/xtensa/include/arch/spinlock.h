@@ -13,17 +13,26 @@
 #include <config.h>
 #include <stdint.h>
 
-struct spinlock {
+typedef struct {
 	volatile uint32_t lock;
 #if CONFIG_DEBUG_LOCKS
 	uint32_t user;
 #endif
-};
+} spinlock_t;
 
-static inline void arch_spin_lock(struct spinlock *lock)
+static inline void arch_spinlock_init(spinlock_t *lock)
+{
+	lock->lock = 0;
+}
+
+static inline void arch_spin_lock(spinlock_t *lock)
 {
 	uint32_t result;
 
+	/* TODO: Should be platform specific, since on SMP platforms
+	 * without uncached memory region we'll need additional cache
+	 * invalidations in a loop
+	 */
 	__asm__ __volatile__(
 		"       movi    %0, 0\n"
 		"       wsr     %0, scompare1\n"
@@ -35,7 +44,7 @@ static inline void arch_spin_lock(struct spinlock *lock)
 		: "memory");
 }
 
-static inline int arch_try_lock(struct spinlock *lock)
+static inline int arch_try_lock(spinlock_t *lock)
 {
 	uint32_t result;
 
@@ -52,7 +61,7 @@ static inline int arch_try_lock(struct spinlock *lock)
 	return result ? 0 : 1;
 }
 
-static inline void arch_spin_unlock(struct spinlock *lock)
+static inline void arch_spin_unlock(spinlock_t *lock)
 {
 	uint32_t result;
 
@@ -63,8 +72,6 @@ static inline void arch_spin_unlock(struct spinlock *lock)
 		: "a" (&lock->lock)
 		: "memory");
 }
-
-void arch_spinlock_init(struct spinlock **lock);
 
 #endif /* __ARCH_SPINLOCK_H__ */
 

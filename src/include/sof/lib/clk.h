@@ -39,7 +39,7 @@ struct clock_info {
 	uint32_t current_freq_idx;
 	uint32_t notification_id;
 	uint32_t notification_mask;
-	spinlock_t *lock;
+	spinlock_t lock;
 	int (*set_freq)(int clock, int freq_idx);
 };
 

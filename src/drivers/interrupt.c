@@ -37,7 +37,7 @@ int interrupt_cascade_register(const struct irq_cascade_tmpl *tmpl)
 	if (!tmpl->name || !tmpl->ops)
 		return -EINVAL;
 
-	spin_lock_irq(root->lock, flags);
+	spin_lock_irq(&root->lock, flags);
 
 	for (cascade = &root->list; *cascade;
 	     cascade = &(*cascade)->next) {
@@ -77,7 +77,7 @@ int interrupt_cascade_register(const struct irq_cascade_tmpl *tmpl)
 unlock:
 	platform_shared_commit(root, sizeof(*root));
 
-	spin_unlock_irq(root->lock, flags);
+	spin_unlock_irq(&root->lock, flags);
 
 	return ret;
 }
@@ -100,7 +100,7 @@ int interrupt_get_irq(unsigned int irq, const char *name)
 		return -EINVAL;
 	}
 
-	spin_lock_irq(root->lock, flags);
+	spin_lock_irq(&root->lock, flags);
 
 	for (cascade = root->list; cascade; cascade = cascade->next) {
 		/* .name is non-volatile */
@@ -115,7 +115,7 @@ int interrupt_get_irq(unsigned int irq, const char *name)
 	platform_shared_commit(cascade, sizeof(*cascade));
 	platform_shared_commit(root, sizeof(*root));
 
-	spin_unlock_irq(root->lock, flags);
+	spin_unlock_irq(&root->lock, flags);
 
 	return ret;
 }
@@ -129,7 +129,7 @@ struct irq_cascade_desc *interrupt_get_parent(uint32_t irq)
 	if (irq < PLATFORM_IRQ_HW_NUM)
 		return NULL;
 
-	spin_lock_irq(root->lock, flags);
+	spin_lock_irq(&root->lock, flags);
 
 	for (cascade = root->list; cascade; cascade = cascade->next) {
 		if (irq >= cascade->irq_base &&
@@ -144,7 +144,7 @@ struct irq_cascade_desc *interrupt_get_parent(uint32_t irq)
 	platform_shared_commit(cascade, sizeof(*cascade));
 	platform_shared_commit(root, sizeof(*root));
 
-	spin_unlock_irq(root->lock, flags);
+	spin_unlock_irq(&root->lock, flags);
 
 	return c;
 }
@@ -281,7 +281,7 @@ static uint32_t irq_enable_child(struct irq_cascade_desc *cascade, int irq,
 	 * holding the child's lock and then also taking the parent's lock. The
 	 * same holds for the interrupt_(un)register() paths.
 	 */
-	spin_lock_irq(cascade->lock, flags);
+	spin_lock_irq(&cascade->lock, flags);
 
 	child = cascade->child + hw_irq;
 	child_idx = cascade->global_mask ? 0 : core;
@@ -311,7 +311,7 @@ static uint32_t irq_enable_child(struct irq_cascade_desc *cascade, int irq,
 
 	platform_shared_commit(cascade, sizeof(*cascade));
 
-	spin_unlock_irq(cascade->lock, flags);
+	spin_unlock_irq(&cascade->lock, flags);
 
 	return 0;
 }
@@ -326,7 +326,7 @@ static uint32_t irq_disable_child(struct irq_cascade_desc *cascade, int irq,
 	struct list_item *list;
 	unsigned long flags;
 
-	spin_lock_irq(cascade->lock, flags);
+	spin_lock_irq(&cascade->lock, flags);
 
 	child = cascade->child + hw_irq;
 	child_idx = cascade->global_mask ? 0 : core;
@@ -360,7 +360,7 @@ static uint32_t irq_disable_child(struct irq_cascade_desc *cascade, int irq,
 
 	platform_shared_commit(cascade, sizeof(*cascade));
 
-	spin_unlock_irq(cascade->lock, flags);
+	spin_unlock_irq(&cascade->lock, flags);
 
 	return 0;
 }
@@ -383,9 +383,9 @@ static int interrupt_register_internal(uint32_t irq, void (*handler)(void *arg),
 	if (!cascade)
 		return arch_interrupt_register(irq, handler, arg);
 
-	spin_lock_irq(cascade->lock, flags);
+	spin_lock_irq(&cascade->lock, flags);
 	ret = irq_register_child(cascade, irq, handler, arg, desc);
-	spin_unlock_irq(cascade->lock, flags);
+	spin_unlock_irq(&cascade->lock, flags);
 
 	return ret;
 }
@@ -409,9 +409,9 @@ static void interrupt_unregister_internal(uint32_t irq, const void *arg,
 		return;
 	}
 
-	spin_lock_irq(cascade->lock, flags);
+	spin_lock_irq(&cascade->lock, flags);
 	irq_unregister_child(cascade, irq, arg, desc);
-	spin_unlock_irq(cascade->lock, flags);
+	spin_unlock_irq(&cascade->lock, flags);
 }
 
 uint32_t interrupt_enable(uint32_t irq, void *arg)

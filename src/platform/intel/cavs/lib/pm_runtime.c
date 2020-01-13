@@ -46,7 +46,7 @@ static inline void cavs_pm_runtime_force_host_dma_l1_exit(void)
 	struct pm_runtime_data *prd = pm_runtime_data_get();
 	uint32_t flags;
 
-	spin_lock_irq(prd->lock, flags);
+	spin_lock_irq(&prd->lock, flags);
 
 	if (!(shim_read(SHIM_SVCFG) & SHIM_SVCFG_FORCE_L1_EXIT)) {
 		shim_write(SHIM_SVCFG,
@@ -58,7 +58,7 @@ static inline void cavs_pm_runtime_force_host_dma_l1_exit(void)
 			   shim_read(SHIM_SVCFG) & ~(SHIM_SVCFG_FORCE_L1_EXIT));
 	}
 
-	spin_unlock_irq(prd->lock, flags);
+	spin_unlock_irq(&prd->lock, flags);
 }
 
 static inline void cavs_pm_runtime_enable_dsp(bool enable)
