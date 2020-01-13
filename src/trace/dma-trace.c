@@ -12,6 +12,7 @@
 #include <sof/lib/cache.h>
 #include <sof/lib/cpu.h>
 #include <sof/lib/dma.h>
+#include <sof/lib/memory.h>
 #include <sof/platform.h>
 #include <sof/schedule/ll_schedule.h>
 #include <sof/schedule/schedule.h>
@@ -32,7 +33,7 @@ static int dma_trace_get_avail_data(struct dma_trace_data *d,
 
 static enum task_state trace_work(void *data)
 {
-	struct dma_trace_data *d = (struct dma_trace_data *)data;
+	struct dma_trace_data *d = data;
 	struct dma_trace_buf *buffer = &d->dmatb;
 	struct dma_sg_config *config = &d->config;
 	unsigned long flags;
@@ -54,8 +55,10 @@ static enum task_state trace_work(void *data)
 	size = dma_trace_get_avail_data(d, buffer, avail);
 
 	/* any data to copy ? */
-	if (size == 0)
+	if (size == 0) {
+		platform_shared_commit(d, sizeof(*d));
 		return SOF_TASK_STATE_RESCHEDULE;
+	}
 
 	d->overflow = overflow;
 
@@ -95,6 +98,8 @@ out:
 	/* DMA trace copying is done, allow reschedule */
 	d->copy_in_progress = 0;
 
+	platform_shared_commit(d, sizeof(*d));
+
 	spin_unlock_irq(d->lock, flags);
 
 	/* reschedule the trace copying work */
@@ -108,12 +113,14 @@ int dma_trace_init_early(struct sof *sof)
 	dma_sg_init(&sof->dmat->config.elem_array);
 	spinlock_init(&sof->dmat->lock);
 
+	platform_shared_commit(sof->dmat, sizeof(*sof->dmat));
+
 	return 0;
 }
 
 int dma_trace_init_complete(struct dma_trace_data *d)
 {
-	int ret;
+	int ret = 0;
 
 	trace_buffer("dma_trace_init_complete()");
 
@@ -122,7 +129,7 @@ int dma_trace_init_complete(struct dma_trace_data *d)
 	if (ret < 0) {
 		trace_buffer_error("dma_trace_init_complete() error: "
 				   "dma_copy_new() failed");
-		return ret;
+		goto out;
 	}
 
 	ret = dma_get_attribute(d->dc.dmac, DMA_ATTR_COPY_ALIGNMENT,
@@ -132,13 +139,16 @@ int dma_trace_init_complete(struct dma_trace_data *d)
 		trace_buffer("dma_trace_init_complete() "
 			     "error: dma_get_attribute()");
 
-		return ret;
+		goto out;
 	}
 
 	schedule_task_init_ll(&d->dmat_work, SOF_SCHEDULE_LL_TIMER,
 			      SOF_TASK_PRI_MED, trace_work, d, 0, 0);
 
-	return 0;
+out:
+	platform_shared_commit(d, sizeof(*d));
+
+	return ret;
 }
 
 #if (CONFIG_HOST_PTABLE)
@@ -148,6 +158,8 @@ int dma_trace_host_buffer(struct dma_trace_data *d,
 {
 	d->host_size = host_size;
 	d->config.elem_array = *elem_array;
+
+	platform_shared_commit(d, sizeof(*d));
 
 	return 0;
 }
@@ -286,7 +298,7 @@ int dma_trace_enable(struct dma_trace_data *d)
 	/* initialize dma trace buffer */
 	err = dma_trace_buffer_init(d);
 	if (err < 0)
-		return err;
+		goto out;
 
 #if CONFIG_DMA_GW
 	/*
@@ -295,20 +307,24 @@ int dma_trace_enable(struct dma_trace_data *d)
 	 */
 	err = dma_trace_start(d);
 	if (err < 0)
-		return err;
+		goto out;
 #endif
 
 	/* validate DMA context */
 	if (!d->dc.dmac || !d->dc.chan) {
 		trace_buffer_error_atomic("dma_trace_enable() error: not "
 					  "valid");
-		return -ENODEV;
+		err = -ENODEV;
+		goto out;
 	}
 
 	d->enabled = 1;
 	schedule_task(&d->dmat_work, DMA_TRACE_PERIOD, DMA_TRACE_PERIOD);
 
-	return 0;
+out:
+	platform_shared_commit(d, sizeof(*d));
+
+	return err;
 }
 
 void dma_trace_flush(void *t)
@@ -320,8 +336,10 @@ void dma_trace_flush(void *t)
 	int32_t wrap_count;
 	int ret;
 
-	if (!trace_data || !trace_data->dmatb.addr)
+	if (!trace_data || !trace_data->dmatb.addr) {
+		platform_shared_commit(trace_data, sizeof(*trace_data));
 		return;
+	}
 
 	buffer = &trace_data->dmatb;
 	avail = buffer->avail;
@@ -360,27 +378,39 @@ void dma_trace_flush(void *t)
 
 	/* writeback trace data */
 	dcache_writeback_region((void *)t, size);
+
+	platform_shared_commit(trace_data, sizeof(*trace_data));
 }
 
 void dma_trace_on(void)
 {
 	struct dma_trace_data *trace_data = dma_trace_data_get();
 
-	if (trace_data->enabled)
+	if (trace_data->enabled) {
+		platform_shared_commit(trace_data, sizeof(*trace_data));
 		return;
+	}
+
 	trace_data->enabled = 1;
 	schedule_task(&trace_data->dmat_work, DMA_TRACE_PERIOD,
 		      DMA_TRACE_PERIOD);
+
+	platform_shared_commit(trace_data, sizeof(*trace_data));
 }
 
 void dma_trace_off(void)
 {
 	struct dma_trace_data *trace_data = dma_trace_data_get();
 
-	if (!trace_data->enabled)
+	if (!trace_data->enabled) {
+		platform_shared_commit(trace_data, sizeof(*trace_data));
 		return;
+	}
+
 	schedule_task_cancel(&trace_data->dmat_work);
 	trace_data->enabled = 0;
+
+	platform_shared_commit(trace_data, sizeof(*trace_data));
 }
 
 static int dtrace_calc_buf_overflow(struct dma_trace_buf *buffer,
@@ -474,6 +504,8 @@ static void dtrace_add_event(const char *e, uint32_t length)
 		/* if there is not enough memory for new log, we drop it */
 		trace_data->dropped_entries++;
 	}
+
+	platform_shared_commit(trace_data, sizeof(*trace_data));
 }
 
 void dtrace_event(const char *e, uint32_t length)
@@ -483,8 +515,10 @@ void dtrace_event(const char *e, uint32_t length)
 	unsigned long flags;
 
 	if (!trace_data || !trace_data->dmatb.addr ||
-	    length > DMA_TRACE_LOCAL_SIZE / 8 || length == 0)
+	    length > DMA_TRACE_LOCAL_SIZE / 8 || length == 0) {
+		platform_shared_commit(trace_data, sizeof(*trace_data));
 		return;
+	}
 
 	buffer = &trace_data->dmatb;
 
@@ -496,6 +530,7 @@ void dtrace_event(const char *e, uint32_t length)
 	 */
 	if (trace_data->copy_in_progress ||
 	    cpu_get_id() != PLATFORM_MASTER_CORE_ID) {
+		platform_shared_commit(trace_data, sizeof(*trace_data));
 		spin_unlock_irq(trace_data->lock, flags);
 		return;
 	}
@@ -512,6 +547,8 @@ void dtrace_event(const char *e, uint32_t length)
 		 */
 		trace_data->copy_in_progress = 1;
 	}
+
+	platform_shared_commit(trace_data, sizeof(*trace_data));
 }
 
 void dtrace_event_atomic(const char *e, uint32_t length)
@@ -519,8 +556,10 @@ void dtrace_event_atomic(const char *e, uint32_t length)
 	struct dma_trace_data *trace_data = dma_trace_data_get();
 
 	if (!trace_data || !trace_data->dmatb.addr ||
-	    length > DMA_TRACE_LOCAL_SIZE / 8 || length == 0)
+	    length > DMA_TRACE_LOCAL_SIZE / 8 || length == 0) {
+		platform_shared_commit(trace_data, sizeof(*trace_data));
 		return;
+	}
 
 	dtrace_add_event(e, length);
 }
