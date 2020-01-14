@@ -11,6 +11,7 @@
 #include <sof/drivers/interrupt.h>
 #include <sof/drivers/timer.h>
 #include <sof/lib/clk.h>
+#include <sof/lib/memory.h>
 #include <sof/lib/shim.h>
 #include <sof/platform.h>
 #include <ipc/stream.h>
@@ -135,8 +136,11 @@ int timer_register(struct timer *timer, void (*handler)(void *arg), void *arg)
 		ret = platform_timer_register(timer, handler, arg);
 		break;
 	default:
-		return -EINVAL;
+		ret = -EINVAL;
+		break;
 	}
+
+	platform_shared_commit(timer, sizeof(*timer));
 
 	return ret;
 }
@@ -163,6 +167,8 @@ void timer_unregister(struct timer *timer, void *arg)
 		platform_timer_unregister(timer, arg);
 		break;
 	}
+
+	platform_shared_commit(timer, sizeof(*timer));
 }
 
 void timer_enable(struct timer *timer, void *arg, int core)
@@ -178,6 +184,8 @@ void timer_enable(struct timer *timer, void *arg, int core)
 		interrupt_unmask(timer->logical_irq, core);
 		break;
 	}
+
+	platform_shared_commit(timer, sizeof(*timer));
 }
 
 void timer_disable(struct timer *timer, void *arg, int core)
@@ -193,4 +201,6 @@ void timer_disable(struct timer *timer, void *arg, int core)
 		interrupt_mask(timer->logical_irq, core);
 		break;
 	}
+
+	platform_shared_commit(timer, sizeof(*timer));
 }

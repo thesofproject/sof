@@ -11,6 +11,7 @@
 #define __ARCH_DRIVERS_TIMER_H__
 
 #include <sof/drivers/interrupt.h>
+#include <sof/lib/memory.h>
 #include <stdint.h>
 
 #define ARCH_TIMER_COUNT	3
@@ -43,6 +44,8 @@ static inline int arch_timer_register(struct timer *timer,
 	timer64_register(timer, handler, arg);
 	ret = arch_interrupt_register(timer->irq, timer_64_handler, timer);
 	arch_interrupt_global_enable(flags);
+
+	platform_shared_commit(timer, sizeof(*timer));
 
 	return ret;
 }

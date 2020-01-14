@@ -12,6 +12,7 @@
 #include <sof/drivers/interrupt.h>
 #include <sof/drivers/timer.h>
 #include <sof/lib/clk.h>
+#include <sof/lib/memory.h>
 #include <sof/lib/shim.h>
 #include <sof/platform.h>
 #include <ipc/stream.h>
@@ -50,6 +51,8 @@ static void platform_timer_64_handler(void *arg)
 	/* set new value and run */
 	shim_write(SHIM_EXT_TIMER_CNTLH, SHIM_EXT_TIMER_RUN);
 	shim_write(SHIM_EXT_TIMER_CNTLL, timeout);
+
+	platform_shared_commit(timer, sizeof(*timer));
 }
 
 void platform_timer_start(struct timer *timer)
@@ -133,6 +136,8 @@ uint64_t platform_timer_get(struct timer *timer)
 
 	arch_interrupt_global_enable(flags);
 
+	platform_shared_commit(timer, sizeof(*timer));
+
 	return time;
 }
 
@@ -192,29 +197,44 @@ static int platform_timer_register(struct timer *timer,
 
 int timer_register(struct timer *timer, void (*handler)(void *arg), void *arg)
 {
+	int ret;
+
 	switch (timer->id) {
 	case TIMER0:
 	case TIMER1:
 	case TIMER2:
-		return arch_timer_register(timer, handler, arg);
+		ret = arch_timer_register(timer, handler, arg);
+		break;
 	case TIMER3:
-		return platform_timer_register(timer, handler, arg);
+		ret = platform_timer_register(timer, handler, arg);
+		break;
 	default:
-		return -EINVAL;
+		ret = -EINVAL;
+		break;
 	}
+
+	platform_shared_commit(timer, sizeof(*timer));
+
+	return ret;
 }
 
 void timer_unregister(struct timer *timer, void *arg)
 {
 	interrupt_unregister(timer->irq, arg);
+
+	platform_shared_commit(timer, sizeof(*timer));
 }
 
 void timer_enable(struct timer *timer, void *arg, int core)
 {
 	interrupt_enable(timer->irq, arg);
+
+	platform_shared_commit(timer, sizeof(*timer));
 }
 
 void timer_disable(struct timer *timer, void *arg, int core)
 {
 	interrupt_disable(timer->irq, arg);
+
+	platform_shared_commit(timer, sizeof(*timer));
 }

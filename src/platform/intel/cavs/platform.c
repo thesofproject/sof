@@ -251,7 +251,7 @@ const int n_iomux = ARRAY_SIZE(iomux_data);
 
 #endif
 
-struct timer timer = {
+SHARED_DATA struct timer timer = {
 	.id = TIMER3, /* external timer */
 	.irq = IRQ_EXT_TSTAMP0_LVL2,
 	.irq_name = irq_name_level2,
@@ -342,7 +342,7 @@ int platform_init(struct sof *sof)
 	int ret;
 	int i;
 
-	sof->platform_timer = &timer;
+	sof->platform_timer = cache_to_uncache(&timer);
 	sof->cpu_timer = &arch_timer;
 
 	/* Turn off memory for all unused cores */
