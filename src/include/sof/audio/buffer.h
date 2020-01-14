@@ -57,6 +57,12 @@ struct comp_dev;
 #define BUFFER_UPDATE_IF_UNSET	0
 #define BUFFER_UPDATE_FORCE	1
 
+/* buffer parameters */
+#define BUFF_PARAMS_FRAME_FMT	BIT(0)
+#define BUFF_PARAMS_BUFFER_FMT	BIT(1)
+#define BUFF_PARAMS_RATE	BIT(2)
+#define BUFF_PARAMS_CHANNELS	BIT(3)
+
 /* audio component buffer - connects 2 audio components together in pipeline */
 struct comp_buffer {
 	/* data buffer */
