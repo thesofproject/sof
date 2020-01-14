@@ -21,6 +21,8 @@ ifelse(PLATFORM, `cml-mono', `define(`MONO', `')', `')
 
 DEBUG_START
 
+ifelse(PLATFORM, `cml-mono', `define(DMIC_ID, `3')', `define(DMIC_ID, `4')')
+
 #
 # Define the pipelines
 #
@@ -169,10 +171,10 @@ PCM_PLAYBACK_ADD(Headphone, 0, PIPELINE_PCM_1)
 PCM_CAPTURE_ADD(Headset mic, 1, PIPELINE_PCM_2)
 PCM_PLAYBACK_ADD(SDW1-speakers, 2, PIPELINE_PCM_3)
 ifdef(`MONO', `', `PCM_PLAYBACK_ADD(SDW2-speakers, 3, PIPELINE_PCM_4)')
-PCM_CAPTURE_ADD(Microphones, 4, PIPELINE_PCM_5)
-PCM_PLAYBACK_ADD(HDMI1, 5, PIPELINE_PCM_6)
-PCM_PLAYBACK_ADD(HDMI2, 6, PIPELINE_PCM_7)
-PCM_PLAYBACK_ADD(HDMI3, 7, PIPELINE_PCM_8)
+PCM_CAPTURE_ADD(DMIC, DMIC_ID, PIPELINE_PCM_5)
+PCM_PLAYBACK_ADD(HDMI1, eval(DMIC_ID + 1), PIPELINE_PCM_6)
+PCM_PLAYBACK_ADD(HDMI2, eval(DMIC_ID + 2), PIPELINE_PCM_7)
+PCM_PLAYBACK_ADD(HDMI3, eval(DMIC_ID + 3), PIPELINE_PCM_8)
 
 #
 # BE configurations - overrides config in ACPI if present
@@ -191,12 +193,12 @@ DAI_CONFIG(ALH, 0x102, 2, SDW1-Playback)
 #ALH SDW2 Pin2 (ID: 3)
 ifdef(`MONO', `', `DAI_CONFIG(ALH, 0x202, 3, SDW2-Playback)')
 
-#ALH SDW3 Pin2 (ID: 4)
-DAI_CONFIG(ALH, 0x302, 4, SDW3-Capture)
+#ALH SDW3 Pin2 (ID: DMIC_ID)
+DAI_CONFIG(ALH, 0x302, DMIC_ID, SDW3-Capture)
 
-# 3 HDMI/DP outputs (ID: 5,6,7)
-DAI_CONFIG(HDA, 0, 5, iDisp1)
-DAI_CONFIG(HDA, 1, 6, iDisp2)
-DAI_CONFIG(HDA, 2, 7, iDisp3)
+# 3 HDMI/DP outputs (ID: DMIC_ID + 1, +2 , +3)
+DAI_CONFIG(HDA, 0, eval(DMIC_ID + 1), iDisp1)
+DAI_CONFIG(HDA, 1, eval(DMIC_ID + 2), iDisp2)
+DAI_CONFIG(HDA, 2, eval(DMIC_ID + 3), iDisp3)
 
 DEBUG_END
