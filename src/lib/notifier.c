@@ -13,7 +13,6 @@
 #include <sof/lib/notifier.h>
 #include <sof/list.h>
 #include <sof/sof.h>
-#include <sof/spinlock.h>
 #include <ipc/topology.h>
 
 #define trace_notifier(__e, ...) \
@@ -54,9 +53,7 @@ int notifier_register(void *receiver, void *caller, enum notify_id type,
 	handle->caller = caller;
 	handle->cb = cb;
 
-	spin_lock(notify->lock);
 	list_item_prepend(&handle->list, &notify->list[type]);
-	spin_unlock(notify->lock);
 
 	return 0;
 }
@@ -80,7 +77,6 @@ void notifier_unregister(void *receiver, void *caller, enum notify_id type)
 	 * Event consumer might unregister from all callers by passing caller
 	 * NULL
 	 */
-	spin_lock(notify->lock);
 	list_for_item_safe(wlist, tlist, &notify->list[type]) {
 		handle = container_of(wlist, struct callback_handle, list);
 		if ((!receiver || handle->receiver == receiver) &&
@@ -89,7 +85,6 @@ void notifier_unregister(void *receiver, void *caller, enum notify_id type)
 			rfree(handle);
 		}
 	}
-	spin_unlock(notify->lock);
 }
 
 void notifier_unregister_all(void *receiver, void *caller)
@@ -175,7 +170,6 @@ void init_system_notify(struct sof *sof)
 
 	for (i = NOTIFIER_ID_CPU_FREQ; i < NOTIFIER_ID_COUNT; i++)
 		list_init(&(*notify)->list[i]);
-	spinlock_init(&(*notify)->lock);
 
 	if (cpu_get_id() == PLATFORM_MASTER_CORE_ID)
 		sof->notify_data = _notify_data;
