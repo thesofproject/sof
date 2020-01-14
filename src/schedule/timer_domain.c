@@ -44,11 +44,14 @@ static int timer_domain_register(struct ll_schedule_domain *domain,
 	struct timer_domain *timer_domain = ll_sch_domain_get_pdata(domain);
 	int core = cpu_get_id();
 
-	trace_ll("timer_domain_register()");
+	tracev_ll("timer_domain_register()");
 
 	/* tasks already registered on this core */
 	if (timer_domain->arg[core])
 		return 0;
+
+	trace_ll("timer_domain_register domain->type %d domain->clk %d domain->ticks_per_ms %d period %d",
+		 domain->type, domain->clk, domain->ticks_per_ms, period);
 
 	timer_domain->arg[core] = arg;
 
@@ -61,11 +64,14 @@ static void timer_domain_unregister(struct ll_schedule_domain *domain,
 	struct timer_domain *timer_domain = ll_sch_domain_get_pdata(domain);
 	int core = cpu_get_id();
 
-	trace_ll("timer_domain_unregister()");
+	tracev_ll("timer_domain_unregister()");
 
 	/* tasks still registered on this core */
 	if (!timer_domain->arg[core] || num_tasks)
 		return;
+
+	trace_ll("timer_domain_unregister domain->type %d domain->clk %d",
+		 domain->type, domain->clk);
 
 	timer_unregister(timer_domain->timer, timer_domain->arg[core]);
 
@@ -124,7 +130,7 @@ struct ll_schedule_domain *timer_domain_init(struct timer *timer, int clk,
 	struct ll_schedule_domain *domain;
 	struct timer_domain *timer_domain;
 
-	trace_ll("timer_domain_init(): clk %d, timeout %u", clk, timeout);
+	trace_ll("timer_domain_init clk %d timeout %u", clk, timeout);
 
 	domain = domain_init(SOF_SCHEDULE_LL_TIMER, clk, false,
 			     &timer_domain_ops);
