@@ -77,7 +77,7 @@ struct sof {
 	const struct dai_info *dai_info;
 
 	/* platform DMA information */
-	struct dma_info *dma_info;
+	const struct dma_info *dma_info;
 
 	__aligned(PLATFORM_DCACHE_ALIGN) int alignment[0];
 } __aligned(PLATFORM_DCACHE_ALIGN);

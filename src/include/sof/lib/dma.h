@@ -530,7 +530,7 @@ int dma_copy_to_host_nowait(struct dma_copy *dc, struct dma_sg_config *host_sg,
 
 int dma_copy_set_stream_tag(struct dma_copy *dc, uint32_t stream_tag);
 
-static inline struct dma_info *dma_info_get(void)
+static inline const struct dma_info *dma_info_get(void)
 {
 	return sof_get()->dma_info;
 }

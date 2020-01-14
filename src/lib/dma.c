@@ -19,7 +19,7 @@
 
 struct dma *dma_get(uint32_t dir, uint32_t cap, uint32_t dev, uint32_t flags)
 {
-	struct dma_info *info = dma_info_get();
+	const struct dma_info *info = dma_info_get();
 	int users, ret;
 	int min_users = INT32_MAX;
 	struct dma *d = NULL, *dmin = NULL;
