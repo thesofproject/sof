@@ -14,10 +14,10 @@
 
 #define trace_dai(__e, ...) trace_event(TRACE_CLASS_DAI, __e, ##__VA_ARGS__)
 
-static inline struct dai_type_info *dai_find_type(uint32_t type)
+static inline const struct dai_type_info *dai_find_type(uint32_t type)
 {
-	struct dai_info *info = dai_info_get();
-	struct dai_type_info *dti;
+	const struct dai_info *info = dai_info_get();
+	const struct dai_type_info *dti;
 
 	for (dti = info->dai_type_array;
 	     dti < info->dai_type_array + info->num_dai_types; dti++) {
@@ -30,7 +30,7 @@ static inline struct dai_type_info *dai_find_type(uint32_t type)
 struct dai *dai_get(uint32_t type, uint32_t index, uint32_t flags)
 {
 	int ret = 0;
-	struct dai_type_info *dti;
+	const struct dai_type_info *dti;
 	struct dai *d;
 
 	dti = dai_find_type(type);

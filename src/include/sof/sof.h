@@ -74,7 +74,7 @@ struct sof {
 	struct notify_data *notify_data;
 
 	/* platform dai information */
-	struct dai_info *dai_info;
+	const struct dai_info *dai_info;
 
 	/* platform DMA information */
 	struct dma_info *dma_info;

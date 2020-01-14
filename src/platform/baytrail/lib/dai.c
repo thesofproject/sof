@@ -116,7 +116,7 @@ static struct dai ssp[] = {
 #endif
 };
 
-static struct dai_type_info dti[] = {
+const struct dai_type_info dti[] = {
 	{
 		.type = SOF_DAI_INTEL_SSP,
 		.dai_array = ssp,
@@ -124,7 +124,7 @@ static struct dai_type_info dti[] = {
 	}
 };
 
-static struct dai_info lib_dai = {
+const struct dai_info lib_dai = {
 	.dai_type_array = dti,
 	.num_dai_types = ARRAY_SIZE(dti)
 };

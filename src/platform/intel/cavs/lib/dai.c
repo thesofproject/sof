@@ -87,7 +87,7 @@ static struct dai alh[DAI_NUM_ALH_BI_DIR_LINKS];
 
 static struct dai hda[(DAI_NUM_HDA_OUT + DAI_NUM_HDA_IN)];
 
-static struct dai_type_info dti[] = {
+const struct dai_type_info dti[] = {
 #if CONFIG_CAVS_SSP
 	{
 		.type = SOF_DAI_INTEL_SSP,
@@ -116,7 +116,7 @@ static struct dai_type_info dti[] = {
 #endif
 };
 
-static struct dai_info lib_dai = {
+const struct dai_info lib_dai = {
 	.dai_type_array = dti,
 	.num_dai_types = ARRAY_SIZE(dti)
 };

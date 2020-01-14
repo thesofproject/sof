@@ -63,7 +63,8 @@ static struct dai sai[] = {
 	.drv = &sai_driver,
 },
 };
-static struct dai_type_info dti[] = {
+
+const struct dai_type_info dti[] = {
 	{
 		.type = SOF_DAI_IMX_SAI,
 		.dai_array = sai,
@@ -76,7 +77,7 @@ static struct dai_type_info dti[] = {
 	},
 };
 
-static struct dai_info lib_dai = {
+const struct dai_info lib_dai = {
 	.dai_type_array = dti,
 	.num_dai_types = ARRAY_SIZE(dti)
 };
