@@ -45,8 +45,11 @@ static inline uint32_t clock_get_nearest_freq_idx(const struct freq_table *tab,
 uint32_t clock_get_freq(int clock)
 {
 	struct clock_info *clk_info = clocks_get() + clock;
+	uint32_t freq = clk_info->freqs[clk_info->current_freq_idx].freq;
 
-	return clk_info->freqs[clk_info->current_freq_idx].freq;
+	platform_shared_commit(clk_info, sizeof(*clk_info));
+
+	return freq;
 }
 
 void clock_set_freq(int clock, uint32_t hz)
@@ -85,14 +88,21 @@ void clock_set_freq(int clock, uint32_t hz)
 		       clk_info->notification_mask, &clk_notify_data,
 		       sizeof(clk_notify_data));
 
+	platform_shared_commit(clk_info, sizeof(*clk_info));
+
 	spin_unlock_irq(clk_info->lock, flags);
 }
 
 uint64_t clock_ms_to_ticks(int clock, uint64_t ms)
 {
 	struct clock_info *clk_info = clocks_get() + clock;
+	uint64_t ticks;
 
-	return clk_info->freqs[clk_info->current_freq_idx].ticks_per_msec * ms;
+	ticks = clk_info->freqs[clk_info->current_freq_idx].ticks_per_msec * ms;
+
+	platform_shared_commit(clk_info, sizeof(*clk_info));
+
+	return ticks;
 }
 
 void platform_timer_set_delta(struct timer *timer, uint64_t ns)
@@ -105,5 +115,6 @@ void platform_timer_set_delta(struct timer *timer, uint64_t ns)
 	ticks = ticks_per_msec * ns / 1000000;
 	timer->delta = ticks - platform_timer_get(timer);
 
+	platform_shared_commit(clk_info, sizeof(*clk_info));
 	platform_shared_commit(timer, sizeof(*timer));
 }

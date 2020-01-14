@@ -8,6 +8,7 @@
 #include <sof/common.h>
 #include <sof/drivers/ssp.h>
 #include <sof/lib/clk.h>
+#include <sof/lib/memory.h>
 #include <sof/lib/notifier.h>
 #include <sof/sof.h>
 #include <sof/spinlock.h>
@@ -87,7 +88,7 @@ static int clock_platform_set_ssp_freq(int clock, int freq_idx)
 	return ipc_pmc_send_msg(platform_ssp_freq_sources[freq_idx]);
 }
 
-static struct clock_info platform_clocks_info[] = {
+static SHARED_DATA struct clock_info platform_clocks_info[] = {
 	{
 		.freqs_num = NUM_CPU_FREQ,
 		.freqs = platform_cpu_freq,
@@ -111,14 +112,14 @@ static struct clock_info platform_clocks_info[] = {
 STATIC_ASSERT(ARRAY_SIZE(platform_clocks_info) == NUM_CLOCKS,
 	      invalid_number_of_clocks);
 
-struct clock_info *clocks = platform_clocks_info;
-
 void platform_clock_init(struct sof *sof)
 {
 	int i;
 
-	for (i = 0; i < NUM_CLOCKS; i++)
-		spinlock_init(&platform_clocks_info[i].lock);
+	sof->clocks = platform_clocks_info;
 
-	sof->clocks = clocks;
+	for (i = 0; i < NUM_CLOCKS; i++)
+		spinlock_init(&sof->clocks[i].lock);
+
+	platform_shared_commit(sof->clocks, sizeof(*sof->clocks) * NUM_CLOCKS);
 }

@@ -7,13 +7,12 @@
 #include <sof/common.h>
 #include <sof/drivers/ssp.h>
 #include <sof/lib/clk.h>
+#include <sof/lib/memory.h>
 #include <sof/lib/notifier.h>
 #include <sof/sof.h>
 #include <sof/spinlock.h>
 
-static struct clock_info platform_clocks_info[NUM_CLOCKS];
-
-struct clock_info *clocks = platform_clocks_info;
+static SHARED_DATA struct clock_info platform_clocks_info[NUM_CLOCKS];
 
 static int clock_platform_set_cpu_freq(int clock, int freq_idx)
 {
@@ -53,8 +52,11 @@ void platform_clock_init(struct sof *sof)
 {
 	int i;
 
+	sof->clocks =
+		cache_to_uncache((struct clock_info *)platform_clocks_info);
+
 	for (i = 0; i < PLATFORM_CORE_COUNT; i++) {
-		platform_clocks_info[i] = (struct clock_info) {
+		sof->clocks[i] = (struct clock_info) {
 			.freqs_num = NUM_CPU_FREQ,
 			.freqs = cpu_freq,
 			.default_freq_idx = CPU_DEFAULT_IDX,
@@ -64,10 +66,10 @@ void platform_clock_init(struct sof *sof)
 			.set_freq = clock_platform_set_cpu_freq,
 		};
 
-		spinlock_init(&platform_clocks_info[i].lock);
+		spinlock_init(&sof->clocks[i].lock);
 	}
 
-	platform_clocks_info[CLK_SSP] = (struct clock_info) {
+	sof->clocks[CLK_SSP] = (struct clock_info) {
 		.freqs_num = NUM_SSP_FREQ,
 		.freqs = ssp_freq,
 		.default_freq_idx = SSP_DEFAULT_IDX,
@@ -77,7 +79,7 @@ void platform_clock_init(struct sof *sof)
 		.set_freq = NULL,
 	};
 
-	spinlock_init(&platform_clocks_info[CLK_SSP].lock);
+	spinlock_init(&sof->clocks[CLK_SSP].lock);
 
-	sof->clocks = clocks;
+	platform_shared_commit(sof->clocks, sizeof(*sof->clocks) * NUM_CLOCKS);
 }
