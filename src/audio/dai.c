@@ -676,8 +676,8 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 	int channel = 0;
 	int handshake;
 
-	trace_dai_comp_with_ids(dev, "config dai %d type %d",
-				config->dai_index, config->type);
+	trace_dai_comp_with_ids(dev, "dai_config() dai %d.%d",
+				config->type, config->dai_index);
 
 	/* cannot configure DAI while active */
 	if (dev->state == COMP_STATE_ACTIVE) {
@@ -691,7 +691,7 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 		dd->config.burst_elems = config->ssp.tdm_slots;
 		break;
 	case SOF_DAI_INTEL_DMIC:
-		trace_dai_comp_with_ids(dev, "dai_config(), config->type = SOF_DAI_INTEL_DMIC");
+		tracev_dai_comp_with_ids(dev, "dai_config(), config->type = SOF_DAI_INTEL_DMIC");
 
 		/* We can use always the largest burst length. */
 		dd->config.burst_elems = 8;

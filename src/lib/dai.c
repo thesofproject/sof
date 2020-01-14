@@ -54,8 +54,8 @@ struct dai *dai_get(uint32_t type, uint32_t index, uint32_t flags)
 		if (!ret)
 			d->sref++;
 
-		trace_dai("dai_get(), d = %p, sref = %d",
-			  (uintptr_t)d, d->sref);
+		trace_dai("dai_get %d.%d new sref %d",
+			  type, index, d->sref);
 
 		platform_shared_commit(d, sizeof(*d));
 
@@ -63,8 +63,8 @@ struct dai *dai_get(uint32_t type, uint32_t index, uint32_t flags)
 
 		return !ret ? d : NULL;
 	}
-	trace_error(TRACE_CLASS_DAI, "dai_get() error: "
-		    "type = %d, index = %d not found", type, index);
+	trace_error(TRACE_CLASS_DAI, "dai_get error: %d.%d not found",
+		    type, index);
 	return NULL;
 }
 
@@ -76,13 +76,12 @@ void dai_put(struct dai *dai)
 	if (--dai->sref == 0) {
 		ret = dai_remove(dai);
 		if (ret < 0) {
-			trace_error(TRACE_CLASS_DAI,
-				    "dai_put() error: "
-				    "dai_remove() failed ret = %d", ret);
+			trace_error(TRACE_CLASS_DAI, "dai_put error: %d.%d dai_remove() failed ret = %d",
+				    dai->drv->type, dai->index, ret);
 		}
 	}
-	trace_event(TRACE_CLASS_DAI, "dai_put(), dai = %p, sref = %d",
-		    (uintptr_t)dai, dai->sref);
+	trace_event(TRACE_CLASS_DAI, "dai_put %d.%d new sref %d",
+		    dai->drv->type, dai->index, dai->sref);
 	platform_shared_commit(dai, sizeof(*dai));
 	spin_unlock(&dai->lock);
 }
