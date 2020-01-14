@@ -125,7 +125,7 @@ struct dai_type_info {
  * \brief Holds information about array of DAIs grouped by type.
  */
 struct dai_info {
-	struct dai_type_info *dai_type_array;
+	const struct dai_type_info *dai_type_array;
 	size_t num_dai_types;
 };
 
@@ -271,7 +271,7 @@ static inline void dai_update_bits(struct dai *dai, uint32_t reg,
 	io_reg_update_bits(dai_base(dai) + reg, mask, value);
 }
 
-static inline struct dai_info *dai_info_get(void)
+static inline const struct dai_info *dai_info_get(void)
 {
 	return sof_get()->dai_info;
 }
