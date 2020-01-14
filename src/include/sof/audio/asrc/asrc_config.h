@@ -13,20 +13,27 @@
  */
 #define ASRC_AUTOARCH    1
 
-/* Select optimized code variant when xt-xcc compiler is used */
+/* Select optimized code variant when xt-xcc compiler is used on HiFi3 */
 #if ASRC_AUTOARCH == 1
 #if defined __XCC__
+/* For xt-xcc */
 #include <xtensa/config/core-isa.h>
-#define ASRC_GENERIC	0
 #if XCHAL_HAVE_HIFI3 == 1
+/* Version for HiFi3 */
 #define ASRC_HIFI3	1
-#endif /* Hifi3 */
+#define ASRC_GENERIC	0
 #else
-/* GCC */
+/* Version for e.g. HiFi2EP */
+#define ASRC_HIFI3	0
+#define ASRC_GENERIC	1
+#endif
+#else
+/* For GCC */
 #define ASRC_GENERIC	1
 #define ASRC_HIFI3	0
 #endif /* XCC */
 #else
+/* Applied when ASRC_AUTOARCH is set to zero */
 #define ASRC_GENERIC	1 /* Enable generic */
 #define ASRC_HIFI3	0 /* Disable HiFi3  */
 #endif /* Autoarch */
