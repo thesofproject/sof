@@ -12,7 +12,6 @@
 #include <sof/lib/memory.h>
 #include <sof/list.h>
 #include <sof/sof.h>
-#include <sof/spinlock.h>
 #include <stdint.h>
 
 /* notifier target core masks */
@@ -34,7 +33,6 @@ enum notify_id {
 };
 
 struct notify {
-	spinlock_t *lock;	/* notifier lock */
 	struct list_item list[NOTIFIER_ID_COUNT]; /* list of callback handles */
 };
 
