@@ -5,6 +5,7 @@
 // Author: Marcin Maka <marcin.maka@linux.intel.com>
 
 #include <sof/lib/dai.h>
+#include <sof/lib/memory.h>
 #include <sof/spinlock.h>
 #include <sof/trace/trace.h>
 #include <user/trace.h>
@@ -38,8 +39,10 @@ struct dai *dai_get(uint32_t type, uint32_t index, uint32_t flags)
 		return NULL; /* type not found */
 
 	for (d = dti->dai_array; d < dti->dai_array + dti->num_dais; d++) {
-		if (d->index != index)
+		if (d->index != index) {
+			platform_shared_commit(d, sizeof(*d));
 			continue;
+		}
 		/* device created? */
 		spin_lock(d->lock);
 		if (d->sref == 0) {
@@ -53,6 +56,8 @@ struct dai *dai_get(uint32_t type, uint32_t index, uint32_t flags)
 
 		trace_dai("dai_get(), d = %p, sref = %d",
 			  (uintptr_t)d, d->sref);
+
+		platform_shared_commit(d, sizeof(*d));
 
 		spin_unlock(d->lock);
 
@@ -78,5 +83,6 @@ void dai_put(struct dai *dai)
 	}
 	trace_event(TRACE_CLASS_DAI, "dai_put(), dai = %p, sref = %d",
 		    (uintptr_t)dai, dai->sref);
+	platform_shared_commit(dai, sizeof(*dai));
 	spin_unlock(dai->lock);
 }
