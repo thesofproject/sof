@@ -124,8 +124,6 @@ SHARED_DATA struct timer timer = {
 	.irq = IRQ_NUM_EXT_TIMER,
 };
 
-struct timer *platform_timer = &timer;
-
 int platform_boot_complete(uint32_t boot_message)
 {
 	uint32_t mb_offset = 0;
