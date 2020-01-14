@@ -552,7 +552,7 @@ static int ipc_dai_config(uint32_t header)
 	/* copy message with ABI safe method */
 	IPC_COPY_CMD(config, ipc->comp_data);
 
-	trace_ipc("ipc: dai %d,%d -> config ", config.type,
+	trace_ipc("ipc: dai %d.%d -> config ", config.type,
 		  config.dai_index);
 
 	/* send params to all DAI components who use that physical DAI */
