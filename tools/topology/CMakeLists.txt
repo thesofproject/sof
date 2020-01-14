@@ -109,6 +109,7 @@ set(TPLGS
 	"sof-tgl-nocodec\;sof-tgl-nocodec"
 	"sof-tgl-rt711-i2s-rt1308\;sof-tgl-rt711-i2s-rt1308\;-DHDMI=1"
 	"sof-tgl-rt711-i2s-rt1308\;sof-tgl-rt711-i2s-rt1308-nohdmi"
+	"sof-tgl-rt711-rt1308\;sof-tgl-rt711-rt1308"
 	"sof-tgl-nocodec\;sof-ehl-nocodec"
 	"sof-ehl-rt5660\;sof-ehl-rt5660\;-DHDMI=1"
 	"sof-ehl-rt5660\;sof-ehl-rt5660-nohdmi"
