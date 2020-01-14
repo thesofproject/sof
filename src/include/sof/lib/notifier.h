@@ -8,8 +8,6 @@
 #ifndef __SOF_LIB_NOTIFIER_H__
 #define __SOF_LIB_NOTIFIER_H__
 
-#include <sof/common.h>
-#include <sof/lib/memory.h>
 #include <sof/list.h>
 #include <sof/sof.h>
 #include <stdint.h>
@@ -41,7 +39,7 @@ struct notify_data {
 	enum notify_id type;
 	uint32_t data_size;
 	void *data;
-} __aligned(PLATFORM_DCACHE_ALIGN);
+};
 
 #ifdef CLK_SSP
 #define NOTIFIER_CLK_CHANGE_ID(clk) \

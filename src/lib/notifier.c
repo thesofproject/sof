@@ -10,6 +10,7 @@
 #include <sof/lib/alloc.h>
 #include <sof/lib/cache.h>
 #include <sof/lib/cpu.h>
+#include <sof/lib/memory.h>
 #include <sof/lib/notifier.h>
 #include <sof/list.h>
 #include <sof/sof.h>
@@ -22,8 +23,7 @@
 #define trace_notifier_error(__e, ...) \
 	trace_error(TRACE_CLASS_NOTIFIER, __e, ##__VA_ARGS__)
 
-static struct notify_data _notify_data[PLATFORM_CORE_COUNT]
-	__aligned(PLATFORM_DCACHE_ALIGN);
+static SHARED_DATA struct notify_data notify_data[PLATFORM_CORE_COUNT];
 
 struct callback_handle {
 	void *receiver;
@@ -117,13 +117,14 @@ void notifier_notify_remote(void)
 	struct notify *notify = *arch_notify_get();
 	struct notify_data *notify_data = notify_data_get() + cpu_get_id();
 
-	dcache_invalidate_region(notify_data, sizeof(*notify_data));
 	if (!list_is_empty(&notify->list[notify_data->type])) {
 		dcache_invalidate_region(notify_data->data,
 					 notify_data->data_size);
 		notifier_notify(notify_data->caller, notify_data->type,
 				notify_data->data);
 	}
+
+	platform_shared_commit(notify_data, sizeof(*notify_data));
 }
 
 void notifier_event(void *caller, enum notify_id type, uint32_t core_mask,
@@ -152,8 +153,9 @@ void notifier_event(void *caller, enum notify_id type, uint32_t core_mask,
 
 				dcache_writeback_region(notify_data->data,
 							data_size);
-				dcache_writeback_region(notify_data,
-							sizeof(*notify_data));
+
+				platform_shared_commit(notify_data,
+						       sizeof(*notify_data));
 
 				idc_send_msg(&notify_msg, IDC_NON_BLOCKING);
 			}
@@ -172,7 +174,8 @@ void init_system_notify(struct sof *sof)
 		list_init(&(*notify)->list[i]);
 
 	if (cpu_get_id() == PLATFORM_MASTER_CORE_ID)
-		sof->notify_data = _notify_data;
+		sof->notify_data = platform_shared_get(notify_data,
+						       sizeof(notify_data));
 }
 
 void free_system_notify(void)
