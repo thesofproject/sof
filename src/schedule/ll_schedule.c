@@ -82,22 +82,22 @@ static void schedule_ll_tasks_execute(struct ll_schedule_data *sch,
 		task = container_of(wlist, struct task, list);
 
 		/* run task if its pending and remove from the list */
-		if (task->state == SOF_TASK_STATE_PENDING) {
-			task->state = task_run(task);
+		if (task->state != SOF_TASK_STATE_PENDING)
+			continue;
 
-			/* do we need to reschedule this task */
-			if (task->state == SOF_TASK_STATE_COMPLETED) {
-				list_item_del(&task->list);
-				atomic_sub(&sch->domain->total_num_tasks, 1);
+		task->state = task_run(task);
 
-				/* don't enable irq, if no more tasks to do */
-				if (!atomic_sub(&sch->num_tasks, 1))
-					sch->domain->registered[cpu] = false;
-			} else {
-				/* update task's start time */
-				schedule_ll_task_update_start(sch, task,
-							      last_tick);
-			}
+		/* do we need to reschedule this task */
+		if (task->state == SOF_TASK_STATE_COMPLETED) {
+			list_item_del(&task->list);
+			atomic_sub(&sch->domain->total_num_tasks, 1);
+
+			/* don't enable irq, if no more tasks to do */
+			if (!atomic_sub(&sch->num_tasks, 1))
+				sch->domain->registered[cpu] = false;
+		} else {
+			/* update task's start time */
+			schedule_ll_task_update_start(sch, task, last_tick);
 		}
 	}
 }
