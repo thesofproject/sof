@@ -20,7 +20,8 @@ struct timer {
 	int irq;
 	int logical_irq;	/* used for external timers */
 	const char *irq_name;
-	void *timer_data;	/* used by core */
+	void (*handler)(void *data);	/* optional timer handler */
+	void *data;			/* optional timer handler's data */
 	uint32_t hitime;	/* high end of 64bit timer */
 	uint32_t hitimeout;
 	uint32_t lowtimeout;

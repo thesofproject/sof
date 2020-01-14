@@ -11,17 +11,9 @@
 #include <errno.h>
 #include <stdint.h>
 
-struct timer_data {
-	void (*handler2)(void *arg);
-	void *arg2;
-};
-
-static struct timer_data xtimer[ARCH_TIMER_COUNT];
-
 void timer_64_handler(void *arg)
 {
 	struct timer *timer = arg;
-	struct timer_data *tdata = timer->timer_data;
 	uint32_t ccompare;
 
 	if (timer->id >= ARCH_TIMER_COUNT)
@@ -37,7 +29,7 @@ void timer_64_handler(void *arg)
 		arch_timer_clear(timer);
 	} else {
 		/* no roll over, run the handler */
-		tdata->handler2(tdata->arg2);
+		timer->handler(timer->data);
 	}
 
 	/* get next timeout value */
@@ -54,16 +46,11 @@ void timer_64_handler(void *arg)
 
 int timer64_register(struct timer *timer, void(*handler)(void *arg), void *arg)
 {
-	struct timer_data *tdata;
-
 	if (timer->id >= ARCH_TIMER_COUNT)
 		return -EINVAL;
 
-	tdata = &xtimer[timer->id];
-
-	tdata->handler2 = handler;
-	tdata->arg2 = arg;
-	timer->timer_data = tdata;
+	timer->handler = handler;
+	timer->data = arg;
 	timer->hitime = 0;
 	timer->hitimeout = 0;
 	return 0;

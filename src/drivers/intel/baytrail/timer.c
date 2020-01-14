@@ -18,17 +18,9 @@
 #include <errno.h>
 #include <stdint.h>
 
-struct timer_data {
-	void (*handler2)(void *arg);
-	void *arg2;
-};
-
-static struct timer_data xtimer[1] = {};
-
 static void platform_timer_64_handler(void *arg)
 {
 	struct timer *timer = arg;
-	struct timer_data *tdata = timer->timer_data;
 	uint32_t timeout;
 
 	/* get timeout value - will tell us timeout reason */
@@ -43,7 +35,7 @@ static void platform_timer_64_handler(void *arg)
 		timer->hitime++;
 	} else {
 		/* no roll over, run the handler */
-		tdata->handler2(tdata->arg2);
+		timer->handler(timer->data);
 	}
 
 	/* get next timeout value */
@@ -183,14 +175,12 @@ void platform_dai_wallclock(struct comp_dev *dai, uint64_t *wallclock)
 static int platform_timer_register(struct timer *timer,
 				   void (*handler)(void *arg), void *arg)
 {
-	struct timer_data *tdata = &xtimer[0];
 	uint32_t flags;
 	int ret;
 
 	flags = arch_interrupt_global_disable();
-	tdata->handler2 = handler;
-	tdata->arg2 = arg;
-	timer->timer_data = tdata;
+	timer->handler = handler;
+	timer->data = arg;
 	timer->hitime = 0;
 	timer->hitimeout = 0;
 	ret = arch_interrupt_register(timer->irq,
