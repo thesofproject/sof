@@ -18,6 +18,7 @@
 #include <sof/lib/cpu.h>
 #include <sof/lib/dai.h>
 #include <sof/lib/dma.h>
+#include <sof/lib/memory.h>
 #include <sof/lib/pm_runtime.h>
 #include <sof/math/decibels.h>
 #include <sof/math/numbers.h>
@@ -166,6 +167,7 @@ static enum task_state dmic_work(void *data)
 
 	ret = spin_try_lock(dai->lock);
 	if (!ret) {
+		platform_shared_commit(dai, sizeof(*dai));
 		tracev_dmic("dmic_work(): spin_try_lock(dai->lock, ret)"
 			    "failed: RESCHEDULE");
 		return SOF_TASK_STATE_RESCHEDULE;
@@ -224,6 +226,9 @@ static enum task_state dmic_work(void *data)
 			break;
 		}
 	}
+
+	platform_shared_commit(dai, sizeof(*dai));
+
 	spin_unlock(dai->lock);
 
 	return gval ? SOF_TASK_STATE_RESCHEDULE : SOF_TASK_STATE_COMPLETED;

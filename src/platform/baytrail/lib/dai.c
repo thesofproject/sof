@@ -15,7 +15,7 @@
 #include <ipc/stream.h>
 #include <config.h>
 
-static struct dai ssp[] = {
+static SHARED_DATA struct dai ssp[] = {
 {
 	.index = 0,
 	.plat_data = {
@@ -136,6 +136,8 @@ int dai_init(struct sof *sof)
 	/* initialize spin locks early to enable ref counting */
 	for (i = 0; i < ARRAY_SIZE(ssp); i++)
 		spinlock_init(&ssp[i].lock);
+
+	platform_shared_commit(ssp, sizeof(*ssp));
 
 	sof->dai_info = &lib_dai;
 

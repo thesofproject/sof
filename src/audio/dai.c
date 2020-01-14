@@ -19,6 +19,7 @@
 #include <sof/lib/cache.h>
 #include <sof/lib/dai.h>
 #include <sof/lib/dma.h>
+#include <sof/lib/memory.h>
 #include <sof/lib/notifier.h>
 #include <sof/list.h>
 #include <sof/string.h>
@@ -783,6 +784,8 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 		break;
 	}
 
+	platform_shared_commit(dd->dai, sizeof(*dd->dai));
+
 	if (channel != DMA_CHAN_INVALID) {
 		if (!dd->chan)
 			/* get dma channel at first config only */
@@ -813,7 +816,6 @@ static void dai_cache(struct comp_dev *dev, int cmd)
 
 		dcache_writeback_invalidate_region(dd->dma_buffer,
 						   sizeof(*dd->dma_buffer));
-		dcache_writeback_invalidate_region(dd->dai, sizeof(*dd->dai));
 		dcache_writeback_invalidate_region(dd->dma, sizeof(*dd->dma));
 		dcache_writeback_invalidate_region(dd, sizeof(*dd));
 		dcache_writeback_invalidate_region(dev, sizeof(*dev));
@@ -827,7 +829,6 @@ static void dai_cache(struct comp_dev *dev, int cmd)
 		dd = comp_get_drvdata(dev);
 		dcache_invalidate_region(dd, sizeof(*dd));
 		dcache_invalidate_region(dd->dma, sizeof(*dd->dma));
-		dcache_invalidate_region(dd->dai, sizeof(*dd->dai));
 		dcache_invalidate_region(dd->dma_buffer,
 					 sizeof(*dd->dma_buffer));
 

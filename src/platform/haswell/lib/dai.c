@@ -9,11 +9,12 @@
 #include <sof/drivers/ssp.h>
 #include <sof/lib/dai.h>
 #include <sof/lib/dma.h>
+#include <sof/lib/memory.h>
 #include <sof/sof.h>
 #include <ipc/dai.h>
 #include <ipc/stream.h>
 
-static struct dai ssp[2] = {
+static SHARED_DATA struct dai ssp[2] = {
 {
 	.index = 0,
 	.plat_data = {
@@ -68,6 +69,8 @@ int dai_init(struct sof *sof)
 	/* initialize spin locks early to enable ref counting */
 	for (i = 0; i < ARRAY_SIZE(ssp); i++)
 		spinlock_init(&ssp[i].lock);
+
+	platform_shared_commit(ssp, sizeof(*ssp));
 
 	sof->dai_info = &lib_dai;
 

@@ -19,6 +19,7 @@
 #include <platform/lib/dai.h>
 #include <sof/bit.h>
 #include <sof/lib/io.h>
+#include <sof/lib/memory.h>
 #include <sof/sof.h>
 #include <sof/spinlock.h>
 #include <errno.h>
@@ -169,7 +170,11 @@ void dai_put(struct dai *dai);
 static inline int dai_set_config(struct dai *dai,
 				 struct sof_ipc_dai_config *config)
 {
-	return dai->drv->ops.set_config(dai, config);
+	int ret = dai->drv->ops.set_config(dai, config);
+
+	platform_shared_commit(dai, sizeof(*dai));
+
+	return ret;
 }
 
 /**
@@ -177,7 +182,11 @@ static inline int dai_set_config(struct dai *dai,
  */
 static inline int dai_trigger(struct dai *dai, int cmd, int direction)
 {
-	return dai->drv->ops.trigger(dai, cmd, direction);
+	int ret = dai->drv->ops.trigger(dai, cmd, direction);
+
+	platform_shared_commit(dai, sizeof(*dai));
+
+	return ret;
 }
 
 /**
@@ -185,7 +194,11 @@ static inline int dai_trigger(struct dai *dai, int cmd, int direction)
  */
 static inline int dai_pm_context_store(struct dai *dai)
 {
-	return dai->drv->ops.pm_context_store(dai);
+	int ret = dai->drv->ops.pm_context_store(dai);
+
+	platform_shared_commit(dai, sizeof(*dai));
+
+	return ret;
 }
 
 /**
@@ -193,7 +206,11 @@ static inline int dai_pm_context_store(struct dai *dai)
  */
 static inline int dai_pm_context_restore(struct dai *dai)
 {
-	return dai->drv->ops.pm_context_restore(dai);
+	int ret = dai->drv->ops.pm_context_restore(dai);
+
+	platform_shared_commit(dai, sizeof(*dai));
+
+	return ret;
 }
 
 /**
@@ -202,7 +219,11 @@ static inline int dai_pm_context_restore(struct dai *dai)
 static inline int dai_get_handshake(struct dai *dai, int direction,
 				    int stream_id)
 {
-	return dai->drv->ops.get_handshake(dai, direction, stream_id);
+	int ret = dai->drv->ops.get_handshake(dai, direction, stream_id);
+
+	platform_shared_commit(dai, sizeof(*dai));
+
+	return ret;
 }
 
 /**
@@ -211,7 +232,11 @@ static inline int dai_get_handshake(struct dai *dai, int direction,
 static inline int dai_get_fifo(struct dai *dai, int direction,
 			       int stream_id)
 {
-	return dai->drv->ops.get_fifo(dai, direction, stream_id);
+	int ret = dai->drv->ops.get_fifo(dai, direction, stream_id);
+
+	platform_shared_commit(dai, sizeof(*dai));
+
+	return ret;
 }
 
 /**
@@ -219,7 +244,11 @@ static inline int dai_get_fifo(struct dai *dai, int direction,
  */
 static inline int dai_probe(struct dai *dai)
 {
-	return dai->drv->ops.probe(dai);
+	int ret = dai->drv->ops.probe(dai);
+
+	platform_shared_commit(dai, sizeof(*dai));
+
+	return ret;
 }
 
 /**
@@ -227,7 +256,11 @@ static inline int dai_probe(struct dai *dai)
  */
 static inline int dai_remove(struct dai *dai)
 {
-	return dai->drv->ops.remove(dai);
+	int ret = dai->drv->ops.remove(dai);
+
+	platform_shared_commit(dai, sizeof(*dai));
+
+	return ret;
 }
 
 /**
@@ -252,23 +285,33 @@ static inline int dai_get_info(struct dai *dai, int info)
 		break;
 	}
 
+	platform_shared_commit(dai, sizeof(*dai));
+
 	return ret;
 }
 
 static inline void dai_write(struct dai *dai, uint32_t reg, uint32_t value)
 {
 	io_reg_write(dai_base(dai) + reg, value);
+
+	platform_shared_commit(dai, sizeof(*dai));
 }
 
 static inline uint32_t dai_read(struct dai *dai, uint32_t reg)
 {
-	return io_reg_read(dai_base(dai) + reg);
+	uint32_t val = io_reg_read(dai_base(dai) + reg);
+
+	platform_shared_commit(dai, sizeof(*dai));
+
+	return val;
 }
 
 static inline void dai_update_bits(struct dai *dai, uint32_t reg,
 				   uint32_t mask, uint32_t value)
 {
 	io_reg_update_bits(dai_base(dai) + reg, mask, value);
+
+	platform_shared_commit(dai, sizeof(*dai));
 }
 
 static inline const struct dai_info *dai_info_get(void)

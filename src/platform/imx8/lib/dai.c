@@ -15,7 +15,7 @@
 #include <ipc/dai.h>
 #include <ipc/stream.h>
 
-static struct dai esai[] = {
+static SHARED_DATA struct dai esai[] = {
 {
 	.index = 0,
 	.plat_data = {
@@ -37,7 +37,7 @@ static struct dai esai[] = {
 },
 };
 
-static struct dai sai[] = {
+static SHARED_DATA struct dai sai[] = {
 {
 	.index = 1,
 	.plat_data = {
@@ -90,8 +90,12 @@ int dai_init(struct sof *sof)
 	for (i = 0; i < ARRAY_SIZE(esai); i++)
 		spinlock_init(&esai[i].lock);
 
+	platform_shared_commit(esai, sizeof(*esai));
+
 	for (i = 0; i < ARRAY_SIZE(sai); i++)
 		spinlock_init(&sai[i].lock);
+
+	platform_shared_commit(sai, sizeof(*sai));
 
 	sof->dai_info = &lib_dai;
 

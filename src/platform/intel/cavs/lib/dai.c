@@ -23,7 +23,7 @@
 
 #include <sof/drivers/ssp.h>
 
-static struct dai ssp[(DAI_NUM_SSP_BASE + DAI_NUM_SSP_EXT)];
+static SHARED_DATA struct dai ssp[(DAI_NUM_SSP_BASE + DAI_NUM_SSP_EXT)];
 
 #endif
 
@@ -31,7 +31,7 @@ static struct dai ssp[(DAI_NUM_SSP_BASE + DAI_NUM_SSP_EXT)];
 
 #include <sof/drivers/dmic.h>
 
-static struct dai dmic[2] = {
+static SHARED_DATA struct dai dmic[2] = {
 	/* Testing idea if DMIC FIFOs A and B to access the same microphones
 	 * with two different sample rate and PCM format could be presented
 	 * similarly as SSP0..N. The difference however is that the DMIC
@@ -82,35 +82,35 @@ static struct dai dmic[2] = {
 
 #include <sof/drivers/alh.h>
 
-static struct dai alh[DAI_NUM_ALH_BI_DIR_LINKS];
+static SHARED_DATA struct dai alh[DAI_NUM_ALH_BI_DIR_LINKS];
 #endif
 
-static struct dai hda[(DAI_NUM_HDA_OUT + DAI_NUM_HDA_IN)];
+static SHARED_DATA struct dai hda[(DAI_NUM_HDA_OUT + DAI_NUM_HDA_IN)];
 
 const struct dai_type_info dti[] = {
 #if CONFIG_CAVS_SSP
 	{
 		.type = SOF_DAI_INTEL_SSP,
-		.dai_array = ssp,
+		.dai_array = cache_to_uncache((struct dai *)ssp),
 		.num_dais = ARRAY_SIZE(ssp)
 	},
 #endif
 #if CONFIG_CAVS_DMIC
 	{
 		.type = SOF_DAI_INTEL_DMIC,
-		.dai_array = dmic,
+		.dai_array = cache_to_uncache((struct dai *)dmic),
 		.num_dais = ARRAY_SIZE(dmic)
 	},
 #endif
 	{
 		.type = SOF_DAI_INTEL_HDA,
-		.dai_array = hda,
+		.dai_array = cache_to_uncache((struct dai *)hda),
 		.num_dais = ARRAY_SIZE(hda)
 	},
 #if CONFIG_CAVS_ALH
 	{
 		.type = SOF_DAI_INTEL_ALH,
-		.dai_array = alh,
+		.dai_array = cache_to_uncache((struct dai *)alh),
 		.num_dais = ARRAY_SIZE(alh)
 	}
 #endif
@@ -123,58 +123,77 @@ const struct dai_info lib_dai = {
 
 int dai_init(struct sof *sof)
 {
+	struct dai *dai;
 	int i;
+
+	sof->dai_info = &lib_dai;
+
 #if CONFIG_CAVS_SSP
+	dai = cache_to_uncache((struct dai *)ssp);
+
 	/* init ssp */
 	for (i = 0; i < ARRAY_SIZE(ssp); i++) {
-		ssp[i].index = i;
-		ssp[i].drv = &ssp_driver;
-		ssp[i].plat_data.base = SSP_BASE(i);
-		ssp[i].plat_data.irq = IRQ_EXT_SSPx_LVL5(i);
-		ssp[i].plat_data.irq_name = irq_name_level5;
-		ssp[i].plat_data.fifo[SOF_IPC_STREAM_PLAYBACK].offset =
+		dai[i].index = i;
+		dai[i].drv = &ssp_driver;
+		dai[i].plat_data.base = SSP_BASE(i);
+		dai[i].plat_data.irq = IRQ_EXT_SSPx_LVL5(i);
+		dai[i].plat_data.irq_name = irq_name_level5;
+		dai[i].plat_data.fifo[SOF_IPC_STREAM_PLAYBACK].offset =
 			SSP_BASE(i) + SSDR;
-		ssp[i].plat_data.fifo[SOF_IPC_STREAM_PLAYBACK].handshake =
+		dai[i].plat_data.fifo[SOF_IPC_STREAM_PLAYBACK].handshake =
 			DMA_HANDSHAKE_SSP0_TX + 2 * i;
-		ssp[i].plat_data.fifo[SOF_IPC_STREAM_CAPTURE].offset =
+		dai[i].plat_data.fifo[SOF_IPC_STREAM_CAPTURE].offset =
 			SSP_BASE(i) + SSDR;
-		ssp[i].plat_data.fifo[SOF_IPC_STREAM_CAPTURE].handshake =
+		dai[i].plat_data.fifo[SOF_IPC_STREAM_CAPTURE].handshake =
 			DMA_HANDSHAKE_SSP0_RX + 2 * i;
 		/* initialize spin locks early to enable ref counting */
-		spinlock_init(&ssp[i].lock);
-	}
-#endif
-	/* init hd/a, note that size depends on the platform caps */
-	for (i = 0; i < ARRAY_SIZE(hda); i++) {
-		hda[i].index = i;
-		hda[i].drv = &hda_driver;
-		spinlock_init(&hda[i].lock);
+		spinlock_init(&dai[i].lock);
 	}
 
+	platform_shared_commit(dai, sizeof(*dai) * ARRAY_SIZE(ssp));
+#endif
+
+	dai = cache_to_uncache((struct dai *)hda);
+
+	/* init hd/a, note that size depends on the platform caps */
+	for (i = 0; i < ARRAY_SIZE(hda); i++) {
+		dai[i].index = i;
+		dai[i].drv = &hda_driver;
+		spinlock_init(&dai[i].lock);
+	}
+
+	platform_shared_commit(dai, sizeof(*dai) * ARRAY_SIZE(hda));
+
 #if (CONFIG_CAVS_DMIC)
+	dai = cache_to_uncache((struct dai *)dmic);
+
 	/* init dmic */
 	for (i = 0; i < ARRAY_SIZE(dmic); i++)
-		spinlock_init(&dmic[i].lock);
+		spinlock_init(&dai[i].lock);
+
+	platform_shared_commit(dai, sizeof(*dai) * ARRAY_SIZE(dmic));
 #endif
 
 #if CONFIG_CAVS_ALH
+	dai = cache_to_uncache((struct dai *)alh);
+
 	for (i = 0; i < ARRAY_SIZE(alh); i++) {
-		alh[i].index = (i / DAI_NUM_ALH_BI_DIR_LINKS_GROUP) << 8 |
+		dai[i].index = (i / DAI_NUM_ALH_BI_DIR_LINKS_GROUP) << 8 |
 			(i % DAI_NUM_ALH_BI_DIR_LINKS_GROUP);
-		alh[i].drv = &alh_driver;
+		dai[i].drv = &alh_driver;
 
 		/* set burst length to align with DMAT value in the
 		 * Audio Link Hub.
 		 */
-		alh[i].plat_data.fifo[SOF_IPC_STREAM_PLAYBACK].depth =
+		dai[i].plat_data.fifo[SOF_IPC_STREAM_PLAYBACK].depth =
 			ALH_GPDMA_BURST_LENGTH;
-		alh[i].plat_data.fifo[SOF_IPC_STREAM_CAPTURE].depth =
+		dai[i].plat_data.fifo[SOF_IPC_STREAM_CAPTURE].depth =
 			ALH_GPDMA_BURST_LENGTH;
-		spinlock_init(&alh[i].lock);
+		spinlock_init(&dai[i].lock);
 	}
-#endif
 
-	sof->dai_info = &lib_dai;
+	platform_shared_commit(dai, sizeof(*dai) * ARRAY_SIZE(alh));
+#endif
 
 	return 0;
 }
