@@ -46,7 +46,7 @@ struct dma dma[PLATFORM_NUM_DMACS] = {
 },
 };
 
-static struct dma_info lib_dma = {
+const struct dma_info lib_dma = {
 	.dma_array = dma,
 	.num_dmas = ARRAY_SIZE(dma)
 };
