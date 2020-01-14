@@ -17,6 +17,7 @@
 #include <sof/lib/dai.h>
 #include <sof/lib/dma.h>
 #include <sof/lib/mailbox.h>
+#include <sof/lib/memory.h>
 #include <sof/platform.h>
 #include <sof/schedule/edf_schedule.h>
 #include <sof/schedule/ll_schedule.h>
@@ -113,7 +114,7 @@ static const struct sof_ipc_window sram_window = {
 	},
 };
 
-struct timer timer = {
+SHARED_DATA struct timer timer = {
 	.id = TIMER0, /* internal timer */
 	.irq = IRQ_NUM_TIMER0,
 };

@@ -6,6 +6,7 @@
 
 #include <sof/drivers/interrupt.h>
 #include <sof/drivers/timer.h>
+#include <sof/lib/memory.h>
 #include <xtensa/config/core-isa.h>
 #include <xtensa/hal.h>
 #include <errno.h>
@@ -17,7 +18,7 @@ void timer_64_handler(void *arg)
 	uint32_t ccompare;
 
 	if (timer->id >= ARCH_TIMER_COUNT)
-		return;
+		goto out;
 
 	/* get comparator value - will tell us timeout reason */
 	ccompare = xthal_get_ccompare(timer->id);
@@ -42,6 +43,9 @@ void timer_64_handler(void *arg)
 	}
 
 	xthal_set_ccompare(timer->id, ccompare);
+
+out:
+	platform_shared_commit(timer, sizeof(*timer));
 }
 
 int timer64_register(struct timer *timer, void(*handler)(void *arg), void *arg)
@@ -53,19 +57,20 @@ int timer64_register(struct timer *timer, void(*handler)(void *arg), void *arg)
 	timer->data = arg;
 	timer->hitime = 0;
 	timer->hitimeout = 0;
+
 	return 0;
 }
 
 uint64_t arch_timer_get_system(struct timer *timer)
 {
-	uint64_t time;
+	uint64_t time = 0;
 	uint32_t flags;
 	uint32_t low;
 	uint32_t high;
 	uint32_t ccompare;
 
 	if (timer->id >= ARCH_TIMER_COUNT)
-		return 0;
+		goto out;
 
 	ccompare = xthal_get_ccompare(timer->id);
 
@@ -87,6 +92,9 @@ uint64_t arch_timer_get_system(struct timer *timer)
 
 	arch_interrupt_global_enable(flags);
 
+out:
+	platform_shared_commit(timer, sizeof(*timer));
+
 	return time;
 }
 
@@ -95,9 +103,12 @@ int64_t arch_timer_set(struct timer *timer, uint64_t ticks)
 	uint32_t time = 1;
 	uint32_t hitimeout = ticks >> 32;
 	uint32_t flags;
+	int64_t ret;
 
-	if (timer->id >= ARCH_TIMER_COUNT)
-		return -EINVAL;
+	if (timer->id >= ARCH_TIMER_COUNT) {
+		ret = -EINVAL;
+		goto out;
+	}
 
 	/* value of 1 represents rollover */
 	if ((ticks & 0xffffffff) == 0x1)
@@ -109,7 +120,8 @@ int64_t arch_timer_set(struct timer *timer, uint64_t ticks)
 	if (hitimeout < timer->hitime) {
 		/* cant be in the past */
 		arch_interrupt_global_enable(flags);
-		return -EINVAL;
+		ret = -EINVAL;
+		goto out;
 	}
 
 	/* set for checking at next timeout */
@@ -120,5 +132,11 @@ int64_t arch_timer_set(struct timer *timer, uint64_t ticks)
 	xthal_set_ccompare(timer->id, time);
 
 	arch_interrupt_global_enable(flags);
-	return ticks;
+
+	ret = ticks;
+
+out:
+	platform_shared_commit(timer, sizeof(*timer));
+
+	return ret;
 }

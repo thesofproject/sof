@@ -8,6 +8,7 @@
 #include <sof/drivers/interrupt.h>
 #include <sof/drivers/timer.h>
 #include <sof/lib/clk.h>
+#include <sof/lib/memory.h>
 #include <sof/platform.h>
 #include <ipc/stream.h>
 #include <errno.h>
@@ -76,27 +77,41 @@ void platform_dai_wallclock(struct comp_dev *dai, uint64_t *wallclock)
 
 int timer_register(struct timer *timer, void (*handler)(void *arg), void *arg)
 {
+	int ret;
+
 	switch (timer->id) {
 	case TIMER0:
 	case TIMER1:
 	case TIMER2:
-		return arch_timer_register(timer, handler, arg);
+		ret = arch_timer_register(timer, handler, arg);
+		break;
 	default:
-		return -EINVAL;
+		ret = -EINVAL;
+		break;
 	}
+
+	platform_shared_commit(timer, sizeof(*timer));
+
+	return ret;
 }
 
 void timer_unregister(struct timer *timer, void *arg)
 {
 	interrupt_unregister(timer->irq, arg);
+
+	platform_shared_commit(timer, sizeof(*timer));
 }
 
 void timer_enable(struct timer *timer, void *arg, int core)
 {
 	interrupt_enable(timer->irq, arg);
+
+	platform_shared_commit(timer, sizeof(*timer));
 }
 
 void timer_disable(struct timer *timer, void *arg, int core)
 {
 	interrupt_disable(timer->irq, arg);
+
+	platform_shared_commit(timer, sizeof(*timer));
 }

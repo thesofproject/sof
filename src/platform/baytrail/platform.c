@@ -19,6 +19,7 @@
 #include <sof/lib/dai.h>
 #include <sof/lib/dma.h>
 #include <sof/lib/mailbox.h>
+#include <sof/lib/memory.h>
 #include <sof/lib/notifier.h>
 #include <sof/lib/shim.h>
 #include <sof/platform.h>
@@ -118,7 +119,7 @@ static const struct sof_ipc_window sram_window = {
 	},
 };
 
-struct timer timer = {
+SHARED_DATA struct timer timer = {
 	.id = TIMER3, /* external timer */
 	.irq = IRQ_NUM_EXT_TIMER,
 };

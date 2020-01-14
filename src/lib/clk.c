@@ -9,6 +9,7 @@
 
 #include <sof/drivers/timer.h>
 #include <sof/lib/clk.h>
+#include <sof/lib/memory.h>
 #include <sof/lib/notifier.h>
 #include <sof/platform.h>
 #include <sof/spinlock.h>
@@ -103,4 +104,6 @@ void platform_timer_set_delta(struct timer *timer, uint64_t ns)
 
 	ticks = ticks_per_msec * ns / 1000000;
 	timer->delta = ticks - platform_timer_get(timer);
+
+	platform_shared_commit(timer, sizeof(*timer));
 }

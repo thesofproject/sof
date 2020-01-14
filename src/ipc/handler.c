@@ -729,6 +729,8 @@ static int ipc_dma_trace_config(uint32_t header)
 	else
 		timer->delta = 0;
 
+	platform_shared_commit(timer, sizeof(*timer));
+
 #if CONFIG_SUECREEK
 	return 0;
 #endif
