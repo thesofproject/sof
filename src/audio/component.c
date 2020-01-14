@@ -211,3 +211,92 @@ int comp_get_copy_limits(struct comp_dev *dev, struct comp_copy_limits *cl)
 
 	return 0;
 }
+
+/* Function overwrites PCM parameters (frame_fmt, buffer_fmt, channels, rate)
+ * with buffer parameters when specific flag is set.
+ */
+static void comp_update_params(uint32_t flag,
+			       struct sof_ipc_stream_params *params,
+			       struct comp_buffer *buffer)
+{
+	if (flag & BUFF_PARAMS_FRAME_FMT)
+		params->frame_fmt = buffer->stream.frame_fmt;
+
+	if (flag & BUFF_PARAMS_BUFFER_FMT)
+		params->buffer_fmt = buffer->buffer_fmt;
+
+	if (flag & BUFF_PARAMS_CHANNELS)
+		params->channels = buffer->stream.channels;
+
+	if (flag & BUFF_PARAMS_RATE)
+		params->rate = buffer->stream.rate;
+}
+
+int comp_verify_params(struct comp_dev *dev, uint32_t flag,
+		       struct sof_ipc_stream_params *params)
+{
+	struct list_item *buffer_list;
+	struct list_item *source_list;
+	struct list_item *sink_list;
+	struct list_item *clist;
+	struct comp_buffer *sinkb;
+	struct comp_buffer *buf;
+	int dir = dev->direction;
+
+	if (!params) {
+		comp_err(dev, "comp_verify_params() error: !params");
+		return -EINVAL;
+	}
+
+	source_list = comp_buffer_list(dev, PPL_DIR_UPSTREAM);
+	sink_list = comp_buffer_list(dev, PPL_DIR_DOWNSTREAM);
+
+	/* searching for endpoint component e.g. HOST, DETECT_TEST, which
+	 * has only one sink or one source buffer.
+	 */
+	if (list_is_empty(source_list) != list_is_empty(sink_list)) {
+		if (!list_is_empty(source_list))
+			buf = list_first_item(&dev->bsource_list,
+					      struct comp_buffer,
+					      sink_list);
+		else
+			buf = list_first_item(&dev->bsink_list,
+					      struct comp_buffer,
+					      source_list);
+
+		/* update specific pcm parameter with buffer parameter if
+		 * specific flag is set.
+		 */
+		comp_update_params(flag, params, buf);
+
+		/* overwrite buffer parameters with modified pcm
+		 * parameters
+		 */
+		buffer_set_params(buf, params, BUFFER_UPDATE_FORCE);
+
+		/* set component period frames */
+		component_set_period_frames(dev, buf->stream.rate);
+	} else {
+		/* for other components we iterate over all downstream buffers
+		 * (for playback) or upstream buffers (for capture).
+		 */
+		buffer_list = comp_buffer_list(dev, dir);
+
+		list_for_item(clist, buffer_list) {
+			buf = buffer_from_list(clist, struct comp_buffer,
+					       dir);
+
+			comp_update_params(flag, params, buf);
+
+			buffer_set_params(buf, params, BUFFER_UPDATE_FORCE);
+		}
+
+		/* fetch sink buffer in order to calculate period frames */
+		sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
+					source_list);
+
+		component_set_period_frames(dev, sinkb->stream.rate);
+	}
+
+	return 0;
+}
