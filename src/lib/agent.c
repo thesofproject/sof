@@ -44,6 +44,8 @@ static enum task_state validate(void *data)
 	current = platform_timer_get(timer_get());
 	delta = current - sa->last_check;
 
+	perf_cnt_stamp(TRACE_CLASS_SA, &sa->pcd, true);
+
 	/* panic timeout */
 	if (delta > sa->panic_timeout)
 		panic(SOF_IPC_PANIC_IDLE);
