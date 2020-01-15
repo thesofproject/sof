@@ -12,6 +12,7 @@
 #include <sof/common.h>
 #include <sof/lib/memory.h>
 
+struct cascade_root;
 struct clock_info;
 struct dai_info;
 struct dma_info;
@@ -78,6 +79,9 @@ struct sof {
 
 	/* platform DMA information */
 	const struct dma_info *dma_info;
+
+	/* cascading interrupt controller root */
+	struct cascade_root *cascade_root;
 
 	__aligned(PLATFORM_DCACHE_ALIGN) int alignment[0];
 } __aligned(PLATFORM_DCACHE_ALIGN);
