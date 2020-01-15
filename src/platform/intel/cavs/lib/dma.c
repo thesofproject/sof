@@ -34,7 +34,7 @@
 #define DMAC1_CLASS 7
 #endif
 
-static struct dw_drv_plat_data dmac0 = {
+const struct dw_drv_plat_data dmac0 = {
 	.chan[0] = {
 		.class	= DMAC0_CLASS,
 		.weight = 0,
@@ -69,7 +69,7 @@ static struct dw_drv_plat_data dmac0 = {
 	},
 };
 
-static struct dw_drv_plat_data dmac1 = {
+const struct dw_drv_plat_data dmac1 = {
 	.chan[0] = {
 		.class	= DMAC1_CLASS,
 		.weight = 0,
