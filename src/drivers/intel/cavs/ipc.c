@@ -161,7 +161,7 @@ static struct sof_ipc_cmd_hdr *ipc_compact_read_msg(void)
 		return NULL;
 	}
 
-	dcache_writeback_region(hdr, hdr->size);
+	platform_shared_commit(hdr, hdr->size);
 
 	return hdr;
 }

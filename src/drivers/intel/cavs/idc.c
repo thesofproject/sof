@@ -169,9 +169,6 @@ static int idc_pipeline_trigger(uint32_t cmd)
 	struct ipc_comp_dev *pcm_dev;
 	int ret;
 
-	/* invalidate stream data */
-	dcache_invalidate_region(data, sizeof(*data));
-
 	/* check whether component exists */
 	pcm_dev = ipc_get_comp_by_id(ipc, data->comp_id);
 	if (!pcm_dev)
@@ -213,11 +210,6 @@ static int idc_component_command(uint32_t cmd)
 	struct ipc_comp_dev *comp_dev;
 	int ret;
 
-	/* invalidate control data */
-	dcache_invalidate_region(data, sizeof(*data));
-	dcache_invalidate_region(data + 1,
-				 data->rhdr.hdr.size - sizeof(*data));
-
 	/* check whether component exists */
 	comp_dev = ipc_get_comp_by_id(ipc, data->comp_id);
 	if (!comp_dev)
@@ -233,9 +225,6 @@ static int idc_component_command(uint32_t cmd)
 
 	/* execute component command */
 	ret = comp_cmd(comp_dev->cd, cmd, data, data->rhdr.hdr.size);
-
-	/* writeback control data */
-	dcache_writeback_region(data, data->rhdr.hdr.size);
 
 	return ret;
 }
