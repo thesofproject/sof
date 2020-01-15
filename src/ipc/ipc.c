@@ -61,6 +61,8 @@ struct ipc_comp_dev *ipc_get_comp_by_id(struct ipc *ipc, uint32_t id)
 		default:
 			break;
 		}
+
+		platform_shared_commit(icd, sizeof(*icd));
 	}
 
 	return NULL;
@@ -74,8 +76,10 @@ struct ipc_comp_dev *ipc_get_comp_by_ppl_id(struct ipc *ipc, uint16_t type,
 
 	list_for_item(clist, &ipc->comp_list) {
 		icd = container_of(clist, struct ipc_comp_dev, list);
-		if (icd->type != type)
+		if (icd->type != type) {
+			platform_shared_commit(icd, sizeof(*icd));
 			continue;
+		}
 
 		switch (icd->type) {
 		case COMP_TYPE_COMPONENT:
@@ -91,6 +95,8 @@ struct ipc_comp_dev *ipc_get_comp_by_ppl_id(struct ipc *ipc, uint16_t type,
 				return icd;
 			break;
 		}
+
+		platform_shared_commit(icd, sizeof(*icd));
 	}
 
 	return NULL;
@@ -111,6 +117,7 @@ static struct ipc_comp_dev *ipc_get_ppl_comp(struct ipc *ipc,
 		    icd->cd->comp.pipeline_id == pipeline_id &&
 		    list_is_empty(comp_buffer_list(icd->cd, dir)))
 			return icd;
+		platform_shared_commit(icd, sizeof(*icd));
 	}
 
 	/* it's connected pipeline, so find the connected module */
@@ -126,6 +133,7 @@ static struct ipc_comp_dev *ipc_get_ppl_comp(struct ipc *ipc,
 			    buff_comp->comp.pipeline_id != pipeline_id)
 				return icd;
 		}
+		platform_shared_commit(icd, sizeof(*icd));
 	}
 
 	return NULL;
@@ -165,6 +173,9 @@ int ipc_comp_new(struct ipc *ipc, struct sof_ipc_comp *comp)
 
 	/* add new component to the list */
 	list_item_append(&icd->list, &ipc->comp_list);
+
+	platform_shared_commit(icd, sizeof(*icd));
+
 	return ret;
 }
 
@@ -232,6 +243,9 @@ int ipc_buffer_new(struct ipc *ipc, struct sof_ipc_buffer *desc)
 
 	/* add new buffer to the list */
 	list_item_append(&ibd->list, &ipc->comp_list);
+
+	platform_shared_commit(ibd, sizeof(*ibd));
+
 	return ret;
 }
 
@@ -257,6 +271,7 @@ int ipc_comp_connect(struct ipc *ipc,
 {
 	struct ipc_comp_dev *icd_source;
 	struct ipc_comp_dev *icd_sink;
+	int ret;
 
 	/* check whether the components already exist */
 	icd_source = ipc_get_comp_by_id(ipc, connect->source_id);
@@ -278,19 +293,24 @@ int ipc_comp_connect(struct ipc *ipc,
 	/* check source and sink types */
 	if (icd_source->type == COMP_TYPE_BUFFER &&
 		icd_sink->type == COMP_TYPE_COMPONENT)
-		return pipeline_connect(icd_sink->cd, icd_source->cb,
-					PPL_CONN_DIR_BUFFER_TO_COMP);
+		ret = pipeline_connect(icd_sink->cd, icd_source->cb,
+				       PPL_CONN_DIR_BUFFER_TO_COMP);
 	else if (icd_source->type == COMP_TYPE_COMPONENT &&
 		icd_sink->type == COMP_TYPE_BUFFER)
-		return pipeline_connect(icd_source->cd, icd_sink->cb,
-					PPL_CONN_DIR_COMP_TO_BUFFER);
+		ret = pipeline_connect(icd_source->cd, icd_sink->cb,
+				       PPL_CONN_DIR_COMP_TO_BUFFER);
 	else {
 		trace_ipc_error("ipc_comp_connect() error: invalid source and"
 				" sink types, connect->source_id = %u, "
 				"connect->sink_id = %u",
 				connect->source_id, connect->sink_id);
-		return -EINVAL;
+		ret = -EINVAL;
 	}
+
+	platform_shared_commit(icd_source, sizeof(*icd_source));
+	platform_shared_commit(icd_sink, sizeof(*icd_sink));
+
+	return ret;
 }
 
 
@@ -355,6 +375,9 @@ int ipc_pipeline_new(struct ipc *ipc,
 
 	/* add new pipeline to the list */
 	list_item_append(&ipc_pipe->list, &ipc->comp_list);
+
+	platform_shared_commit(ipc_pipe, sizeof(*ipc_pipe));
+
 	return 0;
 }
 
@@ -388,6 +411,7 @@ int ipc_pipeline_complete(struct ipc *ipc, uint32_t comp_id)
 	uint32_t pipeline_id;
 	struct ipc_comp_dev *ipc_ppl_source;
 	struct ipc_comp_dev *ipc_ppl_sink;
+	int ret;
 
 	/* check whether pipeline exists */
 	ipc_pipe = ipc_get_comp_by_id(ipc, comp_id);
@@ -406,8 +430,14 @@ int ipc_pipeline_complete(struct ipc *ipc, uint32_t comp_id)
 	if (!ipc_ppl_sink)
 		return -EINVAL;
 
-	return pipeline_complete(ipc_pipe->pipeline, ipc_ppl_source->cd,
-				 ipc_ppl_sink->cd);
+	ret = pipeline_complete(ipc_pipe->pipeline, ipc_ppl_source->cd,
+				ipc_ppl_sink->cd);
+
+	platform_shared_commit(ipc_pipe, sizeof(*ipc_pipe));
+	platform_shared_commit(ipc_ppl_source, sizeof(*ipc_ppl_source));
+	platform_shared_commit(ipc_ppl_sink, sizeof(*ipc_ppl_sink));
+
+	return ret;
 }
 
 int ipc_comp_dai_config(struct ipc *ipc, struct sof_ipc_dai_config *config)
@@ -421,12 +451,15 @@ int ipc_comp_dai_config(struct ipc *ipc, struct sof_ipc_dai_config *config)
 	list_for_item(clist, &ipc->comp_list) {
 		icd = container_of(clist, struct ipc_comp_dev, list);
 		/* make sure we only config DAI comps */
-		if (icd->type != COMP_TYPE_COMPONENT)
+		if (icd->type != COMP_TYPE_COMPONENT) {
+			platform_shared_commit(icd, sizeof(*icd));
 			continue;
+		}
 
 		if (icd->cd->comp.type == SOF_COMP_DAI ||
 		    icd->cd->comp.type == SOF_COMP_SG_DAI) {
 			dai = (struct sof_ipc_comp_dai *)&icd->cd->comp;
+			platform_shared_commit(icd, sizeof(*icd));
 			/*
 			 * set config if comp dai_index matches
 			 * config dai_index.
@@ -434,6 +467,7 @@ int ipc_comp_dai_config(struct ipc *ipc, struct sof_ipc_dai_config *config)
 			if (dai->dai_index == config->dai_index &&
 			    dai->type == config->type) {
 				ret = comp_dai_config(icd->cd, config);
+				platform_shared_commit(icd, sizeof(*icd));
 				if (ret < 0)
 					break;
 			}
