@@ -14,6 +14,7 @@
 #include <sof/lib/alloc.h>
 #include <sof/lib/agent.h>
 #include <sof/lib/cpu.h>
+#include <sof/lib/memory.h>
 #include <sof/lib/wait.h>
 #include <sof/platform.h>
 #include <sof/schedule/edf_schedule.h>
@@ -47,13 +48,17 @@ static uint64_t task_main_deadline(void *data)
 
 enum task_state task_main_master_core(void *data)
 {
+	struct ipc *ipc = ipc_get();
+
 	/* main audio processing loop */
 	while (1) {
 		/* sleep until next IPC or DMA */
 		wait_for_interrupt(0);
 
-		if (ipc_get() && !ipc_get()->pm_prepare_D3)
+		if (!ipc->pm_prepare_D3)
 			ipc_platform_send_msg();
+
+		platform_shared_commit(ipc, sizeof(*ipc));
 	}
 
 	return SOF_TASK_STATE_COMPLETED;
