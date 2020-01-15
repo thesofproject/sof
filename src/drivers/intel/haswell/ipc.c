@@ -116,6 +116,8 @@ void ipc_platform_send_msg(void)
 
 	list_item_append(&msg->list, &ipc->empty_list);
 
+	platform_shared_commit(msg, sizeof(*msg));
+
 out:
 	spin_unlock_irq(ipc->lock, flags);
 }

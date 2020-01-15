@@ -1213,6 +1213,7 @@ static inline struct ipc_msg *ipc_glb_stream_message_find(struct ipc *ipc,
 				if (old_posn->comp_id == posn->comp_id)
 					return msg;
 			}
+			platform_shared_commit(msg, sizeof(*msg));
 		}
 		break;
 	default:
@@ -1240,6 +1241,7 @@ static inline struct ipc_msg *ipc_glb_trace_message_find(struct ipc *ipc,
 			msg = container_of(plist, struct ipc_msg, list);
 			if (msg->header == posn->rhdr.hdr.cmd)
 				return msg;
+			platform_shared_commit(msg, sizeof(*msg));
 		}
 		break;
 	default:
@@ -1312,6 +1314,8 @@ int ipc_queue_host_message(struct ipc *ipc, uint32_t header, void *tx_data,
 	/* queue new message if it's not replacement */
 	if (!found)
 		list_item_append(&msg->list, &ipc->msg_list);
+
+	platform_shared_commit(msg, sizeof(*msg));
 
 out:
 	spin_unlock_irq(ipc->lock, flags);
