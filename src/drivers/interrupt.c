@@ -47,6 +47,8 @@ int interrupt_cascade_register(const struct irq_cascade_tmpl *tmpl)
 				    "error: cascading IRQ controller name duplication!");
 			goto unlock;
 		}
+
+		platform_shared_commit(*cascade, sizeof(**cascade));
 	}
 
 	*cascade = rzalloc(SOF_MEM_ZONE_SYS, SOF_MEM_FLAG_SHARED,
@@ -69,6 +71,8 @@ int interrupt_cascade_register(const struct irq_cascade_tmpl *tmpl)
 	root->last_irq += ARRAY_SIZE((*cascade)->child);
 
 	ret = 0;
+
+	platform_shared_commit(*cascade, sizeof(**cascade));
 
 unlock:
 	platform_shared_commit(root, sizeof(*root));
@@ -98,13 +102,17 @@ int interrupt_get_irq(unsigned int irq, const char *name)
 
 	spin_lock_irq(root->lock, flags);
 
-	for (cascade = root->list; cascade; cascade = cascade->next)
+	for (cascade = root->list; cascade; cascade = cascade->next) {
 		/* .name is non-volatile */
 		if (!rstrcmp(name, cascade->name)) {
 			ret = cascade->irq_base + irq;
 			break;
 		}
 
+		platform_shared_commit(cascade, sizeof(*cascade));
+	}
+
+	platform_shared_commit(cascade, sizeof(*cascade));
 	platform_shared_commit(root, sizeof(*root));
 
 	spin_unlock_irq(root->lock, flags);
@@ -123,13 +131,17 @@ struct irq_cascade_desc *interrupt_get_parent(uint32_t irq)
 
 	spin_lock_irq(root->lock, flags);
 
-	for (cascade = root->list; cascade; cascade = cascade->next)
+	for (cascade = root->list; cascade; cascade = cascade->next) {
 		if (irq >= cascade->irq_base &&
 		    irq < cascade->irq_base + PLATFORM_IRQ_CHILDREN) {
 			c = cascade;
 			break;
 		}
 
+		platform_shared_commit(cascade, sizeof(*cascade));
+	}
+
+	platform_shared_commit(cascade, sizeof(*cascade));
 	platform_shared_commit(root, sizeof(*root));
 
 	spin_unlock_irq(root->lock, flags);
@@ -157,8 +169,10 @@ static int irq_register_child(struct irq_cascade_desc *cascade, int irq,
 
 	hw_irq = irq - cascade->irq_base;
 
-	if (hw_irq < 0 || cascade->irq_base + PLATFORM_IRQ_CHILDREN <= irq)
-		return -EINVAL;
+	if (hw_irq < 0 || cascade->irq_base + PLATFORM_IRQ_CHILDREN <= irq) {
+		ret = -EINVAL;
+		goto out;
+	}
 
 	head = &cascade->child[hw_irq].list;
 
@@ -169,7 +183,8 @@ static int irq_register_child(struct irq_cascade_desc *cascade, int irq,
 			trace_error(TRACE_CLASS_IRQ,
 				    "error: IRQ 0x%x handler argument re-used!",
 				    irq);
-			return -EEXIST;
+			ret = -EEXIST;
+			goto out;
 		}
 	}
 
@@ -179,8 +194,10 @@ static int irq_register_child(struct irq_cascade_desc *cascade, int irq,
 		 */
 		child = rzalloc(SOF_MEM_ZONE_SYS_RUNTIME, SOF_MEM_FLAG_SHARED,
 				SOF_MEM_CAPS_RAM, sizeof(struct irq_desc));
-		if (!child)
-			return -ENOMEM;
+		if (!child) {
+			ret = -ENOMEM;
+			goto out;
+		}
 
 		child->handler = handler;
 		child->handler_arg = arg;
@@ -200,6 +217,9 @@ static int irq_register_child(struct irq_cascade_desc *cascade, int irq,
 	/* increment number of children */
 	if (!ret)
 		cascade->num_children[core]++;
+
+out:
+	platform_shared_commit(cascade, sizeof(*cascade));
 
 	return ret;
 }
@@ -232,6 +252,8 @@ static void irq_unregister_child(struct irq_cascade_desc *cascade, int irq,
 			break;
 		}
 	}
+
+	platform_shared_commit(cascade, sizeof(*cascade));
 }
 
 static uint32_t irq_enable_child(struct irq_cascade_desc *cascade, int irq,
@@ -273,6 +295,8 @@ static uint32_t irq_enable_child(struct irq_cascade_desc *cascade, int irq,
 		/* enable the child interrupt */
 		interrupt_unmask(irq, core);
 	}
+
+	platform_shared_commit(cascade, sizeof(*cascade));
 
 	spin_unlock_irq(cascade->lock, flags);
 
@@ -317,6 +341,8 @@ static uint32_t irq_disable_child(struct irq_cascade_desc *cascade, int irq,
 			interrupt_disable(cascade->desc.irq,
 					  cascade->desc.handler_arg);
 	}
+
+	platform_shared_commit(cascade, sizeof(*cascade));
 
 	spin_unlock_irq(cascade->lock, flags);
 

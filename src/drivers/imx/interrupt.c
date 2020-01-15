@@ -9,6 +9,7 @@
 #include <sof/drivers/interrupt.h>
 #include <sof/lib/cpu.h>
 #include <sof/lib/io.h>
+#include <sof/lib/memory.h>
 #include <sof/list.h>
 #include <sof/spinlock.h>
 #include <errno.h>
@@ -266,6 +267,8 @@ static inline void handle_irq_batch(struct irq_cascade_desc *cascade,
 			}
 		}
 
+		platform_shared_commit(cascade, sizeof(*cascade));
+
 		spin_unlock(cascade->lock);
 
 		if (!handled) {
@@ -430,6 +433,8 @@ void interrupt_mask(uint32_t irq, unsigned int cpu)
 	if (cascade && cascade->ops->mask)
 		cascade->ops->mask(&cascade->desc, irq - cascade->irq_base,
 				   cpu);
+
+	platform_shared_commit(cascade, sizeof(*cascade));
 }
 
 void interrupt_unmask(uint32_t irq, unsigned int cpu)
@@ -439,4 +444,6 @@ void interrupt_unmask(uint32_t irq, unsigned int cpu)
 	if (cascade && cascade->ops->unmask)
 		cascade->ops->unmask(&cascade->desc, irq - cascade->irq_base,
 				     cpu);
+
+	platform_shared_commit(cascade, sizeof(*cascade));
 }
