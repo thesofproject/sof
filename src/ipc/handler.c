@@ -128,7 +128,7 @@ struct sof_ipc_cmd_hdr *mailbox_validate(void)
 	mailbox_hostbox_read(hdr + 1, SOF_IPC_MSG_MAX_SIZE - sizeof(*hdr),
 			     sizeof(*hdr), hdr->size - sizeof(*hdr));
 
-	dcache_writeback_region(hdr, hdr->size);
+	platform_shared_commit(hdr, hdr->size);
 
 	return hdr;
 }
@@ -1159,6 +1159,9 @@ void ipc_cmd(struct sof_ipc_cmd_hdr *hdr)
 		ret = -EINVAL;
 		break;
 	}
+
+	platform_shared_commit(hdr, hdr->size);
+
 out:
 	tracev_ipc("ipc: last request %d returned %d", type, ret);
 

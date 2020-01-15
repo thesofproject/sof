@@ -457,7 +457,7 @@ int ipc_init(struct sof *sof)
 	/* init ipc data */
 	sof->ipc = rzalloc(SOF_MEM_ZONE_SYS, SOF_MEM_FLAG_SHARED,
 			   SOF_MEM_CAPS_RAM, sizeof(*sof->ipc));
-	sof->ipc->comp_data = rzalloc(SOF_MEM_ZONE_SYS, 0,
+	sof->ipc->comp_data = rzalloc(SOF_MEM_ZONE_SYS, SOF_MEM_FLAG_SHARED,
 				      SOF_MEM_CAPS_RAM, SOF_IPC_MSG_MAX_SIZE);
 
 	spinlock_init(&sof->ipc->lock);
