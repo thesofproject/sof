@@ -194,9 +194,13 @@ enum task_state ipc_platform_do_cmd(void *data)
 	/* are we about to enter D3 ? */
 #if !CONFIG_SUECREEK
 	if (ipc->pm_prepare_D3) {
+		platform_shared_commit(ipc, sizeof(*ipc));
+
 		/* no return - memory will be powered off and IPC sent */
 		platform_pm_runtime_power_off();
 	}
+
+	platform_shared_commit(ipc, sizeof(*ipc));
 #endif
 
 	return SOF_TASK_STATE_COMPLETED;
@@ -225,10 +229,14 @@ void ipc_platform_complete_cmd(void *data)
 
 #if CONFIG_SUECREEK
 	if (ipc->pm_prepare_D3) {
+		platform_shared_commit(ipc, sizeof(*ipc));
+
 		//TODO: add support for Icelake
 		while (1)
 			wait_for_interrupt(0);
 	}
+
+	platform_shared_commit(ipc, sizeof(*ipc));
 #endif
 }
 
@@ -273,6 +281,8 @@ void ipc_platform_send_msg(void)
 	platform_shared_commit(msg, sizeof(*msg));
 
 out:
+	platform_shared_commit(ipc, sizeof(*ipc));
+
 	spin_unlock_irq(ipc->lock, flags);
 }
 
@@ -295,6 +305,8 @@ int platform_ipc_init(struct ipc *ipc)
 
 	/* enable IPC interrupts from host */
 	ipc_write(IPC_DIPCCTL, IPC_DIPCCTL_IPCIDIE | IPC_DIPCCTL_IPCTBIE);
+
+	platform_shared_commit(ipc, sizeof(*ipc));
 
 	return 0;
 }
