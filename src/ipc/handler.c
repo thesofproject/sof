@@ -313,6 +313,7 @@ pipe_params:
 	reply.comp_id = pcm_params.comp_id;
 	reply.posn_offset = pcm_dev->cd->pipeline->posn_offset;
 	mailbox_hostbox_write(0, &reply, sizeof(reply));
+	platform_shared_commit(pcm_dev, sizeof(*pcm_dev));
 	return 1;
 
 error:
@@ -321,6 +322,7 @@ error:
 		trace_ipc_error("ipc: pipe %d comp %d reset failed %d",
 				pcm_dev->cd->pipeline->ipc_pipe.pipeline_id,
 				pcm_params.comp_id, reset_err);
+	platform_shared_commit(pcm_dev, sizeof(*pcm_dev));
 	return err;
 }
 
@@ -330,6 +332,7 @@ static int ipc_stream_pcm_free(uint32_t header)
 	struct ipc *ipc = ipc_get();
 	struct sof_ipc_stream free_req;
 	struct ipc_comp_dev *pcm_dev;
+	int ret;
 
 	/* copy message with ABI safe method */
 	IPC_COPY_CMD(free_req, ipc->comp_data);
@@ -351,7 +354,11 @@ static int ipc_stream_pcm_free(uint32_t header)
 	}
 
 	/* reset the pipeline */
-	return pipeline_reset(pcm_dev->cd->pipeline, pcm_dev->cd);
+	ret = pipeline_reset(pcm_dev->cd->pipeline, pcm_dev->cd);
+
+	platform_shared_commit(pcm_dev, sizeof(*pcm_dev));
+
+	return ret;
 }
 
 /* get stream position */
@@ -388,6 +395,8 @@ static int ipc_stream_position(uint32_t header)
 	/* copy positions to stream region */
 	mailbox_stream_write(pcm_dev->cd->pipeline->posn_offset,
 			     &posn, sizeof(posn));
+
+	platform_shared_commit(pcm_dev, sizeof(*pcm_dev));
 
 	return 1;
 }
@@ -483,6 +492,8 @@ static int ipc_stream_trigger(uint32_t header)
 		trace_ipc_error("ipc: comp %d trigger 0x%x failed %d",
 				stream.comp_id, ipc_cmd, ret);
 	}
+
+	platform_shared_commit(pcm_dev, sizeof(*pcm_dev));
 
 	return ret;
 }
@@ -884,6 +895,8 @@ static int ipc_comp_value(uint32_t header, uint32_t cmd)
 				data.cmd, ret);
 		return ret;
 	}
+
+	platform_shared_commit(comp_dev, sizeof(*comp_dev));
 
 	/* write component values to the outbox */
 	if (_data->rhdr.hdr.size <= MAILBOX_HOSTBOX_SIZE &&
