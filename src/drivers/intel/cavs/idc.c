@@ -164,7 +164,7 @@ int idc_send_msg(struct idc_msg *msg, uint32_t mode)
  */
 static int idc_pipeline_trigger(uint32_t cmd)
 {
-	struct ipc *ipc = cache_to_uncache(ipc_get());
+	struct ipc *ipc = ipc_get();
 	struct sof_ipc_stream *data = ipc->comp_data;
 	struct ipc_comp_dev *pcm_dev;
 	int ret;
@@ -208,7 +208,7 @@ static int idc_pipeline_trigger(uint32_t cmd)
  */
 static int idc_component_command(uint32_t cmd)
 {
-	struct ipc *ipc = cache_to_uncache(ipc_get());
+	struct ipc *ipc = ipc_get();
 	struct sof_ipc_ctrl_data *data = ipc->comp_data;
 	struct ipc_comp_dev *comp_dev;
 	int ret;

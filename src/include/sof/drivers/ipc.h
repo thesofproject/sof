@@ -81,13 +81,6 @@ struct ipc_msg {
 	struct list_item list;
 };
 
-struct ipc_shared_context {
-	struct list_item msg_list;	/* queue of messages to be sent */
-	struct list_item empty_list;	/* queue of empty messages */
-
-	struct list_item comp_list;	/* list of component devices */
-};
-
 struct ipc {
 	spinlock_t *lock;	/* locking mechanism */
 	void *comp_data;
@@ -95,8 +88,10 @@ struct ipc {
 	/* PM */
 	int pm_prepare_D3;	/* do we need to prepare for D3 */
 
-	/* context shared between cores */
-	struct ipc_shared_context *shared_ctx;
+	struct list_item msg_list;	/* queue of messages to be sent */
+	struct list_item empty_list;	/* queue of empty messages */
+
+	struct list_item comp_list;	/* list of component devices */
 
 	/* processing task */
 	struct task ipc_task;
