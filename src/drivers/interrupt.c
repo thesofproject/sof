@@ -10,6 +10,7 @@
 #include <sof/lib/alloc.h>
 #include <sof/lib/cpu.h>
 #include <sof/list.h>
+#include <sof/sof.h>
 #include <sof/spinlock.h>
 #include <sof/trace/trace.h>
 #include <ipc/topology.h>
@@ -17,14 +18,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-static spinlock_t *cascade_lock;
-static union {
-	struct {
-		struct irq_cascade_desc *list;
-		int last_irq;
-	} __aligned(PLATFORM_DCACHE_ALIGN);
-	uint8_t bytes[PLATFORM_DCACHE_ALIGN];
-} cascade_root;
+static struct cascade_root cascade_root __aligned(PLATFORM_DCACHE_ALIGN);
 
 static int interrupt_register_internal(uint32_t irq, void (*handler)(void *arg),
 				       void *arg, struct irq_desc *desc);
@@ -33,6 +27,7 @@ static void interrupt_unregister_internal(uint32_t irq, const void *arg,
 
 int interrupt_cascade_register(const struct irq_cascade_tmpl *tmpl)
 {
+	struct cascade_root *root = cascade_root_get();
 	struct irq_cascade_desc **cascade;
 	unsigned long flags;
 	unsigned int i;
@@ -41,11 +36,11 @@ int interrupt_cascade_register(const struct irq_cascade_tmpl *tmpl)
 	if (!tmpl->name || !tmpl->ops)
 		return -EINVAL;
 
-	spin_lock_irq(cascade_lock, flags);
+	spin_lock_irq(root->lock, flags);
 
-	dcache_invalidate_region(&cascade_root, sizeof(cascade_root));
+	dcache_invalidate_region(root, sizeof(*root));
 
-	for (cascade = &cascade_root.list; *cascade;
+	for (cascade = &root->list; *cascade;
 	     cascade = &(*cascade)->next) {
 		if (!rstrcmp((*cascade)->name, tmpl->name)) {
 			ret = -EEXIST;
@@ -66,25 +61,26 @@ int interrupt_cascade_register(const struct irq_cascade_tmpl *tmpl)
 	(*cascade)->name = tmpl->name;
 	(*cascade)->ops = tmpl->ops;
 	(*cascade)->global_mask = tmpl->global_mask;
-	(*cascade)->irq_base = cascade_root.last_irq + 1;
+	(*cascade)->irq_base = root->last_irq + 1;
 	(*cascade)->desc.irq = tmpl->irq;
 	(*cascade)->desc.handler = tmpl->handler;
 	(*cascade)->desc.handler_arg = &(*cascade)->desc;
 	(*cascade)->desc.cpu_mask = 1 << cpu_get_id();
 
-	cascade_root.last_irq += ARRAY_SIZE((*cascade)->child);
-	dcache_writeback_region(&cascade_root, sizeof(cascade_root));
+	root->last_irq += ARRAY_SIZE((*cascade)->child);
+	dcache_writeback_region(root, sizeof(*root));
 
 	ret = 0;
 
 unlock:
-	spin_unlock_irq(cascade_lock, flags);
+	spin_unlock_irq(root->lock, flags);
 
 	return ret;
 }
 
 int interrupt_get_irq(unsigned int irq, const char *name)
 {
+	struct cascade_root *root = cascade_root_get();
 	struct irq_cascade_desc *cascade;
 	unsigned long flags;
 	int ret = -ENODEV;
@@ -100,51 +96,54 @@ int interrupt_get_irq(unsigned int irq, const char *name)
 		return -EINVAL;
 	}
 
-	spin_lock_irq(cascade_lock, flags);
+	spin_lock_irq(root->lock, flags);
 
-	dcache_invalidate_region(&cascade_root, sizeof(cascade_root));
+	dcache_invalidate_region(root, sizeof(*root));
 
-	for (cascade = cascade_root.list; cascade; cascade = cascade->next)
+	for (cascade = root->list; cascade; cascade = cascade->next)
 		/* .name is non-volatile */
 		if (!rstrcmp(name, cascade->name)) {
 			ret = cascade->irq_base + irq;
 			break;
 		}
 
-	spin_unlock_irq(cascade_lock, flags);
+	spin_unlock_irq(root->lock, flags);
 
 	return ret;
 }
 
 struct irq_cascade_desc *interrupt_get_parent(uint32_t irq)
 {
+	struct cascade_root *root = cascade_root_get();
 	struct irq_cascade_desc *cascade, *c = NULL;
 	unsigned long flags;
 
 	if (irq < PLATFORM_IRQ_HW_NUM)
 		return NULL;
 
-	spin_lock_irq(cascade_lock, flags);
+	spin_lock_irq(root->lock, flags);
 
-	dcache_invalidate_region(&cascade_root, sizeof(cascade_root));
+	dcache_invalidate_region(root, sizeof(*root));
 
-	for (cascade = cascade_root.list; cascade; cascade = cascade->next)
+	for (cascade = root->list; cascade; cascade = cascade->next)
 		if (irq >= cascade->irq_base &&
 		    irq < cascade->irq_base + PLATFORM_IRQ_CHILDREN) {
 			c = cascade;
 			break;
 		}
 
-	spin_unlock_irq(cascade_lock, flags);
+	spin_unlock_irq(root->lock, flags);
 
 	return c;
 }
 
-void interrupt_init(void)
+void interrupt_init(struct sof *sof)
 {
-	cascade_root.last_irq = PLATFORM_IRQ_FIRST_CHILD - 1;
-	dcache_writeback_region(&cascade_root, sizeof(cascade_root));
-	spinlock_init(&cascade_lock);
+	sof->cascade_root = &cascade_root;
+
+	sof->cascade_root->last_irq = PLATFORM_IRQ_FIRST_CHILD - 1;
+	spinlock_init(&sof->cascade_root->lock);
+	dcache_writeback_region(sof->cascade_root, sizeof(*sof->cascade_root));
 }
 
 static int irq_register_child(struct irq_cascade_desc *cascade, int irq,

@@ -12,6 +12,7 @@
 #include <platform/drivers/interrupt.h>
 #include <sof/lib/cpu.h>
 #include <sof/list.h>
+#include <sof/sof.h>
 #include <sof/spinlock_t.h>
 #include <sof/trace/trace.h>
 #include <user/trace.h>
@@ -106,6 +107,20 @@ struct irq_cascade_tmpl {
 	bool global_mask;
 };
 
+/**
+ * \brief Cascading interrupt controller root.
+ */
+struct cascade_root {
+	spinlock_t *lock;		/**< locking mechanism */
+	struct irq_cascade_desc *list;	/**< list of child cascade irqs */
+	int last_irq;			/**< last registered cascade irq */
+};
+
+static inline struct cascade_root *cascade_root_get(void)
+{
+	return sof_get()->cascade_root;
+}
+
 int interrupt_register(uint32_t irq, void(*handler)(void *arg), void *arg);
 void interrupt_unregister(uint32_t irq, const void *arg);
 uint32_t interrupt_enable(uint32_t irq, void *arg);
@@ -126,7 +141,7 @@ void interrupt_unmask(uint32_t irq, unsigned int cpu);
 #define interrupt_is_dsp_direct(irq) (!PLATFORM_IRQ_CHILDREN || \
 					irq < PLATFORM_IRQ_HW_NUM)
 
-void interrupt_init(void);
+void interrupt_init(struct sof *sof);
 int interrupt_cascade_register(const struct irq_cascade_tmpl *tmpl);
 struct irq_cascade_desc *interrupt_get_parent(uint32_t irq);
 int interrupt_get_irq(unsigned int irq, const char *cascade);

@@ -50,7 +50,7 @@ int master_core_init(int argc, char *argv[], struct sof *sof)
 	platform_init_memmap(sof);
 	init_heap(sof);
 
-	interrupt_init();
+	interrupt_init(sof);
 
 #if CONFIG_TRACE
 	trace_point(TRACE_BOOT_SYS_TRACES);
