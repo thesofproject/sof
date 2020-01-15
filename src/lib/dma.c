@@ -208,11 +208,7 @@ void dma_buffer_copy_from(struct comp_buffer *source, uint32_t source_bytes,
 	process(istream, &sink->stream, samples);
 
 	istream->r_ptr = (char *)istream->r_ptr + source_bytes;
-
-	/* check for pointer wrap */
-	if (istream->r_ptr >= istream->end_addr)
-		istream->r_ptr = (char *)istream->addr +
-			((char *)istream->r_ptr - (char *)istream->end_addr);
+	istream->r_ptr = audio_stream_wrap(istream, istream->r_ptr);
 
 	comp_update_buffer_produce(sink, sink_bytes);
 }
@@ -239,11 +235,7 @@ void dma_buffer_copy_to(struct comp_buffer *source, uint32_t source_bytes,
 		dcache_writeback_region(ostream->addr, tail);
 
 	ostream->w_ptr = (char *)ostream->w_ptr + sink_bytes;
-
-	/* check for pointer wrap */
-	if (ostream->w_ptr >= ostream->end_addr)
-		ostream->w_ptr = (char *)ostream->addr +
-			((char *)ostream->w_ptr - (char *)ostream->end_addr);
+	ostream->w_ptr = audio_stream_wrap(ostream, ostream->w_ptr);
 
 	comp_update_buffer_consume(source, source_bytes);
 }

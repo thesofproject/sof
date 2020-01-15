@@ -58,17 +58,17 @@ struct audio_stream {
 #define audio_stream_write_frag_s32(buffer, idx) \
 	audio_stream_get_frag(buffer, buffer->w_ptr, idx, sizeof(int32_t))
 
-static inline void *audio_stream_get_frag(const struct audio_stream *buffer,
-				const void *ptr, uint32_t idx, uint32_t size)
+#define audio_stream_get_frag(buffer, ptr, idx, sample_size) \
+	audio_stream_wrap(buffer, (char *)(ptr) + ((idx) * (sample_size)))
+
+static inline void *audio_stream_wrap(const struct audio_stream *buffer,
+				      void *ptr)
 {
-	void *current = (char *)ptr + (idx * size);
+	if (ptr >= buffer->end_addr)
+		ptr = (char *)buffer->addr +
+			((char *)ptr - (char *)buffer->end_addr);
 
-	/* check for pointer wrap */
-	if (current >= buffer->end_addr)
-		current = (char *)buffer->addr +
-			((char *)current - (char *)buffer->end_addr);
-
-	return current;
+	return ptr;
 }
 
 /* get the max number of bytes that can be copied between sink and source */
@@ -144,12 +144,12 @@ audio_stream_avail_frames(const struct audio_stream *source,
 static inline void audio_stream_produce(struct audio_stream *buffer,
 					uint32_t bytes)
 {
-	buffer->w_ptr = (char *)buffer->w_ptr + bytes;
+	buffer->w_ptr = audio_stream_wrap(buffer,
+					  (char *)buffer->w_ptr + bytes);
 
-	/* check for pointer wrap */
-	if (buffer->w_ptr >= buffer->end_addr)
-		buffer->w_ptr = (char *)buffer->addr +
-			((char *)buffer->w_ptr - (char *)buffer->end_addr);
+	/* "overwrite" old data in circular wrap case */
+	if (bytes > buffer->free)
+		buffer->r_ptr = buffer->w_ptr;
 
 	/* calculate available bytes */
 	if (buffer->r_ptr < buffer->w_ptr)
@@ -168,12 +168,8 @@ static inline void audio_stream_produce(struct audio_stream *buffer,
 static inline void audio_stream_consume(struct audio_stream *buffer,
 					uint32_t bytes)
 {
-	buffer->r_ptr = (char *)buffer->r_ptr + bytes;
-
-	/* check for pointer wrap */
-	if (buffer->r_ptr >= buffer->end_addr)
-		buffer->r_ptr = (char *)buffer->addr +
-			((char *)buffer->r_ptr - (char *)buffer->end_addr);
+	buffer->r_ptr = audio_stream_wrap(buffer,
+					  (char *)buffer->r_ptr + bytes);
 
 	/* calculate available bytes */
 	if (buffer->r_ptr < buffer->w_ptr)
