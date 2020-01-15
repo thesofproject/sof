@@ -505,7 +505,8 @@ static void dw_dma_mask_address(struct dma_sg_elem *sg_elem, uint32_t *sar,
 static int dw_dma_set_config(struct dma_chan_data *channel,
 			     struct dma_sg_config *config)
 {
-	struct dw_drv_plat_data *dp = channel->dma->plat_data.drv_plat_data;
+	const struct dw_drv_plat_data *dp =
+		channel->dma->plat_data.drv_plat_data;
 	struct dw_dma_chan_data *dw_chan = dma_chan_get_data(channel);
 	struct dma_sg_elem *sg_elem;
 	struct dw_lli *lli_desc;

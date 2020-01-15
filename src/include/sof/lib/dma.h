@@ -189,7 +189,7 @@ struct dma_plat_data {
 	int irq;
 	const char *irq_name;
 	uint32_t chan_size;
-	void *drv_plat_data;
+	const void *drv_plat_data;
 };
 
 struct dma {

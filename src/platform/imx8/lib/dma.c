@@ -15,7 +15,7 @@
 extern struct dma_ops dummy_dma_ops;
 extern struct dma_ops edma_ops;
 
-static int edma0_ints[EDMA0_CHAN_MAX] = {
+const int edma0_ints[EDMA0_CHAN_MAX] = {
 	[EDMA0_ESAI_CHAN_RX] = EDMA0_ESAI_CHAN_RX_IRQ,
 	[EDMA0_ESAI_CHAN_TX] = EDMA0_ESAI_CHAN_TX_IRQ,
 	[EDMA0_SAI_CHAN_RX] = EDMA0_SAI_CHAN_RX_IRQ,

@@ -13,7 +13,7 @@
 #include <sof/spinlock.h>
 #include <config.h>
 
-static struct dw_drv_plat_data dmac0 = {
+const struct dw_drv_plat_data dmac0 = {
 	.chan[0] = {
 		.class	= 6,
 		.weight = 0,
@@ -48,7 +48,7 @@ static struct dw_drv_plat_data dmac0 = {
 	},
 };
 
-static struct dw_drv_plat_data dmac1 = {
+const struct dw_drv_plat_data dmac1 = {
 	.chan[0] = {
 		.class	= 7,
 		.weight = 0,
@@ -84,7 +84,7 @@ static struct dw_drv_plat_data dmac1 = {
 };
 
 #if defined CONFIG_CHERRYTRAIL_EXTRA_DW_DMA
-static struct dw_drv_plat_data dmac2 = {
+const struct dw_drv_plat_data dmac2 = {
 	.chan[0] = {
 		.class	= 7,
 		.weight = 0,

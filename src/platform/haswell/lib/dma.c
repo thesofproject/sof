@@ -14,7 +14,7 @@
 #include <sof/sof.h>
 #include <sof/spinlock.h>
 
-static struct dw_drv_plat_data dmac0 = {
+const struct dw_drv_plat_data dmac0 = {
 	.chan[0] = {
 		.class	= 6,
 		.weight = 0,
@@ -49,7 +49,7 @@ static struct dw_drv_plat_data dmac0 = {
 	},
 };
 
-static struct dw_drv_plat_data dmac1 = {
+const struct dw_drv_plat_data dmac1 = {
 	.chan[0] = {
 		.class	= 7,
 		.weight = 0,
