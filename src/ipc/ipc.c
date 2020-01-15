@@ -469,6 +469,7 @@ int ipc_init(struct sof *sof)
 		msg = rzalloc(SOF_MEM_ZONE_SYS, SOF_MEM_FLAG_SHARED,
 			      SOF_MEM_CAPS_RAM, sizeof(*msg));
 		list_item_prepend(&msg->list, &sof->ipc->empty_list);
+		platform_shared_commit(msg, sizeof(*msg));
 	}
 
 	return platform_ipc_init(sof->ipc);
