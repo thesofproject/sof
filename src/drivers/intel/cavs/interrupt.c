@@ -10,6 +10,7 @@
 #include <sof/common.h>
 #include <sof/drivers/interrupt.h>
 #include <sof/lib/cpu.h>
+#include <sof/lib/memory.h>
 #include <sof/lib/shim.h>
 #include <sof/list.h>
 #include <sof/spinlock.h>
@@ -82,6 +83,8 @@ static inline void irq_lvl2_handler(void *data, int level, uint32_t ilxsd,
 				handled = true;
 			}
 		}
+
+		platform_shared_commit(cascade, sizeof(*cascade));
 
 		spin_unlock(cascade->lock);
 
@@ -159,6 +162,8 @@ void interrupt_mask(uint32_t irq, unsigned int cpu)
 	if (cascade && cascade->ops->mask)
 		cascade->ops->mask(&cascade->desc, irq - cascade->irq_base,
 				   cpu);
+
+	platform_shared_commit(cascade, sizeof(*cascade));
 }
 
 void interrupt_unmask(uint32_t irq, unsigned int cpu)
@@ -168,6 +173,8 @@ void interrupt_unmask(uint32_t irq, unsigned int cpu)
 	if (cascade && cascade->ops->unmask)
 		cascade->ops->unmask(&cascade->desc, irq - cascade->irq_base,
 				     cpu);
+
+	platform_shared_commit(cascade, sizeof(*cascade));
 }
 
 static void irq_mask(struct irq_desc *desc, uint32_t irq, unsigned int core)
