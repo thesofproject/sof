@@ -9,6 +9,16 @@
 #ifndef __SOF_COMMON_H__
 #define __SOF_COMMON_H__
 
+/* Align the number to the nearest alignment value */
+#define IS_ALIGNED(size, alignment) ((size) % (alignment) == 0)
+#define ALIGN_UP(size, alignment) \
+	((size) + (((alignment) - ((size) % (alignment))) % (alignment)))
+#define ALIGN_DOWN(size, alignment) \
+	((size) - ((size) % (alignment)))
+#define ALIGN ALIGN_UP
+
+#ifndef __ASSEMBLER__
+
 #include <sof/trace/preproc.h>
 #include <stddef.h>
 
@@ -17,15 +27,6 @@
 #define container_of(ptr, type, member) \
 	({const typeof(((type *)0)->member)*__memberptr = (ptr); \
 	(type *)((char *)__memberptr - offsetof(type, member)); })
-
-/* Align the number to the nearest alignment value */
-#define IS_ALIGNED(size, alignment) ((size) % (alignment) == 0)
-#define ALIGN_UP(size, alignment) \
-	(IS_ALIGNED(size, alignment) ? (size) : \
-	((size) - ((size) % (alignment)) + (alignment)))
-#define ALIGN_DOWN(size, alignment) \
-	((size) - ((size) % (alignment)))
-#define ALIGN ALIGN_UP
 
 #define __packed __attribute__((packed))
 
@@ -62,4 +63,5 @@
 #define IS_ENABLED_STEP_2(values) IS_ENABLED_STEP_3(values 1, 0)
 #define IS_ENABLED_STEP_3(ignore, value, ...) (!!(value))
 
+#endif /* __ASSEMBLER__ */
 #endif /* __SOF_COMMON_H__ */
