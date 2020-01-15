@@ -84,7 +84,7 @@ static struct dw_drv_plat_data dmac1 = {
 	},
 };
 
-struct dma dma[PLATFORM_NUM_DMACS] = {
+SHARED_DATA struct dma dma[PLATFORM_NUM_DMACS] = {
 {
 	.plat_data = {
 		.id		= DMA_ID_DMAC0,
@@ -130,6 +130,8 @@ int dmac_init(struct sof *sof)
 	/* early lock initialization for ref counting */
 	for (i = 0; i < ARRAY_SIZE(dma); i++)
 		spinlock_init(&dma[i].lock);
+
+	platform_shared_commit(dma, sizeof(*dma));
 
 	/* clear the masks for dsp of the dmacs */
 	io_reg_update_bits(SHIM_BASE + SHIM_IMRD,

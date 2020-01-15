@@ -105,7 +105,7 @@ static struct dw_drv_plat_data dmac1 = {
 };
 
 #if CONFIG_SUECREEK
-struct dma dma[PLATFORM_NUM_DMACS] = {
+struct SHARED_DATA dma dma[PLATFORM_NUM_DMACS] = {
 {	/* LP GP DMAC 0 */
 	.plat_data = {
 		.id		= DMA_GP_LP_DMAC0,
@@ -154,7 +154,7 @@ struct dma dma[PLATFORM_NUM_DMACS] = {
 };
 
 #else
-struct dma dma[PLATFORM_NUM_DMACS] = {
+SHARED_DATA struct dma dma[PLATFORM_NUM_DMACS] = {
 {	/* Low Power GP DMAC 0 */
 	.plat_data = {
 		.id		= DMA_GP_LP_DMAC0,
@@ -238,7 +238,7 @@ struct dma dma[PLATFORM_NUM_DMACS] = {
 #endif
 
 const struct dma_info lib_dma = {
-	.dma_array = dma,
+	.dma_array = cache_to_uncache((struct dma *)dma),
 	.num_dmas = ARRAY_SIZE(dma)
 };
 
@@ -250,11 +250,14 @@ int dmac_init(struct sof *sof)
 
 	/* TODO: dynamic init based on platform settings */
 
-	/* early lock initialization for ref counting */
-	for (i = 0; i < ARRAY_SIZE(dma); i++)
-		spinlock_init(&dma[i].lock);
-
 	sof->dma_info = &lib_dma;
+
+	/* early lock initialization for ref counting */
+	for (i = 0; i < sof->dma_info->num_dmas; i++)
+		spinlock_init(&sof->dma_info->dma_array[i].lock);
+
+	platform_shared_commit(sof->dma_info->dma_array,
+			       sizeof(struct dma) * sof->dma_info->num_dmas);
 
 	return 0;
 }
