@@ -87,7 +87,12 @@ static struct dma_chan_data *dma_chan_min_period(struct dma_domain *dma_domain)
 
 			channel = &dmas[i].chan[j];
 		}
+
+		platform_shared_commit(dmas[i].chan, sizeof(*dmas[i].chan) *
+				       dmas[i].plat_data.channels);
 	}
+
+	platform_shared_commit(dmas, sizeof(*dmas) * dma_domain->num_dma);
 
 	return channel;
 }
@@ -124,12 +129,14 @@ static int dma_single_chan_domain_irq_register(struct dma_chan_data *channel,
 	trace_ll("dma_single_chan_domain_irq_register()");
 
 	data->irq = interrupt_get_irq(irq, dma_irq_name(channel->dma));
-	if (data->irq < 0)
-		return data->irq;
+	if (data->irq < 0) {
+		ret = data->irq;
+		goto out;
+	}
 
 	ret = interrupt_register(data->irq, handler, arg);
 	if (ret < 0)
-		return ret;
+		goto out;
 
 	interrupt_enable(data->irq, arg);
 
@@ -138,6 +145,9 @@ static int dma_single_chan_domain_irq_register(struct dma_chan_data *channel,
 	data->channel = channel;
 	data->handler = handler;
 	data->arg = arg;
+
+out:
+	platform_shared_commit(channel, sizeof(*channel));
 
 	return ret;
 }
@@ -256,6 +266,7 @@ out:
 static bool dma_chan_is_any_running(struct dma *dmas, uint32_t num)
 {
 	int core = cpu_get_id();
+	bool ret = false;
 	int i;
 	int j;
 
@@ -273,12 +284,23 @@ static bool dma_chan_is_any_running(struct dma *dmas, uint32_t num)
 			if (core != dmas[i].chan[j].core)
 				continue;
 
-			if (dmas[i].chan[j].status == COMP_STATE_ACTIVE)
-				return true;
+			if (dmas[i].chan[j].status == COMP_STATE_ACTIVE) {
+				platform_shared_commit(dmas[i].chan,
+						sizeof(*dmas[i].chan) *
+						dmas[i].plat_data.channels);
+				ret = true;
+				goto out;
+			}
 		}
+
+		platform_shared_commit(dmas[i].chan, sizeof(*dmas[i].chan) *
+				       dmas[i].plat_data.channels);
 	}
 
-	return false;
+out:
+	platform_shared_commit(dmas, sizeof(*dmas) * num);
+
+	return ret;
 }
 
 /**

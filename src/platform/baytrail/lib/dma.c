@@ -8,6 +8,7 @@
 #include <sof/drivers/dw-dma.h>
 #include <sof/drivers/interrupt.h>
 #include <sof/lib/dma.h>
+#include <sof/lib/memory.h>
 #include <sof/sof.h>
 #include <sof/spinlock.h>
 #include <config.h>
@@ -119,7 +120,7 @@ static struct dw_drv_plat_data dmac2 = {
 };
 #endif
 
-struct dma dma[PLATFORM_NUM_DMACS] = {
+SHARED_DATA struct dma dma[PLATFORM_NUM_DMACS] = {
 {
 	.plat_data = {
 		.id		= DMA_ID_DMAC0,
@@ -185,6 +186,8 @@ int dmac_init(struct sof *sof)
 	/* early lock initialization for ref counting */
 	for (i = 0; i < ARRAY_SIZE(dma); i++)
 		spinlock_init(&dma[i].lock);
+
+	platform_shared_commit(dma, sizeof(*dma));
 
 	sof->dma_info = &lib_dma;
 

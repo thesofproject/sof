@@ -9,6 +9,7 @@
 #include <sof/lib/alloc.h>
 #include <sof/lib/cache.h>
 #include <sof/lib/dma.h>
+#include <sof/lib/memory.h>
 #include <sof/spinlock.h>
 #include <sof/trace/trace.h>
 #include <ipc/topology.h>
@@ -82,8 +83,15 @@ struct dma *dma_get(uint32_t dir, uint32_t cap, uint32_t dev, uint32_t flags)
 			trace_error(TRACE_CLASS_DMA, "  caps 0x%x dev 0x%x",
 				    d->plat_data.caps, d->plat_data.devs);
 		}
+
+		platform_shared_commit(info->dma_array,
+				       sizeof(struct dma) * info->num_dmas);
+
 		return NULL;
 	}
+
+	platform_shared_commit(info->dma_array,
+			       sizeof(struct dma) * info->num_dmas);
 
 	/* return DMAC */
 	tracev_event(TRACE_CLASS_DMA, "dma_get(), dma-probe id = %d",
@@ -112,6 +120,8 @@ struct dma *dma_get(uint32_t dir, uint32_t cap, uint32_t dev, uint32_t flags)
 		    "busy channels %d", dmin->plat_data.id, dmin->sref,
 		    atomic_read(&dmin->num_channels_busy));
 
+	platform_shared_commit(dmin, sizeof(*dmin));
+
 	spin_unlock(dmin->lock);
 	return !ret ? dmin : NULL;
 }
@@ -131,6 +141,7 @@ void dma_put(struct dma *dma)
 	}
 	trace_event(TRACE_CLASS_DMA, "dma_put(), dma = %p, sref = %d",
 		   (uintptr_t)dma, dma->sref);
+	platform_shared_commit(dma, sizeof(*dma));
 	spin_unlock(dma->lock);
 }
 

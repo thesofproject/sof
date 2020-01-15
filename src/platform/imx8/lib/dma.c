@@ -22,7 +22,7 @@ static int edma0_ints[EDMA0_CHAN_MAX] = {
 	[EDMA0_SAI_CHAN_TX] = EDMA0_SAI_CHAN_TX_IRQ,
 };
 
-struct dma dma[PLATFORM_NUM_DMACS] = {
+SHARED_DATA struct dma dma[PLATFORM_NUM_DMACS] = {
 {
 	.plat_data = {
 		.id		= DMA_ID_EDMA0,
@@ -58,6 +58,8 @@ int dmac_init(struct sof *sof)
 	/* early lock initialization for ref counting */
 	for (i = 0; i < ARRAY_SIZE(dma); i++)
 		spinlock_init(&dma[i].lock);
+
+	platform_shared_commit(dma, sizeof(*dma));
 
 	sof->dma_info = &lib_dma;
 

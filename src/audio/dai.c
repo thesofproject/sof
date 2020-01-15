@@ -816,7 +816,6 @@ static void dai_cache(struct comp_dev *dev, int cmd)
 
 		dcache_writeback_invalidate_region(dd->dma_buffer,
 						   sizeof(*dd->dma_buffer));
-		dcache_writeback_invalidate_region(dd->dma, sizeof(*dd->dma));
 		dcache_writeback_invalidate_region(dd, sizeof(*dd));
 		dcache_writeback_invalidate_region(dev, sizeof(*dev));
 		break;
@@ -828,7 +827,6 @@ static void dai_cache(struct comp_dev *dev, int cmd)
 
 		dd = comp_get_drvdata(dev);
 		dcache_invalidate_region(dd, sizeof(*dd));
-		dcache_invalidate_region(dd->dma, sizeof(*dd->dma));
 		dcache_invalidate_region(dd->dma_buffer,
 					 sizeof(*dd->dma_buffer));
 

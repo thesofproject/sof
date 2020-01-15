@@ -141,8 +141,12 @@ static int dma_multi_chan_domain_register(struct ll_schedule_domain *domain,
 				ret = dma_multi_chan_domain_irq_register(
 						&dma_domain->data[i][j],
 						handler);
-				if (ret < 0)
+				if (ret < 0) {
+					platform_shared_commit(dmas[i].chan,
+						sizeof(*dmas[i].chan) *
+						dmas[i].plat_data.channels);
 					goto out;
+				}
 
 				dma_domain->data[i][j].handler = handler;
 				dma_domain->data[i][j].arg = arg;
@@ -160,11 +164,19 @@ static int dma_multi_chan_domain_register(struct ll_schedule_domain *domain,
 			dma_domain->data[i][j].task = pipe_task;
 			dma_domain->channel_mask[i][core] |= BIT(j);
 
+			platform_shared_commit(dmas[i].chan,
+					       sizeof(*dmas[i].chan) *
+					       dmas[i].plat_data.channels);
+
 			goto out;
 		}
+
+		platform_shared_commit(dmas[i].chan, sizeof(*dmas[i].chan) *
+				       dmas[i].plat_data.channels);
 	}
 
 out:
+	platform_shared_commit(dmas, sizeof(*dmas) * dma_domain->num_dma);
 	platform_shared_commit(dma_domain, sizeof(*dma_domain));
 
 	return ret;
@@ -240,11 +252,19 @@ static void dma_multi_chan_domain_unregister(struct ll_schedule_domain *domain,
 				dma_multi_chan_domain_irq_unregister(
 						dma_domain->arg[i][core]);
 
+			platform_shared_commit(dmas[i].chan,
+					       sizeof(*dmas[i].chan) *
+					       dmas[i].plat_data.channels);
+
 			goto out;
 		}
+
+		platform_shared_commit(dmas[i].chan, sizeof(*dmas[i].chan) *
+				       dmas[i].plat_data.channels);
 	}
 
 out:
+	platform_shared_commit(dmas, sizeof(*dmas) * dma_domain->num_dma);
 	platform_shared_commit(dma_domain, sizeof(*dma_domain));
 }
 
@@ -294,12 +314,15 @@ static bool dma_multi_chan_domain_is_pending(struct ll_schedule_domain *domain,
 						     BIT(j));
 			}
 
+			platform_shared_commit(dmas, sizeof(*dmas) *
+					       dma_domain->num_dma);
 			platform_shared_commit(dma_domain, sizeof(*dma_domain));
 
 			return true;
 		}
 	}
 
+	platform_shared_commit(dmas, sizeof(*dmas) * dma_domain->num_dma);
 	platform_shared_commit(dma_domain, sizeof(*dma_domain));
 
 	return false;
@@ -346,6 +369,7 @@ struct ll_schedule_domain *dma_multi_chan_domain_init(struct dma *dma_array,
 
 	ll_sch_domain_set_pdata(domain, dma_domain);
 
+	platform_shared_commit(dma_array, sizeof(*dma_array) * num_dma);
 	platform_shared_commit(domain, sizeof(*domain));
 	platform_shared_commit(dma_domain, sizeof(*dma_domain));
 
