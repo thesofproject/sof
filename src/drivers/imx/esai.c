@@ -8,6 +8,7 @@
 #include <sof/audio/component.h>
 #include <sof/drivers/edma.h>
 #include <sof/drivers/esai.h>
+#include <sof/drivers/interrupt.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/dai.h>
 #include <sof/lib/dma.h>
