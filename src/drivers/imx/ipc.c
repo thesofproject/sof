@@ -107,7 +107,7 @@ void ipc_platform_send_msg(void)
 	spin_lock_irq(ipc->lock, flags);
 
 	/* any messages to send ? */
-	if (list_is_empty(&ipc->shared_ctx->msg_list))
+	if (list_is_empty(&ipc->msg_list))
 		goto out;
 
 	/* can't send notification when one is in progress */
@@ -115,7 +115,7 @@ void ipc_platform_send_msg(void)
 		goto out;
 
 	/* now send the message */
-	msg = list_first_item(&ipc->shared_ctx->msg_list, struct ipc_msg,
+	msg = list_first_item(&ipc->msg_list, struct ipc_msg,
 			      list);
 	mailbox_dspbox_write(0, msg->tx_data, msg->tx_size);
 	list_item_del(&msg->list);
@@ -124,7 +124,7 @@ void ipc_platform_send_msg(void)
 	/* now interrupt host to tell it we have sent a message */
 	imx_mu_xcr_rmw(IMX_MU_xCR_GIRn(1), 0);
 
-	list_item_append(&msg->list, &ipc->shared_ctx->empty_list);
+	list_item_append(&msg->list, &ipc->empty_list);
 
 out:
 	spin_unlock_irq(ipc->lock, flags);

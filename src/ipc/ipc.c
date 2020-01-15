@@ -43,7 +43,7 @@ struct ipc_comp_dev *ipc_get_comp_by_id(struct ipc *ipc, uint32_t id)
 	struct ipc_comp_dev *icd;
 	struct list_item *clist;
 
-	list_for_item(clist, &ipc->shared_ctx->comp_list) {
+	list_for_item(clist, &ipc->comp_list) {
 		icd = container_of(clist, struct ipc_comp_dev, list);
 		switch (icd->type) {
 		case COMP_TYPE_COMPONENT:
@@ -72,7 +72,7 @@ struct ipc_comp_dev *ipc_get_comp_by_ppl_id(struct ipc *ipc, uint16_t type,
 	struct ipc_comp_dev *icd;
 	struct list_item *clist;
 
-	list_for_item(clist, &ipc->shared_ctx->comp_list) {
+	list_for_item(clist, &ipc->comp_list) {
 		icd = container_of(clist, struct ipc_comp_dev, list);
 		if (icd->type != type)
 			continue;
@@ -105,7 +105,7 @@ static struct ipc_comp_dev *ipc_get_ppl_comp(struct ipc *ipc,
 	struct list_item *clist;
 
 	/* first try to find the module in the pipeline */
-	list_for_item(clist, &ipc->shared_ctx->comp_list) {
+	list_for_item(clist, &ipc->comp_list) {
 		icd = container_of(clist, struct ipc_comp_dev, list);
 		if (icd->type == COMP_TYPE_COMPONENT &&
 		    icd->cd->comp.pipeline_id == pipeline_id &&
@@ -114,7 +114,7 @@ static struct ipc_comp_dev *ipc_get_ppl_comp(struct ipc *ipc,
 	}
 
 	/* it's connected pipeline, so find the connected module */
-	list_for_item(clist, &ipc->shared_ctx->comp_list) {
+	list_for_item(clist, &ipc->comp_list) {
 		icd = container_of(clist, struct ipc_comp_dev, list);
 		if (icd->type == COMP_TYPE_COMPONENT &&
 		    icd->cd->comp.pipeline_id == pipeline_id) {
@@ -164,7 +164,7 @@ int ipc_comp_new(struct ipc *ipc, struct sof_ipc_comp *comp)
 	icd->type = COMP_TYPE_COMPONENT;
 
 	/* add new component to the list */
-	list_item_append(&icd->list, &ipc->shared_ctx->comp_list);
+	list_item_append(&icd->list, &ipc->comp_list);
 	return ret;
 }
 
@@ -231,7 +231,7 @@ int ipc_buffer_new(struct ipc *ipc, struct sof_ipc_buffer *desc)
 	ibd->type = COMP_TYPE_BUFFER;
 
 	/* add new buffer to the list */
-	list_item_append(&ibd->list, &ipc->shared_ctx->comp_list);
+	list_item_append(&ibd->list, &ipc->comp_list);
 	return ret;
 }
 
@@ -354,7 +354,7 @@ int ipc_pipeline_new(struct ipc *ipc,
 	ipc_pipe->type = COMP_TYPE_PIPELINE;
 
 	/* add new pipeline to the list */
-	list_item_append(&ipc_pipe->list, &ipc->shared_ctx->comp_list);
+	list_item_append(&ipc_pipe->list, &ipc->comp_list);
 	return 0;
 }
 
@@ -418,7 +418,7 @@ int ipc_comp_dai_config(struct ipc *ipc, struct sof_ipc_dai_config *config)
 	int ret = -ENODEV;
 
 	/* for each component */
-	list_for_item(clist, &ipc->shared_ctx->comp_list) {
+	list_for_item(clist, &ipc->comp_list) {
 		icd = container_of(clist, struct ipc_comp_dev, list);
 		/* make sure we only config DAI comps */
 		if (icd->type != COMP_TYPE_COMPONENT)
@@ -455,28 +455,20 @@ int ipc_init(struct sof *sof)
 	trace_ipc("ipc_init()");
 
 	/* init ipc data */
-	sof->ipc = rzalloc(SOF_MEM_ZONE_SYS, 0, SOF_MEM_CAPS_RAM,
-			   sizeof(*sof->ipc));
-	sof->ipc->comp_data = rzalloc(SOF_MEM_ZONE_SYS, 0, SOF_MEM_CAPS_RAM,
-				      SOF_IPC_MSG_MAX_SIZE);
+	sof->ipc = rzalloc(SOF_MEM_ZONE_SYS, SOF_MEM_FLAG_SHARED,
+			   SOF_MEM_CAPS_RAM, sizeof(*sof->ipc));
+	sof->ipc->comp_data = rzalloc(SOF_MEM_ZONE_SYS, 0,
+				      SOF_MEM_CAPS_RAM, SOF_IPC_MSG_MAX_SIZE);
 
 	spinlock_init(&sof->ipc->lock);
-
-	sof->ipc->shared_ctx = rzalloc(SOF_MEM_ZONE_SYS, SOF_MEM_FLAG_SHARED,
-				       SOF_MEM_CAPS_RAM,
-				       sizeof(*sof->ipc->shared_ctx));
-
-	dcache_writeback_region(sof->ipc, sizeof(*sof->ipc));
-
-	list_init(&sof->ipc->shared_ctx->empty_list);
-	list_init(&sof->ipc->shared_ctx->msg_list);
-	list_init(&sof->ipc->shared_ctx->comp_list);
+	list_init(&sof->ipc->empty_list);
+	list_init(&sof->ipc->msg_list);
+	list_init(&sof->ipc->comp_list);
 
 	for (i = 0; i < MSG_QUEUE_SIZE; i++) {
 		msg = rzalloc(SOF_MEM_ZONE_SYS, SOF_MEM_FLAG_SHARED,
 			      SOF_MEM_CAPS_RAM, sizeof(*msg));
-		list_item_prepend(&msg->list,
-				  &sof->ipc->shared_ctx->empty_list);
+		list_item_prepend(&msg->list, &sof->ipc->empty_list);
 	}
 
 	return platform_ipc_init(sof->ipc);

@@ -1176,9 +1176,8 @@ static inline struct ipc_msg *msg_get_empty(struct ipc *ipc)
 {
 	struct ipc_msg *msg = NULL;
 
-	if (!list_is_empty(&ipc->shared_ctx->empty_list)) {
-		msg = list_first_item(&ipc->shared_ctx->empty_list,
-				      struct ipc_msg, list);
+	if (!list_is_empty(&ipc->empty_list)) {
+		msg = list_first_item(&ipc->empty_list, struct ipc_msg, list);
 		list_item_del(&msg->list);
 	}
 
@@ -1201,7 +1200,7 @@ static inline struct ipc_msg *ipc_glb_stream_message_find(struct ipc *ipc,
 	case SOF_IPC_STREAM_POSITION:
 
 		/* iterate host message list for searching */
-		list_for_item(plist, &ipc->shared_ctx->msg_list) {
+		list_for_item(plist, &ipc->msg_list) {
 			msg = container_of(plist, struct ipc_msg, list);
 			if (msg->header == posn->rhdr.hdr.cmd) {
 				old_posn = (struct sof_ipc_stream_posn *)
@@ -1232,7 +1231,7 @@ static inline struct ipc_msg *ipc_glb_trace_message_find(struct ipc *ipc,
 	switch (cmd) {
 	case SOF_IPC_TRACE_DMA_POSITION:
 		/* iterate host message list for searching */
-		list_for_item(plist, &ipc->shared_ctx->msg_list) {
+		list_for_item(plist, &ipc->msg_list) {
 			msg = container_of(plist, struct ipc_msg, list);
 			if (msg->header == posn->rhdr.hdr.cmd)
 				return msg;
@@ -1275,8 +1274,6 @@ int ipc_queue_host_message(struct ipc *ipc, uint32_t header, void *tx_data,
 	uint32_t flags;
 	int ret = 0;
 
-	ipc = cache_to_uncache(ipc);
-
 	spin_lock_irq(ipc->lock, flags);
 
 	/* do we need to replace an existing message? */
@@ -1309,7 +1306,7 @@ int ipc_queue_host_message(struct ipc *ipc, uint32_t header, void *tx_data,
 
 	/* queue new message if it's not replacement */
 	if (!found)
-		list_item_append(&msg->list, &ipc->shared_ctx->msg_list);
+		list_item_append(&msg->list, &ipc->msg_list);
 
 out:
 	spin_unlock_irq(ipc->lock, flags);
