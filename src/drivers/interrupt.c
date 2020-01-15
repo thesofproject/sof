@@ -9,6 +9,7 @@
 #include <sof/drivers/interrupt.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/cpu.h>
+#include <sof/lib/memory.h>
 #include <sof/list.h>
 #include <sof/sof.h>
 #include <sof/spinlock.h>
@@ -18,7 +19,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-static struct cascade_root cascade_root __aligned(PLATFORM_DCACHE_ALIGN);
+static SHARED_DATA struct cascade_root cascade_root;
 
 static int interrupt_register_internal(uint32_t irq, void (*handler)(void *arg),
 				       void *arg, struct irq_desc *desc);
@@ -37,8 +38,6 @@ int interrupt_cascade_register(const struct irq_cascade_tmpl *tmpl)
 		return -EINVAL;
 
 	spin_lock_irq(root->lock, flags);
-
-	dcache_invalidate_region(root, sizeof(*root));
 
 	for (cascade = &root->list; *cascade;
 	     cascade = &(*cascade)->next) {
@@ -68,11 +67,12 @@ int interrupt_cascade_register(const struct irq_cascade_tmpl *tmpl)
 	(*cascade)->desc.cpu_mask = 1 << cpu_get_id();
 
 	root->last_irq += ARRAY_SIZE((*cascade)->child);
-	dcache_writeback_region(root, sizeof(*root));
 
 	ret = 0;
 
 unlock:
+	platform_shared_commit(root, sizeof(*root));
+
 	spin_unlock_irq(root->lock, flags);
 
 	return ret;
@@ -98,14 +98,14 @@ int interrupt_get_irq(unsigned int irq, const char *name)
 
 	spin_lock_irq(root->lock, flags);
 
-	dcache_invalidate_region(root, sizeof(*root));
-
 	for (cascade = root->list; cascade; cascade = cascade->next)
 		/* .name is non-volatile */
 		if (!rstrcmp(name, cascade->name)) {
 			ret = cascade->irq_base + irq;
 			break;
 		}
+
+	platform_shared_commit(root, sizeof(*root));
 
 	spin_unlock_irq(root->lock, flags);
 
@@ -123,14 +123,14 @@ struct irq_cascade_desc *interrupt_get_parent(uint32_t irq)
 
 	spin_lock_irq(root->lock, flags);
 
-	dcache_invalidate_region(root, sizeof(*root));
-
 	for (cascade = root->list; cascade; cascade = cascade->next)
 		if (irq >= cascade->irq_base &&
 		    irq < cascade->irq_base + PLATFORM_IRQ_CHILDREN) {
 			c = cascade;
 			break;
 		}
+
+	platform_shared_commit(root, sizeof(*root));
 
 	spin_unlock_irq(root->lock, flags);
 
@@ -139,11 +139,11 @@ struct irq_cascade_desc *interrupt_get_parent(uint32_t irq)
 
 void interrupt_init(struct sof *sof)
 {
-	sof->cascade_root = &cascade_root;
+	sof->cascade_root = platform_shared_get(&cascade_root,
+						sizeof(cascade_root));
 
 	sof->cascade_root->last_irq = PLATFORM_IRQ_FIRST_CHILD - 1;
 	spinlock_init(&sof->cascade_root->lock);
-	dcache_writeback_region(sof->cascade_root, sizeof(*sof->cascade_root));
 }
 
 static int irq_register_child(struct irq_cascade_desc *cascade, int irq,
