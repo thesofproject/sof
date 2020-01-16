@@ -70,7 +70,7 @@ struct comp_data {
 	size_t fir_delay_size;			/**< allocated size */
 	bool config_ready;			/**< set when fully received */
 	void (*eq_fir_func)(struct fir_state_32x16 fir[],
-			    struct comp_buffer *source,
+			    const struct comp_buffer *source,
 			    struct comp_buffer *sink,
 			    int frames, int nch);
 };
@@ -181,7 +181,7 @@ static inline int set_fir_func(struct comp_dev *dev)
 
 #if CONFIG_FORMAT_S16LE
 static void eq_fir_s16_passthrough(struct fir_state_32x16 fir[],
-				   struct comp_buffer *source,
+				   const struct comp_buffer *source,
 				   struct comp_buffer *sink,
 				   int frames, int nch)
 {
@@ -191,7 +191,7 @@ static void eq_fir_s16_passthrough(struct fir_state_32x16 fir[],
 
 #if CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE
 static void eq_fir_s32_passthrough(struct fir_state_32x16 fir[],
-				   struct comp_buffer *source,
+				   const struct comp_buffer *source,
 				   struct comp_buffer *sink,
 				   int frames, int nch)
 {
