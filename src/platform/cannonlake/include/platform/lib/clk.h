@@ -16,7 +16,7 @@
 
 #define CLK_MAX_CPU_HZ	400000000
 
-#define CPU_DEFAULT_IDX	0
+#define CPU_DEFAULT_IDX	1
 
 #define SSP_DEFAULT_IDX	0
 

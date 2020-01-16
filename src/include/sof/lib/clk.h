@@ -47,4 +47,8 @@ void platform_timer_set_delta(struct timer *timer, uint64_t ns);
 
 void clock_init(void);
 
+void clock_set_high_freq(void);
+
+void clock_set_low_freq(void);
+
 #endif /* __SOF_LIB_CLK_H__ */

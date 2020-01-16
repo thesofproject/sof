@@ -450,8 +450,8 @@ int platform_init(struct sof *sof)
 		short_spin();
 
 	shim_write(SHIM_CLKCTL,
-		   SHIM_CLKCTL_RLROSCC | /* Request Low Performance RING Osc */
-		   SHIM_CLKCTL_OCS_LP_RING | /* Select LP RING Oscillator Clk
+		   SHIM_CLKCTL_RHROSCC | /* Request HIGH Performance RING Osc */
+		   SHIM_CLKCTL_OCS_HP_RING | /* Select HP RING Oscillator Clk
 					      * for memory
 					      */
 		   SHIM_CLKCTL_HMCS_DIV2 | /* HP mem clock div by 2 */
@@ -537,10 +537,32 @@ int platform_init(struct sof *sof)
 void platform_wait_for_interrupt(int level)
 {
 #if (CONFIG_CAVS_LPS)
-	if (pm_runtime_is_active(PM_RUNTIME_DSP, PLATFORM_MASTER_CORE_ID))
+	if (pm_runtime_is_active(PM_RUNTIME_DSP, PLATFORM_MASTER_CORE_ID)) {
 		arch_wait_for_interrupt(level);
-	else
+#if CONFIG_CANNONLAKE
+		if (CPU_DEFAULT_IDX &&
+		    !(shim_read(SHIM_CLKSTS) & SHIM_CLKCTL_RHROSCC)) {
+			/* Switch back to high power clock as this is
+			 * the default one.
+			 */
+			/* Request HP RING OSC and disable request for
+			 * LP RING OSC
+			 */
+			shim_write(SHIM_CLKCTL, ((shim_read(SHIM_CLKCTL) &
+				   ~SHIM_CLKCTL_RLROSCC) |
+				    SHIM_CLKCTL_RHROSCC));
+
+			/* Select high frequency clock source */
+			clock_set_high_freq();
+
+			/* Wait for clock source change */
+			while (!(shim_read(SHIM_CLKSTS) & SHIM_CLKCTL_RHROSCC))
+				short_spin();
+		}
+#endif
+	} else {
 		lp_wait_for_interrupt(level);
+	}
 #else
 	arch_wait_for_interrupt(level);
 #endif

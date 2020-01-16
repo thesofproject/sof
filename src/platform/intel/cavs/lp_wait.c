@@ -19,6 +19,7 @@
 #include <stdint.h>
 
 #define LPSRAM_MAGIC_VALUE 0x13579BDF
+
 struct lpsram_header {
 	uint32_t alt_reset_vector;
 	uint32_t adsp_lpsram_magic;
@@ -88,13 +89,32 @@ static void platform_pg_task(void)
 	}
 }
 
+static inline void short_spin(void)
+{
+	int i;
+
+	for (i = 0; i < 16; i++)
+		asm volatile("nop");
+}
+
 static void platform_pg_int_handler(void *arg)
 {
 	uint32_t dir = (uint32_t)arg;
 
 	if (dir == LPS_POWER_FLOW_D0_D0I3) {
 		pm_runtime_put(PM_RUNTIME_DSP, PLATFORM_MASTER_CORE_ID);
+#if CONFIG_CANNONLAKE
+	/* Request LP RING OSC and cancel HP one */
+	shim_write(SHIM_CLKCTL, ((shim_read(SHIM_CLKCTL) &
+		   ~SHIM_CLKCTL_RHROSCC) | SHIM_CLKCTL_RLROSCC));
 
+	/* Select high frequency clock source */
+	clock_set_low_freq();
+
+	/* Wait for clock source change */
+	while (!(shim_read(SHIM_CLKSTS) & SHIM_CLKCTL_RLROSCC))
+		short_spin();
+#endif
 		/* init power flow task */
 		if (!pg_task_ctx)
 			task_context_alloc(&pg_task_ctx);
