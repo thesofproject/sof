@@ -180,12 +180,16 @@ static int irq_register_child(struct irq_cascade_desc *cascade, int irq,
 		child = container_of(list, struct irq_desc, irq_list);
 
 		if (child->handler_arg == arg) {
+			platform_shared_commit(child, sizeof(*child));
+
 			trace_error(TRACE_CLASS_IRQ,
 				    "error: IRQ 0x%x handler argument re-used!",
 				    irq);
 			ret = -EEXIST;
 			goto out;
 		}
+
+		platform_shared_commit(child, sizeof(*child));
 	}
 
 	if (!desc) {
@@ -218,6 +222,8 @@ static int irq_register_child(struct irq_cascade_desc *cascade, int irq,
 	if (!ret)
 		cascade->num_children[core]++;
 
+	platform_shared_commit(child, sizeof(*child));
+
 out:
 	platform_shared_commit(cascade, sizeof(*cascade));
 
@@ -249,8 +255,12 @@ static void irq_unregister_child(struct irq_cascade_desc *cascade, int irq,
 				interrupt_unregister_internal(parent->irq,
 							      parent, parent);
 
+			platform_shared_commit(child, sizeof(*child));
+
 			break;
 		}
+
+		platform_shared_commit(child, sizeof(*child));
 	}
 
 	platform_shared_commit(cascade, sizeof(*cascade));
@@ -282,8 +292,11 @@ static uint32_t irq_enable_child(struct irq_cascade_desc *cascade, int irq,
 
 		if (d->handler_arg == arg) {
 			d->cpu_mask |= 1 << core;
+			platform_shared_commit(d, sizeof(*d));
 			break;
 		}
+
+		platform_shared_commit(d, sizeof(*d));
 	}
 
 	if (!child->enable_count[child_idx]++) {
@@ -324,8 +337,11 @@ static uint32_t irq_disable_child(struct irq_cascade_desc *cascade, int irq,
 
 		if (d->handler_arg == arg) {
 			d->cpu_mask &= ~(1 << core);
+			platform_shared_commit(d, sizeof(*d));
 			break;
 		}
+
+		platform_shared_commit(d, sizeof(*d));
 	}
 
 	if (!child->enable_count[child_idx]) {

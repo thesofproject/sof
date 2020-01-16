@@ -56,6 +56,8 @@ static inline void irq_lvl2_handler(void *data, int level, uint32_t ilxsd,
 	uint32_t status;
 	uint32_t tries = LVL2_MAX_TRIES;
 
+	platform_shared_commit(parent, sizeof(*parent));
+
 	/* read active interrupt status */
 	status = irq_read(ilxsd);
 	if (!status)
@@ -82,6 +84,8 @@ static inline void irq_lvl2_handler(void *data, int level, uint32_t ilxsd,
 
 				handled = true;
 			}
+
+			platform_shared_commit(child, sizeof(*child));
 		}
 
 		platform_shared_commit(cascade, sizeof(*cascade));
@@ -202,6 +206,8 @@ static void irq_mask(struct irq_desc *desc, uint32_t irq, unsigned int core)
 		break;
 #endif
 	}
+
+	platform_shared_commit(desc, sizeof(*desc));
 }
 
 static void irq_unmask(struct irq_desc *desc, uint32_t irq, unsigned int core)
@@ -229,6 +235,8 @@ static void irq_unmask(struct irq_desc *desc, uint32_t irq, unsigned int core)
 		break;
 #endif
 	}
+
+	platform_shared_commit(desc, sizeof(*desc));
 }
 
 static const struct irq_cascade_ops irq_ops = {

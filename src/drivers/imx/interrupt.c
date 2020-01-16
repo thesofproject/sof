@@ -265,6 +265,8 @@ static inline void handle_irq_batch(struct irq_cascade_desc *cascade,
 
 				handled = true;
 			}
+
+			platform_shared_commit(child, sizeof(*child));
 		}
 
 		platform_shared_commit(cascade, sizeof(*cascade));
@@ -312,6 +314,8 @@ static inline void irq_handler(void *data, uint32_t line_index)
 					get_irqsteer_interrupts(line_index));
 		}
 	}
+
+	platform_shared_commit(parent, sizeof(*parent));
 }
 
 #define DEFINE_IRQ_HANDLER(n) \
@@ -338,6 +342,8 @@ static void irq_mask(struct irq_desc *desc, uint32_t irq, unsigned int core)
 	irq += irq_base;
 
 	irqstr_mask_int(irq);
+
+	platform_shared_commit(desc, sizeof(*desc));
 }
 
 static void irq_unmask(struct irq_desc *desc, uint32_t irq, unsigned int core)
@@ -349,6 +355,8 @@ static void irq_unmask(struct irq_desc *desc, uint32_t irq, unsigned int core)
 	irq += irq_base;
 
 	irqstr_unmask_int(irq);
+
+	platform_shared_commit(desc, sizeof(*desc));
 }
 
 static const struct irq_cascade_ops irq_ops = {
