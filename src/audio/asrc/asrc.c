@@ -45,6 +45,12 @@
 	trace_error_comp(TRACE_CLASS_SRC, comp_ptr,		\
 			 __e, ##__VA_ARGS__)
 
+typedef void (*asrc_proc_func)(struct comp_dev *dev,
+			       struct audio_stream *source,
+			       struct audio_stream *sink,
+			       int *consumed,
+			       int *produced);
+
 /* asrc component private data */
 struct comp_data {
 	struct asrc_farrow *asrc_obj;	/* ASRC core data */
@@ -65,11 +71,7 @@ struct comp_data {
 	uint8_t *buf;		/* Samples buffer for input and output */
 	uint8_t *ibuf[PLATFORM_MAX_CHANNELS];	/* Input channels pointers */
 	uint8_t *obuf[PLATFORM_MAX_CHANNELS];	/* Output channels pointers */
-	void (*asrc_func)(struct comp_dev *dev,
-			  struct comp_buffer *source,
-			  struct comp_buffer *sink,
-			  int *consumed,
-			  int *produced);
+	asrc_proc_func asrc_func;		/* ASRC processing function */
 };
 
 /* In-line functions */
