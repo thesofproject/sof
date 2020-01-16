@@ -232,7 +232,6 @@ struct comp_ops {
  */
 struct comp_driver {
 	uint32_t type;		/**< SOF_COMP_ for driver */
-	uint32_t module_id;	/**< module id */
 
 	struct comp_ops ops;	/**< component operations */
 
