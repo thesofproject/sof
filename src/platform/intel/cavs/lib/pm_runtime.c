@@ -63,9 +63,9 @@ static inline void cavs_pm_runtime_force_host_dma_l1_exit(void)
 
 static inline void cavs_pm_runtime_enable_dsp(bool enable)
 {
+	struct pm_runtime_data *prd = pm_runtime_data_get();
+	struct cavs_pm_runtime_data *pprd = prd->platform_data;
 	uint32_t flags;
-	struct cavs_pm_runtime_data *pprd =
-		pm_runtime_data_get()->platform_data;
 
 	/* request is always run on dsp0 and applies to dsp0,
 	 * so no global lock is required.
@@ -74,6 +74,8 @@ static inline void cavs_pm_runtime_enable_dsp(bool enable)
 
 	enable ? --pprd->dsp_d0_sref : ++pprd->dsp_d0_sref;
 
+	platform_shared_commit(prd, sizeof(*prd));
+
 	irq_local_enable(flags);
 
 	trace_power("pm_runtime_enable_dsp dsp_d0_sref %d", pprd->dsp_d0_sref);
@@ -81,8 +83,11 @@ static inline void cavs_pm_runtime_enable_dsp(bool enable)
 
 static inline bool cavs_pm_runtime_is_active_dsp(void)
 {
-	struct cavs_pm_runtime_data *pprd =
-		pm_runtime_data_get()->platform_data;
+	struct pm_runtime_data *prd = pm_runtime_data_get();
+	struct cavs_pm_runtime_data *pprd = prd->platform_data;
+
+	platform_shared_commit(prd, sizeof(*prd));
+
 	return pprd->dsp_d0_sref > 0;
 }
 
