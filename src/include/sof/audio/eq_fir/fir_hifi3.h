@@ -39,41 +39,47 @@ int fir_init_coef(struct fir_state_32x16 *fir,
 void fir_init_delay(struct fir_state_32x16 *fir, int32_t **data);
 
 #if CONFIG_FORMAT_S16LE
-void eq_fir_s16_hifi3(struct fir_state_32x16 *fir, struct comp_buffer *source,
+void eq_fir_s16_hifi3(struct fir_state_32x16 *fir,
+		      const struct comp_buffer *source,
 		      struct comp_buffer *sink, int frames, int nch);
 
 void eq_fir_2x_s16_hifi3(struct fir_state_32x16 *fir,
-			 struct comp_buffer *source, struct comp_buffer *sink,
+			 const struct comp_buffer *source,
+			 struct comp_buffer *sink,
 			 int frames, int nch);
 #endif /* CONFIG_FORMAT_S16LE */
 
 #if CONFIG_FORMAT_S24LE
-void eq_fir_s24_hifi3(struct fir_state_32x16 *fir, struct comp_buffer *source,
+void eq_fir_s24_hifi3(struct fir_state_32x16 *fir,
+		      const struct comp_buffer *source,
 		      struct comp_buffer *sink, int frames, int nch);
 
 void eq_fir_2x_s24_hifi3(struct fir_state_32x16 *fir,
-			 struct comp_buffer *source, struct comp_buffer *sink,
+			 const struct comp_buffer *source,
+			 struct comp_buffer *sink,
 			 int frames, int nch);
 #endif /* CONFIG_FORMAT_S24LE */
 
 #if CONFIG_FORMAT_S32LE
-void eq_fir_s32_hifi3(struct fir_state_32x16 *fir, struct comp_buffer *source,
+void eq_fir_s32_hifi3(struct fir_state_32x16 *fir,
+		      const struct comp_buffer *source,
 		      struct comp_buffer *sink, int frames, int nch);
 
 void eq_fir_2x_s32_hifi3(struct fir_state_32x16 *fir,
-			 struct comp_buffer *source, struct comp_buffer *sink,
+			 const struct comp_buffer *source,
+			 struct comp_buffer *sink,
 			 int frames, int nch);
 #endif /* CONFIG_FORMAT_S32LE */
 
 /* Setup circular buffer for FIR input data delay */
-static inline void fir_core_setup_circular(struct fir_state_32x16 *fir)
+static inline void fir_core_setup_circular(const struct fir_state_32x16 *fir)
 {
 	AE_SETCBEGIN0(fir->delay);
 	AE_SETCEND0(fir->delay_end);
 }
 
 /* Setup circular for component buffer */
-static inline void fir_comp_setup_circular(struct comp_buffer *buffer)
+static inline void fir_comp_setup_circular(const struct comp_buffer *buffer)
 {
 	AE_SETCBEGIN0(buffer->addr);
 	AE_SETCEND0(buffer->end_addr);

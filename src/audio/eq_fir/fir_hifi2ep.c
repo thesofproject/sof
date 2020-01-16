@@ -83,7 +83,7 @@ void fir_get_lrshifts(struct fir_state_32x16 *fir, int *lshift,
  * sample per call.
  */
 void eq_fir_2x_s32_hifiep(struct fir_state_32x16 fir[],
-			  struct comp_buffer *source,
+			  const struct comp_buffer *source,
 			  struct comp_buffer *sink,
 			  int frames, int nch)
 {
@@ -124,7 +124,8 @@ void eq_fir_2x_s32_hifiep(struct fir_state_32x16 fir[],
 }
 
 /* FIR for any number of frames */
-void eq_fir_s32_hifiep(struct fir_state_32x16 fir[], struct comp_buffer *source,
+void eq_fir_s32_hifiep(struct fir_state_32x16 fir[],
+		       const struct comp_buffer *source,
 		       struct comp_buffer *sink, int frames, int nch)
 {
 	struct fir_state_32x16 *f;
@@ -160,7 +161,7 @@ void eq_fir_s32_hifiep(struct fir_state_32x16 fir[], struct comp_buffer *source,
 
 #if CONFIG_FORMAT_S24LE
 void eq_fir_2x_s24_hifiep(struct fir_state_32x16 fir[],
-			  struct comp_buffer *source,
+			  const struct comp_buffer *source,
 			  struct comp_buffer *sink,
 			  int frames, int nch)
 {
@@ -205,7 +206,8 @@ void eq_fir_2x_s24_hifiep(struct fir_state_32x16 fir[],
 }
 
 /* FIR for any number of frames */
-void eq_fir_s24_hifiep(struct fir_state_32x16 fir[], struct comp_buffer *source,
+void eq_fir_s24_hifiep(struct fir_state_32x16 fir[],
+		       const struct comp_buffer *source,
 		       struct comp_buffer *sink, int frames, int nch)
 {
 	struct fir_state_32x16 *f;
@@ -243,7 +245,7 @@ void eq_fir_s24_hifiep(struct fir_state_32x16 fir[], struct comp_buffer *source,
 
 #if CONFIG_FORMAT_S16LE
 void eq_fir_2x_s16_hifiep(struct fir_state_32x16 fir[],
-			  struct comp_buffer *source,
+			  const struct comp_buffer *source,
 			  struct comp_buffer *sink,
 			  int frames, int nch)
 {
@@ -288,7 +290,8 @@ void eq_fir_2x_s16_hifiep(struct fir_state_32x16 fir[],
 }
 
 /* FIR for any number of frames */
-void eq_fir_s16_hifiep(struct fir_state_32x16 fir[], struct comp_buffer *source,
+void eq_fir_s16_hifiep(struct fir_state_32x16 fir[],
+		       const struct comp_buffer *source,
 		       struct comp_buffer *sink, int frames, int nch)
 {
 	struct fir_state_32x16 *f;
