@@ -11,6 +11,7 @@
  */
 
 #include <sof/lib/alloc.h>
+#include <sof/lib/memory.h>
 #include <sof/lib/pm_runtime.h>
 #include <sof/sof.h>
 #include <sof/spinlock.h>
@@ -19,11 +20,13 @@
 
 void pm_runtime_init(struct sof *sof)
 {
-	sof->prd = rzalloc(SOF_MEM_ZONE_SYS, 0, SOF_MEM_CAPS_RAM,
-			   sizeof(*sof->prd));
+	sof->prd = rzalloc(SOF_MEM_ZONE_SYS, SOF_MEM_FLAG_SHARED,
+			   SOF_MEM_CAPS_RAM, sizeof(*sof->prd));
 	spinlock_init(&sof->prd->lock);
 
 	platform_pm_runtime_init(sof->prd);
+
+	platform_shared_commit(sof->prd, sizeof(*sof->prd));
 }
 
 void pm_runtime_get(enum pm_runtime_context context, uint32_t index)
