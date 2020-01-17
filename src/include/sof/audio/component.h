@@ -239,6 +239,12 @@ struct comp_driver {
 	struct list_item list;	/**< list of component drivers */
 };
 
+/* \brief Holds constant pointer to component driver */
+struct comp_driver_info {
+	const struct comp_driver *drv;
+	struct list_item list;	/**< list of component drivers */
+};
+
 /* \brief Holds list of registered components' drivers */
 struct comp_driver_list {
 	struct list_item list;	/* list of component drivers */
