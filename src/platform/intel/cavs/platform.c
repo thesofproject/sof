@@ -257,7 +257,7 @@ SHARED_DATA struct timer timer = {
 	.irq_name = irq_name_level2,
 };
 
-struct timer arch_timer = {
+SHARED_DATA struct timer arch_timer = {
 	.id = TIMER1, /* internal timer */
 	.irq = IRQ_NUM_TIMER2,
 };
@@ -343,7 +343,7 @@ int platform_init(struct sof *sof)
 	int i;
 
 	sof->platform_timer = cache_to_uncache(&timer);
-	sof->cpu_timer = &arch_timer;
+	sof->cpu_timer = cache_to_uncache(&arch_timer);
 
 	/* Turn off memory for all unused cores */
 	for (i = 0; i < PLATFORM_CORE_COUNT; i++)
