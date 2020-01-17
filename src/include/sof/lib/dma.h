@@ -222,7 +222,7 @@ struct dma_info {
 	size_t num_dmas;
 };
 
-typedef void (*dma_process_func)(struct comp_buffer *source,
+typedef void (*dma_process_func)(const struct comp_buffer *source,
 				 struct comp_buffer *sink, uint32_t frames);
 
 /**
