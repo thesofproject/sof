@@ -187,9 +187,7 @@ void dma_sg_free(struct dma_sg_elem_array *elem_array)
 
 void dma_buffer_copy_from(struct comp_buffer *source, uint32_t source_bytes,
 			  struct comp_buffer *sink, uint32_t sink_bytes,
-			  void (*process)(const struct comp_buffer *,
-					  struct comp_buffer *, uint32_t),
-			  uint32_t samples)
+			  dma_process_func process, uint32_t samples)
 {
 	uint32_t head = source_bytes;
 	uint32_t tail = 0;
@@ -219,9 +217,7 @@ void dma_buffer_copy_from(struct comp_buffer *source, uint32_t source_bytes,
 
 void dma_buffer_copy_to(struct comp_buffer *source, uint32_t source_bytes,
 			struct comp_buffer *sink, uint32_t sink_bytes,
-			void (*process)(const struct comp_buffer *,
-					struct comp_buffer *, uint32_t),
-			uint32_t samples)
+			dma_process_func process, uint32_t samples)
 {
 	uint32_t head = sink_bytes;
 	uint32_t tail = 0;
