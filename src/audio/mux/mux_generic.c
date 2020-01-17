@@ -27,7 +27,7 @@
  * \param[in] offset Offset in source buffer.
  * \param[in] mask Routing bitmask for calculating output sample.
  */
-UT_STATIC inline int32_t calc_sample_s16le(struct comp_buffer *source,
+UT_STATIC inline int32_t calc_sample_s16le(const struct comp_buffer *source,
 					   uint8_t num_ch, uint32_t offset,
 					   uint8_t mask)
 {
@@ -61,7 +61,7 @@ UT_STATIC inline int32_t calc_sample_s16le(struct comp_buffer *source,
  * \param[in] data Parameters describing channel count and routing.
  */
 static void demux_s16le(struct comp_dev *dev, struct comp_buffer *sink,
-			struct comp_buffer *source, uint32_t frames,
+			const struct comp_buffer *source, uint32_t frames,
 			struct mux_stream_data *data)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
@@ -100,11 +100,11 @@ static void demux_s16le(struct comp_dev *dev, struct comp_buffer *sink,
  *		   each stream.
  */
 static void mux_s16le(struct comp_dev *dev, struct comp_buffer *sink,
-		      struct comp_buffer **sources, uint32_t frames,
+		      const struct comp_buffer **sources, uint32_t frames,
 		      struct mux_stream_data *data)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	struct comp_buffer *source;
+	const struct comp_buffer *source;
 	uint8_t i;
 	uint8_t j;
 	uint8_t out_ch;
@@ -142,7 +142,7 @@ static void mux_s16le(struct comp_dev *dev, struct comp_buffer *sink,
  * \param[in] offset Offset in source buffer.
  * \param[in] mask Routing bitmask for calculating output sample.
  */
-UT_STATIC inline int32_t calc_sample_s24le(struct comp_buffer *source,
+UT_STATIC inline int32_t calc_sample_s24le(const struct comp_buffer *source,
 					   uint8_t num_ch, uint32_t offset,
 					   uint8_t mask)
 {
@@ -176,7 +176,7 @@ UT_STATIC inline int32_t calc_sample_s24le(struct comp_buffer *source,
  * \param[in] data Parameters describing channel count and routing.
  */
 static void demux_s24le(struct comp_dev *dev, struct comp_buffer *sink,
-			struct comp_buffer *source, uint32_t frames,
+			const struct comp_buffer *source, uint32_t frames,
 			struct mux_stream_data *data)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
@@ -215,11 +215,11 @@ static void demux_s24le(struct comp_dev *dev, struct comp_buffer *sink,
  *		   each stream.
  */
 static void mux_s24le(struct comp_dev *dev, struct comp_buffer *sink,
-		      struct comp_buffer **sources, uint32_t frames,
+		      const struct comp_buffer **sources, uint32_t frames,
 		      struct mux_stream_data *data)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	struct comp_buffer *source;
+	const struct comp_buffer *source;
 	uint8_t i;
 	uint8_t j;
 	uint8_t out_ch;
@@ -256,7 +256,7 @@ static void mux_s24le(struct comp_dev *dev, struct comp_buffer *sink,
  * \param[in] offset Offset in source buffer.
  * \param[in] mask Routing bitmask for calculating output sample.
  */
-UT_STATIC inline int64_t calc_sample_s32le(struct comp_buffer *source,
+UT_STATIC inline int64_t calc_sample_s32le(const struct comp_buffer *source,
 					   uint8_t num_ch, uint32_t offset,
 					   uint8_t mask)
 {
@@ -290,7 +290,7 @@ UT_STATIC inline int64_t calc_sample_s32le(struct comp_buffer *source,
  * \param[in] data Parameters describing channel count and routing.
  */
 static void demux_s32le(struct comp_dev *dev, struct comp_buffer *sink,
-			struct comp_buffer *source, uint32_t frames,
+			const struct comp_buffer *source, uint32_t frames,
 			struct mux_stream_data *data)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
@@ -329,11 +329,11 @@ static void demux_s32le(struct comp_dev *dev, struct comp_buffer *sink,
  *		   each stream.
  */
 static void mux_s32le(struct comp_dev *dev, struct comp_buffer *sink,
-		      struct comp_buffer **sources, uint32_t frames,
+		      const struct comp_buffer **sources, uint32_t frames,
 		      struct mux_stream_data *data)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	struct comp_buffer *source;
+	const struct comp_buffer *source;
 	uint8_t i;
 	uint8_t j;
 	uint8_t out_ch;

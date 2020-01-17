@@ -62,11 +62,11 @@ struct mux_stream_data {
 };
 
 typedef void(*demux_func)(struct comp_dev *dev, struct comp_buffer *sink,
-			struct comp_buffer *source, uint32_t frames,
-			struct mux_stream_data *data);
-typedef void(*mux_func)(struct comp_dev *dev, struct comp_buffer *sink,
-			  struct comp_buffer **sources, uint32_t frames,
+			  const struct comp_buffer *source, uint32_t frames,
 			  struct mux_stream_data *data);
+typedef void(*mux_func)(struct comp_dev *dev, struct comp_buffer *sink,
+			const struct comp_buffer **sources, uint32_t frames,
+			struct mux_stream_data *data);
 
 struct sof_mux_config {
 	uint16_t frame_format;
@@ -102,17 +102,17 @@ demux_func demux_get_processing_function(struct comp_dev *dev);
 void sys_comp_mux_init(void);
 
 #if CONFIG_FORMAT_S16LE
-int32_t calc_sample_s16le(struct comp_buffer *source,
+int32_t calc_sample_s16le(const struct comp_buffer *source,
 			  uint8_t num_ch, uint32_t offset,
 			  uint8_t mask);
 #endif /* CONFIG_FORMAT_S16LE */
 #if CONFIG_FORMAT_S24LE
-int32_t calc_sample_s24le(struct comp_buffer *source,
+int32_t calc_sample_s24le(const struct comp_buffer *source,
 			  uint8_t num_ch, uint32_t offset,
 			  uint8_t mask);
 #endif /* CONFIG_FORMAT_S24LE */
 #if CONFIG_FORMAT_S32LE
-int64_t calc_sample_s32le(struct comp_buffer *source,
+int64_t calc_sample_s32le(const struct comp_buffer *source,
 			  uint8_t num_ch, uint32_t offset,
 			  uint8_t mask);
 #endif /* CONFIG_FORMAT_S32LE */
