@@ -88,7 +88,7 @@ struct comp_data {
 	struct kpb_client client_data;
 
 	void (*detect_func)(struct comp_dev *dev,
-			    struct comp_buffer *source, uint32_t frames);
+			    const struct comp_buffer *source, uint32_t frames);
 };
 
 static inline bool detector_is_sample_width_supported(enum sof_ipc_frame sf)
@@ -164,7 +164,8 @@ static void detect_test_notify(struct comp_dev *dev)
 }
 
 static void default_detect_test(struct comp_dev *dev,
-				struct comp_buffer *source, uint32_t frames)
+				const struct comp_buffer *source,
+				uint32_t frames)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	void *src;
