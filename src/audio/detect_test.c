@@ -13,6 +13,7 @@
 #include <sof/drivers/ipc.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/cache.h>
+#include <sof/lib/memory.h>
 #include <sof/lib/notifier.h>
 #include <sof/lib/wait.h>
 #include <sof/list.h>
@@ -837,13 +838,14 @@ static const struct comp_driver comp_keyword = {
 	},
 };
 
-static struct comp_driver_info comp_keyword_info = {
+static SHARED_DATA struct comp_driver_info comp_keyword_info = {
 	.drv = &comp_keyword,
 };
 
 static void sys_comp_keyword_init(void)
 {
-	comp_register(&comp_keyword_info);
+	comp_register(platform_shared_get(&comp_keyword_info,
+					  sizeof(comp_keyword_info)));
 }
 
 DECLARE_MODULE(sys_comp_keyword_init);

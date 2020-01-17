@@ -17,6 +17,7 @@
 #include <sof/drivers/ipc.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/cache.h>
+#include <sof/lib/memory.h>
 #include <sof/list.h>
 #include <sof/platform.h>
 #include <sof/string.h>
@@ -954,13 +955,14 @@ static const struct comp_driver comp_eq_iir = {
 	},
 };
 
-static struct comp_driver_info comp_eq_iir_info = {
+static SHARED_DATA struct comp_driver_info comp_eq_iir_info = {
 	.drv = &comp_eq_iir,
 };
 
 static void sys_comp_eq_iir_init(void)
 {
-	comp_register(&comp_eq_iir_info);
+	comp_register(platform_shared_get(&comp_eq_iir_info,
+					  sizeof(comp_eq_iir_info)));
 }
 
 DECLARE_MODULE(sys_comp_eq_iir_init);

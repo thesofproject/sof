@@ -14,6 +14,7 @@
 #include <sof/common.h>
 #include <sof/drivers/ipc.h>
 #include <sof/lib/alloc.h>
+#include <sof/lib/memory.h>
 #include <sof/list.h>
 #include <sof/math/numbers.h>
 #include <sof/platform.h>
@@ -477,7 +478,7 @@ static const struct comp_driver comp_mux = {
 	},
 };
 
-static struct comp_driver_info comp_mux_info = {
+static SHARED_DATA struct comp_driver_info comp_mux_info = {
 	.drv = &comp_mux,
 };
 
@@ -495,14 +496,16 @@ static const struct comp_driver comp_demux = {
 	},
 };
 
-static struct comp_driver_info comp_demux_info = {
+static SHARED_DATA struct comp_driver_info comp_demux_info = {
 	.drv = &comp_demux,
 };
 
 UT_STATIC void sys_comp_mux_init(void)
 {
-	comp_register(&comp_mux_info);
-	comp_register(&comp_demux_info);
+	comp_register(platform_shared_get(&comp_mux_info,
+					  sizeof(comp_mux_info)));
+	comp_register(platform_shared_get(&comp_demux_info,
+					  sizeof(comp_demux_info)));
 }
 
 DECLARE_MODULE(sys_comp_mux_init);

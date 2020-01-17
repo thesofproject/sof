@@ -6,6 +6,7 @@
 
 #include <sof/audio/component.h>
 #include <sof/common.h>
+#include <sof/lib/memory.h>
 #include <sof/trace/trace.h>
 #include <ipc/topology.h>
 #include <user/trace.h>
@@ -89,13 +90,14 @@ static const struct comp_driver comp_switch = {
 	},
 };
 
-static struct comp_driver_info comp_switch_info = {
+static SHARED_DATA struct comp_driver_info comp_switch_info = {
 	.drv = &comp_switch,
 };
 
 static void sys_comp_switch_init(void)
 {
-	comp_register(&comp_switch_info);
+	comp_register(platform_shared_get(&comp_switch_info,
+					  sizeof(comp_switch_info)));
 }
 
 DECLARE_MODULE(sys_comp_switch_init);

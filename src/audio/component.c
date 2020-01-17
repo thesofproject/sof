@@ -9,6 +9,7 @@
 #include <sof/debug/panic.h>
 #include <sof/drivers/interrupt.h>
 #include <sof/lib/alloc.h>
+#include <sof/lib/memory.h>
 #include <sof/list.h>
 #include <sof/sof.h>
 #include <sof/string.h>
@@ -17,7 +18,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-static struct comp_driver_list cd;
+static SHARED_DATA struct comp_driver_list cd;
 
 static const struct comp_driver *get_drv(uint32_t type)
 {
@@ -34,11 +35,17 @@ static const struct comp_driver *get_drv(uint32_t type)
 		info = container_of(clist, struct comp_driver_info, list);
 		if (info->drv->type == type) {
 			drv = info->drv;
+			platform_shared_commit(info, sizeof(*info));
 			goto out;
 		}
+
+		trace_buffer_error("addr = 0x%x", (uintptr_t)info);
+
+		platform_shared_commit(info, sizeof(*info));
 	}
 
 out:
+	platform_shared_commit(drivers, sizeof(*drivers));
 	irq_local_enable(flags);
 	return drv;
 }
@@ -84,6 +91,8 @@ int comp_register(struct comp_driver_info *drv)
 
 	irq_local_disable(flags);
 	list_item_prepend(&drv->list, &drivers->list);
+	platform_shared_commit(drv, sizeof(*drv));
+	platform_shared_commit(drivers, sizeof(*drivers));
 	irq_local_enable(flags);
 
 	return 0;
@@ -95,6 +104,7 @@ void comp_unregister(struct comp_driver_info *drv)
 
 	irq_local_disable(flags);
 	list_item_del(&drv->list);
+	platform_shared_commit(drv, sizeof(*drv));
 	irq_local_enable(flags);
 }
 
@@ -192,9 +202,11 @@ int comp_set_state(struct comp_dev *dev, int cmd)
 
 void sys_comp_init(struct sof *sof)
 {
-	sof->comp_drivers = &cd;
+	sof->comp_drivers = platform_shared_get(&cd, sizeof(cd));
 
 	list_init(&sof->comp_drivers->list);
+
+	platform_shared_commit(sof->comp_drivers, sizeof(*sof->comp_drivers));
 }
 
 int comp_get_copy_limits(struct comp_dev *dev, struct comp_copy_limits *cl)
