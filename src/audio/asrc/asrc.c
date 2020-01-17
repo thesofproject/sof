@@ -46,7 +46,7 @@
 			 __e, ##__VA_ARGS__)
 
 typedef void (*asrc_proc_func)(struct comp_dev *dev,
-			       struct audio_stream *source,
+			       const struct audio_stream *source,
 			       struct audio_stream *sink,
 			       int *consumed,
 			       int *produced);
