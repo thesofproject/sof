@@ -223,12 +223,12 @@ static int dai_playback_params(struct comp_dev *dev, uint32_t period_bytes,
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
 	struct dma_sg_config *config = &dd->config;
+	uint32_t local_fmt = dd->local_buffer->frame_fmt;
 	uint32_t fifo;
 	int err;
 
 	/* set processing function */
-	dd->process = pcm_get_conversion_function(dd->local_buffer->frame_fmt,
-						  dd->frame_fmt);
+	dd->process = pcm_get_conversion_function(local_fmt, dd->frame_fmt);
 
 	/* set up DMA configuration */
 	config->direction = DMA_DIR_MEM_TO_DEV;
@@ -276,12 +276,12 @@ static int dai_capture_params(struct comp_dev *dev, uint32_t period_bytes,
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
 	struct dma_sg_config *config = &dd->config;
+	uint32_t local_fmt = dd->local_buffer->frame_fmt;
 	uint32_t fifo;
 	int err;
 
 	/* set processing function */
-	dd->process = pcm_get_conversion_function(dd->frame_fmt,
-						  dd->local_buffer->frame_fmt);
+	dd->process = pcm_get_conversion_function(dd->frame_fmt, local_fmt);
 
 	/* set up DMA configuration */
 	config->direction = DMA_DIR_DEV_TO_MEM;
