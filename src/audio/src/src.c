@@ -685,8 +685,8 @@ static int src_trigger(struct comp_dev *dev, int cmd)
 }
 
 static int src_get_copy_limits(struct comp_data *cd,
-			       struct comp_buffer *source,
-			       struct comp_buffer *sink)
+			       const struct comp_buffer *source,
+			       const struct comp_buffer *sink)
 {
 	struct src_param *sp;
 	struct src_stage *s1;
