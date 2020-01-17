@@ -100,7 +100,8 @@ struct sof_ipc_ctrl_value_chan;
  * \brief volume processing function interface
  */
 typedef void (*vol_scale_func)(struct comp_dev *dev, struct comp_buffer *sink,
-			       struct comp_buffer *source, uint32_t frames);
+			       const struct comp_buffer *source,
+			       uint32_t frames);
 /**
  * \brief Volume component private data.
  *

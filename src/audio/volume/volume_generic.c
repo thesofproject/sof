@@ -52,7 +52,7 @@ static inline int32_t vol_mult_s24_to_s24(int32_t x, int32_t vol)
  * to 24/32 bit destination buffer.
  */
 static void vol_s24_to_s24(struct comp_dev *dev, struct comp_buffer *sink,
-			   struct comp_buffer *source, uint32_t frames)
+			   const struct comp_buffer *source, uint32_t frames)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	int32_t *src;
@@ -87,7 +87,7 @@ static void vol_s24_to_s24(struct comp_dev *dev, struct comp_buffer *sink,
  * to 32 bit destination buffer.
  */
 static void vol_s32_to_s32(struct comp_dev *dev, struct comp_buffer *sink,
-			   struct comp_buffer *source, uint32_t frames)
+			   const struct comp_buffer *source, uint32_t frames)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	int32_t *src;
@@ -124,7 +124,7 @@ static void vol_s32_to_s32(struct comp_dev *dev, struct comp_buffer *sink,
  * to 16 bit destination buffer.
  */
 static void vol_s16_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
-			   struct comp_buffer *source, uint32_t frames)
+			   const struct comp_buffer *source, uint32_t frames)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	int16_t *src;
