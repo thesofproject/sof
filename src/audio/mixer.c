@@ -50,13 +50,14 @@
 /* mixer component private data */
 struct mixer_data {
 	void (*mix_func)(struct comp_dev *dev, struct comp_buffer *sink,
-		struct comp_buffer **sources, uint32_t count, uint32_t frames);
+			 const struct comp_buffer **sources, uint32_t count,
+			 uint32_t frames);
 };
 
 #if CONFIG_FORMAT_S16LE
 /* Mix n 16 bit PCM source streams to one sink stream */
 static void mix_n_s16(struct comp_dev *dev, struct comp_buffer *sink,
-		      struct comp_buffer **sources, uint32_t num_sources,
+		      const struct comp_buffer **sources, uint32_t num_sources,
 		      uint32_t frames)
 {
 	int16_t *src;
@@ -90,7 +91,7 @@ static void mix_n_s16(struct comp_dev *dev, struct comp_buffer *sink,
 #if CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE
 /* Mix n 32 bit PCM source streams to one sink stream */
 static void mix_n_s32(struct comp_dev *dev, struct comp_buffer *sink,
-		      struct comp_buffer **sources, uint32_t num_sources,
+		      const struct comp_buffer **sources, uint32_t num_sources,
 		      uint32_t frames)
 {
 	int32_t *src;
@@ -317,7 +318,8 @@ static int mixer_copy(struct comp_dev *dev)
 			      "sink_bytes = 0x%x",  source_bytes, sink_bytes);
 
 	/* mix streams */
-	md->mix_func(dev, sink, sources, i, frames);
+	md->mix_func(dev, sink, (const struct comp_buffer **)sources, i,
+		     frames);
 
 	/* update source buffer pointers */
 	for (i = --num_mix_sources; i >= 0; i--)
