@@ -238,6 +238,11 @@ struct comp_driver {
 	struct list_item list;	/**< list of component drivers */
 };
 
+/* \brief Holds list of registered components' drivers */
+struct comp_driver_list {
+	struct list_item list;	/* list of component drivers */
+};
+
 /**
  * Audio component base device "class"
  * - used by other component types.
