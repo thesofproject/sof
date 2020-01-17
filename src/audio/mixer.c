@@ -441,7 +441,7 @@ static void mixer_cache(struct comp_dev *dev, int cmd)
 	}
 }
 
-struct comp_driver comp_mixer = {
+static const struct comp_driver comp_mixer = {
 	.type	= SOF_COMP_MIXER,
 	.ops	= {
 		.new		= mixer_new,
@@ -455,9 +455,13 @@ struct comp_driver comp_mixer = {
 	},
 };
 
+static struct comp_driver_info comp_mixer_info = {
+	.drv = &comp_mixer,
+};
+
 UT_STATIC void sys_comp_mixer_init(void)
 {
-	comp_register(&comp_mixer);
+	comp_register(&comp_mixer_info);
 }
 
 DECLARE_MODULE(sys_comp_mixer_init);

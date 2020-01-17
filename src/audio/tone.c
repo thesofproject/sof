@@ -749,7 +749,7 @@ static void tone_cache(struct comp_dev *dev, int cmd)
 	}
 }
 
-struct comp_driver comp_tone = {
+static const struct comp_driver comp_tone = {
 	.type = SOF_COMP_TONE,
 	.ops = {
 		.new = tone_new,
@@ -764,9 +764,13 @@ struct comp_driver comp_tone = {
 	},
 };
 
+static struct comp_driver_info comp_tone_info = {
+	.drv = &comp_tone,
+};
+
 static void sys_comp_tone_init(void)
 {
-	comp_register(&comp_tone);
+	comp_register(&comp_tone_info);
 }
 
 DECLARE_MODULE(sys_comp_tone_init);

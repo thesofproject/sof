@@ -939,7 +939,7 @@ static void eq_iir_cache(struct comp_dev *dev, int cmd)
 	}
 }
 
-struct comp_driver comp_eq_iir = {
+static const struct comp_driver comp_eq_iir = {
 	.type = SOF_COMP_EQ_IIR,
 	.ops = {
 		.new = eq_iir_new,
@@ -954,9 +954,13 @@ struct comp_driver comp_eq_iir = {
 	},
 };
 
+static struct comp_driver_info comp_eq_iir_info = {
+	.drv = &comp_eq_iir,
+};
+
 static void sys_comp_eq_iir_init(void)
 {
-	comp_register(&comp_eq_iir);
+	comp_register(&comp_eq_iir_info);
 }
 
 DECLARE_MODULE(sys_comp_eq_iir_init);

@@ -868,7 +868,7 @@ static void eq_fir_cache(struct comp_dev *dev, int cmd)
 	}
 }
 
-struct comp_driver comp_eq_fir = {
+static const struct comp_driver comp_eq_fir = {
 	.type = SOF_COMP_EQ_FIR,
 	.ops = {
 		.new = eq_fir_new,
@@ -883,9 +883,13 @@ struct comp_driver comp_eq_fir = {
 	},
 };
 
+static struct comp_driver_info comp_eq_fir_info = {
+	.drv = &comp_eq_fir,
+};
+
 static void sys_comp_eq_fir_init(void)
 {
-	comp_register(&comp_eq_fir);
+	comp_register(&comp_eq_fir_info);
 }
 
 DECLARE_MODULE(sys_comp_eq_fir_init);

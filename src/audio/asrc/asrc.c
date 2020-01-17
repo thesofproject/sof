@@ -620,7 +620,7 @@ static void asrc_cache(struct comp_dev *dev, int cmd)
 	}
 }
 
-struct comp_driver comp_asrc = {
+static const struct comp_driver comp_asrc = {
 	.type = SOF_COMP_ASRC,
 	.ops = {
 		.new = asrc_new,
@@ -635,9 +635,13 @@ struct comp_driver comp_asrc = {
 	},
 };
 
+static struct comp_driver_info comp_asrc_info = {
+	.drv = &comp_asrc,
+};
+
 static void sys_comp_asrc_init(void)
 {
-	comp_register(&comp_asrc);
+	comp_register(&comp_asrc_info);
 }
 
 DECLARE_MODULE(sys_comp_asrc_init);

@@ -822,7 +822,7 @@ static void test_keyword_cache(struct comp_dev *dev, int cmd)
 	}
 }
 
-struct comp_driver comp_keyword = {
+static const struct comp_driver comp_keyword = {
 	.type	= SOF_COMP_KEYWORD_DETECT,
 	.ops	= {
 		.new		= test_keyword_new,
@@ -837,9 +837,13 @@ struct comp_driver comp_keyword = {
 	},
 };
 
+static struct comp_driver_info comp_keyword_info = {
+	.drv = &comp_keyword,
+};
+
 static void sys_comp_keyword_init(void)
 {
-	comp_register(&comp_keyword);
+	comp_register(&comp_keyword_info);
 }
 
 DECLARE_MODULE(sys_comp_keyword_init);

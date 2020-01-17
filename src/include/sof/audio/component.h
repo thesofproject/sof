@@ -233,16 +233,13 @@ struct comp_ops {
  */
 struct comp_driver {
 	uint32_t type;		/**< SOF_COMP_ for driver */
-
 	struct comp_ops ops;	/**< component operations */
-
-	struct list_item list;	/**< list of component drivers */
 };
 
 /* \brief Holds constant pointer to component driver */
 struct comp_driver_info {
-	const struct comp_driver *drv;
-	struct list_item list;	/**< list of component drivers */
+	const struct comp_driver *drv;	/**< pointer to component driver */
+	struct list_item list;		/**< list of component drivers */
 };
 
 /* \brief Holds list of registered components' drivers */
@@ -276,7 +273,7 @@ struct comp_dev {
 	uint32_t direction;	/**< enum sof_ipc_stream_direction */
 
 	/** driver */
-	struct comp_driver *drv;
+	const struct comp_driver *drv;
 
 	/* lists */
 	struct list_item bsource_list;	/**< list of source buffers */
@@ -366,13 +363,13 @@ struct comp_copy_limits {
  * @param drv Component driver to be registered.
  * @return 0 if succeeded, error code otherwise.
  */
-int comp_register(struct comp_driver *drv);
+int comp_register(struct comp_driver_info *drv);
 
 /**
  * Unregisters the component driver from the list of available components.
  * @param drv Component driver to be unregistered.
  */
-void comp_unregister(struct comp_driver *drv);
+void comp_unregister(struct comp_driver_info *drv);
 
 /** @}*/
 

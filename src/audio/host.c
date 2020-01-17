@@ -841,7 +841,7 @@ static int host_set_attribute(struct comp_dev *dev, uint32_t type,
 	return 0;
 }
 
-struct comp_driver comp_host = {
+static const struct comp_driver comp_host = {
 	.type	= SOF_COMP_HOST,
 	.ops	= {
 		.new		= host_new,
@@ -857,9 +857,13 @@ struct comp_driver comp_host = {
 	},
 };
 
+static struct comp_driver_info comp_host_info = {
+	.drv = &comp_host,
+};
+
 static void sys_comp_host_init(void)
 {
-	comp_register(&comp_host);
+	comp_register(&comp_host_info);
 }
 
 DECLARE_MODULE(sys_comp_host_init);

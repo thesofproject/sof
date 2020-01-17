@@ -835,7 +835,7 @@ static void dai_cache(struct comp_dev *dev, int cmd)
 	}
 }
 
-static struct comp_driver comp_dai = {
+static const struct comp_driver comp_dai = {
 	.type	= SOF_COMP_DAI,
 	.ops	= {
 		.new		= dai_new,
@@ -851,9 +851,13 @@ static struct comp_driver comp_dai = {
 	},
 };
 
+static struct comp_driver_info comp_dai_info = {
+	.drv = &comp_dai,
+};
+
 static void sys_comp_dai_init(void)
 {
-	comp_register(&comp_dai);
+	comp_register(&comp_dai_info);
 }
 
 DECLARE_MODULE(sys_comp_dai_init);

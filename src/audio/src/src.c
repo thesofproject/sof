@@ -928,7 +928,7 @@ static void src_cache(struct comp_dev *dev, int cmd)
 	}
 }
 
-struct comp_driver comp_src = {
+static const struct comp_driver comp_src = {
 	.type = SOF_COMP_SRC,
 	.ops = {
 		.new = src_new,
@@ -943,9 +943,13 @@ struct comp_driver comp_src = {
 	},
 };
 
+static struct comp_driver_info comp_src_info = {
+	.drv = &comp_src,
+};
+
 static void sys_comp_src_init(void)
 {
-	comp_register(&comp_src);
+	comp_register(&comp_src_info);
 }
 
 DECLARE_MODULE(sys_comp_src_init);

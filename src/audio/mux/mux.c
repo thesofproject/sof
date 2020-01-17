@@ -463,7 +463,7 @@ static int mux_trigger(struct comp_dev *dev, int cmd)
 	return ret;
 }
 
-struct comp_driver comp_mux = {
+static const struct comp_driver comp_mux = {
 	.type	= SOF_COMP_MUX,
 	.ops	= {
 		.new		= mux_new,
@@ -477,7 +477,11 @@ struct comp_driver comp_mux = {
 	},
 };
 
-struct comp_driver comp_demux = {
+static struct comp_driver_info comp_mux_info = {
+	.drv = &comp_mux,
+};
+
+static const struct comp_driver comp_demux = {
 	.type	= SOF_COMP_DEMUX,
 	.ops	= {
 		.new		= mux_new,
@@ -491,10 +495,14 @@ struct comp_driver comp_demux = {
 	},
 };
 
+static struct comp_driver_info comp_demux_info = {
+	.drv = &comp_demux,
+};
+
 UT_STATIC void sys_comp_mux_init(void)
 {
-	comp_register(&comp_mux);
-	comp_register(&comp_demux);
+	comp_register(&comp_mux_info);
+	comp_register(&comp_demux_info);
 }
 
 DECLARE_MODULE(sys_comp_mux_init);
