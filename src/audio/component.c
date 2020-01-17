@@ -16,7 +16,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-static struct comp_driver_list *cd;
+static struct comp_driver_list cd;
 
 static struct comp_driver *get_drv(uint32_t type)
 {
@@ -27,7 +27,7 @@ static struct comp_driver *get_drv(uint32_t type)
 	irq_local_disable(flags);
 
 	/* search driver list for driver type */
-	list_for_item(clist, &cd->list) {
+	list_for_item(clist, &cd.list) {
 
 		drv = container_of(clist, struct comp_driver, list);
 		if (drv->type == type)
@@ -81,7 +81,7 @@ int comp_register(struct comp_driver *drv)
 	uint32_t flags;
 
 	irq_local_disable(flags);
-	list_item_prepend(&drv->list, &cd->list);
+	list_item_prepend(&drv->list, &cd.list);
 	irq_local_enable(flags);
 
 	return 0;
@@ -190,8 +190,7 @@ int comp_set_state(struct comp_dev *dev, int cmd)
 
 void sys_comp_init(void)
 {
-	cd = rzalloc(SOF_MEM_ZONE_SYS, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
-	list_init(&cd->list);
+	list_init(&cd.list);
 }
 
 int comp_get_copy_limits(struct comp_dev *dev, struct comp_copy_limits *cl)
