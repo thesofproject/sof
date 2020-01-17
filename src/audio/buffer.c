@@ -136,6 +136,7 @@ void comp_update_buffer_produce(struct comp_buffer *buffer, uint32_t bytes)
 		.transaction_amount = bytes,
 		.transaction_begin_address = buffer->w_ptr,
 	};
+	char *addr;
 
 	/* return if no bytes */
 	if (!bytes) {
@@ -178,14 +179,16 @@ void comp_update_buffer_produce(struct comp_buffer *buffer, uint32_t bytes)
 
 	irq_local_enable(flags);
 
+	addr = buffer->addr;
+
 	tracev_buffer_with_ids(buffer,
 			       "comp_update_buffer_produce(), ((buffer->avail << 16) | buffer->free) = %08x, ((buffer->id << 16) | buffer->size) = %08x",
 			       (buffer->avail << 16) | buffer->free,
 			       (buffer->id << 16) | buffer->size);
 	tracev_buffer_with_ids(buffer,
 			       "comp_update_buffer_produce(), ((buffer->r_ptr - buffer->addr) << 16 | (buffer->w_ptr - buffer->addr)) = %08x",
-			       ((char *)buffer->r_ptr - (char *)buffer->addr) << 16 |
-			       ((char *)buffer->w_ptr - (char *)buffer->addr));
+			       ((char *)buffer->r_ptr - addr) << 16 |
+			       ((char *)buffer->w_ptr - addr));
 }
 
 void comp_update_buffer_consume(struct comp_buffer *buffer, uint32_t bytes)
