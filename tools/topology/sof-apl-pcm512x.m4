@@ -22,7 +22,7 @@ DEBUG_START
 #
 # Define the pipelines
 #
-# PCM0 ----> volume -----> SSP5 (pcm512x)
+# PCM0 <---> volume <----> SSP5 (pcm512x)
 # PCM1 ----> volume -----> iDisp1
 # PCM2 ----> volume -----> iDisp2
 # PCM3 ----> volume -----> iDisp3
@@ -38,6 +38,13 @@ dnl     time_domain, sched_comp)
 # Set 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-low-latency-playback.m4,
 	1, 0, 2, s32le,
+	1000, 0, 0,
+	48000, 48000, 48000)
+
+# Low Latency capture pipeline 2 on PCM 0 using max 2 channels of s32le.
+# 1000us deadline on core 0 with priority 0
+PIPELINE_PCM_ADD(sof/pipe-volume-capture.m4,
+	6, 0, 2, s32le,
 	1000, 0, 0,
 	48000, 48000, 48000)
 
@@ -76,6 +83,13 @@ dnl     deadline, priority, core, time_domain)
 DAI_ADD(sof/pipe-dai-playback.m4,
 	1, SSP, 5, SSP5-Codec,
 	PIPELINE_SOURCE_1, 2, s24le,
+	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
+
+# capture DAI is SSP5 using 2 periods
+# Buffers use s16le format, 1000us deadline on core 0 with priority 0
+DAI_ADD(sof/pipe-dai-capture.m4,
+	6, SSP, 5, SSP5-Codec,
+	PIPELINE_SINK_6, 2, s24le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # Media playback pipeline 5 on PCM 4 using max 2 channels of s16le.
@@ -119,7 +133,7 @@ DAI_ADD(sof/pipe-dai-playback.m4,
 
 # PCM Low Latency, id 0
 dnl PCM_PLAYBACK_ADD(name, pcm_id, playback)
-PCM_PLAYBACK_ADD(Port5, 0, PIPELINE_PCM_1)
+PCM_DUPLEX_ADD(Port5, 0, PIPELINE_PCM_1, PIPELINE_PCM_6)
 PCM_PLAYBACK_ADD(HDMI1, 1, PIPELINE_PCM_2)
 PCM_PLAYBACK_ADD(HDMI2, 2, PIPELINE_PCM_3)
 PCM_PLAYBACK_ADD(HDMI3, 3, PIPELINE_PCM_4)
