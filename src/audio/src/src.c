@@ -16,6 +16,7 @@
 #include <sof/drivers/ipc.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/cache.h>
+#include <sof/lib/memory.h>
 #include <sof/list.h>
 #include <sof/math/numbers.h>
 #include <sof/platform.h>
@@ -943,13 +944,14 @@ static const struct comp_driver comp_src = {
 	},
 };
 
-static struct comp_driver_info comp_src_info = {
+static SHARED_DATA struct comp_driver_info comp_src_info = {
 	.drv = &comp_src,
 };
 
 static void sys_comp_src_init(void)
 {
-	comp_register(&comp_src_info);
+	comp_register(platform_shared_get(&comp_src_info,
+					  sizeof(comp_src_info)));
 }
 
 DECLARE_MODULE(sys_comp_src_init);

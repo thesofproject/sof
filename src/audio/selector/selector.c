@@ -21,6 +21,7 @@
 #include <sof/drivers/ipc.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/cache.h>
+#include <sof/lib/memory.h>
 #include <sof/list.h>
 #include <sof/string.h>
 #include <sof/trace/trace.h>
@@ -506,14 +507,15 @@ static const struct comp_driver comp_selector = {
 	},
 };
 
-static struct comp_driver_info comp_selector_info = {
+static SHARED_DATA struct comp_driver_info comp_selector_info = {
 	.drv = &comp_selector,
 };
 
 /** \brief Initializes selector component. */
 static void sys_comp_selector_init(void)
 {
-	comp_register(&comp_selector_info);
+	comp_register(platform_shared_get(&comp_selector_info,
+					  sizeof(comp_selector_info)));
 }
 
 DECLARE_MODULE(sys_comp_selector_init);

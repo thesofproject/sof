@@ -15,6 +15,7 @@
 #include <sof/drivers/ipc.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/cache.h>
+#include <sof/lib/memory.h>
 #include <sof/list.h>
 #include <sof/math/trig.h>
 #include <sof/platform.h>
@@ -764,13 +765,14 @@ static const struct comp_driver comp_tone = {
 	},
 };
 
-static struct comp_driver_info comp_tone_info = {
+static SHARED_DATA struct comp_driver_info comp_tone_info = {
 	.drv = &comp_tone,
 };
 
 static void sys_comp_tone_init(void)
 {
-	comp_register(&comp_tone_info);
+	comp_register(platform_shared_get(&comp_tone_info,
+					  sizeof(comp_tone_info)));
 }
 
 DECLARE_MODULE(sys_comp_tone_init);

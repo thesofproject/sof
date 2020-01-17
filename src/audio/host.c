@@ -15,6 +15,7 @@
 #include <sof/lib/alloc.h>
 #include <sof/lib/cache.h>
 #include <sof/lib/dma.h>
+#include <sof/lib/memory.h>
 #include <sof/lib/notifier.h>
 #include <sof/list.h>
 #include <sof/math/numbers.h>
@@ -857,13 +858,14 @@ static const struct comp_driver comp_host = {
 	},
 };
 
-static struct comp_driver_info comp_host_info = {
+static SHARED_DATA struct comp_driver_info comp_host_info = {
 	.drv = &comp_host,
 };
 
 static void sys_comp_host_init(void)
 {
-	comp_register(&comp_host_info);
+	comp_register(platform_shared_get(&comp_host_info,
+					  sizeof(comp_host_info)));
 }
 
 DECLARE_MODULE(sys_comp_host_init);

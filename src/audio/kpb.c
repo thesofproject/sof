@@ -24,6 +24,7 @@
 #include <sof/drivers/timer.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/clk.h>
+#include <sof/lib/memory.h>
 #include <sof/lib/notifier.h>
 #include <sof/lib/pm_runtime.h>
 #include <sof/list.h>
@@ -1448,13 +1449,14 @@ static const struct comp_driver comp_kpb = {
 	},
 };
 
-static struct comp_driver_info comp_kpb_info = {
+static SHARED_DATA struct comp_driver_info comp_kpb_info = {
 	.drv = &comp_kpb,
 };
 
 UT_STATIC void sys_comp_kpb_init(void)
 {
-	comp_register(&comp_kpb_info);
+	comp_register(platform_shared_get(&comp_kpb_info,
+					  sizeof(comp_kpb_info)));
 }
 
 DECLARE_MODULE(sys_comp_kpb_init);
