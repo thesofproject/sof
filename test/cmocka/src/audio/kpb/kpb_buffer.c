@@ -183,14 +183,15 @@ static int buffering_test_teardown(void **state)
 }
 
 /* Mock comp_register here so we can register our components properly */
-int comp_register(struct comp_driver *drv)
+int comp_register(struct comp_driver_info *info)
 {
 	void *dst;
 
-	switch (drv->type) {
+	switch (info->drv->type) {
 	case SOF_COMP_KPB:
 		dst = &kpb_drv_mock;
-		memcpy(dst, drv, sizeof(struct comp_driver));
+		memcpy_s(dst, sizeof(kpb_drv_mock), info->drv,
+			 sizeof(struct comp_driver));
 		break;
 	default:
 		return -1;

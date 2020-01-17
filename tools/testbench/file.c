@@ -683,7 +683,7 @@ static int file_reset(struct comp_dev *dev)
 	return 0;
 }
 
-struct comp_driver comp_file = {
+static const struct comp_driver comp_file = {
 	.type = SOF_COMP_FILEREAD,
 	.ops = {
 		.new = file_new,
@@ -697,7 +697,11 @@ struct comp_driver comp_file = {
 	},
 };
 
+static struct comp_driver_info comp_file_info = {
+	.drv = &comp_file,
+};
+
 void sys_comp_file_init(void)
 {
-	comp_register(&comp_file);
+	comp_register(&comp_file_info);
 }

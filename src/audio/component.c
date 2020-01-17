@@ -19,25 +19,24 @@
 
 static struct comp_driver_list cd;
 
-static struct comp_driver *get_drv(uint32_t type)
+static const struct comp_driver *get_drv(uint32_t type)
 {
 	struct comp_driver_list *drivers = comp_drivers_get();
 	struct list_item *clist;
-	struct comp_driver *drv = NULL;
+	const struct comp_driver *drv = NULL;
+	struct comp_driver_info *info;
 	uint32_t flags;
 
 	irq_local_disable(flags);
 
 	/* search driver list for driver type */
 	list_for_item(clist, &drivers->list) {
-
-		drv = container_of(clist, struct comp_driver, list);
-		if (drv->type == type)
+		info = container_of(clist, struct comp_driver_info, list);
+		if (info->drv->type == type) {
+			drv = info->drv;
 			goto out;
+		}
 	}
-
-	/* not found */
-	drv = NULL;
 
 out:
 	irq_local_enable(flags);
@@ -47,7 +46,7 @@ out:
 struct comp_dev *comp_new(struct sof_ipc_comp *comp)
 {
 	struct comp_dev *cdev;
-	struct comp_driver *drv;
+	const struct comp_driver *drv;
 	int ret;
 
 	/* find the driver for our new component */
@@ -78,7 +77,7 @@ struct comp_dev *comp_new(struct sof_ipc_comp *comp)
 	return cdev;
 }
 
-int comp_register(struct comp_driver *drv)
+int comp_register(struct comp_driver_info *drv)
 {
 	struct comp_driver_list *drivers = comp_drivers_get();
 	uint32_t flags;
@@ -90,7 +89,7 @@ int comp_register(struct comp_driver *drv)
 	return 0;
 }
 
-void comp_unregister(struct comp_driver *drv)
+void comp_unregister(struct comp_driver_info *drv)
 {
 	uint32_t flags;
 

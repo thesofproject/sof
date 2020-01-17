@@ -491,7 +491,7 @@ static void selector_cache(struct comp_dev *dev, int cmd)
 }
 
 /** \brief Selector component definition. */
-struct comp_driver comp_selector = {
+static const struct comp_driver comp_selector = {
 	.type	= SOF_COMP_SELECTOR,
 	.ops	= {
 		.new		= selector_new,
@@ -506,10 +506,14 @@ struct comp_driver comp_selector = {
 	},
 };
 
+static struct comp_driver_info comp_selector_info = {
+	.drv = &comp_selector,
+};
+
 /** \brief Initializes selector component. */
 static void sys_comp_selector_init(void)
 {
-	comp_register(&comp_selector);
+	comp_register(&comp_selector_info);
 }
 
 DECLARE_MODULE(sys_comp_selector_init);

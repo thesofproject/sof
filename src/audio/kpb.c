@@ -1433,7 +1433,7 @@ static inline void kpb_change_state(struct comp_data *kpb,
 	kpb->state_log = (kpb->state_log << 4) | state;
 }
 
-struct comp_driver comp_kpb = {
+static const struct comp_driver comp_kpb = {
 	.type = SOF_COMP_KPB,
 	.ops = {
 		.new = kpb_new,
@@ -1448,9 +1448,13 @@ struct comp_driver comp_kpb = {
 	},
 };
 
+static struct comp_driver_info comp_kpb_info = {
+	.drv = &comp_kpb,
+};
+
 UT_STATIC void sys_comp_kpb_init(void)
 {
-	comp_register(&comp_kpb);
+	comp_register(&comp_kpb_info);
 }
 
 DECLARE_MODULE(sys_comp_kpb_init);

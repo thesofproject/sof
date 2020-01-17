@@ -76,7 +76,7 @@ static int switch_prepare(struct comp_dev *dev)
 	return 0;
 }
 
-struct comp_driver comp_switch = {
+static const struct comp_driver comp_switch = {
 	.type	= SOF_COMP_SWITCH,
 	.ops	= {
 		.new		= switch_new,
@@ -89,9 +89,13 @@ struct comp_driver comp_switch = {
 	},
 };
 
+static struct comp_driver_info comp_switch_info = {
+	.drv = &comp_switch,
+};
+
 static void sys_comp_switch_init(void)
 {
-	comp_register(&comp_switch);
+	comp_register(&comp_switch_info);
 }
 
 DECLARE_MODULE(sys_comp_switch_init);

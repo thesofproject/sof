@@ -31,21 +31,21 @@ struct comp_dev *post_mixer_comp;
 struct comp_buffer *post_mixer_buf;
 
 /* Mocking comp_register here so we can register our components properly */
-int comp_register(struct comp_driver *drv)
+int comp_register(struct comp_driver_info *info)
 {
 	void *dst;
 	int err;
-	switch (drv->type) {
+	switch (info->drv->type) {
 	case SOF_COMP_MIXER:
 		dst = &mixer_drv_mock;
 		err = memcpy_s(dst, sizeof(mixer_drv_mock),
-			drv, sizeof(struct comp_driver));
+			       info->drv, sizeof(struct comp_driver));
 		break;
 
 	case SOF_COMP_MOCK:
 		dst = &drv_mock;
-		err = memcpy_s(dst, sizeof(drv_mock), drv,
-			sizeof(struct comp_driver));
+		err = memcpy_s(dst, sizeof(drv_mock), info->drv,
+			       sizeof(struct comp_driver));
 		break;
 	}
 

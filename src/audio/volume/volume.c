@@ -743,7 +743,7 @@ static void volume_cache(struct comp_dev *dev, int cmd)
 }
 
 /** \brief Volume component definition. */
-struct comp_driver comp_volume = {
+static const struct comp_driver comp_volume = {
 	.type	= SOF_COMP_VOLUME,
 	.ops	= {
 		.new		= volume_new,
@@ -758,12 +758,16 @@ struct comp_driver comp_volume = {
 	},
 };
 
+static struct comp_driver_info comp_volume_info = {
+	.drv = &comp_volume,
+};
+
 /**
  * \brief Initializes volume component.
  */
 static void sys_comp_volume_init(void)
 {
-	comp_register(&comp_volume);
+	comp_register(&comp_volume_info);
 }
 
 DECLARE_MODULE(sys_comp_volume_init);
