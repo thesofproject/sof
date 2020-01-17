@@ -78,7 +78,7 @@ struct comp_data {
 	int sink_frames;
 	int sample_container_bytes;
 	void (*src_func)(struct comp_dev *dev,
-			 struct comp_buffer *source,
+			 const struct comp_buffer *source,
 			 struct comp_buffer *sink,
 			 int *consumed,
 			 int *produced);
@@ -306,7 +306,7 @@ int src_polyphase_init(struct polyphase_src *src, struct src_param *p,
 }
 
 /* Fallback function */
-static void src_fallback(struct comp_dev *dev, struct comp_buffer *source,
+static void src_fallback(struct comp_dev *dev, const struct comp_buffer *source,
 			 struct comp_buffer *sink, int *n_read, int *n_written)
 {
 	*n_read = 0;
@@ -315,7 +315,7 @@ static void src_fallback(struct comp_dev *dev, struct comp_buffer *source,
 
 /* Normal 2 stage SRC */
 static void src_2s(struct comp_dev *dev,
-		   struct comp_buffer *source, struct comp_buffer *sink,
+		   const struct comp_buffer *source, struct comp_buffer *sink,
 		   int *n_read, int *n_written)
 {
 	struct src_stage_prm s1;
@@ -411,7 +411,7 @@ static void src_2s(struct comp_dev *dev,
 
 /* 1 stage SRC for simple conversions */
 static void src_1s(struct comp_dev *dev,
-		   struct comp_buffer *source, struct comp_buffer *sink,
+		   const struct comp_buffer *source, struct comp_buffer *sink,
 		   int *n_read, int *n_written)
 {
 	struct src_stage_prm s1;
@@ -437,7 +437,8 @@ static void src_1s(struct comp_dev *dev,
 
 /* A fast copy function for same in and out rate */
 static void src_copy_s32(struct comp_dev *dev,
-			 struct comp_buffer *source, struct comp_buffer *sink,
+			 const struct comp_buffer *source,
+			 struct comp_buffer *sink,
 			 int *n_read, int *n_written)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
@@ -451,7 +452,8 @@ static void src_copy_s32(struct comp_dev *dev,
 
 #if CONFIG_FORMAT_S16LE
 static void src_copy_s16(struct comp_dev *dev,
-			 struct comp_buffer *source, struct comp_buffer *sink,
+			 const struct comp_buffer *source,
+			 struct comp_buffer *sink,
 			 int *n_read, int *n_written)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
