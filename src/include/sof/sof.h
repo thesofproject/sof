@@ -14,6 +14,7 @@
 
 struct cascade_root;
 struct clock_info;
+struct comp_driver_list;
 struct dai_info;
 struct dma_info;
 struct dma_trace_data;
@@ -82,6 +83,9 @@ struct sof {
 
 	/* cascading interrupt controller root */
 	struct cascade_root *cascade_root;
+
+	/* list of registered component drivers */
+	struct comp_driver_list *comp_drivers;
 
 	__aligned(PLATFORM_DCACHE_ALIGN) int alignment[0];
 } __aligned(PLATFORM_DCACHE_ALIGN);

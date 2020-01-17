@@ -21,6 +21,7 @@ static struct comp_driver_list cd;
 
 static struct comp_driver *get_drv(uint32_t type)
 {
+	struct comp_driver_list *drivers = comp_drivers_get();
 	struct list_item *clist;
 	struct comp_driver *drv = NULL;
 	uint32_t flags;
@@ -28,7 +29,7 @@ static struct comp_driver *get_drv(uint32_t type)
 	irq_local_disable(flags);
 
 	/* search driver list for driver type */
-	list_for_item(clist, &cd.list) {
+	list_for_item(clist, &drivers->list) {
 
 		drv = container_of(clist, struct comp_driver, list);
 		if (drv->type == type)
@@ -79,10 +80,11 @@ struct comp_dev *comp_new(struct sof_ipc_comp *comp)
 
 int comp_register(struct comp_driver *drv)
 {
+	struct comp_driver_list *drivers = comp_drivers_get();
 	uint32_t flags;
 
 	irq_local_disable(flags);
-	list_item_prepend(&drv->list, &cd.list);
+	list_item_prepend(&drv->list, &drivers->list);
 	irq_local_enable(flags);
 
 	return 0;
@@ -191,7 +193,9 @@ int comp_set_state(struct comp_dev *dev, int cmd)
 
 void sys_comp_init(struct sof *sof)
 {
-	list_init(&cd.list);
+	sof->comp_drivers = &cd;
+
+	list_init(&sof->comp_drivers->list);
 }
 
 int comp_get_copy_limits(struct comp_dev *dev, struct comp_copy_limits *cl)
