@@ -370,7 +370,8 @@ static int mux_copy(struct comp_dev *dev)
 	sink_bytes = frames * buffer_frame_bytes(sink);
 
 	/* produce output */
-	cd->mux(dev, sink, &sources[0], frames, &cd->config.streams[0]);
+	cd->mux(dev, sink, (const struct comp_buffer **)&sources[0],
+		frames, &cd->config.streams[0]);
 
 	/* update components */
 	comp_update_buffer_produce(sink, sink_bytes);
