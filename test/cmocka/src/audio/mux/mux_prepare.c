@@ -22,7 +22,7 @@ struct test_data {
 
 static int setup_group(void **state)
 {
-	sys_comp_init();
+	sys_comp_init(sof_get());
 	sys_comp_mux_init();
 
 	return 0;

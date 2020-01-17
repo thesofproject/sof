@@ -18,6 +18,8 @@
 
 TRACE_IMPL()
 
+static struct sof sof;
+
 void rfree(void *ptr)
 {
 	free(ptr);
@@ -50,4 +52,9 @@ void __panic(uint32_t p, char *filename, uint32_t linenum)
 	(void)linenum;
 
 	abort();
+}
+
+struct sof *sof_get(void)
+{
+	return &sof;
 }

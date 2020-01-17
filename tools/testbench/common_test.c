@@ -27,7 +27,7 @@
 int tb_pipeline_setup(struct sof *sof)
 {
 	/* init components */
-	sys_comp_init();
+	sys_comp_init(sof);
 
 	/* init IPC */
 	if (ipc_init(sof) < 0) {

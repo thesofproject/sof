@@ -35,6 +35,7 @@
 #include <stdint.h>
 
 struct comp_dev;
+struct sof;
 struct sof_ipc_dai_config;
 struct sof_ipc_stream_posn;
 struct dai_hw_params;
@@ -561,7 +562,7 @@ static inline int comp_set_attribute(struct comp_dev *dev, uint32_t type,
  * Allocates and initializes audio component list.
  * To be called once at boot time.
  */
-void sys_comp_init(void);
+void sys_comp_init(struct sof *sof);
 
 /** @}*/
 
