@@ -69,18 +69,18 @@ static void kpb_event_handler(void *arg, enum notify_id type, void *event_data);
 static int kpb_register_client(struct comp_data *kpb, struct kpb_client *cli);
 static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli);
 static enum task_state kpb_draining_task(void *arg);
-static int kpb_buffer_data(struct comp_dev *dev, struct comp_buffer *source,
-			   size_t size);
+static int kpb_buffer_data(struct comp_dev *dev,
+			   const struct comp_buffer *source, size_t size);
 static size_t kpb_allocate_history_buffer(struct comp_data *kpb);
 static void kpb_clear_history_buffer(struct hb *buff);
 static void kpb_free_history_buffer(struct hb *buff);
 static inline bool kpb_is_sample_width_supported(uint32_t sampling_width);
 static void kpb_copy_samples(struct comp_buffer *sink,
-			     struct comp_buffer *source, size_t size,
+			     const struct comp_buffer *source, size_t size,
 			     size_t sample_width);
 static void kpb_drain_samples(void *source, struct comp_buffer *sink,
 			      size_t size, size_t sample_width);
-static void kpb_buffer_samples(struct comp_buffer *source, uint32_t start,
+static void kpb_buffer_samples(const struct comp_buffer *source, uint32_t start,
 			       void *sink, size_t size, size_t sample_width);
 static void kpb_reset_history_buffer(struct hb *buff);
 static inline bool validate_host_params(size_t host_period_size,
@@ -695,8 +695,8 @@ out:
  * \param[in] source pointer to the buffer source.
  *
  */
-static int kpb_buffer_data(struct comp_dev *dev, struct comp_buffer *source,
-			   size_t size)
+static int kpb_buffer_data(struct comp_dev *dev,
+			   const struct comp_buffer *source, size_t size)
 {
 	int ret = 0;
 	size_t size_to_copy = size;
@@ -1232,7 +1232,7 @@ static void kpb_drain_samples(void *source, struct comp_buffer *sink,
  * \param[in] size Requested copy size in bytes.
  * \param[in] sample_width Sample size.
  */
-static void kpb_buffer_samples(struct comp_buffer *source, uint32_t start,
+static void kpb_buffer_samples(const struct comp_buffer *source, uint32_t start,
 			       void *sink, size_t size, size_t sample_width)
 {
 	void *src;
@@ -1330,7 +1330,7 @@ static inline bool kpb_is_sample_width_supported(uint32_t sampling_width)
  * \return none.
  */
 static void kpb_copy_samples(struct comp_buffer *sink,
-			     struct comp_buffer *source, size_t size,
+			     const struct comp_buffer *source, size_t size,
 			     size_t sample_width)
 {
 	void *dst;
