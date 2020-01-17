@@ -93,7 +93,7 @@ int task_main_start(struct sof *sof)
 	int ret;
 
 	/* init default audio components */
-	sys_comp_init();
+	sys_comp_init(sof);
 
 	/* init self-registered modules */
 	sys_module_init();

@@ -10,6 +10,7 @@
 #include <sof/drivers/interrupt.h>
 #include <sof/lib/alloc.h>
 #include <sof/list.h>
+#include <sof/sof.h>
 #include <sof/string.h>
 #include <ipc/topology.h>
 #include <errno.h>
@@ -188,7 +189,7 @@ int comp_set_state(struct comp_dev *dev, int cmd)
 	return ret;
 }
 
-void sys_comp_init(void)
+void sys_comp_init(struct sof *sof)
 {
 	list_init(&cd.list);
 }
