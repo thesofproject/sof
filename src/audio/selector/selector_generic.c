@@ -27,7 +27,7 @@
  * \param[in] frames Number of frames to process.
  */
 static void sel_s16le_1ch(struct comp_dev *dev, struct comp_buffer *sink,
-			  struct comp_buffer *source, uint32_t frames)
+			  const struct comp_buffer *source, uint32_t frames)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	int16_t *src;
@@ -51,7 +51,7 @@ static void sel_s16le_1ch(struct comp_dev *dev, struct comp_buffer *sink,
  * \param[in] frames Number of frames to process.
  */
 static void sel_s16le_nch(struct comp_dev *dev, struct comp_buffer *sink,
-			  struct comp_buffer *source, uint32_t frames)
+			  const struct comp_buffer *source, uint32_t frames)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	int16_t *src;
@@ -81,7 +81,7 @@ static void sel_s16le_nch(struct comp_dev *dev, struct comp_buffer *sink,
  * \param[in] frames Number of frames to process.
  */
 static void sel_s32le_1ch(struct comp_dev *dev, struct comp_buffer *sink,
-			  struct comp_buffer *source, uint32_t frames)
+			  const struct comp_buffer *source, uint32_t frames)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	int32_t *src;
@@ -105,7 +105,7 @@ static void sel_s32le_1ch(struct comp_dev *dev, struct comp_buffer *sink,
  * \param[in] frames Number of frames to process.
  */
 static void sel_s32le_nch(struct comp_dev *dev, struct comp_buffer *sink,
-			  struct comp_buffer *source, uint32_t frames)
+			  const struct comp_buffer *source, uint32_t frames)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	int32_t *src;

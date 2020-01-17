@@ -55,7 +55,7 @@ struct comp_dev;
 
 /** \brief selector processing function interface */
 typedef void (*sel_func)(struct comp_dev *dev, struct comp_buffer *sink,
-			 struct comp_buffer *source, uint32_t frames);
+			 const struct comp_buffer *source, uint32_t frames);
 
 /** \brief Selector component private data. */
 struct comp_data {
