@@ -15,6 +15,8 @@
 
 TRACE_IMPL()
 
+static struct sof sof;
+
 #if !CONFIG_LIBRARY
 
 void *_zalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
@@ -43,6 +45,11 @@ void __panic(uint32_t p, char *filename, uint32_t linenum)
 	(void)p;
 	(void)filename;
 	(void)linenum;
+}
+
+struct sof *sof_get(void)
+{
+	return &sof;
 }
 
 #endif

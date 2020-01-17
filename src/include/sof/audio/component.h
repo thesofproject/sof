@@ -22,6 +22,7 @@
 #include <sof/debug/panic.h>
 #include <sof/list.h>
 #include <sof/math/numbers.h>
+#include <sof/sof.h>
 #include <sof/trace/trace.h>
 #include <ipc/control.h>
 #include <ipc/stream.h>
@@ -35,7 +36,6 @@
 #include <stdint.h>
 
 struct comp_dev;
-struct sof;
 struct sof_ipc_dai_config;
 struct sof_ipc_stream_posn;
 struct dai_hw_params;
@@ -717,6 +717,11 @@ static inline bool comp_is_scheduling_source(struct comp_dev *dev)
  * @param cl Struct of parameters for use in copy function.
  */
 int comp_get_copy_limits(struct comp_dev *dev, struct comp_copy_limits *cl);
+
+static inline struct comp_driver_list *comp_drivers_get(void)
+{
+	return sof_get()->comp_drivers;
+}
 
 /** @}*/
 
