@@ -16,11 +16,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-struct comp_data {
-	struct list_item list;		/* list of components */
-};
-
-static struct comp_data *cd;
+static struct comp_driver_list *cd;
 
 static struct comp_driver *get_drv(uint32_t type)
 {
