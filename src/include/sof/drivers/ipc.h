@@ -61,7 +61,6 @@ struct sof_ipc_stream_posn;
 /* IPC generic component device */
 struct ipc_comp_dev {
 	uint16_t type;	/* COMP_TYPE_ */
-	uint16_t state;
 
 	/* component type data */
 	union {
