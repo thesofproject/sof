@@ -230,6 +230,17 @@ static int idc_component_command(uint32_t cmd)
 }
 
 /**
+ * \brief Executes IDC IPC processing message.
+ */
+static void idc_ipc(void)
+{
+	struct ipc *ipc = ipc_get();
+	struct sof_ipc_cmd_hdr *hdr = ipc->comp_data;
+
+	ipc_cmd(hdr);
+}
+
+/**
  * \brief Executes IDC message based on type.
  * \param[in,out] msg Pointer to IDC message.
  */
@@ -249,6 +260,9 @@ static void idc_cmd(struct idc_msg *msg)
 		break;
 	case iTS(IDC_MSG_NOTIFY):
 		notifier_notify_remote();
+		break;
+	case iTS(IDC_MSG_IPC):
+		idc_ipc();
 		break;
 	default:
 		trace_idc_error("idc_cmd() error: invalid msg->header = %u",
