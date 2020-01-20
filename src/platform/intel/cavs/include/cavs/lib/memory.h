@@ -74,7 +74,7 @@ struct sof;
  * uncached memory region. SMP platforms without uncache can simply
  * align to cache line size instead.
  */
-#if PLATFORM_CORE_COUNT > 1
+#if PLATFORM_CORE_COUNT > 1 && !defined(UNIT_TEST)
 #define SHARED_DATA	__attribute__((section(".shared_data")))
 #else
 #define SHARED_DATA
@@ -84,12 +84,18 @@ struct sof;
 #define SRAM_ALIAS_MASK		0xFF000000
 #define SRAM_ALIAS_OFFSET	0x20000000
 
+#ifndef UNIT_TEST
 #define uncache_to_cache(address) \
 	((__typeof__((address)))((uint32_t)((address)) + SRAM_ALIAS_OFFSET))
 #define cache_to_uncache(address) \
 	((__typeof__((address)))((uint32_t)((address)) - SRAM_ALIAS_OFFSET))
 #define is_uncached(address) \
 	(((uint32_t)(address) & SRAM_ALIAS_MASK) == SRAM_ALIAS_BASE)
+#else
+#define uncache_to_cache(address)	address
+#define cache_to_uncache(address)	address
+#define is_uncached(address)		0
+#endif
 
 /**
  * \brief Returns pointer to the memory shared by multiple cores.
