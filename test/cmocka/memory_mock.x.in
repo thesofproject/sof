@@ -8,11 +8,6 @@ SECTIONS
       *(*.static_log*)
     }
 
-    .shared_data (COPY) : ALIGN(1024)
-    {
-      *(*.shared_data)
-    }
-
     _comp_init_start = .;
     _comp_init_end = .;
     _module_heap = HEAP_RUNTIME_BASE;
