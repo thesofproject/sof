@@ -70,6 +70,7 @@ struct comp_buffer {
 	uint32_t id;
 	uint32_t pipeline_id;
 	uint32_t caps;
+	uint32_t core;
 
 	/* connected components */
 	struct comp_dev *source;	/* source component */
