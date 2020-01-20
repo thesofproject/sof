@@ -35,6 +35,11 @@ static inline bool cpu_is_slave(int id)
 	return id != PLATFORM_MASTER_CORE_ID;
 }
 
+static inline bool cpu_is_me(int id)
+{
+	return id == cpu_get_id();
+}
+
 static inline void cpu_enable_core(int id)
 {
 	arch_cpu_enable_core(id);
