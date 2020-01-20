@@ -45,22 +45,8 @@ struct ipc_comp_dev *ipc_get_comp_by_id(struct ipc *ipc, uint32_t id)
 
 	list_for_item(clist, &ipc->comp_list) {
 		icd = container_of(clist, struct ipc_comp_dev, list);
-		switch (icd->type) {
-		case COMP_TYPE_COMPONENT:
-			if (icd->cd->comp.id == id)
-				return icd;
-			break;
-		case COMP_TYPE_BUFFER:
-			if (icd->cb->id == id)
-				return icd;
-			break;
-		case COMP_TYPE_PIPELINE:
-			if (icd->pipeline->ipc_pipe.comp_id == id)
-				return icd;
-			break;
-		default:
-			break;
-		}
+		if (icd->id == id)
+			return icd;
 
 		platform_shared_commit(icd, sizeof(*icd));
 	}
@@ -170,6 +156,8 @@ int ipc_comp_new(struct ipc *ipc, struct sof_ipc_comp *comp)
 	}
 	icd->cd = cd;
 	icd->type = COMP_TYPE_COMPONENT;
+	icd->core = comp->core;
+	icd->id = comp->id;
 
 	/* add new component to the list */
 	list_item_append(&icd->list, &ipc->comp_list);
@@ -240,6 +228,8 @@ int ipc_buffer_new(struct ipc *ipc, struct sof_ipc_buffer *desc)
 	}
 	ibd->cb = buffer;
 	ibd->type = COMP_TYPE_BUFFER;
+	ibd->core = desc->comp.core;
+	ibd->id = desc->comp.id;
 
 	/* add new buffer to the list */
 	list_item_append(&ibd->list, &ipc->comp_list);
@@ -372,6 +362,8 @@ int ipc_pipeline_new(struct ipc *ipc,
 
 	ipc_pipe->pipeline = pipe;
 	ipc_pipe->type = COMP_TYPE_PIPELINE;
+	ipc_pipe->core = pipe_desc->core;
+	ipc_pipe->id = pipe_desc->comp_id;
 
 	/* add new pipeline to the list */
 	list_item_append(&ipc_pipe->list, &ipc->comp_list);
