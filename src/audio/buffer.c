@@ -70,6 +70,7 @@ struct comp_buffer *buffer_new(struct sof_ipc_buffer *desc)
 	if (buffer) {
 		buffer->id = desc->comp.id;
 		buffer->pipeline_id = desc->comp.pipeline_id;
+		buffer->core = desc->comp.core;
 	}
 
 	return buffer;
