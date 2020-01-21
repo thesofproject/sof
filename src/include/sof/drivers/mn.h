@@ -8,6 +8,7 @@
 #ifndef __SOF_DRIVERS_MN_H__
 #define __SOF_DRIVERS_MN_H__
 
+#include <sof/sof.h>
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -29,7 +30,7 @@
 /**
  * \brief Initializes MN driver.
  */
-void mn_init(void);
+void mn_init(struct sof *sof);
 
 /**
  * \brief Finds and sets valid combination of MCLK source and divider to
@@ -76,5 +77,14 @@ void mn_release_bclk(uint32_t dai_index);
  * \param[in] dai_index DAI index (SSP port).
  */
 void mn_reset_bclk_divider(uint32_t dai_index);
+
+/**
+ * \brief Retrieves M/N dividers structure.
+ * \return Pointer to M/N dividers structure.
+ */
+static inline struct mn *mn_get(void)
+{
+	return sof_get()->mn;
+}
 
 #endif /* __SOF_DRIVERS_MN_H__ */

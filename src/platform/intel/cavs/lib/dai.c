@@ -155,7 +155,7 @@ int dai_init(struct sof *sof)
 #endif
 
 #if CONFIG_CAVS_MN
-	mn_init();
+	mn_init(sof);
 #endif
 
 	dai = cache_to_uncache((struct dai *)hda);
