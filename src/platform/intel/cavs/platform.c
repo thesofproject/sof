@@ -384,14 +384,6 @@ int platform_init(struct sof *sof)
 				  CONFIG_SYSTICK_PERIOD);
 	scheduler_init_ll(sof->platform_timer_domain);
 
-	/* init low latency single channel DW-DMA domain and scheduler */
-	sof->platform_dma_domain =
-		dma_single_chan_domain_init
-			(&dma[PLATFORM_DW_DMA_INDEX],
-			 PLATFORM_NUM_DW_DMACS,
-			 PLATFORM_DEFAULT_CLOCK);
-	scheduler_init_ll(sof->platform_dma_domain);
-
 	/* init the system agent */
 	trace_point(TRACE_BOOT_PLATFORM_AGENT);
 	sa_init(sof, CONFIG_SYSTICK_PERIOD);
@@ -466,6 +458,14 @@ int platform_init(struct sof *sof)
 	ret = dmac_init(sof);
 	if (ret < 0)
 		return ret;
+
+	/* init low latency single channel DW-DMA domain and scheduler */
+	sof->platform_dma_domain =
+		dma_single_chan_domain_init
+			(&sof->dma_info->dma_array[PLATFORM_DW_DMA_INDEX],
+			 PLATFORM_NUM_DW_DMACS,
+			 PLATFORM_DEFAULT_CLOCK);
+	scheduler_init_ll(sof->platform_dma_domain);
 
 	/* initialize the host IPC mechanisms */
 	trace_point(TRACE_BOOT_PLATFORM_IPC);

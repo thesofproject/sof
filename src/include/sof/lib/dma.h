@@ -222,8 +222,6 @@ struct dma_info {
 	size_t num_dmas;
 };
 
-extern struct dma dma[];
-
 /**
  * \brief API to initialize a platform DMA controllers.
  *
