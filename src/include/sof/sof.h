@@ -21,6 +21,7 @@ struct dma_trace_data;
 struct ipc;
 struct ll_schedule_domain;
 struct mm;
+struct mn;
 struct notify_data;
 struct pm_runtime_data;
 struct sa;
@@ -86,6 +87,9 @@ struct sof {
 
 	/* list of registered component drivers */
 	struct comp_driver_list *comp_drivers;
+
+	/* M/N dividers */
+	struct mn *mn;
 
 	__aligned(PLATFORM_DCACHE_ALIGN) int alignment[0];
 } __aligned(PLATFORM_DCACHE_ALIGN);
