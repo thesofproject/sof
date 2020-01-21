@@ -206,8 +206,10 @@ static void dai_free(struct comp_dev *dev)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
 
-	if (dd->chan)
+	if (dd->chan) {
+		notifier_unregister(dev, dd->chan, NOTIFIER_ID_DMA_COPY);
 		dma_channel_put(dd->chan);
+	}
 
 	dma_put(dd->dma);
 
@@ -541,11 +543,6 @@ static int dai_comp_trigger(struct comp_dev *dev, int cmd)
 	if (ret == COMP_STATUS_STATE_ALREADY_SET)
 		return PPL_STATUS_PATH_STOP;
 
-	/* setup callback */
-	notifier_unregister(dev, dd->chan, NOTIFIER_ID_DMA_COPY);
-	notifier_register(dev, dd->chan, NOTIFIER_ID_DMA_COPY,
-			  dai_dma_cb);
-
 	switch (cmd) {
 	case COMP_TRIGGER_START:
 		trace_dai_with_ids(dev, "dai_comp_trigger(), START");
@@ -787,7 +784,11 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 	platform_shared_commit(dd->dai, sizeof(*dd->dai));
 
 	if (channel != DMA_CHAN_INVALID) {
-		if (!dd->chan)
+		if (dd->chan)
+			/* remove callback */
+			notifier_unregister(dev, dd->chan,
+					    NOTIFIER_ID_DMA_COPY);
+		else
 			/* get dma channel at first config only */
 			dd->chan = dma_channel_get(dd->dma, channel);
 
@@ -797,6 +798,10 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 			dd->chan = NULL;
 			return -EIO;
 		}
+
+		/* setup callback */
+		notifier_register(dev, dd->chan, NOTIFIER_ID_DMA_COPY,
+				  dai_dma_cb);
 	}
 
 	return dai_set_config(dd->dai, config);

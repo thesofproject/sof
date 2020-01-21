@@ -306,10 +306,6 @@ static int host_trigger(struct comp_dev *dev, int cmd)
 		return ret;
 	}
 
-	/* set up callback */
-	notifier_unregister(dev, hd->chan, NOTIFIER_ID_DMA_COPY);
-	notifier_register(dev, hd->chan, NOTIFIER_ID_DMA_COPY, host_dma_cb);
-
 	/* we should ignore any trigger commands besides start
 	 * when doing one shot, because transfers will stop automatically
 	 */
@@ -602,6 +598,9 @@ static int host_params(struct comp_dev *dev,
 		return err;
 	}
 
+	/* set up callback */
+	notifier_register(dev, hd->chan, NOTIFIER_ID_DMA_COPY, host_dma_cb);
+
 	/* set processing function */
 	hd->process = pcm_get_conversion_function(hd->local_buffer->frame_fmt,
 						  hd->local_buffer->frame_fmt);
@@ -659,8 +658,11 @@ static int host_reset(struct comp_dev *dev)
 
 	trace_host_with_ids(dev, "host_reset()");
 
-	if (hd->chan)
+	if (hd->chan) {
+		/* remove callback */
+		notifier_unregister(dev, hd->chan, NOTIFIER_ID_DMA_COPY);
 		dma_channel_put(hd->chan);
+	}
 
 	/* free all DMA elements */
 	dma_sg_free(&hd->host.elem_array);
