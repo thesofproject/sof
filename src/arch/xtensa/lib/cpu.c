@@ -35,10 +35,7 @@
 extern struct core_context *core_ctx_ptr[PLATFORM_CORE_COUNT];
 extern struct xtos_core_data *core_data_ptr[PLATFORM_CORE_COUNT];
 
-__aligned(PLATFORM_DCACHE_ALIGN) static union {
-	uint32_t value;
-	uint8_t bytes[PLATFORM_DCACHE_ALIGN];
-} active_cores_mask;
+static uint32_t active_cores_mask;
 
 void arch_cpu_enable_core(int id)
 {
@@ -63,7 +60,7 @@ void arch_cpu_enable_core(int id)
 		/* send IDC power up message */
 		idc_send_msg(&power_up, IDC_NON_BLOCKING);
 
-		active_cores_mask.value |= (1 << id);
+		active_cores_mask |= (1 << id);
 	}
 
 	irq_local_enable(flags);
@@ -80,7 +77,7 @@ void arch_cpu_disable_core(int id)
 	if (arch_cpu_is_core_enabled(id)) {
 		idc_send_msg(&power_down, IDC_NON_BLOCKING);
 
-		active_cores_mask.value ^= (1 << id);
+		active_cores_mask ^= (1 << id);
 	}
 
 	irq_local_enable(flags);
@@ -89,7 +86,7 @@ void arch_cpu_disable_core(int id)
 int arch_cpu_is_core_enabled(int id)
 {
 	return id == PLATFORM_MASTER_CORE_ID ||
-		active_cores_mask.value & (1 << id);
+		active_cores_mask & (1 << id);
 }
 
 void cpu_alloc_core_context(int core)
