@@ -6,6 +6,7 @@
 
 #include <sof/drivers/mn.h>
 #include <sof/drivers/ssp.h>
+#include <sof/lib/memory.h>
 #include <sof/lib/shim.h>
 #include <sof/math/numbers.h>
 #include <sof/sof.h>
@@ -52,18 +53,20 @@ struct mn {
 	spinlock_t lock; /**< lock mechanism */
 };
 
-struct mn mn;
+static SHARED_DATA struct mn mn;
 
 void mn_init(struct sof *sof)
 {
 	int i;
 
-	sof->mn = &mn;
+	sof->mn = cache_to_uncache(&mn);
 
 	for (i = 0; i < ARRAY_SIZE(sof->mn->bclk_sources); i++)
 		sof->mn->bclk_sources[i] = MN_BCLK_SOURCE_NONE;
 
 	spinlock_init(&sof->mn->lock);
+
+	platform_shared_commit(sof->mn, sizeof(*sof->mn));
 }
 
 /**
@@ -74,12 +77,19 @@ void mn_init(struct sof *sof)
 static inline bool is_mclk_source_in_use(void)
 {
 	struct mn *mn = mn_get();
+	bool ret = false;
 	int i;
 
-	for (i = 0; i < ARRAY_SIZE(mn->mclk_sources_used); i++)
-		if (mn->mclk_sources_used[i])
-			return true;
-	return false;
+	for (i = 0; i < ARRAY_SIZE(mn->mclk_sources_used); i++) {
+		if (mn->mclk_sources_used[i]) {
+			ret = true;
+			break;
+		}
+	}
+
+	platform_shared_commit(mn, sizeof(*mn));
+
+	return ret;
 }
 
 /**
@@ -95,6 +105,7 @@ static inline int setup_initial_mclk_source(uint32_t mclk_rate)
 	int i;
 	int clk_index = -1;
 	uint32_t mdivc = mn_reg_read(MN_MDIVCTRL);
+	int ret = 0;
 
 	/* searching the smallest possible mclk source */
 	for (i = MAX_SSP_FREQ_INDEX; i >= 0; i--) {
@@ -108,7 +119,8 @@ static inline int setup_initial_mclk_source(uint32_t mclk_rate)
 	if (clk_index < 0) {
 		trace_mn_error("error: MCLK %d, no valid source",
 			       mclk_rate);
-		return -EINVAL;
+		ret = -EINVAL;
+		goto out;
 	}
 
 	mn->mclk_source_clock = clk_index;
@@ -120,7 +132,11 @@ static inline int setup_initial_mclk_source(uint32_t mclk_rate)
 	mdivc |= MCDSS(ssp_freq_sources[clk_index]);
 
 	mn_reg_write(MN_MDIVCTRL, mdivc);
-	return 0;
+
+out:
+	platform_shared_commit(mn, sizeof(*mn));
+
+	return ret;
 }
 
 /**
@@ -131,13 +147,17 @@ static inline int setup_initial_mclk_source(uint32_t mclk_rate)
 static inline int check_current_mclk_source(uint32_t mclk_rate)
 {
 	struct mn *mn = mn_get();
+	int ret = 0;
 
 	if (ssp_freq[mn->mclk_source_clock].freq % mclk_rate != 0) {
 		trace_mn_error("error: MCLK %d, no valid configuration for already selected source = %d",
 			       mclk_rate, mn->mclk_source_clock);
-		return -EINVAL;
+		ret = -EINVAL;
 	}
-	return 0;
+
+	platform_shared_commit(mn, sizeof(*mn));
+
+	return ret;
 }
 
 /**
@@ -202,6 +222,8 @@ int mn_set_mclk(uint16_t mclk_id, uint32_t mclk_rate)
 			       mclk_rate);
 
 out:
+	platform_shared_commit(mn, sizeof(*mn));
+
 	spin_unlock(&mn->lock);
 
 	return ret;
@@ -213,6 +235,7 @@ void mn_release_mclk(uint32_t mclk_id)
 
 	spin_lock(&mn->lock);
 	mn->mclk_sources_used[mclk_id] = false;
+	platform_shared_commit(mn, sizeof(*mn));
 	spin_unlock(&mn->lock);
 }
 
@@ -311,12 +334,19 @@ static int find_bclk_source(uint32_t bclk,
 static inline bool is_bclk_source_in_use(enum bclk_source clk_src)
 {
 	struct mn *mn = mn_get();
+	bool ret = false;
 	int i;
 
-	for (i = 0; i < ARRAY_SIZE(mn->bclk_sources); i++)
-		if (mn->bclk_sources[i] == clk_src)
-			return true;
-	return false;
+	for (i = 0; i < ARRAY_SIZE(mn->bclk_sources); i++) {
+		if (mn->bclk_sources[i] == clk_src) {
+			ret = true;
+			break;
+		}
+	}
+
+	platform_shared_commit(mn, sizeof(*mn));
+
+	return ret;
 }
 
 /**
@@ -344,6 +374,9 @@ static inline int setup_initial_bclk_mn_source(uint32_t bclk, uint32_t *scr_div,
 
 	mn_reg_write(MN_MDIVCTRL, (mn_reg_read(MN_MDIVCTRL) |
 				   MNDSS(ssp_freq_sources[clk_index])));
+
+	platform_shared_commit(mn, sizeof(*mn));
+
 	return 0;
 }
 
@@ -360,15 +393,21 @@ static inline int setup_current_bclk_mn_source(uint32_t bclk, uint32_t *scr_div,
 					       uint32_t *m, uint32_t *n)
 {
 	struct mn *mn = mn_get();
+	int ret = 0;
 
 	/* source for M/N is already set, no need to do it */
 	if (find_mn(ssp_freq[mn->bclk_source_mn_clock].freq, bclk, scr_div, m,
 		    n))
-		return 0;
+		goto out;
 
 	trace_mn_error("error: BCLK %d, no valid configuration for already selected source = %d",
 		       bclk, mn->bclk_source_mn_clock);
-	return -EINVAL;
+	ret = -EINVAL;
+
+out:
+	platform_shared_commit(mn, sizeof(*mn));
+
+	return ret;
 }
 
 #if CAVS_VERSION >= CAVS_VERSION_2_0
@@ -392,6 +431,7 @@ static inline bool check_bclk_xtal_source(uint32_t bclk, bool mn_in_use,
 					  uint32_t *scr_div)
 {
 	struct mn *mn = mn_get();
+	bool ret = false;
 	int i;
 
 	for (i = 0; i <= MAX_SSP_FREQ_INDEX; i++) {
@@ -403,17 +443,20 @@ static inline bool check_bclk_xtal_source(uint32_t bclk, bool mn_in_use,
 			 * just with SCR, so use it
 			 */
 			*scr_div = ssp_freq[i].freq / bclk;
-			return true;
+			ret = true;
+			break;
 		}
 
 		/* if M/N is already set up for desired clock,
 		 * we can quit and let M/N logic handle it
 		 */
 		if (!mn_in_use || mn->bclk_source_mn_clock == i)
-			return false;
+			break;
 	}
 
-	return false;
+	platform_shared_commit(mn, sizeof(*mn));
+
+	return ret;
 }
 #endif
 
@@ -455,6 +498,8 @@ int mn_set_bclk(uint32_t dai_index, uint32_t bclk_rate,
 	}
 
 out:
+	platform_shared_commit(mn, sizeof(*mn));
+
 	spin_unlock(&mn->lock);
 
 	return ret;
@@ -466,6 +511,7 @@ void mn_release_bclk(uint32_t dai_index)
 
 	spin_lock(&mn->lock);
 	mn->bclk_sources[dai_index] = MN_BCLK_SOURCE_NONE;
+	platform_shared_commit(mn, sizeof(*mn));
 	spin_unlock(&mn->lock);
 }
 
