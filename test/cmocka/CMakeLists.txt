@@ -55,6 +55,8 @@ add_custom_command(OUTPUT ${memory_mock_lds_out}
 add_custom_target(ld_script_memory_mock DEPENDS ${memory_mock_lds_out})
 SET(arch_src ${PROJECT_SOURCE_DIR}/src/arch/xtensa/idc.c)
 add_library(common_mock STATIC ${PROJECT_SOURCE_DIR}/test/cmocka/src/common_mocks.c)
+add_dependencies(common_mock cmocka)
+target_include_directories(common_mock PRIVATE ${CMOCKA_INCLUDE_DIR})
 target_link_libraries(common_mock PRIVATE sof_options)
 link_libraries(common_mock)
 sof_append_relative_path_definitions(common_mock)
