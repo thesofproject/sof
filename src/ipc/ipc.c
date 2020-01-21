@@ -14,6 +14,7 @@
 #include <sof/lib/alloc.h>
 #include <sof/lib/cache.h>
 #include <sof/lib/cpu.h>
+#include <sof/lib/mailbox.h>
 #include <sof/list.h>
 #include <sof/platform.h>
 #include <sof/sof.h>
@@ -87,6 +88,11 @@ struct ipc_comp_dev *ipc_get_comp_by_ppl_id(struct ipc *ipc, uint16_t type,
 			continue;
 		}
 
+		if (!cpu_is_me(icd->core)) {
+			platform_shared_commit(icd, sizeof(*icd));
+			continue;
+		}
+
 		switch (icd->type) {
 		case COMP_TYPE_COMPONENT:
 			if (icd->cd->comp.pipeline_id == ppl_id)
@@ -119,18 +125,37 @@ static struct ipc_comp_dev *ipc_get_ppl_comp(struct ipc *ipc,
 	/* first try to find the module in the pipeline */
 	list_for_item(clist, &ipc->comp_list) {
 		icd = container_of(clist, struct ipc_comp_dev, list);
-		if (icd->type == COMP_TYPE_COMPONENT &&
-		    icd->cd->comp.pipeline_id == pipeline_id &&
+		if (icd->type != COMP_TYPE_COMPONENT) {
+			platform_shared_commit(icd, sizeof(*icd));
+			continue;
+		}
+
+		if (!cpu_is_me(icd->core)) {
+			platform_shared_commit(icd, sizeof(*icd));
+			continue;
+		}
+
+		if (icd->cd->comp.pipeline_id == pipeline_id &&
 		    list_is_empty(comp_buffer_list(icd->cd, dir)))
 			return icd;
+
 		platform_shared_commit(icd, sizeof(*icd));
 	}
 
 	/* it's connected pipeline, so find the connected module */
 	list_for_item(clist, &ipc->comp_list) {
 		icd = container_of(clist, struct ipc_comp_dev, list);
-		if (icd->type == COMP_TYPE_COMPONENT &&
-		    icd->cd->comp.pipeline_id == pipeline_id) {
+		if (icd->type != COMP_TYPE_COMPONENT) {
+			platform_shared_commit(icd, sizeof(*icd));
+			continue;
+		}
+
+		if (!cpu_is_me(icd->core)) {
+			platform_shared_commit(icd, sizeof(*icd));
+			continue;
+		}
+
+		if (icd->cd->comp.pipeline_id == pipeline_id) {
 			buffer = buffer_from_list
 					(comp_buffer_list(icd->cd, dir)->next,
 					 struct comp_buffer, dir);
@@ -139,6 +164,7 @@ static struct ipc_comp_dev *ipc_get_ppl_comp(struct ipc *ipc,
 			    buff_comp->comp.pipeline_id != pipeline_id)
 				return icd;
 		}
+
 		platform_shared_commit(icd, sizeof(*icd));
 	}
 
@@ -195,6 +221,10 @@ int ipc_comp_free(struct ipc *ipc, uint32_t comp_id)
 	icd = ipc_get_comp_by_id(ipc, comp_id);
 	if (icd == NULL)
 		return -ENODEV;
+
+	/* check core */
+	if (!cpu_is_me(icd->core))
+		return ipc_process_on_core(icd->core);
 
 	/* free component and remove from list */
 	comp_free(icd->cd);
@@ -268,6 +298,10 @@ int ipc_buffer_free(struct ipc *ipc, uint32_t buffer_id)
 	if (ibd == NULL)
 		return -ENODEV;
 
+	/* check core */
+	if (!cpu_is_me(ibd->core))
+		return ipc_process_on_core(ibd->core);
+
 	/* free buffer and remove from list */
 	buffer_free(ibd->cb);
 	list_item_del(&ibd->list);
@@ -276,12 +310,63 @@ int ipc_buffer_free(struct ipc *ipc, uint32_t buffer_id)
 	return 0;
 }
 
+static int ipc_comp_to_buffer_connect(struct ipc_comp_dev *comp,
+				      struct ipc_comp_dev *buffer)
+{
+	int ret;
+
+	if (comp->core != buffer->core) {
+		trace_ipc_error("ipc_comp_to_buffer_connect() error: cores don't match %d != %d",
+				comp->core, buffer->core);
+		return -EINVAL;
+	}
+
+	if (!cpu_is_me(comp->core))
+		return ipc_process_on_core(comp->core);
+
+	trace_ipc("ipc: comp sink %d, source %d  -> connect", buffer->id,
+		  comp->id);
+
+	ret = pipeline_connect(comp->cd, buffer->cb,
+			       PPL_CONN_DIR_COMP_TO_BUFFER);
+
+	platform_shared_commit(comp, sizeof(*comp));
+	platform_shared_commit(buffer, sizeof(*buffer));
+
+	return ret;
+}
+
+static int ipc_buffer_to_comp_connect(struct ipc_comp_dev *buffer,
+				      struct ipc_comp_dev *comp)
+{
+	int ret;
+
+	if (buffer->core != comp->core) {
+		trace_ipc_error("ipc_comp_to_buffer_connect() error: cores don't match %d != %d",
+				buffer->core, comp->core);
+		return -EINVAL;
+	}
+
+	if (!cpu_is_me(buffer->core))
+		return ipc_process_on_core(buffer->core);
+
+	trace_ipc("ipc: comp sink %d, source %d  -> connect", comp->id,
+		  buffer->id);
+
+	ret = pipeline_connect(comp->cd, buffer->cb,
+			       PPL_CONN_DIR_BUFFER_TO_COMP);
+
+	platform_shared_commit(comp, sizeof(*comp));
+	platform_shared_commit(buffer, sizeof(*buffer));
+
+	return ret;
+}
+
 int ipc_comp_connect(struct ipc *ipc,
 	struct sof_ipc_pipe_comp_connect *connect)
 {
 	struct ipc_comp_dev *icd_source;
 	struct ipc_comp_dev *icd_sink;
-	int ret;
 
 	/* check whether the components already exist */
 	icd_source = ipc_get_comp_by_id(ipc, connect->source_id);
@@ -302,25 +387,18 @@ int ipc_comp_connect(struct ipc *ipc,
 
 	/* check source and sink types */
 	if (icd_source->type == COMP_TYPE_BUFFER &&
-		icd_sink->type == COMP_TYPE_COMPONENT)
-		ret = pipeline_connect(icd_sink->cd, icd_source->cb,
-				       PPL_CONN_DIR_BUFFER_TO_COMP);
+	    icd_sink->type == COMP_TYPE_COMPONENT)
+		return ipc_buffer_to_comp_connect(icd_source, icd_sink);
 	else if (icd_source->type == COMP_TYPE_COMPONENT &&
-		icd_sink->type == COMP_TYPE_BUFFER)
-		ret = pipeline_connect(icd_source->cd, icd_sink->cb,
-				       PPL_CONN_DIR_COMP_TO_BUFFER);
+		 icd_sink->type == COMP_TYPE_BUFFER)
+		return ipc_comp_to_buffer_connect(icd_source, icd_sink);
 	else {
 		trace_ipc_error("ipc_comp_connect() error: invalid source and"
 				" sink types, connect->source_id = %u, "
 				"connect->sink_id = %u",
 				connect->source_id, connect->sink_id);
-		ret = -EINVAL;
+		return -EINVAL;
 	}
-
-	platform_shared_commit(icd_source, sizeof(*icd_source));
-	platform_shared_commit(icd_sink, sizeof(*icd_sink));
-
-	return ret;
 }
 
 
@@ -358,9 +436,15 @@ int ipc_pipeline_new(struct ipc *ipc,
 				" = %u", pipe_desc->sched_id);
 		return -EINVAL;
 	}
+
 	if (icd->type != COMP_TYPE_COMPONENT) {
 		trace_ipc_error("ipc_pipeline_new() error: "
 				"icd->type != COMP_TYPE_COMPONENT");
+		return -EINVAL;
+	}
+
+	if (icd->core != pipe_desc->core) {
+		trace_ipc_error("ipc_pipeline_new() error: icd->core != pipe_desc->core");
 		return -EINVAL;
 	}
 
@@ -403,6 +487,10 @@ int ipc_pipeline_free(struct ipc *ipc, uint32_t comp_id)
 	if (ipc_pipe == NULL)
 		return -ENODEV;
 
+	/* check core */
+	if (!cpu_is_me(ipc_pipe->core))
+		return ipc_process_on_core(ipc_pipe->core);
+
 	/* free buffer and remove from list */
 	ret = pipeline_free(ipc_pipe->pipeline);
 	if (ret < 0) {
@@ -430,6 +518,12 @@ int ipc_pipeline_complete(struct ipc *ipc, uint32_t comp_id)
 	if (!ipc_pipe)
 		return -EINVAL;
 
+	/* check core */
+	if (!cpu_is_me(ipc_pipe->core))
+		return ipc_process_on_core(ipc_pipe->core);
+
+	trace_ipc("ipc: pipe %d -> complete", comp_id);
+
 	pipeline_id = ipc_pipe->pipeline->ipc_pipe.pipeline_id;
 
 	/* get pipeline source component */
@@ -454,16 +548,26 @@ int ipc_pipeline_complete(struct ipc *ipc, uint32_t comp_id)
 
 int ipc_comp_dai_config(struct ipc *ipc, struct sof_ipc_dai_config *config)
 {
+	bool comp_on_core[PLATFORM_CORE_COUNT] = { false };
 	struct sof_ipc_comp_dai *dai;
+	struct sof_ipc_reply reply;
 	struct ipc_comp_dev *icd;
 	struct list_item *clist;
 	int ret = -ENODEV;
+	int i;
 
 	/* for each component */
 	list_for_item(clist, &ipc->comp_list) {
 		icd = container_of(clist, struct ipc_comp_dev, list);
 		/* make sure we only config DAI comps */
 		if (icd->type != COMP_TYPE_COMPONENT) {
+			platform_shared_commit(icd, sizeof(*icd));
+			continue;
+		}
+
+		if (!cpu_is_me(icd->core)) {
+			comp_on_core[icd->core] = true;
+			ret = 0;
 			platform_shared_commit(icd, sizeof(*icd));
 			continue;
 		}
@@ -486,9 +590,30 @@ int ipc_comp_dai_config(struct ipc *ipc, struct sof_ipc_dai_config *config)
 		}
 	}
 
-	if (ret < 0)
+	if (ret < 0) {
 		trace_ipc_error("ipc_comp_dai_config() error: "
 				"comp_dai_config() failed");
+		return ret;
+	}
+
+	/* message forwarded only by master core */
+	if (!cpu_is_slave(cpu_get_id())) {
+		for (i = 0; i < PLATFORM_CORE_COUNT; ++i) {
+			if (!comp_on_core[i])
+				continue;
+
+			ret = ipc_process_on_core(i);
+			if (ret < 0)
+				return ret;
+
+			/* check whether IPC failed on slave core */
+			mailbox_hostbox_read(&reply, sizeof(reply), 0,
+					     sizeof(reply));
+			if (reply.error < 0)
+				/* error reply already written */
+				return 1;
+		}
+	}
 
 	return ret;
 }
