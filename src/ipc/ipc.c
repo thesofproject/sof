@@ -9,9 +9,11 @@
 #include <sof/audio/component.h>
 #include <sof/audio/pipeline.h>
 #include <sof/common.h>
+#include <sof/drivers/idc.h>
 #include <sof/drivers/ipc.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/cache.h>
+#include <sof/lib/cpu.h>
 #include <sof/list.h>
 #include <sof/platform.h>
 #include <sof/sof.h>
@@ -31,6 +33,24 @@
 /* Returns pipeline sink component */
 #define ipc_get_ppl_sink_comp(ipc, ppl_id) \
 	ipc_get_ppl_comp(ipc, ppl_id, PPL_DIR_DOWNSTREAM)
+
+int ipc_process_on_core(uint32_t core)
+{
+	struct idc_msg msg = { .header = IDC_MSG_IPC, .core = core, };
+	int ret;
+
+	/* check if requested core is enabled */
+	if (!cpu_is_core_enabled(core))
+		return -EINVAL;
+
+	/* send IDC message */
+	ret = idc_send_msg(&msg, IDC_BLOCKING);
+	if (ret < 0)
+		return ret;
+
+	/* reply sent by other core */
+	return 1;
+}
 
 /*
  * Components, buffers and pipelines all use the same set of monotonic ID
