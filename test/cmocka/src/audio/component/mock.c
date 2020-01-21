@@ -40,13 +40,6 @@ void pipeline_xrun(struct pipeline *p, struct comp_dev *dev, int32_t bytes)
 {
 }
 
-void __panic(uint32_t p, char *filename, uint32_t linenum)
-{
-	(void)p;
-	(void)filename;
-	(void)linenum;
-}
-
 struct sof *sof_get(void)
 {
 	return &sof;
