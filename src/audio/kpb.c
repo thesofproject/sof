@@ -45,7 +45,7 @@
 
 /* KPB private data, runtime data */
 struct comp_data {
-	uint64_t state_log;
+	uint64_t state_log; /**< keeps record of KPB recent states */
 	enum kpb_state state; /**< current state of KPB component */
 	uint32_t kpb_no_of_clients; /**< number of registered clients */
 	struct kpb_client clients[KPB_MAX_NO_OF_CLIENTS];
@@ -53,15 +53,17 @@ struct comp_data {
 	uint32_t source_period_bytes; /**< source number of period bytes */
 	uint32_t sink_period_bytes; /**< sink number of period bytes */
 	struct sof_kpb_config config;   /**< component configuration data */
-	struct comp_buffer *sel_sink; /**< real time sink (channel selector ) */
+	struct comp_buffer *sel_sink; /**< real time sink (channel selector )*/
 	struct comp_buffer *host_sink; /**< draining sink (client) */
-	struct hb *history_buffer;
-	size_t buffered_data;
+	struct hb *history_buffer; /**< internal history buffer */
+	size_t buffered_data; /**< keeps info about amount of buffered data */
 	struct dd draining_task_data;
-	size_t buffer_size;
-	size_t host_buffer_size;
-	size_t host_period_size;
-	bool sync_draining_mode;
+	size_t buffer_size; /**< size of internal history buffer */
+	size_t host_buffer_size; /**< size of host buffer */
+	size_t host_period_size; /**< size of history period */
+	bool sync_draining_mode; /**< should we synchronize draining with
+				   * host?
+				   */
 };
 
 /*! KPB private functions */
