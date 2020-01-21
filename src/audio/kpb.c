@@ -56,7 +56,6 @@ struct comp_data {
 	struct comp_buffer *sel_sink; /**< real time sink (channel selector ) */
 	struct comp_buffer *host_sink; /**< draining sink (client) */
 	struct hb *history_buffer;
-	bool is_internal_buffer_full;
 	size_t buffered_data;
 	struct dd draining_task_data;
 	size_t buffer_size;
@@ -529,7 +528,6 @@ static int kpb_reset(struct comp_dev *dev)
 		break;
 	default:
 		kpb->buffered_data = 0;
-		kpb->is_internal_buffer_full = false;
 
 		if (kpb->history_buffer) {
 			/* Reset history buffer - zero its data, reset pointers
@@ -622,8 +620,6 @@ static int kpb_copy(struct comp_dev *dev)
 			}
 			if (kpb->buffered_data < kpb->buffer_size)
 				kpb->buffered_data += copy_bytes;
-			else
-				kpb->is_internal_buffer_full = true;
 		} else {
 			trace_kpb_error_with_ids(dev, "kpb_copy(): "
 						 "too much data to buffer.");
