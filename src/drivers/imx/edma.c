@@ -119,10 +119,10 @@ static void edma_channel_put(struct dma_chan_data *channel)
 
 	notifier_unregister_all(NULL, channel);
 
-	spin_lock_irq(&dma->lock, flags);
+	spin_lock_irq(&channel->dma->lock, flags);
 	channel->status = COMP_STATE_INIT;
 	atomic_sub(&channel->dma->num_channels_busy, 1);
-	spin_unlock_irq(&dma->lock, flags);
+	spin_unlock_irq(&channel->dma->lock, flags);
 }
 
 static int edma_start(struct dma_chan_data *channel)
