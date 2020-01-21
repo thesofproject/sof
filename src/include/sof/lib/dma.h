@@ -20,7 +20,6 @@
 #include <sof/atomic.h>
 #include <sof/bit.h>
 #include <sof/lib/alloc.h>
-#include <sof/lib/cache.h>
 #include <sof/lib/io.h>
 #include <sof/lib/memory.h>
 #include <sof/sof.h>
@@ -573,22 +572,6 @@ int dma_sg_alloc(struct dma_sg_elem_array *ea,
 		 uintptr_t dma_buffer_addr, uintptr_t external_addr);
 
 void dma_sg_free(struct dma_sg_elem_array *ea);
-
-static inline void dma_sg_cache_wb_inv(struct dma_sg_elem_array *ea)
-{
-	if (ea->elems)
-		dcache_writeback_invalidate_region(ea->elems,
-						   ea->count *
-						   sizeof(struct dma_sg_elem));
-}
-
-static inline void dma_sg_cache_inv(struct dma_sg_elem_array *ea)
-{
-	if (ea->elems)
-		dcache_invalidate_region(ea->elems,
-					 ea->count *
-					 sizeof(struct dma_sg_elem));
-}
 
 /**
  * \brief Get the total size of SG buffer

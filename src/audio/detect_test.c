@@ -12,7 +12,6 @@
 #include <sof/debug/panic.h>
 #include <sof/drivers/ipc.h>
 #include <sof/lib/alloc.h>
-#include <sof/lib/cache.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/notifier.h>
 #include <sof/lib/wait.h>
@@ -796,33 +795,6 @@ static int test_keyword_prepare(struct comp_dev *dev)
 	return comp_set_state(dev, COMP_TRIGGER_PREPARE);
 }
 
-static void test_keyword_cache(struct comp_dev *dev, int cmd)
-{
-	struct comp_data *cd;
-
-	switch (cmd) {
-	case CACHE_WRITEBACK_INV:
-		trace_keyword_with_ids(dev, "test_keyword_cache(), "
-				       "CACHE_WRITEBACK_INV");
-
-		cd = comp_get_drvdata(dev);
-
-		dcache_writeback_invalidate_region(cd, sizeof(*cd));
-		dcache_writeback_invalidate_region(dev, sizeof(*dev));
-		break;
-
-	case CACHE_INVALIDATE:
-		trace_keyword_with_ids(dev, "test_keyword_cache(), "
-				       "CACHE_INVALIDATE");
-
-		dcache_invalidate_region(dev, sizeof(*dev));
-
-		cd = comp_get_drvdata(dev);
-		dcache_invalidate_region(cd, sizeof(*cd));
-		break;
-	}
-}
-
 static const struct comp_driver comp_keyword = {
 	.type	= SOF_COMP_KEYWORD_DETECT,
 	.ops	= {
@@ -834,7 +806,6 @@ static const struct comp_driver comp_keyword = {
 		.copy		= test_keyword_copy,
 		.prepare	= test_keyword_prepare,
 		.reset		= test_keyword_reset,
-		.cache		= test_keyword_cache,
 	},
 };
 

@@ -13,7 +13,6 @@
 #include <sof/debug/panic.h>
 #include <sof/drivers/ipc.h>
 #include <sof/lib/alloc.h>
-#include <sof/lib/cache.h>
 #include <sof/lib/dma.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/notifier.h>
@@ -787,44 +786,6 @@ static int host_copy(struct comp_dev *dev)
 	return ret;
 }
 
-static void host_cache(struct comp_dev *dev, int cmd)
-{
-	struct host_data *hd;
-
-	trace_host_with_ids(dev, "host_cache(), cmd = %d", cmd);
-
-	switch (cmd) {
-	case CACHE_WRITEBACK_INV:
-		trace_host_with_ids(dev, "host_cache(), CACHE_WRITEBACK_INV");
-
-		hd = comp_get_drvdata(dev);
-
-		dma_sg_cache_wb_inv(&hd->config.elem_array);
-		dma_sg_cache_wb_inv(&hd->local.elem_array);
-
-		dcache_writeback_invalidate_region(hd->dma_buffer,
-						   sizeof(*hd->dma_buffer));
-		dcache_writeback_invalidate_region(hd, sizeof(*hd));
-		dcache_writeback_invalidate_region(dev, sizeof(*dev));
-		break;
-
-	case CACHE_INVALIDATE:
-		trace_host_with_ids(dev, "host_cache(), CACHE_INVALIDATE");
-
-		dcache_invalidate_region(dev, sizeof(*dev));
-
-		hd = comp_get_drvdata(dev);
-
-		dcache_invalidate_region(hd, sizeof(*hd));
-		dcache_invalidate_region(hd->dma_buffer,
-					 sizeof(*hd->dma_buffer));
-
-		dma_sg_cache_inv(&hd->local.elem_array);
-		dma_sg_cache_inv(&hd->config.elem_array);
-		break;
-	}
-}
-
 static int host_set_attribute(struct comp_dev *dev, uint32_t type,
 			      void *value)
 {
@@ -855,7 +816,6 @@ static const struct comp_driver comp_host = {
 		.copy		= host_copy,
 		.prepare	= host_prepare,
 		.position	= host_position,
-		.cache		= host_cache,
 		.set_attribute	= host_set_attribute,
 	},
 };

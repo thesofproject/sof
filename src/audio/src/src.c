@@ -15,7 +15,6 @@
 #include <sof/debug/panic.h>
 #include <sof/drivers/ipc.h>
 #include <sof/lib/alloc.h>
-#include <sof/lib/cache.h>
 #include <sof/lib/memory.h>
 #include <sof/list.h>
 #include <sof/math/numbers.h>
@@ -894,41 +893,6 @@ static int src_reset(struct comp_dev *dev)
 	return 0;
 }
 
-static void src_cache(struct comp_dev *dev, int cmd)
-{
-	struct comp_data *cd;
-
-	switch (cmd) {
-	case CACHE_WRITEBACK_INV:
-		trace_src_with_ids(dev, "src_cache(), CACHE_WRITEBACK_INV");
-
-		cd = comp_get_drvdata(dev);
-
-		if (cd->delay_lines)
-			dcache_writeback_invalidate_region
-				(cd->delay_lines,
-				 sizeof(int32_t) * cd->param.total);
-
-		dcache_writeback_invalidate_region(cd, sizeof(*cd));
-		dcache_writeback_invalidate_region(dev, sizeof(*dev));
-		break;
-
-	case CACHE_INVALIDATE:
-		trace_src_with_ids(dev, "src_cache(), CACHE_INVALIDATE");
-
-		dcache_invalidate_region(dev, sizeof(*dev));
-
-		cd = comp_get_drvdata(dev);
-		dcache_invalidate_region(cd, sizeof(*cd));
-
-		if (cd->delay_lines)
-			dcache_invalidate_region
-				(cd->delay_lines,
-				 sizeof(int32_t) * cd->param.total);
-		break;
-	}
-}
-
 static const struct comp_driver comp_src = {
 	.type = SOF_COMP_SRC,
 	.ops = {
@@ -940,7 +904,6 @@ static const struct comp_driver comp_src = {
 		.copy = src_copy,
 		.prepare = src_prepare,
 		.reset = src_reset,
-		.cache = src_cache,
 	},
 };
 

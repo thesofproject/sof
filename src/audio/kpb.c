@@ -486,11 +486,6 @@ static int kpb_cmd(struct comp_dev *dev, int cmd, void *data,
 	return ret;
 }
 
-static void kpb_cache(struct comp_dev *dev, int cmd)
-{
-	/* TODO: writeback history buffer */
-}
-
 /**
  * \brief Resets KPB component.
  * \param[in,out] dev KPB base component device.
@@ -1444,7 +1439,6 @@ static const struct comp_driver comp_kpb = {
 		.copy = kpb_copy,
 		.prepare = kpb_prepare,
 		.reset = kpb_reset,
-		.cache = kpb_cache,
 		.params = kpb_params,
 	},
 };

@@ -158,78 +158,6 @@ int idc_send_msg(struct idc_msg *msg, uint32_t mode)
 }
 
 /**
- * \brief Executes IDC pipeline trigger message.
- * \param[in] cmd Trigger command.
- * \return Error code.
- */
-static int idc_pipeline_trigger(uint32_t cmd)
-{
-	struct ipc *ipc = ipc_get();
-	struct sof_ipc_stream *data = ipc->comp_data;
-	struct ipc_comp_dev *pcm_dev;
-	int ret;
-
-	/* check whether component exists */
-	pcm_dev = ipc_get_comp_by_id(ipc, data->comp_id);
-	if (!pcm_dev)
-		return -ENODEV;
-
-	/* invalidate pipeline on start */
-	if (cmd == COMP_TRIGGER_START) {
-		/* invalidate cd before accessing it */
-		dcache_invalidate_region(pcm_dev->cd, sizeof(*pcm_dev->cd));
-
-		pipeline_cache(pcm_dev->cd->pipeline,
-			       pcm_dev->cd, CACHE_INVALIDATE);
-	}
-
-	/* check whether we are executing from the right core */
-	if (!pipeline_is_this_cpu(pcm_dev->cd->pipeline))
-		return -EINVAL;
-
-	/* trigger pipeline */
-	ret = pipeline_trigger(pcm_dev->cd->pipeline, pcm_dev->cd, cmd);
-
-	/* writeback pipeline on stop */
-	if (cmd == COMP_TRIGGER_STOP)
-		pipeline_cache(pcm_dev->cd->pipeline,
-			       pcm_dev->cd, CACHE_WRITEBACK_INV);
-
-	return ret;
-}
-
-/**
- * \brief Executes IDC component command message.
- * \param[in] cmd Component command.
- * \return Error code.
- */
-static int idc_component_command(uint32_t cmd)
-{
-	struct ipc *ipc = ipc_get();
-	struct sof_ipc_ctrl_data *data = ipc->comp_data;
-	struct ipc_comp_dev *comp_dev;
-	int ret;
-
-	/* check whether component exists */
-	comp_dev = ipc_get_comp_by_id(ipc, data->comp_id);
-	if (!comp_dev)
-		return -ENODEV;
-
-	/* If we're here, then the pipeline is already running on this core.
-	 * No need to invalidate any data.
-	 */
-
-	/* check whether we are executing from the right core */
-	if (!pipeline_is_this_cpu(comp_dev->cd->pipeline))
-		return -EINVAL;
-
-	/* execute component command */
-	ret = comp_cmd(comp_dev->cd, cmd, data, data->rhdr.hdr.size);
-
-	return ret;
-}
-
-/**
  * \brief Executes IDC IPC processing message.
  */
 static void idc_ipc(void)
@@ -251,12 +179,6 @@ static void idc_cmd(struct idc_msg *msg)
 	switch (type) {
 	case iTS(IDC_MSG_POWER_DOWN):
 		cpu_power_down_core();
-		break;
-	case iTS(IDC_MSG_PPL_TRIGGER):
-		idc_pipeline_trigger(msg->extension);
-		break;
-	case iTS(IDC_MSG_COMP_CMD):
-		idc_component_command(msg->extension);
 		break;
 	case iTS(IDC_MSG_NOTIFY):
 		notifier_notify_remote();

@@ -807,39 +807,6 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 	return dai_set_config(dd->dai, config);
 }
 
-static void dai_cache(struct comp_dev *dev, int cmd)
-{
-	struct dai_data *dd;
-
-	switch (cmd) {
-	case CACHE_WRITEBACK_INV:
-		trace_dai_with_ids(dev, "dai_cache(), CACHE_WRITEBACK_INV");
-
-		dd = comp_get_drvdata(dev);
-
-		dma_sg_cache_wb_inv(&dd->config.elem_array);
-
-		dcache_writeback_invalidate_region(dd->dma_buffer,
-						   sizeof(*dd->dma_buffer));
-		dcache_writeback_invalidate_region(dd, sizeof(*dd));
-		dcache_writeback_invalidate_region(dev, sizeof(*dev));
-		break;
-
-	case CACHE_INVALIDATE:
-		trace_dai_with_ids(dev, "dai_cache(), CACHE_INVALIDATE");
-
-		dcache_invalidate_region(dev, sizeof(*dev));
-
-		dd = comp_get_drvdata(dev);
-		dcache_invalidate_region(dd, sizeof(*dd));
-		dcache_invalidate_region(dd->dma_buffer,
-					 sizeof(*dd->dma_buffer));
-
-		dma_sg_cache_inv(&dd->config.elem_array);
-		break;
-	}
-}
-
 static const struct comp_driver comp_dai = {
 	.type	= SOF_COMP_DAI,
 	.ops	= {
@@ -852,7 +819,6 @@ static const struct comp_driver comp_dai = {
 		.reset		= dai_reset,
 		.dai_config	= dai_config,
 		.position	= dai_position,
-		.cache		= dai_cache,
 	},
 };
 

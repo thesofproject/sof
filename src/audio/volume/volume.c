@@ -22,7 +22,6 @@
 #include <sof/debug/panic.h>
 #include <sof/drivers/ipc.h>
 #include <sof/lib/alloc.h>
-#include <sof/lib/cache.h>
 #include <sof/lib/memory.h>
 #include <sof/list.h>
 #include <sof/math/numbers.h>
@@ -712,37 +711,6 @@ static int volume_reset(struct comp_dev *dev)
 	return 0;
 }
 
-/**
- * \brief Executes cache operation on volume component.
- * \param[in,out] dev Volume base component device.
- * \param[in] cmd Cache command.
- */
-static void volume_cache(struct comp_dev *dev, int cmd)
-{
-	struct comp_data *cd;
-
-	switch (cmd) {
-	case CACHE_WRITEBACK_INV:
-		trace_volume_with_ids(dev, "volume_cache(), "
-				      "CACHE_WRITEBACK_INV");
-
-		cd = comp_get_drvdata(dev);
-
-		dcache_writeback_invalidate_region(cd, sizeof(*cd));
-		dcache_writeback_invalidate_region(dev, sizeof(*dev));
-		break;
-
-	case CACHE_INVALIDATE:
-		trace_volume_with_ids(dev, "volume_cache(), CACHE_INVALIDATE");
-
-		dcache_invalidate_region(dev, sizeof(*dev));
-
-		cd = comp_get_drvdata(dev);
-		dcache_invalidate_region(cd, sizeof(*cd));
-		break;
-	}
-}
-
 /** \brief Volume component definition. */
 static const struct comp_driver comp_volume = {
 	.type	= SOF_COMP_VOLUME,
@@ -755,7 +723,6 @@ static const struct comp_driver comp_volume = {
 		.copy		= volume_copy,
 		.prepare	= volume_prepare,
 		.reset		= volume_reset,
-		.cache		= volume_cache,
 	},
 };
 

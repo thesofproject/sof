@@ -14,7 +14,6 @@
 #include <sof/debug/panic.h>
 #include <sof/drivers/ipc.h>
 #include <sof/lib/alloc.h>
-#include <sof/lib/cache.h>
 #include <sof/lib/memory.h>
 #include <sof/list.h>
 #include <sof/math/numbers.h>
@@ -417,31 +416,6 @@ static int mixer_prepare(struct comp_dev *dev)
 	return downstream;
 }
 
-static void mixer_cache(struct comp_dev *dev, int cmd)
-{
-	struct mixer_data *md;
-
-	switch (cmd) {
-	case CACHE_WRITEBACK_INV:
-		trace_mixer_with_ids(dev, "mixer_cache(), CACHE_WRITEBACK_INV");
-
-		md = comp_get_drvdata(dev);
-
-		dcache_writeback_invalidate_region(md, sizeof(*md));
-		dcache_writeback_invalidate_region(dev, sizeof(*dev));
-		break;
-
-	case CACHE_INVALIDATE:
-		trace_mixer_with_ids(dev, "mixer_cache(), CACHE_INVALIDATE");
-
-		dcache_invalidate_region(dev, sizeof(*dev));
-
-		md = comp_get_drvdata(dev);
-		dcache_invalidate_region(md, sizeof(*md));
-		break;
-	}
-}
-
 static const struct comp_driver comp_mixer = {
 	.type	= SOF_COMP_MIXER,
 	.ops	= {
@@ -452,7 +426,6 @@ static const struct comp_driver comp_mixer = {
 		.trigger	= mixer_trigger,
 		.copy		= mixer_copy,
 		.reset		= mixer_reset,
-		.cache		= mixer_cache,
 	},
 };
 

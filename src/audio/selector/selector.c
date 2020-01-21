@@ -20,7 +20,6 @@
 #include <sof/debug/panic.h>
 #include <sof/drivers/ipc.h>
 #include <sof/lib/alloc.h>
-#include <sof/lib/cache.h>
 #include <sof/lib/memory.h>
 #include <sof/list.h>
 #include <sof/string.h>
@@ -459,38 +458,6 @@ static int selector_reset(struct comp_dev *dev)
 	return ret == 0 ? PPL_STATUS_PATH_STOP : ret;
 }
 
-/**
- * \brief Executes cache operation on selector component.
- * \param[in,out] dev Selector base component device.
- * \param[in] cmd Cache command.
- */
-static void selector_cache(struct comp_dev *dev, int cmd)
-{
-	struct comp_data *cd;
-
-	switch (cmd) {
-	case CACHE_WRITEBACK_INV:
-		trace_selector_with_ids(dev, "selector_cache(), "
-					"CACHE_WRITEBACK_INV");
-
-		cd = comp_get_drvdata(dev);
-
-		dcache_writeback_invalidate_region(cd, sizeof(*cd));
-		dcache_writeback_invalidate_region(dev, sizeof(*dev));
-		break;
-
-	case CACHE_INVALIDATE:
-		trace_selector_with_ids(dev, "selector_cache(), "
-					"CACHE_INVALIDATE");
-
-		dcache_invalidate_region(dev, sizeof(*dev));
-
-		cd = comp_get_drvdata(dev);
-		dcache_invalidate_region(cd, sizeof(*cd));
-		break;
-	}
-}
-
 /** \brief Selector component definition. */
 static const struct comp_driver comp_selector = {
 	.type	= SOF_COMP_SELECTOR,
@@ -503,7 +470,6 @@ static const struct comp_driver comp_selector = {
 		.copy		= selector_copy,
 		.prepare	= selector_prepare,
 		.reset		= selector_reset,
-		.cache		= selector_cache,
 	},
 };
 

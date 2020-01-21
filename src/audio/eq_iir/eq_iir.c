@@ -16,7 +16,6 @@
 #include <sof/debug/panic.h>
 #include <sof/drivers/ipc.h>
 #include <sof/lib/alloc.h>
-#include <sof/lib/cache.h>
 #include <sof/lib/memory.h>
 #include <sof/list.h>
 #include <sof/platform.h>
@@ -888,58 +887,6 @@ static int eq_iir_reset(struct comp_dev *dev)
 	return 0;
 }
 
-static void eq_iir_cache(struct comp_dev *dev, int cmd)
-{
-	struct comp_data *cd;
-	struct sof_eq_iir_config *cn;
-
-	switch (cmd) {
-	case CACHE_WRITEBACK_INV:
-		trace_eq_with_ids(dev, "eq_iir_cache(), CACHE_WRITEBACK_INV");
-
-		cd = comp_get_drvdata(dev);
-		if (cd->config_new) {
-			cn = cd->config_new;
-			dcache_writeback_invalidate_region(cn, cn->size);
-		}
-
-		if (cd->config)
-			dcache_writeback_invalidate_region(cd->config,
-							   cd->config->size);
-
-		if (cd->iir_delay)
-			dcache_writeback_invalidate_region(cd->iir_delay,
-							   cd->iir_delay_size);
-
-		dcache_writeback_invalidate_region(cd, sizeof(*cd));
-		dcache_writeback_invalidate_region(dev, sizeof(*dev));
-		break;
-
-	case CACHE_INVALIDATE:
-		trace_eq_with_ids(dev, "eq_iir_cache(), CACHE_INVALIDATE");
-
-		dcache_invalidate_region(dev, sizeof(*dev));
-
-		/* Note: The component data need to be retrieved after
-		 * the dev data has been invalidated.
-		 */
-		cd = comp_get_drvdata(dev);
-		dcache_invalidate_region(cd, sizeof(*cd));
-
-		if (cd->iir_delay)
-			dcache_invalidate_region(cd->iir_delay,
-						 cd->iir_delay_size);
-
-		if (cd->config)
-			dcache_invalidate_region(cd->config,
-						 cd->config->size);
-		if (cd->config_new)
-			dcache_invalidate_region(cd->config_new,
-						 cd->config_new->size);
-		break;
-	}
-}
-
 static const struct comp_driver comp_eq_iir = {
 	.type = SOF_COMP_EQ_IIR,
 	.ops = {
@@ -951,7 +898,6 @@ static const struct comp_driver comp_eq_iir = {
 		.copy = eq_iir_copy,
 		.prepare = eq_iir_prepare,
 		.reset = eq_iir_reset,
-		.cache = eq_iir_cache,
 	},
 };
 

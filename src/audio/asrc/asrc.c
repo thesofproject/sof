@@ -10,7 +10,6 @@
 #include <sof/debug/panic.h>
 #include <sof/drivers/ipc.h>
 #include <sof/lib/alloc.h>
-#include <sof/lib/cache.h>
 #include <sof/lib/memory.h>
 #include <sof/math/numbers.h>
 #include <sof/trace/trace.h>
@@ -584,43 +583,6 @@ static int asrc_reset(struct comp_dev *dev)
 	return 0;
 }
 
-static void asrc_cache(struct comp_dev *dev, int cmd)
-{
-	struct comp_data *cd;
-
-	switch (cmd) {
-	case CACHE_WRITEBACK_INV:
-		trace_asrc_with_ids(dev, "asrc_cache(), CACHE_WRITEBACK_INV");
-
-		cd = comp_get_drvdata(dev);
-		if (cd->buf)
-			dcache_writeback_invalidate_region(cd->buf,
-							   cd->buf_size);
-
-		if (cd->asrc_obj)
-			dcache_writeback_invalidate_region(cd->asrc_obj,
-							   cd->asrc_size);
-
-		dcache_writeback_invalidate_region(cd, sizeof(*cd));
-		dcache_writeback_invalidate_region(dev, sizeof(*dev));
-		break;
-
-	case CACHE_INVALIDATE:
-		trace_asrc_with_ids(dev, "asrc_cache(), CACHE_INVALIDATE");
-
-		dcache_invalidate_region(dev, sizeof(*dev));
-		cd = comp_get_drvdata(dev);
-		dcache_invalidate_region(cd, sizeof(*cd));
-		if (cd->asrc_obj)
-			dcache_invalidate_region(cd->asrc_obj, cd->asrc_size);
-
-		if (cd->buf)
-			dcache_invalidate_region(cd->buf, cd->buf_size);
-
-		break;
-	}
-}
-
 static const struct comp_driver comp_asrc = {
 	.type = SOF_COMP_ASRC,
 	.ops = {
@@ -632,7 +594,6 @@ static const struct comp_driver comp_asrc = {
 		.copy = asrc_copy,
 		.prepare = asrc_prepare,
 		.reset = asrc_reset,
-		.cache = asrc_cache,
 	},
 };
 
