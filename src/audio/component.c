@@ -39,8 +39,6 @@ static const struct comp_driver *get_drv(uint32_t type)
 			goto out;
 		}
 
-		trace_buffer_error("addr = 0x%x", (uintptr_t)info);
-
 		platform_shared_commit(info, sizeof(*info));
 	}
 
