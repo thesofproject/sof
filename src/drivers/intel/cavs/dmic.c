@@ -1512,8 +1512,8 @@ static int dmic_probe(struct dai *dai)
 		return -EEXIST; /* already created */
 
 	/* allocate private data */
-	dmic = rzalloc(SOF_MEM_ZONE_SYS_RUNTIME, SOF_MEM_FLAG_SHARED,
-		       SOF_MEM_CAPS_RAM, sizeof(*dmic));
+	dmic = rzalloc(SOF_MEM_ZONE_SYS_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+		       sizeof(*dmic));
 	if (!dmic) {
 		trace_dmic_error("dmic_probe() error: alloc failed");
 		return -ENOMEM;
