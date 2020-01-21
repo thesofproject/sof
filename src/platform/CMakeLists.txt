@@ -16,6 +16,8 @@ elseif(CONFIG_TIGERLAKE)
 	add_subdirectory(tigerlake)
 elseif(CONFIG_IMX8 OR CONFIG_IMX8X)
 	add_subdirectory(imx8)
+elseif(CONFIG_IMX8M)
+	add_subdirectory(imx8m)
 endif()
 
 if(CONFIG_CAVS)
