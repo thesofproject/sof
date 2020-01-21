@@ -252,4 +252,11 @@ struct sof_ipc_cmd_hdr *mailbox_validate(void);
  */
 void ipc_cmd(struct sof_ipc_cmd_hdr *hdr);
 
+/**
+ * \brief IPC message to be processed on other core.
+ * @param[in] core Core id for IPC to be processed on.
+ * @return 1 if successful (reply sent by other core), error code otherwise.
+ */
+int ipc_process_on_core(uint32_t core);
+
 #endif /* __SOF_DRIVERS_IPC_H__ */
