@@ -200,6 +200,9 @@ static inline void audio_stream_reset(struct audio_stream *buffer)
 static inline void audio_stream_init(struct audio_stream *buffer,
 				     void *buff_addr, uint32_t size)
 {
+	assert(buffer);
+	assert(buff_addr);
+
 	buffer->size = size;
 	buffer->addr = buff_addr;
 	buffer->end_addr = (char *)buffer->addr + size;
