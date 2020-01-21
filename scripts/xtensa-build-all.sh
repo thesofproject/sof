@@ -2,7 +2,8 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2018 Intel Corporation. All rights reserved.
 
-SUPPORTED_PLATFORMS=(byt cht bdw hsw apl skl kbl cnl sue icl jsl imx8 imx8x)
+SUPPORTED_PLATFORMS=(byt cht bdw hsw apl skl kbl cnl sue icl jsl \
+                    imx8 imx8x imx8m)
 BUILD_ROM=no
 BUILD_DEBUG=no
 BUILD_FORCE_UP=no
@@ -258,6 +259,16 @@ do
 		HOST="xtensa-imx-elf"
 		XTENSA_TOOLS_VERSION="RF-2016.4-linux"
 	fi
+	if [ $j == "imx8m" ]
+	then
+		PLATFORM="imx8m"
+		ARCH="xtensa"
+		XTENSA_CORE="hifi4_mscale_v0_0_2_prod"
+		ROOT="$pwd/../xtensa-root/xtensa-imx8m-elf"
+		HOST="xtensa-imx8m-elf"
+		XTENSA_TOOLS_VERSION="RF-2016.4-linux"
+	fi
+
 	if [ $XTENSA_TOOLS_ROOT ]
 	then
 		XTENSA_TOOLS_DIR="$XTENSA_TOOLS_ROOT/install/tools/$XTENSA_TOOLS_VERSION"
