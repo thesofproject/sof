@@ -799,7 +799,7 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 		}
 	}
 
-	return 0;
+	return dai_set_config(dd->dai, config);
 }
 
 static void dai_cache(struct comp_dev *dev, int cmd)
