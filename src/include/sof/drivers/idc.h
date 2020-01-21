@@ -71,20 +71,12 @@
 #define IDC_MSG_POWER_DOWN	IDC_TYPE(0x2)
 #define IDC_MSG_POWER_DOWN_EXT	IDC_EXTENSION(0x0)
 
-/** \brief IDC trigger pipeline message. */
-#define IDC_MSG_PPL_TRIGGER		IDC_TYPE(0x3)
-#define IDC_MSG_PPL_TRIGGER_EXT(x)	IDC_EXTENSION(x)
-
-/** \brief IDC component command message. */
-#define IDC_MSG_COMP_CMD	IDC_TYPE(0x4)
-#define IDC_MSG_COMP_CMD_EXT(x)	IDC_EXTENSION(x)
-
 /** \brief IDC notify message. */
-#define IDC_MSG_NOTIFY		IDC_TYPE(0x5)
+#define IDC_MSG_NOTIFY		IDC_TYPE(0x3)
 #define IDC_MSG_NOTIFY_EXT	IDC_EXTENSION(0x0)
 
 /** \brief IDC IPC processing message. */
-#define IDC_MSG_IPC		IDC_TYPE(0x6)
+#define IDC_MSG_IPC		IDC_TYPE(0x4)
 #define IDC_MSG_IPC_EXT		IDC_EXTENSION(0x0)
 
 /** \brief Decodes IDC message type. */
