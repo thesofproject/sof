@@ -27,6 +27,8 @@ elseif(CONFIG_IMX8)
 	set(platform_folder imx8)
 elseif(CONFIG_IMX8X)
 	set(platform_folder imx8)
+elseif(CONFIG_IMX8M)
+	set(platform_folder imx8m)
 endif()
 
 set(fw_name ${CONFIG_FIRMWARE_SHORT_NAME})
