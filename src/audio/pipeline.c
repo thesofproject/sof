@@ -9,13 +9,10 @@
 #include <sof/audio/component.h>
 #include <sof/audio/pipeline.h>
 #include <sof/debug/panic.h>
-#include <sof/drivers/idc.h>
 #include <sof/drivers/interrupt.h>
 #include <sof/drivers/ipc.h>
 #include <sof/drivers/timer.h>
 #include <sof/lib/alloc.h>
-#include <sof/lib/cache.h>
-#include <sof/lib/cpu.h>
 #include <sof/list.h>
 #include <sof/math/numbers.h>
 #include <sof/schedule/ll_schedule.h>
@@ -509,59 +506,6 @@ int pipeline_prepare(struct pipeline *p, struct comp_dev *dev)
 	return ret;
 }
 
-static int pipeline_comp_cache(struct comp_dev *current, void *data, int dir)
-{
-	struct pipeline_data *ppl_data = data;
-
-	tracev_pipe("pipeline_comp_cache(), current->comp.id = %u, dir = %u",
-		    current->comp.id, dir);
-
-	comp_cache(current, ppl_data->cmd);
-
-	if (!comp_is_single_pipeline(current, ppl_data->start)) {
-		tracev_pipe("pipeline_comp_cache(), "
-			    "current is from another pipeline");
-		return 0;
-	}
-
-	return pipeline_for_each_comp(current, &pipeline_comp_cache, data,
-				      comp_buffer_cache_op(ppl_data->cmd),
-				      NULL, dir);
-}
-
-/* execute cache operation on pipeline */
-void pipeline_cache(struct pipeline *p, struct comp_dev *dev, int cmd)
-{
-	struct pipeline_data data;
-	uint32_t flags;
-
-	/* pipeline needs to be invalidated before usage */
-	if (cmd == CACHE_INVALIDATE) {
-		dcache_invalidate_region(p, sizeof(*p));
-		dcache_invalidate_region(p->pipe_task,
-					 sizeof(struct pipeline_task));
-	}
-
-	trace_pipe_with_ids(p, "pipeline_cache()");
-
-	data.start = dev;
-	data.cmd = cmd;
-
-	irq_local_disable(flags);
-
-	/* execute cache operation on components and buffers */
-	pipeline_comp_cache(dev, &data, dev->direction);
-
-	/* pipeline needs to be flushed after usage */
-	if (cmd == CACHE_WRITEBACK_INV) {
-		dcache_writeback_invalidate_region
-				(p->pipe_task, sizeof(struct pipeline_task));
-		dcache_writeback_invalidate_region(p, sizeof(*p));
-	}
-
-	irq_local_enable(flags);
-}
-
 static void pipeline_comp_trigger_sched_comp(struct pipeline *p,
 					     struct comp_dev *comp, int cmd)
 {
@@ -625,44 +569,6 @@ static int pipeline_comp_trigger(struct comp_dev *current, void *data, int dir)
 				      NULL, NULL, dir);
 }
 
-/* trigger pipeline on slave core */
-static int pipeline_trigger_on_core(struct pipeline *p, struct comp_dev *host,
-				    int cmd)
-{
-	struct idc_msg pipeline_trigger = { IDC_MSG_PPL_TRIGGER,
-		IDC_MSG_PPL_TRIGGER_EXT(cmd), p->ipc_pipe.core };
-	int ret;
-
-	/* check if requested core is enabled */
-	if (!cpu_is_core_enabled(p->ipc_pipe.core)) {
-		trace_pipe_error_with_ids(p, "pipeline_trigger_on_core() "
-					  "error: Requested core is not "
-					  "enabled, p->ipc_pipe.core = %u",
-					  p->ipc_pipe.core);
-		return -EINVAL;
-	}
-
-	/* writeback pipeline on start */
-	if (cmd == COMP_TRIGGER_START)
-		pipeline_cache(p, host, CACHE_WRITEBACK_INV);
-
-	/* send IDC pipeline trigger message */
-	ret = idc_send_msg(&pipeline_trigger, IDC_BLOCKING);
-	if (ret < 0) {
-		trace_pipe_error_with_ids(p, "pipeline_trigger_on_core() "
-					  "error: idc_send_msg returned %d, "
-					  "host->comp.id = %u, cmd = %d",
-					  ret, host->comp.id, cmd);
-		return ret;
-	}
-
-	/* invalidate pipeline on stop */
-	if (cmd == COMP_TRIGGER_STOP)
-		pipeline_cache(p, host, CACHE_INVALIDATE);
-
-	return ret;
-}
-
 /*
  * trigger handler for pipelines in xrun, used for recovery from host only.
  * return values:
@@ -713,10 +619,6 @@ int pipeline_trigger(struct pipeline *p, struct comp_dev *host, int cmd)
 	int ret;
 
 	trace_pipe_with_ids(p, "pipeline_trigger()");
-
-	/* if current core is different than requested */
-	if (!pipeline_is_this_cpu(p))
-		return pipeline_trigger_on_core(p, host, cmd);
 
 	/* handle pipeline global checks before going into each components */
 	if (p->xrun_bytes) {

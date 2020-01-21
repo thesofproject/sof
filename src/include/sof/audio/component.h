@@ -218,9 +218,6 @@ struct comp_ops {
 	int (*position)(struct comp_dev *dev,
 		struct sof_ipc_stream_posn *posn);
 
-	/** cache operation on component data */
-	void (*cache)(struct comp_dev *dev, int cmd);
-
 	/** set attribute in component */
 	int (*set_attribute)(struct comp_dev *dev, uint32_t type,
 			     void *value);
@@ -530,17 +527,6 @@ static inline int comp_position(struct comp_dev *dev,
 }
 
 /**
- * Component L1 cache command (invalidate, writeback, ...).
- * @param dev Component device
- * @param cmd Command.
- */
-static inline void comp_cache(struct comp_dev *dev, int cmd)
-{
-	if (dev->drv->ops.cache)
-		dev->drv->ops.cache(dev, cmd);
-}
-
-/**
  * Sets component attribute.
  * @param dev Component device.
  * @param type Attribute type.
@@ -593,27 +579,6 @@ static inline int comp_is_single_pipeline(struct comp_dev *current,
 static inline int comp_is_active(struct comp_dev *current)
 {
 	return current->state == COMP_STATE_ACTIVE;
-}
-
-/**
- * Retrieves previous connected component.
- * @param dev Component device.
- * @param dir Component stream direction.
- * @return Previous connected component device.
- */
-static inline struct comp_dev *comp_get_previous(struct comp_dev *dev, int dir)
-{
-	struct list_item *buffer_list = comp_buffer_list(dev, dir);
-	struct comp_dev *prev = NULL;
-	struct comp_buffer *buffer;
-
-	if (!list_is_empty(buffer_list)) {
-		buffer = buffer_from_list(buffer_list->next,
-					  struct comp_buffer, dir);
-		prev = buffer_get_comp(buffer, dir);
-	}
-
-	return prev;
 }
 
 /**

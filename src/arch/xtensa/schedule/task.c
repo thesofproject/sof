@@ -112,10 +112,6 @@ int task_context_init(void *task_ctx, void *entry, void *arg0, void *arg1,
 
 	ctx->stack_pointer = sp;
 
-	/* flush for slave core */
-	if (cpu_is_slave(task_core))
-		task_context_cache(ctx, CACHE_WRITEBACK_INV);
-
 	return 0;
 }
 
@@ -130,21 +126,4 @@ void task_context_free(void *task_ctx)
 	ctx->stack_pointer = NULL;
 
 	rfree(ctx);
-}
-
-void task_context_cache(void *task_ctx, int cmd)
-{
-	xtos_task_context *ctx = task_ctx;
-
-	switch (cmd) {
-	case CACHE_WRITEBACK_INV:
-		dcache_writeback_invalidate_region(ctx->stack_base,
-						   ctx->stack_size);
-		dcache_writeback_invalidate_region(ctx, sizeof(*ctx));
-		break;
-	case CACHE_INVALIDATE:
-		dcache_invalidate_region(ctx, sizeof(*ctx));
-		dcache_invalidate_region(ctx->stack_base, ctx->stack_size);
-		break;
-	}
 }

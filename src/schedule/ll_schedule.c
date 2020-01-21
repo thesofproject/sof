@@ -11,7 +11,6 @@
 #include <sof/drivers/interrupt.h>
 #include <sof/drivers/timer.h>
 #include <sof/lib/alloc.h>
-#include <sof/lib/cache.h>
 #include <sof/lib/clk.h>
 #include <sof/lib/cpu.h>
 #include <sof/lib/memory.h>
@@ -296,10 +295,6 @@ static void schedule_ll_task(void *data, struct task *task, uint64_t start,
 
 	pdata = ll_sch_get_pdata(task);
 
-	/* invalidate if slave core */
-	if (cpu_is_slave(task->core))
-		dcache_invalidate_region(pdata, sizeof(*pdata));
-
 	trace_ll("task add %p task->priority %d start %u period %u",
 		 (uintptr_t)task, task->priority, start, period);
 
@@ -348,11 +343,6 @@ int schedule_task_init_ll(struct task *task, uint16_t type, uint16_t priority,
 		trace_ll_error("schedule_task_init_ll() error: alloc failed");
 		return -ENOMEM;
 	}
-
-	/* flush for slave core */
-	if (cpu_is_slave(task->core))
-		dcache_writeback_invalidate_region(ll_pdata,
-						   sizeof(*ll_pdata));
 
 	ll_sch_set_pdata(task, ll_pdata);
 

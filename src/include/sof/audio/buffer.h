@@ -117,8 +117,6 @@ struct buffer_cb_free {
 	} while (0)
 
 
-typedef void (*cache_buff_op)(struct comp_buffer *, void *);
-
 /* pipeline buffer creation and destruction */
 struct comp_buffer *buffer_alloc(uint32_t size, uint32_t caps, uint32_t align);
 struct comp_buffer *buffer_new(struct sof_ipc_buffer *desc);
@@ -139,31 +137,6 @@ static inline void buffer_zero(struct comp_buffer *buffer)
 	if (buffer->caps & SOF_MEM_CAPS_DMA)
 		dcache_writeback_region(buffer->stream.addr,
 					buffer->stream.size);
-}
-
-static inline void comp_buffer_cache_wtb_inv(struct comp_buffer *buffer,
-					     void *data)
-{
-	dcache_writeback_invalidate_region(buffer, sizeof(*buffer));
-}
-
-static inline void comp_buffer_cache_inv(struct comp_buffer *buffer, void *data)
-{
-	dcache_invalidate_region(buffer, sizeof(*buffer));
-}
-
-static inline cache_buff_op comp_buffer_cache_op(int cmd)
-{
-	switch (cmd) {
-	case CACHE_WRITEBACK_INV:
-		return &comp_buffer_cache_wtb_inv;
-	case CACHE_INVALIDATE:
-		return &comp_buffer_cache_inv;
-	default:
-		trace_buffer_error("comp_buffer_cache_op() error: "
-				   "invalid cmd = %u", cmd);
-		return NULL;
-	}
 }
 
 static inline void buffer_reset_pos(struct comp_buffer *buffer, void *data)
