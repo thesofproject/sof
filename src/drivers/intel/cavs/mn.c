@@ -10,6 +10,8 @@
 #include <sof/math/numbers.h>
 #include <sof/spinlock.h>
 #include <sof/trace/trace.h>
+#include <stdbool.h>
+#include <stdint.h>
 
 /* tracing */
 #define trace_mn(__e, ...) \
@@ -36,25 +38,29 @@ enum bclk_source {
 	MN_BCLK_SOURCE_XTAL, /**< port is using XTAL directly */
 };
 
-static spinlock_t mn_lock;
+struct mn {
+	/**< keep track of which MCLKs are in use to know when it's safe to
+	 * change shared clock
+	 */
+	bool mclk_sources_used[DAI_NUM_SSP_MCLK];
+	int mclk_source_clock;
 
-/* Keep track of which MCLKs are in use to know when it's safe to change
- * shared clock.
- */
-static bool mclk_sources_used[DAI_NUM_SSP_MCLK];
-static int mclk_source_clock;
+	enum bclk_source bclk_sources[(DAI_NUM_SSP_BASE + DAI_NUM_SSP_EXT)];
+	int bclk_source_mn_clock;
 
-static enum bclk_source bclk_sources[(DAI_NUM_SSP_BASE + DAI_NUM_SSP_EXT)];
-static int bclk_source_mn_clock;
+	spinlock_t lock; /**< lock mechanism */
+};
+
+struct mn mn;
 
 void mn_init(void)
 {
 	int i;
 
-	for (i = 0; i < ARRAY_SIZE(bclk_sources); i++)
-		bclk_sources[i] = MN_BCLK_SOURCE_NONE;
+	for (i = 0; i < ARRAY_SIZE(mn.bclk_sources); i++)
+		mn.bclk_sources[i] = MN_BCLK_SOURCE_NONE;
 
-	spinlock_init(&mn_lock);
+	spinlock_init(&mn.lock);
 }
 
 /**
@@ -66,8 +72,8 @@ static inline bool is_mclk_source_in_use(void)
 {
 	int i;
 
-	for (i = 0; i < ARRAY_SIZE(mclk_sources_used); i++)
-		if (mclk_sources_used[i])
+	for (i = 0; i < ARRAY_SIZE(mn.mclk_sources_used); i++)
+		if (mn.mclk_sources_used[i])
 			return true;
 	return false;
 }
@@ -100,7 +106,7 @@ static inline int setup_initial_mclk_source(uint32_t mclk_rate)
 		return -EINVAL;
 	}
 
-	mclk_source_clock = clk_index;
+	mn.mclk_source_clock = clk_index;
 
 	/* enable MCLK divider */
 	mdivc |= MN_MDIVCTRL_M_DIV_ENABLE;
@@ -119,9 +125,9 @@ static inline int setup_initial_mclk_source(uint32_t mclk_rate)
  */
 static inline int check_current_mclk_source(uint32_t mclk_rate)
 {
-	if (ssp_freq[mclk_source_clock].freq % mclk_rate != 0) {
+	if (ssp_freq[mn.mclk_source_clock].freq % mclk_rate != 0) {
 		trace_mn_error("error: MCLK %d, no valid configuration for already selected source = %d",
-			       mclk_rate, mclk_source_clock);
+			       mclk_rate, mn.mclk_source_clock);
 		return -EINVAL;
 	}
 	return 0;
@@ -169,9 +175,9 @@ int mn_set_mclk(uint16_t mclk_id, uint32_t mclk_rate)
 		return -EINVAL;
 	}
 
-	spin_lock(&mn_lock);
+	spin_lock(&mn.lock);
 
-	mclk_sources_used[mclk_id] = false;
+	mn.mclk_sources_used[mclk_id] = false;
 
 	if (is_mclk_source_in_use())
 		ret = check_current_mclk_source(mclk_rate);
@@ -181,22 +187,22 @@ int mn_set_mclk(uint16_t mclk_id, uint32_t mclk_rate)
 	if (ret < 0)
 		goto out;
 
-	mclk_sources_used[mclk_id] = true;
+	mn.mclk_sources_used[mclk_id] = true;
 
 	ret = set_mclk_divider(mclk_id,
-			       ssp_freq[mclk_source_clock].freq / mclk_rate);
+			       ssp_freq[mn.mclk_source_clock].freq / mclk_rate);
 
 out:
-	spin_unlock(&mn_lock);
+	spin_unlock(&mn.lock);
 
 	return ret;
 }
 
 void mn_release_mclk(uint32_t mclk_id)
 {
-	spin_lock(&mn_lock);
-	mclk_sources_used[mclk_id] = false;
-	spin_unlock(&mn_lock);
+	spin_lock(&mn.lock);
+	mn.mclk_sources_used[mclk_id] = false;
+	spin_unlock(&mn.lock);
 }
 
 /**
@@ -295,8 +301,8 @@ static inline bool is_bclk_source_in_use(enum bclk_source clk_src)
 {
 	int i;
 
-	for (i = 0; i < ARRAY_SIZE(bclk_sources); i++)
-		if (bclk_sources[i] == clk_src)
+	for (i = 0; i < ARRAY_SIZE(mn.bclk_sources); i++)
+		if (mn.bclk_sources[i] == clk_src)
 			return true;
 	return false;
 }
@@ -321,7 +327,7 @@ static inline int setup_initial_bclk_mn_source(uint32_t bclk, uint32_t *scr_div,
 		return -EINVAL;
 	}
 
-	bclk_source_mn_clock = clk_index;
+	mn.bclk_source_mn_clock = clk_index;
 
 	mn_reg_write(MN_MDIVCTRL, (mn_reg_read(MN_MDIVCTRL) |
 				   MNDSS(ssp_freq_sources[clk_index])));
@@ -341,11 +347,12 @@ static inline int setup_current_bclk_mn_source(uint32_t bclk, uint32_t *scr_div,
 					       uint32_t *m, uint32_t *n)
 {
 	/* source for M/N is already set, no need to do it */
-	if (find_mn(ssp_freq[bclk_source_mn_clock].freq, bclk, scr_div, m, n))
+	if (find_mn(ssp_freq[mn.bclk_source_mn_clock].freq, bclk, scr_div, m,
+		    n))
 		return 0;
 
 	trace_mn_error("error: BCLK %d, no valid configuration for already selected source = %d",
-		       bclk, bclk_source_mn_clock);
+		       bclk, mn.bclk_source_mn_clock);
 	return -EINVAL;
 }
 
@@ -386,7 +393,7 @@ static inline bool check_bclk_xtal_source(uint32_t bclk, bool mn_in_use,
 		/* if M/N is already set up for desired clock,
 		 * we can quit and let M/N logic handle it
 		 */
-		if (!mn_in_use || bclk_source_mn_clock == i)
+		if (!mn_in_use || mn.bclk_source_mn_clock == i)
 			return false;
 	}
 
@@ -402,14 +409,14 @@ int mn_set_bclk(uint32_t dai_index, uint32_t bclk_rate,
 	int ret = 0;
 	bool mn_in_use;
 
-	spin_lock(&mn_lock);
+	spin_lock(&mn.lock);
 
-	bclk_sources[dai_index] = MN_BCLK_SOURCE_NONE;
+	mn.bclk_sources[dai_index] = MN_BCLK_SOURCE_NONE;
 
 	mn_in_use = is_bclk_source_in_use(MN_BCLK_SOURCE_MN);
 
 	if (check_bclk_xtal_source(bclk_rate, mn_in_use, out_scr_div)) {
-		bclk_sources[dai_index] = MN_BCLK_SOURCE_XTAL;
+		mn.bclk_sources[dai_index] = MN_BCLK_SOURCE_XTAL;
 		*out_need_ecs = false;
 		goto out;
 	}
@@ -424,29 +431,29 @@ int mn_set_bclk(uint32_t dai_index, uint32_t bclk_rate,
 						   out_scr_div, &m, &n);
 
 	if (ret >= 0) {
-		bclk_sources[dai_index] = MN_BCLK_SOURCE_MN;
+		mn.bclk_sources[dai_index] = MN_BCLK_SOURCE_MN;
 
 		mn_reg_write(MN_MDIV_M_VAL(dai_index), m);
 		mn_reg_write(MN_MDIV_N_VAL(dai_index), n);
 	}
 
 out:
-	spin_unlock(&mn_lock);
+	spin_unlock(&mn.lock);
 
 	return ret;
 }
 
 void mn_release_bclk(uint32_t dai_index)
 {
-	spin_lock(&mn_lock);
-	bclk_sources[dai_index] = MN_BCLK_SOURCE_NONE;
-	spin_unlock(&mn_lock);
+	spin_lock(&mn.lock);
+	mn.bclk_sources[dai_index] = MN_BCLK_SOURCE_NONE;
+	spin_unlock(&mn.lock);
 }
 
 void mn_reset_bclk_divider(uint32_t dai_index)
 {
-	spin_lock(&mn_lock);
+	spin_lock(&mn.lock);
 	mn_reg_write(MN_MDIV_M_VAL(dai_index), 1);
 	mn_reg_write(MN_MDIV_N_VAL(dai_index), 1);
-	spin_unlock(&mn_lock);
+	spin_unlock(&mn.lock);
 }
