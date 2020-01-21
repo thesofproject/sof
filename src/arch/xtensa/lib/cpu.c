@@ -21,6 +21,7 @@
 #include <sof/lib/pm_runtime.h>
 #include <sof/lib/wait.h>
 #include <sof/schedule/schedule.h>
+#include <sof/sof.h>
 #include <sof/trace/trace.h>
 #include <user/trace.h>
 #include <xtos-structs.h>
@@ -33,7 +34,6 @@
 
 extern struct core_context *core_ctx_ptr[PLATFORM_CORE_COUNT];
 extern struct xtos_core_data *core_data_ptr[PLATFORM_CORE_COUNT];
-extern unsigned int _bss_start, _bss_end;
 
 __aligned(PLATFORM_DCACHE_ALIGN) static union {
 	uint32_t value;
@@ -112,10 +112,8 @@ void cpu_alloc_core_context(int core)
 	dcache_writeback_invalidate_region(core_ctx_ptr,
 					   sizeof(core_ctx_ptr));
 
-	/* writeback bss region to share static pointers */
-	dcache_writeback_region((void *)&_bss_start,
-				(unsigned int)&_bss_end -
-				(unsigned int)&_bss_start);
+	/* share pointer to sof context */
+	dcache_writeback_region(sof_get(), sizeof(*sof_get()));
 }
 
 void cpu_power_down_core(void)
