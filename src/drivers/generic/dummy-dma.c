@@ -439,8 +439,7 @@ static int dummy_dma_probe(struct dma *dma)
 		return -ENOMEM;
 	}
 
-	chanp = rzalloc(SOF_MEM_ZONE_SYS_RUNTIME, SOF_MEM_FLAG_SHARED,
-			SOF_MEM_CAPS_RAM,
+	chanp = rzalloc(SOF_MEM_ZONE_SYS_RUNTIME, 0, SOF_MEM_CAPS_RAM,
 			dma->plat_data.channels * sizeof(chanp[0]));
 	if (!chanp) {
 		rfree(dma->chan);

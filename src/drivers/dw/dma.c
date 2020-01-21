@@ -976,8 +976,8 @@ static int dw_dma_probe(struct dma *dma)
 		chan->index = i;
 		chan->core = DMA_CORE_INVALID;
 
-		dw_chan = rzalloc(SOF_MEM_ZONE_SYS_RUNTIME, SOF_MEM_FLAG_SHARED,
-				  SOF_MEM_CAPS_RAM, sizeof(*dw_chan));
+		dw_chan = rzalloc(SOF_MEM_ZONE_SYS_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+				  sizeof(*dw_chan));
 
 		if (!dw_chan) {
 			trace_dwdma_error("dw_dma_probe() error: dma %d "
