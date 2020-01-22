@@ -162,15 +162,6 @@ int platform_init(struct sof *sof)
 				  CONFIG_SYSTICK_PERIOD);
 	scheduler_init_ll(sof->platform_timer_domain);
 
-	/* Init EDMA platform domain */
-	sof->platform_dma_domain =
-		dma_multi_chan_domain_init(
-		    &dma[0],
-		    1,
-		    PLATFORM_DEFAULT_CLOCK,
-		    false);
-	scheduler_init_ll(sof->platform_dma_domain);
-
 	platform_timer_start(sof->platform_timer);
 	sa_init(sof, CONFIG_SYSTICK_PERIOD);
 
@@ -180,6 +171,12 @@ int platform_init(struct sof *sof)
 	ret = dmac_init(sof);
 	if (ret < 0)
 		return -ENODEV;
+
+	/* Init EDMA platform domain */
+	sof->platform_dma_domain =
+		dma_multi_chan_domain_init(&sof->dma_info->dma_array[0],
+					   1, PLATFORM_DEFAULT_CLOCK, false);
+	scheduler_init_ll(sof->platform_dma_domain);
 
 	/* initialize the host IPC mechanims */
 	ipc_init(sof);
