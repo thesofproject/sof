@@ -124,18 +124,18 @@ DAI_ADD(sof/pipe-dai-playback.m4,
 # Buffers use s16le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
 	5, HDA, 0, iDisp1,
-	PIPELINE_SOURCE_5, 2, s16le,
-	1000, 0, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
+	PIPELINE_SOURCE_5, 2, s32le,
+	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 DAI_ADD(sof/pipe-dai-playback.m4,
 	6, HDA, 1, iDisp2,
-	PIPELINE_SOURCE_6, 2, s16le,
-	1000, 0, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
+	PIPELINE_SOURCE_6, 2, s32le,
+	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 DAI_ADD(sof/pipe-dai-playback.m4,
 	7, HDA, 2, iDisp3,
-	PIPELINE_SOURCE_7, 2, s16le,
-	1000, 0, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
+	PIPELINE_SOURCE_7, 2, s32le,
+	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 #
 # Bind PCM with the pipeline
