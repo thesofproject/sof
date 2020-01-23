@@ -36,8 +36,8 @@ struct audio_stream {
 
 	/* runtime stream params */
 	uint32_t frame_fmt;	/**< enum sof_ipc_frame */
-	uint32_t rate;
-	uint16_t channels;
+	uint32_t rate;		/**< number of data frames per second [Hz] */
+	uint16_t channels;	/**< number of samples in each frame */
 };
 
 #define audio_stream_read_frag(buffer, idx, size) \
