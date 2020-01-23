@@ -34,7 +34,7 @@ static void test_audio_buffer_write_10_bytes_out_of_256_and_read_back
 
 	uint8_t bytes[10] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
 
-	memcpy(buf->stream.w_ptr, &bytes, 10);
+	memcpy_s(buf->stream.w_ptr, test_buf_desc.size, &bytes, 10);
 	comp_update_buffer_produce(buf, 10);
 
 	assert_int_equal(buf->stream.avail, 10);
@@ -69,7 +69,7 @@ static void test_audio_buffer_fill_10_bytes(void **state)
 
 	uint8_t bytes[10] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
 
-	memcpy(buf->stream.w_ptr, &bytes, 10);
+	memcpy_s(buf->stream.w_ptr, test_buf_desc.size, &bytes, 10);
 	comp_update_buffer_produce(buf, 10);
 
 	assert_int_equal(buf->stream.avail, 10);
