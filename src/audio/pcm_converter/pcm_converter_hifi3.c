@@ -565,13 +565,13 @@ static void pcm_convert_s32_to_s24(const struct audio_stream *source,
 
 const struct pcm_func_map pcm_func_map[] = {
 #if CONFIG_FORMAT_S16LE
-	{ SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S16_LE, buffer_copy_s16 },
+	{ SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S16_LE, audio_stream_copy_s16 },
 #endif /* CONFIG_FORMAT_S16LE */
 #if CONFIG_FORMAT_S24LE
-	{ SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S24_4LE, buffer_copy_s32 },
+	{ SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S24_4LE, audio_stream_copy_s32 },
 #endif /* CONFIG_FORMAT_S24LE */
 #if CONFIG_FORMAT_S32LE
-	{ SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S32_LE, buffer_copy_s32 },
+	{ SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S32_LE, audio_stream_copy_s32 },
 #endif /* CONFIG_FORMAT_S32LE */
 #if CONFIG_FORMAT_S16LE && CONFIG_FORMAT_S24LE
 	{ SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S24_4LE, pcm_convert_s16_to_s24 },
