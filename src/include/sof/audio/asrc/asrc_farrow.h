@@ -457,13 +457,13 @@ enum asrc_error_code asrc_process_push32(struct asrc_farrow *src_obj,
  *                              parameter returns the number of frames
  *                              that have been read.
  */
-enum asrc_error_code process_pull16(struct asrc_farrow *src_obj,
-				    int16_t **__restrict input_buffers,
-				    int *input_num_frames,
-				    int16_t **__restrict output_buffers,
-				    int output_num_frames,
-				    int write_index,
-				    int *read_index);
+enum asrc_error_code asrc_process_pull16(struct asrc_farrow *src_obj,
+					 int16_t **__restrict input_buffers,
+					 int *input_num_frames,
+					 int16_t **__restrict output_buffers,
+					 int output_num_frames,
+					 int write_index,
+					 int *read_index);
 
 /*
  * @brief Process the sample rate converter and generate one frame of
@@ -520,13 +520,13 @@ enum asrc_error_code process_pull16(struct asrc_farrow *src_obj,
  *                              parameter returns the number of frames
  *                              that have been read.
  */
-enum asrc_error_code process_pull32(struct asrc_farrow *src_obj,
-				    int32_t **__restrict input_buffers,
-				    int *input_num_frames,
-				    int32_t **__restrict output_buffers,
-				    int output_num_frames,
-				    int write_index,
-				    int *read_index);
+enum asrc_error_code asrc_process_pull32(struct asrc_farrow *src_obj,
+					 int32_t **__restrict input_buffers,
+					 int *input_num_frames,
+					 int32_t **__restrict output_buffers,
+					 int output_num_frames,
+					 int write_index,
+					 int *read_index);
 
 /*
  * @brief Updates the clock drift
