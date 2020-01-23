@@ -103,8 +103,9 @@ static void src_copy_s32(struct comp_dev *dev,
 	int n;
 	int ret;
 	int i;
-	int outframes = 0;
-	int wri = 0;
+	int frames = 0;
+	int idx = 0;
+
 	/* TODO: Optimize buffer size by circular write to snk directly */
 	/* TODO: S24_4LE handling */
 
@@ -123,13 +124,23 @@ static void src_copy_s32(struct comp_dev *dev,
 	}
 
 	/* Run ASRC */
-	ret = asrc_process_push32(cd->asrc_obj, (int32_t **)cd->ibuf,
-				  cd->source_frames, (int32_t **)cd->obuf,
-				  &outframes, &wri, 0);
+	if (cd->mode == ASRC_OM_PUSH) {
+		ret = asrc_process_push32(cd->asrc_obj, (int32_t **)cd->ibuf,
+					  cd->source_frames,
+					  (int32_t **)cd->obuf, &frames,
+					  &idx, 0);
+		n = frames * sink->channels;
+	} else {
+		ret = asrc_process_pull32(cd->asrc_obj, (int32_t **)cd->ibuf,
+					  &frames, (int32_t **)cd->obuf,
+					  cd->sink_frames, cd->source_frames,
+					  &idx);
+		n = cd->sink_frames * sink->channels;
+	}
+
 	if (ret)
 		trace_asrc_error_with_ids(dev, "src_copy_s32(), error %d", ret);
 
-	n = outframes * sink->channels;
 	buf = (int32_t *)cd->obuf[0];
 	while (n > 0) {
 		n_wrap_snk = (int32_t *)sink->end_addr - snk;
@@ -142,8 +153,13 @@ static void src_copy_s32(struct comp_dev *dev,
 		src_inc_wrap(&snk, sink->end_addr, sink->size);
 	}
 
-	*n_read = cd->source_frames;
-	*n_written = outframes;
+	if (cd->mode == ASRC_OM_PUSH) {
+		*n_read = cd->source_frames;
+		*n_written = frames;
+	} else {
+		*n_read = frames;
+		*n_written = cd->sink_frames;
+	}
 }
 
 static void src_copy_s16(struct comp_dev *dev,
@@ -152,17 +168,17 @@ static void src_copy_s16(struct comp_dev *dev,
 			 int *n_read, int *n_written)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	int outframes;
-	int wri = 0;
 	int16_t *src = (int16_t *)source->r_ptr;
 	int16_t *snk = (int16_t *)sink->w_ptr;
 	int16_t *buf;
-	int n;
 	int n_wrap_src;
 	int n_wrap_snk;
 	int n_copy;
 	int s_copy;
 	int ret;
+	int n;
+	int frames = 0;
+	int idx = 0;
 
 	/* TODO: Optimize buffer size by circular write to snk directly */
 
@@ -184,13 +200,23 @@ static void src_copy_s16(struct comp_dev *dev,
 	}
 
 	/* Run ASRC */
-	ret = asrc_process_push16(cd->asrc_obj, (int16_t **)cd->ibuf,
-				  cd->source_frames, (int16_t **)cd->obuf,
-				  &outframes, &wri, 0);
+	if (cd->mode == ASRC_OM_PUSH) {
+		ret = asrc_process_push16(cd->asrc_obj, (int16_t **)cd->ibuf,
+					  cd->source_frames,
+					  (int16_t **)cd->obuf, &frames,
+					  &idx, 0);
+		n = frames * sink->channels;
+	} else {
+		ret = asrc_process_pull16(cd->asrc_obj, (int16_t **)cd->ibuf,
+					  &frames, (int16_t **)cd->obuf,
+					  cd->sink_frames, cd->source_frames,
+					  &idx);
+		n = cd->sink_frames * sink->channels;
+	}
+
 	if (ret)
 		trace_asrc_error_with_ids(dev, "src_copy_s16(), error %d", ret);
 
-	n = outframes * sink->channels;
 	buf = (int16_t *)cd->obuf[0];
 	while (n > 0) {
 		n_wrap_snk = (int16_t *)sink->end_addr - snk;
@@ -206,8 +232,13 @@ static void src_copy_s16(struct comp_dev *dev,
 		src_inc_wrap_s16(&snk, sink->end_addr, sink->size);
 	}
 
-	*n_read = cd->source_frames;
-	*n_written = outframes;
+	if (cd->mode == ASRC_OM_PUSH) {
+		*n_read = cd->source_frames;
+		*n_written = frames;
+	} else {
+		*n_read = frames;
+		*n_written = cd->sink_frames;
+	}
 }
 
 static struct comp_dev *asrc_new(struct sof_ipc_comp *comp)
@@ -366,10 +397,12 @@ static int asrc_prepare(struct comp_dev *dev)
 	struct comp_buffer *sourceb;
 	uint32_t source_period_bytes;
 	uint32_t sink_period_bytes;
-	int ret;
-	int frame_bytes;
 	int sample_bytes;
 	int sample_bits;
+	int frame_bytes;
+	int fs_prim;
+	int fs_sec;
+	int ret;
 	int i;
 
 	trace_asrc_with_ids(dev, "asrc_prepare()");
@@ -484,8 +517,16 @@ static int asrc_prepare(struct comp_dev *dev)
 	/*
 	 * Initialize ASRC
 	 */
+	if (cd->mode == ASRC_OM_PUSH) {
+		fs_prim = cd->source_rate;
+		fs_sec = cd->sink_rate;
+	} else {
+		fs_prim = cd->sink_rate;
+		fs_sec = cd->source_rate;
+	}
+
 	ret = asrc_initialise(cd->asrc_obj, sourceb->stream.channels,
-			      cd->source_rate, cd->sink_rate,
+			      fs_prim, fs_sec,
 			      ASRC_IOF_INTERLEAVED, ASRC_IOF_INTERLEAVED,
 			      ASRC_BM_LINEAR, cd->frames, sample_bits,
 			      ASRC_CM_FEEDBACK, cd->mode);
