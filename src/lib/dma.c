@@ -205,7 +205,7 @@ void dma_buffer_copy_from(struct comp_buffer *source, uint32_t source_bytes,
 		dcache_invalidate_region(istream->addr, tail);
 
 	/* process data */
-	process(istream, &sink->stream, samples);
+	process(istream, 0, &sink->stream, 0, samples);
 
 	istream->r_ptr = (char *)istream->r_ptr + source_bytes;
 	istream->r_ptr = audio_stream_wrap(istream, istream->r_ptr);
@@ -222,7 +222,7 @@ void dma_buffer_copy_to(struct comp_buffer *source, uint32_t source_bytes,
 	struct audio_stream *ostream = &sink->stream;
 
 	/* process data */
-	process(&source->stream, ostream, samples);
+	process(&source->stream, 0, ostream, 0, samples);
 
 	/* sink buffer contains data meant to copied to DMA */
 	if ((char *)ostream->w_ptr + sink_bytes > (char *)ostream->end_addr) {

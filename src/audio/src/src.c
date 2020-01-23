@@ -442,7 +442,7 @@ static void src_copy_s32(struct comp_dev *dev,
 	struct comp_data *cd = comp_get_drvdata(dev);
 	int frames = cd->param.blk_in;
 
-	audio_stream_copy_s32(source, sink, frames * source->channels);
+	audio_stream_copy_s32(source, 0, sink, 0, frames * source->channels);
 
 	*n_read = frames;
 	*n_written = frames;
@@ -457,7 +457,7 @@ static void src_copy_s16(struct comp_dev *dev,
 	struct comp_data *cd = comp_get_drvdata(dev);
 	int frames = cd->param.blk_in;
 
-	audio_stream_copy_s16(source, sink, frames * source->channels);
+	audio_stream_copy_s16(source, 0, sink, 0, frames * source->channels);
 
 	*n_read = frames;
 	*n_written = frames;
