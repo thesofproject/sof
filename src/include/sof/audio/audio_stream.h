@@ -207,10 +207,14 @@ static inline void audio_stream_init(struct audio_stream *buffer,
 }
 
 static inline void audio_stream_copy(const struct audio_stream *source,
-				     struct audio_stream *sink, uint32_t bytes)
+				     uint32_t ioffset_bytes,
+				     struct audio_stream *sink,
+				     uint32_t ooffset_bytes, uint32_t bytes)
 {
-	void *src = source->r_ptr;
-	void *snk = sink->w_ptr;
+	void *src = audio_stream_wrap(source,
+				      (char *)source->r_ptr + ioffset_bytes);
+	void *snk = audio_stream_wrap(sink,
+				      (char *)sink->w_ptr + ooffset_bytes);
 	uint32_t bytes_src;
 	uint32_t bytes_snk;
 	uint32_t bytes_copied;
@@ -236,10 +240,14 @@ static inline void audio_stream_copy(const struct audio_stream *source,
 #if CONFIG_FORMAT_S16LE
 
 static inline void audio_stream_copy_s16(const struct audio_stream *source,
+					 uint32_t ioffset,
 					 struct audio_stream *sink,
-					 uint32_t samples)
+					 uint32_t ooffset, uint32_t samples)
 {
-	audio_stream_copy(source, sink, samples * sizeof(int16_t));
+	const int ssize = sizeof(int16_t);
+
+	audio_stream_copy(source, ioffset * ssize, sink, ooffset * ssize,
+			  samples * ssize);
 }
 
 #endif /* CONFIG_FORMAT_S16LE */
@@ -247,10 +255,14 @@ static inline void audio_stream_copy_s16(const struct audio_stream *source,
 #if CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE || CONFIG_FORMAT_FLOAT
 
 static inline void audio_stream_copy_s32(const struct audio_stream *source,
+					 uint32_t ioffset,
 					 struct audio_stream *sink,
-					 uint32_t samples)
+					 uint32_t ooffset, uint32_t samples)
 {
-	audio_stream_copy(source, sink, samples * sizeof(int32_t));
+	const int ssize = sizeof(int32_t);
+
+	audio_stream_copy(source, ioffset * ssize, sink, ooffset * ssize,
+			  samples * ssize);
 }
 
 #endif /* CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE || CONFIG_FORMAT_FLOAT */

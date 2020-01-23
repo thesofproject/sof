@@ -25,7 +25,8 @@
 #if CONFIG_FORMAT_S16LE && CONFIG_FORMAT_S24LE
 
 static void pcm_convert_s16_to_s24(const struct audio_stream *source,
-				   struct audio_stream *sink, uint32_t samples)
+				   uint32_t ioffset, struct audio_stream *sink,
+				   uint32_t ooffset, uint32_t samples)
 {
 	uint32_t buff_frag = 0;
 	int16_t *src;
@@ -33,15 +34,16 @@ static void pcm_convert_s16_to_s24(const struct audio_stream *source,
 	uint32_t i;
 
 	for (i = 0; i < samples; i++) {
-		src = audio_stream_read_frag_s16(source, buff_frag);
-		dst = audio_stream_write_frag_s32(sink, buff_frag);
+		src = audio_stream_read_frag_s16(source, buff_frag + ioffset);
+		dst = audio_stream_write_frag_s32(sink, buff_frag + ooffset);
 		*dst = *src << 8;
 		buff_frag++;
 	}
 }
 
 static void pcm_convert_s24_to_s16(const struct audio_stream *source,
-				   struct audio_stream *sink, uint32_t samples)
+				   uint32_t ioffset, struct audio_stream *sink,
+				   uint32_t ooffset, uint32_t samples)
 {
 	uint32_t buff_frag = 0;
 	int32_t *src;
@@ -49,8 +51,8 @@ static void pcm_convert_s24_to_s16(const struct audio_stream *source,
 	uint32_t i;
 
 	for (i = 0; i < samples; i++) {
-		src = audio_stream_read_frag_s32(source, buff_frag);
-		dst = audio_stream_write_frag_s16(sink, buff_frag);
+		src = audio_stream_read_frag_s32(source, buff_frag + ioffset);
+		dst = audio_stream_write_frag_s16(sink, buff_frag + ooffset);
 		*dst = sat_int16(Q_SHIFT_RND(sign_extend_s24(*src), 23, 15));
 		buff_frag++;
 	}
@@ -61,7 +63,8 @@ static void pcm_convert_s24_to_s16(const struct audio_stream *source,
 #if CONFIG_FORMAT_S16LE && CONFIG_FORMAT_S32LE
 
 static void pcm_convert_s16_to_s32(const struct audio_stream *source,
-				   struct audio_stream *sink, uint32_t samples)
+				   uint32_t ioffset, struct audio_stream *sink,
+				   uint32_t ooffset, uint32_t samples)
 {
 	uint32_t buff_frag = 0;
 	int16_t *src;
@@ -69,15 +72,16 @@ static void pcm_convert_s16_to_s32(const struct audio_stream *source,
 	uint32_t i;
 
 	for (i = 0; i < samples; i++) {
-		src = audio_stream_read_frag_s16(source, buff_frag);
-		dst = audio_stream_write_frag_s32(sink, buff_frag);
+		src = audio_stream_read_frag_s16(source, buff_frag + ioffset);
+		dst = audio_stream_write_frag_s32(sink, buff_frag + ooffset);
 		*dst = *src << 16;
 		buff_frag++;
 	}
 }
 
 static void pcm_convert_s32_to_s16(const struct audio_stream *source,
-				   struct audio_stream *sink, uint32_t samples)
+				   uint32_t ioffset, struct audio_stream *sink,
+				   uint32_t ooffset, uint32_t samples)
 {
 	uint32_t buff_frag = 0;
 	int32_t *src;
@@ -85,8 +89,8 @@ static void pcm_convert_s32_to_s16(const struct audio_stream *source,
 	uint32_t i;
 
 	for (i = 0; i < samples; i++) {
-		src = audio_stream_read_frag_s32(source, buff_frag);
-		dst = audio_stream_write_frag_s16(sink, buff_frag);
+		src = audio_stream_read_frag_s32(source, buff_frag + ioffset);
+		dst = audio_stream_write_frag_s16(sink, buff_frag + ooffset);
 		*dst = sat_int16(Q_SHIFT_RND(*src, 31, 15));
 		buff_frag++;
 	}
@@ -97,7 +101,8 @@ static void pcm_convert_s32_to_s16(const struct audio_stream *source,
 #if CONFIG_FORMAT_S24LE && CONFIG_FORMAT_S32LE
 
 static void pcm_convert_s24_to_s32(const struct audio_stream *source,
-				   struct audio_stream *sink, uint32_t samples)
+				   uint32_t ioffset, struct audio_stream *sink,
+				   uint32_t ooffset, uint32_t samples)
 {
 	uint32_t buff_frag = 0;
 	int32_t *src;
@@ -105,15 +110,16 @@ static void pcm_convert_s24_to_s32(const struct audio_stream *source,
 	uint32_t i;
 
 	for (i = 0; i < samples; i++) {
-		src = audio_stream_read_frag_s32(source, buff_frag);
-		dst = audio_stream_write_frag_s32(sink, buff_frag);
+		src = audio_stream_read_frag_s32(source, buff_frag + ioffset);
+		dst = audio_stream_write_frag_s32(sink, buff_frag + ooffset);
 		*dst = *src << 8;
 		buff_frag++;
 	}
 }
 
 static void pcm_convert_s32_to_s24(const struct audio_stream *source,
-				   struct audio_stream *sink, uint32_t samples)
+				   uint32_t ioffset, struct audio_stream *sink,
+				   uint32_t ooffset, uint32_t samples)
 {
 	uint32_t buff_frag = 0;
 	int32_t *src;
@@ -121,8 +127,8 @@ static void pcm_convert_s32_to_s24(const struct audio_stream *source,
 	uint32_t i;
 
 	for (i = 0; i < samples; i++) {
-		src = audio_stream_read_frag_s32(source, buff_frag);
-		dst = audio_stream_write_frag_s32(sink, buff_frag);
+		src = audio_stream_read_frag_s32(source, buff_frag + ioffset);
+		dst = audio_stream_write_frag_s32(sink, buff_frag + ooffset);
 		*dst = sat_int24(Q_SHIFT_RND(*src, 31, 23));
 		buff_frag++;
 	}

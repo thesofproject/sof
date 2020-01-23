@@ -41,10 +41,11 @@ static void pcm_converter_setup_circular(const struct audio_stream *source)
  * \param[in] samples Number of samples to process.
  */
 static void pcm_convert_s16_to_s24(const struct audio_stream *source,
-				   struct audio_stream *sink, uint32_t samples)
+				   uint32_t ioffset, struct audio_stream *sink,
+				   uint32_t ooffset, uint32_t samples)
 {
-	ae_int16 *in = (ae_int16 *)source->r_ptr;
-	ae_int32 *out = (ae_int32 *)sink->w_ptr;
+	ae_int16 *in = audio_stream_read_frag(source, ioffset, sizeof(int16_t));
+	ae_int32 *out = audio_stream_write_frag(sink, ooffset, sizeof(int32_t));
 	ae_int16x4 sample = AE_ZERO16();
 	ae_valign align_out = AE_ZALIGN64();
 	ae_int16x4 *in16x4;
@@ -138,10 +139,13 @@ static ae_int32x2 pcm_shift_s24_to_s16(ae_int32x2 sample)
  * \param[in] samples Number of samples to process.
  */
 static void pcm_convert_s24_to_s16(const struct audio_stream *source,
-				   struct audio_stream *sink, uint32_t samples)
+				   uint32_t ioffset, struct audio_stream *sink,
+				   uint32_t ooffset, uint32_t samples)
 {
-	ae_int32x2 *in = (ae_int32x2 *)source->r_ptr;
-	ae_int16x4 *out = (ae_int16x4 *)sink->w_ptr;
+	ae_int32x2 *in = audio_stream_read_frag(source, ioffset,
+						sizeof(int32_t));
+	ae_int16x4 *out = audio_stream_write_frag(sink, ooffset,
+						  sizeof(int16_t));
 	ae_int16x4 sample = AE_ZERO16();
 	ae_int32x2 sample_1 = AE_ZERO32();
 	ae_int32x2 sample_2 = AE_ZERO32();
@@ -240,10 +244,13 @@ static void pcm_convert_s24_to_s16(const struct audio_stream *source,
  * \param[in] samples Number of samples to process.
  */
 static void pcm_convert_s16_to_s32(const struct audio_stream *source,
-				   struct audio_stream *sink, uint32_t samples)
+				   uint32_t ioffset, struct audio_stream *sink,
+				   uint32_t ooffset, uint32_t samples)
 {
-	ae_int16 *in = (ae_int16 *)source->r_ptr;
-	ae_int32 *out = (ae_int32 *)sink->w_ptr;
+	ae_int16 *in = audio_stream_read_frag(source, ioffset,
+					      sizeof(int16_t));
+	ae_int32 *out = audio_stream_write_frag(sink, ooffset,
+						sizeof(int32_t));
 	ae_int16x4 sample = AE_ZERO16();
 	ae_valign align_out = AE_ZALIGN64();
 	ae_int16x4 *in16x4;
@@ -317,10 +324,13 @@ static void pcm_convert_s16_to_s32(const struct audio_stream *source,
  * \param[in] samples Number of samples to process.
  */
 static void pcm_convert_s32_to_s16(const struct audio_stream *source,
-				   struct audio_stream *sink, uint32_t samples)
+				   uint32_t ioffset, struct audio_stream *sink,
+				   uint32_t ooffset, uint32_t samples)
 {
-	ae_int32x2 *in = (ae_int32x2 *)source->r_ptr;
-	ae_int16x4 *out = (ae_int16x4 *)sink->w_ptr;
+	ae_int32x2 *in = audio_stream_read_frag(source, ioffset,
+						sizeof(int32_t));
+	ae_int16x4 *out = audio_stream_write_frag(sink, ooffset,
+						  sizeof(int16_t));
 	ae_int16x4 sample = AE_ZERO16();
 	ae_int32x2 sample_1 = AE_ZERO32();
 	ae_int32x2 sample_2 = AE_ZERO32();
@@ -415,10 +425,13 @@ static void pcm_convert_s32_to_s16(const struct audio_stream *source,
  * \param[in] samples Number of samples to process.
  */
 static void pcm_convert_s24_to_s32(const struct audio_stream *source,
-				   struct audio_stream *sink, uint32_t samples)
+				   uint32_t ioffset, struct audio_stream *sink,
+				   uint32_t ooffset, uint32_t samples)
 {
-	ae_int32x2 *in = (ae_int32x2 *)source->r_ptr;
-	ae_int32x2 *out = (ae_int32x2 *)sink->w_ptr;
+	ae_int32x2 *in = audio_stream_read_frag(source, ioffset,
+						sizeof(int32_t));
+	ae_int32x2 *out = audio_stream_write_frag(sink, ooffset,
+						  sizeof(int32_t));
 	ae_int32x2 sample = AE_ZERO32();
 	ae_valign align_out = AE_ZALIGN64();
 	int i;
@@ -498,10 +511,13 @@ static ae_int32x2 pcm_shift_s32_to_s24(ae_int32x2 sample)
  * \param[in] samples Number of samples to process.
  */
 static void pcm_convert_s32_to_s24(const struct audio_stream *source,
-				   struct audio_stream *sink, uint32_t samples)
+				   uint32_t ioffset, struct audio_stream *sink,
+				   uint32_t ooffset, uint32_t samples)
 {
-	ae_int32x2 *in = (ae_int32x2 *)source->r_ptr;
-	ae_int32x2 *out = (ae_int32x2 *)sink->w_ptr;
+	ae_int32x2 *in = audio_stream_read_frag(source, ioffset,
+						sizeof(int32_t));
+	ae_int32x2 *out = audio_stream_write_frag(sink, ooffset,
+						  sizeof(int32_t));
 	ae_int32x2 sample = AE_ZERO32();
 	ae_valign align_out = AE_ZALIGN64();
 	int i;

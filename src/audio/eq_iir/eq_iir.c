@@ -223,7 +223,7 @@ static void eq_iir_s16_pass(const struct comp_dev *dev,
 			    struct audio_stream *sink,
 			    uint32_t frames)
 {
-	audio_stream_copy_s16(source, sink, frames * source->channels);
+	audio_stream_copy_s16(source, 0, sink, 0, frames * source->channels);
 }
 #endif /* CONFIG_FORMAT_S16LE */
 
@@ -233,7 +233,7 @@ static void eq_iir_s32_pass(const struct comp_dev *dev,
 			    struct audio_stream *sink,
 			    uint32_t frames)
 {
-	audio_stream_copy_s32(source, sink, frames * source->channels);
+	audio_stream_copy_s32(source, 0, sink, 0, frames * source->channels);
 }
 #endif /* CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE */
 

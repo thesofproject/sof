@@ -185,7 +185,7 @@ static void eq_fir_s16_passthrough(struct fir_state_32x16 fir[],
 				   struct audio_stream *sink,
 				   int frames, int nch)
 {
-	audio_stream_copy_s16(source, sink, frames * nch);
+	audio_stream_copy_s16(source, 0, sink, 0, frames * nch);
 }
 #endif /* CONFIG_FORMAT_S16LE */
 
@@ -195,7 +195,7 @@ static void eq_fir_s32_passthrough(struct fir_state_32x16 fir[],
 				   struct audio_stream *sink,
 				   int frames, int nch)
 {
-	audio_stream_copy_s32(source, sink, frames * nch);
+	audio_stream_copy_s32(source, 0, sink, 0, frames * nch);
 }
 #endif /* CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE */
 

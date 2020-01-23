@@ -39,11 +39,14 @@ struct audio_stream;
 /**
  * \brief PCM conversion function interface for data in circular buffer
  * \param source buffer with samples to process, read pointer is not modified
+ * \param ioffset offset to first sample in source stream
  * \param sink output buffer, write pointer is not modified
+ * \param ooffset offset to first sample in sink stream
  * \param samples number of samples to convert
  */
 typedef void (*pcm_converter_func)(const struct audio_stream *source,
-				   struct audio_stream *sink, uint32_t samples);
+				   uint32_t ioffset, struct audio_stream *sink,
+				   uint32_t ooffset, uint32_t samples);
 
 /** \brief PCM conversion functions map. */
 struct pcm_func_map {
