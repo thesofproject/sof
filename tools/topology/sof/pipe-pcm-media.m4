@@ -20,7 +20,7 @@ include(`pcm.m4')
 # Controls
 #
 # Volume Mixer control with max value of 32
-C_CONTROLMIXER(PCM PCM_ID Playback Volume, PIPELINE_ID,
+C_CONTROLMIXER(N_CONTROLMIXER(PCM PCM_ID Playback Volume),
 	CONTROLMIXER_OPS(volsw, 256 binds the mixer control to volume get/put handlers, 256, 256),
 	CONTROLMIXER_MAX(, 32),
 	false,
@@ -55,7 +55,7 @@ W_DATA(playback_pga_conf, playback_pga_tokens)
 W_PCM_PLAYBACK(PCM_ID, Media Playback, 2, 0)
 
 # "Playback Volume" has 2 sink period and 2 source periods for host ping-pong
-W_PGA(0, PIPELINE_FORMAT, 2, 2, playback_pga_conf, LIST(`		', "PIPELINE_ID PCM PCM_ID Playback Volume"))
+W_PGA(N_PGA(0), PIPELINE_FORMAT, 2, 2, playback_pga_conf, LIST(`		', "PIPELINE_ID PCM PCM_ID Playback Volume"))
 
 # "SRC 0" has 2 sink and source periods.
 W_SRC(0, PIPELINE_FORMAT, 2, 2, media_src_conf)

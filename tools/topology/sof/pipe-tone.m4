@@ -20,7 +20,7 @@ include(`pipeline.m4')
 #
 
 # Volume Mixer control with max value of 32
-C_CONTROLMIXER(Tone Volume, PIPELINE_ID,
+C_CONTROLMIXER(N_CONTROLMIXER(Tone Volume),
 	CONTROLMIXER_OPS(volsw, 256 binds the mixer control to volume get/put handlers, 256, 256),
 	CONTROLMIXER_MAX(, 32),
 	false,
@@ -29,7 +29,7 @@ C_CONTROLMIXER(Tone Volume, PIPELINE_ID,
 	LIST(`	', KCONTROL_CHANNEL(FL, 1, 0), KCONTROL_CHANNEL(FR, 1, 1)))
 
 # Switch type Mixer Control with max value of 1
-C_CONTROLMIXER(Tone Switch, PIPELINE_ID,
+C_CONTROLMIXER(N_CONTROLMIXER(Tone Switch),
 	CONTROLMIXER_OPS(volsw, 259 binds the mixer control to switch get/put handlers, 259, 259),
 	CONTROLMIXER_MAX(max 1 indicates switch type control, 1),
 	false,
@@ -55,7 +55,7 @@ W_DATA(playback_pga_conf, playback_pga_tokens)
 W_TONE(0, PIPELINE_FORMAT, 2, 0, LIST(`		', "PIPELINE_ID Tone Switch"))
 
 # "Tone Volume" has 2 sink period and 2 source periods
-W_PGA(0, PIPELINE_FORMAT, 2, 2, playback_pga_conf, LIST(`		', "PIPELINE_ID Tone Volume"))
+W_PGA(N_PGA(0), PIPELINE_FORMAT, 2, 2, playback_pga_conf, LIST(`		', "PIPELINE_ID Tone Volume"))
 
 # Low Latency Buffers
 W_BUFFER(0,COMP_BUFFER_SIZE(2,

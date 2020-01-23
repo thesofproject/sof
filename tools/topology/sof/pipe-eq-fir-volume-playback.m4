@@ -19,7 +19,7 @@ include(`eq_fir.m4')
 # Controls
 #
 # Volume Mixer control with max value of 32
-C_CONTROLMIXER(Master Playback Volume, PIPELINE_ID,
+C_CONTROLMIXER(N_CONTROLMIXER(Master Playback Volume),
 	CONTROLMIXER_OPS(volsw, 256 binds the mixer control to volume get/put handlers, 256, 256),
 	CONTROLMIXER_MAX(, 32),
 	false,
@@ -58,7 +58,7 @@ C_CONTROLBYTES(EQFIR, PIPELINE_ID,
 W_PCM_PLAYBACK(PCM_ID, Passthrough Playback, 2, 0)
 
 # "Volume" has 2 source and x sink periods
-W_PGA(0, PIPELINE_FORMAT, DAI_PERIODS, 2, playback_pga_conf, LIST(`		', "PIPELINE_ID Master Playback Volume"))
+W_PGA(N_PGA(0), PIPELINE_FORMAT, DAI_PERIODS, 2, playback_pga_conf, LIST(`		', "PIPELINE_ID Master Playback Volume"))
 
 # "EQ 0" has 2 sink period and 2 source periods
 W_EQ_FIR(0, PIPELINE_FORMAT, 2, 2, LIST(`		', "EQFIR"))

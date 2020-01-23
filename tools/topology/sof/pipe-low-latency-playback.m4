@@ -31,7 +31,7 @@ include(`mixercontrol.m4')
 # Controls
 #
 # Volume Mixer control with max value of 32
-C_CONTROLMIXER(PCM PCM_ID Playback Volume, PIPELINE_ID,
+C_CONTROLMIXER(N_CONTROLMIXER(PCM PCM_ID Playback Volume),
 	CONTROLMIXER_OPS(volsw, 256 binds the mixer control to volume get/put handlers, 256, 256),
 	CONTROLMIXER_MAX(, 32),
 	false,
@@ -40,7 +40,7 @@ C_CONTROLMIXER(PCM PCM_ID Playback Volume, PIPELINE_ID,
 	LIST(KCONTROL_CHANNEL(FL, 0, 0), KCONTROL_CHANNEL(FR, 0, 1)))
 
 # Volume Mixer control with max value of 32
-C_CONTROLMIXER(Master Playback Volume, PIPELINE_ID,
+C_CONTROLMIXER(N_CONTROLMIXER(Master Playback Volume),
 	CONTROLMIXER_OPS(volsw, 256 binds the mixer control to volume get/put handlers, 256, 256),
 	CONTROLMIXER_MAX(, 32),
 	false,
@@ -67,10 +67,10 @@ W_DATA(playback_pga_conf, playback_pga_tokens)
 W_PCM_PLAYBACK(PCM_ID, Low Latency Playback, 2, 0)
 
 # "Playback Volume" has 2 sink periods and 2 source periods for host ping-pong
-W_PGA(0, PIPELINE_FORMAT, 2, 2, playback_pga_conf, LIST(`		', "PIPELINE_ID PCM PCM_ID Playback Volume"))
+W_PGA(N_PGA(0), PIPELINE_FORMAT, 2, 2, playback_pga_conf, LIST(`		', "PIPELINE_ID PCM PCM_ID Playback Volume"))
 
 # "Master Playback Volume" has 2 source and x sink periods for DAI ping-pong
-W_PGA(1, PIPELINE_FORMAT, DAI_PERIODS, 2, playback_pga_conf, LIST(`		', "PIPELINE_ID Master Playback Volume"))
+W_PGA(N_PGA(1), PIPELINE_FORMAT, DAI_PERIODS, 2, playback_pga_conf, LIST(`		', "PIPELINE_ID Master Playback Volume"))
 
 # Mixer 0 has 2 sink and source periods.
 W_MIXER(0, PIPELINE_FORMAT, 2, 2)

@@ -19,7 +19,7 @@ include(`pga.m4')
 #
 
 # Volume Mixer control with max value of 32
-C_CONTROLMIXER(Master Capture Volume, PIPELINE_ID,
+C_CONTROLMIXER(N_CONTROLMIXER(Master Capture Volume),
 	CONTROLMIXER_OPS(volsw,
 		256 binds the mixer control to volume get/put handlers,
 		256, 256),
@@ -63,7 +63,7 @@ W_DATA(MY_SRC_CONF, MY_SRC_TOKENS)
 W_SRC(0, PIPELINE_FORMAT, 3, 3, MY_SRC_CONF)
 
 # "Volume" has x source and 3 sink periods
-W_PGA(0, PIPELINE_FORMAT, DAI_PERIODS, 3, MY_PGA_CONF,
+W_PGA(N_PGA(0), PIPELINE_FORMAT, DAI_PERIODS, 3, MY_PGA_CONF,
 	LIST(`		', "PIPELINE_ID Master Capture Volume"))
 
 # Capture Buffers

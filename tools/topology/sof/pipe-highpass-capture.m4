@@ -19,7 +19,7 @@ include(`eq_iir.m4')
 # Controls
 #
 # Volume Mixer control with max value of 32
-C_CONTROLMIXER(Master Capture Volume, PIPELINE_ID,
+C_CONTROLMIXER(N_CONTROLMIXER(Master Capture Volume),
 	CONTROLMIXER_OPS(volsw,
 		256 binds the mixer control to volume get/put handlers,
 		256, 256),
@@ -70,7 +70,7 @@ C_CONTROLBYTES(MY_EQIIR_BYTES, PIPELINE_ID,
 W_PCM_CAPTURE(PCM_ID, Highpass Capture, 0, 2)
 
 # "Volume" has 2 sink and 2 source periods
-W_PGA(0, PIPELINE_FORMAT, 2, DAI_PERIODS, MY_PGA_CONF,
+W_PGA(N_PGA(0), PIPELINE_FORMAT, 2, DAI_PERIODS, MY_PGA_CONF,
 	LIST(`		', "PIPELINE_ID Master Capture Volume"))
 
 # "EQ_IIR 0" has 2 sink and x source periods

@@ -17,7 +17,7 @@ include(`pipeline.m4')
 # Controls
 #
 # Volume Mixer control with max value of 32
-C_CONTROLMIXER(Master Playback Volume, PIPELINE_ID,
+C_CONTROLMIXER(N_CONTROLMIXER(Master Playback Volume),
 	CONTROLMIXER_OPS(volsw, 256 binds the mixer control to volume get/put handlers, 256, 256),
 	CONTROLMIXER_MAX(, 32),
 	false,
@@ -43,9 +43,8 @@ W_DATA(playback_pga_conf, playback_pga_tokens)
 # with 2 sink and 0 source periods
 W_PCM_PLAYBACK(PCM_ID, Passthrough Playback, 2, 0)
 
-
 # "Volume" has 2 source and x sink periods
-W_PGA(0, PIPELINE_FORMAT, DAI_PERIODS, 2, playback_pga_conf, LIST(`		', "PIPELINE_ID Master Playback Volume"))
+W_PGA(N_PGA(0), PIPELINE_FORMAT, DAI_PERIODS, 2, playback_pga_conf, LIST(`		', "PIPELINE_ID Master Playback Volume"))
 
 # Playback Buffers
 W_BUFFER(0, COMP_BUFFER_SIZE(2,

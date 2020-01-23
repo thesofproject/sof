@@ -28,39 +28,39 @@ define(`CONTROLMIXER_OPS',
 `		put STR($4)'
 `	}')
 
+dnl N_CONTROLMIXER(name)
+define(`N_CONTROLMIXER', PIPELINE_ID $1)
 
-define(`N_CONTROLMIXER', `CONTROLMIXER'PIPELINE_ID`.'$1)
-
-dnl C_CONTROLMIXER(name, index, ops, max, invert, tlv, comment, KCONTROL_CHANNELS, useleds, ledsdir)
+dnl C_CONTROLMIXER(name, ops, max, invert, tlv, comment, KCONTROL_CHANNELS, useleds, ledsdir)
 define(`C_CONTROLMIXER',
-`ifelse(`$#', `10',
-`SectionVendorTuples."'N_CONTROLMIXER($2)`_tuples_w" {'
+`ifelse(`$#', `9',
+`SectionVendorTuples."'$1`_tuples_w" {'
 `	tokens "sof_led_tokens"'
 `	tuples."word" {'
-`		SOF_TKN_MUTE_LED_USE'		$9
-`		SOF_TKN_MUTE_LED_DIRECTION'	$10
+`		SOF_TKN_MUTE_LED_USE'		$8
+`		SOF_TKN_MUTE_LED_DIRECTION'	$9
 `	}'
 `}'
-`SectionData."'N_CONTROLMIXER($2)`_data_w" {'
-`	tuples "'N_CONTROLMIXER($2)`_tuples_w"'
+`SectionData."'$1`_data_w" {'
+`	tuples "'$1`_tuples_w"'
 `}'
 ,` ')'
-`SectionControlMixer."ifdef(`CONTROL_NAME', CONTROL_NAME, $2 $1)" {'
+`SectionControlMixer."'$1`" {'
 `'
 `	# control belongs to this index group'
-`	index STR($2)'
+`	index "PIPELINE_ID"'
 `'
-`	#$7'
-`	$8'
+`	#$6'
+`	$7'
 `	# control uses bespoke driver get/put/info ID'
-`	$3'
+`	$2'
 `'
-`	$4'
-`	invert STR($5)'
-`	$6'
-`ifelse(`$#', `10',
+`	$3'
+`	invert STR($4)'
+`	$5'
+`ifelse(`$#', `9',
 `	data ['
-`		"'N_CONTROLMIXER($2)`_data_w"'
+`		"'$1`_data_w"'
 `	]'
 ,` ')'
 `}')

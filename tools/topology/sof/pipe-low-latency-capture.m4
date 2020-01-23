@@ -15,7 +15,7 @@ include(`mixercontrol.m4')
 # Controls
 #
 # Volume Mixer control with max value of 32
-C_CONTROLMIXER(PCM PCM_ID Capture Volume, PIPELINE_ID,
+C_CONTROLMIXER(N_CONTROLMIXER(PCM PCM_ID Capture Volume),
 	CONTROLMIXER_OPS(volsw, 256 binds the mixer control to volume get/put handlers, 256, 256),
 	CONTROLMIXER_MAX(, 40),
 	false,
@@ -42,7 +42,7 @@ W_DATA(capture_pga_conf, capture_pga_tokens)
 W_PCM_CAPTURE(PCM_ID, Low Latency Capture, 0, 2)
 
 # "Capture Volume" has 2 sink and x source periods for host and DAI ping-pong
-W_PGA(0, PIPELINE_FORMAT, 2, DAI_PERIODS, capture_pga_conf, LIST(`		', "PIPELINE_ID PCM PCM_ID Capture Volume"))
+W_PGA(N_PGA(0), PIPELINE_FORMAT, 2, DAI_PERIODS, capture_pga_conf, LIST(`		', "PIPELINE_ID PCM PCM_ID Capture Volume"))
 
 # Capture Buffers
 W_BUFFER(0, COMP_BUFFER_SIZE(DAI_PERIODS,
