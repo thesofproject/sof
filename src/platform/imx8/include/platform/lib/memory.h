@@ -165,10 +165,6 @@
 
 #define SOF_MEM_RO_SIZE			0x8
 
-#define uncache_to_cache(address)	address
-#define cache_to_uncache(address)	address
-#define is_uncached(address)		0
-
 #define HEAP_BUF_ALIGNMENT		PLATFORM_DCACHE_ALIGN
 
 #if !defined(__ASSEMBLER__) && !defined(LINKER)

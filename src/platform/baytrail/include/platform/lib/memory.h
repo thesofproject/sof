@@ -193,10 +193,6 @@ static inline void *platform_rfree_prepare(void *ptr)
 
 #define SOF_MEM_RO_SIZE			0x8
 
-#define uncache_to_cache(address)	address
-#define cache_to_uncache(address)	address
-#define is_uncached(address)		0
-
 #endif /* __PLATFORM_LIB_MEMORY_H__ */
 
 #else
