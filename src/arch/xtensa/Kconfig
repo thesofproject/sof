@@ -17,4 +17,13 @@ config SMP
 	help
 	  Indicates that architecture uses multiple cores
 
+config WAKEUP_HOOK
+	bool
+	default n
+	help
+	  Enables hook that is called and after coming back from WAITI.
+	  This config should be selected by other platform-level configs.
+	  Platforms that use it, have to implement hook function
+	  platform_interrupt_on_wakeup.
+
 endmenu

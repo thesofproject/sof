@@ -159,6 +159,8 @@ no_context:
 	/* set interrupt task context */
 	xtos_task_ctx_store_percore	a11, a14
 
+	xtos_on_wakeup
+
 /* Loop to handle all pending interrupts. */
 
 LABEL(.L1,_loop0):
