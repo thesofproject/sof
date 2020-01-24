@@ -12,6 +12,7 @@
 
 #include <sof/lib/memory.h>
 #include <config.h>
+#include <stdint.h>
 
 #define MAILBOX_HOST_OFFSET	0x144000
 
@@ -54,6 +55,14 @@
 
 #define MAILBOX_TRACE_BASE \
 	(MAILBOX_BASE + MAILBOX_TRACE_OFFSET)
+
+static inline void mailbox_sw_reg_write(size_t offset, uint32_t src)
+{
+	volatile uint32_t *ptr;
+
+	ptr = (volatile uint32_t *)(MAILBOX_DEBUG_BASE + offset);
+	*ptr = src;
+}
 
 #endif /* __PLATFORM_LIB_MAILBOX_H__ */
 

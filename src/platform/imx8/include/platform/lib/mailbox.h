@@ -11,6 +11,7 @@
 #define __PLATFORM_LIB_MAILBOX_H__
 
 #include <sof/lib/memory.h>
+#include <stdint.h>
 
 /*
  * The Window Region on i.MX8 SRAM is organised like this :-
@@ -50,6 +51,14 @@
 #define MAILBOX_STREAM_SIZE		SRAM_STREAM_SIZE
 #define MAILBOX_STREAM_BASE		SRAM_STREAM_BASE
 #define MAILBOX_STREAM_OFFSET		SRAM_STREAM_OFFSET
+
+static inline void mailbox_sw_reg_write(size_t offset, uint32_t src)
+{
+	volatile uint32_t *ptr;
+
+	ptr = (volatile uint32_t *)(MAILBOX_DEBUG_BASE + offset);
+	*ptr = src;
+}
 
 #endif /* __PLATFORM_LIB_MAILBOX_H__ */
 

@@ -12,6 +12,7 @@
 #define __CAVS_LIB_MAILBOX_H__
 
 #include <sof/lib/memory.h>
+#include <stdint.h>
 
 /*
  * The Window Region on HPSRAM for cAVS platforms is organised like this :-
@@ -59,6 +60,15 @@
 
 #define MAILBOX_SW_REG_SIZE	SRAM_SW_REG_SIZE
 #define MAILBOX_SW_REG_BASE	SRAM_SW_REG_BASE
+
+static inline void mailbox_sw_reg_write(size_t offset, uint32_t src)
+{
+	volatile uint32_t *ptr;
+
+	ptr = (volatile uint32_t *)(MAILBOX_SW_REG_BASE + offset);
+	ptr = cache_to_uncache(ptr);
+	*ptr = src;
+}
 
 #endif /* __CAVS_LIB_MAILBOX_H__ */
 
