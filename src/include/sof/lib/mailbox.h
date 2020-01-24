@@ -12,15 +12,9 @@
 #include <platform/lib/mailbox.h>
 #include <sof/debug/panic.h>
 #include <sof/lib/cache.h>
-#include <sof/lib/memory.h>
 #include <sof/string.h>
 #include <stddef.h>
 #include <stdint.h>
-
-/* For those platform did not have SW_REG window, use DEBUG at now */
-#ifndef MAILBOX_SW_REG_BASE
-#define MAILBOX_SW_REG_BASE MAILBOX_DEBUG_BASE
-#endif  /* MAILBOX_SW_REG_BASE */
 
 #define mailbox_get_exception_base() \
 	MAILBOX_EXCEPTION_BASE
@@ -101,16 +95,6 @@ void mailbox_stream_write(size_t offset, const void *src, size_t bytes)
 	assert(!ret);
 	dcache_writeback_region((void *)(MAILBOX_STREAM_BASE + offset),
 				bytes);
-}
-
-static inline
-void mailbox_sw_reg_write(size_t offset, uint32_t src)
-{
-	volatile uint32_t *ptr;
-
-	ptr = (volatile uint32_t *)(MAILBOX_SW_REG_BASE + offset);
-	ptr = cache_to_uncache(ptr);
-	*ptr = src;
 }
 
 #endif /* __SOF_LIB_MAILBOX_H__ */
