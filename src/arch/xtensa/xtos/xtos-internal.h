@@ -494,6 +494,13 @@ exit:
 	s32i		\ax, \ay, XTOS_TASK_CONTEXT_OFFSET
 	.endm
 
+	// Executes optional callback on wake up
+	.macro	xtos_on_wakeup
+#if CONFIG_WAKEUP_HOOK
+	call12 arch_interrupt_on_wakeup
+#endif
+	.endm
+
 #else /* !_ASMLANGUAGE && !__ASSEMBLER__ */
 
 /*
