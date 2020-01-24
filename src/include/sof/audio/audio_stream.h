@@ -20,6 +20,7 @@
 #include <sof/math/numbers.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/cache.h>
+#include <ipc/stream.h>
 #include <config.h>
 #include <stdint.h>
 
@@ -35,7 +36,7 @@ struct audio_stream {
 	void *end_addr;		/* buffer end address */
 
 	/* runtime stream params */
-	uint32_t frame_fmt;	/**< enum sof_ipc_frame */
+	enum sof_ipc_frame frame_fmt;	/**< sample data format */
 	uint32_t rate;
 	uint16_t channels;
 };
