@@ -169,6 +169,8 @@ no_context:
  * number and exception stack frame), then call the interrupt handler.
  * Note: The callx12 preserves the original user task's a4..a15.*/
 
+	xtos_on_wakeup
+
 #if CONFIG_SMP
 	xtos_addr_percore_add	a12, xtos_interrupt_table, MAPINT(SINGLE_INT_NUM)*XIE_SIZE
 #else
@@ -227,6 +229,8 @@ no_context:
 
 	/* set interrupt task context */
 	xtos_task_ctx_store_percore	a11, a14
+
+	xtos_on_wakeup
 
 /* Loop to handle all pending interrupts. */
 

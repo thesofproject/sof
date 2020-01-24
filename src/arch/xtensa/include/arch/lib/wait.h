@@ -10,6 +10,7 @@
 
 #include <sof/debug/panic.h>
 #include <sof/drivers/interrupt.h>
+#include <sof/lib/clk.h>
 #include <ipc/trace.h>
 #include <config.h>
 #include <xtensa/xtruntime.h>

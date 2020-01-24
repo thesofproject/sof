@@ -14,6 +14,7 @@
 #include <xtensa/xtruntime.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <config.h>
 
 static inline int arch_interrupt_register(int irq,
 	void (*handler)(void *arg), void *arg)
@@ -82,6 +83,10 @@ static inline void arch_interrupt_global_enable(uint32_t flags)
 	asm volatile("wsr %0, ps; rsync"
 		     :: "a" (flags) : "memory");
 }
+
+#if CONFIG_WAKEUP_HOOK
+void arch_interrupt_on_wakeup(void);
+#endif
 
 #endif /* __ARCH_DRIVERS_INTERRUPT_H__ */
 
