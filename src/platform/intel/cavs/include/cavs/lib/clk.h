@@ -43,6 +43,11 @@ extern const uint32_t cpu_freq_status_mask[];
 
 void platform_clock_init(struct sof *sof);
 
+#if CONFIG_CAVS_USE_LPRO_IN_WAITI
+void platform_clock_on_waiti(void);
+void platform_clock_on_wakeup(void);
+#endif
+
 #endif /* __CAVS_LIB_CLK_H__ */
 
 #else

@@ -95,6 +95,7 @@ config CANNONLAKE
 	select CAVS
 	select CAVS_VERSION_1_8
 	select WAITI_DELAY
+	select CAVS_USE_LPRO_IN_WAITI
 	help
 	  Select if your target platform is Cannonlake-compatible
 
@@ -113,6 +114,7 @@ config SUECREEK
 	select CAVS
 	select CAVS_VERSION_2_0
 	select WAITI_DELAY
+	select CAVS_USE_LPRO_IN_WAITI
 	help
 	  Select if your target platform is Suecreek-compatible
 
@@ -130,6 +132,7 @@ config ICELAKE
 	select CAVS
 	select CAVS_VERSION_2_0
 	select WAITI_DELAY
+	select CAVS_USE_LPRO_IN_WAITI
 	help
 	  Select if your target platform is Icelake-compatible
 
@@ -259,6 +262,16 @@ config CAVS_LPRO
 	help
 	  Select if you want to use 120MHz LPRO as the DSP clock source.
 	  This option is required to support S0ix/D0ix mode.
+
+config CAVS_USE_LPRO_IN_WAITI
+	bool
+	default n
+	depends on CAVS
+	select WAKEUP_HOOK
+	help
+	  Select if platform requires DSP clock source to be switched to LPRO
+	  while in waiti.
+	  After waiti clock source is restored.
 
 # TODO: it should just take manifest version and offsets
 config FIRMWARE_SHORT_NAME

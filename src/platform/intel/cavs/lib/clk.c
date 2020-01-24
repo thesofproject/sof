@@ -14,17 +14,20 @@
 
 static SHARED_DATA struct clock_info platform_clocks_info[NUM_CLOCKS];
 
-static int clock_platform_set_cpu_freq(int clock, int freq_idx)
+#if CAVS_VERSION == CAVS_VERSION_1_5
+static inline void select_cpu_clock(int freq_idx, bool release_unused)
 {
 	uint32_t enc = cpu_freq_enc[freq_idx];
 
-	/* set CPU frequency request for CCU */
-#if CAVS_VERSION == CAVS_VERSION_1_5
 	io_reg_update_bits(SHIM_BASE + SHIM_CLKCTL, SHIM_CLKCTL_HDCS, 0);
 	io_reg_update_bits(SHIM_BASE + SHIM_CLKCTL,
 			   SHIM_CLKCTL_DPCS_MASK(cpu_get_id()),
 			   enc);
+}
 #else
+static inline void select_cpu_clock(int freq_idx, bool release_unused)
+{
+	uint32_t enc = cpu_freq_enc[freq_idx];
 	uint32_t status_mask = cpu_freq_status_mask[freq_idx];
 
 	/* request clock */
@@ -40,13 +43,73 @@ static int clock_platform_set_cpu_freq(int clock, int freq_idx)
 	io_reg_update_bits(SHIM_BASE + SHIM_CLKCTL,
 			   SHIM_CLKCTL_OSC_SOURCE_MASK, enc);
 
-	/* release other clocks */
-	io_reg_write(SHIM_BASE + SHIM_CLKCTL,
-		     (io_reg_read(SHIM_BASE + SHIM_CLKCTL) &
-		     ~SHIM_CLKCTL_OSC_REQUEST_MASK) | enc);
+	if (release_unused) {
+		/* release other clocks */
+		io_reg_write(SHIM_BASE + SHIM_CLKCTL,
+			     (io_reg_read(SHIM_BASE + SHIM_CLKCTL) &
+			      ~SHIM_CLKCTL_OSC_REQUEST_MASK) | enc);
+	}
+}
 #endif
+
+static int clock_platform_set_cpu_freq(int clock, int freq_idx)
+{
+	select_cpu_clock(freq_idx, true);
 	return 0;
 }
+
+#if CONFIG_CAVS_USE_LPRO_IN_WAITI
+/* Store clock source that was active before going to waiti,
+ * so it can be restored on wake up.
+ */
+static SHARED_DATA int active_freq_idx = CPU_DEFAULT_IDX;
+
+static inline int get_cpu_current_freq_idx(void)
+{
+	struct clock_info *clk_info = clocks_get() + CLK_CPU(cpu_get_id());
+
+	return clk_info->current_freq_idx;
+}
+
+static inline void set_cpu_current_freq_idx(int freq_idx)
+{
+	int i;
+	struct clock_info *clk_info = clocks_get();
+
+	for (i = 0; i < PLATFORM_CORE_COUNT; i++)
+		clk_info[i].current_freq_idx = freq_idx;
+
+	platform_shared_commit(clk_info,
+			       sizeof(*clk_info) * PLATFORM_CORE_COUNT);
+}
+
+void platform_clock_on_wakeup(void)
+{
+	int freq_idx = *cache_to_uncache(&active_freq_idx);
+
+	if (freq_idx != get_cpu_current_freq_idx()) {
+		select_cpu_clock(freq_idx, true);
+		set_cpu_current_freq_idx(freq_idx);
+	}
+}
+
+void platform_clock_on_waiti(void)
+{
+	int freq_idx = get_cpu_current_freq_idx();
+
+	*cache_to_uncache(&active_freq_idx) = freq_idx;
+
+	if (freq_idx != CPU_LPRO_FREQ_IDX) {
+		/* LPRO requests are fast, but requests for other ROs
+		 * can take a lot of time. That's why it's better to
+		 * not release active clock just for waiti,
+		 * so they can be switched without delay on wake up.
+		 */
+		select_cpu_clock(CPU_LPRO_FREQ_IDX, false);
+		set_cpu_current_freq_idx(CPU_LPRO_FREQ_IDX);
+	}
+}
+#endif
 
 void platform_clock_init(struct sof *sof)
 {
