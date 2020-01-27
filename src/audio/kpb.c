@@ -64,6 +64,7 @@ struct comp_data {
 	bool sync_draining_mode; /**< should we synchronize draining with
 				   * host?
 				   */
+	spinlock_t lock; /**< locking mechanism for read pointer calculations */
 };
 
 /*! KPB private functions */
@@ -916,6 +917,7 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 			      (KPB_SAMPLE_CONTAINER_SIZE(sample_width) / 8) *
 			      kpb->config.channels;
 	size_t period_bytes_limit = 0;
+	uint32_t flags;
 
 	trace_kpb_with_ids(dev, "kpb_init_draining(): requested draining "
 			   "of %d [ms] from history buffer",
@@ -940,6 +942,7 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 		 * in the history buffer. All we have to do now is to calculate
 		 * read pointer from which we will start draining.
 		 */
+		spin_lock_irq(&kpb->lock, flags);
 		do {
 			/* Calculate how much data we have stored in
 			 * current buffer.
@@ -992,6 +995,7 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 			}
 
 		} while (buff != first_buff);
+		spin_unlock_irq(&kpb->lock, flags);
 
 		/* Should we drain in synchronized mode (sync_draining_mode)?
 		 * Note! We have already verified host params during
