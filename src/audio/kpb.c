@@ -564,6 +564,7 @@ static int kpb_copy(struct comp_dev *dev)
 	struct comp_buffer *sink = NULL;
 	size_t copy_bytes = 0;
 	size_t sample_width = kpb->config.sampling_width;
+	uint32_t hb_free_space;
 
 	tracev_kpb_with_ids(dev, "kpb_copy()");
 
@@ -615,8 +616,13 @@ static int kpb_copy(struct comp_dev *dev)
 							 "failed.");
 				goto out;
 			}
-			if (kpb->buffered_data < kpb->buffer_size)
-				kpb->buffered_data += copy_bytes;
+			if (kpb->buffered_data < kpb->buffer_size) {
+				hb_free_space = kpb->buffer_size -
+					kpb->buffered_data;
+
+				kpb->buffered_data +=
+					MIN(copy_bytes, hb_free_space);
+			}
 		} else {
 			trace_kpb_error_with_ids(dev, "kpb_copy(): "
 						 "too much data to buffer.");
