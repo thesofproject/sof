@@ -6,6 +6,7 @@
 //         Liam Girdwood <liam.r.girdwood@linux.intel.com>
 //         Keyon Jie <yang.jie@linux.intel.com>
 
+#include <sof/common.h>
 #include <sof/audio/eq_iir/iir.h>
 #include <sof/audio/format.h>
 #include <user/eq.h>
@@ -28,7 +29,7 @@ int iir_init_coef_df2t(struct iir_state_df2t *iir,
 {
 	iir->biquads = config->num_sections;
 	iir->biquads_in_series = config->num_sections_in_series;
-	iir->coef = config->biquads;
+	iir->coef = ASSUME_ALIGNED(config->biquads, 4);
 
 	return 0;
 }
