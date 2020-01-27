@@ -477,24 +477,24 @@ static int dw_dma_status(struct dma_chan_data *channel,
  * It is requested by BYT, HSW, BDW. For other
  * platforms, the mask is zero.
  */
-static void dw_dma_mask_address(struct dma_sg_elem *sg_elem, uint32_t *sar,
-				uint32_t *dar, uint32_t direction)
+static void dw_dma_mask_address(struct dma_sg_elem *sg_elem,
+				struct dw_lli *lli_desc, uint32_t direction)
 {
-	*sar = sg_elem->src;
-	*dar = sg_elem->dest;
+	lli_desc->sar = sg_elem->src;
+	lli_desc->dar = sg_elem->dest;
 
 	switch (direction) {
 	case DMA_DIR_LMEM_TO_HMEM:
 	case DMA_DIR_MEM_TO_DEV:
-		*sar |= PLATFORM_DW_DMA_HOST_MASK;
+		lli_desc->sar |= PLATFORM_DW_DMA_HOST_MASK;
 		break;
 	case DMA_DIR_HMEM_TO_LMEM:
 	case DMA_DIR_DEV_TO_MEM:
-		*dar |= PLATFORM_DW_DMA_HOST_MASK;
+		lli_desc->dar |= PLATFORM_DW_DMA_HOST_MASK;
 		break;
 	case DMA_DIR_MEM_TO_MEM:
-		*sar |= PLATFORM_DW_DMA_HOST_MASK;
-		*dar |= PLATFORM_DW_DMA_HOST_MASK;
+		lli_desc->sar |= PLATFORM_DW_DMA_HOST_MASK;
+		lli_desc->dar |= PLATFORM_DW_DMA_HOST_MASK;
 		break;
 	default:
 		break;
@@ -733,8 +733,7 @@ static int dw_dma_set_config(struct dma_chan_data *channel,
 			goto out;
 		}
 
-		dw_dma_mask_address(sg_elem, &lli_desc->sar, &lli_desc->dar,
-				    config->direction);
+		dw_dma_mask_address(sg_elem, lli_desc, config->direction);
 
 		if (sg_elem->size > DW_CTLH_BLOCK_TS_MASK) {
 			trace_dwdma_error("dw_dma_set_config() error: dma %d "
