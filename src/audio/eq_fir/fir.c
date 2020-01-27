@@ -10,6 +10,7 @@
 
 #if FIR_GENERIC
 
+#include <sof/common.h>
 #include <sof/audio/buffer.h>
 #include <sof/audio/eq_fir/fir.h>
 #include <sof/audio/format.h>
@@ -51,7 +52,7 @@ int fir_init_coef(struct fir_state_32x16 *fir,
 	fir->length = (int)config->length;
 	fir->taps = fir->length; /* The same for generic C version */
 	fir->out_shift = (int)config->out_shift;
-	fir->coef = &config->coef[0];
+	fir->coef = ASSUME_ALIGNED(&config->coef[0], 4);
 	return 0;
 }
 

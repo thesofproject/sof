@@ -396,8 +396,9 @@ static int eq_iir_init_coef(struct sof_eq_iir_config *config,
 
 	/* Collect index of response start positions in all_coefficients[]  */
 	j = 0;
-	assign_response = &config->data[0];
-	coef_data = &config->data[config->channels_in_config];
+	assign_response = ASSUME_ALIGNED(&config->data[0], 4);
+	coef_data = ASSUME_ALIGNED(&config->data[config->channels_in_config],
+				   4);
 	for (i = 0; i < SOF_EQ_IIR_MAX_RESPONSES; i++) {
 		if (i < config->number_of_responses) {
 			eq = (struct sof_eq_iir_header_df2t *)&coef_data[j];
