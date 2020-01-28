@@ -721,8 +721,11 @@ static int kpb_buffer_data(struct comp_dev *dev,
 
 	tracev_kpb_with_ids(dev, "kpb_buffer_data()");
 
-	if (kpb->state != KPB_STATE_RUN && kpb->state != KPB_STATE_DRAINING)
+	if (kpb->state != KPB_STATE_RUN && kpb->state != KPB_STATE_DRAINING) {
+		trace_kpb_error("kpb_buffer_data() error: wrong state! (current state %d, state log %x)",
+						 kpb->state, kpb->state_log);
 		return PPL_STATUS_PATH_STOP;
+	}
 
 	if (kpb->state == KPB_STATE_DRAINING)
 		draining_data->buffered_while_draining += size_to_copy;
@@ -746,8 +749,8 @@ static int kpb_buffer_data(struct comp_dev *dev,
 		current_time = platform_timer_get(timer);
 		if (timeout < current_time) {
 			trace_kpb_error("kpb_buffer_data(): timeout of %d [ms] (current state %d, state log %x)",
-					current_time - timeout, kpb->state,
-					kpb->state_log);
+							 current_time - timeout, kpb->state,
+							 kpb->state_log);
 			return -ETIME;
 		}
 
@@ -922,6 +925,7 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 			      (KPB_SAMPLE_CONTAINER_SIZE(sample_width) / 8) *
 			      kpb->config.channels;
 	size_t period_bytes_limit = 0;
+	enum kpb_state state_preserved = kpb->state;
 
 	trace_kpb_with_ids(dev, "kpb_init_draining(): requested draining "
 			   "of %d [ms] from history buffer",
@@ -946,6 +950,8 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 		 * in the history buffer. All we have to do now is to calculate
 		 * read pointer from which we will start draining.
 		 */
+		kpb_change_state(kpb, KPB_STATE_INIT_DRAINING);
+
 		do {
 			/* Calculate how much data we have stored in
 			 * current buffer.
@@ -1042,6 +1048,9 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 
 		/* Schedule draining task */
 		schedule_task(&kpb->draining_task, 0, 0);
+
+		kpb_change_state(kpb, state_preserved);
+
 	}
 }
 
