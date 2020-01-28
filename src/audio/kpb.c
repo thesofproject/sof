@@ -59,6 +59,7 @@ struct comp_data {
 	size_t buffered_data; /**< keeps info about amount of buffered data */
 	struct dd draining_task_data;
 	size_t buffer_size; /**< size of internal history buffer */
+	size_t hb_free_space; /**< free space in history buffer */
 	size_t host_buffer_size; /**< size of host buffer */
 	size_t host_period_size; /**< size of history period */
 	bool sync_draining_mode; /**< should we synchronize draining with
@@ -663,12 +664,14 @@ static int kpb_copy(struct comp_dev *dev)
 		break;
 	case KPB_STATE_INIT_DRAINING:
 	case KPB_STATE_DRAINING:
-		/* In init_ draining and draining state we only buffer data in
+		/* In init_draining and draining state we only buffer data in
 		 * internal, history buffer.
 		 */
 		if (source->stream.avail <= kpb->buffer_size) {
-			ret = kpb_buffer_data(dev, source,
-					      source->stream.avail);
+			copy_bytes = MIN(source->stream.avail,
+					 kpb->hb_free_space);
+			
+			ret = kpb_buffer_data(dev, source, copy_bytes);
 			if (ret) {
 				trace_kpb_error_with_ids(dev, "kpb_copy(): "
 							 "internal buffering "
@@ -676,8 +679,8 @@ static int kpb_copy(struct comp_dev *dev)
 				goto out;
 			}
 
-			comp_update_buffer_consume(source,
-						   source->stream.avail);
+			comp_update_buffer_consume(source, copy_bytes);
+			kpb->hb_free_space -= copy_bytes;
 		} else {
 			trace_kpb_error_with_ids(dev, "kpb_copy(): "
 						 "too much data to buffer.");
@@ -722,7 +725,8 @@ static int kpb_buffer_data(struct comp_dev *dev,
 
 	tracev_kpb_with_ids(dev, "kpb_buffer_data()");
 
-	if (kpb->state != KPB_STATE_RUN && kpb->state != KPB_STATE_DRAINING) {
+	if (kpb->state != KPB_STATE_RUN && kpb->state != KPB_STATE_DRAINING &&
+	    kpb->state != KPB_STATE_INIT_DRAINING) {
 		trace_kpb_error("kpb_buffer_data() error: wrong state! (current state %d, state log %x)",
 						 kpb->state, kpb->state_log);
 		return PPL_STATUS_PATH_STOP;
@@ -1005,6 +1009,12 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 
 		} while (buff != first_buff);
 
+		kpb->hb_free_space = MAX(kpb->buffer_size - history_depth,
+					 kpb->buffer_size - kpb->buffered_data);
+
+		/* Change KPB internal state to DRAINING */
+		kpb_change_state(kpb, KPB_STATE_DRAINING);
+
 		/* Should we drain in synchronized mode (sync_draining_mode)?
 		 * Note! We have already verified host params during
 		 * kpb_prepare().
@@ -1089,9 +1099,6 @@ static enum task_state kpb_draining_task(void *arg)
 
 	pm_runtime_disable(PM_RUNTIME_DSP, PLATFORM_MASTER_CORE_ID);
 
-	/* Change KPB internal state to DRAINING */
-	kpb_change_state(kpb, KPB_STATE_DRAINING);
-
 	draining_time_start = platform_timer_get(timer);
 
 	while (history_depth > 0) {
@@ -1136,6 +1143,7 @@ static enum task_state kpb_draining_task(void *arg)
 		history_depth -= size_to_copy;
 		drained += size_to_copy;
 		period_bytes += size_to_copy;
+		kpb->hb_free_space += size_to_copy;
 
 		if (move_buffer) {
 			buff->r_ptr = buff->start_addr;
