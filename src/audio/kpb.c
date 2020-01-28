@@ -74,7 +74,8 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli);
 static enum task_state kpb_draining_task(void *arg);
 static int kpb_buffer_data(struct comp_dev *dev,
 			   const struct comp_buffer *source, size_t size);
-static size_t kpb_allocate_history_buffer(struct comp_data *kpb);
+static size_t kpb_allocate_history_buffer(struct comp_data *kpb,
+					  size_t hb_size_req);
 static void kpb_clear_history_buffer(struct hb *buff);
 static void kpb_free_history_buffer(struct hb *buff);
 static inline bool kpb_is_sample_width_supported(uint32_t sampling_width);
@@ -189,12 +190,13 @@ static struct comp_dev *kpb_new(struct sof_ipc_comp *comp)
  *
  * \return: none.
  */
-static size_t kpb_allocate_history_buffer(struct comp_data *kpb)
+static size_t kpb_allocate_history_buffer(struct comp_data *kpb,
+					  size_t hb_size_req)
 {
 	struct hb *history_buffer;
 	struct hb *new_hb = NULL;
 	/*! Total allocation size */
-	size_t hb_size = kpb->buffer_size;
+	size_t hb_size = hb_size_req;
 	/*! Current allocation size */
 	size_t ca_size = hb_size;
 	/*! Memory caps priorites for history buffer */
@@ -330,6 +332,7 @@ static void kpb_free(struct comp_dev *dev)
 	/* Reclaim memory occupied by history buffer */
 	kpb_free_history_buffer(kpb->history_buffer);
 	kpb->history_buffer = NULL;
+	kpb->buffer_size = 0;
 
 	/* remove scheduling */
 	schedule_task_free(&kpb->draining_task);
@@ -385,7 +388,7 @@ static int kpb_prepare(struct comp_dev *dev)
 	int i;
 	struct list_item *blist;
 	struct comp_buffer *sink;
-	size_t allocated_size;
+	size_t hb_size_req = KPB_MAX_BUFFER_SIZE(kpb->config.sampling_width);
 
 	trace_kpb_with_ids(dev, "kpb_prepare()");
 
@@ -403,33 +406,42 @@ static int kpb_prepare(struct comp_dev *dev)
 	if (ret == COMP_STATUS_STATE_ALREADY_SET)
 		return PPL_STATUS_PATH_STOP;
 
-	/* Init private data */
-	kpb_change_state(kpb, KPB_STATE_PREPARING);
-	kpb->kpb_no_of_clients = 0;
-	kpb->buffered_data = 0;
-	kpb->buffer_size = KPB_MAX_BUFFER_SIZE(kpb->config.sampling_width);
-	kpb->sel_sink = NULL;
-	kpb->host_sink = NULL;
-
 	if (!validate_host_params(dev, kpb->host_period_size,
 				  kpb->host_buffer_size)) {
 		trace_kpb_error("kpb_prepare() error: wrong host params.");
 		return -EINVAL;
 	}
+
+	kpb_change_state(kpb, KPB_STATE_PREPARING);
+
+	/* Init private data */
+	kpb->kpb_no_of_clients = 0;
+	kpb->buffered_data = 0;
+	kpb->sel_sink = NULL;
+	kpb->host_sink = NULL;
+
+	if (kpb->history_buffer && kpb->buffer_size < hb_size_req) {
+		/* Host params has changed, we need to allocate new buffer */
+		kpb_free_history_buffer(kpb->history_buffer);
+		kpb->history_buffer = NULL;
+	}
+
 	if (!kpb->history_buffer) {
 		/* Allocate history buffer */
-		allocated_size = kpb_allocate_history_buffer(kpb);
+		kpb->buffer_size = kpb_allocate_history_buffer(kpb,
+							       hb_size_req);
 
 		/* Have we allocated what we requested? */
-		if (allocated_size < kpb->buffer_size) {
-			trace_kpb_error("kpb_prepare() error: failed to allocate space for KPB buffer/s");
+		if (kpb->buffer_size < hb_size_req) {
+			trace_kpb_error("kpb_prepare() error: failed to allocate space for KPB buffer");
 			kpb_free_history_buffer(kpb->history_buffer);
 			kpb->history_buffer = NULL;
+			kpb->buffer_size = 0;
 			return -EINVAL;
 		}
 	}
 	/* Init history buffer */
-	kpb_clear_history_buffer(kpb->history_buffer);
+	kpb_reset_history_buffer(kpb->history_buffer);
 
 	/* Initialize clients data */
 	for (i = 0; i < KPB_MAX_NO_OF_CLIENTS; i++) {
