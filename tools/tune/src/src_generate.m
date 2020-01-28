@@ -145,7 +145,7 @@ for b = 1:nfso
                         f_pb = fs1*cnv1.c_pb;
                         cnv2.c_pb = f_pb/min(fs2,fs3);
                 end
-		if fs_inout(a,b) > 0 || (a == b)
+		if fs_inout(a,b) > 0 || abs(fs1 - fs2) < eps
                         if cnv2.fs1-cnv2.fs2 > eps
                                 % Allow half ripple for dual stage SRC parts
                                 cnv1.rp = cnv1.rp/2;
