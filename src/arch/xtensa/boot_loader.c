@@ -170,7 +170,9 @@ static void parse_manifest(void)
 
 /* power off unused HPSRAM */
 #if CONFIG_CANNONLAKE
-
+/* function powers up a number of memory banks provided as an argument and
+ * gates remaining memory banks
+ */
 static int32_t hp_sram_pm_banks(uint32_t banks)
 {
 	int delay_count = 256;
@@ -257,7 +259,7 @@ static int32_t hp_sram_power_off_unused_banks(uint32_t memory_size)
 
 static int32_t hp_sram_init(void)
 {
-	return hp_sram_power_off_memory(SOF_MEMORY_SIZE);
+	return hp_sram_power_off_memory(HP_SRAM_SIZE);
 }
 
 #else

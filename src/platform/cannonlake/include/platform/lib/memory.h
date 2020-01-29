@@ -290,9 +290,6 @@
 	SRAM_BANK_SIZE)
 #define SOF_CORE_S_T_SIZE ((PLATFORM_CORE_COUNT - 1) * SOF_CORE_S_SIZE)
 
-/* Temporary until the boot_loader code get fixed */
-#define SOF_MEMORY_SIZE (HP_SRAM_SIZE)
-
 /*
  * The LP SRAM Heap and Stack on Cannonlake are organised like this :-
  *
