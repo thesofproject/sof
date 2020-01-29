@@ -20,21 +20,12 @@
 #endif
 #include <sof/common.h>
 #include <sof/sof.h>
-#include <sof/spinlock.h>
 #include <sof/trace/preproc.h>
 #include <config.h>
 #include <stdint.h>
 #if CONFIG_LIBRARY
 #include <stdio.h>
 #endif
-
-struct sof;
-
-struct trace {
-	uint32_t pos ;	/* trace position */
-	uint32_t enable;
-	spinlock_t lock; /* locking mechanism */
-};
 
 /* bootloader trace values */
 #define TRACE_BOOT_LDR_ENTRY		0x100
@@ -173,16 +164,6 @@ _TRACE_EVENT_NTH_DECLARE_GROUP(3)
 _TRACE_EVENT_NTH_DECLARE_GROUP(4)
 
 #define _TRACE_EVENT_MAX_ARGUMENT_COUNT 4
-
-void trace_flush(void);
-void trace_on(void);
-void trace_off(void);
-void trace_init(struct sof *sof);
-
-static inline struct trace *trace_get(void)
-{
-	return sof_get()->trace;
-}
 
 #define trace_unused(class, id_0, id_1, format, ...) \
 	UNUSED(id_0, id_1, ##__VA_ARGS__)
@@ -387,5 +368,25 @@ do {									\
 						##__VA_ARGS__)
 #define trace_error_comp(...) _trace_comp_build(trace_error_with_ids,	\
 						##__VA_ARGS__)
+
+#include <sof/spinlock.h>
+
+struct sof;
+
+struct trace {
+	uint32_t pos ;	/* trace position */
+	uint32_t enable;
+	spinlock_t lock; /* locking mechanism */
+};
+
+void trace_flush(void);
+void trace_on(void);
+void trace_off(void);
+void trace_init(struct sof *sof);
+
+static inline struct trace *trace_get(void)
+{
+	return sof_get()->trace;
+}
 
 #endif /* __SOF_TRACE_TRACE_H__ */
