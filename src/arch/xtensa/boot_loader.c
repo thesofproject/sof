@@ -4,6 +4,7 @@
 //
 // Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
 
+#include <cavs/version.h>
 #include <sof/bit.h>
 #include <sof/lib/cache.h>
 #include <sof/lib/io.h>
@@ -168,8 +169,7 @@ static void parse_manifest(void)
 }
 #endif
 
-
-#if CONFIG_CANNONLAKE
+#if CAVS_VERSION >= CAVS_VERSION_1_8
 /* function powers up a number of memory banks provided as an argument and
  * gates remaining memory banks
  */
@@ -178,6 +178,7 @@ static int32_t hp_sram_pm_banks(uint32_t banks)
 	int delay_count = 256;
 	uint32_t status;
 	uint32_t ebb_mask0, ebb_mask1, ebb_avail_mask0, ebb_avail_mask1;
+	uint32_t total_banks_count = PLATFORM_HPSRAM_EBB_COUNT;
 
 	shim_write(SHIM_LDOCTL, SHIM_LDOCTL_HPSRAM_LDO_ON);
 
@@ -187,12 +188,12 @@ static int32_t hp_sram_pm_banks(uint32_t banks)
 	/* bit masks reflect total number of available EBB (banks) in each
 	 * segment; current implementation supports 2 segments 0,1
 	 */
-	if (PLATFORM_HPSRAM_EBB_COUNT > EBB_SEGMENT_SIZE) {
+	if (total_banks_count > EBB_SEGMENT_SIZE) {
 		ebb_avail_mask0 = (uint32_t)MASK(EBB_SEGMENT_SIZE - 1, 0);
-		ebb_avail_mask1 = (uint32_t)MASK(PLATFORM_HPSRAM_EBB_COUNT -
+		ebb_avail_mask1 = (uint32_t)MASK(total_banks_count -
 		EBB_SEGMENT_SIZE - 1, 0);
 	} else{
-		ebb_avail_mask0 = (uint32_t)MASK(PLATFORM_HPSRAM_EBB_COUNT - 1,
+		ebb_avail_mask0 = (uint32_t)MASK(total_banks_count - 1,
 		0);
 		ebb_avail_mask1 = 0;
 	}
