@@ -200,3 +200,93 @@ int platform_ipc_init(struct ipc *ipc)
 	return 0;
 }
 
+#if CONFIG_IPC_POLLING
+
+int ipc_platform_poll_init(void)
+{
+	return 0;
+}
+
+/* tell host we have completed command */
+void ipc_platform_poll_set_cmd_done(void)
+{
+	/* enable GP interrupt #0 - accept new messages */
+	imx_mu_xcr_rmw(IMX_MU_xCR_GIEn(0), 0);
+
+	/* request GP interrupt #0 - notify host that reply is ready */
+	imx_mu_xcr_rmw(IMX_MU_xCR_GIRn(0), 0);
+}
+
+/* read the IPC register for any new command messages */
+int ipc_platform_poll_is_cmd_pending(void)
+{
+	uint32_t status;
+
+	/* Interrupt arrived, check src */
+	status = imx_mu_read(IMX_MU_xSR);
+
+	/* new message from host */
+	if (status & IMX_MU_xSR_GIPn(0)) {
+
+		/* Disable GP interrupt #0 */
+		imx_mu_xcr_rmw(0, IMX_MU_xCR_GIEn(0));
+
+		/* Clear GP pending interrupt #0 */
+		imx_mu_xsr_rmw(IMX_MU_xSR_GIPn(0), 0);
+
+		interrupt_clear(PLATFORM_IPC_INTERRUPT);
+
+		/*new message */
+		return 1;
+	}
+
+	/* no new message */
+	return 0;
+}
+
+int ipc_platform_poll_is_host_ready(void)
+{
+	uint32_t status;
+
+	/* Interrupt arrived, check src */
+	status = imx_mu_read(IMX_MU_xSR);
+
+	/* reply message(done) from host */
+	if (status & IMX_MU_xSR_GIPn(1)) {
+		/* Disable GP interrupt #1 */
+		imx_mu_xcr_rmw(0, IMX_MU_xCR_GIEn(1));
+
+		/* Clear GP pending interrupt #1 */
+		imx_mu_xsr_rmw(IMX_MU_xSR_GIPn(1), 0);
+
+		interrupt_clear(PLATFORM_IPC_INTERRUPT);
+
+		/* unmask GP interrupt #1 */
+		imx_mu_xcr_rmw(IMX_MU_xCR_GIEn(1), 0);
+
+		/* host done */
+		return 1;
+	}
+
+	/* host still pending */
+	return 0;
+}
+
+int ipc_platform_poll_tx_host_msg(struct ipc_msg *msg)
+{
+	/* can't send notification when one is in progress */
+	if (imx_mu_read(IMX_MU_xCR) & IMX_MU_xCR_GIRn(1))
+		return 0;
+
+	/* now send the message */
+	mailbox_dspbox_write(0, msg->tx_data, msg->tx_size);
+
+	/* now interrupt host to tell it we have sent a message */
+	imx_mu_xcr_rmw(IMX_MU_xCR_GIRn(1), 0);
+
+	/* message sent */
+	platform_shared_commit(msg, sizeof(*msg));
+	return 1;
+}
+
+#endif

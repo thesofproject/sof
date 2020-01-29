@@ -310,3 +310,144 @@ int platform_ipc_init(struct ipc *ipc)
 
 	return 0;
 }
+
+#if CONFIG_IPC_POLLING
+
+int ipc_platform_poll_init(void)
+{
+	return 0;
+}
+
+/* tell host we have completed command */
+void ipc_platform_poll_set_cmd_done(void)
+{
+
+	/* write 1 to clear busy, and trigger interrupt to host*/
+#if CAVS_VERSION == CAVS_VERSION_1_5
+	ipc_write(IPC_DIPCT, ipc_read(IPC_DIPCT) | IPC_DIPCT_BUSY);
+#else
+	ipc_write(IPC_DIPCTDR, ipc_read(IPC_DIPCTDR) | IPC_DIPCTDR_BUSY);
+	ipc_write(IPC_DIPCTDA, ipc_read(IPC_DIPCTDA) | IPC_DIPCTDA_DONE);
+#endif
+
+	/* unmask Busy interrupt */
+	ipc_write(IPC_DIPCCTL, ipc_read(IPC_DIPCCTL) | IPC_DIPCCTL_IPCTBIE);
+}
+
+/* read the IPC register for any new command messages */
+int ipc_platform_poll_is_cmd_pending(void)
+{
+	uint32_t dipcctl;
+
+#if CAVS_VERSION == CAVS_VERSION_1_5
+	uint32_t dipct;
+
+	dipct = ipc_read(IPC_DIPCT);
+	dipcctl = ipc_read(IPC_DIPCCTL);
+
+
+#else
+	uint32_t dipctdr;
+
+	dipctdr = ipc_read(IPC_DIPCTDR);
+	dipcctl = ipc_read(IPC_DIPCCTL);
+#endif
+
+	/* new message from host */
+#if CAVS_VERSION == CAVS_VERSION_1_5
+	if (dipct & IPC_DIPCT_BUSY && dipcctl & IPC_DIPCCTL_IPCTBIE)
+#else
+	if (dipctdr & IPC_DIPCTDR_BUSY && dipcctl & IPC_DIPCCTL_IPCTBIE)
+#endif
+	{
+		/* mask Busy interrupt */
+		ipc_write(IPC_DIPCCTL, dipcctl & ~IPC_DIPCCTL_IPCTBIE);
+
+		/* new message */
+		return 1;
+	}
+
+	/* no new message */
+	return 0;
+}
+
+int ipc_platform_poll_is_host_ready(void)
+{
+#if CAVS_VERSION == CAVS_VERSION_1_5
+	uint32_t dipcie;
+	uint32_t dipcctl;
+
+	dipcie = ipc_read(IPC_DIPCIE);
+	dipcctl = ipc_read(IPC_DIPCCTL);
+
+
+#else
+	uint32_t dipcida;
+
+	dipcida = ipc_read(IPC_DIPCIDA);
+#endif
+
+	/* reply message(done) from host */
+#if CAVS_VERSION == CAVS_VERSION_1_5
+	if (dipcie & IPC_DIPCIE_DONE && dipcctl & IPC_DIPCCTL_IPCIDIE)
+#else
+	if (dipcida & IPC_DIPCIDA_DONE)
+#endif
+	{
+		/* mask Done interrupt */
+		ipc_write(IPC_DIPCCTL,
+			  ipc_read(IPC_DIPCCTL) & ~IPC_DIPCCTL_IPCIDIE);
+
+		/* clear DONE bit - tell host we have completed the operation */
+#if CAVS_VERSION == CAVS_VERSION_1_5
+		ipc_write(IPC_DIPCIE,
+			  ipc_read(IPC_DIPCIE) | IPC_DIPCIE_DONE);
+#else
+		ipc_write(IPC_DIPCIDA,
+			  ipc_read(IPC_DIPCIDA) | IPC_DIPCIDA_DONE);
+#endif
+
+		/* unmask Done interrupt */
+		ipc_write(IPC_DIPCCTL,
+			  ipc_read(IPC_DIPCCTL) | IPC_DIPCCTL_IPCIDIE);
+
+		/* host has completed */
+		return 1;
+	}
+
+	/* host still pending */
+	return 0;
+}
+
+
+
+int ipc_platform_poll_tx_host_msg(struct ipc_msg *msg)
+{
+
+#if CAVS_VERSION == CAVS_VERSION_1_5
+	if (ipc_read(IPC_DIPCI) & IPC_DIPCI_BUSY)
+#else
+	if (ipc_read(IPC_DIPCIDR) & IPC_DIPCIDR_BUSY ||
+	    ipc_read(IPC_DIPCIDA) & IPC_DIPCIDA_DONE)
+#endif
+		/* cant send message atm */
+		return 0;
+
+	/* now send the message */
+	mailbox_dspbox_write(0, msg->tx_data, msg->tx_size);
+
+	/* now interrupt host to tell it we have message sent */
+#if CAVS_VERSION == CAVS_VERSION_1_5
+	ipc_write(IPC_DIPCIE, 0);
+	ipc_write(IPC_DIPCI, IPC_DIPCI_BUSY | msg->header);
+#else
+	ipc_write(IPC_DIPCIDD, 0);
+	ipc_write(IPC_DIPCIDR, 0x80000000 | msg->header);
+#endif
+
+	/* message sent */
+	platform_shared_commit(msg, sizeof(*msg));
+	return 1;
+}
+
+#endif

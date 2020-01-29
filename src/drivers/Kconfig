@@ -18,4 +18,14 @@ config DUMMY_DMA
 
 	  If unsure, select "n".
 
+config IPC_POLLING
+	bool "Enable IPC Polling support"
+	default n
+	help
+	  Select this to enable support for simple IPC polling. This allows
+	  users like GDB and boot loader a simple IPC mechanism that does not
+	  depend on IRQ or a scheduler.
+
+	  If unsure, select "n".
+
 endmenu # "Drivers"
