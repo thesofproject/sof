@@ -35,6 +35,7 @@ struct sof_ipc_host_buffer;
 struct sof_ipc_pipe_comp_connect;
 struct sof_ipc_pipe_new;
 struct sof_ipc_stream_posn;
+struct ipc_msg;
 
 #define trace_ipc(format, ...) \
 	trace_event(TRACE_CLASS_IPC, format, ##__VA_ARGS__)
@@ -258,5 +259,34 @@ void ipc_cmd(struct sof_ipc_cmd_hdr *hdr);
  * @return 1 if successful (reply sent by other core), error code otherwise.
  */
 int ipc_process_on_core(uint32_t core);
+
+/**
+ * \brief Initialise IPC hardware for polling mode.
+ * @return 0 if successful error code otherwise.
+ */
+int ipc_platform_poll_init(void);
+
+/**
+ * \brief Tell host DSP has completed command.
+ */
+void ipc_platform_poll_set_cmd_done(void);
+
+/**
+ * \brief Check whether there is a new IPC command from host.
+ * @return 1 if new command is pending from host.
+ */
+int ipc_platform_poll_is_cmd_pending(void);
+
+/**
+ * \brief Check whether host is ready for new IPC from DSP.
+ * @return 1 if host is ready for a new command from DSP.
+ */
+int ipc_platform_poll_is_host_ready(void);
+
+/**
+ * \brief Transmit new message to host.
+ * @return 0 if successful error code otherwise.
+ */
+int ipc_platform_poll_tx_host_msg(struct ipc_msg *msg);
 
 #endif /* __SOF_DRIVERS_IPC_H__ */

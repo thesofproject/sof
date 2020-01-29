@@ -182,3 +182,87 @@ int platform_ipc_init(struct ipc *ipc)
 
 	return 0;
 }
+
+#if CONFIG_IPC_POLLING
+
+int ipc_platform_poll_init(void)
+{
+	return 0;
+}
+
+/* tell host we have completed command */
+void ipc_platform_poll_set_cmd_done(void)
+{
+	/* clear BUSY bit and set DONE bit - accept new messages */
+	shim_write(SHIM_IPCX, SHIM_IPCX_DONE);
+
+	/* unmask busy interrupt */
+	shim_write(SHIM_IMRD, shim_read(SHIM_IMRD) & ~SHIM_IMRD_BUSY);
+}
+
+/* read the IPC register for any new command messages */
+int ipc_platform_poll_is_cmd_pending(void)
+{
+	uint32_t isr, imrd;
+
+	/* Interrupt arrived, check src */
+	isr = shim_read(SHIM_ISRD);
+	imrd = shim_read(SHIM_IMRD);
+
+	if (isr & SHIM_ISRD_BUSY && !(imrd & SHIM_IMRD_BUSY)) {
+
+		/* Mask Busy interrupt before return */
+		shim_write(SHIM_IMRD, shim_read(SHIM_IMRD) | SHIM_IMRD_BUSY);
+
+		/* new message */
+		return 1;
+	}
+
+	/* no new message */
+	return 0;
+}
+
+int ipc_platform_poll_is_host_ready(void)
+{
+	uint32_t isr;
+
+	/* Interrupt arrived, check src */
+	isr = shim_read(SHIM_ISRD);
+
+	if (isr & SHIM_ISRD_DONE) {
+
+		/* Mask Done interrupt before return */
+		shim_write(SHIM_IMRD, shim_read(SHIM_IMRD) | SHIM_IMRD_DONE);
+
+		/* clear DONE bit - tell Host we have completed */
+		shim_write(SHIM_IPCD, 0);
+
+		/* unmask Done interrupt */
+		shim_write(SHIM_IMRD, shim_read(SHIM_IMRD) & ~SHIM_IMRD_DONE);
+
+		/* host done */
+		return 1;
+	}
+
+	/* host still pending */
+	return 0;
+}
+
+int ipc_platform_poll_tx_host_msg(struct ipc_msg *msg)
+{
+	/* can't send nofication when one is in progress */
+	if (shim_read(SHIM_IPCD) & (SHIM_IPCD_BUSY | SHIM_IPCD_DONE))
+		return 0;
+
+	/* now send the message */
+	mailbox_dspbox_write(0, msg->tx_data, msg->tx_size);
+
+	/* now interrupt host to tell it we have message sent */
+	shim_write(SHIM_IPCD, SHIM_IPCD_BUSY);
+
+	/* message sent */
+	platform_shared_commit(msg, sizeof(*msg));
+	return 1;
+}
+
+#endif
