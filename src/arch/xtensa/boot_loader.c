@@ -168,7 +168,7 @@ static void parse_manifest(void)
 }
 #endif
 
-/* power off unused HPSRAM */
+
 #if CONFIG_CANNONLAKE
 /* function powers up a number of memory banks provided as an argument and
  * gates remaining memory banks
@@ -238,7 +238,7 @@ static int32_t hp_sram_pm_banks(uint32_t banks)
 	return 0;
 }
 
-static uint32_t hp_sram_power_off_memory(uint32_t memory_size)
+static uint32_t hp_sram_power_on_memory(uint32_t memory_size)
 {
 	uint32_t ebb_in_use;
 
@@ -254,12 +254,13 @@ static uint32_t hp_sram_power_off_memory(uint32_t memory_size)
 
 static int32_t hp_sram_power_off_unused_banks(uint32_t memory_size)
 {
-	return hp_sram_power_off_memory(memory_size);
+	/* keep enabled only memory banks used by FW */
+	return hp_sram_power_on_memory(memory_size);
 }
 
 static int32_t hp_sram_init(void)
 {
-	return hp_sram_power_off_memory(HP_SRAM_SIZE);
+	return hp_sram_power_on_memory(HP_SRAM_SIZE);
 }
 
 #else
