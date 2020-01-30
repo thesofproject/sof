@@ -179,8 +179,6 @@
 #define SHIM_LPSCTL_FDSPRUN	BIT(9)
 #define SHIM_LPSCTL_BATTR_0	BIT(12)
 
-#define SHIM_LSPGCTL		0x50
-
 /** \brief GPDMA shim registers Control */
 #define SHIM_GPDMA_BASE_OFFSET	0x6500
 #define SHIM_GPDMA_BASE(x)	(SHIM_GPDMA_BASE_OFFSET + (x) * 0x100)
