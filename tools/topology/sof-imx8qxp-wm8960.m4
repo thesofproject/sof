@@ -31,17 +31,17 @@ dnl     period, priority, core,
 dnl     pcm_min_rate, pcm_max_rate, pipeline_rate,
 dnl     time_domain, sched_comp)
 
-# Low Latency playback pipeline 1 on PCM 0 using max 2 channels of s24le.
+# Low Latency playback pipeline 1 on PCM 0 using max 2 channels of s32le.
 # Set 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
-	1, 0, 2, s24le,
+	1, 0, 2, s32le,
 	1000, 0, 0,
 	48000, 48000, 48000)
 
-# Low Latency capture pipeline 2 on PCM 0 using max 2 channels of s24le.
+# Low Latency capture pipeline 2 on PCM 0 using max 2 channels of s32le.
 # Set 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-volume-capture.m4,
-	2, 0, 2, s24le,
+	2, 0, 2, s32le,
 	1000, 0, 0,
 	48000, 48000, 48000)
 #
@@ -54,17 +54,17 @@ dnl     buffer, periods, format,
 dnl     period, priority, core, time_domain)
 
 # playback DAI is SAI1 using 2 periods
-# Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
+# Buffers use s32le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
 	1, SAI, 1, sai1-wm8960-hifi,
-	PIPELINE_SOURCE_1, 2, s24le,
+	PIPELINE_SOURCE_1, 2, s32le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_DMA)
 
 # capture DAI is SAI1 using 2 periods
-# Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
+# Buffers use s32le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
 	2, SAI, 1, sai1-wm8960-hifi,
-	PIPELINE_SINK_2, 2, s24le,
+	PIPELINE_SINK_2, 2, s32le,
 	1000, 0, 0)
 
 
