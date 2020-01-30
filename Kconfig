@@ -19,18 +19,17 @@ config HP_MEMORY_BANKS
 
 config LP_MEMORY_BANKS
 	int "LP memory banks count"
-	default 1
-	depends on LP_SRAM
+	default 0
 	help
-	  Available memory banks count for Low Power memory
+	  Available memory banks count for Low Power memory.
+	  It can be used to turn ON/OFF LPSRAM bank/s.
+	  Firmware will turn on only as many banks as are defined here.
 
 config LP_SRAM
-	bool "Enable LPSRAM memory"
-	default n
+	bool
+	default LP_MEMORY_BANKS > 0
 	help
-	  Turn ON/OFF LPSRAM bank/s. This provides an option to enable an LPSRAM
-	  memory for specific platform. Until this options is enabled firmware will
-	  not enable any of LPSRAM memory banks.
+	  Indicates that platform uses LPSRAM.
 
 config CAVS_LPS
 	bool "Intel cAVS Low Power Sequencer for Power Management"
