@@ -20,6 +20,7 @@
 #include <sof/drivers/interrupt.h>
 #include <sof/drivers/ipc.h>
 #include <sof/drivers/timer.h>
+#include <sof/fw-ready-metadata.h>
 #include <sof/lib/agent.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/cache.h>
@@ -300,6 +301,10 @@ int platform_boot_complete(uint32_t boot_message)
 	/* variable length compiler description is a last field of cc_version */
 	mailbox_dspbox_write(mb_offset, &cc_version,
 			     cc_version.ext_hdr.hdr.size);
+	mb_offset = mb_offset + cc_version.ext_hdr.hdr.size;
+
+	mailbox_dspbox_write(mb_offset, &probe_support,
+			     probe_support.ext_hdr.hdr.size);
 
 	/* tell host we are ready */
 #if CAVS_VERSION == CAVS_VERSION_1_5
