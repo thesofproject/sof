@@ -11,6 +11,7 @@
 #include <sof/drivers/ipc.h>
 #include <sof/drivers/mu.h>
 #include <sof/drivers/timer.h>
+#include <sof/fw-ready-metadata.h>
 #include <sof/lib/agent.h>
 #include <sof/lib/clk.h>
 #include <sof/lib/cpu.h>
@@ -133,6 +134,10 @@ int platform_boot_complete(uint32_t boot_message)
 	/* variable length compiler description is a last field of cc_version */
 	mailbox_dspbox_write(mb_offset, &cc_version,
 			     cc_version.ext_hdr.hdr.size);
+	mb_offset = mb_offset + cc_version.ext_hdr.hdr.size;
+
+	mailbox_dspbox_write(mb_offset, &probe_support,
+			     probe_support.ext_hdr.hdr.size);
 
 	/* now interrupt host to tell it we are done booting */
 	imx_mu_xcr_rmw(IMX_MU_xCR_GIRn(1), 0);

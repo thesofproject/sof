@@ -35,6 +35,9 @@ set_property(TARGET data_structs APPEND
 	     PROPERTY COMPILE_DEFINITIONS
 	     CC_OPTIMIZE_FLAGS="${optimization_flag}")
 
-add_local_sources(data_structs cc_version.c)
+add_local_sources(data_structs
+	cc_version.c
+	probe_support.c)
+
 target_link_libraries(data_structs sof_options)
 target_link_libraries(sof_static_libraries INTERFACE data_structs)
