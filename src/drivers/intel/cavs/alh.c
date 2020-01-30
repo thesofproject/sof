@@ -27,10 +27,11 @@ static int alh_trigger(struct dai *dai, int cmd, int direction)
 	return 0;
 }
 
-static int alh_set_config(struct dai *dai, struct sof_ipc_dai_config *config)
+static int alh_set_config(struct dai *dai, struct sof_ipc_dai_config *config,
+			  int config_idx)
 {
-	trace_alh("alh_set_config() config->format = 0x%4x",
-		  config->format);
+	trace_alh("alh_set_config() config->params.format = 0x%4x",
+		  config->params.format);
 
 	return 0;
 }

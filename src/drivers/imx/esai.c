@@ -89,13 +89,14 @@ static int esai_context_restore(struct dai *dai)
 }
 
 static inline int esai_set_config(struct dai *dai,
-				 struct sof_ipc_dai_config *config)
+				  struct sof_ipc_dai_config *config,
+				  int config_idx)
 {
 	uint32_t xcr = 0, xccr = 0, mask;
 
 	tracev_esai("ESAI: set_config format 0x%04x",
-		    config->format);
-	switch (config->format & SOF_DAI_FMT_FORMAT_MASK) {
+		    config->params.format);
+	switch (config->params.format & SOF_DAI_FMT_FORMAT_MASK) {
 	case SOF_DAI_FMT_I2S:
 		/* Data on rising edge of bclk, frame low, 1clk before
 		 * data
@@ -134,7 +135,7 @@ static inline int esai_set_config(struct dai *dai,
 		return -EINVAL;
 	}
 
-	switch (config->format & SOF_DAI_FMT_INV_MASK) {
+	switch (config->params.format & SOF_DAI_FMT_INV_MASK) {
 	case SOF_DAI_FMT_NB_NF:
 		 /* Nothing to do for both normal cases */
 		break;
@@ -155,7 +156,7 @@ static inline int esai_set_config(struct dai *dai,
 		return -EINVAL;
 	}
 
-	switch (config->format & SOF_DAI_FMT_MASTER_MASK) {
+	switch (config->params.format & SOF_DAI_FMT_MASTER_MASK) {
 	case SOF_DAI_FMT_CBM_CFM:
 		/* Nothing to do in the registers */
 		break;

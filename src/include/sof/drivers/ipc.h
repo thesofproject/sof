@@ -236,7 +236,8 @@ struct ipc_comp_dev *ipc_get_comp_by_ppl_id(struct ipc *ipc, uint16_t type,
 /*
  * Configure all DAI components attached to DAI.
  */
-int ipc_comp_dai_config(struct ipc *ipc, struct sof_ipc_dai_config *config);
+int ipc_comp_dai_config(struct ipc *ipc, struct sof_ipc_dai_config *config,
+			int config_idx);
 
 /* send DMA trace host buffer position to host */
 int ipc_dma_trace_send_position(void);

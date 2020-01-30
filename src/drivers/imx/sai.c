@@ -95,7 +95,8 @@ static int sai_context_restore(struct dai *dai)
 }
 
 static inline int sai_set_config(struct dai *dai,
-				 struct sof_ipc_dai_config *config)
+				 struct sof_ipc_dai_config *config,
+				 int config_idx)
 {
 	trace_sai("SAI: sai_set_config");
 	uint32_t val_cr2 = 0, val_cr4 = 0, val_cr5 = 0;
@@ -103,7 +104,7 @@ static inline int sai_set_config(struct dai *dai,
 	/* TODO: this value will be provided by config */
 	uint32_t sywd = 32;
 
-	switch (config->format & SOF_DAI_FMT_FORMAT_MASK) {
+	switch (config->params.format & SOF_DAI_FMT_FORMAT_MASK) {
 	case SOF_DAI_FMT_I2S:
 		/*
 		 * Frame low, 1clk before data, one word length for frame sync,
@@ -162,7 +163,7 @@ static inline int sai_set_config(struct dai *dai,
 	}
 
 	/* DAI clock inversion */
-	switch (config->format & SOF_DAI_FMT_INV_MASK) {
+	switch (config->params.format & SOF_DAI_FMT_INV_MASK) {
 	case SOF_DAI_FMT_IB_IF:
 		/* Invert both clocks */
 		val_cr2 ^= REG_SAI_CR2_BCP;
@@ -184,7 +185,7 @@ static inline int sai_set_config(struct dai *dai,
 	}
 
 	/* DAI clock master masks */
-	switch (config->format & SOF_DAI_FMT_MASTER_MASK) {
+	switch (config->params.format & SOF_DAI_FMT_MASTER_MASK) {
 	case SOF_DAI_FMT_CBS_CFS:
 		trace_sai("SAI: codec is slave");
 		val_cr2 |= REG_SAI_CR2_MSEL_MCLK1;

@@ -23,7 +23,7 @@ static int hda_trigger(struct dai *dai, int cmd, int direction)
 }
 
 static int hda_set_config(struct dai *dai,
-			  struct sof_ipc_dai_config *config)
+			  struct sof_ipc_dai_config *config, int config_idx)
 {
 	return 0;
 }

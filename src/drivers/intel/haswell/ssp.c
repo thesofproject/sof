@@ -51,7 +51,7 @@ static int ssp_context_restore(struct dai *dai)
 
 /* Digital Audio interface formatting */
 static int ssp_set_config(struct dai *dai,
-			  struct sof_ipc_dai_config *config)
+			  struct sof_ipc_dai_config *config, int config_idx)
 {
 	struct ssp_pdata *ssp = dai_get_drvdata(dai);
 	uint32_t sscr0;
@@ -107,10 +107,9 @@ static int ssp_set_config(struct dai *dai,
 	/* sspsp2 no dynamic setting */
 	sspsp2 = 0x0;
 
-	ssp->config = *config;
-	ssp->params = config->ssp;
+	ssp->params = config->ssp[config_idx];
 
-	switch (config->format & SOF_DAI_FMT_MASTER_MASK) {
+	switch (config->params.format & SOF_DAI_FMT_MASTER_MASK) {
 	case SOF_DAI_FMT_CBM_CFM:
 		sscr1 |= SSCR1_SCLKDIR | SSCR1_SFRMDIR;
 #ifdef ENABLE_SSRCR1_SCFR
@@ -136,7 +135,7 @@ static int ssp_set_config(struct dai *dai,
 	}
 
 	/* clock signal polarity */
-	switch (config->format & SOF_DAI_FMT_INV_MASK) {
+	switch (config->params.format & SOF_DAI_FMT_INV_MASK) {
 	case SOF_DAI_FMT_NB_NF:
 		break;
 	case SOF_DAI_FMT_NB_IF:
@@ -197,7 +196,8 @@ static int ssp_set_config(struct dai *dai,
 		SSCR2_PSPSRWFDFD : 0;
 
 	/* BCLK is generated from MCLK - must be divisable */
-	if (config->ssp.mclk_rate % config->ssp.bclk_rate) {
+	if (config->ssp[config_idx].mclk_rate %
+	    config->ssp[config_idx].bclk_rate) {
 		trace_ssp_error("ssp_set_config() error: "
 				"MCLK is not divisable");
 		ret = -EINVAL;
@@ -205,7 +205,8 @@ static int ssp_set_config(struct dai *dai,
 	}
 
 	/* divisor must be within SCR range */
-	mdiv = (config->ssp.mclk_rate / config->ssp.bclk_rate) - 1;
+	mdiv = (config->ssp[config_idx].mclk_rate /
+		config->ssp[config_idx].bclk_rate) - 1;
 	if (mdiv > (SSCR0_SCR_MASK >> 8)) {
 		trace_ssp_error("ssp_set_config() error: "
 				"divisor is not within SCR range");
@@ -217,7 +218,8 @@ static int ssp_set_config(struct dai *dai,
 	sscr0 |= SSCR0_SCR(mdiv);
 
 	/* calc frame width based on BCLK and rate - must be divisable */
-	if (config->ssp.bclk_rate % config->ssp.fsync_rate) {
+	if (config->ssp[config_idx].bclk_rate %
+	    config->ssp[config_idx].fsync_rate) {
 		trace_ssp_error("ssp_set_config() error: "
 				"BLCK is not divisable");
 		ret = -EINVAL;
@@ -225,22 +227,24 @@ static int ssp_set_config(struct dai *dai,
 	}
 
 	/* must be enouch BCLKs for data */
-	bdiv = config->ssp.bclk_rate / config->ssp.fsync_rate;
-	if (bdiv < config->ssp.tdm_slot_width *
-	    config->ssp.tdm_slots) {
+	bdiv = config->ssp[config_idx].bclk_rate /
+	       config->ssp[config_idx].fsync_rate;
+	if (bdiv < config->ssp[config_idx].tdm_slot_width *
+	    config->ssp[config_idx].tdm_slots) {
 		trace_ssp_error("ssp_set_config() error: not enough BCLKs");
 		ret = -EINVAL;
 		goto out;
 	}
 
 	/* tdm_slot_width must be <= 38 for SSP */
-	if (config->ssp.tdm_slot_width > 38) {
+	if (config->ssp[config_idx].tdm_slot_width > 38) {
 		trace_ssp_error("ssp_set_config() error: tdm_slot_width > 38");
 		ret = -EINVAL;
 		goto out;
 	}
 
-	bdiv_min = config->ssp.tdm_slots * config->ssp.sample_valid_bits;
+	bdiv_min = config->ssp[config_idx].tdm_slots *
+		   config->ssp[config_idx].sample_valid_bits;
 	if (bdiv < bdiv_min) {
 		trace_ssp_error("ssp_set_config() error: bdiv < bdiv_min");
 		ret = -EINVAL;
@@ -256,7 +260,7 @@ static int ssp_set_config(struct dai *dai,
 	}
 
 	/* format */
-	format = config->format & SOF_DAI_FMT_FORMAT_MASK;
+	format = config->params.format & SOF_DAI_FMT_FORMAT_MASK;
 	switch (format) {
 	case SOF_DAI_FMT_I2S:
 	case SOF_DAI_FMT_LEFT_J:
@@ -285,7 +289,7 @@ static int ssp_set_config(struct dai *dai,
 			sspsp |= SSPSP_SFRMP(!inverted_frame);
 		}
 
-		sscr0 |= SSCR0_FRDC(config->ssp.tdm_slots);
+		sscr0 |= SSCR0_FRDC(config->ssp[config_idx].tdm_slots);
 
 		if (bdiv % 2) {
 			trace_ssp_error("ssp_set_config() error: "
@@ -328,7 +332,7 @@ static int ssp_set_config(struct dai *dai,
 
 		start_delay = 1;
 
-		sscr0 |= SSCR0_FRDC(config->ssp.tdm_slots);
+		sscr0 |= SSCR0_FRDC(config->ssp[config_idx].tdm_slots);
 
 		/* set asserted frame length */
 		frame_len = 1;
@@ -342,7 +346,7 @@ static int ssp_set_config(struct dai *dai,
 
 		start_delay = 0;
 
-		sscr0 |= SSCR0_FRDC(config->ssp.tdm_slots);
+		sscr0 |= SSCR0_FRDC(config->ssp[config_idx].tdm_slots);
 
 		/* set asserted frame length */
 		frame_len = 1;
@@ -363,7 +367,7 @@ static int ssp_set_config(struct dai *dai,
 
 	sspsp |= SSPSP_SFRMWDTH(frame_len);
 
-	data_size = config->ssp.sample_valid_bits;
+	data_size = config->ssp[config_idx].sample_valid_bits;
 
 	if (data_size > 16)
 		sscr0 |= (SSCR0_EDSS | SSCR0_DSIZE(data_size - 16));
@@ -376,8 +380,8 @@ static int ssp_set_config(struct dai *dai,
 	ssp_write(dai, SSCR1, sscr1);
 	ssp_write(dai, SSCR2, sscr2);
 	ssp_write(dai, SSPSP, sspsp);
-	ssp_write(dai, SSTSA, config->ssp.tx_slots);
-	ssp_write(dai, SSRSA, config->ssp.rx_slots);
+	ssp_write(dai, SSTSA, config->ssp[config_idx].tx_slots);
+	ssp_write(dai, SSRSA, config->ssp[config_idx].rx_slots);
 	ssp_write(dai, SSPSP2, sspsp2);
 
 	ssp->state[DAI_DIR_PLAYBACK] = COMP_STATE_PREPARE;

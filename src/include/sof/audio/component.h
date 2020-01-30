@@ -197,7 +197,8 @@ struct comp_ops {
 
 	/** set component audio stream parameters */
 	int (*dai_config)(struct comp_dev *dev,
-			  struct sof_ipc_dai_config *dai_config);
+			  struct sof_ipc_dai_config *dai_config,
+			  int config_idx);
 
 	/** used to pass standard and bespoke commands (with optional data) */
 	int (*cmd)(struct comp_dev *dev, int cmd, void *data,
@@ -519,10 +520,10 @@ static inline int comp_reset(struct comp_dev *dev)
  * @return 0 if succeeded, error code otherwise.
  */
 static inline int comp_dai_config(struct comp_dev *dev,
-	struct sof_ipc_dai_config *config)
+	struct sof_ipc_dai_config *config, int config_idx)
 {
 	if (dev->drv->ops.dai_config)
-		return dev->drv->ops.dai_config(dev, config);
+		return dev->drv->ops.dai_config(dev, config, config_idx);
 	return 0;
 }
 

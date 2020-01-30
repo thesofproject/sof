@@ -16,6 +16,7 @@
 #ifndef __IPC_DAI_H__
 #define __IPC_DAI_H__
 
+#include <ipc/channel_map.h>
 #include <ipc/dai-intel.h>
 #include <ipc/dai-imx.h>
 #include <ipc/header.h>
@@ -63,9 +64,7 @@ enum sof_ipc_dai_type {
 	SOF_DAI_IMX_ESAI,               /**< i.MX ESAI */
 };
 
-/* general purpose DAI configuration */
-struct sof_ipc_dai_config {
-	struct sof_ipc_cmd_hdr hdr;
+struct sof_ipc_dai_base_params {
 	uint32_t type;		/**< DAI type - enum sof_ipc_dai_type */
 	uint32_t dai_index;	/**< index of this type dai */
 
@@ -74,16 +73,26 @@ struct sof_ipc_dai_config {
 	uint16_t reserved16;	/**< alignment */
 
 	/* reserved for future use */
-	uint32_t reserved[8];
+	uint32_t reserved[4];
+} __attribute__((packed));
+
+/* general purpose DAI configuration */
+struct sof_ipc_dai_config {
+	struct sof_ipc_cmd_hdr hdr;
+	struct sof_ipc_dai_base_params params;
+
+	/* reserved for future use */
+	uint32_t reserved[3];
+	uint32_t num_configs;
 
 	/* HW specific data */
 	union {
-		struct sof_ipc_dai_ssp_params ssp;
-		struct sof_ipc_dai_dmic_params dmic;
-		struct sof_ipc_dai_hda_params hda;
-		struct sof_ipc_dai_alh_params alh;
-		struct sof_ipc_dai_esai_params esai;
-		struct sof_ipc_dai_sai_params sai;
+		struct sof_ipc_dai_ssp_params ssp[0];
+		struct sof_ipc_dai_dmic_params dmic[0];
+		struct sof_ipc_dai_hda_params hda[0];
+		struct sof_ipc_dai_alh_params alh[0];
+		struct sof_ipc_dai_esai_params esai[0];
+		struct sof_ipc_dai_sai_params sai[0];
 	};
 } __attribute__((packed));
 

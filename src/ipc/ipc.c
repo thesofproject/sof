@@ -546,7 +546,8 @@ int ipc_pipeline_complete(struct ipc *ipc, uint32_t comp_id)
 	return ret;
 }
 
-int ipc_comp_dai_config(struct ipc *ipc, struct sof_ipc_dai_config *config)
+int ipc_comp_dai_config(struct ipc *ipc, struct sof_ipc_dai_config *config,
+			int config_idx)
 {
 	bool comp_on_core[PLATFORM_CORE_COUNT] = { false };
 	struct sof_ipc_comp_dai *dai;
@@ -580,9 +581,10 @@ int ipc_comp_dai_config(struct ipc *ipc, struct sof_ipc_dai_config *config)
 			 * set config if comp dai_index matches
 			 * config dai_index.
 			 */
-			if (dai->dai_index == config->dai_index &&
-			    dai->type == config->type) {
-				ret = comp_dai_config(icd->cd, config);
+			if (dai->dai_index == config->params.dai_index &&
+			    dai->type == config->params.type) {
+				ret = comp_dai_config(icd->cd, config,
+						      config_idx);
 				platform_shared_commit(icd, sizeof(*icd));
 				if (ret < 0)
 					break;

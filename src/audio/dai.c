@@ -668,7 +668,8 @@ static int dai_position(struct comp_dev *dev, struct sof_ipc_stream_posn *posn)
 	return 0;
 }
 
-static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
+static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config,
+		      int config_idx)
 {
 	struct sof_ipc_comp_config *dconfig = COMP_GET_CONFIG(dev);
 	struct dai_data *dd = comp_get_drvdata(dev);
@@ -677,7 +678,7 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 	int handshake;
 
 	trace_dai_comp_with_ids(dev, "dai_config() dai %d.%d",
-				config->type, config->dai_index);
+				config->params.type, config->params.dai_index);
 
 	/* cannot configure DAI while active */
 	if (dev->state == COMP_STATE_ACTIVE) {
@@ -685,10 +686,10 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 		return -EINVAL;
 	}
 
-	switch (config->type) {
+	switch (config->params.type) {
 	case SOF_DAI_INTEL_SSP:
 		/* set dma burst elems to slot number */
-		dd->config.burst_elems = config->ssp.tdm_slots;
+		dd->config.burst_elems = config->ssp[config_idx].tdm_slots;
 		break;
 	case SOF_DAI_INTEL_DMIC:
 		tracev_dai_comp_with_ids(dev, "dai_config(), config->type = SOF_DAI_INTEL_DMIC");
@@ -697,11 +698,11 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 		dd->config.burst_elems = 8;
 
 		trace_dai_comp_with_ids(dev, "dai_config(), config->dmic.fifo_bits = %u config->dmic.num_pdm_active = %u",
-					config->dmic.fifo_bits,
-					config->dmic.num_pdm_active);
+					config->dmic[config_idx].fifo_bits,
+					config->dmic[config_idx].num_pdm_active);
 		break;
 	case SOF_DAI_INTEL_HDA:
-		channel = config->hda.link_dma_ch;
+		channel = config->hda[config_idx].link_dma_ch;
 		trace_dai_comp_with_ids(dev, "dai_config(), channel = %d",
 					channel);
 
@@ -729,8 +730,8 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 		/* As with HDA, the DMA channel is assigned in runtime,
 		 * not during topology parsing.
 		 */
-		channel = config->alh.stream_id;
-		dd->stream_id = config->alh.stream_id;
+		channel = config->alh[config_idx].stream_id;
+		dd->stream_id = config->alh[config_idx].stream_id;
 		trace_dai_comp_with_ids(dev, "dai_config(), channel = %d",
 					channel);
 		break;
@@ -778,7 +779,7 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 				  dai_dma_cb);
 	}
 
-	return dai_set_config(dd->dai, config);
+	return dai_set_config(dd->dai, config, config_idx);
 }
 
 static int dai_ts_config(struct comp_dev *dev)

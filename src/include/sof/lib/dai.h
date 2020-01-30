@@ -61,7 +61,8 @@ struct sof_ipc_dai_config;
  * \brief DAI operations - all optional
  */
 struct dai_ops {
-	int (*set_config)(struct dai *dai, struct sof_ipc_dai_config *config);
+	int (*set_config)(struct dai *dai, struct sof_ipc_dai_config *config,
+			  int config_idx);
 	int (*trigger)(struct dai *dai, int cmd, int direction);
 	int (*pm_context_restore)(struct dai *dai);
 	int (*pm_context_store)(struct dai *dai);
@@ -212,9 +213,10 @@ void dai_put(struct dai *dai);
  * \brief Digital Audio interface formatting
  */
 static inline int dai_set_config(struct dai *dai,
-				 struct sof_ipc_dai_config *config)
+				 struct sof_ipc_dai_config *config,
+				 int config_idx)
 {
-	int ret = dai->drv->ops.set_config(dai, config);
+	int ret = dai->drv->ops.set_config(dai, config, config_idx);
 
 	platform_shared_commit(dai, sizeof(*dai));
 
