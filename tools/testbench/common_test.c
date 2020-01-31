@@ -12,6 +12,7 @@
 #include <sof/sof.h>
 #include <sof/schedule/task.h>
 #include <sof/lib/alloc.h>
+#include <sof/lib/notifier.h>
 #include <sof/drivers/ipc.h>
 #include <sof/lib/dai.h>
 #include <sof/lib/dma.h>
@@ -28,6 +29,8 @@ int tb_pipeline_setup(struct sof *sof)
 {
 	/* init components */
 	sys_comp_init(sof);
+
+	init_system_notify(sof);
 
 	/* init IPC */
 	if (ipc_init(sof) < 0) {
