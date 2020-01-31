@@ -555,5 +555,5 @@ finish:
 
 	free(temp_comp_list);
 	fclose(file);
-	return 0;
+	return ret;
 }
