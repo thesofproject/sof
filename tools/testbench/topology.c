@@ -196,6 +196,7 @@ static int tplg_load_fileread(int comp_id, int pipeline_id, int size,
 	fileread->comp.id = comp_id;
 
 	/* use fileread comp as scheduling comp */
+	fileread->comp.core = 0;
 	fileread->comp.hdr.size = sizeof(struct sof_ipc_comp_file);
 	fileread->comp.type = SOF_COMP_FILEREAD;
 	fileread->comp.pipeline_id = pipeline_id;
@@ -283,6 +284,7 @@ static int tplg_load_filewrite(int comp_id, int pipeline_id, int size,
 	}
 
 	/* configure filewrite */
+	filewrite->comp.core = 0;
 	filewrite->comp.id = comp_id;
 	filewrite->mode = FILE_WRITE;
 	filewrite->comp.hdr.size = sizeof(struct sof_ipc_comp_file);
