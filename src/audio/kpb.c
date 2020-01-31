@@ -661,9 +661,10 @@ static int kpb_copy(struct comp_dev *dev)
 		comp_update_buffer_consume(source, copy_bytes);
 
 		break;
+	case KPB_STATE_INIT_DRAINING:
 	case KPB_STATE_DRAINING:
-		/* In draining state we only buffer data in internal,
-		 * history buffer.
+		/* In init_ draining and draining state we only buffer data in
+		 * internal, history buffer.
 		 */
 		if (source->stream.avail <= kpb->buffer_size) {
 			ret = kpb_buffer_data(dev, source,
@@ -925,7 +926,6 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 			      (KPB_SAMPLE_CONTAINER_SIZE(sample_width) / 8) *
 			      kpb->config.channels;
 	size_t period_bytes_limit = 0;
-	enum kpb_state state_preserved = kpb->state;
 
 	trace_kpb_with_ids(dev, "kpb_init_draining(): requested draining "
 			   "of %d [ms] from history buffer",
@@ -1048,9 +1048,6 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 
 		/* Schedule draining task */
 		schedule_task(&kpb->draining_task, 0, 0);
-
-		kpb_change_state(kpb, state_preserved);
-
 	}
 }
 
