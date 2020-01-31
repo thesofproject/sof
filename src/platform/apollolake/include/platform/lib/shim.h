@@ -197,7 +197,7 @@
 #define SHIM_HSPGCTL		0x80
 #define SHIM_LSPGCTL		0x84
 #define SHIM_SPSREQ		0xa0
-#define LSPGCTL			SHIM_LSPGCTL
+#define LSPGCTL			(SHIM_BASE + SHIM_LSPGCTL)
 
 #define SHIM_SPSREQ_RVNNP	(0x1 << 0)
 
