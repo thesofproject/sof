@@ -259,6 +259,7 @@ int main(int argc, char **argv)
 	/* reset and free pipeline */
 	toc = clock();
 	tb_enable_trace(true);
+	pipeline_trigger(p, cd, COMP_TRIGGER_STOP);
 	ret = pipeline_reset(p, cd);
 	if (ret < 0) {
 		fprintf(stderr, "error: pipeline reset\n");
