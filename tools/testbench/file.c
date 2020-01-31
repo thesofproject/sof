@@ -307,17 +307,19 @@ static int file_s32_default(struct comp_dev *dev, struct audio_stream *sink,
 			    struct audio_stream *source, uint32_t frames)
 {
 	struct file_comp_data *cd = comp_get_drvdata(dev);
-	int nch = source->channels;
+	int nch;
 	int n_samples = 0;
 
 	switch (cd->fs.mode) {
 	case FILE_READ:
 		/* read samples */
+		nch = sink->channels;
 		n_samples = read_samples_32(dev, sink, frames * nch,
 					    SOF_IPC_FRAME_S32_LE, nch);
 		break;
 	case FILE_WRITE:
 		/* write samples */
+		nch = source->channels;
 		n_samples = write_samples_32(dev, source, frames * nch,
 					     SOF_IPC_FRAME_S32_LE, nch);
 		break;
@@ -335,16 +337,18 @@ static int file_s16(struct comp_dev *dev, struct audio_stream *sink,
 		    struct audio_stream *source, uint32_t frames)
 {
 	struct file_comp_data *cd = comp_get_drvdata(dev);
-	int nch = source->channels;
+	int nch;
 	int n_samples = 0;
 
 	switch (cd->fs.mode) {
 	case FILE_READ:
 		/* read samples */
+		nch = sink->channels;
 		n_samples = read_samples_16(dev, sink, frames * nch, nch);
 		break;
 	case FILE_WRITE:
 		/* write samples */
+		nch = source->channels;
 		n_samples = write_samples_16(dev, source, frames * nch, nch);
 		break;
 	default:
@@ -361,17 +365,19 @@ static int file_s24(struct comp_dev *dev, struct audio_stream *sink,
 		    struct audio_stream *source, uint32_t frames)
 {
 	struct file_comp_data *cd = comp_get_drvdata(dev);
-	int nch = source->channels;
+	int nch;
 	int n_samples = 0;
 
 	switch (cd->fs.mode) {
 	case FILE_READ:
 		/* read samples */
+		nch = sink->channels;
 		n_samples = read_samples_32(dev, sink, frames * nch,
 					    SOF_IPC_FRAME_S24_4LE, nch);
 		break;
 	case FILE_WRITE:
 		/* write samples */
+		nch = source->channels;
 		n_samples = write_samples_32(dev, source, frames * nch,
 					     SOF_IPC_FRAME_S24_4LE, nch);
 		break;
@@ -492,24 +498,26 @@ static int file_params(struct comp_dev *dev,
 {
 	struct file_comp_data *cd = comp_get_drvdata(dev);
 	struct sof_ipc_comp_config *config = COMP_GET_CONFIG(dev);
-	struct audio_stream *sourceb;
+	struct audio_stream *stream;
 
-	/* file component source buffer */
-	sourceb = &list_first_item(&dev->bsource_list, struct comp_buffer,
-				  sink_list)->stream;
-
-	/* for file endpoint set the following from topology config */
+	/* file component source or sink buffer */
 	if (cd->fs.mode == FILE_WRITE) {
-		sourceb->frame_fmt = config->frame_fmt;
-		if (sourceb->frame_fmt == SOF_IPC_FRAME_S16_LE)
-			cd->sample_container_bytes = 2;
-		else
-			cd->sample_container_bytes = 4;
+		stream = &list_first_item(&dev->bsource_list,
+					 struct comp_buffer, sink_list)->stream;
+	} else {
+		stream = &list_first_item(&dev->bsink_list, struct comp_buffer,
+					 source_list)->stream;
 	}
+
+	stream->frame_fmt = config->frame_fmt;
+	if (stream->frame_fmt == SOF_IPC_FRAME_S16_LE)
+		cd->sample_container_bytes = 2;
+	else
+		cd->sample_container_bytes = 4;
 
 	/* calculate period size based on config */
 	cd->period_bytes = dev->frames * cd->sample_container_bytes *
-		sourceb->channels;
+		stream->channels;
 
 	/* File to sink supports only S32_LE/S16_LE/S24_4LE PCM formats */
 	if (config->frame_fmt != SOF_IPC_FRAME_S32_LE &&
@@ -556,9 +564,10 @@ static int file_copy(struct comp_dev *dev)
 {
 	struct comp_buffer *buffer;
 	struct file_comp_data *cd = comp_get_drvdata(dev);
-	int ret = 0, bytes;
 	int snk_frames;
 	int src_frames;
+	int bytes = cd->sample_container_bytes;
+	int ret = 0;
 
 	switch (cd->fs.mode) {
 	case FILE_READ:
@@ -575,7 +584,6 @@ static int file_copy(struct comp_dev *dev)
 					    snk_frames);
 
 			/* update sink buffer pointers */
-			bytes = cd->sample_container_bytes;
 			if (ret > 0)
 				comp_update_buffer_produce(buffer,
 							   ret * bytes);
@@ -595,7 +603,6 @@ static int file_copy(struct comp_dev *dev)
 					    src_frames);
 
 			/* update source buffer pointers */
-			bytes = cd->sample_container_bytes;
 			if (ret > 0)
 				comp_update_buffer_consume(buffer,
 							   ret * bytes);
