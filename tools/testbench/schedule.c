@@ -27,7 +27,7 @@ int schedule_task_init(struct task *task, uint16_t type, uint16_t priority,
 	if (type >= SOF_SCHEDULE_COUNT)
 		return -EINVAL;
 
-	task->type = type;
+	task->type = SOF_SCHEDULE_EDF; /* Note: Force EDF scheduler */
 	task->priority = priority;
 	task->core = core;
 	task->flags = flags;
@@ -44,7 +44,7 @@ static void scheduler_register(struct schedule_data *scheduler)
 
 	if (!*sch) {
 		/* init schedulers list */
-		*sch = malloc(sizeof(**sch));
+		*sch = calloc(1, sizeof(**sch));
 		list_init(&(*sch)->list);
 	}
 
@@ -55,9 +55,9 @@ void scheduler_init(int type, const struct scheduler_ops *ops, void *data)
 {
 	struct schedule_data *sch;
 
-	sch = malloc(sizeof(*sch));
+	sch = calloc(1, sizeof(*sch));
 	list_init(&sch->list);
-	sch->type = type;
+	sch->type = SOF_SCHEDULE_EDF; /* Note: Force EDF scheduler */
 	sch->ops = ops;
 	sch->data = data;
 
