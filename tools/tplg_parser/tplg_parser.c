@@ -79,6 +79,7 @@ int tplg_load_buffer(int comp_id, int pipeline_id, int size,
 	int ret = 0;
 
 	/* configure buffer */
+	buffer->comp.core = 0;
 	buffer->comp.id = comp_id;
 	buffer->comp.pipeline_id = pipeline_id;
 	buffer->comp.hdr.cmd = SOF_IPC_GLB_TPLG_MSG | SOF_IPC_TPLG_BUFFER_NEW;
