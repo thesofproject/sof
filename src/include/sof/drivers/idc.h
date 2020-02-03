@@ -79,6 +79,22 @@
 #define IDC_MSG_IPC		IDC_TYPE(0x4)
 #define IDC_MSG_IPC_EXT		IDC_EXTENSION(0x0)
 
+/** \brief IDC component params message. */
+#define IDC_MSG_PARAMS		IDC_TYPE(0x5)
+#define IDC_MSG_PARAMS_EXT(x)	IDC_EXTENSION(x)
+
+/** \brief IDC component prepare message. */
+#define IDC_MSG_PREPARE		IDC_TYPE(0x6)
+#define IDC_MSG_PREPARE_EXT(x)	IDC_EXTENSION(x)
+
+/** \brief IDC component trigger message. */
+#define IDC_MSG_TRIGGER		IDC_TYPE(0x7)
+#define IDC_MSG_TRIGGER_EXT(x)	IDC_EXTENSION(x)
+
+/** \brief IDC component reset message. */
+#define IDC_MSG_RESET		IDC_TYPE(0x8)
+#define IDC_MSG_RESET_EXT(x)	IDC_EXTENSION(x)
+
 /** \brief Decodes IDC message type. */
 #define iTS(x)	(((x) >> IDC_TYPE_SHIFT) & IDC_TYPE_MASK)
 
