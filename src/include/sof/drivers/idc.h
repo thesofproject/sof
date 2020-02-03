@@ -82,11 +82,21 @@
 /** \brief Decodes IDC message type. */
 #define iTS(x)	(((x) >> IDC_TYPE_SHIFT) & IDC_TYPE_MASK)
 
+/** \brief Max IDC message payload size in bytes. */
+#define IDC_MAX_PAYLOAD_SIZE	96
+
+/** \brief IDC message payload. */
+struct idc_payload {
+	uint8_t data[IDC_MAX_PAYLOAD_SIZE];
+};
+
 /** \brief IDC message. */
 struct idc_msg {
 	uint32_t header;	/**< header value */
 	uint32_t extension;	/**< extension value */
 	uint32_t core;		/**< core id */
+	uint32_t size;		/**< payload size in bytes */
+	void *payload;		/**< pointer to payload data */
 };
 
 /** \brief IDC data. */
@@ -96,8 +106,15 @@ struct idc {
 	struct idc_msg received_msg;	/**< received message */
 	struct task idc_task;		/**< IDC processing task */
 	bool msg_processed[PLATFORM_CORE_COUNT];
+	struct idc_payload *payload;
 	int irq;
 };
+
+static inline struct idc_payload *idc_payload_get(struct idc *idc,
+						  uint32_t core)
+{
+	return idc->payload + cpu_get_id();
+}
 
 void idc_enable_interrupts(int target_core, int source_core);
 

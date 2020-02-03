@@ -6,6 +6,7 @@
 
 #include <sof/audio/component.h>
 #include <sof/audio/pipeline.h>
+#include <sof/debug/panic.h>
 #include <sof/drivers/idc.h>
 #include <sof/drivers/interrupt.h>
 #include <sof/drivers/ipc.h>
@@ -29,6 +30,9 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+
+/** \brief IDC message payload per core. */
+static SHARED_DATA struct idc_payload payload[PLATFORM_CORE_COUNT];
 
 /**
  * \brief Returns IDC data.
@@ -124,12 +128,22 @@ int idc_send_msg(struct idc_msg *msg, uint32_t mode)
 {
 	struct timer *timer = timer_get();
 	struct idc *idc = *idc_get();
+	struct idc_payload *payload = idc_payload_get(idc, msg->core);
 	int core = cpu_get_id();
 	uint64_t deadline;
+	int ret = 0;
 
 	tracev_idc("arch_idc_send_msg()");
 
 	idc->msg_processed[msg->core] = false;
+
+	/* copy payload if available */
+	if (msg->payload) {
+		ret = memcpy_s(payload->data, IDC_MAX_PAYLOAD_SIZE,
+			       msg->payload, msg->size);
+		assert(!ret);
+		platform_shared_commit(payload, sizeof(*payload));
+	}
 
 	idc_write(IPC_IDCIETC(msg->core), core, msg->extension);
 	idc_write(IPC_IDCITC(msg->core), core, msg->header | IPC_IDCITC_BUSY);
@@ -154,7 +168,7 @@ int idc_send_msg(struct idc_msg *msg, uint32_t mode)
 		}
 	}
 
-	return 0;
+	return ret;
 }
 
 /**
@@ -271,6 +285,7 @@ int idc_init(void)
 	*idc = rzalloc(SOF_MEM_ZONE_SYS, 0, SOF_MEM_CAPS_RAM, sizeof(**idc));
 	(*idc)->busy_bit_mask = idc_get_busy_bit_mask(core);
 	(*idc)->done_bit_mask = idc_get_done_bit_mask(core);
+	(*idc)->payload = cache_to_uncache((struct idc_payload *)payload);
 
 	/* process task */
 	schedule_task_init_edf(&(*idc)->idc_task, &ops, *idc, core, 0);
