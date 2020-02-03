@@ -119,6 +119,39 @@ static void idc_irq_handler(void *arg)
 }
 
 /**
+ * \brief Sets IDC command status after execution.
+ * \param[in] status Status to be set.
+ * \param[in] core Id of the core for this status.
+ */
+static void idc_msg_status_set(int status, uint32_t core)
+{
+	struct idc *idc = *idc_get();
+	struct idc_payload *payload = idc_payload_get(idc, core);
+
+	*(uint32_t *)payload->data = status;
+
+	platform_shared_commit(payload, sizeof(*payload));
+}
+
+/**
+ * \brief Retrieves IDC command status after sending message.
+ * \param[in] core Id of the core for this status.
+ * \return Last IDC message status.
+ */
+static int idc_msg_status_get(uint32_t core)
+{
+	struct idc *idc = *idc_get();
+	struct idc_payload *payload = idc_payload_get(idc, core);
+	int status;
+
+	status = *(uint32_t *)payload->data;
+
+	platform_shared_commit(payload, sizeof(*payload));
+
+	return status;
+}
+
+/**
  * \brief Sends IDC message.
  * \param[in,out] msg Pointer to IDC message.
  * \param[in] mode Is message blocking or not.
@@ -159,13 +192,15 @@ int idc_send_msg(struct idc_msg *msg, uint32_t mode)
 				 * after read
 				 */
 				if (idc->msg_processed[msg->core])
-					return 0;
+					break;
 
 				trace_idc_error("arch_idc_send_msg() error: "
 						"timeout");
 				return -ETIME;
 			}
 		}
+
+		ret = idc_msg_status_get(msg->core);
 	}
 
 	return ret;
@@ -189,6 +224,7 @@ static void idc_ipc(void)
 static void idc_cmd(struct idc_msg *msg)
 {
 	uint32_t type = iTS(msg->header);
+	int ret = 0;
 
 	switch (type) {
 	case iTS(IDC_MSG_POWER_DOWN):
@@ -204,6 +240,8 @@ static void idc_cmd(struct idc_msg *msg)
 		trace_idc_error("idc_cmd() error: invalid msg->header = %u",
 				msg->header);
 	}
+
+	idc_msg_status_set(ret, cpu_get_id());
 }
 
 /**
