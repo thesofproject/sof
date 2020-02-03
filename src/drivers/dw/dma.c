@@ -334,12 +334,6 @@ out:
 static int dw_dma_release(struct dma_chan_data *channel)
 {
 	struct dw_dma_chan_data *dw_chan = dma_chan_get_data(channel);
-	struct dma_cb_data next = {
-		.channel = channel,
-		.status = DMA_CB_STATUS_RELOAD,
-	};
-	uint32_t next_ptr;
-	uint32_t bytes_left;
 	uint32_t flags;
 
 	trace_dwdma("dw_dma_release(): dma %d channel %d release",
@@ -349,24 +343,6 @@ static int dw_dma_release(struct dma_chan_data *channel)
 
 	/* get next lli for proper release */
 	dw_chan->lli_current = (struct dw_lli *)dw_chan->lli_current->llp;
-
-	/* copy leftover data between current and last lli */
-	next_ptr = DW_DMA_LLI_ADDRESS(dw_chan->lli_current, channel->direction);
-	if (next_ptr >= dw_chan->ptr_data.current_ptr)
-		bytes_left = next_ptr - dw_chan->ptr_data.current_ptr;
-	else
-		/* pointer wrap */
-		bytes_left = (dw_chan->ptr_data.end_ptr -
-			dw_chan->ptr_data.current_ptr) +
-			(next_ptr - dw_chan->ptr_data.start_ptr);
-
-	/* perform copy if callback exists */
-	next.elem.size = bytes_left;
-	notifier_event(channel, NOTIFIER_ID_DMA_COPY,
-		       NOTIFIER_TARGET_CORE_LOCAL, &next, sizeof(next));
-
-	/* increment pointer */
-	dw_dma_increment_pointer(dw_chan, bytes_left);
 
 	irq_local_enable(flags);
 
