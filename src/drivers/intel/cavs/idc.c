@@ -218,6 +218,107 @@ static void idc_ipc(void)
 }
 
 /**
+ * \brief Executes IDC component params message.
+ * \param[in] comp_id Component id to have params set.
+ * \return Error code.
+ */
+static int idc_params(uint32_t comp_id)
+{
+	struct ipc *ipc = ipc_get();
+	struct ipc_comp_dev *ipc_dev;
+	struct idc *idc = *idc_get();
+	struct idc_payload *payload = idc_payload_get(idc, cpu_get_id());
+	struct sof_ipc_stream_params *params =
+		(struct sof_ipc_stream_params *)payload;
+	int ret;
+
+	ipc_dev = ipc_get_comp_by_id(ipc, comp_id);
+	if (!ipc_dev)
+		return -ENODEV;
+
+	ret = comp_params(ipc_dev->cd, params);
+
+	platform_shared_commit(payload, sizeof(*payload));
+	platform_shared_commit(ipc_dev, sizeof(*ipc_dev));
+	platform_shared_commit(ipc, sizeof(*ipc));
+
+	return ret;
+}
+
+/**
+ * \brief Executes IDC component prepare message.
+ * \param[in] comp_id Component id to be prepared.
+ * \return Error code.
+ */
+static int idc_prepare(uint32_t comp_id)
+{
+	struct ipc *ipc = ipc_get();
+	struct ipc_comp_dev *ipc_dev;
+	int ret;
+
+	ipc_dev = ipc_get_comp_by_id(ipc, comp_id);
+	if (!ipc_dev)
+		return -ENODEV;
+
+	ret = comp_prepare(ipc_dev->cd);
+
+	platform_shared_commit(ipc_dev, sizeof(*ipc_dev));
+	platform_shared_commit(ipc, sizeof(*ipc));
+
+	return ret;
+}
+
+/**
+ * \brief Executes IDC component trigger message.
+ * \param[in] comp_id Component id to be triggered.
+ * \return Error code.
+ */
+static int idc_trigger(uint32_t comp_id)
+{
+	struct ipc *ipc = ipc_get();
+	struct ipc_comp_dev *ipc_dev;
+	struct idc *idc = *idc_get();
+	struct idc_payload *payload = idc_payload_get(idc, cpu_get_id());
+	uint32_t cmd = *(uint32_t *)payload;
+	int ret;
+
+	ipc_dev = ipc_get_comp_by_id(ipc, comp_id);
+	if (!ipc_dev)
+		return -ENODEV;
+
+	ret = comp_trigger(ipc_dev->cd, cmd);
+
+	platform_shared_commit(payload, sizeof(*payload));
+	platform_shared_commit(ipc_dev, sizeof(*ipc_dev));
+	platform_shared_commit(ipc, sizeof(*ipc));
+
+	return ret;
+}
+
+/**
+ * \brief Executes IDC component reset message.
+ * \param[in] comp_id Component id to be reset.
+ * \return Error code.
+ */
+static int idc_reset(uint32_t comp_id)
+{
+	struct ipc *ipc = ipc_get();
+	struct ipc_comp_dev *ipc_dev;
+	int ret;
+
+	ipc_dev = ipc_get_comp_by_id(ipc, comp_id);
+	if (!ipc_dev)
+		return -ENODEV;
+
+	ret = comp_reset(ipc_dev->cd);
+
+	platform_shared_commit(ipc_dev, sizeof(*ipc_dev));
+	platform_shared_commit(ipc, sizeof(*ipc));
+
+	return ret;
+}
+
+/**
  * \brief Executes IDC message based on type.
  * \param[in,out] msg Pointer to IDC message.
  */
@@ -235,6 +336,18 @@ static void idc_cmd(struct idc_msg *msg)
 		break;
 	case iTS(IDC_MSG_IPC):
 		idc_ipc();
+		break;
+	case iTS(IDC_MSG_PARAMS):
+		ret = idc_params(msg->extension);
+		break;
+	case iTS(IDC_MSG_PREPARE):
+		ret = idc_prepare(msg->extension);
+		break;
+	case iTS(IDC_MSG_TRIGGER):
+		ret = idc_trigger(msg->extension);
+		break;
+	case iTS(IDC_MSG_RESET):
+		ret = idc_reset(msg->extension);
 		break;
 	default:
 		trace_idc_error("idc_cmd() error: invalid msg->header = %u",
