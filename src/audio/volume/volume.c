@@ -22,6 +22,7 @@
 #include <sof/debug/panic.h>
 #include <sof/drivers/ipc.h>
 #include <sof/lib/alloc.h>
+#include <sof/lib/cpu.h>
 #include <sof/lib/memory.h>
 #include <sof/list.h>
 #include <sof/math/numbers.h>
@@ -149,6 +150,36 @@ static enum task_state vol_work(void *data)
 }
 
 /**
+ * \brief Allocates task of volume component.
+ * \param[in,out] dev Volume base component device.
+ * \return Error code.
+ */
+static int vol_task_init(struct comp_dev *dev)
+{
+	struct comp_data *cd = comp_get_drvdata(dev);
+	int ret;
+
+	/* initialize task if necessary */
+	if (cd->volwork)
+		return 0;
+
+	cd->volwork = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+			      sizeof(*cd->volwork));
+	if (!cd->volwork)
+		return -ENOMEM;
+
+	ret = schedule_task_init_ll(cd->volwork, SOF_SCHEDULE_LL_TIMER,
+				    SOF_TASK_PRI_MED, vol_work, dev,
+				    cpu_get_id(), 0);
+	if (ret < 0) {
+		rfree(cd->volwork);
+		return ret;
+	}
+
+	return 0;
+}
+
+/**
  * \brief Creates volume component.
  * \param[in,out] data Volume base component device.
  * \param[in] delay Update time.
@@ -188,8 +219,6 @@ static struct comp_dev *volume_new(struct sof_ipc_comp *comp)
 	}
 
 	comp_set_drvdata(dev, cd);
-	schedule_task_init_ll(&cd->volwork, SOF_SCHEDULE_LL_TIMER,
-			      SOF_TASK_PRI_MED, vol_work, dev, 0, 0);
 
 	/* Set the default volumes. If IPC sets min_value or max_value to
 	 * not-zero, use them. Otherwise set to internal limits and notify
@@ -264,7 +293,10 @@ static void volume_free(struct comp_dev *dev)
 	trace_volume_with_ids(dev, "volume_free()");
 
 	/* remove scheduling */
-	schedule_task_free(&cd->volwork);
+	if (cd->volwork) {
+		schedule_task_free(cd->volwork);
+		rfree(cd->volwork);
+	}
 
 	rfree(cd);
 	rfree(dev);
@@ -464,9 +496,14 @@ static int volume_ctrl_set_cmd(struct comp_dev *dev,
 			}
 		}
 
-		if (!cd->vol_ramp_active)
-			schedule_task(&cd->volwork, VOL_RAMP_UPDATE_US,
+		if (!cd->vol_ramp_active) {
+			ret = vol_task_init(dev);
+			if (ret < 0)
+				return ret;
+
+			schedule_task(cd->volwork, VOL_RAMP_UPDATE_US,
 				      VOL_RAMP_UPDATE_US);
+		}
 		break;
 
 	case SOF_CTRL_CMD_SWITCH:
@@ -491,9 +528,14 @@ static int volume_ctrl_set_cmd(struct comp_dev *dev,
 				volume_set_chan_mute(dev, ch);
 		}
 
-		if (!cd->vol_ramp_active)
-			schedule_task(&cd->volwork, VOL_RAMP_UPDATE_US,
+		if (!cd->vol_ramp_active) {
+			ret = vol_task_init(dev);
+			if (ret < 0)
+				return ret;
+
+			schedule_task(cd->volwork, VOL_RAMP_UPDATE_US,
 				      VOL_RAMP_UPDATE_US);
+		}
 		break;
 
 	default:
@@ -600,7 +642,7 @@ static int volume_copy(struct comp_dev *dev)
 	tracev_volume_with_ids(dev, "volume_copy()");
 
 	if (!cd->ramp_started)
-		schedule_task(&cd->volwork, VOL_RAMP_UPDATE_US,
+		schedule_task(cd->volwork, VOL_RAMP_UPDATE_US,
 			      VOL_RAMP_UPDATE_US);
 
 	/* Get source, sink, number of frames etc. to process. */
@@ -691,6 +733,10 @@ static int volume_prepare(struct comp_dev *dev)
 		cd->volume[i] = cd->vol_min;
 		volume_set_chan(dev, i, cd->tvolume[i], false);
 	}
+
+	ret = vol_task_init(dev);
+	if (ret < 0)
+		return ret;
 
 	return 0;
 
