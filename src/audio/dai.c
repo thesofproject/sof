@@ -136,6 +136,8 @@ static struct comp_dev *dai_new(const struct comp_driver *drv,
 		return NULL;
 	dev->drv = drv;
 
+	dev->size = COMP_SIZE(struct sof_ipc_comp_dai);
+
 	dai = COMP_GET_IPC(dev, sof_ipc_comp_dai);
 	ret = memcpy_s(dai, sizeof(*dai), ipc_dai,
 		       sizeof(struct sof_ipc_comp_dai));

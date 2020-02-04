@@ -274,6 +274,8 @@ static struct comp_dev *asrc_new(const struct comp_driver *drv,
 		return NULL;
 	dev->drv = drv;
 
+	dev->size = COMP_SIZE(struct sof_ipc_comp_asrc);
+
 	asrc = COMP_GET_IPC(dev, sof_ipc_comp_asrc);
 	err = memcpy_s(asrc, sizeof(*asrc), ipc_asrc,
 		       sizeof(struct sof_ipc_comp_asrc));

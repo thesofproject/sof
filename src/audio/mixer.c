@@ -124,6 +124,8 @@ static struct comp_dev *mixer_new(const struct comp_driver *drv,
 		return NULL;
 	dev->drv = drv;
 
+	dev->size = COMP_SIZE(struct sof_ipc_comp_mixer);
+
 	mixer = COMP_GET_IPC(dev, sof_ipc_comp_mixer);
 
 	ret = memcpy_s(mixer, sizeof(*mixer), ipc_mixer,

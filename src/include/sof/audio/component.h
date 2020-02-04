@@ -298,6 +298,8 @@ struct comp_dev {
 				     *  to run component's processing
 				     */
 
+	uint32_t size;		/**< component's allocated size */
+
 	/** common runtime configuration for downstream/upstream */
 	uint32_t direction;	/**< enum sof_ipc_stream_direction */
 

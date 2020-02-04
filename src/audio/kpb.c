@@ -129,6 +129,8 @@ static struct comp_dev *kpb_new(const struct comp_driver *drv,
 		return NULL;
 	dev->drv = drv;
 
+	dev->size = COMP_SIZE(struct sof_ipc_comp_process);
+
 	ret = memcpy_s(COMP_GET_IPC(dev, sof_ipc_comp_process),
 		       sizeof(struct sof_ipc_comp_process),
 		       comp, sizeof(struct sof_ipc_comp_process));

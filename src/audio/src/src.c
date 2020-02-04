@@ -469,6 +469,8 @@ static struct comp_dev *src_new(const struct comp_driver *drv,
 		return NULL;
 	dev->drv = drv;
 
+	dev->size = COMP_SIZE(struct sof_ipc_comp_src);
+
 	src = COMP_GET_IPC(dev, sof_ipc_comp_src);
 
 	ret = memcpy_s(src, sizeof(*src), ipc_src,
