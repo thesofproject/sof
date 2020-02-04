@@ -10,12 +10,14 @@
 #include <sof/drivers/interrupt.h>
 #include <sof/drivers/ipc.h>
 #include <sof/lib/alloc.h>
+#include <sof/lib/cache.h>
 #include <sof/lib/memory.h>
 #include <sof/list.h>
 #include <sof/sof.h>
 #include <sof/string.h>
 #include <ipc/topology.h>
 #include <errno.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -299,4 +301,27 @@ int comp_verify_params(struct comp_dev *dev, uint32_t flag,
 	}
 
 	return 0;
+}
+
+struct comp_dev *comp_make_shared(struct comp_dev *dev)
+{
+	struct comp_dev *old = dev;
+
+	dev = rrealloc(dev, SOF_MEM_ZONE_RUNTIME, SOF_MEM_FLAG_SHARED,
+		       SOF_MEM_CAPS_RAM, dev->size);
+	if (!dev) {
+		trace_error(TRACE_CLASS_COMP, "comp_make_shared() error: unable to realloc component");
+		return NULL;
+	}
+
+	list_init(&dev->bsource_list);
+	list_init(&dev->bsink_list);
+	dev->is_shared = true;
+
+	platform_shared_commit(dev, sizeof(*dev));
+
+	/* clear cache to avoid later random flushes */
+	dcache_invalidate_region(old, sizeof(*old));
+
+	return dev;
 }
