@@ -108,7 +108,7 @@ typedef void (*vol_scale_func)(struct comp_dev *dev, struct audio_stream *sink,
  * Gain amplitude value is between 0 (mute) ... 2^16 (0dB) ... 2^24 (~+48dB).
  */
 struct comp_data {
-	struct task volwork;		/**< volume scheduled work function */
+	struct task *volwork;		/**< volume scheduled work function */
 	struct sof_ipc_ctrl_value_chan *hvol;	/**< host volume readback */
 	int32_t volume[SOF_IPC_MAX_CHANNELS];	/**< current volume */
 	int32_t tvolume[SOF_IPC_MAX_CHANNELS];	/**< target volume */
