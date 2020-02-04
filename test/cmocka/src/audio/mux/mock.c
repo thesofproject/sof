@@ -36,3 +36,8 @@ struct sof *sof_get(void)
 {
 	return &sof;
 }
+
+struct schedulers **arch_schedulers_get(void)
+{
+	return NULL;
+}

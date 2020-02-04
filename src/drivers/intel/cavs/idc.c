@@ -20,6 +20,7 @@
 #include <sof/lib/shim.h>
 #include <sof/platform.h>
 #include <sof/schedule/edf_schedule.h>
+#include <sof/schedule/ll_schedule.h>
 #include <sof/schedule/schedule.h>
 #include <sof/schedule/task.h>
 #include <ipc/control.h>
@@ -245,6 +246,14 @@ static int idc_params(uint32_t comp_id)
 	return ret;
 }
 
+static enum task_state comp_task(void *data)
+{
+	if (comp_copy(data) < 0)
+		return SOF_TASK_STATE_COMPLETED;
+
+	return SOF_TASK_STATE_RESCHEDULE;
+}
+
 /**
  * \brief Executes IDC component prepare message.
  * \param[in] comp_id Component id to be prepared.
@@ -254,14 +263,38 @@ static int idc_prepare(uint32_t comp_id)
 {
 	struct ipc *ipc = ipc_get();
 	struct ipc_comp_dev *ipc_dev;
+	struct comp_dev *dev;
 	int ret;
 
 	ipc_dev = ipc_get_comp_by_id(ipc, comp_id);
 	if (!ipc_dev)
 		return -ENODEV;
 
+	dev = ipc_dev->cd;
+
+	/* we're running on different core, so allocate our own task */
+	if (!dev->task) {
+		/* allocate task for shared component */
+		dev->task = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+				    sizeof(*dev->task));
+		if (!dev->task) {
+			ret = -ENOMEM;
+			goto out;
+		}
+
+		ret = schedule_task_init_ll(dev->task, SOF_SCHEDULE_LL_TIMER,
+					    dev->priority, comp_task, dev,
+					    dev->comp.core, 0);
+		if (ret < 0) {
+			rfree(dev->task);
+			goto out;
+		}
+	}
+
 	ret = comp_prepare(ipc_dev->cd);
 
+out:
+	platform_shared_commit(dev, sizeof(*dev));
 	platform_shared_commit(ipc_dev, sizeof(*ipc_dev));
 	platform_shared_commit(ipc, sizeof(*ipc));
 
@@ -287,8 +320,25 @@ static int idc_trigger(uint32_t comp_id)
 		return -ENODEV;
 
 	ret = comp_trigger(ipc_dev->cd, cmd);
+	if (ret < 0)
+		goto out;
 
+	/* schedule or cancel task */
+	switch (cmd) {
+	case COMP_TRIGGER_START:
+	case COMP_TRIGGER_RELEASE:
+		schedule_task(ipc_dev->cd->task, 0, ipc_dev->cd->period);
+		break;
+	case COMP_TRIGGER_XRUN:
+	case COMP_TRIGGER_PAUSE:
+	case COMP_TRIGGER_STOP:
+		schedule_task_cancel(ipc_dev->cd->task);
+		break;
+	}
+
+out:
 	platform_shared_commit(payload, sizeof(*payload));
+	platform_shared_commit(ipc_dev->cd, sizeof(*ipc_dev->cd));
 	platform_shared_commit(ipc_dev, sizeof(*ipc_dev));
 	platform_shared_commit(ipc, sizeof(*ipc));
 

@@ -143,6 +143,8 @@ static int pipeline_comp_complete(struct comp_dev *current,
 
 	/* complete component init */
 	current->pipeline = ppl_data->p;
+	current->period = ppl_data->p->ipc_pipe.period;
+	current->priority = ppl_data->p->ipc_pipe.priority;
 
 	pipeline_for_each_comp(current, &pipeline_comp_complete, data,
 			       NULL, NULL, dir);
