@@ -466,8 +466,8 @@ static int ssp_set_config(struct dai *dai,
 	ssp_write(dai, SSCR5, sscr5);
 	ssp_write(dai, SSPSP, sspsp);
 	ssp_write(dai, SFIFOTT, sfifott);
-	ssp_write(dai, SSTSA, config->ssp.tx_slots);
-	ssp_write(dai, SSRSA, config->ssp.rx_slots);
+	ssp_write(dai, SSTSA, SSTSA_SSTSA(config->ssp.tx_slots));
+	ssp_write(dai, SSRSA, SSRSA_SSRSA(config->ssp.rx_slots));
 
 	ssp->state[DAI_DIR_PLAYBACK] = COMP_STATE_PREPARE;
 	ssp->state[DAI_DIR_CAPTURE] = COMP_STATE_PREPARE;
