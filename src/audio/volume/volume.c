@@ -206,6 +206,8 @@ static struct comp_dev *volume_new(const struct comp_driver *drv,
 		return NULL;
 	dev->drv = drv;
 
+	dev->size = COMP_SIZE(struct sof_ipc_comp_volume);
+
 	vol = COMP_GET_IPC(dev, sof_ipc_comp_volume);
 	ret = memcpy_s(vol, sizeof(*vol), ipc_vol,
 		       sizeof(struct sof_ipc_comp_volume));

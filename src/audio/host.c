@@ -330,6 +330,8 @@ static struct comp_dev *host_new(const struct comp_driver *drv,
 		return NULL;
 	dev->drv = drv;
 
+	dev->size = COMP_SIZE(struct sof_ipc_comp_host);
+
 	host = COMP_GET_IPC(dev, sof_ipc_comp_host);
 	ret = memcpy_s(host, sizeof(*host),
 		       ipc_host, sizeof(struct sof_ipc_comp_host));

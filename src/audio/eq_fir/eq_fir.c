@@ -417,6 +417,8 @@ static struct comp_dev *eq_fir_new(const struct comp_driver *drv,
 		return NULL;
 	dev->drv = drv;
 
+	dev->size = COMP_SIZE(struct sof_ipc_comp_process);
+
 	fir = COMP_GET_IPC(dev, sof_ipc_comp_process);
 	ret = memcpy_s(fir, sizeof(*fir), ipc_fir,
 		       sizeof(struct sof_ipc_comp_process));

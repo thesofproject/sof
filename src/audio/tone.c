@@ -384,6 +384,8 @@ static struct comp_dev *tone_new(const struct comp_driver *drv,
 		return NULL;
 	dev->drv = drv;
 
+	dev->size = COMP_SIZE(struct sof_ipc_comp_tone);
+
 	tone = COMP_GET_IPC(dev, sof_ipc_comp_tone);
 	ret = memcpy_s(tone, sizeof(*tone), ipc_tone,
 		       sizeof(struct sof_ipc_comp_tone));

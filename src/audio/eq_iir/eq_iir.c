@@ -523,6 +523,8 @@ static struct comp_dev *eq_iir_new(const struct comp_driver *drv,
 		return NULL;
 	dev->drv = drv;
 
+	dev->size = COMP_SIZE(struct sof_ipc_comp_process);
+
 	iir = COMP_GET_IPC(dev, sof_ipc_comp_process);
 	ret = memcpy_s(iir, sizeof(*iir), ipc_iir,
 		       sizeof(struct sof_ipc_comp_process));
