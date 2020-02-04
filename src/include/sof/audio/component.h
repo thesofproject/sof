@@ -22,6 +22,7 @@
 #include <sof/debug/panic.h>
 #include <sof/list.h>
 #include <sof/lib/dai.h>
+#include <sof/lib/memory.h>
 #include <sof/math/numbers.h>
 #include <sof/sof.h>
 #include <sof/trace/trace.h>
@@ -299,6 +300,9 @@ struct comp_dev {
 				     */
 
 	uint32_t size;		/**< component's allocated size */
+	bool is_shared;		/**< indicates whether component is shared
+				  *  across cores
+				  */
 
 	/** common runtime configuration for downstream/upstream */
 	uint32_t direction;	/**< enum sof_ipc_stream_direction */
@@ -486,6 +490,16 @@ static inline void comp_free(struct comp_dev *dev)
  */
 
 /**
+ * Commits component's memory if it's shared.
+ * @param dev Component device.
+ */
+static inline void comp_shared_commit(struct comp_dev *dev)
+{
+	if (dev->is_shared)
+		platform_shared_commit(dev, sizeof(*dev));
+}
+
+/**
  * Component state set.
  * @param dev Component device.
  * @param cmd Command, one of <i>COMP_TRIGGER_...</i>.
@@ -502,9 +516,14 @@ int comp_set_state(struct comp_dev *dev, int cmd);
 static inline int comp_params(struct comp_dev *dev,
 			      struct sof_ipc_stream_params *params)
 {
+	int ret = 0;
+
 	if (dev->drv->ops.params)
-		return dev->drv->ops.params(dev, params);
-	return 0;
+		ret = dev->drv->ops.params(dev, params);
+
+	comp_shared_commit(dev);
+
+	return ret;
 }
 
 /**
@@ -517,9 +536,14 @@ static inline int comp_dai_get_hw_params(struct comp_dev *dev,
 					 struct sof_ipc_stream_params *params,
 					 int dir)
 {
+	int ret = -EINVAL;
+
 	if (dev->drv->ops.dai_get_hw_params)
-		return dev->drv->ops.dai_get_hw_params(dev, params, dir);
-	return -EINVAL;
+		ret = dev->drv->ops.dai_get_hw_params(dev, params, dir);
+
+	comp_shared_commit(dev);
+
+	return ret;
 }
 
 /**
@@ -534,18 +558,23 @@ static inline int comp_cmd(struct comp_dev *dev, int cmd, void *data,
 			   int max_data_size)
 {
 	struct sof_ipc_ctrl_data *cdata = data;
+	int ret = -EINVAL;
 
 	if (cmd == COMP_CMD_SET_DATA &&
 	    (cdata->data->magic != SOF_ABI_MAGIC ||
 	     SOF_ABI_VERSION_INCOMPATIBLE(SOF_ABI_VERSION, cdata->data->abi))) {
 		comp_err(dev, "comp_cmd() error: invalid version, data->magic = %u, data->abi = %u",
-			 cdata->data->magic, cdata->data->abi);
-		return -EINVAL;
+					 cdata->data->magic, cdata->data->abi);
+		goto out;
 	}
 
 	if (dev->drv->ops.cmd)
-		return dev->drv->ops.cmd(dev, cmd, data, max_data_size);
-	return -EINVAL;
+		ret = dev->drv->ops.cmd(dev, cmd, data, max_data_size);
+
+out:
+	comp_shared_commit(dev);
+
+	return ret;
 }
 
 /**
@@ -556,9 +585,15 @@ static inline int comp_cmd(struct comp_dev *dev, int cmd, void *data,
  */
 static inline int comp_trigger(struct comp_dev *dev, int cmd)
 {
+	int ret = 0;
+
 	assert(dev->drv->ops.trigger);
 
-	return dev->drv->ops.trigger(dev, cmd);
+	ret = dev->drv->ops.trigger(dev, cmd);
+
+	comp_shared_commit(dev);
+
+	return ret;
 }
 
 /**
@@ -568,9 +603,14 @@ static inline int comp_trigger(struct comp_dev *dev, int cmd)
  */
 static inline int comp_prepare(struct comp_dev *dev)
 {
+	int ret = 0;
+
 	if (dev->drv->ops.prepare)
-		return dev->drv->ops.prepare(dev);
-	return 0;
+		ret = dev->drv->ops.prepare(dev);
+
+	comp_shared_commit(dev);
+
+	return ret;
 }
 
 /**
@@ -580,9 +620,15 @@ static inline int comp_prepare(struct comp_dev *dev)
  */
 static inline int comp_copy(struct comp_dev *dev)
 {
+	int ret = 0;
+
 	assert(dev->drv->ops.copy);
 
-	return dev->drv->ops.copy(dev);
+	ret = dev->drv->ops.copy(dev);
+
+	comp_shared_commit(dev);
+
+	return ret;
 }
 
 /**
@@ -592,9 +638,14 @@ static inline int comp_copy(struct comp_dev *dev)
  */
 static inline int comp_reset(struct comp_dev *dev)
 {
+	int ret = 0;
+
 	if (dev->drv->ops.reset)
-		return dev->drv->ops.reset(dev);
-	return 0;
+		ret = dev->drv->ops.reset(dev);
+
+	comp_shared_commit(dev);
+
+	return ret;
 }
 
 /**
@@ -606,9 +657,14 @@ static inline int comp_reset(struct comp_dev *dev)
 static inline int comp_dai_config(struct comp_dev *dev,
 	struct sof_ipc_dai_config *config)
 {
+	int ret = 0;
+
 	if (dev->drv->ops.dai_config)
-		return dev->drv->ops.dai_config(dev, config);
-	return 0;
+		ret = dev->drv->ops.dai_config(dev, config);
+
+	comp_shared_commit(dev);
+
+	return ret;
 }
 
 /**
@@ -620,9 +676,14 @@ static inline int comp_dai_config(struct comp_dev *dev,
 static inline int comp_position(struct comp_dev *dev,
 	struct sof_ipc_stream_posn *posn)
 {
+	int ret = 0;
+
 	if (dev->drv->ops.position)
-		return dev->drv->ops.position(dev, posn);
-	return 0;
+		ret = dev->drv->ops.position(dev, posn);
+
+	comp_shared_commit(dev);
+
+	return ret;
 }
 
 /**
@@ -635,9 +696,14 @@ static inline int comp_position(struct comp_dev *dev,
 static inline int comp_set_attribute(struct comp_dev *dev, uint32_t type,
 				     void *value)
 {
+	int ret = 0;
+
 	if (dev->drv->ops.set_attribute)
-		return dev->drv->ops.set_attribute(dev, type, value);
-	return 0;
+		ret = dev->drv->ops.set_attribute(dev, type, value);
+
+	comp_shared_commit(dev);
+
+	return ret;
 }
 
 /** @}*/
@@ -812,6 +878,12 @@ int comp_get_copy_limits(struct comp_dev *dev, struct comp_copy_limits *cl);
  */
 int comp_verify_params(struct comp_dev *dev, uint32_t flag,
 		       struct sof_ipc_stream_params *params);
+/**
+ * Called to reallocate component in shared memory.
+ * @param dev Component device.
+ * @return Pointer to reallocated component device.
+ */
+struct comp_dev *comp_make_shared(struct comp_dev *dev);
 
 static inline struct comp_driver_list *comp_drivers_get(void)
 {

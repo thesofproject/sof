@@ -28,6 +28,17 @@ void *_zalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
 	return calloc(bytes, 1);
 }
 
+void *_realloc(void *ptr, enum mem_zone zone, uint32_t flags, uint32_t caps,
+	       size_t bytes)
+{
+	(void)ptr;
+	(void)zone;
+	(void)flags;
+	(void)caps;
+
+	return realloc(ptr, bytes);
+}
+
 int buffer_set_size(struct comp_buffer *buffer, uint32_t size)
 {
 	(void)buffer;
