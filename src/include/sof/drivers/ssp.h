@@ -156,6 +156,14 @@ extern const struct dai_driver ssp_driver;
 #define SSP_REG_MAX	SSIOC
 #endif
 
+/* SSTSA bits */
+#define SSTSA_SSTSA(x)		SET_BITS(7, 0, x)
+#define SSTSA_TXEN		BIT(8)
+
+/* SSRSA bits */
+#define SSRSA_SSRSA(x)		SET_BITS(7, 0, x)
+#define SSRSA_RXEN		BIT(8)
+
 /* SSCR3 bits */
 #define SSCR3_FRM_MST_EN	(1 << 0)
 #define SSCR3_I2S_MODE_EN	(1 << 1)
