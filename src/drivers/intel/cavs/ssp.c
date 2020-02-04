@@ -172,10 +172,10 @@ static int ssp_set_config(struct dai *dai,
 	ssto = 0x0;
 
 	/* sstsa dynamic setting is TTSA, default 2 slots */
-	sstsa = config->ssp.tx_slots;
+	sstsa = SSTSA_SSTSA(config->ssp.tx_slots);
 
 	/* ssrsa dynamic setting is RTSA, default 2 slots */
-	ssrsa = config->ssp.rx_slots;
+	ssrsa = SSRSA_SSRSA(config->ssp.rx_slots);
 
 	switch (config->format & SOF_DAI_FMT_MASTER_MASK) {
 	case SOF_DAI_FMT_CBM_CFM:
@@ -667,10 +667,10 @@ static void ssp_start(struct dai *dai, int direction)
 	/* enable DMA */
 	if (direction == DAI_DIR_PLAYBACK) {
 		ssp_update_bits(dai, SSCR1, SSCR1_TSRE, SSCR1_TSRE);
-		ssp_update_bits(dai, SSTSA, 0x1 << 8, 0x1 << 8);
+		ssp_update_bits(dai, SSTSA, SSTSA_TXEN, SSTSA_TXEN);
 	} else {
 		ssp_update_bits(dai, SSCR1, SSCR1_RSRE, SSCR1_RSRE);
-		ssp_update_bits(dai, SSRSA, 0x1 << 8, 0x1 << 8);
+		ssp_update_bits(dai, SSRSA, SSRSA_RXEN, SSRSA_RXEN);
 	}
 
 	/* wait to get valid fifo status */
@@ -693,7 +693,7 @@ static void ssp_stop(struct dai *dai, int direction)
 	if (direction == DAI_DIR_CAPTURE &&
 	    ssp->state[SOF_IPC_STREAM_CAPTURE] == COMP_STATE_ACTIVE) {
 		ssp_update_bits(dai, SSCR1, SSCR1_RSRE, 0);
-		ssp_update_bits(dai, SSRSA, 0x1 << 8, 0x0 << 8);
+		ssp_update_bits(dai, SSRSA, SSRSA_RXEN, 0);
 		ssp_empty_rx_fifo(dai);
 		ssp->state[SOF_IPC_STREAM_CAPTURE] = COMP_STATE_PAUSED;
 		dai_info(dai, "ssp_stop(), RX stop");
@@ -704,7 +704,7 @@ static void ssp_stop(struct dai *dai, int direction)
 	    ssp->state[SOF_IPC_STREAM_PLAYBACK] == COMP_STATE_ACTIVE) {
 		ssp_empty_tx_fifo(dai);
 		ssp_update_bits(dai, SSCR1, SSCR1_TSRE, 0);
-		ssp_update_bits(dai, SSTSA, 0x1 << 8, 0x0 << 8);
+		ssp_update_bits(dai, SSTSA, SSTSA_TXEN, 0);
 		ssp->state[SOF_IPC_STREAM_PLAYBACK] = COMP_STATE_PAUSED;
 		dai_info(dai, "ssp_stop(), TX stop");
 	}
