@@ -21,9 +21,11 @@
 #include <sof/audio/pipeline.h>
 #include <sof/debug/panic.h>
 #include <sof/list.h>
+#include <sof/lib/alloc.h>
 #include <sof/lib/dai.h>
 #include <sof/lib/memory.h>
 #include <sof/math/numbers.h>
+#include <sof/schedule/schedule.h>
 #include <sof/sof.h>
 #include <sof/trace/trace.h>
 #include <ipc/control.h>
@@ -299,7 +301,13 @@ struct comp_dev {
 				     *  to run component's processing
 				     */
 
+	struct task *task;	/**< component's processing task used only
+				  *  for components running on different core
+				  *  than the rest of the pipeline
+				  */
 	uint32_t size;		/**< component's allocated size */
+	uint32_t period;	/**< component's processing period */
+	uint32_t priority;	/**< component's processing priority */
 	bool is_shared;		/**< indicates whether component is shared
 				  *  across cores
 				  */
@@ -479,6 +487,12 @@ struct comp_dev *comp_new(struct sof_ipc_comp *comp);
 static inline void comp_free(struct comp_dev *dev)
 {
 	assert(dev->drv->ops.free);
+
+	/* free task if shared component */
+	if (dev->is_shared && dev->task) {
+		schedule_task_free(dev->task);
+		rfree(dev->task);
+	}
 
 	dev->drv->ops.free(dev);
 }
@@ -795,15 +809,11 @@ static inline int comp_get_endpoint_type(struct comp_dev *dev)
 static inline void component_set_period_frames(struct comp_dev *current,
 					       uint32_t rate)
 {
-	int period;
-
-	period = current->pipeline->ipc_pipe.period;
-
 	/* Samplerate is in Hz and period in microseconds.
 	 * As we don't have floats use scale divider 1000000.
 	 * Also integer round up the result.
 	 */
-	current->frames = ceil_divide(rate * period, 1000000);
+	current->frames = ceil_divide(rate * current->period, 1000000);
 }
 
 /** @}*/
