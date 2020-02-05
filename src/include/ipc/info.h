@@ -151,6 +151,4 @@ struct sof_ipc_probe_support {
 	uint32_t reserved[2];
 } __attribute__((packed));
 
-extern const struct sof_ipc_cc_version cc_version;
-
 #endif /* __IPC_INFO_H__ */

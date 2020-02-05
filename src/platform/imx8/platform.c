@@ -61,7 +61,8 @@ static const struct sof_ipc_fw_ready ready
 
 #define NUM_IMX_WINDOWS		6
 
-static const struct sof_ipc_window sram_window = {
+static const struct sof_ipc_window sram_window
+	__attribute__((section(".fw_ready_metadata"))) = {
 	.ext_hdr	= {
 		.hdr.cmd = SOF_IPC_FW_READY,
 		.hdr.size = sizeof(struct sof_ipc_window) +

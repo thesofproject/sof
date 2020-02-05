@@ -10,6 +10,7 @@
 
 #include <ipc/info.h>
 
+extern const struct sof_ipc_cc_version cc_version;
 extern const struct sof_ipc_probe_support probe_support;
 
 #endif /* __IPC_FW_READY_METADATA_H__ */
