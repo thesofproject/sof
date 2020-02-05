@@ -81,6 +81,8 @@ struct comp_buffer *buffer_new(struct sof_ipc_buffer *desc)
 		buffer->id = desc->comp.id;
 		buffer->pipeline_id = desc->comp.pipeline_id;
 		buffer->core = desc->comp.core;
+
+		dcache_writeback_invalidate_region(buffer, sizeof(*buffer));
 	}
 
 	return buffer;
