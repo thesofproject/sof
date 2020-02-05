@@ -41,3 +41,15 @@ struct schedulers **arch_schedulers_get(void)
 {
 	return NULL;
 }
+
+#if CONFIG_SMP
+
+int idc_send_msg(struct idc_msg *msg, uint32_t mode)
+{
+	(void)msg;
+	(void)mode;
+
+	return 0;
+}
+
+#endif
