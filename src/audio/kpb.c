@@ -734,8 +734,11 @@ static int kpb_buffer_data(struct comp_dev *dev,
 
 	tracev_kpb_with_ids(dev, "kpb_buffer_data()");
 
-	if (kpb->state != KPB_STATE_RUN && kpb->state != KPB_STATE_DRAINING)
+	if (kpb->state != KPB_STATE_RUN && kpb->state != KPB_STATE_DRAINING) {
+		trace_kpb_error("kpb_buffer_data() error: wrong state! (current state %d, state log %x)",
+				kpb->state, kpb->state_log);
 		return PPL_STATUS_PATH_STOP;
+	}
 
 	if (kpb->state == KPB_STATE_DRAINING)
 		draining_data->buffered_while_draining += size_to_copy;
