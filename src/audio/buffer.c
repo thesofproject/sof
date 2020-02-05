@@ -13,6 +13,7 @@
 #include <sof/lib/memory.h>
 #include <sof/lib/notifier.h>
 #include <sof/list.h>
+#include <sof/spinlock.h>
 #include <ipc/topology.h>
 #include <errno.h>
 #include <stddef.h>
@@ -40,6 +41,14 @@ struct comp_buffer *buffer_alloc(uint32_t size, uint32_t caps, uint32_t align)
 		return NULL;
 	}
 
+	buffer->lock = rzalloc(SOF_MEM_ZONE_RUNTIME, SOF_MEM_FLAG_SHARED,
+			       SOF_MEM_CAPS_RAM, sizeof(*buffer->lock));
+	if (!buffer->lock) {
+		rfree(buffer);
+		trace_buffer_error("buffer_alloc() error: could not alloc lock");
+		return NULL;
+	}
+
 	buffer->stream.addr = rballoc_align(0, caps, size, align);
 	if (!buffer->stream.addr) {
 		rfree(buffer);
@@ -54,6 +63,7 @@ struct comp_buffer *buffer_alloc(uint32_t size, uint32_t caps, uint32_t align)
 
 	list_init(&buffer->source_list);
 	list_init(&buffer->sink_list);
+	spinlock_init(buffer->lock);
 
 	return buffer;
 }
@@ -126,6 +136,7 @@ void buffer_free(struct comp_buffer *buffer)
 	list_item_del(&buffer->source_list);
 	list_item_del(&buffer->sink_list);
 	rfree(buffer->stream.addr);
+	rfree(buffer->lock);
 	rfree(buffer);
 }
 

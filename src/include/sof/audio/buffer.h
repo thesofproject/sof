@@ -28,6 +28,7 @@
 #include <stdint.h>
 
 struct comp_dev;
+struct spinlock_t;
 
 /* buffer tracing */
 #define trace_buffer(__e, ...) \
@@ -65,6 +66,8 @@ struct comp_dev;
 
 /* audio component buffer - connects 2 audio components together in pipeline */
 struct comp_buffer {
+	spinlock_t *lock;		/* locking mechanism */
+
 	/* data buffer */
 	struct audio_stream stream;
 
