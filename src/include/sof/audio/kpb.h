@@ -54,6 +54,15 @@ struct comp_buffer;
 /**< Host buffer shall be at least two times bigger than history buffer. */
 #define HOST_BUFFER_MIN_SIZE(hb) (hb * 2)
 
+/** All states below as well as relations between them are documented in
+ * the sof-dosc in [kpbm-state-diagram]
+ * Therefore any addition of new states or modification of existing ones
+ * should have a corresponding update in the sof-docs.
+ * [kpbm-state-diagram]: https://thesofproject.github.io/latest/
+ * developer_guides/firmware/kd_integration/
+ * kd-integration.html#kpbm-state-diagram "Keyphrase buffer manager state
+ * diagram"
+ */
 enum kpb_state {
 	KPB_STATE_DISABLED = 0,
 	KPB_STATE_RESET_FINISHING,
@@ -61,6 +70,7 @@ enum kpb_state {
 	KPB_STATE_PREPARING,
 	KPB_STATE_RUN,
 	KPB_STATE_BUFFERING,
+	KPB_STATE_INIT_DRAINING,
 	KPB_STATE_DRAINING,
 	KPB_STATE_HOST_COPY,
 	KPB_STATE_RESETTING,

@@ -674,9 +674,10 @@ static int kpb_copy(struct comp_dev *dev)
 		comp_update_buffer_consume(source, copy_bytes);
 
 		break;
+	case KPB_STATE_INIT_DRAINING:
 	case KPB_STATE_DRAINING:
-		/* In draining state we only buffer data in internal,
-		 * history buffer.
+		/* In draining and init draining we only buffer data in
+		 * the internal history buffer.
 		 */
 		if (source->stream.avail <= kpb->buffer_size) {
 			ret = kpb_buffer_data(dev, source,
@@ -734,7 +735,13 @@ static int kpb_buffer_data(struct comp_dev *dev,
 
 	tracev_kpb_with_ids(dev, "kpb_buffer_data()");
 
-	if (kpb->state != KPB_STATE_RUN && kpb->state != KPB_STATE_DRAINING) {
+	/* We are allowed to buffer data in internal history buffer
+	 * only in KPB_STATE_RUN, KPB_STATE_DRAINING or KPB_STATE_INIT_DRAINING
+	 * states.
+	 */
+	if (kpb->state != KPB_STATE_RUN &&
+	    kpb->state != KPB_STATE_DRAINING &&
+	    kpb->state != KPB_STATE_INIT_DRAINING) {
 		trace_kpb_error("kpb_buffer_data() error: wrong state! (current state %d, state log %x)",
 				kpb->state, kpb->state_log);
 		return PPL_STATUS_PATH_STOP;
@@ -964,6 +971,9 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 		 * read pointer from which we will start draining.
 		 */
 		spin_lock_irq(&kpb->lock, flags);
+
+		kpb_change_state(kpb, KPB_STATE_INIT_DRAINING);
+
 		do {
 			/* Calculate how much data we have stored in
 			 * current buffer.
