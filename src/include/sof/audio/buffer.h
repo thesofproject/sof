@@ -24,6 +24,7 @@
 #include <user/trace.h>
 #include <sof/audio/format.h>
 #include <config.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -76,6 +77,7 @@ struct comp_buffer {
 	uint32_t pipeline_id;
 	uint32_t caps;
 	uint32_t core;
+	bool inter_core; /* true if connected to a comp from another core */
 
 	/* connected components */
 	struct comp_dev *source;	/* source component */
