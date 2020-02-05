@@ -20,8 +20,10 @@
 #include <sof/audio/format.h>
 #include <sof/audio/pipeline.h>
 #include <sof/debug/panic.h>
+#include <sof/drivers/idc.h>
 #include <sof/list.h>
 #include <sof/lib/alloc.h>
+#include <sof/lib/cpu.h>
 #include <sof/lib/dai.h>
 #include <sof/lib/memory.h>
 #include <sof/math/numbers.h>
@@ -520,6 +522,21 @@ static inline void comp_shared_commit(struct comp_dev *dev)
 int comp_set_state(struct comp_dev *dev, int cmd);
 
 /**
+ * Parameter init for component on other core.
+ * @param dev Component device.
+ * @param params Parameters to be set.
+ * @return 0 if succeeded, error code otherwise.
+ */
+static inline int comp_params_remote(struct comp_dev *dev,
+				     struct sof_ipc_stream_params *params)
+{
+	struct idc_msg msg = { IDC_MSG_PARAMS, IDC_MSG_PARAMS_EXT(dev->comp.id),
+		dev->comp.core, sizeof(*params), params, };
+
+	return idc_send_msg(&msg, IDC_BLOCKING);
+}
+
+/**
  * Component parameter init.
  * @param dev Component device.
  * @param params Audio (PCM) stream parameters to be set
@@ -531,7 +548,9 @@ static inline int comp_params(struct comp_dev *dev,
 	int ret = 0;
 
 	if (dev->drv->ops.params)
-		ret = dev->drv->ops.params(dev, params);
+		ret = (dev->is_shared && !cpu_is_me(dev->comp.core)) ?
+			comp_params_remote(dev, params) :
+			dev->drv->ops.params(dev, params);
 
 	comp_shared_commit(dev);
 
@@ -590,6 +609,21 @@ out:
 }
 
 /**
+ * Triggers command for component on other core.
+ * @param dev Component device.
+ * @param cmd Command to be triggered.
+ * @return 0 if succeeded, error code otherwise.
+ */
+static inline int comp_trigger_remote(struct comp_dev *dev, int cmd)
+{
+	struct idc_msg msg = { IDC_MSG_TRIGGER,
+		IDC_MSG_TRIGGER_EXT(dev->comp.id), dev->comp.core, sizeof(cmd),
+		&cmd, };
+
+	return idc_send_msg(&msg, IDC_BLOCKING);
+}
+
+/**
  * Trigger component - mandatory and atomic.
  * @param dev Component device.
  * @param cmd Command.
@@ -601,11 +635,25 @@ static inline int comp_trigger(struct comp_dev *dev, int cmd)
 
 	assert(dev->drv->ops.trigger);
 
-	ret = dev->drv->ops.trigger(dev, cmd);
+	ret = (dev->is_shared && !cpu_is_me(dev->comp.core)) ?
+		comp_trigger_remote(dev, cmd) : dev->drv->ops.trigger(dev, cmd);
 
 	comp_shared_commit(dev);
 
 	return ret;
+}
+
+/**
+ * Prepares component on other core.
+ * @param dev Component device.
+ * @return 0 if succeeded, error code otherwise.
+ */
+static inline int comp_prepare_remote(struct comp_dev *dev)
+{
+	struct idc_msg msg = { IDC_MSG_PREPARE,
+		IDC_MSG_PREPARE_EXT(dev->comp.id), dev->comp.core, };
+
+	return idc_send_msg(&msg, IDC_BLOCKING);
 }
 
 /**
@@ -618,7 +666,8 @@ static inline int comp_prepare(struct comp_dev *dev)
 	int ret = 0;
 
 	if (dev->drv->ops.prepare)
-		ret = dev->drv->ops.prepare(dev);
+		ret = (dev->is_shared && !cpu_is_me(dev->comp.core)) ?
+			comp_prepare_remote(dev) : dev->drv->ops.prepare(dev);
 
 	comp_shared_commit(dev);
 
@@ -644,6 +693,19 @@ static inline int comp_copy(struct comp_dev *dev)
 }
 
 /**
+ * Resets component on other core.
+ * @param dev Component device.
+ * @return 0 if succeeded, error code otherwise.
+ */
+static inline int comp_reset_remote(struct comp_dev *dev)
+{
+	struct idc_msg msg = { IDC_MSG_RESET,
+		IDC_MSG_RESET_EXT(dev->comp.id), dev->comp.core, };
+
+	return idc_send_msg(&msg, IDC_BLOCKING);
+}
+
+/**
  * Component reset and free runtime resources.
  * @param dev Component device.
  * @return 0 if succeeded, error code otherwise.
@@ -653,7 +715,8 @@ static inline int comp_reset(struct comp_dev *dev)
 	int ret = 0;
 
 	if (dev->drv->ops.reset)
-		ret = dev->drv->ops.reset(dev);
+		ret = (dev->is_shared && !cpu_is_me(dev->comp.core)) ?
+			comp_reset_remote(dev) : dev->drv->ops.reset(dev);
 
 	comp_shared_commit(dev);
 
