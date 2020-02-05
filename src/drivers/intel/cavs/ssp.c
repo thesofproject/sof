@@ -75,6 +75,38 @@ static int ssp_context_store(struct dai *dai)
 	return 0;
 }
 
+#define dump_ssp(dai, reg) \
+	trace_ssp(#reg ": 0x%08x", ssp_read(dai, reg))
+
+static inline void dump_ssp_and_mn_regs(struct dai *dai)
+{
+	struct ssp_pdata *ssp = dai_get_drvdata(dai);
+	struct sof_ipc_dai_config *config = &ssp->config;
+
+	trace_ssp("SSP DUMP FOR DAI %d", config->dai_index);
+	dump_ssp(dai, SSCR0);
+	dump_ssp(dai, SSCR1);
+	dump_ssp(dai, SSCR2);
+	dump_ssp(dai, SSCR3);
+	dump_ssp(dai, SSPSP);
+	dump_ssp(dai, SSPSP2);
+	dump_ssp(dai, SSIOC);
+	dump_ssp(dai, SSTO);
+	dump_ssp(dai, SSTSA);
+	dump_ssp(dai, SSRSA);
+
+	trace_ssp("MDIVC: 0x%08x", mn_reg_read(0x0));
+	trace_ssp("MDIVR for mclk %d: 0x%08x",
+		  config->ssp.mclk_id,
+		  mn_reg_read(0x80 + (config->ssp.mclk_id) * 0x4));
+	trace_ssp("MDIV M VAL for bclk %d: 0x%08x",
+		  config->dai_index,
+		  mn_reg_read(0x100 + (config->dai_index) * 0x8 + 0x0));
+	trace_ssp("MDIV N VAL for bclk %d: 0x%08x",
+		  config->dai_index,
+		  mn_reg_read(0x100 + (config->dai_index) * 0x8 + 0x4));
+}
+
 /* restore SSP context after leaving D3 */
 static int ssp_context_restore(struct dai *dai)
 {
@@ -625,6 +657,8 @@ static int ssp_set_config(struct dai *dai,
 	ssp->state[DAI_DIR_CAPTURE] = COMP_STATE_PREPARE;
 
 out:
+	dump_ssp_and_mn_regs(dai);
+
 	spin_unlock(dai->lock);
 
 	return ret;
