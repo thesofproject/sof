@@ -71,3 +71,17 @@ void WEAK __panic(uint32_t p, char *filename, uint32_t linenum)
 {
 	fail_msg("panic: %s:%d (code 0x%X)\n", filename, linenum, p);
 }
+
+uint32_t WEAK _spin_lock_irq(spinlock_t *lock)
+{
+	(void)lock;
+
+	return 0;
+}
+
+void WEAK _spin_unlock_irq(spinlock_t *lock, uint32_t flags, int line)
+{
+	(void)lock;
+	(void)flags;
+	(void)line;
+}

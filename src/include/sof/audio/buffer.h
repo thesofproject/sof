@@ -17,6 +17,7 @@
 #include <sof/lib/cache.h>
 #include <sof/list.h>
 #include <sof/math/numbers.h>
+#include <sof/spinlock.h>
 #include <sof/string.h>
 #include <sof/trace/trace.h>
 #include <ipc/stream.h>
@@ -29,7 +30,6 @@
 #include <stdint.h>
 
 struct comp_dev;
-struct spinlock_t;
 
 /* buffer tracing */
 #define trace_buffer(__e, ...) \
@@ -145,6 +145,46 @@ void comp_update_buffer_produce(struct comp_buffer *buffer, uint32_t bytes);
 /* called by a component after consuming data from this buffer */
 void comp_update_buffer_consume(struct comp_buffer *buffer, uint32_t bytes);
 
+/**
+ * Locks buffer instance for buffers connecting components
+ * running on different cores. Buffer parameters will be invalidated
+ * to make sure the latest data can be retrieved.
+ * @param buffer Buffer instance.
+ * @param flags IRQ flags.
+ */
+static inline void buffer_lock(struct comp_buffer *buffer, uint32_t flags)
+{
+	if (!buffer->inter_core)
+		return;
+
+	spin_lock_irq(buffer->lock, flags);
+
+	/* invalidate in case something has changed during our wait */
+	dcache_invalidate_region(buffer, sizeof(*buffer));
+}
+
+/**
+ * Unlocks buffer instance for buffers connecting components
+ * running on different cores. Buffer parameters will be flushed
+ * to make sure all the changes are saved. Also they will be invalidated
+ * to spare the need of locking/unlocking buffer, when only reading parameters.
+ * @param buffer Buffer instance.
+ * @param flags IRQ flags.
+ */
+static inline void buffer_unlock(struct comp_buffer *buffer, uint32_t flags)
+{
+	if (!buffer->inter_core)
+		return;
+
+	/* save lock pointer to avoid memory access after cache flushing */
+	spinlock_t *lock = buffer->lock;
+
+	/* wtb and inv to avoid buffer locking in read only situations */
+	dcache_writeback_invalidate_region(buffer, sizeof(*buffer));
+
+	spin_unlock_irq(lock, flags);
+}
+
 static inline void buffer_zero(struct comp_buffer *buffer)
 {
 	tracev_buffer_with_ids(buffer, "stream_zero()");
@@ -157,11 +197,17 @@ static inline void buffer_zero(struct comp_buffer *buffer)
 
 static inline void buffer_reset_pos(struct comp_buffer *buffer, void *data)
 {
+	uint32_t flags = 0;
+
+	buffer_lock(buffer, flags);
+
 	/* reset rw pointers and avail/free bytes counters */
 	audio_stream_reset(&buffer->stream);
 
 	/* clear buffer contents */
 	buffer_zero(buffer);
+
+	buffer_unlock(buffer, flags);
 }
 
 static inline void buffer_init(struct comp_buffer *buffer, uint32_t size,
@@ -175,7 +221,13 @@ static inline void buffer_init(struct comp_buffer *buffer, uint32_t size,
 
 static inline void buffer_reset_params(struct comp_buffer *buffer, void *data)
 {
+	uint32_t flags = 0;
+
+	buffer_lock(buffer, flags);
+
 	buffer->hw_params_configured = false;
+
+	buffer_unlock(buffer, flags);
 }
 
 static inline int buffer_set_params(struct comp_buffer *buffer,
