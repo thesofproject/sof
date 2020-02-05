@@ -183,6 +183,15 @@ xtos_per_core_vecbase:
 	wsr.vecbase	a2
 #endif
 
+#if XCHAL_HAVE_S32C1I && (XCHAL_HW_MIN_VERSION >= XTENSA_HWVERSION_RC_2009_0)	/* have ATOMCTL ? */
+# if XCHAL_DCACHE_IS_COHERENT
+	movi	a3, 0x25		/* MX -- internal for writeback, RCW otherwise */
+# else
+	movi	a3, 0x15		/* non-MX -- always RCW */
+# endif
+	wsr.atomctl	a3
+#endif
+
 // Obtain core structs from given address.
 xtos_per_core_obtain_xtos_structs:
 	get_prid	a5
