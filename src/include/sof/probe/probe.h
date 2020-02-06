@@ -81,6 +81,15 @@ int probe_point_info(struct sof_ipc_probe_info_params *data, uint32_t max_size);
  */
 int probe_point_remove(uint32_t count, uint32_t *buffer_id);
 
+/**
+ * \brief Retrieves probes structure.
+ * \return Pointer to probes structure.
+ */
+static inline struct probe_pdata *probe_get(void)
+{
+	return sof_get()->probe;
+}
+
 #endif /* CONFIG_PROBE */
 
 #endif /* __SOF_PROBE_PROBE_H__ */
