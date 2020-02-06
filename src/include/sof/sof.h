@@ -27,6 +27,7 @@ struct pm_runtime_data;
 struct sa;
 struct timer;
 struct trace;
+struct probe_pdata;
 
 /**
  * \brief General firmware context.
@@ -90,6 +91,9 @@ struct sof {
 
 	/* M/N dividers */
 	struct mn *mn;
+
+	/* probes */
+	struct probe_pdata *probe;
 
 	__aligned(PLATFORM_DCACHE_ALIGN) int alignment[0];
 } __aligned(PLATFORM_DCACHE_ALIGN);

@@ -68,8 +68,6 @@ struct probe_pdata {
 	struct task dmap_work;					  /**< probe task */
 };
 
-static struct probe_pdata *_probe;
-
 /**
  * \brief Allocate and initialize probe buffer with correct alignment.
  * \param[out] probe buffer.
@@ -195,6 +193,7 @@ static int probe_dma_deinit(struct probe_dma_ext *dma)
  */
 static enum task_state probe_task(void *data)
 {
+	struct probe_pdata *_probe = probe_get();
 	int err;
 
 	if (_probe->ext_dma.dmapb.avail > 0)
@@ -219,6 +218,7 @@ static enum task_state probe_task(void *data)
 
 int probe_init(struct probe_dma *probe_dma)
 {
+	struct probe_pdata *_probe = probe_get();
 	uint32_t i;
 	int err;
 
@@ -230,8 +230,9 @@ int probe_init(struct probe_dma *probe_dma)
 	}
 
 	/* alloc probes main struct */
-	_probe = rzalloc(SOF_MEM_ZONE_SYS_RUNTIME, 0, SOF_MEM_CAPS_RAM,
-			 sizeof(*_probe));
+	sof_get()->probe = rzalloc(SOF_MEM_ZONE_SYS_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+				   sizeof(*_probe));
+	_probe = probe_get();
 
 	if (!_probe) {
 		trace_probe_error("probe_init() error: Alloc failed.");
@@ -281,6 +282,7 @@ int probe_init(struct probe_dma *probe_dma)
 
 int probe_deinit(void)
 {
+	struct probe_pdata *_probe = probe_get();
 	uint32_t i;
 	int err;
 
@@ -323,6 +325,7 @@ int probe_deinit(void)
 
 int probe_dma_add(uint32_t count, struct probe_dma *probe_dma)
 {
+	struct probe_pdata *_probe = probe_get();
 	uint32_t i;
 	uint32_t j;
 	uint32_t stream_tag;
@@ -389,6 +392,7 @@ int probe_dma_add(uint32_t count, struct probe_dma *probe_dma)
 
 int probe_dma_info(struct sof_ipc_probe_info_params *data, uint32_t max_size)
 {
+	struct probe_pdata *_probe = probe_get();
 	uint32_t i = 0;
 	uint32_t j = 0;
 
@@ -429,6 +433,7 @@ int probe_dma_info(struct sof_ipc_probe_info_params *data, uint32_t max_size)
  */
 static int is_probe_stream_used(uint32_t stream_tag)
 {
+	struct probe_pdata *_probe = probe_get();
 	uint32_t i;
 
 	for (i = 0; i < CONFIG_PROBE_POINTS_MAX; i++) {
@@ -441,6 +446,7 @@ static int is_probe_stream_used(uint32_t stream_tag)
 
 int probe_dma_remove(uint32_t count, uint32_t *stream_tag)
 {
+	struct probe_pdata *_probe = probe_get();
 	uint32_t i;
 	uint32_t j;
 	int err;
@@ -588,6 +594,7 @@ static int copy_from_pbuffer(struct probe_dma_buf *pbuf, void *data, uint32_t by
  */
 static int probe_gen_header(struct comp_buffer *buffer, uint32_t size, uint32_t format)
 {
+	struct probe_pdata *_probe = probe_get();
 	struct probe_data_packet *header;
 	uint64_t timestamp;
 	uint32_t crc;
@@ -725,6 +732,7 @@ static uint32_t probe_gen_format(uint32_t frame_fmt, uint32_t rate, uint32_t cha
  */
 static void probe_cb_produce(void *arg, enum notify_id type, void *data)
 {
+	struct probe_pdata *_probe = probe_get();
 	struct buffer_cb_transact *cb_data = data;
 	struct comp_buffer *buffer = cb_data->buffer;
 	struct probe_dma_ext *dma;
@@ -881,6 +889,7 @@ static void probe_cb_free(void *arg, enum notify_id type, void *data)
 
 int probe_point_add(uint32_t count, struct probe_point *probe)
 {
+	struct probe_pdata *_probe = probe_get();
 	uint32_t i;
 	uint32_t j;
 	uint32_t buffer_id;
@@ -1010,6 +1019,7 @@ int probe_point_add(uint32_t count, struct probe_point *probe)
 
 int probe_point_info(struct sof_ipc_probe_info_params *data, uint32_t max_size)
 {
+	struct probe_pdata *_probe = probe_get();
 	uint32_t i = 0;
 	uint32_t j = 0;
 
@@ -1044,6 +1054,7 @@ int probe_point_info(struct sof_ipc_probe_info_params *data, uint32_t max_size)
 
 int probe_point_remove(uint32_t count, uint32_t *buffer_id)
 {
+	struct probe_pdata *_probe = probe_get();
 	struct ipc_comp_dev *dev;
 	uint32_t i;
 	uint32_t j;
