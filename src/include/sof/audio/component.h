@@ -425,6 +425,7 @@ int comp_set_state(struct comp_dev *dev, int cmd);
 /**
  * Component parameter init.
  * @param dev Component device.
+ * @param params Audio (PCM) stream parameters to be set
  * @return 0 if succeeded, error code otherwise.
  */
 static inline int comp_params(struct comp_dev *dev,

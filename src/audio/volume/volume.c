@@ -305,6 +305,7 @@ static void volume_free(struct comp_dev *dev)
 /**
  * \brief Sets volume component audio stream parameters.
  * \param[in,out] dev Volume base component device.
+ * \param[in] params Audio (PCM) stream parameters (ignored for this component)
  * \return Error code.
  *
  * All done in prepare() since we need to know source and sink component params.
