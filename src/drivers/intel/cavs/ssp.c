@@ -700,34 +700,44 @@ static void ssp_stop(struct dai *dai, int direction)
 
 	/* stop Rx if neeed */
 	if (direction == DAI_DIR_CAPTURE &&
-	    ssp->state[SOF_IPC_STREAM_CAPTURE] == COMP_STATE_ACTIVE) {
+	    ssp->state[SOF_IPC_STREAM_CAPTURE] != COMP_STATE_PREPARE) {
 		ssp_update_bits(dai, SSCR1, SSCR1_RSRE, 0);
 		ssp_update_bits(dai, SSRSA, SSRSA_RXEN, 0);
 		ssp_empty_rx_fifo(dai);
-		ssp->state[SOF_IPC_STREAM_CAPTURE] = COMP_STATE_PAUSED;
+		ssp->state[SOF_IPC_STREAM_CAPTURE] = COMP_STATE_PREPARE;
 		dai_info(dai, "ssp_stop(), RX stop");
 	}
 
 	/* stop Tx if needed */
 	if (direction == DAI_DIR_PLAYBACK &&
-	    ssp->state[SOF_IPC_STREAM_PLAYBACK] == COMP_STATE_ACTIVE) {
+	    ssp->state[SOF_IPC_STREAM_PLAYBACK] != COMP_STATE_PREPARE) {
 		ssp_empty_tx_fifo(dai);
 		ssp_update_bits(dai, SSCR1, SSCR1_TSRE, 0);
 		ssp_update_bits(dai, SSTSA, SSTSA_TXEN, 0);
-		ssp->state[SOF_IPC_STREAM_PLAYBACK] = COMP_STATE_PAUSED;
+		ssp->state[SOF_IPC_STREAM_PLAYBACK] = COMP_STATE_PREPARE;
 		dai_info(dai, "ssp_stop(), TX stop");
 	}
 
 	/* disable SSP port if no users */
-	if (ssp->state[SOF_IPC_STREAM_CAPTURE] != COMP_STATE_ACTIVE &&
-	    ssp->state[SOF_IPC_STREAM_PLAYBACK] != COMP_STATE_ACTIVE) {
+	if (ssp->state[SOF_IPC_STREAM_CAPTURE] == COMP_STATE_PREPARE &&
+	    ssp->state[SOF_IPC_STREAM_PLAYBACK] == COMP_STATE_PREPARE) {
 		ssp_update_bits(dai, SSCR0, SSCR0_SSE, 0);
-		ssp->state[SOF_IPC_STREAM_CAPTURE] = COMP_STATE_PREPARE;
-		ssp->state[SOF_IPC_STREAM_PLAYBACK] = COMP_STATE_PREPARE;
 		dai_info(dai, "ssp_stop(), SSP port disabled");
 	}
 
 	spin_unlock(&dai->lock);
+}
+
+static void ssp_pause(struct dai *dai, int direction)
+{
+	struct ssp_pdata *ssp = dai_get_drvdata(dai);
+
+	if (direction == SOF_IPC_STREAM_CAPTURE)
+		dai_info(dai, "ssp_pause(), RX");
+	else
+		dai_info(dai, "ssp_pause(), TX");
+
+	ssp->state[direction] = COMP_STATE_PAUSED;
 }
 
 static int ssp_trigger(struct dai *dai, int cmd, int direction)
@@ -748,8 +758,10 @@ static int ssp_trigger(struct dai *dai, int cmd, int direction)
 			ssp_start(dai, direction);
 		break;
 	case COMP_TRIGGER_STOP:
-	case COMP_TRIGGER_PAUSE:
 		ssp_stop(dai, direction);
+		break;
+	case COMP_TRIGGER_PAUSE:
+		ssp_pause(dai, direction);
 		break;
 	case COMP_TRIGGER_RESUME:
 		ssp_context_restore(dai);

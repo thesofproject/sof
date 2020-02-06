@@ -626,7 +626,7 @@ static int dai_comp_trigger(struct comp_dev *dev, int cmd)
 	case COMP_TRIGGER_STOP:
 		comp_info(dev, "dai_comp_trigger(), PAUSE/STOP");
 		ret = dma_stop(dd->chan);
-		dai_trigger(dd->dai, COMP_TRIGGER_STOP, dev->direction);
+		dai_trigger(dd->dai, cmd, dev->direction);
 		break;
 	default:
 		break;
