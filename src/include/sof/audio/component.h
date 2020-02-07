@@ -338,8 +338,6 @@ struct comp_dev {
 
 /** \brief Struct for use with comp_get_copy_limits() function. */
 struct comp_copy_limits {
-	struct comp_buffer *sink;
-	struct comp_buffer *source;
 	int frames;
 	int source_bytes;
 	int sink_bytes;
@@ -871,10 +869,12 @@ static inline bool comp_is_scheduling_source(struct comp_dev *dev)
 
 /**
  * Called by component in copy.
- * @param dev Component device.
+ * @param source Source buffer.
+ * @param sink Sink buffer.
  * @param cl Struct of parameters for use in copy function.
  */
-int comp_get_copy_limits(struct comp_dev *dev, struct comp_copy_limits *cl);
+void comp_get_copy_limits(struct comp_buffer *source, struct comp_buffer *sink,
+			  struct comp_copy_limits *cl);
 
 /**
  * Called by component in  params() function in order to set and update some of

@@ -692,6 +692,7 @@ static int eq_fir_copy(struct comp_dev *dev)
 {
 	struct comp_copy_limits cl;
 	struct comp_buffer *sourceb;
+	struct comp_buffer *sinkb;
 	struct comp_data *cd = comp_get_drvdata(dev);
 	int ret;
 	int n;
@@ -713,8 +714,11 @@ static int eq_fir_copy(struct comp_dev *dev)
 		}
 	}
 
+	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
+				source_list);
+
 	/* Get source, sink, number of frames etc. to process. */
-	comp_get_copy_limits(dev, &cl);
+	comp_get_copy_limits(sourceb, sinkb, &cl);
 
 	/*
 	 * Process only even number of frames with the FIR function. The
@@ -728,13 +732,12 @@ static int eq_fir_copy(struct comp_dev *dev)
 		n = (cl.frames >> 1) << 1;
 
 		/* Run EQ function */
-		cd->eq_fir_func(cd->fir, &cl.source->stream, &cl.sink->stream,
-				n, cl.source->stream.channels);
+		cd->eq_fir_func(cd->fir, &sourceb->stream, &sinkb->stream, n,
+				sourceb->stream.channels);
 
 		/* calc new free and available */
-		comp_update_buffer_consume(cl.source,
-					   n * cl.source_frame_bytes);
-		comp_update_buffer_produce(cl.sink, n * cl.sink_frame_bytes);
+		comp_update_buffer_consume(sourceb, n * cl.source_frame_bytes);
+		comp_update_buffer_produce(sinkb, n * cl.sink_frame_bytes);
 	}
 
 	return 0;

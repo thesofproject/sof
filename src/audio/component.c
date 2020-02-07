@@ -196,22 +196,14 @@ void sys_comp_init(struct sof *sof)
 	platform_shared_commit(sof->comp_drivers, sizeof(*sof->comp_drivers));
 }
 
-int comp_get_copy_limits(struct comp_dev *dev, struct comp_copy_limits *cl)
+void comp_get_copy_limits(struct comp_buffer *source, struct comp_buffer *sink,
+			  struct comp_copy_limits *cl)
 {
-	/* Get source and sink buffer addresses */
-	cl->source = list_first_item(&dev->bsource_list, struct comp_buffer,
-				     sink_list);
-	cl->sink = list_first_item(&dev->bsink_list, struct comp_buffer,
-				   source_list);
-
-	cl->frames = audio_stream_avail_frames(&cl->source->stream,
-					       &cl->sink->stream);
-	cl->source_frame_bytes = audio_stream_frame_bytes(&cl->source->stream);
-	cl->sink_frame_bytes = audio_stream_frame_bytes(&cl->sink->stream);
+	cl->frames = audio_stream_avail_frames(&source->stream, &sink->stream);
+	cl->source_frame_bytes = audio_stream_frame_bytes(&source->stream);
+	cl->sink_frame_bytes = audio_stream_frame_bytes(&sink->stream);
 	cl->source_bytes = cl->frames * cl->source_frame_bytes;
 	cl->sink_bytes = cl->frames * cl->sink_frame_bytes;
-
-	return 0;
 }
 
 /* Function overwrites PCM parameters (frame_fmt, buffer_fmt, channels, rate)

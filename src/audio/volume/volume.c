@@ -642,7 +642,8 @@ static int volume_copy(struct comp_dev *dev)
 {
 	struct comp_copy_limits c;
 	struct comp_data *cd = comp_get_drvdata(dev);
-	int ret;
+	struct comp_buffer *source;
+	struct comp_buffer *sink;
 
 	comp_dbg(dev, "volume_copy()");
 
@@ -650,22 +651,23 @@ static int volume_copy(struct comp_dev *dev)
 		schedule_task(cd->volwork, VOL_RAMP_UPDATE_US,
 			      VOL_RAMP_UPDATE_US);
 
+	source = list_first_item(&dev->bsource_list, struct comp_buffer,
+				 sink_list);
+	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
+			       source_list);
+
 	/* Get source, sink, number of frames etc. to process. */
-	ret = comp_get_copy_limits(dev, &c);
-	if (ret < 0) {
-		comp_err(dev, "volume_copy(): Failed comp_get_copy_limits()");
-		return ret;
-	}
+	comp_get_copy_limits(source, sink, &c);
 
 	comp_dbg(dev, "volume_copy(), source_bytes = 0x%x, sink_bytes = 0x%x",
 		 c.source_bytes, c.sink_bytes);
 
 	/* copy and scale volume */
-	cd->scale_vol(dev, &c.sink->stream, &c.source->stream, c.frames);
+	cd->scale_vol(dev, &sink->stream, &source->stream, c.frames);
 
 	/* calculate new free and available */
-	comp_update_buffer_produce(c.sink, c.sink_bytes);
-	comp_update_buffer_consume(c.source, c.source_bytes);
+	comp_update_buffer_produce(sink, c.sink_bytes);
+	comp_update_buffer_consume(source, c.source_bytes);
 
 	return 0;
 }
