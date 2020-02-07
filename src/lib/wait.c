@@ -21,57 +21,6 @@
 
 #define DEFAULT_TRY_TIMES 8
 
-/* simple interrupt based wait for completion with timeout */
-int wait_for_completion_timeout(completion_t *comp)
-{
-	volatile completion_t *c = (volatile completion_t *)comp;
-
-	schedule_task(&comp->work, comp->timeout, comp->timeout);
-	comp->timeout = 0;
-
-	/* check for completion after every wake from IRQ */
-	while (!c->complete && !c->timeout)
-		wait_for_interrupt(0);
-
-	/* did we complete */
-	if (c->complete) {
-		/* no timeout so cancel work and return 0 */
-		schedule_task_cancel(&comp->work);
-
-		return 0;
-	}
-
-	/* timeout */
-	trace_error(TRACE_CLASS_WAIT, "wait_for_completion_timeout, timeout: "
-		    PRIu64 " complete: %d", c->timeout, c->complete);
-
-	return -ETIME;
-}
-
-int poll_for_completion_delay(completion_t *comp, uint64_t us)
-{
-	uint64_t tick = clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1) *
-						us / 1000;
-	uint32_t tries = DEFAULT_TRY_TIMES;
-	uint64_t delta = tick / tries;
-
-	if (!delta) {
-		delta = us;
-		tries = 1;
-	}
-
-	while (!wait_is_completed(comp)) {
-		if (!tries--) {
-			trace_error(TRACE_CLASS_WAIT, "ewt");
-			return -EIO;
-		}
-
-		wait_delay(delta);
-	}
-
-	return 0;
-}
-
 int poll_for_register_delay(uint32_t reg, uint32_t mask,
 			    uint32_t val, uint64_t us)
 {
