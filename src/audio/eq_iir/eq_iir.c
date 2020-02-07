@@ -784,6 +784,7 @@ static int eq_iir_copy(struct comp_dev *dev)
 	struct comp_copy_limits cl;
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *sourceb;
+	struct comp_buffer *sinkb;
 	int ret;
 
 	comp_dbg(dev, "eq_iir_copy()");
@@ -803,19 +804,18 @@ static int eq_iir_copy(struct comp_dev *dev)
 		}
 	}
 
+	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
+				source_list);
+
 	/* Get source, sink, number of frames etc. to process. */
-	ret = comp_get_copy_limits(dev, &cl);
-	if (ret < 0) {
-		comp_err(dev, "eq_iir_copy(), failed comp_get_copy_limits()");
-		return ret;
-	}
+	comp_get_copy_limits(sourceb, sinkb, &cl);
 
 	/* Run EQ function */
-	cd->eq_iir_func(dev, &cl.source->stream, &cl.sink->stream, cl.frames);
+	cd->eq_iir_func(dev, &sourceb->stream, &sinkb->stream, cl.frames);
 
 	/* calc new free and available */
-	comp_update_buffer_consume(cl.source, cl.source_bytes);
-	comp_update_buffer_produce(cl.sink, cl.sink_bytes);
+	comp_update_buffer_consume(sourceb, cl.source_bytes);
+	comp_update_buffer_produce(sinkb, cl.sink_bytes);
 
 	return 0;
 }
