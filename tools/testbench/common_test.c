@@ -205,6 +205,20 @@ void dma_put(struct dma *dma)
 {
 }
 
+int dai_gen_dma_sg_elems(struct dai *dai, int direction, int id,
+			 int periods, int period_bytes,
+			 uintptr_t buffer,
+			 struct dma_sg_elem_array *elem_array)
+{
+	return 0;
+}
+
+int dma_sg_array_alloc(struct dma_sg_array *sg_array, int count,
+		       enum mem_zone zone)
+{
+	return 0;
+}
+
 int dma_sg_alloc(struct dma_sg_elem_array *elem_array,
 		 enum mem_zone zone,
 		 uint32_t direction,
@@ -214,7 +228,11 @@ int dma_sg_alloc(struct dma_sg_elem_array *elem_array,
 	return 0;
 }
 
-void dma_sg_free(struct dma_sg_elem_array *elem_array)
+void dma_sg_free(struct dma_sg_array *sg_array)
+{
+}
+
+void dma_sg_elems_free(struct dma_sg_elem_array *elem_array)
 {
 }
 

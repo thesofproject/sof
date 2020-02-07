@@ -564,10 +564,12 @@ static int hda_dma_status(struct dma_chan_data *channel,
 
 /* set the DMA channel configuration, source/target address, buffer sizes */
 static int hda_dma_set_config(struct dma_chan_data *channel,
-			      struct dma_sg_config *config)
+			      struct dma_sg_config *config,
+			      unsigned int sg_index)
 {
 	struct dma *dma = channel->dma;
 	struct hda_chan_data *hda_chan;
+	struct dma_sg_elem_array *elem_array;
 	struct dma_sg_elem *sg_elem;
 	uint32_t buffer_addr = 0;
 	uint32_t period_bytes = 0;
@@ -586,12 +588,14 @@ static int hda_dma_set_config(struct dma_chan_data *channel,
 	trace_hddma("hda-dmac: %d channel %d -> config",
 		    dma->plat_data.id, channel->index);
 
-	if (!config->elem_array.count) {
-		trace_hddma_error("hda-dmac: %d channel %d no DMA descriptors",
-				  dma->plat_data.id, channel->index);
+	if (config->sg_array.count < sg_index) {
+		trace_hddma_error("hda-dmac: %d channel %d invalid sg_index %d",
+				  dma->plat_data.id, channel->index, sg_index);
 		ret = -EINVAL;
 		goto out;
 	}
+
+	elem_array = &config->sg_array.elems[sg_index];
 
 	if ((config->direction & (DMA_DIR_MEM_TO_DEV | DMA_DIR_DEV_TO_MEM)) &&
 	    !config->irq_disabled) {
@@ -604,13 +608,13 @@ static int hda_dma_set_config(struct dma_chan_data *channel,
 
 	/* default channel config */
 	channel->direction = config->direction;
-	channel->desc_count = config->elem_array.count;
+	channel->desc_count = elem_array->count;
 	channel->is_scheduling_source = config->is_scheduling_source;
 	channel->period = config->period;
 
 	/* validate - HDA only supports continuous elems of same size  */
-	for (i = 0; i < config->elem_array.count; i++) {
-		sg_elem = config->elem_array.elems + i;
+	for (i = 0; i < channel->desc_count; i++) {
+		sg_elem = elem_array->elems + i;
 
 		if (config->direction == DMA_DIR_HMEM_TO_LMEM ||
 		    config->direction == DMA_DIR_DEV_TO_MEM)

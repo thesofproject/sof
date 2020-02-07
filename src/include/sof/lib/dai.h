@@ -18,6 +18,7 @@
 
 #include <platform/lib/dai.h>
 #include <sof/bit.h>
+#include <sof/lib/dma.h>
 #include <sof/lib/io.h>
 #include <sof/lib/memory.h>
 #include <sof/sof.h>
@@ -68,8 +69,12 @@ struct dai_ops {
 	int (*pm_context_store)(struct dai *dai);
 	int (*get_hw_params)(struct dai *dai,
 			     struct sof_ipc_stream_params *params, int dir);
-	int (*get_handshake)(struct dai *dai, int direction, int stream_id);
-	int (*get_fifo)(struct dai *dai, int direction, int stream_id);
+	int (*get_handshake)(struct dai *dai, int direction, int id);
+	int (*get_fifo)(struct dai *dai, int direction, int id);
+	int (*gen_dma_elem_array)(struct dai *dai, int direction, int id,
+				  int periods, int period_bytes,
+				  uintptr_t buffer,
+				  struct dma_sg_array *sg_array);
 	int (*probe)(struct dai *dai);
 	int (*remove)(struct dai *dai);
 };
@@ -211,6 +216,22 @@ struct dai *dai_get(uint32_t type, uint32_t index, uint32_t flags);
  */
 void dai_put(struct dai *dai);
 
+/**
+ * \brief API to generate a DMA buffer list
+ *
+ * @param[in] dai DAI to generate list for
+ * @param[in] direction Stream direction
+ * @param[in] id ID the DAI has been assigned (e.g. stream ID)
+ * @param[in] periods Number of periods
+ * @param[in] period_bytes Size of a single period in bytes
+ * @param[in] buffer Local buffer address
+ * @param[out] elem_array Allocated and initialized list
+ */
+int dai_gen_dma_sg_elems(struct dai *dai, int direction, int id,
+			 int periods, int period_bytes,
+			 uintptr_t buffer,
+			 struct dma_sg_elem_array *elem_array);
+
 #define dai_set_drvdata(dai, data) \
 	(dai->private = data)
 #define dai_get_drvdata(dai) \
@@ -289,9 +310,9 @@ static inline int dai_get_hw_params(struct dai *dai,
  * \brief Get Digital Audio interface DMA Handshake
  */
 static inline int dai_get_handshake(struct dai *dai, int direction,
-				    int stream_id)
+				    int id)
 {
-	int ret = dai->drv->ops.get_handshake(dai, direction, stream_id);
+	int ret = dai->drv->ops.get_handshake(dai, direction, id);
 
 	platform_shared_commit(dai, sizeof(*dai));
 
@@ -302,9 +323,9 @@ static inline int dai_get_handshake(struct dai *dai, int direction,
  * \brief Get Digital Audio interface FIFO address
  */
 static inline int dai_get_fifo(struct dai *dai, int direction,
-			       int stream_id)
+			       int id)
 {
-	int ret = dai->drv->ops.get_fifo(dai, direction, stream_id);
+	int ret = dai->drv->ops.get_fifo(dai, direction, id);
 
 	platform_shared_commit(dai, sizeof(*dai));
 
@@ -356,6 +377,23 @@ static inline int dai_get_info(struct dai *dai, int info)
 		ret = -EINVAL;
 		break;
 	}
+
+	platform_shared_commit(dai, sizeof(*dai));
+
+	return ret;
+}
+
+/**
+ * \brief Digital Audio interface Get DMA buffer array
+ */
+static inline int dai_gen_dma_array(struct dai *dai, int direction, int id,
+				    int periods, int period_bytes,
+				    uintptr_t buffer,
+				    struct dma_sg_array *sg_array)
+{
+	int ret = dai->drv->ops.gen_dma_elem_array(dai, direction, id, periods,
+						   period_bytes, buffer,
+						   sg_array);
 
 	platform_shared_commit(dai, sizeof(*dai));
 

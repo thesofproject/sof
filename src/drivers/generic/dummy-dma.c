@@ -329,15 +329,17 @@ static int dummy_dma_status(struct dma_chan_data *channel,
  * the direction and the actual SG elems for copying.
  */
 static int dummy_dma_set_config(struct dma_chan_data *channel,
-				struct dma_sg_config *config)
+				struct dma_sg_config *config,
+				unsigned int sg_index)
 {
 	struct dma_chan_pdata *ch = dma_chan_get_data(channel);
+	struct dma_sg_elem_array *elem_array;
 	uint32_t flags;
 	int ret = 0;
 
 	spin_lock_irq(&channel->dma->lock, flags);
 
-	if (!config->elem_array.count) {
+	if (!config->sg_array.count) {
 		trace_dummydma_error("dummy-dmac: %d channel %d no DMA descriptors",
 				     channel->dma->plat_data.id,
 				     channel->index);
@@ -346,6 +348,7 @@ static int dummy_dma_set_config(struct dma_chan_data *channel,
 		goto out;
 	}
 
+	elem_array = &config->sg_array.elems[sg_index];
 	channel->direction = config->direction;
 
 	if (config->direction != DMA_DIR_HMEM_TO_LMEM &&
@@ -357,8 +360,8 @@ static int dummy_dma_set_config(struct dma_chan_data *channel,
 		ret = -EINVAL;
 		goto out;
 	}
-	channel->desc_count = config->elem_array.count;
-	ch->elems = &config->elem_array;
+	channel->desc_count = elem_array->count;
+	ch->elems = elem_array;
 	ch->sg_elem_curr_idx = 0;
 	ch->cyclic = config->cyclic;
 

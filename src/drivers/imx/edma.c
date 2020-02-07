@@ -337,11 +337,13 @@ static int edma_setup_tcd(struct dma_chan_data *channel, int16_t soff,
 
 /* set the DMA channel configuration, source/target address, buffer sizes */
 static int edma_set_config(struct dma_chan_data *channel,
-			   struct dma_sg_config *config)
+			   struct dma_sg_config *config,
+			   unsigned int sg_index)
 {
 	int handshake, irq;
 	int16_t soff = 0;
 	int16_t doff = 0;
+	struct dma_sg_elem_array *elem_array;
 
 	/* We may need to pass some data through the handshake in the
 	 * future, so we just have them here, even if unused for now
@@ -351,6 +353,14 @@ static int edma_set_config(struct dma_chan_data *channel,
 
 	trace_edma("EDMA: set config");
 
+	if (config->sg_array.count < sg_index) {
+		trace_edma_error("edma_set_config() channel %d invalid sg_index %d",
+				 channel->index, sg_index);
+		return -EINVAL;
+	}
+
+	elem_array = &config->sg_array.elems[sg_index];
+
 	channel->is_scheduling_source = config->is_scheduling_source;
 	channel->direction = config->direction;
 
@@ -358,12 +368,12 @@ static int edma_set_config(struct dma_chan_data *channel,
 	case DMA_DIR_MEM_TO_DEV:
 		soff = config->src_width;
 		doff = 0;
-		handshake = config->dest_dev;
+		handshake = elem_array->dest_dev;
 		break;
 	case DMA_DIR_DEV_TO_MEM:
 		soff = 0;
 		doff = config->dest_width;
-		handshake = config->src_dev;
+		handshake = elem_array->src_dev;
 		break;
 	default:
 		trace_edma_error("edma_set_config() unsupported config direction");
@@ -381,7 +391,7 @@ static int edma_set_config(struct dma_chan_data *channel,
 
 	return edma_setup_tcd(channel, soff, doff, config->cyclic,
 			      config->scatter, config->irq_disabled,
-			      &config->elem_array, config->src_width,
+			      elem_array, config->src_width,
 			      config->dest_width, config->burst_elems);
 }
 

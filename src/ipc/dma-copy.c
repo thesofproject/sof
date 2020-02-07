@@ -22,17 +22,17 @@
 #define tracev_dma(__e)	tracev_event(TRACE_CLASS_DMA, __e)
 
 #if !CONFIG_DMA_GW
-static struct dma_sg_elem *sg_get_elem_at(struct dma_sg_config *host_sg,
-	int32_t *offset)
+static struct dma_sg_elem *sg_get_elem_at(struct dma_sg_elem_array *elem_array,
+					  int32_t *offset)
 {
 	struct dma_sg_elem *host_sg_elem;
 	int i;
 	int32_t _offset = *offset;
 
 	/* find host element with host_offset */
-	for (i = 0; i < host_sg->elem_array.count; i++) {
+	for (i = 0; i < elem_array->count; i++) {
 
-		host_sg_elem = host_sg->elem_array.elems + i;
+		host_sg_elem = elem_array->elems + i;
 
 		/* is offset in this elem ? */
 		if (_offset >= 0 && _offset < host_sg_elem->size) {
@@ -86,7 +86,7 @@ int dma_copy_to_host_nowait(struct dma_copy *dc, struct dma_sg_config *host_sg,
 		return 0;
 
 	/* find host element with host_offset */
-	host_sg_elem = sg_get_elem_at(host_sg, &offset);
+	host_sg_elem = sg_get_elem_at(&host_sg->sg_array.elems[0], &offset);
 	if (host_sg_elem == NULL)
 		return -EINVAL;
 
@@ -96,7 +96,7 @@ int dma_copy_to_host_nowait(struct dma_copy *dc, struct dma_sg_config *host_sg,
 	config.dest_width = sizeof(uint32_t);
 	config.cyclic = 0;
 	config.irq_disabled = false;
-	dma_sg_init(&config.elem_array);
+	dma_sg_init(&config.sg_array);
 
 	/* configure local DMA elem */
 	local_sg_elem.dest = host_sg_elem->dest + offset;
@@ -106,11 +106,11 @@ int dma_copy_to_host_nowait(struct dma_copy *dc, struct dma_sg_config *host_sg,
 	else
 		local_sg_elem.size = size;
 
-	config.elem_array.elems = &local_sg_elem;
-	config.elem_array.count = 1;
+	config.sg_array.elems[0].elems = &local_sg_elem;
+	config.sg_array.elems[0].count = 1;
 
 	/* start the DMA */
-	err = dma_set_config(dc->chan, &config);
+	err = dma_set_config(dc->chan, &config, 0);
 	if (err < 0)
 		return err;
 

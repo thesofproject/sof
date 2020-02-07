@@ -479,11 +479,13 @@ static void dw_dma_mask_address(struct dma_sg_elem *sg_elem,
 
 /* set the DMA channel configuration, source/target address, buffer sizes */
 static int dw_dma_set_config(struct dma_chan_data *channel,
-			     struct dma_sg_config *config)
+			     struct dma_sg_config *config,
+			     unsigned int sg_index)
 {
 	const struct dw_drv_plat_data *dp =
 		channel->dma->plat_data.drv_plat_data;
 	struct dw_dma_chan_data *dw_chan = dma_chan_get_data(channel);
+	struct dma_sg_elem_array *elem_array;
 	struct dma_sg_elem *sg_elem;
 	struct dw_lli *lli_desc;
 	struct dw_lli *lli_desc_head;
@@ -508,7 +510,7 @@ static int dw_dma_set_config(struct dma_chan_data *channel,
 	dw_chan->cfg_lo = DW_CFG_LOW_DEF;
 	dw_chan->cfg_hi = DW_CFG_HIGH_DEF;
 
-	if (!config->elem_array.count) {
+	if (!config->sg_array.count) {
 		trace_dwdma_error("dw_dma_set_config() error: dma %d "
 				  "channel %d no elems",
 				  channel->dma->plat_data.id, channel->index);
@@ -516,20 +518,23 @@ static int dw_dma_set_config(struct dma_chan_data *channel,
 		goto out;
 	}
 
+	elem_array = &config->sg_array.elems[sg_index];
+
 	if (config->irq_disabled &&
-	    config->elem_array.count < DW_DMA_CFG_NO_IRQ_MIN_ELEMS) {
+	    elem_array->count < DW_DMA_CFG_NO_IRQ_MIN_ELEMS) {
 		trace_dwdma_error("dw_dma_set_config() error: dma %d channel "
 				  "%d not enough elems for config with irq "
 				  "disabled %d", channel->dma->plat_data.id,
-				  channel->index, config->elem_array.count);
+				  channel->index,
+				  elem_array->count);
 		ret = -EINVAL;
 		goto out;
 	}
 
 	/* do we need to realloc descriptors */
-	if (config->elem_array.count != channel->desc_count) {
+	if (elem_array->count != channel->desc_count) {
 
-		channel->desc_count = config->elem_array.count;
+		channel->desc_count = elem_array->count;
 
 		/* allocate descriptors for channel */
 		if (dw_chan->lli)
@@ -568,8 +573,8 @@ static int dw_dma_set_config(struct dma_chan_data *channel,
 	dw_chan->ptr_data.buffer_bytes = 0;
 
 	/* fill in lli for the elems in the list */
-	for (i = 0; i < config->elem_array.count; i++) {
-		sg_elem = config->elem_array.elems + i;
+	for (i = 0; i < elem_array->count; i++) {
+		sg_elem = elem_array->elems + i;
 
 		/* write CTL_LO for each lli */
 		switch (config->src_width) {
@@ -669,9 +674,9 @@ static int dw_dma_set_config(struct dma_chan_data *channel,
 			lli_desc->ctrl_lo |= DW_CTLL_LLP_S_EN;
 			dw_chan->cfg_lo |= DW_CFG_RELOAD_DST;
 #endif
-			dw_chan->cfg_hi |= DW_CFGH_DST(config->dest_dev);
+			dw_chan->cfg_hi |= DW_CFGH_DST(elem_array->dest_dev);
 			platform_dw_dma_llp_config(channel->dma, channel,
-						   config->dest_dev);
+						   elem_array->dest_dev);
 			break;
 		case DMA_DIR_DEV_TO_MEM:
 			lli_desc->ctrl_lo |= DW_CTLL_FC_P2M | DW_CTLL_SRC_FIX |
@@ -686,9 +691,9 @@ static int dw_dma_set_config(struct dma_chan_data *channel,
 				lli_desc->ctrl_lo |= DW_CTLL_D_SCAT_EN;
 			dw_chan->cfg_lo |= DW_CFG_RELOAD_SRC;
 #endif
-			dw_chan->cfg_hi |= DW_CFGH_SRC(config->src_dev);
+			dw_chan->cfg_hi |= DW_CFGH_SRC(elem_array->src_dev);
 			platform_dw_dma_llp_config(channel->dma, channel,
-						   config->src_dev);
+						   elem_array->src_dev);
 			break;
 		case DMA_DIR_DEV_TO_DEV:
 			lli_desc->ctrl_lo |= DW_CTLL_FC_P2P | DW_CTLL_SRC_FIX |
@@ -697,8 +702,8 @@ static int dw_dma_set_config(struct dma_chan_data *channel,
 			lli_desc->ctrl_lo |=
 				DW_CTLL_LLP_S_EN | DW_CTLL_LLP_D_EN;
 #endif
-			dw_chan->cfg_hi |= DW_CFGH_SRC(config->src_dev) |
-				DW_CFGH_DST(config->dest_dev);
+			dw_chan->cfg_hi |= DW_CFGH_SRC(elem_array->src_dev) |
+				DW_CFGH_DST(elem_array->dest_dev);
 			break;
 		default:
 			trace_dwdma_error("dw_dma_set_config() error: dma %d "

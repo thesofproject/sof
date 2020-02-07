@@ -1599,14 +1599,28 @@ static int dmic_remove(struct dai *dai)
 	return 0;
 }
 
-static int dmic_get_handshake(struct dai *dai, int direction, int stream_id)
+static int dmic_get_handshake(struct dai *dai, int direction, int id)
 {
 	return dai->plat_data.fifo[SOF_IPC_STREAM_CAPTURE].handshake;
 }
 
-static int dmic_get_fifo(struct dai *dai, int direction, int stream_id)
+static int dmic_get_fifo(struct dai *dai, int direction, int id)
 {
 	return dai->plat_data.fifo[SOF_IPC_STREAM_CAPTURE].offset;
+}
+
+static int dmic_gen_dma_elem_array(struct dai *dai, int direction, int id,
+				   int periods, int period_bytes,
+				   uintptr_t buffer,
+				   struct dma_sg_array *sg_array)
+{
+	int ret = dma_sg_array_alloc(sg_array, 1, SOF_MEM_ZONE_RUNTIME);
+
+	if (ret)
+		return ret;
+
+	return dai_gen_dma_sg_elems(dai, direction, id, periods, period_bytes,
+				    buffer, &sg_array->elems[0]);
 }
 
 /* Functions for HW timestamp */
@@ -1720,6 +1734,7 @@ const struct dai_driver dmic_driver = {
 		.pm_context_restore	= dmic_context_restore,
 		.get_handshake		= dmic_get_handshake,
 		.get_fifo		= dmic_get_fifo,
+		.gen_dma_elem_array	= dmic_gen_dma_elem_array,
 		.probe			= dmic_probe,
 		.remove			= dmic_remove,
 	},

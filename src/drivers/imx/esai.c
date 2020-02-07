@@ -405,7 +405,7 @@ static int esai_probe(struct dai *dai)
 	return 0;
 }
 
-static int esai_get_handshake(struct dai *dai, int direction, int stream_id)
+static int esai_get_handshake(struct dai *dai, int direction, int id)
 {
 	int handshake = dai->plat_data.fifo[direction].handshake;
 	int channel = EDMA_HS_GET_CHAN(handshake);
@@ -414,16 +414,30 @@ static int esai_get_handshake(struct dai *dai, int direction, int stream_id)
 	return EDMA_HANDSHAKE(irq, channel);
 }
 
-static int esai_get_fifo(struct dai *dai, int direction, int stream_id)
+static int esai_get_fifo(struct dai *dai, int direction, int id)
 {
 	switch (direction) {
 	case DAI_DIR_PLAYBACK:
 	case DAI_DIR_CAPTURE:
-		return dai_fifo(dai, direction); /* stream_id is unused */
+		return dai_fifo(dai, direction); /* id is unused */
 	default:
 		trace_esai_error("esai_get_fifo(): Invalid direction");
 		return -EINVAL;
 	}
+}
+
+static int esai_gen_dma_elem_array(struct dai *dai, int direction, int id,
+				   int periods, int period_bytes,
+				   uintptr_t buffer,
+				   struct dma_sg_array *sg_array)
+{
+	int ret = dma_sg_array_alloc(sg_array, 1, SOF_MEM_ZONE_RUNTIME);
+
+	if (ret < 0)
+		return ret;
+
+	return dai_gen_dma_sg_elems(dai, direction, id, periods, period_bytes,
+				    buffer, &sg_array->elems[0]);
 }
 
 const struct dai_driver esai_driver = {
@@ -437,5 +451,6 @@ const struct dai_driver esai_driver = {
 		.probe			= esai_probe,
 		.get_handshake		= esai_get_handshake,
 		.get_fifo		= esai_get_fifo,
+		.gen_dma_elem_array	= esai_gen_dma_elem_array,
 	},
 };

@@ -100,7 +100,14 @@ static int ipc_get_page_descriptors(struct dma *dmac, uint8_t *page_table,
 	config.dest_width = sizeof(uint32_t);
 	config.cyclic = 0;
 	config.irq_disabled = false;
-	dma_sg_init(&config.elem_array);
+	dma_sg_init(&config.sg_array);
+
+	ret = dma_sg_array_alloc(&config.sg_array, 1, SOF_MEM_ZONE_RUNTIME);
+
+	if (ret < 0) {
+		trace_ipc_error("ipc_get_page_descriptors() error: dma_sg_array_alloc() failed");
+		goto out;
+	}
 
 	/* set up DMA descriptor */
 	elem.dest = (uint32_t)page_table;
@@ -109,10 +116,10 @@ static int ipc_get_page_descriptors(struct dma *dmac, uint8_t *page_table,
 	/* source buffer size is always PAGE_SIZE bytes */
 	/* 20 bits for each page, round up to 32 */
 	elem.size = (ring->pages * 5 * 16 + 31) / 32;
-	config.elem_array.elems = &elem;
-	config.elem_array.count = 1;
+	config.sg_array.elems[0].elems = &elem;
+	config.sg_array.elems[0].count = 1;
 
-	ret = dma_set_config(chan, &config);
+	ret = dma_set_config(chan, &config, 0);
 	if (ret < 0) {
 		trace_ipc_error("ipc_get_page_descriptors() error: "
 				"dma_set_config() failed");
@@ -143,7 +150,7 @@ int ipc_process_host_buffer(struct ipc *ipc,
 	int err;
 
 	data_host_buffer = ipc_platform_get_host_buffer(ipc);
-	dma_sg_init(elem_array);
+	dma_sg_elems_init(elem_array);
 
 	/* use DMA to read in compressed page table ringbuffer from host */
 	err = ipc_get_page_descriptors(data_host_buffer->dmac,
@@ -166,6 +173,6 @@ int ipc_process_host_buffer(struct ipc *ipc,
 
 	return 0;
 error:
-	dma_sg_free(elem_array);
+	dma_sg_elems_free(elem_array);
 	return err;
 }

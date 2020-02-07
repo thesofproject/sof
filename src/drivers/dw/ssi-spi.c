@@ -234,16 +234,28 @@ static inline void spi_config(struct spi *spi,
 static int spi_slave_dma_set_config(struct spi *spi,
 				    const struct spi_dma_config *spi_cfg)
 {
+	int ret = 0;
+
 	struct dma_sg_config config = {
 		.src_width  = 4,
 		.dest_width = 4,
 	};
 	struct dma_sg_elem local_sg_elem;
+	struct dma_sg_elem_array *elem_array;
 	struct dma_chan_data *chan = spi->chan[spi_cfg->dir];
 
 	/* dma config */
 
 	local_sg_elem.size = spi_cfg->transfer_len;
+
+	ret = dma_sg_array_alloc(&config.sg_array, 1, SOF_MEM_ZONE_SYS);
+
+	if (ret < 0) {
+		trace_ipc_error("spi_slave_dma_set_config() error: dma_sg_array_alloc() failed");
+		return ret;
+	}
+
+	elem_array = &config.sg_array.elems[0];
 
 	/*
 	 * Source and destination width is 32 bits, contrary to dw_apb_ssi note
@@ -253,16 +265,14 @@ static int spi_slave_dma_set_config(struct spi *spi,
 	case SPI_DIR_RX:	/* HOST -> DSP */
 		config.direction	= DMA_DIR_DEV_TO_MEM;
 		config.scatter		= true;
-		config.src_dev		= spi_fifo_handshake(spi,
-							spi_cfg->dir);
+		elem_array->src_dev	= spi_fifo_handshake(spi, spi_cfg->dir);
 
 		local_sg_elem.dest	= (uint32_t)spi_cfg->dest_buf;
 		local_sg_elem.src	= spi->plat_data->base + SPI_REG_DR;
 		break;
 	case SPI_DIR_TX:	/* DSP -> HOST */
 		config.direction	= DMA_DIR_MEM_TO_DEV;
-		config.dest_dev		= spi_fifo_handshake(spi,
-							spi_cfg->dir);
+		elem_array->dest_dev	= spi_fifo_handshake(spi, spi_cfg->dir);
 
 		local_sg_elem.dest	= spi->plat_data->base + SPI_REG_DR;
 		local_sg_elem.src	= (uint32_t)spi_cfg->src_buf;
@@ -272,10 +282,10 @@ static int spi_slave_dma_set_config(struct spi *spi,
 	}
 
 	/* configure local DMA elem */
-	config.elem_array.count = 1;
-	config.elem_array.elems = &local_sg_elem;
+	elem_array->count = 1;
+	elem_array->elems = &local_sg_elem;
 
-	return dma_set_config(chan, &config);
+	return dma_set_config(chan, &config, 0);
 }
 
 static int spi_set_config(struct spi *spi,

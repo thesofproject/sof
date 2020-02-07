@@ -116,8 +116,16 @@ struct dma_cb_data {
  * \brief SG elem array.
  */
 struct dma_sg_elem_array {
+	uint32_t id;			/**< e.g. DAI index or stream ID */
+	uint32_t src_dev;		/**< e.g. DMA handshake */
+	uint32_t dest_dev;		/**< e.g. DMA handshake */
 	uint32_t count;			/**< number of elements in elems */
 	struct dma_sg_elem *elems;	/**< elements */
+};
+
+struct dma_sg_array {
+	uint32_t count;				/**< number of elem arrays */
+	struct dma_sg_elem_array *elems;	/**< array of dma_sg elems */
 };
 
 /* DMA physical SG params */
@@ -126,11 +134,9 @@ struct dma_sg_config {
 	uint32_t dest_width;			/* in bytes */
 	uint32_t burst_elems;
 	uint32_t direction;
-	uint32_t src_dev;
-	uint32_t dest_dev;
 	uint32_t cyclic;			/* circular buffer */
 	uint64_t period;
-	struct dma_sg_elem_array elem_array;	/* array of dma_sg elems */
+	struct dma_sg_array sg_array;
 	bool scatter;
 	bool irq_disabled;
 	/* true if configured DMA channel is the scheduling source */
@@ -161,7 +167,7 @@ struct dma_ops {
 		      struct dma_chan_status *status, uint8_t direction);
 
 	int (*set_config)(struct dma_chan_data *channel,
-			  struct dma_sg_config *config);
+			  struct dma_sg_config *config, unsigned int sg_index);
 
 	int (*pm_context_restore)(struct dma *dma);
 	int (*pm_context_store)(struct dma *dma);
@@ -362,9 +368,9 @@ static inline int dma_status(struct dma_chan_data *channel,
 }
 
 static inline int dma_set_config(struct dma_chan_data *channel,
-				 struct dma_sg_config *config)
+				 struct dma_sg_config *config, int sg_index)
 {
-	int ret = channel->dma->ops->set_config(channel, config);
+	int ret = channel->dma->ops->set_config(channel, config, sg_index);
 
 	platform_shared_commit(channel->dma, sizeof(*channel->dma));
 	platform_shared_commit(channel, sizeof(*channel));
@@ -564,11 +570,20 @@ static inline bool dma_is_scheduling_source(struct dma_chan_data *channel)
 	return ret;
 }
 
-static inline void dma_sg_init(struct dma_sg_elem_array *ea)
+static inline void dma_sg_init(struct dma_sg_array *sg_array)
 {
-	ea->count = 0;
-	ea->elems = NULL;
+	sg_array->count = 0;
+	sg_array->elems = NULL;
 }
+
+static inline void dma_sg_elems_init(struct dma_sg_elem_array *elem_array)
+{
+	elem_array->count = 0;
+	elem_array->elems = NULL;
+}
+
+int dma_sg_array_alloc(struct dma_sg_array *sg_array, int count,
+		       enum mem_zone zone);
 
 int dma_sg_alloc(struct dma_sg_elem_array *ea,
 		 enum mem_zone zone,
@@ -576,7 +591,8 @@ int dma_sg_alloc(struct dma_sg_elem_array *ea,
 		 uint32_t buffer_count, uint32_t buffer_bytes,
 		 uintptr_t dma_buffer_addr, uintptr_t external_addr);
 
-void dma_sg_free(struct dma_sg_elem_array *ea);
+void dma_sg_free(struct dma_sg_array *sg_array);
+void dma_sg_elems_free(struct dma_sg_elem_array *elem_array);
 
 /**
  * \brief Get the total size of SG buffer

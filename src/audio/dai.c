@@ -37,7 +37,7 @@ static const struct comp_driver comp_dai;
 struct dai_data {
 	/* local DMA config */
 	struct dma_chan_data *chan;
-	uint32_t stream_id;
+	uint32_t id;
 	struct dma_sg_config config;
 	struct comp_buffer *dma_buffer;
 	struct comp_buffer *local_buffer;
@@ -170,7 +170,7 @@ static struct comp_dev *dai_new(const struct comp_driver *drv,
 		goto error;
 	}
 
-	dma_sg_init(&dd->config.elem_array);
+	dma_sg_init(&dd->config.sg_array);
 	dd->dai_pos = NULL;
 	dd->dai_pos_blks = 0;
 	dd->xrun = 0;
@@ -256,7 +256,7 @@ static int dai_playback_params(struct comp_dev *dev, uint32_t period_bytes,
 	struct dai_data *dd = comp_get_drvdata(dev);
 	struct dma_sg_config *config = &dd->config;
 	uint32_t local_fmt = dd->local_buffer->stream.frame_fmt;
-	uint32_t fifo;
+	uintptr_t buf = (uintptr_t)dd->dma_buffer->stream.addr;
 	int err;
 
 	/* set processing function */
@@ -268,27 +268,17 @@ static int dai_playback_params(struct comp_dev *dev, uint32_t period_bytes,
 	config->dest_width = sample_bytes(dd->frame_fmt);
 	config->cyclic = 1;
 	config->irq_disabled = pipeline_is_timer_driven(dev->pipeline);
-	config->dest_dev = dai_get_handshake(dd->dai, dev->direction,
-					     dd->stream_id);
 	config->is_scheduling_source = comp_is_scheduling_source(dev);
 	config->period = dev->pipeline->ipc_pipe.period;
 
-	comp_info(dev, "dai_playback_params() dest_dev = %d stream_id = %d src_width = %d dest_width = %d",
-		  config->dest_dev, dd->stream_id,
-		  config->src_width, config->dest_width);
+	comp_info(dev, "dai_playback_params() id = %d src_width = %d dest_width = %d",
+		  dd->id, config->src_width, config->dest_width);
 
-	if (!config->elem_array.elems) {
-		fifo = dai_get_fifo(dd->dai, dev->direction,
-				    dd->stream_id);
+	if (!config->sg_array.elems) {
+		err = dai_gen_dma_array(dd->dai, config->direction, dd->id,
+					period_count, period_bytes,
+					buf, &config->sg_array);
 
-		comp_info(dev, "dai_playback_params() fifo %X", fifo);
-
-		err = dma_sg_alloc(&config->elem_array, SOF_MEM_ZONE_RUNTIME,
-				   config->direction,
-				   period_count,
-				   period_bytes,
-				   (uintptr_t)(dd->dma_buffer->stream.addr),
-				   fifo);
 		if (err < 0) {
 			comp_err(dev, "dai_playback_params() error: dma_sg_alloc() failed with err = %d",
 				 err);
@@ -305,7 +295,7 @@ static int dai_capture_params(struct comp_dev *dev, uint32_t period_bytes,
 	struct dai_data *dd = comp_get_drvdata(dev);
 	struct dma_sg_config *config = &dd->config;
 	uint32_t local_fmt = dd->local_buffer->stream.frame_fmt;
-	uint32_t fifo;
+	uintptr_t buf = (uintptr_t)dd->dma_buffer->stream.addr;
 	int err;
 
 	/* set processing function */
@@ -315,8 +305,6 @@ static int dai_capture_params(struct comp_dev *dev, uint32_t period_bytes,
 	config->direction = DMA_DIR_DEV_TO_MEM;
 	config->cyclic = 1;
 	config->irq_disabled = pipeline_is_timer_driven(dev->pipeline);
-	config->src_dev = dai_get_handshake(dd->dai, dev->direction,
-					    dd->stream_id);
 	config->is_scheduling_source = comp_is_scheduling_source(dev);
 	config->period = dev->pipeline->ipc_pipe.period;
 
@@ -333,22 +321,14 @@ static int dai_capture_params(struct comp_dev *dev, uint32_t period_bytes,
 		config->dest_width = sample_bytes(dd->frame_fmt);
 	}
 
-	comp_info(dev, "dai_capture_params() src_dev = %d stream_id = %d src_width = %d dest_width = %d",
-		  config->src_dev, dd->stream_id,
-		  config->src_width, config->dest_width);
+	comp_info(dev, "dai_capture_params() id = %d src_width = %d dest_width = %d",
+		  dd->id, config->src_width, config->dest_width);
 
-	if (!config->elem_array.elems) {
-		fifo = dai_get_fifo(dd->dai, dev->direction,
-				    dd->stream_id);
+	if (!config->sg_array.elems) {
+		err = dai_gen_dma_array(dd->dai, config->direction, dd->id,
+					period_count, period_bytes,
+					buf, &config->sg_array);
 
-		comp_info(dev, "dai_capture_params() fifo %X", fifo);
-
-		err = dma_sg_alloc(&config->elem_array, SOF_MEM_ZONE_RUNTIME,
-				   config->direction,
-				   period_count,
-				   period_bytes,
-				   (uintptr_t)(dd->dma_buffer->stream.addr),
-				   fifo);
 		if (err < 0) {
 			comp_err(dev, "dai_capture_params() error: dma_sg_alloc() failed with err = %d",
 				 err);
@@ -484,8 +464,8 @@ static int dai_prepare(struct comp_dev *dev)
 		return -EINVAL;
 	}
 
-	if (!dd->config.elem_array.elems) {
-		comp_err(dev, "dai_prepare() error: Missing dd->config.elem_array.elems.");
+	if (!dd->config.sg_array.elems) {
+		comp_err(dev, "dai_prepare() error: Missing dd->config.sg_array.elems.");
 		comp_set_state(dev, COMP_TRIGGER_RESET);
 		return -EINVAL;
 	}
@@ -502,7 +482,7 @@ static int dai_prepare(struct comp_dev *dev)
 		return ret;
 	}
 
-	ret = dma_set_config(dd->chan, &dd->config);
+	ret = dma_set_config(dd->chan, &dd->config, 0);
 	if (ret < 0)
 		comp_set_state(dev, COMP_TRIGGER_RESET);
 
@@ -516,7 +496,7 @@ static int dai_reset(struct comp_dev *dev)
 
 	comp_info(dev, "dai_reset()");
 
-	dma_sg_free(&config->elem_array);
+	dma_sg_free(&config->sg_array);
 
 	if (dd->dma_buffer) {
 		buffer_free(dd->dma_buffer);
@@ -765,20 +745,18 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 		 * not during topology parsing.
 		 */
 		channel = config->alh.stream_id;
-		dd->stream_id = config->alh.stream_id;
+		dd->id = config->alh.stream_id;
 		comp_info(dev, "dai_config(), channel = %d", channel);
 		break;
 	case SOF_DAI_IMX_SAI:
-		handshake = dai_get_handshake(dd->dai, dai->direction,
-					      dd->stream_id);
+		handshake = dai_get_handshake(dd->dai, dai->direction, dd->id);
 		channel = EDMA_HS_GET_CHAN(handshake);
 
 		dd->config.burst_elems =
 			dd->dai->plat_data.fifo[dai->direction].depth;
 		break;
 	case SOF_DAI_IMX_ESAI:
-		handshake = dai_get_handshake(dd->dai, dai->direction,
-					      dd->stream_id);
+		handshake = dai_get_handshake(dd->dai, dai->direction, dd->id);
 		channel = EDMA_HS_GET_CHAN(handshake);
 
 		dd->config.burst_elems =

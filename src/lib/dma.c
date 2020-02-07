@@ -146,6 +146,25 @@ void dma_put(struct dma *dma)
 	spin_unlock(&dma->lock);
 }
 
+int dma_sg_array_alloc(struct dma_sg_array *sg_array, int count,
+		       enum mem_zone zone)
+{
+	int i;
+
+	sg_array->elems = rzalloc(zone, 0, SOF_MEM_CAPS_RAM,
+				  sizeof(struct dma_sg_elem_array) * count);
+
+	if (!sg_array->elems)
+		return -ENOMEM;
+
+	for (i = 0; i < count; i++)
+		dma_sg_elems_init(&sg_array->elems[i]);
+
+	sg_array->count = count;
+
+	return 0;
+}
+
 int dma_sg_alloc(struct dma_sg_elem_array *elem_array,
 		 enum mem_zone zone,
 		 uint32_t direction,
@@ -180,10 +199,20 @@ int dma_sg_alloc(struct dma_sg_elem_array *elem_array,
 	return 0;
 }
 
-void dma_sg_free(struct dma_sg_elem_array *elem_array)
+void dma_sg_free(struct dma_sg_array *sg_array)
+{
+	int i;
+
+	for (i = 0; i < sg_array->count; i++)
+		rfree(sg_array->elems[i].elems);
+
+	rfree(sg_array->elems);
+	dma_sg_init(sg_array);
+}
+
+void dma_sg_elems_free(struct dma_sg_elem_array *elem_array)
 {
 	rfree(elem_array->elems);
-	dma_sg_init(elem_array);
 }
 
 void dma_buffer_copy_from(struct comp_buffer *source, uint32_t source_bytes,

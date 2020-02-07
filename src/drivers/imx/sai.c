@@ -303,21 +303,35 @@ static int sai_probe(struct dai *dai)
 	return 0;
 }
 
-static int sai_get_handshake(struct dai *dai, int direction, int stream_id)
+static int sai_get_handshake(struct dai *dai, int direction, int id)
 {
 	return dai->plat_data.fifo[direction].handshake;
 }
 
-static int sai_get_fifo(struct dai *dai, int direction, int stream_id)
+static int sai_get_fifo(struct dai *dai, int direction, int id)
 {
 	switch (direction) {
 	case DAI_DIR_PLAYBACK:
 	case DAI_DIR_CAPTURE:
-		return dai_fifo(dai, direction); /* stream_id is unused */
+		return dai_fifo(dai, direction); /* id is unused */
 	default:
 		trace_sai_error("sai_get_fifo(): Invalid direction");
 		return -EINVAL;
 	}
+}
+
+static int sai_gen_dma_elem_array(struct dai *dai, int direction, int id,
+				  int periods, int period_bytes,
+				  uintptr_t buffer,
+				  struct dma_sg_array *sg_array)
+{
+	int ret = dma_sg_array_alloc(sg_array, 1, SOF_MEM_ZONE_RUNTIME);
+
+	if (ret < 0)
+		return ret;
+
+	return dai_gen_dma_sg_elems(dai, direction, id, periods, period_bytes,
+				    buffer, &sg_array->elems[0]);
 }
 
 const struct dai_driver sai_driver = {
@@ -331,5 +345,6 @@ const struct dai_driver sai_driver = {
 		.probe			= sai_probe,
 		.get_handshake		= sai_get_handshake,
 		.get_fifo		= sai_get_fifo,
+		.gen_dma_elem_array	= sai_gen_dma_elem_array,
 	},
 };

@@ -5,6 +5,7 @@
 // Author: Marcin Maka <marcin.maka@linux.intel.com>
 
 #include <sof/lib/dai.h>
+#include <sof/lib/dma.h>
 #include <sof/lib/memory.h>
 #include <sof/spinlock.h>
 #include <sof/trace/trace.h>
@@ -84,4 +85,26 @@ void dai_put(struct dai *dai)
 		    dai->drv->type, dai->index, dai->sref);
 	platform_shared_commit(dai, sizeof(*dai));
 	spin_unlock(&dai->lock);
+}
+
+int dai_gen_dma_sg_elems(struct dai *dai, int direction, int id,
+			 int periods, int period_bytes,
+			 uintptr_t buffer,
+			 struct dma_sg_elem_array *elem_array)
+{
+	uintptr_t fifo;
+
+	if (direction == DMA_DIR_MEM_TO_DEV ||
+	    direction == DMA_DIR_LMEM_TO_HMEM) {
+		fifo = dai_get_fifo(dai, SOF_IPC_STREAM_PLAYBACK, id);
+		elem_array->dest_dev =
+			dai_get_handshake(dai, SOF_IPC_STREAM_PLAYBACK, id);
+	} else {
+		fifo = dai_get_fifo(dai, SOF_IPC_STREAM_CAPTURE, id);
+		elem_array->src_dev =
+			dai_get_handshake(dai, SOF_IPC_STREAM_CAPTURE, id);
+	}
+
+	return dma_sg_alloc(elem_array, SOF_MEM_ZONE_RUNTIME, direction,
+			    periods, period_bytes, buffer, fifo);
 }

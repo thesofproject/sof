@@ -98,7 +98,7 @@ static inline struct dma_sg_elem *next_buffer(struct hc_buf *hc)
 
 static uint32_t host_dma_get_split(struct host_data *hd, uint32_t bytes)
 {
-	struct dma_sg_elem *local_elem = hd->config.elem_array.elems;
+	struct dma_sg_elem *local_elem = hd->config.sg_array.elems[0].elems;
 	uint32_t split_src = 0;
 	uint32_t split_dst = 0;
 
@@ -172,7 +172,7 @@ static void host_update_position(struct comp_dev *dev, uint32_t bytes)
 static void host_one_shot_cb(struct comp_dev *dev, uint32_t bytes)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
-	struct dma_sg_elem *local_elem = hd->config.elem_array.elems;
+	struct dma_sg_elem *local_elem = hd->config.sg_array.elems[0].elems;
 	struct dma_sg_elem *source_elem;
 	struct dma_sg_elem *sink_elem;
 
@@ -232,19 +232,30 @@ static int create_local_elems(struct comp_dev *dev, uint32_t buffer_count,
 	dir = dev->direction == SOF_IPC_STREAM_PLAYBACK ?
 		DMA_DIR_HMEM_TO_LMEM : DMA_DIR_LMEM_TO_HMEM;
 
+	if (!hd->config.sg_array.count) {
+		err = dma_sg_array_alloc(&hd->config.sg_array, 1,
+					 SOF_MEM_ZONE_RUNTIME);
+
+		if (err < 0) {
+			comp_err(dev, "create_local_elems() error: dma_sg_array_alloc() failed");
+			return err;
+		}
+	}
+
 	/* if host buffer set we need to allocate local buffer */
 	if (hd->host.elem_array.count) {
 		elem_array = &hd->local.elem_array;
 
 		/* config buffer will be used as proxy */
-		err = dma_sg_alloc(&hd->config.elem_array, SOF_MEM_ZONE_RUNTIME,
-				   dir, 1, 0, 0, 0);
+		err = dma_sg_alloc(&hd->config.sg_array.elems[0],
+				   SOF_MEM_ZONE_RUNTIME, dir, 1, 0, 0, 0);
+
 		if (err < 0) {
 			comp_err(dev, "create_local_elems() error: dma_sg_alloc() failed");
 			return err;
 		}
 	} else {
-		elem_array = &hd->config.elem_array;
+		elem_array = &hd->config.sg_array.elems[0];
 	}
 
 	err = dma_sg_alloc(elem_array, SOF_MEM_ZONE_RUNTIME, dir, buffer_count,
@@ -362,9 +373,9 @@ static struct comp_dev *host_new(const struct comp_driver *drv,
 	}
 
 	/* init buffer elems */
-	dma_sg_init(&hd->config.elem_array);
-	dma_sg_init(&hd->host.elem_array);
-	dma_sg_init(&hd->local.elem_array);
+	dma_sg_init(&hd->config.sg_array);
+	dma_sg_elems_init(&hd->host.elem_array);
+	dma_sg_elems_init(&hd->local.elem_array);
 
 	ipc_build_stream_posn(&hd->posn, SOF_IPC_STREAM_POSITION, comp->id);
 
@@ -393,7 +404,7 @@ static void host_free(struct comp_dev *dev)
 	dma_put(hd->dma);
 
 	ipc_msg_free(hd->msg);
-	dma_sg_free(&hd->config.elem_array);
+	dma_sg_free(&hd->config.sg_array);
 	rfree(hd);
 	rfree(dev);
 }
@@ -421,7 +432,7 @@ static int host_elements_reset(struct comp_dev *dev)
 
 	/* local element */
 	if (source_elem && sink_elem) {
-		local_elem = hd->config.elem_array.elems;
+		local_elem = hd->config.sg_array.elems[0].elems;
 		local_elem->dest = sink_elem->dest;
 		local_elem->size =
 			dev->direction == SOF_IPC_STREAM_PLAYBACK ?
@@ -582,7 +593,7 @@ static int host_params(struct comp_dev *dev,
 		return -ENODEV;
 	}
 
-	err = dma_set_config(hd->chan, &hd->config);
+	err = dma_set_config(hd->chan, &hd->config, 0);
 	if (err < 0) {
 		comp_err(dev, "host_params() error: dma_set_config() failed");
 		dma_channel_put(hd->chan);
@@ -667,9 +678,9 @@ static int host_reset(struct comp_dev *dev)
 	}
 
 	/* free all DMA elements */
-	dma_sg_free(&hd->host.elem_array);
-	dma_sg_free(&hd->local.elem_array);
-	dma_sg_free(&hd->config.elem_array);
+	dma_sg_elems_free(&hd->host.elem_array);
+	dma_sg_elems_free(&hd->local.elem_array);
+	dma_sg_free(&hd->config.sg_array);
 
 	/* free DMA buffer */
 	if (hd->dma_buffer) {
@@ -692,7 +703,7 @@ static int host_reset(struct comp_dev *dev)
 static uint32_t host_buffer_get_copy_bytes(struct comp_dev *dev)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
-	struct dma_sg_elem *local_elem = hd->config.elem_array.elems;
+	struct dma_sg_elem *local_elem = hd->config.sg_array.elems[0].elems;
 	uint32_t avail_bytes = 0;
 	uint32_t free_bytes = 0;
 	uint32_t copy_bytes = 0;
@@ -781,7 +792,7 @@ static int host_copy(struct comp_dev *dev)
 	}
 
 	/* reconfigure transfer */
-	ret = dma_set_config(hd->chan, &hd->config);
+	ret = dma_set_config(hd->chan, &hd->config, 0);
 	if (ret < 0) {
 		comp_cl_err(&comp_host, "host_copy() error: dma_set_config() failed, ret = %u",
 			    ret);

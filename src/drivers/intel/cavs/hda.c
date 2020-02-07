@@ -51,6 +51,20 @@ static int hda_get_fifo(struct dai *dai, int direction, int stream_id)
 	return 0;
 }
 
+static int hda_gen_dma_elem_array(struct dai *dai, int direction, int id,
+				  int periods, int period_bytes,
+				  uintptr_t buffer,
+				  struct dma_sg_array *sg_array)
+{
+	int ret = dma_sg_array_alloc(sg_array, 1, SOF_MEM_ZONE_RUNTIME);
+
+	if (ret)
+		return ret;
+
+	return dai_gen_dma_sg_elems(dai, direction, id, periods, period_bytes,
+				    buffer, &sg_array->elems[0]);
+}
+
 /* Functions for HW timestamp */
 
 static inline uint32_t hda_ts_local_tsctrl_addr(void)
@@ -169,6 +183,7 @@ const struct dai_driver hda_driver = {
 		.get_hw_params		= hda_get_hw_params,
 		.get_handshake		= hda_get_handshake,
 		.get_fifo		= hda_get_fifo,
+		.gen_dma_elem_array	= hda_gen_dma_elem_array,
 		.probe			= hda_dummy,
 		.remove			= hda_dummy,
 	},

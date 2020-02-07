@@ -91,6 +91,20 @@ static int alh_get_fifo(struct dai *dai, int direction, int stream_id)
 	return ALH_BASE + offset + ALH_STREAM_OFFSET * stream_id;
 }
 
+static int alh_gen_dma_elem_array(struct dai *dai, int direction, int id,
+				  int periods, int period_bytes,
+				  uintptr_t buffer,
+				  struct dma_sg_array *sg_array)
+{
+	int ret = dma_sg_array_alloc(sg_array, 1, SOF_MEM_ZONE_RUNTIME);
+
+	if (ret)
+		return ret;
+
+	return dai_gen_dma_sg_elems(dai, direction, id, periods, period_bytes,
+				    buffer, &sg_array->elems[0]);
+}
+
 const struct dai_driver alh_driver = {
 	.type = SOF_DAI_INTEL_ALH,
 	.dma_caps = DMA_CAP_GP_LP | DMA_CAP_GP_HP,
@@ -103,6 +117,7 @@ const struct dai_driver alh_driver = {
 		.get_hw_params		= alh_get_hw_params,
 		.get_handshake		= alh_get_handshake,
 		.get_fifo		= alh_get_fifo,
+		.gen_dma_elem_array	= alh_gen_dma_elem_array,
 		.probe			= alh_probe,
 		.remove			= alh_remove,
 	},

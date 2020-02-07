@@ -536,14 +536,28 @@ static int ssp_probe(struct dai *dai)
 	return 0;
 }
 
-static int ssp_get_handshake(struct dai *dai, int direction, int stream_id)
+static int ssp_get_handshake(struct dai *dai, int direction, int id)
 {
 	return dai->plat_data.fifo[direction].handshake;
 }
 
-static int ssp_get_fifo(struct dai *dai, int direction, int stream_id)
+static int ssp_get_fifo(struct dai *dai, int direction, int id)
 {
 	return dai->plat_data.fifo[direction].offset;
+}
+
+static int ssp_gen_dma_elem_array(struct dai *dai, int direction, int id,
+				  int periods, int period_bytes,
+				  uintptr_t buffer,
+				  struct dma_sg_array *sg_array)
+{
+	int ret = dma_sg_array_alloc(sg_array, 1, SOF_MEM_ZONE_RUNTIME);
+
+	if (ret)
+		return ret;
+
+	return dai_gen_dma_sg_elems(dai, direction, id, periods, period_bytes,
+				    buffer, &sg_array->elems[0]);
 }
 
 const struct dai_driver ssp_driver = {
@@ -558,6 +572,7 @@ const struct dai_driver ssp_driver = {
 		.get_hw_params		= ssp_get_hw_params,
 		.get_handshake		= ssp_get_handshake,
 		.get_fifo		= ssp_get_fifo,
+		.gen_dma_elem_array	= ssp_gen_dma_elem_array,
 		.probe			= ssp_probe,
 	},
 };
