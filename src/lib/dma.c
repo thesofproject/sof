@@ -190,22 +190,15 @@ void dma_buffer_copy_from(struct comp_buffer *source, uint32_t source_bytes,
 			  struct comp_buffer *sink, uint32_t sink_bytes,
 			  dma_process_func process, uint32_t samples)
 {
-	uint32_t head = source_bytes;
-	uint32_t tail = 0;
 	struct audio_stream *istream = &source->stream;
 
 	/* source buffer contains data copied by DMA */
-	if ((char *)istream->r_ptr + source_bytes > (char *)istream->end_addr) {
-		head = (char *)istream->end_addr - (char *)istream->r_ptr;
-		tail = source_bytes - head;
-	}
-
-	dcache_invalidate_region(istream->r_ptr, head);
-	if (tail)
-		dcache_invalidate_region(istream->addr, tail);
+	audio_stream_invalidate(istream, source_bytes);
 
 	/* process data */
 	process(istream, 0, &sink->stream, 0, samples);
+
+	buffer_writeback(sink, sink_bytes);
 
 	istream->r_ptr = (char *)istream->r_ptr + source_bytes;
 	istream->r_ptr = audio_stream_wrap(istream, istream->r_ptr);
@@ -217,22 +210,15 @@ void dma_buffer_copy_to(struct comp_buffer *source, uint32_t source_bytes,
 			struct comp_buffer *sink, uint32_t sink_bytes,
 			dma_process_func process, uint32_t samples)
 {
-	uint32_t head = sink_bytes;
-	uint32_t tail = 0;
 	struct audio_stream *ostream = &sink->stream;
+
+	buffer_invalidate(source, source_bytes);
 
 	/* process data */
 	process(&source->stream, 0, ostream, 0, samples);
 
 	/* sink buffer contains data meant to copied to DMA */
-	if ((char *)ostream->w_ptr + sink_bytes > (char *)ostream->end_addr) {
-		head = (char *)ostream->end_addr - (char *)ostream->w_ptr;
-		tail = sink_bytes - head;
-	}
-
-	dcache_writeback_region(ostream->w_ptr, head);
-	if (tail)
-		dcache_writeback_region(ostream->addr, tail);
+	audio_stream_writeback(ostream, sink_bytes);
 
 	ostream->w_ptr = (char *)ostream->w_ptr + sink_bytes;
 	ostream->w_ptr = audio_stream_wrap(ostream, ostream->w_ptr);
