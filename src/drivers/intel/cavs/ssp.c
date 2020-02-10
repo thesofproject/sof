@@ -160,7 +160,7 @@ static int ssp_set_config(struct dai *dai,
 	sspsp = 0;
 
 	ssp->config = *config;
-	ssp->params = config->ssp;
+	ssp->params = config->dai_data[0].ssp;
 
 	/* sspsp2 no dynamic setting */
 	sspsp2 = 0x0;
@@ -172,10 +172,10 @@ static int ssp_set_config(struct dai *dai,
 	ssto = 0x0;
 
 	/* sstsa dynamic setting is TTSA, default 2 slots */
-	sstsa = config->ssp.tx_slots;
+	sstsa = config->dai_data[0].ssp.tx_slots;
 
 	/* ssrsa dynamic setting is RTSA, default 2 slots */
-	ssrsa = config->ssp.rx_slots;
+	ssrsa = config->dai_data[0].ssp.rx_slots;
 
 	switch (config->format & SOF_DAI_FMT_MASTER_MASK) {
 	case SOF_DAI_FMT_CBM_CFM:
@@ -275,39 +275,45 @@ static int ssp_set_config(struct dai *dai,
 	sscr2 |= (ssp->params.quirks & SOF_DAI_INTEL_SSP_QUIRK_PSPSRWFDFD) ?
 		SSCR2_PSPSRWFDFD : 0;
 
-	if (!config->ssp.mclk_rate ||
-	    config->ssp.mclk_rate > ssp_freq[MAX_SSP_FREQ_INDEX].freq) {
+	if (!config->dai_data[0].ssp.mclk_rate ||
+	    config->dai_data[0].ssp.mclk_rate >
+	    ssp_freq[MAX_SSP_FREQ_INDEX].freq) {
 		trace_ssp_error("ssp_set_config() error: "
 				"invalid MCLK = %d Hz (valid < %d)",
-				config->ssp.mclk_rate,
+				config->dai_data[0].ssp.mclk_rate,
 				ssp_freq[MAX_SSP_FREQ_INDEX].freq);
 		ret = -EINVAL;
 		goto out;
 	}
 
-	if (!config->ssp.bclk_rate ||
-	    config->ssp.bclk_rate > config->ssp.mclk_rate) {
+	if (!config->dai_data[0].ssp.bclk_rate ||
+	    config->dai_data[0].ssp.bclk_rate >
+	    config->dai_data[0].ssp.mclk_rate) {
 		trace_ssp_error("ssp_set_config() error: "
 				"BCLK %d Hz = 0 or > MCLK %d Hz",
-				config->ssp.bclk_rate, config->ssp.mclk_rate);
+				config->dai_data[0].ssp.bclk_rate,
+				config->dai_data[0].ssp.mclk_rate);
 		ret = -EINVAL;
 		goto out;
 	}
 
 	/* MCLK config */
-	ret = mn_set_mclk(config->ssp.mclk_id, config->ssp.mclk_rate);
+	ret = mn_set_mclk(config->dai_data[0].ssp.mclk_id,
+			  config->dai_data[0].ssp.mclk_rate);
 	if (ret < 0) {
 		trace_ssp_error("error: invalid mclk_rate = %d for mclk_id = %d",
-				config->ssp.mclk_id, config->ssp.mclk_rate);
+				config->dai_data[0].ssp.mclk_id,
+				config->dai_data[0].ssp.mclk_rate);
 		goto out;
 	}
 
 	/* BCLK config */
-	ret = mn_set_bclk(config->dai_index, config->ssp.bclk_rate,
+	ret = mn_set_bclk(config->dai_index, config->dai_data[0].ssp.bclk_rate,
 			  &mdiv, &need_ecs);
 	if (ret < 0) {
 		trace_ssp_error("error: invalid bclk_rate = %d for dai_index = %d",
-				config->ssp.bclk_rate, config->dai_index);
+				config->dai_data[0].ssp.bclk_rate,
+				config->dai_index);
 		goto out;
 	}
 
@@ -329,35 +335,40 @@ static int ssp_set_config(struct dai *dai,
 	sscr0 |= SSCR0_SCR(mdiv);
 
 	/* calc frame width based on BCLK and rate - must be divisable */
-	if (config->ssp.bclk_rate % config->ssp.fsync_rate) {
+	if (config->dai_data[0].ssp.bclk_rate %
+	    config->dai_data[0].ssp.fsync_rate) {
 		trace_ssp_error("ssp_set_config() error: "
 				"BCLK %d is not divisable by rate %d",
-				config->ssp.bclk_rate, config->ssp.fsync_rate);
+				config->dai_data[0].ssp.bclk_rate,
+				config->dai_data[0].ssp.fsync_rate);
 		ret = -EINVAL;
 		goto out;
 	}
 
 	/* must be enough BCLKs for data */
-	bdiv = config->ssp.bclk_rate / config->ssp.fsync_rate;
-	if (bdiv < config->ssp.tdm_slot_width * config->ssp.tdm_slots) {
+	bdiv = config->dai_data[0].ssp.bclk_rate /
+		config->dai_data[0].ssp.fsync_rate;
+	if (bdiv < config->dai_data[0].ssp.tdm_slot_width * config->dai_data[0].ssp.tdm_slots) {
 		trace_ssp_error("ssp_set_config() error: not enough BCLKs "
-				"need %d", config->ssp.tdm_slot_width *
-				config->ssp.tdm_slots);
+				"need %d",
+				config->dai_data[0].ssp.tdm_slot_width *
+				config->dai_data[0].ssp.tdm_slots);
 		ret = -EINVAL;
 		goto out;
 	}
 
 	/* tdm_slot_width must be <= 38 for SSP */
-	if (config->ssp.tdm_slot_width > 38) {
+	if (config->dai_data[0].ssp.tdm_slot_width > 38) {
 		trace_ssp_error("ssp_set_config() error: tdm_slot_width %d > "
-				"38", config->ssp.tdm_slot_width);
+				"38", config->dai_data[0].ssp.tdm_slot_width);
 		ret = -EINVAL;
 		goto out;
 	}
 
-	bdiv_min = config->ssp.tdm_slots *
-		   (config->ssp.tdm_per_slot_padding_flag ?
-		    config->ssp.tdm_slot_width : config->ssp.sample_valid_bits);
+	bdiv_min = config->dai_data[0].ssp.tdm_slots *
+		   (config->dai_data[0].ssp.tdm_per_slot_padding_flag ?
+		    config->dai_data[0].ssp.tdm_slot_width :
+		    config->dai_data[0].ssp.sample_valid_bits);
 	if (bdiv < bdiv_min) {
 		trace_ssp_error("ssp_set_config() error: bdiv(%d) < "
 				"bdiv_min(%d)", bdiv, bdiv_min);
@@ -379,7 +390,7 @@ static int ssp_set_config(struct dai *dai,
 
 		start_delay = true;
 
-		sscr0 |= SSCR0_FRDC(config->ssp.tdm_slots);
+		sscr0 |= SSCR0_FRDC(config->dai_data[0].ssp.tdm_slots);
 
 		if (bdiv % 2) {
 			trace_ssp_error("ssp_set_config() error: "
@@ -433,7 +444,7 @@ static int ssp_set_config(struct dai *dai,
 
 		/* default start_delay value is set to false */
 
-		sscr0 |= SSCR0_FRDC(config->ssp.tdm_slots);
+		sscr0 |= SSCR0_FRDC(config->dai_data[0].ssp.tdm_slots);
 
 		/* LJDFD enable */
 		sscr2 &= ~SSCR2_LJDFD;
@@ -495,7 +506,8 @@ static int ssp_set_config(struct dai *dai,
 
 		/* default start_delay value is set to false */
 
-		sscr0 |= SSCR0_MOD | SSCR0_FRDC(config->ssp.tdm_slots);
+		sscr0 |= SSCR0_MOD |
+			SSCR0_FRDC(config->dai_data[0].ssp.tdm_slots);
 
 		/* set asserted frame length */
 		frame_len = 1; /* default */
@@ -524,8 +536,8 @@ static int ssp_set_config(struct dai *dai,
 		 */
 		sspsp |= SSPSP_SFRMP(!inverted_frame);
 
-		active_tx_slots = popcount(config->ssp.tx_slots);
-		active_rx_slots = popcount(config->ssp.rx_slots);
+		active_tx_slots = popcount(config->dai_data[0].ssp.tx_slots);
+		active_rx_slots = popcount(config->dai_data[0].ssp.rx_slots);
 
 		/*
 		 * handle TDM mode, TDM mode has padding at the end of
@@ -533,11 +545,12 @@ static int ssp_set_config(struct dai *dai,
 		 * subtracting slot width and valid bits per slot.
 		 */
 		if (ssp->params.tdm_per_slot_padding_flag) {
-			frame_end_padding = bdiv - config->ssp.tdm_slots *
-				config->ssp.tdm_slot_width;
+			frame_end_padding = bdiv -
+				config->dai_data[0].ssp.tdm_slots *
+				config->dai_data[0].ssp.tdm_slot_width;
 
-			slot_end_padding = config->ssp.tdm_slot_width -
-				config->ssp.sample_valid_bits;
+			slot_end_padding = config->dai_data[0].ssp.tdm_slot_width -
+				config->dai_data[0].ssp.sample_valid_bits;
 
 			if (slot_end_padding >
 				SOF_DAI_INTEL_SSP_SLOT_PADDING_MAX) {
@@ -571,7 +584,7 @@ static int ssp_set_config(struct dai *dai,
 
 	sspsp |= SSPSP_SFRMWDTH(frame_len);
 
-	data_size = config->ssp.sample_valid_bits;
+	data_size = config->dai_data[0].ssp.sample_valid_bits;
 
 	if (data_size > 16)
 		sscr0 |= (SSCR0_EDSS | SSCR0_DSIZE(data_size - 16));
@@ -579,7 +592,7 @@ static int ssp_set_config(struct dai *dai,
 		sscr0 |= SSCR0_DSIZE(data_size);
 
 	/* setting TFT and RFT */
-	switch (config->ssp.sample_valid_bits) {
+	switch (config->dai_data[0].ssp.sample_valid_bits) {
 	case 16:
 			/* use 2 bytes for each slot */
 			sample_width = 2;
@@ -592,7 +605,7 @@ static int ssp_set_config(struct dai *dai,
 	default:
 			trace_ssp_error("ssp_set_config() error: "
 					"sample_valid_bits %d",
-					config->ssp.sample_valid_bits);
+					config->dai_data[0].ssp.sample_valid_bits);
 			ret = -EINVAL;
 			goto out;
 	}
@@ -790,7 +803,7 @@ static int ssp_remove(struct dai *dai)
 
 	pm_runtime_put_sync(SSP_CLK, dai->index);
 
-	mn_release_mclk(ssp->config.ssp.mclk_id);
+	mn_release_mclk(ssp->config.dai_data[0].ssp.mclk_id);
 	mn_release_bclk(dai->index);
 
 	/* Disable SSP power */

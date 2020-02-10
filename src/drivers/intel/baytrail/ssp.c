@@ -165,7 +165,7 @@ static int ssp_set_config(struct dai *dai,
 	sspsp = SSPSP_ETDS; /* last value (bit 0) */
 
 	ssp->config = *config;
-	ssp->params = config->ssp;
+	ssp->params = config->dai_data[0].ssp;
 
 	/* clock masters */
 	/*
@@ -281,7 +281,8 @@ static int ssp_set_config(struct dai *dai,
 	}
 
 	/* BCLK is generated from MCLK - must be divisable */
-	if (config->ssp.mclk_rate % config->ssp.bclk_rate) {
+	if (config->dai_data[0].ssp.mclk_rate %
+	    config->dai_data[0].ssp.bclk_rate) {
 		trace_ssp_error("ssp_set_config() error: "
 				"MCLK is not divisable");
 		ret = -EINVAL;
@@ -289,7 +290,8 @@ static int ssp_set_config(struct dai *dai,
 	}
 
 	/* divisor must be within SCR range */
-	mdiv = (config->ssp.mclk_rate / config->ssp.bclk_rate) - 1;
+	mdiv = (config->dai_data[0].ssp.mclk_rate /
+		config->dai_data[0].ssp.bclk_rate) - 1;
 	if (mdiv > (SSCR0_SCR_MASK >> 8)) {
 		trace_ssp_error("ssp_set_config() error: "
 				"divisor is not within SCR range");
@@ -301,7 +303,8 @@ static int ssp_set_config(struct dai *dai,
 	sscr0 |= SSCR0_SCR(mdiv);
 
 	/* calc frame width based on BCLK and rate - must be divisable */
-	if (config->ssp.bclk_rate % config->ssp.fsync_rate) {
+	if (config->dai_data[0].ssp.bclk_rate %
+	    config->dai_data[0].ssp.fsync_rate) {
 		trace_ssp_error("ssp_set_config() error: "
 				"BLCK is not divisable");
 		ret = -EINVAL;
@@ -309,16 +312,17 @@ static int ssp_set_config(struct dai *dai,
 	}
 
 	/* must be enouch BCLKs for data */
-	bdiv = config->ssp.bclk_rate / config->ssp.fsync_rate;
-	if (bdiv < config->ssp.tdm_slot_width *
-	    config->ssp.tdm_slots) {
+	bdiv = config->dai_data[0].ssp.bclk_rate /
+		config->dai_data[0].ssp.fsync_rate;
+	if (bdiv < config->dai_data[0].ssp.tdm_slot_width *
+	    config->dai_data[0].ssp.tdm_slots) {
 		trace_ssp_error("ssp_set_config() error: not enough BCLKs");
 		ret = -EINVAL;
 		goto out;
 	}
 
 	/* tdm_slot_width must be <= 38 for SSP */
-	if (config->ssp.tdm_slot_width > 38) {
+	if (config->dai_data[0].ssp.tdm_slot_width > 38) {
 		trace_ssp_error("ssp_set_config() error: tdm_slot_width > 38");
 		ret = -EINVAL;
 		goto out;
@@ -334,7 +338,7 @@ static int ssp_set_config(struct dai *dai,
 		sscr3 |= SSCR3_I2S_MODE_EN | SSCR3_I2S_TX_EN | SSCR3_I2S_RX_EN;
 
 		/* set asserted frame length */
-		frame_len = config->ssp.tdm_slot_width;
+		frame_len = config->dai_data[0].ssp.tdm_slot_width;
 
 		/* handle frame polarity, I2S default is falling/active low */
 		sspsp |= SSPSP_SFRMP(!inverted_frame);
@@ -364,7 +368,7 @@ static int ssp_set_config(struct dai *dai,
 		sscr3 |= SSCR3_I2S_MODE_EN | SSCR3_I2S_TX_EN | SSCR3_I2S_RX_EN;
 
 		/* set asserted frame length */
-		frame_len = config->ssp.tdm_slot_width;
+		frame_len = config->dai_data[0].ssp.tdm_slot_width;
 
 		/* LEFT_J default is rising/active high, opposite of I2S */
 		sspsp |= SSPSP_SFRMP(inverted_frame);
@@ -389,7 +393,8 @@ static int ssp_set_config(struct dai *dai,
 
 		start_delay = 1;
 
-		sscr0 |= SSCR0_MOD | SSCR0_FRDC(config->ssp.tdm_slots);
+		sscr0 |= SSCR0_MOD |
+			SSCR0_FRDC(config->dai_data[0].ssp.tdm_slots);
 
 		/* set asserted frame length */
 		frame_len = 1;
@@ -405,19 +410,24 @@ static int ssp_set_config(struct dai *dai,
 		 * total frame period (both asserted and
 		 * deasserted time of frame)
 		 */
-		if (cbs)
-			sscr4 |= SSCR4_TOT_FRM_PRD(config->ssp.tdm_slots *
-					   config->ssp.tdm_slot_width);
+		if (cbs) {
+			int tdm_slots = config->dai_data[0].ssp.tdm_slots;
+			int tdm_slot_width =
+				config->dai_data[0].ssp.tdm_slot_width;
 
-		active_tx_slots = popcount(config->ssp.tx_slots);
-		active_rx_slots = popcount(config->ssp.rx_slots);
+			sscr4 |= SSCR4_TOT_FRM_PRD(tdm_slots * tdm_slot_width);
+		}
+
+		active_tx_slots = popcount(config->dai_data[0].ssp.tx_slots);
+		active_rx_slots = popcount(config->dai_data[0].ssp.rx_slots);
 
 		break;
 	case SOF_DAI_FMT_DSP_B:
 
 		start_delay = 0;
 
-		sscr0 |= SSCR0_MOD | SSCR0_FRDC(config->ssp.tdm_slots);
+		sscr0 |= SSCR0_MOD |
+			SSCR0_FRDC(config->dai_data[0].ssp.tdm_slots);
 
 		/* set asserted frame length */
 		frame_len = 1;
@@ -433,12 +443,16 @@ static int ssp_set_config(struct dai *dai,
 		 * total frame period (both asserted and
 		 * deasserted time of frame
 		 */
-		if (cbs)
-			sscr4 |= SSCR4_TOT_FRM_PRD(config->ssp.tdm_slots *
-					   config->ssp.tdm_slot_width);
+		if (cbs) {
+			int tdm_slots = config->dai_data[0].ssp.tdm_slots;
+			int tdm_slot_width =
+				config->dai_data[0].ssp.tdm_slot_width;
 
-		active_tx_slots = popcount(config->ssp.tx_slots);
-		active_rx_slots = popcount(config->ssp.rx_slots);
+			sscr4 |= SSCR4_TOT_FRM_PRD(tdm_slots * tdm_slot_width);
+		}
+
+		active_tx_slots = popcount(config->dai_data[0].ssp.tx_slots);
+		active_rx_slots = popcount(config->dai_data[0].ssp.rx_slots);
 
 		break;
 	default:
@@ -452,7 +466,7 @@ static int ssp_set_config(struct dai *dai,
 	sspsp |= SSPSP_SFRMWDTH(frame_len);
 	sscr5 |= SSCR5_FRM_ASRT_CLOCKS(frame_len);
 
-	data_size = config->ssp.sample_valid_bits;
+	data_size = config->dai_data[0].ssp.sample_valid_bits;
 
 	if (data_size > 16)
 		sscr0 |= (SSCR0_EDSS | SSCR0_DSIZE(data_size - 16));
@@ -473,8 +487,8 @@ static int ssp_set_config(struct dai *dai,
 	ssp_write(dai, SSCR5, sscr5);
 	ssp_write(dai, SSPSP, sspsp);
 	ssp_write(dai, SFIFOTT, sfifott);
-	ssp_write(dai, SSTSA, config->ssp.tx_slots);
-	ssp_write(dai, SSRSA, config->ssp.rx_slots);
+	ssp_write(dai, SSTSA, config->dai_data[0].ssp.tx_slots);
+	ssp_write(dai, SSRSA, config->dai_data[0].ssp.rx_slots);
 
 	ssp->state[DAI_DIR_PLAYBACK] = COMP_STATE_PREPARE;
 	ssp->state[DAI_DIR_CAPTURE] = COMP_STATE_PREPARE;

@@ -13,7 +13,8 @@
 
 /* ESAI Configuration Request - SOF_IPC_DAI_ESAI_CONFIG */
 struct sof_ipc_dai_esai_params {
-	uint32_t reserved0[2];
+	uint32_t subdai_index; /* only used in multi-dai usages */
+	uint32_t reserved0;
 
 	/* MCLK */
 	uint16_t reserved1;
@@ -32,7 +33,8 @@ struct sof_ipc_dai_esai_params {
 
 /* SAI Configuration Request - SOF_IPC_DAI_SAI_CONFIG */
 struct sof_ipc_dai_sai_params {
-	uint32_t reserved0[2];
+	uint32_t subdai_index; /* only used in multi-dai usages */
+	uint32_t reserved0;
 
 	/* MCLK */
 	uint16_t reserved1;

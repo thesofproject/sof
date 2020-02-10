@@ -688,7 +688,7 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 	switch (config->type) {
 	case SOF_DAI_INTEL_SSP:
 		/* set dma burst elems to slot number */
-		dd->config.burst_elems = config->ssp.tdm_slots;
+		dd->config.burst_elems = config->dai_data[0].ssp.tdm_slots;
 		break;
 	case SOF_DAI_INTEL_DMIC:
 		tracev_dai_comp_with_ids(dev, "dai_config(), config->type = SOF_DAI_INTEL_DMIC");
@@ -697,11 +697,11 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 		dd->config.burst_elems = 8;
 
 		trace_dai_comp_with_ids(dev, "dai_config(), config->dmic.fifo_bits = %u config->dmic.num_pdm_active = %u",
-					config->dmic.fifo_bits,
-					config->dmic.num_pdm_active);
+					config->dai_data[0].dmic.fifo_bits,
+					config->dai_data[0].dmic.num_pdm_active);
 		break;
 	case SOF_DAI_INTEL_HDA:
-		channel = config->hda.link_dma_ch;
+		channel = config->dai_data[0].hda.link_dma_ch;
 		trace_dai_comp_with_ids(dev, "dai_config(), channel = %d",
 					channel);
 
@@ -729,8 +729,8 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 		/* As with HDA, the DMA channel is assigned in runtime,
 		 * not during topology parsing.
 		 */
-		channel = config->alh.stream_id;
-		dd->stream_id = config->alh.stream_id;
+		channel = config->dai_data[0].alh.stream_id;
+		dd->stream_id = config->dai_data[0].alh.stream_id;
 		trace_dai_comp_with_ids(dev, "dai_config(), channel = %d",
 					channel);
 		break;

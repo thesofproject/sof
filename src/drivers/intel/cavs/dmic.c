@@ -1077,7 +1077,7 @@ static int dmic_set_config(struct dai *dai, struct sof_ipc_dai_config *config)
 
 	trace_dmic_id(dai, "dmic_set_config()");
 
-	if (config->dmic.driver_ipc_version != DMIC_IPC_VERSION) {
+	if (config->dai_data[0].dmic.driver_ipc_version != DMIC_IPC_VERSION) {
 		trace_error_dmic_id(dai, "dmic_set_config() error: wrong ipc version");
 		return -EINVAL;
 	}
@@ -1085,8 +1085,8 @@ static int dmic_set_config(struct dai *dai, struct sof_ipc_dai_config *config)
 	/* Compute unmute ramp gain update coefficient. Use the value from
 	 * topology if it is non-zero, otherwise use default length.
 	 */
-	if (config->dmic.unmute_ramp_time)
-		unmute_ramp_time_ms = config->dmic.unmute_ramp_time;
+	if (config->dai_data[0].dmic.unmute_ramp_time)
+		unmute_ramp_time_ms = config->dai_data[0].dmic.unmute_ramp_time;
 	else
 		unmute_ramp_time_ms = LOGRAMP_TIME_MS;
 
@@ -1102,7 +1102,7 @@ static int dmic_set_config(struct dai *dai, struct sof_ipc_dai_config *config)
 		return -EINVAL;
 	}
 
-	if (config->dmic.num_pdm_active > DMIC_HW_CONTROLLERS) {
+	if (config->dai_data[0].dmic.num_pdm_active > DMIC_HW_CONTROLLERS) {
 		trace_error_dmic_id(dai, "dmic_set_config() error: the requested PDM controllers count exceeds platform capability");
 		return -EINVAL;
 	}
@@ -1136,19 +1136,21 @@ static int dmic_set_config(struct dai *dai, struct sof_ipc_dai_config *config)
 	/* Copy the new DMIC params to persistent.  The last request
 	 * determines the parameters.
 	 */
-	ret = memcpy_s(dmic_prm[di], sizeof(*dmic_prm[di]), &config->dmic,
+	ret = memcpy_s(dmic_prm[di], sizeof(*dmic_prm[di]),
+		       &config->dai_data[0].dmic,
 		       sizeof(struct sof_ipc_dai_dmic_params));
 	assert(!ret);
 
 	/* copy the pdm controller params from ipc */
 	for (i = 0; i < DMIC_HW_CONTROLLERS; i++) {
 		dmic_prm[di]->pdm[i].id = i;
-		for (j = 0; j < config->dmic.num_pdm_active; j++) {
+		for (j = 0; j < config->dai_data[0].dmic.num_pdm_active; j++) {
 			/* copy the pdm controller params id the id's match */
-			if (dmic_prm[di]->pdm[i].id == config->dmic.pdm[j].id) {
+			if (dmic_prm[di]->pdm[i].id ==
+			    config->dai_data[0].dmic.pdm[j].id) {
 				ret = memcpy_s(&dmic_prm[di]->pdm[i],
 					       sizeof(dmic_prm[di]->pdm[i]),
-					       &config->dmic.pdm[j],
+					       &config->dai_data[0].dmic.pdm[j],
 					       sizeof(
 					       struct sof_ipc_dai_dmic_pdm_ctrl));
 				assert(!ret);
@@ -1156,8 +1158,8 @@ static int dmic_set_config(struct dai *dai, struct sof_ipc_dai_config *config)
 		}
 	}
 
-	trace_dmic_id(dai, "dmic_set_config(), prm config->dmic.num_pdm_active = %u",
-		      config->dmic.num_pdm_active);
+	trace_dmic_id(dai, "dmic_set_config(), prm config->dai_data[0].dmic.num_pdm_active = %u",
+		      config->dai_data[0].dmic.num_pdm_active);
 	trace_dmic_id(dai, "dmic_set_config(), prm pdmclk_min = %u, pdmclk_max = %u",
 		      dmic_prm[di]->pdmclk_min, dmic_prm[di]->pdmclk_max);
 	trace_dmic_id(dai, "dmic_set_config(), prm duty_min = %u, duty_max = %u",

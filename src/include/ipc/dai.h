@@ -16,6 +16,7 @@
 #ifndef __IPC_DAI_H__
 #define __IPC_DAI_H__
 
+#include <ipc/channel_map.h>
 #include <ipc/dai-intel.h>
 #include <ipc/dai-imx.h>
 #include <ipc/header.h>
@@ -61,20 +62,28 @@ enum sof_ipc_dai_type {
 	SOF_DAI_INTEL_ALH,		/**< Intel ALH */
 	SOF_DAI_IMX_SAI,                /**< i.MX SAI */
 	SOF_DAI_IMX_ESAI,               /**< i.MX ESAI */
+	SOF_DAI_MULTIDAI = 0xFFFF       /**< config with multiple elements of the same dai type */
 };
 
 /* general purpose DAI configuration */
 struct sof_ipc_dai_config {
 	struct sof_ipc_cmd_hdr hdr;
-	uint32_t type;		/**< DAI type - enum sof_ipc_dai_type */
+
+	uint16_t type;		/**< DAI type - enum sof_ipc_dai_type */
+	uint16_t subdai_type;	/**< only used in multi-dai cases */
 	uint32_t dai_index;	/**< index of this type dai */
 
 	/* physical protocol and clocking */
 	uint16_t format;	/**< SOF_DAI_FMT_ */
-	uint16_t reserved16;	/**< alignment */
+
+	/* we can either have multiple sub-DAIs or multiple configs, not both */
+	uint16_t num_payloads; 	/**< number of configs or number of sub-DAIs */
+
+	uint16_t config_index;	/**< index in dai_data */
 
 	/* reserved for future use */
-	uint32_t reserved[8];
+	uint32_t reserved16;
+	uint32_t reserved[7];
 
 	/* HW specific data */
 	union {
@@ -84,7 +93,13 @@ struct sof_ipc_dai_config {
 		struct sof_ipc_dai_alh_params alh;
 		struct sof_ipc_dai_esai_params esai;
 		struct sof_ipc_dai_sai_params sai;
-	};
+	} dai_data[0];
+
+	/*
+	 * multi-dai stream maps. The ext_id used needs to match subdai_index
+	 * in each _params structure above
+	 */
+	struct sof_ipc_stream_map stream_map;
 } __attribute__((packed));
 
 #endif /* __IPC_DAI_H__ */
