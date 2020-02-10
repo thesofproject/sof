@@ -778,6 +778,23 @@ static int eq_iir_trigger(struct comp_dev *dev, int cmd)
 	return comp_set_state(dev, cmd);
 }
 
+static void eq_iir_process(struct comp_dev *dev, struct comp_buffer *source,
+			   struct comp_buffer *sink, int frames,
+			   uint32_t source_bytes, uint32_t sink_bytes)
+{
+	struct comp_data *cd = comp_get_drvdata(dev);
+
+	buffer_invalidate(source, source_bytes);
+
+	cd->eq_iir_func(dev, &source->stream, &sink->stream, frames);
+
+	buffer_writeback(sink, sink_bytes);
+
+	/* calc new free and available */
+	comp_update_buffer_consume(source, source_bytes);
+	comp_update_buffer_produce(sink, sink_bytes);
+}
+
 /* copy and process stream data from source to sink buffers */
 static int eq_iir_copy(struct comp_dev *dev)
 {
@@ -811,11 +828,8 @@ static int eq_iir_copy(struct comp_dev *dev)
 	comp_get_copy_limits(sourceb, sinkb, &cl);
 
 	/* Run EQ function */
-	cd->eq_iir_func(dev, &sourceb->stream, &sinkb->stream, cl.frames);
-
-	/* calc new free and available */
-	comp_update_buffer_consume(sourceb, cl.source_bytes);
-	comp_update_buffer_produce(sinkb, cl.sink_bytes);
+	eq_iir_process(dev, sourceb, sinkb, cl.frames, cl.source_bytes,
+		       cl.sink_bytes);
 
 	return 0;
 }

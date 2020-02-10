@@ -327,10 +327,14 @@ static int mixer_copy(struct comp_dev *dev)
 		 source_bytes, sink_bytes);
 
 	/* mix streams */
-	md->mix_func(dev, &sink->stream, sources_stream, i, frames);
+	for (i = num_mix_sources - 1; i >= 0; i--)
+		buffer_invalidate(sources[i], source_bytes);
+	md->mix_func(dev, &sink->stream, sources_stream, num_mix_sources,
+		     frames);
+	buffer_writeback(sink, sink_bytes);
 
 	/* update source buffer pointers */
-	for (i = --num_mix_sources; i >= 0; i--)
+	for (i = num_mix_sources - 1; i >= 0; i--)
 		comp_update_buffer_consume(sources[i], source_bytes);
 
 	/* update sink buffer pointer */

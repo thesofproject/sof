@@ -81,8 +81,8 @@ static size_t kpb_allocate_history_buffer(struct comp_data *kpb,
 static void kpb_clear_history_buffer(struct hb *buff);
 static void kpb_free_history_buffer(struct hb *buff);
 static inline bool kpb_is_sample_width_supported(uint32_t sampling_width);
-static void kpb_copy_samples(struct audio_stream *sink,
-			     const struct audio_stream *source, size_t size,
+static void kpb_copy_samples(struct comp_buffer *sink,
+			     struct comp_buffer *source, size_t size,
 			     size_t sample_width);
 static void kpb_drain_samples(void *source, struct audio_stream *sink,
 			      size_t size, size_t sample_width);
@@ -637,8 +637,7 @@ static int kpb_copy(struct comp_dev *dev)
 			goto out;
 		}
 
-		kpb_copy_samples(&sink->stream, &source->stream, copy_bytes,
-				 sample_width);
+		kpb_copy_samples(sink, source, copy_bytes, sample_width);
 
 		/* Buffer source data internally in history buffer for future
 		 * use by clients.
@@ -684,8 +683,7 @@ static int kpb_copy(struct comp_dev *dev)
 			goto out;
 		}
 
-		kpb_copy_samples(&sink->stream, &source->stream, copy_bytes,
-				 sample_width);
+		kpb_copy_samples(sink, source, copy_bytes, sample_width);
 
 		comp_update_buffer_produce(sink, copy_bytes);
 		comp_update_buffer_consume(source, copy_bytes);
@@ -697,6 +695,7 @@ static int kpb_copy(struct comp_dev *dev)
 		 * the internal history buffer.
 		 */
 		if (source->stream.avail <= kpb->buffer_size) {
+			buffer_invalidate(source, source->stream.avail);
 			ret = kpb_buffer_data(dev, source,
 					      source->stream.avail);
 			if (ret) {
@@ -1371,8 +1370,8 @@ static inline bool kpb_is_sample_width_supported(uint32_t sampling_width)
  *
  * \return none.
  */
-static void kpb_copy_samples(struct audio_stream *sink,
-			     const struct audio_stream *source, size_t size,
+static void kpb_copy_samples(struct comp_buffer *sink,
+			     struct comp_buffer *source, size_t size,
 			     size_t sample_width)
 {
 	void *dst;
@@ -1381,14 +1380,18 @@ static void kpb_copy_samples(struct audio_stream *sink,
 	size_t j = 0;
 	size_t channel;
 	size_t frames = KPB_BYTES_TO_FRAMES(size, sample_width);
+	struct audio_stream *istream = &source->stream;
+	struct audio_stream *ostream = &sink->stream;
+
+	buffer_invalidate(source, size);
 
 	for (i = 0; i < frames; i++) {
 		for (channel = 0; channel < KPB_NUM_OF_CHANNELS; channel++) {
 			switch (sample_width) {
 #if CONFIG_FORMAT_S16LE
 			case 16:
-				dst = audio_stream_write_frag_s16(sink, j);
-				src = audio_stream_read_frag_s16(source, j);
+				dst = audio_stream_write_frag_s16(ostream, j);
+				src = audio_stream_read_frag_s16(istream, j);
 				*((int16_t *)dst) = *((int16_t *)src);
 				break;
 #endif /* CONFIG_FORMAT_S16LE */
@@ -1396,8 +1399,8 @@ static void kpb_copy_samples(struct audio_stream *sink,
 			case 24:
 				/* FALLTHROUGH */
 			case 32:
-				dst = audio_stream_write_frag_s32(sink, j);
-				src = audio_stream_read_frag_s32(source, j);
+				dst = audio_stream_write_frag_s32(ostream, j);
+				src = audio_stream_read_frag_s32(istream, j);
 				*((int32_t *)dst) = *((int32_t *)src);
 				break;
 #endif /* CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE*/
@@ -1408,6 +1411,8 @@ static void kpb_copy_samples(struct audio_stream *sink,
 			j++;
 		}
 	}
+
+	buffer_writeback(sink, size);
 }
 
 /**

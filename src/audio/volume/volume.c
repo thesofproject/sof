@@ -663,7 +663,9 @@ static int volume_copy(struct comp_dev *dev)
 		 c.source_bytes, c.sink_bytes);
 
 	/* copy and scale volume */
+	buffer_invalidate(source, c.source_bytes);
 	cd->scale_vol(dev, &sink->stream, &source->stream, c.frames);
+	buffer_writeback(sink, c.sink_bytes);
 
 	/* calculate new free and available */
 	comp_update_buffer_produce(sink, c.sink_bytes);

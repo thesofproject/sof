@@ -687,6 +687,24 @@ static int eq_fir_trigger(struct comp_dev *dev, int cmd)
 	return comp_set_state(dev, cmd);
 }
 
+static void eq_fir_process(struct comp_dev *dev, struct comp_buffer *source,
+			   struct comp_buffer *sink, int frames,
+			   uint32_t source_bytes, uint32_t sink_bytes)
+{
+	struct comp_data *cd = comp_get_drvdata(dev);
+
+	buffer_invalidate(source, source_bytes);
+
+	cd->eq_fir_func(cd->fir, &source->stream, &sink->stream, frames,
+			source->stream.channels);
+
+	buffer_writeback(sink, sink_bytes);
+
+	/* calc new free and available */
+	comp_update_buffer_consume(source, source_bytes);
+	comp_update_buffer_produce(sink, sink_bytes);
+}
+
 /* copy and process stream data from source to sink buffers */
 static int eq_fir_copy(struct comp_dev *dev)
 {
@@ -732,12 +750,9 @@ static int eq_fir_copy(struct comp_dev *dev)
 		n = (cl.frames >> 1) << 1;
 
 		/* Run EQ function */
-		cd->eq_fir_func(cd->fir, &sourceb->stream, &sinkb->stream, n,
-				sourceb->stream.channels);
-
-		/* calc new free and available */
-		comp_update_buffer_consume(sourceb, n * cl.source_frame_bytes);
-		comp_update_buffer_produce(sinkb, n * cl.sink_frame_bytes);
+		eq_fir_process(dev, sourceb, sinkb, n,
+			       n * cl.source_frame_bytes,
+			       n * cl.sink_frame_bytes);
 	}
 
 	return 0;
