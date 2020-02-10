@@ -21,8 +21,8 @@
 const struct sof_ipc_cc_version cc_version = {
 	.ext_hdr = {
 		.hdr.cmd = SOF_IPC_FW_READY,
-		.hdr.size = sizeof(struct sof_ipc_cc_version)
-			    + sizeof(CC_DESC),
+		.hdr.size = ALIGN_UP(sizeof(struct sof_ipc_cc_version)
+				     + sizeof(CC_DESC), 4),
 		.type = SOF_IPC_EXT_CC_INFO,
 	},
 	.micro = CC_MICRO,
