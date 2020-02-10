@@ -145,6 +145,22 @@ void comp_update_buffer_produce(struct comp_buffer *buffer, uint32_t bytes);
 /* called by a component after consuming data from this buffer */
 void comp_update_buffer_consume(struct comp_buffer *buffer, uint32_t bytes);
 
+static inline void buffer_invalidate(struct comp_buffer *buffer, uint32_t bytes)
+{
+	if (!buffer->inter_core)
+		return;
+
+	audio_stream_invalidate(&buffer->stream, bytes);
+}
+
+static inline void buffer_writeback(struct comp_buffer *buffer, uint32_t bytes)
+{
+	if (!buffer->inter_core)
+		return;
+
+	audio_stream_writeback(&buffer->stream, bytes);
+}
+
 /**
  * Locks buffer instance for buffers connecting components
  * running on different cores. Buffer parameters will be invalidated

@@ -220,6 +220,40 @@ static inline void audio_stream_init(struct audio_stream *buffer,
 	audio_stream_reset(buffer);
 }
 
+static inline void audio_stream_invalidate(struct audio_stream *buffer,
+					   uint32_t bytes)
+{
+	uint32_t head_size = bytes;
+	uint32_t tail_size = 0;
+
+	/* check for potential wrap */
+	if ((char *)buffer->r_ptr + bytes > (char *)buffer->end_addr) {
+		head_size = (char *)buffer->end_addr - (char *)buffer->r_ptr;
+		tail_size = bytes - head_size;
+	}
+
+	dcache_invalidate_region(buffer->r_ptr, head_size);
+	if (tail_size)
+		dcache_invalidate_region(buffer->addr, tail_size);
+}
+
+static inline void audio_stream_writeback(struct audio_stream *buffer,
+					  uint32_t bytes)
+{
+	uint32_t head_size = bytes;
+	uint32_t tail_size = 0;
+
+	/* check for potential wrap */
+	if ((char *)buffer->w_ptr + bytes > (char *)buffer->end_addr) {
+		head_size = (char *)buffer->end_addr - (char *)buffer->w_ptr;
+		tail_size = bytes - head_size;
+	}
+
+	dcache_writeback_region(buffer->w_ptr, head_size);
+	if (tail_size)
+		dcache_writeback_region(buffer->addr, tail_size);
+}
+
 static inline void audio_stream_copy(const struct audio_stream *source,
 				     uint32_t ioffset_bytes,
 				     struct audio_stream *sink,
