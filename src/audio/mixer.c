@@ -283,6 +283,7 @@ static int mixer_copy(struct comp_dev *dev)
 	uint32_t frames = INT32_MAX;
 	uint32_t source_bytes;
 	uint32_t sink_bytes;
+	uint32_t flags = 0;
 
 	comp_dbg(dev, "mixer_copy()");
 
@@ -311,11 +312,18 @@ static int mixer_copy(struct comp_dev *dev)
 	if (num_mix_sources == 0)
 		return 0;
 
+	buffer_lock(sink, flags);
+
 	/* check for underruns */
-	for (i = 0; i < num_mix_sources; i++)
+	for (i = 0; i < num_mix_sources; i++) {
+		buffer_lock(sources[i], flags);
 		frames = MIN(frames,
 			     audio_stream_avail_frames(sources_stream[i],
 						       &sink->stream));
+		buffer_unlock(sources[i], flags);
+	}
+
+	buffer_unlock(sink, flags);
 
 	/* Every source has the same format, so calculate bytes based
 	 * on the first one.

@@ -274,6 +274,7 @@ static int pipeline_comp_hw_params(struct comp_dev *current,
 {
 	struct pipeline_data *ppl_data = data;
 	int ret = 0;
+	uint32_t flags = 0;
 
 	pipe_cl_dbg("pipeline_comp_hw_params(), current->comp.id = %u, dir = %u",
 		    dev_comp_id(current), dir);
@@ -292,9 +293,12 @@ static int pipeline_comp_hw_params(struct comp_dev *current,
 	}
 
 	/* set buffer parameters */
-	if (calling_buf)
+	if (calling_buf) {
+		buffer_lock(calling_buf, flags);
 		buffer_set_params(calling_buf, &ppl_data->params->params,
 				  BUFFER_UPDATE_IF_UNSET);
+		buffer_unlock(calling_buf, flags);
+	}
 
 	return ret;
 }

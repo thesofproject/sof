@@ -285,6 +285,7 @@ static int demux_copy(struct comp_dev *dev)
 	uint32_t source_bytes;
 	uint32_t avail;
 	uint32_t sinks_bytes[MUX_MAX_STREAMS] = { 0 };
+	uint32_t flags = 0;
 
 	comp_dbg(dev, "demux_copy()");
 
@@ -305,17 +306,25 @@ static int demux_copy(struct comp_dev *dev)
 	source = list_first_item(&dev->bsource_list, struct comp_buffer,
 				 sink_list);
 
+	buffer_lock(source, flags);
+
 	/* check if source is active */
-	if (source->source->state != dev->state)
+	if (source->source->state != dev->state) {
+		buffer_unlock(source, flags);
 		return 0;
+	}
 
 	for (i = 0; i < MUX_MAX_STREAMS; i++) {
 		if (!sinks[i])
 			continue;
+		buffer_lock(sinks[i], flags);
 		avail = audio_stream_avail_frames(&source->stream,
 						  &sinks[i]->stream);
 		frames = MIN(frames, avail);
+		buffer_unlock(sinks[i], flags);
 	}
+
+	buffer_unlock(source, flags);
 
 	source_bytes = frames * audio_stream_frame_bytes(&source->stream);
 	for (i = 0; i < MUX_MAX_STREAMS; i++) {
