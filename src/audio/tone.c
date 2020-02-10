@@ -428,6 +428,7 @@ static int tone_params(struct comp_dev *dev,
 	struct sof_ipc_comp_config *config = dev_comp_config(dev);
 	struct comp_buffer *sourceb;
 	struct comp_buffer *sinkb;
+	uint32_t flags = 0;
 
 	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer,
 				  sink_list);
@@ -442,12 +443,18 @@ static int tone_params(struct comp_dev *dev,
 	if (config->frame_fmt != SOF_IPC_FRAME_S32_LE)
 		return -EINVAL;
 
+	buffer_lock(sourceb, flags);
+	buffer_lock(sinkb, flags);
+
 	sourceb->stream.frame_fmt = config->frame_fmt;
 	sinkb->stream.frame_fmt = config->frame_fmt;
 
 	/* calculate period size based on config */
 	cd->period_bytes = dev->frames *
 			   audio_stream_frame_bytes(&sourceb->stream);
+
+	buffer_unlock(sinkb, flags);
+	buffer_unlock(sourceb, flags);
 
 	return 0;
 }
@@ -609,6 +616,8 @@ static int tone_copy(struct comp_dev *dev)
 {
 	struct comp_buffer *sink;
 	struct comp_data *cd = comp_get_drvdata(dev);
+	uint32_t free;
+	uint32_t flags = 0;
 
 	comp_dbg(dev, "tone_copy()");
 
@@ -616,10 +625,14 @@ static int tone_copy(struct comp_dev *dev)
 	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
 			       source_list);
 
+	buffer_lock(sink, flags);
+	free = sink->stream.free;
+	buffer_unlock(sink, flags);
+
 	/* Test that sink has enough free frames. Then run once to maintain
 	 * low latency and steady load for tones.
 	 */
-	if (sink->stream.free >= cd->period_bytes) {
+	if (free >= cd->period_bytes) {
 		/* create tone */
 		cd->tone_func(dev, &sink->stream, dev->frames);
 		buffer_writeback(sink, cd->period_bytes);

@@ -393,11 +393,6 @@ static int asrc_params(struct comp_dev *dev,
 
 	comp_info(dev, "asrc_params()");
 
-	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer,
-				  sink_list);
-	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
-				source_list);
-
 	err = asrc_verify_params(dev, pcm_params);
 	if (err < 0) {
 		comp_err(dev, "src_params(): pcm params verification failed.");
@@ -821,6 +816,7 @@ static int asrc_copy(struct comp_dev *dev)
 	int frames_src;
 	int frames_snk;
 	int ret;
+	uint32_t flags = 0;
 
 	comp_dbg(dev, "asrc_copy()");
 
@@ -834,10 +830,16 @@ static int asrc_copy(struct comp_dev *dev)
 	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
 			       source_list);
 
+	buffer_lock(source, flags);
+	buffer_lock(sink, flags);
+
 	frames_src = source->stream.avail /
 		     audio_stream_frame_bytes(&source->stream);
 	frames_snk = sink->stream.free /
 		     audio_stream_frame_bytes(&sink->stream);
+
+	buffer_unlock(sink, flags);
+	buffer_unlock(source, flags);
 
 	cd->source_frames = MIN(frames_src, cd->source_frames_max);
 	cd->sink_frames = ceil_divide(cd->source_frames * cd->sink_rate,
