@@ -789,14 +789,35 @@ static int asrc_control_loop(struct comp_dev *dev, struct comp_data *cd)
 	return 0;
 }
 
+static void asrc_process(struct comp_dev *dev, struct comp_buffer *source,
+			 struct comp_buffer *sink)
+{
+	struct comp_data *cd = comp_get_drvdata(dev);
+	int consumed = 0;
+	int produced = 0;
+
+	/* consumed bytes are not known at this point */
+	buffer_invalidate(source, source->stream.size);
+	cd->asrc_func(dev, &source->stream, &sink->stream, &consumed,
+		      &produced);
+	buffer_writeback(sink, produced *
+			 audio_stream_frame_bytes(&sink->stream));
+
+	comp_dbg(dev, "asrc_copy(), consumed = %u,  produced = %u",
+		 consumed, produced);
+
+	comp_update_buffer_consume(source, consumed *
+				   audio_stream_frame_bytes(&source->stream));
+	comp_update_buffer_produce(sink, produced *
+				   audio_stream_frame_bytes(&sink->stream));
+}
+
 /* copy and process stream data from source to sink buffers */
 static int asrc_copy(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *source;
 	struct comp_buffer *sink;
-	int consumed = 0;
-	int produced = 0;
 	int frames_src;
 	int frames_snk;
 	int ret;
@@ -835,22 +856,7 @@ static int asrc_copy(struct comp_dev *dev)
 	}
 
 	if (cd->source_frames && cd->sink_frames)
-		cd->asrc_func(dev, &source->stream, &sink->stream, &consumed,
-			      &produced);
-
-	comp_dbg(dev, "asrc_copy(), consumed = %u,  produced = %u",
-		 consumed, produced);
-
-	/* Calc new free and available if data was processed. These
-	 * functions must not be called with 0 consumed/produced.
-	 */
-	if (consumed > 0)
-		comp_update_buffer_consume(source, consumed *
-				audio_stream_frame_bytes(&source->stream));
-
-	if (produced > 0)
-		comp_update_buffer_produce(sink, produced *
-				audio_stream_frame_bytes(&sink->stream));
+		asrc_process(dev, source, sink);
 
 	return 0;
 }

@@ -728,6 +728,7 @@ static int test_keyword_copy(struct comp_dev *dev)
 				 struct comp_buffer, sink_list);
 
 	/* copy and perform detection */
+	buffer_invalidate(source, source->stream.avail);
 	cd->detect_func(dev, &source->stream,
 			source->stream.avail /
 			audio_stream_frame_bytes(&source->stream));
