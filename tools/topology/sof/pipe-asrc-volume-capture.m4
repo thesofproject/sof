@@ -64,11 +64,11 @@ W_DATA(MY_ASRC_CONF, MY_ASRC_TOKENS)
 # Components
 #
 
-# "ASRC" has 3 source and 3 sink periods
+# "ASRC" has 3 sink and 3 source periods
 W_ASRC(0, PIPELINE_FORMAT, 3, 3, MY_ASRC_CONF)
 
-# "Volume" has x source and 3 sink periods
-W_PGA(0, PIPELINE_FORMAT, DAI_PERIODS, 3, MY_PGA_CONF,
+# "Volume" has 3 sink and x source periods
+W_PGA(0, PIPELINE_FORMAT, 3, DAI_PERIODS, MY_PGA_CONF,
 	LIST(`		', "PIPELINE_ID Master Capture Volume"))
 
 # Capture Buffers

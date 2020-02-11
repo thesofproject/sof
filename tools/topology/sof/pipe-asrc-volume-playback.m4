@@ -48,7 +48,7 @@ LIST(`		', `SOF_TKN_ASRC_RATE_OUT "PIPELINE_RATE"'
      `		', `SOF_TKN_ASRC_OPERATION_MODE "0"'))
 W_DATA(MY_ASRC_CONF, MY_ASRC_TOKENS)
 
-# "ASRC" has 2 source and 2 sink periods
+# "ASRC" has 2 sink and 2 source periods
 W_ASRC(0, PIPELINE_FORMAT, 2, 2, MY_ASRC_CONF)
 
 #
@@ -61,8 +61,8 @@ LIST(`		', `SOF_TKN_VOLUME_RAMP_STEP_TYPE	"0"'
      `		', `SOF_TKN_VOLUME_RAMP_STEP_MS		"250"'))
 W_DATA(MY_PGA_CONF, MY_PGA_TOKENS)
 
-# "Volume" has 2 source and x sink periods
-W_PGA(0, PIPELINE_FORMAT, 2, DAI_PERIODS, MY_PGA_CONF,
+# "Volume" has x sink and 2 source periods
+W_PGA(0, PIPELINE_FORMAT, DAI_PERIODS, 2, MY_PGA_CONF,
 	 LIST(`		', "PIPELINE_ID Master Playback Volume"))
 
 # Playback Buffers
