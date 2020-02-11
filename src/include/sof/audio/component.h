@@ -145,23 +145,34 @@ struct dai_hw_params;
 /** \name Trace macros
  *  @{
  */
-#define trace_comp(__e, ...) \
-	trace_event(TRACE_CLASS_COMP, __e, ##__VA_ARGS__)
-#define trace_comp_with_ids(comp_ptr, __e, ...)			\
-	trace_event_comp(TRACE_CLASS_COMP, comp_ptr,		\
-			 __e, ##__VA_ARGS__)
+#define trace_comp_get_id(comp_p) ((comp_p)->comp.pipeline_id)
+#define trace_comp_get_subid(comp_p) ((comp_p)->comp.id)
 
-#define tracev_comp(__e, ...) \
-	tracev_event(TRACE_CLASS_COMP, __e, ##__VA_ARGS__)
-#define tracev_comp_with_ids(comp_ptr, __e, ...)		\
-	tracev_event_comp(TRACE_CLASS_COMP, comp_ptr,		\
-			  __e, ##__VA_ARGS__)
+/* class (driver) level (no device object) tracing */
 
-#define trace_comp_error(__e, ...) \
+#define comp_cl_err(drv_p, __e, ...)					\
 	trace_error(TRACE_CLASS_COMP, __e, ##__VA_ARGS__)
-#define trace_comp_error_with_ids(comp_ptr, __e, ...)		\
-	trace_error_comp(TRACE_CLASS_COMP, comp_ptr,		\
-			 __e, ##__VA_ARGS__)
+
+#define comp_cl_info(drv_p, __e, ...)					\
+	trace_event(TRACE_CLASS_COMP, __e, ##__VA_ARGS__)
+
+#define comp_cl_dbg(drv_p, __e, ...)					\
+	tracev_event(TRACE_CLASS_COMP, __e, ##__VA_ARGS__)
+/* device tracing */
+
+#define comp_err(comp_p, __e, ...)					\
+	trace_dev_err(TRACE_CLASS_COMP, trace_comp_get_id,		\
+		      trace_comp_get_subid, comp_p, __e, ##__VA_ARGS__)
+
+#define comp_info(comp_p, __e, ...)					\
+	trace_dev_info(TRACE_CLASS_COMP, trace_comp_get_id,		\
+		       trace_comp_get_subid, comp_p, __e, ##__VA_ARGS__)
+
+#define comp_dbg(comp_p, __e, ...)					\
+	trace_dev_dbg(TRACE_CLASS_COMP, trace_comp_get_id,		\
+		      trace_comp_get_subid, comp_p, __e, ##__VA_ARGS__)
+
+
 /** @}*/
 
 /* \brief Type of endpoint this component is connected to in a pipeline */
@@ -452,10 +463,8 @@ static inline int comp_cmd(struct comp_dev *dev, int cmd, void *data,
 	if (cmd == COMP_CMD_SET_DATA &&
 	    (cdata->data->magic != SOF_ABI_MAGIC ||
 	     SOF_ABI_VERSION_INCOMPATIBLE(SOF_ABI_VERSION, cdata->data->abi))) {
-		trace_comp_error_with_ids(dev, "comp_cmd() error: "
-					  "invalid version, "
-					  "data->magic = %u, data->abi = %u",
-					  cdata->data->magic, cdata->data->abi);
+		comp_err(dev, "comp_cmd() error: invalid version, data->magic = %u, data->abi = %u",
+			 cdata->data->magic, cdata->data->abi);
 		return -EINVAL;
 	}
 
@@ -659,13 +668,10 @@ static inline void comp_underrun(struct comp_dev *dev,
 {
 	int32_t bytes = (int32_t)source->stream.avail - copy_bytes;
 
-	trace_comp_error_with_ids(dev, "comp_underrun() error: "
-				  "dev->comp.id = %u, "
-				  "source->avail = %u, "
-				  "copy_bytes = %u",
-				  dev->comp.id,
-				  source->stream.avail,
-				  copy_bytes);
+	comp_err(dev, "comp_underrun() error: dev->comp.id = %u, source->avail = %u, copy_bytes = %u",
+		 dev->comp.id,
+		 source->stream.avail,
+		 copy_bytes);
 
 	pipeline_xrun(dev->pipeline, dev, bytes);
 }
@@ -681,8 +687,8 @@ static inline void comp_overrun(struct comp_dev *dev, struct comp_buffer *sink,
 {
 	int32_t bytes = (int32_t)copy_bytes - sink->stream.free;
 
-	trace_comp_error("comp_overrun() error: dev->comp.id = %u, sink->free = %u, copy_bytes = %u",
-			 dev->comp.id, sink->stream.free, copy_bytes);
+	comp_err(dev, "comp_overrun() error: sink->free = %u, copy_bytes = %u",
+		 sink->stream.free, copy_bytes);
 
 	pipeline_xrun(dev->pipeline, dev, bytes);
 }

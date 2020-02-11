@@ -12,28 +12,11 @@
 #include <user/trace.h>
 #include <stddef.h>
 
-/* mixer tracing */
-#define trace_switch(__e, ...) \
-	trace_event(TRACE_CLASS_SWITCH, __e, ##__VA_ARGS__)
-#define trace_switch_with_ids(comp_ptr, __e, ...)		\
-	trace_event_comp(TRACE_CLASS_SWITCH, comp_ptr,		\
-			 __e, ##__VA_ARGS__)
-
-#define tracev_switch(__e, ...) \
-	tracev_event(TRACE_CLASS_SWITCH, __e, ##__VA_ARGS__)
-#define tracev_switch_with_ids(comp_ptr, __e, ...)		\
-	tracev_event_comp(TRACE_CLASS_SWITCH, comp_ptr,		\
-			  __e, ##__VA_ARGS__)
-
-#define trace_switch_error(__e, ...) \
-	trace_error(TRACE_CLASS_SWITCH, __e, ##__VA_ARGS__)
-#define trace_switch_error_with_ids(comp_ptr, __e, ...)		\
-	trace_error_comp(TRACE_CLASS_SWITCH, comp_ptr,		\
-			 __e, ##__VA_ARGS__)
+static const struct comp_driver comp_switch;
 
 static struct comp_dev *switch_new(struct sof_ipc_comp *comp)
 {
-	trace_switch("switch_new()");
+	comp_cl_info(&comp_switch, "switch_new()");
 
 	return NULL;
 }

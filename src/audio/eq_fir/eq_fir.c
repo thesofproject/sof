@@ -41,22 +41,7 @@
 #include <sof/audio/eq_fir/fir_hifi3.h>
 #endif
 
-/* tracing */
-#define trace_eq(__e, ...) trace_event(TRACE_CLASS_EQ_FIR, __e, ##__VA_ARGS__)
-#define trace_eq_with_ids(comp_ptr, __e, ...)			\
-	trace_event_comp(TRACE_CLASS_EQ_FIR, comp_ptr,		\
-			 __e, ##__VA_ARGS__)
-
-#define tracev_eq(__e, ...) tracev_event(TRACE_CLASS_EQ_FIR, __e, ##__VA_ARGS__)
-#define tracev_eq_with_ids(comp_ptr, __e, ...)			\
-	tracev_event_comp(TRACE_CLASS_EQ_FIR, comp_ptr,		\
-			  __e, ##__VA_ARGS__)
-
-#define trace_eq_error(__e, ...) \
-	trace_error(TRACE_CLASS_EQ_FIR, __e, ##__VA_ARGS__)
-#define trace_eq_error_with_ids(comp_ptr, __e, ...)		\
-	trace_error_comp(TRACE_CLASS_EQ_FIR, comp_ptr,		\
-			 __e, ##__VA_ARGS__)
+static const struct comp_driver comp_eq_fir;
 
 /* src component private data */
 struct comp_data {
@@ -151,24 +136,24 @@ static inline int set_fir_func(struct comp_dev *dev)
 	switch (sourceb->stream.frame_fmt) {
 #if CONFIG_FORMAT_S16LE
 	case SOF_IPC_FRAME_S16_LE:
-		trace_eq_with_ids(dev, "set_fir_func(), SOF_IPC_FRAME_S16_LE");
+		comp_info(dev, "set_fir_func(), SOF_IPC_FRAME_S16_LE");
 		set_s16_fir(cd);
 		break;
 #endif /* CONFIG_FORMAT_S16LE */
 #if CONFIG_FORMAT_S24LE
 	case SOF_IPC_FRAME_S24_4LE:
-		trace_eq_with_ids(dev, "set_fir_func(), SOF_IPC_FRAME_S24_4LE");
+		comp_info(dev, "set_fir_func(), SOF_IPC_FRAME_S24_4LE");
 		set_s24_fir(cd);
 		break;
 #endif /* CONFIG_FORMAT_S24LE */
 #if CONFIG_FORMAT_S32LE
 	case SOF_IPC_FRAME_S32_LE:
-		trace_eq_with_ids(dev, "set_fir_func(), SOF_IPC_FRAME_S32_LE");
+		comp_info(dev, "set_fir_func(), SOF_IPC_FRAME_S32_LE");
 		set_s32_fir(cd);
 		break;
 #endif /* CONFIG_FORMAT_S32LE */
 	default:
-		trace_eq_error_with_ids(dev, "set_fir_func(), invalid frame_fmt");
+		comp_err(dev, "set_fir_func(), invalid frame_fmt");
 		return -EINVAL;
 	}
 	return 0;
@@ -211,20 +196,19 @@ static inline int set_pass_func(struct comp_dev *dev)
 	switch (sourceb->stream.frame_fmt) {
 #if CONFIG_FORMAT_S16LE
 	case SOF_IPC_FRAME_S16_LE:
-		trace_eq_with_ids(dev, "set_pass_func(), SOF_IPC_FRAME_S16_LE");
+		comp_info(dev, "set_pass_func(), SOF_IPC_FRAME_S16_LE");
 		cd->eq_fir_func = eq_fir_s16_passthrough;
 		break;
 #endif /* CONFIG_FORMAT_S32LE */
 #if CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE
 	case SOF_IPC_FRAME_S24_4LE:
 	case SOF_IPC_FRAME_S32_LE:
-		trace_eq_with_ids(dev, "set_pass_func(), SOF_IPC_FRAME_S32_LE");
+		comp_info(dev, "set_pass_func(), SOF_IPC_FRAME_S32_LE");
 		cd->eq_fir_func = eq_fir_s32_passthrough;
 		break;
 #endif /* CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE */
 	default:
-		trace_eq_error_with_ids(dev, "set_pass_func() error: "
-					"invalid dev->params.frame_fmt");
+		comp_err(dev, "set_pass_func() error: invalid dev->params.frame_fmt");
 		return -EINVAL;
 	}
 	return 0;
@@ -268,19 +252,19 @@ static int eq_fir_init_coef(struct sof_eq_fir_config *config,
 	int j;
 	int s;
 
-	trace_eq("eq_fir_init_coef(), response assign for %u channels, %u"
-		 " responses", config->channels_in_config,
-		 config->number_of_responses);
+	comp_cl_info(&comp_eq_fir, "eq_fir_init_coef(), response assign for %u channels, %u responses",
+		     config->channels_in_config,
+		     config->number_of_responses);
 
 	/* Sanity checks */
 	if (nch > PLATFORM_MAX_CHANNELS ||
 	    config->channels_in_config > PLATFORM_MAX_CHANNELS ||
 	    !config->channels_in_config) {
-		trace_eq_error("eq_fir_init_coef(), invalid channels count");
+		comp_cl_err(&comp_eq_fir, "eq_fir_init_coef(), invalid channels count");
 		return -EINVAL;
 	}
 	if (config->number_of_responses > SOF_EQ_FIR_MAX_RESPONSES) {
-		trace_eq_error("eq_fir_init_coef(), # of resp exceeds max");
+		comp_cl_err(&comp_eq_fir, "eq_fir_init_coef(), # of resp exceeds max");
 		return -EINVAL;
 	}
 
@@ -314,15 +298,15 @@ static int eq_fir_init_coef(struct sof_eq_fir_config *config,
 			/* Initialize EQ channel to bypass and continue with
 			 * next channel response.
 			 */
-			trace_eq("eq_fir_init_coef(), ch %d is set to bypass",
-				 i);
+			comp_cl_info(&comp_eq_fir, "eq_fir_init_coef(), ch %d is set to bypass",
+				     i);
 			fir_reset(&fir[i]);
 			continue;
 		}
 
 		if (resp >= config->number_of_responses) {
-			trace_eq_error("eq_fir_init_coef(), requested response %d"
-				 " exceeds what has been defined", resp);
+			comp_cl_err(&comp_eq_fir, "eq_fir_init_coef(), requested response %d exceeds what has been defined",
+				    resp);
 			return -EINVAL;
 		}
 
@@ -332,23 +316,22 @@ static int eq_fir_init_coef(struct sof_eq_fir_config *config,
 		if (s > 0) {
 			size_sum += s;
 		} else {
-			trace_eq("eq_fir_init_coef(), FIR length %d"
-				 " is invalid", eq->length);
+			comp_cl_info(&comp_eq_fir, "eq_fir_init_coef(), FIR length %d is invalid",
+				     eq->length);
 			return -EINVAL;
 		}
 
 #if defined FIR_MAX_LENGTH_BUILD_SPECIFIC
 		if (fir[i].taps * nch > FIR_MAX_LENGTH_BUILD_SPECIFIC) {
-			trace_eq_error("Filter length %d"
-					" exceeds limitation for build.",
-					fir[i].length);
+			comp_cl_err(&comp_eq_fir, "Filter length %d exceeds limitation for build.",
+				    fir[i].length);
 			return -EINVAL;
 		}
 #endif
 
 		fir_init_coef(&fir[i], eq);
-		trace_eq("eq_fir_init_coef(), ch %d is set to response = %d",
-			 i, resp);
+		comp_cl_info(&comp_eq_fir, "eq_fir_init_coef(), ch %d is set to response = %d",
+			     i, resp);
 	}
 
 	return size_sum;
@@ -388,8 +371,8 @@ static int eq_fir_setup(struct comp_data *cd, int nch)
 	/* Allocate all FIR channels data in a big chunk and clear it */
 	cd->fir_delay = rballoc(0, SOF_MEM_CAPS_RAM, delay_size);
 	if (!cd->fir_delay) {
-		trace_eq_error("eq_fir_setup(), delay allocation failed for size %d",
-			       delay_size);
+		comp_cl_err(&comp_eq_fir, "eq_fir_setup(), delay allocation failed for size %d",
+			    delay_size);
 		return -ENOMEM;
 	}
 
@@ -416,10 +399,10 @@ static struct comp_dev *eq_fir_new(struct sof_ipc_comp *comp)
 	int i;
 	int ret;
 
-	trace_eq("eq_fir_new()");
+	comp_cl_info(&comp_eq_fir, "eq_fir_new()");
 
 	if (IPC_IS_SIZE_INVALID(ipc_fir->config)) {
-		IPC_SIZE_ERROR_TRACE(TRACE_CLASS_EQ_FIR, ipc_fir->config);
+		IPC_SIZE_ERROR_TRACE(TRACE_CLASS_COMP, ipc_fir->config);
 		return NULL;
 	}
 
@@ -427,8 +410,8 @@ static struct comp_dev *eq_fir_new(struct sof_ipc_comp *comp)
 	 * blob size is sane.
 	 */
 	if (bs > SOF_EQ_FIR_MAX_SIZE) {
-		trace_eq_error("eq_fir_new() error: coefficients blob size = "
-			       "%u > SOF_EQ_FIR_MAX_SIZE", bs);
+		comp_cl_err(&comp_eq_fir, "eq_fir_new() error: coefficients blob size = %u > SOF_EQ_FIR_MAX_SIZE",
+			    bs);
 		return NULL;
 	}
 
@@ -484,7 +467,7 @@ static void eq_fir_free(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 
-	trace_eq_with_ids(dev, "eq_fir_free()");
+	comp_info(dev, "eq_fir_free()");
 
 	eq_fir_free_delaylines(cd);
 	eq_fir_free_parameters(&cd->config);
@@ -498,7 +481,7 @@ static void eq_fir_free(struct comp_dev *dev)
 static int eq_fir_params(struct comp_dev *dev,
 			 struct sof_ipc_stream_params *params)
 {
-	trace_eq_with_ids(dev, "eq_fir_params()");
+	comp_info(dev, "eq_fir_params()");
 
 	/* All configuration work is postponed to prepare(). */
 	return 0;
@@ -515,7 +498,7 @@ static int fir_cmd_get_data(struct comp_dev *dev,
 
 	switch (cdata->cmd) {
 	case SOF_CTRL_CMD_BINARY:
-		trace_eq_with_ids(dev, "fir_cmd_get_data(), SOF_CTRL_CMD_BINARY");
+		comp_info(dev, "fir_cmd_get_data(), SOF_CTRL_CMD_BINARY");
 
 		max_size -= sizeof(struct sof_ipc_ctrl_data) +
 			sizeof(struct sof_abi_hdr);
@@ -536,13 +519,8 @@ static int fir_cmd_get_data(struct comp_dev *dev,
 					offset;
 			}
 			cdata->num_elems = bs;
-			trace_eq_with_ids(dev, "fir_cmd_get_data(), "
-					  "blob size %zu "
-					  "msg index %u "
-					  "max size %u "
-					  "offset %zu",
-					   bs, cdata->msg_index,
-					   max_size, offset);
+			comp_info(dev, "fir_cmd_get_data(), blob size %zu msg index %u max size %u offset %zu",
+				  bs, cdata->msg_index, max_size, offset);
 			ret = memcpy_s(dst, ((struct sof_abi_hdr *)
 				       (cdata->data))->size, src + offset,
 				       bs);
@@ -551,14 +529,12 @@ static int fir_cmd_get_data(struct comp_dev *dev,
 			cdata->data->abi = SOF_ABI_VERSION;
 			cdata->data->size = bs;
 		} else {
-			trace_eq_error_with_ids(dev, "fir_cmd_get_data() error:"
-						"invalid cd->config");
+			comp_err(dev, "fir_cmd_get_data() error: invalid cd->config");
 			ret = -EINVAL;
 		}
 		break;
 	default:
-		trace_eq_error_with_ids(dev, "fir_cmd_get_data() error: "
-					"invalid cdata->cmd");
+		comp_err(dev, "fir_cmd_get_data() error: invalid cdata->cmd");
 		ret = -EINVAL;
 		break;
 	}
@@ -575,19 +551,18 @@ static int fir_cmd_set_data(struct comp_dev *dev,
 
 	switch (cdata->cmd) {
 	case SOF_CTRL_CMD_BINARY:
-		trace_eq_with_ids(dev, "fir_cmd_set_data(), SOF_CTRL_CMD_BINARY");
+		comp_info(dev, "fir_cmd_set_data(), SOF_CTRL_CMD_BINARY");
 
 		/* Check that there is no work-in-progress previous request */
 		if (cd->config_new && cdata->msg_index == 0) {
-			trace_eq_error_with_ids(dev, "fir_cmd_set_data(), busy with previous request");
+			comp_err(dev, "fir_cmd_set_data(), busy with previous request");
 			return -EBUSY;
 		}
 
 		/* Copy new config, find size from header */
-		trace_eq_with_ids(dev, "fir_cmd_set_data(): "
-				  "blob size: %u msg_index %u",
-				  cdata->num_elems + cdata->elems_remaining,
-				  cdata->msg_index);
+		comp_info(dev, "fir_cmd_set_data(): blob size: %u msg_index %u",
+			  cdata->num_elems + cdata->elems_remaining,
+			  cdata->msg_index);
 		if (cdata->num_elems + cdata->elems_remaining >
 		    SOF_EQ_FIR_MAX_SIZE)
 			return -EINVAL;
@@ -599,9 +574,7 @@ static int fir_cmd_set_data(struct comp_dev *dev,
 						 cdata->elems_remaining);
 
 			if (!cd->config_new) {
-				trace_eq_error_with_ids(dev, "fir_cmd_set_data() "
-							"error: buffer "
-							"allocation failed");
+				comp_err(dev, "fir_cmd_set_data() error: buffer allocation failed");
 				return -EINVAL;
 			}
 
@@ -647,8 +620,7 @@ static int fir_cmd_set_data(struct comp_dev *dev,
 		}
 		break;
 	default:
-		trace_eq_error_with_ids(dev, "fir_cmd_set_data() "
-					"error: invalid cdata->cmd");
+		comp_err(dev, "fir_cmd_set_data() error: invalid cdata->cmd");
 		ret = -EINVAL;
 		break;
 	}
@@ -663,7 +635,7 @@ static int eq_fir_cmd(struct comp_dev *dev, int cmd, void *data,
 	struct sof_ipc_ctrl_data *cdata = data;
 	int ret = 0;
 
-	trace_eq_with_ids(dev, "eq_fir_cmd()");
+	comp_info(dev, "eq_fir_cmd()");
 
 	switch (cmd) {
 	case COMP_CMD_SET_DATA:
@@ -673,8 +645,7 @@ static int eq_fir_cmd(struct comp_dev *dev, int cmd, void *data,
 		ret = fir_cmd_get_data(dev, cdata, max_data_size);
 		break;
 	default:
-		trace_eq_error_with_ids(dev, "eq_fir_cmd() error: "
-					"invalid command");
+		comp_err(dev, "eq_fir_cmd() error: invalid command");
 		ret = -EINVAL;
 	}
 
@@ -684,7 +655,7 @@ static int eq_fir_cmd(struct comp_dev *dev, int cmd, void *data,
 static int eq_fir_trigger(struct comp_dev *dev, int cmd)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	trace_eq_with_ids(dev, "eq_fir_trigger()");
+	comp_info(dev, "eq_fir_trigger()");
 
 	if (cmd == COMP_TRIGGER_START || cmd == COMP_TRIGGER_RELEASE)
 		assert(cd->eq_fir_func);
@@ -701,7 +672,7 @@ static int eq_fir_copy(struct comp_dev *dev)
 	int ret;
 	int n;
 
-	tracev_eq_with_ids(dev, "eq_fir_copy()");
+	comp_dbg(dev, "eq_fir_copy()");
 
 	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer,
 				  sink_list);
@@ -713,7 +684,7 @@ static int eq_fir_copy(struct comp_dev *dev)
 		cd->config_new = NULL;
 		ret = eq_fir_setup(cd, sourceb->stream.channels);
 		if (ret < 0) {
-			trace_eq_error_with_ids(dev, "eq_fir_copy(), failed FIR setup");
+			comp_err(dev, "eq_fir_copy(), failed FIR setup");
 			return ret;
 		}
 	}
@@ -754,7 +725,7 @@ static int eq_fir_prepare(struct comp_dev *dev)
 	uint32_t sink_period_bytes;
 	int ret;
 
-	trace_eq_with_ids(dev, "eq_fir_prepare()");
+	comp_info(dev, "eq_fir_prepare()");
 
 	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
 	if (ret < 0)
@@ -784,8 +755,7 @@ static int eq_fir_prepare(struct comp_dev *dev)
 		sinkb->stream.frame_fmt = cd->sink_format;
 
 	if (sinkb->stream.size < config->periods_sink * sink_period_bytes) {
-		trace_eq_error_with_ids(dev, "eq_fir_prepare() error: "
-					"sink buffer size is insufficient");
+		comp_err(dev, "eq_fir_prepare() error: sink buffer size is insufficient");
 		ret = -ENOMEM;
 		goto err;
 	}
@@ -794,8 +764,7 @@ static int eq_fir_prepare(struct comp_dev *dev)
 	if (cd->config && cd->config_ready) {
 		ret = eq_fir_setup(cd, sourceb->stream.channels);
 		if (ret < 0) {
-			trace_eq_error_with_ids(dev, "eq_fir_prepare() error: "
-						"eq_fir_setup failed.");
+			comp_err(dev, "eq_fir_prepare() error: eq_fir_setup failed.");
 			goto err;
 		}
 
@@ -816,7 +785,7 @@ static int eq_fir_reset(struct comp_dev *dev)
 	int i;
 	struct comp_data *cd = comp_get_drvdata(dev);
 
-	trace_eq_with_ids(dev, "eq_fir_reset()");
+	comp_info(dev, "eq_fir_reset()");
 
 	eq_fir_free_delaylines(cd);
 

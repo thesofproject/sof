@@ -37,30 +37,13 @@
 #define COEF_C1		Q_CONVERT_FLOAT(0.01, 30)
 #define COEF_C2		Q_CONVERT_FLOAT(0.99, 30)
 
-/* Tracing */
-#define trace_asrc(__e, ...)					\
-	trace_event(TRACE_CLASS_SRC, __e, ##__VA_ARGS__)
-#define trace_asrc_with_ids(comp_ptr, __e, ...)			\
-	trace_event_comp(TRACE_CLASS_SRC, comp_ptr,		\
-			 __e, ##__VA_ARGS__)
-
-#define tracev_asrc(__e, ...) \
-	tracev_event(TRACE_CLASS_SRC, __e, ##__VA_ARGS__)
-#define tracev_asrc_with_ids(comp_ptr, __e, ...)		\
-	tracev_event_comp(TRACE_CLASS_SRC, comp_ptr,		\
-			  __e, ##__VA_ARGS__)
-
-#define trace_asrc_error(__e, ...) \
-	trace_error(TRACE_CLASS_SRC, __e, ##__VA_ARGS__)
-#define trace_asrc_error_with_ids(comp_ptr, __e, ...)		\
-	trace_error_comp(TRACE_CLASS_SRC, comp_ptr,		\
-			 __e, ##__VA_ARGS__)
-
 typedef void (*asrc_proc_func)(struct comp_dev *dev,
 			       const struct audio_stream *source,
 			       struct audio_stream *sink,
 			       int *consumed,
 			       int *produced);
+
+static const struct comp_driver comp_asrc;
 
 /* asrc component private data */
 struct comp_data {
@@ -144,13 +127,15 @@ static void src_copy_s32(struct comp_dev *dev,
 
 	/* Run ASRC */
 	if (cd->mode == ASRC_OM_PUSH) {
-		ret = asrc_process_push32(cd->asrc_obj, (int32_t **)cd->ibuf,
+		ret = asrc_process_push32(dev,
+					  cd->asrc_obj, (int32_t **)cd->ibuf,
 					  cd->source_frames,
 					  (int32_t **)cd->obuf, &frames,
 					  &idx, 0);
 		n = frames * sink->channels;
 	} else {
-		ret = asrc_process_pull32(cd->asrc_obj, (int32_t **)cd->ibuf,
+		ret = asrc_process_pull32(dev, cd->asrc_obj,
+					  (int32_t **)cd->ibuf,
 					  &frames, (int32_t **)cd->obuf,
 					  cd->sink_frames, cd->source_frames,
 					  &idx);
@@ -158,7 +143,7 @@ static void src_copy_s32(struct comp_dev *dev,
 	}
 
 	if (ret)
-		trace_asrc_error_with_ids(dev, "src_copy_s32(), error %d", ret);
+		comp_err(dev, "src_copy_s32(), error %d", ret);
 
 	buf = (int32_t *)cd->obuf[0];
 	while (n > 0) {
@@ -220,13 +205,15 @@ static void src_copy_s16(struct comp_dev *dev,
 
 	/* Run ASRC */
 	if (cd->mode == ASRC_OM_PUSH) {
-		ret = asrc_process_push16(cd->asrc_obj, (int16_t **)cd->ibuf,
+		ret = asrc_process_push16(dev,
+					  cd->asrc_obj, (int16_t **)cd->ibuf,
 					  cd->source_frames,
 					  (int16_t **)cd->obuf, &frames,
 					  &idx, 0);
 		n = frames * sink->channels;
 	} else {
-		ret = asrc_process_pull16(cd->asrc_obj, (int16_t **)cd->ibuf,
+		ret = asrc_process_pull16(dev,
+					  cd->asrc_obj, (int16_t **)cd->ibuf,
 					  &frames, (int16_t **)cd->obuf,
 					  cd->sink_frames, cd->source_frames,
 					  &idx);
@@ -234,7 +221,7 @@ static void src_copy_s16(struct comp_dev *dev,
 	}
 
 	if (ret)
-		trace_asrc_error_with_ids(dev, "src_copy_s16(), error %d", ret);
+		comp_err(dev, "src_copy_s16(), error %d", ret);
 
 	buf = (int16_t *)cd->obuf[0];
 	while (n > 0) {
@@ -268,21 +255,20 @@ static struct comp_dev *asrc_new(struct sof_ipc_comp *comp)
 	struct comp_data *cd;
 	int err;
 
-	trace_asrc("asrc_new()");
+	comp_cl_info(&comp_asrc, "asrc_new()");
 
 	if (IPC_IS_SIZE_INVALID(ipc_asrc->config)) {
-		IPC_SIZE_ERROR_TRACE(TRACE_CLASS_SRC, ipc_asrc->config);
+		IPC_SIZE_ERROR_TRACE(TRACE_CLASS_COMP, ipc_asrc->config);
 		return NULL;
 	}
 
-	trace_asrc("asrc_new(), source_rate=%d, sink_rate=%d"
-		   ", asynchronous_mode=%d, operation_mode=%d",
-		   ipc_asrc->source_rate, ipc_asrc->sink_rate,
-		   ipc_asrc->asynchronous_mode, ipc_asrc->operation_mode);
+	comp_cl_info(&comp_asrc, "asrc_new(), source_rate=%d, sink_rate=%d, asynchronous_mode=%d, operation_mode=%d",
+		     ipc_asrc->source_rate, ipc_asrc->sink_rate,
+		     ipc_asrc->asynchronous_mode, ipc_asrc->operation_mode);
 
 	/* validate init data - either SRC sink or source rate must be set */
 	if (ipc_asrc->source_rate == 0 && ipc_asrc->sink_rate == 0) {
-		trace_asrc_error("asrc_new(), sink and source rates are not set");
+		comp_cl_err(&comp_asrc, "asrc_new(), sink and source rates are not set");
 		return NULL;
 	}
 
@@ -325,7 +311,7 @@ static void asrc_free(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 
-	trace_asrc_with_ids(dev, "asrc_free()");
+	comp_info(dev, "asrc_free()");
 
 	rfree(cd->buf);
 	rfree(cd->asrc_obj);
@@ -335,7 +321,7 @@ static void asrc_free(struct comp_dev *dev)
 
 static int asrc_ctrl_cmd(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata)
 {
-	trace_asrc_error_with_ids(dev, "asrc_ctrl_cmd()");
+	comp_err(dev, "asrc_ctrl_cmd()");
 	return -EINVAL;
 }
 
@@ -346,7 +332,7 @@ static int asrc_cmd(struct comp_dev *dev, int cmd, void *data,
 	struct sof_ipc_ctrl_data *cdata = data;
 	int ret = 0;
 
-	trace_asrc_with_ids(dev, "asrc_cmd()");
+	comp_info(dev, "asrc_cmd()");
 
 	if (cmd == COMP_CMD_SET_VALUE)
 		ret = asrc_ctrl_cmd(dev, cdata);
@@ -356,7 +342,7 @@ static int asrc_cmd(struct comp_dev *dev, int cmd, void *data,
 
 static int asrc_trigger(struct comp_dev *dev, int cmd)
 {
-	trace_asrc_with_ids(dev, "asrc_trigger()");
+	comp_info(dev, "asrc_trigger()");
 
 	return comp_set_state(dev, cmd);
 }
@@ -369,7 +355,7 @@ static int asrc_params(struct comp_dev *dev,
 	struct sof_ipc_comp_asrc *asrc = COMP_GET_IPC(dev, sof_ipc_comp_asrc);
 	struct comp_data *cd = comp_get_drvdata(dev);
 
-	trace_asrc_with_ids(dev, "asrc_params()");
+	comp_info(dev, "asrc_params()");
 
 	/* Calculate source and sink rates, one rate will come from IPC new
 	 * and the other from params.
@@ -404,10 +390,9 @@ static int asrc_params(struct comp_dev *dev,
 	cd->sink_frames_max = cd->sink_frames + 10;
 	cd->frames = MAX(cd->source_frames_max, cd->sink_frames_max);
 
-	trace_asrc_with_ids(dev, "asrc_params(), source_rate=%u, sink_rate=%u"
-			    ", source_frames_max=%d, sink_frames_max=%d",
-			    cd->source_rate, cd->sink_rate,
-			    cd->source_frames_max, cd->sink_frames_max);
+	comp_info(dev, "asrc_params(), source_rate=%u, sink_rate=%u, source_frames_max=%d, sink_frames_max=%d",
+		  cd->source_rate, cd->sink_rate,
+		  cd->source_frames_max, cd->sink_frames_max);
 
 	return 0;
 }
@@ -432,12 +417,12 @@ static int asrc_dai_find(struct comp_dev *dev,
 						source_list);
 			next_dev = sinkb->sink;
 			if (!next_dev) {
-				trace_asrc_error("At end, no DAI found.");
+				comp_cl_err(&comp_asrc, "At end, no DAI found.");
 				return -EINVAL;
 			}
 
 			if (next_dev->comp.pipeline_id != pid) {
-				trace_asrc_error("No DAI sink in pipeline.");
+				comp_cl_err(&comp_asrc, "No DAI sink in pipeline.");
 				return -EINVAL;
 			}
 		}
@@ -450,12 +435,12 @@ static int asrc_dai_find(struct comp_dev *dev,
 						  sink_list);
 			next_dev = sourceb->source;
 			if (!next_dev) {
-				trace_asrc_error("At beginning, no DAI found.");
+				comp_cl_err(&comp_asrc, "At beginning, no DAI found.");
 				return -EINVAL;
 			}
 
 			if (next_dev->comp.pipeline_id != pid) {
-				trace_asrc_error("No DAI source in pipeline.");
+				comp_cl_err(&comp_asrc, "No DAI source in pipeline.");
 				return -EINVAL;
 			}
 		}
@@ -527,7 +512,7 @@ static int asrc_prepare(struct comp_dev *dev)
 	int ret;
 	int i;
 
-	trace_asrc_with_ids(dev, "asrc_prepare()");
+	comp_info(dev, "asrc_prepare()");
 
 	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
 	if (ret < 0)
@@ -553,23 +538,21 @@ static int asrc_prepare(struct comp_dev *dev)
 						      cd->sink_frames);
 
 	if (sinkb->stream.size < config->periods_sink * sink_period_bytes) {
-		trace_asrc_error_with_ids(dev,
-					  "asrc_prepare(), sink size=%d is insufficient, when periods=%d, period_bytes=%d",
-					  sinkb->stream.size,
-					  config->periods_sink,
-					  sink_period_bytes);
+		comp_err(dev, "asrc_prepare(), sink size=%d is insufficient, when periods=%d, period_bytes=%d",
+			 sinkb->stream.size, config->periods_sink,
+			 sink_period_bytes);
 		ret = -ENOMEM;
 		goto err;
 	}
 
 	/* validate */
 	if (!sink_period_bytes) {
-		trace_asrc_error_with_ids(dev, "asrc_prepare(), sink_period_bytes = 0");
+		comp_err(dev, "asrc_prepare(), sink_period_bytes = 0");
 		ret = -EINVAL;
 		goto err;
 	}
 	if (!source_period_bytes) {
-		trace_asrc_error_with_ids(dev, "asrc_prepare(), source_period_bytes = 0");
+		comp_err(dev, "asrc_prepare(), source_period_bytes = 0");
 		ret = -EINVAL;
 		goto err;
 	}
@@ -588,7 +571,7 @@ static int asrc_prepare(struct comp_dev *dev)
 		cd->asrc_func = src_copy_s32;
 		break;
 	default:
-		trace_asrc_error_with_ids(dev, "asrc_prepare(), invalid frame format");
+		comp_err(dev, "asrc_prepare(), invalid frame format");
 		return -EINVAL;
 	}
 
@@ -603,8 +586,8 @@ static int asrc_prepare(struct comp_dev *dev)
 			  cd->buf_size);
 	if (!cd->buf) {
 		cd->buf_size = 0;
-		trace_asrc_error_with_ids(dev, "asrc_prepare(), allocation fail for size %d",
-					  cd->buf_size);
+		comp_err(dev, "asrc_prepare(), allocation fail for size %d",
+			 cd->buf_size);
 		ret = -ENOMEM;
 		goto err_free_buf;
 	}
@@ -619,18 +602,19 @@ static int asrc_prepare(struct comp_dev *dev)
 	 * Get required size and allocate memory for ASRC
 	 */
 	sample_bits = sample_bytes * 8;
-	ret = asrc_get_required_size(&cd->asrc_size, sourceb->stream.channels,
+	ret = asrc_get_required_size(dev, &cd->asrc_size,
+				     sourceb->stream.channels,
 				     sample_bits);
 	if (ret) {
-		trace_asrc_error_with_ids(dev, "asrc_prepare(), get_required_size_bytes failed");
+		comp_err(dev, "asrc_prepare(), get_required_size_bytes failed");
 		goto err_free_buf;
 	}
 
 	cd->asrc_obj = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
 			       cd->asrc_size);
 	if (!cd->asrc_obj) {
-		trace_asrc_error_with_ids(dev, "asrc_prepare(), allocation fail for size %d",
-					  cd->asrc_size);
+		comp_err(dev, "asrc_prepare(), allocation fail for size %d",
+			 cd->asrc_size);
 		cd->asrc_size = 0;
 		ret = -ENOMEM;
 		goto err_free_buf;
@@ -647,14 +631,13 @@ static int asrc_prepare(struct comp_dev *dev)
 		fs_sec = cd->source_rate;
 	}
 
-	ret = asrc_initialise(cd->asrc_obj, sourceb->stream.channels,
+	ret = asrc_initialise(dev, cd->asrc_obj, sourceb->stream.channels,
 			      fs_prim, fs_sec,
 			      ASRC_IOF_INTERLEAVED, ASRC_IOF_INTERLEAVED,
 			      ASRC_BM_LINEAR, cd->frames, sample_bits,
 			      ASRC_CM_FEEDBACK, cd->mode);
 	if (ret) {
-		trace_asrc_error_with_ids(dev, "initialise_asrc(), error %d",
-					  ret);
+		comp_err(dev, "initialise_asrc(), error %d", ret);
 		goto err_free_asrc;
 	}
 
@@ -665,11 +648,10 @@ static int asrc_prepare(struct comp_dev *dev)
 	if (!cd->skew)
 		cd->skew = Q_CONVERT_FLOAT(1.0, 30);
 
-	trace_asrc_with_ids(dev, "asrc_prepare(), skew = %d", cd->skew);
-	ret = asrc_update_drift(cd->asrc_obj, cd->skew);
+	comp_info(dev, "asrc_prepare(), skew = %d", cd->skew);
+	ret = asrc_update_drift(dev, cd->asrc_obj, cd->skew);
 	if (ret) {
-		trace_asrc_error_with_ids(dev, "asrc_update_drift(), error %d",
-					  ret);
+		comp_err(dev, "asrc_update_drift(), error %d", ret);
 		goto err_free_asrc;
 	}
 
@@ -677,7 +659,7 @@ static int asrc_prepare(struct comp_dev *dev)
 	if (cd->track_drift) {
 		ret = asrc_dai_find(dev, cd, sinkb, sourceb);
 		if (ret) {
-			trace_asrc_error_with_ids(dev, "No DAI found to track");
+			comp_err(dev, "No DAI found to track");
 			cd->track_drift = false;
 			goto err_free_asrc;
 		}
@@ -685,7 +667,7 @@ static int asrc_prepare(struct comp_dev *dev)
 		cd->ts_count = 0;
 		ret = asrc_dai_configure_timestamp(cd);
 		if (ret) {
-			trace_asrc_error_with_ids(dev, "No timestamp capability in DAI");
+			comp_err(dev, "No timestamp capability in DAI");
 			cd->track_drift = false;
 			goto err_free_asrc;
 		}
@@ -706,7 +688,7 @@ err:
 	return ret;
 }
 
-static int asrc_control_loop(struct comp_data *cd)
+static int asrc_control_loop(struct comp_dev *dev, struct comp_data *cd)
 {
 	struct timestamp_data tsd;
 	int64_t tmp;
@@ -750,7 +732,7 @@ static int asrc_control_loop(struct comp_data *cd)
 
 	/* Prevent divide by zero */
 	if (delta_sample == 0 || tsd.walclk_rate == 0) {
-		trace_asrc_error("asrc_control_loop(), DAI timestamp failed");
+		comp_cl_err(&comp_asrc, "asrc_control_loop(), DAI timestamp failed");
 		return -EINVAL;
 	}
 
@@ -765,8 +747,8 @@ static int asrc_control_loop(struct comp_data *cd)
 	/* tmp is Q4.60, shift and round to Q2.30 */
 	tmp = ((int64_t)COEF_C1) * skew + ((int64_t)COEF_C2) * cd->skew;
 	cd->skew = sat_int32(Q_SHIFT_RND(tmp, 60, 30));
-	asrc_update_drift(cd->asrc_obj, cd->skew);
-	tracev_asrc("skew %d %d %d %d", delta_sample, delta_ts, skew, cd->skew);
+	asrc_update_drift(dev, cd->asrc_obj, cd->skew);
+	comp_cl_dbg("skew %d %d %d %d", delta_sample, delta_ts, skew, cd->skew);
 	return 0;
 }
 
@@ -782,9 +764,9 @@ static int asrc_copy(struct comp_dev *dev)
 	int frames_snk;
 	int ret;
 
-	tracev_asrc_with_ids(dev, "asrc_copy()");
+	comp_dbg(dev, "asrc_copy()");
 
-	ret = asrc_control_loop(cd);
+	ret = asrc_control_loop(dev, cd);
 	if (ret)
 		return ret;
 
@@ -819,8 +801,8 @@ static int asrc_copy(struct comp_dev *dev)
 		cd->asrc_func(dev, &source->stream, &sink->stream, &consumed,
 			      &produced);
 
-	tracev_asrc_with_ids(dev, "asrc_copy(), consumed = %u,  produced = %u",
-			     consumed, produced);
+	comp_dbg(dev, "asrc_copy(), consumed = %u,  produced = %u",
+		 consumed, produced);
 
 	/* Calc new free and available if data was processed. These
 	 * functions must not be called with 0 consumed/produced.
@@ -840,7 +822,7 @@ static int asrc_reset(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 
-	trace_asrc_with_ids(dev, "asrc_reset()");
+	comp_info(dev, "asrc_reset()");
 
 	/* If any resources feasible to stop */
 	if (cd->track_drift)

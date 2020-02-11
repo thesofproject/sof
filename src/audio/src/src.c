@@ -37,28 +37,11 @@
 #include <sof/audio/coefficients/src/src_std_int32_table.h>
 #endif
 
-/* tracing */
-#define trace_src(__e, ...) \
-	trace_event(TRACE_CLASS_SRC, __e, ##__VA_ARGS__)
-#define trace_src_with_ids(comp_ptr, __e, ...)			\
-	trace_event_comp(TRACE_CLASS_SRC, comp_ptr,		\
-			 __e, ##__VA_ARGS__)
-
-#define tracev_src(__e, ...) \
-	tracev_event(TRACE_CLASS_SRC, __e, ##__VA_ARGS__)
-#define tracev_src_with_ids(comp_ptr, __e, ...)			\
-	tracev_event_comp(TRACE_CLASS_SRC, comp_ptr,		\
-			  __e, ##__VA_ARGS__)
-
-#define trace_src_error(__e, ...) \
-	trace_error(TRACE_CLASS_SRC, __e, ##__VA_ARGS__)
-#define trace_src_error_with_ids(comp_ptr, __e, ...)		\
-	trace_error_comp(TRACE_CLASS_SRC, comp_ptr,		\
-			 __e, ##__VA_ARGS__)
-
 /* The FIR maximum lengths are per channel so need to multiply them */
 #define MAX_FIR_DELAY_SIZE_XNCH (PLATFORM_MAX_CHANNELS * MAX_FIR_DELAY_SIZE)
 #define MAX_OUT_DELAY_SIZE_XNCH (PLATFORM_MAX_CHANNELS * MAX_OUT_DELAY_SIZE)
+
+static const struct comp_driver comp_src;
 
 /* src component private data */
 struct comp_data {
@@ -118,8 +101,9 @@ int src_buffer_lengths(struct src_param *a, int fs_in, int fs_out, int nch,
 	int r1;
 
 	if (nch > PLATFORM_MAX_CHANNELS) {
-		trace_src_error("src_buffer_lengths() error: "
-				"nch = %u > PLATFORM_MAX_CHANNELS", nch);
+		/* TODO: should be device, not class */
+		comp_cl_err(&comp_src, "src_buffer_lengths() error: nch = %u > PLATFORM_MAX_CHANNELS",
+			    nch);
 		return -EINVAL;
 	}
 
@@ -129,9 +113,8 @@ int src_buffer_lengths(struct src_param *a, int fs_in, int fs_out, int nch,
 
 	/* Check that both in and out rates are supported */
 	if (a->idx_in < 0 || a->idx_out < 0) {
-		trace_src_error("src_buffer_lengths() error: "
-				"rates not supported, "
-				"fs_in: %u, fs_out: %u", fs_in, fs_out);
+		comp_cl_err(&comp_src, "src_buffer_lengths() error: rates not supported, fs_in: %u, fs_out: %u",
+			    fs_in, fs_out);
 		return -EINVAL;
 	}
 
@@ -140,9 +123,8 @@ int src_buffer_lengths(struct src_param *a, int fs_in, int fs_out, int nch,
 
 	/* Check from stage1 parameter for a deleted in/out rate combination.*/
 	if (stage1->filter_length < 1) {
-		trace_src_error("src_buffer_lengths() error: "
-				"Non-supported combination "
-				"fs_in = %d, fs_out = %d", fs_in, fs_out);
+		comp_cl_err(&comp_src, "src_buffer_lengths() error: Non-supported combination sfs_in = %d, fs_out = %d",
+			    fs_in, fs_out);
 		return -EINVAL;
 	}
 
@@ -374,7 +356,7 @@ static void src_2s(struct comp_dev *dev, const struct audio_stream *source,
 		s1.times = sbuf_free / (cd->src.stage1->blk_out * nch);
 		s1_blk_in = s1.times * cd->src.stage1->blk_in * nch;
 		s1_blk_out = s1.times * cd->src.stage1->blk_out * nch;
-		tracev_src_with_ids(dev, "s1.times = %d", s1.times);
+		comp_dbg(dev, "s1.times = %d", s1.times);
 	}
 
 	if (avail_b >= s1_blk_in * sz && sbuf_free >= s1_blk_out) {
@@ -394,7 +376,7 @@ static void src_2s(struct comp_dev *dev, const struct audio_stream *source,
 		s2.times = cd->sbuf_avail / (cd->src.stage2->blk_in * nch);
 		s2_blk_in = s2.times * cd->src.stage2->blk_in * nch;
 		s2_blk_out = s2.times * cd->src.stage2->blk_out * nch;
-		tracev_src_with_ids(dev, "s2.times = %d", s2.times);
+		comp_dbg(dev, "s2.times = %d", s2.times);
 	}
 
 	/* Test if second stage can be run with default block length. */
@@ -472,17 +454,16 @@ static struct comp_dev *src_new(struct sof_ipc_comp *comp)
 	struct comp_data *cd;
 	int ret;
 
-	trace_src("src_new()");
+	comp_cl_info(&comp_src, "src_new()");
 
 	if (IPC_IS_SIZE_INVALID(ipc_src->config)) {
-		IPC_SIZE_ERROR_TRACE(TRACE_CLASS_SRC, ipc_src->config);
+		IPC_SIZE_ERROR_TRACE(TRACE_CLASS_COMP, ipc_src->config);
 		return NULL;
 	}
 
 	/* validate init data - either SRC sink or source rate must be set */
 	if (ipc_src->source_rate == 0 && ipc_src->sink_rate == 0) {
-		trace_src_error("src_new() error: "
-				"SRC sink and source rate are not set");
+		comp_cl_err(&comp_src, "src_new() error: SRC sink and source rate are not set");
 		return NULL;
 	}
 
@@ -520,7 +501,7 @@ static void src_free(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 
-	trace_src_with_ids(dev, "src_free()");
+	comp_info(dev, "src_free()");
 
 	/* Free dynamically reserved buffers for SRC algorithm */
 	if (cd->delay_lines)
@@ -543,7 +524,7 @@ static int src_params(struct comp_dev *dev,
 	int n = 0;
 	int err;
 
-	trace_src_with_ids(dev, "src_params()");
+	comp_info(dev, "src_params()");
 
 	cd->sample_container_bytes = params->sample_container_bytes;
 
@@ -553,8 +534,8 @@ static int src_params(struct comp_dev *dev,
 	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
 				source_list);
 
-	trace_src("src_params(): src->source_rate: %d", src->source_rate);
-	trace_src("src_params(): src->sink_rate: %d", src->sink_rate);
+	comp_info(dev, "src_params(): src->source_rate: %d", src->source_rate);
+	comp_info(dev, "src_params(): src->sink_rate: %d", src->sink_rate);
 
 	/* Calculate source and sink rates, one rate will come from IPC new
 	 * and the other from params.
@@ -578,28 +559,25 @@ static int src_params(struct comp_dev *dev,
 	cd->sink_frames = dev->frames;
 
 	/* Allocate needed memory for delay lines */
-	trace_src_with_ids(dev,
-			   "src_params(), source_rate = %u, sink_rate = %u",
-			   cd->source_rate, cd->sink_rate);
-	trace_src_with_ids(dev,
-			   "src_params(), sourceb->channels = %u, sinkb->channels = %u, dev->frames = %u",
-			   sourceb->stream.channels,
-			   sinkb->stream.channels, dev->frames);
-	err = src_buffer_lengths(&cd->param, cd->source_rate, cd->sink_rate,
+	comp_info(dev, "src_params(), source_rate = %u, sink_rate = %u",
+		  cd->source_rate, cd->sink_rate);
+	comp_info(dev, "src_params(), sourceb->channels = %u, sinkb->channels = %u, dev->frames = %u",
+		  sourceb->stream.channels,
+		  sinkb->stream.channels, dev->frames);
+	err = src_buffer_lengths(&cd->param, cd->source_rate,
+				 cd->sink_rate,
 				 sourceb->stream.channels, cd->source_frames);
 	if (err < 0) {
-		trace_src_error_with_ids(dev, "src_params() error: "
-					 "src_buffer_lengths() failed");
+		comp_err(dev, "src_params() error: src_buffer_lengths() failed");
 		return err;
 	}
 
-	trace_src_with_ids(dev, "src_params(), blk_in = %u, blk_out = %u",
-			   cd->param.blk_in, cd->param.blk_out);
+	comp_info(dev, "src_params(), blk_in = %u, blk_out = %u",
+		  cd->param.blk_in, cd->param.blk_out);
 
 	delay_lines_size = sizeof(int32_t) * cd->param.total;
 	if (delay_lines_size == 0) {
-		trace_src_error_with_ids(dev, "src_params() error: "
-					 "delay_lines_size = 0");
+		comp_err(dev, "src_params() error: delay_lines_size = 0");
 		return -EINVAL;
 	}
 
@@ -609,10 +587,8 @@ static int src_params(struct comp_dev *dev,
 
 	cd->delay_lines = rballoc(0, SOF_MEM_CAPS_RAM, delay_lines_size);
 	if (!cd->delay_lines) {
-		trace_src_error_with_ids(dev, "src_params() error: "
-					 "failed to alloc cd->delay_lines, "
-					 "delay_lines_size = %u",
-					 delay_lines_size);
+		comp_err(dev, "src_params() error: failed to alloc cd->delay_lines, delay_lines_size = %u",
+			 delay_lines_size);
 		return -EINVAL;
 	}
 
@@ -643,8 +619,7 @@ static int src_params(struct comp_dev *dev,
 		/* This is possibly due to missing coefficients for
 		 * requested rates combination.
 		 */
-		trace_src_with_ids(dev, "src_params(), missing coefficients "
-				   "for requested rates combination");
+		comp_info(dev, "src_params(), missing coefficients for requested rates combination");
 		cd->src_func = src_fallback;
 		return -EINVAL;
 	}
@@ -654,7 +629,7 @@ static int src_params(struct comp_dev *dev,
 
 static int src_ctrl_cmd(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata)
 {
-	trace_src_error_with_ids(dev, "src_ctrl_cmd()");
+	comp_err(dev, "src_ctrl_cmd()");
 	return -EINVAL;
 }
 
@@ -665,7 +640,7 @@ static int src_cmd(struct comp_dev *dev, int cmd, void *data,
 	struct sof_ipc_ctrl_data *cdata = data;
 	int ret = 0;
 
-	trace_src_with_ids(dev, "src_cmd()");
+	comp_info(dev, "src_cmd()");
 
 	if (cmd == COMP_CMD_SET_VALUE)
 		ret = src_ctrl_cmd(dev, cdata);
@@ -677,7 +652,7 @@ static int src_trigger(struct comp_dev *dev, int cmd)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 
-	trace_src_with_ids(dev, "src_trigger()");
+	comp_info(dev, "src_trigger()");
 
 	if (cmd == COMP_TRIGGER_START || cmd == COMP_TRIGGER_RELEASE)
 		assert(cd->polyphase_func);
@@ -746,7 +721,7 @@ static int src_copy(struct comp_dev *dev)
 	int consumed = 0;
 	int produced = 0;
 
-	tracev_src_with_ids(dev, "src_copy()");
+	comp_dbg(dev, "src_copy()");
 
 	/* src component needs 1 source and 1 sink buffer */
 	source = list_first_item(&dev->bsource_list, struct comp_buffer,
@@ -760,14 +735,14 @@ static int src_copy(struct comp_dev *dev)
 	 */
 	ret = src_get_copy_limits(cd, source, sink);
 	if (ret) {
-		trace_src_with_ids(dev, "No data to process.");
+		comp_info(dev, "No data to process.");
 		return PPL_STATUS_PATH_STOP;
 	}
 
 	cd->src_func(dev, &source->stream, &sink->stream, &consumed, &produced);
 
-	tracev_src_with_ids(dev, "src_copy(), consumed = %u,  produced = %u",
-			    consumed, produced);
+	comp_dbg(dev, "src_copy(), consumed = %u,  produced = %u",
+		 consumed, produced);
 
 	/* Calc new free and available if data was processed. These
 	 * functions must not be called with 0 consumed/produced.
@@ -794,7 +769,7 @@ static int src_prepare(struct comp_dev *dev)
 	uint32_t sink_period_bytes;
 	int ret;
 
-	trace_src_with_ids(dev, "src_prepare()");
+	comp_info(dev, "src_prepare()");
 
 	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
 	if (ret < 0)
@@ -820,31 +795,27 @@ static int src_prepare(struct comp_dev *dev)
 						      dev->frames);
 
 	if (sinkb->stream.size < config->periods_sink * sink_period_bytes) {
-		trace_src_error_with_ids(dev, "src_prepare() error: "
-					  "sink buffer size is insufficient");
+		comp_err(dev, "src_prepare() error: sink buffer size is insufficient");
 		ret = -ENOMEM;
 		goto err;
 	}
 
 	/* validate */
 	if (!sink_period_bytes) {
-		trace_src_error_with_ids(dev, "src_prepare() error: "
-					 "sink_period_bytes = 0");
+		comp_err(dev, "src_prepare() error: sink_period_bytes = 0");
 		ret = -EINVAL;
 		goto err;
 	}
 	if (!source_period_bytes) {
-		trace_src_error_with_ids(dev, "src_prepare() error: "
-					 "source_period_bytes = 0");
+		comp_err(dev, "src_prepare() error: source_period_bytes = 0");
 		ret = -EINVAL;
 		goto err;
 	}
 
 	/* SRC supports S16_LE, S24_4LE and S32_LE formats */
 	if (cd->source_format != cd->sink_format) {
-		trace_src_error("src_prepare() error: "
-				"Source fmt %d and sink fmt %d are different.",
-				cd->source_format, cd->sink_format);
+		comp_err(dev, "src_prepare() error: Source fmt %d and sink fmt %d are different.",
+			 cd->source_format, cd->sink_format);
 		ret = -EINVAL;
 		goto err;
 	}
@@ -875,8 +846,8 @@ static int src_prepare(struct comp_dev *dev)
 		break;
 #endif /* CONFIG_FORMAT_S32LE */
 	default:
-		trace_src_error("src_prepare() error: invalid format %d",
-				cd->source_format);
+		comp_err(dev, "src_prepare() error: invalid format %d",
+			 cd->source_format);
 		ret = -EINVAL;
 		goto err;
 	}
@@ -892,7 +863,7 @@ static int src_reset(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 
-	trace_src_with_ids(dev, "src_reset()");
+	comp_info(dev, "src_reset()");
 
 	cd->src_func = src_fallback;
 	src_polyphase_reset(&cd->src);

@@ -31,13 +31,6 @@
 /* Generic scale value for Q27 fractional arithmetic */
 #define ONE_Q27 Q_CONVERT_FLOAT(1, 27)
 
-#define trace_asrc(__e, ...) \
-	trace_event(TRACE_CLASS_ASRC, __e, ##__VA_ARGS__)
-#define tracev_asrc(__e, ...) \
-	tracev_event(TRACE_CLASS_ASRC, __e, ##__VA_ARGS__)
-#define trace_asrc_error(__e, ...) \
-	trace_error(TRACE_CLASS_ASRC, __e, ##__VA_ARGS__)
-
 /*
  * GLOBALS
  */
@@ -206,7 +199,8 @@ static enum asrc_error_code initialise_buffer(struct asrc_farrow *src_obj);
  * Initialise the pointers to the filters, set the number of filters
  * and their length
  */
-static enum asrc_error_code initialise_filter(struct asrc_farrow *src_obj);
+static enum asrc_error_code initialise_filter(struct comp_dev *dev,
+					      struct asrc_farrow *src_obj);
 
 /*
  * FUNCTION DEFINITIONS + GENERAL SETUP
@@ -238,7 +232,8 @@ static enum asrc_error_code initialise_filter(struct asrc_farrow *src_obj);
  * This is where the actual input data is buffered.
  */
 
-enum asrc_error_code asrc_get_required_size(int *required_size,
+enum asrc_error_code asrc_get_required_size(struct comp_dev *dev,
+					    int *required_size,
 					    int num_channels,
 					    int bit_depth)
 {
@@ -248,19 +243,19 @@ enum asrc_error_code asrc_get_required_size(int *required_size,
 
 	/* check for parameter errors */
 	if (!required_size) {
-		trace_asrc_error("asrc_get_required_size(), invalid required_size");
+		comp_err(dev, "asrc_get_required_size(), invalid required_size");
 		return ASRC_EC_INVALID_POINTER;
 	}
 
 	if (num_channels < 1) {
-		trace_asrc_error("asrc_get_required_size(), invalid num_channels = %d",
-				 num_channels);
+		comp_err(dev, "asrc_get_required_size(), invalid num_channels = %d",
+			 num_channels);
 		return ASRC_EC_INVALID_NUM_CHANNELS;
 	}
 
 	if (bit_depth != 16 && bit_depth != 32) {
-		trace_asrc_error("asrc_get_required_size_bytes(), invalid bit_depth = %d",
-				 bit_depth);
+		comp_err(dev, "asrc_get_required_size_bytes(), invalid bit_depth = %d",
+			 bit_depth);
 		return ASRC_EC_INVALID_BIT_DEPTH;
 	}
 
@@ -289,7 +284,8 @@ enum asrc_error_code asrc_get_required_size(int *required_size,
 	return ASRC_EC_OK;
 }
 
-enum asrc_error_code asrc_initialise(struct asrc_farrow *src_obj,
+enum asrc_error_code asrc_initialise(struct comp_dev *dev,
+				     struct asrc_farrow *src_obj,
 				     int num_channels,
 				     int fs_prim,
 				     int fs_sec,
@@ -305,35 +301,35 @@ enum asrc_error_code asrc_initialise(struct asrc_farrow *src_obj,
 
 	/* check for parameter errors */
 	if (!src_obj) {
-		trace_asrc_error("asrc_initialise(), null src_obj");
+		comp_err(dev, "asrc_initialise(), null src_obj");
 		return ASRC_EC_INVALID_POINTER;
 	}
 
 	if (num_channels < 1) {
-		trace_asrc_error("asrc_initialise(), num_channels = %d",
-				 num_channels);
+		comp_err(dev, "asrc_initialise(), num_channels = %d",
+			 num_channels);
 		return ASRC_EC_INVALID_NUM_CHANNELS;
 	}
 
 	if (fs_prim < 8000 || fs_prim > 192000) {
-		trace_asrc_error("asrc_initialise(), fs_prim = %d", fs_prim);
+		comp_err(dev, "asrc_initialise(), fs_prim = %d", fs_prim);
 		return ASRC_EC_INVALID_SAMPLE_RATE;
 	}
 
 	if (fs_sec < 8000 || fs_sec > 192000) {
-		trace_asrc_error("asrc_initialise(), fs_src = %d", fs_sec);
+		comp_err(dev, "asrc_initialise(), fs_src = %d", fs_sec);
 		return ASRC_EC_INVALID_SAMPLE_RATE;
 	}
 
 	if (buffer_length < 2) {
-		trace_asrc_error("asrc_initialise(), buffer_length = %d",
-				 buffer_length);
+		comp_err(dev, "asrc_initialise(), buffer_length = %d",
+			 buffer_length);
 		return ASRC_EC_INVALID_BUFFER_LENGTH;
 	}
 
 	if (bit_depth != 16 && bit_depth != 32) {
-		trace_asrc_error("asrc_initialise(), bit_depth = %d",
-				 bit_depth);
+		comp_err(dev, "asrc_initialise(), bit_depth = %d",
+			 bit_depth);
 		return ASRC_EC_INVALID_BIT_DEPTH;
 	}
 
@@ -365,7 +361,7 @@ enum asrc_error_code asrc_initialise(struct asrc_farrow *src_obj,
 
 	/* check conversion ratios */
 	if (src_obj->fs_ratio == 0 || src_obj->fs_ratio_inv == 0) {
-		trace_asrc_error("asrc_initialise(), fail to calculate ratios");
+		comp_err(dev, "asrc_initialise(), fail to calculate ratios");
 		return ASRC_EC_INVALID_CONVERSION_RATIO;
 	}
 
@@ -388,11 +384,11 @@ enum asrc_error_code asrc_initialise(struct asrc_farrow *src_obj,
 	 * also sets the pointer to the corresponding
 	 * calc_impulse_response_nX function.
 	 */
-	error_code = initialise_filter(src_obj);
+	error_code = initialise_filter(dev, src_obj);
 
 	/* check for errors */
 	if (error_code != ASRC_EC_OK) {
-		trace_asrc_error("asrc_initialise(), failed filter initialise");
+		comp_err(dev, "asrc_initialise(), failed filter initialise");
 		return error_code;
 	}
 
@@ -401,7 +397,7 @@ enum asrc_error_code asrc_initialise(struct asrc_farrow *src_obj,
 
 	/* check for errors */
 	if (error_code != ASRC_EC_OK) {
-		trace_asrc_error("asrc_initialise(), failed buffer initialise");
+		comp_err(dev, "asrc_initialise(), failed buffer initialise");
 		return error_code;
 	}
 
@@ -430,27 +426,28 @@ enum asrc_error_code asrc_initialise(struct asrc_farrow *src_obj,
 	return ASRC_EC_OK;
 }
 
-enum asrc_error_code asrc_set_fs_ratio(struct asrc_farrow *src_obj,
+enum asrc_error_code asrc_set_fs_ratio(struct comp_dev *dev,
+				       struct asrc_farrow *src_obj,
 				       int32_t fs_prim, int32_t fs_sec)
 {
 	/* Check for parameter errors */
 	if (!src_obj) {
-		trace_asrc_error("asrc_set_fs_ratio(), null src_obj");
+		comp_err(dev, "asrc_set_fs_ratio(), null src_obj");
 		return ASRC_EC_INVALID_POINTER;
 	}
 
 	if (!src_obj->is_initialised) {
-		trace_asrc_error("asrc_set_fs_ratio(), not initialised");
+		comp_err(dev, "asrc_set_fs_ratio(), not initialised");
 		return ASRC_EC_INIT_FAILED;
 	}
 
 	if (fs_prim < 8000 || fs_prim > 192000) {
-		trace_asrc_error("asrc_set_fs_ratio(), fs_prim = %d", fs_prim);
+		comp_err(dev, "asrc_set_fs_ratio(), fs_prim = %d", fs_prim);
 		return ASRC_EC_INVALID_SAMPLE_RATE;
 	}
 
 	if (fs_sec < 8000 || fs_sec > 192000) {
-		trace_asrc_error("asrc_set_fs_ratio(), fs_sec = %d", fs_sec);
+		comp_err(dev, "asrc_set_fs_ratio(), fs_sec = %d", fs_sec);
 		return ASRC_EC_INVALID_SAMPLE_RATE;
 	}
 
@@ -470,7 +467,7 @@ enum asrc_error_code asrc_set_fs_ratio(struct asrc_farrow *src_obj,
 
 	/* check conversion ratios */
 	if (src_obj->fs_ratio == 0 || src_obj->fs_ratio_inv == 0) {
-		trace_asrc_error("asrc_set_fs_ratio(), failed to calculate ratios");
+		comp_err(dev, "asrc_set_fs_ratio(), failed to calculate ratios");
 		return ASRC_EC_INVALID_CONVERSION_RATIO;
 	}
 
@@ -481,10 +478,10 @@ enum asrc_error_code asrc_set_fs_ratio(struct asrc_farrow *src_obj,
 	/* See initialise_asrc(...) for further information
 	 * Update the filters accordingly
 	 */
-	enum asrc_error_code error_code = initialise_filter(src_obj);
+	enum asrc_error_code error_code = initialise_filter(dev, src_obj);
 	/* check for errors */
 	if (error_code != ASRC_EC_OK) {
-		trace_asrc_error("asrc_set_fs_ratio(), failed filter initialise");
+		comp_err(dev, "asrc_set_fs_ratio(), failed filter initialise");
 		return error_code;
 	}
 
@@ -492,7 +489,7 @@ enum asrc_error_code asrc_set_fs_ratio(struct asrc_farrow *src_obj,
 	error_code = initialise_buffer(src_obj);
 	/* check for errors */
 	if (error_code != ASRC_EC_OK) {
-		trace_asrc_error("asrc_set_fs_ratio(), failed buffer initialise");
+		comp_err(dev, "asrc_set_fs_ratio(), failed buffer initialise");
 		return error_code;
 	}
 
@@ -511,17 +508,18 @@ enum asrc_error_code asrc_set_fs_ratio(struct asrc_farrow *src_obj,
 	return ASRC_EC_OK;
 }
 
-enum asrc_error_code asrc_set_input_format(struct asrc_farrow *src_obj,
+enum asrc_error_code asrc_set_input_format(struct comp_dev *dev,
+					   struct asrc_farrow *src_obj,
 					   enum asrc_io_format input_format)
 {
 	/* check for parameter errors */
 	if (!src_obj) {
-		trace_asrc_error("asrc_set_input_format(), null src_obj");
+		comp_err(dev, "asrc_set_input_format(), null src_obj");
 		return ASRC_EC_INVALID_POINTER;
 	}
 
 	if (!src_obj->is_initialised) {
-		trace_asrc_error("asrc_set_input_format(), not initialised");
+		comp_err(dev, "asrc_set_input_format(), not initialised");
 		return ASRC_EC_INIT_FAILED;
 	}
 
@@ -530,17 +528,18 @@ enum asrc_error_code asrc_set_input_format(struct asrc_farrow *src_obj,
 	return ASRC_EC_OK;
 }
 
-enum asrc_error_code asrc_set_output_format(struct asrc_farrow *src_obj,
+enum asrc_error_code asrc_set_output_format(struct comp_dev *dev,
+					    struct asrc_farrow *src_obj,
 					    enum asrc_io_format output_format)
 {
 	/* check for parameter errors */
 	if (!src_obj) {
-		trace_asrc_error("asrc_set_output_format(), null src_obj");
+		comp_err(dev, "asrc_set_output_format(), null src_obj");
 		return ASRC_EC_INVALID_POINTER;
 	}
 
 	if (!src_obj->is_initialised) {
-		trace_asrc_error("asrc_set_output_format(), not initialised");
+		comp_err(dev, "asrc_set_output_format(), not initialised");
 		return ASRC_EC_INIT_FAILED;
 	}
 
@@ -606,7 +605,8 @@ static enum asrc_error_code initialise_buffer(struct asrc_farrow *src_obj)
 /*
  * FILTER FUNCTIONS
  */
-static enum asrc_error_code initialise_filter(struct asrc_farrow *src_obj)
+static enum asrc_error_code initialise_filter(struct comp_dev *dev,
+					      struct asrc_farrow *src_obj)
 {
 	int fs_in;
 	int fs_out;
@@ -632,8 +632,8 @@ static enum asrc_error_code initialise_filter(struct asrc_farrow *src_obj)
 
 	if (fs_in == 0 || fs_out == 0) {
 		/* Avoid possible divisions by zero. */
-		trace_asrc_error("initialise_filter(), fs_in = %d, fs_out = %d",
-				 fs_in, fs_out);
+		comp_err(dev, "initialise_filter(), fs_in = %d, fs_out = %d",
+			 fs_in, fs_out);
 		return ASRC_EC_INVALID_SAMPLE_RATE;
 	} else if (fs_in == 48000 && fs_out >= 48000) {
 		/* For conversion from 48 kHz to 48 kHz (and above) we
@@ -729,8 +729,8 @@ static enum asrc_error_code initialise_filter(struct asrc_farrow *src_obj)
 			break;
 #endif
 		default:
-			trace_asrc_error("initialise_filter(), fs_out = %d",
-					 fs_out);
+			comp_err(dev, "initialise_filter(), fs_out = %d",
+				 fs_out);
 			return ASRC_EC_INVALID_SAMPLE_RATE;
 		}
 	} else if (fs_in == 24000) {
@@ -754,13 +754,13 @@ static enum asrc_error_code initialise_filter(struct asrc_farrow *src_obj)
 			break;
 #endif
 		default:
-			trace_asrc_error("initialise_filter(), fs_out = %d",
-					 fs_out);
+			comp_err(dev, "initialise_filter(), fs_out = %d",
+				 fs_out);
 			return ASRC_EC_INVALID_SAMPLE_RATE;
 		}
 	} else {
 		/* Conversion ratio is not supported. */
-		trace_asrc_error("initialise_filter(), fs_in = %d", fs_in);
+		comp_err(dev, "initialise_filter(), fs_in = %d", fs_in);
 		return ASRC_EC_INVALID_SAMPLE_RATE;
 	}
 
@@ -781,15 +781,16 @@ static enum asrc_error_code initialise_filter(struct asrc_farrow *src_obj)
 		src_obj->calc_ir = &asrc_calc_impulse_response_n7;
 		break;
 	default:
-		trace_asrc_error("initialise_filter(), num_filters = %d",
-				 src_obj->num_filters);
+		comp_err(dev, "initialise_filter(), num_filters = %d",
+			 src_obj->num_filters);
 		return ASRC_EC_INVALID_CONVERSION_RATIO;
 	}
 
 	return ASRC_EC_OK;
 }
 
-enum asrc_error_code asrc_update_drift(struct asrc_farrow *src_obj,
+enum asrc_error_code asrc_update_drift(struct comp_dev *dev,
+				       struct asrc_farrow *src_obj,
 				       uint32_t clock_skew)
 {
 	uint32_t fs_ratio;
@@ -797,24 +798,24 @@ enum asrc_error_code asrc_update_drift(struct asrc_farrow *src_obj,
 
 	/* check for parameter errors */
 	if (!src_obj) {
-		trace_asrc_error("asrc_update_drift(), null src_obj");
+		comp_err(dev, "asrc_update_drift(), null src_obj");
 		return ASRC_EC_INVALID_POINTER;
 	}
 
 	if (!src_obj->is_initialised) {
-		trace_asrc_error("asrc_update_drift(), not initialised");
+		comp_err(dev, "asrc_update_drift(), not initialised");
 		return ASRC_EC_INIT_FAILED;
 	}
 
 	if (src_obj->control_mode != ASRC_CM_FEEDBACK) {
-		trace_asrc_error("update_drift(), need to use feedback mode");
+		comp_err(dev, "update_drift(), need to use feedback mode");
 		return ASRC_EC_INVALID_CONTROL_MODE;
 	}
 
 	/* Skew is Q2.30 */
 	if (clock_skew < SKEW_MIN || clock_skew > SKEW_MAX) {
-		trace_asrc_error("asrc_update_drift(), clock_skew = %d",
-				 clock_skew);
+		comp_err(dev, "asrc_update_drift(), clock_skew = %d",
+			 clock_skew);
 		return ASRC_EC_INVALID_CLOCK_SKEW;
 	}
 
@@ -836,7 +837,8 @@ enum asrc_error_code asrc_update_drift(struct asrc_farrow *src_obj,
 	return ASRC_EC_OK;
 }
 
-enum asrc_error_code asrc_update_fs_ratio(struct asrc_farrow *src_obj,
+enum asrc_error_code asrc_update_fs_ratio(struct comp_dev *dev,
+					  struct asrc_farrow *src_obj,
 					  int primary_num_frames,
 					  int secondary_num_frames)
 {
@@ -844,24 +846,23 @@ enum asrc_error_code asrc_update_fs_ratio(struct asrc_farrow *src_obj,
 
 	/* Check input for errors */
 	if (!src_obj) {
-		trace_asrc_error("asrc_update_fs_ratio(), null src_obj");
+		comp_err(dev, "asrc_update_fs_ratio(), null src_obj");
 		return ASRC_EC_INVALID_POINTER;
 	}
 
 	if (!src_obj->is_initialised) {
-		trace_asrc_error("asrc_update_fs_ratio(), not initialized");
+		comp_err(dev, "asrc_update_fs_ratio(), not initialized");
 		return ASRC_EC_INIT_FAILED;
 	}
 
 	if (src_obj->control_mode != ASRC_CM_FIXED) {
-		trace_asrc_error("update_fs_ratio(), need to use fixed mode");
+		comp_err(dev, "update_fs_ratio(), need to use fixed mode");
 		return ASRC_EC_INVALID_CONTROL_MODE;
 	}
 
 	if (primary_num_frames < 1 || secondary_num_frames < 1) {
-		trace_asrc_error("update_fs_ratio(), primary_num_frames = %d"
-				 ", secondary_num_frames = %d",
-				 primary_num_frames, secondary_num_frames);
+		comp_err(dev, "update_fs_ratio(), primary_num_frames = %d, secondary_num_frames = %d",
+			 primary_num_frames, secondary_num_frames);
 		return ASRC_EC_INVALID_FRAME_SIZE;
 	}
 
@@ -971,7 +972,8 @@ void asrc_write_to_ring_buffer32(struct asrc_farrow  *src_obj,
 	}
 }
 
-enum asrc_error_code asrc_process_push16(struct asrc_farrow *src_obj,
+enum asrc_error_code asrc_process_push16(struct comp_dev *dev,
+					 struct asrc_farrow *src_obj,
 					 int16_t **__restrict input_buffers,
 					 int input_num_frames,
 					 int16_t **__restrict output_buffers,
@@ -1034,9 +1036,9 @@ enum asrc_error_code asrc_process_push16(struct asrc_farrow *src_obj,
 
 				(*output_num_frames)++;
 			} else {
-				trace_asrc_error("error onf=%d, max=%d",
-						 *output_num_frames,
-						 max_num_free_frames);
+				comp_err(dev, "error onf=%d, max=%d",
+					 *output_num_frames,
+					 max_num_free_frames);
 				break;
 			}
 		} else {
@@ -1061,15 +1063,15 @@ enum asrc_error_code asrc_process_push16(struct asrc_farrow *src_obj,
 		    src_obj->sec_num_frames >= src_obj->sec_num_frames_targ) {
 			if (src_obj->sec_num_frames !=
 			    src_obj->sec_num_frames_targ) {
-				trace_asrc_error("process_push16(), Generated = %d, Target = %d",
-						 src_obj->sec_num_frames,
-						 src_obj->sec_num_frames_targ);
+				comp_err(dev, "process_push16(), Generated = %d, Target = %d",
+					 src_obj->sec_num_frames,
+					 src_obj->sec_num_frames_targ);
 				return ASRC_EC_FAILED_PUSH_MODE;
 			}
 
 			if (src_obj->time_value > TIME_VALUE_LIMIT) {
-				trace_asrc_error("process_push16(), Time value = %d",
-						 src_obj->time_value);
+				comp_err(dev, "process_push16(), Time value = %d",
+					 src_obj->time_value);
 				return ASRC_EC_FAILED_PUSH_MODE;
 			}
 
@@ -1083,7 +1085,8 @@ enum asrc_error_code asrc_process_push16(struct asrc_farrow *src_obj,
 	return ASRC_EC_OK;
 }
 
-enum asrc_error_code asrc_process_push32(struct asrc_farrow *src_obj,
+enum asrc_error_code asrc_process_push32(struct comp_dev *dev,
+					 struct asrc_farrow *src_obj,
 					 int32_t **__restrict input_buffers,
 					 int input_num_frames,
 					 int32_t **__restrict output_buffers,
@@ -1146,9 +1149,9 @@ enum asrc_error_code asrc_process_push32(struct asrc_farrow *src_obj,
 
 				(*output_num_frames)++;
 			} else {
-				trace_asrc_error("error onf=%d, max=%d",
-						 *output_num_frames,
-						 max_num_free_frames);
+				comp_err(dev, "error onf=%d, max=%d",
+					 *output_num_frames,
+					 max_num_free_frames);
 				break;
 			}
 		} else {
@@ -1174,16 +1177,15 @@ enum asrc_error_code asrc_process_push32(struct asrc_farrow *src_obj,
 		    src_obj->sec_num_frames >= src_obj->sec_num_frames_targ) {
 			if (src_obj->sec_num_frames !=
 			    src_obj->sec_num_frames_targ) {
-				trace_asrc_error("process_push32(), Generated =  %d"
-						 ", Target = %d",
-						 src_obj->sec_num_frames,
-						 src_obj->sec_num_frames_targ);
+				comp_err(dev, "process_push32(), Generated =  %d, Target = %d",
+					 src_obj->sec_num_frames,
+					 src_obj->sec_num_frames_targ);
 				return ASRC_EC_FAILED_PUSH_MODE;
 			}
 
 			if (src_obj->time_value > TIME_VALUE_LIMIT) {
-				trace_asrc_error("process_push32(), Time value = %d",
-						 src_obj->time_value);
+				comp_err(dev, "process_push32(), Time value = %d",
+					 src_obj->time_value);
 				return ASRC_EC_FAILED_PUSH_MODE;
 			}
 
@@ -1197,7 +1199,8 @@ enum asrc_error_code asrc_process_push32(struct asrc_farrow *src_obj,
 	return ASRC_EC_OK;
 }
 
-enum asrc_error_code asrc_process_pull16(struct asrc_farrow *src_obj,
+enum asrc_error_code asrc_process_pull16(struct comp_dev *dev,
+					 struct asrc_farrow *src_obj,
 					 int16_t **__restrict input_buffers,
 					 int *input_num_frames,
 					 int16_t **__restrict output_buffers,
@@ -1276,16 +1279,15 @@ enum asrc_error_code asrc_process_pull16(struct asrc_farrow *src_obj,
 		    src_obj->sec_num_frames >= src_obj->sec_num_frames_targ) {
 			if (src_obj->sec_num_frames !=
 			    src_obj->sec_num_frames_targ) {
-				trace_asrc_error("process_pull16(), Consumed = %d"
-						 ", Target = %d",
-						 src_obj->sec_num_frames,
-						 src_obj->sec_num_frames_targ);
+				comp_err(dev, "process_pull16(), Consumed = %d, Target = %d",
+					 src_obj->sec_num_frames,
+					 src_obj->sec_num_frames_targ);
 				return ASRC_EC_FAILED_PULL_MODE;
 			}
 
 			if (src_obj->time_value_pull > TIME_VALUE_LIMIT) {
-				trace_asrc_error("process_pull16(), Time value = %d",
-						 src_obj->time_value_pull);
+				comp_err(dev, "process_pull16(), Time value = %d",
+					 src_obj->time_value_pull);
 				return ASRC_EC_FAILED_PULL_MODE;
 			}
 
@@ -1299,7 +1301,8 @@ enum asrc_error_code asrc_process_pull16(struct asrc_farrow *src_obj,
 	return ASRC_EC_OK;
 }
 
-enum asrc_error_code asrc_process_pull32(struct asrc_farrow *src_obj,
+enum asrc_error_code asrc_process_pull32(struct comp_dev *dev,
+					 struct asrc_farrow *src_obj,
 					 int32_t **__restrict input_buffers,
 					 int *input_num_frames,
 					 int32_t **__restrict output_buffers,
@@ -1379,16 +1382,15 @@ enum asrc_error_code asrc_process_pull32(struct asrc_farrow *src_obj,
 		    src_obj->sec_num_frames >= src_obj->sec_num_frames_targ) {
 			if (src_obj->sec_num_frames !=
 			    src_obj->sec_num_frames_targ) {
-				trace_asrc_error("process_pull32(), Consumed = %d"
-						 ", Target = %d.\n",
-						 src_obj->sec_num_frames,
-						 src_obj->sec_num_frames_targ);
+				comp_err(dev, "process_pull32(), Consumed = %d, Target = %d.\n",
+					 src_obj->sec_num_frames,
+					 src_obj->sec_num_frames_targ);
 				return ASRC_EC_FAILED_PULL_MODE;
 			}
 
 			if (src_obj->time_value_pull > TIME_VALUE_LIMIT) {
-				trace_asrc_error("process_pull32(): Time value = %d",
-						 src_obj->time_value_pull);
+				comp_err(dev, "process_pull32(): Time value = %d",
+					 src_obj->time_value_pull);
 				return ASRC_EC_FAILED_PULL_MODE;
 			}
 

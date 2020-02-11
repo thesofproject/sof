@@ -27,24 +27,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-/* mixer tracing */
-#define trace_mixer(__e, ...) \
-	trace_event(TRACE_CLASS_MIXER, __e, ##__VA_ARGS__)
-#define trace_mixer_with_ids(comp_ptr, __e, ...)		\
-	trace_event_comp(TRACE_CLASS_MIXER, comp_ptr,		\
-			 __e, ##__VA_ARGS__)
-
-#define tracev_mixer(__e, ...) \
-	tracev_event(TRACE_CLASS_MIXER, __e, ##__VA_ARGS__)
-#define tracev_mixer_with_ids(comp_ptr, __e, ...)		\
-	tracev_event_comp(TRACE_CLASS_MIXER, comp_ptr,		\
-			  __e, ##__VA_ARGS__)
-
-#define trace_mixer_error(__e, ...) \
-	trace_error(TRACE_CLASS_MIXER, __e, ##__VA_ARGS__)
-#define trace_mixer_error_with_ids(comp_ptr, __e, ...)		\
-	trace_error_comp(TRACE_CLASS_MIXER, comp_ptr,		\
-			 __e, ##__VA_ARGS__)
+static const struct comp_driver comp_mixer;
 
 /* mixer component private data */
 struct mixer_data {
@@ -132,10 +115,10 @@ static struct comp_dev *mixer_new(struct sof_ipc_comp *comp)
 	struct mixer_data *md;
 	int ret;
 
-	trace_mixer("mixer_new()");
+	comp_cl_info(&comp_mixer, "mixer_new()");
 
 	if (IPC_IS_SIZE_INVALID(ipc_mixer->config)) {
-		IPC_SIZE_ERROR_TRACE(TRACE_CLASS_MIXER, ipc_mixer->config);
+		IPC_SIZE_ERROR_TRACE(TRACE_CLASS_COMP, ipc_mixer->config);
 		return NULL;
 	}
 
@@ -165,7 +148,7 @@ static void mixer_free(struct comp_dev *dev)
 {
 	struct mixer_data *md = comp_get_drvdata(dev);
 
-	trace_mixer_with_ids(dev, "mixer_free()");
+	comp_info(dev, "mixer_free()");
 
 	rfree(md);
 	rfree(dev);
@@ -179,7 +162,7 @@ static int mixer_params(struct comp_dev *dev,
 	struct comp_buffer *sinkb;
 	uint32_t period_bytes;
 
-	trace_mixer_with_ids(dev, "mixer_params()");
+	comp_info(dev, "mixer_params()");
 
 	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
 							source_list);
@@ -187,14 +170,12 @@ static int mixer_params(struct comp_dev *dev,
 	/* calculate period size based on config */
 	period_bytes = dev->frames * audio_stream_frame_bytes(&sinkb->stream);
 	if (period_bytes == 0) {
-		trace_mixer_error_with_ids(dev, "mixer_params() error: "
-					   "period_bytes = 0");
+		comp_err(dev, "mixer_params() error: period_bytes = 0");
 		return -EINVAL;
 	}
 
 	if (sinkb->stream.size < config->periods_sink * period_bytes) {
-		trace_mixer_error_with_ids(dev, "mixer_params() error: "
-					   "sink buffer size is insufficient");
+		comp_err(dev, "mixer_params() error: sink buffer size is insufficient");
 		return -ENOMEM;
 	}
 
@@ -232,7 +213,7 @@ static int mixer_trigger(struct comp_dev *dev, int cmd)
 	int dir = dev->pipeline->source_comp->direction;
 	int ret;
 
-	trace_mixer_with_ids(dev, "mixer_trigger()");
+	comp_info(dev, "mixer_trigger()");
 
 	ret = comp_set_state(dev, cmd);
 	if (ret < 0)
@@ -282,7 +263,7 @@ static int mixer_copy(struct comp_dev *dev)
 	uint32_t source_bytes;
 	uint32_t sink_bytes;
 
-	tracev_mixer_with_ids(dev, "mixer_copy()");
+	comp_dbg(dev, "mixer_copy()");
 
 	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
 			       source_list);
@@ -321,8 +302,8 @@ static int mixer_copy(struct comp_dev *dev)
 	source_bytes = frames * audio_stream_frame_bytes(sources_stream[0]);
 	sink_bytes = frames * audio_stream_frame_bytes(&sink->stream);
 
-	tracev_mixer_with_ids(dev, "mixer_copy(), source_bytes = 0x%x, "
-			      "sink_bytes = 0x%x",  source_bytes, sink_bytes);
+	comp_dbg(dev, "mixer_copy(), source_bytes = 0x%x, sink_bytes = 0x%x",
+		 source_bytes, sink_bytes);
 
 	/* mix streams */
 	md->mix_func(dev, &sink->stream, sources_stream, i, frames);
@@ -342,7 +323,7 @@ static int mixer_reset(struct comp_dev *dev)
 	struct list_item *blist;
 	struct comp_buffer *source;
 
-	trace_mixer_with_ids(dev, "mixer_reset()");
+	comp_info(dev, "mixer_reset()");
 
 	list_for_item(blist, &dev->bsource_list) {
 		source = container_of(blist, struct comp_buffer, sink_list);
@@ -373,7 +354,7 @@ static int mixer_prepare(struct comp_dev *dev)
 	int downstream = 0;
 	int ret;
 
-	trace_mixer_with_ids(dev, "mixer_prepare()");
+	comp_info(dev, "mixer_prepare()");
 
 	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
 			       source_list);
@@ -398,7 +379,7 @@ static int mixer_prepare(struct comp_dev *dev)
 			break;
 #endif /* CONFIG_FORMAT_S32LE */
 		default:
-			trace_mixer_error_with_ids(dev, "unsupported data format");
+			comp_err(dev, "unsupported data format");
 			return -EINVAL;
 		}
 

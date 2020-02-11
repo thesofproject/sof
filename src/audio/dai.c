@@ -32,24 +32,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-/* tracing */
-#define trace_dai_comp(__e, ...)				\
-	trace_event(TRACE_CLASS_DAI, __e, ##__VA_ARGS__)
-#define trace_dai_comp_with_ids(comp_ptr, __e, ...)		\
-	trace_event_comp(TRACE_CLASS_DAI, comp_ptr,		\
-			 __e, ##__VA_ARGS__)
-
-#define tracev_dai_comp(__e, ...)				\
-	tracev_event(TRACE_CLASS_DAI, __e, ##__VA_ARGS__)
-#define tracev_dai_comp_with_ids(comp_ptr, __e, ...)		\
-	tracev_event_comp(TRACE_CLASS_DAI, comp_ptr,		\
-			  __e, ##__VA_ARGS__)
-
-#define trace_dai_comp_error(__e, ...)				\
-	trace_error(TRACE_CLASS_DAI, __e, ##__VA_ARGS__)
-#define trace_dai_comp_error_with_ids(comp_ptr, __e, ...)	\
-	trace_error_comp(TRACE_CLASS_DAI, comp_ptr,		\
-			 __e, ##__VA_ARGS__)
+static const struct comp_driver comp_dai;
 
 struct dai_data {
 	/* local DMA config */
@@ -86,7 +69,7 @@ static void dai_dma_cb(void *arg, enum notify_id type, void *data)
 	uint32_t samples = bytes / sample_bytes(dd->frame_fmt);
 	void *buffer_ptr;
 
-	tracev_dai_comp_with_ids(dev, "dai_dma_cb()");
+	comp_dbg(dev, "dai_dma_cb()");
 
 	next->status = DMA_CB_STATUS_RELOAD;
 
@@ -144,7 +127,7 @@ static struct comp_dev *dai_new(struct sof_ipc_comp *comp)
 	uint32_t dir, caps, dma_dev;
 	int ret;
 
-	trace_dai_comp("dai_new()");
+	comp_cl_info(&comp_dai, "dai_new()");
 
 	if (IPC_IS_SIZE_INVALID(ipc_dai->config)) {
 		IPC_SIZE_ERROR_TRACE(TRACE_CLASS_DAI, ipc_dai->config);
@@ -171,7 +154,7 @@ static struct comp_dev *dai_new(struct sof_ipc_comp *comp)
 
 	dd->dai = dai_get(dai->type, dai->dai_index, DAI_CREAT);
 	if (!dd->dai) {
-		trace_dai_comp_error("dai_new() error: dai_get() failed to create DAI.");
+		comp_cl_err(&comp_dai, "dai_new() error: dai_get() failed to create DAI.");
 		goto error;
 	}
 
@@ -184,7 +167,7 @@ static struct comp_dev *dai_new(struct sof_ipc_comp *comp)
 
 	dd->dma = dma_get(dir, caps, dma_dev, DMA_ACCESS_SHARED);
 	if (!dd->dma) {
-		trace_dai_comp_error("dai_new() error: dma_get() failed to get shared access to DMA.");
+		comp_cl_err(&comp_dai, "dai_new() error: dma_get() failed to get shared access to DMA.");
 		goto error;
 	}
 
@@ -244,16 +227,15 @@ static int dai_playback_params(struct comp_dev *dev, uint32_t period_bytes,
 	config->is_scheduling_source = comp_is_scheduling_source(dev);
 	config->period = dev->pipeline->ipc_pipe.period;
 
-	trace_dai_comp_with_ids(dev, "dai_playback_params() dest_dev = %d stream_id = %d src_width = %d dest_width = %d",
-				config->dest_dev, dd->stream_id,
-				config->src_width, config->dest_width);
+	comp_info(dev, "dai_playback_params() dest_dev = %d stream_id = %d src_width = %d dest_width = %d",
+		  config->dest_dev, dd->stream_id,
+		  config->src_width, config->dest_width);
 
 	if (!config->elem_array.elems) {
 		fifo = dai_get_fifo(dd->dai, dev->direction,
 				    dd->stream_id);
 
-		trace_dai_comp_with_ids(dev, "dai_playback_params() fifo %X",
-					fifo);
+		comp_info(dev, "dai_playback_params() fifo %X", fifo);
 
 		err = dma_sg_alloc(&config->elem_array, SOF_MEM_ZONE_RUNTIME,
 				   config->direction,
@@ -262,8 +244,8 @@ static int dai_playback_params(struct comp_dev *dev, uint32_t period_bytes,
 				   (uintptr_t)(dd->dma_buffer->stream.addr),
 				   fifo);
 		if (err < 0) {
-			trace_dai_comp_error_with_ids(dev, "dai_playback_params() error: dma_sg_alloc() failed with err = %d",
-						      err);
+			comp_err(dev, "dai_playback_params() error: dma_sg_alloc() failed with err = %d",
+				 err);
 			return err;
 		}
 	}
@@ -305,16 +287,15 @@ static int dai_capture_params(struct comp_dev *dev, uint32_t period_bytes,
 		config->dest_width = sample_bytes(dd->frame_fmt);
 	}
 
-	trace_dai_comp_with_ids(dev, "dai_capture_params() src_dev = %d stream_id = %d src_width = %d dest_width = %d",
-				config->src_dev, dd->stream_id,
-				config->src_width, config->dest_width);
+	comp_info(dev, "dai_capture_params() src_dev = %d stream_id = %d src_width = %d dest_width = %d",
+		  config->src_dev, dd->stream_id,
+		  config->src_width, config->dest_width);
 
 	if (!config->elem_array.elems) {
 		fifo = dai_get_fifo(dd->dai, dev->direction,
 				    dd->stream_id);
 
-		trace_dai_comp_with_ids(dev, "dai_capture_params() fifo %X",
-					fifo);
+		comp_info(dev, "dai_capture_params() fifo %X", fifo);
 
 		err = dma_sg_alloc(&config->elem_array, SOF_MEM_ZONE_RUNTIME,
 				   config->direction,
@@ -323,8 +304,8 @@ static int dai_capture_params(struct comp_dev *dev, uint32_t period_bytes,
 				   (uintptr_t)(dd->dma_buffer->stream.addr),
 				   fifo);
 		if (err < 0) {
-			trace_dai_comp_error_with_ids(dev, "dai_capture_params() error: dma_sg_alloc() failed with err = %d",
-						      err);
+			comp_err(dev, "dai_capture_params() error: dma_sg_alloc() failed with err = %d",
+				 err);
 			return err;
 		}
 	}
@@ -345,7 +326,7 @@ static int dai_params(struct comp_dev *dev,
 	uint32_t align;
 	int err;
 
-	trace_dai_comp_with_ids(dev, "dai_params()");
+	comp_info(dev, "dai_params()");
 
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
 		dd->local_buffer = list_first_item(&dev->bsource_list,
@@ -358,37 +339,36 @@ static int dai_params(struct comp_dev *dev,
 
 	/* check if already configured */
 	if (dev->state == COMP_STATE_PREPARE) {
-		trace_dai_comp_with_ids(dev, "dai_params() component has been already configured.");
+		comp_info(dev, "dai_params() component has been already configured.");
 		return 0;
 	}
 
 	/* can set params on only init state */
 	if (dev->state != COMP_STATE_READY) {
-		trace_dai_comp_error_with_ids(dev, "dai_params() error: Component is not in init state.");
+		comp_err(dev, "dai_params() error: Component is not in init state.");
 		return -EINVAL;
 	}
 
 	err = dma_get_attribute(dd->dma, DMA_ATTR_BUFFER_ADDRESS_ALIGNMENT,
 				&addr_align);
 	if (err < 0) {
-		trace_dai_comp_error_with_ids(dev, "dai_params() error: could not get dma buffer address alignment, err = %d",
-					      err);
+		comp_err(dev, "dai_params() error: could not get dma buffer address alignment, err = %d",
+			 err);
 		return err;
 	}
 
 	err = dma_get_attribute(dd->dma, DMA_ATTR_BUFFER_ALIGNMENT, &align);
 	if (err < 0 || !align) {
-		trace_dai_comp_error_with_ids(dev, "dai_params() error: could not get valid dma buffer alignment, err = %d, align = %u",
-					      err, align);
+		comp_err(dev, "dai_params() error: could not get valid dma buffer alignment, err = %d, align = %u",
+			 err, align);
 		return -EINVAL;
 	}
 
 	err = dma_get_attribute(dd->dma, DMA_ATTR_BUFFER_PERIOD_COUNT,
 				&period_count);
 	if (err < 0 || !period_count) {
-		trace_dai_comp_error_with_ids(dev, "dai_params() error: could not get valid dma buffer period count, err = %d, period_count = %u",
-					      err,
-					      period_count);
+		comp_err(dev, "dai_params() error: could not get valid dma buffer period count, err = %d, period_count = %u",
+			 err, period_count);
 		return -EINVAL;
 	}
 
@@ -401,7 +381,7 @@ static int dai_params(struct comp_dev *dev,
 	/* calculate period size */
 	period_bytes = dev->frames * frame_size;
 	if (!period_bytes) {
-		trace_dai_comp_error_with_ids(dev, "dai_params() error: invalid period_bytes.");
+		comp_err(dev, "dai_params() error: invalid period_bytes.");
 		return -EINVAL;
 	}
 
@@ -412,15 +392,15 @@ static int dai_params(struct comp_dev *dev,
 	if (dd->dma_buffer) {
 		err = buffer_set_size(dd->dma_buffer, buffer_size);
 		if (err < 0) {
-			trace_dai_comp_error_with_ids(dev, "dai_params() error: buffer_set_size() failed, buffer_size = %u",
-						      buffer_size);
+			comp_err(dev, "dai_params() error: buffer_set_size() failed, buffer_size = %u",
+				 buffer_size);
 			return err;
 		}
 	} else {
 		dd->dma_buffer = buffer_alloc(buffer_size, SOF_MEM_CAPS_DMA,
 					      addr_align);
 		if (!dd->dma_buffer) {
-			trace_dai_comp_error_with_ids(dev, "dai_params() error: failed to alloc dma buffer");
+			comp_err(dev, "dai_params() error: failed to alloc dma buffer");
 			return -ENOMEM;
 		}
 	}
@@ -435,7 +415,7 @@ static int dai_prepare(struct comp_dev *dev)
 	struct dai_data *dd = comp_get_drvdata(dev);
 	int ret = 0;
 
-	trace_dai_comp_with_ids(dev, "dai_prepare()");
+	comp_info(dev, "dai_prepare()");
 
 	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
 	if (ret < 0)
@@ -447,13 +427,13 @@ static int dai_prepare(struct comp_dev *dev)
 	dev->position = 0;
 
 	if (!dd->chan) {
-		trace_dai_comp_error_with_ids(dev, "dai_prepare() error: Missing dd->chan.");
+		comp_err(dev, "dai_prepare() error: Missing dd->chan.");
 		comp_set_state(dev, COMP_TRIGGER_RESET);
 		return -EINVAL;
 	}
 
 	if (!dd->config.elem_array.elems) {
-		trace_dai_comp_error_with_ids(dev, "dai_prepare() error: Missing dd->config.elem_array.elems.");
+		comp_err(dev, "dai_prepare() error: Missing dd->config.elem_array.elems.");
 		comp_set_state(dev, COMP_TRIGGER_RESET);
 		return -EINVAL;
 	}
@@ -482,7 +462,7 @@ static int dai_reset(struct comp_dev *dev)
 	struct dai_data *dd = comp_get_drvdata(dev);
 	struct dma_sg_config *config = &dd->config;
 
-	trace_dai_comp_with_ids(dev, "dai_reset()");
+	comp_info(dev, "dai_reset()");
 
 	dma_sg_free(&config->elem_array);
 
@@ -520,7 +500,7 @@ static int dai_comp_trigger(struct comp_dev *dev, int cmd)
 	struct dai_data *dd = comp_get_drvdata(dev);
 	int ret;
 
-	trace_dai_comp_with_ids(dev, "dai_comp_trigger(), command = %u", cmd);
+	comp_info(dev, "dai_comp_trigger(), command = %u", cmd);
 
 	ret = comp_set_state(dev, cmd);
 	if (ret < 0)
@@ -531,7 +511,7 @@ static int dai_comp_trigger(struct comp_dev *dev, int cmd)
 
 	switch (cmd) {
 	case COMP_TRIGGER_START:
-		trace_dai_comp_with_ids(dev, "dai_comp_trigger(), START");
+		comp_info(dev, "dai_comp_trigger(), START");
 
 		/* only start the DAI if we are not XRUN handling */
 		if (dd->xrun == 0) {
@@ -573,13 +553,13 @@ static int dai_comp_trigger(struct comp_dev *dev, int cmd)
 		dai_update_start_position(dev);
 		break;
 	case COMP_TRIGGER_XRUN:
-		trace_dai_comp_with_ids(dev, "dai_comp_trigger(), XRUN");
+		comp_info(dev, "dai_comp_trigger(), XRUN");
 		dd->xrun = 1;
 
 		/* fallthrough */
 	case COMP_TRIGGER_PAUSE:
 	case COMP_TRIGGER_STOP:
-		trace_dai_comp_with_ids(dev, "dai_comp_trigger(), PAUSE/STOP");
+		comp_info(dev, "dai_comp_trigger(), PAUSE/STOP");
 		ret = dma_stop(dd->chan);
 		dai_trigger(dd->dai, COMP_TRIGGER_STOP, dev->direction);
 		break;
@@ -596,10 +576,10 @@ static void dai_report_xrun(struct comp_dev *dev, uint32_t bytes)
 	struct dai_data *dd = comp_get_drvdata(dev);
 
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
-		trace_dai_comp_error_with_ids(dev, "dai_report_xrun() error: underrun due to no data available");
+		comp_err(dev, "dai_report_xrun() error: underrun due to no data available");
 		comp_underrun(dev, dd->local_buffer, bytes);
 	} else {
-		trace_dai_comp_error_with_ids(dev, "dai_report_xrun() error: overrun due to no data available");
+		comp_err(dev, "dai_report_xrun() error: overrun due to no data available");
 		comp_overrun(dev, dd->local_buffer, bytes);
 	}
 }
@@ -615,7 +595,7 @@ static int dai_copy(struct comp_dev *dev)
 	uint32_t sink_samples;
 	int ret = 0;
 
-	tracev_dai_comp_with_ids(dev, "dai_copy()");
+	comp_dbg(dev, "dai_copy()");
 
 	/* get data sizes from DMA */
 	ret = dma_get_data_size(dd->chan, &avail_bytes, &free_bytes);
@@ -639,8 +619,7 @@ static int dai_copy(struct comp_dev *dev)
 			sample_bytes(dd->frame_fmt);
 	}
 
-	tracev_dai_comp_with_ids(dev, "dai_copy(), copy_bytes = 0x%x",
-				 copy_bytes);
+	comp_dbg(dev, "dai_copy(), copy_bytes = 0x%x", copy_bytes);
 
 	/* return if it's not stream start */
 	if (!copy_bytes && dd->start_position != dev->position)
@@ -676,12 +655,12 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 	int channel = 0;
 	int handshake;
 
-	trace_dai_comp_with_ids(dev, "dai_config() dai %d.%d",
-				config->type, config->dai_index);
+	comp_info(dev, "dai_config() dai %d.%d",
+		  config->type, config->dai_index);
 
 	/* cannot configure DAI while active */
 	if (dev->state == COMP_STATE_ACTIVE) {
-		trace_dai_comp_error_with_ids(dev, "dai_config() error: Component is in active state.");
+		comp_err(dev, "dai_config() error: Component is in active state.");
 		return -EINVAL;
 	}
 
@@ -691,19 +670,18 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 		dd->config.burst_elems = config->ssp.tdm_slots;
 		break;
 	case SOF_DAI_INTEL_DMIC:
-		tracev_dai_comp_with_ids(dev, "dai_config(), config->type = SOF_DAI_INTEL_DMIC");
+		comp_dbg(dev, "dai_config(), config->type = SOF_DAI_INTEL_DMIC");
 
 		/* We can use always the largest burst length. */
 		dd->config.burst_elems = 8;
 
-		trace_dai_comp_with_ids(dev, "dai_config(), config->dmic.fifo_bits = %u config->dmic.num_pdm_active = %u",
-					config->dmic.fifo_bits,
-					config->dmic.num_pdm_active);
+		comp_info(dev, "dai_config(), config->dmic.fifo_bits = %u config->dmic.num_pdm_active = %u",
+			  config->dmic.fifo_bits,
+			  config->dmic.num_pdm_active);
 		break;
 	case SOF_DAI_INTEL_HDA:
 		channel = config->hda.link_dma_ch;
-		trace_dai_comp_with_ids(dev, "dai_config(), channel = %d",
-					channel);
+		comp_info(dev, "dai_config(), channel = %d", channel);
 
 		/*
 		 * For HDA DAIs, the driver sends the DAI_CONFIG IPC
@@ -731,8 +709,7 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 		 */
 		channel = config->alh.stream_id;
 		dd->stream_id = config->alh.stream_id;
-		trace_dai_comp_with_ids(dev, "dai_config(), channel = %d",
-					channel);
+		comp_info(dev, "dai_config(), channel = %d", channel);
 		break;
 	case SOF_DAI_IMX_SAI:
 		handshake = dai_get_handshake(dd->dai, dai->direction,
@@ -752,7 +729,7 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 		break;
 	default:
 		/* other types of DAIs not handled for now */
-		trace_dai_comp_error_with_ids(dev, "dai_config() error: Unknown dai type");
+		comp_err(dev, "dai_config() error: Unknown dai type");
 		break;
 	}
 
@@ -768,7 +745,7 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 			dd->chan = dma_channel_get(dd->dma, channel);
 
 		if (!dd->chan) {
-			trace_dai_comp_error_with_ids(dev, "dai_config() error: dma_channel_get() failed");
+			comp_err(dev, "dai_config() error: dma_channel_get() failed");
 			dd->chan = NULL;
 			return -EIO;
 		}
@@ -787,7 +764,7 @@ static int dai_ts_config(struct comp_dev *dev)
 	struct timestamp_cfg *cfg = &dd->ts_config;
 	struct sof_ipc_comp_dai *dai = (struct sof_ipc_comp_dai *)&dev->comp;
 
-	tracev_dai_comp_with_ids(dev, "dai_ts_config()");
+	comp_dbg(dev, "dai_ts_config()");
 	cfg->type = dd->dai->drv->type;
 	cfg->direction = dai->direction;
 	cfg->index = dd->dai->index;
@@ -804,7 +781,7 @@ static int dai_ts_start(struct comp_dev *dev)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
 
-	tracev_dai_comp_with_ids(dev, "dai_ts_start()");
+	comp_dbg(dev, "dai_ts_start()");
 	if (!dd->dai->drv->ts_ops.ts_start)
 		return -ENXIO;
 
@@ -815,7 +792,7 @@ static int dai_ts_stop(struct comp_dev *dev)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
 
-	tracev_dai_comp_with_ids(dev, "dai_ts_stop()");
+	comp_dbg(dev, "dai_ts_stop()");
 	if (!dd->dai->drv->ts_ops.ts_stop)
 		return -ENXIO;
 
@@ -826,7 +803,7 @@ static int dai_ts_get(struct comp_dev *dev, struct timestamp_data *tsd)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
 
-	tracev_dai_comp_with_ids(dev, "dai_ts_get()");
+	comp_dbg(dev, "dai_ts_get()");
 	if (!dd->dai->drv->ts_ops.ts_get)
 		return -ENXIO;
 

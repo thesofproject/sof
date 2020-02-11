@@ -39,27 +39,6 @@ struct sof_ipc_ctrl_value_chan;
 
 #endif
 
-/** \brief Volume trace function. */
-#define trace_volume(__e, ...) \
-	trace_event(TRACE_CLASS_VOLUME, __e, ##__VA_ARGS__)
-#define trace_volume_with_ids(comp_ptr, __e, ...)		\
-	trace_event_comp(TRACE_CLASS_VOLUME, comp_ptr,		\
-			 __e, ##__VA_ARGS__)
-
-/** \brief Volume trace value function. */
-#define tracev_volume(__e, ...) \
-	tracev_event(TRACE_CLASS_VOLUME, __e, ##__VA_ARGS__)
-#define tracev_volume_with_ids(comp_ptr, __e, ...)		\
-	tracev_event_comp(TRACE_CLASS_VOLUME, comp_ptr,		\
-			  __e, ##__VA_ARGS__)
-
-/** \brief Volume trace error function. */
-#define trace_volume_error(__e, ...) \
-	trace_error(TRACE_CLASS_VOLUME, __e, ##__VA_ARGS__)
-#define trace_volume_error_with_ids(comp_ptr, __e, ...)		\
-	trace_error_comp(TRACE_CLASS_VOLUME, comp_ptr,		\
-			 __e, ##__VA_ARGS__)
-
 //** \brief Volume gain Qx.y integer x number of bits including sign bit. */
 #define VOL_QXY_X 8
 

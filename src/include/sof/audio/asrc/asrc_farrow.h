@@ -41,6 +41,7 @@
 #ifndef IAS_SRC_FARROW_H
 #define IAS_SRC_FARROW_H
 
+#include <sof/audio/component.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -239,7 +240,8 @@ struct asrc_farrow {
  * @param[in]  bit_depth     The wordlength that will be used for representing
  *                           the PCM samples, must be 16 or 32.
  */
-enum asrc_error_code asrc_get_required_size(int *required_size,
+enum asrc_error_code asrc_get_required_size(struct comp_dev *dev,
+					    int *required_size,
 					    int num_channels,
 					    int bit_depth);
 
@@ -275,7 +277,8 @@ enum asrc_error_code asrc_get_required_size(int *required_size,
  * @param[in] operation_mode Choose 'push' or 'pull', depending on the mode
  *                           you want your ASRC to operate in.
  */
-enum asrc_error_code asrc_initialise(struct asrc_farrow *src_obj,
+enum asrc_error_code asrc_initialise(struct comp_dev *dev,
+				     struct asrc_farrow *src_obj,
 				     int num_channels,
 				     int32_t fs_prim,
 				     int32_t fs_sec,
@@ -336,7 +339,8 @@ enum asrc_error_code asrc_initialise(struct asrc_farrow *src_obj,
  *                               avoid that unconsumed samples are
  *                               overwritten.
  */
-enum asrc_error_code asrc_process_push16(struct asrc_farrow *src_obj,
+enum asrc_error_code asrc_process_push16(struct comp_dev *dev,
+					 struct asrc_farrow *src_obj,
 					 int16_t **__restrict input_buffers,
 					 int input_num_frames,
 					 int16_t **__restrict output_buffers,
@@ -393,7 +397,8 @@ enum asrc_error_code asrc_process_push16(struct asrc_farrow *src_obj,
  *                                avoid that unconsumed samples are
  *                                overwritten.
  */
-enum asrc_error_code asrc_process_push32(struct asrc_farrow *src_obj,
+enum asrc_error_code asrc_process_push32(struct comp_dev *dev,
+					 struct asrc_farrow *src_obj,
 					 int32_t **__restrict input_buffers,
 					 int input_num_frames,
 					 int32_t **__restrict output_buffers,
@@ -457,7 +462,8 @@ enum asrc_error_code asrc_process_push32(struct asrc_farrow *src_obj,
  *                              parameter returns the number of frames
  *                              that have been read.
  */
-enum asrc_error_code asrc_process_pull16(struct asrc_farrow *src_obj,
+enum asrc_error_code asrc_process_pull16(struct comp_dev *dev,
+					 struct asrc_farrow *src_obj,
 					 int16_t **__restrict input_buffers,
 					 int *input_num_frames,
 					 int16_t **__restrict output_buffers,
@@ -520,7 +526,8 @@ enum asrc_error_code asrc_process_pull16(struct asrc_farrow *src_obj,
  *                              parameter returns the number of frames
  *                              that have been read.
  */
-enum asrc_error_code asrc_process_pull32(struct asrc_farrow *src_obj,
+enum asrc_error_code asrc_process_pull32(struct comp_dev *dev,
+					 struct asrc_farrow *src_obj,
 					 int32_t **__restrict input_buffers,
 					 int *input_num_frames,
 					 int32_t **__restrict output_buffers,
@@ -540,7 +547,8 @@ enum asrc_error_code asrc_process_pull32(struct asrc_farrow *src_obj,
  *                       Value should be passed as 2q30 fixed point value.
  *                       For synchrounous operation pass (1 << 30).
  */
-enum asrc_error_code asrc_update_drift(struct asrc_farrow *src_obj,
+enum asrc_error_code asrc_update_drift(struct comp_dev *dev,
+				       struct asrc_farrow *src_obj,
 				       uint32_t clock_skew);
 
 /*
@@ -562,7 +570,8 @@ enum asrc_error_code asrc_update_drift(struct asrc_farrow *src_obj,
  *                                 in one controller loop on the
  *                                 secondary (SSP) side
  */
-enum asrc_error_code asrc_update_fs_ratio(struct asrc_farrow *src_obj,
+enum asrc_error_code asrc_update_fs_ratio(struct comp_dev *dev,
+					  struct asrc_farrow *src_obj,
 					  int primary_num_frames,
 					  int secondary_num_frames);
 
@@ -579,7 +588,8 @@ enum asrc_error_code asrc_update_fs_ratio(struct asrc_farrow *src_obj,
  * @param[in] fs_prim  Primary sampling rate.
  * @param[in] fs_sec   Secondary sampling rate.
  */
-enum asrc_error_code asrc_set_fs_ratio(struct asrc_farrow *src_obj,
+enum asrc_error_code asrc_set_fs_ratio(struct comp_dev *dev,
+				       struct asrc_farrow *src_obj,
 				       int32_t fs_prim, int32_t fs_sec);
 
 /*
@@ -590,7 +600,8 @@ enum asrc_error_code asrc_set_fs_ratio(struct asrc_farrow *src_obj,
  * @param[in] src_obj      Pointer to the ias_src_farrow instance.
  * @param[in] input_format Format parameter.
  */
-enum asrc_error_code asrc_set_input_format(struct asrc_farrow *src_obj,
+enum asrc_error_code asrc_set_input_format(struct comp_dev *dev,
+					   struct asrc_farrow *src_obj,
 					   enum asrc_io_format input_format);
 
 /*
@@ -601,7 +612,8 @@ enum asrc_error_code asrc_set_input_format(struct asrc_farrow *src_obj,
  * @param[in] src_obj        Pointer to the ias_src_farrow instance.
  * @param[in] output_format  Format parameter.
  */
-enum asrc_error_code asrc_set_output_format(struct asrc_farrow *src_obj,
+enum asrc_error_code asrc_set_output_format(struct comp_dev *dev,
+					    struct asrc_farrow *src_obj,
 					    enum asrc_io_format output_format);
 
 /*
