@@ -33,8 +33,8 @@ LIST(`		', `SOF_TKN_ASRC_RATE_IN "PIPELINE_RATE"'
 
 W_DATA(MY_ASRC_CONF, MY_ASRC_TOKENS)
 
-# "ASRC" has x source and 3 sink periods
-W_ASRC(0, PIPELINE_FORMAT, DAI_PERIODS, 3, MY_ASRC_CONF)
+# "ASRC" has x 3 sink and x source periods
+W_ASRC(0, PIPELINE_FORMAT, 3, DAI_PERIODS, MY_ASRC_CONF)
 
 # Capture Buffers
 W_BUFFER(0, COMP_BUFFER_SIZE(3,

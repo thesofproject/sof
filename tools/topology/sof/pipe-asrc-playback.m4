@@ -37,8 +37,8 @@ LIST(`		', `SOF_TKN_ASRC_RATE_OUT "PIPELINE_RATE"'
 
 W_DATA(MY_ASRC_CONF, MY_ASRC_TOKENS)
 
-# "ASRC" has 2 source and 2 sink periods
-W_ASRC(0, PIPELINE_FORMAT, 2, 2, MY_ASRC_CONF)
+# "ASRC" has x sink and 2 source periods
+W_ASRC(0, PIPELINE_FORMAT, DAI_PERIODS, 2, MY_ASRC_CONF)
 
 # Playback Buffers
 W_BUFFER(0, COMP_BUFFER_SIZE(2,
