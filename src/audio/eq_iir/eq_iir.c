@@ -30,22 +30,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-/* tracing */
-#define trace_eq(__e, ...) trace_event(TRACE_CLASS_EQ_IIR, __e, ##__VA_ARGS__)
-#define trace_eq_with_ids(comp_ptr, __e, ...)			\
-	trace_event_comp(TRACE_CLASS_EQ_IIR, comp_ptr,		\
-			 __e, ##__VA_ARGS__)
-
-#define tracev_eq(__e, ...) tracev_event(TRACE_CLASS_EQ_IIR, __e, ##__VA_ARGS__)
-#define tracev_eq_with_ids(comp_ptr, __e, ...)			\
-	tracev_event_comp(TRACE_CLASS_EQ_IIR, comp_ptr,		\
-			  __e, ##__VA_ARGS__)
-
-#define trace_eq_error(__e, ...)				\
-	trace_error(TRACE_CLASS_EQ_IIR, __e, ##__VA_ARGS__)
-#define trace_eq_error_with_ids(comp_ptr, __e, ...)		\
-	trace_error_comp(TRACE_CLASS_EQ_IIR, comp_ptr,		\
-			 __e, ##__VA_ARGS__)
+static const struct comp_driver comp_eq_iir;
 
 /* IIR component private data */
 struct comp_data {
@@ -377,19 +362,19 @@ static int eq_iir_init_coef(struct sof_eq_iir_config *config,
 	int j;
 	int s;
 
-	trace_eq("eq_iir_init_coef(), response assign for %u channels, "
-		 "%u responses", config->channels_in_config,
-		 config->number_of_responses);
+	comp_cl_info(&comp_eq_iir, "eq_iir_init_coef(), response assign for %u channels, %u responses",
+		     config->channels_in_config,
+		     config->number_of_responses);
 
 	/* Sanity checks */
 	if (nch > PLATFORM_MAX_CHANNELS ||
 	    config->channels_in_config > PLATFORM_MAX_CHANNELS ||
 	    !config->channels_in_config) {
-		trace_eq_error("eq_iir_init_coef(), invalid channels count");
+		comp_cl_err(&comp_eq_iir, "eq_iir_init_coef(), invalid channels count");
 		return -EINVAL;
 	}
 	if (config->number_of_responses > SOF_EQ_IIR_MAX_RESPONSES) {
-		trace_eq_error("eq_iir_init_coef(), # of resp exceeds max");
+		comp_cl_err(&comp_eq_iir, "eq_iir_init_coef(), # of resp exceeds max");
 		return -EINVAL;
 	}
 
@@ -424,15 +409,15 @@ static int eq_iir_init_coef(struct sof_eq_iir_config *config,
 			/* Initialize EQ channel to bypass and continue with
 			 * next channel response.
 			 */
-			trace_eq("eq_iir_init_coef(), ch %d is set to bypass",
-				 i);
+			comp_cl_err(&comp_eq_iir, "eq_iir_init_coef(), ch %d is set to bypass",
+				    i);
 			iir_reset_df2t(&iir[i]);
 			continue;
 		}
 
 		if (resp >= config->number_of_responses) {
-			trace_eq("eq_iir_init_coef(), requested response %d"
-				 " exceeds defined", resp);
+			comp_cl_info(&comp_eq_iir, "eq_iir_init_coef(), requested response %d exceeds defined",
+				     resp);
 			return -EINVAL;
 		}
 
@@ -442,14 +427,14 @@ static int eq_iir_init_coef(struct sof_eq_iir_config *config,
 		if (s > 0) {
 			size_sum += s;
 		} else {
-			trace_eq("eq_iir_init_coef(), sections count %d"
-				 " exceeds max", eq->num_sections);
+			comp_cl_info(&comp_eq_iir, "eq_iir_init_coef(), sections count %d exceeds max",
+				     eq->num_sections);
 			return -EINVAL;
 		}
 
 		iir_init_coef_df2t(&iir[i], eq);
-		trace_eq("eq_iir_init_coef(), ch %d is set to response %d",
-			 i, resp);
+		comp_cl_info(&comp_eq_iir, "eq_iir_init_coef(), ch %d is set to response %d",
+			     i, resp);
 	}
 
 	return size_sum;
@@ -492,7 +477,7 @@ static int eq_iir_setup(struct comp_data *cd, int nch)
 	cd->iir_delay = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
 				delay_size);
 	if (!cd->iir_delay) {
-		trace_eq_error("eq_iir_setup(), delay allocation fail");
+		comp_cl_err(&comp_eq_iir, "eq_iir_setup(), delay allocation fail");
 		return -ENOMEM;
 	}
 
@@ -519,10 +504,10 @@ static struct comp_dev *eq_iir_new(struct sof_ipc_comp *comp)
 	int i;
 	int ret;
 
-	trace_eq("eq_iir_new()");
+	comp_cl_info(&comp_eq_iir, "eq_iir_new()");
 
 	if (IPC_IS_SIZE_INVALID(ipc_iir->config)) {
-		IPC_SIZE_ERROR_TRACE(TRACE_CLASS_EQ_IIR, ipc_iir->config);
+		IPC_SIZE_ERROR_TRACE(TRACE_CLASS_COMP, ipc_iir->config);
 		return NULL;
 	}
 
@@ -530,8 +515,8 @@ static struct comp_dev *eq_iir_new(struct sof_ipc_comp *comp)
 	 * blob size is sane.
 	 */
 	if (bs > SOF_EQ_IIR_MAX_SIZE) {
-		trace_eq_error("eq_iir_new(), coefficients blob size %u "
-			       "exceeds maximum", bs);
+		comp_cl_err(&comp_eq_iir, "eq_iir_new(), coefficients blob size %u exceeds maximum",
+			    bs);
 		return NULL;
 	}
 
@@ -586,7 +571,7 @@ static void eq_iir_free(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 
-	trace_eq_with_ids(dev, "eq_iir_free()");
+	comp_info(dev, "eq_iir_free()");
 
 	eq_iir_free_delaylines(cd);
 	eq_iir_free_parameters(&cd->config);
@@ -600,7 +585,7 @@ static void eq_iir_free(struct comp_dev *dev)
 static int eq_iir_params(struct comp_dev *dev,
 			 struct sof_ipc_stream_params *params)
 {
-	trace_eq_with_ids(dev, "eq_iir_params()");
+	comp_info(dev, "eq_iir_params()");
 
 	/* All configuration work is postponed to prepare(). */
 	return 0;
@@ -616,13 +601,13 @@ static int iir_cmd_get_data(struct comp_dev *dev,
 
 	switch (cdata->cmd) {
 	case SOF_CTRL_CMD_BINARY:
-		trace_eq_with_ids(dev, "iir_cmd_get_data(), SOF_CTRL_CMD_BINARY");
+		comp_info(dev, "iir_cmd_get_data(), SOF_CTRL_CMD_BINARY");
 
 		/* Copy back to user space */
 		if (cd->config) {
 			bs = cd->config->size;
-			trace_eq_with_ids(dev, "iir_cmd_set_data(), size %u",
-					  bs);
+			comp_info(dev, "iir_cmd_set_data(), size %u",
+				  bs);
 			if (bs > SOF_EQ_IIR_MAX_SIZE || bs == 0 ||
 			    bs > max_size)
 				return -EINVAL;
@@ -634,12 +619,12 @@ static int iir_cmd_get_data(struct comp_dev *dev,
 			cdata->data->abi = SOF_ABI_VERSION;
 			cdata->data->size = bs;
 		} else {
-			trace_eq_error_with_ids(dev, "iir_cmd_get_data(), no config");
+			comp_err(dev, "iir_cmd_get_data(), no config");
 			ret = -EINVAL;
 		}
 		break;
 	default:
-		trace_eq_error_with_ids(dev, "iir_cmd_get_data(), invalid command");
+		comp_err(dev, "iir_cmd_get_data(), invalid command");
 		ret = -EINVAL;
 		break;
 	}
@@ -656,20 +641,20 @@ static int iir_cmd_set_data(struct comp_dev *dev,
 
 	switch (cdata->cmd) {
 	case SOF_CTRL_CMD_BINARY:
-		trace_eq_with_ids(dev, "iir_cmd_set_data(), SOF_CTRL_CMD_BINARY");
+		comp_info(dev, "iir_cmd_set_data(), SOF_CTRL_CMD_BINARY");
 
 		/* Find size from header */
 		request = (struct sof_eq_iir_config *)cdata->data->data;
 		bs = request->size;
 		if (bs > SOF_EQ_IIR_MAX_SIZE || bs == 0) {
-			trace_eq_error_with_ids(dev, "iir_cmd_set_data(), size %d"
-						" is invalid", bs);
+			comp_err(dev, "iir_cmd_set_data(), size %d is invalid",
+				 bs);
 			return -EINVAL;
 		}
 
 		/* Check that there is no work-in-progress previous request */
 		if (cd->config_new) {
-			trace_eq_error_with_ids(dev, "iir_cmd_set_data(), busy with previous");
+			comp_err(dev, "iir_cmd_set_data(), busy with previous");
 			return -EBUSY;
 		}
 
@@ -677,7 +662,7 @@ static int iir_cmd_set_data(struct comp_dev *dev,
 		cd->config_new = rzalloc(SOF_MEM_ZONE_RUNTIME, 0,
 					 SOF_MEM_CAPS_RAM, bs);
 		if (!cd->config_new) {
-			trace_eq_error_with_ids(dev, "iir_cmd_set_data(), alloc fail");
+			comp_err(dev, "iir_cmd_set_data(), alloc fail");
 			return -EINVAL;
 		}
 
@@ -705,7 +690,7 @@ static int iir_cmd_set_data(struct comp_dev *dev,
 
 		break;
 	default:
-		trace_eq_error_with_ids(dev, "iir_cmd_set_data(), invalid command");
+		comp_err(dev, "iir_cmd_set_data(), invalid command");
 		ret = -EINVAL;
 		break;
 	}
@@ -720,7 +705,7 @@ static int eq_iir_cmd(struct comp_dev *dev, int cmd, void *data,
 	struct sof_ipc_ctrl_data *cdata = data;
 	int ret = 0;
 
-	trace_eq_with_ids(dev, "eq_iir_cmd()");
+	comp_info(dev, "eq_iir_cmd()");
 
 	switch (cmd) {
 	case COMP_CMD_SET_DATA:
@@ -730,7 +715,7 @@ static int eq_iir_cmd(struct comp_dev *dev, int cmd, void *data,
 		ret = iir_cmd_get_data(dev, cdata, max_data_size);
 		break;
 	default:
-		trace_eq_error_with_ids(dev, "eq_iir_cmd(), invalid command");
+		comp_err(dev, "eq_iir_cmd(), invalid command");
 		ret = -EINVAL;
 	}
 
@@ -740,7 +725,7 @@ static int eq_iir_cmd(struct comp_dev *dev, int cmd, void *data,
 static int eq_iir_trigger(struct comp_dev *dev, int cmd)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	trace_eq_with_ids(dev, "eq_iir_trigger()");
+	comp_info(dev, "eq_iir_trigger()");
 
 	if (cmd == COMP_TRIGGER_START || cmd == COMP_TRIGGER_RELEASE)
 		assert(cd->eq_iir_func);
@@ -756,7 +741,7 @@ static int eq_iir_copy(struct comp_dev *dev)
 	struct comp_buffer *sourceb;
 	int ret;
 
-	tracev_eq_with_ids(dev, "eq_iir_copy()");
+	comp_dbg(dev, "eq_iir_copy()");
 
 	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer,
 				  sink_list);
@@ -768,7 +753,7 @@ static int eq_iir_copy(struct comp_dev *dev)
 		cd->config_new = NULL;
 		ret = eq_iir_setup(cd, sourceb->stream.channels);
 		if (ret < 0) {
-			trace_eq_error_with_ids(dev, "eq_iir_copy(), failed IIR setup");
+			comp_err(dev, "eq_iir_copy(), failed IIR setup");
 			return ret;
 		}
 	}
@@ -776,7 +761,7 @@ static int eq_iir_copy(struct comp_dev *dev)
 	/* Get source, sink, number of frames etc. to process. */
 	ret = comp_get_copy_limits(dev, &cl);
 	if (ret < 0) {
-		trace_eq_error_with_ids(dev, "eq_iir_copy(), failed comp_get_copy_limits()");
+		comp_err(dev, "eq_iir_copy(), failed comp_get_copy_limits()");
 		return ret;
 	}
 
@@ -799,7 +784,7 @@ static int eq_iir_prepare(struct comp_dev *dev)
 	uint32_t sink_period_bytes;
 	int ret;
 
-	trace_eq_with_ids(dev, "eq_iir_prepare()");
+	comp_info(dev, "eq_iir_prepare()");
 
 	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
 	if (ret < 0)
@@ -829,38 +814,38 @@ static int eq_iir_prepare(struct comp_dev *dev)
 		sinkb->stream.frame_fmt = cd->sink_format;
 
 	if (sinkb->stream.size < config->periods_sink * sink_period_bytes) {
-		trace_eq_error_with_ids(dev, "eq_iir_prepare(), sink buffer size %d is insufficient",
-					sinkb->stream.size);
+		comp_err(dev, "eq_iir_prepare(), sink buffer size %d is insufficient",
+			 sinkb->stream.size);
 		ret = -ENOMEM;
 		goto err;
 	}
 
 	/* Initialize EQ */
-	trace_eq_with_ids(dev, "eq_iir_prepare(), source_format=%d, sink_format=%d",
-			  cd->source_format, cd->sink_format);
+	comp_info(dev, "eq_iir_prepare(), source_format=%d, sink_format=%d",
+		  cd->source_format, cd->sink_format);
 	if (cd->config) {
 		ret = eq_iir_setup(cd, sourceb->stream.channels);
 		if (ret < 0) {
-			trace_eq_error_with_ids(dev, "eq_iir_prepare(), setup failed.");
+			comp_err(dev, "eq_iir_prepare(), setup failed.");
 			goto err;
 		}
 		cd->eq_iir_func = eq_iir_find_func(cd, fm_configured,
 						   ARRAY_SIZE(fm_configured));
 		if (!cd->eq_iir_func) {
-			trace_eq_error_with_ids(dev, "eq_iir_prepare(), No proc func");
+			comp_err(dev, "eq_iir_prepare(), No proc func");
 			ret = -EINVAL;
 			goto err;
 		}
-		trace_eq_with_ids(dev, "eq_iir_prepare(), IIR is configured.");
+		comp_info(dev, "eq_iir_prepare(), IIR is configured.");
 	} else {
 		cd->eq_iir_func = eq_iir_find_func(cd, fm_passthrough,
 						   ARRAY_SIZE(fm_passthrough));
 		if (!cd->eq_iir_func) {
-			trace_eq_error_with_ids(dev, "eq_iir_prepare(), No pass func");
+			comp_err(dev, "eq_iir_prepare(), No pass func");
 			ret = -EINVAL;
 			goto err;
 		}
-		trace_eq_with_ids(dev, "eq_iir_prepare(), pass-through mode.");
+		comp_info(dev, "eq_iir_prepare(), pass-through mode.");
 	}
 	return 0;
 
@@ -874,7 +859,7 @@ static int eq_iir_reset(struct comp_dev *dev)
 	int i;
 	struct comp_data *cd = comp_get_drvdata(dev);
 
-	trace_eq_with_ids(dev, "eq_iir_reset()");
+	comp_info(dev, "eq_iir_reset()");
 
 	eq_iir_free_delaylines(cd);
 

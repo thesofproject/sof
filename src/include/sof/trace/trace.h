@@ -400,16 +400,4 @@ do {									\
 	tracev_event_with_ids(class, get_id_m(dev), get_subid_m(dev), fmt, \
 			      ##__VA_ARGS__)
 
-/* TODO: remove component specific macros from global header */
-/* tracing from component */
-#define _trace_comp_build(fun, class, comp_ptr, format, ...)		\
-		fun(class, comp_ptr->comp.pipeline_id,			\
-		    comp_ptr->comp.id, format, ##__VA_ARGS__)
-
-#define trace_event_comp(...) _trace_comp_build(trace_event_with_ids,	\
-						##__VA_ARGS__)
-#define tracev_event_comp(...) _trace_comp_build(tracev_event_with_ids,	\
-						##__VA_ARGS__)
-#define trace_error_comp(...) _trace_comp_build(trace_error_with_ids,	\
-						##__VA_ARGS__)
 #endif /* __SOF_TRACE_TRACE_H__ */

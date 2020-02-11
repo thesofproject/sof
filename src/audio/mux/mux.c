@@ -29,6 +29,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+static const struct comp_driver comp_mux;
+
 static int mux_set_values(struct comp_data *cd, struct sof_mux_config *cfg)
 {
 	uint8_t i;
@@ -36,10 +38,8 @@ static int mux_set_values(struct comp_data *cd, struct sof_mux_config *cfg)
 
 	/* check if number of streams configured doesn't exceed maximum */
 	if (cfg->num_streams > MUX_MAX_STREAMS) {
-		trace_mux_error("mux_set_values() error: configured number of "
-				"streams (%u) exceeds maximum = "
-				META_QUOTE(MUX_MAX_STREAMS),
-				cfg->num_streams);
+		comp_cl_err(&comp_mux, "mux_set_values() error: configured number of streams (%u) exceeds maximum = "
+			    META_QUOTE(MUX_MAX_STREAMS), cfg->num_streams);
 		return -EINVAL;
 	}
 
@@ -48,10 +48,8 @@ static int mux_set_values(struct comp_data *cd, struct sof_mux_config *cfg)
 		for (j = i + 1; j < cfg->num_streams; j++) {
 			if (cfg->streams[i].pipeline_id ==
 				cfg->streams[j].pipeline_id) {
-				trace_mux_error("mux_set_values() error: "
-						"multiple configured streams "
-						"have same pipeline ID = %u",
-						cfg->streams[i].pipeline_id);
+				comp_cl_err(&comp_mux, "mux_set_values() error: multiple configured streams have same pipeline ID = %u",
+					    cfg->streams[i].pipeline_id);
 				return -EINVAL;
 			}
 		}
@@ -60,11 +58,8 @@ static int mux_set_values(struct comp_data *cd, struct sof_mux_config *cfg)
 	/* check if number of channels per stream doesn't exceed maximum */
 	for (i = 0; i < cfg->num_streams; i++) {
 		if (cfg->streams[i].num_channels > PLATFORM_MAX_CHANNELS) {
-			trace_mux_error("mux_set_values() error: configured "
-					"number of channels for stream %u "
-					"exceeds platform maximum = "
-					META_QUOTE(PLATFORM_MAX_CHANNELS),
-					i);
+			comp_cl_err(&comp_mux, "mux_set_values() error: configured number of channels for stream %u exceeds platform maximum = "
+				    META_QUOTE(PLATFORM_MAX_CHANNELS), i);
 			return -EINVAL;
 		}
 	}
@@ -91,10 +86,10 @@ static struct comp_dev *mux_new(struct sof_ipc_comp *comp)
 	struct comp_data *cd;
 	int ret;
 
-	trace_mux("mux_new()");
+	comp_cl_info(&comp_mux, "mux_new()");
 
 	if (IPC_IS_SIZE_INVALID(ipc_process->config)) {
-		IPC_SIZE_ERROR_TRACE(TRACE_CLASS_MUX, ipc_process->config);
+		IPC_SIZE_ERROR_TRACE(TRACE_CLASS_COMP, ipc_process->config);
 		return NULL;
 	}
 
@@ -135,7 +130,7 @@ static void mux_free(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 
-	trace_mux_with_ids(dev, "mux_free()");
+	comp_info(dev, "mux_free()");
 
 	rfree(cd);
 	rfree(dev);
@@ -148,7 +143,7 @@ static int mux_params(struct comp_dev *dev,
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *sinkb;
 
-	trace_mux_with_ids(dev, "mux_params()");
+	comp_info(dev, "mux_params()");
 
 	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
 				  source_list);
@@ -166,8 +161,8 @@ static int mux_ctrl_set_cmd(struct comp_dev *dev,
 	struct sof_mux_config *cfg;
 	int ret = 0;
 
-	trace_mux_with_ids(dev, "mux_ctrl_set_cmd(), cdata->cmd = 0x%08x",
-			   cdata->cmd);
+	comp_info(dev, "mux_ctrl_set_cmd(), cdata->cmd = 0x%08x",
+		  cdata->cmd);
 
 	switch (cdata->cmd) {
 	case SOF_CTRL_CMD_BINARY:
@@ -177,8 +172,8 @@ static int mux_ctrl_set_cmd(struct comp_dev *dev,
 		ret = mux_set_values(cd, cfg);
 		break;
 	default:
-		trace_mux_error_with_ids(dev, "mux_ctrl_set_cmd() error: "
-				"invalid cdata->cmd = 0x%08x", cdata->cmd);
+		comp_err(dev, "mux_ctrl_set_cmd() error: invalid cdata->cmd = 0x%08x",
+			 cdata->cmd);
 		ret = -EINVAL;
 		break;
 	}
@@ -194,7 +189,8 @@ static int mux_ctrl_get_cmd(struct comp_dev *dev,
 	uint32_t reply_size;
 	int ret = 0;
 
-	trace_mux("mux_ctrl_get_cmd(), cdata->cmd = 0x%08x", cdata->cmd);
+	comp_cl_info(&comp_mux, "mux_ctrl_get_cmd(), cdata->cmd = 0x%08x",
+		     cdata->cmd);
 
 	switch (cdata->cmd) {
 	case SOF_CTRL_CMD_BINARY:
@@ -210,8 +206,8 @@ static int mux_ctrl_get_cmd(struct comp_dev *dev,
 		cdata->data->size = reply_size;
 		break;
 	default:
-		trace_mux_error("mux_ctrl_set_cmd() error: invalid cdata->cmd ="
-				" 0x%08x", cdata->cmd);
+		comp_cl_err(&comp_mux, "mux_ctrl_set_cmd() error: invalid cdata->cmd = 0x%08x",
+			    cdata->cmd);
 		ret = -EINVAL;
 		break;
 	}
@@ -225,7 +221,7 @@ static int mux_cmd(struct comp_dev *dev, int cmd, void *data,
 {
 	struct sof_ipc_ctrl_data *cdata = data;
 
-	trace_mux_with_ids(dev, "mux_cmd() cmd = 0x%08x", cmd);
+	comp_info(dev, "mux_cmd() cmd = 0x%08x", cmd);
 
 	switch (cmd) {
 	case COMP_CMD_SET_DATA:
@@ -245,8 +241,8 @@ static uint8_t get_stream_index(struct comp_data *cd, uint32_t pipe_id)
 		if (cd->config.streams[i].pipeline_id == pipe_id)
 			return i;
 	}
-	trace_mux_error("get_stream_index() error: couldn't find configuration "
-			"for connected pipeline %u", pipe_id);
+	comp_cl_err(&comp_mux, "get_stream_index() error: couldn't find configuration for connected pipeline %u",
+		    pipe_id);
 	return 0;
 }
 
@@ -265,7 +261,7 @@ static int demux_copy(struct comp_dev *dev)
 	uint32_t avail;
 	uint32_t sinks_bytes[MUX_MAX_STREAMS] = { 0 };
 
-	tracev_mux_with_ids(dev, "demux_copy()");
+	comp_dbg(dev, "demux_copy()");
 
 	// align sink streams with their respective configurations
 	list_for_item(clist, &dev->bsink_list) {
@@ -339,7 +335,7 @@ static int mux_copy(struct comp_dev *dev)
 	uint32_t sources_bytes[MUX_MAX_STREAMS] = { 0 };
 	uint32_t sink_bytes;
 
-	tracev_mux_with_ids(dev, "mux_copy()");
+	comp_dbg(dev, "mux_copy()");
 
 	/* align source streams with their respective configurations */
 	list_for_item(clist, &dev->bsource_list) {
@@ -396,7 +392,7 @@ static int mux_copy(struct comp_dev *dev)
 
 static int mux_reset(struct comp_dev *dev)
 {
-	trace_mux_with_ids(dev, "mux_reset()");
+	comp_info(dev, "mux_reset()");
 
 	return comp_set_state(dev, COMP_TRIGGER_RESET);
 }
@@ -406,20 +402,17 @@ static int mux_prepare(struct comp_dev *dev)
 	struct comp_data *cd = comp_get_drvdata(dev);
 	int ret;
 
-	trace_mux_with_ids(dev, "mux_prepare()");
+	comp_info(dev, "mux_prepare()");
 
 	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
 	if (ret) {
-		trace_mux_with_ids(dev, "mux_prepare() comp_set_state() "
-					"returned non-zero.");
+		comp_info(dev, "mux_prepare() comp_set_state() returned non-zero.");
 		return ret;
 	}
 
 	cd->mux = mux_get_processing_function(dev);
 	if (!cd->mux) {
-		trace_mux_error_with_ids(dev, "mux_prepare() error: couldn't "
-				"find appropriate mux processing function for "
-				"component.");
+		comp_err(dev, "mux_prepare() error: couldn't find appropriate mux processing function for component.");
 		ret = -EINVAL;
 		goto err;
 	}
@@ -436,20 +429,17 @@ static int demux_prepare(struct comp_dev *dev)
 	struct comp_data *cd = comp_get_drvdata(dev);
 	int ret;
 
-	trace_mux_with_ids(dev, "demux_prepare()");
+	comp_info(dev, "demux_prepare()");
 
 	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
 	if (ret) {
-		trace_mux_with_ids(dev, "demux_prepare() comp_set_state() "
-					"returned non-zero");
+		comp_info(dev, "demux_prepare() comp_set_state() returned non-zero");
 		return ret;
 	}
 
 	cd->demux = demux_get_processing_function(dev);
 	if (!cd->demux) {
-		trace_mux_error_with_ids(dev, "demux_prepare() error: couldn't "
-				"find appropriate demux processing function "
-				"for component.");
+		comp_err(dev, "demux_prepare() error: couldn't find appropriate demux processing function for component.");
 		ret = -EINVAL;
 		goto err;
 	}
@@ -465,7 +455,7 @@ static int mux_trigger(struct comp_dev *dev, int cmd)
 {
 	int ret = 0;
 
-	trace_mux_with_ids(dev, "mux_trigger(), command = %u", cmd);
+	comp_info(dev, "mux_trigger(), command = %u", cmd);
 
 	ret = comp_set_state(dev, cmd);
 
