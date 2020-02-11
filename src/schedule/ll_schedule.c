@@ -232,8 +232,9 @@ static void schedule_ll_domain_clear(struct ll_schedule_data *sch,
 	if (!atomic_sub(&sch->num_tasks, 1)) {
 		sch->domain->registered[cpu_get_id()] = false;
 
-		/* reschedule if there is no more clients waiting */
-		if (!atomic_sub(&sch->domain->num_clients, 1)) {
+		/* reschedule if we are the last client */
+		if (atomic_read(&sch->domain->num_clients) &&
+		    !atomic_sub(&sch->domain->num_clients, 1)) {
 			domain_clear(sch->domain);
 			schedule_ll_clients_reschedule(sch);
 		}
