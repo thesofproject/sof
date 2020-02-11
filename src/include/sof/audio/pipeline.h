@@ -31,29 +31,33 @@ struct task;
 #define NO_XRUN_RECOVERY 1
 
 /* pipeline tracing */
-#define trace_pipe(format, ...) \
-	trace_event(TRACE_CLASS_PIPE, format, ##__VA_ARGS__)
-#define trace_pipe_with_ids(pipe_ptr, format, ...)		\
-	trace_event_with_ids(TRACE_CLASS_PIPE,			\
-			     pipe_ptr->ipc_pipe.pipeline_id,	\
-			     pipe_ptr->ipc_pipe.comp_id,	\
-			     format, ##__VA_ARGS__)
+#define trace_pipe_get_id(pipe_p) ((pipe_p)->ipc_pipe.pipeline_id)
+#define trace_pipe_get_subid(pipe_p) ((pipe_p)->ipc_pipe.comp_id)
 
-#define trace_pipe_error(format, ...) \
-	trace_error(TRACE_CLASS_PIPE, format, ##__VA_ARGS__)
-#define trace_pipe_error_with_ids(pipe_ptr, format, ...)	\
-	trace_error_with_ids(TRACE_CLASS_PIPE,			\
-			     pipe_ptr->ipc_pipe.pipeline_id,	\
-			     pipe_ptr->ipc_pipe.comp_id,	\
-			     format, ##__VA_ARGS__)
+/* class (driver) level (no device object) tracing */
 
-#define tracev_pipe(format, ...) \
-	tracev_event(TRACE_CLASS_PIPE, format, ##__VA_ARGS__)
-#define tracev_pipe_with_ids(pipe_ptr, format, ...)		\
-	tracev_event_with_ids(TRACE_CLASS_PIPE,			\
-			     pipe_ptr->ipc_pipe.pipeline_id,	\
-			     pipe_ptr->ipc_pipe.comp_id,	\
-			     format, ##__VA_ARGS__)
+#define pipe_cl_err(__e, ...)						\
+	trace_error(TRACE_CLASS_PIPE, __e, ##__VA_ARGS__)
+
+#define pipe_cl_info(__e, ...)						\
+	trace_event(TRACE_CLASS_PIPE, __e, ##__VA_ARGS__)
+
+#define pipe_cl_dbg(__e, ...)						\
+	tracev_event(TRACE_CLASS_PIPE, __e, ##__VA_ARGS__)
+
+/* device tracing */
+
+#define pipe_err(pipe_p, __e, ...)					\
+	trace_dev_err(TRACE_CLASS_PIPE, trace_pipe_get_id,		\
+		      trace_pipe_get_subid, pipe_p, __e, ##__VA_ARGS__)
+
+#define pipe_info(pipe_p, __e, ...)					\
+	trace_dev_info(TRACE_CLASS_PIPE, trace_pipe_get_id,		\
+		       trace_pipe_get_subid, pipe_p, __e, ##__VA_ARGS__)
+
+#define pipe_dbg(pipe_p, __e, ...)					\
+	trace_dev_dbg(TRACE_CLASS_PIPE, trace_pipe_get_id,		\
+		      trace_pipe_get_subid, pipe_p, __e, ##__VA_ARGS__)
 
 /* Pipeline status to stop execution of current path */
 #define PPL_STATUS_PATH_STOP	1

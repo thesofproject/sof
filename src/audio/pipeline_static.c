@@ -415,7 +415,7 @@ int init_static_pipeline(struct ipc *ipc)
 	return 0;
 
 error:
-	trace_pipe_error("init_static_pipeline() error");
+	pipe_cl_err("init_static_pipeline() error");
 
 	for (i = 0; i < ARRAY_SIZE(pipeline); i++) {
 
