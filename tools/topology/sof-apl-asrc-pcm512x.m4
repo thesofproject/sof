@@ -16,6 +16,7 @@ include(`sof/tokens.m4')
 
 # Include Apollolake DSP configuration
 include(`platform/intel/bxt.m4')
+include(`platform/intel/dmic.m4')
 
 DEBUG_START
 
@@ -23,7 +24,8 @@ DEBUG_START
 # Define the pipelines
 #
 # PCM0 --> ASRC --> Volume --> SSP5 (pcm512x)
-#
+# PCM5 <-- ASRC <-- Volume <-- DMIC0 (DMIC)
+# PCM6 <-- ASRC <-- Volume <-- DMIC1 (DMIC16kHz)
 
 dnl PIPELINE_PCM_ADD(pipeline,
 dnl     pipe id, pcm, max channels, format,
@@ -37,6 +39,20 @@ PIPELINE_PCM_ADD(sof/pipe-asrc-volume-playback.m4,
 	1, 0, 2, s32le,
 	1000, 0, 0,
 	8000, 192000, 48000)
+
+# DMIC capture pipeline 2 on PCM 5 using max 2 channels.
+# 1000us deadline on core 0 with priority 0
+PIPELINE_PCM_ADD(sof/pipe-asrc-volume-capture.m4,
+        2, 5, 2, s32le,
+        1000, 0, 0,
+        8000, 192000, 48000)
+
+# DMIC16kHz capture pipeline 2 on PCM 6 using max 2 channels.
+# 1000us deadline on core 0 with priority 0
+PIPELINE_PCM_ADD(sof/pipe-asrc-volume-capture.m4,
+        3, 6, 2, s32le,
+        1000, 0, 0,
+        8000, 192000, 16000)
 
 #
 # DAIs configuration
@@ -54,9 +70,25 @@ DAI_ADD(sof/pipe-dai-playback.m4,
 	PIPELINE_SOURCE_1, 2, s24le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
+# capture DAI is DMIC using 2 periods
+# Buffers use s32le format, 1000us deadline on core 0 with priority 0
+DAI_ADD(sof/pipe-dai-capture.m4,
+        2, DMIC, 0, dmic01,
+        PIPELINE_SINK_2, 2, s32le,
+        1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
+
+# capture DAI is DMIC16kHz using 2 periods
+# Buffers use s16le format, 1000us deadline on core 0 with priority 0
+DAI_ADD(sof/pipe-dai-capture.m4,
+        3, DMIC, 1, dmic16k,
+        PIPELINE_SINK_3, 2, s32le,
+        1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
+
 # PCM, id 0
 dnl PCM_PLAYBACK_ADD(name, pcm_id, playback)
 PCM_PLAYBACK_ADD(Port5, 0, PIPELINE_PCM_1)
+PCM_CAPTURE_ADD(DMIC, 5, PIPELINE_PCM_2)
+PCM_CAPTURE_ADD(DMIC16kHz, 6, PIPELINE_PCM_3)
 
 #
 # BE configurations - overrides config in ACPI if present
@@ -69,5 +101,17 @@ DAI_CONFIG(SSP, 5, 0, SSP5-Codec,
 		SSP_CLOCK(fsync, 48000, codec_slave),
 		SSP_TDM(2, 32, 3, 3),
 		SSP_CONFIG_DATA(SSP, 5, 24)))
+
+# DMIC (ID: 1)
+DAI_CONFIG(DMIC, 0, 1, dmic01,
+           DMIC_CONFIG(1, 500000, 4800000, 40, 60, 48000,
+                DMIC_WORD_LENGTH(s32le), 400, DMIC, 0,
+                PDM_CONFIG(DMIC, 0, STEREO_PDM0)))
+
+# DMIC16kHz (ID: 2)
+DAI_CONFIG(DMIC, 1, 2, dmic16k,
+           DMIC_CONFIG(1, 500000, 4800000, 40, 60, 16000,
+                DMIC_WORD_LENGTH(s32le), 400, DMIC, 1,
+                PDM_CONFIG(DMIC, 1, STEREO_PDM0)))
 
 DEBUG_END
