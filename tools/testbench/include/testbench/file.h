@@ -52,5 +52,5 @@ struct sof_ipc_comp_file {
 	struct sof_ipc_comp_config config;
 	char *fn;
 	enum file_mode mode;
-};
+} __attribute__((packed));
 #endif
