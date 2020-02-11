@@ -376,6 +376,31 @@ do {									\
 	trace_unused(class, id_0, id_1, format, ##__VA_ARGS__)
 #endif
 
+/* tracing from device (component, pipeline, dai, ...) */
+
+/** \brief Trace from a device on err level.
+ *
+ * \param class Trace class, one of TRACE_CLASS_...
+ * \param get_id_m Macro that can retrieve device's id0 from the dev
+ * \param get_subid_m Macro that can retrieve device's id1 from the dev
+ * \param dev Device
+ * \param fmt Format followed by parameters
+ */
+#define trace_dev_err(class, get_id_m, get_subid_m, dev, fmt, ...) \
+	trace_error_with_ids(class, get_id_m(dev), get_subid_m(dev), fmt, \
+			     ##__VA_ARGS__)
+
+/** \brief Trace from a device on info level. */
+#define trace_dev_info(class, get_id_m, get_subid_m, dev, fmt, ...) \
+	trace_event_with_ids(class, get_id_m(dev), get_subid_m(dev), fmt, \
+			     ##__VA_ARGS__)
+
+/** \brief Trace from a device on dbg level. */
+#define trace_dev_dbg(class, get_id_m, get_subid_m, dev, fmt, ...) \
+	tracev_event_with_ids(class, get_id_m(dev), get_subid_m(dev), fmt, \
+			      ##__VA_ARGS__)
+
+/* TODO: remove component specific macros from global header */
 /* tracing from component */
 #define _trace_comp_build(fun, class, comp_ptr, format, ...)		\
 		fun(class, comp_ptr->comp.pipeline_id,			\
@@ -387,5 +412,4 @@ do {									\
 						##__VA_ARGS__)
 #define trace_error_comp(...) _trace_comp_build(trace_error_with_ids,	\
 						##__VA_ARGS__)
-
 #endif /* __SOF_TRACE_TRACE_H__ */
