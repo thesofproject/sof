@@ -148,25 +148,6 @@ struct dai_type_info {
 	size_t num_dais;	/**< Number of elements in dai_array */
 };
 
-/* TODO: to be removed once dais using it are switched to the new one */
-#define trace_dai_with_ids(klass, dai_ptr, format, ...) \
-	trace_event_with_ids(klass,			\
-			     dai_ptr->drv->type,	\
-			     dai_ptr->index,		\
-			     format, ##__VA_ARGS__)
-
-#define trace_dai_error_with_ids(klass, dai_ptr, format, ...)	\
-	trace_error_with_ids(klass,				\
-			     dai_ptr->drv->type,		\
-			     dai_ptr->index,			\
-			     format, ##__VA_ARGS__)
-
-#define tracev_dai_with_ids(klass, dai_ptr, format, ...)	\
-	tracev_event_with_ids(klass,				\
-			      dai_ptr->drv->type,		\
-			      dai_ptr->index,			\
-			      format, ##__VA_ARGS__)
-
 /* dai tracing */
 #define trace_dai_get_id(dai_p) ((dai_p)->drv->type)
 #define trace_dai_get_subid(dai_p) ((dai_p)->index)
