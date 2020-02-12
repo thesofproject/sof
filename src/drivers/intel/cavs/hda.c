@@ -11,12 +11,6 @@
 #include <sof/lib/dma.h>
 #include <ipc/dai.h>
 
-/* tracing */
-#define trace_hda(__e, ...) \
-	trace_event(TRACE_CLASS_DAI, __e, ##__VA_ARGS__)
-#define trace_hda_error(__e, ...) \
-	trace_error(TRACE_CLASS_DAI, __e, ##__VA_ARGS__)
-
 static int hda_trigger(struct dai *dai, int cmd, int direction)
 {
 	return 0;
@@ -75,7 +69,7 @@ static int hda_ts_config(struct dai *dai, struct timestamp_cfg *cfg)
 	int i;
 
 	if (cfg->type != SOF_DAI_INTEL_HDA) {
-		trace_hda_error("dmic_ts_config(): Illegal DAI type");
+		dai_err(dai, "dmic_ts_config(): Illegal DAI type");
 		return -EINVAL;
 	}
 
