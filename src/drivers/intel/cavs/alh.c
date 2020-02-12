@@ -15,21 +15,16 @@
 #include <user/trace.h>
 #include <stdint.h>
 
-#define trace_alh(__e, ...) trace_event(TRACE_CLASS_ALH, __e, ##__VA_ARGS__)
-#define trace_alh_error(__e, ...) \
-	trace_error(TRACE_CLASS_ALH, __e, ##__VA_ARGS__)
-#define tracev_alh(__e, ...) tracev_event(TRACE_CLASS_ALH, __e, ##__VA_ARGS__)
-
 static int alh_trigger(struct dai *dai, int cmd, int direction)
 {
-	trace_alh("alh_trigger() cmd %d", cmd);
+	dai_info(dai, "alh_trigger() cmd %d", cmd);
 
 	return 0;
 }
 
 static int alh_set_config(struct dai *dai, struct sof_ipc_dai_config *config)
 {
-	trace_alh("alh_set_config() config->format = 0x%4x",
+	dai_info(dai, "alh_set_config() config->format = 0x%4x",
 		  config->format);
 
 	return 0;
@@ -37,28 +32,28 @@ static int alh_set_config(struct dai *dai, struct sof_ipc_dai_config *config)
 
 static int alh_context_store(struct dai *dai)
 {
-	trace_alh("alh_context_store()");
+	dai_info(dai, "alh_context_store()");
 
 	return 0;
 }
 
 static int alh_context_restore(struct dai *dai)
 {
-	trace_alh("alh_context_restore()");
+	dai_info(dai, "alh_context_restore()");
 
 	return 0;
 }
 
 static int alh_probe(struct dai *dai)
 {
-	trace_alh("alh_probe()");
+	dai_info(dai, "alh_probe()");
 
 	return 0;
 }
 
 static int alh_remove(struct dai *dai)
 {
-	trace_alh("alh_remove()");
+	dai_info(dai, "alh_remove()");
 
 	return 0;
 }
@@ -66,7 +61,7 @@ static int alh_remove(struct dai *dai)
 static int alh_get_handshake(struct dai *dai, int direction, int stream_id)
 {
 	if (stream_id >= ARRAY_SIZE(alh_handshake_map)) {
-		trace_alh_error("alh_get_handshake() error: "
+		dai_err(dai, "alh_get_handshake() error: "
 				"stream_id %d out of range", stream_id);
 
 		return -1;
