@@ -31,7 +31,6 @@
 	trace_error_comp(TRACE_CLASS_SWITCH, comp_ptr,		\
 			 __e, ##__VA_ARGS__)
 
-
 static struct comp_dev *switch_new(struct sof_ipc_comp *comp)
 {
 	trace_switch("switch_new()");
@@ -41,14 +40,12 @@ static struct comp_dev *switch_new(struct sof_ipc_comp *comp)
 
 static void switch_free(struct comp_dev *dev)
 {
-
 }
 
 /* set component audio stream parameters */
 static int switch_params(struct comp_dev *dev,
 			 struct sof_ipc_stream_params *params)
 {
-
 	return 0;
 }
 
@@ -63,7 +60,6 @@ static int switch_cmd(struct comp_dev *dev, int cmd, void *data,
 /* copy and process stream data from source to sink buffers */
 static int switch_copy(struct comp_dev *dev)
 {
-
 	return 0;
 }
 
