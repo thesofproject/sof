@@ -131,13 +131,13 @@ static int ssp_set_config(struct dai *dai,
 	/* is playback/capture already running */
 	if (ssp->state[DAI_DIR_PLAYBACK] == COMP_STATE_ACTIVE ||
 	    ssp->state[DAI_DIR_CAPTURE] == COMP_STATE_ACTIVE) {
-		trace_ssp_error("ssp_set_config() error: "
-				"playback/capture already running");
+		dai_info(dai, "ssp_set_config() error: playback/capture already running");
 		ret = -EINVAL;
 		goto out;
 	}
 
-	trace_ssp("ssp_set_config(), config->format = 0x%4x", config->format);
+	dai_info(dai, "ssp_set_config(), config->format = 0x%4x",
+		 config->format);
 
 	/* reset SSP settings */
 	/* sscr0 dynamic settings are DSS, EDSS, SCR, FRDC, ECS */
@@ -196,8 +196,7 @@ static int ssp_set_config(struct dai *dai,
 		/* FIXME: this mode has not been tested */
 		break;
 	default:
-		trace_ssp_error("ssp_set_config() error: "
-				"format & MASTER_MASK EINVAL");
+		dai_err(dai, "ssp_set_config() error: format & MASTER_MASK EINVAL");
 		ret = -EINVAL;
 		goto out;
 	}
@@ -217,8 +216,7 @@ static int ssp_set_config(struct dai *dai,
 		inverted_bclk = true; /* handled later with bclk idle */
 		break;
 	default:
-		trace_ssp_error("ssp_set_config() error: "
-				"format & INV_MASK EINVAL");
+		dai_err(dai, "ssp_set_config() error: format & INV_MASK EINVAL");
 		ret = -EINVAL;
 		goto out;
 	}
@@ -277,19 +275,17 @@ static int ssp_set_config(struct dai *dai,
 
 	if (!config->ssp.mclk_rate ||
 	    config->ssp.mclk_rate > ssp_freq[MAX_SSP_FREQ_INDEX].freq) {
-		trace_ssp_error("ssp_set_config() error: "
-				"invalid MCLK = %d Hz (valid < %d)",
-				config->ssp.mclk_rate,
-				ssp_freq[MAX_SSP_FREQ_INDEX].freq);
+		dai_err(dai, "ssp_set_config() error: invalid MCLK = %d Hz (valid < %d)",
+			config->ssp.mclk_rate,
+			ssp_freq[MAX_SSP_FREQ_INDEX].freq);
 		ret = -EINVAL;
 		goto out;
 	}
 
 	if (!config->ssp.bclk_rate ||
 	    config->ssp.bclk_rate > config->ssp.mclk_rate) {
-		trace_ssp_error("ssp_set_config() error: "
-				"BCLK %d Hz = 0 or > MCLK %d Hz",
-				config->ssp.bclk_rate, config->ssp.mclk_rate);
+		dai_err(dai, "ssp_set_config() error: BCLK %d Hz = 0 or > MCLK %d Hz",
+			config->ssp.bclk_rate, config->ssp.mclk_rate);
 		ret = -EINVAL;
 		goto out;
 	}
@@ -297,8 +293,8 @@ static int ssp_set_config(struct dai *dai,
 	/* MCLK config */
 	ret = mn_set_mclk(config->ssp.mclk_id, config->ssp.mclk_rate);
 	if (ret < 0) {
-		trace_ssp_error("error: invalid mclk_rate = %d for mclk_id = %d",
-				config->ssp.mclk_id, config->ssp.mclk_rate);
+		dai_err(dai, "error: invalid mclk_rate = %d for mclk_id = %d",
+			config->ssp.mclk_id, config->ssp.mclk_rate);
 		goto out;
 	}
 
@@ -306,8 +302,8 @@ static int ssp_set_config(struct dai *dai,
 	ret = mn_set_bclk(config->dai_index, config->ssp.bclk_rate,
 			  &mdiv, &need_ecs);
 	if (ret < 0) {
-		trace_ssp_error("error: invalid bclk_rate = %d for dai_index = %d",
-				config->ssp.bclk_rate, config->dai_index);
+		dai_err(dai, "error: invalid bclk_rate = %d for dai_index = %d",
+			config->ssp.bclk_rate, config->dai_index);
 		goto out;
 	}
 
@@ -319,8 +315,8 @@ static int ssp_set_config(struct dai *dai,
 
 	/* divisor must be within SCR range */
 	if (mdiv > (SSCR0_SCR_MASK >> 8)) {
-		trace_ssp_error("ssp_set_config() error: "
-				"divisor %d is not within SCR range", mdiv);
+		dai_err(dai, "ssp_set_config() error: divisor %d is not within SCR range",
+			mdiv);
 		ret = -EINVAL;
 		goto out;
 	}
@@ -330,9 +326,8 @@ static int ssp_set_config(struct dai *dai,
 
 	/* calc frame width based on BCLK and rate - must be divisable */
 	if (config->ssp.bclk_rate % config->ssp.fsync_rate) {
-		trace_ssp_error("ssp_set_config() error: "
-				"BCLK %d is not divisable by rate %d",
-				config->ssp.bclk_rate, config->ssp.fsync_rate);
+		dai_err(dai, "ssp_set_config() error: BCLK %d is not divisable by rate %d",
+			config->ssp.bclk_rate, config->ssp.fsync_rate);
 		ret = -EINVAL;
 		goto out;
 	}
@@ -340,17 +335,17 @@ static int ssp_set_config(struct dai *dai,
 	/* must be enough BCLKs for data */
 	bdiv = config->ssp.bclk_rate / config->ssp.fsync_rate;
 	if (bdiv < config->ssp.tdm_slot_width * config->ssp.tdm_slots) {
-		trace_ssp_error("ssp_set_config() error: not enough BCLKs "
-				"need %d", config->ssp.tdm_slot_width *
-				config->ssp.tdm_slots);
+		dai_err(dai, "ssp_set_config() error: not enough BCLKs need %d",
+			config->ssp.tdm_slot_width *
+			config->ssp.tdm_slots);
 		ret = -EINVAL;
 		goto out;
 	}
 
 	/* tdm_slot_width must be <= 38 for SSP */
 	if (config->ssp.tdm_slot_width > 38) {
-		trace_ssp_error("ssp_set_config() error: tdm_slot_width %d > "
-				"38", config->ssp.tdm_slot_width);
+		dai_err(dai, "ssp_set_config() error: tdm_slot_width %d > 38",
+			config->ssp.tdm_slot_width);
 		ret = -EINVAL;
 		goto out;
 	}
@@ -359,16 +354,16 @@ static int ssp_set_config(struct dai *dai,
 		   (config->ssp.tdm_per_slot_padding_flag ?
 		    config->ssp.tdm_slot_width : config->ssp.sample_valid_bits);
 	if (bdiv < bdiv_min) {
-		trace_ssp_error("ssp_set_config() error: bdiv(%d) < "
-				"bdiv_min(%d)", bdiv, bdiv_min);
+		dai_err(dai, "ssp_set_config() error: bdiv(%d) < bdiv_min(%d)",
+			bdiv, bdiv_min);
 		ret = -EINVAL;
 		goto out;
 	}
 
 	frame_end_padding = bdiv - bdiv_min;
 	if (frame_end_padding > SSPSP2_FEP_MASK) {
-		trace_ssp_error("ssp_set_config() error: frame_end_padding "
-				"too big: %u", frame_end_padding);
+		dai_err(dai, "ssp_set_config() error: frame_end_padding too big: %u",
+			frame_end_padding);
 		ret = -EINVAL;
 		goto out;
 	}
@@ -382,8 +377,8 @@ static int ssp_set_config(struct dai *dai,
 		sscr0 |= SSCR0_FRDC(config->ssp.tdm_slots);
 
 		if (bdiv % 2) {
-			trace_ssp_error("ssp_set_config() error: "
-					"bdiv %d is not divisible by 2", bdiv);
+			dai_err(dai, "ssp_set_config() error: bdiv %d is not divisible by 2",
+				bdiv);
 			ret = -EINVAL;
 			goto out;
 		}
@@ -404,10 +399,8 @@ static int ssp_set_config(struct dai *dai,
 		 * of each slot
 		 */
 		if (frame_end_padding % 2) {
-			trace_ssp_error("ssp_set_config() error: "
-					"frame_end_padding %d "
-					"is not divisible by 2",
-					frame_end_padding);
+			dai_err(dai, "ssp_set_config() error: frame_end_padding %d is not divisible by 2",
+				frame_end_padding);
 			ret = -EINVAL;
 			goto out;
 		}
@@ -416,9 +409,8 @@ static int ssp_set_config(struct dai *dai,
 
 		if (slot_end_padding > SOF_DAI_INTEL_SSP_SLOT_PADDING_MAX) {
 			/* too big padding */
-			trace_ssp_error("ssp_set_config() error: "
-					"slot_end_padding > %d",
-					SOF_DAI_INTEL_SSP_SLOT_PADDING_MAX);
+			dai_err(dai, "ssp_set_config() error: slot_end_padding > %d",
+				SOF_DAI_INTEL_SSP_SLOT_PADDING_MAX);
 			ret = -EINVAL;
 			goto out;
 		}
@@ -439,8 +431,8 @@ static int ssp_set_config(struct dai *dai,
 		sscr2 &= ~SSCR2_LJDFD;
 
 		if (bdiv % 2) {
-			trace_ssp_error("ssp_set_config() error: "
-					"bdiv %d is not divisible by 2", bdiv);
+			dai_err(dai, "ssp_set_config() error: bdiv %d is not divisible by 2",
+				bdiv);
 			ret = -EINVAL;
 			goto out;
 		}
@@ -461,10 +453,8 @@ static int ssp_set_config(struct dai *dai,
 		 * of each slot
 		 */
 		if (frame_end_padding % 2) {
-			trace_ssp_error("ssp_set_config() error: "
-					"frame_end_padding %d "
-					"is not divisible by 2",
-					frame_end_padding);
+			dai_err(dai, "ssp_set_config() error: frame_end_padding %d is not divisible by 2",
+				frame_end_padding);
 			ret = -EINVAL;
 			goto out;
 		}
@@ -473,9 +463,8 @@ static int ssp_set_config(struct dai *dai,
 
 		if (slot_end_padding > 15) {
 			/* can't handle padding over 15 bits */
-			trace_ssp_error("ssp_set_config() error: "
-					"slot_end_padding %d > 15 bits",
-					slot_end_padding);
+			dai_err(dai, "ssp_set_config() error: slot_end_padding %d > 15 bits",
+				slot_end_padding);
 			ret = -EINVAL;
 			goto out;
 		}
@@ -509,9 +498,7 @@ static int ssp_set_config(struct dai *dai,
 		/* frame_pulse_width must less or equal 38 */
 		if (ssp->params.frame_pulse_width >
 			SOF_DAI_INTEL_SSP_FRAME_PULSE_WIDTH_MAX) {
-			trace_ssp_error
-				("ssp_set_config() error: "
-				"frame_pulse_width > %d",
+			dai_err(dai, "ssp_set_config() error: frame_pulse_width > %d",
 				SOF_DAI_INTEL_SSP_FRAME_PULSE_WIDTH_MAX);
 			ret = -EINVAL;
 			goto out;
@@ -541,9 +528,7 @@ static int ssp_set_config(struct dai *dai,
 
 			if (slot_end_padding >
 				SOF_DAI_INTEL_SSP_SLOT_PADDING_MAX) {
-				trace_ssp_error
-					("ssp_set_config() error: "
-					"slot_end_padding > %d",
+				dai_err(dai, "ssp_set_config() error: slot_end_padding > %d",
 					SOF_DAI_INTEL_SSP_SLOT_PADDING_MAX);
 				ret = -EINVAL;
 				goto out;
@@ -560,8 +545,8 @@ static int ssp_set_config(struct dai *dai,
 
 		break;
 	default:
-		trace_ssp_error("ssp_set_config() error: "
-				"invalid format 0x%04x", config->format);
+		dai_err(dai, "ssp_set_config() error: invalid format 0x%04x",
+			config->format);
 		ret = -EINVAL;
 		goto out;
 	}
@@ -590,9 +575,8 @@ static int ssp_set_config(struct dai *dai,
 			sample_width = 4;
 			break;
 	default:
-			trace_ssp_error("ssp_set_config() error: "
-					"sample_valid_bits %d",
-					config->ssp.sample_valid_bits);
+			dai_err(dai, "ssp_set_config() error: sample_valid_bits %d",
+				config->ssp.sample_valid_bits);
 			ret = -EINVAL;
 			goto out;
 	}
@@ -615,13 +599,12 @@ static int ssp_set_config(struct dai *dai,
 	ssp_write(dai, SSTSA, sstsa);
 	ssp_write(dai, SSRSA, ssrsa);
 
-	trace_ssp("ssp_set_config(), sscr0 = 0x%08x, sscr1 = 0x%08x, "
-		  "ssto = 0x%08x, sspsp = 0x%0x", sscr0, sscr1, ssto, sspsp);
-	trace_ssp("ssp_set_config(), sscr2 = 0x%08x, sspsp2 = 0x%08x, "
-		  "sscr3 = 0x%08x, ssioc = 0x%08x", sscr2, sspsp2, sscr3,
-		  ssioc);
-	trace_ssp("ssp_set_config(), ssrsa = 0x%08x, sstsa = 0x%08x", ssrsa,
-		  sstsa);
+	dai_info(dai, "ssp_set_config(), sscr0 = 0x%08x, sscr1 = 0x%08x, ssto = 0x%08x, sspsp = 0x%0x",
+		 sscr0, sscr1, ssto, sspsp);
+	dai_info(dai, "ssp_set_config(), sscr2 = 0x%08x, sspsp2 = 0x%08x, sscr3 = 0x%08x, ssioc = 0x%08x",
+		 sscr2, sspsp2, sscr3, ssioc);
+	dai_info(dai, "ssp_set_config(), ssrsa = 0x%08x, sstsa = 0x%08x",
+		 ssrsa, sstsa);
 
 	ssp->state[DAI_DIR_PLAYBACK] = COMP_STATE_PREPARE;
 	ssp->state[DAI_DIR_CAPTURE] = COMP_STATE_PREPARE;
@@ -645,7 +628,7 @@ static void ssp_start(struct dai *dai, int direction)
 	ssp_update_bits(dai, SSCR0, SSCR0_SSE, SSCR0_SSE);
 	ssp->state[direction] = COMP_STATE_ACTIVE;
 
-	trace_ssp("ssp_start()");
+	dai_info(dai, "ssp_start()");
 
 	if (ssp->params.bclk_delay) {
 		/* drive BCLK early for guaranteed time,
@@ -687,7 +670,7 @@ static void ssp_stop(struct dai *dai, int direction)
 		ssp_update_bits(dai, SSRSA, 0x1 << 8, 0x0 << 8);
 		ssp_empty_rx_fifo(dai);
 		ssp->state[SOF_IPC_STREAM_CAPTURE] = COMP_STATE_PAUSED;
-		trace_ssp("ssp_stop(), RX stop");
+		dai_info(dai, "ssp_stop(), RX stop");
 	}
 
 	/* stop Tx if needed */
@@ -697,7 +680,7 @@ static void ssp_stop(struct dai *dai, int direction)
 		ssp_update_bits(dai, SSCR1, SSCR1_TSRE, 0);
 		ssp_update_bits(dai, SSTSA, 0x1 << 8, 0x0 << 8);
 		ssp->state[SOF_IPC_STREAM_PLAYBACK] = COMP_STATE_PAUSED;
-		trace_ssp("ssp_stop(), TX stop");
+		dai_info(dai, "ssp_stop(), TX stop");
 	}
 
 	/* disable SSP port if no users */
@@ -706,7 +689,7 @@ static void ssp_stop(struct dai *dai, int direction)
 		ssp_update_bits(dai, SSCR0, SSCR0_SSE, 0);
 		ssp->state[SOF_IPC_STREAM_CAPTURE] = COMP_STATE_PREPARE;
 		ssp->state[SOF_IPC_STREAM_PLAYBACK] = COMP_STATE_PREPARE;
-		trace_ssp("ssp_stop(), SSP port disabled");
+		dai_info(dai, "ssp_stop(), SSP port disabled");
 	}
 
 	spin_unlock(&dai->lock);
@@ -716,7 +699,7 @@ static int ssp_trigger(struct dai *dai, int cmd, int direction)
 {
 	struct ssp_pdata *ssp = dai_get_drvdata(dai);
 
-	trace_ssp("ssp_trigger() cmd %d", cmd);
+	dai_info(dai, "ssp_trigger() cmd %d", cmd);
 
 	switch (cmd) {
 	case COMP_TRIGGER_START:
@@ -759,8 +742,7 @@ static int ssp_probe(struct dai *dai)
 	ssp = rzalloc(SOF_MEM_ZONE_SYS_RUNTIME, SOF_MEM_FLAG_SHARED,
 		      SOF_MEM_CAPS_RAM, sizeof(*ssp));
 	if (!ssp) {
-		trace_error(TRACE_CLASS_DAI, "ssp_probe() error: "
-			    "alloc failed");
+		dai_err(dai, "ssp_probe() error: alloc failed");
 		return -ENOMEM;
 	}
 	dai_set_drvdata(dai, ssp);
@@ -883,12 +865,12 @@ static int ssp_ts_config(struct dai *dai, struct timestamp_cfg *cfg)
 	int i;
 
 	if (cfg->type != SOF_DAI_INTEL_SSP) {
-		trace_ssp_error("ssp_ts_config(): Illegal DAI type");
+		dai_err(dai, "ssp_ts_config(): Illegal DAI type");
 		return -EINVAL;
 	}
 
 	if (cfg->index > DAI_NUM_SSP_BASE + DAI_NUM_SSP_EXT - 1) {
-		trace_ssp_error("ssp_ts_config(): Illegal DAI index");
+		dai_err(dai, "ssp_ts_config(): Illegal DAI index");
 		return -EINVAL;
 	}
 
@@ -899,7 +881,7 @@ static int ssp_ts_config(struct dai *dai, struct timestamp_cfg *cfg)
 	}
 
 	if (!cfg->walclk_rate) {
-		trace_ssp_error("ssp_ts_config(): No XTAL frequency defined");
+		dai_err(dai, "ssp_ts_config(): No XTAL frequency defined");
 		return -EINVAL;
 	}
 

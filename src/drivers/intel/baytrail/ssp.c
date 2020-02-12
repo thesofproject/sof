@@ -100,13 +100,12 @@ static int ssp_set_config(struct dai *dai,
 	/* is playback/capture already running */
 	if (ssp->state[DAI_DIR_PLAYBACK] == COMP_STATE_ACTIVE ||
 	    ssp->state[DAI_DIR_CAPTURE] == COMP_STATE_ACTIVE) {
-		trace_ssp_error("ssp_set_config(): "
-				"playback/capture already running");
+		dai_err(dai, "ssp_set_config(): playback/capture already running");
 		ret = -EINVAL;
 		goto out;
 	}
 
-	trace_ssp("ssp_set_config(), config->format = %d", config->format);
+	dai_info(dai, "ssp_set_config(), config->format = %d", config->format);
 
 	/* reset SSP settings */
 	/* sscr0 dynamic settings are DSS, EDSS, SCR, FRDC, ECS */
@@ -212,8 +211,7 @@ static int ssp_set_config(struct dai *dai,
 		cbs = true;
 		break;
 	default:
-		trace_ssp_error("ssp_set_config() error: "
-				"format & MASTER_MASK EINVAL");
+		dai_err(dai, "ssp_set_config() error: format & MASTER_MASK EINVAL");
 		ret = -EINVAL;
 		goto out;
 	}
@@ -233,8 +231,7 @@ static int ssp_set_config(struct dai *dai,
 		sspsp |= SSPSP_SCMODE(2);
 		break;
 	default:
-		trace_ssp_error("ssp_set_config() error: "
-				"format & INV_MASK EINVAL");
+		dai_err(dai, "ssp_set_config() error: format & INV_MASK EINVAL");
 		ret = -EINVAL;
 		goto out;
 	}
@@ -257,33 +254,32 @@ static int ssp_set_config(struct dai *dai,
 
 	/* Checks for quirks that were requested but are not supported. */
 	if (ssp->params.quirks & SOF_DAI_INTEL_SSP_QUIRK_SMTATF) {
-		trace_ssp_error("SMTATF is not supported");
+		dai_err(dai, "SMTATF is not supported");
 		ret = -EINVAL;
 		goto out;
 	}
 
 	if (ssp->params.quirks & SOF_DAI_INTEL_SSP_QUIRK_MMRATF) {
-		trace_ssp_error("MMRATF is not supported");
+		dai_err(dai, "MMRATF is not supported");
 		ret = -EINVAL;
 		goto out;
 	}
 
 	if (ssp->params.quirks & SOF_DAI_INTEL_SSP_QUIRK_PSPSTWFDFD) {
-		trace_ssp_error("PSPSTWFDFD is not supported");
+		dai_err(dai, "PSPSTWFDFD is not supported");
 		ret = -EINVAL;
 		goto out;
 	}
 
 	if (ssp->params.quirks & SOF_DAI_INTEL_SSP_QUIRK_PSPSRWFDFD) {
-		trace_ssp_error("PSPSRWFDFD is not supported");
+		dai_err(dai, "PSPSRWFDFD is not supported");
 		ret = -EINVAL;
 		goto out;
 	}
 
 	/* BCLK is generated from MCLK - must be divisable */
 	if (config->ssp.mclk_rate % config->ssp.bclk_rate) {
-		trace_ssp_error("ssp_set_config() error: "
-				"MCLK is not divisable");
+		dai_err(dai, "ssp_set_config() error: MCLK is not divisable");
 		ret = -EINVAL;
 		goto out;
 	}
@@ -291,8 +287,7 @@ static int ssp_set_config(struct dai *dai,
 	/* divisor must be within SCR range */
 	mdiv = (config->ssp.mclk_rate / config->ssp.bclk_rate) - 1;
 	if (mdiv > (SSCR0_SCR_MASK >> 8)) {
-		trace_ssp_error("ssp_set_config() error: "
-				"divisor is not within SCR range");
+		dai_err(dai, "ssp_set_config() error: divisor is not within SCR range");
 		ret = -EINVAL;
 		goto out;
 	}
@@ -302,8 +297,7 @@ static int ssp_set_config(struct dai *dai,
 
 	/* calc frame width based on BCLK and rate - must be divisable */
 	if (config->ssp.bclk_rate % config->ssp.fsync_rate) {
-		trace_ssp_error("ssp_set_config() error: "
-				"BLCK is not divisable");
+		dai_err(dai, "ssp_set_config() error: BLCK is not divisable");
 		ret = -EINVAL;
 		goto out;
 	}
@@ -312,14 +306,14 @@ static int ssp_set_config(struct dai *dai,
 	bdiv = config->ssp.bclk_rate / config->ssp.fsync_rate;
 	if (bdiv < config->ssp.tdm_slot_width *
 	    config->ssp.tdm_slots) {
-		trace_ssp_error("ssp_set_config() error: not enough BCLKs");
+		dai_err(dai, "ssp_set_config() error: not enough BCLKs");
 		ret = -EINVAL;
 		goto out;
 	}
 
 	/* tdm_slot_width must be <= 38 for SSP */
 	if (config->ssp.tdm_slot_width > 38) {
-		trace_ssp_error("ssp_set_config() error: tdm_slot_width > 38");
+		dai_err(dai, "ssp_set_config() error: tdm_slot_width > 38");
 		ret = -EINVAL;
 		goto out;
 	}
@@ -442,8 +436,7 @@ static int ssp_set_config(struct dai *dai,
 
 		break;
 	default:
-		trace_ssp_error("ssp_set_config() error: "
-				"format & FORMAT_MASK EINVAL");
+		dai_err(dai, "ssp_set_config() error: format & FORMAT_MASK EINVAL");
 		ret = -EINVAL;
 		goto out;
 	}
@@ -479,7 +472,7 @@ static int ssp_set_config(struct dai *dai,
 	ssp->state[DAI_DIR_PLAYBACK] = COMP_STATE_PREPARE;
 	ssp->state[DAI_DIR_CAPTURE] = COMP_STATE_PREPARE;
 
-	trace_ssp("ssp_set_config(), done");
+	dai_info(dai, "ssp_set_config(), done");
 
 out:
 	spin_unlock(&dai->lock);
@@ -498,7 +491,7 @@ static void ssp_start(struct dai *dai, int direction)
 	ssp_update_bits(dai, SSCR0, SSCR0_SSE, SSCR0_SSE);
 	ssp->state[direction] = COMP_STATE_ACTIVE;
 
-	trace_ssp("ssp_start()");
+	dai_info(dai, "ssp_start()");
 
 	/* enable DMA */
 	if (direction == DAI_DIR_PLAYBACK)
@@ -522,7 +515,7 @@ static void ssp_stop(struct dai *dai, int direction)
 		ssp_update_bits(dai, SSCR1, SSCR1_RSRE, 0);
 		ssp_empty_rx_fifo(dai);
 		ssp->state[SOF_IPC_STREAM_CAPTURE] = COMP_STATE_PAUSED;
-		trace_ssp("ssp_stop(), RX stop");
+		dai_info(dai, "ssp_stop(), RX stop");
 	}
 
 	/* stop Tx if needed */
@@ -530,7 +523,7 @@ static void ssp_stop(struct dai *dai, int direction)
 	    ssp->state[SOF_IPC_STREAM_PLAYBACK] == COMP_STATE_ACTIVE) {
 		ssp_update_bits(dai, SSCR1, SSCR1_TSRE, 0);
 		ssp->state[SOF_IPC_STREAM_PLAYBACK] = COMP_STATE_PAUSED;
-		trace_ssp("ssp_stop(), TX stop");
+		dai_info(dai, "ssp_stop(), TX stop");
 	}
 
 	/* disable SSP port if no users */
@@ -539,7 +532,7 @@ static void ssp_stop(struct dai *dai, int direction)
 		ssp_update_bits(dai, SSCR0, SSCR0_SSE, 0);
 		ssp->state[SOF_IPC_STREAM_CAPTURE] = COMP_STATE_PREPARE;
 		ssp->state[SOF_IPC_STREAM_PLAYBACK] = COMP_STATE_PREPARE;
-		trace_ssp("ssp_stop(), SSP port disabled");
+		dai_info(dai, "ssp_stop(), SSP port disabled");
 	}
 
 	spin_unlock(&dai->lock);
@@ -549,7 +542,7 @@ static int ssp_trigger(struct dai *dai, int cmd, int direction)
 {
 	struct ssp_pdata *ssp = dai_get_drvdata(dai);
 
-	trace_ssp("ssp_trigger()");
+	dai_info(dai, "ssp_trigger()");
 
 	switch (cmd) {
 	case COMP_TRIGGER_START:
