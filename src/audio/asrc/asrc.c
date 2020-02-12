@@ -739,7 +739,6 @@ static int asrc_control_loop(struct comp_data *cd)
 	delta_sample = sample - cd->sample_prev;
 	cd->ts_prev = ts;
 	cd->sample_prev = sample;
-	asrc_dai_start_timestamp(cd);
 
 	/* Avoid first delta timestamp(s) those can be off and
 	 * confuse the filter.
