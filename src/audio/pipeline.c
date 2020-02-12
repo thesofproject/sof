@@ -260,7 +260,6 @@ static void pipeline_comp_period_frames(struct comp_dev *current,
 	else
 		samplerate = rate;
 
-
 	/* Samplerate is in kHz and period in microseconds.
 	 * As we don't have floats use scale divider 1000000.
 	 * Also integer round up the result.
@@ -820,7 +819,6 @@ static int pipeline_comp_xrun(struct comp_dev *current, void *data, int dir)
 	if (current->comp.type == SOF_COMP_HOST) {
 		/* get host timestamps */
 		platform_host_timestamp(current, ppl_data->posn);
-
 
 		/* send XRUN to host */
 		ipc_stream_send_xrun(current, ppl_data->posn);
