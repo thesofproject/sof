@@ -368,8 +368,15 @@ static int asrc_params(struct comp_dev *dev,
 	struct sof_ipc_stream_params *params = pcm_params;
 	struct sof_ipc_comp_asrc *asrc = COMP_GET_IPC(dev, sof_ipc_comp_asrc);
 	struct comp_data *cd = comp_get_drvdata(dev);
+	struct comp_buffer *sinkb;
+	struct comp_buffer *sourceb;
 
 	trace_asrc_with_ids(dev, "asrc_params()");
+
+	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer,
+				  sink_list);
+	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
+				source_list);
 
 	/* Calculate source and sink rates, one rate will come from IPC new
 	 * and the other from params.
@@ -382,13 +389,13 @@ static int asrc_params(struct comp_dev *dev,
 						cd->sink_rate);
 		cd->sink_frames = dev->frames;
 		/* re-write our params with output rate for next component */
-		params->rate = cd->source_rate;
+		sourceb->stream.rate = cd->source_rate;
 	} else {
 		/* params rate is source rate */
 		cd->source_rate = params->rate;
 		cd->sink_rate = asrc->sink_rate;
 		/* re-write our params with output rate for next component */
-		params->rate = cd->sink_rate;
+		sinkb->stream.rate = cd->sink_rate;
 		cd->source_frames = dev->frames;
 		cd->sink_frames = ceil_divide(dev->frames * cd->sink_rate,
 					      cd->source_rate);
