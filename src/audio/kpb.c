@@ -394,7 +394,8 @@ static int kpb_prepare(struct comp_dev *dev)
 
 	if (kpb->state == KPB_STATE_RESETTING ||
 	    kpb->state == KPB_STATE_RESET_FINISHING) {
-		trace_kpb_error("kpb_prepare() error: can not prepare KPB due to ongoing reset, state log %x",
+		trace_kpb_error("kpb_prepare() error: "
+				"can not prepare KPB due to ongoing reset, state log %x",
 				kpb->state_log);
 		return -EBUSY;
 	}
@@ -433,7 +434,8 @@ static int kpb_prepare(struct comp_dev *dev)
 
 		/* Have we allocated what we requested? */
 		if (kpb->buffer_size < hb_size_req) {
-			trace_kpb_error("kpb_prepare() error: failed to allocate space for KPB buffer");
+			trace_kpb_error("kpb_prepare() error: "
+					"failed to allocate space for KPB buffer");
 			kpb_free_history_buffer(kpb->history_buffer);
 			kpb->history_buffer = NULL;
 			kpb->buffer_size = 0;
@@ -608,7 +610,8 @@ static int kpb_copy(struct comp_dev *dev)
 
 		copy_bytes = MIN(sink->stream.free, source->stream.avail);
 		if (!copy_bytes) {
-			trace_kpb_error_with_ids(dev, "kpb_copy() error: nothing to copy sink->free %d source->avail %d",
+			trace_kpb_error_with_ids(dev, "kpb_copy() error: "
+						"nothing to copy sink->free %d source->avail %d",
 						 sink->stream.free,
 						 source->stream.avail);
 			ret = PPL_STATUS_PATH_STOP;
@@ -660,7 +663,8 @@ static int kpb_copy(struct comp_dev *dev)
 
 		copy_bytes = MIN(sink->stream.free, source->stream.avail);
 		if (!copy_bytes) {
-			trace_kpb_error_with_ids(dev, "kpb_copy() error: nothing to copy sink->free %d source->avail %d",
+			trace_kpb_error_with_ids(dev, "kpb_copy() error: "
+						"nothing to copy sink->free %d source->avail %d",
 						 sink->stream.free,
 						 source->stream.avail);
 			ret = PPL_STATUS_PATH_STOP;
@@ -758,7 +762,8 @@ static int kpb_buffer_data(struct comp_dev *dev,
 		/* Are we stuck in buffering? */
 		current_time = platform_timer_get(timer);
 		if (timeout < current_time) {
-			trace_kpb_error("kpb_buffer_data(): timeout of %d [ms] (current state %d, state log %x)",
+			trace_kpb_error("kpb_buffer_data(): "
+					"timeout of %d [ms] (current state %d, state log %x)",
 					current_time - timeout, kpb->state,
 					kpb->state_log);
 			return -ETIME;
@@ -953,7 +958,8 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 					 "sink not ready for draining");
 	} else if (kpb->buffered_data < history_depth ||
 		   kpb->buffer_size < history_depth) {
-		trace_kpb_error("kpb_init_draining() error: not enough data in history buffer");
+		trace_kpb_error("kpb_init_draining() error: "
+					"not enough data in history buffer");
 	} else {
 		/* Draining accepted, find proper buffer to start reading
 		 * At this point we are guaranteed that there is enough data
@@ -1028,12 +1034,15 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 					 ticks_per_ms) /
 					 KPB_DRAIN_NUM_OF_PPL_PERIODS_AT_ONCE;
 			period_bytes_limit = host_period_size;
-			trace_kpb_with_ids(dev, "kpb_init_draining(): sync_draining_mode selected with interval %d [uS].", drain_interval * 1000 / ticks_per_ms);
+			trace_kpb_with_ids(dev, "kpb_init_draining(): "
+					"sync_draining_mode selected with interval %d [uS].",
+					drain_interval * 1000 / ticks_per_ms);
 		} else {
 			/* Unlimited draining */
 			drain_interval = 0;
 			period_bytes_limit = 0;
-			trace_kpb_with_ids(dev, "kpb_init_draining: unlimited draining speed selected.");
+			trace_kpb_with_ids(dev, "kpb_init_draining: "
+					"unlimited draining speed selected.");
 		}
 
 		trace_kpb_with_ids(dev, "kpb_init_draining(), "
