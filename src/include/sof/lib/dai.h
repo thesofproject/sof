@@ -148,6 +148,7 @@ struct dai_type_info {
 	size_t num_dais;	/**< Number of elements in dai_array */
 };
 
+/* TODO: to be removed once dais using it are switched to the new one */
 #define trace_dai_with_ids(klass, dai_ptr, format, ...) \
 	trace_event_with_ids(klass,			\
 			     dai_ptr->drv->type,	\
@@ -165,6 +166,35 @@ struct dai_type_info {
 			      dai_ptr->drv->type,		\
 			      dai_ptr->index,			\
 			      format, ##__VA_ARGS__)
+
+/* dai tracing */
+#define trace_dai_get_id(dai_p) ((dai_p)->drv->type)
+#define trace_dai_get_subid(dai_p) ((dai_p)->index)
+
+/* class (driver) level (no device object) tracing */
+
+#define dai_cl_err(drv_p, __e, ...)					\
+	trace_error(TRACE_CLASS_DAI, __e, ##__VA_ARGS__)
+
+#define dai_cl_info(drv_p, __e, ...)					\
+	trace_event(TRACE_CLASS_DAI, __e, ##__VA_ARGS__)
+
+#define dai_cl_dbg(drv_p, __e, ...)					\
+	tracev_event(TRACE_CLASS_DAI, __e, ##__VA_ARGS__)
+
+/* device tracing */
+
+#define dai_err(dai_p, __e, ...)					\
+	trace_dev_err(TRACE_CLASS_DAI, trace_dai_get_id,		\
+		      trace_dai_get_subid, dai_p, __e, ##__VA_ARGS__)
+
+#define dai_info(dai_p, __e, ...)					\
+	trace_dev_info(TRACE_CLASS_DAI, trace_dai_get_id,		\
+		       trace_dai_get_subid, dai_p, __e, ##__VA_ARGS__)
+
+#define dai_dbg(dai_p, __e, ...)					\
+	trace_dev_dbg(TRACE_CLASS_DAI, trace_dai_get_id,		\
+		      trace_dai_get_subid, dai_p, __e, ##__VA_ARGS__)
 
 /**
  * \brief Holds information about array of DAIs grouped by type.
