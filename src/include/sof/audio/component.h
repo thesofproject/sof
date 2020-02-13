@@ -685,7 +685,9 @@ static inline int comp_copy(struct comp_dev *dev)
 
 	assert(dev->drv->ops.copy);
 
-	ret = dev->drv->ops.copy(dev);
+	/* copy only if we are the owner of the component */
+	if (cpu_is_me(dev->comp.core))
+		ret = dev->drv->ops.copy(dev);
 
 	comp_shared_commit(dev);
 
