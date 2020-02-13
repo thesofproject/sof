@@ -190,6 +190,8 @@ extern const struct dai_driver ssp_driver;
 
 #define SSCR3_TFL_MASK	MASK(5, 0)
 #define SSCR3_RFL_MASK	MASK(13, 8)
+#define SSCR3_TFL_VAL(scr3_val)	(((scr3_val) >> 0) & MASK(5, 0))
+#define SSCR3_RFL_VAL(scr3_val)	(((scr3_val) >> 8) & MASK(5, 0))
 #define SSCR3_TX(x)	SET_BITS(21, 16, (x) - 1)
 #define SSCR3_RX(x)	SET_BITS(29, 24, (x) - 1)
 
