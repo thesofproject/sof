@@ -62,14 +62,14 @@ dnl     time_domain, sched_comp)
 # Schedule 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
 	1, 0, 2, s24le,
-	1000, 0, 0, SSP,
+	1000, 0, 0,
 	48000, 48000, 48000)
 
 # Low Latency capture pipeline 2 on PCM 0 using max 2 channels of s24le.
 # Schedule 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-volume-capture.m4,
 	2, 0, 2, s24le,
-	1000, 0, 0, SSP,
+	1000, 0, 0,
 	48000, 48000, 48000)
 
 # Passthrough capture pipeline 3 on PCM 1 using max 4 channels.
