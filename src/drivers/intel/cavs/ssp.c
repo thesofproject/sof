@@ -57,7 +57,7 @@ static void ssp_empty_rx_fifo(struct dai *dai)
 
 	/* empty fifo */
 	if (sssr & SSSR_RNE) {
-		entries = (ssp_read(dai, SSCR3) & SSCR3_RFL_MASK) >> 8;
+		entries = SSCR3_RFL_VAL(ssp_read(dai, SSCR3));
 		for (i = 0; i < entries + 1; i++)
 			ssp_read(dai, SSDR);
 	}
