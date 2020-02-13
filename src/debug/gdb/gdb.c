@@ -105,11 +105,11 @@ retry:
 static int get_hex(unsigned char ch)
 {
 	if (ch >= 'a' && ch <= 'f')
-		return ch-'a'+10;
+		return ch - 'a' + 10;
 	if (ch >= '0' && ch <= '9')
-		return ch-'0';
+		return ch - '0';
 	if (ch >= 'A' && ch <= 'F')
-		return ch-'A'+10;
+		return ch - 'A' + 10;
 	return -1;
 }
 
@@ -370,13 +370,13 @@ static inline int gdb_parser(void)
 	default:
 		gdb_log_exception("Unknown GDB command.");
 		break;
-
 	}
 	/* reply to the request */
 	put_packet(remcom_out_buffer);
 
 	return 1;
 }
+
 /*
  * While we find nice hex chars, build an int.
  * Return number of chars processed.
@@ -401,7 +401,6 @@ static int hex_to_int(unsigned char **ptr, int *int_value)
 	}
 	return num_chars;
 }
-
 
 /* Send the packet to the buffer */
 static void put_packet(unsigned char *buffer)
@@ -430,12 +429,10 @@ static void put_packet(unsigned char *buffer)
 	} while (get_debug_char() != '+');
 }
 
-
 static void gdb_log_exception(char *message)
 {
 	while (*message)
 		put_exception_char(*message++);
-
 }
 
 /* Convert the memory pointed to by mem into hex, placing result in buf.
