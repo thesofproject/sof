@@ -41,7 +41,21 @@ DECLARE_TR_CTX(ssp_tr, SOF_UUID(ssp_uuid), LOG_LEVEL_INFO);
 /* empty SSP transmit FIFO */
 static void ssp_empty_tx_fifo(struct dai *dai)
 {
+	int ret;
 	uint32_t sssr;
+
+	/*
+	 * SSSR_TNF is cleared when TX FIFO is empty or full,
+	 * so wait for set TNF then for TFL zero - order matter.
+	 */
+	ret = poll_for_register_delay(dai_base(dai) + SSSR, SSSR_TNF, SSSR_TNF,
+				      SSP_MAX_SEND_TIME_PER_SAMPLE);
+	ret |= poll_for_register_delay(dai_base(dai) + SSCR3, SSCR3_TFL_MASK, 0,
+				       SSP_MAX_SEND_TIME_PER_SAMPLE *
+				       (SSP_FIFO_DEPTH - 1) / 2);
+
+	if (ret)
+		dai_warn(dai, "ssp_empty_tx_fifo() warning: timeout");
 
 	sssr = ssp_read(dai, SSSR);
 
