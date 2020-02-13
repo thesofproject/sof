@@ -15,7 +15,7 @@
 	"Add it to CMake's target with sof_append_relative_path_definitions."
 #endif
 
-#if CONFIG_TRACE
+#if !CONFIG_LIBRARY && CONFIG_TRACE
 #include <platform/trace/trace.h>
 #endif
 #include <sof/common.h>
