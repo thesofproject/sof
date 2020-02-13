@@ -12,7 +12,7 @@
 
 #define SINE_C_Q20 341782638 /* 2*SINE_NQUART/pi in Q12.20 */
 #define SINE_NQUART 512 /* Must be 2^N */
-#define SINE_TABLE_SIZE (SINE_NQUART+1)
+#define SINE_TABLE_SIZE (SINE_NQUART + 1)
 
 /* An 1/4 period of sine wave as Q1.31 */
 const int32_t sine_table[SINE_TABLE_SIZE] = {
