@@ -8,7 +8,12 @@
 #ifndef __SOF_BIT_H__
 #define __SOF_BIT_H__
 
+#if ASSEMBLY
 #define BIT(b)			(1 << (b))
+#else
+#define BIT(b)			(1UL << (b))
+#endif
+
 #define MASK(b_hi, b_lo)	\
 	(((1ULL << ((b_hi) - (b_lo) + 1ULL)) - 1ULL) << (b_lo))
 #define SET_BIT(b, x)		(((x) & 1) << (b))
