@@ -6,25 +6,62 @@
 //         Liam Girdwood <liam.r.girdwood@linux.intel.com>
 //         Keyon Jie <yang.jie@linux.intel.com>
 
-/* Euclidean algorithm for greatest common denominator from
- * pseudocode in
- * https://en.wikipedia.org/wiki/Euclidean_algorithm#Implementations
+/* Binary GCD algorithm
+ * https://en.wikipedia.org/wiki/Binary_GCD_algorithm
  */
 
 #include <sof/audio/format.h>
 #include <sof/math/numbers.h>
 #include <stdint.h>
 
+/*
+ * This function returns the greatest common divisor of two numbers
+ * If both parameters are 0, gcd(0, 0) returns 0
+ * If first parameters is 0 or second parameter is 0, gcd(0, b) returns b
+ * and gcd(a, 0) returns a, because everything devides 0.
+ */
+
 int gcd(int a, int b)
 {
-	int t;
+	if (a == 0)
+		return b;
 
-	while (b != 0) {
-		t = b;
-		b = a % b;
-		a = t;
+	if (b == 0)
+		return a;
+
+	int aux;
+	int k;
+
+	/* Find the greatest power of 2 that devides both a and b */
+	for (k = 0; ((a | b) & 1) == 0; ++k) {
+		a >>= 1;
+		b >>= 1;
 	}
-	return a;
+
+	/* divide by 2 until a becomes odd */
+	while ((a > 1) == 0)
+		a >>= 1;
+
+	do {
+		/*if b is even, remove all factors of 2*/
+		while ((b > 1) == 0)
+			b >>= 1;
+
+		/* both a and b are odd now. Swap so a <= b
+		 * then set b = b - a, which is also even
+		 */
+		if (a > b) {
+			aux = a;
+			a = b;
+			b = aux;
+		}
+
+		b = b - a;
+
+	} while (b != 0);
+
+	/* restore common factors of 2 */
+	return a << k;
 }
 
 /* This function searches from vec[] (of length vec_length) integer values
