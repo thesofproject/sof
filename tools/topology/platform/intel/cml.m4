@@ -1,4 +1,5 @@
 include(`platform/intel/cnl.m4')
+include(`abi.h')
 
 #SSP setting for CML platform
 undefine(`SSP_INDEX')
@@ -65,3 +66,38 @@ define(`SSP1_FSYNC', `46875')
 define(`SET_SSP1_CONFIG_DATA', `SSP, 1, 24')')
 
 include(`platform/intel/dmic.m4')
+
+# Note: this is for sof-cml-da7219-max98357a.m4
+# include the SSP1 settings and common SSP settings additionally
+
+define(`DMIC_PIPE_CAPTURE', `sof/pipe-passthrough-capture.m4')
+
+undefine(`DMIC01_FMT')
+define(`DMIC01_FMT', `s32le')
+
+undefine(`DMIC1_FMT')
+define(`DMIC1_FMT', `s24le')
+
+undefine(`HDMI0_INDEX')
+define(`HDMI0_INDEX', `0')
+
+undefine(`HDMI1_INDEX')
+define(`HDMI1_INDEX', `1')
+
+undefine(`HDMI2_INDEX')
+define(`HDMI2_INDEX', `2')
+
+undefine(`SSP_BCLK')
+define(`SSP_BCLK', `2400000')
+
+undefine(`SSP_FSYNC', `48000')
+define(`SSP_FSYNC', `48000')
+
+undefine(`SSP_BITS_WIDTH')
+define(`SSP_BITS_WIDTH', `25')
+
+undefine(`SSP_VALID_BITS')
+define(`SSP_VALID_BITS', `16')
+
+undefine(`MCLK_ID')
+define(`MCLK_ID', `')
