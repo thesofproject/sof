@@ -63,9 +63,8 @@ struct comp_dev *comp_new(struct sof_ipc_comp *comp)
 	}
 
 	/* validate size of ipc config */
-	if (IPC_IS_SIZE_INVALID(*COMP_IPC_GET_CONFIG(comp))) {
-		IPC_SIZE_ERROR_TRACE(TRACE_CLASS_COMP,
-				     *COMP_IPC_GET_CONFIG(comp));
+	if (IPC_IS_SIZE_INVALID(*comp_config(comp))) {
+		IPC_SIZE_ERROR_TRACE(TRACE_CLASS_COMP, *comp_config(comp));
 		return NULL;
 	}
 

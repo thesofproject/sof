@@ -56,7 +56,8 @@ static struct comp_dev *selector_new(struct sof_ipc_comp *comp)
 	if (!dev)
 		return NULL;
 
-	ret = memcpy_s(&dev->comp, sizeof(struct sof_ipc_comp_process), comp,
+	ret = memcpy_s(COMP_GET_IPC(dev, sof_ipc_comp_process),
+		       sizeof(struct sof_ipc_comp_process), comp,
 		       sizeof(struct sof_ipc_comp_process));
 	assert(!ret);
 
@@ -348,7 +349,7 @@ static int selector_trigger(struct comp_dev *dev, int cmd)
 	 * kpb_init_draining() and kpb_draining_task() are interrupted by
 	 * new pipeline_task()
 	 */
-	return sourceb->source->comp.type == SOF_COMP_KPB ?
+	return dev_comp_type(sourceb->source) == SOF_COMP_KPB ?
 		PPL_STATUS_PATH_STOP : ret;
 }
 
@@ -401,7 +402,7 @@ static int selector_prepare(struct comp_dev *dev)
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *sinkb;
 	struct comp_buffer *sourceb;
-	struct sof_ipc_comp_config *config = COMP_GET_CONFIG(dev);
+	struct sof_ipc_comp_config *config = dev_comp_config(dev);
 	int ret;
 
 	comp_info(dev, "selector_prepare()");

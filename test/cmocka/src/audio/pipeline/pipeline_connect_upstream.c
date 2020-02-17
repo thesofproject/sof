@@ -148,11 +148,13 @@ static void test_audio_pipeline_complete_connect_downstream_full(void **state)
 {
 	struct pipeline_connect_data *test_data = *state;
 	struct pipeline result = test_data->p;
+	struct sof_ipc_comp *comp;
 
 	cleanup_test_data(test_data);
 
 	/*Connecting first comp to second*/
-	test_data->second->comp.pipeline_id = PIPELINE_ID_SAME;
+	comp = dev_comp(test_data->second);
+	comp->pipeline_id = PIPELINE_ID_SAME;
 	list_item_append(&result.sched_comp->bsink_list,
 					 &test_data->b1->source_list);
 	test_data->b1->source = result.sched_comp;
@@ -177,11 +179,13 @@ static void test_audio_pipeline_complete_connect_upstream_full(void **state)
 {
 	struct pipeline_connect_data *test_data = *state;
 	struct pipeline result = test_data->p;
+	struct sof_ipc_comp *comp;
 
 	cleanup_test_data(test_data);
 
 	/*Connecting first comp to second*/
-	test_data->second->comp.pipeline_id = PIPELINE_ID_SAME;
+	comp = dev_comp(test_data->second);
+	comp->pipeline_id = PIPELINE_ID_SAME;
 	list_item_append(&result.sched_comp->bsource_list,
 					 &test_data->b1->sink_list);
 	test_data->b1->sink = test_data->first;
@@ -200,11 +204,13 @@ static void test_audio_pipeline_complete_connect_upstream_other_pipeline
 {
 	struct pipeline_connect_data *test_data = *state;
 	struct pipeline result = test_data->p;
+	struct sof_ipc_comp *comp;
 
 	cleanup_test_data(test_data);
 
 	/*Connecting first comp to second*/
-	test_data->second->comp.pipeline_id = PIPELINE_ID_DIFFERENT;
+	comp = dev_comp(test_data->second);
+	comp->pipeline_id = PIPELINE_ID_DIFFERENT;
 	list_item_append(&result.sched_comp->bsource_list,
 					 &test_data->b1->sink_list);
 	test_data->b1->sink = test_data->first;

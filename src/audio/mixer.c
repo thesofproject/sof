@@ -122,7 +122,7 @@ static struct comp_dev *mixer_new(struct sof_ipc_comp *comp)
 	if (!dev)
 		return NULL;
 
-	mixer = (struct sof_ipc_comp_mixer *)&dev->comp;
+	mixer = COMP_GET_IPC(dev, sof_ipc_comp_mixer);
 
 	ret = memcpy_s(mixer, sizeof(*mixer), ipc_mixer,
 		       sizeof(struct sof_ipc_comp_mixer));
@@ -168,7 +168,7 @@ static int mixer_verify_params(struct comp_dev *dev,
 static int mixer_params(struct comp_dev *dev,
 			struct sof_ipc_stream_params *params)
 {
-	struct sof_ipc_comp_config *config = COMP_GET_CONFIG(dev);
+	struct sof_ipc_comp_config *config = dev_comp_config(dev);
 	struct comp_buffer *sinkb;
 	uint32_t period_bytes;
 	int err;

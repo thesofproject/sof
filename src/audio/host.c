@@ -328,7 +328,7 @@ static struct comp_dev *host_new(struct sof_ipc_comp *comp)
 	if (!dev)
 		return NULL;
 
-	host = (struct sof_ipc_comp_host *)&dev->comp;
+	host = COMP_GET_IPC(dev, sof_ipc_comp_host);
 	ret = memcpy_s(host, sizeof(*host),
 		       ipc_host, sizeof(struct sof_ipc_comp_host));
 	assert(!ret);

@@ -338,15 +338,65 @@ struct comp_copy_limits {
 #define COMP_GET_IPC(dev, type) \
 	(struct type *)(&dev->comp)
 
-/** \brief Retrieves component device config data. */
-#define COMP_GET_CONFIG(dev) \
-	(struct sof_ipc_comp_config *)((char *)&dev->comp + \
-	sizeof(struct sof_ipc_comp))
+/**
+ * Retrieves component from device.
+ * @param dev Device.
+ * @return Pointer to the component.
+ */
+static inline struct sof_ipc_comp *dev_comp(struct comp_dev *dev)
+{
+	return &dev->comp;
+}
 
-/* todo: this one looks as bad as the prev one, common comp data needs work*/
-/** \brief Retrieves config data from component ipc. */
-#define COMP_IPC_GET_CONFIG(comp) \
-	(struct sof_ipc_comp_config *)((comp) + 1)
+/**
+ * Retrieves Component id from device.
+ * @param dev Device.
+ * @return Component id.
+ */
+static inline uint32_t dev_comp_id(const struct comp_dev *dev)
+{
+	return dev->comp.id;
+}
+
+/**
+ * Retrieves Component pipeline id from device.
+ * @param dev Device.
+ * @return Component pipeline id.
+ */
+static inline uint32_t dev_comp_pipe_id(const struct comp_dev *dev)
+{
+	return dev->comp.pipeline_id;
+}
+
+/**
+ * Retrieves component type from device.
+ * @param dev Device.
+ * @return Component type.
+ */
+static inline enum sof_comp_type dev_comp_type(const struct comp_dev *dev)
+{
+	return dev->comp.type;
+}
+
+/**
+ * Retrieves component config data from device.
+ * @param dev Device.
+ * @return Pointer to the component data.
+ */
+static inline struct sof_ipc_comp_config *dev_comp_config(struct comp_dev *dev)
+{
+	return (struct sof_ipc_comp_config *)(&dev->comp + 1);
+}
+
+/**
+ * Retrieves component config data from component ipc.
+ * @param comp Component ipc data.
+ * @return Pointer to the component config data.
+ */
+static inline struct sof_ipc_comp_config *comp_config(struct sof_ipc_comp *comp)
+{
+	return (struct sof_ipc_comp_config *)(comp + 1);
+}
 
 /** \brief Sets the driver private data. */
 #define comp_set_drvdata(c, data) \
@@ -611,7 +661,7 @@ void sys_comp_init(struct sof *sof);
 static inline int comp_is_single_pipeline(struct comp_dev *current,
 					  struct comp_dev *previous)
 {
-	return current->comp.pipeline_id == previous->comp.pipeline_id;
+	return dev_comp_pipe_id(current) == dev_comp_pipe_id(previous);
 }
 
 /**
@@ -659,7 +709,7 @@ static inline int comp_get_requested_state(int cmd)
 /* \brief Returns comp_endpoint_type of given component */
 static inline int comp_get_endpoint_type(struct comp_dev *dev)
 {
-	switch (dev->comp.type) {
+	switch (dev_comp_type(dev)) {
 	case SOF_COMP_HOST:
 		return COMP_ENDPOINT_HOST;
 	case SOF_COMP_DAI:
@@ -703,7 +753,7 @@ static inline void comp_underrun(struct comp_dev *dev,
 	int32_t bytes = (int32_t)source->stream.avail - copy_bytes;
 
 	comp_err(dev, "comp_underrun() error: dev->comp.id = %u, source->avail = %u, copy_bytes = %u",
-		 dev->comp.id,
+		 dev_comp_id(dev),
 		 source->stream.avail,
 		 copy_bytes);
 

@@ -127,7 +127,8 @@ static struct comp_dev *kpb_new(struct sof_ipc_comp *comp)
 	if (!dev)
 		return NULL;
 
-	ret = memcpy_s(&dev->comp, sizeof(struct sof_ipc_comp_process),
+	ret = memcpy_s(COMP_GET_IPC(dev, sof_ipc_comp_process),
+		       sizeof(struct sof_ipc_comp_process),
 		       comp, sizeof(struct sof_ipc_comp_process));
 	assert(!ret);
 
@@ -491,10 +492,10 @@ static int kpb_prepare(struct comp_dev *dev)
 			ret = -EINVAL;
 			break;
 		}
-		if (sink->sink->comp.type == SOF_COMP_SELECTOR) {
+		if (dev_comp_type(sink->sink) == SOF_COMP_SELECTOR) {
 			/* We found proper real time sink */
 			kpb->sel_sink = sink;
-		} else if (sink->sink->comp.type == SOF_COMP_HOST) {
+		} else if (dev_comp_type(sink->sink) == SOF_COMP_HOST) {
 			/* We found proper host sink */
 			kpb->host_sink = sink;
 		}

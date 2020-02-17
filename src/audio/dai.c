@@ -134,7 +134,7 @@ static struct comp_dev *dai_new(struct sof_ipc_comp *comp)
 	if (!dev)
 		return NULL;
 
-	dai = (struct sof_ipc_comp_dai *)&dev->comp;
+	dai = COMP_GET_IPC(dev, sof_ipc_comp_dai);
 	ret = memcpy_s(dai, sizeof(*dai), ipc_dai,
 		       sizeof(struct sof_ipc_comp_dai));
 	assert(!ret);
@@ -358,7 +358,7 @@ static int dai_capture_params(struct comp_dev *dev, uint32_t period_bytes,
 static int dai_params(struct comp_dev *dev,
 		      struct sof_ipc_stream_params *params)
 {
-	struct sof_ipc_comp_config *dconfig = COMP_GET_CONFIG(dev);
+	struct sof_ipc_comp_config *dconfig = dev_comp_config(dev);
 	struct dai_data *dd = comp_get_drvdata(dev);
 	uint32_t frame_size;
 	uint32_t period_count;
@@ -697,9 +697,9 @@ static int dai_position(struct comp_dev *dev, struct sof_ipc_stream_posn *posn)
 
 static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 {
-	struct sof_ipc_comp_config *dconfig = COMP_GET_CONFIG(dev);
+	struct sof_ipc_comp_config *dconfig = dev_comp_config(dev);
 	struct dai_data *dd = comp_get_drvdata(dev);
-	struct sof_ipc_comp_dai *dai = (struct sof_ipc_comp_dai *)&dev->comp;
+	struct sof_ipc_comp_dai *dai = COMP_GET_IPC(dev, sof_ipc_comp_dai);
 	int channel = 0;
 	int handshake;
 
@@ -810,7 +810,7 @@ static int dai_ts_config(struct comp_dev *dev)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
 	struct timestamp_cfg *cfg = &dd->ts_config;
-	struct sof_ipc_comp_dai *dai = (struct sof_ipc_comp_dai *)&dev->comp;
+	struct sof_ipc_comp_dai *dai = COMP_GET_IPC(dev, sof_ipc_comp_dai);
 
 	comp_dbg(dev, "dai_ts_config()");
 	cfg->type = dd->dai->drv->type;

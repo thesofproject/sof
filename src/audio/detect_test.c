@@ -303,7 +303,7 @@ static struct comp_dev *test_keyword_new(struct sof_ipc_comp *comp)
 	if (!dev)
 		return NULL;
 
-	keyword = (struct sof_ipc_comp_process *)&dev->comp;
+	keyword = COMP_GET_IPC(dev, sof_ipc_comp_process);
 	ret = memcpy_s(keyword, sizeof(*keyword), ipc_keyword,
 		       sizeof(struct sof_ipc_comp_process));
 	assert(!ret);

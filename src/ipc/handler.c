@@ -420,9 +420,9 @@ int ipc_stream_send_position(struct comp_dev *cdev,
 	struct sof_ipc_stream_posn *posn)
 {
 	posn->rhdr.hdr.cmd = SOF_IPC_GLB_STREAM_MSG | SOF_IPC_STREAM_POSITION |
-		cdev->comp.id;
+		dev_comp_id(cdev);
 	posn->rhdr.hdr.size = sizeof(*posn);
-	posn->comp_id = cdev->comp.id;
+	posn->comp_id = dev_comp_id(cdev);
 
 	mailbox_stream_write(cdev->pipeline->posn_offset, posn, sizeof(*posn));
 	return ipc_queue_host_message(ipc_get(), posn->rhdr.hdr.cmd, posn,
@@ -434,10 +434,10 @@ int ipc_send_comp_notification(const struct comp_dev *cdev,
 			       struct sof_ipc_comp_event *event)
 {
 	event->rhdr.hdr.cmd = SOF_IPC_GLB_COMP_MSG |
-		SOF_IPC_COMP_NOTIFICATION | cdev->comp.id;
+		SOF_IPC_COMP_NOTIFICATION | dev_comp_id(cdev);
 	event->rhdr.hdr.size = sizeof(*event);
-	event->src_comp_type = cdev->comp.type;
-	event->src_comp_id = cdev->comp.id;
+	event->src_comp_type = dev_comp_type(cdev);
+	event->src_comp_id = dev_comp_id(cdev);
 
 	return ipc_queue_host_message(ipc_get(), event->rhdr.hdr.cmd, event,
 				      sizeof(*event), false);
@@ -449,9 +449,9 @@ int ipc_stream_send_xrun(struct comp_dev *cdev,
 {
 	posn->rhdr.hdr.cmd = SOF_IPC_GLB_STREAM_MSG |
 			     SOF_IPC_STREAM_TRIG_XRUN |
-			     cdev->comp.id;
+			     dev_comp_id(cdev);
 	posn->rhdr.hdr.size = sizeof(*posn);
-	posn->comp_id = cdev->comp.id;
+	posn->comp_id = dev_comp_id(cdev);
 
 	mailbox_stream_write(cdev->pipeline->posn_offset, posn, sizeof(*posn));
 	return ipc_queue_host_message(ipc_get(), posn->rhdr.hdr.cmd, posn,

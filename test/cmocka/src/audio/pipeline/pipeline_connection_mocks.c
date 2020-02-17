@@ -52,18 +52,20 @@ struct pipeline_connect_data *get_standard_connect_objects(void)
 	list_item_append(&sch->list, &schedulers->list);
 
 	struct comp_dev *first = calloc(sizeof(struct comp_dev), 1);
+	struct sof_ipc_comp *first_comp = dev_comp(first);
 
-	first->comp.id = 3;
-	first->comp.pipeline_id = PIPELINE_ID_SAME;
+	first_comp->id = 3;
+	first_comp->pipeline_id = PIPELINE_ID_SAME;
 	list_init(&first->bsink_list);
 	list_init(&first->bsource_list);
 	pipeline_connect_data->first = first;
 	pipe->sched_comp = first;
 
 	struct comp_dev *second = calloc(sizeof(struct comp_dev), 1);
+	struct sof_ipc_comp *second_comp = dev_comp(second);
 
-	second->comp.id = 4;
-	second->comp.pipeline_id = PIPELINE_ID_DIFFERENT;
+	second_comp->id = 4;
+	second_comp->pipeline_id = PIPELINE_ID_DIFFERENT;
 	list_init(&second->bsink_list);
 	list_init(&second->bsource_list);
 	pipeline_connect_data->second = second;

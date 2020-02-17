@@ -272,7 +272,7 @@ static struct comp_dev *asrc_new(struct sof_ipc_comp *comp)
 	if (!dev)
 		return NULL;
 
-	asrc = (struct sof_ipc_comp_asrc *)&dev->comp;
+	asrc = COMP_GET_IPC(dev, sof_ipc_comp_asrc);
 	err = memcpy_s(asrc, sizeof(*asrc), ipc_asrc,
 		       sizeof(struct sof_ipc_comp_asrc));
 	assert(!err);
@@ -438,12 +438,12 @@ static int asrc_dai_find(struct comp_dev *dev,
 	int pid;
 
 	/* Get current pipeline ID and walk to find the DAI */
-	pid = dev->comp.pipeline_id;
+	pid = dev_comp_pipe_id(dev);
 	cd->dai_dev = NULL;
 	if (cd->mode == ASRC_OM_PUSH) {
 		/* In push mode check if sink component is DAI */
 		next_dev = sinkb->sink;
-		while (next_dev->comp.type != SOF_COMP_DAI) {
+		while (dev_comp_type(next_dev) != SOF_COMP_DAI) {
 			sinkb = list_first_item(&next_dev->bsink_list,
 						struct comp_buffer,
 						source_list);
@@ -453,7 +453,7 @@ static int asrc_dai_find(struct comp_dev *dev,
 				return -EINVAL;
 			}
 
-			if (next_dev->comp.pipeline_id != pid) {
+			if (dev_comp_pipe_id(next_dev) != pid) {
 				comp_cl_err(&comp_asrc, "No DAI sink in pipeline.");
 				return -EINVAL;
 			}
@@ -461,7 +461,7 @@ static int asrc_dai_find(struct comp_dev *dev,
 	} else {
 		/* In pull mode check if source component is DAI */
 		next_dev = sourceb->source;
-		while (next_dev->comp.type != SOF_COMP_DAI) {
+		while (dev_comp_type(next_dev) != SOF_COMP_DAI) {
 			sourceb = list_first_item(&next_dev->bsource_list,
 						  struct comp_buffer,
 						  sink_list);
@@ -471,7 +471,7 @@ static int asrc_dai_find(struct comp_dev *dev,
 				return -EINVAL;
 			}
 
-			if (next_dev->comp.pipeline_id != pid) {
+			if (dev_comp_pipe_id(next_dev) != pid) {
 				comp_cl_err(&comp_asrc, "No DAI source in pipeline.");
 				return -EINVAL;
 			}
@@ -531,7 +531,7 @@ static int asrc_dai_get_timestamp(struct comp_data *cd,
 static int asrc_prepare(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	struct sof_ipc_comp_config *config = COMP_GET_CONFIG(dev);
+	struct sof_ipc_comp_config *config = dev_comp_config(dev);
 	struct comp_buffer *sinkb;
 	struct comp_buffer *sourceb;
 	uint32_t source_period_bytes;

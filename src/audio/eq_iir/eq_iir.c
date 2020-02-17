@@ -520,7 +520,7 @@ static struct comp_dev *eq_iir_new(struct sof_ipc_comp *comp)
 	if (!dev)
 		return NULL;
 
-	iir = (struct sof_ipc_comp_process *)&dev->comp;
+	iir = COMP_GET_IPC(dev, sof_ipc_comp_process);
 	ret = memcpy_s(iir, sizeof(*iir), ipc_iir,
 		       sizeof(struct sof_ipc_comp_process));
 	assert(!ret);
@@ -797,7 +797,7 @@ static int eq_iir_copy(struct comp_dev *dev)
 static int eq_iir_prepare(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	struct sof_ipc_comp_config *config = COMP_GET_CONFIG(dev);
+	struct sof_ipc_comp_config *config = dev_comp_config(dev);
 	struct comp_buffer *sourceb;
 	struct comp_buffer *sinkb;
 	uint32_t sink_period_bytes;

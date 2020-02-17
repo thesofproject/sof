@@ -204,7 +204,7 @@ static struct comp_dev *volume_new(struct sof_ipc_comp *comp)
 	if (!dev)
 		return NULL;
 
-	vol = (struct sof_ipc_comp_volume *)&dev->comp;
+	vol = COMP_GET_IPC(dev, sof_ipc_comp_volume);
 	ret = memcpy_s(vol, sizeof(*vol), ipc_vol,
 		       sizeof(struct sof_ipc_comp_volume));
 	assert(!ret);
@@ -678,7 +678,7 @@ static int volume_prepare(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *sinkb;
-	struct sof_ipc_comp_config *config = COMP_GET_CONFIG(dev);
+	struct sof_ipc_comp_config *config = dev_comp_config(dev);
 	uint32_t sink_period_bytes;
 	int i;
 	int ret;

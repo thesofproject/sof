@@ -418,7 +418,7 @@ static struct comp_dev *file_new(struct sof_ipc_comp *comp)
 	if (!dev)
 		return NULL;
 
-	file = (struct sof_ipc_comp_file *)&dev->comp;
+	file = COMP_GET_IPC(dev, sof_ipc_comp_file);
 	assert(!memcpy_s(file, sizeof(*file), ipc_file,
 		       sizeof(struct sof_ipc_comp_file)));
 
@@ -497,7 +497,7 @@ static int file_params(struct comp_dev *dev,
 		       struct sof_ipc_stream_params *params)
 {
 	struct file_comp_data *cd = comp_get_drvdata(dev);
-	struct sof_ipc_comp_config *config = COMP_GET_CONFIG(dev);
+	struct sof_ipc_comp_config *config = dev_comp_config(dev);
 	struct audio_stream *stream;
 
 	/* file component source or sink buffer */
@@ -618,7 +618,7 @@ static int file_copy(struct comp_dev *dev)
 
 static int file_prepare(struct comp_dev *dev)
 {
-	struct sof_ipc_comp_config *config = COMP_GET_CONFIG(dev);
+	struct sof_ipc_comp_config *config = dev_comp_config(dev);
 	struct comp_buffer *buffer = NULL;
 	struct file_comp_data *cd = comp_get_drvdata(dev);
 	int ret = 0, periods;
