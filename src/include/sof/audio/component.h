@@ -347,6 +347,11 @@ struct comp_copy_limits {
 	(struct sof_ipc_comp_config *)((char *)&dev->comp + \
 	sizeof(struct sof_ipc_comp))
 
+/* todo: this one looks as bad as the prev one, common comp data needs work*/
+/** \brief Retrieves config data from component ipc. */
+#define COMP_IPC_GET_CONFIG(comp) \
+	(struct sof_ipc_comp_config *)((comp) + 1)
+
 /** \brief Sets the driver private data. */
 #define comp_set_drvdata(c, data) \
 	(c->private = data)
