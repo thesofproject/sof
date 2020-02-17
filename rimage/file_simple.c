@@ -2,6 +2,7 @@
 //
 // Copyright(c) 2015 Intel Corporation. All rights reserved.
 
+#include <kernel/abi.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -70,6 +71,73 @@ static int get_mem_zone_type(struct image *image, Elf32_Shdr *section)
 		return i;
 	}
 	return SOF_FW_BLK_TYPE_INVALID;
+}
+
+static int fw_version_copy(struct snd_sof_logs_header *header,
+			   const struct module *module)
+{
+	Elf32_Shdr *section = NULL;
+	struct sof_ipc_ext_data_hdr *ext_hdr = NULL;
+	void *buffer = NULL;
+
+	if (module->fw_ready_index <= 0)
+		return 0;
+
+	section = &module->section[module->fw_ready_index];
+
+	buffer = calloc(1, section->size);
+	if (!buffer)
+		return -ENOMEM;
+
+	fseek(module->fd, section->off, SEEK_SET);
+	size_t count = fread(buffer, 1,
+		section->size, module->fd);
+
+	if (count != section->size) {
+		fprintf(stderr, "error: can't read ready section %d\n", -errno);
+		free(buffer);
+		return -errno;
+	}
+
+	memcpy(&header->version,
+	       &((struct sof_ipc_fw_ready *)buffer)->version,
+	       sizeof(header->version));
+
+	/* fw_ready structure contains main (primarily kernel)
+	 * ABI version.
+	 */
+
+	fprintf(stdout, "fw abi main version: %d:%d:%d\n",
+		SOF_ABI_VERSION_MAJOR(header->version.abi_version),
+		SOF_ABI_VERSION_MINOR(header->version.abi_version),
+		SOF_ABI_VERSION_PATCH(header->version.abi_version));
+
+	/* let's find dbg abi version, which the log client
+	 * is interested in and override the kernel's one.
+	 *
+	 * skip the base fw-ready record and begin from the first extension.
+	 */
+	ext_hdr = buffer + ((struct sof_ipc_fw_ready *)buffer)->hdr.size;
+	while ((uintptr_t)ext_hdr < (uintptr_t)buffer + section->size) {
+		if (ext_hdr->type == SOF_IPC_EXT_USER_ABI_INFO) {
+			header->version.abi_version =
+				((struct sof_ipc_user_abi_version *)
+						ext_hdr)->abi_dbg_version;
+			break;
+		}
+		//move to the next entry
+		ext_hdr = (struct sof_ipc_ext_data_hdr *)
+				((uint8_t *)ext_hdr + ext_hdr->hdr.size);
+	}
+
+	fprintf(stdout, "fw abi dbg version: %d:%d:%d\n",
+		SOF_ABI_VERSION_MAJOR(header->version.abi_version),
+		SOF_ABI_VERSION_MINOR(header->version.abi_version),
+		SOF_ABI_VERSION_PATCH(header->version.abi_version));
+
+	free(buffer);
+
+	return 0;
 }
 
 static int block_idx;
@@ -389,33 +457,9 @@ int write_logs_dictionary(struct image *image)
 		/* extract fw_version from fw_ready message located
 		 * in .fw_ready section
 		 */
-		if (module->fw_ready_index > 0) {
-			Elf32_Shdr *section =
-				&module->section[module->fw_ready_index];
-
-			buffer = calloc(1, sizeof(struct sof_ipc_fw_ready));
-			if (!buffer)
-				return -ENOMEM;
-
-			fseek(module->fd, section->off, SEEK_SET);
-			size_t count = fread(buffer, 1,
-				sizeof(struct sof_ipc_fw_ready), module->fd);
-
-			if (count != sizeof(struct sof_ipc_fw_ready)) {
-				fprintf(stderr,
-					"error: can't read ready section %d\n",
-					-errno);
-				ret = -errno;
-				goto out;
-			}
-
-			memcpy(&header.version,
-			       &((struct sof_ipc_fw_ready *)buffer)->version,
-			       sizeof(header.version));
-
-			free(buffer);
-			buffer = NULL;
-		}
+		ret = fw_version_copy(&header, module);
+		if (ret < 0)
+			goto out;
 
 		if (module->logs_index > 0) {
 			Elf32_Shdr *section =
