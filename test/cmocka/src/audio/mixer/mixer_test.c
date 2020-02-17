@@ -101,7 +101,8 @@ static struct comp_dev *create_comp(struct sof_ipc_comp *comp,
 
 	assert_non_null(cd);
 
-	memcpy(&cd->comp, comp, sizeof(*comp));
+	memcpy_s(COMP_GET_IPC(cd, sof_ipc_comp), sizeof(struct sof_ipc_comp),
+		 comp, sizeof(*comp));
 	cd->drv = drv;
 	list_init(&cd->bsource_list);
 	list_init(&cd->bsink_list);

@@ -382,7 +382,7 @@ static struct comp_dev *tone_new(struct sof_ipc_comp *comp)
 	if (!dev)
 		return NULL;
 
-	tone = (struct sof_ipc_comp_tone *)&dev->comp;
+	tone = COMP_GET_IPC(dev, sof_ipc_comp_tone);
 	ret = memcpy_s(tone, sizeof(*tone), ipc_tone,
 		       sizeof(struct sof_ipc_comp_tone));
 	assert(!ret);
@@ -421,7 +421,7 @@ static int tone_params(struct comp_dev *dev,
 		       struct sof_ipc_stream_params *params)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	struct sof_ipc_comp_config *config = COMP_GET_CONFIG(dev);
+	struct sof_ipc_comp_config *config = dev_comp_config(dev);
 	struct comp_buffer *sourceb;
 	struct comp_buffer *sinkb;
 

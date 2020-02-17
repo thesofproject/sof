@@ -95,7 +95,7 @@ struct ipc_comp_dev *ipc_get_comp_by_ppl_id(struct ipc *ipc, uint16_t type,
 
 		switch (icd->type) {
 		case COMP_TYPE_COMPONENT:
-			if (icd->cd->comp.pipeline_id == ppl_id)
+			if (dev_comp_pipe_id(icd->cd) == ppl_id)
 				return icd;
 			break;
 		case COMP_TYPE_BUFFER:
@@ -135,7 +135,7 @@ static struct ipc_comp_dev *ipc_get_ppl_comp(struct ipc *ipc,
 			continue;
 		}
 
-		if (icd->cd->comp.pipeline_id == pipeline_id &&
+		if (dev_comp_pipe_id(icd->cd) == pipeline_id &&
 		    list_is_empty(comp_buffer_list(icd->cd, dir)))
 			return icd;
 
@@ -155,13 +155,13 @@ static struct ipc_comp_dev *ipc_get_ppl_comp(struct ipc *ipc,
 			continue;
 		}
 
-		if (icd->cd->comp.pipeline_id == pipeline_id) {
+		if (dev_comp_pipe_id(icd->cd) == pipeline_id) {
 			buffer = buffer_from_list
 					(comp_buffer_list(icd->cd, dir)->next,
 					 struct comp_buffer, dir);
 			buff_comp = buffer_get_comp(buffer, dir);
 			if (buff_comp &&
-			    buff_comp->comp.pipeline_id != pipeline_id)
+			    dev_comp_pipe_id(buff_comp) != pipeline_id)
 				return icd;
 		}
 
@@ -572,9 +572,9 @@ int ipc_comp_dai_config(struct ipc *ipc, struct sof_ipc_dai_config *config)
 			continue;
 		}
 
-		if (icd->cd->comp.type == SOF_COMP_DAI ||
-		    icd->cd->comp.type == SOF_COMP_SG_DAI) {
-			dai = (struct sof_ipc_comp_dai *)&icd->cd->comp;
+		if (dev_comp_type(icd->cd) == SOF_COMP_DAI ||
+		    dev_comp_type(icd->cd) == SOF_COMP_SG_DAI) {
+			dai = COMP_GET_IPC(icd->cd, sof_ipc_comp_dai);
 			platform_shared_commit(icd, sizeof(*icd));
 			/*
 			 * set config if comp dai_index matches

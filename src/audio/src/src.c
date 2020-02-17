@@ -467,7 +467,7 @@ static struct comp_dev *src_new(struct sof_ipc_comp *comp)
 	if (!dev)
 		return NULL;
 
-	src = (struct sof_ipc_comp_src *)&dev->comp;
+	src = COMP_GET_IPC(dev, sof_ipc_comp_src);
 
 	ret = memcpy_s(src, sizeof(*src), ipc_src,
 		       sizeof(struct sof_ipc_comp_src));
@@ -785,7 +785,7 @@ static int src_copy(struct comp_dev *dev)
 static int src_prepare(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	struct sof_ipc_comp_config *config = COMP_GET_CONFIG(dev);
+	struct sof_ipc_comp_config *config = dev_comp_config(dev);
 	struct comp_buffer *sinkb;
 	struct comp_buffer *sourceb;
 	uint32_t source_period_bytes;

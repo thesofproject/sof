@@ -72,7 +72,7 @@ int pipeline_connect(struct comp_dev *comp, struct comp_buffer *buffer,
 	uint32_t flags;
 
 	pipe_cl_info("pipeline: connect comp %d and buffer %d",
-		     comp->comp.id, buffer->id);
+		     dev_comp_id(comp), buffer->id);
 
 	irq_local_disable(flags);
 	list_item_prepend(buffer_comp_list(buffer, dir),
@@ -134,7 +134,7 @@ static int pipeline_comp_complete(struct comp_dev *current,
 	struct pipeline_data *ppl_data = data;
 
 	pipe_dbg(ppl_data->p, "pipeline_comp_complete(), current->comp.id = %u, dir = %u",
-		 current->comp.id, dir);
+		 dev_comp_id(current), dir);
 
 	if (!comp_is_single_pipeline(current, ppl_data->start)) {
 		pipe_dbg(ppl_data->p, "pipeline_comp_complete(), current is from another pipeline");
@@ -189,7 +189,7 @@ static int pipeline_comp_free(struct comp_dev *current,
 	uint32_t flags;
 
 	pipe_cl_dbg("pipeline_comp_free(), current->comp.id = %u, dir = %u",
-		    current->comp.id, dir);
+		    dev_comp_id(current), dir);
 
 	if (!comp_is_single_pipeline(current, ppl_data->start)) {
 		pipe_cl_dbg("pipeline_comp_free(), current is from another pipeline");
@@ -221,7 +221,7 @@ int pipeline_free(struct pipeline *p)
 	if (p->source_comp) {
 		if (p->source_comp->state > COMP_STATE_READY) {
 			pipe_err(p, "pipeline_free() error: Pipeline in use, %u, %u",
-				 p->source_comp->comp.id,
+				 dev_comp_id(p->source_comp),
 				 p->source_comp->state);
 			return -EBUSY;
 		}
@@ -274,13 +274,13 @@ static int pipeline_comp_hw_params(struct comp_dev *current,
 	int ret = 0;
 
 	pipe_cl_dbg("pipeline_comp_hw_params(), current->comp.id = %u, dir = %u",
-		    current->comp.id, dir);
+		    dev_comp_id(current), dir);
 
 	pipeline_for_each_comp(current, &pipeline_comp_hw_params, data, NULL,
 			       NULL, dir);
 
 	/* Fetch hardware stream parameters from DAI component */
-	if (current->comp.type == SOF_COMP_DAI) {
+	if (dev_comp_type(current) == SOF_COMP_DAI) {
 		ret = comp_dai_get_hw_params(current,
 					     &ppl_data->params->params);
 		if (ret < 0) {
@@ -307,7 +307,7 @@ static int pipeline_comp_params(struct comp_dev *current,
 	int err = 0;
 
 	pipe_cl_dbg("pipeline_comp_params(), current->comp.id = %u, dir = %u",
-		    current->comp.id, dir);
+		    dev_comp_id(current), dir);
 
 	if (!comp_is_single_pipeline(current, ppl_data->start)) {
 		/* If pipeline connected to the starting one is in improper
@@ -376,8 +376,8 @@ int pipeline_params(struct pipeline *p, struct comp_dev *host,
 
 	ret = pipeline_comp_hw_params(data.start, NULL, &data, dir);
 	if (ret < 0) {
-		pipe_cl_err("pipeline_prepare() error: ret = %d, dev->comp.id = %u"
-			    , ret, host->comp.id);
+		pipe_cl_err("pipeline_prepare() error: ret = %d, dev->comp.id = %u",
+			    ret, dev_comp_id(host));
 		return ret;
 	}
 
@@ -388,7 +388,7 @@ int pipeline_params(struct pipeline *p, struct comp_dev *host,
 	ret = pipeline_comp_params(host, NULL, &data, params->params.direction);
 	if (ret < 0) {
 		pipe_cl_err("pipeline_params() error: ret = %d, host->comp.id = %u",
-			    ret, host->comp.id);
+			    ret, dev_comp_id(host));
 	}
 
 	return ret;
@@ -448,7 +448,7 @@ static int pipeline_comp_prepare(struct comp_dev *current,
 	int end_type;
 
 	pipe_cl_dbg("pipeline_comp_prepare(), current->comp.id = %u, dir = %u",
-		    current->comp.id, dir);
+		    dev_comp_id(current), dir);
 
 	if (!comp_is_single_pipeline(current, ppl_data->start)) {
 		/* If pipeline connected to the starting one is in improper
@@ -496,7 +496,7 @@ int pipeline_prepare(struct pipeline *p, struct comp_dev *dev)
 	ret = pipeline_comp_prepare(dev, NULL, &ppl_data, dev->direction);
 	if (ret < 0) {
 		pipe_cl_err("pipeline_prepare() error: ret = %d, dev->comp.id = %u",
-			    ret, dev->comp.id);
+			    ret, dev_comp_id(dev));
 		return ret;
 	}
 
@@ -547,7 +547,7 @@ static int pipeline_comp_trigger(struct comp_dev *current,
 	int err;
 
 	pipe_cl_dbg("pipeline_comp_trigger(), current->comp.id = %u, dir = %u",
-		    current->comp.id, dir);
+		    dev_comp_id(current), dir);
 
 	/* trigger should propagate to the connected pipelines,
 	 * which need to be scheduled together
@@ -636,7 +636,7 @@ int pipeline_trigger(struct pipeline *p, struct comp_dev *host, int cmd)
 	ret = pipeline_comp_trigger(host, NULL, &data, host->direction);
 	if (ret < 0) {
 		pipe_cl_err("pipeline_trigger() error: ret = %d, host->comp.id = %u, cmd = %d",
-			    ret, host->comp.id, cmd);
+			    ret, dev_comp_id(host), cmd);
 	}
 
 	return ret;
@@ -652,7 +652,7 @@ static int pipeline_comp_reset(struct comp_dev *current,
 	int err = 0;
 
 	pipe_cl_dbg("pipeline_comp_reset(), current->comp.id = %u, dir = %u",
-		    current->comp.id, dir);
+		    dev_comp_id(current), dir);
 
 	if (!comp_is_single_pipeline(current, p->source_comp)) {
 		/* If pipeline connected to the starting one is in improper
@@ -693,7 +693,7 @@ int pipeline_reset(struct pipeline *p, struct comp_dev *host)
 	ret = pipeline_comp_reset(host, NULL, p, host->direction);
 	if (ret < 0) {
 		pipe_cl_err("pipeline_reset() error: ret = %d, host->comp.id = %u",
-			    ret, host->comp.id);
+			    ret, dev_comp_id(host));
 	}
 
 	return ret;
@@ -708,7 +708,7 @@ static int pipeline_comp_copy(struct comp_dev *current,
 	int err;
 
 	pipe_cl_dbg("pipeline_comp_copy(), current->comp.id = %u, dir = %u",
-		    current->comp.id, dir);
+		    dev_comp_id(current), dir);
 
 	if (!is_single_ppl) {
 		pipe_cl_dbg("pipeline_comp_copy(), current is from another pipeline and can't be scheduled together");
@@ -764,7 +764,7 @@ static int pipeline_copy(struct pipeline *p)
 	ret = pipeline_comp_copy(start, NULL, &data, dir);
 	if (ret < 0)
 		pipe_cl_err("pipeline_copy() error: ret = %d, start->comp.id = %u, dir = %u",
-			    ret, start->comp.id, dir);
+			    ret, dev_comp_id(start), dir);
 
 	return ret;
 }
@@ -785,8 +785,8 @@ static int pipeline_comp_timestamp(struct comp_dev *current,
 
 	/* is component a DAI endpoint? */
 	if (current != ppl_data->start &&
-	    (current->comp.type == SOF_COMP_DAI ||
-	    current->comp.type == SOF_COMP_SG_DAI)) {
+	    (dev_comp_type(current) == SOF_COMP_DAI ||
+	    dev_comp_type(current) == SOF_COMP_SG_DAI)) {
 		platform_dai_timestamp(current, ppl_data->posn);
 		return -1;
 	}
@@ -818,7 +818,7 @@ static int pipeline_comp_xrun(struct comp_dev *current,
 {
 	struct pipeline_data *ppl_data = data;
 
-	if (current->comp.type == SOF_COMP_HOST) {
+	if (dev_comp_type(current) == SOF_COMP_HOST) {
 		/* get host timestamps */
 		platform_host_timestamp(current, ppl_data->posn);
 
@@ -855,7 +855,7 @@ void pipeline_xrun(struct pipeline *p, struct comp_dev *dev,
 	memset(&posn, 0, sizeof(posn));
 	p->xrun_bytes = bytes;
 	posn.xrun_size = bytes;
-	posn.xrun_comp_id = dev->comp.id;
+	posn.xrun_comp_id = dev_comp_id(dev);
 	data.posn = &posn;
 
 	pipeline_comp_xrun(dev, NULL, &data, dev->direction);

@@ -93,7 +93,9 @@ static struct comp_dev *mux_new(struct sof_ipc_comp *comp)
 	if (!dev)
 		return NULL;
 
-	memcpy(&dev->comp, comp, sizeof(struct sof_ipc_comp_process));
+	memcpy_s(COMP_GET_IPC(dev, sof_ipc_comp_process),
+		 sizeof(struct sof_ipc_comp_process),
+		 comp, sizeof(struct sof_ipc_comp_process));
 
 	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
 		     sizeof(*cd) + MUX_MAX_STREAMS * sizeof(struct mux_stream_data));
