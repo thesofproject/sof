@@ -173,11 +173,8 @@ static int selector_params(struct comp_dev *dev,
 	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
 				source_list);
 
-	/* rewrite channels number for other components */
-	if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
-		sinkb->stream.channels = cd->config.out_channels_count;
-	else
-		sourceb->stream.channels = cd->config.in_channels_count;
+	sourceb->stream.channels = params->channels;
+	sinkb->stream.channels = cd->config.out_channels_count;
 
 	return PPL_STATUS_PATH_STOP;
 }

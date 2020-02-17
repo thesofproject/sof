@@ -729,8 +729,18 @@ static int test_keyword_prepare(struct comp_dev *dev)
 	struct comp_data *cd = comp_get_drvdata(dev);
 	uint16_t valid_bits = cd->sample_valid_bytes * 8;
 	uint16_t sample_width = cd->config.sample_width;
+	struct comp_buffer *sourceb;
 
 	comp_info(dev, "test_keyword_prepare()");
+
+	/* keyword components will only ever have 1 source */
+	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer,
+				  sink_list);
+
+	if (sourceb->stream.channels != 1) {
+		comp_err(dev, "test_keyword_prepare() error: only single-channel supported");
+		return -EINVAL;
+	}
 
 	if (valid_bits != sample_width) {
 		/* Default threshold value has to be changed
