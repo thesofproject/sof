@@ -37,7 +37,8 @@ set_property(TARGET data_structs APPEND
 
 add_local_sources(data_structs
 	cc_version.c
-	probe_support.c)
+	probe_support.c
+	user_abi_version.c)
 
 target_link_libraries(data_structs sof_options)
 target_link_libraries(sof_static_libraries INTERFACE data_structs)

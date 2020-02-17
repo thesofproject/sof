@@ -11,7 +11,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <math.h>
-#include <kernel/abi.h>
+#include <user/abi_dbg.h>
 #include <user/trace.h>
 #include "convert.h"
 
@@ -445,15 +445,16 @@ int convert(const struct convert_config *config) {
 			return -EINVAL;
 		}
 
-		/* logger and version_file abi verification */
-		if SOF_ABI_VERSION_INCOMPATIBLE(SOF_ABI_VERSION, ver.abi_version) {
+		/* logger and version_file abi dbg verification */
+		if (SOF_ABI_VERSION_INCOMPATIBLE(SOF_ABI_DBG_VERSION,
+						 ver.abi_version)) {
 			fprintf(stderr, "Error: abi version in %s file "
 				"does not coincide with abi version used "
 				"by logger.\n", config->version_file);
 			fprintf(stderr, "logger ABI Version is %d:%d:%d\n",
-				SOF_ABI_VERSION_MAJOR(SOF_ABI_VERSION),
-				SOF_ABI_VERSION_MINOR(SOF_ABI_VERSION),
-				SOF_ABI_VERSION_PATCH(SOF_ABI_VERSION));
+				SOF_ABI_VERSION_MAJOR(SOF_ABI_DBG_VERSION),
+				SOF_ABI_VERSION_MINOR(SOF_ABI_DBG_VERSION),
+				SOF_ABI_VERSION_PATCH(SOF_ABI_DBG_VERSION));
 			fprintf(stderr, "version_file ABI Version is %d:%d:%d\n",
 				SOF_ABI_VERSION_MAJOR(ver.abi_version),
 				SOF_ABI_VERSION_MINOR(ver.abi_version),
@@ -463,14 +464,15 @@ int convert(const struct convert_config *config) {
 	}
 
 	/* default logger and ldc_file abi verification */
-	if SOF_ABI_VERSION_INCOMPATIBLE(SOF_ABI_VERSION, snd.version.abi_version) {
+	if (SOF_ABI_VERSION_INCOMPATIBLE(SOF_ABI_DBG_VERSION,
+					 snd.version.abi_version)) {
 		fprintf(stderr, "Error: abi version in %s file "
 			"does not coincide with abi version used "
 			"by logger.\n", config->ldc_file);
 			fprintf(stderr, "logger ABI Version is %d:%d:%d\n",
-				SOF_ABI_VERSION_MAJOR(SOF_ABI_VERSION),
-				SOF_ABI_VERSION_MINOR(SOF_ABI_VERSION),
-				SOF_ABI_VERSION_PATCH(SOF_ABI_VERSION));
+				SOF_ABI_VERSION_MAJOR(SOF_ABI_DBG_VERSION),
+				SOF_ABI_VERSION_MINOR(SOF_ABI_DBG_VERSION),
+				SOF_ABI_VERSION_PATCH(SOF_ABI_DBG_VERSION));
 			fprintf(stderr, "ldc_file ABI Version is %d:%d:%d\n",
 				SOF_ABI_VERSION_MAJOR(snd.version.abi_version),
 				SOF_ABI_VERSION_MINOR(snd.version.abi_version),
