@@ -338,10 +338,6 @@ struct comp_copy_limits {
 #define COMP_GET_IPC(dev, type) \
 	(struct type *)(&dev->comp)
 
-/** \brief Retrieves component device runtime configuration. */
-#define COMP_GET_PARAMS(dev) \
-	(struct type *)(&dev->params)
-
 /** \brief Retrieves component device config data. */
 #define COMP_GET_CONFIG(dev) \
 	(struct sof_ipc_comp_config *)((char *)&dev->comp + \
