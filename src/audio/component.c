@@ -52,7 +52,6 @@ struct comp_dev *comp_new(struct sof_ipc_comp *comp)
 {
 	struct comp_dev *cdev;
 	const struct comp_driver *drv;
-	int ret;
 
 	/* find the driver for our new component */
 	drv = get_drv(comp->type);
@@ -68,11 +67,6 @@ struct comp_dev *comp_new(struct sof_ipc_comp *comp)
 		comp_cl_err(drv, "comp_new() error: unable to create the new component");
 		return NULL;
 	}
-
-	/* init component */
-	ret = memcpy_s(&cdev->comp, sizeof(cdev->comp),
-		       comp, sizeof(*comp));
-	assert(!ret);
 
 	cdev->drv = drv;
 	list_init(&cdev->bsource_list);
