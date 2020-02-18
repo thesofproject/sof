@@ -456,11 +456,6 @@ static struct comp_dev *src_new(struct sof_ipc_comp *comp)
 
 	comp_cl_info(&comp_src, "src_new()");
 
-	if (IPC_IS_SIZE_INVALID(ipc_src->config)) {
-		IPC_SIZE_ERROR_TRACE(TRACE_CLASS_COMP, ipc_src->config);
-		return NULL;
-	}
-
 	/* validate init data - either SRC sink or source rate must be set */
 	if (ipc_src->source_rate == 0 && ipc_src->sink_rate == 0) {
 		comp_cl_err(&comp_src, "src_new() error: SRC sink and source rate are not set");

@@ -401,11 +401,6 @@ static struct comp_dev *eq_fir_new(struct sof_ipc_comp *comp)
 
 	comp_cl_info(&comp_eq_fir, "eq_fir_new()");
 
-	if (IPC_IS_SIZE_INVALID(ipc_fir->config)) {
-		IPC_SIZE_ERROR_TRACE(TRACE_CLASS_COMP, ipc_fir->config);
-		return NULL;
-	}
-
 	/* Check first before proceeding with dev and cd that coefficients
 	 * blob size is sane.
 	 */

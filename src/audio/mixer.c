@@ -117,11 +117,6 @@ static struct comp_dev *mixer_new(struct sof_ipc_comp *comp)
 
 	comp_cl_info(&comp_mixer, "mixer_new()");
 
-	if (IPC_IS_SIZE_INVALID(ipc_mixer->config)) {
-		IPC_SIZE_ERROR_TRACE(TRACE_CLASS_COMP, ipc_mixer->config);
-		return NULL;
-	}
-
 	dev = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
 		      COMP_SIZE(struct sof_ipc_comp_mixer));
 	if (!dev)

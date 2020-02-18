@@ -8,6 +8,7 @@
 #include <sof/common.h>
 #include <sof/debug/panic.h>
 #include <sof/drivers/interrupt.h>
+#include <sof/drivers/ipc.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/memory.h>
 #include <sof/list.h>
@@ -58,6 +59,13 @@ struct comp_dev *comp_new(struct sof_ipc_comp *comp)
 	if (!drv) {
 		trace_error(TRACE_CLASS_COMP, "comp_new() error: driver not found, comp->type = %u",
 			    comp->type);
+		return NULL;
+	}
+
+	/* validate size of ipc config */
+	if (IPC_IS_SIZE_INVALID(*COMP_IPC_GET_CONFIG(comp))) {
+		IPC_SIZE_ERROR_TRACE(TRACE_CLASS_COMP,
+				     *COMP_IPC_GET_CONFIG(comp));
 		return NULL;
 	}
 

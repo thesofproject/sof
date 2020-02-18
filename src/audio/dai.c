@@ -129,11 +129,6 @@ static struct comp_dev *dai_new(struct sof_ipc_comp *comp)
 
 	comp_cl_info(&comp_dai, "dai_new()");
 
-	if (IPC_IS_SIZE_INVALID(ipc_dai->config)) {
-		IPC_SIZE_ERROR_TRACE(TRACE_CLASS_DAI, ipc_dai->config);
-		return NULL;
-	}
-
 	dev = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
 		      COMP_SIZE(struct sof_ipc_comp_dai));
 	if (!dev)

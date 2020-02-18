@@ -257,11 +257,6 @@ static struct comp_dev *asrc_new(struct sof_ipc_comp *comp)
 
 	comp_cl_info(&comp_asrc, "asrc_new()");
 
-	if (IPC_IS_SIZE_INVALID(ipc_asrc->config)) {
-		IPC_SIZE_ERROR_TRACE(TRACE_CLASS_COMP, ipc_asrc->config);
-		return NULL;
-	}
-
 	comp_cl_info(&comp_asrc, "asrc_new(), source_rate=%d, sink_rate=%d, asynchronous_mode=%d, operation_mode=%d",
 		     ipc_asrc->source_rate, ipc_asrc->sink_rate,
 		     ipc_asrc->asynchronous_mode, ipc_asrc->operation_mode);

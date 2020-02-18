@@ -377,11 +377,6 @@ static struct comp_dev *tone_new(struct sof_ipc_comp *comp)
 
 	comp_cl_info(&comp_tone, "tone_new()");
 
-	if (IPC_IS_SIZE_INVALID(ipc_tone->config)) {
-		IPC_SIZE_ERROR_TRACE(TRACE_CLASS_COMP, ipc_tone->config);
-		return NULL;
-	}
-
 	dev = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
 		      COMP_SIZE(struct sof_ipc_comp_tone));
 	if (!dev)
