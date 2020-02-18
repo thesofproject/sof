@@ -199,11 +199,6 @@ static struct comp_dev *volume_new(struct sof_ipc_comp *comp)
 
 	comp_cl_info(&comp_volume, "volume_new()");
 
-	if (IPC_IS_SIZE_INVALID(ipc_vol->config)) {
-		IPC_SIZE_ERROR_TRACE(TRACE_CLASS_COMP, ipc_vol->config);
-		return NULL;
-	}
-
 	dev = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
 		      COMP_SIZE(struct sof_ipc_comp_volume));
 	if (!dev)

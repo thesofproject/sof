@@ -298,11 +298,6 @@ static struct comp_dev *test_keyword_new(struct sof_ipc_comp *comp)
 
 	comp_cl_info(&comp_keyword, "test_keyword_new()");
 
-	if (IPC_IS_SIZE_INVALID(ipc_keyword->config)) {
-		IPC_SIZE_ERROR_TRACE(TRACE_CLASS_KEYWORD, ipc_keyword->config);
-		return NULL;
-	}
-
 	dev = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
 		      COMP_SIZE(struct sof_ipc_comp_process));
 	if (!dev)
