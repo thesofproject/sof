@@ -411,6 +411,49 @@ static int logger_read(const struct convert_config *config,
 	return ret;
 }
 
+/* fw verification */
+static int verify_fw_ver(const struct convert_config *config,
+			 const struct snd_sof_logs_header *snd)
+{
+	struct sof_ipc_fw_version ver;
+	int count, ret = 0;
+
+	if (!config->version_fd)
+		return 0;
+
+	/* here fw verification should be exploited */
+	count = fread(&ver, sizeof(ver), 1, config->version_fd);
+	if (!count) {
+		fprintf(stderr, "Error while reading %s.\n",
+			config->version_file);
+		return -ferror(config->version_fd);
+	}
+
+	ret = memcmp(&ver, &snd->version, sizeof(struct sof_ipc_fw_version));
+	if (ret) {
+		fprintf(stderr, "Error: fw version in %s file does not coincide with fw version in %s file.\n",
+			config->ldc_file, config->version_file);
+		return -EINVAL;
+	}
+
+	/* logger and version_file abi dbg verification */
+	if (SOF_ABI_VERSION_INCOMPATIBLE(SOF_ABI_DBG_VERSION,
+					 ver.abi_version)) {
+		fprintf(stderr, "Error: abi version in %s file does not coincide with abi version used by logger.\n",
+			config->version_file);
+		fprintf(stderr, "logger ABI Version is %d:%d:%d\n",
+			SOF_ABI_VERSION_MAJOR(SOF_ABI_DBG_VERSION),
+			SOF_ABI_VERSION_MINOR(SOF_ABI_DBG_VERSION),
+			SOF_ABI_VERSION_PATCH(SOF_ABI_DBG_VERSION));
+		fprintf(stderr, "version_file ABI Version is %d:%d:%d\n",
+			SOF_ABI_VERSION_MAJOR(ver.abi_version),
+			SOF_ABI_VERSION_MINOR(ver.abi_version),
+			SOF_ABI_VERSION_PATCH(ver.abi_version));
+		return -EINVAL;
+	}
+	return 0;
+}
+
 int convert(const struct convert_config *config) {
 	struct snd_sof_logs_header snd;
 	int count, ret = 0;
@@ -426,42 +469,9 @@ int convert(const struct convert_config *config) {
 		return -EINVAL;
 	}
 
-	/* fw verification */
-	if (config->version_fd) {
-		struct sof_ipc_fw_version ver;
-
-		/* here fw verification should be exploited */
-		count = fread(&ver, sizeof(ver), 1, config->version_fd);
-		if (!count) {
-			fprintf(stderr, "Error while reading %s. \n", config->version_file);
-			return -ferror(config->version_fd);
-		}
-
-		ret = memcmp(&ver, &snd.version, sizeof(struct sof_ipc_fw_version));
-		if (ret) {
-			fprintf(stderr, "Error: fw version in %s file "
-				"does not coincide with fw version in "
-				"%s file. \n", config->ldc_file, config->version_file);
-			return -EINVAL;
-		}
-
-		/* logger and version_file abi dbg verification */
-		if (SOF_ABI_VERSION_INCOMPATIBLE(SOF_ABI_DBG_VERSION,
-						 ver.abi_version)) {
-			fprintf(stderr, "Error: abi version in %s file "
-				"does not coincide with abi version used "
-				"by logger.\n", config->version_file);
-			fprintf(stderr, "logger ABI Version is %d:%d:%d\n",
-				SOF_ABI_VERSION_MAJOR(SOF_ABI_DBG_VERSION),
-				SOF_ABI_VERSION_MINOR(SOF_ABI_DBG_VERSION),
-				SOF_ABI_VERSION_PATCH(SOF_ABI_DBG_VERSION));
-			fprintf(stderr, "version_file ABI Version is %d:%d:%d\n",
-				SOF_ABI_VERSION_MAJOR(ver.abi_version),
-				SOF_ABI_VERSION_MINOR(ver.abi_version),
-				SOF_ABI_VERSION_PATCH(ver.abi_version));
-			return -EINVAL;
-		}
-	}
+	ret = verify_fw_ver(config, &snd);
+	if (ret)
+		return ret;
 
 	/* default logger and ldc_file abi verification */
 	if (SOF_ABI_VERSION_INCOMPATIBLE(SOF_ABI_DBG_VERSION,
