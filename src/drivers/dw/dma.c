@@ -404,7 +404,7 @@ static int dw_dma_stop(struct dma_chan_data *channel)
 
 	/* now we wait for FIFO to be empty */
 	ret = poll_for_register_delay(dma_base(dma) +
-					DW_CFG_LOW(channel->index),
+				      DW_CFG_LOW(channel->index),
 				      DW_CFGL_FIFO_EMPTY,
 				      DW_CFGL_FIFO_EMPTY,
 				      DW_DMA_TIMEOUT);
