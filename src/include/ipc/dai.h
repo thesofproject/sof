@@ -61,7 +61,14 @@ enum sof_ipc_dai_type {
 	SOF_DAI_INTEL_ALH,		/**< Intel ALH */
 	SOF_DAI_IMX_SAI,                /**< i.MX SAI */
 	SOF_DAI_IMX_ESAI,               /**< i.MX ESAI */
+	SOF_DAI_MULTIDAI = 0xFFFF       /**< config with multiple elements of the same dai type */
 };
+
+struct sof_ipc_dai_multi_params {
+	struct sof_ipc_hdr hdr;
+	uint32_t type;
+	uint32_t dai_index[4]; /* Up to 4 subdais */
+} __attribute__((packed));
 
 /* general purpose DAI configuration */
 struct sof_ipc_dai_config {
@@ -84,6 +91,7 @@ struct sof_ipc_dai_config {
 		struct sof_ipc_dai_alh_params alh;
 		struct sof_ipc_dai_esai_params esai;
 		struct sof_ipc_dai_sai_params sai;
+		struct sof_ipc_dai_multi_params multi;
 	};
 } __attribute__((packed));
 
