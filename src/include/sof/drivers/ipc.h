@@ -52,12 +52,12 @@ struct ipc_msg;
 
 /* validates internal non tail structures within IPC command structure */
 #define IPC_IS_SIZE_INVALID(object)					\
-	object.hdr.size == sizeof(object) ? 0 : 1
+	(object).hdr.size == sizeof(object) ? 0 : 1
 
 /* convenience error trace for mismatched internal structures */
 #define IPC_SIZE_ERROR_TRACE(class, object)				\
 	trace_error(class, "ipc: size %d expected %d",			\
-		    object.hdr.size, sizeof(object))
+		    (object).hdr.size, sizeof(object))
 
 /* IPC generic component device */
 struct ipc_comp_dev {
