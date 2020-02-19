@@ -11,6 +11,7 @@
 #include <sof/drivers/ipc.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/memory.h>
+#include <sof/lib/uuid.h>
 #include <sof/math/numbers.h>
 #include <sof/trace/trace.h>
 #include <sof/common.h>
@@ -44,6 +45,10 @@ typedef void (*asrc_proc_func)(struct comp_dev *dev,
 			       int *produced);
 
 static const struct comp_driver comp_asrc;
+
+/* c8ec72f6-8526-4faf-9d39-a23d0b541de2 */
+DECLARE_SOF_UUID("asrc", asrc_uuid, 0xc8ec72f6, 0x8526, 0x4faf,
+		 0x9d, 0x39, 0xa2, 0x3d, 0x0b, 0x54, 0x1d, 0xe2);
 
 /* asrc component private data */
 struct comp_data {
@@ -892,6 +897,7 @@ static int asrc_reset(struct comp_dev *dev)
 
 static const struct comp_driver comp_asrc = {
 	.type = SOF_COMP_ASRC,
+	.uid = SOF_UUID(asrc_uuid),
 	.ops = {
 		.new = asrc_new,
 		.free = asrc_free,

@@ -21,6 +21,7 @@
 #include <sof/lib/dma.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/notifier.h>
+#include <sof/lib/uuid.h>
 #include <sof/list.h>
 #include <sof/string.h>
 #include <sof/trace/trace.h>
@@ -33,6 +34,10 @@
 #include <stdint.h>
 
 static const struct comp_driver comp_dai;
+
+/* c2b00d27-ffbc-4150-a51a-245c79c5e54b */
+DECLARE_SOF_UUID("dai", dai_comp_uuid, 0xc2b00d27, 0xffbc, 0x4150,
+		 0xa5, 0x1a, 0x24, 0x5c, 0x79, 0xc5, 0xe5, 0x4b);
 
 struct dai_data {
 	/* local DMA config */
@@ -878,6 +883,7 @@ static int dai_ts_get(struct comp_dev *dev, struct timestamp_data *tsd)
 
 static const struct comp_driver comp_dai = {
 	.type	= SOF_COMP_DAI,
+	.uid	= SOF_UUID(dai_comp_uuid),
 	.ops	= {
 		.new			= dai_new,
 		.free			= dai_free,

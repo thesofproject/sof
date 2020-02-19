@@ -17,6 +17,7 @@
 #include <sof/lib/dma.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/pm_runtime.h>
+#include <sof/lib/uuid.h>
 #include <sof/lib/wait.h>
 #include <sof/platform.h>
 #include <sof/spinlock.h>
@@ -29,6 +30,10 @@
 #include <errno.h>
 #include <stdbool.h>
 #include <stdint.h>
+
+/* 31458125-95c4-4085-8f3f-497434cb2daf */
+DECLARE_SOF_UUID("ssp-dai", ssp_uuid, 0x31458125, 0x95c4, 0x4085,
+		 0x8f, 0x3f, 0x49, 0x74, 0x34, 0xcb, 0x2d, 0xaf);
 
 /* empty SSP transmit FIFO */
 static void ssp_empty_tx_fifo(struct dai *dai)
@@ -980,6 +985,7 @@ out:
 
 const struct dai_driver ssp_driver = {
 	.type = SOF_DAI_INTEL_SSP,
+	.uid = SOF_UUID(ssp_uuid),
 	.dma_caps = DMA_CAP_GP_LP | DMA_CAP_GP_HP,
 	.dma_dev = DMA_DEV_SSP,
 	.ops = {

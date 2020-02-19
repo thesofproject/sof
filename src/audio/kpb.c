@@ -27,6 +27,7 @@
 #include <sof/lib/memory.h>
 #include <sof/lib/notifier.h>
 #include <sof/lib/pm_runtime.h>
+#include <sof/lib/uuid.h>
 #include <sof/list.h>
 #include <sof/math/numbers.h>
 #include <sof/platform.h>
@@ -44,6 +45,10 @@
 #include <stdint.h>
 
 static const struct comp_driver comp_kpb;
+
+/* d8218443-5ff3-4a4c-b388-6cfe07b9562e */
+DECLARE_SOF_UUID("kpb", kpb_uuid, 0xd8218443, 0x5ff3, 0x4a4c,
+		 0xb3, 0x88, 0x6c, 0xfe, 0x07, 0xb9, 0x56, 0x2e);
 
 /* KPB private data, runtime data */
 struct comp_data {
@@ -1527,6 +1532,7 @@ static inline void kpb_change_state(struct comp_data *kpb,
 
 static const struct comp_driver comp_kpb = {
 	.type = SOF_COMP_KPB,
+	.uid = SOF_UUID(kpb_uuid),
 	.ops = {
 		.new = kpb_new,
 		.free = kpb_free,

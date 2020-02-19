@@ -7,12 +7,17 @@
 #include <sof/audio/component.h>
 #include <sof/common.h>
 #include <sof/lib/memory.h>
+#include <sof/lib/uuid.h>
 #include <sof/trace/trace.h>
 #include <ipc/topology.h>
 #include <user/trace.h>
 #include <stddef.h>
 
 static const struct comp_driver comp_switch;
+
+/* 385cc44b-f34e-4b9b-8be0-535c5f43a825 */
+DECLARE_SOF_UUID("switch", switch_uuid, 0x385cc44b, 0xf34e, 0x4b9b,
+		 0x8b, 0xe0, 0x53, 0x5c, 0x5f, 0x43, 0xa8, 0x25);
 
 static struct comp_dev *switch_new(const struct comp_driver *drv,
 				   struct sof_ipc_comp *comp)
@@ -59,6 +64,7 @@ static int switch_prepare(struct comp_dev *dev)
 
 static const struct comp_driver comp_switch = {
 	.type	= SOF_COMP_SWITCH,
+	.uid	= SOF_UUID(switch_uuid),
 	.ops	= {
 		.new		= switch_new,
 		.free		= switch_free,

@@ -15,6 +15,7 @@
 #include <sof/drivers/ipc.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/memory.h>
+#include <sof/lib/uuid.h>
 #include <sof/list.h>
 #include <sof/math/trig.h>
 #include <sof/platform.h>
@@ -42,6 +43,10 @@
 #define TONE_NUM_FS            13       /* Table size for 8-192 kHz range */
 
 static const struct comp_driver comp_tone;
+
+/* 04e3f894-2c5c-4f2e-8dc1-694eeaab53fa */
+DECLARE_SOF_UUID("tone", tone_uuid, 0x04e3f894, 0x2c5c, 0x4f2e,
+		 0x8d, 0xc1, 0x69, 0x4e, 0xea, 0xab, 0x53, 0xfa);
 
 /* 2*pi/Fs lookup tables in Q1.31 for each Fs */
 static const int32_t tone_fs_list[TONE_NUM_FS] = {
@@ -702,6 +707,7 @@ static int tone_reset(struct comp_dev *dev)
 
 static const struct comp_driver comp_tone = {
 	.type = SOF_COMP_TONE,
+	.uid = SOF_UUID(tone_uuid),
 	.ops = {
 		.new = tone_new,
 		.free = tone_free,

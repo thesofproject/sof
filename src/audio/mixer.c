@@ -15,6 +15,7 @@
 #include <sof/drivers/ipc.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/memory.h>
+#include <sof/lib/uuid.h>
 #include <sof/list.h>
 #include <sof/math/numbers.h>
 #include <sof/platform.h>
@@ -28,6 +29,10 @@
 #include <stdint.h>
 
 static const struct comp_driver comp_mixer;
+
+/* bc06c037-12aa-417c-9a97-89282e321a76 */
+DECLARE_SOF_UUID("mixer", mixer_uuid, 0xbc06c037, 0x12aa, 0x417c,
+		 0x9a, 0x97, 0x89, 0x28, 0x2e, 0x32, 0x1a, 0x76);
 
 /* mixer component private data */
 struct mixer_data {
@@ -436,6 +441,7 @@ static int mixer_prepare(struct comp_dev *dev)
 
 static const struct comp_driver comp_mixer = {
 	.type	= SOF_COMP_MIXER,
+	.uid	= SOF_UUID(mixer_uuid),
 	.ops	= {
 		.new		= mixer_new,
 		.free		= mixer_free,
