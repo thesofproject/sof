@@ -98,6 +98,9 @@ static inline void *platform_rfree_prepare(void *ptr)
 #define LOG_ENTRY_ELF_BASE	0x20000000
 #define LOG_ENTRY_ELF_SIZE	0x2000000
 
+#define EXT_MANIFEST_ELF_BASE	(LOG_ENTRY_ELF_BASE + LOG_ENTRY_ELF_SIZE)
+#define EXT_MANIFEST_ELF_SIZE	0x2000000
+
 /*
  * The Heap and Stack on Baytrail are organised like this :-
  *
