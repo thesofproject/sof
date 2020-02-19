@@ -167,7 +167,7 @@ struct sof_ipc_comp_event {
 
 	/* reserved for future use */
 	uint32_t reserved[8];
-	
+
 	/* control data - add new types if needed */
 	union {
 		/* data can be used by binary controls */
