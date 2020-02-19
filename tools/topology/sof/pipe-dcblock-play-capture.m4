@@ -1,8 +1,8 @@
-# Low Latency Passthrough with volume Pipeline and PCM
+# Low Latency Passthrough with volume, DC Block Pipeline and PCM
 #
 # Pipeline Endpoints for connection are :-
 #
-#  host PCM_P --> B0 --> Volume 0 --> B1 --> sink DAI0
+#  host PCM_P --> B0 --> Volume 0 --> B1 --> host PCM_C
 
 # Include topology builder
 include(`utils.m4')
@@ -36,20 +36,6 @@ LIST(`		', `SOF_TKN_VOLUME_RAMP_STEP_TYPE	"0"'
 
 W_DATA(playback_pga_conf, playback_pga_tokens)
 
-# Amp Bytes control with max value of 140
-# The max size needs to also take into account the space required to hold the control data IPC message
-# struct sof_ipc_ctrl_data requires 92 bytes
-# AMP priv in amp_bytes.m4 (ABI header (32 bytes) + 2 dwords) requires 40 bytes
-# Therefore at least 132 bytes are required for this kcontrol
-# Any value lower than that would end up in a topology load error
-# C_CONTROLBYTES(AMP, PIPELINE_ID,
-#      CONTROLBYTES_OPS(bytes, 258 binds the control to bytes get/put handlers, 258, 258),
-#      CONTROLBYTES_EXTOPS(258 binds the control to bytes get/put handlers, 258, 258),
-#      , , ,
-#      CONTROLBYTES_MAX(, 140),
-#      ,
-#      AMP_priv)
-
 #
 # Components and Buffers
 #
@@ -57,6 +43,10 @@ W_DATA(playback_pga_conf, playback_pga_tokens)
 # Host "Passthrough Playback" PCM
 # with 2 sink and 0 source periods
 W_PCM_PLAYBACK(PCM_ID, Passthrough Playback, 2, 0)
+
+# Host "Passthrough Capture" PCM
+# with 0 sink and 2 source periods
+W_PCM_CAPTURE(PCM_ID, Passthrough Capture, 0, 2)
 
 
 # "Volume" has 2 source and x sink periods
@@ -79,25 +69,25 @@ W_BUFFER(2, COMP_BUFFER_SIZE(DAI_PERIODS,
 #
 # Pipeline Graph
 #
-#  host PCM_P --> B0 --> Volume 0 --> B1 --> sink DAI0
+#  host PCM_P --> B0 --> DCBlock--> B1 --> Volume 0 --> B2 --> host PCM_C
 
-P_GRAPH(pipe-pass-vol-playback-PIPELINE_ID, PIPELINE_ID,
+P_GRAPH(pipe-pass-vol-play-capture-PIPELINE_ID, PIPELINE_ID,
 	LIST(`		',
 	`dapm(N_BUFFER(0), N_PCMP(PCM_ID))',
 	`dapm(N_DCBLOCK(0), N_BUFFER(0))',
-     	`dapm(N_BUFFER(1), N_DCBLOCK(0))',
-     	`dapm(N_PGA(0), N_BUFFER(1))',
-     	`dapm(N_BUFFER(2), N_PGA(0))'))
-
+ 	`dapm(N_BUFFER(1), N_DCBLOCK(0))',
+ 	`dapm(N_PGA(0), N_BUFFER(1))',
+ 	`dapm(N_BUFFER(2), N_PGA(0))',
+  `dapm(N_PCMC(PCM_ID), N_BUFFER(2))'))
 #
 # Pipeline Source and Sinks
 #
-indir(`define', concat(`PIPELINE_SOURCE_', PIPELINE_ID), N_BUFFER(2))
-indir(`define', concat(`PIPELINE_PCM_', PIPELINE_ID), Passthrough Playback PCM_ID)
+indir(`define', concat(`PIPELINE_PCM_SINK_', PIPELINE_ID), Passthrough Capture PCM_ID)
+indir(`define', concat(`PIPELINE_PCM_SOURCE_', PIPELINE_ID), Passthrough Playback PCM_ID)
 
 
 #
 # PCM Configuration
 
 #
-PCM_CAPABILITIES(Passthrough Playback PCM_ID, `S32_LE,S24_LE,S16_LE', PCM_MIN_RATE, PCM_MAX_RATE, 2, PIPELINE_CHANNELS, 2, 16, 192, 16384, 65536, 65536)
+PCM_CAPABILITIES(Passthrough PlayCapture PCM_ID, `S32_LE,S24_LE,S16_LE', PCM_MIN_RATE, PCM_MAX_RATE, 2, PIPELINE_CHANNELS, 2, 16, 192, 16384, 65536, 65536)
