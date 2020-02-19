@@ -674,6 +674,7 @@ static int eq_fir_cmd(struct comp_dev *dev, int cmd, void *data,
 static int eq_fir_trigger(struct comp_dev *dev, int cmd)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
+
 	comp_info(dev, "eq_fir_trigger()");
 
 	if (cmd == COMP_TRIGGER_START || cmd == COMP_TRIGGER_RELEASE)
