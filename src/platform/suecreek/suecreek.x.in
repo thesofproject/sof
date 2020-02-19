@@ -87,6 +87,9 @@ MEMORY
   sof_fw :
        	org = SOF_FW_BASE,
         len = SOF_FW_MAX_SIZE,
+  static_uuid_entries_seg (!ari) :
+        org = UUID_ENTRY_ELF_BASE,
+        len = UUID_ENTRY_ELF_SIZE
   static_log_entries_seg (!ari) :
         org = LOG_ENTRY_ELF_BASE,
         len = LOG_ENTRY_ELF_SIZE
@@ -118,6 +121,7 @@ PHDRS
   vector_double_lit_phdr PT_LOAD;
   vector_double_text_phdr PT_LOAD;
   sof_fw_phdr PT_LOAD;
+  static_uuid_entries_phdr PT_NOTE;
   static_log_entries_phdr PT_NOTE;
 }
 
@@ -543,6 +547,11 @@ SECTIONS
     KEEP (*(.xt.profile_files))
     KEEP (*(.gnu.linkonce.xt.profile_files.*))
   }
+
+  .static_uuid_entries (COPY) : ALIGN(1024)
+  {
+    *(*.static_uuids)
+  } > static_uuid_entries_seg :static_uuid_entries_phdr
 
   .static_log_entries (COPY) : ALIGN(1024)
   {
