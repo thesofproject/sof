@@ -1491,7 +1491,7 @@ static inline bool validate_host_params(struct comp_dev *dev,
 static inline void kpb_change_state(struct comp_data *kpb,
 				    enum kpb_state state)
 {
-	comp_cl_dbg("kpb_change_state(): from %d to %d",
+	comp_cl_dbg(&comp_kpb, "kpb_change_state(): from %d to %d",
 		    kpb->state, state);
 	kpb->state = state;
 	kpb->state_log = (kpb->state_log << 4) | state;
