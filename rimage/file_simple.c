@@ -442,7 +442,7 @@ static int simple_write_firmware(struct image *image)
 	return 0;
 }
 
-int write_logs_dictionary(struct image *image)
+static int write_logs_dictionary(struct image *image)
 {
 	struct snd_sof_logs_header header;
 	int i, ret = 0;
@@ -497,7 +497,7 @@ int write_logs_dictionary(struct image *image)
 
 			fprintf(stdout, "logs dictionary: size %u\n",
 				header.data_length + header.data_offset);
-			fprintf(stdout, "including fw version of size: %lu\n\n",
+			fprintf(stdout, "including fw version of size: %lu\n",
 				(unsigned long)sizeof(header.version));
 		}
 	}
@@ -505,6 +505,69 @@ out:
 	if (buffer)
 		free(buffer);
 
+	return ret;
+}
+
+static int write_uids_dictionary(struct image *image)
+{
+	struct snd_sof_uids_header header;
+	Elf32_Shdr *section;
+	int i, ret = 0;
+	void *buffer = NULL;
+
+	memcpy(header.sig, SND_SOF_UIDS_SIG, SND_SOF_UIDS_SIG_SIZE);
+	header.data_offset = sizeof(struct snd_sof_uids_header);
+
+	for (i = 0; i < image->num_modules; i++) {
+		struct module *module = &image->module[i];
+
+		if (module->uids_index <= 0)
+			continue;
+		section = &module->section[module->uids_index];
+
+		header.base_address = section->vaddr;
+		header.data_length = section->size;
+
+		fwrite(&header, sizeof(struct snd_sof_uids_header), 1,
+		       image->ldc_out_fd);
+
+		buffer = calloc(1, section->size);
+		if (!buffer)
+			return -ENOMEM;
+		fseek(module->fd, section->off, SEEK_SET);
+		if (fread(buffer, 1, section->size, module->fd) !=
+				section->size) {
+			fprintf(stderr, "error: can't read uids section %d\n",
+				-errno);
+			ret = -errno;
+			goto out;
+		}
+		if (fwrite(buffer, 1, section->size, image->ldc_out_fd) !=
+				section->size) {
+			fprintf(stderr, "error: cant't write section %d\n",
+				-errno);
+			ret = -errno;
+			goto out;
+		}
+		fprintf(stdout, "uids dictionary: size %u\n",
+			header.data_length + header.data_offset);
+	}
+out:
+	free(buffer);
+	return ret;
+}
+
+int write_dictionaries(struct image *image)
+{
+	int ret = 0;
+
+	ret = write_logs_dictionary(image);
+	if (ret)
+		goto out;
+
+	ret = write_uids_dictionary(image);
+
+out:
 	return ret;
 }
 
