@@ -166,7 +166,7 @@ found:
 		ret = -EINVAL;
 		goto out;
 	}
-	ret = write_logs_dictionary(&image);
+	ret = write_dictionaries(&image);
 out:
 	/* close files */
 	if (image.out_fd)

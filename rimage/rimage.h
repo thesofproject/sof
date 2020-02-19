@@ -68,6 +68,7 @@ struct module {
 	int fw_size;
 	int bss_index;
 	int logs_index;
+	int uids_index;
 	int fw_ready_index;
 
 	/* sizes do not include any gaps */
@@ -151,7 +152,7 @@ struct adsp {
 	int exec_boot_ldr;
 };
 
-int write_logs_dictionary(struct image *image);
+int write_dictionaries(struct image *image);
 
 void module_sha256_create(struct image *image);
 void module_sha_update(struct image *image, uint8_t *data, size_t bytes);

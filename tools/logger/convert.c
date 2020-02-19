@@ -11,6 +11,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <math.h>
+#include <sof/lib/uuid.h>
 #include <user/abi_dbg.h>
 #include <user/trace.h>
 #include "convert.h"
@@ -65,8 +66,25 @@ static inline void print_table_header(FILE *out_fd)
 #define CASE(x) \
 	case(TRACE_CLASS_##x): return #x
 
-static const char * get_component_name(uint32_t component_id) {
-	switch (component_id) {
+static
+const char *get_component_name(const struct snd_sof_uids_header *uids_dict,
+			       uint32_t trace_class, uint32_t uid_ptr)
+{
+	/* if uid_ptr is non-zero, find name in the ldc file */
+	if (uid_ptr) {
+		if (uid_ptr < uids_dict->base_address ||
+		    uid_ptr >= uids_dict->base_address +
+		    uids_dict->data_length)
+			return "<uid?>";
+		const struct sof_uuid *uid_val = (const struct sof_uuid *)
+			((uint8_t *)uids_dict + uids_dict->data_offset +
+			 uid_ptr - uids_dict->base_address);
+
+		return (const char *)(uid_val + 1) + sizeof(uint32_t);
+	}
+
+	/* otherwise print legacy trace class name */
+	switch (trace_class) {
 		CASE(IRQ);
 		CASE(IPC);
 		CASE(PIPE);
@@ -130,6 +148,7 @@ static char *format_file_name(char *file_name_raw, int full_name)
 }
 
 static void print_entry_params(FILE *out_fd,
+	const struct snd_sof_uids_header *uids_dict,
 	const struct log_entry_header *dma_log, const struct ldc_entry *entry,
 	uint64_t last_timestamp, double clock, int use_colors, int raw_output)
 {
@@ -153,7 +172,9 @@ static void print_entry_params(FILE *out_fd,
 			(LOG_LEVEL_CRITICAL ? KRED : KNRM) : "",
 		dma_log->core_id,
 		entry->header.level,
-		get_component_name(entry->header.component_class),
+		get_component_name(uids_dict,
+				   entry->header.component_class,
+				   dma_log->uid),
 		raw_output && strlen(ids) ? "-" : "",
 		ids,
 		to_usecs(dma_log->timestamp, clock),
@@ -291,8 +312,11 @@ static int fetch_entry(const struct convert_config *config,
 	}
 
 	/* printing entry content */
-	print_entry_params(config->out_fd, dma_log, &entry, *last_timestamp,
-			   config->clock, config->use_colors, config->raw_output);
+	print_entry_params(config->out_fd,
+			   config->uids_dict,
+			   dma_log, &entry, *last_timestamp,
+			   config->clock, config->use_colors,
+			   config->raw_output);
 	*last_timestamp = dma_log->timestamp;
 
 	/* set f_ldc file position to the beginning */
@@ -457,8 +481,10 @@ static int verify_fw_ver(const struct convert_config *config,
 	return 0;
 }
 
-int convert(const struct convert_config *config) {
+int convert(struct convert_config *config)
+{
 	struct snd_sof_logs_header snd;
+	struct snd_sof_uids_header uids_hdr;
 	int count, ret = 0;
 
 	count = fread(&snd, sizeof(snd), 1, config->ldc_fd);
@@ -492,5 +518,32 @@ int convert(const struct convert_config *config) {
 				SOF_ABI_VERSION_PATCH(snd.version.abi_version));
 		return -EINVAL;
 	}
+
+	/* read uuid section header */
+	fseek(config->ldc_fd, snd.data_offset + snd.data_length, SEEK_SET);
+	count = fread(&uids_hdr, sizeof(uids_hdr), 1, config->ldc_fd);
+	if (!count) {
+		fprintf(stderr, "Error while reading uuids header from %s.\n",
+			config->ldc_file);
+		return -ferror(config->ldc_fd);
+	}
+	if (strncmp((char *)uids_hdr.sig, SND_SOF_UIDS_SIG,
+		    SND_SOF_UIDS_SIG_SIZE)) {
+		fprintf(stderr, "Error: invalid uuid section signature.\n");
+		return -EINVAL;
+	}
+	config->uids_dict = calloc(1, sizeof(uids_hdr) + uids_hdr.data_length);
+	if (!config->uids_dict) {
+		fprintf(stderr, "Error: failed to alloc memory for uuids.\n");
+		return -ENOMEM;
+	}
+	memcpy(config->uids_dict, &uids_hdr, sizeof(uids_hdr));
+	count = fread(config->uids_dict + 1, uids_hdr.data_length, 1,
+		      config->ldc_fd);
+	if (!count) {
+		fprintf(stderr, "Error: failed to read uuid section data.\n");
+		return -ferror(config->ldc_fd);
+	}
+
 	return logger_read(config, &snd);
 }
