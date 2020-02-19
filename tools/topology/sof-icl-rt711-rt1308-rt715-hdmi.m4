@@ -6,6 +6,7 @@
 include(`utils.m4')
 include(`dai.m4')
 include(`pipeline.m4')
+include(`multidai.m4')
 
 # Include TLV library
 include(`common/tlv.m4')
@@ -186,7 +187,8 @@ DAI_CONFIG(ALH, 2, 0, SDW0-Playback)
 DAI_CONFIG(ALH, 3, 1, SDW0-Capture)
 
 #ALH SDW1 Pin2 (ID: 2)
-DAI_CONFIG(ALH, 0x102, 2, SDW1-Playback)
+DAI_CONFIG(MULTI, 1, 2, SDW1-Playback,
+	   MULTI_DAI_CONFIG(MULTI_DAI_DATA(MULTI, 1, ALH, 0x102, 0x202, 0, 0)))
 
 #ALH SDW2 Pin2 (ID: 3)
 ifdef(`MONO', `', `DAI_CONFIG(ALH, 0x202, 3, SDW2-Playback)')
