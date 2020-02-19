@@ -22,11 +22,11 @@
 #define TRACE_MAX_FILENAME_LEN		128
 #define TRACE_MAX_IDS_STR		10
 #define TRACE_IDS_MASK			((1 << TRACE_ID_LENGTH) - 1)
+#define INVALID_TRACE_ID		(-1 & TRACE_IDS_MASK)
 
 struct ldc_entry_header {
 	uint32_t level;
 	uint32_t component_class;
-	uint32_t has_ids;
 	uint32_t params_num;
 	uint32_t line_idx;
 	uint32_t file_name_len;
@@ -142,17 +142,20 @@ static void print_entry_params(FILE *out_fd,
 	if (dt < 0 || dt > 1000.0 * 1000.0 * 1000.0)
 		dt = NAN;
 
-	if (entry->header.has_ids)
+	if (dma_log->id_0 != INVALID_TRACE_ID &&
+	    dma_log->id_1 != INVALID_TRACE_ID)
 		sprintf(ids, "%d.%d", (dma_log->id_0 & TRACE_IDS_MASK),
 			(dma_log->id_1 & TRACE_IDS_MASK));
+	else
+		ids[0] = '\0';
 	fprintf(out_fd, entry_fmt,
 		entry->header.level == use_colors ?
 			(LOG_LEVEL_CRITICAL ? KRED : KNRM) : "",
 		dma_log->core_id,
 		entry->header.level,
 		get_component_name(entry->header.component_class),
-		raw_output && entry->header.has_ids ? "-" : "",
-		entry->header.has_ids ? ids : "",
+		raw_output && strlen(ids) ? "-" : "",
+		ids,
 		to_usecs(dma_log->timestamp, clock),
 		dt,
 		format_file_name(entry->file_name, raw_output),

@@ -37,15 +37,17 @@
 
 #define TRACE_ID_MASK ((1 << TRACE_ID_LENGTH) - 1)
 
-static void put_header(uint32_t *dst, uint32_t id_0, uint32_t id_1,
+static void put_header(uint32_t *dst, uint32_t id_0,
+		       uint32_t id_1, uint32_t id_2,
 		       uint32_t entry, uint64_t timestamp)
 {
 	struct timer *timer = timer_get();
 	struct log_entry_header header;
 	int ret;
 
-	header.id_0 = id_0 & TRACE_ID_MASK;
-	header.id_1 = id_1 & TRACE_ID_MASK;
+	header.uid = id_0;
+	header.id_0 = id_1 & TRACE_ID_MASK;
+	header.id_1 = id_2 & TRACE_ID_MASK;
 	header.core_id = cpu_get_id();
 	header.timestamp = timestamp + timer->delta;
 	header.log_entry_address = entry;
@@ -112,7 +114,7 @@ META_IF_ELSE(is_atomic)(_atomic)()					\
 		return;							\
 	}								\
 									\
-	put_header(dt, id_0, id_1, log_entry,				\
+	put_header(dt, id_0, id_1, id_2, log_entry,			\
 		   platform_timer_get(timer_get()));			\
 									\
 	_TRACE_EVENT_NTH_PAYLOAD_IMPL(arg_count)			\

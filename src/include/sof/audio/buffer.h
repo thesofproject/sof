@@ -35,13 +35,13 @@ struct comp_dev;
 #define trace_buffer(__e, ...) \
 	trace_event(TRACE_CLASS_BUFFER, __e, ##__VA_ARGS__)
 #define trace_buffer_with_ids(buf_ptr, __e, ...) \
-	trace_event_with_ids(TRACE_CLASS_BUFFER, (buf_ptr)->pipeline_id, \
+	trace_event_with_ids(TRACE_CLASS_BUFFER, 0, (buf_ptr)->pipeline_id, \
 			     (buf_ptr)->id, __e, ##__VA_ARGS__)
 
 #define tracev_buffer(__e, ...) \
 	tracev_event(TRACE_CLASS_BUFFER, __e, ##__VA_ARGS__)
 #define tracev_buffer_with_ids(buf_ptr, __e, ...) \
-	tracev_event_with_ids(TRACE_CLASS_BUFFER, (buf_ptr)->pipeline_id, \
+	tracev_event_with_ids(TRACE_CLASS_BUFFER, 0, (buf_ptr)->pipeline_id, \
 			      (buf_ptr)->id, __e, ##__VA_ARGS__)
 
 #define trace_buffer_error(__e, ...) \
@@ -49,7 +49,7 @@ struct comp_dev;
 #define trace_buffer_error_atomic(__e, ...) \
 	trace_error_atomic(TRACE_CLASS_BUFFER, __e, ##__VA_ARGS__)
 #define trace_buffer_error_with_ids(buf_ptr, __e, ...) \
-	trace_error_with_ids(TRACE_CLASS_BUFFER, (buf_ptr)->pipeline_id, \
+	trace_error_with_ids(TRACE_CLASS_BUFFER, 0, (buf_ptr)->pipeline_id, \
 			     (buf_ptr)->id, __e, ##__VA_ARGS__)
 
 /* buffer callback types */

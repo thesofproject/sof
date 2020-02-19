@@ -18,8 +18,8 @@
 #ifndef __USER_ABI_DBG_H__
 #define __USER_ABI_DBG_H__
 
-#define SOF_ABI_DBG_MAJOR 3
-#define SOF_ABI_DBG_MINOR 14
+#define SOF_ABI_DBG_MAJOR 4
+#define SOF_ABI_DBG_MINOR 0
 #define SOF_ABI_DBG_PATCH 0
 
 #define SOF_ABI_DBG_VERSION SOF_ABI_VER(SOF_ABI_DBG_MAJOR, \

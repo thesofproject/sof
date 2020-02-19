@@ -100,6 +100,7 @@ struct timestamp_ops {
 
 struct dai_driver {
 	uint32_t type;	/**< type, one of SOF_DAI_... */
+	uint32_t uid;
 	uint32_t dma_caps;
 	uint32_t dma_dev;
 	struct dai_ops ops;
@@ -152,32 +153,52 @@ struct dai_type_info {
 };
 
 /* dai tracing */
+#define trace_dai_drv_get_uid(drv_p) ((drv_p)->uid)
+#define trace_dai_drv_get_id(drv_p) (-1)
+#define trace_dai_drv_get_subid(drv_p) (-1)
+
+#define trace_dai_get_uid(dai_p) ((dai_p)->drv->uid)
 #define trace_dai_get_id(dai_p) ((dai_p)->drv->type)
 #define trace_dai_get_subid(dai_p) ((dai_p)->index)
 
 /* class (driver) level (no device object) tracing */
 
-#define dai_cl_err(drv_p, __e, ...)					\
-	trace_error(TRACE_CLASS_DAI, __e, ##__VA_ARGS__)
+#define dai_cl_err(drv_p, __e, ...)		\
+	trace_dev_err(TRACE_CLASS_DAI,		\
+		      trace_dai_drv_get_uid,	\
+		      trace_dai_drv_get_id,	\
+		      trace_dai_drv_get_subid,	\
+		      drv_p, __e, ##__VA_ARGS__)
 
-#define dai_cl_info(drv_p, __e, ...)					\
-	trace_event(TRACE_CLASS_DAI, __e, ##__VA_ARGS__)
+#define dai_cl_info(drv_p, __e, ...)		\
+	trace_dev_info(TRACE_CLASS_DAI,		\
+		       trace_dai_drv_get_uid,	\
+		       trace_dai_drv_get_id,	\
+		       trace_dai_drv_get_subid,	\
+		       drv_p, __e, ##__VA_ARGS__)
 
-#define dai_cl_dbg(drv_p, __e, ...)					\
-	tracev_event(TRACE_CLASS_DAI, __e, ##__VA_ARGS__)
+#define dai_cl_dbg(drv_p, __e, ...)		\
+	trace_dev_dbg(TRACE_CLASS_DAI,		\
+		      trace_dai_drv_get_uid,	\
+		      trace_dai_drv_get_id,	\
+		      trace_dai_drv_get_subid,	\
+		      drv_p, __e, ##__VA_ARGS__)
 
 /* device tracing */
 
 #define dai_err(dai_p, __e, ...)					\
-	trace_dev_err(TRACE_CLASS_DAI, trace_dai_get_id,		\
+	trace_dev_err(TRACE_CLASS_DAI, trace_dai_get_uid,		\
+		      trace_dai_get_id,					\
 		      trace_dai_get_subid, dai_p, __e, ##__VA_ARGS__)
 
 #define dai_info(dai_p, __e, ...)					\
-	trace_dev_info(TRACE_CLASS_DAI, trace_dai_get_id,		\
+	trace_dev_info(TRACE_CLASS_DAI, trace_dai_get_uid,		\
+		       trace_dai_get_id,				\
 		       trace_dai_get_subid, dai_p, __e, ##__VA_ARGS__)
 
 #define dai_dbg(dai_p, __e, ...)					\
-	trace_dev_dbg(TRACE_CLASS_DAI, trace_dai_get_id,		\
+	trace_dev_dbg(TRACE_CLASS_DAI, trace_dai_get_uid,		\
+		      trace_dai_get_id,					\
 		      trace_dai_get_subid, dai_p, __e, ##__VA_ARGS__)
 
 /**

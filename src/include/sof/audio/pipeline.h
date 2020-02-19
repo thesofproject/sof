@@ -32,6 +32,7 @@ struct task;
 #define NO_XRUN_RECOVERY 1
 
 /* pipeline tracing */
+#define trace_pipe_get_uid(pipe_p) (0)
 #define trace_pipe_get_id(pipe_p) ((pipe_p)->ipc_pipe.pipeline_id)
 #define trace_pipe_get_subid(pipe_p) ((pipe_p)->ipc_pipe.comp_id)
 
@@ -49,15 +50,15 @@ struct task;
 /* device tracing */
 
 #define pipe_err(pipe_p, __e, ...)					\
-	trace_dev_err(TRACE_CLASS_PIPE, trace_pipe_get_id,		\
+	trace_dev_err(TRACE_CLASS_PIPE, trace_pipe_get_uid, trace_pipe_get_id,\
 		      trace_pipe_get_subid, pipe_p, __e, ##__VA_ARGS__)
 
 #define pipe_info(pipe_p, __e, ...)					\
-	trace_dev_info(TRACE_CLASS_PIPE, trace_pipe_get_id,		\
+	trace_dev_info(TRACE_CLASS_PIPE, trace_pipe_get_uid, trace_pipe_get_id,\
 		       trace_pipe_get_subid, pipe_p, __e, ##__VA_ARGS__)
 
 #define pipe_dbg(pipe_p, __e, ...)					\
-	trace_dev_dbg(TRACE_CLASS_PIPE, trace_pipe_get_id,		\
+	trace_dev_dbg(TRACE_CLASS_PIPE, trace_pipe_get_uid, trace_pipe_get_id,\
 		      trace_pipe_get_subid, pipe_p, __e, ##__VA_ARGS__)
 
 /* Pipeline status to stop execution of current path */
