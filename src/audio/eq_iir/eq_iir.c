@@ -749,6 +749,7 @@ static int eq_iir_cmd(struct comp_dev *dev, int cmd, void *data,
 static int eq_iir_trigger(struct comp_dev *dev, int cmd)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
+
 	comp_info(dev, "eq_iir_trigger()");
 
 	if (cmd == COMP_TRIGGER_START || cmd == COMP_TRIGGER_RELEASE)
