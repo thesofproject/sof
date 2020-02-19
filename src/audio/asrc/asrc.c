@@ -780,7 +780,8 @@ static int asrc_control_loop(struct comp_dev *dev, struct comp_data *cd)
 	tmp = ((int64_t)COEF_C1) * skew + ((int64_t)COEF_C2) * cd->skew;
 	cd->skew = sat_int32(Q_SHIFT_RND(tmp, 60, 30));
 	asrc_update_drift(dev, cd->asrc_obj, cd->skew);
-	comp_cl_dbg("skew %d %d %d %d", delta_sample, delta_ts, skew, cd->skew);
+	comp_cl_dbg(&comp_asrc, "skew %d %d %d %d", delta_sample, delta_ts,
+		    skew, cd->skew);
 	return 0;
 }
 
