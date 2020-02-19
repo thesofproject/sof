@@ -16,7 +16,7 @@
 #define _TRACE_EVENT_NTH(postfix, param_count)			\
 	META_FUNC_WITH_VARARGS(					\
 		_trace_event, META_CONCAT(postfix, param_count),\
-		void, _TRACE_EVENT_NTH_PARAMS(2, param_count)	\
+		void, _TRACE_EVENT_NTH_PARAMS(3, param_count)	\
 	)
 
 #define META_SEQ_STEP_void_param(i, _) (void)META_CONCAT(param,i);
@@ -28,6 +28,7 @@
 		(void)log_entry;					\
 		(void)id_0;						\
 		(void)id_1;						\
+		(void)id_2;						\
 		META_SEQ_FROM_0_TO(N, META_SEQ_STEP_void_param)		\
 	}
 

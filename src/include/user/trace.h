@@ -97,12 +97,13 @@ struct log_buffer_status {
  * Number of arguments is specified by the params_num field of log_entry
  */
 struct log_entry_header {
-	uint32_t id_0 : TRACE_ID_LENGTH;	/* e.g. Pipeline ID */
-	uint32_t id_1 : TRACE_ID_LENGTH;	/* e.g. Component ID */
-	uint32_t core_id : 8;		/* Reporting core's id */
+	uint32_t uid;
+	uint32_t id_0 : TRACE_ID_LENGTH; /* e.g. Pipeline ID */
+	uint32_t id_1 : TRACE_ID_LENGTH; /* e.g. Component ID */
+	uint32_t core_id : 8;		 /* Reporting core's id */
 
-	uint64_t timestamp;		/* Timestamp (in dsp ticks) */
-	uint32_t log_entry_address;	/* Address of log entry in ELF */
+	uint64_t timestamp;		 /* Timestamp (in dsp ticks) */
+	uint32_t log_entry_address;	 /* Address of log entry in ELF */
 } __attribute__((packed));
 
 #endif /* __USER_TRACE_H__ */

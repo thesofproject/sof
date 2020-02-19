@@ -27,7 +27,6 @@ static void test_debugability_macros_declare_log_entry(void **state)
 		LOG_LEVEL_CRITICAL,
 		"Message",
 		TRACE_CLASS_DMA,
-		1,
 		1
 	));
 	const char *should_be_eq =
@@ -37,7 +36,6 @@ static void test_debugability_macros_declare_log_entry(void **state)
 		"{ "
 			"uint32_t level; "
 			"uint32_t component_class; "
-			"uint32_t has_ids; "
 			"uint32_t params_num; "
 			"uint32_t line_idx; "
 			"uint32_t file_name_len; "
@@ -48,8 +46,7 @@ static void test_debugability_macros_declare_log_entry(void **state)
 			"1"
 			"(6 << 24)"
 			"1"
-			"1"
-			"32"
+			"31"
 			"sizeof(\"" RELATIVE_FILE "\")"
 			"sizeof(\"Message\")"
 			"\"" RELATIVE_FILE "\""
@@ -89,7 +86,7 @@ static char *get_should_be(const int param_count)
 	/*3*/param_count,
 	/*4*/") ? 1 : -1]; _trace_event",
 	/*5*/param_count,
-	/*6*/" ((uint32_t)&log_entry, 1, 1",
+	/*6*/" ((uint32_t)&log_entry, 0, 1, 1",
 	/*7*/paramlist,
 	/*8*/"); }"
 	);
@@ -105,11 +102,11 @@ do {								\
 		LOG_LEVEL_CRITICAL,				\
 		"Message",					\
 		TRACE_CLASS_DMA,				\
-		META_COUNT_VARAGS_BEFORE_COMPILE(__VA_ARGS__),	\
-		1						\
+		META_COUNT_VARAGS_BEFORE_COMPILE(__VA_ARGS__)	\
 	);							\
 	const char *macro_result = CAPTURE(BASE_LOG(		\
 		_trace_event,					\
+		0,						\
 		1,						\
 		1,						\
 		&log_entry,					\

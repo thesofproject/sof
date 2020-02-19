@@ -150,31 +150,52 @@ struct dai_hw_params;
 /** \name Trace macros
  *  @{
  */
+#define trace_comp_drv_get_uid(drv_p) ((drv_p)->uid)
+#define trace_comp_drv_get_id(drv_p) (-1)
+#define trace_comp_drv_get_subid(drv_p) (-1)
+
+#define trace_comp_get_uid(comp_p) ((comp_p)->drv->uid)
 #define trace_comp_get_id(comp_p) ((comp_p)->comp.pipeline_id)
 #define trace_comp_get_subid(comp_p) ((comp_p)->comp.id)
 
 /* class (driver) level (no device object) tracing */
 
-#define comp_cl_err(drv_p, __e, ...)					\
-	trace_error(TRACE_CLASS_COMP, __e, ##__VA_ARGS__)
+#define comp_cl_err(drv_p, __e, ...)		\
+	trace_dev_err(TRACE_CLASS_COMP,		\
+		      trace_comp_drv_get_uid,	\
+		      trace_comp_drv_get_id,	\
+		      trace_comp_drv_get_subid,	\
+		      drv_p,			\
+		      __e, ##__VA_ARGS__)
 
-#define comp_cl_info(drv_p, __e, ...)					\
-	trace_event(TRACE_CLASS_COMP, __e, ##__VA_ARGS__)
+#define comp_cl_info(drv_p, __e, ...)		\
+	trace_dev_info(TRACE_CLASS_COMP,	\
+		       trace_comp_drv_get_uid,	\
+		       trace_comp_drv_get_id,	\
+		       trace_comp_drv_get_subid,\
+		       drv_p,			\
+		       __e, ##__VA_ARGS__)
 
-#define comp_cl_dbg(drv_p, __e, ...)					\
-	tracev_event(TRACE_CLASS_COMP, __e, ##__VA_ARGS__)
+#define comp_cl_dbg(drv_p, __e, ...)		\
+	trace_dev_dbg(TRACE_CLASS_COMP,		\
+		      trace_comp_drv_get_uid,	\
+		      trace_comp_drv_get_id,	\
+		      trace_comp_drv_get_subid,	\
+		      drv_p,			\
+		      __e, ##__VA_ARGS__)
+
 /* device tracing */
 
 #define comp_err(comp_p, __e, ...)					\
-	trace_dev_err(TRACE_CLASS_COMP, trace_comp_get_id,		\
+	trace_dev_err(TRACE_CLASS_COMP, trace_comp_get_uid, trace_comp_get_id, \
 		      trace_comp_get_subid, comp_p, __e, ##__VA_ARGS__)
 
 #define comp_info(comp_p, __e, ...)					\
-	trace_dev_info(TRACE_CLASS_COMP, trace_comp_get_id,		\
+	trace_dev_info(TRACE_CLASS_COMP, trace_comp_get_uid, trace_comp_get_id,\
 		       trace_comp_get_subid, comp_p, __e, ##__VA_ARGS__)
 
 #define comp_dbg(comp_p, __e, ...)					\
-	trace_dev_dbg(TRACE_CLASS_COMP, trace_comp_get_id,		\
+	trace_dev_dbg(TRACE_CLASS_COMP, trace_comp_get_uid, trace_comp_get_id, \
 		      trace_comp_get_subid, comp_p, __e, ##__VA_ARGS__)
 
 
@@ -267,6 +288,7 @@ struct comp_ops {
  */
 struct comp_driver {
 	uint32_t type;		/**< SOF_COMP_ for driver */
+	uint32_t uid;		/**< Address of uuid_entry */
 	struct comp_ops ops;	/**< component operations */
 };
 
