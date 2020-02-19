@@ -1007,6 +1007,7 @@ out:
 static int dw_dma_remove(struct dma *dma)
 {
 	int i;
+
 	tracev_dwdma("dw_dma_remove(): dma %d remove", dma->plat_data.id);
 
 	pm_runtime_put_sync(DW_DMAC_CLK, dma->plat_data.id);
