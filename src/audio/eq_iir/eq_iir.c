@@ -17,6 +17,7 @@
 #include <sof/drivers/ipc.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/memory.h>
+#include <sof/lib/uuid.h>
 #include <sof/list.h>
 #include <sof/platform.h>
 #include <sof/string.h>
@@ -31,6 +32,10 @@
 #include <stdint.h>
 
 static const struct comp_driver comp_eq_iir;
+
+/* 5150c0e6-27f9-4ec8-8351-c705b642d12f */
+DECLARE_SOF_UUID("eq-iir", eq_iir_uuid, 0x5150c0e6, 0x27f9, 0x4ec8,
+		 0x83, 0x51, 0xc7, 0x05, 0xb6, 0x42, 0xd1, 0x2f);
 
 /* IIR component private data */
 struct comp_data {
@@ -937,6 +942,7 @@ static int eq_iir_reset(struct comp_dev *dev)
 
 static const struct comp_driver comp_eq_iir = {
 	.type = SOF_COMP_EQ_IIR,
+	.uid = SOF_UUID(eq_iir_uuid),
 	.ops = {
 		.new = eq_iir_new,
 		.free = eq_iir_free,

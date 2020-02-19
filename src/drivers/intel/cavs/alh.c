@@ -8,12 +8,17 @@
 #include <sof/lib/dai.h>
 #include <sof/lib/dma.h>
 #include <sof/lib/memory.h>
+#include <sof/lib/uuid.h>
 #include <sof/trace/trace.h>
 #include <sof/common.h>
 #include <ipc/dai.h>
 #include <ipc/stream.h>
 #include <user/trace.h>
 #include <stdint.h>
+
+/* a8e4218c-e863-4c93-84e7-5c27d2504501 */
+DECLARE_SOF_UUID("alh-dai", alh_uuid, 0xa8e4218c, 0xe863, 0x4c93,
+		 0x84, 0xe7, 0x5c, 0x27, 0xd2, 0x50, 0x45, 0x01);
 
 static int alh_trigger(struct dai *dai, int cmd, int direction)
 {
@@ -93,6 +98,7 @@ static int alh_get_fifo(struct dai *dai, int direction, int stream_id)
 
 const struct dai_driver alh_driver = {
 	.type = SOF_DAI_INTEL_ALH,
+	.uid = SOF_UUID(alh_uuid),
 	.dma_caps = DMA_CAP_GP_LP | DMA_CAP_GP_HP,
 	.dma_dev = DMA_DEV_ALH,
 	.ops = {

@@ -9,8 +9,13 @@
 #include <sof/drivers/timestamp.h>
 #include <sof/lib/dai.h>
 #include <sof/lib/dma.h>
+#include <sof/lib/uuid.h>
 #include <ipc/dai.h>
 #include <ipc/stream.h>
+
+/* bc9ebe20-4577-41bb-9eed-d0cb236328da */
+DECLARE_SOF_UUID("hda-dai", hda_uuid, 0xbc9ebe20, 0x4577, 0x41bb,
+		 0x9e, 0xed, 0xd0, 0xcb, 0x23, 0x63, 0x28, 0xda);
 
 static int hda_trigger(struct dai *dai, int cmd, int direction)
 {
@@ -159,6 +164,7 @@ out:
 
 const struct dai_driver hda_driver = {
 	.type = SOF_DAI_INTEL_HDA,
+	.uid = SOF_UUID(hda_uuid),
 	.dma_caps = DMA_CAP_HDA,
 	.dma_dev = DMA_DEV_HDA,
 	.ops = {

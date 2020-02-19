@@ -15,6 +15,7 @@
 #include <sof/drivers/ipc.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/memory.h>
+#include <sof/lib/uuid.h>
 #include <sof/list.h>
 #include <sof/math/numbers.h>
 #include <sof/platform.h>
@@ -30,6 +31,10 @@
 #include <stdint.h>
 
 static const struct comp_driver comp_mux;
+
+/* c4b26868-1430-470e-a089-15d1c77f851a */
+DECLARE_SOF_UUID("mux", mux_uuid, 0xc4b26868, 0x1430, 0x470e,
+		 0xa0, 0x89, 0x15, 0xd1, 0xc7, 0x7f, 0x85, 0x1a);
 
 static int mux_set_values(struct comp_dev *dev, struct comp_data *cd,
 			  struct sof_mux_config *cfg)
@@ -502,6 +507,7 @@ static SHARED_DATA struct comp_driver_info comp_mux_info = {
 
 static const struct comp_driver comp_demux = {
 	.type	= SOF_COMP_DEMUX,
+	.uid = SOF_UUID(mux_uuid),
 	.ops	= {
 		.new		= mux_new,
 		.free		= mux_free,

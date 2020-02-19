@@ -15,6 +15,7 @@
 #include <sof/drivers/ipc.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/memory.h>
+#include <sof/lib/uuid.h>
 #include <sof/list.h>
 #include <sof/platform.h>
 #include <sof/string.h>
@@ -42,6 +43,10 @@
 #endif
 
 static const struct comp_driver comp_eq_fir;
+
+/* 43a90ce7-f3a5-41df-ac06-ba98651ae6a3 */
+DECLARE_SOF_UUID("eq-fir", eq_fir_uuid, 0x43a90ce7, 0xf3a5, 0x41df,
+		 0xac, 0x06, 0xba, 0x98, 0x65, 0x1a, 0xe6, 0xa3);
 
 /* src component private data */
 struct comp_data {
@@ -842,6 +847,7 @@ static int eq_fir_reset(struct comp_dev *dev)
 
 static const struct comp_driver comp_eq_fir = {
 	.type = SOF_COMP_EQ_FIR,
+	.uid = SOF_UUID(eq_fir_uuid),
 	.ops = {
 		.new = eq_fir_new,
 		.free = eq_fir_free,

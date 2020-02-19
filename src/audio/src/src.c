@@ -16,6 +16,7 @@
 #include <sof/drivers/ipc.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/memory.h>
+#include <sof/lib/uuid.h>
 #include <sof/list.h>
 #include <sof/math/numbers.h>
 #include <sof/platform.h>
@@ -42,6 +43,10 @@
 #define MAX_OUT_DELAY_SIZE_XNCH (PLATFORM_MAX_CHANNELS * MAX_OUT_DELAY_SIZE)
 
 static const struct comp_driver comp_src;
+
+/* c1c5326d-8390-46b4-aa47-95c3beca6550 */
+DECLARE_SOF_UUID("src", src_uuid, 0xc1c5326d, 0x8390, 0x46b4,
+		 0xaa, 0x47, 0x95, 0xc3, 0xbe, 0xca, 0x65, 0x50);
 
 /* src component private data */
 struct comp_data {
@@ -910,6 +915,7 @@ static int src_reset(struct comp_dev *dev)
 
 static const struct comp_driver comp_src = {
 	.type = SOF_COMP_SRC,
+	.uid = SOF_UUID(src_uuid),
 	.ops = {
 		.new = src_new,
 		.free = src_free,

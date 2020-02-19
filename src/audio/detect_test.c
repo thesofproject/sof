@@ -15,6 +15,7 @@
 #include <sof/lib/memory.h>
 #include <sof/lib/notifier.h>
 #include <sof/lib/wait.h>
+#include <sof/lib/uuid.h>
 #include <sof/list.h>
 #include <sof/math/numbers.h>
 #include <sof/string.h>
@@ -48,6 +49,10 @@
 #define KEYPHRASE_DEFAULT_PREAMBLE_LENGTH 0
 
 static const struct comp_driver comp_keyword;
+
+/* eba8d51f-7827-47b5-82ee-de6e7743af67 */
+DECLARE_SOF_UUID("kd-test", keyword_uuid, 0xeba8d51f, 0x7827, 0x47b5,
+		 0x82, 0xee, 0xde, 0x6e, 0x77, 0x43, 0xaf, 0x67);
 
 struct model_data {
 	uint32_t data_size;
@@ -782,6 +787,7 @@ static int test_keyword_prepare(struct comp_dev *dev)
 
 static const struct comp_driver comp_keyword = {
 	.type	= SOF_COMP_KEYWORD_DETECT,
+	.uid	= SOF_UUID(keyword_uuid),
 	.ops	= {
 		.new		= test_keyword_new,
 		.free		= test_keyword_free,

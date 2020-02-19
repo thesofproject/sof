@@ -24,6 +24,7 @@
 #include <sof/lib/alloc.h>
 #include <sof/lib/cpu.h>
 #include <sof/lib/memory.h>
+#include <sof/lib/uuid.h>
 #include <sof/list.h>
 #include <sof/math/numbers.h>
 #include <sof/platform.h>
@@ -44,6 +45,10 @@
 #define Q_MUL_SHIFT Q_SHIFT_BITS_32(VOL_QXY_Y, VOL_QXY_Y, VOL_QXY_Y)
 
 static const struct comp_driver comp_volume;
+
+/* b77e677e-5ff4-4188-af14-fba8bdbf8682 */
+DECLARE_SOF_UUID("volume", volume_uuid, 0xb77e677e, 0x5ff4, 0x4188,
+		 0xaf, 0x14, 0xfb, 0xa8, 0xbd, 0xbf, 0x86, 0x82);
 
 /**
  * \brief Synchronize host mmap() volume with real value.
@@ -771,6 +776,7 @@ static int volume_reset(struct comp_dev *dev)
 /** \brief Volume component definition. */
 static const struct comp_driver comp_volume = {
 	.type	= SOF_COMP_VOLUME,
+	.uid	= SOF_UUID(volume_uuid),
 	.ops	= {
 		.new		= volume_new,
 		.free		= volume_free,

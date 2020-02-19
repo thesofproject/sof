@@ -21,6 +21,7 @@
 #include <sof/lib/dma.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/pm_runtime.h>
+#include <sof/lib/uuid.h>
 #include <sof/math/decibels.h>
 #include <sof/math/numbers.h>
 #include <sof/schedule/ll_schedule.h>
@@ -35,6 +36,10 @@
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
+
+/* aafc26fe-3b8d-498d-8bd6-248fc72efa31 */
+DECLARE_SOF_UUID("dmic-dai", dmic_uuid, 0xaafc26fe, 0x3b8d, 0x498d,
+		 0x8b, 0xd6, 0x24, 0x8f, 0xc7, 0x2e, 0xfa, 0x31);
 
 #define DMIC_MAX_MODES 50
 
@@ -1710,6 +1715,7 @@ out:
 
 const struct dai_driver dmic_driver = {
 	.type = SOF_DAI_INTEL_DMIC,
+	.uid = SOF_UUID(dmic_uuid),
 	.dma_caps = DMA_CAP_GP_LP | DMA_CAP_GP_HP,
 	.dma_dev = DMA_DEV_DMIC,
 	.ops = {
