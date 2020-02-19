@@ -122,6 +122,9 @@
 #define LOG_ENTRY_ELF_BASE	0x20000000
 #define LOG_ENTRY_ELF_SIZE	0x2000000
 
+#define EXT_MANIFEST_ELF_BASE	(LOG_ENTRY_ELF_BASE + LOG_ENTRY_ELF_SIZE)
+#define EXT_MANIFEST_ELF_SIZE	0x2000000
+
 /*
  * The HP SRAM Region Apollolake is organised like this :-
  * +--------------------------------------------------------------------------+
