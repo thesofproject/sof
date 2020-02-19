@@ -422,7 +422,8 @@ int convert(const struct convert_config *config) {
 	}
 
 	if (strncmp((char *) snd.sig, SND_SOF_LOGS_SIG, SND_SOF_LOGS_SIG_SIZE)) {
-		fprintf(stderr, "Error: Invalid ldc file signature. \n");
+		fprintf(stderr, "HERE IS THE FILE SIGNATURE: %s", (char *)snd.sig);
+                fprintf(stderr, "Error: Invalid ldc file signature. \n");
 		return -EINVAL;
 	}
 

@@ -403,6 +403,7 @@ static struct dma_chan_data *hda_dma_channel_get(struct dma *dma,
 
 	trace_hddma("hda-dmac: %d channel %d -> get", dma->plat_data.id,
 		    channel);
+        trace_hddma("WOOOO");
 
 	/* use channel if it's free */
 	if (dma->chan[channel].status == COMP_STATE_INIT) {
