@@ -118,7 +118,8 @@ static void dai_dma_cb(void *arg, enum notify_id type, void *data)
 	}
 }
 
-static struct comp_dev *dai_new(struct sof_ipc_comp *comp)
+static struct comp_dev *dai_new(const struct comp_driver *drv,
+				struct sof_ipc_comp *comp)
 {
 	struct comp_dev *dev;
 	struct sof_ipc_comp_dai *dai;
@@ -133,6 +134,7 @@ static struct comp_dev *dai_new(struct sof_ipc_comp *comp)
 		      COMP_SIZE(struct sof_ipc_comp_dai));
 	if (!dev)
 		return NULL;
+	dev->drv = drv;
 
 	dai = COMP_GET_IPC(dev, sof_ipc_comp_dai);
 	ret = memcpy_s(dai, sizeof(*dai), ipc_dai,

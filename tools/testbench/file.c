@@ -400,7 +400,8 @@ static enum file_format get_file_format(char *filename)
 	return FILE_RAW;
 }
 
-static struct comp_dev *file_new(struct sof_ipc_comp *comp)
+static struct comp_dev *file_new(const struct comp_driver *drv,
+				 struct sof_ipc_comp *comp)
 {
 	struct comp_dev *dev;
 	struct sof_ipc_comp_file *file;
@@ -417,6 +418,7 @@ static struct comp_dev *file_new(struct sof_ipc_comp *comp)
 		      COMP_SIZE(struct sof_ipc_comp_file));
 	if (!dev)
 		return NULL;
+	dev->drv = drv;
 
 	file = COMP_GET_IPC(dev, sof_ipc_comp_file);
 	assert(!memcpy_s(file, sizeof(*file), ipc_file,

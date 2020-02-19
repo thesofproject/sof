@@ -107,7 +107,8 @@ static uint64_t kpb_task_deadline(void *data)
  *
  * \return: a pointer to newly created KPB component.
  */
-static struct comp_dev *kpb_new(struct sof_ipc_comp *comp)
+static struct comp_dev *kpb_new(const struct comp_driver *drv,
+				struct sof_ipc_comp *comp)
 {
 	struct sof_ipc_comp_process *ipc_process =
 					(struct sof_ipc_comp_process *)comp;
@@ -126,6 +127,7 @@ static struct comp_dev *kpb_new(struct sof_ipc_comp *comp)
 		      COMP_SIZE(struct sof_ipc_comp_process));
 	if (!dev)
 		return NULL;
+	dev->drv = drv;
 
 	ret = memcpy_s(COMP_GET_IPC(dev, sof_ipc_comp_process),
 		       sizeof(struct sof_ipc_comp_process),

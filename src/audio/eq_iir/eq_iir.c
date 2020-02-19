@@ -493,7 +493,8 @@ static int eq_iir_setup(struct comp_data *cd, int nch)
  * End of EQ setup code. Next the standard component methods.
  */
 
-static struct comp_dev *eq_iir_new(struct sof_ipc_comp *comp)
+static struct comp_dev *eq_iir_new(const struct comp_driver *drv,
+				   struct sof_ipc_comp *comp)
 {
 	struct comp_dev *dev;
 	struct comp_data *cd;
@@ -519,6 +520,7 @@ static struct comp_dev *eq_iir_new(struct sof_ipc_comp *comp)
 		      COMP_SIZE(struct sof_ipc_comp_process));
 	if (!dev)
 		return NULL;
+	dev->drv = drv;
 
 	iir = COMP_GET_IPC(dev, sof_ipc_comp_process);
 	ret = memcpy_s(iir, sizeof(*iir), ipc_iir,

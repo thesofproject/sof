@@ -446,7 +446,8 @@ static void src_copy_s16(struct comp_dev *dev,
 }
 #endif /* CONFIG_FORMAT_S16LE */
 
-static struct comp_dev *src_new(struct sof_ipc_comp *comp)
+static struct comp_dev *src_new(const struct comp_driver *drv,
+				struct sof_ipc_comp *comp)
 {
 	struct comp_dev *dev;
 	struct sof_ipc_comp_src *src;
@@ -466,6 +467,7 @@ static struct comp_dev *src_new(struct sof_ipc_comp *comp)
 		      COMP_SIZE(struct sof_ipc_comp_src));
 	if (!dev)
 		return NULL;
+	dev->drv = drv;
 
 	src = COMP_GET_IPC(dev, sof_ipc_comp_src);
 

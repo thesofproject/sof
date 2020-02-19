@@ -187,7 +187,8 @@ static int vol_task_init(struct comp_dev *dev)
  * \param[in] delay Update time.
  * \return Pointer to volume base component device.
  */
-static struct comp_dev *volume_new(struct sof_ipc_comp *comp)
+static struct comp_dev *volume_new(const struct comp_driver *drv,
+				   struct sof_ipc_comp *comp)
 {
 	struct comp_dev *dev;
 	struct sof_ipc_comp_volume *vol;
@@ -203,6 +204,7 @@ static struct comp_dev *volume_new(struct sof_ipc_comp *comp)
 		      COMP_SIZE(struct sof_ipc_comp_volume));
 	if (!dev)
 		return NULL;
+	dev->drv = drv;
 
 	vol = COMP_GET_IPC(dev, sof_ipc_comp_volume);
 	ret = memcpy_s(vol, sizeof(*vol), ipc_vol,

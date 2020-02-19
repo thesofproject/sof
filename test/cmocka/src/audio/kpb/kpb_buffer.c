@@ -120,7 +120,8 @@ static int buffering_test_setup(void **state)
 	sys_comp_kpb_init();
 
 	/* Create KPB component */
-	kpb_dev_mock = kpb_drv_mock.ops.new((struct sof_ipc_comp *)&kpb);
+	kpb_dev_mock = kpb_drv_mock.ops.new(&kpb_drv_mock,
+					    (struct sof_ipc_comp *)&kpb);
 
 	/* Was device created properly?  */
 	assert_non_null(kpb_dev_mock);

@@ -247,7 +247,8 @@ static void src_copy_s16(struct comp_dev *dev,
 	}
 }
 
-static struct comp_dev *asrc_new(struct sof_ipc_comp *comp)
+static struct comp_dev *asrc_new(const struct comp_driver *drv,
+				 struct sof_ipc_comp *comp)
 {
 	struct comp_dev *dev;
 	struct sof_ipc_comp_asrc *asrc;
@@ -271,6 +272,7 @@ static struct comp_dev *asrc_new(struct sof_ipc_comp *comp)
 		      COMP_SIZE(struct sof_ipc_comp_asrc));
 	if (!dev)
 		return NULL;
+	dev->drv = drv;
 
 	asrc = COMP_GET_IPC(dev, sof_ipc_comp_asrc);
 	err = memcpy_s(asrc, sizeof(*asrc), ipc_asrc,

@@ -285,7 +285,8 @@ static int test_keyword_apply_config(struct comp_dev *dev,
 	return 0;
 }
 
-static struct comp_dev *test_keyword_new(struct sof_ipc_comp *comp)
+static struct comp_dev *test_keyword_new(const struct comp_driver *drv,
+					 struct sof_ipc_comp *comp)
 {
 	struct comp_dev *dev;
 	struct sof_ipc_comp_process *keyword;
@@ -302,6 +303,7 @@ static struct comp_dev *test_keyword_new(struct sof_ipc_comp *comp)
 		      COMP_SIZE(struct sof_ipc_comp_process));
 	if (!dev)
 		return NULL;
+	dev->drv = drv;
 
 	keyword = COMP_GET_IPC(dev, sof_ipc_comp_process);
 	ret = memcpy_s(keyword, sizeof(*keyword), ipc_keyword,

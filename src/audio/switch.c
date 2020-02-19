@@ -14,7 +14,8 @@
 
 static const struct comp_driver comp_switch;
 
-static struct comp_dev *switch_new(struct sof_ipc_comp *comp)
+static struct comp_dev *switch_new(const struct comp_driver *drv,
+				   struct sof_ipc_comp *comp)
 {
 	comp_cl_info(&comp_switch, "switch_new()");
 
