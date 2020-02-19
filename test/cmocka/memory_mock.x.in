@@ -2,6 +2,10 @@
 
 SECTIONS
 {
+    .static_uuid_entries (COPY) : ALIGN(1024)
+    {
+      *(*.static_uuids)
+    }
 
     .static_log_entries (COPY) : ALIGN(1024)
     {

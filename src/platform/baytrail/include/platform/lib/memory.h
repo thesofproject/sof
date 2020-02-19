@@ -89,6 +89,9 @@ static inline void *platform_rfree_prepare(void *ptr)
 #define SSP5_BASE	0xFF2A6000
 #define SSP5_SIZE	0x00001000
 
+#define UUID_ENTRY_ELF_BASE	0x1FFFA000
+#define UUID_ENTRY_ELF_SIZE	0x6000
+
 #define LOG_ENTRY_ELF_BASE	0x20000000
 #define LOG_ENTRY_ELF_SIZE	0x2000000
 

@@ -96,6 +96,9 @@ MEMORY
   wnd3 :
         org = HP_SRAM_WIN3_BASE,
         len = HP_SRAM_WIN3_SIZE
+  static_uuid_entries_seg (!ari) :
+        org = UUID_ENTRY_ELF_BASE,
+        len = UUID_ENTRY_ELF_SIZE
   static_log_entries_seg (!ari) :
         org = LOG_ENTRY_ELF_BASE,
         len = LOG_ENTRY_ELF_SIZE
@@ -133,6 +136,7 @@ PHDRS
   wnd1_phdr PT_LOAD;
   wnd2_phdr PT_LOAD;
   wnd3_phdr PT_LOAD;
+  static_uuid_entries_phdr PT_NOTE;
   static_log_entries_phdr PT_NOTE;
   lpsram_mem_phdr PT_LOAD;
 }
@@ -556,6 +560,11 @@ SECTIONS
     KEEP (*(.xt.profile_files))
     KEEP (*(.gnu.linkonce.xt.profile_files.*))
   }
+
+  .static_uuid_entries (COPY) : ALIGN(1024)
+  {
+    *(*.static_uuids)
+  } > static_uuid_entries_seg :static_uuid_entries_phdr
 
   .static_log_entries (COPY) : ALIGN(1024)
   {
