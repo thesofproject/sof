@@ -366,7 +366,8 @@ static int tonegen_init(struct tone_state *sg, int32_t fs, int32_t f, int32_t a)
  * End of algorithm code. Next the standard component methods.
  */
 
-static struct comp_dev *tone_new(struct sof_ipc_comp *comp)
+static struct comp_dev *tone_new(const struct comp_driver *drv,
+				 struct sof_ipc_comp *comp)
 {
 	struct comp_dev *dev;
 	struct sof_ipc_comp_tone *tone;
@@ -381,6 +382,7 @@ static struct comp_dev *tone_new(struct sof_ipc_comp *comp)
 		      COMP_SIZE(struct sof_ipc_comp_tone));
 	if (!dev)
 		return NULL;
+	dev->drv = drv;
 
 	tone = COMP_GET_IPC(dev, sof_ipc_comp_tone);
 	ret = memcpy_s(tone, sizeof(*tone), ipc_tone,

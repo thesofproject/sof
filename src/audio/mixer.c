@@ -106,7 +106,8 @@ static void mix_n_s32(struct comp_dev *dev, struct audio_stream *sink,
 }
 #endif /* CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE */
 
-static struct comp_dev *mixer_new(struct sof_ipc_comp *comp)
+static struct comp_dev *mixer_new(const struct comp_driver *drv,
+				  struct sof_ipc_comp *comp)
 {
 	struct comp_dev *dev;
 	struct sof_ipc_comp_mixer *mixer;
@@ -121,6 +122,7 @@ static struct comp_dev *mixer_new(struct sof_ipc_comp *comp)
 		      COMP_SIZE(struct sof_ipc_comp_mixer));
 	if (!dev)
 		return NULL;
+	dev->drv = drv;
 
 	mixer = COMP_GET_IPC(dev, sof_ipc_comp_mixer);
 

@@ -312,7 +312,8 @@ static int host_trigger(struct comp_dev *dev, int cmd)
 	return ret;
 }
 
-static struct comp_dev *host_new(struct sof_ipc_comp *comp)
+static struct comp_dev *host_new(const struct comp_driver *drv,
+				 struct sof_ipc_comp *comp)
 {
 	struct sof_ipc_comp_host *ipc_host = (struct sof_ipc_comp_host *)comp;
 	struct sof_ipc_comp_host *host;
@@ -327,6 +328,7 @@ static struct comp_dev *host_new(struct sof_ipc_comp *comp)
 		      COMP_SIZE(struct sof_ipc_comp_host));
 	if (!dev)
 		return NULL;
+	dev->drv = drv;
 
 	host = COMP_GET_IPC(dev, sof_ipc_comp_host);
 	ret = memcpy_s(host, sizeof(*host),
@@ -347,7 +349,7 @@ static struct comp_dev *host_new(struct sof_ipc_comp *comp)
 
 	hd->dma = dma_get(dir, 0, DMA_DEV_HOST, DMA_ACCESS_SHARED);
 	if (!hd->dma) {
-		comp_cl_err(&comp_host, "host_new() error: dma_get() returned NULL");
+		comp_err(dev, "host_new() error: dma_get() returned NULL");
 		rfree(hd);
 		rfree(dev);
 		return NULL;

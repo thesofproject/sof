@@ -77,7 +77,8 @@ static int mux_set_values(struct comp_data *cd, struct sof_mux_config *cfg)
 	return 0;
 }
 
-static struct comp_dev *mux_new(struct sof_ipc_comp *comp)
+static struct comp_dev *mux_new(const struct comp_driver *drv,
+				struct sof_ipc_comp *comp)
 {
 	struct sof_ipc_comp_process *ipc_process =
 		(struct sof_ipc_comp_process *)comp;
@@ -92,6 +93,7 @@ static struct comp_dev *mux_new(struct sof_ipc_comp *comp)
 		      COMP_SIZE(struct sof_ipc_comp_process));
 	if (!dev)
 		return NULL;
+	dev->drv = drv;
 
 	memcpy_s(COMP_GET_IPC(dev, sof_ipc_comp_process),
 		 sizeof(struct sof_ipc_comp_process),

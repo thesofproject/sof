@@ -97,7 +97,7 @@ static struct sof_ipc_comp mock_comp = {
 static struct comp_dev *create_comp(struct sof_ipc_comp *comp,
 				    struct comp_driver *drv)
 {
-	struct comp_dev *cd = drv->ops.new(comp);
+	struct comp_dev *cd = drv->ops.new(drv, comp);
 
 	assert_non_null(cd);
 

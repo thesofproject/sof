@@ -69,13 +69,12 @@ struct comp_dev *comp_new(struct sof_ipc_comp *comp)
 	}
 
 	/* create the new component */
-	cdev = drv->ops.new(comp);
+	cdev = drv->ops.new(drv, comp);
 	if (!cdev) {
 		comp_cl_err(drv, "comp_new() error: unable to create the new component");
 		return NULL;
 	}
 
-	cdev->drv = drv;
 	list_init(&cdev->bsource_list);
 	list_init(&cdev->bsink_list);
 

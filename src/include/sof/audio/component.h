@@ -189,6 +189,8 @@ enum comp_copy_type {
 	COMP_COPY_ONE_SHOT,
 };
 
+struct comp_driver;
+
 /**
  * Audio component operations - all mandatory.
  *
@@ -197,7 +199,8 @@ enum comp_copy_type {
  */
 struct comp_ops {
 	/** component creation */
-	struct comp_dev *(*new)(struct sof_ipc_comp *comp);
+	struct comp_dev *(*new)(const struct comp_driver *drv,
+				struct sof_ipc_comp *comp);
 
 	/** component destruction */
 	void (*free)(struct comp_dev *dev);

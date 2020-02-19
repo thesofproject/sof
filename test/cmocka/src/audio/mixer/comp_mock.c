@@ -13,9 +13,13 @@
 
 #include "comp_mock.h"
 
-static struct comp_dev *mock_comp_new(struct sof_ipc_comp *comp)
+static struct comp_dev *mock_comp_new(const struct comp_driver *drv,
+				      struct sof_ipc_comp *comp)
 {
-	return calloc(1, sizeof(struct comp_dev));
+	struct comp_dev *dev = calloc(1, sizeof(struct comp_dev));
+
+	dev->drv = drv;
+	return dev;
 }
 
 static void mock_comp_free(struct comp_dev *dev)
