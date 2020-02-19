@@ -441,11 +441,27 @@ else()
 	add_custom_target(run_meu DEPENDS run_rimage)
 endif()
 
+if(CMAKE_HOST_WIN32)
+	set(GLUE_CMD copy /b sof-${fw_name}.ri.xman + sof-${fw_name}.ri sof-${fw_name}.ri.temp)
+else()
+	set(GLUE_CMD cat sof-${fw_name}.ri.xman sof-${fw_name}.ri > sof-${fw_name}.ri.temp)
+endif()
+
+add_custom_target(
+	ext_man_glue ALL
+	COMMAND ${GLUE_CMD}
+	COMMAND ${CMAKE_COMMAND} -E copy sof-${fw_name}.ri.temp sof-${fw_name}.ri
+	COMMAND ${CMAKE_COMMAND} -E remove sof-${fw_name}.ri.temp
+	DEPENDS run_meu
+	VERBATIM
+	USES_TERMINAL
+)
+
 add_custom_target(
 	bin ALL
 	COMMAND ${CMAKE_COMMAND} -E copy sof-${fw_name}.ri ${PROJECT_BINARY_DIR}/sof-${fw_name}.ri
 	COMMAND ${CMAKE_COMMAND} -E copy sof-${fw_name}.ldc ${PROJECT_BINARY_DIR}/sof-${fw_name}.ldc
-	DEPENDS run_meu bin_extras
+	DEPENDS ext_man_glue bin_extras
 	VERBATIM
 	USES_TERMINAL
 )

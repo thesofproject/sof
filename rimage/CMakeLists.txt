@@ -32,6 +32,7 @@ add_executable(rimage
 	hash.c
 	pkcs1_5.c
 	manifest.c
+	ext_manifest.c
 	elf.c
 	rimage.c
 )

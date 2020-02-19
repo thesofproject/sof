@@ -8,6 +8,7 @@
 #include <errno.h>
 #include <string.h>
 
+#include "ext_manifest.h"
 #include "rimage.h"
 #include "file_format.h"
 #include "manifest.h"
@@ -150,7 +151,13 @@ found:
 		ret = image.adsp->write_firmware_meu(&image);
 	else
 		ret = image.adsp->write_firmware(&image);
+	if (ret) {
+		fprintf(stderr, "error: unable to write firmware, %d\n",
+			errno);
+		goto out;
+	}
 
+	ext_man_write(&image);
 out:
 	/* close files */
 	if (image.out_fd)
