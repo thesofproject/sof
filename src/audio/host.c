@@ -207,7 +207,7 @@ static void host_dma_cb(void *arg, enum notify_id type, void *data)
 	struct host_data *hd = comp_get_drvdata(dev);
 	uint32_t bytes = next->elem.size;
 
-	comp_cl_dbg(&comp_host, "host_dma_cb() %p", &comp_host);
+	comp_cl_dbg(&comp_host, "host_dma_cb() %p", (uintptr_t)&comp_host);
 
 	/* update position */
 	host_update_position(dev, bytes);
