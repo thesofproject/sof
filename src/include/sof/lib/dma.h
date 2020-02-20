@@ -47,6 +47,7 @@ struct comp_buffer;
 #define DMA_CAP_HDA		BIT(0) /**< HDA DMA */
 #define DMA_CAP_GP_LP		BIT(1) /**< GP LP DMA */
 #define DMA_CAP_GP_HP		BIT(2) /**< GP HP DMA */
+#define DMA_CAP_BUF_COPIER	BIT(3) /**< Buffer copying DMA */
 
 /* DMA dev type bitmasks used to define the type of DMA */
 
@@ -58,6 +59,7 @@ struct comp_buffer;
 #define DMA_DEV_ALH		BIT(5) /**< connectable to ALH link */
 #define DMA_DEV_SAI		BIT(6) /**< connectable to SAI fifo */
 #define DMA_DEV_ESAI		BIT(7) /**< connectable to ESAI fifo */
+#define DMA_DEV_BUFFER		BIT(8) /**< connectable to buffer component */
 
 /* DMA access privilege flag */
 #define DMA_ACCESS_EXCLUSIVE	1
