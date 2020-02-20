@@ -829,12 +829,6 @@ static int eq_iir_prepare(struct comp_dev *dev)
 	sink_period_bytes = audio_stream_period_bytes(&sinkb->stream,
 						      dev->frames);
 
-	/* Rewrite params format for this component to match the host side. */
-	if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
-		sourceb->stream.frame_fmt = cd->source_format;
-	else
-		sinkb->stream.frame_fmt = cd->sink_format;
-
 	if (sinkb->stream.size < config->periods_sink * sink_period_bytes) {
 		comp_err(dev, "eq_iir_prepare(), sink buffer size %d is insufficient",
 			 sinkb->stream.size);
