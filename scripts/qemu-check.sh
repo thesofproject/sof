@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2018 Intel Corporation. All rights reserved.
 
-SUPPORTED_PLATFORMS=(byt cht bdw hsw apl icl skl kbl cnl)
+SUPPORTED_PLATFORMS=(byt cht bdw hsw apl icl skl kbl cnl imx8)
 READY_MSG="6c 00 00 00 00 00 00 70"
 
 rm -f dump-*.txt
@@ -95,6 +95,12 @@ do
 		SHM_MBOX=qemu-bridge-hp-sram-mem
 		ROM="-r ../sof.git/build_${j}_gcc/src/arch/xtensa/rom-$j.bin"
 	fi
+        if [ $j == "imx8" ]
+        then
+                READY_IPC="00 00 00 00 00 00 04 c0"
+                SHM_IPC_REG=qemu-bridge-mu-io
+                SHM_MBOX=qemu-bridge-mbox-io
+        fi
 
 	./xtensa-host.sh $PLATFORM -k ../sof.git/build_${j}_gcc/src/arch/xtensa/$FWNAME $ROM -o 2.0 ../sof.git/dump-$j.txt
 	# dump log into sof.git incase running in docker
