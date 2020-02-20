@@ -18,6 +18,13 @@ config DUMMY_DMA
 
 	  If unsure, select "n".
 
+config IMX_EDMA
+	bool "i.MX EDMA driver"
+	default n
+	depends on IMX
+	help
+	  Select this to enable support for i.MX EDMA DMA controller.
+
 config IPC_POLLING
 	bool "Enable IPC Polling support"
 	default n
