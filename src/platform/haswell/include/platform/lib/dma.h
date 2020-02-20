@@ -10,13 +10,14 @@
 #ifndef __PLATFORM_LIB_DMA_H__
 #define __PLATFORM_LIB_DMA_H__
 
-#define PLATFORM_NUM_DMACS		2
+#define PLATFORM_NUM_DMACS		3
 
 /* max number of supported DMA channels */
 #define PLATFORM_MAX_DMA_CHAN	8
 
 #define DMA_ID_DMAC0			0
 #define DMA_ID_DMAC1			1
+#define DMA_ID_DMAC2			2
 
 #define DMA_HANDSHAKE_SSP1_RX		0
 #define DMA_HANDSHAKE_SSP1_TX		1

@@ -8,6 +8,7 @@
 //         Janusz Jankowski <janusz.jankowski@linux.intel.com>
 
 #include <sof/common.h>
+#include <sof/drivers/buf-copier-dma.h>
 #include <sof/drivers/dw-dma.h>
 #include <sof/drivers/hda-dma.h>
 #include <sof/drivers/interrupt.h>
@@ -151,6 +152,17 @@ struct SHARED_DATA dma dma[PLATFORM_NUM_DMACS] = {
 	},
 	.ops		= &dw_dma_ops,
 },
+{
+	/* Buf copier DMAC */
+	.plat_data = {
+		.id		= DMA_BUF_COPIER,
+		.dir		= DMA_DIR_MEM_TO_MEM,
+		.caps		= DMA_CAP_BUF_COPIER,
+		.devs		= DMA_DEV_BUFFER,
+		.channels	= 1,
+	},
+	.ops		= &buf_copier_dma_ops,
+},
 };
 
 #else
@@ -234,7 +246,19 @@ SHARED_DATA struct dma dma[PLATFORM_NUM_DMACS] = {
 		.chan_size	= GTW_LINK_OUT_STREAM_SIZE,
 	},
 	.ops		= &hda_link_dma_ops,
-},};
+},
+{
+	/* Buf copier DMAC */
+	.plat_data = {
+		.id		= DMA_BUF_COPIER,
+		.dir		= DMA_DIR_MEM_TO_MEM,
+		.caps		= DMA_CAP_BUF_COPIER,
+		.devs		= DMA_DEV_BUFFER,
+		.channels	= 1,
+	},
+	.ops		= &buf_copier_dma_ops,
+},
+};
 #endif
 
 const struct dma_info lib_dma = {

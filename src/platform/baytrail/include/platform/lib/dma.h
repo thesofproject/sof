@@ -14,9 +14,9 @@
 #include <config.h>
 
 #if defined CONFIG_CHERRYTRAIL_EXTRA_DW_DMA
-#define PLATFORM_NUM_DMACS	3
+#define PLATFORM_NUM_DMACS	4
 #else
-#define PLATFORM_NUM_DMACS	2
+#define PLATFORM_NUM_DMACS	3
 #endif
 
 /* max number of supported DMA channels */
@@ -25,6 +25,7 @@
 #define DMA_ID_DMAC0	0
 #define DMA_ID_DMAC1	1
 #define DMA_ID_DMAC2	2
+#define DMA_ID_DMAC3	3
 
 #define DMA_HANDSHAKE_SSP0_RX	0
 #define DMA_HANDSHAKE_SSP0_TX	1

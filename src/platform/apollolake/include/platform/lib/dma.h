@@ -12,7 +12,7 @@
 #define __PLATFORM_LIB_DMA_H__
 
 /* number of supported DMACs */
-#define PLATFORM_NUM_DMACS	6
+#define PLATFORM_NUM_DMACS	7
 
 /* max number of supported DMA channels */
 #define PLATFORM_MAX_DMA_CHAN	8
@@ -26,6 +26,7 @@
 #define DMA_HOST_OUT_DMAC	5
 #define DMA_LINK_IN_DMAC	6
 #define DMA_LINK_OUT_DMAC	7
+#define DMA_BUF_COPIER		8
 
 /* mappings - TODO improve API to get type */
 #define DMA_ID_DMAC0		DMA_HOST_IN_DMAC
@@ -36,6 +37,7 @@
 #define DMA_ID_DMAC5		DMA_GP_HP_DMAC1
 #define DMA_ID_DMAC6		DMA_LINK_IN_DMAC
 #define DMA_ID_DMAC7		DMA_LINK_OUT_DMAC
+#define DMA_ID_DMAC8		DMA_BUF_COPIER
 
 /* handshakes */
 #define DMA_HANDSHAKE_DMIC_CH0	0

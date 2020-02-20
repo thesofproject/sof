@@ -12,9 +12,11 @@
 
 #define DMA_ID_DMAC0	0
 #define DMA_ID_DMAC1	1
+#define DMA_ID_DMAC2	2
 
 #define DMA_DEV_PCM			0
 #define DMA_DEV_WAV			1
+#define DMA_BUF_COPIER			2
 
 #endif /* __PLATFORM_LIB_DMA_H__ */
 

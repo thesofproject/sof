@@ -5,6 +5,7 @@
 // Author: Daniel Baluta <daniel.baluta@nxp.com>
 
 #include <sof/common.h>
+#include <sof/drivers/buf-copier-dma.h>
 #include <sof/drivers/edma.h>
 #include <sof/drivers/interrupt.h>
 #include <sof/lib/dma.h>
@@ -43,6 +44,17 @@ SHARED_DATA struct dma dma[PLATFORM_NUM_DMACS] = {
 		.channels	= 16,
 	},
 	.ops	= &dummy_dma_ops,
+},
+{
+	/* Buf copier DMAC */
+	.plat_data = {
+		.id		= DMA_ID_BUF_COPIER,
+		.dir		= DMA_DIR_MEM_TO_MEM,
+		.caps		= DMA_CAP_BUF_COPIER,
+		.devs		= DMA_DEV_BUFFER,
+		.channels	= 1,
+	},
+	.ops	= &buf_copier_dma_ops,
 },
 };
 

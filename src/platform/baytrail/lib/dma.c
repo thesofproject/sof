@@ -5,6 +5,7 @@
 // Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
 
 #include <sof/common.h>
+#include <sof/drivers/buf-copier-dma.h>
 #include <sof/drivers/dw-dma.h>
 #include <sof/drivers/interrupt.h>
 #include <sof/lib/dma.h>
@@ -168,6 +169,17 @@ SHARED_DATA struct dma dma[PLATFORM_NUM_DMACS] = {
 	.ops		= &dw_dma_ops,
 },
 #endif
+{
+	/* Buf copier DMAC */
+	.plat_data = {
+		.id = DMA_ID_DMAC2,
+		.dir = DMA_DIR_MEM_TO_MEM,
+		.caps = DMA_CAP_BUF_COPIER,
+		.devs = DMA_DEV_BUFFER,
+		.channels = 1,
+	},
+	.ops = &buf_copier_dma_ops,
+},
 };
 
 const struct dma_info lib_dma = {
