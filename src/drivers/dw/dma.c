@@ -288,8 +288,8 @@ static int dw_dma_start(struct dma_chan_data *channel)
 
 #if CONFIG_HW_LLI
 	/* LLP mode - write LLP pointer unless in scatter mode */
-	dma_reg_write(dma, DW_LLP(channel->index), lli->ctrl_lo &
-		      (DW_CTLL_LLP_D_EN | DW_CTLL_LLP_S_EN) ?
+	dma_reg_write(dma, DW_LLP(channel->index),
+		      (lli->ctrl_lo & (DW_CTLL_LLP_D_EN | DW_CTLL_LLP_S_EN)) ?
 		      (uint32_t)lli : 0);
 #endif
 	/* channel needs to start from scratch, so write SAR and DAR */
