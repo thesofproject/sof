@@ -5,6 +5,7 @@
 // Author: Daniel Baluta <daniel.baluta@nxp.com>
 
 #include <sof/common.h>
+#include <sof/drivers/echo-ref.h>
 #include <sof/drivers/edma.h>
 #include <sof/drivers/esai.h>
 #include <sof/drivers/sai.h>
@@ -64,6 +65,13 @@ static SHARED_DATA struct dai sai[] = {
 },
 };
 
+static SHARED_DATA struct dai echo_ref[] = {
+{
+	.index = 0,
+	.drv = &echo_ref_driver,
+},
+};
+
 const struct dai_type_info dti[] = {
 	{
 		.type = SOF_DAI_IMX_SAI,
@@ -74,6 +82,11 @@ const struct dai_type_info dti[] = {
 		.type = SOF_DAI_IMX_ESAI,
 		.dai_array = esai,
 		.num_dais = ARRAY_SIZE(esai)
+	},
+	{
+		.type = SOF_DAI_ECHO_REF,
+		.dai_array = echo_ref,
+		.num_dais = ARRAY_SIZE(echo_ref)
 	},
 };
 
@@ -96,6 +109,11 @@ int dai_init(struct sof *sof)
 		spinlock_init(&sai[i].lock);
 
 	platform_shared_commit(sai, sizeof(*sai));
+
+	for (i = 0; i < ARRAY_SIZE(echo_ref); i++)
+		spinlock_init(&echo_ref[i].lock);
+
+	platform_shared_commit(echo_ref, sizeof(*echo_ref));
 
 	sof->dai_info = &lib_dai;
 

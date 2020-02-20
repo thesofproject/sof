@@ -8,6 +8,7 @@
 //         Janusz Jankowski <janusz.jankowski@linux.intel.com>
 
 #include <sof/common.h>
+#include <sof/drivers/echo-ref.h>
 #include <sof/drivers/hda.h>
 #include <sof/drivers/interrupt.h>
 #include <sof/drivers/mn.h>
@@ -87,6 +88,7 @@ static SHARED_DATA struct dai alh[DAI_NUM_ALH_BI_DIR_LINKS];
 #endif
 
 static SHARED_DATA struct dai hda[(DAI_NUM_HDA_OUT + DAI_NUM_HDA_IN)];
+static SHARED_DATA struct dai echo_ref[1];
 
 const struct dai_type_info dti[] = {
 #if CONFIG_CAVS_SSP
@@ -113,8 +115,13 @@ const struct dai_type_info dti[] = {
 		.type = SOF_DAI_INTEL_ALH,
 		.dai_array = cache_to_uncache((struct dai *)alh),
 		.num_dais = ARRAY_SIZE(alh)
-	}
+	},
 #endif
+	{
+		.type = SOF_DAI_ECHO_REF,
+		.dai_array = cache_to_uncache((struct dai *)echo_ref),
+		.num_dais = ARRAY_SIZE(echo_ref)
+	},
 };
 
 const struct dai_info lib_dai = {
@@ -199,6 +206,16 @@ int dai_init(struct sof *sof)
 
 	platform_shared_commit(dai, sizeof(*dai) * ARRAY_SIZE(alh));
 #endif
+
+	dai = cache_to_uncache((struct dai *)echo_ref);
+
+	for (i = 0; i < ARRAY_SIZE(echo_ref); i++) {
+		dai[i].index = i;
+		dai[i].drv = &echo_ref_driver;
+		spinlock_init(&dai[i].lock);
+	}
+
+	platform_shared_commit(dai, sizeof(*dai) * ARRAY_SIZE(echo_ref));
 
 	return 0;
 }

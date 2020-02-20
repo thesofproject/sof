@@ -5,6 +5,7 @@
 // Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
 
 #include <sof/common.h>
+#include <sof/drivers/echo-ref.h>
 #include <sof/drivers/interrupt.h>
 #include <sof/drivers/ssp.h>
 #include <sof/lib/dai.h>
@@ -49,12 +50,24 @@ static SHARED_DATA struct dai ssp[2] = {
 },
 };
 
+static SHARED_DATA struct dai echo_ref[] = {
+{
+	.index = 0,
+	.drv = &echo_ref_driver,
+},
+};
+
 const struct dai_type_info dti[] = {
 	{
 		.type = SOF_DAI_INTEL_SSP,
 		.dai_array = ssp,
 		.num_dais = ARRAY_SIZE(ssp)
-	}
+	},
+	{
+		.type = SOF_DAI_ECHO_REF,
+		.dai_array = echo_ref,
+		.num_dais = ARRAY_SIZE(echo_ref)
+	},
 };
 
 const struct dai_info lib_dai = {
@@ -71,6 +84,11 @@ int dai_init(struct sof *sof)
 		spinlock_init(&ssp[i].lock);
 
 	platform_shared_commit(ssp, sizeof(*ssp));
+
+	for (i = 0; i < ARRAY_SIZE(echo_ref); i++)
+		spinlock_init(&echo_ref[i].lock);
+
+	platform_shared_commit(echo_ref, sizeof(*echo_ref));
 
 	sof->dai_info = &lib_dai;
 
