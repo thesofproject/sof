@@ -115,7 +115,7 @@ void src_polyphase_stage_cir(struct src_stage_prm *s);
 void src_polyphase_stage_cir_s16(struct src_stage_prm *s);
 #endif /* CONFIG_FORMAT_S16LE */
 
-int src_buffer_lengths(struct src_param *p, int fs_in, int fs_out, int nch,
+int src_buffer_lengths(struct src_param *a, int fs_in, int fs_out, int nch,
 		       int source_frames);
 
 int32_t src_input_rates(void);
