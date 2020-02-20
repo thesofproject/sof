@@ -712,7 +712,7 @@ static int test_keyword_trigger(struct comp_dev *dev, int cmd)
 		cd->activation = 0;
 	}
 
-	return ret;
+	return 0;
 }
 
 /*  process stream data from source buffer */
