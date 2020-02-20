@@ -201,7 +201,7 @@ static size_t kpb_allocate_history_buffer(struct comp_data *kpb,
 	int hb_mcp[KPB_NO_OF_MEM_POOLS] = {SOF_MEM_CAPS_LP, SOF_MEM_CAPS_HP,
 					   SOF_MEM_CAPS_RAM };
 	void *new_mem_block = NULL;
-	size_t temp_ca_size = 0;
+	size_t temp_ca_size;
 	int i = 0;
 	size_t allocated_size = 0;
 
@@ -756,7 +756,7 @@ static int kpb_buffer_data(struct comp_dev *dev,
 	struct hb *buff = kpb->history_buffer;
 	uint32_t offset = 0;
 	uint64_t timeout = 0;
-	uint64_t current_time = 0;
+	uint64_t current_time;
 	enum kpb_state state_preserved = kpb->state;
 	struct dd *draining_data = &kpb->draining_task_data;
 	size_t sample_width = kpb->config.sampling_width;
@@ -960,15 +960,15 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 	struct hb *buff = kpb->history_buffer;
 	struct hb *first_buff = buff;
 	size_t buffered = 0;
-	size_t local_buffered = 0;
+	size_t local_buffered;
 	enum comp_copy_type copy_type = COMP_COPY_NORMAL;
-	size_t drain_interval = 0;
+	size_t drain_interval;
 	size_t host_period_size = kpb->host_period_size;
 	size_t ticks_per_ms = clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1);
 	size_t bytes_per_ms = KPB_SAMPLES_PER_MS *
 			      (KPB_SAMPLE_CONTAINER_SIZE(sample_width) / 8) *
 			      kpb->config.channels;
-	size_t period_bytes_limit = 0;
+	size_t period_bytes_limit;
 	uint32_t flags;
 
 	comp_info(dev, "kpb_init_draining(): requested draining of %d [ms] from history buffer",
@@ -998,7 +998,6 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 			/* Calculate how much data we have stored in
 			 * current buffer.
 			 */
-			local_buffered = 0;
 			buff->r_ptr = buff->start_addr;
 			if (buff->state == KPB_BUFFER_FREE) {
 				local_buffered = (uint32_t)buff->w_ptr -
