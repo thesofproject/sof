@@ -108,7 +108,6 @@ struct spi_dma_config {
 
 struct spi_reg_list {
 	uint32_t ctrlr0;
-	uint32_t ctrlr1;
 	uint32_t dmacr;		/* dma control register */
 };
 
