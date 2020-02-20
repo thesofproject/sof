@@ -1246,8 +1246,10 @@ out:
 static void kpb_drain_samples(void *source, struct audio_stream *sink,
 			      size_t size, size_t sample_width)
 {
+#if CONFIG_FORMAT_S16LE || CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE
 	void *dst;
 	void *src = source;
+#endif
 	size_t i;
 	size_t j = 0;
 	size_t channel;
@@ -1389,8 +1391,10 @@ static void kpb_copy_samples(struct comp_buffer *sink,
 			     struct comp_buffer *source, size_t size,
 			     size_t sample_width)
 {
+#if CONFIG_FORMAT_S16LE || CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE
 	void *dst;
 	void *src;
+#endif
 	size_t i;
 	size_t j = 0;
 	size_t channel;
