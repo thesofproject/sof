@@ -1,0 +1,323 @@
+SDMA implementation details
+
+DMA channel caps:
+	* Burst
+	* Repeat
+	* Event on complete
+	* Event per segment
+	* Source segmented
+	* Source scatter-gather
+	* Source increment
+	* Source decrement
+	* Source fixed
+	* Source unaligned
+	* Destination segmented...unaligned
+	* IO2MEM
+	* IO2IO
+	* IO2DEV
+	* MEM2MEM
+	* MEM2IO
+	* MEM2DEV
+	* DEV2MEM
+	* DEV2IO
+	* DEV2DEV
+
+DMA attach flags:
+	* Any channel
+	* Strict priority
+	* Minimum priority
+	* Maximum priority
+	* Event on complete
+	* Event per segment
+	* Cascaded mode
+	* Friendly (share with other users)
+
+DMA mode flags:
+	* Repeat
+	* Burst
+
+DMA transfer flags:
+	* IO
+	* MEM
+	* DEV
+	* NOINCREMENT
+	* DECREMENT
+	* SEGMENTED
+
+Buffer flags:
+	* NOCACHE
+	* SHARED
+
+DMA driver info:
+	* Version (major/minor/rev/librev)
+	* Description
+	* Number of channels
+	* Maximum priority
+
+SDMA driver:
+Globals:
+	sdma_base -- I/O BAR
+	ccb_ptr	-- ?? (Who sets it?)
+	sdram_base = SDRAM_BASE (??)
+	struct cache_ctrl cinfo; (??)
+Locals (api.c):
+	irq = IMX_SDMA_IRQ;
+	regphys = IMX_SDMA_BASE;
+	sdma_size = IMX_SDMA_SIZE;
+	core_ratio = CORE_CLOCK_EQUAL ? CORE_CLOCK_EQUAL : 0
+
+QNX options: irq, regbase, ratio (for controller); eventnum, watermark, fifopaddr, regen, contloop (for channel)
+
+chan_ptr_list[IMX_SDMA_N_CH] -- chan contexts
+
+
+chan_create():
+	chan_ptr = calloc()
+	chan_ptr->bd_ptr = mmap(sizeof(sdma_bd_t) * MAX_DESCRIPTORS, MAP_ANON | MAP_PRIVATE) // allocate MAX_DESCRIPTORS sdma_bd_t structures
+	paddr64 = (phys)chan_ptr->bd_ptr
+	ccb_ptr[ch_num].base_bd_paddr = paddr64
+	ccb_ptr[ch_num].current_bd_paddr = paddr64
+	chan_ptr->ctx_ptr = dma_alloc(sizeof(sdma_ch_ctx_t)) // Channel context, 32 bytes
+	paddr64 = (phys)chan_ptr->ctx_ptr
+	chan_ptr->ctx_paddr = paddr64
+	chan_ptr_list[ch_num] = chan_ptr
+
+chan_destroy(channel):
+	chan_ptr_list[ch_num] = NULL
+	free(channel->ctx_ptr, channel->bd_ptr, channel)
+
+register_init():
+	io_write(IMX_SDMA_RESET, 1)
+	wait(10us)
+	io_write(IMX_SDMA_INTR, 0xFFFFFFFF)
+	if (core_ratio)
+		io_set_bits(IMX_SDMA_CONFIG, CONFIG_CSM_MSK | CONFIG_ACR, CONFIG_ACR)
+	else
+		io_set_bits(IMX_SDMA_CONFIG, CONFIG_CSM_MSK | CONFIG_ACR, 0)
+	for (event)
+		io_write(IMX_SDMA_CHNENBL(event), 0)
+	io_write(IMX_SDMA_MC0PTR, sdmasync_ccb_paddr_get()) // TODO understand this
+
+parse_init_options():
+	irq = option("irq")
+	regphys = option("regbase")
+	core_ratio = option("ratio")
+
+parse_channel_options(chan):
+	chan->eventnum = option("eventnum"); is_event_driven set when there is an event set
+	chan->watermark = option("watermark")
+	chan->fifo_paddr = option("fifopaddr")
+	chan->regen_descr = isoption("regen")
+	chan->cont_descr_loop = isoption("contloop")
+
+callback_reenable_descr(ch_num):
+	channel = lookup(ch_num)
+	for (bd : fragments)
+		bd.cmd_and_status.value |= IMX_SDMA_CMDSTAT_DONE_MASK; // Set done bits on all descriptors of this channel
+
+sdma_init():
+	ccb_ptr = sdmasync_ccb_ptr_get()
+	sdma_base = (virt)regphys
+	register_init()
+  fail:
+	sdmairq_fini()
+	sdmasync_fini()
+
+sdma_fini():
+	sdmairq_fini()
+	sdmasync_fini()
+
+sdma_channel_attach(options, event[int], unsigned *channel, priority, flags):
+	ch_type = *channel
+	// Clear interrupts
+	io_write(IMX_SDMA_INTR, BIT(ch_num))
+	chan_ptr = chan_create(ch_num)
+	// initialize chan_ptr
+	parse_channel_options(chan_ptr, options)
+	sdmacmd_ctx_config(chan_ptr)
+	sdmacmd_ctx_load(chan_ptr)
+	// Switch to dynamic context
+	if io_read(IMX_SDMA_CONFIG) & CONFIG_CSM_MSK == CONFIG_CSM_STATIC:
+		io_set_bits(IMX_SDMA_CONFIG, CONFIG_CSM_MSK, CONFIG_CSM_DYNAMIC)
+	if flags & DMA_ATTACH_PRIORITY_HIGHEST || prio > maximum
+		prio = max
+	else
+		prio = min
+	io_write(IMX_SDMA_CHNPRI(ch_num), prio)
+	if (chan_ptr -> is_event_driven)
+		io_set_bits(IMX_SDMA_EVTOVR, BIT(ch_num), 0)
+		io_set_bits(IMX_SDMA_CHNENBL(eventnum), BIT(ch_num), BIT(ch_num))
+	sdmairq_event_add(ch_num, event)
+	if (regen_descr)
+		sdmairq_callback_add(ch_num, callback_reenable_descr)
+
+sdma_channel_release(handle):
+	io_write(IMX_SDMA_INTR, BIT(ch_num)
+	io_set_bits(IMX_SDMA_EVTOVR, BIT(ch_num), BIT(ch_num))
+	io_set_bits(IMX_SDMA_HOSTOVR, BIT(ch_num), 0)
+	io_set_bits(IMX_SDMA_CHNENBL(eventnum), BIT(ch_num), 0)
+	sdmairq_event_remove(chnum)
+	chan_destroy(chan_ptr)
+
+sdma_setup_xfer():
+	cmd_and_status = IMX_SDMA_CMDSTAT_EXT_MASK | CONT_MASK | XFER_SIZE(in[xfer_unit_size])
+	if flags & ATTACH_PER_SEGMENT:
+		cmd_status |= CMDSTAT_INT_MASK
+	switch (ch_type)
+		case AP2MCU, SHP2MCU, UART2MCU, UARTSH2MCU, SPDIF2MCU, ZQSPI2MCU:
+			n_frags = in[dst_fragments]
+			for (frag : fragments)
+				bd.cmd_and_status.value = cmd_and_status | in[dst_addrs[i]].len
+				bd.buf_paddr = dst_addrs[i].paddr
+				bd.cmd_and_status.value |= DONE_MASK
+			bd[last].value = EXT_MASK | XFER_SIZE(xfer_unit_size) | CMDSTAT_WRAP_MASK | len
+			if (cont_descr_loop)
+				bd[last].value |= CONT_MASK
+			if (EVENT_ON_COMPLETE || EVENT_PER_SEGMENT)
+				bd[last].value |= INT_MASK
+			bd[last].paddr = dst_addrs[last].paddr
+			bd[last].value |= DONE_MASK
+		case MCU2AP, MCU2SHP, MCU2SPDIF:
+			use src_addrs instead of dst_addrs, otherwise the same
+		case AP2AP, default:
+			use src_addrs, populate ext_buf_paddr with dst_addrs on each bd
+	// Save n_frags
+
+sdma_xfer_start():
+	if is_event_driven:
+		io_set_bits(IMX_SDMA_HOSTOVR, BIT(ch_num), BIT(ch_num))
+	else:
+		io_write(IMX_SDMA_HSTART, BIT(ch_num))
+
+sdma_xfer_abort():
+	if is_event_driven:
+		io_set_bits(IMX_SDMA_HOSTOVR, BIT(ch_num), 0)
+		if cont_descr_loop:
+			sdmacmd_ctx_load(chan_ptr) // reset
+		ccb_ptr[ch_num].current_bd_paddr = ccb_ptr[ch_num].base_bd_paddr
+
+sdma_bytes_left():
+	if type in {UARTSH2MCU, UART2MCU):
+		return bd[last].cmd_and_status.value & COUNT_MASK
+	else:
+		return bd[last].cmd_and_status.value & DONE_MASK ? 1 : 0
+
+sdma_xfer_complete():
+	if is_event_driven:
+		io_set_bits(IMX_SDMA_HOSTOVR, BIT(ch_num), 0)
+	return bd[last].cmd_and_status.value & ERROR_MASK >> 20 // ?? why 20?
+
+sdma_alloc_buffer():
+	// Allocate DMA buffer, given size and flags
+sdma_free_buffer():
+	// Free DMA buffer
+
+// Load script into RAM (FW loading)
+sdmaram_script_load():
+	script = alloc(script_size)
+	script_paddr = (phys)script
+	sdmairq_event_add(0, &cmd_complete_event)
+	cmd_bd_ptr[0].cmd_and_status.value = 0
+		|= IMX_SDMA_CMD_C0_SET_PM
+		|= WRAP_MASK
+		|= DONE_MASK
+		|= INT_MASK
+		|= EXT_MASK
+		|= script_size / 2
+	cmd_bd_ptr[0].buf_paddr = script_paddr
+	cmd_bd_ptr[0].ext_buf_paddr = sdma_ram_addr(script)
+	io_write(IMX_SDMA_HSTART, BIT(0))
+	WaitTimeout:
+		MsgReceivePulse(cmd_chid)
+			When complete, return 0, on error return error
+	sdmairq_event_remove(0)
+
+script_lookup():
+	sdmascript_lookup() -- set global variable &scriptinfo
+
+sdmacmd_cmdch_create(): // Create command channel descriptor buffer, associate with ccb[0]
+	cmd_bd_ptr = alloc(sdma_bd_t)
+	paddr64 = (phys)cmd_bd_ptr
+	ccb_ptr[0].base_bd_paddr = paddr64
+	ccb_ptr[0].current_bd_paddr = paddr64
+	io_write(IMX_SDMA_CHNPRI(0), IMX_SDMA_CMD_CH_PRIO) // 4
+	io_set_bits(IMX_SDMA_EVTOVR, BIT(0), BIT(0))
+	cmd_chid = ChannelCreate()
+	cmd_coid = ConnectAttach(cmd_chid)
+	/* Setup event cmd_complete_event with cmd_coid */
+
+sdmacmd_cmdch_destroy():
+	ConnectDetach(cmd_coid)
+	ChannelDestroy(cmd_chid)
+	free(cmd_bd_ptr)
+
+sdmacmd_ctx_config(chan_ptr):
+	switch (ch_type):
+		AP2AP:
+			pc = scripts[AP2AP]
+			greg7 = sdram_base; // 0x80000000?
+		Everything else:
+			pc = scripts[ch_type]
+			if event_num >= 32:
+				greg0 = BIT(event_num - 32)
+				greg1 = 0
+			else:
+				greg1 = BIT(event_num)
+				greg0 = 0
+			greg6 = fifo_paddr
+			greg7 = watermark (??)
+
+sdmacmd_ctx_load(chan_ptr):
+	// Configure event cmd_complete_event
+	sdmairq_event_add(0, &cmd_complete_event)
+	cmd_bd_ptr[0].cmd_and_status.value = 0
+		|= CMD_C0_SETCTX(ch_num)
+		|= WRAP_MASK
+		|= DONE_MASK
+		|= INT_MASK
+		|= CTX_WSIZE // context size, in words? It says 32
+	cmd_bd_ptr[0].buf_paddr = ctx_paddr
+	io_write(IMX_SDMA_HSTART, BIT(0))
+	WaitTimeout
+	sdmairq_event_remove(0)
+
+shared_mem_create():
+	// Allocate and get paddr64 of ccb_arr
+	// Return shared memory structure with this, mutexes and everything
+shared_mem_init():
+	Initialize mutexes, process count
+
+[[ctor]]():
+	shared_mem_create()
+	shared_mem_init()
+	// Create resource manager allocator for channels
+
+[[dtor]]():
+	// Empty
+
+irq_handler():
+	irq_status = io_read(IMX_SDMA_INTR) & channel_mask // WHO is channel_mask?
+	// First IRQ that has BIT(ch) set:
+		io_set_bits(IMX_SDMA_INTR, BIT(ch), BIT(ch))
+		callback_array[i](i) // If set
+		return event_array[i] // To signal the event
+	return NULL
+
+sdmairq_init(irq):
+	InterruptAttach(irq, irq_handler)
+	for (ch):
+		event_array[ch] = NULL
+		callback_array[ch] = NULL
+
+sdmairq_fini():
+	InterruptDetach(id)
+
+sdmairq_event_add(channel, event):
+	atomic_set(channel_mask, BIT(channel)) // Make IRQ handler consider this event
+	event_array[channel] = event
+
+sdmairq_event_remove(channel):
+	atomic_clr(&channel_mask, BIT(channel))
+	event_array[channel] = NULL
+
+sdmairq_callback_add, sdmairq_callback_remove: Obvious
