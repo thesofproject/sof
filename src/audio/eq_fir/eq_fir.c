@@ -481,7 +481,7 @@ static int eq_fir_verify_params(struct comp_dev *dev,
 
 	comp_dbg(dev, "eq_fir_verify_params()");
 
-	ret = comp_verify_params(dev, BUFF_PARAMS_FRAME_FMT, params);
+	ret = comp_verify_params(dev, 0, params);
 	if (ret < 0) {
 		comp_err(dev, "eq_fir_verify_params() error: comp_verify_params() failed.");
 		return ret;
