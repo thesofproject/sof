@@ -309,7 +309,8 @@ const struct eq_iir_func_map fm_passthrough[] = {
 #endif /* CONFIG_FORMAT_S32LE */
 };
 
-static eq_iir_func eq_iir_find_func(struct comp_data *cd,
+static eq_iir_func eq_iir_find_func(enum sof_ipc_frame source_format,
+				    enum sof_ipc_frame sink_format,
 				    const struct eq_iir_func_map *map,
 				    int n)
 {
@@ -317,9 +318,9 @@ static eq_iir_func eq_iir_find_func(struct comp_data *cd,
 
 	/* Find suitable processing function from map. */
 	for (i = 0; i < n; i++) {
-		if ((uint8_t)cd->source_format != map[i].source)
+		if ((uint8_t)source_format != map[i].source)
 			continue;
-		if ((uint8_t)cd->sink_format != map[i].sink)
+		if ((uint8_t)sink_format != map[i].sink)
 			continue;
 
 		return map[i].func;
@@ -581,11 +582,31 @@ static void eq_iir_free(struct comp_dev *dev)
 static int eq_iir_verify_params(struct comp_dev *dev,
 				struct sof_ipc_stream_params *params)
 {
+	struct comp_buffer *sourceb;
+	struct comp_buffer *sinkb;
+	uint32_t buffer_flag;
 	int ret;
 
 	comp_dbg(dev, "eq_iir_verify_params()");
 
-	ret = comp_verify_params(dev, BUFF_PARAMS_FRAME_FMT, params);
+	/* EQ component will only ever have 1 source and 1 sink buffer */
+	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer,
+				  sink_list);
+	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
+				source_list);
+
+	/* we check whether we can support frame_fmt conversion (whether we have
+	 * such conversion function) due to source and sink buffer frame_fmt's.
+	 * If not, we will overwrite sink (playback) and source (capture) with
+	 * pcm frame_fmt and will not make any conversion (sink and source
+	 * frame_fmt will be equal).
+	 */
+	buffer_flag = eq_iir_find_func(sourceb->stream.frame_fmt,
+				       sinkb->stream.frame_fmt, fm_configured,
+				       ARRAY_SIZE(fm_configured)) ?
+				       BUFF_PARAMS_FRAME_FMT : 0;
+
+	ret = comp_verify_params(dev, buffer_flag, params);
 	if (ret < 0) {
 		comp_err(dev, "eq_iir_verify_params() error: comp_verify_params() failed.");
 		return ret;
@@ -845,7 +866,9 @@ static int eq_iir_prepare(struct comp_dev *dev)
 			comp_err(dev, "eq_iir_prepare(), setup failed.");
 			goto err;
 		}
-		cd->eq_iir_func = eq_iir_find_func(cd, fm_configured,
+		cd->eq_iir_func = eq_iir_find_func(cd->source_format,
+						   cd->sink_format,
+						   fm_configured,
 						   ARRAY_SIZE(fm_configured));
 		if (!cd->eq_iir_func) {
 			comp_err(dev, "eq_iir_prepare(), No proc func");
@@ -854,7 +877,9 @@ static int eq_iir_prepare(struct comp_dev *dev)
 		}
 		comp_info(dev, "eq_iir_prepare(), IIR is configured.");
 	} else {
-		cd->eq_iir_func = eq_iir_find_func(cd, fm_passthrough,
+		cd->eq_iir_func = eq_iir_find_func(cd->source_format,
+						   cd->sink_format,
+						   fm_passthrough,
 						   ARRAY_SIZE(fm_passthrough));
 		if (!cd->eq_iir_func) {
 			comp_err(dev, "eq_iir_prepare(), No pass func");
