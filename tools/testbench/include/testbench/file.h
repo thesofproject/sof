@@ -41,6 +41,7 @@ struct file_comp_data {
 	uint32_t rate;
 	struct file_state fs;
 	int sample_container_bytes;
+	enum sof_ipc_frame frame_fmt;
 	int (*file_func)(struct comp_dev *dev, struct audio_stream *sink,
 			 struct audio_stream *source, uint32_t frames);
 
@@ -50,7 +51,10 @@ struct file_comp_data {
 struct sof_ipc_comp_file {
 	struct sof_ipc_comp comp;
 	struct sof_ipc_comp_config config;
+	uint32_t rate;
+	uint32_t channels;
 	char *fn;
 	enum file_mode mode;
+	enum sof_ipc_frame frame_fmt;
 } __attribute__((packed));
 #endif

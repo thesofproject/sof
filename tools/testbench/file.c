@@ -21,6 +21,9 @@
 #include "testbench/common_test.h"
 #include "testbench/file.h"
 
+static const struct comp_driver comp_file_dai;
+static const struct comp_driver comp_file_host;
+
 static inline void buffer_check_wrap_32(int32_t **ptr, int32_t *end,
 					size_t size)
 {
@@ -409,6 +412,8 @@ static struct comp_dev *file_new(const struct comp_driver *drv,
 		(struct sof_ipc_comp_file *)comp;
 	struct file_comp_data *cd;
 
+	debug_print("file_new()\n");
+
 	if (IPC_IS_SIZE_INVALID(ipc_file->config)) {
 		fprintf(stderr, "error: file_new() Invalid IPC size.\n");
 		return NULL;
@@ -444,6 +449,10 @@ static struct comp_dev *file_new(const struct comp_driver *drv,
 
 	/* set file comp mode */
 	cd->fs.mode = ipc_file->mode;
+
+	cd->rate = ipc_file->rate;
+	cd->channels = ipc_file->channels;
+	cd->frame_fmt = ipc_file->frame_fmt;
 
 	/* open file handle(s) depending on mode */
 	switch (cd->fs.mode) {
@@ -482,6 +491,8 @@ static void file_free(struct comp_dev *dev)
 {
 	struct file_comp_data *cd = comp_get_drvdata(dev);
 
+	comp_dbg(dev, "file_free()");
+
 	if (cd->fs.mode == FILE_READ)
 		fclose(cd->fs.rfh);
 	else
@@ -490,42 +501,44 @@ static void file_free(struct comp_dev *dev)
 	free(cd->fs.fn);
 	free(cd);
 	free(dev);
-
-	debug_print("free file component\n");
 }
 
-/* set component audio stream parameters */
+static int file_verify_params(struct comp_dev *dev,
+			      struct sof_ipc_stream_params *params)
+{
+	int ret;
+
+	comp_dbg(dev, "file_verify_params()");
+
+	ret = comp_verify_params(dev, 0, params);
+	if (ret < 0) {
+		comp_err(dev, "file_verify_params() error: comp_verify_params() failed.");
+		return ret;
+	}
+
+	return 0;
+}
+
+/**
+ * \brief Sets file component audio stream parameters.
+ * \param[in,out] dev Volume base component device.
+ * \param[in] params Audio (PCM) stream parameters (ignored for this component)
+ * \return Error code.
+ *
+ * All done in prepare() since we need to know source and sink component params.
+ */
 static int file_params(struct comp_dev *dev,
 		       struct sof_ipc_stream_params *params)
 {
-	struct file_comp_data *cd = comp_get_drvdata(dev);
-	struct sof_ipc_comp_config *config = dev_comp_config(dev);
-	struct audio_stream *stream;
+	int err;
 
-	/* file component source or sink buffer */
-	if (cd->fs.mode == FILE_WRITE) {
-		stream = &list_first_item(&dev->bsource_list,
-					 struct comp_buffer, sink_list)->stream;
-	} else {
-		stream = &list_first_item(&dev->bsink_list, struct comp_buffer,
-					 source_list)->stream;
-	}
+	comp_info(dev, "file_params()");
 
-	stream->frame_fmt = config->frame_fmt;
-	if (stream->frame_fmt == SOF_IPC_FRAME_S16_LE)
-		cd->sample_container_bytes = 2;
-	else
-		cd->sample_container_bytes = 4;
-
-	/* calculate period size based on config */
-	cd->period_bytes = dev->frames * cd->sample_container_bytes *
-		stream->channels;
-
-	/* File to sink supports only S32_LE/S16_LE/S24_4LE PCM formats */
-	if (config->frame_fmt != SOF_IPC_FRAME_S32_LE &&
-	    config->frame_fmt != SOF_IPC_FRAME_S24_4LE &&
-	    config->frame_fmt != SOF_IPC_FRAME_S16_LE)
+	err = file_verify_params(dev, params);
+	if (err < 0) {
+		comp_err(dev, "file_params(): pcm params verification failed.");
 		return -EINVAL;
+	}
 
 	return 0;
 }
@@ -537,6 +550,7 @@ static int fr_cmd(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata)
 
 static int file_trigger(struct comp_dev *dev, int cmd)
 {
+	comp_info(dev, "file_trigger()");
 	return comp_set_state(dev, cmd);
 }
 
@@ -547,6 +561,7 @@ static int file_cmd(struct comp_dev *dev, int cmd, void *data,
 	struct sof_ipc_ctrl_data *cdata = data;
 	int ret = 0;
 
+	comp_info(dev, "file_cmd()");
 	switch (cmd) {
 	case COMP_CMD_SET_DATA:
 		ret = fr_cmd(dev, cdata);
@@ -623,7 +638,36 @@ static int file_prepare(struct comp_dev *dev)
 	struct sof_ipc_comp_config *config = dev_comp_config(dev);
 	struct comp_buffer *buffer = NULL;
 	struct file_comp_data *cd = comp_get_drvdata(dev);
-	int ret = 0, periods;
+	struct audio_stream *stream;
+	int periods;
+	int ret = 0;
+
+	comp_info(dev, "file_prepare()");
+
+	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
+	if (ret < 0)
+		return ret;
+
+	if (ret == COMP_STATUS_STATE_ALREADY_SET)
+		return PPL_STATUS_PATH_STOP;
+
+	/* file component source or sink buffer */
+	if (cd->fs.mode == FILE_WRITE) {
+		stream = &list_first_item(&dev->bsource_list,
+					 struct comp_buffer, sink_list)->stream;
+	} else {
+		stream = &list_first_item(&dev->bsink_list, struct comp_buffer,
+					 source_list)->stream;
+	}
+
+	if (stream->frame_fmt == SOF_IPC_FRAME_S16_LE)
+		cd->sample_container_bytes = 2;
+	else
+		cd->sample_container_bytes = 4;
+
+	/* calculate period size based on config */
+	cd->period_bytes = dev->frames * cd->sample_container_bytes *
+		stream->channels;
 
 	/* file component sink/source buffer period count */
 	switch (cd->fs.mode) {
@@ -693,13 +737,26 @@ static int file_prepare(struct comp_dev *dev)
 
 static int file_reset(struct comp_dev *dev)
 {
-	dev->state = COMP_STATE_INIT;
-
+	comp_info(dev, "file_reset()");
+	comp_set_state(dev, COMP_TRIGGER_RESET);
 	return 0;
 }
 
-static const struct comp_driver comp_file = {
-	.type = SOF_COMP_FILEREAD,
+static int file_get_hw_params(struct comp_dev *dev,
+			      struct sof_ipc_stream_params *params)
+{
+	struct file_comp_data *cd = comp_get_drvdata(dev);
+
+	comp_info(dev, "file_hw_params()");
+	params->rate = cd->rate;
+	params->channels = cd->channels;
+	params->buffer_fmt = 0;
+	params->frame_fmt = cd->frame_fmt;
+	return 0;
+}
+
+static const struct comp_driver comp_file_host = {
+	.type = SOF_COMP_HOST,
 	.ops = {
 		.new = file_new,
 		.free = file_free,
@@ -712,11 +769,31 @@ static const struct comp_driver comp_file = {
 	},
 };
 
-static struct comp_driver_info comp_file_info = {
-	.drv = &comp_file,
+static const struct comp_driver comp_file_dai = {
+	.type = SOF_COMP_DAI,
+	.ops = {
+		.new = file_new,
+		.free = file_free,
+		.params = file_params,
+		.cmd = file_cmd,
+		.trigger = file_trigger,
+		.copy = file_copy,
+		.prepare = file_prepare,
+		.reset = file_reset,
+		.dai_get_hw_params = file_get_hw_params,
+	},
+};
+
+static struct comp_driver_info comp_file_host_info = {
+	.drv = &comp_file_host,
+};
+
+static struct comp_driver_info comp_file_dai_info = {
+	.drv = &comp_file_dai,
 };
 
 void sys_comp_file_init(void)
 {
-	comp_register(&comp_file_info);
+	comp_register(&comp_file_host_info);
+	comp_register(&comp_file_dai_info);
 }

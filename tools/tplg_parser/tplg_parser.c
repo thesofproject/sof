@@ -730,7 +730,7 @@ int tplg_load_graph(int num_comps, int pipeline_id,
 /* load dapm widget */
 int load_widget(void *dev, int dev_type, struct comp_info *temp_comp_list,
 		int comp_id, int comp_index, int pipeline_id,
-		void *tp, int *fr_id, int *fw_id, int *sched_id, FILE *file)
+		void *tp, int *sched_id, FILE *file)
 {
 	struct snd_soc_tplg_dapm_widget *widget;
 	size_t read_size, size;
@@ -781,8 +781,7 @@ int load_widget(void *dev, int dev_type, struct comp_info *temp_comp_list,
 	case(SND_SOC_TPLG_DAPM_AIF_IN):
 		if (load_aif_in_out(dev, temp_comp_list[comp_index].id,
 				    pipeline_id, widget->priv.size,
-				    fr_id, sched_id, tp,
-				    SOF_IPC_STREAM_PLAYBACK) < 0) {
+				    SOF_IPC_STREAM_PLAYBACK, tp) < 0) {
 			fprintf(stderr, "error: load AIF IN failed\n");
 			return -EINVAL;
 		}
@@ -790,17 +789,23 @@ int load_widget(void *dev, int dev_type, struct comp_info *temp_comp_list,
 	case(SND_SOC_TPLG_DAPM_AIF_OUT):
 		if (load_aif_in_out(dev, temp_comp_list[comp_index].id,
 				    pipeline_id, widget->priv.size,
-				    fr_id, sched_id, tp,
-				    SOF_IPC_STREAM_CAPTURE) < 0) {
+				    SOF_IPC_STREAM_CAPTURE, tp) < 0) {
 			fprintf(stderr, "error: load AIF OUT failed\n");
 			return -EINVAL;
 		}
 		break;
 	case(SND_SOC_TPLG_DAPM_DAI_IN):
+		if (load_dai_in_out(dev, temp_comp_list[comp_index].id,
+				    pipeline_id, widget->priv.size,
+				    SOF_IPC_STREAM_PLAYBACK, tp) < 0) {
+			fprintf(stderr, "error: load filewrite\n");
+			return -EINVAL;
+		}
+		break;
 	case(SND_SOC_TPLG_DAPM_DAI_OUT):
 		if (load_dai_in_out(dev, temp_comp_list[comp_index].id,
 				    pipeline_id, widget->priv.size,
-				    fw_id, tp) < 0) {
+				    SOF_IPC_STREAM_CAPTURE, tp) < 0) {
 			fprintf(stderr, "error: load filewrite\n");
 			return -EINVAL;
 		}
@@ -820,7 +825,7 @@ int load_widget(void *dev, int dev_type, struct comp_info *temp_comp_list,
 
 		if (load_pipeline(dev, temp_comp_list[comp_index].id,
 				  pipeline_id, widget->priv.size,
-				  sched_id) < 0) {
+				  *sched_id) < 0) {
 			fprintf(stderr, "error: load pipeline\n");
 			return -EINVAL;
 		}
