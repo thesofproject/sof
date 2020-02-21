@@ -69,6 +69,8 @@ struct comp_data {
 	struct kpb_event_data event_data;
 	struct kpb_client client_data;
 
+	struct ipc_msg msg;	/**< host notification */
+
 	void (*detect_func)(struct comp_dev *dev,
 			    const struct audio_stream *source, uint32_t frames);
 };
@@ -102,6 +104,7 @@ static inline bool detector_is_sample_width_supported(enum sof_ipc_frame sf)
 
 static void notify_host(const struct comp_dev *dev)
 {
+	struct comp_data *cd = comp_get_drvdata(dev);
 	struct sof_ipc_comp_event event;
 
 	comp_info(dev, "notify_host()");
@@ -109,12 +112,12 @@ static void notify_host(const struct comp_dev *dev)
 	event.event_type = SOF_CTRL_EVENT_KD;
 	event.num_elems = 0;
 
-	ipc_send_comp_notification(dev, &event);
+	ipc_build_comp_notification(dev, &event);
+	ipc_prepare_host_message(&cd->msg, event.rhdr.hdr.cmd, &event,
+				 sizeof(event));
 
-	/* Send queued IPC message right away to wake host up ASAP
-	 * NOTE! This will only send one IPC from the list!
-	 */
-	ipc_send_queued_msg();
+	/* Send IPC message right away to wake host up ASAP */
+	ipc_platform_send_msg(&cd->msg);
 }
 
 static void notify_kpb(const struct comp_dev *dev)

@@ -429,15 +429,21 @@ int ipc_stream_send_position(struct comp_dev *cdev,
 				      sizeof(*posn), false);
 }
 
-/* send component notification */
-int ipc_send_comp_notification(const struct comp_dev *cdev,
-			       struct sof_ipc_comp_event *event)
+void ipc_build_comp_notification(const struct comp_dev *cdev,
+				 struct sof_ipc_comp_event *event)
 {
 	event->rhdr.hdr.cmd = SOF_IPC_GLB_COMP_MSG |
 		SOF_IPC_COMP_NOTIFICATION | dev_comp_id(cdev);
 	event->rhdr.hdr.size = sizeof(*event);
 	event->src_comp_type = dev_comp_type(cdev);
 	event->src_comp_id = dev_comp_id(cdev);
+}
+
+/* send component notification */
+int ipc_send_comp_notification(const struct comp_dev *cdev,
+			       struct sof_ipc_comp_event *event)
+{
+	ipc_build_comp_notification(cdev, event);
 
 	return ipc_queue_host_message(ipc_get(), event->rhdr.hdr.cmd, event,
 				      sizeof(*event), false);
