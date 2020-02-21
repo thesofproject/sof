@@ -163,7 +163,7 @@ static int load_pcm(void *dev, int comp_id, int pipeline_id, int size, int dir)
 }
 
 int load_aif_in_out(void *dev, int comp_id, int pipeline_id,
-		    int size, int *fr_id, int *sched_id, void *tp, int dir)
+		    int size, int dir, void *tp)
 {
 	return load_pcm(dev, comp_id, pipeline_id, size, dir);
 }
@@ -196,7 +196,7 @@ static int load_dai(struct fuzz *fuzzer, int comp_id, int pipeline_id,
 }
 
 int load_dai_in_out(void *dev, int comp_id, int pipeline_id,
-		    int size, int *fw_id, void *tp)
+		    int size, int dir, void *tp)
 {
 	return load_dai(dev, comp_id, pipeline_id, size);
 }
@@ -229,7 +229,7 @@ int load_pga(void *dev, int comp_id, int pipeline_id, int size)
 
 /* load scheduler dapm widget */
 int load_pipeline(void *dev, int comp_id, int pipeline_id, int size,
-		  int *sched_id)
+		  int sched_id)
 {
 	struct sof_ipc_pipe_new pipeline;
 	struct fuzz *fuzzer = (struct fuzz *)dev;
@@ -241,7 +241,7 @@ int load_pipeline(void *dev, int comp_id, int pipeline_id, int size,
 	if (ret < 0)
 		return ret;
 
-	pipeline.sched_id = *sched_id;
+	pipeline.sched_id = sched_id;
 
 	/* configure fuzzer msg */
 	fuzzer->msg.header = pipeline.hdr.cmd;
@@ -403,8 +403,7 @@ int parse_tplg(struct fuzz *fuzzer, char *tplg_filename)
 				ret = load_widget(fuzzer, FUZZER_DEV,
 						  temp_comp_list,
 						  next_comp_id++, i,
-						  hdr->index, NULL, 0, 0,
-						  &sched_id,
+						  hdr->index, NULL, &sched_id,
 						  fuzzer->tplg_file);
 				if (ret < 0) {
 					fprintf(stderr, "error: loading widget\n");
