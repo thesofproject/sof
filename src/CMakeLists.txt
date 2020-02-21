@@ -7,6 +7,7 @@ if(BUILD_LIBRARY)
 	add_subdirectory(ipc)
 	add_subdirectory(audio)
 	add_subdirectory(lib)
+	add_local_sources(sof spinlock.c)
 	return()
 endif()
 
