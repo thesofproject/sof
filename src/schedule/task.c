@@ -56,7 +56,7 @@ enum task_state task_main_master_core(void *data)
 		wait_for_interrupt(0);
 
 		if (!ipc->pm_prepare_D3)
-			ipc_platform_send_msg();
+			ipc_send_queued_msg();
 
 		platform_shared_commit(ipc, sizeof(*ipc));
 	}

@@ -15,6 +15,7 @@
 #include <sof/lib/clk.h>
 #include <stdint.h>
 
+struct ipc_msg;
 struct timer;
 
 /*! \def PLATFORM_DEFAULT_CLOCK
@@ -50,6 +51,8 @@ static inline void platform_wait_for_interrupt(int level)
 {
 	arch_wait_for_interrupt(level);
 }
+
+static inline void ipc_platform_send_msg(struct ipc_msg *msg) { }
 
 #endif /* __PLATFORM_PLATFORM_H__ */
 

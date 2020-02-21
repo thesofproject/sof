@@ -618,6 +618,31 @@ int ipc_comp_dai_config(struct ipc *ipc, struct sof_ipc_dai_config *config)
 	return ret;
 }
 
+void ipc_send_queued_msg(void)
+{
+	struct ipc *ipc = ipc_get();
+	struct ipc_msg *msg;
+	uint32_t flags;
+
+	spin_lock_irq(&ipc->lock, flags);
+
+	/* any messages to send ? */
+	if (list_is_empty(&ipc->msg_list)) {
+		spin_unlock_irq(&ipc->lock, flags);
+		goto out;
+	}
+
+	msg = list_first_item(&ipc->msg_list, struct ipc_msg,
+			      list);
+
+	spin_unlock_irq(&ipc->lock, flags);
+
+	ipc_platform_send_msg(msg);
+
+out:
+	platform_shared_commit(ipc, sizeof(*ipc));
+}
+
 int ipc_init(struct sof *sof)
 {
 	struct ipc_msg *msg;
