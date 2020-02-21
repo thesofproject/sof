@@ -171,6 +171,7 @@ static struct comp_dev *dai_new(const struct comp_driver *drv,
 	}
 
 	dma_sg_init(&dd->config.elem_array);
+	dd->frame_fmt = ipc_dai->config.frame_fmt;
 	dd->dai_pos = NULL;
 	dd->dai_pos_blks = 0;
 	dd->xrun = 0;
@@ -202,8 +203,9 @@ static void dai_free(struct comp_dev *dev)
 	rfree(dev);
 }
 
-static int dai_comp_get_hw_params(struct comp_dev *dev,
-				  struct sof_ipc_stream_params *params, int dir)
+static inline int dai_comp_get_hw_params(struct comp_dev *dev,
+					 struct sof_ipc_stream_params *params,
+					 int dir)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
 	int ret = 0;
@@ -216,6 +218,15 @@ static int dai_comp_get_hw_params(struct comp_dev *dev,
 		comp_err(dev, "dai_comp_get_hw_params() error: dai_get_hw_params failed");
 		return ret;
 	}
+
+	/* dai_comp_get_hw_params() function fetches hardware dai parameters,
+	 * which then are propagating back through the pipeline, so that any
+	 * component can convert specific stream parameter. Here, we overwrite
+	 * frame_fmt hardware parameter as DAI component is able to convert
+	 * stream with different frame_fmt's (using pcm converter)
+	 */
+	if (dd->frame_fmt)
+		params->frame_fmt = dd->frame_fmt;
 
 	return 0;
 }
@@ -362,7 +373,6 @@ static int dai_capture_params(struct comp_dev *dev, uint32_t period_bytes,
 static int dai_params(struct comp_dev *dev,
 		      struct sof_ipc_stream_params *params)
 {
-	struct sof_ipc_comp_config *dconfig = dev_comp_config(dev);
 	struct dai_data *dd = comp_get_drvdata(dev);
 	uint32_t frame_size;
 	uint32_t period_count;
@@ -423,8 +433,6 @@ static int dai_params(struct comp_dev *dev,
 			 err, period_count);
 		return -EINVAL;
 	}
-
-	dd->frame_fmt = dconfig->frame_fmt;
 
 	/* calculate frame size */
 	frame_size = frame_bytes(dd->frame_fmt,
@@ -757,6 +765,7 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 		 * all formats, such as 8/16/24/32 bits.
 		 */
 		dconfig->frame_fmt = SOF_IPC_FRAME_S32_LE;
+		dd->frame_fmt = dconfig->frame_fmt;
 
 		dd->config.burst_elems =
 			dd->dai->plat_data.fifo[dai->direction].depth;
