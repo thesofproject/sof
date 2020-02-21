@@ -1462,6 +1462,21 @@ static inline struct ipc_msg *msg_find(struct ipc *ipc, uint32_t header,
 	}
 }
 
+void ipc_prepare_host_message(struct ipc_msg *msg, uint32_t header,
+			      void *tx_data, size_t tx_bytes)
+{
+	int ret;
+
+	msg->header = header;
+	msg->tx_size = tx_bytes;
+
+	/* copy mailbox data to message */
+	if (tx_bytes > 0 && tx_bytes < SOF_IPC_MSG_MAX_SIZE) {
+		ret = memcpy_s(msg->tx_data, msg->tx_size, tx_data, tx_bytes);
+		assert(!ret);
+	}
+}
+
 int ipc_queue_host_message(struct ipc *ipc, uint32_t header, void *tx_data,
 			   size_t tx_bytes, bool replace)
 {
@@ -1491,14 +1506,7 @@ int ipc_queue_host_message(struct ipc *ipc, uint32_t header, void *tx_data,
 	}
 
 	/* prepare the message */
-	msg->header = header;
-	msg->tx_size = tx_bytes;
-
-	/* copy mailbox data to message */
-	if (tx_bytes > 0 && tx_bytes < SOF_IPC_MSG_MAX_SIZE) {
-		ret = memcpy_s(msg->tx_data, msg->tx_size, tx_data, tx_bytes);
-		assert(!ret);
-	}
+	ipc_prepare_host_message(msg, header, tx_data, tx_bytes);
 
 	/* queue new message if it's not replacement */
 	if (!found)
