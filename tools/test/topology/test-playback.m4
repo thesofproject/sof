@@ -14,8 +14,10 @@ include(`common/tlv.m4')
 # Include Token library
 include(`sof/tokens.m4')
 
-# Include Baytrail DSP configuration
-include(`byt.m4')
+# Include Apollolake DSP configuration
+include(`platform/intel/bxt.m4')
+
+DEBUG_START
 
 #
 # Machine Specific Config - !! MUST BE SET TO MATCH TEST MACHINE DRIVER !!
@@ -35,18 +37,16 @@ include(`byt.m4')
 #
 # Define the pipeline
 #
-# PCM0 <---> SSP TEST_DAI_PORT
+# PCM0P  -->  TEST_PIPE_NAME  -->  SSP(TEST_DAI_PORT)
 #
 
-# Passthrough playback pipeline 1 on PCM 0 using max 2 channels of s24le.
-# Schedule 48 frames per 1000us deadline on core 0 with priority 0
-
-PIPELINE_PCM_DAI_ADD(sof/pipe-TEST_PIPE_NAME-playback.m4,
-	1, 0, 2, TEST_PIPE_FORMAT,
+# Playback pipeline 1 on PCM 0 using max 2 channels of s32le.
+# Set 1000us deadline on core 0 with priority 0
+PIPELINE_PCM_ADD(sof/pipe-TEST_PIPE_NAME-playback.m4,
+	1, 0, 2, s32le,
 	1000, 0, 0,
-	TEST_DAI_TYPE, TEST_DAI_PORT, TEST_DAI_FORMAT, 2,
-	48000, 48000, 48000)
-#
+	8000, 192000, 48000)
+
 # DAI configuration
 #
 # SSP port TEST_DAI_PORT is our only pipeline DAI
@@ -57,7 +57,7 @@ PIPELINE_PCM_DAI_ADD(sof/pipe-TEST_PIPE_NAME-playback.m4,
 DAI_ADD(sof/pipe-dai-playback.m4,
 	1, TEST_DAI_TYPE, TEST_DAI_PORT, TEST_DAI_LINK_NAME,
 	PIPELINE_SOURCE_1, 2, TEST_DAI_FORMAT,
-	1000, 0, 0)
+	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # PCM Passthrough
 PCM_PLAYBACK_ADD(Passthrough, 0, PIPELINE_PCM_1)
@@ -67,13 +67,17 @@ PCM_PLAYBACK_ADD(Passthrough, 0, PIPELINE_PCM_1)
 #
 # Clocks masters wrt codec
 #
-# TEST_SSP_DATA_BITS bit I2S using TEST_SSP_PHY_BITS bit sample conatiner on SSP TEST_DAI_PORT
+# TEST_SSP_DATA_BITS bit I2S
+# using TEST_SSP_PHY_BITS bit sample container on SSP TEST_DAI_PORT
 #
-DAI_CONFIG(TEST_DAI_TYPE, TEST_DAI_PORT, TEST_DAI_PORT, TEST_DAI_LINK_NAME,
+DAI_CONFIG(TEST_DAI_TYPE, TEST_DAI_PORT, 0, TEST_DAI_LINK_NAME,
 	   SSP_CONFIG(TEST_SSP_MODE,
-		      SSP_CLOCK(mclk, TEST_SSP_MCLK, codec_slave),
+		      SSP_CLOCK(mclk, TEST_SSP_MCLK, codec_mclk_in),
 		      SSP_CLOCK(bclk, TEST_SSP_BCLK, codec_slave),
 		      SSP_CLOCK(fsync, 48000, codec_slave),
 		      SSP_TDM(2, TEST_SSP_PHY_BITS, 3, 3),
 		      SSP_CONFIG_DATA(TEST_DAI_TYPE, TEST_DAI_PORT,
 				      TEST_SSP_DATA_BITS, TEST_SSP_MCLK_ID)))
+
+
+DEBUG_END

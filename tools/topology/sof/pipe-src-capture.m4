@@ -2,7 +2,7 @@
 #
 # Pipeline Endpoints for connection are :-
 #
-#  host PCM_C <-- B0 <-- SRC <-- B1 <-- sink DAI0
+#  host PCM_C <-- B0 <-- SRC <-- B1 <-- source DAI0
 
 # Include topology builder
 include(`pipeline.m4')
@@ -13,14 +13,10 @@ include(`pcm.m4')
 include(`dai.m4')
 
 #
-# Controls
-#
-
-#
 # Components and Buffers
 #
 
-# Host "Passthrough Capture" PCM
+# Host "SRC Capture" PCM
 # with 0 sink and 3 source periods
 W_PCM_CAPTURE(PCM_ID, SRC Capture, 0, 3)
 
@@ -52,7 +48,7 @@ W_BUFFER(1, COMP_BUFFER_SIZE(DAI_PERIODS,
 #
 # Pipeline Graph
 #
-#  host PCM_C <-- B0 <-- SRC <-- B1 <-- sink DAI0
+#  host PCM_C <-- B0 <-- SRC <-- B1 <-- source DAI0
 
 P_GRAPH(pipe-pass-src-capture-PIPELINE_ID, PIPELINE_ID,
 	LIST(`		',
@@ -64,8 +60,7 @@ P_GRAPH(pipe-pass-src-capture-PIPELINE_ID, PIPELINE_ID,
 # Pipeline Source and Sinks
 #
 indir(`define', concat(`PIPELINE_SINK_', PIPELINE_ID), N_BUFFER(1))
-indir(`define', concat(`PIPELINE_PCM_', PIPELINE_ID),
-	SRC Capture PCM_ID)
+indir(`define', concat(`PIPELINE_PCM_', PIPELINE_ID), SRC Capture PCM_ID)
 
 #
 # PCM Configuration
