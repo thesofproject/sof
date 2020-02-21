@@ -26,9 +26,6 @@ struct shared_lib_table lib_table[NUM_WIDGETS_SUPPORTED] = {
 
 /* main firmware context */
 static struct sof sof;
-static int fr_id; /* comp id for fileread */
-static int fw_id; /* comp id for filewrite */
-static int sched_id; /* comp id for scheduling comp */
 
 /* compatible variables, not used */
 intptr_t _comp_init_start, _comp_init_end;
@@ -148,6 +145,7 @@ static void parse_input_args(int argc, char **argv, struct testbench_prm *tp)
 		/* input samples bit format */
 		case 'b':
 			tp->bits_in = strdup(optarg);
+			tp->frame_fmt = find_format(tp->bits_in);
 			break;
 
 		/* override default libraries */
@@ -199,6 +197,7 @@ int main(int argc, char **argv)
 	tp.bits_in = 0;
 	tp.input_file = NULL;
 	tp.output_file = NULL;
+	tp.channels = TESTBENCH_NCH;
 
 	/* command line arguments*/
 	parse_input_args(argc, argv, &tp);
@@ -216,20 +215,19 @@ int main(int argc, char **argv)
 	}
 
 	/* parse topology file and create pipeline */
-	if (parse_topology(&sof, lib_table, &tp, &fr_id, &fw_id, &sched_id,
-			   pipeline) < 0) {
+	if (parse_topology(&sof, lib_table, &tp, pipeline) < 0) {
 		fprintf(stderr, "error: parsing topology\n");
 		exit(EXIT_FAILURE);
 	}
 
 	/* Get pointers to fileread and filewrite */
-	pcm_dev = ipc_get_comp_by_id(sof.ipc, fw_id);
+	pcm_dev = ipc_get_comp_by_id(sof.ipc, tp.fw_id);
 	fwcd = comp_get_drvdata(pcm_dev->cd);
-	pcm_dev = ipc_get_comp_by_id(sof.ipc, fr_id);
+	pcm_dev = ipc_get_comp_by_id(sof.ipc, tp.fr_id);
 	frcd = comp_get_drvdata(pcm_dev->cd);
 
 	/* Run pipeline until EOF from fileread */
-	pcm_dev = ipc_get_comp_by_id(sof.ipc, sched_id);
+	pcm_dev = ipc_get_comp_by_id(sof.ipc, tp.sched_id);
 	p = pcm_dev->cd->pipeline;
 	ipc_pipe = &p->ipc_pipe;
 
@@ -241,7 +239,7 @@ int main(int argc, char **argv)
 		tp.fs_out = ipc_pipe->period * ipc_pipe->frames_per_sched;
 
 	/* set pipeline params and trigger start */
-	if (tb_pipeline_start(sof.ipc, TESTBENCH_NCH, ipc_pipe, &tp) < 0) {
+	if (tb_pipeline_start(sof.ipc, ipc_pipe, &tp) < 0) {
 		fprintf(stderr, "error: pipeline params\n");
 		exit(EXIT_FAILURE);
 	}

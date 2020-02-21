@@ -50,8 +50,7 @@ int tb_pipeline_setup(struct sof *sof)
 }
 
 /* set up pcm params, prepare and trigger pipeline */
-int tb_pipeline_start(struct ipc *ipc, int nch,
-		      struct sof_ipc_pipe_new *ipc_pipe,
+int tb_pipeline_start(struct ipc *ipc, struct sof_ipc_pipe_new *ipc_pipe,
 		      struct testbench_prm *tp)
 {
 	struct ipc_comp_dev *pcm_dev;
@@ -60,7 +59,7 @@ int tb_pipeline_start(struct ipc *ipc, int nch,
 	int ret;
 
 	/* set up pipeline params */
-	ret = tb_pipeline_params(ipc, nch, ipc_pipe, tp);
+	ret = tb_pipeline_params(ipc, ipc_pipe, tp);
 	if (ret < 0) {
 		fprintf(stderr, "error: pipeline params\n");
 		return -EINVAL;
@@ -89,8 +88,7 @@ int tb_pipeline_start(struct ipc *ipc, int nch,
 }
 
 /* pipeline pcm params */
-int tb_pipeline_params(struct ipc *ipc, int nch,
-		       struct sof_ipc_pipe_new *ipc_pipe,
+int tb_pipeline_params(struct ipc *ipc, struct sof_ipc_pipe_new *ipc_pipe,
 		       struct testbench_prm *tp)
 {
 	struct ipc_comp_dev *pcm_dev;
@@ -110,27 +108,27 @@ int tb_pipeline_params(struct ipc *ipc, int nch,
 	/* set pcm params */
 	params.comp_id = ipc_pipe->comp_id;
 	params.params.buffer_fmt = SOF_IPC_BUFFER_INTERLEAVED;
-	params.params.frame_fmt = find_format(tp->bits_in);
+	params.params.frame_fmt = tp->frame_fmt;
 	params.params.direction = SOF_IPC_STREAM_PLAYBACK;
 	params.params.rate = tp->fs_in;
-	params.params.channels = nch;
+	params.params.channels = tp->channels;
 	switch (params.params.frame_fmt) {
 	case(SOF_IPC_FRAME_S16_LE):
 		params.params.sample_container_bytes = 2;
 		params.params.sample_valid_bytes = 2;
-		params.params.host_period_bytes = fs_period * nch *
+		params.params.host_period_bytes = fs_period * tp->channels *
 			params.params.sample_container_bytes;
 		break;
 	case(SOF_IPC_FRAME_S24_4LE):
 		params.params.sample_container_bytes = 4;
 		params.params.sample_valid_bytes = 3;
-		params.params.host_period_bytes = fs_period * nch *
+		params.params.host_period_bytes = fs_period * tp->channels *
 			params.params.sample_container_bytes;
 		break;
 	case(SOF_IPC_FRAME_S32_LE):
 		params.params.sample_container_bytes = 4;
 		params.params.sample_valid_bytes = 4;
-		params.params.host_period_bytes = fs_period * nch *
+		params.params.host_period_bytes = fs_period * tp->channels *
 			params.params.sample_container_bytes;
 		break;
 	default:
@@ -162,8 +160,7 @@ int tb_pipeline_params(struct ipc *ipc, int nch,
 }
 
 /* getindex of shared library from table */
-int get_index_by_name(char *comp_type,
-		      struct shared_lib_table *lib_table)
+int get_index_by_name(char *comp_type, struct shared_lib_table *lib_table)
 {
 	int i;
 
@@ -176,8 +173,7 @@ int get_index_by_name(char *comp_type,
 }
 
 /* getindex of shared library from table by widget type*/
-int get_index_by_type(uint32_t comp_type,
-		      struct shared_lib_table *lib_table)
+int get_index_by_type(uint32_t comp_type, struct shared_lib_table *lib_table)
 {
 	int i;
 

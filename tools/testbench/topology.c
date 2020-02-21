@@ -52,7 +52,9 @@ void register_comp(int comp_type)
 
 	/* register file comp driver (no shared library needed) */
 	if (comp_type == SND_SOC_TPLG_DAPM_DAI_IN ||
-	    comp_type == SND_SOC_TPLG_DAPM_AIF_IN) {
+	    comp_type == SND_SOC_TPLG_DAPM_DAI_OUT ||
+	    comp_type == SND_SOC_TPLG_DAPM_AIF_IN ||
+	    comp_type == SND_SOC_TPLG_DAPM_AIF_OUT) {
 		if (!lib_table[0].register_drv) {
 			sys_comp_file_init();
 			lib_table[0].register_drv = 1;
@@ -207,44 +209,6 @@ static int tplg_load_fileread(int comp_id, int pipeline_id, int size,
 	return 0;
 }
 
-/* load fileread component */
-static int load_fileread(void *dev, int comp_id, int pipeline_id,
-			 int size, int *fr_id, int *sched_id,
-			 struct testbench_prm *tp)
-{
-	struct sof *sof = (struct sof *)dev;
-	struct sof_ipc_comp_file fileread;
-	int ret;
-
-	fileread.config.frame_fmt = find_format(tp->bits_in);
-
-	ret = tplg_load_fileread(comp_id, pipeline_id, size, &fileread);
-	if (ret < 0)
-		return ret;
-
-	/* configure fileread */
-	fileread.fn = strdup(tp->input_file);
-
-	/* use fileread comp as scheduling comp */
-	*fr_id = *sched_id = comp_id;
-
-	/* create fileread component */
-	if (ipc_comp_new(sof->ipc, (struct sof_ipc_comp *)&fileread) < 0) {
-		fprintf(stderr, "error: comp register\n");
-		return -EINVAL;
-	}
-
-	free(fileread.fn);
-	return 0;
-}
-
-int load_aif_in_out(void *dev, int comp_id, int pipeline_id,
-		    int size, int *fr_id, int *sched_id, void *tp, int dir)
-{
-	return load_fileread(dev, comp_id, pipeline_id, size, fr_id,
-			     sched_id, (struct testbench_prm *)tp);
-}
-
 /* load filewrite component */
 static int tplg_load_filewrite(int comp_id, int pipeline_id, int size,
 			       struct sof_ipc_comp_file *filewrite)
@@ -296,9 +260,49 @@ static int tplg_load_filewrite(int comp_id, int pipeline_id, int size,
 	return 0;
 }
 
+/* load fileread component */
+static int load_fileread(void *dev, int comp_id, int pipeline_id,
+			 int size, int dir, struct testbench_prm *tp)
+{
+	struct sof *sof = (struct sof *)dev;
+	struct sof_ipc_comp_file fileread;
+	int ret;
+
+	fileread.config.frame_fmt = find_format(tp->bits_in);
+
+	ret = tplg_load_fileread(comp_id, pipeline_id, size, &fileread);
+	if (ret < 0)
+		return ret;
+
+	/* configure fileread */
+	fileread.fn = strdup(tp->input_file);
+
+	/* use fileread comp as scheduling comp */
+	tp->fr_id = comp_id;
+	tp->sched_id = comp_id;
+
+	/* Set format from testbench command line*/
+	fileread.rate = tp->fs_in;
+	fileread.channels = tp->channels;
+	fileread.frame_fmt = tp->frame_fmt;
+
+	/* Set type depending on direction */
+	fileread.comp.type = (dir == SOF_IPC_STREAM_PLAYBACK) ?
+		SOF_COMP_HOST : SOF_COMP_DAI;
+
+	/* create fileread component */
+	if (ipc_comp_new(sof->ipc, (struct sof_ipc_comp *)&fileread) < 0) {
+		fprintf(stderr, "error: comp register\n");
+		return -EINVAL;
+	}
+
+	free(fileread.fn);
+	return 0;
+}
+
 /* load filewrite component */
 static int load_filewrite(struct sof *sof, int comp_id, int pipeline_id,
-			  int size, int *fw_id, struct testbench_prm *tp)
+			  int size, int dir, struct testbench_prm *tp)
 {
 	struct sof_ipc_comp_file filewrite;
 	int ret;
@@ -309,7 +313,16 @@ static int load_filewrite(struct sof *sof, int comp_id, int pipeline_id,
 
 	/* configure filewrite */
 	filewrite.fn = strdup(tp->output_file);
-	*fw_id = comp_id;
+	tp->fw_id = comp_id;
+
+	/* Set format from testbench command line*/
+	filewrite.rate = tp->fs_out;
+	filewrite.channels = tp->channels;
+	filewrite.frame_fmt = tp->frame_fmt;
+
+	/* Set type depending on direction */
+	filewrite.comp.type = (dir == SOF_IPC_STREAM_PLAYBACK) ?
+		SOF_COMP_DAI : SOF_COMP_HOST;
 
 	/* create filewrite component */
 	if (ipc_comp_new(sof->ipc, (struct sof_ipc_comp *)&filewrite) < 0) {
@@ -321,11 +334,26 @@ static int load_filewrite(struct sof *sof, int comp_id, int pipeline_id,
 	return 0;
 }
 
-int load_dai_in_out(void *dev, int comp_id, int pipeline_id,
-		    int size, int *fw_id, void *tp)
+int load_aif_in_out(void *dev, int comp_id, int pipeline_id,
+		    int size, int dir, void *tp)
 {
-	return load_filewrite(dev, comp_id, pipeline_id, size, fw_id,
+	if (dir == SOF_IPC_STREAM_PLAYBACK)
+		return load_fileread(dev, comp_id, pipeline_id, size, dir,
+				     (struct testbench_prm *)tp);
+
+	return load_filewrite(dev, comp_id, pipeline_id, size, dir,
 			      (struct testbench_prm *)tp);
+}
+
+int load_dai_in_out(void *dev, int comp_id, int pipeline_id,
+		    int size, int dir, void *tp)
+{
+	if (dir == SOF_IPC_STREAM_PLAYBACK)
+		return load_filewrite(dev, comp_id, pipeline_id, size, dir,
+				      (struct testbench_prm *)tp);
+
+	return load_fileread(dev, comp_id, pipeline_id, size, dir,
+			     (struct testbench_prm *)tp);
 }
 
 /* load pda dapm widget */
@@ -350,7 +378,7 @@ int load_pga(void *dev, int comp_id, int pipeline_id, int size)
 
 /* load scheduler dapm widget */
 int load_pipeline(void *dev, int comp_id, int pipeline_id, int size,
-		  int *sched_id)
+		  int sched_id)
 {
 	struct sof *sof = (struct sof *)dev;
 	struct sof_ipc_pipe_new pipeline;
@@ -360,7 +388,7 @@ int load_pipeline(void *dev, int comp_id, int pipeline_id, int size,
 	if (ret < 0)
 		return ret;
 
-	pipeline.sched_id = *sched_id;
+	pipeline.sched_id = sched_id;
 
 	/* Create pipeline */
 	if (ipc_pipeline_new(sof->ipc, &pipeline) < 0) {
@@ -454,8 +482,7 @@ int load_mixer(void *dev, int comp_id, int pipeline_id, int size)
 
 /* parse topology file and set up pipeline */
 int parse_topology(struct sof *sof, struct shared_lib_table *library_table,
-		   struct testbench_prm *tp, int *fr_id, int *fw_id,
-		   int *sched_id, char *pipeline_msg)
+		   struct testbench_prm *tp, char *pipeline_msg)
 {
 	struct snd_soc_tplg_hdr *hdr;
 
@@ -517,8 +544,8 @@ int parse_topology(struct sof *sof, struct shared_lib_table *library_table,
 				ret = load_widget(sof, SOF_DEV,
 						  temp_comp_list,
 						  next_comp_id++, i,
-						  hdr->index, tp, fr_id,
-						  fw_id, sched_id, file);
+						  hdr->index, tp, &tp->sched_id,
+						  file);
 				if (ret < 0) {
 					printf("error: loading widget\n");
 					goto finish;
