@@ -160,7 +160,9 @@ int ipc_stream_send_xrun(struct comp_dev *cdev,
 int ipc_queue_host_message(struct ipc *ipc, uint32_t header, void *tx_data,
 			   size_t tx_bytes, bool replace);
 
-void ipc_platform_send_msg(void);
+void ipc_platform_send_msg(struct ipc_msg *msg);
+
+void ipc_send_queued_msg(void);
 
 /**
  * \brief Data provided by the platform which use ipc...page_descriptors().

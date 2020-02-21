@@ -94,25 +94,18 @@ void ipc_platform_complete_cmd(void *data)
 	shim_write(SHIM_IMRD, shim_read(SHIM_IMRD) & ~SHIM_IMRD_BUSY);
 }
 
-void ipc_platform_send_msg(void)
+void ipc_platform_send_msg(struct ipc_msg *msg)
 {
 	struct ipc *ipc = ipc_get();
-	struct ipc_msg *msg;
 	uint32_t flags;
 
 	spin_lock_irq(&ipc->lock, flags);
-
-	/* any messages to send ? */
-	if (list_is_empty(&ipc->msg_list))
-		goto out;
 
 	/* can't send notification when one is in progress */
 	if (shim_read(SHIM_IPCDH) & (SHIM_IPCDH_BUSY | SHIM_IPCDH_DONE))
 		goto out;
 
 	/* now send the message */
-	msg = list_first_item(&ipc->msg_list, struct ipc_msg,
-			      list);
 	mailbox_dspbox_write(0, msg->tx_data, msg->tx_size);
 	list_item_del(&msg->list);
 	tracev_ipc("ipc: msg tx -> 0x%x", msg->header);

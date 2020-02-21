@@ -51,21 +51,14 @@ void ipc_platform_complete_cmd(void *data)
 {
 }
 
-void ipc_platform_send_msg(void)
+void ipc_platform_send_msg(struct ipc_msg *msg)
 {
 	struct ipc *ipc = ipc_get();
-	struct ipc_msg *msg;
 	uint32_t flags;
 
 	spin_lock_irq(&ipc->lock, flags);
 
-	/* any messages to send ? */
-	if (list_is_empty(&ipc->msg_list))
-		goto out;
-
 	/* now send the message */
-	msg = list_first_item(&ipc->msg_list, struct ipc_msg,
-			      list);
 	mailbox_dspbox_write(0, msg->tx_data, msg->tx_size);
 	list_item_del(&msg->list);
 	tracev_ipc("ipc: msg tx -> 0x%x", msg->header);
@@ -74,7 +67,6 @@ void ipc_platform_send_msg(void)
 
 	list_item_append(&msg->list, &ipc->empty_list);
 
-out:
 	platform_shared_commit(ipc, sizeof(*ipc));
 
 	spin_unlock_irq(&ipc->lock, flags);

@@ -124,7 +124,7 @@ static void ipc_irq_handler(void *arg)
 			  ipc_read(IPC_DIPCCTL) | IPC_DIPCCTL_IPCIDIE);
 
 		/* send next message to host */
-		ipc_platform_send_msg();
+		ipc_send_queued_msg();
 	}
 }
 
@@ -240,17 +240,12 @@ void ipc_platform_complete_cmd(void *data)
 #endif
 }
 
-void ipc_platform_send_msg(void)
+void ipc_platform_send_msg(struct ipc_msg *msg)
 {
 	struct ipc *ipc = ipc_get();
-	struct ipc_msg *msg;
 	uint32_t flags;
 
 	spin_lock_irq(&ipc->lock, flags);
-
-	/* any messages to send ? */
-	if (list_is_empty(&ipc->msg_list))
-		goto out;
 
 #if CAVS_VERSION == CAVS_VERSION_1_5
 	if (ipc_read(IPC_DIPCI) & IPC_DIPCI_BUSY)
@@ -261,8 +256,6 @@ void ipc_platform_send_msg(void)
 		goto out;
 
 	/* now send the message */
-	msg = list_first_item(&ipc->msg_list, struct ipc_msg,
-			      list);
 	mailbox_dspbox_write(0, msg->tx_data, msg->tx_size);
 	list_item_del(&msg->list);
 	tracev_ipc("ipc: msg tx -> 0x%x", msg->header);

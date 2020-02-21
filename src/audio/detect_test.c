@@ -114,7 +114,7 @@ static void notify_host(const struct comp_dev *dev)
 	/* Send queued IPC message right away to wake host up ASAP
 	 * NOTE! This will only send one IPC from the list!
 	 */
-	ipc_platform_send_msg();
+	ipc_send_queued_msg();
 }
 
 static void notify_kpb(const struct comp_dev *dev)
