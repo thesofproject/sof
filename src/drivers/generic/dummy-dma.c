@@ -400,7 +400,6 @@ static int dummy_dma_copy(struct dma_chan_data *channel, int bytes,
 	};
 	struct dma_chan_pdata *pdata = dma_chan_get_data(channel);
 
-	//next.elem.size = do_copy(channel, bytes);
 	next.elem.size = dummy_dma_do_copies(pdata, bytes);
 
 	/* Let the user of the driver know how much we copied */
