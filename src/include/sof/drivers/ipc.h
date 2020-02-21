@@ -157,6 +157,9 @@ int ipc_send_comp_notification(const struct comp_dev *cdev,
 int ipc_stream_send_xrun(struct comp_dev *cdev,
 	struct sof_ipc_stream_posn *posn);
 
+void ipc_prepare_host_message(struct ipc_msg *msg, uint32_t header,
+			      void *tx_data, size_t tx_bytes);
+
 int ipc_queue_host_message(struct ipc *ipc, uint32_t header, void *tx_data,
 			   size_t tx_bytes, bool replace);
 
