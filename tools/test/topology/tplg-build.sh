@@ -6,6 +6,9 @@
 # binaries. Currently supports simple PCM <-> component <-> SSP style tests
 # using simple_test()
 
+# Remove possible old topologies
+rm -f test-*.conf test-*.tplg
+
 # fail immediately on any errors
 set -e
 
@@ -22,8 +25,6 @@ fi
 # Simple component test cases
 # can be used on components with 1 sink and 1 source.
 SIMPLE_TESTS=(test-all test-capture test-playback)
-TONE_TEST=test-tone-playback
-DMIC_TEST=test-capture
 TEST_STRINGS=""
 M4_STRINGS=""
 # process m4 simple tests -
@@ -140,7 +141,6 @@ simple_test nocodec passthrough "NoCodec-2" s24le SSP 2 s24le 25 24 2400000 1920
 simple_test nocodec volume "NoCodec-2" s16le SSP 2 s16le 20 16 1920000 19200000 I2S 0 SIMPLE_TESTS[@]
 simple_test nocodec volume "NoCodec-2" s24le SSP 2 s24le 25 24 2400000 19200000 I2S 0 SIMPLE_TESTS[@]
 simple_test nocodec volume "NoCodec-2" s16le SSP 2 s24le 25 24 2400000 19200000 I2S 0 SIMPLE_TESTS[@]
-simple_test nocodec src "NoCodec-2" s24le SSP 2 s24le 25 24 2400000 19200000 I2S 0 SIMPLE_TESTS[@]
 
 simple_test codec passthrough "SSP2-Codec" s16le SSP 2 s16le 20 16 1920000 19200000 I2S 0 SIMPLE_TESTS[@]
 simple_test codec passthrough "SSP2-Codec" s24le SSP 2 s24le 25 24 2400000 19200000 I2S 0 SIMPLE_TESTS[@]
@@ -148,12 +148,11 @@ simple_test codec volume "SSP2-Codec" s16le SSP 2 s16le 20 16 1920000 19200000 I
 simple_test codec volume "SSP2-Codec" s24le SSP 2 s24le 25 24 2400000 19200000 I2S 0 SIMPLE_TESTS[@]
 simple_test codec volume "SSP2-Codec" s24le SSP 2 s16le 20 16 1920000 19200000 I2S 0 SIMPLE_TESTS[@]
 simple_test codec volume "SSP2-Codec" s16le SSP 2 s24le 25 24 2400000 19200000 I2S 0 SIMPLE_TESTS[@]
-simple_test codec src "SSP2-Codec" s24le SSP 2 s24le 25 24 2400000 19200000 I2S 0 SIMPLE_TESTS[@]
 
 # for APL
 APL_PROTOCOL_TESTS=(I2S LEFT_J DSP_A DSP_B)
 APL_SSP_TESTS=(0 1 2 3 4 5)
-APL_MODE_TESTS=(volume src asrc)
+APL_MODE_TESTS=(volume)
 APL_FORMAT_TESTS=(s16le s24le s32le)
 MCLK_IDS=(0 1)
 
@@ -213,6 +212,30 @@ do
 	done
 done
 
+
+# for processing algorithms
+ALG_MODE_TESTS=(asrc eq-fir eq-iir src)
+ALG_SIMPLE_TESTS=(test-capture test-playback)
+ALG_PROTOCOL_TESTS=(I2S)
+ALG_SSP_TESTS=(5)
+ALG_MCLK_IDS=(0)
+
+for protocol in ${ALG_PROTOCOL_TESTS[@]}
+do
+	for ssp in ${ALG_SSP_TESTS[@]}
+	do
+		for mode in ${ALG_MODE_TESTS[@]}
+		do
+			for mclk_id in ${ALG_MCLK_IDS[@]}
+			do
+				simple_test codec $mode "SSP${ssp}-Codec" s16le SSP $ssp s16le 16 16 1536000 24576000 $protocol $mclk_id ALG_SIMPLE_TESTS[@]
+				simple_test codec $mode "SSP${ssp}-Codec" s24le SSP $ssp s24le 32 24 3072000 24576000 $protocol $mclk_id ALG_SIMPLE_TESTS[@]
+				simple_test codec $mode "SSP${ssp}-Codec" s32le SSP $ssp s32le 32 32 3072000 24576000 $protocol $mclk_id ALG_SIMPLE_TESTS[@]
+			done
+		done
+	done
+done
+
 # for CNL
 simple_test nocodec passthrough "NoCodec-0" s16le SSP 0 s16le 25 16 2400000 24000000 I2S 0 SIMPLE_TESTS[@]
 simple_test nocodec passthrough "NoCodec-2" s24le SSP 0 s24le 25 24 2400000 24000000 I2S 0 SIMPLE_TESTS[@]
@@ -229,29 +252,7 @@ simple_test nocodec volume "NoCodec-2" s24le SSP 2 s24le 25 24 2400000 24000000 
 simple_test nocodec volume "NoCodec-2" s24le SSP 2 s16le 25 16 2400000 24000000 I2S 0 SIMPLE_TESTS[@]
 simple_test nocodec src "NoCodec-4" s24le SSP 4 s24le 25 24 2400000 24000000 I2S 0 SIMPLE_TESTS[@]
 
-# Tone test: Tone component only supports s32le currently
-simple_test codec tone "SSP2-Codec" s32le SSP 2 s16le 20 16 1920000 19200000 I2S 0 TONE_TEST[@]
-#Tone Test for APL
-simple_test codec tone "SSP5-Codec" s32le SSP 5 s24le 32 24 3072000 24576000 I2S 0 TONE_TEST[@]
-simple_test codec tone "SSP5-Codec" s32le SSP 5 s32le 32 32 3072000 24576000 I2S 0 TONE_TEST[@]
-
-# DMIC Test Topologies for APL/GLK
-DMIC_PDM_CONFIGS=(MONO_PDM0_MICA MONO_PDM0_MICB STEREO_PDM0 STEREO_PDM1 FOUR_CH_PDM0_PDM1)
-DMIC_SAMPLE_RATE=(8000 16000 24000 32000 48000 64000 96000)
-DMIC_SAMPLE_FORMATS=(s16le s32le)
-
-for pdm in ${DMIC_PDM_CONFIGS[@]}
-do
-	for rate in ${DMIC_SAMPLE_RATE[@]}
-	do
-		for format in ${DMIC_SAMPLE_FORMATS[@]}
-		do
-			simple_test nocodec passthrough "DMIC0" $format DMIC 0\
-				$format 1 500000 4800000 40 60 $rate $pdm\
-				DMIC_TEST[@]
-		done
-	done
-done
+# algorithms tests
 
 if [ "$USE_XARGS" == "yes" ]
 then
