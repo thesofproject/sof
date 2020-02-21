@@ -36,6 +36,7 @@
 #include <sof/spinlock.h>
 #include <sof/string.h>
 #include <sof/trace/trace.h>
+#include <sys/types.h>
 #include <ipc/topology.h>
 #include <user/trace.h>
 #include <config.h>
@@ -72,8 +73,8 @@ struct dma_chan_pdata {
  * Perform the individual copy of the in-progress DMA SG elem. To copy more
  * data, one should call this function repeatedly.
  */
-static size_t dummy_dma_copy_crt_elem(struct dma_chan_pdata *pdata,
-				      int bytes)
+static ssize_t dummy_dma_copy_crt_elem(struct dma_chan_pdata *pdata,
+				       int bytes)
 {
 	int ret;
 	uintptr_t rptr, wptr;
@@ -184,11 +185,11 @@ static size_t dummy_dma_compute_avail_data(struct dma_chan_pdata *pdata)
  * @bytes bytes of data. Will copy exactly this much data if possible, however
  * it will stop short if you try to copy more data than available.
  */
-static size_t dummy_dma_do_copies(struct dma_chan_pdata *pdata, int bytes)
+static ssize_t dummy_dma_do_copies(struct dma_chan_pdata *pdata, int bytes)
 {
 	size_t avail = dummy_dma_compute_avail_data(pdata);
-	size_t copied = 0;
-	size_t crt_copied;
+	ssize_t copied = 0;
+	ssize_t crt_copied;
 
 	if (!avail)
 		return -ENODATA;
@@ -395,12 +396,17 @@ static int dummy_dma_pm_context_store(struct dma *dma)
 static int dummy_dma_copy(struct dma_chan_data *channel, int bytes,
 			  uint32_t flags)
 {
+	ssize_t copied;
 	struct dma_cb_data next = {
 		.channel = channel,
 	};
 	struct dma_chan_pdata *pdata = dma_chan_get_data(channel);
 
-	next.elem.size = dummy_dma_do_copies(pdata, bytes);
+	copied = dummy_dma_do_copies(pdata, bytes);
+	if (copied < 0)
+		return copied;
+
+	next.elem.size = copied;
 
 	/* Let the user of the driver know how much we copied */
 	notifier_event(channel, NOTIFIER_ID_DMA_COPY,
