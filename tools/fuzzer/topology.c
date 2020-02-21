@@ -285,6 +285,34 @@ int load_src(void *dev, int comp_id, int pipeline_id, int size,
 	return ret;
 }
 
+/* load asrc dapm widget */
+int load_asrc(void *dev, int comp_id, int pipeline_id, int size,
+	      void *params)
+{
+	struct fuzz *fuzzer = (struct fuzz *)dev;
+	struct sof_ipc_comp_asrc asrc = {0};
+	struct sof_ipc_comp_reply r;
+	int ret = 0;
+
+	ret = tplg_load_asrc(comp_id, pipeline_id, size, &asrc,
+			     fuzzer->tplg_file);
+	if (ret < 0)
+		return ret;
+
+	/* configure fuzzer msg */
+	fuzzer->msg.header = asrc.comp.hdr.cmd;
+	memcpy(fuzzer->msg.msg_data, &asrc, asrc.comp.hdr.size);
+	fuzzer->msg.msg_size = sizeof(asrc);
+	fuzzer->msg.reply_size = sizeof(r);
+
+	/* load asrc component */
+	ret = fuzzer_send_msg(fuzzer);
+	if (ret < 0)
+		fprintf(stderr, "error: message tx failed\n");
+
+	return ret;
+}
+
 /* load mixer dapm widget */
 int load_mixer(void *dev, int comp_id, int pipeline_id, int size)
 {
