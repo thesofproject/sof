@@ -193,27 +193,18 @@ target_link_libraries(sof_ld_flags INTERFACE "-lgcc")
 target_link_libraries(sof_ld_flags INTERFACE "-Wl,-Map=sof.map")
 target_link_libraries(sof_ld_flags INTERFACE "-T${PROJECT_BINARY_DIR}/${platform_ld_script}")
 
-# rimage
-
-include(ExternalProject)
-
-ExternalProject_Add(rimage_ep
-	DEPENDS check_version_h
-	DOWNLOAD_COMMAND ""
-	SOURCE_DIR "${PROJECT_SOURCE_DIR}/rimage"
-	PREFIX "${PROJECT_BINARY_DIR}/rimage_ep"
-	BINARY_DIR "${PROJECT_BINARY_DIR}/rimage_ep/build"
-	BUILD_ALWAYS 1
-	CMAKE_ARGS -DVERSION_H_PATH=${VERSION_H_PATH}
-		-DPEM_KEY_PREFIX=${PROJECT_SOURCE_DIR}/rimage/keys
-	INSTALL_COMMAND ""
-)
-
 add_custom_target(
-	prepare_fw_copy_for_rimage
-	DEPENDS sof rimage_ep
+	prepare_sof_post_process
+	DEPENDS sof
 	COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_BINARY_DIR}/sof sof-${fw_name}
 )
+
+# contains steps that should be performed before fw image is ready for being
+# processed by tools like rimage and MEU
+add_custom_target(sof_post_process DEPENDS prepare_sof_post_process)
+
+# contains extra output that should be generated for bin target
+add_custom_target(bin_extras)
 
 # bootloader binary
 
@@ -248,14 +239,46 @@ if(build_bootloader)
 		process_base_module
 		COMMAND ${CMAKE_OBJCOPY} -O binary ${PROJECT_BINARY_DIR}/src/platform/${platform_folder}/base_module mod-${fw_name}.bin
 		COMMAND ${CMAKE_OBJCOPY} --add-section .module=mod-${fw_name}.bin --set-section-flags .module=load,readonly sof-${fw_name}
-		DEPENDS prepare_fw_copy_for_rimage base_module bootloader_dump
+		DEPENDS prepare_sof_post_process base_module bootloader_dump
 		VERBATIM
 		USES_TERMINAL
 	)
-else()
-	set(bootloader_binary_path "")
 
-	add_custom_target(process_base_module DEPENDS prepare_fw_copy_for_rimage)
+	add_dependencies(sof_post_process process_base_module)
+else()
+	set(bootloader_binary_path)
+endif()
+
+if(CONFIG_BUILD_VM_ROM)
+	add_executable(rom "")
+	target_link_libraries(rom PRIVATE sof_options)
+	target_link_libraries(rom PRIVATE "-lgcc")
+	target_link_libraries(rom PRIVATE "-T${PROJECT_BINARY_DIR}/${platform_rom_ld_script}")
+	sof_add_ld_script(rom ${platform_rom_ld_script})
+
+	# We have to make additional define, because sources
+	# are reused for other objects with different flags.
+	target_compile_definitions(rom PRIVATE -DCONFIG_VM_ROM)
+
+	add_local_sources(rom
+		xtos/crt1-boards-rom.S
+		xtos/memctl_default.S
+		xtos/reset-vector.S
+	)
+
+	add_custom_target(
+		rom_dump
+		COMMAND ${CMAKE_COMMAND} -E copy rom rom-${fw_name}
+		COMMAND ${CMAKE_OBJCOPY} -O binary rom rom-${fw_name}.bin
+		COMMAND ${CMAKE_OBJDUMP} -h -D rom > rom-${fw_name}.lmap
+		COMMAND ${CMAKE_OBJDUMP} -S rom > rom-${fw_name}.lst
+		COMMAND ${CMAKE_OBJDUMP} -D rom > rom-${fw_name}.dis
+		DEPENDS rom
+		VERBATIM
+		USES_TERMINAL
+	)
+
+	add_dependencies(bin_extras rom_dump)
 endif()
 
 add_custom_target(
@@ -263,9 +286,25 @@ add_custom_target(
 	COMMAND ${CMAKE_OBJDUMP} -S sof-${fw_name} > sof-${fw_name}.lst
 	COMMAND ${CMAKE_OBJDUMP} -h sof-${fw_name} > sof-${fw_name}.lmap
 	COMMAND ${CMAKE_OBJDUMP} -D sof-${fw_name} > sof-${fw_name}.dis
-	DEPENDS process_base_module
+	DEPENDS sof_post_process
 	VERBATIM
 	USES_TERMINAL
+)
+
+# rimage
+
+include(ExternalProject)
+
+ExternalProject_Add(rimage_ep
+	DEPENDS check_version_h
+	DOWNLOAD_COMMAND ""
+	SOURCE_DIR "${PROJECT_SOURCE_DIR}/rimage"
+	PREFIX "${PROJECT_BINARY_DIR}/rimage_ep"
+	BINARY_DIR "${PROJECT_BINARY_DIR}/rimage_ep/build"
+	BUILD_ALWAYS 1
+	CMAKE_ARGS -DVERSION_H_PATH=${VERSION_H_PATH}
+		-DPEM_KEY_PREFIX=${PROJECT_SOURCE_DIR}/rimage/keys
+	INSTALL_COMMAND ""
 )
 
 if(NOT DEFINED RIMAGE_PRIVATE_KEY)
@@ -307,7 +346,7 @@ if(MEU_PATH)
 			${RIMAGE_MOD_OFFSET_FLAG}
 			${bootloader_binary_path}
 			sof-${fw_name}
-		DEPENDS sof_dump
+		DEPENDS sof_dump rimage_ep
 		VERBATIM
 		USES_TERMINAL
 	)
@@ -347,7 +386,7 @@ else()
 			${RIMAGE_MOD_OFFSET_FLAG}
 			${bootloader_binary_path}
 			sof-${fw_name}
-		DEPENDS sof_dump
+		DEPENDS sof_dump rimage_ep
 		VERBATIM
 		USES_TERMINAL
 	)
@@ -358,7 +397,7 @@ add_custom_target(
 	bin ALL
 	COMMAND ${CMAKE_COMMAND} -E copy sof-${fw_name}.ri ${PROJECT_BINARY_DIR}/sof-${fw_name}.ri
 	COMMAND ${CMAKE_COMMAND} -E copy sof-${fw_name}.ldc ${PROJECT_BINARY_DIR}/sof-${fw_name}.ldc
-	DEPENDS run_meu
+	DEPENDS run_meu bin_extras
 	VERBATIM
 	USES_TERMINAL
 )
@@ -368,35 +407,3 @@ install(
 		${PROJECT_BINARY_DIR}/sof-${fw_name}.ldc
 	DESTINATION bin
 )
-
-if(CONFIG_BUILD_VM_ROM)
-	add_executable(rom "")
-	target_link_libraries(rom PRIVATE sof_options)
-	target_link_libraries(rom PRIVATE "-lgcc")
-	target_link_libraries(rom PRIVATE "-T${PROJECT_BINARY_DIR}/${platform_rom_ld_script}")
-	sof_add_ld_script(rom ${platform_rom_ld_script})
-
-	# We have to make additional define, because sources
-	# are reused for other objects with different flags.
-	target_compile_definitions(rom PRIVATE -DCONFIG_VM_ROM)
-
-	add_local_sources(rom
-		xtos/crt1-boards-rom.S
-		xtos/memctl_default.S
-		xtos/reset-vector.S
-	)
-
-	add_custom_target(
-		rom_dump
-		COMMAND ${CMAKE_COMMAND} -E copy rom rom-${fw_name}
-		COMMAND ${CMAKE_OBJCOPY} -O binary rom rom-${fw_name}.bin
-		COMMAND ${CMAKE_OBJDUMP} -h -D rom > rom-${fw_name}.lmap
-		COMMAND ${CMAKE_OBJDUMP} -S rom > rom-${fw_name}.lst
-		COMMAND ${CMAKE_OBJDUMP} -D rom > rom-${fw_name}.dis
-		DEPENDS rom
-		VERBATIM
-		USES_TERMINAL
-	)
-
-	add_dependencies(bin rom_dump)
-endif()
