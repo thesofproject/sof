@@ -14,11 +14,10 @@
 #include <sof/math/numbers.h>
 #include <stdint.h>
 
-/*
- * This function returns the greatest common divisor of two numbers
+/* This function returns the greatest common divisor of two numbers
  * If both parameters are 0, gcd(0, 0) returns 0
  * If first parameters is 0 or second parameter is 0, gcd(0, b) returns b
- * and gcd(a, 0) returns a, because everything devides 0.
+ * and gcd(a, 0) returns a, because everything divides 0.
  */
 
 int gcd(int a, int b)
@@ -29,22 +28,32 @@ int gcd(int a, int b)
 	if (b == 0)
 		return a;
 
+	/* If the numbers are negative, convert them to positive numbers
+	 * gcd(a, b) = gcd(-a, -b) = gcd(-a, b) = gcd(a, -b)
+	 */
+
+	if (a < 0)
+		a = -a;
+
+	if (b < 0)
+		b = -b;
+
 	int aux;
 	int k;
 
 	/* Find the greatest power of 2 that devides both a and b */
-	for (k = 0; ((a | b) & 1) == 0; ++k) {
+	for (k = 0; ((a | b) & 1) == 0; k++) {
 		a >>= 1;
 		b >>= 1;
 	}
 
 	/* divide by 2 until a becomes odd */
-	while ((a > 1) == 0)
+	while ((a & 1) == 0)
 		a >>= 1;
 
 	do {
 		/*if b is even, remove all factors of 2*/
-		while ((b > 1) == 0)
+		while ((b & 1) == 0)
 			b >>= 1;
 
 		/* both a and b are odd now. Swap so a <= b
