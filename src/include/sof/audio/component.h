@@ -168,6 +168,14 @@ struct dai_hw_params;
 		      drv_p,			\
 		      __e, ##__VA_ARGS__)
 
+#define comp_cl_warn(drv_p, __e, ...)		\
+	trace_dev_warn(TRACE_CLASS_COMP,	\
+		       trace_comp_drv_get_uid,	\
+		       trace_comp_drv_get_id,	\
+		       trace_comp_drv_get_subid,\
+		       drv_p,			\
+		       __e, ##__VA_ARGS__)
+
 #define comp_cl_info(drv_p, __e, ...)		\
 	trace_dev_info(TRACE_CLASS_COMP,	\
 		       trace_comp_drv_get_uid,	\
@@ -189,6 +197,10 @@ struct dai_hw_params;
 #define comp_err(comp_p, __e, ...)					\
 	trace_dev_err(TRACE_CLASS_COMP, trace_comp_get_uid, trace_comp_get_id, \
 		      trace_comp_get_subid, comp_p, __e, ##__VA_ARGS__)
+
+#define comp_warn(comp_p, __e, ...)					\
+	trace_dev_warn(TRACE_CLASS_COMP, trace_comp_get_uid, trace_comp_get_id,\
+		       trace_comp_get_subid, comp_p, __e, ##__VA_ARGS__)
 
 #define comp_info(comp_p, __e, ...)					\
 	trace_dev_info(TRACE_CLASS_COMP, trace_comp_get_uid, trace_comp_get_id,\
