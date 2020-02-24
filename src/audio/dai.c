@@ -201,7 +201,7 @@ static void dai_free(struct comp_dev *dev)
 }
 
 static int dai_comp_get_hw_params(struct comp_dev *dev,
-				  struct sof_ipc_stream_params *params)
+				  struct sof_ipc_stream_params *params, int dir)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
 	int ret = 0;
@@ -209,7 +209,7 @@ static int dai_comp_get_hw_params(struct comp_dev *dev,
 	comp_info(dev, "dai_hw_params()");
 
 	/* fetching hw dai stream params */
-	ret = dai_get_hw_params(dd->dai, params);
+	ret = dai_get_hw_params(dd->dai, params, dir);
 	if (ret < 0) {
 		comp_err(dev, "dai_comp_get_hw_params() error: dai_get_hw_params failed");
 		return ret;
@@ -223,7 +223,7 @@ static int dai_verify_params(struct comp_dev *dev,
 {
 	struct sof_ipc_stream_params hw_params;
 
-	dai_comp_get_hw_params(dev, &hw_params);
+	dai_comp_get_hw_params(dev, &hw_params, params->direction);
 
 	/* checks whether pcm parameters match hardware DAI parameter set
 	 * during dai_set_config(). If hardware parameter is equal to 0, it
