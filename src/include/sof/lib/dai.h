@@ -170,6 +170,13 @@ struct dai_type_info {
 		      trace_dai_drv_get_subid,	\
 		      drv_p, __e, ##__VA_ARGS__)
 
+#define dai_cl_warn(drv_p, __e, ...)		\
+	trace_dev_warn(TRACE_CLASS_DAI,		\
+		       trace_dai_drv_get_uid,	\
+		       trace_dai_drv_get_id,	\
+		       trace_dai_drv_get_subid,	\
+		       drv_p, __e, ##__VA_ARGS__)
+
 #define dai_cl_info(drv_p, __e, ...)		\
 	trace_dev_info(TRACE_CLASS_DAI,		\
 		       trace_dai_drv_get_uid,	\
@@ -190,6 +197,11 @@ struct dai_type_info {
 	trace_dev_err(TRACE_CLASS_DAI, trace_dai_get_uid,		\
 		      trace_dai_get_id,					\
 		      trace_dai_get_subid, dai_p, __e, ##__VA_ARGS__)
+
+#define dai_warn(dai_p, __e, ...)					\
+	trace_dev_warn(TRACE_CLASS_DAI, trace_dai_get_uid,		\
+		       trace_dai_get_id,				\
+		       trace_dai_get_subid, dai_p, __e, ##__VA_ARGS__)
 
 #define dai_info(dai_p, __e, ...)					\
 	trace_dev_info(TRACE_CLASS_DAI, trace_dai_get_uid,		\

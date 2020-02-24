@@ -41,6 +41,9 @@ struct task;
 #define pipe_cl_err(__e, ...)						\
 	trace_error(TRACE_CLASS_PIPE, __e, ##__VA_ARGS__)
 
+#define pipe_cl_warn(__e, ...)						\
+	trace_warn(TRACE_CLASS_PIPE, __e, ##__VA_ARGS__)
+
 #define pipe_cl_info(__e, ...)						\
 	trace_event(TRACE_CLASS_PIPE, __e, ##__VA_ARGS__)
 
@@ -52,6 +55,10 @@ struct task;
 #define pipe_err(pipe_p, __e, ...)					\
 	trace_dev_err(TRACE_CLASS_PIPE, trace_pipe_get_uid, trace_pipe_get_id,\
 		      trace_pipe_get_subid, pipe_p, __e, ##__VA_ARGS__)
+
+#define pipe_warn(pipe_p, __e, ...)					\
+	trace_dev_warn(TRACE_CLASS_PIPE, trace_pipe_get_uid, trace_pipe_get_id,\
+		       trace_pipe_get_subid, pipe_p, __e, ##__VA_ARGS__)
 
 #define pipe_info(pipe_p, __e, ...)					\
 	trace_dev_info(TRACE_CLASS_PIPE, trace_pipe_get_uid, trace_pipe_get_id,\

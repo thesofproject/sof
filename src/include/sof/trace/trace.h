@@ -225,6 +225,23 @@ static inline struct trace *trace_get(void)
 	_trace_event_atomic_with_ids(LOG_LEVEL_INFO, class, id_0, id_1, id_2, \
 				     format, ##__VA_ARGS__)
 
+#define trace_warn(class, format, ...)					\
+	_trace_event_with_ids(LOG_LEVEL_WARNING, class, 0, -1, -1,	\
+			      format, ##__VA_ARGS__)
+
+#define trace_warn_atomic(class, format, ...)				   \
+	_trace_event_atomic_with_ids(LOG_LEVEL_WARNING, class, 0, -1, -1,  \
+				     format, ##__VA_ARGS__)
+
+#define trace_warn_with_ids(class, id_0, id_1, id_2, format, ...)	   \
+	_trace_event_with_ids(LOG_LEVEL_WARNING, class, id_0, id_1, id_2,  \
+			      format, ##__VA_ARGS__)
+
+#define trace_warn_atomic_with_ids(class, id_0, id_1, id_2, format, ...)   \
+	_trace_event_atomic_with_ids(LOG_LEVEL_WARNING, class,		   \
+				     id_0, id_1, id_2,			   \
+				     format, ##__VA_ARGS__)
+
 #if CONFIG_TRACEM
 /* send all trace to mbox and local trace buffer */
 #define __mbox _mbox
@@ -329,6 +346,15 @@ do {									    \
 #define trace_event_atomic_with_ids(class, id_0, id_1, id_2, format, ...) \
 	trace_unused(class, id_0, id_1, id_2, format, ##__VA_ARGS__)
 
+#define trace_warn(class, format, ...) \
+	trace_unused(class, 0, -1, -1, format, ##__VA_ARGS__)
+#define trace_warn_with_ids(class, id_0, id_1, id_2, format, ...) \
+	trace_unused(class, id_0, id_1, id_2, format, ##__VA_ARGS__)
+#define trace_warn_atomic(class, format, ...) \
+	trace_unused(class, 0, -1, -1, format, ##__VA_ARGS__)
+#define trace_warn_atomic_with_ids(class, id_0, id_1, id_2, format, ...) \
+	trace_unused(class, id_0, id_1, id_2, format, ##__VA_ARGS__)
+
 #define trace_point(x)  do {} while (0)
 
 #endif
@@ -404,6 +430,11 @@ do {									    \
  */
 #define trace_dev_err(class, get_uid_m, get_id_m, get_subid_m, dev, fmt, ...) \
 	trace_error_with_ids(class, get_uid_m(dev), get_id_m(dev),	      \
+			     get_subid_m(dev), fmt, ##__VA_ARGS__)
+
+/** \brief Trace from a device on warning level. */
+#define trace_dev_warn(class, get_uid_m, get_id_m, get_subid_m, dev, fmt, ...) \
+	trace_warn_with_ids(class, get_uid_m(dev), get_id_m(dev),	       \
 			     get_subid_m(dev), fmt, ##__VA_ARGS__)
 
 /** \brief Trace from a device on info level. */
