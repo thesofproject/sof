@@ -1048,7 +1048,7 @@ static int configure_registers(struct dai *dai,
 
 /* get DMIC hw params */
 static int dmic_get_hw_params(struct dai *dai,
-			      struct sof_ipc_stream_params  *params)
+			      struct sof_ipc_stream_params  *params, int dir)
 {
 	int di = dai->index;
 
