@@ -157,7 +157,13 @@ found:
 		goto out;
 	}
 
-	ext_man_write(&image);
+	ret = ext_man_write(&image);
+	if (ret) {
+		fprintf(stderr, "error: unable to write extended manifest, %d\n",
+			errno);
+		goto out;
+	}
+
 out:
 	/* close files */
 	if (image.out_fd)
