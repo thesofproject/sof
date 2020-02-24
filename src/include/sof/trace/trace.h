@@ -209,16 +209,21 @@ static inline struct trace *trace_get(void)
  * image size. This way more elaborate log messages are possible and encouraged,
  * for better debugging experience, without worrying about runtime performance.
  */
-#define trace_event(class, format, ...) \
-	_trace_event_with_ids(class, 0, -1, -1, format, ##__VA_ARGS__)
-#define trace_event_atomic(class, format, ...) \
-	_trace_event_atomic_with_ids(class, 0, -1, -1, format, ##__VA_ARGS__)
+#define trace_event(class, format, ...)					\
+	_trace_event_with_ids(LOG_LEVEL_INFO, class, 0, -1, -1,		\
+			      format, ##__VA_ARGS__)
+
+#define trace_event_atomic(class, format, ...)				\
+	_trace_event_atomic_with_ids(LOG_LEVEL_INFO, class, 0, -1, -1,	\
+				     format, ##__VA_ARGS__)
 
 #define trace_event_with_ids(class, id_0, id_1, id_2, format, ...)	\
-	_trace_event_with_ids(class, id_0, id_1, id_2, format, ##__VA_ARGS__)
-#define trace_event_atomic_with_ids(class, id_0, id_1, id_2, format, ...) \
-	_trace_event_atomic_with_ids(class, id_0, id_1, id_2, format,  \
-				     ##__VA_ARGS__)
+	_trace_event_with_ids(LOG_LEVEL_INFO, class, id_0, id_1, id_2,	\
+			      format, ##__VA_ARGS__)
+
+#define trace_event_atomic_with_ids(class, id_0, id_1, id_2, format, ...)     \
+	_trace_event_atomic_with_ids(LOG_LEVEL_INFO, class, id_0, id_1, id_2, \
+				     format, ##__VA_ARGS__)
 
 #if CONFIG_TRACEM
 /* send all trace to mbox and local trace buffer */
@@ -227,11 +232,13 @@ static inline struct trace *trace_get(void)
 /* send trace events only to the local trace buffer */
 #define __mbox
 #endif
-#define _trace_event_with_ids(class, id_0, id_1, id_2, format, ...)	     \
-	_log_message(__mbox,, LOG_LEVEL_VERBOSE, class, id_0, id_1, id_2,    \
+
+#define _trace_event_with_ids(lvl, class, id_0, id_1, id_2, format, ...)       \
+	_log_message(__mbox,, lvl, class, id_0, id_1, id_2,		       \
 		     format, ##__VA_ARGS__)
-#define _trace_event_atomic_with_ids(class, id_0, id_1, id_2, format, ...)   \
-	_log_message(__mbox, _atomic, LOG_LEVEL_VERBOSE, class, id_0, id_1,  \
+
+#define _trace_event_atomic_with_ids(lvl, class, id_0, id_1, id_2, format, ...)\
+	_log_message(__mbox, _atomic, lvl, class, id_0, id_1,		       \
 		     id_2, format, ##__VA_ARGS__)
 
 #define trace_point(x) platform_trace_point(x)
@@ -328,11 +335,23 @@ do {									    \
 
 /* verbose tracing */
 #if CONFIG_TRACEV
-#define tracev_event(...) trace_event(__VA_ARGS__)
-#define tracev_event_with_ids(...) trace_event_with_ids(__VA_ARGS__)
-#define tracev_event_atomic(...) trace_event_atomic(__VA_ARGS__)
-#define tracev_event_atomic_with_ids(...) \
-	trace_event_atomic_with_ids(__VA_ARGS__)
+#define tracev_event(class, format, ...)				\
+	_trace_event_with_ids(LOG_LEVEL_VERBOSE, class, 0, -1, -1,	\
+			      format, ##__VA_ARGS__)
+
+#define tracev_event_atomic(class, format, ...)				   \
+	_trace_event_atomic_with_ids(LOG_LEVEL_VERBOSE, class, 0, -1, -1,  \
+				     format, ##__VA_ARGS__)
+
+#define tracev_event_with_ids(class, id_0, id_1, id_2, format, ...)	   \
+	_trace_event_with_ids(LOG_LEVEL_VERBOSE, class, id_0, id_1, id_2,  \
+			      format, ##__VA_ARGS__)
+
+#define tracev_event_atomic_with_ids(class, id_0, id_1, id_2, format, ...) \
+	_trace_event_atomic_with_ids(LOG_LEVEL_VERBOSE, class,		   \
+				     id_0, id_1, id_2,			   \
+				     format, ##__VA_ARGS__)
+
 #else
 #define tracev_event(class, format, ...) \
 	trace_unused(class, 0, -1, -1, format, ##__VA_ARGS__)
