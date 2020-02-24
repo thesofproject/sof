@@ -60,11 +60,25 @@ static inline void print_table_header(FILE *out_fd)
 #define CASE(x) \
 	case(TRACE_CLASS_##x): return #x
 
+static const char *get_level_color(uint32_t level)
+{
+	switch (level) {
+	case LOG_LEVEL_CRITICAL:
+		return KRED;
+	case LOG_LEVEL_WARNING:
+		return KYEL;
+	default:
+		return KNRM;
+	}
+}
+
 static const char *get_level_name(uint32_t level)
 {
 	switch (level) {
 	case LOG_LEVEL_CRITICAL:
 		return "ERROR ";
+	case LOG_LEVEL_WARNING:
+		return "WARN ";
 	default:
 		return ""; /* info is usual, do not print anything */
 	}
@@ -204,8 +218,7 @@ static void print_entry_params(FILE *out_fd,
 
 		/* level name */
 		fprintf(out_fd, "%s%s",
-			use_colors ? (entry->header.level ==
-				LOG_LEVEL_CRITICAL ? KRED : KNRM) : "",
+			use_colors ? get_level_color(entry->header.level) : "",
 			get_level_name(entry->header.level));
 	}
 
