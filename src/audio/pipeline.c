@@ -282,7 +282,7 @@ static int pipeline_comp_hw_params(struct comp_dev *current,
 	/* Fetch hardware stream parameters from DAI component */
 	if (dev_comp_type(current) == SOF_COMP_DAI) {
 		ret = comp_dai_get_hw_params(current,
-					     &ppl_data->params->params);
+					     &ppl_data->params->params, dir);
 		if (ret < 0) {
 			pipe_cl_err("pipeline_find_dai_comp(): comp_dai_get_hw_params() error.");
 			return ret;
