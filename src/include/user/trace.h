@@ -70,7 +70,11 @@ struct system_time {
 #define LOG_DISABLE		0  /* Disable logging */
 
 #define LOG_LEVEL_CRITICAL	1  /* (FDK fatal) */
-#define LOG_LEVEL_VERBOSE	2
+#define LOG_LEVEL_ERROR		LOG_LEVEL_CRITICAL
+#define LOG_LEVEL_WARNING	2
+#define LOG_LEVEL_INFO		3
+#define LOG_LEVEL_DEBUG		4
+#define LOG_LEVEL_VERBOSE	LOG_LEVEL_DEBUG
 
 /*
  * Layout of a log fifo.
