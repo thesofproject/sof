@@ -32,7 +32,7 @@ static int alh_set_config(struct dai *dai, struct sof_ipc_dai_config *config)
 
 /* get ALH hw params */
 static int alh_get_hw_params(struct dai *dai,
-			     struct sof_ipc_stream_params  *params)
+			     struct sof_ipc_stream_params  *params, int dir)
 {
 	/* 0 means variable */
 	params->rate = 0;

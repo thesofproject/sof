@@ -390,7 +390,7 @@ out:
 
 /* get SSP hw params */
 static int ssp_get_hw_params(struct dai *dai,
-			     struct sof_ipc_stream_params  *params)
+			     struct sof_ipc_stream_params  *params, int dir)
 {
 	struct ssp_pdata *ssp = dai_get_drvdata(dai);
 
