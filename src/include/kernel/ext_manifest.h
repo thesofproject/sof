@@ -27,6 +27,7 @@
 #ifndef __KERNEL_EXT_MANIFEST_H__
 #define __KERNEL_EXT_MANIFEST_H__
 
+#include <ipc/info.h>
 #include <sof/compiler_attributes.h>
 #include <stdint.h>
 
@@ -67,12 +68,25 @@ struct ext_man_header {
 
 /* Now define extended manifest elements */
 
+/* Extended manifest elements identificators */
+enum ext_man_elem_type {
+	EXT_MAN_ELEM_FW_VERSION		= 0,
+};
+
 /* extended manifest element header */
 struct ext_man_elem_header {
 	uint32_t type;		/**< EXT_MAN_ELEM_* */
 	uint32_t elem_size;	/**< in bytes, including header size */
 
 	/* just after this header should be type dependent content */
+} __packed;
+
+/* FW version */
+struct ext_man_fw_version {
+	struct ext_man_elem_header hdr;
+	/* use sof_ipc struct because of code re-use */
+	struct sof_ipc_fw_version version;
+	uint32_t flags;
 } __packed;
 
 #endif /* __KERNEL_EXT_MANIFEST_H__ */
