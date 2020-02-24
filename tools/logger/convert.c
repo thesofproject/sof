@@ -51,20 +51,24 @@ static double to_usecs(uint64_t time, double clk)
 
 static inline void print_table_header(FILE *out_fd)
 {
-	fprintf(out_fd, "%5s %6s %12s %7s %16s %16s %24s\t%s\n",
-		"CORE",
-		"LEVEL",
-		"COMP_ID",
-		"",
-		"TIMESTAMP",
-		"DELTA",
-		"FILE_NAME",
+	fprintf(out_fd, "%18s %18s  %2s %-18s %-29s  %s\n",
+		"TIMESTAMP", "DELTA", "C#", "COMPONENT", "LOCATION",
 		"CONTENT");
 	fflush(out_fd);
 }
 
 #define CASE(x) \
 	case(TRACE_CLASS_##x): return #x
+
+static const char *get_level_name(uint32_t level)
+{
+	switch (level) {
+	case LOG_LEVEL_CRITICAL:
+		return "ERROR ";
+	default:
+		return ""; /* info is usual, do not print anything */
+	}
+}
 
 static
 const char *get_component_name(const struct snd_sof_uids_header *uids_dict,
@@ -122,11 +126,19 @@ static char *format_file_name(char *file_name_raw, int full_name)
 		if (!name)
 			name = file_name_raw;
 
-		/* keep the last 20 chars */
-		if (!full_name) {
-			len = strlen(name);
-			if (len > 20)
-				name += (len - 20);
+		if (full_name)
+			return name;
+		/* keep the last 24 chars */
+		len = strlen(name);
+		if (len > 24) {
+			char *sep_pos = NULL;
+
+			name += (len - 24);
+			sep_pos = strchr(name, '/');
+			if (!sep_pos)
+				return name;
+			while (--sep_pos >= name)
+				*sep_pos = '.';
 		}
 		return name;
 }
@@ -138,9 +150,6 @@ static void print_entry_params(FILE *out_fd,
 {
 	char ids[TRACE_MAX_IDS_STR];
 	float dt = to_usecs(dma_log->timestamp - last_timestamp, clock);
-	const char *entry_fmt = raw_output ?
-		"%s%u %u %s%s%s %.6f %.6f (%s:%u) " :
-		"%s%5u %6u %12s%s %-7s %16.6f %16.6f %20s:%-4u\t";
 
 	if (dt < 0 || dt > 1000.0 * 1000.0 * 1000.0)
 		dt = NAN;
@@ -151,20 +160,54 @@ static void print_entry_params(FILE *out_fd,
 			(dma_log->id_1 & TRACE_IDS_MASK));
 	else
 		ids[0] = '\0';
-	fprintf(out_fd, entry_fmt,
-		entry->header.level == use_colors ?
-			(LOG_LEVEL_CRITICAL ? KRED : KNRM) : "",
-		dma_log->core_id,
-		entry->header.level,
-		get_component_name(uids_dict,
-				   entry->header.component_class,
-				   dma_log->uid),
-		raw_output && strlen(ids) ? "-" : "",
-		ids,
-		to_usecs(dma_log->timestamp, clock),
-		dt,
-		format_file_name(entry->file_name, raw_output),
-		entry->header.line_idx);
+
+	if (raw_output) {
+		const char *entry_fmt = "%s%u %u %s%s%s %.6f %.6f (%s:%u) ";
+
+		fprintf(out_fd, entry_fmt,
+			entry->header.level == use_colors ?
+				(LOG_LEVEL_CRITICAL ? KRED : KNRM) : "",
+			dma_log->core_id,
+			entry->header.level,
+			get_component_name(uids_dict,
+					   entry->header.component_class,
+					   dma_log->uid),
+			raw_output && strlen(ids) ? "-" : "",
+			ids,
+			to_usecs(dma_log->timestamp, clock),
+			dt,
+			format_file_name(entry->file_name, raw_output),
+			entry->header.line_idx);
+	} else {
+		/* timestamp */
+		fprintf(out_fd, "%s[%16.6f] (%16.6f)%s ",
+			use_colors ? KGRN : "",
+			to_usecs(dma_log->timestamp, clock), dt,
+			use_colors ? KNRM : "");
+
+		/* core id */
+		fprintf(out_fd, "c%d ", dma_log->core_id);
+
+		/* component name and id */
+		fprintf(out_fd, "%s%-12s %-5s%s ",
+			use_colors ? KYEL : "",
+			get_component_name(uids_dict,
+					   entry->header.component_class,
+					   dma_log->uid),
+			ids,
+			use_colors ? KNRM : "");
+
+		/* location */
+		fprintf(out_fd, "%24s:%-4u  ",
+			format_file_name(entry->file_name, raw_output),
+			entry->header.line_idx);
+
+		/* level name */
+		fprintf(out_fd, "%s%s",
+			use_colors ? (entry->header.level ==
+				LOG_LEVEL_CRITICAL ? KRED : KNRM) : "",
+			get_level_name(entry->header.level));
+	}
 
 	switch (entry->header.params_num) {
 	case 0:

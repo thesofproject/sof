@@ -16,6 +16,8 @@
 
 #define KNRM	"\x1B[0m"
 #define KRED	"\x1B[31m"
+#define KGRN	"\x1B[32m"
+#define KYEL	"\x1B[33m"
 
 struct convert_config {
 	const char *out_file;
