@@ -41,6 +41,89 @@ struct ldc_entry {
 	uint32_t *params;
 };
 
+struct proc_ldc_entry {
+	int subst_mask;
+	struct ldc_entry_header header;
+	char *file_name;
+	char *text;
+	uintptr_t params[TRACE_MAX_PARAMS_COUNT];
+};
+
+static const char *BAD_PTR_STR = "<bad uid ptr %x>";
+
+const char *format_uid(const struct snd_sof_uids_header *uids_dict,
+		       uint32_t uid_ptr,
+		       int use_colors)
+{
+	char *str;
+
+	if (uid_ptr < uids_dict->base_address ||
+	    uid_ptr >= uids_dict->base_address + uids_dict->data_length) {
+		str = calloc(1, strlen(BAD_PTR_STR) + 1 + 6);
+		sprintf(str, BAD_PTR_STR, uid_ptr);
+	} else {
+		const struct sof_uuid *uid_val = (const struct sof_uuid *)
+			((uint8_t *)uids_dict + uids_dict->data_offset +
+			uid_ptr - uids_dict->base_address);
+
+		str = calloc(1, (use_colors ? strlen(KBLU) : 0) + 1 +
+			36 + 1 + *(uint32_t *)(uid_val + 1) + 1 +
+			(use_colors ? strlen(KNRM) : 0));
+		sprintf(str, "%s%s <%08x-%04x-%04x-%02x%02x-%02x%02x%02x%02x%02x%02x>%s",
+			use_colors ? KBLU : "",
+			(const char *)(uid_val + 1) + 4,
+			uid_val->a, uid_val->b, uid_val->c,
+			uid_val->d[0], uid_val->d[1], uid_val->d[2],
+			uid_val->d[3], uid_val->d[4], uid_val->d[5],
+			uid_val->d[6], uid_val->d[7],
+			use_colors ? KNRM : "");
+	}
+	return str;
+}
+
+static void process_params(struct proc_ldc_entry *pe,
+			   const struct ldc_entry *e,
+			   const struct snd_sof_uids_header *uids_dict,
+			   int use_colors)
+{
+	const char *p = e->text;
+	const char *t_end = p + strlen(e->text);
+	unsigned int par_bit = 1;
+	int i;
+
+	pe->subst_mask = 0;
+	pe->header =  e->header;
+	pe->file_name = e->file_name;
+	pe->text = e->text;
+
+	/* scan the text for possible replacements */
+	while ((p = strchr(p, '%'))) {
+		if (p < t_end - 1 && *(p + 1) == 's')
+			pe->subst_mask += par_bit;
+		par_bit <<= 1;
+		++p;
+	}
+
+	for (i = 0; i < e->header.params_num; i++) {
+		pe->params[i] = e->params[i];
+		if (pe->subst_mask & (1 << i))
+			pe->params[i] = (uintptr_t)format_uid(uids_dict,
+							      e->params[i],
+							      use_colors);
+	}
+}
+
+static void free_proc_ldc_entry(struct proc_ldc_entry *pe)
+{
+	int i;
+
+	for (i = 0; i < TRACE_MAX_PARAMS_COUNT; i++) {
+		if (pe->subst_mask & (1 << i))
+			free((void *)pe->params[i]);
+		pe->params[i] = 0;
+	}
+}
+
 static double to_usecs(uint64_t time, double clk)
 {
 	/* trace timestamp uses CPU system clock at default 25MHz ticks */
@@ -164,6 +247,10 @@ static void print_entry_params(FILE *out_fd,
 {
 	char ids[TRACE_MAX_IDS_STR];
 	float dt = to_usecs(dma_log->timestamp - last_timestamp, clock);
+	struct proc_ldc_entry proc_entry;
+
+	if (raw_output)
+		use_colors = 0;
 
 	if (dt < 0 || dt > 1000.0 * 1000.0 * 1000.0)
 		dt = NAN;
@@ -222,25 +309,30 @@ static void print_entry_params(FILE *out_fd,
 			get_level_name(entry->header.level));
 	}
 
-	switch (entry->header.params_num) {
+	process_params(&proc_entry, entry, uids_dict, use_colors);
+
+	switch (proc_entry.header.params_num) {
 	case 0:
-		fprintf(out_fd, "%s", entry->text);
+		fprintf(out_fd, "%s", proc_entry.text);
 		break;
 	case 1:
-		fprintf(out_fd, entry->text, entry->params[0]);
+		fprintf(out_fd, proc_entry.text, proc_entry.params[0]);
 		break;
 	case 2:
-		fprintf(out_fd, entry->text, entry->params[0], entry->params[1]);
+		fprintf(out_fd, proc_entry.text, proc_entry.params[0],
+			proc_entry.params[1]);
 		break;
 	case 3:
-		fprintf(out_fd, entry->text, entry->params[0], entry->params[1],
-			entry->params[2]);
+		fprintf(out_fd, proc_entry.text, proc_entry.params[0],
+			proc_entry.params[1], proc_entry.params[2]);
 		break;
 	case 4:
-		fprintf(out_fd, entry->text, entry->params[0], entry->params[1],
-			entry->params[2], entry->params[3]);
+		fprintf(out_fd, proc_entry.text, proc_entry.params[0],
+			proc_entry.params[1], proc_entry.params[2],
+			proc_entry.params[3]);
 		break;
 	}
+	free_proc_ldc_entry(&proc_entry);
 	fprintf(out_fd, "%s\n", use_colors ? KNRM : "");
 	fflush(out_fd);
 }
