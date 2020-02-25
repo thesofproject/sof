@@ -42,7 +42,8 @@ dnl PIPELINE_PCM_ADD(pipeline,
 dnl     pipe id, pcm, max channels, format,
 dnl     period, priority, core,
 dnl     pcm_min_rate, pcm_max_rate, pipeline_rate,
-dnl     time_domain, sched_comp)
+dnl     time_domain, sched_comp,
+dnl 	pipeline_filter1, pipeline_filter2)
 define(`PIPELINE_PCM_ADD',
 `ifelse(eval(`$# > 10'), `1',
 `undefine(`PCM_ID')'
@@ -59,6 +60,8 @@ define(`PIPELINE_PCM_ADD',
 `undefine(`DAI_FORMAT')'
 `undefine(`SCHED_COMP')'
 `undefine(`DAI_PERIODS')'
+`undefine(`PIPELINE_FILTER1')'
+`undefine(`PIPELINE_FILTER2')'
 `define(`PIPELINE_ID', $2)'
 `define(`PCM_ID', $3)'
 `define(`PIPELINE_CHANNELS', $4)'
@@ -72,6 +75,8 @@ define(`PIPELINE_PCM_ADD',
 `define(`SCHEDULE_TIME_DOMAIN', $12)'
 `define(`DAI_FORMAT', $5)'
 `define(`SCHED_COMP', $13)'
+`define(`PIPELINE_FILTER1', $14)'
+`define(`PIPELINE_FILTER2', $15)'
 `define(`DAI_PERIODS', DAI_DEFAULT_PERIODS)'
 `include($1)'
 `DEBUG_PCM_ADD($1, $3)'
