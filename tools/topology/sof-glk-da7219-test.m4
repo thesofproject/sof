@@ -1,5 +1,5 @@
 #
-# Topology for ApolloLake with Dialog7219.
+# Topology for GeminiLake with Dialog7219.
 #
 
 # Include topology builder
@@ -21,8 +21,8 @@ include(`platform/intel/dmic.m4')
 #
 # Define the pipelines
 #
-# PCM0  ----> volume (pipe 1)   -----> SSP5 (speaker - maxim98357a, BE link 0)
-# PCM1  <---> volume (pipe 2,3) <----> SSP1 (headset - da7219, BE link 1)
+# PCM0  ----> volume (pipe 1)   -----> SSP1 (speaker - maxim98357a, BE link 0)
+# PCM1  <---> volume (pipe 2,3) <----> SSP2 (headset - da7219, BE link 1)
 # PCM99 <---- DMIC0 (dmic capture, BE link 2)
 # PCM5  ----> volume (pipe 5)   -----> iDisp1 (HDMI/DP playback, BE link 3)
 # PCM6  ----> Volume (pipe 6)   -----> iDisp2 (HDMI/DP playback, BE link 4)
@@ -44,7 +44,7 @@ PIPELINE_PCM_ADD(sof/pipe-amp-volume-playback.m4,
 
 # Low Latency playback pipeline 2 on PCM 1 using max 2 channels of s32le.
 # 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
+PIPELINE_PCM_ADD(sof/pipe-amp-volume-playback.m4,
 	2, 1, 2, s32le,
 	1000, 0, 0,
 	48000, 48000, 48000)
@@ -58,8 +58,9 @@ PIPELINE_PCM_ADD(sof/pipe-volume-capture.m4,
 
 # Low Latency capture pipeline 4 on PCM 99 using max 4 channels of s32le.
 # 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_ADD(sof/pipe-passthrough-capture.m4,
-	4, 99, 2, s32le,
+#PIPELINE_PCM_ADD(sof/pipe-volume-capture.m4,
+PIPELINE_PCM_ADD(sof/pipe-volume-capture.m4,
+	4, 99, 4, s16le,
 	1000, 0, 0,
 	48000, 48000, 48000)
 
@@ -96,24 +97,24 @@ dnl     pipe id, dai type, dai_index, dai_be,
 dnl     buffer, periods, format,
 dnl     deadline, priority, core, time_domain)
 
-# playback DAI is SSP5 using 2 periods
-# Buffers use s16le format, 1000us deadline on core 0 with priority 0
-DAI_ADD(sof/pipe-dai-playback.m4,
-	1, SSP, 5, SSP5-Codec,
-	PIPELINE_SOURCE_1, 2, s16le,
-	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
-
 # playback DAI is SSP1 using 2 periods
 # Buffers use s16le format, 1000us deadline on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
-	2, SSP, 1, SSP1-Codec,
+	1, SSP, 1, SSP1-Codec,
+	PIPELINE_SOURCE_1, 2, s16le,
+	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
+
+# playback DAI is SSP2 using 2 periods
+# Buffers use s16le format, 1000us deadline on core 0 with priority 0
+DAI_ADD(sof/pipe-dai-playback.m4,
+	2, SSP, 2, SSP2-Codec,
 	PIPELINE_SOURCE_2, 2, s16le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
-# capture DAI is SSP1 using 2 periods
+# capture DAI is SSP2 using 2 periods
 # Buffers use s16le format, 1000us deadline on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
-	3, SSP, 1, SSP1-Codec,
+	3, SSP, 2, SSP2-Codec,
 	PIPELINE_SINK_3, 2, s16le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
@@ -121,7 +122,7 @@ DAI_ADD(sof/pipe-dai-capture.m4,
 # Buffers use s32le format, 1000us deadline on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
 	4, DMIC, 0, dmic01,
-	PIPELINE_SINK_4, 2, s32le,
+	PIPELINE_SINK_4, 2, s16le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # playback DAI is iDisp1 using 2 periods
@@ -156,29 +157,27 @@ PCM_PLAYBACK_ADD(HDMI3, 7, PIPELINE_PCM_7)
 # BE configurations - overrides config in ACPI if present
 #
 
-#SSP 5 (ID: 0) with 19.2 MHz mclk with MCLK_ID 0 (unused), 1.536 MHz blck
-DAI_CONFIG(SSP, 5, 0, SSP5-Codec,
+#SSP 1 (ID: 0) with 19.2 MHz mclk with MCLK_ID 1 (unused), 1.536 MHz blck
+DAI_CONFIG(SSP, 1, 0, SSP1-Codec,
 	SSP_CONFIG(I2S, SSP_CLOCK(mclk, 19200000, codec_mclk_in),
 		SSP_CLOCK(bclk, 1536000, codec_slave),
 		SSP_CLOCK(fsync, 48000, codec_slave),
 		SSP_TDM(2, 16, 3, 3),
-		SSP_CONFIG_DATA(SSP, 5, 16, 0)))
+		SSP_CONFIG_DATA(SSP, 1, 16, 1)))
 
-#SSP 1 (ID: 1) with 19.2 MHz mclk with MCLK_ID 0, 1.92 MHz bclk
-DAI_CONFIG(SSP, 1, 1, SSP1-Codec,
+#SSP 2 (ID: 1) with 19.2 MHz mclk with MCLK_ID 1, 1.92 MHz bclk
+DAI_CONFIG(SSP, 2, 1, SSP2-Codec,
 	SSP_CONFIG(I2S, SSP_CLOCK(mclk, 19200000, codec_mclk_in),
 		SSP_CLOCK(bclk, 1920000, codec_slave),
 		SSP_CLOCK(fsync, 48000, codec_slave),
 		SSP_TDM(2, 20, 3, 3),
-		SSP_CONFIG_DATA(SSP, 1, 16, 0)))
+		SSP_CONFIG_DATA(SSP, 2, 16, 1)))
 
 # dmic01 (id: 2)
 DAI_CONFIG(DMIC, 0, 2, dmic01,
 	DMIC_CONFIG(1, 500000, 4800000, 40, 60, 48000,
-		DMIC_WORD_LENGTH(s32le), 400, DMIC, 0,
-		# FIXME: what is the right configuration
-		# PDM_CONFIG(DMIC, 0, FOUR_CH_PDM0_PDM1)))
-		PDM_CONFIG(DMIC, 0, STEREO_PDM0)))
+		DMIC_WORD_LENGTH(s16le), 400, DMIC, 0,
+		PDM_CONFIG(DMIC, 0, FOUR_CH_PDM0_PDM1)))
 
 # 3 HDMI/DP outputs (ID: 3,4,5)
 DAI_CONFIG(HDA, 3, 3, iDisp1)
@@ -187,9 +186,12 @@ DAI_CONFIG(HDA, 5, 5, iDisp3)
 
 ## remove warnings with SST hard-coded routes
 
-VIRTUAL_WIDGET(ssp5 Tx, out_drv, 0)
-VIRTUAL_WIDGET(ssp1 Rx, out_drv, 1)
-VIRTUAL_WIDGET(ssp1 Tx, out_drv, 2)
+VIRTUAL_WIDGET(ssp1 Tx, out_drv, 0)
+VIRTUAL_WIDGET(ssp2 Rx, out_drv, 1)
+VIRTUAL_WIDGET(ssp2 Tx, out_drv, 2)
+VIRTUAL_WIDGET(iDisp3 Tx, out_drv, 15)
+VIRTUAL_WIDGET(iDisp2 Tx, out_drv, 16)
+VIRTUAL_WIDGET(iDisp1 Tx, out_drv, 17)
 VIRTUAL_WIDGET(DMIC01 Rx, out_drv, 3)
 VIRTUAL_WIDGET(DMic, out_drv, 4)
 VIRTUAL_WIDGET(dmic01_hifi, out_drv, 5)

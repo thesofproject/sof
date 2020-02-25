@@ -13,7 +13,7 @@ include(`dai.m4')
 include(`mixercontrol.m4')
 include(`bytecontrol.m4')
 include(`pipeline.m4')
-include(`amp.m4')
+include(`dcblock.m4')
 
 #
 # Controls
@@ -30,15 +30,11 @@ C_CONTROLMIXER(Master Playback Volume, PIPELINE_ID,
 #
 # Volume configuration
 #
-
 W_VENDORTUPLES(playback_pga_tokens, sof_volume_tokens,
 LIST(`		', `SOF_TKN_VOLUME_RAMP_STEP_TYPE	"0"'
      `		', `SOF_TKN_VOLUME_RAMP_STEP_MS		"250"'))
 
 W_DATA(playback_pga_conf, playback_pga_tokens)
-
-# Amp Parameters
-include(`amp_bytes.m4')
 
 # Amp Bytes control with max value of 140
 # The max size needs to also take into account the space required to hold the control data IPC message
@@ -46,14 +42,13 @@ include(`amp_bytes.m4')
 # AMP priv in amp_bytes.m4 (ABI header (32 bytes) + 2 dwords) requires 40 bytes
 # Therefore at least 132 bytes are required for this kcontrol
 # Any value lower than that would end up in a topology load error
-C_CONTROLBYTES(AMP, PIPELINE_ID,
-     CONTROLBYTES_OPS(bytes, 258 binds the control to bytes get/put handlers, 258, 258),
-     CONTROLBYTES_EXTOPS(258 binds the control to bytes get/put handlers, 258, 258),
-     , , ,
-     CONTROLBYTES_MAX(, 140),
-     ,
-     AMP_priv)
-
+# C_CONTROLBYTES(AMP, PIPELINE_ID,
+#      CONTROLBYTES_OPS(bytes, 258 binds the control to bytes get/put handlers, 258, 258),
+#      CONTROLBYTES_EXTOPS(258 binds the control to bytes get/put handlers, 258, 258),
+#      , , ,
+#      CONTROLBYTES_MAX(, 140),
+#      ,
+#      AMP_priv)
 
 #
 # Components and Buffers
@@ -67,8 +62,8 @@ W_PCM_PLAYBACK(PCM_ID, Passthrough Playback, 2, 0)
 # "Volume" has 2 source and x sink periods
 W_PGA(0, PIPELINE_FORMAT, DAI_PERIODS, 2, playback_pga_conf, LIST(`		', "PIPELINE_ID Master Playback Volume"))
 
-# "Amp" has 2 sink periods and 2 source periods
-W_AMP(0, PIPELINE_FORMAT, 2, 2, LIST(`                ', "AMP"))
+# "DC Block" has 2 sink periods and 2 source periods
+W_DCBLOCK(0, PIPELINE_FORMAT, 2, 2,)
 
 # Playback Buffers
 W_BUFFER(0, COMP_BUFFER_SIZE(2,
@@ -89,8 +84,8 @@ W_BUFFER(2, COMP_BUFFER_SIZE(DAI_PERIODS,
 P_GRAPH(pipe-pass-vol-playback-PIPELINE_ID, PIPELINE_ID,
 	LIST(`		',
 	`dapm(N_BUFFER(0), N_PCMP(PCM_ID))',
-	`dapm(N_AMP(0), N_BUFFER(0))',
-     	`dapm(N_BUFFER(1), N_AMP(0))',
+	`dapm(N_DCBLOCK(0), N_BUFFER(0))',
+     	`dapm(N_BUFFER(1), N_DCBLOCK(0))',
      	`dapm(N_PGA(0), N_BUFFER(1))',
      	`dapm(N_BUFFER(2), N_PGA(0))'))
 
