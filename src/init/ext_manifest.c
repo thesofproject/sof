@@ -54,3 +54,19 @@ const struct ext_man_cc_version ext_man_cc_ver
 		.desc = CC_DESC "\0", ///< eg. " RG-2017.8-linux"
 	},
 };
+
+const struct ext_man_probe_support ext_man_probe
+	__aligned(EXT_MAN_ALIGN) __section(".fw_metadata") = {
+	.hdr.type = EXT_MAN_ELEM_PROBE_INFO,
+	.hdr.elem_size = ALIGN_UP(sizeof(struct ext_man_probe_support),
+				  EXT_MAN_ALIGN),
+	.probe = {
+		.ext_hdr.hdr.size = sizeof(struct sof_ipc_probe_support),
+		.ext_hdr.hdr.cmd = SOF_IPC_FW_READY,
+		.ext_hdr.type = SOF_IPC_EXT_PROBE_INFO,
+#if CONFIG_PROBE
+		.probe_points_max = CONFIG_PROBE_POINTS_MAX,
+		.injection_dmas_max = CONFIG_PROBE_DMA_MAX
+#endif
+	},
+};

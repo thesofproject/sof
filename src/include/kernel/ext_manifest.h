@@ -72,6 +72,7 @@ struct ext_man_header {
 enum ext_man_elem_type {
 	EXT_MAN_ELEM_FW_VERSION		= 0,
 	EXT_MAN_ELEM_CC_VERSION		= SOF_IPC_EXT_CC_INFO,
+	EXT_MAN_ELEM_PROBE_INFO		= SOF_IPC_EXT_PROBE_INFO,
 };
 
 /* extended manifest element header */
@@ -95,6 +96,12 @@ struct ext_man_cc_version {
 	struct ext_man_elem_header hdr;
 	/* use sof_ipc struct because of code re-use */
 	struct sof_ipc_cc_version cc_version;
+} __packed;
+
+struct ext_man_probe_support {
+	struct ext_man_elem_header hdr;
+	/* use sof_ipc struct because of code re-use */
+	struct sof_ipc_probe_support probe;
 } __packed;
 
 #endif /* __KERNEL_EXT_MANIFEST_H__ */
