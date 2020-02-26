@@ -15,7 +15,7 @@
 
 static SHARED_DATA struct dai sai[] = {
 {
-	.index = 0,
+	.index = 3,
 	.plat_data = {
 		.base = SAI_3_BASE,
 	},
