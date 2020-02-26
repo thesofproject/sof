@@ -841,20 +841,27 @@ static int asrc_copy(struct comp_dev *dev)
 	buffer_unlock(sink, flags);
 	buffer_unlock(source, flags);
 
-	cd->source_frames = MIN(frames_src, cd->source_frames_max);
-	cd->sink_frames = ceil_divide(cd->source_frames * cd->sink_rate,
-				      cd->source_rate);
-
-	if (cd->sink_frames > cd->sink_frames_max) {
-		cd->sink_frames = cd->sink_frames_max;
-		cd->source_frames = cd->sink_frames * cd->source_rate /
-			cd->sink_rate;
-	}
-
-	if (cd->sink_frames > frames_snk) {
+	if (cd->mode == ASRC_OM_PULL) {
+		/* Let ASRC access max number of source frames in pull mode.
+		 * The amount cd->sink_frames will be produced while
+		 * consumption varies.
+		 */
+		cd->source_frames = MIN(frames_src, cd->source_frames_max);
+		cd->sink_frames = cd->source_frames * cd->sink_rate /
+			cd->source_rate;
+		cd->sink_frames = MIN(cd->sink_frames, cd->sink_frames_max);
+		cd->sink_frames = MIN(cd->sink_frames, frames_snk);
+	} else {
+		/* In push mode maximize the sink buffer write potential.
+		 * ASRC will consume from source cd->source_frames while
+		 * production varies.
+		 */
 		cd->sink_frames = MIN(frames_snk, cd->sink_frames_max);
 		cd->source_frames = cd->sink_frames * cd->source_rate /
 			cd->sink_rate;
+		cd->source_frames = MIN(cd->source_frames,
+					cd->source_frames_max);
+		cd->source_frames = MIN(cd->source_frames, frames_src);
 	}
 
 	if (cd->source_frames && cd->sink_frames)
