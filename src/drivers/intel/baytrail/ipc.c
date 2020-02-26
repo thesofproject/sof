@@ -94,16 +94,19 @@ void ipc_platform_complete_cmd(void *data)
 	shim_write(SHIM_IMRD, shim_read(SHIM_IMRD) & ~SHIM_IMRD_BUSY);
 }
 
-void ipc_platform_send_msg(struct ipc_msg *msg)
+int ipc_platform_send_msg(struct ipc_msg *msg)
 {
 	struct ipc *ipc = ipc_get();
 	uint32_t flags;
+	int ret = 0;
 
 	spin_lock_irq(&ipc->lock, flags);
 
 	/* can't send notification when one is in progress */
-	if (shim_read(SHIM_IPCDH) & (SHIM_IPCDH_BUSY | SHIM_IPCDH_DONE))
+	if (shim_read(SHIM_IPCDH) & (SHIM_IPCDH_BUSY | SHIM_IPCDH_DONE)) {
+		ret = -EBUSY;
 		goto out;
+	}
 
 	/* now send the message */
 	mailbox_dspbox_write(0, msg->tx_data, msg->tx_size);
@@ -122,6 +125,8 @@ out:
 	platform_shared_commit(ipc, sizeof(*ipc));
 
 	spin_unlock_irq(&ipc->lock, flags);
+
+	return ret;
 }
 
 struct ipc_data_host_buffer *ipc_platform_get_host_buffer(struct ipc *ipc)

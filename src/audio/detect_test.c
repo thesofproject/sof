@@ -117,7 +117,9 @@ static void notify_host(const struct comp_dev *dev)
 				 sizeof(event));
 
 	/* Send IPC message right away to wake host up ASAP */
-	ipc_platform_send_msg(&cd->msg);
+	if (ipc_platform_send_msg(&cd->msg) < 0)
+		/* Other notification in progress, so just add to the list */
+		list_item_prepend(&cd->msg.list, &ipc_get()->msg_list);
 }
 
 static void notify_kpb(const struct comp_dev *dev)

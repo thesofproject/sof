@@ -240,20 +240,23 @@ void ipc_platform_complete_cmd(void *data)
 #endif
 }
 
-void ipc_platform_send_msg(struct ipc_msg *msg)
+int ipc_platform_send_msg(struct ipc_msg *msg)
 {
 	struct ipc *ipc = ipc_get();
 	uint32_t flags;
+	int ret = 0;
 
 	spin_lock_irq(&ipc->lock, flags);
 
 #if CAVS_VERSION == CAVS_VERSION_1_5
-	if (ipc_read(IPC_DIPCI) & IPC_DIPCI_BUSY)
+	if (ipc_read(IPC_DIPCI) & IPC_DIPCI_BUSY) {
 #else
 	if (ipc_read(IPC_DIPCIDR) & IPC_DIPCIDR_BUSY ||
-	    ipc_read(IPC_DIPCIDA) & IPC_DIPCIDA_DONE)
+	    ipc_read(IPC_DIPCIDA) & IPC_DIPCIDA_DONE) {
 #endif
+		ret = -EBUSY;
 		goto out;
+	}
 
 	/* now send the message */
 	mailbox_dspbox_write(0, msg->tx_data, msg->tx_size);
@@ -277,6 +280,8 @@ out:
 	platform_shared_commit(ipc, sizeof(*ipc));
 
 	spin_unlock_irq(&ipc->lock, flags);
+
+	return ret;
 }
 
 int platform_ipc_init(struct ipc *ipc)
