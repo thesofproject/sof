@@ -75,12 +75,13 @@ struct sof_ipc_ctrl_value_chan;
 /**
  * \brief Macro for volume linear gain ramp step computation
  * Volume gain ramp step as Q1.16 is computed with equation
- * step = VOL_RAMP_STEP_CONST/ SOF_TKN_VOLUME_RAMP_STEP_MS. This
+ * step = VOL_RAMP_STEP_CONST / SOF_TKN_VOLUME_RAMP_STEP_MS. This
  * macro defines as Q1.16 value the constant term
- * (1000 / VOL_RAMP_UPDATE) for step calculation.
+ * VOL_RAMP_UPDATE / 1000.0 for step calculation. The value 1000
+ * is used to to convert microseconds to milliseconds.
  */
 #define VOL_RAMP_STEP_CONST \
-	Q_CONVERT_FLOAT(1000.0 / VOL_RAMP_UPDATE_US, VOL_QXY_Y)
+	Q_CONVERT_FLOAT(VOL_RAMP_UPDATE_US / 1000.0, VOL_QXY_Y)
 
 /**
  * \brief Volume maximum value.
@@ -110,6 +111,10 @@ struct comp_data {
 	int32_t vol_min;			/**< minimum volume */
 	int32_t vol_max;			/**< maximum volume */
 	int32_t	vol_ramp_range;			/**< max ramp transition */
+	unsigned int channels;			/**< current channels count */
+	bool muted[SOF_IPC_MAX_CHANNELS];	/**< set if channel is muted */
+	bool vol_ramp_active;			/**< set if volume is ramped */
+	bool ramp_started;			/**< control ramp launch */
 	/**< volume processing function */
 	void (*scale_vol)(struct comp_dev *dev, struct comp_buffer *sink,
 			  struct comp_buffer *source, uint32_t frames);
