@@ -28,6 +28,7 @@ env:
   - PLATFORM=jsl
   - PLATFORM=imx8
   - PLATFORM=imx8x
+  - PLATFORM=imx8m
 
 script: ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -j $PLATFORM
 
