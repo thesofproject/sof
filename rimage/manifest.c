@@ -42,6 +42,7 @@ static int man_open_rom_file(struct image *image)
 	if (!image->out_rom_fd) {
 		fprintf(stderr, "error: unable to open %s for writing %d\n",
 			image->out_rom_file, errno);
+		return -errno;
 	}
 
 	return 0;
@@ -57,6 +58,7 @@ static int man_open_unsigned_file(struct image *image)
 	if (!image->out_unsigned_fd) {
 		fprintf(stderr, "error: unable to open %s for writing %d\n",
 			image->out_unsigned_file, errno);
+		return -errno;
 	}
 
 	return 0;
@@ -72,6 +74,7 @@ static int man_open_manifest_file(struct image *image)
 	if (!image->out_man_fd) {
 		fprintf(stderr, "error: unable to open %s for writing %d\n",
 			image->out_man_file, errno);
+		return -errno;
 	}
 
 	return 0;
