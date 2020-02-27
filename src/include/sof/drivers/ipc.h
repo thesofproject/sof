@@ -92,6 +92,7 @@ struct ipc {
 
 	struct list_item msg_list;	/* queue of messages to be sent */
 	struct list_item empty_list;	/* queue of empty messages */
+	bool is_notification_pending;	/* notification is being sent to host */
 
 	struct list_item comp_list;	/* list of component devices */
 

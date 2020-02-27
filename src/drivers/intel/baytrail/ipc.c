@@ -20,6 +20,7 @@
 #include <sof/spinlock.h>
 #include <ipc/header.h>
 #include <ipc/topology.h>
+#include <stdbool.h>
 #include <stdint.h>
 
 /* private data for IPC */
@@ -49,6 +50,8 @@ static void irq_handler(void *arg)
 		/* clear DONE bit - tell Host we have completed */
 		shim_write(SHIM_IPCDH,
 			   shim_read(SHIM_IPCDH) & ~SHIM_IPCDH_DONE);
+
+		ipc->is_notification_pending = false;
 
 		/* unmask Done interrupt */
 		shim_write(SHIM_IMRD, shim_read(SHIM_IMRD) & ~SHIM_IMRD_DONE);
@@ -102,13 +105,16 @@ void ipc_platform_send_msg(struct ipc_msg *msg)
 	spin_lock_irq(&ipc->lock, flags);
 
 	/* can't send notification when one is in progress */
-	if (shim_read(SHIM_IPCDH) & (SHIM_IPCDH_BUSY | SHIM_IPCDH_DONE))
+	if (ipc->is_notification_pending ||
+	    shim_read(SHIM_IPCDH) & (SHIM_IPCDH_BUSY | SHIM_IPCDH_DONE))
 		goto out;
 
 	/* now send the message */
 	mailbox_dspbox_write(0, msg->tx_data, msg->tx_size);
 	list_item_del(&msg->list);
 	tracev_ipc("ipc: msg tx -> 0x%x", msg->header);
+
+	ipc->is_notification_pending = true;
 
 	/* now interrupt host to tell it we have message sent */
 	shim_write(SHIM_IPCDL, msg->header);

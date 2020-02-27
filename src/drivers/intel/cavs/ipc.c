@@ -25,6 +25,7 @@
 #include <ipc/pm.h>
 #endif
 #include <config.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -118,6 +119,8 @@ static void ipc_irq_handler(void *arg)
 		ipc_write(IPC_DIPCIDA,
 			  ipc_read(IPC_DIPCIDA) | IPC_DIPCIDA_DONE);
 #endif
+
+		ipc->is_notification_pending = false;
 
 		/* unmask Done interrupt */
 		ipc_write(IPC_DIPCCTL,
@@ -247,10 +250,11 @@ void ipc_platform_send_msg(struct ipc_msg *msg)
 
 	spin_lock_irq(&ipc->lock, flags);
 
+	if (ipc->is_notification_pending ||
 #if CAVS_VERSION == CAVS_VERSION_1_5
-	if (ipc_read(IPC_DIPCI) & IPC_DIPCI_BUSY)
+	    ipc_read(IPC_DIPCI) & IPC_DIPCI_BUSY)
 #else
-	if (ipc_read(IPC_DIPCIDR) & IPC_DIPCIDR_BUSY ||
+	    ipc_read(IPC_DIPCIDR) & IPC_DIPCIDR_BUSY ||
 	    ipc_read(IPC_DIPCIDA) & IPC_DIPCIDA_DONE)
 #endif
 		goto out;
@@ -259,6 +263,8 @@ void ipc_platform_send_msg(struct ipc_msg *msg)
 	mailbox_dspbox_write(0, msg->tx_data, msg->tx_size);
 	list_item_del(&msg->list);
 	tracev_ipc("ipc: msg tx -> 0x%x", msg->header);
+
+	ipc->is_notification_pending = true;
 
 	/* now interrupt host to tell it we have message sent */
 #if CAVS_VERSION == CAVS_VERSION_1_5
