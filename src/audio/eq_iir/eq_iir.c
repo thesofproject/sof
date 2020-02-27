@@ -621,7 +621,7 @@ static int iir_cmd_get_data(struct comp_dev *dev,
 		/* Copy back to user space */
 		if (cd->config) {
 			bs = cd->config->size;
-			trace_eq_with_ids(dev, "iir_cmd_set_data(), size %u",
+			trace_eq_with_ids(dev, "iir_cmd_get_data(), size %u",
 					  bs);
 			if (bs > SOF_EQ_IIR_MAX_SIZE || bs == 0 ||
 			    bs > max_size)
