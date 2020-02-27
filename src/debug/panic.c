@@ -102,10 +102,12 @@ void __panic(uint32_t p, char *filename, uint32_t linenum)
 	 * set a reserved value for the exception cause (63) so the
 	 * coredumper tool could distinguish between the situations.
 	 */
+#if !__clang_analyzer__
 	__asm__ __volatile__("movi a3, 63\n\t"
 			     "wsr.exccause a3\n\t"
 			     "esync" : : :
 			     "a3", "memory");
+#endif
 
 	panic_rewind(p, 0, &panicinfo, NULL);
 }
