@@ -743,11 +743,12 @@ static int file_reset(struct comp_dev *dev)
 }
 
 static int file_get_hw_params(struct comp_dev *dev,
-			      struct sof_ipc_stream_params *params)
+			      struct sof_ipc_stream_params *params, int dir)
 {
 	struct file_comp_data *cd = comp_get_drvdata(dev);
 
 	comp_info(dev, "file_hw_params()");
+	params->direction = dir;
 	params->rate = cd->rate;
 	params->channels = cd->channels;
 	params->buffer_fmt = 0;
