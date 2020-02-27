@@ -23,6 +23,7 @@
 #include <ipc/topology.h>
 #include <config.h>
 #include <errno.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -49,6 +50,8 @@ static void irq_handler(void *arg)
 		imx_mu_xsr_rmw(IMX_MU_xSR_GIPn(1), 0);
 
 		interrupt_clear(PLATFORM_IPC_INTERRUPT);
+
+		ipc->is_notification_pending = false;
 
 		/* unmask GP interrupt #1 */
 		imx_mu_xcr_rmw(IMX_MU_xCR_GIEn(1), 0);
@@ -114,13 +117,16 @@ void ipc_platform_send_msg(struct ipc_msg *msg)
 	spin_lock_irq(&ipc->lock, flags);
 
 	/* can't send notification when one is in progress */
-	if (imx_mu_read(IMX_MU_xCR) & IMX_MU_xCR_GIRn(1))
+	if (ipc->is_notification_pending ||
+	    imx_mu_read(IMX_MU_xCR) & IMX_MU_xCR_GIRn(1))
 		goto out;
 
 	/* now send the message */
 	mailbox_dspbox_write(0, msg->tx_data, msg->tx_size);
 	list_item_del(&msg->list);
 	tracev_ipc("ipc: msg tx -> 0x%x", msg->header);
+
+	ipc->is_notification_pending = true;
 
 	/* now interrupt host to tell it we have sent a message */
 	imx_mu_xcr_rmw(IMX_MU_xCR_GIRn(1), 0);
