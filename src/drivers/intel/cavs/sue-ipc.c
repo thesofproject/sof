@@ -51,7 +51,7 @@ void ipc_platform_complete_cmd(void *data)
 {
 }
 
-void ipc_platform_send_msg(struct ipc_msg *msg)
+int ipc_platform_send_msg(struct ipc_msg *msg)
 {
 	struct ipc *ipc = ipc_get();
 	uint32_t flags;
@@ -70,6 +70,8 @@ void ipc_platform_send_msg(struct ipc_msg *msg)
 	platform_shared_commit(ipc, sizeof(*ipc));
 
 	spin_unlock_irq(&ipc->lock, flags);
+
+	return 0;
 }
 
 int platform_ipc_init(struct ipc *ipc)

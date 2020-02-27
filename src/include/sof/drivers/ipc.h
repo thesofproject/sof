@@ -166,7 +166,7 @@ void ipc_prepare_host_message(struct ipc_msg *msg, uint32_t header,
 int ipc_queue_host_message(struct ipc *ipc, uint32_t header, void *tx_data,
 			   size_t tx_bytes, bool replace);
 
-void ipc_platform_send_msg(struct ipc_msg *msg);
+int ipc_platform_send_msg(struct ipc_msg *msg);
 
 void ipc_send_queued_msg(void);
 

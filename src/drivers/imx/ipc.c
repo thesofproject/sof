@@ -109,17 +109,20 @@ void ipc_platform_complete_cmd(void *data)
 	platform_shared_commit(ipc, sizeof(*ipc));
 }
 
-void ipc_platform_send_msg(struct ipc_msg *msg)
+int ipc_platform_send_msg(struct ipc_msg *msg)
 {
 	struct ipc *ipc = ipc_get();
 	uint32_t flags;
+	int ret = 0;
 
 	spin_lock_irq(&ipc->lock, flags);
 
 	/* can't send notification when one is in progress */
 	if (ipc->is_notification_pending ||
-	    imx_mu_read(IMX_MU_xCR) & IMX_MU_xCR_GIRn(1))
+	    imx_mu_read(IMX_MU_xCR) & IMX_MU_xCR_GIRn(1)) {
+		ret = -EBUSY;
 		goto out;
+	}
 
 	/* now send the message */
 	mailbox_dspbox_write(0, msg->tx_data, msg->tx_size);
@@ -139,6 +142,8 @@ out:
 	platform_shared_commit(ipc, sizeof(*ipc));
 
 	spin_unlock_irq(&ipc->lock, flags);
+
+	return ret;
 }
 
 #if CONFIG_HOST_PTABLE
