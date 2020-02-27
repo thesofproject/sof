@@ -20,7 +20,12 @@
 void dump_panicinfo(void *addr, struct sof_ipc_panic_info *panic_info);
 void panic_rewind(uint32_t p, uint32_t stack_rewind_frames,
 		  struct sof_ipc_panic_info *panic_info, uintptr_t *data);
+#if __clang_analyzer__
+void __panic(uint32_t p, char *filename, uint32_t linenum)
+	__attribute__((analyzer_noreturn));
+#else
 void __panic(uint32_t p, char *filename, uint32_t linenum);
+#endif
 
 /* panic dump filename and linenumber of the call */
 #define panic(x) __panic((x), (RELATIVE_FILE), (__LINE__))
