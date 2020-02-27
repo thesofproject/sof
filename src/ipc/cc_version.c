@@ -20,7 +20,7 @@
 	field[ARRAY_SIZE(((struct sof_ipc_cc_version *)(0))->optim) - 1] = 0
 
 const struct sof_ipc_cc_version cc_version
-	__attribute__((section(".fw_ready_metadata"))) = {
+	__section(".fw_ready_metadata") = {
 	.ext_hdr = {
 		.hdr.cmd = SOF_IPC_FW_READY,
 		.hdr.size = ALIGN_UP(sizeof(struct sof_ipc_cc_version)

@@ -6,10 +6,11 @@
 
 #include <ipc/info.h>
 #include <sof/fw-ready-metadata.h>
+#include <sof/compiler_attributes.h>
 #include <config.h>
 
 const struct sof_ipc_probe_support probe_support
-	__attribute__((section(".fw_ready_metadata"))) = {
+	__section(".fw_ready_metadata") = {
 	.ext_hdr = {
 		.hdr.cmd = SOF_IPC_FW_READY,
 		.hdr.size = sizeof(struct sof_ipc_probe_support),

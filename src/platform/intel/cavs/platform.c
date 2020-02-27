@@ -49,7 +49,7 @@
 #include <stdint.h>
 
 static const struct sof_ipc_fw_ready ready
-	__attribute__((section(".fw_ready"))) = {
+	__section(".fw_ready") = {
 	.hdr = {
 		.cmd = SOF_IPC_FW_READY,
 		.size = sizeof(struct sof_ipc_fw_ready),
@@ -77,7 +77,7 @@ static const struct sof_ipc_fw_ready ready
 #define NUM_WINDOWS 7
 
 static const struct sof_ipc_window sram_window
-	__attribute__((section(".fw_ready_metadata"))) = {
+	__section(".fw_ready_metadata") = {
 	.ext_hdr	= {
 		.hdr.cmd = SOF_IPC_FW_READY,
 		.hdr.size = sizeof(struct sof_ipc_window) +
