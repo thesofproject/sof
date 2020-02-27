@@ -19,6 +19,7 @@ endif()
 
 option(BUILD_LIBRARY "Build library" OFF)
 option(BUILD_UNIT_TESTS "Build unit tests" OFF)
+option(BUILD_CLANG_SCAN "Build for clang's scan-build" OFF)
 
 if(BUILD_LIBRARY)
 	set(ARCH host)
