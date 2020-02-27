@@ -68,7 +68,6 @@ set(TPLGS
 	"sof-apl-da7219\;sof-apl-da7219"
 	"sof-glk-da7219-kwd\;sof-glk-da7219-kwd"
 	"sof-glk-da7219\;sof-glk-da7219"
-	"sof-apl-da7219-test\;sof-apl-da7219-test"
 	"sof-glk-rt5682\;sof-glk-rt5682"
 	"sof-icl-nocodec\;sof-icl-nocodec"
 	"sof-apl-eq-pcm512x\;sof-apl-eq-pcm512x"
