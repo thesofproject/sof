@@ -442,7 +442,7 @@ static inline struct sof_ipc_comp_config *comp_config(struct sof_ipc_comp *comp)
 	static void _module_init(void) { init(); }
 #else
 #define DECLARE_MODULE(init) __attribute__((__used__)) \
-	__attribute__((section(".module_init"))) static void(*f)(void) = init
+	__section(".module_init") static void(*f)(void) = init
 #endif
 
 /** @}*/

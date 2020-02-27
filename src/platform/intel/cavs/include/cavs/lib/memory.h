@@ -75,7 +75,7 @@ struct sof;
  * align to cache line size instead.
  */
 #if PLATFORM_CORE_COUNT > 1 && !defined(UNIT_TEST)
-#define SHARED_DATA	__attribute__((section(".shared_data")))
+#define SHARED_DATA	__section(".shared_data")
 #else
 #define SHARED_DATA
 #endif

@@ -238,7 +238,7 @@ static inline struct trace *trace_get(void)
 #ifndef CONFIG_LIBRARY
 
 #define _DECLARE_LOG_ENTRY(lvl, format, comp_class, params, ids)\
-	__attribute__((section(".static_log." #lvl)))		\
+	__section(".static_log." #lvl)				\
 	static const struct {					\
 		uint32_t level;					\
 		uint32_t component_class;			\
