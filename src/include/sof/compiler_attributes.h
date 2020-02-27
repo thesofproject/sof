@@ -8,3 +8,5 @@
 #define __packed __attribute__((packed))
 
 #define __aligned(x) __attribute__((__aligned__(x)))
+
+#define __section(x) __attribute__((section(x)))
