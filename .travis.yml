@@ -70,3 +70,5 @@ jobs:
       env: PLATFORM=icl
     - <<: *qemuboottest
       env: PLATFORM=imx8
+    - <<: *qemuboottest
+      env: PLATFORM=imx8x
