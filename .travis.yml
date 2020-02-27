@@ -37,6 +37,9 @@ jobs:
     - stage: test
       script: ./scripts/docker-run.sh ./scripts/build-tools.sh
       env: PLATFORM=tools
+    - stage: test
+      script: ./scripts/docker-run.sh ./scripts/host-build-all.sh -l
+      env: PLATFORM=host
       # Matrix hack: Declare the same stage name multiple times to test multiple
       # versions. Use a YAML alias to prevent redundancy.
     - &qemuboottest
