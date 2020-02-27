@@ -36,11 +36,11 @@
 
 /* extended data types that can be appended onto end of sof_ipc_fw_ready */
 enum sof_ipc_ext_data {
-	SOF_IPC_EXT_DMA_BUFFER = 0,
-	SOF_IPC_EXT_WINDOW,
-	SOF_IPC_EXT_CC_INFO,
-	SOF_IPC_EXT_PROBE_INFO,
-	SOF_IPC_EXT_USER_ABI_INFO,
+	SOF_IPC_EXT_DMA_BUFFER		= 0,
+	SOF_IPC_EXT_WINDOW		= 1,
+	SOF_IPC_EXT_CC_INFO		= 2,
+	SOF_IPC_EXT_PROBE_INFO		= 3,
+	SOF_IPC_EXT_USER_ABI_INFO 	= 4,
 };
 
 /* FW version - SOF_IPC_GLB_VERSION */
