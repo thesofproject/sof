@@ -1,4 +1,33 @@
 # SPDX-License-Identifier: BSD-3-Clause
+if(TOOLCHAIN)
+	set(CROSS_COMPILE "${TOOLCHAIN}-")
+else()
+	message(FATAL_ERROR
+		" Please specify toolchain to use.\n"
+		" Examples:\n"
+		" 	1) cmake -DTOOLCHAIN=xt ...\n"
+		" 	2) cmake -DTOOLCHAIN=xtensa-apl-elf ...\n"
+	)
+endif()
+
+if(BUILD_CLANG_SCAN)
+	# scan-build has to set its own compiler,
+	# so we need to unset current one
+	message(STATUS "Reset C Compiler for scan-build")
+	set(CMAKE_C_COMPILER)
+
+	# scan-build proxies only compiler, other tools are used directly
+	find_program(CMAKE_AR NAMES "${CROSS_COMPILE}ar" PATHS ENV PATH NO_DEFAULT_PATH)
+	find_program(CMAKE_RANLIB NAMES "${CROSS_COMPILE}ranlib" PATHS ENV PATH NO_DEFAULT_PATH)
+
+	set(XCC_TOOLS_VERSION "CLANG-SCAN-BUILD")
+
+	if(TOOLCHAIN STREQUAL "xt")
+		set(XCC 1)
+	endif()
+
+	return()
+endif()
 
 message(STATUS "Preparing Xtensa toolchain")
 
@@ -16,17 +45,6 @@ set(CMAKE_C_COMPILER_ID GNU)
 # in case if *_FORCED variables are ignored,
 # try to just compile lib instead of executable
 set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
-
-if(TOOLCHAIN)
-	set(CROSS_COMPILE "${TOOLCHAIN}-")
-else()
-	message(FATAL_ERROR
-		" Please specify toolchain to use.\n"
-		" Examples:\n"
-		" 	1) cmake -DTOOLCHAIN=xt ...\n"
-		" 	2) cmake -DTOOLCHAIN=xtensa-apl-elf ...\n"
-	)
-endif()
 
 # xt toolchain only partially follows gcc convention
 if(TOOLCHAIN STREQUAL "xt")

@@ -67,11 +67,33 @@ endif()
 
 get_optimization_flag(optimization_flag)
 
+if(BUILD_CLANG_SCAN)
+	# pretend to be xtensa compiler to go trough the same paths for AST
+	target_compile_definitions(sof_options INTERFACE -D__XTENSA__=1)
+
+	if(XCC)
+		# clang has to compile objects in order to analyze sources,
+		# so it needs xcc's headers
+		find_program(XCC_PATH NAMES "xt-xcc" PATHS ENV PATH NO_DEFAULT_PATH)
+		get_filename_component(XCC_DIR ${XCC_PATH} DIRECTORY)
+		target_include_directories(sof_options INTERFACE ${XCC_DIR}/../xtensa-elf/include)
+	endif()
+
+	# Clang by default compiles for host architecture,
+	# but xtensa is always 32 bit, what may cause mismatch in definitions,
+	# that depend on bitness, so force compilation for 32 bit.
+	set(XTENSA_C_ASM_FLAGS -m32)
+	set(XTENSA_C_FLAGS)
+else()
+	set(XTENSA_C_ASM_FLAGS -mlongcalls)
+	set(XTENSA_C_FLAGS -mtext-section-literals)
+endif()
+
 # linker flags
 target_link_libraries(sof_options INTERFACE ${stdlib_flag} -Wl,--no-check-sections -ucall_user_start -Wl,-static)
 
 # C & ASM flags
-target_compile_options(sof_options INTERFACE ${stdlib_flag} -fno-inline-functions -mlongcalls)
+target_compile_options(sof_options INTERFACE ${stdlib_flag} -fno-inline-functions ${XTENSA_C_ASM_FLAGS})
 
 # C flags
 # TODO: Generator expressions are supported only with Make and Ninja,
@@ -83,7 +105,7 @@ target_compile_options(sof_options INTERFACE ${stdlib_flag} -fno-inline-function
 #      better to have set of default flags and change it only for special cases
 #   3) custom function that is used instead of target_sources and sets flags
 #      for each added source based on file extension
-target_compile_options(sof_options INTERFACE $<$<COMPILE_LANGUAGE:C>: -${optimization_flag} -g -Wall -Werror -Wl,-EL -Wmissing-prototypes -Wpointer-arith -mtext-section-literals>)
+target_compile_options(sof_options INTERFACE $<$<COMPILE_LANGUAGE:C>: -${optimization_flag} -g -Wall -Werror -Wl,-EL -Wmissing-prototypes -Wpointer-arith ${XTENSA_C_FLAGS}>)
 
 if(BUILD_UNIT_TESTS)
 	# rest of this file is not needed for unit tests
@@ -279,6 +301,12 @@ if(CONFIG_BUILD_VM_ROM)
 	)
 
 	add_dependencies(bin_extras rom_dump)
+endif()
+
+if(BUILD_CLANG_SCAN)
+	# steps below don't compile parts of fw,
+	# so they are not needed for scan-build
+	return()
 endif()
 
 add_custom_target(
