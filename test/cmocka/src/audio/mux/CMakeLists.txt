@@ -20,8 +20,8 @@ target_link_libraries(audio_mux PRIVATE sof_options)
 link_libraries(audio_mux)
 
 cmocka_test(
-	mux_prepare
-	mux_prepare.c
+	mux_get_processing_function
+	mux_get_processing_function.c
 	mock.c
 )
 

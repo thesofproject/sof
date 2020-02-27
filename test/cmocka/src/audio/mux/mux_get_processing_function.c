@@ -67,47 +67,59 @@ static int teardown_test_case(void **state)
 }
 
 #if CONFIG_FORMAT_FLOAT
-static void test_mux_prepare_invalid_float(void **state)
+static void test_mux_get_processing_function_invalid_float(void **state)
 {
 	struct test_data *td = *state;
+	mux_func func = NULL;
 
 	/* set frame format value to unsupported value */
 	td->cd->config.frame_format = SOF_IPC_FRAME_FLOAT;
 
-	assert_int_equal(comp_prepare(td->dev), -EINVAL);
+	func = mux_get_processing_function(td->dev);
+
+	assert_ptr_equal(func, NULL);
 }
 #endif /* CONFIG_FORMAT_FLOAT */
 
 #if CONFIG_FORMAT_S16LE
-static void test_mux_prepare_valid_s16le(void **state)
+static void test_mux_get_processing_function_valid_s16le(void **state)
 {
 	struct test_data *td = *state;
+	mux_func func = NULL;
 
 	td->cd->config.frame_format = SOF_IPC_FRAME_S16_LE;
 
-	assert_int_equal(comp_prepare(td->dev), 0);
+	func = mux_get_processing_function(td->dev);
+
+	assert_ptr_not_equal(func, NULL);
 }
 #endif /* CONFIG_FORMAT_S16LE */
 
 #if CONFIG_FORMAT_S24LE
-static void test_mux_prepare_valid_s24_4le(void **state)
+static void test_mux_get_processing_function_valid_s24_4le(void **state)
 {
 	struct test_data *td = *state;
+	mux_func func = NULL;
 
 	td->cd->config.frame_format = SOF_IPC_FRAME_S24_4LE;
 
-	assert_int_equal(comp_prepare(td->dev), 0);
+	func = mux_get_processing_function(td->dev);
+
+	assert_ptr_not_equal(func, NULL);
 }
 #endif /* CONFIG_FORMAT_S24LE */
 
 #if CONFIG_FORMAT_S32LE
-static void test_mux_prepare_valid_s32le(void **state)
+static void test_mux_get_processing_function_valid_s32le(void **state)
 {
 	struct test_data *td = *state;
+	mux_func func = NULL;
 
 	td->cd->config.frame_format = SOF_IPC_FRAME_S32_LE;
 
-	assert_int_equal(comp_prepare(td->dev), 0);
+	func = mux_get_processing_function(td->dev);
+
+	assert_ptr_not_equal(func, NULL);
 }
 #endif /* CONFIG_FORMAT_S32LE */
 
@@ -120,16 +132,16 @@ int main(void)
 {
 	const struct CMUnitTest tests[] = {
 #if CONFIG_FORMAT_FLOAT
-		TEST_CASE(test_mux_prepare_invalid_float),
+		TEST_CASE(test_mux_get_processing_function_invalid_float),
 #endif /* CONFIG_FORMAT_FLOAT */
 #if CONFIG_FORMAT_S16LE
-		TEST_CASE(test_mux_prepare_valid_s16le),
+		TEST_CASE(test_mux_get_processing_function_valid_s16le),
 #endif /* CONFIG_FORMAT_S16LE */
 #if CONFIG_FORMAT_S24LE
-		TEST_CASE(test_mux_prepare_valid_s24_4le),
+		TEST_CASE(test_mux_get_processing_function_valid_s24_4le),
 #endif /* CONFIG_FORMAT_S24LE */
 #if CONFIG_FORMAT_S32LE
-		TEST_CASE(test_mux_prepare_valid_s32le),
+		TEST_CASE(test_mux_get_processing_function_valid_s32le),
 #endif /* CONFIG_FORMAT_S32LE */
 	};
 

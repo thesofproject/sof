@@ -31,7 +31,8 @@
 
 static const struct comp_driver comp_mux;
 
-static int mux_set_values(struct comp_data *cd, struct sof_mux_config *cfg)
+static int mux_set_values(struct comp_dev *dev, struct comp_data *cd,
+			  struct sof_mux_config *cfg)
 {
 	uint8_t i;
 	uint8_t j;
@@ -74,6 +75,11 @@ static int mux_set_values(struct comp_data *cd, struct sof_mux_config *cfg)
 			cd->config.streams[i].mask[j] = cfg->streams[i].mask[j];
 	}
 
+	if (dev->comp.type == SOF_COMP_MUX)
+		cd->mux = mux_get_processing_function(dev);
+	else
+		cd->demux = demux_get_processing_function(dev);
+
 	return 0;
 }
 
@@ -115,7 +121,7 @@ static struct comp_dev *mux_new(const struct comp_driver *drv,
 		 ipc_process->data, bs);
 
 	/* verification of initial parameters */
-	ret = mux_set_values(cd, &cd->config);
+	ret = mux_set_values(dev, cd, &cd->config);
 
 	if (ret < 0) {
 		rfree(cd);
@@ -207,7 +213,7 @@ static int mux_ctrl_set_cmd(struct comp_dev *dev,
 		cfg = (struct sof_mux_config *)
 		      ASSUME_ALIGNED(cdata->data->data, 4);
 
-		ret = mux_set_values(cd, cfg);
+		ret = mux_set_values(dev, cd, cfg);
 		break;
 	default:
 		comp_err(dev, "mux_ctrl_set_cmd() error: invalid cdata->cmd = 0x%08x",
@@ -288,6 +294,12 @@ static int demux_copy(struct comp_dev *dev)
 	uint32_t flags = 0;
 
 	comp_dbg(dev, "demux_copy()");
+
+	if (!cd->demux) {
+		comp_err(dev, "demux_copy() error: no demux processing function for component.");
+		comp_set_state(dev, COMP_TRIGGER_RESET);
+		return -EINVAL;
+	}
 
 	// align sink streams with their respective configurations
 	list_for_item(clist, &dev->bsink_list) {
@@ -373,6 +385,12 @@ static int mux_copy(struct comp_dev *dev)
 
 	comp_dbg(dev, "mux_copy()");
 
+	if (!cd->mux) {
+		comp_err(dev, "mux_copy() error: no mux processing function for component.");
+		comp_set_state(dev, COMP_TRIGGER_RESET);
+		return -EINVAL;
+	}
+
 	/* align source streams with their respective configurations */
 	list_for_item(clist, &dev->bsource_list) {
 		source = container_of(clist, struct comp_buffer, sink_list);
@@ -437,7 +455,6 @@ static int mux_reset(struct comp_dev *dev)
 
 static int mux_prepare(struct comp_dev *dev)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
 	int ret;
 
 	comp_info(dev, "mux_prepare()");
@@ -448,45 +465,7 @@ static int mux_prepare(struct comp_dev *dev)
 		return ret;
 	}
 
-	cd->mux = mux_get_processing_function(dev);
-	if (!cd->mux) {
-		comp_err(dev, "mux_prepare() error: couldn't find appropriate mux processing function for component.");
-		ret = -EINVAL;
-		goto err;
-	}
-
 	return 0;
-
-err:
-	comp_set_state(dev, COMP_TRIGGER_RESET);
-	return ret;
-}
-
-static int demux_prepare(struct comp_dev *dev)
-{
-	struct comp_data *cd = comp_get_drvdata(dev);
-	int ret;
-
-	comp_info(dev, "demux_prepare()");
-
-	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
-	if (ret) {
-		comp_info(dev, "demux_prepare() comp_set_state() returned non-zero");
-		return ret;
-	}
-
-	cd->demux = demux_get_processing_function(dev);
-	if (!cd->demux) {
-		comp_err(dev, "demux_prepare() error: couldn't find appropriate demux processing function for component.");
-		ret = -EINVAL;
-		goto err;
-	}
-
-	return 0;
-
-err:
-	comp_set_state(dev, COMP_TRIGGER_RESET);
-	return ret;
 }
 
 static int mux_trigger(struct comp_dev *dev, int cmd)
@@ -529,7 +508,7 @@ static const struct comp_driver comp_demux = {
 		.params		= mux_params,
 		.cmd		= mux_cmd,
 		.copy		= demux_copy,
-		.prepare	= demux_prepare,
+		.prepare	= mux_prepare,
 		.reset		= mux_reset,
 		.trigger	= mux_trigger,
 	},
