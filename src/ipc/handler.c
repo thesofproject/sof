@@ -1525,6 +1525,43 @@ out:
 	return ret;
 }
 
+void ipc_msg_send(struct ipc_msg *msg, void *data, bool high_priority)
+{
+	struct ipc *ipc = ipc_get();
+	uint32_t flags;
+	int ret;
+
+	spin_lock_irq(&ipc->lock, flags);
+
+	/* copy mailbox data to message */
+	if (msg->tx_size > 0 && msg->tx_size < SOF_IPC_MSG_MAX_SIZE) {
+		ret = memcpy_s(msg->tx_data, msg->tx_size, data, msg->tx_size);
+		assert(!ret);
+	}
+
+	/* try to send critical notifications right away */
+	if (high_priority) {
+		ret = ipc_platform_send_msg(msg);
+		if (!ret)
+			goto out;
+	}
+
+	/* add to queue unless already there */
+	if (list_is_empty(&msg->list)) {
+		if (high_priority)
+			list_item_prepend(&msg->list, &ipc->msg_list);
+		else
+			list_item_append(&msg->list, &ipc->msg_list);
+	}
+
+out:
+	platform_shared_commit(msg->tx_data, msg->tx_size);
+	platform_shared_commit(msg, sizeof(*msg));
+	platform_shared_commit(ipc, sizeof(*ipc));
+
+	spin_unlock_irq(&ipc->lock, flags);
+}
+
 void ipc_schedule_process(struct ipc *ipc)
 {
 	schedule_task(&ipc->ipc_task, 0, 100);
