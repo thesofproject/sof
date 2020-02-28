@@ -362,9 +362,10 @@ static struct comp_dev *host_new(const struct comp_driver *drv,
 	dma_sg_init(&hd->host.elem_array);
 	dma_sg_init(&hd->local.elem_array);
 
+	ipc_build_stream_posn(&hd->posn, SOF_IPC_STREAM_POSITION, comp->id);
+
 	hd->chan = NULL;
 	hd->copy_type = COMP_COPY_NORMAL;
-	hd->posn.comp_id = comp->id;
 	dev->state = COMP_STATE_READY;
 
 	return dev;
