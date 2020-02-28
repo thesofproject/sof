@@ -54,9 +54,6 @@ void ipc_platform_complete_cmd(void *data)
 int ipc_platform_send_msg(struct ipc_msg *msg)
 {
 	struct ipc *ipc = ipc_get();
-	uint32_t flags;
-
-	spin_lock_irq(&ipc->lock, flags);
 
 	/* now send the message */
 	mailbox_dspbox_write(0, msg->tx_data, msg->tx_size);
@@ -65,11 +62,7 @@ int ipc_platform_send_msg(struct ipc_msg *msg)
 
 	/* now interrupt host to tell it we have message sent */
 
-	list_item_append(&msg->list, &ipc->empty_list);
-
 	platform_shared_commit(ipc, sizeof(*ipc));
-
-	spin_unlock_irq(&ipc->lock, flags);
 
 	return 0;
 }

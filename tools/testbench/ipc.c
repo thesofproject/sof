@@ -46,16 +46,8 @@ int platform_ipc_init(struct ipc *ipc)
 	return 0;
 }
 
-/* The following definitions are to satisfy libsof linker errors */
+/* The following definition is to satisfy libsof linker errors */
 
-int ipc_stream_send_position(struct comp_dev *cdev,
-			     struct sof_ipc_stream_posn *posn)
+void ipc_msg_send(struct ipc_msg *msg, void *data, bool high_priority)
 {
-	return 0;
-}
-
-int ipc_stream_send_xrun(struct comp_dev *cdev,
-			 struct sof_ipc_stream_posn *posn)
-{
-	return 0;
 }

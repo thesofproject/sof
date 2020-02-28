@@ -69,7 +69,8 @@ struct comp_data {
 	struct kpb_event_data event_data;
 	struct kpb_client client_data;
 
-	struct ipc_msg msg;	/**< host notification */
+	struct sof_ipc_comp_event event;
+	struct ipc_msg *msg;	/**< host notification */
 
 	void (*detect_func)(struct comp_dev *dev,
 			    const struct audio_stream *source, uint32_t frames);
@@ -105,19 +106,10 @@ static inline bool detector_is_sample_width_supported(enum sof_ipc_frame sf)
 static void notify_host(const struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	struct sof_ipc_comp_event event;
 
 	comp_info(dev, "notify_host()");
 
-	event.event_type = SOF_CTRL_EVENT_KD;
-	event.num_elems = 0;
-
-	ipc_build_comp_event(&event, dev_comp_type(dev), dev_comp_id(dev));
-	ipc_prepare_host_message(&cd->msg, event.rhdr.hdr.cmd, &event,
-				 sizeof(event));
-
-	/* Send IPC message right away to wake host up ASAP */
-	ipc_platform_send_msg(&cd->msg);
+	ipc_msg_send(cd->msg, &cd->event, true);
 }
 
 static void notify_kpb(const struct comp_dev *dev)
@@ -346,6 +338,17 @@ static struct comp_dev *test_keyword_new(const struct comp_driver *drv,
 		goto fail;
 	}
 
+	/* build component event */
+	ipc_build_comp_event(&cd->event, comp->type, comp->id);
+	cd->event.event_type = SOF_CTRL_EVENT_KD;
+	cd->event.num_elems = 0;
+
+	cd->msg = ipc_msg_init(cd->event.rhdr.hdr.cmd, sizeof(cd->event));
+	if (!cd->msg) {
+		comp_err(dev, "test_keyword_new() error: ipc notification init failed");
+		goto fail;
+	}
+
 	dev->state = COMP_STATE_READY;
 	return dev;
 
@@ -362,6 +365,7 @@ static void test_keyword_free(struct comp_dev *dev)
 
 	comp_info(dev, "test_keyword_free()");
 
+	ipc_msg_free(cd->msg);
 	free_mem_load(cd);
 	rfree(cd);
 	rfree(dev);

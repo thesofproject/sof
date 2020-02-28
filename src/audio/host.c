@@ -14,6 +14,7 @@
 #include <sof/drivers/ipc.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/dma.h>
+#include <sof/lib/mailbox.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/notifier.h>
 #include <sof/list.h>
@@ -83,6 +84,7 @@ struct host_data {
 
 	/* stream info */
 	struct sof_ipc_stream_posn posn; /* TODO: update this */
+	struct ipc_msg *msg;	/**< host notification */
 };
 
 static inline struct dma_sg_elem *next_buffer(struct hc_buf *hc)
@@ -155,7 +157,9 @@ static void host_update_position(struct comp_dev *dev, uint32_t bytes)
 			 * (updates position first, by calling ops.position())
 			 */
 			pipeline_get_timestamp(dev->pipeline, dev, &hd->posn);
-			ipc_stream_send_position(dev, &hd->posn);
+			mailbox_stream_write(dev->pipeline->posn_offset,
+					     &hd->posn, sizeof(hd->posn));
+			ipc_msg_send(hd->msg, &hd->posn, false);
 		}
 	}
 }
@@ -364,6 +368,15 @@ static struct comp_dev *host_new(const struct comp_driver *drv,
 
 	ipc_build_stream_posn(&hd->posn, SOF_IPC_STREAM_POSITION, comp->id);
 
+	hd->msg = ipc_msg_init(hd->posn.rhdr.hdr.cmd, sizeof(hd->posn));
+	if (!hd->msg) {
+		comp_err(dev, "host_new() error: ipc_msg_init failed");
+		dma_put(hd->dma);
+		rfree(hd);
+		rfree(dev);
+		return NULL;
+	}
+
 	hd->chan = NULL;
 	hd->copy_type = COMP_COPY_NORMAL;
 	dev->state = COMP_STATE_READY;
@@ -379,6 +392,7 @@ static void host_free(struct comp_dev *dev)
 
 	dma_put(hd->dma);
 
+	ipc_msg_free(hd->msg);
 	dma_sg_free(&hd->config.elem_array);
 	rfree(hd);
 	rfree(dev);

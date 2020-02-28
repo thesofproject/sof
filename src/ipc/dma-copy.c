@@ -8,6 +8,7 @@
 #include <sof/drivers/ipc.h>
 #include <sof/lib/dma.h>
 #include <sof/platform.h>
+#include <sof/trace/dma-trace.h>
 #include <sof/trace/trace.h>
 #include <user/trace.h>
 #include <config.h>
@@ -74,6 +75,7 @@ int dma_copy_to_host_nowait(struct dma_copy *dc, struct dma_sg_config *host_sg,
 int dma_copy_to_host_nowait(struct dma_copy *dc, struct dma_sg_config *host_sg,
 			    int32_t host_offset, void *local_ptr, int32_t size)
 {
+	struct dma_trace_data *dmat = dma_trace_data_get();
 	struct dma_sg_config config;
 	struct dma_sg_elem *host_sg_elem;
 	struct dma_sg_elem local_sg_elem;
@@ -117,7 +119,9 @@ int dma_copy_to_host_nowait(struct dma_copy *dc, struct dma_sg_config *host_sg,
 	if (err < 0)
 		return err;
 
-	ipc_dma_trace_send_position();
+	ipc_msg_send(dmat->msg, &dmat->posn, false);
+
+	platform_shared_commit(dmat, sizeof(*dmat));
 
 	/* bytes copied */
 	return local_sg_elem.size;

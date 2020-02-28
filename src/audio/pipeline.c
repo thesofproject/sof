@@ -13,6 +13,7 @@
 #include <sof/drivers/ipc.h>
 #include <sof/drivers/timer.h>
 #include <sof/lib/alloc.h>
+#include <sof/lib/mailbox.h>
 #include <sof/list.h>
 #include <sof/math/numbers.h>
 #include <sof/schedule/ll_schedule.h>
@@ -20,6 +21,7 @@
 #include <sof/schedule/task.h>
 #include <sof/spinlock.h>
 #include <sof/string.h>
+#include <ipc/header.h>
 #include <ipc/stream.h>
 #include <ipc/topology.h>
 #include <errno.h>
@@ -41,6 +43,7 @@ static enum task_state pipeline_task(void *arg);
 struct pipeline *pipeline_new(struct sof_ipc_pipe_new *pipe_desc,
 			      struct comp_dev *cd)
 {
+	struct sof_ipc_stream_posn posn;
 	struct pipeline *p;
 	int ret;
 
@@ -62,6 +65,17 @@ struct pipeline *pipeline_new(struct sof_ipc_pipe_new *pipe_desc,
 	ret = memcpy_s(&p->ipc_pipe, sizeof(p->ipc_pipe),
 		       pipe_desc, sizeof(*pipe_desc));
 	assert(!ret);
+
+	/* just for retrieving valid ipc_msg header */
+	ipc_build_stream_posn(&posn, SOF_IPC_STREAM_TRIG_XRUN,
+			      p->ipc_pipe.comp_id);
+
+	p->msg = ipc_msg_init(posn.rhdr.hdr.cmd, sizeof(posn));
+	if (!p->msg) {
+		pipe_cl_err("pipeline_new() error: ipc_msg_init failed");
+		rfree(p);
+		return NULL;
+	}
 
 	return p;
 }
@@ -240,6 +254,8 @@ int pipeline_free(struct pipeline *p)
 		schedule_task_free(p->pipe_task);
 		rfree(p->pipe_task);
 	}
+
+	ipc_msg_free(p->msg);
 
 	/* now free the pipeline */
 	rfree(p);
@@ -829,7 +845,9 @@ static int pipeline_comp_xrun(struct comp_dev *current,
 		platform_host_timestamp(current, ppl_data->posn);
 
 		/* send XRUN to host */
-		ipc_stream_send_xrun(current, ppl_data->posn);
+		mailbox_stream_write(ppl_data->p->posn_offset, ppl_data->posn,
+				     sizeof(*ppl_data->posn));
+		ipc_msg_send(ppl_data->p->msg, ppl_data->posn, true);
 	}
 
 	return pipeline_for_each_comp(current, &pipeline_comp_xrun, data, NULL,
@@ -865,6 +883,7 @@ void pipeline_xrun(struct pipeline *p, struct comp_dev *dev,
 	posn.xrun_size = bytes;
 	posn.xrun_comp_id = dev_comp_id(dev);
 	data.posn = &posn;
+	data.p = p;
 
 	pipeline_comp_xrun(dev, NULL, &data, dev->direction);
 }

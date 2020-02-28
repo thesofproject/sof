@@ -50,8 +50,6 @@ struct ipc_msg;
 #define trace_ipc_error(format, ...) \
 	trace_error(TRACE_CLASS_IPC, format, ##__VA_ARGS__)
 
-#define MSG_QUEUE_SIZE		12
-
 #define COMP_TYPE_COMPONENT	1
 #define COMP_TYPE_BUFFER	2
 #define COMP_TYPE_PIPELINE	3
@@ -97,7 +95,6 @@ struct ipc {
 	int pm_prepare_D3;	/* do we need to prepare for D3 */
 
 	struct list_item msg_list;	/* queue of messages to be sent */
-	struct list_item empty_list;	/* queue of empty messages */
 	bool is_notification_pending;	/* notification is being sent to host */
 
 	struct list_item comp_list;	/* list of component devices */
@@ -225,21 +222,6 @@ void ipc_platform_complete_cmd(void *data);
 void ipc_free(struct ipc *ipc);
 
 void ipc_schedule_process(struct ipc *ipc);
-
-int ipc_stream_send_position(struct comp_dev *cdev,
-		struct sof_ipc_stream_posn *posn);
-void ipc_build_comp_notification(const struct comp_dev *cdev,
-				 struct sof_ipc_comp_event *event);
-int ipc_send_comp_notification(const struct comp_dev *cdev,
-			       struct sof_ipc_comp_event *event);
-int ipc_stream_send_xrun(struct comp_dev *cdev,
-	struct sof_ipc_stream_posn *posn);
-
-void ipc_prepare_host_message(struct ipc_msg *msg, uint32_t header,
-			      void *tx_data, size_t tx_bytes);
-
-int ipc_queue_host_message(struct ipc *ipc, uint32_t header, void *tx_data,
-			   size_t tx_bytes, bool replace);
 
 int ipc_platform_send_msg(struct ipc_msg *msg);
 

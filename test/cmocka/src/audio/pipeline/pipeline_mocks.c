@@ -13,6 +13,12 @@ TRACE_IMPL()
 struct ipc *_ipc;
 struct timer *platform_timer;
 struct schedulers *schedulers;
+static struct sof sof;
+
+struct sof *sof_get(void)
+{
+	return &sof;
+}
 
 struct schedulers **arch_schedulers_get(void)
 {
@@ -106,4 +112,11 @@ uint64_t clock_ms_to_ticks(int clock, uint64_t ms)
 	(void)ms;
 
 	return 0;
+}
+
+void ipc_msg_send(struct ipc_msg *msg, void *data, bool high_priority)
+{
+	(void)msg;
+	(void)data;
+	(void)high_priority;
 }
