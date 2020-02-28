@@ -9,6 +9,8 @@
 #ifndef __SOF_DRIVERS_IPC_H__
 #define __SOF_DRIVERS_IPC_H__
 
+#include <sof/lib/alloc.h>
+#include <sof/lib/memory.h>
 #include <sof/list.h>
 #include <sof/platform.h>
 #include <sof/schedule/task.h>
@@ -18,6 +20,7 @@
 #include <ipc/control.h>
 #include <ipc/header.h>
 #include <ipc/stream.h>
+#include <ipc/topology.h>
 #include <ipc/trace.h>
 #include <user/trace.h>
 #include <stdbool.h>
@@ -82,7 +85,7 @@ struct ipc_comp_dev {
 struct ipc_msg {
 	uint32_t header;	/* specific to platform */
 	uint32_t tx_size;	/* payload size in bytes */
-	uint8_t tx_data[SOF_IPC_MSG_MAX_SIZE];	/* pointer to payload data */
+	void *tx_data;		/* pointer to payload data */
 	struct list_item list;
 };
 
@@ -151,6 +154,50 @@ static inline void ipc_build_trace_posn(struct sof_ipc_dma_trace_posn *posn)
 	posn->rhdr.hdr.cmd =  SOF_IPC_GLB_TRACE_MSG |
 		SOF_IPC_TRACE_DMA_POSITION;
 	posn->rhdr.hdr.size = sizeof(*posn);
+}
+
+static inline struct ipc_msg *ipc_msg_init(uint32_t header, uint32_t size)
+{
+	struct ipc_msg *msg;
+
+	msg = rzalloc(SOF_MEM_ZONE_RUNTIME, SOF_MEM_FLAG_SHARED,
+		      SOF_MEM_CAPS_RAM, size);
+	if (!msg)
+		return NULL;
+
+	msg->tx_data = rzalloc(SOF_MEM_ZONE_RUNTIME, SOF_MEM_FLAG_SHARED,
+			       SOF_MEM_CAPS_RAM, size);
+	if (!msg->tx_data) {
+		rfree(msg);
+		return NULL;
+	}
+
+	msg->header = header;
+	msg->tx_size = size;
+	list_init(&msg->list);
+
+	platform_shared_commit(msg, sizeof(*msg));
+
+	return msg;
+}
+
+static inline void ipc_msg_free(struct ipc_msg *msg)
+{
+	if (!msg)
+		return;
+
+	struct ipc *ipc = ipc_get();
+	uint32_t flags;
+
+	spin_lock_irq(&ipc->lock, flags);
+
+	list_item_del(&msg->list);
+	rfree(msg->tx_data);
+	rfree(msg);
+
+	platform_shared_commit(ipc, sizeof(*ipc));
+
+	spin_unlock_irq(&ipc->lock, flags);
 }
 
 int ipc_init(struct sof *sof);
