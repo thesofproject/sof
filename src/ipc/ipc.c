@@ -646,27 +646,22 @@ void ipc_send_queued_msg(void)
 	spin_lock_irq(&ipc->lock, flags);
 
 	/* any messages to send ? */
-	if (list_is_empty(&ipc->msg_list)) {
-		spin_unlock_irq(&ipc->lock, flags);
+	if (list_is_empty(&ipc->msg_list))
 		goto out;
-	}
 
 	msg = list_first_item(&ipc->msg_list, struct ipc_msg,
 			      list);
-
-	spin_unlock_irq(&ipc->lock, flags);
 
 	ipc_platform_send_msg(msg);
 
 out:
 	platform_shared_commit(ipc, sizeof(*ipc));
+
+	spin_unlock_irq(&ipc->lock, flags);
 }
 
 int ipc_init(struct sof *sof)
 {
-	struct ipc_msg *msg;
-	int i;
-
 	trace_ipc("ipc_init()");
 
 	/* init ipc data */
@@ -676,16 +671,8 @@ int ipc_init(struct sof *sof)
 				      SOF_MEM_CAPS_RAM, SOF_IPC_MSG_MAX_SIZE);
 
 	spinlock_init(&sof->ipc->lock);
-	list_init(&sof->ipc->empty_list);
 	list_init(&sof->ipc->msg_list);
 	list_init(&sof->ipc->comp_list);
-
-	for (i = 0; i < MSG_QUEUE_SIZE; i++) {
-		msg = rzalloc(SOF_MEM_ZONE_SYS, SOF_MEM_FLAG_SHARED,
-			      SOF_MEM_CAPS_RAM, sizeof(*msg));
-		list_item_prepend(&msg->list, &sof->ipc->empty_list);
-		platform_shared_commit(msg, sizeof(*msg));
-	}
 
 	return platform_ipc_init(sof->ipc);
 }

@@ -102,10 +102,7 @@ void ipc_platform_complete_cmd(void *data)
 int ipc_platform_send_msg(struct ipc_msg *msg)
 {
 	struct ipc *ipc = ipc_get();
-	uint32_t flags;
 	int ret = 0;
-
-	spin_lock_irq(&ipc->lock, flags);
 
 	/* can't send nofication when one is in progress */
 	if (ipc->is_notification_pending ||
@@ -124,14 +121,10 @@ int ipc_platform_send_msg(struct ipc_msg *msg)
 	/* now interrupt host to tell it we have message sent */
 	shim_write(SHIM_IPCD, SHIM_IPCD_BUSY);
 
-	list_item_append(&msg->list, &ipc->empty_list);
-
 	platform_shared_commit(msg, sizeof(*msg));
 
 out:
 	platform_shared_commit(ipc, sizeof(*ipc));
-
-	spin_unlock_irq(&ipc->lock, flags);
 
 	return ret;
 }

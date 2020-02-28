@@ -22,6 +22,7 @@
 #include <sof/string.h>
 #include <sof/trace/dma-trace.h>
 #include <ipc/topology.h>
+#include <ipc/trace.h>
 #include <config.h>
 #include <errno.h>
 #include <stddef.h>
@@ -112,7 +113,12 @@ int dma_trace_init_early(struct sof *sof)
 			    SOF_MEM_CAPS_RAM, sizeof(*sof->dmat));
 	dma_sg_init(&sof->dmat->config.elem_array);
 	spinlock_init(&sof->dmat->lock);
+
 	ipc_build_trace_posn(&sof->dmat->posn);
+	sof->dmat->msg = ipc_msg_init(sof->dmat->posn.rhdr.hdr.cmd,
+				      sizeof(sof->dmat->posn));
+	if (!sof->dmat->msg)
+		return -ENOMEM;
 
 	platform_shared_commit(sof->dmat, sizeof(*sof->dmat));
 
@@ -251,7 +257,7 @@ static int dma_trace_get_avail_data(struct dma_trace_data *d,
 	 * if no new trace is filled.
 	 */
 	if (d->old_host_offset != d->posn.host_offset) {
-		ipc_dma_trace_send_position();
+		ipc_msg_send(d->msg, &d->posn, false);
 		d->old_host_offset = d->posn.host_offset;
 	}
 

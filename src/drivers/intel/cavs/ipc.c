@@ -246,10 +246,7 @@ void ipc_platform_complete_cmd(void *data)
 int ipc_platform_send_msg(struct ipc_msg *msg)
 {
 	struct ipc *ipc = ipc_get();
-	uint32_t flags;
 	int ret = 0;
-
-	spin_lock_irq(&ipc->lock, flags);
 
 	if (ipc->is_notification_pending ||
 #if CAVS_VERSION == CAVS_VERSION_1_5
@@ -278,14 +275,10 @@ int ipc_platform_send_msg(struct ipc_msg *msg)
 	ipc_write(IPC_DIPCIDR, 0x80000000 | msg->header);
 #endif
 
-	list_item_append(&msg->list, &ipc->empty_list);
-
 	platform_shared_commit(msg, sizeof(*msg));
 
 out:
 	platform_shared_commit(ipc, sizeof(*ipc));
-
-	spin_unlock_irq(&ipc->lock, flags);
 
 	return ret;
 }

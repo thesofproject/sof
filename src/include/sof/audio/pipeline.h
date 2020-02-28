@@ -8,6 +8,7 @@
 #ifndef __SOF_AUDIO_PIPELINE_H__
 #define __SOF_AUDIO_PIPELINE_H__
 
+#include <sof/drivers/ipc.h>
 #include <sof/lib/cpu.h>
 #include <sof/trace/trace.h>
 #include <ipc/topology.h>
@@ -92,6 +93,7 @@ struct pipeline {
 
 	/* position update */
 	uint32_t posn_offset;		/* position update array offset*/
+	struct ipc_msg *msg;
 };
 
 /* static pipeline */
