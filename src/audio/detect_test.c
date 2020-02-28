@@ -112,7 +112,7 @@ static void notify_host(const struct comp_dev *dev)
 	event.event_type = SOF_CTRL_EVENT_KD;
 	event.num_elems = 0;
 
-	ipc_build_comp_notification(dev, &event);
+	ipc_build_comp_event(&event, dev_comp_type(dev), dev_comp_id(dev));
 	ipc_prepare_host_message(&cd->msg, event.rhdr.hdr.cmd, &event,
 				 sizeof(event));
 

@@ -15,7 +15,10 @@
 #include <sof/sof.h>
 #include <sof/spinlock.h>
 #include <sof/trace/trace.h>
+#include <ipc/control.h>
 #include <ipc/header.h>
+#include <ipc/stream.h>
+#include <ipc/trace.h>
 #include <user/trace.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -123,6 +126,31 @@ static inline uint64_t ipc_task_deadline(void *data)
 	 * to finish processing. This will allow us to calculate task deadline.
 	 */
 	return SOF_TASK_DEADLINE_NOW;
+}
+
+static inline void ipc_build_stream_posn(struct sof_ipc_stream_posn *posn,
+					 uint32_t type, uint32_t id)
+{
+	posn->rhdr.hdr.cmd = SOF_IPC_GLB_STREAM_MSG | type | id;
+	posn->rhdr.hdr.size = sizeof(*posn);
+	posn->comp_id = id;
+}
+
+static inline void ipc_build_comp_event(struct sof_ipc_comp_event *event,
+					uint32_t type, uint32_t id)
+{
+	event->rhdr.hdr.cmd = SOF_IPC_GLB_COMP_MSG | SOF_IPC_COMP_NOTIFICATION |
+		id;
+	event->rhdr.hdr.size = sizeof(*event);
+	event->src_comp_type = type;
+	event->src_comp_id = id;
+}
+
+static inline void ipc_build_trace_posn(struct sof_ipc_dma_trace_posn *posn)
+{
+	posn->rhdr.hdr.cmd =  SOF_IPC_GLB_TRACE_MSG |
+		SOF_IPC_TRACE_DMA_POSITION;
+	posn->rhdr.hdr.size = sizeof(*posn);
 }
 
 int ipc_init(struct sof *sof);

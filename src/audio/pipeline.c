@@ -859,6 +859,8 @@ void pipeline_xrun(struct pipeline *p, struct comp_dev *dev,
 			 ret);
 
 	memset(&posn, 0, sizeof(posn));
+	ipc_build_stream_posn(&posn, SOF_IPC_STREAM_TRIG_XRUN,
+			      dev_comp_id(dev));
 	p->xrun_bytes = bytes;
 	posn.xrun_size = bytes;
 	posn.xrun_comp_id = dev_comp_id(dev);

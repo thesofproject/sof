@@ -12,6 +12,7 @@
 #include <sof/schedule/task.h>
 #include <sof/sof.h>
 #include <sof/spinlock.h>
+#include <ipc/trace.h>
 #include <stdint.h>
 
 struct sof;
@@ -29,10 +30,8 @@ struct dma_trace_data {
 	struct dma_sg_config config;
 	struct dma_trace_buf dmatb;
 	struct dma_copy dc;
+	struct sof_ipc_dma_trace_posn posn;
 	uint32_t old_host_offset;
-	uint32_t host_offset;
-	uint32_t overflow;
-	uint32_t messages;
 	uint32_t host_size;
 	struct task dmat_work;
 	uint32_t enabled;

@@ -60,14 +60,14 @@ static enum task_state trace_work(void *data)
 		return SOF_TASK_STATE_RESCHEDULE;
 	}
 
-	d->overflow = overflow;
+	d->posn.overflow = overflow;
 
 	/* DMA trace copying is working */
 	d->copy_in_progress = 1;
 
 	/* copy this section to host */
-	size = dma_copy_to_host_nowait(&d->dc, config, d->host_offset,
-		buffer->r_ptr, size);
+	size = dma_copy_to_host_nowait(&d->dc, config, d->posn.host_offset,
+				       buffer->r_ptr, size);
 	if (size < 0) {
 		trace_buffer_error("trace_work() error: "
 				   "dma_copy_to_host_nowait() failed");
@@ -75,9 +75,9 @@ static enum task_state trace_work(void *data)
 	}
 
 	/* update host pointer and check for wrap */
-	d->host_offset += size;
-	if (d->host_offset >= d->host_size)
-		d->host_offset -= d->host_size;
+	d->posn.host_offset += size;
+	if (d->posn.host_offset >= d->host_size)
+		d->posn.host_offset -= d->host_size;
 
 	/* update local pointer and check for wrap */
 	buffer->r_ptr = (char *)buffer->r_ptr + size;
@@ -89,7 +89,7 @@ out:
 
 	/* disregard any old messages and don't resend them if we overflow */
 	if (size > 0) {
-		if (d->overflow)
+		if (d->posn.overflow)
 			buffer->avail = DMA_TRACE_LOCAL_SIZE - size;
 		else
 			buffer->avail -= size;
@@ -112,6 +112,7 @@ int dma_trace_init_early(struct sof *sof)
 			    SOF_MEM_CAPS_RAM, sizeof(*sof->dmat));
 	dma_sg_init(&sof->dmat->config.elem_array);
 	spinlock_init(&sof->dmat->lock);
+	ipc_build_trace_posn(&sof->dmat->posn);
 
 	platform_shared_commit(sof->dmat, sizeof(*sof->dmat));
 
@@ -249,9 +250,9 @@ static int dma_trace_get_avail_data(struct dma_trace_data *d,
 	 * This function will be called once every 500ms at least even
 	 * if no new trace is filled.
 	 */
-	if (d->old_host_offset != d->host_offset) {
+	if (d->old_host_offset != d->posn.host_offset) {
 		ipc_dma_trace_send_position();
-		d->old_host_offset = d->host_offset;
+		d->old_host_offset = d->posn.host_offset;
 	}
 
 	/* align data to HD-DMA burst size */
@@ -274,8 +275,8 @@ static int dma_trace_get_avail_data(struct dma_trace_data *d,
 		return 0;
 
 	/* host buffer wrap ? */
-	if (d->host_offset + avail > d->host_size)
-		hsize = d->host_size - d->host_offset;
+	if (d->posn.host_offset + avail > d->host_size)
+		hsize = d->host_size - d->posn.host_offset;
 
 	/* local buffer wrap ? */
 	if ((char *)buffer->r_ptr + avail > (char *)buffer->end_addr)
@@ -499,7 +500,7 @@ static void dtrace_add_event(const char *e, uint32_t length)
 		}
 
 		buffer->avail += length;
-		trace_data->messages++;
+		trace_data->posn.messages++;
 	} else {
 		/* if there is not enough memory for new log, we drop it */
 		trace_data->dropped_entries++;
