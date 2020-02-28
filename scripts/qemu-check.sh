@@ -23,12 +23,20 @@ else
 	done
 fi
 
-echo $PLATFORMS
+# check target platform(s) have been passed in
+if [ ${#PLATFORMS[@]} -eq 0 ];
+then
+	echo "Error: No platforms specified. Supported are: ${SUPPORTED_PLATFORMS[@]}"
+	exit 1
+fi
 
 for j in ${PLATFORMS[@]}
 do
 	FWNAME="sof-$j.ri"
 	PLATFORM=$j
+	# reset variable to avoid issue in random order
+	ROM=''
+	OUTBOX_OFFSET=''
 	if [ $j == "byt" ]
 	then
 		READY_IPC="00 88 02 70 00 00 00 80"
