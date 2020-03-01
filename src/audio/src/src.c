@@ -490,8 +490,6 @@ static struct comp_dev *src_new(const struct comp_driver *drv,
 	cd->polyphase_func = NULL;
 	src_polyphase_reset(&cd->src);
 
-	dev->output_rate = ipc_src->sink_rate;
-
 	dev->state = COMP_STATE_READY;
 	return dev;
 }
