@@ -8,8 +8,10 @@
 #ifndef __SOF_DRIVERS_INTERRUPT_H__
 #define __SOF_DRIVERS_INTERRUPT_H__
 
-#include <arch/drivers/interrupt.h>
 #include <platform/drivers/interrupt.h>
+
+#if !defined(__ASSEMBLER__) && !defined(LINKER)
+#include <arch/drivers/interrupt.h>
 #include <sof/lib/cpu.h>
 #include <sof/list.h>
 #include <sof/sof.h>
@@ -178,5 +180,5 @@ static inline void interrupt_global_enable(uint32_t flags)
 /* re-enables IRQ sources on current core */
 #define irq_local_enable(flags) \
 	interrupt_global_enable(flags)
-
+#endif
 #endif /* __SOF_DRIVERS_INTERRUPT_H__ */
