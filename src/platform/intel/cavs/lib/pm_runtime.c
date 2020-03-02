@@ -309,7 +309,7 @@ static inline void cavs_pm_runtime_core_en_memory(uint32_t index)
 static inline void cavs_pm_runtime_dis_dsp_pg(uint32_t index)
 {
 #if CAVS_VERSION >= CAVS_VERSION_1_8
-	uint32_t lps_ctl;
+	uint32_t lps_ctl, tries = PLATFORM_PM_RUNTIME_DSP_TRIES;
 
 	if (index == PLATFORM_MASTER_CORE_ID) {
 		lps_ctl = shim_read(SHIM_LPSCTL);
@@ -323,8 +323,20 @@ static inline void cavs_pm_runtime_dis_dsp_pg(uint32_t index)
 		lps_ctl |= SHIM_LPSCTL_FDSPRUN;
 		shim_write(SHIM_LPSCTL, lps_ctl);
 	} else {
+		/* Slave core power up */
 		shim_write16(SHIM_PWRCTL, shim_read16(SHIM_PWRCTL) |
-			     SHIM_PWRCTL_TCPDSPPG(index));
+			     SHIM_PWRCTL_TCPDSPPG(index) |
+			     SHIM_PWRCTL_TCPCTLPG);
+
+		/* Waiting for power up */
+		while (((shim_read16(SHIM_PWRSTS) & SHIM_PWRCTL_TCPDSPPG(index)) !=
+			SHIM_PWRCTL_TCPDSPPG(index)) && tries--) {
+			idelay(PLATFORM_PM_RUNTIME_DSP_DELAY);
+		}
+		/* Timeout check with warning log */
+		if (tries == 0)
+			trace_power_error("cavs_pm_runtime_dis_dsp_pg(): failed to power up core %d",
+					  index);
 	}
 #endif
 }

@@ -89,6 +89,10 @@ struct timer;
 /* minimal SSP port delay in cycles */
 #define PLATFORM_SSP_DELAY	1000
 
+/* timeout tries and delay for powering up slave core */
+#define PLATFORM_PM_RUNTIME_DSP_TRIES 32
+#define PLATFORM_PM_RUNTIME_DSP_DELAY 256
+
 /* Platform defined trace code */
 static inline void platform_panic(uint32_t p)
 {
