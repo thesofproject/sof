@@ -132,13 +132,14 @@ static void schedule_edf_task(void *data, struct task *task, uint64_t start,
 	schedule_edf(data);
 }
 
-int schedule_task_init_edf(struct task *task, const struct task_ops *ops,
+int schedule_task_init_edf(struct task *task, uint32_t uid,
+			   const struct task_ops *ops,
 			   void *data, uint16_t core, uint32_t flags)
 {
 	struct edf_task_pdata *edf_pdata = NULL;
 	int ret = 0;
 
-	ret = schedule_task_init(task, SOF_SCHEDULE_EDF, 0, ops->run, data,
+	ret = schedule_task_init(task, uid, SOF_SCHEDULE_EDF, 0, ops->run, data,
 				 core, flags);
 	if (ret < 0)
 		return ret;

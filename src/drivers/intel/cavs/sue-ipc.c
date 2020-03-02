@@ -10,6 +10,7 @@
 #include <sof/drivers/spi.h>
 #include <sof/lib/mailbox.h>
 #include <sof/lib/memory.h>
+#include <sof/lib/uuid.h>
 #include <sof/lib/wait.h>
 #include <sof/list.h>
 #include <sof/schedule/edf_schedule.h>
@@ -19,6 +20,10 @@
 #include <ipc/header.h>
 #include <stddef.h>
 #include <stdint.h>
+
+/* 7552b3a1-98dd-4419-ad6f-fbf21ebfceec */
+DECLARE_SOF_UUID("ipc-task", ipc_task_uuid, 0x7552b3a1, 0x98dd, 0x4419,
+		 0xad, 0x6f, 0xfb, 0xf2, 0x1e, 0xbf, 0xce, 0xec);
 
 /* No private data for IPC */
 enum task_state ipc_platform_do_cmd(void *data)
@@ -72,7 +77,8 @@ int platform_ipc_init(struct ipc *ipc)
 	ipc_set_drvdata(ipc, NULL);
 
 	/* schedule */
-	schedule_task_init_edf(&ipc->ipc_task, &ipc_task_ops, ipc, 0, 0);
+	schedule_task_init_edf(&ipc->ipc_task, SOF_UUID(ipc_task_uuid),
+			       &ipc_task_ops, ipc, 0, 0);
 
 	platform_shared_commit(ipc, sizeof(*ipc));
 

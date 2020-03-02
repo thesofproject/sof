@@ -18,6 +18,7 @@
 #include <sof/lib/memory.h>
 #include <sof/lib/notifier.h>
 #include <sof/lib/shim.h>
+#include <sof/lib/uuid.h>
 #include <sof/platform.h>
 #include <sof/schedule/edf_schedule.h>
 #include <sof/schedule/ll_schedule.h>
@@ -34,6 +35,14 @@
 
 /** \brief IDC message payload per core. */
 static SHARED_DATA struct idc_payload payload[PLATFORM_CORE_COUNT];
+
+/* b90f5a4e-5537-4375-a1df-95485472ff9e */
+DECLARE_SOF_UUID("comp-task", idc_comp_task_uuid, 0xb90f5a4e, 0x5537, 0x4375,
+		 0xa1, 0xdf, 0x95, 0x48, 0x54, 0x72, 0xff, 0x9e);
+
+/* a5dacb0e-88dc-415c-a1b5-3e8df77f1976 */
+DECLARE_SOF_UUID("idc-cmd-task", idc_cmd_task_uuid, 0xa5dacb0e, 0x88dc, 0x415c,
+		 0xa1, 0xb5, 0x3e, 0x8d, 0xf7, 0x7f, 0x19, 0x76);
 
 /**
  * \brief Returns IDC data.
@@ -282,7 +291,9 @@ static int idc_prepare(uint32_t comp_id)
 			goto out;
 		}
 
-		ret = schedule_task_init_ll(dev->task, SOF_SCHEDULE_LL_TIMER,
+		ret = schedule_task_init_ll(dev->task,
+					    SOF_UUID(idc_comp_task_uuid),
+					    SOF_SCHEDULE_LL_TIMER,
 					    dev->priority, comp_task, dev,
 					    dev->comp.core, 0);
 		if (ret < 0) {
@@ -489,7 +500,8 @@ int idc_init(void)
 	(*idc)->payload = cache_to_uncache((struct idc_payload *)payload);
 
 	/* process task */
-	schedule_task_init_edf(&(*idc)->idc_task, &ops, *idc, core, 0);
+	schedule_task_init_edf(&(*idc)->idc_task, SOF_UUID(idc_cmd_task_uuid),
+			       &ops, *idc, core, 0);
 
 	/* configure interrupt */
 	(*idc)->irq = interrupt_get_irq(PLATFORM_IDC_INTERRUPT,

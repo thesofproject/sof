@@ -13,6 +13,7 @@
 #include <sof/lib/cpu.h>
 #include <sof/lib/dma.h>
 #include <sof/lib/memory.h>
+#include <sof/lib/uuid.h>
 #include <sof/platform.h>
 #include <sof/schedule/ll_schedule.h>
 #include <sof/schedule/schedule.h>
@@ -27,6 +28,10 @@
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
+
+/* 2b972272-c5b1-4b7e-926f-0fc5cb4c4690 */
+DECLARE_SOF_UUID("dma-trace-task", dma_trace_task_uuid, 0x2b972272, 0xc5b1,
+		 0x4b7e, 0x92, 0x6f, 0x0f, 0xc5, 0xcb, 0x4c, 0x46, 0x90);
 
 static int dma_trace_get_avail_data(struct dma_trace_data *d,
 				    struct dma_trace_buf *buffer,
@@ -149,7 +154,8 @@ int dma_trace_init_complete(struct dma_trace_data *d)
 		goto out;
 	}
 
-	schedule_task_init_ll(&d->dmat_work, SOF_SCHEDULE_LL_TIMER,
+	schedule_task_init_ll(&d->dmat_work, SOF_UUID(dma_trace_task_uuid),
+			      SOF_SCHEDULE_LL_TIMER,
 			      SOF_TASK_PRI_MED, trace_work, d, 0, 0);
 
 out:
