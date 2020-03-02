@@ -20,6 +20,7 @@
 #ifndef __ASSEMBLER__
 
 #include <sof/trace/preproc.h>
+#include <sof/compiler_attributes.h>
 #include <stddef.h>
 
 /* use same syntax as Linux for simplicity */
@@ -27,10 +28,6 @@
 #define container_of(ptr, type, member) \
 	({const typeof(((type *)0)->member)*__memberptr = (ptr); \
 	(type *)((char *)__memberptr - offsetof(type, member)); })
-
-#define __packed __attribute__((packed))
-
-#define __aligned(x) __attribute__((__aligned__(x)))
 
 #define ffs(i) __builtin_ffs(i)
 #define ffsl(i) __builtin_ffsl(i)
