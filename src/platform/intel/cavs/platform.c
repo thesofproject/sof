@@ -139,13 +139,13 @@ static const struct sof_ipc_window sram_window
 };
 #endif
 
-#if CONFIG_CANNONLAKE
+#if CONFIG_CANNONLAKE || CONFIG_ICELAKE || CONFIG_TIGERLAKE
 #if CONFIG_CAVS_LPRO
-#define CNL_DEFAULT_RO		SHIM_CLKCTL_RLROSCC
-#define CNL_DEFAULT_RO_FOR_MEM	SHIM_CLKCTL_OCS_LP_RING
+#define CAVS_DEFAULT_RO		SHIM_CLKCTL_RLROSCC
+#define CAVS_DEFAULT_RO_FOR_MEM	SHIM_CLKCTL_OCS_LP_RING
 #else
-#define CNL_DEFAULT_RO		SHIM_CLKCTL_RHROSCC
-#define CNL_DEFAULT_RO_FOR_MEM	SHIM_CLKCTL_OCS_HP_RING
+#define CAVS_DEFAULT_RO		SHIM_CLKCTL_RHROSCC
+#define CAVS_DEFAULT_RO_FOR_MEM	SHIM_CLKCTL_OCS_HP_RING
 #endif
 #endif
 
@@ -419,26 +419,23 @@ int platform_init(struct sof *sof)
 
 	shim_write(SHIM_LPSCTL, shim_read(SHIM_LPSCTL));
 
-#elif CONFIG_CANNONLAKE
+#elif CONFIG_CANNONLAKE || CONFIG_ICELAKE || CONFIG_TIGERLAKE
 
 	/* initialize PM for boot */
 
 	/* request configured ring oscillator and wait for status ready */
-	shim_write(SHIM_CLKCTL, shim_read(SHIM_CLKCTL) | CNL_DEFAULT_RO);
-	while (!(shim_read(SHIM_CLKSTS) & CNL_DEFAULT_RO))
+	shim_write(SHIM_CLKCTL, shim_read(SHIM_CLKCTL) | CAVS_DEFAULT_RO);
+	while (!(shim_read(SHIM_CLKSTS) & CAVS_DEFAULT_RO))
 		idelay(16);
 
 	shim_write(SHIM_CLKCTL,
-		   CNL_DEFAULT_RO | /* Request configured RING Osc */
-		   CNL_DEFAULT_RO_FOR_MEM | /* Select configured
+		   CAVS_DEFAULT_RO | /* Request configured RING Osc */
+		   CAVS_DEFAULT_RO_FOR_MEM | /* Select configured
 					     * RING Oscillator Clk for memory
 					     */
 		   SHIM_CLKCTL_HMCS_DIV2 | /* HP mem clock div by 2 */
 		   SHIM_CLKCTL_LMCS_DIV4 | /* LP mem clock div by 4 */
-		   SHIM_CLKCTL_TCPLCG_DIS(0) | /* Allow Local Clk Gating */
-		   SHIM_CLKCTL_TCPLCG_DIS(1) |
-		   SHIM_CLKCTL_TCPLCG_DIS(2) |
-		   SHIM_CLKCTL_TCPLCG_DIS(3));
+		   SHIM_CLKCTL_TCPLCG_DIS_ALL); /* Allow Local Clk Gating */
 
 	/* prevent LP GPDMA 0&1 clock gating */
 	shim_write(SHIM_GPDMA_CLKCTL(0), SHIM_CLKCTL_LPGPDMAFDCGB);
@@ -447,7 +444,7 @@ int platform_init(struct sof *sof)
 	/* prevent DSP Common power gating */
 	pm_runtime_get(PM_RUNTIME_DSP, PLATFORM_MASTER_CORE_ID);
 
-#elif CONFIG_ICELAKE || CONFIG_SUECREEK || CONFIG_TIGERLAKE
+#elif CONFIG_SUECREEK
 	/* TODO: need to merge as for APL */
 	clock_set_freq(CLK_CPU(cpu_get_id()), CLK_MAX_CPU_HZ);
 

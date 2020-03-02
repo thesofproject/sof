@@ -123,8 +123,12 @@
 #define SHIM_CLKCTL_RLROSCC	BIT(29)
 
 /** \brief Tensilica Core Prevent Local Clock Gating */
-#define SHIM_CLKCTL_TCPLCG_EN(x)	BIT(16 + x)
+#define SHIM_CLKCTL_TCPLCG_EN(x)	BIT(16 + (x))
 #define SHIM_CLKCTL_TCPLCG_DIS(x)	0
+#define SHIM_CLKCTL_TCPLCG_DIS_ALL	(SHIM_CLKCTL_TCPLCG_DIS(0) | \
+					 SHIM_CLKCTL_TCPLCG_DIS(1) | \
+					 SHIM_CLKCTL_TCPLCG_DIS(2) | \
+					 SHIM_CLKCTL_TCPLCG_DIS(3))
 
 /* Core clock PLL divisor */
 #define SHIM_CLKCTL_DPCS_MASK(x)	BIT(2)

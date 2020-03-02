@@ -122,6 +122,14 @@
 /** \brief Request LP RING Oscillator Clock */
 #define SHIM_CLKCTL_RLROSCC	BIT(29)
 
+/** \brief Tensilica Core Prevent Local Clock Gating */
+#define SHIM_CLKCTL_TCPLCG_EN(x)	BIT(16 + (x))
+#define SHIM_CLKCTL_TCPLCG_DIS(x)	0
+#define SHIM_CLKCTL_TCPLCG_DIS_ALL	(SHIM_CLKCTL_TCPLCG_DIS(0) | \
+					 SHIM_CLKCTL_TCPLCG_DIS(1) | \
+					 SHIM_CLKCTL_TCPLCG_DIS(2) | \
+					 SHIM_CLKCTL_TCPLCG_DIS(3))
+
 /** \brief Oscillator Clock Select*/
 #define SHIM_CLKCTL_OCS_HP_RING		BIT(2)
 #define SHIM_CLKCTL_OCS_LP_RING		0

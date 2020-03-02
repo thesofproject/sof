@@ -260,7 +260,7 @@ config CONFIG_CHERRYTRAIL_EXTRA_DW_DMA
 
 config CAVS_LPRO
 	bool "Enable low power ring oscillator as the default clock"
-	depends on CANNONLAKE
+	depends on CAVS && !CAVS_VERSION_1_5
 	help
 	  Select if you want to use 120MHz LPRO as the DSP clock source.
 	  This option is required to support S0ix/D0ix mode.
