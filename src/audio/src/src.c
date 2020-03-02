@@ -365,8 +365,6 @@ static void src_2s(struct comp_dev *dev, const struct audio_stream *source,
 		cd->sbuf_w_ptr = s1.y_wptr;
 		cd->sbuf_avail += s1_blk_out;
 		*n_read += s1.times * cd->src.stage1->blk_in;
-		avail_b -= s1_blk_in * sz;
-		sbuf_free -= s1_blk_out;
 	}
 
 	s2.times = cd->param.stage2_times;
@@ -385,7 +383,6 @@ static void src_2s(struct comp_dev *dev, const struct audio_stream *source,
 
 		cd->sbuf_r_ptr = s2.x_rptr;
 		cd->sbuf_avail -= s2_blk_in;
-		free_b -= s2_blk_out * sz;
 		*n_written += s2.times * cd->src.stage2->blk_out;
 	}
 }
