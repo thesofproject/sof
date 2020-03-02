@@ -14,6 +14,7 @@
 #include <sof/drivers/timer.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/mailbox.h>
+#include <sof/lib/uuid.h>
 #include <sof/list.h>
 #include <sof/math/numbers.h>
 #include <sof/schedule/ll_schedule.h>
@@ -36,6 +37,10 @@ struct pipeline_data {
 	struct pipeline *p;
 	int cmd;
 };
+
+/* f11818eb-e92e-4082-82a3-dc54c604ebb3 */
+DECLARE_SOF_UUID("pipe-task", pipe_task_uuid, 0xf11818eb, 0xe92e, 0x4082,
+		 0x82,  0xa3, 0xdc, 0x54, 0xc6, 0x04, 0xeb, 0xb3);
 
 static enum task_state pipeline_task(void *arg);
 
@@ -426,7 +431,8 @@ static struct task *pipeline_task_init(struct pipeline *p, uint32_t type,
 	if (!task)
 		return NULL;
 
-	if (schedule_task_init_ll(&task->task, type, p->ipc_pipe.priority, func,
+	if (schedule_task_init_ll(&task->task, SOF_UUID(pipe_task_uuid), type,
+				  p->ipc_pipe.priority, func,
 				  p, p->ipc_pipe.core, 0) < 0) {
 		rfree(task);
 		return NULL;

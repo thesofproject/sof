@@ -17,6 +17,7 @@
 #include <sof/lib/agent.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/clk.h>
+#include <sof/lib/uuid.h>
 #include <sof/debug/panic.h>
 #include <sof/platform.h>
 #include <sof/schedule/ll_schedule.h>
@@ -34,6 +35,10 @@
 	trace_event_atomic(TRACE_CLASS_SA, __e, ##__VA_ARGS__)
 #define trace_sa_error(__e, ...) \
 	trace_error(TRACE_CLASS_SA, __e, ##__VA_ARGS__)
+
+/* c63c4e75-8f61-4420-9319-1395932efa9e */
+DECLARE_SOF_UUID("agent-work", agent_work_task_uuid, 0xc63c4e75, 0x8f61, 0x4420,
+		 0x93, 0x19, 0x13, 0x95, 0x93, 0x2e, 0xfa, 0x9e);
 
 static enum task_state validate(void *data)
 {
@@ -80,7 +85,8 @@ void sa_init(struct sof *sof, uint64_t timeout)
 	trace_sa("sa_init(), ticks = %u, sof->sa->warn_timeout = %u, sof->sa->panic_timeout = %u",
 		 ticks, sof->sa->warn_timeout, sof->sa->panic_timeout);
 
-	schedule_task_init_ll(&sof->sa->work, SOF_SCHEDULE_LL_TIMER,
+	schedule_task_init_ll(&sof->sa->work, SOF_UUID(agent_work_task_uuid),
+			      SOF_SCHEDULE_LL_TIMER,
 			      SOF_TASK_PRI_HIGH, validate, sof->sa, 0, 0);
 
 	schedule_task(&sof->sa->work, 0, timeout);

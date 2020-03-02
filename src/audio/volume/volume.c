@@ -50,6 +50,10 @@ static const struct comp_driver comp_volume;
 DECLARE_SOF_UUID("volume", volume_uuid, 0xb77e677e, 0x5ff4, 0x4188,
 		 0xaf, 0x14, 0xfb, 0xa8, 0xbd, 0xbf, 0x86, 0x82);
 
+/* 34dc0385-fc2f-4f7f-82d2-6cee444533e0 */
+DECLARE_SOF_UUID("volume-task", volume_task_uuid, 0x34dc0385, 0xfc2f, 0x4f7f,
+		 0x82, 0xd2, 0x6c, 0xee, 0x44, 0x45, 0x33, 0xe0);
+
 /**
  * \brief Synchronize host mmap() volume with real value.
  * \param[in,out] cd Volume component private data.
@@ -175,7 +179,8 @@ static int vol_task_init(struct comp_dev *dev)
 	if (!cd->volwork)
 		return -ENOMEM;
 
-	ret = schedule_task_init_ll(cd->volwork, SOF_SCHEDULE_LL_TIMER,
+	ret = schedule_task_init_ll(cd->volwork, SOF_UUID(volume_task_uuid),
+				    SOF_SCHEDULE_LL_TIMER,
 				    SOF_TASK_PRI_MED, vol_work, dev,
 				    cpu_get_id(), 0);
 	if (ret < 0) {

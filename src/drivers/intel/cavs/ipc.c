@@ -12,6 +12,7 @@
 #include <sof/lib/mailbox.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/pm_runtime.h>
+#include <sof/lib/uuid.h>
 #include <sof/lib/wait.h>
 #include <sof/list.h>
 #include <sof/platform.h>
@@ -34,6 +35,10 @@
 #define CAVS_IPC_TYPE_S(x)		((x) & CAVS_IPC_TYPE_MASK)
 
 #endif
+
+/* 8fa1d42f-bc6f-464b-867f-547af08834da */
+DECLARE_SOF_UUID("ipc-task", ipc_task_uuid, 0x8fa1d42f, 0xbc6f, 0x464b,
+		 0x86, 0x7f, 0x54, 0x7a, 0xf0, 0x88, 0x34, 0xda);
 
 /* No private data for IPC */
 
@@ -290,7 +295,8 @@ int platform_ipc_init(struct ipc *ipc)
 	ipc_set_drvdata(ipc, NULL);
 
 	/* schedule */
-	schedule_task_init_edf(&ipc->ipc_task, &ipc_task_ops, ipc, 0, 0);
+	schedule_task_init_edf(&ipc->ipc_task, SOF_UUID(ipc_task_uuid),
+			       &ipc_task_ops, ipc, 0, 0);
 
 	/* configure interrupt */
 	irq = interrupt_get_irq(PLATFORM_IPC_INTERRUPT,

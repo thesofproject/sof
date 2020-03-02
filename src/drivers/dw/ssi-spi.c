@@ -16,6 +16,7 @@
 #include <sof/lib/io.h>
 #include <sof/lib/mailbox.h>
 #include <sof/lib/memory.h>
+#include <sof/lib/uuid.h>
 #include <sof/lib/wait.h>
 #include <sof/platform.h>
 #include <sof/schedule/ll_schedule.h>
@@ -27,6 +28,11 @@
 #include <ipc/topology.h>
 #include <stddef.h>
 #include <stdint.h>
+
+/* a417b6fb-459d-4cf9-be65-d38dc9057b80 */
+DECLARE_SOF_UUID("spi-completion", spi_compl_task_uuid, 0xa417b6fb,
+		 0x459d, 0x4cf9,
+		 0xbe, 0x65, 0xd3, 0x8d, 0xc9, 0x05, 0x7b, 0x80);
 
 #define	SPI_REG_CTRLR0		0x00
 #define	SPI_REG_CTRLR1		0x04
@@ -402,7 +408,9 @@ static int spi_slave_init(struct spi *spi)
 
 	spi->completion.private = NULL;
 
-	ret = schedule_task_init_ll(&spi->completion, SOF_SCHEDULE_LL_DMA,
+	ret = schedule_task_init_ll(&spi->completion,
+				    SOF_UUID(spi_compl_task_uuid),
+				    SOF_SCHEDULE_LL_DMA,
 				    SOF_TASK_PRI_MED, spi_completion_work,
 				    spi, 0, 0);
 	if (ret < 0)

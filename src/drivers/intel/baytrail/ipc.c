@@ -12,6 +12,7 @@
 #include <sof/lib/mailbox.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/shim.h>
+#include <sof/lib/uuid.h>
 #include <sof/lib/wait.h>
 #include <sof/list.h>
 #include <sof/platform.h>
@@ -22,6 +23,10 @@
 #include <ipc/topology.h>
 #include <stdbool.h>
 #include <stdint.h>
+
+/* 80ef9faa-a407-47d2-ae50-7973d106489e */
+DECLARE_SOF_UUID("ipc-task", ipc_task_uuid, 0x80ef9faa, 0xa407, 0x47d2,
+		 0xae, 0x50, 0x79, 0x73, 0xd1, 0x06, 0x48, 0x9e);
 
 /* private data for IPC */
 struct ipc_data {
@@ -148,7 +153,8 @@ int platform_ipc_init(struct ipc *ipc)
 	ipc_set_drvdata(ipc, iipc);
 
 	/* schedule */
-	schedule_task_init_edf(&ipc->ipc_task, &ipc_task_ops, ipc, 0, 0);
+	schedule_task_init_edf(&ipc->ipc_task, SOF_UUID(ipc_task_uuid),
+			       &ipc_task_ops, ipc, 0, 0);
 
 #if CONFIG_HOST_PTABLE
 	/* allocate page table buffer */
