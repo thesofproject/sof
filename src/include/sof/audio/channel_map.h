@@ -9,6 +9,7 @@
 #define __SOF_AUDIO_CHANNEL_MAP_H__
 
 #include <ipc/channel_map.h>
+#include <sof/common.h>
 #include <stdint.h>
 
 /* Returns the size of a channel map in bytes */
