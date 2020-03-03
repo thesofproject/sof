@@ -243,7 +243,7 @@ config FORMAT_FLOAT
 
 config FORMAT_CONVERT_HIFI3
 	bool "HIFI3 optimized conversion"
-	default n
+	default y
 	help
 	  Use HIFI3 extensions for optimized format conversion (experimental).
 
