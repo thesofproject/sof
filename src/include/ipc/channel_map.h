@@ -10,7 +10,7 @@
 #define __IPC_CHANNEL_MAP_H__
 
 #include <ipc/header.h>
-#include <sof/common.h>
+#include <sof/compiler_attributes.h>
 #include <stdint.h>
 
 /**
