@@ -243,28 +243,23 @@ static int mixer_trigger(struct comp_dev *dev, int cmd)
 	if (ret == COMP_STATUS_STATE_ALREADY_SET)
 		return PPL_STATUS_PATH_STOP;
 
-	switch (cmd) {
-	case COMP_TRIGGER_START:
-	case COMP_TRIGGER_RELEASE:
-		if (dir == SOF_IPC_STREAM_PLAYBACK &&
-		    mixer_sink_status(dev) == COMP_STATE_ACTIVE)
-			/* no need to go downstream */
-			return PPL_STATUS_PATH_STOP;
-		break;
-	case COMP_TRIGGER_PAUSE:
-	case COMP_TRIGGER_STOP:
-		if (dir == SOF_IPC_STREAM_PLAYBACK &&
-		    mixer_source_status_count(dev, COMP_STATE_ACTIVE) > 0) {
-			dev->state = COMP_STATE_ACTIVE;
-			/* no need to go downstream */
-			return PPL_STATUS_PATH_STOP;
-		}
-		break;
-	default:
-		break;
+	/* nothing else to check for capture streams */
+	if (dir == SOF_IPC_STREAM_CAPTURE)
+		return ret;
+
+	/* don't stop mixer if at least one source is active */
+	if (mixer_source_status_count(dev, COMP_STATE_ACTIVE) &&
+	    (cmd == COMP_TRIGGER_PAUSE || cmd == COMP_TRIGGER_STOP)) {
+		dev->state = COMP_STATE_ACTIVE;
+		ret = PPL_STATUS_PATH_STOP;
+	/* don't stop mixer if at least one source is paused */
+	} else if (mixer_source_status_count(dev, COMP_STATE_PAUSED) &&
+		   cmd == COMP_TRIGGER_STOP) {
+		dev->state = COMP_STATE_PAUSED;
+		ret = PPL_STATUS_PATH_STOP;
 	}
 
-	return 0; /* send cmd downstream */
+	return ret;
 }
 
 /*
