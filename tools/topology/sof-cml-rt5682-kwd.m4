@@ -14,30 +14,12 @@ include(`common/tlv.m4')
 # Include Token library
 include(`sof/tokens.m4')
 
-# Include Cannonlake or Icelake DSP configuration
-ifelse(PLATFORM, `icl', include(`platform/intel/icl.m4'),
-	ifelse(PLATFORM, `whl', include(`platform/intel/cnl.m4'),
-		ifelse(PLATFORM, `cml', include(`platform/intel/cnl.m4'), `')))
-include(`platform/intel/dmic.m4')
+# Include Platform specific DSP configuration
+include(`platform/intel/'PLATFORM`.m4')
 
 define(KWD_PIPE_SCH_DEADLINE_US, 20000)
 
 DEBUG_START
-
-undefine(`SSP_INDEX')
-define(`SSP_INDEX', ifelse(PLATFORM, `icl', `0',
-	ifelse(PLATFORM, `whl', `1',
-		ifelse(PLATFORM, `cml', `0', `'))))
-
-undefine(`SSP_NAME')
-define(`SSP_NAME', ifelse(PLATFORM, `icl', `SSP0-Codec',
-	ifelse(PLATFORM, `whl', `SSP1-Codec',
-		ifelse(PLATFORM, `cml', `SSP0-Codec', `'))))
-
-undefine(`SSP_MCLK_RATE')
-define(`SSP_MCLK_RATE', ifelse(PLATFORM, `icl', `19200000',
-	ifelse(PLATFORM, `whl', `24000000',
-		ifelse(PLATFORM, `cml', `24000000', `'))))
 
 #
 # Define the pipelines

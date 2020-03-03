@@ -14,7 +14,7 @@ include(`common/tlv.m4')
 # Include Token library
 include(`sof/tokens.m4')
 
-# Include Apollolake DSP configuration
+# Include Cannonlake DSP configuration
 include(`platform/intel/cnl.m4')
 
 #
