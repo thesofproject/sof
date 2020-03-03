@@ -14,6 +14,12 @@
 #include <sof/trace/trace.h>
 #include <user/trace.h>
 
+#ifdef CONFIG_IMX8M
+#define SAI_OFS		8
+#else
+#define SAI_OFS		0
+#endif
+
 #define REG_SAI_FORMATS (SNDRV_PCM_FMTBIT_S16_LE |\
 		SNDRV_PCM_FMTBIT_S24_LE |\
 		SNDRV_PCM_FMTBIT_S32_LE |\
@@ -24,12 +30,12 @@
 /* SAI Register Map Register */
 #define REG_SAI_VERID	0x00 /* SAI Version ID Register */
 #define REG_SAI_PARAM	0x04 /* SAI Parameter Register */
-#define REG_SAI_TCSR	0x00 /* SAI Transmit Control */
-#define REG_SAI_TCR1	0x04 /* SAI Transmit Configuration 1 */
-#define REG_SAI_TCR2	0x08 /* SAI Transmit Configuration 2 */
-#define REG_SAI_TCR3	0x0c /* SAI Transmit Configuration 3 */
-#define REG_SAI_TCR4	0x10 /* SAI Transmit Configuration 4 */
-#define REG_SAI_TCR5	0x14 /* SAI Transmit Configuration 5 */
+#define REG_SAI_TCSR	(0x00 + SAI_OFS) /* SAI Transmit Control */
+#define REG_SAI_TCR1	(0x04 + SAI_OFS) /* SAI Transmit Configuration 1 */
+#define REG_SAI_TCR2	(0x08 + SAI_OFS) /* SAI Transmit Configuration 2 */
+#define REG_SAI_TCR3	(0x0c + SAI_OFS) /* SAI Transmit Configuration 3 */
+#define REG_SAI_TCR4	(0x10 + SAI_OFS) /* SAI Transmit Configuration 4 */
+#define REG_SAI_TCR5	(0x14 + SAI_OFS) /* SAI Transmit Configuration 5 */
 #define REG_SAI_TDR0	0x20 /* SAI Transmit Data */
 #define REG_SAI_TDR1	0x24 /* SAI Transmit Data */
 #define REG_SAI_TDR2	0x28 /* SAI Transmit Data */
@@ -52,12 +58,12 @@
 #define REG_SAI_TBCTN	0x78 /* SAI Transmit Bit Counter Register */
 #define REG_SAI_TTCAP	0x7C /* SAI Transmit Timestamp Capture */
 
-#define REG_SAI_RCSR	0x80 /* SAI Receive Control */
-#define REG_SAI_RCR1	0x84 /* SAI Receive Configuration 1 */
-#define REG_SAI_RCR2	0x88 /* SAI Receive Configuration 2 */
-#define REG_SAI_RCR3	0x8c /* SAI Receive Configuration 3 */
-#define REG_SAI_RCR4	0x90 /* SAI Receive Configuration 4 */
-#define REG_SAI_RCR5	0x94 /* SAI Receive Configuration 5 */
+#define REG_SAI_RCSR	(0x80 + SAI_OFS) /* SAI Receive Control */
+#define REG_SAI_RCR1	(0x84 + SAI_OFS) /* SAI Receive Configuration 1 */
+#define REG_SAI_RCR2	(0x88 + SAI_OFS) /* SAI Receive Configuration 2 */
+#define REG_SAI_RCR3	(0x8c + SAI_OFS) /* SAI Receive Configuration 3 */
+#define REG_SAI_RCR4	(0x90 + SAI_OFS) /* SAI Receive Configuration 4 */
+#define REG_SAI_RCR5	(0x94 + SAI_OFS) /* SAI Receive Configuration 5 */
 #define REG_SAI_RDR0	0xa0 /* SAI Receive Data */
 #define REG_SAI_RDR1	0xa4 /* SAI Receive Data */
 #define REG_SAI_RDR2	0xa8 /* SAI Receive Data */
