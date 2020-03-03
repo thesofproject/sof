@@ -119,7 +119,7 @@ audio_stream_get_copy_bytes(const struct audio_stream *source,
  */
 static inline uint32_t audio_stream_frame_bytes(const struct audio_stream *buf)
 {
-	return frame_bytes(buf->frame_fmt, buf->channels);
+	return get_frame_bytes(buf->frame_fmt, buf->channels);
 }
 
 /**
@@ -129,7 +129,7 @@ static inline uint32_t audio_stream_frame_bytes(const struct audio_stream *buf)
  */
 static inline uint32_t audio_stream_sample_bytes(const struct audio_stream *buf)
 {
-	return sample_bytes(buf->frame_fmt);
+	return get_sample_bytes(buf->frame_fmt);
 }
 
 /**

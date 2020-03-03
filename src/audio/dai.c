@@ -66,7 +66,7 @@ static void dai_dma_cb(void *arg, enum notify_id type, void *data)
 	struct dai_data *dd = comp_get_drvdata(dev);
 	uint32_t bytes = next->elem.size;
 	uint32_t sink_bytes;
-	uint32_t samples = bytes / sample_bytes(dd->frame_fmt);
+	uint32_t samples = bytes / get_sample_bytes(dd->frame_fmt);
 	void *buffer_ptr;
 
 	comp_dbg(dev, "dai_dma_cb()");
@@ -275,8 +275,8 @@ static int dai_playback_params(struct comp_dev *dev, uint32_t period_bytes,
 
 	/* set up DMA configuration */
 	config->direction = DMA_DIR_MEM_TO_DEV;
-	config->src_width = sample_bytes(dd->frame_fmt);
-	config->dest_width = sample_bytes(dd->frame_fmt);
+	config->src_width = get_sample_bytes(dd->frame_fmt);
+	config->dest_width = config->src_width;
 	config->cyclic = 1;
 	config->irq_disabled = pipeline_is_timer_driven(dev->pipeline);
 	config->dest_dev = dai_get_handshake(dd->dai, dev->direction,
@@ -340,8 +340,8 @@ static int dai_capture_params(struct comp_dev *dev, uint32_t period_bytes,
 		config->src_width = 4;
 		config->dest_width = 4;
 	} else {
-		config->src_width = sample_bytes(dd->frame_fmt);
-		config->dest_width = sample_bytes(dd->frame_fmt);
+		config->src_width = get_sample_bytes(dd->frame_fmt);
+		config->dest_width = config->src_width;
 	}
 
 	comp_info(dev, "dai_capture_params() src_dev = %d stream_id = %d src_width = %d dest_width = %d",
@@ -435,8 +435,8 @@ static int dai_params(struct comp_dev *dev,
 	}
 
 	/* calculate frame size */
-	frame_size = frame_bytes(dd->frame_fmt,
-				 dd->local_buffer->stream.channels);
+	frame_size = get_frame_bytes(dd->frame_fmt,
+				     dd->local_buffer->stream.channels);
 
 	/* calculate period size */
 	period_bytes = dev->frames * frame_size;
@@ -671,15 +671,15 @@ static int dai_copy(struct comp_dev *dev)
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
 		src_samples = dd->local_buffer->stream.avail /
 			audio_stream_sample_bytes(&dd->local_buffer->stream);
-		sink_samples = free_bytes / sample_bytes(dd->frame_fmt);
+		sink_samples = free_bytes / get_sample_bytes(dd->frame_fmt);
 		copy_bytes = MIN(src_samples, sink_samples) *
-			sample_bytes(dd->frame_fmt);
+			get_sample_bytes(dd->frame_fmt);
 	} else {
-		src_samples = avail_bytes / sample_bytes(dd->frame_fmt);
+		src_samples = avail_bytes / get_sample_bytes(dd->frame_fmt);
 		sink_samples = dd->local_buffer->stream.free /
 			audio_stream_sample_bytes(&dd->local_buffer->stream);
 		copy_bytes = MIN(src_samples, sink_samples) *
-			sample_bytes(dd->frame_fmt);
+			get_sample_bytes(dd->frame_fmt);
 	}
 
 	buffer_unlock(dd->local_buffer, flags);

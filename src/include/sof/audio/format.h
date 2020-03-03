@@ -161,14 +161,15 @@ static inline int32_t sign_extend_s24(int32_t x)
 	return (x << 8) >> 8;
 }
 
-static inline uint32_t sample_bytes(enum sof_ipc_frame fmt)
+static inline uint32_t get_sample_bytes(enum sof_ipc_frame fmt)
 {
 	return fmt == SOF_IPC_FRAME_S16_LE ? 2 : 4;
 }
 
-static inline uint32_t frame_bytes(enum sof_ipc_frame fmt, uint32_t channels)
+static inline uint32_t get_frame_bytes(enum sof_ipc_frame fmt,
+				       uint32_t channels)
 {
-	return sample_bytes(fmt) * channels;
+	return get_sample_bytes(fmt) * channels;
 }
 
 #endif /* __SOF_AUDIO_FORMAT_H__ */
