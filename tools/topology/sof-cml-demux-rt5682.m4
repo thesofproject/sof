@@ -14,18 +14,11 @@ include(`common/tlv.m4')
 # Include Token library
 include(`sof/tokens.m4')
 
-# Include Cannonlake DSP configuration
-include(`platform/intel/cnl.m4')
-include(`platform/intel/dmic.m4')
+# Include platform specific DSP configuration
+include(`platform/intel/'PLATFORM`.m4')
 
 DEBUG_START
 
-undefine(`SSP_INDEX')
-define(`SSP_INDEX', ifelse(PLATFORM, `whl', `1',
-	ifelse(PLATFORM, `cml', `0', `')))
-undefine(`SSP_NAME')
-define(`SSP_NAME', ifelse(PLATFORM, `whl', `SSP1-Codec',
-	ifelse(PLATFORM, `cml', `SSP0-Codec', `')))
 
 #
 # Define the pipelines

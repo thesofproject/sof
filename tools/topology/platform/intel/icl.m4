@@ -36,3 +36,15 @@ W_VENDORTUPLES(pipe_dai_schedule_plat_tokens, sof_sched_tokens,
 		LIST(`		', `SOF_TKN_SCHED_MIPS	"5000"'))
 
 W_DATA(pipe_dai_schedule_plat, pipe_dai_schedule_plat_tokens)
+
+#SSP setting for ICL platform
+undefine(`SSP_INDEX')
+define(`SSP_INDEX', 0)
+
+undefine(`SSP_NAME')
+define(`SSP_NAME', `SSP0-Codec')
+
+undefine(`SSP_MCLK_RATE')
+define(`SSP_MCLK_RATE', `19200000')
+
+include(`platform/intel/dmic.m4')

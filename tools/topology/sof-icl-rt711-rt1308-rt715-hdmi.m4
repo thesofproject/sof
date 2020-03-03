@@ -13,11 +13,8 @@ include(`common/tlv.m4')
 # Include Token library
 include(`sof/tokens.m4')
 
-ifelse(PLATFORM, `icl', include(`platform/intel/icl.m4'),
-	ifelse(PLATFORM, `cml-mono', include(`platform/intel/cnl.m4'),
-		ifelse(PLATFORM, `cml', include(`platform/intel/cnl.m4'), `')))
-
-ifelse(PLATFORM, `cml-mono', `define(`MONO', `')', `')
+# Include Platform specific DSP configuration
+include(`platform/intel/'PLATFORM`.m4')
 
 DEBUG_START
 

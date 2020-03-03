@@ -13,9 +13,8 @@ include(`common/tlv.m4')
 # Include Token library
 include(`sof/tokens.m4')
 
-# Include Apollolake DSP configuration
-include(`platform/intel/bxt.m4')
-include(`platform/intel/dmic.m4')
+# Include IceLake DSP configuration
+include(`platform/intel/icl.m4')
 
 #
 # Define the pipelines

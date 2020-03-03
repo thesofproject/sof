@@ -13,7 +13,7 @@ include(`common/tlv.m4')
 # Include Token library
 include(`sof/tokens.m4')
 
-# Include ICL DSP configuration
+# Include Icelake DSP configuration
 include(`platform/intel/icl.m4')
 
 DEBUG_START

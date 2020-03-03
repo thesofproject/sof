@@ -14,9 +14,8 @@ include(`common/tlv.m4')
 # Include Token library
 include(`sof/tokens.m4')
 
-# Include Cannonlake DSP configuration
-include(`platform/intel/cnl.m4')
-include(`platform/intel/dmic.m4')
+# Include Cometlake DSP configuration
+include(`platform/intel/cml.m4')
 
 DEBUG_START
 
