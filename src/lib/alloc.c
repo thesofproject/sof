@@ -23,8 +23,8 @@
 
 /* debug to set memory value on every allocation */
 #if CONFIG_DEBUG_BLOCK_FREE
-#define DEBUG_BLOCK_FREE_VALUE_8BIT ((uint8_t) 0xa5)
-#define DEBUG_BLOCK_FREE_VALUE_32BIT ((uint32_t) 0xa5a5a5a5)
+#define DEBUG_BLOCK_FREE_VALUE_8BIT ((uint8_t)0xa5)
+#define DEBUG_BLOCK_FREE_VALUE_32BIT ((uint32_t)0xa5a5a5a5)
 #endif
 
 /* We have 3 memory pools
