@@ -48,7 +48,7 @@ static void validate_memory(void *ptr, size_t size)
 	uint32_t *ptr_32 = ptr;
 	int i, not_matching = 0;
 
-	for (i = 0; i < size/4; i++) {
+	for (i = 0; i < size / 4; i++) {
 		if (ptr_32[i] != DEBUG_BLOCK_FREE_VALUE_32BIT)
 			not_matching = 1;
 	}
