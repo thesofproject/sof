@@ -1007,7 +1007,6 @@ void heap_trace(struct mm_heap *heap, int size)
 	int j;
 
 	for (i = 0; i < size; i++) {
-
 		trace_mem_init(" heap: 0x%x size %d blocks %d caps 0x%x",
 			       heap->heap, heap->size, heap->blocks,
 			       heap->caps);
