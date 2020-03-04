@@ -12,6 +12,7 @@
 #include <sof/spinlock.h>
 
 extern struct dma_ops dummy_dma_ops;
+extern struct dma_ops sdma_ops;
 
 SHARED_DATA struct dma dma[PLATFORM_NUM_DMACS] = {
 {
@@ -22,6 +23,21 @@ SHARED_DATA struct dma dma[PLATFORM_NUM_DMACS] = {
 		.channels	= 16,
 	},
 	.ops	= &dummy_dma_ops,
+},
+{
+	.plat_data = {
+		.id		= DMA_ID_SDMA2,
+		/* Note: support is available for MEM_TO_MEM but not
+		 * enabled as it is unneeded
+		 */
+		.dir		= DMA_DIR_MEM_TO_DEV | DMA_DIR_DEV_TO_MEM,
+		.devs		= DMA_DEV_SAI,
+		.base		= SDMA2_BASE,
+		.channels	= 32,
+		.irq		= SDMA2_IRQ,
+		.irq_name	= SDMA2_IRQ_NAME,
+	},
+	.ops	= &sdma_ops,
 },
 };
 
