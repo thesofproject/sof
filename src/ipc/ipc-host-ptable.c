@@ -43,8 +43,13 @@ static int ipc_parse_page_descriptors(uint8_t *page_table,
 
 	elem_array->elems = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
 				    sizeof(struct dma_sg_elem) * ring->pages);
-	if (!elem_array->elems)
+	if (!elem_array->elems) {
+		trace_ipc_error("ipc_parse_page_descriptors() error: "
+		"There is no heap free with this block size: %d",
+		sizeof(struct dma_sg_elem) * ring->pages);
 		return -ENOMEM;
+	}
+
 	elem_array->count = ring->pages;
 
 	for (i = 0; i < ring->pages; i++) {
