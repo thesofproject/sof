@@ -41,7 +41,7 @@ static int alh_get_hw_params(struct dai *dai,
 {
 	/* 0 means variable */
 	params->rate = 0;
-	params->channels = 0;
+	params->channels = 2;
 	params->buffer_fmt = 0;
 	params->frame_fmt = 0;
 
