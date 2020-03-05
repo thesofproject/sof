@@ -200,4 +200,9 @@ define(`DAI_ADD',
 `DEBUG_DAI($3, $4)'
 )
 
+define(`DAI_ADD_SCHED',
+`undefine(`SCHED_COMP')'
+`define(`SCHED_COMP', $13)'
+`DAI_ADD($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)'
+)
 divert(0)dnl
