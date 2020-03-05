@@ -42,6 +42,10 @@ struct ll_schedule_data {
 
 const struct scheduler_ops schedule_ll_ops;
 
+#define perf_ll_sched_trace(pcd, ll_sched)			\
+	trace_ll("perf ll_work peak plat %lu cpu %lu",		\
+		 (pcd)->plat_delta_peak, (pcd)->cpu_delta_peak)
+
 static bool schedule_ll_is_pending(struct ll_schedule_data *sch)
 {
 	struct list_item *tlist;
@@ -171,7 +175,7 @@ static void schedule_ll_tasks_run(void *data)
 	if (schedule_ll_is_pending(sch))
 		schedule_ll_tasks_execute(sch, last_tick);
 
-	perf_cnt_stamp(TRACE_CLASS_SCHEDULE_LL, &sch->pcd, true);
+	perf_cnt_stamp(&sch->pcd, perf_ll_sched_trace, sch);
 
 	spin_lock(&sch->domain->lock);
 

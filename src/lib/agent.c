@@ -36,6 +36,10 @@
 #define trace_sa_error(__e, ...) \
 	trace_error(TRACE_CLASS_SA, __e, ##__VA_ARGS__)
 
+#define perf_sa_trace(pcd, sa)						  \
+	trace_sa("perf sys_load peak plat %lu cpu %lu",  \
+		 (pcd)->plat_delta_peak, (pcd)->cpu_delta_peak)
+
 /* c63c4e75-8f61-4420-9319-1395932efa9e */
 DECLARE_SOF_UUID("agent-work", agent_work_task_uuid, 0xc63c4e75, 0x8f61, 0x4420,
 		 0x93, 0x19, 0x13, 0x95, 0x93, 0x2e, 0xfa, 0x9e);
@@ -49,7 +53,7 @@ static enum task_state validate(void *data)
 	current = platform_timer_get(timer_get());
 	delta = current - sa->last_check;
 
-	perf_cnt_stamp(TRACE_CLASS_SA, &sa->pcd, true);
+	perf_cnt_stamp(&sa->pcd, perf_sa_trace, sa);
 
 	/* panic timeout */
 	if (delta > sa->panic_timeout)
