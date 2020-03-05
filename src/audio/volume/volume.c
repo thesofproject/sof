@@ -367,15 +367,15 @@ static inline int volume_set_chan(struct comp_dev *dev, int chan,
 	 */
 	if (v < VOL_MIN) {
 		/* No need to fail, just trace the event. */
-		comp_err(dev, "volume_set_chan: Limited request %d to min. %d",
-			 v, VOL_MIN);
+		comp_warn(dev, "volume_set_chan: Limited request %d to min. %d",
+			  v, VOL_MIN);
 		v = VOL_MIN;
 	}
 
 	if (v > VOL_MAX) {
 		/* No need to fail, just trace the event. */
-		comp_err(dev, "volume_set_chan: Limited request %d to max. %d",
-			 v, VOL_MAX);
+		comp_warn(dev, "volume_set_chan: Limited request %d to max. %d",
+			  v, VOL_MAX);
 		v = VOL_MAX;
 	}
 
