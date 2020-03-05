@@ -192,9 +192,11 @@ static inline int comp_copy(struct comp_dev *dev)
 	assert(dev->drv->ops.copy);
 
 	/* copy only if we are the owner of the component */
-	if (cpu_is_me(dev->comp.core))
+	if (cpu_is_me(dev->comp.core)) {
+		perf_cnt_init(&dev->pcd);
 		ret = dev->drv->ops.copy(dev);
-
+		perf_cnt_stamp(&dev->pcd, comp_perf_info, dev);
+	}
 	comp_shared_commit(dev);
 
 	return ret;

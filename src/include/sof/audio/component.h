@@ -26,6 +26,7 @@
 #include <sof/lib/cpu.h>
 #include <sof/lib/dai.h>
 #include <sof/lib/memory.h>
+#include <sof/lib/perf_cnt.h>
 #include <sof/math/numbers.h>
 #include <sof/schedule/schedule.h>
 #include <sof/sof.h>
@@ -197,6 +198,9 @@ struct dai_hw_params;
 	trace_dev_dbg(TRACE_CLASS_COMP, trace_comp_get_uid, trace_comp_get_id, \
 		      trace_comp_get_subid, comp_p, __e, ##__VA_ARGS__)
 
+#define comp_perf_info(pcd, comp_p)					\
+	comp_info(comp_p, "perf comp_copy peak plat %lu cpu %lu",	\
+		  (pcd)->plat_delta_peak, (pcd)->cpu_delta_peak)
 
 /** @}*/
 
@@ -434,6 +438,10 @@ struct comp_dev {
 
 	/* private data - core does not touch this */
 	void *priv_data;	/**< private data */
+
+#if CONFIG_PERFORMANCE_COUNTERS
+	struct perf_cnt_data pcd;
+#endif
 
 	/**
 	 * IPC config object header - MUST be at end as it's
