@@ -278,7 +278,7 @@ static int host_trigger(struct comp_dev *dev, int cmd)
 	struct host_data *hd = comp_get_drvdata(dev);
 	int ret = 0;
 
-	comp_info(dev, "host_trigger()");
+	comp_dbg(dev, "host_trigger()");
 
 	ret = comp_set_state(dev, cmd);
 	if (ret < 0)
@@ -331,7 +331,7 @@ static struct comp_dev *host_new(const struct comp_driver *drv,
 	uint32_t dir;
 	int ret;
 
-	comp_cl_info(&comp_host, "host_new()");
+	comp_cl_dbg(&comp_host, "host_new()");
 
 	dev = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
 		      COMP_SIZE(struct sof_ipc_comp_host));
@@ -466,7 +466,7 @@ static int host_params(struct comp_dev *dev,
 	uint32_t align;
 	int err;
 
-	comp_info(dev, "host_params()");
+	comp_dbg(dev, "host_params()");
 
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
 		hd->local_buffer = list_first_item(&dev->bsink_list,
@@ -620,7 +620,7 @@ static int host_prepare(struct comp_dev *dev)
 	struct host_data *hd = comp_get_drvdata(dev);
 	int ret;
 
-	comp_info(dev, "host_prepare()");
+	comp_dbg(dev, "host_prepare()");
 
 	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
 	if (ret < 0)
@@ -663,7 +663,7 @@ static int host_reset(struct comp_dev *dev)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
 
-	comp_info(dev, "host_reset()");
+	comp_dbg(dev, "host_reset()");
 
 	if (hd->chan) {
 		/* remove callback */
