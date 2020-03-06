@@ -203,7 +203,7 @@ static struct comp_dev *volume_new(const struct comp_driver *drv,
 	int i;
 	int ret;
 
-	comp_cl_info(&comp_volume, "volume_new()");
+	comp_cl_dbg(&comp_volume, "volume_new()");
 
 	dev = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
 		      COMP_SIZE(struct sof_ipc_comp_volume));
@@ -493,8 +493,8 @@ static int volume_ctrl_set_cmd(struct comp_dev *dev,
 
 	switch (cdata->cmd) {
 	case SOF_CTRL_CMD_VOLUME:
-		comp_info(dev, "volume_ctrl_set_cmd(), SOF_CTRL_CMD_VOLUME, cdata->comp_id = %u",
-			  cdata->comp_id);
+		comp_dbg(dev, "volume_ctrl_set_cmd(), SOF_CTRL_CMD_VOLUME, cdata->comp_id = %u",
+			 cdata->comp_id);
 		for (j = 0; j < cdata->num_elems; j++) {
 			ch = cdata->chanv[j].channel;
 			val = cdata->chanv[j].value;
@@ -526,8 +526,8 @@ static int volume_ctrl_set_cmd(struct comp_dev *dev,
 		break;
 
 	case SOF_CTRL_CMD_SWITCH:
-		comp_info(dev, "volume_ctrl_set_cmd(), SOF_CTRL_CMD_SWITCH, cdata->comp_id = %u",
-			  cdata->comp_id);
+		comp_dbg(dev, "volume_ctrl_set_cmd(), SOF_CTRL_CMD_SWITCH, cdata->comp_id = %u",
+			 cdata->comp_id);
 		for (j = 0; j < cdata->num_elems; j++) {
 			ch = cdata->chanv[j].channel;
 			val = cdata->chanv[j].value;
@@ -584,8 +584,8 @@ static int volume_ctrl_get_cmd(struct comp_dev *dev,
 
 	if (cdata->cmd == SOF_CTRL_CMD_VOLUME ||
 	    cdata->cmd ==  SOF_CTRL_CMD_SWITCH) {
-		comp_info(dev, "volume_ctrl_get_cmd(), SOF_CTRL_CMD_VOLUME / SOF_CTRL_CMD_SWITCH, cdata->comp_id = %u",
-			  cdata->comp_id);
+		comp_dbg(dev, "volume_ctrl_get_cmd(), SOF_CTRL_CMD_VOLUME / SOF_CTRL_CMD_SWITCH, cdata->comp_id = %u",
+			 cdata->comp_id);
 		for (j = 0; j < cdata->num_elems; j++) {
 			cdata->chanv[j].channel = j;
 			cdata->chanv[j].value = cd->tvolume[j];
@@ -613,7 +613,7 @@ static int volume_cmd(struct comp_dev *dev, int cmd, void *data,
 {
 	struct sof_ipc_ctrl_data *cdata = data;
 
-	comp_info(dev, "volume_cmd()");
+	comp_dbg(dev, "volume_cmd()");
 
 	switch (cmd) {
 	case COMP_CMD_SET_VALUE:
@@ -633,7 +633,7 @@ static int volume_cmd(struct comp_dev *dev, int cmd, void *data,
  */
 static int volume_trigger(struct comp_dev *dev, int cmd)
 {
-	comp_info(dev, "volume_trigger()");
+	comp_dbg(dev, "volume_trigger()");
 
 	return comp_set_state(dev, cmd);
 }
@@ -703,7 +703,7 @@ static int volume_prepare(struct comp_dev *dev)
 	int i;
 	int ret;
 
-	comp_info(dev, "volume_prepare()");
+	comp_dbg(dev, "volume_prepare()");
 
 	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
 	if (ret < 0)
@@ -767,7 +767,7 @@ err:
  */
 static int volume_reset(struct comp_dev *dev)
 {
-	comp_info(dev, "volume_reset()");
+	comp_dbg(dev, "volume_reset()");
 
 	comp_set_state(dev, COMP_TRIGGER_RESET);
 	return 0;
