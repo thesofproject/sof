@@ -133,7 +133,7 @@ static struct comp_dev *dai_new(const struct comp_driver *drv,
 	uint32_t dir, caps, dma_dev;
 	int ret;
 
-	comp_cl_info(&comp_dai, "dai_new()");
+	comp_cl_dbg(&comp_dai, "dai_new()");
 
 	dev = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
 		      COMP_SIZE(struct sof_ipc_comp_dai));
@@ -215,7 +215,7 @@ static inline int dai_comp_get_hw_params(struct comp_dev *dev,
 	struct dai_data *dd = comp_get_drvdata(dev);
 	int ret = 0;
 
-	comp_info(dev, "dai_hw_params()");
+	comp_dbg(dev, "dai_hw_params()");
 
 	/* fetching hw dai stream params */
 	ret = dai_get_hw_params(dd->dai, params, dir);
@@ -387,7 +387,7 @@ static int dai_params(struct comp_dev *dev,
 	uint32_t align;
 	int err;
 
-	comp_info(dev, "dai_params()");
+	comp_dbg(dev, "dai_params()");
 
 	err = dai_verify_params(dev, params);
 	if (err < 0) {
@@ -480,7 +480,7 @@ static int dai_prepare(struct comp_dev *dev)
 	struct dai_data *dd = comp_get_drvdata(dev);
 	int ret = 0;
 
-	comp_info(dev, "dai_prepare()");
+	comp_dbg(dev, "dai_prepare()");
 
 	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
 	if (ret < 0)
@@ -527,7 +527,7 @@ static int dai_reset(struct comp_dev *dev)
 	struct dai_data *dd = comp_get_drvdata(dev);
 	struct dma_sg_config *config = &dd->config;
 
-	comp_info(dev, "dai_reset()");
+	comp_dbg(dev, "dai_reset()");
 
 	dma_sg_free(&config->elem_array);
 
@@ -565,7 +565,7 @@ static int dai_comp_trigger(struct comp_dev *dev, int cmd)
 	struct dai_data *dd = comp_get_drvdata(dev);
 	int ret;
 
-	comp_info(dev, "dai_comp_trigger(), command = %u", cmd);
+	comp_dbg(dev, "dai_comp_trigger(), command = %u", cmd);
 
 	ret = comp_set_state(dev, cmd);
 	if (ret < 0)
@@ -576,7 +576,7 @@ static int dai_comp_trigger(struct comp_dev *dev, int cmd)
 
 	switch (cmd) {
 	case COMP_TRIGGER_START:
-		comp_info(dev, "dai_comp_trigger(), START");
+		comp_dbg(dev, "dai_comp_trigger(), START");
 
 		/* only start the DAI if we are not XRUN handling */
 		if (dd->xrun == 0) {
@@ -624,7 +624,7 @@ static int dai_comp_trigger(struct comp_dev *dev, int cmd)
 		/* fallthrough */
 	case COMP_TRIGGER_PAUSE:
 	case COMP_TRIGGER_STOP:
-		comp_info(dev, "dai_comp_trigger(), PAUSE/STOP");
+		comp_dbg(dev, "dai_comp_trigger(), PAUSE/STOP");
 		ret = dma_stop(dd->chan);
 		dai_trigger(dd->dai, cmd, dev->direction);
 		break;
