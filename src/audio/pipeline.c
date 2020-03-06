@@ -390,7 +390,13 @@ int pipeline_params(struct pipeline *p, struct comp_dev *host,
 	int dir = params->params.direction;
 	int ret;
 
-	pipe_info(p, "pipeline_params()");
+	pipe_info(p, "pipe params dir %d frame_fmt %d buffer_fmt %d rate %d",
+		  params->params.direction, params->params.frame_fmt,
+		  params->params.buffer_fmt, params->params.rate);
+	pipe_info(p, "pipe params stream_tag %d channels %d sample_valid_bytes %d sample_container_bytes %d",
+		  params->params.stream_tag, params->params.channels,
+		  params->params.sample_valid_bytes,
+		  params->params.sample_container_bytes);
 
 	/* settin hw params */
 	data.start = host;
@@ -511,7 +517,7 @@ int pipeline_prepare(struct pipeline *p, struct comp_dev *dev)
 	struct pipeline_data ppl_data;
 	int ret = 0;
 
-	pipe_info(p, "pipeline_prepare()");
+	pipe_info(p, "pipe prepare");
 
 	ppl_data.start = dev;
 
@@ -639,7 +645,7 @@ int pipeline_trigger(struct pipeline *p, struct comp_dev *host, int cmd)
 	struct pipeline_data data;
 	int ret;
 
-	pipe_info(p, "pipeline_trigger()");
+	pipe_info(p, "pipe trigger cmd %d", cmd);
 
 	/* handle pipeline global checks before going into each components */
 	if (p->xrun_bytes) {
@@ -710,7 +716,7 @@ int pipeline_reset(struct pipeline *p, struct comp_dev *host)
 {
 	int ret = 0;
 
-	pipe_info(p, "pipeline_reset()");
+	pipe_info(p, "pipe reset");
 
 	ret = pipeline_comp_reset(host, NULL, p, host->direction);
 	if (ret < 0) {
