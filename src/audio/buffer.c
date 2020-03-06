@@ -23,7 +23,7 @@ struct comp_buffer *buffer_alloc(uint32_t size, uint32_t caps, uint32_t align)
 {
 	struct comp_buffer *buffer;
 
-	trace_buffer("buffer_alloc()");
+	tracev_buffer("buffer_alloc()");
 
 	/* validate request */
 	if (size == 0 || size > HEAP_BUFFER_SIZE) {
@@ -127,7 +127,7 @@ void buffer_free(struct comp_buffer *buffer)
 		.buffer = buffer,
 	};
 
-	trace_buffer_with_ids(buffer, "buffer_free()");
+	tracev_buffer_with_ids(buffer, "buffer_free()");
 
 	notifier_event(buffer, NOTIFIER_ID_BUFFER_FREE,
 		       NOTIFIER_TARGET_CORE_LOCAL, &cb_data, sizeof(cb_data));
