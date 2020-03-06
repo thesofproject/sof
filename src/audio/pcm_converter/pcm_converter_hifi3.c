@@ -52,6 +52,10 @@ static void pcm_convert_s16_to_s24(const struct audio_stream *source,
 	ae_int32x2 *out32x2;
 	int i = 0;
 
+	/* nothing to do */
+	if (!samples)
+		return;
+
 	/* required alignment for AE_L16X4_XC */
 	while (!IS_ALIGNED((uintptr_t)in, 8)) {
 		/* set source as circular buffer */
@@ -152,6 +156,10 @@ static void pcm_convert_s24_to_s16(const struct audio_stream *source,
 	ae_valign align_out = AE_ZALIGN64();
 	int i = 0;
 	int leftover;
+
+	/* nothing to do */
+	if (!samples)
+		return;
 
 	/* required alignment for AE_L32X2_XC */
 	if (!IS_ALIGNED((uintptr_t)in, 8)) {
@@ -257,6 +265,10 @@ static void pcm_convert_s16_to_s32(const struct audio_stream *source,
 	ae_int32x2 *out32x2;
 	int i = 0;
 
+	/* nothing to do */
+	if (!samples)
+		return;
+
 	/* required alignment for AE_L16X4_XC */
 	while (!IS_ALIGNED((uintptr_t)in, 8)) {
 		/* set source as circular buffer */
@@ -337,6 +349,10 @@ static void pcm_convert_s32_to_s16(const struct audio_stream *source,
 	ae_valign align_out = AE_ZALIGN64();
 	int i = 0;
 	int leftover;
+
+	/* nothing to do */
+	if (!samples)
+		return;
 
 	/* required alignment for AE_L32X2_XC */
 	if (!IS_ALIGNED((uintptr_t)in, 8)) {
@@ -436,6 +452,10 @@ static void pcm_convert_s24_to_s32(const struct audio_stream *source,
 	ae_valign align_out = AE_ZALIGN64();
 	int i;
 
+	/* nothing to do */
+	if (!samples)
+		return;
+
 	/* required alignment for AE_L32X2_XC */
 	if (!IS_ALIGNED((uintptr_t)in, 8)) {
 		/* set source as circular buffer */
@@ -521,6 +541,10 @@ static void pcm_convert_s32_to_s24(const struct audio_stream *source,
 	ae_int32x2 sample = AE_ZERO32();
 	ae_valign align_out = AE_ZALIGN64();
 	int i;
+
+	/* nothing to do */
+	if (!samples)
+		return;
 
 	/* required alignment for AE_L32X2_XC */
 	if (!IS_ALIGNED((uintptr_t)in, 8)) {
