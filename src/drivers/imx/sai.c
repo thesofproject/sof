@@ -320,6 +320,19 @@ static int sai_get_fifo(struct dai *dai, int direction, int stream_id)
 	}
 }
 
+static int sai_get_hw_params(struct dai *dai,
+			     struct sof_ipc_stream_params *params,
+			     int dir)
+{
+	/* SAI only currently supports these parameters */
+	params->rate = 48000;
+	params->channels = 2;
+	params->buffer_fmt = 0;
+	params->frame_fmt = SOF_IPC_FRAME_S32_LE;
+
+	return 0;
+}
+
 const struct dai_driver sai_driver = {
 	.type = SOF_DAI_IMX_SAI,
 	.dma_dev = DMA_DEV_SAI,
@@ -331,5 +344,6 @@ const struct dai_driver sai_driver = {
 		.probe			= sai_probe,
 		.get_handshake		= sai_get_handshake,
 		.get_fifo		= sai_get_fifo,
+		.get_hw_params		= sai_get_hw_params,
 	},
 };
