@@ -1520,9 +1520,9 @@ static void dmic_irq_handler(void *data)
 	dai_info(dai, "dmic_irq_handler(), OUTSTAT1 = %u", val1);
 
 	if (val0 & OUTSTAT0_ROR_BIT)
-		dai_err(dai, "dmic_irq_handler() error: full fifo A or PDM overrrun");
+		dai_err(dai, "dmic_irq_handler() error: full fifo A or PDM overrun");
 	if (val1 & OUTSTAT1_ROR_BIT)
-		dai_err(dai, "dmic_irq_handler() error: full fifo B or PDM overrrun");
+		dai_err(dai, "dmic_irq_handler() error: full fifo B or PDM overrun");
 }
 
 static int dmic_probe(struct dai *dai)
