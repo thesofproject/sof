@@ -1519,10 +1519,15 @@ static void dmic_irq_handler(void *data)
 	dai_info(dai, "dmic_irq_handler(), OUTSTAT0 = %u", val0);
 	dai_info(dai, "dmic_irq_handler(), OUTSTAT1 = %u", val1);
 
-	if (val0 & OUTSTAT0_ROR_BIT)
+	if (val0 & OUTSTAT0_ROR_BIT) {
 		dai_err(dai, "dmic_irq_handler() error: full fifo A or PDM overrun");
-	if (val1 & OUTSTAT1_ROR_BIT)
+		dai_write(dai, OUTSTAT0, val0);
+	}
+
+	if (val1 & OUTSTAT1_ROR_BIT) {
 		dai_err(dai, "dmic_irq_handler() error: full fifo B or PDM overrun");
+		dai_write(dai, OUTSTAT1, val1);
+	}
 }
 
 static int dmic_probe(struct dai *dai)
