@@ -426,6 +426,19 @@ static int esai_get_fifo(struct dai *dai, int direction, int stream_id)
 	}
 }
 
+static int esai_get_hw_params(struct dai *dai,
+			      struct sof_ipc_stream_params *params,
+			      int dir)
+{
+	/* ESAI only currently supports these parameters */
+	params->rate = 48000;
+	params->channels = 2;
+	params->buffer_fmt = 0;
+	params->frame_fmt = SOF_IPC_FRAME_S24_4LE;
+
+	return 0;
+}
+
 const struct dai_driver esai_driver = {
 	.type = SOF_DAI_IMX_ESAI,
 	.dma_dev = DMA_DEV_ESAI,
@@ -437,5 +450,6 @@ const struct dai_driver esai_driver = {
 		.probe			= esai_probe,
 		.get_handshake		= esai_get_handshake,
 		.get_fifo		= esai_get_fifo,
+		.get_hw_params		= esai_get_hw_params,
 	},
 };
