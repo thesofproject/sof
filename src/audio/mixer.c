@@ -121,7 +121,7 @@ static struct comp_dev *mixer_new(const struct comp_driver *drv,
 	struct mixer_data *md;
 	int ret;
 
-	comp_cl_info(&comp_mixer, "mixer_new()");
+	comp_cl_dbg(&comp_mixer, "mixer_new()");
 
 	dev = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
 		      COMP_SIZE(struct sof_ipc_comp_mixer));
@@ -152,7 +152,7 @@ static void mixer_free(struct comp_dev *dev)
 {
 	struct mixer_data *md = comp_get_drvdata(dev);
 
-	comp_info(dev, "mixer_free()");
+	comp_dbg(dev, "mixer_free()");
 
 	rfree(md);
 	rfree(dev);
@@ -182,7 +182,7 @@ static int mixer_params(struct comp_dev *dev,
 	uint32_t period_bytes;
 	int err;
 
-	comp_info(dev, "mixer_params()");
+	comp_dbg(dev, "mixer_params()");
 
 	err = mixer_verify_params(dev, params);
 	if (err < 0) {
@@ -239,7 +239,7 @@ static int mixer_trigger(struct comp_dev *dev, int cmd)
 	int dir = dev->pipeline->source_comp->direction;
 	int ret;
 
-	comp_info(dev, "mixer_trigger()");
+	comp_dbg(dev, "mixer_trigger()");
 
 	ret = comp_set_state(dev, cmd);
 	if (ret < 0)
@@ -356,7 +356,7 @@ static int mixer_reset(struct comp_dev *dev)
 	struct list_item *blist;
 	struct comp_buffer *source;
 
-	comp_info(dev, "mixer_reset()");
+	comp_dbg(dev, "mixer_reset()");
 
 	list_for_item(blist, &dev->bsource_list) {
 		source = container_of(blist, struct comp_buffer, sink_list);
@@ -387,7 +387,7 @@ static int mixer_prepare(struct comp_dev *dev)
 	int downstream = 0;
 	int ret;
 
-	comp_info(dev, "mixer_prepare()");
+	comp_dbg(dev, "mixer_prepare()");
 
 	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
 			       source_list);
