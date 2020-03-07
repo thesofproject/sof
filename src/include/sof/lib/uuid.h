@@ -8,7 +8,7 @@
 #ifndef __SOF_LIB_UUID_H__
 #define __SOF_LIB_UUID_H__
 
-#include <stdint.h>
+#include <sof/common.h>
 
 #define UUID_SIZE 16
 
@@ -41,7 +41,7 @@ struct sof_uuid {
 #define DECLARE_SOF_UUID(entity_name, uuid_name,			\
 			 va, vb, vc,					\
 			 vd0, vd1, vd2, vd3, vd4, vd5, vd6, vd7)	\
-	__attribute__((section(".static_uuids")))			\
+	__section(".static_uuids")					\
 	static const struct {						\
 		struct sof_uuid id;					\
 		uint32_t name_len;					\
