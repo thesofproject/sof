@@ -39,23 +39,23 @@
 #define IPC_IDCCTL		0x50
 
 /* IDCTFC */
-#define IPC_IDCTFC_BUSY		(1 << 31)
+#define IPC_IDCTFC_BUSY		BIT(31)
 #define IPC_IDCTFC_MSG_MASK	0x7FFFFFFF
 
 /* IDCTEFC */
 #define IPC_IDCTEFC_MSG_MASK	0x3FFFFFFF
 
 /* IDCITC */
-#define IPC_IDCITC_BUSY		(1 << 31)
+#define IPC_IDCITC_BUSY		BIT(31)
 #define IPC_IDCITC_MSG_MASK	0x7FFFFFFF
 
 /* IDCIETC */
-#define IPC_IDCIETC_DONE	(1 << 30)
+#define IPC_IDCIETC_DONE	BIT(30)
 #define IPC_IDCIETC_MSG_MASK	0x3FFFFFFF
 
 /* IDCCTL */
 #define IPC_IDCCTL_IDCIDIE(x)	(0x100 << (x))
-#define IPC_IDCCTL_IDCTBIE(x)	(0x1 << (x))
+#define IPC_IDCCTL_IDCTBIE(x)	BIT(x)
 
 #define IRQ_CPU_OFFSET	0x40
 
@@ -105,10 +105,10 @@
 #define SHIM_DSPWCT0C		0x30 /* DSP Wall Clock Timer 0 Compare */
 #define SHIM_DSPWCT1C		0x38 /* DSP Wall Clock Timer 1 Compare */
 
-#define SHIM_DSPWCTCS_T1T	(0x1 << 5) /* Timer 1 triggered */
-#define SHIM_DSPWCTCS_T0T	(0x1 << 4) /* Timer 0 triggered */
-#define SHIM_DSPWCTCS_T1A	(0x1 << 1) /* Timer 1 armed */
-#define SHIM_DSPWCTCS_T0A	(0x1 << 0) /* Timer 0 armed */
+#define SHIM_DSPWCTCS_T1T	BIT(5) /* Timer 1 triggered */
+#define SHIM_DSPWCTCS_T0T	BIT(4) /* Timer 0 triggered */
+#define SHIM_DSPWCTCS_T1A	BIT(1) /* Timer 1 armed */
+#define SHIM_DSPWCTCS_T0A	BIT(0) /* Timer 0 armed */
 
 /** \brief Clock control */
 #define SHIM_CLKCTL		0x78
@@ -129,6 +129,7 @@
 					 SHIM_CLKCTL_TCPLCG_DIS(1) | \
 					 SHIM_CLKCTL_TCPLCG_DIS(2) | \
 					 SHIM_CLKCTL_TCPLCG_DIS(3))
+
 /** \brief Oscillator Clock Select*/
 #define SHIM_CLKCTL_OCS_HP_RING		BIT(2)
 #define SHIM_CLKCTL_OCS_LP_RING		0
@@ -145,19 +146,19 @@
 #define SHIM_CLKCTL_TCPLCG(x)		(0x1 << (16 + x))
 
 /* Core clock PLL divisor */
-#define SHIM_CLKCTL_DPCS_MASK(x)	(0x1 << 2)
+#define SHIM_CLKCTL_DPCS_MASK(x)	BIT(2)
 
 /* Prevent Audio PLL Shutdown */
-#define SHIM_CLKCTL_TCPAPLLS	(0x1 << 7)
+#define SHIM_CLKCTL_TCPAPLLS	BIT(7)
 
 /* 0--from PLL, 1--from oscillator */
-#define SHIM_CLKCTL_HDCS	(0x1 << 4)
+#define SHIM_CLKCTL_HDCS	BIT(4)
 
 /* Oscillator select */
-#define SHIM_CLKCTL_HDOCS	(0x1 << 2)
+#define SHIM_CLKCTL_HDOCS	BIT(2)
 
 /* HP memory clock PLL divisor */
-#define SHIM_CLKCTL_HPMPCS	(0x1 << 0)
+#define SHIM_CLKCTL_HPMPCS	BIT(0)
 
 /** \brief Mask for requesting clock
  */
@@ -234,37 +235,37 @@
 #define SHIM_LDOCTL_LPSRAM_MASK	(3 << 2)
 #define SHIM_LDOCTL_HPSRAM_LDO_ON	(3 << 0)
 #define SHIM_LDOCTL_LPSRAM_LDO_ON	(3 << 2)
-#define SHIM_LDOCTL_HPSRAM_LDO_BYPASS	(1 << 0)
-#define SHIM_LDOCTL_LPSRAM_LDO_BYPASS	(1 << 2)
+#define SHIM_LDOCTL_HPSRAM_LDO_BYPASS	BIT(0)
+#define SHIM_LDOCTL_LPSRAM_LDO_BYPASS	BIT(2)
 #define SHIM_LDOCTL_HPSRAM_LDO_OFF	(0 << 0)
 #define SHIM_LDOCTL_LPSRAM_LDO_OFF	(0 << 2)
 
 #define DSP_INIT_LPGPDMA(x)	(0x71A60 + (2*x))
-#define LPGPDMA_CTLOSEL_FLAG	(1 << 15)
-#define LPGPDMA_CHOSEL_FLAG	(0xFF)
+#define LPGPDMA_CTLOSEL_FLAG	BIT(15)
+#define LPGPDMA_CHOSEL_FLAG	0xFF
 
 #define DSP_INIT_IOPO	0x71A68
-#define IOPO_DMIC_FLAG		(1 << 0)
+#define IOPO_DMIC_FLAG		BIT(0)
 #define IOPO_I2S_FLAG		MASK(DAI_NUM_SSP_BASE + DAI_NUM_SSP_EXT + 7, 8)
 
 #define DSP_INIT_GENO	0x71A6C
-#define GENO_MDIVOSEL		(1 << 1)
-#define GENO_DIOPTOSEL		(1 << 2)
+#define GENO_MDIVOSEL		BIT(1)
+#define GENO_DIOPTOSEL		BIT(2)
 
 #define DSP_INIT_ALHO	0x71A70
-#define ALHO_ASO_FLAG		(1 << 0)
-#define ALHO_CSO_FLAG		(1 << 1)
-#define ALHO_CFO_FLAG		(1 << 2)
+#define ALHO_ASO_FLAG		BIT(0)
+#define ALHO_CSO_FLAG		BIT(1)
+#define ALHO_CFO_FLAG		BIT(2)
 
 #define SHIM_SVCFG			0xF4
-#define SHIM_SVCFG_FORCE_L1_EXIT	(0x1 << 1)
+#define SHIM_SVCFG_FORCE_L1_EXIT	BIT(1)
 
 /* host windows */
 #define DMWBA(x)		(HOST_WIN_BASE(x) + 0x0)
 #define DMWLO(x)		(HOST_WIN_BASE(x) + 0x4)
 
-#define DMWBA_ENABLE		(1 << 0)
-#define DMWBA_READONLY		(1 << 1)
+#define DMWBA_ENABLE		BIT(0)
+#define DMWBA_READONLY		BIT(1)
 
 /* DMIC power ON bit */
 #define DMICLCTL_SPA	((uint32_t) BIT(0))
