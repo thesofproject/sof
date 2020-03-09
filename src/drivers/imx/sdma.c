@@ -87,6 +87,8 @@ static int sdma_run_c0(struct dma *dma, uint8_t cmd, uint32_t buf_addr, uint16_t
 	dcache_writeback_region(c0data->descriptors, sizeof(c0data->descriptors[0]));
 	dcache_writeback_region(c0data->ccb, sizeof(*c0data->ccb));
 
+	sdma_set_overrides(c0, true, false);
+	int ovr = dma_reg_read(dma, SDMA_HOSTOVR);
 	ret = dma_start(&dma->chan[0]);
 
 	if (ret < 0)
@@ -95,9 +97,12 @@ static int sdma_run_c0(struct dma *dma, uint8_t cmd, uint32_t buf_addr, uint16_t
 	/* 1 is BIT(0) for channel 0, the bit will be cleared as the
 	 * channel finishes
 	 */
-	ret = poll_for_register_delay(dma_base(dma) + SDMA_STOP_STAT, 1, 0, 500);
+	ret = poll_for_register_delay(dma_base(dma) + SDMA_STOP_STAT, 1, 0, 400000);
 	if (ret >= 0)
 		ret = 0;
+
+	int ovr2 = dma_reg_read(dma, SDMA_HOSTOVR);
+	trace_sdma_error("ovr=%d, ovr2=%d", ovr, ovr2);
 
 	/* Switch to dynamic context if needed */
 	if ((dma_reg_read(dma, SDMA_CONFIG) & SDMA_CONFIG_CSM_MSK) == SDMA_CONFIG_CSM_STATIC)
@@ -116,10 +121,15 @@ static void sdma_register_init(struct dma *dma) {
 #else
 	dma_reg_update_bits(dma, SDMA_CONFIG, SDMA_CONFIG_CSM_MSK | SDMA_CONFIG_ACR, 0);
 #endif
+	/* Set 32-word scratch memory size */
+	dma_reg_update_bits(dma, SDMA_CHN0ADDR, BIT(14), BIT(14));
 	for (int i = 0; i < SDMA_HWEVENTS_COUNT; i++)
 		dma_reg_write(dma, SDMA_CHNENBL(i), 0);
 	struct sdma_ccb *ccb_arr = (((struct sdma_pdata *)dma_get_drvdata(dma))->ccb_array);
+	trace_sdma_error("ccb_arr is 0x%08x", (uint32_t)ccb_arr);
 	dma_reg_write(dma, SDMA_MC0PTR, (uint32_t)ccb_arr);
+	trace_sdma_error("After write we got 0x%08x",
+			 dma_reg_read(dma, SDMA_MC0PTR));
 }
 
 static int sdma_boot(struct dma *dma) {
@@ -130,6 +140,9 @@ static int sdma_boot(struct dma *dma) {
 
 static int sdma_upload_context(struct dma_chan_data *chan) {
 	struct sdma_chan *pdata = dma_chan_get_data(chan);
+
+	/* Ensure context is ready for upload */
+	dcache_writeback_region(pdata->ctx, sizeof(*pdata->ctx));
 
 	/* Last parameters are unneeded for this command and are ignored;
 	 * set to 0.
@@ -144,11 +157,16 @@ static int sdma_download_context(struct dma_chan_data *chan) {
 	/* Last parameters are unneeded for this command and are ignored;
 	 * set to 0.
 	 */
-	return sdma_run_c0(chan->dma, SDMA_CMD_C0_GETCTX(chan->index), (uint32_t)pdata->ctx, 0, 0);
+	int ret = sdma_run_c0(chan->dma, SDMA_CMD_C0_GETCTX(chan->index), (uint32_t)pdata->ctx, 0, 0);
+	dcache_invalidate_region(pdata->ctx, sizeof(*pdata->ctx));
+
+	return ret;
 }
 
 static int sdma_upload_contexts_all(struct dma *dma) {
 	struct sdma_pdata *pdata = dma_get_drvdata(dma);
+
+	dcache_writeback_region(pdata->contexts, sizeof(*pdata->contexts));
 
 	return sdma_run_c0(dma, SDMA_CMD_C0_SET_DM, (uint32_t)pdata->contexts, SDMA_SRAM_CONTEXTS_BASE, dma->plat_data.channels * sizeof(*pdata->contexts) / 4); /* Division by 4 because count is in words and not in bytes */
 }
@@ -156,7 +174,11 @@ static int sdma_upload_contexts_all(struct dma *dma) {
 static int sdma_download_contexts_all(struct dma *dma) {
 	struct sdma_pdata *pdata = dma_get_drvdata(dma);
 
-	return sdma_run_c0(dma, SDMA_CMD_C0_GET_DM, (uint32_t)pdata->contexts, SDMA_SRAM_CONTEXTS_BASE, dma->plat_data.channels * sizeof(*pdata->contexts) / 4); /* Division by 4 because count is in words and not in bytes */
+	int ret = sdma_run_c0(dma, SDMA_CMD_C0_GET_DM, (uint32_t)pdata->contexts, SDMA_SRAM_CONTEXTS_BASE, dma->plat_data.channels * sizeof(*pdata->contexts) / 4); /* Division by 4 because count is in words and not in bytes */
+
+	dcache_invalidate_region(pdata->contexts, sizeof(*pdata->contexts));
+
+	return ret;
 }
 
 // TODO
@@ -169,6 +191,10 @@ static void sdma_shutdown(struct dma *dma) {
 	trace_sdma_error("SDMA: Shutdown, TODO");
 }
 
+static void irqhdnlr(void *data) {
+	trace_sdma_error("SDMA interrupt works");
+}
+
 /* Below SOF related functions will be placed */
 
 static int sdma_probe(struct dma *dma)
@@ -176,6 +202,8 @@ static int sdma_probe(struct dma *dma)
 	int channel;
 	int ret;
 	struct sdma_pdata *pdata;
+
+	interrupt_register(interrupt_get_irq(dma_irq(dma), dma_irq_name(dma)), irqhdnlr, dma);
 
 	if (dma->chan) {
 		trace_sdma_error("SDMA: Repeated probe");
@@ -298,6 +326,8 @@ static struct dma_chan_data *sdma_channel_get(struct dma *dma, unsigned chan) {
 
 		channel->status = COMP_STATE_READY;
 		dma_chan_set_data(channel, cdata);
+		/* Allow events, allow manual */
+		sdma_set_overrides(channel, false, true);
 		return channel;
 	}
 	trace_sdma_error("sdma no channel free");
@@ -316,11 +346,14 @@ static void sdma_set_event(struct dma_chan_data *channel, int eventnum) {
 	if (eventnum < -1 || eventnum > SDMA_HWEVENTS_COUNT)
 		return;
 	sdma_clear_event(channel);
-	if (eventnum == -1)
+	if (eventnum == -1) {
+		sdma_set_overrides(channel, true, false);
 		return;
+	}
 	struct sdma_chan *pdata = dma_chan_get_data(channel);
 	dma_reg_update_bits(channel->dma, SDMA_CHNENBL(eventnum), BIT(channel->index), BIT(channel->index));
 	pdata->hw_event = eventnum;
+	sdma_set_overrides(channel, false, true);
 }
 
 static int sdma_interrupt(struct dma_chan_data *channel, enum dma_irq_cmd cmd);
@@ -329,7 +362,7 @@ static void sdma_channel_put(struct dma_chan_data *channel) {
 	if (channel->status == COMP_STATE_INIT)
 		return; /* Channel was already free */
 	sdma_interrupt(channel, DMA_IRQ_CLEAR);
-	sdma_set_overrides(channel, true, false);
+	sdma_set_overrides(channel, false, false);
 	sdma_clear_event(channel);
 	channel->status = COMP_STATE_INIT;
 }
@@ -345,6 +378,9 @@ static int sdma_start(struct dma_chan_data *channel)
 		dma_reg_update_bits(channel->dma, SDMA_HOSTOVR, BIT(channel->index), BIT(channel->index));
 	else
 		dma_reg_write(channel->dma, SDMA_HSTART, BIT(channel->index));
+
+	/* Set a runnable channel priority */
+	dma_reg_write(channel->dma, SDMA_CHNPRI(channel->index), SDMA_DEFPRI);
 
 	return 0;
 }
@@ -391,8 +427,11 @@ static int sdma_copy(struct dma_chan_data *channel, int bytes, uint32_t flags) {
 	 */
 	struct sdma_chan *pdata = dma_chan_get_data(channel);
 
-	for (int i = 0; i < pdata->descriptor_count; i++)
+	for (int i = 0; i < pdata->descriptor_count; i++) {
+		dcache_invalidate_region(&pdata->descriptors[i].config, sizeof(pdata->descriptors[i].config));
 		pdata->descriptors[i].config |= SDMA_BD_DONE;
+		dcache_writeback_region(&pdata->descriptors[i].config, sizeof(pdata->descriptors[i].config));
+	}
 	return 0;
 }
 
@@ -431,6 +470,7 @@ static int sdma_status(struct dma_chan_data *channel, struct dma_chan_status *st
 // TODO
 static int sdma_set_config(struct dma_chan_data *channel, struct dma_sg_config *config) {
 	struct sdma_chan *pdata = dma_chan_get_data(channel);
+	int handshake;
 
 	/* Data to store in the descriptors:
 	 * 1) Each descriptor corresponds to each of the
@@ -467,9 +507,11 @@ static int sdma_set_config(struct dma_chan_data *channel, struct dma_sg_config *
 	switch (config->direction) {
 	case DMA_DIR_MEM_TO_DEV:
 		src_may_change = true; dst_may_change = false;
+		handshake = config->dest_dev;
 		break;
 	case DMA_DIR_DEV_TO_MEM:
 		src_may_change = false; dst_may_change = true;
+		handshake = config->src_dev;
 		break;
 	case DMA_DIR_MEM_TO_MEM:
 		/* Fallthrough, TODO implement if desired, both are true */
@@ -508,24 +550,24 @@ static int sdma_set_config(struct dma_chan_data *channel, struct dma_sg_config *
 	 * stored, upload context and have everything be ready.
 	 */
 
-	/* TODO fetch HW event number and proper watermark */
-	int hwevent = -1;
-	int watermark = 16;
+	/* The handshake currently only contains the hardware channel
+	 * number itself.
+	 */
+	int hwevent = handshake;
+
+	int watermark = config->burst_elems;
 
 	for (int i = 0; i < config->elem_array.count; i++) {
 		pdata->descriptors[i].buf_xaddr = 0;
+		pdata->descriptors[i].buf_addr = config->elem_array.elems[i].src;
 		if (!src_may_change)
 			pdata->descriptors[i].buf_addr = config->elem_array.elems[i].dest;
-		if (!dst_may_change)
-			pdata->descriptors[i].buf_addr = config->elem_array.elems[i].src;
 		if (src_may_change && dst_may_change) {
 			/* M2M copy */
-			pdata->descriptors[i].buf_addr = config->elem_array.elems[i].src;
 			pdata->descriptors[i].buf_xaddr = config->elem_array.elems[i].dest;
 		}
-		int width = 32;
-		if (!src_may_change)
-			width = config->src_width;
+		int width = config->src_width;
+
 		if (!dst_may_change)
 			width = config->dest_width;
 		pdata->descriptors[i].config =
@@ -603,8 +645,11 @@ static int sdma_set_config(struct dma_chan_data *channel, struct dma_sg_config *
 	/* Context uploaded, we can set up events now */
 	sdma_set_event(channel, hwevent);
 
-	trace_sdma_error("sdma_set_config unimplemented");
-	return -EINVAL;
+	/* Finally set channel priority */
+
+	dma_reg_write(channel->dma, SDMA_CHNPRI(channel->index), SDMA_DEFPRI);
+
+	return 0;
 }
 
 static int sdma_pm_context_store(struct dma *dma) {
