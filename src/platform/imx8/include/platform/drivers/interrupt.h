@@ -77,6 +77,39 @@
  */
 int irqstr_get_sof_int(int irqstr_int);
 
+#if defined CONFIG_IMX8
+#define IRQSTR_BASE_ADDR	0x510A0000
+#elif defined CONFIG_IMX8X
+#define IRQSTR_BASE_ADDR	0x51080000
+#else
+#error "Unsupported i.MX8 platform detected"
+#endif
+
+/* The MASK, SET (unused) and STATUS registers are 512-bit registers
+ * split into 16 32-bit registers that we can directly access.
+ *
+ * The interrupts are mapped in the registers in the following way:
+ * Interrupts 480-511 at offset 0
+ * Interrupts 448-479 at offset 1
+ * Interrupts 416-447 at offset 2
+ * ...
+ * Interrupts 64-95 at offset 13
+ * Interrupts 32-63 at offset 14
+ * Interrupts 0-31 at offset 15
+ */
+
+#define IRQSTR_CHANCTL			0x00
+#define IRQSTR_CH_MASK(n)		(0x04 + 0x04 * (15 - (n)))
+#define IRQSTR_CH_SET(n)		(0x44 + 0x04 * (15 - (n)))
+#define IRQSTR_CH_STATUS(n)		(0x84 + 0x04 * (15 - (n)))
+#define IRQSTR_MASTER_DISABLE		0xC4
+#define IRQSTR_MASTER_STATUS		0xC8
+
+#define IRQSTR_RESERVED_IRQS_NUM	32
+#define IRQSTR_IRQS_NUM			512
+#define IRQSTR_IRQS_REGISTERS_NUM	16
+#define IRQSTR_IRQS_PER_LINE		64
+
 #endif /* __PLATFORM_DRIVERS_INTERRUPT_H__ */
 
 #else

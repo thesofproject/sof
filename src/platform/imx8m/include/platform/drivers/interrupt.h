@@ -61,8 +61,18 @@
 /* 32 HW interrupts + 8 IRQ_STEER lines each with 64 interrupts */
 #define PLATFORM_IRQ_HW_NUM	XCHAL_NUM_INTERRUPTS
 #define PLATFORM_IRQ_CHILDREN	64 /* Each cascaded struct covers 64 IRQs */
-/* IMX: Covered steer IRQs are modulo-64 aligned. */
-#define PLATFORM_IRQ_FIRST_CHILD  0
+/* On the i.MX8MP there are no reserved interrupts in the IRQ_STEER controller,
+ * so we have to revert to the usual behavior of moving the IRQ_STEER interrupts
+ * after the hardware interrupts.
+ *
+ * On i.MX8QXP and i.MX8QM this value is 0 so as to hide the reserved initial
+ * 32 interrupts by overlapping them with the hardware interrupts.
+ *
+ * In practice this means that the IRQ_STEER interrupt numbers do not match the
+ * SOF internal interrupt numbers exactly; rather IRQ_STEER interrupt 0 will be
+ * known as interrupt number 32 within SOF.
+ */
+#define PLATFORM_IRQ_FIRST_CHILD  PLATFORM_IRQ_HW_NUM
 
 /* irqstr_get_sof_int() - Convert IRQ_STEER interrupt to SOF logical
  * interrupt
@@ -76,6 +86,35 @@
  * Return: SOF interrupt number
  */
 int irqstr_get_sof_int(int irqstr_int);
+
+#define IRQSTR_BASE_ADDR	0x30A80000
+
+/* The MASK, SET (unused) and STATUS registers are 160-bit registers
+ * split into 5 32-bit registers that we can directly access.
+ *
+ * The interrupts are mapped in the registers in the following way:
+ * Interrupts 0-31 at offset 0
+ * Interrupts 32-63 at offset 1
+ * Interrupts 64-95 at offset 2
+ * Interrupts 96-127 at offset 3
+ * Interrupts 128-159 at offset 4
+ */
+
+/* This register is only there for HW compatibility; on this platform it
+ * does nothing.
+ */
+#define IRQSTR_CHANCTL			0x00
+
+#define IRQSTR_CH_MASK(n)		(0x04 + 0x04 * (n))
+#define IRQSTR_CH_SET(n)		(0x18 + 0x04 * (n))
+#define IRQSTR_CH_STATUS(n)		(0x2C + 0x04 * (n))
+#define IRQSTR_MASTER_DISABLE		0x40
+#define IRQSTR_MASTER_STATUS		0x44
+
+#define IRQSTR_RESERVED_IRQS_NUM	0
+#define IRQSTR_IRQS_NUM			160
+#define IRQSTR_IRQS_REGISTERS_NUM	5
+#define IRQSTR_IRQS_PER_LINE		64
 
 #endif /* __PLATFORM_DRIVERS_INTERRUPT_H__ */
 

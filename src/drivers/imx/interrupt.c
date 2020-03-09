@@ -70,18 +70,6 @@
  * usage in this driver.
  */
 
-#if defined CONFIG_IMX8
-#define IRQSTR_BASE_ADDR	0x510A0000
-#endif
-
-#if defined CONFIG_IMX8X
-#define IRQSTR_BASE_ADDR	0x51080000
-#endif
-
-#if defined CONFIG_IMX8M
-#define IRQSTR_BASE_ADDR	0x30A80000
-#endif
-
 /* The MASK, SET (unused) and STATUS registers are 512-bit registers
  * split into 16 32-bit registers that we can directly access.
  *
@@ -89,34 +77,16 @@
  * IRQSTR_CH_MASK(IRQSTR_INT_REG(irq)) (MASK can be replaced by SET or
  * STATUS).
  *
- * The interrupts are mapped in the registers in the following way:
- * Interrupts 480-511 at offset 0
- * Interrupts 448-479 at offset 1
- * Interrupts 416-447 at offset 2
- * ...
- * Interrupts 64-95 at offset 13
- * Interrupts 32-63 at offset 14
- * Interrupts 0-31 at offset 15
+ * The interrupt mapping to registers is defined in
+ * platform/drivers/interrupt.h for each platform.
  *
  * The IRQSTR_CH_* macros perform the second part of this calculation
  * (offset) automatically.
  */
 
-#define IRQSTR_CHANCTL			0x00
-#define IRQSTR_CH_MASK(n)		(0x04 + 0x04 * (15 - (n)))
-#define IRQSTR_CH_SET(n)		(0x44 + 0x04 * (15 - (n)))
-#define IRQSTR_CH_STATUS(n)		(0x84 + 0x04 * (15 - (n)))
-#define IRQSTR_MASTER_DISABLE		0xC4
-#define IRQSTR_MASTER_STATUS		0xC8
-
 #define IRQSTR_INT_REG(irq)		((irq) / 32)
 #define IRQSTR_INT_BIT(irq)		((irq) % 32)
 #define IRQSTR_INT_MASK(irq)		(1 << IRQSTR_INT_BIT(irq))
-
-#define IRQSTR_RESERVED_IRQS_NUM	32
-#define IRQSTR_IRQS_NUM			512
-#define IRQSTR_IRQS_REGISTERS_NUM	16
-#define IRQSTR_IRQS_PER_LINE		64
 
 /* HW register access helper methods */
 
@@ -191,7 +161,7 @@ static void irqstr_unmask_int(uint32_t irq)
 
 /* SOF specific part of the driver */
 
-/* Quirk of the driver in SOF:
+/* Quirk of the driver in SOF (Quirk is specific to 8QXP/8QM):
  * -> Interrupts 0-31 are hardware
  * -> Interrupts 32-63 are unusable, as they are reserved in irqstr. We
  *  will never get an event on these shared interrupt lines.
