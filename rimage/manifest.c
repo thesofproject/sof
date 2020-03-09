@@ -127,9 +127,16 @@ static uint32_t elf_to_file_offset(struct image *image,
 				   struct sof_man_module *man_module,
 				   Elf32_Shdr *section)
 {
-	uint32_t elf_addr = section->vaddr, file_offset = 0;
+	uint32_t elf_addr = section->vaddr, file_offset = 0, i;
 
 	if (section->type == SHT_PROGBITS) {
+		/* check programs for lma/vma change */
+		for (i = 0; i < module->hdr.phnum; i++) {
+			if (section->vaddr == module->prg[i].vaddr) {
+				elf_addr = module->prg[i].paddr;
+				break;
+			}
+		}
 		if (section->flags & SHF_EXECINSTR) {
 			/* text segment */
 			file_offset = elf_addr - module->text_start +
