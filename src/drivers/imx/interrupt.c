@@ -159,11 +159,10 @@ static void irqstr_disable_hw(void)
  */
 static uint32_t irqstr_get_status_word(uint32_t index)
 {
-	/* First 32 interrupts are reserved, we just give 0 */
-	if (!index)
+	if (index < IRQSTR_RESERVED_IRQS_NUM / 32)
 		return 0;
 	/* On out of range for our platform, be silent */
-	if (index > 15)
+	if (index >= IRQSTR_IRQS_REGISTERS_NUM)
 		return 0;
 	return irqstr_read(IRQSTR_CH_STATUS(index));
 }
