@@ -142,9 +142,6 @@
 #define SHIM_CLKCTL_HMCS_DIV2	0
 #define SHIM_CLKCTL_HMCS_DIV4	BIT(0)
 
-/* LP GPDMA Force Dynamic Clock Gating bits, 0--enable */
-#define SHIM_CLKCTL_TCPLCG(x)		(0x1 << (16 + x))
-
 /* Core clock PLL divisor */
 #define SHIM_CLKCTL_DPCS_MASK(x)	BIT(2)
 

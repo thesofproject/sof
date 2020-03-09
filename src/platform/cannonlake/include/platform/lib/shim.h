@@ -130,7 +130,7 @@
 					 SHIM_CLKCTL_TCPLCG_DIS(2) | \
 					 SHIM_CLKCTL_TCPLCG_DIS(3))
 
-/* Core clock PLL divisor */
+/** \brief Core clock PLL divisor */
 #define SHIM_CLKCTL_DPCS_MASK(x)	BIT(2)
 
 /** \brief DMIC Force Dynamic Clock Gating */
@@ -147,6 +147,21 @@
 /** \brief HP Memory Clock Select */
 #define SHIM_CLKCTL_HMCS_DIV2	0
 #define SHIM_CLKCTL_HMCS_DIV4	BIT(0)
+
+/* Core clock PLL divisor */
+#define SHIM_CLKCTL_DPCS_MASK(x)	BIT(2)
+
+/* Prevent Audio PLL Shutdown */
+#define SHIM_CLKCTL_TCPAPLLS	BIT(7)
+
+/* 0--from PLL, 1--from oscillator */
+#define SHIM_CLKCTL_HDCS	BIT(4)
+
+/* Oscillator select */
+#define SHIM_CLKCTL_HDOCS	BIT(2)
+
+/* HP memory clock PLL divisor */
+#define SHIM_CLKCTL_HPMPCS	BIT(0)
 
 /** \brief Mask for requesting clock
  */
@@ -204,12 +219,12 @@
 #define HSRMCTL0		0x71D14
 #define HSPGISTS0		0x71D18
 
+#define SHIM_HSPGCTL(x)		(HSPGCTL0 + 0x10 * (x))
+#define SHIM_HSPGISTS(x)	(HSPGISTS0 + 0x10 * (x))
+
 #define HSPGCTL1		0x71D20
 #define HSRMCTL1		0x71D24
 #define HSPGISTS1		0x71D28
-
-#define SHIM_HSPGCTL(x)	(HSPGCTL0 + 0x10 * (x))
-#define SHIM_HSPGISTS(x)	(HSPGISTS0 + 0x10 * (x))
 
 #define LSPGCTL			0x71D50
 #define LSRMCTL			0x71D54
