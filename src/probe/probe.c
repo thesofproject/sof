@@ -311,14 +311,15 @@ int probe_deinit(void)
 	}
 
 	if (_probe->ext_dma.stream_tag != PROBE_DMA_INVALID) {
-		tracev_probe("probe_deinit() Freeing extraction DMA.");
+		tracev_probe("probe_deinit() Freeing task and extraction DMA.");
+		schedule_task_free(&_probe->dmap_work);
 		err = probe_dma_deinit(&_probe->ext_dma);
 		if (err < 0)
 			return err;
 	}
 
+	sof_get()->probe = NULL;
 	rfree(_probe);
-	_probe = NULL;
 
 	return 0;
 }
