@@ -72,7 +72,8 @@ W_DATA(capture_pga_conf, capture_pga_tokens)
 W_PCM_CAPTURE(PCM_ID, Sound Trigger Capture, 0, 2, 2)
 
 # "Volume" has x source and 2 sink periods
-W_PGA(0, PIPELINE_FORMAT, 2, DAI_PERIODS, capture_pga_conf, LIST(`		', "PIPELINE_ID KWD Capture Volume"))
+W_PGA(0, PIPELINE_FORMAT, 2, DAI_PERIODS, capture_pga_conf, SCHEDULE_CORE,
+	LIST(`		', "PIPELINE_ID KWD Capture Volume"))
 
 # "KPBM" has 2 source and 2 sink periods
 W_KPBM(0, PIPELINE_FORMAT, 2, 2, PIPELINE_ID, LIST(`             ', "KPB"))

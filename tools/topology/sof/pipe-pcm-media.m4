@@ -55,7 +55,8 @@ W_DATA(playback_pga_conf, playback_pga_tokens)
 W_PCM_PLAYBACK(PCM_ID, Media Playback, 2, 0, SCHEDULE_CORE)
 
 # "Playback Volume" has 3 sink period and 2 source periods for host ping-pong
-W_PGA(0, PIPELINE_FORMAT, 3, 2, playback_pga_conf, LIST(`		', "PIPELINE_ID PCM PCM_ID Playback Volume"))
+W_PGA(0, PIPELINE_FORMAT, 3, 2, playback_pga_conf, SCHEDULE_CORE,
+	LIST(`		', "PIPELINE_ID PCM PCM_ID Playback Volume"))
 
 # "SRC 0" has 3 sink and source periods.
 W_SRC(0, PIPELINE_FORMAT, 3, 3, media_src_conf)

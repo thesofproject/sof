@@ -63,7 +63,7 @@ W_DATA(MY_SRC_CONF, MY_SRC_TOKENS)
 W_SRC(0, PIPELINE_FORMAT, 3, 3, MY_SRC_CONF)
 
 # "Volume" has x source and 3 sink periods
-W_PGA(0, PIPELINE_FORMAT, DAI_PERIODS, 3, MY_PGA_CONF,
+W_PGA(0, PIPELINE_FORMAT, DAI_PERIODS, 3, MY_PGA_CONF, SCHEDULE_CORE,
 	LIST(`		', "PIPELINE_ID Master Capture Volume"))
 
 # Capture Buffers

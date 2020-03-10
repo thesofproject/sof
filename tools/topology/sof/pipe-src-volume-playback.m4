@@ -57,7 +57,8 @@ LIST(`		', `SOF_TKN_VOLUME_RAMP_STEP_TYPE	"0"'
 W_DATA(playback_pga_conf, playback_pga_tokens)
 
 # "Volume" has 3 source and x sink periods
-W_PGA(0, PIPELINE_FORMAT, DAI_PERIODS, 3, playback_pga_conf, LIST(`		', "PIPELINE_ID Master Playback Volume"))
+W_PGA(0, PIPELINE_FORMAT, DAI_PERIODS, 3, playback_pga_conf, SCHEDULE_CORE,
+	 LIST(`		', "PIPELINE_ID Master Playback Volume"))
 
 # Playback Buffers
 W_BUFFER(0, COMP_BUFFER_SIZE(3,
