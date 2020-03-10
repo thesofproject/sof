@@ -208,11 +208,16 @@ enum comp_endpoint_type {
 	COMP_ENDPOINT_NODE	/**< No dma connection */
 };
 
- /* \brief Type of component copy, which can be changed on runtime */
+/**
+ * \brief Type of next dma copy mode, changed on runtime.
+ *
+ * Supported by host as COMP_ATTR_COPY_TYPE parameter
+ * to comp_set_attribute().
+ */
 enum comp_copy_type {
-	COMP_COPY_NORMAL = 0,
-	COMP_COPY_BLOCKING,
-	COMP_COPY_ONE_SHOT,
+	COMP_COPY_NORMAL = 0,	/**< Normal */
+	COMP_COPY_BLOCKING,	/**< Blocking */
+	COMP_COPY_ONE_SHOT,	/**< One-shot */
 };
 
 struct comp_driver;
@@ -292,15 +297,15 @@ struct comp_driver {
 	struct comp_ops ops;	/**< component operations */
 };
 
-/* \brief Holds constant pointer to component driver */
+/** \brief Holds constant pointer to component driver */
 struct comp_driver_info {
 	const struct comp_driver *drv;	/**< pointer to component driver */
 	struct list_item list;		/**< list of component drivers */
 };
 
-/* \brief Holds list of registered components' drivers */
+/** \brief Holds list of registered components' drivers */
 struct comp_driver_list {
-	struct list_item list;	/* list of component drivers */
+	struct list_item list;	/**< list of component drivers */
 };
 
 /**
@@ -335,11 +340,10 @@ struct comp_dev {
 				  *  across cores
 				  */
 
-	/** common runtime configuration for downstream/upstream */
+	/* common runtime configuration for downstream/upstream */
 	uint32_t direction;	/**< enum sof_ipc_stream_direction */
 
-	/** driver */
-	const struct comp_driver *drv;
+	const struct comp_driver *drv;	/**< driver */
 
 	/* lists */
 	struct list_item bsource_list;	/**< list of source buffers */
@@ -595,6 +599,7 @@ static inline int comp_params(struct comp_dev *dev,
  * Fetch hardware stream parameters - only mandatory for DAI components.
  * @param dev Component device.
  * @param params hw parameters
+ * @param dir Pipeline direction (see enum sof_ipc_stream_direction).
  * @return 0 if succeeded, error code otherwise.
  */
 static inline int comp_dai_get_hw_params(struct comp_dev *dev,
