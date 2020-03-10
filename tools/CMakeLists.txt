@@ -14,6 +14,7 @@ project(SOF_TOOLS C)
 
 set(SOF_ROOT_SOURCE_DIRECTORY "${PROJECT_SOURCE_DIR}/..")
 
+add_subdirectory(probes)
 add_subdirectory(logger)
 add_subdirectory(ctl)
 add_subdirectory(topology)
