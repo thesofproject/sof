@@ -36,7 +36,9 @@ uint32_t lock_dbg_atomic;
 /** \brief Debug locks per user. */
 uint32_t lock_dbg_user[DBG_LOCK_USERS] = {0};
 #endif
-
+#if CONFIG_NO_SLAVE_CORE_ROM
+SHARED_DATA void *shared_vecbase_ptr;
+#endif
 /** \brief Core context for master core. */
 static struct core_context master_core_ctx;
 

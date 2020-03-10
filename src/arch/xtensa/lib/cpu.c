@@ -38,6 +38,43 @@ extern struct xtos_core_data *core_data_ptr[PLATFORM_CORE_COUNT];
 
 static uint32_t active_cores_mask;
 
+#if CONFIG_NO_SLAVE_CORE_ROM
+extern void *shared_vecbase_ptr;
+extern void _WindowOverflow4;
+
+/**
+ * \brief This function will allocate memory for shared slave cores
+ *	  dynamic vectors and set global pointer shared_vecbase_ptr
+ */
+static void alloc_shared_slave_cores_objects(void)
+{
+	uint8_t *dynamic_vectors;
+
+	dynamic_vectors = rzalloc(SOF_MEM_ZONE_RUNTIME, SOF_MEM_FLAG_SHARED, 0,
+				  SOF_DYNAMIC_VECTORS_SIZE);
+	if (dynamic_vectors == NULL)
+		panic(SOF_IPC_PANIC_MEM);
+
+	shared_vecbase_ptr = dynamic_vectors;
+	dcache_writeback_invalidate_region(shared_vecbase_ptr,
+					   SOF_DYNAMIC_VECTORS_SIZE);
+}
+
+/**
+ * \brief This function will copy dynamic vectors from _WindowOverflow4
+ *	  to shared shared_vecbase_ptr used in alternate reset vector
+ */
+static void unpack_dynamic_vectors(void)
+{
+	void *dyn_vec_start_addr = (void *)(&_WindowOverflow4);
+
+	memcpy_s(shared_vecbase_ptr, SOF_DYNAMIC_VECTORS_SIZE,
+		 dyn_vec_start_addr, SOF_DYNAMIC_VECTORS_SIZE);
+	dcache_writeback_invalidate_region(shared_vecbase_ptr,
+					   SOF_DYNAMIC_VECTORS_SIZE);
+}
+#endif
+
 int arch_cpu_enable_core(int id)
 {
 	struct idc_msg power_up = {
@@ -56,6 +93,13 @@ int arch_cpu_enable_core(int id)
 		/* enable IDC interrupt for the the slave core */
 		idc_enable_interrupts(id, cpu_get_id());
 
+#if CONFIG_NO_SLAVE_CORE_ROM
+		/* unpack dynamic vectors if it is the first slave core */
+		if (active_cores_mask == 0) {
+			alloc_shared_slave_cores_objects();
+			unpack_dynamic_vectors();
+		}
+#endif
 		/* send IDC power up message */
 		ret = idc_send_msg(&power_up, IDC_POWER_UP);
 		if (ret < 0)
@@ -76,6 +120,13 @@ void arch_cpu_disable_core(int id)
 		idc_send_msg(&power_down, IDC_NON_BLOCKING);
 
 		active_cores_mask ^= (1 << id);
+#if CONFIG_NO_SLAVE_CORE_ROM
+		/* free shared dynamic vectors it was the last slave core */
+		if (active_cores_mask == 0) {
+			rfree(shared_vecbase_ptr);
+			shared_vecbase_ptr = NULL;
+		}
+#endif
 	}
 }
 
