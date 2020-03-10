@@ -119,16 +119,28 @@ struct dai_hw_params;
 /** \name Trace macros
  *  @{
  */
+
+/** \brief Retrieves uid from the component driver */
 #define trace_comp_drv_get_uid(drv_p) ((drv_p)->uid)
+
+/** \brief Retrieves id (-1 = undefined) from the component driver */
 #define trace_comp_drv_get_id(drv_p) (-1)
+
+/** \brief Retrieves subid (-1 = undefined) from the component driver */
 #define trace_comp_drv_get_subid(drv_p) (-1)
 
+/** \brief Retrieves uid from the component device */
 #define trace_comp_get_uid(comp_p) ((comp_p)->drv->uid)
+
+/** \brief Retrieves id (pipe id) from the component device */
 #define trace_comp_get_id(comp_p) ((comp_p)->comp.pipeline_id)
+
+/** \brief Retrieves subid (comp id) from the component device */
 #define trace_comp_get_subid(comp_p) ((comp_p)->comp.id)
 
 /* class (driver) level (no device object) tracing */
 
+/** \brief Trace error message from component driver (no comp instance) */
 #define comp_cl_err(drv_p, __e, ...)		\
 	trace_dev_err(TRACE_CLASS_COMP,		\
 		      trace_comp_drv_get_uid,	\
@@ -137,6 +149,7 @@ struct dai_hw_params;
 		      drv_p,			\
 		      __e, ##__VA_ARGS__)
 
+/** \brief Trace warning message from component driver (no comp instance) */
 #define comp_cl_warn(drv_p, __e, ...)		\
 	trace_dev_warn(TRACE_CLASS_COMP,	\
 		       trace_comp_drv_get_uid,	\
@@ -145,6 +158,7 @@ struct dai_hw_params;
 		       drv_p,			\
 		       __e, ##__VA_ARGS__)
 
+/** \brief Trace info message from component driver (no comp instance) */
 #define comp_cl_info(drv_p, __e, ...)		\
 	trace_dev_info(TRACE_CLASS_COMP,	\
 		       trace_comp_drv_get_uid,	\
@@ -153,6 +167,7 @@ struct dai_hw_params;
 		       drv_p,			\
 		       __e, ##__VA_ARGS__)
 
+/** \brief Trace debug message from component driver (no comp instance) */
 #define comp_cl_dbg(drv_p, __e, ...)		\
 	trace_dev_dbg(TRACE_CLASS_COMP,		\
 		      trace_comp_drv_get_uid,	\
@@ -163,18 +178,22 @@ struct dai_hw_params;
 
 /* device tracing */
 
+/** \brief Trace error message from component device */
 #define comp_err(comp_p, __e, ...)					\
 	trace_dev_err(TRACE_CLASS_COMP, trace_comp_get_uid, trace_comp_get_id, \
 		      trace_comp_get_subid, comp_p, __e, ##__VA_ARGS__)
 
+/** \brief Trace warning message from component device */
 #define comp_warn(comp_p, __e, ...)					\
 	trace_dev_warn(TRACE_CLASS_COMP, trace_comp_get_uid, trace_comp_get_id,\
 		       trace_comp_get_subid, comp_p, __e, ##__VA_ARGS__)
 
+/** \brief Trace info message from component device */
 #define comp_info(comp_p, __e, ...)					\
 	trace_dev_info(TRACE_CLASS_COMP, trace_comp_get_uid, trace_comp_get_id,\
 		       trace_comp_get_subid, comp_p, __e, ##__VA_ARGS__)
 
+/** \brief Trace debug message from component device */
 #define comp_dbg(comp_p, __e, ...)					\
 	trace_dev_dbg(TRACE_CLASS_COMP, trace_comp_get_uid, trace_comp_get_id, \
 		      trace_comp_get_subid, comp_p, __e, ##__VA_ARGS__)
