@@ -110,6 +110,10 @@ void comp_unregister(struct comp_driver_info *drv)
 	irq_local_enable(flags);
 }
 
+/* NOTE: Keep the component state diagram up to date:
+ * sof-docs/developer_guides/firmware/components/images/comp-dev-states.pu
+ */
+
 int comp_set_state(struct comp_dev *dev, int cmd)
 {
 	int requested_state = comp_get_requested_state(cmd);
