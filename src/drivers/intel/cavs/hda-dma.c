@@ -50,7 +50,9 @@
 #define DGCS_GEN	BIT(26)
 #define DGCS_FWCB	BIT(23)
 #define DGCS_BSC	BIT(11)
-#define DGCS_BOR	BIT(10) /* buffer overrun */
+/* NOTE: both XRUN bits are the same, just direction is different */
+#define DGCS_BOR	BIT(10) /* buffer overrun (input streams) */
+#define DGCS_BUR	BIT(10) /* buffer underrun (output streams) */
 #define DGCS_BF		BIT(9)  /* buffer full */
 #define DGCS_BNE	BIT(8)  /* buffer not empty */
 #define DGCS_FIFORDY	BIT(5)  /* enable FIFO */
@@ -778,19 +780,14 @@ static int hda_dma_remove(struct dma *dma)
 
 static int hda_dma_link_check_xrun(struct dma_chan_data *chan)
 {
-	uint32_t dgcs;
+	uint32_t dgcs = dma_chan_reg_read(chan, DGCS);
 
-	if (chan->direction == DMA_DIR_MEM_TO_DEV ||
-	    chan->direction == DMA_DIR_DEV_TO_MEM) {
-		/* check for link xruns */
-		dgcs = dma_chan_reg_read(chan, DGCS);
-		if (dgcs & DGCS_BOR) {
-			trace_hddma_error("hda_dma_link_check_xrun() error: "
-					  "xrun detected");
-			dma_chan_reg_update_bits(chan, DGCS, DGCS_BOR,
-						 DGCS_BOR);
-			return -ENODATA;
-		}
+	if (chan->direction == DMA_DIR_MEM_TO_DEV && dgcs & DGCS_BUR) {
+		trace_hddma_error("hda_dma_link_check_xrun() error: underrun detected");
+		dma_chan_reg_update_bits(chan, DGCS, DGCS_BUR, DGCS_BUR);
+	} else if (chan->direction == DMA_DIR_DEV_TO_MEM && dgcs & DGCS_BOR) {
+		trace_hddma_error("hda_dma_link_check_xrun() error: overrun detected");
+		dma_chan_reg_update_bits(chan, DGCS, DGCS_BOR, DGCS_BOR);
 	}
 
 	return 0;
