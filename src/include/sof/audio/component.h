@@ -213,11 +213,11 @@ struct dai_hw_params;
 
 /** @}*/
 
-/* \brief Type of endpoint this component is connected to in a pipeline */
+/** \brief Type of endpoint this component is connected to in a pipeline */
 enum comp_endpoint_type {
-	COMP_ENDPOINT_HOST,
-	COMP_ENDPOINT_DAI,
-	COMP_ENDPOINT_NODE
+	COMP_ENDPOINT_HOST,	/**< Connected to host dma */
+	COMP_ENDPOINT_DAI,	/**< Connected to dai dma */
+	COMP_ENDPOINT_NODE	/**< No dma connection */
 };
 
  /* \brief Type of component copy, which can be changed on runtime */
@@ -888,7 +888,11 @@ static inline int comp_get_requested_state(int cmd)
 	return state;
 }
 
-/* \brief Returns comp_endpoint_type of given component */
+/**
+ * \brief Returns endpoint type of given component.
+ * @param dev Component device
+ * @return Endpoint type, one of comp_endpoint_type.
+ */
 static inline int comp_get_endpoint_type(struct comp_dev *dev)
 {
 	switch (dev_comp_type(dev)) {
