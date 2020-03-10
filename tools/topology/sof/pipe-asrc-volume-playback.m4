@@ -34,7 +34,7 @@ C_CONTROLMIXER(Master Playback Volume, PIPELINE_ID,
 
 # Host "ASRC Playback" PCM
 # with 2 sink and 0 source periods
-W_PCM_PLAYBACK(PCM_ID, ASRC Playback, 2, 0)
+W_PCM_PLAYBACK(PCM_ID, ASRC Playback, 2, 0, SCHEDULE_CORE)
 
 #
 # ASRC Configuration

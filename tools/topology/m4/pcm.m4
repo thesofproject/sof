@@ -6,7 +6,7 @@ dnl PCM name)
 define(`N_PCMP', `PCM'$1`P')
 define(`N_PCMC', `PCM'$1`C')
 
-dnl W_PCM_PLAYBACK(pcm, stream, periods_sink, periods_source)
+dnl W_PCM_PLAYBACK(pcm, stream, periods_sink, periods_source, core)
 dnl  PCM platform configuration
 define(`W_PCM_PLAYBACK',
 `SectionVendorTuples."'N_PCMP($1)`_tuples_w_comp" {'
@@ -14,6 +14,7 @@ define(`W_PCM_PLAYBACK',
 `	tuples."word" {'
 `		SOF_TKN_COMP_PERIOD_SINK_COUNT'		STR($3)
 `		SOF_TKN_COMP_PERIOD_SOURCE_COUNT'	STR($4)
+`		SOF_TKN_COMP_CORE_ID'			STR($5)
 `	}'
 `}'
 `SectionData."'N_PCMP($1)`_data_w_comp" {'

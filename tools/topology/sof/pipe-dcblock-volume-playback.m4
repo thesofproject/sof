@@ -61,7 +61,7 @@ include(`dcblock_coef_default.m4')
 
 # Host "Passthrough Playback" PCM
 # with 2 sink and 0 source periods
-W_PCM_PLAYBACK(PCM_ID, Passthrough Playback, 2, 0)
+W_PCM_PLAYBACK(PCM_ID, Passthrough Playback, 2, 0, SCHEDULE_CORE)
 
 
 # "Volume" has 2 source and x sink periods
