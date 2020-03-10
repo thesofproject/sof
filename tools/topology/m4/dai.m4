@@ -4,18 +4,19 @@ include(`debug.m4')
 
 dnl Define macros for DAI IN/OUT widgets and DAI config
 
-dnl DAI name)
+dnl N_DAI(name)
 define(`N_DAI', DAI_NAME)
 define(`N_DAI_OUT', DAI_NAME`.OUT')
 define(`N_DAI_IN', DAI_NAME`.IN')
 
-dnl W_DAI_OUT(type, index, dai_link, format, periods_sink, periods_source)
+dnl W_DAI_OUT(type, index, dai_link, format, periods_sink, periods_source, core)
 define(`W_DAI_OUT',
 `SectionVendorTuples."'N_DAI_OUT`_tuples_w_comp" {'
 `	tokens "sof_comp_tokens"'
 `	tuples."word" {'
 `		SOF_TKN_COMP_PERIOD_SINK_COUNT'		STR($5)
 `		SOF_TKN_COMP_PERIOD_SOURCE_COUNT'	STR($6)
+`		SOF_TKN_COMP_CORE_ID'			STR($7)
 `	}'
 `}'
 `SectionData."'N_DAI_OUT`_data_w_comp" {'
