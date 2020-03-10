@@ -150,6 +150,7 @@ config TIGERLAKE
 	select CAVS
 	select CAVS_VERSION_2_5
 	select WAITI_DELAY
+	select NO_SLAVE_CORE_ROM
 	help
 	  Select if your target platform is Tigerlake-compatible
 
