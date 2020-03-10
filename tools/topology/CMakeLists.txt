@@ -120,6 +120,7 @@ set(TPLGS
 	"sof-jsl-da7219\;sof-jsl-da7219\;-DPLATFORM=jsl"
 	"sof-jsl-da7219\;sof-jsl-da7219-mx98360a\;-DPLATFORM=jsl-dedede"
 	"sof-imx8mp-wm8960\;sof-imx8mp-wm8960"
+	"sof-tgl-nocodec-mux-8ch\;sof-tgl-nocodec-mux-8ch"
 )
 
 add_custom_target(topologies ALL)
