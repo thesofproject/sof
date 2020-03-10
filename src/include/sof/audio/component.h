@@ -51,47 +51,16 @@ struct dai_hw_params;
  *  @{
  */
 
+/* NOTE: Keep the component state diagram up to date:
+ * sof-docs/developer_guides/firmware/components/images/comp-dev-states.pu
+ */
+
 /** \name Audio Component States
  *  @{
  */
-
-/**
- * States may transform as below:-
- * \verbatim
- *                                  +---------------------------------------+
- *                                  |                                       |
- *                            -------------                                 |
- *                   pause    |           |    stop                         |
- *              +-------------| ACTIVITY  |---------------+                 |
- *              |             |           |               |      prepare    |
- *              |             -------------               |   +---------+   |
- *              |                ^     ^                  |   |         |   |
- *              |                |     |                  |   |         |   |
- *              v                |     |                  v   |         |   |
- *       -------------           |     |             -------------      |   |
- *       |           |   release |     |   start     |           |      |   |
- *       |   PAUSED  |-----------+     +-------------|  PREPARE  |<-----+   |
- *       |           |                               |           |          |
- *       -------------                               -------------          |
- *              |                                      ^     ^              |
- *              |               stop                   |     |              |
- *              +--------------------------------------+     |              |
- *                                                           | prepare      |
- *                            -------------                  |              |
- *                            |           |                  |              |
- *                ----------->|   READY   |------------------+              |
- *                    reset   |           |                                 |
- *                            -------------                                 |
- *                                  ^                                       |
- *                                  |                 xrun                  |
- *                                  +---------------------------------------+
- *
- * \endverbatim
- */
-
 #define COMP_STATE_INIT		0	/**< Component being initialised */
-#define COMP_STATE_READY	1       /**< Component inactive, but ready */
-#define COMP_STATE_SUSPEND	2       /**< Component suspended */
+#define COMP_STATE_READY	1	/**< Component inactive, but ready */
+#define COMP_STATE_SUSPEND	2	/**< Component suspended */
 #define COMP_STATE_PREPARE	3	/**< Component prepared */
 #define COMP_STATE_PAUSED	4	/**< Component paused */
 #define COMP_STATE_ACTIVE	5	/**< Component active */
@@ -551,6 +520,19 @@ static inline void comp_shared_commit(struct comp_dev *dev)
  * @param dev Component device.
  * @param cmd Command, one of <i>COMP_TRIGGER_...</i>.
  * @return 0 if succeeded, error code otherwise.
+ *
+ * This function should be called by a component implementation at the beginning
+ * of its state transition to verify whether the trigger is valid in the
+ * current state and abort the transition otherwise.
+ *
+ * Typically the COMP_STATE_READY as the initial state is set directly
+ * by the component's implementation of _new().
+ *
+ * COMP_TRIGGER_PREPARE is called from the component's prepare().
+ *
+ * COMP_TRIGGER_START/STOP is called from trigger().
+ *
+ * COMP_TRIGGER_RESET is called from reset().
  */
 int comp_set_state(struct comp_dev *dev, int cmd);
 
