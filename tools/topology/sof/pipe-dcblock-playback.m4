@@ -23,7 +23,7 @@ include(`dcblock.m4')
 
 # Host "DC Block Playback" PCM
 # with 2 sink and 0 source periods
-W_PCM_PLAYBACK(PCM_ID, DC Block Playback, 2, 0)
+W_PCM_PLAYBACK(PCM_ID, DC Block Playback, 2, 0, SCHEDULE_CORE)
 
 #
 # DC Block Configuration

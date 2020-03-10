@@ -18,7 +18,7 @@ include(`pipeline.m4')
 
 # Host "SRC Playback" PCM
 # with 3 sink and 0 source periods
-W_PCM_PLAYBACK(PCM_ID, SRC Playback, 3, 0)
+W_PCM_PLAYBACK(PCM_ID, SRC Playback, 3, 0, SCHEDULE_CORE)
 
 #
 # SRC Configuration

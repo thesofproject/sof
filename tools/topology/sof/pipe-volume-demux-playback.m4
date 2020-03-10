@@ -56,7 +56,7 @@ W_DATA(playback_pga_conf, playback_pga_tokens)
 
 # Host "Low latency Playback" PCM
 # with 2 sink and 0 source periods
-W_PCM_PLAYBACK(PCM_ID, Low Latency Playback, 2, 0)
+W_PCM_PLAYBACK(PCM_ID, Low Latency Playback, 2, 0, SCHEDULE_CORE)
 
 # "Master Playback Volume" has 2 source and x sink periods for DAI ping-pong
 W_PGA(1, PIPELINE_FORMAT, DAI_PERIODS, 2, playback_pga_conf, LIST(`		', "PIPELINE_ID Master Playback Volume"))

@@ -42,7 +42,7 @@ C_CONTROLBYTES(MY_CONTROLBYTES, PIPELINE_ID,
 
 # Host "EQ FIR Playback" PCM
 # with 2 sink and 0 source periods
-W_PCM_PLAYBACK(PCM_ID, EQ FIR Playback, 2, 0)
+W_PCM_PLAYBACK(PCM_ID, EQ FIR Playback, 2, 0, SCHEDULE_CORE)
 
 # "EQ 0" has x sink period and 2 source periods
 W_EQ_FIR(0, PIPELINE_FORMAT, DAI_PERIODS, 2, LIST(`		', "MY_CONTROLBYTES"))
