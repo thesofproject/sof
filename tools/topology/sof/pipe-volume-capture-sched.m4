@@ -26,6 +26,16 @@ C_CONTROLMIXER(Master Capture Volume, PIPELINE_ID,
 	LIST(`	', KCONTROL_CHANNEL(FL, 1, 0), KCONTROL_CHANNEL(FR, 1, 1)))
 
 #
+# Volume Configuration
+#
+
+W_VENDORTUPLES(capture_pga_tokens, sof_volume_tokens,
+LIST(`		', `SOF_TKN_VOLUME_RAMP_STEP_TYPE	"0"'
+     `		', `SOF_TKN_VOLUME_RAMP_STEP_MS		"250"'))
+
+W_DATA(capture_pga_conf, capture_pga_tokens)
+
+#
 # Components and Buffers
 #
 
@@ -34,7 +44,7 @@ C_CONTROLMIXER(Master Capture Volume, PIPELINE_ID,
 W_PCM_CAPTURE(PCM_ID, Passthrough Capture, 0, 2)
 
 # "Volume" has x source and 2 sink periods
-W_PGA(0, PIPELINE_FORMAT, 2, DAI_PERIODS, LIST(`		', "PIPELINE_ID Master Capture Volume"))
+W_PGA(0, PIPELINE_FORMAT, 2, DAI_PERIODS, capture_pga_conf, LIST(`		', "PIPELINE_ID Master Capture Volume"))
 
 # Capture Buffers
 W_BUFFER(0, COMP_BUFFER_SIZE(2,
@@ -65,7 +75,7 @@ P_GRAPH(pipe-pass-vol-capture-PIPELINE_ID, PIPELINE_ID,
 indir(`define', concat(`PIPELINE_SINK_', PIPELINE_ID), N_BUFFER(1))
 indir(`define', concat(`PIPELINE_PCM_', PIPELINE_ID), Passthrough Capture PCM_ID)
 
-W_PIPELINE(SCHED_COMP, SCHEDULE_PERIOD, SCHEDULE_PRIORITY, SCHEDULE_CORE, SCHEDULE_TIME_DOMAIN, pipe_media_schedule_plat)
+W_PIPELINE(N_PCMC(PCM_ID), SCHEDULE_PERIOD, SCHEDULE_PRIORITY, SCHEDULE_CORE, SCHEDULE_TIME_DOMAIN, pipe_media_schedule_plat)
 #
 # PCM Configuration
 #
