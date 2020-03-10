@@ -31,6 +31,38 @@ struct sof *sof_get(void)
 	return &sof;
 }
 
+#if CONFIG_NO_SLAVE_CORE_ROM
+/**
+ * \brief This function will unpack lpsram text sections from AltBootManifest
+	  created in linker script.
+	  AltBootManifest structure:
+	  - number of entries
+	  and for each entry:
+	  - source pointer
+	  - destination pointer
+	  - size
+ */
+static inline void lp_sram_unpack(void)
+{
+	extern uintptr_t _loader_storage_manifest_start;
+
+	uint32_t *src, *dst;
+	uint32_t size, i;
+
+	uint32_t *ptr = (uintptr_t *)&_loader_storage_manifest_start;
+	uint32_t entries = (uint32_t)*ptr++;
+
+	for (i = 0; i < entries; i++) {
+		src = (uint32_t *)*ptr++;
+		dst = (uint32_t *)*ptr++;
+		size = *ptr++;
+
+		memcpy_s(dst, size, src, size);
+		dcache_writeback_region(dst, size);
+	}
+}
+#endif
+
 int master_core_init(int argc, char *argv[], struct sof *sof)
 {
 	int err;
@@ -69,6 +101,10 @@ int master_core_init(int argc, char *argv[], struct sof *sof)
 		panic(SOF_IPC_PANIC_PLATFORM);
 
 	trace_point(TRACE_BOOT_PLATFORM);
+
+#if CONFIG_NO_SLAVE_CORE_ROM
+	lp_sram_unpack();
+#endif
 
 	/* should not return */
 	err = task_main_start(sof);
