@@ -75,7 +75,7 @@ C_CONTROLBYTES(DEF_EQFIR_COEF, PIPELINE_ID,
 W_PCM_CAPTURE(PCM_ID, Passthrough Capture, 0, 2)
 
 # "Volume" has 2 sink and 2 source periods
-W_PGA(0, PIPELINE_FORMAT, 2, 2, DEF_PGA_CONF,
+W_PGA(0, PIPELINE_FORMAT, 2, 2, DEF_PGA_CONF, SCHEDULE_CORE,
 	LIST(`		', "PIPELINE_ID Master Capture Volume"))
 
 # "EQ 0" has 2 sink period and x source periods

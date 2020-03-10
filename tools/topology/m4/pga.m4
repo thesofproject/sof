@@ -2,17 +2,17 @@ divert(-1)
 
 dnl Define macro for PGA widget
 
-dnl PGA name)
-
+dnl N_PGA(name)
 define(`N_PGA', `PGA'PIPELINE_ID`.'$1)
 
-dnl W_PGA(name, format, periods_sink, periods_source, kcontrol0. kcontrol1...etc)
+dnl W_PGA(name, format, periods_sink, periods_source, core, kcontrol0. kcontrol1...etc)
 define(`W_PGA',
 `SectionVendorTuples."'N_PGA($1)`_tuples_w" {'
 `	tokens "sof_comp_tokens"'
 `	tuples."word" {'
 `		SOF_TKN_COMP_PERIOD_SINK_COUNT'		STR($3)
 `		SOF_TKN_COMP_PERIOD_SOURCE_COUNT'	STR($4)
+`		SOF_TKN_COMP_CORE_ID'			STR($6)
 `	}'
 `}'
 `SectionData."'N_PGA($1)`_data_w" {'
@@ -37,7 +37,7 @@ define(`W_PGA',
 `		"'$5`"'
 `	]'
 `	mixer ['
-		$6
+		$7
 `	]'
 
 `}')

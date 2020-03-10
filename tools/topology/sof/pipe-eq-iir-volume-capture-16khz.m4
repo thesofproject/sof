@@ -72,9 +72,8 @@ C_CONTROLBYTES(DEF_EQIIR_COEF, PIPELINE_ID,
 W_PCM_CAPTURE(PCM_ID, Highpass Capture, 0, 2)
 
 # "Volume" has 2 source and 2 sink periods
-W_PGA(0, PIPELINE_FORMAT, 2, 2,
-	 DEF_PGA_CONF, LIST(`		',
-		"CONTROL_NAME"))
+W_PGA(0, PIPELINE_FORMAT, 2, 2, DEF_PGA_CONF, SCHEDULE_CORE,
+	LIST(`		', "CONTROL_NAME"))
 
 # "EQ 0" has 2 sink period and x source periods
 W_EQ_IIR(0, PIPELINE_FORMAT, 2, DAI_PERIODS, LIST(`		', "DEF_EQIIR_COEF"))

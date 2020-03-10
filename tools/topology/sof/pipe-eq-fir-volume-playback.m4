@@ -65,7 +65,8 @@ C_CONTROLBYTES(EQFIR, PIPELINE_ID,
 W_PCM_PLAYBACK(PCM_ID, Passthrough Playback, 2, 0, SCHEDULE_CORE)
 
 # "Volume" has 2 source and x sink periods
-W_PGA(0, PIPELINE_FORMAT, DAI_PERIODS, 2, DEF_PGA_CONF, LIST(`		', "PIPELINE_ID Master Playback Volume"))
+W_PGA(0, PIPELINE_FORMAT, DAI_PERIODS, 2, DEF_PGA_CONF, SCHEDULE_CORE,
+	LIST(`		', "PIPELINE_ID Master Playback Volume"))
 
 # "EQ 0" has 2 sink period and 2 source periods
 W_EQ_FIR(0, PIPELINE_FORMAT, 2, 2, LIST(`		', "DEF_EQFIR_COEF"))
