@@ -378,6 +378,9 @@
 #define SOF_MEM_VECT_SIZE		(SOF_MEM_VECT_TEXT_SIZE + \
 					SOF_MEM_VECT_LIT_SIZE)
 
+/* Size of dynamic vectors unpacked from WindowOverflow4 */
+#define SOF_DYNAMIC_VECTORS_SIZE	0x400
+
 #define SOF_MEM_ERROR_TEXT_SIZE	0x180
 #define SOF_MEM_ERROR_LIT_SIZE		0x8
 
