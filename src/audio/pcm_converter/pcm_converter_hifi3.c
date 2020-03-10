@@ -79,7 +79,7 @@ static void pcm_convert_s16_to_s24(const struct audio_stream *source,
 	out32x2 = (ae_int32x2 *)out;
 
 	/* main loop processes 4 samples at a time */
-	while (i < samples - 3) {
+	while (samples >= 3 && i < samples - 3) {
 		/* set source as circular buffer */
 		pcm_converter_setup_circular(source);
 
@@ -184,7 +184,7 @@ static void pcm_convert_s24_to_s16(const struct audio_stream *source,
 	}
 
 	/* main loop processes 4 samples at a time */
-	while (i < samples - 3) {
+	while (samples >= 3 && i < samples - 3) {
 		/* set source as circular buffer */
 		pcm_converter_setup_circular(source);
 
@@ -291,7 +291,7 @@ static void pcm_convert_s16_to_s32(const struct audio_stream *source,
 	out32x2 = (ae_int32x2 *)out;
 
 	/* main loop processes 4 samples at a time */
-	while (i < samples - 3) {
+	while (samples >= 3 && i < samples - 3) {
 		/* set source as circular buffer */
 		pcm_converter_setup_circular(source);
 
@@ -376,7 +376,7 @@ static void pcm_convert_s32_to_s16(const struct audio_stream *source,
 	}
 
 	/* main loop processes 4 samples at a time */
-	while (i < samples - 3) {
+	while (samples >= 3 && i < samples - 3) {
 		/* set source as circular buffer */
 		pcm_converter_setup_circular(source);
 
