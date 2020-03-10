@@ -8,7 +8,7 @@ include(`pipeline.m4')
 #
 # DAI definitions
 #
-W_DAI_OUT(DAI_TYPE, DAI_INDEX, DAI_BE, DAI_FORMAT, 0, DAI_PERIODS)
+W_DAI_OUT(DAI_TYPE, DAI_INDEX, DAI_BE, DAI_FORMAT, 0, DAI_PERIODS, SCHEDULE_CORE)
 
 #
 # DAI pipeline - always use 0 for DAIs
