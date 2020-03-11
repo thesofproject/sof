@@ -424,6 +424,8 @@ int probe_dma_info(struct sof_ipc_probe_info_params *data, uint32_t max_size)
 		i++;
 	}
 
+	data->num_elems = j;
+
 	return 1;
 }
 
@@ -1049,6 +1051,8 @@ int probe_point_info(struct sof_ipc_probe_info_params *data, uint32_t max_size)
 
 		i++;
 	}
+
+	data->num_elems = j;
 
 	return 1;
 }
