@@ -53,7 +53,7 @@ PIPELINE_PCM_ADD(sof/pipe-volume-capture.m4,
 
 # Low Latency playback pipeline 3 on PCM 2 using max 2 channels of s32le.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
+PIPELINE_PCM_ADD(sof/pipe-volume-demux-playback.m4,
 	3, 2, 2, s32le,
 	1000, 0, 0,
 	48000, 48000, 48000)
@@ -61,7 +61,7 @@ PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
 ifdef(`MONO', `',
 `# Low Latency playback pipeline 4 on PCM 3 using max 2 channels of s32le.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
+PIPELINE_PCM_ADD(sof/pipe-dai-endpoint.m4,
 	4, 3, 2, s32le,
 	1000, 0, 0,
 	48000, 48000, 48000)')
@@ -127,10 +127,22 @@ DAI_ADD(sof/pipe-dai-playback.m4,
 ifdef(`MONO', `',
 `# playback DAI is ALH(SDW2 PIN2) using 2 periods
 # Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
-DAI_ADD(sof/pipe-dai-playback.m4,
-	4, ALH, 0x202, SDW2-Playback,
+DAI_ADD_SCHED(sof/pipe-dai-sched-playback.m4,
+	4, ALH, 0x202, SDW1-Playback,
 	PIPELINE_SOURCE_4, 2, s24le,
-	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)')
+	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER,
+	PIPELINE_PLAYBACK_SCHED_COMP_3)
+
+# Connect demux to 2nd pipeline
+SectionGraph."PIPE_DEMUX" {
+	index "4"
+
+	lines [
+		# mux to 2nd pipeline
+		dapm(PIPELINE_SOURCE_4, PIPELINE_DEMUX_3)
+	]
+}
+')
 
 # capture DAI is ALH(SDW3 PIN2) using 2 periods
 # Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
@@ -165,7 +177,6 @@ dnl PCM_PLAYBACK_ADD(name, pcm_id, playback)
 PCM_PLAYBACK_ADD(Headphone, 0, PIPELINE_PCM_1)
 PCM_CAPTURE_ADD(Headset mic, 1, PIPELINE_PCM_2)
 PCM_PLAYBACK_ADD(SDW1-speakers, 2, PIPELINE_PCM_3)
-ifdef(`MONO', `', `PCM_PLAYBACK_ADD(SDW2-speakers, 3, PIPELINE_PCM_4)')
 PCM_CAPTURE_ADD(Microphones, 4, PIPELINE_PCM_5)
 PCM_PLAYBACK_ADD(HDMI1, 5, PIPELINE_PCM_6)
 PCM_PLAYBACK_ADD(HDMI2, 6, PIPELINE_PCM_7)
@@ -184,9 +195,6 @@ DAI_CONFIG(ALH, 3, 1, SDW0-Capture)
 
 #ALH SDW1 Pin2 (ID: 2)
 DAI_CONFIG(ALH, 0x102, 2, SDW1-Playback)
-
-#ALH SDW2 Pin2 (ID: 3)
-ifdef(`MONO', `', `DAI_CONFIG(ALH, 0x202, 3, SDW2-Playback)')
 
 #ALH SDW3 Pin2 (ID: 4)
 DAI_CONFIG(ALH, 0x302, 4, SDW3-Capture)
