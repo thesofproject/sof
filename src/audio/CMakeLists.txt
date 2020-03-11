@@ -21,6 +21,9 @@ if(NOT BUILD_LIBRARY)
 	if(CONFIG_COMP_IIR)
 		add_subdirectory(eq_iir)
 	endif()
+	if(CONFIG_COMP_DCBLOCK)
+		add_subdirectory(dcblock)
+	endif()
 	if(CONFIG_COMP_TONE)
 		add_local_sources(sof
 			tone.c
