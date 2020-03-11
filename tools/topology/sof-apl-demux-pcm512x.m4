@@ -151,9 +151,9 @@ DAI_CONFIG(SSP, 5, 0, SSP5-Codec,
 		SSP_TDM(2, 32, 3, 3),
 		SSP_CONFIG_DATA(SSP, 5, 24)))
 
-# 3 HDMI/DP outputs (ID: 1,2,3)
-DAI_CONFIG(HDA, 0, 1, iDisp1)
-DAI_CONFIG(HDA, 1, 2, iDisp2)
-DAI_CONFIG(HDA, 2, 3, iDisp3)
+# 3 HDMI/DP outputs (ID: 3,4,5)
+DAI_CONFIG(HDA, 0, 3, iDisp1)
+DAI_CONFIG(HDA, 1, 4, iDisp2)
+DAI_CONFIG(HDA, 2, 5, iDisp3)
 
 DEBUG_END
