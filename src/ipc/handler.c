@@ -918,6 +918,7 @@ static int ipc_probe_info(uint32_t header)
 	/* write data to the outbox */
 	if (params->rhdr.hdr.size <= MAILBOX_HOSTBOX_SIZE &&
 	    params->rhdr.hdr.size <= SOF_IPC_MSG_MAX_SIZE) {
+		params->rhdr.error = ret;
 		mailbox_hostbox_write(0, params, params->rhdr.hdr.size);
 		ret = 1;
 	} else {
