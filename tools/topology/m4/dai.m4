@@ -200,4 +200,14 @@ define(`DAI_ADD',
 `DEBUG_DAI($3, $4)'
 )
 
+# DAI_ADD_SCHED can be used for adding a DAI with sched_comp
+dnl DAI_ADD_SCHED(pipeline,
+dnl     pipe id, dai type, dai_index, dai_be,
+dnl     buffer, periods, format,
+dnl     period , priority, core, time_domain, sched_comp)
+define(`DAI_ADD_SCHED',
+`undefine(`SCHED_COMP')'
+`define(`SCHED_COMP', $13)'
+`DAI_ADD($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)'
+)
 divert(0)dnl
