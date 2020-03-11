@@ -129,7 +129,7 @@ struct idc {
 static inline struct idc_payload *idc_payload_get(struct idc *idc,
 						  uint32_t core)
 {
-	return idc->payload + cpu_get_id();
+	return idc->payload + core;
 }
 
 void idc_enable_interrupts(int target_core, int source_core);
