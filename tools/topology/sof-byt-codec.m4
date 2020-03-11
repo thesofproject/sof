@@ -13,10 +13,7 @@ include(`common/tlv.m4')
 include(`sof/tokens.m4')
 
 # Include DSP configuration
-ifelse(PLATFORM, `cht', include(`platform/intel/cht.m4'),
-	ifelse(PLATFORM, `byt', include(`platform/intel/byt.m4'), `'))
-
-define(PIPE_NAME, pipe-`'PLATFORM`'-`'CODEC`')
+include(`platform/intel/'PLATFORM`.m4')
 
 #
 # Define the pipelines
