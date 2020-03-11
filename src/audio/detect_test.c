@@ -738,7 +738,7 @@ static int test_keyword_copy(struct comp_dev *dev)
 	source = list_first_item(&dev->bsource_list,
 				 struct comp_buffer, sink_list);
 
-	buffer_lock(source, flags);
+	buffer_lock(source, &flags);
 	frames = source->stream.avail /
 		audio_stream_frame_bytes(&source->stream);
 	buffer_unlock(source, flags);

@@ -163,7 +163,7 @@ void comp_update_buffer_produce(struct comp_buffer *buffer, uint32_t bytes)
 		return;
 	}
 
-	buffer_lock(buffer, flags);
+	buffer_lock(buffer, &flags);
 
 	audio_stream_produce(&buffer->stream, bytes);
 
@@ -206,7 +206,7 @@ void comp_update_buffer_consume(struct comp_buffer *buffer, uint32_t bytes)
 		return;
 	}
 
-	buffer_lock(buffer, flags);
+	buffer_lock(buffer, &flags);
 
 	audio_stream_consume(&buffer->stream, bytes);
 

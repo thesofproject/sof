@@ -830,8 +830,8 @@ static int eq_iir_copy(struct comp_dev *dev)
 	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
 				source_list);
 
-	buffer_lock(sourceb, flags);
-	buffer_lock(sinkb, flags);
+	buffer_lock(sourceb, &flags);
+	buffer_lock(sinkb, &flags);
 
 	/* Get source, sink, number of frames etc. to process. */
 	comp_get_copy_limits(sourceb, sinkb, &cl);

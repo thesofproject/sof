@@ -131,7 +131,7 @@ static int selector_verify_params(struct comp_dev *dev,
 		}
 		in_channels = cd->config.in_channels_count;
 
-		buffer_lock(buffer, flags);
+		buffer_lock(buffer, &flags);
 
 		/* if cd->config.out_channels_count are equal to 0
 		 * (it can vary), we set params->channels to sink buffer
@@ -152,7 +152,7 @@ static int selector_verify_params(struct comp_dev *dev,
 		}
 		out_channels = cd->config.out_channels_count;
 
-		buffer_lock(buffer, flags);
+		buffer_lock(buffer, &flags);
 
 		/* if cd->config.in_channels_count are equal to 0
 		 * (it can vary), we set params->channels to source buffer
@@ -392,8 +392,8 @@ static int selector_copy(struct comp_dev *dev)
 	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
 			       source_list);
 
-	buffer_lock(source, flags);
-	buffer_lock(sink, flags);
+	buffer_lock(source, &flags);
+	buffer_lock(sink, &flags);
 
 	frames = audio_stream_avail_frames(&source->stream, &sink->stream);
 	source_bytes = frames * audio_stream_frame_bytes(&source->stream);

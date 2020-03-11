@@ -312,11 +312,11 @@ static int mixer_copy(struct comp_dev *dev)
 	if (num_mix_sources == 0)
 		return 0;
 
-	buffer_lock(sink, flags);
+	buffer_lock(sink, &flags);
 
 	/* check for underruns */
 	for (i = 0; i < num_mix_sources; i++) {
-		buffer_lock(sources[i], flags);
+		buffer_lock(sources[i], &flags);
 		frames = MIN(frames,
 			     audio_stream_avail_frames(sources_stream[i],
 						       &sink->stream));

@@ -323,7 +323,7 @@ static int demux_copy(struct comp_dev *dev)
 	source = list_first_item(&dev->bsource_list, struct comp_buffer,
 				 sink_list);
 
-	buffer_lock(source, flags);
+	buffer_lock(source, &flags);
 
 	/* check if source is active */
 	if (source->source->state != dev->state) {
@@ -334,7 +334,7 @@ static int demux_copy(struct comp_dev *dev)
 	for (i = 0; i < MUX_MAX_STREAMS; i++) {
 		if (!sinks[i])
 			continue;
-		buffer_lock(sinks[i], flags);
+		buffer_lock(sinks[i], &flags);
 		avail = audio_stream_avail_frames(&source->stream,
 						  &sinks[i]->stream);
 		frames = MIN(frames, avail);

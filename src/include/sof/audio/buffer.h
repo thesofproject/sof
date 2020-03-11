@@ -168,12 +168,12 @@ static inline void buffer_writeback(struct comp_buffer *buffer, uint32_t bytes)
  * @param buffer Buffer instance.
  * @param flags IRQ flags.
  */
-static inline void buffer_lock(struct comp_buffer *buffer, uint32_t flags)
+static inline void buffer_lock(struct comp_buffer *buffer, uint32_t *flags)
 {
 	if (!buffer->inter_core)
 		return;
 
-	spin_lock_irq(buffer->lock, flags);
+	spin_lock_irq(buffer->lock, *flags);
 
 	/* invalidate in case something has changed during our wait */
 	dcache_invalidate_region(buffer, sizeof(*buffer));
@@ -215,7 +215,7 @@ static inline void buffer_reset_pos(struct comp_buffer *buffer, void *data)
 {
 	uint32_t flags = 0;
 
-	buffer_lock(buffer, flags);
+	buffer_lock(buffer, &flags);
 
 	/* reset rw pointers and avail/free bytes counters */
 	audio_stream_reset(&buffer->stream);
@@ -239,7 +239,7 @@ static inline void buffer_reset_params(struct comp_buffer *buffer, void *data)
 {
 	uint32_t flags = 0;
 
-	buffer_lock(buffer, flags);
+	buffer_lock(buffer, &flags);
 
 	buffer->hw_params_configured = false;
 

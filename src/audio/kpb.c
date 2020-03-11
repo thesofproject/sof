@@ -616,7 +616,7 @@ static int kpb_copy(struct comp_dev *dev)
 	source = list_first_item(&dev->bsource_list, struct comp_buffer,
 				 sink_list);
 
-	buffer_lock(source, flags);
+	buffer_lock(source, &flags);
 
 	/* Validate source */
 	if (!source || !source->stream.r_ptr) {
@@ -633,7 +633,7 @@ static int kpb_copy(struct comp_dev *dev)
 		/* In normal RUN state we simply copy to our sink. */
 		sink = kpb->sel_sink;
 
-		buffer_lock(sink, flags);
+		buffer_lock(sink, &flags);
 
 		/* Validate sink */
 		if (!sink || !sink->stream.w_ptr) {
@@ -684,7 +684,7 @@ static int kpb_copy(struct comp_dev *dev)
 		/* In host copy state we only copy to host buffer. */
 		sink = kpb->host_sink;
 
-		buffer_lock(sink, flags);
+		buffer_lock(sink, &flags);
 
 		/* Validate sink */
 		if (!sink || !sink->stream.w_ptr) {

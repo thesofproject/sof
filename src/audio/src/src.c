@@ -777,8 +777,8 @@ static int src_copy(struct comp_dev *dev)
 	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
 			       source_list);
 
-	buffer_lock(source, flags);
-	buffer_lock(sink, flags);
+	buffer_lock(source, &flags);
+	buffer_lock(sink, &flags);
 
 	/* Get from buffers and SRC conversion specific block constraints
 	 * how many frames can be processed. If sufficient number of samples

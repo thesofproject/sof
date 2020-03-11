@@ -263,7 +263,7 @@ int comp_verify_params(struct comp_dev *dev, uint32_t flag,
 					      struct comp_buffer,
 					      source_list);
 
-		buffer_lock(buf, flags);
+		buffer_lock(buf, &flags);
 
 		/* update specific pcm parameter with buffer parameter if
 		 * specific flag is set.
@@ -291,7 +291,7 @@ int comp_verify_params(struct comp_dev *dev, uint32_t flag,
 
 			buf = buffer_from_list(curr, struct comp_buffer, dir);
 
-			buffer_lock(buf, flags);
+			buffer_lock(buf, &flags);
 
 			clist = clist->next;
 
@@ -306,7 +306,7 @@ int comp_verify_params(struct comp_dev *dev, uint32_t flag,
 		sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
 					source_list);
 
-		buffer_lock(sinkb, flags);
+		buffer_lock(sinkb, &flags);
 
 		component_set_period_frames(dev, sinkb->stream.rate);
 
