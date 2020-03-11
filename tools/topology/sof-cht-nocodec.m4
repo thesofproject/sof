@@ -1,7 +1,4 @@
-#
-ifelse(PLATFORM, `cht', `# Topology for generic CherryTrail board with no codec.', `')
-ifelse(PLATFORM, `byt', `# Topology for generic BayTrail board with no codec.', `')
-#
+`# Topology for generic' PLATFORM `board with no codec.'
 
 # Include topology builder
 include(`pipeline.m4')
@@ -16,10 +13,7 @@ include(`common/tlv.m4')
 include(`sof/tokens.m4')
 
 # Include DSP configuration
-ifelse(PLATFORM, `cht', include(`platform/intel/cht.m4'),
-	ifelse(PLATFORM, `byt', include(`platform/intel/byt.m4'), `'))
-define(PIPE_NAME, ifelse(PLATFORM, `cht', pipe-cht-nocodec,
-	ifelse(PLATFORM, `byt', pipe-byt-nocodec, `')))
+include(`platform/intel/'PLATFORM`.m4')
 
 #
 # Define the pipelines
