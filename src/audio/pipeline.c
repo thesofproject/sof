@@ -310,7 +310,7 @@ static int pipeline_comp_hw_params(struct comp_dev *current,
 
 	/* set buffer parameters */
 	if (calling_buf) {
-		buffer_lock(calling_buf, flags);
+		buffer_lock(calling_buf, &flags);
 		buffer_set_params(calling_buf, &ppl_data->params->params,
 				  BUFFER_UPDATE_IF_UNSET);
 		buffer_unlock(calling_buf, flags);

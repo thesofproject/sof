@@ -670,7 +670,7 @@ static int dai_copy(struct comp_dev *dev)
 		return ret;
 	}
 
-	buffer_lock(dd->local_buffer, flags);
+	buffer_lock(dd->local_buffer, &flags);
 
 	/* calculate minimum size to copy */
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {

@@ -662,8 +662,8 @@ static int volume_copy(struct comp_dev *dev)
 	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
 			       source_list);
 
-	buffer_lock(source, flags);
-	buffer_lock(sink, flags);
+	buffer_lock(source, &flags);
+	buffer_lock(sink, &flags);
 
 	/* Get source, sink, number of frames etc. to process. */
 	comp_get_copy_limits(source, sink, &c);

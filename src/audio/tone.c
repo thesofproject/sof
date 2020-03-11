@@ -448,8 +448,8 @@ static int tone_params(struct comp_dev *dev,
 	if (config->frame_fmt != SOF_IPC_FRAME_S32_LE)
 		return -EINVAL;
 
-	buffer_lock(sourceb, flags);
-	buffer_lock(sinkb, flags);
+	buffer_lock(sourceb, &flags);
+	buffer_lock(sinkb, &flags);
 
 	sourceb->stream.frame_fmt = config->frame_fmt;
 	sinkb->stream.frame_fmt = config->frame_fmt;
@@ -630,7 +630,7 @@ static int tone_copy(struct comp_dev *dev)
 	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
 			       source_list);
 
-	buffer_lock(sink, flags);
+	buffer_lock(sink, &flags);
 	free = sink->stream.free;
 	buffer_unlock(sink, flags);
 

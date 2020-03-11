@@ -706,7 +706,7 @@ static uint32_t host_buffer_get_copy_bytes(struct comp_dev *dev)
 	uint32_t flags = 0;
 
 	if (hd->copy_type == COMP_COPY_ONE_SHOT) {
-		buffer_lock(hd->local_buffer, flags);
+		buffer_lock(hd->local_buffer, &flags);
 
 		/* calculate minimum size to copy */
 		if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
@@ -736,7 +736,7 @@ static uint32_t host_buffer_get_copy_bytes(struct comp_dev *dev)
 			return 0;
 		}
 
-		buffer_lock(hd->local_buffer, flags);
+		buffer_lock(hd->local_buffer, &flags);
 
 		/* calculate minimum size to copy */
 		if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
