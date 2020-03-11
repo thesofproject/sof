@@ -82,10 +82,11 @@ int arch_cpu_enable_core(int id)
 	int ret;
 
 	if (!arch_cpu_is_core_enabled(id)) {
-		pm_runtime_get(PM_RUNTIME_DSP, id);
-
 		/* Turn on stack memory for core */
 		pm_runtime_get(CORE_MEMORY_POW, id);
+
+		/* Power up slave core */
+		pm_runtime_get(PM_RUNTIME_DSP, id);
 
 		/* allocate resources for core */
 		cpu_alloc_core_context(id);
