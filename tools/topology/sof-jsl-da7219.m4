@@ -15,15 +15,7 @@ include(`common/tlv.m4')
 include(`sof/tokens.m4')
 
 # Include Icelake DSP configuration
-include(`platform/intel/icl.m4')
-include(`platform/intel/dmic.m4')
-
-define(`SPK_INDEX', `1')
-define(`SPK_NAME', `SSP1-Codec')
-
-undefine(`SPK_DATA_FORMAT')
-define(`SPK_DATA_FORMAT', ifelse(PLATFORM, `jsl', `s16le',
-	ifelse(PLATFORM, `jsl-dedede', `s24le',`')))
+include(`platform/intel/'PLATFORM`.m4')
 
 #
 # Define the pipelines
@@ -165,19 +157,8 @@ dnl mclk_id is optional
 
 # SSP 1 (ID: 0)
 DAI_CONFIG(SSP, SPK_INDEX, 0, SPK_NAME,
-	ifelse(PLATFORM, `jsl',
-		SSP_CONFIG(DSP_B, SSP_CLOCK(mclk, 24000000, codec_mclk_in),
-			SSP_CLOCK(bclk, 4800000, codec_slave),
-			SSP_CLOCK(fsync, 48000, codec_slave),
-			SSP_TDM(4, 25, 3, 240),
-			SSP_CONFIG_DATA(SSP, SPK_INDEX, 16)),
-	       PLATFORM, `jsl-dedede',
-		SSP_CONFIG(I2S, SSP_CLOCK(mclk, 24000000, codec_mclk_in),
-			SSP_CLOCK(bclk, 2304000, codec_slave),
-			SSP_CLOCK(fsync, 48000, codec_slave),
-			SSP_TDM(2, 24, 3, 3),
-			SSP_CONFIG_DATA(SSP, SPK_INDEX, 24, 0)),
-		  `'))
+		  SET_SSP_CONFIG)
+
 # SSP 0 (ID: 1)
 DAI_CONFIG(SSP, 0, 1, SSP0-Codec,
 	SSP_CONFIG(I2S, SSP_CLOCK(mclk, 24000000, codec_mclk_in),

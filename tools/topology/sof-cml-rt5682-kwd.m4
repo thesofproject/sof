@@ -14,6 +14,7 @@ include(`common/tlv.m4')
 # Include Token library
 include(`sof/tokens.m4')
 
+include(`abi.h')
 # Include Platform specific DSP configuration
 include(`platform/intel/'PLATFORM`.m4')
 

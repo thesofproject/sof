@@ -53,18 +53,11 @@ PCM_PLAYBACK_ADD(Speakers, 5, PIPELINE_PCM_7)
 #SSP 1 (ID: 6)
 #Use BCLK delay in SSP_CONFIG_DATA only on supporting version
 
-ifelse(SOF_ABI_VERSION_3_9_OR_GRT, `1',
-`DAI_CONFIG(SSP, 1, 6, SSP1-Codec,
-	SSP_CONFIG(DSP_A, SSP_CLOCK(mclk, 24000000, codec_mclk_in),
-		SSP_CLOCK(bclk, 4800000, codec_slave),
-		SSP_CLOCK(fsync, 48000, codec_slave),
-		SSP_TDM(4, 25, 3, 15),
-		SSP_CONFIG_DATA(SSP, 1, 24, 0, 0, 10)))',
-`DAI_CONFIG(SSP, 1, 6, SSP1-Codec,
-        SSP_CONFIG(DSP_A, SSP_CLOCK(mclk, 24000000, codec_mclk_in),
+DAI_CONFIG(SSP, SSP1_INDEX, 6, SSP1_NAME,
+        SSP_CONFIG(DSP_A, SSP_CLOCK(mclk, SSP1_MCLK_RATE, codec_mclk_in),
                 SSP_CLOCK(bclk, 4800000, codec_slave),
                 SSP_CLOCK(fsync, 48000, codec_slave),
                 SSP_TDM(4, 25, 3, 15),
-                SSP_CONFIG_DATA(SSP, 1, 24)))')
+                SSP_CONFIG_DATA(SET_SSP1_CONFIG_DATA)))
 
 DEBUG_END
