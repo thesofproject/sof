@@ -176,7 +176,6 @@ int ipc_comp_new(struct ipc *ipc, struct sof_ipc_comp *comp)
 {
 	struct comp_dev *cd;
 	struct ipc_comp_dev *icd;
-	int ret = 0;
 
 	/* check whether component already exists */
 	icd = ipc_get_comp_by_id(ipc, comp->id);
@@ -211,7 +210,7 @@ int ipc_comp_new(struct ipc *ipc, struct sof_ipc_comp *comp)
 
 	platform_shared_commit(icd, sizeof(*icd));
 
-	return ret;
+	return 0;
 }
 
 int ipc_comp_free(struct ipc *ipc, uint32_t comp_id)
