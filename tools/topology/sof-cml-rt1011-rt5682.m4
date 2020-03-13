@@ -13,6 +13,10 @@ DEBUG_START
 # PCM5  ----> volume (pipe 7) ----> SSP1 (speaker - rt1011, BE link 5)
 #
 
+# The pipeline naming notation is pipe-PROCESSING-DIRECTION.m4
+# PPROC is set by makefile
+define(PIPE_PROC_PLAYBACK, `sof/pipe-`PPROC'-playback.m4')
+
 dnl PIPELINE_PCM_ADD(pipeline,
 dnl     pipe id, pcm, max channels, format,
 dnl     period, priority, core,
@@ -21,7 +25,7 @@ dnl     time_domain, sched_comp)
 
 # Low Latency playback pipeline 7 on PCM 5 using max 2 channels of s32le.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
+PIPELINE_PCM_ADD(PIPE_PROC_PLAYBACK,
 	7, 5, 2, s32le,
 	1000, 0, 0,
 	48000, 48000, 48000)
