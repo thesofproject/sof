@@ -22,6 +22,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include <sof/lib/cpu.h>
+
 struct edf_schedule_data {
 	struct list_item list;	/* list of tasks in priority queue */
 	uint32_t clock;
@@ -100,6 +102,7 @@ static void schedule_edf_task(void *data, struct task *task, uint64_t start,
 	uint64_t ticks_per_ms;
 	uint64_t current;
 	uint32_t flags;
+	bool main_started;
 
 	irq_local_disable(flags);
 
@@ -113,6 +116,8 @@ static void schedule_edf_task(void *data, struct task *task, uint64_t start,
 		return;
 	}
 
+	main_started = !list_is_empty(&edf_sch->list);
+
 	/* get current time */
 	current = platform_timer_get(timer_get());
 
@@ -124,12 +129,16 @@ static void schedule_edf_task(void *data, struct task *task, uint64_t start,
 
 	/* add task to the list */
 	list_item_append(&task->list, &edf_sch->list);
+	tracev_edf_sch("schedule_edf_task() %p", (long)task);
 
 	task->state = SOF_TASK_STATE_QUEUED;
 
 	irq_local_enable(flags);
 
-	schedule_edf(data);
+	if (cpu_get_id() == PLATFORM_MASTER_CORE_ID ||
+	    main_started ||
+	    task == *task_main_get())
+		schedule_edf(data);
 }
 
 int schedule_task_init_edf(struct task *task, const struct task_ops *ops,
