@@ -11,6 +11,7 @@
 #define __PLATFORM_LIB_MAILBOX_H__
 
 #include <sof/lib/memory.h>
+#include <stddef.h>
 #include <stdint.h>
 
 /*

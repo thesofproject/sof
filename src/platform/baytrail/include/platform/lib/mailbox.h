@@ -12,6 +12,7 @@
 
 #include <sof/lib/memory.h>
 #include <config.h>
+#include <stddef.h>
 #include <stdint.h>
 
 #define MAILBOX_HOST_OFFSET	0x144000
