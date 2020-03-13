@@ -208,9 +208,9 @@ static void dai_free(struct comp_dev *dev)
 	rfree(dev);
 }
 
-static inline int dai_comp_get_hw_params(struct comp_dev *dev,
-					 struct sof_ipc_stream_params *params,
-					 int dir)
+static int dai_comp_get_hw_params(struct comp_dev *dev,
+				  struct sof_ipc_stream_params *params,
+				  int dir)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
 	int ret = 0;
