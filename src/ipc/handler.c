@@ -1044,7 +1044,12 @@ static int ipc_glb_tplg_comp_new(uint32_t header)
 {
 	struct ipc *ipc = ipc_get();
 	struct sof_ipc_comp comp;
-	struct sof_ipc_comp_reply reply;
+	struct sof_ipc_comp_reply reply = {
+		.rhdr.hdr = {
+			.cmd = header,
+			.size = sizeof(reply),
+		},
+	};
 	int ret;
 
 	/* copy message with ABI safe method */
@@ -1066,11 +1071,8 @@ static int ipc_glb_tplg_comp_new(uint32_t header)
 	}
 
 	/* write component values to the outbox */
-	reply.rhdr.hdr.size = sizeof(reply);
-	reply.rhdr.hdr.cmd = header;
-	reply.rhdr.error = 0;
-	reply.offset = 0; /* TODO: set this up for mmaped components */
 	mailbox_hostbox_write(0, &reply, sizeof(reply));
+
 	return 1;
 }
 
@@ -1078,7 +1080,12 @@ static int ipc_glb_tplg_buffer_new(uint32_t header)
 {
 	struct ipc *ipc = ipc_get();
 	struct sof_ipc_buffer ipc_buffer;
-	struct sof_ipc_comp_reply reply;
+	struct sof_ipc_comp_reply reply = {
+		.rhdr.hdr = {
+			.cmd = header,
+			.size = sizeof(reply),
+		},
+	};
 	int ret;
 
 	/* copy message with ABI safe method */
@@ -1101,11 +1108,8 @@ static int ipc_glb_tplg_buffer_new(uint32_t header)
 	}
 
 	/* write component values to the outbox */
-	reply.rhdr.hdr.size = sizeof(reply);
-	reply.rhdr.hdr.cmd = header;
-	reply.rhdr.error = 0;
-	reply.offset = 0; /* TODO: set this up for mmaped components */
 	mailbox_hostbox_write(0, &reply, sizeof(reply));
+
 	return 1;
 }
 
@@ -1113,7 +1117,12 @@ static int ipc_glb_tplg_pipe_new(uint32_t header)
 {
 	struct ipc *ipc = ipc_get();
 	struct sof_ipc_pipe_new ipc_pipeline;
-	struct sof_ipc_comp_reply reply;
+	struct sof_ipc_comp_reply reply = {
+		.rhdr.hdr = {
+			.cmd = header,
+			.size = sizeof(reply),
+		},
+	};
 	int ret;
 
 	/* copy message with ABI safe method */
@@ -1134,11 +1143,8 @@ static int ipc_glb_tplg_pipe_new(uint32_t header)
 	}
 
 	/* write component values to the outbox */
-	reply.rhdr.hdr.size = sizeof(reply);
-	reply.rhdr.hdr.cmd = header;
-	reply.rhdr.error = 0;
-	reply.offset = 0; /* TODO: set this up for mmaped components */
 	mailbox_hostbox_write(0, &reply, sizeof(reply));
+
 	return 1;
 }
 
