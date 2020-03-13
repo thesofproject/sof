@@ -7,19 +7,19 @@ define(`CONTROLBYTES_MAX',
 `#$1'
 `	max STR($2)')
 
-dnl CONTROLMIXER_TLV(comment, value)
+dnl CONTROLBYTES_TLV(comment, value)
 define(`CONTROLBYTES_TLV',
 `#$1'
 `	tlv STR($2)')
 
-dnl CONTROLMIXER_OPS(info, comment, get, put)
+dnl CONTROLBYTES_OPS(info, comment, get, put)
 define(`CONTROLBYTES_OPS',
 `ops."ctl" {'
 `		info STR($1)'
 `		#$2'
 `	}')
 
-dnl CONTROLMIXER_OPS(info, comment, get, put)
+dnl CONTROLBYTES_OPS(info, comment, get, put)
 define(`CONTROLBYTES_EXTOPS',
 `extops."extctl" {'
 `		#$1'
@@ -32,7 +32,7 @@ define(`CONTROLBYTES_PRIV',
 `	$2'
 `}')
 
-dnl C_CONTROLMIXER(name, index, ops, base, num_regs, mask, max, tlv, priv)
+dnl C_CONTROLBYTES(name, index, ops, base, num_regs, mask, max, tlv, priv)
 define(`C_CONTROLBYTES',
 `SectionControlBytes.STR($1) {'
 `'
