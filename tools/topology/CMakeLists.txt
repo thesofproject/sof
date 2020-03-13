@@ -117,6 +117,7 @@ set(TPLGS
 	"sof-imx8qxp-nocodec-sai\;sof-imx8qxp-nocodec-sai"
 	"sof-imx8qxp-wm8960\;sof-imx8qxp-wm8960"
 	"sof-tgl-max98357a-rt5682\;sof-tgl-max98357a-rt5682"
+	"sof-tgl-max98373-rt5682\;sof-tgl-max98373-rt5682"
 	"sof-jsl-da7219\;sof-jsl-da7219\;-DPLATFORM=jsl"
 	"sof-jsl-da7219\;sof-jsl-da7219-mx98360a\;-DPLATFORM=jsl-dedede"
 	"sof-imx8mp-wm8960\;sof-imx8mp-wm8960"
