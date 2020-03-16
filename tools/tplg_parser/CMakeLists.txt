@@ -9,6 +9,7 @@ set(sof_source_directory "${PROJECT_SOURCE_DIR}/../..")
 add_library(sof_tplg_parser SHARED tplg_parser.c)
 target_include_directories(sof_tplg_parser PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_include_directories(sof_tplg_parser PRIVATE ${sof_source_directory}/src/include)
+target_compile_options(sof_tplg_parser PRIVATE -g -O -Wall -Werror -Wl,-EL -Wmissing-prototypes -Wimplicit-fallthrough=3)
 
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/tplg_parser
 	DESTINATION include
