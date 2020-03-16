@@ -10,9 +10,15 @@
 
 #include <sof/drivers/ipc.h>
 #include <sof/lib/cpu.h>
+#include <sof/lib/mailbox.h>
+#include <sof/lib/memory.h>
+#include <sof/sof.h>
+#include <sof/spinlock.h>
 #include <sof/trace/trace.h>
+#include <ipc/stream.h>
 #include <ipc/topology.h>
 #include <user/trace.h>
+#include <errno.h>
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -21,7 +27,6 @@ struct comp_dev;
 struct ipc;
 struct sof_ipc_buffer;
 struct sof_ipc_pcm_params;
-struct sof_ipc_stream_posn;
 struct task;
 
 /*
@@ -79,6 +84,9 @@ struct task;
 #define PPL_DIR_DOWNSTREAM	0
 #define PPL_DIR_UPSTREAM	1
 
+#define PPL_POSN_OFFSETS \
+	(MAILBOX_STREAM_SIZE / sizeof(struct sof_ipc_stream_posn))
+
 /*
  * Audio pipeline.
  */
@@ -106,6 +114,81 @@ struct pipeline {
 
 /* static pipeline */
 extern struct pipeline *pipeline_static;
+
+struct pipeline_posn {
+	bool posn_offset[PPL_POSN_OFFSETS];	/**< available offsets */
+	spinlock_t lock;			/**< lock mechanism */
+};
+
+static SHARED_DATA struct pipeline_posn pipeline_posn;
+
+/**
+ * \brief Retrieves pipeline position structure.
+ * \return Pointer to pipeline position structure.
+ */
+static inline struct pipeline_posn *pipeline_posn_get(void)
+{
+	return sof_get()->pipeline_posn;
+}
+
+/**
+ * \brief Initializes pipeline position structure.
+ * \param[in,out] sof Pointer to sof structure.
+ */
+static inline void pipeline_posn_init(struct sof *sof)
+{
+	sof->pipeline_posn = platform_shared_get(&pipeline_posn,
+						 sizeof(pipeline_posn));
+	spinlock_init(&sof->pipeline_posn->lock);
+	platform_shared_commit(sof->pipeline_posn, sizeof(*sof->pipeline_posn));
+}
+
+/**
+ * \brief Retrieves first free pipeline position offset.
+ * \param[in,out] posn_offset Pipeline position offset to be set.
+ * \return Error code.
+ */
+static inline int pipeline_posn_offset_get(uint32_t *posn_offset)
+{
+	struct pipeline_posn *pipeline_posn = pipeline_posn_get();
+	int ret = -EINVAL;
+	uint32_t i;
+
+	spin_lock(&pipeline_posn->lock);
+
+	for (i = 0; i < PPL_POSN_OFFSETS; ++i) {
+		if (!pipeline_posn->posn_offset[i]) {
+			*posn_offset = i * sizeof(struct sof_ipc_stream_posn);
+			pipeline_posn->posn_offset[i] = true;
+			ret = 0;
+			break;
+		}
+	}
+
+	platform_shared_commit(pipeline_posn, sizeof(*pipeline_posn));
+
+	spin_unlock(&pipeline_posn->lock);
+
+	return ret;
+}
+
+/**
+ * \brief Frees pipeline position offset.
+ * \param[in] posn_offset Pipeline position offset to be freed.
+ */
+static inline void pipeline_posn_offset_put(uint32_t posn_offset)
+{
+	struct pipeline_posn *pipeline_posn = pipeline_posn_get();
+	int i = posn_offset / sizeof(struct sof_ipc_stream_posn);
+
+	spin_lock(&pipeline_posn->lock);
+
+	pipeline_posn->posn_offset[i] = false;
+
+	platform_shared_commit(pipeline_posn, sizeof(*pipeline_posn));
+
+	spin_unlock(&pipeline_posn->lock);
+}
 
 /* checks if two pipelines have the same scheduling component */
 static inline bool pipeline_is_same_sched_comp(struct pipeline *current,

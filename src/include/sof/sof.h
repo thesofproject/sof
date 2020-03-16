@@ -27,6 +27,7 @@ struct pm_runtime_data;
 struct sa;
 struct timer;
 struct trace;
+struct pipeline_posn;
 struct probe_pdata;
 
 /**
@@ -94,6 +95,9 @@ struct sof {
 
 	/* probes */
 	struct probe_pdata *probe;
+
+	/* pipelines stream position */
+	struct pipeline_posn *pipeline_posn;
 
 	__aligned(PLATFORM_DCACHE_ALIGN) int alignment[0];
 } __aligned(PLATFORM_DCACHE_ALIGN);

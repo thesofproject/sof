@@ -9,6 +9,7 @@
  */
 
 #include <sof/audio/component_ext.h>
+#include <sof/audio/pipeline.h>
 #include <sof/debug/panic.h>
 #include <sof/drivers/ipc.h>
 #include <sof/lib/alloc.h>
@@ -103,6 +104,9 @@ int task_main_start(struct sof *sof)
 
 	/* init self-registered modules */
 	sys_module_init();
+
+	/* init pipeline position offsets */
+	pipeline_posn_init(sof);
 
 #if STATIC_PIPE
 	/* init static pipeline */
