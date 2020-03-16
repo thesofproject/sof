@@ -56,11 +56,11 @@ DAI_ADD(sof/pipe-dai-playback.m4,
 	1000, 1, 0, SCHEDULE_TIME_DOMAIN_DMA)
 
 # PCM Media Playback pipeline 3 on PCM 1 using max 2 channels of s32le.
-# 4000us deadline on core 0 with priority 0
+# 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-pcm-media.m4,
-	3, 1, 2, s16le,
-	4000, 0, 0,
-	8000, 96000, 48000,
+	3, 1, 2, s32le,
+	1000, 0, 0,
+	8000, 48000, 48000,
 	SCHEDULE_TIME_DOMAIN_DMA,
 	PIPELINE_PLAYBACK_SCHED_COMP_1)
 

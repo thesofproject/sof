@@ -54,22 +54,22 @@ W_DATA(playback_pga_conf, playback_pga_tokens)
 # with 2 sink and 0 source periods
 W_PCM_PLAYBACK(PCM_ID, Media Playback, 2, 0)
 
-# "Playback Volume" has 2 sink period and 2 source periods for host ping-pong
-W_PGA(0, PIPELINE_FORMAT, 2, 2, playback_pga_conf, LIST(`		', "PIPELINE_ID PCM PCM_ID Playback Volume"))
+# "Playback Volume" has 3 sink period and 2 source periods for host ping-pong
+W_PGA(0, PIPELINE_FORMAT, 3, 2, playback_pga_conf, LIST(`		', "PIPELINE_ID PCM PCM_ID Playback Volume"))
 
-# "SRC 0" has 2 sink and source periods.
-W_SRC(0, PIPELINE_FORMAT, 2, 2, media_src_conf)
+# "SRC 0" has 3 sink and source periods.
+W_SRC(0, PIPELINE_FORMAT, 3, 3, media_src_conf)
 
-# Media Source Buffers to SRC, make them big enough to deal with 2 * rate.
-W_BUFFER(0, COMP_BUFFER_SIZE(4,
+# Media Source Buffers to SRC
+W_BUFFER(0, COMP_BUFFER_SIZE(2,
 	COMP_SAMPLE_SIZE(PIPELINE_FORMAT), PIPELINE_CHANNELS, COMP_PERIOD_FRAMES(PCM_MAX_RATE, SCHEDULE_PERIOD)),
 	PLATFORM_HOST_MEM_CAP)
-W_BUFFER(1,COMP_BUFFER_SIZE(4,
+W_BUFFER(1,COMP_BUFFER_SIZE(3,
 	COMP_SAMPLE_SIZE(PIPELINE_FORMAT), PIPELINE_CHANNELS, COMP_PERIOD_FRAMES(PCM_MAX_RATE, SCHEDULE_PERIOD)),
 	PLATFORM_COMP_MEM_CAP)
 
 # Buffer B2 is on fixed rate sink side of SRC.
-W_BUFFER(2, COMP_BUFFER_SIZE(4,
+W_BUFFER(2, COMP_BUFFER_SIZE(3,
 	COMP_SAMPLE_SIZE(PIPELINE_FORMAT), PIPELINE_CHANNELS, COMP_PERIOD_FRAMES(PCM_MAX_RATE, SCHEDULE_PERIOD)),
 	PLATFORM_COMP_MEM_CAP)
 
