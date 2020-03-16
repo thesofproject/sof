@@ -858,7 +858,7 @@ static int hda_dma_data_size(struct dma_chan_data *channel,
 
 	ret = hda_dma_link_check_xrun(channel);
 	if (ret < 0)
-		return ret;
+		goto unlock;
 
 	if (channel->direction == DMA_DIR_HMEM_TO_LMEM ||
 	    channel->direction == DMA_DIR_DEV_TO_MEM)
@@ -866,6 +866,7 @@ static int hda_dma_data_size(struct dma_chan_data *channel,
 	else
 		*free = hda_dma_free_data_size(channel);
 
+unlock:
 	irq_local_enable(flags);
 
 	return ret;
