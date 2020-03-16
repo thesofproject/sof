@@ -47,7 +47,6 @@ struct sof_ipc_stream_posn;
 struct dai_hw_params;
 
 /** \addtogroup component_api Component API
- *  Component API specification.
  *  @{
  */
 
@@ -223,69 +222,158 @@ enum comp_copy_type {
 struct comp_driver;
 
 /**
- * Audio component operations - all mandatory.
+ * Audio component operations.
  *
  * All component operations must return 0 for success, negative values for
- * errors and 1 to stop the pipeline walk operation.
+ * errors and 1 to stop the pipeline walk operation unless specified otherwise
+ * in the operation documentation.
  */
 struct comp_ops {
-	/** component creation */
+	/**
+	 * Creates a new component device.
+	 * @param drv Parent component driver.
+	 * @param comp Component parameters.
+	 * @return Pointer to the new component device.
+	 *
+	 * All required data objects should be allocated from the run-time
+	 * heap (RZONE_RUNTIME).
+	 * Any component-specific private data is allocated separately and
+	 * pointer is connected to the comp_dev::private by using
+	 * comp_set_drvdata() and later retrieved by comp_get_drvdata().
+	 *
+	 * All parameters should be initialized to their default values.
+	 */
 	struct comp_dev *(*new)(const struct comp_driver *drv,
 				struct sof_ipc_comp *comp);
 
-	/** component destruction */
+	/**
+	 * Called to delete the specified component device.
+	 * @param dev Component device to be deleted.
+	 *
+	 * All data structures previously allocated on the run-time heap
+	 * must be freed by the implementation of <code>free()</code>.
+	 */
 	void (*free)(struct comp_dev *dev);
 
-	/** set component audio stream parameters */
+	/**
+	 * Sets component audio stream parameters.
+	 * @param dev Component device.
+	 * @param params Audio (PCM) stream parameters to be set.
+	 */
 	int (*params)(struct comp_dev *dev,
 		      struct sof_ipc_stream_params *params);
 
-	/** get dai hw parameters */
+	/**
+	 * Fetches hardware stream parameters.
+	 * @param dev Component device.
+	 * @param params Receives copy of stream parameters retrieved from
+	 *	DAI hw settings.
+	 * @param dir Stream direction (see enum sof_ipc_stream_direction).
+	 *
+	 * Mandatory for components that allocate DAI.
+	 */
 	int (*dai_get_hw_params)(struct comp_dev *dev,
 				 struct sof_ipc_stream_params *params, int dir);
 
-	/** set component audio stream parameters */
+	/**
+	 * Configures attached DAI.
+	 * @param dev Component device.
+	 * @param dai_config DAI configuration.
+	 *
+	 * Mandatory for components that allocate DAI.
+	 */
 	int (*dai_config)(struct comp_dev *dev,
 			  struct sof_ipc_dai_config *dai_config);
 
-	/** used to pass standard and bespoke commands (with optional data) */
+	/**
+	 * Used to pass standard and bespoke commands (with optional data).
+	 * @param dev Component device.
+	 * @param cmd Command.
+	 * @param data Command data.
+	 * @param max_data_size Max size of returned data acceptable by the
+	 *	caller in case of 'get' commands.
+	 */
 	int (*cmd)(struct comp_dev *dev, int cmd, void *data,
 		   int max_data_size);
 
-	/** atomic - used to start/stop/pause stream operations */
+	/**
+	 * Trigger, atomic - used to start/stop/pause stream operations.
+	 * @param dev Component device.
+	 * @param cmd Command, one of COMP_TRIGGER_...
+	 */
 	int (*trigger)(struct comp_dev *dev, int cmd);
 
-	/** prepare component after params are set */
+	/**
+	 * Prepares component after params are set.
+	 * @param dev Component device.
+	 */
 	int (*prepare)(struct comp_dev *dev);
 
-	/** reset component */
+	/**
+	 * Resets component.
+	 * @param dev Component device.
+	 */
 	int (*reset)(struct comp_dev *dev);
 
-	/** copy and process stream data from source to sink buffers */
+	/**
+	 * Copy and process stream data from source to sink buffers.
+	 * @param dev Component device.
+	 * @return Number of copied frames.
+	 */
 	int (*copy)(struct comp_dev *dev);
 
-	/** position */
+	/**
+	 * Retrieves component rendering position.
+	 * @param dev Component device.
+	 * @param posn Receives reported position.
+	 */
 	int (*position)(struct comp_dev *dev,
 		struct sof_ipc_stream_posn *posn);
 
-	/** set attribute in component */
+	/**
+	 * Sets attribute in component.
+	 * @param dev Component device.
+	 * @param type Attribute type.
+	 * @param value Attribute value.
+	 * @return 0 if succeeded, error code otherwise.
+	 */
 	int (*set_attribute)(struct comp_dev *dev, uint32_t type,
 			     void *value);
 
-	/* Configure timestamping */
+	/**
+	 * Configures timestamping in attached DAI.
+	 * @param dev Component device.
+	 *
+	 * Mandatory for components that allocate DAI.
+	 */
 	int (*dai_ts_config)(struct comp_dev *dev);
 
-	/* Start timestamping */
+	/**
+	 * Starts timestamping.
+	 * @param dev Component device.
+	 *
+	 * Mandatory for components that allocate DAI.
+	 */
 	int (*dai_ts_start)(struct comp_dev *dev);
 
-	/* Stop timestamping */
+	/**
+	 * Stops timestamping.
+	 * @param dev Component device.
+	 *
+	 * Mandatory for components that allocate DAI.
+	 */
 	int (*dai_ts_stop)(struct comp_dev *dev);
 
-	/* Get timestamp */
+	/**
+	 * Gets timestamp.
+	 * @param dev Component device.
+	 * @param tsd Receives timestamp data.
+	 *
+	 * Mandatory for components that allocate DAI.
+	 */
 	int (*dai_ts_get)(struct comp_dev *dev,
 			  struct timestamp_data *tsd);
 };
-
 
 /**
  * Audio component base driver "class"
@@ -354,7 +442,13 @@ struct comp_dev {
 	struct sof_ipc_comp comp;
 };
 
-/** \name Helpers.
+/** @}*/
+
+/* Common helper function used internally by the component implementations
+ * begin here.
+ */
+
+/** \addtogroup component_common_int Component's Common Helpers
  *  @{
  */
 
@@ -435,21 +529,22 @@ static inline struct sof_ipc_comp_config *comp_config(struct sof_ipc_comp *comp)
 	return (struct sof_ipc_comp_config *)(comp + 1);
 }
 
-/** \brief Sets the driver private data. */
+/**
+ * \brief Assigns private data to component device.
+ * @param c Component device.
+ * @param data Private data.
+ */
 #define comp_set_drvdata(c, data) \
 	(c->private = data)
 
-/** \brief Retrieves the driver private data. */
+/**
+ * \brief Retrieves driver private data from component device.
+ * @param c Component device.
+ * @return Private data.
+ */
 #define comp_get_drvdata(c) \
 	c->private
 
-/** @}*/
-
-/** \name Declare module macro
- *  \brief Usage at the end of an independent module file:
- *         DECLARE_MODULE(sys_*_init);
- *  @{
- */
 #ifdef UNIT_TEST
 #define DECLARE_MODULE(init)
 #elif CONFIG_LIBRARY
@@ -457,11 +552,12 @@ static inline struct sof_ipc_comp_config *comp_config(struct sof_ipc_comp *comp)
 #define DECLARE_MODULE(init) __attribute__((constructor)) \
 	static void _module_init(void) { init(); }
 #else
+/** \brief Usage at the end of an independent module file:
+ *	DECLARE_MODULE(sys_*_init);
+ */
 #define DECLARE_MODULE(init) __attribute__((__used__)) \
 	__section(".module_init") static void(*f)(void) = init
 #endif
-
-/** @}*/
 
 /** \name Component registration
  *  @{
@@ -481,10 +577,6 @@ int comp_register(struct comp_driver_info *drv);
 void comp_unregister(struct comp_driver_info *drv);
 
 /** @}*/
-
-/** \name Component API.
- *  @{
- */
 
 /**
  * Component state set.
@@ -507,12 +599,6 @@ void comp_unregister(struct comp_driver_info *drv);
  */
 int comp_set_state(struct comp_dev *dev, int cmd);
 
-/** @}*/
-
-/** \name Helpers.
- *  @{
- */
-
 /* \brief Set component period frames */
 static inline void component_set_period_frames(struct comp_dev *current,
 					       uint32_t rate)
@@ -523,8 +609,6 @@ static inline void component_set_period_frames(struct comp_dev *current,
 	 */
 	current->frames = ceil_divide(rate * current->period, 1000000);
 }
-
-/** @}*/
 
 /** \name XRUN handling.
  *  @{
@@ -567,6 +651,8 @@ static inline void comp_overrun(struct comp_dev *dev, struct comp_buffer *sink,
 	pipeline_xrun(dev->pipeline, dev, bytes);
 }
 
+/** @}*/
+
 /**
  * Called by component in copy.
  * @param source Source buffer.
@@ -588,8 +674,6 @@ void comp_get_copy_limits(struct comp_buffer *source, struct comp_buffer *sink,
  */
 int comp_verify_params(struct comp_dev *dev, uint32_t flag,
 		       struct sof_ipc_stream_params *params);
-
-/** @}*/
 
 /** @}*/
 
