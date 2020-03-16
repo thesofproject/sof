@@ -19,6 +19,46 @@
 #include <sof/common.h>
 #include <tplg_parser/topology.h>
 
+struct sof_process_types {
+	const char *name;
+	enum sof_ipc_process_type type;
+	enum sof_comp_type comp_type;
+};
+
+static const struct sof_process_types sof_process[] = {
+	{"EQFIR", SOF_PROCESS_EQFIR, SOF_COMP_EQ_FIR},
+	{"EQIIR", SOF_PROCESS_EQIIR, SOF_COMP_EQ_IIR},
+	{"KEYWORD_DETECT", SOF_PROCESS_KEYWORD_DETECT, SOF_COMP_KEYWORD_DETECT},
+	{"KPB", SOF_PROCESS_KPB, SOF_COMP_KPB},
+	{"CHAN_SELECTOR", SOF_PROCESS_CHAN_SELECTOR, SOF_COMP_SELECTOR},
+	{"MUX", SOF_PROCESS_MUX, SOF_COMP_MUX},
+	{"DEMUX", SOF_PROCESS_DEMUX, SOF_COMP_DEMUX},
+};
+
+static enum sof_ipc_process_type find_process(const char *name)
+{
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(sof_process); i++) {
+		if (strcmp(name, sof_process[i].name) == 0)
+			return sof_process[i].type;
+	}
+
+	return SOF_PROCESS_NONE;
+}
+
+static enum sof_comp_type find_process_comp_type(enum sof_ipc_process_type type)
+{
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(sof_process); i++) {
+		if (sof_process[i].type == type)
+			return sof_process[i].comp_type;
+	}
+
+	return SOF_COMP_NONE;
+}
+
 /* read vendor tuples array from topology */
 int tplg_read_array(struct snd_soc_tplg_vendor_array *array, FILE *file)
 {
@@ -256,15 +296,27 @@ int tplg_load_pga(int comp_id, int pipeline_id, int size,
 		}
 		tplg_read_array(array, file);
 
-		/* parse volume tokens */
+		/* parse comp tokens */
 		ret = sof_parse_tokens(&volume->config, comp_tokens,
 				       ARRAY_SIZE(comp_tokens), array,
 				       array->size);
 		if (ret != 0) {
-			fprintf(stderr, "error: parse pga tokens %d\n", size);
+			fprintf(stderr, "error: parse pga comp tokens %d\n",
+				size);
 			free(array);
 			return -EINVAL;
 		}
+
+		/* parse volume tokens */
+		ret = sof_parse_tokens(volume, volume_tokens,
+				       ARRAY_SIZE(volume_tokens), array,
+				       array->size);
+		if (ret != 0) {
+			fprintf(stderr, "error: parse src tokens %d\n", size);
+			free(array);
+			return -EINVAL;
+		}
+
 		total_array_size += array->size;
 	}
 
@@ -341,8 +393,148 @@ int tplg_load_pipeline(int comp_id, int pipeline_id, int size,
 	return 0;
 }
 
+int tplg_load_one_control(struct snd_soc_tplg_ctl_hdr **ctl, char **priv_data,
+			  FILE *file)
+{
+	struct snd_soc_tplg_ctl_hdr *ctl_hdr;
+	struct snd_soc_tplg_mixer_control *mixer_ctl = NULL;
+	struct snd_soc_tplg_enum_control *enum_ctl = NULL;
+	struct snd_soc_tplg_bytes_control *bytes_ctl = NULL;
+	size_t rewind_size;
+	size_t read_size;
+	size_t hdr_size;
+	int ret = 0;
+
+	/* These are set if success */
+	*ctl = NULL;
+	*priv_data = NULL;
+
+	/* allocate memory */
+	hdr_size = sizeof(struct snd_soc_tplg_ctl_hdr);
+	ctl_hdr = (struct snd_soc_tplg_ctl_hdr *)malloc(hdr_size);
+	if (!ctl_hdr) {
+		fprintf(stderr, "error: mem alloc\n");
+		return -EINVAL;
+	}
+
+	/* read control header */
+	ret = fread(ctl_hdr, hdr_size, 1, file);
+	if (ret != 1) {
+		ret = -EINVAL;
+		goto err;
+	}
+
+	/* load control based on type */
+	switch (ctl_hdr->ops.info) {
+	case SND_SOC_TPLG_CTL_VOLSW:
+	case SND_SOC_TPLG_CTL_STROBE:
+	case SND_SOC_TPLG_CTL_VOLSW_SX:
+	case SND_SOC_TPLG_CTL_VOLSW_XR_SX:
+	case SND_SOC_TPLG_CTL_RANGE:
+	case SND_SOC_TPLG_DAPM_CTL_VOLSW:
+		/* load mixer type control */
+		rewind_size = sizeof(struct snd_soc_tplg_ctl_hdr);
+		fseek(file, rewind_size * -1, SEEK_CUR);
+		read_size = sizeof(struct snd_soc_tplg_mixer_control);
+		mixer_ctl = malloc(read_size);
+		if (!mixer_ctl) {
+			fprintf(stderr, "error: mem alloc\n");
+			ret = -EINVAL;
+			goto err;
+		}
+		ret = fread(mixer_ctl, read_size, 1, file);
+		if (ret != 1) {
+			ret = -EINVAL;
+			goto err;
+		}
+
+		/* skip mixer private data */
+		fseek(file, mixer_ctl->priv.size, SEEK_CUR);
+		*ctl = (struct snd_soc_tplg_ctl_hdr *)mixer_ctl;
+		break;
+
+	case SND_SOC_TPLG_CTL_ENUM:
+	case SND_SOC_TPLG_CTL_ENUM_VALUE:
+	case SND_SOC_TPLG_DAPM_CTL_ENUM_DOUBLE:
+	case SND_SOC_TPLG_DAPM_CTL_ENUM_VIRT:
+	case SND_SOC_TPLG_DAPM_CTL_ENUM_VALUE:
+		/* load enum type control */
+		rewind_size = sizeof(struct snd_soc_tplg_ctl_hdr);
+		fseek(file, rewind_size * -1, SEEK_CUR);
+		read_size = sizeof(struct snd_soc_tplg_enum_control);
+		enum_ctl = malloc(read_size);
+		if (!enum_ctl) {
+			fprintf(stderr, "error: mem alloc\n");
+			ret = -EINVAL;
+			goto err;
+		}
+		ret = fread(enum_ctl, read_size, 1, file);
+		if (ret != 1) {
+			ret = -EINVAL;
+			goto err;
+		}
+
+		/* skip enum private data */
+		fseek(file, enum_ctl->priv.size, SEEK_CUR);
+		*ctl = (struct snd_soc_tplg_ctl_hdr *)enum_ctl;
+		break;
+
+	case SND_SOC_TPLG_CTL_BYTES:
+		/* load bytes type controls */
+		rewind_size = sizeof(struct snd_soc_tplg_ctl_hdr);
+		fseek(file, rewind_size * -1, SEEK_CUR);
+		read_size = sizeof(struct snd_soc_tplg_bytes_control);
+		bytes_ctl = malloc(read_size);
+		if (!bytes_ctl) {
+			fprintf(stderr, "error: mem alloc\n");
+			ret = -EINVAL;
+			goto err;
+		}
+
+		ret = fread(bytes_ctl, read_size, 1, file);
+		if (ret != 1) {
+			ret = -EINVAL;
+			goto err;
+		}
+
+		/* Get private data */
+		read_size = bytes_ctl->priv.size;
+		*priv_data = malloc(read_size);
+		if (!(*priv_data)) {
+			fprintf(stderr, "error: mem alloc\n");
+			ret = -EINVAL;
+			goto err;
+		}
+
+		ret = fread(*priv_data, read_size, 1, file);
+		if (ret != 1) {
+			ret = -EINVAL;
+			goto err;
+		}
+
+		*ctl = (struct snd_soc_tplg_ctl_hdr *)bytes_ctl;
+		break;
+
+	default:
+		printf("info: control type not supported\n");
+		return -EINVAL;
+	}
+
+	free(ctl_hdr);
+	return 0;
+
+err:
+	/* free all data */
+	free(ctl_hdr);
+	free(mixer_ctl);
+	free(enum_ctl);
+	free(bytes_ctl);
+	free(*priv_data);
+	return ret;
+}
+
 /* load dapm widget kcontrols
- * we don't use controls in the testbench or the fuzzer atm.
+ * we don't use controls in the fuzzer atm.
  * so just skip to the next dapm widget
  */
 int tplg_load_controls(int num_kcontrols, FILE *file)
@@ -603,6 +795,75 @@ int tplg_load_asrc(int comp_id, int pipeline_id, int size,
 	return 0;
 }
 
+/* load asrc dapm widget */
+int tplg_load_process(int comp_id, int pipeline_id, int size,
+		      struct sof_ipc_comp_process *process, FILE *file)
+{
+	struct snd_soc_tplg_vendor_array *array = NULL;
+	size_t total_array_size = 0;
+	size_t read_size;
+	int ret = 0;
+
+	/* allocate memory for vendor tuple array */
+	array = (struct snd_soc_tplg_vendor_array *)malloc(size);
+	if (!array) {
+		fprintf(stderr, "error: mem alloc for asrc vendor array\n");
+		return -EINVAL;
+	}
+
+	/* read vendor tokens */
+	while (total_array_size < size) {
+		read_size = sizeof(struct snd_soc_tplg_vendor_array);
+		ret = fread(array, read_size, 1, file);
+		if (ret != 1) {
+			free(array);
+			return -EINVAL;
+		}
+
+		tplg_read_array(array, file);
+
+		/* parse comp tokens */
+		ret = sof_parse_tokens(&process->config, comp_tokens,
+				       ARRAY_SIZE(comp_tokens), array,
+				       array->size);
+		if (ret != 0) {
+			fprintf(stderr, "error: parse process comp_tokens %d\n",
+				size);
+			free(array);
+			return -EINVAL;
+		}
+
+		/* parse process tokens */
+		ret = sof_parse_tokens(process, process_tokens,
+				       ARRAY_SIZE(process_tokens), array,
+				       array->size);
+		if (ret != 0) {
+			fprintf(stderr, "error: parse process tokens %d\n",
+				size);
+			free(array);
+			return -EINVAL;
+		}
+
+		total_array_size += array->size;
+
+		/* read next array */
+		array = (void *)array + array->size;
+	}
+
+	array = (void *)array - size;
+
+	/* configure asrc */
+	process->comp.hdr.cmd = SOF_IPC_GLB_TPLG_MSG | SOF_IPC_TPLG_COMP_NEW;
+	process->comp.id = comp_id;
+	process->comp.hdr.size = sizeof(struct sof_ipc_comp_asrc);
+	process->comp.type = find_process_comp_type(process->type);
+	process->comp.pipeline_id = pipeline_id;
+	process->config.hdr.size = sizeof(struct sof_ipc_comp_config);
+
+	free(array);
+	return 0;
+}
+
 /* load mixer dapm widget */
 int tplg_load_mixer(int comp_id, int pipeline_id, int size,
 		    struct sof_ipc_comp_mixer *mixer, FILE *file)
@@ -733,7 +994,8 @@ int load_widget(void *dev, int dev_type, struct comp_info *temp_comp_list,
 		void *tp, int *sched_id, FILE *file)
 {
 	struct snd_soc_tplg_dapm_widget *widget;
-	size_t read_size, size;
+	size_t read_size;
+	size_t size;
 	int ret = 0;
 
 	/* allocate memory for widget */
@@ -760,59 +1022,48 @@ int load_widget(void *dev, int dev_type, struct comp_info *temp_comp_list,
 	temp_comp_list[comp_index].type = widget->id;
 	temp_comp_list[comp_index].pipeline_id = pipeline_id;
 
-	printf("debug: loading widget %s id %d\n",
-	       temp_comp_list[comp_index].name,
-	       temp_comp_list[comp_index].id);
-
-	/* register comp driver */
-	register_comp(temp_comp_list[comp_index].type);
+	printf("debug: loading widget %s id %d\n", widget->name, widget->id);
 
 	/* load widget based on type */
-	switch (temp_comp_list[comp_index].type) {
+	switch (widget->id) {
 
 	/* load pga widget */
 	case(SND_SOC_TPLG_DAPM_PGA):
-		if (load_pga(dev, temp_comp_list[comp_index].id,
-			     pipeline_id, widget->priv.size) < 0) {
+		if (load_pga(dev, comp_id, pipeline_id, widget) < 0) {
 			fprintf(stderr, "error: load pga\n");
 			return -EINVAL;
 		}
 		break;
 	case(SND_SOC_TPLG_DAPM_AIF_IN):
-		if (load_aif_in_out(dev, temp_comp_list[comp_index].id,
-				    pipeline_id, widget->priv.size,
+		if (load_aif_in_out(dev, comp_id, pipeline_id, widget,
 				    SOF_IPC_STREAM_PLAYBACK, tp) < 0) {
 			fprintf(stderr, "error: load AIF IN failed\n");
 			return -EINVAL;
 		}
 		break;
 	case(SND_SOC_TPLG_DAPM_AIF_OUT):
-		if (load_aif_in_out(dev, temp_comp_list[comp_index].id,
-				    pipeline_id, widget->priv.size,
+		if (load_aif_in_out(dev, comp_id, pipeline_id, widget,
 				    SOF_IPC_STREAM_CAPTURE, tp) < 0) {
 			fprintf(stderr, "error: load AIF OUT failed\n");
 			return -EINVAL;
 		}
 		break;
 	case(SND_SOC_TPLG_DAPM_DAI_IN):
-		if (load_dai_in_out(dev, temp_comp_list[comp_index].id,
-				    pipeline_id, widget->priv.size,
+		if (load_dai_in_out(dev, comp_id, pipeline_id, widget,
 				    SOF_IPC_STREAM_PLAYBACK, tp) < 0) {
 			fprintf(stderr, "error: load filewrite\n");
 			return -EINVAL;
 		}
 		break;
 	case(SND_SOC_TPLG_DAPM_DAI_OUT):
-		if (load_dai_in_out(dev, temp_comp_list[comp_index].id,
-				    pipeline_id, widget->priv.size,
+		if (load_dai_in_out(dev, comp_id, pipeline_id, widget,
 				    SOF_IPC_STREAM_CAPTURE, tp) < 0) {
 			fprintf(stderr, "error: load filewrite\n");
 			return -EINVAL;
 		}
 		break;
 	case(SND_SOC_TPLG_DAPM_BUFFER):
-		if (load_buffer(dev, temp_comp_list[comp_index].id,
-				pipeline_id, widget->priv.size) < 0) {
+		if (load_buffer(dev, comp_id, pipeline_id, widget) < 0) {
 			fprintf(stderr, "error: load buffer\n");
 			return -EINVAL;
 		}
@@ -823,48 +1074,47 @@ int load_widget(void *dev, int dev_type, struct comp_info *temp_comp_list,
 			*sched_id = find_widget(temp_comp_list, comp_id,
 						widget->sname);
 
-		if (load_pipeline(dev, temp_comp_list[comp_index].id,
-				  pipeline_id, widget->priv.size,
+		if (load_pipeline(dev, comp_id, pipeline_id, widget,
 				  *sched_id) < 0) {
 			fprintf(stderr, "error: load pipeline\n");
 			return -EINVAL;
 		}
 		break;
 	case(SND_SOC_TPLG_DAPM_SRC):
-		if (load_src(dev, temp_comp_list[comp_index].id,
-			     pipeline_id, widget->priv.size, tp) < 0) {
+		if (load_src(dev, comp_id, pipeline_id, widget, tp) < 0) {
 			fprintf(stderr, "error: load src\n");
 			return -EINVAL;
 		}
 		break;
 	case(SND_SOC_TPLG_DAPM_ASRC):
-		if (load_asrc(dev, temp_comp_list[comp_index].id,
-			      pipeline_id, widget->priv.size, tp) < 0) {
+		if (load_asrc(dev, comp_id, pipeline_id, widget, tp) < 0) {
 			fprintf(stderr, "error: load src\n");
 			return -EINVAL;
 		}
 		break;
 	case(SND_SOC_TPLG_DAPM_MIXER):
-		if (load_mixer(dev, temp_comp_list[comp_index].id,
-			       pipeline_id, widget->priv.size) < 0) {
+		if (load_mixer(dev, comp_id, pipeline_id, widget) < 0) {
 			fprintf(stderr, "error: load mixer\n");
+			return -EINVAL;
+		}
+		break;
+	case(SND_SOC_TPLG_DAPM_EFFECT):
+		if (load_process(dev, comp_id, pipeline_id, widget) < 0) {
+			fprintf(stderr, "error: load effect\n");
 			return -EINVAL;
 		}
 		break;
 	/* unsupported widgets */
 	default:
 		fseek(file, widget->priv.size, SEEK_CUR);
-		printf("info: Widget type not supported %d\n",
-		       widget->id);
+		printf("info: Widget type not supported %d\n", widget->id);
+		ret = tplg_load_controls(widget->num_kcontrols, file);
+		if (ret < 0) {
+			fprintf(stderr, "error: loading controls\n");
+			return ret;
+		}
 		break;
 	}
-
-	/* load widget kcontrols */
-	if (widget->num_kcontrols > 0)
-		if (tplg_load_controls(widget->num_kcontrols, file) < 0) {
-			fprintf(stderr, "error: loading controls\n");
-			return -EINVAL;
-		}
 
 	free(widget);
 	return 0;
@@ -1052,5 +1302,15 @@ int get_token_dai_type(void *elem, void *object, uint32_t offset, uint32_t size)
 	uint32_t *val = (uint32_t *)((uint8_t *)object + offset);
 
 	*val = find_dai(velem->string);
+	return 0;
+}
+
+int get_token_process_type(void *elem, void *object, uint32_t offset,
+			   uint32_t size)
+{
+	struct snd_soc_tplg_vendor_string_elem *velem = elem;
+	uint32_t *val = (uint32_t *)((uint8_t *)object + offset);
+
+	*val = find_process(velem->string);
 	return 0;
 }

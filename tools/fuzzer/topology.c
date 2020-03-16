@@ -110,14 +110,15 @@ static int load_graph(void *dev, struct comp_info *temp_comp_list,
 }
 
 /* load buffer DAPM widget */
-int load_buffer(void *dev, int comp_id, int pipeline_id, int size)
+int load_buffer(void *dev, int comp_id, int pipeline_id,
+		struct snd_soc_tplg_dapm_widget *widget)
 {
 	struct sof_ipc_buffer buffer;
 	struct fuzz *fuzzer = (struct fuzz *)dev;
 	struct sof_ipc_comp_reply r;
 	int ret;
 
-	ret = tplg_load_buffer(comp_id, pipeline_id, size, &buffer,
+	ret = tplg_load_buffer(comp_id, pipeline_id, widget->priv.size, &buffer,
 			       fuzzer->tplg_file);
 	if (ret < 0)
 		return ret;
@@ -163,9 +164,9 @@ static int load_pcm(void *dev, int comp_id, int pipeline_id, int size, int dir)
 }
 
 int load_aif_in_out(void *dev, int comp_id, int pipeline_id,
-		    int size, int dir, void *tp)
+		    struct snd_soc_tplg_dapm_widget *widget, int dir, void *tp)
 {
-	return load_pcm(dev, comp_id, pipeline_id, size, dir);
+	return load_pcm(dev, comp_id, pipeline_id, widget->priv.size, dir);
 }
 
 /* load dai component */
@@ -196,20 +197,21 @@ static int load_dai(struct fuzz *fuzzer, int comp_id, int pipeline_id,
 }
 
 int load_dai_in_out(void *dev, int comp_id, int pipeline_id,
-		    int size, int dir, void *tp)
+		    struct snd_soc_tplg_dapm_widget *widget, int dir, void *tp)
 {
-	return load_dai(dev, comp_id, pipeline_id, size);
+	return load_dai(dev, comp_id, pipeline_id, widget->priv.size);
 }
 
 /* load pda dapm widget */
-int load_pga(void *dev, int comp_id, int pipeline_id, int size)
+int load_pga(void *dev, int comp_id, int pipeline_id,
+	     struct snd_soc_tplg_dapm_widget *widget)
 {
 	struct fuzz *fuzzer = (struct fuzz *)dev;
 	struct sof_ipc_comp_volume volume;
 	struct sof_ipc_comp_reply r;
 	int ret = 0;
 
-	ret = tplg_load_pga(comp_id, pipeline_id, size, &volume,
+	ret = tplg_load_pga(comp_id, pipeline_id, widget->priv.size, &volume,
 			    fuzzer->tplg_file);
 	if (ret < 0)
 		return ret;
@@ -228,16 +230,16 @@ int load_pga(void *dev, int comp_id, int pipeline_id, int size)
 }
 
 /* load scheduler dapm widget */
-int load_pipeline(void *dev, int comp_id, int pipeline_id, int size,
-		  int sched_id)
+int load_pipeline(void *dev, int comp_id, int pipeline_id,
+		  struct snd_soc_tplg_dapm_widget *widget, int sched_id)
 {
 	struct sof_ipc_pipe_new pipeline;
 	struct fuzz *fuzzer = (struct fuzz *)dev;
 	struct sof_ipc_comp_reply r;
 	int ret;
 
-	ret = tplg_load_pipeline(comp_id, pipeline_id, size, &pipeline,
-				 fuzzer->tplg_file);
+	ret = tplg_load_pipeline(comp_id, pipeline_id, widget->priv.size,
+				 &pipeline, fuzzer->tplg_file);
 	if (ret < 0)
 		return ret;
 
@@ -258,15 +260,15 @@ int load_pipeline(void *dev, int comp_id, int pipeline_id, int size,
 }
 
 /* load src dapm widget */
-int load_src(void *dev, int comp_id, int pipeline_id, int size,
-	     void *params)
+int load_src(void *dev, int comp_id, int pipeline_id,
+	     struct snd_soc_tplg_dapm_widget *widget, void *params)
 {
 	struct fuzz *fuzzer = (struct fuzz *)dev;
 	struct sof_ipc_comp_src src = {0};
 	struct sof_ipc_comp_reply r;
 	int ret = 0;
 
-	ret = tplg_load_src(comp_id, pipeline_id, size, &src,
+	ret = tplg_load_src(comp_id, pipeline_id, widget->priv.size, &src,
 			    fuzzer->tplg_file);
 	if (ret < 0)
 		return ret;
@@ -286,15 +288,15 @@ int load_src(void *dev, int comp_id, int pipeline_id, int size,
 }
 
 /* load asrc dapm widget */
-int load_asrc(void *dev, int comp_id, int pipeline_id, int size,
-	      void *params)
+int load_asrc(void *dev, int comp_id, int pipeline_id,
+	      struct snd_soc_tplg_dapm_widget *widget, void *params)
 {
 	struct fuzz *fuzzer = (struct fuzz *)dev;
 	struct sof_ipc_comp_asrc asrc = {0};
 	struct sof_ipc_comp_reply r;
 	int ret = 0;
 
-	ret = tplg_load_asrc(comp_id, pipeline_id, size, &asrc,
+	ret = tplg_load_asrc(comp_id, pipeline_id, widget->priv.size, &asrc,
 			     fuzzer->tplg_file);
 	if (ret < 0)
 		return ret;
@@ -314,14 +316,15 @@ int load_asrc(void *dev, int comp_id, int pipeline_id, int size,
 }
 
 /* load mixer dapm widget */
-int load_mixer(void *dev, int comp_id, int pipeline_id, int size)
+int load_mixer(void *dev, int comp_id, int pipeline_id,
+	       struct snd_soc_tplg_dapm_widget *widget)
 {
 	struct fuzz *fuzzer = (struct fuzz *)dev;
 	struct sof_ipc_comp_mixer mixer = {0};
 	struct sof_ipc_comp_reply r;
 	int ret = 0;
 
-	ret = tplg_load_mixer(comp_id, pipeline_id, size, &mixer,
+	ret = tplg_load_mixer(comp_id, pipeline_id, widget->priv.size, &mixer,
 			      fuzzer->tplg_file);
 	if (ret < 0)
 		return ret;
@@ -338,6 +341,13 @@ int load_mixer(void *dev, int comp_id, int pipeline_id, int size)
 		fprintf(stderr, "error: message tx failed\n");
 
 	return ret;
+}
+
+/* load effect dapm widget */
+int load_process(void *dev, int comp_id, int pipeline_id,
+		 struct snd_soc_tplg_dapm_widget *widget)
+{
+	return -EINVAL; /* Not implemented */
 }
 
 /* parse topology file and set up pipeline */

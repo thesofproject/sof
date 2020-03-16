@@ -7,6 +7,7 @@
 
 /* Topology loader to set up components and pipeline */
 
+#include <math.h>
 #include <sof/drivers/ipc.h>
 #include <sof/common.h>
 #include <stdio.h>
@@ -16,6 +17,10 @@
 #include "testbench/file.h"
 #include <tplg_parser/topology.h>
 #include "testbench/common_test.h"
+
+FILE *file;
+char pipeline_string[DEBUG_MSG_LEN];
+struct shared_lib_table *lib_table;
 
 const struct sof_dai_types sof_dais[] = {
 	{"SSP", SOF_DAI_INTEL_SSP},
@@ -36,11 +41,6 @@ enum sof_ipc_dai_type find_dai(const char *name)
 	return SOF_DAI_INTEL_NONE;
 }
 
-FILE *file;
-char pipeline_string[DEBUG_MSG_LEN];
-
-struct shared_lib_table *lib_table;
-
 /*
  * Register component driver
  * Only needed once per component type
@@ -51,10 +51,7 @@ void register_comp(int comp_type)
 	char message[DEBUG_MSG_LEN + MAX_LIB_NAME_LEN];
 
 	/* register file comp driver (no shared library needed) */
-	if (comp_type == SND_SOC_TPLG_DAPM_DAI_IN ||
-	    comp_type == SND_SOC_TPLG_DAPM_DAI_OUT ||
-	    comp_type == SND_SOC_TPLG_DAPM_AIF_IN ||
-	    comp_type == SND_SOC_TPLG_DAPM_AIF_OUT) {
+	if (comp_type == SOF_COMP_HOST || comp_type == SOF_COMP_DAI) {
 		if (!lib_table[0].register_drv) {
 			sys_comp_file_init();
 			lib_table[0].register_drv = 1;
@@ -131,15 +128,22 @@ static int load_graph(void *dev, struct comp_info *temp_comp_list,
 }
 
 /* load buffer DAPM widget */
-int load_buffer(void *dev, int comp_id, int pipeline_id, int size)
+int load_buffer(void *dev, int comp_id, int pipeline_id,
+		struct snd_soc_tplg_dapm_widget *widget)
 {
 	struct sof *sof = (struct sof *)dev;
 	struct sof_ipc_buffer buffer;
+	int size = widget->priv.size;
 	int ret;
 
 	ret = tplg_load_buffer(comp_id, pipeline_id, size, &buffer, file);
 	if (ret < 0)
 		return ret;
+
+	if (tplg_load_controls(widget->num_kcontrols, file) < 0) {
+		fprintf(stderr, "error: loading controls\n");
+		return -EINVAL;
+	}
 
 	/* create buffer component */
 	if (ipc_buffer_new(sof->ipc, &buffer) < 0) {
@@ -155,7 +159,8 @@ static int tplg_load_fileread(int comp_id, int pipeline_id, int size,
 			      struct sof_ipc_comp_file *fileread)
 {
 	struct snd_soc_tplg_vendor_array *array = NULL;
-	size_t total_array_size = 0, read_size;
+	size_t total_array_size = 0;
+	size_t read_size;
 	int ret = 0;
 
 
@@ -193,6 +198,8 @@ static int tplg_load_fileread(int comp_id, int pipeline_id, int size,
 		total_array_size += array->size;
 	}
 
+	free(array);
+
 	/* configure fileread */
 	fileread->mode = FILE_READ;
 	fileread->comp.id = comp_id;
@@ -203,9 +210,6 @@ static int tplg_load_fileread(int comp_id, int pipeline_id, int size,
 	fileread->comp.type = SOF_COMP_FILEREAD;
 	fileread->comp.pipeline_id = pipeline_id;
 	fileread->config.hdr.size = sizeof(struct sof_ipc_comp_config);
-
-	free(array);
-
 	return 0;
 }
 
@@ -214,7 +218,8 @@ static int tplg_load_filewrite(int comp_id, int pipeline_id, int size,
 			       struct sof_ipc_comp_file *filewrite)
 {
 	struct snd_soc_tplg_vendor_array *array = NULL;
-	size_t total_array_size = 0, read_size;
+	size_t read_size;
+	size_t total_array_size = 0;
 	int ret = 0;
 
 	/* allocate memory for vendor tuple array */
@@ -247,6 +252,8 @@ static int tplg_load_filewrite(int comp_id, int pipeline_id, int size,
 		total_array_size += array->size;
 	}
 
+	free(array);
+
 	/* configure filewrite */
 	filewrite->comp.core = 0;
 	filewrite->comp.id = comp_id;
@@ -255,17 +262,17 @@ static int tplg_load_filewrite(int comp_id, int pipeline_id, int size,
 	filewrite->comp.type = SOF_COMP_FILEREAD;
 	filewrite->comp.pipeline_id = pipeline_id;
 	filewrite->config.hdr.size = sizeof(struct sof_ipc_comp_config);
-
-	free(array);
 	return 0;
 }
 
 /* load fileread component */
 static int load_fileread(void *dev, int comp_id, int pipeline_id,
-			 int size, int dir, struct testbench_prm *tp)
+			 struct snd_soc_tplg_dapm_widget *widget, int dir,
+			 struct testbench_prm *tp)
 {
 	struct sof *sof = (struct sof *)dev;
 	struct sof_ipc_comp_file fileread;
+	int size = widget->priv.size;
 	int ret;
 
 	fileread.config.frame_fmt = find_format(tp->bits_in);
@@ -273,6 +280,11 @@ static int load_fileread(void *dev, int comp_id, int pipeline_id,
 	ret = tplg_load_fileread(comp_id, pipeline_id, size, &fileread);
 	if (ret < 0)
 		return ret;
+
+	if (tplg_load_controls(widget->num_kcontrols, file) < 0) {
+		fprintf(stderr, "error: loading controls\n");
+		return -EINVAL;
+	}
 
 	/* configure fileread */
 	fileread.fn = strdup(tp->input_file);
@@ -291,6 +303,7 @@ static int load_fileread(void *dev, int comp_id, int pipeline_id,
 		SOF_COMP_HOST : SOF_COMP_DAI;
 
 	/* create fileread component */
+	register_comp(fileread.comp.type);
 	if (ipc_comp_new(sof->ipc, (struct sof_ipc_comp *)&fileread) < 0) {
 		fprintf(stderr, "error: comp register\n");
 		return -EINVAL;
@@ -302,14 +315,21 @@ static int load_fileread(void *dev, int comp_id, int pipeline_id,
 
 /* load filewrite component */
 static int load_filewrite(struct sof *sof, int comp_id, int pipeline_id,
-			  int size, int dir, struct testbench_prm *tp)
+			  struct snd_soc_tplg_dapm_widget *widget, int dir,
+			  struct testbench_prm *tp)
 {
 	struct sof_ipc_comp_file filewrite;
+	int size = widget->priv.size;
 	int ret;
 
 	ret = tplg_load_filewrite(comp_id, pipeline_id, size, &filewrite);
 	if (ret < 0)
 		return ret;
+
+	if (tplg_load_controls(widget->num_kcontrols, file) < 0) {
+		fprintf(stderr, "error: loading controls\n");
+		return -EINVAL;
+	}
 
 	/* configure filewrite */
 	filewrite.fn = strdup(tp->output_file);
@@ -325,6 +345,7 @@ static int load_filewrite(struct sof *sof, int comp_id, int pipeline_id,
 		SOF_COMP_DAI : SOF_COMP_HOST;
 
 	/* create filewrite component */
+	register_comp(filewrite.comp.type);
 	if (ipc_comp_new(sof->ipc, (struct sof_ipc_comp *)&filewrite) < 0) {
 		fprintf(stderr, "error: comp register\n");
 		return -EINVAL;
@@ -335,39 +356,82 @@ static int load_filewrite(struct sof *sof, int comp_id, int pipeline_id,
 }
 
 int load_aif_in_out(void *dev, int comp_id, int pipeline_id,
-		    int size, int dir, void *tp)
+		    struct snd_soc_tplg_dapm_widget *widget, int dir, void *tp)
 {
 	if (dir == SOF_IPC_STREAM_PLAYBACK)
-		return load_fileread(dev, comp_id, pipeline_id, size, dir,
+		return load_fileread(dev, comp_id, pipeline_id, widget, dir,
 				     (struct testbench_prm *)tp);
 
-	return load_filewrite(dev, comp_id, pipeline_id, size, dir,
+	return load_filewrite(dev, comp_id, pipeline_id, widget, dir,
 			      (struct testbench_prm *)tp);
 }
 
 int load_dai_in_out(void *dev, int comp_id, int pipeline_id,
-		    int size, int dir, void *tp)
+		    struct snd_soc_tplg_dapm_widget *widget, int dir, void *tp)
 {
 	if (dir == SOF_IPC_STREAM_PLAYBACK)
-		return load_filewrite(dev, comp_id, pipeline_id, size, dir,
+		return load_filewrite(dev, comp_id, pipeline_id, widget, dir,
 				      (struct testbench_prm *)tp);
 
-	return load_fileread(dev, comp_id, pipeline_id, size, dir,
+	return load_fileread(dev, comp_id, pipeline_id, widget, dir,
 			     (struct testbench_prm *)tp);
 }
 
 /* load pda dapm widget */
-int load_pga(void *dev, int comp_id, int pipeline_id, int size)
+int load_pga(void *dev, int comp_id, int pipeline_id,
+	     struct snd_soc_tplg_dapm_widget *widget)
 {
 	struct sof *sof = (struct sof *)dev;
-	struct sof_ipc_comp_volume volume;
+	struct sof_ipc_comp_volume volume = {};
+	struct snd_soc_tplg_ctl_hdr *ctl = NULL;
+	struct snd_soc_tplg_mixer_control *mixer_ctl;
+	char *priv_data = NULL;
+	int32_t vol_min = 0;
+	int32_t vol_step = 0;
+	int32_t vol_maxs = 0;
+	float vol_min_db;
+	float vol_max_db;
+	int channels = 0;
+	int size = widget->priv.size;
 	int ret = 0;
 
 	ret = tplg_load_pga(comp_id, pipeline_id, size, &volume, file);
 	if (ret < 0)
 		return ret;
 
+	/* Only one control is supported*/
+	if (widget->num_kcontrols > 1) {
+		fprintf(stderr, "error: more than one kcontrol defined\n");
+		return -EINVAL;
+	}
+
+	/* Get control into ctl and priv_data */
+	if (widget->num_kcontrols) {
+		ret = tplg_load_one_control(&ctl, &priv_data, file);
+		if (ret < 0) {
+			fprintf(stderr, "error: failed control load\n");
+			return ret;
+		}
+
+		/* Get volume scale */
+		mixer_ctl = (struct snd_soc_tplg_mixer_control *)ctl;
+		vol_min = (int32_t)mixer_ctl->hdr.tlv.scale.min;
+		vol_step = mixer_ctl->hdr.tlv.scale.step;
+		vol_maxs = mixer_ctl->max;
+		channels = mixer_ctl->num_channels;
+	}
+
+	vol_min_db = 0.01 * vol_min;
+	vol_max_db = 0.01 * (vol_maxs * vol_step) + vol_min_db;
+	volume.min_value = round(pow(10, vol_min_db / 20.0) * 65535);
+	volume.max_value = round(pow(10, vol_max_db / 20.0) * 65536);
+	volume.channels = channels;
+
+	free(ctl);
+	free(priv_data);
+
 	/* load volume component */
+	register_comp(volume.comp.type);
 	if (ipc_comp_new(sof->ipc, (struct sof_ipc_comp *)&volume) < 0) {
 		fprintf(stderr, "error: comp register\n");
 		return -EINVAL;
@@ -377,16 +441,22 @@ int load_pga(void *dev, int comp_id, int pipeline_id, int size)
 }
 
 /* load scheduler dapm widget */
-int load_pipeline(void *dev, int comp_id, int pipeline_id, int size,
-		  int sched_id)
+int load_pipeline(void *dev, int comp_id, int pipeline_id,
+		  struct snd_soc_tplg_dapm_widget *widget, int sched_id)
 {
 	struct sof *sof = (struct sof *)dev;
 	struct sof_ipc_pipe_new pipeline;
+	int size = widget->priv.size;
 	int ret;
 
 	ret = tplg_load_pipeline(comp_id, pipeline_id, size, &pipeline, file);
 	if (ret < 0)
 		return ret;
+
+	if (tplg_load_controls(widget->num_kcontrols, file) < 0) {
+		fprintf(stderr, "error: loading controls\n");
+		return -EINVAL;
+	}
 
 	pipeline.sched_id = sched_id;
 
@@ -400,17 +470,24 @@ int load_pipeline(void *dev, int comp_id, int pipeline_id, int size,
 }
 
 /* load src dapm widget */
-int load_src(void *dev, int comp_id, int pipeline_id, int size,
+int load_src(void *dev, int comp_id, int pipeline_id,
+	     struct snd_soc_tplg_dapm_widget *widget,
 	     void *params)
 {
 	struct testbench_prm *tp = (struct testbench_prm *)params;
 	struct sof *sof = (struct sof *)dev;
 	struct sof_ipc_comp_src src = {0};
+	int size = widget->priv.size;
 	int ret = 0;
 
 	ret = tplg_load_src(comp_id, pipeline_id, size, &src, file);
 	if (ret < 0)
 		return ret;
+
+	if (tplg_load_controls(widget->num_kcontrols, file) < 0) {
+		fprintf(stderr, "error: loading controls\n");
+		return -EINVAL;
+	}
 
 	/* set testbench input and output sample rate from topology */
 	if (!tp->fs_out) {
@@ -425,6 +502,7 @@ int load_src(void *dev, int comp_id, int pipeline_id, int size,
 	}
 
 	/* load src component */
+	register_comp(src.comp.type);
 	if (ipc_comp_new(sof->ipc, (struct sof_ipc_comp *)&src) < 0) {
 		fprintf(stderr, "error: new src comp\n");
 		return -EINVAL;
@@ -434,17 +512,24 @@ int load_src(void *dev, int comp_id, int pipeline_id, int size,
 }
 
 /* load asrc dapm widget */
-int load_asrc(void *dev, int comp_id, int pipeline_id, int size,
+int load_asrc(void *dev, int comp_id, int pipeline_id,
+	      struct snd_soc_tplg_dapm_widget *widget,
 	      void *params)
 {
 	struct testbench_prm *tp = (struct testbench_prm *)params;
 	struct sof *sof = (struct sof *)dev;
 	struct sof_ipc_comp_asrc asrc = {0};
+	int size = widget->priv.size;
 	int ret = 0;
 
 	ret = tplg_load_asrc(comp_id, pipeline_id, size, &asrc, file);
 	if (ret < 0)
 		return ret;
+
+	if (tplg_load_controls(widget->num_kcontrols, file) < 0) {
+		fprintf(stderr, "error: loading controls\n");
+		return -EINVAL;
+	}
 
 	/* set testbench input and output sample rate from topology */
 	if (!tp->fs_out) {
@@ -459,6 +544,7 @@ int load_asrc(void *dev, int comp_id, int pipeline_id, int size,
 	}
 
 	/* load asrc component */
+	register_comp(asrc.comp.type);
 	if (ipc_comp_new(sof->ipc, (struct sof_ipc_comp *)&asrc) < 0) {
 		fprintf(stderr, "error: new asrc comp\n");
 		return -EINVAL;
@@ -467,15 +553,113 @@ int load_asrc(void *dev, int comp_id, int pipeline_id, int size,
 	return ret;
 }
 
+static int process_append_data(struct sof_ipc_comp_process **process_ipc,
+			       struct sof_ipc_comp_process *process,
+			       struct snd_soc_tplg_ctl_hdr *ctl,
+			       char *priv_data)
+{
+	int ipc_size;
+	int size = 0;
+	struct snd_soc_tplg_bytes_control *bytes_ctl;
+
+	/* Size is process IPC plus private data minus ABI header */
+	ipc_size = sizeof(struct sof_ipc_comp_process);
+	if (ctl->ops.info == SND_SOC_TPLG_CTL_BYTES) {
+		bytes_ctl = (struct snd_soc_tplg_bytes_control *)ctl;
+		size = bytes_ctl->priv.size - sizeof(struct sof_abi_hdr);
+		ipc_size += size;
+	}
+	*process_ipc = malloc(ipc_size);
+	if (!(*process_ipc)) {
+		fprintf(stderr, "error: Failed to allocate IPC\n");
+		return -ENOMEM;
+	}
+
+	/* Copy header */
+	memcpy(*process_ipc, process, sizeof(struct sof_ipc_comp_process));
+
+	/* Copy configuration data, need to strip ABI header*/
+	memcpy((char *)*process_ipc + sizeof(struct sof_ipc_comp_process),
+	       priv_data + sizeof(struct sof_abi_hdr), size);
+	(*process_ipc)->size = size;
+	return 0;
+}
+
+/* load process dapm widget */
+int load_process(void *dev, int comp_id, int pipeline_id,
+		 struct snd_soc_tplg_dapm_widget *widget)
+{
+	struct sof *sof = (struct sof *)dev;
+	struct sof_ipc_comp_process process = {0};
+	struct sof_ipc_comp_process *process_ipc;
+	struct snd_soc_tplg_ctl_hdr *ctl = NULL;
+	char *priv_data = NULL;
+	int size;
+	int ret = 0;
+
+	size = widget->priv.size;
+	ret = tplg_load_process(comp_id, pipeline_id, size, &process, file);
+	if (ret < 0)
+		return ret;
+
+	if (process.comp.type == SOF_COMP_NONE) {
+		fprintf(stderr, "Invalid process comp type SOF_COMP_NONE\n");
+		return -EINVAL;
+	}
+
+	/* Only one control is supported*/
+	if (widget->num_kcontrols > 1) {
+		fprintf(stderr, "error: more than one kcontrol defined\n");
+		return -EINVAL;
+	}
+
+	/* Get control into ctl and priv_data */
+	if (widget->num_kcontrols) {
+		ret = tplg_load_one_control(&ctl, &priv_data, file);
+		if (ret < 0) {
+			fprintf(stderr, "error: failed control load\n");
+			return ret;
+		}
+	}
+
+	/* Merge process and priv_data into process_ipc */
+	ret = process_append_data(&process_ipc, &process, ctl, priv_data);
+	free(ctl);
+	free(priv_data);
+	if (ret) {
+		fprintf(stderr, "error: private data append failed\n");
+		return ret;
+	}
+
+	/* load process component */
+	register_comp(process_ipc->comp.type);
+
+	/* Instantiate */
+	ret = ipc_comp_new(sof->ipc, (struct sof_ipc_comp *)process_ipc);
+	free(process_ipc);
+
+	if (ret < 0)
+		fprintf(stderr, "error: new process comp\n");
+
+	return ret;
+}
+
 /* load mixer dapm widget */
-int load_mixer(void *dev, int comp_id, int pipeline_id, int size)
+int load_mixer(void *dev, int comp_id, int pipeline_id,
+	       struct snd_soc_tplg_dapm_widget *widget)
 {
 	struct sof_ipc_comp_mixer mixer = {0};
+	int size = widget->priv.size;
 	int ret = 0;
 
 	ret = tplg_load_mixer(comp_id, pipeline_id, size, &mixer, file);
 	if (ret < 0)
 		return ret;
+
+	if (tplg_load_controls(widget->num_kcontrols, file) < 0) {
+		fprintf(stderr, "error: loading controls\n");
+		return -EINVAL;
+	}
 
 	return ret;
 }
@@ -488,9 +672,12 @@ int parse_topology(struct sof *sof, struct shared_lib_table *library_table,
 
 	struct comp_info *temp_comp_list = NULL;
 	char message[DEBUG_MSG_LEN];
-	int next_comp_id = 0, num_comps = 0;
-	int i, ret = 0;
-	size_t file_size, size;
+	int next_comp_id = 0;
+	int num_comps = 0;
+	int i;
+	int ret = 0;
+	size_t file_size;
+	size_t size;
 
 	/* open topology file */
 	file = fopen(tp->tplg_file, "rb");
