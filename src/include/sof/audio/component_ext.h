@@ -37,23 +37,10 @@ struct comp_driver_list {
 	((dir) == PPL_DIR_DOWNSTREAM ? &comp->bsink_list : \
 	 &comp->bsource_list)
 
-/** \name Component creation and destruction - mandatory
- *  @{
- */
-
-/**
- * Creates a new component device.
- * @param comp Parameters of the new component device.
- * @return Pointer to the new component device.
- */
+/** See comp_ops::new */
 struct comp_dev *comp_new(struct sof_ipc_comp *comp);
 
-/**
- * Called to delete the specified component device.
- * All data structures previously allocated on the run-time heap
- * must be freed by the implementation of <code>free()</code>.
- * @param dev Component device to be deleted.
- */
+/** See comp_ops::free */
 static inline void comp_free(struct comp_dev *dev)
 {
 	assert(dev->drv->ops.free);
@@ -66,8 +53,6 @@ static inline void comp_free(struct comp_dev *dev)
 
 	dev->drv->ops.free(dev);
 }
-
-/** @}*/
 
 /**
  * Commits component's memory if it's shared.
@@ -94,12 +79,7 @@ static inline int comp_params_remote(struct comp_dev *dev,
 	return idc_send_msg(&msg, IDC_BLOCKING);
 }
 
-/**
- * Component parameter init.
- * @param dev Component device.
- * @param params Audio (PCM) stream parameters to be set
- * @return 0 if succeeded, error code otherwise.
- */
+/** See comp_ops::params */
 static inline int comp_params(struct comp_dev *dev,
 			      struct sof_ipc_stream_params *params)
 {
@@ -115,13 +95,7 @@ static inline int comp_params(struct comp_dev *dev,
 	return ret;
 }
 
-/**
- * Fetch hardware stream parameters - only mandatory for DAI components.
- * @param dev Component device.
- * @param params hw parameters
- * @param dir Pipeline direction (see enum sof_ipc_stream_direction).
- * @return 0 if succeeded, error code otherwise.
- */
+/** See comp_ops::dai_get_hw_params */
 static inline int comp_dai_get_hw_params(struct comp_dev *dev,
 					 struct sof_ipc_stream_params *params,
 					 int dir)
@@ -136,14 +110,7 @@ static inline int comp_dai_get_hw_params(struct comp_dev *dev,
 	return ret;
 }
 
-/**
- * Send component command.
- * @param dev Component device.
- * @param cmd Command.
- * @param data Command data.
- * @param max_data_size Max data size.
- * @return 0 if succeeded, error code otherwise.
- */
+/** See comp_ops::cmd */
 static inline int comp_cmd(struct comp_dev *dev, int cmd, void *data,
 			   int max_data_size)
 {
@@ -154,7 +121,7 @@ static inline int comp_cmd(struct comp_dev *dev, int cmd, void *data,
 	    (cdata->data->magic != SOF_ABI_MAGIC ||
 	     SOF_ABI_VERSION_INCOMPATIBLE(SOF_ABI_VERSION, cdata->data->abi))) {
 		comp_err(dev, "comp_cmd() error: invalid version, data->magic = %u, data->abi = %u",
-					 cdata->data->magic, cdata->data->abi);
+			 cdata->data->magic, cdata->data->abi);
 		goto out;
 	}
 
@@ -168,10 +135,7 @@ out:
 }
 
 /**
- * Triggers command for component on other core.
- * @param dev Component device.
- * @param cmd Command to be triggered.
- * @return 0 if succeeded, error code otherwise.
+ * Runs comp_ops::trigger on the core the target component is assigned to.
  */
 static inline int comp_trigger_remote(struct comp_dev *dev, int cmd)
 {
@@ -182,12 +146,7 @@ static inline int comp_trigger_remote(struct comp_dev *dev, int cmd)
 	return idc_send_msg(&msg, IDC_BLOCKING);
 }
 
-/**
- * Trigger component - mandatory and atomic.
- * @param dev Component device.
- * @param cmd Command.
- * @return 0 if succeeded, error code otherwise.
- */
+/** See comp_ops::trigger */
 static inline int comp_trigger(struct comp_dev *dev, int cmd)
 {
 	int ret = 0;
@@ -202,11 +161,7 @@ static inline int comp_trigger(struct comp_dev *dev, int cmd)
 	return ret;
 }
 
-/**
- * Prepares component on other core.
- * @param dev Component device.
- * @return 0 if succeeded, error code otherwise.
- */
+/** Runs comp_ops::prepare on the target component's core */
 static inline int comp_prepare_remote(struct comp_dev *dev)
 {
 	struct idc_msg msg = { IDC_MSG_PREPARE,
@@ -215,11 +170,7 @@ static inline int comp_prepare_remote(struct comp_dev *dev)
 	return idc_send_msg(&msg, IDC_BLOCKING);
 }
 
-/**
- * Prepare component.
- * @param dev Component device.
- * @return 0 if succeeded, error code otherwise.
- */
+/** See comp_ops::prepare */
 static inline int comp_prepare(struct comp_dev *dev)
 {
 	int ret = 0;
@@ -233,11 +184,7 @@ static inline int comp_prepare(struct comp_dev *dev)
 	return ret;
 }
 
-/**
- * Copy component buffers - mandatory.
- * @param dev Component device.
- * @return Number of frames copied.
- */
+/** See comp_ops::copy */
 static inline int comp_copy(struct comp_dev *dev)
 {
 	int ret = 0;
@@ -253,13 +200,7 @@ static inline int comp_copy(struct comp_dev *dev)
 	return ret;
 }
 
-/**
- * Sets component attribute.
- * @param dev Component device.
- * @param type Attribute type.
- * @param value Attribute value.
- * @return 0 if succeeded, error code otherwise.
- */
+/** See comp_ops::set_attribute */
 static inline int comp_set_attribute(struct comp_dev *dev, uint32_t type,
 				     void *value)
 {
@@ -273,11 +214,7 @@ static inline int comp_set_attribute(struct comp_dev *dev, uint32_t type,
 	return ret;
 }
 
-/**
- * Resets component on other core.
- * @param dev Component device.
- * @return 0 if succeeded, error code otherwise.
- */
+/** Runs comp_ops::reset on the target component's core */
 static inline int comp_reset_remote(struct comp_dev *dev)
 {
 	struct idc_msg msg = { IDC_MSG_RESET,
@@ -304,14 +241,9 @@ static inline int comp_reset(struct comp_dev *dev)
 	return ret;
 }
 
-/**
- * DAI configuration - only mandatory for DAI components.
- * @param dev Component device.
- * @param config DAI configuration.
- * @return 0 if succeeded, error code otherwise.
- */
+/** See comp_ops::dai_config */
 static inline int comp_dai_config(struct comp_dev *dev,
-	struct sof_ipc_dai_config *config)
+				  struct sof_ipc_dai_config *config)
 {
 	int ret = 0;
 
@@ -323,14 +255,9 @@ static inline int comp_dai_config(struct comp_dev *dev,
 	return ret;
 }
 
-/**
- * Retrieves component rendering position.
- * @param dev Component device.
- * @param posn Position reported by the component device.
- * @return 0 if succeeded, error code otherwise.
- */
+/** See comp_ops::position */
 static inline int comp_position(struct comp_dev *dev,
-	struct sof_ipc_stream_posn *posn)
+				struct sof_ipc_stream_posn *posn)
 {
 	int ret = 0;
 
@@ -342,17 +269,11 @@ static inline int comp_position(struct comp_dev *dev,
 	return ret;
 }
 
-/** \name Components API for infrastructure.
- *  @{
- */
-
 /**
  * Allocates and initializes audio component list.
  * To be called once at boot time.
  */
 void sys_comp_init(struct sof *sof);
-
-/** @}*/
 
 /**
  * Checks if two component devices belong to the same parent pipeline.
