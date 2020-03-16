@@ -199,6 +199,12 @@ void parse_data(char *file_in)
 	}
 
 	packet = malloc(PACKET_MAX_SIZE);
+	if (!packet) {
+		fprintf(stderr, "error: allocation failed, err %d\n",
+			errno);
+		fclose(fd_in);
+		exit(0);
+	}
 	memset(&data, 0, sizeof(uint32_t) * DATA_READ_LIMIT);
 	memset(&files, 0, sizeof(struct wave_files) * FILES_LIMIT);
 
