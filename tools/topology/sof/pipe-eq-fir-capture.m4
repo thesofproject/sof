@@ -68,8 +68,8 @@ P_GRAPH(pipe-pass-capture-PIPELINE_ID, PIPELINE_ID,
 #
 # Pipeline Source and Sinks
 #
-indir(`define', concat(`PIPELINE_SINK_', PIPELINE_ID), N_BUFFER(2))
-indir(`define', concat(`PIPELINE_PCM_', PIPELINE_ID), Highpass Capture PCM_ID)
+indir(`define', concat(`PIPELINE_SINK_', PIPELINE_ID), N_BUFFER(1))
+indir(`define', concat(`PIPELINE_PCM_', PIPELINE_ID), EQ FIR Capture PCM_ID)
 
 #
 # PCM Configuration
