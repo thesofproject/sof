@@ -63,9 +63,15 @@ struct pipeline *pipeline_new(struct sof_ipc_pipe_new *pipe_desc,
 
 	/* init pipeline */
 	p->sched_comp = cd;
-	p->posn_offset = pipe_desc->pipeline_id *
-		sizeof(struct sof_ipc_stream_posn);
 	p->status = COMP_STATE_INIT;
+
+	ret = pipeline_posn_offset_get(&p->posn_offset);
+	if (ret < 0) {
+		pipe_cl_err("pipeline_new() error: pipeline_posn_offset_get failed %d",
+			    ret);
+		rfree(p);
+		return NULL;
+	}
 
 	ret = memcpy_s(&p->ipc_pipe, sizeof(p->ipc_pipe),
 		       pipe_desc, sizeof(*pipe_desc));
@@ -261,6 +267,8 @@ int pipeline_free(struct pipeline *p)
 	}
 
 	ipc_msg_free(p->msg);
+
+	pipeline_posn_offset_put(p->posn_offset);
 
 	/* now free the pipeline */
 	rfree(p);
