@@ -101,7 +101,8 @@ static void kpb_buffer_samples(const struct audio_stream *source,
 static void kpb_reset_history_buffer(struct hb *buff);
 static inline bool validate_host_params(struct comp_dev *dev,
 					size_t host_period_size,
-					size_t host_buffer_size);
+					size_t host_buffer_size,
+					size_t hb_size_req);
 static inline void kpb_change_state(struct comp_data *kpb,
 				    enum kpb_state state);
 
@@ -444,7 +445,7 @@ static int kpb_prepare(struct comp_dev *dev)
 		return PPL_STATUS_PATH_STOP;
 
 	if (!validate_host_params(dev, kpb->host_period_size,
-				  kpb->host_buffer_size)) {
+				  kpb->host_buffer_size, hb_size_req)) {
 		comp_cl_err(&comp_kpb, "kpb_prepare() error: wrong host params.");
 		return -EINVAL;
 	}
@@ -1473,7 +1474,8 @@ static void kpb_reset_history_buffer(struct hb *buff)
 
 static inline bool validate_host_params(struct comp_dev *dev,
 					size_t host_period_size,
-					size_t host_buffer_size)
+					size_t host_buffer_size,
+					size_t hb_size_req)
 {
 	/* The aim of this function is to perform basic check of host params
 	 * and reject them if they won't allow for stable draining.
@@ -1495,7 +1497,7 @@ static inline bool validate_host_params(struct comp_dev *dev,
 	if (!host_period_size || !host_buffer_size) {
 		/* Wrong host params */
 		return false;
-	} else if (HOST_BUFFER_MIN_SIZE(kpb->buffer_size) >
+	} else if (HOST_BUFFER_MIN_SIZE(hb_size_req) >
 		   host_buffer_size) {
 		/* Host buffer size is too small - history data
 		 * may get overwritten.
