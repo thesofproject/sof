@@ -1,6 +1,6 @@
 #!/bin/bash
 # SPDX-License-Identifier: BSD-3-Clause
-# Copyright(c) 2018-2020 Intel Corporation. All rights reserved.
+# Copyright(c) 2020 Intel Corporation. All rights reserved.
 
 if [ -z "$6" ]; then
     echo "Usage:   $0 <bits in> <bits out> <rate in> <rate out> <input> <output>"
@@ -8,7 +8,7 @@ if [ -z "$6" ]; then
     exit
 fi
 
-COMP=src
+COMP=asrc
 DIRECTION=playback
 
 ./comp_run.sh $COMP $DIRECTION $1 $2 $3 $4 $5 $6
