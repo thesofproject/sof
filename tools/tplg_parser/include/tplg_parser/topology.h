@@ -42,6 +42,18 @@ static const struct frame_types sof_frames[] = {
 	{"FLOAT_LE", SOF_IPC_FRAME_FLOAT},
 };
 
+/** \brief Types of processing components */
+enum sof_ipc_process_type {
+	SOF_PROCESS_NONE = 0,		/**< None */
+	SOF_PROCESS_EQFIR,		/**< Intel FIR */
+	SOF_PROCESS_EQIIR,		/**< Intel IIR */
+	SOF_PROCESS_KEYWORD_DETECT,	/**< Keyword Detection */
+	SOF_PROCESS_KPB,		/**< KeyPhrase Buffer Manager */
+	SOF_PROCESS_CHAN_SELECTOR,	/**< Channel Selector */
+	SOF_PROCESS_MUX,
+	SOF_PROCESS_DEMUX,
+};
+
 struct sof_topology_token {
 	uint32_t token;
 	uint32_t type;
@@ -124,6 +136,16 @@ static const struct sof_topology_token asrc_tokens[] = {
 		offsetof(struct sof_ipc_comp_asrc, operation_mode), 0},
 };
 
+/* EFFECT */
+int get_token_process_type(void *elem, void *object, uint32_t offset,
+			   uint32_t size);
+
+static const struct sof_topology_token process_tokens[] = {
+	{SOF_TKN_PROCESS_TYPE, SND_SOC_TPLG_TUPLE_TYPE_STRING,
+		get_token_process_type,
+		offsetof(struct sof_ipc_comp_process, type), 0},
+};
+
 /* Tone */
 static const struct sof_topology_token tone_tokens[] = {
 };
@@ -199,6 +221,8 @@ int tplg_load_pga(int comp_id, int pipeline_id, int size,
 		  struct sof_ipc_comp_volume *volume, FILE *file);
 int tplg_load_pipeline(int comp_id, int pipeline_id, int size,
 		       struct sof_ipc_pipe_new *pipeline, FILE *file);
+int tplg_load_one_control(struct snd_soc_tplg_ctl_hdr **ctl, char **priv,
+			  FILE *file);
 int tplg_load_controls(int num_kcontrols, FILE *file);
 int tplg_load_src(int comp_id, int pipeline_id, int size,
 		  struct sof_ipc_comp_src *src, FILE *file);
@@ -206,25 +230,38 @@ int tplg_load_asrc(int comp_id, int pipeline_id, int size,
 		   struct sof_ipc_comp_asrc *asrc, FILE *file);
 int tplg_load_mixer(int comp_id, int pipeline_id, int size,
 		    struct sof_ipc_comp_mixer *mixer, FILE *file);
+int tplg_load_process(int comp_id, int pipeline_id, int size,
+		      struct sof_ipc_comp_process *process, FILE *file);
 int tplg_load_graph(int num_comps, int pipeline_id,
 		    struct comp_info *temp_comp_list, char *pipeline_string,
 		    struct sof_ipc_pipe_comp_connect *connection, FILE *file,
 		    int route_num, int count);
 
-int load_pga(void *dev, int comp_id, int pipeline_id, int size);
+int load_pga(void *dev, int comp_id, int pipeline_id,
+	     struct snd_soc_tplg_dapm_widget *widget);
+
 int load_aif_in_out(void *dev, int comp_id, int pipeline_id,
-		    int size, int dir, void *tp);
+		    struct snd_soc_tplg_dapm_widget *widget, int dir, void *tp);
 int load_dai_in_out(void *dev, int comp_id, int pipeline_id,
-		    int size, int dir, void *tp);
-int load_buffer(void *dev, int comp_id, int pipeline_id, int size);
-int load_pipeline(void *dev, int comp_id, int pipeline_id, int size,
+		    struct snd_soc_tplg_dapm_widget *widget, int dir, void *tp);
+int load_buffer(void *dev, int comp_id, int pipeline_id,
+		struct snd_soc_tplg_dapm_widget *widget);
+int load_pipeline(void *dev, int comp_id, int pipeline_id,
+		  struct snd_soc_tplg_dapm_widget *widget,
 		  int sched_id);
-int load_src(void *dev, int comp_id, int pipeline_id, int size, void *params);
-int load_asrc(void *dev, int comp_id, int pipeline_id, int size, void *params);
-int load_mixer(void *dev, int comp_id, int pipeline_id, int size);
+int load_src(void *dev, int comp_id, int pipeline_id,
+	     struct snd_soc_tplg_dapm_widget *widget, void *params);
+int load_asrc(void *dev, int comp_id, int pipeline_id,
+	      struct snd_soc_tplg_dapm_widget *widget, void *params);
+int load_mixer(void *dev, int comp_id, int pipeline_id,
+	       struct snd_soc_tplg_dapm_widget *widget);
+int load_process(void *dev, int comp_id, int pipeline_id,
+		 struct snd_soc_tplg_dapm_widget *widget);
 int load_widget(void *dev, int dev_type, struct comp_info *temp_comp_list,
 		int comp_id, int comp_index, int pipeline_id, void *tp,
 		int *sched_id, FILE *file);
+
 void register_comp(int comp_type);
 int find_widget(struct comp_info *temp_comp_list, int count, char *name);
+
 #endif

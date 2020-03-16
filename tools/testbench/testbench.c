@@ -18,10 +18,12 @@
 
 /* shared library look up table */
 struct shared_lib_table lib_table[NUM_WIDGETS_SUPPORTED] = {
-	{"file", "", SND_SOC_TPLG_DAPM_AIF_IN, 0, NULL},
-	{"vol", "libsof_volume.so", SND_SOC_TPLG_DAPM_PGA, 0, NULL},
-	{"src", "libsof_src.so", SND_SOC_TPLG_DAPM_SRC, 0, NULL},
-	{"asrc", "libsof_asrc.so", SND_SOC_TPLG_DAPM_ASRC, 0, NULL},
+	{"file", "", SOF_COMP_HOST, 0, NULL}, /* File must be first */
+	{"volume", "libsof_volume.so", SOF_COMP_VOLUME, 0, NULL},
+	{"src", "libsof_src.so", SOF_COMP_SRC, 0, NULL},
+	{"asrc", "libsof_asrc.so", SOF_COMP_ASRC, 0, NULL},
+	{"eq-fir", "libsof_eq-fir.so", SOF_COMP_EQ_FIR, 0, NULL},
+	{"eq-iir", "libsof_eq-iir.so", SOF_COMP_EQ_IIR, 0, NULL},
 };
 
 /* main firmware context */
@@ -44,7 +46,7 @@ struct sof *sof_get()
  * component type and the library name and sets up the library handle
  * for the component and stores it in the shared library table
  */
-static void parse_libraries(char *libs)
+static int parse_libraries(char *libs)
 {
 	char *lib_token = NULL;
 	char *comp_token = NULL;
@@ -61,7 +63,7 @@ static void parse_libraries(char *libs)
 
 		if (index < 0) {
 			fprintf(stderr, "error: unsupported comp type\n");
-			break;
+			return -EINVAL;
 		}
 
 		/* get shared library name */
@@ -76,6 +78,7 @@ static void parse_libraries(char *libs)
 		/* next library */
 		token = strtok_r(NULL, ",", &lib_token);
 	}
+	return 0;
 }
 
 /* print usage for testbench */
@@ -124,6 +127,7 @@ static void free_comps(void)
 static void parse_input_args(int argc, char **argv, struct testbench_prm *tp)
 {
 	int option = 0;
+	int ret = 0;
 
 	while ((option = getopt(argc, argv, "hdi:o:t:b:a:r:R:")) != -1) {
 		switch (option) {
@@ -150,7 +154,7 @@ static void parse_input_args(int argc, char **argv, struct testbench_prm *tp)
 
 		/* override default libraries */
 		case 'a':
-			parse_libraries(optarg);
+			ret = parse_libraries(optarg);
 			break;
 
 		/* input sample rate */
@@ -174,6 +178,9 @@ static void parse_input_args(int argc, char **argv, struct testbench_prm *tp)
 			print_usage(argv[0]);
 			exit(EXIT_FAILURE);
 		}
+
+		if (ret < 0)
+			exit(EXIT_FAILURE);
 	}
 }
 
