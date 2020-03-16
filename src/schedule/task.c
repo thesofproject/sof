@@ -8,7 +8,7 @@
  * Generic audio task.
  */
 
-#include <sof/audio/component.h>
+#include <sof/audio/component_ext.h>
 #include <sof/debug/panic.h>
 #include <sof/drivers/ipc.h>
 #include <sof/lib/alloc.h>

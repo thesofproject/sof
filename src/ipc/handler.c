@@ -13,7 +13,7 @@
  */
 
 #include <sof/audio/buffer.h>
-#include <sof/audio/component.h>
+#include <sof/audio/component_ext.h>
 #include <sof/audio/pipeline.h>
 #include <sof/common.h>
 #include <sof/debug/gdb/gdb.h>

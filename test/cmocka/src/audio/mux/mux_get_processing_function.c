@@ -5,7 +5,7 @@
 // Author: Daniel Bogdzia <danielx.bogdzia@linux.intel.com>
 //         Janusz Jankowski <janusz.jankowski@linux.intel.com>
 
-#include <sof/audio/component.h>
+#include <sof/audio/component_ext.h>
 #include <sof/audio/mux.h>
 
 #include <stdarg.h>
