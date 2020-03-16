@@ -219,7 +219,8 @@ void parse_data(char *file_in)
 				/* request to copy full data packet */
 				total_data_to_copy = sizeof(struct probe_data_packet) /
 					sizeof(uint32_t);
-				w_ptr = (uint32_t *)packet;
+				/* probe_data_packet forced to align 4 */
+				w_ptr = __builtin_assume_aligned((uint32_t *)packet, 4);
 				state = SYNC;
 			}
 			/* data copying section */
@@ -251,7 +252,8 @@ void parse_data(char *file_in)
 						packet = realloc(packet,
 								 sizeof(struct probe_data_packet) +
 								 packet->data_size_bytes);
-					w_ptr = (uint32_t *)&packet->data;
+					/* probe_data_packet forced to align 4 */
+					w_ptr = __builtin_assume_aligned((uint32_t *)&packet->data, 4);
 					state = CHECK;
 					break;
 				case CHECK:
