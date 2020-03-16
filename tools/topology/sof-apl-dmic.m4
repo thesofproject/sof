@@ -23,7 +23,16 @@ define(DMIC_PDM_CONFIG, ifelse(CHANNELS, `4', ``FOUR_CH_PDM0_PDM1'',
 #
 # Define the pipelines
 #
-# PCM6 <----- DMIC6 (DMIC01)
+# CPROC is for capture pipeline processing, i.e volume, eq, eq-iir, eq-fir etc
+# In this file, volume and eq are used. If anything else is used, please update
+# pipeline comments below for tracking purpose.
+#
+ifelse(CPROC, `volume', `# PCM6 <----- DMIC6 (DMIC01)',
+    `ifelse(CPROC, `eq', `# PCM6 <---- EQ IIR <----- DMIC6 (DMIC01)', `')')
+
+# The pipeline naming notation is pipe-PROCESSING-DIRECTION.m4
+define(PIPE_PROC_CAPTURE, `sof/pipe-`CPROC'-capture.m4')
+
 # PCM7 <----- DMIC7 (DMIC16k)
 #
 
@@ -35,7 +44,7 @@ dnl     time_domain, sched_comp)
 
 # Passthrough capture pipeline 6 on PCM 6 using max channels defined by CHANNELS.
 # Set 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_ADD(sof/pipe-volume-capture.m4,
+PIPELINE_PCM_ADD(PIPE_PROC_CAPTURE,
 	6, 6, CHANNELS, s32le,
 	1000, 0, 0,
 	48000, 48000, 48000)

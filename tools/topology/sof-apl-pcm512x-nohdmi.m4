@@ -22,8 +22,17 @@ DEBUG_START
 #
 # Define the pipelines
 #
-# PCM0 ----> volume -----> SSP5 (pcm512x)
+# PPROC is for playback pipeline processing, i.e volume, eq-volume, eq-iir, eq-fir etc
+# In this file, volume and eq-volume are used. If anything else is used, please update
+# pipeline comments below for tracking purpose.
 #
+ifelse(PPROC, `volume', `# PCM0 ----> volume -----> SSP5 (pcm512x)',
+    `ifelse(PPROC, `eq-volume',
+        `# PCM0 ----> EQ IIR ----> EQ FIR ----> volume ----> SSP5 (pcm512x)', `')')
+#
+# The pipeline naming notation is pipe-PROCESSING-DIRECTION.m4
+define(PIPE_PROC_PLAYBACK, `sof/pipe-`PPROC'-playback.m4')
+
 
 dnl PIPELINE_PCM_ADD(pipeline,
 dnl     pipe id, pcm, max channels, format,
@@ -33,7 +42,7 @@ dnl     time_domain, sched_comp)
 
 # Low Latency playback pipeline 1 on PCM 0 using max 2 channels of s32le.
 # Set 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
+PIPELINE_PCM_ADD(PIPE_PROC_PLAYBACK,
 	1, 0, 2, s32le,
 	1000, 0, 0,
 	48000, 48000, 48000)
