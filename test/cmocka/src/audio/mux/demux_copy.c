@@ -7,7 +7,7 @@
 
 #include "util.h"
 
-#include <sof/audio/component.h>
+#include <sof/audio/component_ext.h>
 #include <sof/audio/format.h>
 #include <sof/audio/mux.h>
 

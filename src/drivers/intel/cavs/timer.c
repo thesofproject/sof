@@ -7,7 +7,7 @@
 //         Rander Wang <rander.wang@intel.com>
 //         Janusz Jankowski <janusz.jankowski@linux.intel.com>
 
-#include <sof/audio/component.h>
+#include <sof/audio/component_ext.h>
 #include <sof/drivers/interrupt.h>
 #include <sof/drivers/timer.h>
 #include <sof/lib/clk.h>

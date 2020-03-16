@@ -11,7 +11,7 @@
 #include <time.h>
 #include <stdio.h>
 #include <sof/sof.h>
-#include <sof/audio/component.h>
+#include <sof/audio/component_ext.h>
 #include <sof/audio/format.h>
 
 #define DEBUG_MSG_LEN		256

@@ -4,7 +4,7 @@
 //
 // Author: Tomasz Lauda <tomasz.lauda@linux.intel.com>
 
-#include <sof/audio/component.h>
+#include <sof/audio/component_ext.h>
 #include <sof/audio/pipeline.h>
 #include <sof/debug/panic.h>
 #include <sof/drivers/idc.h>

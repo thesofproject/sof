@@ -4,7 +4,7 @@
 //
 // Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
 
-#include <sof/audio/component.h>
+#include <sof/audio/component_ext.h>
 #include <sof/common.h>
 #include <sof/debug/panic.h>
 #include <sof/drivers/interrupt.h>
