@@ -20,7 +20,6 @@
 #endif
 #include <sof/common.h>
 #include <sof/sof.h>
-#include <sof/spinlock.h>
 #include <sof/trace/preproc.h>
 #include <config.h>
 #include <stdint.h>
@@ -29,12 +28,7 @@
 #endif
 
 struct sof;
-
-struct trace {
-	uint32_t pos ;	/* trace position */
-	uint32_t enable;
-	spinlock_t lock; /* locking mechanism */
-};
+struct trace;
 
 /* bootloader trace values */
 #define TRACE_BOOT_LDR_ENTRY		0x100

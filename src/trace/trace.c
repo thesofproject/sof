@@ -23,6 +23,12 @@
 #include <user/trace.h>
 #include <stdint.h>
 
+struct trace {
+	uint32_t pos ;	/* trace position */
+	uint32_t enable;
+	spinlock_t lock; /* locking mechanism */
+};
+
 /* calculates total message size, both header and payload in bytes */
 #define MESSAGE_SIZE(args_num)	\
 	(sizeof(struct log_entry_header) + args_num * sizeof(uint32_t))
