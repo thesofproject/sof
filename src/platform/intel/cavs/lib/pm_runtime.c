@@ -33,6 +33,8 @@
 
 #define trace_power(format, ...)	\
 	trace_event(TRACE_CLASS_POWER, format, ##__VA_ARGS__)
+#define trace_power_error(format, ...) \
+	trace_error(TRACE_CLASS_POWER, format, ##__VA_ARGS__)
 
 #if !CONFIG_SUECREEK
 #include <cavs/lib/power_down.h>
