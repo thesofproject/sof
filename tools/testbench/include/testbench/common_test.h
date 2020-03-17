@@ -18,7 +18,7 @@
 #define MAX_LIB_NAME_LEN	256
 
 /* number of widgets types supported in testbench */
-#define NUM_WIDGETS_SUPPORTED	6
+#define NUM_WIDGETS_SUPPORTED	7
 
 struct testbench_prm {
 	char *tplg_file; /* topology file to use */

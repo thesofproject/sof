@@ -52,6 +52,7 @@ enum sof_ipc_process_type {
 	SOF_PROCESS_CHAN_SELECTOR,	/**< Channel Selector */
 	SOF_PROCESS_MUX,
 	SOF_PROCESS_DEMUX,
+	SOF_PROCESS_DCBLOCK,
 };
 
 struct sof_topology_token {
