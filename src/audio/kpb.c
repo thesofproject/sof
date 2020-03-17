@@ -320,7 +320,7 @@ static void kpb_free_history_buffer(struct hb *buff)
 		_buff = buff->next;
 		rfree(buff);
 		buff = _buff;
-	} while (buff != first_buff);
+	} while (buff && buff != first_buff);
 }
 
 /**
