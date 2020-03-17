@@ -274,7 +274,7 @@ int ipc_buffer_new(struct ipc *ipc, struct sof_ipc_buffer *desc)
 	ibd = rzalloc(SOF_MEM_ZONE_RUNTIME, SOF_MEM_FLAG_SHARED,
 		      SOF_MEM_CAPS_RAM, sizeof(struct ipc_comp_dev));
 	if (ibd == NULL) {
-		rfree(buffer);
+		buffer_free(buffer);
 		return -ENOMEM;
 	}
 	ibd->cb = buffer;
