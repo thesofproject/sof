@@ -267,7 +267,7 @@ int ipc_buffer_new(struct ipc *ipc, struct sof_ipc_buffer *desc)
 	buffer = buffer_new(desc);
 	if (buffer == NULL) {
 		trace_ipc_error("ipc_buffer_new() error: buffer_new() failed");
-		rfree(ibd);
+
 		return -ENOMEM;
 	}
 
