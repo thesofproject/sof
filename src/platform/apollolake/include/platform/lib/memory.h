@@ -263,7 +263,7 @@
 /* Heap section sizes for module pool */
 #define HEAP_RT_COUNT64			128
 #define HEAP_RT_COUNT128		64
-#define HEAP_RT_COUNT256		128
+#define HEAP_RT_COUNT256		96
 #define HEAP_RT_COUNT512		8
 #define HEAP_RT_COUNT1024		4
 #define HEAP_RT_COUNT2048		0
