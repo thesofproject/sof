@@ -257,8 +257,7 @@ int ipc_buffer_new(struct ipc *ipc, struct sof_ipc_buffer *desc)
 	/* check whether buffer already exists */
 	ibd = ipc_get_comp_by_id(ipc, desc->comp.id);
 	if (ibd != NULL) {
-		trace_ipc_error("ipc_buffer_new() error: "
-				"buffer already exists, desc->comp.id = %u",
+		trace_ipc_error("ipc_buffer_new() error: buffer already exists, desc->comp.id = %u",
 				desc->comp.id);
 		return -EINVAL;
 	}
@@ -390,16 +389,14 @@ int ipc_comp_connect(struct ipc *ipc,
 	/* check whether the components already exist */
 	icd_source = ipc_get_comp_by_id(ipc, connect->source_id);
 	if (icd_source == NULL) {
-		trace_ipc_error("ipc_comp_connect() error: components already"
-				" exist, connect->source_id = %u",
+		trace_ipc_error("ipc_comp_connect() error: components already exist, connect->source_id = %u",
 				connect->source_id);
 		return -EINVAL;
 	}
 
 	icd_sink = ipc_get_comp_by_id(ipc, connect->sink_id);
 	if (icd_sink == NULL) {
-		trace_ipc_error("ipc_comp_connect() error: components already"
-				" exist, connect->sink_id = %u",
+		trace_ipc_error("ipc_comp_connect() error: components already exist, connect->sink_id = %u",
 				connect->sink_id);
 		return -EINVAL;
 	}
@@ -412,9 +409,7 @@ int ipc_comp_connect(struct ipc *ipc,
 		 icd_sink->type == COMP_TYPE_BUFFER)
 		return ipc_comp_to_buffer_connect(icd_source, icd_sink);
 	else {
-		trace_ipc_error("ipc_comp_connect() error: invalid source and"
-				" sink types, connect->source_id = %u, "
-				"connect->sink_id = %u",
+		trace_ipc_error("ipc_comp_connect() error: invalid source and sink types, connect->source_id = %u, connect->sink_id = %u",
 				connect->source_id, connect->sink_id);
 		return -EINVAL;
 	}
@@ -431,8 +426,7 @@ int ipc_pipeline_new(struct ipc *ipc,
 	/* check whether the pipeline already exists */
 	ipc_pipe = ipc_get_comp_by_id(ipc, pipe_desc->comp_id);
 	if (ipc_pipe != NULL) {
-		trace_ipc_error("ipc_pipeline_new() error: pipeline already"
-				" exists, pipe_desc->comp_id = %u",
+		trace_ipc_error("ipc_pipeline_new() error: pipeline already exists, pipe_desc->comp_id = %u",
 				pipe_desc->comp_id);
 		return -EINVAL;
 	}
@@ -441,8 +435,7 @@ int ipc_pipeline_new(struct ipc *ipc,
 	ipc_pipe = ipc_get_comp_by_ppl_id(ipc, COMP_TYPE_PIPELINE,
 					  pipe_desc->pipeline_id);
 	if (ipc_pipe) {
-		trace_ipc_error("ipc_pipeline_new() error: pipeline id is "
-				"already taken, pipe_desc->pipeline_id = %u",
+		trace_ipc_error("ipc_pipeline_new() error: pipeline id is already taken, pipe_desc->pipeline_id = %u",
 				pipe_desc->pipeline_id);
 		return -EINVAL;
 	}
@@ -450,15 +443,13 @@ int ipc_pipeline_new(struct ipc *ipc,
 	/* find the scheduling component */
 	icd = ipc_get_comp_by_id(ipc, pipe_desc->sched_id);
 	if (icd == NULL) {
-		trace_ipc_error("ipc_pipeline_new() error: cannot find the "
-				"scheduling component, pipe_desc->sched_id"
-				" = %u", pipe_desc->sched_id);
+		trace_ipc_error("ipc_pipeline_new() error: cannot find the scheduling component, pipe_desc->sched_id = %u",
+				pipe_desc->sched_id);
 		return -EINVAL;
 	}
 
 	if (icd->type != COMP_TYPE_COMPONENT) {
-		trace_ipc_error("ipc_pipeline_new() error: "
-				"icd->type != COMP_TYPE_COMPONENT");
+		trace_ipc_error("ipc_pipeline_new() error: icd->type != COMP_TYPE_COMPONENT");
 		return -EINVAL;
 	}
 
@@ -470,8 +461,7 @@ int ipc_pipeline_new(struct ipc *ipc,
 	/* create the pipeline */
 	pipe = pipeline_new(pipe_desc, icd->cd);
 	if (pipe == NULL) {
-		trace_ipc_error("ipc_pipeline_new() error: "
-				"pipeline_new() failed");
+		trace_ipc_error("ipc_pipeline_new() error: pipeline_new() failed");
 		return -ENOMEM;
 	}
 
@@ -513,8 +503,7 @@ int ipc_pipeline_free(struct ipc *ipc, uint32_t comp_id)
 	/* free buffer and remove from list */
 	ret = pipeline_free(ipc_pipe->pipeline);
 	if (ret < 0) {
-		trace_ipc_error("ipc_pipeline_free() error: "
-				"pipeline_free() failed");
+		trace_ipc_error("ipc_pipeline_free() error: pipeline_free() failed");
 		return ret;
 	}
 	ipc_pipe->pipeline = NULL;
@@ -610,8 +599,7 @@ int ipc_comp_dai_config(struct ipc *ipc, struct sof_ipc_dai_config *config)
 	}
 
 	if (ret < 0) {
-		trace_ipc_error("ipc_comp_dai_config() error: "
-				"comp_dai_config() failed");
+		trace_ipc_error("ipc_comp_dai_config() error: comp_dai_config() failed");
 		return ret;
 	}
 
