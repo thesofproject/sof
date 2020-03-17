@@ -15,6 +15,7 @@
 #include <sof/lib/alloc.h>
 #include <sof/lib/cache.h>
 #include <sof/lib/cpu.h>
+#include <sof/lib/memory.h>
 #include <sof/lib/wait.h>
 #include <sof/schedule/edf_schedule.h>
 #include <sof/schedule/schedule.h>
@@ -83,10 +84,10 @@ int task_context_init(void *task_ctx, void *entry, void *arg0, void *arg1,
 		ctx->stack_size = stack_size;
 	} else {
 		ctx->stack_base = rballoc(0, SOF_MEM_CAPS_RAM,
-					  SOF_TASK_DEFAULT_STACK_SIZE);
+					  PLATFORM_TASK_DEFAULT_STACK_SIZE);
 		if (!ctx->stack_base)
 			return -ENOMEM;
-		ctx->stack_size = SOF_TASK_DEFAULT_STACK_SIZE;
+		ctx->stack_size = PLATFORM_TASK_DEFAULT_STACK_SIZE;
 		ctx->flags |= XTOS_TASK_CONTEXT_OWN_STACK;
 	}
 	bzero(ctx->stack_base, ctx->stack_size);

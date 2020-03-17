@@ -48,6 +48,9 @@ static inline void *platform_rfree_prepare(void *ptr)
 /* data cache line alignment */
 #define PLATFORM_DCACHE_ALIGN	sizeof(void *)
 
+/** \brief EDF task's default stack size in bytes. */
+#define PLATFORM_TASK_DEFAULT_STACK_SIZE	2048
+
 /* physical DSP addresses */
 
 #define SHIM_SIZE	0x00001000
