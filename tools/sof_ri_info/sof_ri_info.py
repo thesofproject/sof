@@ -250,22 +250,12 @@ def seg_flags_to_string(flags):
 
 # Parsers
 
-def parse_extended_manifest(reader):
-    """ Parses extended manifest from sof binary
-    """
-    ext_mft = ExtendedManifest()
+def parse_extended_manifest_ae1(reader):
+    ext_mft = ExtendedManifestAE1()
     hdr = Component('ext_mft_hdr', 'Header', 0)
     ext_mft.add_comp(hdr)
 
-    # Try to detect signature first
     sig = reader.read_bytes(4).decode()
-    if sig != '$AE1':
-        reader.set_offset(0)
-        reader.info('info: Extended Manifest not found (sig = '+sig+')')
-        reader.ext_mft_length = 0
-        hdr.add_a(Auint('length', reader.ext_mft_length))
-        return ext_mft
-
     reader.info('Extended Manifest (' + sig + ')', -4)
     hdr.add_a(Astring('sig', sig))
 
@@ -277,6 +267,25 @@ def parse_extended_manifest(reader):
     hdr.add_a(Auint('entries', reader.read_dw()))
 
     reader.ff_data(reader.ext_mft_length-16)
+    return ext_mft
+
+def parse_extended_manifest(reader):
+    """ Parses extended manifest from sof binary
+    """
+
+    # Try to detect signature first
+    sig = reader.read_bytes(4).decode()
+    reader.set_offset(0)
+    if sig == '$AE1':
+        ext_mft = parse_extended_manifest_ae1(reader)
+    else:
+        ext_mft = ExtendedManifestAE1()
+        hdr = Component('ext_mft_hdr', 'Header', 0)
+        ext_mft.add_comp(hdr)
+        reader.info('info: Extended Manifest not found (sig = '+sig+')')
+        reader.ext_mft_length = 0
+        hdr.add_a(Auint('length', reader.ext_mft_length))
+
     return ext_mft
 
 def parse_cse_manifest(reader, add_module_entries):
@@ -818,11 +827,11 @@ class Component():
             print()
             comp.dump_info(pref + '  ')
 
-class ExtendedManifest(Component):
+class ExtendedManifestAE1(Component):
     """ Extended manifest
     """
     def __init__(self):
-        super(ExtendedManifest, self).__init__('ext_mft',
+        super(ExtendedManifestAE1, self).__init__('ext_mft',
                                                'Extended Manifest', 0)
 
     def dump_info(self, pref):
