@@ -124,9 +124,10 @@ static void schedule_ll_clients_enable(struct ll_schedule_data *sch)
 	int i;
 
 	for (i = 0; i < PLATFORM_CORE_COUNT; i++) {
-		if (sch->domain->registered[i]) {
+		if (sch->domain->registered[i] && !sch->domain->enabled[i]) {
 			atomic_add(&sch->domain->num_clients, 1);
 			domain_enable(sch->domain, i);
+			sch->domain->enabled[i] = true;
 		}
 	}
 }
@@ -154,6 +155,8 @@ static void schedule_ll_tasks_run(void *data)
 	irq_local_disable(flags);
 
 	spin_lock(&sch->domain->lock);
+
+	sch->domain->enabled[cpu_get_id()] = false;
 
 	last_tick = sch->domain->last_tick;
 
@@ -192,6 +195,8 @@ static int schedule_ll_domain_set(struct ll_schedule_data *sch,
 				  struct task *task, uint64_t period)
 {
 	int core = cpu_get_id();
+	unsigned int total;
+	bool registered;
 	int ret;
 
 	ret = domain_register(sch->domain, period, task, &schedule_ll_tasks_run,
@@ -204,13 +209,21 @@ static int schedule_ll_domain_set(struct ll_schedule_data *sch,
 
 	spin_lock(&sch->domain->lock);
 
+	registered = sch->domain->registered[core];
 	if (atomic_add(&sch->num_tasks, 1) == 1)
 		sch->domain->registered[core] = true;
 
-	if (atomic_add(&sch->domain->total_num_tasks, 1) == 1) {
+	total = atomic_add(&sch->domain->total_num_tasks, 1);
+
+	if (total == 1)
+		/* First task in domain over all cores: actiivate it */
 		domain_set(sch->domain, platform_timer_get(timer_get()));
+
+	if (total == 1 || !registered) {
+		/* First task on core: count and enable it */
 		atomic_add(&sch->domain->num_clients, 1);
 		domain_enable(sch->domain, core);
+		sch->domain->enabled[core] = true;
 	}
 
 	trace_ll("num_tasks %d total_num_tasks %d",
