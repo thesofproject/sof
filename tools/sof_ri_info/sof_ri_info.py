@@ -269,6 +269,32 @@ def parse_extended_manifest_ae1(reader):
     reader.ff_data(reader.ext_mft_length-16)
     return ext_mft
 
+def parse_extended_manifest_xman(reader):
+    ext_mft = ExtendedManifestXMan()
+    hdr = Component('ext_mft_hdr', 'Header', 0)
+    ext_mft.add_comp(hdr)
+
+    sig = reader.read_bytes(4).decode()
+    reader.info('Extended Manifest (' + sig + ')', -4)
+    hdr.add_a(Astring('sig', sig))
+
+    # Next dword is the total length of the extended manifest
+    # (need to use it for further parsing)
+    reader.ext_mft_length = reader.read_dw()
+    hdr_length = reader.read_dw()
+    hdr_ver = reader.read_dw()
+
+    major = hdr_ver >> 24
+    minor = (hdr_ver >> 12) & 0xFFF
+    patch = hdr_ver & 0xFFF
+
+    hdr.add_a(Auint('length', reader.ext_mft_length))
+    hdr.add_a(Astring('ver', '{}.{}.{}'.format(major, minor, patch)))
+    hdr.add_a(Auint('hdr_length', hdr_length))
+
+    reader.ff_data(reader.ext_mft_length-16)
+    return ext_mft
+
 def parse_extended_manifest(reader):
     """ Parses extended manifest from sof binary
     """
@@ -278,6 +304,8 @@ def parse_extended_manifest(reader):
     reader.set_offset(0)
     if sig == '$AE1':
         ext_mft = parse_extended_manifest_ae1(reader)
+    elif sig == 'XMan':
+        ext_mft = parse_extended_manifest_xman(reader)
     else:
         ext_mft = ExtendedManifestAE1()
         hdr = Component('ext_mft_hdr', 'Header', 0)
@@ -841,6 +869,23 @@ class ExtendedManifestAE1(Component):
         out = '{}{}'.format(pref, self.name)
         out += ' ver {}'.format(hdr.adir['ver'])
         out += ' entries {}'.format(hdr.adir['entries'])
+        print(out)
+        self.dump_comp_info(pref, name_filter='Header')
+
+class ExtendedManifestXMan(Component):
+    """ Extended manifest
+    """
+    def __init__(self):
+        super(ExtendedManifestXMan, self).__init__('ext_mft',
+                                               'Extended Manifest', 0)
+
+    def dump_info(self, pref):
+        hdr = self.cdir['ext_mft_hdr']
+        if hdr.adir['length'].val == 0:
+            return
+        out = '{}{}'.format(pref, self.name)
+        out += ' ver {}'.format(hdr.adir['ver'])
+        out += ' length {}'.format(hdr.adir['length'].val)
         print(out)
         self.dump_comp_info(pref, name_filter='Header')
 
