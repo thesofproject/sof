@@ -14,12 +14,17 @@
 #include <sof/lib/alloc.h>
 #include <sof/lib/dma.h>
 #include <sof/lib/notifier.h>
+#include <sof/lib/uuid.h>
 #include <ipc/topology.h>
 #include <sof/drivers/ipc.h>
 #include <sof/drivers/timer.h>
 #include <sof/schedule/ll_schedule.h>
 #include <sof/schedule/schedule.h>
 #include <sof/schedule/task.h>
+
+/* 2f0b1901-cac0-4b87-812f-f2d5e4f19e4a */
+DECLARE_SOF_UUID("probe-task", probe_task_uuid, 0x2f0b1901, 0xcac0, 0x4b87,
+		 0x81, 0x2f, 0xf2, 0xd5, 0xe4, 0xf1, 0x9e, 0x4a);
 
 #define trace_probe(__e, ...) \
 	trace_event(TRACE_CLASS_PROBE, __e, ##__VA_ARGS__)
@@ -261,8 +266,10 @@ int probe_init(struct probe_dma *probe_dma)
 			return -EBUSY;
 		}
 		/* init task for extraction probes */
-		schedule_task_init_ll(&_probe->dmap_work, SOF_SCHEDULE_LL_TIMER,
-				      SOF_TASK_PRI_LOW, probe_task, _probe, 0, 0);
+		schedule_task_init_ll(&_probe->dmap_work,
+				      SOF_UUID(probe_task_uuid),
+				      SOF_SCHEDULE_LL_TIMER, SOF_TASK_PRI_LOW,
+				      probe_task, _probe, 0, 0);
 	} else {
 		tracev_probe("\tno extraction DMA setup");
 
