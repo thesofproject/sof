@@ -348,6 +348,9 @@ static void kpb_free(struct comp_dev *dev)
 	/* remove scheduling */
 	schedule_task_free(&kpb->draining_task);
 
+	/* change state */
+	kpb_change_state(kpb, KPB_STATE_DISABLED);
+
 	/* Free KPB */
 	rfree(kpb);
 	rfree(dev);
