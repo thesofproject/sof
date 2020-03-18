@@ -105,15 +105,15 @@ int irqstr_get_sof_int(int irqstr_int);
  */
 #define IRQSTR_CHANCTL			0x00
 
-#define IRQSTR_CH_MASK(n)		(0x04 + 0x04 * (n))
-#define IRQSTR_CH_SET(n)		(0x18 + 0x04 * (n))
-#define IRQSTR_CH_STATUS(n)		(0x2C + 0x04 * (n))
+#define IRQSTR_CH_MASK(n)		(0x04 + 0x04 * (5 - (n)))
+#define IRQSTR_CH_SET(n)		(0x18 + 0x04 * (5 - (n)))
+#define IRQSTR_CH_STATUS(n)		(0x2C + 0x04 * (5 - (n)))
 #define IRQSTR_MASTER_DISABLE		0x40
 #define IRQSTR_MASTER_STATUS		0x44
 
-#define IRQSTR_RESERVED_IRQS_NUM	0
-#define IRQSTR_IRQS_NUM			160
-#define IRQSTR_IRQS_REGISTERS_NUM	5
+#define IRQSTR_RESERVED_IRQS_NUM	32
+#define IRQSTR_IRQS_NUM			192
+#define IRQSTR_IRQS_REGISTERS_NUM	6
 #define IRQSTR_IRQS_PER_LINE		64
 
 #endif /* __PLATFORM_DRIVERS_INTERRUPT_H__ */
