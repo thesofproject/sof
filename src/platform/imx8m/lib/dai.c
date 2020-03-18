@@ -18,6 +18,17 @@ static SHARED_DATA struct dai sai[] = {
 	.index = 3,
 	.plat_data = {
 		.base = SAI_3_BASE,
+		.fifo[SOF_IPC_STREAM_PLAYBACK] = {
+			.offset = SAI_3_BASE + REG_SAI_TDR0,
+			.depth = 16,
+			/* Handshake is SDMA hardware event */
+			.handshake = 5,
+		},
+		.fifo[SOF_IPC_STREAM_CAPTURE] = {
+			.offset = SAI_3_BASE + REG_SAI_RDR0,
+			.depth = 16,
+			.handshake = 4,
+		},
 	},
 	.drv = &sai_driver,
 },
