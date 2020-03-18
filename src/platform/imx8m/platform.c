@@ -182,7 +182,7 @@ int platform_init(struct sof *sof)
 	if (ret < 0)
 		return -ENODEV;
 
-	/* Init EDMA platform domain */
+	/* Init SDMA platform domain */
 	sof->platform_dma_domain =
 		dma_multi_chan_domain_init(&sof->dma_info->dma_array[0],
 					   1, PLATFORM_DEFAULT_CLOCK, false);
