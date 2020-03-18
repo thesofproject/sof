@@ -503,10 +503,8 @@ static int dai_prepare(struct comp_dev *dev)
 		return -EINVAL;
 	}
 
-	/* TODO: not sure what this wb is for? */
-	/* write back buffer contents from cache */
-	dcache_writeback_region(dd->dma_buffer->stream.addr,
-				dd->dma_buffer->stream.size);
+	/* clear dma buffer to avoid pop noise */
+	buffer_zero(dd->dma_buffer);
 
 	/* dma reconfig not required if XRUN handling */
 	if (dd->xrun) {
