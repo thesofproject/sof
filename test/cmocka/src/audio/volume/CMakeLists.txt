@@ -8,6 +8,9 @@ target_include_directories(volume_process PRIVATE ${PROJECT_SOURCE_DIR}/src/audi
 
 # make small version of libaudio so we don't have to care
 # about unused missing references
+
+add_compile_options(-DUNIT_TEST)
+
 add_library(audio_for_volume STATIC
 	${PROJECT_SOURCE_DIR}/src/audio/volume/volume.c
 	${PROJECT_SOURCE_DIR}/src/audio/volume/volume_generic.c

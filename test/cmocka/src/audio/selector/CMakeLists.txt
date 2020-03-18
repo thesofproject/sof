@@ -8,6 +8,9 @@ target_include_directories(selector_test PRIVATE ${PROJECT_SOURCE_DIR}/src/audio
 
 # make small version of libaudio so we don't have to care
 # about unused missing references
+
+add_compile_options(-DUNIT_TEST)
+
 add_library(audio_for_selector STATIC
 	${PROJECT_SOURCE_DIR}/src/audio/selector/selector.c
 	${PROJECT_SOURCE_DIR}/src/audio/selector/selector_generic.c

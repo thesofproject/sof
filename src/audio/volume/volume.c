@@ -33,6 +33,7 @@
 #include <sof/schedule/task.h>
 #include <sof/string.h>
 #include <sof/trace/trace.h>
+#include <sof/ut.h>
 #include <ipc/control.h>
 #include <ipc/stream.h>
 #include <ipc/topology.h>
@@ -801,7 +802,7 @@ static SHARED_DATA struct comp_driver_info comp_volume_info = {
 /**
  * \brief Initializes volume component.
  */
-static void sys_comp_volume_init(void)
+UT_STATIC void sys_comp_volume_init(void)
 {
 	comp_register(platform_shared_get(&comp_volume_info,
 					  sizeof(comp_volume_info)));
