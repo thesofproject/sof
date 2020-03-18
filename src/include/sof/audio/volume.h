@@ -138,4 +138,8 @@ static inline vol_scale_func vol_get_processing_function(struct comp_dev *dev)
 	return NULL;
 }
 
+#ifdef UNIT_TEST
+void sys_comp_volume_init(void);
+#endif
+
 #endif /* __SOF_AUDIO_VOLUME_H__ */

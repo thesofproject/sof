@@ -63,4 +63,8 @@ extern const struct comp_func_map func_map[];
  */
 sel_func sel_get_processing_function(struct comp_dev *dev);
 
+#ifdef UNIT_TEST
+void sys_comp_selector_init(void);
+#endif
+
 #endif /* __SOF_AUDIO_SELECTOR_H__ */

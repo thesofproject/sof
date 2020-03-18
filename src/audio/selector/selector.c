@@ -25,6 +25,7 @@
 #include <sof/list.h>
 #include <sof/string.h>
 #include <sof/trace/trace.h>
+#include <sof/ut.h>
 #include <ipc/control.h>
 #include <ipc/stream.h>
 #include <ipc/topology.h>
@@ -538,7 +539,7 @@ static SHARED_DATA struct comp_driver_info comp_selector_info = {
 };
 
 /** \brief Initializes selector component. */
-static void sys_comp_selector_init(void)
+UT_STATIC void sys_comp_selector_init(void)
 {
 	comp_register(platform_shared_get(&comp_selector_info,
 					  sizeof(comp_selector_info)));
