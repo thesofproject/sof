@@ -264,6 +264,7 @@ static size_t kpb_allocate_history_buffer(struct comp_data *kpb,
 				if (!new_hb)
 					return 0;
 				history_buffer->next = new_hb;
+				new_hb->next = kpb->history_buffer;
 				new_hb->state = KPB_BUFFER_OFF;
 				new_hb->prev = history_buffer;
 				history_buffer = new_hb;
