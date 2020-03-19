@@ -14,6 +14,7 @@
 #include <sof/drivers/timer.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/mailbox.h>
+#include <sof/lib/mm_heap.h>
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
 #include <sof/math/numbers.h>

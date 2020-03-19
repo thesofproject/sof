@@ -12,7 +12,6 @@
 #include <sof/drivers/timer.h>
 #include <sof/fw-ready-metadata.h>
 #include <sof/lib/agent.h>
-#include <sof/lib/alloc.h>
 #include <sof/lib/clk.h>
 #include <sof/lib/cpu.h>
 #include <sof/lib/dai.h>
@@ -20,6 +19,7 @@
 #include <sof/lib/io.h>
 #include <sof/lib/mailbox.h>
 #include <sof/lib/memory.h>
+#include <sof/lib/mm_heap.h>
 #include <sof/lib/notifier.h>
 #include <sof/lib/shim.h>
 #include <sof/schedule/edf_schedule.h>

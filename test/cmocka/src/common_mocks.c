@@ -8,6 +8,7 @@
 #include <errno.h>
 #include <sof/lib/alloc.h>
 #include <sof/drivers/timer.h>
+#include <sof/lib/mm_heap.h>
 #include <stdlib.h>
 #include <stdarg.h>
 #include <stddef.h>

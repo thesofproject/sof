@@ -17,6 +17,7 @@
 #include <sof/lib/cache.h>
 #include <sof/lib/cpu.h>
 #include <sof/lib/memory.h>
+#include <sof/lib/mm_heap.h>
 #include <sof/lib/notifier.h>
 #include <sof/lib/pm_runtime.h>
 #include <sof/lib/wait.h>

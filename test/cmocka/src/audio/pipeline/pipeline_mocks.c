@@ -5,6 +5,7 @@
 // Author: Jakub Dabek <jakub.dabek@linux.intel.com>
 
 #include "pipeline_mocks.h"
+#include <sof/lib/mm_heap.h>
 
 #include <mock_trace.h>
 

@@ -11,6 +11,7 @@
 #include <sof/lib/cpu.h>
 #include <sof/lib/dma.h>
 #include <sof/lib/memory.h>
+#include <sof/lib/mm_heap.h>
 #include <sof/spinlock.h>
 #include <sof/string.h>
 #include <ipc/topology.h>
