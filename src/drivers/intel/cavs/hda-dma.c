@@ -517,8 +517,8 @@ static int hda_dma_pause(struct dma_chan_data *channel)
 	if (channel->status != COMP_STATE_ACTIVE)
 		goto out;
 
-	/* pause the channel */
-	channel->status = COMP_STATE_PAUSED;
+	/* stop the channel */
+	hda_dma_stop(channel);
 
 out:
 	irq_local_enable(flags);

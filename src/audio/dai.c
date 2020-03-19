@@ -620,12 +620,15 @@ static int dai_comp_trigger(struct comp_dev *dev, int cmd)
 		dd->xrun = 1;
 
 		/* fallthrough */
-	case COMP_TRIGGER_PAUSE:
 	case COMP_TRIGGER_STOP:
-		comp_dbg(dev, "dai_comp_trigger(), PAUSE/STOP");
+		comp_dbg(dev, "dai_comp_trigger(), STOP");
 		ret = dma_stop(dd->chan);
 		dai_trigger(dd->dai, cmd, dev->direction);
 		break;
+	case COMP_TRIGGER_PAUSE:
+		comp_dbg(dev, "dai_comp_trigger(), PAUSE");
+		ret = dma_pause(dd->chan);
+		dai_trigger(dd->dai, cmd, dev->direction);
 	default:
 		break;
 	}
