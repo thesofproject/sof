@@ -5,6 +5,7 @@
 // Author: Bartosz Kokoszko	<bartoszx.kokoszko@linux.intel.com>
 //	   Artur Kloniecki	<arturx.kloniecki@linux.intel.com>
 
+#include <stdarg.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
@@ -50,6 +51,34 @@ struct proc_ldc_entry {
 };
 
 static const char *BAD_PTR_STR = "<bad uid ptr %x>";
+
+static void log_err(FILE *out_fd, const char *fmt, ...)
+{
+	ssize_t needed_size;
+	va_list args, args_alloc;
+	char *buff;
+
+	va_start(args, fmt);
+
+	va_copy(args_alloc, args);
+	needed_size = vsnprintf(NULL, 0, fmt, args_alloc) + 1;
+	buff = malloc(needed_size);
+	va_end(args_alloc);
+
+	if (buff) {
+		vsprintf(buff, fmt, args);
+		fprintf(stderr, "%s", buff);
+		if (out_fd) {
+			fprintf(out_fd, "%s", buff);
+			fflush(out_fd);
+		}
+		free(buff);
+	} else {
+		vfprintf(stderr, fmt, args);
+	}
+
+	va_end(args);
+}
 
 const char *format_uid(const struct snd_sof_uids_header *uids_dict,
 		       uint32_t uid_ptr,
@@ -363,15 +392,17 @@ static int fetch_entry(const struct convert_config *config,
 		goto out;
 	}
 	if (entry.header.file_name_len > TRACE_MAX_FILENAME_LEN) {
-		fprintf(stderr, "Error: Invalid filename length or ldc file does not match firmware\n");
+		log_err(config->out_fd,
+			"Error: Invalid filename length or ldc file does not match firmware\n");
 		ret = -EINVAL;
 		goto out;
 	}
 	entry.file_name = (char *)malloc(entry.header.file_name_len);
 
 	if (!entry.file_name) {
-		fprintf(stderr, "error: can't allocate %d byte for "
-			"entry.file_name\n", entry.header.file_name_len);
+		log_err(config->out_fd,
+			"error: can't allocate %d byte for entry.file_name\n",
+			entry.header.file_name_len);
 		ret = -ENOMEM;
 		goto out;
 	}
@@ -385,14 +416,16 @@ static int fetch_entry(const struct convert_config *config,
 
 	/* fetching text */
 	if (entry.header.text_len > TRACE_MAX_TEXT_LEN) {
-		fprintf(stderr, "Error: Invalid text length. \n");
+		log_err(config->out_fd,
+			"Error: Invalid text length.\n");
 		ret = -EINVAL;
 		goto out;
 	}
 	entry.text = (char *)malloc(entry.header.text_len);
 	if (entry.text == NULL) {
-		fprintf(stderr, "error: can't allocate %d byte for "
-			"entry.text\n", entry.header.text_len);
+		log_err(config->out_fd,
+			"error: can't allocate %d byte for entry.text\n",
+			entry.header.text_len);
 		ret = -ENOMEM;
 		goto out;
 	}
@@ -404,16 +437,17 @@ static int fetch_entry(const struct convert_config *config,
 
 	/* fetching entry params from dma dump */
 	if (entry.header.params_num > TRACE_MAX_PARAMS_COUNT) {
-		fprintf(stderr, "Error: Invalid number of parameters. \n");
+		log_err(config->out_fd,
+			"Error: Invalid number of parameters.\n");
 		ret = -EINVAL;
 		goto out;
 	}
 	entry.params = (uint32_t *)malloc(sizeof(uint32_t) *
 		entry.header.params_num);
 	if (entry.params == NULL) {
-		fprintf(stderr, "error: can't allocate %d byte for "
-			"entry.params\n", (int)(sizeof(uint32_t) *
-			entry.header.params_num));
+		log_err(config->out_fd,
+			"error: can't allocate %d byte for entry.params\n",
+			(int)(sizeof(uint32_t) * entry.header.params_num));
 		ret = -ENOMEM;
 		goto out;
 	}
@@ -437,7 +471,7 @@ static int fetch_entry(const struct convert_config *config,
 				goto out;
 			}
 			if (ret != size)
-				fprintf(stderr,
+				log_err(config->out_fd,
 					"Partial read of %u bytes of %lu.\n",
 					ret, size);
 		}
@@ -583,14 +617,15 @@ static int verify_fw_ver(const struct convert_config *config,
 	/* here fw verification should be exploited */
 	count = fread(&ver, sizeof(ver), 1, config->version_fd);
 	if (!count) {
-		fprintf(stderr, "Error while reading %s.\n",
+		log_err(config->out_fd, "Error while reading %s.\n",
 			config->version_file);
 		return -ferror(config->version_fd);
 	}
 
 	ret = memcmp(&ver, &snd->version, sizeof(struct sof_ipc_fw_version));
 	if (ret) {
-		fprintf(stderr, "Error: fw version in %s file does not coincide with fw version in %s file.\n",
+		log_err(config->out_fd,
+			"Error: fw version in %s file does not coincide with fw version in %s file.\n",
 			config->ldc_file, config->version_file);
 		return -EINVAL;
 	}
@@ -598,13 +633,16 @@ static int verify_fw_ver(const struct convert_config *config,
 	/* logger and version_file abi dbg verification */
 	if (SOF_ABI_VERSION_INCOMPATIBLE(SOF_ABI_DBG_VERSION,
 					 ver.abi_version)) {
-		fprintf(stderr, "Error: abi version in %s file does not coincide with abi version used by logger.\n",
+		log_err(config->out_fd,
+			"Error: abi version in %s file does not coincide with abi version used by logger.\n",
 			config->version_file);
-		fprintf(stderr, "logger ABI Version is %d:%d:%d\n",
+		log_err(config->out_fd,
+			"logger ABI Version is %d:%d:%d\n",
 			SOF_ABI_VERSION_MAJOR(SOF_ABI_DBG_VERSION),
 			SOF_ABI_VERSION_MINOR(SOF_ABI_DBG_VERSION),
 			SOF_ABI_VERSION_PATCH(SOF_ABI_DBG_VERSION));
-		fprintf(stderr, "version_file ABI Version is %d:%d:%d\n",
+		log_err(config->out_fd,
+			"version_file ABI Version is %d:%d:%d\n",
 			SOF_ABI_VERSION_MAJOR(ver.abi_version),
 			SOF_ABI_VERSION_MINOR(ver.abi_version),
 			SOF_ABI_VERSION_PATCH(ver.abi_version));
@@ -621,12 +659,14 @@ int convert(struct convert_config *config)
 
 	count = fread(&snd, sizeof(snd), 1, config->ldc_fd);
 	if (!count) {
-		fprintf(stderr, "Error while reading %s. \n", config->ldc_file);
+		log_err(config->out_fd, "Error while reading %s.\n",
+			config->ldc_file);
 		return -ferror(config->ldc_fd);
 	}
 
 	if (strncmp((char *) snd.sig, SND_SOF_LOGS_SIG, SND_SOF_LOGS_SIG_SIZE)) {
-		fprintf(stderr, "Error: Invalid ldc file signature. \n");
+		log_err(config->out_fd,
+			"Error: Invalid ldc file signature.\n");
 		return -EINVAL;
 	}
 
@@ -637,14 +677,14 @@ int convert(struct convert_config *config)
 	/* default logger and ldc_file abi verification */
 	if (SOF_ABI_VERSION_INCOMPATIBLE(SOF_ABI_DBG_VERSION,
 					 snd.version.abi_version)) {
-		fprintf(stderr, "Error: abi version in %s file "
-			"does not coincide with abi version used "
-			"by logger.\n", config->ldc_file);
-		fprintf(stderr, "logger ABI Version is %d:%d:%d\n",
+		log_err(config->out_fd,
+			"Error: abi version in %s file does not coincide with abi version used by logger.\n",
+			config->ldc_file);
+		log_err(config->out_fd, "logger ABI Version is %d:%d:%d\n",
 			SOF_ABI_VERSION_MAJOR(SOF_ABI_DBG_VERSION),
 			SOF_ABI_VERSION_MINOR(SOF_ABI_DBG_VERSION),
 			SOF_ABI_VERSION_PATCH(SOF_ABI_DBG_VERSION));
-		fprintf(stderr, "ldc_file ABI Version is %d:%d:%d\n",
+		log_err(config->out_fd, "ldc_file ABI Version is %d:%d:%d\n",
 			SOF_ABI_VERSION_MAJOR(snd.version.abi_version),
 			SOF_ABI_VERSION_MINOR(snd.version.abi_version),
 			SOF_ABI_VERSION_PATCH(snd.version.abi_version));
@@ -655,25 +695,29 @@ int convert(struct convert_config *config)
 	fseek(config->ldc_fd, snd.data_offset + snd.data_length, SEEK_SET);
 	count = fread(&uids_hdr, sizeof(uids_hdr), 1, config->ldc_fd);
 	if (!count) {
-		fprintf(stderr, "Error while reading uuids header from %s.\n",
+		log_err(config->out_fd,
+			"Error while reading uuids header from %s.\n",
 			config->ldc_file);
 		return -ferror(config->ldc_fd);
 	}
 	if (strncmp((char *)uids_hdr.sig, SND_SOF_UIDS_SIG,
 		    SND_SOF_UIDS_SIG_SIZE)) {
-		fprintf(stderr, "Error: invalid uuid section signature.\n");
+		log_err(config->out_fd,
+			"Error: invalid uuid section signature.\n");
 		return -EINVAL;
 	}
 	config->uids_dict = calloc(1, sizeof(uids_hdr) + uids_hdr.data_length);
 	if (!config->uids_dict) {
-		fprintf(stderr, "Error: failed to alloc memory for uuids.\n");
+		log_err(config->out_fd,
+			"Error: failed to alloc memory for uuids.\n");
 		return -ENOMEM;
 	}
 	memcpy(config->uids_dict, &uids_hdr, sizeof(uids_hdr));
 	count = fread(config->uids_dict + 1, uids_hdr.data_length, 1,
 		      config->ldc_fd);
 	if (!count) {
-		fprintf(stderr, "Error: failed to read uuid section data.\n");
+		log_err(config->out_fd,
+			"Error: failed to read uuid section data.\n");
 		return -ferror(config->ldc_fd);
 	}
 
