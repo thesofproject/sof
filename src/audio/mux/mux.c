@@ -477,9 +477,20 @@ static int mux_reset(struct comp_dev *dev)
 
 static int mux_prepare(struct comp_dev *dev)
 {
+	struct comp_data *cd = comp_get_drvdata(dev);
 	int ret;
 
 	comp_info(dev, "mux_prepare()");
+
+	if (dev->comp.type == SOF_COMP_MUX)
+		cd->mux = mux_get_processing_function(dev);
+	else
+		cd->demux = demux_get_processing_function(dev);
+
+	if (!cd->mux && !cd->demux) {
+		comp_err(dev, "mux_prepare() error: Invalid configuration, couldn't find suitable processing function.");
+		return -EINVAL;
+	}
 
 	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
 	if (ret) {
