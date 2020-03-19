@@ -14,6 +14,8 @@ else()
 	# Build Cmocka locally
 	ExternalProject_Add(cmocka_git
 		GIT_REPOSITORY https://github.com/thesofproject/cmocka
+		# Don't re-fetch (and change!) the code every time we rebuild
+		UPDATE_DISCONNECTED True
 		PREFIX "${PROJECT_BINARY_DIR}/cmocka_git"
 		BINARY_DIR ${cmocka_binary_directory}
 		CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release
