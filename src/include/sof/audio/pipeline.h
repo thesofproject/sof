@@ -120,8 +120,6 @@ struct pipeline_posn {
 	spinlock_t lock;			/**< lock mechanism */
 };
 
-static SHARED_DATA struct pipeline_posn pipeline_posn;
-
 /**
  * \brief Retrieves pipeline position structure.
  * \return Pointer to pipeline position structure.
@@ -135,13 +133,7 @@ static inline struct pipeline_posn *pipeline_posn_get(void)
  * \brief Initializes pipeline position structure.
  * \param[in,out] sof Pointer to sof structure.
  */
-static inline void pipeline_posn_init(struct sof *sof)
-{
-	sof->pipeline_posn = platform_shared_get(&pipeline_posn,
-						 sizeof(pipeline_posn));
-	spinlock_init(&sof->pipeline_posn->lock);
-	platform_shared_commit(sof->pipeline_posn, sizeof(*sof->pipeline_posn));
-}
+void pipeline_posn_init(struct sof *sof);
 
 /**
  * \brief Retrieves first free pipeline position offset.

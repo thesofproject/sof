@@ -42,6 +42,16 @@ struct pipeline_data {
 DECLARE_SOF_UUID("pipe-task", pipe_task_uuid, 0xf11818eb, 0xe92e, 0x4082,
 		 0x82,  0xa3, 0xdc, 0x54, 0xc6, 0x04, 0xeb, 0xb3);
 
+static SHARED_DATA struct pipeline_posn pipeline_posn;
+
+void pipeline_posn_init(struct sof *sof)
+{
+	sof->pipeline_posn = platform_shared_get(&pipeline_posn,
+						 sizeof(pipeline_posn));
+	spinlock_init(&sof->pipeline_posn->lock);
+	platform_shared_commit(sof->pipeline_posn, sizeof(*sof->pipeline_posn));
+}
+
 static enum task_state pipeline_task(void *arg);
 
 /* create new pipeline - returns pipeline id or negative error */
