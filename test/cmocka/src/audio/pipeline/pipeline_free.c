@@ -19,6 +19,7 @@
 
 static int setup(void **state)
 {
+	pipeline_posn_init(sof_get());
 	*state = get_standard_connect_objects();
 	return 0;
 }

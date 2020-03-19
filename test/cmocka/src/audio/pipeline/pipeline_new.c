@@ -20,6 +20,8 @@ static int setup(void **state)
 	struct pipeline_new_setup_data *pipeline_data = malloc(
 		sizeof(struct pipeline_new_setup_data));
 
+	pipeline_posn_init(sof_get());
+
 	if (pipeline_data == NULL)
 		return -1;
 
