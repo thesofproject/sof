@@ -1669,7 +1669,6 @@ static int dmic_ts_start(struct dai *dai, struct timestamp_cfg *cfg)
 	uint32_t addr = dmic_ts_local_tsctrl_addr();
 
 	/* Set DMIC timestamp registers */
-	spin_lock(&dai->lock);
 
 	/* First point CDMAS to GPDMA channel that is used by DMIC
 	 * also clear NTK to be sure there is no old timestamp.
@@ -1681,7 +1680,6 @@ static int dmic_ts_start(struct dai *dai, struct timestamp_cfg *cfg)
 	/* Request on demand timestamp */
 	io_reg_write(addr, TS_LOCAL_TSCTRL_ODTS_BIT | cdmas);
 
-	spin_unlock(&dai->lock);
 	return 0;
 }
 
@@ -1700,7 +1698,6 @@ static int dmic_ts_get(struct dai *dai, struct timestamp_cfg *cfg,
 	uint32_t tsctrl = dmic_ts_local_tsctrl_addr();
 
 	/* Read SSP timestamp registers */
-	spin_lock(&dai->lock);
 	ntk = io_reg_read(tsctrl) & TS_LOCAL_TSCTRL_NTK_BIT;
 	if (!ntk)
 		goto out;
@@ -1715,7 +1712,6 @@ static int dmic_ts_get(struct dai *dai, struct timestamp_cfg *cfg,
 	io_reg_write(tsctrl, TS_LOCAL_TSCTRL_NTK_BIT);
 
 out:
-	spin_unlock(&dai->lock);
 	tsd->walclk_rate = cfg->walclk_rate;
 	if (!ntk)
 		return -ENODATA;
