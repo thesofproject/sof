@@ -22,9 +22,6 @@ include(`muxdemux.m4')
 include(`mixercontrol.m4')
 include(`bytecontrol.m4')
 
-# Use default parameters
-include(`demux_coef_default.m4')
-
 # demux Bytes control with max value of 255
 C_CONTROLBYTES(DEMUX, PIPELINE_ID,
 	CONTROLBYTES_OPS(bytes, 258 binds the mixer control to bytes get/put handlers, 258, 258),
@@ -32,7 +29,7 @@ C_CONTROLBYTES(DEMUX, PIPELINE_ID,
 	, , ,
 	CONTROLBYTES_MAX(, 304),
 	,
-	DEMUX_priv)
+	demux_priv)
 
 # Volume Mixer control with max value of 32
 C_CONTROLMIXER(Master Playback Volume, PIPELINE_ID,
