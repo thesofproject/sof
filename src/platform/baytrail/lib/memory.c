@@ -5,7 +5,7 @@
 // Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
 
 #include <sof/common.h>
-#include <sof/lib/alloc.h>
+#include <sof/lib/mm_heap.h>
 #include <sof/lib/memory.h>
 #include <sof/sof.h>
 #include <ipc/topology.h>
