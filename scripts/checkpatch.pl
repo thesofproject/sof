@@ -1104,6 +1104,14 @@ sub top_of_kernel_tree {
 		"fs", "init", "ipc", "kernel", "lib", "scripts",
 	);
 
+	if ($SOF) {
+		@tree_check = (
+			"LICENCE", "README.md", "rimage", "tools",
+			"scripts", "doc", "src", "CODEOWNERS",
+			"CMakeLists.txt",
+		);
+	}
+
 	foreach my $check (@tree_check) {
 		if (! -e $root . '/' . $check) {
 			return 0;
