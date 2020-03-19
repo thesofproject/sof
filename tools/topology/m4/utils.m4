@@ -114,5 +114,46 @@ define(`VIRTUAL_WIDGET',
 `       no_pm "true"'
 `}', `fatal_error(`Invalid parameters ($#) to VIRTUAL_WIDGET')')')
 
+dnl create SOF_ABI_VERSION if not defined
+dnl you can give the abi.h with -DSOF_ABI_FILE=(full path to abi.h)
+dnl otherwise this will be empty macro
+ifdef(`SOF_ABI_VERSION', `',
+ifdef(`SOF_ABI_FILE',
+`define(`SOF_MAJOR','
+`esyscmd(`grep "#define SOF_ABI_MAJOR "' SOF_ABI_FILE `| grep -E ".[[:digit:]]$" -o'))dnl'
+`define(`SOF_MINOR','
+`esyscmd(`grep "#define SOF_ABI_MINOR "' SOF_ABI_FILE `| grep -E ".[[:digit:]]$" -o'))dnl'
+`define(`SOF_PATCH','
+`esyscmd(`grep "#define SOF_ABI_PATCH "' SOF_ABI_FILE `| grep -E ".[[:digit:]]$" -o'))dnl'
+`define(`SOF_MAJOR_SHIFT','
+`esyscmd(`grep "#define SOF_ABI_MAJOR_SHIFT"' SOF_ABI_FILE `| grep -E ".[[:digit:]]$" -o'))dnl'
+`define(`SOF_MINOR_SHIFT','
+`esyscmd(`grep "#define SOF_ABI_MINOR_SHIFT"' SOF_ABI_FILE `| grep -E ".[[:digit:]]$" -o'))dnl'
+`define(`SOF_ABI_VERSION','
+`eval(eval((SOF_MAJOR) << (SOF_MAJOR_SHIFT))dnl'
+`| eval((SOF_MINOR) << (SOF_MINOR_SHIFT))))dnl'
+ `'))
+
+dnl print number's 4 bytes from right to left as hex values
+define(`PRINT_BYTES_4',
+`format(`0x%02x', eval(($1)&0xFF)),'dnl
+`format(`0x%02x', eval(($1>>8)&0xFF)),'dnl
+`format(`0x%02x', eval(($1>>16)&0xFF)),'dnl
+`format(`0x%02x', eval(($1>>24)&0xFF))')dnl
+
+dnl print number's 2 bytes from right to left as hex values
+define(`PRINT_BYTES_2',
+`format(`0x%02x', eval(($1)&0xFF)),'dnl
+`format(`0x%02x', eval(($1>>8)&0xFF))')dnl
+
+dnl print a number's right most byte as hex values
+define(`PRINT_BYTE',
+`format(`0x%02x', eval(($1)&0xFF))')dnl
+
+dnl make a byte from 8 binary values, right to left in increasing argument order
+define(`BITS_TO_BYTE',
+`eval(eval($1 << 0) | eval($2 << 1) | eval($3 << 2) | eval($4 << 3)dnl
+| eval($5 << 4) | eval($6 << 5) | eval($7 << 6) | eval($8 << 7))')dnl
+
 divert(0) dnl
 
