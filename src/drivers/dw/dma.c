@@ -72,6 +72,8 @@ static const uint32_t burst_elems[] = {1, 2, 4, 8};
 #define DW_DMA_BUFFER_PERIOD_COUNT	2
 #endif
 
+static int dw_dma_stop(struct dma_chan_data *channel);
+
 static void dw_dma_interrupt_mask(struct dma_chan_data *channel)
 {
 	/* mask block, transfer and error interrupts for channel */
@@ -266,7 +268,8 @@ static int dw_dma_start(struct dma_chan_data *channel)
 	irq_local_disable(flags);
 
 	/* check if channel idle, disabled and ready */
-	if (channel->status != COMP_STATE_PREPARE ||
+	if ((channel->status != COMP_STATE_PREPARE &&
+	     channel->status != COMP_STATE_PAUSED) ||
 	    (dma_reg_read(dma, DW_DMA_CHAN_EN) & DW_CHAN(channel->index))) {
 		trace_dwdma_error("dw_dma_start() error: dma %d channel %d "
 				  "not ready ena 0x%x status 0x%x",
@@ -334,15 +337,31 @@ out:
 static int dw_dma_release(struct dma_chan_data *channel)
 {
 	struct dw_dma_chan_data *dw_chan = dma_chan_get_data(channel);
+	struct dma *dma = channel->dma;
 	uint32_t flags;
+	int ret;
 
 	trace_dwdma("dw_dma_release(): dma %d channel %d release",
 		    channel->dma->plat_data.id, channel->index);
 
 	irq_local_disable(flags);
 
+	/* now we wait for FIFO to be empty */
+	ret = poll_for_register_delay(dma_base(dma) +
+				      DW_CFG_LOW(channel->index),
+				      DW_CFGL_FIFO_EMPTY,
+				      DW_CFGL_FIFO_EMPTY,
+				      DW_DMA_TIMEOUT);
+
 	/* get next lli for proper release */
 	dw_chan->lli_current = (struct dw_lli *)dw_chan->lli_current->llp;
+
+	/* prepare to start */
+	dw_dma_stop(channel);
+
+	if (ret < 0)
+		trace_dwdma_error("dw_dma_release() error: dma %d channel %d timeout",
+				  dma->plat_data.id, channel->index);
 
 	irq_local_enable(flags);
 
@@ -351,6 +370,8 @@ static int dw_dma_release(struct dma_chan_data *channel)
 
 static int dw_dma_pause(struct dma_chan_data *channel)
 {
+	struct dw_dma_chan_data *dw_chan = dma_chan_get_data(channel);
+	struct dma *dma = channel->dma;
 	uint32_t flags;
 
 	trace_dwdma("dw_dma_pause(): dma %d channel %d pause",
@@ -360,6 +381,9 @@ static int dw_dma_pause(struct dma_chan_data *channel)
 
 	if (channel->status != COMP_STATE_ACTIVE)
 		goto out;
+
+	dma_reg_write(dma, DW_CFG_LOW(channel->index),
+		      dw_chan->cfg_lo | DW_CFGL_SUSPEND);
 
 	/* pause the channel */
 	channel->status = COMP_STATE_PAUSED;
@@ -392,7 +416,8 @@ static int dw_dma_stop(struct dma_chan_data *channel)
 
 	irq_local_disable(flags);
 
-	if (channel->status != COMP_STATE_ACTIVE)
+	if (channel->status != COMP_STATE_ACTIVE &&
+	    channel->status != COMP_STATE_PAUSED)
 		goto out;
 
 #if CONFIG_DMA_SUSPEND_DRAIN
