@@ -7,6 +7,7 @@
 
 #include <errno.h>
 #include <sof/lib/alloc.h>
+#include <sof/drivers/timer.h>
 #include <stdlib.h>
 #include <stdarg.h>
 #include <stddef.h>
@@ -85,3 +86,18 @@ void WEAK _spin_unlock_irq(spinlock_t *lock, uint32_t flags, int line)
 	(void)flags;
 	(void)line;
 }
+
+uint64_t WEAK platform_timer_get(struct timer *timer)
+{
+	(void)timer;
+
+	return 0;
+}
+
+uint64_t WEAK arch_timer_get_system(struct timer *timer)
+{
+	(void)timer;
+
+	return 0;
+}
+
