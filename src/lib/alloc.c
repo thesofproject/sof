@@ -601,7 +601,7 @@ void alloc_trace_buffer_heap(uint32_t caps, size_t bytes)
 	/* check buffer heap for capabilities */
 	trace_mem_init("heap: using buffer");
 
-	alloc_trace_heap(RZONE_BUFFER, caps, bytes, memmap->buffer,
+	alloc_trace_heap(SOF_MEM_ZONE_BUFFER, caps, bytes, memmap->buffer,
 			 PLATFORM_HEAP_BUFFER);
 
 	platform_shared_commit(memmap, sizeof(*memmap));
