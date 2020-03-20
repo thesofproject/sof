@@ -255,7 +255,7 @@ static void null_test_success(void **state)
 /* Test main function */
 int main(void)
 {
-	struct CMUnitTest tests[1];
+	struct CMUnitTest tests[2];
 	struct test_case internal_buffering = {
 		.period_bytes = KPB_MAX_BUFFER_SIZE(16),
 		.history_buffer_size = KPB_MAX_BUFFER_SIZE(16),
