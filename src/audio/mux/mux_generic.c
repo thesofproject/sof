@@ -385,11 +385,17 @@ const struct comp_func_map mux_func_map[] = {
 
 mux_func mux_get_processing_function(struct comp_dev *dev)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
+	struct comp_buffer *sinkb;
 	uint8_t i;
 
+	if (list_is_empty(&dev->bsink_list))
+		return NULL;
+
+	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
+				source_list);
+
 	for (i = 0; i < ARRAY_SIZE(mux_func_map); i++) {
-		if (cd->config.frame_format == mux_func_map[i].frame_format)
+		if (sinkb->stream.frame_fmt == mux_func_map[i].frame_format)
 			return mux_func_map[i].mux_proc_func;
 	}
 
@@ -398,11 +404,17 @@ mux_func mux_get_processing_function(struct comp_dev *dev)
 
 demux_func demux_get_processing_function(struct comp_dev *dev)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
+	struct comp_buffer *sinkb;
 	uint8_t i;
 
+	if (list_is_empty(&dev->bsink_list))
+		return NULL;
+
+	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
+				source_list);
+
 	for (i = 0; i < ARRAY_SIZE(mux_func_map); i++) {
-		if (cd->config.frame_format == mux_func_map[i].frame_format)
+		if (sinkb->stream.frame_fmt == mux_func_map[i].frame_format)
 			return mux_func_map[i].demux_proc_func;
 	}
 

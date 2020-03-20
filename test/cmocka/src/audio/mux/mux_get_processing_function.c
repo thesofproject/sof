@@ -5,6 +5,8 @@
 // Author: Daniel Bogdzia <danielx.bogdzia@linux.intel.com>
 //         Janusz Jankowski <janusz.jankowski@linux.intel.com>
 
+#include "util.h"
+
 #include <sof/audio/component_ext.h>
 #include <sof/audio/mux.h>
 
@@ -18,6 +20,7 @@
 struct test_data {
 	struct comp_dev *dev;
 	struct comp_data *cd;
+	struct comp_buffer *sink;
 };
 
 static int setup_group(void **state)
@@ -51,6 +54,8 @@ static int setup_test_case(void **state)
 
 	td->cd = (struct comp_data *)td->dev->priv_data;
 
+	td->sink = create_test_sink(td->dev, 0, 0, 0);
+
 	*state = td;
 
 	return 0;
@@ -61,6 +66,7 @@ static int teardown_test_case(void **state)
 	struct test_data *td = *state;
 
 	comp_free(td->dev);
+	free(td->sink);
 	free(td);
 
 	return 0;
@@ -73,7 +79,7 @@ static void test_mux_get_processing_function_invalid_float(void **state)
 	mux_func func = NULL;
 
 	/* set frame format value to unsupported value */
-	td->cd->config.frame_format = SOF_IPC_FRAME_FLOAT;
+	td->sink->stream.frame_fmt = SOF_IPC_FRAME_FLOAT;
 
 	func = mux_get_processing_function(td->dev);
 
@@ -87,7 +93,7 @@ static void test_mux_get_processing_function_valid_s16le(void **state)
 	struct test_data *td = *state;
 	mux_func func = NULL;
 
-	td->cd->config.frame_format = SOF_IPC_FRAME_S16_LE;
+	td->sink->stream.frame_fmt = SOF_IPC_FRAME_S16_LE;
 
 	func = mux_get_processing_function(td->dev);
 
@@ -101,7 +107,7 @@ static void test_mux_get_processing_function_valid_s24_4le(void **state)
 	struct test_data *td = *state;
 	mux_func func = NULL;
 
-	td->cd->config.frame_format = SOF_IPC_FRAME_S24_4LE;
+	td->sink->stream.frame_fmt = SOF_IPC_FRAME_S24_4LE;
 
 	func = mux_get_processing_function(td->dev);
 
@@ -115,7 +121,7 @@ static void test_mux_get_processing_function_valid_s32le(void **state)
 	struct test_data *td = *state;
 	mux_func func = NULL;
 
-	td->cd->config.frame_format = SOF_IPC_FRAME_S32_LE;
+	td->sink->stream.frame_fmt = SOF_IPC_FRAME_S32_LE;
 
 	func = mux_get_processing_function(td->dev);
 
