@@ -1147,9 +1147,7 @@ static int dmic_set_config(struct dai *dai, struct sof_ipc_dai_config *config)
 	 * "prm" is initialized with default params for all HW controllers
 	 */
 	if (!dmic_prm[0]) {
-		size = sizeof(struct sof_ipc_dai_dmic_params)
-			+ DMIC_HW_CONTROLLERS
-			* sizeof(struct sof_ipc_dai_dmic_pdm_ctrl);
+		size = sizeof(struct sof_ipc_dai_dmic_params);
 		dmic_prm[0] = rzalloc(SOF_MEM_ZONE_SYS_RUNTIME, 0,
 				      SOF_MEM_CAPS_RAM,
 				      DMIC_HW_FIFOS * size);
@@ -1162,11 +1160,11 @@ static int dmic_set_config(struct dai *dai, struct sof_ipc_dai_config *config)
 				((uint8_t *)dmic_prm[i - 1] + size);
 	}
 
-	/* Copy the new DMIC params to persistent.  The last request
-	 * determines the parameters.
+	/* Copy the new DMIC params header (all but not pdm[]) to persistent.
+	 * The last arrived request determines the parameters.
 	 */
 	ret = memcpy_s(dmic_prm[di], sizeof(*dmic_prm[di]), &config->dmic,
-		       sizeof(struct sof_ipc_dai_dmic_params));
+		       offsetof(struct sof_ipc_dai_dmic_params, pdm));
 	assert(!ret);
 
 	/* copy the pdm controller params from ipc */
