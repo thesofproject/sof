@@ -17,11 +17,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define trace_mem_error(__e, ...) \
-	trace_error(TRACE_CLASS_MEM, __e, ##__VA_ARGS__)
-#define trace_mem_init(__e, ...) \
-	trace_event(TRACE_CLASS_MEM, __e, ##__VA_ARGS__)
-
 /* Heap Memory Zones
  *
  * The heap has three different zones from where memory can be allocated :-
@@ -61,99 +56,6 @@ void *_brealloc(void *ptr, uint32_t flags, uint32_t caps, size_t bytes,
 		uint32_t alignment);
 void rfree(void *ptr);
 
-#if CONFIG_DEBUG_HEAP
-
-#define rmalloc(zone, flags, caps, bytes)				\
-	({void *_ptr;							\
-	do {								\
-		_ptr = _malloc(zone, flags, caps, bytes);		\
-		if (!_ptr) {						\
-			trace_mem_error("failed to alloc 0x%x bytes caps 0x%x flags 0x%x",\
-					bytes, caps, flags);		\
-			alloc_trace_runtime_heap(caps, bytes);		\
-		}							\
-	} while (0);							\
-	_ptr; })
-
-#define rzalloc(zone, flags, caps, bytes)				\
-	({void *_ptr;							\
-	do {								\
-		_ptr = _zalloc(zone, flags, caps, bytes);		\
-		if (!_ptr) {						\
-			trace_mem_error("failed to alloc 0x%x bytes caps 0x%x flags 0x%x",\
-					bytes, caps, flags);		\
-			alloc_trace_runtime_heap(caps, bytes);		\
-		}							\
-	} while (0);							\
-	_ptr; })
-
-#define rballoc(flags, caps, bytes)				\
-	({void *_ptr;						\
-	do {							\
-		_ptr = _balloc(flags, caps, bytes,		\
-			       PLATFORM_DCACHE_ALIGN);		\
-		if (!_ptr) {					\
-			trace_mem_error("failed to alloc 0x%x bytes caps 0x%x flags 0x%x",\
-					bytes, caps, flags);	\
-			alloc_trace_buffer_heap(caps, bytes);	\
-		}						\
-	} while (0);						\
-	_ptr; })
-
-#define rrealloc(ptr, zone, flags, caps, bytes)				\
-	({void *_ptr;							\
-	do {								\
-		_ptr = _realloc(ptr, zone, flags, caps, bytes);		\
-		if (!_ptr) {						\
-			trace_mem_error("failed to alloc 0x%x bytes caps 0x%x flags 0x%x",\
-					bytes, caps, flags);		\
-			alloc_trace_buffer_heap(caps, bytes);		\
-		}							\
-	} while (0);							\
-	_ptr; })
-
-#define rbrealloc(ptr, flags, caps, bytes)				\
-	({void *_ptr;							\
-	do {								\
-		_ptr = _brealloc(ptr, flags, caps, bytes,		\
-				 PLATFORM_DCACHE_ALIGN);		\
-		if (!_ptr) {						\
-			trace_mem_error("failed to alloc 0x%x bytes caps 0x%x flags 0x%x",\
-					bytes, caps, flags);		\
-			alloc_trace_buffer_heap(caps, bytes);		\
-		}							\
-	} while (0);							\
-	_ptr; })
-
-#define rbrealloc_align(ptr, flags, caps, bytes, alignment)		\
-	({void *_ptr;							\
-	do {								\
-		_ptr = _brealloc(ptr, flags, caps, bytes, alignment);	\
-		if (!_ptr) {						\
-			trace_mem_error("failed to alloc 0x%x bytes caps 0x%x flags 0x%x",\
-					bytes, caps, flags);		\
-			alloc_trace_buffer_heap(caps, bytes);		\
-		}							\
-	} while (0);							\
-	_ptr; })
-
-#define rballoc_align(flags, caps, bytes, alignment)		\
-	({void *_ptr;						\
-	do {							\
-		_ptr = _balloc(flags, caps, bytes, alignment);	\
-		if (!_ptr) {					\
-			trace_mem_error("failed to alloc 0x%x bytes caps 0x%x flags 0x%x",\
-					bytes, caps, flags);	\
-			alloc_trace_buffer_heap(caps, bytes);	\
-		}						\
-	} while (0);						\
-	_ptr; })
-
-void alloc_trace_runtime_heap(uint32_t caps, size_t bytes);
-void alloc_trace_buffer_heap(uint32_t caps, size_t bytes);
-
-#else
-
 #define rmalloc(zone, flags, caps, bytes) \
 	_malloc(zone, flags, caps, bytes)
 #define rzalloc(zone, flags, caps, bytes) \
@@ -168,8 +70,6 @@ void alloc_trace_buffer_heap(uint32_t caps, size_t bytes);
 	_brealloc(ptr, flags, caps, bytes, PLATFORM_DCACHE_ALIGN)
 #define rbrealloc_align(ptr, flags, caps, bytes, alignment) \
 	_brealloc(ptr, flags, caps, bytes, alignment)
-
-#endif
 
 /* system heap allocation for specific core */
 void *rzalloc_core_sys(int core, size_t bytes);
