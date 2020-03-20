@@ -15,6 +15,7 @@
 #include <sof/lib/cache.h>
 #include <sof/lib/clk.h>
 #include <sof/lib/cpu.h>
+#include <sof/lib/mailbox.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/notifier.h>
 #include <sof/lib/shim.h>
@@ -24,6 +25,7 @@
 #include <sof/schedule/ll_schedule.h>
 #include <sof/schedule/schedule.h>
 #include <sof/schedule/task.h>
+#include <sof/trace/trace.h>
 #include <ipc/control.h>
 #include <ipc/stream.h>
 #include <ipc/topology.h>
@@ -143,27 +145,48 @@ static int idc_msg_status_get(uint32_t core)
 }
 
 /**
- * \brief Waits until slave core receives the message.
+ * \brief Checks IDC registers whether message has been received.
  * \param[in] target_core Id of the core receiving the message.
+ * \return True if message received, false otherwise.
+ */
+static bool idc_is_received(int target_core)
+{
+	return idc_read(IPC_IDCIETC(target_core), cpu_get_id()) &
+		IPC_IDCIETC_DONE;
+}
+
+/**
+ * \brief Checks core status register.
+ * \param[in] target_core Id of the core powering up.
+ * \return True if core powered up, false otherwise.
+ */
+static bool idc_is_powered_up(int target_core)
+{
+	return mailbox_sw_reg_read(PLATFORM_TRACEP_SLAVE_CORE(target_core)) ==
+		TRACE_BOOT_PLATFORM;
+}
+
+/**
+ * \brief Waits until status condition is true.
+ * \param[in] target_core Id of the core receiving the message.
+ * \param[in] cond Pointer to condition function.
  * \return Error code.
  */
-static int idc_wait_in_blocking_mode(uint32_t target_core)
+static int idc_wait_in_blocking_mode(uint32_t target_core, bool (*cond)(int))
 {
 	struct timer *timer = timer_get();
-	uint32_t core = cpu_get_id();
 	uint64_t deadline;
 
 	deadline = platform_timer_get(timer) +
 		clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1) *
 		IDC_TIMEOUT / 1000;
 
-	while (!(idc_read(IPC_IDCIETC(target_core), core) & IPC_IDCIETC_DONE)) {
+	while (!cond(target_core)) {
 		if (deadline < platform_timer_get(timer)) {
 			/* safe check in case we've got preempted
 			 * after read
 			 */
-			if (idc_read(IPC_IDCIETC(target_core), core) &
-			    IPC_IDCIETC_DONE)
+			if (cond(target_core))
 				break;
 
 			trace_idc_error("idc_wait_in_blocking_mode() error: timeout");
@@ -206,8 +229,9 @@ int idc_send_msg(struct idc_msg *msg, uint32_t mode)
 	idc_write(IPC_IDCIETC(msg->core), core, msg->extension);
 	idc_write(IPC_IDCITC(msg->core), core, msg->header | IPC_IDCITC_BUSY);
 
-	if (mode == IDC_BLOCKING) {
-		ret = idc_wait_in_blocking_mode(msg->core);
+	switch (mode) {
+	case IDC_BLOCKING:
+		ret = idc_wait_in_blocking_mode(msg->core, idc_is_received);
 		if (ret < 0)
 			return ret;
 
@@ -216,6 +240,11 @@ int idc_send_msg(struct idc_msg *msg, uint32_t mode)
 			  IPC_IDCIETC_DONE);
 
 		ret = idc_msg_status_get(msg->core);
+		break;
+
+	case IDC_POWER_UP:
+		ret = idc_wait_in_blocking_mode(msg->core, idc_is_powered_up);
+		break;
 	}
 
 	return ret;

@@ -38,10 +38,11 @@ extern struct xtos_core_data *core_data_ptr[PLATFORM_CORE_COUNT];
 
 static uint32_t active_cores_mask;
 
-void arch_cpu_enable_core(int id)
+int arch_cpu_enable_core(int id)
 {
 	struct idc_msg power_up = {
 		IDC_MSG_POWER_UP, IDC_MSG_POWER_UP_EXT, id };
+	int ret;
 
 	if (!arch_cpu_is_core_enabled(id)) {
 		pm_runtime_get(PM_RUNTIME_DSP, id);
@@ -56,10 +57,14 @@ void arch_cpu_enable_core(int id)
 		idc_enable_interrupts(id, cpu_get_id());
 
 		/* send IDC power up message */
-		idc_send_msg(&power_up, IDC_NON_BLOCKING);
+		ret = idc_send_msg(&power_up, IDC_POWER_UP);
+		if (ret < 0)
+			return ret;
 
 		active_cores_mask |= (1 << id);
 	}
+
+	return 0;
 }
 
 void arch_cpu_disable_core(int id)

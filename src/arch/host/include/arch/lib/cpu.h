@@ -10,8 +10,9 @@
 #ifndef __ARCH_LIB_CPU_H__
 #define __ARCH_LIB_CPU_H__
 
-static inline void arch_cpu_enable_core(int id)
+static inline int arch_cpu_enable_core(int id)
 {
+	return 0;
 }
 
 static inline void arch_cpu_disable_core(int id)

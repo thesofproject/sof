@@ -40,9 +40,9 @@ static inline bool cpu_is_me(int id)
 	return id == cpu_get_id();
 }
 
-static inline void cpu_enable_core(int id)
+static inline int cpu_enable_core(int id)
 {
-	arch_cpu_enable_core(id);
+	return arch_cpu_enable_core(id);
 }
 
 static inline void cpu_disable_core(int id)
