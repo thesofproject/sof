@@ -42,9 +42,6 @@ void arch_cpu_enable_core(int id)
 {
 	struct idc_msg power_up = {
 		IDC_MSG_POWER_UP, IDC_MSG_POWER_UP_EXT, id };
-	uint32_t flags;
-
-	irq_local_disable(flags);
 
 	if (!arch_cpu_is_core_enabled(id)) {
 		pm_runtime_get(PM_RUNTIME_DSP, id);
@@ -63,25 +60,18 @@ void arch_cpu_enable_core(int id)
 
 		active_cores_mask |= (1 << id);
 	}
-
-	irq_local_enable(flags);
 }
 
 void arch_cpu_disable_core(int id)
 {
 	struct idc_msg power_down = {
 		IDC_MSG_POWER_DOWN, IDC_MSG_POWER_DOWN_EXT, id };
-	uint32_t flags;
-
-	irq_local_disable(flags);
 
 	if (arch_cpu_is_core_enabled(id)) {
 		idc_send_msg(&power_down, IDC_NON_BLOCKING);
 
 		active_cores_mask ^= (1 << id);
 	}
-
-	irq_local_enable(flags);
 }
 
 int arch_cpu_is_core_enabled(int id)
