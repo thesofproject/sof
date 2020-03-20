@@ -17,6 +17,9 @@
 #include <ipc/stream.h>
 #include <stdint.h>
 
+/** \brief Minimum number of timer recovery cycles in case of delay. */
+#define TIMER_MIN_RECOVER_CYCLES	100
+
 void platform_timer_start(struct timer *timer)
 {
 	/* run timer */
@@ -43,7 +46,8 @@ int64_t platform_timer_set(struct timer *timer, uint64_t ticks)
 	if (ticks > shim_read64(SHIM_DSPWC))
 		shim_write64(SHIM_DSPWCT0C, ticks);
 	else
-		shim_write64(SHIM_DSPWCT0C, shim_read64(SHIM_DSPWC) + 1);
+		shim_write64(SHIM_DSPWCT0C, shim_read64(SHIM_DSPWC) +
+			     TIMER_MIN_RECOVER_CYCLES);
 
 	/* Enable IRQ */
 	shim_write(SHIM_DSPWCTCS, SHIM_DSPWCTCS_T0A);
