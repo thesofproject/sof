@@ -71,7 +71,6 @@ static int mux_set_values(struct comp_dev *dev, struct comp_data *cd,
 	}
 
 	cd->config.num_channels = cfg->num_channels;
-	cd->config.frame_format = cfg->frame_format;
 
 	for (i = 0; i < cfg->num_streams; i++) {
 		cd->config.streams[i].num_channels = cfg->streams[i].num_channels;
@@ -80,10 +79,12 @@ static int mux_set_values(struct comp_dev *dev, struct comp_data *cd,
 			cd->config.streams[i].mask[j] = cfg->streams[i].mask[j];
 	}
 
-	if (dev->comp.type == SOF_COMP_MUX)
-		cd->mux = mux_get_processing_function(dev);
-	else
-		cd->demux = demux_get_processing_function(dev);
+	if (dev->state > COMP_STATE_INIT) {
+		if (dev->comp.type == SOF_COMP_MUX)
+			cd->mux = mux_get_processing_function(dev);
+		else
+			cd->demux = demux_get_processing_function(dev);
+	}
 
 	return 0;
 }
@@ -104,6 +105,8 @@ static struct comp_dev *mux_new(const struct comp_driver *drv,
 		      COMP_SIZE(struct sof_ipc_comp_process));
 	if (!dev)
 		return NULL;
+
+	dev->state = COMP_STATE_INIT;
 	dev->drv = drv;
 
 	dev->size = COMP_SIZE(struct sof_ipc_comp_process);
@@ -198,7 +201,6 @@ static int mux_params(struct comp_dev *dev,
 				  source_list);
 
 	cd->config.num_channels = sinkb->stream.channels;
-	cd->config.frame_format = sinkb->stream.frame_fmt;
 
 	return 0;
 }
