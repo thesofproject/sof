@@ -359,7 +359,7 @@ static int demux_copy(struct comp_dev *dev)
 			continue;
 
 		buffer_invalidate(source, source_bytes);
-		cd->demux(dev, &sinks[i]->stream, &source->stream, frames,
+		cd->demux(&sinks[i]->stream, &source->stream, frames,
 			  &cd->config.streams[i]);
 		buffer_writeback(sinks[i], sinks_bytes[i]);
 	}
@@ -455,7 +455,7 @@ static int mux_copy(struct comp_dev *dev)
 	sink_bytes = frames * audio_stream_frame_bytes(&sink->stream);
 
 	/* produce output */
-	cd->mux(dev, &sink->stream, &sources_stream[0], frames,
+	cd->mux(&sink->stream, &sources_stream[0], frames,
 		&cd->config.streams[0]);
 	buffer_writeback(sink, sink_bytes);
 

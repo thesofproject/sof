@@ -53,13 +53,12 @@ UT_STATIC inline int32_t calc_sample_s16le(const struct audio_stream *source,
  * mux_stream_data structure. Each bitmask describes composition of single
  * output channel.
  *
- * \param[in,out] dev Demux base component device.
  * \param[in,out] sink Destination buffer.
  * \param[in,out] source Source buffer.
  * \param[in] frames Number of frames to process.
  * \param[in] data Parameters describing channel count and routing.
  */
-static void demux_s16le(const struct comp_dev *dev, struct audio_stream *sink,
+static void demux_s16le(struct audio_stream *sink,
 			const struct audio_stream *source, uint32_t frames,
 			struct mux_stream_data *data)
 {
@@ -90,14 +89,13 @@ static void demux_s16le(const struct comp_dev *dev, struct audio_stream *sink,
  * of it's channels describing to which channels of output stream it
  * contributes.
  *
- * \param[in,out] dev Demux base component device.
  * \param[in,out] sink Destination buffer.
  * \param[in,out] sources Array of source buffers.
  * \param[in] frames Number of frames to process.
  * \param[in] data Array of parameters describing channel count and routing for
  *		   each stream.
  */
-static void mux_s16le(const struct comp_dev *dev, struct audio_stream *sink,
+static void mux_s16le(struct audio_stream *sink,
 		      const struct audio_stream **sources, uint32_t frames,
 		      struct mux_stream_data *data)
 {
@@ -165,13 +163,12 @@ UT_STATIC inline int32_t calc_sample_s24le(const struct audio_stream *source,
  * mux_stream_data structure. Each bitmask describes composition of single
  * output channel.
  *
- * \param[in,out] dev Demux base component device.
  * \param[in,out] sink Destination buffer.
  * \param[in,out] source Source buffer.
  * \param[in] frames Number of frames to process.
  * \param[in] data Parameters describing channel count and routing.
  */
-static void demux_s24le(const struct comp_dev *dev, struct audio_stream *sink,
+static void demux_s24le(struct audio_stream *sink,
 			const struct audio_stream *source, uint32_t frames,
 			struct mux_stream_data *data)
 {
@@ -202,14 +199,13 @@ static void demux_s24le(const struct comp_dev *dev, struct audio_stream *sink,
  * of it's channels describing to which channels of output stream it
  * contributes.
  *
- * \param[in,out] dev Demux base component device.
  * \param[in,out] sink Destination buffer.
  * \param[in,out] sources Array of source buffers.
  * \param[in] frames Number of frames to process.
  * \param[in] data Array of parameters describing channel count and routing for
  *		   each stream.
  */
-static void mux_s24le(const struct comp_dev *dev, struct audio_stream *sink,
+static void mux_s24le(struct audio_stream *sink,
 		      const struct audio_stream **sources, uint32_t frames,
 		      struct mux_stream_data *data)
 {
@@ -276,13 +272,12 @@ UT_STATIC inline int64_t calc_sample_s32le(const struct audio_stream *source,
  * mux_stream_data structure. Each bitmask describes composition of single
  * output channel.
  *
- * \param[in,out] dev Demux base component device.
  * \param[in,out] sink Destination buffer.
  * \param[in,out] source Source buffer.
  * \param[in] frames Number of frames to process.
  * \param[in] data Parameters describing channel count and routing.
  */
-static void demux_s32le(const struct comp_dev *dev, struct audio_stream *sink,
+static void demux_s32le(struct audio_stream *sink,
 			const struct audio_stream *source, uint32_t frames,
 			struct mux_stream_data *data)
 {
@@ -313,14 +308,13 @@ static void demux_s32le(const struct comp_dev *dev, struct audio_stream *sink,
  * of it's channels describing to which channels of output stream it
  * contributes.
  *
- * \param[in,out] dev Demux base component device.
  * \param[in,out] sink Destination buffer.
  * \param[in,out] sources Array of source buffers.
  * \param[in] frames Number of frames to process.
  * \param[in] data Array of parameters describing channel count and routing for
  *		   each stream.
  */
-static void mux_s32le(const struct comp_dev *dev, struct audio_stream *sink,
+static void mux_s32le(struct audio_stream *sink,
 		      const struct audio_stream **sources, uint32_t frames,
 		      struct mux_stream_data *data)
 {
