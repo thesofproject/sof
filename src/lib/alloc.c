@@ -22,6 +22,11 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#define trace_mem_error(__e, ...) \
+	trace_error(TRACE_CLASS_MEM, __e, ##__VA_ARGS__)
+#define trace_mem_init(__e, ...) \
+	trace_event(TRACE_CLASS_MEM, __e, ##__VA_ARGS__)
+
 /* debug to set memory value on every allocation */
 #if CONFIG_DEBUG_BLOCK_FREE
 #define DEBUG_BLOCK_FREE_VALUE_8BIT ((uint8_t)0xa5)
@@ -556,14 +561,31 @@ static void trace_heap_blocks(struct mm_heap *heap)
 	platform_shared_commit(heap, sizeof(*heap));
 }
 
-static void alloc_trace_heap(enum mem_zone zone, uint32_t caps, size_t bytes,
-			     struct mm_heap *heap_base,
-			     unsigned int heap_count)
+static void alloc_trace_heap(enum mem_zone zone, uint32_t caps, size_t bytes)
 {
-	struct mm_heap *heap = heap_base;
-	unsigned int n = heap_count;
+	struct mm *memmap = memmap_get();
+	struct mm_heap *heap_base;
+	struct mm_heap *heap;
+	unsigned int heap_count;
+	unsigned int n;
 	unsigned int i = 0;
 	int count = 0;
+
+	switch (zone) {
+	case SOF_MEM_ZONE_RUNTIME:
+		heap_base = memmap->runtime;
+		heap_count = PLATFORM_HEAP_RUNTIME;
+		break;
+	case SOF_MEM_ZONE_BUFFER:
+		heap_base = memmap->buffer;
+		heap_count = PLATFORM_HEAP_BUFFER;
+		break;
+	default:
+		trace_mem_error("alloc trace: unsupported mem zone");
+		goto out;
+	}
+	heap = heap_base;
+	n = heap_count;
 
 	while (i < heap_count) {
 		heap = get_heap_from_caps(heap, n, caps);
@@ -580,34 +602,21 @@ static void alloc_trace_heap(enum mem_zone zone, uint32_t caps, size_t bytes,
 	if (count == 0)
 		trace_mem_error("heap: none found for zone %d caps 0x%x, "
 				"bytes 0x%x", zone, caps, bytes);
-}
-
-void alloc_trace_runtime_heap(uint32_t caps, size_t bytes)
-{
-	struct mm *memmap = memmap_get();
-
-	/* check runtime heap for capabilities */
-	trace_mem_init("heap: using runtime");
-
-	alloc_trace_heap(SOF_MEM_ZONE_RUNTIME, caps, bytes,
-			 memmap->runtime, PLATFORM_HEAP_RUNTIME);
-
+out:
 	platform_shared_commit(memmap, sizeof(*memmap));
+	return;
 }
 
-void alloc_trace_buffer_heap(uint32_t caps, size_t bytes)
-{
-	struct mm *memmap = memmap_get();
-
-	/* check buffer heap for capabilities */
-	trace_mem_init("heap: using buffer");
-
-	alloc_trace_heap(SOF_MEM_ZONE_BUFFER, caps, bytes, memmap->buffer,
-			 PLATFORM_HEAP_BUFFER);
-
-	platform_shared_commit(memmap, sizeof(*memmap));
-}
-
+#define DEBUG_TRACE_PTR(ptr, bytes, zone, caps, flags) \
+	do { \
+		if (!ptr) { \
+			trace_mem_error("failed to alloc 0x%x bytes zone 0x%x caps 0x%x flags 0x%x", \
+					bytes, zone, caps, flags); \
+			alloc_trace_heap(zone, caps, bytes); \
+		} \
+	} while (0)
+#else
+#define DEBUG_TRACE_PTR(ptr, bytes, zone, caps, flags)
 #endif
 
 /* allocate single block for system runtime */
@@ -707,6 +716,7 @@ void *_malloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
 
 	spin_unlock_irq(&memmap->lock, lock_flags);
 
+	DEBUG_TRACE_PTR(ptr, bytes, zone, caps, flags);
 	return ptr;
 }
 
@@ -719,6 +729,7 @@ void *_zalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
 	if (ptr)
 		bzero(ptr, bytes);
 
+	DEBUG_TRACE_PTR(ptr, bytes, zone, caps, flags);
 	return ptr;
 }
 
@@ -859,6 +870,7 @@ void *_balloc(uint32_t flags, uint32_t caps, size_t bytes, uint32_t alignment)
 
 	spin_unlock_irq(&memmap->lock, lock_flags);
 
+	DEBUG_TRACE_PTR(ptr, bytes, SOF_MEM_ZONE_BUFFER, caps, flags);
 	return ptr;
 }
 
@@ -925,6 +937,7 @@ void *_realloc(void *ptr, enum mem_zone zone, uint32_t flags, uint32_t caps,
 
 	spin_unlock_irq(&memmap->lock, lock_flags);
 
+	DEBUG_TRACE_PTR(ptr, bytes, zone, caps, flags);
 	return new_ptr;
 }
 
@@ -950,6 +963,7 @@ void *_brealloc(void *ptr, uint32_t flags, uint32_t caps, size_t bytes,
 
 	spin_unlock_irq(&memmap->lock, lock_flags);
 
+	DEBUG_TRACE_PTR(ptr, bytes, SOF_MEM_ZONE_BUFFER, caps, flags);
 	return new_ptr;
 }
 
