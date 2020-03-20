@@ -85,18 +85,15 @@ void sys_comp_mux_init(void);
 
 #if CONFIG_FORMAT_S16LE
 int32_t calc_sample_s16le(const struct audio_stream *source,
-			  uint8_t num_ch, uint32_t offset,
-			  uint8_t mask);
+			  uint32_t offset, uint8_t mask);
 #endif /* CONFIG_FORMAT_S16LE */
 #if CONFIG_FORMAT_S24LE
 int32_t calc_sample_s24le(const struct audio_stream *source,
-			  uint8_t num_ch, uint32_t offset,
-			  uint8_t mask);
+			  uint32_t offset, uint8_t mask);
 #endif /* CONFIG_FORMAT_S24LE */
 #if CONFIG_FORMAT_S32LE
 int64_t calc_sample_s32le(const struct audio_stream *source,
-			  uint8_t num_ch, uint32_t offset,
-			  uint8_t mask);
+			  uint32_t offset, uint8_t mask);
 #endif /* CONFIG_FORMAT_S32LE */
 #endif /* UNIT_TEST */
 
