@@ -9,6 +9,7 @@ BUILD_DEBUG=no
 BUILD_FORCE_UP=no
 BUILD_JOBS=$(nproc --all)
 BUILD_JOBS_NEXT=0
+BUILD_VERBOSE=OFF
 
 PATH=$pwd/local/bin:$PATH
 
@@ -23,6 +24,7 @@ then
 	echo "       [-d] Enable debug build"
 	echo "       [-c] Configure defconfig"
 	echo "       [-k] Use private key"
+	echo "       [-v] Verbose Makefile log"
 	echo "       [-j [n]] Set number of make build jobs." \
 		"Jobs=#cores when no flag. Inifinte when no arg."
 	echo "       Supported platforms ${SUPPORTED_PLATFORMS[@]}"
@@ -54,6 +56,10 @@ else
 		elif [[ "$args" == "-k" ]]
 			then
 			USE_PRIVATE_KEY=yes
+
+		elif [[ "$args" == "-v" ]]
+			then
+			BUILD_VERBOSE=ON
 
 		# Build all platforms
 		elif [[ "$args" == "-a" ]]
@@ -317,7 +323,7 @@ do
 
 	cmake -DTOOLCHAIN=$TOOLCHAIN \
 		-DROOT_DIR=$ROOT \
-		-DCMAKE_VERBOSE_MAKEFILE=ON \
+		-DCMAKE_VERBOSE_MAKEFILE=${BUILD_VERBOSE} \
 		${PRIVATE_KEY_OPTION} \
 		..
 
