@@ -61,21 +61,9 @@ static int mux_set_values(struct comp_dev *dev, struct comp_data *cd,
 		}
 	}
 
-	/* check if number of channels per stream doesn't exceed maximum */
 	for (i = 0; i < cfg->num_streams; i++) {
-		if (cfg->streams[i].num_channels > PLATFORM_MAX_CHANNELS) {
-			comp_cl_err(&comp_mux, "mux_set_values(): configured number of channels for stream %u exceeds platform maximum = "
-				    META_QUOTE(PLATFORM_MAX_CHANNELS), i);
-			return -EINVAL;
-		}
-	}
-
-	cd->config.num_channels = cfg->num_channels;
-
-	for (i = 0; i < cfg->num_streams; i++) {
-		cd->config.streams[i].num_channels = cfg->streams[i].num_channels;
 		cd->config.streams[i].pipeline_id = cfg->streams[i].pipeline_id;
-		for (j = 0; j < cfg->streams[i].num_channels; j++)
+		for (j = 0; j < PLATFORM_MAX_CHANNELS; j++)
 			cd->config.streams[i].mask[j] = cfg->streams[i].mask[j];
 	}
 
@@ -185,8 +173,6 @@ static int mux_verify_params(struct comp_dev *dev,
 static int mux_params(struct comp_dev *dev,
 		      struct sof_ipc_stream_params *params)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
-	struct comp_buffer *sinkb;
 	int err;
 
 	comp_info(dev, "mux_params()");
@@ -196,11 +182,6 @@ static int mux_params(struct comp_dev *dev,
 		comp_err(dev, "mux_fir_params(): pcm params verification failed.");
 		return -EINVAL;
 	}
-
-	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
-				  source_list);
-
-	cd->config.num_channels = sinkb->stream.channels;
 
 	return 0;
 }

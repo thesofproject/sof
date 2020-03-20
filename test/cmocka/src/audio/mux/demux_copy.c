@@ -102,13 +102,10 @@ static struct sof_ipc_comp_process *create_demux_comp_ipc(struct test_data *td)
 	ipc->config.hdr.size = sizeof(struct sof_ipc_comp_config);
 	ipc->size = mux_size;
 
-	mux->frame_format = td->format;
-	mux->num_channels = PLATFORM_MAX_CHANNELS;
 	mux->num_streams = MUX_MAX_STREAMS;
 
 	for (i = 0; i < MUX_MAX_STREAMS; ++i) {
 		mux->streams[i].pipeline_id = i;
-		mux->streams[i].num_channels = PLATFORM_MAX_CHANNELS;
 		for (j = 0; j < PLATFORM_MAX_CHANNELS; ++j)
 			mux->streams[i].mask[j] = td->mask[i][j];
 	}
