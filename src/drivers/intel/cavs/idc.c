@@ -162,6 +162,37 @@ static int idc_msg_status_get(uint32_t core)
 }
 
 /**
+ * \brief Waits until slave core receives the message.
+ * \param[in] target_core Id of the core receiving the message.
+ * \return Error code.
+ */
+static int idc_wait_in_blocking_mode(uint32_t target_core)
+{
+	struct timer *timer = timer_get();
+	struct idc *idc = *idc_get();
+	uint64_t deadline;
+
+	deadline = platform_timer_get(timer) +
+		clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1) *
+		IDC_TIMEOUT / 1000;
+
+	while (!idc->msg_processed[target_core]) {
+		if (deadline < platform_timer_get(timer)) {
+			/* safe check in case we've got preempted
+			 * after read
+			 */
+			if (idc->msg_processed[target_core])
+				break;
+
+			trace_idc_error("idc_wait_in_blocking_mode() error: timeout");
+			return -ETIME;
+		}
+	}
+
+	return 0;
+}
+
+/**
  * \brief Sends IDC message.
  * \param[in,out] msg Pointer to IDC message.
  * \param[in] mode Is message blocking or not.
@@ -169,11 +200,9 @@ static int idc_msg_status_get(uint32_t core)
  */
 int idc_send_msg(struct idc_msg *msg, uint32_t mode)
 {
-	struct timer *timer = timer_get();
 	struct idc *idc = *idc_get();
 	struct idc_payload *payload = idc_payload_get(idc, msg->core);
 	int core = cpu_get_id();
-	uint64_t deadline;
 	int ret = 0;
 
 	tracev_idc("arch_idc_send_msg()");
@@ -192,22 +221,9 @@ int idc_send_msg(struct idc_msg *msg, uint32_t mode)
 	idc_write(IPC_IDCITC(msg->core), core, msg->header | IPC_IDCITC_BUSY);
 
 	if (mode == IDC_BLOCKING) {
-		deadline = platform_timer_get(timer) +
-			clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1) *
-			IDC_TIMEOUT / 1000;
-
-		while (!idc->msg_processed[msg->core]) {
-			if (deadline < platform_timer_get(timer)) {
-				/* safe check in case we've got preempted
-				 * after read
-				 */
-				if (idc->msg_processed[msg->core])
-					break;
-
-				trace_idc_error("arch_idc_send_msg(): timeout");
-				return -ETIME;
-			}
-		}
+		ret = idc_wait_in_blocking_mode(msg->core);
+		if (ret < 0)
+			return ret;
 
 		ret = idc_msg_status_get(msg->core);
 	}
