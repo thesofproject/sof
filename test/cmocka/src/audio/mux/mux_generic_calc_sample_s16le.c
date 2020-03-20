@@ -75,7 +75,6 @@ static void test_calc_sample(void **state)
 	struct test_data *td = *((struct test_data **)state);
 
 	int32_t ret =  calc_sample_s16le(&td->buffer->stream,
-					 td->channels,
 					 0,
 					 td->mask);
 
@@ -89,6 +88,7 @@ static int setup(void **state)
 
 	td->buffer = calloc(1, sizeof(struct comp_buffer));
 	td->buffer->stream.r_ptr = td->input;
+	td->buffer->stream.channels = td->channels;
 
 	td->expected_result = 0;
 
