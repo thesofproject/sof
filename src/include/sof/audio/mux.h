@@ -37,7 +37,7 @@ STATIC_ASSERT(MUX_MAX_STREAMS < PLATFORM_MAX_STREAMS,
 
 struct mux_stream_data {
 	uint32_t pipeline_id;
-	uint8_t num_channels;
+	uint8_t num_channels_deprecated;	/* deprecated in ABI 3.15 */
 	uint8_t mask[PLATFORM_MAX_CHANNELS];
 
 	uint8_t reserved[(20 - PLATFORM_MAX_CHANNELS - 1) % 4]; // padding to ensure proper alignment of following instances
@@ -51,8 +51,8 @@ typedef void(*mux_func)(struct audio_stream *sink,
 			struct mux_stream_data *data);
 
 struct sof_mux_config {
-	uint16_t frame_format;
-	uint16_t num_channels;
+	uint16_t frame_format_deprecated;	/* deprecated in ABI 3.15 */
+	uint16_t num_channels_deprecated;	/* deprecated in ABI 3.15 */
 	uint16_t num_streams;
 
 	uint16_t reserved; // padding to ensure proper alignment
