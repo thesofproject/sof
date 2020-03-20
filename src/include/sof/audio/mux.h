@@ -43,10 +43,10 @@ struct mux_stream_data {
 	uint8_t reserved[(20 - PLATFORM_MAX_CHANNELS - 1) % 4]; // padding to ensure proper alignment of following instances
 };
 
-typedef void(*demux_func)(const struct comp_dev *dev, struct audio_stream *sink,
+typedef void(*demux_func)(struct audio_stream *sink,
 			  const struct audio_stream *source, uint32_t frames,
 			  struct mux_stream_data *data);
-typedef void(*mux_func)(const struct comp_dev *dev, struct audio_stream *sink,
+typedef void(*mux_func)(struct audio_stream *sink,
 			const struct audio_stream **sources, uint32_t frames,
 			struct mux_stream_data *data);
 
