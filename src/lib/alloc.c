@@ -209,7 +209,7 @@ static void *align_ptr(struct mm_heap *heap, uint32_t alignment,
 
 /* allocate single block */
 static void *alloc_block(struct mm_heap *heap, int level,
-	uint32_t caps, uint32_t alignment)
+			 uint32_t caps, uint32_t alignment)
 {
 	struct block_map *map = &heap->map[level];
 	struct block_hdr *hdr;
@@ -247,7 +247,7 @@ static void *alloc_block(struct mm_heap *heap, int level,
 
 /* allocates continuous blocks */
 static void *alloc_cont_blocks(struct mm_heap *heap, int level,
-	uint32_t caps, size_t bytes, uint32_t alignment)
+			       uint32_t caps, size_t bytes, uint32_t alignment)
 {
 	struct block_map *map = &heap->map[level];
 	struct block_hdr *hdr;
