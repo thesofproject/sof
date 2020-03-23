@@ -702,8 +702,7 @@ static void *_malloc_unlocked(enum mem_zone zone, uint32_t flags, uint32_t caps,
 	return ptr;
 }
 
-/* allocates memory - not for direct use, clients use rmalloc() */
-void *_malloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
+void *rmalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
 {
 	struct mm *memmap = memmap_get();
 	uint32_t lock_flags;
@@ -720,11 +719,11 @@ void *_malloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
 }
 
 /* allocates and clears memory - not for direct use, clients use rzalloc() */
-void *_zalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
+void *rzalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
 {
 	void *ptr;
 
-	ptr = _malloc(zone, flags, caps, bytes);
+	ptr = rmalloc(zone, flags, caps, bytes);
 	if (ptr)
 		bzero(ptr, bytes);
 
@@ -857,7 +856,8 @@ static void *_balloc_unlocked(uint32_t flags, uint32_t caps, size_t bytes,
 }
 
 /* allocates continuous buffers - not for direct use, clients use rballoc() */
-void *_balloc(uint32_t flags, uint32_t caps, size_t bytes, uint32_t alignment)
+void *rballoc_align(uint32_t flags, uint32_t caps, size_t bytes,
+		    uint32_t alignment)
 {
 	struct mm *memmap = memmap_get();
 	void *ptr = NULL;
@@ -914,7 +914,7 @@ void rfree(void *ptr)
 	spin_unlock_irq(&memmap->lock, flags);
 }
 
-void *_realloc(void *ptr, enum mem_zone zone, uint32_t flags, uint32_t caps,
+void *rrealloc(void *ptr, enum mem_zone zone, uint32_t flags, uint32_t caps,
 	       size_t bytes)
 {
 	struct mm *memmap = memmap_get();
@@ -940,8 +940,8 @@ void *_realloc(void *ptr, enum mem_zone zone, uint32_t flags, uint32_t caps,
 	return new_ptr;
 }
 
-void *_brealloc(void *ptr, uint32_t flags, uint32_t caps, size_t bytes,
-		uint32_t alignment)
+void *rbrealloc_align(void *ptr, uint32_t flags, uint32_t caps, size_t bytes,
+		      uint32_t alignment)
 {
 	struct mm *memmap = memmap_get();
 	void *new_ptr = NULL;

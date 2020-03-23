@@ -47,29 +47,31 @@ enum mem_zone {
 #define SOF_MEM_FLAG_SHARED	BIT(0)
 
 /* heap allocation and free */
-void *_malloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes);
-void *_zalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes);
-void *_balloc(uint32_t flags, uint32_t caps, size_t bytes, uint32_t alignment);
-void *_realloc(void *ptr, enum mem_zone zone, uint32_t flags, uint32_t caps,
-	       size_t bytes);
-void *_brealloc(void *ptr, uint32_t flags, uint32_t caps, size_t bytes,
-		uint32_t alignment);
-void rfree(void *ptr);
+void *rmalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes);
 
-#define rmalloc(zone, flags, caps, bytes) \
-	_malloc(zone, flags, caps, bytes)
-#define rzalloc(zone, flags, caps, bytes) \
-	_zalloc(zone, flags, caps, bytes)
-#define rballoc(flags, caps, bytes) \
-	_balloc(flags, caps, bytes, PLATFORM_DCACHE_ALIGN)
-#define rballoc_align(flags, caps, bytes, alignment) \
-	_balloc(flags, caps, bytes, alignment)
-#define rrealloc(ptr, zone, flags, caps, bytes) \
-	_realloc(ptr, zone, flags, caps, bytes)
-#define rbrealloc(ptr, flags, caps, bytes) \
-	_brealloc(ptr, flags, caps, bytes, PLATFORM_DCACHE_ALIGN)
-#define rbrealloc_align(ptr, flags, caps, bytes, alignment) \
-	_brealloc(ptr, flags, caps, bytes, alignment)
+void *rzalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes);
+
+void *rballoc_align(uint32_t flags, uint32_t caps, size_t bytes,
+		    uint32_t alignment);
+
+static inline void *rballoc(uint32_t flags, uint32_t caps, size_t bytes)
+{
+	return rballoc_align(flags, caps, bytes, PLATFORM_DCACHE_ALIGN);
+}
+
+void *rrealloc(void *ptr, enum mem_zone zone, uint32_t flags, uint32_t caps,
+	       size_t bytes);
+
+void *rbrealloc_align(void *ptr, uint32_t flags, uint32_t caps, size_t bytes,
+		      uint32_t alignment);
+
+static inline void *rbrealloc(void *ptr, uint32_t flags, uint32_t caps,
+			      size_t bytes)
+{
+	return rbrealloc_align(ptr, flags, caps, bytes, PLATFORM_DCACHE_ALIGN);
+}
+
+void rfree(void *ptr);
 
 /* system heap allocation for specific core */
 void *rzalloc_core_sys(int core, size_t bytes);
