@@ -433,7 +433,7 @@ struct comp_dev {
 	struct list_item bsink_list;	/**< list of sink buffers */
 
 	/* private data - core does not touch this */
-	void *private;		/**< private data */
+	void *priv_data;	/**< private data */
 
 	/**
 	 * IPC config object header - MUST be at end as it's
@@ -535,7 +535,7 @@ static inline struct sof_ipc_comp_config *comp_config(struct sof_ipc_comp *comp)
  * @param data Private data.
  */
 #define comp_set_drvdata(c, data) \
-	(c->private = data)
+	(c->priv_data = data)
 
 /**
  * \brief Retrieves driver private data from component device.
@@ -543,7 +543,7 @@ static inline struct sof_ipc_comp_config *comp_config(struct sof_ipc_comp *comp)
  * @return Private data.
  */
 #define comp_get_drvdata(c) \
-	c->private
+	c->priv_data
 
 #ifdef UNIT_TEST
 #define DECLARE_MODULE(init)

@@ -49,7 +49,7 @@ static int setup_test_case(void **state)
 	if (!td->dev)
 		return -EINVAL;
 
-	td->cd = (struct comp_data *)td->dev->private;
+	td->cd = (struct comp_data *)td->dev->priv_data;
 
 	*state = td;
 
