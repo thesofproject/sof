@@ -246,7 +246,7 @@ static int test_teardown(void **state)
 
 static void test_audio_mixer_new(void **state)
 {
-	assert_non_null(mixer_dev_mock->private);
+	assert_non_null(mixer_dev_mock->priv_data);
 }
 
 static void test_audio_mixer_prepare_no_sources(void **state)
