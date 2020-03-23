@@ -456,7 +456,7 @@ int spi_probe(struct spi *spi)
 
 	spi->rx_buffer = rzalloc(SOF_MEM_ZONE_SYS_RUNTIME, 0, SOF_MEM_CAPS_DMA,
 				 SPI_BUFFER_SIZE);
-	if (spi->rx_buffer == NULL) {
+	if (!spi->rx_buffer) {
 		trace_ipc_error("eSp");
 		return -ENOMEM;
 	}
@@ -464,7 +464,7 @@ int spi_probe(struct spi *spi)
 	spi->tx_buffer = rzalloc(SOF_MEM_ZONE_SYS_RUNTIME, 0, SOF_MEM_CAPS_DMA,
 				 SPI_BUFFER_SIZE);
 	spi->buffer_size = SPI_BUFFER_SIZE;
-	if (spi->tx_buffer == NULL) {
+	if (!spi->tx_buffer) {
 		rfree(spi->rx_buffer);
 		trace_ipc_error("eSp");
 		return -ENOMEM;
