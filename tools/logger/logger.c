@@ -63,7 +63,7 @@ static int snapshot(const char *name)
 	FILE *in_fd, *out_fd;
 	int i, count;
 
-	if (name == NULL) {
+	if (!name) {
 		fprintf(stderr, "error: need snapshot name\n");
 		return -EINVAL;
 	}
@@ -75,7 +75,7 @@ static int snapshot(const char *name)
 
 		/* open debugfs for reading */
 		in_fd = fopen(pinname, "rb");
-		if (in_fd == NULL) {
+		if (!in_fd) {
 			fprintf(stderr, "error: unable to open %s for reading %d\n",
 				pinname, errno);
 			continue;
@@ -83,7 +83,7 @@ static int snapshot(const char *name)
 
 		/* open outfile for writing */
 		out_fd = fopen(poutname, "wb");
-		if (out_fd == NULL) {
+		if (!out_fd) {
 			fprintf(stderr, "error: unable to open %s for writing %d\n",
 				poutname, errno);
 			fclose(in_fd);
