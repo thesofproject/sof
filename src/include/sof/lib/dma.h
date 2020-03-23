@@ -198,7 +198,7 @@ struct dma {
 	const struct dma_ops *ops;
 	atomic_t num_channels_busy; /* number of busy channels */
 	struct dma_chan_data *chan; /* channels array */
-	void *private;
+	void *priv_data;
 };
 
 struct dma_chan_data {
@@ -213,7 +213,7 @@ struct dma_chan_data {
 	/* true if this DMA channel is the scheduling source */
 	bool is_scheduling_source;
 
-	void *private;
+	void *priv_data;
 };
 
 struct dma_info {
@@ -251,9 +251,9 @@ struct dma *dma_get(uint32_t dir, uint32_t caps, uint32_t dev, uint32_t flags);
 void dma_put(struct dma *dma);
 
 #define dma_set_drvdata(dma, data) \
-	(dma->private = data)
+	(dma->priv_data = data)
 #define dma_get_drvdata(dma) \
-	dma->private
+	dma->priv_data
 #define dma_base(dma) \
 	dma->plat_data.base
 #define dma_irq(dma) \
@@ -265,9 +265,9 @@ void dma_put(struct dma *dma);
 #define dma_chan_base(dma, chan) \
 	(dma->plat_data.base + chan * dma->plat_data.chan_size)
 #define dma_chan_get_data(chan)	\
-	((chan)->private)
+	((chan)->priv_data)
 #define dma_chan_set_data(chan, data) \
-	((chan)->private = data)
+	((chan)->priv_data = data)
 
 /* DMA API
  * Programming flow is :-
