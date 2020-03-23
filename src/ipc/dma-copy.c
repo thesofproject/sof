@@ -86,7 +86,7 @@ int dma_copy_to_host_nowait(struct dma_copy *dc, struct dma_sg_config *host_sg,
 
 	/* find host element with host_offset */
 	host_sg_elem = sg_get_elem_at(host_sg, &offset);
-	if (host_sg_elem == NULL)
+	if (!host_sg_elem)
 		return -EINVAL;
 
 	/* set up DMA configuration */

@@ -227,7 +227,7 @@ static int ipc_stream_pcm_params(uint32_t stream)
 
 	/* get the pcm_dev */
 	pcm_dev = ipc_get_comp_by_id(ipc, pcm_params.comp_id);
-	if (pcm_dev == NULL) {
+	if (!pcm_dev) {
 		trace_ipc_error("ipc: comp %d not found", pcm_params.comp_id);
 		return -ENODEV;
 	}
@@ -345,7 +345,7 @@ static int ipc_stream_pcm_free(uint32_t header)
 
 	/* get the pcm_dev */
 	pcm_dev = ipc_get_comp_by_id(ipc, free_req.comp_id);
-	if (pcm_dev == NULL) {
+	if (!pcm_dev) {
 		trace_ipc_error("ipc: comp %d not found", free_req.comp_id);
 		return -ENODEV;
 	}
@@ -384,7 +384,7 @@ static int ipc_stream_position(uint32_t header)
 
 	/* get the pcm_dev */
 	pcm_dev = ipc_get_comp_by_id(ipc, stream.comp_id);
-	if (pcm_dev == NULL) {
+	if (!pcm_dev) {
 		trace_ipc_error("ipc: comp %d not found", stream.comp_id);
 		return -ENODEV;
 	}
@@ -429,7 +429,7 @@ static int ipc_stream_trigger(uint32_t header)
 
 	/* get the pcm_dev */
 	pcm_dev = ipc_get_comp_by_id(ipc, stream.comp_id);
-	if (pcm_dev == NULL) {
+	if (!pcm_dev) {
 		trace_ipc_error("ipc: comp %d not found", stream.comp_id);
 		return -ENODEV;
 	}
@@ -1247,7 +1247,7 @@ void ipc_cmd(struct sof_ipc_cmd_hdr *hdr)
 	uint32_t type = 0;
 	int ret;
 
-	if (hdr == NULL) {
+	if (!hdr) {
 		trace_ipc_error("ipc: invalid IPC header.");
 		ret = -EINVAL;
 		goto out;
