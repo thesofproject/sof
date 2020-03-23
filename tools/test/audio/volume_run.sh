@@ -2,14 +2,25 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2020 Intel Corporation. All rights reserved.
 
-if [ -z "$5" ]; then
+usage ()
+{
     echo "Usage:   $0 <bits in> <bits out> <rate> <input> <output>"
     echo "Example: $0 16 16 48000 input.raw output.raw"
-    exit
-fi
+}
 
+main ()
+{
+    local COMP DIRECTION
 
-COMP=volume
-DIRECTION=playback
+    if [ $# -ne 5 ]; then
+	usage "$0"
+	exit
+    fi
 
-./comp_run.sh $COMP $DIRECTION $1 $2 $3 $3 $4 $5
+    COMP=volume
+    DIRECTION=playback
+
+    ./comp_run.sh $COMP $DIRECTION "$1" "$2" "$3" "$3" "$4" "$5"
+}
+
+main "$@"
