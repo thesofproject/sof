@@ -140,7 +140,7 @@ struct dai {
 	int sref;		/**< simple ref counter, guarded by lock */
 	struct dai_plat_data plat_data;
 	const struct dai_driver *drv;
-	void *private;
+	void *priv_data;
 };
 
 /**
@@ -245,9 +245,9 @@ struct dai *dai_get(uint32_t type, uint32_t index, uint32_t flags);
 void dai_put(struct dai *dai);
 
 #define dai_set_drvdata(dai, data) \
-	(dai->private = data)
+	(dai->priv_data = data)
 #define dai_get_drvdata(dai) \
-	dai->private
+	dai->priv_data
 #define dai_base(dai) \
 	dai->plat_data.base
 #define dai_irq(dai) \
