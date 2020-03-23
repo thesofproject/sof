@@ -23,7 +23,7 @@ static int setup(void **state)
 {
 	struct test_data *data = malloc(sizeof(struct test_data));
 
-	if (data == NULL)
+	if (!data)
 		return -1;
 
 	data->head = malloc(sizeof(struct list_item));
