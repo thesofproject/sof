@@ -277,28 +277,28 @@ int platform_init(struct sof *sof)
 	/* init SSP ports */
 	trace_point(TRACE_BOOT_PLATFORM_SSP);
 	ssp0 = dai_get(SOF_DAI_INTEL_SSP, 0, DAI_CREAT);
-	if (ssp0 == NULL)
+	if (!ssp0)
 		return -ENODEV;
 
 	ssp1 = dai_get(SOF_DAI_INTEL_SSP, 1, DAI_CREAT);
-	if (ssp1 == NULL)
+	if (!ssp1)
 		return -ENODEV;
 
 	ssp2 = dai_get(SOF_DAI_INTEL_SSP, 2, DAI_CREAT);
-	if (ssp2 == NULL)
+	if (!ssp2)
 		return -ENODEV;
 
 #if defined CONFIG_CHERRYTRAIL
 	ssp3 = dai_get(SOF_DAI_INTEL_SSP, 3, DAI_CREAT);
-	if (ssp3 == NULL)
+	if (!ssp3)
 		return -ENODEV;
 
 	ssp4 = dai_get(SOF_DAI_INTEL_SSP, 4, DAI_CREAT);
-	if (ssp4 == NULL)
+	if (!ssp4)
 		return -ENODEV;
 
 	ssp5 = dai_get(SOF_DAI_INTEL_SSP, 5, DAI_CREAT);
-	if (ssp5 == NULL)
+	if (!ssp5)
 		return -ENODEV;
 #endif
 
