@@ -187,7 +187,7 @@ int ipc_comp_new(struct ipc *ipc, struct sof_ipc_comp *comp)
 
 	/* create component */
 	cd = comp_new(comp);
-	if (cd == NULL) {
+	if (!cd) {
 		trace_ipc_error("ipc_comp_new(): component cd = NULL");
 		return -EINVAL;
 	}
@@ -195,7 +195,7 @@ int ipc_comp_new(struct ipc *ipc, struct sof_ipc_comp *comp)
 	/* allocate the IPC component container */
 	icd = rzalloc(SOF_MEM_ZONE_RUNTIME, SOF_MEM_FLAG_SHARED,
 		      SOF_MEM_CAPS_RAM, sizeof(struct ipc_comp_dev));
-	if (icd == NULL) {
+	if (!icd) {
 		trace_ipc_error("ipc_comp_new(): alloc failed");
 		rfree(cd);
 		return -ENOMEM;
@@ -219,7 +219,7 @@ int ipc_comp_free(struct ipc *ipc, uint32_t comp_id)
 
 	/* check whether component exists */
 	icd = ipc_get_comp_by_id(ipc, comp_id);
-	if (icd == NULL)
+	if (!icd)
 		return -ENODEV;
 
 	/* check core */
@@ -263,7 +263,7 @@ int ipc_buffer_new(struct ipc *ipc, struct sof_ipc_buffer *desc)
 
 	/* register buffer with pipeline */
 	buffer = buffer_new(desc);
-	if (buffer == NULL) {
+	if (!buffer) {
 		trace_ipc_error("ipc_buffer_new(): buffer_new() failed");
 
 		return -ENOMEM;
@@ -271,7 +271,7 @@ int ipc_buffer_new(struct ipc *ipc, struct sof_ipc_buffer *desc)
 
 	ibd = rzalloc(SOF_MEM_ZONE_RUNTIME, SOF_MEM_FLAG_SHARED,
 		      SOF_MEM_CAPS_RAM, sizeof(struct ipc_comp_dev));
-	if (ibd == NULL) {
+	if (!ibd) {
 		buffer_free(buffer);
 		return -ENOMEM;
 	}
@@ -294,7 +294,7 @@ int ipc_buffer_free(struct ipc *ipc, uint32_t buffer_id)
 
 	/* check whether buffer exists */
 	ibd = ipc_get_comp_by_id(ipc, buffer_id);
-	if (ibd == NULL)
+	if (!ibd)
 		return -ENODEV;
 
 	/* check core */
@@ -387,14 +387,14 @@ int ipc_comp_connect(struct ipc *ipc,
 
 	/* check whether the components already exist */
 	icd_source = ipc_get_comp_by_id(ipc, connect->source_id);
-	if (icd_source == NULL) {
+	if (!icd_source) {
 		trace_ipc_error("ipc_comp_connect(): components already exist, connect->source_id = %u",
 				connect->source_id);
 		return -EINVAL;
 	}
 
 	icd_sink = ipc_get_comp_by_id(ipc, connect->sink_id);
-	if (icd_sink == NULL) {
+	if (!icd_sink) {
 		trace_ipc_error("ipc_comp_connect(): components already exist, connect->sink_id = %u",
 				connect->sink_id);
 		return -EINVAL;
@@ -441,7 +441,7 @@ int ipc_pipeline_new(struct ipc *ipc,
 
 	/* find the scheduling component */
 	icd = ipc_get_comp_by_id(ipc, pipe_desc->sched_id);
-	if (icd == NULL) {
+	if (!icd) {
 		trace_ipc_error("ipc_pipeline_new(): cannot find the scheduling component, pipe_desc->sched_id = %u",
 				pipe_desc->sched_id);
 		return -EINVAL;
@@ -459,7 +459,7 @@ int ipc_pipeline_new(struct ipc *ipc,
 
 	/* create the pipeline */
 	pipe = pipeline_new(pipe_desc, icd->cd);
-	if (pipe == NULL) {
+	if (!pipe) {
 		trace_ipc_error("ipc_pipeline_new(): pipeline_new() failed");
 		return -ENOMEM;
 	}
@@ -467,7 +467,7 @@ int ipc_pipeline_new(struct ipc *ipc,
 	/* allocate the IPC pipeline container */
 	ipc_pipe = rzalloc(SOF_MEM_ZONE_RUNTIME, SOF_MEM_FLAG_SHARED,
 			   SOF_MEM_CAPS_RAM, sizeof(struct ipc_comp_dev));
-	if (ipc_pipe == NULL) {
+	if (!ipc_pipe) {
 		pipeline_free(pipe);
 		return -ENOMEM;
 	}
@@ -492,7 +492,7 @@ int ipc_pipeline_free(struct ipc *ipc, uint32_t comp_id)
 
 	/* check whether pipeline exists */
 	ipc_pipe = ipc_get_comp_by_id(ipc, comp_id);
-	if (ipc_pipe == NULL)
+	if (!ipc_pipe)
 		return -ENODEV;
 
 	/* check core */
