@@ -58,7 +58,7 @@ struct task {
 	enum task_state state;	/**< current state */
 	void *data;		/**< custom data passed to all ops */
 	struct list_item list;	/**< used by schedulers to hold tasks */
-	void *private;		/**< task private data */
+	void *priv_data;	/**< task private data */
 	struct task_ops ops;	/**< task operations */
 };
 
