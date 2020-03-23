@@ -24,9 +24,9 @@
 	tracev_event(TRACE_CLASS_EDF, format, ##__VA_ARGS__)
 
 #define edf_sch_set_pdata(task, data) \
-	(task->private = data)
+	(task->priv_data = data)
 
-#define edf_sch_get_pdata(task) task->private
+#define edf_sch_get_pdata(task) task->priv_data
 
 struct edf_task_pdata {
 	void *ctx;

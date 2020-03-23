@@ -406,7 +406,7 @@ static int spi_slave_init(struct spi *spi)
 	config->src_buf = spi->tx_buffer;
 	config->buffer_size = spi->buffer_size;
 
-	spi->completion.private = NULL;
+	spi->completion.priv_data = NULL;
 
 	ret = schedule_task_init_ll(&spi->completion,
 				    SOF_UUID(spi_compl_task_uuid),
