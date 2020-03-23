@@ -241,11 +241,11 @@ int platform_init(struct sof *sof)
 	/* init SSP ports */
 	trace_point(TRACE_BOOT_PLATFORM_SSP);
 	ssp0 = dai_get(SOF_DAI_INTEL_SSP, 0, DAI_CREAT);
-	if (ssp0 == NULL)
+	if (!ssp0)
 		return -ENODEV;
 
 	ssp1 = dai_get(SOF_DAI_INTEL_SSP, 1, DAI_CREAT);
-	if (ssp1 == NULL)
+	if (!ssp1)
 		return -ENODEV;
 
 #if CONFIG_TRACE
