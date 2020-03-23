@@ -240,7 +240,7 @@ struct comp_ops {
 	 * @return Pointer to the new component device.
 	 *
 	 * All required data objects should be allocated from the run-time
-	 * heap (RZONE_RUNTIME).
+	 * heap (SOF_MEM_ZONE_RUNTIME).
 	 * Any component-specific private data is allocated separately and
 	 * pointer is connected to the comp_dev::private by using
 	 * comp_set_drvdata() and later retrieved by comp_get_drvdata().
