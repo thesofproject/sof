@@ -465,7 +465,7 @@ static int fetch_entry(const struct convert_config *config,
 		goto out;
 	}
 	entry.text = (char *)malloc(entry.header.text_len);
-	if (entry.text == NULL) {
+	if (!entry.text) {
 		log_err(config->out_fd,
 			"can't allocate %d byte for entry.text\n",
 			entry.header.text_len);
@@ -487,7 +487,7 @@ static int fetch_entry(const struct convert_config *config,
 	}
 	entry.params = (uint32_t *)malloc(sizeof(uint32_t) *
 		entry.header.params_num);
-	if (entry.params == NULL) {
+	if (!entry.params) {
 		log_err(config->out_fd,
 			"can't allocate %d byte for entry.params\n",
 			(int)(sizeof(uint32_t) * entry.header.params_num));
