@@ -19,7 +19,7 @@ static struct sof sof;
 
 #if !CONFIG_LIBRARY
 
-void *_zalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
+void *rzalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
 {
 	(void)zone;
 	(void)flags;
@@ -28,7 +28,7 @@ void *_zalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
 	return calloc(bytes, 1);
 }
 
-void *_realloc(void *ptr, enum mem_zone zone, uint32_t flags, uint32_t caps,
+void *rrealloc(void *ptr, enum mem_zone zone, uint32_t flags, uint32_t caps,
 	       size_t bytes)
 {
 	(void)ptr;

@@ -18,8 +18,8 @@
 
 #define WEAK __attribute__((weak))
 
-void WEAK *_balloc(uint32_t flags, uint32_t caps, size_t bytes,
-		   uint32_t alignment)
+void WEAK *rballoc_align(uint32_t flags, uint32_t caps, size_t bytes,
+			 uint32_t alignment)
 {
 	(void)flags;
 	(void)caps;
@@ -27,7 +27,7 @@ void WEAK *_balloc(uint32_t flags, uint32_t caps, size_t bytes,
 	return malloc(bytes);
 }
 
-void WEAK *_zalloc(enum mem_zone zone, uint32_t flags, uint32_t caps,
+void WEAK *rzalloc(enum mem_zone zone, uint32_t flags, uint32_t caps,
 		   size_t bytes)
 {
 	(void)zone;
@@ -37,8 +37,8 @@ void WEAK *_zalloc(enum mem_zone zone, uint32_t flags, uint32_t caps,
 	return calloc(bytes, 1);
 }
 
-void WEAK *_brealloc(void *ptr, uint32_t flags, uint32_t caps, size_t bytes,
-		     uint32_t alignment)
+void WEAK *rbrealloc_align(void *ptr, uint32_t flags, uint32_t caps,
+			   size_t bytes, uint32_t alignment)
 {
 	(void)flags;
 	(void)caps;
