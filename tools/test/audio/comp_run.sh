@@ -25,7 +25,7 @@ TPLGFN=test-${DIRECTION}-ssp5-mclk-0-I2S-${COMP}-${INFMT}-${OUTFMT}-48k-24576k-c
 TPLG=${TPLG_DIR}/${TPLGFN}
 
 # If binary test vectors
-if [ ${FN_IN: -4} == ".raw" ]; then
+if [ "${FN_IN: -4}" == ".raw" ]; then
     BINFMT="-b S${BITS_IN}_LE"
 else
     BINFMT=""
