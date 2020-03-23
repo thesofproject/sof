@@ -74,7 +74,7 @@ struct comp_dev *comp_new(struct sof_ipc_comp *comp)
 		    drv->uid, comp->type, comp->pipeline_id, comp->id);
 
 	/* create the new component */
-	cdev = drv->ops.new(drv, comp);
+	cdev = drv->ops.create(drv, comp);
 	if (!cdev) {
 		comp_cl_err(drv, "comp_new() error: unable to create the new component");
 		return NULL;

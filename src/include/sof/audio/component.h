@@ -243,8 +243,8 @@ struct comp_ops {
 	 *
 	 * All parameters should be initialized to their default values.
 	 */
-	struct comp_dev *(*new)(const struct comp_driver *drv,
-				struct sof_ipc_comp *comp);
+	struct comp_dev *(*create)(const struct comp_driver *drv,
+				   struct sof_ipc_comp *comp);
 
 	/**
 	 * Called to delete the specified component device.
