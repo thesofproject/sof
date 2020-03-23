@@ -266,27 +266,24 @@ int elf_is_rom(struct image *image, Elf32_Shdr *section)
 }
 
 static void elf_module_size(struct image *image, struct module *module,
-			    Elf32_Shdr *section, int index)
+			    Elf32_Shdr *section, uint32_t lma, int index)
 {
 	switch (section->type) {
 	case SHT_PROGBITS:
 		/* text or data */
 		if (section->flags & SHF_EXECINSTR) {
 			/* text */
-			if (module->text_start > section->vaddr)
-				module->text_start = section->vaddr;
-			if (module->text_end < section->vaddr + section->size)
-				module->text_end = section->vaddr +
-					section->size;
-
+			if (module->text_start > lma)
+				module->text_start = lma;
+			if (module->text_end < lma + section->size)
+				module->text_end = lma + section->size;
 			fprintf(stdout, "\tTEXT\t");
 		} else {
 			/* initialized data, also calc the writable sections */
-			if (module->data_start > section->vaddr)
-				module->data_start = section->vaddr;
-			if (module->data_end < section->vaddr + section->size)
-				module->data_end = section->vaddr +
-					section->size;
+			if (module->data_start > lma)
+				module->data_start = lma;
+			if (module->data_end < lma + section->size)
+				module->data_end = lma + section->size;
 
 			fprintf(stdout, "\tDATA\t");
 		}
@@ -350,7 +347,8 @@ static void elf_module_limits(struct image *image, struct module *module)
 {
 	Elf32_Shdr *section;
 	uint32_t valid = (SHF_WRITE | SHF_ALLOC | SHF_EXECINSTR);
-	int i;
+	uint32_t section_lma;
+	int i, j;
 
 	module->text_start = 0xffffffff;
 	module->data_start = 0xffffffff;
@@ -362,7 +360,7 @@ static void elf_module_limits(struct image *image, struct module *module)
 	fprintf(stdout, "  Found %d sections, listing valid sections......\n",
 		module->hdr.shnum);
 
-	fprintf(stdout, "\tNo\tStart\t\tEnd\t\tSize\tType\tName\n");
+	fprintf(stdout, "\tNo\tLMA\t\tVMA\t\tEnd\t\tSize\tType\tName\n");
 
 	/* iterate all sections and get size of segments */
 	for (i = 0; i < module->hdr.shnum; i++) {
@@ -381,16 +379,24 @@ static void elf_module_limits(struct image *image, struct module *module)
 			if (elf_is_rom(image, section))
 				continue;
 		}
+		/* check programs to get LMA */
+		section_lma = section->vaddr;
+		for (j = 0; j < module->hdr.phnum; j++) {
+			if (section->vaddr == module->prg[j].vaddr) {
+				section_lma = module->prg[j].paddr;
+				break;
+			}
+		}
 
-		fprintf(stdout, "\t%d\t0x%8.8x\t0x%8.8x\t0x%x", i,
-			section->vaddr, section->vaddr + section->size,
-			section->size);
+		fprintf(stdout, "\t%d\t0x%8.8x\t0x%8.8x\t0x%8.8x\t0x%x", i,
+			section_lma, section->vaddr,
+			section->vaddr + section->size, section->size);
 
 		/* text or data section */
 		if (image->reloc)
 			elf_module_size_reloc(image, module, section, i);
 		else
-			elf_module_size(image, module, section, i);
+			elf_module_size(image, module, section, section_lma, i);
 
 		/* section name */
 		fprintf(stdout, "%s\n", module->strings + section->name);
