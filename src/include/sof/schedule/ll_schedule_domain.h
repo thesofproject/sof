@@ -50,14 +50,14 @@ struct ll_schedule_domain {
 	int type;			/**< domain type */
 	int clk;			/**< source clock */
 	bool synchronous;		/**< are tasks should be synchronous */
-	void *private;			/**< pointer to private data */
+	void *priv_data;		/**< pointer to private data */
 	bool registered[PLATFORM_CORE_COUNT];		/**< registered cores */
 	const struct ll_schedule_domain_ops *ops;	/**< domain ops */
 };
 
-#define ll_sch_domain_set_pdata(domain, data) ((domain)->private = (data))
+#define ll_sch_domain_set_pdata(domain, data) ((domain)->priv_data = (data))
 
-#define ll_sch_domain_get_pdata(domain) ((domain)->private)
+#define ll_sch_domain_get_pdata(domain) ((domain)->priv_data)
 
 static inline struct ll_schedule_domain *timer_domain_get(void)
 {
