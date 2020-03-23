@@ -68,7 +68,9 @@ static void log_err(FILE *out_fd, const char *fmt, ...)
 	if (buff) {
 		vsprintf(buff, fmt, args);
 		fprintf(stderr, "%s", buff);
-		if (out_fd) {
+
+		/* take care about out_fd validity and duplicated logging */
+		if (out_fd && out_fd != stderr && out_fd != stdout) {
 			fprintf(out_fd, "%s", buff);
 			fflush(out_fd);
 		}
