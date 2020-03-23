@@ -518,7 +518,7 @@ static int mux_trigger(struct comp_dev *dev, int cmd)
 static const struct comp_driver comp_mux = {
 	.type	= SOF_COMP_MUX,
 	.ops	= {
-		.new		= mux_new,
+		.create		= mux_new,
 		.free		= mux_free,
 		.params		= mux_params,
 		.cmd		= mux_cmd,
@@ -537,7 +537,7 @@ static const struct comp_driver comp_demux = {
 	.type	= SOF_COMP_DEMUX,
 	.uid = SOF_UUID(mux_uuid),
 	.ops	= {
-		.new		= mux_new,
+		.create		= mux_new,
 		.free		= mux_free,
 		.params		= mux_params,
 		.cmd		= mux_cmd,

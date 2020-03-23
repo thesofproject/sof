@@ -57,7 +57,7 @@ static int mock_comp_prepare(struct comp_dev *dev)
 static const struct comp_driver comp_mock = {
 	.type	= SOF_COMP_MOCK,
 	.ops	= {
-		.new		= mock_comp_new,
+		.create		= mock_comp_new,
 		.free		= mock_comp_free,
 		.params		= mock_comp_params,
 		.cmd		= mock_comp_cmd,

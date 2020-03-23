@@ -762,7 +762,7 @@ static int file_get_hw_params(struct comp_dev *dev,
 static const struct comp_driver comp_file_host = {
 	.type = SOF_COMP_HOST,
 	.ops = {
-		.new = file_new,
+		.create = file_new,
 		.free = file_free,
 		.params = file_params,
 		.cmd = file_cmd,
@@ -776,7 +776,7 @@ static const struct comp_driver comp_file_host = {
 static const struct comp_driver comp_file_dai = {
 	.type = SOF_COMP_DAI,
 	.ops = {
-		.new = file_new,
+		.create = file_new,
 		.free = file_free,
 		.params = file_params,
 		.cmd = file_cmd,
