@@ -22,7 +22,7 @@ static int setup(void **state)
 
 	pipeline_posn_init(sof_get());
 
-	if (pipeline_data == NULL)
+	if (!pipeline_data)
 		return -1;
 
 	struct sof_ipc_pipe_new pipe_desc = { .core = 1, .priority = 2 };
