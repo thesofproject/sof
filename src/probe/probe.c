@@ -78,8 +78,8 @@ struct probe_pdata {
 static int probe_dma_buffer_init(struct probe_dma_buf *buffer, uint32_t size, uint32_t align)
 {
 	/* allocate new buffer */
-	buffer->addr = (uintptr_t)rballoc_align(SOF_MEM_ZONE_BUFFER,
-						SOF_MEM_CAPS_DMA, size, align);
+	buffer->addr = (uintptr_t)rballoc_align(0, SOF_MEM_CAPS_DMA,
+						size, align);
 
 	if (!buffer->addr) {
 		trace_probe_error("probe_dma_buffer_init() error: alloc failed");
