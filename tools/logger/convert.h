@@ -36,6 +36,7 @@ struct convert_config {
 	int use_colors;
 	int serial_fd;
 	int raw_output;
+	int dump_ldc;
 	struct snd_sof_uids_header *uids_dict;
 };
 

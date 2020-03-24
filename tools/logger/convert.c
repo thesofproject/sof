@@ -694,6 +694,62 @@ static int verify_fw_ver(const struct convert_config *config,
 	return 0;
 }
 
+static int dump_ldc_info(struct convert_config *config,
+			 const struct snd_sof_logs_header *snd)
+{
+	struct snd_sof_uids_header *uids_dict = config->uids_dict;
+	ssize_t remaining = uids_dict->data_length;
+	FILE *out_fd = config->out_fd;
+	uint32_t *name_len_ptr;
+	ssize_t entry_size;
+	uintptr_t uid_addr;
+	uintptr_t uid_ptr;
+	int cnt = 0;
+	char *name;
+
+	fprintf(out_fd, "logger ABI Version is\t%d:%d:%d\n",
+		SOF_ABI_VERSION_MAJOR(SOF_ABI_DBG_VERSION),
+		SOF_ABI_VERSION_MINOR(SOF_ABI_DBG_VERSION),
+		SOF_ABI_VERSION_PATCH(SOF_ABI_DBG_VERSION));
+	fprintf(out_fd, "ldc_file ABI Version is\t%d:%d:%d\n",
+		SOF_ABI_VERSION_MAJOR(snd->version.abi_version),
+		SOF_ABI_VERSION_MINOR(snd->version.abi_version),
+		SOF_ABI_VERSION_PATCH(snd->version.abi_version));
+	fprintf(out_fd, "\n");
+	fprintf(out_fd, "Components uuid dictionary size:\t%ld bytes\n",
+		remaining);
+	fprintf(out_fd, "Components uuid base address:   \t0x%X\n",
+		uids_dict->base_address);
+	fprintf(out_fd, "Components uuid entries:\n");
+	fprintf(out_fd, "\t%10s  %38s %s\n", "ADDRESS", "UUID", "NAME");
+
+	uid_ptr = (uintptr_t)uids_dict + uids_dict->data_offset;
+
+	while (remaining > 0) {
+		name = format_uid_raw((struct sof_uuid *)uid_ptr, 0, 0);
+		uid_addr = uid_ptr - (uintptr_t)uids_dict -
+			    uids_dict->data_offset + uids_dict->base_address;
+		fprintf(out_fd, "\t0x%lX  %s\n", uid_addr, name);
+
+		if (name) {
+			free(name);
+			name = NULL;
+		}
+		/* just after sof_uuid there is name_len in uint32_t format */
+		name_len_ptr = (uint32_t *)(uid_ptr + sizeof(struct sof_uuid));
+		entry_size = ALIGN_UP(*name_len_ptr + sizeof(struct sof_uuid) +
+				      sizeof(uint32_t), 4);
+		remaining -= entry_size;
+		uid_ptr += entry_size;
+		++cnt;
+	}
+
+	fprintf(out_fd, "\t-------------------------------------------------- cnt: %d\n",
+		cnt);
+
+	return 0;
+}
+
 int convert(struct convert_config *config)
 {
 	struct snd_sof_logs_header snd;
@@ -763,6 +819,9 @@ int convert(struct convert_config *config)
 			"failed to read uuid section data.\n");
 		return -ferror(config->ldc_fd);
 	}
+
+	if (config->dump_ldc)
+		return dump_ldc_info(config, &snd);
 
 	return logger_read(config, &snd);
 }
