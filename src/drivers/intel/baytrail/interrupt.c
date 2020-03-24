@@ -97,32 +97,32 @@ void interrupt_mask(uint32_t irq, unsigned int cpu)
 #if CONFIG_INTERRUPT_LEVEL_5
 	switch (irq) {
 	case IRQ_NUM_EXT_SSP0:
-		shim_write(SHIM_PIMR, 1 << 3);
+		shim_write(SHIM_PIMR, BIT(3));
 		break;
 	case IRQ_NUM_EXT_SSP1:
-		shim_write(SHIM_PIMR, 1 << 4);
+		shim_write(SHIM_PIMR, BIT(4));
 		break;
 	case IRQ_NUM_EXT_SSP2:
-		shim_write(SHIM_PIMR, 1 << 5);
+		shim_write(SHIM_PIMR, BIT(5));
 		break;
 	case IRQ_NUM_EXT_DMAC0:
-		shim_write(SHIM_PIMR, 1 << 16);
+		shim_write(SHIM_PIMR, BIT(16));
 		break;
 	case IRQ_NUM_EXT_DMAC1:
-		shim_write(SHIM_PIMR, 1 << 24);
+		shim_write(SHIM_PIMR, BIT(24));
 		break;
 #if defined CONFIG_CHERRYTRAIL
 	case IRQ_NUM_EXT_DMAC2:
-		shim_write(SHIM_PIMRH, 1 << 8);
+		shim_write(SHIM_PIMRH, BIT(8));
 		break;
 	case IRQ_NUM_EXT_SSP3:
-		shim_write(SHIM_PIMRH, 1 << 0);
+		shim_write(SHIM_PIMRH, BIT(0));
 		break;
 	case IRQ_NUM_EXT_SSP4:
-		shim_write(SHIM_PIMRH, 1 << 1);
+		shim_write(SHIM_PIMRH, BIT(1));
 		break;
 	case IRQ_NUM_EXT_SSP5:
-		shim_write(SHIM_PIMRH, 1 << 2);
+		shim_write(SHIM_PIMRH, BIT(2));
 		break;
 #endif
 	default:
