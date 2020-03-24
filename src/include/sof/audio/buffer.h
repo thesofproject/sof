@@ -254,7 +254,7 @@ static inline int buffer_set_params(struct comp_buffer *buffer,
 	int i;
 
 	if (!params) {
-		trace_buffer_error("buffer_set_params() error: !params");
+		trace_buffer_error("buffer_set_params(): !params");
 		return -EINVAL;
 	}
 
@@ -263,7 +263,7 @@ static inline int buffer_set_params(struct comp_buffer *buffer,
 
 	ret = audio_stream_set_params(&buffer->stream, params);
 	if (ret < 0) {
-		trace_buffer_error("buffer_set_params() error: audio_stream_set_params failed");
+		trace_buffer_error("buffer_set_params(): audio_stream_set_params failed");
 		return -EINVAL;
 	}
 

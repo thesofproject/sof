@@ -204,8 +204,7 @@ int idc_send_msg(struct idc_msg *msg, uint32_t mode)
 				if (idc->msg_processed[msg->core])
 					break;
 
-				trace_idc_error("arch_idc_send_msg() error: "
-						"timeout");
+				trace_idc_error("arch_idc_send_msg(): timeout");
 				return -ETIME;
 			}
 		}
@@ -411,7 +410,7 @@ static void idc_cmd(struct idc_msg *msg)
 		ret = idc_reset(msg->extension);
 		break;
 	default:
-		trace_idc_error("idc_cmd() error: invalid msg->header = %u",
+		trace_idc_error("idc_cmd(): invalid msg->header = %u",
 				msg->header);
 	}
 

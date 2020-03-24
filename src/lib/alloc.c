@@ -172,7 +172,7 @@ static void *rmalloc_sys(uint32_t flags, int caps, int core, size_t bytes)
 
 	/* always succeeds or panics */
 	if (alignment + bytes > cpu_heap->info.free) {
-		trace_mem_error("rmalloc_sys() error: core = %d, bytes = %d",
+		trace_mem_error("rmalloc_sys(): core = %d, bytes = %d",
 				core, bytes);
 		panic(SOF_IPC_PANIC_MEM);
 	}
@@ -281,8 +281,7 @@ static void *alloc_cont_blocks(struct mm_heap *heap, int level,
 	}
 
 	if (count > map->count || remaining < count) {
-		trace_mem_error("error: %d blocks needed for allocation "
-				"but only %d blocks are remaining",
+		trace_mem_error("%d blocks needed for allocation but only %d blocks are remaining",
 				count, remaining);
 		goto out;
 	}
@@ -451,7 +450,7 @@ static void free_block(void *ptr)
 
 	heap = get_heap_from_ptr(ptr);
 	if (!heap) {
-		trace_mem_error("free_block() error: invalid heap = %p, cpu = %d",
+		trace_mem_error("free_block(): invalid heap = %p, cpu = %d",
 				(uintptr_t)ptr, cpu_get_id());
 		return;
 	}
@@ -472,7 +471,7 @@ static void free_block(void *ptr)
 		platform_shared_commit(heap, sizeof(*heap));
 
 		/* not found */
-		trace_mem_error("free_block() error: invalid ptr = %p cpu = %d",
+		trace_mem_error("free_block(): invalid ptr = %p cpu = %d",
 				(uintptr_t)ptr, cpu_get_id());
 		return;
 	}
@@ -656,7 +655,7 @@ static void *rmalloc_runtime(uint32_t flags, uint32_t caps, size_t bytes)
 		if (!heap) {
 			platform_shared_commit(memmap, sizeof(*memmap));
 
-			trace_mem_error("rmalloc_runtime() error: caps = %x, bytes = %d",
+			trace_mem_error("rmalloc_runtime(): caps = %x, bytes = %d",
 					caps, bytes);
 
 			return NULL;
@@ -686,7 +685,7 @@ static void *_malloc_unlocked(enum mem_zone zone, uint32_t flags, uint32_t caps,
 		ptr = rmalloc_runtime(flags, caps, bytes);
 		break;
 	default:
-		trace_mem_error("rmalloc() error: invalid zone");
+		trace_mem_error("rmalloc(): invalid zone");
 		panic(SOF_IPC_PANIC_MEM); /* logic non recoverable problem */
 		break;
 	}
@@ -892,7 +891,7 @@ static void _rfree_unlocked(void *ptr)
 	/* panic if pointer is from system heap */
 	if (ptr >= (void *)cpu_heap->heap &&
 	    (char *)ptr < (char *)cpu_heap->heap + cpu_heap->size) {
-		trace_mem_error("rfree() error: attempt to free system heap = %p, cpu = %d",
+		trace_mem_error("rfree(): attempt to free system heap = %p, cpu = %d",
 				(uintptr_t)ptr, cpu_get_id());
 		panic(SOF_IPC_PANIC_MEM);
 	}
@@ -1002,7 +1001,7 @@ void free_heap(enum mem_zone zone)
 	 */
 	if (cpu_get_id() == PLATFORM_MASTER_CORE_ID ||
 	    zone != SOF_MEM_ZONE_SYS) {
-		trace_mem_error("free_heap() error: critical flow issue");
+		trace_mem_error("free_heap(): critical flow issue");
 		panic(SOF_IPC_PANIC_MEM);
 	}
 

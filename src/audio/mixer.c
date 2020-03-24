@@ -167,7 +167,7 @@ static int mixer_verify_params(struct comp_dev *dev,
 
 	ret = comp_verify_params(dev, BUFF_PARAMS_CHANNELS, params);
 	if (ret < 0) {
-		comp_err(dev, "mixer_verify_params() error: comp_verify_params() failed.");
+		comp_err(dev, "mixer_verify_params(): comp_verify_params() failed.");
 		return ret;
 	}
 
@@ -196,12 +196,12 @@ static int mixer_params(struct comp_dev *dev,
 	/* calculate period size based on config */
 	period_bytes = dev->frames * audio_stream_frame_bytes(&sinkb->stream);
 	if (period_bytes == 0) {
-		comp_err(dev, "mixer_params() error: period_bytes = 0");
+		comp_err(dev, "mixer_params(): period_bytes = 0");
 		return -EINVAL;
 	}
 
 	if (sinkb->stream.size < config->periods_sink * period_bytes) {
-		comp_err(dev, "mixer_params() error: sink buffer size is insufficient");
+		comp_err(dev, "mixer_params(): sink buffer size is insufficient");
 		return -ENOMEM;
 	}
 

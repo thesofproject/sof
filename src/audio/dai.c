@@ -158,7 +158,7 @@ static struct comp_dev *dai_new(const struct comp_driver *drv,
 
 	dd->dai = dai_get(dai->type, dai->dai_index, DAI_CREAT);
 	if (!dd->dai) {
-		comp_cl_err(&comp_dai, "dai_new() error: dai_get() failed to create DAI.");
+		comp_cl_err(&comp_dai, "dai_new(): dai_get() failed to create DAI.");
 		goto error;
 	}
 
@@ -171,7 +171,7 @@ static struct comp_dev *dai_new(const struct comp_driver *drv,
 
 	dd->dma = dma_get(dir, caps, dma_dev, DMA_ACCESS_SHARED);
 	if (!dd->dma) {
-		comp_cl_err(&comp_dai, "dai_new() error: dma_get() failed to get shared access to DMA.");
+		comp_cl_err(&comp_dai, "dai_new(): dma_get() failed to get shared access to DMA.");
 		goto error;
 	}
 
@@ -220,7 +220,7 @@ static int dai_comp_get_hw_params(struct comp_dev *dev,
 	/* fetching hw dai stream params */
 	ret = dai_get_hw_params(dd->dai, params, dir);
 	if (ret < 0) {
-		comp_err(dev, "dai_comp_get_hw_params() error: dai_get_hw_params failed");
+		comp_err(dev, "dai_comp_get_hw_params(): dai_get_hw_params failed");
 		return ret;
 	}
 
@@ -250,12 +250,12 @@ static int dai_verify_params(struct comp_dev *dev,
 	 * pcm_converter functions.
 	 */
 	if (hw_params.rate && hw_params.rate != params->rate) {
-		comp_err(dev, "dai_verify_params() error: pcm rate parameter does not match hardware rate");
+		comp_err(dev, "dai_verify_params(): pcm rate parameter does not match hardware rate");
 		return -EINVAL;
 	}
 
 	if (hw_params.channels && hw_params.channels != params->channels) {
-		comp_err(dev, "dai_verify_params() error: pcm channels parameter does not match hardware channels");
+		comp_err(dev, "dai_verify_params(): pcm channels parameter does not match hardware channels");
 		return -EINVAL;
 	}
 
@@ -306,7 +306,7 @@ static int dai_playback_params(struct comp_dev *dev, uint32_t period_bytes,
 				   (uintptr_t)(dd->dma_buffer->stream.addr),
 				   fifo);
 		if (err < 0) {
-			comp_err(dev, "dai_playback_params() error: dma_sg_alloc() failed with err = %d",
+			comp_err(dev, "dai_playback_params(): dma_sg_alloc() failed with err = %d",
 				 err);
 			return err;
 		}
@@ -366,7 +366,7 @@ static int dai_capture_params(struct comp_dev *dev, uint32_t period_bytes,
 				   (uintptr_t)(dd->dma_buffer->stream.addr),
 				   fifo);
 		if (err < 0) {
-			comp_err(dev, "dai_capture_params() error: dma_sg_alloc() failed with err = %d",
+			comp_err(dev, "dai_capture_params(): dma_sg_alloc() failed with err = %d",
 				 err);
 			return err;
 		}
@@ -412,21 +412,21 @@ static int dai_params(struct comp_dev *dev,
 
 	/* can set params on only init state */
 	if (dev->state != COMP_STATE_READY) {
-		comp_err(dev, "dai_params() error: Component is not in init state.");
+		comp_err(dev, "dai_params(): Component is not in init state.");
 		return -EINVAL;
 	}
 
 	err = dma_get_attribute(dd->dma, DMA_ATTR_BUFFER_ADDRESS_ALIGNMENT,
 				&addr_align);
 	if (err < 0) {
-		comp_err(dev, "dai_params() error: could not get dma buffer address alignment, err = %d",
+		comp_err(dev, "dai_params(): could not get dma buffer address alignment, err = %d",
 			 err);
 		return err;
 	}
 
 	err = dma_get_attribute(dd->dma, DMA_ATTR_BUFFER_ALIGNMENT, &align);
 	if (err < 0 || !align) {
-		comp_err(dev, "dai_params() error: could not get valid dma buffer alignment, err = %d, align = %u",
+		comp_err(dev, "dai_params(): could not get valid dma buffer alignment, err = %d, align = %u",
 			 err, align);
 		return -EINVAL;
 	}
@@ -434,7 +434,7 @@ static int dai_params(struct comp_dev *dev,
 	err = dma_get_attribute(dd->dma, DMA_ATTR_BUFFER_PERIOD_COUNT,
 				&period_count);
 	if (err < 0 || !period_count) {
-		comp_err(dev, "dai_params() error: could not get valid dma buffer period count, err = %d, period_count = %u",
+		comp_err(dev, "dai_params(): could not get valid dma buffer period count, err = %d, period_count = %u",
 			 err, period_count);
 		return -EINVAL;
 	}
@@ -446,7 +446,7 @@ static int dai_params(struct comp_dev *dev,
 	/* calculate period size */
 	period_bytes = dev->frames * frame_size;
 	if (!period_bytes) {
-		comp_err(dev, "dai_params() error: invalid period_bytes.");
+		comp_err(dev, "dai_params(): invalid period_bytes.");
 		return -EINVAL;
 	}
 
@@ -457,7 +457,7 @@ static int dai_params(struct comp_dev *dev,
 	if (dd->dma_buffer) {
 		err = buffer_set_size(dd->dma_buffer, buffer_size);
 		if (err < 0) {
-			comp_err(dev, "dai_params() error: buffer_set_size() failed, buffer_size = %u",
+			comp_err(dev, "dai_params(): buffer_set_size() failed, buffer_size = %u",
 				 buffer_size);
 			return err;
 		}
@@ -465,7 +465,7 @@ static int dai_params(struct comp_dev *dev,
 		dd->dma_buffer = buffer_alloc(buffer_size, SOF_MEM_CAPS_DMA,
 					      addr_align);
 		if (!dd->dma_buffer) {
-			comp_err(dev, "dai_params() error: failed to alloc dma buffer");
+			comp_err(dev, "dai_params(): failed to alloc dma buffer");
 			return -ENOMEM;
 		}
 	}
@@ -492,13 +492,13 @@ static int dai_prepare(struct comp_dev *dev)
 	dev->position = 0;
 
 	if (!dd->chan) {
-		comp_err(dev, "dai_prepare() error: Missing dd->chan.");
+		comp_err(dev, "dai_prepare(): Missing dd->chan.");
 		comp_set_state(dev, COMP_TRIGGER_RESET);
 		return -EINVAL;
 	}
 
 	if (!dd->config.elem_array.elems) {
-		comp_err(dev, "dai_prepare() error: Missing dd->config.elem_array.elems.");
+		comp_err(dev, "dai_prepare(): Missing dd->config.elem_array.elems.");
 		comp_set_state(dev, COMP_TRIGGER_RESET);
 		return -EINVAL;
 	}
@@ -642,10 +642,10 @@ static void dai_report_xrun(struct comp_dev *dev, uint32_t bytes)
 	struct dai_data *dd = comp_get_drvdata(dev);
 
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
-		comp_err(dev, "dai_report_xrun() error: underrun due to no data available");
+		comp_err(dev, "dai_report_xrun(): underrun due to no data available");
 		comp_underrun(dev, dd->local_buffer, bytes);
 	} else {
-		comp_err(dev, "dai_report_xrun() error: overrun due to no data available");
+		comp_err(dev, "dai_report_xrun(): overrun due to no data available");
 		comp_overrun(dev, dd->local_buffer, bytes);
 	}
 }
@@ -731,7 +731,7 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 
 	/* cannot configure DAI while active */
 	if (dev->state == COMP_STATE_ACTIVE) {
-		comp_err(dev, "dai_config() error: Component is in active state.");
+		comp_err(dev, "dai_config(): Component is in active state.");
 		return -EINVAL;
 	}
 
@@ -801,7 +801,7 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 		break;
 	default:
 		/* other types of DAIs not handled for now */
-		comp_err(dev, "dai_config() error: Unknown dai type");
+		comp_err(dev, "dai_config(): Unknown dai type");
 		break;
 	}
 
@@ -817,7 +817,7 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 			dd->chan = dma_channel_get(dd->dma, channel);
 
 		if (!dd->chan) {
-			comp_err(dev, "dai_config() error: dma_channel_get() failed");
+			comp_err(dev, "dai_config(): dma_channel_get() failed");
 			dd->chan = NULL;
 			return -EIO;
 		}

@@ -197,7 +197,7 @@ static int schedule_ll_domain_set(struct ll_schedule_data *sch,
 	ret = domain_register(sch->domain, period, task, &schedule_ll_tasks_run,
 			      sch);
 	if (ret < 0) {
-		trace_ll_error("schedule_ll_domain_set error: cannot register domain %d",
+		trace_ll_error("schedule_ll_domain_set: cannot register domain %d",
 			       ret);
 		return ret;
 	}
@@ -349,7 +349,7 @@ int schedule_task_init_ll(struct task *task,
 			   sizeof(*ll_pdata));
 
 	if (!ll_pdata) {
-		trace_ll_error("schedule_task_init_ll() error: alloc failed");
+		trace_ll_error("schedule_task_init_ll(): alloc failed");
 		return -ENOMEM;
 	}
 
@@ -431,7 +431,7 @@ static void reschedule_ll_task(void *data, struct task *task, uint64_t start)
 		}
 	}
 
-	trace_ll_error("reschedule_ll_task() error: task not found");
+	trace_ll_error("reschedule_ll_task(): task not found");
 
 out:
 	platform_shared_commit(sch->domain, sizeof(*sch->domain));

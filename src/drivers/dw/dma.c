@@ -207,8 +207,8 @@ static struct dma_chan_data *dw_dma_channel_get(struct dma *dma,
 
 	/* DMA controller has no free channels */
 	spin_unlock_irq(&dma->lock, flags);
-	trace_dwdma_error("dw_dma_channel_get() error: dma %d "
-			  "no free channels", dma->plat_data.id);
+	trace_dwdma_error("dw_dma_channel_get(): dma %d no free channels",
+			  dma->plat_data.id);
 
 	return NULL;
 }
@@ -271,8 +271,7 @@ static int dw_dma_start(struct dma_chan_data *channel)
 	if ((channel->status != COMP_STATE_PREPARE &&
 	     channel->status != COMP_STATE_PAUSED) ||
 	    (dma_reg_read(dma, DW_DMA_CHAN_EN) & DW_CHAN(channel->index))) {
-		trace_dwdma_error("dw_dma_start() error: dma %d channel %d "
-				  "not ready ena 0x%x status 0x%x",
+		trace_dwdma_error("dw_dma_start(): dma %d channel %d not ready ena 0x%x status 0x%x",
 				  dma->plat_data.id, channel->index,
 				  dma_reg_read(dma, DW_DMA_CHAN_EN),
 				  channel->status);
@@ -282,9 +281,8 @@ static int dw_dma_start(struct dma_chan_data *channel)
 
 	/* is valid stream */
 	if (!dw_chan->lli) {
-		trace_dwdma_error("dw_dma_start() error: dma %d channel %d "
-				  "invalid stream", dma->plat_data.id,
-				  channel->index);
+		trace_dwdma_error("dw_dma_start(): dma %d channel %d invalid stream",
+				  dma->plat_data.id, channel->index);
 		ret = -EINVAL;
 		goto out;
 	}
@@ -434,8 +432,8 @@ static int dw_dma_stop(struct dma_chan_data *channel)
 				      DW_CFGL_FIFO_EMPTY,
 				      DW_DMA_TIMEOUT);
 	if (ret < 0)
-		trace_dwdma_error("dw_dma_stop() error: dma %d channel %d "
-				  "timeout", dma->plat_data.id, channel->index);
+		trace_dwdma_error("dw_dma_stop(): dma %d channel %d timeout",
+				  dma->plat_data.id, channel->index);
 #endif
 
 	dma_reg_write(dma, DW_DMA_CHAN_EN, DW_CHAN_MASK(channel->index));
@@ -534,8 +532,7 @@ static int dw_dma_set_config(struct dma_chan_data *channel,
 	dw_chan->cfg_hi = DW_CFG_HIGH_DEF;
 
 	if (!config->elem_array.count) {
-		trace_dwdma_error("dw_dma_set_config() error: dma %d "
-				  "channel %d no elems",
+		trace_dwdma_error("dw_dma_set_config(): dma %d channel %d no elems",
 				  channel->dma->plat_data.id, channel->index);
 		ret = -EINVAL;
 		goto out;
@@ -543,9 +540,8 @@ static int dw_dma_set_config(struct dma_chan_data *channel,
 
 	if (config->irq_disabled &&
 	    config->elem_array.count < DW_DMA_CFG_NO_IRQ_MIN_ELEMS) {
-		trace_dwdma_error("dw_dma_set_config() error: dma %d channel "
-				  "%d not enough elems for config with irq "
-				  "disabled %d", channel->dma->plat_data.id,
+		trace_dwdma_error("dw_dma_set_config(): dma %d channel %d not enough elems for config with irq disabled %d",
+				  channel->dma->plat_data.id,
 				  channel->index, config->elem_array.count);
 		ret = -EINVAL;
 		goto out;
@@ -565,8 +561,7 @@ static int dw_dma_set_config(struct dma_chan_data *channel,
 				       sizeof(struct dw_lli) *
 				       channel->desc_count);
 		if (!dw_chan->lli) {
-			trace_dwdma_error("dw_dma_set_config() error: dma %d "
-					  "channel %d lli alloc failed",
+			trace_dwdma_error("dw_dma_set_config(): dma %d channel %d lli alloc failed",
 					  channel->dma->plat_data.id,
 					  channel->index);
 			ret = -ENOMEM;
@@ -618,8 +613,7 @@ static int dw_dma_set_config(struct dma_chan_data *channel,
 			lli_desc->ctrl_lo |= DW_CTLL_SRC_WIDTH(2);
 			break;
 		default:
-			trace_dwdma_error("dw_dma_set_config() error: dma %d "
-					  "channel %d invalid src width %d",
+			trace_dwdma_error("dw_dma_set_config(): dma %d channel %d invalid src width %d",
 					  channel->dma->plat_data.id,
 					  channel->index, config->src_width);
 			ret = -EINVAL;
@@ -647,8 +641,7 @@ static int dw_dma_set_config(struct dma_chan_data *channel,
 			lli_desc->ctrl_lo |= DW_CTLL_DST_WIDTH(2);
 			break;
 		default:
-			trace_dwdma_error("dw_dma_set_config() error: dma %d "
-					  "channel %d invalid dest width %d",
+			trace_dwdma_error("dw_dma_set_config(): dma %d channel %d invalid dest width %d",
 					  channel->dma->plat_data.id,
 					  channel->index, config->dest_width);
 			ret = -EINVAL;
@@ -726,8 +719,7 @@ static int dw_dma_set_config(struct dma_chan_data *channel,
 				DW_CFGH_DST(config->dest_dev);
 			break;
 		default:
-			trace_dwdma_error("dw_dma_set_config() error: dma %d "
-					  "channel %d invalid direction %d",
+			trace_dwdma_error("dw_dma_set_config(): dma %d channel %d invalid direction %d",
 					  channel->dma->plat_data.id,
 					  channel->index, config->direction);
 			ret = -EINVAL;
@@ -737,8 +729,7 @@ static int dw_dma_set_config(struct dma_chan_data *channel,
 		dw_dma_mask_address(sg_elem, lli_desc, config->direction);
 
 		if (sg_elem->size > DW_CTLH_BLOCK_TS_MASK) {
-			trace_dwdma_error("dw_dma_set_config() error: dma %d "
-					  "channel %d block size too big %d",
+			trace_dwdma_error("dw_dma_set_config(): dma %d channel %d block size too big %d",
 					  channel->dma->plat_data.id,
 					  channel->index, sg_elem->size);
 			ret = -EINVAL;
@@ -959,8 +950,8 @@ static int dw_dma_probe(struct dma *dma)
 			    dma->plat_data.channels);
 
 	if (!dma->chan) {
-		trace_dwdma_error("dw_dma_probe() error: dma %d allocaction of "
-				  "channels failed", dma->plat_data.id);
+		trace_dwdma_error("dw_dma_probe(): dma %d allocaction of channels failed",
+				  dma->plat_data.id);
 		goto out;
 	}
 
@@ -980,9 +971,8 @@ static int dw_dma_probe(struct dma *dma)
 				  sizeof(*dw_chan));
 
 		if (!dw_chan) {
-			trace_dwdma_error("dw_dma_probe() error: dma %d "
-					  "allocaction of channel %d private "
-					  "data failed", dma->plat_data.id, i);
+			trace_dwdma_error("dw_dma_probe(): dma %d allocaction of channel %d private data failed",
+					  dma->plat_data.id, i);
 			goto out;
 		}
 
@@ -1070,8 +1060,7 @@ static int dw_dma_get_data_size(struct dma_chan_data *channel,
 #if CONFIG_HW_LLI
 	if (!(dma_reg_read(channel->dma, DW_DMA_CHAN_EN) &
 	      DW_CHAN(channel->index))) {
-		trace_dwdma_error("dw_dma_get_data_size() error: "
-				  "xrun detected");
+		trace_dwdma_error("dw_dma_get_data_size(): xrun detected");
 		return -ENODATA;
 	}
 #endif

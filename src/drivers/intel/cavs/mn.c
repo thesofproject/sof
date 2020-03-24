@@ -117,7 +117,7 @@ static inline int setup_initial_mclk_source(uint32_t mclk_rate)
 	}
 
 	if (clk_index < 0) {
-		trace_mn_error("error: MCLK %d, no valid source",
+		trace_mn_error("MCLK %d, no valid source",
 			       mclk_rate);
 		ret = -EINVAL;
 		goto out;
@@ -150,7 +150,7 @@ static inline int check_current_mclk_source(uint32_t mclk_rate)
 	int ret = 0;
 
 	if (ssp_freq[mn->mclk_source_clock].freq % mclk_rate != 0) {
-		trace_mn_error("error: MCLK %d, no valid configuration for already selected source = %d",
+		trace_mn_error("MCLK %d, no valid configuration for already selected source = %d",
 			       mclk_rate, mn->mclk_source_clock);
 		ret = -EINVAL;
 	}
@@ -184,7 +184,7 @@ static inline int set_mclk_divider(uint16_t mclk_id, uint32_t mdivr_val)
 		mdivr = 0x6; /* 1/8 */
 		break;
 	default:
-		trace_mn_error("error: invalid mdivr_val %d", mdivr_val);
+		trace_mn_error("invalid mdivr_val %d", mdivr_val);
 		return -EINVAL;
 	}
 
@@ -198,7 +198,7 @@ int mn_set_mclk(uint16_t mclk_id, uint32_t mclk_rate)
 	int ret = 0;
 
 	if (mclk_id >= DAI_NUM_SSP_MCLK) {
-		trace_mn_error("error: mclk ID (%d) >= %d",
+		trace_mn_error("mclk ID (%d) >= %d",
 			       mclk_id, DAI_NUM_SSP_MCLK);
 		return -EINVAL;
 	}
@@ -366,7 +366,7 @@ static inline int setup_initial_bclk_mn_source(uint32_t bclk, uint32_t *scr_div,
 	int clk_index = find_bclk_source(bclk, scr_div, m, n);
 
 	if (clk_index < 0) {
-		trace_mn_error("error: BCLK %d, no valid source", bclk);
+		trace_mn_error("BCLK %d, no valid source", bclk);
 		return -EINVAL;
 	}
 
@@ -400,7 +400,7 @@ static inline int setup_current_bclk_mn_source(uint32_t bclk, uint32_t *scr_div,
 		    n))
 		goto out;
 
-	trace_mn_error("error: BCLK %d, no valid configuration for already selected source = %d",
+	trace_mn_error("BCLK %d, no valid configuration for already selected source = %d",
 		       bclk, mn->bclk_source_mn_clock);
 	ret = -EINVAL;
 

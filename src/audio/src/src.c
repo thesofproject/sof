@@ -107,7 +107,7 @@ int src_buffer_lengths(struct src_param *a, int fs_in, int fs_out, int nch,
 
 	if (nch > PLATFORM_MAX_CHANNELS) {
 		/* TODO: should be device, not class */
-		comp_cl_err(&comp_src, "src_buffer_lengths() error: nch = %u > PLATFORM_MAX_CHANNELS",
+		comp_cl_err(&comp_src, "src_buffer_lengths(): nch = %u > PLATFORM_MAX_CHANNELS",
 			    nch);
 		return -EINVAL;
 	}
@@ -118,7 +118,7 @@ int src_buffer_lengths(struct src_param *a, int fs_in, int fs_out, int nch,
 
 	/* Check that both in and out rates are supported */
 	if (a->idx_in < 0 || a->idx_out < 0) {
-		comp_cl_err(&comp_src, "src_buffer_lengths() error: rates not supported, fs_in: %u, fs_out: %u",
+		comp_cl_err(&comp_src, "src_buffer_lengths(): rates not supported, fs_in: %u, fs_out: %u",
 			    fs_in, fs_out);
 		return -EINVAL;
 	}
@@ -128,7 +128,7 @@ int src_buffer_lengths(struct src_param *a, int fs_in, int fs_out, int nch,
 
 	/* Check from stage1 parameter for a deleted in/out rate combination.*/
 	if (stage1->filter_length < 1) {
-		comp_cl_err(&comp_src, "src_buffer_lengths() error: Non-supported combination sfs_in = %d, fs_out = %d",
+		comp_cl_err(&comp_src, "src_buffer_lengths(): Non-supported combination sfs_in = %d, fs_out = %d",
 			    fs_in, fs_out);
 		return -EINVAL;
 	}
@@ -461,7 +461,7 @@ static struct comp_dev *src_new(const struct comp_driver *drv,
 
 	/* validate init data - either SRC sink or source rate must be set */
 	if (ipc_src->source_rate == 0 && ipc_src->sink_rate == 0) {
-		comp_cl_err(&comp_src, "src_new() error: SRC sink and source rate are not set");
+		comp_cl_err(&comp_src, "src_new(): SRC sink and source rate are not set");
 		return NULL;
 	}
 
@@ -525,12 +525,12 @@ static int src_verify_params(struct comp_dev *dev,
 	 */
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
 		if (src->source_rate && (params->rate != src->source_rate)) {
-			comp_err(dev, "src_verify_params(): error: runtime stream pcm rate does not match rate fetched from ipc.");
+			comp_err(dev, "src_verify_params(): runtime stream pcm rate does not match rate fetched from ipc.");
 			return -EINVAL;
 		}
 	} else {
 		if (src->sink_rate && (params->rate != src->sink_rate)) {
-			comp_err(dev, "src_verify_params(): error: runtime stream pcm rate does not match rate fetched from ipc.");
+			comp_err(dev, "src_verify_params(): runtime stream pcm rate does not match rate fetched from ipc.");
 			return -EINVAL;
 		}
 	}
@@ -539,7 +539,7 @@ static int src_verify_params(struct comp_dev *dev,
 	 */
 	ret = comp_verify_params(dev, BUFF_PARAMS_RATE, params);
 	if (ret < 0) {
-		comp_err(dev, "src_verify_params() error: comp_verify_params() failed.");
+		comp_err(dev, "src_verify_params(): comp_verify_params() failed.");
 		return ret;
 	}
 
@@ -595,7 +595,7 @@ static int src_params(struct comp_dev *dev,
 				 cd->sink_rate,
 				 sourceb->stream.channels, cd->source_frames);
 	if (err < 0) {
-		comp_err(dev, "src_params() error: src_buffer_lengths() failed");
+		comp_err(dev, "src_params(): src_buffer_lengths() failed");
 		return err;
 	}
 
@@ -604,7 +604,7 @@ static int src_params(struct comp_dev *dev,
 
 	delay_lines_size = sizeof(int32_t) * cd->param.total;
 	if (delay_lines_size == 0) {
-		comp_err(dev, "src_params() error: delay_lines_size = 0");
+		comp_err(dev, "src_params(): delay_lines_size = 0");
 		return -EINVAL;
 	}
 
@@ -614,7 +614,7 @@ static int src_params(struct comp_dev *dev,
 
 	cd->delay_lines = rballoc(0, SOF_MEM_CAPS_RAM, delay_lines_size);
 	if (!cd->delay_lines) {
-		comp_err(dev, "src_params() error: failed to alloc cd->delay_lines, delay_lines_size = %u",
+		comp_err(dev, "src_params(): failed to alloc cd->delay_lines, delay_lines_size = %u",
 			 delay_lines_size);
 		return -EINVAL;
 	}
@@ -836,26 +836,26 @@ static int src_prepare(struct comp_dev *dev)
 						      dev->frames);
 
 	if (sinkb->stream.size < config->periods_sink * sink_period_bytes) {
-		comp_err(dev, "src_prepare() error: sink buffer size is insufficient");
+		comp_err(dev, "src_prepare(): sink buffer size is insufficient");
 		ret = -ENOMEM;
 		goto err;
 	}
 
 	/* validate */
 	if (!sink_period_bytes) {
-		comp_err(dev, "src_prepare() error: sink_period_bytes = 0");
+		comp_err(dev, "src_prepare(): sink_period_bytes = 0");
 		ret = -EINVAL;
 		goto err;
 	}
 	if (!source_period_bytes) {
-		comp_err(dev, "src_prepare() error: source_period_bytes = 0");
+		comp_err(dev, "src_prepare(): source_period_bytes = 0");
 		ret = -EINVAL;
 		goto err;
 	}
 
 	/* SRC supports S16_LE, S24_4LE and S32_LE formats */
 	if (cd->source_format != cd->sink_format) {
-		comp_err(dev, "src_prepare() error: Source fmt %d and sink fmt %d are different.",
+		comp_err(dev, "src_prepare(): Source fmt %d and sink fmt %d are different.",
 			 cd->source_format, cd->sink_format);
 		ret = -EINVAL;
 		goto err;
@@ -887,7 +887,7 @@ static int src_prepare(struct comp_dev *dev)
 		break;
 #endif /* CONFIG_FORMAT_S32LE */
 	default:
-		comp_err(dev, "src_prepare() error: invalid format %d",
+		comp_err(dev, "src_prepare(): invalid format %d",
 			 cd->source_format);
 		ret = -EINVAL;
 		goto err;

@@ -59,7 +59,7 @@ struct comp_dev *comp_new(struct sof_ipc_comp *comp)
 	/* find the driver for our new component */
 	drv = get_drv(comp->type);
 	if (!drv) {
-		trace_error(TRACE_CLASS_COMP, "comp_new() error: driver not found, comp->type = %u",
+		trace_error(TRACE_CLASS_COMP, "comp_new(): driver not found, comp->type = %u",
 			    comp->type);
 		return NULL;
 	}
@@ -76,7 +76,7 @@ struct comp_dev *comp_new(struct sof_ipc_comp *comp)
 	/* create the new component */
 	cdev = drv->ops.create(drv, comp);
 	if (!cdev) {
-		comp_cl_err(drv, "comp_new() error: unable to create the new component");
+		comp_cl_err(drv, "comp_new(): unable to create the new component");
 		return NULL;
 	}
 
@@ -130,7 +130,7 @@ int comp_set_state(struct comp_dev *dev, int cmd)
 		if (dev->state == COMP_STATE_PREPARE) {
 			dev->state = COMP_STATE_ACTIVE;
 		} else {
-			comp_err(dev, "comp_set_state() error: wrong state = %u, COMP_TRIGGER_START",
+			comp_err(dev, "comp_set_state(): wrong state = %u, COMP_TRIGGER_START",
 				 dev->state);
 			ret = -EINVAL;
 		}
@@ -139,7 +139,7 @@ int comp_set_state(struct comp_dev *dev, int cmd)
 		if (dev->state == COMP_STATE_PAUSED) {
 			dev->state = COMP_STATE_ACTIVE;
 		} else {
-			comp_err(dev, "comp_set_state() error: wrong state = %u, COMP_TRIGGER_RELEASE",
+			comp_err(dev, "comp_set_state(): wrong state = %u, COMP_TRIGGER_RELEASE",
 				 dev->state);
 			ret = -EINVAL;
 		}
@@ -149,7 +149,7 @@ int comp_set_state(struct comp_dev *dev, int cmd)
 		    dev->state == COMP_STATE_PAUSED) {
 			dev->state = COMP_STATE_PREPARE;
 		} else {
-			comp_err(dev, "comp_set_state() error: wrong state = %u, COMP_TRIGGER_STOP",
+			comp_err(dev, "comp_set_state(): wrong state = %u, COMP_TRIGGER_STOP",
 				 dev->state);
 			ret = -EINVAL;
 		}
@@ -163,7 +163,7 @@ int comp_set_state(struct comp_dev *dev, int cmd)
 		if (dev->state == COMP_STATE_ACTIVE) {
 			dev->state = COMP_STATE_PAUSED;
 		} else {
-			comp_err(dev, "comp_set_state() error: wrong state = %u, COMP_TRIGGER_PAUSE",
+			comp_err(dev, "comp_set_state(): wrong state = %u, COMP_TRIGGER_PAUSE",
 				 dev->state);
 			ret = -EINVAL;
 		}
@@ -172,7 +172,7 @@ int comp_set_state(struct comp_dev *dev, int cmd)
 		/* reset always succeeds */
 		if (dev->state == COMP_STATE_ACTIVE ||
 		    dev->state == COMP_STATE_PAUSED) {
-			comp_err(dev, "comp_set_state() error: wrong state = %u, COMP_TRIGGER_RESET",
+			comp_err(dev, "comp_set_state(): wrong state = %u, COMP_TRIGGER_RESET",
 				 dev->state);
 			ret = 0;
 		}
@@ -182,7 +182,7 @@ int comp_set_state(struct comp_dev *dev, int cmd)
 		if (dev->state == COMP_STATE_READY) {
 			dev->state = COMP_STATE_PREPARE;
 		} else {
-			comp_err(dev, "comp_set_state() error: wrong state = %u, COMP_TRIGGER_PREPARE",
+			comp_err(dev, "comp_set_state(): wrong state = %u, COMP_TRIGGER_PREPARE",
 				 dev->state);
 			ret = -EINVAL;
 		}
@@ -247,7 +247,7 @@ int comp_verify_params(struct comp_dev *dev, uint32_t flag,
 	uint32_t flags = 0;
 
 	if (!params) {
-		comp_err(dev, "comp_verify_params() error: !params");
+		comp_err(dev, "comp_verify_params(): !params");
 		return -EINVAL;
 	}
 
@@ -327,7 +327,7 @@ struct comp_dev *comp_make_shared(struct comp_dev *dev)
 	dev = rrealloc(dev, SOF_MEM_ZONE_RUNTIME, SOF_MEM_FLAG_SHARED,
 		       SOF_MEM_CAPS_RAM, dev->size);
 	if (!dev) {
-		trace_error(TRACE_CLASS_COMP, "comp_make_shared() error: unable to realloc component");
+		trace_error(TRACE_CLASS_COMP, "comp_make_shared(): unable to realloc component");
 		return NULL;
 	}
 

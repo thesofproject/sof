@@ -366,12 +366,12 @@ static int asrc_verify_params(struct comp_dev *dev,
 	 */
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
 		if (params->rate != asrc->source_rate && asrc->source_rate) {
-			comp_err(dev, "asrc_verify_params(): error: runtime stream pcm rate does not match rate fetched from ipc.");
+			comp_err(dev, "asrc_verify_params(): runtime stream pcm rate does not match rate fetched from ipc.");
 			return -EINVAL;
 		}
 	} else {
 		if (params->rate != asrc->sink_rate && asrc->sink_rate) {
-			comp_err(dev, "asrc_verify_params(): error: runtime stream pcm rate does not match rate fetched from ipc.");
+			comp_err(dev, "asrc_verify_params(): runtime stream pcm rate does not match rate fetched from ipc.");
 			return -EINVAL;
 		}
 	}
@@ -380,7 +380,7 @@ static int asrc_verify_params(struct comp_dev *dev,
 	 */
 	ret = comp_verify_params(dev, BUFF_PARAMS_RATE, params);
 	if (ret < 0) {
-		comp_err(dev, "asrc_verify_params() error: comp_verify_params() failed.");
+		comp_err(dev, "asrc_verify_params(): comp_verify_params() failed.");
 		return ret;
 	}
 

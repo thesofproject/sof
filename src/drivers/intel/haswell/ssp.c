@@ -76,7 +76,7 @@ static int ssp_set_config(struct dai *dai,
 	/* is playback/capture already running */
 	if (ssp->state[DAI_DIR_PLAYBACK] == COMP_STATE_ACTIVE ||
 	    ssp->state[DAI_DIR_CAPTURE] == COMP_STATE_ACTIVE) {
-		dai_err(dai, "ssp_set_config() error: playback/capture already running");
+		dai_err(dai, "ssp_set_config(): playback/capture already running");
 		ret = -EINVAL;
 		goto out;
 	}
@@ -128,7 +128,7 @@ static int ssp_set_config(struct dai *dai,
 		sscr1 |= SSCR1_SFRMDIR;
 		break;
 	default:
-		dai_err(dai, "ssp_set_config() error: format & MASTER_MASK EINVAL");
+		dai_err(dai, "ssp_set_config(): format & MASTER_MASK EINVAL");
 		ret = -EINVAL;
 		goto out;
 	}
@@ -148,7 +148,7 @@ static int ssp_set_config(struct dai *dai,
 		sspsp |= SSPSP_SCMODE(2);
 		break;
 	default:
-		dai_err(dai, "ssp_set_config() error: format & INV_MASK EINVAL");
+		dai_err(dai, "ssp_set_config(): format & INV_MASK EINVAL");
 		ret = -EINVAL;
 		goto out;
 	}
@@ -195,7 +195,7 @@ static int ssp_set_config(struct dai *dai,
 
 	/* BCLK is generated from MCLK - must be divisable */
 	if (config->ssp.mclk_rate % config->ssp.bclk_rate) {
-		dai_err(dai, "ssp_set_config() error: MCLK is not divisable");
+		dai_err(dai, "ssp_set_config(): MCLK is not divisable");
 		ret = -EINVAL;
 		goto out;
 	}
@@ -203,7 +203,7 @@ static int ssp_set_config(struct dai *dai,
 	/* divisor must be within SCR range */
 	mdiv = (config->ssp.mclk_rate / config->ssp.bclk_rate) - 1;
 	if (mdiv > (SSCR0_SCR_MASK >> 8)) {
-		dai_err(dai, "ssp_set_config() error: divisor is not within SCR range");
+		dai_err(dai, "ssp_set_config(): divisor is not within SCR range");
 		ret = -EINVAL;
 		goto out;
 	}
@@ -213,7 +213,7 @@ static int ssp_set_config(struct dai *dai,
 
 	/* calc frame width based on BCLK and rate - must be divisable */
 	if (config->ssp.bclk_rate % config->ssp.fsync_rate) {
-		dai_err(dai, "ssp_set_config() error: BLCK is not divisable");
+		dai_err(dai, "ssp_set_config(): BLCK is not divisable");
 		ret = -EINVAL;
 		goto out;
 	}
@@ -222,28 +222,28 @@ static int ssp_set_config(struct dai *dai,
 	bdiv = config->ssp.bclk_rate / config->ssp.fsync_rate;
 	if (bdiv < config->ssp.tdm_slot_width *
 	    config->ssp.tdm_slots) {
-		dai_err(dai, "ssp_set_config() error: not enough BCLKs");
+		dai_err(dai, "ssp_set_config(): not enough BCLKs");
 		ret = -EINVAL;
 		goto out;
 	}
 
 	/* tdm_slot_width must be <= 38 for SSP */
 	if (config->ssp.tdm_slot_width > 38) {
-		dai_err(dai, "ssp_set_config() error: tdm_slot_width > 38");
+		dai_err(dai, "ssp_set_config(): tdm_slot_width > 38");
 		ret = -EINVAL;
 		goto out;
 	}
 
 	bdiv_min = config->ssp.tdm_slots * config->ssp.sample_valid_bits;
 	if (bdiv < bdiv_min) {
-		dai_err(dai, "ssp_set_config() error: bdiv < bdiv_min");
+		dai_err(dai, "ssp_set_config(): bdiv < bdiv_min");
 		ret = -EINVAL;
 		goto out;
 	}
 
 	frame_end_padding = bdiv - bdiv_min;
 	if (frame_end_padding > SSPSP2_FEP_MASK) {
-		dai_err(dai, "ssp_set_config() error: frame_end_padding > SSPSP2_FEP_MASK");
+		dai_err(dai, "ssp_set_config(): frame_end_padding > SSPSP2_FEP_MASK");
 		ret = -EINVAL;
 		goto out;
 	}
@@ -281,7 +281,7 @@ static int ssp_set_config(struct dai *dai,
 		sscr0 |= SSCR0_FRDC(config->ssp.tdm_slots);
 
 		if (bdiv % 2) {
-			dai_err(dai, "ssp_set_config() error: bdiv is not divisible by 2");
+			dai_err(dai, "ssp_set_config(): bdiv is not divisible by 2");
 			ret = -EINVAL;
 			goto out;
 		}
@@ -294,7 +294,7 @@ static int ssp_set_config(struct dai *dai,
 		 * of each slot
 		 */
 		if (frame_end_padding % 2) {
-			dai_err(dai, "ssp_set_config() error: frame_end_padding is not divisible by 2");
+			dai_err(dai, "ssp_set_config(): frame_end_padding is not divisible by 2");
 			ret = -EINVAL;
 			goto out;
 		}
@@ -303,7 +303,7 @@ static int ssp_set_config(struct dai *dai,
 
 		if (slot_end_padding > 15) {
 			/* can't handle padding over 15 bits */
-			dai_err(dai, "ssp_set_config() error: slot_end_padding over 15 bits");
+			dai_err(dai, "ssp_set_config(): slot_end_padding over 15 bits");
 			ret = -EINVAL;
 			goto out;
 		}
@@ -342,7 +342,7 @@ static int ssp_set_config(struct dai *dai,
 
 		break;
 	default:
-		dai_err(dai, "ssp_set_config() error: invalid format");
+		dai_err(dai, "ssp_set_config(): invalid format");
 		ret = -EINVAL;
 		goto out;
 	}

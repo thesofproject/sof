@@ -75,8 +75,7 @@ static enum task_state trace_work(void *data)
 	size = dma_copy_to_host_nowait(&d->dc, config, d->posn.host_offset,
 				       buffer->r_ptr, size);
 	if (size < 0) {
-		trace_buffer_error("trace_work() error: "
-				   "dma_copy_to_host_nowait() failed");
+		trace_buffer_error("trace_work(): dma_copy_to_host_nowait() failed");
 		goto out;
 	}
 
@@ -139,8 +138,7 @@ int dma_trace_init_complete(struct dma_trace_data *d)
 	/* init DMA copy context */
 	ret = dma_copy_new(&d->dc);
 	if (ret < 0) {
-		trace_buffer_error("dma_trace_init_complete() error: "
-				   "dma_copy_new() failed");
+		trace_buffer_error("dma_trace_init_complete(): dma_copy_new() failed");
 		goto out;
 	}
 
@@ -148,8 +146,7 @@ int dma_trace_init_complete(struct dma_trace_data *d)
 				&d->dma_copy_align);
 
 	if (ret < 0) {
-		trace_buffer("dma_trace_init_complete() "
-			     "error: dma_get_attribute()");
+		trace_buffer("dma_trace_init_complete(): dma_get_attribute()");
 
 		goto out;
 	}
@@ -188,8 +185,7 @@ static int dma_trace_buffer_init(struct dma_trace_data *d)
 	buf = rballoc(0, SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_DMA,
 		      DMA_TRACE_LOCAL_SIZE);
 	if (!buf) {
-		trace_buffer_error("dma_trace_buffer_init() error: "
-				   "alloc failed");
+		trace_buffer_error("dma_trace_buffer_init(): alloc failed");
 		return -ENOMEM;
 	}
 
@@ -325,8 +321,7 @@ int dma_trace_enable(struct dma_trace_data *d)
 
 	/* validate DMA context */
 	if (!d->dc.dmac || !d->dc.chan) {
-		trace_buffer_error_atomic("dma_trace_enable() error: not "
-					  "valid");
+		trace_buffer_error_atomic("dma_trace_enable(): not valid");
 		err = -ENODEV;
 		goto out;
 	}
@@ -475,8 +470,7 @@ static void dtrace_add_event(const char *e, uint32_t length)
 			 * so after it we have to recalculate margin and
 			 * overflow
 			 */
-			trace_error(0, "dtrace_add_event() error: "
-				    "number of dropped logs = %u",
+			trace_error(0, "dtrace_add_event(): number of dropped logs = %u",
 				    tmp_dropped_entries);
 			margin = dtrace_calc_buf_margin(buffer);
 			overflow = dtrace_calc_buf_overflow(buffer, length);

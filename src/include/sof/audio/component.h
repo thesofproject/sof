@@ -634,7 +634,7 @@ static inline void comp_underrun(struct comp_dev *dev,
 {
 	int32_t bytes = (int32_t)source->stream.avail - copy_bytes;
 
-	comp_err(dev, "comp_underrun() error: dev->comp.id = %u, source->avail = %u, copy_bytes = %u",
+	comp_err(dev, "comp_underrun(): dev->comp.id = %u, source->avail = %u, copy_bytes = %u",
 		 dev_comp_id(dev),
 		 source->stream.avail,
 		 copy_bytes);
@@ -653,7 +653,7 @@ static inline void comp_overrun(struct comp_dev *dev, struct comp_buffer *sink,
 {
 	int32_t bytes = (int32_t)copy_bytes - sink->stream.free;
 
-	comp_err(dev, "comp_overrun() error: sink->free = %u, copy_bytes = %u",
+	comp_err(dev, "comp_overrun(): sink->free = %u, copy_bytes = %u",
 		 sink->stream.free, copy_bytes);
 
 	pipeline_xrun(dev->pipeline, dev, bytes);

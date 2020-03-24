@@ -120,7 +120,7 @@ static inline int comp_cmd(struct comp_dev *dev, int cmd, void *data,
 	if (cmd == COMP_CMD_SET_DATA &&
 	    (cdata->data->magic != SOF_ABI_MAGIC ||
 	     SOF_ABI_VERSION_INCOMPATIBLE(SOF_ABI_VERSION, cdata->data->abi))) {
-		comp_err(dev, "comp_cmd() error: invalid version, data->magic = %u, data->abi = %u",
+		comp_err(dev, "comp_cmd(): invalid version, data->magic = %u, data->abi = %u",
 			 cdata->data->magic, cdata->data->abi);
 		goto out;
 	}

@@ -68,7 +68,7 @@ struct pipeline *pipeline_new(struct sof_ipc_pipe_new *pipe_desc,
 	/* allocate new pipeline */
 	p = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*p));
 	if (!p) {
-		pipe_cl_err("pipeline_new() error: Out of Memory");
+		pipe_cl_err("pipeline_new(): Out of Memory");
 		return NULL;
 	}
 
@@ -78,7 +78,7 @@ struct pipeline *pipeline_new(struct sof_ipc_pipe_new *pipe_desc,
 
 	ret = pipeline_posn_offset_get(&p->posn_offset);
 	if (ret < 0) {
-		pipe_cl_err("pipeline_new() error: pipeline_posn_offset_get failed %d",
+		pipe_cl_err("pipeline_new(): pipeline_posn_offset_get failed %d",
 			    ret);
 		rfree(p);
 		return NULL;
@@ -94,7 +94,7 @@ struct pipeline *pipeline_new(struct sof_ipc_pipe_new *pipe_desc,
 
 	p->msg = ipc_msg_init(posn.rhdr.hdr.cmd, sizeof(posn));
 	if (!p->msg) {
-		pipe_cl_err("pipeline_new() error: ipc_msg_init failed");
+		pipe_cl_err("pipeline_new(): ipc_msg_init failed");
 		rfree(p);
 		return NULL;
 	}
@@ -197,7 +197,7 @@ int pipeline_complete(struct pipeline *p, struct comp_dev *source,
 
 	/* check whether pipeline is already completed */
 	if (p->status != COMP_STATE_INIT) {
-		pipe_err(p, "pipeline_complete() error: Pipeline already completed");
+		pipe_err(p, "pipeline_complete(): Pipeline already completed");
 		return -EINVAL;
 	}
 
@@ -258,7 +258,7 @@ int pipeline_free(struct pipeline *p)
 	/* make sure we are not in use */
 	if (p->source_comp) {
 		if (p->source_comp->state > COMP_STATE_READY) {
-			pipe_err(p, "pipeline_free() error: Pipeline in use, %u, %u",
+			pipe_err(p, "pipeline_free(): Pipeline in use, %u, %u",
 				 dev_comp_id(p->source_comp),
 				 p->source_comp->state);
 			return -EBUSY;
@@ -428,7 +428,7 @@ int pipeline_params(struct pipeline *p, struct comp_dev *host,
 
 	ret = pipeline_comp_hw_params(data.start, NULL, &data, dir);
 	if (ret < 0) {
-		pipe_cl_err("pipeline_prepare() error: ret = %d, dev->comp.id = %u",
+		pipe_cl_err("pipeline_prepare(): ret = %d, dev->comp.id = %u",
 			    ret, dev_comp_id(host));
 		return ret;
 	}
@@ -439,7 +439,7 @@ int pipeline_params(struct pipeline *p, struct comp_dev *host,
 
 	ret = pipeline_comp_params(host, NULL, &data, params->params.direction);
 	if (ret < 0) {
-		pipe_cl_err("pipeline_params() error: ret = %d, host->comp.id = %u",
+		pipe_cl_err("pipeline_params(): ret = %d, host->comp.id = %u",
 			    ret, dev_comp_id(host));
 	}
 
@@ -483,7 +483,7 @@ static int pipeline_comp_task_init(struct pipeline *p)
 
 		p->pipe_task = pipeline_task_init(p, type, pipeline_task);
 		if (!p->pipe_task) {
-			pipe_cl_err("pipeline_prepare() error: task init failed");
+			pipe_cl_err("pipeline_prepare(): task init failed");
 			return -ENOMEM;
 		}
 	}
@@ -548,7 +548,7 @@ int pipeline_prepare(struct pipeline *p, struct comp_dev *dev)
 
 	ret = pipeline_comp_prepare(dev, NULL, &ppl_data, dev->direction);
 	if (ret < 0) {
-		pipe_cl_err("pipeline_prepare() error: ret = %d, dev->comp.id = %u",
+		pipe_cl_err("pipeline_prepare(): ret = %d, dev->comp.id = %u",
 			    ret, dev_comp_id(dev));
 		return ret;
 	}
@@ -645,7 +645,7 @@ static int pipeline_xrun_handle_trigger(struct pipeline *p, int cmd)
 		/* prepare the pipeline */
 		ret = pipeline_prepare(p, p->source_comp);
 		if (ret < 0) {
-			pipe_err(p, "prepare error: ret = %d", ret);
+			pipe_err(p, "prepare: ret = %d", ret);
 			return ret;
 		}
 		/* now ready for start, clear xrun_bytes */
@@ -676,7 +676,7 @@ int pipeline_trigger(struct pipeline *p, struct comp_dev *host, int cmd)
 	if (p->xrun_bytes) {
 		ret = pipeline_xrun_handle_trigger(p, cmd);
 		if (ret < 0) {
-			pipe_err(p, "xrun handle error: ret = %d", ret);
+			pipe_err(p, "xrun handle: ret = %d", ret);
 			return ret;
 		} else if (ret == PPL_STATUS_PATH_STOP)
 			/* no further action needed*/
@@ -688,7 +688,7 @@ int pipeline_trigger(struct pipeline *p, struct comp_dev *host, int cmd)
 
 	ret = pipeline_comp_trigger(host, NULL, &data, host->direction);
 	if (ret < 0) {
-		pipe_cl_err("pipeline_trigger() error: ret = %d, host->comp.id = %u, cmd = %d",
+		pipe_cl_err("pipeline_trigger(): ret = %d, host->comp.id = %u, cmd = %d",
 			    ret, dev_comp_id(host), cmd);
 	}
 
@@ -745,7 +745,7 @@ int pipeline_reset(struct pipeline *p, struct comp_dev *host)
 
 	ret = pipeline_comp_reset(host, NULL, p, host->direction);
 	if (ret < 0) {
-		pipe_cl_err("pipeline_reset() error: ret = %d, host->comp.id = %u",
+		pipe_cl_err("pipeline_reset(): ret = %d, host->comp.id = %u",
 			    ret, dev_comp_id(host));
 	}
 
@@ -816,7 +816,7 @@ static int pipeline_copy(struct pipeline *p)
 
 	ret = pipeline_comp_copy(start, NULL, &data, dir);
 	if (ret < 0)
-		pipe_cl_err("pipeline_copy() error: ret = %d, start->comp.id = %u, dir = %u",
+		pipe_cl_err("pipeline_copy(): ret = %d, start->comp.id = %u, dir = %u",
 			    ret, dev_comp_id(start), dir);
 
 	return ret;
@@ -904,7 +904,7 @@ void pipeline_xrun(struct pipeline *p, struct comp_dev *dev,
 	/* notify all pipeline comps we are in XRUN, and stop copying */
 	ret = pipeline_trigger(p, p->source_comp, COMP_TRIGGER_XRUN);
 	if (ret < 0)
-		pipe_err(p, "pipeline_xrun() error: Pipelines notification about XRUN failed, ret = %d",
+		pipe_err(p, "pipeline_xrun(): Pipelines notification about XRUN failed, ret = %d",
 			 ret);
 
 	memset(&posn, 0, sizeof(posn));
@@ -937,7 +937,7 @@ static int pipeline_xrun_recover(struct pipeline *p)
 	/* prepare the pipeline */
 	ret = pipeline_prepare(p, p->source_comp);
 	if (ret < 0) {
-		pipe_err(p, "pipeline_xrun_recover() error: pipeline_prepare() failed, ret = %d",
+		pipe_err(p, "pipeline_xrun_recover(): pipeline_prepare() failed, ret = %d",
 			 ret);
 		return ret;
 	}
@@ -948,7 +948,7 @@ static int pipeline_xrun_recover(struct pipeline *p)
 	/* restart pipeline comps */
 	ret = pipeline_trigger(p, p->source_comp, COMP_TRIGGER_START);
 	if (ret < 0) {
-		pipe_err(p, "pipeline_xrun_recover() error: pipeline_trigger() failed, ret = %d",
+		pipe_err(p, "pipeline_xrun_recover(): pipeline_trigger() failed, ret = %d",
 			 ret);
 		return ret;
 	}

@@ -200,7 +200,7 @@ static void default_detect_test(struct comp_dev *dev,
 static void free_mem_load(struct comp_data *cd)
 {
 	if (!cd) {
-		comp_cl_err(&comp_keyword, "free_mem_load() error: invalid cd");
+		comp_cl_err(&comp_keyword, "free_mem_load(): invalid cd");
 		return;
 	}
 
@@ -219,7 +219,7 @@ static int alloc_mem_load(struct comp_data *cd, uint32_t size)
 		return 0;
 
 	if (!cd) {
-		comp_cl_err(&comp_keyword, "alloc_mem_load() error: invalid cd");
+		comp_cl_err(&comp_keyword, "alloc_mem_load(): invalid cd");
 		return -EINVAL;
 	}
 
@@ -327,19 +327,19 @@ static struct comp_dev *test_keyword_new(const struct comp_driver *drv,
 
 	if (bs > 0) {
 		if (bs < sizeof(struct sof_detect_test_config)) {
-			comp_err(dev, "test_keyword_new() error: invalid data size");
+			comp_err(dev, "test_keyword_new(): invalid data size");
 			goto fail;
 		}
 
 		if (test_keyword_apply_config(dev, cfg)) {
-			comp_err(dev, "test_keyword_new() error: failed to apply config");
+			comp_err(dev, "test_keyword_new(): failed to apply config");
 			goto fail;
 		}
 	}
 
 	ret = alloc_mem_load(cd, INITIAL_MODEL_DATA_SIZE);
 	if (ret < 0) {
-		comp_err(dev, "test_keyword_new() error: model data initial failed");
+		comp_err(dev, "test_keyword_new(): model data initial failed");
 		goto fail;
 	}
 
@@ -350,7 +350,7 @@ static struct comp_dev *test_keyword_new(const struct comp_driver *drv,
 
 	cd->msg = ipc_msg_init(cd->event.rhdr.hdr.cmd, sizeof(cd->event));
 	if (!cd->msg) {
-		comp_err(dev, "test_keyword_new() error: ipc notification init failed");
+		comp_err(dev, "test_keyword_new(): ipc notification init failed");
 		goto fail;
 	}
 
@@ -385,7 +385,7 @@ static int test_keyword_verify_params(struct comp_dev *dev,
 
 	ret = comp_verify_params(dev, 0, params);
 	if (ret < 0) {
-		comp_err(dev, "test_keyword_verify_params() error: comp_verify_params() failed");
+		comp_err(dev, "test_keyword_verify_params(): comp_verify_params() failed");
 		return ret;
 	}
 
@@ -418,12 +418,12 @@ static int test_keyword_params(struct comp_dev *dev,
 				  sink_list);
 
 	if (sourceb->stream.channels != 1) {
-		comp_err(dev, "test_keyword_params() error: only single-channel supported");
+		comp_err(dev, "test_keyword_params(): only single-channel supported");
 		return -EINVAL;
 	}
 
 	if (!detector_is_sample_width_supported(sourceb->stream.frame_fmt)) {
-		comp_err(dev, "test_keyword_params() error: only 16-bit format supported");
+		comp_err(dev, "test_keyword_params(): only 16-bit format supported");
 		return -EINVAL;
 	}
 
@@ -451,7 +451,7 @@ static int test_keyword_set_config(struct comp_dev *dev,
 	comp_info(dev, "test_keyword_set_config(), blob size = %u", bs);
 
 	if (bs != sizeof(struct sof_detect_test_config)) {
-		comp_err(dev, "test_keyword_set_config() error: invalid blob size");
+		comp_err(dev, "test_keyword_set_config(): invalid blob size");
 		return -EINVAL;
 	}
 
@@ -476,14 +476,14 @@ static int test_keyword_set_model(struct comp_dev *dev,
 	}
 
 	if (!cd->model.data) {
-		comp_err(dev, "keyword_ctrl_set_model() error: buffer not allocated");
+		comp_err(dev, "keyword_ctrl_set_model(): buffer not allocated");
 		return -EINVAL;
 	}
 
 	if (!cdata->elems_remaining) {
 		if (cdata->num_elems + cd->model.data_pos <
 		    cd->model.data_size) {
-			comp_err(dev, "keyword_ctrl_set_model() error: not enough data to fill the buffer");
+			comp_err(dev, "keyword_ctrl_set_model(): not enough data to fill the buffer");
 
 			/* TODO: anything to do in such a situation? */
 
@@ -496,7 +496,7 @@ static int test_keyword_set_model(struct comp_dev *dev,
 
 	if (cdata->num_elems >
 	    cd->model.data_size - cd->model.data_pos) {
-		comp_err(dev, "keyword_ctrl_set_model() error: too much data");
+		comp_err(dev, "keyword_ctrl_set_model(): too much data");
 		return -EINVAL;
 	}
 
@@ -529,7 +529,7 @@ static int test_keyword_ctrl_set_bin_data(struct comp_dev *dev,
 		 * configuration will be used when playback/capture
 		 * starts.
 		 */
-		comp_err(dev, "keyword_ctrl_set_bin_data() error: driver is busy");
+		comp_err(dev, "keyword_ctrl_set_bin_data(): driver is busy");
 		return -EBUSY;
 	}
 
@@ -541,7 +541,7 @@ static int test_keyword_ctrl_set_bin_data(struct comp_dev *dev,
 		ret = test_keyword_set_model(dev, cdata);
 		break;
 	default:
-		comp_err(dev, "keyword_ctrl_set_bin_data() error: unknown binary data type");
+		comp_err(dev, "keyword_ctrl_set_bin_data(): unknown binary data type");
 		break;
 	}
 
@@ -555,7 +555,7 @@ static int test_keyword_ctrl_set_data(struct comp_dev *dev,
 
 	/* Check version from ABI header */
 	if (SOF_ABI_VERSION_INCOMPATIBLE(SOF_ABI_VERSION, cdata->data->abi)) {
-		comp_err(dev, "test_keyword_cmd_set_data() error: invalid version");
+		comp_err(dev, "test_keyword_cmd_set_data(): invalid version");
 		return -EINVAL;
 	}
 
@@ -568,7 +568,7 @@ static int test_keyword_ctrl_set_data(struct comp_dev *dev,
 		ret = test_keyword_ctrl_set_bin_data(dev, cdata);
 		break;
 	default:
-		comp_err(dev, "test_keyword_cmd_set_data() error: invalid cdata->cmd");
+		comp_err(dev, "test_keyword_cmd_set_data(): invalid cdata->cmd");
 		ret = -EINVAL;
 		break;
 	}
@@ -623,7 +623,7 @@ static int test_keyword_get_model(struct comp_dev *dev,
 
 		bs = cdata->num_elems;
 		if (bs > size) {
-			comp_err(dev, "test_keyword_get_model() error: invalid size %d",
+			comp_err(dev, "test_keyword_get_model(): invalid size %d",
 				 bs);
 			return -EINVAL;
 		}
@@ -638,7 +638,7 @@ static int test_keyword_get_model(struct comp_dev *dev,
 		cd->model.data_pos += bs;
 
 	} else {
-		comp_err(dev, "test_keyword_get_model() error: invalid cd->config");
+		comp_err(dev, "test_keyword_get_model(): invalid cd->config");
 		ret = -EINVAL;
 	}
 
@@ -659,7 +659,7 @@ static int test_keyword_ctrl_get_bin_data(struct comp_dev *dev,
 		ret = test_keyword_get_model(dev, cdata, size);
 		break;
 	default:
-		comp_err(dev, "test_keyword_ctrl_get_bin_data() error: unknown binary data type");
+		comp_err(dev, "test_keyword_ctrl_get_bin_data(): unknown binary data type");
 		break;
 	}
 
@@ -678,7 +678,7 @@ static int test_keyword_ctrl_get_data(struct comp_dev *dev,
 		ret = test_keyword_ctrl_get_bin_data(dev, cdata, size);
 		break;
 	default:
-		comp_err(dev, "test_keyword_ctrl_get_data() error: invalid cdata->cmd");
+		comp_err(dev, "test_keyword_ctrl_get_data(): invalid cdata->cmd");
 		return -EINVAL;
 	}
 

@@ -783,10 +783,10 @@ static int hda_dma_link_check_xrun(struct dma_chan_data *chan)
 	uint32_t dgcs = dma_chan_reg_read(chan, DGCS);
 
 	if (chan->direction == DMA_DIR_MEM_TO_DEV && dgcs & DGCS_BUR) {
-		trace_hddma_error("hda_dma_link_check_xrun() error: underrun detected");
+		trace_hddma_error("hda_dma_link_check_xrun(): underrun detected");
 		dma_chan_reg_update_bits(chan, DGCS, DGCS_BUR, DGCS_BUR);
 	} else if (chan->direction == DMA_DIR_DEV_TO_MEM && dgcs & DGCS_BOR) {
-		trace_hddma_error("hda_dma_link_check_xrun() error: overrun detected");
+		trace_hddma_error("hda_dma_link_check_xrun(): overrun detected");
 		dma_chan_reg_update_bits(chan, DGCS, DGCS_BOR, DGCS_BOR);
 	}
 
