@@ -52,6 +52,35 @@ struct proc_ldc_entry {
 
 static const char *BAD_PTR_STR = "<bad uid ptr %x>";
 
+char *vasprintf(const char *format, va_list args)
+{
+	va_list args_copy;
+	int size;
+	char localbuf[1];
+	char *result;
+
+	va_copy(args_copy, args);
+	size = vsnprintf(localbuf, 1, format, args_copy);
+	va_end(args_copy);
+
+	result = calloc(1, size + 1);
+	if (result)
+		vsnprintf(result, size + 1, format, args);
+	return result;
+}
+
+char *asprintf(const char *format, ...)
+{
+	va_list args;
+	char *result;
+
+	va_start(args, format);
+	result = vasprintf(format, args);
+	va_end(args);
+
+	return result;
+}
+
 static void log_err(FILE *out_fd, const char *fmt, ...)
 {
 	static const char prefix[] = "error: ";
@@ -84,6 +113,26 @@ static void log_err(FILE *out_fd, const char *fmt, ...)
 	va_end(args);
 }
 
+char *format_uid_raw(const struct sof_uuid *uid_val, int use_colors,
+		     int name_first)
+{
+	const char *name = (const char *)(uid_val + 1) + 4;
+	char *str;
+
+	str = asprintf("%s%s%s<%08x-%04x-%04x-%02x%02x-%02x%02x%02x%02x%02x%02x>%s%s%s",
+		use_colors ? KBLU : "",
+		name_first ? name : "",
+		name_first ? " " : "",
+		uid_val->a, uid_val->b, uid_val->c,
+		uid_val->d[0], uid_val->d[1], uid_val->d[2],
+		uid_val->d[3], uid_val->d[4], uid_val->d[5],
+		uid_val->d[6], uid_val->d[7],
+		name_first ? "" : " ",
+		name_first ? "" : name,
+		use_colors ? KNRM : "");
+	return str;
+}
+
 const char *format_uid(const struct snd_sof_uids_header *uids_dict,
 		       uint32_t uid_ptr,
 		       int use_colors)
@@ -98,18 +147,8 @@ const char *format_uid(const struct snd_sof_uids_header *uids_dict,
 		const struct sof_uuid *uid_val = (const struct sof_uuid *)
 			((uint8_t *)uids_dict + uids_dict->data_offset +
 			uid_ptr - uids_dict->base_address);
+		str = format_uid_raw(uid_val, use_colors, 1);
 
-		str = calloc(1, (use_colors ? strlen(KBLU) : 0) + 1 +
-			36 + 1 + *(uint32_t *)(uid_val + 1) + 1 +
-			(use_colors ? strlen(KNRM) : 0));
-		sprintf(str, "%s%s <%08x-%04x-%04x-%02x%02x-%02x%02x%02x%02x%02x%02x>%s",
-			use_colors ? KBLU : "",
-			(const char *)(uid_val + 1) + 4,
-			uid_val->a, uid_val->b, uid_val->c,
-			uid_val->d[0], uid_val->d[1], uid_val->d[2],
-			uid_val->d[3], uid_val->d[4], uid_val->d[5],
-			uid_val->d[6], uid_val->d[7],
-			use_colors ? KNRM : "");
 	}
 	return str;
 }
