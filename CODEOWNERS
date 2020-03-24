@@ -9,20 +9,19 @@
 # will be requested to review.
 
 # include files
-src/include/sof/dmic.h			@singalsu
-src/include/host/*			@ranj063
+src/include/sof/drivers/dmic.h		@singalsu
 src/include/ipc/**			@thesofproject/steering-committee
 src/include/kernel/**			@thesofproject/steering-committee
 src/include/user/**			@thesofproject/steering-committee
-src/include/gdb/*			@mrajwa
-src/include/audio/kpb.h			@mrajwa
-src/include/audio/mux.h			@akloniex
+src/include/sof/debug/gdb/*		@mrajwa
+src/include/sof/audio/kpb.h		@mrajwa
+src/include/sof/audio/mux.h		@akloniex
 
 # audio component
 src/audio/src*				@singalsu
 src/audio/eq*				@singalsu
-src/audio/fir*				@singalsu
-src/audio/iir*				@singalsu
+src/audio/eq_fir*			@singalsu
+src/audio/eq_iir*			@singalsu
 src/audio/tone.c			@singalsu
 src/audio/kpb.c				@mrajwa
 src/audio/mux/*				@akloniex
@@ -33,7 +32,7 @@ src/platform/*				@tlauda
 src/platform/baytrail/*			@xiulipan
 src/platform/haswell/*			@xiulipan @randerwang
 src/platform/suecreek/*			@lyakh
-src/arch/xtensa/gdb/*			@mrajwa
+src/arch/xtensa/debug/gdb/*		@mrajwa
 src/platform/imx8/**			@dbaluta
 
 # drivers
@@ -44,12 +43,11 @@ src/drivers/imx/**			@dbaluta
 src/drivers/dw/*			@lyakh
 
 # other libs
-src/host/*				@ranj063
 src/math/*				@singalsu
 src/ipc/*				@xiulipan @bardliao
-src/ipc/sue-ipc.c			@lyakh
+src/drivers/intel/cavs/sue-ipc.c	@lyakh
 src/lib/*				@libinyang
-src/gdb/*				@mrajwa
+src/debug/gdb/*			@mrajwa
 src/schedule				@tlauda @mrajwa
 
 # other helpers
@@ -60,9 +58,10 @@ rimage/*				@xiulipan
 # tools(old soft)
 tools/logger/*				@xiulipan @bkokoszx @akloniex
 tools/topology/*			@ranj063 @xiulipan
+tools/testbench/*			@ranj063
 tools/test/*				@xiulipan
 tools/test/audio/*			@singalsu
-tools/eqctl/*				@singalsu
+tools/ctl/*				@singalsu
 tools/tune/*				@singalsu
 
 # build system
@@ -71,7 +70,7 @@ tools/tune/*				@singalsu
 scripts/cmake/**			@jajanusz
 scripts/kconfig/**			@jajanusz
 
-# related fileds
+# related files
 *.sh					@jajanusz
 *trace.*				@xiulipan @akloniex
 
