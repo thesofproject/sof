@@ -15,11 +15,9 @@
 #define __SOF_DRIVERS_IDC_H__
 
 #include <platform/drivers/idc.h>
-#include <sof/lib/cpu.h>
 #include <sof/schedule/task.h>
 #include <sof/trace/trace.h>
 #include <user/trace.h>
-#include <stdbool.h>
 #include <stdint.h>
 
 /** \brief IDC trace function. */
@@ -118,10 +116,8 @@ struct idc_msg {
 /** \brief IDC data. */
 struct idc {
 	uint32_t busy_bit_mask;		/**< busy interrupt mask */
-	uint32_t done_bit_mask;		/**< done interrupt mask */
 	struct idc_msg received_msg;	/**< received message */
 	struct task idc_task;		/**< IDC processing task */
-	bool msg_processed[PLATFORM_CORE_COUNT];
 	struct idc_payload *payload;
 	int irq;
 };
