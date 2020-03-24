@@ -12,10 +12,6 @@ int schedule_task_init_ll(struct task *task, uint32_t uid, uint16_t type,
 			  enum task_state (*run)(void *data), void *data,
 			  uint16_t core, uint32_t flags)
 {
-	int ret;
-
-	ret = schedule_task_init(task, uid, type, priority, run, data, core,
-				 flags);
-
-	return ret;
+	return schedule_task_init(task, uid, type, priority, run, data, core,
+				  flags);
 }
