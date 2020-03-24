@@ -79,7 +79,6 @@ static void idc_irq_handler(void *arg)
 	int core = cpu_get_id();
 	uint32_t idctfc;
 	uint32_t idctefc;
-	uint32_t idcietc;
 	uint32_t i;
 
 	tracev_idc("idc_irq_handler()");
@@ -95,7 +94,7 @@ static void idc_irq_handler(void *arg)
 			trace_idc("idc_irq_handler(), IPC_IDCTFC_BUSY");
 
 			/* disable BUSY interrupt */
-			idc_write(IPC_IDCCTL, core, idc->done_bit_mask);
+			idc_write(IPC_IDCCTL, core, 0);
 
 			idc->received_msg.core = i;
 			idc->received_msg.header =
@@ -106,24 +105,6 @@ static void idc_irq_handler(void *arg)
 					idctefc & IPC_IDCTEFC_MSG_MASK;
 
 			schedule_task(&idc->idc_task, 0, IDC_DEADLINE);
-		}
-	}
-
-	for (i = 0; i < PLATFORM_CORE_COUNT; i++) {
-		/* skip current core */
-		if (core == i)
-			continue;
-
-		idcietc = idc_read(IPC_IDCIETC(i), core);
-
-		if (idcietc & IPC_IDCIETC_DONE) {
-			tracev_idc("idc_irq_handler(), "
-				   "IPC_IDCIETC_DONE");
-
-			idc_write(IPC_IDCIETC(i), core,
-				  idcietc | IPC_IDCIETC_DONE);
-
-			idc->msg_processed[i] = true;
 		}
 	}
 }
@@ -169,19 +150,20 @@ static int idc_msg_status_get(uint32_t core)
 static int idc_wait_in_blocking_mode(uint32_t target_core)
 {
 	struct timer *timer = timer_get();
-	struct idc *idc = *idc_get();
+	uint32_t core = cpu_get_id();
 	uint64_t deadline;
 
 	deadline = platform_timer_get(timer) +
 		clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1) *
 		IDC_TIMEOUT / 1000;
 
-	while (!idc->msg_processed[target_core]) {
+	while (!(idc_read(IPC_IDCIETC(target_core), core) & IPC_IDCIETC_DONE)) {
 		if (deadline < platform_timer_get(timer)) {
 			/* safe check in case we've got preempted
 			 * after read
 			 */
-			if (idc->msg_processed[target_core])
+			if (idc_read(IPC_IDCIETC(target_core), core) &
+			    IPC_IDCIETC_DONE)
 				break;
 
 			trace_idc_error("idc_wait_in_blocking_mode() error: timeout");
@@ -203,11 +185,15 @@ int idc_send_msg(struct idc_msg *msg, uint32_t mode)
 	struct idc *idc = *idc_get();
 	struct idc_payload *payload = idc_payload_get(idc, msg->core);
 	int core = cpu_get_id();
+	uint32_t idcietc;
 	int ret = 0;
 
 	tracev_idc("arch_idc_send_msg()");
 
-	idc->msg_processed[msg->core] = false;
+	/* clear any previous messages */
+	idcietc = idc_read(IPC_IDCIETC(msg->core), core);
+	if (idcietc & IPC_IDCIETC_DONE)
+		idc_write(IPC_IDCIETC(msg->core), core, idcietc);
 
 	/* copy payload if available */
 	if (msg->payload) {
@@ -224,6 +210,10 @@ int idc_send_msg(struct idc_msg *msg, uint32_t mode)
 		ret = idc_wait_in_blocking_mode(msg->core);
 		if (ret < 0)
 			return ret;
+
+		idc_write(IPC_IDCIETC(msg->core), core,
+			  idc_read(IPC_IDCIETC(msg->core), core) |
+			  IPC_IDCIETC_DONE);
 
 		ret = idc_msg_status_get(msg->core);
 	}
@@ -452,7 +442,7 @@ static enum task_state idc_do_cmd(void *data)
 		  idc_read(IPC_IDCTFC(initiator), core) | IPC_IDCTFC_BUSY);
 
 	/* enable BUSY interrupt */
-	idc_write(IPC_IDCCTL, core, idc->busy_bit_mask | idc->done_bit_mask);
+	idc_write(IPC_IDCCTL, core, idc->busy_bit_mask);
 
 	return SOF_TASK_STATE_COMPLETED;
 }
@@ -476,24 +466,6 @@ static uint32_t idc_get_busy_bit_mask(int core)
 }
 
 /**
- * \brief Returns DONE interrupt mask based on core id.
- * \param[in] core Core id.
- * \return DONE interrupt mask.
- */
-static uint32_t idc_get_done_bit_mask(int core)
-{
-	uint32_t done_mask = 0;
-	int i;
-
-	for (i = 0; i < PLATFORM_CORE_COUNT; i++) {
-		if (i != core)
-			done_mask |= IPC_IDCCTL_IDCIDIE(i);
-	}
-
-	return done_mask;
-}
-
-/**
  * \brief Initializes IDC data and registers for interrupt.
  */
 int idc_init(void)
@@ -511,7 +483,6 @@ int idc_init(void)
 	struct idc **idc = idc_get();
 	*idc = rzalloc(SOF_MEM_ZONE_SYS, 0, SOF_MEM_CAPS_RAM, sizeof(**idc));
 	(*idc)->busy_bit_mask = idc_get_busy_bit_mask(core);
-	(*idc)->done_bit_mask = idc_get_done_bit_mask(core);
 	(*idc)->payload = cache_to_uncache((struct idc_payload *)payload);
 
 	/* process task */
@@ -528,9 +499,8 @@ int idc_init(void)
 		return ret;
 	interrupt_enable((*idc)->irq, *idc);
 
-	/* enable BUSY and DONE interrupts */
-	idc_write(IPC_IDCCTL, core,
-		  (*idc)->busy_bit_mask | (*idc)->done_bit_mask);
+	/* enable BUSY interrupt */
+	idc_write(IPC_IDCCTL, core, (*idc)->busy_bit_mask);
 
 	return 0;
 }
