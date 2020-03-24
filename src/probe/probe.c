@@ -1015,6 +1015,8 @@ int probe_point_add(uint32_t count, struct probe_point *probe)
 				tracev_probe("probe_point_add(): start probe task");
 				schedule_task(&_probe->dmap_work, 1000, 1000);
 			}
+			/* ignore probe stream tag for extraction probes */
+			probe[i].stream_tag = _probe->ext_dma.stream_tag;
 		}
 
 		/* probe point valid, save it */
