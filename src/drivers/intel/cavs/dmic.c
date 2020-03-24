@@ -517,9 +517,9 @@ static int fir_coef_scale(int32_t *fir_scale, int *fir_shift, int add_shift,
 
 	/* Compensate shift into FIR coef scaler and store as Q4.20. */
 	if (shift < 0)
-		*fir_scale = (fir_gain << -shift);
+		*fir_scale = fir_gain << -shift;
 	else
-		*fir_scale = (fir_gain >> shift);
+		*fir_scale = fir_gain >> shift;
 
 	return 0;
 }
