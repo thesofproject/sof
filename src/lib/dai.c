@@ -63,7 +63,7 @@ struct dai *dai_get(uint32_t type, uint32_t index, uint32_t flags)
 
 		return !ret ? d : NULL;
 	}
-	trace_error(TRACE_CLASS_DAI, "dai_get error: %d.%d not found",
+	trace_error(TRACE_CLASS_DAI, "dai_get: %d.%d not found",
 		    type, index);
 	return NULL;
 }
@@ -76,7 +76,7 @@ void dai_put(struct dai *dai)
 	if (--dai->sref == 0) {
 		ret = dai_remove(dai);
 		if (ret < 0) {
-			trace_error(TRACE_CLASS_DAI, "dai_put error: %d.%d dai_remove() failed ret = %d",
+			trace_error(TRACE_CLASS_DAI, "dai_put: %d.%d dai_remove() failed ret = %d",
 				    dai->drv->type, dai->index, ret);
 		}
 	}

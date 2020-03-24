@@ -245,7 +245,7 @@ static int create_local_elems(struct comp_dev *dev, uint32_t buffer_count,
 		err = dma_sg_alloc(&hd->config.elem_array, SOF_MEM_ZONE_RUNTIME,
 				   dir, 1, 0, 0, 0);
 		if (err < 0) {
-			comp_err(dev, "create_local_elems() error: dma_sg_alloc() failed");
+			comp_err(dev, "create_local_elems(): dma_sg_alloc() failed");
 			return err;
 		}
 	} else {
@@ -256,7 +256,7 @@ static int create_local_elems(struct comp_dev *dev, uint32_t buffer_count,
 			   buffer_bytes,
 			   (uintptr_t)(hd->dma_buffer->stream.addr), 0);
 	if (err < 0) {
-		comp_err(dev, "create_local_elems() error: dma_sg_alloc() failed");
+		comp_err(dev, "create_local_elems(): dma_sg_alloc() failed");
 		return err;
 	}
 
@@ -296,7 +296,7 @@ static int host_trigger(struct comp_dev *dev, int cmd)
 		return ret;
 
 	if (!hd->chan) {
-		comp_err(dev, "host_trigger() error: no dma channel configured");
+		comp_err(dev, "host_trigger(): no dma channel configured");
 		return -EINVAL;
 	}
 
@@ -304,7 +304,7 @@ static int host_trigger(struct comp_dev *dev, int cmd)
 	case COMP_TRIGGER_START:
 		ret = dma_start(hd->chan);
 		if (ret < 0)
-			comp_err(dev, "host_trigger() error: dma_start() failed, ret = %u",
+			comp_err(dev, "host_trigger(): dma_start() failed, ret = %u",
 				 ret);
 		break;
 	case COMP_TRIGGER_STOP:
@@ -360,7 +360,7 @@ static struct comp_dev *host_new(const struct comp_driver *drv,
 
 	hd->dma = dma_get(dir, 0, DMA_DEV_HOST, DMA_ACCESS_SHARED);
 	if (!hd->dma) {
-		comp_err(dev, "host_new() error: dma_get() returned NULL");
+		comp_err(dev, "host_new(): dma_get() returned NULL");
 		rfree(hd);
 		rfree(dev);
 		return NULL;
@@ -375,7 +375,7 @@ static struct comp_dev *host_new(const struct comp_driver *drv,
 
 	hd->msg = ipc_msg_init(hd->posn.rhdr.hdr.cmd, sizeof(hd->posn));
 	if (!hd->msg) {
-		comp_err(dev, "host_new() error: ipc_msg_init failed");
+		comp_err(dev, "host_new(): ipc_msg_init failed");
 		dma_put(hd->dma);
 		rfree(hd);
 		rfree(dev);
@@ -446,7 +446,7 @@ static int host_verify_params(struct comp_dev *dev,
 
 	ret = comp_verify_params(dev, 0, params);
 	if (ret < 0) {
-		comp_err(dev, "host_verify_params() error: comp_verify_params() failed");
+		comp_err(dev, "host_verify_params(): comp_verify_params() failed");
 		return ret;
 	}
 
@@ -493,7 +493,7 @@ static int host_params(struct comp_dev *dev,
 	err = dma_get_attribute(hd->dma, DMA_ATTR_BUFFER_ADDRESS_ALIGNMENT,
 				&addr_align);
 	if (err < 0) {
-		comp_err(dev, "host_params() error: could not get dma buffer address alignment, err = %d",
+		comp_err(dev, "host_params(): could not get dma buffer address alignment, err = %d",
 			 err);
 		return err;
 	}
@@ -501,7 +501,7 @@ static int host_params(struct comp_dev *dev,
 	/* retrieve DMA buffer size alignment */
 	err = dma_get_attribute(hd->dma, DMA_ATTR_BUFFER_ALIGNMENT, &align);
 	if (err < 0 || !align) {
-		comp_err(dev, "host_params() error: could not get valid dma buffer alignment, err = %d, align = %u",
+		comp_err(dev, "host_params(): could not get valid dma buffer alignment, err = %d, align = %u",
 			 err, align);
 		return -EINVAL;
 	}
@@ -510,7 +510,7 @@ static int host_params(struct comp_dev *dev,
 	err = dma_get_attribute(hd->dma, DMA_ATTR_BUFFER_PERIOD_COUNT,
 				&period_count);
 	if (err < 0 || !period_count) {
-		comp_err(dev, "host_params() error: could not get valid dma buffer period count, err = %d, period_count = %u",
+		comp_err(dev, "host_params(): could not get valid dma buffer period count, err = %d, period_count = %u",
 			 err, period_count);
 		return -EINVAL;
 	}
@@ -519,7 +519,7 @@ static int host_params(struct comp_dev *dev,
 		audio_stream_frame_bytes(&hd->local_buffer->stream);
 
 	if (!period_bytes) {
-		comp_err(dev, "host_params() error: invalid period_bytes");
+		comp_err(dev, "host_params(): invalid period_bytes");
 		return -EINVAL;
 	}
 
@@ -547,7 +547,7 @@ static int host_params(struct comp_dev *dev,
 	if (hd->dma_buffer) {
 		err = buffer_set_size(hd->dma_buffer, buffer_size);
 		if (err < 0) {
-			comp_err(dev, "host_params() error: buffer_set_size() failed, buffer_size = %u",
+			comp_err(dev, "host_params(): buffer_set_size() failed, buffer_size = %u",
 				 buffer_size);
 			return err;
 		}
@@ -555,7 +555,7 @@ static int host_params(struct comp_dev *dev,
 		hd->dma_buffer = buffer_alloc(buffer_size, SOF_MEM_CAPS_DMA,
 					      addr_align);
 		if (!hd->dma_buffer) {
-			comp_err(dev, "host_params() error: failed to alloc dma buffer");
+			comp_err(dev, "host_params(): failed to alloc dma buffer");
 			return -ENOMEM;
 		}
 	}
@@ -583,13 +583,13 @@ static int host_params(struct comp_dev *dev,
 	 */
 	hd->chan = dma_channel_get(hd->dma, hd->stream_tag);
 	if (!hd->chan) {
-		comp_err(dev, "host_params() error: hd->chan is NULL");
+		comp_err(dev, "host_params(): hd->chan is NULL");
 		return -ENODEV;
 	}
 
 	err = dma_set_config(hd->chan, &hd->config);
 	if (err < 0) {
-		comp_err(dev, "host_params() error: dma_set_config() failed");
+		comp_err(dev, "host_params(): dma_set_config() failed");
 		dma_channel_put(hd->chan);
 		hd->chan = NULL;
 		return err;
@@ -599,7 +599,7 @@ static int host_params(struct comp_dev *dev,
 				&hd->dma_copy_align);
 
 	if (err < 0) {
-		comp_err(dev, "host_params() error: dma_get_attribute()");
+		comp_err(dev, "host_params(): dma_get_attribute()");
 
 		return err;
 	}
@@ -731,7 +731,7 @@ static uint32_t host_buffer_get_copy_bytes(struct comp_dev *dev)
 		ret = dma_get_data_size(hd->chan, &avail_bytes,
 					&free_bytes);
 		if (ret < 0) {
-			comp_cl_err(&comp_host, "host_buffer_cb() error: dma_get_data_size() failed, ret = %u",
+			comp_cl_err(&comp_host, "host_buffer_cb(): dma_get_data_size() failed, ret = %u",
 				    ret);
 			return 0;
 		}
@@ -788,14 +788,14 @@ static int host_copy(struct comp_dev *dev)
 	/* reconfigure transfer */
 	ret = dma_set_config(hd->chan, &hd->config);
 	if (ret < 0) {
-		comp_cl_err(&comp_host, "host_copy() error: dma_set_config() failed, ret = %u",
+		comp_cl_err(&comp_host, "host_copy(): dma_set_config() failed, ret = %u",
 			    ret);
 		return ret;
 	}
 
 	ret = dma_copy(hd->chan, copy_bytes, flags);
 	if (ret < 0) {
-		comp_cl_err(&comp_host, "host_copy() error: dma_copy() failed, ret = %u",
+		comp_cl_err(&comp_host, "host_copy(): dma_copy() failed, ret = %u",
 			    ret);
 		return ret;
 	}

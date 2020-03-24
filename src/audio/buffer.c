@@ -27,8 +27,8 @@ struct comp_buffer *buffer_alloc(uint32_t size, uint32_t caps, uint32_t align)
 
 	/* validate request */
 	if (size == 0 || size > HEAP_BUFFER_SIZE) {
-		trace_buffer_error("buffer_alloc() error: "
-				   "new size = %u is invalid", size);
+		trace_buffer_error("buffer_alloc(): new size = %u is invalid",
+				   size);
 		return NULL;
 	}
 
@@ -36,8 +36,7 @@ struct comp_buffer *buffer_alloc(uint32_t size, uint32_t caps, uint32_t align)
 	buffer = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
 			 sizeof(*buffer));
 	if (!buffer) {
-		trace_buffer_error("buffer_alloc() error: "
-				   "could not alloc structure");
+		trace_buffer_error("buffer_alloc(): could not alloc structure");
 		return NULL;
 	}
 
@@ -45,16 +44,14 @@ struct comp_buffer *buffer_alloc(uint32_t size, uint32_t caps, uint32_t align)
 			       SOF_MEM_CAPS_RAM, sizeof(*buffer->lock));
 	if (!buffer->lock) {
 		rfree(buffer);
-		trace_buffer_error("buffer_alloc() error: could not alloc lock");
+		trace_buffer_error("buffer_alloc(): could not alloc lock");
 		return NULL;
 	}
 
 	buffer->stream.addr = rballoc_align(0, caps, size, align);
 	if (!buffer->stream.addr) {
 		rfree(buffer);
-		trace_buffer_error("buffer_alloc() error: "
-				   "could not alloc size = %u "
-				   "bytes of type = %u",
+		trace_buffer_error("buffer_alloc(): could not alloc size = %u bytes of type = %u",
 				   size, caps);
 		return NULL;
 	}
@@ -94,7 +91,7 @@ int buffer_set_size(struct comp_buffer *buffer, uint32_t size)
 
 	/* validate request */
 	if (size == 0 || size > HEAP_BUFFER_SIZE) {
-		trace_buffer_error_with_ids(buffer, "resize error: size = %u is invalid",
+		trace_buffer_error_with_ids(buffer, "resize size = %u is invalid",
 					    size);
 		return -EINVAL;
 	}
@@ -106,7 +103,7 @@ int buffer_set_size(struct comp_buffer *buffer, uint32_t size)
 
 	/* we couldn't allocate bigger chunk */
 	if (!new_ptr && size > buffer->stream.size) {
-		trace_buffer_error_with_ids(buffer, "resize error: can't alloc %u bytes type %u",
+		trace_buffer_error_with_ids(buffer, "resize can't alloc %u bytes type %u",
 					    buffer->stream.size, buffer->caps);
 		return -ENOMEM;
 	}

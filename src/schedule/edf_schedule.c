@@ -150,8 +150,7 @@ int schedule_task_init_edf(struct task *task, uint32_t uid,
 	edf_pdata = rzalloc(SOF_MEM_ZONE_SYS_RUNTIME, 0, SOF_MEM_CAPS_RAM,
 			    sizeof(*edf_pdata));
 	if (!edf_pdata) {
-		trace_edf_sch_error("schedule_task_init_edf() error: alloc "
-				    "failed");
+		trace_edf_sch_error("schedule_task_init_edf(): alloc failed");
 		return -ENOMEM;
 	}
 
@@ -174,8 +173,7 @@ int schedule_task_init_edf(struct task *task, uint32_t uid,
 	return 0;
 
 error:
-	trace_edf_sch_error("schedule_task_init_edf() error: init "
-			    "context failed");
+	trace_edf_sch_error("schedule_task_init_edf(): init context failed");
 	if (edf_pdata->ctx)
 		task_context_free(edf_pdata->ctx);
 	rfree(edf_pdata);

@@ -276,28 +276,28 @@ static void find_modes(struct dai *dai,
 	/* Check for sane pdm clock, min 100 kHz, max ioclk/2 */
 	if (dmic_prm[di]->pdmclk_max < DMIC_HW_PDM_CLK_MIN ||
 	    dmic_prm[di]->pdmclk_max > DMIC_HW_IOCLK / 2) {
-		dai_err(dai, "find_modes() error:  pdm clock max not in range");
+		dai_err(dai, "find_modes():  pdm clock max not in range");
 		return;
 	}
 	if (dmic_prm[di]->pdmclk_min < DMIC_HW_PDM_CLK_MIN ||
 	    dmic_prm[di]->pdmclk_min > dmic_prm[di]->pdmclk_max) {
-		dai_err(dai, "find_modes() error:  pdm clock min not in range");
+		dai_err(dai, "find_modes():  pdm clock min not in range");
 		return;
 	}
 
 	/* Check for sane duty cycle */
 	if (dmic_prm[di]->duty_min > dmic_prm[di]->duty_max) {
-		dai_err(dai, "find_modes() error: duty cycle min > max");
+		dai_err(dai, "find_modes(): duty cycle min > max");
 		return;
 	}
 	if (dmic_prm[di]->duty_min < DMIC_HW_DUTY_MIN ||
 	    dmic_prm[di]->duty_min > DMIC_HW_DUTY_MAX) {
-		dai_err(dai, "find_modes() error:  pdm clock min not in range");
+		dai_err(dai, "find_modes():  pdm clock min not in range");
 		return;
 	}
 	if (dmic_prm[di]->duty_max < DMIC_HW_DUTY_MIN ||
 	    dmic_prm[di]->duty_max > DMIC_HW_DUTY_MAX) {
-		dai_err(dai, "find_modes() error: pdm clock max not in range");
+		dai_err(dai, "find_modes(): pdm clock max not in range");
 		return;
 	}
 
@@ -563,7 +563,7 @@ static int select_mode(struct dai *dai,
 	 * the candidates should be sufficient.
 	 */
 	if (modes->num_of_modes == 0) {
-		dai_err(dai, "select_mode() error: no modes available");
+		dai_err(dai, "select_mode(): no modes available");
 		return -EINVAL;
 	}
 
@@ -596,7 +596,7 @@ static int select_mode(struct dai *dai,
 	if (cfg->mfir_a > 0) {
 		cfg->fir_a = get_fir(dai, cfg, cfg->mfir_a);
 		if (!cfg->fir_a) {
-			dai_err(dai, "select_mode() error: cannot find FIR coefficients, mfir_a = %u",
+			dai_err(dai, "select_mode(): cannot find FIR coefficients, mfir_a = %u",
 				cfg->mfir_a);
 			return -EINVAL;
 		}
@@ -605,7 +605,7 @@ static int select_mode(struct dai *dai,
 	if (cfg->mfir_b > 0) {
 		cfg->fir_b = get_fir(dai, cfg, cfg->mfir_b);
 		if (!cfg->fir_b) {
-			dai_err(dai, "select_mode() error: cannot find FIR coefficients, mfir_b = %u",
+			dai_err(dai, "select_mode(): cannot find FIR coefficients, mfir_b = %u",
 				cfg->mfir_b);
 			return -EINVAL;
 		}
@@ -618,7 +618,7 @@ static int select_mode(struct dai *dai,
 	g_cic = mcic * mcic * mcic * mcic * mcic;
 	if (g_cic < 0) {
 		/* Erroneous decimation factor and CIC gain */
-		dai_err(dai, "select_mode() error: erroneous decimation factor and CIC gain");
+		dai_err(dai, "select_mode(): erroneous decimation factor and CIC gain");
 		return -EINVAL;
 	}
 
@@ -645,7 +645,7 @@ static int select_mode(struct dai *dai,
 				     cfg->fir_a->length, gain_to_fir);
 		if (ret < 0) {
 			/* Invalid coefficient set found, should not happen. */
-			dai_err(dai, "select_mode() error: invalid coefficient set found");
+			dai_err(dai, "select_mode(): invalid coefficient set found");
 			return -EINVAL;
 		}
 	} else {
@@ -661,7 +661,7 @@ static int select_mode(struct dai *dai,
 				     cfg->fir_b->length, gain_to_fir);
 		if (ret < 0) {
 			/* Invalid coefficient set found, should not happen. */
-			dai_err(dai, "select_mode() error: invalid coefficient set found");
+			dai_err(dai, "select_mode(): invalid coefficient set found");
 			return -EINVAL;
 		}
 	} else {
@@ -826,7 +826,7 @@ static int configure_registers(struct dai *dai,
 
 	/* pdata is set by dmic_probe(), error if it has not been set */
 	if (!pdata) {
-		dai_err(dai, "configure_registers() error: pdata not set");
+		dai_err(dai, "configure_registers(): pdata not set");
 		return -EINVAL;
 	}
 
@@ -1107,7 +1107,7 @@ static int dmic_set_config(struct dai *dai, struct sof_ipc_dai_config *config)
 	dai_info(dai, "dmic_set_config()");
 
 	if (config->dmic.driver_ipc_version != DMIC_IPC_VERSION) {
-		dai_err(dai, "dmic_set_config() error: wrong ipc version");
+		dai_err(dai, "dmic_set_config(): wrong ipc version");
 		return -EINVAL;
 	}
 
@@ -1127,12 +1127,12 @@ static int dmic_set_config(struct dai *dai, struct sof_ipc_dai_config *config)
 	}
 
 	if (di >= DMIC_HW_FIFOS) {
-		dai_err(dai, "dmic_set_config() error: dai->index exceeds number of FIFOs");
+		dai_err(dai, "dmic_set_config(): dai->index exceeds number of FIFOs");
 		return -EINVAL;
 	}
 
 	if (config->dmic.num_pdm_active > DMIC_HW_CONTROLLERS) {
-		dai_err(dai, "dmic_set_config() error: the requested PDM controllers count exceeds platform capability");
+		dai_err(dai, "dmic_set_config(): the requested PDM controllers count exceeds platform capability");
 		return -EINVAL;
 	}
 
@@ -1154,7 +1154,7 @@ static int dmic_set_config(struct dai *dai, struct sof_ipc_dai_config *config)
 				      SOF_MEM_CAPS_RAM,
 				      DMIC_HW_FIFOS * size);
 		if (!dmic_prm[0]) {
-			dai_err(dai, "dmic_set_config() error: prm not initialized");
+			dai_err(dai, "dmic_set_config(): prm not initialized");
 			return -ENOMEM;
 		}
 		for (i = 1; i < DMIC_HW_FIFOS; i++)
@@ -1200,7 +1200,7 @@ static int dmic_set_config(struct dai *dai, struct sof_ipc_dai_config *config)
 	case 32:
 		break;
 	default:
-		dai_err(dai, "dmic_set_config() error: fifo_bits EINVAL");
+		dai_err(dai, "dmic_set_config(): fifo_bits EINVAL");
 		return -EINVAL;
 	}
 
@@ -1212,20 +1212,20 @@ static int dmic_set_config(struct dai *dai, struct sof_ipc_dai_config *config)
 	 */
 	find_modes(dai, &modes_a, dmic_prm[0]->fifo_fs, di);
 	if (modes_a.num_of_modes == 0 && dmic_prm[0]->fifo_fs > 0) {
-		dai_err(dai, "dmic_set_config() error: No modes found found for FIFO A");
+		dai_err(dai, "dmic_set_config(): No modes found found for FIFO A");
 		return -EINVAL;
 	}
 
 	find_modes(dai, &modes_b, dmic_prm[1]->fifo_fs, di);
 	if (modes_b.num_of_modes == 0 && dmic_prm[1]->fifo_fs > 0) {
-		dai_err(dai, "dmic_set_config() error: No modes found for FIFO B");
+		dai_err(dai, "dmic_set_config(): No modes found for FIFO B");
 		return -EINVAL;
 	}
 
 	match_modes(&modes_ab, &modes_a, &modes_b);
 	ret = select_mode(dai, &cfg, &modes_ab);
 	if (ret < 0) {
-		dai_err(dai, "dmic_set_config() error: select_mode() failed");
+		dai_err(dai, "dmic_set_config(): select_mode() failed");
 		return -EINVAL;
 	}
 
@@ -1246,7 +1246,7 @@ static int dmic_set_config(struct dai *dai, struct sof_ipc_dai_config *config)
 	 */
 	ret = configure_registers(dai, &cfg);
 	if (ret < 0) {
-		dai_err(dai, "dmic_set_config() error: cannot configure registers");
+		dai_err(dai, "dmic_set_config(): cannot configure registers");
 		return -EINVAL;
 	}
 
@@ -1471,12 +1471,12 @@ static int dmic_trigger(struct dai *dai, int cmd, int direction)
 
 	/* dai private is set in dmic_probe(), error if not set */
 	if (!dmic) {
-		dai_err(dai, "dmic_trigger() error: dai not set");
+		dai_err(dai, "dmic_trigger(): dai not set");
 		return -EINVAL;
 	}
 
 	if (direction != DAI_DIR_CAPTURE) {
-		dai_err(dai, "dmic_trigger() error: direction != DAI_DIR_CAPTURE");
+		dai_err(dai, "dmic_trigger(): direction != DAI_DIR_CAPTURE");
 		return -EINVAL;
 	}
 
@@ -1487,7 +1487,7 @@ static int dmic_trigger(struct dai *dai, int cmd, int direction)
 		    dmic->state == COMP_STATE_PAUSED) {
 			dmic_start(dai);
 		} else {
-			dai_err(dai, "dmic_trigger() error: state is not prepare or paused, dmic->state = %u",
+			dai_err(dai, "dmic_trigger(): state is not prepare or paused, dmic->state = %u",
 				dmic->state);
 		}
 		break;
@@ -1524,12 +1524,12 @@ static void dmic_irq_handler(void *data)
 	dai_info(dai, "dmic_irq_handler(), OUTSTAT1 = %u", val1);
 
 	if (val0 & OUTSTAT0_ROR_BIT) {
-		dai_err(dai, "dmic_irq_handler() error: full fifo A or PDM overrun");
+		dai_err(dai, "dmic_irq_handler(): full fifo A or PDM overrun");
 		dai_write(dai, OUTSTAT0, val0);
 	}
 
 	if (val1 & OUTSTAT1_ROR_BIT) {
-		dai_err(dai, "dmic_irq_handler() error: full fifo B or PDM overrun");
+		dai_err(dai, "dmic_irq_handler(): full fifo B or PDM overrun");
 		dai_write(dai, OUTSTAT1, val1);
 	}
 }
@@ -1549,7 +1549,7 @@ static int dmic_probe(struct dai *dai)
 	dmic = rzalloc(SOF_MEM_ZONE_SYS_RUNTIME, 0, SOF_MEM_CAPS_RAM,
 		       sizeof(*dmic));
 	if (!dmic) {
-		dai_err(dai, "dmic_probe() error: alloc failed");
+		dai_err(dai, "dmic_probe(): alloc failed");
 		return -ENOMEM;
 	}
 	dai_set_drvdata(dai, dmic);

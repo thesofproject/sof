@@ -127,7 +127,7 @@ static int selector_verify_params(struct comp_dev *dev,
 					 source_list);
 		if (cd->config.in_channels_count &&
 		    cd->config.in_channels_count != params->channels) {
-			comp_err(dev, "selector_verify_params() error: src in_channels_count does not match pcm channels");
+			comp_err(dev, "selector_verify_params(): src in_channels_count does not match pcm channels");
 			return -EINVAL;
 		}
 		in_channels = cd->config.in_channels_count;
@@ -148,7 +148,7 @@ static int selector_verify_params(struct comp_dev *dev,
 					 sink_list);
 		if (cd->config.out_channels_count &&
 		    cd->config.out_channels_count != params->channels) {
-			comp_err(dev, "selector_verify_params() error: src in_channels_count does not match pcm channels");
+			comp_err(dev, "selector_verify_params(): src in_channels_count does not match pcm channels");
 			return -EINVAL;
 		}
 		out_channels = cd->config.out_channels_count;
@@ -179,7 +179,7 @@ static int selector_verify_params(struct comp_dev *dev,
 	case SEL_SOURCE_4CH:
 		break;
 	default:
-		comp_err(dev, "selector_verify_params() error: in_channels = %u"
+		comp_err(dev, "selector_verify_params(): in_channels = %u"
 			 , in_channels);
 		return -EINVAL;
 	}
@@ -192,19 +192,19 @@ static int selector_verify_params(struct comp_dev *dev,
 	case SEL_SINK_4CH:
 		/* verify proper channels for passthrough mode */
 		if (in_channels != out_channels) {
-			comp_err(dev, "selector_verify_params() error: in_channels = %u, out_channels = %u"
+			comp_err(dev, "selector_verify_params(): in_channels = %u, out_channels = %u"
 				 , in_channels, out_channels);
 			return -EINVAL;
 		}
 		break;
 	default:
-		comp_err(dev, "selector_verify_params() error: out_channels = %u"
+		comp_err(dev, "selector_verify_params(): out_channels = %u"
 			 , out_channels);
 		return -EINVAL;
 	}
 
 	if (cd->config.sel_channel > (SEL_SOURCE_4CH - 1)) {
-		comp_err(dev, "selector_verify_params() error: ch_idx = %u"
+		comp_err(dev, "selector_verify_params(): ch_idx = %u"
 			 , cd->config.sel_channel);
 		return -EINVAL;
 	}
@@ -261,7 +261,7 @@ static int selector_ctrl_set_data(struct comp_dev *dev,
 		cd->config.sel_channel = cfg->sel_channel;
 		break;
 	default:
-		comp_err(dev, "selector_ctrl_set_cmd() error: invalid cdata->cmd = %u",
+		comp_err(dev, "selector_ctrl_set_cmd(): invalid cdata->cmd = %u",
 			 cdata->cmd);
 		ret = -EINVAL;
 		break;
@@ -299,7 +299,7 @@ static int selector_ctrl_get_data(struct comp_dev *dev,
 		break;
 
 	default:
-		comp_err(dev, "selector_ctrl_get_data() error: invalid cdata->cmd");
+		comp_err(dev, "selector_ctrl_get_data(): invalid cdata->cmd");
 		ret = -EINVAL;
 		break;
 	}
@@ -337,7 +337,7 @@ static int selector_cmd(struct comp_dev *dev, int cmd, void *data,
 		comp_info(dev, "selector_cmd(), COMP_CMD_GET_VALUE");
 		break;
 	default:
-		comp_err(dev, "selector_cmd() error: invalid command");
+		comp_err(dev, "selector_cmd(): invalid command");
 		ret = -EINVAL;
 	}
 
@@ -466,21 +466,21 @@ static int selector_prepare(struct comp_dev *dev)
 		  sinkb->stream.channels);
 
 	if (sinkb->stream.size < config->periods_sink * cd->sink_period_bytes) {
-		comp_err(dev, "selector_prepare() error: sink buffer size is insufficient");
+		comp_err(dev, "selector_prepare(): sink buffer size is insufficient");
 		ret = -ENOMEM;
 		goto err;
 	}
 
 	/* validate */
 	if (cd->sink_period_bytes == 0) {
-		comp_err(dev, "selector_prepare() error: cd->sink_period_bytes = 0, dev->frames = %u",
+		comp_err(dev, "selector_prepare(): cd->sink_period_bytes = 0, dev->frames = %u",
 			 dev->frames);
 		ret = -EINVAL;
 		goto err;
 	}
 
 	if (cd->source_period_bytes == 0) {
-		comp_err(dev, "selector_prepare() error: cd->source_period_bytes = 0, dev->frames = %u",
+		comp_err(dev, "selector_prepare(): cd->source_period_bytes = 0, dev->frames = %u",
 			 dev->frames);
 		ret = -EINVAL;
 		goto err;
@@ -488,7 +488,7 @@ static int selector_prepare(struct comp_dev *dev)
 
 	cd->sel_func = sel_get_processing_function(dev);
 	if (!cd->sel_func) {
-		comp_err(dev, "selector_prepare() error: invalid cd->sel_func, cd->source_format = %u, cd->sink_format = %u, cd->out_channels_count = %u",
+		comp_err(dev, "selector_prepare(): invalid cd->sel_func, cd->source_format = %u, cd->sink_format = %u, cd->out_channels_count = %u",
 			 cd->source_format, cd->sink_format,
 			 cd->config.out_channels_count);
 		ret = -EINVAL;

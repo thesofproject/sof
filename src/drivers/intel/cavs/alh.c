@@ -79,7 +79,7 @@ static int alh_remove(struct dai *dai)
 static int alh_get_handshake(struct dai *dai, int direction, int stream_id)
 {
 	if (stream_id >= ARRAY_SIZE(alh_handshake_map)) {
-		dai_err(dai, "alh_get_handshake() error: "
+		dai_err(dai, "alh_get_handshake(): "
 				"stream_id %d out of range", stream_id);
 
 		return -1;

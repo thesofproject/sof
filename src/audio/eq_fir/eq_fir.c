@@ -213,7 +213,7 @@ static inline int set_pass_func(struct comp_dev *dev)
 		break;
 #endif /* CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE */
 	default:
-		comp_err(dev, "set_pass_func() error: invalid dev->params.frame_fmt");
+		comp_err(dev, "set_pass_func(): invalid dev->params.frame_fmt");
 		return -EINVAL;
 	}
 	return 0;
@@ -411,7 +411,7 @@ static struct comp_dev *eq_fir_new(const struct comp_driver *drv,
 	 * blob size is sane.
 	 */
 	if (bs > SOF_EQ_FIR_MAX_SIZE) {
-		comp_cl_err(&comp_eq_fir, "eq_fir_new() error: coefficients blob size = %u > SOF_EQ_FIR_MAX_SIZE",
+		comp_cl_err(&comp_eq_fir, "eq_fir_new(): coefficients blob size = %u > SOF_EQ_FIR_MAX_SIZE",
 			    bs);
 		return NULL;
 	}
@@ -490,7 +490,7 @@ static int eq_fir_verify_params(struct comp_dev *dev,
 
 	ret = comp_verify_params(dev, 0, params);
 	if (ret < 0) {
-		comp_err(dev, "eq_fir_verify_params() error: comp_verify_params() failed.");
+		comp_err(dev, "eq_fir_verify_params(): comp_verify_params() failed.");
 		return ret;
 	}
 
@@ -557,12 +557,12 @@ static int fir_cmd_get_data(struct comp_dev *dev,
 			cdata->data->abi = SOF_ABI_VERSION;
 			cdata->data->size = bs;
 		} else {
-			comp_err(dev, "fir_cmd_get_data() error: invalid cd->config");
+			comp_err(dev, "fir_cmd_get_data(): invalid cd->config");
 			ret = -EINVAL;
 		}
 		break;
 	default:
-		comp_err(dev, "fir_cmd_get_data() error: invalid cdata->cmd");
+		comp_err(dev, "fir_cmd_get_data(): invalid cdata->cmd");
 		ret = -EINVAL;
 		break;
 	}
@@ -602,7 +602,7 @@ static int fir_cmd_set_data(struct comp_dev *dev,
 						 cdata->elems_remaining);
 
 			if (!cd->config_new) {
-				comp_err(dev, "fir_cmd_set_data() error: buffer allocation failed");
+				comp_err(dev, "fir_cmd_set_data(): buffer allocation failed");
 				return -EINVAL;
 			}
 
@@ -648,7 +648,7 @@ static int fir_cmd_set_data(struct comp_dev *dev,
 		}
 		break;
 	default:
-		comp_err(dev, "fir_cmd_set_data() error: invalid cdata->cmd");
+		comp_err(dev, "fir_cmd_set_data(): invalid cdata->cmd");
 		ret = -EINVAL;
 		break;
 	}
@@ -673,7 +673,7 @@ static int eq_fir_cmd(struct comp_dev *dev, int cmd, void *data,
 		ret = fir_cmd_get_data(dev, cdata, max_data_size);
 		break;
 	default:
-		comp_err(dev, "eq_fir_cmd() error: invalid command");
+		comp_err(dev, "eq_fir_cmd(): invalid command");
 		ret = -EINVAL;
 	}
 
@@ -803,7 +803,7 @@ static int eq_fir_prepare(struct comp_dev *dev)
 						      dev->frames);
 
 	if (sinkb->stream.size < config->periods_sink * sink_period_bytes) {
-		comp_err(dev, "eq_fir_prepare() error: sink buffer size is insufficient");
+		comp_err(dev, "eq_fir_prepare(): sink buffer size is insufficient");
 		ret = -ENOMEM;
 		goto err;
 	}
@@ -812,7 +812,7 @@ static int eq_fir_prepare(struct comp_dev *dev)
 	if (cd->config && cd->config_ready) {
 		ret = eq_fir_setup(cd, sourceb->stream.channels);
 		if (ret < 0) {
-			comp_err(dev, "eq_fir_prepare() error: eq_fir_setup failed.");
+			comp_err(dev, "eq_fir_prepare(): eq_fir_setup failed.");
 			goto err;
 		}
 

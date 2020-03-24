@@ -211,7 +211,7 @@ static int ssp_set_config(struct dai *dai,
 		cbs = true;
 		break;
 	default:
-		dai_err(dai, "ssp_set_config() error: format & MASTER_MASK EINVAL");
+		dai_err(dai, "ssp_set_config(): format & MASTER_MASK EINVAL");
 		ret = -EINVAL;
 		goto out;
 	}
@@ -231,7 +231,7 @@ static int ssp_set_config(struct dai *dai,
 		sspsp |= SSPSP_SCMODE(2);
 		break;
 	default:
-		dai_err(dai, "ssp_set_config() error: format & INV_MASK EINVAL");
+		dai_err(dai, "ssp_set_config(): format & INV_MASK EINVAL");
 		ret = -EINVAL;
 		goto out;
 	}
@@ -279,7 +279,7 @@ static int ssp_set_config(struct dai *dai,
 
 	/* BCLK is generated from MCLK - must be divisable */
 	if (config->ssp.mclk_rate % config->ssp.bclk_rate) {
-		dai_err(dai, "ssp_set_config() error: MCLK is not divisable");
+		dai_err(dai, "ssp_set_config(): MCLK is not divisable");
 		ret = -EINVAL;
 		goto out;
 	}
@@ -287,7 +287,7 @@ static int ssp_set_config(struct dai *dai,
 	/* divisor must be within SCR range */
 	mdiv = (config->ssp.mclk_rate / config->ssp.bclk_rate) - 1;
 	if (mdiv > (SSCR0_SCR_MASK >> 8)) {
-		dai_err(dai, "ssp_set_config() error: divisor is not within SCR range");
+		dai_err(dai, "ssp_set_config(): divisor is not within SCR range");
 		ret = -EINVAL;
 		goto out;
 	}
@@ -297,7 +297,7 @@ static int ssp_set_config(struct dai *dai,
 
 	/* calc frame width based on BCLK and rate - must be divisable */
 	if (config->ssp.bclk_rate % config->ssp.fsync_rate) {
-		dai_err(dai, "ssp_set_config() error: BLCK is not divisable");
+		dai_err(dai, "ssp_set_config(): BLCK is not divisable");
 		ret = -EINVAL;
 		goto out;
 	}
@@ -306,14 +306,14 @@ static int ssp_set_config(struct dai *dai,
 	bdiv = config->ssp.bclk_rate / config->ssp.fsync_rate;
 	if (bdiv < config->ssp.tdm_slot_width *
 	    config->ssp.tdm_slots) {
-		dai_err(dai, "ssp_set_config() error: not enough BCLKs");
+		dai_err(dai, "ssp_set_config(): not enough BCLKs");
 		ret = -EINVAL;
 		goto out;
 	}
 
 	/* tdm_slot_width must be <= 38 for SSP */
 	if (config->ssp.tdm_slot_width > 38) {
-		dai_err(dai, "ssp_set_config() error: tdm_slot_width > 38");
+		dai_err(dai, "ssp_set_config(): tdm_slot_width > 38");
 		ret = -EINVAL;
 		goto out;
 	}
@@ -436,7 +436,7 @@ static int ssp_set_config(struct dai *dai,
 
 		break;
 	default:
-		dai_err(dai, "ssp_set_config() error: format & FORMAT_MASK EINVAL");
+		dai_err(dai, "ssp_set_config(): format & FORMAT_MASK EINVAL");
 		ret = -EINVAL;
 		goto out;
 	}

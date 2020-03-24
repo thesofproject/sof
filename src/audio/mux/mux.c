@@ -44,7 +44,7 @@ static int mux_set_values(struct comp_dev *dev, struct comp_data *cd,
 
 	/* check if number of streams configured doesn't exceed maximum */
 	if (cfg->num_streams > MUX_MAX_STREAMS) {
-		comp_cl_err(&comp_mux, "mux_set_values() error: configured number of streams (%u) exceeds maximum = "
+		comp_cl_err(&comp_mux, "mux_set_values(): configured number of streams (%u) exceeds maximum = "
 			    META_QUOTE(MUX_MAX_STREAMS), cfg->num_streams);
 		return -EINVAL;
 	}
@@ -54,7 +54,7 @@ static int mux_set_values(struct comp_dev *dev, struct comp_data *cd,
 		for (j = i + 1; j < cfg->num_streams; j++) {
 			if (cfg->streams[i].pipeline_id ==
 				cfg->streams[j].pipeline_id) {
-				comp_cl_err(&comp_mux, "mux_set_values() error: multiple configured streams have same pipeline ID = %u",
+				comp_cl_err(&comp_mux, "mux_set_values(): multiple configured streams have same pipeline ID = %u",
 					    cfg->streams[i].pipeline_id);
 				return -EINVAL;
 			}
@@ -64,7 +64,7 @@ static int mux_set_values(struct comp_dev *dev, struct comp_data *cd,
 	/* check if number of channels per stream doesn't exceed maximum */
 	for (i = 0; i < cfg->num_streams; i++) {
 		if (cfg->streams[i].num_channels > PLATFORM_MAX_CHANNELS) {
-			comp_cl_err(&comp_mux, "mux_set_values() error: configured number of channels for stream %u exceeds platform maximum = "
+			comp_cl_err(&comp_mux, "mux_set_values(): configured number of channels for stream %u exceeds platform maximum = "
 				    META_QUOTE(PLATFORM_MAX_CHANNELS), i);
 			return -EINVAL;
 		}
@@ -156,7 +156,7 @@ static uint8_t get_stream_index(struct comp_data *cd, uint32_t pipe_id)
 		if (cd->config.streams[i].pipeline_id == pipe_id)
 			return i;
 
-	comp_cl_err(&comp_mux, "get_stream_index() error: couldn't find configuration for connected pipeline %u",
+	comp_cl_err(&comp_mux, "get_stream_index(): couldn't find configuration for connected pipeline %u",
 		    pipe_id);
 
 	return 0;
@@ -171,7 +171,7 @@ static int mux_verify_params(struct comp_dev *dev,
 
 	ret = comp_verify_params(dev, BUFF_PARAMS_CHANNELS, params);
 	if (ret < 0) {
-		comp_err(dev, "mux_verify_params() error: comp_verify_params() failed.");
+		comp_err(dev, "mux_verify_params(): comp_verify_params() failed.");
 		return ret;
 	}
 
@@ -221,7 +221,7 @@ static int mux_ctrl_set_cmd(struct comp_dev *dev,
 		ret = mux_set_values(dev, cd, cfg);
 		break;
 	default:
-		comp_err(dev, "mux_ctrl_set_cmd() error: invalid cdata->cmd = 0x%08x",
+		comp_err(dev, "mux_ctrl_set_cmd(): invalid cdata->cmd = 0x%08x",
 			 cdata->cmd);
 		ret = -EINVAL;
 		break;
@@ -255,7 +255,7 @@ static int mux_ctrl_get_cmd(struct comp_dev *dev,
 		cdata->data->size = reply_size;
 		break;
 	default:
-		comp_cl_err(&comp_mux, "mux_ctrl_set_cmd() error: invalid cdata->cmd = 0x%08x",
+		comp_cl_err(&comp_mux, "mux_ctrl_set_cmd(): invalid cdata->cmd = 0x%08x",
 			    cdata->cmd);
 		ret = -EINVAL;
 		break;
@@ -301,7 +301,7 @@ static int demux_copy(struct comp_dev *dev)
 	comp_dbg(dev, "demux_copy()");
 
 	if (!cd->demux) {
-		comp_err(dev, "demux_copy() error: no demux processing function for component.");
+		comp_err(dev, "demux_copy(): no demux processing function for component.");
 		comp_set_state(dev, COMP_TRIGGER_RESET);
 		return -EINVAL;
 	}
@@ -392,7 +392,7 @@ static int mux_copy(struct comp_dev *dev)
 	comp_dbg(dev, "mux_copy()");
 
 	if (!cd->mux) {
-		comp_err(dev, "mux_copy() error: no mux processing function for component.");
+		comp_err(dev, "mux_copy(): no mux processing function for component.");
 		comp_set_state(dev, COMP_TRIGGER_RESET);
 		return -EINVAL;
 	}
@@ -488,7 +488,7 @@ static int mux_prepare(struct comp_dev *dev)
 		cd->demux = demux_get_processing_function(dev);
 
 	if (!cd->mux && !cd->demux) {
-		comp_err(dev, "mux_prepare() error: Invalid configuration, couldn't find suitable processing function.");
+		comp_err(dev, "mux_prepare(): Invalid configuration, couldn't find suitable processing function.");
 		return -EINVAL;
 	}
 

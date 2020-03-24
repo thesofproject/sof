@@ -787,7 +787,7 @@ static inline int ipc_probe_init(uint32_t header)
 	tracev_ipc("ipc_probe_init()");
 
 	if (dma_provided > 1 || dma_provided < 0) {
-		trace_ipc_error("ipc_probe_init() error: Invalid amount of extraction DMAs specified = %d",
+		trace_ipc_error("ipc_probe_init(): Invalid amount of extraction DMAs specified = %d",
 				dma_provided);
 		return -EINVAL;
 	}
@@ -810,13 +810,13 @@ static inline int ipc_probe_dma_add(uint32_t header)
 	tracev_ipc("ipc_probe_dma_add()");
 
 	if (dmas_count > CONFIG_PROBE_DMA_MAX) {
-		trace_ipc_error("ipc_probe_dma_add() error: Invalid amount of injection DMAs specified = %d. Max is " META_QUOTE(CONFIG_PROBE_DMA_MAX) ".",
+		trace_ipc_error("ipc_probe_dma_add(): Invalid amount of injection DMAs specified = %d. Max is " META_QUOTE(CONFIG_PROBE_DMA_MAX) ".",
 				dmas_count);
 		return -EINVAL;
 	}
 
 	if (dmas_count <= 0) {
-		trace_ipc_error("ipc_probe_dma_add() error: Inferred amount of incjection DMAs in payload is %d. This could indicate corrupt size reported in header or invalid IPC payload.",
+		trace_ipc_error("ipc_probe_dma_add(): Inferred amount of incjection DMAs in payload is %d. This could indicate corrupt size reported in header or invalid IPC payload.",
 				dmas_count);
 		return -EINVAL;
 	}
@@ -832,13 +832,13 @@ static inline int ipc_probe_dma_remove(uint32_t header)
 	tracev_ipc("ipc_probe_dma_remove()");
 
 	if (tags_count > CONFIG_PROBE_DMA_MAX) {
-		trace_ipc_error("ipc_probe_dma_remove() error: Invalid amount of injection DMAs specified = %d. Max is " META_QUOTE(CONFIG_PROBE_DMA_MAX) ".",
+		trace_ipc_error("ipc_probe_dma_remove(): Invalid amount of injection DMAs specified = %d. Max is " META_QUOTE(CONFIG_PROBE_DMA_MAX) ".",
 				tags_count);
 		return -EINVAL;
 	}
 
 	if (tags_count <= 0) {
-		trace_ipc_error("ipc_probe_dma_remove() error: Inferred amount of incjection DMAs in payload is %d. This could indicate corrupt size reported in header or invalid IPC payload.",
+		trace_ipc_error("ipc_probe_dma_remove(): Inferred amount of incjection DMAs in payload is %d. This could indicate corrupt size reported in header or invalid IPC payload.",
 				tags_count);
 		return -EINVAL;
 	}
@@ -854,13 +854,13 @@ static inline int ipc_probe_point_add(uint32_t header)
 	tracev_ipc("ipc_probe_point_add()");
 
 	if (probes_count > CONFIG_PROBE_POINTS_MAX) {
-		trace_ipc_error("ipc_probe_point_add() error: Invalid amount of Probe Points specified = %d. Max is " META_QUOTE(CONFIG_PROBE_POINT_MAX) ".",
+		trace_ipc_error("ipc_probe_point_add(): Invalid amount of Probe Points specified = %d. Max is " META_QUOTE(CONFIG_PROBE_POINT_MAX) ".",
 				probes_count);
 		return -EINVAL;
 	}
 
 	if (probes_count <= 0) {
-		trace_ipc_error("ipc_probe_point_add() error: Inferred amount of Probe Points in payload is %d. This could indicate corrupt size reported in header or invalid IPC payload.",
+		trace_ipc_error("ipc_probe_point_add(): Inferred amount of Probe Points in payload is %d. This could indicate corrupt size reported in header or invalid IPC payload.",
 				probes_count);
 		return -EINVAL;
 	}
@@ -876,13 +876,13 @@ static inline int ipc_probe_point_remove(uint32_t header)
 	tracev_ipc("ipc_probe_point_remove()");
 
 	if (probes_count > CONFIG_PROBE_POINTS_MAX) {
-		trace_ipc_error("ipc_probe_point_remove() error: Invalid amount of Probe Points specified = %d. Max is " META_QUOTE(CONFIG_PROBE_POINT_MAX) ".",
+		trace_ipc_error("ipc_probe_point_remove(): Invalid amount of Probe Points specified = %d. Max is " META_QUOTE(CONFIG_PROBE_POINT_MAX) ".",
 				probes_count);
 		return -EINVAL;
 	}
 
 	if (probes_count <= 0) {
-		trace_ipc_error("ipc_probe_point_remove() error: Inferred amount of Probe Points in payload is %d. This could indicate corrupt size reported in header or invalid IPC payload.",
+		trace_ipc_error("ipc_probe_point_remove(): Inferred amount of Probe Points in payload is %d. This could indicate corrupt size reported in header or invalid IPC payload.",
 				probes_count);
 		return -EINVAL;
 	}
@@ -905,13 +905,13 @@ static int ipc_probe_info(uint32_t header)
 		ret = probe_point_info(params, SOF_IPC_MSG_MAX_SIZE);
 		break;
 	default:
-		trace_ipc_error("ipc_probe_info() error: Invalid probe INFO command = %u",
+		trace_ipc_error("ipc_probe_info(): Invalid probe INFO command = %u",
 				cmd);
 		ret = -EINVAL;
 	}
 
 	if (ret < 0) {
-		trace_ipc_error("ipc_probe_info() error: cmd %u failed", cmd);
+		trace_ipc_error("ipc_probe_info(): cmd %u failed", cmd);
 		return ret;
 	}
 
@@ -922,7 +922,7 @@ static int ipc_probe_info(uint32_t header)
 		mailbox_hostbox_write(0, params, params->rhdr.hdr.size);
 		ret = 1;
 	} else {
-		trace_ipc_error("ipc_probe_get_data() error: probes module returned too much payload for cmd %u - returned %d bytes, max %d",
+		trace_ipc_error("ipc_probe_get_data(): probes module returned too much payload for cmd %u - returned %d bytes, max %d",
 				cmd, params->rhdr.hdr.size,
 				MIN(MAILBOX_HOSTBOX_SIZE,
 				    SOF_IPC_MSG_MAX_SIZE));
@@ -962,7 +962,7 @@ static int ipc_glb_probe(uint32_t header)
 #else
 static inline int ipc_glb_probe(uint32_t header)
 {
-	trace_ipc_error("ipc_glb_probe() error: Probes not enabled by Kconfig.");
+	trace_ipc_error("ipc_glb_probe(): Probes not enabled by Kconfig.");
 
 	return -EINVAL;
 }

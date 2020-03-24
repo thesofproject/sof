@@ -74,7 +74,7 @@ static void vol_sync_host(struct comp_dev *dev, unsigned int num_channels)
 		for (n = 0; n < num_channels; n++)
 			cd->hvol[n].value = cd->volume[n];
 	} else {
-		comp_err(dev, "vol_sync_host() error: channels count %d exceeds SOF_IPC_MAX_CHANNELS",
+		comp_err(dev, "vol_sync_host(): channels count %d exceeds SOF_IPC_MAX_CHANNELS",
 			 num_channels);
 	}
 }
@@ -315,7 +315,7 @@ static int volume_verify_params(struct comp_dev *dev,
 
 	ret = comp_verify_params(dev, 0, params);
 	if (ret < 0) {
-		comp_err(dev, "volume_verify_params() error: comp_verify_params() failed.");
+		comp_err(dev, "volume_verify_params(): comp_verify_params() failed.");
 		return ret;
 	}
 
@@ -437,7 +437,7 @@ static inline int volume_set_chan(struct comp_dev *dev, int chan,
 	case SOF_VOLUME_LINEAR_ZC:
 	case SOF_VOLUME_LOG_ZC:
 	default:
-		comp_err(dev, "volume_set_chan() error: invalid ramp type %d",
+		comp_err(dev, "volume_set_chan(): invalid ramp type %d",
 			 pga->ramp);
 		return -EINVAL;
 	}
@@ -493,7 +493,7 @@ static int volume_ctrl_set_cmd(struct comp_dev *dev,
 
 	/* validate */
 	if (cdata->num_elems == 0 || cdata->num_elems > SOF_IPC_MAX_CHANNELS) {
-		comp_err(dev, "volume_ctrl_set_cmd() error: invalid cdata->num_elems");
+		comp_err(dev, "volume_ctrl_set_cmd(): invalid cdata->num_elems");
 		return -EINVAL;
 	}
 
@@ -562,7 +562,7 @@ static int volume_ctrl_set_cmd(struct comp_dev *dev,
 		break;
 
 	default:
-		comp_err(dev, "volume_ctrl_set_cmd() error: invalid cdata->cmd");
+		comp_err(dev, "volume_ctrl_set_cmd(): invalid cdata->cmd");
 		return -EINVAL;
 	}
 
@@ -583,7 +583,7 @@ static int volume_ctrl_get_cmd(struct comp_dev *dev,
 
 	/* validate */
 	if (cdata->num_elems == 0 || cdata->num_elems > SOF_IPC_MAX_CHANNELS) {
-		comp_err(dev, "volume_ctrl_get_cmd() error: invalid cdata->num_elems %u",
+		comp_err(dev, "volume_ctrl_get_cmd(): invalid cdata->num_elems %u",
 			 cdata->num_elems);
 		return -EINVAL;
 	}
@@ -600,7 +600,7 @@ static int volume_ctrl_get_cmd(struct comp_dev *dev,
 				  cdata->chanv[j].value);
 		}
 	} else {
-		comp_err(dev, "volume_ctrl_get_cmd() error: invalid cdata->cmd");
+		comp_err(dev, "volume_ctrl_get_cmd(): invalid cdata->cmd");
 		return -EINVAL;
 	}
 
@@ -727,14 +727,14 @@ static int volume_prepare(struct comp_dev *dev)
 						      dev->frames);
 
 	if (sinkb->stream.size < config->periods_sink * sink_period_bytes) {
-		comp_err(dev, "volume_prepare() error: sink buffer size is insufficient");
+		comp_err(dev, "volume_prepare(): sink buffer size is insufficient");
 		ret = -ENOMEM;
 		goto err;
 	}
 
 	cd->scale_vol = vol_get_processing_function(dev);
 	if (!cd->scale_vol) {
-		comp_err(dev, "volume_prepare() error: invalid cd->scale_vol");
+		comp_err(dev, "volume_prepare(): invalid cd->scale_vol");
 
 		ret = -EINVAL;
 		goto err;

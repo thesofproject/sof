@@ -20,8 +20,7 @@ int schedule_task_init(struct task *task,
 		       uint16_t core, uint32_t flags)
 {
 	if (type >= SOF_SCHEDULE_COUNT) {
-		trace_schedule_error("schedule_task_init() error: "
-				     "invalid task type");
+		trace_schedule_error("schedule_task_init(): invalid task type");
 		return -EINVAL;
 	}
 

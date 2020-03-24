@@ -109,7 +109,7 @@ struct dma *dma_get(uint32_t dir, uint32_t cap, uint32_t dev, uint32_t flags)
 		ret = dma_probe(dmin);
 		if (ret < 0) {
 			trace_error(TRACE_CLASS_DMA,
-				    "dma_get() error: dma-probe failed"
+				    "dma_get(): dma-probe failed"
 				    " id = %d, ret = %d",
 				    dmin->plat_data.id, ret);
 		}
@@ -136,8 +136,8 @@ void dma_put(struct dma *dma)
 		ret = dma_remove(dma);
 		if (ret < 0) {
 			trace_error(TRACE_CLASS_DMA,
-				    "dma_put() error: dma_remove() failed id"
-				    " = %d, ret = %d", dma->plat_data.id, ret);
+				    "dma_put(): dma_remove() failed id  = %d, ret = %d",
+				    dma->plat_data.id, ret);
 		}
 	}
 	trace_event(TRACE_CLASS_DMA, "dma_put(), dma = %p, sref = %d",

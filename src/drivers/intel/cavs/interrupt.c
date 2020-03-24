@@ -94,7 +94,7 @@ static inline void irq_lvl2_handler(void *data, int level, uint32_t ilxsd,
 
 		if (!handled) {
 			/* nobody cared ? */
-			trace_irq_error("irq_lvl2_handler() error: "
+			trace_irq_error("irq_lvl2_handler(): "
 					"nobody cared level %d bit %d",
 					level, bit);
 			/* now mask it */
@@ -113,7 +113,7 @@ static inline void irq_lvl2_handler(void *data, int level, uint32_t ilxsd,
 		/* any devices continually interrupting / can't be cleared ? */
 		if (!--tries) {
 			tries = LVL2_MAX_TRIES;
-			trace_irq_error("irq_lvl2_handler() error: "
+			trace_irq_error("irq_lvl2_handler(): "
 					"IRQ storm at level %d status %08X",
 					level, irq_read(ilxsd));
 		}
