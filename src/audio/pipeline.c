@@ -321,8 +321,8 @@ static int pipeline_comp_hw_params(struct comp_dev *current,
 				   struct pipeline_walk_context *ctx, int dir)
 {
 	struct pipeline_data *ppl_data = ctx->comp_data;
-	int ret = 0;
 	uint32_t flags = 0;
+	int ret;
 
 	pipe_cl_dbg("pipeline_comp_hw_params(), current->comp.id = %u, dir = %u",
 		    dev_comp_id(current), dir);
@@ -347,7 +347,7 @@ static int pipeline_comp_hw_params(struct comp_dev *current,
 		buffer_unlock(calling_buf, flags);
 	}
 
-	return ret;
+	return 0;
 }
 
 static int pipeline_comp_params(struct comp_dev *current,
@@ -357,7 +357,7 @@ static int pipeline_comp_params(struct comp_dev *current,
 	struct pipeline_data *ppl_data = ctx->comp_data;
 	int stream_direction = ppl_data->params->params.direction;
 	int end_type;
-	int err = 0;
+	int err;
 
 	pipe_cl_dbg("pipeline_comp_params(), current->comp.id = %u, dir = %u",
 		    dev_comp_id(current), dir);
@@ -509,10 +509,10 @@ static int pipeline_comp_prepare(struct comp_dev *current,
 				 struct comp_buffer *calling_buf,
 				 struct pipeline_walk_context *ctx, int dir)
 {
-	int err = 0;
 	struct pipeline_data *ppl_data = ctx->comp_data;
 	int stream_direction = dir;
 	int end_type;
+	int err;
 
 	pipe_cl_dbg("pipeline_comp_prepare(), current->comp.id = %u, dir = %u",
 		    dev_comp_id(current), dir);
@@ -558,7 +558,7 @@ int pipeline_prepare(struct pipeline *p, struct comp_dev *dev)
 		.comp_data = &ppl_data,
 		.buff_func = buffer_reset_pos,
 	};
-	int ret = 0;
+	int ret;
 
 	pipe_info(p, "pipe prepare");
 
@@ -674,8 +674,6 @@ static int pipeline_xrun_handle_trigger(struct pipeline *p, int cmd)
 		/* no more further trigger stop needed */
 		ret = PPL_STATUS_PATH_STOP;
 		break;
-	default:
-		break;
 	}
 
 	return ret;
@@ -723,7 +721,7 @@ static int pipeline_comp_reset(struct comp_dev *current,
 	struct pipeline *p = ctx->comp_data;
 	int stream_direction = dir;
 	int end_type;
-	int err = 0;
+	int err;
 
 	pipe_cl_dbg("pipeline_comp_reset(), current->comp.id = %u, dir = %u",
 		    dev_comp_id(current), dir);
@@ -764,7 +762,7 @@ int pipeline_reset(struct pipeline *p, struct comp_dev *host)
 		.comp_data = p,
 		.buff_func = buffer_reset_params,
 	};
-	int ret = 0;
+	int ret;
 
 	pipe_info(p, "pipe reset");
 
@@ -829,7 +827,7 @@ static int pipeline_copy(struct pipeline *p)
 	};
 	struct comp_dev *start;
 	uint32_t dir;
-	int ret = 0;
+	int ret;
 
 	if (p->source_comp->direction == SOF_IPC_STREAM_PLAYBACK) {
 		dir = PPL_DIR_UPSTREAM;
