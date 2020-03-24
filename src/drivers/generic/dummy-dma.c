@@ -458,7 +458,7 @@ static int dummy_dma_probe(struct dma *dma)
 		dma->chan[i].dma = dma;
 		dma->chan[i].index = i;
 		dma->chan[i].status = COMP_STATE_INIT;
-		dma->chan[i].priv_data = &chanp[i];
+		dma_chan_set_data(&dma->chan[i], &chanp[i]);
 	}
 
 	atomic_init(&dma->num_channels_busy, 0);
