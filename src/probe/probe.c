@@ -921,6 +921,14 @@ int probe_point_add(uint32_t count, struct probe_point *probe)
 			     i, probe[i].buffer_id, probe[i].purpose,
 			     probe[i].stream_tag);
 
+		if (probe[i].purpose != PROBE_PURPOSE_EXTRACTION &&
+		    probe[i].purpose != PROBE_PURPOSE_INJECTION) {
+			trace_probe_error("probe_point_add() error: invalid purpose %d",
+					  probe[i].purpose);
+
+			return -EINVAL;
+		}
+
 		if (probe[i].purpose == PROBE_PURPOSE_EXTRACTION &&
 		    _probe->ext_dma.stream_tag == PROBE_DMA_INVALID) {
 			trace_probe_error("probe_point_add() error: Setting probe for extraction, while extraction DMA not enabled.");
