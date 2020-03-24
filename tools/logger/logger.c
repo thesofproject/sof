@@ -50,6 +50,7 @@ static void usage(void)
 	fprintf(stdout, "%s:\t -r\t\t\tLess formatted output for "
 		"chained log processors\n",
 		APP_NAME);
+	fprintf(stdout, "%s:\t -d\t\t\tDump ldc information\n", APP_NAME);
 	exit(0);
 }
 
@@ -154,8 +155,9 @@ int main(int argc, char *argv[])
 	config.use_colors = 1;
 	config.serial_fd = -EINVAL;
 	config.raw_output = 0;
+	config.dump_ldc = 0;
 
-	while ((opt = getopt(argc, argv, "ho:i:l:ps:c:u:tev:r")) != -1) {
+	while ((opt = getopt(argc, argv, "ho:i:l:ps:c:u:tev:rd")) != -1) {
 		switch (opt) {
 		case 'o':
 			config.out_file = optarg;
@@ -195,6 +197,9 @@ int main(int argc, char *argv[])
 			/* enabling checking fw version with ver_file file */
 			config.version_fw = 1;
 			config.version_file = optarg;
+			break;
+		case 'd':
+			config.dump_ldc = 1;
 			break;
 		case 'h':
 		default: /* '?' */
