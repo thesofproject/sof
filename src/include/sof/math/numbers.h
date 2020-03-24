@@ -81,4 +81,8 @@ uint32_t crc32(uint32_t base, const void *data, uint32_t bytes);
 #define merge_4b4b(high, low) (((uint8_t)(high) << 4) | \
 			       ((low) & 0xF))
 
+/* Get max and min signed integer values for N bits word length */
+#define INT_MAX(N)	((int64_t)((1ULL << ((N) - 1)) - 1))
+#define INT_MIN(N)	((int64_t)(-((1ULL << ((N) - 1)) - 1) - 1))
+
 #endif /* __SOF_MATH_NUMBERS_H__ */
