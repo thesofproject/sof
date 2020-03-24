@@ -310,6 +310,8 @@ config HAVE_AGENT
 	help
 	  Enables system agent. It can be disabled on systems
 	  which are still unstable and cannot assure that
-	  system agent will always execute on time.
+	  system agent will always execute on time or systems
+	  with DMA based scheduling, where asynchronous interrupts
+	  can potentially starve the agent.
 
 endmenu
