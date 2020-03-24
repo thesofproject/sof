@@ -125,6 +125,13 @@ struct pipeline_walk_context {
 	void *comp_data;
 	void (*buff_func)(struct comp_buffer *, void *);
 	void *buff_data;
+	/*
+	 * If this flag is set, pipeline_for_each_comp() will skip all
+	 * incompletely initialised components, i.e. those, whose .pipeline ==
+	 * NULL. Such coomponents should not be skipped during initialisation
+	 * and clean up, but they should be skipped during streaming.
+	 */
+	bool skip_incomplete;
 };
 
 /* Generic method for walking the graph upstream or downstream.
@@ -150,7 +157,8 @@ static int pipeline_for_each_comp(struct comp_dev *current,
 		buffer_comp = buffer_get_comp(buffer, dir);
 
 		/* don't go further if this component is not connected */
-		if (!buffer_comp)
+		if (!buffer_comp ||
+		    (ctx->skip_incomplete && !buffer_comp->pipeline))
 			continue;
 
 		/* continue further */
@@ -418,12 +426,14 @@ int pipeline_params(struct pipeline *p, struct comp_dev *host,
 	struct pipeline_walk_context hw_param_ctx = {
 		.comp_func = pipeline_comp_hw_params,
 		.comp_data = &data,
+		.skip_incomplete = true,
 	};
 	struct pipeline_walk_context param_ctx = {
 		.comp_func = pipeline_comp_params,
 		.comp_data = &data,
 		.buff_func = pipeline_update_buffer_pcm_params,
 		.buff_data = &params->params,
+		.skip_incomplete = true,
 	};
 	int dir = params->params.direction;
 	int ret;
@@ -557,6 +567,7 @@ int pipeline_prepare(struct pipeline *p, struct comp_dev *dev)
 		.comp_func = pipeline_comp_prepare,
 		.comp_data = &ppl_data,
 		.buff_func = buffer_reset_pos,
+		.skip_incomplete = true,
 	};
 	int ret;
 
@@ -686,6 +697,7 @@ int pipeline_trigger(struct pipeline *p, struct comp_dev *host, int cmd)
 	struct pipeline_walk_context walk_ctx = {
 		.comp_func = pipeline_comp_trigger,
 		.comp_data = &data,
+		.skip_incomplete = true,
 	};
 	int ret;
 
@@ -761,6 +773,7 @@ int pipeline_reset(struct pipeline *p, struct comp_dev *host)
 		.comp_func = pipeline_comp_reset,
 		.comp_data = p,
 		.buff_func = buffer_reset_params,
+		.skip_incomplete = true,
 	};
 	int ret;
 
@@ -824,6 +837,7 @@ static int pipeline_copy(struct pipeline *p)
 	struct pipeline_walk_context walk_ctx = {
 		.comp_func = pipeline_comp_copy,
 		.comp_data = &data,
+		.skip_incomplete = true,
 	};
 	struct comp_dev *start;
 	uint32_t dir;
@@ -881,6 +895,7 @@ void pipeline_get_timestamp(struct pipeline *p, struct comp_dev *host,
 	struct pipeline_walk_context walk_ctx = {
 		.comp_func = pipeline_comp_timestamp,
 		.comp_data = &data,
+		.skip_incomplete = true,
 	};
 
 	platform_host_timestamp(host, posn);
@@ -921,6 +936,7 @@ void pipeline_xrun(struct pipeline *p, struct comp_dev *dev,
 	struct pipeline_walk_context walk_ctx = {
 		.comp_func = pipeline_comp_xrun,
 		.comp_data = &data,
+		.skip_incomplete = true,
 	};
 	struct sof_ipc_stream_posn posn;
 	int ret;
