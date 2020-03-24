@@ -805,6 +805,10 @@ static void probe_cb_produce(void *arg, enum notify_id type, void *data)
 			if (ret < 0)
 				goto err;
 		}
+		/* check if more than 75% of buffer size is already used */
+		if (_probe->ext_dma.dmapb.size - _probe->ext_dma.dmapb.avail <
+		    _probe->ext_dma.dmapb.size >> 2)
+			probe_task(NULL);
 	} else {
 		/* search for DMA used by this probe point */
 		for (j = 0; j < CONFIG_PROBE_DMA_MAX; j++) {
