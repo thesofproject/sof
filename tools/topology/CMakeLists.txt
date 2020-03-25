@@ -157,6 +157,11 @@ foreach(tplg ${TPLGS})
 
 	add_custom_command(
 		OUTPUT ${output}.tplg
+# - In alsa-utils commit v1.2.2~15-gcbabe7a3f0cc, alsatplg (accidentally?)
+#   dropped the verbosity level; -v became a boolean.
+# - It unfortunately does not seem possible to base '-v' on ${VERBOSE}
+#   without adding a new layer of indirection / script between cmake and
+#   alsatplg
 		COMMAND alsatplg -v 1 -c ${output}.conf -o ${output}.tplg
 		DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/${output}.conf
 		VERBATIM
