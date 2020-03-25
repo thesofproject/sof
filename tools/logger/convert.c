@@ -167,7 +167,7 @@ static double to_usecs(uint64_t time, double clk)
 
 static inline void print_table_header(FILE *out_fd)
 {
-	fprintf(out_fd, "%18s %18s  %2s %-18s %-29s  %s\n",
+	fprintf(out_fd, "%18s %18s %2s %-18s %-29s  %s\n",
 		"TIMESTAMP", "DELTA", "C#", "COMPONENT", "LOCATION",
 		"CONTENT");
 	fflush(out_fd);
