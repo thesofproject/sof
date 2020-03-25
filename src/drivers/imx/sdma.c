@@ -653,6 +653,9 @@ static int sdma_set_config(struct dma_chan_data *channel,
 		return -EINVAL;
 	}
 
+	channel->is_scheduling_source = config->is_scheduling_source;
+	channel->direction = config->direction;
+
 	switch (config->direction) {
 	case DMA_DIR_MEM_TO_DEV:
 		src_may_change = true; dst_may_change = false;
