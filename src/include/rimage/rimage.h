@@ -39,6 +39,7 @@ enum machine_id {
 	MACHINE_SUECREEK,
 	MACHINE_IMX8,
 	MACHINE_IMX8X,
+	MACHINE_IMX8M,
 	MACHINE_MAX
 };
 
@@ -67,6 +68,7 @@ struct module {
 	int fw_size;
 	int bss_index;
 	int logs_index;
+	int uids_index;
 	int fw_ready_index;
 
 	/* sizes do not include any gaps */
@@ -162,7 +164,7 @@ struct adsp {
 };
 
 #ifdef HAS_FILE_FORMAT_H
-int write_logs_dictionary(struct image *image);
+int write_dictionaries(struct image *image);
 #endif /* HAS_FILE_FORMAT_H */
 
 void module_sha256_create(struct image *image);
@@ -208,5 +210,6 @@ extern const struct adsp machine_skl;
 extern const struct adsp machine_kbl;
 extern const struct adsp machine_imx8;
 extern const struct adsp machine_imx8x;
+extern const struct adsp machine_imx8m;
 
 #endif

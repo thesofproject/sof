@@ -27,6 +27,7 @@ static const struct adsp *machine[] = {
 	&machine_skl,
 	&machine_imx8,
 	&machine_imx8x,
+	&machine_imx8m,
 };
 
 static void usage(char *name)
@@ -213,7 +214,7 @@ found:
 		ret = -EINVAL;
 		goto out;
 	}
-	ret = write_logs_dictionary(&image);
+	ret = write_dictionaries(&image);
 #endif /* HAS_FILE_FORMAT_H */
 
 out:
