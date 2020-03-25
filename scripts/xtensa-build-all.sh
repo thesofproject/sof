@@ -9,7 +9,7 @@ BUILD_DEBUG=no
 BUILD_FORCE_UP=no
 BUILD_JOBS=$(nproc --all)
 BUILD_JOBS_NEXT=0
-BUILD_VERBOSE=OFF
+BUILD_VERBOSE=
 
 PATH=$pwd/local/bin:$PATH
 
@@ -59,7 +59,7 @@ else
 
 		elif [[ "$args" == "-v" ]]
 			then
-			BUILD_VERBOSE=ON
+			BUILD_VERBOSE='VERBOSE=1'
 
 		# Build all platforms
 		elif [[ "$args" == "-a" ]]
@@ -323,7 +323,6 @@ do
 
 	cmake -DTOOLCHAIN=$TOOLCHAIN \
 		-DROOT_DIR=$ROOT \
-		-DCMAKE_VERBOSE_MAKEFILE=${BUILD_VERBOSE} \
 		${PRIVATE_KEY_OPTION} \
 		..
 
@@ -358,7 +357,7 @@ do
 		make overrideconfig
 	fi
 
-	make bin -j ${BUILD_JOBS}
+	make bin -j ${BUILD_JOBS} ${BUILD_VERBOSE}
 
 	cd "$WORKDIR"
 done
