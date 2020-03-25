@@ -193,8 +193,8 @@ void set_power_gate_for_memory_address_range(void *ptr,
 	/* Ending bank id has to be lowered by one because it is
 	 * calculated from memory end ptr
 	 */
-	ending_bank_id = (((uintptr_t)end_ptr - HP_SRAM_BASE)
-		/ SRAM_BANK_SIZE - 1);
+	ending_bank_id = ((uintptr_t)end_ptr - HP_SRAM_BASE)
+			/ SRAM_BANK_SIZE - 1;
 
 	set_banks_gating(start_bank_id, ending_bank_id, enabled);
 }
