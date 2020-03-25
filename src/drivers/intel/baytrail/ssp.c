@@ -455,8 +455,8 @@ static int ssp_set_config(struct dai *dai,
 	/* FIXME:
 	 * watermarks - (RFT + 1) should equal DMA SRC_MSIZE
 	 */
-	sfifott = (SFIFOTT_TX(2 * active_tx_slots) |
-		   SFIFOTT_RX(2 * active_rx_slots));
+	sfifott = SFIFOTT_TX(2 * active_tx_slots) |
+		  SFIFOTT_RX(2 * active_rx_slots);
 
 	ssp_write(dai, SSCR0, sscr0);
 	ssp_write(dai, SSCR1, sscr1);
