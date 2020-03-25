@@ -478,10 +478,21 @@ static int sdma_start(struct dma_chan_data *channel)
 {
 	struct sdma_chan *pdata = dma_chan_get_data(channel);
 
-	if (channel->status == COMP_STATE_INIT)
-		return -EINVAL;
-
 	trace_sdma_error("sdma_start(%d)", channel->index);
+
+
+	if (channel->index) {
+		/* rest of the channels are prepared first */
+		if (channel->status != COMP_STATE_PREPARE &&
+		    channel->status != COMP_STATE_SUSPEND)
+			return -EINVAL;
+	} else {
+		/* channel 0 doesn't get set_config set on */
+		if (channel->status != COMP_STATE_READY)
+			return -EINVAL;
+	}
+
+	channel->status = COMP_STATE_ACTIVE;
 
 	/* If channel is event driven, allow it to run by setting HOSTOVR.
 	 * If it's manually controlled, kickstart it by writing to SDMA_HSTART.
@@ -508,8 +519,12 @@ static int sdma_stop(struct dma_chan_data *channel)
 {
 	struct sdma_chan *pdata = dma_chan_get_data(channel);
 
-	if (channel->status == COMP_STATE_INIT)
-		return -EINVAL;
+	/* do not try to stop multiple times */
+	if (channel->status != COMP_STATE_ACTIVE &&
+	    channel->status != COMP_STATE_PAUSED)
+		return 0;
+
+	channel->status = COMP_STATE_READY;
 
 	tracev_sdma("sdma_stop(%d)", channel->index);
 	if (pdata->hw_event != -1) {
@@ -533,8 +548,10 @@ static int sdma_pause(struct dma_chan_data *channel)
 {
 	struct sdma_chan *pdata = dma_chan_get_data(channel);
 
-	if (channel->status == COMP_STATE_INIT)
+	if (channel->status != COMP_STATE_ACTIVE)
 		return -EINVAL;
+
+	channel->status = COMP_STATE_PAUSED;
 
 	/* Manually controlled channels need not be paused. */
 	if (pdata->hw_event != -1)
@@ -546,6 +563,11 @@ static int sdma_pause(struct dma_chan_data *channel)
 
 static int sdma_release(struct dma_chan_data *channel)
 {
+	if (channel->status != COMP_STATE_PAUSED)
+		return -EINVAL;
+
+	channel->status = COMP_STATE_ACTIVE;
+
 	/* No pointer realignment is necessary for release, context points
 	 * correctly to beginning of the following BD.
 	 */
@@ -823,6 +845,8 @@ static int sdma_set_config(struct dma_chan_data *channel,
 
 	/* Finally set channel priority */
 	dma_reg_write(channel->dma, SDMA_CHNPRI(channel->index), SDMA_DEFPRI);
+
+	channel->status = COMP_STATE_PREPARE;
 
 	return 0;
 }
