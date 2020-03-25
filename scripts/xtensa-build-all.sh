@@ -73,6 +73,7 @@ else
 				then
 					PLATFORMS+=$i" "
 					BUILD_JOBS_NEXT=0
+					continue 2
 				fi
 			done
 
@@ -81,7 +82,10 @@ else
 				then
 				BUILD_JOBS=$args
 				BUILD_JOBS_NEXT=0
+				continue
 			fi
+
+			printf '%s: WARN: ignoring arg %s\n' "$0" "$args" >&2
 		fi
 	done
 fi
