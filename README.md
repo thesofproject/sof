@@ -9,12 +9,14 @@ to generate binary image files.
 
 The `rimage` tool can be built with or without logging dictionary
 support, where such support is required to decipher the log messages
-produced the the SOF firmware.
+produced by the the SOF firmware.
 
 #### Build without dictionary support:
 
 ```shell
-$ ./configure
+$ mkdir build
+$ cd build
+$ cmake ..
 $ make
 $ make install
 ```
@@ -26,7 +28,9 @@ First, clone the SOF source tree from
 [here](https://github.com/thesofproject/sof). Then, do:
 
 ```shell
-$ ./configure --with-sof-source=<full path to SOF source>
+$ mkdir build
+$ cd build
+$ cmake -DSOF_SOURCE_DIR=<full path to SOF source> ..
 $ make
 $ make install
 ```
