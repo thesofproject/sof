@@ -6,11 +6,10 @@
  */
 
 /**
- * audio_stream is kind of circular buffer with information about data format
- * and buffer size. Audio processing functions should work on this component.
- * This component is not responsible for memory menagement for himself,
- * it is a role of highly coupled comp_buffer or dma component as usual.
- */
+  * \file include/sof/audio/audio_stream.h
+  * \brief Audio Stream API definition
+  * \author Karol Trzcinski <karolx.trzcinski@linux.intel.com>
+  */
 
 #ifndef __SOF_AUDIO_AUDIO_STREAM_H__
 #define __SOF_AUDIO_AUDIO_STREAM_H__
@@ -24,44 +23,139 @@
 #include <config.h>
 #include <stdint.h>
 
-/* audio circular stream */
+/** \addtogroup audio_stream_api Audio Stream API
+ *  @{
+ */
+
+/**
+ * Audio stream is kind of circular buffer with information about data format
+ * and buffer size.
+ *
+ * Audio processing functions should work on this object.
+ * This object is not responsible for memory management for himself,
+ * it is a role of highly coupled comp_buffer or dma client code.
+ */
 struct audio_stream {
 	/* runtime data */
-	uint32_t size;	/* runtime buffer size in bytes (period multiple) */
-	uint32_t avail;		/* available bytes for reading */
-	uint32_t free;		/* free bytes for writing */
-	void *w_ptr;		/* buffer write pointer */
-	void *r_ptr;		/* buffer read position */
-	void *addr;		/* buffer base address */
-	void *end_addr;		/* buffer end address */
+	uint32_t size;	/**< Runtime buffer size in bytes (period multiple) */
+	uint32_t avail;	/**< Available bytes for reading */
+	uint32_t free;	/**< Free bytes for writing */
+	void *w_ptr;	/**< Buffer write pointer */
+	void *r_ptr;	/**< Buffer read position */
+	void *addr;	/**< Buffer base address */
+	void *end_addr;	/**< Buffer end address */
 
 	/* runtime stream params */
-	enum sof_ipc_frame frame_fmt;	/**< sample data format */
-	uint32_t rate;		/**< number of data frames per second [Hz] */
-	uint16_t channels;	/**< number of samples in each frame */
+	enum sof_ipc_frame frame_fmt;	/**< Sample data format */
+	uint32_t rate;		/**< Number of data frames per second [Hz] */
+	uint16_t channels;	/**< Number of samples in each frame */
 };
 
+/**
+ * Retrieves readable address of a sample at specified index (see versions of
+ * this macro specialized for various sample types).
+ * @param buffer Buffer.
+ * @param idx Index of sample.
+ * @param size Size of sample in bytes.
+ * @return Pointer to the sample.
+ *
+ * Once the consumer finishes reading samples from the buffer, it should
+ * "commit" the operation and update the buffer state by calling
+ * audio_stream_consume().
+ *
+ * @note Components should call comp_update_buffer_consume().
+ *
+ * @see audio_stream_get_frag().
+ * @see audio_stream_consume().
+ * @see comp_update_buffer_consume().
+ */
 #define audio_stream_read_frag(buffer, idx, size) \
 	audio_stream_get_frag(buffer, buffer->r_ptr, idx, size)
 
+/**
+ * Retrieves readable address of a signed 16-bit sample at specified index.
+ * @param buffer Buffer.
+ * @param idx Index of sample.
+ * @return Pointer to the sample.
+ *
+ * @see audio_stream_get_frag().
+ */
 #define audio_stream_read_frag_s16(buffer, idx) \
 	audio_stream_get_frag(buffer, buffer->r_ptr, idx, sizeof(int16_t))
 
+/**
+ * Retrieves readable address of a signed 32-bit sample at specified index.
+ * @param buffer Buffer.
+ * @param idx Index of sample.
+ * @return Pointer to the sample.
+ *
+ * @see audio_stream_get_frag().
+ */
 #define audio_stream_read_frag_s32(buffer, idx) \
 	audio_stream_get_frag(buffer, buffer->r_ptr, idx, sizeof(int32_t))
 
+/**
+ * Retrieves writeable address of a sample at specified index (see versions of
+ * this macro specialized for various sample types).
+ * @param buffer Buffer.
+ * @param idx Index of sample.
+ * @param size Size of sample in bytes.
+ * @return Pointer to the space for sample.
+ *
+ * Once the producer finishes writing samples to the buffer, it should
+ * "commit" the operation and update the buffer state by calling
+ * audio_stream_produce().
+ *
+ * @note Components should call comp_update_buffer_produce().
+ *
+ * @see audio_stream_get_frag().
+ * @see audio_stream_produce().
+ * @see comp_update_buffer_produce().
+ */
 #define audio_stream_write_frag(buffer, idx, size) \
 	audio_stream_get_frag(buffer, buffer->w_ptr, idx, size)
 
+/**
+ * Retrieves writeable address of a signed 16-bit sample at specified index.
+ * @param buffer Buffer.
+ * @param idx Index of sample.
+ * @return Pointer to the space for sample.
+ *
+ * @see audio_stream_get_frag().
+ */
 #define audio_stream_write_frag_s16(buffer, idx) \
 	audio_stream_get_frag(buffer, buffer->w_ptr, idx, sizeof(int16_t))
 
+/**
+ * Retrieves writeable address of a signed 32-bit sample at specified index.
+ * @param buffer Buffer.
+ * @param idx Index of sample.
+ * @return Pointer to the space for sample.
+ *
+ * @see audio_stream_get_frag().
+ */
 #define audio_stream_write_frag_s32(buffer, idx) \
 	audio_stream_get_frag(buffer, buffer->w_ptr, idx, sizeof(int32_t))
 
+/**
+ * Retrieves address of sample (space for sample) at specified index within
+ * the buffer. Index is interpreted as an offset relative to the specified
+ * pointer, rollover is ensured.
+ * @param buffer Circular buffer.
+ * @param ptr Pointer to start from, it may be either read or write pointer.
+ * @param idx Index of the sample.
+ * @param sample_size Size of the sample in bytes.
+ * @return Pointer to the sample.
+ */
 #define audio_stream_get_frag(buffer, ptr, idx, sample_size) \
 	audio_stream_wrap(buffer, (char *)(ptr) + ((idx) * (sample_size)))
 
+/**
+ * Applies parameters to the buffer.
+ * @param buffer Buffer.
+ * @param params Parameters (frame format, rate, number of channels).
+ * @return 0 if succeeded, error code otherwise.
+ */
 static inline int audio_stream_set_params(struct audio_stream *buffer,
 					  struct sof_ipc_stream_params *params)
 {
@@ -75,6 +169,13 @@ static inline int audio_stream_set_params(struct audio_stream *buffer,
 	return 0;
 }
 
+/**
+ * Verifies the pointer and performs rollover when reached the end of
+ * the buffer.
+ * @param buffer Buffer accessed by the pointer.
+ * @param ptr Pointer
+ * @return Pointer, adjusted if necessary.
+ */
 static inline void *audio_stream_wrap(const struct audio_stream *buffer,
 				      void *ptr)
 {
@@ -85,7 +186,16 @@ static inline void *audio_stream_wrap(const struct audio_stream *buffer,
 	return ptr;
 }
 
-/* get the max number of bytes that can be copied between sink and source */
+/**
+ *  Verifies whether specified number of bytes can be copied from source buffer
+ *  to sink buffer.
+ *  @param source Source buffer.
+ *  @param sink Sink buffer.
+ *  @param bytes Number of bytes to copy.
+ *  @return 0 if there is enough data in source and enough free space in sink.
+ *  @return 1 if there is not enough free space in sink.
+ *  @return -1 if there is not enough data in source.
+ */
 static inline int audio_stream_can_copy_bytes(const struct audio_stream *source,
 					      const struct audio_stream *sink,
 					      uint32_t bytes)
@@ -102,6 +212,14 @@ static inline int audio_stream_can_copy_bytes(const struct audio_stream *source,
 	return 0;
 }
 
+/**
+ * Computes maximum number of bytes that can be copied from source buffer to
+ * sink buffer, verifying number of bytes available in source vs. free space
+ * available in sink.
+ * @param source Source buffer.
+ * @param sink Sink buffer.
+ * @return Number of bytes.
+ */
 static inline uint32_t
 audio_stream_get_copy_bytes(const struct audio_stream *source,
 			    const struct audio_stream *sink)
@@ -144,6 +262,14 @@ static inline uint32_t audio_stream_period_bytes(const struct audio_stream *buf,
 	return frames * audio_stream_frame_bytes(buf);
 }
 
+/**
+ * Computes maximum number of frames that can be copied from source buffer
+ * to sink buffer, verifying number of available source frames vs. free
+ * space available in sink.
+ * @param source Source buffer.
+ * @param sink Sink buffer.
+ * @return Number of frames.
+ */
 static inline uint32_t
 audio_stream_avail_frames(const struct audio_stream *source,
 			  const struct audio_stream *sink)
@@ -154,7 +280,11 @@ audio_stream_avail_frames(const struct audio_stream *source,
 	return MIN(src_frames, sink_frames);
 }
 
-/* called only by a comp_buffer procedures */
+/**
+ * Updates the buffer state after writing to the buffer.
+ * @param buffer Buffer to update.
+ * @param bytes Number of written bytes.
+ */
 static inline void audio_stream_produce(struct audio_stream *buffer,
 					uint32_t bytes)
 {
@@ -178,7 +308,11 @@ static inline void audio_stream_produce(struct audio_stream *buffer,
 	buffer->free = buffer->size - buffer->avail;
 }
 
-/* called only by a comp_buffer procedures */
+/**
+ * Updates the buffer state after reading from the buffer.
+ * @param buffer Buffer to update.
+ * @param bytes Number of read bytes.
+ */
 static inline void audio_stream_consume(struct audio_stream *buffer,
 					uint32_t bytes)
 {
@@ -198,6 +332,10 @@ static inline void audio_stream_consume(struct audio_stream *buffer,
 	buffer->free = buffer->size - buffer->avail;
 }
 
+/**
+ * Resets the buffer.
+ * @param buffer Buffer to reset.
+ */
 static inline void audio_stream_reset(struct audio_stream *buffer)
 {
 	/* reset read and write pointer to buffer bas */
@@ -211,6 +349,12 @@ static inline void audio_stream_reset(struct audio_stream *buffer)
 	buffer->avail = 0;
 }
 
+/**
+ * Initializes the buffer with specified memory block and size.
+ * @param buffer Buffer to initialize.
+ * @param buff_addr Address of the memory block to assign.
+ * @param size Size of the memory block in bytes.
+ */
 static inline void audio_stream_init(struct audio_stream *buffer,
 				     void *buff_addr, uint32_t size)
 {
@@ -220,6 +364,12 @@ static inline void audio_stream_init(struct audio_stream *buffer,
 	audio_stream_reset(buffer);
 }
 
+/**
+ * Invalidates (in DSP d-cache) the buffer in range [r_ptr, r_ptr+bytes],
+ * with rollover if necessary.
+ * @param buffer Buffer.
+ * @param bytes Size of the fragment to invalidate.
+ */
 static inline void audio_stream_invalidate(struct audio_stream *buffer,
 					   uint32_t bytes)
 {
@@ -237,6 +387,12 @@ static inline void audio_stream_invalidate(struct audio_stream *buffer,
 		dcache_invalidate_region(buffer->addr, tail_size);
 }
 
+/**
+ * Writes back (from DSP d-cache) the buffer in range [w_ptr, w_ptr+bytes],
+ * with rollover if necessary.
+ * @param buffer Buffer.
+ * @param bytes Size of the fragment to write back.
+ */
 static inline void audio_stream_writeback(struct audio_stream *buffer,
 					  uint32_t bytes)
 {
@@ -254,6 +410,15 @@ static inline void audio_stream_writeback(struct audio_stream *buffer,
 		dcache_writeback_region(buffer->addr, tail_size);
 }
 
+/**
+ * Copies data from source buffer to sink buffer.
+ * @param source Source buffer.
+ * @param ioffset_bytes Offset (in bytes) in source buffer to start reading
+ *	from.
+ * @param sink Sink buffer.
+ * @param ooffset_bytes Offset (in bytes) in sink buffer to start writing to.
+ * @param bytes Number of bytes to copy.
+ */
 static inline void audio_stream_copy(const struct audio_stream *source,
 				     uint32_t ioffset_bytes,
 				     struct audio_stream *sink,
@@ -287,6 +452,14 @@ static inline void audio_stream_copy(const struct audio_stream *source,
 
 #if CONFIG_FORMAT_S16LE
 
+/**
+ * Copies signed 16-bit samples from source buffer to sink buffer.
+ * @param source Source buffer.
+ * @param ioffset Offset (in samples) in source buffer to start reading from.
+ * @param sink Sink buffer.
+ * @param ooffset Offset (in samples) in sink buffer to start writing to.
+ * @param samples Number of samples to copy.
+ */
 static inline void audio_stream_copy_s16(const struct audio_stream *source,
 					 uint32_t ioffset,
 					 struct audio_stream *sink,
@@ -302,6 +475,14 @@ static inline void audio_stream_copy_s16(const struct audio_stream *source,
 
 #if CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE || CONFIG_FORMAT_FLOAT
 
+/**
+ * Copies signed 32-bit samples from source buffer to sink buffer.
+ * @param source Source buffer.
+ * @param ioffset Offset (in samples) in source buffer to start reading from.
+ * @param sink Sink buffer.
+ * @param ooffset Offset (in samples) in sink buffer to start writing to.
+ * @param samples Number of samples to copy.
+ */
 static inline void audio_stream_copy_s32(const struct audio_stream *source,
 					 uint32_t ioffset,
 					 struct audio_stream *sink,
@@ -314,5 +495,7 @@ static inline void audio_stream_copy_s32(const struct audio_stream *source,
 }
 
 #endif /* CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE || CONFIG_FORMAT_FLOAT */
+
+/** @}*/
 
 #endif /* __SOF_AUDIO_AUDIO_STREAM_H__ */
