@@ -42,7 +42,8 @@ static void usage(void)
 		"default verification file\n", APP_NAME);
 	fprintf(stdout, "%s:\t -v ver_file\t\tEnable checking firmware version "
 		"with ver_file file\n", APP_NAME);
-	fprintf(stdout, "%s:\t -c\t\t\tSet timestamp clock in MHz\n", APP_NAME);
+	fprintf(stdout, "%s:\t -c clock\t\tSet timestamp clock in MHz\n",
+		APP_NAME);
 	fprintf(stdout, "%s:\t -s state_name\t\tTake a snapshot of state\n",
 		APP_NAME);
 	fprintf(stdout, "%s:\t -t\t\t\tDisplay trace data\n", APP_NAME);
