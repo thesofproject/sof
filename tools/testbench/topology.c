@@ -445,7 +445,7 @@ int load_pipeline(void *dev, int comp_id, int pipeline_id,
 		  struct snd_soc_tplg_dapm_widget *widget, int sched_id)
 {
 	struct sof *sof = (struct sof *)dev;
-	struct sof_ipc_pipe_new pipeline;
+	struct sof_ipc_pipe_new pipeline = {0};
 	int size = widget->priv.size;
 	int ret;
 

@@ -30,6 +30,8 @@ int tb_pipeline_setup(struct sof *sof)
 	/* init components */
 	sys_comp_init(sof);
 
+	/* other necessary initializations, todo: follow better SOF init */
+	pipeline_posn_init(sof);
 	init_system_notify(sof);
 
 	/* init IPC */
