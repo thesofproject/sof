@@ -28,9 +28,6 @@
 #include <sof/list.h>
 #include <sof/math/numbers.h>
 #include <sof/platform.h>
-#include <sof/schedule/ll_schedule.h>
-#include <sof/schedule/schedule.h>
-#include <sof/schedule/task.h>
 #include <sof/string.h>
 #include <sof/trace/trace.h>
 #include <sof/ut.h>
@@ -40,6 +37,7 @@
 #include <user/trace.h>
 #include <config.h>
 #include <errno.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -51,10 +49,6 @@ static const struct comp_driver comp_volume;
 /* b77e677e-5ff4-4188-af14-fba8bdbf8682 */
 DECLARE_SOF_UUID("volume", volume_uuid, 0xb77e677e, 0x5ff4, 0x4188,
 		 0xaf, 0x14, 0xfb, 0xa8, 0xbd, 0xbf, 0x86, 0x82);
-
-/* 34dc0385-fc2f-4f7f-82d2-6cee444533e0 */
-DECLARE_SOF_UUID("volume-task", volume_task_uuid, 0x34dc0385, 0xfc2f, 0x4f7f,
-		 0x82, 0xd2, 0x6c, 0xee, 0x44, 0x45, 0x33, 0xe0);
 
 #if CONFIG_FORMAT_S16LE
 /**
@@ -215,16 +209,12 @@ static void vol_sync_host(struct comp_dev *dev, unsigned int num_channels)
 
 /**
  * \brief Ramps volume changes over time.
- * \param[in,out] data Volume base component device.
- * \param[in] delay Update time.
- * \return Time until next work.
+ * \param[in,out] dev Volume base component device.
  */
-static enum task_state vol_work(void *data)
+static void volume_ramp(struct comp_dev *dev)
 {
-	struct comp_dev *dev = (struct comp_dev *)data;
 	struct comp_data *cd = comp_get_drvdata(dev);
 	int32_t vol;
-	int again = 0;
 	int i;
 
 	/* No need to ramp in idle state, jump volume to request. */
@@ -233,7 +223,8 @@ static enum task_state vol_work(void *data)
 			cd->volume[i] = cd->tvolume[i];
 
 		vol_sync_host(dev, PLATFORM_MAX_CHANNELS);
-		return SOF_TASK_STATE_COMPLETED;
+		cd->ramp_finished = true;
+		return;
 	}
 
 	/* The first is set and cleared to indicate ongoing ramp, the
@@ -241,7 +232,6 @@ static enum task_state vol_work(void *data)
 	 * in stream start.
 	 */
 	cd->vol_ramp_active = true;
-	cd->ramp_started = true;
 
 	/* inc/dec each volume if it's not at target for active channels */
 	for (i = 0; i < cd->channels; i++) {
@@ -259,9 +249,10 @@ static enum task_state vol_work(void *data)
 			if (vol >= cd->tvolume[i] || vol >= cd->vol_max) {
 				cd->ramp_increment[i] = 0;
 				cd->volume[i] = cd->tvolume[i];
+				cd->ramp_finished = true;
+				cd->vol_ramp_active = false;
 			} else {
 				cd->volume[i] = vol;
-				again = 1;
 			}
 		} else {
 			/* ramp down */
@@ -275,9 +266,10 @@ static enum task_state vol_work(void *data)
 				    vol <= cd->vol_min) {
 					cd->ramp_increment[i] = 0;
 					cd->volume[i] = cd->tvolume[i];
+					cd->ramp_finished = true;
+					cd->vol_ramp_active = false;
 				} else {
 					cd->volume[i] = vol;
-					again = 1;
 				}
 			}
 		}
@@ -286,44 +278,6 @@ static enum task_state vol_work(void *data)
 
 	/* sync host with new value */
 	vol_sync_host(dev, cd->channels);
-
-	/* do we need to continue ramping */
-	if (again)
-		return SOF_TASK_STATE_RESCHEDULE;
-
-	cd->vol_ramp_active = 0;
-	return SOF_TASK_STATE_COMPLETED;
-}
-
-/**
- * \brief Allocates task of volume component.
- * \param[in,out] dev Volume base component device.
- * \return Error code.
- */
-static int vol_task_init(struct comp_dev *dev)
-{
-	struct comp_data *cd = comp_get_drvdata(dev);
-	int ret;
-
-	/* initialize task if necessary */
-	if (cd->volwork)
-		return 0;
-
-	cd->volwork = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
-			      sizeof(*cd->volwork));
-	if (!cd->volwork)
-		return -ENOMEM;
-
-	ret = schedule_task_init_ll(cd->volwork, SOF_UUID(volume_task_uuid),
-				    SOF_SCHEDULE_LL_TIMER,
-				    SOF_TASK_PRI_MED, vol_work, dev,
-				    cpu_get_id(), 0);
-	if (ret < 0) {
-		rfree(cd->volwork);
-		return ret;
-	}
-
-	return 0;
 }
 
 /**
@@ -426,12 +380,6 @@ static void volume_free(struct comp_dev *dev)
 
 	comp_dbg(dev, "volume_free()");
 
-	/* remove scheduling */
-	if (cd->volwork) {
-		schedule_task_free(cd->volwork);
-		rfree(cd->volwork);
-	}
-
 	rfree(cd);
 	rfree(dev);
 }
@@ -480,6 +428,7 @@ static inline int volume_set_chan(struct comp_dev *dev, int chan,
 	/* Check ramp type */
 	switch (pga->ramp) {
 	case SOF_VOLUME_LINEAR:
+	case SOF_VOLUME_LINEAR_ZC:
 		/* Get volume transition delta and absolute value */
 		delta = cd->tvolume[chan] - cd->volume[chan];
 		delta_abs = ABS(delta);
@@ -524,7 +473,6 @@ static inline int volume_set_chan(struct comp_dev *dev, int chan,
 			 cd->ramp_increment[chan]);
 		break;
 	case SOF_VOLUME_LOG:
-	case SOF_VOLUME_LINEAR_ZC:
 	case SOF_VOLUME_LOG_ZC:
 	default:
 		comp_err(dev, "volume_set_chan(): invalid ramp type %d",
@@ -612,12 +560,8 @@ static int volume_ctrl_set_cmd(struct comp_dev *dev,
 		}
 
 		if (!cd->vol_ramp_active) {
-			ret = vol_task_init(dev);
-			if (ret < 0)
-				return ret;
-
-			schedule_task(cd->volwork, VOL_RAMP_UPDATE_US,
-				      VOL_RAMP_UPDATE_US);
+			cd->ramp_finished = false;
+			volume_ramp(dev);
 		}
 		break;
 
@@ -642,12 +586,8 @@ static int volume_ctrl_set_cmd(struct comp_dev *dev,
 		}
 
 		if (!cd->vol_ramp_active) {
-			ret = vol_task_init(dev);
-			if (ret < 0)
-				return ret;
-
-			schedule_task(cd->volwork, VOL_RAMP_UPDATE_US,
-				      VOL_RAMP_UPDATE_US);
+			cd->ramp_finished = false;
+			volume_ramp(dev);
 		}
 		break;
 
@@ -741,16 +681,18 @@ static int volume_trigger(struct comp_dev *dev, int cmd)
  */
 static int volume_copy(struct comp_dev *dev)
 {
+	struct sof_ipc_comp_volume *pga =
+		COMP_GET_IPC(dev, sof_ipc_comp_volume);
 	struct comp_copy_limits c;
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *source;
 	struct comp_buffer *sink;
+	uint32_t source_bytes;
+	uint32_t sink_bytes;
+	uint32_t frames;
+	int64_t prev_sum = 0;
 
 	comp_dbg(dev, "volume_copy()");
-
-	if (!cd->ramp_started)
-		schedule_task(cd->volwork, VOL_RAMP_UPDATE_US,
-			      VOL_RAMP_UPDATE_US);
 
 	source = list_first_item(&dev->bsource_list, struct comp_buffer,
 				 sink_list);
@@ -763,14 +705,36 @@ static int volume_copy(struct comp_dev *dev)
 	comp_dbg(dev, "volume_copy(), source_bytes = 0x%x, sink_bytes = 0x%x",
 		 c.source_bytes, c.sink_bytes);
 
-	/* copy and scale volume */
-	buffer_invalidate(source, c.source_bytes);
-	cd->scale_vol(dev, &sink->stream, &source->stream, c.frames);
-	buffer_writeback(sink, c.sink_bytes);
+	while (c.frames) {
+		if (cd->ramp_finished || cd->vol_ramp_frames > c.frames) {
+			/* without ramping process all at once */
+			frames = c.frames;
+		} else if (pga->ramp == SOF_VOLUME_LINEAR_ZC) {
+			/* with ZC ramping look for next ZC offset */
+			frames = cd->zc_get(&source->stream,
+					    cd->vol_ramp_frames, &prev_sum);
+		} else {
+			/* without ZC process max ramp chunk */
+			frames = cd->vol_ramp_frames;
+		}
 
-	/* calculate new free and available */
-	comp_update_buffer_produce(sink, c.sink_bytes);
-	comp_update_buffer_consume(source, c.source_bytes);
+		source_bytes = frames * c.source_frame_bytes;
+		sink_bytes = frames * c.sink_frame_bytes;
+
+		/* copy and scale volume */
+		buffer_invalidate(source, source_bytes);
+		cd->scale_vol(dev, &sink->stream, &source->stream, frames);
+		buffer_writeback(sink, sink_bytes);
+
+		/* calculate new free and available */
+		comp_update_buffer_produce(sink, sink_bytes);
+		comp_update_buffer_consume(source, source_bytes);
+
+		if (!cd->ramp_finished)
+			volume_ramp(dev);
+
+		c.frames -= frames;
+	}
 
 	return 0;
 }
@@ -856,21 +820,20 @@ static int volume_prepare(struct comp_dev *dev)
 	vol_sync_host(dev, PLATFORM_MAX_CHANNELS);
 
 	/* Set current volume to min to ensure ramp starts from minimum
-	 * to previous volume request. Copy() checks for ramp started
-	 * and schedules it if it has not yet started as result of
+	 * to previous volume request. Copy() checks for ramp finished
+	 * and executes it if it has not yet finished as result of
 	 * driver commands. Ramp is not constant rate to ensure it lasts
 	 * for entire topology specified time.
 	 */
-	cd->ramp_started = false;
+	cd->ramp_finished = true;
+	cd->vol_ramp_frames = dev->frames / (dev->period / VOL_RAMP_UPDATE_US);
 	cd->channels = sinkb->stream.channels;
 	for (i = 0; i < cd->channels; i++) {
 		cd->volume[i] = cd->vol_min;
 		volume_set_chan(dev, i, cd->tvolume[i], false);
+		if (cd->volume[i] != cd->tvolume[i])
+			cd->ramp_finished = false;
 	}
-
-	ret = vol_task_init(dev);
-	if (ret < 0)
-		return ret;
 
 	return 0;
 

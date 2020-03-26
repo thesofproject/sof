@@ -19,7 +19,6 @@
 #include <sof/audio/component.h>
 #include <sof/bit.h>
 #include <sof/common.h>
-#include <sof/schedule/task.h>
 #include <sof/trace/trace.h>
 #include <ipc/stream.h>
 #include <user/trace.h>
@@ -95,7 +94,6 @@ typedef uint32_t (*vol_zc_func)(const struct audio_stream *source,
  * Gain amplitude value is between 0 (mute) ... 2^16 (0dB) ... 2^24 (~+48dB).
  */
 struct comp_data {
-	struct task *volwork;		/**< volume scheduled work function */
 	struct sof_ipc_ctrl_value_chan *hvol;	/**< host volume readback */
 	int32_t volume[SOF_IPC_MAX_CHANNELS];	/**< current volume */
 	int32_t tvolume[SOF_IPC_MAX_CHANNELS];	/**< target volume */
@@ -104,10 +102,12 @@ struct comp_data {
 	int32_t vol_min;			/**< minimum volume */
 	int32_t vol_max;			/**< maximum volume */
 	int32_t	vol_ramp_range;			/**< max ramp transition */
+	/**< max number of frames to process per ramp transition */
+	uint32_t vol_ramp_frames;
 	unsigned int channels;			/**< current channels count */
 	bool muted[SOF_IPC_MAX_CHANNELS];	/**< set if channel is muted */
 	bool vol_ramp_active;			/**< set if volume is ramped */
-	bool ramp_started;			/**< control ramp launch */
+	bool ramp_finished;			/**< control ramp launch */
 	vol_scale_func scale_vol;	/**< volume processing function */
 	vol_zc_func zc_get; /**< function getting nearest zero crossing frame */
 };
