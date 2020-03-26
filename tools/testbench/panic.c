@@ -5,5 +5,9 @@
 // Author: Tomasz Lauda <tomasz.lauda@linux.intel.com>
 
 #include <sof/debug/panic.h>
+#include <stdlib.h>
 
-void __panic(uint32_t p, char *filename, uint32_t linenum) { }
+void __panic(uint32_t p, char *filename, uint32_t linenum)
+{
+	abort();
+}
