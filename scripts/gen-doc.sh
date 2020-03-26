@@ -28,39 +28,31 @@ DOCS_REPO="$(dirname "$SOF_REPO")/sof-docs"
 PUBLISH_REPO="$(dirname "$SOF_REPO")/thesofproject.github.io"
 
 # parse arguments
-DO_BUILD=no
-DO_CLEAN=no
-DO_PUBLISH=no
-DO_CLONE=no
+DO_BUILD=false
+DO_CLEAN=false
+DO_PUBLISH=false
+DO_FETCH=false
 
-for args in $@
-do
-	if [[ "$args" == "-b" ]]
-	then
-		DO_BUILD=yes
-	elif [[ "$args" == "-c" ]]
-	then
-		DO_CLEAN=yes
-	elif [[ "$args" == "-p" ]]
-	then
-		DO_PUBLISH=yes
-	elif [[ "$args" == "-r" ]]
-	then
-		DO_CLONE=yes
-	fi
+while getopts "bcpr" OPTION; do
+        case "$OPTION" in
+        b) DO_BUILD=true ;;
+        c) DO_CLEAN=true ;;
+        p) DO_PUBLISH=true ;;
+        r) DO_FETCH=true ;;
+        *) print_usage; exit 1 ;;
+        esac
 done
+shift "$(($OPTIND - 1))"
 
-if [ "x$DO_BUILD" == "xno" ] && \
-	[ "x$DO_CLEAN" == "xno" ] && \
-	[ "x$DO_PUBLISH" == "xno" ]
+if ! { "$DO_BUILD" || "$DO_CLEAN" || "$DO_PUBLISH"; }
 then
-	print_usage
-	exit 1
+        print_usage
+        exit 1
 fi
 
 if [ ! -d "$DOCS_REPO" ]
 then
-	if [ "x$DO_CLONE" == "xyes" ]
+        if "$DO_FETCH"
 	then
 		echo "No sof-docs repo at: $DOCS_REPO"
 		echo "Cloning sof-docs repo"
@@ -83,7 +75,7 @@ fi
 
 cd "$SOF_REPO/doc"
 
-if [ "x$DO_CLEAN" == "xyes" ]
+if "$DO_CLEAN"
 then
 	echo "Cleaning $SOF_REPO"
 	cmake .
@@ -91,7 +83,7 @@ then
 	make doc-clean
 fi
 
-if [ "x$DO_BUILD" == "xyes" ]
+if "$DO_BUILD"
 then
 	echo "Building $SOF_REPO"
 	cmake .
@@ -100,13 +92,13 @@ fi
 
 cd "$DOCS_REPO"
 
-if [ "x$DO_CLEAN" == "xyes" ]
+if "$DO_CLEAN"
 then
 	echo "Cleaning $DOCS_REPO"
 	make clean
 fi
 
-if [ "x$DO_BUILD" == "xyes" ]
+if "$DO_BUILD"
 then
 	echo "Building $DOCS_REPO"
 	make html
@@ -115,12 +107,12 @@ then
 	echo "It can be viewed at: $DOCS_REPO/_build/html/index.html"
 fi
 
-if [ "x$DO_PUBLISH" == "xyes" ]
+if "$DO_PUBLISH"
 then
 	if [ ! -d "$PUBLISH_REPO" ]
 	then
 
-		if [ "x$DO_CLONE" == "xyes" ]
+		if "$DO_FETCH"
 		then
 			echo "No publishing repo at: $PUBLISH_REPO"
 			echo "Cloning thesofproject.github.io.git repo"
