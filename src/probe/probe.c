@@ -75,7 +75,8 @@ struct probe_pdata {
  * \param[in] buffer address alignment.
  * \return 0 on success, error code otherwise.
  */
-static int probe_dma_buffer_init(struct probe_dma_buf *buffer, uint32_t size, uint32_t align)
+static int probe_dma_buffer_init(struct probe_dma_buf *buffer, uint32_t size,
+				 uint32_t align)
 {
 	/* allocate new buffer */
 	buffer->addr = (uintptr_t)rballoc_align(SOF_MEM_ZONE_BUFFER,
@@ -488,7 +489,8 @@ int probe_dma_remove(uint32_t count, uint32_t *stream_tag)
  * \param[in] size.
  * \return 0 on success, error code otherwise.
  */
-static int copy_to_pbuffer(struct probe_dma_buf *pbuf, void *data, uint32_t bytes)
+static int copy_to_pbuffer(struct probe_dma_buf *pbuf, void *data,
+			   uint32_t bytes)
 {
 	uint32_t head;
 	uint32_t tail;
@@ -538,7 +540,8 @@ static int copy_to_pbuffer(struct probe_dma_buf *pbuf, void *data, uint32_t byte
  * \param[in] size.
  * \return 0 on success, error code otherwise.
  */
-static int copy_from_pbuffer(struct probe_dma_buf *pbuf, void *data, uint32_t bytes)
+static int copy_from_pbuffer(struct probe_dma_buf *pbuf, void *data,
+			     uint32_t bytes)
 {
 	uint32_t head;
 	uint32_t tail;
@@ -595,7 +598,8 @@ static int copy_from_pbuffer(struct probe_dma_buf *pbuf, void *data, uint32_t by
  * \param[in] audio format.
  * \return 0 on success, error code otherwise.
  */
-static int probe_gen_header(struct comp_buffer *buffer, uint32_t size, uint32_t format)
+static int probe_gen_header(struct comp_buffer *buffer, uint32_t size,
+			    uint32_t format)
 {
 	struct probe_pdata *_probe = probe_get();
 	struct probe_data_packet *header;
@@ -630,7 +634,8 @@ static int probe_gen_header(struct comp_buffer *buffer, uint32_t size, uint32_t 
  * \param[in] channels num.
  * \return format.
  */
-static uint32_t probe_gen_format(uint32_t frame_fmt, uint32_t rate, uint32_t channels)
+static uint32_t probe_gen_format(uint32_t frame_fmt, uint32_t rate,
+				 uint32_t channels)
 {
 	uint32_t format = 0;
 	uint32_t sample_rate;
