@@ -19,12 +19,16 @@
 	field = CC_OPTIMIZE_FLAGS, \
 	field[ARRAY_SIZE(((struct sof_ipc_cc_version *)(0))->optim) - 1] = 0
 
+/* copy CC_DESC to arrays during compilation time */
+#define CC_DESC_COPY(field) \
+	field = CC_DESC, \
+	field[ARRAY_SIZE(((struct sof_ipc_cc_version *)(0))->desc) - 1] = 0
+
 const struct sof_ipc_cc_version cc_version
 	__section(".fw_ready_metadata") = {
 	.ext_hdr = {
 		.hdr.cmd = SOF_IPC_FW_READY,
-		.hdr.size = ALIGN_UP(sizeof(struct sof_ipc_cc_version)
-				     + sizeof(CC_DESC), 4),
+		.hdr.size = sizeof(struct sof_ipc_cc_version),
 		.type = SOF_IPC_EXT_CC_INFO,
 	},
 	.micro = CC_MICRO,
@@ -32,5 +36,5 @@ const struct sof_ipc_cc_version cc_version
 	.major = CC_MAJOR,
 	CC_NAME_COPY(.name),
 	CC_OPTIM_COPY(.optim),
-	.desc = CC_DESC,
+	CC_DESC_COPY(.desc),
 };
