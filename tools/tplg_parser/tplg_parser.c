@@ -929,7 +929,7 @@ int tplg_load_graph(int num_comps, int pipeline_id,
 		    int route_num, int count)
 {
 	struct snd_soc_tplg_dapm_graph_elem *graph_elem;
-	char *source, *sink;
+	char *source = NULL, *sink = NULL;
 	int j, ret = 0;
 	size_t size;
 
@@ -971,7 +971,9 @@ int tplg_load_graph(int num_comps, int pipeline_id,
 		}
 	}
 
-	if (connection->source_id == -1 || connection->sink_id == -1) {
+	if (!source || !sink) {
+		fprintf(stderr, "%s() error: source=%p, sink=%p\n",
+			__func__, source, sink);
 		free(graph_elem);
 		return -EINVAL;
 	}
