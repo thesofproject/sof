@@ -412,6 +412,11 @@ static int asrc_params(struct comp_dev *dev,
 	/* set source/sink_frames/rate */
 	cd->source_rate = sourceb->stream.rate;
 	cd->sink_rate = sinkb->stream.rate;
+	if (!cd->sink_rate) {
+		comp_err(dev, "asrc_params(), zero sink rate");
+		return -EINVAL;
+	}
+
 	cd->sink_frames = dev->frames;
 	cd->source_frames = ceil_divide(dev->frames * cd->source_rate,
 					cd->sink_rate);
