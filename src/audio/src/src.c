@@ -581,6 +581,10 @@ static int src_params(struct comp_dev *dev,
 	/* Set source/sink_rate/frames */
 	cd->source_rate = sourceb->stream.rate;
 	cd->sink_rate = sinkb->stream.rate;
+	if (!cd->sink_rate) {
+		comp_err(dev, "src_params(), zero sink rate");
+		return -EINVAL;
+	}
 
 	cd->source_frames = dev->frames * cd->source_rate / cd->sink_rate;
 	cd->sink_frames = dev->frames;
