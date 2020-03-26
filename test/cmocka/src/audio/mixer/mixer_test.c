@@ -47,12 +47,12 @@ int comp_register(struct comp_driver_info *info)
 		err = memcpy_s(dst, sizeof(drv_mock), info->drv,
 			       sizeof(struct comp_driver));
 		break;
+
+	default:
+		return -ENOTSUP;
 	}
 
-	if (err)
-		return -EINVAL;
-
-	return 0;
+	return err;
 }
 
 struct source {
