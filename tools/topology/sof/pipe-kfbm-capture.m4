@@ -2,7 +2,7 @@
 #
 # Pipeline Endpoints for connection are :-
 #
-#  host PCM_C <-+- KPBM 0 <-- B1 <-- Volume 0 <-- B0 <-- source DAI0
+#  host PCM_C <-- B1 <--+- KPBM 0 <-- B0 <-- source DAI0
 #               |
 #  Others    <--+
 
