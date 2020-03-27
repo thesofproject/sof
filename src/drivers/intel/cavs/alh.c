@@ -13,6 +13,7 @@
 #include <sof/common.h>
 #include <ipc/dai.h>
 #include <ipc/stream.h>
+#include <ipc/topology.h>
 #include <user/trace.h>
 #include <stdint.h>
 
@@ -29,21 +30,30 @@ static int alh_trigger(struct dai *dai, int cmd, int direction)
 
 static int alh_set_config(struct dai *dai, struct sof_ipc_dai_config *config)
 {
+	struct alh_pdata *alh = dai_get_drvdata(dai);
+
 	dai_info(dai, "alh_set_config() config->format = 0x%4x",
 		  config->format);
+
+	alh->params = config->alh;
 
 	return 0;
 }
 
 /* get ALH hw params */
 static int alh_get_hw_params(struct dai *dai,
-			     struct sof_ipc_stream_params  *params, int dir)
+			     struct sof_ipc_stream_params *params, int dir)
 {
+	struct alh_pdata *alh = dai_get_drvdata(dai);
+
+	params->rate = alh->params.rate;
+	params->channels = alh->params.channels;
+
 	/* 0 means variable */
-	params->rate = 0;
-	params->channels = 0;
 	params->buffer_fmt = 0;
-	params->frame_fmt = 0;
+
+	/* FIFO format is static */
+	params->frame_fmt = SOF_IPC_FRAME_S32_LE;
 
 	return 0;
 }
@@ -64,7 +74,20 @@ static int alh_context_restore(struct dai *dai)
 
 static int alh_probe(struct dai *dai)
 {
+	struct alh_pdata *alh;
+
 	dai_info(dai, "alh_probe()");
+
+	if (dai_get_drvdata(dai))
+		return -EEXIST;
+
+	alh = rzalloc(SOF_MEM_ZONE_SYS_RUNTIME, SOF_MEM_FLAG_SHARED,
+		      SOF_MEM_CAPS_RAM, sizeof(*alh));
+	if (!alh) {
+		dai_err(dai, "ssp_probe() error: alloc failed");
+		return -ENOMEM;
+	}
+	dai_set_drvdata(dai, alh);
 
 	return 0;
 }
