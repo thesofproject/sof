@@ -28,12 +28,18 @@
  */
 
 /**
- * Audio stream is kind of circular buffer with information about data format
- * and buffer size.
+ * Audio stream is a circular buffer aware of audio format of the data
+ * in the buffer so provides API for reading and writing not only bytes,
+ * but also samples and frames.
  *
- * Audio processing functions should work on this object.
- * This object is not responsible for memory management for himself,
- * it is a role of highly coupled comp_buffer or dma client code.
+ * Audio stream does not perform any memory allocations. A client (a component
+ * buffer or dma) must allocate the memory for the underlying data buffer and
+ * provide it to the initialization routine.
+ *
+ * Once the client is done with reading/writing the data, it must commit the
+ * consumption/production and update the buffer state by calling
+ * audio_stream_consume()/audio_stream_produce() (just a single call following
+ * series of reads/writes).
  */
 struct audio_stream {
 	/* runtime data */
