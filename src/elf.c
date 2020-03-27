@@ -76,7 +76,7 @@ static int elf_read_sections(struct image *image, struct module *module,
 		module->bss_end = 0;
 	} else {
 		/* find manifest module data */
-		module->bss_index = elf_find_section(image, module, ".bss");
+		module->bss_index = elf_find_section(module, ".bss");
 		if (module->bss_index < 0)
 			return module->bss_index;
 	}
@@ -464,11 +464,10 @@ int elf_validate_modules(struct image *image)
 	return 0;
 }
 
-int elf_find_section(struct image *image, struct module *module,
-		     const char *name)
+int elf_find_section(const struct module *module, const char *name)
 {
 	Elf32_Ehdr *hdr = &module->hdr;
-	Elf32_Shdr *section, *s;
+	const Elf32_Shdr *section, *s;
 	char *buffer;
 	size_t count;
 	int ret, i;
@@ -569,7 +568,7 @@ int elf_parse_module(struct image *image, int module_index, const char *name)
 	/* check limits */
 	elf_module_limits(image, module);
 
-	elf_find_section(image, module, "");
+	elf_find_section(module, "");
 
 	fprintf(stdout, " module: input size %d (0x%x) bytes %d sections\n",
 		module->fw_size, module->fw_size, module->num_sections);
