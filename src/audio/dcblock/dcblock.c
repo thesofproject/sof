@@ -213,7 +213,6 @@ static int dcblock_cmd_set_data(struct comp_dev *dev,
 				struct sof_ipc_ctrl_data *cdata)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	int32_t *request;
 	size_t req_size = sizeof(cd->R_coeffs);
 	int ret = 0;
 
@@ -222,8 +221,8 @@ static int dcblock_cmd_set_data(struct comp_dev *dev,
 		comp_info(dev, "dcblock_cmd_set_data(), SOF_CTRL_CMD_BINARY");
 
 		/* Retrieve the binary controls from the packet */
-		request = (int32_t *)cdata->data->data;
-		ret = memcpy_s(cd->R_coeffs, req_size, request, req_size);
+		ret = memcpy_s(cd->R_coeffs, req_size, cdata->data->data,
+			       req_size);
 		assert(!ret);
 
 		break;
