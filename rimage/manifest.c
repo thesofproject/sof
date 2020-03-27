@@ -231,7 +231,7 @@ static int man_get_module_manifest(struct image *image, struct module *module,
 	fprintf(stdout, "Module Write: %s\n", module->elf_file);
 
 	/* find manifest module data */
-	man_section_idx = elf_find_section(image, module, ".module");
+	man_section_idx = elf_find_section(module, ".module");
 	if (man_section_idx < 0)
 		return -EINVAL;
 
