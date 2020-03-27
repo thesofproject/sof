@@ -206,10 +206,6 @@ struct pipeline *pipeline_new(struct sof_ipc_pipe_new *pipe_desc,
 	struct comp_dev *cd);
 int pipeline_free(struct pipeline *p);
 
-/* pipeline buffer creation and destruction */
-struct comp_buffer *buffer_new(struct sof_ipc_buffer *desc);
-void buffer_free(struct comp_buffer *buffer);
-
 /* insert component in pipeline */
 int pipeline_connect(struct comp_dev *comp, struct comp_buffer *buffer,
 		     int dir);
