@@ -28,6 +28,8 @@ set(TPLGS
 	"sof-hda-generic\;sof-hda-generic-4ch\;-DCHANNELS=4\;-DPPROC=volume"
 	"sof-hda-generic\;sof-hda-generic-eq-2ch\;-DCHANNELS=2\;-DPPROC=eq-volume"
 	"sof-hda-generic\;sof-hda-generic-eq-4ch\;-DCHANNELS=4\;-DPPROC=eq-volume"
+	"sof-hda-generic-kwd\;sof-hda-generic-2ch-kwd\;-DCHANNELS=2"
+	"sof-hda-generic-kwd\;sof-hda-generic-4ch-kwd\;-DCHANNELS=4"
 	"sof-hda-generic-idisp\;sof-hda-generic-idisp\;-DCHANNELS=0"
 	"sof-hda-generic-idisp\;sof-hda-generic-idisp-2ch\;-DCHANNELS=2"
 	"sof-hda-generic-idisp\;sof-hda-generic-idisp-4ch\;-DCHANNELS=4"
