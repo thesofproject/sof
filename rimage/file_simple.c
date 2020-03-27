@@ -73,31 +73,17 @@ static int get_mem_zone_type(struct image *image, Elf32_Shdr *section)
 	return SOF_FW_BLK_TYPE_INVALID;
 }
 
-static int fw_version_copy(struct snd_sof_logs_header *header,
-			   const struct module *module)
+static int fw_version_copy(const struct image *image,
+			   struct snd_sof_logs_header *header)
 {
-	Elf32_Shdr *section = NULL;
 	struct sof_ipc_ext_data_hdr *ext_hdr = NULL;
 	void *buffer = NULL;
+	int section_size;
 
-	if (module->fw_ready_index <= 0)
-		return 0;
+	section_size = elf_read_section(image, ".fw_ready", NULL, &buffer);
 
-	section = &module->section[module->fw_ready_index];
-
-	buffer = calloc(1, section->size);
-	if (!buffer)
-		return -ENOMEM;
-
-	fseek(module->fd, section->off, SEEK_SET);
-	size_t count = fread(buffer, 1,
-		section->size, module->fd);
-
-	if (count != section->size) {
-		fprintf(stderr, "error: can't read ready section %d\n", -errno);
-		free(buffer);
-		return -errno;
-	}
+	if (section_size < 0)
+		return section_size;
 
 	memcpy(&header->version,
 	       &((struct sof_ipc_fw_ready *)buffer)->version,
@@ -118,7 +104,7 @@ static int fw_version_copy(struct snd_sof_logs_header *header,
 	 * skip the base fw-ready record and begin from the first extension.
 	 */
 	ext_hdr = buffer + ((struct sof_ipc_fw_ready *)buffer)->hdr.size;
-	while ((uintptr_t)ext_hdr < (uintptr_t)buffer + section->size) {
+	while ((uintptr_t)ext_hdr < (uintptr_t)buffer + section_size) {
 		if (ext_hdr->type == SOF_IPC_EXT_USER_ABI_INFO) {
 			header->version.abi_version =
 				((struct sof_ipc_user_abi_version *)
@@ -445,62 +431,46 @@ static int simple_write_firmware(struct image *image)
 static int write_logs_dictionary(struct image *image)
 {
 	struct snd_sof_logs_header header;
-	int i, ret = 0;
+	const Elf32_Shdr *section;
 	void *buffer = NULL;
+	int count;
+	int ret;
 
 	memcpy(header.sig, SND_SOF_LOGS_SIG, SND_SOF_LOGS_SIG_SIZE);
 	header.data_offset = sizeof(struct snd_sof_logs_header);
 
-	for (i = 0; i < image->num_modules; i++) {
-		struct module *module = &image->module[i];
+	/* extract fw_version from fw_ready message located
+	 * in .fw_ready section
+	 */
+	ret = fw_version_copy(image, &header);
+	if (ret < 0)
+		goto out;
 
-		/* extract fw_version from fw_ready message located
-		 * in .fw_ready section
-		 */
-		ret = fw_version_copy(&header, module);
-		if (ret < 0)
-			goto out;
+	ret = elf_read_section(image, ".static_log_entries", &section, &buffer);
+	if (ret < 0)
+		goto out;
 
-		if (module->logs_index > 0) {
-			Elf32_Shdr *section =
-				&module->section[module->logs_index];
+	ret = 0;
+	header.base_address = section->vaddr;
+	header.data_length = section->size;
 
-			header.base_address = section->vaddr;
-			header.data_length = section->size;
+	fwrite(&header, sizeof(struct snd_sof_logs_header), 1,
+	       image->ldc_out_fd);
 
-			fwrite(&header, sizeof(struct snd_sof_logs_header), 1,
-			       image->ldc_out_fd);
-
-			buffer = calloc(1, section->size);
-			if (!buffer)
-				return -ENOMEM;
-
-			fseek(module->fd, section->off, SEEK_SET);
-			size_t count = fread(buffer, 1, section->size,
-				module->fd);
-			if (count != section->size) {
-				fprintf(stderr,
-					"error: can't read logs section %d\n",
-					-errno);
-				ret = -errno;
-				goto out;
-			}
-			count = fwrite(buffer, 1, section->size,
-				       image->ldc_out_fd);
-			if (count != section->size) {
-				fprintf(stderr,
-					"error: can't write section %d\n",
-					-errno);
-				ret = -errno;
-				goto out;
-			}
-
-			fprintf(stdout, "logs dictionary: size %u\n",
-				header.data_length + header.data_offset);
-			fprintf(stdout, "including fw version of size: %lu\n",
-				(unsigned long)sizeof(header.version));
-		}
+	count = fwrite(buffer, 1, section->size,
+		       image->ldc_out_fd);
+	if (count != section->size) {
+		fprintf(stderr,
+			"error: can't write section %d\n",
+			-errno);
+		ret = -errno;
+		goto out;
 	}
+
+	fprintf(stdout, "logs dictionary: size %u\n",
+		header.data_length + header.data_offset);
+	fprintf(stdout, "including fw version of size: %lu\n",
+		(unsigned long)sizeof(header.version));
 out:
 	if (buffer)
 		free(buffer);
@@ -511,49 +481,37 @@ out:
 static int write_uids_dictionary(struct image *image)
 {
 	struct snd_sof_uids_header header;
-	Elf32_Shdr *section;
-	int i, ret = 0;
+	const Elf32_Shdr *section;
 	void *buffer = NULL;
+	int ret;
 
 	memcpy(header.sig, SND_SOF_UIDS_SIG, SND_SOF_UIDS_SIG_SIZE);
 	header.data_offset = sizeof(struct snd_sof_uids_header);
 
-	for (i = 0; i < image->num_modules; i++) {
-		struct module *module = &image->module[i];
+	ret = elf_read_section(image, ".static_uuid_entries", &section,
+			       &buffer);
+	if (ret < 0)
+		goto out;
 
-		if (module->uids_index <= 0)
-			continue;
-		section = &module->section[module->uids_index];
+	ret = 0;
+	header.base_address = section->vaddr;
+	header.data_length = section->size;
 
-		header.base_address = section->vaddr;
-		header.data_length = section->size;
+	fwrite(&header, sizeof(struct snd_sof_uids_header), 1,
+	       image->ldc_out_fd);
 
-		fwrite(&header, sizeof(struct snd_sof_uids_header), 1,
-		       image->ldc_out_fd);
-
-		buffer = calloc(1, section->size);
-		if (!buffer)
-			return -ENOMEM;
-		fseek(module->fd, section->off, SEEK_SET);
-		if (fread(buffer, 1, section->size, module->fd) !=
-				section->size) {
-			fprintf(stderr, "error: can't read uids section %d\n",
-				-errno);
-			ret = -errno;
-			goto out;
-		}
-		if (fwrite(buffer, 1, section->size, image->ldc_out_fd) !=
-				section->size) {
-			fprintf(stderr, "error: cant't write section %d\n",
-				-errno);
-			ret = -errno;
-			goto out;
-		}
-		fprintf(stdout, "uids dictionary: size %u\n",
-			header.data_length + header.data_offset);
+	if (fwrite(buffer, 1, section->size, image->ldc_out_fd) !=
+			section->size) {
+		fprintf(stderr, "error: cant't write section %d\n",
+			-errno);
+		ret = -errno;
+		goto out;
 	}
+	fprintf(stdout, "uids dictionary: size %u\n",
+		header.data_length + header.data_offset);
 out:
-	free(buffer);
+	if (buffer)
+		free(buffer);
 	return ret;
 }
 

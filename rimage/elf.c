@@ -492,7 +492,7 @@ int elf_validate_modules(struct image *image)
 
 int elf_find_section(const struct module *module, const char *name)
 {
-	Elf32_Ehdr *hdr = &module->hdr;
+	const Elf32_Ehdr *hdr = &module->hdr;
 	const Elf32_Shdr *section, *s;
 	char *buffer;
 	size_t count;
@@ -536,6 +536,52 @@ int elf_find_section(const struct module *module, const char *name)
 out:
 	free(buffer);
 	return ret;
+}
+
+int elf_read_section(const struct image *image, const char *section_name,
+		     const Elf32_Shdr **dst_section, void **dst_buff)
+{
+	const struct module *module;
+	const Elf32_Shdr *section;
+	int section_index = -1;
+	int read;
+	int i;
+
+	/* when there is more than one module, then first one is bootloader */
+	for (i = image->num_modules == 1 ? 0 : 1; i < image->num_modules; i++) {
+		module = &image->module[i];
+		section_index = elf_find_section(module, section_name);
+		if (section_index >= 0)
+			break;
+	}
+
+	if (section_index < 0) {
+		fprintf(stderr, "error: section %s can't be found\n",
+			section_name);
+		return -EINVAL;
+	}
+
+	section = &module->section[section_index];
+	if (dst_section)
+		*dst_section = section;
+
+	/* alloc buffer for section content */
+	*dst_buff = calloc(1, section->size);
+	if (!*dst_buff)
+		return -ENOMEM;
+
+	/* fill buffer with section content */
+	fseek(module->fd, section->off, SEEK_SET);
+	read = fread(*dst_buff, 1, section->size, module->fd);
+	if (read != section->size) {
+		fprintf(stderr,
+			"error: can't read %s section %d\n", section_name,
+			-errno);
+		free(*dst_buff);
+		return -errno;
+	}
+
+	return section->size;
 }
 
 int elf_parse_module(struct image *image, int module_index, const char *name)

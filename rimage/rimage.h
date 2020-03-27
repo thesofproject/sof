@@ -177,6 +177,8 @@ void elf_free_module(struct image *image, int module_index);
 int elf_is_rom(struct image *image, Elf32_Shdr *section);
 int elf_validate_modules(struct image *image);
 int elf_find_section(const struct module *module, const char *name);
+int elf_read_section(const struct image *image, const char *name,
+		     const Elf32_Shdr **dst_section, void **dst_buff);
 int elf_validate_section(struct image *image, struct module *module,
 			 Elf32_Shdr *section, int index);
 
