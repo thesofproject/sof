@@ -183,7 +183,7 @@ static int mux_params(struct comp_dev *dev,
 		      struct sof_ipc_stream_params *params)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	struct comp_buffer *sinkb;
+	struct comp_buffer *muxed_buf;
 	int err;
 
 	comp_info(dev, "mux_params()");
@@ -194,11 +194,20 @@ static int mux_params(struct comp_dev *dev,
 		return -EINVAL;
 	}
 
-	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
-				  source_list);
+	/* get the params from the muxed buffer (the "1' in 1->N or N->1) */
+	if (dev->comp.type == SOF_COMP_MUX)
+		/* N->1 mux, get the sink buffer */
+		muxed_buf = list_first_item(&dev->bsink_list,
+					    struct comp_buffer,
+					    source_list);
+	else
+		/* 1->N demux, get the source buffer */
+		muxed_buf = list_first_item(&dev->bsource_list,
+					    struct comp_buffer,
+					    sink_list);
 
-	cd->config.num_channels = sinkb->stream.channels;
-	cd->config.frame_format = sinkb->stream.frame_fmt;
+	cd->config.num_channels = muxed_buf->stream.channels;
+	cd->config.frame_format = muxed_buf->stream.frame_fmt;
 
 	return 0;
 }
