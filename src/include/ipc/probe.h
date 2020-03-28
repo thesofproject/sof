@@ -94,7 +94,7 @@ struct probe_data_packet {
 	uint32_t checksum;		/**< CRC32 of header and payload */
 	uint32_t data_size_bytes;	/**< Size of following audio data */
 	uint32_t data[];		/**< Audio data extracted from buffer */
-} __attribute__((packed));
+} __attribute__((packed, aligned(4)));
 
 /**
  * Description of probe dma
