@@ -5,6 +5,7 @@
 // Author: Slawomir Blauciak <slawomir.blauciak@linux.intel.com>
 
 #include <sof/math/numbers.h>
+#include <sof/common.h>
 
 #include <stdarg.h>
 #include <stddef.h>
@@ -17,7 +18,7 @@ static void test_math_numbers_find_min_int16_for_2_equals_2(void **state)
 	(void)state;
 
 	int16_t vec[] = {2};
-	int r = find_min_int16(vec, sizeof(vec) / sizeof(int16_t));
+	int r = find_min_int16(vec, ARRAY_SIZE(vec));
 
 	assert_int_equal(r, 2);
 }
@@ -28,7 +29,7 @@ static void test_math_numbers_find_min_int16_for_5_2_3_4_1_equals_1
 	(void)state;
 
 	int16_t vec[] = {5, 2, 3, 4, 1};
-	int r = find_min_int16(vec, sizeof(vec) / sizeof(int16_t));
+	int r = find_min_int16(vec, ARRAY_SIZE(vec));
 
 	assert_int_equal(r, 1);
 }
