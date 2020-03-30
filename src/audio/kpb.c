@@ -544,9 +544,7 @@ static int kpb_prepare(struct comp_dev *dev)
 static int kpb_cmd(struct comp_dev *dev, int cmd, void *data,
 		   int max_data_size)
 {
-	int ret = 0;
-
-	return ret;
+	return 0;
 }
 
 /**
