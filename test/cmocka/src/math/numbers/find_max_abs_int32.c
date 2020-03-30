@@ -5,6 +5,7 @@
 // Author: Slawomir Blauciak <slawomir.blauciak@linux.intel.com>
 
 #include <sof/math/numbers.h>
+#include <sof/common.h>
 
 #include <stdarg.h>
 #include <stddef.h>
@@ -18,7 +19,7 @@ static void test_math_numbers_find_max_abs_int32_for_neg100_99_98_50_equals_100
 	(void)state;
 
 	int32_t vec[] = {-100, 99, 98, 50};
-	int r = find_max_abs_int32(vec, sizeof(vec) / sizeof(int32_t));
+	int r = find_max_abs_int32(vec, ARRAY_SIZE(vec));
 
 	assert_int_equal(r, 100);
 }
@@ -29,7 +30,7 @@ static void test_math_numbers_find_max_abs_int32_for_neg100_99_98_50_101_equals_
 	(void)state;
 
 	int32_t vec[] = {-100, 99, 98, 50, 101};
-	int r = find_max_abs_int32(vec, sizeof(vec) / sizeof(int32_t));
+	int r = find_max_abs_int32(vec, ARRAY_SIZE(vec));
 
 	assert_int_equal(r, 101);
 }
