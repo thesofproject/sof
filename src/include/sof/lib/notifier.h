@@ -8,6 +8,7 @@
 #ifndef __SOF_LIB_NOTIFIER_H__
 #define __SOF_LIB_NOTIFIER_H__
 
+#include <sof/bit.h>
 #include <sof/list.h>
 #include <sof/sof.h>
 #include <stdint.h>
@@ -16,6 +17,9 @@
 #define NOTIFIER_TARGET_CORE_MASK(x)	(1 << (x))
 #define NOTIFIER_TARGET_CORE_LOCAL	NOTIFIER_TARGET_CORE_MASK(cpu_get_id())
 #define NOTIFIER_TARGET_CORE_ALL_MASK	0xFFFFFFFF
+
+/** \brief Notifier flags. */
+#define NOTIFIER_FLAG_AGGREGATE		BIT(0)
 
 enum notify_id {
 	NOTIFIER_ID_CPU_FREQ = 0,		/* struct clock_notify_data * */
