@@ -1038,9 +1038,9 @@ int probe_point_add(uint32_t count, struct probe_point *probe)
 			probe[i].stream_tag;
 
 		notifier_register(_probe, dev->cb, NOTIFIER_ID_BUFFER_PRODUCE,
-				  &probe_cb_produce);
+				  &probe_cb_produce, 0);
 		notifier_register(_probe, dev->cb, NOTIFIER_ID_BUFFER_FREE,
-				  &probe_cb_free);
+				  &probe_cb_free, 0);
 	}
 
 	return 0;

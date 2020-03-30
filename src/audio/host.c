@@ -761,7 +761,7 @@ static int host_params(struct comp_dev *dev,
 	}
 
 	/* set up callback */
-	notifier_register(dev, hd->chan, NOTIFIER_ID_DMA_COPY, host_dma_cb);
+	notifier_register(dev, hd->chan, NOTIFIER_ID_DMA_COPY, host_dma_cb, 0);
 
 	/* set copy function */
 	hd->copy = hd->copy_type == COMP_COPY_ONE_SHOT ? host_copy_one_shot :

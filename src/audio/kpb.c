@@ -491,7 +491,7 @@ static int kpb_prepare(struct comp_dev *dev)
 
 	/* Register KPB for notification */
 	ret = notifier_register(dev, NULL, NOTIFIER_ID_KPB_CLIENT_EVT,
-				kpb_event_handler);
+				kpb_event_handler, 0);
 	if (ret < 0) {
 		kpb_free_history_buffer(kpb->hd.c_hb);
 		kpb->hd.c_hb = NULL;
