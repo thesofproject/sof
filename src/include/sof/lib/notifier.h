@@ -51,7 +51,8 @@ struct notify_data {
 struct notify **arch_notify_get(void);
 
 int notifier_register(void *receiver, void *caller, enum notify_id type,
-		void (*cb)(void *arg, enum notify_id type, void *data));
+		      void (*cb)(void *arg, enum notify_id type, void *data),
+		      uint32_t flags);
 void notifier_unregister(void *receiver, void *caller, enum notify_id type);
 void notifier_unregister_all(void *receiver, void *caller);
 

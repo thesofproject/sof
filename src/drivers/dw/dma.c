@@ -197,7 +197,7 @@ static struct dma_chan_data *dw_dma_channel_get(struct dma *dma,
 		atomic_add(&dma->num_channels_busy, 1);
 #if !CONFIG_HW_LLI
 		notifier_register(&dma->chan[i], &dma->chan[i],
-			NOTIFIER_ID_DMA_IRQ, dw_dma_chan_reload_lli_cb);
+			NOTIFIER_ID_DMA_IRQ, dw_dma_chan_reload_lli_cb, 0);
 #endif
 
 		/* return channel */
