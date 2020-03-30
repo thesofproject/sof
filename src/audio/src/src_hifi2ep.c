@@ -55,7 +55,7 @@ static inline void fir_filter(ae_q32s *rp, const void *cp, ae_q32s *wp0,
 		AE_LP24F_C(p0, dp, -sizeof(ae_p24f));
 
 		/* Reset coefficient pointer and clear accumulator */
-		coefp = (ae_p16x2s *)cp;
+		coefp = cp;
 		a0 = AE_ZEROQ56();
 		a1 = AE_ZEROQ56();
 
@@ -113,7 +113,7 @@ static inline void fir_filter(ae_q32s *rp, const void *cp, ae_q32s *wp0,
 		AE_LP24F_C(p0, dp, -sizeof(ae_p24f));
 
 		/* Reset coefficient pointer and clear accumulator */
-		coefp = (ae_p16x2s *)cp;
+		coefp = cp;
 		a0 = AE_ZEROQ56();
 
 		/* Compute FIR filter for current channel with four
@@ -187,7 +187,7 @@ static inline void fir_filter(ae_q32s *rp, const void *cp, ae_q32s *wp0,
 		AE_LP24F_C(p0, dp, -sizeof(ae_p24f));
 
 		/* Reset coefficient pointer and clear accumulator */
-		coefp = (ae_p24x2f *)cp;
+		coefp = cp;
 		a0 = AE_ZEROQ56();
 		a1 = AE_ZEROQ56();
 
@@ -249,7 +249,7 @@ static inline void fir_filter(ae_q32s *rp, const void *cp, ae_q32s *wp0,
 		AE_LP24F_C(p0, dp, -sizeof(ae_p24f));
 
 		/* Reset coefficient pointer and clear accumulator */
-		coefp = (ae_p24x2f *)cp;
+		coefp = cp;
 		a0 = AE_ZEROQ56();
 
 		/* Compute FIR filter for current channel with four
