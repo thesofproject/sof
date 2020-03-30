@@ -208,9 +208,7 @@ static void *align_ptr(struct mm_heap *heap, uint32_t alignment,
 		mod_align = alignment - ((uintptr_t)ptr % alignment);
 
 	/* Calculate aligned pointer */
-	ptr = (char *)ptr + mod_align;
-
-	return ptr;
+	return (char *)ptr + mod_align;
 }
 
 /* allocate single block */
