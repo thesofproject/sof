@@ -87,7 +87,7 @@ static void vol_sync_host(struct comp_dev *dev, unsigned int num_channels)
  */
 static enum task_state vol_work(void *data)
 {
-	struct comp_dev *dev = (struct comp_dev *)data;
+	struct comp_dev *dev = data;
 	struct comp_data *cd = comp_get_drvdata(dev);
 	int32_t vol;
 	int again = 0;
