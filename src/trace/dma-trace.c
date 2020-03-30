@@ -367,7 +367,7 @@ void dma_trace_flush(void *t)
 	}
 
 	/* invalidate trace data */
-	dcache_invalidate_region((void *)t, size);
+	dcache_invalidate_region(t, size);
 
 	/* check for buffer wrap */
 	if ((char *)buffer->w_ptr - size < (char *)buffer->addr) {
@@ -385,7 +385,7 @@ void dma_trace_flush(void *t)
 	}
 
 	/* writeback trace data */
-	dcache_writeback_region((void *)t, size);
+	dcache_writeback_region(t, size);
 
 	platform_shared_commit(trace_data, sizeof(*trace_data));
 }
