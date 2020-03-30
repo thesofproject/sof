@@ -23,7 +23,7 @@ include(`platform/intel/dmic.m4')
 #
 # PCM0  ----> volume (pipe 1)   -----> SSP1 (speaker - maxim98357a, BE link 0)
 # PCM1  <---> volume (pipe 2,3) <----> SSP2 (headset - da7219, BE link 1)
-# PCM99 <---- DMIC0 (dmic capture, BE link 2)
+`# PCM99 <---- 'DMICPROC` <---- DMIC0 (dmic capture, BE link 2)'
 # PCM5  ----> volume (pipe 5)   -----> iDisp1 (HDMI/DP playback, BE link 3)
 # PCM6  ----> Volume (pipe 6)   -----> iDisp2 (HDMI/DP playback, BE link 4)
 # PCM7  ----> volume (pipe 7)   -----> iDisp3 (HDMI/DP playback, BE link 5)
@@ -56,10 +56,13 @@ PIPELINE_PCM_ADD(sof/pipe-volume-capture.m4,
 	1000, 0, 0,
 	48000, 48000, 48000)
 
+# if DMICPROC is not defined, default pipepline is volume
+ifdef(`DMICPROC', , `define(DMICPROC, volume)')
+define(DEF_PIPE_DMIC_CAPTURE, sof/pipe-DMICPROC-capture.m4)
+
 # Low Latency capture pipeline 4 on PCM 99 using max 4 channels of s32le.
 # 1000us deadline on core 0 with priority 0
-#PIPELINE_PCM_ADD(sof/pipe-volume-capture.m4,
-PIPELINE_PCM_ADD(sof/pipe-volume-capture.m4,
+PIPELINE_PCM_ADD(DEF_PIPE_DMIC_CAPTURE,
 	4, 99, 4, s16le,
 	1000, 0, 0,
 	48000, 48000, 48000)
