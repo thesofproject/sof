@@ -1,47 +1,26 @@
 %% Design effect EQs and bundle them to parameter block
 
-%%
-% Copyright (c) 2016, Intel Corporation
-% All rights reserved.
+% SPDX-License-Identifier: BSD-3-Clause
 %
-% Redistribution and use in source and binary forms, with or without
-% modification, are permitted provided that the following conditions are met:
-%   * Redistributions of source code must retain the above copyright
-%     notice, this list of conditions and the following disclaimer.
-%   * Redistributions in binary form must reproduce the above copyright
-%     notice, this list of conditions and the following disclaimer in the
-%     documentation and/or other materials provided with the distribution.
-%   * Neither the name of the Intel Corporation nor the
-%     names of its contributors may be used to endorse or promote products
-%     derived from this software without specific prior written permission.
-%
-% THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-% AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-% IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-% ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
-% LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-% CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-% SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-% INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
-% CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
-% ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-% POSSIBILITY OF SUCH DAMAGE.
+% Copyright (c) 2016-2020, Intel Corporation. All rights reserved.
 %
 % Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
-%
 
 function example_iir_eq()
 
 %% Common definitions
-endian = 'little';
 fs = 48e3;
+tpath =  '../../topology/m4';
+cpath = '../../ctl';
+priv = 'DEF_EQIIR_PRIV';
 
 %% -------------------
 %% Example 1: Loudness
 %% -------------------
-alsa_fn = '../../ctl/eq_iir_loudness.txt';
-blob_fn = 'example_iir_eq.blob';
-tplg_fn = 'example_iir_eq.m4';
+blob_fn = fullfile(cpath, 'eq_iir_loudness.bin');
+alsa_fn = fullfile(cpath, 'eq_iir_loudness.txt');
+tplg_fn = fullfile(tpath, 'eq_iir_coef_loudness.m4');
+comment = 'Loudness effect, created with example_iir_eq.m';
 
 %% Design IIR loudness equalizer
 eq_loud = loudness_iir_eq(fs);
@@ -63,15 +42,15 @@ bm = eq_iir_blob_merge(channels_in_config, ...
 		       [bq_pass bq_loud]);
 
 %% Pack and write file
-bp = eq_iir_blob_pack(bm);
-eq_blob_write(blob_fn, bp);
-eq_alsactl_write(alsa_fn, bp);
-eq_tplg_write(tplg_fn, bp, 'IIR');
+eq_pack_export(bm, blob_fn, alsa_fn, tplg_fn, priv, comment)
 
 %% ------------------------------------
 %% Example 2: Bass boost
 %% ------------------------------------
-alsa_fn = '../../ctl/eq_iir_bassboost.txt';
+blob_fn = fullfile(cpath, 'eq_iir_bassboost.bin');
+alsa_fn = fullfile(cpath, 'eq_iir_bassboost.txt');
+tplg_fn = fullfile(tpath, 'eq_iir_coef_bassboost.m4');
+comment = 'Bass boost, created with example_iir_eq.m';
 
 %% Design IIR bass boost equalizer
 eq_bass = bassboost_iir_eq(fs);
@@ -89,13 +68,15 @@ bm = eq_iir_blob_merge(channels_in_config, ...
 		       bq_bass);
 
 %% Pack and write file
-bp = eq_iir_blob_pack(bm);
-eq_alsactl_write(alsa_fn, bp);
+eq_pack_export(bm, blob_fn, alsa_fn, tplg_fn, priv, comment)
 
 %% ------------------------------------
 %% Example 3: Band-pass
 %% ------------------------------------
-alsa_fn = '../../ctl/eq_iir_bandpass.txt';
+blob_fn = fullfile(cpath, 'eq_iir_bandpass.bin');
+alsa_fn = fullfile(cpath, 'eq_iir_bandpass.txt');
+tplg_fn = fullfile(tpath, 'eq_iir_coef_bandpass.m4');
+comment = 'Band-pass, created with example_iir_eq.m';
 
 %% Design IIR bass boost equalizer
 eq_band = bandpass_iir_eq(fs);
@@ -113,16 +94,15 @@ bm = eq_iir_blob_merge(channels_in_config, ...
 		       bq_band);
 
 %% Pack and write file
-bp = eq_iir_blob_pack(bm);
-eq_alsactl_write(alsa_fn, bp);
-
+eq_pack_export(bm, blob_fn, alsa_fn, tplg_fn, priv, comment)
 
 %% -------------------
 %% Example 4: Flat IIR
 %% -------------------
-comment = 'Flat IIR EQ, created with example_iir_eq.m';
-alsa_fn = '../../ctl/eq_iir_flat.txt';
-tplg_fn = '../../topology/m4/eq_iir_coef_flat.m4';
+blob_fn = fullfile(cpath, 'eq_iir_flat.bin');
+alsa_fn = fullfile(cpath, 'eq_iir_flat.txt');
+tplg_fn = fullfile(tpath, 'eq_iir_coef_flat.m4');
+comment = 'Flat response, created with example_iir_eq.m';
 
 %% Define a passthru IIR EQ equalizer
 [z_pass, p_pass, k_pass] = tf2zp([1 0 0],[1 0 0]);
@@ -140,14 +120,15 @@ bm = eq_iir_blob_merge(channels_in_config, ...
 		       bq_pass);
 
 %% Pack and write file
-bp = eq_iir_blob_pack(bm);
-eq_alsactl_write(alsa_fn, bp);
-eq_tplg_write(tplg_fn, bp, 'IIR', comment);
+eq_pack_export(bm, blob_fn, alsa_fn, tplg_fn, priv, comment)
 
 %% ---------------------------
 %% Example 5: Pass-through IIR
-%% ------------------------------------
-alsa_fn = '../../ctl/eq_iir_pass.txt';
+%% ---------------------------
+blob_fn = fullfile(cpath, 'eq_iir_pass.bin');
+alsa_fn = fullfile(cpath, 'eq_iir_pass.txt');
+tplg_fn = fullfile(tpath, 'eq_iir_coef_pass.m4');
+comment = 'Pass-through, created with example_iir_eq.m';
 
 %% Define a passthru IIR EQ equalizer
 [z_pass, p_pass, k_pass] = tf2zp([1 0 0],[1 0 0]);
@@ -165,15 +146,13 @@ bm = eq_iir_blob_merge(channels_in_config, ...
 		       bq_pass);
 
 %% Pack and write file
-bp = eq_iir_blob_pack(bm);
-eq_alsactl_write(alsa_fn, bp);
+eq_pack_export(bm, blob_fn, alsa_fn, tplg_fn, priv, comment)
 
 %% ------------------------------------
 %% Example 6: 20/30/40/50 Hz high-pass
 %% ------------------------------------
 
-tpath =  '../../topology/m4';
-cpath = '../../ctl';
+blob_fn = ''; % Don't create
 fs_list = [16e3 48e3];
 fc_list = [20 30 40 50];
 g_list = [0 20];
@@ -190,7 +169,6 @@ for i = 1:length(fs_list)
 					  cpath, fc, g, fsk);
 			comment = sprintf('%d Hz second order high-pass, gain %d dB, created with example_iir_eq.m', ...
 					  fc, g);
-			tpid = sprintf('IIR_HP%dHZ%ddB%dK', fc, g, fsk);
 
 			%% Design IIR high-pass
 			eq_hp = hp_iir_eq(fs, fc, g);
@@ -207,15 +185,18 @@ for i = 1:length(fs_list)
 					       assign_response, ...
 					       bq_hp);
 
-			%% Pack and write file. If there are several EQ instances need
-			%% to have identifier string to get correct response to each
-			%% instance (here _HP50HZ20dB48K) and refer to in topology.
+			%% Pack and write file
+			eq_pack_export(bm, blob_fn, alsa_fn, tplg_fn, priv, comment)
 			bp = eq_iir_blob_pack(bm);
-			eq_tplg_write(tplg_fn, bp, tpid, comment);
+			eq_tplg_write(tplg_fn, bp, priv, comment);
 			eq_alsactl_write(alsa_fn, bp);
 		end
 	end
 end
+
+%% ------------------------------------
+%% Done.
+%% ------------------------------------
 
 end
 
@@ -334,5 +315,24 @@ eq.peq = [ ...
          ];
 eq = eq_compute(eq);
 eq_plot(eq);
+
+end
+
+% Pack and write file common function for all exports
+function eq_pack_export(bm, bin_fn, ascii_fn, tplg_fn, priv, note)
+
+bp = eq_iir_blob_pack(bm);
+
+if ~isempty(bin_fn)
+	eq_blob_write(bin_fn, bp);
+end
+
+if ~isempty(ascii_fn)
+	eq_alsactl_write(ascii_fn, bp);
+end
+
+if ~isempty(tplg_fn)
+	eq_tplg_write(tplg_fn, bp, priv, note);
+end
 
 end
