@@ -193,7 +193,7 @@ for i = 1:length(fs_list)
 			tpid = sprintf('IIR_HP%dHZ%ddB%dK', fc, g, fsk);
 
 			%% Design IIR high-pass
-			eq_hp = hp_iir_eq(fs, fc, 0);
+			eq_hp = hp_iir_eq(fs, fc, g);
 
 			%% Quantize and pack filter coefficients plus shifts etc.
 			bq_hp = eq_iir_blob_quant(eq_hp.p_z, eq_hp.p_p, eq_hp.p_k);
