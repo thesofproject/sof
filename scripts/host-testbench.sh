@@ -1,42 +1,91 @@
-#!/bin/sh
+#!/bin/bash
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2018 Intel Corporation. All rights reserved.
 
-#build host library
-sudo ./scripts/host-build-all.sh
+#
+# Usage:
+# please run following scrits for the test tplg and host build
+# ./scripts/build-tools.sh -t
+# ./scripts/host-build-all.sh
+# Run test
+# ./scripts/host-testbench.sh
+#
 
-#input file
-input_file="48000Hz_stereo_16bit.raw"
+function filesize() {
+  du -b $1 | awk '{print $1}'
+}
 
-#output_file
-output_file="out.raw"
+function comparesize() {
+  INPUT_SIZE=$1
+  OUTPUT_SIZE=$2
+  INPUT_SIZE_MIN=$(echo "$INPUT_SIZE*0.9/1"|bc)
+  # echo "MIN SIZE with 90% tolerance is $INPUT_SIZE_MIN"
+  # echo "ACTUALL SIZE is $OUTPUT_SIZE"
+  if [[ "$OUTPUT_SIZE" -gt "$INPUT_SIZE" ]]; then
+    echo "OUTPUT_SIZE $OUTPUT_SIZE too big"
+    return 1
+  fi
+  if [[ "$OUTPUT_SIZE" -lt "$INPUT_SIZE_MIN" ]]; then
+    echo "OUTPUT_SIZE $OUTPUT_SIZE too small"
+    return 1
+  fi
 
-#input bit format
-bits_in="S16_LE"
+  return 0
+}
 
-#input sample rate (this is an optional argument for SRC based pipelines)
-#should be used with -r option
-fs_in="48000"
+function srcsize() {
+  INPUT_SIZE=$1
+  INPUT_RATE=$2
+  OUTPUT_RATE=$3
+  OUTPUT_SIZE=$(echo "${INPUT_SIZE}*${OUTPUT_RATE}/${INPUT_RATE}"|bc)
+  echo $OUTPUT_SIZE
+}
 
-#output sample rate (this is an optional argument for SRC based pipelines)
-#should be used with -R option
-fs_out="96000"
+SCRIPTS_DIR=$(dirname ${BASH_SOURCE[0]})
+SOF_DIR=$SCRIPTS_DIR/../
+TESTBENCH_DIR=${SOF_DIR}/tools/test/audio
+INPUT_FILE_SIZE=10240
 
-# topology file
-# please use simple volume/src topologies for now
+cd $TESTBENCH_DIR
+rm -rf *.raw
 
-topology_file="./tools/test/topology/test-playback-ssp2-I2S-volume-s16le-s32le-48k-24576k-codec.tplg"
+# create input zeros raw file
+head -c ${INPUT_FILE_SIZE} < /dev/zero > zeros_in.raw
 
-#example src topology
-#topology_file="./tools/test/topology/test-playback-ssp5-LEFT_J-src-s24le-s24le-48k-19200k-codec.tplg"
+# test with volume
+echo "=========================================================="
+echo "test volume with ./volume_run.sh 16 16 48000 zeros_in.raw volume_out.raw"
+./volume_run.sh 16 16 48000 zeros_in.raw volume_out.raw &>vol.log
+# VOL_SIZE=$(filesize volume_out.raw)
+# echo "VOL_SIZE is $VOL_SIZE"
+comparesize ${INPUT_FILE_SIZE} $(filesize volume_out.raw)
+if [[ $? -ne 0 ]]; then
+  echo "volume test failed!"
+  cat vol.log
+else
+  echo "volume test passed!"
+fi
 
-#optional libraries to override
-libraries="vol=libsof_volume.so,src=libsof_src.so"
+# # test with src
+echo "=========================================================="
+echo "test src with ./src_run.sh 32 32 44100 48000 zeros_in.raw src_out.raw"
+./src_run.sh 32 32 44100 48000 zeros_in.raw src_out.raw &>src.log
+comparesize $(srcsize ${INPUT_FILE_SIZE} 44100 48000) $(filesize src_out.raw)
+if [[ $? -ne 0 ]]; then
+  echo "src test failed!"
+  cat src.log
+else
+  echo "src test passed!"
+fi
 
-# Use -d to enable debug prints
-
-# run volume testbench
-./src/host/testbench -i $input_file -o $output_file -b $bits_in -t $topology_file -a $libraries -d
-
-# run src testbench
-#./src/host/testbench -i $input_file -o $output_file -b $bits_in -t $topology_file -a $libraries -r $fs_in -R $fs_out -d
+# test with eq
+echo "=========================================================="
+echo "test eqiir with ./eqiir_run.sh 16 16 48000 zeros_in.raw eqiir_out.raw"
+./eqiir_run.sh 16 16 48000 zeros_in.raw eqiir_out.raw &>eqiir.log
+comparesize $INPUT_FILE_SIZE $(filesize volume_out.raw)
+if [[ $? -ne 0 ]]; then
+  echo "eqiir test failed!"
+  cat eqiir.log
+else
+  echo "eqiir test passed!"
+fi
