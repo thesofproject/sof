@@ -31,6 +31,7 @@ struct callback_handle {
 	void *caller;
 	void (*cb)(void *arg, enum notify_id, void *data);
 	struct list_item list;
+	uint32_t num_registrations;
 };
 
 int notifier_register(void *receiver, void *caller, enum notify_id type,
@@ -41,6 +42,16 @@ int notifier_register(void *receiver, void *caller, enum notify_id type,
 	struct callback_handle *handle;
 
 	assert(type >= NOTIFIER_ID_CPU_FREQ && type < NOTIFIER_ID_COUNT);
+
+	/* Find already registered event of this type */
+	if (flags & NOTIFIER_FLAG_AGGREGATE &&
+	    !list_is_empty(&notify->list[type])) {
+		handle = container_of((&notify->list[type])->next,
+				      struct callback_handle, list);
+		handle->num_registrations++;
+
+		return 0;
+	}
 
 	handle = rzalloc(SOF_MEM_ZONE_SYS_RUNTIME, 0, SOF_MEM_CAPS_RAM,
 			 sizeof(*handle));
@@ -53,6 +64,7 @@ int notifier_register(void *receiver, void *caller, enum notify_id type,
 	handle->receiver = receiver;
 	handle->caller = caller;
 	handle->cb = cb;
+	handle->num_registrations = 1;
 
 	list_item_prepend(&handle->list, &notify->list[type]);
 
@@ -82,8 +94,10 @@ void notifier_unregister(void *receiver, void *caller, enum notify_id type)
 		handle = container_of(wlist, struct callback_handle, list);
 		if ((!receiver || handle->receiver == receiver) &&
 		    (!caller || handle->caller == caller)) {
-			list_item_del(&handle->list);
-			rfree(handle);
+			if (!--handle->num_registrations) {
+				list_item_del(&handle->list);
+				rfree(handle);
+			}
 		}
 	}
 }
