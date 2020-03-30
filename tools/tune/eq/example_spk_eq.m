@@ -7,41 +7,34 @@ function example_spk_eq()
 %  Note that IIR should be first since the included band-pass response provides
 %  signal headroom.
 
-%%
-% Copyright (c) 2016, Intel Corporation
-% All rights reserved.
+% SPDX-License-Identifier: BSD-3-Clause
 %
-% Redistribution and use in source and binary forms, with or without
-% modification, are permitted provided that the following conditions are met:
-%   * Redistributions of source code must retain the above copyright
-%     notice, this list of conditions and the following disclaimer.
-%   * Redistributions in binary form must reproduce the above copyright
-%     notice, this list of conditions and the following disclaimer in the
-%     documentation and/or other materials provided with the distribution.
-%   * Neither the name of the Intel Corporation nor the
-%     names of its contributors may be used to endorse or promote products
-%     derived from this software without specific prior written permission.
-%
-% THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-% AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-% IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-% ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
-% LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-% CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-% SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-% INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
-% CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
-% ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-% POSSIBILITY OF SUCH DAMAGE.
+% Copyright (c) 2016-2020, Intel Corporation. All rights reserved.
 %
 % Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
-%
+
+%% Defaults
+fs = 48e3;
+tpath =  '../../topology/m4';
+cpath = '../../ctl';
+iir_priv = 'DEF_EQIIR_PRIV';
+fir_priv = 'DEF_EQFIR_PRIV';
+iir_comment = 'Speaker FIR+IIR EQ created with example_spk_eq.m';
+fir_comment = 'Speaker FIR+IIR EQ created with example_spk_eq.m';
+
+%% File names
+fn_fir_sofctl = fullfile(cpath, 'eq_fir_spk.txt');
+fn_fir_blob   = fullfile(cpath, 'eq_fir_spk.bin');
+fn_fir_tplg   = fullfile(tpath, 'eq_fir_coef_spk.m4');
+fn_iir_sofctl = fullfile(cpath, 'eq_fir_spk.txt');
+fn_iir_blob   = fullfile(cpath, 'eq_fir_spk.bin');
+fn_iir_tplg   = fullfile(tpath, 'eq_fir_coef_spk.m4');
 
 %% Get defaults for equalizer design
 eq = eq_defaults();
 
 %% Settings for this EQ
-eq.fs = 48e3;               % Default sample rate in SOF
+eq.fs = fs;                 % Default sample rate in SOF
 eq.enable_fir = 1;          % Try enabling and disabling FIR part
 eq.enable_iir = 1;          % Try enabling and disabling IIR part
 eq.norm_type = 'peak';      % Scale filters to have peak at 0 dB
@@ -134,9 +127,9 @@ if eq.enable_fir
                 assign_response, ...
                 [ bq_fir ]);
         bp_fir = eq_fir_blob_pack(bm_fir);
-        eq_alsactl_write('example_spk_eq_fir.txt', bp_fir);
-        eq_blob_write('example_spk_eq_fir.blob', bp_fir);
-	eq_tplg_write('example_spk_eq_fir.m4', bp_fir, 'FIR');
+        eq_alsactl_write(fn_fir_sofctl, bp_fir);
+        eq_blob_write(fn_fir_blob, bp_fir);
+	eq_tplg_write(fn_fir_tplg, bp_fir, fir_priv, fir_comment);
 end
 
 %% Export IIR part
@@ -147,9 +140,9 @@ if eq.enable_iir
                 assign_response, ...
                 [ bq_iir ]);
         bp_iir = eq_iir_blob_pack(bm_iir);
-        eq_alsactl_write('example_spk_eq_iir.txt', bp_iir);
-        eq_blob_write('example_spk_eq_iir.blob', bp_iir);
-	eq_tplg_write('example_spk_eq_iir.m4', bp_iir, 'IIR');
+        eq_alsactl_write(fn_iir_sofctl, bp_iir);
+        eq_blob_write(fn_iir_blob, bp_iir);
+	eq_tplg_write(fn_iir_tplg, bp_iir, iir_priv, iir_comment);
 end
 
 end
