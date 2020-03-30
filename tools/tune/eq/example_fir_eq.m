@@ -1,47 +1,26 @@
 %% Design demo EQs and bundle them to parameter block
 
-%%
-% Copyright (c) 2016, Intel Corporation
-% All rights reserved.
+% SPDX-License-Identifier: BSD-3-Clause
 %
-% Redistribution and use in source and binary forms, with or without
-% modification, are permitted provided that the following conditions are met:
-%   * Redistributions of source code must retain the above copyright
-%     notice, this list of conditions and the following disclaimer.
-%   * Redistributions in binary form must reproduce the above copyright
-%     notice, this list of conditions and the following disclaimer in the
-%     documentation and/or other materials provided with the distribution.
-%   * Neither the name of the Intel Corporation nor the
-%     names of its contributors may be used to endorse or promote products
-%     derived from this software without specific prior written permission.
-%
-% THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-% AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-% IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-% ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
-% LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-% CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-% SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-% INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
-% CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
-% ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-% POSSIBILITY OF SUCH DAMAGE.
+% Copyright (c) 2016-2020, Intel Corporation. All rights reserved.
 %
 % Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
-%
 
 function example_fir_eq()
 
 %% Common definitions
-endian = 'little';
 fs = 48e3;
+tpath =  '../../topology/m4';
+cpath = '../../ctl';
+priv = 'DEF_EQFIR_PRIV';
 
 %% -------------------
 %% Example 1: Loudness
 %% -------------------
-ascii_blob_fn = '../../ctl/eq_fir_loudness.txt';
-binary_blob_fn = 'example_fir_eq.blob';
-tplg_blob_fn = 'example_fir_eq.m4';
+blob_fn = fullfile(cpath, 'eq_fir_loudness.bin');
+alsa_fn = fullfile(cpath, 'eq_fir_loudness.txt');
+tplg_fn = fullfile(tpath, 'eq_fir_coef_loudness.m4');
+comment = 'Loudness effect, created with example_fir_eq.m';
 
 %% Design FIR loudness equalizer
 eq_loud = loudness_fir_eq(fs);
@@ -63,15 +42,15 @@ bm = eq_fir_blob_merge(channels_in_config, ...
 		       [ bq_pass bq_loud ]);
 
 %% Pack and write file
-bp = eq_fir_blob_pack(bm, endian);
-eq_alsactl_write(ascii_blob_fn, bp);
-eq_blob_write(binary_blob_fn, bp);
-eq_tplg_write(tplg_blob_fn, bp, 'FIR');
+eq_pack_export(bm, blob_fn, alsa_fn, tplg_fn, priv, comment);
 
 %% -------------------
 %% Example 2: Mid boost
 %% -------------------
-ascii_blob_fn = '../../ctl/eq_fir_mid.txt';
+blob_fn = fullfile(cpath, 'eq_fir_mid.bin');
+alsa_fn = fullfile(cpath, 'eq_fir_mid.txt');
+tplg_fn = fullfile(tpath, 'eq_fir_coef_mid.m4');
+comment = 'Mid boost, created with example_fir_eq.m';
 
 %% Define mid frequencies boost EQ
 eq_mid = midboost_fir_eq(fs);
@@ -89,15 +68,15 @@ bm = eq_fir_blob_merge(channels_in_config, ...
 		       bq_pass);
 
 %% Pack and write file
-bp = eq_fir_blob_pack(bm, endian);
-eq_alsactl_write(ascii_blob_fn, bp);
+eq_pack_export(bm, blob_fn, alsa_fn, tplg_fn, priv, comment);
 
 %% -------------------
 %% Example 3: Flat EQ
 %% -------------------
-comment = 'Flat FIR EQ';
-ascii_blob_fn = '../../ctl/eq_fir_flat.txt';
-tplg_blob_fn = '../../topology/m4/eq_fir_coef_flat.m4';
+blob_fn = fullfile(cpath, 'eq_fir_flat.bin');
+alsa_fn = fullfile(cpath, 'eq_fir_flat.txt');
+tplg_fn = fullfile(tpath, 'eq_fir_coef_flat.m4');
+comment = 'Flat response, created with example_fir_eq.m';
 
 %% Define a passthru EQ with one tap
 b_pass = 1;
@@ -115,14 +94,15 @@ bm = eq_fir_blob_merge(channels_in_config, ...
 		       bq_pass);
 
 %% Pack and write file
-bp = eq_fir_blob_pack(bm, endian);
-eq_alsactl_write(ascii_blob_fn, bp);
-eq_tplg_write(tplg_blob_fn, bp, 'FIR', comment);
+eq_pack_export(bm, blob_fn, alsa_fn, tplg_fn, priv, comment);
 
 %% --------------------------
 %% Example 4: Pass-through EQ
 %% --------------------------
-ascii_blob_fn = '../../ctl/eq_fir_pass.txt';
+blob_fn = fullfile(cpath, 'eq_fir_pass.bin');
+alsa_fn = fullfile(cpath, 'eq_fir_pass.txt');
+tplg_fn = fullfile(tpath, 'eq_fir_coef_pass.m4');
+comment = 'Pass-through response, created with example_fir_eq.m';
 
 %% Define a passthru EQ with one tap
 b_pass = 1;
@@ -140,8 +120,12 @@ bm = eq_fir_blob_merge(channels_in_config, ...
 		       bq_pass);
 
 %% Pack and write file
-bp = eq_fir_blob_pack(bm, endian);
-eq_alsactl_write(ascii_blob_fn, bp);
+eq_pack_export(bm, blob_fn, alsa_fn, tplg_fn, priv, comment);
+
+
+%% --------------------------
+%% Done.
+%% --------------------------
 
 end
 
@@ -223,5 +207,24 @@ eq = eq_compute(eq);
 
 %% Plot
 eq_plot(eq);
+
+end
+
+% Pack and write file common function for all exports
+function eq_pack_export(bm, bin_fn, ascii_fn, tplg_fn, priv, note)
+
+bp = eq_fir_blob_pack(bm);
+
+if ~isempty(bin_fn)
+	eq_blob_write(bin_fn, bp);
+end
+
+if ~isempty(ascii_fn)
+	eq_alsactl_write(ascii_fn, bp);
+end
+
+if ~isempty(tplg_fn)
+	eq_tplg_write(tplg_fn, bp, priv, note);
+end
 
 end
