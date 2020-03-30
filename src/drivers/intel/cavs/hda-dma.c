@@ -23,6 +23,7 @@
 #include <ipc/topology.h>
 #include <user/trace.h>
 #include <errno.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -134,6 +135,10 @@ struct hda_chan_data {
 
 	uint32_t period_bytes;
 	uint32_t buffer_bytes;
+
+	bool irq_disabled;	/**< indicates whether channel is used by the
+				  * pipeline scheduled on DMA
+				  */
 
 #if HDA_DMA_PTR_DBG
 	struct hda_dbg_data dbg_data;
@@ -657,6 +662,7 @@ static int hda_dma_set_config(struct dma_chan_data *channel,
 	hda_chan = dma_chan_get_data(channel);
 	hda_chan->period_bytes = period_bytes;
 	hda_chan->buffer_bytes = buffer_bytes;
+	hda_chan->irq_disabled = config->irq_disabled;
 
 	/* init channel in HW */
 	dma_chan_reg_write(channel, DGBBA, buffer_addr);
