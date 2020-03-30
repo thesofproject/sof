@@ -70,6 +70,7 @@ set(TPLGS
 	"sof-apl-da7219\;sof-apl-da7219"
 	"sof-glk-da7219-kwd\;sof-glk-da7219-kwd"
 	"sof-glk-da7219\;sof-glk-da7219"
+	"sof-glk-da7219\;sof-glk-eq-da7219\;-DDMICPROC=eq"
 	"sof-glk-rt5682\;sof-glk-rt5682"
 	"sof-icl-nocodec\;sof-icl-nocodec"
 	"sof-apl-pcm512x-nohdmi\;sof-apl-eq-pcm512x\;-DPPROC=eq-volume"
