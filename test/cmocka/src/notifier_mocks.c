@@ -50,7 +50,7 @@ void notifier_event(const void *caller, enum notify_id type, uint32_t core_mask,
 }
 
 int notifier_register(void *receiver, void *caller, enum notify_id type,
-	void (*cb)(void *arg, enum notify_id type, void *data))
+	void (*cb)(void *arg, enum notify_id type, void *data), uint32_t flags)
 {
 	struct notify *notify = *arch_notify_get();
 	struct callback_handle *handle;

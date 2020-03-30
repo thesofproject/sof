@@ -819,7 +819,7 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 
 		/* setup callback */
 		notifier_register(dev, dd->chan, NOTIFIER_ID_DMA_COPY,
-				  dai_dma_cb);
+				  dai_dma_cb, 0);
 	}
 
 	return dai_set_config(dd->dai, config);

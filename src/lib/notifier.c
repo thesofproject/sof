@@ -15,6 +15,7 @@
 #include <sof/list.h>
 #include <sof/sof.h>
 #include <ipc/topology.h>
+#include <stdint.h>
 
 #define trace_notifier(__e, ...) \
 	trace_event(TRACE_CLASS_NOTIFIER, __e, ##__VA_ARGS__)
@@ -33,7 +34,8 @@ struct callback_handle {
 };
 
 int notifier_register(void *receiver, void *caller, enum notify_id type,
-		      void (*cb)(void *arg, enum notify_id type, void *data))
+		      void (*cb)(void *arg, enum notify_id type, void *data),
+		      uint32_t flags)
 {
 	struct notify *notify = *arch_notify_get();
 	struct callback_handle *handle;

@@ -247,7 +247,7 @@ static int dma_single_chan_domain_register(struct ll_schedule_domain *domain,
 	/* register for source change notifications */
 	if (register_needed)
 		notifier_register(domain, NULL, NOTIFIER_ID_DMA_DOMAIN_CHANGE,
-				  dma_domain_changed);
+				  dma_domain_changed, 0);
 
 	dma_domain->owner = channel->core;
 
