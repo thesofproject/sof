@@ -98,19 +98,19 @@ enum kpb_id {
 	KPB_HP,
 };
 
-struct hb {
+struct history_buffer {
 	enum buffer_state state; /**< state of the buffer */
 	void *start_addr; /**< buffer start address */
 	void *end_addr; /**< buffer end address */
 	void *w_ptr; /**< buffer write pointer */
 	void *r_ptr; /**< buffer read pointer */
-	struct hb *next; /**< next history buffer */
-	struct hb *prev; /**< next history buffer */
+	struct history_buffer *next; /**< next history buffer */
+	struct history_buffer *prev; /**< next history buffer */
 };
 
 struct dd {
 	struct comp_buffer *sink;
-	struct hb *history_buffer;
+	struct history_buffer *hb;
 	size_t history_depth;
 	uint8_t is_draining_active;
 	size_t sample_width;

@@ -66,7 +66,7 @@ struct comp_data {
 	struct sof_kpb_config config;   /**< component configuration data */
 	struct comp_buffer *sel_sink; /**< real time sink (channel selector )*/
 	struct comp_buffer *host_sink; /**< draining sink (client) */
-	struct hb *history_buffer; /**< internal history buffer */
+	struct history_buffer *hb; /**< internal history buffer */
 	size_t buffered_data; /**< keeps info about amount of buffered data */
 	struct dd draining_task_data;
 	size_t buffer_size; /**< size of internal history buffer */
@@ -87,8 +87,8 @@ static int kpb_buffer_data(struct comp_dev *dev,
 			   const struct comp_buffer *source, size_t size);
 static size_t kpb_allocate_history_buffer(struct comp_data *kpb,
 					  size_t hb_size_req);
-static void kpb_clear_history_buffer(struct hb *buff);
-static void kpb_free_history_buffer(struct hb *buff);
+static void kpb_clear_history_buffer(struct history_buffer *buff);
+static void kpb_free_history_buffer(struct history_buffer *buff);
 static inline bool kpb_is_sample_width_supported(uint32_t sampling_width);
 static void kpb_copy_samples(struct comp_buffer *sink,
 			     struct comp_buffer *source, size_t size,
@@ -98,7 +98,7 @@ static void kpb_drain_samples(void *source, struct audio_stream *sink,
 static void kpb_buffer_samples(const struct audio_stream *source,
 			       uint32_t start, void *sink, size_t size,
 			       size_t sample_width);
-static void kpb_reset_history_buffer(struct hb *buff);
+static void kpb_reset_history_buffer(struct history_buffer *buff);
 static inline bool validate_host_params(struct comp_dev *dev,
 					size_t host_period_size,
 					size_t host_buffer_size,
@@ -182,7 +182,7 @@ static struct comp_dev *kpb_new(const struct comp_driver *drv,
 			       0); /* no flags */
 
 	/* Init basic component data */
-	kpb->history_buffer = NULL;
+	kpb->hb = NULL;
 	kpb->kpb_no_of_clients = 0;
 	kpb->state_log = 0;
 
@@ -202,8 +202,8 @@ static struct comp_dev *kpb_new(const struct comp_driver *drv,
 static size_t kpb_allocate_history_buffer(struct comp_data *kpb,
 					  size_t hb_size_req)
 {
-	struct hb *history_buffer;
-	struct hb *new_hb = NULL;
+	struct history_buffer *hb;
+	struct history_buffer *new_hb = NULL;
 	/*! Total allocation size */
 	size_t hb_size = hb_size_req;
 	/*! Current allocation size */
@@ -219,13 +219,13 @@ static size_t kpb_allocate_history_buffer(struct comp_data *kpb,
 	comp_cl_info(&comp_kpb, "kpb_allocate_history_buffer()");
 
 	/* Initialize history buffer */
-	kpb->history_buffer = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
-				      sizeof(struct hb));
-	if (!kpb->history_buffer)
+	kpb->hb = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+			  sizeof(struct history_buffer));
+	if (!kpb->hb)
 		return 0;
-	kpb->history_buffer->next = kpb->history_buffer;
-	kpb->history_buffer->prev = kpb->history_buffer;
-	history_buffer = kpb->history_buffer;
+	kpb->hb->next = kpb->hb;
+	kpb->hb->prev = kpb->hb;
+	hb = kpb->hb;
 
 	/* Allocate history buffer/s. KPB history buffer has a size of
 	 * KPB_MAX_BUFFER_SIZE, since there is no single memory block
@@ -245,14 +245,14 @@ static size_t kpb_allocate_history_buffer(struct comp_data *kpb,
 			comp_cl_info(&comp_kpb, "kpb new memory block: %d",
 				     ca_size);
 			allocated_size += ca_size;
-			history_buffer->start_addr = new_mem_block;
-			history_buffer->end_addr = (char *)new_mem_block +
+			hb->start_addr = new_mem_block;
+			hb->end_addr = (char *)new_mem_block +
 				ca_size;
-			history_buffer->w_ptr = new_mem_block;
-			history_buffer->r_ptr = new_mem_block;
-			history_buffer->state = KPB_BUFFER_FREE;
+			hb->w_ptr = new_mem_block;
+			hb->r_ptr = new_mem_block;
+			hb->state = KPB_BUFFER_FREE;
 			hb_size -= ca_size;
-			history_buffer->next = kpb->history_buffer;
+			hb->next = kpb->hb;
 			/* Do we need another buffer? */
 			if (hb_size > 0) {
 				/* Yes, we still need at least one more buffer.
@@ -260,15 +260,15 @@ static size_t kpb_allocate_history_buffer(struct comp_data *kpb,
 				 */
 				new_hb = rzalloc(SOF_MEM_ZONE_RUNTIME, 0,
 						 SOF_MEM_CAPS_RAM,
-						 sizeof(struct hb));
+						 sizeof(struct history_buffer));
 				if (!new_hb)
 					return 0;
-				history_buffer->next = new_hb;
-				new_hb->next = kpb->history_buffer;
+				hb->next = new_hb;
+				new_hb->next = kpb->hb;
 				new_hb->state = KPB_BUFFER_OFF;
-				new_hb->prev = history_buffer;
-				history_buffer = new_hb;
-				kpb->history_buffer->prev = new_hb;
+				new_hb->prev = hb;
+				hb = new_hb;
+				kpb->hb->prev = new_hb;
 				ca_size = hb_size;
 				i++;
 			}
@@ -303,10 +303,10 @@ static size_t kpb_allocate_history_buffer(struct comp_data *kpb,
  *
  * \return none.
  */
-static void kpb_free_history_buffer(struct hb *buff)
+static void kpb_free_history_buffer(struct history_buffer *buff)
 {
-	struct hb *_buff;
-	struct hb *first_buff = buff;
+	struct history_buffer *_buff;
+	struct history_buffer *first_buff = buff;
 
 	comp_cl_info(&comp_kpb, "kpb_free_history_buffer()");
 
@@ -341,8 +341,8 @@ static void kpb_free(struct comp_dev *dev)
 	notifier_unregister(dev, NULL, NOTIFIER_ID_KPB_CLIENT_EVT);
 
 	/* Reclaim memory occupied by history buffer */
-	kpb_free_history_buffer(kpb->history_buffer);
-	kpb->history_buffer = NULL;
+	kpb_free_history_buffer(kpb->hb);
+	kpb->hb = NULL;
 	kpb->buffer_size = 0;
 
 	/* remove scheduling */
@@ -462,13 +462,13 @@ static int kpb_prepare(struct comp_dev *dev)
 	kpb->sel_sink = NULL;
 	kpb->host_sink = NULL;
 
-	if (kpb->history_buffer && kpb->buffer_size < hb_size_req) {
+	if (kpb->hb && kpb->buffer_size < hb_size_req) {
 		/* Host params has changed, we need to allocate new buffer */
-		kpb_free_history_buffer(kpb->history_buffer);
-		kpb->history_buffer = NULL;
+		kpb_free_history_buffer(kpb->hb);
+		kpb->hb = NULL;
 	}
 
-	if (!kpb->history_buffer) {
+	if (!kpb->hb) {
 		/* Allocate history buffer */
 		kpb->buffer_size = kpb_allocate_history_buffer(kpb,
 							       hb_size_req);
@@ -476,14 +476,14 @@ static int kpb_prepare(struct comp_dev *dev)
 		/* Have we allocated what we requested? */
 		if (kpb->buffer_size < hb_size_req) {
 			comp_cl_err(&comp_kpb, "kpb_prepare(): failed to allocate space for KPB buffer");
-			kpb_free_history_buffer(kpb->history_buffer);
-			kpb->history_buffer = NULL;
+			kpb_free_history_buffer(kpb->hb);
+			kpb->hb = NULL;
 			kpb->buffer_size = 0;
 			return -EINVAL;
 		}
 	}
 	/* Init history buffer */
-	kpb_reset_history_buffer(kpb->history_buffer);
+	kpb_reset_history_buffer(kpb->hb);
 
 	/* Initialize clients data */
 	for (i = 0; i < KPB_MAX_NO_OF_CLIENTS; i++) {
@@ -495,8 +495,8 @@ static int kpb_prepare(struct comp_dev *dev)
 	ret = notifier_register(dev, NULL, NOTIFIER_ID_KPB_CLIENT_EVT,
 				kpb_event_handler);
 	if (ret < 0) {
-		kpb_free_history_buffer(kpb->history_buffer);
-		kpb->history_buffer = NULL;
+		kpb_free_history_buffer(kpb->hb);
+		kpb->hb = NULL;
 		return -ENOMEM;
 	}
 
@@ -577,11 +577,11 @@ static int kpb_reset(struct comp_dev *dev)
 	default:
 		kpb->buffered_data = 0;
 
-		if (kpb->history_buffer) {
+		if (kpb->hb) {
 			/* Reset history buffer - zero its data, reset pointers
 			 * and states.
 			 */
-			kpb_reset_history_buffer(kpb->history_buffer);
+			kpb_reset_history_buffer(kpb->hb);
 		}
 
 		/* Unregister KPB from notifications */
@@ -784,7 +784,7 @@ static int kpb_buffer_data(struct comp_dev *dev,
 	size_t size_to_copy = size;
 	size_t space_avail;
 	struct comp_data *kpb = comp_get_drvdata(dev);
-	struct hb *buff = kpb->history_buffer;
+	struct history_buffer *buff = kpb->hb;
 	uint32_t offset = 0;
 	uint64_t timeout = 0;
 	uint64_t current_time;
@@ -882,7 +882,7 @@ static int kpb_buffer_data(struct comp_dev *dev,
 				 * we will know right away what is the current
 				 * write buffer
 				 */
-				kpb->history_buffer = buff;
+				kpb->hb = buff;
 			}
 			/* Mark buffer as FREE */
 			buff->state = KPB_BUFFER_FREE;
@@ -988,8 +988,8 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 	size_t history_depth = cli->history_depth * kpb->config.channels *
 			       (kpb->config.sampling_freq / 1000) *
 			       (KPB_SAMPLE_CONTAINER_SIZE(sample_width) / 8);
-	struct hb *buff = kpb->history_buffer;
-	struct hb *first_buff = buff;
+	struct history_buffer *buff = kpb->hb;
+	struct history_buffer *first_buff = buff;
 	size_t buffered = 0;
 	size_t local_buffered;
 	enum comp_copy_type copy_type = COMP_COPY_NORMAL;
@@ -1100,7 +1100,7 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 
 		/* Add one-time draining task into the scheduler. */
 		kpb->draining_task_data.sink = kpb->host_sink;
-		kpb->draining_task_data.history_buffer = buff;
+		kpb->draining_task_data.hb = buff;
 		kpb->draining_task_data.history_depth = history_depth;
 		kpb->draining_task_data.sample_width = sample_width;
 		kpb->draining_task_data.drain_interval = drain_interval;
@@ -1132,7 +1132,7 @@ static enum task_state kpb_draining_task(void *arg)
 {
 	struct dd *draining_data = (struct dd *)arg;
 	struct comp_buffer *sink = draining_data->sink;
-	struct hb *buff = draining_data->history_buffer;
+	struct history_buffer *buff = draining_data->hb;
 	size_t history_depth = draining_data->history_depth;
 	size_t sample_width = draining_data->sample_width;
 	size_t size_to_read;
@@ -1364,9 +1364,9 @@ static void kpb_buffer_samples(const struct audio_stream *source,
  *
  * \return: none.
  */
-static void kpb_clear_history_buffer(struct hb *buff)
+static void kpb_clear_history_buffer(struct history_buffer *buff)
 {
-	struct hb *first_buff = buff;
+	struct history_buffer *first_buff = buff;
 	void *start_addr;
 	size_t size;
 
@@ -1471,9 +1471,9 @@ static void kpb_copy_samples(struct comp_buffer *sink,
  *
  * \return none.
  */
-static void kpb_reset_history_buffer(struct hb *buff)
+static void kpb_reset_history_buffer(struct history_buffer *buff)
 {
-	struct hb *first_buff = buff;
+	struct history_buffer *first_buff = buff;
 
 	comp_cl_info(&comp_kpb, "kpb_reset_history_buffer()");
 
