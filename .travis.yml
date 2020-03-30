@@ -10,6 +10,7 @@ services:
 stages:
   - test
   - qemutest
+  - testbench
 
 before_install:
   - docker pull thesofproject/sof && docker tag thesofproject/sof sof
@@ -74,3 +75,8 @@ jobs:
       env: PLATFORM=imx8x
     - <<: *qemuboottest
       env: PLATFORM=imx8m
+    - stage: testbench
+      script:
+        - ./scripts/docker-run.sh ./scripts/build-tools.sh -t &> /dev/null
+        - ./scripts/docker-run.sh ./scripts/host-build-all.sh
+        - ./scripts/host-testbench.sh
