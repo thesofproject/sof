@@ -76,7 +76,8 @@ W_PGA(0, PIPELINE_FORMAT, 2, DAI_PERIODS, capture_pga_conf, SCHEDULE_CORE,
 	LIST(`		', "PIPELINE_ID KWD Capture Volume"))
 
 # "KPBM" has 2 source and 2 sink periods
-W_KPBM(0, PIPELINE_FORMAT, 2, 2, PIPELINE_ID, LIST(`             ', "KPB"))
+W_KPBM(0, PIPELINE_FORMAT, 2, 2, PIPELINE_ID, SCHEDULE_CORE,
+	LIST(`             ', "KPB"))
 
 # Capture Buffers
 W_BUFFER(0, COMP_BUFFER_SIZE(DAI_PERIODS,
