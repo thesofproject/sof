@@ -77,7 +77,6 @@ static int fw_version_copy(struct snd_sof_logs_header *header,
 			   const struct module *module)
 {
 	Elf32_Shdr *section = NULL;
-	struct sof_ipc_ext_data_hdr *ext_hdr = NULL;
 	void *buffer = NULL;
 
 	if (module->fw_ready_index <= 0)
@@ -112,28 +111,10 @@ static int fw_version_copy(struct snd_sof_logs_header *header,
 		SOF_ABI_VERSION_MINOR(header->version.abi_version),
 		SOF_ABI_VERSION_PATCH(header->version.abi_version));
 
-	/* let's find dbg abi version, which the log client
-	 * is interested in and override the kernel's one.
-	 *
-	 * skip the base fw-ready record and begin from the first extension.
-	 */
-	ext_hdr = buffer + ((struct sof_ipc_fw_ready *)buffer)->hdr.size;
-	while ((uintptr_t)ext_hdr < (uintptr_t)buffer + section->size) {
-		if (ext_hdr->type == SOF_IPC_EXT_USER_ABI_INFO) {
-			header->version.abi_version =
-				((struct sof_ipc_user_abi_version *)
-						ext_hdr)->abi_dbg_version;
-			break;
-		}
-		//move to the next entry
-		ext_hdr = (struct sof_ipc_ext_data_hdr *)
-				((uint8_t *)ext_hdr + ext_hdr->hdr.size);
-	}
-
 	fprintf(stdout, "fw abi dbg version: %d:%d:%d\n",
-		SOF_ABI_VERSION_MAJOR(header->version.abi_version),
-		SOF_ABI_VERSION_MINOR(header->version.abi_version),
-		SOF_ABI_VERSION_PATCH(header->version.abi_version));
+		SOF_ABI_VERSION_MAJOR(header->version.dbg_abi_version),
+		SOF_ABI_VERSION_MINOR(header->version.dbg_abi_version),
+		SOF_ABI_VERSION_PATCH(header->version.dbg_abi_version));
 
 	free(buffer);
 

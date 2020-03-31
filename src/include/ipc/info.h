@@ -54,9 +54,10 @@ struct sof_ipc_fw_version {
 	uint8_t time[10];
 	uint8_t tag[6];
 	uint32_t abi_version;
+	uint32_t dbg_abi_version;
 
 	/* reserved for future use */
-	uint32_t reserved[4];
+	uint32_t reserved[3];
 } __attribute__((packed));
 
 /* FW ready Message - sent by firmware when boot has completed */
@@ -134,13 +135,6 @@ struct sof_ipc_probe_support {
 
 	/* reserved for future use */
 	uint32_t reserved[2];
-} __attribute__((packed));
-
-/* extended data: user abi version(s) */
-struct sof_ipc_user_abi_version {
-	struct sof_ipc_ext_data_hdr ext_hdr;
-
-	uint32_t abi_dbg_version;
 } __attribute__((packed));
 
 #endif /* __IPC_INFO_H__ */

@@ -34,6 +34,7 @@
 #include <ipc/header.h>
 #include <ipc/info.h>
 #include <kernel/abi.h>
+#include <user/abi_dbg.h>
 #include <config.h>
 #include <version.h>
 #include <errno.h>
@@ -61,6 +62,7 @@ static const struct sof_ipc_fw_ready ready
 #endif
 		.tag = SOF_TAG,
 		.abi_version = SOF_ABI_VERSION,
+		.dbg_abi_version = SOF_ABI_DBG_VERSION,
 	},
 	.flags = DEBUG_SET_FW_READY_FLAGS
 };
@@ -146,9 +148,6 @@ int platform_boot_complete(uint32_t boot_message)
 	mailbox_dspbox_write(mb_offset, &probe_support,
 			     probe_support.ext_hdr.hdr.size);
 	mb_offset = mb_offset + probe_support.ext_hdr.hdr.size;
-
-	mailbox_dspbox_write(mb_offset, &user_abi_version,
-			     user_abi_version.ext_hdr.hdr.size);
 
 	/* now interrupt host to tell it we are done booting */
 	shim_write(SHIM_IPCDL, SOF_IPC_FW_READY | outbox);

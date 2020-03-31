@@ -12,6 +12,5 @@
 
 extern const struct sof_ipc_cc_version cc_version;
 extern const struct sof_ipc_probe_support probe_support;
-extern const struct sof_ipc_user_abi_version user_abi_version;
 
 #endif /* __IPC_FW_READY_METADATA_H__ */

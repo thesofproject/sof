@@ -675,7 +675,7 @@ static int verify_fw_ver(const struct convert_config *config,
 
 	/* logger and version_file abi dbg verification */
 	if (SOF_ABI_VERSION_INCOMPATIBLE(SOF_ABI_DBG_VERSION,
-					 ver.abi_version)) {
+					 ver.dbg_abi_version)) {
 		log_err(config->out_fd,
 			"abi version in %s file does not coincide with abi version used by logger.\n",
 			config->version_file);
@@ -686,9 +686,9 @@ static int verify_fw_ver(const struct convert_config *config,
 			SOF_ABI_VERSION_PATCH(SOF_ABI_DBG_VERSION));
 		log_err(config->out_fd,
 			"version_file ABI Version is %d:%d:%d\n",
-			SOF_ABI_VERSION_MAJOR(ver.abi_version),
-			SOF_ABI_VERSION_MINOR(ver.abi_version),
-			SOF_ABI_VERSION_PATCH(ver.abi_version));
+			SOF_ABI_VERSION_MAJOR(ver.dbg_abi_version),
+			SOF_ABI_VERSION_MINOR(ver.dbg_abi_version),
+			SOF_ABI_VERSION_PATCH(ver.dbg_abi_version));
 		return -EINVAL;
 	}
 	return 0;
@@ -707,10 +707,14 @@ static int dump_ldc_info(struct convert_config *config,
 	int cnt = 0;
 	char *name;
 
-	fprintf(out_fd, "logger ABI Version is\t%d:%d:%d\n",
+	fprintf(out_fd, "logger DBG_ABI Version is\t%d:%d:%d\n",
 		SOF_ABI_VERSION_MAJOR(SOF_ABI_DBG_VERSION),
 		SOF_ABI_VERSION_MINOR(SOF_ABI_DBG_VERSION),
 		SOF_ABI_VERSION_PATCH(SOF_ABI_DBG_VERSION));
+	fprintf(out_fd, "ldc_file DBG_ABI Version is\t%d:%d:%d\n",
+		SOF_ABI_VERSION_MAJOR(snd->version.dbg_abi_version),
+		SOF_ABI_VERSION_MINOR(snd->version.dbg_abi_version),
+		SOF_ABI_VERSION_PATCH(snd->version.dbg_abi_version));
 	fprintf(out_fd, "ldc_file ABI Version is\t%d:%d:%d\n",
 		SOF_ABI_VERSION_MAJOR(snd->version.abi_version),
 		SOF_ABI_VERSION_MINOR(snd->version.abi_version),
@@ -775,7 +779,7 @@ int convert(struct convert_config *config)
 
 	/* default logger and ldc_file abi verification */
 	if (SOF_ABI_VERSION_INCOMPATIBLE(SOF_ABI_DBG_VERSION,
-					 snd.version.abi_version)) {
+					 snd.version.dbg_abi_version)) {
 		log_err(config->out_fd,
 			"abi version in %s file does not coincide with abi version used by logger.\n",
 			config->ldc_file);
@@ -784,9 +788,9 @@ int convert(struct convert_config *config)
 			SOF_ABI_VERSION_MINOR(SOF_ABI_DBG_VERSION),
 			SOF_ABI_VERSION_PATCH(SOF_ABI_DBG_VERSION));
 		log_err(config->out_fd, "ldc_file ABI Version is %d:%d:%d\n",
-			SOF_ABI_VERSION_MAJOR(snd.version.abi_version),
-			SOF_ABI_VERSION_MINOR(snd.version.abi_version),
-			SOF_ABI_VERSION_PATCH(snd.version.abi_version));
+			SOF_ABI_VERSION_MAJOR(snd.version.dbg_abi_version),
+			SOF_ABI_VERSION_MINOR(snd.version.dbg_abi_version),
+			SOF_ABI_VERSION_PATCH(snd.version.dbg_abi_version));
 		return -EINVAL;
 	}
 
