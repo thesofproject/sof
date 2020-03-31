@@ -63,13 +63,14 @@ define(`W_DAI_OUT',
 `	]'
 `}')
 
-dnl W_DAI_IN(type, index, dai_link, format, periods_sink, periods_source)
+dnl W_DAI_IN(type, index, dai_link, format, periods_sink, periods_source, core)
 define(`W_DAI_IN',
 `SectionVendorTuples."'N_DAI_IN`_tuples_w_comp" {'
 `	tokens "sof_comp_tokens"'
 `	tuples."word" {'
 `		SOF_TKN_COMP_PERIOD_SINK_COUNT'		STR($5)
 `		SOF_TKN_COMP_PERIOD_SOURCE_COUNT'	STR($6)
+`		SOF_TKN_COMP_CORE_ID'			STR($7)
 `	}'
 `}'
 `SectionData."'N_DAI_IN`_data_w_comp" {'
