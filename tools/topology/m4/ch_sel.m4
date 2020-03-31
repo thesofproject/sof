@@ -2,16 +2,17 @@ divert(-1)
 
 dnl Define macro for channel selector widget
 
-dnl Selector name)
+dnl N_SELECTOR(name)
 define(`N_SELECTOR', `SELECTOR'PIPELINE_ID`.'$1)
 
-dnl W_SELECTOR(name, format, periods_sink, periods_source, kcontrols_list)
+dnl W_SELECTOR(name, format, periods_sink, periods_source, core, kcontrols_list)
 define(`W_SELECTOR',
 `SectionVendorTuples."'N_SELECTOR($1)`_tuples_w" {'
 `	tokens "sof_comp_tokens"'
 `	tuples."word" {'
 `		SOF_TKN_COMP_PERIOD_SINK_COUNT'		STR($3)
 `		SOF_TKN_COMP_PERIOD_SOURCE_COUNT'	STR($4)
+`		SOF_TKN_COMP_CORE_ID'			STR($5)
 `	}'
 `}'
 `SectionData."'N_SELECTOR($1)`_data_w" {'
@@ -42,7 +43,7 @@ define(`W_SELECTOR',
 `		"'N_SELECTOR($1)`_data_str"'
 `	]'
 `	bytes ['
-		$5
+		$6
 `	]'
 `}')
 
