@@ -13,7 +13,7 @@ function [bytes, nbytes] = eq_get_abi(setsize)
 
 %% Use sof-ctl to write ABI header into a file
 abifn = 'eq_get_abi.bin';
-cmd = sprintf('sof-ctl -g %d -b -o %s', setsize, abifn);
+cmd = sprintf('sof-ctl -g %d -b -o %s > /dev/null', setsize, abifn);
 system(cmd);
 
 %% Read file and delete it
