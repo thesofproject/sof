@@ -44,7 +44,7 @@ C_CONTROLBYTES(DEF_EQIIR_COEF, PIPELINE_ID,
 
 # Host "EQ IIR Capture" PCM
 # with 0 sink and 2 source periods
-W_PCM_CAPTURE(PCM_ID, EQ IIR Capture, 0, 2)
+W_PCM_CAPTURE(PCM_ID, EQ IIR Capture, 0, 2, SCHEDULE_CORE)
 
 # "EQ 0" has 2 sink period and x source periods
 W_EQ_IIR(0, PIPELINE_FORMAT, 2, DAI_PERIODS, LIST(`		', "DEF_EQIIR_COEF"))

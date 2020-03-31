@@ -44,7 +44,7 @@ C_CONTROLBYTES(MY_CONTROLBYTES, PIPELINE_ID,
 
 # Host "EQ FIR Capture" PCM
 # with 0 sink and 2 source periods
-W_PCM_CAPTURE(PCM_ID, EQ FIR Capture, 0, 2)
+W_PCM_CAPTURE(PCM_ID, EQ FIR Capture, 0, 2, SCHEDULE_CORE)
 
 # "EQ 0" has 2 sink period and x source periods
 W_EQ_FIR(0, PIPELINE_FORMAT, 2, DAI_PERIODS, LIST(`		', "MY_CONTROLBYTES"))

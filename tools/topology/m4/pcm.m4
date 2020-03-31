@@ -2,7 +2,7 @@ divert(-1)
 
 dnl Define the macro for PCM playback/capture/capabilities
 
-dnl PCM name)
+dnl N_PCM(name)
 define(`N_PCMP', `PCM'$1`P')
 define(`N_PCMC', `PCM'$1`C')
 
@@ -31,13 +31,14 @@ define(`W_PCM_PLAYBACK',
 `}')
 
 
-dnl W_PCM_CAPTURE(pcm, stream, periods_sink, periods_source)
+dnl W_PCM_CAPTURE(pcm, stream, periods_sink, periods_source, core)
 define(`W_PCM_CAPTURE',
 `SectionVendorTuples."'N_PCMC($1)`_tuples_w_comp" {'
 `	tokens "sof_comp_tokens"'
 `	tuples."word" {'
 `		SOF_TKN_COMP_PERIOD_SINK_COUNT'		STR($3)
 `		SOF_TKN_COMP_PERIOD_SOURCE_COUNT'	STR($4)
+`		SOF_TKN_COMP_CORE_ID'			STR($5)
 `	}'
 `}'
 `SectionData."'N_PCMC($1)`_data_w_comp" {'

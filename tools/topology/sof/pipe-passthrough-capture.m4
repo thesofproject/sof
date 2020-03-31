@@ -17,7 +17,7 @@ include(`pipeline.m4')
 
 # Host "Passthrough Capture" PCM
 # with 0 sink and 2 source periods
-W_PCM_CAPTURE(PCM_ID, Passthrough Capture, 0, DAI_PERIODS)
+W_PCM_CAPTURE(PCM_ID, Passthrough Capture, 0, DAI_PERIODS, SCHEDULE_CORE)
 
 # Capture Buffers
 W_BUFFER(0, COMP_BUFFER_SIZE(DAI_PERIODS,
