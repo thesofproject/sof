@@ -53,7 +53,8 @@ C_CONTROLBYTES(KPB, PIPELINE_ID,
 W_PCM_CAPTURE(PCM_ID, Sound Trigger Capture, 0, 2, 2, SCHEDULE_CORE)
 
 # "KPBM" has 2 source and 2 sink periods
-W_KPBM(0, PIPELINE_FORMAT, 2, 2, PIPELINE_ID, LIST(`             ', "KPB"))
+W_KPBM(0, PIPELINE_FORMAT, 2, 2, PIPELINE_ID, SCHEDULE_CORE,
+	LIST(`             ', "KPB"))
 
 # Capture Buffers
 W_BUFFER(0, COMP_BUFFER_SIZE(DAI_PERIODS,

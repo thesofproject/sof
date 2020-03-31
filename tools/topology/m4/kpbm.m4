@@ -2,16 +2,17 @@ divert(-1)
 
 dnl Define macro for Key Phrase Buffer Manager(kpbm) widget
 
-dnl kpbm Name)
+dnl N_KPBM(name)
 define(`N_KPBM', `KPBM'$2`.'$1)
 
-dnl W_KPBM(name, format, periods_sink, periods_source, pipeline_id, kcontrols_list)
+dnl W_KPBM(name, format, periods_sink, periods_source, pipeline_id, core, kcontrols_list)
 define(`W_KPBM',
 `SectionVendorTuples."'N_KPBM($1, $5)`_tuples_w" {'
 `	tokens "sof_comp_tokens"'
 `	tuples."word" {'
 `		SOF_TKN_COMP_PERIOD_SINK_COUNT'		STR($3)
 `		SOF_TKN_COMP_PERIOD_SOURCE_COUNT'	STR($4)
+`		SOF_TKN_COMP_CORE_ID'			STR($6)
 `	}'
 `}'
 `SectionData."'N_KPBM($1, $5)`_data_w" {'
@@ -42,7 +43,7 @@ define(`W_KPBM',
 `		"'N_KPBM($1, $5)`_data_str"'
 `	]'
 `	bytes ['
-		$6
+		$7
 `	]'
 `}')
 
