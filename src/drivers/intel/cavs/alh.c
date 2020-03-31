@@ -35,7 +35,12 @@ static int alh_set_config(struct dai *dai, struct sof_ipc_dai_config *config)
 	dai_info(dai, "alh_set_config() config->format = 0x%4x",
 		  config->format);
 
-	alh->params = config->alh;
+	if (config->alh.channels || config->alh.rate) {
+		alh->params.channels = config->alh.channels;
+		alh->params.rate = config->alh.rate;
+	}
+
+	alh->params.stream_id = config->alh.stream_id;
 
 	return 0;
 }
@@ -46,15 +51,8 @@ static int alh_get_hw_params(struct dai *dai,
 {
 	struct alh_pdata *alh = dai_get_drvdata(dai);
 
-	/*
-	 * ALH config is sent multiple times, only the first batch contains
-	 * the stream format
-	 */
-	if (alh->params.rate)
-		params->rate = alh->params.rate;
-
-	if (alh->params.channels)
-		params->channels = alh->params.channels;
+	params->rate = alh->params.rate;
+	params->channels = alh->params.channels;
 
 	/* 0 means variable */
 	params->buffer_fmt = 0;
