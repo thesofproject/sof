@@ -18,6 +18,10 @@ include(`sof/tokens.m4')
 include(`platform/intel/bxt.m4')
 include(`platform/intel/dmic.m4')
 
+ifdef(`CODEC_MASTER',
+define(SSP_SCHEDULE_TIME_DOMAIN, SCHEDULE_TIME_DOMAIN_DMA),
+define(SSP_SCHEDULE_TIME_DOMAIN, SCHEDULE_TIME_DOMAIN_TIMER))
+
 DEBUG_START
 
 #
@@ -43,14 +47,14 @@ dnl     time_domain, sched_comp)
 PIPELINE_PCM_ADD(sof/pipe-low-latency-playback.m4,
 	1, 0, 2, s32le,
 	1000, 0, 0,
-	48000, 48000, 48000)
+	FSYNC, FSYNC, FSYNC)
 
 # Low Latency capture pipeline 2 on PCM 0 using max 2 channels of s32le.
 # 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-volume-capture.m4,
 	6, 0, 2, s32le,
 	1000, 0, 0,
-	48000, 48000, 48000)
+	FSYNC, FSYNC, FSYNC)
 
 # Low Latency playback pipeline 2 on PCM 1 using max 2 channels of s32le.
 # 1000us deadline on core 0 with priority 0
@@ -101,22 +105,22 @@ dnl     deadline, priority, core, time_domain)
 DAI_ADD(sof/pipe-dai-playback.m4,
 	1, SSP, 5, SSP5-Codec,
 	PIPELINE_SOURCE_1, 2, s24le,
-	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
+	1000, 0, 0, SSP_SCHEDULE_TIME_DOMAIN)
 
 # capture DAI is SSP5 using 2 periods
 # Buffers use s16le format, 1000us deadline on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
 	6, SSP, 5, SSP5-Codec,
 	PIPELINE_SINK_6, 2, s24le,
-	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
+	1000, 0, 0, SSP_SCHEDULE_TIME_DOMAIN)
 
 # Media playback pipeline 5 on PCM 4 using max 2 channels of s16le.
 # Set 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-pcm-media.m4,
 	5, 4, 2, s16le,
 	1000, 0, 0,
-	8000, 96000, 48000,
-	SCHEDULE_TIME_DOMAIN_TIMER,
+	8000, 96000, FSYNC,
+	SSP_SCHEDULE_TIME_DOMAIN,
 	PIPELINE_PLAYBACK_SCHED_COMP_1)
 
 # Connect pipelines together
@@ -178,12 +182,25 @@ PCM_CAPTURE_ADD(DMIC16kHz, 6, PIPELINE_PCM_8)
 
 dnl DAI_CONFIG(type, dai_index, link_id, name, ssp_config/dmic_config)
 #SSP 5 (ID: 0)
+ifdef(`CODEC_MASTER',
+`
+DAI_CONFIG(SSP, 5, 0, SSP5-Codec,
+	SSP_CONFIG(I2S, SSP_CLOCK(mclk, 24576000, codec_mclk_in),
+		SSP_CLOCK(bclk, eval(FSYNC * 64), codec_master),
+		SSP_CLOCK(fsync, FSYNC, codec_master),
+		SSP_TDM(2, 32, 3, 3),
+		SSP_CONFIG_DATA(SSP, 5, 24)))
+'
+,
+`
 DAI_CONFIG(SSP, 5, 0, SSP5-Codec,
 	SSP_CONFIG(I2S, SSP_CLOCK(mclk, 24576000, codec_mclk_in),
 		SSP_CLOCK(bclk, 3072000, codec_slave),
 		SSP_CLOCK(fsync, 48000, codec_slave),
 		SSP_TDM(2, 32, 3, 3),
 		SSP_CONFIG_DATA(SSP, 5, 24)))
+'
+)
 
 # DMIC (ID: 1)
 DAI_CONFIG(DMIC, 0, 1, dmic01,
