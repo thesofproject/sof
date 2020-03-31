@@ -69,7 +69,8 @@ W_PGA(0, PIPELINE_FORMAT, DAI_PERIODS, 2, MY_PGA_CONF, SCHEDULE_CORE,
 	LIST(`		', "PIPELINE_ID Master Playback Volume"))
 
 # "DC Block" has 2 sink periods and 2 source periods
-W_DCBLOCK(0, PIPELINE_FORMAT, 2, 2, LIST(`   ', "MY_DCBLOCK_CTRL"))
+W_DCBLOCK(0, PIPELINE_FORMAT, 2, 2, SCHEDULE_CORE,
+	LIST(`   ', "MY_DCBLOCK_CTRL"))
 
 # Playback Buffers
 W_BUFFER(0, COMP_BUFFER_SIZE(2,

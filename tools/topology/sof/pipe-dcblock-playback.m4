@@ -47,7 +47,8 @@ include(`dcblock_coef_default.m4')
       DCBLOCK_priv)
 
 # "DC Block" has 2 sink periods and 2 source periods
-W_DCBLOCK(0, PIPELINE_FORMAT, 2, 2, LIST(`   ', "MY_DCBLOCK_CTRL"))
+W_DCBLOCK(0, PIPELINE_FORMAT, 2, 2, SCHEDULE_CORE,
+	LIST(`   ', "MY_DCBLOCK_CTRL"))
 
 # Playback Buffers
 W_BUFFER(0, COMP_BUFFER_SIZE(2,
