@@ -79,7 +79,7 @@ W_PGA(0, PIPELINE_FORMAT, 2, 2, DEF_PGA_CONF, SCHEDULE_CORE,
 	LIST(`		', "PIPELINE_ID Master Capture Volume"))
 
 # "EQ 0" has 2 sink period and x source periods
-W_EQ_FIR(0, PIPELINE_FORMAT, 2, DAI_PERIODS,
+W_EQ_FIR(0, PIPELINE_FORMAT, 2, DAI_PERIODS, SCHEDULE_CORE,
 	LIST(`		', "DEF_EQFIR_COEF"))
 
 # Capture Buffers
