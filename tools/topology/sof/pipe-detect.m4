@@ -75,7 +75,8 @@ C_CONTROLBYTES(Hotword Model, PIPELINE_ID,
 #
 
 # "Detect 0" has 2 sink period and 0 source periods
-W_DETECT(0, PIPELINE_FORMAT, 0, 2, KEYWORD, N_STS(PCM_ID), LIST(`             ', "Detector Config", "Hotword Model"))
+W_DETECT(0, PIPELINE_FORMAT, 0, 2, KEYWORD, N_STS(PCM_ID), SCHEDULE_CORE,
+	LIST(`             ', "Detector Config", "Hotword Model"))
 
 W_SELECTOR(0, PIPELINE_FORMAT, 2, 2, SCHEDULE_CORE,
 	LIST(`		', "SELECTOR"))

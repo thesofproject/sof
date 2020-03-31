@@ -2,16 +2,17 @@ divert(-1)
 
 dnl Define macro for generic detection widget
 
-dnl Detect name)
+dnl N_DETECT(name)
 define(`N_DETECT', `DETECT'PIPELINE_ID`.'$1)
 
-dnl W_DETECT(name, format, periods_sink, periods_source, detect_type, stream_name, kcontrols_list)
+dnl W_DETECT(name, format, periods_sink, periods_source, detect_type, stream_name, core, kcontrols_list)
 define(`W_DETECT',
 `SectionVendorTuples."'N_DETECT($1)`_tuples_w" {'
 `	tokens "sof_comp_tokens"'
 `	tuples."word" {'
 `		SOF_TKN_COMP_PERIOD_SINK_COUNT'		STR($3)
 `		SOF_TKN_COMP_PERIOD_SOURCE_COUNT'	STR($4)
+`		SOF_TKN_COMP_CORE_ID'			STR($7)
 `	}'
 `}'
 `SectionVendorTuples."'N_DETECT($1)`_detect_process_tuples_str" {'
@@ -45,7 +46,7 @@ define(`W_DETECT',
 `		"'N_DETECT($1)`_data_str"'
 `	]'
 `       bytes ['
-                $7
+                $8
 `       ]'
 `}')
 
