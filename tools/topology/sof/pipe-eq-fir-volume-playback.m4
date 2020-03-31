@@ -69,7 +69,8 @@ W_PGA(0, PIPELINE_FORMAT, DAI_PERIODS, 2, DEF_PGA_CONF, SCHEDULE_CORE,
 	LIST(`		', "PIPELINE_ID Master Playback Volume"))
 
 # "EQ 0" has 2 sink period and 2 source periods
-W_EQ_FIR(0, PIPELINE_FORMAT, 2, 2, LIST(`		', "DEF_EQFIR_COEF"))
+W_EQ_FIR(0, PIPELINE_FORMAT, 2, 2, SCHEDULE_CORE,
+	LIST(`		', "DEF_EQFIR_COEF"))
 
 # Playback Buffers
 W_BUFFER(0, COMP_BUFFER_SIZE(2,
