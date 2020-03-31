@@ -6,6 +6,7 @@
 include(`utils.m4')
 include(`dai.m4')
 include(`pipeline.m4')
+include(`alh.m4')
 
 # Include TLV library
 include(`common/tlv.m4')
@@ -206,21 +207,26 @@ PCM_PLAYBACK_ADD(HDMI3, 7, PIPELINE_PCM_8)
 
 #ALH dai index = ((link_id << 8) | PDI id)
 #ALH SDW0 Pin2 (ID: 0)
-DAI_CONFIG(ALH, 2, 0, SDW0-Playback)
+DAI_CONFIG(ALH, 2, 0, SDW0-Playback,
+	ALH_CONFIG(ALH_CONFIG_DATA(ALH, 2, 48000, 2)))
 
 #ALH SDW0 Pin3 (ID: 1)
-DAI_CONFIG(ALH, 3, 1, SDW0-Capture)
+DAI_CONFIG(ALH, 3, 1, SDW0-Capture,
+	ALH_CONFIG(ALH_CONFIG_DATA(ALH, 3, 48000, 2)))
 
 #ALH SDW1 Pin2 (ID: 2)
-DAI_CONFIG(ALH, 0x102, 2, SDW1-Playback)
+DAI_CONFIG(ALH, 0x102, 2, SDW1-Playback,
+	ALH_CONFIG(ALH_CONFIG_DATA(ALH, 0x102, 48000, 2)))
 
 ifdef(`NO_AGGREGATION',
 `#ALH SDW2 Pin2 (ID: 3)
-DAI_CONFIG(ALH, 0x202, 3, SDW2-Playback)',
+DAI_CONFIG(ALH, 0x202, 3, SDW2-Playback,
+	ALH_CONFIG(ALH_CONFIG_DATA(ALH, 0x202, 48000, 2)))',
 `')
 
 #ALH SDW3 Pin2 (ID: 4)
-DAI_CONFIG(ALH, 0x302, 4, SDW3-Capture)
+DAI_CONFIG(ALH, 0x302, 4, SDW3-Capture,
+	ALH_CONFIG(ALH_CONFIG_DATA(ALH, 0x302, 48000, 2)))
 
 # 3 HDMI/DP outputs (ID: 5,6,7)
 DAI_CONFIG(HDA, 0, 5, iDisp1)
