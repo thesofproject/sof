@@ -335,31 +335,18 @@ out:
 static int dw_dma_release(struct dma_chan_data *channel)
 {
 	struct dw_dma_chan_data *dw_chan = dma_chan_get_data(channel);
-	struct dma *dma = channel->dma;
 	uint32_t flags;
-	int ret;
 
 	trace_dwdma("dw_dma_release(): dma %d channel %d release",
 		    channel->dma->plat_data.id, channel->index);
 
 	irq_local_disable(flags);
 
-	/* now we wait for FIFO to be empty */
-	ret = poll_for_register_delay(dma_base(dma) +
-				      DW_CFG_LOW(channel->index),
-				      DW_CFGL_FIFO_EMPTY,
-				      DW_CFGL_FIFO_EMPTY,
-				      DW_DMA_TIMEOUT);
-
 	/* get next lli for proper release */
 	dw_chan->lli_current = (struct dw_lli *)dw_chan->lli_current->llp;
 
 	/* prepare to start */
 	dw_dma_stop(channel);
-
-	if (ret < 0)
-		trace_dwdma_error("dw_dma_release() error: dma %d channel %d timeout",
-				  dma->plat_data.id, channel->index);
 
 	irq_local_enable(flags);
 
