@@ -52,7 +52,8 @@ W_DATA(playback_pga_conf, playback_pga_tokens)
 #
 
 # "Tone 0" has 2 sink period and 0 source periods
-W_TONE(0, PIPELINE_FORMAT, 2, 0, LIST(`		', "PIPELINE_ID Tone Switch"))
+W_TONE(0, PIPELINE_FORMAT, 2, 0, SCHEDULE_CORE,
+	LIST(`		', "PIPELINE_ID Tone Switch"))
 
 # "Tone Volume" has 2 sink period and 2 source periods
 W_PGA(0, PIPELINE_FORMAT, 2, 2, playback_pga_conf, SCHEDULE_CORE,
