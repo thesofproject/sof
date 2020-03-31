@@ -7,6 +7,7 @@ include(`utils.m4')
 include(`dai.m4')
 include(`pipeline.m4')
 include(`ssp.m4')
+include(`alh.m4')
 
 # Include TLV library
 include(`common/tlv.m4')
@@ -207,10 +208,12 @@ PCM_PLAYBACK_ADD(HDMI4, 8, PIPELINE_PCM_9)
 
 #ALH dai index = ((link_id << 8) | PDI id)
 #ALH SDW0 Pin2 (ID: 0)
-DAI_CONFIG(ALH, 0x002, 0, SDW0-Playback)
+DAI_CONFIG(ALH, 0x002, 0, SDW0-Playback,
+	ALH_CONFIG(ALH_CONFIG_DATA(ALH, 0x002, 48000, 2)))
 
 #ALH SDW0 Pin3 (ID: 1)
-DAI_CONFIG(ALH, 0x003, 1, SDW0-Capture)
+DAI_CONFIG(ALH, 0x003, 1, SDW0-Capture,
+	ALH_CONFIG(ALH_CONFIG_DATA(ALH, 0x003, 48000, 2)))
 
 #SSP 2 (ID: 2)
 DAI_CONFIG(SSP, 2, 2, SSP2-Codec,

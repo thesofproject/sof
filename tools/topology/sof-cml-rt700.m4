@@ -6,6 +6,7 @@
 include(`utils.m4')
 include(`dai.m4')
 include(`pipeline.m4')
+include(`alh.m4')
 
 # Include TLV library
 include(`common/tlv.m4')
@@ -159,10 +160,12 @@ PCM_PLAYBACK_ADD(HDMI3, 6, PIPELINE_PCM_7)
 
 #ALH dai index = ((link_id << 8) | PDI id)
 #ALH SDW1 Pin2 (ID: 0)
-DAI_CONFIG(ALH, 0x102, 0, SDW1-Playback)
+DAI_CONFIG(ALH, 0x102, 0, SDW1-Playback,
+	ALH_CONFIG(ALH_CONFIG_DATA(ALH, 0x102, 48000, 2)))
 
 #ALH SDW1 Pin3 (ID: 1)
-DAI_CONFIG(ALH, 0x103, 1, SDW1-Capture)
+DAI_CONFIG(ALH, 0x103, 1, SDW1-Capture,
+	ALH_CONFIG(ALH_CONFIG_DATA(ALH, 0x103, 48000, 2)))
 
 # dmic01 (ID: 1)
 DAI_CONFIG(DMIC, 0, 2, dmic01,

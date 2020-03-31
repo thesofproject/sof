@@ -117,3 +117,8 @@ SectionVendorTokens."sof_led_tokens" {
 	SOF_TKN_MUTE_LED_USE			"1300"
 	SOF_TKN_MUTE_LED_DIRECTION		"1301"
 }
+
+SectionVendorTokens."sof_alh_tokens" {
+	SOF_TKN_INTEL_ALH_RATE			"1400"
+	SOF_TKN_INTEL_ALH_CH			"1401"
+}
