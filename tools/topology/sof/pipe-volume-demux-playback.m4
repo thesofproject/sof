@@ -63,7 +63,8 @@ W_PGA(1, PIPELINE_FORMAT, DAI_PERIODS, 2, playback_pga_conf, SCHEDULE_CORE,
 	LIST(`		', "PIPELINE_ID Master Playback Volume"))
 
 # Mux 0 has 2 sink and source periods.
-W_MUXDEMUX(0, 1, PIPELINE_FORMAT, 2, 2, LIST(`         ', "DEMUX"))
+W_MUXDEMUX(0, 1, PIPELINE_FORMAT, 2, 2, SCHEDULE_CORE,
+	LIST(`         ', "DEMUX"))
 
 # Low Latency Buffers
 W_BUFFER(0, COMP_BUFFER_SIZE(2,
