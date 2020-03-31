@@ -75,7 +75,7 @@ W_PGA(1, PIPELINE_FORMAT, DAI_PERIODS, 2, playback_pga_conf, SCHEDULE_CORE,
 	LIST(`		', "PIPELINE_ID Master Playback Volume"))
 
 # Mixer 0 has 2 sink and source periods.
-W_MIXER(0, PIPELINE_FORMAT, 2, 2)
+W_MIXER(0, PIPELINE_FORMAT, 2, 2, SCHEDULE_CORE)
 
 # Low Latency Buffers
 W_BUFFER(0, COMP_BUFFER_SIZE(2,
