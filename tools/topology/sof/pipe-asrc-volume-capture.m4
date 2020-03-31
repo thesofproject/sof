@@ -45,7 +45,7 @@ W_DATA(MY_PGA_CONF, MY_PGA_TOKENS)
 
 # Host "Passthrough Capture" PCM
 # with 0 sink and 3 source periods
-W_PCM_CAPTURE(PCM_ID, ASRC Capture, 0, 3)
+W_PCM_CAPTURE(PCM_ID, ASRC Capture, 0, 3, SCHEDULE_CORE)
 
 #
 # ASRC Configuration

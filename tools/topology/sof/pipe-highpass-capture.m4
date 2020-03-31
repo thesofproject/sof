@@ -72,7 +72,7 @@ C_CONTROLBYTES(DEF_EQIIR_COEF, PIPELINE_ID,
 
 # Host "Highpass Capture" PCM
 # with 0 sink and 2 source periods
-W_PCM_CAPTURE(PCM_ID, Highpass Capture, 0, 2)
+W_PCM_CAPTURE(PCM_ID, Highpass Capture, 0, 2, SCHEDULE_CORE)
 
 # "Volume" has 2 sink and 2 source periods
 W_PGA(0, PIPELINE_FORMAT, 2, DAI_PERIODS, DEF_PGA_CONF, SCHEDULE_CORE,

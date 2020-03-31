@@ -19,7 +19,7 @@ include(`dcblock.m4')
 
 # Host "DC Block Capture" PCM
 # with 0 sink and 3 source periods
-W_PCM_CAPTURE(PCM_ID, DC Block Capture, 0, 3)
+W_PCM_CAPTURE(PCM_ID, DC Block Capture, 0, 3, SCHEDULE_CORE)
 
 define(DCBLOCK_priv, concat(`dcblock_bytes_', PIPELINE_ID))
 define(MY_DCBLOCK_CTRL, concat(`dcblock_control_', PIPELINE_ID))

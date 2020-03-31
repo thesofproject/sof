@@ -50,7 +50,7 @@ C_CONTROLBYTES(KPB, PIPELINE_ID,
 
 # Host "Passthrough Capture" PCM
 # with 0 sink and 2 source periods
-W_PCM_CAPTURE(PCM_ID, Sound Trigger Capture, 0, 2, 2)
+W_PCM_CAPTURE(PCM_ID, Sound Trigger Capture, 0, 2, 2, SCHEDULE_CORE)
 
 # "KPBM" has 2 source and 2 sink periods
 W_KPBM(0, PIPELINE_FORMAT, 2, 2, PIPELINE_ID, LIST(`             ', "KPB"))

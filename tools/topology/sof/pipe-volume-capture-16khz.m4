@@ -44,7 +44,7 @@ W_DATA(playback_pga_conf, playback_pga_tokens)
 
 # Host "Passthrough Capture" PCM
 # with 0 sink and 2 source periods
-W_PCM_CAPTURE(PCM_ID, Passthrough Capture, 0, 2)
+W_PCM_CAPTURE(PCM_ID, Passthrough Capture, 0, 2, SCHEDULE_CORE)
 
 # "Volume" has x source and 2 sink periods
 W_PGA(0, PIPELINE_FORMAT, 2, DAI_PERIODS, playback_pga_conf, SCHEDULE_CORE,
