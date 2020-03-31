@@ -31,16 +31,17 @@ define(`MUXDEMUX_CONFIG',
 	`}'
 )
 
-dnl Mux name)
+dnl N_MUXDEMUX(name)
 define(`N_MUXDEMUX', `MUXDEMUX'PIPELINE_ID`.'$1)
 
-dnl W_MUXDEMUX(name, mux/demux, format, periods_sink, periods_source, kcontrol_list)
+dnl W_MUXDEMUX(name, mux/demux, format, periods_sink, periods_source, core, kcontrol_list)
 define(`W_MUXDEMUX',
 `SectionVendorTuples."'N_MUXDEMUX($1)`_tuples_w" {'
 `	tokens "sof_comp_tokens"'
 `	tuples."word" {'
 `		SOF_TKN_COMP_PERIOD_SINK_COUNT'		STR($4)
 `		SOF_TKN_COMP_PERIOD_SOURCE_COUNT'	STR($5)
+`		SOF_TKN_COMP_CORE_ID'			STR($6)
 `	}'
 `}'
 `SectionData."'N_MUXDEMUX($1)`_data_w" {'
@@ -71,7 +72,7 @@ define(`W_MUXDEMUX',
 `		"'N_MUXDEMUX($1)`_data_str"'
 `	]'
 `	bytes ['
-		$6
+		$7
 `	]'
 `}')
 
