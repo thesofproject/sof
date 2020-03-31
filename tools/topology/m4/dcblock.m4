@@ -2,16 +2,17 @@ divert(-1)
 
 dnl Define macro for DC Blocking Filter widget
 
-dnl DCBLOCK name)
+dnl N_DCBLOCK(name)
 define(`N_DCBLOCK', `DCBLOCK'PIPELINE_ID`.'$1)
 
-dnl W_EQ(name, format, periods_sink, periods_source, kcontrols_list)
+dnl W_DCBLOCK(name, format, periods_sink, periods_source, core, kcontrols_list)
 define(`W_DCBLOCK',
 `SectionVendorTuples."'N_DCBLOCK($1)`_tuples_w" {'
 `	tokens "sof_comp_tokens"'
 `	tuples."word" {'
 `		SOF_TKN_COMP_PERIOD_SINK_COUNT'		STR($3)
 `		SOF_TKN_COMP_PERIOD_SOURCE_COUNT'	STR($4)
+`		SOF_TKN_COMP_CORE_ID'			STR($5)
 `	}'
 `}'
 `SectionData."'N_DCBLOCK($1)`_data_w" {'
@@ -45,7 +46,7 @@ define(`W_DCBLOCK',
 `		"'N_DCBLOCK($1)`_data_str_type"'
 `	]'
 `	bytes ['
-		$5
+		$6
 `	]'
 `}')
 
