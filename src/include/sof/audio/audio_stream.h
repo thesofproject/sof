@@ -76,7 +76,7 @@ struct audio_stream {
  * @see comp_update_buffer_consume().
  */
 #define audio_stream_read_frag(buffer, idx, size) \
-	audio_stream_get_frag(buffer, buffer->r_ptr, idx, size)
+	audio_stream_get_frag(buffer, (buffer)->r_ptr, idx, size)
 
 /**
  * Retrieves readable address of a signed 16-bit sample at specified index.
@@ -87,7 +87,7 @@ struct audio_stream {
  * @see audio_stream_get_frag().
  */
 #define audio_stream_read_frag_s16(buffer, idx) \
-	audio_stream_get_frag(buffer, buffer->r_ptr, idx, sizeof(int16_t))
+	audio_stream_get_frag(buffer, (buffer)->r_ptr, idx, sizeof(int16_t))
 
 /**
  * Retrieves readable address of a signed 32-bit sample at specified index.
@@ -98,7 +98,7 @@ struct audio_stream {
  * @see audio_stream_get_frag().
  */
 #define audio_stream_read_frag_s32(buffer, idx) \
-	audio_stream_get_frag(buffer, buffer->r_ptr, idx, sizeof(int32_t))
+	audio_stream_get_frag(buffer, (buffer)->r_ptr, idx, sizeof(int32_t))
 
 /**
  * Retrieves writeable address of a sample at specified index (see versions of
@@ -119,7 +119,7 @@ struct audio_stream {
  * @see comp_update_buffer_produce().
  */
 #define audio_stream_write_frag(buffer, idx, size) \
-	audio_stream_get_frag(buffer, buffer->w_ptr, idx, size)
+	audio_stream_get_frag(buffer, (buffer)->w_ptr, idx, size)
 
 /**
  * Retrieves writeable address of a signed 16-bit sample at specified index.
@@ -130,7 +130,7 @@ struct audio_stream {
  * @see audio_stream_get_frag().
  */
 #define audio_stream_write_frag_s16(buffer, idx) \
-	audio_stream_get_frag(buffer, buffer->w_ptr, idx, sizeof(int16_t))
+	audio_stream_get_frag(buffer, (buffer)->w_ptr, idx, sizeof(int16_t))
 
 /**
  * Retrieves writeable address of a signed 32-bit sample at specified index.
@@ -141,7 +141,7 @@ struct audio_stream {
  * @see audio_stream_get_frag().
  */
 #define audio_stream_write_frag_s32(buffer, idx) \
-	audio_stream_get_frag(buffer, buffer->w_ptr, idx, sizeof(int32_t))
+	audio_stream_get_frag(buffer, (buffer)->w_ptr, idx, sizeof(int32_t))
 
 /**
  * Retrieves address of sample (space for sample) at specified index within
