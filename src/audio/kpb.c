@@ -56,24 +56,24 @@ DECLARE_SOF_UUID("kpb-task", kpb_task_uuid, 0xe50057a5, 0x8b27, 0x4db4,
 
 /* KPB private data, runtime data */
 struct comp_data {
-	uint64_t state_log; /**< keeps record of KPB recent states */
 	enum kpb_state state; /**< current state of KPB component */
-	uint32_t kpb_no_of_clients; /**< number of registered clients */
-	struct kpb_client clients[KPB_MAX_NO_OF_CLIENTS];
-	struct task draining_task;
-	uint32_t source_period_bytes; /**< source number of period bytes */
-	uint32_t sink_period_bytes; /**< sink number of period bytes */
+	uint64_t state_log; /**< keeps record of KPB recent states */
+	spinlock_t lock; /**< locking mechanism for read pointer calculations */
 	struct sof_kpb_config config;   /**< component configuration data */
+	struct history_data hd; /** data related to history buffer */
+	struct task draining_task;
+	struct draining_data draining_task_data;
+	struct kpb_client clients[KPB_MAX_NO_OF_CLIENTS];
 	struct comp_buffer *sel_sink; /**< real time sink (channel selector )*/
 	struct comp_buffer *host_sink; /**< draining sink (client) */
-	struct draining_data draining_task_data;
+	uint32_t kpb_no_of_clients; /**< number of registered clients */
+	uint32_t source_period_bytes; /**< source number of period bytes */
+	uint32_t sink_period_bytes; /**< sink number of period bytes */
 	size_t host_buffer_size; /**< size of host buffer */
 	size_t host_period_size; /**< size of history period */
 	bool sync_draining_mode; /**< should we synchronize draining with
 				   * host?
 				   */
-	struct history_data hd; /** data related to history buffer */
-	spinlock_t lock; /**< locking mechanism for read pointer calculations */
 };
 
 /*! KPB private functions */
