@@ -108,7 +108,8 @@ struct history_buffer {
 	struct history_buffer *prev; /**< next history buffer */
 };
 
-struct dd {
+/* Draining task data */
+struct draining_data {
 	struct comp_buffer *sink;
 	struct history_buffer *hb;
 	size_t history_depth;
