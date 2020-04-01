@@ -741,19 +741,19 @@ static int kpb_copy(struct comp_dev *dev)
 		 * the internal history buffer.
 		 */
 
-		if (source->stream.avail <= kpb->buffer_size) {
-			buffer_invalidate(source, source->stream.avail);
-			ret = kpb_buffer_data(dev, source,
-					      source->stream.avail);
+		copy_bytes = MIN(source->stream.avail, kpb->hd.free);
+		if (copy_bytes) {
+			buffer_invalidate(source, copy_bytes);
+			ret = kpb_buffer_data(dev, source, copy_bytes);
 			if (ret) {
 				comp_err(dev, "kpb_copy(): internal buffering failed.");
 				goto out;
 			}
 
-			comp_update_buffer_consume(source,
-						   source->stream.avail);
+			comp_update_buffer_consume(source, copy_bytes);
 		} else {
-			comp_err(dev, "kpb_copy(): too much data to buffer.");
+			comp_err(dev, "kpb_copy(): buffering skipped (no data to copy, avail %d, free %d",
+				 source->stream.avail, kpb->hd.free);
 		}
 
 		ret = PPL_STATUS_PATH_STOP;
