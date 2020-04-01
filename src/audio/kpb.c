@@ -482,6 +482,7 @@ static int kpb_prepare(struct comp_dev *dev)
 	}
 	/* Init history buffer */
 	kpb_reset_history_buffer(kpb->hd.c_hb);
+	kpb->hd.free = kpb->hd.buffer_size;
 
 	/* Initialize clients data */
 	for (i = 0; i < KPB_MAX_NO_OF_CLIENTS; i++) {
@@ -1024,6 +1025,12 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 
 		kpb_change_state(kpb, KPB_STATE_INIT_DRAINING);
 
+		/* Set history buffer size so new data won't overwrite those
+		 * staged for draining.
+		 */
+		kpb->hd.free = kpb->hd.buffer_size - history_depth;
+
+		/* Find buffer to start draining from */
 		do {
 			/* Calculate how much data we have stored in
 			 * current buffer.
@@ -1205,6 +1212,8 @@ static enum task_state kpb_draining_task(void *arg)
 		history_depth -= size_to_copy;
 		drained += size_to_copy;
 		period_bytes += size_to_copy;
+		kpb->hd.free += MIN(kpb->hd.buffer_size -
+				    kpb->hd.free, size_to_copy);
 
 		if (move_buffer) {
 			buff->r_ptr = buff->start_addr;
