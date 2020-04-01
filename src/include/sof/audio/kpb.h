@@ -122,6 +122,13 @@ struct draining_data {
 	bool sync_mode_on;
 };
 
+struct history_data {
+	size_t buffer_size; /**< size of internal history buffer */
+	size_t buffered; /**< amount of buffered data */
+	size_t free; /** spce we can use to write new data */
+	struct history_buffer *c_hb; /**< current buffer used for writing */
+};
+
 #ifdef UNIT_TEST
 void sys_comp_kpb_init(void);
 #endif
