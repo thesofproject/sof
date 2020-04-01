@@ -33,6 +33,8 @@
 
 #define trace_sa(__e, ...) \
 	trace_event_atomic(TRACE_CLASS_SA, __e, ##__VA_ARGS__)
+#define trace_sa_warn(__e, ...) \
+	trace_warn(TRACE_CLASS_SA, __e, ##__VA_ARGS__)
 #define trace_sa_error(__e, ...) \
 	trace_error(TRACE_CLASS_SA, __e, ##__VA_ARGS__)
 
@@ -61,8 +63,8 @@ static enum task_state validate(void *data)
 
 	/* warning timeout */
 	if (delta > sa->warn_timeout)
-		trace_sa_error("validate(), ll drift detected, delta = "
-			       "%u", delta);
+		trace_sa_warn("validate(), ll drift detected, delta = %u",
+			      delta);
 
 	/* update last_check to current */
 	sa->last_check = current;
