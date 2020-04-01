@@ -122,3 +122,12 @@ void ipc_msg_send(struct ipc_msg *msg, void *data, bool high_priority)
 	(void)data;
 	(void)high_priority;
 }
+
+int comp_verify_params(struct comp_dev *dev, uint32_t flag,
+		       struct sof_ipc_stream_params *params)
+{
+	(void)dev;
+	(void)flag;
+	(void)params;
+	return 0;
+}
