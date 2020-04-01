@@ -68,7 +68,7 @@ struct comp_data {
 	struct comp_buffer *host_sink; /**< draining sink (client) */
 	struct history_buffer *hb; /**< internal history buffer */
 	size_t buffered_data; /**< keeps info about amount of buffered data */
-	struct dd draining_task_data;
+	struct draining_data draining_task_data;
 	size_t buffer_size; /**< size of internal history buffer */
 	size_t host_buffer_size; /**< size of host buffer */
 	size_t host_period_size; /**< size of history period */
@@ -741,6 +741,7 @@ static int kpb_copy(struct comp_dev *dev)
 		/* In draining and init draining we only buffer data in
 		 * the internal history buffer.
 		 */
+
 		if (source->stream.avail <= kpb->buffer_size) {
 			buffer_invalidate(source, source->stream.avail);
 			ret = kpb_buffer_data(dev, source,
@@ -789,7 +790,7 @@ static int kpb_buffer_data(struct comp_dev *dev,
 	uint64_t timeout = 0;
 	uint64_t current_time;
 	enum kpb_state state_preserved = kpb->state;
-	struct dd *draining_data = &kpb->draining_task_data;
+	struct draining_data *draining_data = &kpb->draining_task_data;
 	size_t sample_width = kpb->config.sampling_width;
 	struct timer *timer = timer_get();
 
@@ -1072,6 +1073,7 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 			}
 
 		} while (buff != first_buff);
+
 		spin_unlock_irq(&kpb->lock, flags);
 
 		/* Should we drain in synchronized mode (sync_draining_mode)?
@@ -1130,7 +1132,7 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
  */
 static enum task_state kpb_draining_task(void *arg)
 {
-	struct dd *draining_data = (struct dd *)arg;
+	struct draining_data *draining_data = (struct draining_data *)arg;
 	struct comp_buffer *sink = draining_data->sink;
 	struct history_buffer *buff = draining_data->hb;
 	size_t history_depth = draining_data->history_depth;
