@@ -614,7 +614,6 @@ static int kpb_copy(struct comp_dev *dev)
 	struct comp_buffer *sink = NULL;
 	size_t copy_bytes = 0;
 	size_t sample_width = kpb->config.sampling_width;
-	uint32_t hb_free_space;
 	uint32_t flags = 0;
 
 	comp_dbg(dev, "kpb_copy()");
@@ -683,13 +682,13 @@ static int kpb_copy(struct comp_dev *dev)
 				comp_err(dev, "kpb_copy(): internal buffering failed.");
 				goto out;
 			}
-			if (kpb->buffered_data < kpb->buffer_size) {
-				hb_free_space = kpb->buffer_size -
-					kpb->buffered_data;
 
-				kpb->hd.buffered +=
-					MIN(copy_bytes, hb_free_space);
-			}
+			/* Update buffered size. NOTE! We only record buffered
+			 * data up to the size of history buffer.
+			 */
+			kpb->hd.buffered += MIN(kpb->hd.buffer_size -
+						kpb->hd.buffered,
+						copy_bytes);
 		} else {
 			comp_err(dev, "kpb_copy(): too much data to buffer.");
 		}
