@@ -615,6 +615,7 @@ static int kpb_copy(struct comp_dev *dev)
 	size_t copy_bytes = 0;
 	size_t sample_width = kpb->config.sampling_width;
 	uint32_t flags = 0;
+	struct draining_data *dd = &kpb->draining_task_data;
 
 	comp_dbg(dev, "kpb_copy()");
 
@@ -744,6 +745,8 @@ static int kpb_copy(struct comp_dev *dev)
 		if (copy_bytes) {
 			buffer_invalidate(source, copy_bytes);
 			ret = kpb_buffer_data(dev, source, copy_bytes);
+			dd->buffered_while_draining += copy_bytes;
+
 			if (ret) {
 				comp_err(dev, "kpb_copy(): internal buffering failed.");
 				goto out;
@@ -788,7 +791,6 @@ static int kpb_buffer_data(struct comp_dev *dev,
 	uint64_t timeout = 0;
 	uint64_t current_time;
 	enum kpb_state state_preserved = kpb->state;
-	struct draining_data *draining_data = &kpb->draining_task_data;
 	size_t sample_width = kpb->config.sampling_width;
 	struct timer *timer = timer_get();
 
@@ -805,9 +807,6 @@ static int kpb_buffer_data(struct comp_dev *dev,
 			 kpb->state, kpb->state_log);
 		return PPL_STATUS_PATH_STOP;
 	}
-
-	if (kpb->state == KPB_STATE_DRAINING)
-		draining_data->buffered_while_draining += size_to_copy;
 
 	kpb_change_state(kpb, KPB_STATE_BUFFERING);
 
