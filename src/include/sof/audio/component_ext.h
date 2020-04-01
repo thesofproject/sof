@@ -85,10 +85,18 @@ static inline int comp_params(struct comp_dev *dev,
 {
 	int ret = 0;
 
-	if (dev->drv->ops.params)
-		ret = (dev->is_shared && !cpu_is_me(dev->comp.core)) ?
-			comp_params_remote(dev, params) :
-			dev->drv->ops.params(dev, params);
+	if (dev->is_shared && !cpu_is_me(dev->comp.core)) {
+		ret = comp_params_remote(dev, params);
+	} else {
+		if (dev->drv->ops.params) {
+			ret = dev->drv->ops.params(dev, params);
+		} else {
+			/* not defined, run the default handler */
+			ret = comp_verify_params(dev, 0, params);
+			if (ret < 0)
+				comp_err(dev, "pcm params verification failed");
+		}
+	}
 
 	comp_shared_commit(dev);
 

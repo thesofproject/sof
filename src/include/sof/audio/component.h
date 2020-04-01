@@ -263,6 +263,10 @@ struct comp_ops {
 	 * Sets component audio stream parameters.
 	 * @param dev Component device.
 	 * @param params Audio (PCM) stream parameters to be set.
+	 *
+	 * Infrastructure calls comp_verify_params() if this handler is not
+	 * defined, therefore it should be left NULL if no extra steps are
+	 * required.
 	 */
 	int (*params)(struct comp_dev *dev,
 		      struct sof_ipc_stream_params *params);
