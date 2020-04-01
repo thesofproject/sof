@@ -751,8 +751,8 @@ static int kpb_copy(struct comp_dev *dev)
 
 			comp_update_buffer_consume(source, copy_bytes);
 		} else {
-			comp_err(dev, "kpb_copy(): buffering skipped (no data to copy, avail %d, free %d",
-				 source->stream.avail, kpb->hd.free);
+			comp_warn(dev, "kpb_copy(): buffering skipped (no data to copy, avail %d, free %d",
+				  source->stream.avail, kpb->hd.free);
 		}
 
 		ret = PPL_STATUS_PATH_STOP;
