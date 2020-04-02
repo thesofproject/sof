@@ -59,6 +59,7 @@ define(`W_DAI_OUT',
 `		"'N_DAI_OUT`_data_w_comp"'
 `		"'N_DAI_OUT`_data_str"'
 `		"'N_DAI_OUT`_data_comp_str"'
+`		ifdef(`SET_DAICONFIG',`"DAICONFIG.'N_DAI`_data"',`')'
 `	]'
 `}')
 
