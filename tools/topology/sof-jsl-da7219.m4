@@ -14,8 +14,28 @@ include(`common/tlv.m4')
 # Include Token library
 include(`sof/tokens.m4')
 
-# Include Icelake DSP configuration
+# Include Jasperlake DSP configuration
 include(`platform/intel/'PLATFORM`.m4')
+
+# Define pipeline id for intel-generic-dmic-kwd.m4
+# to generate dmic setting with kwd when we have dmic
+# define channel
+define(CHANNELS, `4')
+# define kfbm with volume
+define(KFBM_TYPE, `vol-kfbm')
+# define pcm, pipeline and dai id
+define(DMIC_PCM_48k_ID, `5')
+define(DMIC_PIPELINE_48k_ID, `3')
+define(DMIC_DAI_LINK_48k_ID, `2')
+
+define(DMIC_PCM_16k_ID, `6')
+define(DMIC_PIPELINE_16k_ID, `8')
+define(DMIC_PIPELINE_KWD_ID, `9')
+define(DMIC_DAI_LINK_16k_ID, `6')
+
+define(KWD_PIPE_SCH_DEADLINE_US, 20000)
+# include the generic dmic with kwd
+include(`platform/intel/intel-generic-dmic-kwd.m4')
 
 #
 # Define the pipelines
@@ -44,13 +64,6 @@ PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-volume-capture.m4,
 	2, 1, 2, s32le,
-	1000, 0, 0,
-	48000, 48000, 48000)
-
-# Low Latency capture pipeline 3 on PCM 5 using max 4 channels of s32le.
-# Schedule 48 frames per 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_ADD(sof/pipe-passthrough-capture.m4,
-	3, 5, 4, s32le,
 	1000, 0, 0,
 	48000, 48000, 48000)
 
@@ -104,13 +117,6 @@ DAI_ADD(sof/pipe-dai-capture.m4,
 	PIPELINE_SINK_2, 2, s16le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
-# capture DAI is DMIC0 using 2 periods
-# Buffers use s32le format, with 48 frame per 1000us on core 0 with priority 0
-DAI_ADD(sof/pipe-dai-capture.m4,
-	3, DMIC, 0, dmic01,
-	PIPELINE_SINK_3, 2, s32le,
-	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
-
 DAI_ADD(sof/pipe-dai-playback.m4,
 	4, SSP, SPK_INDEX, SPK_NAME,
 	PIPELINE_SOURCE_4, 2, SPK_DATA_FORMAT,
@@ -140,7 +146,6 @@ DAI_ADD(sof/pipe-dai-playback.m4,
 dnl PCM_PLAYBACK_ADD(name, pcm_id, playback)
 PCM_PLAYBACK_ADD(Speakers, 0, PIPELINE_PCM_4)
 PCM_DUPLEX_ADD(Headset, 1, PIPELINE_PCM_1, PIPELINE_PCM_2)
-PCM_CAPTURE_ADD(DMIC01, 5, PIPELINE_PCM_3)
 PCM_PLAYBACK_ADD(HDMI1, 2, PIPELINE_PCM_5)
 PCM_PLAYBACK_ADD(HDMI2, 3, PIPELINE_PCM_6)
 PCM_PLAYBACK_ADD(HDMI3, 4, PIPELINE_PCM_7)
@@ -166,12 +171,6 @@ DAI_CONFIG(SSP, 0, 1, SSP0-Codec,
 		SSP_CLOCK(fsync, 48000, codec_slave),
 		SSP_TDM(2, 25, 3, 3),
 		SSP_CONFIG_DATA(SSP, 0, 16)))
-
-# dmic01 (ID: 2)
-DAI_CONFIG(DMIC, 0, 2, dmic01,
-	DMIC_CONFIG(1, 500000, 4800000, 40, 60, 48000,
-		DMIC_WORD_LENGTH(s32le), 400, DMIC, 0,
-		PDM_CONFIG(DMIC, 0, FOUR_CH_PDM0_PDM1)))
 
 # 3 HDMI/DP outputs (ID: 3,4,5)
 DAI_CONFIG(HDA, 0, 3, iDisp1)
