@@ -445,7 +445,7 @@ static unsigned char *mem_to_hex(void *mem_, unsigned char *buf,
 	unsigned char *mem = mem_;
 	unsigned char ch;
 
-	if ((mem == NULL) || (buf == NULL))
+	if (!mem || !buf)
 		return NULL;
 	while (count-- > 0) {
 		ch = arch_gdb_load_from_memory(mem);
@@ -468,7 +468,7 @@ static unsigned char *hex_to_mem(const unsigned char *buf, void *mem_,
 	int i;
 	unsigned char ch;
 
-	if ((mem == NULL) || (buf == NULL))
+	if (!mem || !buf)
 		return NULL;
 	for (i = 0; i < count; i++) {
 		ch = get_hex(*buf++) << 4;

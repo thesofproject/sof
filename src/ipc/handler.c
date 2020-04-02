@@ -239,7 +239,7 @@ static int ipc_stream_pcm_params(uint32_t stream)
 	trace_ipc("ipc: comp %d -> params", pcm_params.comp_id);
 
 	/* sanity check comp */
-	if (pcm_dev->cd->pipeline == NULL) {
+	if (!pcm_dev->cd->pipeline) {
 		trace_ipc_error("ipc: comp %d pipeline not found",
 				pcm_params.comp_id);
 		return -EINVAL;
@@ -357,7 +357,7 @@ static int ipc_stream_pcm_free(uint32_t header)
 	trace_ipc("ipc: comp %d -> free", free_req.comp_id);
 
 	/* sanity check comp */
-	if (pcm_dev->cd->pipeline == NULL) {
+	if (!pcm_dev->cd->pipeline) {
 		trace_ipc_error("ipc: comp %d pipeline not found",
 				free_req.comp_id);
 		return -EINVAL;
