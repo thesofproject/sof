@@ -652,11 +652,12 @@ static inline void comp_underrun(struct comp_dev *dev,
 				 struct comp_buffer *source,
 				 uint32_t copy_bytes)
 {
-	int32_t bytes = (int32_t)source->stream.avail - copy_bytes;
+	int32_t bytes = (int32_t)audio_stream_get_avail_bytes(&source->stream) -
+			copy_bytes;
 
 	comp_err(dev, "comp_underrun(): dev->comp.id = %u, source->avail = %u, copy_bytes = %u",
 		 dev_comp_id(dev),
-		 source->stream.avail,
+		 audio_stream_get_avail_bytes(&source->stream),
 		 copy_bytes);
 
 	pipeline_xrun(dev->pipeline, dev, bytes);
@@ -671,10 +672,11 @@ static inline void comp_underrun(struct comp_dev *dev,
 static inline void comp_overrun(struct comp_dev *dev, struct comp_buffer *sink,
 				uint32_t copy_bytes)
 {
-	int32_t bytes = (int32_t)copy_bytes - sink->stream.free;
+	int32_t bytes = (int32_t)copy_bytes -
+			audio_stream_get_free_bytes(&sink->stream);
 
 	comp_err(dev, "comp_overrun(): sink->free = %u, copy_bytes = %u",
-		 sink->stream.free, copy_bytes);
+		 audio_stream_get_free_bytes(&sink->stream), copy_bytes);
 
 	pipeline_xrun(dev->pipeline, dev, bytes);
 }
