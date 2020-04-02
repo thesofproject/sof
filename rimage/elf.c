@@ -74,36 +74,11 @@ static int elf_read_sections(struct image *image, struct module *module,
 
 		module->bss_start = 0;
 		module->bss_end = 0;
-
-		fprintf(stdout, "info: ignore .static_log_entries"
-			" section for bootloader module\n");
-
-		module->logs_index = -EINVAL;
-
-		fprintf(stdout, "info: ignore .static_uuids section for bootloader module\n");
-		module->uids_index = -EINVAL;
-
-		fprintf(stdout, "info: ignore .fw_ready"
-			" section for bootloader module\n");
-
-		module->fw_ready_index = -EINVAL;
 	} else {
 		/* find manifest module data */
 		module->bss_index = elf_find_section(image, module, ".bss");
 		if (module->bss_index < 0)
 			return module->bss_index;
-
-		/* find log entries and fw ready sections */
-		module->logs_index = elf_find_section(image, module,
-						      ".static_log_entries");
-
-		module->uids_index = elf_find_section(image, module,
-						      ".static_uuid_entries");
-
-		module->fw_ready_index = elf_find_section(image, module,
-							  ".fw_ready");
-		if (module->fw_ready_index < 0)
-			return module->fw_ready_index;
 	}
 
 	/* parse each section */
@@ -369,8 +344,7 @@ static void elf_module_limits(struct image *image, struct module *module)
 		section = &module->section[i];
 
 		/* module bss can sometimes be missed */
-		if (i != module->bss_index && i != module->logs_index &&
-		    i != module->fw_ready_index) {
+		if (i != module->bss_index) {
 			/* only check valid sections */
 			if (!(section->flags & valid))
 				continue;

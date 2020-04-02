@@ -319,9 +319,31 @@ add_custom_target(
 	USES_TERMINAL
 )
 
-# rimage
-
 include(ExternalProject)
+
+# smex
+
+ExternalProject_Add(smex_ep
+	DEPENDS check_version_h
+	DOWNLOAD_COMMAND ""
+	SOURCE_DIR "${PROJECT_SOURCE_DIR}/smex"
+	PREFIX "${PROJECT_BINARY_DIR}/smex_ep"
+	BINARY_DIR "${PROJECT_BINARY_DIR}/smex_ep/build"
+	BUILD_ALWAYS 1
+	INSTALL_COMMAND ""
+)
+
+add_custom_target(
+	run_smex
+	COMMAND ${PROJECT_BINARY_DIR}/smex_ep/build/smex
+		-l sof-${fw_name}.ldc
+		sof-${fw_name}
+	DEPENDS sof_dump smex_ep
+	VERBATIM
+	USES_TERMINAL
+)
+
+# rimage
 
 ExternalProject_Add(rimage_ep
 	DEPENDS check_version_h
@@ -366,7 +388,6 @@ if(MEU_PATH)
 		run_rimage
 		COMMAND ${PROJECT_BINARY_DIR}/rimage_ep/build/rimage
 			-o sof-${fw_name}.ri
-			-p sof-${fw_name}.ldc
 			-m ${fw_name}
 			-s ${MEU_OFFSET}
 			-k ${RIMAGE_PRIVATE_KEY}
@@ -374,7 +395,7 @@ if(MEU_PATH)
 			${RIMAGE_MOD_OFFSET_FLAG}
 			${bootloader_binary_path}
 			sof-${fw_name}
-		DEPENDS sof_dump rimage_ep
+		DEPENDS sof_dump rimage_ep run_smex
 		VERBATIM
 		USES_TERMINAL
 	)
@@ -407,14 +428,13 @@ else()
 		run_rimage
 		COMMAND ${PROJECT_BINARY_DIR}/rimage_ep/build/rimage
 			-o sof-${fw_name}.ri
-			-p sof-${fw_name}.ldc
 			-m ${fw_name}
 			-k ${RIMAGE_PRIVATE_KEY}
 			-i ${RIMAGE_IMR_TYPE}
 			${RIMAGE_MOD_OFFSET_FLAG}
 			${bootloader_binary_path}
 			sof-${fw_name}
-		DEPENDS sof_dump rimage_ep
+		DEPENDS sof_dump rimage_ep run_smex
 		VERBATIM
 		USES_TERMINAL
 	)

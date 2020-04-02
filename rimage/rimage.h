@@ -67,9 +67,6 @@ struct module {
 	int num_bss;
 	int fw_size;
 	int bss_index;
-	int logs_index;
-	int uids_index;
-	int fw_ready_index;
 
 	/* sizes do not include any gaps */
 	int bss_size;
@@ -95,9 +92,7 @@ struct module {
 struct image {
 
 	const char *out_file;
-	const char *ldc_out_file;
 	FILE *out_fd;
-	FILE *ldc_out_fd;
 	void *pos;
 
 	const struct adsp *adsp;
