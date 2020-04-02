@@ -121,43 +121,45 @@ for b = 1:n_fso
         end
 end
 
+%% Scale frequencies to kHz
+k = 1/1000;
+
 %% Print table with test summary: Gain
 fn = 'reports/g_src.txt';
-print_val(fn, fs_in_list, fs_out_list, r.g, r.pf, 'Gain dB');
+print_val('SRC', 'Gain dB', fn, k * fs_in_list, k * fs_out_list, r.g, r.pf);
 
 %% Print table with test summary: FR
 fn = 'reports/fr_src.txt';
-print_fr(fn, fs_in_list, fs_out_list, r.fr_db, r.fr_hz, r.pf);
+print_fr('SRC', fn, k * fs_in_list, k * fs_out_list, r.fr_db, r.fr_hz, r.pf);
 
 %% Print table with test summary: FR
 fn = 'reports/fr_src.txt';
-print_val(fn, fs_in_list, fs_out_list, r.fr3db_hz/1e3, r.pf, ...
-        'Frequency response -3 dB 0 - X kHz');
+print_val('SRC', 'Frequency response -3 dB 0 - X kHz', ...
+	  fn, k * fs_in_list, k * fs_out_list, r.fr3db_hz/1e3, r.pf);
 
 %% Print table with test summary: THD+N vs. frequency
 fn = 'reports/thdnf_src.txt';
-print_val(fn, fs_in_list, fs_out_list, r.thdnf, r.pf, ...
-        'Worst-case THD+N vs. frequency');
+print_val('SRC', 'Worst-case THD+N vs. frequency', ...
+	  fn, k * fs_in_list, k * fs_out_list, r.thdnf, r.pf);
 
 %% Print table with test summary: DR
 fn = 'reports/dr_src.txt';
-print_val(fn, fs_in_list, fs_out_list, r.dr, r.pf, ...
-        'Dynamic range dB (CCIR-RMS)');
+print_val('SRC', 'Dynamic range dB (CCIR-RMS)', ...
+	  fn, k * fs_in_list, k * fs_out_list, r.dr, r.pf);
 
 %% Print table with test summary: AAP
 fn = 'reports/aap_src.txt';
-print_val(fn, fs_in_list, fs_out_list, r.aap, r.pf, ...
-        'Attenuation of alias products dB');
+print_val('SRC', 'Attenuation of alias products dB', ...
+	  fn, k * fs_in_list, k * fs_out_list, r.aap, r.pf);
 
 %% Print table with test summary: AIP
 fn = 'reports/aip_src.txt';
-print_val(fn, fs_in_list, fs_out_list, r.aip, r.pf, ...
-        'Attenuation of image products dB');
-
+print_val('SRC', 'Attenuation of image products dB', ...
+	  fn, k * fs_in_list, k * fs_out_list, r.aip, r.pf);
 
 %% Print table with test summary: pass/fail
 fn = 'reports/pf_src.txt';
-print_pf(fn, fs_in_list, fs_out_list, r.pf);
+print_pf('SRC', fn, k * fs_in_list, k * fs_out_list, r.pf);
 
 fprintf('\n');
 fprintf('Number of passed tests = %d\n', r.n_pass);
@@ -456,148 +458,4 @@ pfn = sprintf('plots/%s_src_%d_%d.png', testacronym, t.fs1, t.fs2);
 if t.plot_close_windows
 	close all;
 end
-end
-
-%% The next are results printing functions
-
-function  print_val(fn, fs_in_list, fs_out_list, val, pf, valstr)
-n_fsi = length(fs_in_list);
-n_fso = length(fs_out_list);
-fh = fopen(fn,'w');
-fprintf(fh,'\n');
-fprintf(fh,'SRC test result: %s\n', valstr);
-fprintf(fh,'%8s, ', 'in \ out');
-for a = 1:n_fso-1
-        fprintf(fh,'%8.1f, ', fs_out_list(a)/1e3);
-end
-fprintf(fh,'%8.1f', fs_out_list(n_fso)/1e3);
-fprintf(fh,'\n');
-for a = 1:n_fsi
-        fprintf(fh,'%8.1f, ', fs_in_list(a)/1e3);
-	for b = 1:n_fso
-                if pf(a,b,1) < 0
-                        cstr = 'x';
-                else
-                        if isnan(val(a,b))
-                                cstr = '-';
-                        else
-                                cstr = sprintf('%8.2f', val(a,b));
-                        end
-                end
-                if b < n_fso
-                        fprintf(fh,'%8s, ', cstr);
-                else
-                        fprintf(fh,'%8s', cstr);
-                end
-        end
-        fprintf(fh,'\n');
-end
-fclose(fh);
-type(fn);
-end
-
-function print_fr(fn, fs_in_list, fs_out_list, fr_db, fr_hz, pf)
-n_fsi = length(fs_in_list);
-n_fso = length(fs_out_list);
-fh = fopen(fn,'w');
-fprintf(fh,'\n');
-fprintf(fh,'SRC test result: Frequency response +/- X.XX dB (YY.Y kHz) \n');
-fprintf(fh,'%8s, ', 'in \ out');
-for a = 1:n_fso-1
-        fprintf(fh,'%12.1f, ', fs_out_list(a)/1e3);
-end
-fprintf(fh,'%12.1f', fs_out_list(n_fso)/1e3);
-fprintf(fh,'\n');
-for a = 1:n_fsi
-        fprintf(fh,'%8.1f, ', fs_in_list(a)/1e3);
-	for b = 1:n_fso
-                if pf(a,b,1) < 0
-                        cstr = 'x';
-                else
-                        cstr = sprintf('%4.2f (%4.1f)', fr_db(a,b), fr_hz(a,b,2)/1e3);
-                end
-                if b < n_fso
-                        fprintf(fh,'%12s, ', cstr);
-                else
-                        fprintf(fh,'%12s', cstr);
-                end
-        end
-        fprintf(fh,'\n');
-end
-fclose(fh);
-type(fn);
-end
-
-function print_fr3db(fn, fs_in_list, fs_out_list, fr3db_hz, pf)
-n_fsi = length(fs_in_list);
-n_fso = length(fs_out_list);
-fh = fopen(fn,'w');
-fprintf(fh,'\n');
-fprintf(fh,'SRC test result: Frequency response -3dB 0 - X.XX kHz\n');
-fprintf(fh,'%8s, ', 'in \ out');
-for a = 1:n_fso-1
-        fprintf(fh,'%8.1f, ', fs_out_list(a)/1e3);
-end
-fprintf(fh,'%8.1f', fs_out_list(n_fso)/1e3);
-fprintf(fh,'\n');
-for a = 1:n_fsi
-        fprintf(fh,'%8.1f, ', fs_in_list(a)/1e3);
-	for b = 1:n_fso
-                if pf(a,b,1) < 0
-                        cstr = 'x';
-                else
-                        cstr = sprintf('%4.1f', fr3db_hz(a,b)/1e3);
-                end
-                if b < n_fso
-                        fprintf(fh,'%8s, ', cstr);
-                else
-                        fprintf(fh,'%8s', cstr);
-                end
-        end
-        fprintf(fh,'\n');
-end
-fclose(fh);
-type(fn);
-end
-
-
-function print_pf(fn, fs_in_list, fs_out_list, pf)
-n_fsi = length(fs_in_list);
-n_fso = length(fs_out_list);
-fh = fopen(fn,'w');
-fprintf(fh,'\n');
-fprintf(fh,'SRC test result: Fails\n');
-fprintf(fh,'%8s, ', 'in \ out');
-for a = 1:n_fso-1
-        fprintf(fh,'%14.1f, ', fs_out_list(a)/1e3);
-end
-fprintf(fh,'%14.1f', fs_out_list(n_fso)/1e3);
-fprintf(fh,'\n');
-spf = size(pf);
-npf = spf(3);
-for a = 1:n_fsi
-        fprintf(fh,'%8.1f, ', fs_in_list(a)/1e3);
-	for b = 1:n_fso
-                if pf(a,b,1) < 0
-                        cstr = 'x';
-                else
-                        cstr = sprintf('%d', pf(a,b,1));
-                        for n=2:npf
-                                if pf(a,b,n) < 0
-                                        cstr = sprintf('%s/x', cstr);
-                                else
-                                        cstr = sprintf('%s/%d', cstr,pf(a,b,n));
-                                end
-                        end
-                end
-                if b < n_fso
-                        fprintf(fh,'%14s, ', cstr);
-                else
-                        fprintf(fh,'%14s', cstr);
-                end
-        end
-        fprintf(fh,'\n');
-end
-fclose(fh);
-type(fn);
 end
