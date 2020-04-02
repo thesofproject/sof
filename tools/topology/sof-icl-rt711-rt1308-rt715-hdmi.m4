@@ -145,11 +145,14 @@ DAI_ADD(sof/pipe-dai-playback.m4,
 	PIPELINE_SOURCE_4, 2, s24le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)',
 `ifdef(`MONO', `',
-`DAI_ADD_SCHED(sof/pipe-dai-sched-playback.m4,
+`define(`SET_DAICONFIG',`')
+ALH_CONFIG_DATA(ALH, 0x202, 48000, 2)
+DAI_ADD_SCHED(sof/pipe-dai-sched-playback.m4,
 	4, ALH, 0x202, SDW1-Playback,
 	PIPELINE_SOURCE_4, 2, s24le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER,
 	PIPELINE_PLAYBACK_SCHED_COMP_3)
+undefine(`SET_DAICONFIG',`')
 
 # Connect demux to 2nd pipeline
 SectionGraph."PIPE_DEMUX" {
