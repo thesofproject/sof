@@ -217,6 +217,168 @@ static int elf_read_hdr(struct elf_module *module, bool verbose)
 	return 0;
 }
 
+static void elf_module_size(struct elf_module *module, Elf32_Shdr *section,
+			    int index)
+{
+	switch (section->type) {
+	case SHT_PROGBITS:
+		/* text or data */
+		if (section->flags & SHF_EXECINSTR) {
+			/* text */
+			if (module->text_start > section->vaddr)
+				module->text_start = section->vaddr;
+			if (module->text_end < section->vaddr + section->size)
+				module->text_end = section->vaddr +
+					section->size;
+
+			fprintf(stdout, "\tTEXT\t");
+		} else {
+			/* initialized data, also calc the writable sections */
+			if (module->data_start > section->vaddr)
+				module->data_start = section->vaddr;
+			if (module->data_end < section->vaddr + section->size)
+				module->data_end = section->vaddr +
+					section->size;
+
+			fprintf(stdout, "\tDATA\t");
+		}
+		break;
+	case SHT_NOBITS:
+		/* bss */
+		if (index == module->bss_index) {
+			/* updated the .bss segment */
+			module->bss_start = section->vaddr;
+			module->bss_end = section->vaddr + section->size;
+			fprintf(stdout, "\tBSS\t");
+		} else {
+			fprintf(stdout, "\tHEAP\t");
+		}
+		break;
+	case SHT_NOTE:
+		fprintf(stdout, "\tNOTE\t");
+		break;
+	default:
+		break;
+	}
+}
+
+static void elf_module_limits(struct elf_module *module)
+{
+	Elf32_Shdr *section;
+	int i;
+
+	module->text_start = 0xffffffff;
+	module->data_start = 0xffffffff;
+	module->bss_start = 0;
+	module->text_end = 0;
+	module->data_end = 0;
+	module->bss_end = 0;
+
+	fprintf(stdout, "  Found %d sections, listing valid sections......\n",
+		module->hdr.shnum);
+
+	fprintf(stdout, "\tNo\tStart\t\tEnd\t\tSize\tType\tName\n");
+
+	/* iterate all sections and get size of segments */
+	for (i = 0; i < module->hdr.shnum; i++) {
+		section = &module->section[i];
+
+		/* module bss can sometimes be missed */
+		if (i != module->bss_index) {
+			if (section->vaddr == 0)
+				continue;
+
+			if (section->size == 0)
+				continue;
+		}
+
+		fprintf(stdout, "\t%d\t0x%8.8x\t0x%8.8x\t0x%x", i,
+			section->vaddr, section->vaddr + section->size,
+			section->size);
+
+		/* text or data section */
+		elf_module_size(module, section, i);
+
+		/* section name */
+		fprintf(stdout, "%s\n", module->strings + section->name);
+	}
+
+	fprintf(stdout, "\n");
+}
+
+/* make sure no section overlap */
+static int elf_validate_section(struct elf_module *module,
+				Elf32_Shdr *section, int index)
+{
+	Elf32_Shdr *s;
+	uint32_t valid = (SHF_WRITE | SHF_ALLOC | SHF_EXECINSTR);
+	int i;
+
+	/* for each section */
+	for (i = 0; i < module->hdr.shnum; i++) {
+		s = &module->section[i];
+
+		if (s == section)
+			continue;
+
+		/* only check valid sections */
+		if (!(s->flags & valid))
+			continue;
+
+		if (s->size == 0)
+			continue;
+
+		/* is section start non overlapping ? */
+		if (section->vaddr >= s->vaddr &&
+		    section->vaddr < s->vaddr + s->size) {
+			goto err;
+		}
+
+		/* is section end non overlapping ? */
+		if (section->vaddr + section->size > s->vaddr &&
+		    section->vaddr + section->size <= s->vaddr + s->size) {
+			goto err;
+		}
+	}
+
+	return 0;
+
+err:
+	fprintf(stderr, "error: section overlap between %s:%d and %s:%d\n",
+		module->elf_file, index, module->elf_file, i);
+	fprintf(stderr, "     [0x%x : 0x%x] overlaps with [0x%x :0x%x]\n",
+		section->vaddr, section->vaddr + section->size,
+		s->vaddr, s->vaddr + s->size);
+	return -EINVAL;
+}
+
+/* make sure no section overlaps from any modules */
+static int elf_validate_module(struct elf_module *module)
+{
+	Elf32_Shdr *section;
+	uint32_t valid = (SHF_WRITE | SHF_ALLOC | SHF_EXECINSTR);
+	int i, ret;
+
+	/* for each section */
+	for (i = 0; i < module->hdr.shnum; i++) {
+		section = &module->section[i];
+
+		/* only check valid sections */
+		if (!(section->flags & valid))
+			continue;
+
+		if (section->size == 0)
+			continue;
+
+		/* is section non overlapping ? */
+		ret = elf_validate_section(module, section, i);
+		if (ret < 0)
+			return ret;
+	}
+
+	return 0;
+}
+
 int elf_find_section(const struct elf_module *module, const char *name)
 {
 	const Elf32_Ehdr *hdr = &module->hdr;
@@ -345,6 +507,7 @@ int elf_read_module(struct elf_module *module, const char *name, bool verbose)
 		goto sec_err;
 	}
 
+	elf_module_limits(module);
 	elf_find_section(module, "");
 
 	fprintf(stdout, " module: input size %d (0x%x) bytes %d sections\n",
@@ -355,6 +518,8 @@ int elf_read_module(struct elf_module *module, const char *name, bool verbose)
 		module->text_size, module->text_size,
 		module->data_size, module->data_size,
 		module->bss_size, module->bss_size);
+
+	elf_validate_module(module);
 
 	return 0;
 
