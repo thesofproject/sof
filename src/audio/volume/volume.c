@@ -651,7 +651,6 @@ static int volume_copy(struct comp_dev *dev)
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *source;
 	struct comp_buffer *sink;
-	uint32_t flags = 0;
 
 	comp_dbg(dev, "volume_copy()");
 
@@ -664,14 +663,8 @@ static int volume_copy(struct comp_dev *dev)
 	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
 			       source_list);
 
-	buffer_lock(source, &flags);
-	buffer_lock(sink, &flags);
-
 	/* Get source, sink, number of frames etc. to process. */
-	comp_get_copy_limits(source, sink, &c);
-
-	buffer_unlock(sink, flags);
-	buffer_unlock(source, flags);
+	comp_get_copy_limits_with_lock(source, sink, &c);
 
 	comp_dbg(dev, "volume_copy(), source_bytes = 0x%x, sink_bytes = 0x%x",
 		 c.source_bytes, c.sink_bytes);
