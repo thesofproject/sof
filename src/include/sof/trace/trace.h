@@ -199,7 +199,7 @@ static inline struct trace *trace_get(void)
  *
  * All compile-time accessible data (verbosity, class, source file name, line
  * index and string literal) are linked into .static_log_entries section
- * of binary and then extracted by rimage, so they do not contribute to loadable
+ * of binary and then extracted by smex, so they do not contribute to loadable
  * image size. This way more elaborate log messages are possible and encouraged,
  * for better debugging experience, without worrying about runtime performance.
  */
