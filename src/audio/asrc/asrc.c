@@ -839,10 +839,8 @@ static int asrc_copy(struct comp_dev *dev)
 	buffer_lock(source, &flags);
 	buffer_lock(sink, &flags);
 
-	frames_src = source->stream.avail /
-		     audio_stream_frame_bytes(&source->stream);
-	frames_snk = sink->stream.free /
-		     audio_stream_frame_bytes(&sink->stream);
+	frames_src = audio_stream_get_avail_frames(&source->stream);
+	frames_snk = audio_stream_get_free_frames(&sink->stream);
 
 	buffer_unlock(sink, flags);
 	buffer_unlock(source, flags);

@@ -627,7 +627,7 @@ static int tone_copy(struct comp_dev *dev)
 			       source_list);
 
 	buffer_lock(sink, &flags);
-	free = sink->stream.free;
+	free = audio_stream_get_free_bytes(&sink->stream);
 	buffer_unlock(sink, flags);
 
 	/* Test that sink has enough free frames. Then run once to maintain

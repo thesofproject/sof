@@ -650,6 +650,7 @@ static void dai_report_xrun(struct comp_dev *dev, uint32_t bytes)
 static int dai_copy(struct comp_dev *dev)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
+	struct comp_buffer *buf = dd->local_buffer;
 	uint32_t avail_bytes = 0;
 	uint32_t free_bytes = 0;
 	uint32_t copy_bytes = 0;
@@ -667,24 +668,22 @@ static int dai_copy(struct comp_dev *dev)
 		return ret;
 	}
 
-	buffer_lock(dd->local_buffer, &flags);
+	buffer_lock(buf, &flags);
 
 	/* calculate minimum size to copy */
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
-		src_samples = dd->local_buffer->stream.avail /
-			audio_stream_sample_bytes(&dd->local_buffer->stream);
+		src_samples = audio_stream_get_avail_samples(&buf->stream);
 		sink_samples = free_bytes / get_sample_bytes(dd->frame_fmt);
 		copy_bytes = MIN(src_samples, sink_samples) *
-			get_sample_bytes(dd->frame_fmt);
+			     get_sample_bytes(dd->frame_fmt);
 	} else {
 		src_samples = avail_bytes / get_sample_bytes(dd->frame_fmt);
-		sink_samples = dd->local_buffer->stream.free /
-			audio_stream_sample_bytes(&dd->local_buffer->stream);
+		sink_samples = audio_stream_get_free_samples(&buf->stream);
 		copy_bytes = MIN(src_samples, sink_samples) *
-			get_sample_bytes(dd->frame_fmt);
+			     get_sample_bytes(dd->frame_fmt);
 	}
 
-	buffer_unlock(dd->local_buffer, flags);
+	buffer_unlock(buf, flags);
 
 	comp_dbg(dev, "dai_copy(), copy_bytes = 0x%x", copy_bytes);
 
