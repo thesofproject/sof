@@ -719,7 +719,6 @@ static int eq_fir_copy(struct comp_dev *dev)
 	struct comp_data *cd = comp_get_drvdata(dev);
 	int ret;
 	int n;
-	uint32_t flags = 0;
 
 	comp_dbg(dev, "eq_fir_copy()");
 
@@ -741,14 +740,8 @@ static int eq_fir_copy(struct comp_dev *dev)
 	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
 				source_list);
 
-	buffer_lock(sourceb, &flags);
-	buffer_lock(sinkb, &flags);
-
 	/* Get source, sink, number of frames etc. to process. */
-	comp_get_copy_limits(sourceb, sinkb, &cl);
-
-	buffer_unlock(sinkb, flags);
-	buffer_unlock(sourceb, flags);
+	comp_get_copy_limits_with_lock(sourceb, sinkb, &cl);
 
 	/*
 	 * Process only even number of frames with the FIR function. The
