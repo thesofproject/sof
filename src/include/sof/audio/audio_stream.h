@@ -21,6 +21,7 @@
 #include <sof/lib/cache.h>
 #include <ipc/stream.h>
 #include <config.h>
+#include <stdbool.h>
 #include <stdint.h>
 
 /** \addtogroup audio_stream_api Audio Stream API
@@ -55,6 +56,9 @@ struct audio_stream {
 	enum sof_ipc_frame frame_fmt;	/**< Sample data format */
 	uint32_t rate;		/**< Number of data frames per second [Hz] */
 	uint16_t channels;	/**< Number of samples in each frame */
+
+	bool overrun_permitted; /**< indicates whether overrun is permitted */
+	bool underrun_permitted; /**< indicates whether underrun is permitted */
 };
 
 /**
@@ -176,67 +180,6 @@ static inline int audio_stream_set_params(struct audio_stream *buffer,
 }
 
 /**
- * Verifies the pointer and performs rollover when reached the end of
- * the buffer.
- * @param buffer Buffer accessed by the pointer.
- * @param ptr Pointer
- * @return Pointer, adjusted if necessary.
- */
-static inline void *audio_stream_wrap(const struct audio_stream *buffer,
-				      void *ptr)
-{
-	if (ptr >= buffer->end_addr)
-		ptr = (char *)buffer->addr +
-			((char *)ptr - (char *)buffer->end_addr);
-
-	return ptr;
-}
-
-/**
- *  Verifies whether specified number of bytes can be copied from source buffer
- *  to sink buffer.
- *  @param source Source buffer.
- *  @param sink Sink buffer.
- *  @param bytes Number of bytes to copy.
- *  @return 0 if there is enough data in source and enough free space in sink.
- *  @return 1 if there is not enough free space in sink.
- *  @return -1 if there is not enough data in source.
- */
-static inline int audio_stream_can_copy_bytes(const struct audio_stream *source,
-					      const struct audio_stream *sink,
-					      uint32_t bytes)
-{
-	/* check for underrun */
-	if (source->avail < bytes)
-		return -1;
-
-	/* check for overrun */
-	if (sink->free < bytes)
-		return 1;
-
-	/* we are good to copy */
-	return 0;
-}
-
-/**
- * Computes maximum number of bytes that can be copied from source buffer to
- * sink buffer, verifying number of bytes available in source vs. free space
- * available in sink.
- * @param source Source buffer.
- * @param sink Sink buffer.
- * @return Number of bytes.
- */
-static inline uint32_t
-audio_stream_get_copy_bytes(const struct audio_stream *source,
-			    const struct audio_stream *sink)
-{
-	if (source->avail > sink->free)
-		return sink->free;
-	else
-		return source->avail;
-}
-
-/**
  * Calculates period size in bytes based on component stream's parameters.
  * @param buf Component buffer.
  * @return Period size in bytes.
@@ -269,6 +212,158 @@ static inline uint32_t audio_stream_period_bytes(const struct audio_stream *buf,
 }
 
 /**
+ * Verifies the pointer and performs rollover when reached the end of
+ * the buffer.
+ * @param buffer Buffer accessed by the pointer.
+ * @param ptr Pointer
+ * @return Pointer, adjusted if necessary.
+ */
+static inline void *audio_stream_wrap(const struct audio_stream *buffer,
+				      void *ptr)
+{
+	if (ptr >= buffer->end_addr)
+		ptr = (char *)buffer->addr +
+			((char *)ptr - (char *)buffer->end_addr);
+
+	return ptr;
+}
+
+/**
+ * Calculates available data in bytes, handling underrun_permitted behaviour
+ * @param stream Stream pointer
+ * @return amount of data available for processing in bytes
+ */
+static inline uint32_t
+audio_stream_get_avail_bytes(const struct audio_stream *stream)
+{
+	/*
+	 * In case of underrun-permitted stream, report buffer full instead of
+	 * empty. This way, any data present in such stream is processed at
+	 * regular pace, but buffer will never be seen as completely empty by
+	 * clients, and in turn will not cause underrun/XRUN.
+	 */
+	if (stream->underrun_permitted)
+		return stream->avail != 0 ? stream->avail : stream->size;
+
+	return stream->avail;
+}
+
+/**
+ * Calculates available data in samples, handling underrun_permitted behaviour
+ * @param stream Stream pointer
+ * @return amount of data available for processing in samples
+ */
+static inline uint32_t
+audio_stream_get_avail_samples(const struct audio_stream *stream)
+{
+	return audio_stream_get_avail_bytes(stream) /
+		audio_stream_sample_bytes(stream);
+}
+
+/**
+ * Calculates available data in frames, handling underrun_permitted behaviour
+ * @param stream Stream pointer
+ * @return amount of data available for processing in frames
+ */
+static inline uint32_t
+audio_stream_get_avail_frames(const struct audio_stream *stream)
+{
+	return audio_stream_get_avail_bytes(stream) /
+		audio_stream_frame_bytes(stream);
+}
+
+/**
+ * Calculates free space in bytes, handling overrun_permitted behaviour
+ * @param stream Stream pointer
+ * @return amount of space free in bytes
+ */
+static inline uint32_t
+audio_stream_get_free_bytes(const struct audio_stream *stream)
+{
+	/*
+	 * In case of overrun-permitted stream, report buffer empty instead of
+	 * full. This way, if there's any actual free space for data it is
+	 * processed at regular pace, but buffer will never be seen as
+	 * completely full by clients, and in turn will not cause overrun/XRUN.
+	 */
+	if (stream->overrun_permitted)
+		return stream->free != 0 ? stream->free : stream->size;
+
+	return stream->free;
+}
+
+/**
+ * Calculates free space in samples, handling overrun_permitted behaviour
+ * @param stream Stream pointer
+ * @return amount of space free in samples
+ */
+static inline uint32_t
+audio_stream_get_free_samples(const struct audio_stream *stream)
+{
+	return audio_stream_get_free_bytes(stream) /
+		audio_stream_sample_bytes(stream);
+}
+
+/**
+ * Calculates free space in frames, handling overrun_permitted behaviour
+ * @param stream Stream pointer
+ * @return amount of space free in frames
+ */
+static inline uint32_t
+audio_stream_get_free_frames(const struct audio_stream *stream)
+{
+	return audio_stream_get_free_bytes(stream) /
+		audio_stream_frame_bytes(stream);
+}
+
+/**
+ *  Verifies whether specified number of bytes can be copied from source buffer
+ *  to sink buffer.
+ *  @param source Source buffer.
+ *  @param sink Sink buffer.
+ *  @param bytes Number of bytes to copy.
+ *  @return 0 if there is enough data in source and enough free space in sink.
+ *  @return 1 if there is not enough free space in sink.
+ *  @return -1 if there is not enough data in source.
+ */
+static inline int audio_stream_can_copy_bytes(const struct audio_stream *source,
+					      const struct audio_stream *sink,
+					      uint32_t bytes)
+{
+	/* check for underrun */
+	if (audio_stream_get_avail_bytes(source) < bytes)
+		return -1;
+
+	/* check for overrun */
+	if (audio_stream_get_free_bytes(sink) < bytes)
+		return 1;
+
+	/* we are good to copy */
+	return 0;
+}
+
+/**
+ * Computes maximum number of bytes that can be copied from source buffer to
+ * sink buffer, verifying number of bytes available in source vs. free space
+ * available in sink.
+ * @param source Source buffer.
+ * @param sink Sink buffer.
+ * @return Number of bytes.
+ */
+static inline uint32_t
+audio_stream_get_copy_bytes(const struct audio_stream *source,
+			    const struct audio_stream *sink)
+{
+	uint32_t avail = audio_stream_get_avail_bytes(source);
+	uint32_t free = audio_stream_get_free_bytes(sink);
+
+	if (avail > free)
+		return free;
+	else
+		return avail;
+}
+
+/**
  * Computes maximum number of frames that can be copied from source buffer
  * to sink buffer, verifying number of available source frames vs. free
  * space available in sink.
@@ -280,8 +375,8 @@ static inline uint32_t
 audio_stream_avail_frames(const struct audio_stream *source,
 			  const struct audio_stream *sink)
 {
-	uint32_t src_frames = source->avail / audio_stream_frame_bytes(source);
-	uint32_t sink_frames = sink->free / audio_stream_frame_bytes(sink);
+	uint32_t src_frames = audio_stream_get_avail_frames(source);
+	uint32_t sink_frames = audio_stream_get_free_frames(sink);
 
 	return MIN(src_frames, sink_frames);
 }
