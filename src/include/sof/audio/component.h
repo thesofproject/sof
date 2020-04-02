@@ -694,6 +694,31 @@ void comp_get_copy_limits(struct comp_buffer *source, struct comp_buffer *sink,
 			  struct comp_copy_limits *cl);
 
 /**
+ * Version of comp_get_copy_limits that locks both buffers to guarantee
+ * consistent state readings.
+ *
+ * @param[in] source Source buffer.
+ * @param[in] sink Sink buffer
+ * @param[out] cl Current copy limits.
+ */
+static inline
+void comp_get_copy_limits_with_lock(struct comp_buffer *source,
+				    struct comp_buffer *sink,
+				    struct comp_copy_limits *cl)
+{
+	uint32_t source_flags = 0;
+	uint32_t sink_flags = 0;
+
+	buffer_lock(source, &source_flags);
+	buffer_lock(sink, &sink_flags);
+
+	comp_get_copy_limits(source, sink, cl);
+
+	buffer_unlock(sink, sink_flags);
+	buffer_unlock(source, source_flags);
+}
+
+/**
  * Called by component in  params() function in order to set and update some of
  * downstream (playback) or upstream (capture) buffer parameters with pcm
  * parameters. There is a possibility to specify which of parameters won't be
