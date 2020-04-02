@@ -301,7 +301,6 @@ static int dcblock_copy(struct comp_dev *dev)
 	struct comp_copy_limits cl;
 	struct comp_buffer *sourceb;
 	struct comp_buffer *sinkb;
-	uint32_t flags = 0;
 
 	comp_dbg(dev, "dcblock_copy()");
 
@@ -310,14 +309,8 @@ static int dcblock_copy(struct comp_dev *dev)
 	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
 				source_list);
 
-	buffer_lock(sinkb, &flags);
-	buffer_lock(sourceb, &flags);
-
 	/* Get source, sink, number of frames etc. to process. */
-	comp_get_copy_limits(sourceb, sinkb, &cl);
-
-	buffer_unlock(sinkb, flags);
-	buffer_unlock(sourceb, flags);
+	comp_get_copy_limits_with_lock(sourceb, sinkb, &cl);
 
 	dcblock_process(dev, sourceb, sinkb,
 			cl.frames, cl.source_bytes, cl.sink_bytes);
