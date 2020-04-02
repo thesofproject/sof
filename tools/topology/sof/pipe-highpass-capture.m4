@@ -33,23 +33,28 @@ C_CONTROLMIXER(Master Capture Volume, PIPELINE_ID,
 # Volume Configuration
 #
 
-define(MY_PGA_TOKENS, concat(`pga_tokens_', PIPELINE_ID))
-define(MY_PGA_CONF, concat(`pga_conf_', PIPELINE_ID))
-W_VENDORTUPLES(MY_PGA_TOKENS, sof_volume_tokens,
+define(DEF_PGA_TOKENS, concat(`pga_tokens_', PIPELINE_ID))
+define(DEF_PGA_CONF, concat(`pga_conf_', PIPELINE_ID))
+W_VENDORTUPLES(DEF_PGA_TOKENS, sof_volume_tokens,
 LIST(`		', `SOF_TKN_VOLUME_RAMP_STEP_TYPE	"0"'
      `		', `SOF_TKN_VOLUME_RAMP_STEP_MS		"400"'))
 
-W_DATA(MY_PGA_CONF, MY_PGA_TOKENS)
+W_DATA(DEF_PGA_CONF, DEF_PGA_TOKENS)
 
 #
 # IIR configuration
 #
 
-include(`eq_iir_coef_highpass_40hz_0db_48khz.m4')
+define(DEF_EQIIR_COEF, concat(`eqiir_coef_', PIPELINE_ID))
+define(DEF_EQIIR_PRIV, concat(`eqiir_priv_', PIPELINE_ID))
+
+# By default, use 40 Hz highpass response with 0 dB gain
+ifdef(`PIPELINE_FILTER1', , `define(PIPELINE_FILTER1, eq_iir_coef_highpass_40hz_0db_48khz.m4)')
+include(PIPELINE_FILTER1)
 
 # EQ Bytes control with max value of 255
-define(MY_EQIIR_BYTES, concat(`eqiir_bytes_', PIPELINE_ID))
-C_CONTROLBYTES(MY_EQIIR_BYTES, PIPELINE_ID,
+define(DEF_EQIIR_COEF, concat(`eqiir_bytes_', PIPELINE_ID))
+C_CONTROLBYTES(DEF_EQIIR_COEF, PIPELINE_ID,
 	CONTROLBYTES_OPS(bytes,
 		258 binds the mixer control to bytes get/put handlers,
 		258, 258),
@@ -59,7 +64,7 @@ C_CONTROLBYTES(MY_EQIIR_BYTES, PIPELINE_ID,
 	, , ,
 	CONTROLBYTES_MAX(, 304),
 	,
-	EQIIR_HP40HZ0dB48K_priv)
+	DEF_EQIIR_PRIV)
 
 #
 # Components and Buffers
@@ -70,12 +75,12 @@ C_CONTROLBYTES(MY_EQIIR_BYTES, PIPELINE_ID,
 W_PCM_CAPTURE(PCM_ID, Highpass Capture, 0, 2)
 
 # "Volume" has 2 sink and 2 source periods
-W_PGA(0, PIPELINE_FORMAT, 2, DAI_PERIODS, MY_PGA_CONF,
+W_PGA(0, PIPELINE_FORMAT, 2, DAI_PERIODS, DEF_PGA_CONF,
 	LIST(`		', "PIPELINE_ID Master Capture Volume"))
 
 # "EQ_IIR 0" has 2 sink and x source periods
 W_EQ_IIR(0, PIPELINE_FORMAT, 2, DAI_PERIODS,
-	LIST(`		', "MY_EQIIR_BYTES"))
+	LIST(`		', "DEF_EQIIR_COEF"))
 
 # Capture Buffers
 W_BUFFER(0, COMP_BUFFER_SIZE(2,
@@ -118,6 +123,7 @@ PCM_CAPABILITIES(Highpass Capture PCM_ID, `S32_LE,S24_LE,S16_LE',
 	PCM_MIN_RATE, PCM_MAX_RATE, PIPELINE_CHANNELS, PIPELINE_CHANNELS,
 	2, 16, 192, 16384, 65536, 65536)
 
-undefine(`MY_PGA_TOKENS')
-undefine(`MY_PGA_CONF')
-undefine(`MY_EQIIR_BYTES')
+undefine(`DEF_PGA_TOKENS')
+undefine(`DEF_PGA_CONF')
+undefine(`DEF_EQFIR_COEF')
+undefine(`DEF_EQFIR_PRIV')

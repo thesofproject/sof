@@ -19,15 +19,22 @@ include(`platform/intel/'PLATFORM`.m4')
 
 DEBUG_START
 
+# if XPROC is not defined, define with default pipe
+ifdef(`HSMICPROC', , `define(HSMICPROC, volume)')
+ifdef(`HSEARPROC', , `define(HSEARPROC, volume)')
+ifdef(`DMICPROC', , `define(DMICPROC, passthrough)')
+ifdef(`DMIC16KPROC', , `define(DMIC16KPROC, volume)')
+
 #
 # Define the pipelines
 #
-# PCM0 <---> volume <----> SSP(SSP_INDEX, BE link 0)
-# PCM1 <------------------ DMIC01 (dmic0 capture, , BE link 1)
+`# PCM0 ---> 'HSEARPROC` ----> SSP(SSP_INDEX, BE link 0)'
+`# PCM0 <--- 'HSMICPROC` <---- SSP(SSP_INDEX, BE link 0)'
+`# PCM1 <--- 'DMICPROC` <----- DMIC01 (dmic0 capture, , BE link 1)'
 # PCM2 ----> volume -----> iDisp1 (HDMI/DP playback, BE link 3)
 # PCM3 ----> volume -----> iDisp2 (HDMI/DP playback, BE link 4)
 # PCM4 ----> volume -----> iDisp3 (HDMI/DP playback, BE link 5)
-# PCM8 <---- volume <----- DMIC16k (dmic16k, BE link 2)
+`# PCM8 <---- 'DMIC16KPROC` <----- DMIC16k (dmic16k, BE link 2)'
 #
 
 dnl PIPELINE_PCM_ADD(pipeline,
@@ -38,21 +45,21 @@ dnl     time_domain, sched_comp)
 
 # Low Latency playback pipeline 1 on PCM 0 using max 2 channels of s24le.
 # 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
+PIPELINE_PCM_ADD(sof/pipe-`HSEARPROC'-playback.m4,
 	1, 0, 2, s24le,
 	1000, 0, 0,
 	48000, 48000, 48000)
 
 # Low Latency capture pipeline 2 on PCM 0 using max 2 channels of s24le.
 # 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_ADD(sof/pipe-volume-capture.m4,
+PIPELINE_PCM_ADD(sof/pipe-`HSMICPROC'-capture.m4,
 	2, 0, 2, s24le,
 	1000, 0, 0,
 	48000, 48000, 48000)
 
 # Passthrough capture pipeline 3 on PCM 1 using max 4 channels.
 # 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_ADD(sof/pipe-passthrough-capture.m4,
+PIPELINE_PCM_ADD(sof/pipe-`DMICPROC'-capture.m4,
 	3, 1, 4, s32le,
 	1000, 0, 0,
 	48000, 48000, 48000)
@@ -80,7 +87,7 @@ PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
 
 # Passthrough capture pipeline 7 on PCM 5 using max 2 channels.
 # Schedule 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_ADD(sof/pipe-volume-capture-16khz.m4,
+PIPELINE_PCM_ADD(sof/pipe-`DMIC16KPROC'-capture-16khz.m4,
 	8, 8, 2, s24le,
 	1000, 0, 0,
 	16000, 16000, 16000)

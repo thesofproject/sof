@@ -17,12 +17,16 @@ include(`eq_iir.m4')
 # Controls
 #
 
-# Use 40 Hz highpass response with 0 dB gain
-include(`eq_iir_coef_highpass_40hz_0db_48khz.m4')
+define(DEF_EQIIR_COEF, concat(`eqiir_coef_', PIPELINE_ID))
+define(DEF_EQIIR_PRIV, concat(`eqiir_priv_', PIPELINE_ID))
+
+# By default, use 40 Hz highpass response with 0 dB gain
+# TODO: need to implement middle level macro handler per pipeline
+ifdef(`DMICPROC_FILTER1', , `define(DMICPROC_FILTER1, eq_iir_coef_highpass_40hz_0db_48khz.m4)')
+include(DMICPROC_FILTER1)
 
 # EQ Bytes control with max value of 255
-define(MY_CONTROLBYTES, concat(`EQIIR_CONTROLBYTES_', PIPELINE_ID))
-C_CONTROLBYTES(MY_CONTROLBYTES, PIPELINE_ID,
+C_CONTROLBYTES(DEF_EQIIR_COEF, PIPELINE_ID,
 	CONTROLBYTES_OPS(bytes,
 		258 binds the mixer control to bytes get/put handlers,
 		258, 258),
@@ -32,7 +36,7 @@ C_CONTROLBYTES(MY_CONTROLBYTES, PIPELINE_ID,
 	, , ,
 	CONTROLBYTES_MAX(, 1024),
 	,
-	EQIIR_HP40HZ0dB48K_priv)
+	DEF_EQIIR_PRIV)
 
 #
 # Components and Buffers
@@ -43,7 +47,7 @@ C_CONTROLBYTES(MY_CONTROLBYTES, PIPELINE_ID,
 W_PCM_CAPTURE(PCM_ID, EQ IIR Capture, 0, 2)
 
 # "EQ 0" has 2 sink period and x source periods
-W_EQ_IIR(0, PIPELINE_FORMAT, 2, DAI_PERIODS, LIST(`		', "MY_CONTROLBYTES"))
+W_EQ_IIR(0, PIPELINE_FORMAT, 2, DAI_PERIODS, LIST(`		', "DEF_EQIIR_COEF"))
 
 # Capture Buffers
 W_BUFFER(0, COMP_BUFFER_SIZE(2,
@@ -79,4 +83,5 @@ PCM_CAPABILITIES(EQ IIR Capture PCM_ID, `S32_LE,S24_LE,S16_LE', PCM_MIN_RATE,
 	PCM_MAX_RATE, PIPELINE_CHANNELS, PIPELINE_CHANNELS,
 	2, 16, 192, 16384, 65536, 65536)
 
-undefine(`MY_CONTROLBYTES')
+undefine(`DEF_EQIIR_COEF')
+undefine(`DEF_EQIIR_PRIV')
