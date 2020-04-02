@@ -808,7 +808,6 @@ static int eq_iir_copy(struct comp_dev *dev)
 	struct comp_buffer *sourceb;
 	struct comp_buffer *sinkb;
 	int ret;
-	uint32_t flags = 0;
 
 	comp_dbg(dev, "eq_iir_copy()");
 
@@ -830,14 +829,8 @@ static int eq_iir_copy(struct comp_dev *dev)
 	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
 				source_list);
 
-	buffer_lock(sourceb, &flags);
-	buffer_lock(sinkb, &flags);
-
 	/* Get source, sink, number of frames etc. to process. */
-	comp_get_copy_limits(sourceb, sinkb, &cl);
-
-	buffer_unlock(sinkb, flags);
-	buffer_unlock(sourceb, flags);
+	comp_get_copy_limits_with_lock(sourceb, sinkb, &cl);
 
 	/* Run EQ function */
 	eq_iir_process(dev, sourceb, sinkb, cl.frames, cl.source_bytes,
