@@ -137,7 +137,7 @@ int dma_copy_new(struct dma_copy *dc)
 	dev = DMA_DEV_HOST;
 	cap = 0;
 	dc->dmac = dma_get(dir, cap, dev, DMA_ACCESS_SHARED);
-	if (dc->dmac == NULL) {
+	if (!dc->dmac) {
 		trace_dma_error("dma_copy_new(): dc->dmac = NULL");
 		return -ENODEV;
 	}

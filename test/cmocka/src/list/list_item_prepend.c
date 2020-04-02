@@ -30,9 +30,8 @@ static int setup(void **state)
 	data->tail_minus_1 = malloc(sizeof(struct list_item));
 	data->tail = malloc(sizeof(struct list_item));
 
-	if (data->head == NULL
-			|| data->tail_minus_1 == NULL
-			|| data->tail == NULL) {
+	if (!data->head	|| !data->tail_minus_1
+			|| !data->tail) {
 		free(data->head);
 		free(data->tail_minus_1);
 		free(data->tail);
