@@ -31,14 +31,21 @@ C_CONTROLMIXER(Master Playback Volume, PIPELINE_ID,
 # Volume configuration
 #
 
-W_VENDORTUPLES(playback_pga_tokens, sof_volume_tokens,
+define(DEF_PGA_TOKENS, concat(`pga_tokens_', PIPELINE_ID))
+define(DEF_PGA_CONF, concat(`pga_conf_', PIPELINE_ID))
+
+W_VENDORTUPLES(DEF_PGA_TOKENS, sof_volume_tokens,
 LIST(`		', `SOF_TKN_VOLUME_RAMP_STEP_TYPE	"0"'
      `		', `SOF_TKN_VOLUME_RAMP_STEP_MS		"250"'))
 
-W_DATA(playback_pga_conf, playback_pga_tokens)
+W_DATA(DEF_PGA_CONF, DEF_PGA_TOKENS)
+
+define(DEF_EQFIR_COEF, concat(`eqfir_coef_', PIPELINE_ID))
+define(DEF_EQFIR_PRIV, concat(`eqfir_priv_', PIPELINE_ID))
 
 # EQ initial parameters, in this case flat response
-include(`eq_fir_coef_flat.m4')
+ifdef(`PIPELINE_FILTER2', , `define(PIPELINE_FILTER2, eq_fir_coef_flat.m4)')
+include(PIPELINE_FILTER2)
 
 # EQ Bytes control with max value of 255
 C_CONTROLBYTES(EQFIR, PIPELINE_ID,
@@ -47,7 +54,7 @@ C_CONTROLBYTES(EQFIR, PIPELINE_ID,
 	, , ,
 	CONTROLBYTES_MAX(, 304),
 	,
-	EQFIR_priv)
+	DEF_EQFIR_PRIV)
 
 #
 # Components and Buffers
@@ -58,10 +65,10 @@ C_CONTROLBYTES(EQFIR, PIPELINE_ID,
 W_PCM_PLAYBACK(PCM_ID, Passthrough Playback, 2, 0)
 
 # "Volume" has 2 source and x sink periods
-W_PGA(0, PIPELINE_FORMAT, DAI_PERIODS, 2, playback_pga_conf, LIST(`		', "PIPELINE_ID Master Playback Volume"))
+W_PGA(0, PIPELINE_FORMAT, DAI_PERIODS, 2, DEF_PGA_CONF, LIST(`		', "PIPELINE_ID Master Playback Volume"))
 
 # "EQ 0" has 2 sink period and 2 source periods
-W_EQ_FIR(0, PIPELINE_FORMAT, 2, 2, LIST(`		', "EQFIR"))
+W_EQ_FIR(0, PIPELINE_FORMAT, 2, 2, LIST(`		', "DEF_EQFIR_COEF"))
 
 # Playback Buffers
 W_BUFFER(0, COMP_BUFFER_SIZE(2,
@@ -100,3 +107,7 @@ indir(`define', concat(`PIPELINE_PCM_', PIPELINE_ID), Passthrough Playback PCM_I
 #
 PCM_CAPABILITIES(Passthrough Playback PCM_ID, `S32_LE,S24_LE,S16_LE', PCM_MIN_RATE, PCM_MAX_RATE, 2, PIPELINE_CHANNELS, 2, 16, 192, 16384, 65536, 65536)
 
+undefine(`DEF_PGA_TOKENS')
+undefine(`DEF_PGA_CONF')
+undefine(`DEF_EQFIR_COEF')
+undefine(`DEF_EQFIR_PRIV')

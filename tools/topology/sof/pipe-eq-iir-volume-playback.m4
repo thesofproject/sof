@@ -31,23 +31,33 @@ C_CONTROLMIXER(Master Playback Volume, PIPELINE_ID,
 # Volume configuration
 #
 
-W_VENDORTUPLES(playback_pga_tokens, sof_volume_tokens,
+define(DEF_PGA_TOKENS, concat(`pga_tokens_', PIPELINE_ID))
+define(DEF_PGA_CONF, concat(`pga_conf_', PIPELINE_ID))
+
+W_VENDORTUPLES(DEF_PGA_TOKENS, sof_volume_tokens,
 LIST(`		', `SOF_TKN_VOLUME_RAMP_STEP_TYPE	"0"'
      `		', `SOF_TKN_VOLUME_RAMP_STEP_MS		"250"'))
 
-W_DATA(playback_pga_conf, playback_pga_tokens)
+W_DATA(DEF_PGA_CONF, DEF_PGA_TOKENS)
 
-# EQ initial parameters, in this case flat response
-include(`eq_iir_coef_flat.m4')
+#
+# IIR EQ
+#
+define(DEF_EQIIR_COEF, concat(`eqiir_coef_', PIPELINE_ID))
+define(DEF_EQIIR_PRIV, concat(`eqiir_priv_', PIPELINE_ID))
+
+# define filter. eq_iir_coef_flat.m4 is set by default
+ifdef(`PIPELINE_FILTER1', , `define(PIPELINE_FILTER1, eq_iir_coef_flat.m4)')
+include(PIPELINE_FILTER1)
 
 # EQ Bytes control with max value of 255
-C_CONTROLBYTES(EQIIR, PIPELINE_ID,
+C_CONTROLBYTES(DEF_EQIIR_COEF, PIPELINE_ID,
 	CONTROLBYTES_OPS(bytes, 258 binds the mixer control to bytes get/put handlers, 258, 258),
 	CONTROLBYTES_EXTOPS(258 binds the mixer control to bytes get/put handlers, 258, 258),
 	, , ,
 	CONTROLBYTES_MAX(, 304),
 	,
-	EQIIR_priv)
+	DEF_EQIIR_PRIV)
 
 #
 # Components and Buffers
@@ -58,10 +68,10 @@ C_CONTROLBYTES(EQIIR, PIPELINE_ID,
 W_PCM_PLAYBACK(PCM_ID, Passthrough Playback, 2, 0)
 
 # "Volume" has 2 source and x sink periods
-W_PGA(0, PIPELINE_FORMAT, DAI_PERIODS, 2, playback_pga_conf, LIST(`		', "PIPELINE_ID Master Playback Volume"))
+W_PGA(0, PIPELINE_FORMAT, DAI_PERIODS, 2, DEF_PGA_CONF, LIST(`		', "PIPELINE_ID Master Playback Volume"))
 
 # "EQ 0" has 2 sink period and 2 source periods
-W_EQ_IIR(0, PIPELINE_FORMAT, 2, 2, LIST(`		', "EQIIR"))
+W_EQ_IIR(0, PIPELINE_FORMAT, 2, 2, LIST(`		', "DEF_EQIIR_COEF"))
 
 # Playback Buffers
 W_BUFFER(0, COMP_BUFFER_SIZE(2,
@@ -100,3 +110,7 @@ indir(`define', concat(`PIPELINE_PCM_', PIPELINE_ID), Passthrough Playback PCM_I
 #
 PCM_CAPABILITIES(Passthrough Playback PCM_ID, `S32_LE,S24_LE,S16_LE', PCM_MIN_RATE, PCM_MAX_RATE, 2, PIPELINE_CHANNELS, 2, 16, 192, 16384, 65536, 65536)
 
+undefine(`DEF_PGA_TOKENS')
+undefine(`DEF_PGA_CONF')
+undefine(`DEF_EQIIR_COEF')
+undefine(`DEF_EQIIR_PRIV')

@@ -17,8 +17,12 @@ include(`eq_iir.m4')
 # Controls
 #
 
-# Use coefficients for flat frequency response
-include(`eq_iir_coef_flat.m4')
+define(DEF_EQIIR_COEF, concat(`eqiir_coef_', PIPELINE_ID))
+define(DEF_EQIIR_PRIV, concat(`eqiir_priv_', PIPELINE_ID))
+
+# define filter. eq_iir_coef_flat.m4 is set by default
+ifdef(`PIPELINE_FILTER1', , `define(PIPELINE_FILTER1, eq_iir_coef_flat.m4)')
+include(PIPELINE_FILTER1)
 
 # EQ Bytes control with max value of 255
 define(MY_CONTROLBYTES, concat(`EQIIR_CONTROLBYTES_', PIPELINE_ID))
@@ -30,7 +34,7 @@ C_CONTROLBYTES(MY_CONTROLBYTES, PIPELINE_ID,
 	, , ,
 	CONTROLBYTES_MAX(, 1024),
 	,
-	EQIIR_priv)
+	DEF_EQIIR_PRIV)
 
 #
 # Components and Buffers
@@ -80,3 +84,5 @@ PCM_CAPABILITIES(EQ IIR Playback PCM_ID, `S32_LE,S24_LE,S16_LE',
 	2, 16, 192, 16384, 65536, 65536)
 
 undefine(`MY_CONTROLBYTES')
+undefine(`DEF_EQIIR_COEF')
+undefine(`DEF_EQIIR_PRIV')

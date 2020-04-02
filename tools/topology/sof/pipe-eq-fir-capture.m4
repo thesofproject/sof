@@ -17,8 +17,12 @@ include(`eq_fir.m4')
 # Controls
 #
 
-# Use flat response
-include(`eq_fir_coef_flat.m4')
+define(DEF_EQFIR_COEF, concat(`eqfir_coef_', PIPELINE_ID))
+define(DEF_EQFIR_PRIV, concat(`eqfir_priv_', PIPELINE_ID))
+
+# define filter. eq_fir_coef_flat.m4 is set by default
+ifdef(`PIPELINE_FILTER2', , `define(PIPELINE_FILTER2, eq_fir_coef_flat.m4)')
+include(PIPELINE_FILTER2)
 
 # EQ Bytes control with max value of 255
 define(MY_CONTROLBYTES, concat(`EQFIR_CONTROLBYTES_', PIPELINE_ID))
@@ -32,7 +36,7 @@ C_CONTROLBYTES(MY_CONTROLBYTES, PIPELINE_ID,
 	, , ,
 	CONTROLBYTES_MAX(, 4096),
 	,
-	EQFIR_priv)
+	DEF_EQFIR_PRIV)
 
 #
 # Components and Buffers
@@ -80,3 +84,5 @@ PCM_CAPABILITIES(EQ FIR Capture PCM_ID, `S32_LE,S24_LE,S16_LE', PCM_MIN_RATE,
 	2, 16, 192, 16384, 65536, 65536)
 
 undefine(`MY_CONTROLBYTES')
+undefine(`MY_EQFIR_COEF')
+undefine(`MY_EQFIR_PRIV')
