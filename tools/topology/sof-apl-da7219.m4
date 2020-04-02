@@ -7,6 +7,7 @@ include(`utils.m4')
 include(`dai.m4')
 include(`pipeline.m4')
 include(`ssp.m4')
+include(`hda.m4')
 
 # Include TLV library
 include(`common/tlv.m4')
@@ -181,9 +182,12 @@ DAI_CONFIG(DMIC, 0, 2, dmic01,
 		PDM_CONFIG(DMIC, 0, STEREO_PDM0)))
 
 # 3 HDMI/DP outputs (ID: 3,4,5)
-DAI_CONFIG(HDA, 3, 3, iDisp1)
-DAI_CONFIG(HDA, 4, 4, iDisp2)
-DAI_CONFIG(HDA, 5, 5, iDisp3)
+DAI_CONFIG(HDA, 3, 3, iDisp1,
+	HDA_CONFIG(HDA_CONFIG_DATA(HDA, 3, 48000, 2)))
+DAI_CONFIG(HDA, 4, 4, iDisp2,
+	HDA_CONFIG(HDA_CONFIG_DATA(HDA, 4, 48000, 2)))
+DAI_CONFIG(HDA, 5, 5, iDisp3,
+	HDA_CONFIG(HDA_CONFIG_DATA(HDA, 5, 48000, 2)))
 
 ## remove warnings with SST hard-coded routes
 

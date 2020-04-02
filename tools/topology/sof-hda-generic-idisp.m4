@@ -6,6 +6,7 @@
 include(`utils.m4')
 include(`dai.m4')
 include(`pipeline.m4')
+include(`hda.m4')
 
 # Include TLV library
 include(`common/tlv.m4')
@@ -104,9 +105,12 @@ PCM_PLAYBACK_ADD(HDMI3, 3, PIPELINE_PCM_4)
 #
 
 # 3 HDMI/DP outputs (ID: 1,2,3)
-DAI_CONFIG(HDA, 0, 1, iDisp1)
-DAI_CONFIG(HDA, 1, 2, iDisp2)
-DAI_CONFIG(HDA, 2, 3, iDisp3)
+DAI_CONFIG(HDA, 0, 1, iDisp1,
+	HDA_CONFIG(HDA_CONFIG_DATA(HDA, 0, 48000, 2)))
+DAI_CONFIG(HDA, 1, 2, iDisp2,
+	HDA_CONFIG(HDA_CONFIG_DATA(HDA, 1, 48000, 2)))
+DAI_CONFIG(HDA, 2, 3, iDisp3,
+	HDA_CONFIG(HDA_CONFIG_DATA(HDA, 2, 48000, 2)))
 
 VIRTUAL_DAPM_ROUTE_OUT(iDisp1_out, HDA, 0, OUT, 2)
 VIRTUAL_DAPM_ROUTE_OUT(iDisp2_out, HDA, 1, OUT, 3)
