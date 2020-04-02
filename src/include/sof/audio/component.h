@@ -662,10 +662,13 @@ static inline void comp_overrun(struct comp_dev *dev, struct comp_buffer *sink,
 /** @}*/
 
 /**
- * Called by component in copy.
- * @param source Source buffer.
- * @param sink Sink buffer.
- * @param cl Struct of parameters for use in copy function.
+ * Computes source to sink copy operation boundaries including maximum number
+ * of frames that can be transferred (data available in source vs. free space
+ * available in sink).
+ *
+ * @param[in] source Source buffer.
+ * @param[in] sink Sink buffer.
+ * @param[out] cl Current copy limits.
  */
 void comp_get_copy_limits(struct comp_buffer *source, struct comp_buffer *sink,
 			  struct comp_copy_limits *cl);
