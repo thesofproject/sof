@@ -30,6 +30,11 @@ static inline void select_cpu_clock(int freq_idx, bool release_unused)
 	uint32_t enc = cpu_freq_enc[freq_idx];
 	uint32_t status_mask = cpu_freq_status_mask[freq_idx];
 
+#if CONFIG_TIGERLAKE
+	if (freq_idx == CPU_HPRO_FREQ_IDX)
+		cpu_enable_core(PLATFORM_CORE_COUNT - 1);
+#endif
+
 	/* request clock */
 	io_reg_write(SHIM_BASE + SHIM_CLKCTL,
 		     io_reg_read(SHIM_BASE + SHIM_CLKCTL) | enc);
@@ -48,6 +53,10 @@ static inline void select_cpu_clock(int freq_idx, bool release_unused)
 		io_reg_write(SHIM_BASE + SHIM_CLKCTL,
 			     (io_reg_read(SHIM_BASE + SHIM_CLKCTL) &
 			      ~SHIM_CLKCTL_OSC_REQUEST_MASK) | enc);
+#if CONFIG_TIGERLAKE
+		if (freq_idx != CPU_HPRO_FREQ_IDX)
+			cpu_disable_core(PLATFORM_CORE_COUNT - 1);
+#endif
 	}
 }
 #endif

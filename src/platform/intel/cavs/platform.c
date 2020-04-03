@@ -290,6 +290,10 @@ int platform_boot_complete(uint32_t boot_message)
 {
 	uint32_t mb_offset = 0;
 
+#if CONFIG_TIGERLAKE && !CONFIG_CAVS_LPRO
+	cpu_enable_core(PLATFORM_CORE_COUNT - 1);
+#endif
+
 	mailbox_dspbox_write(mb_offset, &ready, sizeof(ready));
 	mb_offset = mb_offset + sizeof(ready);
 
