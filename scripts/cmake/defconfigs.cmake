@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 # Looks for defconfig files in arch directory
-set(DEFCONFIGS_DIRECTORY "${PROJECT_SOURCE_DIR}/src/arch/${ARCH}/configs/*_defconfig")
-file(GLOB DEFCONFIG_PATHS ${DEFCONFIGS_DIRECTORY})
+set(DEFCONFIGS_DIRECTORY "${PROJECT_SOURCE_DIR}/src/arch/${ARCH}/configs")
+file(GLOB DEFCONFIG_PATHS "${DEFCONFIGS_DIRECTORY}/*_defconfig")
 
 # Adds dependency on defconfigs directory
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${DEFCONFIGS_DIRECTORY})
