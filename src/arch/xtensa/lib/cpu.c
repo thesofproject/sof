@@ -32,6 +32,7 @@ extern struct core_context *core_ctx_ptr[PLATFORM_CORE_COUNT];
 extern struct xtos_core_data *core_data_ptr[PLATFORM_CORE_COUNT];
 
 static uint32_t active_cores_mask;
+static int dsp_sref[PLATFORM_CORE_COUNT];	/**< simple ref counter */
 
 #if CONFIG_NO_SLAVE_CORE_ROM
 extern void *shared_vecbase_ptr;
@@ -103,6 +104,7 @@ int arch_cpu_enable_core(int id)
 
 		active_cores_mask |= (1 << id);
 	}
+	++dsp_sref[id];
 
 	return 0;
 }
@@ -112,7 +114,8 @@ void arch_cpu_disable_core(int id)
 	struct idc_msg power_down = {
 		IDC_MSG_POWER_DOWN, IDC_MSG_POWER_DOWN_EXT, id };
 
-	if (arch_cpu_is_core_enabled(id)) {
+	--dsp_sref[id];
+	if (arch_cpu_is_core_enabled(id) && dsp_sref[id] == 0) {
 		idc_send_msg(&power_down, IDC_NON_BLOCKING);
 
 		active_cores_mask ^= (1 << id);
