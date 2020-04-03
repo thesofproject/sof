@@ -21,14 +21,14 @@ dnl     time_domain, sched_comp)
 # Passthrough capture pipeline using max channels defined by CHANNELS.
 
 # Set 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_ADD(sof/pipe-eq-capture.m4,
+PIPELINE_PCM_ADD(sof/pipe-eq-iir-volume-capture.m4,
 	DMIC_PIPELINE_48k_ID, DMIC_DAI_LINK_48k_ID, CHANNELS, s32le,
 	1000, 0, 0, 48000, 48000, 48000)
 
 # Passthrough capture pipeline using max channels defined by CHANNELS.
 
 # Schedule with 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_ADD(sof/pipe-eq-capture-16khz.m4,
+PIPELINE_PCM_ADD(sof/pipe-eq-iir-volume-capture-16khz.m4,
 	DMIC_PIPELINE_16k_ID, DMIC_DAI_LINK_16k_ID, CHANNELS, s32le,
 	1000, 0, 0, 16000, 16000, 16000)
 

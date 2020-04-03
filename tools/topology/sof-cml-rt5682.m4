@@ -22,8 +22,8 @@ DEBUG_START
 # if XPROC is not defined, define with default pipe
 ifdef(`HSMICPROC', , `define(HSMICPROC, volume)')
 ifdef(`HSEARPROC', , `define(HSEARPROC, volume)')
-ifdef(`DMICPROC', , `define(DMICPROC, passthrough)')
-ifdef(`DMIC16KPROC', , `define(DMIC16KPROC, volume)')
+ifdef(`DMICPROC', , `define(DMICPROC, eq-iir-volume)')
+ifdef(`DMIC16KPROC', , `define(DMIC16KPROC, eq-iir-volume)')
 
 #
 # Define the pipelines

@@ -20,8 +20,8 @@ include(`eq_fir.m4')
 define(DEF_EQFIR_COEF, concat(`eqfir_coef_', PIPELINE_ID))
 define(DEF_EQFIR_PRIV, concat(`eqfir_priv_', PIPELINE_ID))
 
-# define filter. eq_fir_coef_flat.m4 is set by default
-ifdef(`PIPELINE_FILTER2', , `define(PIPELINE_FILTER2, eq_fir_coef_flat.m4)')
+# define filter. eq_fir_coef_pass.m4 is set by default
+ifdef(`PIPELINE_FILTER2', , `define(PIPELINE_FILTER2, eq_fir_coef_pass.m4)')
 include(PIPELINE_FILTER2)
 
 # EQ Bytes control with max value of 255

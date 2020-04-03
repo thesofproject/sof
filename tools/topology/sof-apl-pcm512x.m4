@@ -79,14 +79,14 @@ PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
 
 # DMIC passthrough capture pipeline 7 on PCM 4 using max 2 channels.
 # 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_ADD(sof/pipe-eq-capture.m4,
+PIPELINE_PCM_ADD(sof/pipe-eq-iir-volume-capture.m4,
 	7, 5, 4, s32le,
 	1000, 0, 0,
 	48000, 48000, 48000)
 
 # DMIC16kHz passthrough capture pipeline 8 on PCM 5 using max 2 channels.
 # 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_ADD(sof/pipe-eq-capture-16khz.m4,
+PIPELINE_PCM_ADD(sof/pipe-eq-iir-volume-capture-16khz.m4,
 	8, 6, 2, s16le,
 	1000, 0, 0,
 	16000, 16000, 16000)
