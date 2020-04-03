@@ -169,11 +169,6 @@ _TRACE_EVENT_NTH_DECLARE_GROUP(4)
 
 #define _TRACE_EVENT_MAX_ARGUMENT_COUNT 4
 
-void trace_flush(void);
-void trace_on(void);
-void trace_off(void);
-void trace_init(struct sof *sof);
-
 static inline struct trace *trace_get(void)
 {
 	return sof_get()->trace;
@@ -235,6 +230,11 @@ static inline struct trace *trace_get(void)
 	_trace_event_atomic_with_ids(LOG_LEVEL_WARNING, class,		   \
 				     id_0, id_1, id_2,			   \
 				     format, ##__VA_ARGS__)
+
+void trace_flush(void);
+void trace_on(void);
+void trace_off(void);
+void trace_init(struct sof *sof);
 
 #if CONFIG_TRACEM
 /* send all trace to mbox and local trace buffer */
@@ -350,6 +350,11 @@ do {									    \
 	trace_unused(class, id_0, id_1, id_2, format, ##__VA_ARGS__)
 
 #define trace_point(x)  do {} while (0)
+
+static inline void trace_flush(void) { }
+static inline void trace_on(void) { }
+static inline void trace_off(void) { }
+static inline void trace_init(struct sof *sof) { }
 
 #endif
 
