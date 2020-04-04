@@ -53,7 +53,7 @@ src/schedule				@tlauda @mrajwa
 
 # other helpers
 test/**					@jajanusz
-scripts/*				@xiulipan
+scripts/*				@xiulipan @marc-hb
 rimage/*				@xiulipan
 
 # tools(old soft)
