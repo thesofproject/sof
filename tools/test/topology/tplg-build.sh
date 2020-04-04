@@ -264,6 +264,6 @@ then
 	#execute alsatplg to create topology binary
 	TEST_STRINGS=${TEST_STRINGS%?}
 	echo $TEST_STRINGS | tr '\n' ',' |\
-		xargs -d ',' -P0 -n1 -I string alsatplg -v 1 -c\
+		xargs -d ',' -P0 -n1 -I string alsatplg ${VERBOSE:+-v 1} -c\
 			string".conf" -o string".tplg"
 fi
