@@ -31,7 +31,7 @@
  * IRQ_STEER driver interacts with SOF.
  */
 #define SDMA2_IRQ	7
-#define SDMA2_IRQ_NAME	"irqstr2"
+#define SDMA2_IRQ_NAME	"irqsteer2"
 
 #define SDMA_CORE_RATIO 1/* Enable ACR bit as it's needed for this platform */
 
