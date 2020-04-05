@@ -18,4 +18,5 @@ target_compile_options(smex PRIVATE
 
 target_include_directories(smex PRIVATE
 	"${SOF_ROOT_SOURCE_DIRECTORY}/src/include"
+	"${SOF_ROOT_SOURCE_DIRECTORY}/rimage/src/include/sof"
 )
