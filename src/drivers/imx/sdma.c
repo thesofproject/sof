@@ -478,8 +478,7 @@ static int sdma_start(struct dma_chan_data *channel)
 {
 	struct sdma_chan *pdata = dma_chan_get_data(channel);
 
-	trace_sdma_error("sdma_start(%d)", channel->index);
-
+	tracev_sdma("sdma_start(%d)", channel->index);
 
 	if (channel->index) {
 		/* rest of the channels are prepared first */
