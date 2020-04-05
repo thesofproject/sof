@@ -347,7 +347,6 @@ add_custom_target(
 
 ExternalProject_Add(rimage_ep
 	DEPENDS check_version_h
-	DOWNLOAD_COMMAND git submodule update --init
 	SOURCE_DIR "${PROJECT_SOURCE_DIR}/rimage"
 	PREFIX "${PROJECT_BINARY_DIR}/rimage_ep"
 	BINARY_DIR "${PROJECT_BINARY_DIR}/rimage_ep/build"
