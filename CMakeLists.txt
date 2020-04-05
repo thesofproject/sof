@@ -29,18 +29,7 @@ target_link_libraries(rimage PRIVATE "-lcrypto")
 
 target_include_directories(rimage PRIVATE
 	src/include/rimage
+	src/include/sof
 )
-
-if(DEFINED SOF_SOURCE_DIR)
-	# Use headers from SOF_SOURCE_DIR
-	target_include_directories(rimage PRIVATE
-		"${SOF_SOURCE_DIR}/src/include"
-	)
-else()
-	# Use headers provided here
-	target_include_directories(rimage PRIVATE
-		src/include/sof
-	)
-endif()
 
 install(TARGETS rimage DESTINATION bin)
