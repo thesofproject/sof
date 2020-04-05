@@ -37,9 +37,6 @@ static void usage(char *name)
 	fprintf(stdout, "\t -v enable verbose output\n");
 	fprintf(stdout, "\t -r enable relocatable ELF files\n");
 	fprintf(stdout, "\t -s MEU signing offset\n");
-#ifdef HAS_FILE_FORMAT_H
-	fprintf(stdout, "\t -p log dictionary outfile\n");
-#endif /* HAS_FILE_FORMAT_H */
 	fprintf(stdout, "\t -i set IMR type\n");
 	fprintf(stdout, "\t -x set xcc module offset\n");
 	fprintf(stdout, "\t -f firmware version = x.y\n");
@@ -58,19 +55,10 @@ int main(int argc, char *argv[])
 
 	image.xcc_mod_offset = DEFAULT_XCC_MOD_OFFSET;
 
-	while ((opt = getopt(argc, argv, "ho:p:m:va:s:k:l:ri:x:f:b:")) != -1) {
+	while ((opt = getopt(argc, argv, "ho:m:va:s:k:l:ri:x:f:b:")) != -1) {
 		switch (opt) {
 		case 'o':
 			image.out_file = optarg;
-			break;
-		case 'p':
-#ifdef HAS_FILE_FORMAT_H
-			image.ldc_out_file = optarg;
-#else
-			fprintf(stderr,
-				"error: log dictionary is not supported\n");
-			return -EINVAL;
-#endif /* HAS_FILE_FORMAT_H */
 			break;
 		case 'm':
 			mach = optarg;
@@ -115,11 +103,6 @@ int main(int argc, char *argv[])
 	/* make sure we have an outfile and machine */
 	if (!image.out_file || !mach)
 		usage(argv[0]);
-
-#ifdef HAS_FILE_FORMAT_H
-	if (!image.ldc_out_file)
-		image.ldc_out_file = "out.ldc";
-#endif /* HAS_FILE_FORMAT_H */
 
 	/* requires private key */
 	if (!image.key_name) {
@@ -205,27 +188,10 @@ found:
 	else
 		ret = image.adsp->write_firmware(&image);
 
-#ifdef HAS_FILE_FORMAT_H
-	unlink(image.ldc_out_file);
-	image.ldc_out_fd = fopen(image.ldc_out_file, "wb");
-	if (!image.ldc_out_fd) {
-		fprintf(stderr, "error: unable to open %s for writing %d\n",
-			image.ldc_out_file, errno);
-		ret = -EINVAL;
-		goto out;
-	}
-	ret = write_dictionaries(&image);
-#endif /* HAS_FILE_FORMAT_H */
-
 out:
 	/* close files */
 	if (image.out_fd)
 		fclose(image.out_fd);
-
-#ifdef HAS_FILE_FORMAT_H
-	if (image.ldc_out_fd)
-		fclose(image.ldc_out_fd);
-#endif /* HAS_FILE_FORMAT_H */
 
 	return ret;
 }

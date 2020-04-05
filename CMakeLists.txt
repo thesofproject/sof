@@ -33,10 +33,6 @@ target_include_directories(rimage PRIVATE
 
 if(DEFINED SOF_SOURCE_DIR)
 	# Use headers from SOF_SOURCE_DIR
-	target_compile_definitions(rimage PRIVATE
-		HAS_FILE_FORMAT_H
-	)
-
 	target_include_directories(rimage PRIVATE
 		"${SOF_SOURCE_DIR}/src/include"
 	)
