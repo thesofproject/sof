@@ -682,12 +682,12 @@ static int sdma_set_config(struct dma_chan_data *channel,
 	case DMA_DIR_MEM_TO_DEV:
 		src_may_change = true; dst_may_change = false;
 		handshake = config->dest_dev;
-		pdata->sdma_chan_type = SDMA_CHAN_TYPE_SHP2MCU;
+		pdata->sdma_chan_type = SDMA_CHAN_TYPE_MCU2SHP;
 		break;
 	case DMA_DIR_DEV_TO_MEM:
 		src_may_change = false; dst_may_change = true;
 		handshake = config->src_dev;
-		pdata->sdma_chan_type = SDMA_CHAN_TYPE_MCU2SHP;
+		pdata->sdma_chan_type = SDMA_CHAN_TYPE_SHP2MCU;
 		break;
 	case DMA_DIR_MEM_TO_MEM:
 		pdata->sdma_chan_type = SDMA_CHAN_TYPE_AP2AP;
