@@ -47,6 +47,9 @@ set(SOF_ROOT_BINARY_DIRECTORY "${PROJECT_BINARY_DIR}")
 # check git hooks
 include(scripts/cmake/git-hooks.cmake)
 
+# checkout submodules
+include(scripts/cmake/git-submodules.cmake)
+
 # most of other options are set on per-arch and per-target basis
 set(CMAKE_ASM_FLAGS -DASSEMBLY)
 
@@ -55,6 +58,7 @@ set(CMAKE_ASM_FLAGS -DASSEMBLY)
 add_library(sof_public_headers INTERFACE)
 
 target_include_directories(sof_public_headers INTERFACE ${PROJECT_SOURCE_DIR}/src/include)
+target_include_directories(sof_public_headers INTERFACE ${PROJECT_SOURCE_DIR}/rimage/src/include/sof)
 
 # interface library that is used only as container for sof binary options
 # other targets can use it to build with the same options
@@ -162,6 +166,8 @@ install(
 		${PROJECT_SOURCE_DIR}/src/include/ipc
 		${PROJECT_SOURCE_DIR}/src/include/kernel
 		${PROJECT_SOURCE_DIR}/src/include/user
+		${PROJECT_SOURCE_DIR}/rimage/src/include/sof/kernel
+		${PROJECT_SOURCE_DIR}/rimage/src/include/sof/user
 	DESTINATION include/sof
 	PATTERN "*.h"
 )
