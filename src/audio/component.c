@@ -324,12 +324,7 @@ struct comp_dev *comp_make_shared(struct comp_dev *dev)
 {
 	struct comp_dev *old = dev;
 
-	dev = rrealloc(dev, SOF_MEM_ZONE_RUNTIME, SOF_MEM_FLAG_SHARED,
-		       SOF_MEM_CAPS_RAM, dev->size, dev->size);
-	if (!dev) {
-		trace_error(TRACE_CLASS_COMP, "comp_make_shared(): unable to realloc component");
-		return NULL;
-	}
+	dev = platform_shared_get(dev, dev->size);
 
 	list_init(&dev->bsource_list);
 	list_init(&dev->bsink_list);
