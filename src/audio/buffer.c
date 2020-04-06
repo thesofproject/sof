@@ -99,8 +99,8 @@ int buffer_set_size(struct comp_buffer *buffer, uint32_t size)
 	if (size == buffer->stream.size)
 		return 0;
 
-	new_ptr = rbrealloc(buffer->stream.addr, 0, buffer->caps, size,
-			    buffer->stream.size);
+	new_ptr = rbrealloc(buffer->stream.addr, SOF_MEM_FLAG_NO_COPY,
+			    buffer->caps, size, buffer->stream.size);
 
 	/* we couldn't allocate bigger chunk */
 	if (!new_ptr && size > buffer->stream.size) {
