@@ -40,17 +40,35 @@
 #include <cavs/lib/power_down.h>
 #endif
 
+/** \brief Registers Host DMA access by incrementing ref counter. */
+static void cavs_pm_runtime_host_dma_l1_entry(void)
+{
+	struct pm_runtime_data *prd = pm_runtime_data_get();
+	struct cavs_pm_runtime_data *pprd = prd->platform_data;
+	uint32_t flags;
+
+	spin_lock_irq(&prd->lock, flags);
+
+	pprd->host_dma_l1_sref++;
+
+	platform_shared_commit(prd, sizeof(*prd));
+	platform_shared_commit(pprd, sizeof(*pprd));
+
+	spin_unlock_irq(&prd->lock, flags);
+}
+
 /**
  * \brief Forces Host DMAs to exit L1.
  */
 static inline void cavs_pm_runtime_force_host_dma_l1_exit(void)
 {
 	struct pm_runtime_data *prd = pm_runtime_data_get();
+	struct cavs_pm_runtime_data *pprd = prd->platform_data;
 	uint32_t flags;
 
 	spin_lock_irq(&prd->lock, flags);
 
-	if (!(shim_read(SHIM_SVCFG) & SHIM_SVCFG_FORCE_L1_EXIT)) {
+	if (!--pprd->host_dma_l1_sref) {
 		shim_write(SHIM_SVCFG,
 			   shim_read(SHIM_SVCFG) | SHIM_SVCFG_FORCE_L1_EXIT);
 
@@ -59,6 +77,9 @@ static inline void cavs_pm_runtime_force_host_dma_l1_exit(void)
 		shim_write(SHIM_SVCFG,
 			   shim_read(SHIM_SVCFG) & ~(SHIM_SVCFG_FORCE_L1_EXIT));
 	}
+
+	platform_shared_commit(prd, sizeof(*prd));
+	platform_shared_commit(pprd, sizeof(*pprd));
 
 	spin_unlock_irq(&prd->lock, flags);
 }
@@ -382,6 +403,9 @@ void platform_pm_runtime_get(enum pm_runtime_context context, uint32_t index,
 {
 	/* Action based on context */
 	switch (context) {
+	case PM_RUNTIME_HOST_DMA_L1:
+		cavs_pm_runtime_host_dma_l1_entry();
+		break;
 #if CONFIG_CAVS_SSP
 	case SSP_CLK:
 		cavs_pm_runtime_dis_ssp_clk_gating(index);
