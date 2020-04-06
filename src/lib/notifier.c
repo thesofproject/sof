@@ -7,6 +7,7 @@
 #include <sof/common.h>
 #include <sof/debug/panic.h>
 #include <sof/drivers/idc.h>
+#include <sof/drivers/interrupt.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/cache.h>
 #include <sof/lib/cpu.h>
@@ -40,8 +41,12 @@ int notifier_register(void *receiver, void *caller, enum notify_id type,
 {
 	struct notify *notify = *arch_notify_get();
 	struct callback_handle *handle;
+	uint32_t irq_flags;
+	int ret = 0;
 
 	assert(type >= NOTIFIER_ID_CPU_FREQ && type < NOTIFIER_ID_COUNT);
+
+	irq_local_disable(irq_flags);
 
 	/* Find already registered event of this type */
 	if (flags & NOTIFIER_FLAG_AGGREGATE &&
@@ -50,7 +55,7 @@ int notifier_register(void *receiver, void *caller, enum notify_id type,
 				      struct callback_handle, list);
 		handle->num_registrations++;
 
-		return 0;
+		goto out;
 	}
 
 	handle = rzalloc(SOF_MEM_ZONE_SYS_RUNTIME, 0, SOF_MEM_CAPS_RAM,
@@ -58,7 +63,8 @@ int notifier_register(void *receiver, void *caller, enum notify_id type,
 
 	if (!handle) {
 		trace_notifier_error("notifier_register(): callback handle allocation failed.");
-		return -ENOMEM;
+		ret = -ENOMEM;
+		goto out;
 	}
 
 	handle->receiver = receiver;
@@ -68,7 +74,10 @@ int notifier_register(void *receiver, void *caller, enum notify_id type,
 
 	list_item_prepend(&handle->list, &notify->list[type]);
 
-	return 0;
+out:
+	irq_local_enable(irq_flags);
+
+	return ret;
 }
 
 void notifier_unregister(void *receiver, void *caller, enum notify_id type)
@@ -77,8 +86,11 @@ void notifier_unregister(void *receiver, void *caller, enum notify_id type)
 	struct list_item *wlist;
 	struct list_item *tlist;
 	struct callback_handle *handle;
+	uint32_t flags;
 
 	assert(type >= NOTIFIER_ID_CPU_FREQ && type < NOTIFIER_ID_COUNT);
+
+	irq_local_disable(flags);
 
 	/*
 	 * Unregister all matching callbacks
@@ -100,6 +112,8 @@ void notifier_unregister(void *receiver, void *caller, enum notify_id type)
 			}
 		}
 	}
+
+	irq_local_enable(flags);
 }
 
 void notifier_unregister_all(void *receiver, void *caller)
