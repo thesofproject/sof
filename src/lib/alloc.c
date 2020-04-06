@@ -12,6 +12,7 @@
 #include <sof/lib/dma.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/mm_heap.h>
+#include <sof/math/numbers.h>
 #include <sof/spinlock.h>
 #include <sof/string.h>
 #include <ipc/topology.h>
@@ -913,11 +914,12 @@ void rfree(void *ptr)
 }
 
 void *rrealloc(void *ptr, enum mem_zone zone, uint32_t flags, uint32_t caps,
-	       size_t bytes)
+	       size_t bytes, size_t old_bytes)
 {
 	struct mm *memmap = memmap_get();
 	void *new_ptr = NULL;
 	uint32_t lock_flags;
+	size_t copy_bytes = MIN(bytes, old_bytes);
 
 	if (!bytes)
 		return new_ptr;
@@ -927,7 +929,7 @@ void *rrealloc(void *ptr, enum mem_zone zone, uint32_t flags, uint32_t caps,
 	new_ptr = _malloc_unlocked(zone, flags, caps, bytes);
 
 	if (new_ptr && ptr)
-		memcpy_s(new_ptr, bytes, ptr, bytes);
+		memcpy_s(new_ptr, copy_bytes, ptr, copy_bytes);
 
 	if (new_ptr)
 		_rfree_unlocked(ptr);
