@@ -528,6 +528,26 @@ static inline struct sof_ipc_comp_config *dev_comp_config(struct comp_dev *dev)
 }
 
 /**
+ * Allocates memory for the component device and initializes common part.
+ * @param drv Parent component driver.
+ * @param bytes Size of the component device in bytes.
+ * @return Pointer to the component device.
+ */
+static inline struct comp_dev *comp_alloc(const struct comp_driver *drv,
+					  size_t bytes)
+{
+	struct comp_dev *dev = NULL;
+
+	dev = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, bytes);
+	if (!dev)
+		return NULL;
+	dev->size = bytes;
+	dev->drv = drv;
+
+	return dev;
+}
+
+/**
  * Retrieves component config data from component ipc.
  * @param comp Component ipc data.
  * @return Pointer to the component config data.
