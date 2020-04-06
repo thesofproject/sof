@@ -221,6 +221,12 @@ static void hda_dma_get_dbg_vals(struct dma_chan_data *chan,
 #define hda_dma_ptr_trace(...)
 #endif
 
+static void hda_dma_l1_entry_notify(void *arg, enum notify_id type, void *data)
+{
+	/* Notify about Host DMA usage */
+	pm_runtime_get(PM_RUNTIME_HOST_DMA_L1, 0);
+}
+
 static void hda_dma_l1_exit_notify(void *arg, enum notify_id type, void *data)
 {
 	/* Force Host DMA to exit L1 */
@@ -344,6 +350,15 @@ static int hda_dma_host_start(struct dma_chan_data *channel)
 	if (!hda_chan->irq_disabled)
 		return ret;
 
+	/* Inform about Host DMA usage */
+	ret = notifier_register(NULL, scheduler_get_data(SOF_SCHEDULE_LL_TIMER),
+				NOTIFIER_ID_LL_PRE_RUN, hda_dma_l1_entry_notify,
+				NOTIFIER_FLAG_AGGREGATE);
+	if (ret < 0)
+		trace_hddma_error("hda-dmac: %d channel %d, cannot register notification %d",
+				  channel->dma->plat_data.id, channel->index,
+				  ret);
+
 	/* Register common L1 exit for all channels */
 	ret = notifier_register(NULL, scheduler_get_data(SOF_SCHEDULE_LL_TIMER),
 				NOTIFIER_ID_LL_POST_RUN, hda_dma_l1_exit_notify,
@@ -362,6 +377,10 @@ static void hda_dma_host_stop(struct dma_chan_data *channel)
 
 	if (!hda_chan->irq_disabled)
 		return;
+
+	/* Unregister L1 entry */
+	notifier_unregister(NULL, scheduler_get_data(SOF_SCHEDULE_LL_TIMER),
+			    NOTIFIER_ID_LL_PRE_RUN);
 
 	/* Unregister L1 exit */
 	notifier_unregister(NULL, scheduler_get_data(SOF_SCHEDULE_LL_TIMER),
@@ -389,6 +408,7 @@ static int hda_dma_enable_unlock(struct dma_chan_data *channel)
 
 	if (channel->direction == DMA_DIR_HMEM_TO_LMEM ||
 	    channel->direction == DMA_DIR_LMEM_TO_HMEM) {
+		pm_runtime_get(PM_RUNTIME_HOST_DMA_L1, 0);
 		ret = hda_dma_host_start(channel);
 		if (ret < 0)
 			return ret;
@@ -418,12 +438,17 @@ static int hda_dma_link_copy(struct dma_chan_data *channel, int bytes,
 static int hda_dma_host_copy(struct dma_chan_data *channel, int bytes,
 			     uint32_t flags)
 {
+	struct hda_chan_data *hda_chan = dma_chan_get_data(channel);
 	int ret;
 
 	tracev_hddma("hda-dmac: %d channel %d -> copy 0x%x bytes",
 		     channel->dma->plat_data.id, channel->index, bytes);
 
 	hda_dma_get_dbg_vals(channel, HDA_DBG_PRE, HDA_DBG_HOST);
+
+	/* Register Host DMA usage */
+	if (!hda_chan->irq_disabled)
+		pm_runtime_get(PM_RUNTIME_HOST_DMA_L1, 0);
 
 	/* blocking mode copy */
 	if (flags & DMA_COPY_BLOCKING) {
