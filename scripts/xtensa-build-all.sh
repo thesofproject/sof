@@ -59,6 +59,11 @@ for arg in "$@"; do
 			break
 		fi
 	done
+	if [ $platform == "none" ]; then
+		echo "Error: Unknown platform specified: $arg"
+		echo "Supported platforms are: ${SUPPORTED_PLATFORMS[*]}"
+		exit 1
+	fi
 done
 
 # check target platform(s) have been passed in
