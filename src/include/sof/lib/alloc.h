@@ -115,7 +115,7 @@ static inline void *rballoc(uint32_t flags, uint32_t caps, size_t bytes)
  * @return Pointer to the resized memory or NULL if failed.
  *
  * Note: Do not use for buffers (SOF_MEM_ZONE_BUFFER zone).
- * Use rballoc(), rballoc_align() to allocate memory for buffers.
+ * Use rbrealloc(), rbrealloc_align() to reallocate memory for buffers.
  */
 void *rrealloc(void *ptr, enum mem_zone zone, uint32_t flags, uint32_t caps,
 	       size_t bytes, size_t old_bytes);
