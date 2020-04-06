@@ -38,10 +38,11 @@ void WEAK *rzalloc(enum mem_zone zone, uint32_t flags, uint32_t caps,
 }
 
 void WEAK *rbrealloc_align(void *ptr, uint32_t flags, uint32_t caps,
-			   size_t bytes, uint32_t alignment)
+			   size_t bytes, size_t old_bytes, uint32_t alignment)
 {
 	(void)flags;
 	(void)caps;
+	(void)old_bytes;
 
 	return realloc(ptr, bytes);
 }
