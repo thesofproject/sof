@@ -323,11 +323,16 @@ int comp_verify_params(struct comp_dev *dev, uint32_t flag,
 struct comp_dev *comp_make_shared(struct comp_dev *dev)
 {
 	struct comp_dev *old = dev;
+	struct list_item *old_bsource_list = &dev->bsource_list;
+	struct list_item *old_bsink_list = &dev->bsink_list;
 
 	dev = platform_shared_get(dev, dev->size);
 
-	list_init(&dev->bsource_list);
-	list_init(&dev->bsink_list);
+	/* re-link lists with the new heads addresses, init would cut
+	 * links to existing items, local already connected buffers
+	 */
+	list_relink(&dev->bsource_list, old_bsource_list);
+	list_relink(&dev->bsink_list, old_bsink_list);
 	dev->is_shared = true;
 
 	platform_shared_commit(dev, sizeof(*dev));
