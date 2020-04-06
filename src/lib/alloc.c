@@ -928,7 +928,7 @@ void *rrealloc(void *ptr, enum mem_zone zone, uint32_t flags, uint32_t caps,
 
 	new_ptr = _malloc_unlocked(zone, flags, caps, bytes);
 
-	if (new_ptr && ptr)
+	if (new_ptr && ptr && !(flags & SOF_MEM_FLAG_NO_COPY))
 		memcpy_s(new_ptr, copy_bytes, ptr, copy_bytes);
 
 	if (new_ptr)
@@ -955,7 +955,7 @@ void *rbrealloc_align(void *ptr, uint32_t flags, uint32_t caps, size_t bytes,
 
 	new_ptr = _balloc_unlocked(flags, caps, bytes, alignment);
 
-	if (new_ptr && ptr)
+	if (new_ptr && ptr && !(flags & SOF_MEM_FLAG_NO_COPY))
 		memcpy_s(new_ptr, copy_bytes, ptr, copy_bytes);
 
 	if (new_ptr)
