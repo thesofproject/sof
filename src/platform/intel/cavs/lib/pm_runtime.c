@@ -81,16 +81,20 @@ static inline void cavs_pm_runtime_enable_dsp(bool enable)
 	irq_local_enable(flags);
 
 	trace_power("pm_runtime_enable_dsp dsp_d0_sref %d", pprd->dsp_d0_sref);
+
+	platform_shared_commit(pprd, sizeof(*pprd));
 }
 
 static inline bool cavs_pm_runtime_is_active_dsp(void)
 {
 	struct pm_runtime_data *prd = pm_runtime_data_get();
 	struct cavs_pm_runtime_data *pprd = prd->platform_data;
+	int is_active = pprd->dsp_d0_sref > 0;
 
 	platform_shared_commit(prd, sizeof(*prd));
+	platform_shared_commit(pprd, sizeof(*pprd));
 
-	return pprd->dsp_d0_sref > 0;
+	return is_active;
 }
 
 #if CONFIG_CAVS_SSP
@@ -368,7 +372,8 @@ void platform_pm_runtime_init(struct pm_runtime_data *prd)
 {
 	struct cavs_pm_runtime_data *pprd;
 
-	pprd = rzalloc(SOF_MEM_ZONE_SYS, 0, SOF_MEM_CAPS_RAM, sizeof(*pprd));
+	pprd = rzalloc(SOF_MEM_ZONE_SYS, SOF_MEM_FLAG_SHARED, SOF_MEM_CAPS_RAM,
+		       sizeof(*pprd));
 	prd->platform_data = pprd;
 }
 
