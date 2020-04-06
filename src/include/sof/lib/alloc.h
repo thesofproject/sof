@@ -126,20 +126,22 @@ void *rrealloc(void *ptr, enum mem_zone zone, uint32_t flags, uint32_t caps,
  * @param flags Flags, see SOF_MEM_FLAG_...
  * @param caps Capabilities, see SOF_MEM_CAPS_...
  * @param bytes New size in bytes.
+ * @param old_bytes Old size in bytes.
  * @param alignment Alignment in bytes.
  * @return Pointer to the resized memory of NULL if failed.
  */
 void *rbrealloc_align(void *ptr, uint32_t flags, uint32_t caps, size_t bytes,
-		      uint32_t alignment);
+		      size_t old_bytes, uint32_t alignment);
 
 /**
  * Similar to rballoc_align(), returns resized buffer aligned to
  * PLATFORM_DCACHE_ALIGN.
  */
 static inline void *rbrealloc(void *ptr, uint32_t flags, uint32_t caps,
-			      size_t bytes)
+			      size_t bytes, size_t old_bytes)
 {
-	return rbrealloc_align(ptr, flags, caps, bytes, PLATFORM_DCACHE_ALIGN);
+	return rbrealloc_align(ptr, flags, caps, bytes, old_bytes,
+			       PLATFORM_DCACHE_ALIGN);
 }
 
 /**

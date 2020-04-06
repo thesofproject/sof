@@ -941,11 +941,12 @@ void *rrealloc(void *ptr, enum mem_zone zone, uint32_t flags, uint32_t caps,
 }
 
 void *rbrealloc_align(void *ptr, uint32_t flags, uint32_t caps, size_t bytes,
-		      uint32_t alignment)
+		      size_t old_bytes, uint32_t alignment)
 {
 	struct mm *memmap = memmap_get();
 	void *new_ptr = NULL;
 	uint32_t lock_flags;
+	size_t copy_bytes = MIN(bytes, old_bytes);
 
 	if (!bytes)
 		return new_ptr;
@@ -955,7 +956,7 @@ void *rbrealloc_align(void *ptr, uint32_t flags, uint32_t caps, size_t bytes,
 	new_ptr = _balloc_unlocked(flags, caps, bytes, alignment);
 
 	if (new_ptr && ptr)
-		memcpy_s(new_ptr, bytes, ptr, bytes);
+		memcpy_s(new_ptr, copy_bytes, ptr, copy_bytes);
 
 	if (new_ptr)
 		_rfree_unlocked(ptr);
