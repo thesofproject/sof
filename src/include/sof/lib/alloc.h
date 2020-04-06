@@ -62,6 +62,9 @@ enum mem_zone {
  */
 #define SOF_MEM_FLAG_SHARED	BIT(0)
 
+/** \brief Indicates that original content should not be copied by realloc. */
+#define SOF_MEM_FLAG_NO_COPY	BIT(1)
+
 /** @} */
 
 /**
