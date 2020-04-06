@@ -98,4 +98,27 @@ static inline int list_item_is_last(struct list_item *item,
 	for (item = (list)->next, tmp = item->next;\
 		item != (list); \
 		item = tmp, tmp = item->next)
+
+/**
+ * Re-links the list when head address changed (list moved).
+ * @param new_list New address of the head.
+ * @param old_list Old address of the head.
+ */
+static inline void list_relink(struct list_item *new_list,
+			       struct list_item *old_list)
+{
+	struct list_item *li;
+
+	if (list_is_empty(new_list)) {
+		list_init(new_list);
+	} else {
+		list_for_item(li, new_list)
+			if (li->next == old_list)
+				li->next = new_list; /* for stops here */
+		list_for_item_prev(li, new_list)
+			if (li->prev == old_list)
+				li->prev = new_list; /* for stops here */
+	}
+}
+
 #endif /* __SOF_LIST_H__ */
