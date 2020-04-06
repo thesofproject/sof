@@ -333,13 +333,9 @@ static struct comp_dev *host_new(const struct comp_driver *drv,
 
 	comp_cl_dbg(&comp_host, "host_new()");
 
-	dev = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
-		      COMP_SIZE(struct sof_ipc_comp_host));
+	dev = comp_alloc(drv, COMP_SIZE(struct sof_ipc_comp_host));
 	if (!dev)
 		return NULL;
-	dev->drv = drv;
-
-	dev->size = COMP_SIZE(struct sof_ipc_comp_host);
 
 	host = COMP_GET_IPC(dev, sof_ipc_comp_host);
 	ret = memcpy_s(host, sizeof(*host),

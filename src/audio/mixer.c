@@ -123,13 +123,9 @@ static struct comp_dev *mixer_new(const struct comp_driver *drv,
 
 	comp_cl_dbg(&comp_mixer, "mixer_new()");
 
-	dev = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
-		      COMP_SIZE(struct sof_ipc_comp_mixer));
+	dev = comp_alloc(drv, COMP_SIZE(struct sof_ipc_comp_mixer));
 	if (!dev)
 		return NULL;
-	dev->drv = drv;
-
-	dev->size = COMP_SIZE(struct sof_ipc_comp_mixer);
 
 	mixer = COMP_GET_IPC(dev, sof_ipc_comp_mixer);
 

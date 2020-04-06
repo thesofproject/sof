@@ -422,11 +422,9 @@ static struct comp_dev *file_new(const struct comp_driver *drv,
 		return NULL;
 	}
 
-	dev = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
-		      COMP_SIZE(struct sof_ipc_comp_file));
+	dev = comp_alloc(drv, COMP_SIZE(struct sof_ipc_comp_file));
 	if (!dev)
 		return NULL;
-	dev->drv = drv;
 
 	file = COMP_GET_IPC(dev, sof_ipc_comp_file);
 	assert(!memcpy_s(file, sizeof(*file), ipc_file,

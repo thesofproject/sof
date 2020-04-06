@@ -89,15 +89,11 @@ static struct comp_dev *mux_new(const struct comp_driver *drv,
 
 	comp_cl_info(&comp_mux, "mux_new()");
 
-	dev = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
-		      COMP_SIZE(struct sof_ipc_comp_process));
+	dev = comp_alloc(drv, COMP_SIZE(struct sof_ipc_comp_process));
 	if (!dev)
 		return NULL;
 
 	dev->state = COMP_STATE_INIT;
-	dev->drv = drv;
-
-	dev->size = COMP_SIZE(struct sof_ipc_comp_process);
 
 	memcpy_s(COMP_GET_IPC(dev, sof_ipc_comp_process),
 		 sizeof(struct sof_ipc_comp_process),

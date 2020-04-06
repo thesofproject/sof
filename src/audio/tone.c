@@ -383,13 +383,9 @@ static struct comp_dev *tone_new(const struct comp_driver *drv,
 
 	comp_cl_info(&comp_tone, "tone_new()");
 
-	dev = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
-		      COMP_SIZE(struct sof_ipc_comp_tone));
+	dev = comp_alloc(drv, COMP_SIZE(struct sof_ipc_comp_tone));
 	if (!dev)
 		return NULL;
-	dev->drv = drv;
-
-	dev->size = COMP_SIZE(struct sof_ipc_comp_tone);
 
 	tone = COMP_GET_IPC(dev, sof_ipc_comp_tone);
 	ret = memcpy_s(tone, sizeof(*tone), ipc_tone,
