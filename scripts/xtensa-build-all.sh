@@ -8,93 +8,64 @@ BUILD_ROM=no
 BUILD_DEBUG=no
 BUILD_FORCE_UP=no
 BUILD_JOBS=$(nproc --all)
-BUILD_JOBS_NEXT=0
 BUILD_VERBOSE=
 PLATFORMS=()
 
 PATH=$pwd/local/bin:$PATH
 
-pwd=`pwd`
+pwd=$(pwd)
 
-if [ "$#" -eq 0 ]
-then
-	echo "usage: xtensa-build.sh [options] platform(s)"
-	echo "       [-r] Build rom (gcc only)"
-	echo "       [-a] Build all platforms"
-	echo "       [-u] Force UP ARCH"
-	echo "       [-d] Enable debug build"
-	echo "       [-c] Configure defconfig"
-	echo "       [-k] Use private key"
-	echo "       [-v] Verbose Makefile log"
-	echo "       [-j [n]] Set number of make build jobs." \
-		"Jobs=#cores when no flag. Inifinte when no arg."
-	echo "       Supported platforms ${SUPPORTED_PLATFORMS[@]}"
-else
-	# parse the args
-	for args in $@
-	do
-		if [[ "$args" == "-r" ]]
-			then
-			BUILD_ROM=yes
+print_usage()
+{
+    cat <<EOF
+usage: xtensa-build.sh [options] platform(s)
+       -r Build rom (gcc only)
+       -a Build all platforms
+       -u Force UP ARCH
+       -d Enable debug build
+       -c Configure defconfig
+       -k Use private key
+       -v Verbose Makefile log
+       -j n Set number of make build jobs. Jobs=#cores when no flag. \
+Infinte when not specified.
+       Supported platforms ${SUPPORTED_PLATFORMS[*]}
+EOF
+}
 
-		elif [[ "$args" == "-u" ]]
-			then
-			BUILD_FORCE_UP=yes
+# parse the args
+while getopts "rudj:ckva" OPTION; do
+        case "$OPTION" in
+		r) BUILD_ROM=yes ;;
+		u) BUILD_FORCE_UP=yes ;;
+		d) BUILD_DEBUG=yes ;;
+		j) BUILD_JOBS=$OPTARG ;;
+		c) MAKE_MENUCONFIG=yes ;;
+		k) USE_PRIVATE_KEY=yes ;;
+		v) BUILD_VERBOSE='VERBOSE=1' ;;
+		a) PLATFORMS=("${SUPPORTED_PLATFORMS[@]}") ;;
+		*) print_usage; exit 1 ;;
+        esac
+done
+shift $((OPTIND-1))
 
-		elif [[ "$args" == "-d" ]]
-			then
-			BUILD_DEBUG=yes
-
-		elif [[ "$args" == "-j" ]]
-			then
-			BUILD_JOBS_NEXT=1
-			BUILD_JOBS=""
-
-		elif [[ "$args" == "-c" ]]
-			then
-			MAKE_MENUCONFIG=yes
-
-		elif [[ "$args" == "-k" ]]
-			then
-			USE_PRIVATE_KEY=yes
-
-		elif [[ "$args" == "-v" ]]
-			then
-			BUILD_VERBOSE='VERBOSE=1'
-
-		# Build all platforms
-		elif [[ "$args" == "-a" ]]
-			then
-			PLATFORMS=("${SUPPORTED_PLATFORMS[@]}")
-		else
-			# check for plaform
-			for i in ${SUPPORTED_PLATFORMS[@]}
-			do
-				if [ $i == $args ]
-				then
-					PLATFORMS=("${PLATFORMS[@]}" "$i")
-					BUILD_JOBS_NEXT=0
-					continue 2
-				fi
-			done
-
-			# check for jobs
-			if [ ${BUILD_JOBS_NEXT} == 1 ]
-				then
-				BUILD_JOBS=$args
-				BUILD_JOBS_NEXT=0
-				continue
-			fi
-
-			printf '%s: WARN: ignoring arg %s\n' "$0" "$args" >&2
+# parse platform args
+for arg in "$@"; do
+	platform=none
+	for i in "${SUPPORTED_PLATFORMS[@]}"; do
+		if [ x"$i" = x"$arg" ]; then
+			PLATFORMS=("${PLATFORMS[@]}" "$i")
+			platform=$i
+			shift
+			break
 		fi
 	done
-fi
+done
 
 # check target platform(s) have been passed in
 if [ ${#PLATFORMS[@]} -eq 0 ];
 then
-	echo "Error: No platforms specified. Supported are: ${SUPPORTED_PLATFORMS[@]}"
+	echo "Error: No platforms specified. Supported are: " \
+		"${SUPPORTED_PLATFORMS[*]}"
 	exit 1
 fi
 
