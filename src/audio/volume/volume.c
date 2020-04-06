@@ -211,13 +211,9 @@ static struct comp_dev *volume_new(const struct comp_driver *drv,
 
 	comp_cl_dbg(&comp_volume, "volume_new()");
 
-	dev = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
-		      COMP_SIZE(struct sof_ipc_comp_volume));
+	dev = comp_alloc(drv, COMP_SIZE(struct sof_ipc_comp_volume));
 	if (!dev)
 		return NULL;
-	dev->drv = drv;
-
-	dev->size = COMP_SIZE(struct sof_ipc_comp_volume);
 
 	vol = COMP_GET_IPC(dev, sof_ipc_comp_volume);
 	ret = memcpy_s(vol, sizeof(*vol), ipc_vol,

@@ -416,13 +416,9 @@ static struct comp_dev *eq_fir_new(const struct comp_driver *drv,
 		return NULL;
 	}
 
-	dev = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
-		      COMP_SIZE(struct sof_ipc_comp_process));
+	dev = comp_alloc(drv, COMP_SIZE(struct sof_ipc_comp_process));
 	if (!dev)
 		return NULL;
-	dev->drv = drv;
-
-	dev->size = COMP_SIZE(struct sof_ipc_comp_process);
 
 	fir = COMP_GET_IPC(dev, sof_ipc_comp_process);
 	ret = memcpy_s(fir, sizeof(*fir), ipc_fir,

@@ -58,13 +58,9 @@ static struct comp_dev *selector_new(const struct comp_driver *drv,
 
 	comp_cl_info(&comp_selector, "selector_new()");
 
-	dev = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
-		      COMP_SIZE(struct sof_ipc_comp_process));
+	dev = comp_alloc(drv, COMP_SIZE(struct sof_ipc_comp_process));
 	if (!dev)
 		return NULL;
-	dev->drv = drv;
-
-	dev->size = COMP_SIZE(struct sof_ipc_comp_process);
 
 	ret = memcpy_s(COMP_GET_IPC(dev, sof_ipc_comp_process),
 		       sizeof(struct sof_ipc_comp_process), comp,

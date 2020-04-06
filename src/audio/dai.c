@@ -135,13 +135,9 @@ static struct comp_dev *dai_new(const struct comp_driver *drv,
 
 	comp_cl_dbg(&comp_dai, "dai_new()");
 
-	dev = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
-		      COMP_SIZE(struct sof_ipc_comp_dai));
+	dev = comp_alloc(drv, COMP_SIZE(struct sof_ipc_comp_dai));
 	if (!dev)
 		return NULL;
-	dev->drv = drv;
-
-	dev->size = COMP_SIZE(struct sof_ipc_comp_dai);
 
 	dai = COMP_GET_IPC(dev, sof_ipc_comp_dai);
 	ret = memcpy_s(dai, sizeof(*dai), ipc_dai,

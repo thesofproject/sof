@@ -299,13 +299,9 @@ static struct comp_dev *test_keyword_new(const struct comp_driver *drv,
 
 	comp_cl_info(&comp_keyword, "test_keyword_new()");
 
-	dev = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
-		      COMP_SIZE(struct sof_ipc_comp_process));
+	dev = comp_alloc(drv, COMP_SIZE(struct sof_ipc_comp_process));
 	if (!dev)
 		return NULL;
-	dev->drv = drv;
-
-	dev->size = COMP_SIZE(struct sof_ipc_comp_process);
 
 	keyword = COMP_GET_IPC(dev, sof_ipc_comp_process);
 	ret = memcpy_s(keyword, sizeof(*keyword), ipc_keyword,

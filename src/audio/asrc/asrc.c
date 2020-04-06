@@ -273,13 +273,9 @@ static struct comp_dev *asrc_new(const struct comp_driver *drv,
 		return NULL;
 	}
 
-	dev = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
-		      COMP_SIZE(struct sof_ipc_comp_asrc));
+	dev = comp_alloc(drv, COMP_SIZE(struct sof_ipc_comp_asrc));
 	if (!dev)
 		return NULL;
-	dev->drv = drv;
-
-	dev->size = COMP_SIZE(struct sof_ipc_comp_asrc);
 
 	asrc = COMP_GET_IPC(dev, sof_ipc_comp_asrc);
 	err = memcpy_s(asrc, sizeof(*asrc), ipc_asrc,
