@@ -101,7 +101,6 @@ do
 			PLATFORM="baytrail"
 			ARCH="xtensa"
 			XTENSA_CORE="Intel_HiFiEP"
-			ROOT="$pwd/../xtensa-root/xtensa-byt-elf"
 			HOST="xtensa-byt-elf"
 			XTENSA_TOOLS_VERSION="RD-2012.5-linux"
 			;;
@@ -109,7 +108,6 @@ do
 			PLATFORM="cherrytrail"
 			ARCH="xtensa"
 			XTENSA_CORE="CHT_audio_hifiep"
-			ROOT="$pwd/../xtensa-root/xtensa-byt-elf"
 			HOST="xtensa-byt-elf"
 			XTENSA_TOOLS_VERSION="RD-2012.5-linux"
 			;;
@@ -117,7 +115,6 @@ do
 			PLATFORM="broadwell"
 			ARCH="xtensa"
 			XTENSA_CORE="LX4_langwell_audio_17_8"
-			ROOT="$pwd/../xtensa-root/xtensa-hsw-elf"
 			HOST="xtensa-hsw-elf"
 			XTENSA_TOOLS_VERSION="RG-2017.8-linux"
 			;;
@@ -125,7 +122,6 @@ do
 			PLATFORM="haswell"
 			ARCH="xtensa"
 			XTENSA_CORE="LX4_langwell_audio_17_8"
-			ROOT="$pwd/../xtensa-root/xtensa-hsw-elf"
 			HOST="xtensa-hsw-elf"
 			XTENSA_TOOLS_VERSION="RG-2017.8-linux"
 			;;
@@ -141,7 +137,6 @@ do
 				HOST="xtensa-apl-elf"
 			fi
 
-			ROOT="$pwd/../xtensa-root/$HOST"
 			XTENSA_TOOLS_VERSION="RG-2017.8-linux"
 			HAVE_ROM='yes'
 			;;
@@ -157,7 +152,6 @@ do
 				HOST="xtensa-apl-elf"
 			fi
 
-			ROOT="$pwd/../xtensa-root/$HOST"
 			XTENSA_TOOLS_VERSION="RG-2017.8-linux"
 			HAVE_ROM='yes'
 			;;
@@ -173,7 +167,6 @@ do
 				HOST="xtensa-apl-elf"
 			fi
 
-			ROOT="$pwd/../xtensa-root/$HOST"
 			XTENSA_TOOLS_VERSION="RG-2017.8-linux"
 			HAVE_ROM='yes'
 			;;
@@ -181,7 +174,6 @@ do
 			PLATFORM="cannonlake"
 			ARCH="xtensa-smp"
 			XTENSA_CORE="X6H3CNL_2017_8"
-			ROOT="$pwd/../xtensa-root/xtensa-cnl-elf"
 			HOST="xtensa-cnl-elf"
 			XTENSA_TOOLS_VERSION="RG-2017.8-linux"
 			HAVE_ROM='yes'
@@ -190,7 +182,6 @@ do
 			PLATFORM="suecreek"
 			ARCH="xtensa"
 			XTENSA_CORE="X6H3CNL_2017_8"
-			ROOT="$pwd/../xtensa-root/xtensa-cnl-elf"
 			HOST="xtensa-cnl-elf"
 			XTENSA_TOOLS_VERSION="RG-2017.8-linux"
 			HAVE_ROM='yes'
@@ -199,7 +190,6 @@ do
 			PLATFORM="icelake"
 			ARCH="xtensa-smp"
 			XTENSA_CORE="X6H3CNL_2017_8"
-			ROOT="$pwd/../xtensa-root/xtensa-cnl-elf"
 			HOST="xtensa-cnl-elf"
 			XTENSA_TOOLS_VERSION="RG-2017.8-linux"
 			HAVE_ROM='yes'
@@ -208,7 +198,6 @@ do
 			PLATFORM="jasperlake"
 			ARCH="xtensa-smp"
 			XTENSA_CORE="X6H3CNL_2017_8"
-			ROOT="$pwd/../xtensa-root/xtensa-cnl-elf"
 			HOST="xtensa-cnl-elf"
 			XTENSA_TOOLS_VERSION="RG-2017.8-linux"
 			HAVE_ROM='yes'
@@ -217,7 +206,6 @@ do
 			PLATFORM="imx8"
 			ARCH="xtensa"
 			XTENSA_CORE="hifi4_nxp_v3_3_1_2_dev"
-			ROOT="$pwd/../xtensa-root/xtensa-imx-elf"
 			HOST="xtensa-imx-elf"
 			XTENSA_TOOLS_VERSION="RF-2016.4-linux"
 			;;
@@ -225,7 +213,6 @@ do
 			PLATFORM="imx8x"
 			ARCH="xtensa"
 			XTENSA_CORE="hifi4_nxp_v3_3_1_2_dev"
-			ROOT="$pwd/../xtensa-root/xtensa-imx-elf"
 			HOST="xtensa-imx-elf"
 			XTENSA_TOOLS_VERSION="RF-2016.4-linux"
 			;;
@@ -233,12 +220,12 @@ do
 			PLATFORM="imx8m"
 			ARCH="xtensa"
 			XTENSA_CORE="hifi4_mscale_v0_0_2_prod"
-			ROOT="$pwd/../xtensa-root/xtensa-imx8m-elf"
 			HOST="xtensa-imx8m-elf"
 			XTENSA_TOOLS_VERSION="RF-2016.4-linux"
 			;;
 
 	esac
+	ROOT="$pwd/../xtensa-root/$HOST"
 
 	if [ $XTENSA_TOOLS_ROOT ]
 	then
