@@ -164,7 +164,7 @@ int xthal_set_region_translation_raw(void *vaddr, void *paddr, unsigned cattr) {
  * 					Assumes that architecture variable DVARWAY56 is "Variable"
  * 					Uses the D-TLBS for the translation ... assumption is that ITLB's have same mappings
  */
-int xthal_v2p(void* vaddr, void** paddr, unsigned *way, unsigned* cattr) {
+int xthal_v2p(void *vaddr, void **paddr, unsigned *way, unsigned *cattr) {
 #if XCHAL_HAVE_XEA2
 #if XCHAL_HAVE_MPU
   if (paddr)
@@ -190,7 +190,7 @@ int xthal_v2p(void* vaddr, void** paddr, unsigned *way, unsigned* cattr) {
 		unsigned ppn = 0xe0000000 & temp;
 		unsigned att = 0xf & temp;
 		if (paddr)
-		*paddr = ((void*)(ppn + (((unsigned)vaddr) & 0x1fffffff)));
+		*paddr = ((void *)(ppn + (((unsigned)vaddr) & 0x1fffffff)));
 		if (cattr)
 		*cattr = att;
 	}
@@ -260,7 +260,7 @@ int xthal_v2p(void* vaddr, void** paddr, unsigned *way, unsigned* cattr) {
 					break;
 				}
 			ppn1 = ppn & temp;
-			*paddr = ((void*)(ppn1 + (((unsigned)vaddr) & (~ppn))));
+			*paddr = ((void *)(ppn1 + (((unsigned)vaddr) & (~ppn))));
 		}
 	}
 #endif
@@ -394,7 +394,7 @@ static inline int is_writeback(unsigned attr) {
  *
  *	XCHAL_UNSUPPORTED_ON_THIS_ARCH	function not supported in this processor configuration
  */
-int xthal_set_region_translation(void* vaddr, void* paddr, unsigned size,
+int xthal_set_region_translation(void *vaddr, void *paddr, unsigned size,
 		unsigned cattr, unsigned flags) {
 #if XCHAL_HAVE_XEA2 & !XCHAL_HAVE_MPU
 #if XCHAL_HAVE_XLT_CACHEATTR || (XCHAL_HAVE_PTP_MMU && XCHAL_HAVE_SPANNING_WAY)
@@ -473,8 +473,8 @@ int xthal_set_region_translation(void* vaddr, void* paddr, unsigned size,
 	/* Now we set the affected region translations */
 	for (i = start_va_reg; i <= end_va_reg; i++) {
 		if ((rv = xthal_set_region_translation_raw(
-				(void*)((start_va_reg++) << addr_shift),
-				(void*)((start_pa_reg++) << addr_shift), icache_attr)))
+				(void *)((start_va_reg++) << addr_shift),
+				(void *)((start_pa_reg++) << addr_shift), icache_attr)))
 			return rv;
 	}
 
@@ -514,7 +514,7 @@ int xthal_set_region_translation(void* vaddr, void* paddr, unsigned size,
  * XCHAL_UNSUPPORTED_ON_THIS_ARCH 			- Unsupported
  *
  */
-int xthal_invalidate_region(void* vaddr) {
+int xthal_invalidate_region(void *vaddr) {
 #if XCHAL_HAVE_XEA2 & !XCHAL_HAVE_MPU
 #if (XCHAL_HAVE_PTP_MMU && XCHAL_HAVE_SPANNING_WAY)
 	unsigned addr = (unsigned)vaddr;
