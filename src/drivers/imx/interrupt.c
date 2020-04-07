@@ -159,6 +159,29 @@ static void irqstr_unmask_int(uint32_t irq)
 	irqstr_update_bits(IRQSTR_CH_MASK(IRQSTR_INT_REG(irq)), mask, mask);
 }
 
+#ifdef CONFIG_IMX8M
+
+/* Quirk of the driver in SOF (Quirk is specific to 8MP):
+ * -> IRQSTR has 5 input channels each with 32 interrupts
+ * -> IRQSTR has 3 output channels each with 64 interrupts
+ * -> IRQ in[31:0]    => IRQ out[63:32]   (output channel #0)
+ * -> IRQ in[63:32]   => IRQ out[95:64]   (output channel #1, low half)
+ * -> IRQ in[95:64]   => IRQ out[127:96]  (output channel #1, high half)
+ * -> IRQ in[127:96]  => IRQ out[159:128] (output channel #2, low half)
+ * -> IRQ in[159:128] => IRQ out[191:160] (output channel #2, high half)
+ * Thus in SOF irqsteer we shift everything with 32 and we get:
+ * -> Interrupts 0-31 are not usable
+ * -> Interrupts 32-63 map to hw irqs 0-31 (irqsteer0)
+ * -> Interrupts 64-127 map to hw irqs 32-95 (irqsteer1)
+ * -> Interrupts 128-191 map to hw irqs 96-159 (irqsteer2)
+ */
+
+const char * const irq_name_irqsteer[] = {
+	"irqsteer0",
+	"irqsteer1",
+	"irqsteer2"
+};
+#else
 /* SOF specific part of the driver */
 
 /* Quirk of the driver in SOF (Quirk is specific to 8QXP/8QM):
@@ -180,6 +203,7 @@ const char * const irq_name_irqsteer[] = {
 	"irqsteer6",
 	"irqsteer7"
 };
+#endif
 
 #define IRQ_MAX_TRIES	1000
 
