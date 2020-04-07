@@ -225,6 +225,24 @@ const char * const irq_name_irqsteer[] = {
 /* Extract the 64 status bits corresponding to output interrupt line
  * index (64 input interrupts)
  */
+#ifdef CONFIG_IMX8M
+static uint64_t get_irqsteer_interrupts(uint32_t index)
+{
+	uint64_t result = 0;
+
+	result = irqstr_get_status_word(2 * index);
+	result <<= 32;
+
+	/* line 0 is special only maps interrupts [63..32],
+	 * interval [31..0] is not used
+	 */
+	if (index == 0)
+		return result;
+
+	result |= irqstr_get_status_word(2 * index - 1);
+	return result;
+}
+#else
 static uint64_t get_irqsteer_interrupts(uint32_t index)
 {
 	uint64_t result = irqstr_get_status_word(2 * index + 1);
@@ -233,6 +251,7 @@ static uint64_t get_irqsteer_interrupts(uint32_t index)
 	result |= irqstr_get_status_word(2 * index);
 	return result;
 }
+#endif
 
 /**
  * get_first_irq() Get the first IRQ bit set in this group.
