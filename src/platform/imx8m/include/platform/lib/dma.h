@@ -33,6 +33,17 @@
 #define SDMA2_IRQ	7
 #define SDMA2_IRQ_NAME	"irqsteer2"
 
+/* SDMA3 specific data */
+
+/* Hardware interrupt at the input of irqsteer for SDMA3_IRQ is 34. In
+ * order to map it inside the IRQSTEER we must add 32. So inside
+ * irqsteer SDMA2 interrupt will be 32 + 34 = 66. Next is to map it
+ * to an irqsteer child 66 % 64 = 1 and reminder 2. This means the
+ * interrupt is mapped to irqsteer1 and has the index 2.
+ */
+#define SDMA3_IRQ	2
+#define SDMA3_IRQ_NAME	"irqsteer1"
+
 #define SDMA_CORE_RATIO 1/* Enable ACR bit as it's needed for this platform */
 
 #endif /* __PLATFORM_LIB_DMA_H__ */
