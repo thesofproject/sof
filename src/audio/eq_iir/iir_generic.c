@@ -42,13 +42,9 @@
 
 /* Series DF2T IIR */
 
-/* 32 bit data, 32 bit coefficients and 64 bit state variables */
-
 int32_t iir_df2t(struct iir_state_df2t *iir, int32_t x)
 {
 	int32_t in;
-	int32_t tmp;
-	int64_t acc;
 	int32_t out = 0;
 	int i;
 	int j;
@@ -63,35 +59,8 @@ int32_t iir_df2t(struct iir_state_df2t *iir, int32_t x)
 	in = x;
 	for (j = 0; j < iir->biquads; j += iir->biquads_in_series) {
 		for (i = 0; i < iir->biquads_in_series; i++) {
-			/* Compute output: Delay is Q3.61
-			 * Q2.30 x Q1.31 -> Q3.61
-			 * Shift Q3.61 to Q3.31 with rounding
-			 */
-			acc = ((int64_t)iir->coef[c + 4]) * in + iir->delay[d];
-			tmp = (int32_t)Q_SHIFT_RND(acc, 61, 31);
-
-			/* Compute first delay */
-			acc = iir->delay[d + 1];
-			acc += ((int64_t)iir->coef[c + 3]) * in; /* Coef  b1 */
-			acc += ((int64_t)iir->coef[c + 1]) * tmp; /* Coef a1 */
-			iir->delay[d] = acc;
-
-			/* Compute second delay */
-			acc = ((int64_t)iir->coef[c + 2]) * in; /* Coef  b2 */
-			acc += ((int64_t)iir->coef[c]) * tmp; /* Coef a2 */
-			iir->delay[d + 1] = acc;
-
-			/* Apply gain Q2.14 x Q1.31 -> Q3.45 */
-			acc = ((int64_t)iir->coef[c + 6]) * tmp; /* Gain */
-
-			/* Apply biquad output shift right parameter
-			 * simultaneously with Q3.45 to Q3.31 conversion. Then
-			 * saturate to 32 bits Q1.31 and prepare for next
-			 * biquad.
-			 */
-			acc = Q_SHIFT_RND(acc, 45 + iir->coef[c + 5], 31);
-			in = sat_int32(acc);
-
+			in = iir_process_biquad(in, &iir->coef[c],
+						&iir->delay[d]);
 			/* Proceed to next biquad coefficients and delay
 			 * lines.
 			 */
