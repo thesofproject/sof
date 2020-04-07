@@ -137,6 +137,15 @@ static uint32_t irqstr_get_status_word(uint32_t index)
 	return irqstr_read(IRQSTR_CH_STATUS(index));
 }
 
+static uint32_t irqstr_fixup_irq(uint32_t irq)
+{
+#ifdef CONFIG_IMX8M
+	return irq - 32;
+#else
+	return irq;
+#endif
+}
+
 /* Mask, that is, disable interrupts */
 static void irqstr_mask_int(uint32_t irq)
 {
@@ -144,6 +153,9 @@ static void irqstr_mask_int(uint32_t irq)
 
 	if (irq < IRQSTR_RESERVED_IRQS_NUM || irq >= IRQSTR_IRQS_NUM)
 		return; // Unusable interrupts
+
+	irq = irqstr_fixup_irq(irq);
+
 	mask = IRQSTR_INT_MASK(irq);
 	irqstr_update_bits(IRQSTR_CH_MASK(IRQSTR_INT_REG(irq)), mask, 0);
 }
@@ -155,6 +167,9 @@ static void irqstr_unmask_int(uint32_t irq)
 
 	if (irq < IRQSTR_RESERVED_IRQS_NUM || irq >= IRQSTR_IRQS_NUM)
 		return; // Unusable interrupts
+
+	irq = irqstr_fixup_irq(irq);
+
 	mask = IRQSTR_INT_MASK(irq);
 	irqstr_update_bits(IRQSTR_CH_MASK(IRQSTR_INT_REG(irq)), mask, mask);
 }
