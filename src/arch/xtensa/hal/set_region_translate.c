@@ -503,7 +503,7 @@ int xthal_set_region_translation(void* vaddr, void* paddr, unsigned size,
 /* xthal_invalidate_region()
  * invalidates the tlb entry for the specified region.
  *
- * This function is only supported on processor configurations 
+ * This function is only supported on processor configurations
  * with a v3 MMU with a spanning way.
  *
  * Parameter
