@@ -29,12 +29,12 @@
  */
 static inline void write_dtlb_entry(unsigned vpn_way, unsigned ppn_ca) {
 	__asm__ __volatile__("wdtlb  %1, %0; dsync\n\t"
-			: : "r" (vpn_way), "r" (ppn_ca) );
+			: : "r" (vpn_way), "r" (ppn_ca));
 }
 
 static inline void write_itlb_entry(unsigned vpn_way, unsigned ppn_ca) {
 	__asm__ __volatile__("witlb  %1, %0; isync\n\t"
-			: : "r" (vpn_way), "r" (ppn_ca) );
+			: : "r" (vpn_way), "r" (ppn_ca));
 }
 
 static inline unsigned read_dtlb1_entry(unsigned addr) {
@@ -70,7 +70,7 @@ static inline unsigned probe_itlb(unsigned addr) {
 }
 
 static inline void invalidate_dtlb_entry(unsigned addr) {
-	__asm__ __volatile__("idtlb  %0; dsync \n\t"
+	__asm__ __volatile__("idtlb  %0; dsync\n\t"
 			: : "a" (addr));
 }
 
@@ -127,9 +127,9 @@ int xthal_set_region_translation_raw(void *vaddr, void *paddr, unsigned cattr) {
 # if XCHAL_HAVE_XLT_CACHEATTR
 	unsigned vpn_way = (unsigned)vaddr;
 # else
-	unsigned vpn_way = ((unsigned) vaddr & 0xFFFFFFF0) + XCHAL_SPANNING_WAY;
+	unsigned vpn_way = ((unsigned)vaddr & 0xFFFFFFF0) + XCHAL_SPANNING_WAY;
 # endif
-	unsigned ppn_ca = ((unsigned) paddr & 0xFFFFFFF0) + (cattr & 0xF);
+	unsigned ppn_ca = ((unsigned)paddr & 0xFFFFFFF0) + (cattr & 0xF);
 	write_dtlb_entry(vpn_way, ppn_ca);
 	write_itlb_entry(vpn_way, ppn_ca);
 	return XTHAL_SUCCESS;
@@ -178,7 +178,7 @@ int xthal_v2p(void* vaddr, void** paddr, unsigned *way, unsigned* cattr) {
   }
   return XTHAL_SUCCESS;
 #else
-	unsigned long probe = probe_dtlb((unsigned) vaddr);
+	unsigned long probe = probe_dtlb((unsigned)vaddr);
 #if !XCHAL_HAVE_PTP_MMU
 	if (!(0x1 & probe))
 	return XTHAL_NO_MAPPING;
@@ -190,7 +190,7 @@ int xthal_v2p(void* vaddr, void** paddr, unsigned *way, unsigned* cattr) {
 		unsigned ppn = 0xe0000000 & temp;
 		unsigned att = 0xf & temp;
 		if (paddr)
-		*paddr = ((void*) (ppn + (((unsigned) vaddr) & 0x1fffffff)));
+		*paddr = ((void*)(ppn + (((unsigned)vaddr) & 0x1fffffff)));
 		if (cattr)
 		*cattr = att;
 	}
@@ -260,7 +260,7 @@ int xthal_v2p(void* vaddr, void** paddr, unsigned *way, unsigned* cattr) {
 					break;
 				}
 			ppn1 = ppn & temp;
-			*paddr = ((void*) (ppn1 + (((unsigned) vaddr) & (~ppn))));
+			*paddr = ((void*)(ppn1 + (((unsigned)vaddr) & (~ppn))));
 		}
 	}
 #endif
@@ -401,8 +401,8 @@ int xthal_set_region_translation(void* vaddr, void* paddr, unsigned size,
 	const unsigned CA_MASK = 0xF;
 	const unsigned addr_mask = 0x1fffffff;
 	const unsigned addr_shift = 29;
-	unsigned vaddr_a = (unsigned) vaddr;
-	unsigned paddr_a = (unsigned) paddr;
+	unsigned vaddr_a = (unsigned)vaddr;
+	unsigned paddr_a = (unsigned)paddr;
 	unsigned end_vaddr;
 	unsigned end_paddr;
 	unsigned start_va_reg;
@@ -449,7 +449,7 @@ int xthal_set_region_translation(void* vaddr, void* paddr, unsigned size,
 	 * 2) change those pages to write through
 	 * 3) force the writeback of d-cache by calling xthal_dcach_all_writeback()
 	 */
-#if ((XCHAL_DCACHE_SIZE >0) && XCHAL_DCACHE_IS_WRITEBACK)
+#if ((XCHAL_DCACHE_SIZE > 0) && XCHAL_DCACHE_IS_WRITEBACK)
 	if (!(flags & XTHAL_CAFLAG_NO_AUTO_WB)) {
 		unsigned old_cache_attr = xthal_get_cacheattr();
 		unsigned cachewrtr = old_cache_attr;
@@ -473,8 +473,8 @@ int xthal_set_region_translation(void* vaddr, void* paddr, unsigned size,
 	/* Now we set the affected region translations */
 	for (i = start_va_reg; i <= end_va_reg; i++) {
 		if ((rv = xthal_set_region_translation_raw(
-				(void*) ((start_va_reg++) << addr_shift),
-				(void*) ((start_pa_reg++) << addr_shift), icache_attr)))
+				(void*)((start_va_reg++) << addr_shift),
+				(void*)((start_pa_reg++) << addr_shift), icache_attr)))
 			return rv;
 	}
 
@@ -487,7 +487,7 @@ int xthal_set_region_translation(void* vaddr, void* paddr, unsigned size,
 		xthal_dcache_all_writeback_inv(); /* some areas in memory (outside the intended region) may have uncommitted
 		 data so we need the writeback_inv(). */
 #endif
-#if	XCHAL_ICACHE_SIZE >0
+#if	XCHAL_ICACHE_SIZE > 0
 		xthal_icache_all_invalidate();
 #endif
 	}
@@ -517,7 +517,7 @@ int xthal_set_region_translation(void* vaddr, void* paddr, unsigned size,
 int xthal_invalidate_region(void* vaddr) {
 #if XCHAL_HAVE_XEA2 & !XCHAL_HAVE_MPU
 #if (XCHAL_HAVE_PTP_MMU && XCHAL_HAVE_SPANNING_WAY)
-	unsigned addr = (unsigned) vaddr;
+	unsigned addr = (unsigned)vaddr;
 	if (addr & 0x1fffffff)
 		return XTHAL_INVALID_ADDRESS;
 	addr += XCHAL_SPANNING_WAY;
