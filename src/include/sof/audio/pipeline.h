@@ -12,6 +12,7 @@
 #include <sof/lib/cpu.h>
 #include <sof/lib/mailbox.h>
 #include <sof/lib/memory.h>
+#include <sof/list.h>
 #include <sof/sof.h>
 #include <sof/spinlock.h>
 #include <sof/trace/trace.h>
@@ -106,6 +107,8 @@ struct pipeline {
 	struct comp_dev *source_comp;
 	/* sink component for this pipe */
 	struct comp_dev *sink_comp;
+
+	struct list_item list;	/**< list in walk context */
 
 	/* position update */
 	uint32_t posn_offset;		/* position update array offset*/

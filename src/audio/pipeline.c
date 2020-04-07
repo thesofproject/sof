@@ -125,6 +125,8 @@ struct pipeline_walk_context {
 	void *comp_data;
 	void (*buff_func)(struct comp_buffer *, void *);
 	void *buff_data;
+	/**< pipelines to be scheduled after trigger walk */
+	struct list_item pipelines;
 	/*
 	 * If this flag is set, pipeline_for_each_comp() will skip all
 	 * incompletely initialised components, i.e. those, whose .pipeline ==
@@ -588,7 +590,8 @@ int pipeline_prepare(struct pipeline *p, struct comp_dev *dev)
 }
 
 static void pipeline_comp_trigger_sched_comp(struct pipeline *p,
-					     struct comp_dev *comp, int cmd)
+					     struct comp_dev *comp,
+					     struct pipeline_walk_context *ctx)
 {
 	/* only required by the scheduling component or sink component
 	 * on pipeline without one
@@ -597,24 +600,8 @@ static void pipeline_comp_trigger_sched_comp(struct pipeline *p,
 	    (p == p->sched_comp->pipeline || p->sink_comp != comp))
 		return;
 
-	switch (cmd) {
-	case COMP_TRIGGER_PAUSE:
-	case COMP_TRIGGER_STOP:
-	case COMP_TRIGGER_XRUN:
-		pipeline_schedule_cancel(p);
-		p->status = COMP_STATE_PAUSED;
-		break;
-	case COMP_TRIGGER_RELEASE:
-	case COMP_TRIGGER_START:
-		pipeline_schedule_copy(p, 0);
-		p->xrun_bytes = 0;
-		p->status = COMP_STATE_ACTIVE;
-		break;
-	case COMP_TRIGGER_SUSPEND:
-	case COMP_TRIGGER_RESUME:
-	default:
-		break;
-	}
+	/* add for later schedule */
+	list_item_append(&p->list, &ctx->pipelines);
 }
 
 static int pipeline_comp_trigger(struct comp_dev *current,
@@ -644,8 +631,7 @@ static int pipeline_comp_trigger(struct comp_dev *current,
 	if (err < 0 || err == PPL_STATUS_PATH_STOP)
 		return err;
 
-	pipeline_comp_trigger_sched_comp(current->pipeline, current,
-					 ppl_data->cmd);
+	pipeline_comp_trigger_sched_comp(current->pipeline, current, ctx);
 
 	return pipeline_for_each_comp(current, ctx, dir);
 }
@@ -690,6 +676,41 @@ static int pipeline_xrun_handle_trigger(struct pipeline *p, int cmd)
 	return ret;
 }
 
+static void pipeline_schedule_triggered(struct pipeline_walk_context *ctx,
+					int cmd)
+{
+	struct list_item *tlist;
+	struct pipeline *p;
+	uint32_t flags;
+
+	irq_local_disable(flags);
+
+	list_for_item(tlist, &ctx->pipelines) {
+		p = container_of(tlist, struct pipeline, list);
+
+		switch (cmd) {
+		case COMP_TRIGGER_PAUSE:
+		case COMP_TRIGGER_STOP:
+		case COMP_TRIGGER_XRUN:
+			pipeline_schedule_cancel(p);
+			p->status = COMP_STATE_PAUSED;
+			break;
+		case COMP_TRIGGER_RELEASE:
+		case COMP_TRIGGER_START:
+			pipeline_schedule_copy(p, 0);
+			p->xrun_bytes = 0;
+			p->status = COMP_STATE_ACTIVE;
+			break;
+		case COMP_TRIGGER_SUSPEND:
+		case COMP_TRIGGER_RESUME:
+		default:
+			break;
+		}
+	}
+
+	irq_local_enable(flags);
+}
+
 /* trigger pipeline */
 int pipeline_trigger(struct pipeline *p, struct comp_dev *host, int cmd)
 {
@@ -702,6 +723,8 @@ int pipeline_trigger(struct pipeline *p, struct comp_dev *host, int cmd)
 	int ret;
 
 	pipe_info(p, "pipe trigger cmd %d", cmd);
+
+	list_init(&walk_ctx.pipelines);
 
 	/* handle pipeline global checks before going into each components */
 	if (p->xrun_bytes) {
@@ -722,6 +745,8 @@ int pipeline_trigger(struct pipeline *p, struct comp_dev *host, int cmd)
 		pipe_cl_err("pipeline_trigger(): ret = %d, host->comp.id = %u, cmd = %d",
 			    ret, dev_comp_id(host), cmd);
 	}
+
+	pipeline_schedule_triggered(&walk_ctx, cmd);
 
 	return ret;
 }
