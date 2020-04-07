@@ -72,7 +72,7 @@
  * SOF internal interrupt numbers exactly; rather IRQ_STEER interrupt 0 will be
  * known as interrupt number 32 within SOF.
  */
-#define PLATFORM_IRQ_FIRST_CHILD  PLATFORM_IRQ_HW_NUM
+#define PLATFORM_IRQ_FIRST_CHILD  0
 
 /* irqstr_get_sof_int() - Convert IRQ_STEER interrupt to SOF logical
  * interrupt
@@ -105,15 +105,16 @@ int irqstr_get_sof_int(int irqstr_int);
  */
 #define IRQSTR_CHANCTL			0x00
 
-#define IRQSTR_CH_MASK(n)		(0x04 + 0x04 * (5 - (n)))
-#define IRQSTR_CH_SET(n)		(0x18 + 0x04 * (5 - (n)))
-#define IRQSTR_CH_STATUS(n)		(0x2C + 0x04 * (5 - (n)))
+#define IRQSTR_CH_MASK(n)		(0x04 + 0x04 * (4 - (n)))
+#define IRQSTR_CH_SET(n)		(0x18 + 0x04 * (4 - (n)))
+#define IRQSTR_CH_STATUS(n)		(0x2C + 0x04 * (4 - (n)))
+
 #define IRQSTR_MASTER_DISABLE		0x40
 #define IRQSTR_MASTER_STATUS		0x44
 
 #define IRQSTR_RESERVED_IRQS_NUM	32
 #define IRQSTR_IRQS_NUM			192
-#define IRQSTR_IRQS_REGISTERS_NUM	6
+#define IRQSTR_IRQS_REGISTERS_NUM	5
 #define IRQSTR_IRQS_PER_LINE		64
 
 #endif /* __PLATFORM_DRIVERS_INTERRUPT_H__ */
