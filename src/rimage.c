@@ -8,6 +8,7 @@
 #include <errno.h>
 #include <string.h>
 
+#include "kernel/ext_manifest_gen.h"
 #include "rimage.h"
 #include "manifest.h"
 
@@ -187,6 +188,16 @@ found:
 		ret = image.adsp->write_firmware_meu(&image);
 	else
 		ret = image.adsp->write_firmware(&image);
+	if (ret)
+		goto out;
+
+	ret = ext_man_write(&image);
+	if (ret < 0) {
+		fprintf(stderr, "warning: unable to write extended manifest, %d\n",
+			ret);
+		/* ext man is optional until FW side merge to master */
+		ret = 0;
+	}
 
 out:
 	/* close files */

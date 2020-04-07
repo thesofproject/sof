@@ -115,9 +115,11 @@ struct image {
 	void *rom_image;
 	FILE *out_rom_fd;
 	FILE *out_man_fd;
+	FILE *out_ext_man_fd;
 	FILE *out_unsigned_fd;
 	char out_rom_file[256];
 	char out_man_file[256];
+	char out_ext_man_file[256];
 	char out_unsigned_file[256];
 
 	/* fw version and build id */

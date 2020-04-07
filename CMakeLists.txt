@@ -17,6 +17,7 @@ add_executable(rimage
 	src/hash.c
 	src/pkcs1_5.c
 	src/manifest.c
+	src/ext_manifest.c
 	src/elf.c
 	src/rimage.c
 )
