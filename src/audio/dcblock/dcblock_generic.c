@@ -21,7 +21,7 @@ static int32_t dcblock_generic(struct dcblock_state *state,
 	 * R: Q2.30, y_prev: Q1.31
 	 * R * y_prev: Q3.61
 	 */
-	int64_t out = x - state->x_prev +
+	int64_t out = ((int64_t)x) - state->x_prev +
 		      Q_SHIFT_RND(R * state->y_prev, 61, 31);
 
 	state->y_prev = sat_int32(out);
