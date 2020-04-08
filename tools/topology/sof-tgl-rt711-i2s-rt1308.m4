@@ -19,6 +19,9 @@ include(`sof/tokens.m4')
 include(`platform/intel/tgl.m4')
 include(`platform/intel/dmic.m4')
 
+define(DMIC_PDM_CONFIG, ifelse(CHANNELS, `4', ``FOUR_CH_PDM0_PDM1'',
+	`ifelse(CHANNELS, `2', ``STEREO_PDM0'', `')'))
+
 DEBUG_START
 
 #
@@ -76,7 +79,7 @@ PIPELINE_PCM_ADD(sof/pipe-volume-capture.m4,
 # Passthrough capture pipeline 5 on PCM 4 using max 4 channels.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-volume-capture-16khz.m4,
-	5, 4, 4, s16le,
+	5, 4, CHANNELS, s16le,
 	1000, 0, 0,
 	16000, 16000, 16000)
 
@@ -233,7 +236,7 @@ DAI_CONFIG(DMIC, 0, 3, dmic01,
 DAI_CONFIG(DMIC, 1, 4, dmic16k,
 	   DMIC_CONFIG(1, 500000, 4800000, 40, 60, 16000,
 		DMIC_WORD_LENGTH(s16le), 400, DMIC, 1,
-		PDM_CONFIG(DMIC, 1, STEREO_PDM0)))
+		PDM_CONFIG(DMIC, 1, DMIC_PDM_CONFIG)))
 
 ifelse(HDMI, `1',
 `
