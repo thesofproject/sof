@@ -76,7 +76,8 @@ static struct fuzz_platform *platform[] = {
 		&cht_platform,
 		&bsw_platform,
 		&hsw_platform,
-		&bdw_platform
+		&bdw_platform,
+		&imx8_platform
 };
 
 static void usage(char *name)
