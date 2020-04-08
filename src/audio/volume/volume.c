@@ -38,6 +38,7 @@
 #include <ipc/stream.h>
 #include <ipc/topology.h>
 #include <user/trace.h>
+#include <config.h>
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -54,6 +55,139 @@ DECLARE_SOF_UUID("volume", volume_uuid, 0xb77e677e, 0x5ff4, 0x4188,
 /* 34dc0385-fc2f-4f7f-82d2-6cee444533e0 */
 DECLARE_SOF_UUID("volume-task", volume_task_uuid, 0x34dc0385, 0xfc2f, 0x4f7f,
 		 0x82, 0xd2, 0x6c, 0xee, 0x44, 0x45, 0x33, 0xe0);
+
+#if CONFIG_FORMAT_S16LE
+/**
+ * \brief Used to find nearest zero crossing frame for 16 bit format.
+ * \param[in,out] source Source buffer.
+ * \param[in] frames Number of frames.
+ * \param[in,out] prev_sum Previous sum of channel samples.
+ */
+static uint32_t vol_zc_get_s16(const struct audio_stream *source,
+			       uint32_t frames, int64_t *prev_sum)
+{
+	uint32_t buff_frag = frames * source->channels - 1;
+	uint32_t curr_frames = frames;
+	uint32_t channel;
+	int16_t *src;
+	int32_t sum;
+	uint32_t i;
+
+	for (i = 0; i < frames; i++) {
+		sum = 0;
+
+		for (channel = 0; channel < source->channels; channel++) {
+			src = audio_stream_read_frag_s16(source, buff_frag);
+			sum += *src;
+			buff_frag--;
+		}
+
+		/* first sign change */
+		if ((sum ^ *prev_sum) < 0)
+			return curr_frames;
+
+		*prev_sum = sum;
+		curr_frames--;
+	}
+
+	/* sign change not detected, process all samples */
+	return frames;
+}
+
+#endif /* CONFIG_FORMAT_S16LE */
+
+#if CONFIG_FORMAT_S24LE
+/**
+ * \brief Used to find nearest zero crossing frame for 24 in 32 bit format.
+ * \param[in,out] source Source buffer.
+ * \param[in] frames Number of frames.
+ * \param[in,out] prev_sum Previous sum of channel samples.
+ */
+static uint32_t vol_zc_get_s24(const struct audio_stream *source,
+			       uint32_t frames, int64_t *prev_sum)
+{
+	uint32_t buff_frag = frames * source->channels - 1;
+	uint32_t curr_frames = frames;
+	uint32_t channel;
+	int32_t *src;
+	int64_t sum;
+	uint32_t i;
+
+	for (i = 0; i < frames; i++) {
+		sum = 0;
+
+		for (channel = 0; channel < source->channels; channel++) {
+			src = audio_stream_read_frag_s32(source, buff_frag);
+			sum += sign_extend_s24(*src);
+			buff_frag--;
+		}
+
+		/* first sign change */
+		if ((sum ^ *prev_sum) < 0)
+			return curr_frames;
+
+		*prev_sum = sum;
+		curr_frames--;
+	}
+
+	/* sign change not detected, process all samples */
+	return frames;
+}
+
+#endif /* CONFIG_FORMAT_S24LE */
+
+#if CONFIG_FORMAT_S32LE
+/**
+ * \brief Used to find nearest zero crossing frame for 32 bit format.
+ * \param[in,out] source Source buffer.
+ * \param[in] frames Number of frames.
+ * \param[in,out] prev_sum Previous sum of channel samples.
+ */
+static uint32_t vol_zc_get_s32(const struct audio_stream *source,
+			       uint32_t frames, int64_t *prev_sum)
+{
+	uint32_t buff_frag = frames * source->channels - 1;
+	uint32_t curr_frames = frames;
+	uint32_t channel;
+	int32_t *src;
+	int64_t sum;
+	uint32_t i;
+
+	for (i = 0; i < frames; i++) {
+		sum = 0;
+
+		for (channel = 0; channel < source->channels; channel++) {
+			src = audio_stream_read_frag_s32(source, buff_frag);
+			sum += *src;
+			buff_frag--;
+		}
+
+		/* first sign change */
+		if ((sum ^ *prev_sum) < 0)
+			return curr_frames;
+
+		*prev_sum = sum;
+		curr_frames--;
+	}
+
+	/* sign change not detected, process all samples */
+	return frames;
+}
+
+#endif /* CONFIG_FORMAT_S32LE */
+
+/** \brief Map of formats with dedicated zc functions. */
+const struct comp_zc_func_map zc_func_map[] = {
+#if CONFIG_FORMAT_S16LE
+	{ SOF_IPC_FRAME_S16_LE, vol_zc_get_s16 },
+#endif /* CONFIG_FORMAT_S16LE */
+#if CONFIG_FORMAT_S24LE
+	{ SOF_IPC_FRAME_S24_4LE, vol_zc_get_s24 },
+#endif /* CONFIG_FORMAT_S24LE */
+#if CONFIG_FORMAT_S32LE
+	{ SOF_IPC_FRAME_S32_LE, vol_zc_get_s32 },
+#endif /* CONFIG_FORMAT_S32LE */
+};
 
 /**
  * \brief Synchronize host mmap() volume with real value.
@@ -642,6 +776,29 @@ static int volume_copy(struct comp_dev *dev)
 }
 
 /**
+ * \brief Retrieves volume zero crossing function.
+ * \param[in,out] dev Volume base component device.
+ */
+static vol_zc_func vol_get_zc_function(struct comp_dev *dev)
+{
+	struct comp_buffer *sinkb;
+	int i;
+
+	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
+				source_list);
+
+	/* map the zc function to frame format */
+	for (i = 0; i < ARRAY_SIZE(zc_func_map); i++) {
+		if (sinkb->stream.frame_fmt != zc_func_map[i].frame_fmt)
+			continue;
+
+		return zc_func_map[i].func;
+	}
+
+	return NULL;
+}
+
+/**
  * \brief Prepares volume component for processing.
  * \param[in,out] dev Volume base component device.
  * \return Error code.
@@ -685,6 +842,13 @@ static int volume_prepare(struct comp_dev *dev)
 	if (!cd->scale_vol) {
 		comp_err(dev, "volume_prepare(): invalid cd->scale_vol");
 
+		ret = -EINVAL;
+		goto err;
+	}
+
+	cd->zc_get = vol_get_zc_function(dev);
+	if (!cd->zc_get) {
+		comp_err(dev, "volume_prepare(): invalid cd->zc_get");
 		ret = -EINVAL;
 		goto err;
 	}
