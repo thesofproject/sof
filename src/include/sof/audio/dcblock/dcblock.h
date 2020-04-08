@@ -55,8 +55,9 @@ extern const struct dcblock_func_map dcblock_fnmap[];
 extern const size_t dcblock_fncount;
 
 /**
- * \brief Retrieives DC Blocking processing function.
- * \param[in,out] dev DC Blocking Filter base component device.
+ * \brief Retrieves a DC Blocking processing function matching
+ *	  the source buffer's frame format.
+ * \param src_fmt the frames' format of the source buffer
  */
 static inline dcblock_func dcblock_find_func(enum sof_ipc_frame src_fmt)
 {
