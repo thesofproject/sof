@@ -7,80 +7,73 @@ git:
 
 services:
   - docker
+
+# We don't need the strict sequence of stages; for now we use stages
+# only as presentation labels.  The strict order hurts only in case of a
+# failure however there are only basic, non-flaky tests here.
 stages:
-  - test
+  - buildonly
   - qemutest
   - testbench
   - doxygen
 
-before_install:
-  - docker pull thesofproject/sof && docker tag thesofproject/sof sof
-
-env:
-  - PLATFORM=byt
-  - PLATFORM=cht
-  - PLATFORM=bdw
-  - PLATFORM=hsw
-  - PLATFORM=apl
-  - PLATFORM=skl
-  - PLATFORM=kbl
-  - PLATFORM=cnl
-  - PLATFORM=sue
-  - PLATFORM=icl
-  - PLATFORM=jsl
-  - PLATFORM=imx8
-  - PLATFORM=imx8x
-  - PLATFORM=imx8m
-
-script: ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -j $PLATFORM
 
 jobs:
   include:
-    - stage: test
+
+    - &build-platform
+      stage: buildonly
+      before_install:
+        &docker-pull-sof
+        docker pull thesofproject/sof && docker tag thesofproject/sof sof
+      script:
+        ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -j $PLATFORM
+      env: PLATFORM='sue'
+
+    - <<: *build-platform
+      env: PLATFORM='jsl'
+
+    - name: "./scripts/build-tools.sh"
+      stage: buildonly
+      before_install: *docker-pull-sof
       script: ./scripts/docker-run.sh ./scripts/build-tools.sh
-      env: PLATFORM=tools
-    - stage: test
+
+    - name: "./scripts/host-build-all.sh"
+      stage: buildonly
+      before_install: *docker-pull-sof
       script: ./scripts/docker-run.sh ./scripts/host-build-all.sh -l
-      env: PLATFORM=host
-      # Matrix hack: Declare the same stage name multiple times to test multiple
-      # versions. Use a YAML alias to prevent redundancy.
+
     - &qemuboottest
       stage: qemutest
       script:
         - sed -i $(($(grep "config HAVE_AGENT" -n src/platform/Kconfig | cut -f1 -d:)+2))"s/default y/default n/" src/platform/Kconfig
         - ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -r -j $PLATFORM
         - ./scripts/docker-qemu.sh ../sof.git/scripts/qemu-check.sh $PLATFORM
-      env: PLATFORM=byt
+      env: PLATFORM='byt cht'
       before_install:
-        - docker pull thesofproject/sof && docker tag thesofproject/sof sof
+        - *docker-pull-sof
         - docker pull thesofproject/sofqemu && docker tag thesofproject/sofqemu sofqemu
+
     - <<: *qemuboottest
-      env: PLATFORM=cht
+      env: PLATFORM='bdw hsw'
+
     - <<: *qemuboottest
-      env: PLATFORM=bdw
+      env: PLATFORM='apl skl kbl'
+
     - <<: *qemuboottest
-      env: PLATFORM=hsw
+      env: PLATFORM='cnl icl'
+
     - <<: *qemuboottest
-      env: PLATFORM=apl
-    - <<: *qemuboottest
-      env: PLATFORM=skl
-    - <<: *qemuboottest
-      env: PLATFORM=kbl
-    - <<: *qemuboottest
-      env: PLATFORM=cnl
-    - <<: *qemuboottest
-      env: PLATFORM=icl
-    - <<: *qemuboottest
-      env: PLATFORM=imx8
-    - <<: *qemuboottest
-      env: PLATFORM=imx8x
-    - <<: *qemuboottest
-      env: PLATFORM=imx8m
+      env: PLATFORM='imx8 imx8x imx8m'
+
+
     - stage: testbench
+      before_install: *docker-pull-sof
       script:
         - ./scripts/docker-run.sh ./scripts/build-tools.sh -t &> /dev/null
         - ./scripts/docker-run.sh ./scripts/host-build-all.sh
         - ./scripts/host-testbench.sh
+
 
     - stage: doxygen
 
