@@ -57,8 +57,8 @@ struct sdma_chan {
 	/* Statically allocate BDs; we can change if we ever need dynamic
 	 * allocation
 	 */
-	struct sdma_bd descriptors[SDMA_MAX_BDS];
-	int descriptor_count;
+	struct sdma_bd desc[SDMA_MAX_BDS];
+	int desc_count;
 	struct sdma_context *ctx;
 	struct sdma_ccb *ccb;
 	int hw_event;
@@ -97,19 +97,19 @@ static int sdma_run_c0(struct dma *dma, uint8_t cmd, uint32_t buf_addr,
 	tracev_sdma("sdma_run_c0 cmd %d buf_addr 0x%08x sdma_addr 0x%04x count %d",
 		    cmd, buf_addr, sdma_addr, count);
 
-	c0data->descriptors[0].config = SDMA_BD_CMD(cmd) | SDMA_BD_COUNT(count)
+	c0data->desc[0].config = SDMA_BD_CMD(cmd) | SDMA_BD_COUNT(count)
 		| SDMA_BD_WRAP | SDMA_BD_DONE | SDMA_BD_INT | SDMA_BD_CONT;
-	c0data->descriptors[0].buf_addr = buf_addr;
-	c0data->descriptors[0].buf_xaddr = sdma_addr;
+	c0data->desc[0].buf_addr = buf_addr;
+	c0data->desc[0].buf_xaddr = sdma_addr;
 	if (sdma_addr)
-		c0data->descriptors[0].config |= SDMA_BD_EXTD;
+		c0data->desc[0].config |= SDMA_BD_EXTD;
 
-	c0data->ccb->current_bd_paddr = (uint32_t)&c0data->descriptors[0];
-	c0data->ccb->base_bd_paddr = (uint32_t)&c0data->descriptors[0];
+	c0data->ccb->current_bd_paddr = (uint32_t)&c0data->desc[0];
+	c0data->ccb->base_bd_paddr = (uint32_t)&c0data->desc[0];
 
 	/* Writeback descriptors and CCB */
-	dcache_writeback_region(c0data->descriptors,
-				sizeof(c0data->descriptors[0]));
+	dcache_writeback_region(c0data->desc,
+				sizeof(c0data->desc[0]));
 	dcache_writeback_region(c0data->ccb, sizeof(*c0data->ccb));
 
 	/* Set event override to true so we can manually start channel */
@@ -582,15 +582,15 @@ static int sdma_copy(struct dma_chan_data *channel, int bytes, uint32_t flags)
 	struct sdma_chan *pdata = dma_chan_get_data(channel);
 
 	tracev_sdma("sdma_copy");
-	for (int i = 0; i < pdata->descriptor_count; i++) {
+	for (int i = 0; i < pdata->desc_count; i++) {
 		/* Work around the fact that we cannot allocate uncached memory
 		 * on all platforms supporting SDMA.
 		 */
-		dcache_invalidate_region(&pdata->descriptors[i].config,
-					 sizeof(pdata->descriptors[i].config));
-		pdata->descriptors[i].config |= SDMA_BD_DONE;
-		dcache_writeback_region(&pdata->descriptors[i].config,
-					sizeof(pdata->descriptors[i].config));
+		dcache_invalidate_region(&pdata->desc[i].config,
+					 sizeof(pdata->desc[i].config));
+		pdata->desc[i].config |= SDMA_BD_DONE;
+		dcache_writeback_region(&pdata->desc[i].config,
+					sizeof(pdata->desc[i].config));
 	}
 	return 0;
 }
@@ -743,15 +743,15 @@ static int sdma_set_config(struct dma_chan_data *channel,
 		 * For MEM2MEM the source is stored in buf_addr and destination
 		 * is in buf_xaddr.
 		 */
-		pdata->descriptors[i].buf_xaddr = 0;
-		pdata->descriptors[i].buf_addr =
+		pdata->desc[i].buf_xaddr = 0;
+		pdata->desc[i].buf_addr =
 			config->elem_array.elems[i].src;
 		if (!src_may_change)
-			pdata->descriptors[i].buf_addr =
+			pdata->desc[i].buf_addr =
 				config->elem_array.elems[i].dest;
 		if (src_may_change && dst_may_change) {
 			/* M2M copy */
-			pdata->descriptors[i].buf_xaddr =
+			pdata->desc[i].buf_xaddr =
 				config->elem_array.elems[i].dest;
 		}
 
@@ -762,37 +762,37 @@ static int sdma_set_config(struct dma_chan_data *channel,
 		if (!dst_may_change)
 			width = config->dest_width;
 
-		pdata->descriptors[i].config =
+		pdata->desc[i].config =
 			SDMA_BD_COUNT(config->elem_array.elems[i].size) |
 			SDMA_BD_CMD(SDMA_CMD_XFER_SIZE(width)) | SDMA_BD_CONT;
 		if (!config->irq_disabled)
-			pdata->descriptors[i].config |= SDMA_BD_INT;
+			pdata->desc[i].config |= SDMA_BD_INT;
 		if (dst_may_change) {
 			/* Capture or M2M, enable this descriptor to be
 			 * used by SDMAC
 			 */
-			pdata->descriptors[i].config |= SDMA_BD_DONE;
+			pdata->desc[i].config |= SDMA_BD_DONE;
 			/* On playback we don't do this and instead wait
 			 * for copy() to let us know the data is ready.
 			 * copy() is called during preload.
 			 */
 		}
 		if (src_may_change && dst_may_change)
-			pdata->descriptors[i].config |= SDMA_BD_EXTD;
+			pdata->desc[i].config |= SDMA_BD_EXTD;
 	}
 	/* Configure last BD to account for cyclic transfers */
 	if (config->cyclic)
-		pdata->descriptors[config->elem_array.count - 1].config |=
+		pdata->desc[config->elem_array.count - 1].config |=
 			SDMA_BD_WRAP;
 	else
-		pdata->descriptors[config->elem_array.count - 1].config &=
+		pdata->desc[config->elem_array.count - 1].config &=
 			~SDMA_BD_CONT;
 
 	/* CCB must point to buffer descriptors array */
 	memset(pdata->ccb, 0, sizeof(*pdata->ccb));
-	pdata->ccb->base_bd_paddr = (uint32_t)pdata->descriptors;
-	pdata->ccb->current_bd_paddr = (uint32_t)pdata->descriptors;
-	pdata->descriptor_count = config->elem_array.count;
+	pdata->ccb->base_bd_paddr = (uint32_t)pdata->desc;
+	pdata->ccb->current_bd_paddr = (uint32_t)pdata->desc;
+	pdata->desc_count = config->elem_array.count;
 
 	/* Context must be configured, dependent on transfer direction */
 
@@ -935,10 +935,10 @@ static int sdma_get_data_size(struct dma_chan_data *channel, uint32_t *avail,
 		return -EINVAL;
 	}
 
-	for (i = 0; i < pdata->descriptor_count && i < SDMA_MAX_BDS; i++) {
-		if (pdata->descriptors[i].config & SDMA_BD_DONE)
+	for (i = 0; i < pdata->desc_count && i < SDMA_MAX_BDS; i++) {
+		if (pdata->desc[i].config & SDMA_BD_DONE)
 			continue; /* These belong to SDMA controller */
-		result_data += pdata->descriptors[i].config &
+		result_data += pdata->desc[i].config &
 			SDMA_BD_COUNT_MASK;
 	}
 
