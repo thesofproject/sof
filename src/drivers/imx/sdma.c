@@ -87,6 +87,11 @@ static void sdma_set_overrides(struct dma_chan_data *channel,
 			    host_override ? BIT(channel->index) : 0);
 }
 
+static void sdma_enable_channel(struct dma *dma, int channel)
+{
+	dma_reg_write(dma, SDMA_HSTART, BIT(channel));
+}
+
 static int sdma_run_c0(struct dma *dma, uint8_t cmd, uint32_t buf_addr,
 		       uint16_t sdma_addr, uint16_t count)
 {
@@ -114,9 +119,8 @@ static int sdma_run_c0(struct dma *dma, uint8_t cmd, uint32_t buf_addr,
 
 	/* Set event override to true so we can manually start channel */
 	sdma_set_overrides(c0, true, false);
-	ret = dma_start(&dma->chan[0]);
-	if (ret < 0)
-		return ret;
+
+	sdma_enable_channel(dma, 0);
 
 	/* 1 is BIT(0) for channel 0, the bit will be cleared as the
 	 * channel finishes execution. 1ms is sufficient if everything is fine.
