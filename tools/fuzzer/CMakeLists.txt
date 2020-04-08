@@ -38,6 +38,7 @@ add_executable(sof-fuzzer
 	topology.c
 	platform/byt-host.c
 	platform/hsw-host.c
+	platform/imx8-host.c
 )
 
 target_link_libraries(sof-fuzzer PRIVATE sof_parser)

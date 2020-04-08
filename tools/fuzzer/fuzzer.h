@@ -161,6 +161,7 @@ extern struct fuzz_platform cht_platform;
 extern struct fuzz_platform bsw_platform;
 extern struct fuzz_platform hsw_platform;
 extern struct fuzz_platform bdw_platform;
+extern struct fuzz_platform imx8_platform;
 
 extern pthread_cond_t cond;
 
