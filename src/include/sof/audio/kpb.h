@@ -41,10 +41,9 @@ struct comp_buffer;
  * the sof-dosc in [kpbm-state-diagram]
  * Therefore any addition of new states or modification of existing ones
  * should have a corresponding update in the sof-docs.
- * [kpbm-state-diagram]: https://thesofproject.github.io/latest/
- * developer_guides/firmware/kd_integration/
- * kd-integration.html#kpbm-state-diagram "Keyphrase buffer manager state
- * diagram"
+ * [kpbm-state-diagram]:
+https://thesofproject.github.io/latest/developer_guides/firmware/kd_integration/kd-integration.html#kpbm-state-diagram
+"Keyphrase buffer manager state diagram"
  */
 enum kpb_state {
 	KPB_STATE_DISABLED = 0,
