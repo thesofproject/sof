@@ -18,6 +18,7 @@
 
 #include <sof/audio/component.h>
 #include <sof/bit.h>
+#include <sof/common.h>
 #include <sof/schedule/task.h>
 #include <sof/trace/trace.h>
 #include <ipc/stream.h>
@@ -81,6 +82,13 @@ struct sof_ipc_ctrl_value_chan;
 typedef void (*vol_scale_func)(struct comp_dev *dev, struct audio_stream *sink,
 			       const struct audio_stream *source,
 			       uint32_t frames);
+
+/**
+ * \brief volume interface for function getting nearest zero crossing frame
+ */
+typedef uint32_t (*vol_zc_func)(const struct audio_stream *source,
+				uint32_t frames, int64_t *prev_sum);
+
 /**
  * \brief Volume component private data.
  *
@@ -101,6 +109,7 @@ struct comp_data {
 	bool vol_ramp_active;			/**< set if volume is ramped */
 	bool ramp_started;			/**< control ramp launch */
 	vol_scale_func scale_vol;	/**< volume processing function */
+	vol_zc_func zc_get; /**< function getting nearest zero crossing frame */
 };
 
 /** \brief Volume processing functions map. */
@@ -114,6 +123,12 @@ extern const struct comp_func_map func_map[];
 
 /** \brief Number of processing functions. */
 extern const size_t func_count;
+
+/** \brief Volume zero crossing functions map. */
+struct comp_zc_func_map {
+	uint16_t frame_fmt;	/**< frame format */
+	vol_zc_func func;	/**< volume zc function */
+};
 
 /**
  * \brief Retrievies volume processing function.
