@@ -630,61 +630,23 @@ static int sdma_status(struct dma_chan_data *channel,
 	return 0;
 }
 
-static int sdma_set_config(struct dma_chan_data *channel,
-			   struct dma_sg_config *config)
+static int sdma_read_config(struct dma_chan_data *channel,
+			    struct dma_sg_config *config)
 {
-	struct sdma_chan *pdata = dma_chan_get_data(channel);
-	int handshake;
-	bool src_may_change, dst_may_change;
-	uint32_t fifo_paddr = 0;
 	int i;
-	int hwevent, watermark;
-	int width;
-	int ret;
-	uint32_t sdma_script_addr;
-
-	tracev_sdma("sdma_set_config channel %d", channel->index);
-	/* Data to store in the descriptors:
-	 * 1) Each descriptor corresponds to each of the
-	 *    config->elem_array elems; if we have more than
-	 *    MAX_DESCRIPTORS we bail outright. For the future, we could
-	 *    allocate the per-channel descriptors dynamically.
-	 * 2) For each of them, store the host side (SDRAM side) as
-	 *    buf_addr and keep the FIFO address as a separate variable.
-	 *    Complain if this address changes between descriptors as we
-	 *    do not support this for now.
-	 * 3) Enable interrupts, set up transfer width, length of elem,
-	 *    wrap bit on the last descriptor, host side address, and
-	 *    finally the DONE bit so the SDMA can use the descriptors.
-	 * 4) The FIFO address will be stored in the context.
-	 * 5) Actually upload context now as we are inside DAI prepare.
-	 *    We have no other opportunity in the future.
-	 */
-
-	/* Validate requested configuration */
-	if (config->elem_array.count > SDMA_MAX_BDS) {
-		trace_sdma_error("sdma_set_config: Unable to handle %d descriptors",
-				 config->elem_array.count);
-		return -EINVAL;
-	}
-	if (config->elem_array.count <= 0) {
-		trace_sdma_error("sdma_set_config: Invalid descriptor count: %d",
-				 config->elem_array.count);
-		return -EINVAL;
-	}
-
-	channel->is_scheduling_source = config->is_scheduling_source;
-	channel->direction = config->direction;
+	uint32_t fifo_paddr = 0;
+	bool src_may_change, dst_may_change;
+	struct sdma_chan *pdata = dma_chan_get_data(channel);
 
 	switch (config->direction) {
 	case DMA_DIR_MEM_TO_DEV:
 		src_may_change = true; dst_may_change = false;
-		handshake = config->dest_dev;
+		pdata->hw_event = config->dest_dev;
 		pdata->sdma_chan_type = SDMA_CHAN_TYPE_MCU2SHP;
 		break;
 	case DMA_DIR_DEV_TO_MEM:
 		src_may_change = false; dst_may_change = true;
-		handshake = config->src_dev;
+		pdata->hw_event = config->src_dev;
 		pdata->sdma_chan_type = SDMA_CHAN_TYPE_SHP2MCU;
 		break;
 	case DMA_DIR_MEM_TO_MEM:
@@ -724,16 +686,48 @@ static int sdma_set_config(struct dma_chan_data *channel,
 			return -EINVAL;
 		}
 	}
-	/* Checks passed, we need to populate the buffer descriptors,
-	 * adjust count, configure context so the FIFO address is also
-	 * stored, upload context and have everything be ready.
-	 */
 
-	/* The handshake currently only contains the hardware channel
-	 * number itself.
-	 */
-	hwevent = handshake;
-	watermark = config->burst_elems;
+	return 0;
+}
+
+/* Data to store in the descriptors:
+ * 1) Each descriptor corresponds to each of the
+ *    config->elem_array elems; if we have more than
+ *    MAX_DESCRIPTORS we bail outright. For the future, we could
+ *    allocate the per-channel descriptors dynamically.
+ * 2) For each of them, store the host side (SDRAM side) as
+ *    buf_addr and keep the FIFO address as a separate variable.
+ *    Complain if this address changes between descriptors as we
+ *    do not support this for now.
+ * 3) Enable interrupts, set up transfer width, length of elem,
+ *    wrap bit on the last descriptor, host side address, and
+ *    finally the DONE bit so the SDMA can use the descriptors.
+ * 4) The FIFO address will be stored in the context.
+ * 5) Actually upload context now as we are inside DAI prepare.
+ *    We have no other opportunity in the future.
+ */
+static int sdma_prep_desc(struct dma_chan_data *channel,
+			  struct dma_sg_config *config)
+{
+	int i;
+	int width;
+	int watermark;
+	uint32_t sdma_script_addr;
+	bool src_may_change = 0, dst_may_change = 0;
+
+	struct sdma_chan *pdata = dma_chan_get_data(channel);
+
+	/* Validate requested configuration */
+	if (config->elem_array.count > SDMA_MAX_BDS) {
+		trace_sdma_error("sdma_set_config: Unable to handle %d descriptors",
+				 config->elem_array.count);
+		return -EINVAL;
+	}
+	if (config->elem_array.count <= 0) {
+		trace_sdma_error("sdma_set_config: Invalid descriptor count: %d",
+				 config->elem_array.count);
+		return -EINVAL;
+	}
 
 	for (i = 0; i < config->elem_array.count; i++) {
 		/* For MEM2DEV and DEV2MEM, buf_addr holds the RAM address and
@@ -813,6 +807,8 @@ static int sdma_set_config(struct dma_chan_data *channel,
 		return -EINVAL;
 	}
 
+	watermark = config->burst_elems;
+
 	memset(pdata->ctx, 0, sizeof(*pdata->ctx));
 	pdata->ctx->pc = sdma_script_addr;
 
@@ -820,15 +816,37 @@ static int sdma_set_config(struct dma_chan_data *channel,
 		/* Base of RAM, TODO must be moved to a define */
 		pdata->ctx->g_reg[7] = 0x40000000;
 	} else {
-		if (hwevent != -1) {
-			if (hwevent >= 32)
-				pdata->ctx->g_reg[0] |= BIT(hwevent - 32);
+		if (pdata->hw_event != -1) {
+			if (pdata->hw_event >= 32)
+				pdata->ctx->g_reg[0] |= BIT(pdata->hw_event - 32);
 			else
-				pdata->ctx->g_reg[1] |= BIT(hwevent);
+				pdata->ctx->g_reg[1] |= BIT(pdata->hw_event);
 		}
-		pdata->ctx->g_reg[6] = fifo_paddr;
+		pdata->ctx->g_reg[6] = pdata->fifo_paddr;
 		pdata->ctx->g_reg[7] = watermark;
 	}
+
+	return 0;
+}
+
+static int sdma_set_config(struct dma_chan_data *channel,
+			   struct dma_sg_config *config)
+{
+	struct sdma_chan *pdata = dma_chan_get_data(channel);
+	int ret;
+
+	tracev_sdma("sdma_set_config channel %d", channel->index);
+
+	ret = sdma_read_config(channel, config);
+	if (ret < 0)
+		return ret;
+
+	channel->is_scheduling_source = config->is_scheduling_source;
+	channel->direction = config->direction;
+
+	ret = sdma_prep_desc(channel, config);
+	if (ret < 0)
+		return ret;
 
 	/* Upload context */
 	ret = sdma_upload_context(channel);
@@ -839,7 +857,7 @@ static int sdma_set_config(struct dma_chan_data *channel,
 
 	tracev_sdma("SDMA context uploaded");
 	/* Context uploaded, we can set up events now */
-	sdma_set_event(channel, hwevent);
+	sdma_set_event(channel, pdata->hw_event);
 
 	/* Finally set channel priority */
 	dma_reg_write(channel->dma, SDMA_CHNPRI(channel->index), SDMA_DEFPRI);
