@@ -708,6 +708,7 @@ static int sdma_prep_desc(struct dma_chan_data *channel,
 	bool src_may_change = 0, dst_may_change = 0;
 
 	struct sdma_chan *pdata = dma_chan_get_data(channel);
+	struct sdma_bd *bd;
 
 	/* Validate requested configuration */
 	if (config->elem_array.count > SDMA_MAX_BDS) {
@@ -722,21 +723,21 @@ static int sdma_prep_desc(struct dma_chan_data *channel,
 	}
 
 	for (i = 0; i < config->elem_array.count; i++) {
+		bd = &pdata->desc[i];
 		/* For MEM2DEV and DEV2MEM, buf_addr holds the RAM address and
 		 * the FIFO address is stored in one of the general registers of
 		 * the SDMA core.
 		 * For MEM2MEM the source is stored in buf_addr and destination
 		 * is in buf_xaddr.
 		 */
-		pdata->desc[i].buf_xaddr = 0;
-		pdata->desc[i].buf_addr =
-			config->elem_array.elems[i].src;
+		bd->buf_xaddr = 0;
+		bd->buf_addr = config->elem_array.elems[i].src;
 		if (!src_may_change)
-			pdata->desc[i].buf_addr =
+			bd->buf_addr =
 				config->elem_array.elems[i].dest;
 		if (src_may_change && dst_may_change) {
 			/* M2M copy */
-			pdata->desc[i].buf_xaddr =
+			bd->buf_xaddr =
 				config->elem_array.elems[i].dest;
 		}
 
@@ -747,31 +748,29 @@ static int sdma_prep_desc(struct dma_chan_data *channel,
 		if (!dst_may_change)
 			width = config->dest_width;
 
-		pdata->desc[i].config =
+		bd->config =
 			SDMA_BD_COUNT(config->elem_array.elems[i].size) |
 			SDMA_BD_CMD(SDMA_CMD_XFER_SIZE(width)) | SDMA_BD_CONT;
 		if (!config->irq_disabled)
-			pdata->desc[i].config |= SDMA_BD_INT;
+			bd->config |= SDMA_BD_INT;
 		if (dst_may_change) {
 			/* Capture or M2M, enable this descriptor to be
 			 * used by SDMAC
 			 */
-			pdata->desc[i].config |= SDMA_BD_DONE;
+			bd->config |= SDMA_BD_DONE;
 			/* On playback we don't do this and instead wait
 			 * for copy() to let us know the data is ready.
 			 * copy() is called during preload.
 			 */
 		}
 		if (src_may_change && dst_may_change)
-			pdata->desc[i].config |= SDMA_BD_EXTD;
+			bd->config |= SDMA_BD_EXTD;
 	}
 	/* Configure last BD to account for cyclic transfers */
 	if (config->cyclic)
-		pdata->desc[config->elem_array.count - 1].config |=
-			SDMA_BD_WRAP;
+		bd->config |= SDMA_BD_WRAP;
 	else
-		pdata->desc[config->elem_array.count - 1].config &=
-			~SDMA_BD_CONT;
+		bd->config &= ~SDMA_BD_CONT;
 
 	/* CCB must point to buffer descriptors array */
 	memset(pdata->ccb, 0, sizeof(*pdata->ccb));
