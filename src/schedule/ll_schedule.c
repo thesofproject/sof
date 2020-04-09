@@ -279,14 +279,15 @@ static void schedule_ll_task_insert(struct task *task, struct list_item *tasks)
 	list_item_append(&task->list, tasks);
 }
 
-static void schedule_ll_task(void *data, struct task *task, uint64_t start,
-			     uint64_t period)
+static int schedule_ll_task(void *data, struct task *task, uint64_t start,
+			    uint64_t period)
 {
 	struct ll_schedule_data *sch = data;
 	struct ll_task_pdata *pdata;
 	struct list_item *tlist;
 	struct task *curr_task;
 	uint32_t flags;
+	int ret = 0;
 
 	irq_local_disable(flags);
 
@@ -311,7 +312,8 @@ static void schedule_ll_task(void *data, struct task *task, uint64_t start,
 	schedule_ll_task_insert(task, &sch->tasks);
 
 	/* set schedule domain */
-	if (schedule_ll_domain_set(sch, task, period) < 0) {
+	ret = schedule_ll_domain_set(sch, task, period);
+	if (ret < 0) {
 		list_item_del(&task->list);
 		goto out;
 	}
@@ -327,6 +329,8 @@ static void schedule_ll_task(void *data, struct task *task, uint64_t start,
 
 out:
 	irq_local_enable(flags);
+
+	return ret;
 }
 
 int schedule_task_init_ll(struct task *task,
@@ -358,7 +362,7 @@ int schedule_task_init_ll(struct task *task,
 	return 0;
 }
 
-static void schedule_ll_task_free(void *data, struct task *task)
+static int schedule_ll_task_free(void *data, struct task *task)
 {
 	struct ll_task_pdata *ll_pdata;
 	uint32_t flags;
@@ -372,9 +376,11 @@ static void schedule_ll_task_free(void *data, struct task *task)
 	ll_sch_set_pdata(task, NULL);
 
 	irq_local_enable(flags);
+
+	return 0;
 }
 
-static void schedule_ll_task_cancel(void *data, struct task *task)
+static int schedule_ll_task_cancel(void *data, struct task *task)
 {
 	struct ll_schedule_data *sch = data;
 	struct list_item *tlist;
@@ -401,9 +407,11 @@ static void schedule_ll_task_cancel(void *data, struct task *task)
 	list_item_del(&task->list);
 
 	irq_local_enable(flags);
+
+	return 0;
 }
 
-static void reschedule_ll_task(void *data, struct task *task, uint64_t start)
+static int reschedule_ll_task(void *data, struct task *task, uint64_t start)
 {
 	struct ll_schedule_data *sch = data;
 	struct list_item *tlist;
@@ -437,6 +445,8 @@ out:
 	platform_shared_commit(sch->domain, sizeof(*sch->domain));
 
 	irq_local_enable(flags);
+
+	return 0;
 }
 
 static void scheduler_free_ll(void *data)
