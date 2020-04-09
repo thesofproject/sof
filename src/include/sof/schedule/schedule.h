@@ -9,7 +9,6 @@
 #ifndef __SOF_SCHEDULE_SCHEDULE_H__
 #define __SOF_SCHEDULE_SCHEDULE_H__
 
-#include <sof/bit.h>
 #include <sof/common.h>
 #include <sof/list.h>
 #include <sof/schedule/task.h>
