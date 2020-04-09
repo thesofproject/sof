@@ -30,8 +30,8 @@ struct edf_schedule_data {
 
 const struct scheduler_ops schedule_edf_ops;
 
-static void schedule_edf_task_complete(void *data, struct task *task);
-static void schedule_edf_task_running(void *data, struct task *task);
+static int schedule_edf_task_complete(void *data, struct task *task);
+static int schedule_edf_task_running(void *data, struct task *task);
 static void schedule_edf(void *data);
 
 static void schedule_edf_task_run(struct task *task, void *data)
@@ -93,8 +93,8 @@ static void edf_scheduler_run(void *data)
 	schedule_edf_task_running(data, task_next);
 }
 
-static void schedule_edf_task(void *data, struct task *task, uint64_t start,
-			      uint64_t period)
+static int schedule_edf_task(void *data, struct task *task, uint64_t start,
+			     uint64_t period)
 {
 	struct edf_schedule_data *edf_sch = data;
 	uint64_t ticks_per_ms;
@@ -110,7 +110,7 @@ static void schedule_edf_task(void *data, struct task *task, uint64_t start,
 			("schedule_edf_task(), task already queued or running %d",
 			 task->state);
 		irq_local_enable(flags);
-		return;
+		return -EALREADY;
 	}
 
 	/* get current time */
@@ -130,6 +130,8 @@ static void schedule_edf_task(void *data, struct task *task, uint64_t start,
 	irq_local_enable(flags);
 
 	schedule_edf(data);
+
+	return 0;
 }
 
 int schedule_task_init_edf(struct task *task, uint32_t uid,
@@ -181,7 +183,7 @@ error:
 	return -EINVAL;
 }
 
-static void schedule_edf_task_running(void *data, struct task *task)
+static int schedule_edf_task_running(void *data, struct task *task)
 {
 	struct edf_task_pdata *edf_pdata = edf_sch_get_pdata(task);
 	uint32_t flags;
@@ -194,9 +196,11 @@ static void schedule_edf_task_running(void *data, struct task *task)
 	task->state = SOF_TASK_STATE_RUNNING;
 
 	irq_local_enable(flags);
+
+	return 0;
 }
 
-static void schedule_edf_task_complete(void *data, struct task *task)
+static int schedule_edf_task_complete(void *data, struct task *task)
 {
 	uint32_t flags;
 
@@ -210,9 +214,11 @@ static void schedule_edf_task_complete(void *data, struct task *task)
 	list_item_del(&task->list);
 
 	irq_local_enable(flags);
+
+	return 0;
 }
 
-static void schedule_edf_task_cancel(void *data, struct task *task)
+static int schedule_edf_task_cancel(void *data, struct task *task)
 {
 	uint32_t flags;
 
@@ -227,9 +233,11 @@ static void schedule_edf_task_cancel(void *data, struct task *task)
 	}
 
 	irq_local_enable(flags);
+
+	return 0;
 }
 
-static void schedule_edf_task_free(void *data, struct task *task)
+static int schedule_edf_task_free(void *data, struct task *task)
 {
 	struct edf_task_pdata *edf_pdata = edf_sch_get_pdata(task);
 	uint32_t flags;
@@ -244,6 +252,8 @@ static void schedule_edf_task_free(void *data, struct task *task)
 	edf_sch_set_pdata(task, NULL);
 
 	irq_local_enable(flags);
+
+	return 0;
 }
 
 int scheduler_init_edf(void)

@@ -22,14 +22,16 @@ struct scheduler_ops schedule_edf_ops;
 
 static struct edf_schedule_data *sch;
 
-static void schedule_edf_task_complete(struct task *task)
+static int schedule_edf_task_complete(struct task *task)
 {
 	list_item_del(&task->list);
 	task->state = SOF_TASK_STATE_COMPLETED;
+
+	return 0;
 }
 
 /* schedule task */
-static void schedule_edf_task(void *data, struct task *task, uint64_t start,
+static int schedule_edf_task(void *data, struct task *task, uint64_t start,
 			      uint64_t period)
 {
 	struct edf_schedule_data *sch = data;
@@ -41,6 +43,8 @@ static void schedule_edf_task(void *data, struct task *task, uint64_t start,
 		task->ops.run(task->data);
 
 	schedule_edf_task_complete(task);
+
+	return 0;
 }
 
 int schedule_task_init_edf(struct task *task, uint32_t uid,
@@ -85,16 +89,18 @@ static void schedule_edf(void *data)
 {
 }
 
-static void schedule_edf_task_cancel(void *data, struct task *task)
+static int schedule_edf_task_cancel(void *data, struct task *task)
 {
 	if (task->state == SOF_TASK_STATE_QUEUED) {
 		/* delete task */
 		task->state = SOF_TASK_STATE_CANCEL;
 		list_item_del(&task->list);
 	}
+
+	return 0;
 }
 
-static void schedule_edf_task_free(void *data, struct task *task)
+static int schedule_edf_task_free(void *data, struct task *task)
 {
 	task->state = SOF_TASK_STATE_FREE;
 	task->ops.run = NULL;
@@ -102,6 +108,8 @@ static void schedule_edf_task_free(void *data, struct task *task)
 
 	free(edf_sch_get_pdata(task));
 	edf_sch_set_pdata(task, NULL);
+
+	return 0;
 }
 
 struct scheduler_ops schedule_edf_ops = {
