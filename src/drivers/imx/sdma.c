@@ -634,24 +634,22 @@ static int sdma_read_config(struct dma_chan_data *channel,
 			    struct dma_sg_config *config)
 {
 	int i;
-	uint32_t fifo_paddr = 0;
-	bool src_may_change, dst_may_change;
 	struct sdma_chan *pdata = dma_chan_get_data(channel);
 
 	switch (config->direction) {
 	case DMA_DIR_MEM_TO_DEV:
-		src_may_change = true; dst_may_change = false;
 		pdata->hw_event = config->dest_dev;
 		pdata->sdma_chan_type = SDMA_CHAN_TYPE_MCU2SHP;
+		pdata->fifo_paddr = config->elem_array.elems[0].dest;
 		break;
 	case DMA_DIR_DEV_TO_MEM:
-		src_may_change = false; dst_may_change = true;
 		pdata->hw_event = config->src_dev;
 		pdata->sdma_chan_type = SDMA_CHAN_TYPE_SHP2MCU;
+		pdata->fifo_paddr = config->elem_array.elems[0].src;
 		break;
 	case DMA_DIR_MEM_TO_MEM:
 		pdata->sdma_chan_type = SDMA_CHAN_TYPE_AP2AP;
-		/* Fallthrough, TODO implement if desired, both are true */
+		/* Fallthrough, TODO: implement to support m2m */
 	default:
 		trace_sdma_error("sdma_set_config: Unsupported direction %d",
 				 config->direction);
@@ -659,24 +657,18 @@ static int sdma_read_config(struct dma_chan_data *channel,
 	}
 
 	for (i = 0; i < config->elem_array.count; i++) {
-		if (!src_may_change) {
-			/* src is fifo */
-			if (i == 0) {
-				fifo_paddr = config->elem_array.elems[0].src;
-			} else if (fifo_paddr != config->elem_array.elems[i].src) {
-				trace_sdma_error("sdma_set_config: FIFO changes address!");
-				return -EINVAL;
-			}
+		if (config->direction == DMA_DIR_MEM_TO_DEV &&
+		    pdata->fifo_paddr != config->elem_array.elems[i].dest) {
+			trace_sdma_error("sdma_read_config: FIFO changes address!");
+			return -EINVAL;
 		}
-		if (!dst_may_change) {
-			/* dst is fifo */
-			if (i == 0) {
-				fifo_paddr = config->elem_array.elems[0].dest;
-			} else if (fifo_paddr != config->elem_array.elems[i].dest) {
-				trace_sdma_error("sdma_set_config: FIFO changes address!");
-				return -EINVAL;
-			}
+
+		if (config->direction == DMA_DIR_DEV_TO_MEM &&
+		    pdata->fifo_paddr != config->elem_array.elems[i].src) {
+			trace_sdma_error("sdma_read_config: FIFO changes address!");
+			return -EINVAL;
 		}
+
 		if (config->elem_array.elems[i].size > SDMA_BD_MAX_COUNT) {
 			/* Future improvement: Create multiple BDs so as to
 			 * support this situation
