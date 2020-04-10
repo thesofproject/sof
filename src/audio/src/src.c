@@ -721,7 +721,6 @@ static int src_get_copy_limits(struct comp_data *cd,
 		frames_snk = MIN(frames_snk, cd->sink_frames + s1->blk_out);
 		sp->stage1_times = frames_snk / s1->blk_out;
 		frames_src = audio_stream_get_avail_frames(&source->stream);
-		frames_snk = MIN(frames_src, cd->source_frames + s1->blk_in);
 		sp->stage1_times = MIN(sp->stage1_times,
 				       frames_src / s1->blk_in);
 		sp->blk_in = sp->stage1_times * s1->blk_in;
