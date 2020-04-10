@@ -49,6 +49,14 @@ define(`COMP_FORMAT_NAME',
 	$1, `float', `FLOAT_LE',
 	)')
 
+dnl COMP_FORMAT_VALUE(FMT)
+define(`COMP_FORMAT_VALUE',
+`ifelse(
+	$1, `s16le', `0x00',
+	$1, `s24le', `0x01',
+	$1, `s32le', `0x02',
+	)')
+
 dnl P_GRAPH(NAME, PIPELINE_ID, CONNECTIONS)
 define(`P_GRAPH',
 `SectionGraph.STR($1 $2) {'
