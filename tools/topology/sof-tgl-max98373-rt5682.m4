@@ -21,12 +21,14 @@ include(`platform/intel/dmic.m4')
 
 DEBUG_START
 
-
-
 #
 # Define the pipelines
 #
-# PCM0 ---> volume ----> SSP1  (Speaker - max98373)
+# PCM0 ----> smart_amp ----> SSP1 (Speaker -max98373)
+#              ^
+#              |
+#              |
+# PCM0 <---- demux <----- SSP1 (Speaker -max98373)
 # PCM1 <---> volume <----> SSP0  (Headset - ALC5682)
 # PCM2 ----> volume -----> iDisp1
 # PCM3 ----> volume -----> iDisp2
@@ -34,6 +36,30 @@ DEBUG_START
 # PCM5 ----> volume -----> iDisp4
 # PCM99 <---- volume <---- DMIC01 (dmic 48k capture)
 # PCM100 <---- kpb <---- DMIC16K (dmic 16k capture)
+
+# Smart amplifier related
+# SSP related
+#define smart amplifier SSP index
+define(`SMART_SSP_INDEX', 1)
+#define SSP BE dai_link name
+define(`SMART_SSP_NAME', `SSP1-Codec')
+#define BE dai_link ID
+define(`SMART_BE_ID', 7)
+# Playback related
+define(`SMART_PB_PPL_ID', 1)
+define(`SMART_PB_CH_NUM', 2)
+define(`SMART_TX_CHANNELS', 4)
+define(`SMART_RX_CHANNELS', 8)
+define(`SMART_FB_CHANNELS', 8)
+# Ref capture related
+define(`SMART_REF_PPL_ID', 11)
+define(`SMART_REF_CH_NUM', 4)
+# PCM related
+define(`SMART_PCM_ID', 0)
+define(`SMART_PCM_NAME', `smart373-spk')
+
+# Include Smart Amplifier support
+include(`sof-smart-amplifier.m4')
 
 # Define pipeline id for intel-generic-dmic-kwd.m4
 # to generate dmic setting with kwd when we have dmic
@@ -57,13 +83,6 @@ include(`platform/intel/intel-generic-dmic-kwd.m4')
 dnl PIPELINE_PCM_ADD(pipeline,
 dnl     pipe id, pcm, max channels, format,
 dnl     frames, deadline, priority, core)
-
-# Low Latency playback pipeline 1 on PCM 0 using max 2 channels of s32le.
-# Schedule 48 frames per 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
-	1, 0, 2, s32le,
-	1000, 0, 0,
-	48000, 48000, 48000)
 
 # Low Latency playback pipeline 2 on PCM 1 using max 2 channels of s32le.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
@@ -116,13 +135,6 @@ dnl     pipe id, dai type, dai_index, dai_be,
 dnl     buffer, periods, format,
 dnl     frames, deadline, priority, core)
 
-# playback DAI is SSP1 using 2 periods
-# Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
-DAI_ADD(sof/pipe-dai-playback.m4,
-	1, SSP, 1, SSP1-Codec,
-	PIPELINE_SOURCE_1, 2, s24le,
-	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
-
 # playback DAI is SSP0 using 2 periods
 # Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
@@ -169,7 +181,6 @@ DAI_ADD(sof/pipe-dai-playback.m4,
 # Bind PCM with the pipeline
 #
 dnl PCM_PLAYBACK_ADD(name, pcm_id, playback)
-PCM_PLAYBACK_ADD(max373-spk, 0, PIPELINE_PCM_1)
 PCM_DUPLEX_ADD(Headset, 1, PIPELINE_PCM_2, PIPELINE_PCM_3)
 PCM_PLAYBACK_ADD(HDMI1, 2, PIPELINE_PCM_5)
 PCM_PLAYBACK_ADD(HDMI2, 3, PIPELINE_PCM_6)
@@ -187,12 +198,12 @@ dnl mclk_id is optional
 dnl ssp1-maxmspk, ssp0-RTHeadset
 
 #SSP 1 (ID: 7)
-DAI_CONFIG(SSP, 1, 7, SSP1-Codec,
-	SSP_CONFIG(DSP_B, SSP_CLOCK(mclk, 38400000, codec_mclk_in),
-		      SSP_CLOCK(bclk, 9600000, codec_slave),
-		      SSP_CLOCK(fsync, 48000, codec_slave),
-		      SSP_TDM(8, 25, 3, 3),
-		      SSP_CONFIG_DATA(SSP, 1, 24)))
+#DAI_CONFIG(SSP, 1, 7, SSP1-Codec,
+#	SSP_CONFIG(DSP_B, SSP_CLOCK(mclk, 38400000, codec_mclk_in),
+#		      SSP_CLOCK(bclk, 9600000, codec_slave),
+#		      SSP_CLOCK(fsync, 48000, codec_slave),
+#		      SSP_TDM(8, 25, 3, 3),
+#		      SSP_CONFIG_DATA(SSP, 1, 24)))
 
 #SSP 0 (ID: 0)
 DAI_CONFIG(SSP, 0, 0, SSP0-Codec,
