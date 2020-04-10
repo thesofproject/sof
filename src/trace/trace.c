@@ -21,6 +21,7 @@
 #include <sof/trace/trace.h>
 #include <ipc/topology.h>
 #include <user/trace.h>
+#include <stdarg.h>
 #include <stdint.h>
 
 struct trace {
@@ -64,7 +65,8 @@ static void put_header(uint32_t *dst, uint32_t id_0,
 	platform_shared_commit(timer, sizeof(*timer));
 }
 
-static void mtrace_event(const char *data, uint32_t length)
+#if CONFIG_TRACEM
+static inline void mtrace_event(const char *data, uint32_t length)
 {
 	struct trace *trace = trace_get();
 	volatile char *t;
@@ -92,119 +94,51 @@ static void mtrace_event(const char *data, uint32_t length)
 
 	platform_shared_commit(trace, sizeof(*trace));
 }
+#endif /* CONFIG_TRACEM */
 
-#define _TRACE_EVENT_NTH_IMPL_PAYLOAD_STEP(i, _)	\
-	dt[PAYLOAD_OFFSET(i)] = META_CONCAT(param, i);
+void trace_log(bool send_atomic, const void *log_entry,
+	       uint32_t id_0, uint32_t id_1, uint32_t id_2,
+	       int arg_count, ...)
+{
+	uint32_t data[MESSAGE_SIZE_DWORDS(_TRACE_EVENT_MAX_ARGUMENT_COUNT)];
+	const int message_size = MESSAGE_SIZE(arg_count);
+	struct trace *trace = trace_get();
+	va_list vl;
+	int i;
+#if CONFIG_TRACEM
+	unsigned long flags;
+#endif /* CONFIG_TRACEM */
 
-#define _TRACE_EVENT_NTH_PAYLOAD_IMPL(arg_count)			\
-	META_SEQ_FROM_0_TO(arg_count, _TRACE_EVENT_NTH_IMPL_PAYLOAD_STEP)
+	if (!trace->enable) {
+		platform_shared_commit(trace, sizeof(*trace));
+		return;
+	}
 
- /* _trace_event function with poor people's version of constexpr if */
-#define _TRACE_EVENT_NTH_IMPL(is_mbox, is_atomic, arg_count)		\
-_TRACE_EVENT_NTH(META_CONCAT(						\
-/*if is_mbox  , append _mbox   to function name*/			\
-META_IF_ELSE(is_mbox)(_mbox)(),						\
-/*if is_atomic, append _atomic to function name*/			\
-META_IF_ELSE(is_atomic)(_atomic)()					\
-), arg_count)								\
-{									\
-	uint32_t dt[MESSAGE_SIZE_DWORDS(arg_count)];			\
-	struct trace *trace = trace_get();				\
-	META_IF_ELSE(is_mbox)						\
-	(								\
-		META_IF_ELSE(is_atomic)()(unsigned long flags;)		\
-	)()								\
-									\
-	if (!trace->enable) {						\
-		platform_shared_commit(trace, sizeof(*trace));		\
-		return;							\
-	}								\
-									\
-	put_header(dt, id_0, id_1, id_2, log_entry,			\
-		   platform_timer_get(timer_get()));			\
-									\
-	_TRACE_EVENT_NTH_PAYLOAD_IMPL(arg_count)			\
-	META_IF_ELSE(is_atomic)						\
-		(dtrace_event_atomic)					\
-		(dtrace_event)						\
-			((const char *)dt, MESSAGE_SIZE(arg_count));	\
-	/* send event by mail box too. */				\
-	META_IF_ELSE(is_mbox)						\
-	(								\
-		META_IF_ELSE(is_atomic)()(				\
-			spin_lock_irq(&trace->lock, flags);		\
-		)							\
-		mtrace_event((const char *)dt, MESSAGE_SIZE(arg_count));\
-									\
-		META_IF_ELSE(is_atomic)()(spin_unlock_irq(&trace->lock,	\
-							  flags);)	\
-	)()								\
+	/* fill log content */
+	put_header(data, id_0, id_1, id_2, (uint32_t)log_entry,
+		   platform_timer_get(timer_get()));
+	va_start(vl, arg_count);
+	for (i = 0; i < arg_count; ++i)
+		data[PAYLOAD_OFFSET(i)] = va_arg(vl, uint32_t);
+	va_end(vl);
+
+	/* send event by */
+	if (send_atomic)
+		dtrace_event_atomic((const char *)data, message_size);
+	else
+		dtrace_event((const char *)data, message_size);
+
+#if CONFIG_TRACEM
+	/* send event by mail box too. */
+	if (send_atomic) {
+		spin_lock_irq(&trace->lock, flags);
+		mtrace_event((const char *)data, MESSAGE_SIZE(arg_count));
+		spin_unlock_irq(&trace->lock, flags);
+	} else {
+		mtrace_event((const char *)data, MESSAGE_SIZE(arg_count));
+	}
+#endif /* CONFIG_TRACEM */
 }
-
-#define _TRACE_EVENT_NTH_IMPL_GROUP(arg_count)				\
-	/* send trace events only to the local trace buffer */		\
-	_TRACE_EVENT_NTH_IMPL(0, 0, arg_count)				\
-	_TRACE_EVENT_NTH_IMPL(0, 1, arg_count)				\
-	/* send trace events to the local trace buffer and mailbox */	\
-	_TRACE_EVENT_NTH_IMPL(1, 0, arg_count)				\
-	_TRACE_EVENT_NTH_IMPL(1, 1, arg_count)
-
-
-/* Implementation of
- * void _trace_event1(            uintptr_t log_entry, uint32_t ids...) {...}
- * void _trace_event_mbox1(       uintptr_t log_entry, uint32_t ids...) {...}
- * void _trace_event_atomic1(     uintptr_t log_entry, uint32_t ids...) {...}
- * void _trace_event_mbox_atomic1(uintptr_t log_entry, uint32_t ids...) {...}
- */
-_TRACE_EVENT_NTH_IMPL_GROUP(0)
-
-/* Implementation of
- * void _trace_event1(            uintptr_t log_entry, uint32_t ids...,
- *                                uint32_t params...) {...}
- * void _trace_event_mbox1(       uintptr_t log_entry, uint32_t ids...,
- *                                uint32_t params...) {...}
- * void _trace_event_atomic1(     uintptr_t log_entry, uint32_t ids...,
- *                                uint32_t params...) {...}
- * void _trace_event_mbox_atomic1(uintptr_t log_entry, uint32_t ids...,
- *                                uint32_t params...) {...}
- */
-_TRACE_EVENT_NTH_IMPL_GROUP(1)
-
-/* Implementation of
- * void _trace_event2(            uintptr_t log_entry, uint32_t ids...,
- *                                uint32_t params...) {...}
- * void _trace_event_mbox2(       uintptr_t log_entry, uint32_t ids...,
- *                                uint32_t params...) {...}
- * void _trace_event_atomic2(     uintptr_t log_entry, uint32_t ids...,
- *                                uint32_t params...) {...}
- * void _trace_event_mbox_atomic2(uintptr_t log_entry, uint32_t ids...,
- *                                uint32_t params...) {...}
- */
-_TRACE_EVENT_NTH_IMPL_GROUP(2)
-
-/* Implementation of
- * void _trace_event3(            uintptr_t log_entry, uint32_t ids...,
- *                                uint32_t params...) {...}
- * void _trace_event_mbox3(       uintptr_t log_entry, uint32_t ids...,
- *                                uint32_t params...) {...}
- * void _trace_event_atomic3(     uintptr_t log_entry, uint32_t ids...,
- *                                uint32_t params...) {...}
- * void _trace_event_mbox_atomic3(uintptr_t log_entry, uint32_t ids...,
- *                                uint32_t params...) {...}
- */
-_TRACE_EVENT_NTH_IMPL_GROUP(3)
-
-/* Implementation of
- * void _trace_event4(            uintptr_t log_entry, uint32_t ids...,
- *                                uint32_t params...) {...}
- * void _trace_event_mbox4(       uintptr_t log_entry, uint32_t ids...,
- *                                uint32_t params...) {...}
- * void _trace_event_atomic4(     uintptr_t log_entry, uint32_t ids...,
- *                                uint32_t params...) {...}
- * void _trace_event_mbox_atomic4(uintptr_t log_entry, uint32_t ids...,
- *                                uint32_t params...) {...}
- */
-_TRACE_EVENT_NTH_IMPL_GROUP(4)
 
 void trace_flush(void)
 {

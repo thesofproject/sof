@@ -16,10 +16,6 @@
 
 #include "comp_mock.h"
 
-#include <mock_trace.h>
-
-TRACE_IMPL()
-
 void pipeline_xrun(struct pipeline *p, struct comp_dev *dev, int32_t bytes)
 {
 }
