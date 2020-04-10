@@ -7,10 +7,6 @@
 #include "pipeline_mocks.h"
 #include <sof/lib/mm_heap.h>
 
-#include <mock_trace.h>
-
-TRACE_IMPL()
-
 struct ipc *_ipc;
 struct timer *platform_timer;
 struct schedulers *schedulers;

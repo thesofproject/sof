@@ -11,10 +11,6 @@
 #include <sof/trace/trace.h>
 #include <sof/audio/component.h>
 
-#include <mock_trace.h>
-
-TRACE_IMPL()
-
 static struct sof sof;
 
 #if !CONFIG_LIBRARY

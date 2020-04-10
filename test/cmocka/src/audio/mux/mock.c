@@ -4,8 +4,6 @@
 //
 // Author: Daniel Bogdzia <danielx.bogdzia@linux.intel.com>
 
-#include <mock_trace.h>
-
 #include <sof/audio/component.h>
 #include <sof/lib/alloc.h>
 
@@ -15,8 +13,6 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <cmocka.h>
-
-TRACE_IMPL()
 
 static struct sof sof;
 

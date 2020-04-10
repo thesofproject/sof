@@ -12,10 +12,6 @@
 #include <sof/debug/panic.h>
 #include <sof/schedule/task.h>
 
-#include <mock_trace.h>
-
-TRACE_IMPL()
-
 struct dma_copy;
 struct dma_sg_config;
 
