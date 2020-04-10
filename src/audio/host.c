@@ -36,6 +36,9 @@ static const struct comp_driver comp_host;
 DECLARE_SOF_UUID("host", host_uuid, 0x8b9d100c, 0x6d78, 0x418f,
 		 0x90, 0xa3, 0xe0, 0xe8, 0x05, 0xd0, 0x85, 0x2b);
 
+/** \brief Host copy function interface. */
+typedef int (*host_copy_func)(struct comp_dev *dev);
+
 /**
  * \brief Host buffer info.
  */
@@ -85,6 +88,7 @@ struct host_data {
 				   *  copied by dma connected to host
 				   */
 
+	host_copy_func copy;	/**< host copy function */
 	pcm_converter_func process;	/**< processing function */
 
 	/* stream info */
@@ -224,6 +228,162 @@ static void host_dma_cb(void *arg, enum notify_id type, void *data)
 	/* callback for one shot copy */
 	if (hd->copy_type == COMP_COPY_ONE_SHOT)
 		host_one_shot_cb(dev, bytes);
+}
+
+/**
+ * Calculates bytes to be copied in one shot mode.
+ * @param dev Host component device.
+ * @return Bytes to be copied.
+ */
+static uint32_t host_get_copy_bytes_one_shot(struct comp_dev *dev)
+{
+	struct host_data *hd = comp_get_drvdata(dev);
+	struct dma_sg_elem *local_elem = hd->config.elem_array.elems;
+	uint32_t copy_bytes = 0;
+	uint32_t split_value;
+	uint32_t flags = 0;
+
+	buffer_lock(hd->local_buffer, &flags);
+
+	/* calculate minimum size to copy */
+	if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
+		copy_bytes = hd->local_buffer->stream.free;
+	else
+		copy_bytes = hd->local_buffer->stream.avail;
+
+	buffer_unlock(hd->local_buffer, flags);
+
+	/* copy_bytes should be aligned to minimum possible chunk of
+	 * data to be copied by dma.
+	 */
+	copy_bytes = ALIGN_DOWN(copy_bytes, hd->dma_copy_align);
+
+	split_value = host_dma_get_split(hd, copy_bytes);
+	if (split_value)
+		copy_bytes -= split_value;
+
+	local_elem->size = copy_bytes;
+
+	return copy_bytes;
+}
+
+/**
+ * Performs copy operation for host component working in one shot mode.
+ * It means DMA needs to be reconfigured after every transfer.
+ * @param dev Host component device.
+ * @return 0 if succeeded, error code otherwise.
+ */
+static int host_copy_one_shot(struct comp_dev *dev)
+{
+	struct host_data *hd = comp_get_drvdata(dev);
+	uint32_t copy_bytes = 0;
+	int ret = 0;
+
+	comp_dbg(dev, "host_copy_one_shot()");
+
+	/* update first transfer manually */
+	if (!dev->position)
+		host_one_shot_cb(dev, hd->dma_buffer->stream.size);
+
+	copy_bytes = host_get_copy_bytes_one_shot(dev);
+	if (!copy_bytes) {
+		comp_info(dev, "host_copy_one_shot(): no bytes to copy");
+		return ret;
+	}
+
+	/* reconfigure transfer */
+	ret = dma_set_config(hd->chan, &hd->config);
+	if (ret < 0) {
+		comp_cl_err(&comp_host, "host_copy_one_shot(): dma_set_config() failed, ret = %u",
+			    ret);
+		return ret;
+	}
+
+	ret = dma_copy(hd->chan, copy_bytes, DMA_COPY_ONE_SHOT);
+	if (ret < 0) {
+		comp_cl_err(&comp_host, "host_copy_one_shot(): dma_copy() failed, ret = %u",
+			    ret);
+		return ret;
+	}
+
+	return ret;
+}
+
+/**
+ * Calculates bytes to be copied in normal mode.
+ * @param dev Host component device.
+ * @return Bytes to be copied.
+ */
+static uint32_t host_get_copy_bytes_normal(struct comp_dev *dev)
+{
+	struct host_data *hd = comp_get_drvdata(dev);
+	uint32_t avail_bytes = 0;
+	uint32_t free_bytes = 0;
+	uint32_t copy_bytes = 0;
+	uint32_t flags = 0;
+	int ret;
+
+	/* get data sizes from DMA */
+	ret = dma_get_data_size(hd->chan, &avail_bytes,
+				&free_bytes);
+	if (ret < 0) {
+		comp_cl_err(&comp_host, "host_get_copy_bytes_normal(): dma_get_data_size() failed, ret = %u",
+			    ret);
+		return 0;
+	}
+
+	buffer_lock(hd->local_buffer, &flags);
+
+	/* calculate minimum size to copy */
+	if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
+		copy_bytes = MIN(avail_bytes,
+				 hd->local_buffer->stream.free);
+	else
+		copy_bytes = MIN(hd->local_buffer->stream.avail,
+				 free_bytes);
+
+	buffer_unlock(hd->local_buffer, flags);
+
+	/* copy_bytes should be aligned to minimum possible chunk of
+	 * data to be copied by dma.
+	 */
+	copy_bytes = ALIGN_DOWN(copy_bytes, hd->dma_copy_align);
+
+	return copy_bytes;
+}
+
+/**
+ * Performs copy operation for host component working in normal mode.
+ * It means DMA works continuously and doesn't need reconfiguration.
+ * @param dev Host component device.
+ * @return 0 if succeeded, error code otherwise.
+ */
+static int host_copy_normal(struct comp_dev *dev)
+{
+	struct host_data *hd = comp_get_drvdata(dev);
+	uint32_t copy_bytes = 0;
+	uint32_t flags = 0;
+	int ret = 0;
+
+	comp_dbg(dev, "host_copy_normal()");
+
+	if (hd->copy_type == COMP_COPY_BLOCKING)
+		flags |= DMA_COPY_BLOCKING;
+
+	copy_bytes = host_get_copy_bytes_normal(dev);
+	if (!copy_bytes) {
+		comp_info(dev, "host_copy_normal(): no bytes to copy");
+		return ret;
+	}
+
+	ret = dma_copy(hd->chan, copy_bytes, flags);
+	if (ret < 0) {
+		comp_cl_err(&comp_host, "host_copy_normal(): dma_copy() failed, ret = %u",
+			    ret);
+		return ret;
+	}
+
+	return ret;
 }
 
 static int create_local_elems(struct comp_dev *dev, uint32_t buffer_count,
@@ -603,6 +763,10 @@ static int host_params(struct comp_dev *dev,
 	/* set up callback */
 	notifier_register(dev, hd->chan, NOTIFIER_ID_DMA_COPY, host_dma_cb);
 
+	/* set copy function */
+	hd->copy = hd->copy_type == COMP_COPY_ONE_SHOT ? host_copy_one_shot :
+		host_copy_normal;
+
 	/* set processing function */
 	hd->process =
 		pcm_get_conversion_function(hd->local_buffer->stream.frame_fmt,
@@ -690,113 +854,15 @@ static int host_reset(struct comp_dev *dev)
 	return 0;
 }
 
-static uint32_t host_buffer_get_copy_bytes(struct comp_dev *dev)
-{
-	struct host_data *hd = comp_get_drvdata(dev);
-	struct dma_sg_elem *local_elem = hd->config.elem_array.elems;
-	uint32_t avail_bytes = 0;
-	uint32_t free_bytes = 0;
-	uint32_t copy_bytes = 0;
-	uint32_t split_value;
-	int ret;
-	uint32_t flags = 0;
-
-	if (hd->copy_type == COMP_COPY_ONE_SHOT) {
-		buffer_lock(hd->local_buffer, &flags);
-
-		/* calculate minimum size to copy */
-		if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
-			copy_bytes = hd->local_buffer->stream.free;
-		else
-			copy_bytes = hd->local_buffer->stream.avail;
-
-		buffer_unlock(hd->local_buffer, flags);
-
-		/* copy_bytes should be aligned to minimum possible chunk of
-		 * data to be copied by dma.
-		 */
-		copy_bytes = ALIGN_DOWN(copy_bytes, hd->dma_copy_align);
-
-		split_value = host_dma_get_split(hd, copy_bytes);
-		if (split_value)
-			copy_bytes -= split_value;
-
-		local_elem->size = copy_bytes;
-	} else {
-		/* get data sizes from DMA */
-		ret = dma_get_data_size(hd->chan, &avail_bytes,
-					&free_bytes);
-		if (ret < 0) {
-			comp_cl_err(&comp_host, "host_buffer_cb(): dma_get_data_size() failed, ret = %u",
-				    ret);
-			return 0;
-		}
-
-		buffer_lock(hd->local_buffer, &flags);
-
-		/* calculate minimum size to copy */
-		if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
-			copy_bytes = MIN(avail_bytes,
-					 hd->local_buffer->stream.free);
-		else
-			copy_bytes = MIN(hd->local_buffer->stream.avail,
-					 free_bytes);
-
-		buffer_unlock(hd->local_buffer, flags);
-
-		/* copy_bytes should be aligned to minimum possible chunk of
-		 * data to be copied by dma.
-		 */
-		copy_bytes = ALIGN_DOWN(copy_bytes, hd->dma_copy_align);
-	}
-
-	return copy_bytes;
-}
-
 /* copy and process stream data from source to sink buffers */
 static int host_copy(struct comp_dev *dev)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
-	uint32_t copy_bytes = 0;
-	uint32_t flags = 0;
-	int ret = 0;
-
-	comp_dbg(dev, "host_copy()");
 
 	if (dev->state != COMP_STATE_ACTIVE)
 		return 0;
 
-	if (hd->copy_type == COMP_COPY_BLOCKING)
-		flags |= DMA_COPY_BLOCKING;
-	else if (hd->copy_type == COMP_COPY_ONE_SHOT)
-		flags |= DMA_COPY_ONE_SHOT;
-
-	/* update first transfer manually */
-	if (!dev->position && flags & COMP_COPY_ONE_SHOT)
-		host_one_shot_cb(dev, hd->dma_buffer->stream.size);
-
-	copy_bytes = host_buffer_get_copy_bytes(dev);
-	if (!copy_bytes) {
-		comp_info(dev, "host_copy(): no bytes to copy");
-		return ret;
-	}
-
-	/* reconfigure transfer */
-	ret = dma_set_config(hd->chan, &hd->config);
-	if (ret < 0) {
-		comp_cl_err(&comp_host, "host_copy(): dma_set_config() failed, ret = %u",
-			    ret);
-		return ret;
-	}
-
-	ret = dma_copy(hd->chan, copy_bytes, flags);
-	if (ret < 0) {
-		comp_cl_err(&comp_host, "host_copy(): dma_copy() failed, ret = %u",
-			    ret);
-		return ret;
-	}
-
-	return ret;
+	return hd->copy(dev);
 }
 
 static int host_set_attribute(struct comp_dev *dev, uint32_t type,
