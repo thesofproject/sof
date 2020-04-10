@@ -57,6 +57,14 @@ define(`COMP_FORMAT_VALUE',
 	$1, `s32le', `0x02',
 	)')
 
+# note: only support number < 256 at the moment
+dnl DEC2HEX(dec_num)
+define(`DEC2HEX',
+`ifelse(
+	eval(`$1 < 16'), `1', concat(`0x0',eval($1, 16)),
+	eval(`$1 < 256'), `1', concat(`0x',eval($1, 16)),
+	)')
+
 dnl P_GRAPH(NAME, PIPELINE_ID, CONNECTIONS)
 define(`P_GRAPH',
 `SectionGraph.STR($1 $2) {'
