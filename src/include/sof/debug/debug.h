@@ -153,7 +153,6 @@ static inline uint32_t dump_stack(uint32_t p, void *addr, size_t offset,
 
 	/* is stack smashed ? */
 	if (stack_top - offset <= stack_limit) {
-		stack_bottom = stack_limit;
 		p = SOF_IPC_PANIC_STACK;
 		return p;
 	}
