@@ -187,7 +187,7 @@ static inline struct trace *trace_get(void)
  * above, it might also propagate log messages to mbox if desired.
  *
  * First argument is always class of event being logged, as defined in
- * uapi/logging.h.
+ * user/trace.h - TRACE_CLASS_*.
  * Second argument is string literal in printf format, followed by up to 4
  * parameters (uint32_t), that are used to expand into string fromat when
  * parsing log data.
