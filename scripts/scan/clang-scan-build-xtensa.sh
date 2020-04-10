@@ -90,7 +90,8 @@ fi
 # However clang tries to pass all flags to original compiler, so we need to put
 # proxy compiler in the middle that is going to filter out unsupported flags.
 PROXY_CC=$COMPILER PROXY_REMOVE_FLAGS=-m32 \
-	scan-build $VERBOSE_SCAN_BUILD --use-cc="$PROXY_COMPILER" -o report \
+	scan-build $VERBOSE_SCAN_BUILD --status-bugs \
+	--use-cc="$PROXY_COMPILER" -o report \
 	make sof -j$JOBS
 
 cd "$WORKDIR"
