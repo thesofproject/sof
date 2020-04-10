@@ -38,12 +38,6 @@ void *rballoc_align(uint32_t flags, uint32_t caps, size_t bytes,
 	return malloc(bytes);
 }
 
-void *rrealloc(void *ptr, enum mem_zone zone, uint32_t flags, uint32_t caps,
-	       size_t bytes, size_t old_bytes)
-{
-	return realloc(ptr, bytes);
-}
-
 void *rbrealloc_align(void *ptr, uint32_t flags, uint32_t caps, size_t bytes,
 		      size_t old_bytes, uint32_t alignment)
 {

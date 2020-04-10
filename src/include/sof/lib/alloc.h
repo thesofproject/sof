@@ -108,22 +108,6 @@ static inline void *rballoc(uint32_t flags, uint32_t caps, size_t bytes)
 }
 
 /**
- * Changes size of the memory block.
- * @param ptr Address of the block to resize.
- * @param zone Zone, see enum mem_zone.
- * @param flags Flags, see SOF_MEM_FLAG_...
- * @param caps Capabilities, see SOF_MEM_CAPS_...
- * @param bytes New size in bytes.
- * @param old_bytes Old size in bytes.
- * @return Pointer to the resized memory or NULL if failed.
- *
- * Note: Do not use for buffers (SOF_MEM_ZONE_BUFFER zone).
- * Use rbrealloc(), rbrealloc_align() to reallocate memory for buffers.
- */
-void *rrealloc(void *ptr, enum mem_zone zone, uint32_t flags, uint32_t caps,
-	       size_t bytes, size_t old_bytes);
-
-/**
  * Changes size of the memory block allocated from SOF_MEM_ZONE_BUFFER.
  * @param ptr Address of the block to resize.
  * @param flags Flags, see SOF_MEM_FLAG_...
