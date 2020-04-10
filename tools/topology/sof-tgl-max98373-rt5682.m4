@@ -197,6 +197,14 @@ dnl SSP_CONFIG_DATA(type, idx, valid bits, mclk_id)
 dnl mclk_id is optional
 dnl ssp1-maxmspk, ssp0-RTHeadset
 
+#SSP 1 (ID: 7)
+#DAI_CONFIG(SSP, 1, 7, SSP1-Codec,
+#	SSP_CONFIG(DSP_B, SSP_CLOCK(mclk, 38400000, codec_mclk_in),
+#		      SSP_CLOCK(bclk, 9600000, codec_slave),
+#		      SSP_CLOCK(fsync, 48000, codec_slave),
+#		      SSP_TDM(8, 25, 3, 3),
+#		      SSP_CONFIG_DATA(SSP, 1, 24)))
+
 #SSP 0 (ID: 0)
 DAI_CONFIG(SSP, 0, 0, SSP0-Codec,
         SSP_CONFIG(I2S, SSP_CLOCK(mclk, 19200000, codec_mclk_in),
