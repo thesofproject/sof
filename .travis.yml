@@ -9,17 +9,19 @@ services:
   - docker
 
 # We don't need the strict sequence of stages; for now we use stages
-# only as presentation labels.  The strict order hurts only in case of a
-# failure however there are only basic, non-flaky tests here.
+# only as presentation labels. Nothing in stage "tests" will run if
+# anything in buildonly fails; in the future we may want to get rid of
+# stages.
 stages:
   - buildonly
-  - qemutest
-  - testbench
-  - doxygen
+  - tests
 
 
+# 'name:'-less jobs appear with their env, e.g.: PLATFORM=sue
 jobs:
   include:
+
+    # stage buildonly
 
     - &build-platform
       stage: buildonly
@@ -34,17 +36,18 @@ jobs:
       env: PLATFORM='jsl'
 
     - name: "./scripts/build-tools.sh"
-      stage: buildonly
       before_install: *docker-pull-sof
       script: ./scripts/docker-run.sh ./scripts/build-tools.sh
 
     - name: "./scripts/host-build-all.sh"
-      stage: buildonly
       before_install: *docker-pull-sof
       script: ./scripts/docker-run.sh ./scripts/host-build-all.sh -l
 
+
+    # stage tests
+
     - &qemuboottest
-      stage: qemutest
+      stage: tests
       script:
         - sed -i $(($(grep "config HAVE_AGENT" -n src/platform/Kconfig | cut -f1 -d:)+2))"s/default y/default n/" src/platform/Kconfig
         - ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -r -j $PLATFORM
@@ -67,7 +70,7 @@ jobs:
       env: PLATFORM='imx8 imx8x imx8m'
 
 
-    - stage: testbench
+    - name: testbench
       # Disabled for as long as host-testbench.sh ignores failures, see
       # https://github.com/thesofproject/sof/issues/2752
       if: false
@@ -78,7 +81,7 @@ jobs:
         - ./scripts/host-testbench.sh
 
 
-    - stage: doxygen
+    - name: doxygen
 
       before_install: sudo apt-get -y install ninja-build doxygen graphviz
 
