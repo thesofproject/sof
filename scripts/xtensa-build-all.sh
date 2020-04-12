@@ -10,6 +10,7 @@ BUILD_FORCE_UP=no
 BUILD_JOBS=$(nproc --all)
 BUILD_JOBS_NEXT=0
 BUILD_VERBOSE=
+PLATFORMS=()
 
 PATH=$pwd/local/bin:$PATH
 
@@ -64,14 +65,14 @@ else
 		# Build all platforms
 		elif [[ "$args" == "-a" ]]
 			then
-			PLATFORMS=${SUPPORTED_PLATFORMS[@]}
+			PLATFORMS=("${SUPPORTED_PLATFORMS[@]}")
 		else
 			# check for plaform
 			for i in ${SUPPORTED_PLATFORMS[@]}
 			do
 				if [ $i == $args ]
 				then
-					PLATFORMS+=$i" "
+					PLATFORMS=("${PLATFORMS[@]}" "$i")
 					BUILD_JOBS_NEXT=0
 					continue 2
 				fi
@@ -114,7 +115,7 @@ OLDPATH=$PATH
 WORKDIR="$pwd"
 
 # build platform
-for j in ${PLATFORMS[@]}
+for j in "${PLATFORMS[@]}"
 do
 	HAVE_ROM='no'
 	DEFCONFIG_PATCH=''
