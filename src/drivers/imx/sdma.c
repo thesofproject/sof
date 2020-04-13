@@ -407,10 +407,10 @@ static struct dma_chan_data *sdma_channel_get(struct dma *dma,
 	struct dma_chan_data *channel;
 	struct sdma_chan *cdata;
 	int i;
-	/* Ignoring channel; let's just allocate a free channel */
+	/* Ignoring channel 0; let's just allocate a free channel */
 
 	tracev_sdma("sdma_channel_get");
-	for (i = 0; i < dma->plat_data.channels; i++) {
+	for (i = 1; i < dma->plat_data.channels; i++) {
 		channel = &dma->chan[i];
 		if (channel->status != COMP_STATE_INIT)
 			continue;
@@ -486,16 +486,9 @@ static int sdma_start(struct dma_chan_data *channel)
 
 	tracev_sdma("sdma_start(%d)", channel->index);
 
-	if (channel->index) {
-		/* rest of the channels are prepared first */
-		if (channel->status != COMP_STATE_PREPARE &&
-		    channel->status != COMP_STATE_SUSPEND)
-			return -EINVAL;
-	} else {
-		/* channel 0 doesn't get set_config set on */
-		if (channel->status != COMP_STATE_READY)
-			return -EINVAL;
-	}
+	if (channel->status != COMP_STATE_PREPARE &&
+	    channel->status != COMP_STATE_SUSPEND)
+		return -EINVAL;
 
 	channel->status = COMP_STATE_ACTIVE;
 
