@@ -208,6 +208,8 @@ static void sdma_init_c0(struct dma *dma)
 	pdata->ccb = sdma_pdata->ccb_array;
 	pdata->hw_event = -1;
 	dma_chan_set_data(c0, pdata);
+
+	dma_reg_write(dma, SDMA_CHNPRI(0), SDMA_MAXPRI);
 }
 
 static int sdma_boot(struct dma *dma)
