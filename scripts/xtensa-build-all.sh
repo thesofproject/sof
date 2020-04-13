@@ -138,9 +138,7 @@ do
 		XTENSA_CORE="X4H3I16w2D48w3a_2017_8"
 
 		# test APL compiler aliases and ignore set -e here
-		type xtensa-bxt-elf-gcc > /dev/null 2>&1 && true
-		if [ $? == 0 ]
-		then
+		if type xtensa-bxt-elf-gcc; then
 			HOST="xtensa-bxt-elf"
 		else
 			HOST="xtensa-apl-elf"
@@ -157,9 +155,7 @@ do
 		XTENSA_CORE="X4H3I16w2D48w3a_2017_8"
 
 		# test APL compiler aliases and ignore set -e here
-		type xtensa-bxt-elf-gcc > /dev/null 2>&1 && true
-		if [ $? == 0 ]
-		then
+		if type xtensa-bxt-elf-gcc; then
 			HOST="xtensa-bxt-elf"
 		else
 			HOST="xtensa-apl-elf"
@@ -176,9 +172,7 @@ do
 		XTENSA_CORE="X4H3I16w2D48w3a_2017_8"
 
 		# test APL compiler aliases and ignore set -e here
-		type xtensa-bxt-elf-gcc > /dev/null 2>&1 && true
-		if [ $? == 0 ]
-		then
+		if type xtensa-bxt-elf-gcc; then
 			HOST="xtensa-bxt-elf"
 		else
 			HOST="xtensa-apl-elf"
