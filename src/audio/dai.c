@@ -56,6 +56,7 @@ struct dai_data {
 
 	uint32_t dai_pos_blks;	/* position in bytes (nearest block) */
 	uint64_t start_position;	/* position on start */
+	uint32_t period_bytes;	/**< number of bytes per one period */
 
 	/* host can read back this value without IPC */
 	uint64_t *dai_pos;
@@ -446,6 +447,8 @@ static int dai_params(struct comp_dev *dev,
 		return -EINVAL;
 	}
 
+	dd->period_bytes = period_bytes;
+
 	/* calculate DMA buffer size */
 	buffer_size = ALIGN_UP(period_count * period_bytes, align);
 
@@ -679,8 +682,13 @@ static int dai_copy(struct comp_dev *dev)
 	} else {
 		src_samples = avail_bytes / get_sample_bytes(dd->frame_fmt);
 		sink_samples = audio_stream_get_free_samples(&buf->stream);
-		copy_bytes = MIN(src_samples, sink_samples) *
-			     get_sample_bytes(dd->frame_fmt);
+
+		/* limit bytes per copy to one period for the whole pipeline
+		 * in order to avoid high load spike
+		 */
+		copy_bytes = MIN(dd->period_bytes,
+				 MIN(src_samples, sink_samples) *
+				 get_sample_bytes(dd->frame_fmt));
 	}
 
 	buffer_unlock(buf, flags);

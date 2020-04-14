@@ -87,6 +87,7 @@ struct host_data {
 	uint32_t dma_copy_align; /**< Minimal chunk of data possible to be
 				   *  copied by dma connected to host
 				   */
+	uint32_t period_bytes;	/**< number of bytes per one period */
 
 	host_copy_func copy;	/**< host copy function */
 	pcm_converter_func process;	/**< processing function */
@@ -336,8 +337,12 @@ static uint32_t host_get_copy_bytes_normal(struct comp_dev *dev)
 
 	/* calculate minimum size to copy */
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
-		copy_bytes = MIN(avail_bytes,
-				 hd->local_buffer->stream.free);
+		/* limit bytes per copy to one period for the whole pipeline
+		 * in order to avoid high load spike
+		 */
+		copy_bytes = MIN(hd->period_bytes,
+				 MIN(avail_bytes,
+				     hd->local_buffer->stream.free));
 	else
 		copy_bytes = MIN(hd->local_buffer->stream.avail,
 				 free_bytes);
@@ -759,6 +764,9 @@ static int host_params(struct comp_dev *dev,
 
 		return err;
 	}
+
+	/* minimal copied data shouldn't be less than alignment */
+	hd->period_bytes = ALIGN_UP(period_bytes, hd->dma_copy_align);
 
 	/* set up callback */
 	notifier_register(dev, hd->chan, NOTIFIER_ID_DMA_COPY, host_dma_cb);
