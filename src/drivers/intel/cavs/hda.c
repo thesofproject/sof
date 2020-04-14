@@ -12,6 +12,7 @@
 #include <sof/lib/uuid.h>
 #include <ipc/dai.h>
 #include <ipc/stream.h>
+#include <ipc/topology.h>
 
 /* bc9ebe20-4577-41bb-9eed-d0cb236328da */
 DECLARE_SOF_UUID("hda-dai", hda_uuid, 0xbc9ebe20, 0x4577, 0x41bb,
@@ -25,6 +26,13 @@ static int hda_trigger(struct dai *dai, int cmd, int direction)
 static int hda_set_config(struct dai *dai,
 			  struct sof_ipc_dai_config *config)
 {
+	struct hda_pdata *hda = dai_get_drvdata(dai);
+
+	if (config->hda.channels || config->hda.rate) {
+		hda->params.channels = config->hda.channels;
+		hda->params.rate = config->hda.rate;
+	}
+
 	return 0;
 }
 
@@ -32,11 +40,44 @@ static int hda_set_config(struct dai *dai,
 static int hda_get_hw_params(struct dai *dai,
 			     struct sof_ipc_stream_params  *params, int dir)
 {
+	struct hda_pdata *hda = dai_get_drvdata(dai);
+
+	params->rate = hda->params.rate;
+	params->channels = hda->params.channels;
+
 	/* 0 means variable */
-	params->rate = 0;
-	params->channels = 0;
 	params->buffer_fmt = 0;
 	params->frame_fmt = 0;
+
+	return 0;
+}
+
+static int hda_probe(struct dai *dai)
+{
+	struct hda_pdata *hda;
+
+	dai_info(dai, "hda_probe()");
+
+	if (dai_get_drvdata(dai))
+		return -EEXIST;
+
+	hda = rzalloc(SOF_MEM_ZONE_SYS_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+		      sizeof(*hda));
+	if (!hda) {
+		dai_err(dai, "hda_probe() error: alloc failed");
+		return -ENOMEM;
+	}
+	dai_set_drvdata(dai, hda);
+
+	return 0;
+}
+
+static int hda_remove(struct dai *dai)
+{
+	dai_info(dai, "hda_remove()");
+
+	rfree(dai_get_drvdata(dai));
+	dai_set_drvdata(dai, NULL);
 
 	return 0;
 }
@@ -170,8 +211,8 @@ const struct dai_driver hda_driver = {
 		.get_hw_params		= hda_get_hw_params,
 		.get_handshake		= hda_get_handshake,
 		.get_fifo		= hda_get_fifo,
-		.probe			= hda_dummy,
-		.remove			= hda_dummy,
+		.probe			= hda_probe,
+		.remove			= hda_remove,
 	},
 	.ts_ops = {
 		.ts_config		= hda_ts_config,
