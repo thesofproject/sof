@@ -128,7 +128,7 @@ static uint32_t elf_to_file_offset(struct image *image,
 {
 	uint32_t elf_addr = section->vaddr, file_offset = 0;
 
-	if (section->type == SHT_PROGBITS) {
+	if (section->type == SHT_PROGBITS || section->type == SHT_INIT_ARRAY) {
 		if (section->flags & SHF_EXECINSTR) {
 			/* text segment */
 			file_offset = elf_addr - module->text_start +
@@ -160,6 +160,8 @@ static int man_copy_sram(struct image *image, Elf32_Shdr *section,
 	size_t count;
 
 	switch (section->type) {
+	case SHT_INIT_ARRAY:
+		/* fall through */
 	case SHT_PROGBITS:
 		/* text or data */
 		if (section->flags & SHF_EXECINSTR)

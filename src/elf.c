@@ -93,6 +93,8 @@ static int elf_read_sections(struct image *image, struct module *module,
 			module->bss_size += section[i].size;
 			module->num_bss++;
 			break;
+		case SHT_INIT_ARRAY:
+			/* fall through */
 		case SHT_PROGBITS:
 			/* text or data */
 			module->fw_size += section[i].size;
@@ -244,6 +246,8 @@ static void elf_module_size(struct image *image, struct module *module,
 			    Elf32_Shdr *section, int index)
 {
 	switch (section->type) {
+	case SHT_INIT_ARRAY:
+		/* fall through */
 	case SHT_PROGBITS:
 		/* text or data */
 		if (section->flags & SHF_EXECINSTR) {
