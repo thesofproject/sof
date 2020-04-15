@@ -63,7 +63,9 @@ struct pipeline *pipeline_new(struct sof_ipc_pipe_new *pipe_desc,
 	struct pipeline *p;
 	int ret;
 
-	pipe_cl_info("pipeline_new()");
+	pipe_cl_info("pipeline new pipe_id %d period %d priority %d",
+		     pipe_desc->pipeline_id, pipe_desc->period,
+		     pipe_desc->priority);
 
 	/* allocate new pipeline */
 	p = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*p));
@@ -107,8 +109,10 @@ int pipeline_connect(struct comp_dev *comp, struct comp_buffer *buffer,
 {
 	uint32_t flags;
 
-	pipe_cl_info("pipeline: connect comp %d and buffer %d",
-		     dev_comp_id(comp), buffer->id);
+	if (dir == PPL_CONN_DIR_COMP_TO_BUFFER)
+		comp_info(comp, "connect buffer %d as sink", buffer->id);
+	else
+		comp_info(comp, "connect buffer %d as source", buffer->id);
 
 	irq_local_disable(flags);
 	list_item_prepend(buffer_comp_list(buffer, dir),
@@ -208,7 +212,7 @@ int pipeline_complete(struct pipeline *p, struct comp_dev *source,
 		.comp_data = &data,
 	};
 
-	pipe_info(p, "pipeline_complete()");
+	pipe_info(p, "pipeline complete");
 
 	/* check whether pipeline is already completed */
 	if (p->status != COMP_STATE_INIT) {
