@@ -70,7 +70,7 @@ rm -fr $BUILD_DIR
 mkdir $BUILD_DIR
 cd $BUILD_DIR
 
-scan-build $VERBOSE_SCAN_BUILD cmake \
+scan-build-11 $VERBOSE_SCAN_BUILD cmake \
 	-DBUILD_CLANG_SCAN=ON \
 	-DTOOLCHAIN=$TOOLCHAIN \
 	-DROOT_DIR=$ROOT_DIR \
@@ -90,7 +90,7 @@ fi
 # However clang tries to pass all flags to original compiler, so we need to put
 # proxy compiler in the middle that is going to filter out unsupported flags.
 PROXY_CC=$COMPILER PROXY_REMOVE_FLAGS=-m32 \
-	scan-build $VERBOSE_SCAN_BUILD --use-cc="$PROXY_COMPILER" -o report \
+	scan-build-11 $VERBOSE_SCAN_BUILD --use-cc="$PROXY_COMPILER" -o report \
 	make sof -j$JOBS
 
 cd "$WORKDIR"
