@@ -389,11 +389,64 @@ static int pipeline_comp_hw_params(struct comp_dev *current,
 	return 0;
 }
 
+static int pipeline_comp_params_neg(struct comp_dev *current,
+				    struct comp_buffer *calling_buf,
+				    struct pipeline_walk_context *ctx,
+				    int dir)
+{
+	struct pipeline_data *ppl_data = ctx->comp_data;
+	uint32_t flags = 0;
+	int err = 0;
+
+	pipe_dbg(ppl_data->p, "pipeline_comp_params_neg(), current->comp.id = %u, dir = %u",
+		 dev_comp_id(current), dir);
+
+	/* check if 'current' is already configured */
+	if (current->state != COMP_STATE_INIT &&
+	    current->state != COMP_STATE_READY) {
+		/* return 0 if params matches */
+		if (buffer_params_match(calling_buf,
+					&ppl_data->params->params,
+					BUFF_PARAMS_FRAME_FMT |
+					BUFF_PARAMS_RATE))
+			return 0;
+		/*
+		 * the param is conflict with an active pipeline,
+		 * drop an error and reject the .params() command.
+		 */
+		pipe_err(ppl_data->p, "pipeline_comp_params_neg(): params conflict with existed active pipeline!");
+		return -EINVAL;
+	}
+
+	/*
+	 * Negotiation only happen when the current component has > 1
+	 * source or sink, we are propagating the params to branched
+	 * buffers, and the subsequent component's .params() or .prepare()
+	 * should be responsible for calibrating if needed. For example,
+	 * a component who has different channels input/output buffers
+	 * should explicitly configure the channels of the branched buffers.
+	 */
+	if (calling_buf) {
+		buffer_lock(calling_buf, &flags);
+		err = buffer_set_params(calling_buf,
+					&ppl_data->params->params,
+					BUFFER_UPDATE_FORCE);
+		buffer_unlock(calling_buf, flags);
+	}
+
+	return err;
+}
+
 static int pipeline_comp_params(struct comp_dev *current,
 				struct comp_buffer *calling_buf,
 				struct pipeline_walk_context *ctx, int dir)
 {
 	struct pipeline_data *ppl_data = ctx->comp_data;
+	struct pipeline_walk_context param_neg_ctx = {
+		.comp_func = pipeline_comp_params_neg,
+		.comp_data = ppl_data,
+		.skip_incomplete = true,
+	};
 	int stream_direction = ppl_data->params->params.direction;
 	int end_type;
 	int err;
@@ -426,6 +479,11 @@ static int pipeline_comp_params(struct comp_dev *current,
 	/* don't do any params if current is running */
 	if (current->state == COMP_STATE_ACTIVE)
 		return 0;
+
+	/* do params negotiation with other branches(opposite direction) */
+	err = pipeline_for_each_comp(current, &param_neg_ctx, !dir);
+	if (err < 0 || err == PPL_STATUS_PATH_STOP)
+		return err;
 
 	/* set comp direction */
 	current->direction = ppl_data->params->params.direction;
