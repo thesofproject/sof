@@ -236,7 +236,7 @@ static int ipc_stream_pcm_params(uint32_t stream)
 	if (!cpu_is_me(pcm_dev->core))
 		return ipc_process_on_core(pcm_dev->core);
 
-	trace_ipc("ipc: comp %d -> params", pcm_params.comp_id);
+	tracev_ipc("ipc: comp %d -> params", pcm_params.comp_id);
 
 	/* sanity check comp */
 	if (!pcm_dev->cd->pipeline) {
@@ -354,7 +354,7 @@ static int ipc_stream_pcm_free(uint32_t header)
 	if (!cpu_is_me(pcm_dev->core))
 		return ipc_process_on_core(pcm_dev->core);
 
-	trace_ipc("ipc: comp %d -> free", free_req.comp_id);
+	tracev_ipc("ipc: comp %d -> free", free_req.comp_id);
 
 	/* sanity check comp */
 	if (!pcm_dev->cd->pipeline) {
@@ -438,7 +438,7 @@ static int ipc_stream_trigger(uint32_t header)
 	if (!cpu_is_me(pcm_dev->core))
 		return ipc_process_on_core(pcm_dev->core);
 
-	trace_ipc("ipc: comp %d -> trigger cmd 0x%x", stream.comp_id, ipc_cmd);
+	tracev_ipc("ipc: comp %d -> trigger cmd 0x%x", stream.comp_id, ipc_cmd);
 
 	switch (ipc_cmd) {
 	case SOF_IPC_STREAM_TRIG_START:
@@ -509,8 +509,8 @@ static int ipc_dai_config(uint32_t header)
 	/* copy message with ABI safe method */
 	IPC_COPY_CMD(config, ipc->comp_data);
 
-	trace_ipc("ipc: dai %d.%d -> config ", config.type,
-		  config.dai_index);
+	tracev_ipc("ipc: dai %d.%d -> config ", config.type,
+		   config.dai_index);
 
 	/* send params to all DAI components who use that physical DAI */
 	return ipc_comp_dai_config(ipc,
@@ -992,7 +992,7 @@ static int ipc_comp_value(uint32_t header, uint32_t cmd)
 	if (!cpu_is_me(comp_dev->core))
 		return ipc_process_on_core(comp_dev->core);
 
-	trace_ipc("ipc: comp %d -> cmd %d", data->comp_id, data->cmd);
+	tracev_ipc("ipc: comp %d -> cmd %d", data->comp_id, data->cmd);
 
 	/* get component values */
 	ret = comp_cmd(comp_dev->cd, cmd, data, SOF_IPC_MSG_MAX_SIZE);
@@ -1055,8 +1055,8 @@ static int ipc_glb_tplg_comp_new(uint32_t header)
 	if (!cpu_is_me(comp->core))
 		return ipc_process_on_core(comp->core);
 
-	trace_ipc("ipc: pipe %d comp %d -> new (type %d)", comp->pipeline_id,
-		  comp->id, comp->type);
+	tracev_ipc("ipc: pipe %d comp %d -> new (type %d)", comp->pipeline_id,
+		   comp->id, comp->type);
 
 	/* register component */
 	ret = ipc_comp_new(ipc, comp);
@@ -1091,9 +1091,9 @@ static int ipc_glb_tplg_buffer_new(uint32_t header)
 	if (!cpu_is_me(ipc_buffer.comp.core))
 		return ipc_process_on_core(ipc_buffer.comp.core);
 
-	trace_ipc("ipc: pipe %d buffer %d -> new (0x%x bytes)",
-		  ipc_buffer.comp.pipeline_id, ipc_buffer.comp.id,
-		  ipc_buffer.size);
+	tracev_ipc("ipc: pipe %d buffer %d -> new (0x%x bytes)",
+		   ipc_buffer.comp.pipeline_id, ipc_buffer.comp.id,
+		   ipc_buffer.size);
 
 	ret = ipc_buffer_new(ipc, (struct sof_ipc_buffer *)ipc->comp_data);
 	if (ret < 0) {
@@ -1128,7 +1128,7 @@ static int ipc_glb_tplg_pipe_new(uint32_t header)
 	if (!cpu_is_me(ipc_pipeline.core))
 		return ipc_process_on_core(ipc_pipeline.core);
 
-	trace_ipc("ipc: pipe %d -> new", ipc_pipeline.pipeline_id);
+	tracev_ipc("ipc: pipe %d -> new", ipc_pipeline.pipeline_id);
 
 	ret = ipc_pipeline_new(ipc,
 			       (struct sof_ipc_pipe_new *)ipc->comp_data);
