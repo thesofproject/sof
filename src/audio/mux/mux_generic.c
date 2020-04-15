@@ -380,17 +380,17 @@ mux_func mux_get_processing_function(struct comp_dev *dev)
 
 demux_func demux_get_processing_function(struct comp_dev *dev)
 {
-	struct comp_buffer *sinkb;
+	struct comp_buffer *sourceb;
 	uint8_t i;
 
-	if (list_is_empty(&dev->bsink_list))
+	if (list_is_empty(&dev->bsource_list))
 		return NULL;
 
-	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
-				source_list);
+	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer,
+				sink_list);
 
 	for (i = 0; i < ARRAY_SIZE(mux_func_map); i++) {
-		if (sinkb->stream.frame_fmt == mux_func_map[i].frame_format)
+		if (sourceb->stream.frame_fmt == mux_func_map[i].frame_format)
 			return mux_func_map[i].demux_proc_func;
 	}
 
