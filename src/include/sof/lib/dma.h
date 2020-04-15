@@ -319,6 +319,12 @@ static inline int dma_stop(struct dma_chan_data *channel)
 	return ret;
 }
 
+/** \defgroup sof_dma_copy_func static int dma_copy (struct dma_chan_data * channel, int bytes, uint32_t flags)
+ *
+ * This function is in a separate subgroup to solve a name clash with
+ * struct dma_copy {}
+ * @{
+ */
 static inline int dma_copy(struct dma_chan_data *channel, int bytes,
 			   uint32_t flags)
 {
@@ -329,6 +335,7 @@ static inline int dma_copy(struct dma_chan_data *channel, int bytes,
 
 	return ret;
 }
+/** @} */
 
 static inline int dma_pause(struct dma_chan_data *channel)
 {
