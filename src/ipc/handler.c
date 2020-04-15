@@ -94,13 +94,13 @@
 			___ret = memcpy_s(rx, rx_size, tx, tx->size);	\
 			assert(!___ret);				\
 			bzero((char *)rx + tx->size, rx_size - tx->size);\
-			trace_ipc("ipc: hdr 0x%x rx (%d) > tx (%d)",	\
-				  rx->cmd, rx_size, tx->size);		\
+			tracev_ipc("ipc: hdr 0x%x rx (%d) > tx (%d)",	\
+				   rx->cmd, rx_size, tx->size);		\
 		} else if (tx->size > rx_size) {			\
 			___ret = memcpy_s(rx, rx_size, tx, rx_size);	\
 			assert(!___ret);				\
-			trace_ipc("ipc: hdr 0x%x tx (%d) > rx (%d)",	\
-				  rx->cmd, tx->size, rx_size);		\
+			trace_ipc_warn("ipc: hdr 0x%x tx (%d) > rx (%d)",\
+				       rx->cmd, tx->size, rx_size);	\
 		} else	{						\
 			___ret = memcpy_s(rx, rx_size, tx, rx_size);	\
 			assert(!___ret);				\
