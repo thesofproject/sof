@@ -68,3 +68,6 @@ doc/Makefile
 # cscope files
 cscope.*
 ncscope.*
+
+# zephyr files
+zephyr/include/version.h
