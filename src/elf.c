@@ -466,7 +466,7 @@ int elf_validate_modules(struct image *image)
 
 int elf_find_section(const struct module *module, const char *name)
 {
-	Elf32_Ehdr *hdr = &module->hdr;
+	const Elf32_Ehdr *hdr = &module->hdr;
 	const Elf32_Shdr *section, *s;
 	char *buffer;
 	size_t count;
