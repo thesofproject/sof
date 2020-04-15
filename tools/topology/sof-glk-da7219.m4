@@ -63,7 +63,7 @@ define(DEF_PIPE_DMIC_CAPTURE, sof/pipe-DMICPROC-capture.m4)
 # Low Latency capture pipeline 4 on PCM 99 using max 4 channels of s32le.
 # 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(DEF_PIPE_DMIC_CAPTURE,
-	4, 99, 4, s16le,
+	4, 99, 4, s32le,
 	1000, 0, 0,
 	48000, 48000, 48000)
 
@@ -125,7 +125,7 @@ DAI_ADD(sof/pipe-dai-capture.m4,
 # Buffers use s32le format, 1000us deadline on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
 	4, DMIC, 0, dmic01,
-	PIPELINE_SINK_4, 2, s16le,
+	PIPELINE_SINK_4, 2, s32le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # playback DAI is iDisp1 using 2 periods
@@ -179,7 +179,7 @@ DAI_CONFIG(SSP, 2, 1, SSP2-Codec,
 # dmic01 (id: 2)
 DAI_CONFIG(DMIC, 0, 2, dmic01,
 	DMIC_CONFIG(1, 500000, 4800000, 40, 60, 48000,
-		DMIC_WORD_LENGTH(s16le), 400, DMIC, 0,
+		DMIC_WORD_LENGTH(s32le), 400, DMIC, 0,
 		PDM_CONFIG(DMIC, 0, FOUR_CH_PDM0_PDM1)))
 
 # 3 HDMI/DP outputs (ID: 3,4,5)
