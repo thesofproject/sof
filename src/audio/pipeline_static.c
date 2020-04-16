@@ -362,7 +362,6 @@ int init_static_pipeline(struct ipc *ipc)
 
 	/* create the pipelines */
 	for (i = 0; i < ARRAY_SIZE(pipeline); i++) {
-
 		/* create the pipeline */
 		ret = ipc_pipeline_new(ipc, &pipeline[i]);
 		if (ret < 0)
@@ -372,12 +371,10 @@ int init_static_pipeline(struct ipc *ipc)
 
 		/* register components for this pipeline */
 		for (j = 0; j < spipe[i].num_scomps; j++) {
-
 			/* all pipeline components have same header */
 			c = sc[j].comps;
 
 			for (k = 0; k < sc[j].num_comps; k++) {
-
 				ret = ipc_comp_new(ipc, c);
 				if (ret < 0)
 					goto error;
@@ -418,7 +415,6 @@ error:
 	pipe_cl_err("init_static_pipeline() error");
 
 	for (i = 0; i < ARRAY_SIZE(pipeline); i++) {
-
 		/* free pipeline */
 		ipc_pipeline_free(ipc, pipeline[i].pipeline_id);
 
