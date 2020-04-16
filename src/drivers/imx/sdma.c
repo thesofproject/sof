@@ -103,7 +103,7 @@ static int sdma_run_c0(struct dma *dma, uint8_t cmd, uint32_t buf_addr,
 		    cmd, buf_addr, sdma_addr, count);
 
 	c0data->desc[0].config = SDMA_BD_CMD(cmd) | SDMA_BD_COUNT(count)
-		| SDMA_BD_WRAP | SDMA_BD_DONE | SDMA_BD_INT | SDMA_BD_CONT;
+		| SDMA_BD_WRAP | SDMA_BD_DONE;
 	c0data->desc[0].buf_addr = buf_addr;
 	c0data->desc[0].buf_xaddr = sdma_addr;
 	if (sdma_addr)
