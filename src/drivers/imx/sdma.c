@@ -945,10 +945,10 @@ static int sdma_get_data_size(struct dma_chan_data *channel, uint32_t *avail,
 	*avail = *free = 0;
 	switch (channel->direction) {
 	case DMA_DIR_MEM_TO_DEV:
-		*avail = result_data;
+		*free = result_data;
 		break;
 	case DMA_DIR_DEV_TO_MEM:
-		*free = result_data;
+		*avail = result_data;
 		break;
 	default:
 		trace_sdma_error("sdma_get_data_size channel invalid direction");
