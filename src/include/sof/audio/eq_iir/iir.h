@@ -63,15 +63,15 @@ struct iir_state_df2t {
 };
 
 /*
- * \brief Returns the output of a biquad.
+ * \brief Returns the output of a biquad using its df2t form.
  *
  * 32 bit data, 32 bit coefficients and 64 bit state variables
  * \param in input to the biquad Q1.31
  * \param coef coefficients of the biquad Q2.30
  * \param delay delay of the biquads Q3.61
  */
-static inline int32_t iir_process_biquad(int32_t in, int32_t *coef,
-					 int64_t *delay)
+static inline int32_t iir_df2t_biquad(int32_t in, int32_t *coef,
+				      int64_t *delay)
 {
 	int32_t tmp;
 	int64_t acc;
