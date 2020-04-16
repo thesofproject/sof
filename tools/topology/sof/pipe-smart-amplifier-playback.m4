@@ -29,6 +29,47 @@ ifdef(`SMART_FB_CHANNELS',`',`errprint(note: Need to define feedback channel num
 )')
 
 #
+# Controls
+#
+
+# initial config params for smart_amp, aligned with struct sof_smart_amp_config
+CONTROLBYTES_PRIV(SMART_AMP_priv,
+`       bytes "0x53,0x4f,0x46,0x00,0x00,0x00,0x00,0x00,'
+`       0x18,0x00,0x00,0x00,0x00,0x00,0x00,0x03,'
+`       0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,'
+`       0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,'
+`       0x18,0x00,0x00,0x00,0x08,0x00,0x00,0x00,'
+`		0x00,0x01,0xff,0xff,0xff,0xff,0xff,0xff,'
+`		0xff,0xff,0x00,0x01,0xff,0xff,0xff,0xff"'
+)
+
+# Smart_amp Bytes control for config
+C_CONTROLBYTES(Smart_amp Config, PIPELINE_ID,
+        CONTROLBYTES_OPS(bytes, 258 binds the mixer control to bytes get/put handlers, 258, 258),
+        CONTROLBYTES_EXTOPS(258 binds the mixer control to bytes get/put handlers, 258, 258),
+        , , ,
+        CONTROLBYTES_MAX(, 304),
+        ,
+        SMART_AMP_priv)
+
+# Algorithm Model initial parameters
+CONTROLBYTES_PRIV(MODEL_priv,
+`       bytes "0x53,0x4f,0x46,0x00,0x01,0x00,0x00,0x00,'
+`       0x00,0x00,0x00,0x00,0x00,0x10,0x00,0x03,'
+`       0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,'
+`       0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00"'
+)
+
+# Detector Bytes control for Hotword Model blob
+C_CONTROLBYTES(Smart_amp Model, PIPELINE_ID,
+        CONTROLBYTES_OPS(bytes, 258 binds the mixer control to bytes get/put handlers, 258, 258),
+        CONTROLBYTES_EXTOPS(258 binds the mixer control to bytes get/put handlers, 258, 258),
+        , , ,
+        CONTROLBYTES_MAX(, 300000),
+        ,
+        MODEL_priv)
+
+#
 # Components and Buffers
 #
 
@@ -37,7 +78,7 @@ ifdef(`SMART_FB_CHANNELS',`',`errprint(note: Need to define feedback channel num
 W_PCM_PLAYBACK(PCM_ID, Smart Amplifier Playback, 2, 0)
 
 # Mux 0 has 2 sink and source periods.
-W_SMART_AMP(0, PIPELINE_FORMAT, 2, 2)
+W_SMART_AMP(0, PIPELINE_FORMAT, 2, 2, LIST(`             ', "Smart_amp Config", "Smart_amp Model"))
 
 # Low Latency Buffers
 W_BUFFER(0, COMP_BUFFER_SIZE(2,
