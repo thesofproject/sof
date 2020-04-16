@@ -42,9 +42,9 @@ struct ll_schedule_data {
 
 const struct scheduler_ops schedule_ll_ops;
 
-#define perf_ll_sched_trace(pcd, ll_sched)			\
-	trace_ll("perf ll_work peak plat %lu cpu %lu",		\
-		 (pcd)->plat_delta_peak, (pcd)->cpu_delta_peak)
+#define perf_ll_sched_trace(pcd, ll_sched)				\
+	trace_ll_atomic("perf ll_work peak plat %lu cpu %lu",		\
+			(pcd)->plat_delta_peak, (pcd)->cpu_delta_peak)
 
 static bool schedule_ll_is_pending(struct ll_schedule_data *sch)
 {
@@ -105,11 +105,11 @@ static void schedule_ll_tasks_execute(struct ll_schedule_data *sch,
 			/* don't enable irq, if no more tasks to do */
 			if (!atomic_sub(&sch->num_tasks, 1))
 				sch->domain->registered[cpu] = false;
-			trace_ll("task complete %p %s", (uintptr_t)task,
-				 task->uid);
-			trace_ll("num_tasks %d total_num_tasks %d",
-				 atomic_read(&sch->num_tasks),
-				 atomic_read(&sch->domain->total_num_tasks));
+			trace_ll_atomic("task complete %p %s", (uintptr_t)task,
+					task->uid);
+			trace_ll_atomic("num_tasks %d total_num_tasks %d",
+				atomic_read(&sch->num_tasks),
+				atomic_read(&sch->domain->total_num_tasks));
 		} else {
 			/* update task's start time */
 			schedule_ll_task_update_start(sch, task, last_tick);
@@ -213,9 +213,9 @@ static int schedule_ll_domain_set(struct ll_schedule_data *sch,
 		domain_enable(sch->domain, core);
 	}
 
-	trace_ll("num_tasks %d total_num_tasks %d",
-		 atomic_read(&sch->num_tasks),
-		 atomic_read(&sch->domain->total_num_tasks));
+	trace_ll_atomic("num_tasks %d total_num_tasks %d",
+			atomic_read(&sch->num_tasks),
+			atomic_read(&sch->domain->total_num_tasks));
 
 	platform_shared_commit(sch->domain, sizeof(*sch->domain));
 
@@ -245,9 +245,9 @@ static void schedule_ll_domain_clear(struct ll_schedule_data *sch,
 		}
 	}
 
-	trace_ll("num_tasks %d total_num_tasks %d",
-		 atomic_read(&sch->num_tasks),
-		 atomic_read(&sch->domain->total_num_tasks));
+	trace_ll_atomic("num_tasks %d total_num_tasks %d",
+			atomic_read(&sch->num_tasks),
+			atomic_read(&sch->domain->total_num_tasks));
 
 	platform_shared_commit(sch->domain, sizeof(*sch->domain));
 
@@ -302,9 +302,9 @@ static int schedule_ll_task(void *data, struct task *task, uint64_t start,
 
 	pdata = ll_sch_get_pdata(task);
 
-	trace_ll("task add %p %s", (uintptr_t)task, task->uid);
-	trace_ll("task params pri %d flags %d start %u period %u",
-		 task->priority, task->flags, start, period);
+	trace_ll_atomic("task add %p %s", (uintptr_t)task, task->uid);
+	trace_ll_atomic("task params pri %d flags %d start %u period %u",
+			task->priority, task->flags, start, period);
 
 	pdata->period = period;
 
@@ -389,7 +389,7 @@ static int schedule_ll_task_cancel(void *data, struct task *task)
 
 	irq_local_disable(flags);
 
-	trace_ll("task cancel %p %s", (uintptr_t)task, task->uid);
+	trace_ll_atomic("task cancel %p %s", (uintptr_t)task, task->uid);
 
 	/* check to see if we are scheduled */
 	list_for_item(tlist, &sch->tasks) {

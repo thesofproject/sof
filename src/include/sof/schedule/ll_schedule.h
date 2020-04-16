@@ -24,6 +24,9 @@ struct ll_schedule_domain;
 #define trace_ll(format, ...) \
 	trace_event(TRACE_CLASS_SCHEDULE_LL, format, ##__VA_ARGS__)
 
+#define trace_ll_atomic(format, ...) \
+	trace_event_atomic(TRACE_CLASS_SCHEDULE_LL, format, ##__VA_ARGS__)
+
 #define trace_ll_error(format, ...) \
 	trace_error(TRACE_CLASS_SCHEDULE_LL, format, ##__VA_ARGS__)
 
