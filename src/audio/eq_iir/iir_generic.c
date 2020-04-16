@@ -59,8 +59,7 @@ int32_t iir_df2t(struct iir_state_df2t *iir, int32_t x)
 	in = x;
 	for (j = 0; j < iir->biquads; j += iir->biquads_in_series) {
 		for (i = 0; i < iir->biquads_in_series; i++) {
-			in = iir_process_biquad(in, &iir->coef[c],
-						&iir->delay[d]);
+			in = iir_df2t_biquad(in, &iir->coef[c], &iir->delay[d]);
 			/* Proceed to next biquad coefficients and delay
 			 * lines.
 			 */

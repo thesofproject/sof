@@ -115,6 +115,14 @@ config COMP_SEL
 	help
 	  Select for SEL component
 
+config COMP_CROSSOVER
+	bool "Crossover Filter component"
+	default y
+	help
+	  Select for Crossover Filter component. A crossover can be used to
+	  split a signal into two or more frequency ranges, so that the outputs
+	  can be sent to drivers that are designed for those ranges.
+
 config COMP_DCBLOCK
 	bool "DC Blocking Filter component"
 	default y

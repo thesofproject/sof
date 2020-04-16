@@ -24,6 +24,9 @@ if(NOT CONFIG_LIBRARY)
 	if(CONFIG_COMP_DCBLOCK)
 		add_subdirectory(dcblock)
 	endif()
+	if(CONFIG_COMP_CROSSOVER)
+		add_subdirectory(crossover)
+	endif()
 	if(CONFIG_COMP_TONE)
 		add_local_sources(sof
 			tone.c
