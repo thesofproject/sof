@@ -276,8 +276,8 @@ static uint32_t host_get_copy_bytes_one_shot(struct comp_dev *dev)
 static int host_copy_one_shot(struct comp_dev *dev)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
-	uint32_t copy_bytes = 0;
-	int ret = 0;
+	uint32_t copy_bytes;
+	int ret;
 
 	comp_dbg(dev, "host_copy_one_shot()");
 
@@ -288,7 +288,7 @@ static int host_copy_one_shot(struct comp_dev *dev)
 	copy_bytes = host_get_copy_bytes_one_shot(dev);
 	if (!copy_bytes) {
 		comp_info(dev, "host_copy_one_shot(): no bytes to copy");
-		return ret;
+		return 0;
 	}
 
 	/* reconfigure transfer */
@@ -361,9 +361,9 @@ static uint32_t host_get_copy_bytes_normal(struct comp_dev *dev)
 static int host_copy_normal(struct comp_dev *dev)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
-	uint32_t copy_bytes = 0;
+	uint32_t copy_bytes;
 	uint32_t flags = 0;
-	int ret = 0;
+	int ret;
 
 	comp_dbg(dev, "host_copy_normal()");
 
@@ -373,7 +373,7 @@ static int host_copy_normal(struct comp_dev *dev)
 	copy_bytes = host_get_copy_bytes_normal(dev);
 	if (!copy_bytes) {
 		comp_info(dev, "host_copy_normal(): no bytes to copy");
-		return ret;
+		return 0;
 	}
 
 	ret = dma_copy(hd->chan, copy_bytes, flags);
