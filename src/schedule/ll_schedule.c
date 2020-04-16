@@ -43,8 +43,9 @@ struct ll_schedule_data {
 const struct scheduler_ops schedule_ll_ops;
 
 #define perf_ll_sched_trace(pcd, ll_sched)			\
-	trace_ll("perf ll_work peak plat %lu cpu %lu",		\
-		 (pcd)->plat_delta_peak, (pcd)->cpu_delta_peak)
+	trace_ll("perf ll_work peak plat %u cpu %u",		\
+		 (uint32_t)((pcd)->plat_delta_peak),		\
+		 (uint32_t)((pcd)->cpu_delta_peak))
 
 static bool schedule_ll_is_pending(struct ll_schedule_data *sch)
 {
