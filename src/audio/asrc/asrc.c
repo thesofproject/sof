@@ -626,7 +626,7 @@ static int asrc_prepare(struct comp_dev *dev)
 		comp_err(dev, "asrc_prepare(), allocation fail for size %d",
 			 cd->buf_size);
 		ret = -ENOMEM;
-		goto err_free_buf;
+		goto err;
 	}
 
 	sample_bytes = frame_bytes / sourceb->stream.channels;
