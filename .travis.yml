@@ -71,9 +71,6 @@ jobs:
 
 
     - name: testbench
-      # Disabled for as long as host-testbench.sh ignores failures, see
-      # https://github.com/thesofproject/sof/issues/2752
-      if: false
       before_install: *docker-pull-sof
       script:
         - ./scripts/docker-run.sh ./scripts/build-tools.sh -t &> /dev/null
