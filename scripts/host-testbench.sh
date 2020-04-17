@@ -12,7 +12,7 @@
 #
 
 function filesize() {
-  du -b $1 | awk '{print $1}'
+  du -b "$1" | awk '{print $1}'
 }
 
 function comparesize() {
@@ -38,16 +38,16 @@ function srcsize() {
   INPUT_RATE=$2
   OUTPUT_RATE=$3
   OUTPUT_SIZE=$(echo "${INPUT_SIZE}*${OUTPUT_RATE}/${INPUT_RATE}"|bc)
-  echo $OUTPUT_SIZE
+  echo "$OUTPUT_SIZE"
 }
 
-SCRIPTS_DIR=$(dirname ${BASH_SOURCE[0]})
+SCRIPTS_DIR=$(dirname "${BASH_SOURCE[0]}")
 SOF_DIR=$SCRIPTS_DIR/../
 TESTBENCH_DIR=${SOF_DIR}/tools/test/audio
 INPUT_FILE_SIZE=10240
 
-cd $TESTBENCH_DIR
-rm -rf *.raw
+cd "$TESTBENCH_DIR" || exit 2
+rm -rf ./*.raw
 
 # create input zeros raw file
 head -c ${INPUT_FILE_SIZE} < /dev/zero > zeros_in.raw
@@ -55,37 +55,57 @@ head -c ${INPUT_FILE_SIZE} < /dev/zero > zeros_in.raw
 # test with volume
 echo "=========================================================="
 echo "test volume with ./volume_run.sh 16 16 48000 zeros_in.raw volume_out.raw"
-./volume_run.sh 16 16 48000 zeros_in.raw volume_out.raw &>vol.log
-# VOL_SIZE=$(filesize volume_out.raw)
-# echo "VOL_SIZE is $VOL_SIZE"
-comparesize ${INPUT_FILE_SIZE} $(filesize volume_out.raw)
-if [[ $? -ne 0 ]]; then
+if ./volume_run.sh 16 16 48000 zeros_in.raw volume_out.raw &>vol.log; then
+  echo "volume test passed!"
+else
   echo "volume test failed!"
   cat vol.log
-else
-  echo "volume test passed!"
+  exit 1
 fi
 
-# # test with src
+if comparesize ${INPUT_FILE_SIZE} "$(filesize volume_out.raw)"; then
+  echo "volume_out size check passed!"
+else
+  echo "volume_out size check failed!"
+  cat vol.log
+  exit 1
+fi
+
+# test with src
 echo "=========================================================="
 echo "test src with ./src_run.sh 32 32 44100 48000 zeros_in.raw src_out.raw"
-./src_run.sh 32 32 44100 48000 zeros_in.raw src_out.raw &>src.log
-comparesize $(srcsize ${INPUT_FILE_SIZE} 44100 48000) $(filesize src_out.raw)
-if [[ $? -ne 0 ]]; then
+if ./src_run.sh 32 32 44100 48000 zeros_in.raw src_out.raw &>src.log; then
+  echo "src test passed!"
+else
   echo "src test failed!"
   cat src.log
+  exit 1
+fi
+
+if comparesize "$(srcsize ${INPUT_FILE_SIZE} 44100 48000)" "$(filesize src_out.raw)";then
+  echo "src_out size check passed!"
 else
-  echo "src test passed!"
+  echo "src_out size check failed!"
+  cat src.log
+  exit 1
 fi
 
 # test with eq
 echo "=========================================================="
 echo "test eqiir with ./eqiir_run.sh 16 16 48000 zeros_in.raw eqiir_out.raw"
-./eqiir_run.sh 16 16 48000 zeros_in.raw eqiir_out.raw &>eqiir.log
-comparesize $INPUT_FILE_SIZE $(filesize volume_out.raw)
-if [[ $? -ne 0 ]]; then
+if ./eqiir_run.sh 16 16 48000 zeros_in.raw eqiir_out.raw &>eqiir.log; then
+  echo "eqiir test passed!"
+else
   echo "eqiir test failed!"
   cat eqiir.log
+  exit 1
+fi
+
+
+if comparesize $INPUT_FILE_SIZE "$(filesize eqiir_out.raw)"; then
+  echo "eqiir_out size check passed!"
 else
-  echo "eqiir test passed!"
+  echo "eqiir_out size check failed!"
+  cat eqiir.log
+  exit 1
 fi
