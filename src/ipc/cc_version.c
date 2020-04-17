@@ -11,18 +11,15 @@
 
 /* copy CC_NAME to const arrays during compilation time */
 #define CC_NAME_COPY(field) \
-	field = CC_NAME, \
-	field[ARRAY_SIZE(((struct sof_ipc_cc_version *)(0))->name) - 1] = 0
+	field = CC_NAME "\0"
 
 /* copy CC_OPTIM to const arrays during compilation time */
 #define CC_OPTIM_COPY(field) \
-	field = CC_OPTIMIZE_FLAGS, \
-	field[ARRAY_SIZE(((struct sof_ipc_cc_version *)(0))->optim) - 1] = 0
+	field = CC_OPTIMIZE_FLAGS "\0"
 
 /* copy CC_DESC to arrays during compilation time */
 #define CC_DESC_COPY(field) \
-	field = CC_DESC, \
-	field[ARRAY_SIZE(((struct sof_ipc_cc_version *)(0))->desc) - 1] = 0
+	field = CC_DESC "\0"
 
 const struct sof_ipc_cc_version cc_version
 	__section(".fw_ready_metadata") = {
