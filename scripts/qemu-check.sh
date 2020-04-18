@@ -7,18 +7,33 @@ READY_MSG="6c 00 00 00 00 00 00 70"
 
 rm -f dump-*.txt
 
+print_usage()
+{
+	cat <<EOF
+usage: qemu-check.sh platform(s)
+	Supported platforms are ${SUPPORTED_PLATFORMS[*]}
+EOF
+}
+
+while getopts "" OPTION; do
+	case "$OPTION" in
+		*) print_usage; exit 1 ;;
+	esac
+done
+shift $((OPTIND-1))
+
 PLATFORMS=()
-if [ "$#" -eq 0 ]
-then
+if [ "$#" -eq 0 ]; then
 	PLATFORMS=("${SUPPORTED_PLATFORMS[@]}")
 else
-	for args in $@
-	do
-		for i in ${SUPPORTED_PLATFORMS[@]}
-		do
-			if [ $i == $args ]
-			then
-				PLATFORMS=("${PLATFORMS[@]}" "$i")
+	for arg in "$@"; do
+		platform=unknown
+		for sp in "${SUPPORTED_PLATFORMS[@]}"; do
+			if [ x"$sp" = x"$arg" ]; then
+				PLATFORMS=("${PLATFORMS[@]}" "$sp")
+				platform=$sp
+				shift
+				break
 			fi
 		done
 	done
