@@ -46,87 +46,88 @@ then
 	exit 1
 fi
 
-for j in "${PLATFORMS[@]}"
+for platform in "${PLATFORMS[@]}"
 do
-	FWNAME="sof-$j.ri"
-	PLATFORM=$j
+	FWNAME="sof-$platform.ri"
+	PLATFORM=$platform
 	# reset variable to avoid issue in random order
 	ROM=''
 	OUTBOX_OFFSET=''
-	if [ $j == "byt" ]
-	then
-		READY_IPC="00 88 02 70 00 00 00 80"
-		SHM_IPC_REG=qemu-bridge-shim-io
-		SHM_MBOX=qemu-bridge-mbox-io
-	fi
-	if [ $j == "cht" ]
-	then
-		READY_IPC="00 88 02 70 00 00 00 80"
-		SHM_IPC_REG=qemu-bridge-shim-io
-		SHM_MBOX=qemu-bridge-mbox-io
-	fi
-	if [ $j == "bdw" ]
-	then
-		READY_IPC="00 3c 01 80"
-		OUTBOX_OFFSET="9e000"
-		SHM_IPC_REG=qemu-bridge-shim-io
-		SHM_MBOX=qemu-bridge-dram-mem
-	fi
-	if [ $j == "hsw" ]
-	then
-		READY_IPC="00 fc 00 80"
-		OUTBOX_OFFSET="7e000"
-		SHM_IPC_REG=qemu-bridge-shim-io
-		SHM_MBOX=qemu-bridge-dram-mem
-	fi
-	if [ $j == "apl" ]
-	then
-		READY_IPC="00 00 00 f0"
-		SHM_IPC_REG="qemu-bridge-ipc(|-dsp)-io"
-		OUTBOX_OFFSET="7000"
-		SHM_MBOX=qemu-bridge-hp-sram-mem
-		ROM="-r ../sof.git/build_${j}_gcc/src/arch/xtensa/rom-$j.bin"
-	fi
-	if [ $j == "skl" ]
-	then
-		READY_IPC="00 00 00 f0"
-		SHM_IPC_REG="qemu-bridge-ipc(|-dsp)-io"
-		OUTBOX_OFFSET="7000"
-		SHM_MBOX=qemu-bridge-hp-sram-mem
-		ROM="-r ../sof.git/build_${j}_gcc/src/arch/xtensa/rom-$j.bin"
-	fi
-	if [ $j == "kbl" ]
-	then
-		READY_IPC="00 00 00 f0"
-		SHM_IPC_REG="qemu-bridge-ipc(|-dsp)-io"
-		OUTBOX_OFFSET="7000"
-		SHM_MBOX=qemu-bridge-hp-sram-mem
-		ROM="-r ../sof.git/build_${j}_gcc/src/arch/xtensa/rom-$j.bin"
-	fi
-	if [ $j == "cnl" ]
-	then
-		READY_IPC="00 00 00 f0"
-		SHM_IPC_REG="qemu-bridge-ipc(|-dsp)-io"
-		OUTBOX_OFFSET="5000"
-		SHM_MBOX=qemu-bridge-hp-sram-mem
-		ROM="-r ../sof.git/build_${j}_gcc/src/arch/xtensa/rom-$j.bin"
-	fi
-	if [ $j == "icl" ]
-	then
-		READY_IPC="00 00 00 f0"
-		SHM_IPC_REG="qemu-bridge-ipc(|-dsp)-io"
-		OUTBOX_OFFSET="5000"
-		SHM_MBOX=qemu-bridge-hp-sram-mem
-		ROM="-r ../sof.git/build_${j}_gcc/src/arch/xtensa/rom-$j.bin"
-	fi
-	if [ $j == "imx8" ] || [ $j == "imx8x" ] || [ $j == "imx8m" ]
-	then
-		READY_IPC="00 00 00 00 00 00 04 c0"
-		SHM_IPC_REG=qemu-bridge-mu-io
-		SHM_MBOX=qemu-bridge-mbox-io
+
+	has_rom=false
+	case "$platform" in
+		byt)
+			READY_IPC="00 88 02 70 00 00 00 80"
+			SHM_IPC_REG=qemu-bridge-shim-io
+			SHM_MBOX=qemu-bridge-mbox-io
+			;;
+		cht)
+			READY_IPC="00 88 02 70 00 00 00 80"
+			SHM_IPC_REG=qemu-bridge-shim-io
+			SHM_MBOX=qemu-bridge-mbox-io
+			;;
+		bdw)
+			READY_IPC="00 3c 01 80"
+			OUTBOX_OFFSET="9e000"
+			SHM_IPC_REG=qemu-bridge-shim-io
+			SHM_MBOX=qemu-bridge-dram-mem
+			;;
+		hsw)
+			READY_IPC="00 fc 00 80"
+			OUTBOX_OFFSET="7e000"
+			SHM_IPC_REG=qemu-bridge-shim-io
+			SHM_MBOX=qemu-bridge-dram-mem
+			;;
+		apl)
+			READY_IPC="00 00 00 f0"
+			SHM_IPC_REG="qemu-bridge-ipc(|-dsp)-io"
+			OUTBOX_OFFSET="7000"
+			SHM_MBOX=qemu-bridge-hp-sram-mem
+			has_rom=true
+			;;
+		skl)
+			READY_IPC="00 00 00 f0"
+			SHM_IPC_REG="qemu-bridge-ipc(|-dsp)-io"
+			OUTBOX_OFFSET="7000"
+			SHM_MBOX=qemu-bridge-hp-sram-mem
+			has_rom=true
+			;;
+		kbl)
+			READY_IPC="00 00 00 f0"
+			SHM_IPC_REG="qemu-bridge-ipc(|-dsp)-io"
+			OUTBOX_OFFSET="7000"
+			SHM_MBOX=qemu-bridge-hp-sram-mem
+			has_rom=true
+			;;
+		cnl)
+			READY_IPC="00 00 00 f0"
+			SHM_IPC_REG="qemu-bridge-ipc(|-dsp)-io"
+			OUTBOX_OFFSET="5000"
+			SHM_MBOX=qemu-bridge-hp-sram-mem
+			has_rom=true
+			;;
+		icl)
+			READY_IPC="00 00 00 f0"
+			SHM_IPC_REG="qemu-bridge-ipc(|-dsp)-io"
+			OUTBOX_OFFSET="5000"
+			SHM_MBOX=qemu-bridge-hp-sram-mem
+			has_rom=true
+			;;
+		imx8 | imx8x | imx8m)
+			READY_IPC="00 00 00 00 00 00 04 c0"
+			SHM_IPC_REG=qemu-bridge-mu-io
+			SHM_MBOX=qemu-bridge-mbox-io
+			;;
+	esac
+
+	if $has_rom; then
+		ROM="-r ../sof.git/build_${platform}_gcc"
+		ROM+="/src/arch/xtensa/rom-$platform.bin"
 	fi
 
-	./xtensa-host.sh $PLATFORM -k ../sof.git/build_${j}_gcc/src/arch/xtensa/$FWNAME $ROM -o 2.0 ../sof.git/dump-$j.txt
+	./xtensa-host.sh $PLATFORM -k \
+		../sof.git/build_${platform}_gcc/src/arch/xtensa/$FWNAME $ROM \
+		-o 2.0 ../sof.git/dump-$platform.txt
 	# dump log into sof.git incase running in docker
 
 	# use regular expression to match the SHM IPC REG file name
@@ -156,7 +157,7 @@ do
 		echo "Boot success";
 	else
 		echo "Error boot failed"
-		tail -n 50 ../sof.git/dump-$j.txt
+		tail -n 50 ../sof.git/dump-$platform.txt
 		exit 2;
 	fi
 done
