@@ -24,7 +24,11 @@
 #include <stddef.h>
 
 /* use same syntax as Linux for simplicity */
-#define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
+/* Zephyr defines this - remove local copy once Zephyr integration complete */
+#ifdef ARRAY_SIZE
+#undef ARRAY_SIZE
+#endif
+#define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 #define container_of(ptr, type, member) \
 	({const typeof(((type *)0)->member)*__memberptr = (ptr); \
 	(type *)((char *)__memberptr - offsetof(type, member)); })
@@ -54,6 +58,9 @@
  * error for other types, except positive integers, but it shouldn't be
  * used with them.
  */
+#ifdef IS_ENABLED
+#undef IS_ENABLED
+#endif
 #define IS_ENABLED(config) IS_ENABLED_STEP_1(config)
 #define IS_ENABLED_DUMMY_1 0,
 #define IS_ENABLED_STEP_1(config) IS_ENABLED_STEP_2(IS_ENABLED_DUMMY_ ## config)

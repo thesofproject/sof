@@ -9,7 +9,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#if !CONFIG_LIBRARY
+/* Not needed for host or Zephyr */
+#if !CONFIG_LIBRARY && !__ZEPHYR__
 /* used by gcc - but uses arch_memcpy internally */
 void *memcpy(void *dest, const void *src, size_t n)
 {

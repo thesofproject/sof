@@ -70,7 +70,7 @@ struct comp_dev *comp_new(struct sof_ipc_comp *comp)
 		return NULL;
 	}
 
-	trace_event(TRACE_CLASS_COMP, "comp new %s type %d pipe_id %d id %d",
+	trace_event(TRACE_CLASS_COMP, "comp new %s type %d id %d.%d",
 		    drv->uid, comp->type, comp->pipeline_id, comp->id);
 
 	/* create the new component */
@@ -322,9 +322,11 @@ int comp_verify_params(struct comp_dev *dev, uint32_t flag,
 
 struct comp_dev *comp_make_shared(struct comp_dev *dev)
 {
-	struct comp_dev *old = dev;
 	struct list_item *old_bsource_list = &dev->bsource_list;
 	struct list_item *old_bsink_list = &dev->bsink_list;
+
+	/* flush cache to share */
+	dcache_writeback_region(dev, dev->size);
 
 	dev = platform_shared_get(dev, dev->size);
 
@@ -336,9 +338,6 @@ struct comp_dev *comp_make_shared(struct comp_dev *dev)
 	dev->is_shared = true;
 
 	platform_shared_commit(dev, sizeof(*dev));
-
-	/* clear cache to avoid later random flushes */
-	dcache_invalidate_region(old, sizeof(*old));
 
 	return dev;
 }
