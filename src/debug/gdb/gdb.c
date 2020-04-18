@@ -290,8 +290,7 @@ static inline int gdb_parser(void)
 				mem_to_hex(sregs + addr, remcom_out_buffer, 4);
 			} else if (addr >= GDB_SPEC_REG_RANGE_END &&
 				   addr < GDB_REG_RANGE_END) {
-				strcpy((char *)remcom_out_buffer,
-						"deadbabe");
+				strcpy((char *)remcom_out_buffer, "deadbabe");
 			} else {
 				/* unexpected register number */
 				strcpy((char *)remcom_out_buffer, "E00");
