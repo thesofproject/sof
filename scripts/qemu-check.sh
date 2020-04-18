@@ -36,14 +36,12 @@ else
 				break
 			fi
 		done
+		if [ "$platform" = "unknown" ]; then
+			echo "Error: Unknown platform specified: $arg"
+			echo "Supported platforms: ${SUPPORTED_PLATFORMS[*]}"
+			exit 1
+		fi
 	done
-fi
-
-# check target platform(s) have been passed in
-if [ ${#PLATFORMS[@]} -eq 0 ];
-then
-	echo "Error: No platforms specified. Supported are: ${SUPPORTED_PLATFORMS[@]}"
-	exit 1
 fi
 
 for platform in "${PLATFORMS[@]}"
