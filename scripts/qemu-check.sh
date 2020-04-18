@@ -7,9 +7,10 @@ READY_MSG="6c 00 00 00 00 00 00 70"
 
 rm -f dump-*.txt
 
+PLATFORMS=()
 if [ "$#" -eq 0 ]
 then
-	PLATFORMS=${SUPPORTED_PLATFORMS[@]}
+	PLATFORMS=("${SUPPORTED_PLATFORMS[@]}")
 else
 	for args in $@
 	do
@@ -17,7 +18,7 @@ else
 		do
 			if [ $i == $args ]
 			then
-				PLATFORMS+=$i" "
+				PLATFORMS=("${PLATFORMS[@]}" "$i")
 			fi
 		done
 	done
@@ -30,7 +31,7 @@ then
 	exit 1
 fi
 
-for j in ${PLATFORMS[@]}
+for j in "${PLATFORMS[@]}"
 do
 	FWNAME="sof-$j.ri"
 	PLATFORM=$j
