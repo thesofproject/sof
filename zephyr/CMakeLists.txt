@@ -154,35 +154,35 @@ endif()
 # Files used on all platforms.
 # Commented files will be added/removed as integration dictates.
 zephyr_library_sources(
-	#../src/trace/dma-trace.c
-	#../src/trace/trace.c
+	../src/trace/dma-trace.c
+	../src/trace/trace.c
 	#../src/drivers/dw/ssi-spi.c
 	#../src/drivers/dw/gpio.c
 	../src/drivers/dw/dma.c
 	#../src/drivers/interrupt.c
-	#../src/drivers/generic/dummy-dma.c
-	#../src/ipc/dma-copy.c
+	../src/drivers/generic/dummy-dma.c
+	../src/ipc/dma-copy.c
 	../src/ipc/ipc.c
 	../src/ipc/handler.c
-	#../src/ipc/probe_support.c
+	../src/ipc/probe_support.c
 	../src/ipc/user_abi_version.c
 	../src/ipc/ipc-host-ptable.c
 	../src/ipc/cc_version.c
-	#../src/debug/gdb/gdb.c
-	#../src/debug/gdb/ringbuffer.c
+	../src/debug/gdb/gdb.c
+	../src/debug/gdb/ringbuffer.c
 	../src/debug/panic.c
 	../src/spinlock.c
 	../src/math/decibels.c
 	../src/math/numbers.c
 	../src/math/trig.c
 	#../src/init/init.c
-	../src/schedule/task.c
-	../src/schedule/timer_domain.c
-	../src/schedule/schedule.c
-	../src/schedule/edf_schedule.c
-	../src/schedule/dma_single_chan_domain.c
-	../src/schedule/dma_multi_chan_domain.c
-	../src/schedule/ll_schedule.c
+	#../src/schedule/task.c
+	#../src/schedule/timer_domain.c
+	#../src/schedule/schedule.c
+	#../src/schedule/edf_schedule.c
+	#../src/schedule/dma_single_chan_domain.c
+	#../src/schedule/dma_multi_chan_domain.c
+	#../src/schedule/ll_schedule.c
 	../src/lib/clk.c
 	../src/lib/notifier.c
 	../src/lib/lib.c
@@ -232,6 +232,7 @@ zephyr_library_sources(
 	../src/audio/dai.c
 	../src/audio/pipeline.c
 	#../src/probe/probe.c
+	wrapper.c
 )
 
 zephyr_library_link_libraries(SOF)
