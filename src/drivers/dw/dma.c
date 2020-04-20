@@ -67,7 +67,7 @@ struct dw_dma_chan_data {
 static const uint32_t burst_elems[] = {1, 2, 4, 8};
 
 #if CONFIG_HW_LLI
-#define DW_DMA_BUFFER_PERIOD_COUNT	3
+#define DW_DMA_BUFFER_PERIOD_COUNT	4
 #else
 #define DW_DMA_BUFFER_PERIOD_COUNT	2
 #endif
