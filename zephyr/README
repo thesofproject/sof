@@ -47,3 +47,33 @@ This will setup the Zephyr environment, code can then be built
 
 % west build -p always  -b up_squared_adsp samples/basic/minimal
 % west sign -t rimage -- -k ../../sof/sof/rimage/keys/otc_private_key.pem
+
+
+Testing on Qemu
+===============
+
+Get the SOF qemu sof-v4.2 branch here.
+
+git@github.com:thesofproject/qemu.git
+
+Configure as
+
+./configure' '--prefix=.' '--target-list=xtensa-softmmu,x86_64-softmmu' \
+             '--enable-gtk' '--enable-sdl' '--enable-spice' \
+             '--audio-drv-list=alsa' '--enable-libusb' \
+             '--enable-usb-redir' '--enable-coroutine-pool' \
+             '--disable-opengl' '--enable-fdt'
+
+ Then run make.
+
+FW can be tested as follows using the qemu helper script.
+
+ ./xtensa-host.sh apl \
+     -r ../../sof/sof/build_apl_gcc/src/arch/xtensa/rom-apl.bin \
+     -k ../../zephyrproject/zephyr/build/zephyr/zephyr.ri
+
+Where -r and -k are used to specify the ROM and kernel files.
+
+The ROMS can be built from the SOF repo by running
+
+./scripts/xtensa-build-all.sh  -r -a
