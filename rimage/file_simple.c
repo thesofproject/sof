@@ -194,7 +194,13 @@ static int simple_write_module(struct image *image, struct module *module)
 		if (!(module->section[i].flags & valid))
 			continue;
 
+		if (section->vaddr == 0)
+			continue;
+
 		/* dont write bss */
+		if (section->type == SHT_NOBITS)
+			continue;
+
 		if (section->type == SHT_NOBITS)
 			continue;
 
