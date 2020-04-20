@@ -154,16 +154,19 @@ static struct comp_dev *kpb_new(const struct comp_driver *drv,
 
 	if (!kpb_is_sample_width_supported(kpb->config.sampling_width)) {
 		comp_err(dev, "kpb_new(): requested sampling width not supported");
+		rfree(dev);
 		return NULL;
 	}
 
 	if (kpb->config.channels > KPB_MAX_SUPPORTED_CHANNELS) {
 		comp_err(dev, "kpb_new(): no of channels exceeded the limit");
+		rfree(dev);
 		return NULL;
 	}
 
 	if (kpb->config.sampling_freq != KPB_SAMPLNG_FREQUENCY) {
 		comp_err(dev, "kpb_new(): requested sampling frequency not supported");
+		rfree(dev);
 		return NULL;
 	}
 
