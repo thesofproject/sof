@@ -117,6 +117,8 @@ int tplg_load_buffer(int comp_id, int pipeline_id, int size,
 		     struct sof_ipc_buffer *buffer, FILE *file)
 {
 	struct snd_soc_tplg_vendor_array *array;
+	size_t read_size;
+	size_t parsed_size = 0;
 	int ret = 0;
 
 	/* configure buffer */
@@ -131,22 +133,46 @@ int tplg_load_buffer(int comp_id, int pipeline_id, int size,
 	array = (struct snd_soc_tplg_vendor_array *)malloc(size);
 	if (!array) {
 		fprintf(stderr, "error: malloc fail during load_buffer\n");
-		free(array);
 		return -EINVAL;
 	}
 
-	ret = fread(array, sizeof(struct snd_soc_tplg_vendor_array), 1, file);
-	if (ret != 1) {
-		fprintf(stderr, "error: fread fail during load_buffer\n");
-		free(array);
-		return -EINVAL;
+	/* read vendor tokens */
+	while (parsed_size < size) {
+		read_size = sizeof(struct snd_soc_tplg_vendor_array);
+		ret = fread(array, read_size, 1, file);
+		if (ret != 1) {
+			fprintf(stderr,
+				"error: fread fail during load_buffer\n");
+			free(array);
+			return -EINVAL;
+		}
+
+		tplg_read_array(array, file);
+
+		/* parse buffer comp tokens */
+		ret = sof_parse_tokens(&buffer->comp, buffer_comp_tokens,
+				       ARRAY_SIZE(buffer_comp_tokens), array,
+				       array->size);
+		if (ret) {
+			fprintf(stderr, "error: parse buffer comp tokens %d\n",
+				size);
+			free(array);
+			return -EINVAL;
+		}
+
+		/* parse buffer tokens */
+		ret = sof_parse_tokens(buffer, buffer_tokens,
+				       ARRAY_SIZE(buffer_tokens), array,
+				       array->size);
+		if (ret) {
+			fprintf(stderr, "error: parse buffer tokens %d\n",
+				size);
+			free(array);
+			return -EINVAL;
+		}
+
+		parsed_size += array->size;
 	}
-
-	tplg_read_array(array, file);
-
-	/* parse buffer tokens */
-	ret = sof_parse_tokens(buffer, buffer_tokens,
-			       ARRAY_SIZE(buffer_tokens), array, size);
 
 	free(array);
 	return 0;
@@ -1144,7 +1170,7 @@ int sof_parse_tokens(void *object, const struct sof_topology_token *tokens,
 		priv_size -= asize;
 
 		if (priv_size < 0) {
-			fprintf(stderr, "error: invalid array size 0x%x\n",
+			fprintf(stderr, "error: invalid priv size 0x%x\n",
 				asize);
 			return -EINVAL;
 		}
