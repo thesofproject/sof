@@ -94,13 +94,13 @@
 			___ret = memcpy_s(rx, rx_size, tx, tx->size);	\
 			assert(!___ret);				\
 			bzero((char *)rx + tx->size, rx_size - tx->size);\
-			tracev_ipc("ipc: hdr 0x%x rx (%d) > tx (%d)",	\
-				   rx->cmd, rx_size, tx->size);		\
+			trace_ipc("ipc: hdr 0x%x rx (%d) > tx (%d)",	\
+				  rx->cmd, rx_size, tx->size);		\
 		} else if (tx->size > rx_size) {			\
 			___ret = memcpy_s(rx, rx_size, tx, rx_size);	\
 			assert(!___ret);				\
-			trace_ipc_warn("ipc: hdr 0x%x tx (%d) > rx (%d)",\
-				       rx->cmd, tx->size, rx_size);	\
+			trace_ipc("ipc: hdr 0x%x tx (%d) > rx (%d)",	\
+				  rx->cmd, tx->size, rx_size);		\
 		} else	{						\
 			___ret = memcpy_s(rx, rx_size, tx, rx_size);	\
 			assert(!___ret);				\
@@ -236,7 +236,7 @@ static int ipc_stream_pcm_params(uint32_t stream)
 	if (!cpu_is_me(pcm_dev->core))
 		return ipc_process_on_core(pcm_dev->core);
 
-	tracev_ipc("ipc: comp %d -> params", pcm_params.comp_id);
+	trace_ipc("ipc: comp %d -> params", pcm_params.comp_id);
 
 	/* sanity check comp */
 	if (!pcm_dev->cd->pipeline) {
@@ -354,7 +354,7 @@ static int ipc_stream_pcm_free(uint32_t header)
 	if (!cpu_is_me(pcm_dev->core))
 		return ipc_process_on_core(pcm_dev->core);
 
-	tracev_ipc("ipc: comp %d -> free", free_req.comp_id);
+	trace_ipc("ipc: comp %d -> free", free_req.comp_id);
 
 	/* sanity check comp */
 	if (!pcm_dev->cd->pipeline) {
@@ -438,7 +438,7 @@ static int ipc_stream_trigger(uint32_t header)
 	if (!cpu_is_me(pcm_dev->core))
 		return ipc_process_on_core(pcm_dev->core);
 
-	tracev_ipc("ipc: comp %d -> trigger cmd 0x%x", stream.comp_id, ipc_cmd);
+	trace_ipc("ipc: comp %d -> trigger cmd 0x%x", stream.comp_id, ipc_cmd);
 
 	switch (ipc_cmd) {
 	case SOF_IPC_STREAM_TRIG_START:
@@ -509,8 +509,8 @@ static int ipc_dai_config(uint32_t header)
 	/* copy message with ABI safe method */
 	IPC_COPY_CMD(config, ipc->comp_data);
 
-	tracev_ipc("ipc: dai %d.%d -> config ", config.type,
-		   config.dai_index);
+	trace_ipc("ipc: dai %d.%d -> config ", config.type,
+		  config.dai_index);
 
 	/* send params to all DAI components who use that physical DAI */
 	return ipc_comp_dai_config(ipc,
@@ -978,13 +978,16 @@ static int ipc_comp_value(uint32_t header, uint32_t cmd)
 {
 	struct ipc *ipc = ipc_get();
 	struct ipc_comp_dev *comp_dev;
-	struct sof_ipc_ctrl_data *data = ipc->comp_data;
+	struct sof_ipc_ctrl_data data, *_data = ipc->comp_data;
 	int ret;
 
+	/* copy message with ABI safe method */
+	IPC_COPY_CMD(data, ipc->comp_data);
+
 	/* get the component */
-	comp_dev = ipc_get_comp_by_id(ipc, data->comp_id);
+	comp_dev = ipc_get_comp_by_id(ipc, data.comp_id);
 	if (!comp_dev) {
-		trace_ipc_error("ipc: comp %d not found", data->comp_id);
+		trace_ipc_error("ipc: comp %d not found", data.comp_id);
 		return -ENODEV;
 	}
 
@@ -992,26 +995,26 @@ static int ipc_comp_value(uint32_t header, uint32_t cmd)
 	if (!cpu_is_me(comp_dev->core))
 		return ipc_process_on_core(comp_dev->core);
 
-	tracev_ipc("ipc: comp %d -> cmd %d", data->comp_id, data->cmd);
+	trace_ipc("ipc: comp %d -> cmd %d", data.comp_id, data.cmd);
 
 	/* get component values */
-	ret = comp_cmd(comp_dev->cd, cmd, data, SOF_IPC_MSG_MAX_SIZE);
+	ret = comp_cmd(comp_dev->cd, cmd, _data, SOF_IPC_MSG_MAX_SIZE);
 	if (ret < 0) {
-		trace_ipc_error("ipc: comp %d cmd %u failed %d", data->comp_id,
-				data->cmd, ret);
+		trace_ipc_error("ipc: comp %d cmd %u failed %d", data.comp_id,
+				data.cmd, ret);
 		return ret;
 	}
 
 	platform_shared_commit(comp_dev, sizeof(*comp_dev));
 
 	/* write component values to the outbox */
-	if (data->rhdr.hdr.size <= MAILBOX_HOSTBOX_SIZE &&
-	    data->rhdr.hdr.size <= SOF_IPC_MSG_MAX_SIZE) {
-		mailbox_hostbox_write(0, data, data->rhdr.hdr.size);
+	if (_data->rhdr.hdr.size <= MAILBOX_HOSTBOX_SIZE &&
+	    _data->rhdr.hdr.size <= SOF_IPC_MSG_MAX_SIZE) {
+		mailbox_hostbox_write(0, _data, data.rhdr.hdr.size);
 		ret = 1;
 	} else {
 		trace_ipc_error("ipc: comp %d cmd %u returned %d bytes max %d",
-				data->comp_id, data->cmd, data->rhdr.hdr.size,
+				data.comp_id, data.cmd, _data->rhdr.hdr.size,
 				MIN(MAILBOX_HOSTBOX_SIZE,
 				    SOF_IPC_MSG_MAX_SIZE));
 		ret = -EINVAL;
@@ -1042,7 +1045,7 @@ static int ipc_glb_comp_message(uint32_t header)
 static int ipc_glb_tplg_comp_new(uint32_t header)
 {
 	struct ipc *ipc = ipc_get();
-	struct sof_ipc_comp *comp = ipc->comp_data;
+	struct sof_ipc_comp comp;
 	struct sof_ipc_comp_reply reply = {
 		.rhdr.hdr = {
 			.cmd = header,
@@ -1051,18 +1054,21 @@ static int ipc_glb_tplg_comp_new(uint32_t header)
 	};
 	int ret;
 
-	/* check core */
-	if (!cpu_is_me(comp->core))
-		return ipc_process_on_core(comp->core);
+	/* copy message with ABI safe method */
+	IPC_COPY_CMD(comp, ipc->comp_data);
 
-	tracev_ipc("ipc: pipe %d comp %d -> new (type %d)", comp->pipeline_id,
-		   comp->id, comp->type);
+	/* check core */
+	if (!cpu_is_me(comp.core))
+		return ipc_process_on_core(comp.core);
+
+	trace_ipc("ipc: pipe %d comp %d -> new (type %d)", comp.pipeline_id,
+		  comp.id, comp.type);
 
 	/* register component */
-	ret = ipc_comp_new(ipc, comp);
+	ret = ipc_comp_new(ipc, (struct sof_ipc_comp *)ipc->comp_data);
 	if (ret < 0) {
 		trace_ipc_error("ipc: pipe %d comp %d creation failed %d",
-				comp->pipeline_id, comp->id, ret);
+				comp.pipeline_id, comp.id, ret);
 		return ret;
 	}
 
@@ -1091,9 +1097,9 @@ static int ipc_glb_tplg_buffer_new(uint32_t header)
 	if (!cpu_is_me(ipc_buffer.comp.core))
 		return ipc_process_on_core(ipc_buffer.comp.core);
 
-	tracev_ipc("ipc: pipe %d buffer %d -> new (0x%x bytes)",
-		   ipc_buffer.comp.pipeline_id, ipc_buffer.comp.id,
-		   ipc_buffer.size);
+	trace_ipc("ipc: pipe %d buffer %d -> new (0x%x bytes)",
+		  ipc_buffer.comp.pipeline_id, ipc_buffer.comp.id,
+		  ipc_buffer.size);
 
 	ret = ipc_buffer_new(ipc, (struct sof_ipc_buffer *)ipc->comp_data);
 	if (ret < 0) {
@@ -1128,7 +1134,7 @@ static int ipc_glb_tplg_pipe_new(uint32_t header)
 	if (!cpu_is_me(ipc_pipeline.core))
 		return ipc_process_on_core(ipc_pipeline.core);
 
-	tracev_ipc("ipc: pipe %d -> new", ipc_pipeline.pipeline_id);
+	trace_ipc("ipc: pipe %d -> new", ipc_pipeline.pipeline_id);
 
 	ret = ipc_pipeline_new(ipc,
 			       (struct sof_ipc_pipe_new *)ipc->comp_data);

@@ -89,7 +89,7 @@ static int alh_probe(struct dai *dai)
 	alh = rzalloc(SOF_MEM_ZONE_SYS_RUNTIME, 0, SOF_MEM_CAPS_RAM,
 		      sizeof(*alh));
 	if (!alh) {
-		dai_err(dai, "alh_probe() error: alloc failed");
+		dai_err(dai, "ssp_probe() error: alloc failed");
 		return -ENOMEM;
 	}
 	dai_set_drvdata(dai, alh);

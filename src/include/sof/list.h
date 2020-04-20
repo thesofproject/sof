@@ -109,7 +109,7 @@ static inline void list_relink(struct list_item *new_list,
 {
 	struct list_item *li;
 
-	if (new_list->next == old_list) {
+	if (list_is_empty(new_list)) {
 		list_init(new_list);
 	} else {
 		list_for_item(li, new_list)

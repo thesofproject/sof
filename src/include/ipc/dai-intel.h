@@ -96,8 +96,6 @@ struct sof_ipc_dai_ssp_params {
 struct sof_ipc_dai_hda_params {
 	uint32_t reserved0;
 	uint32_t link_dma_ch;
-	uint32_t rate;
-	uint32_t channels;
 } __attribute__((packed));
 
 /* ALH Configuration Request - SOF_IPC_DAI_ALH_CONFIG */

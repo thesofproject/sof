@@ -12,22 +12,11 @@
 
 #include <stdint.h>
 
-/* Zephyr defines this - remove local copy once Zephyr integration complete */
-#ifdef MIN
-#undef MIN
-#endif
-
 #define MIN(a, b) ({		\
 	typeof(a) __a = (a);	\
 	typeof(b) __b = (b);	\
 	__a > __b ? __b : __a;	\
 })
-
-/* Zephyr defines this - remove local copy once Zephyr integration complete */
-#ifdef MAX
-#undef MAX
-#endif
-
 #define MAX(a, b) ({		\
 	typeof(a) __a = (a);	\
 	typeof(b) __b = (b);	\

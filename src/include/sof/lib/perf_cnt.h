@@ -28,11 +28,11 @@ struct perf_cnt_data {
 #if CONFIG_PERFORMANCE_COUNTERS
 
 #define perf_cnt_trace(tclass, pcd) \
-		trace_event(tclass, "perf plat last %u peak %u cpu last %u, peak %u", \
-			    (uint32_t)((pcd)->plat_delta_last),	\
-			    (uint32_t)((pcd)->plat_delta_peak),	\
-			    (uint32_t)((pcd)->cpu_delta_last),	\
-			    (uint32_t)((pcd)->cpu_delta_peak))
+		trace_event(tclass, "perf plat last %lu peak %lu cpu last %lu, peak %lu", \
+			    (pcd)->plat_delta_last,	\
+			    (pcd)->plat_delta_peak,	\
+			    (pcd)->cpu_delta_last,	\
+			    (pcd)->cpu_delta_peak)
 
 /** \brief Clears performance counters data. */
 #define perf_cnt_clear(pcd) memset((pcd), 0, sizeof(struct perf_cnt_data))

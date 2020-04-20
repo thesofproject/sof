@@ -7,7 +7,6 @@ include(`utils.m4')
 include(`dai.m4')
 include(`pipeline.m4')
 include(`ssp.m4')
-include(`hda.m4')
 
 # Include TLV library
 include(`common/tlv.m4')
@@ -115,10 +114,7 @@ DAI_CONFIG(SSP, 5, 0, SSP5-Codec,
 		SSP_TDM(2, 32, 3, 3),
 		SSP_CONFIG_DATA(SSP, 5, 24)))
 
-DAI_CONFIG(HDA, 3, 3, iDisp1,
-	HDA_CONFIG(HDA_CONFIG_DATA(HDA, 3, 48000, 2)))
-DAI_CONFIG(HDA, 4, 4, iDisp2,
-	HDA_CONFIG(HDA_CONFIG_DATA(HDA, 4, 48000, 2)))
-DAI_CONFIG(HDA, 5, 5, iDisp3,
-	HDA_CONFIG(HDA_CONFIG_DATA(HDA, 5, 48000, 2)))
+DAI_CONFIG(HDA, 3, 3, iDisp1)
+DAI_CONFIG(HDA, 4, 4, iDisp2)
+DAI_CONFIG(HDA, 5, 5, iDisp3)
 

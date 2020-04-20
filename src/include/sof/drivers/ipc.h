@@ -47,8 +47,6 @@ struct ipc_msg;
 	trace_event(TRACE_CLASS_IPC, format, ##__VA_ARGS__)
 #define tracev_ipc(format, ...) \
 	tracev_event(TRACE_CLASS_IPC, format, ##__VA_ARGS__)
-#define trace_ipc_warn(format, ...) \
-	trace_warn(TRACE_CLASS_IPC, format, ##__VA_ARGS__)
 #define trace_ipc_error(format, ...) \
 	trace_error(TRACE_CLASS_IPC, format, ##__VA_ARGS__)
 

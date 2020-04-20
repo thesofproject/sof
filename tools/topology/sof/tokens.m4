@@ -123,8 +123,3 @@ SectionVendorTokens."sof_alh_tokens" {
 	SOF_TKN_INTEL_ALH_RATE			"1400"
 	SOF_TKN_INTEL_ALH_CH			"1401"
 }
-
-SectionVendorTokens."sof_hda_tokens" {
-	SOF_TKN_INTEL_HDA_RATE			"1500"
-	SOF_TKN_INTEL_HDA_CH			"1501"
-}

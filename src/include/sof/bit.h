@@ -8,11 +8,6 @@
 #ifndef __SOF_BIT_H__
 #define __SOF_BIT_H__
 
-/* Zephyr defines this - remove local copy once Zephyr integration complete */
-#ifdef BIT
-#undef BIT
-#endif
-
 #if ASSEMBLY
 #define BIT(b)			(1 << (b))
 #else

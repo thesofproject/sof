@@ -187,7 +187,7 @@ static int mixer_params(struct comp_dev *dev,
 	}
 
 	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
-				source_list);
+							source_list);
 
 	/* calculate period size based on config */
 	period_bytes = dev->frames * audio_stream_frame_bytes(&sinkb->stream);

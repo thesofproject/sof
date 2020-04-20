@@ -8,7 +8,6 @@ include(`dai.m4')
 include(`pipeline.m4')
 include(`ssp.m4')
 include(`alh.m4')
-include(`hda.m4')
 
 # Include TLV library
 include(`common/tlv.m4')
@@ -242,14 +241,10 @@ DAI_CONFIG(DMIC, 1, 4, dmic16k,
 ifelse(HDMI, `1',
 `
 # 4 HDMI/DP outputs (ID: 5,6,7,8)
-DAI_CONFIG(HDA, 0, 5, iDisp1,
-	HDA_CONFIG(HDA_CONFIG_DATA(HDA, 0, 48000, 2)))
-DAI_CONFIG(HDA, 1, 6, iDisp2,
-	HDA_CONFIG(HDA_CONFIG_DATA(HDA, 1, 48000, 2)))
-DAI_CONFIG(HDA, 2, 7, iDisp3,
-	HDA_CONFIG(HDA_CONFIG_DATA(HDA, 2, 48000, 2)))
-DAI_CONFIG(HDA, 3, 8, iDisp4,
-	HDA_CONFIG(HDA_CONFIG_DATA(HDA, 3, 48000, 2)))
+DAI_CONFIG(HDA, 0, 5, iDisp1)
+DAI_CONFIG(HDA, 1, 6, iDisp2)
+DAI_CONFIG(HDA, 2, 7, iDisp3)
+DAI_CONFIG(HDA, 3, 8, iDisp4)
 ')
 
 DEBUG_END

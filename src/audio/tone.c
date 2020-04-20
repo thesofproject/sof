@@ -503,6 +503,7 @@ static int tone_cmd_set_value(struct comp_dev *dev,
 				tonegen_unmute(&cd->sg[ch]);
 			else
 				tonegen_mute(&cd->sg[ch]);
+
 		}
 	} else {
 		comp_err(dev, "tone_cmd_set_value(): invalid cdata->cmd");
@@ -685,6 +686,7 @@ static int tone_prepare(struct comp_dev *dev)
 
 static int tone_reset(struct comp_dev *dev)
 {
+
 	struct comp_data *cd = comp_get_drvdata(dev);
 	int i;
 

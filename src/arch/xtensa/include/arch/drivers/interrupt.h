@@ -73,14 +73,14 @@ static inline uint32_t arch_interrupt_global_disable(void)
 {
 	uint32_t flags;
 
-	__asm__ __volatile__("rsil	%0, 5"
+	asm volatile("rsil	%0, 5"
 		     : "=a" (flags) :: "memory");
 	return flags;
 }
 
 static inline void arch_interrupt_global_enable(uint32_t flags)
 {
-	__asm__ __volatile__("wsr %0, ps; rsync"
+	asm volatile("wsr %0, ps; rsync"
 		     :: "a" (flags) : "memory");
 }
 

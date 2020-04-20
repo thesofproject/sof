@@ -8,7 +8,6 @@ include(`dai.m4')
 include(`pipeline.m4')
 include(`alh.m4')
 include(`muxdemux.m4')
-include(`hda.m4')
 
 # Include TLV library
 include(`common/tlv.m4')
@@ -264,11 +263,8 @@ DAI_CONFIG(ALH, 0x302, 4, SDW3-Capture,
 	ALH_CONFIG(ALH_CONFIG_DATA(ALH, 0x302, 48000, 2)))
 
 # 3 HDMI/DP outputs (ID: 5,6,7)
-DAI_CONFIG(HDA, 0, 5, iDisp1,
-	HDA_CONFIG(HDA_CONFIG_DATA(HDA, 0, 48000, 2)))
-DAI_CONFIG(HDA, 1, 6, iDisp2,
-	HDA_CONFIG(HDA_CONFIG_DATA(HDA, 1, 48000, 2)))
-DAI_CONFIG(HDA, 2, 7, iDisp3,
-	HDA_CONFIG(HDA_CONFIG_DATA(HDA, 2, 48000, 2)))
+DAI_CONFIG(HDA, 0, 5, iDisp1)
+DAI_CONFIG(HDA, 1, 6, iDisp2)
+DAI_CONFIG(HDA, 2, 7, iDisp3)
 
 DEBUG_END

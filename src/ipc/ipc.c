@@ -317,8 +317,8 @@ static int ipc_comp_to_buffer_connect(struct ipc_comp_dev *comp,
 	if (!cpu_is_me(comp->core))
 		return ipc_process_on_core(comp->core);
 
-	tracev_ipc("ipc: comp sink %d, source %d  -> connect", buffer->id,
-		   comp->id);
+	trace_ipc("ipc: comp sink %d, source %d  -> connect", buffer->id,
+		  comp->id);
 
 	/* check if it's a connection between cores */
 	if (buffer->core != comp->core) {
@@ -352,8 +352,8 @@ static int ipc_buffer_to_comp_connect(struct ipc_comp_dev *buffer,
 	if (!cpu_is_me(comp->core))
 		return ipc_process_on_core(comp->core);
 
-	tracev_ipc("ipc: comp sink %d, source %d  -> connect", comp->id,
-		   buffer->id);
+	trace_ipc("ipc: comp sink %d, source %d  -> connect", comp->id,
+		  buffer->id);
 
 	/* check if it's a connection between cores */
 	if (buffer->core != comp->core) {
@@ -529,7 +529,7 @@ int ipc_pipeline_complete(struct ipc *ipc, uint32_t comp_id)
 	if (!cpu_is_me(ipc_pipe->core))
 		return ipc_process_on_core(ipc_pipe->core);
 
-	tracev_ipc("ipc: pipe %d -> complete", comp_id);
+	trace_ipc("ipc: pipe %d -> complete", comp_id);
 
 	pipeline_id = ipc_pipe->pipeline->ipc_pipe.pipeline_id;
 
