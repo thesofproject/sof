@@ -1221,6 +1221,12 @@ static enum task_state kpb_draining_task(void *arg)
 		if (size_to_copy) {
 			comp_update_buffer_produce(sink, size_to_copy);
 			comp_copy(sink->sink);
+		} else if (!sink->stream.free) {
+			/* There is no free space in sink buffer.
+			 * Call .copy() on sink component so it can
+			 * process its data further.
+			 */
+			comp_copy(sink->sink);
 		}
 
 		if (sync_mode_on && period_bytes >= period_bytes_limit) {
