@@ -17,6 +17,7 @@
 #include <sof/lib/agent.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/clk.h>
+#include <sof/lib/memory.h>
 #include <sof/lib/uuid.h>
 #include <sof/debug/panic.h>
 #include <sof/platform.h>
@@ -70,6 +71,8 @@ static enum task_state validate(void *data)
 	/* update last_check to current */
 	sa->last_check = current;
 
+	platform_shared_commit(sa, sizeof(*sa));
+
 	return SOF_TASK_STATE_RESCHEDULE;
 }
 
@@ -79,8 +82,8 @@ void sa_init(struct sof *sof, uint64_t timeout)
 
 	trace_sa("sa_init(), timeout = %u", timeout);
 
-	sof->sa = rzalloc(SOF_MEM_ZONE_SYS, 0, SOF_MEM_CAPS_RAM,
-			  sizeof(*sof->sa));
+	sof->sa = rzalloc(SOF_MEM_ZONE_SYS, SOF_MEM_FLAG_SHARED,
+			  SOF_MEM_CAPS_RAM, sizeof(*sof->sa));
 
 	/* set default timeouts */
 	ticks = clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1) * timeout / 1000;
@@ -100,4 +103,6 @@ void sa_init(struct sof *sof, uint64_t timeout)
 
 	/* set last check time to now to give time for boot completion */
 	sof->sa->last_check = platform_timer_get(timer_get());
+
+	platform_shared_commit(sof->sa, sizeof(*sof->sa));
 }
