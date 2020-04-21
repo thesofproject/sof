@@ -29,6 +29,7 @@
 #include <ipc/topology.h>
 #include <ipc/trace.h>
 #include <user/trace.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -60,7 +61,7 @@ static enum task_state validate(void *data)
 	perf_cnt_stamp(&sa->pcd, perf_sa_trace, sa);
 
 	/* panic timeout */
-	if (delta > sa->panic_timeout)
+	if (sa->panic_on_delay && delta > sa->panic_timeout)
 		panic(SOF_IPC_PANIC_IDLE);
 
 	/* warning timeout */
@@ -91,6 +92,9 @@ void sa_init(struct sof *sof, uint64_t timeout)
 	/* TODO: change values after minimal drifts will be assured */
 	sof->sa->panic_timeout = 2 * ticks;	/* 100% delay */
 	sof->sa->warn_timeout = ticks + ticks / 20;	/* 5% delay */
+
+	atomic_init(&sof->sa->panic_cnt, 0);
+	sof->sa->panic_on_delay = true;
 
 	trace_sa("sa_init(), ticks = %u, sof->sa->warn_timeout = %u, sof->sa->panic_timeout = %u",
 		 ticks, sof->sa->warn_timeout, sof->sa->panic_timeout);
