@@ -30,7 +30,7 @@ include(`platform/intel/intel-generic-dmic.m4')
 
 # The pipeline naming notation is pipe-PROCESSING-DIRECTION.m4
 # PPROC is set by makefile
-define(PIPE_VOLUME_PLAYBACK, `sof/pipe-`PPROC'-playback.m4')
+define(PIPE_HEADSET_PLAYBACK, `sof/pipe-`PPROC'-playback.m4')
 
 #
 # Define the pipelines
@@ -46,7 +46,7 @@ define(PIPE_VOLUME_PLAYBACK, `sof/pipe-`PPROC'-playback.m4')
 
 # Low Latency playback pipeline 1 on PCM 0 using max 2 channels of s24le.
 # 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_ADD(PIPE_VOLUME_PLAYBACK,
+PIPELINE_PCM_ADD(PIPE_HEADSET_PLAYBACK,
 	1, 0, 2, s24le,
 	1000, 0, 0,
 	48000, 48000, 48000)
