@@ -12,6 +12,7 @@
 #include <sof/drivers/interrupt.h>
 #include <sof/drivers/ipc.h>
 #include <sof/drivers/timer.h>
+#include <sof/lib/agent.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/mailbox.h>
 #include <sof/lib/mm_heap.h>
@@ -27,6 +28,7 @@
 #include <ipc/stream.h>
 #include <ipc/topology.h>
 #include <errno.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -1037,12 +1039,22 @@ static int pipeline_xrun_recover(struct pipeline *p)
 /* notify pipeline that this component requires buffers emptied/filled */
 void pipeline_schedule_copy(struct pipeline *p, uint64_t start)
 {
+	/* disable system agent panic for DMA driven pipelines */
+	if (!pipeline_is_timer_driven(p))
+		sa_set_panic_on_delay(false);
+
 	schedule_task(p->pipe_task, start, p->ipc_pipe.period);
 }
 
 void pipeline_schedule_cancel(struct pipeline *p)
 {
 	schedule_task_cancel(p->pipe_task);
+
+	/* enable system agent panic, when there are no longer
+	 * DMA driven pipelines
+	 */
+	if (!pipeline_is_timer_driven(p))
+		sa_set_panic_on_delay(true);
 }
 
 static enum task_state pipeline_task(void *arg)
