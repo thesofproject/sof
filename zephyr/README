@@ -77,3 +77,13 @@ Where -r and -k are used to specify the ROM and kernel files.
 The ROMS can be built from the SOF repo by running
 
 ./scripts/xtensa-build-all.sh  -r -a
+
+Using console
+-------------
+
+Using logging and simulator backend with processing printk (LOG_PRINTK)
+can bring console in qemu.
+
+ - Enable xtensa simulator logging backend (LOG_BACKEND_XTENSA_SIM).
+ - Enable printk processing(LOG_PRINTK)
+ - Add "-semihosting" to qemu command line. Make sure it goes through scripts to real qemu.
