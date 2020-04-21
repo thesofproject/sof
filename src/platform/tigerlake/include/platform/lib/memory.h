@@ -258,7 +258,7 @@
 #define HEAP_RT_COUNT256		128
 #define HEAP_RT_COUNT512		8
 #define HEAP_RT_COUNT1024		4
-#define HEAP_RT_COUNT2048		0
+#define HEAP_RT_COUNT2048		1
 #define HEAP_RT_COUNT4096		1
 
 /* Heap configuration */
