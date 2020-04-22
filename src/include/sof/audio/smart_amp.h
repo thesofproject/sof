@@ -25,6 +25,7 @@ enum {
 struct smart_amp_model_data {
         uint32_t data_size;
         void *data;
+        uint32_t crc;
         uint32_t data_pos;
 };
 

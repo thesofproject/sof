@@ -12,6 +12,8 @@
 
 static const struct comp_driver comp_smart_amp;
 
+#define INITIAL_MODEL_DATA_SIZE	64
+
 struct smart_amp_data {
 	struct sof_smart_amp_config config;
 	struct smart_amp_model_data model;
@@ -24,6 +26,48 @@ struct smart_amp_data {
 	uint32_t out_channels;
 };
 
+static void free_mem_load(struct smart_amp_data *sad)
+{
+	if (!sad) {
+		comp_cl_err(&comp_smart_amp, "free_mem_load(): invalid sad");
+		return;
+	}
+
+	if (sad->model.data) {
+		rfree(sad->model.data);
+		sad->model.data = NULL;
+		sad->model.data_size = 0;
+		sad->model.crc = 0;
+		sad->model.data_pos = 0;
+	}
+}
+
+static int alloc_mem_load(struct smart_amp_data *sad, uint32_t size)
+{
+	if (!size)
+		return 0;
+
+	if (!sad) {
+		comp_cl_err(&comp_smart_amp, "alloc_mem_load(): invalid sad");
+		return -EINVAL;
+	}
+
+	free_mem_load(sad);
+
+	sad->model.data = rballoc(0, SOF_MEM_CAPS_RAM, size);
+
+	if (!sad->model.data) {
+		comp_cl_err(&comp_smart_amp, "alloc_mem_load() alloc failed");
+		return -ENOMEM;
+	}
+
+	bzero(sad->model.data, size);
+	sad->model.data_size = size;
+	sad->model.data_pos = 0;
+
+	return 0;
+}
+
 static struct comp_dev *smart_amp_new(const struct comp_driver *drv,
 				      struct sof_ipc_comp *comp)
 {
@@ -34,6 +78,7 @@ static struct comp_dev *smart_amp_new(const struct comp_driver *drv,
 	struct smart_amp_data *sad;
 	struct sof_smart_amp_config *cfg;
 	size_t bs;
+	int ret;
 
 	comp_cl_info(&comp_smart_amp, "smart_amp_new()");
 
@@ -62,6 +107,12 @@ static struct comp_dev *smart_amp_new(const struct comp_driver *drv,
 
 	comp_set_drvdata(dev, sad);
 
+	ret = alloc_mem_load(sad, INITIAL_MODEL_DATA_SIZE);
+	if (ret < 0) {
+		comp_err(dev, "smart_amp_new(): model data initial failed");
+		goto fail;
+	}
+
 	cfg = (struct sof_smart_amp_config *)ipc_sa->data;
 	bs = ipc_sa->size;
 
@@ -79,6 +130,12 @@ static struct comp_dev *smart_amp_new(const struct comp_driver *drv,
 	dev->state = COMP_STATE_READY;
 
 	return dev;
+
+fail:
+	if (sad)
+		rfree(sad);
+	rfree(dev);
+	return NULL;
 }
 
 static int smart_amp_set_config(struct comp_dev *dev,
@@ -215,51 +272,11 @@ static int smart_amp_ctrl_get_data(struct comp_dev *dev,
 	return ret;
 }
 
-static void free_mem_load(struct smart_amp_data *sad)
-{
-	if (!sad) {
-		comp_cl_err(&comp_smart_amp, "free_mem_load(): invalid sad");
-		return;
-	}
-
-	if (sad->model.data) {
-		rfree(sad->model.data);
-		sad->model.data = NULL;
-		sad->model.data_size = 0;
-		sad->model.data_pos = 0;
-	}
-}
-
-static int alloc_mem_load(struct smart_amp_data *sad, uint32_t size)
-{
-	if (!size)
-		return 0;
-
-	if (!sad) {
-		comp_cl_err(&comp_smart_amp, "alloc_mem_load(): invalid sad");
-		return -EINVAL;
-	}
-
-	free_mem_load(sad);
-
-	sad->model.data = rballoc(0, SOF_MEM_CAPS_RAM, size);
-
-	if (!sad->model.data) {
-		comp_cl_err(&comp_smart_amp, "alloc_mem_load() alloc failed");
-		return -ENOMEM;
-	}
-
-	bzero(sad->model.data, size);
-	sad->model.data_size = size;
-	sad->model.data_pos = 0;
-
-	return 0;
-}
-
 static int smart_amp_set_model(struct comp_dev *dev,
 			       struct sof_ipc_ctrl_data *cdata)
 {
 	struct smart_amp_data *sad = comp_get_drvdata(dev);
+	bool done = false;
 	int ret = 0;
 
 	comp_dbg(dev, "smart_amp_set_model() msg_index = %d, num_elems = %d, remaining = %d ",
@@ -286,6 +303,7 @@ static int smart_amp_set_model(struct comp_dev *dev,
 			return -EINVAL;
 		}
 
+		done = true;
 		comp_info(dev, "smart_amp_set_model() final packet received");
 	}
 
@@ -301,6 +319,14 @@ static int smart_amp_set_model(struct comp_dev *dev,
 	assert(!ret);
 
 	sad->model.data_pos += cdata->num_elems;
+
+	if (done) {
+		/* Set model data done, update crc value */
+		sad->model.crc = crc32(0, sad->model.data,
+				      sad->model.data_size);
+		comp_info(dev, "smart_amp_set_model() done, memory_size = 0x%x, crc = 0x%08x",
+			  sad->model.data_size, sad->model.crc);
+	}
 
 	return 0;
 }
@@ -390,6 +416,7 @@ static void smart_amp_free(struct comp_dev *dev)
 
 	comp_info(dev, "smart_amp_free()");
 
+	free_mem_load(sad);
 	rfree(sad);
 	rfree(dev);
 }
