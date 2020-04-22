@@ -76,12 +76,12 @@ static int ext_man_build(const struct image *image,
 	size_t offset;
 	int ret = 0;
 
-	ret = elf_read_section(image, ".fw_metadata", &section,
+	ret = elf_read_section(image, EXT_MAN_DATA_SECTION, &section,
 			       (void **)&sec_buffer);
 	if (ret < 0) {
 		fprintf(stderr,
-			"error: failed to read .fw_metadata section content, code %d\n",
-			ret);
+			"error: failed to read %s section content, code %d\n",
+			EXT_MAN_DATA_SECTION, ret);
 		goto out;
 	}
 

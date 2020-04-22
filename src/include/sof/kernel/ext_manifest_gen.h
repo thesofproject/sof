@@ -29,6 +29,8 @@
 
 #include "rimage.h"
 
+#define EXT_MAN_DATA_SECTION ".fw_metadata"
+
 int ext_man_write(struct image *image);
 
 #endif /* __EXT_MAN_H__ */
