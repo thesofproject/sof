@@ -42,6 +42,7 @@ static void usage(char *name)
 	fprintf(stdout, "\t -x set xcc module offset\n");
 	fprintf(stdout, "\t -f firmware version = x.y\n");
 	fprintf(stdout, "\t -b build version\n");
+	fprintf(stdout, "\t -e build extended manifest\n");
 	exit(0);
 }
 
@@ -51,12 +52,13 @@ int main(int argc, char *argv[])
 	const char *mach = NULL;
 	int opt, ret, i, elf_argc = 0;
 	int imr_type = MAN_DEFAULT_IMR_TYPE;
+	int use_ext_man = 0;
 
 	memset(&image, 0, sizeof(image));
 
 	image.xcc_mod_offset = DEFAULT_XCC_MOD_OFFSET;
 
-	while ((opt = getopt(argc, argv, "ho:m:va:s:k:l:ri:x:f:b:")) != -1) {
+	while ((opt = getopt(argc, argv, "ho:m:va:s:k:l:ri:x:f:b:e")) != -1) {
 		switch (opt) {
 		case 'o':
 			image.out_file = optarg;
@@ -90,6 +92,9 @@ int main(int argc, char *argv[])
 			break;
 		case 'b':
 			image.fw_ver_build_string = optarg;
+			break;
+		case 'e':
+			use_ext_man = 1;
 			break;
 		case 'h':
 			usage(argv[0]);
@@ -191,12 +196,14 @@ found:
 	if (ret)
 		goto out;
 
-	ret = ext_man_write(&image);
-	if (ret < 0) {
-		fprintf(stderr, "warning: unable to write extended manifest, %d\n",
-			ret);
-		/* ext man is optional until FW side merge to master */
-		ret = 0;
+	/* build extended manifest */
+	if (use_ext_man) {
+		ret = ext_man_write(&image);
+		if (ret < 0) {
+			fprintf(stderr, "error: unable to write extended manifest, %d\n",
+				ret);
+			goto out;
+		}
 	}
 
 out:
