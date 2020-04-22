@@ -516,23 +516,14 @@ out:
 	return ret;
 }
 
-int elf_read_section(const struct image *image, const char *section_name,
+int elf_read_section(const struct module *module, const char *section_name,
 		     const Elf32_Shdr **dst_section, void **dst_buff)
 {
-	const struct module *module;
 	const Elf32_Shdr *section;
 	int section_index = -1;
 	int read;
-	int i;
 
-	/* when there is more than one module, then first one is bootloader */
-	for (i = image->num_modules == 1 ? 0 : 1; i < image->num_modules; i++) {
-		module = &image->module[i];
-		section_index = elf_find_section(module, section_name);
-		if (section_index >= 0)
-			break;
-	}
-
+	section_index = elf_find_section(module, section_name);
 	if (section_index < 0) {
 		fprintf(stderr, "error: section %s can't be found\n",
 			section_name);

@@ -36,6 +36,21 @@ static int ext_man_open_file(struct image *image)
 	return 0;
 }
 
+static const struct module *ext_man_find_module(const struct image *image)
+{
+	const struct module *module;
+	int i;
+
+	/* when there is more than one module, then first one is bootloader */
+	for (i = image->num_modules == 1 ? 0 : 1; i < image->num_modules; i++) {
+		module = &image->module[i];
+		if (elf_find_section(module, EXT_MAN_DATA_SECTION) >= 0)
+			return module;
+	}
+
+	return NULL;
+}
+
 static int ext_man_validate(uint32_t section_size, const void *section_data)
 {
 	uint8_t *sbuf = (uint8_t *)section_data;
@@ -66,7 +81,7 @@ static int ext_man_validate(uint32_t section_size, const void *section_data)
 	}
 }
 
-static int ext_man_build(const struct image *image,
+static int ext_man_build(const struct module *module,
 			 struct ext_man_header **dst_buff)
 {
 	struct ext_man_header ext_man;
@@ -76,7 +91,7 @@ static int ext_man_build(const struct image *image,
 	size_t offset;
 	int ret = 0;
 
-	ret = elf_read_section(image, EXT_MAN_DATA_SECTION, &section,
+	ret = elf_read_section(module, EXT_MAN_DATA_SECTION, &section,
 			       (void **)&sec_buffer);
 	if (ret < 0) {
 		fprintf(stderr,
@@ -117,6 +132,7 @@ out:
 
 int ext_man_write(struct image *image)
 {
+	const struct module *module;
 	struct ext_man_header *ext_man = NULL;
 	int count;
 	int ret;
@@ -125,7 +141,13 @@ int ext_man_write(struct image *image)
 	if (ret)
 		goto out;
 
-	ret = ext_man_build(image, &ext_man);
+	module = ext_man_find_module(image);
+	if (!module) {
+		ret = -ECANCELED;
+		goto out;
+	}
+
+	ret = ext_man_build(module, &ext_man);
 	if (ret)
 		goto out;
 
