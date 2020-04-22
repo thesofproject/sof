@@ -51,10 +51,11 @@ RUN apt-get -y update && \
 		libglib2.0-dev
 
 
+ARG CLONE_DEFAULTS="--depth 5"
 # Use ToT alsa utils for the latest topology patches.
 RUN mkdir -p /root/alsa-build && cd /root/alsa-build && \
-git clone https://github.com/thesofproject/alsa-lib.git && \
-git clone https://github.com/thesofproject/alsa-utils.git && \
+git clone $CLONE_DEFAULTS https://github.com/thesofproject/alsa-lib.git && \
+git clone $CLONE_DEFAULTS https://github.com/thesofproject/alsa-utils.git && \
 cd /root/alsa-build/alsa-lib && ./gitcompile &&  make install && \
 cd /root/alsa-build/alsa-utils && ./gitcompile &&  make install && \
 cd /root/ && rm -rf alsa-build
@@ -64,13 +65,17 @@ RUN useradd --create-home -d /home/sof -u $UID -G sudo sof && \
 echo "sof:test0000" | chpasswd && adduser sof sudo
 ENV HOME /home/sof
 
+ARG GITHUB_SOF=https://github.com/thesofproject
+ARG XT_OVERLAY_REPO=$GITHUB_SOF/xtensa-overlay.git
+ARG CT_NG_REPO=$GITHUB_SOF/crosstool-ng.git
 # build cross compiler
 USER sof
-RUN cd /home/sof && git clone https://github.com/thesofproject/xtensa-overlay.git && \
-	cd xtensa-overlay && git checkout sof-gcc8.1 && cd ../ && \
-	git clone https://github.com/thesofproject/crosstool-ng.git && \
+RUN cd /home/sof && \
+	git clone $CLONE_DEFAULTS --branch sof-gcc8.1 $XT_OVERLAY_REPO && \
+	cd xtensa-overlay && cd ../ && \
+	git clone $CLONE_DEFAULTS --branch sof-gcc8.1 $CT_NG_REPO && \
 	mkdir -p /home/sof/work/ && \
-	cd crosstool-ng && git checkout sof-gcc8.1 && \
+	cd crosstool-ng && \
 	./bootstrap && ./configure --prefix=`pwd` && make && make install && \
 	for arch in byt hsw apl cnl imx imx8m; do \
 		cp config-${arch}-gcc8.1-gdb8.1 .config && \
@@ -89,8 +94,10 @@ ENV PATH="/home/sof/work/xtensa-cnl-elf/bin:${PATH}"
 ENV PATH="/home/sof/work/xtensa-imx-elf/bin:${PATH}"
 ENV PATH="/home/sof/work/xtensa-imx8m-elf/bin:${PATH}"
 
-RUN cd /home/sof && git clone https://github.com/jcmvbkbc/newlib-xtensa.git newlib-xtensa.git && \
-	cd newlib-xtensa.git && git checkout -b xtensa origin/xtensa && \
+ARG NEWLIB_REPO=https://github.com/jcmvbkbc/newlib-xtensa.git
+RUN cd /home/sof && \
+	git clone $CLONE_DEFAULTS --branch xtensa $NEWLIB_REPO && \
+	cd newlib-xtensa && \
 	for arch in byt hsw apl cnl imx imx8m; do \
 		./configure --target=xtensa-${arch}-elf \
 		--prefix=/home/sof/work/xtensa-root && \
