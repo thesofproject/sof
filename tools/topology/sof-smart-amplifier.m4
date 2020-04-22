@@ -106,14 +106,14 @@ dnl     deadline, priority, core, time_domain)
 # Buffers use s32le format, 1000us deadline on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
 	SMART_PB_PPL_ID, SSP, SMART_SSP_INDEX, SMART_SSP_NAME,
-	SMART_PIPE_SOURCE, 2, s32le,
+	SMART_PIPE_SOURCE, 2, s24le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # capture DAI is SSP(SSP_INDEX) using 2 periods
 # Buffers use s32le format, 1000us deadline on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
 	SMART_REF_PPL_ID, SSP, SMART_SSP_INDEX, SMART_SSP_NAME,
-	SMART_PIPE_SINK, 2, s32le,
+	SMART_PIPE_SINK, 2, s24le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # Connect demux to smart_amp
@@ -141,9 +141,9 @@ PCM_DUPLEX_ADD(SMART_PCM_NAME, SMART_PCM_ID, SMART_PB_PPL_NAME, SMART_REF_PPL_NA
 #SSP SSP_INDEX (ID: SMART_BE_ID)
 DAI_CONFIG(SSP, SMART_SSP_INDEX, SMART_BE_ID, SMART_SSP_NAME,
 	SSP_CONFIG(DSP_B, SSP_CLOCK(mclk, 38400000, codec_mclk_in),
-		      SSP_CLOCK(bclk, 12288000, codec_slave),
+		      SSP_CLOCK(bclk, 9600000, codec_slave),
 		      SSP_CLOCK(fsync, 48000, codec_slave),
-		      SSP_TDM(8, 32, 15, 255),
-		      SSP_CONFIG_DATA(SSP, SMART_SSP_INDEX, 32, 0, SMART_SSP_QUIRK)))
+		      SSP_TDM(8, 25, 15, 255),
+		      SSP_CONFIG_DATA(SSP, SMART_SSP_INDEX, 24, 0, SMART_SSP_QUIRK)))
 
 DEBUG_END
