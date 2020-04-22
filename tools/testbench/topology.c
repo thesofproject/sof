@@ -7,16 +7,17 @@
 
 /* Topology loader to set up components and pipeline */
 
-#include <math.h>
-#include <sof/drivers/ipc.h>
-#include <sof/common.h>
-#include <stdio.h>
-#include <sof/string.h>
 #include <dlfcn.h>
+#include <errno.h>
+#include <math.h>
+#include <stdio.h>
+#include <sof/common.h>
+#include <sof/string.h>
 #include <sof/audio/component.h>
-#include "testbench/file.h"
+#include <sof/drivers/ipc.h>
 #include <tplg_parser/topology.h>
 #include "testbench/common_test.h"
+#include "testbench/file.h"
 
 FILE *file;
 char pipeline_string[DEBUG_MSG_LEN];
@@ -168,7 +169,7 @@ static int tplg_load_fileread(int comp_id, int pipeline_id, int size,
 	array = (struct snd_soc_tplg_vendor_array *)malloc(size);
 	if (!array) {
 		fprintf(stderr, "error: mem alloc\n");
-		return -EINVAL;
+		return -errno;
 	}
 
 	/* read vendor tokens */
@@ -226,7 +227,7 @@ static int tplg_load_filewrite(int comp_id, int pipeline_id, int size,
 	array = (struct snd_soc_tplg_vendor_array *)malloc(size);
 	if (!array) {
 		fprintf(stderr, "error: mem alloc\n");
-		return -EINVAL;
+		return -errno;
 	}
 
 	/* read vendor tokens */
@@ -572,7 +573,7 @@ static int process_append_data(struct sof_ipc_comp_process **process_ipc,
 	*process_ipc = malloc(ipc_size);
 	if (!(*process_ipc)) {
 		fprintf(stderr, "error: Failed to allocate IPC\n");
-		return -ENOMEM;
+		return -errno;
 	}
 
 	/* Copy header */
@@ -689,16 +690,22 @@ int parse_topology(struct sof *sof, struct shared_lib_table *library_table,
 	lib_table = library_table;
 
 	/* file size */
-	fseek(file, 0, SEEK_END);
+	if (fseek(file, 0, SEEK_END)) {
+		fprintf(stderr, "error: seek to end of topology\n");
+		return -errno;
+	}
 	file_size = ftell(file);
-	fseek(file, 0, SEEK_SET);
+	if (fseek(file, 0, SEEK_SET)) {
+		fprintf(stderr, "error: seek to beginning of topology\n");
+		return -errno;
+	}
 
 	/* allocate memory */
 	size = sizeof(struct snd_soc_tplg_hdr);
 	hdr = (struct snd_soc_tplg_hdr *)malloc(size);
 	if (!hdr) {
 		fprintf(stderr, "error: mem alloc\n");
-		return -EINVAL;
+		return -errno;
 	}
 
 	debug_print("topology parsing start\n");
@@ -750,10 +757,16 @@ int parse_topology(struct sof *sof, struct shared_lib_table *library_table,
 			if (ftell(file) == file_size)
 				goto finish;
 			break;
+
 		default:
-			fseek(file, hdr->payload_size, SEEK_CUR);
+			if (fseek(file, hdr->payload_size, SEEK_CUR)) {
+				fprintf(stderr, "error: fseek payload size\n");
+				return -errno;
+			}
+
 			if (ftell(file) == file_size)
 				goto finish;
+
 			break;
 		}
 	}

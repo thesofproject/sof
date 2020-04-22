@@ -133,7 +133,7 @@ int tplg_load_buffer(int comp_id, int pipeline_id, int size,
 	array = (struct snd_soc_tplg_vendor_array *)malloc(size);
 	if (!array) {
 		fprintf(stderr, "error: malloc fail during load_buffer\n");
-		return -EINVAL;
+		return -errno;
 	}
 
 	/* read vendor tokens */
@@ -198,7 +198,7 @@ int tplg_load_pcm(int comp_id, int pipeline_id, int size, int dir,
 	array = (struct snd_soc_tplg_vendor_array *)malloc(size);
 	if (!array) {
 		fprintf(stderr, "error: mem alloc\n");
-		return -EINVAL;
+		return -errno;
 	}
 
 	/* read vendor tokens */
@@ -257,7 +257,7 @@ int tplg_load_dai(int comp_id, int pipeline_id, int size,
 	array = (struct snd_soc_tplg_vendor_array *)malloc(size);
 	if (!array) {
 		fprintf(stderr, "error: mem alloc\n");
-		return -EINVAL;
+		return -errno;
 	}
 
 	/* read vendor tokens */
@@ -310,7 +310,7 @@ int tplg_load_pga(int comp_id, int pipeline_id, int size,
 	array = (struct snd_soc_tplg_vendor_array *)malloc(size);
 	if (!array) {
 		fprintf(stderr, "error: mem alloc\n");
-		return -EINVAL;
+		return -errno;
 	}
 
 	/* read vendor tokens */
@@ -379,7 +379,7 @@ int tplg_load_pipeline(int comp_id, int pipeline_id, int size,
 	array = (struct snd_soc_tplg_vendor_array *)malloc(size);
 	if (!array) {
 		fprintf(stderr, "error: mem alloc\n");
-		return -EINVAL;
+		return -errno;
 	}
 
 	/* read vendor arrays */
@@ -441,7 +441,7 @@ int tplg_load_one_control(struct snd_soc_tplg_ctl_hdr **ctl, char **priv_data,
 	ctl_hdr = (struct snd_soc_tplg_ctl_hdr *)malloc(hdr_size);
 	if (!ctl_hdr) {
 		fprintf(stderr, "error: mem alloc\n");
-		return -EINVAL;
+		return -errno;
 	}
 
 	/* read control header */
@@ -461,14 +461,19 @@ int tplg_load_one_control(struct snd_soc_tplg_ctl_hdr **ctl, char **priv_data,
 	case SND_SOC_TPLG_DAPM_CTL_VOLSW:
 		/* load mixer type control */
 		rewind_size = sizeof(struct snd_soc_tplg_ctl_hdr);
-		fseek(file, rewind_size * -1, SEEK_CUR);
+		if (fseek(file, rewind_size * -1, SEEK_CUR)) {
+			ret = -errno;
+			goto err;
+		}
+
 		read_size = sizeof(struct snd_soc_tplg_mixer_control);
 		mixer_ctl = malloc(read_size);
 		if (!mixer_ctl) {
 			fprintf(stderr, "error: mem alloc\n");
-			ret = -EINVAL;
+			ret = -errno;
 			goto err;
 		}
+
 		ret = fread(mixer_ctl, read_size, 1, file);
 		if (ret != 1) {
 			ret = -EINVAL;
@@ -476,7 +481,11 @@ int tplg_load_one_control(struct snd_soc_tplg_ctl_hdr **ctl, char **priv_data,
 		}
 
 		/* skip mixer private data */
-		fseek(file, mixer_ctl->priv.size, SEEK_CUR);
+		if (fseek(file, mixer_ctl->priv.size, SEEK_CUR)) {
+			ret = -errno;
+			goto err;
+		}
+
 		*ctl = (struct snd_soc_tplg_ctl_hdr *)mixer_ctl;
 		break;
 
@@ -487,14 +496,19 @@ int tplg_load_one_control(struct snd_soc_tplg_ctl_hdr **ctl, char **priv_data,
 	case SND_SOC_TPLG_DAPM_CTL_ENUM_VALUE:
 		/* load enum type control */
 		rewind_size = sizeof(struct snd_soc_tplg_ctl_hdr);
-		fseek(file, rewind_size * -1, SEEK_CUR);
+		if (fseek(file, rewind_size * -1, SEEK_CUR)) {
+			ret = -errno;
+			goto err;
+		}
+
 		read_size = sizeof(struct snd_soc_tplg_enum_control);
 		enum_ctl = malloc(read_size);
 		if (!enum_ctl) {
 			fprintf(stderr, "error: mem alloc\n");
-			ret = -EINVAL;
+			ret = -errno;
 			goto err;
 		}
+
 		ret = fread(enum_ctl, read_size, 1, file);
 		if (ret != 1) {
 			ret = -EINVAL;
@@ -502,19 +516,27 @@ int tplg_load_one_control(struct snd_soc_tplg_ctl_hdr **ctl, char **priv_data,
 		}
 
 		/* skip enum private data */
-		fseek(file, enum_ctl->priv.size, SEEK_CUR);
+		if (fseek(file, enum_ctl->priv.size, SEEK_CUR)) {
+			ret = -errno;
+			goto err;
+		}
+
 		*ctl = (struct snd_soc_tplg_ctl_hdr *)enum_ctl;
 		break;
 
 	case SND_SOC_TPLG_CTL_BYTES:
 		/* load bytes type controls */
 		rewind_size = sizeof(struct snd_soc_tplg_ctl_hdr);
-		fseek(file, rewind_size * -1, SEEK_CUR);
+		if (fseek(file, rewind_size * -1, SEEK_CUR)) {
+			ret = -errno;
+			goto err;
+		}
+
 		read_size = sizeof(struct snd_soc_tplg_bytes_control);
 		bytes_ctl = malloc(read_size);
 		if (!bytes_ctl) {
 			fprintf(stderr, "error: mem alloc\n");
-			ret = -EINVAL;
+			ret = -errno;
 			goto err;
 		}
 
@@ -529,7 +551,7 @@ int tplg_load_one_control(struct snd_soc_tplg_ctl_hdr **ctl, char **priv_data,
 		*priv_data = malloc(read_size);
 		if (!(*priv_data)) {
 			fprintf(stderr, "error: mem alloc\n");
-			ret = -EINVAL;
+			ret = -errno;
 			goto err;
 		}
 
@@ -578,7 +600,7 @@ int tplg_load_controls(int num_kcontrols, FILE *file)
 	ctl_hdr = (struct snd_soc_tplg_ctl_hdr *)malloc(size);
 	if (!ctl_hdr) {
 		fprintf(stderr, "error: mem alloc\n");
-		return -EINVAL;
+		return -errno;
 	}
 
 	size = sizeof(struct snd_soc_tplg_mixer_control);
@@ -586,7 +608,7 @@ int tplg_load_controls(int num_kcontrols, FILE *file)
 	if (!mixer_ctl) {
 		fprintf(stderr, "error: mem alloc\n");
 		free(ctl_hdr);
-		return -EINVAL;
+		return -errno;
 	}
 
 	size = sizeof(struct snd_soc_tplg_enum_control);
@@ -595,7 +617,7 @@ int tplg_load_controls(int num_kcontrols, FILE *file)
 		fprintf(stderr, "error: mem alloc\n");
 		free(ctl_hdr);
 		free(mixer_ctl);
-		return -EINVAL;
+		return -errno;
 	}
 
 	size = sizeof(struct snd_soc_tplg_bytes_control);
@@ -605,7 +627,7 @@ int tplg_load_controls(int num_kcontrols, FILE *file)
 		free(ctl_hdr);
 		free(mixer_ctl);
 		free(enum_ctl);
-		return -EINVAL;
+		return -errno;
 	}
 
 	for (j = 0; j < num_kcontrols; j++) {
@@ -625,10 +647,13 @@ int tplg_load_controls(int num_kcontrols, FILE *file)
 		case SND_SOC_TPLG_CTL_VOLSW_XR_SX:
 		case SND_SOC_TPLG_CTL_RANGE:
 		case SND_SOC_TPLG_DAPM_CTL_VOLSW:
-
 			/* load mixer type control */
 			read_size = sizeof(struct snd_soc_tplg_ctl_hdr);
-			fseek(file, read_size * -1, SEEK_CUR);
+			if (fseek(file, read_size * -1, SEEK_CUR)) {
+				return -errno;
+				goto err;
+			}
+
 			read_size = sizeof(struct snd_soc_tplg_mixer_control);
 			ret = fread(mixer_ctl, read_size, 1, file);
 			if (ret != 1) {
@@ -637,17 +662,24 @@ int tplg_load_controls(int num_kcontrols, FILE *file)
 			}
 
 			/* skip mixer private data */
-			fseek(file, mixer_ctl->priv.size, SEEK_CUR);
+			if (fseek(file, mixer_ctl->priv.size, SEEK_CUR)) {
+				ret = -errno;
+				goto err;
+			}
 			break;
+
 		case SND_SOC_TPLG_CTL_ENUM:
 		case SND_SOC_TPLG_CTL_ENUM_VALUE:
 		case SND_SOC_TPLG_DAPM_CTL_ENUM_DOUBLE:
 		case SND_SOC_TPLG_DAPM_CTL_ENUM_VIRT:
 		case SND_SOC_TPLG_DAPM_CTL_ENUM_VALUE:
-
 			/* load enum type control */
 			read_size = sizeof(struct snd_soc_tplg_ctl_hdr);
-			fseek(file, read_size * -1, SEEK_CUR);
+			if (fseek(file, read_size * -1, SEEK_CUR)) {
+				ret = -errno;
+				goto err;
+			}
+
 			read_size = sizeof(struct snd_soc_tplg_enum_control);
 			ret = fread(enum_ctl, read_size, 1, file);
 			if (ret != 1) {
@@ -656,13 +688,20 @@ int tplg_load_controls(int num_kcontrols, FILE *file)
 			}
 
 			/* skip enum private data */
-			fseek(file, enum_ctl->priv.size, SEEK_CUR);
+			if (fseek(file, enum_ctl->priv.size, SEEK_CUR)) {
+				ret = -errno;
+				goto err;
+			}
 			break;
-		case SND_SOC_TPLG_CTL_BYTES:
 
+		case SND_SOC_TPLG_CTL_BYTES:
 			/* load bytes type controls */
 			read_size = sizeof(struct snd_soc_tplg_ctl_hdr);
-			fseek(file, read_size * -1, SEEK_CUR);
+			if (fseek(file, read_size * -1, SEEK_CUR)) {
+				ret = -errno;
+				goto err;
+			}
+
 			read_size = sizeof(struct snd_soc_tplg_bytes_control);
 			ret = fread(bytes_ctl, read_size, 1, file);
 			if (ret != 1) {
@@ -671,8 +710,12 @@ int tplg_load_controls(int num_kcontrols, FILE *file)
 			}
 
 			/* skip bytes private data */
-			fseek(file, bytes_ctl->priv.size, SEEK_CUR);
+			if (fseek(file, bytes_ctl->priv.size, SEEK_CUR)) {
+				ret = -errno;
+				goto err;
+			}
 			break;
+
 		default:
 			printf("info: control type not supported\n");
 			return -EINVAL;
@@ -700,7 +743,7 @@ int tplg_load_src(int comp_id, int pipeline_id, int size,
 	array = (struct snd_soc_tplg_vendor_array *)malloc(size);
 	if (!array) {
 		fprintf(stderr, "error: mem alloc for src vendor array\n");
-		return -EINVAL;
+		return -errno;
 	}
 
 	/* read vendor tokens */
@@ -767,7 +810,7 @@ int tplg_load_asrc(int comp_id, int pipeline_id, int size,
 	array = (struct snd_soc_tplg_vendor_array *)malloc(size);
 	if (!array) {
 		fprintf(stderr, "error: mem alloc for asrc vendor array\n");
-		return -EINVAL;
+		return -errno;
 	}
 
 	/* read vendor tokens */
@@ -835,7 +878,7 @@ int tplg_load_process(int comp_id, int pipeline_id, int size,
 	array = (struct snd_soc_tplg_vendor_array *)malloc(size);
 	if (!array) {
 		fprintf(stderr, "error: mem alloc for asrc vendor array\n");
-		return -EINVAL;
+		return -errno;
 	}
 
 	/* read vendor tokens */
@@ -903,7 +946,7 @@ int tplg_load_mixer(int comp_id, int pipeline_id, int size,
 	array = (struct snd_soc_tplg_vendor_array *)malloc(size);
 	if (!array) {
 		fprintf(stderr, "error: mem alloc for src vendor array\n");
-		return -EINVAL;
+		return -errno;
 	}
 
 	/* read vendor tokens */
@@ -969,7 +1012,7 @@ int tplg_load_graph(int num_comps, int pipeline_id,
 	graph_elem = (struct snd_soc_tplg_dapm_graph_elem *)malloc(size);
 	if (!graph_elem) {
 		fprintf(stderr, "error: mem alloc\n");
-		return -EINVAL;
+		return -errno;
 	}
 
 	/* set up component connections */
@@ -1032,7 +1075,7 @@ int load_widget(void *dev, int dev_type, struct comp_info *temp_comp_list,
 	widget = (struct snd_soc_tplg_dapm_widget *)malloc(size);
 	if (!widget) {
 		fprintf(stderr, "error: mem alloc\n");
-		return -EINVAL;
+		return -errno;
 	}
 
 	/* read widget data */
@@ -1135,7 +1178,11 @@ int load_widget(void *dev, int dev_type, struct comp_info *temp_comp_list,
 		break;
 	/* unsupported widgets */
 	default:
-		fseek(file, widget->priv.size, SEEK_CUR);
+		if (fseek(file, widget->priv.size, SEEK_CUR)) {
+			fprintf(stderr, "error: fseek unsupported widget\n");
+			return -errno;
+		}
+
 		printf("info: Widget type not supported %d\n", widget->id);
 		ret = tplg_load_controls(widget->num_kcontrols, file);
 		if (ret < 0) {
