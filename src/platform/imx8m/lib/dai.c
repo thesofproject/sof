@@ -20,13 +20,13 @@ static SHARED_DATA struct dai sai[] = {
 		.base = SAI_3_BASE,
 		.fifo[SOF_IPC_STREAM_PLAYBACK] = {
 			.offset = SAI_3_BASE + REG_SAI_TDR0,
-			.depth = 16,
+			.depth = 128, /* in 4 bytes words */
 			/* Handshake is SDMA hardware event */
 			.handshake = 5,
 		},
 		.fifo[SOF_IPC_STREAM_CAPTURE] = {
 			.offset = SAI_3_BASE + REG_SAI_RDR0,
-			.depth = 16,
+			.depth = 128, /* in 4 bytes words */
 			.handshake = 4,
 		},
 	},
