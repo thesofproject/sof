@@ -99,6 +99,7 @@ static int ext_man_build(const struct module *module,
 			EXT_MAN_DATA_SECTION, ret);
 		goto out;
 	}
+	ret = 0;
 
 	/* fill ext_man struct, size aligned to 4 to avoid unaligned accesses */
 	memcpy(&ext_man, &ext_man_template, sizeof(struct ext_man_header));
