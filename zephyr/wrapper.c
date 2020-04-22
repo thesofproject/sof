@@ -46,32 +46,44 @@ void *rballoc_align(uint32_t flags, uint32_t caps, size_t bytes,
 	return NULL;
 }
 
+/*
+ * Free's memory allocated by above alloc calls.
+ */
 void rfree(void *ptr)
 {
 	// TODO: call Zephyr API
 }
 
+/* debug only - only needed for linking */
 void heap_trace_all(int force)
 {
 }
 
 /*
- * Interrupts
+ * Interrupts - SOF IRQs can have > 1 handler (like Linux) so arg is
+ * used by care for matching.
  */
+
+/* register an IRQ  handler - irq number needs mapped to zephyr IRQ */
 int interrupt_register(uint32_t irq, void(*handler)(void *arg), void *arg)
 {
 	return 0;
 }
 
+/* unregister an IRQ handler - matches on IRQ number and data ptr */
 void interrupt_unregister(uint32_t irq, const void *arg)
 {
 }
 
+/* enable an interrupt source - IRQ needs mapped to Zephyr,
+ * arg is used to match.
+ */
 uint32_t interrupt_enable(uint32_t irq, void *arg)
 {
 	return 0;
 }
 
+/* disable interrupt */
 uint32_t interrupt_disable(uint32_t irq, void *arg)
 {
 	return 0;
@@ -121,6 +133,7 @@ int interrupt_get_irq(unsigned int irq, const char *cascade)
 	return 0;
 }
 
+/* needed for linkage only */
 const char irq_name_level2[] = "level2";
 const char irq_name_level5[] = "level5";
 
@@ -182,6 +195,7 @@ volatile void *task_context_get(void)
 
 uint32_t arch_timer_get_system(struct timer *timer)
 {
+	/* copy from SOF */
 	return 0;
 }
 
@@ -191,6 +205,7 @@ uint32_t arch_timer_get_system(struct timer *timer)
 
 struct notify **arch_notify_get(void)
 {
+	/* copy from SOF */
 	return NULL;
 }
 
@@ -199,7 +214,7 @@ struct notify **arch_notify_get(void)
  */
 void arch_dump_regs_a(void *dump_buf)
 {
-
+	/* needed for linkage only */
 }
 
 /*
@@ -208,6 +223,7 @@ void arch_dump_regs_a(void *dump_buf)
 
 unsigned int _xtos_ints_off( unsigned int mask )
 {
+	/* can call xtos version directly */
 	return 0;
 }
 
