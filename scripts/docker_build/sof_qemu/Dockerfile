@@ -40,10 +40,13 @@ RUN useradd --create-home -d /home/sof -u $UID -G sudo sof && \
 echo "sof:test0000" | chpasswd && adduser sof sudo
 ENV HOME /home/sof
 
+ARG GITHUB_SOF=https://github.com/thesofproject
+ARG SOF_REPO=$GITHUB_SOF/qemu.git
+ARG CLONE_DEFAULTS="--depth 5"
 # build qemu
 USER sof
-RUN cd /home/sof && git clone https://github.com/thesofproject/qemu.git && \
-	cd qemu && git checkout sof-v4.2 && \
+RUN cd /home/sof && git clone $CLONE_DEFAULTS --branch sof-v4.2 $SOF_REPO && \
+	cd qemu && \
 # replace the submodule git repo to github mirror
 	sed -i 's#git://git.qemu.org#https://github.com/qemu#g' .gitmodules && \
 	sed -i 's#git://git.qemu-project.org#https://github.com/qemu#g' .gitmodules && \
