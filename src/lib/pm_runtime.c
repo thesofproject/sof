@@ -104,3 +104,10 @@ bool pm_runtime_is_active(enum pm_runtime_context context, uint32_t index)
 		return platform_pm_runtime_is_active(context, index);
 	}
 }
+
+int pm_runtime_pg_lpsram(void)
+{
+	tracev_pm("pm_runtime_pg_lpsram()");
+
+	return platform_pm_pg_lpsram();
+}

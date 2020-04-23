@@ -119,6 +119,15 @@ void pm_runtime_disable(enum pm_runtime_context context, uint32_t index);
 bool pm_runtime_is_active(enum pm_runtime_context context, uint32_t index);
 
 /**
+ * \brief Power gate available LPSRAM banks.
+ *
+ * @param none.
+ *
+ * @return 0 if succeeded error code otherwise.
+ */
+int pm_runtime_pg_lpsram(void);
+
+/**
  * \brief Retrieves pointer to runtime power management data.
  *
  * @return Runtime power management data pointer.
