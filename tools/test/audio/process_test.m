@@ -14,11 +14,11 @@ if nargin < 1
 end
 
 if nargin < 2
-	bits_in_list = [16 32];
+	bits_in_list = [16 24 32];
 end
 
 if nargin < 3
-	bits_out_list = [16 32];
+	bits_out_list = [16 24 32];
 end
 
 if nargin < 4
@@ -26,26 +26,21 @@ if nargin < 4
 end
 
 %% Paths
-blobpath = '../../topology/m4';
+t.blobpath = '../../topology/m4';
 plots = 'plots';
 reports = 'reports';
 
-t.comp = comp;
-t.blob = fullfile(blobpath, 'eq_iir_coef_flat.m4');
-%t.blob = fullfile(blobpath, 'eq_iir_coef_loudness.m4');
-%t.comp = 'EQIIR';
-%t.comp = 'EQFIR';
-%t.comp = 'volume';
-%t.comp = 'DCblock';
-
 %% Defaults for test
-t.fmt = 'raw';              % Can be 'raw' (fast binary) or 'txt' (debug)
-t.fs = fs;                  % Sample rate from func params
-t.nch = 2;                  % Number of channels
-t.ch = [1 2];               % Test channel 1
-t.bits_in = bits_in_list;   % Input word length from func params
-t.bits_out = bits_out_list; % Output word length from func params
-t.full_test = 1;            % 0 is quick check only, 1 is full set
+t.comp = comp;                         % Pass component name from func arguments
+t.fmt = 'raw';                         % Can be 'raw' (fast binary) or 'txt' (debug)
+t.iirblob = 'eq_iir_coef_loudness.m4'; % Use loudness type response
+t.firblob = 'eq_fir_coef_loudness.m4'; % Use loudness type response
+t.fs = fs;                             % Sample rate from func arguments
+t.nch = 2;                             % Number of channels
+t.ch = [1 2];                          % Test channel 1 and 2
+t.bits_in = bits_in_list;              % Input word length from func arguments
+t.bits_out = bits_out_list;            % Output word length from func arguments
+t.full_test = 1;                       % 0 is quick check only, 1 is full set
 
 %% Show graphics or not. With visible plot windows Octave may freeze if too
 %  many windows are kept open. As workaround setting close windows to
@@ -53,9 +48,9 @@ t.full_test = 1;            % 0 is quick check only, 1 is full set
 %  visibility set to to 0 only console text is seen. The plots are
 %  exported into plots directory in png format and can be viewed from
 %  there.
-t.plot_close_windows = 0;  % Workaround for visible windows if Octave hangs
-t.plot_visible = 'on';     % Use off for batch tests and on for interactive
-t.files_delete = 0;        % Set to 0 to inspect the audio data files
+t.plot_close_windows = 1;  % Workaround for visible windows if Octave hangs
+t.plot_visible = 'off';    % Use off for batch tests and on for interactive
+t.files_delete = 1;        % Set to 0 to inspect the audio data files
 
 %% Prepare
 addpath('std_utils');
@@ -117,17 +112,18 @@ end
 fn = sprintf('%s/g_%s.txt', reports, t.comp);
 print_val(t.comp, 'Gain (dB)', fn, bits_in_list, bits_out_list, r.g, r.pf);
 
-%% Print table with test summary: THD+N vs. frequency
-fn = sprintf('%s/thdnf_%s.txt', reports, t.comp);
-print_val(t.comp, 'Worst-case THD+N vs. frequency', fn, bits_in_list, bits_out_list, r.thdnf, r.pf);
-
 %% Print table with test summary: DR
 fn = sprintf('%s/dr_%s.txt', reports, t.comp);
 print_val(t.comp, 'Dynamic range (dB CCIR-RMS)', fn, bits_in_list, bits_out_list, r.dr, r.pf);
 
+%% Print table with test summary: THD+N vs. frequency
+fn = sprintf('%s/thdnf_%s.txt', reports, t.comp);
+print_val(t.comp, 'Worst-case THD+N vs. frequency', fn, bits_in_list, bits_out_list, r.thdnf, r.pf);
+
+
 %% Print table with test summary: pass/fail
-fn = 'reports/pf_src.txt';
-print_pf(t.comp', fn, bits_in_list, bits_out_list, r.pf);
+fn = sprintf('%s/pf_%s.txt', reports, t.comp);
+print_pf(t.comp', fn, bits_in_list, bits_out_list, r.pf, 'Fails chirp/gain/DR/THD+N/FR');
 
 fprintf('\n');
 fprintf('Number of passed tests = %d\n', r.n_pass);
@@ -167,7 +163,7 @@ test = test_run_process(test, t);
 
 % Analyze
 test = chirp_test_analyze(test);
-test_result_print(t, 'Continuous frequency sweep', 'chirpf');
+test_result_print(t, 'Continuous frequency sweep', 'chirpf', test);
 
 % Delete files unless e.g. debugging and need data to run
 delete_check(t.files_delete, test.fn_in);
@@ -188,12 +184,8 @@ test = g_test_input(test);
 % Run test
 test = test_run_process(test, t);
 
-% EQ gain at test frequency
-channel = 1;
-h = eq_blob_plot(t.blob, 'iir', test.fs, test.f, 0);
-test.g_db_expect = h.m(channel);
-
 % Measure
+test = g_spec(test, t);
 test = g_test_measure(test);
 
 % Get output parameters
@@ -238,26 +230,23 @@ test = thdnf_test_input(test);
 test = test_run_process(test, t);
 
 % Measure
+test = thdnf_mask(test, t);
 test = thdnf_test_measure(test);
 
 % For EQ use the -20dBFS result and ignore possible -1 dBFS fail
 thdnf = max(test.thdnf_low);
-if thdnf > test.thdnf_max
-  fail = 1;
-else
-  fail = 0;
-end
+fail = test.fail;
 delete_check(t.files_delete, test.fn_in);
 delete_check(t.files_delete, test.fn_out);
 
 % Print
-test_result_print(t, 'THD+N ratio vs. frequency', 'THDNF');
+test_result_print(t, 'THD+N ratio vs. frequency', 'THDNF', test);
 
 end
 
 
 %% Reference: AES17 6.2.3 Frequency response
-function [fail, pm_range_db, range_hz, fr3db_hz] = fr_test(t)
+function fail = fr_test(t)
 
 test = test_defaults(t);
 
@@ -268,43 +257,77 @@ test = fr_test_input(test);
 test = test_run_process(test, t);
 
 % Measure
-test = eq_mask(test, t, 0.5);
+test = fr_mask(test, t);
 test = fr_test_measure(test);
-
 fail = test.fail;
-pm_range_db = test.rp;
-range_hz = [test.f_lo test.f_hi];
-fr3db_hz = test.fr3db_hz;
 delete_check(t.files_delete, test.fn_in);
 delete_check(t.files_delete, test.fn_out);
 
 % Print
-test_result_print(t, 'Frequency response', 'FR', test.ph, test.fh);
+test_result_print(t, 'Frequency response', 'FR', test);
 
 end
 
 %% Helper functions
 
-% Create mask from theoretical frequency response calculated from coefficients
-% and align mask to be relative 997 Hz response
-function test = eq_mask(test, t, tol)
+function test = thdnf_mask(test, prm)
 
-if ~strcmp(lower(test.comp), 'eqiir') && ~strcmp(lower(test.comp), 'eqfir')
-	return
+min_bits = min(test.bits_in, test.bits_out);
+test.thdnf_mask_f = [50 400 test.f_max];
+test.thdnf_mask_hi = [-40 -50 -50];
+
 end
 
-test.fr_mask_f = [];
-test.fr_mask_lo = [];
-test.fr_mask_hi = [];
+function test = g_spec(test, prm)
 
+switch lower(test.comp)
+	case 'eqiir'
+		blob = fullfile(prm.blobpath, prm.iirblob);
+		h = eq_blob_plot(blob, 'iir', test.fs, test.f, 0);
+	case 'eqfir'
+		blob = fullfile(prm.blobpath, prm.firblob);
+		h = eq_blob_plot(blob, 'fir', test.fs, test.f, 0);
+	otherwise
+		test.g_db_expect = zeros(1, test.nch);
+		return
+end
+
+test.g_db_expect = h.m(:, test.ch);
+end
+
+function test = fr_mask(test, prm)
+
+switch lower(test.comp)
+	case 'eqiir'
+		blob = fullfile(prm.blobpath, prm.iirblob);
+		h = eq_blob_plot(blob, 'iir', test.fs, test.f, 0);
+	case 'eqfir'
+		blob = fullfile(prm.blobpath, prm.firblob);
+		h = eq_blob_plot(blob, 'fir', test.fs, test.f, 0);
+	otherwise
+		% Define a generic mask for frequency response, generally
+		% all processing at 8 kHz or above should pass, if not
+	        % or need for tighter criteria define per component other
+		% target.
+		test.fr_mask_fhi = [20 test.f_max];
+		test.fr_mask_flo = [200 400 3500 3600 ];
+		for i = 1:test.nch
+			test.fr_mask_mhi(:,i) = [ 1 1 ];
+			test.fr_mask_mlo(:,i) = [-10 -1 -1 -10];
+		end
+		return
+end
+
+% Create mask from theoretical frequency response calculated from decoded
+% response in h and align mask to be relative to 997 Hz response
+i997 = find(test.f > 997, 1, 'first')-1;
 j = 1;
-for channel = t.ch
-	h = eq_blob_plot(t.blob, 'iir', test.fs, test.f, 0);
-	i997 = find(test.f > 997, 1, 'first')-1;
+for channel = test.ch
 	m = h.m(:, channel) - h.m(i997, channel);
-	test.fr_mask_f = test.f;
-	test.fr_mask_lo(:,j) = m-tol;
-	test.fr_mask_hi(:,j) = m+tol;
+	test.fr_mask_flo = test.f;
+	test.fr_mask_fhi = test.f;
+	test.fr_mask_mlo(:,j) = m - test.fr_rp_max_db;
+	test.fr_mask_mhi(:,j) = m + test.fr_rp_max_db;
 	j = j + 1;
 end
 
@@ -327,32 +350,23 @@ test.att_rec_db = 0;
 
 % Plotting
 test.plot_channels_combine = 1;
-test.plot_thdn_axis = [10 100e3 -180 -50];
-test.plot_fr_axis = [10 100e3 -20 10 ];
+test.plot_thdn_axis = [];
+test.plot_fr_axis = [];
 test.plot_passband_zoom = 0;
 
 % Test constraints
 test.f_start = 20;
 test.f_end = test.fs * 0.41667; % 20 kHz @ 48 kHz
 test.fu = test.fs * 0.41667;    % 20 kHz @ 48 kHz
-test.f_lo = 20;                 % For response reporting, measure from 20 Hz
-test.f_hi = 0.999*t.fs/2 ;      % to designed filter upper frequency
 test.f_max = 0.999*t.fs/2;      % Measure up to min. Nyquist frequency
 test.fs1 = test.fs;
 test.fs2 = test.fs;
 
 % Pass criteria
 test.g_db_tol = 0.1;            % Allow 0.1 dB gain variation
-test.thdnf_max = -50;           % Max. THD+N over frequency for -20 dBFS
+test.thdnf_max = [];            % Set per component
 test.dr_db_min = 80;            % Min. DR
-test.fr_rp_max_db = 0.1;        % Allow 0.1 dB frequency response ripple
-
-% A generic relaxed frequency response mask
-test.fr_mask_f = [ 100 400 7000 ];
-for i = 1:t.nch
-	test.fr_mask_lo(:,i) = [-9 -1 -1 ];
-	test.fr_mask_hi(:,i) = [ 1  1  1 ];
-end
+test.fr_rp_max_db = 0.5;        % Allow 0.5 dB frequency response ripple
 
 end
 
@@ -362,7 +376,7 @@ switch lower(test.comp)
 	case 'eqiir'
 		test.ex = './eqiir_run.sh';
 	case 'eqfir'
-		test.ex = './eqiir_run.sh';
+		test.ex = './eqfir_run.sh';
 	case 'dcblock'
 		test.ex = './dcblock_run.sh';
 	case 'volume'
@@ -378,31 +392,21 @@ test = test_run(test);
 
 end
 
-function test_result_print(t, testverbose, testacronym, ph, fh)
+function test_result_print(t, testverbose, testacronym, test)
 
 tstr = sprintf('%s %s %d-%d %d Hz', ...
 	       testverbose, t.comp, t.bits_in, t.bits_out, t.fs);
-if nargin > 3
-	nph = length(ph);
-	for i=1:nph
-		title(ph(i), tstr);
-	end
-else
-	title(tstr);
+
+for i = 1:length(test.ph)
+	title(test.ph(i), tstr);
 end
 
-if nargin > 4
-	nfh = length(fh);
-	for i=1:nfh
-		figure(fh(i));
-		pfn = sprintf('plots/%s_%s_%d_%d_%d_%d.png', ...
-			      testacronym, t.comp, ...
-			      t.bits_in, t.bits_out, t.fs, i);
-		print(pfn, '-dpng');
-	end
-else
-	pfn = sprintf('plots/%s_%s_%d_%d_%d.png', ...
-		      testacronym, t.comp, t.bits_in, t.bits_out, t.fs);
+for i = 1:length(test.fh)
+	figure(test.fh(i), 'visible', test.plot_visible);
+	pfn = sprintf('plots/%s_%s_%d_%d_%d_%d.png', ...
+		      testacronym, t.comp, ...
+		      t.bits_in, t.bits_out, t.fs, i);
 	print(pfn, '-dpng');
 end
+
 end

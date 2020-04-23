@@ -4,6 +4,23 @@ function test = thdnf_test_measure(test)
 % Copyright(c) 2017 Intel Corporation. All rights reserved.
 % Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 
+test.ph = [];
+test.fh = [];
+
+if isempty(test.thdnf_mask_f)
+	if ~isempty(test.thdnf_max)
+		test.thdnf_mask_f = [1 test.fs/2]; % Start from 1 due to log()
+		test.thdnf_mask_hi = test.thdnf_max * [1 1];
+	end
+else
+	if ~isempty(test.thdnf_max)
+		error('Set either thdnf_max or thdnf_mask_f & thdnf_mask_hi but not both');
+	end
+	if isempty(test.thdnf_mask_hi)
+		error('thdnf_mask_hi must be set when thdnf_mask_f is defined');
+	end
+end
+
 %% Reference: AES17 6.3.2 THD+N ratio vs frequency
 %  http://www.aes.org/publications/standards/
 
@@ -28,6 +45,14 @@ if isempty(d)
 	return
 end
 
+%% Interpolate THD+N mask
+idx = find(test.f <= test.thdnf_mask_f(end));
+idx = find(test.f(idx) >= test.thdnf_mask_f(1));
+f_mask = test.f(idx);
+f_log = log(f_mask);
+mask_hi = interp1(log(test.thdnf_mask_f), test.thdnf_mask_hi, f_log, 'linear');
+mask_hi = mask_hi(:);
+
 %% Measure all test frequencies
 test.fail = 0;
 for i = 1:length(test.ch);
@@ -50,7 +75,24 @@ for i = 1:length(test.ch);
 	test.thdnf = mn - ml;
 	test.thdnf_high(:,i) = test.thdnf(:,1);
 	test.thdnf_low(:,i) = test.thdnf(:,2);
-	if max(max(test.thdnf)) > test.thdnf_max
+
+	fidx = find(test.thdnf(idx, 1) > mask_hi);
+	if length(fidx) > 0
+		fail_hi = 1;
+		fprintf('Failed THD+N mask with high input.\n');
+	else
+		fail_hi = 0;
+	end
+
+	fidx = find(test.thdnf(idx, 2) > mask_hi);
+	if length(fidx) > 0
+		fail_lo = 1;
+		fprintf('Failed THD+N mask with low input.\n');
+	else
+		fail_lo = 0;
+	end
+
+	if fail_hi && fail_lo
 		test.fail = 1;
 	end
 end
@@ -61,15 +103,22 @@ for i = 1:length(test.ch)
 	test.ph(i) = subplot(1, 1, 1);
 
 	if test.plot_channels_combine
-		semilogx(test.f, test.thdnf_high, test.f, test.thdnf_low, '--');
+		semilogx(test.f, test.thdnf_high, test.f, test.thdnf_low);
 	else
 		semilogx(test.f, test.thdnf_high(:,i), ...
-			test.f, test.thdnf_low(:,i), '--');
+			test.f, test.thdnf_low(:,i));
+	end
+
+	if ~isempty(test.thdnf_mask_f)
+		hold on
+		plot(f_mask, mask_hi, 'k--');
+		hold off
 	end
 
 	grid on;
-	if ~isempty(test.plot_thdn_axis);
+	if ~isempty(test.plot_thdn_axis)
 		axis(test.plot_thdn_axis);
+	end
 
 	xlabel('Frequency (Hz)');
 	ylabel('THD+N (dB)');
