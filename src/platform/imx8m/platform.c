@@ -29,6 +29,7 @@
 #include <ipc/header.h>
 #include <ipc/info.h>
 #include <kernel/abi.h>
+#include <kernel/ext_manifest.h>
 #include <version.h>
 #include <errno.h>
 #include <stdint.h>
@@ -61,12 +62,17 @@ static const struct sof_ipc_fw_ready ready
 
 #define NUM_IMX_WINDOWS		6
 
-static const struct sof_ipc_window sram_window
-	__section(".fw_ready_metadata") = {
+EXT_MAN_PORT(
+	EXT_MAN_ELEM_WINDOW,
+	sizeof(struct ext_man_windows),
+	window,
+	static const struct ext_man_windows xsram_window,
+	static const struct sof_ipc_window sram_window
+		__section(".fw_ready_metadata"),
+	_META_EXPAND(
 	.ext_hdr	= {
 		.hdr.cmd = SOF_IPC_FW_READY,
-		.hdr.size = sizeof(struct sof_ipc_window) +
-			sizeof(struct sof_ipc_window_elem) * NUM_IMX_WINDOWS,
+		.hdr.size = sizeof(struct sof_ipc_window),
 		.type	= SOF_IPC_EXT_WINDOW,
 	},
 	.num_windows	= NUM_IMX_WINDOWS,
@@ -114,7 +120,7 @@ static const struct sof_ipc_window sram_window
 			.offset	= MAILBOX_EXCEPTION_OFFSET,
 		},
 	},
-};
+));
 
 SHARED_DATA struct timer timer = {
 	.id = TIMER0, /* internal timer */
