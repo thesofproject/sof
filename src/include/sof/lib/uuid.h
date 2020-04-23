@@ -18,6 +18,9 @@
 /** \brief UUID is 16 bytes long */
 #define UUID_SIZE 16
 
+/** \brief UUID name string max length in bytes, including null termination */
+#define UUID_NAME_MAX_LEN 32
+
 /**
  * \brief UUID (Universally Unique IDentifier) structure.
  *
@@ -38,6 +41,18 @@ struct sof_uuid {
 	uint16_t b;
 	uint16_t c;
 	uint8_t  d[8];
+};
+
+/**
+ * \brief Connects UUID with component description
+ *
+ * Declaration of this structure should be done by DECLARE_SOF_UUID(),
+ * then declaration will be part of `.static_uuids` section and `SMEX` tool
+ * use it during `ldc` file creation.
+ */
+struct sof_uuid_entry {
+	struct sof_uuid id;
+	const char name[UUID_NAME_MAX_LEN];
 };
 
 #if CONFIG_LIBRARY
@@ -69,15 +84,10 @@ struct sof_uuid {
 			 va, vb, vc,					\
 			 vd0, vd1, vd2, vd3, vd4, vd5, vd6, vd7)	\
 	__section(".static_uuids")					\
-	static const struct {						\
-		struct sof_uuid id;					\
-		uint32_t name_len;					\
-		const char name[sizeof(entity_name)];			\
-	} uuid_name = {							\
+	static const struct sof_uuid_entry uuid_name = {		\
 		{.a = va, .b = vb, .c = vc,				\
 		 .d = {vd0, vd1, vd2, vd3, vd4, vd5, vd6, vd7}},	\
-		sizeof(entity_name),					\
-		entity_name						\
+		entity_name "\0"					\
 	}
 
 /** \brief Creates local unique 32-bit representation of UUID structure.
