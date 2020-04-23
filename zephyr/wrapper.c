@@ -7,8 +7,38 @@
 
 #include <sof/lib/alloc.h>
 #include <sof/drivers/interrupt.h>
+#include <sof/drivers/interrupt-map.h>
 #include <sof/lib/dma.h>
 #include <sof/schedule/schedule.h>
+
+/* Zephyr includes */
+#include <soc.h>
+
+/* Including following header
+ * #include <kernel.h>
+ * triggers include chain issue
+ *
+ * TODO: Figure out best way for include
+ */
+void *k_malloc(size_t size);
+void *k_calloc(size_t nmemb, size_t size);
+void k_free(void *ptr);
+
+int arch_irq_connect_dynamic(unsigned int irq, unsigned int priority,
+			     void (*routine)(void *parameter),
+			     void *parameter, u32_t flags);
+
+#define arch_irq_enable(irq)	z_soc_irq_enable(irq)
+#define arch_irq_disable(irq)	z_soc_irq_disable(irq)
+
+/* TODO: Use ASSERT */
+#if !defined(CONFIG_DYNAMIC_INTERRUPTS)
+#error Define CONFIG_DYNAMIC_INTERRUPTS
+#endif
+
+#if !defined(CONFIG_HEAP_MEM_POOL_SIZE)
+#error Define CONFIG_HEAP_MEM_POOL_SIZE
+#endif
 
 /*
  * Memory
@@ -64,15 +94,25 @@ void heap_trace_all(int force)
  * used by care for matching.
  */
 
-/* register an IRQ  handler - irq number needs mapped to zephyr IRQ */
+static uint32_t to_zephyr_irq(uint32_t sof_irq) {
+        return SOC_AGGREGATE_IRQ(SOF_IRQ_BIT(sof_irq),
+                                 SOF_IRQ_NUMBER(sof_irq));
+}
+
 int interrupt_register(uint32_t irq, void(*handler)(void *arg), void *arg)
 {
-	return 0;
+	uint32_t zephyr_irq = to_zephyr_irq(irq);
+
+	return arch_irq_connect_dynamic(zephyr_irq, 0, handler, arg, 0);
 }
 
 /* unregister an IRQ handler - matches on IRQ number and data ptr */
 void interrupt_unregister(uint32_t irq, const void *arg)
 {
+	/*
+	 * There is no "unregister" (or "disconnect") for
+         * interrupts in Zephyr.
+         */
 }
 
 /* enable an interrupt source - IRQ needs mapped to Zephyr,
@@ -80,12 +120,16 @@ void interrupt_unregister(uint32_t irq, const void *arg)
  */
 uint32_t interrupt_enable(uint32_t irq, void *arg)
 {
+	arch_irq_enable(to_zephyr_irq(irq));
+
 	return 0;
 }
 
 /* disable interrupt */
 uint32_t interrupt_disable(uint32_t irq, void *arg)
 {
+	arch_irq_disable(to_zephyr_irq(irq));
+
 	return 0;
 }
 
