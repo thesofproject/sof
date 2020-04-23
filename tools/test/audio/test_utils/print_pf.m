@@ -1,4 +1,4 @@
-% print_pf(comp, filename, prm_in_list, prm_out_list, pf)
+% print_pf(comp, filename, prm_in_list, prm_out_list, pf, desc)
 %
 % Prints and exports in CSV format a matrix of overall pass/fail test results
 
@@ -6,13 +6,13 @@
 % Copyright(c) 2020 Intel Corporation. All rights reserved.
 % Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 
-function print_pf(comp, fn, prm_in_list, prm_out_list, pf)
+function print_pf(comp, fn, prm_in_list, prm_out_list, pf, desc)
 
 n_prmi = length(prm_in_list);
 n_prmo = length(prm_out_list);
 fh = fopen(fn,'w');
 fprintf(fh,'\n');
-fprintf(fh,'%s test result: Fails\n', comp);
+fprintf(fh,'%s test result: %s\n', comp, desc);
 fprintf(fh,'%8s, ', 'in \ out');
 
 % Do not print decimals for all integer parameters

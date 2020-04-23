@@ -159,7 +159,7 @@ print_val('SRC', 'Attenuation of image products dB', ...
 
 %% Print table with test summary: pass/fail
 fn = 'reports/pf_src.txt';
-print_pf('SRC', fn, k * fs_in_list, k * fs_out_list, r.pf);
+print_pf('SRC', fn, k * fs_in_list, k * fs_out_list, r.pf, 'chirp/gain/FR/THD+N/DR/AAP/AIP');
 
 fprintf('\n');
 fprintf('Number of passed tests = %d\n', r.n_pass);
@@ -222,10 +222,10 @@ function [fail, pm_range_db, range_hz, fr3db_hz] = fr_test(t)
 test = test_defaults_src(t);
 prm = src_param(t.fs1, t.fs2, test.coef_bits);
 
-test.fr_rp_max_db = prm.rp_tot; % Max. ripple +/- dB allowed
-test.f_lo = 20;                 % For response reporting, measure from 20 Hz
-test.f_hi = 0.99 * min(t.fs1,t.fs2)*prm.c_pb; % to designed filter upper frequency
-test.f_max = 0.99 * min(t.fs1/2, t.fs2/2); % Measure up to Nyquist frequency
+test.fr_rp_max_db = prm.rp_tot;                % Max. ripple +/- dB allowed
+test.fr_lo = 20;                               % Ripple measure from 20 Hz
+test.fr_hi = 0.99 * min(t.fs1,t.fs2)*prm.c_pb; % up to Nyquist frequency
+test.f_max = 0.99 * min(t.fs1/2, t.fs2/2);     % Measure up to Nyquist frequency
 
 %% Create input file
 test = fr_test_input(test);
@@ -239,7 +239,7 @@ test = fr_test_measure(test);
 
 fail = test.fail;
 pm_range_db = test.rp;
-range_hz = [test.f_lo test.f_hi];
+range_hz = [test.fr_lo test.fr_hi];
 fr3db_hz = test.fr3db_hz;
 delete_check(t.files_delete, test.fn_in);
 delete_check(t.files_delete, test.fn_out);
@@ -424,9 +424,6 @@ test.ch = t.ch;
 test.fs = t.fs1;
 test.fs1 = t.fs1;
 test.fs2 = t.fs2;
-test.fr_mask_f = [];
-test.fr_mask_lo = [];
-test.fr_mask_hi = [];
 test.coef_bits = 24; % No need to use actual word length in test
 test.att_rec_db = 0; % Not used in simulation test
 test.quick = 0;      % Test speed is no issue in simulation
@@ -434,7 +431,14 @@ test.plot_visible = t.plot_visible;
 test.plot_channels_combine = 0;
 test.plot_passband_zoom = 1;
 test.plot_fr_axis = [10 100e3 -4 1];
-test.plot_thdn_axis = [10 100e3 -140 -60];
+test.plot_thdn_axis = [10 100e3 -140 -59];
+test.fr_mask_flo = [];
+test.fr_mask_fhi = [];
+test.fr_mask_mlo = [];
+test.fr_mask_mhi = [];
+test.thdnf_mask_f = [];
+test.thdnf_mask_hi = [];
+test.thdnf_max = [];
 end
 
 function test = test_run_src(test, t)
