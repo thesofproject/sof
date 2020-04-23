@@ -113,30 +113,39 @@ static void log_err(FILE *out_fd, const char *fmt, ...)
 	va_end(args);
 }
 
-char *format_uid_raw(const struct sof_uuid *uid_val, int use_colors,
+char *format_uid_raw(const struct sof_uuid_entry *uid_entry, int use_colors,
 		     int name_first)
 {
-	const char *name = (const char *)(uid_val + 1) + 4;
+	const struct sof_uuid *uid_val = &uid_entry->id;
 	char *str;
 
 	str = asprintf("%s%s%s<%08x-%04x-%04x-%02x%02x-%02x%02x%02x%02x%02x%02x>%s%s%s",
 		use_colors ? KBLU : "",
-		name_first ? name : "",
+		name_first ? uid_entry->name : "",
 		name_first ? " " : "",
 		uid_val->a, uid_val->b, uid_val->c,
 		uid_val->d[0], uid_val->d[1], uid_val->d[2],
 		uid_val->d[3], uid_val->d[4], uid_val->d[5],
 		uid_val->d[6], uid_val->d[7],
 		name_first ? "" : " ",
-		name_first ? "" : name,
+		name_first ? "" : uid_entry->name,
 		use_colors ? KNRM : "");
 	return str;
+}
+
+static const struct sof_uuid_entry *
+get_uuid_entry(const struct snd_sof_uids_header *uids_dict, uint32_t uid_ptr)
+{
+	return (const struct sof_uuid_entry *)
+	       ((uint8_t *)uids_dict + uids_dict->data_offset + uid_ptr -
+	       uids_dict->base_address);
 }
 
 const char *format_uid(const struct snd_sof_uids_header *uids_dict,
 		       uint32_t uid_ptr,
 		       int use_colors)
 {
+	const struct sof_uuid_entry *uid_entry;
 	char *str;
 
 	if (uid_ptr < uids_dict->base_address ||
@@ -144,10 +153,8 @@ const char *format_uid(const struct snd_sof_uids_header *uids_dict,
 		str = calloc(1, strlen(BAD_PTR_STR) + 1 + 6);
 		sprintf(str, BAD_PTR_STR, uid_ptr);
 	} else {
-		const struct sof_uuid *uid_val = (const struct sof_uuid *)
-			((uint8_t *)uids_dict + uids_dict->data_offset +
-			uid_ptr - uids_dict->base_address);
-		str = format_uid_raw(uid_val, use_colors, 1);
+		uid_entry = get_uuid_entry(uids_dict, uid_ptr);
+		str = format_uid_raw(uid_entry, use_colors, 1);
 
 	}
 	return str;
@@ -243,17 +250,16 @@ static
 const char *get_component_name(const struct snd_sof_uids_header *uids_dict,
 			       uint32_t trace_class, uint32_t uid_ptr)
 {
+	const struct sof_uuid_entry *uid_entry;
+
 	/* if uid_ptr is non-zero, find name in the ldc file */
 	if (uid_ptr) {
 		if (uid_ptr < uids_dict->base_address ||
 		    uid_ptr >= uids_dict->base_address +
 		    uids_dict->data_length)
 			return "<uid?>";
-		const struct sof_uuid *uid_val = (const struct sof_uuid *)
-			((uint8_t *)uids_dict + uids_dict->data_offset +
-			 uid_ptr - uids_dict->base_address);
-
-		return (const char *)(uid_val + 1) + sizeof(uint32_t);
+		uid_entry = get_uuid_entry(uids_dict, uid_ptr);
+		return uid_entry->name;
 	}
 
 	/* otherwise print legacy trace class name */
@@ -699,11 +705,9 @@ static int dump_ldc_info(struct convert_config *config,
 {
 	struct snd_sof_uids_header *uids_dict = config->uids_dict;
 	ssize_t remaining = uids_dict->data_length;
+	const struct sof_uuid_entry *uid_ptr;
 	FILE *out_fd = config->out_fd;
-	uint32_t *name_len_ptr;
-	ssize_t entry_size;
 	uintptr_t uid_addr;
-	uintptr_t uid_ptr;
 	int cnt = 0;
 	char *name;
 
@@ -723,11 +727,12 @@ static int dump_ldc_info(struct convert_config *config,
 	fprintf(out_fd, "Components uuid entries:\n");
 	fprintf(out_fd, "\t%10s  %38s %s\n", "ADDRESS", "UUID", "NAME");
 
-	uid_ptr = (uintptr_t)uids_dict + uids_dict->data_offset;
+	uid_ptr = (const struct sof_uuid_entry *)
+		  ((uintptr_t)uids_dict + uids_dict->data_offset);
 
 	while (remaining > 0) {
-		name = format_uid_raw((struct sof_uuid *)uid_ptr, 0, 0);
-		uid_addr = uid_ptr - (uintptr_t)uids_dict -
+		name = format_uid_raw(uid_ptr, 0, 0);
+		uid_addr = (uintptr_t)&uid_ptr[cnt] - (uintptr_t)uids_dict -
 			    uids_dict->data_offset + uids_dict->base_address;
 		fprintf(out_fd, "\t0x%lX  %s\n", uid_addr, name);
 
@@ -735,12 +740,7 @@ static int dump_ldc_info(struct convert_config *config,
 			free(name);
 			name = NULL;
 		}
-		/* just after sof_uuid there is name_len in uint32_t format */
-		name_len_ptr = (uint32_t *)(uid_ptr + sizeof(struct sof_uuid));
-		entry_size = ALIGN_UP(*name_len_ptr + sizeof(struct sof_uuid) +
-				      sizeof(uint32_t), 4);
-		remaining -= entry_size;
-		uid_ptr += entry_size;
+		remaining -= sizeof(struct sof_uuid_entry);
 		++cnt;
 	}
 
