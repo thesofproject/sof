@@ -213,6 +213,7 @@ static inline int sai_set_config(struct dai *dai,
 
 	/* TODO: set number of slots from config */
 	val_cr4 |= REG_SAI_CR4_FRSZ(SAI_TDM_SLOTS);
+	val_cr4 |= REG_SAI_CR4_CHMOD;
 
 	val_cr5 |= REG_SAI_CR5_WNW(sywd) | REG_SAI_CR5_W0W(sywd) |
 			REG_SAI_CR5_FBT(sywd);
@@ -222,7 +223,9 @@ static inline int sai_set_config(struct dai *dai,
 
 	mask_cr4  = REG_SAI_CR4_MF | REG_SAI_CR4_FSE |
 			REG_SAI_CR4_FSP | REG_SAI_CR4_FSD_MSTR |
-			REG_SAI_CR4_FRSZ_MASK | REG_SAI_CR4_SYWD_MASK;
+			REG_SAI_CR4_FRSZ_MASK | REG_SAI_CR4_SYWD_MASK |
+			REG_SAI_CR4_CHMOD_MASK;
+
 
 	mask_cr5  = REG_SAI_CR5_WNW_MASK | REG_SAI_CR5_W0W_MASK |
 			REG_SAI_CR5_FBT_MASK;
