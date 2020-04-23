@@ -618,11 +618,13 @@ static int sdma_status(struct dma_chan_data *channel,
 		status->w_pos = bd->buf_xaddr;
 		break;
 	case SDMA_CHAN_TYPE_AP2MCU:
+	case SDMA_CHAN_TYPE_MCU2SHP:
 		status->r_pos = bd->buf_addr;
 		status->w_pos = pdata->fifo_paddr;
 		/* We cannot see the target address */
 		break;
 	case SDMA_CHAN_TYPE_MCU2AP:
+	case SDMA_CHAN_TYPE_SHP2MCU:
 		status->w_pos = bd->buf_addr;
 		status->r_pos = pdata->fifo_paddr;
 		break;
