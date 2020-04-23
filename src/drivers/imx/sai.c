@@ -30,6 +30,13 @@ static void sai_start(struct dai *dai, int direction)
 	/* enable DMA requests */
 	dai_update_bits(dai, REG_SAI_XCSR(direction),
 			REG_SAI_CSR_FWDE, REG_SAI_CSR_FWDE);
+
+	/* add one word to FIFO before TRCE is enabled */
+	if (direction == DAI_DIR_PLAYBACK)
+		dai_write(dai, REG_SAI_TDR0, 0x0);
+	else
+		dai_write(dai, REG_SAI_RDR0, 0x0);
+
 	/* transmitter enable */
 	dai_update_bits(dai, REG_SAI_XCSR(direction),
 			REG_SAI_CSR_TERE, REG_SAI_CSR_TERE);
@@ -47,11 +54,6 @@ static void sai_start(struct dai *dai, int direction)
 					REG_SAI_CR3_TRCE(1));
 	}
 
-	/* add one word to FIFO after TRCE has been enabled */
-	if (direction == DAI_DIR_PLAYBACK)
-		dai_update_bits(dai, REG_SAI_TDR0, 0x0, 0x0);
-	else
-		dai_update_bits(dai, REG_SAI_RDR0, 0x0, 0x0);
 }
 
 static void sai_stop(struct dai *dai, int direction)
