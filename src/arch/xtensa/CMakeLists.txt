@@ -395,10 +395,14 @@ if(MEU_PATH)
 			${RIMAGE_MOD_OFFSET_FLAG}
 			${bootloader_binary_path}
 			sof-${fw_name}
-		DEPENDS sof_dump rimage_ep run_smex
+		DEPENDS sof_dump rimage_ep
 		VERBATIM
 		USES_TERMINAL
 	)
+
+	if(CONFIG_TRACE)
+		add_dependencies(run_rimage run_smex)
+	endif()
 
 	if(NOT DEFINED MEU_OPENSSL)
 		set(MEU_OPENSSL "/usr/bin/openssl")
@@ -434,10 +438,15 @@ else()
 			${RIMAGE_MOD_OFFSET_FLAG}
 			${bootloader_binary_path}
 			sof-${fw_name}
-		DEPENDS sof_dump rimage_ep run_smex
+		DEPENDS sof_dump rimage_ep
 		VERBATIM
 		USES_TERMINAL
 	)
+
+	if (CONFIG_TRACE)
+		add_dependencies(run_rimage run_smex)
+	endif()
+
 	add_custom_target(run_meu DEPENDS run_rimage)
 endif()
 
