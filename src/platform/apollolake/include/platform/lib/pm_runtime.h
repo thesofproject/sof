@@ -57,6 +57,13 @@ bool platform_pm_runtime_is_active(uint32_t context, uint32_t index);
  */
 void platform_pm_runtime_power_off(void);
 
+/**
+ * \brief Power gates available LPSRAM banks.
+ * \param[in] None.
+ * \param[out] 0 if succeeded error code otherwise.
+ */
+int platform_pm_pg_lpsram(void);
+
 #endif /* __PLATFORM_LIB_PM_RUNTIME_H__ */
 
 #else

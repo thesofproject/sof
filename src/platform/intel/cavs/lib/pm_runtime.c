@@ -518,3 +518,30 @@ void platform_pm_runtime_power_off(void)
 	power_down(true, hpsram_mask);
 }
 #endif
+
+int platform_pm_pg_lpsram(void)
+{
+	int ret = 0;
+	uint32_t status;
+	uint32_t delay_count, timeout_counter = 256;
+
+	delay_count = timeout_counter;
+
+	io_reg_write(LSPGCTL, LPSRAM_MASK());
+
+	/* add some delay before checking the status */
+	idelay(delay_count);
+
+	/* query the power status of first part of LP memory */
+	status = io_reg_read(LSPGISTS);
+	while ((status & LPSRAM_MASK(0)) != LPSRAM_MASK()) {
+		if (!timeout_counter--) {
+			ret = -ETIME;
+			break;
+		}
+		idelay(delay_count);
+		status = io_reg_read(LSPGISTS);
+	}
+
+	return ret;
+}
