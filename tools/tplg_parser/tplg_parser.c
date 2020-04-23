@@ -147,7 +147,12 @@ int tplg_load_buffer(int comp_id, int pipeline_id, int size,
 			return -EINVAL;
 		}
 
-		tplg_read_array(array, file);
+		ret = tplg_read_array(array, file);
+		if (ret) {
+			fprintf(stderr, "error: read array fail\n");
+			free(array);
+			return ret;
+		}
 
 		/* parse buffer comp tokens */
 		ret = sof_parse_tokens(&buffer->comp, buffer_comp_tokens,
@@ -207,7 +212,14 @@ int tplg_load_pcm(int comp_id, int pipeline_id, int size, int dir,
 		ret = fread(array, read_size, 1, file);
 		if (ret != 1)
 			return -EINVAL;
-		tplg_read_array(array, file);
+
+		ret = tplg_read_array(array, file);
+		if (ret) {
+			fprintf(stderr, "error: read array fail\n");
+			free(array);
+			return ret;
+		}
+
 
 		/* parse comp tokens */
 		ret = sof_parse_tokens(&host->config, comp_tokens,
@@ -269,7 +281,12 @@ int tplg_load_dai(int comp_id, int pipeline_id, int size,
 			return -EINVAL;
 		}
 
-		tplg_read_array(array, file);
+		ret = tplg_read_array(array, file);
+		if (ret) {
+			fprintf(stderr, "error: read array fail\n");
+			free(array);
+			return ret;
+		}
 
 		ret = sof_parse_tokens(comp_dai, dai_tokens,
 				       ARRAY_SIZE(dai_tokens), array,
@@ -321,7 +338,13 @@ int tplg_load_pga(int comp_id, int pipeline_id, int size,
 			free(array);
 			return -EINVAL;
 		}
-		tplg_read_array(array, file);
+
+		ret = tplg_read_array(array, file);
+		if (ret) {
+			fprintf(stderr, "error: read array fail\n");
+			free(array);
+			return ret;
+		}
 
 		/* parse comp tokens */
 		ret = sof_parse_tokens(&volume->config, comp_tokens,
@@ -392,7 +415,8 @@ int tplg_load_pipeline(int comp_id, int pipeline_id, int size,
 		}
 
 		ret = tplg_read_array(array, file);
-		if (ret < 0) {
+		if (ret) {
+			fprintf(stderr, "error: read array fail\n");
 			free(array);
 			return -EINVAL;
 		}
@@ -755,7 +779,12 @@ int tplg_load_src(int comp_id, int pipeline_id, int size,
 			return -EINVAL;
 		}
 
-		tplg_read_array(array, file);
+		ret = tplg_read_array(array, file);
+		if (ret) {
+			fprintf(stderr, "error: read array fail\n");
+			free(array);
+			return ret;
+		}
 
 		/* parse comp tokens */
 		ret = sof_parse_tokens(&src->config, comp_tokens,
@@ -822,7 +851,12 @@ int tplg_load_asrc(int comp_id, int pipeline_id, int size,
 			return -EINVAL;
 		}
 
-		tplg_read_array(array, file);
+		ret = tplg_read_array(array, file);
+		if (ret) {
+			fprintf(stderr, "error: read array fail\n");
+			free(array);
+			return ret;
+		}
 
 		/* parse comp tokens */
 		ret = sof_parse_tokens(&asrc->config, comp_tokens,
@@ -890,7 +924,12 @@ int tplg_load_process(int comp_id, int pipeline_id, int size,
 			return -EINVAL;
 		}
 
-		tplg_read_array(array, file);
+		ret = tplg_read_array(array, file);
+		if (ret) {
+			fprintf(stderr, "error: read array fail\n");
+			free(array);
+			return ret;
+		}
 
 		/* parse comp tokens */
 		ret = sof_parse_tokens(&process->config, comp_tokens,
@@ -958,7 +997,12 @@ int tplg_load_mixer(int comp_id, int pipeline_id, int size,
 			return -EINVAL;
 		}
 
-		tplg_read_array(array, file);
+		ret = tplg_read_array(array, file);
+		if (ret) {
+			fprintf(stderr, "error: read array fail\n");
+			free(array);
+			return ret;
+		}
 
 		/* parse comp tokens */
 		ret = sof_parse_tokens(&mixer->config, comp_tokens,
