@@ -629,6 +629,7 @@ static int ipc_pm_core_enable(uint32_t header)
 
 static int ipc_pm_gate(uint32_t header)
 {
+	int ret;
 	struct sof_ipc_pm_gate pm_gate;
 
 	IPC_COPY_CMD(pm_gate, ipc_get()->comp_data);
@@ -641,6 +642,15 @@ static int ipc_pm_gate(uint32_t header)
 		pm_runtime_disable(PM_RUNTIME_DSP, PLATFORM_MASTER_CORE_ID);
 	else
 		pm_runtime_enable(PM_RUNTIME_DSP, PLATFORM_MASTER_CORE_ID);
+
+	if (pm_gate.flags & SOF_PM_PG_LPSRAM) {
+		ret = pm_runtime_pg_lpsram();
+		if (ret) {
+			trace_ipc("ipc_pm_gate() error %d: failed to power gate lpsram",
+				  ret);
+			return ret;
+		}
+	}
 
 	/* resume dma trace if needed */
 	if (!(pm_gate.flags & SOF_PM_NO_TRACE))

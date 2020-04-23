@@ -75,5 +75,7 @@ struct sof_ipc_pm_gate {
 
 /** \brief Disable DMA tracing (0 - keep tracing, 1 - to disable DMA trace) */
 #define SOF_PM_NO_TRACE		BIT(4)
+/** \brief Power gate available LPSRAM banks */
+#define SOF_PM_PG_LPSRAM	BIT(5)
 
 #endif /* __IPC_PM_H__ */
