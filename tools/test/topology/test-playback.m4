@@ -34,6 +34,11 @@ DEBUG_START
 # TEST_SSP_MODE - SSP mode e.g. I2S, LEFT_J, DSP_A and DSP_B
 #
 
+# Apply a non-trivial filter blob IIR and FIR tests. TODO: Note that the
+# PIPELINE_FILTERx notation will be updated in future for better flexibility.
+define(PIPELINE_FILTER1, ifelse(TEST_PIPE_NAME, `eq-iir', `eq_iir_coef_loudness.m4'))
+define(PIPELINE_FILTER2, ifelse(TEST_PIPE_NAME, `eq-fir', `eq_fir_coef_loudness.m4'))
+
 #
 # Define the pipeline
 #
