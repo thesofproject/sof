@@ -114,8 +114,9 @@ end
 %% Trim avay the duplicated frequency point
 if f_single
 	eq.f = eq.f(1);
+	eq.m = eq.m(1, :);
 	if do_group_delay
-		eq.gd = eq.gd(1);
+		eq.gd = eq.gd(1, :);
 	end
 end
 
