@@ -30,6 +30,10 @@ static void sai_start(struct dai *dai, int direction)
 	/* enable DMA requests */
 	dai_update_bits(dai, REG_SAI_XCSR(direction),
 			REG_SAI_CSR_FWDE, REG_SAI_CSR_FWDE);
+#ifdef CONFIG_IMX8M
+	dai_update_bits(dai, REG_SAI_MCTL, REG_SAI_MCTL_MCLK_EN,
+			REG_SAI_MCTL_MCLK_EN);
+#endif
 
 	/* add one word to FIFO before TRCE is enabled */
 	if (direction == DAI_DIR_PLAYBACK)
