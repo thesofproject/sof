@@ -42,7 +42,7 @@ ExternalProject_Add(sof_ep
 	SOURCE_DIR "${sof_source_directory}"
 	PREFIX "${PROJECT_BINARY_DIR}/sof_ep"
 	BINARY_DIR "${sof_binary_directory}"
-	CMAKE_ARGS -DBUILD_LIBRARY=ON
+	CMAKE_ARGS -DCONFIG_LIBRARY=ON
 		-DCMAKE_INSTALL_PREFIX=${sof_install_directory}
 		-DCMAKE_VERBOSE_MAKEFILE=${CMAKE_VERBOSE_MAKEFILE}
 	BUILD_ALWAYS 1
@@ -69,7 +69,7 @@ ExternalProject_Add(parser_ep
 	SOURCE_DIR "${parser_source_directory}"
 	PREFIX "${PROJECT_BINARY_DIR}/sof_parser"
 	BINARY_DIR "${PROJECT_BINARY_DIR}/sof_parser/build"
-	CMAKE_ARGS -DBUILD_LIBRARY=ON
+	CMAKE_ARGS -DCONFIG_LIBRARY=ON
 		-DCMAKE_INSTALL_PREFIX=${PROJECT_BINARY_DIR}/sof_parser/install
 		-DCMAKE_VERBOSE_MAKEFILE=${CMAKE_VERBOSE_MAKEFILE}
 	BUILD_COMMAND make

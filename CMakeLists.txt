@@ -17,11 +17,10 @@ if(NOT (${CMAKE_VERSION} VERSION_LESS "3.13.0"))
 	cmake_policy(SET CMP0079 OLD)
 endif()
 
-option(BUILD_LIBRARY "Build library" OFF)
 option(BUILD_UNIT_TESTS "Build unit tests" OFF)
 option(BUILD_CLANG_SCAN "Build for clang's scan-build" OFF)
 
-if(BUILD_LIBRARY)
+if(CONFIG_LIBRARY)
 	set(ARCH host)
 else()
 	# firmware build supports only xtensa arch for now
@@ -123,7 +122,7 @@ include(scripts/cmake/kconfig.cmake)
 add_dependencies(sof_public_headers genconfig check_version_h)
 target_include_directories(sof_public_headers INTERFACE ${GENERATED_DIRECTORY}/include)
 
-if(BUILD_LIBRARY)
+if(CONFIG_LIBRARY)
 	add_library(sof SHARED "")
 	target_link_libraries(sof PRIVATE sof_options)
 	target_link_libraries(sof PRIVATE sof_static_libraries)

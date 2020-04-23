@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
-if(BUILD_LIBRARY)
+if(CONFIG_LIBRARY)
 	add_local_sources(sof
 		ipc.c
 	)
