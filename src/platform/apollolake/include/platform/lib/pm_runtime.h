@@ -52,7 +52,8 @@ bool platform_pm_runtime_is_active(uint32_t context, uint32_t index);
 
 /**
  * \brief Power gates platform specific hardware resources.
- * \param[in] context Type of power management context.
+ * \param[in] None.
+ * \param[out] None.
  */
 void platform_pm_runtime_power_off(void);
 
