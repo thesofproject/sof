@@ -15,8 +15,8 @@
  */
 void *rmalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
 {
-	// TODO: call Zephyr API
-	return NULL;
+	/* TODO: Use different memory areas */
+	return k_malloc(bytes);
 }
 
 /**
@@ -27,8 +27,8 @@ void *rmalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
  */
 void *rzalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
 {
-	// TODO: call Zephyr API
-	return NULL;
+	/* TODO: Use different memory areas */
+	return k_calloc(bytes, 1);
 }
 
 /**
@@ -42,8 +42,8 @@ void *rzalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
 void *rballoc_align(uint32_t flags, uint32_t caps, size_t bytes,
 		    uint32_t alignment)
 {
-	// TODO: call Zephyr API
-	return NULL;
+	/* TODO: Rewrite with alignment, mem areas, caps */
+	return k_malloc(bytes);
 }
 
 /*
@@ -51,7 +51,7 @@ void *rballoc_align(uint32_t flags, uint32_t caps, size_t bytes,
  */
 void rfree(void *ptr)
 {
-	// TODO: call Zephyr API
+	k_free(ptr);
 }
 
 /* debug only - only needed for linking */
