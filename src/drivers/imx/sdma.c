@@ -822,6 +822,10 @@ static int sdma_prep_desc(struct dma_chan_data *channel,
 		pdata->ctx->g_reg[7] = watermark;
 	}
 
+	dcache_writeback_region(pdata->desc, sizeof(pdata->desc));
+	dcache_writeback_region(pdata->ccb, sizeof(*pdata->ccb));
+	dcache_writeback_region(pdata->ctx,  sizeof(*pdata->ctx));
+
 	return 0;
 }
 
