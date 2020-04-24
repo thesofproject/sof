@@ -111,8 +111,11 @@ void interrupt_unregister(uint32_t irq, const void *arg)
 {
 	/*
 	 * There is no "unregister" (or "disconnect") for
-         * interrupts in Zephyr.
+         * interrupts in Zephyr. Clear handler in the table.
          */
+        uint32_t zephyr_irq = to_zephyr_irq(irq);
+
+        arch_irq_connect_dynamic(zephyr_irq, 0, NULL, NULL, 0);
 }
 
 /* enable an interrupt source - IRQ needs mapped to Zephyr,
