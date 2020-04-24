@@ -875,12 +875,8 @@ static int sdma_pm_context_restore(struct dma *dma)
 
 static int sdma_interrupt(struct dma_chan_data *channel, enum dma_irq_cmd cmd)
 {
-	if (!channel->index) {
-		trace_sdma_error("sdma_interrupt called for channel 0; ignoring command");
+	if (!channel->index)
 		return 0;
-	}
-
-	tracev_sdma("sdma_interrupt(%d cmd %d)", channel->index, cmd);
 
 	switch (cmd) {
 	case DMA_IRQ_STATUS_GET:
