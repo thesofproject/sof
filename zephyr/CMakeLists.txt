@@ -32,6 +32,7 @@ endfunction()
 zephyr_interface_library_named(SOF)
 
 # default SOF includes
+target_include_directories(SOF INTERFACE ../zephyr/include)
 target_include_directories(SOF INTERFACE ../src/include)
 target_include_directories(SOF INTERFACE ../src/arch/xtensa/include)
 
@@ -155,7 +156,7 @@ endif()
 # Commented files will be added/removed as integration dictates.
 zephyr_library_sources(
 	../src/trace/dma-trace.c
-	../src/trace/trace.c
+	#../src/trace/trace.c
 	#../src/drivers/dw/ssi-spi.c
 	#../src/drivers/dw/gpio.c
 	../src/drivers/dw/dma.c
