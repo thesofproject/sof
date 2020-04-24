@@ -89,7 +89,7 @@ static int ext_man_build(const struct module *module,
 	uint8_t *buffer = NULL;
 	uint8_t *sec_buffer = NULL;
 	size_t offset;
-	int ret = 0;
+	int ret;
 
 	ret = elf_read_section(module, EXT_MAN_DATA_SECTION, &section,
 			       (void **)&sec_buffer);
