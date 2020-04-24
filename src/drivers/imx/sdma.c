@@ -189,6 +189,9 @@ static int sdma_register_init(struct dma *dma)
 	for (int i = 0; i < SDMA_HWEVENTS_COUNT; i++)
 		dma_reg_write(dma, SDMA_CHNENBL(i), 0);
 
+	for (int i = 0; i < dma->plat_data.channels; i++)
+		dma_reg_write(dma, SDMA_CHNPRI(i), 0);
+
 	/* Write ccb_array pointer to SDMA controller */
 	dma_reg_write(dma, SDMA_MC0PTR, (uint32_t)pdata->ccb_array);
 
