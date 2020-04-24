@@ -62,6 +62,7 @@ struct sdma_chan {
 	struct sdma_context *ctx;
 	struct sdma_ccb *ccb;
 	int hw_event;
+	int next_bd;
 	int sdma_chan_type;
 	int fifo_paddr;
 };
@@ -579,23 +580,31 @@ static int sdma_release(struct dma_chan_data *channel)
 
 static int sdma_copy(struct dma_chan_data *channel, int bytes, uint32_t flags)
 {
-	/* Check the buffer descriptors, set the "DONE" bit on one of
-	 * them. Ignoring "bytes" value, if the pipeline is incorrect it
-	 * will be audible.
-	 */
 	struct sdma_chan *pdata = dma_chan_get_data(channel);
+	struct dma_cb_data next = {
+		.channel = channel,
+		.elem.size = bytes,
+	};
+	int idx;
 
 	tracev_sdma("sdma_copy");
-	for (int i = 0; i < pdata->desc_count; i++) {
-		/* Work around the fact that we cannot allocate uncached memory
-		 * on all platforms supporting SDMA.
-		 */
-		dcache_invalidate_region(&pdata->desc[i].config,
-					 sizeof(pdata->desc[i].config));
-		pdata->desc[i].config |= SDMA_BD_DONE;
-		dcache_writeback_region(&pdata->desc[i].config,
-					sizeof(pdata->desc[i].config));
-	}
+
+	idx = (pdata->next_bd + 1) % 2;
+	pdata->next_bd = idx;
+
+	/* Work around the fact that we cannot allocate uncached memory
+	 * on all platforms supporting SDMA.
+	 */
+	dcache_invalidate_region(&pdata->desc[idx].config,
+				 sizeof(pdata->desc[idx].config));
+	pdata->desc[idx].config |= SDMA_BD_DONE;
+	dcache_writeback_region(&pdata->desc[idx].config,
+				sizeof(pdata->desc[idx].config));
+
+
+	notifier_event(channel, NOTIFIER_ID_DMA_COPY,
+		       NOTIFIER_TARGET_CORE_LOCAL, &next, sizeof(next));
+
 	return 0;
 }
 
@@ -753,14 +762,14 @@ static int sdma_prep_desc(struct dma_chan_data *channel,
 			return -EINVAL;
 		}
 
-		bd->config =
-			SDMA_BD_COUNT(config->elem_array.elems[i].size) |
-			SDMA_BD_CMD(SDMA_CMD_XFER_SIZE(width)) | SDMA_BD_CONT;
-
+		bd->config = SDMA_BD_COUNT(config->elem_array.elems[i].size) |
+			SDMA_BD_CMD(SDMA_CMD_XFER_SIZE(width));
 		if (!config->irq_disabled)
 			bd->config |= SDMA_BD_INT;
 
-		bd->config |= SDMA_BD_DONE | SDMA_BD_CONT;
+		bd->config |= SDMA_BD_CONT;
+		if (pdata->next_bd == i)
+			bd->config |= SDMA_BD_DONE;
 	}
 
 	/* Configure last BD to account for cyclic transfers */
