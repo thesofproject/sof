@@ -45,7 +45,7 @@ int arch_irq_connect_dynamic(unsigned int irq, unsigned int priority,
  */
 void *rmalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
 {
-	/* TODO: Use different memory areas */
+	/* TODO: Use different memory areas - & cache line alignment*/
 	return k_malloc(bytes);
 }
 
@@ -57,7 +57,7 @@ void *rmalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
  */
 void *rzalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
 {
-	/* TODO: Use different memory areas */
+	/* TODO: Use different memory areas & cache line alignment */
 	return k_calloc(bytes, 1);
 }
 
@@ -99,11 +99,14 @@ static uint32_t to_zephyr_irq(uint32_t sof_irq) {
                                  SOF_IRQ_NUMBER(sof_irq));
 }
 
+int interrupt_get_irq(unsigned int irq, const char *cascade)
+{
+	return to_zephyr_irq(irq);
+}
+
 int interrupt_register(uint32_t irq, void(*handler)(void *arg), void *arg)
 {
-	uint32_t zephyr_irq = to_zephyr_irq(irq);
-
-	return arch_irq_connect_dynamic(zephyr_irq, 0, handler, arg, 0);
+	return arch_irq_connect_dynamic(irq, 0, handler, arg, 0);
 }
 
 /* unregister an IRQ handler - matches on IRQ number and data ptr */
@@ -111,11 +114,9 @@ void interrupt_unregister(uint32_t irq, const void *arg)
 {
 	/*
 	 * There is no "unregister" (or "disconnect") for
-         * interrupts in Zephyr. Clear handler in the table.
+         * interrupts in Zephyr.
          */
-        uint32_t zephyr_irq = to_zephyr_irq(irq);
-
-        arch_irq_connect_dynamic(zephyr_irq, 0, NULL, NULL, 0);
+	arch_irq_disable(irq);
 }
 
 /* enable an interrupt source - IRQ needs mapped to Zephyr,
@@ -123,7 +124,7 @@ void interrupt_unregister(uint32_t irq, const void *arg)
  */
 uint32_t interrupt_enable(uint32_t irq, void *arg)
 {
-	arch_irq_enable(to_zephyr_irq(irq));
+	arch_irq_enable(irq);
 
 	return 0;
 }
@@ -131,53 +132,113 @@ uint32_t interrupt_enable(uint32_t irq, void *arg)
 /* disable interrupt */
 uint32_t interrupt_disable(uint32_t irq, void *arg)
 {
-	arch_irq_disable(to_zephyr_irq(irq));
+	arch_irq_disable(irq);
 
 	return 0;
 }
 
 void platform_interrupt_init(void)
 {
+	/* masks all external IRQs on SOF - Zephyr should do the same ? */
+#if 0
+	/* mask all external IRQs by default */
+	irq_write(REG_IRQ_IL2MSD(core), REG_IRQ_IL2MD_ALL);
+	irq_write(REG_IRQ_IL3MSD(core), REG_IRQ_IL3MD_ALL);
+	irq_write(REG_IRQ_IL4MSD(core), REG_IRQ_IL4MD_ALL);
+	irq_write(REG_IRQ_IL5MSD(core), REG_IRQ_IL5MD_ALL);
+#endif
 }
 
 void platform_interrupt_set(uint32_t irq)
 {
+	/* TODO sets (asserts) direct IRQs i.e. DSP level 1 like SW IRQ */
+	/* IIRC this may be used, but only for SW IRQs... */
 }
 
 void platform_interrupt_clear(uint32_t irq, uint32_t mask)
 {
+	/* TODO clears (de-asserts) direct IRQs i.e. DSP level 1 like SW IRQ */
+	/* IIRC this may be used, but only for SW IRQs... */
 }
 
 uint32_t platform_interrupt_get_enabled(void)
 {
+	/* CAVS always returns 0*/
 	return 0;
 }
 
 void interrupt_mask(uint32_t irq, unsigned int cpu)
 {
+	/* masks CAVS IRQ controller IRQs */
+	/* TODO: assumption is that Zephyr does this ?*/
+#if 0
+	#if CONFIG_INTERRUPT_LEVEL_5
+	case IRQ_NUM_EXT_LEVEL5:
+		irq_write(REG_IRQ_IL5MSD(core), 1 << irq);
+		break;
+#endif
+#if CONFIG_INTERRUPT_LEVEL_4
+	case IRQ_NUM_EXT_LEVEL4:
+		irq_write(REG_IRQ_IL4MSD(core), 1 << irq);
+		break;
+#endif
+#if CONFIG_INTERRUPT_LEVEL_3
+	case IRQ_NUM_EXT_LEVEL3:
+		irq_write(REG_IRQ_IL3MSD(core), 1 << irq);
+		break;
+#endif
+#if CONFIG_INTERRUPT_LEVEL_2
+	case IRQ_NUM_EXT_LEVEL2:
+		irq_write(REG_IRQ_IL2MSD(core), 1 << irq);
+		break;
+#endif
+#endif
+
 }
 
 void interrupt_unmask(uint32_t irq, unsigned int cpu)
 {
+	/* masks CAVS IRQ controller IRQs */
+	/* TODO: assumption is that Zephyr does this ?*/
+#if 0
+#if CONFIG_INTERRUPT_LEVEL_5
+	case IRQ_NUM_EXT_LEVEL5:
+		irq_write(REG_IRQ_IL5MCD(core), 1 << irq);
+		break;
+#endif
+#if CONFIG_INTERRUPT_LEVEL_4
+	case IRQ_NUM_EXT_LEVEL4:
+		irq_write(REG_IRQ_IL4MCD(core), 1 << irq);
+		break;
+#endif
+#if CONFIG_INTERRUPT_LEVEL_3
+	case IRQ_NUM_EXT_LEVEL3:
+		irq_write(REG_IRQ_IL3MCD(core), 1 << irq);
+		break;
+#endif
+#if CONFIG_INTERRUPT_LEVEL_2
+	case IRQ_NUM_EXT_LEVEL2:
+		irq_write(REG_IRQ_IL2MCD(core), 1 << irq);
+		break;
+#endif
+#endif
 }
 
 void interrupt_init(struct sof *sof)
 {
+	/* not needed */
 }
 
 int interrupt_cascade_register(const struct irq_cascade_tmpl *tmpl)
 {
+	/* not needed on Zephyr  - to be removed */
 	return 0;
 }
 
 struct irq_cascade_desc *interrupt_get_parent(uint32_t irq)
 {
+	/* not needed on Zephyr  - to be removed */
 	return NULL;
-}
-
-int interrupt_get_irq(unsigned int irq, const char *cascade)
-{
-	return 0;
 }
 
 /* needed for linkage only */
