@@ -159,6 +159,8 @@ static int sdma_register_init(struct dma *dma)
 		return ret;
 	}
 
+	dma_reg_write(dma, SDMA_MC0PTR, 0);
+
 	/* Ack all interrupts, they're leftover */
 	dma_reg_write(dma, SDMA_INTR, MASK(31, 0));
 
