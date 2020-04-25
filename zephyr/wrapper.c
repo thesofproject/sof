@@ -10,6 +10,7 @@
 #include <sof/drivers/interrupt-map.h>
 #include <sof/lib/dma.h>
 #include <sof/schedule/schedule.h>
+#include <platform/drivers/interrupt.h>
 
 /* Zephyr includes */
 #include <soc.h>
@@ -99,9 +100,17 @@ static uint32_t to_zephyr_irq(uint32_t sof_irq) {
                                  SOF_IRQ_NUMBER(sof_irq));
 }
 
+/* needed for linkage only */
+const char irq_name_level2[] = "level2";
+const char irq_name_level5[] = "level5";
+
 int interrupt_get_irq(unsigned int irq, const char *cascade)
 {
-	return to_zephyr_irq(irq);
+	if (cascade == irq_name_level2)
+		return SOC_AGGREGATE_IRQ(irq, IRQ_NUM_EXT_LEVEL2);
+	if (cascade == irq_name_level5)
+		return SOC_AGGREGATE_IRQ(irq, IRQ_NUM_EXT_LEVEL5);
+	return SOC_AGGREGATE_IRQ(0, irq);
 }
 
 int interrupt_register(uint32_t irq, void(*handler)(void *arg), void *arg)
@@ -139,14 +148,14 @@ uint32_t interrupt_disable(uint32_t irq, void *arg)
 
 void platform_interrupt_init(void)
 {
-	/* masks all external IRQs on SOF - Zephyr should do the same ? */
-#if 0
+	int core = 0;
+
 	/* mask all external IRQs by default */
 	irq_write(REG_IRQ_IL2MSD(core), REG_IRQ_IL2MD_ALL);
 	irq_write(REG_IRQ_IL3MSD(core), REG_IRQ_IL3MD_ALL);
 	irq_write(REG_IRQ_IL4MSD(core), REG_IRQ_IL4MD_ALL);
 	irq_write(REG_IRQ_IL5MSD(core), REG_IRQ_IL5MD_ALL);
-#endif
+
 }
 
 void platform_interrupt_set(uint32_t irq)
@@ -240,10 +249,6 @@ struct irq_cascade_desc *interrupt_get_parent(uint32_t irq)
 	/* not needed on Zephyr  - to be removed */
 	return NULL;
 }
-
-/* needed for linkage only */
-const char irq_name_level2[] = "level2";
-const char irq_name_level5[] = "level5";
 
 /*
  * Scheduler
