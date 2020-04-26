@@ -25,15 +25,17 @@
 #include <stddef.h>
 #include <stdint.h>
 
+extern struct tr_ctx wait_tr;
+
 static inline void wait_for_interrupt(int level)
 {
-	tracev_event(TRACE_CLASS_WAIT, "WFE");
+	tr_dbg(&wait_tr, "WFE");
 #if CONFIG_DEBUG_LOCKS
 	if (lock_dbg_atomic)
-		trace_error_atomic(TRACE_CLASS_WAIT, "atm");
+		tr_err_atomic(&wait_tr, "atm");
 #endif
 	platform_wait_for_interrupt(level);
-	tracev_event(TRACE_CLASS_WAIT, "WFX");
+	tr_dbg(&wait_tr, "WFX");
 }
 
 /**

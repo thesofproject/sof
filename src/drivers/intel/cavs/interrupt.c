@@ -12,12 +12,19 @@
 #include <sof/lib/cpu.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/shim.h>
+#include <sof/lib/uuid.h>
 #include <sof/list.h>
 #include <sof/spinlock.h>
 #include <config.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+
+/* f6448dbf-a8ec-4660-ada2-08a0011a7a86 */
+DECLARE_SOF_UUID("irq-cavs", irq_cavs_uuid, 0xf6448dbf, 0xa8ec, 0x4660,
+		 0xad, 0xa2, 0x08, 0xa0, 0x01, 0x1a, 0x7a, 0x86);
+
+DECLARE_TR_CTX(irq_c_tr, SOF_UUID(irq_cavs_uuid), LOG_LEVEL_INFO);
 
 /*
  * Number of status reload tries before warning the user we are in an IRQ
@@ -94,9 +101,8 @@ static inline void irq_lvl2_handler(void *data, int level, uint32_t ilxsd,
 
 		if (!handled) {
 			/* nobody cared ? */
-			trace_irq_error("irq_lvl2_handler(): "
-					"nobody cared level %d bit %d",
-					level, bit);
+			tr_err(&irq_c_tr, "irq_lvl2_handler(): nobody cared level %d bit %d",
+			       level, bit);
 			/* now mask it */
 			irq_write(ilxmsd, 0x1 << bit);
 		}
@@ -113,9 +119,8 @@ static inline void irq_lvl2_handler(void *data, int level, uint32_t ilxsd,
 		/* any devices continually interrupting / can't be cleared ? */
 		if (!--tries) {
 			tries = LVL2_MAX_TRIES;
-			trace_irq_error("irq_lvl2_handler(): "
-					"IRQ storm at level %d status %08X",
-					level, irq_read(ilxsd));
+			tr_err(&irq_c_tr, "irq_lvl2_handler(): IRQ storm at level %d status %08X",
+			       level, irq_read(ilxsd));
 		}
 	}
 }

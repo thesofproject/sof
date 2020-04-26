@@ -36,6 +36,8 @@ static const struct comp_driver comp_host;
 DECLARE_SOF_UUID("host", host_uuid, 0x8b9d100c, 0x6d78, 0x418f,
 		 0x90, 0xa3, 0xe0, 0xe8, 0x05, 0xd0, 0x85, 0x2b);
 
+DECLARE_TR_CTX(host_tr, SOF_UUID(host_uuid), LOG_LEVEL_INFO);
+
 /** \brief Host copy function interface. */
 typedef int (*host_copy_func)(struct comp_dev *dev);
 
@@ -895,6 +897,7 @@ static int host_set_attribute(struct comp_dev *dev, uint32_t type,
 static const struct comp_driver comp_host = {
 	.type	= SOF_COMP_HOST,
 	.uid	= SOF_UUID(host_uuid),
+	.tctx	= &host_tr,
 	.ops	= {
 		.create		= host_new,
 		.free		= host_free,

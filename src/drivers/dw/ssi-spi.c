@@ -337,7 +337,7 @@ int spi_push(struct spi *spi, const void *data, size_t size)
 	int ret;
 
 	if (size > SPI_BUFFER_SIZE) {
-		trace_ipc_error("ePs");
+		tr_err(&ipc_tr, "ePs");
 		return -ENOBUFS;
 	}
 
@@ -457,7 +457,7 @@ int spi_probe(struct spi *spi)
 	spi->rx_buffer = rzalloc(SOF_MEM_ZONE_SYS_RUNTIME, 0, SOF_MEM_CAPS_DMA,
 				 SPI_BUFFER_SIZE);
 	if (!spi->rx_buffer) {
-		trace_ipc_error("eSp");
+		tr_err(&ipc_tr, "eSp");
 		return -ENOMEM;
 	}
 
@@ -466,7 +466,7 @@ int spi_probe(struct spi *spi)
 	spi->buffer_size = SPI_BUFFER_SIZE;
 	if (!spi->tx_buffer) {
 		rfree(spi->rx_buffer);
-		trace_ipc_error("eSp");
+		tr_err(&ipc_tr, "eSp");
 		return -ENOMEM;
 	}
 

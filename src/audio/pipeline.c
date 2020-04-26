@@ -41,6 +41,12 @@ struct pipeline_data {
 	int cmd;
 };
 
+/* 4e934adb-b0ec-4d33-a086-c1022f921321 */
+DECLARE_SOF_UUID("pipe", pipe_uuid, 0x4e934adb, 0xb0ec, 0x4d33,
+		 0xa0, 0x86, 0xc1, 0x02, 0x2f, 0x92, 0x13, 0x21);
+
+DECLARE_TR_CTX(pipe_tr, SOF_UUID(pipe_uuid), LOG_LEVEL_INFO);
+
 /* f11818eb-e92e-4082-82a3-dc54c604ebb3 */
 DECLARE_SOF_UUID("pipe-task", pipe_task_uuid, 0xf11818eb, 0xe92e, 0x4082,
 		 0x82,  0xa3, 0xdc, 0x54, 0xc6, 0x04, 0xeb, 0xb3);

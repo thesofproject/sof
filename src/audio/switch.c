@@ -19,6 +19,8 @@ static const struct comp_driver comp_switch;
 DECLARE_SOF_UUID("switch", switch_uuid, 0x385cc44b, 0xf34e, 0x4b9b,
 		 0x8b, 0xe0, 0x53, 0x5c, 0x5f, 0x43, 0xa8, 0x25);
 
+DECLARE_TR_CTX(switch_tr, SOF_UUID(switch_uuid), LOG_LEVEL_INFO);
+
 static struct comp_dev *switch_new(const struct comp_driver *drv,
 				   struct sof_ipc_comp *comp)
 {
@@ -65,6 +67,7 @@ static int switch_prepare(struct comp_dev *dev)
 static const struct comp_driver comp_switch = {
 	.type	= SOF_COMP_SWITCH,
 	.uid	= SOF_UUID(switch_uuid),
+	.tctx	= &switch_tr,
 	.ops	= {
 		.create		= switch_new,
 		.free		= switch_free,

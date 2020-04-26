@@ -31,8 +31,8 @@ static inline void timer_report_delay(int id, uint64_t delay)
 	uint32_t ll_delay_us = (delay * 1000) /
 				clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1);
 
-	trace_ll_error("timer_report_delay(): timer %d delayed by %d uS %d "
-		       "ticks", id, ll_delay_us, delay);
+	tr_err(&ll_tr, "timer_report_delay(): timer %d delayed by %d uS %d ticks",
+	       id, ll_delay_us, delay);
 
 	/* Fix compile error when traces are disabled */
 	(void)ll_delay_us;
@@ -46,14 +46,14 @@ static int timer_domain_register(struct ll_schedule_domain *domain,
 	int core = cpu_get_id();
 	int ret = 0;
 
-	tracev_ll("timer_domain_register()");
+	tr_dbg(&ll_tr, "timer_domain_register()");
 
 	/* tasks already registered on this core */
 	if (timer_domain->arg[core])
 		goto out;
 
-	trace_ll("timer_domain_register domain->type %d domain->clk %d domain->ticks_per_ms %d period %d",
-		 domain->type, domain->clk, domain->ticks_per_ms, period);
+	tr_info(&ll_tr, "timer_domain_register domain->type %d domain->clk %d domain->ticks_per_ms %d period %d",
+		domain->type, domain->clk, domain->ticks_per_ms, period);
 
 	timer_domain->arg[core] = arg;
 
@@ -71,14 +71,14 @@ static void timer_domain_unregister(struct ll_schedule_domain *domain,
 	struct timer_domain *timer_domain = ll_sch_domain_get_pdata(domain);
 	int core = cpu_get_id();
 
-	tracev_ll("timer_domain_unregister()");
+	tr_dbg(&ll_tr, "timer_domain_unregister()");
 
 	/* tasks still registered on this core */
 	if (!timer_domain->arg[core] || num_tasks)
 		goto out;
 
-	trace_ll("timer_domain_unregister domain->type %d domain->clk %d",
-		 domain->type, domain->clk);
+	tr_info(&ll_tr, "timer_domain_unregister domain->type %d domain->clk %d",
+		domain->type, domain->clk);
 
 	timer_unregister(timer_domain->timer, timer_domain->arg[core]);
 
@@ -148,7 +148,7 @@ struct ll_schedule_domain *timer_domain_init(struct timer *timer, int clk,
 	struct ll_schedule_domain *domain;
 	struct timer_domain *timer_domain;
 
-	trace_ll("timer_domain_init clk %d timeout %u", clk, timeout);
+	tr_info(&ll_tr, "timer_domain_init clk %d timeout %u", clk, timeout);
 
 	domain = domain_init(SOF_SCHEDULE_LL_TIMER, clk, false,
 			     &timer_domain_ops);

@@ -44,7 +44,7 @@ static void irq_handler(void *arg)
 	/* Interrupt arrived, check src */
 	status = imx_mu_read(IMX_MU_xSR);
 
-	tracev_ipc("ipc: irq isr 0x%x", status);
+	tr_dbg(&ipc_tr, "ipc: irq isr 0x%x", status);
 
 	/* reply message(done) from host */
 	if (status & IMX_MU_xSR_GIPn(1)) {
@@ -129,7 +129,7 @@ int ipc_platform_send_msg(struct ipc_msg *msg)
 	/* now send the message */
 	mailbox_dspbox_write(0, msg->tx_data, msg->tx_size);
 	list_item_del(&msg->list);
-	tracev_ipc("ipc: msg tx -> 0x%x", msg->header);
+	tr_dbg(&ipc_tr, "ipc: msg tx -> 0x%x", msg->header);
 
 	ipc->is_notification_pending = true;
 
@@ -162,7 +162,7 @@ int platform_ipc_init(struct ipc *ipc)
 
 	iipc = rzalloc(SOF_MEM_ZONE_SYS, 0, SOF_MEM_CAPS_RAM, sizeof(*iipc));
 	if (!iipc) {
-		trace_ipc_error("Unable to allocate IPC private data");
+		tr_err(&ipc_tr, "Unable to allocate IPC private data");
 		return -ENOMEM;
 	}
 	ipc_set_drvdata(ipc, iipc);
@@ -184,7 +184,7 @@ int platform_ipc_init(struct ipc *ipc)
 	iipc->dh_buffer.dmac = dma_get(DMA_DIR_HMEM_TO_LMEM, 0, DMA_DEV_HOST,
 				       DMA_ACCESS_SHARED);
 	if (!iipc->dh_buffer.dmac) {
-		trace_ipc_error("Unable to find DMA for host page table");
+		tr_err(&ipc_tr, "Unable to find DMA for host page table");
 		panic(SOF_IPC_PANIC_IPC);
 	}
 #endif

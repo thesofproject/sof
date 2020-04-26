@@ -120,8 +120,8 @@ struct dai_hw_params;
  *  @{
  */
 
-/** \brief Retrieves uid from the component driver */
-#define trace_comp_drv_get_uid(drv_p) ((drv_p)->uid)
+/** \brief Retrieves trace context from the component driver */
+#define trace_comp_drv_get_tr_ctx(drv_p) ((drv_p)->tctx)
 
 /** \brief Retrieves id (-1 = undefined) from the component driver */
 #define trace_comp_drv_get_id(drv_p) (-1)
@@ -129,8 +129,8 @@ struct dai_hw_params;
 /** \brief Retrieves subid (-1 = undefined) from the component driver */
 #define trace_comp_drv_get_subid(drv_p) (-1)
 
-/** \brief Retrieves uid from the component device */
-#define trace_comp_get_uid(comp_p) ((comp_p)->drv->uid)
+/** \brief Retrieves trace context from the component device */
+#define trace_comp_get_tr_ctx(comp_p) ((comp_p)->drv->tctx)
 
 /** \brief Retrieves id (pipe id) from the component device */
 #define trace_comp_get_id(comp_p) ((comp_p)->comp.pipeline_id)
@@ -141,61 +141,57 @@ struct dai_hw_params;
 /* class (driver) level (no device object) tracing */
 
 /** \brief Trace error message from component driver (no comp instance) */
-#define comp_cl_err(drv_p, __e, ...)		\
-	trace_dev_err(TRACE_CLASS_COMP,		\
-		      trace_comp_drv_get_uid,	\
-		      trace_comp_drv_get_id,	\
-		      trace_comp_drv_get_subid,	\
-		      drv_p,			\
+#define comp_cl_err(drv_p, __e, ...)			\
+	trace_dev_err(trace_comp_drv_get_tr_ctx,	\
+		      trace_comp_drv_get_id,		\
+		      trace_comp_drv_get_subid,		\
+		      drv_p,				\
 		      __e, ##__VA_ARGS__)
 
 /** \brief Trace warning message from component driver (no comp instance) */
-#define comp_cl_warn(drv_p, __e, ...)		\
-	trace_dev_warn(TRACE_CLASS_COMP,	\
-		       trace_comp_drv_get_uid,	\
-		       trace_comp_drv_get_id,	\
-		       trace_comp_drv_get_subid,\
-		       drv_p,			\
+#define comp_cl_warn(drv_p, __e, ...)			\
+	trace_dev_warn(trace_comp_drv_get_tr_ctx,	\
+		       trace_comp_drv_get_id,		\
+		       trace_comp_drv_get_subid,	\
+		       drv_p,				\
 		       __e, ##__VA_ARGS__)
 
 /** \brief Trace info message from component driver (no comp instance) */
-#define comp_cl_info(drv_p, __e, ...)		\
-	trace_dev_info(TRACE_CLASS_COMP,	\
-		       trace_comp_drv_get_uid,	\
-		       trace_comp_drv_get_id,	\
-		       trace_comp_drv_get_subid,\
-		       drv_p,			\
+#define comp_cl_info(drv_p, __e, ...)			\
+	trace_dev_info(trace_comp_drv_get_tr_ctx,	\
+		       trace_comp_drv_get_id,		\
+		       trace_comp_drv_get_subid,	\
+		       drv_p,				\
 		       __e, ##__VA_ARGS__)
 
 /** \brief Trace debug message from component driver (no comp instance) */
-#define comp_cl_dbg(drv_p, __e, ...)		\
-	trace_dev_dbg(TRACE_CLASS_COMP,		\
-		      trace_comp_drv_get_uid,	\
-		      trace_comp_drv_get_id,	\
-		      trace_comp_drv_get_subid,	\
-		      drv_p,			\
+#define comp_cl_dbg(drv_p, __e, ...)			\
+	trace_dev_dbg(trace_comp_drv_get_tr_ctx,	\
+		      trace_comp_drv_get_id,		\
+		      trace_comp_drv_get_subid,		\
+		      drv_p,				\
 		      __e, ##__VA_ARGS__)
 
 /* device tracing */
 
 /** \brief Trace error message from component device */
 #define comp_err(comp_p, __e, ...)					\
-	trace_dev_err(TRACE_CLASS_COMP, trace_comp_get_uid, trace_comp_get_id, \
+	trace_dev_err(trace_comp_get_tr_ctx, trace_comp_get_id,		\
 		      trace_comp_get_subid, comp_p, __e, ##__VA_ARGS__)
 
 /** \brief Trace warning message from component device */
 #define comp_warn(comp_p, __e, ...)					\
-	trace_dev_warn(TRACE_CLASS_COMP, trace_comp_get_uid, trace_comp_get_id,\
+	trace_dev_warn(trace_comp_get_tr_ctx, trace_comp_get_id,	\
 		       trace_comp_get_subid, comp_p, __e, ##__VA_ARGS__)
 
 /** \brief Trace info message from component device */
 #define comp_info(comp_p, __e, ...)					\
-	trace_dev_info(TRACE_CLASS_COMP, trace_comp_get_uid, trace_comp_get_id,\
+	trace_dev_info(trace_comp_get_tr_ctx, trace_comp_get_id,	\
 		       trace_comp_get_subid, comp_p, __e, ##__VA_ARGS__)
 
 /** \brief Trace debug message from component device */
 #define comp_dbg(comp_p, __e, ...)					\
-	trace_dev_dbg(TRACE_CLASS_COMP, trace_comp_get_uid, trace_comp_get_id, \
+	trace_dev_dbg(trace_comp_get_tr_ctx, trace_comp_get_id,		\
 		      trace_comp_get_subid, comp_p, __e, ##__VA_ARGS__)
 
 #define comp_perf_info(pcd, comp_p)					\
@@ -391,6 +387,7 @@ struct comp_ops {
 struct comp_driver {
 	uint32_t type;		/**< SOF_COMP_ for driver */
 	uint32_t uid;		/**< Address of uuid_entry */
+	struct tr_ctx *tctx;	/**< Pointer to trace context */
 	struct comp_ops ops;	/**< component operations */
 };
 

@@ -39,6 +39,8 @@ static const struct comp_driver comp_dai;
 DECLARE_SOF_UUID("dai", dai_comp_uuid, 0xc2b00d27, 0xffbc, 0x4150,
 		 0xa5, 0x1a, 0x24, 0x5c, 0x79, 0xc5, 0xe5, 0x4b);
 
+DECLARE_TR_CTX(dai_comp_tr, SOF_UUID(dai_comp_uuid), LOG_LEVEL_INFO);
+
 struct dai_data {
 	/* local DMA config */
 	struct dma_chan_data *chan;
@@ -888,6 +890,7 @@ static int dai_ts_get(struct comp_dev *dev, struct timestamp_data *tsd)
 static const struct comp_driver comp_dai = {
 	.type	= SOF_COMP_DAI,
 	.uid	= SOF_UUID(dai_comp_uuid),
+	.tctx	= &dai_comp_tr,
 	.ops	= {
 		.create			= dai_new,
 		.free			= dai_free,

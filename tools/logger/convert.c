@@ -212,9 +212,6 @@ static inline void print_table_header(FILE *out_fd)
 	fflush(out_fd);
 }
 
-#define CASE(x) \
-	case(TRACE_CLASS_##x): return #x
-
 static const char *get_level_color(uint32_t level)
 {
 	switch (level) {
@@ -256,32 +253,8 @@ const char *get_component_name(const struct snd_sof_uids_header *uids_dict,
 		return (const char *)(uid_val + 1) + sizeof(uint32_t);
 	}
 
-	/* otherwise print legacy trace class name */
-	switch (trace_class) {
-		CASE(IRQ);
-		CASE(IPC);
-		CASE(PIPE);
-		CASE(DAI);
-		CASE(DMA);
-		CASE(COMP);
-		CASE(WAIT);
-		CASE(LOCK);
-		CASE(MEM);
-		CASE(BUFFER);
-		CASE(SA);
-		CASE(POWER);
-		CASE(IDC);
-		CASE(CPU);
-		CASE(CLK);
-		CASE(EDF);
-		CASE(SCHEDULE);
-		CASE(SCHEDULE_LL);
-		CASE(CHMAP);
-		CASE(NOTIFIER);
-		CASE(MN);
-		CASE(PROBE);
-	default: return "unknown";
-	}
+	/* do not resolve legacy (deprecated) trace class name */
+	return "unknown";
 }
 
 /* remove superfluous leading file path and shrink to last 20 chars */

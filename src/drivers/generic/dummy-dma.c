@@ -32,6 +32,7 @@
 #include <sof/lib/cache.h>
 #include <sof/lib/dma.h>
 #include <sof/lib/notifier.h>
+#include <sof/lib/uuid.h>
 #include <sof/platform.h>
 #include <sof/spinlock.h>
 #include <sof/string.h>
@@ -45,12 +46,11 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define trace_dummydma(__e, ...) \
-	trace_event(TRACE_CLASS_DMA, __e, ##__VA_ARGS__)
-#define tracev_dummydma(__e, ...) \
-	tracev_event(TRACE_CLASS_DMA, __e, ##__VA_ARGS__)
-#define trace_dummydma_error(__e, ...) \
-	trace_error(TRACE_CLASS_DMA, __e, ##__VA_ARGS__)
+/* f6d15ad3-b122-458c-ae9b-0ab0b5867aa0 */
+DECLARE_SOF_UUID("dummy-dma", dummy_dma_uuid, 0xf6d15ad3, 0xb122, 0x458c,
+		 0xae, 0x9b, 0x0a, 0xb0, 0xb5, 0x86, 0x7a, 0xa0);
+
+DECLARE_TR_CTX(ddma_tr, SOF_UUID(dummy_dma_uuid), LOG_LEVEL_INFO);
 
 struct dma_chan_pdata {
 	struct dma_sg_elem_array *elems;
@@ -240,8 +240,8 @@ static struct dma_chan_data *dummy_dma_channel_get(struct dma *dma,
 		}
 	}
 	spin_unlock_irq(&dma->lock, flags);
-	trace_dummydma_error("dummy-dmac: %d no free channel",
-			     dma->plat_data.id);
+	tr_err(&ddma_tr, "dummy-dmac: %d no free channel",
+	       dma->plat_data.id);
 	return NULL;
 }
 
@@ -338,9 +338,9 @@ static int dummy_dma_set_config(struct dma_chan_data *channel,
 	spin_lock_irq(&channel->dma->lock, flags);
 
 	if (!config->elem_array.count) {
-		trace_dummydma_error("dummy-dmac: %d channel %d no DMA descriptors",
-				     channel->dma->plat_data.id,
-				     channel->index);
+		tr_err(&ddma_tr, "dummy-dmac: %d channel %d no DMA descriptors",
+		       channel->dma->plat_data.id,
+		       channel->index);
 
 		ret = -EINVAL;
 		goto out;
@@ -351,9 +351,9 @@ static int dummy_dma_set_config(struct dma_chan_data *channel,
 	if (config->direction != DMA_DIR_HMEM_TO_LMEM &&
 	    config->direction != DMA_DIR_LMEM_TO_HMEM) {
 		/* Shouldn't even happen though */
-		trace_dummydma_error("dummy-dmac: %d channel %d invalid direction %d",
-				     channel->dma->plat_data.id, channel->index,
-				     config->direction);
+		tr_err(&ddma_tr, "dummy-dmac: %d channel %d invalid direction %d",
+		       channel->dma->plat_data.id, channel->index,
+		       config->direction);
 		ret = -EINVAL;
 		goto out;
 	}
@@ -430,8 +430,8 @@ static int dummy_dma_probe(struct dma *dma)
 	int i;
 
 	if (dma->chan) {
-		trace_dummydma_error("dummy-dmac %d already created!",
-				     dma->plat_data.id);
+		tr_err(&ddma_tr, "dummy-dmac %d already created!",
+		       dma->plat_data.id);
 		return -EEXIST; /* already created */
 	}
 
@@ -439,8 +439,8 @@ static int dummy_dma_probe(struct dma *dma)
 			    SOF_MEM_CAPS_RAM,
 			    dma->plat_data.channels * sizeof(dma->chan[0]));
 	if (!dma->chan) {
-		trace_dummydma_error("dummy-dmac %d: Out of memory!",
-				     dma->plat_data.id);
+		tr_err(&ddma_tr, "dummy-dmac %d: Out of memory!",
+		       dma->plat_data.id);
 		return -ENOMEM;
 	}
 
@@ -448,8 +448,8 @@ static int dummy_dma_probe(struct dma *dma)
 			dma->plat_data.channels * sizeof(chanp[0]));
 	if (!chanp) {
 		rfree(dma->chan);
-		trace_dummydma_error("dummy-dmac %d: Out of memory!",
-				     dma->plat_data.id);
+		tr_err(&ddma_tr, "dummy-dmac %d: Out of memory!",
+		       dma->plat_data.id);
 		dma->chan = NULL;
 		return -ENOMEM;
 	}
@@ -479,7 +479,7 @@ static int dummy_dma_probe(struct dma *dma)
  */
 static int dummy_dma_remove(struct dma *dma)
 {
-	tracev_dummydma("dummy_dma %d -> remove", dma->plat_data.id);
+	tr_dbg(&ddma_tr, "dummy_dma %d -> remove", dma->plat_data.id);
 	if (!dma->chan)
 		return 0;
 
@@ -512,8 +512,8 @@ static int dummy_dma_get_data_size(struct dma_chan_data *channel,
 		*free = size;
 		break;
 	default:
-		trace_dummydma_error("get_data_size direction: %d",
-				     channel->direction);
+		tr_err(&ddma_tr, "get_data_size direction: %d",
+		       channel->direction);
 		return -EINVAL;
 	}
 	return 0;

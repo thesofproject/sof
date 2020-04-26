@@ -50,6 +50,8 @@ static const struct comp_driver comp_asrc;
 DECLARE_SOF_UUID("asrc", asrc_uuid, 0xc8ec72f6, 0x8526, 0x4faf,
 		 0x9d, 0x39, 0xa2, 0x3d, 0x0b, 0x54, 0x1d, 0xe2);
 
+DECLARE_TR_CTX(asrc_tr, SOF_UUID(asrc_uuid), LOG_LEVEL_INFO);
+
 /* asrc component private data */
 struct comp_data {
 	struct asrc_farrow *asrc_obj;	/* ASRC core data */
@@ -897,6 +899,7 @@ static int asrc_reset(struct comp_dev *dev)
 static const struct comp_driver comp_asrc = {
 	.type = SOF_COMP_ASRC,
 	.uid = SOF_UUID(asrc_uuid),
+	.tctx = &asrc_tr,
 	.ops = {
 		.create = asrc_new,
 		.free = asrc_free,

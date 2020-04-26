@@ -33,6 +33,8 @@ static const struct comp_driver comp_dcblock;
 DECLARE_SOF_UUID("dcblock", dcblock_uuid, 0xb809efaf, 0x5681, 0x42b1,
 		 0x9e, 0xd6, 0x04, 0xbb, 0x01, 0x2d, 0xd3, 0x84);
 
+DECLARE_TR_CTX(dcblock_tr, SOF_UUID(dcblock_uuid), LOG_LEVEL_INFO);
+
 /**
  * \brief Sets the DC Blocking filter in pass through mode.
  * The frequency response of a DCB filter is:
@@ -394,6 +396,7 @@ static int dcblock_reset(struct comp_dev *dev)
 static const struct comp_driver comp_dcblock = {
 	.type = SOF_COMP_DCBLOCK,
 	.uid  = SOF_UUID(dcblock_uuid),
+	.tctx = &dcblock_tr,
 	.ops  = {
 		 .create	= dcblock_new,
 		 .free		= dcblock_free,

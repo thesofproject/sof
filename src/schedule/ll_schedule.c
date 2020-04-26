@@ -16,6 +16,7 @@
 #include <sof/lib/memory.h>
 #include <sof/lib/notifier.h>
 #include <sof/lib/perf_cnt.h>
+#include <sof/lib/uuid.h>
 #include <sof/list.h>
 #include <sof/platform.h>
 #include <sof/schedule/ll_schedule.h>
@@ -30,6 +31,12 @@
 #include <stddef.h>
 #include <stdint.h>
 
+/* 4f9c3ec7-7b55-400c-86b3-502b4420e625 */
+DECLARE_SOF_UUID("ll-schedule", ll_sched_uuid, 0x4f9c3ec7, 0x7b55, 0x400c,
+		 0x86, 0xb3, 0x50, 0x2b, 0x44, 0x20, 0xe6, 0x25);
+
+DECLARE_TR_CTX(ll_tr, SOF_UUID(ll_sched_uuid), LOG_LEVEL_INFO);
+
 /* one instance of data allocated per core */
 struct ll_schedule_data {
 	struct list_item tasks;			/* list of ll tasks */
@@ -43,9 +50,9 @@ struct ll_schedule_data {
 const struct scheduler_ops schedule_ll_ops;
 
 #define perf_ll_sched_trace(pcd, ll_sched)			\
-	trace_ll("perf ll_work peak plat %u cpu %u",		\
-		 (uint32_t)((pcd)->plat_delta_peak),		\
-		 (uint32_t)((pcd)->cpu_delta_peak))
+	tr_info(&ll_tr, "perf ll_work peak plat %u cpu %u",	\
+		(uint32_t)((pcd)->plat_delta_peak),		\
+		(uint32_t)((pcd)->cpu_delta_peak))
 
 static bool schedule_ll_is_pending(struct ll_schedule_data *sch)
 {
@@ -106,11 +113,11 @@ static void schedule_ll_tasks_execute(struct ll_schedule_data *sch,
 			/* don't enable irq, if no more tasks to do */
 			if (!atomic_sub(&sch->num_tasks, 1))
 				sch->domain->registered[cpu] = false;
-			trace_ll("task complete %p %s", (uintptr_t)task,
-				 task->uid);
-			trace_ll("num_tasks %d total_num_tasks %d",
-				 atomic_read(&sch->num_tasks),
-				 atomic_read(&sch->domain->total_num_tasks));
+			tr_info(&ll_tr, "task complete %p %s", (uintptr_t)task,
+				task->uid);
+			tr_info(&ll_tr, "num_tasks %d total_num_tasks %d",
+				atomic_read(&sch->num_tasks),
+				atomic_read(&sch->domain->total_num_tasks));
 		} else {
 			/* update task's start time */
 			schedule_ll_task_update_start(sch, task, last_tick);
@@ -209,8 +216,8 @@ static int schedule_ll_domain_set(struct ll_schedule_data *sch,
 	ret = domain_register(sch->domain, period, task, &schedule_ll_tasks_run,
 			      sch);
 	if (ret < 0) {
-		trace_ll_error("schedule_ll_domain_set: cannot register domain %d",
-			       ret);
+		tr_err(&ll_tr, "schedule_ll_domain_set: cannot register domain %d",
+		       ret);
 		return ret;
 	}
 
@@ -233,9 +240,9 @@ static int schedule_ll_domain_set(struct ll_schedule_data *sch,
 		sch->domain->enabled[core] = true;
 	}
 
-	trace_ll("num_tasks %d total_num_tasks %d",
-		 atomic_read(&sch->num_tasks),
-		 atomic_read(&sch->domain->total_num_tasks));
+	tr_info(&ll_tr, "num_tasks %d total_num_tasks %d",
+		atomic_read(&sch->num_tasks),
+		atomic_read(&sch->domain->total_num_tasks));
 
 	platform_shared_commit(sch->domain, sizeof(*sch->domain));
 
@@ -265,9 +272,9 @@ static void schedule_ll_domain_clear(struct ll_schedule_data *sch,
 		}
 	}
 
-	trace_ll("num_tasks %d total_num_tasks %d",
-		 atomic_read(&sch->num_tasks),
-		 atomic_read(&sch->domain->total_num_tasks));
+	tr_info(&ll_tr, "num_tasks %d total_num_tasks %d",
+		atomic_read(&sch->num_tasks),
+		atomic_read(&sch->domain->total_num_tasks));
 
 	platform_shared_commit(sch->domain, sizeof(*sch->domain));
 
@@ -322,9 +329,9 @@ static int schedule_ll_task(void *data, struct task *task, uint64_t start,
 
 	pdata = ll_sch_get_pdata(task);
 
-	trace_ll("task add %p %s", (uintptr_t)task, task->uid);
-	trace_ll("task params pri %d flags %d start %u period %u",
-		 task->priority, task->flags, start, period);
+	tr_info(&ll_tr, "task add %p %s", (uintptr_t)task, task->uid);
+	tr_info(&ll_tr, "task params pri %d flags %d start %u period %u",
+		task->priority, task->flags, start, period);
 
 	pdata->period = period;
 
@@ -373,7 +380,7 @@ int schedule_task_init_ll(struct task *task,
 			   sizeof(*ll_pdata));
 
 	if (!ll_pdata) {
-		trace_ll_error("schedule_task_init_ll(): alloc failed");
+		tr_err(&ll_tr, "schedule_task_init_ll(): alloc failed");
 		return -ENOMEM;
 	}
 
@@ -409,7 +416,7 @@ static int schedule_ll_task_cancel(void *data, struct task *task)
 
 	irq_local_disable(flags);
 
-	trace_ll("task cancel %p %s", (uintptr_t)task, task->uid);
+	tr_info(&ll_tr, "task cancel %p %s", (uintptr_t)task, task->uid);
 
 	/* check to see if we are scheduled */
 	list_for_item(tlist, &sch->tasks) {
@@ -459,7 +466,7 @@ static int reschedule_ll_task(void *data, struct task *task, uint64_t start)
 		}
 	}
 
-	trace_ll_error("reschedule_ll_task(): task not found");
+	tr_err(&ll_tr, "reschedule_ll_task(): task not found");
 
 out:
 	platform_shared_commit(sch->domain, sizeof(*sch->domain));

@@ -10,6 +10,7 @@
 #include <sof/lib/cpu.h>
 #include <sof/lib/io.h>
 #include <sof/lib/memory.h>
+#include <sof/lib/uuid.h>
 #include <sof/list.h>
 #include <sof/spinlock.h>
 #include <errno.h>
@@ -17,6 +18,12 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+
+/* fa00558c-d653-4851-a03a-b21f125a9524 */
+DECLARE_SOF_UUID("irq-imx", irq_imx_uuid, 0xfa00558c, 0xd653, 0x4851,
+		 0xa0, 0x3a, 0xb2, 0x1f, 0x12, 0x5a, 0x95, 0x24);
+
+DECLARE_TR_CTX(irq_i_tr, SOF_UUID(irq_imx_uuid), LOG_LEVEL_INFO);
 
 /*
  * The IRQ_STEER module takes 512 shared interrupts and delivers them
@@ -305,8 +312,8 @@ static inline void handle_irq_batch(struct irq_cascade_desc *cascade,
 		spin_unlock(&cascade->lock);
 
 		if (!handled) {
-			trace_irq_error("irq_handler(): nobody cared, bit %d",
-					bit);
+			tr_err(&irq_i_tr, "irq_handler(): nobody cared, bit %d",
+			       bit);
 			/* Mask this interrupt so it won't happen again */
 			irqstr_mask_int(line_index * IRQSTR_IRQS_PER_LINE + bit);
 		}
@@ -340,9 +347,9 @@ static inline void irq_handler(void *data, uint32_t line_index)
 
 		if (!--tries) {
 			tries = IRQ_MAX_TRIES;
-			trace_irq_error("irq_handler(): IRQ storm, status "
-					PRIx64,
-					get_irqsteer_interrupts(line_index));
+			tr_err(&irq_i_tr, "irq_handler(): IRQ storm, status "
+			       PRIx64,
+			       get_irqsteer_interrupts(line_index));
 		}
 	}
 

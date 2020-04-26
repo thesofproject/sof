@@ -18,6 +18,8 @@
 DECLARE_SOF_UUID("hda-dai", hda_uuid, 0xbc9ebe20, 0x4577, 0x41bb,
 		 0x9e, 0xed, 0xd0, 0xcb, 0x23, 0x63, 0x28, 0xda);
 
+DECLARE_TR_CTX(hda_tr, SOF_UUID(hda_uuid), LOG_LEVEL_INFO);
+
 static int hda_trigger(struct dai *dai, int cmd, int direction)
 {
 	return 0;
@@ -201,6 +203,7 @@ out:
 const struct dai_driver hda_driver = {
 	.type = SOF_DAI_INTEL_HDA,
 	.uid = SOF_UUID(hda_uuid),
+	.tctx = &hda_tr,
 	.dma_caps = DMA_CAP_HDA,
 	.dma_dev = DMA_DEV_HDA,
 	.ops = {

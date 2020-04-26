@@ -10,6 +10,7 @@
 
 #include <sof/lib/clk.h>
 #include <sof/lib/io.h>
+#include <sof/lib/uuid.h>
 #include <sof/lib/wait.h>
 #include <sof/platform.h>
 #include <sof/schedule/schedule.h>
@@ -18,6 +19,12 @@
 #include <errno.h>
 #include <stdint.h>
 #include <inttypes.h>
+
+/* 1028070e-04e8-46ab-8d81-10a0116ce738 */
+DECLARE_SOF_UUID("wait", wait_uuid, 0x1028070e, 0x04e8, 0x46ab,
+		 0x8d, 0x81, 0x10, 0xa0, 0x11, 0x6c, 0xe7, 0x38);
+
+DECLARE_TR_CTX(wait_tr, SOF_UUID(wait_uuid), LOG_LEVEL_INFO);
 
 #define DEFAULT_TRY_TIMES 8
 
@@ -36,7 +43,7 @@ int poll_for_register_delay(uint32_t reg, uint32_t mask,
 
 	while ((io_reg_read(reg) & mask) != val) {
 		if (!tries--) {
-			trace_error(TRACE_CLASS_WAIT, "ewt");
+			tr_err(&wait_tr, "ewt");
 			return -EIO;
 		}
 		wait_delay(delta);

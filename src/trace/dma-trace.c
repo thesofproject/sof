@@ -29,6 +29,12 @@
 #include <stddef.h>
 #include <stdint.h>
 
+/* 58782c63-1326-4185-8459-22272e12d1f1 */
+DECLARE_SOF_UUID("dma-trace", dma_trace_uuid, 0x58782c63, 0x1326, 0x4185,
+		 0x84, 0x59, 0x22, 0x27, 0x2e, 0x12, 0xd1, 0xf1);
+
+DECLARE_TR_CTX(dt_tr, SOF_UUID(dma_trace_uuid), LOG_LEVEL_INFO);
+
 /* 2b972272-c5b1-4b7e-926f-0fc5cb4c4690 */
 DECLARE_SOF_UUID("dma-trace-task", dma_trace_task_uuid, 0x2b972272, 0xc5b1,
 		 0x4b7e, 0x92, 0x6f, 0x0f, 0xc5, 0xcb, 0x4c, 0x46, 0x90);
@@ -75,7 +81,7 @@ static enum task_state trace_work(void *data)
 	size = dma_copy_to_host_nowait(&d->dc, config, d->posn.host_offset,
 				       buffer->r_ptr, size);
 	if (size < 0) {
-		trace_buffer_error("trace_work(): dma_copy_to_host_nowait() failed");
+		tr_err(&dt_tr, "trace_work(): dma_copy_to_host_nowait() failed");
 		goto out;
 	}
 
@@ -133,12 +139,12 @@ int dma_trace_init_complete(struct dma_trace_data *d)
 {
 	int ret = 0;
 
-	trace_buffer("dma_trace_init_complete()");
+	tr_info(&dt_tr, "dma_trace_init_complete()");
 
 	/* init DMA copy context */
 	ret = dma_copy_new(&d->dc);
 	if (ret < 0) {
-		trace_buffer_error("dma_trace_init_complete(): dma_copy_new() failed");
+		tr_err(&dt_tr, "dma_trace_init_complete(): dma_copy_new() failed");
 		goto out;
 	}
 
@@ -146,7 +152,7 @@ int dma_trace_init_complete(struct dma_trace_data *d)
 				&d->dma_copy_align);
 
 	if (ret < 0) {
-		trace_buffer("dma_trace_init_complete(): dma_get_attribute()");
+		tr_err(&dt_tr, "dma_trace_init_complete(): dma_get_attribute()");
 
 		goto out;
 	}
@@ -185,7 +191,7 @@ static int dma_trace_buffer_init(struct dma_trace_data *d)
 	buf = rballoc(0, SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_DMA,
 		      DMA_TRACE_LOCAL_SIZE);
 	if (!buf) {
-		trace_buffer_error("dma_trace_buffer_init(): alloc failed");
+		tr_err(&dt_tr, "dma_trace_buffer_init(): alloc failed");
 		return -ENOMEM;
 	}
 
@@ -321,7 +327,7 @@ int dma_trace_enable(struct dma_trace_data *d)
 
 	/* validate DMA context */
 	if (!d->dc.dmac || !d->dc.chan) {
-		trace_buffer_error_atomic("dma_trace_enable(): not valid");
+		tr_err_atomic(&dt_tr, "dma_trace_enable(): not valid");
 		err = -ENODEV;
 		goto out;
 	}
@@ -470,8 +476,8 @@ static void dtrace_add_event(const char *e, uint32_t length)
 			 * so after it we have to recalculate margin and
 			 * overflow
 			 */
-			trace_error(0, "dtrace_add_event(): number of dropped logs = %u",
-				    tmp_dropped_entries);
+			tr_err(&dt_tr, "dtrace_add_event(): number of dropped logs = %u",
+			       tmp_dropped_entries);
 			margin = dtrace_calc_buf_margin(buffer);
 			overflow = dtrace_calc_buf_overflow(buffer, length);
 		}

@@ -116,7 +116,7 @@ static inline struct trace *trace_get(void)
  * above, it might also propagate log messages to mbox if desired.
  *
  * First argument is always class of event being logged, as defined in
- * user/trace.h - TRACE_CLASS_*.
+ * user/trace.h - TRACE_CLASS_* (deprecated - do not use).
  * Second argument is string literal in printf format, followed by up to 4
  * parameters (uint32_t), that are used to expand into string fromat when
  * parsing log data.
@@ -127,28 +127,12 @@ static inline struct trace *trace_get(void)
  * image size. This way more elaborate log messages are possible and encouraged,
  * for better debugging experience, without worrying about runtime performance.
  */
-#define trace_event(class, format, ...)					\
-	_trace_event_with_ids(LOG_LEVEL_INFO, class, 0, -1, -1,		\
-			      format, ##__VA_ARGS__)
-
-#define trace_event_atomic(class, format, ...)				\
-	_trace_event_atomic_with_ids(LOG_LEVEL_INFO, class, 0, -1, -1,	\
-				     format, ##__VA_ARGS__)
-
 #define trace_event_with_ids(class, id_0, id_1, id_2, format, ...)	\
 	_trace_event_with_ids(LOG_LEVEL_INFO, class, id_0, id_1, id_2,	\
 			      format, ##__VA_ARGS__)
 
 #define trace_event_atomic_with_ids(class, id_0, id_1, id_2, format, ...)     \
 	_trace_event_atomic_with_ids(LOG_LEVEL_INFO, class, id_0, id_1, id_2, \
-				     format, ##__VA_ARGS__)
-
-#define trace_warn(class, format, ...)					\
-	_trace_event_with_ids(LOG_LEVEL_WARNING, class, 0, -1, -1,	\
-			      format, ##__VA_ARGS__)
-
-#define trace_warn_atomic(class, format, ...)				   \
-	_trace_event_atomic_with_ids(LOG_LEVEL_WARNING, class, 0, -1, -1,  \
 				     format, ##__VA_ARGS__)
 
 #define trace_warn_with_ids(class, id_0, id_1, id_2, format, ...)	   \
@@ -244,21 +228,13 @@ do {									    \
 #endif
 #else
 
-#define	trace_event(class, format, ...) \
-	trace_unused(class, 0, -1, -1, format, ##__VA_ARGS__)
 #define trace_event_with_ids(class, id_0, id_1, id_2, format, ...) \
 	trace_unused(class, id_0, id_1, id_2, format, ##__VA_ARGS__)
-#define	trace_event_atomic(class, format, ...) \
-	trace_unused(class, 0, -1, -1, format, ##__VA_ARGS__)
 #define trace_event_atomic_with_ids(class, id_0, id_1, id_2, format, ...) \
 	trace_unused(class, id_0, id_1, id_2, format, ##__VA_ARGS__)
 
-#define trace_warn(class, format, ...) \
-	trace_unused(class, 0, -1, -1, format, ##__VA_ARGS__)
 #define trace_warn_with_ids(class, id_0, id_1, id_2, format, ...) \
 	trace_unused(class, id_0, id_1, id_2, format, ##__VA_ARGS__)
-#define trace_warn_atomic(class, format, ...) \
-	trace_unused(class, 0, -1, -1, format, ##__VA_ARGS__)
 #define trace_warn_atomic_with_ids(class, id_0, id_1, id_2, format, ...) \
 	trace_unused(class, id_0, id_1, id_2, format, ##__VA_ARGS__)
 
@@ -273,14 +249,6 @@ static inline void trace_init(struct sof *sof) { }
 
 /* verbose tracing */
 #if CONFIG_TRACEV
-#define tracev_event(class, format, ...)				\
-	_trace_event_with_ids(LOG_LEVEL_VERBOSE, class, 0, -1, -1,	\
-			      format, ##__VA_ARGS__)
-
-#define tracev_event_atomic(class, format, ...)				   \
-	_trace_event_atomic_with_ids(LOG_LEVEL_VERBOSE, class, 0, -1, -1,  \
-				     format, ##__VA_ARGS__)
-
 #define tracev_event_with_ids(class, id_0, id_1, id_2, format, ...)	   \
 	_trace_event_with_ids(LOG_LEVEL_VERBOSE, class, id_0, id_1, id_2,  \
 			      format, ##__VA_ARGS__)
@@ -291,12 +259,8 @@ static inline void trace_init(struct sof *sof) { }
 				     format, ##__VA_ARGS__)
 
 #else
-#define tracev_event(class, format, ...) \
-	trace_unused(class, 0, -1, -1, format, ##__VA_ARGS__)
 #define tracev_event_with_ids(class, id_0, id_1, id_2, format, ...) \
 	trace_unused(class, id_0, id_1, id_2, format, ##__VA_ARGS__)
-#define tracev_event_atomic(class, format, ...) \
-	trace_unused(class, 0, -1, -1, format, ##__VA_ARGS__)
 #define tracev_event_atomic_with_ids(class, id_0, id_1, id_2, format, ...) \
 	trace_unused(class, id_0, id_1, id_2, format, ##__VA_ARGS__)
 
@@ -307,58 +271,118 @@ static inline void trace_init(struct sof *sof) { }
 #define _trace_error_with_ids(class, id_0, id_1, id_2, format, ...)	\
 	_log_message(true, LOG_LEVEL_CRITICAL, class, id_0, id_1,	\
 		     id_2, format, ##__VA_ARGS__)
-#define trace_error(class, format, ...)					\
-	_trace_error_with_ids(class, 0, -1, -1, format, ##__VA_ARGS__)
 #define trace_error_with_ids(class, id_0, id_1, id_2, format, ...)	\
 	_trace_error_with_ids(class, id_0, id_1, id_2, format, ##__VA_ARGS__)
-#define trace_error_atomic(...) trace_error(__VA_ARGS__)
 #define trace_error_atomic_with_ids(...) trace_error_with_ids(__VA_ARGS__)
 #elif CONFIG_TRACE
-#define trace_error(...) trace_event(__VA_ARGS__)
 #define trace_error_with_ids(...) trace_event_with_ids(__VA_ARGS__)
-#define trace_error_atomic(...) trace_event_atomic(__VA_ARGS__)
 #define trace_error_atomic_with_ids(...) \
 	trace_event_atomic_with_ids(__VA_ARGS__)
 #else
-#define trace_error(class, format, ...) \
-	trace_unused(class, 0, -1, -1, format, ##__VA_ARGS__)
 #define trace_error_with_ids(class, id_0, id_1, id_2, format, ...) \
 	trace_unused(class, id_0, id_1, id_2, format, ##__VA_ARGS__)
-#define trace_error_atomic(class, format, ...) \
-	trace_unused(class, 0, -1, -1, format, ##__VA_ARGS__)
 #define trace_error_atomic_with_ids(class, id_0, id_1, id_2, format, ...) \
 	trace_unused(class, id_0, id_1, id_2, format, ##__VA_ARGS__)
 #endif
+
+#define _TRACE_INV_CLASS	TRACE_CLASS_DEPRECATED
+#define _TRACE_INV_ID		-1
+
+/**
+ * Trace context.
+ */
+struct tr_ctx {
+	uintptr_t uuid_p;	/**< UUID pointer, use SOF_UUID() to init */
+	uint32_t level;		/**< Default log level */
+};
+
+/* todo: put in a section to iterate over later while cfg log levels */
+
+/**
+ * Declares trace context.
+ * @param ctx_name (Symbol) name.
+ * @param uuid UUID pointer, use SOF_UUID() to inititalize.
+ * @param default_log_level Default log level.
+ */
+#define DECLARE_TR_CTX(ctx_name, uuid, default_log_level) \
+	struct tr_ctx ctx_name = { \
+			.uuid_p = uuid, \
+			.level = default_log_level, \
+	}
+
+/** \brief Retrieves UUID pointer from the trace context. */
+#define tr_ctx_get_uuid(ctx) ((ctx)->uuid_p)
 
 /* tracing from device (component, pipeline, dai, ...) */
 
 /** \brief Trace from a device on err level.
  *
- * @param class Trace class, one of TRACE_CLASS_...
- * @param get_uid_m Macro that can retrieve device's uid from the dev
+ * @param get_ctx_m Macro that can retrieve trace context from dev
  * @param get_id_m Macro that can retrieve device's id0 from the dev
  * @param get_subid_m Macro that can retrieve device's id1 from the dev
  * @param dev Device
  * @param fmt Format followed by parameters
  * @param ... Parameters
  */
-#define trace_dev_err(class, get_uid_m, get_id_m, get_subid_m, dev, fmt, ...) \
-	trace_error_with_ids(class, get_uid_m(dev), get_id_m(dev),	      \
-			     get_subid_m(dev), fmt, ##__VA_ARGS__)
+#define trace_dev_err(get_ctx_m, get_id_m, get_subid_m, dev, fmt, ...)	       \
+	trace_error_with_ids(_TRACE_INV_CLASS, tr_ctx_get_uuid(get_ctx_m(dev)),\
+			     get_id_m(dev), get_subid_m(dev),		       \
+			     fmt, ##__VA_ARGS__)
 
 /** \brief Trace from a device on warning level. */
-#define trace_dev_warn(class, get_uid_m, get_id_m, get_subid_m, dev, fmt, ...) \
-	trace_warn_with_ids(class, get_uid_m(dev), get_id_m(dev),	       \
-			     get_subid_m(dev), fmt, ##__VA_ARGS__)
+#define trace_dev_warn(get_ctx_m, get_id_m, get_subid_m, dev, fmt, ...)	       \
+	trace_warn_with_ids(_TRACE_INV_CLASS, tr_ctx_get_uuid(get_ctx_m(dev)), \
+			    get_id_m(dev), get_subid_m(dev),		       \
+			    fmt, ##__VA_ARGS__)
 
 /** \brief Trace from a device on info level. */
-#define trace_dev_info(class, get_uid_m, get_id_m, get_subid_m, dev, fmt, ...) \
-	trace_event_with_ids(class, get_uid_m(dev), get_id_m(dev),	       \
-			     get_subid_m(dev), fmt, ##__VA_ARGS__)
+#define trace_dev_info(get_ctx_m, get_id_m, get_subid_m, dev, fmt, ...)	       \
+	trace_event_with_ids(_TRACE_INV_CLASS, tr_ctx_get_uuid(get_ctx_m(dev)),\
+			     get_id_m(dev), get_subid_m(dev),		       \
+			     fmt, ##__VA_ARGS__)
 
 /** \brief Trace from a device on dbg level. */
-#define trace_dev_dbg(class, get_uid_m, get_id_m, get_subid_m, dev, fmt, ...) \
-	tracev_event_with_ids(class, get_uid_m(dev), get_id_m(dev),	      \
+#define trace_dev_dbg(get_ctx_m, get_id_m, get_subid_m, dev, fmt, ...)	       \
+	tracev_event_with_ids(_TRACE_INV_CLASS,				       \
+			      tr_ctx_get_uuid(get_ctx_m(dev)), get_id_m(dev),  \
 			      get_subid_m(dev), fmt, ##__VA_ARGS__)
+
+/* tracing from infrastructure part */
+
+#define tr_err(ctx, fmt, ...) \
+	trace_error_with_ids(_TRACE_INV_CLASS, tr_ctx_get_uuid(ctx), \
+			     _TRACE_INV_ID, _TRACE_INV_ID, fmt, ##__VA_ARGS__)
+
+#define tr_err_atomic(ctx, fmt, ...) \
+	trace_error_atomic_with_ids(_TRACE_INV_CLASS, tr_ctx_get_uuid(ctx), \
+				    _TRACE_INV_ID, _TRACE_INV_ID, \
+				    fmt, ##__VA_ARGS__)
+
+#define tr_warn(ctx, fmt, ...) \
+	trace_warn_with_ids(_TRACE_INV_CLASS, tr_ctx_get_uuid(ctx), \
+			    _TRACE_INV_ID, _TRACE_INV_ID, fmt, ##__VA_ARGS__)
+
+#define tr_warn_atomic(ctx, fmt, ...) \
+	trace_warn_atomic_with_ids(_TRACE_INV_CLASS, tr_ctx_get_uuid(ctx), \
+				   _TRACE_INV_ID, _TRACE_INV_ID, \
+				   fmt, ##__VA_ARGS__)
+
+#define tr_info(ctx, fmt, ...) \
+	trace_event_with_ids(_TRACE_INV_CLASS, tr_ctx_get_uuid(ctx), \
+			     _TRACE_INV_ID, _TRACE_INV_ID, fmt, ##__VA_ARGS__)
+
+#define tr_info_atomic(ctx, fmt, ...) \
+	trace_event_atomic_with_ids(_TRACE_INV_CLASS, tr_ctx_get_uuid(ctx), \
+				    _TRACE_INV_ID, _TRACE_INV_ID, \
+				    fmt, ##__VA_ARGS__)
+
+#define tr_dbg(ctx, fmt, ...) \
+	tracev_event_with_ids(_TRACE_INV_CLASS, tr_ctx_get_uuid(ctx), \
+			      _TRACE_INV_ID, _TRACE_INV_ID, fmt, ##__VA_ARGS__)
+
+#define tr_dbg_atomic(ctx, fmt, ...) \
+	tracev_event_atomic_with_ids(_TRACE_INV_CLASS, tr_ctx_get_uuid(ctx), \
+				     _TRACE_INV_ID, _TRACE_INV_ID, \
+				     fmt, ##__VA_ARGS__)
 
 #endif /* __SOF_TRACE_TRACE_H__ */

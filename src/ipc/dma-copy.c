@@ -7,6 +7,7 @@
 
 #include <sof/drivers/ipc.h>
 #include <sof/lib/dma.h>
+#include <sof/lib/uuid.h>
 #include <sof/platform.h>
 #include <sof/trace/dma-trace.h>
 #include <sof/trace/trace.h>
@@ -17,9 +18,12 @@
 #include <stdint.h>
 
 /* tracing */
-#define trace_dma(__e)	trace_event(TRACE_CLASS_DMA, __e)
-#define trace_dma_error(__e)	trace_error(TRACE_CLASS_DMA, __e)
-#define tracev_dma(__e)	tracev_event(TRACE_CLASS_DMA, __e)
+
+/* 729bf8b5-e873-4bf5-9690-8e2a3fd33911 */
+DECLARE_SOF_UUID("dma-copy", dma_copy_uuid, 0x729bf8b5, 0xe873, 0x4bf5,
+		 0x96, 0x90, 0x8e, 0x2a, 0x3f, 0xd3, 0x39, 0x11);
+
+DECLARE_TR_CTX(dmacpy_tr, SOF_UUID(dma_copy_uuid), LOG_LEVEL_INFO);
 
 #if !CONFIG_DMA_GW
 static struct dma_sg_elem *sg_get_elem_at(struct dma_sg_config *host_sg,
@@ -44,7 +48,7 @@ static struct dma_sg_elem *sg_get_elem_at(struct dma_sg_config *host_sg,
 	}
 
 	/* host offset in beyond end of SG buffer */
-	trace_dma_error("sg_get_elem_at(): host offset in beyond end of SG buffer");
+	tr_err(&dmacpy_tr, "sg_get_elem_at(): host offset in beyond end of SG buffer");
 	return NULL;
 }
 #endif
@@ -138,7 +142,7 @@ int dma_copy_new(struct dma_copy *dc)
 	cap = 0;
 	dc->dmac = dma_get(dir, cap, dev, DMA_ACCESS_SHARED);
 	if (!dc->dmac) {
-		trace_dma_error("dma_copy_new(): dc->dmac = NULL");
+		tr_err(&dmacpy_tr, "dma_copy_new(): dc->dmac = NULL");
 		return -ENODEV;
 	}
 
@@ -146,7 +150,7 @@ int dma_copy_new(struct dma_copy *dc)
 	/* get DMA channel from DMAC0 */
 	dc->chan = dma_channel_get(dc->dmac, 0);
 	if (!dc->chan) {
-		trace_dma_error("dma_copy_new(): dc->chan is NULL");
+		tr_err(&dmacpy_tr, "dma_copy_new(): dc->chan is NULL");
 		return -ENODEV;
 	}
 #endif
@@ -161,7 +165,7 @@ int dma_copy_set_stream_tag(struct dma_copy *dc, uint32_t stream_tag)
 	/* get DMA channel from DMAC */
 	dc->chan = dma_channel_get(dc->dmac, stream_tag - 1);
 	if (!dc->chan) {
-		trace_dma_error("dma_copy_set_stream_tag(): dc->chan is NULL");
+		tr_err(&dmacpy_tr, "dma_copy_set_stream_tag(): dc->chan is NULL");
 		return -EINVAL;
 	}
 

@@ -38,6 +38,12 @@
 /** \brief IDC message payload per core. */
 static SHARED_DATA struct idc_payload payload[PLATFORM_CORE_COUNT];
 
+/* 379a60ae-cedb-4777-aaf2-5659b0a85735 */
+DECLARE_SOF_UUID("idc", idc_uuid, 0x379a60ae, 0xcedb, 0x4777,
+		 0xaa, 0xf2, 0x56, 0x59, 0xb0, 0xa8, 0x57, 0x35);
+
+DECLARE_TR_CTX(idc_tr, SOF_UUID(idc_uuid), LOG_LEVEL_INFO);
+
 /* b90f5a4e-5537-4375-a1df-95485472ff9e */
 DECLARE_SOF_UUID("comp-task", idc_comp_task_uuid, 0xb90f5a4e, 0x5537, 0x4375,
 		 0xa1, 0xdf, 0x95, 0x48, 0x54, 0x72, 0xff, 0x9e);
@@ -83,7 +89,7 @@ static void idc_irq_handler(void *arg)
 	uint32_t idctefc;
 	uint32_t i;
 
-	tracev_idc("idc_irq_handler()");
+	tr_dbg(&idc_tr, "idc_irq_handler()");
 
 	for (i = 0; i < PLATFORM_CORE_COUNT; i++) {
 		/* skip current core */
@@ -93,7 +99,7 @@ static void idc_irq_handler(void *arg)
 		idctfc = idc_read(IPC_IDCTFC(i), core);
 
 		if (idctfc & IPC_IDCTFC_BUSY) {
-			trace_idc("idc_irq_handler(), IPC_IDCTFC_BUSY");
+			tr_info(&idc_tr, "idc_irq_handler(), IPC_IDCTFC_BUSY");
 
 			/* disable BUSY interrupt */
 			idc_write(IPC_IDCCTL, core, 0);
@@ -189,7 +195,7 @@ static int idc_wait_in_blocking_mode(uint32_t target_core, bool (*cond)(int))
 			if (cond(target_core))
 				break;
 
-			trace_idc_error("idc_wait_in_blocking_mode() error: timeout");
+			tr_err(&idc_tr, "idc_wait_in_blocking_mode() error: timeout");
 			return -ETIME;
 		}
 	}
@@ -211,7 +217,7 @@ int idc_send_msg(struct idc_msg *msg, uint32_t mode)
 	uint32_t idcietc;
 	int ret = 0;
 
-	tracev_idc("arch_idc_send_msg()");
+	tr_dbg(&idc_tr, "arch_idc_send_msg()");
 
 	/* clear any previous messages */
 	idcietc = idc_read(IPC_IDCIETC(msg->core), core);
@@ -445,8 +451,8 @@ static void idc_cmd(struct idc_msg *msg)
 		ret = idc_reset(msg->extension);
 		break;
 	default:
-		trace_idc_error("idc_cmd(): invalid msg->header = %u",
-				msg->header);
+		tr_err(&idc_tr, "idc_cmd(): invalid msg->header = %u",
+		       msg->header);
 	}
 
 	idc_msg_status_set(ret, cpu_get_id());
@@ -462,7 +468,7 @@ static enum task_state idc_do_cmd(void *data)
 	int core = cpu_get_id();
 	int initiator = idc->received_msg.core;
 
-	trace_idc("idc_do_cmd()");
+	tr_info(&idc_tr, "idc_do_cmd()");
 
 	idc_cmd(&idc->received_msg);
 
@@ -506,7 +512,7 @@ int idc_init(void)
 		.get_deadline = ipc_task_deadline,
 	};
 
-	trace_idc("arch_idc_init()");
+	tr_info(&idc_tr, "arch_idc_init()");
 
 	/* initialize idc data */
 	struct idc **idc = idc_get();
@@ -544,7 +550,7 @@ void idc_free(void)
 	int i = 0;
 	uint32_t idctfc;
 
-	trace_idc("idc_free()");
+	tr_info(&idc_tr, "idc_free()");
 
 	/* disable and unregister interrupt */
 	interrupt_disable(idc->irq, idc);

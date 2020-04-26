@@ -54,6 +54,8 @@ static const struct comp_driver comp_keyword;
 DECLARE_SOF_UUID("kd-test", keyword_uuid, 0xeba8d51f, 0x7827, 0x47b5,
 		 0x82, 0xee, 0xde, 0x6e, 0x77, 0x43, 0xaf, 0x67);
 
+DECLARE_TR_CTX(keyword_tr, SOF_UUID(keyword_uuid), LOG_LEVEL_INFO);
+
 struct model_data {
 	uint32_t data_size;
 	void *data;
@@ -784,6 +786,7 @@ static int test_keyword_prepare(struct comp_dev *dev)
 static const struct comp_driver comp_keyword = {
 	.type	= SOF_COMP_KEYWORD_DETECT,
 	.uid	= SOF_UUID(keyword_uuid),
+	.tctx	= &keyword_tr,
 	.ops	= {
 		.create		= test_keyword_new,
 		.free		= test_keyword_free,

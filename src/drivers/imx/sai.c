@@ -12,16 +12,23 @@
 #include <sof/drivers/sai.h>
 #include <sof/lib/dai.h>
 #include <sof/lib/dma.h>
+#include <sof/lib/uuid.h>
 #include <ipc/dai.h>
 #include <errno.h>
 #include <stdint.h>
+
+/* 9302adf5-88be-4234-a0a7-dca538ef81f4 */
+DECLARE_SOF_UUID("sai", sai_uuid, 0x9302adf5, 0x88be, 0x4234,
+		 0xa0, 0xa7, 0xdc, 0xa5, 0x38, 0xef, 0x81, 0xf4);
+
+DECLARE_TR_CTX(sai_tr, SOF_UUID(sai_uuid), LOG_LEVEL_INFO);
 
 #define REG_TX_DIR 0
 #define REG_RX_DIR 1
 
 static void sai_start(struct dai *dai, int direction)
 {
-	trace_sai("SAI: sai_start");
+	dai_info(dai, "SAI: sai_start");
 
 	uint32_t xcsr = 0U;
 
@@ -62,7 +69,7 @@ static void sai_start(struct dai *dai, int direction)
 
 static void sai_stop(struct dai *dai, int direction)
 {
-	trace_sai("SAI: sai_stop");
+	dai_info(dai, "SAI: sai_stop");
 
 	uint32_t xcsr = 0U;
 
@@ -103,7 +110,7 @@ static int sai_context_restore(struct dai *dai)
 static inline int sai_set_config(struct dai *dai,
 				 struct sof_ipc_dai_config *config)
 {
-	trace_sai("SAI: sai_set_config");
+	dai_info(dai, "SAI: sai_set_config");
 	uint32_t val_cr2 = 0, val_cr4 = 0, val_cr5 = 0;
 	uint32_t mask_cr2 = 0, mask_cr4 = 0, mask_cr5 = 0;
 	/* TODO: this value will be provided by config */
@@ -192,14 +199,14 @@ static inline int sai_set_config(struct dai *dai,
 	/* DAI clock master masks */
 	switch (config->format & SOF_DAI_FMT_MASTER_MASK) {
 	case SOF_DAI_FMT_CBS_CFS:
-		trace_sai("SAI: codec is slave");
+		dai_info(dai, "SAI: codec is slave");
 		val_cr2 |= REG_SAI_CR2_MSEL_MCLK1;
 		val_cr2 |= REG_SAI_CR2_BCD_MSTR;
 		val_cr2 |= SAI_CLOCK_DIV; /* TODO: determine dynamically.*/
 		val_cr4 |= REG_SAI_CR4_FSD_MSTR;
 		break;
 	case SOF_DAI_FMT_CBM_CFM:
-		trace_sai("SAI: codec is master");
+		dai_info(dai, "SAI: codec is master");
 		/*
 		 * fields CR2_DIV and CR2_MSEL not relevant in slave mode.
 		 * fields CR2_BCD and CR4_MFSD already at 0
@@ -257,7 +264,7 @@ static inline int sai_set_config(struct dai *dai,
 
 static int sai_trigger(struct dai *dai, int cmd, int direction)
 {
-	trace_sai("SAI: sai_trigger");
+	dai_info(dai, "SAI: sai_trigger");
 
 	switch (cmd) {
 	case COMP_TRIGGER_START:
@@ -276,7 +283,7 @@ static int sai_trigger(struct dai *dai, int cmd, int direction)
 	case COMP_TRIGGER_RESUME:
 		break;
 	default:
-		trace_sai_error("SAI: invalid trigger cmd %d", cmd);
+		dai_err(dai, "SAI: invalid trigger cmd %d", cmd);
 		break;
 	}
 	return 0;
@@ -284,7 +291,7 @@ static int sai_trigger(struct dai *dai, int cmd, int direction)
 
 static int sai_probe(struct dai *dai)
 {
-	trace_sai("SAI: sai_probe");
+	dai_info(dai, "SAI: sai_probe");
 
 	/* Software Reset for both Tx and Rx */
 	dai_update_bits(dai, REG_SAI_TCSR, REG_SAI_CSR_SR, REG_SAI_CSR_SR);
@@ -323,7 +330,7 @@ static int sai_get_fifo(struct dai *dai, int direction, int stream_id)
 	case DAI_DIR_CAPTURE:
 		return dai_fifo(dai, direction); /* stream_id is unused */
 	default:
-		trace_sai_error("sai_get_fifo(): Invalid direction");
+		dai_err(dai, "sai_get_fifo(): Invalid direction");
 		return -EINVAL;
 	}
 }
@@ -343,6 +350,8 @@ static int sai_get_hw_params(struct dai *dai,
 
 const struct dai_driver sai_driver = {
 	.type = SOF_DAI_IMX_SAI,
+	.uid = SOF_UUID(sai_uuid),
+	.tctx = &sai_tr,
 	.dma_dev = DMA_DEV_SAI,
 	.ops = {
 		.trigger		= sai_trigger,

@@ -21,6 +21,7 @@
 #include <sof/lib/pm_memory.h>
 #include <sof/lib/pm_runtime.h>
 #include <sof/lib/shim.h>
+#include <sof/lib/uuid.h>
 #include <sof/lib/wait.h>
 #include <sof/platform.h>
 #include <sof/spinlock.h>
@@ -31,14 +32,15 @@
 #include <version.h>
 #include <stdint.h>
 
-#define trace_power(format, ...)	\
-	trace_event(TRACE_CLASS_POWER, format, ##__VA_ARGS__)
-#define trace_power_error(format, ...) \
-	trace_error(TRACE_CLASS_POWER, format, ##__VA_ARGS__)
-
 #if !CONFIG_SUECREEK
 #include <cavs/lib/power_down.h>
 #endif
+
+/* 76cc9773-440c-4df9-95a8-72defe7796fc */
+DECLARE_SOF_UUID("power", power_uuid, 0x76cc9773, 0x440c, 0x4df9,
+		 0x95, 0xa8, 0x72, 0xde, 0xfe, 0x77, 0x96, 0xfc);
+
+DECLARE_TR_CTX(power_tr, SOF_UUID(power_uuid), LOG_LEVEL_INFO);
 
 /** \brief Registers Host DMA access by incrementing ref counter. */
 static void cavs_pm_runtime_host_dma_l1_entry(void)
@@ -101,7 +103,8 @@ static inline void cavs_pm_runtime_enable_dsp(bool enable)
 
 	irq_local_enable(flags);
 
-	trace_power("pm_runtime_enable_dsp dsp_d0_sref %d", pprd->dsp_d0_sref);
+	tr_info(&power_tr, "pm_runtime_enable_dsp dsp_d0_sref %d",
+		pprd->dsp_d0_sref);
 
 	platform_shared_commit(pprd, sizeof(*pprd));
 }
@@ -131,7 +134,8 @@ static inline void cavs_pm_runtime_dis_ssp_clk_gating(uint32_t index)
 
 	shim_write(SHIM_CLKCTL, shim_reg);
 
-	trace_power("dis-ssp-clk-gating index %d CLKCTL %08x", index, shim_reg);
+	tr_info(&power_tr, "dis-ssp-clk-gating index %d CLKCTL %08x",
+		index, shim_reg);
 #endif
 }
 
@@ -147,7 +151,8 @@ static inline void cavs_pm_runtime_en_ssp_clk_gating(uint32_t index)
 
 	shim_write(SHIM_CLKCTL, shim_reg);
 
-	trace_power("en-ssp-clk-gating index %d CLKCTL %08x", index, shim_reg);
+	tr_info(&power_tr, "en-ssp-clk-gating index %d CLKCTL %08x",
+		index, shim_reg);
 #endif
 }
 
@@ -156,7 +161,7 @@ static inline void cavs_pm_runtime_en_ssp_power(uint32_t index)
 #if CONFIG_TIGERLAKE
 	uint32_t reg;
 
-	trace_power("en_ssp_power index %d", index);
+	tr_info(&power_tr, "en_ssp_power index %d", index);
 
 	io_reg_write(I2SLCTL, io_reg_read(I2SLCTL) | I2SLCTL_SPA(index));
 
@@ -165,7 +170,7 @@ static inline void cavs_pm_runtime_en_ssp_power(uint32_t index)
 		reg = io_reg_read(I2SLCTL);
 	} while (!(reg & I2SLCTL_CPA(index)));
 
-	trace_power("en_ssp_power I2SLCTL %08x", reg);
+	tr_info(&power_tr, "en_ssp_power I2SLCTL %08x", reg);
 #endif
 }
 
@@ -174,7 +179,7 @@ static inline void cavs_pm_runtime_dis_ssp_power(uint32_t index)
 #if CONFIG_TIGERLAKE
 	uint32_t reg;
 
-	trace_power("dis_ssp_power index %d", index);
+	tr_info(&power_tr, "dis_ssp_power index %d", index);
 
 	io_reg_write(I2SLCTL, io_reg_read(I2SLCTL) & (~I2SLCTL_SPA(index)));
 
@@ -183,7 +188,7 @@ static inline void cavs_pm_runtime_dis_ssp_power(uint32_t index)
 		reg = io_reg_read(I2SLCTL);
 	} while (reg & I2SLCTL_CPA(index));
 
-	trace_power("dis_ssp_power I2SLCTL %08x", reg);
+	tr_info(&power_tr, "dis_ssp_power I2SLCTL %08x", reg);
 #endif
 }
 #endif
@@ -199,8 +204,8 @@ static inline void cavs_pm_runtime_dis_dmic_clk_gating(uint32_t index)
 
 	shim_write(SHIM_CLKCTL, shim_reg);
 
-	trace_power("dis-dmic-clk-gating index %d CLKCTL %08x", index,
-		    shim_reg);
+	tr_info(&power_tr, "dis-dmic-clk-gating index %d CLKCTL %08x", index,
+		shim_reg);
 #endif
 #if CONFIG_CANNONLAKE || CONFIG_ICELAKE || CONFIG_SUECREEK || CONFIG_TIGERLAKE
 	/* Disable DMIC clock gating */
@@ -219,7 +224,8 @@ static inline void cavs_pm_runtime_en_dmic_clk_gating(uint32_t index)
 
 	shim_write(SHIM_CLKCTL, shim_reg);
 
-	trace_power("en-dmic-clk-gating index %d CLKCTL %08x", index, shim_reg);
+	tr_info(&power_tr, "en-dmic-clk-gating index %d CLKCTL %08x",
+		index, shim_reg);
 #endif
 #if CONFIG_CANNONLAKE || CONFIG_ICELAKE || CONFIG_SUECREEK || CONFIG_TIGERLAKE
 	/* Enable DMIC clock gating */
@@ -256,8 +262,8 @@ static inline void cavs_pm_runtime_dis_dwdma_clk_gating(uint32_t index)
 
 	shim_write(SHIM_CLKCTL, shim_reg);
 
-	trace_power("dis-dwdma-clk-gating index %d CLKCTL %08x", index,
-		    shim_reg);
+	tr_info(&power_tr, "dis-dwdma-clk-gating index %d CLKCTL %08x", index,
+		shim_reg);
 #elif CONFIG_CANNONLAKE
 	uint32_t shim_reg;
 
@@ -266,8 +272,8 @@ static inline void cavs_pm_runtime_dis_dwdma_clk_gating(uint32_t index)
 
 	shim_write(SHIM_GPDMA_CLKCTL(index), shim_reg);
 
-	trace_power("dis-dwdma-clk-gating index %d GPDMA_CLKCTL %08x", index,
-		    shim_reg);
+	tr_info(&power_tr, "dis-dwdma-clk-gating index %d GPDMA_CLKCTL %08x",
+		index, shim_reg);
 #endif
 }
 
@@ -280,8 +286,8 @@ static inline void cavs_pm_runtime_en_dwdma_clk_gating(uint32_t index)
 
 	shim_write(SHIM_CLKCTL, shim_reg);
 
-	trace_power("en-dwdma-clk-gating index %d CLKCTL %08x", index,
-		    shim_reg);
+	tr_info(&power_tr, "en-dwdma-clk-gating index %d CLKCTL %08x", index,
+		shim_reg);
 #elif CONFIG_CANNONLAKE
 	uint32_t shim_reg;
 
@@ -290,8 +296,8 @@ static inline void cavs_pm_runtime_en_dwdma_clk_gating(uint32_t index)
 
 	shim_write(SHIM_GPDMA_CLKCTL(index), shim_reg);
 
-	trace_power("en-dwdma-clk-gating index %d GPDMA_CLKCTL %08x", index,
-		    shim_reg);
+	tr_info(&power_tr, "en-dwdma-clk-gating index %d GPDMA_CLKCTL %08x",
+		index, shim_reg);
 #endif
 }
 
@@ -360,8 +366,8 @@ static inline void cavs_pm_runtime_dis_dsp_pg(uint32_t index)
 		}
 		/* Timeout check with warning log */
 		if (tries == 0)
-			trace_power_error("cavs_pm_runtime_dis_dsp_pg(): failed to power up core %d",
-					  index);
+			tr_err(&power_tr, "cavs_pm_runtime_dis_dsp_pg(): failed to power up core %d",
+			       index);
 	}
 #endif
 }

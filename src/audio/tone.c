@@ -48,6 +48,8 @@ static const struct comp_driver comp_tone;
 DECLARE_SOF_UUID("tone", tone_uuid, 0x04e3f894, 0x2c5c, 0x4f2e,
 		 0x8d, 0xc1, 0x69, 0x4e, 0xea, 0xab, 0x53, 0xfa);
 
+DECLARE_TR_CTX(tone_tr, SOF_UUID(tone_uuid), LOG_LEVEL_INFO);
+
 /* 2*pi/Fs lookup tables in Q1.31 for each Fs */
 static const int32_t tone_fs_list[TONE_NUM_FS] = {
 	8000, 11025, 16000, 22050, 24000, 32000, 44100, 48000,
@@ -702,6 +704,7 @@ static int tone_reset(struct comp_dev *dev)
 static const struct comp_driver comp_tone = {
 	.type = SOF_COMP_TONE,
 	.uid = SOF_UUID(tone_uuid),
+	.tctx = &tone_tr,
 	.ops = {
 		.create = tone_new,
 		.free = tone_free,

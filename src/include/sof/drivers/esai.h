@@ -191,12 +191,5 @@
 #define EDMA_ESAI_TX_CHAN	7
 #define EDMA_ESAI_RX_CHAN	6
 
-#define trace_esai(format, ...) \
-	trace_event(TRACE_CLASS_DAI, format, ##__VA_ARGS__)
-#define tracev_esai(format, ...) \
-	tracev_event(TRACE_CLASS_DAI, format, ##__VA_ARGS__)
-#define trace_esai_error(format, ...) \
-	trace_error(TRACE_CLASS_DAI, format, ##__VA_ARGS__)
-
 extern const struct dai_driver esai_driver;
 #endif /* __SOF_DRIVERS_ESAI_H__ */

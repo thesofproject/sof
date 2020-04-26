@@ -17,14 +17,6 @@
 #include <user/trace.h>
 #include <stdint.h>
 
-/* clock tracing */
-#define trace_clk(__e, ...) \
-	trace_event(TRACE_CLASS_CLK, __e, ##__VA_ARGS__)
-#define tracev_clk(__e, ...) \
-	tracev_event(TRACE_CLASS_CLK, __e, ##__VA_ARGS__)
-#define trace_clk_error(__e, ...) \
-	trace_error(TRACE_CLASS_CLK, __e, ##__VA_ARGS__)
-
 struct clock_notify_data clk_notify_data;
 
 static inline uint32_t clock_get_nearest_freq_idx(const struct freq_table *tab,

@@ -15,6 +15,7 @@
 #include <sof/debug/panic.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/cache.h>
+#include <sof/lib/uuid.h>
 #include <sof/list.h>
 #include <sof/math/numbers.h>
 #include <sof/spinlock.h>
@@ -32,25 +33,47 @@
 struct comp_dev;
 
 /* buffer tracing */
-#define trace_buffer(__e, ...) \
-	trace_event(TRACE_CLASS_BUFFER, __e, ##__VA_ARGS__)
-#define trace_buffer_with_ids(buf_ptr, __e, ...) \
-	trace_event_with_ids(TRACE_CLASS_BUFFER, 0, (buf_ptr)->pipeline_id, \
+extern uintptr_t buffer_uuid_ptr;
+
+#define buf_cl_err(__e, ...) \
+	trace_error_with_ids(TRACE_CLASS_DEPRECATED, buffer_uuid_ptr, \
+			     -1, -1, __e, ##__VA_ARGS__)
+
+#define buf_cl_err_a(__e, ...) \
+	trace_error_atomic_with_ids(TRACE_CLASS_DEPRECATED, buffer_uuid_ptr, \
+				    -1, -1, __e, ##__VA_ARGS__)
+
+#define buf_cl_warn(__e, ...) \
+	trace_warn_with_ids(TRACE_CLASS_DEPRECATED, buffer_uuid_ptr, \
+			    -1, -1, __e, ##__VA_ARGS__)
+
+#define buf_cl_info(__e, ...) \
+	trace_event_with_ids(TRACE_CLASS_DEPRECATED, buffer_uuid_ptr, \
+			     -1, -1, __e, ##__VA_ARGS__)
+
+#define buf_cl_dbg(__e, ...) \
+	tracev_event_with_ids(TRACE_CLASS_DEPRECATED, buffer_uuid_ptr, \
+			      -1, -1, __e, ##__VA_ARGS__)
+
+#define buf_err(buf_ptr, __e, ...) \
+	trace_error_with_ids(TRACE_CLASS_DEPRECATED, buffer_uuid_ptr, \
+			     (buf_ptr)->pipeline_id, \
 			     (buf_ptr)->id, __e, ##__VA_ARGS__)
 
-#define tracev_buffer(__e, ...) \
-	tracev_event(TRACE_CLASS_BUFFER, __e, ##__VA_ARGS__)
-#define tracev_buffer_with_ids(buf_ptr, __e, ...) \
-	tracev_event_with_ids(TRACE_CLASS_BUFFER, 0, (buf_ptr)->pipeline_id, \
+#define buf_warn(buf_ptr, __e, ...) \
+	trace_warn_with_ids(TRACE_CLASS_DEPRECATED, buffer_uuid_ptr, \
+			    (buf_ptr)->pipeline_id, \
+			    (buf_ptr)->id, __e, ##__VA_ARGS__)
+
+#define buf_info(buf_ptr, __e, ...) \
+	trace_event_with_ids(TRACE_CLASS_DEPRECATED, buffer_uuid_ptr, \
+			     (buf_ptr)->pipeline_id, \
+			     (buf_ptr)->id, __e, ##__VA_ARGS__)
+
+#define buf_dbg(buf_ptr, __e, ...) \
+	tracev_event_with_ids(TRACE_CLASS_DEPRECATED, buffer_uuid_ptr, \
+			      (buf_ptr)->pipeline_id, \
 			      (buf_ptr)->id, __e, ##__VA_ARGS__)
-
-#define trace_buffer_error(__e, ...) \
-	trace_error(TRACE_CLASS_BUFFER, __e, ##__VA_ARGS__)
-#define trace_buffer_error_atomic(__e, ...) \
-	trace_error_atomic(TRACE_CLASS_BUFFER, __e, ##__VA_ARGS__)
-#define trace_buffer_error_with_ids(buf_ptr, __e, ...) \
-	trace_error_with_ids(TRACE_CLASS_BUFFER, 0, (buf_ptr)->pipeline_id, \
-			     (buf_ptr)->id, __e, ##__VA_ARGS__)
 
 /* buffer callback types */
 #define BUFF_CB_TYPE_PRODUCE	BIT(0)
@@ -203,7 +226,7 @@ static inline void buffer_unlock(struct comp_buffer *buffer, uint32_t flags)
 
 static inline void buffer_zero(struct comp_buffer *buffer)
 {
-	tracev_buffer_with_ids(buffer, "stream_zero()");
+	buf_dbg(buffer, "stream_zero()");
 
 	bzero(buffer->stream.addr, buffer->stream.size);
 	if (buffer->caps & SOF_MEM_CAPS_DMA)
@@ -254,7 +277,7 @@ static inline int buffer_set_params(struct comp_buffer *buffer,
 	int i;
 
 	if (!params) {
-		trace_buffer_error("buffer_set_params(): !params");
+		buf_err(buffer, "buffer_set_params(): !params");
 		return -EINVAL;
 	}
 
@@ -263,7 +286,7 @@ static inline int buffer_set_params(struct comp_buffer *buffer,
 
 	ret = audio_stream_set_params(&buffer->stream, params);
 	if (ret < 0) {
-		trace_buffer_error("buffer_set_params(): audio_stream_set_params failed");
+		buf_err(buffer, "buffer_set_params(): audio_stream_set_params failed");
 		return -EINVAL;
 	}
 

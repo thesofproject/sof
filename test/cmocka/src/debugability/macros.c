@@ -26,7 +26,7 @@ static void test_debugability_macros_declare_log_entry(void **state)
 	const char *macro_result = CAPTURE(_DECLARE_LOG_ENTRY(
 		LOG_LEVEL_CRITICAL,
 		"Message",
-		TRACE_CLASS_DMA,
+		0,
 		1
 	));
 	const char *should_be_eq =
@@ -44,7 +44,7 @@ static void test_debugability_macros_declare_log_entry(void **state)
 			"const char text[sizeof(\"Message\")]; "
 		"} log_entry = { "
 			"1"
-			"(6 << 24)"
+			"0"
 			"1"
 			"31"
 			"sizeof(\"" RELATIVE_FILE "\")"

@@ -72,15 +72,10 @@
 #define DBG_LOCK_USERS		8
 #define DBG_LOCK_TRIES		10000
 
-#define trace_lock(__e, ...)		trace_error_atomic(TRACE_CLASS_LOCK,\
-						   __e, ##__VA_ARGS__)
-#define tracev_lock(__e, ...)		tracev_event_atomic(TRACE_CLASS_LOCK,\
-						    __e, ##__VA_ARGS__)
-#define trace_lock_error(__e, ...)	trace_error_atomic(TRACE_CLASS_LOCK, \
-						   __e, ##__VA_ARGS__)
-
 extern uint32_t lock_dbg_atomic;
 extern uint32_t lock_dbg_user[DBG_LOCK_USERS];
+
+extern struct tr_ctx sl_tr;
 
 /* panic on deadlock */
 #define spin_try_lock_dbg(lock, line) \
@@ -91,9 +86,9 @@ extern uint32_t lock_dbg_user[DBG_LOCK_USERS];
 				break;	/* lock acquired */ \
 		} \
 		if (__tries == 0) { \
-			trace_lock_error("DED"); \
-			trace_lock_error("line: %d", line); \
-			trace_lock_error("user: %d", (lock)->user); \
+			tr_err_atomic(&sl_tr, "DED"); \
+			tr_err_atomic(&sl_tr, "line: %d", line); \
+			tr_err_atomic(&sl_tr, "user: %d", (lock)->user); \
 			panic(SOF_IPC_PANIC_DEADLOCK); /* lock not acquired */ \
 		} \
 	} while (0)
@@ -105,27 +100,27 @@ extern uint32_t lock_dbg_user[DBG_LOCK_USERS];
 			int __i = 0; \
 			int  __count = lock_dbg_atomic >= DBG_LOCK_USERS \
 				? DBG_LOCK_USERS : lock_dbg_atomic; \
-			trace_lock_error("eal"); \
-			trace_lock_error("line: %d", line); \
-			trace_lock_error("dbg_atomic: %d", lock_dbg_atomic); \
+			tr_err_atomic(&sl_tr, "eal"); \
+			tr_err_atomic(&sl_tr, "line: %d", line); \
+			tr_err_atomic(&sl_tr, "dbg_atomic: %d", lock_dbg_atomic); \
 			for (__i = 0; __i < __count; __i++) { \
-				trace_lock_error("value: %d", \
-						 (lock_dbg_atomic << 24) | \
-						  lock_dbg_user[__i]); \
+				tr_err_atomic(&sl_tr, "value: %d", \
+					      (lock_dbg_atomic << 24) | \
+					      lock_dbg_user[__i]); \
 			} \
 		} \
 	} while (0)
 
 #define spin_lock_dbg(line) \
 	do { \
-		trace_lock("LcE"); \
-		trace_lock("line: %d", line); \
+		tr_info(&sl_tr, "LcE"); \
+		tr_info(&sl_tr, "line: %d", line); \
 	} while (0)
 
 #define spin_unlock_dbg(line) \
 	do { \
-		trace_lock("LcX"); \
-		trace_lock("line: %d", line); \
+		tr_info(&sl_tr, "LcX"); \
+		tr_info(&sl_tr, "line: %d", line); \
 	} while (0)
 
 #else

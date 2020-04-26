@@ -34,6 +34,8 @@ static const struct comp_driver comp_mixer;
 DECLARE_SOF_UUID("mixer", mixer_uuid, 0xbc06c037, 0x12aa, 0x417c,
 		 0x9a, 0x97, 0x89, 0x28, 0x2e, 0x32, 0x1a, 0x76);
 
+DECLARE_TR_CTX(mixer_tr, SOF_UUID(mixer_uuid), LOG_LEVEL_INFO);
+
 /* mixer component private data */
 struct mixer_data {
 	void (*mix_func)(struct comp_dev *dev, struct audio_stream *sink,
@@ -438,6 +440,7 @@ static int mixer_prepare(struct comp_dev *dev)
 static const struct comp_driver comp_mixer = {
 	.type	= SOF_COMP_MIXER,
 	.uid	= SOF_UUID(mixer_uuid),
+	.tctx	= &mixer_tr,
 	.ops	= {
 		.create		= mixer_new,
 		.free		= mixer_free,

@@ -84,13 +84,6 @@
 #define EDMA_HANDSHAKE(irq, channel)\
 	(EDMA_HS_SET_CHAN(channel) | EDMA_HS_SET_IRQ(irq))
 
-#define trace_edma(format, ...) trace_event(TRACE_CLASS_DMA,\
-					    format, ##__VA_ARGS__)
-#define tracev_edma(format, ...) tracev_event(TRACE_CLASS_DMA,\
-					      format, ##__VA_ARGS__)
-#define trace_edma_error(format, ...) trace_error(TRACE_CLASS_DMA,\
-						  format, ##__VA_ARGS__)
-
 #define EDMA0_ESAI_CHAN_RX	6
 #define EDMA0_ESAI_CHAN_TX	7
 #define EDMA0_SAI_CHAN_RX	14

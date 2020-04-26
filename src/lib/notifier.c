@@ -13,17 +13,17 @@
 #include <sof/lib/cpu.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/notifier.h>
+#include <sof/lib/uuid.h>
 #include <sof/list.h>
 #include <sof/sof.h>
 #include <ipc/topology.h>
 #include <stdint.h>
 
-#define trace_notifier(__e, ...) \
-	trace_event(TRACE_CLASS_NOTIFIER, __e, ##__VA_ARGS__)
-#define tracev_notifier(__e, ...) \
-	tracev_event(TRACE_CLASS_NOTIFIER, __e, ##__VA_ARGS__)
-#define trace_notifier_error(__e, ...) \
-	trace_error(TRACE_CLASS_NOTIFIER, __e, ##__VA_ARGS__)
+/* 1fb15a7a-83cd-4c2e-8b32-4da1b2adeeaf */
+DECLARE_SOF_UUID("notifier", notifier_uuid, 0x1fb15a7a, 0x83cd, 0x4c2e,
+		 0x8b, 0x32, 0x4d, 0xa1, 0xb2, 0xad, 0xee, 0xaf);
+
+DECLARE_TR_CTX(nt_tr, SOF_UUID(notifier_uuid), LOG_LEVEL_INFO);
 
 static SHARED_DATA struct notify_data notify_data[PLATFORM_CORE_COUNT];
 
@@ -62,7 +62,7 @@ int notifier_register(void *receiver, void *caller, enum notify_id type,
 			 sizeof(*handle));
 
 	if (!handle) {
-		trace_notifier_error("notifier_register(): callback handle allocation failed.");
+		tr_err(&nt_tr, "notifier_register(): callback handle allocation failed.");
 		ret = -ENOMEM;
 		goto out;
 	}

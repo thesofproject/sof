@@ -127,16 +127,6 @@
 #define DW_DMA_LLI_ADDRESS(lli, dir) \
 	(((dir) == DMA_DIR_MEM_TO_DEV) ? ((lli)->sar) : ((lli)->dar))
 
-/* tracing */
-#define trace_dwdma(__e, ...) \
-	trace_event(TRACE_CLASS_DMA, __e, ##__VA_ARGS__)
-#define trace_dwdma_atomic(__e, ...) \
-	trace_event_atomic(TRACE_CLASS_DMA, __e, ##__VA_ARGS__)
-#define tracev_dwdma(__e, ...) \
-	tracev_event(TRACE_CLASS_DMA, __e, ##__VA_ARGS__)
-#define trace_dwdma_error(__e, ...) \
-	trace_error(TRACE_CLASS_DMA, __e, ##__VA_ARGS__)
-
 #define DW_DMA_BUFFER_ALIGNMENT 0x4
 #define DW_DMA_COPY_ALIGNMENT	0x4
 

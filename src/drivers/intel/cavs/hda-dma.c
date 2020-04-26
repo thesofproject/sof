@@ -28,12 +28,11 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define trace_hddma(__e, ...) \
-	trace_event(TRACE_CLASS_DMA, __e, ##__VA_ARGS__)
-#define tracev_hddma(__e, ...) \
-	tracev_event(TRACE_CLASS_DMA, __e, ##__VA_ARGS__)
-#define trace_hddma_error(__e, ...) \
-	trace_error(TRACE_CLASS_DMA, __e, ##__VA_ARGS__)
+/* ee12fa71-4579-45d7-bde2-b32c6893a122 */
+DECLARE_SOF_UUID("hda-dma", hda_dma_uuid, 0xee12fa71, 0x4579, 0x45d7,
+		 0xbd, 0xe2, 0xb3, 0x2c, 0x68, 0x93, 0xa1, 0x22);
+
+DECLARE_TR_CTX(hdma_tr, SOF_UUID(hda_dma_uuid), LOG_LEVEL_INFO);
 
 /* Gateway Stream Registers */
 #define DGCS		0x00
@@ -209,8 +208,9 @@ static void hda_dma_get_dbg_vals(struct dma_chan_data *chan,
 				uint32_t rp = merge_16b16b(\
 					dbg_data->last_rp[HDA_DBG_PRE], \
 					dbg_data->last_rp[HDA_DBG_POST]); \
-				trace_hddma("hda-dma-ptr-trace %08X %08X " \
-					"%08X " postfix, info, wp, rp); \
+				tr_info(&hdma_tr, \
+					"hda-dma-ptr-trace %08X %08X %08X " \
+					postfix, info, wp, rp); \
 				++dbg_data->cur_sample; \
 			} \
 		} \
@@ -256,11 +256,10 @@ static int hda_dma_wait_for_buffer_full(struct dma_chan_data *chan)
 			if (hda_dma_is_buffer_full(chan))
 				return 0;
 
-			trace_hddma_error("hda-dmac: %d wait for buffer full "
-					  "timeout rp 0x%x wp 0x%x",
-					  chan->dma->plat_data.id,
-					  dma_chan_reg_read(chan, DGBRP),
-					  dma_chan_reg_read(chan, DGBWP));
+			tr_err(&hdma_tr, "hda-dmac: %d wait for buffer full timeout rp 0x%x wp 0x%x",
+			       chan->dma->plat_data.id,
+			       dma_chan_reg_read(chan, DGBRP),
+			       dma_chan_reg_read(chan, DGBWP));
 			return -ETIME;
 		}
 	}
@@ -281,11 +280,10 @@ static int hda_dma_wait_for_buffer_empty(struct dma_chan_data *chan)
 			if (hda_dma_is_buffer_empty(chan))
 				return 0;
 
-			trace_hddma_error("hda-dmac: %d wait for buffer empty "
-					  "timeout rp 0x%x wp 0x%x",
-				chan->dma->plat_data.id,
-				dma_chan_reg_read(chan, DGBRP),
-				dma_chan_reg_read(chan, DGBWP));
+			tr_err(&hdma_tr, "hda-dmac: %d wait for buffer empty timeout rp 0x%x wp 0x%x",
+			       chan->dma->plat_data.id,
+			       dma_chan_reg_read(chan, DGBRP),
+			       dma_chan_reg_read(chan, DGBWP));
 			return -ETIME;
 		}
 	}
@@ -325,8 +323,8 @@ static void hda_dma_post_copy(struct dma_chan_data *chan, int bytes)
 
 static int hda_dma_link_copy_ch(struct dma_chan_data *chan, int bytes)
 {
-	tracev_hddma("hda-dmac: %d channel %d -> copy 0x%x bytes",
-		     chan->dma->plat_data.id, chan->index, bytes);
+	tr_dbg(&hdma_tr, "hda-dmac: %d channel %d -> copy 0x%x bytes",
+	       chan->dma->plat_data.id, chan->index, bytes);
 
 	hda_dma_get_dbg_vals(chan, HDA_DBG_PRE, HDA_DBG_LINK);
 
@@ -355,18 +353,18 @@ static int hda_dma_host_start(struct dma_chan_data *channel)
 				NOTIFIER_ID_LL_PRE_RUN, hda_dma_l1_entry_notify,
 				NOTIFIER_FLAG_AGGREGATE);
 	if (ret < 0)
-		trace_hddma_error("hda-dmac: %d channel %d, cannot register notification %d",
-				  channel->dma->plat_data.id, channel->index,
-				  ret);
+		tr_err(&hdma_tr, "hda-dmac: %d channel %d, cannot register notification %d",
+		       channel->dma->plat_data.id, channel->index,
+		       ret);
 
 	/* Register common L1 exit for all channels */
 	ret = notifier_register(NULL, scheduler_get_data(SOF_SCHEDULE_LL_TIMER),
 				NOTIFIER_ID_LL_POST_RUN, hda_dma_l1_exit_notify,
 				NOTIFIER_FLAG_AGGREGATE);
 	if (ret < 0)
-		trace_hddma_error("hda-dmac: %d channel %d, cannot register notification %d",
-				  channel->dma->plat_data.id, channel->index,
-				  ret);
+		tr_err(&hdma_tr, "hda-dmac: %d channel %d, cannot register notification %d",
+		       channel->dma->plat_data.id, channel->index,
+		       ret);
 
 	return ret;
 }
@@ -393,8 +391,8 @@ static int hda_dma_enable_unlock(struct dma_chan_data *channel)
 	struct hda_chan_data *hda_chan;
 	int ret;
 
-	trace_hddma("hda-dmac: %d channel %d -> enable",
-		    channel->dma->plat_data.id, channel->index);
+	tr_info(&hdma_tr, "hda-dmac: %d channel %d -> enable",
+		channel->dma->plat_data.id, channel->index);
 
 	hda_dma_get_dbg_vals(channel, HDA_DBG_PRE, HDA_DBG_BOTH);
 
@@ -441,8 +439,8 @@ static int hda_dma_host_copy(struct dma_chan_data *channel, int bytes,
 	struct hda_chan_data *hda_chan = dma_chan_get_data(channel);
 	int ret;
 
-	tracev_hddma("hda-dmac: %d channel %d -> copy 0x%x bytes",
-		     channel->dma->plat_data.id, channel->index, bytes);
+	tr_dbg(&hdma_tr, "hda-dmac: %d channel %d -> copy 0x%x bytes",
+	       channel->dma->plat_data.id, channel->index, bytes);
 
 	hda_dma_get_dbg_vals(channel, HDA_DBG_PRE, HDA_DBG_HOST);
 
@@ -474,15 +472,15 @@ static struct dma_chan_data *hda_dma_channel_get(struct dma *dma,
 	uint32_t flags;
 
 	if (channel >= dma->plat_data.channels) {
-		trace_hddma_error("hda-dmac: %d invalid channel %d",
-				  dma->plat_data.id, channel);
+		tr_err(&hdma_tr, "hda-dmac: %d invalid channel %d",
+		       dma->plat_data.id, channel);
 		return NULL;
 	}
 
 	spin_lock_irq(&dma->lock, flags);
 
-	trace_hddma("hda-dmac: %d channel %d -> get", dma->plat_data.id,
-		    channel);
+	tr_info(&hdma_tr, "hda-dmac: %d channel %d -> get", dma->plat_data.id,
+		channel);
 
 	/* use channel if it's free */
 	if (dma->chan[channel].status == COMP_STATE_INIT) {
@@ -497,8 +495,8 @@ static struct dma_chan_data *hda_dma_channel_get(struct dma *dma,
 
 	/* DMAC has no free channels */
 	spin_unlock_irq(&dma->lock, flags);
-	trace_hddma_error("hda-dmac: %d no free channel %d", dma->plat_data.id,
-			  channel);
+	tr_err(&hdma_tr, "hda-dmac: %d no free channel %d", dma->plat_data.id,
+	       channel);
 	return NULL;
 }
 
@@ -538,8 +536,8 @@ static int hda_dma_start(struct dma_chan_data *channel)
 
 	irq_local_disable(flags);
 
-	trace_hddma("hda-dmac: %d channel %d -> start",
-		    channel->dma->plat_data.id, channel->index);
+	tr_info(&hdma_tr, "hda-dmac: %d channel %d -> start",
+		channel->dma->plat_data.id, channel->index);
 
 	hda_dma_dbg_count_reset(channel);
 
@@ -547,9 +545,9 @@ static int hda_dma_start(struct dma_chan_data *channel)
 	dgcs = dma_chan_reg_read(channel, DGCS);
 	if (channel->status != COMP_STATE_PREPARE || (dgcs & DGCS_GEN)) {
 		ret = -EBUSY;
-		trace_hddma_error("hda-dmac: %d channel %d busy. dgcs 0x%x "
-				  "status %d", channel->dma->plat_data.id,
-				  channel->index, dgcs, channel->status);
+		tr_err(&hdma_tr, "hda-dmac: %d channel %d busy. dgcs 0x%x status %d",
+		       channel->dma->plat_data.id,
+		       channel->index, dgcs, channel->status);
 		goto out;
 	}
 
@@ -573,8 +571,8 @@ static int hda_dma_release(struct dma_chan_data *channel)
 
 	irq_local_disable(flags);
 
-	trace_hddma("hda-dmac: %d channel %d -> release",
-		    channel->dma->plat_data.id, channel->index);
+	tr_info(&hdma_tr, "hda-dmac: %d channel %d -> release",
+		channel->dma->plat_data.id, channel->index);
 
 	/*
 	 * Prepare for the handling of release condition on the first work cb.
@@ -596,8 +594,8 @@ static int hda_dma_pause(struct dma_chan_data *channel)
 
 	irq_local_disable(flags);
 
-	trace_hddma("hda-dmac: %d channel %d -> pause",
-		    channel->dma->plat_data.id, channel->index);
+	tr_info(&hdma_tr, "hda-dmac: %d channel %d -> pause",
+		channel->dma->plat_data.id, channel->index);
 
 	if (channel->status != COMP_STATE_ACTIVE)
 		goto out;
@@ -621,8 +619,8 @@ static int hda_dma_stop(struct dma_chan_data *channel)
 	hda_dma_ptr_trace(channel, "last-copy", HDA_DBG_BOTH);
 	hda_dma_get_dbg_vals(channel, HDA_DBG_PRE, HDA_DBG_BOTH);
 
-	trace_hddma("hda-dmac: %d channel %d -> stop",
-		    channel->dma->plat_data.id, channel->index);
+	tr_info(&hdma_tr, "hda-dmac: %d channel %d -> stop",
+		channel->dma->plat_data.id, channel->index);
 
 	if (channel->direction == DMA_DIR_HMEM_TO_LMEM ||
 	    channel->direction == DMA_DIR_LMEM_TO_HMEM)
@@ -674,21 +672,20 @@ static int hda_dma_set_config(struct dma_chan_data *channel,
 
 	irq_local_disable(flags);
 
-	trace_hddma("hda-dmac: %d channel %d -> config",
-		    dma->plat_data.id, channel->index);
+	tr_info(&hdma_tr, "hda-dmac: %d channel %d -> config",
+		dma->plat_data.id, channel->index);
 
 	if (!config->elem_array.count) {
-		trace_hddma_error("hda-dmac: %d channel %d no DMA descriptors",
-				  dma->plat_data.id, channel->index);
+		tr_err(&hdma_tr, "hda-dmac: %d channel %d no DMA descriptors",
+		       dma->plat_data.id, channel->index);
 		ret = -EINVAL;
 		goto out;
 	}
 
 	if ((config->direction & (DMA_DIR_MEM_TO_DEV | DMA_DIR_DEV_TO_MEM)) &&
 	    !config->irq_disabled) {
-		trace_hddma_error("hda-dmac: %d channel %d HDA Link DMA "
-				  "doesn't support irq scheduling",
-				  dma->plat_data.id, channel->index);
+		tr_err(&hdma_tr, "hda-dmac: %d channel %d HDA Link DMA doesn't support irq scheduling",
+		       dma->plat_data.id, channel->index);
 		ret = -EINVAL;
 		goto out;
 	}
@@ -711,20 +708,19 @@ static int hda_dma_set_config(struct dma_chan_data *channel,
 
 		/* make sure elem is continuous */
 		if (buffer_addr && (buffer_addr + buffer_bytes) != addr) {
-			trace_hddma_error("hda-dmac: %d chan %d - "
-					  "non continuous elem",
-					  dma->plat_data.id, channel->index);
-			trace_hddma_error(" addr 0x%x buffer 0x%x size 0x%x",
-					  addr, buffer_addr, buffer_bytes);
+			tr_err(&hdma_tr, "hda-dmac: %d chan %d - non continuous elem",
+			       dma->plat_data.id, channel->index);
+			tr_err(&hdma_tr, " addr 0x%x buffer 0x%x size 0x%x",
+			       addr, buffer_addr, buffer_bytes);
 			ret = -EINVAL;
 			goto out;
 		}
 
 		/* make sure period_bytes are constant */
 		if (period_bytes && period_bytes != sg_elem->size) {
-			trace_hddma_error("hda-dmac: %d chan %d - period size "
-					  "not constant %d", dma->plat_data.id,
-					  channel->index, period_bytes);
+			tr_err(&hdma_tr, "hda-dmac: %d chan %d - period size not constant %d",
+			       dma->plat_data.id,
+			       channel->index, period_bytes);
 			ret = -EINVAL;
 			goto out;
 		}
@@ -739,9 +735,9 @@ static int hda_dma_set_config(struct dma_chan_data *channel,
 
 	/* buffer size must be multiple of hda dma burst size */
 	if (buffer_bytes % HDA_DMA_BUFFER_ALIGNMENT) {
-		trace_hddma_error("hda-dmac: %d chan %d - buffer not DMA "
-				  "aligned 0x%x", dma->plat_data.id,
-				  channel->index, buffer_bytes);
+		tr_err(&hdma_tr, "hda-dmac: %d chan %d - buffer not DMA aligned 0x%x",
+		       dma->plat_data.id,
+		       channel->index, buffer_bytes);
 		ret = -EINVAL;
 		goto out;
 	}
@@ -801,7 +797,7 @@ static int hda_dma_probe(struct dma *dma)
 	int i;
 	struct dma_chan_data *chan;
 
-	trace_hddma("hda-dmac :%d -> probe", dma->plat_data.id);
+	tr_info(&hdma_tr, "hda-dmac :%d -> probe", dma->plat_data.id);
 
 	if (dma->chan)
 		return -EEXIST; /* already created */
@@ -811,8 +807,8 @@ static int hda_dma_probe(struct dma *dma)
 			    dma->plat_data.channels);
 
 	if (!dma->chan) {
-		trace_hddma_error("hda-dmac: %d channels alloc failed",
-				  dma->plat_data.id);
+		tr_err(&hdma_tr, "hda-dmac: %d channels alloc failed",
+		       dma->plat_data.id);
 		goto out;
 	}
 
@@ -829,8 +825,8 @@ static int hda_dma_probe(struct dma *dma)
 				   SOF_MEM_CAPS_RAM,
 				   sizeof(struct hda_chan_data));
 		if (!hda_chan) {
-			trace_hddma_error("hda-dma: %d channel %d private data "
-					  "alloc failed", dma->plat_data.id, i);
+			tr_err(&hdma_tr, "hda-dma: %d channel %d private data alloc failed",
+			       dma->plat_data.id, i);
 			goto out;
 		}
 
@@ -857,7 +853,7 @@ static int hda_dma_remove(struct dma *dma)
 {
 	int i;
 
-	trace_hddma("hda-dmac :%d -> remove", dma->plat_data.id);
+	tr_info(&hdma_tr, "hda-dmac :%d -> remove", dma->plat_data.id);
 
 	for (i = 0; i < dma->plat_data.channels; i++)
 		rfree(dma_chan_get_data(&dma->chan[i]));
@@ -873,10 +869,10 @@ static int hda_dma_link_check_xrun(struct dma_chan_data *chan)
 	uint32_t dgcs = dma_chan_reg_read(chan, DGCS);
 
 	if (chan->direction == DMA_DIR_MEM_TO_DEV && dgcs & DGCS_BUR) {
-		trace_hddma_error("hda_dma_link_check_xrun(): underrun detected");
+		tr_err(&hdma_tr, "hda_dma_link_check_xrun(): underrun detected");
 		dma_chan_reg_update_bits(chan, DGCS, DGCS_BUR, DGCS_BUR);
 	} else if (chan->direction == DMA_DIR_DEV_TO_MEM && dgcs & DGCS_BOR) {
-		trace_hddma_error("hda_dma_link_check_xrun(): overrun detected");
+		tr_err(&hdma_tr, "hda_dma_link_check_xrun(): overrun detected");
 		dma_chan_reg_update_bits(chan, DGCS, DGCS_BOR, DGCS_BOR);
 	}
 
@@ -941,8 +937,8 @@ static int hda_dma_data_size(struct dma_chan_data *channel,
 	uint32_t flags;
 	int ret = 0;
 
-	tracev_hddma("hda-dmac: %d channel %d -> get_data_size",
-		     channel->dma->plat_data.id, channel->index);
+	tr_dbg(&hdma_tr, "hda-dmac: %d channel %d -> get_data_size",
+	       channel->dma->plat_data.id, channel->index);
 
 	irq_local_disable(flags);
 

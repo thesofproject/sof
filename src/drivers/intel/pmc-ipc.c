@@ -29,7 +29,7 @@ static void do_cmd(void)
 	uint32_t ipcsc;
 	uint32_t status = 0;
 
-	trace_ipc("pmc: tx -> 0x%x", _pmc->msg_l);
+	tr_info(&ipc_tr, "pmc: tx -> 0x%x", _pmc->msg_l);
 
 	_pmc->pending = 0;
 
@@ -54,7 +54,7 @@ int pmc_process_msg_queue(void)
 
 static void do_notify(void)
 {
-	trace_ipc("pmc: not rx");
+	tr_info(&ipc_tr, "pmc: not rx");
 
 	/* clear DONE bit  */
 	shim_write(SHIM_IPCLPESCH,
@@ -72,7 +72,7 @@ static void irq_handler(void *arg)
 	/* Interrupt arrived, check src */
 	isrlpesc = shim_read(SHIM_ISRLPESC);
 
-	tracev_ipc("pmc: irq isrlpesc 0x%x", isrlpesc);
+	tr_dbg(&ipc_tr, "pmc: irq isrlpesc 0x%x", isrlpesc);
 
 	if (isrlpesc & SHIM_ISRLPESC_DONE) {
 		/* Mask Done interrupt before return */
@@ -100,13 +100,13 @@ int ipc_pmc_send_msg(uint32_t message)
 	uint32_t ipclpesch;
 	int ret;
 
-	tracev_ipc("pmc: msg tx -> 0x%x", message);
+	tr_dbg(&ipc_tr, "pmc: msg tx -> 0x%x", message);
 
 	ipclpesch = shim_read(SHIM_IPCLPESCH);
 
 	/* we can only send new messages if the SC is not busy */
 	if (ipclpesch & SHIM_IPCLPESCH_BUSY) {
-		trace_ipc_error("pmc: busy 0x%x", ipclpesch);
+		tr_err(&ipc_tr, "pmc: busy 0x%x", ipclpesch);
 		return -EAGAIN;
 	}
 
@@ -121,7 +121,7 @@ int ipc_pmc_send_msg(uint32_t message)
 
 	/* did command succeed */
 	if (ret < 0) {
-		trace_ipc_error("pmc: command 0x%x failed", message);
+		tr_err(&ipc_tr, "pmc: command 0x%x failed", message);
 		return -EINVAL;
 	}
 

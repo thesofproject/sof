@@ -21,6 +21,8 @@
 DECLARE_SOF_UUID("alh-dai", alh_uuid, 0xa8e4218c, 0xe863, 0x4c93,
 		 0x84, 0xe7, 0x5c, 0x27, 0xd2, 0x50, 0x45, 0x01);
 
+DECLARE_TR_CTX(alh_tr, SOF_UUID(alh_uuid), LOG_LEVEL_INFO);
+
 static int alh_trigger(struct dai *dai, int cmd, int direction)
 {
 	dai_info(dai, "alh_trigger() cmd %d", cmd);
@@ -130,6 +132,7 @@ static int alh_get_fifo(struct dai *dai, int direction, int stream_id)
 const struct dai_driver alh_driver = {
 	.type = SOF_DAI_INTEL_ALH,
 	.uid = SOF_UUID(alh_uuid),
+	.tctx = &alh_tr,
 	.dma_caps = DMA_CAP_GP_LP | DMA_CAP_GP_HP,
 	.dma_dev = DMA_DEV_ALH,
 	.ops = {

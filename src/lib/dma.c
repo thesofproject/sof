@@ -11,6 +11,7 @@
 #include <sof/lib/cache.h>
 #include <sof/lib/dma.h>
 #include <sof/lib/memory.h>
+#include <sof/lib/uuid.h>
 #include <sof/spinlock.h>
 #include <sof/trace/trace.h>
 #include <ipc/topology.h>
@@ -18,6 +19,12 @@
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
+
+/* bc3526a7-9b86-4ab4-84a5-2e02ae70cc10 */
+DECLARE_SOF_UUID("dma", dma_uuid, 0xbc3526a7, 0x9b86, 0x4ab4,
+		 0x84, 0xa5, 0x2e, 0x02, 0xae, 0x70, 0xcc, 0x10);
+
+DECLARE_TR_CTX(dma_tr, SOF_UUID(dma_uuid), LOG_LEVEL_INFO);
 
 struct dma *dma_get(uint32_t dir, uint32_t cap, uint32_t dev, uint32_t flags)
 {
@@ -27,7 +34,7 @@ struct dma *dma_get(uint32_t dir, uint32_t cap, uint32_t dev, uint32_t flags)
 	struct dma *d = NULL, *dmin = NULL;
 
 	if (!info->num_dmas) {
-		trace_error(TRACE_CLASS_DMA, "dma_get(): No DMACs installed");
+		tr_err(&dma_tr, "dma_get(): No DMACs installed");
 		return NULL;
 	}
 
@@ -71,18 +78,17 @@ struct dma *dma_get(uint32_t dir, uint32_t cap, uint32_t dev, uint32_t flags)
 	}
 
 	if (!dmin) {
-		trace_error(TRACE_CLASS_DMA, "No DMAC dir %d caps 0x%x "
-			    "dev 0x%x flags 0x%x", dir, cap, dev, flags);
+		tr_err(&dma_tr, "No DMAC dir %d caps 0x%x dev 0x%x flags 0x%x",
+		       dir, cap, dev, flags);
 
 		for (d = info->dma_array;
 		     d < info->dma_array + info->num_dmas;
 		     d++) {
-			trace_error(TRACE_CLASS_DMA, " DMAC ID %d users %d "
-				    "busy channels %d", d->plat_data.id,
-				    d->sref,
-				    atomic_read(&d->num_channels_busy));
-			trace_error(TRACE_CLASS_DMA, "  caps 0x%x dev 0x%x",
-				    d->plat_data.caps, d->plat_data.devs);
+			tr_err(&dma_tr, " DMAC ID %d users %d busy channels %d",
+			       d->plat_data.id, d->sref,
+			       atomic_read(&d->num_channels_busy));
+			tr_err(&dma_tr, "  caps 0x%x dev 0x%x",
+			       d->plat_data.caps, d->plat_data.devs);
 		}
 
 		platform_shared_commit(info->dma_array,
@@ -95,8 +101,8 @@ struct dma *dma_get(uint32_t dir, uint32_t cap, uint32_t dev, uint32_t flags)
 			       sizeof(struct dma) * info->num_dmas);
 
 	/* return DMAC */
-	tracev_event(TRACE_CLASS_DMA, "dma_get(), dma-probe id = %d",
-		     dmin->plat_data.id);
+	tr_dbg(&dma_tr, "dma_get(), dma-probe id = %d",
+	       dmin->plat_data.id);
 
 	/* Shared DMA controllers with multiple channels
 	 * may be requested many times, let the probe()
@@ -108,18 +114,16 @@ struct dma *dma_get(uint32_t dir, uint32_t cap, uint32_t dev, uint32_t flags)
 	if (!dmin->sref) {
 		ret = dma_probe(dmin);
 		if (ret < 0) {
-			trace_error(TRACE_CLASS_DMA,
-				    "dma_get(): dma-probe failed"
-				    " id = %d, ret = %d",
-				    dmin->plat_data.id, ret);
+			tr_err(&dma_tr, "dma_get(): dma-probe failed id = %d, ret = %d",
+			       dmin->plat_data.id, ret);
 		}
 	}
 	if (!ret)
 		dmin->sref++;
 
-	trace_event(TRACE_CLASS_DMA, "dma_get() ID %d sref = %d "
-		    "busy channels %d", dmin->plat_data.id, dmin->sref,
-		    atomic_read(&dmin->num_channels_busy));
+	tr_info(&dma_tr, "dma_get() ID %d sref = %d busy channels %d",
+		dmin->plat_data.id, dmin->sref,
+		atomic_read(&dmin->num_channels_busy));
 
 	platform_shared_commit(dmin, sizeof(*dmin));
 
@@ -135,13 +139,12 @@ void dma_put(struct dma *dma)
 	if (--dma->sref == 0) {
 		ret = dma_remove(dma);
 		if (ret < 0) {
-			trace_error(TRACE_CLASS_DMA,
-				    "dma_put(): dma_remove() failed id  = %d, ret = %d",
-				    dma->plat_data.id, ret);
+			tr_err(&dma_tr, "dma_put(): dma_remove() failed id  = %d, ret = %d",
+			       dma->plat_data.id, ret);
 		}
 	}
-	trace_event(TRACE_CLASS_DMA, "dma_put(), dma = %p, sref = %d",
-		   (uintptr_t)dma, dma->sref);
+	tr_info(&dma_tr, "dma_put(), dma = %p, sref = %d",
+		(uintptr_t)dma, dma->sref);
 	platform_shared_commit(dma, sizeof(*dma));
 	spin_unlock(&dma->lock);
 }

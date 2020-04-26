@@ -8,6 +8,7 @@
 #include <sof/drivers/ssp.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/shim.h>
+#include <sof/lib/uuid.h>
 #include <sof/math/numbers.h>
 #include <sof/sof.h>
 #include <sof/spinlock.h>
@@ -16,12 +17,12 @@
 #include <stdint.h>
 
 /* tracing */
-#define trace_mn(__e, ...) \
-	trace_event(TRACE_CLASS_MN, __e, ##__VA_ARGS__)
-#define trace_mn_error(__e, ...) \
-	trace_error(TRACE_CLASS_MN, __e, ##__VA_ARGS__)
-#define tracev_mn(__e, ...) \
-	tracev_event(TRACE_CLASS_MN, __e, ##__VA_ARGS__)
+
+/* fa3b3763-759c-4c64-82b6-3dd239c89f58 */
+DECLARE_SOF_UUID("mn", mn_uuid, 0xfa3b3763, 0x759c, 0x4c64,
+		 0x82, 0xb6, 0x3d, 0xd2, 0x39, 0xc8, 0x9f, 0x58);
+
+DECLARE_TR_CTX(mn_tr, SOF_UUID(mn_uuid), LOG_LEVEL_INFO);
 
 /** \brief BCLKs can be driven by multiple sources - M/N or XTAL directly.
  *	   Even in the case of M/N, the actual clock source can be XTAL,
@@ -117,8 +118,7 @@ static inline int setup_initial_mclk_source(uint32_t mclk_rate)
 	}
 
 	if (clk_index < 0) {
-		trace_mn_error("MCLK %d, no valid source",
-			       mclk_rate);
+		tr_err(&mn_tr, "MCLK %d, no valid source", mclk_rate);
 		ret = -EINVAL;
 		goto out;
 	}
@@ -150,8 +150,8 @@ static inline int check_current_mclk_source(uint32_t mclk_rate)
 	int ret = 0;
 
 	if (ssp_freq[mn->mclk_source_clock].freq % mclk_rate != 0) {
-		trace_mn_error("MCLK %d, no valid configuration for already selected source = %d",
-			       mclk_rate, mn->mclk_source_clock);
+		tr_err(&mn_tr, "MCLK %d, no valid configuration for already selected source = %d",
+		       mclk_rate, mn->mclk_source_clock);
 		ret = -EINVAL;
 	}
 
@@ -184,7 +184,7 @@ static inline int set_mclk_divider(uint16_t mclk_id, uint32_t mdivr_val)
 		mdivr = 0x6; /* 1/8 */
 		break;
 	default:
-		trace_mn_error("invalid mdivr_val %d", mdivr_val);
+		tr_err(&mn_tr, "invalid mdivr_val %d", mdivr_val);
 		return -EINVAL;
 	}
 
@@ -198,8 +198,7 @@ int mn_set_mclk(uint16_t mclk_id, uint32_t mclk_rate)
 	int ret = 0;
 
 	if (mclk_id >= DAI_NUM_SSP_MCLK) {
-		trace_mn_error("mclk ID (%d) >= %d",
-			       mclk_id, DAI_NUM_SSP_MCLK);
+		tr_err(&mn_tr, "mclk ID (%d) >= %d", mclk_id, DAI_NUM_SSP_MCLK);
 		return -EINVAL;
 	}
 
@@ -366,7 +365,7 @@ static inline int setup_initial_bclk_mn_source(uint32_t bclk, uint32_t *scr_div,
 	int clk_index = find_bclk_source(bclk, scr_div, m, n);
 
 	if (clk_index < 0) {
-		trace_mn_error("BCLK %d, no valid source", bclk);
+		tr_err(&mn_tr, "BCLK %d, no valid source", bclk);
 		return -EINVAL;
 	}
 
@@ -400,8 +399,8 @@ static inline int setup_current_bclk_mn_source(uint32_t bclk, uint32_t *scr_div,
 		    n))
 		goto out;
 
-	trace_mn_error("BCLK %d, no valid configuration for already selected source = %d",
-		       bclk, mn->bclk_source_mn_clock);
+	tr_err(&mn_tr, "BCLK %d, no valid configuration for already selected source = %d",
+	       bclk, mn->bclk_source_mn_clock);
 	ret = -EINVAL;
 
 out:

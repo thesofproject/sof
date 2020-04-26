@@ -36,9 +36,13 @@ static const struct comp_driver comp_mux;
 DECLARE_SOF_UUID("mux", mux_uuid, 0xc607ff4d, 0x9cb6, 0x49dc,
 		 0xb6, 0x78, 0x7d, 0xa3, 0xc6, 0x3e, 0xa5, 0x57);
 
+DECLARE_TR_CTX(mux_tr, SOF_UUID(mux_uuid), LOG_LEVEL_INFO);
+
 /* c4b26868-1430-470e-a089-15d1c77f851a */
 DECLARE_SOF_UUID("demux", demux_uuid, 0xc4b26868, 0x1430, 0x470e,
 		 0xa0, 0x89, 0x15, 0xd1, 0xc7, 0x7f, 0x85, 0x1a);
+
+DECLARE_TR_CTX(demux_tr, SOF_UUID(demux_uuid), LOG_LEVEL_INFO);
 
 static int mux_set_values(struct comp_dev *dev, struct comp_data *cd,
 			  struct sof_mux_config *cfg)
@@ -501,6 +505,7 @@ static int mux_trigger(struct comp_dev *dev, int cmd)
 static const struct comp_driver comp_mux = {
 	.type	= SOF_COMP_MUX,
 	.uid	= SOF_UUID(mux_uuid),
+	.tctx	= &mux_tr,
 	.ops	= {
 		.create		= mux_new,
 		.free		= mux_free,
@@ -520,6 +525,7 @@ static SHARED_DATA struct comp_driver_info comp_mux_info = {
 static const struct comp_driver comp_demux = {
 	.type	= SOF_COMP_DEMUX,
 	.uid	= SOF_UUID(demux_uuid),
+	.tctx	= &demux_tr,
 	.ops	= {
 		.create		= mux_new,
 		.free		= mux_free,

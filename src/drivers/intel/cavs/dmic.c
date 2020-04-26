@@ -41,6 +41,8 @@
 DECLARE_SOF_UUID("dmic-dai", dmic_uuid, 0xaafc26fe, 0x3b8d, 0x498d,
 		 0x8b, 0xd6, 0x24, 0x8f, 0xc7, 0x2e, 0xfa, 0x31);
 
+DECLARE_TR_CTX(dmic_tr, SOF_UUID(dmic_uuid), LOG_LEVEL_INFO);
+
 /* 59c87728-d8f9-42f6-b89d-5870a87b0e1e */
 DECLARE_SOF_UUID("dmic-work", dmic_work_task_uuid, 0x59c87728, 0xd8f9, 0x42f6,
 		 0xb8, 0x9d, 0x58, 0x70, 0xa8, 0x7b, 0x0e, 0x1e);
@@ -1720,6 +1722,7 @@ out:
 const struct dai_driver dmic_driver = {
 	.type = SOF_DAI_INTEL_DMIC,
 	.uid = SOF_UUID(dmic_uuid),
+	.tctx = &dmic_tr,
 	.dma_caps = DMA_CAP_GP_LP | DMA_CAP_GP_HP,
 	.dma_dev = DMA_DEV_DMIC,
 	.ops = {
