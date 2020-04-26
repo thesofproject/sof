@@ -13,10 +13,17 @@
 #include <sof/lib/alloc.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/pm_runtime.h>
+#include <sof/lib/uuid.h>
 #include <sof/sof.h>
 #include <sof/spinlock.h>
 #include <ipc/topology.h>
 #include <stdint.h>
+
+/* d7f6712d-131c-45a7-82ed-6aa9dc2291ea */
+DECLARE_SOF_UUID("pm-runtime", pm_runtime_uuid, 0xd7f6712d, 0x131c, 0x45a7,
+		 0x82, 0xed, 0x6a, 0xa9, 0xdc, 0x22, 0x91, 0xea);
+
+DECLARE_TR_CTX(pm_tr, SOF_UUID(pm_runtime_uuid), LOG_LEVEL_INFO);
 
 void pm_runtime_init(struct sof *sof)
 {
@@ -31,7 +38,7 @@ void pm_runtime_init(struct sof *sof)
 
 void pm_runtime_get(enum pm_runtime_context context, uint32_t index)
 {
-	tracev_pm("pm_runtime_get()");
+	tr_dbg(&pm_tr, "pm_runtime_get()");
 
 	switch (context) {
 	default:
@@ -42,7 +49,7 @@ void pm_runtime_get(enum pm_runtime_context context, uint32_t index)
 
 void pm_runtime_get_sync(enum pm_runtime_context context, uint32_t index)
 {
-	tracev_pm("pm_runtime_get_sync()");
+	tr_dbg(&pm_tr, "pm_runtime_get_sync()");
 
 	switch (context) {
 	default:
@@ -53,7 +60,7 @@ void pm_runtime_get_sync(enum pm_runtime_context context, uint32_t index)
 
 void pm_runtime_put(enum pm_runtime_context context, uint32_t index)
 {
-	tracev_pm("pm_runtime_put()");
+	tr_dbg(&pm_tr, "pm_runtime_put()");
 
 	switch (context) {
 	default:
@@ -64,7 +71,7 @@ void pm_runtime_put(enum pm_runtime_context context, uint32_t index)
 
 void pm_runtime_put_sync(enum pm_runtime_context context, uint32_t index)
 {
-	tracev_pm("pm_runtime_put_sync()");
+	tr_dbg(&pm_tr, "pm_runtime_put_sync()");
 
 	switch (context) {
 	default:
@@ -75,7 +82,7 @@ void pm_runtime_put_sync(enum pm_runtime_context context, uint32_t index)
 
 void pm_runtime_enable(enum pm_runtime_context context, uint32_t index)
 {
-	tracev_pm("pm_runtime_enable()");
+	tr_dbg(&pm_tr, "pm_runtime_enable()");
 
 	switch (context) {
 	default:
@@ -86,7 +93,7 @@ void pm_runtime_enable(enum pm_runtime_context context, uint32_t index)
 
 void pm_runtime_disable(enum pm_runtime_context context, uint32_t index)
 {
-	tracev_pm("pm_runtime_disable()");
+	tr_dbg(&pm_tr, "pm_runtime_disable()");
 
 	switch (context) {
 	default:
@@ -97,7 +104,7 @@ void pm_runtime_disable(enum pm_runtime_context context, uint32_t index)
 
 bool pm_runtime_is_active(enum pm_runtime_context context, uint32_t index)
 {
-	tracev_pm("pm_runtime_is_active()");
+	tr_dbg(&pm_tr, "pm_runtime_is_active()");
 
 	switch (context) {
 	default:

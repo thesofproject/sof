@@ -50,6 +50,8 @@ static const struct comp_driver comp_volume;
 DECLARE_SOF_UUID("volume", volume_uuid, 0xb77e677e, 0x5ff4, 0x4188,
 		 0xaf, 0x14, 0xfb, 0xa8, 0xbd, 0xbf, 0x86, 0x82);
 
+DECLARE_TR_CTX(volume_tr, SOF_UUID(volume_uuid), LOG_LEVEL_INFO);
+
 #if CONFIG_FORMAT_S16LE
 /**
  * \brief Used to find nearest zero crossing frame for 16 bit format.
@@ -859,6 +861,7 @@ static int volume_reset(struct comp_dev *dev)
 static const struct comp_driver comp_volume = {
 	.type	= SOF_COMP_VOLUME,
 	.uid	= SOF_UUID(volume_uuid),
+	.tctx	= &volume_tr,
 	.ops	= {
 		.create		= volume_new,
 		.free		= volume_free,

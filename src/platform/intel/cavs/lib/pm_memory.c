@@ -11,13 +11,18 @@
 #include <sof/lib/memory.h>
 #include <sof/lib/pm_memory.h>
 #include <sof/lib/shim.h>
+#include <sof/lib/uuid.h>
 #include <sof/lib/wait.h>
 #include <sof/trace/trace.h>
 #include <user/trace.h>
 #include <stdint.h>
 
-#define trace_mem_pm(__e, ...) \
-	trace_event(TRACE_CLASS_MEM, __e, ##__VA_ARGS__)
+/* 14f25ab6-3a4b-4e5d-b343-2a142d4e4d92 */
+DECLARE_SOF_UUID("pm-memory", pm_mem_uuid, 0x14f25ab6, 0x3a4b, 0x4e5d,
+		 0xb3, 0x43, 0x2a, 0x14, 0x2d, 0x4e, 0x4d, 0x92);
+
+DECLARE_TR_CTX(pm_mem_tr, SOF_UUID(pm_mem_uuid), LOG_LEVEL_INFO);
+
 #if CAVS_VERSION >= CAVS_VERSION_1_8
 
 #define EBB_SEGMENT_SIZE_ZERO_BASE (EBB_SEGMENT_SIZE - 1)
@@ -184,8 +189,7 @@ void set_power_gate_for_memory_address_range(void *ptr,
 
 	/* return if no full bank could be found for enabled gate control */
 	if ((char *)end_ptr - (char *)ptr < SRAM_BANK_SIZE) {
-		trace_mem_pm("Could not find full bank "
-			"to perform gating operation");
+		tr_info(&pm_mem_tr, "Could not find full bank to perform gating operation");
 		return;
 	}
 

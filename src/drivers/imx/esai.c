@@ -12,10 +12,17 @@
 #include <sof/lib/alloc.h>
 #include <sof/lib/dai.h>
 #include <sof/lib/dma.h>
+#include <sof/lib/uuid.h>
 #include <ipc/dai.h>
 #include <ipc/topology.h>
 #include <errno.h>
 #include <stdint.h>
+
+/* 889f6dcd-ddcd-4e05-aa5b-0d39f8bca961 */
+DECLARE_SOF_UUID("esai", esai_uuid, 0x889f6dcd, 0xddcd, 0x4e05,
+		 0xaa, 0x5b, 0x0d, 0x39, 0xf8, 0xbc, 0xa9, 0x61);
+
+DECLARE_TR_CTX(esai_tr, SOF_UUID(esai_uuid), LOG_LEVEL_INFO);
 
 struct esai_pdata {
 	struct {
@@ -93,8 +100,8 @@ static inline int esai_set_config(struct dai *dai,
 {
 	uint32_t xcr = 0, xccr = 0, mask;
 
-	tracev_esai("ESAI: set_config format 0x%04x",
-		    config->format);
+	dai_dbg(dai, "ESAI: set_config format 0x%04x",
+		config->format);
 	switch (config->format & SOF_DAI_FMT_FORMAT_MASK) {
 	case SOF_DAI_FMT_I2S:
 		/* Data on rising edge of bclk, frame low, 1clk before
@@ -127,10 +134,10 @@ static inline int esai_set_config(struct dai *dai,
 		xccr |= ESAI_xCCR_xCKP | ESAI_xCCR_xHCKP;
 		break;
 	case SOF_DAI_FMT_PDM:
-		trace_esai_error("ESAI: Unsupported format (PDM)");
+		dai_err(dai, "ESAI: Unsupported format (PDM)");
 		return -EINVAL;
 	default:
-		trace_esai_error("ESAI: invalid format");
+		dai_err(dai, "ESAI: invalid format");
 		return -EINVAL;
 	}
 
@@ -151,7 +158,7 @@ static inline int esai_set_config(struct dai *dai,
 		xccr ^= ESAI_xCCR_xCKP | ESAI_xCCR_xHCKP | ESAI_xCCR_xFSP;
 		break;
 	default:
-		trace_esai_error("ESAI: Invalid bit inversion format");
+		dai_err(dai, "ESAI: Invalid bit inversion format");
 		return -EINVAL;
 	}
 
@@ -169,7 +176,7 @@ static inline int esai_set_config(struct dai *dai,
 		xccr |= ESAI_xCCR_xFSD | ESAI_xCCR_xCKD;
 		break;
 	default:
-		trace_esai_error("ESAI: Invalid clock master-slave configuration");
+		dai_err(dai, "ESAI: Invalid clock master-slave configuration");
 		return -EINVAL;
 	}
 
@@ -350,7 +357,7 @@ static void esai_stop(struct dai *dai, int direction)
 
 static int esai_trigger(struct dai *dai, int cmd, int direction)
 {
-	tracev_esai("ESAI: trigger");
+	dai_dbg(dai, "ESAI: trigger");
 
 	switch (cmd) {
 	case COMP_TRIGGER_START:
@@ -366,7 +373,7 @@ static int esai_trigger(struct dai *dai, int cmd, int direction)
 	case COMP_TRIGGER_RESUME:
 		break;
 	default:
-		trace_esai_error("ESAI: invalid trigger cmd %d", cmd);
+		dai_err(dai, "ESAI: invalid trigger cmd %d", cmd);
 		return -EINVAL;
 	}
 	return 0;
@@ -376,15 +383,15 @@ static int esai_probe(struct dai *dai)
 {
 	struct esai_pdata *pdata;
 
-	tracev_esai("ESAI: probe");
+	dai_dbg(dai, "ESAI: probe");
 	if (dai_get_drvdata(dai)) {
-		trace_esai_error("ESAI: Repeated probe, skipping");
+		dai_err(dai, "ESAI: Repeated probe, skipping");
 		return -EEXIST;
 	}
 	pdata = rzalloc(SOF_MEM_ZONE_SYS_RUNTIME, SOF_MEM_FLAG_SHARED,
 			SOF_MEM_CAPS_RAM, sizeof(*pdata));
 	if (!pdata) {
-		trace_esai_error("ESAI probe failure, out of memory");
+		dai_err(dai, "ESAI probe failure, out of memory");
 		return -ENOMEM;
 	}
 	/* ESAI core reset */
@@ -421,7 +428,7 @@ static int esai_get_fifo(struct dai *dai, int direction, int stream_id)
 	case DAI_DIR_CAPTURE:
 		return dai_fifo(dai, direction); /* stream_id is unused */
 	default:
-		trace_esai_error("esai_get_fifo(): Invalid direction");
+		dai_err(dai, "esai_get_fifo(): Invalid direction");
 		return -EINVAL;
 	}
 }
@@ -441,6 +448,8 @@ static int esai_get_hw_params(struct dai *dai,
 
 const struct dai_driver esai_driver = {
 	.type = SOF_DAI_IMX_ESAI,
+	.uid = SOF_UUID(esai_uuid),
+	.tctx = &esai_tr,
 	.dma_dev = DMA_DEV_ESAI,
 	.ops = {
 		.trigger		= esai_trigger,

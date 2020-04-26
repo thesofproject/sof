@@ -22,24 +22,6 @@
  *  @{
  */
 
-/** \name Trace macros
- *  @{
- */
-
-/** \brief Trace info message from generic schedule functions */
-#define trace_schedule(format, ...) \
-	trace_event(TRACE_CLASS_EDF, format, ##__VA_ARGS__)
-
-/** \brief Trace error message from generic schedule functions */
-#define trace_schedule_error(format, ...) \
-	trace_error(TRACE_CLASS_EDF, format, ##__VA_ARGS__)
-
-/** \brief Trace verbose message from generic schedule functions */
-#define tracev_schedule(format, ...) \
-	tracev_event(TRACE_CLASS_EDF, format, ##__VA_ARGS__)
-
-/** @}*/
-
 /** \brief Type of scheduler, comes from topology. */
 enum {
 	SOF_SCHEDULE_EDF = 0,	/**< EDF, schedules based on task's deadline */

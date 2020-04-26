@@ -27,12 +27,6 @@
  *  @{
  */
 
-/** \brief Power management trace function. */
-#define trace_pm(__e, ...) \
-	trace_event(TRACE_CLASS_POWER, __e, ##__VA_ARGS__)
-#define tracev_pm(__e, ...) \
-	tracev_event(TRACE_CLASS_POWER, __e, ##__VA_ARGS__)
-
 /* PM runtime flags */
 
 #define RPM_ASYNC		0x01	/**< Request is asynchronous */

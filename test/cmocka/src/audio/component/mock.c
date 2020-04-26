@@ -13,6 +13,8 @@
 
 static struct sof sof;
 
+uintptr_t buffer_uuid_ptr;
+
 #if !CONFIG_LIBRARY
 
 void *rzalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)

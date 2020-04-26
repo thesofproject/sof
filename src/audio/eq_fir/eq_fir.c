@@ -48,6 +48,8 @@ static const struct comp_driver comp_eq_fir;
 DECLARE_SOF_UUID("eq-fir", eq_fir_uuid, 0x43a90ce7, 0xf3a5, 0x41df,
 		 0xac, 0x06, 0xba, 0x98, 0x65, 0x1a, 0xe6, 0xa3);
 
+DECLARE_TR_CTX(eq_fir_tr, SOF_UUID(eq_fir_uuid), LOG_LEVEL_INFO);
+
 /* src component private data */
 struct comp_data {
 	struct fir_state_32x16 fir[PLATFORM_MAX_CHANNELS]; /**< filters state */
@@ -803,6 +805,7 @@ static int eq_fir_reset(struct comp_dev *dev)
 static const struct comp_driver comp_eq_fir = {
 	.type = SOF_COMP_EQ_FIR,
 	.uid = SOF_UUID(eq_fir_uuid),
+	.tctx = &eq_fir_tr,
 	.ops = {
 		.create = eq_fir_new,
 		.free = eq_fir_free,

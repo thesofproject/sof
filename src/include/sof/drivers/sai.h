@@ -245,10 +245,4 @@
 #define SAI_TDM_SLOTS		2
 
 extern const struct dai_driver sai_driver;
-#define trace_sai(format, ...) trace_event(TRACE_CLASS_DAI, format, \
-##__VA_ARGS__)
-#define tracev_sai(format, ...) tracev_event(TRACE_CLASS_DAI, format, \
-##__VA_ARGS__)
-#define trace_sai_error(format, ...) trace_error(TRACE_CLASS_DAI, format, \
-##__VA_ARGS__)
 #endif /*__SOF_DRIVERS_SAI_H__ */

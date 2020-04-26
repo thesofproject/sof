@@ -33,17 +33,16 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define trace_sa(__e, ...) \
-	trace_event_atomic(TRACE_CLASS_SA, __e, ##__VA_ARGS__)
-#define trace_sa_warn(__e, ...) \
-	trace_warn(TRACE_CLASS_SA, __e, ##__VA_ARGS__)
-#define trace_sa_error(__e, ...) \
-	trace_error(TRACE_CLASS_SA, __e, ##__VA_ARGS__)
+/* 5276b491-5b64-464e-8984-dc228ef9e6a1 */
+DECLARE_SOF_UUID("sa", sa_uuid, 0x5276b491, 0x5b64, 0x464e,
+		 0x89, 0x84, 0xdc, 0x22, 0x8e, 0xf9, 0xe6, 0xa1);
 
-#define perf_sa_trace(pcd, sa)				\
-	trace_sa("perf sys_load peak plat %u cpu %u",	\
-		 (uint32_t)((pcd)->plat_delta_peak),	\
-		 (uint32_t)((pcd)->cpu_delta_peak))
+DECLARE_TR_CTX(sa_tr, SOF_UUID(sa_uuid), LOG_LEVEL_INFO);
+
+#define perf_sa_trace(pcd, sa)					\
+	tr_info(&sa_tr, "perf sys_load peak plat %u cpu %u",	\
+		(uint32_t)((pcd)->plat_delta_peak),		\
+		(uint32_t)((pcd)->cpu_delta_peak))
 
 /* c63c4e75-8f61-4420-9319-1395932efa9e */
 DECLARE_SOF_UUID("agent-work", agent_work_task_uuid, 0xc63c4e75, 0x8f61, 0x4420,
@@ -66,8 +65,8 @@ static enum task_state validate(void *data)
 
 	/* warning timeout */
 	if (delta > sa->warn_timeout)
-		trace_sa_warn("validate(), ll drift detected, delta = %u",
-			      delta);
+		tr_warn(&sa_tr, "validate(), ll drift detected, delta = %u",
+			delta);
 
 	/* update last_check to current */
 	sa->last_check = current;
@@ -81,7 +80,7 @@ void sa_init(struct sof *sof, uint64_t timeout)
 {
 	uint64_t ticks;
 
-	trace_sa("sa_init(), timeout = %u", timeout);
+	tr_info(&sa_tr, "sa_init(), timeout = %u", timeout);
 
 	sof->sa = rzalloc(SOF_MEM_ZONE_SYS, SOF_MEM_FLAG_SHARED,
 			  SOF_MEM_CAPS_RAM, sizeof(*sof->sa));
@@ -96,8 +95,8 @@ void sa_init(struct sof *sof, uint64_t timeout)
 	atomic_init(&sof->sa->panic_cnt, 0);
 	sof->sa->panic_on_delay = true;
 
-	trace_sa("sa_init(), ticks = %u, sof->sa->warn_timeout = %u, sof->sa->panic_timeout = %u",
-		 ticks, sof->sa->warn_timeout, sof->sa->panic_timeout);
+	tr_info(&sa_tr, "sa_init(), ticks = %u, sof->sa->warn_timeout = %u, sof->sa->panic_timeout = %u",
+		ticks, sof->sa->warn_timeout, sof->sa->panic_timeout);
 
 	schedule_task_init_ll(&sof->sa->work, SOF_UUID(agent_work_task_uuid),
 			      SOF_SCHEDULE_LL_TIMER,

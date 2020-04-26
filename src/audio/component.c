@@ -23,6 +23,12 @@
 
 static SHARED_DATA struct comp_driver_list cd;
 
+/* 7c42ce8b-0108-43d0-9137-56d660478c5f */
+DECLARE_SOF_UUID("component", comp_uuid, 0x7c42ce8b, 0x0108, 0x43d0,
+		 0x91, 0x37, 0x56, 0xd6, 0x60, 0x47, 0x8c, 0x5f);
+
+DECLARE_TR_CTX(comp_tr, SOF_UUID(comp_uuid), LOG_LEVEL_INFO);
+
 static const struct comp_driver *get_drv(uint32_t type)
 {
 	struct comp_driver_list *drivers = comp_drivers_get();
@@ -59,19 +65,19 @@ struct comp_dev *comp_new(struct sof_ipc_comp *comp)
 	/* find the driver for our new component */
 	drv = get_drv(comp->type);
 	if (!drv) {
-		trace_error(TRACE_CLASS_COMP, "comp_new(): driver not found, comp->type = %u",
-			    comp->type);
+		tr_err(&comp_tr, "comp_new(): driver not found, comp->type = %u",
+		       comp->type);
 		return NULL;
 	}
 
 	/* validate size of ipc config */
 	if (IPC_IS_SIZE_INVALID(*comp_config(comp))) {
-		IPC_SIZE_ERROR_TRACE(TRACE_CLASS_COMP, *comp_config(comp));
+		IPC_SIZE_ERROR_TRACE(&comp_tr, *comp_config(comp));
 		return NULL;
 	}
 
-	trace_event(TRACE_CLASS_COMP, "comp new %s type %d id %d.%d",
-		    drv->uid, comp->type, comp->pipeline_id, comp->id);
+	tr_info(&comp_tr, "comp new %s type %d id %d.%d",
+		drv->uid, comp->type, comp->pipeline_id, comp->id);
 
 	/* create the new component */
 	cdev = drv->ops.create(drv, comp);

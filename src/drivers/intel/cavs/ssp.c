@@ -35,6 +35,8 @@
 DECLARE_SOF_UUID("ssp-dai", ssp_uuid, 0x31458125, 0x95c4, 0x4085,
 		 0x8f, 0x3f, 0x49, 0x74, 0x34, 0xcb, 0x2d, 0xaf);
 
+DECLARE_TR_CTX(ssp_tr, SOF_UUID(ssp_uuid), LOG_LEVEL_INFO);
+
 /* empty SSP transmit FIFO */
 static void ssp_empty_tx_fifo(struct dai *dai)
 {
@@ -994,6 +996,7 @@ out:
 const struct dai_driver ssp_driver = {
 	.type = SOF_DAI_INTEL_SSP,
 	.uid = SOF_UUID(ssp_uuid),
+	.tctx = &ssp_tr,
 	.dma_caps = DMA_CAP_GP_LP | DMA_CAP_GP_HP,
 	.dma_dev = DMA_DEV_SSP,
 	.ops = {

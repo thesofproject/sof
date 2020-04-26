@@ -36,15 +36,15 @@ static int ipc_parse_page_descriptors(uint8_t *page_table,
 	if ((ring->size <= HOST_PAGE_SIZE * (ring->pages - 1)) ||
 	    (ring->size > HOST_PAGE_SIZE * ring->pages)) {
 		/* error buffer size */
-		trace_ipc_error("ipc_parse_page_descriptors(): error buffer size");
+		tr_err(&ipc_tr, "ipc_parse_page_descriptors(): error buffer size");
 		return -EINVAL;
 	}
 
 	elem_array->elems = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
 				    sizeof(struct dma_sg_elem) * ring->pages);
 	if (!elem_array->elems) {
-		trace_ipc_error("ipc_parse_page_descriptors(): There is no heap free with this block size: %d",
-		sizeof(struct dma_sg_elem) * ring->pages);
+		tr_err(&ipc_tr, "ipc_parse_page_descriptors(): There is no heap free with this block size: %d",
+		       sizeof(struct dma_sg_elem) * ring->pages);
 		return -ENOMEM;
 	}
 
@@ -92,7 +92,7 @@ static int ipc_get_page_descriptors(struct dma *dmac, uint8_t *page_table,
 	/* get DMA channel from DMAC */
 	chan = dma_channel_get(dmac, 0);
 	if (!chan) {
-		trace_ipc_error("ipc_get_page_descriptors(): chan is NULL");
+		tr_err(&ipc_tr, "ipc_get_page_descriptors(): chan is NULL");
 		return -ENODEV;
 	}
 
@@ -116,14 +116,14 @@ static int ipc_get_page_descriptors(struct dma *dmac, uint8_t *page_table,
 
 	ret = dma_set_config(chan, &config);
 	if (ret < 0) {
-		trace_ipc_error("ipc_get_page_descriptors(): dma_set_config() failed");
+		tr_err(&ipc_tr, "ipc_get_page_descriptors(): dma_set_config() failed");
 		goto out;
 	}
 
 	/* start the copy of page table to DSP */
 	ret = dma_copy(chan, elem.size, DMA_COPY_ONE_SHOT | DMA_COPY_BLOCKING);
 	if (ret < 0) {
-		trace_ipc_error("ipc_get_page_descriptors(): dma_start() failed");
+		tr_err(&ipc_tr, "ipc_get_page_descriptors(): dma_start() failed");
 		goto out;
 	}
 
@@ -150,7 +150,7 @@ int ipc_process_host_buffer(struct ipc *ipc,
 				       data_host_buffer->page_table,
 				       ring);
 	if (err < 0) {
-		trace_ipc_error("ipc: get descriptors failed %d", err);
+		tr_err(&ipc_tr, "ipc: get descriptors failed %d", err);
 		goto error;
 	}
 
@@ -160,7 +160,7 @@ int ipc_process_host_buffer(struct ipc *ipc,
 					 ring,
 					 elem_array, direction);
 	if (err < 0) {
-		trace_ipc_error("ipc: parse descriptors failed %d", err);
+		tr_err(&ipc_tr, "ipc: parse descriptors failed %d", err);
 		goto error;
 	}
 

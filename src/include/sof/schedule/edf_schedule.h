@@ -13,16 +13,6 @@
 #include <user/trace.h>
 #include <stdint.h>
 
-/* schedule tracing */
-#define trace_edf_sch(format, ...) \
-	trace_event(TRACE_CLASS_EDF, format, ##__VA_ARGS__)
-
-#define trace_edf_sch_error(format, ...) \
-	trace_error(TRACE_CLASS_EDF, format, ##__VA_ARGS__)
-
-#define tracev_edf_sch(format, ...) \
-	tracev_event(TRACE_CLASS_EDF, format, ##__VA_ARGS__)
-
 #define edf_sch_set_pdata(task, data) \
 	(task->priv_data = data)
 

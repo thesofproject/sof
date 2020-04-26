@@ -43,7 +43,7 @@ static void irq_handler(void *arg)
 	isr = shim_read(SHIM_ISRD);
 	imrd = shim_read(SHIM_IMRD);
 
-	tracev_ipc("ipc: irq isr 0x%x", isr);
+	tr_dbg(&ipc_tr, "ipc: irq isr 0x%x", isr);
 
 	/* reply message(done) from host */
 	if (isr & SHIM_ISRD_DONE &&
@@ -117,7 +117,7 @@ int ipc_platform_send_msg(struct ipc_msg *msg)
 	/* now send the message */
 	mailbox_dspbox_write(0, msg->tx_data, msg->tx_size);
 	list_item_del(&msg->list);
-	tracev_ipc("ipc: msg tx -> 0x%x", msg->header);
+	tr_dbg(&ipc_tr, "ipc: msg tx -> 0x%x", msg->header);
 
 	ipc->is_notification_pending = true;
 

@@ -28,11 +28,6 @@
 #include <xtos-structs.h>
 #include <stdint.h>
 
-/* cpu tracing */
-#define trace_cpu(__e) trace_event(TRACE_CLASS_CPU, __e)
-#define trace_cpu_error(__e) trace_error(TRACE_CLASS_CPU, __e)
-#define tracev_cpu(__e) tracev_event(TRACE_CLASS_CPU, __e)
-
 extern struct core_context *core_ctx_ptr[PLATFORM_CORE_COUNT];
 extern struct xtos_core_data *core_data_ptr[PLATFORM_CORE_COUNT];
 

@@ -50,6 +50,8 @@ static const struct comp_driver comp_kpb;
 DECLARE_SOF_UUID("kpb", kpb_uuid, 0xd8218443, 0x5ff3, 0x4a4c,
 		 0xb3, 0x88, 0x6c, 0xfe, 0x07, 0xb9, 0x56, 0x2e);
 
+DECLARE_TR_CTX(kpb_tr, SOF_UUID(kpb_uuid), LOG_LEVEL_INFO);
+
 /* e50057a5-8b27-4db4-bd79-9a639cee5f50 */
 DECLARE_SOF_UUID("kpb-task", kpb_task_uuid, 0xe50057a5, 0x8b27, 0x4db4,
 		 0xbd, 0x79, 0x9a, 0x63, 0x9c, 0xee, 0x5f, 0x50);
@@ -1572,6 +1574,7 @@ static inline void kpb_change_state(struct comp_data *kpb,
 static const struct comp_driver comp_kpb = {
 	.type = SOF_COMP_KPB,
 	.uid = SOF_UUID(kpb_uuid),
+	.tctx = &kpb_tr,
 	.ops = {
 		.create = kpb_new,
 		.free = kpb_free,

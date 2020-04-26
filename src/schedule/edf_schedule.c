@@ -11,6 +11,7 @@
 #include <sof/drivers/timer.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/clk.h>
+#include <sof/lib/uuid.h>
 #include <sof/list.h>
 #include <sof/platform.h>
 #include <sof/schedule/edf_schedule.h>
@@ -21,6 +22,12 @@
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
+
+/* 77de2074-828c-4044-a40b-420b72749e8b */
+DECLARE_SOF_UUID("edf-schedule", edf_sched_uuid, 0x77de2074, 0x828c, 0x4044,
+		 0xa4, 0x0b, 0x42, 0x0b, 0x72, 0x74, 0x9e, 0x8b);
+
+DECLARE_TR_CTX(edf_tr, SOF_UUID(edf_sched_uuid), LOG_LEVEL_INFO);
 
 struct edf_schedule_data {
 	struct list_item list;	/* list of tasks in priority queue */
@@ -58,7 +65,7 @@ static void edf_scheduler_run(void *data)
 	uint64_t deadline;
 	uint32_t flags;
 
-	tracev_edf_sch("edf_scheduler_run()");
+	tr_dbg(&edf_tr, "edf_scheduler_run()");
 
 	irq_local_disable(flags);
 
@@ -106,9 +113,8 @@ static int schedule_edf_task(void *data, struct task *task, uint64_t start,
 	/* not enough MCPS to complete */
 	if (task->state == SOF_TASK_STATE_QUEUED ||
 	    task->state == SOF_TASK_STATE_RUNNING) {
-		trace_edf_sch_error
-			("schedule_edf_task(), task already queued or running %d",
-			 task->state);
+		tr_err(&edf_tr, "schedule_edf_task(), task already queued or running %d",
+		       task->state);
 		irq_local_enable(flags);
 		return -EALREADY;
 	}
@@ -152,7 +158,7 @@ int schedule_task_init_edf(struct task *task, uint32_t uid,
 	edf_pdata = rzalloc(SOF_MEM_ZONE_SYS_RUNTIME, 0, SOF_MEM_CAPS_RAM,
 			    sizeof(*edf_pdata));
 	if (!edf_pdata) {
-		trace_edf_sch_error("schedule_task_init_edf(): alloc failed");
+		tr_err(&edf_tr, "schedule_task_init_edf(): alloc failed");
 		return -ENOMEM;
 	}
 
@@ -175,7 +181,7 @@ int schedule_task_init_edf(struct task *task, uint32_t uid,
 	return 0;
 
 error:
-	trace_edf_sch_error("schedule_task_init_edf(): init context failed");
+	tr_err(&edf_tr, "schedule_task_init_edf(): init context failed");
 	if (edf_pdata->ctx)
 		task_context_free(edf_pdata->ctx);
 	rfree(edf_pdata);
@@ -188,7 +194,7 @@ static int schedule_edf_task_running(void *data, struct task *task)
 	struct edf_task_pdata *edf_pdata = edf_sch_get_pdata(task);
 	uint32_t flags;
 
-	tracev_edf_sch("schedule_edf_task_running()");
+	tr_dbg(&edf_tr, "schedule_edf_task_running()");
 
 	irq_local_disable(flags);
 
@@ -204,7 +210,7 @@ static int schedule_edf_task_complete(void *data, struct task *task)
 {
 	uint32_t flags;
 
-	tracev_edf_sch("schedule_edf_task_complete()");
+	tr_dbg(&edf_tr, "schedule_edf_task_complete()");
 
 	irq_local_disable(flags);
 
@@ -222,7 +228,7 @@ static int schedule_edf_task_cancel(void *data, struct task *task)
 {
 	uint32_t flags;
 
-	tracev_edf_sch("schedule_edf_task_cancel()");
+	tr_dbg(&edf_tr, "schedule_edf_task_cancel()");
 
 	irq_local_disable(flags);
 
@@ -260,7 +266,7 @@ int scheduler_init_edf(void)
 {
 	struct edf_schedule_data *edf_sch;
 
-	trace_edf_sch("edf_scheduler_init()");
+	tr_info(&edf_tr, "edf_scheduler_init()");
 
 	edf_sch = rzalloc(SOF_MEM_ZONE_SYS, 0, SOF_MEM_CAPS_RAM,
 			  sizeof(*edf_sch));

@@ -43,15 +43,6 @@ struct sof_ipc_pipe_new;
 struct sof_ipc_stream_posn;
 struct ipc_msg;
 
-#define trace_ipc(format, ...) \
-	trace_event(TRACE_CLASS_IPC, format, ##__VA_ARGS__)
-#define tracev_ipc(format, ...) \
-	tracev_event(TRACE_CLASS_IPC, format, ##__VA_ARGS__)
-#define trace_ipc_warn(format, ...) \
-	trace_warn(TRACE_CLASS_IPC, format, ##__VA_ARGS__)
-#define trace_ipc_error(format, ...) \
-	trace_error(TRACE_CLASS_IPC, format, ##__VA_ARGS__)
-
 #define COMP_TYPE_COMPONENT	1
 #define COMP_TYPE_BUFFER	2
 #define COMP_TYPE_PIPELINE	3
@@ -60,10 +51,13 @@ struct ipc_msg;
 #define IPC_IS_SIZE_INVALID(object)					\
 	(object).hdr.size == sizeof(object) ? 0 : 1
 
+/* ipc trace context, used by multiple units */
+extern struct tr_ctx ipc_tr;
+
 /* convenience error trace for mismatched internal structures */
-#define IPC_SIZE_ERROR_TRACE(class, object)				\
-	trace_error(class, "ipc: size %d expected %d",			\
-		    (object).hdr.size, sizeof(object))
+#define IPC_SIZE_ERROR_TRACE(ctx, object)		\
+	tr_err(ctx, "ipc: size %d expected %d",		\
+	       (object).hdr.size, sizeof(object))
 
 /* IPC generic component device */
 struct ipc_comp_dev {

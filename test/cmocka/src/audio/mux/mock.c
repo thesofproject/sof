@@ -16,6 +16,8 @@
 
 static struct sof sof;
 
+uintptr_t buffer_uuid_ptr;
+
 void pipeline_xrun(struct pipeline *p, struct comp_dev *dev, int32_t bytes)
 {
 }

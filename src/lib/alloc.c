@@ -12,6 +12,7 @@
 #include <sof/lib/dma.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/mm_heap.h>
+#include <sof/lib/uuid.h>
 #include <sof/math/numbers.h>
 #include <sof/spinlock.h>
 #include <sof/string.h>
@@ -23,10 +24,11 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define trace_mem_error(__e, ...) \
-	trace_error(TRACE_CLASS_MEM, __e, ##__VA_ARGS__)
-#define trace_mem_init(__e, ...) \
-	trace_event(TRACE_CLASS_MEM, __e, ##__VA_ARGS__)
+/* 425d6e68-145c-4455-b0b2-c7260b0600a5 */
+DECLARE_SOF_UUID("memory", mem_uuid, 0x425d6e68, 0x145c, 0x4455,
+		 0xb0, 0xb2, 0xc7, 0x26, 0x0b, 0x06, 0x00, 0xa5);
+
+DECLARE_TR_CTX(mem_tr, SOF_UUID(mem_uuid), LOG_LEVEL_INFO);
 
 /* debug to set memory value on every allocation */
 #if CONFIG_DEBUG_BLOCK_FREE
@@ -61,14 +63,11 @@ static void validate_memory(void *ptr, size_t size)
 	}
 
 	if (not_matching) {
-		trace_mem_init("validate_memory() pointer:"
-			"%p freed pattern not detected",
+		tr_info(&mem_tr, "validate_memory() pointer: %p freed pattern not detected",
 			(uintptr_t)ptr);
 	} else {
-		trace_mem_error(
-			"validate_memory() freeing pointer:"
-			"%p double free detected",
-			(uintptr_t)ptr);
+		tr_err(&mem_tr, "validate_memory() freeing pointer: %p double free detected",
+		       (uintptr_t)ptr);
 	}
 }
 #endif
@@ -173,8 +172,8 @@ static void *rmalloc_sys(uint32_t flags, int caps, int core, size_t bytes)
 
 	/* always succeeds or panics */
 	if (alignment + bytes > cpu_heap->info.free) {
-		trace_mem_error("rmalloc_sys(): core = %d, bytes = %d",
-				core, bytes);
+		tr_err(&mem_tr, "rmalloc_sys(): core = %d, bytes = %d",
+		       core, bytes);
 		panic(SOF_IPC_PANIC_MEM);
 	}
 	cpu_heap->info.used += alignment;
@@ -280,8 +279,8 @@ static void *alloc_cont_blocks(struct mm_heap *heap, int level,
 	}
 
 	if (count > map->count || remaining < count) {
-		trace_mem_error("%d blocks needed for allocation but only %d blocks are remaining",
-				count, remaining);
+		tr_err(&mem_tr, "%d blocks needed for allocation but only %d blocks are remaining",
+		       count, remaining);
 		goto out;
 	}
 
@@ -449,8 +448,8 @@ static void free_block(void *ptr)
 
 	heap = get_heap_from_ptr(ptr);
 	if (!heap) {
-		trace_mem_error("free_block(): invalid heap = %p, cpu = %d",
-				(uintptr_t)ptr, cpu_get_id());
+		tr_err(&mem_tr, "free_block(): invalid heap = %p, cpu = %d",
+		       (uintptr_t)ptr, cpu_get_id());
 		return;
 	}
 
@@ -470,8 +469,8 @@ static void free_block(void *ptr)
 		platform_shared_commit(heap, sizeof(*heap));
 
 		/* not found */
-		trace_mem_error("free_block(): invalid ptr = %p cpu = %d",
-				(uintptr_t)ptr, cpu_get_id());
+		tr_err(&mem_tr, "free_block(): invalid ptr = %p cpu = %d",
+		       (uintptr_t)ptr, cpu_get_id());
 		return;
 	}
 
@@ -539,19 +538,19 @@ static void trace_heap_blocks(struct mm_heap *heap)
 	struct block_map *block_map;
 	int i;
 
-	trace_mem_error("heap: 0x%x size %d blocks %d caps 0x%x", heap->heap,
-			heap->size, heap->blocks, heap->caps);
-	trace_mem_error(" used %d free %d", heap->info.used,
-			heap->info.free);
+	tr_err(&mem_tr, "heap: 0x%x size %d blocks %d caps 0x%x", heap->heap,
+	       heap->size, heap->blocks, heap->caps);
+	tr_err(&mem_tr, " used %d free %d", heap->info.used,
+	       heap->info.free);
 
 	for (i = 0; i < heap->blocks; i++) {
 		block_map = &heap->map[i];
 
-		trace_mem_error(" block %d base 0x%x size %d count %d", i,
-				block_map->base, block_map->block_size,
-				block_map->count);
-		trace_mem_error("  free %d first at %d",
-				block_map->free_count, block_map->first_free);
+		tr_err(&mem_tr, " block %d base 0x%x size %d count %d", i,
+		       block_map->base, block_map->block_size,
+		       block_map->count);
+		tr_err(&mem_tr, "  free %d first at %d",
+		       block_map->free_count, block_map->first_free);
 
 		platform_shared_commit(block_map, sizeof(*block_map));
 	}
@@ -579,7 +578,7 @@ static void alloc_trace_heap(enum mem_zone zone, uint32_t caps, size_t bytes)
 		heap_count = PLATFORM_HEAP_BUFFER;
 		break;
 	default:
-		trace_mem_error("alloc trace: unsupported mem zone");
+		tr_err(&mem_tr, "alloc trace: unsupported mem zone");
 		goto out;
 	}
 	heap = heap_base;
@@ -598,8 +597,8 @@ static void alloc_trace_heap(enum mem_zone zone, uint32_t caps, size_t bytes)
 	}
 
 	if (count == 0)
-		trace_mem_error("heap: none found for zone %d caps 0x%x, "
-				"bytes 0x%x", zone, caps, bytes);
+		tr_err(&mem_tr, "heap: none found for zone %d caps 0x%x, bytes 0x%x",
+		       zone, caps, bytes);
 out:
 	platform_shared_commit(memmap, sizeof(*memmap));
 	return;
@@ -608,8 +607,8 @@ out:
 #define DEBUG_TRACE_PTR(ptr, bytes, zone, caps, flags) \
 	do { \
 		if (!ptr) { \
-			trace_mem_error("failed to alloc 0x%x bytes zone 0x%x caps 0x%x flags 0x%x", \
-					bytes, zone, caps, flags); \
+			tr_err(&mem_tr, "failed to alloc 0x%x bytes zone 0x%x caps 0x%x flags 0x%x", \
+			       bytes, zone, caps, flags); \
 			alloc_trace_heap(zone, caps, bytes); \
 		} \
 	} while (0)
@@ -654,8 +653,8 @@ static void *rmalloc_runtime(uint32_t flags, uint32_t caps, size_t bytes)
 		if (!heap) {
 			platform_shared_commit(memmap, sizeof(*memmap));
 
-			trace_mem_error("rmalloc_runtime(): caps = %x, bytes = %d",
-					caps, bytes);
+			tr_err(&mem_tr, "rmalloc_runtime(): caps = %x, bytes = %d",
+			       caps, bytes);
 
 			return NULL;
 		}
@@ -684,7 +683,7 @@ static void *_malloc_unlocked(enum mem_zone zone, uint32_t flags, uint32_t caps,
 		ptr = rmalloc_runtime(flags, caps, bytes);
 		break;
 	default:
-		trace_mem_error("rmalloc(): invalid zone");
+		tr_err(&mem_tr, "rmalloc(): invalid zone");
 		panic(SOF_IPC_PANIC_MEM); /* logic non recoverable problem */
 		break;
 	}
@@ -890,8 +889,8 @@ static void _rfree_unlocked(void *ptr)
 	/* panic if pointer is from system heap */
 	if (ptr >= (void *)cpu_heap->heap &&
 	    (char *)ptr < (char *)cpu_heap->heap + cpu_heap->size) {
-		trace_mem_error("rfree(): attempt to free system heap = %p, cpu = %d",
-				(uintptr_t)ptr, cpu_get_id());
+		tr_err(&mem_tr, "rfree(): attempt to free system heap = %p, cpu = %d",
+		       (uintptr_t)ptr, cpu_get_id());
 		panic(SOF_IPC_PANIC_MEM);
 	}
 
@@ -975,7 +974,7 @@ void free_heap(enum mem_zone zone)
 	 */
 	if (cpu_get_id() == PLATFORM_MASTER_CORE_ID ||
 	    zone != SOF_MEM_ZONE_SYS) {
-		trace_mem_error("free_heap(): critical flow issue");
+		tr_err(&mem_tr, "free_heap(): critical flow issue");
 		panic(SOF_IPC_PANIC_MEM);
 	}
 
@@ -995,22 +994,22 @@ void heap_trace(struct mm_heap *heap, int size)
 	int j;
 
 	for (i = 0; i < size; i++) {
-		trace_mem_init(" heap: 0x%x size %d blocks %d caps 0x%x",
-			       heap->heap, heap->size, heap->blocks,
-			       heap->caps);
-		trace_mem_init("  used %d free %d", heap->info.used,
-			       heap->info.free);
+		tr_info(&mem_tr, " heap: 0x%x size %d blocks %d caps 0x%x",
+			heap->heap, heap->size, heap->blocks,
+			heap->caps);
+		tr_info(&mem_tr, "  used %d free %d", heap->info.used,
+			heap->info.free);
 
 		/* map[j]'s base is calculated based on map[j-1] */
 		for (j = 1; j < heap->blocks; j++) {
 			current_map = &heap->map[j];
 
-			trace_mem_init("  block %d base 0x%x size %d",
-				       j, current_map->base,
-				       current_map->block_size);
-			trace_mem_init("   count %d free %d",
-				       current_map->count,
-				       current_map->free_count);
+			tr_info(&mem_tr, "  block %d base 0x%x size %d",
+				j, current_map->base,
+				current_map->block_size);
+			tr_info(&mem_tr, "   count %d free %d",
+				current_map->count,
+				current_map->free_count);
 
 			platform_shared_commit(current_map,
 					       sizeof(*current_map));
@@ -1028,9 +1027,9 @@ void heap_trace_all(int force)
 
 	/* has heap changed since last shown */
 	if (memmap->heap_trace_updated || force) {
-		trace_mem_init("heap: buffer status");
+		tr_info(&mem_tr, "heap: buffer status");
 		heap_trace(memmap->buffer, PLATFORM_HEAP_BUFFER);
-		trace_mem_init("heap: runtime status");
+		tr_info(&mem_tr, "heap: runtime status");
 		heap_trace(memmap->runtime, PLATFORM_HEAP_RUNTIME);
 	}
 

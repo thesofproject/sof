@@ -6,6 +6,7 @@
 
 #include <sof/lib/dai.h>
 #include <sof/lib/memory.h>
+#include <sof/lib/uuid.h>
 #include <sof/spinlock.h>
 #include <sof/trace/trace.h>
 #include <user/trace.h>
@@ -13,7 +14,11 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define trace_dai(__e, ...) trace_event(TRACE_CLASS_DAI, __e, ##__VA_ARGS__)
+/* 06711c94-d37d-4a76-b302-bbf6944fdd2b */
+DECLARE_SOF_UUID("dai", dai_uuid, 0x06711c94, 0xd37d, 0x4a76,
+		 0xb3, 0x02, 0xbb, 0xf6, 0x94, 0x4f, 0xdd, 0x2b);
+
+DECLARE_TR_CTX(dai_tr, SOF_UUID(dai_uuid), LOG_LEVEL_INFO);
 
 static inline const struct dai_type_info *dai_find_type(uint32_t type)
 {
@@ -54,8 +59,8 @@ struct dai *dai_get(uint32_t type, uint32_t index, uint32_t flags)
 		if (!ret)
 			d->sref++;
 
-		trace_dai("dai_get %d.%d new sref %d",
-			  type, index, d->sref);
+		tr_info(&dai_tr, "dai_get %d.%d new sref %d",
+			type, index, d->sref);
 
 		platform_shared_commit(d, sizeof(*d));
 
@@ -63,8 +68,7 @@ struct dai *dai_get(uint32_t type, uint32_t index, uint32_t flags)
 
 		return !ret ? d : NULL;
 	}
-	trace_error(TRACE_CLASS_DAI, "dai_get: %d.%d not found",
-		    type, index);
+	tr_err(&dai_tr, "dai_get: %d.%d not found", type, index);
 	return NULL;
 }
 
@@ -76,12 +80,12 @@ void dai_put(struct dai *dai)
 	if (--dai->sref == 0) {
 		ret = dai_remove(dai);
 		if (ret < 0) {
-			trace_error(TRACE_CLASS_DAI, "dai_put: %d.%d dai_remove() failed ret = %d",
-				    dai->drv->type, dai->index, ret);
+			tr_err(&dai_tr, "dai_put: %d.%d dai_remove() failed ret = %d",
+			       dai->drv->type, dai->index, ret);
 		}
 	}
-	trace_event(TRACE_CLASS_DAI, "dai_put %d.%d new sref %d",
-		    dai->drv->type, dai->index, dai->sref);
+	tr_info(&dai_tr, "dai_put %d.%d new sref %d",
+		dai->drv->type, dai->index, dai->sref);
 	platform_shared_commit(dai, sizeof(*dai));
 	spin_unlock(&dai->lock);
 }

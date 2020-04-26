@@ -48,6 +48,8 @@ static const struct comp_driver comp_src;
 DECLARE_SOF_UUID("src", src_uuid, 0xc1c5326d, 0x8390, 0x46b4,
 		 0xaa, 0x47, 0x95, 0xc3, 0xbe, 0xca, 0x65, 0x50);
 
+DECLARE_TR_CTX(src_tr, SOF_UUID(src_uuid), LOG_LEVEL_INFO);
+
 /* src component private data */
 struct comp_data {
 	struct polyphase_src src;
@@ -911,6 +913,7 @@ static int src_reset(struct comp_dev *dev)
 static const struct comp_driver comp_src = {
 	.type = SOF_COMP_SRC,
 	.uid = SOF_UUID(src_uuid),
+	.tctx = &src_tr,
 	.ops = {
 		.create = src_new,
 		.free = src_free,

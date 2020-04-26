@@ -10,6 +10,7 @@
 #include <sof/lib/alloc.h>
 #include <sof/lib/cpu.h>
 #include <sof/lib/memory.h>
+#include <sof/lib/uuid.h>
 #include <sof/list.h>
 #include <sof/sof.h>
 #include <sof/spinlock.h>
@@ -18,6 +19,13 @@
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
+
+/* 1862d39a-3a84-4d64-8c91-dce1dfc122db */
+
+DECLARE_SOF_UUID("irq", irq_uuid, 0x1862d39a, 0x3a84, 0x4d64,
+		 0x8c, 0x91, 0xdc, 0xe1, 0xdf, 0xc1, 0x22, 0xdb);
+
+DECLARE_TR_CTX(irq_tr, SOF_UUID(irq_uuid), LOG_LEVEL_INFO);
 
 static SHARED_DATA struct cascade_root cascade_root;
 
@@ -43,8 +51,7 @@ int interrupt_cascade_register(const struct irq_cascade_tmpl *tmpl)
 	     cascade = &(*cascade)->next) {
 		if (!rstrcmp((*cascade)->name, tmpl->name)) {
 			ret = -EEXIST;
-			trace_error(TRACE_CLASS_IRQ,
-				    "cascading IRQ controller name duplication!");
+			tr_err(&irq_tr, "cascading IRQ controller name duplication!");
 			goto unlock;
 		}
 
@@ -94,9 +101,8 @@ int interrupt_get_irq(unsigned int irq, const char *name)
 
 	/* If a name is specified, irq must be <= PLATFORM_IRQ_CHILDREN */
 	if (irq >= PLATFORM_IRQ_CHILDREN) {
-		trace_error(TRACE_CLASS_IRQ,
-			    "IRQ %d invalid as a child interrupt!",
-			    irq);
+		tr_err(&irq_tr, "IRQ %d invalid as a child interrupt!",
+		       irq);
 		return -EINVAL;
 	}
 
@@ -182,9 +188,8 @@ static int irq_register_child(struct irq_cascade_desc *cascade, int irq,
 		if (child->handler_arg == arg) {
 			platform_shared_commit(child, sizeof(*child));
 
-			trace_error(TRACE_CLASS_IRQ,
-				    "IRQ 0x%x handler argument re-used!",
-				    irq);
+			tr_err(&irq_tr, "IRQ 0x%x handler argument re-used!",
+			       irq);
 			ret = -EEXIST;
 			goto out;
 		}
@@ -345,9 +350,8 @@ static uint32_t irq_disable_child(struct irq_cascade_desc *cascade, int irq,
 	}
 
 	if (!child->enable_count[child_idx]) {
-		trace_error(TRACE_CLASS_IRQ,
-			    "IRQ %x unbalanced interrupt_disable()",
-			    irq);
+		tr_err(&irq_tr, "IRQ %x unbalanced interrupt_disable()",
+		       irq);
 	} else if (!--child->enable_count[child_idx]) {
 		/* disable the child interrupt */
 		interrupt_mask(irq, core);

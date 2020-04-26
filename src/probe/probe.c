@@ -22,16 +22,15 @@
 #include <sof/schedule/schedule.h>
 #include <sof/schedule/task.h>
 
+/* 9d1fb66e-4ffb-497f-994b-17719686596e */
+DECLARE_SOF_UUID("probe", probe_uuid, 0x9d1fb66e, 0x4ffb, 0x497f,
+		 0x99, 0x4b, 0x17, 0x71, 0x96, 0x86, 0x59, 0x6e);
+
+DECLARE_TR_CTX(pr_tr, SOF_UUID(probe_uuid), LOG_LEVEL_INFO);
+
 /* 2f0b1901-cac0-4b87-812f-f2d5e4f19e4a */
 DECLARE_SOF_UUID("probe-task", probe_task_uuid, 0x2f0b1901, 0xcac0, 0x4b87,
 		 0x81, 0x2f, 0xf2, 0xd5, 0xe4, 0xf1, 0x9e, 0x4a);
-
-#define trace_probe(__e, ...) \
-	trace_event(TRACE_CLASS_PROBE, __e, ##__VA_ARGS__)
-#define tracev_probe(__e, ...) \
-	tracev_event(TRACE_CLASS_PROBE, __e, ##__VA_ARGS__)
-#define trace_probe_error(__e, ...) \
-	trace_error(TRACE_CLASS_PROBE, __e, ##__VA_ARGS__)
 
 #define PROBE_DMA_INVALID	0xFFFFFFFF
 #define PROBE_POINT_INVALID	0xFFFFFFFF
@@ -88,7 +87,7 @@ static int probe_dma_buffer_init(struct probe_dma_buf *buffer, uint32_t size,
 						size, align);
 
 	if (!buffer->addr) {
-		trace_probe_error("probe_dma_buffer_init(): alloc failed");
+		tr_err(&pr_tr, "probe_dma_buffer_init(): alloc failed");
 		return -ENOMEM;
 	}
 
@@ -124,7 +123,7 @@ static int probe_dma_init(struct probe_dma_ext *dma, uint32_t direction)
 	dma->dc.dmac = dma_get(direction, 0, DMA_DEV_HOST,
 			       DMA_ACCESS_SHARED);
 	if (!dma->dc.dmac) {
-		trace_probe_error("probe_dma_init(): dma->dc.dmac = NULL");
+		tr_err(&pr_tr, "probe_dma_init(): dma->dc.dmac = NULL");
 		return -ENODEV;
 	}
 
@@ -176,7 +175,7 @@ static int probe_dma_deinit(struct probe_dma_ext *dma)
 
 	err = dma_stop(dma->dc.chan);
 	if (err < 0) {
-		trace_probe_error("probe_dma_deinit(): dma_stop() failed");
+		tr_err(&pr_tr, "probe_dma_deinit(): dma_stop() failed");
 		return err;
 	}
 
@@ -211,7 +210,7 @@ static enum task_state probe_task(void *data)
 		return SOF_TASK_STATE_RESCHEDULE;
 
 	if (err < 0) {
-		trace_probe_error("probe_task(): dma_copy_to_host_nowait() failed.");
+		tr_err(&pr_tr, "probe_task(): dma_copy_to_host_nowait() failed.");
 		return err;
 	}
 
@@ -228,10 +227,10 @@ int probe_init(struct probe_dma *probe_dma)
 	uint32_t i;
 	int err;
 
-	tracev_probe("probe_init()");
+	tr_dbg(&pr_tr, "probe_init()");
 
 	if (_probe) {
-		trace_probe_error("probe_init(): Probes already initialized.");
+		tr_err(&pr_tr, "probe_init(): Probes already initialized.");
 		return -EINVAL;
 	}
 
@@ -241,28 +240,28 @@ int probe_init(struct probe_dma *probe_dma)
 	_probe = probe_get();
 
 	if (!_probe) {
-		trace_probe_error("probe_init(): Alloc failed.");
+		tr_err(&pr_tr, "probe_init(): Alloc failed.");
 		return -ENOMEM;
 	}
 
 	/* setup extraction dma if requested */
 	if (probe_dma) {
-		tracev_probe("\tstream_tag = %u, dma_buffer_size = %u",
-			     probe_dma->stream_tag, probe_dma->dma_buffer_size);
+		tr_dbg(&pr_tr, "\tstream_tag = %u, dma_buffer_size = %u",
+		       probe_dma->stream_tag, probe_dma->dma_buffer_size);
 
 		_probe->ext_dma.stream_tag = probe_dma->stream_tag;
 		_probe->ext_dma.dma_buffer_size = probe_dma->dma_buffer_size;
 
 		err = probe_dma_init(&_probe->ext_dma, DMA_DIR_LMEM_TO_HMEM);
 		if (err < 0) {
-			trace_probe_error("probe_init(): probe_dma_init() failed");
+			tr_err(&pr_tr, "probe_init(): probe_dma_init() failed");
 			_probe->ext_dma.stream_tag = PROBE_DMA_INVALID;
 			return err;
 		}
 
 		err = dma_start(_probe->ext_dma.dc.chan);
 		if (err < 0) {
-			trace_probe_error("probe_init(): failed to start extraction dma");
+			tr_err(&pr_tr, "probe_init(): failed to start extraction dma");
 
 			return -EBUSY;
 		}
@@ -272,7 +271,7 @@ int probe_init(struct probe_dma *probe_dma)
 				      SOF_SCHEDULE_LL_TIMER, SOF_TASK_PRI_LOW,
 				      probe_task, _probe, 0, 0);
 	} else {
-		tracev_probe("\tno extraction DMA setup");
+		tr_dbg(&pr_tr, "\tno extraction DMA setup");
 
 		_probe->ext_dma.stream_tag = PROBE_DMA_INVALID;
 	}
@@ -294,10 +293,10 @@ int probe_deinit(void)
 	uint32_t i;
 	int err;
 
-	tracev_probe("probe_deinit()");
+	tr_dbg(&pr_tr, "probe_deinit()");
 
 	if (!_probe) {
-		trace_probe_error("probe_deinit(): Not initialized.");
+		tr_err(&pr_tr, "probe_deinit(): Not initialized.");
 
 		return -EINVAL;
 	}
@@ -305,7 +304,7 @@ int probe_deinit(void)
 	/* check for attached injection probe DMAs */
 	for (i = 0; i < CONFIG_PROBE_DMA_MAX; i++) {
 		if (_probe->inject_dma[i].stream_tag != PROBE_DMA_INVALID) {
-			trace_probe_error("probe_deinit(): Cannot deinitialize with injection DMAs attached.");
+			tr_err(&pr_tr, "probe_deinit(): Cannot deinitialize with injection DMAs attached.");
 			return -EINVAL;
 		}
 	}
@@ -313,13 +312,13 @@ int probe_deinit(void)
 	/* check for connected probe points */
 	for (i = 0; i < CONFIG_PROBE_POINTS_MAX; i++) {
 		if (_probe->probe_points[i].stream_tag != PROBE_POINT_INVALID) {
-			trace_probe_error("probe_deinit(): Cannot deinitialize with probe points connected.");
+			tr_err(&pr_tr, "probe_deinit(): Cannot deinitialize with probe points connected.");
 			return -EINVAL;
 		}
 	}
 
 	if (_probe->ext_dma.stream_tag != PROBE_DMA_INVALID) {
-		tracev_probe("probe_deinit() Freeing task and extraction DMA.");
+		tr_dbg(&pr_tr, "probe_deinit() Freeing task and extraction DMA.");
 		schedule_task_free(&_probe->dmap_work);
 		err = probe_dma_deinit(&_probe->ext_dma);
 		if (err < 0)
@@ -341,10 +340,10 @@ int probe_dma_add(uint32_t count, struct probe_dma *probe_dma)
 	uint32_t first_free;
 	int err;
 
-	tracev_probe("probe_dma_add() count = %u", count);
+	tr_dbg(&pr_tr, "probe_dma_add() count = %u", count);
 
 	if (!_probe) {
-		trace_probe_error("probe_dma_add(): Not initialized.");
+		tr_err(&pr_tr, "probe_dma_add(): Not initialized.");
 
 		return -EINVAL;
 	}
@@ -352,9 +351,9 @@ int probe_dma_add(uint32_t count, struct probe_dma *probe_dma)
 	/* Iterate over all (DMA) fields if there are multiple of them */
 	/* add them if there is free place and they are not already attached */
 	for (i = 0; i < count; i++) {
-		tracev_probe("\tprobe_dma[%u] stream_tag = %u, dma_buffer_size = %u",
-			     i, probe_dma[i].stream_tag,
-			     probe_dma[i].dma_buffer_size);
+		tr_dbg(&pr_tr, "\tprobe_dma[%u] stream_tag = %u, dma_buffer_size = %u",
+		       i, probe_dma[i].stream_tag,
+		       probe_dma[i].dma_buffer_size);
 
 		first_free = CONFIG_PROBE_DMA_MAX;
 
@@ -370,14 +369,15 @@ int probe_dma_add(uint32_t count, struct probe_dma *probe_dma)
 			}
 
 			if (stream_tag == probe_dma[i].stream_tag) {
-				trace_probe_error("probe_dma_add(): Probe DMA %u already attached.",
-						  stream_tag);
+				tr_err(&pr_tr, "probe_dma_add(): Probe DMA %u already attached.",
+				       stream_tag);
 				return -EINVAL;
 			}
 		}
 
 		if (first_free == CONFIG_PROBE_DMA_MAX) {
-			trace_probe_error("probe_dma_add(): Exceeded maximum number of DMAs attached = " META_QUOTE(CONFIG_PROBE_DMA_MAX));
+			tr_err(&pr_tr, "probe_dma_add(): Exceeded maximum number of DMAs attached = "
+			       META_QUOTE(CONFIG_PROBE_DMA_MAX));
 			return -EINVAL;
 		}
 
@@ -389,7 +389,7 @@ int probe_dma_add(uint32_t count, struct probe_dma *probe_dma)
 		err = probe_dma_init(&_probe->inject_dma[first_free],
 				     DMA_DIR_HMEM_TO_LMEM);
 		if (err < 0) {
-			trace_probe_error("probe_dma_add(): probe_dma_init() failed");
+			tr_err(&pr_tr, "probe_dma_add(): probe_dma_init() failed");
 			_probe->inject_dma[first_free].stream_tag =
 				PROBE_DMA_INVALID;
 			return err;
@@ -405,10 +405,10 @@ int probe_dma_info(struct sof_ipc_probe_info_params *data, uint32_t max_size)
 	uint32_t i = 0;
 	uint32_t j = 0;
 
-	tracev_probe("probe_dma_info()");
+	tr_dbg(&pr_tr, "probe_dma_info()");
 
 	if (!_probe) {
-		trace_probe_error("probe_dma_info(): Not initialized.");
+		tr_err(&pr_tr, "probe_dma_info(): Not initialized.");
 
 		return -EINVAL;
 	}
@@ -462,17 +462,17 @@ int probe_dma_remove(uint32_t count, uint32_t *stream_tag)
 	uint32_t j;
 	int err;
 
-	tracev_probe("probe_dma_remove() count = %u", count);
+	tr_dbg(&pr_tr, "probe_dma_remove() count = %u", count);
 
 	if (!_probe) {
-		trace_probe_error("probe_dma_remove(): Not initialized.");
+		tr_err(&pr_tr, "probe_dma_remove(): Not initialized.");
 
 		return -EINVAL;
 	}
 
 	/* remove each DMA if they are not used */
 	for (i = 0; i < count; i++) {
-		tracev_probe("\tstream_tag[%u] = %u", i, stream_tag[i]);
+		tr_dbg(&pr_tr, "\tstream_tag[%u] = %u", i, stream_tag[i]);
 
 		if (is_probe_stream_used(stream_tag[i]))
 			return -EINVAL;
@@ -516,7 +516,7 @@ static int copy_to_pbuffer(struct probe_dma_buf *pbuf, void *data,
 
 	/* copy data to probe buffer */
 	if (memcpy_s((void *)pbuf->w_ptr, pbuf->end_addr - pbuf->w_ptr, data, head)) {
-		trace_probe_error("copy_to_pbuffer(): memcpy_s() failed");
+		tr_err(&pr_tr, "copy_to_pbuffer(): memcpy_s() failed");
 		return -EINVAL;
 	}
 	dcache_writeback_region((void *)pbuf->w_ptr, head);
@@ -526,7 +526,7 @@ static int copy_to_pbuffer(struct probe_dma_buf *pbuf, void *data,
 		pbuf->w_ptr = pbuf->addr;
 		if (memcpy_s((void *)pbuf->w_ptr, (char *)pbuf->end_addr - (char *)pbuf->w_ptr,
 			     (char *)data + head, tail)) {
-			trace_probe_error("copy_to_pbuffer(): memcpy_s() failed");
+			tr_err(&pr_tr, "copy_to_pbuffer(): memcpy_s() failed");
 			return -EINVAL;
 		}
 		dcache_writeback_region((void *)pbuf->w_ptr, tail);
@@ -573,7 +573,7 @@ static int copy_from_pbuffer(struct probe_dma_buf *pbuf, void *data,
 	/* data from DMA so invalidate it */
 	dcache_invalidate_region((void *)pbuf->r_ptr, head);
 	if (memcpy_s(data, bytes, (void *)pbuf->r_ptr, head)) {
-		trace_probe_error("copy_from_pbuffer(): memcpy_s() failed");
+		tr_err(&pr_tr, "copy_from_pbuffer(): memcpy_s() failed");
 		return -EINVAL;
 	}
 
@@ -583,7 +583,7 @@ static int copy_from_pbuffer(struct probe_dma_buf *pbuf, void *data,
 		pbuf->r_ptr = pbuf->addr;
 		dcache_invalidate_region((void *)pbuf->r_ptr, tail);
 		if (memcpy_s((char *)data + head, tail, (void *)pbuf->r_ptr, tail)) {
-			trace_probe_error("copy_from_pbuffer(): memcpy_s() failed");
+			tr_err(&pr_tr, "copy_from_pbuffer(): memcpy_s() failed");
 			return -EINVAL;
 		}
 		pbuf->r_ptr = pbuf->r_ptr + tail;
@@ -669,8 +669,8 @@ static uint32_t probe_gen_format(uint32_t frame_fmt, uint32_t rate,
 		float_fmt = 1;
 		break;
 	default:
-		trace_probe_error("probe_gen_format(): Invalid frame format specified = 0x%08x",
-				  frame_fmt);
+		tr_err(&pr_tr, "probe_gen_format(): Invalid frame format specified = 0x%08x",
+		       frame_fmt);
 		assert(false);
 	}
 
@@ -766,8 +766,8 @@ static void probe_cb_produce(void *arg, enum notify_id type, void *data)
 			break;
 
 	if (i == CONFIG_PROBE_POINTS_MAX) {
-		trace_probe_error("probe_cb_produce(): probe not found for buffer id: %d",
-				  buffer_id);
+		tr_err(&pr_tr, "probe_cb_produce(): probe not found for buffer id: %d",
+		       buffer_id);
 		return;
 	}
 
@@ -820,7 +820,7 @@ static void probe_cb_produce(void *arg, enum notify_id type, void *data)
 			}
 		}
 		if (j == CONFIG_PROBE_DMA_MAX) {
-			trace_probe_error("probe_cb_produce(): dma not found");
+			tr_err(&pr_tr, "probe_cb_produce(): dma not found");
 			return;
 		}
 		dma = &_probe->inject_dma[j];
@@ -829,8 +829,8 @@ static void probe_cb_produce(void *arg, enum notify_id type, void *data)
 					&dma->dmapb.avail,
 					&free_bytes);
 		if (ret < 0) {
-			trace_probe_error("probe_cb_produce(): dma_get_data_size() failed, ret = %u",
-					  ret);
+			tr_err(&pr_tr, "probe_cb_produce(): dma_get_data_size() failed, ret = %u",
+			       ret);
 			goto err;
 		}
 
@@ -884,7 +884,7 @@ static void probe_cb_produce(void *arg, enum notify_id type, void *data)
 	}
 	return;
 err:
-	trace_probe_error("probe_cb_produce(): failed to generate probe data");
+	tr_err(&pr_tr, "probe_cb_produce(): failed to generate probe data");
 }
 
 /**
@@ -899,11 +899,11 @@ static void probe_cb_free(void *arg, enum notify_id type, void *data)
 	uint32_t buffer_id = cb_data->buffer->id;
 	uint32_t ret;
 
-	tracev_probe("probe_cb_free() buffer_id = %u", buffer_id);
+	tr_dbg(&pr_tr, "probe_cb_free() buffer_id = %u", buffer_id);
 
 	ret = probe_point_remove(1, &buffer_id);
 	if (ret < 0)
-		trace_probe_error("probe_cb_free(): probe_point_remove() failed");
+		tr_err(&pr_tr, "probe_cb_free(): probe_point_remove() failed");
 }
 
 int probe_point_add(uint32_t count, struct probe_point *probe)
@@ -916,31 +916,31 @@ int probe_point_add(uint32_t count, struct probe_point *probe)
 	uint32_t dma_found;
 	struct ipc_comp_dev *dev;
 
-	tracev_probe("probe_point_add() count = %u", count);
+	tr_dbg(&pr_tr, "probe_point_add() count = %u", count);
 
 	if (!_probe) {
-		trace_probe_error("probe_point_add(): Not initialized.");
+		tr_err(&pr_tr, "probe_point_add(): Not initialized.");
 
 		return -EINVAL;
 	}
 
 	/* add all probe points if they are corresponding to valid component and DMA */
 	for (i = 0; i < count; i++) {
-		tracev_probe("\tprobe[%u] buffer_id = %u, purpose = %u, stream_tag = %u",
-			     i, probe[i].buffer_id, probe[i].purpose,
-			     probe[i].stream_tag);
+		tr_dbg(&pr_tr, "\tprobe[%u] buffer_id = %u, purpose = %u, stream_tag = %u",
+		       i, probe[i].buffer_id, probe[i].purpose,
+		       probe[i].stream_tag);
 
 		if (probe[i].purpose != PROBE_PURPOSE_EXTRACTION &&
 		    probe[i].purpose != PROBE_PURPOSE_INJECTION) {
-			trace_probe_error("probe_point_add() error: invalid purpose %d",
-					  probe[i].purpose);
+			tr_err(&pr_tr, "probe_point_add() error: invalid purpose %d",
+			       probe[i].purpose);
 
 			return -EINVAL;
 		}
 
 		if (probe[i].purpose == PROBE_PURPOSE_EXTRACTION &&
 		    _probe->ext_dma.stream_tag == PROBE_DMA_INVALID) {
-			trace_probe_error("probe_point_add(): Setting probe for extraction, while extraction DMA not enabled.");
+			tr_err(&pr_tr, "probe_point_add(): Setting probe for extraction, while extraction DMA not enabled.");
 
 			return -EINVAL;
 		}
@@ -948,15 +948,15 @@ int probe_point_add(uint32_t count, struct probe_point *probe)
 		/* check if buffer exists */
 		dev = ipc_get_comp_by_id(ipc_get(), probe[i].buffer_id);
 		if (!dev) {
-			trace_probe_error("probe_point_add(): No device with ID %u found.",
-					  probe[i].buffer_id);
+			tr_err(&pr_tr, "probe_point_add(): No device with ID %u found.",
+			       probe[i].buffer_id);
 
 			return -EINVAL;
 		}
 
 		if (dev->type != COMP_TYPE_BUFFER) {
-			trace_probe_error("probe_point_add(): Device ID %u is not a buffer.",
-					  probe[i].buffer_id);
+			tr_err(&pr_tr, "probe_point_add(): Device ID %u is not a buffer.",
+			       probe[i].buffer_id);
 
 			return -EINVAL;
 		}
@@ -977,9 +977,9 @@ int probe_point_add(uint32_t count, struct probe_point *probe)
 			if (buffer_id == probe[i].buffer_id) {
 				if (_probe->probe_points[j].purpose ==
 				    probe[i].purpose) {
-					trace_probe_error("probe_point_add(): Probe already attached to buffer %u with purpose %u",
-							  buffer_id,
-							  probe[i].purpose);
+					tr_err(&pr_tr, "probe_point_add(): Probe already attached to buffer %u with purpose %u",
+					       buffer_id,
+					       probe[i].purpose);
 
 					return -EINVAL;
 				}
@@ -987,7 +987,8 @@ int probe_point_add(uint32_t count, struct probe_point *probe)
 		}
 
 		if (first_free == CONFIG_PROBE_POINTS_MAX) {
-			trace_probe_error("probe_point_add(): Maximum number of probe points connected aleady: " META_QUOTE(CONFIG_PROBE_POINTS_MAX));
+			tr_err(&pr_tr, "probe_point_add(): Maximum number of probe points connected aleady: "
+			       META_QUOTE(CONFIG_PROBE_POINTS_MAX));
 
 			return -EINVAL;
 		}
@@ -1007,13 +1008,13 @@ int probe_point_add(uint32_t count, struct probe_point *probe)
 			}
 
 			if (!dma_found) {
-				trace_probe_error("probe_point_add(): No DMA with stream tag %u found for injection.",
-						  probe[i].stream_tag);
+				tr_err(&pr_tr, "probe_point_add(): No DMA with stream tag %u found for injection.",
+				       probe[i].stream_tag);
 
 				return -EINVAL;
 			}
 			if (dma_start(_probe->inject_dma[j].dc.chan) < 0) {
-				trace_probe_error("probe_point_add(): failed to start dma");
+				tr_err(&pr_tr, "probe_point_add(): failed to start dma");
 
 				return -EBUSY;
 			}
@@ -1024,7 +1025,7 @@ int probe_point_add(uint32_t count, struct probe_point *probe)
 					break;
 			}
 			if (j == CONFIG_PROBE_POINTS_MAX) {
-				tracev_probe("probe_point_add(): start probe task");
+				tr_dbg(&pr_tr, "probe_point_add(): start probe task");
 				schedule_task(&_probe->dmap_work, 1000, 1000);
 			}
 			/* ignore probe stream tag for extraction probes */
@@ -1052,10 +1053,10 @@ int probe_point_info(struct sof_ipc_probe_info_params *data, uint32_t max_size)
 	uint32_t i = 0;
 	uint32_t j = 0;
 
-	tracev_probe("probe_point_info()");
+	tr_dbg(&pr_tr, "probe_point_info()");
 
 	if (!_probe) {
-		trace_probe_error("probe_point_info(): Not initialized.");
+		tr_err(&pr_tr, "probe_point_info(): Not initialized.");
 
 		return -EINVAL;
 	}
@@ -1090,15 +1091,15 @@ int probe_point_remove(uint32_t count, uint32_t *buffer_id)
 	uint32_t i;
 	uint32_t j;
 
-	tracev_probe("probe_point_remove() count = %u", count);
+	tr_dbg(&pr_tr, "probe_point_remove() count = %u", count);
 
 	if (!_probe) {
-		trace_probe_error("probe_point_remove(): Not initialized.");
+		tr_err(&pr_tr, "probe_point_remove(): Not initialized.");
 		return -EINVAL;
 	}
 	/* remove each requested probe point */
 	for (i = 0; i < count; i++) {
-		tracev_probe("\tbuffer_id[%u] = %u", i, buffer_id[i]);
+		tr_dbg(&pr_tr, "\tbuffer_id[%u] = %u", i, buffer_id[i]);
 
 		for (j = 0; j < CONFIG_PROBE_POINTS_MAX; j++) {
 			if (_probe->probe_points[j].stream_tag != PROBE_POINT_INVALID &&
@@ -1122,7 +1123,7 @@ int probe_point_remove(uint32_t count, uint32_t *buffer_id)
 			break;
 	}
 	if (j == CONFIG_PROBE_POINTS_MAX) {
-		tracev_probe("probe_point_remove(): cancel probe task");
+		tr_dbg(&pr_tr, "probe_point_remove(): cancel probe task");
 		schedule_task_cancel(&_probe->dmap_work);
 	}
 

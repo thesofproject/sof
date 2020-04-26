@@ -38,40 +38,41 @@ struct task;
 #define NO_XRUN_RECOVERY 1
 
 /* pipeline tracing */
-#define trace_pipe_get_uid(pipe_p) (0)
+extern struct tr_ctx pipe_tr;
+
+#define trace_pipe_get_tr_ctx(pipe_p) (&pipe_tr)
 #define trace_pipe_get_id(pipe_p) ((pipe_p)->ipc_pipe.pipeline_id)
 #define trace_pipe_get_subid(pipe_p) ((pipe_p)->ipc_pipe.comp_id)
 
 /* class (driver) level (no device object) tracing */
 
 #define pipe_cl_err(__e, ...)						\
-	trace_error(TRACE_CLASS_PIPE, __e, ##__VA_ARGS__)
+	tr_err(&pipe_tr, __e, ##__VA_ARGS__)
 
 #define pipe_cl_warn(__e, ...)						\
-	trace_warn(TRACE_CLASS_PIPE, __e, ##__VA_ARGS__)
+	tr_warn(&pipe_tr, __e, ##__VA_ARGS__)
 
 #define pipe_cl_info(__e, ...)						\
-	trace_event(TRACE_CLASS_PIPE, __e, ##__VA_ARGS__)
+	tr_info(&pipe_tr, __e, ##__VA_ARGS__)
 
 #define pipe_cl_dbg(__e, ...)						\
-	tracev_event(TRACE_CLASS_PIPE, __e, ##__VA_ARGS__)
+	tr_dbg(&pipe_tr, __e, ##__VA_ARGS__)
 
 /* device tracing */
-
 #define pipe_err(pipe_p, __e, ...)					\
-	trace_dev_err(TRACE_CLASS_PIPE, trace_pipe_get_uid, trace_pipe_get_id,\
+	trace_dev_err(trace_pipe_get_tr_ctx, trace_pipe_get_id,		\
 		      trace_pipe_get_subid, pipe_p, __e, ##__VA_ARGS__)
 
 #define pipe_warn(pipe_p, __e, ...)					\
-	trace_dev_warn(TRACE_CLASS_PIPE, trace_pipe_get_uid, trace_pipe_get_id,\
+	trace_dev_warn(trace_pipe_get_tr_ctx, trace_pipe_get_id,	\
 		       trace_pipe_get_subid, pipe_p, __e, ##__VA_ARGS__)
 
 #define pipe_info(pipe_p, __e, ...)					\
-	trace_dev_info(TRACE_CLASS_PIPE, trace_pipe_get_uid, trace_pipe_get_id,\
+	trace_dev_info(trace_pipe_get_tr_ctx, trace_pipe_get_id,	\
 		       trace_pipe_get_subid, pipe_p, __e, ##__VA_ARGS__)
 
 #define pipe_dbg(pipe_p, __e, ...)					\
-	trace_dev_dbg(TRACE_CLASS_PIPE, trace_pipe_get_uid, trace_pipe_get_id,\
+	trace_dev_dbg(trace_pipe_get_tr_ctx, trace_pipe_get_id,		\
 		      trace_pipe_get_subid, pipe_p, __e, ##__VA_ARGS__)
 
 /* Pipeline status to stop execution of current path */

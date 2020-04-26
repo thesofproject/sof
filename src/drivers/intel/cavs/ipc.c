@@ -74,8 +74,8 @@ static void ipc_irq_handler(void *arg)
 	dipcie = ipc_read(IPC_DIPCIE);
 	dipcctl = ipc_read(IPC_DIPCCTL);
 
-	tracev_ipc("ipc: irq dipct 0x%x dipcie 0x%x dipcctl 0x%x", dipct,
-		   dipcie, dipcctl);
+	tr_dbg(&ipc_tr, "ipc: irq dipct 0x%x dipcie 0x%x dipcctl 0x%x", dipct,
+	       dipcie, dipcctl);
 #else
 	uint32_t dipctdr;
 	uint32_t dipcida;
@@ -84,8 +84,8 @@ static void ipc_irq_handler(void *arg)
 	dipcida = ipc_read(IPC_DIPCIDA);
 	dipcctl = ipc_read(IPC_DIPCCTL);
 
-	tracev_ipc("ipc: irq dipctdr 0x%x dipcida 0x%x dipcctl 0x%x", dipctdr,
-		   dipcida, dipcctl);
+	tr_dbg(&ipc_tr, "ipc: irq dipctdr 0x%x dipcida 0x%x dipcctl 0x%x",
+	       dipctdr, dipcida, dipcctl);
 #endif
 
 	/* new message from host */
@@ -267,7 +267,7 @@ int ipc_platform_send_msg(struct ipc_msg *msg)
 	/* now send the message */
 	mailbox_dspbox_write(0, msg->tx_data, msg->tx_size);
 	list_item_del(&msg->list);
-	tracev_ipc("ipc: msg tx -> 0x%x", msg->header);
+	tr_dbg(&ipc_tr, "ipc: msg tx -> 0x%x", msg->header);
 
 	ipc->is_notification_pending = true;
 
