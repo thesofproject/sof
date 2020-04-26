@@ -90,16 +90,6 @@ void heap_trace_all(int force)
 {
 }
 
-/*
- * Interrupts - SOF IRQs can have > 1 handler (like Linux) so arg is
- * used by care for matching.
- */
-
-static uint32_t to_zephyr_irq(uint32_t sof_irq) {
-        return SOC_AGGREGATE_IRQ(SOF_IRQ_BIT(sof_irq),
-                                 SOF_IRQ_NUMBER(sof_irq));
-}
-
 /* needed for linkage only */
 const char irq_name_level2[] = "level2";
 const char irq_name_level5[] = "level5";
@@ -251,58 +241,6 @@ struct irq_cascade_desc *interrupt_get_parent(uint32_t irq)
 }
 
 /*
- * Scheduler
- */
-
-struct schedulers **arch_schedulers_get(void)
-{
-	return NULL;
-}
-
-int scheduler_init_ll(struct ll_schedule_domain *domain)
-{
-	return 0;
-}
-
-int schedule_task_init_ll(struct task *task,
-			  uint32_t uid, uint16_t type, uint16_t priority,
-			  enum task_state (*run)(void *data), void *data,
-			  uint16_t core, uint32_t flags)
-{
-	return 0;
-}
-
-int scheduler_init_edf(void)
-{
-	return 0;
-}
-
-int schedule_task_init_edf(struct task *task, uint32_t uid,
-			   const struct task_ops *ops,
-			   void *data, uint16_t core, uint32_t flags)
-{
-	return 0;
-}
-
-struct ll_schedule_domain *timer_domain_init(struct timer *timer, int clk,
-					     uint64_t timeout)
-{
-	return NULL;
-}
-
-struct ll_schedule_domain *dma_single_chan_domain_init(struct dma *dma_array,
-						       uint32_t num_dma,
-						       int clk)
-{
-	return NULL;
-}
-
-volatile void *task_context_get(void)
-{
-	return NULL;
-}
-
-/*
  * Timers
  */
 
@@ -328,6 +266,12 @@ struct notify **arch_notify_get(void)
 void arch_dump_regs_a(void *dump_buf)
 {
 	/* needed for linkage only */
+}
+
+/* used by panic code only - should not use this as zephyr register handlers */
+volatile void *task_context_get(void)
+{
+	return NULL;
 }
 
 /*

@@ -234,6 +234,9 @@ zephyr_library_sources(
 	../src/audio/pipeline.c
 	#../src/probe/probe.c
 	wrapper.c
+	edf_schedule.c
+	ll_schedule.c
+	schedule.c
 )
 
 zephyr_library_link_libraries(SOF)
