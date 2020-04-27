@@ -1592,7 +1592,6 @@ static int dmic_probe(struct dai *dai)
 	/* Disable dynamic clock gating for dmic before touching any reg */
 	pm_runtime_get_sync(DMIC_CLK, dai->index);
 
-	interrupt_unmask(dmic->irq, cpu_get_id());
 	interrupt_enable(dmic->irq, dai);
 
 	platform_shared_commit(dmic, sizeof(*dmic));
@@ -1606,7 +1605,6 @@ static int dmic_remove(struct dai *dai)
 	int i;
 
 	interrupt_disable(dmic->irq, dai);
-	interrupt_mask(dmic->irq, cpu_get_id());
 	interrupt_unregister(dmic->irq, dai);
 
 	pm_runtime_put_sync(DMIC_CLK, dai->index);
