@@ -64,12 +64,12 @@ PIPELINE_PCM_ADD(sof/pipe-volume-capture.m4,
 	1000, 0, 0,
 	48000, 48000, 48000)
 
-# Passthrough capture pipeline 4 on PCM 3 using max 4 channels.
-# Schedule 48 frames per 1000us deadline on core 0 with priority 0
+# Passthrough capture pipeline 4 on PCM 3 using max 2 channels.
+# Schedule 16 frames per 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-volume-capture.m4,
-	4, 3, 4, s32le,
+	4, 3, 2, s16le,
 	1000, 0, 0,
-	48000, 48000, 48000)
+	16000, 16000, 16000)
 
 ifelse(HDMI, `1',
 `
