@@ -697,7 +697,6 @@ static void pipeline_schedule_triggered(struct pipeline_walk_context *ctx,
 		switch (cmd) {
 		case COMP_TRIGGER_PAUSE:
 		case COMP_TRIGGER_STOP:
-		case COMP_TRIGGER_XRUN:
 			pipeline_schedule_cancel(p);
 			p->status = COMP_STATE_PAUSED;
 			break;
