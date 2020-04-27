@@ -11,6 +11,9 @@
 #include <sof/lib/dma.h>
 #include <sof/schedule/schedule.h>
 #include <platform/drivers/interrupt.h>
+#include <sof/lib/notifier.h>
+#include <sof/audio/pipeline.h>
+#include <sof/audio/component_ext.h>
 
 /* Zephyr includes */
 #include <soc.h>
@@ -136,6 +139,7 @@ uint32_t interrupt_disable(uint32_t irq, void *arg)
 	return 0;
 }
 
+/* TODO; zephyr should do this. */
 void platform_interrupt_init(void)
 {
 	int core = 0;
@@ -148,103 +152,11 @@ void platform_interrupt_init(void)
 
 }
 
-void platform_interrupt_set(uint32_t irq)
-{
-	/* TODO sets (asserts) direct IRQs i.e. DSP level 1 like SW IRQ */
-	/* IIRC this may be used, but only for SW IRQs... */
-}
-
-void platform_interrupt_clear(uint32_t irq, uint32_t mask)
-{
-	/* TODO clears (de-asserts) direct IRQs i.e. DSP level 1 like SW IRQ */
-	/* IIRC this may be used, but only for SW IRQs... */
-}
-
-uint32_t platform_interrupt_get_enabled(void)
-{
-	/* CAVS always returns 0*/
-	return 0;
-}
-
-void interrupt_mask(uint32_t irq, unsigned int cpu)
-{
-	/* masks CAVS IRQ controller IRQs */
-	/* TODO: assumption is that Zephyr does this ?*/
-#if 0
-	#if CONFIG_INTERRUPT_LEVEL_5
-	case IRQ_NUM_EXT_LEVEL5:
-		irq_write(REG_IRQ_IL5MSD(core), 1 << irq);
-		break;
-#endif
-#if CONFIG_INTERRUPT_LEVEL_4
-	case IRQ_NUM_EXT_LEVEL4:
-		irq_write(REG_IRQ_IL4MSD(core), 1 << irq);
-		break;
-#endif
-#if CONFIG_INTERRUPT_LEVEL_3
-	case IRQ_NUM_EXT_LEVEL3:
-		irq_write(REG_IRQ_IL3MSD(core), 1 << irq);
-		break;
-#endif
-#if CONFIG_INTERRUPT_LEVEL_2
-	case IRQ_NUM_EXT_LEVEL2:
-		irq_write(REG_IRQ_IL2MSD(core), 1 << irq);
-		break;
-#endif
-#endif
-
-}
-
-void interrupt_unmask(uint32_t irq, unsigned int cpu)
-{
-	/* masks CAVS IRQ controller IRQs */
-	/* TODO: assumption is that Zephyr does this ?*/
-#if 0
-#if CONFIG_INTERRUPT_LEVEL_5
-	case IRQ_NUM_EXT_LEVEL5:
-		irq_write(REG_IRQ_IL5MCD(core), 1 << irq);
-		break;
-#endif
-#if CONFIG_INTERRUPT_LEVEL_4
-	case IRQ_NUM_EXT_LEVEL4:
-		irq_write(REG_IRQ_IL4MCD(core), 1 << irq);
-		break;
-#endif
-#if CONFIG_INTERRUPT_LEVEL_3
-	case IRQ_NUM_EXT_LEVEL3:
-		irq_write(REG_IRQ_IL3MCD(core), 1 << irq);
-		break;
-#endif
-#if CONFIG_INTERRUPT_LEVEL_2
-	case IRQ_NUM_EXT_LEVEL2:
-		irq_write(REG_IRQ_IL2MCD(core), 1 << irq);
-		break;
-#endif
-#endif
-}
-
-void interrupt_init(struct sof *sof)
-{
-	/* not needed */
-}
-
-int interrupt_cascade_register(const struct irq_cascade_tmpl *tmpl)
-{
-	/* not needed on Zephyr  - to be removed */
-	return 0;
-}
-
-struct irq_cascade_desc *interrupt_get_parent(uint32_t irq)
-{
-	/* not needed on Zephyr  - to be removed */
-	return NULL;
-}
-
 /*
  * Timers
  */
 
-uint32_t arch_timer_get_system(struct timer *timer)
+uint64_t arch_timer_get_system(struct timer *timer)
 {
 	/* copy from SOF */
 	return 0;
@@ -254,10 +166,13 @@ uint32_t arch_timer_get_system(struct timer *timer)
  * Notifier
  */
 
+static struct notify *host_notify;
+
 struct notify **arch_notify_get(void)
 {
-	/* copy from SOF */
-	return NULL;
+	if (!host_notify)
+		host_notify = k_calloc(sizeof(*host_notify), 1);
+	return &host_notify;
 }
 
 /*
@@ -277,17 +192,38 @@ volatile void *task_context_get(void)
 /*
  * Xtensa
  */
-
 unsigned int _xtos_ints_off( unsigned int mask )
 {
-	/* can call xtos version directly */
+	/* turn all local IRQs OFF */
+	irq_lock();
 	return 0;
 }
 
 /*
- * entry
+ * init audio components.
  */
+
+extern intptr_t _module_init_start;
+extern intptr_t _module_init_end;
+
+static void sys_module_init(void)
+{
+	intptr_t *module_init = (intptr_t *)(&_module_init_start);
+
+	for (; module_init < (intptr_t *)&_module_init_end; ++module_init)
+		((void(*)(void))(*module_init))();
+}
+
 int task_main_start(struct sof *sof)
 {
+	/* init default audio components */
+	sys_comp_init(sof);
+
+	/* init self-registered modules */
+	sys_module_init();
+
+	/* init pipeline position offsets */
+	pipeline_posn_init(sof);
+
 	return 0;
 }
