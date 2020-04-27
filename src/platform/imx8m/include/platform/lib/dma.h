@@ -17,6 +17,7 @@
 
 #define DMA_ID_SDMA2	0
 #define DMA_ID_HOST	1
+#define DMA_ID_SDMA3	2
 
 #define dma_chan_irq(dma, chan) dma_irq(dma)
 #define dma_chan_irq_name(dma, chan) dma_irq_name(dma)
