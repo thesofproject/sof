@@ -59,10 +59,14 @@ static void sai_start(struct dai *dai, int direction)
 
 	if (direction == DAI_DIR_CAPTURE) {
 		xcsr = dai_read(dai, REG_SAI_XCSR(DAI_DIR_PLAYBACK));
-		if (!(xcsr & REG_SAI_CSR_FRDE))
+		if (!(xcsr & REG_SAI_CSR_FRDE)) {
+
+			dai_update_bits(dai, REG_SAI_XCSR(DAI_DIR_PLAYBACK),
+					REG_SAI_CSR_TERE, REG_SAI_CSR_TERE);
 			dai_update_bits(dai, REG_SAI_XCR3(DAI_DIR_PLAYBACK),
 					REG_SAI_CR3_TRCE_MASK,
 					REG_SAI_CR3_TRCE(1));
+		}
 	}
 
 }
