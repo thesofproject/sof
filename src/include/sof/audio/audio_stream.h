@@ -512,6 +512,21 @@ static inline void audio_stream_writeback(struct audio_stream *buffer,
 }
 
 /**
+ * @brief Calculates numbers of bytes to buffer wrap and return
+ *	  minimum of calculated value and given bytes number.
+ * @param source Stream to get information from.
+ * @param ptr Read or write pointer from source
+ * @return Number of data samples to buffer wrap or given samples number.
+ */
+static inline int
+audio_stream_bytes_without_wrap(const struct audio_stream *source,
+				const void *ptr)
+{
+	int to_end = (intptr_t)source->end_addr - (intptr_t)ptr;
+	return to_end;
+}
+
+/**
  * Copies data from source buffer to sink buffer.
  * @param source Source buffer.
  * @param ioffset_bytes Offset (in bytes) in source buffer to start reading
@@ -535,8 +550,8 @@ static inline void audio_stream_copy(const struct audio_stream *source,
 	int ret;
 
 	while (bytes) {
-		bytes_src = (char *)source->end_addr - (char *)src;
-		bytes_snk = (char *)sink->end_addr - (char *)snk;
+		bytes_src = audio_stream_bytes_without_wrap(source, src);
+		bytes_snk = audio_stream_bytes_without_wrap(sink, snk);
 		bytes_copied = MIN(bytes, MIN(bytes_src, bytes_snk));
 
 		ret = memcpy_s(snk, bytes_snk, src, bytes_copied);
