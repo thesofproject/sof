@@ -187,14 +187,17 @@ static inline int32_t _pcm_shift(int32_t d, int32_t a)
  * \param src integer number to convert, it is int32_t to omit software float
  *            operations library inclusion by compiler, when in whole topology
  *            only external component needs float input.
- * \return (int32_t)src
+ * \param pow additional exponent component,
+ *            number of fractional bits in fixed point value.
+ *            Use '0' for normal conversion to integers
+ * \return (int32_t)src * 2**pow
  */
-static int32_t _pcm_convert_f_to_i(int32_t src)
+static int32_t _pcm_convert_f_to_i(int32_t src, int32_t pow)
 {
 	int32_t exponent, mantissa, dst;
 
 	exponent = (src >> 23);
-	exponent = (exponent & 0xFF) - 127; /* exponential */
+	exponent = (exponent & 0xFF) + pow - 127; /* exponential */
 	mantissa = BIT(23) | (MASK(22, 0) & src); /* mantisa + 1.0 [Q9.22] */
 	/* calculate power */
 	dst = _pcm_shift(mantissa, exponent - 23);
@@ -219,11 +222,11 @@ static int32_t _pcm_convert_f_to_i(int32_t src)
  * \param pow additional exponent component
  *            number of fractional bits in fixed point value.
  *            Use '0' for normal conversion to float
- * \return (float)src, return type is int32_t to omit software float
+ * \return (float)(src * 2**pow), return type is int32_t to omit software float
  *          operations library inclusion by compiler, when in whole topology
  *          only external component needs float input
  */
-static int32_t _pcm_convert_i_to_f(int32_t src)
+static int32_t _pcm_convert_i_to_f(int32_t src, int32_t pow)
 {
 	int sign, mantissa, exponent, dst, abs_clz;
 
@@ -232,7 +235,7 @@ static int32_t _pcm_convert_i_to_f(int32_t src)
 
 	sign = src & BIT(31);
 	abs_clz = clz(PCM_ABS32(src));
-	exponent = (127 + 31 - abs_clz) & 0xFF;
+	exponent = (127 + 31 - abs_clz - pow) & 0xFF;
 	mantissa = PCM_ABS32(src);
 	mantissa = _pcm_shift(mantissa, 23 - 31 + abs_clz) & MASK(22, 0);
 	dst = sign | (exponent << 23) | mantissa;
@@ -250,8 +253,10 @@ static void pcm_convert_s16_to_f_lin(const void *psrc, void *pdst,
 	int32_t *dst = pdst; /* float */
 	int i;
 
+	/* s16 is in format Q1.15 so during */
+	/* conversion subtract 15 from exponent */
 	for (i = 0; i < samples; i++)
-		dst[i] = _pcm_convert_i_to_f(src[i]);
+		dst[i] = _pcm_convert_i_to_f(src[i], 15);
 }
 
 static void pcm_convert_f_to_s16_lin(const void *psrc, void *pdst,
@@ -261,8 +266,10 @@ static void pcm_convert_f_to_s16_lin(const void *psrc, void *pdst,
 	int16_t *dst = pdst;
 	int i;
 
+	/* s16 is in format Q1.15 so during */
+	/* conversion add 15 from exponent */
 	for (i = 0; i < samples; i++)
-		dst[i] = sat_int16(_pcm_convert_f_to_i(src[i]));
+		dst[i] = sat_int16(_pcm_convert_f_to_i(src[i], 15));
 }
 
 static void pcm_convert_s16_to_f(const struct audio_stream *source,
@@ -290,8 +297,10 @@ static void pcm_convert_s24_to_f_lin(const void *psrc, void *pdst,
 	int32_t *dst = pdst; /* float */
 	int i;
 
+	/* s24 is in format Q1.23 so during */
+	/* conversion subtract 23 to exponent */
 	for (i = 0; i < samples; i++)
-		dst[i] = _pcm_convert_i_to_f(sign_extend_s24(src[i]));
+		dst[i] = _pcm_convert_i_to_f(sign_extend_s24(src[i]), 23);
 }
 
 static void pcm_convert_f_to_s24_lin(const void *psrc, void *pdst,
@@ -301,8 +310,10 @@ static void pcm_convert_f_to_s24_lin(const void *psrc, void *pdst,
 	int32_t *dst = pdst;
 	int i;
 
+	/* s24 is in format Q1.23 so during */
+	/* conversion add 23 to exponent */
 	for (i = 0; i < samples; i++)
-		dst[i] = sat_int24(_pcm_convert_f_to_i(src[i]));
+		dst[i] = sat_int24(_pcm_convert_f_to_i(src[i], 23));
 }
 
 static void pcm_convert_s24_to_f(const struct audio_stream *source,
@@ -330,8 +341,10 @@ static void pcm_convert_s32_to_f_lin(const void *psrc, void *pdst,
 	int32_t *dst = pdst; /* float */
 	int i;
 
+	/* s32 is in format Q1.31 so during */
+	/* conversion subtract 31 to exponent */
 	for (i = 0; i < samples; i++)
-		dst[i] = _pcm_convert_i_to_f(src[i]);
+		dst[i] = _pcm_convert_i_to_f(src[i], 31);
 }
 
 static void pcm_convert_f_to_s32_lin(const void *psrc, void *pdst,
@@ -341,8 +354,10 @@ static void pcm_convert_f_to_s32_lin(const void *psrc, void *pdst,
 	int32_t *dst = pdst;
 	int i;
 
+	/* s32 is in format Q1.31 so during */
+	/* conversion add 31 to exponent */
 	for (i = 0; i < samples; i++)
-		dst[i] = _pcm_convert_f_to_i(src[i]);
+		dst[i] = _pcm_convert_f_to_i(src[i], 31);
 }
 
 static void pcm_convert_s32_to_f(const struct audio_stream *source,

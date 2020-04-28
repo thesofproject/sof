@@ -37,6 +37,11 @@
 /* generate smallest signed value on a 24 bits number */
 #define INT24_MIN (-INT24_MAX - 1)
 
+/* conversion ration */
+const float ratio16 = 1.f / (1u << 15);
+const float ratio24 = 1.f / (1u << 23);
+const float ratio32 = 1.f / (1u << 31);
+
 /*
  * Function design to help debugging conversion between fixed and float numbers.
  *
@@ -132,6 +137,13 @@ static void mask_array(int32_t mask, int32_t *parray, int cnt)
 		parray[cnt] &= mask;
 }
 
+static void scale_array(float ratio, float *parray, int cnt)
+{
+	assert_non_null(parray);
+	while (cnt--)
+		parray[cnt] *= ratio;
+}
+
 #if CONFIG_FORMAT_FLOAT && CONFIG_FORMAT_S16LE
 static void test_pcm_convert_s16_to_f(void **state)
 {
@@ -142,7 +154,7 @@ static void test_pcm_convert_s16_to_f(void **state)
 		INT16_MIN + 1, INT16_MIN,
 		INT16_MAX - 1, INT16_MAX,
 	};
-	static const Tout expected_buf[] = {
+	static Tout expected_buf[] = {
 		PCM_TEST_INT_NUMBERS,
 		INT16_MIN + 1, INT16_MIN,
 		INT16_MAX - 1, INT16_MAX,
@@ -153,6 +165,7 @@ static void test_pcm_convert_s16_to_f(void **state)
 	Tout *read_val;
 
 	assert_int_equal(ARRAY_SIZE(source_buf), ARRAY_SIZE(expected_buf));
+	scale_array(ratio16, expected_buf, N);
 
 	/* run test */
 	sink = _test_pcm_convert(SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_FLOAT,
@@ -175,7 +188,7 @@ static void test_pcm_convert_f_to_s16(void **state)
 {
 	typedef float Tin;
 	typedef int16_t Tout;
-	static const Tin source_buf[] = {
+	static Tin source_buf[] = {
 		PCM_TEST_FLOAT_NUMBERS,
 		INT16_MIN + 1, INT16_MIN,
 		INT16_MAX - 1, INT16_MAX,
@@ -191,6 +204,7 @@ static void test_pcm_convert_f_to_s16(void **state)
 	Tout *read_val;
 
 	assert_int_equal(ARRAY_SIZE(source_buf), ARRAY_SIZE(expected_buf));
+	scale_array(ratio16, source_buf, N);
 
 	/* run test */
 	sink = _test_pcm_convert(SOF_IPC_FRAME_FLOAT, SOF_IPC_FRAME_S16_LE,
@@ -235,6 +249,7 @@ static void test_pcm_convert_s24_in_s32_to_f(void **state)
 	Tout *read_val;
 
 	assert_int_equal(ARRAY_SIZE(source_buf), ARRAY_SIZE(expected_buf));
+	scale_array(ratio24, expected_buf, N);
 
 	/* run test */
 	sink = _test_pcm_convert(SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_FLOAT,
@@ -264,7 +279,7 @@ static void test_pcm_convert_s24_to_f(void **state)
 		INT24_MIN + 1, INT24_MIN,
 		INT24_MAX - 1, INT24_MAX,
 	};
-	static const Tout expected_buf[] = {
+	static Tout expected_buf[] = {
 		PCM_TEST_INT_NUMBERS,
 		INT16_MIN + 1, INT16_MIN,
 		INT16_MAX - 1, INT16_MAX,
@@ -278,6 +293,7 @@ static void test_pcm_convert_s24_to_f(void **state)
 
 	assert_int_equal(ARRAY_SIZE(source_buf), ARRAY_SIZE(expected_buf));
 	mask_array(MASK(24, 0), source_buf, N);
+	scale_array(ratio24, expected_buf, N);
 
 	/* run test */
 	sink = _test_pcm_convert(SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_FLOAT,
@@ -301,7 +317,7 @@ static void test_pcm_convert_f_to_s24(void **state)
 {
 	typedef float Tin;
 	typedef int32_t Tout;
-	static const Tin source_buf[] = {
+	static Tin source_buf[] = {
 		PCM_TEST_FLOAT_NUMBERS,
 		INT16_MIN + 1, INT16_MIN,
 		INT16_MAX - 1, INT16_MAX,
@@ -323,6 +339,7 @@ static void test_pcm_convert_f_to_s24(void **state)
 	Tout *read_val;
 
 	assert_int_equal(ARRAY_SIZE(source_buf), ARRAY_SIZE(expected_buf));
+	scale_array(ratio24, source_buf, N);
 
 	/* run test */
 	sink = _test_pcm_convert(SOF_IPC_FRAME_FLOAT, SOF_IPC_FRAME_S24_4LE,
@@ -358,7 +375,7 @@ static void test_pcm_convert_s32_to_f(void **state)
 		INT32_MIN + 1, INT32_MIN,
 		INT32_MAX - 1, INT32_MAX,
 	};
-	static const Tout expected_buf[] = {
+	static Tout expected_buf[] = {
 		PCM_TEST_INT_NUMBERS,
 		INT16_MIN + 1, INT16_MIN,
 		INT16_MAX - 1, INT16_MAX,
@@ -373,6 +390,7 @@ static void test_pcm_convert_s32_to_f(void **state)
 	Tout *read_val;
 
 	assert_int_equal(ARRAY_SIZE(source_buf), ARRAY_SIZE(expected_buf));
+	scale_array(ratio32, expected_buf, N);
 
 	/* run test */
 	sink = _test_pcm_convert(SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_FLOAT,
@@ -395,7 +413,7 @@ static void test_pcm_convert_f_to_s32(void **state)
 {
 	typedef float Tin;
 	typedef int32_t Tout;
-	static const Tin source_buf[] = {
+	static Tin source_buf[] = {
 		PCM_TEST_FLOAT_NUMBERS,
 		INT16_MIN + 1, INT16_MIN,
 		INT16_MAX - 1, INT16_MAX,
@@ -415,6 +433,7 @@ static void test_pcm_convert_f_to_s32(void **state)
 	Tout *read_val;
 
 	assert_int_equal(ARRAY_SIZE(source_buf), ARRAY_SIZE(expected_buf));
+	scale_array(ratio32, source_buf, N);
 
 	/* run test */
 	sink = _test_pcm_convert(SOF_IPC_FRAME_FLOAT, SOF_IPC_FRAME_S32_LE,
@@ -437,7 +456,7 @@ static void test_pcm_convert_f_to_s32_big_neg(void **state)
 {
 	typedef float Tin;
 	typedef int32_t Tout;
-	static const Tin source_buf[] = {
+	static Tin source_buf[] = {
 		INT24_MIN - 127, INT24_MIN - 128, /* 24B mantissa trimming */
 		INT32_MIN + 1, INT32_MIN, /* 24B mantissa trimming */
 		INT32_MIN * 2.f, INT32_MIN * 10.f,
@@ -455,6 +474,7 @@ static void test_pcm_convert_f_to_s32_big_neg(void **state)
 	Tout *read_val;
 
 	assert_int_equal(ARRAY_SIZE(source_buf), ARRAY_SIZE(expected_buf));
+	scale_array(ratio32, source_buf, N);
 
 	/* run test */
 	sink = _test_pcm_convert(SOF_IPC_FRAME_FLOAT, SOF_IPC_FRAME_S32_LE,
@@ -478,7 +498,7 @@ static void test_pcm_convert_f_to_s32_big_pos(void **state)
 {
 	typedef float Tin;
 	typedef int32_t Tout;
-	static const Tin source_buf[] = {
+	static Tin source_buf[] = {
 		INT24_MAX + 127, INT24_MAX + 128,
 		INT32_MAX - 255, INT32_MAX - 127,
 		INT32_MAX - 1, INT32_MAX,
@@ -499,6 +519,7 @@ static void test_pcm_convert_f_to_s32_big_pos(void **state)
 	Tout *read_val;
 
 	assert_int_equal(ARRAY_SIZE(source_buf), ARRAY_SIZE(expected_buf));
+	scale_array(ratio32, source_buf, N);
 
 	/* run test */
 	sink = _test_pcm_convert(SOF_IPC_FRAME_FLOAT, SOF_IPC_FRAME_S32_LE,
