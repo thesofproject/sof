@@ -21,20 +21,18 @@
 
 struct audio_stream;
 
-#define PCM_CONVERTER_GENERIC
 
 #if __XCC__
-
 #include <xtensa/config/core-isa.h>
+#endif
 
+#ifndef UNIT_TEST
 #if XCHAL_HAVE_HIFI3 && CONFIG_FORMAT_CONVERT_HIFI3
-
-#undef PCM_CONVERTER_GENERIC
 #define PCM_CONVERTER_HIFI3
-
+#else
+#define PCM_CONVERTER_GENERIC
 #endif
-
-#endif
+#endif /* UNIT_TEST */
 
 /**
  * \brief PCM conversion function interface for data in circular buffer
