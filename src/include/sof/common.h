@@ -37,6 +37,10 @@
 #define ffsl(i) __builtin_ffsl(i)
 #define ffsll(i) __builtin_ffsll(i)
 
+#define clz(i) __builtin_clz(i)
+#define clzl(i) __builtin_clzl(i)
+#define clzll(i) __builtin_clzll(i)
+
 #define popcount(x) __builtin_popcount(x)
 
 /* count number of var args */
