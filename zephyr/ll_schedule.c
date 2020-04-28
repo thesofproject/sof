@@ -114,6 +114,7 @@ int schedule_task_init_ll(struct task *task,
 					 core, flags);
 	if (ret < 0)
 		return ret;
+	task->ops.run = run;
 
 	k_delayed_work_init(&task->z_delayed_work, ll_work_handler);
 

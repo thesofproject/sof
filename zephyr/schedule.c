@@ -58,7 +58,6 @@ int schedule_task_init(struct task *task,
 	task->core = core;
 	task->flags = flags;
 	task->state = SOF_TASK_STATE_INIT;
-	task->ops.run = run;
 	task->data = data;
 	task->sops = sched[type].ops;
 

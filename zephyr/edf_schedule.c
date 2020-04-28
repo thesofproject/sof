@@ -80,6 +80,8 @@ int scheduler_init_edf(void)
 {
 	trace_edf_sch("edf_scheduler_init()");
 
+	scheduler_init(SOF_SCHEDULE_EDF, &schedule_edf_ops, NULL);
+
 	k_work_q_start(&edf_workq,
 		       edf_workq_stack,
 		       K_THREAD_STACK_SIZEOF(edf_workq_stack),
@@ -100,8 +102,7 @@ int schedule_task_init_edf(struct task *task, uint32_t uid,
 	if (ret < 0)
 		return ret;
 
-	task->ops.complete = ops->complete;
-	task->ops.get_deadline = ops->get_deadline;
+	task->ops = *ops;
 
 	k_delayed_work_init(&task->z_delayed_work, edf_work_handler);
 
