@@ -48,6 +48,15 @@ typedef void (*pcm_converter_func)(const struct audio_stream *source,
 				   uint32_t ioffset, struct audio_stream *sink,
 				   uint32_t ooffset, uint32_t samples);
 
+/**
+ * \brief PCM conversion function interface for data in linear buffer
+ * \param psrc linear memory region with samples to process
+ * \param pdst linear memory region for output
+ * \param samples number of samples to convert
+ */
+typedef void (*pcm_converter_lin_func)(const void *psrc, void *pdst,
+				       uint32_t samples);
+
 /** \brief PCM conversion functions map. */
 struct pcm_func_map {
 	enum sof_ipc_frame source;	/**< source frame format */
@@ -83,5 +92,19 @@ pcm_get_conversion_function(enum sof_ipc_frame in,
 
 	return NULL;
 }
+
+/**
+ * \brief Convert data from circular buffer using converter working on linear
+ *	  memory space
+ * \param source buffer with samples to process, read pointer is not modified
+ * \param ioffset offset to first sample in source stream
+ * \param sink output buffer, write pointer is not modified
+ * \param ooffset offset to first sample in sink stream
+ * \param samples number of samples to convert
+ * \param converter core conversion function working on linear memory regions
+ */
+void pcm_convert_as_linear(const struct audio_stream *source, uint32_t ioffset,
+			   struct audio_stream *sink, uint32_t ooffset,
+			   uint32_t samples, pcm_converter_lin_func converter);
 
 #endif /* __SOF_AUDIO_PCM_CONVERTER_H__ */
