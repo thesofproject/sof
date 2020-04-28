@@ -242,6 +242,126 @@ static int32_t _pcm_convert_i_to_f(int32_t src)
 
 #endif /* CONFIG_FORMAT_FLOAT && (CONFIG_FORMAT_S16LE || CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE) */
 
+#if CONFIG_FORMAT_FLOAT && CONFIG_FORMAT_S16LE
+static void pcm_convert_s16_to_f_lin(const void *psrc, void *pdst,
+				     uint32_t samples)
+{
+	const int16_t *src = psrc;
+	int32_t *dst = pdst; /* float */
+	int i;
+
+	for (i = 0; i < samples; i++)
+		dst[i] = _pcm_convert_i_to_f(src[i]);
+}
+
+static void pcm_convert_f_to_s16_lin(const void *psrc, void *pdst,
+				     uint32_t samples)
+{
+	const int32_t *src = psrc; /* float */
+	int16_t *dst = pdst;
+	int i;
+
+	for (i = 0; i < samples; i++)
+		dst[i] = sat_int16(_pcm_convert_f_to_i(src[i]));
+}
+
+static void pcm_convert_s16_to_f(const struct audio_stream *source,
+				 uint32_t ioffset, struct audio_stream *sink,
+				 uint32_t ooffset, uint32_t samples)
+{
+	pcm_convert_as_linear(source, ioffset, sink, ooffset, samples,
+			      pcm_convert_s16_to_f_lin);
+}
+
+static void pcm_convert_f_to_s16(const struct audio_stream *source,
+				 uint32_t ioffset, struct audio_stream *sink,
+				 uint32_t ooffset, uint32_t samples)
+{
+	pcm_convert_as_linear(source, ioffset, sink, ooffset, samples,
+			      pcm_convert_f_to_s16_lin);
+}
+#endif /* CONFIG_FORMAT_FLOAT && CONFIG_FORMAT_S16LE */
+
+#if CONFIG_FORMAT_FLOAT && CONFIG_FORMAT_S24LE
+static void pcm_convert_s24_to_f_lin(const void *psrc, void *pdst,
+				     uint32_t samples)
+{
+	const int32_t *src = psrc;
+	int32_t *dst = pdst; /* float */
+	int i;
+
+	for (i = 0; i < samples; i++)
+		dst[i] = _pcm_convert_i_to_f(sign_extend_s24(src[i]));
+}
+
+static void pcm_convert_f_to_s24_lin(const void *psrc, void *pdst,
+				     uint32_t samples)
+{
+	const int32_t *src = psrc; /* float */
+	int32_t *dst = pdst;
+	int i;
+
+	for (i = 0; i < samples; i++)
+		dst[i] = sat_int24(_pcm_convert_f_to_i(src[i]));
+}
+
+static void pcm_convert_s24_to_f(const struct audio_stream *source,
+				 uint32_t ioffset, struct audio_stream *sink,
+				 uint32_t ooffset, uint32_t samples)
+{
+	pcm_convert_as_linear(source, ioffset, sink, ooffset, samples,
+			      pcm_convert_s24_to_f_lin);
+}
+
+static void pcm_convert_f_to_s24(const struct audio_stream *source,
+				 uint32_t ioffset, struct audio_stream *sink,
+				 uint32_t ooffset, uint32_t samples)
+{
+	pcm_convert_as_linear(source, ioffset, sink, ooffset, samples,
+			      pcm_convert_f_to_s24_lin);
+}
+#endif /* CONFIG_FORMAT_FLOAT && CONFIG_FORMAT_S24LE */
+
+#if CONFIG_FORMAT_FLOAT && CONFIG_FORMAT_S32LE
+static void pcm_convert_s32_to_f_lin(const void *psrc, void *pdst,
+				     uint32_t samples)
+{
+	const int32_t *src = psrc;
+	int32_t *dst = pdst; /* float */
+	int i;
+
+	for (i = 0; i < samples; i++)
+		dst[i] = _pcm_convert_i_to_f(src[i]);
+}
+
+static void pcm_convert_f_to_s32_lin(const void *psrc, void *pdst,
+				     uint32_t samples)
+{
+	const int32_t *src = psrc; /* float */
+	int32_t *dst = pdst;
+	int i;
+
+	for (i = 0; i < samples; i++)
+		dst[i] = _pcm_convert_f_to_i(src[i]);
+}
+
+static void pcm_convert_s32_to_f(const struct audio_stream *source,
+				 uint32_t ioffset, struct audio_stream *sink,
+				 uint32_t ooffset, uint32_t samples)
+{
+	pcm_convert_as_linear(source, ioffset, sink, ooffset, samples,
+			      pcm_convert_s32_to_f_lin);
+}
+
+static void pcm_convert_f_to_s32(const struct audio_stream *source,
+				 uint32_t ioffset, struct audio_stream *sink,
+				 uint32_t ooffset, uint32_t samples)
+{
+	pcm_convert_as_linear(source, ioffset, sink, ooffset, samples,
+			      pcm_convert_f_to_s32_lin);
+}
+#endif /* CONFIG_FORMAT_FLOAT && CONFIG_FORMAT_S32LE */
+
 const struct pcm_func_map pcm_func_map[] = {
 #if CONFIG_FORMAT_S16LE
 	{ SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S16_LE, audio_stream_copy_s16 },
