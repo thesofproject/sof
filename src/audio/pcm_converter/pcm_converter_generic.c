@@ -8,6 +8,7 @@
  * \file audio/pcm_converter/pcm_converter_generic.c
  * \brief PCM converter generic processing implementation
  * \authors Tomasz Lauda <tomasz.lauda@linux.intel.com>
+ * \authors Karol Trzcinski <karolx.trzcinski@linux.intel.com>
  */
 
 #include <sof/audio/pcm_converter.h>
@@ -16,6 +17,7 @@
 
 #include <sof/audio/buffer.h>
 #include <sof/audio/format.h>
+#include <sof/bit.h>
 #include <sof/common.h>
 #include <ipc/stream.h>
 #include <config.h>
@@ -135,6 +137,110 @@ static void pcm_convert_s32_to_s24(const struct audio_stream *source,
 }
 
 #endif /* CONFIG_FORMAT_S24LE && CONFIG_FORMAT_S32LE */
+
+#if CONFIG_FORMAT_FLOAT && (CONFIG_FORMAT_S16LE || CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE)
+/*
+ * IEEE 754 binary32 float format:
+ *
+ *   S|EEEEEEEE|MMMMMMMMMMMMMMMMMMMMMMM|
+ *  31|30    23|22                    0|
+ *
+ * S - sign bit
+ * E - exponent number, base 2
+ * M - mantissa, unsigned Q1.22 value where integer portion is always set
+*/
+
+/**
+ * shift d value left (for positive a) or right (for negative a)
+ * and take care about overflows
+ */
+static inline int32_t _pcm_shift(int32_t d, int32_t a)
+{
+	int64_t dd = d;
+
+	if (a > 32)
+		a = 32;
+	else if (a < -32)
+		a = -32;
+
+	dd = a >= 0 ? dd << a : dd >> -a;
+	if (dd > INT32_MAX)
+		dd = INT32_MAX;
+
+	return (int32_t)dd;
+}
+
+/**
+ * Calculate absolute value of s32 number without using code branching.
+ * XOR number with sign bit (stretched in 32 bits) (+1 for for negative numbers)
+ */
+#define PCM_ABS32(x) (((x) ^ ((int32_t)(x) >> 31)) + ((uint32_t)(x) >> 31))
+
+/**
+ * \brief convert float number to fixed point
+ *
+ * Do not relay on compiler built-in float<=>int conversion in generic
+ * implementation, because "floating types float, double, and long double whose
+ * radix is not specified by the C standard but is usually two"
+ * ~https://gcc.gnu.org/onlinedocs/gcc/Decimal-Float.html
+ *
+ * \param src integer number to convert, it is int32_t to omit software float
+ *            operations library inclusion by compiler, when in whole topology
+ *            only external component needs float input.
+ * \return (int32_t)src
+ */
+static int32_t _pcm_convert_f_to_i(int32_t src)
+{
+	int32_t exponent, mantissa, dst;
+
+	exponent = (src >> 23);
+	exponent = (exponent & 0xFF) - 127; /* exponential */
+	mantissa = BIT(23) | (MASK(22, 0) & src); /* mantisa + 1.0 [Q9.22] */
+	/* calculate power */
+	dst = _pcm_shift(mantissa, exponent - 23);
+	/* add 0.5 to round correctly but assert it doesn't lead to overflow */
+	if (exponent - 22 < 9 || (src & BIT(31)) == BIT(31))
+		dst += _pcm_shift(mantissa, exponent - 22) & 1;
+	/* copy sign to dst */
+	dst = (dst ^ (src >> 31)) + (int)((unsigned int)src >> 31);
+
+	return dst;
+}
+
+/**
+ * \brief convert fixed number to float
+ *
+ * Do not relay on compiler built-in float<=>int conversion in generic
+ * implementation, because "floating types float, double, and long double whose
+ * radix is not specified by the C standard but is usually two"
+ * ~https://gcc.gnu.org/onlinedocs/gcc/Decimal-Float.html
+ *
+ * \param src integer number to convert
+ * \param pow additional exponent component
+ *            number of fractional bits in fixed point value.
+ *            Use '0' for normal conversion to float
+ * \return (float)src, return type is int32_t to omit software float
+ *          operations library inclusion by compiler, when in whole topology
+ *          only external component needs float input
+ */
+static int32_t _pcm_convert_i_to_f(int32_t src)
+{
+	int sign, mantissa, exponent, dst, abs_clz;
+
+	if (src == 0)
+		return 0;
+
+	sign = src & BIT(31);
+	abs_clz = clz(PCM_ABS32(src));
+	exponent = (127 + 31 - abs_clz) & 0xFF;
+	mantissa = PCM_ABS32(src);
+	mantissa = _pcm_shift(mantissa, 23 - 31 + abs_clz) & MASK(22, 0);
+	dst = sign | (exponent << 23) | mantissa;
+
+	return dst;
+}
+
+#endif /* CONFIG_FORMAT_FLOAT && (CONFIG_FORMAT_S16LE || CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE) */
 
 const struct pcm_func_map pcm_func_map[] = {
 #if CONFIG_FORMAT_S16LE
