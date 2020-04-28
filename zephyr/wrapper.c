@@ -214,6 +214,36 @@ static void sys_module_init(void)
 		((void(*)(void))(*module_init))();
 }
 
+char *get_trace_class(uint32_t trace_class)
+{
+#define CASE(x) case TRACE_CLASS_##x: return #x
+	switch (trace_class) {
+		CASE(IRQ);
+		CASE(IPC);
+		CASE(PIPE);
+		CASE(DAI);
+		CASE(DMA);
+		CASE(COMP);
+		CASE(WAIT);
+		CASE(LOCK);
+		CASE(MEM);
+		CASE(BUFFER);
+		CASE(SA);
+		CASE(POWER);
+		CASE(IDC);
+		CASE(CPU);
+		CASE(CLK);
+		CASE(EDF);
+		CASE(SCHEDULE);
+		CASE(SCHEDULE_LL);
+		CASE(CHMAP);
+		CASE(NOTIFIER);
+		CASE(MN);
+		CASE(PROBE);
+	default: return "unknown";
+	}
+}
+
 int task_main_start(struct sof *sof)
 {
 	/* init default audio components */
