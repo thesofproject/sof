@@ -10,4 +10,3 @@ if(CONFIG_FORMAT_FLOAT)
 	target_compile_definitions(pcm_float_generic PRIVATE PCM_CONVERTER_GENERIC)
 	target_link_libraries(pcm_float_generic PRIVATE sof_options)
 endif()
-

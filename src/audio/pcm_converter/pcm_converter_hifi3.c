@@ -8,6 +8,7 @@
  * \file audio/pcm_converter/pcm_converter_hifi3.c
  * \brief PCM converter HiFi3 processing implementation
  * \authors Tomasz Lauda <tomasz.lauda@linux.intel.com>
+ * \authors Karol Trzcinski <karolx.trzcinski@linux.intel.com>
  */
 
 #include <sof/audio/pcm_converter.h>
@@ -21,6 +22,10 @@
 #include <config.h>
 #include <stddef.h>
 #include <stdint.h>
+
+#if XCHAL_HAVE_FP
+#include <xtensa/tie/xt_FP.h>
+#endif
 
 /**
  * \brief Sets buffer to be circular using HiFi3 functions.
@@ -603,6 +608,291 @@ static void pcm_convert_s32_to_s24(const struct audio_stream *source,
 
 #endif /* CONFIG_FORMAT_S24LE && CONFIG_FORMAT_S32LE */
 
+#if XCHAL_HAVE_FP
+#if CONFIG_FORMAT_FLOAT && CONFIG_FORMAT_S16LE
+
+/**
+ * \brief HiFi3 enabled PCM conversion from 16 bit to IEEE-754 float.
+ * \param[in] psrc source linear buffer.
+ * \param[out] pdst destination linear buffer.
+ * \param[in] samples Number of samples to process.
+ */
+static void pcm_convert_s16_to_f_lin(const void *psrc, void *pdst,
+				     uint32_t samples)
+{
+	const ae_int16 *in = psrc;
+	xtfloat *out = pdst;
+	ae_int16x4 sample = AE_ZERO16();
+	xtfloat fl;
+	int i = 0;
+
+	while (i < samples) {
+		/* load one 16 bit sample */
+		AE_L16_XC(sample, in, sizeof(ae_int16));
+
+		/* run conversion */
+		fl = XT_FLOAT_S((ae_int16)sample, 15);
+
+		/* store one float sample */
+		/* need address align to 32 bits */
+		XT_xtfloat_storeip(fl, out, sizeof(fl));
+
+		++i;
+	}
+}
+
+/**
+ * \brief HiFi3 enabled PCM conversion from IEEE-754 float to 16 bit.
+ * \param[in] psrc source linear buffer.
+ * \param[out] pdst destination linear buffer.
+ * \param[in] samples Number of samples to process.
+ */
+static void pcm_convert_f_to_s16_lin(const void *psrc, void *pdst,
+				     uint32_t samples)
+{
+	const xtfloat *in = psrc;
+	ae_int16x4 *out = pdst;
+	xtfloat x;
+	int y;
+	int i = 0;
+
+	while (i < samples) {
+		/* load one 32 bit sample */
+		XT_xtfloat_loadip(x, in, sizeof(x));
+
+		/* shift and round */
+		y = XT_ROUND_S(x, 15);
+
+		/* store one 16 bit sample */
+		AE_S16_0_IP(y, (ae_int16 *)out, sizeof(ae_int16));
+
+		++i;
+	}
+}
+
+/**
+ * \brief HiFi3 enabled PCM conversion from 16 bit to IEEE-754 float.
+ * \param[in] source Source buffer.
+ * \param[in,out] sink Destination buffer.
+ * \param[in] samples Number of samples to process.
+ */
+static void pcm_convert_s16_to_f(const struct audio_stream *source,
+				 uint32_t ioffset, struct audio_stream *sink,
+				 uint32_t ooffset, uint32_t samples)
+{
+	pcm_convert_as_linear(source, ioffset, sink, ooffset, samples,
+			      pcm_convert_s16_to_f_lin);
+}
+
+/**
+ * \brief HiFi3 enabled PCM conversion from IEEE-754 float to 16 bit.
+ * \param[in] source Source buffer.
+ * \param[in,out] sink Destination buffer.
+ * \param[in] samples Number of samples to process.
+ */
+static void pcm_convert_f_to_s16(const struct audio_stream *source,
+				 uint32_t ioffset, struct audio_stream *sink,
+				 uint32_t ooffset, uint32_t samples)
+{
+	pcm_convert_as_linear(source, ioffset, sink, ooffset, samples,
+			      pcm_convert_f_to_s16_lin);
+}
+#endif /* CONFIG_FORMAT_FLOAT && CONFIG_FORMAT_S16LE */
+
+#if CONFIG_FORMAT_FLOAT && CONFIG_FORMAT_S24LE
+
+/**
+ * \brief HiFi3 enabled PCM conversion from  24 bit to IEEE-754 float.
+ * \param[in] psrc source linear buffer.
+ * \param[out] pdst destination linear buffer.
+ * \param[in] samples Number of samples to process.
+ */
+static void pcm_convert_s24_to_f_lin(const void *psrc, void *pdst,
+				     uint32_t samples)
+{
+	const ae_int32 *in = psrc;
+	xtfloat *out = pdst;
+	ae_int32x2 sample = AE_ZERO32();
+	xtfloat fl;
+	const xtfloat ratio = (xtfloat)(1.f / (1 << (23 - 15)));
+	int i = 0;
+
+	while (i < samples) {
+		/* load one 24 bit sample */
+		AE_L32_XC(sample, in, sizeof(*in));
+
+		/* extend sign */
+		sample = AE_SRAI32(AE_SLAI32(sample, 8), 8);
+		/* run conversion */
+		fl = XT_FLOAT_S(sample, 15);
+		fl = fl * ratio;
+
+		/* store one 32 bit float sample */
+		/* need address align to 32 bits */
+		XT_xtfloat_storeip(fl, out, sizeof(fl));
+
+		++i;
+	}
+}
+
+/**
+ * \brief HiFi3 enabled PCM conversion from IEEE-754 float to 24 bit.
+ * \param[in] psrc source linear buffer.
+ * \param[out] pdst destination linear buffer.
+ * \param[in] samples Number of samples to process.
+ */
+static void pcm_convert_f_to_s24_lin(const void *psrc, void *pdst,
+				     uint32_t samples)
+{
+	const xtfloat *in = psrc;
+	ae_int32 *out = pdst;
+	xtfloat x;
+	ae_int32x2 y1;
+	int i = 0;
+	const xtfloat ratio = (xtfloat)(1 << (23 - 15));
+
+	while (i < samples) {
+		/* load one 32 bit sample */
+		/* need address align to 32 bits */
+		XT_xtfloat_loadxp(x, in, sizeof(x));
+
+		/* shift and round */
+		x = x * ratio;
+		y1 = XT_ROUND_S(x, 15);
+		y1 = AE_SAT24S((ae_f32x2)y1);
+
+		/* store one 24 bit sample in 32 bit memory size */
+		AE_S32_L_IP(y1, (ae_int32 *)out, sizeof(*out));
+
+		++i;
+	}
+}
+
+/**
+ * \brief HiFi3 enabled PCM conversion from 24 bit to IEEE-754 float.
+ * \param[in] psrc source linear buffer.
+ * \param[out] pdst destination linear buffer.
+ * \param[in] samples Number of samples to process.
+ */
+static void pcm_convert_s24_to_f(const struct audio_stream *source,
+				 uint32_t ioffset, struct audio_stream *sink,
+				 uint32_t ooffset, uint32_t samples)
+{
+	pcm_convert_as_linear(source, ioffset, sink, ooffset, samples,
+			      pcm_convert_s24_to_f_lin);
+}
+
+/**
+ * \brief HiFi3 enabled PCM conversion from IEEE-754 float to 24 bit.
+ * \param[in] psrc source linear buffer.
+ * \param[out] pdst destination linear buffer.
+ * \param[in] samples Number of samples to process.
+ */
+static void pcm_convert_f_to_s24(const struct audio_stream *source,
+				 uint32_t ioffset, struct audio_stream *sink,
+				 uint32_t ooffset, uint32_t samples)
+{
+	pcm_convert_as_linear(source, ioffset, sink, ooffset, samples,
+			      pcm_convert_f_to_s24_lin);
+}
+#endif /* CONFIG_FORMAT_FLOAT && CONFIG_FORMAT_24LE */
+
+#if CONFIG_FORMAT_FLOAT && CONFIG_FORMAT_S32LE
+
+/**
+ * \brief HiFi3 enabled PCM conversion from 32 bit to IEEE-754 float.
+ * \param[in] psrc source linear buffer.
+ * \param[out] pdst destination linear buffer.
+ * \param[in] samples Number of samples to process.
+ */
+static void pcm_convert_s32_to_f_lin(const void *psrc, void *pdst,
+				     uint32_t samples)
+{
+	const ae_int32 *in = psrc;
+	xtfloat *out = pdst;
+	ae_int32x2 sample = AE_ZERO32();
+	xtfloat fl;
+	const xtfloat ratio = (xtfloat)(1.f / (1ul << (31 - 15)));
+	int i = 0;
+
+	while (i < samples) {
+		/* load one 32 bit sample */
+		AE_L32_XC(sample, in, sizeof(*in));
+
+		/* run conversion */
+		fl = XT_FLOAT_S(sample, 15);
+		fl = fl * ratio;
+
+		/* store one 32 bit float sample */
+		/* need address align to 32 bits */
+		XT_xtfloat_storeip(fl, out, sizeof(fl));
+
+		++i;
+	}
+}
+
+/**
+ * \brief HiFi3 enabled PCM conversion from IEEE-754 float to 32 bit.
+ * \param[in] psrc source linear buffer.
+ * \param[out] pdst destination linear buffer.
+ * \param[in] samples Number of samples to process.
+ */
+static void pcm_convert_f_to_s32_lin(const void *psrc, void *pdst,
+				     uint32_t samples)
+{
+	const xtfloat *in = psrc;
+	ae_int32 *out = pdst;
+	xtfloat x;
+	ae_int32x2 y1;
+	int i = 0;
+	const xtfloat ratio = (xtfloat)(1ul << (31 - 15));
+
+	while (i < samples) {
+		/* load one 32 bit sample */
+		/* need address align to 32 bits */
+		XT_xtfloat_loadxp(x, in, sizeof(x));
+
+		/* shift and round */
+		x = x * ratio;
+		y1 = XT_ROUND_S(x, 15);
+
+		/* store one 32 bit sample */
+		AE_S32_L_IP(y1, (ae_int32 *)out, sizeof(*out));
+
+		++i;
+	}
+}
+
+/**
+ * \brief HiFi3 enabled PCM conversion from 32 bit to IEEE-754 float.
+ * \param[in] source Source buffer.
+ * \param[in,out] sink Destination buffer.
+ * \param[in] samples Number of samples to process.
+ */
+static void pcm_convert_s32_to_f(const struct audio_stream *source,
+				 uint32_t ioffset, struct audio_stream *sink,
+				 uint32_t ooffset, uint32_t samples)
+{
+	pcm_convert_as_linear(source, ioffset, sink, ooffset, samples,
+			      pcm_convert_s32_to_f_lin);
+}
+
+/**
+ * \brief HiFi3 enabled PCM conversion from IEEE-754 float to 32 bit.
+ * \param[in] source Source buffer.
+ * \param[in,out] sink Destination buffer.
+ * \param[in] samples Number of samples to process.
+ */
+static void pcm_convert_f_to_s32(const struct audio_stream *source,
+				 uint32_t ioffset, struct audio_stream *sink,
+				 uint32_t ooffset, uint32_t samples)
+{
+	pcm_convert_as_linear(source, ioffset, sink, ooffset, samples,
+			      pcm_convert_f_to_s32_lin);
+}
+#endif /* CONFIG_FORMAT_FLOAT && CONFIG_FORMAT_32LE */
+#endif /* XCHAL_HAVE_FP */
+
 const struct pcm_func_map pcm_func_map[] = {
 #if CONFIG_FORMAT_S16LE
 	{ SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S16_LE, audio_stream_copy_s16 },
@@ -625,6 +915,23 @@ const struct pcm_func_map pcm_func_map[] = {
 	{ SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S32_LE, pcm_convert_s24_to_s32 },
 	{ SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S24_4LE, pcm_convert_s32_to_s24 },
 #endif /* CONFIG_FORMAT_S32LE && CONFIG_FORMAT_S24LE */
+#if XCHAL_HAVE_FP
+#if CONFIG_FORMAT_FLOAT
+	{ SOF_IPC_FRAME_FLOAT, SOF_IPC_FRAME_FLOAT, audio_stream_copy_s32 },
+#endif /* CONFIG_FORMAT_FLOAT */
+#if CONFIG_FORMAT_FLOAT && CONFIG_FORMAT_S16LE
+	{ SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_FLOAT, pcm_convert_s16_to_f },
+	{ SOF_IPC_FRAME_FLOAT, SOF_IPC_FRAME_S16_LE, pcm_convert_f_to_s16 },
+#endif /* CONFIG_FORMAT_FLOAT && CONFIG_FORMAT_S16LE */
+#if CONFIG_FORMAT_FLOAT && CONFIG_FORMAT_S24LE
+	{ SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_FLOAT, pcm_convert_s24_to_f },
+	{ SOF_IPC_FRAME_FLOAT, SOF_IPC_FRAME_S24_4LE, pcm_convert_f_to_s24 },
+#endif /* CONFIG_FORMAT_FLOAT && CONFIG_FORMAT_S24LE */
+#if CONFIG_FORMAT_FLOAT && CONFIG_FORMAT_S32LE
+	{ SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_FLOAT, pcm_convert_s32_to_f },
+	{ SOF_IPC_FRAME_FLOAT, SOF_IPC_FRAME_S32_LE, pcm_convert_f_to_s32 },
+#endif /* CONFIG_FORMAT_FLOAT && CONFIG_FORMAT_S32LE */
+#endif /* XCHAL_HAVE_FP */
 };
 
 const size_t pcm_func_count = ARRAY_SIZE(pcm_func_map);
