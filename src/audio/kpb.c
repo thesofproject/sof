@@ -435,7 +435,7 @@ static int kpb_prepare(struct comp_dev *dev)
 
 	if (kpb->state == KPB_STATE_RESETTING ||
 	    kpb->state == KPB_STATE_RESET_FINISHING) {
-		comp_cl_err(&comp_kpb, "kpb_prepare(): can not prepare KPB due to ongoing reset, state log %x",
+		comp_cl_err(&comp_kpb, "kpb_prepare(): can not prepare KPB due to ongoing reset, state log %llx",
 			    kpb->state_log);
 		return -EBUSY;
 	}
@@ -556,7 +556,7 @@ static int kpb_reset(struct comp_dev *dev)
 	struct comp_data *kpb = comp_get_drvdata(dev);
 	int ret = 0;
 
-	comp_cl_info(&comp_kpb, "kpb_reset(): resetting from state %d, state log %x",
+	comp_cl_info(&comp_kpb, "kpb_reset(): resetting from state %d, state log %llx",
 		     kpb->state, kpb->state_log);
 
 	switch (kpb->state) {
@@ -761,7 +761,7 @@ static int kpb_copy(struct comp_dev *dev)
 		ret = PPL_STATUS_PATH_STOP;
 		break;
 	default:
-		comp_cl_err(&comp_kpb, "kpb_copy(): wrong state (state %d, state log %x)",
+		comp_cl_err(&comp_kpb, "kpb_copy(): wrong state (state %d, state log %llx)",
 			    kpb->state, kpb->state_log);
 		ret = -EIO;
 		break;
@@ -803,7 +803,7 @@ static int kpb_buffer_data(struct comp_dev *dev,
 	if (kpb->state != KPB_STATE_RUN &&
 	    kpb->state != KPB_STATE_DRAINING &&
 	    kpb->state != KPB_STATE_INIT_DRAINING) {
-		comp_err(dev, "kpb_buffer_data(): wrong state! (current state %d, state log %x)",
+		comp_err(dev, "kpb_buffer_data(): wrong state! (current state %d, state log %llx)",
 			 kpb->state, kpb->state_log);
 		return PPL_STATUS_PATH_STOP;
 	}
@@ -826,7 +826,7 @@ static int kpb_buffer_data(struct comp_dev *dev,
 		/* Are we stuck in buffering? */
 		current_time = platform_timer_get(timer);
 		if (timeout < current_time) {
-			comp_err(dev, "kpb_buffer_data(): timeout of %d [ms] (current state %d, state log %x)",
+			comp_err(dev, "kpb_buffer_data(): timeout of %lld [ms] (current state %d, state log %llx)",
 				 current_time - timeout, kpb->state,
 				 kpb->state_log);
 			return -ETIME;
@@ -1262,7 +1262,7 @@ out:
 	/* Reset host-sink copy mode back to unblocking */
 	comp_set_attribute(sink->sink, COMP_ATTR_COPY_TYPE, &copy_type);
 
-	comp_cl_info(&comp_kpb, "KPB: kpb_draining_task(), done. %u drained in %d ms",
+	comp_cl_info(&comp_kpb, "KPB: kpb_draining_task(), done. %u drained in %lld ms",
 		     drained,
 		     (draining_time_end - draining_time_start)
 		     / clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1));
