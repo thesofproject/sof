@@ -53,6 +53,14 @@ void *rmalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
 	return k_malloc(bytes);
 }
 
+void *rbrealloc_align(void *ptr, uint32_t flags, uint32_t caps, size_t bytes,
+		      size_t old_bytes, uint32_t alignment)
+{
+	if (ptr)
+		k_free(ptr);
+	return k_malloc(bytes);
+}
+
 /**
  * Similar to rmalloc(), guarantees that returned block is zeroed.
  *
