@@ -10,7 +10,7 @@
 
 /* UT_STATIC makes function unit-testable (non-static) when built for unit tests
  */
-#ifdef UNIT_TEST
+#if defined UNIT_TEST || defined __ZEPHYR__
 #define UT_STATIC
 #else
 #define UT_STATIC static

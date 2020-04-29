@@ -21,6 +21,7 @@
 #include <sof/math/numbers.h>
 #include <sof/platform.h>
 #include <sof/string.h>
+#include <sof/ut.h>
 #include <sof/trace/trace.h>
 #include <ipc/control.h>
 #include <ipc/stream.h>
@@ -927,7 +928,7 @@ static SHARED_DATA struct comp_driver_info comp_src_info = {
 	.drv = &comp_src,
 };
 
-static void sys_comp_src_init(void)
+UT_STATIC void sys_comp_src_init(void)
 {
 	comp_register(platform_shared_get(&comp_src_info,
 					  sizeof(comp_src_info)));

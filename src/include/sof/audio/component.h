@@ -578,7 +578,7 @@ static inline struct sof_ipc_comp_config *comp_config(struct sof_ipc_comp *comp)
 #define comp_get_drvdata(c) \
 	c->priv_data
 
-#ifdef UNIT_TEST
+#if defined UNIT_TEST || defined __ZEPHYR__
 #define DECLARE_MODULE(init)
 #elif CONFIG_LIBRARY
 /* In case of shared libs components are initialised in dlopen */

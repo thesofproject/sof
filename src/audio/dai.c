@@ -24,6 +24,7 @@
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
 #include <sof/string.h>
+#include <sof/ut.h>
 #include <sof/trace/trace.h>
 #include <ipc/dai.h>
 #include <ipc/stream.h>
@@ -910,7 +911,7 @@ static SHARED_DATA struct comp_driver_info comp_dai_info = {
 	.drv = &comp_dai,
 };
 
-static void sys_comp_dai_init(void)
+UT_STATIC void sys_comp_dai_init(void)
 {
 	comp_register(platform_shared_get(&comp_dai_info,
 					  sizeof(comp_dai_info)));
