@@ -141,7 +141,7 @@ void dma_put(struct dma *dma)
 		}
 	}
 	trace_event(TRACE_CLASS_DMA, "dma_put(), dma = %p, sref = %d",
-		   (uintptr_t)dma, dma->sref);
+		    dma, dma->sref);
 	platform_shared_commit(dma, sizeof(*dma));
 	spin_unlock(&dma->lock);
 }

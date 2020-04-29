@@ -70,7 +70,7 @@ struct comp_dev *comp_new(struct sof_ipc_comp *comp)
 		return NULL;
 	}
 
-	trace_event(TRACE_CLASS_COMP, "comp new %s type %d id %d.%d",
+	trace_event(TRACE_CLASS_COMP, "comp new %d type %d id %d.%d",
 		    drv->uid, comp->type, comp->pipeline_id, comp->id);
 
 	/* create the new component */
