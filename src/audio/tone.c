@@ -21,6 +21,7 @@
 #include <sof/platform.h>
 #include <sof/string.h>
 #include <sof/trace/trace.h>
+#include <sof/ut.h>
 #include <ipc/control.h>
 #include <ipc/stream.h>
 #include <ipc/topology.h>
@@ -721,7 +722,7 @@ static SHARED_DATA struct comp_driver_info comp_tone_info = {
 	.drv = &comp_tone,
 };
 
-static void sys_comp_tone_init(void)
+UT_STATIC void sys_comp_tone_init(void)
 {
 	comp_register(platform_shared_get(&comp_tone_info,
 					  sizeof(comp_tone_info)));
