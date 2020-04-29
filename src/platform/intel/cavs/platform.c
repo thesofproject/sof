@@ -111,7 +111,7 @@ static const struct sof_ipc_window sram_window
 			.type	= SOF_IPC_REGION_DEBUG,
 			.id	= 2,	/* map to host window 2 */
 			.flags	= 0, // TODO: set later
-			.size	= MAILBOX_EXCEPTION_SIZE + MAILBOX_DEBUG_SIZE,
+			.size	= MAILBOX_DEBUG_SIZE,
 			.offset	= 0,
 		},
 		{
