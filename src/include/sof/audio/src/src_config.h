@@ -36,7 +36,11 @@
 #define SRC_HIFI3	0
 #endif
 #if XCHAL_HAVE_HIFI3 == 1
+#if CONFIG_COMP_SRC_32BIT_COEF
 #define SRC_SHORT	0  /* Select 32 bit default quality coefficients */
+#else
+#define SRC_SHORT	1
+#endif
 #define SRC_HIFI3	1
 #define SRC_HIFIEP	0
 #endif
