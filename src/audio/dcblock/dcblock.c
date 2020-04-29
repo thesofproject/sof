@@ -18,6 +18,7 @@
 #include <sof/list.h>
 #include <sof/platform.h>
 #include <sof/string.h>
+#include <sof/ut.h>
 #include <sof/trace/trace.h>
 #include <ipc/control.h>
 #include <ipc/stream.h>
@@ -413,7 +414,7 @@ static SHARED_DATA struct comp_driver_info comp_dcblock_info = {
 	.drv = &comp_dcblock,
 };
 
-static void sys_comp_dcblock_init(void)
+UT_STATIC void sys_comp_dcblock_init(void)
 {
 	comp_register(platform_shared_get(&comp_dcblock_info,
 					  sizeof(comp_dcblock_info)));

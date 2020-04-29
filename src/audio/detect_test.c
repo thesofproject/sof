@@ -19,6 +19,7 @@
 #include <sof/list.h>
 #include <sof/math/numbers.h>
 #include <sof/string.h>
+#include <sof/ut.h>
 #include <sof/trace/trace.h>
 #include <ipc/control.h>
 #include <ipc/stream.h>
@@ -657,7 +658,7 @@ static SHARED_DATA struct comp_driver_info comp_keyword_info = {
 	.drv = &comp_keyword,
 };
 
-static void sys_comp_keyword_init(void)
+UT_STATIC void sys_comp_keyword_init(void)
 {
 	comp_register(platform_shared_get(&comp_keyword_info,
 					  sizeof(comp_keyword_info)));

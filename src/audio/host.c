@@ -21,6 +21,7 @@
 #include <sof/list.h>
 #include <sof/math/numbers.h>
 #include <sof/string.h>
+#include <sof/ut.h>
 #include <sof/trace/trace.h>
 #include <ipc/stream.h>
 #include <ipc/topology.h>
@@ -915,7 +916,7 @@ static SHARED_DATA struct comp_driver_info comp_host_info = {
 	.drv = &comp_host,
 };
 
-static void sys_comp_host_init(void)
+UT_STATIC void sys_comp_host_init(void)
 {
 	comp_register(platform_shared_get(&comp_host_info,
 					  sizeof(comp_host_info)));
