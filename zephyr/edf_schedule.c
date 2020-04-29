@@ -13,9 +13,6 @@
 #include <kernel.h>
 #include <sys_clock.h>
 
-#include <logging/log.h>
-LOG_MODULE_REGISTER(sofedfsch);
-
 struct k_work_q edf_workq;
 K_THREAD_STACK_DEFINE(edf_workq_stack, 8192);
 
