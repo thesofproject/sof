@@ -252,6 +252,9 @@ char *get_trace_class(uint32_t trace_class)
 	}
 }
 
+void sys_comp_volume_init(void);
+void sys_comp_host_init(void);
+
 int task_main_start(struct sof *sof)
 {
 	/* init default audio components */
@@ -259,6 +262,8 @@ int task_main_start(struct sof *sof)
 
 	/* init self-registered modules */
 	sys_module_init();
+	sys_comp_volume_init();
+	sys_comp_host_init();
 
 	/* init pipeline position offsets */
 	pipeline_posn_init(sof);
