@@ -13,6 +13,9 @@
 #include <kernel.h>
 #include <sys_clock.h>
 
+#include <logging/log.h>
+LOG_MODULE_REGISTER(sofedfsch);
+
 struct k_work_q edf_workq;
 K_THREAD_STACK_DEFINE(edf_workq_stack, 8192);
 
@@ -21,10 +24,9 @@ static void edf_work_handler(struct k_work *work)
 	struct task *task = CONTAINER_OF(work, struct task, z_delayed_work);
 
 	task->state = SOF_TASK_STATE_RUNNING;
+	task_run(task);
 
-	if (task->ops.run)
-		task->ops.run(task->data);
-
+	task_complete(task);
 	task->state = SOF_TASK_STATE_COMPLETED;
 }
 
@@ -32,7 +34,7 @@ static void edf_work_handler(struct k_work *work)
 static int schedule_edf_task(struct task *task, uint64_t start,
 			      uint64_t period)
 {
-	k_timeout_t start_time = K_USEC(start);
+	k_timeout_t start_time = K_USEC(start + 1000);
 
 	k_delayed_work_submit_to_queue(&edf_workq,
 				       &task->z_delayed_work,
@@ -56,6 +58,13 @@ static int schedule_edf_task_cancel(struct task *task)
 	return ret;
 }
 
+static int schedule_edf_task_complete(struct task *task)
+{
+	LOG_ERR("completed task handler");
+	task_complete(task);
+	return 0;
+}
+
 static int schedule_edf_task_free(struct task *task)
 {
 	task->state = SOF_TASK_STATE_FREE;
@@ -65,10 +74,10 @@ static int schedule_edf_task_free(struct task *task)
 	return 0;
 }
 
-const struct scheduler_ops schedule_edf_ops = {
+struct scheduler_ops schedule_edf_ops = {
 	.schedule_task		= schedule_edf_task,
 //	.schedule_task_running	= schedule_edf_task_running,
-//	.schedule_task_complete = schedule_edf_task_complete,
+	.schedule_task_complete = schedule_edf_task_complete,
 	.reschedule_task	= NULL,
 	.schedule_task_cancel	= schedule_edf_task_cancel,
 	.schedule_task_free	= schedule_edf_task_free,
