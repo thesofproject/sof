@@ -21,6 +21,7 @@
 #include <sof/list.h>
 #include <sof/platform.h>
 #include <sof/string.h>
+#include <sof/ut.h>
 #include <sof/trace/trace.h>
 #include <ipc/control.h>
 #include <ipc/stream.h>
@@ -1003,7 +1004,7 @@ static SHARED_DATA struct comp_driver_info comp_eq_iir_info = {
 	.drv = &comp_eq_iir,
 };
 
-static void sys_comp_eq_iir_init(void)
+UT_STATIC void sys_comp_eq_iir_init(void)
 {
 	comp_register(platform_shared_get(&comp_eq_iir_info,
 					  sizeof(comp_eq_iir_info)));
