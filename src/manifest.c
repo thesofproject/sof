@@ -976,6 +976,11 @@ static int man_write_fw_meu_v1_5(struct image *image)
 	memcpy(desc, &image->adsp->man_v1_5->desc,
 	       sizeof(struct sof_man_fw_desc));
 
+	/* firmware and build version */
+	desc->header.major_version = image->fw_ver_major;
+	desc->header.minor_version = image->fw_ver_minor;
+	desc->header.build_version = image->fw_ver_build;
+
 	/* create each module */
 	desc->header.num_module_entries = image->num_modules;
 	man_create_modules(image, desc, FILE_TEXT_OFFSET_V1_5);
@@ -1051,6 +1056,11 @@ static int man_write_fw_meu_v1_8(struct image *image)
 	memcpy(desc, &image->adsp->man_v1_8->desc,
 	       sizeof(struct sof_man_fw_desc));
 
+	/* firmware and build version */
+	desc->header.major_version = image->fw_ver_major;
+	desc->header.minor_version = image->fw_ver_minor;
+	desc->header.build_version = image->fw_ver_build;
+
 	/* create each module */
 	desc->header.num_module_entries = image->num_modules;
 	man_create_modules(image, desc, FILE_TEXT_OFFSET_V1_8);
@@ -1125,6 +1135,11 @@ static int man_write_fw_meu_v2_5(struct image *image)
 	       sizeof(struct sof_man_adsp_meta_file_ext_v2_5));
 	memcpy(desc, &image->adsp->man_v2_5->desc,
 	       sizeof(struct sof_man_fw_desc));
+
+	/* firmware and build version */
+	desc->header.major_version = image->fw_ver_major;
+	desc->header.minor_version = image->fw_ver_minor;
+	desc->header.build_version = image->fw_ver_build;
 
 	/* create each module */
 	desc->header.num_module_entries = image->num_modules;
