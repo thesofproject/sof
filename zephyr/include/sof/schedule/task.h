@@ -9,7 +9,6 @@
 #define __SOF_SCHEDULE_TASK_H__
 
 #include <arch/schedule/task.h>
-#include <sof/debug/panic.h>
 #include <sof/list.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -79,8 +78,6 @@ struct pipeline_task {
 
 static inline enum task_state task_run(struct task *task)
 {
-	assert(task->ops.run);
-
 	return task->ops.run(task->data);
 }
 
@@ -92,8 +89,6 @@ static inline void task_complete(struct task *task)
 
 static inline uint64_t task_get_deadline(struct task *task)
 {
-	assert(task->ops.get_deadline);
-
 	return task->ops.get_deadline(task->data);
 }
 
