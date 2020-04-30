@@ -251,9 +251,26 @@ char *get_trace_class(uint32_t trace_class)
 	default: return "unknown";
 	}
 }
+/*
+ * TODO: all the audio processing components/modules constructor should be
+ * linked to the module_init section, but this is not happening. Just call
+ * constructors directly atm.
+ */
 
 void sys_comp_volume_init(void);
 void sys_comp_host_init(void);
+void sys_comp_mixer_init(void);
+void sys_comp_dai_init(void);
+void sys_comp_src_init(void);
+void sys_comp_mux_init(void);
+void sys_comp_selector_init(void);
+void sys_comp_switch_init(void);
+void sys_comp_tone_init(void);
+void sys_comp_eq_fir_init(void);
+void sys_comp_keyword_init(void);
+void sys_comp_asrc_init(void);
+void sys_comp_dcblock_init(void);
+void sys_comp_eq_iir_init(void);
 
 int task_main_start(struct sof *sof)
 {
@@ -264,6 +281,18 @@ int task_main_start(struct sof *sof)
 	sys_module_init();
 	sys_comp_volume_init();
 	sys_comp_host_init();
+	sys_comp_mixer_init();
+	sys_comp_dai_init();
+	sys_comp_src_init();
+	//sys_comp_mux_init();   // needs more symbols.
+	sys_comp_selector_init();
+	sys_comp_switch_init();
+	sys_comp_tone_init();
+	sys_comp_eq_fir_init();
+	sys_comp_keyword_init();
+	sys_comp_asrc_init();
+	sys_comp_dcblock_init();
+	sys_comp_eq_iir_init();
 
 	/* init pipeline position offsets */
 	pipeline_posn_init(sof);

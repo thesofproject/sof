@@ -85,6 +85,7 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V15)
 	)
 
 	# CAVS15 include seems to be set in Zephyr. TODO also set common dir.
+	target_include_directories(SOF INTERFACE ../zephyr/include/cavs15)
 	zephyr_include_directories(../../../../zephyr/soc/xtensa/intel_adsp/common/include)
 endif()
 
@@ -105,6 +106,9 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V18)
 		../src/drivers/intel/cavs/alh.c
 	)
 
+	target_include_directories(SOF INTERFACE ../zephyr/include/cavs18)
+	zephyr_include_directories(../../../../zephyr/soc/xtensa/intel_adsp/common/include)
+
 endif()
 
 # ICL
@@ -121,6 +125,9 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V20)
 		../src/drivers/intel/cavs/mn.c
 		../src/drivers/intel/cavs/alh.c
 	)
+
+	target_include_directories(SOF INTERFACE ../zephyr/include/cavs20)
+	zephyr_include_directories(../../../../zephyr/soc/xtensa/intel_adsp/common/include)
 endif()
 
 # TGL
@@ -137,6 +144,9 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V25)
 		../src/drivers/intel/cavs/mn.c
 		../src/drivers/intel/cavs/alh.c
 	)
+
+	target_include_directories(SOF INTERFACE ../zephyr/include/cavs25)
+	zephyr_include_directories(../../../../zephyr/soc/xtensa/intel_adsp/common/include)
 endif()
 
 # IMX8
