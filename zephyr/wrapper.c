@@ -166,8 +166,32 @@ void platform_interrupt_init(void)
 
 uint64_t arch_timer_get_system(struct timer *timer)
 {
-	/* copy from SOF */
-	return 0;
+	uint64_t time = 0;
+#if 1
+	uint32_t low, high;
+	uint32_t flags;
+
+	if (timer->id >= ARCH_TIMER_COUNT) {
+		goto out;
+	}
+
+	flags = arch_interrupt_global_disable();
+
+	/* Read low 32 bits, for xtensa ccount read */
+	low = k_cycle_get_32();
+
+	high = timer->hitime;
+
+	time = ((uint64_t)high << 32) | low;
+
+	arch_interrupt_global_enable(flags);
+out:
+	platform_shared_commit(timer, sizeof(*timer));
+#else
+	time = k_uptime_ticks();
+#endif
+
+	return time;
 }
 
 /*
