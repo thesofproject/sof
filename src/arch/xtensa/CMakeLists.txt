@@ -363,7 +363,7 @@ if(NOT DEFINED RIMAGE_IMR_TYPE)
 	set(RIMAGE_IMR_TYPE 3)
 endif()
 
-if(MEU_PATH)
+if(MEU_PATH OR DEFINED MEU_NO_SIGN)
 	execute_process(
 		COMMAND ${MEU_PATH}/meu -ver
 		OUTPUT_VARIABLE MEU_VERSION_FULL_TEXT
@@ -413,15 +413,19 @@ if(MEU_PATH)
 		)
 	endif()
 
-	add_custom_target(
-		run_meu
-		COMMAND ${MEU_PATH}/meu -w ./ -s sof-${fw_name}
-			${MEU_FLAGS}
-			-o sof-${fw_name}.ri
-		DEPENDS run_rimage
-		VERBATIM
-		USES_TERMINAL
-	)
+	if(MEU_NO_SIGN)
+		add_custom_target(run_meu DEPENDS run_rimage)
+	else()
+		add_custom_target(
+			run_meu
+			COMMAND ${MEU_PATH}/meu -w ./ -s sof-${fw_name}
+				${MEU_FLAGS}
+				-o sof-${fw_name}.ri
+			DEPENDS run_rimage
+			VERBATIM
+			USES_TERMINAL
+		)
+	endif()
 else()
 	add_custom_target(
 		run_rimage
@@ -442,14 +446,27 @@ else()
 	add_custom_target(run_meu DEPENDS run_rimage)
 endif()
 
-add_custom_target(
-	bin ALL
-	COMMAND ${CMAKE_COMMAND} -E copy sof-${fw_name}.ri ${PROJECT_BINARY_DIR}/sof-${fw_name}.ri
-	COMMAND ${CMAKE_COMMAND} -E copy sof-${fw_name}.ldc ${PROJECT_BINARY_DIR}/sof-${fw_name}.ldc
-	DEPENDS run_meu bin_extras
-	VERBATIM
-	USES_TERMINAL
-)
+if(MEU_NO_SIGN)
+	# copy rimage output that can be used to sign firmware
+	add_custom_target(
+		bin ALL
+		COMMAND ${CMAKE_COMMAND} -E copy sof-${fw_name}.ri.uns ${PROJECT_BINARY_DIR}/sof-${fw_name}.ri.uns
+		COMMAND ${CMAKE_COMMAND} -E copy sof-${fw_name}.ri.met ${PROJECT_BINARY_DIR}/sof-${fw_name}.ri.met
+		COMMAND ${CMAKE_COMMAND} -E copy sof-${fw_name}.ldc ${PROJECT_BINARY_DIR}/sof-${fw_name}.ldc
+		DEPENDS run_meu bin_extras
+		VERBATIM
+		USES_TERMINAL
+	)
+else()
+	add_custom_target(
+		bin ALL
+		COMMAND ${CMAKE_COMMAND} -E copy sof-${fw_name}.ri ${PROJECT_BINARY_DIR}/sof-${fw_name}.ri
+		COMMAND ${CMAKE_COMMAND} -E copy sof-${fw_name}.ldc ${PROJECT_BINARY_DIR}/sof-${fw_name}.ldc
+		DEPENDS run_meu bin_extras
+		VERBATIM
+		USES_TERMINAL
+	)
+endif()
 
 install(
 	FILES ${PROJECT_BINARY_DIR}/sof-${fw_name}.ri
