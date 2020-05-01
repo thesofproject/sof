@@ -95,6 +95,7 @@ set(TPLGS
 	"sof-icl-rt711-rt1308-rt715-hdmi\;sof-cml-rt711-rt1308-mono-rt715\;-DPLATFORM=cml-mono"
 	"sof-icl-rt711-rt1308-rt715-hdmi\;sof-cml-rt711-rt1308-rt715\;-DPLATFORM=cml"
 	"sof-icl-rt711-rt1308-rt715-hdmi\;sof-icl-rt711-rt1308-rt715-hdmi\;-DPLATFORM=icl"
+	"sof-cnl-rt5682-sdw2\;sof-cnl-rt5682-sdw2\;-DPLATFORM=cnl"
 	"sof-apl-asrc-wm8804\;sof-apl-asrc-wm8804"
 	"sof-apl-asrc-pcm512x\;sof-apl-asrc-pcm512x"
 	"sof-apl-src-pcm512x\;sof-apl-src-pcm512x"
