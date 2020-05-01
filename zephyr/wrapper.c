@@ -285,14 +285,14 @@ int task_main_start(struct sof *sof)
 	sys_comp_dai_init();
 	sys_comp_src_init();
 	//sys_comp_mux_init();   // needs more symbols.
-	sys_comp_selector_init();
-	sys_comp_switch_init();
-	sys_comp_tone_init();
-	sys_comp_eq_fir_init();
-	sys_comp_keyword_init();
-	sys_comp_asrc_init();
-	sys_comp_dcblock_init();
-	sys_comp_eq_iir_init();
+	//sys_comp_selector_init();
+	//sys_comp_switch_init();
+	//sys_comp_tone_init();
+	//sys_comp_eq_fir_init();
+	//sys_comp_keyword_init();
+	//sys_comp_asrc_init();
+	//sys_comp_dcblock_init();
+	//sys_comp_eq_iir_init();
 
 	/* init pipeline position offsets */
 	pipeline_posn_init(sof);
