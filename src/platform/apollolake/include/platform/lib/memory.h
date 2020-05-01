@@ -13,7 +13,7 @@
 
 #include <cavs/lib/memory.h>
 #include <sof/lib/cpu.h>
-#include <config.h>
+#include <sof-config.h>
 
 /* physical DSP addresses */
 

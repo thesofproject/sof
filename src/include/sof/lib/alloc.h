@@ -20,7 +20,7 @@
 #include <sof/string.h>
 #include <sof/trace/trace.h>
 #include <user/trace.h>
-#include <config.h>
+#include <sof-config.h>
 #include <stddef.h>
 #include <stdint.h>
 

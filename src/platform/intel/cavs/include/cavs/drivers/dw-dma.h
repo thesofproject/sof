@@ -13,7 +13,7 @@
 #include <sof/bit.h>
 #include <sof/lib/dma.h>
 #include <sof/lib/shim.h>
-#include <config.h>
+#include <sof-config.h>
 #include <stdint.h>
 
 /* number of supported DW-DMACs */

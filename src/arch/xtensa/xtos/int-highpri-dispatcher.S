@@ -33,7 +33,7 @@
 // To use this template file, define a macro called _INTERRUPT_LEVEL
 // to be the interrupt priority level of the vector, then include this file.
 
-#include <config.h>
+#include <sof-config.h>
 #if CONFIG_SMP
 #include <sof/lib/cpu.h>
 #endif

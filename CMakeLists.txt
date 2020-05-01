@@ -84,7 +84,7 @@ set(GENERATED_DIRECTORY ${PROJECT_BINARY_DIR}/generated)
 file(MAKE_DIRECTORY ${GENERATED_DIRECTORY}/include)
 
 set(DOT_CONFIG_PATH ${GENERATED_DIRECTORY}/.config)
-set(CONFIG_H_PATH ${GENERATED_DIRECTORY}/include/config.h)
+set(CONFIG_H_PATH ${GENERATED_DIRECTORY}/include/sof-config.h)
 set(VERSION_H_PATH ${GENERATED_DIRECTORY}/include/version.h)
 
 include(scripts/cmake/version.cmake)

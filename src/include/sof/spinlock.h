@@ -15,7 +15,7 @@
 
 #include <arch/spinlock.h>
 #include <sof/lib/memory.h>
-#include <config.h>
+#include <sof-config.h>
 #include <stdint.h>
 
 /*

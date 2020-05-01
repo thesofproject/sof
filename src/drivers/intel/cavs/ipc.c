@@ -25,7 +25,7 @@
 #include <ipc/header-intel-cavs.h>
 #include <ipc/pm.h>
 #endif
-#include <config.h>
+#include <sof-config.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>

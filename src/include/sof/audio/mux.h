@@ -14,7 +14,7 @@
 #ifndef __SOF_AUDIO_MUX_H__
 #define __SOF_AUDIO_MUX_H__
 
-#include <config.h>
+#include <sof-config.h>
 
 #if CONFIG_COMP_MUX
 

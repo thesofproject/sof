@@ -17,7 +17,7 @@
 #include <sof/string.h>
 #include <ipc/info.h>
 #include <ipc/trace.h>
-#include <config.h>
+#include <sof-config.h>
 #include <stddef.h>
 #include <stdint.h>
 

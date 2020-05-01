@@ -18,7 +18,7 @@
 #include <sof/audio/format.h>
 #include <sof/common.h>
 #include <ipc/stream.h>
-#include <config.h>
+#include <sof-config.h>
 #include <stddef.h>
 #include <stdint.h>
 

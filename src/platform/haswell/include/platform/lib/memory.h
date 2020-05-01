@@ -10,7 +10,7 @@
 #ifndef __PLATFORM_LIB_MEMORY_H__
 #define __PLATFORM_LIB_MEMORY_H__
 
-#include <config.h>
+#include <sof-config.h>
 
 #if !defined(__ASSEMBLER__) && !defined(LINKER)
 

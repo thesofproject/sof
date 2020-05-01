@@ -11,7 +11,7 @@
 #include <sof/debug/debug.h>
 #include <kernel/abi.h>
 #include <kernel/ext_manifest.h>
-#include <config.h>
+#include <sof-config.h>
 #include <version.h>
 
 const struct ext_man_fw_version ext_man_fw_ver

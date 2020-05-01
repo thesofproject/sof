@@ -11,7 +11,7 @@
 #define __PLATFORM_LIB_MEMORY_H__
 
 #include <sof/lib/cache.h>
-#include <config.h>
+#include <sof-config.h>
 
 /* data cache line alignment */
 #define PLATFORM_DCACHE_ALIGN	DCACHE_LINE_SIZE

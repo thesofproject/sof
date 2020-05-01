@@ -22,7 +22,7 @@
 // TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 // SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-#include <config.h>
+#include <sof-config.h>
 #include <sof/common.h>
 #if CONFIG_BOOT_LOADER && !CONFIG_VM_ROM
 #include <sof/lib/memory.h>

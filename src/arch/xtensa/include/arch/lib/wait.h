@@ -12,7 +12,7 @@
 #include <sof/drivers/interrupt.h>
 #include <sof/lib/clk.h>
 #include <ipc/trace.h>
-#include <config.h>
+#include <sof-config.h>
 #include <xtensa/xtruntime.h>
 
 #if (CONFIG_WAITI_DELAY)

@@ -14,7 +14,7 @@
 #include <sof/lib/shim.h>
 #include <sof/list.h>
 #include <sof/spinlock.h>
-#include <config.h>
+#include <sof-config.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>

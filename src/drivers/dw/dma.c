@@ -37,7 +37,7 @@
 #include <sof/platform.h>
 #include <sof/spinlock.h>
 #include <ipc/topology.h>
-#include <config.h>
+#include <sof-config.h>
 #include <errno.h>
 #include <stdbool.h>
 #include <stddef.h>

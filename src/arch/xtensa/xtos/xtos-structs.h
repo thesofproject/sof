@@ -11,7 +11,7 @@
 #include "xtos-internal.h"
 #include <sof/common.h>
 #include <sof/lib/memory.h>
-#include <config.h>
+#include <sof-config.h>
 #include <xtensa/xtruntime-frames.h>
 #include <stdint.h>
 

@@ -15,7 +15,7 @@
 #include <sof/lib/memory.h>
 #include <sof/sof.h>
 #include <sof/spinlock.h>
-#include <config.h>
+#include <sof-config.h>
 
 #if CONFIG_APOLLOLAKE
 #define DMAC0_CLASS 1

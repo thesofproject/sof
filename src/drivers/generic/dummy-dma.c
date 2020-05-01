@@ -39,7 +39,7 @@
 #include <sys/types.h>
 #include <ipc/topology.h>
 #include <user/trace.h>
-#include <config.h>
+#include <sof-config.h>
 #include <errno.h>
 #include <stdbool.h>
 #include <stddef.h>

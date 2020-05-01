@@ -8,7 +8,7 @@
 #ifndef __SOF_DRIVERS_DMIC_H__
 #define __SOF_DRIVERS_DMIC_H__
 
-#include <config.h>
+#include <sof-config.h>
 
 #if CONFIG_CAVS_DMIC
 

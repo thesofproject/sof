@@ -6,7 +6,7 @@
 
 #include <sof/drivers/interrupt.h>
 #include <sof/spinlock.h>
-#include <config.h>
+#include <sof-config.h>
 #include <stdint.h>
 
 uint32_t _spin_lock_irq(spinlock_t *lock)

@@ -14,7 +14,7 @@
 #include <xtensa/xtruntime.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <config.h>
+#include <sof-config.h>
 
 static inline int arch_interrupt_register(int irq,
 	void (*handler)(void *arg), void *arg)

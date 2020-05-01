@@ -18,7 +18,7 @@
 #include <sof/common.h>
 #include <ipc/stream.h>
 #include <xtensa/tie/xt_hifi3.h>
-#include <config.h>
+#include <sof-config.h>
 #include <stddef.h>
 #include <stdint.h>
 

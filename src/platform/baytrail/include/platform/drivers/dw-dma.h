@@ -11,7 +11,7 @@
 #define __PLATFORM_DRIVERS_DW_DMA_H__
 
 #include <sof/bit.h>
-#include <config.h>
+#include <sof-config.h>
 #include <stdint.h>
 
 struct dma;

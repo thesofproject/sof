@@ -11,7 +11,7 @@
 #define __PLATFORM_DRIVERS_INTERRUPT_H__
 
 #include <sof/bit.h>
-#include <config.h>
+#include <sof-config.h>
 
 #define PLATFORM_IRQ_HW_NUM	XCHAL_NUM_INTERRUPTS
 #define PLATFORM_IRQ_FIRST_CHILD  PLATFORM_IRQ_HW_NUM

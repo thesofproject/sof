@@ -24,7 +24,7 @@
 #include <sof/trace/dma-trace.h>
 #include <ipc/topology.h>
 #include <ipc/trace.h>
-#include <config.h>
+#include <sof-config.h>
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>

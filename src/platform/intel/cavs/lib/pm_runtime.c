@@ -27,7 +27,7 @@
 #include <sof/trace/trace.h>
 #include <ipc/topology.h>
 #include <user/trace.h>
-#include <config.h>
+#include <sof-config.h>
 #include <version.h>
 #include <stdint.h>
 

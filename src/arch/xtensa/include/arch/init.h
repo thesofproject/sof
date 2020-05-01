@@ -18,7 +18,7 @@
 
 #include <sof/debug/panic.h>
 #include <ipc/trace.h>
-#include <config.h>
+#include <sof-config.h>
 #include <xtensa/corebits.h>
 #include <xtensa/xtruntime.h>
 #include <stddef.h>

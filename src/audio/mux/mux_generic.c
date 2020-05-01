@@ -4,7 +4,7 @@
 //
 // Author: Artur Kloniecki <arturx.kloniecki@linux.intel.com>
 
-#include <config.h>
+#include <sof-config.h>
 
 #if CONFIG_COMP_MUX
 

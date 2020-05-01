@@ -21,7 +21,7 @@
 #include <sof/common.h>
 #include <sof/sof.h>
 #include <sof/trace/preproc.h>
-#include <config.h>
+#include <sof-config.h>
 #include <stdbool.h>
 #include <stdint.h>
 #if CONFIG_LIBRARY

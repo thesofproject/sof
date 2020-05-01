@@ -1,4 +1,4 @@
-#include <config.h>
+#include <sof-config.h>
 
 #if CONFIG_HASWELL
 #include <xtensa/config/core-isa-hsw.h>

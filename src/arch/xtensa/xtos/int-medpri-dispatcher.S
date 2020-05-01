@@ -31,7 +31,7 @@
 // to be the interrupt priority level of the vector, then include this file.
 
 #include <sof/lib/memory.h>
-#include <config.h>
+#include <sof-config.h>
 #include <xtensa/coreasm.h>
 #include "xtos-internal.h"
 

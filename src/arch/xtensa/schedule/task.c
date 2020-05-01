@@ -21,7 +21,7 @@
 #include <sof/schedule/schedule.h>
 #include <sof/schedule/task.h>
 #include <ipc/topology.h>
-#include <config.h>
+#include <sof-config.h>
 #include <xtensa/corebits.h>
 #include <xtensa/xtruntime-frames.h>
 #include <xtos-structs.h>

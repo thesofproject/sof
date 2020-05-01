@@ -11,7 +11,7 @@
 #ifndef __PLATFORM_LIB_DMA_H__
 #define __PLATFORM_LIB_DMA_H__
 
-#include <config.h>
+#include <sof-config.h>
 
 #if defined CONFIG_CHERRYTRAIL_EXTRA_DW_DMA
 #define PLATFORM_NUM_DMACS	3

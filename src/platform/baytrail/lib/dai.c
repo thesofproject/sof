@@ -13,7 +13,7 @@
 #include <sof/sof.h>
 #include <ipc/dai.h>
 #include <ipc/stream.h>
-#include <config.h>
+#include <sof-config.h>
 
 static SHARED_DATA struct dai ssp[] = {
 {

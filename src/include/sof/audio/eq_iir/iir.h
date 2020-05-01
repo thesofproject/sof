@@ -16,7 +16,7 @@
 struct sof_eq_iir_header_df2t;
 
 /* Get platforms configuration */
-#include <config.h>
+#include <sof-config.h>
 
 /* If next defines are set to 1 the EQ is configured automatically. Setting
  * to zero temporarily is useful is for testing needs.

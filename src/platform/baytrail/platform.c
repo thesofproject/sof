@@ -34,7 +34,7 @@
 #include <ipc/header.h>
 #include <ipc/info.h>
 #include <kernel/abi.h>
-#include <config.h>
+#include <sof-config.h>
 #include <version.h>
 #include <errno.h>
 #include <stdbool.h>

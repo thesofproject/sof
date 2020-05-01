@@ -27,7 +27,7 @@
 #ifndef XTOS_INTERNAL_H
 #define XTOS_INTERNAL_H
 
-#include <config.h>
+#include <sof-config.h>
 #if CONFIG_SMP
 #include <sof/lib/cpu.h>
 #endif
