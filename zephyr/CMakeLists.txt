@@ -56,6 +56,7 @@ if (CONFIG_SOC_SERIES_INTEL_BAYTRAIL)
 	)
 
 	target_include_directories(SOF INTERFACE ../src/platform/baytrail/include)
+	set(PLATFORM "baytrail")
 endif()
 
 # HSW, BDW
@@ -68,6 +69,7 @@ if (CONFIG_SOC_SERIES_INTEL_BROADWELL)
 	)
 
 	target_include_directories(SOF INTERFACE ../src/platform/haswell/include)
+	set(PLATFORM "haswell")
 endif()
 
 # APL, KBL, SKL
@@ -85,6 +87,7 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V15)
 	)
 
 	# CAVS15 include seems to be set in Zephyr. TODO also set common dir.
+	set(PLATFORM "apollolake")
 	target_include_directories(SOF INTERFACE ../zephyr/include/cavs15)
 	zephyr_include_directories(../../../../zephyr/soc/xtensa/intel_adsp/common/include)
 endif()
@@ -106,6 +109,7 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V18)
 		../src/drivers/intel/cavs/alh.c
 	)
 
+	set(PLATFORM "cannonlake")
 	target_include_directories(SOF INTERFACE ../zephyr/include/cavs18)
 	zephyr_include_directories(../../../../zephyr/soc/xtensa/intel_adsp/common/include)
 
@@ -126,6 +130,7 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V20)
 		../src/drivers/intel/cavs/alh.c
 	)
 
+	set(PLATFORM "icelake")
 	target_include_directories(SOF INTERFACE ../zephyr/include/cavs20)
 	zephyr_include_directories(../../../../zephyr/soc/xtensa/intel_adsp/common/include)
 endif()
@@ -145,6 +150,7 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V25)
 		../src/drivers/intel/cavs/alh.c
 	)
 
+	set(PLATFORM "tigerlake")
 	target_include_directories(SOF INTERFACE ../zephyr/include/cavs25)
 	zephyr_include_directories(../../../../zephyr/soc/xtensa/intel_adsp/common/include)
 endif()
@@ -261,7 +267,51 @@ file(MAKE_DIRECTORY ${GENERATED_DIRECTORY}/include)
 # generated files
 set(VERSION_H_PATH ${GENERATED_DIRECTORY}/include/version.h)
 set(DOT_CONFIG_PATH ${GENERATED_DIRECTORY}/.config)
-set(CONFIG_H_PATH ${GENERATED_DIRECTORY}/include/config.h)
+set(CONFIG_H_PATH ${GENERATED_DIRECTORY}/include/sof-config.h)
+
+if(${CMAKE_VERSION} VERSION_LESS "3.12.0")
+	# FindPythonInterp is bugged and may sometimes be unable to find
+	# Python 3 when both Python 2 & 3 are in PATH,
+	# so it's always better to use CMake 3.12+
+	find_package(PythonInterp 3.0)
+	set(PYTHON3 "${PYTHON_EXECUTABLE}")
+else()
+	find_package(Python3 COMPONENTS Interpreter)
+	set(PYTHON3 "${Python3_EXECUTABLE}")
+endif()
+
+# Looks for defconfig files in arch directory
+set(DEFCONFIGS_DIRECTORY "${SOF_ROOT_SOURCE_DIRECTORY}/../src/arch/${ARCH}/configs")
+file(GLOB DEFCONFIG_PATHS "${DEFCONFIGS_DIRECTORY}/*_defconfig")
+
+# Adds dependency on defconfigs directory
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${DEFCONFIGS_DIRECTORY})
+
+# create a sof-config.h for target. 
+foreach(defconfig_path ${DEFCONFIG_PATHS})
+	get_filename_component(defconfig_name ${defconfig_path} NAME)
+	add_custom_target(
+		${defconfig_name}
+		COMMAND ${CMAKE_COMMAND} -E copy
+			${defconfig_path}
+			${DOT_CONFIG_PATH}
+		COMMAND ${CMAKE_COMMAND} -E env
+			srctree=${SOF_ROOT_SOURCE_DIRECTORY}/../
+			CC_VERSION_TEXT="zephyr"
+			ARCH=${ARCH}
+			KCONFIG_CONFIG=${DOT_CONFIG_PATH}
+			${PYTHON3} ${SOF_ROOT_SOURCE_DIRECTORY}/../scripts/kconfig/genconfig.py
+			--header-path ${CONFIG_H_PATH}
+			${SOF_ROOT_SOURCE_DIRECTORY}/../Kconfig
+		WORKING_DIRECTORY ${GENERATED_DIRECTORY}
+		COMMENT "SOF using ${defconfig_name}"
+		VERBATIM
+		USES_TERMINAL
+	)
+endforeach()
+
+# TODO: detect GCC vs XCC builds and apply DEFCONFIG_PATCH= "_gcc"
+add_dependencies(modules_sof ${PLATFORM}${DEFCONFIG_PATCH}_defconfig)
 
 # create version.h
 include(../scripts/cmake/version.cmake)
