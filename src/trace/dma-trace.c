@@ -309,7 +309,7 @@ static int dma_trace_get_avail_data(struct dma_trace_data *d,
 int dma_trace_enable(struct dma_trace_data *d)
 {
 	int err;
-return 0;
+
 	/* initialize dma trace buffer */
 	err = dma_trace_buffer_init(d);
 	if (err < 0)
