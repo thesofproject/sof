@@ -1333,7 +1333,7 @@ void ipc_cmd(struct sof_ipc_cmd_hdr *hdr)
 	platform_shared_commit(hdr, hdr->size);
 
 out:
-	tr_dbg(&ipc_tr, "ipc: last request %d returned %d", type, ret);
+	tr_dbg(&ipc_tr, "ipc: last request 0x%x returned %d", type, ret);
 
 	/* if ret > 0, reply created and copied by cmd() */
 	if (ret <= 0) {
