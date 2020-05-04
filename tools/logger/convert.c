@@ -204,11 +204,14 @@ static double to_usecs(uint64_t time, double clk)
 }
 
 
-static inline void print_table_header(FILE *out_fd)
+static inline void print_table_header(FILE *out_fd, int hide_location)
 {
-	fprintf(out_fd, "%18s %18s %2s %-18s %-29s  %s\n",
-		"TIMESTAMP", "DELTA", "C#", "COMPONENT", "LOCATION",
-		"CONTENT");
+	fprintf(out_fd, "%18s %18s %2s %-18s",
+		"TIMESTAMP", "DELTA", "C#", "COMPONENT");
+	if (!hide_location)
+		fprintf(out_fd, " %-29s", "LOCATION");
+	fprintf(out_fd, "  %s\n", "CONTENT");
+
 	fflush(out_fd);
 }
 
@@ -288,7 +291,8 @@ static char *format_file_name(char *file_name_raw, int full_name)
 static void print_entry_params(FILE *out_fd,
 	const struct snd_sof_uids_header *uids_dict,
 	const struct log_entry_header *dma_log, const struct ldc_entry *entry,
-	uint64_t last_timestamp, double clock, int use_colors, int raw_output)
+	uint64_t last_timestamp, double clock, int use_colors, int raw_output,
+	int hide_location)
 {
 	char ids[TRACE_MAX_IDS_STR];
 	float dt = to_usecs(dma_log->timestamp - last_timestamp, clock);
@@ -308,7 +312,7 @@ static void print_entry_params(FILE *out_fd,
 		ids[0] = '\0';
 
 	if (raw_output) {
-		const char *entry_fmt = "%s%u %u %s%s%s %.6f %.6f (%s:%u) ";
+		const char *entry_fmt = "%s%u %u %s%s%s %.6f %.6f ";
 
 		fprintf(out_fd, entry_fmt,
 			entry->header.level == use_colors ?
@@ -321,9 +325,11 @@ static void print_entry_params(FILE *out_fd,
 			raw_output && strlen(ids) ? "-" : "",
 			ids,
 			to_usecs(dma_log->timestamp, clock),
-			dt,
-			format_file_name(entry->file_name, raw_output),
-			entry->header.line_idx);
+			dt);
+		if (!hide_location)
+			fprintf(out_fd, "(%s:%u) ",
+				format_file_name(entry->file_name, raw_output),
+				entry->header.line_idx);
 	} else {
 		/* timestamp */
 		fprintf(out_fd, "%s[%16.6f] (%16.6f)%s ",
@@ -344,9 +350,10 @@ static void print_entry_params(FILE *out_fd,
 			use_colors ? KNRM : "");
 
 		/* location */
-		fprintf(out_fd, "%24s:%-4u  ",
-			format_file_name(entry->file_name, raw_output),
-			entry->header.line_idx);
+		if (!hide_location)
+			fprintf(out_fd, "%24s:%-4u ",
+				format_file_name(entry->file_name, raw_output),
+				entry->header.line_idx);
 
 		/* level name */
 		fprintf(out_fd, "%s%s",
@@ -498,7 +505,7 @@ static int fetch_entry(const struct convert_config *config,
 			   config->uids_dict,
 			   dma_log, &entry, *last_timestamp,
 			   config->clock, config->use_colors,
-			   config->raw_output);
+			   config->raw_output, config->hide_location);
 	*last_timestamp = dma_log->timestamp;
 
 	/* set f_ldc file position to the beginning */
@@ -576,7 +583,7 @@ static int logger_read(const struct convert_config *config,
 	uint64_t last_timestamp = 0;
 
 	if (!config->raw_output)
-		print_table_header(config->out_fd);
+		print_table_header(config->out_fd, config->hide_location);
 
 	if (config->serial_fd >= 0)
 		/* Wait for CTRL-C */
