@@ -17,16 +17,34 @@
 struct k_work_q ll_workq;
 K_THREAD_STACK_DEFINE(ll_workq_stack, 8192);
 
+/*
+ * TODO: Zephyr LL scheduler needs to be based on audio clock domain for accurate scheduling.
+ */
+
 static void ll_work_handler(struct k_work *work)
 {
 	struct task *task = CONTAINER_OF(work, struct task, z_delayed_work);
+	enum task_state state;
 
-	task->state = SOF_TASK_STATE_RUNNING;
+	/* check state prior to start */
+	switch (task->state) {
+	case SOF_TASK_STATE_QUEUED:
+	case SOF_TASK_STATE_PENDING:
+		task->state = SOF_TASK_STATE_RUNNING;
+		task->state = task_run(task);
+	default:
+			/* no need to do work now */
+			return;
+	}
 
-	if (task->ops.run)
-		task->ops.run(task->data);
-
-	task->state = SOF_TASK_STATE_COMPLETED;
+	/* do we need to reschedule ? */
+	switch (task->state) {
+	case SOF_TASK_STATE_RESCHEDULE:
+		/* TODO: hard codec to 1ms */
+		schedule_task(task, 1000, 0);
+	default:
+		break;
+	}
 }
 
 /* schedule task */
@@ -35,6 +53,10 @@ static int schedule_ll_task(struct task *task, uint64_t start,
 {
 	k_timeout_t start_time = K_USEC(start);
 
+	/* SOF start time of task */
+	task->start = start + platform_timer_get(NULL);
+
+	/* start work - zephyr using CCOUNT DSP clock domain */
 	k_delayed_work_submit_to_queue(&ll_workq,
 				       &task->z_delayed_work,
 					   start_time);
@@ -77,26 +99,32 @@ struct scheduler_ops schedule_ll_ops = {
 	.scheduler_run		= NULL,
 };
 
+static int ll_init_complete = 0;
+
 int scheduler_init_ll(struct ll_schedule_domain *domain)
 {
-	trace_ll("ll_scheduler_init()");
-
-	k_work_q_start(&ll_workq,
+	/* only perform the work init once */
+	if (!ll_init_complete) {
+		k_work_q_start(&ll_workq,
 		       ll_workq_stack,
 		       K_THREAD_STACK_SIZEOF(ll_workq_stack),
 		       -1);
-	k_thread_name_set(&ll_workq.thread, "ll_workq");
+		k_thread_name_set(&ll_workq.thread, "ll_workq");
+		ll_init_complete = 1;
+	}
 
-	/* TODO: we are scheduling work on timers atm, TOD DMA */
+	/* LL work is either schedule by timer IRQ or DMA IRQ */
 	switch (domain->type) {
 	case SOF_SCHEDULE_LL_TIMER:
+		trace_ll("ll_scheduler_init() TIMER");
 		scheduler_init(SOF_SCHEDULE_LL_TIMER, &schedule_ll_ops, NULL);
 		break;
 	case SOF_SCHEDULE_LL_DMA:
+		trace_ll("ll_scheduler_init() DMA");
 		scheduler_init(SOF_SCHEDULE_LL_DMA, &schedule_ll_ops, NULL);
 		break;
 	default:
-		// panic;
+		assert(0);
 		break;
 	}
 
