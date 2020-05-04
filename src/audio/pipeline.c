@@ -1114,6 +1114,7 @@ static enum task_state pipeline_task(void *arg)
 {
 	struct pipeline *p = arg;
 	int err;
+	uint64_t time;
 
 	pipe_dbg(p, "pipeline_task()");
 
@@ -1137,7 +1138,8 @@ static enum task_state pipeline_task(void *arg)
 		}
 	}
 
-	pipe_dbg(p, "pipeline_task() sched");
+	time = platform_timer_get(NULL);
+	pipe_cl_info("pipeline_task() sched %d.%d", (uint32_t)(time >> 32), (uint32_t)(time & 0xffffffff));
 
 	return SOF_TASK_STATE_RESCHEDULE;
 }
