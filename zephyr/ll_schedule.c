@@ -10,6 +10,9 @@
 #include <sof/schedule/ll_schedule.h>
 #include <sof/schedule/ll_schedule_domain.h>
 #include <sof/lib/wait.h>
+#include <sof/lib/clk.h>
+#include <sof/audio/pipeline.h>
+#include <sof/trace/trace.h>
 
 #include <kernel.h>
 #include <sys_clock.h>
@@ -21,10 +24,15 @@ K_THREAD_STACK_DEFINE(ll_workq_stack, 8192);
  * TODO: Zephyr LL scheduler needs to be based on audio clock domain for accurate scheduling.
  */
 
+#define SCHEDULING_COST	100
+
 static void ll_work_handler(struct k_work *work)
 {
 	struct task *task = CONTAINER_OF(work, struct task, z_delayed_work);
-	enum task_state state;
+	uint64_t next_start, ticks;
+	uint64_t ticks_us = clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1) * 1000;
+
+	//_log_message(LOG_LEVEL_INF, 1, " work handler task %p", task);
 
 	/* check state prior to start */
 	switch (task->state) {
@@ -32,6 +40,7 @@ static void ll_work_handler(struct k_work *work)
 	case SOF_TASK_STATE_PENDING:
 		task->state = SOF_TASK_STATE_RUNNING;
 		task->state = task_run(task);
+		break;
 	default:
 			/* no need to do work now */
 			return;
@@ -40,8 +49,12 @@ static void ll_work_handler(struct k_work *work)
 	/* do we need to reschedule ? */
 	switch (task->state) {
 	case SOF_TASK_STATE_RESCHEDULE:
-		/* TODO: hard codec to 1ms */
-		schedule_task(task, 1000, 0);
+		ticks = platform_timer_get(NULL) - task->start;
+		next_start = ticks_us / ticks;
+		next_start = task->period - (next_start / 1000);
+
+		schedule_task(task, next_start - SCHEDULING_COST, task->period);
+		break;
 	default:
 		break;
 	}
@@ -52,16 +65,21 @@ static int schedule_ll_task(struct task *task, uint64_t start,
 			      uint64_t period)
 {
 	k_timeout_t start_time = K_USEC(start);
+	uint64_t ticks_ms = clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1);
+
+	/* start in local timebase */
+	task->start = (start * ticks_ms) / 1000;
 
 	/* SOF start time of task */
-	task->start = start + platform_timer_get(NULL);
+	task->period = period;
+	task->start += platform_timer_get(NULL);
+	task->state = SOF_TASK_STATE_QUEUED;
 
 	/* start work - zephyr using CCOUNT DSP clock domain */
 	k_delayed_work_submit_to_queue(&ll_workq,
 				       &task->z_delayed_work,
 					   start_time);
 
-	task->state = SOF_TASK_STATE_QUEUED;
 	return 0;
 }
 

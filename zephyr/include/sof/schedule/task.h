@@ -53,6 +53,7 @@ struct scheduler_ops;
 /** \brief Task used by schedulers. */
 struct task {
 	uint64_t start;		/**< start time */
+	uint64_t period;		/**< period */
 	uint32_t uid;		/**< Uuid */
 	uint16_t type;		/**< type of the task (LL or EDF) */
 	uint16_t priority;	/**< priority of the task (used by LL) */
