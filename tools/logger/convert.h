@@ -37,6 +37,7 @@ struct convert_config {
 	int serial_fd;
 	int raw_output;
 	int dump_ldc;
+	int hide_location;
 	struct snd_sof_uids_header *uids_dict;
 };
 
