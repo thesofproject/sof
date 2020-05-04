@@ -56,16 +56,9 @@ DECLARE_SOF_RT_UUID("kd-test", keyword_uuid, 0xeba8d51f, 0x7827, 0x47b5,
 
 DECLARE_TR_CTX(keyword_tr, SOF_UUID(keyword_uuid), LOG_LEVEL_INFO);
 
-struct model_data {
-	uint32_t data_size;
-	void *data;
-	uint32_t crc;
-	uint32_t data_pos; /**< current copy position for model data */
-};
-
 struct comp_data {
 	struct sof_detect_test_config config;
-	struct model_data model;
+	struct comp_model_data model;
 	int32_t activation;
 	uint32_t detected;
 	uint32_t detect_preamble; /**< current keyphrase preamble length */
@@ -199,48 +192,6 @@ static void default_detect_test(struct comp_dev *dev,
 	}
 }
 
-static void free_mem_load(struct comp_data *cd)
-{
-	if (!cd) {
-		comp_cl_err(&comp_keyword, "free_mem_load(): invalid cd");
-		return;
-	}
-
-	if (cd->model.data) {
-		rfree(cd->model.data);
-		cd->model.data = NULL;
-		cd->model.data_size = 0;
-		cd->model.crc = 0;
-		cd->model.data_pos = 0;
-	}
-}
-
-static int alloc_mem_load(struct comp_data *cd, uint32_t size)
-{
-	if (!size)
-		return 0;
-
-	if (!cd) {
-		comp_cl_err(&comp_keyword, "alloc_mem_load(): invalid cd");
-		return -EINVAL;
-	}
-
-	free_mem_load(cd);
-
-	cd->model.data = rballoc(0, SOF_MEM_CAPS_RAM, size);
-
-	if (!cd->model.data) {
-		comp_cl_err(&comp_keyword, "alloc_mem_load() alloc failed");
-		return -ENOMEM;
-	}
-
-	bzero(cd->model.data, size);
-	cd->model.data_size = size;
-	cd->model.data_pos = 0;
-
-	return 0;
-}
-
 static int test_keyword_get_threshold(struct comp_dev *dev, int sample_width)
 {
 	switch (sample_width) {
@@ -335,7 +286,7 @@ static struct comp_dev *test_keyword_new(const struct comp_driver *drv,
 		}
 	}
 
-	ret = alloc_mem_load(cd, INITIAL_MODEL_DATA_SIZE);
+	ret = comp_alloc_model_data(dev, &cd->model, INITIAL_MODEL_DATA_SIZE);
 	if (ret < 0) {
 		comp_err(dev, "test_keyword_new(): model data initial failed");
 		goto fail;
@@ -369,7 +320,7 @@ static void test_keyword_free(struct comp_dev *dev)
 	comp_info(dev, "test_keyword_free()");
 
 	ipc_msg_free(cd->msg);
-	free_mem_load(cd);
+	comp_free_model_data(dev, &cd->model);
 	rfree(cd);
 	rfree(dev);
 }
@@ -456,69 +407,13 @@ static int test_keyword_set_config(struct comp_dev *dev,
 	return test_keyword_apply_config(dev, cfg);
 }
 
-static int test_keyword_set_model(struct comp_dev *dev,
-				  struct sof_ipc_ctrl_data *cdata)
-{
-	struct comp_data *cd = comp_get_drvdata(dev);
-	int ret = 0;
-	bool done = false;
-
-	comp_dbg(dev, "keyword_ctrl_set_model() msg_index = %d, num_elems = %d, remaining = %d ",
-		 cdata->msg_index, cdata->num_elems,
-		 cdata->elems_remaining);
-
-	if (!cdata->msg_index) {
-		ret = alloc_mem_load(cd, cdata->data->size);
-		if (ret < 0)
-			return ret;
-	}
-
-	if (!cd->model.data) {
-		comp_err(dev, "keyword_ctrl_set_model(): buffer not allocated");
-		return -EINVAL;
-	}
-
-	if (!cdata->elems_remaining) {
-		if (cdata->num_elems + cd->model.data_pos <
-		    cd->model.data_size) {
-			comp_err(dev, "keyword_ctrl_set_model(): not enough data to fill the buffer");
-
-			/* TODO: anything to do in such a situation? */
-
-			return -EINVAL;
-		}
-
-		done = true;
-		comp_info(dev, "test_keyword_set_model() final packet received");
-	}
-
-	if (cdata->num_elems >
-	    cd->model.data_size - cd->model.data_pos) {
-		comp_err(dev, "keyword_ctrl_set_model(): too much data");
-		return -EINVAL;
-	}
-
-	ret = memcpy_s((char *)cd->model.data + cd->model.data_pos,
-		       cd->model.data_size - cd->model.data_pos,
-		       cdata->data->data, cdata->num_elems);
-	assert(!ret);
-
-	cd->model.data_pos += cdata->num_elems;
-
-	if (done) {
-		/* Set model data done, update crc value */
-		cd->model.crc = crc32(0, cd->model.data,
-				      cd->model.data_size);
-		comp_info(dev, "keyword_ctrl_set_model() done, memory_size = 0x%x, crc = 0x%08x",
-			  cd->model.data_size, cd->model.crc);
-	}
-	return 0;
-}
-
 static int test_keyword_ctrl_set_bin_data(struct comp_dev *dev,
 					  struct sof_ipc_ctrl_data *cdata)
 {
+	struct comp_data *cd = comp_get_drvdata(dev);
 	int ret = 0;
+
+	assert(cd);
 
 	if (dev->state != COMP_STATE_READY) {
 		/* It is a valid request but currently this is not
@@ -536,7 +431,7 @@ static int test_keyword_ctrl_set_bin_data(struct comp_dev *dev,
 		ret = test_keyword_set_config(dev, cdata);
 		break;
 	case SOF_DETECT_TEST_MODEL:
-		ret = test_keyword_set_model(dev, cdata);
+		ret = comp_set_model(dev, &cd->model, cdata);
 		break;
 	default:
 		comp_err(dev, "keyword_ctrl_set_bin_data(): unknown binary data type");
@@ -599,62 +494,21 @@ static int test_keyword_get_config(struct comp_dev *dev,
 	return ret;
 }
 
-static int test_keyword_get_model(struct comp_dev *dev,
-				  struct sof_ipc_ctrl_data *cdata, int size)
-{
-	struct comp_data *cd = comp_get_drvdata(dev);
-	size_t bs;
-	int ret = 0;
-
-	comp_dbg(dev, "test_keyword_get_model() msg_index = %d, num_elems = %d, remaining = %d ",
-		 cdata->msg_index, cdata->num_elems,
-		 cdata->elems_remaining);
-
-	/* Copy back to user space */
-	if (cd->model.data) {
-		if (!cdata->msg_index) {
-			/* reset copy offset */
-			cd->model.data_pos = 0;
-			comp_info(dev, "test_keyword_get_model() model data_size = 0x%x, crc = 0x%08x",
-				  cd->model.data_size, cd->model.crc);
-		}
-
-		bs = cdata->num_elems;
-		if (bs > size) {
-			comp_err(dev, "test_keyword_get_model(): invalid size %d",
-				 bs);
-			return -EINVAL;
-		}
-
-		ret = memcpy_s(cdata->data->data, size,
-			       (char *)cd->model.data + cd->model.data_pos,
-			       bs);
-		assert(!ret);
-
-		cdata->data->abi = SOF_ABI_VERSION;
-		cdata->data->size = cd->model.data_size;
-		cd->model.data_pos += bs;
-
-	} else {
-		comp_err(dev, "test_keyword_get_model(): invalid cd->config");
-		ret = -EINVAL;
-	}
-
-	return ret;
-}
-
 static int test_keyword_ctrl_get_bin_data(struct comp_dev *dev,
 					  struct sof_ipc_ctrl_data *cdata,
 					  int size)
 {
+	struct comp_data *cd = comp_get_drvdata(dev);
 	int ret = 0;
+
+	assert(cd);
 
 	switch (cdata->data->type) {
 	case SOF_DETECT_TEST_CONFIG:
 		ret = test_keyword_get_config(dev, cdata, size);
 		break;
 	case SOF_DETECT_TEST_MODEL:
-		ret = test_keyword_get_model(dev, cdata, size);
+		ret = comp_get_model(dev, &cd->model, cdata, size);
 		break;
 	default:
 		comp_err(dev, "test_keyword_ctrl_get_bin_data(): unknown binary data type");
