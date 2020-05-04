@@ -284,15 +284,21 @@ int task_main_start(struct sof *sof)
 	sys_comp_mixer_init();
 	sys_comp_dai_init();
 	sys_comp_src_init();
+
+	/* only CAVS18+ have enough memory for these */
+#if defined CONFIG_SOC_SERIES_INTEL_CAVS_V18 ||\
+	defined CONFIG_SOC_SERIES_INTEL_CAVS_V20 ||\
+	defined CONFIG_SOC_SERIES_INTEL_CAVS_V25
 	//sys_comp_mux_init();   // needs more symbols.
-	//sys_comp_selector_init();
-	//sys_comp_switch_init();
-	//sys_comp_tone_init();
-	//sys_comp_eq_fir_init();
-	//sys_comp_keyword_init();
-	//sys_comp_asrc_init();
-	//sys_comp_dcblock_init();
-	//sys_comp_eq_iir_init();
+	sys_comp_selector_init();
+	sys_comp_switch_init();
+	sys_comp_tone_init();
+	sys_comp_eq_fir_init();
+	sys_comp_keyword_init();
+	sys_comp_asrc_init();
+	sys_comp_dcblock_init();
+	sys_comp_eq_iir_init();
+#endif
 
 	/* init pipeline position offsets */
 	pipeline_posn_init(sof);
