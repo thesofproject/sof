@@ -166,8 +166,7 @@ void platform_interrupt_init(void)
 
 uint64_t arch_timer_get_system(struct timer *timer)
 {
-	/* copy from SOF */
-	return 0;
+	return platform_timer_get(timer);
 }
 
 /*
@@ -211,6 +210,9 @@ unsigned int _xtos_ints_off( unsigned int mask )
  * init audio components.
  */
 
+/* TODO: this is not yet working with Zephyr - section hase been created but
+ *  no symbols are being loaded into ELF file.
+ */
 extern intptr_t _module_init_start;
 extern intptr_t _module_init_end;
 
