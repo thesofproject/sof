@@ -472,6 +472,16 @@ struct comp_copy_limits {
 	int sink_frame_bytes;
 };
 
+/** \brief Struct for large component configs */
+struct comp_model_data {
+	uint32_t data_size;	/**< size of component's model data */
+	void *data;		/**< pointer to model data */
+	uint32_t crc;		/**< crc value of model data */
+	uint32_t data_pos;	/**< indicates a data position in data
+				  *  sending/receiving process
+				  */
+};
+
 /** \brief Computes size of the component device including ipc config. */
 #define COMP_SIZE(x) \
 	(sizeof(struct comp_dev) - sizeof(struct sof_ipc_comp) + sizeof(x))
@@ -724,6 +734,45 @@ void comp_get_copy_limits_with_lock(struct comp_buffer *source,
 	buffer_unlock(sink, sink_flags);
 	buffer_unlock(source, source_flags);
 }
+
+/**
+ * Frees data for large component configurations.
+ *
+ * @param dev Component device
+ * @param model Component model struct
+ */
+void comp_free_model_data(struct comp_dev *dev, struct comp_model_data *model);
+
+/**
+ * Allocates data for large component configurations.
+ *
+ * @param dev Component device
+ * @param model Component model struct
+ * @param size Required size.
+ */
+int comp_alloc_model_data(struct comp_dev *dev, struct comp_model_data *model,
+			  uint32_t size);
+
+/**
+ * Gets model data for large component configurations.
+ *
+ * @param dev Component device
+ * @param model Component model struct
+ * @param cdata IPC ctrl data
+ */
+int comp_set_model(struct comp_dev *dev, struct comp_model_data *model,
+		   struct sof_ipc_ctrl_data *cdata);
+/**
+ *
+ * Set model data for large component configurations.
+ *
+ * @param dev Component device
+ * @param model Component model struct
+ * @param cdata IPC ctrl data
+ * @param size Required size
+ */
+int comp_get_model(struct comp_dev *dev, struct comp_model_data *model,
+		   struct sof_ipc_ctrl_data *cdata, int size);
 
 /**
  * Called by component in  params() function in order to set and update some of
