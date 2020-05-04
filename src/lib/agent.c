@@ -94,8 +94,9 @@ void sa_init(struct sof *sof, uint64_t timeout)
 	sof->sa->warn_timeout = ticks + ticks / 20;	/* 5% delay */
 
 	atomic_init(&sof->sa->panic_cnt, 0);
+#if !defined __ZEPHYR__
 	sof->sa->panic_on_delay = true;
-
+#endif
 	trace_sa("sa_init(), ticks = %u, sof->sa->warn_timeout = %u, sof->sa->panic_timeout = %u",
 		 ticks, sof->sa->warn_timeout, sof->sa->panic_timeout);
 
