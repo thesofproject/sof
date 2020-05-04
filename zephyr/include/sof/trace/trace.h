@@ -12,6 +12,11 @@
 LOG_MODULE_DECLARE(sof, LOG_LEVEL_DBG);
 #endif
 
+#include <sof-config.h>
+
+struct timer;
+uint64_t platform_timer_get(struct timer *);
+
 #include <user/trace.h>
 
 #define trace_point(x)
@@ -30,8 +35,13 @@ LOG_MODULE_DECLARE(sof, LOG_LEVEL_DBG);
 	_log_message(LOG_LEVEL_WRN, class, format,  ##__VA_ARGS__)
 
 /* TODO: Verbose handling */
+#if CONFIG_TRACE_VERBOSE
 #define tracev_event(...)		trace_event(__VA_ARGS__)
 #define tracev_event_with_ids(...)	trace_event_with_ids(__VA_ARGS__)
+#else
+#define tracev_event(...)
+#define tracev_event_with_ids(...)
+#endif
 #define tracev_event_atomic(...)
 #define tracev_event_atomic_with_ids(...)
 #define tracev_value(x)
@@ -64,7 +74,7 @@ char *get_trace_class(uint32_t trace_class);
 
 #define _log_message(level, class, format, ...)				\
 	do {								\
-		Z_LOG(level, "%s " format, get_trace_class(class),	\
+		Z_LOG(level, "%d:%s " format, (uint32_t)(platform_timer_get(NULL) & 0xffffffff), get_trace_class(class),	\
 		      ##__VA_ARGS__);					\
 	} while (0)
 
