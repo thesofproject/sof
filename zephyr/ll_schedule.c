@@ -110,7 +110,7 @@ int schedule_task_init_ll(struct task *task,
 {
 	int ret = 0;
 
-	ret = schedule_task_init(task, uid, SOF_SCHEDULE_EDF, 0, run, data,
+	ret = schedule_task_init(task, uid, type, 0, run, data,
 					 core, flags);
 	if (ret < 0)
 		return ret;
