@@ -938,6 +938,7 @@ void pipeline_get_timestamp(struct pipeline *p, struct comp_dev *host,
 
 	/* set timestamp resolution */
 	posn->timestamp_ns = p->ipc_pipe.period * 1000;
+	pipe_err(p, "pipe stamp %d", posn->timestamp_ns);
 }
 
 static int pipeline_comp_xrun(struct comp_dev *current,
@@ -1061,6 +1062,7 @@ static enum task_state pipeline_task(void *arg)
 {
 	struct pipeline *p = arg;
 	int err;
+	uint64_t time;
 
 	pipe_dbg(p, "pipeline_task()");
 
@@ -1084,7 +1086,8 @@ static enum task_state pipeline_task(void *arg)
 		}
 	}
 
-	pipe_cl_dbg("pipeline_task() sched");
+	time = platform_timer_get(NULL);
+	pipe_cl_info("pipeline_task() sched %d.%d", (uint32_t)(time >> 32), (uint32_t)(time & 0xffffffff));
 
 	return SOF_TASK_STATE_RESCHEDULE;
 }
