@@ -204,13 +204,18 @@ static double to_usecs(uint64_t time, double clk)
 }
 
 
-static inline void print_table_header(FILE *out_fd, int hide_location)
+static inline void print_table_header(FILE *out_fd, int hide_location,
+				      int float_precision)
 {
-	fprintf(out_fd, "%18s %18s %2s %-18s",
-		"TIMESTAMP", "DELTA", "C#", "COMPONENT");
+	char time_fmt[32];
+
+	snprintf(time_fmt, sizeof(time_fmt), "%%%ds %%%ds ",
+		 float_precision + 12, float_precision + 12);
+	fprintf(out_fd, time_fmt, "TIMESTAMP", "DELTA");
+	fprintf(out_fd, "%2s %-18s ", "C#", "COMPONENT");
 	if (!hide_location)
-		fprintf(out_fd, " %-29s", "LOCATION");
-	fprintf(out_fd, "  %s\n", "CONTENT");
+		fprintf(out_fd, "%-29s ", "LOCATION");
+	fprintf(out_fd, "%s\n", "CONTENT");
 
 	fflush(out_fd);
 }
@@ -319,11 +324,12 @@ static void print_entry_params(FILE *out_fd,
 	const struct snd_sof_uids_header *uids_dict,
 	const struct log_entry_header *dma_log, const struct ldc_entry *entry,
 	uint64_t last_timestamp, double clock, int use_colors, int raw_output,
-	int hide_location)
+	int hide_location, int float_precision)
 {
 	char ids[TRACE_MAX_IDS_STR];
 	float dt = to_usecs(dma_log->timestamp - last_timestamp, clock);
 	struct proc_ldc_entry proc_entry;
+	static char time_fmt[32];
 
 	if (raw_output)
 		use_colors = 0;
@@ -339,7 +345,10 @@ static void print_entry_params(FILE *out_fd,
 		ids[0] = '\0';
 
 	if (raw_output) {
-		const char *entry_fmt = "%s%u %u %s%s%s %.6f %.6f ";
+		const char *entry_fmt = "%s%u %u %s%s%s ";
+
+		snprintf(time_fmt, sizeof(time_fmt), "%%.%df %%.%df ",
+			 float_precision, float_precision);
 
 		fprintf(out_fd, entry_fmt,
 			entry->header.level == use_colors ?
@@ -350,8 +359,8 @@ static void print_entry_params(FILE *out_fd,
 					   entry->header.component_class,
 					   dma_log->uid),
 			raw_output && strlen(ids) ? "-" : "",
-			ids,
-			to_usecs(dma_log->timestamp, clock),
+			ids);
+		fprintf(out_fd, time_fmt, to_usecs(dma_log->timestamp, clock),
 			dt);
 		if (!hide_location)
 			fprintf(out_fd, "(%s:%u) ",
@@ -359,7 +368,11 @@ static void print_entry_params(FILE *out_fd,
 				entry->header.line_idx);
 	} else {
 		/* timestamp */
-		fprintf(out_fd, "%s[%16.6f] (%16.6f)%s ",
+		snprintf(time_fmt, sizeof(time_fmt),
+			 "%%s[%%%d.%df] (%%%d.%df)%%s ",
+			 float_precision + 10, float_precision,
+			 float_precision + 10, float_precision);
+		fprintf(out_fd, time_fmt,
 			use_colors ? KGRN : "",
 			to_usecs(dma_log->timestamp, clock), dt,
 			use_colors ? KNRM : "");
@@ -532,7 +545,8 @@ static int fetch_entry(const struct convert_config *config,
 			   config->uids_dict,
 			   dma_log, &entry, *last_timestamp,
 			   config->clock, config->use_colors,
-			   config->raw_output, config->hide_location);
+			   config->raw_output, config->hide_location,
+			   config->float_precision);
 	*last_timestamp = dma_log->timestamp;
 
 	/* set f_ldc file position to the beginning */
@@ -610,7 +624,8 @@ static int logger_read(const struct convert_config *config,
 	uint64_t last_timestamp = 0;
 
 	if (!config->raw_output)
-		print_table_header(config->out_fd, config->hide_location);
+		print_table_header(config->out_fd, config->hide_location,
+				   config->float_precision);
 
 	if (config->serial_fd >= 0)
 		/* Wait for CTRL-C */
