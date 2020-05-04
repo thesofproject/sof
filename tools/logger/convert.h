@@ -38,6 +38,7 @@ struct convert_config {
 	int raw_output;
 	int dump_ldc;
 	int hide_location;
+	int float_precision;
 	struct snd_sof_uids_header *uids_dict;
 };
 

@@ -53,6 +53,8 @@ static void usage(void)
 		APP_NAME);
 	fprintf(stdout, "%s:\t -L\t\t\tHide log location in source code\n",
 		APP_NAME);
+	fprintf(stdout, "%s:\t -f precision\t\t\tset timestamp precision\n",
+		APP_NAME);
 	fprintf(stdout, "%s:\t -d\t\t\tDump ldc information\n", APP_NAME);
 	exit(0);
 }
@@ -160,8 +162,9 @@ int main(int argc, char *argv[])
 	config.raw_output = 0;
 	config.dump_ldc = 0;
 	config.hide_location = 0;
+	config.float_precision = 6;
 
-	while ((opt = getopt(argc, argv, "ho:i:l:ps:c:u:tev:rdL")) != -1) {
+	while ((opt = getopt(argc, argv, "ho:i:l:ps:c:u:tev:rdLf:")) != -1) {
 		switch (opt) {
 		case 'o':
 			config.out_file = optarg;
@@ -204,6 +207,13 @@ int main(int argc, char *argv[])
 			break;
 		case 'L':
 			config.hide_location = 1;
+			break;
+		case 'f':
+			config.float_precision = atoi(optarg);
+			if (config.float_precision < 0) {
+				usage();
+				return -EINVAL;
+			}
 			break;
 		case 'd':
 			config.dump_ldc = 1;
