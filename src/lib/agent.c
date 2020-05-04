@@ -66,9 +66,13 @@ static enum task_state validate(void *data)
 
 	/* warning timeout */
 	if (delta > sa->warn_timeout)
+#if !defined __ZEPHYR__
 		trace_sa_warn("validate(), ll drift detected, delta = %llu",
 			      delta);
-
+#else
+		trace_sa_warn("validate(), ll drift detected, delta = %u",
+				      (uint32_t)delta);
+#endif
 	/* update last_check to current */
 	sa->last_check = current;
 
