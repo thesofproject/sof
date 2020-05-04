@@ -38,6 +38,11 @@ void pipeline_xrun(struct pipeline *p, struct comp_dev *dev, int32_t bytes)
 {
 }
 
+uint32_t crc32(uint32_t base, const void *data, uint32_t bytes)
+{
+	return 0;
+}
+
 struct sof *sof_get(void)
 {
 	return &sof;

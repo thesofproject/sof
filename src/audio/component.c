@@ -326,6 +326,158 @@ int comp_verify_params(struct comp_dev *dev, uint32_t flag,
 	return 0;
 }
 
+void comp_free_model_data(struct comp_dev *dev, struct comp_model_data *model)
+{
+	if (!model->data)
+		return;
+
+	rfree(model->data);
+	model->data = NULL;
+	model->data_size = 0;
+	model->crc = 0;
+	model->data_pos = 0;
+}
+
+int  comp_alloc_model_data(struct comp_dev *dev, struct comp_model_data *model,
+			   uint32_t size)
+{
+	if (!size)
+		return 0;
+
+	comp_free_model_data(dev, model);
+
+	model->data = rballoc(0, SOF_MEM_CAPS_RAM, size);
+
+	if (!model->data) {
+		comp_err(dev, "comp_alloc_model_data(): model->data rballoc failed");
+		return -ENOMEM;
+	}
+
+	bzero(model->data, size);
+	model->data_size = size;
+	model->data_pos = 0;
+	model->crc = 0;
+
+	return 0;
+}
+
+int comp_set_model(struct comp_dev *dev, struct comp_model_data *model,
+		   struct sof_ipc_ctrl_data *cdata)
+{
+	bool done = false;
+	int ret = 0;
+
+	comp_dbg(dev, "comp_set_model() msg_index = %d, num_elems = %d, remaining = %d ",
+		 cdata->msg_index, cdata->num_elems,
+		 cdata->elems_remaining);
+
+	/* in case when the current package is the first, we should allocate
+	 * memory for whole model data
+	 */
+	if (!cdata->msg_index) {
+		ret = comp_alloc_model_data(dev, model, cdata->data->size);
+		if (ret < 0)
+			return ret;
+	}
+
+	/* return an error in case when we do not have allocated memory for
+	 * model data
+	 */
+	if (!model->data) {
+		comp_err(dev, "comp_set_model(): buffer not allocated");
+		return -ENOMEM;
+	}
+
+	if (!cdata->elems_remaining) {
+		/* when we receive the last package and do not fill the whole
+		 * allocated buffer, we return an error
+		 */
+		if (cdata->num_elems + model->data_pos < model->data_size) {
+			comp_err(dev, "comp_set_model(): not enough data to fill the buffer");
+			// TODO: handle this situation
+
+			return -EINVAL;
+		}
+
+		/* the whole data were received properly */
+		done = true;
+		comp_dbg(dev, "comp_set_model(): final package received");
+	}
+
+	/* return an error in case when received data exceed allocated
+	 * memory
+	 */
+	if (cdata->num_elems > model->data_size - model->data_pos) {
+		comp_err(dev, "comp_set_model(): too much data");
+		return -EINVAL;
+	}
+
+	ret = memcpy_s((char *)model->data + model->data_pos,
+		       model->data_size - model->data_pos,
+		       cdata->data->data, cdata->num_elems);
+	assert(!ret);
+
+	/* update data_pos variable with received number of elements (num_elem)
+	 */
+	model->data_pos += cdata->num_elems;
+
+	/* Update crc value when done */
+	if (done) {
+		model->crc = crc32(0, model->data, model->data_size);
+		comp_dbg(dev, "comp_set_model() done, memory_size = 0x%x, crc = 0x%08x",
+			 model->data_size, model->crc);
+	}
+
+	return 0;
+}
+
+int comp_get_model(struct comp_dev *dev, struct comp_model_data *model,
+		   struct sof_ipc_ctrl_data *cdata, int size)
+{
+	size_t bs;
+	int ret = 0;
+
+	comp_dbg(dev, "comp_get_model() msg_index = %d, num_elems = %d, remaining = %d ",
+		 cdata->msg_index, cdata->num_elems,
+		 cdata->elems_remaining);
+
+	/* Copy back to user space */
+	if (model->data) {
+		/* reset data_pos variable in case of copying first element */
+		if (!cdata->msg_index) {
+			model->data_pos = 0;
+			comp_dbg(dev, "comp_get_model() model data_size = 0x%x",
+				 model->data_size);
+		}
+
+		bs = cdata->num_elems;
+
+		/* return an error in case of mismatch between num_elems and
+		 * required size
+		 */
+		if (bs > size) {
+			comp_err(dev, "comp_get_model(): invalid size %d", bs);
+			return -EINVAL;
+		}
+
+		/* copy required size of data */
+		ret = memcpy_s(cdata->data->data, size,
+			       (char *)model->data + model->data_pos,
+			       bs);
+		assert(!ret);
+
+		cdata->data->abi = SOF_ABI_VERSION;
+		cdata->data->size = model->data_size;
+		model->data_pos += bs;
+
+	} else {
+		comp_err(dev, "comp_get_model(): !model->data");
+		ret = -EINVAL;
+	}
+
+	return ret;
+}
+
 struct comp_dev *comp_make_shared(struct comp_dev *dev)
 {
 	struct list_item *old_bsource_list = &dev->bsource_list;
