@@ -52,6 +52,7 @@ struct dai_data {
 	struct timestamp_cfg ts_config;
 	struct dai *dai;
 	struct dma *dma;
+	struct dai_group *group;	/**< NULL if no group assigned */
 	int xrun;		/* true if we are doing xrun recovery */
 
 	pcm_converter_func process;	/* processing function */
@@ -65,6 +66,41 @@ struct dai_data {
 
 	uint64_t wallclock;	/* wall clock at stream start */
 };
+
+static void dai_atomic_trigger(void *arg, enum notify_id type, void *data);
+
+/* Assign DAI to a group */
+static int dai_assign_group(struct comp_dev *dev, uint32_t group_id)
+{
+	struct dai_data *dd = comp_get_drvdata(dev);
+
+	if (dd->group) {
+		if (dd->group->group_id != group_id) {
+			comp_err(dev, "dai_assign_group(), DAI already in group %d, requested %d",
+				 dd->group->group_id, group_id);
+			return -EINVAL;
+		}
+
+		/* No need to re-assign to the same group, do nothing */
+		return 0;
+	}
+
+	dd->group = dai_group_get(group_id, DAI_CREAT);
+	if (!dd->group) {
+		comp_err(dev, "dai_assign_group(), failed to assign group %d",
+			 group_id);
+		return -EINVAL;
+	}
+
+	comp_dbg(dev, "dai_assign_group(), group %d num %d",
+		 group_id, dd->group->num_dais);
+
+	/* Register for the atomic trigger event */
+	notifier_register(dev, dd->group, NOTIFIER_ID_DAI_TRIGGER,
+			  dai_atomic_trigger, 0);
+
+	return 0;
+}
 
 /* this is called by DMA driver every time descriptor has completed */
 static void dai_dma_cb(void *arg, enum notify_id type, void *data)
@@ -204,6 +240,11 @@ error:
 static void dai_free(struct comp_dev *dev)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
+
+	if (dd->group) {
+		notifier_unregister(dev, dd->group, NOTIFIER_ID_DAI_TRIGGER);
+		dai_group_put(dd->group);
+	}
 
 	if (dd->chan) {
 		notifier_unregister(dev, dd->chan, NOTIFIER_ID_DMA_COPY);
@@ -588,12 +629,12 @@ static void dai_update_start_position(struct comp_dev *dev)
 }
 
 /* used to pass standard and bespoke command (with data) to component */
-static int dai_comp_trigger(struct comp_dev *dev, int cmd)
+static int dai_comp_trigger_internal(struct comp_dev *dev, int cmd)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
 	int ret;
 
-	comp_dbg(dev, "dai_comp_trigger(), command = %u", cmd);
+	comp_dbg(dev, "dai_comp_trigger_internal(), command = %u", cmd);
 
 	ret = comp_set_state(dev, cmd);
 	if (ret < 0)
@@ -604,7 +645,7 @@ static int dai_comp_trigger(struct comp_dev *dev, int cmd)
 
 	switch (cmd) {
 	case COMP_TRIGGER_START:
-		comp_dbg(dev, "dai_comp_trigger(), START");
+		comp_dbg(dev, "dai_comp_trigger_internal(), START");
 
 		/* only start the DAI if we are not XRUN handling */
 		if (dd->xrun == 0) {
@@ -646,17 +687,17 @@ static int dai_comp_trigger(struct comp_dev *dev, int cmd)
 		dai_update_start_position(dev);
 		break;
 	case COMP_TRIGGER_XRUN:
-		comp_info(dev, "dai_comp_trigger(), XRUN");
+		comp_info(dev, "dai_comp_trigger_internal(), XRUN");
 		dd->xrun = 1;
 
 		/* fallthrough */
 	case COMP_TRIGGER_STOP:
-		comp_dbg(dev, "dai_comp_trigger(), STOP");
+		comp_dbg(dev, "dai_comp_trigger_internal(), STOP");
 		ret = dma_stop(dd->chan);
 		dai_trigger(dd->dai, cmd, dev->direction);
 		break;
 	case COMP_TRIGGER_PAUSE:
-		comp_dbg(dev, "dai_comp_trigger(), PAUSE");
+		comp_dbg(dev, "dai_comp_trigger_internal(), PAUSE");
 		ret = dma_pause(dd->chan);
 		dai_trigger(dd->dai, cmd, dev->direction);
 	default:
@@ -664,6 +705,72 @@ static int dai_comp_trigger(struct comp_dev *dev, int cmd)
 	}
 
 	return ret;
+}
+
+static int dai_comp_trigger(struct comp_dev *dev, int cmd)
+{
+	struct dai_data *dd = comp_get_drvdata(dev);
+	struct dai_group *group = dd->group;
+	uint32_t irq_flags;
+	int ret = 0;
+
+	/* DAI not in a group, use normal trigger */
+	if (!group) {
+		comp_dbg(dev, "dai_comp_trigger(), non-atomic trigger");
+		return dai_comp_trigger_internal(dev, cmd);
+	}
+
+	/* DAI is grouped, so only trigger when the entire group is ready */
+
+	if (!group->trigger_counter) {
+		/* First DAI to receive the trigger command,
+		 * prepare for atomic trigger
+		 */
+		comp_dbg(dev, "dai_comp_trigger(), begin atomic trigger for group %d",
+			 group->group_id);
+		group->trigger_cmd = cmd;
+		group->trigger_counter = group->num_dais - 1;
+	} else if (group->trigger_cmd != cmd) {
+		/* Already processing a different trigger command */
+		comp_err(dev, "dai_comp_trigger(), already processing atomic trigger");
+		ret = -EAGAIN;
+	} else {
+		/* Count down the number of remaining DAIs required
+		 * to receive the trigger command before atomic trigger
+		 * takes place
+		 */
+		group->trigger_counter--;
+		comp_dbg(dev, "dai_comp_trigger(), trigger counter %d, group %d",
+			 group->trigger_counter, group->group_id);
+
+		if (!group->trigger_counter) {
+			/* The counter has reached 0, which means
+			 * all DAIs have received the same trigger command
+			 * and we may begin the actual trigger process
+			 * synchronously.
+			 */
+
+			irq_local_disable(irq_flags);
+			notifier_event(group, NOTIFIER_ID_DAI_TRIGGER,
+				       BIT(cpu_get_id()), NULL, 0);
+			irq_local_enable(irq_flags);
+
+			/* return error of last trigger */
+			ret = group->trigger_ret;
+		}
+	}
+
+	return ret;
+}
+
+static void dai_atomic_trigger(void *arg, enum notify_id type, void *data)
+{
+	struct comp_dev *dev = arg;
+	struct dai_data *dd = comp_get_drvdata(dev);
+	struct dai_group *group = dd->group;
+
+	/* Atomic context set by the last DAI to receive trigger command */
+	group->trigger_ret = dai_comp_trigger_internal(dev, group->trigger_cmd);
 }
 
 /* report xrun occurrence */
@@ -763,6 +870,7 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 	struct sof_ipc_comp_dai *dai = COMP_GET_IPC(dev, sof_ipc_comp_dai);
 	int channel = 0;
 	int handshake;
+	int ret = 0;
 
 	comp_info(dev, "dai_config() dai type = %d index = %d",
 		  config->type, config->dai_index);
@@ -771,6 +879,13 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 	if (dev->state == COMP_STATE_ACTIVE) {
 		comp_err(dev, "dai_config(): Component is in active state.");
 		return -EINVAL;
+	}
+
+	if (config->group_id) {
+		ret = dai_assign_group(dev, config->group_id);
+
+		if (ret)
+			return ret;
 	}
 
 	switch (config->type) {
