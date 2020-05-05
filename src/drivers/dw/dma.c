@@ -999,6 +999,7 @@ static int dw_dma_remove(struct dma *dma)
 	return 0;
 }
 
+/* capture */
 static int dw_dma_avail_data_size(struct dma_chan_data *channel)
 {
 	struct dw_dma_chan_data *dw_chan = dma_chan_get_data(channel);
@@ -1013,9 +1014,13 @@ static int dw_dma_avail_data_size(struct dma_chan_data *channel)
 	if (!size)
 		trace_dwdma("dw_dma_avail_data_size() size is 0!");
 
+	tracev_dwdma("DAR %x reader 0x%x free 0x%x avail 0x%x", write_ptr,
+				read_ptr, dw_chan->ptr_data.buffer_bytes - size, size);
+
 	return size;
 }
 
+/* playback */
 static int dw_dma_free_data_size(struct dma_chan_data *channel)
 {
 	struct dw_dma_chan_data *dw_chan = dma_chan_get_data(channel);
@@ -1029,6 +1034,9 @@ static int dw_dma_free_data_size(struct dma_chan_data *channel)
 
 	if (!size)
 		trace_dwdma("dw_dma_free_data_size() size is 0!");
+
+	tracev_dwdma("SAR %x writer 0x%x free 0x%x avail 0x%x", read_ptr,
+				write_ptr, size, dw_chan->ptr_data.buffer_bytes - size);
 
 	return size;
 }
