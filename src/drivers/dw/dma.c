@@ -1036,6 +1036,7 @@ static int dw_dma_free_data_size(struct dma_chan_data *channel)
 static int dw_dma_get_data_size(struct dma_chan_data *channel,
 				uint32_t *avail, uint32_t *free)
 {
+	struct dw_dma_chan_data *dw_chan = dma_chan_get_data(channel);
 	uint32_t flags;
 	int ret = 0;
 
@@ -1044,6 +1045,16 @@ static int dw_dma_get_data_size(struct dma_chan_data *channel,
 
 	irq_local_disable(flags);
 
+	if (channel->direction == DMA_DIR_HMEM_TO_LMEM ||
+	    channel->direction == DMA_DIR_DEV_TO_MEM) {
+		*avail = dw_dma_avail_data_size(channel);
+		*free = dw_chan->ptr_data.buffer_bytes - *avail;
+	} else {
+		*free = dw_dma_free_data_size(channel);
+		*avail = dw_chan->ptr_data.buffer_bytes - *free;
+	}
+	irq_local_enable(flags);
+
 #if CONFIG_HW_LLI
 	if (!(dma_reg_read(channel->dma, DW_DMA_CHAN_EN) &
 	      DW_CHAN(channel->index))) {
@@ -1051,14 +1062,6 @@ static int dw_dma_get_data_size(struct dma_chan_data *channel,
 		return -ENODATA;
 	}
 #endif
-
-	if (channel->direction == DMA_DIR_HMEM_TO_LMEM ||
-	    channel->direction == DMA_DIR_DEV_TO_MEM)
-		*avail = dw_dma_avail_data_size(channel);
-	else
-		*free = dw_dma_free_data_size(channel);
-
-	irq_local_enable(flags);
 
 	return ret;
 }
