@@ -218,6 +218,65 @@ struct dai_type_info {
 		      trace_dai_get_subid, dai_p, __e, ##__VA_ARGS__)
 
 /**
+ * \brief API to request DAI group
+ *
+ * Returns a DAI group for the given ID and
+ * increments the counter of DAIs in the group.
+ *
+ * If a group for the given ID doesn't exist,
+ * it will either return NULL or allocate a new group structure
+ * if the CREATE flag is supplied.
+ *
+ * \param[in] group_id Group ID
+ * \param[in] flags Flags (CREATE)
+ */
+struct dai_group *dai_group_get(uint32_t group_id, uint32_t flags);
+
+/**
+ * \brief API to release DAI group
+ *
+ * Decrements the DAI counter inside the group.
+ *
+ * \param[in] group Group
+ */
+void dai_group_put(struct dai_group *group);
+
+/**
+ * \brief DAI group information
+ */
+struct dai_group {
+	/**
+	 * Group ID
+	 */
+	uint32_t group_id;
+
+	/**
+	 * Number of DAIs in this group
+	 */
+	uint32_t num_dais;
+
+	/**
+	 * Number of DAIs to receive a trigger before processing begins
+	 */
+	uint32_t trigger_counter;
+
+	/**
+	 * Trigger command to propagate
+	 */
+	int trigger_cmd;
+
+	/**
+	 * Last trigger error
+	 */
+	int trigger_ret;
+
+	/**
+	 * Group list
+	 */
+	struct list_item list;
+};
+
+/**
  * \brief Holds information about array of DAIs grouped by type.
  */
 struct dai_info {
