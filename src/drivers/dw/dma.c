@@ -806,6 +806,7 @@ static void dw_dma_verify_transfer(struct dma_chan_data *channel,
 	default:
 		while (lli->ctrl_hi & DW_CTLH_DONE(1)) {
 			lli->ctrl_hi &= ~DW_CTLH_DONE(1);
+			dcache_writeback_region(lli, sizeof(struct dw_lli));
 			dw_chan->lli_current =
 				(struct dw_lli *)dw_chan->lli_current->llp;
 			lli = platform_dw_dma_lli_get(dw_chan->lli_current);
