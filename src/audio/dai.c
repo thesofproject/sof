@@ -650,7 +650,7 @@ static void dai_report_xrun(struct comp_dev *dev, uint32_t bytes)
 		comp_err(dev, "dai_report_xrun(): underrun due to no data available");
 		comp_underrun(dev, dd->local_buffer, bytes);
 	} else {
-		comp_err(dev, "dai_report_xrun(): overrun due to no data available");
+		comp_err(dev, "dai_report_xrun(): overrun due to no space available");
 		comp_overrun(dev, dd->local_buffer, bytes);
 	}
 }
