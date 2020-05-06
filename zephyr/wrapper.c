@@ -167,12 +167,16 @@ void *rballoc_align(uint32_t flags, uint32_t caps, size_t bytes,
 {
 	void *ptr;
 
+	bytes += PLATFORM_DCACHE_ALIGN;
+
 	/* TODO: Rewrite with alignment, mem areas, caps */
 	ptr = k_malloc(bytes);
 	if (!ptr) {
 		trace_error(TRACE_CLASS_MEM, "Failed to rballoc_align");
 		return NULL;
 	}
+
+	ptr = ROUND_UP(ptr, PLATFORM_DCACHE_ALIGN);
 
 	alloc_table_add(ptr);
 
@@ -191,7 +195,7 @@ void rfree(void *ptr)
 	}
 
 	alloc_table_remove(ptr);
-	k_free(ptr);
+	//k_free(ptr);
 }
 
 /* debug only - only needed for linking */
