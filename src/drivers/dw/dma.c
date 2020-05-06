@@ -796,6 +796,7 @@ static void dw_dma_verify_transfer(struct dma_chan_data *channel,
 	struct dw_dma_chan_data *dw_chan = dma_chan_get_data(channel);
 #if CONFIG_HW_LLI
 	struct dw_lli *lli = platform_dw_dma_lli_get(dw_chan->lli_current);
+	int i;
 
 	switch (next->status) {
 	case DMA_CB_STATUS_END:
@@ -804,13 +805,26 @@ static void dw_dma_verify_transfer(struct dma_chan_data *channel,
 			      DW_CHAN_MASK(channel->index));
 		/* fallthrough */
 	default:
+	/* default action is to clear the DONE bit for all LLI making
+	 * sure the cache is coherent between DSP and DMAC.
+	 */
+#if defined __ZEPHYR__
+	dcache_invalidate_region(dw_chan->lli,
+				 sizeof(struct dw_lli) * channel->desc_count);
+
+	for (i = 0; i < channel->desc_count; i++)
+		dw_chan->lli[i].ctrl_hi &= lli->ctrl_hi &= ~DW_CTLH_DONE(1);
+
+	dcache_writeback_region(dw_chan->lli,
+				sizeof(struct dw_lli) * channel->desc_count);
+#else
 		while (lli->ctrl_hi & DW_CTLH_DONE(1)) {
 			lli->ctrl_hi &= ~DW_CTLH_DONE(1);
-			dcache_writeback_region(lli, sizeof(struct dw_lli));
 			dw_chan->lli_current =
 				(struct dw_lli *)dw_chan->lli_current->llp;
 			lli = platform_dw_dma_lli_get(dw_chan->lli_current);
 		}
+#endif
 		break;
 	}
 #else
