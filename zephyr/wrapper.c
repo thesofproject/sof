@@ -14,6 +14,7 @@
 #include <sof/lib/notifier.h>
 #include <sof/audio/pipeline.h>
 #include <sof/audio/component_ext.h>
+#include <sof/trace/trace.h>
 
 /* Zephyr includes */
 #include <soc.h>
@@ -47,18 +48,88 @@ int arch_irq_connect_dynamic(unsigned int irq, unsigned int priority,
 /*
  * Memory
  */
-void *rmalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
+
+#define DEBUG_MEMORY_ALLOC
+
+#if defined(DEBUG_MEMORY_ALLOC)
+/* TODO: Calculate size based on HEAP size and the smallest block */
+static void *alloc_table[2000];
+
+static bool alloc_table_add(void *ptr)
 {
-	/* TODO: Use different memory areas - & cache line alignment*/
-	return k_malloc(bytes);
+	for (int i = 0; i < ARRAY_SIZE(alloc_table); i++) {
+		if (alloc_table[i] == NULL) {
+			alloc_table[i] = ptr;
+			return true;
+		}
+	}
+
+	trace_error(TRACE_CLASS_MEM, "End of alloc table");
+	return false;
 }
 
+static bool alloc_table_remove(void *ptr)
+{
+	for (int i = 0; i < ARRAY_SIZE(alloc_table); i++) {
+		if (alloc_table[i] == ptr) {
+			alloc_table[i] = NULL;
+			return true;
+		}
+	}
+
+	trace_error(TRACE_CLASS_MEM, "Pointer was not allocated, ptr %p", ptr);
+	return false;
+}
+#else
+#define alloc_table_add(...)
+#define alloc_table_remove(...)
+#endif
+
+void *rmalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
+{
+	void *ptr;
+
+	/* TODO: Use different memory areas - & cache line alignment*/
+	ptr = k_malloc(bytes);
+	if (!ptr) {
+		trace_error(TRACE_CLASS_MEM, "Failed to malloc");
+		return NULL;
+	}
+
+	alloc_table_add(ptr);
+
+	return ptr;
+}
+
+/* Use SOF_MEM_ZONE_BUFFER at the moment */
 void *rbrealloc_align(void *ptr, uint32_t flags, uint32_t caps, size_t bytes,
 		      size_t old_bytes, uint32_t alignment)
 {
-	if (ptr)
-		k_free(ptr);
-	return k_malloc(bytes);
+	void *new_ptr;
+
+	trace_error(TRACE_CLASS_MEM, "realloc %p", ptr);
+
+	if (!ptr) {
+		/* TODO: Use correct zone */
+		return rmalloc(SOF_MEM_ZONE_BUFFER, flags, caps, bytes);
+	}
+
+	/* Original version returns NULL without freeing this memory */
+	if (!bytes) {
+		//rfree(ptr);
+		return NULL;
+	}
+
+	new_ptr = rmalloc(SOF_MEM_ZONE_BUFFER, flags, caps, bytes);
+	if (!new_ptr) {
+		return NULL;
+	}
+
+	if (!(flags & SOF_MEM_FLAG_NO_COPY)) {
+		memcpy(new_ptr, ptr, MIN(bytes, old_bytes));
+	}
+
+	return new_ptr;
 }
 
 /**
@@ -69,8 +140,18 @@ void *rbrealloc_align(void *ptr, uint32_t flags, uint32_t caps, size_t bytes,
  */
 void *rzalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
 {
+	void *ptr;
+
 	/* TODO: Use different memory areas & cache line alignment */
-	return k_calloc(bytes, 1);
+	ptr = k_calloc(bytes, 1);
+	if (!ptr) {
+		trace_error(TRACE_CLASS_MEM, "Failed to rzalloc");
+		return NULL;
+	}
+
+	alloc_table_add(ptr);
+
+	return ptr;
 }
 
 /**
@@ -84,8 +165,18 @@ void *rzalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
 void *rballoc_align(uint32_t flags, uint32_t caps, size_t bytes,
 		    uint32_t alignment)
 {
+	void *ptr;
+
 	/* TODO: Rewrite with alignment, mem areas, caps */
-	return k_malloc(bytes);
+	ptr = k_malloc(bytes);
+	if (!ptr) {
+		trace_error(TRACE_CLASS_MEM, "Failed to rballoc_align");
+		return NULL;
+	}
+
+	alloc_table_add(ptr);
+
+	return ptr;
 }
 
 /*
@@ -93,6 +184,13 @@ void *rballoc_align(uint32_t flags, uint32_t caps, size_t bytes,
  */
 void rfree(void *ptr)
 {
+	if (!ptr) {
+		/* Should this be warning? */
+		trace_error(TRACE_CLASS_MEM, "Trying to free NULL");
+		return;
+	}
+
+	alloc_table_remove(ptr);
 	k_free(ptr);
 }
 
