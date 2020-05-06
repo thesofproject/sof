@@ -616,6 +616,47 @@ static void pipeline_comp_trigger_sched_comp(struct pipeline *p,
 	list_item_append(&p->list, &ctx->pipelines);
 }
 
+/*
+ * Check whether pipeline is incapable of acquiring data for capture.
+ *
+ * If capture START/RELEASE trigger originated on dailess pipeline and reached
+ * inactive pipeline as it's source, then we indicate that it's blocked.
+ *
+ * @param rsrc - component from remote pipeline serving as source to relevant
+ *		 pipeline
+ * @param ctx - trigger walk context
+ * @param dir - trigger direction
+ */
+static inline bool
+pipeline_should_report_enodata_on_trigger(struct comp_dev *rsrc,
+					  struct pipeline_walk_context *ctx,
+					  int dir)
+{
+	struct pipeline_data *ppl_data = ctx->comp_data;
+	struct comp_dev *pipe_source = ppl_data->start->pipeline->source_comp;
+
+	/* only applies to capture pipelines */
+	if (dir != SOF_IPC_STREAM_CAPTURE)
+		return false;
+
+	/* only applicable on trigger start/release */
+	if (ppl_data->cmd != COMP_TRIGGER_START &&
+	    ppl_data->cmd != COMP_TRIGGER_RELEASE)
+		return false;
+
+	/* only applies for dailess pipelines */
+	if (pipe_source && dev_comp_type(pipe_source) == SOF_COMP_DAI)
+		return false;
+
+	/* if component on which we depend to provide data is inactive, then the
+	 * pipeline has no means of providing data
+	 */
+	if (rsrc->state != COMP_STATE_ACTIVE)
+		return true;
+
+	return false;
+}
+
 static int pipeline_comp_trigger(struct comp_dev *current,
 				 struct comp_buffer *calling_buf,
 				 struct pipeline_walk_context *ctx, int dir)
@@ -635,6 +676,11 @@ static int pipeline_comp_trigger(struct comp_dev *current,
 	 */
 	if (!is_single_ppl && !is_same_sched) {
 		pipe_dbg(current->pipeline, "pipeline_comp_trigger(), current is from another pipeline");
+
+		if (pipeline_should_report_enodata_on_trigger(current, ctx,
+							      dir))
+			return -ENODATA;
+
 		return 0;
 	}
 
