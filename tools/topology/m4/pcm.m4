@@ -74,6 +74,20 @@ define(`PCM_CAPABILITIES',
 dnl PCM_PLAYBACK_ADD(name, pcm_id, playback)
 define(`PCM_PLAYBACK_ADD',
 `ifelse(`$#', `3',
+PCM_PLAYBACK_ADD_COMMON($1, $2, $3, false),
+`fatal_error(`Invalid parameters ($#) to PCM_PLAYBACK_ADD')')'
+)
+
+dnl COMPR_PLAYBACK_ADD(name, pcm_id, playback)
+define(`COMPR_PLAYBACK_ADD',
+`ifelse(`$#', `3',
+PCM_PLAYBACK_ADD_COMMON($1, $2, $3, true),
+`fatal_error(`Invalid parameters ($#) to PCM_PLAYBACK_COMPR_ADD')')'
+)
+
+dnl PCM_PLAYBACK_ADD_COMMON(name, pcm_id, playback, compress)
+define(`PCM_PLAYBACK_ADD_COMMON',
+`ifelse(`$#', `4',
 `SectionPCM.STR($1) {'
 `'
 `	# used for binding to the PCM'
@@ -87,7 +101,9 @@ define(`PCM_PLAYBACK_ADD',
 `'
 `		capabilities STR($3)'
 `	}'
-`}', `fatal_error(`Invalid parameters ($#) to PCM_PLAYBACK_ADD')')'
+`'
+`	compress STR($4)'
+`}', `fatal_error(`Invalid parameters ($#) to PCM_PLAYBACK_ADD_COMMON')')'
 )
 
 dnl PCM_CAPTURE_ADD_COMMON(name, pcm_id, capture, lp)
