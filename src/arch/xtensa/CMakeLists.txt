@@ -367,21 +367,23 @@ if(NOT DEFINED RIMAGE_IMR_TYPE)
 endif()
 
 if(MEU_PATH OR DEFINED MEU_NO_SIGN)
-	execute_process(
-		COMMAND ${MEU_PATH}/meu -ver
-		OUTPUT_VARIABLE MEU_VERSION_FULL_TEXT
-		OUTPUT_STRIP_TRAILING_WHITESPACE
-	)
+	if(NOT DEFINED MEU_OFFSET)
+		execute_process(
+			COMMAND ${MEU_PATH}/meu -ver
+			OUTPUT_VARIABLE MEU_VERSION_FULL_TEXT
+			OUTPUT_STRIP_TRAILING_WHITESPACE
+		)
 
-	string(REGEX MATCH "Version:[\t\n ]*([^\t\n ]+)" ignored "${MEU_VERSION_FULL_TEXT}")
-	set(MEU_VERSION ${CMAKE_MATCH_1})
+		string(REGEX MATCH "Version:[\t\n ]*([^\t\n ]+)" ignored "${MEU_VERSION_FULL_TEXT}")
+		set(MEU_VERSION ${CMAKE_MATCH_1})
 
-	if(MEU_VERSION VERSION_LESS 12.0.0.1035)
-		set(MEU_OFFSET 1152)
-	elseif(MEU_VERSION VERSION_LESS 15.0.0.7041)
-		set(MEU_OFFSET 1088)
-	else()
-		set(MEU_OFFSET 1344)
+		if(MEU_VERSION VERSION_LESS 12.0.0.1035)
+			set(MEU_OFFSET 1152)
+		elseif(MEU_VERSION VERSION_LESS 15.0.0.7041)
+			set(MEU_OFFSET 1088)
+		else()
+			set(MEU_OFFSET 1344)
+		endif()
 	endif()
 
 	add_custom_target(
