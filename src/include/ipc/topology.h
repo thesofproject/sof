@@ -86,12 +86,12 @@ struct sof_ipc_comp {
 /*
  * overrun will cause ring buffer overwrite, instead of XRUN.
  */
-#define SOF_BUF_OVERRUN_PERMITTED	BIT(0)
+#define SOF_BUF_OVERRUN_PERMITTED	BIT(16)
 
 /*
  * underrun will cause readback of 0s, instead of XRUN.
  */
-#define SOF_BUF_UNDERRUN_PERMITTED	BIT(1)
+#define SOF_BUF_UNDERRUN_PERMITTED	BIT(17)
 
 /* create new component buffer - SOF_IPC_TPLG_BUFFER_NEW */
 struct sof_ipc_buffer {
