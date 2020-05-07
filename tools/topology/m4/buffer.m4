@@ -2,6 +2,10 @@ divert(-1)
 
 dnl Define the macro for buffer widget
 
+dnl buffer flags, trasmitted in buffer caps, starting from bit 16
+define(`BUFFER_CAPS_OVERRUN_PERMITTED', eval(1 << 16))
+define(`BUFFER_CAPS_UNDERRUN_PERMITTED', eval(1 << 17))
+
 dnl N_BUFFER(name)
 define(`N_BUFFER', `BUF'PIPELINE_ID`.'$1)
 
