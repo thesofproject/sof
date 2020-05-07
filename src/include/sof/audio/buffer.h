@@ -88,6 +88,9 @@ extern uintptr_t buffer_uuid_ptr;
 #define BUFF_PARAMS_RATE	BIT(2)
 #define BUFF_PARAMS_CHANNELS	BIT(3)
 
+/* mask for getting only mem caps in lower 16 bit of buf caps */
+#define BUFF_CAPS_MEM_MASK	0xFFFF
+
 /* audio component buffer - connects 2 audio components together in pipeline */
 struct comp_buffer {
 	spinlock_t *lock;		/* locking mechanism */

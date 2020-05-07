@@ -27,6 +27,8 @@ uintptr_t buffer_uuid_ptr = SOF_UUID(buffer_uuid);
 struct comp_buffer *buffer_alloc(uint32_t size, uint32_t caps, uint32_t align)
 {
 	struct comp_buffer *buffer;
+	/* mask away upper 16 bit and leave only mem caps */
+	uint32_t mem_caps = caps & BUFF_CAPS_MEM_MASK;
 
 	buf_cl_dbg("buffer_alloc()");
 
@@ -52,11 +54,11 @@ struct comp_buffer *buffer_alloc(uint32_t size, uint32_t caps, uint32_t align)
 		return NULL;
 	}
 
-	buffer->stream.addr = rballoc_align(0, caps, size, align);
+	buffer->stream.addr = rballoc_align(0, mem_caps, size, align);
 	if (!buffer->stream.addr) {
 		rfree(buffer);
 		buf_cl_err("buffer_alloc(): could not alloc size = %u bytes of type = %u",
-			   size, caps);
+			   size, mem_caps);
 		return NULL;
 	}
 
