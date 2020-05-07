@@ -87,7 +87,9 @@ static bool alloc_table_remove(void *ptr)
 
 void *rmalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
 {
-	void *ptr;
+	void *ptr, *new_ptr;
+
+	bytes += 32;
 
 	/* TODO: Use different memory areas - & cache line alignment*/
 	ptr = k_malloc(bytes);
@@ -96,9 +98,12 @@ void *rmalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
 		return NULL;
 	}
 
-	alloc_table_add(ptr);
+	new_ptr = (void *)((unsigned long)ptr + 32);
+	*((void **)new_ptr - 1) = ptr;
 
-	return ptr;
+	alloc_table_add(new_ptr);
+
+	return new_ptr;
 }
 
 /* Use SOF_MEM_ZONE_BUFFER at the moment */
@@ -140,18 +145,24 @@ void *rbrealloc_align(void *ptr, uint32_t flags, uint32_t caps, size_t bytes,
  */
 void *rzalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
 {
-	void *ptr;
+	void *ptr, *new_ptr;
+
+	bytes += 32;
 
 	/* TODO: Use different memory areas & cache line alignment */
 	ptr = k_calloc(bytes, 1);
 	if (!ptr) {
 		trace_error(TRACE_CLASS_MEM, "Failed to rzalloc");
+		k_panic();
 		return NULL;
 	}
 
-	alloc_table_add(ptr);
+	new_ptr = (void *)((unsigned long)ptr + 32);
+	*((void **)new_ptr - 1) = ptr;
 
-	return ptr;
+	alloc_table_add(new_ptr);
+
+	return new_ptr;
 }
 
 /**
@@ -165,9 +176,9 @@ void *rzalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
 void *rballoc_align(uint32_t flags, uint32_t caps, size_t bytes,
 		    uint32_t alignment)
 {
-	void *ptr;
+	void *ptr, *new_ptr;
 
-	bytes += PLATFORM_DCACHE_ALIGN;
+	bytes += PLATFORM_DCACHE_ALIGN - 1 + sizeof(void *);
 
 	/* TODO: Rewrite with alignment, mem areas, caps */
 	ptr = k_malloc(bytes);
@@ -176,11 +187,13 @@ void *rballoc_align(uint32_t flags, uint32_t caps, size_t bytes,
 		return NULL;
 	}
 
-	ptr = ROUND_UP(ptr, PLATFORM_DCACHE_ALIGN);
+	new_ptr = (void *)ROUND_UP(ptr, PLATFORM_DCACHE_ALIGN);
 
-	alloc_table_add(ptr);
+	*((void **)new_ptr - 1) = ptr;
 
-	return ptr;
+	alloc_table_add(new_ptr);
+
+	return new_ptr;
 }
 
 /*
@@ -192,10 +205,13 @@ void rfree(void *ptr)
 		/* Should this be warning? */
 		trace_error(TRACE_CLASS_MEM, "Trying to free NULL");
 		return;
-	}
+	} else {
+		void *orig_ptr = ((void**)ptr)[-1];
 
-	alloc_table_remove(ptr);
-	//k_free(ptr);
+		alloc_table_remove(ptr);
+
+		k_free(orig_ptr);
+	}
 }
 
 /* debug only - only needed for linking */
