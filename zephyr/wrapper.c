@@ -49,47 +49,23 @@ int arch_irq_connect_dynamic(unsigned int irq, unsigned int priority,
  * Memory
  */
 
-#define DEBUG_MEMORY_ALLOC
+/*  Single-linked alloc list for simple book keeping */
+static sys_slist_t alloc_list;
 
-#if defined(DEBUG_MEMORY_ALLOC)
-/* TODO: Calculate size based on HEAP size and the smallest block */
-static void *alloc_table[2000];
+/* Organized for alignment purposes */
+struct __alloc_hdr {
+	sys_snode_t snode;
+	char padding[24];
+	void *orig_ptr;
+} __packed;
 
-static bool alloc_table_add(void *ptr)
-{
-	for (int i = 0; i < ARRAY_SIZE(alloc_table); i++) {
-		if (alloc_table[i] == NULL) {
-			alloc_table[i] = ptr;
-			return true;
-		}
-	}
-
-	trace_error(TRACE_CLASS_MEM, "End of alloc table");
-	return false;
-}
-
-static bool alloc_table_remove(void *ptr)
-{
-	for (int i = 0; i < ARRAY_SIZE(alloc_table); i++) {
-		if (alloc_table[i] == ptr) {
-			alloc_table[i] = NULL;
-			return true;
-		}
-	}
-
-	trace_error(TRACE_CLASS_MEM, "Pointer was not allocated, ptr %p", ptr);
-	return false;
-}
-#else
-#define alloc_table_add(...)
-#define alloc_table_remove(...)
-#endif
+BUILD_ASSERT((sizeof(struct __alloc_hdr) == 32), "Must be 32");
 
 void *rmalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
 {
 	void *ptr, *new_ptr;
 
-	bytes += 32;
+	bytes += sizeof(struct __alloc_hdr);
 
 	/* TODO: Use different memory areas - & cache line alignment*/
 	ptr = k_malloc(bytes);
@@ -98,10 +74,10 @@ void *rmalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
 		return NULL;
 	}
 
-	new_ptr = (void *)((unsigned long)ptr + 32);
+	new_ptr = (void *)((unsigned long)ptr + sizeof(struct __alloc_hdr));
 	*((void **)new_ptr - 1) = ptr;
 
-	alloc_table_add(new_ptr);
+	sys_slist_append(&alloc_list, &((struct __alloc_hdr *)ptr)->snode);
 
 	return new_ptr;
 }
@@ -147,7 +123,7 @@ void *rzalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
 {
 	void *ptr, *new_ptr;
 
-	bytes += 32;
+	bytes += sizeof(struct __alloc_hdr);
 
 	/* TODO: Use different memory areas & cache line alignment */
 	ptr = k_calloc(bytes, 1);
@@ -157,10 +133,10 @@ void *rzalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
 		return NULL;
 	}
 
-	new_ptr = (void *)((unsigned long)ptr + 32);
+	new_ptr = (void *)((unsigned long)ptr + sizeof(struct __alloc_hdr));
 	*((void **)new_ptr - 1) = ptr;
 
-	alloc_table_add(new_ptr);
+	sys_slist_append(&alloc_list, &((struct __alloc_hdr *)ptr)->snode);
 
 	return new_ptr;
 }
@@ -178,7 +154,7 @@ void *rballoc_align(uint32_t flags, uint32_t caps, size_t bytes,
 {
 	void *ptr, *new_ptr;
 
-	bytes += PLATFORM_DCACHE_ALIGN - 1 + sizeof(void *);
+	bytes += MAX(PLATFORM_DCACHE_ALIGN - 1, sizeof(struct __alloc_hdr));
 
 	/* TODO: Rewrite with alignment, mem areas, caps */
 	ptr = k_malloc(bytes);
@@ -191,7 +167,7 @@ void *rballoc_align(uint32_t flags, uint32_t caps, size_t bytes,
 
 	*((void **)new_ptr - 1) = ptr;
 
-	alloc_table_add(new_ptr);
+	sys_slist_append(&alloc_list, &((struct __alloc_hdr *)ptr)->snode);
 
 	return new_ptr;
 }
@@ -207,8 +183,11 @@ void rfree(void *ptr)
 		return;
 	} else {
 		void *orig_ptr = ((void**)ptr)[-1];
+		struct __alloc_hdr *hdr = orig_ptr;
 
-		alloc_table_remove(ptr);
+		if (!sys_slist_find_and_remove(&alloc_list, &hdr->snode)) {
+			trace_error(TRACE_CLASS_MEM, "Remove unknown block %p", ptr);
+		}
 
 		k_free(orig_ptr);
 	}
