@@ -65,9 +65,14 @@ struct comp_dev *comp_new(struct sof_ipc_comp *comp)
 	/* find the driver for our new component */
 	drv = get_drv(comp->type);
 	if (!drv) {
-		tr_err(&comp_tr, "comp_new(): driver not found, comp->type = %u",
-		       comp->type);
-		return NULL;
+		tr_info(&comp_tr, "comp_new(), no type %d, fallback to use subtype",
+			comp->type);
+		drv = get_drv(comp->subtype);
+		if (!drv) {
+			tr_err(&comp_tr, "comp_new(): driver not found, comp->type = %u",
+			       comp->type);
+			return NULL;
+		}
 	}
 
 	/* validate size of ipc config */
