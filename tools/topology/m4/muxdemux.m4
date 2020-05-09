@@ -1,6 +1,10 @@
 divert(-1)
 
-dnl Define macro for demux widget
+dnl Define macro for mux/demux widget
+DECLARE_SOF_RT_UUID("mux", mux_uuid, 0xc607ff4d, 0x9cb6, 0x49dc,
+		 0xb6, 0x78, 0x7d, 0xa3, 0xc6, 0x3e, 0xa5, 0x57)
+DECLARE_SOF_RT_UUID("demux", demux_uuid, 0xc4b26868, 0x1430, 0x470e,
+		 0xa0, 0x89, 0x15, 0xd1, 0xc7, 0x7f, 0x85, 0x1a)
 
 dnl Hard coded values for mux/demux config blob
 define(mux_sof_magic, 0x00464F53)
@@ -36,6 +40,17 @@ define(`N_MUXDEMUX', `MUXDEMUX'PIPELINE_ID`.'$1)
 
 dnl W_MUXDEMUX(name, mux/demux, format, periods_sink, periods_source, core, kcontrol_list)
 define(`W_MUXDEMUX',
+`SectionVendorTuples."'N_MUXDEMUX($1)`_tuples_uuid" {'
+`	tokens "sof_comp_tokens"'
+`	tuples."uuid" {'
+ifelse(`$2', `0',
+`		SOF_TKN_COMP_UUID'	STR(mux_uuid),
+`		SOF_TKN_COMP_UUID'	STR(demux_uuid))
+`	}'
+`}'
+`SectionData."'N_MUXDEMUX($1)`_data_uuid" {'
+`	tuples "'N_MUXDEMUX($1)`_tuples_uuid"'
+`}'
 `SectionVendorTuples."'N_MUXDEMUX($1)`_tuples_w" {'
 `	tokens "sof_comp_tokens"'
 `	tuples."word" {'
@@ -68,6 +83,7 @@ define(`W_MUXDEMUX',
 `	type "effect"'
 `	no_pm "true"'
 `	data ['
+`		"'N_MUXDEMUX($1)`_data_uuid"'
 `		"'N_MUXDEMUX($1)`_data_w"'
 `		"'N_MUXDEMUX($1)`_data_str"'
 `	]'
