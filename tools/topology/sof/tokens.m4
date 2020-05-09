@@ -59,6 +59,7 @@ SectionVendorTokens."sof_comp_tokens" {
 # Token retired with ABI 3.2, do not use for new capabilities
 #	SOF_TKN_COMP_PRELOAD_COUNT		"403"
 	SOF_TKN_COMP_CORE_ID			"404"
+	SOF_TKN_COMP_UUID				"405"
 }
 
 SectionVendorTokens."sof_ssp_tokens" {
