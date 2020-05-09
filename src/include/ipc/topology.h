@@ -71,8 +71,7 @@ struct sof_ipc_comp {
 	uint32_t pipeline_id;
 	uint32_t core;
 
-	/* reserved for future use */
-	uint32_t reserved[1];
+	uint32_t subtype;       /**< flavour for generic component type */
 } __attribute__((packed));
 
 /*
