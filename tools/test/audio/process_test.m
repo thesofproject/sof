@@ -373,16 +373,10 @@ end
 function test = test_run_process(test, t)
 
 switch lower(test.comp)
-	case 'eqiir'
-		test.ex = './eqiir_run.sh';
-	case 'eqfir'
-		test.ex = './eqfir_run.sh';
-	case 'dcblock'
-		test.ex = './dcblock_run.sh';
-	case 'volume'
-		test.ex = './volume_run.sh';
-	otherwise
-		error('Unknown component');
+       case {'eqiir', 'eqfir', 'dcblock', 'volume', 'tdfb'}
+	       test.ex = sprintf('./%s_run.sh', lower(test.comp));
+       otherwise
+               error('Unknown component');
 end
 
 test.arg = { num2str(test.bits_in) num2str(test.bits_out) ...
