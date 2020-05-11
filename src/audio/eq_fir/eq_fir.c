@@ -6,9 +6,9 @@
 //         Liam Girdwood <liam.r.girdwood@linux.intel.com>
 //         Keyon Jie <yang.jie@linux.intel.com>
 
+#include <sof/audio/eq_fir/eq_fir.h>
 #include <sof/audio/buffer.h>
 #include <sof/audio/component.h>
-#include <sof/audio/eq_fir/fir_config.h>
 #include <sof/audio/pipeline.h>
 #include <sof/common.h>
 #include <sof/debug/panic.h>
@@ -17,6 +17,7 @@
 #include <sof/lib/memory.h>
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
+#include <sof/math/fir_config.h>
 #include <sof/platform.h>
 #include <sof/string.h>
 #include <sof/ut.h>
@@ -26,22 +27,11 @@
 #include <ipc/topology.h>
 #include <kernel/abi.h>
 #include <user/eq.h>
+#include <user/fir.h>
 #include <user/trace.h>
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
-
-#if FIR_GENERIC
-#include <sof/audio/eq_fir/fir.h>
-#endif
-
-#if FIR_HIFIEP
-#include <sof/audio/eq_fir/fir_hifi2ep.h>
-#endif
-
-#if FIR_HIFI3
-#include <sof/audio/eq_fir/fir_hifi3.h>
-#endif
 
 static const struct comp_driver comp_eq_fir;
 
@@ -71,45 +61,26 @@ struct comp_data {
  * set_fir_func.
  */
 
-#if FIR_HIFI3
+#if FIR_HIFI3 || FIR_HIFIEP
 #if CONFIG_FORMAT_S16LE
 static inline void set_s16_fir(struct comp_data *cd)
 {
-	cd->eq_fir_func = eq_fir_2x_s16_hifi3;
+	cd->eq_fir_func = eq_fir_2x_s16;
 }
 #endif /* CONFIG_FORMAT_S16LE */
 #if CONFIG_FORMAT_S24LE
 static inline void set_s24_fir(struct comp_data *cd)
 {
-	cd->eq_fir_func = eq_fir_2x_s24_hifi3;
+	cd->eq_fir_func = eq_fir_2x_s24;
 }
 #endif /* CONFIG_FORMAT_S24LE */
 #if CONFIG_FORMAT_S32LE
 static inline void set_s32_fir(struct comp_data *cd)
 {
-	cd->eq_fir_func = eq_fir_2x_s32_hifi3;
+	cd->eq_fir_func = eq_fir_2x_s32;
 }
 #endif /* CONFIG_FORMAT_S32LE */
 
-#elif FIR_HIFIEP
-#if CONFIG_FORMAT_S16LE
-static inline void set_s16_fir(struct comp_data *cd)
-{
-	cd->eq_fir_func = eq_fir_2x_s16_hifiep;
-}
-#endif /* CONFIG_FORMAT_S16LE */
-#if CONFIG_FORMAT_S24LE
-static inline void set_s24_fir(struct comp_data *cd)
-{
-	cd->eq_fir_func = eq_fir_2x_s24_hifiep;
-}
-#endif /* CONFIG_FORMAT_S24LE */
-#if CONFIG_FORMAT_S32LE
-static inline void set_s32_fir(struct comp_data *cd)
-{
-	cd->eq_fir_func = eq_fir_2x_s32_hifiep;
-}
-#endif /* CONFIG_FORMAT_S32LE */
 #else
 /* FIR_GENERIC */
 #if CONFIG_FORMAT_S16LE
@@ -196,8 +167,8 @@ static void eq_fir_free_delaylines(struct comp_data *cd)
 static int eq_fir_init_coef(struct sof_eq_fir_config *config,
 			    struct fir_state_32x16 *fir, int nch)
 {
-	struct sof_eq_fir_coef_data *lookup[SOF_EQ_FIR_MAX_RESPONSES];
-	struct sof_eq_fir_coef_data *eq;
+	struct sof_fir_coef_data *lookup[SOF_EQ_FIR_MAX_RESPONSES];
+	struct sof_fir_coef_data *eq;
 	int16_t *assign_response;
 	int16_t *coef_data;
 	size_t size_sum = 0;
@@ -229,9 +200,9 @@ static int eq_fir_init_coef(struct sof_eq_fir_config *config,
 				   4);
 	for (i = 0; i < SOF_EQ_FIR_MAX_RESPONSES; i++) {
 		if (i < config->number_of_responses) {
-			eq = (struct sof_eq_fir_coef_data *)&coef_data[j];
+			eq = (struct sof_fir_coef_data *)&coef_data[j];
 			lookup[i] = eq;
-			j += SOF_EQ_FIR_COEF_NHEADER + coef_data[j];
+			j += SOF_FIR_COEF_NHEADER + coef_data[j];
 		} else {
 			lookup[i] = NULL;
 		}

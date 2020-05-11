@@ -16,8 +16,6 @@
 
 #define SOF_EQ_FIR_MAX_SIZE 4096 /* Max size allowed for coef data in bytes */
 
-#define SOF_EQ_FIR_MAX_LENGTH 192 /* Max length for individual filter */
-
 #define SOF_EQ_FIR_MAX_RESPONSES 8 /* A blob can define max 8 FIR EQs */
 
 /*
@@ -61,23 +59,6 @@ struct sof_eq_fir_config {
 
 	int16_t data[];
 } __attribute__((packed));
-
-struct sof_eq_fir_coef_data {
-	int16_t length; /* Number of FIR taps */
-	int16_t out_shift; /* Amount of right shifts at output */
-
-	/* reserved */
-	uint32_t reserved[4];
-
-	int16_t coef[]; /* FIR coefficients */
-} __attribute__((packed));
-
-/* In the struct above there's two 16 bit words (length, shift) and four
- * reserved 32 bit words before the actual FIR coefficients. This information
- * is used in parsing of the configuration blob.
- */
-#define SOF_EQ_FIR_COEF_NHEADER \
-	(sizeof(struct sof_eq_fir_coef_data) / sizeof(int16_t))
 
 /* IIR EQ type */
 

@@ -6,61 +6,15 @@
 //         Liam Girdwood <liam.r.girdwood@linux.intel.com>
 //         Keyon Jie <yang.jie@linux.intel.com>
 
-#include <sof/audio/eq_fir/fir_config.h>
+#include <sof/math/fir_config.h>
 
 #if FIR_GENERIC
 
-#include <sof/common.h>
-#include <sof/audio/buffer.h>
-#include <sof/audio/eq_fir/fir.h>
-#include <sof/audio/format.h>
-#include <user/eq.h>
+#include <sof/audio/eq_fir/eq_fir.h>
+#include <sof/math/fir_generic.h>
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
-
-/*
- * EQ FIR algorithm code
- */
-
-void fir_reset(struct fir_state_32x16 *fir)
-{
-	fir->rwi = 0;
-	fir->length = 0;
-	fir->out_shift = 0;
-	fir->coef = NULL;
-	/* There may need to know the beginning of dynamic allocation after
-	 * reset so omitting setting also fir->delay to NULL.
-	 */
-}
-
-int fir_delay_size(struct sof_eq_fir_coef_data *config)
-{
-	/* Check for sane FIR length. The generic version does not
-	 * have other constraints.
-	 */
-	if (config->length > SOF_EQ_FIR_MAX_LENGTH || config->length < 1)
-		return -EINVAL;
-
-	return config->length * sizeof(int32_t);
-}
-
-int fir_init_coef(struct fir_state_32x16 *fir,
-		  struct sof_eq_fir_coef_data *config)
-{
-	fir->rwi = 0;
-	fir->length = (int)config->length;
-	fir->taps = fir->length; /* The same for generic C version */
-	fir->out_shift = (int)config->out_shift;
-	fir->coef = ASSUME_ALIGNED(&config->coef[0], 4);
-	return 0;
-}
-
-void fir_init_delay(struct fir_state_32x16 *fir, int32_t **data)
-{
-	fir->delay = *data;
-	*data += fir->length; /* Point to next delay line start */
-}
 
 #if CONFIG_FORMAT_S16LE
 void eq_fir_s16(struct fir_state_32x16 fir[], const struct audio_stream *source,
@@ -138,4 +92,4 @@ void eq_fir_s32(struct fir_state_32x16 fir[], const struct audio_stream *source,
 }
 #endif /* CONFIG_FORMAT_S32LE */
 
-#endif
+#endif /* FIR_GENERIC */
