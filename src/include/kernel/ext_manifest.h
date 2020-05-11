@@ -30,58 +30,7 @@
 #include <ipc/info.h>
 #include <sof/compiler_attributes.h>
 #include <stdint.h>
-
-/* In ASCII `XMan` */
-#define EXT_MAN_MAGIC_NUMBER	0x6e614d58
-
-/* Build u32 number in format MMmmmppp */
-#define EXT_MAN_BUILD_VERSION(MAJOR, MINOR, PATH) ( \
-	((uint32_t)(MAJOR) << 24) | \
-	((uint32_t)(MINOR) << 12) | \
-	(uint32_t)(PATH))
-
-/* check extended manifest version consistency */
-#define EXT_MAN_VERSION_INCOMPATIBLE(host_ver, cli_ver) ( \
-	((host_ver) & GENMASK(31, 24)) != \
-	((cli_ver) & GENMASK(31, 24)))
-
-/* used extended manifest header version */
-#define EXT_MAN_VERSION		EXT_MAN_BUILD_VERSION(1, 0, 0)
-
-/* struct size alignment for ext_man elements */
-#define EXT_MAN_ALIGN 16
-
-/* extended manifest header, deleting any field breaks backward compatibility */
-struct ext_man_header {
-	uint32_t magic;		/**< identification number, */
-				/**< EXT_MAN_MAGIC_NUMBER */
-	uint32_t full_size;	/**< [bytes] full size of ext_man, */
-				/**< (header + content + padding) */
-	uint32_t header_size;	/**< [bytes] makes header extensionable, */
-				/**< after append new field to ext_man header */
-				/**< then backward compatible won't be lost */
-	uint32_t header_version; /**< value of EXT_MAN_VERSION */
-				/**< not related with following content */
-
-	/* just after this header should be list of ext_man_elem_* elements */
-} __packed;
-
-/* Now define extended manifest elements */
-
-/* Extended manifest elements identificators */
-enum ext_man_elem_type {
-	EXT_MAN_ELEM_FW_VERSION		= 0,
-	EXT_MAN_ELEM_CC_VERSION		= SOF_IPC_EXT_CC_INFO,
-	EXT_MAN_ELEM_PROBE_INFO		= SOF_IPC_EXT_PROBE_INFO,
-};
-
-/* extended manifest element header */
-struct ext_man_elem_header {
-	uint32_t type;		/**< EXT_MAN_ELEM_* */
-	uint32_t elem_size;	/**< in bytes, including header size */
-
-	/* just after this header should be type dependent content */
-} __packed;
+#include <rimage/src/include/sof/kernel/ext_manifest.h>
 
 /* FW version */
 struct ext_man_fw_version {
