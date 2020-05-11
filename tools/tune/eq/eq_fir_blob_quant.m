@@ -1,4 +1,4 @@
-function fbr = eq_fir_blob_quant(b, bits)
+function fbr = eq_fir_blob_quant(b, bits, strip_trailing_zeros)
 
 %% Quantize FIR coefficients and return vector with length,
 %  out shift, and coefficients to be used in the setup blob.
@@ -40,6 +40,10 @@ function fbr = eq_fir_blob_quant(b, bits)
 % Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 %
 
+if nargin < 3
+	strip_trailing_zeros = 1;
+end
+
 if nargin < 2
 	bits = 16;
 end
@@ -53,7 +57,7 @@ nz = nf;
 while bq(nz) == 0
 	nz = nz - 1;
 end
-if nz < nf
+if nz < nf && strip_trailing_zeros
 	nb = nz + 1;
 	fprintf(1, 'Note: Filter length was reduced ');
 	fprintf(1, 'to %d -> %d due to trailing zeros.\n', nf, nb);
