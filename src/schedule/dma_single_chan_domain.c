@@ -349,8 +349,13 @@ static void dma_domain_unregister_owner(struct ll_schedule_domain *domain,
 		tr_info(&ll_tr, "dma_domain_unregister_owner(): some channel is still running, registering again");
 
 		/* register again and enable */
-		dma_single_chan_domain_irq_register(channel, data,
-						    data->handler, data->arg);
+		if (dma_single_chan_domain_irq_register(channel, data,
+							data->handler,
+							data->arg) < 0) {
+			tr_err(&ll_tr, "dma_domain_unregister_owner(): couldn't register irq");
+			return;
+		}
+
 		dma_interrupt(data->channel, DMA_IRQ_CLEAR);
 		dma_single_chan_domain_enable(domain, core);
 		dma_domain->channel_changed = true;
