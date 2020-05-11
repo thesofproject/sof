@@ -27,6 +27,7 @@ src/audio/kpb.c				@mrajwa
 src/audio/mux/*				@akloniex
 src/audio/dcblock*			@cujomalainey @dgreid
 src/audio/crossover*			@cujomalainey @dgreid
+src/audio/tdfb*                         @singalsu
 
 # platforms
 src/platform/baytrail/*			@xiulipan
