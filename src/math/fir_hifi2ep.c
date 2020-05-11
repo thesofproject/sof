@@ -1,90 +1,88 @@
-/* SPDX-License-Identifier: BSD-3-Clause
- *
- * Copyright(c) 2017 Intel Corporation. All rights reserved.
- *
- * Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
- */
+// SPDX-License-Identifier: BSD-3-Clause
+//
+// Copyright(c) 2017 Intel Corporation. All rights reserved.
+//
+// Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 
-#ifndef __SOF_AUDIO_EQ_FIR_FIR_HIFI2EP_H__
-#define __SOF_AUDIO_EQ_FIR_FIR_HIFI2EP_H__
-
-#include <sof/audio/eq_fir/fir_config.h>
+#include <sof/math/fir_config.h>
 
 #if FIR_HIFIEP
 
+#include <sof/audio/format.h>
+#include <sof/math/fir_hifi2ep.h>
+#include <user/fir.h>
 #include <xtensa/config/defs.h>
 #include <xtensa/tie/xt_hifi2.h>
+#include <errno.h>
+#include <stddef.h>
 #include <stdint.h>
 
-struct comp_buffer;
-struct sof_eq_fir_coef_data;
+/*
+ * EQ FIR algorithm code
+ */
 
-struct fir_state_32x16 {
-	ae_p24x2f *rwp; /* Circular read and write pointer */
-	ae_p24f *delay; /* Pointer to FIR delay line */
-	ae_p24f *delay_end; /* Pointer to FIR delay line end */
-	ae_p16x2s *coef; /* Pointer to FIR coefficients */
-	int taps; /* Number of FIR taps */
-	int length; /* Number of FIR taps plus input length (even) */
-	int in_shift; /* Amount of right shifts at input */
-	int out_shift; /* Amount of right shifts at output */
-};
+void fir_reset(struct fir_state_32x16 *fir)
+{
+	fir->taps = 0;
+	fir->length = 0;
+	fir->out_shift = 0;
+	fir->coef = NULL;
+	/* There may need to know the beginning of dynamic allocation after
+	 * reset so omitting setting also fir->delay to NULL.
+	 */
+}
 
-void fir_reset(struct fir_state_32x16 *fir);
+int fir_delay_size(struct sof_fir_coef_data *config)
+{
+	/* Check FIR tap count for implementation specific constraints */
+	if (config->length > SOF_FIR_MAX_LENGTH || config->length < 4)
+		return -EINVAL;
 
-int fir_delay_size(struct sof_eq_fir_coef_data *config);
+	if (config->length & 0x3)
+		return -EINVAL;
+
+	/* The dual sample version needs one more delay entry. To preserve
+	 * align for 64 bits need to add two.
+	 */
+	return (config->length + 2) * sizeof(int32_t);
+}
 
 int fir_init_coef(struct fir_state_32x16 *fir,
-		  struct sof_eq_fir_coef_data *config);
-
-void fir_init_delay(struct fir_state_32x16 *fir, int32_t **data);
-
-void eq_fir_s16_hifiep(struct fir_state_32x16 fir[],
-		       const struct audio_stream *source,
-		       struct audio_stream *sink, int frames, int nch);
-
-void eq_fir_2x_s16_hifiep(struct fir_state_32x16 fir[],
-			  const struct audio_stream *source,
-			  struct audio_stream *sink,
-			  int frames, int nch);
-
-void eq_fir_s24_hifiep(struct fir_state_32x16 fir[],
-		       const struct audio_stream *source,
-		       struct audio_stream *sink, int frames, int nch);
-
-void eq_fir_2x_s24_hifiep(struct fir_state_32x16 fir[],
-			  const struct audio_stream *source,
-			  struct audio_stream *sink,
-			  int frames, int nch);
-
-void eq_fir_s32_hifiep(struct fir_state_32x16 fir[],
-		       const struct audio_stream *source,
-		       struct audio_stream *sink, int frames, int nch);
-
-void eq_fir_2x_s32_hifiep(struct fir_state_32x16 fir[],
-			  const struct audio_stream *source,
-			  struct audio_stream *sink,
-			  int frames, int nch);
-
-/* Setup circular buffer for FIR input data delay */
-static inline void fir_hifiep_setup_circular(struct fir_state_32x16 *fir)
+		  struct sof_fir_coef_data *config)
 {
-	AE_SETCBEGIN0(fir->delay);
-	AE_SETCEND0(fir->delay_end);
+	/* The length is taps plus two since the filter computes two
+	 * samples per call. Length plus one would be minimum but the add
+	 * must be even. The even length is needed for 64 bit loads from delay
+	 * lines with 32 bit samples.
+	 */
+	fir->taps = (int)config->length;
+	fir->length = fir->taps + 2;
+	fir->out_shift = (int)config->out_shift;
+	fir->coef = (ae_p16x2s *)&config->coef[0];
+	return 0;
+}
+
+void fir_init_delay(struct fir_state_32x16 *fir, int32_t **data)
+{
+	fir->delay = (ae_p24f *)*data;
+	fir->delay_end = fir->delay + fir->length;
+	fir->rwp = (ae_p24x2f *)(fir->delay + fir->length - 1);
+	*data += fir->length; /* Point to next delay line start */
 }
 
 void fir_get_lrshifts(struct fir_state_32x16 *fir, int *lshift,
-		      int *rshift);
-
-/* The next functions are inlined to optmize execution speed */
+		      int *rshift)
+{
+	*lshift = (fir->out_shift < 0) ? -fir->out_shift : 0;
+	*rshift = (fir->out_shift > 0) ? fir->out_shift : 0;
+}
 
 /* HiFi EP has the follow number of reqisters that should not be exceeded
  * 4x 56 bit registers in register file Q
  * 8x 48 bit registers in register file P
  */
 
-static inline void fir_32x16_hifiep(struct fir_state_32x16 *fir, int32_t x,
-				    int32_t *y, int lshift, int rshift)
+void fir_32x16_hifiep(struct fir_state_32x16 *fir, int32_t x, int32_t *y, int lshift, int rshift)
 {
 	/* This function uses
 	 * 1x 56 bit registers Q,
@@ -157,9 +155,8 @@ static inline void fir_32x16_hifiep(struct fir_state_32x16 *fir, int32_t x,
  * 8x 48 bit registers in register file P
  */
 
-static inline void fir_32x16_2x_hifiep(struct fir_state_32x16 *fir, int32_t x0,
-				       int32_t x1, int32_t *y0, int32_t *y1,
-				       int lshift, int rshift)
+void fir_32x16_2x_hifiep(struct fir_state_32x16 *fir, int32_t x0, int32_t x1,
+			 int32_t *y0, int32_t *y1, int lshift, int rshift)
 {
 	/* This function uses
 	 * 2x 56 bit registers Q,
@@ -247,4 +244,3 @@ static inline void fir_32x16_2x_hifiep(struct fir_state_32x16 *fir, int32_t x0,
 }
 
 #endif
-#endif /* __SOF_AUDIO_EQ_FIR_FIR_HIFI2EP_H__ */

@@ -62,8 +62,19 @@ endchoice
 
 endif # SRC
 
+config MATH_FIR
+	bool "FIR filter library"
+	default n
+	help
+	  This option builds FIR (Finite Impulse Response) filter library. It
+	  is selected by components for their digital signal processing. A FIR
+	  filter calculates a convolution of input PCM sample and a configurable
+	  impulse response.
+
+
 config COMP_FIR
 	bool "FIR component"
+	select MATH_FIR
 	default y
 	help
 	  Select for FIR component. FIR performance can differ between DSP
