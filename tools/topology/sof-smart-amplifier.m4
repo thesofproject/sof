@@ -6,7 +6,10 @@
 include(`utils.m4')
 include(`dai.m4')
 include(`pipeline.m4')
-include(`ssp.m4')
+
+ifelse(SDW, `1',
+`include(`alh.m4')',
+`include(`ssp.m4')')
 
 # Include Token library
 include(`sof/tokens.m4')
@@ -17,6 +20,18 @@ DEBUG_START
 # define them in your specific platform .m4 if needed.
 
 
+ifelse(SDW, `1',
+`
+# ALH related
+# define(`SMART_ALH_INDEX', 1) define smart amplifier ALH index
+ifdef(`SMART_ALH_INDEX',`',`errprint(note: Need to define ALH index for sof-smart-amplifier
+)')
+ifdef(`SMART_ALH_PLAYBACK_NAME',`',`errprint(note: Need to define ALH BE dai_link name for sof-smart-amplifier
+)')
+ifdef(`SMART_ALH_CAPTURE_NAME',`',`errprint(note: Need to define ALH BE dai_link name for sof-smart-amplifier
+)')
+',
+`
 # SSP related
 # define(`SMART_SSP_INDEX', 1) define smart amplifier SSP index
 ifdef(`SMART_SSP_INDEX',`',`errprint(note: Need to define SSP index for sof-smart-amplifier
@@ -24,6 +39,8 @@ ifdef(`SMART_SSP_INDEX',`',`errprint(note: Need to define SSP index for sof-smar
 # define(`SMART_SSP_NAME', `SSP1-Codec') define SSP BE dai_link name
 ifdef(`SMART_SSP_NAME',`',`errprint(note: Need to define SSP BE dai_link name for sof-smart-amplifier
 )')
+')
+
 # define(`SMART_BE_ID', 7) define BE dai_link ID
 ifdef(`SMART_BE_ID',`',`errprint(note: Need to define SSP BE dai_link ID for sof-smart-amplifier
 )')
@@ -63,6 +80,19 @@ ifdef(`SMART_PCM_ID',`',`errprint(note: Need to define PCM ID for sof-smart-ampl
 ifdef(`SMART_PCM_NAME',`',`errprint(note: Need to define Echo Ref pipeline ID for sof-smart-amplifier
 )')
 
+ifelse(SDW, `1',
+`
+#
+# Define the pipelines
+#
+# PCM2 ----> smart_amp ----> ALH(ALH_INDEX)
+#             ^
+#             |
+#             |
+# PCM3 <---- demux <----- ALH(ALH_INDEX + 1)
+#
+'
+,`
 #
 # Define the pipelines
 #
@@ -72,6 +102,7 @@ ifdef(`SMART_PCM_NAME',`',`errprint(note: Need to define Echo Ref pipeline ID fo
 #             |
 # PCM0 <---- demux <----- SSP(SSP_INDEX)
 #
+')
 
 dnl PIPELINE_PCM_ADD(pipeline,
 dnl     pipe id, pcm, max channels, format,
@@ -88,10 +119,19 @@ PIPELINE_PCM_ADD(sof/pipe-smart-amplifier-playback.m4,
 
 # Low Latency capture pipeline 2 on PCM 0 using max 2 channels of s32le.
 # Set 1000us deadline on core 0 with priority 0
+ifelse(SDW, `1',
+`
+PIPELINE_PCM_ADD(sof/pipe-amp-ref-capture.m4,
+        SMART_REF_PPL_ID, eval(SMART_PCM_ID + 1), SMART_REF_CH_NUM, s32le,
+        1000, 0, 0,
+        48000, 48000, 48000)
+',
+`
 PIPELINE_PCM_ADD(sof/pipe-amp-ref-capture.m4,
 	SMART_REF_PPL_ID, SMART_PCM_ID, SMART_REF_CH_NUM, s32le,
 	1000, 0, 0,
 	48000, 48000, 48000)
+')
 
 #
 # DAIs configuration
@@ -102,6 +142,23 @@ dnl     pipe id, dai type, dai_index, dai_be,
 dnl     buffer, periods, format,
 dnl     deadline, priority, core, time_domain)
 
+ifelse(SDW, `1',
+`
+# playback DAI is ALH(ALH_INDEX) using 2 periods
+# Buffers use s32le format, 1000us deadline on core 0 with priority 0
+DAI_ADD(sof/pipe-dai-playback.m4,
+        SMART_PB_PPL_ID, ALH, SMART_ALH_INDEX, SMART_ALH_PLAYBACK_NAME,
+        SMART_PIPE_SOURCE, 2, s24le,
+        1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
+
+# capture DAI is ALH(ALH_INDEX) using 2 periods
+# Buffers use s32le format, 1000us deadline on core 0 with priority 0
+DAI_ADD(sof/pipe-dai-capture.m4,
+        SMART_REF_PPL_ID, ALH, eval(SMART_ALH_INDEX + 1), SMART_ALH_CAPTURE_NAME,
+        SMART_PIPE_SINK, 2, s24le,
+        1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
+',
+`
 # playback DAI is SSP(SPP_INDEX) using 2 periods
 # Buffers use s32le format, 1000us deadline on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
@@ -115,6 +172,7 @@ DAI_ADD(sof/pipe-dai-capture.m4,
 	SMART_REF_PPL_ID, SSP, SMART_SSP_INDEX, SMART_SSP_NAME,
 	SMART_PIPE_SINK, 2, s24le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
+')
 
 # Connect demux to smart_amp
 ifdef(`N_SMART_REF_BUF',`',`errprint(note: Need to define ref buffer name for connection
@@ -131,13 +189,31 @@ SectionGraph."PIPE_SMART_AMP" {
 }
 
 # PCM for SMART_AMP Playback and EchoRef.
+ifelse(SDW, `1',
+`
+PCM_PLAYBACK_ADD(SMART_PCM_NAME, SMART_PCM_ID, SMART_PB_PPL_NAME)
+PCM_CAPTURE_ADD(echo, eval(SMART_PCM_ID + 1), SMART_REF_PPL_NAME)
+',
+`
 dnl PCM_DUPLEX_ADD(name, pcm_id, playback, capture)
 PCM_DUPLEX_ADD(SMART_PCM_NAME, SMART_PCM_ID, SMART_PB_PPL_NAME, SMART_REF_PPL_NAME)
+')
 
 #
 # BE configurations - overrides config in ACPI if present
 #
 
+ifelse(SDW, `1',
+`
+#ALH ALH Pin2 (ID: SMART_BE_ID)
+DAI_CONFIG(ALH, SMART_ALH_INDEX, SMART_BE_ID, SMART_ALH_PLAYBACK_NAME,
+        ALH_CONFIG(ALH_CONFIG_DATA(ALH, SMART_ALH_INDEX, 48000, SMART_TX_CHANNELS)))
+
+#ALH ALH Pin3 (ID: SMART_BE_ID + 1)
+DAI_CONFIG(ALH, eval(SMART_ALH_INDEX + 1), eval(SMART_BE_ID + 1), SMART_ALH_CAPTURE_NAME,
+        ALH_CONFIG(ALH_CONFIG_DATA(ALH, eval(SMART_ALH_INDEX + 1), 48000, SMART_RX_CHANNELS)))
+',
+`
 #SSP SSP_INDEX (ID: SMART_BE_ID)
 DAI_CONFIG(SSP, SMART_SSP_INDEX, SMART_BE_ID, SMART_SSP_NAME,
 	SSP_CONFIG(DSP_B, SSP_CLOCK(mclk, 38400000, codec_mclk_in),
@@ -145,5 +221,6 @@ DAI_CONFIG(SSP, SMART_SSP_INDEX, SMART_BE_ID, SMART_SSP_NAME,
 		      SSP_CLOCK(fsync, 48000, codec_slave),
 		      SSP_TDM(8, 25, 15, 255),
 		      SSP_CONFIG_DATA(SSP, SMART_SSP_INDEX, 24, 0, SMART_SSP_QUIRK)))
+')
 
 DEBUG_END
