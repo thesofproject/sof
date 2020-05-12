@@ -70,3 +70,14 @@ const struct ext_man_probe_support ext_man_probe
 #endif
 	},
 };
+
+/*
+ * this element size will be updated by rimage,
+ * so size shouldn't be aligned yet.
+ * List of entries will be fetched from `fw_metadata_uuid_dict` section.
+ */
+const struct ext_man_uuid_dict ext_man_uuid_header
+	__aligned(EXT_MAN_ALIGN) __section(".fw_metadata") = {
+	.hdr.type = EXT_MAN_ELEM_UUID_DICT,
+	.hdr.elem_size = sizeof(struct ext_man_uuid_dict),
+};

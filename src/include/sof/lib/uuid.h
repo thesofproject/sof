@@ -9,6 +9,7 @@
 #define __SOF_LIB_UUID_H__
 
 #include <sof/common.h>
+#include <kernel/ext_manifest.h>
 
 /** \addtogroup uuid_api UUID API
  *  UUID API specification.
@@ -78,6 +79,17 @@ struct sof_uuid {
 		 .d = {vd0, vd1, vd2, vd3, vd4, vd5, vd6, vd7}},	\
 		sizeof(entity_name),					\
 		entity_name						\
+	};								\
+	__section(".fw_metadata_uuid_dict")				\
+	static const struct ext_man_uuid_dict_elem			\
+	ext_man_uuid_ ## uuid_name = {					\
+		.addr = (uint32_t)&uuid_name,				\
+		.uuid = { (va) & 0xFF, ((va) >> 8) & 0xFF,		\
+			  ((va) >> 16) & 0xFF, ((va) >> 24) & 0xFF,	\
+			  (vb) & 0xFF, ((vb) >> 8) & 0xFF,		\
+			  (vc) & 0xFF, ((vc) >> 8) & 0xFF,		\
+			  (vd0), (vd1), (vd2), (vd3),			\
+			  (vd4), (vd5), (vd6), (vd7) }			\
 	}
 
 /** \brief Creates local unique 32-bit representation of UUID structure.

@@ -53,4 +53,16 @@ struct ext_man_probe_support {
 	struct sof_ipc_probe_support probe;
 } __packed;
 
+/* UUID dictionary */
+struct ext_man_uuid_dict_elem {
+	uint32_t addr;
+	uint8_t uuid[16];
+} __packed;
+
+struct ext_man_uuid_dict {
+	struct ext_man_elem_header hdr;
+	/* filled in rimage by uuid_section content */
+	struct ext_man_uuid_dict_elem entries[];
+} __packed;
+
 #endif /* __KERNEL_EXT_MANIFEST_H__ */
