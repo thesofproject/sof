@@ -13,7 +13,7 @@
 
 static struct sof sof;
 
-uintptr_t buffer_uuid_ptr;
+struct tr_ctx buffer_tr;
 
 #if !CONFIG_LIBRARY
 

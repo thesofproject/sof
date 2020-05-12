@@ -11,7 +11,7 @@ struct ipc *_ipc;
 struct timer *platform_timer;
 struct schedulers *schedulers;
 static struct sof sof;
-uintptr_t buffer_uuid_ptr;
+struct tr_ctx buffer_tr;
 
 struct sof *sof_get(void)
 {

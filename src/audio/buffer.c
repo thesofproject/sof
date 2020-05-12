@@ -22,17 +22,18 @@
 /* 42544c92-8e92-4e41-b679-34519f1c1d28 */
 DECLARE_SOF_UUID("buffer", buffer_uuid, 0x42544c92, 0x8e92, 0x4e41,
 		 0xb6, 0x79, 0x34, 0x51, 0x9f, 0x1c, 0x1d, 0x28);
-uintptr_t buffer_uuid_ptr = SOF_UUID(buffer_uuid);
+DECLARE_TR_CTX(buffer_tr, SOF_UUID(buffer_uuid), LOG_LEVEL_INFO);
 
 struct comp_buffer *buffer_alloc(uint32_t size, uint32_t caps, uint32_t align)
 {
 	struct comp_buffer *buffer;
 
-	buf_cl_dbg("buffer_alloc()");
+	tr_dbg(&buffer_tr, "buffer_alloc()");
 
 	/* validate request */
 	if (size == 0 || size > HEAP_BUFFER_SIZE) {
-		buf_cl_err("buffer_alloc(): new size = %u is invalid", size);
+		tr_err(&buffer_tr, "buffer_alloc(): new size = %u is invalid",
+		       size);
 		return NULL;
 	}
 
@@ -40,7 +41,7 @@ struct comp_buffer *buffer_alloc(uint32_t size, uint32_t caps, uint32_t align)
 	buffer = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
 			 sizeof(*buffer));
 	if (!buffer) {
-		buf_cl_err("buffer_alloc(): could not alloc structure");
+		tr_err(&buffer_tr, "buffer_alloc(): could not alloc structure");
 		return NULL;
 	}
 
@@ -48,15 +49,15 @@ struct comp_buffer *buffer_alloc(uint32_t size, uint32_t caps, uint32_t align)
 			       SOF_MEM_CAPS_RAM, sizeof(*buffer->lock));
 	if (!buffer->lock) {
 		rfree(buffer);
-		buf_cl_err("buffer_alloc(): could not alloc lock");
+		tr_err(&buffer_tr, "buffer_alloc(): could not alloc lock");
 		return NULL;
 	}
 
 	buffer->stream.addr = rballoc_align(0, caps, size, align);
 	if (!buffer->stream.addr) {
 		rfree(buffer);
-		buf_cl_err("buffer_alloc(): could not alloc size = %u bytes of type = %u",
-			   size, caps);
+		tr_err(&buffer_tr, "buffer_alloc(): could not alloc size = %u bytes of type = %u",
+		       size, caps);
 		return NULL;
 	}
 
@@ -74,7 +75,7 @@ struct comp_buffer *buffer_new(struct sof_ipc_buffer *desc)
 {
 	struct comp_buffer *buffer;
 
-	buf_cl_info("buffer new size 0x%x id %d.%d", desc->size,
+	tr_info(&buffer_tr, "buffer new size 0x%x id %d.%d", desc->size,
 		    desc->comp.pipeline_id, desc->comp.id);
 
 	/* allocate buffer */
