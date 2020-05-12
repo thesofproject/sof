@@ -790,6 +790,7 @@ static int host_copy(struct comp_dev *dev)
 		if (ret < 0) {
 			trace_host_error("host_copy() error: dma_copy() "
 					 "failed, ret = %u", ret);
+			comp_underrun(dev, hd->dma_buffer, hd->dma_buffer->size, 0);
 			return ret;
 		}
 	}
