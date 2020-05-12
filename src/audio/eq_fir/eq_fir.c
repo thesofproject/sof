@@ -539,6 +539,7 @@ static int fir_cmd_set_data(struct comp_dev *dev,
 	struct comp_data *cd = comp_get_drvdata(dev);
 	unsigned char *dst, *src;
 	uint32_t offset;
+	size_t size;
 	int ret = 0;
 
 	switch (cdata->cmd) {
@@ -551,20 +552,19 @@ static int fir_cmd_set_data(struct comp_dev *dev,
 			return -EBUSY;
 		}
 
-		/* Copy new config, find size from header */
-		comp_info(dev, "fir_cmd_set_data(): blob size: %u msg_index %u",
-			  cdata->num_elems + cdata->elems_remaining,
-			  cdata->msg_index);
-		if (cdata->num_elems + cdata->elems_remaining >
-		    SOF_EQ_FIR_MAX_SIZE)
-			return -EINVAL;
-
+		/* Copy new configuration */
 		if (cdata->msg_index == 0) {
 			/* Allocate buffer for copy of the blob. */
-			cd->config_new = rballoc(0, SOF_MEM_CAPS_RAM,
-						 cdata->num_elems +
-						 cdata->elems_remaining);
+			size = cdata->num_elems + cdata->elems_remaining;
+			comp_info(dev, "fir_cmd_set_data(), allocating %d for configuration blob",
+				  size);
+			if (size > SOF_EQ_FIR_MAX_SIZE) {
+				comp_err(dev, "fir_cmd_set_data(), size exceeds %d",
+					 SOF_EQ_FIR_MAX_SIZE);
+				return -EINVAL;
+			}
 
+			cd->config_new = rballoc(0, SOF_MEM_CAPS_RAM, size);
 			if (!cd->config_new) {
 				comp_err(dev, "fir_cmd_set_data(): buffer allocation failed");
 				return -EINVAL;
@@ -574,18 +574,20 @@ static int fir_cmd_set_data(struct comp_dev *dev,
 			offset = 0;
 		} else {
 			assert(cd->config_new);
-			offset = cd->config_new->size - cdata->elems_remaining -
+			size = cd->config_new->size;
+			offset = size - cdata->elems_remaining -
 				cdata->num_elems;
 		}
 
+		comp_info(dev, "fir_cmd_set_data(), chunk size: %u msg_index %u",
+			  cdata->num_elems, cdata->msg_index);
 		dst = (unsigned char *)cd->config_new;
 		src = (unsigned char *)cdata->data->data;
 
 		/* Just copy the configuration. The EQ will be initialized in
 		 * prepare().
 		 */
-		ret = memcpy_s(dst + offset, cdata->num_elems +
-			       cdata->elems_remaining - offset, src,
+		ret = memcpy_s(dst + offset, size - offset, src,
 			       cdata->num_elems);
 		assert(!ret);
 
