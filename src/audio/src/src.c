@@ -418,7 +418,7 @@ static void src_1s(struct comp_dev *dev, const struct audio_stream *source,
 }
 
 /* A fast copy function for same in and out rate */
-static void src_copy_s32(struct comp_dev *dev,
+static void src_copy_sxx(struct comp_dev *dev,
 			 const struct audio_stream *source,
 			 struct audio_stream *sink,
 			 int *n_read, int *n_written)
@@ -426,27 +426,29 @@ static void src_copy_s32(struct comp_dev *dev,
 	struct comp_data *cd = comp_get_drvdata(dev);
 	int frames = cd->param.blk_in;
 
-	audio_stream_copy_s32(source, 0, sink, 0, frames * source->channels);
-
-	*n_read = frames;
-	*n_written = frames;
-}
-
+	switch (sink->frame_fmt) {
 #if CONFIG_FORMAT_S16LE
-static void src_copy_s16(struct comp_dev *dev,
-			 const struct audio_stream *source,
-			 struct audio_stream *sink,
-			 int *n_read, int *n_written)
-{
-	struct comp_data *cd = comp_get_drvdata(dev);
-	int frames = cd->param.blk_in;
-
-	audio_stream_copy_s16(source, 0, sink, 0, frames * source->channels);
-
-	*n_read = frames;
-	*n_written = frames;
+	case SOF_IPC_FRAME_S16_LE:
+		audio_stream_copy_s16(source, 0, sink, 0,
+				      frames * source->channels);
+		*n_read = frames;
+		*n_written = frames;
+		break;
+#endif
+#if CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE
+	case SOF_IPC_FRAME_S24_4LE:
+	case SOF_IPC_FRAME_S32_LE:
+		audio_stream_copy_s32(source, 0, sink, 0,
+				      frames * source->channels);
+		*n_read = frames;
+		*n_written = frames;
+		break;
+#endif
+	default:
+		*n_read = 0;
+		*n_written = 0;
+	}
 }
-#endif /* CONFIG_FORMAT_S16LE */
 
 static struct comp_dev *src_new(const struct comp_driver *drv,
 				struct sof_ipc_comp *comp)
@@ -634,7 +636,7 @@ static int src_params(struct comp_dev *dev,
 	switch (n) {
 	case 0:
 		/* 1:1 fast copy */
-		cd->src_func = src_copy_s32;
+		cd->src_func = src_copy_sxx;
 		break;
 	case 1:
 		cd->src_func = src_1s; /* Simpler 1 stage SRC */
@@ -866,12 +868,6 @@ static int src_prepare(struct comp_dev *dev)
 	case SOF_IPC_FRAME_S16_LE:
 		cd->data_shift = 0;
 		cd->polyphase_func = src_polyphase_stage_cir_s16;
-		/* Copy function is set by default in params() for 32 bit
-		 * data. Change it to 16 bit version here if source and sink
-		 * rates are equal.
-		 */
-		if (cd->source_rate == cd->sink_rate)
-			cd->src_func = src_copy_s16;
 		break;
 #endif /* CONFIG_FORMAT_S16LE */
 #if CONFIG_FORMAT_S24LE
