@@ -97,7 +97,7 @@ static inline void mtrace_event(const char *data, uint32_t length)
 #endif /* CONFIG_TRACEM */
 
 void trace_log(bool send_atomic, const void *log_entry,
-	       uint32_t id_0, uint32_t id_1, uint32_t id_2,
+	       const struct tr_ctx *ctx, uint32_t id_1, uint32_t id_2,
 	       int arg_count, ...)
 {
 	uint32_t data[MESSAGE_SIZE_DWORDS(_TRACE_EVENT_MAX_ARGUMENT_COUNT)];
@@ -115,7 +115,7 @@ void trace_log(bool send_atomic, const void *log_entry,
 	}
 
 	/* fill log content */
-	put_header(data, id_0, id_1, id_2, (uint32_t)log_entry,
+	put_header(data, ctx->uuid_p, id_1, id_2, (uint32_t)log_entry,
 		   platform_timer_get(timer_get()));
 	va_start(vl, arg_count);
 	for (i = 0; i < arg_count; ++i)
