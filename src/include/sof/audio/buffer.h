@@ -32,48 +32,43 @@
 
 struct comp_dev;
 
+/** \name Trace macros
+ *  @{
+ */
+
 /* buffer tracing */
-extern uintptr_t buffer_uuid_ptr;
+extern struct tr_ctx buffer_tr;
 
-#define buf_cl_err(__e, ...) \
-	trace_error_with_ids(TRACE_CLASS_DEPRECATED, buffer_uuid_ptr, \
-			     -1, -1, __e, ##__VA_ARGS__)
+/** \brief Retrieves trace context from the buffer */
+#define trace_buf_get_tr_ctx(buf_ptr) (&buffer_tr)
 
-#define buf_cl_err_a(__e, ...) \
-	trace_error_atomic_with_ids(TRACE_CLASS_DEPRECATED, buffer_uuid_ptr, \
-				    -1, -1, __e, ##__VA_ARGS__)
+/** \brief Retrieves id (pipe id) from the buffer */
+#define trace_buf_get_id(buf_ptr) ((buf_ptr)->pipeline_id)
 
-#define buf_cl_warn(__e, ...) \
-	trace_warn_with_ids(TRACE_CLASS_DEPRECATED, buffer_uuid_ptr, \
-			    -1, -1, __e, ##__VA_ARGS__)
+/** \brief Retrieves subid (comp id) from the buffer */
+#define trace_buf_get_subid(buf_ptr) ((buf_ptr)->id)
 
-#define buf_cl_info(__e, ...) \
-	trace_event_with_ids(TRACE_CLASS_DEPRECATED, buffer_uuid_ptr, \
-			     -1, -1, __e, ##__VA_ARGS__)
+/** \brief Trace error message from buffer */
+#define buf_err(buf_ptr, __e, ...)					\
+	trace_dev_err(trace_buf_get_tr_ctx, trace_buf_get_id,		\
+		      trace_buf_get_subid, buf_ptr, __e, ##__VA_ARGS__)
 
-#define buf_cl_dbg(__e, ...) \
-	tracev_event_with_ids(TRACE_CLASS_DEPRECATED, buffer_uuid_ptr, \
-			      -1, -1, __e, ##__VA_ARGS__)
+/** \brief Trace warning message from buffer */
+#define buf_warn(buf_ptr, __e, ...)					\
+	trace_dev_warn(trace_buf_get_tr_ctx, trace_buf_get_id,	\
+		       trace_buf_get_subid, buf_ptr, __e, ##__VA_ARGS__)
 
-#define buf_err(buf_ptr, __e, ...) \
-	trace_error_with_ids(TRACE_CLASS_DEPRECATED, buffer_uuid_ptr, \
-			     (buf_ptr)->pipeline_id, \
-			     (buf_ptr)->id, __e, ##__VA_ARGS__)
+/** \brief Trace info message from buffer */
+#define buf_info(buf_ptr, __e, ...)					\
+	trace_dev_info(trace_buf_get_tr_ctx, trace_buf_get_id,	\
+		       trace_buf_get_subid, buf_ptr, __e, ##__VA_ARGS__)
 
-#define buf_warn(buf_ptr, __e, ...) \
-	trace_warn_with_ids(TRACE_CLASS_DEPRECATED, buffer_uuid_ptr, \
-			    (buf_ptr)->pipeline_id, \
-			    (buf_ptr)->id, __e, ##__VA_ARGS__)
+/** \brief Trace debug message from buffer */
+#define buf_dbg(buf_ptr, __e, ...)					\
+	trace_dev_dbg(trace_buf_get_tr_ctx, trace_buf_get_id,		\
+		      trace_buf_get_subid, buf_ptr, __e, ##__VA_ARGS__)
 
-#define buf_info(buf_ptr, __e, ...) \
-	trace_event_with_ids(TRACE_CLASS_DEPRECATED, buffer_uuid_ptr, \
-			     (buf_ptr)->pipeline_id, \
-			     (buf_ptr)->id, __e, ##__VA_ARGS__)
-
-#define buf_dbg(buf_ptr, __e, ...) \
-	tracev_event_with_ids(TRACE_CLASS_DEPRECATED, buffer_uuid_ptr, \
-			      (buf_ptr)->pipeline_id, \
-			      (buf_ptr)->id, __e, ##__VA_ARGS__)
+/** @}*/
 
 /* buffer callback types */
 #define BUFF_CB_TYPE_PRODUCE	BIT(0)
