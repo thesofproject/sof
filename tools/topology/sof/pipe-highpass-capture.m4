@@ -125,5 +125,5 @@ PCM_CAPABILITIES(Highpass Capture PCM_ID, `S32_LE,S24_LE,S16_LE',
 
 undefine(`DEF_PGA_TOKENS')
 undefine(`DEF_PGA_CONF')
-undefine(`DEF_EQFIR_COEF')
-undefine(`DEF_EQFIR_PRIV')
+undefine(`DEF_EQIIR_COEF')
+undefine(`DEF_EQIIR_PRIV')
