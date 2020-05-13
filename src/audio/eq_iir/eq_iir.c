@@ -418,8 +418,8 @@ static int eq_iir_init_coef(struct sof_eq_iir_config *config,
 			/* Initialize EQ channel to bypass and continue with
 			 * next channel response.
 			 */
-			comp_cl_err(&comp_eq_iir, "eq_iir_init_coef(), ch %d is set to bypass",
-				    i);
+			comp_cl_info(&comp_eq_iir, "eq_iir_init_coef(), ch %d is set to bypass",
+				     i);
 			iir_reset_df2t(&iir[i]);
 			continue;
 		}
