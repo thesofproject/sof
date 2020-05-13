@@ -11,8 +11,8 @@
  * \author Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
-#ifndef __USER_MANIFEST_H__
-#define __USER_MANIFEST_H__
+#ifndef __RIMAGE_USER_MANIFEST_H__
+#define __RIMAGE_USER_MANIFEST_H__
 
 #include <stdint.h>
 
@@ -225,4 +225,4 @@ struct sof_man_module_manifest {
 	(sizeof(struct sof_man_fw_header) + \
 		(index) * sizeof(struct sof_man_module))
 
-#endif /* __USER_MANIFEST_H__ */
+#endif /* __RIMAGE_USER_MANIFEST_H__ */

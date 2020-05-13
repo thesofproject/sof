@@ -30,7 +30,7 @@ target_link_libraries(rimage PRIVATE "-lcrypto")
 
 target_include_directories(rimage PRIVATE
 	src/include/rimage
-	src/include/sof
+	src/include/rimage/sof
 )
 
 install(TARGETS rimage DESTINATION bin)

@@ -24,8 +24,8 @@
  * used in such a situation.
  */
 
-#ifndef __KERNEL_EXT_MANIFEST_H__
-#define __KERNEL_EXT_MANIFEST_H__
+#ifndef __RIMAGE_KERNEL_EXT_MANIFEST_H__
+#define __RIMAGE_KERNEL_EXT_MANIFEST_H__
 
 #include <stdint.h>
 
@@ -78,4 +78,4 @@ struct ext_man_elem_header {
 	/* just after this header should be type dependent content */
 } __packed;
 
-#endif /* __KERNEL_EXT_MANIFEST_H__ */
+#endif /* __RIMAGE_KERNEL_EXT_MANIFEST_H__ */

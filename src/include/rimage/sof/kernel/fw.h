@@ -10,8 +10,8 @@
  * Firmware file format .
  */
 
-#ifndef __KERNEL_FW_H__
-#define __KERNEL_FW_H__
+#ifndef __RIMAGE_KERNEL_FW_H__
+#define __RIMAGE_KERNEL_FW_H__
 
 #include <stdint.h>
 
@@ -77,4 +77,4 @@ struct snd_sof_fw_header {
 	uint32_t abi;		/* version of header format */
 } __attribute__((packed));
 
-#endif /* __KERNEL_FW_H__ */
+#endif /* __RIMAGE_KERNEL_FW_H__ */
