@@ -8,7 +8,7 @@
 #include <errno.h>
 #include <string.h>
 
-#include "kernel/ext_manifest_gen.h"
+#include "ext_manifest_gen.h"
 #include "rimage.h"
 #include "manifest.h"
 

@@ -9,7 +9,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "kernel/ext_manifest_gen.h"
+#include "ext_manifest_gen.h"
 #include "kernel/ext_manifest.h"
 #include "rimage.h"
 
