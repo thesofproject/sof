@@ -2,6 +2,9 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2018-2020 Intel Corporation. All rights reserved.
 
+# stop on most errors
+set -e
+
 COMP=$1
 DIRECTION=$2
 BITS_IN=$3
