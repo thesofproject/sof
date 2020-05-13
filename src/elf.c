@@ -7,9 +7,9 @@
 
 #include <stdio.h>
 #include <string.h>
-#include "rimage.h"
-#include "cse.h"
-#include "manifest.h"
+#include <rimage/rimage.h>
+#include <rimage/cse.h>
+#include <rimage/manifest.h>
 
 static int elf_read_sections(struct image *image, struct module *module,
 			     int module_index)

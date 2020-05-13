@@ -17,9 +17,9 @@
 #include <errno.h>
 #include <string.h>
 
-#include "rimage.h"
-#include "css.h"
-#include "manifest.h"
+#include <rimage/rimage.h>
+#include <rimage/css.h>
+#include <rimage/manifest.h>
 
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
 void RSA_get0_key(const RSA *r,

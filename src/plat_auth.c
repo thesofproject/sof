@@ -5,9 +5,9 @@
 // Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
 //         Keyon Jie <yang.jie@linux.intel.com>
 
-#include "rimage.h"
-#include "manifest.h"
-#include "plat_auth.h"
+#include <rimage/rimage.h>
+#include <rimage/manifest.h>
+#include <rimage/plat_auth.h>
 
 void ri_adsp_meta_data_create_v1_8(struct image *image, int meta_start_offset,
 				   int meta_end_offset)

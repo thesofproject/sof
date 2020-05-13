@@ -6,9 +6,9 @@
 //         Keyon Jie <yang.jie@linux.intel.com>
 
 #include <stdio.h>
-#include "rimage.h"
-#include "cse.h"
-#include "manifest.h"
+#include <rimage/rimage.h>
+#include <rimage/cse.h>
+#include <rimage/manifest.h>
 
 void ri_cse_create(struct image *image)
 {

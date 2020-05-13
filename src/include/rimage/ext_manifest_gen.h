@@ -27,7 +27,7 @@
 #ifndef __EXT_MAN_H__
 #define __EXT_MAN_H__
 
-#include "rimage.h"
+#include <rimage/rimage.h>
 
 #define EXT_MAN_DATA_SECTION ".fw_metadata"
 

@@ -2,10 +2,10 @@
 //
 // Copyright(c) 2018 Intel Corporation. All rights reserved.
 
-#include "css.h"
-#include "cse.h"
-#include "plat_auth.h"
-#include "manifest.h"
+#include <rimage/css.h>
+#include <rimage/cse.h>
+#include <rimage/plat_auth.h>
+#include <rimage/manifest.h>
 
 /*
  * TODO: check if all platform for 1.5 are the same base and length.

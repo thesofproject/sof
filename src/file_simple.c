@@ -8,7 +8,7 @@
 #include <errno.h>
 #include <string.h>
 
-#include "rimage.h"
+#include <rimage/rimage.h>
 
 #define BYT_IRAM_BASE		0xff2c0000
 #define BYT_IRAM_HOST_OFFSET	0x0C0000

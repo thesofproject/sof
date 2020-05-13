@@ -2,10 +2,10 @@
 //
 // Copyright(c) 2017 Intel Corporation. All rights reserved.
 
-#include "css.h"
-#include "cse.h"
-#include "plat_auth.h"
-#include "manifest.h"
+#include <rimage/css.h>
+#include <rimage/cse.h>
+#include <rimage/plat_auth.h>
+#include <rimage/manifest.h>
 
 /* manifest template */
 struct fw_image_manifest_v1_8 apl_manifest = {

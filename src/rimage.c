@@ -8,9 +8,9 @@
 #include <errno.h>
 #include <string.h>
 
-#include "ext_manifest_gen.h"
-#include "rimage.h"
-#include "manifest.h"
+#include <rimage/ext_manifest_gen.h>
+#include <rimage/rimage.h>
+#include <rimage/manifest.h>
 
 static const struct adsp *machine[] = {
 	&machine_byt,

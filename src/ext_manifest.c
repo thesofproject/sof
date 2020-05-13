@@ -9,9 +9,9 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "ext_manifest_gen.h"
-#include "kernel/ext_manifest.h"
-#include "rimage.h"
+#include <rimage/ext_manifest_gen.h>
+#include <rimage/sof/kernel/ext_manifest.h>
+#include <rimage/rimage.h>
 
 const struct ext_man_header ext_man_template = {
 	.magic = EXT_MAN_MAGIC_NUMBER,

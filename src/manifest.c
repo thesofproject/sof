@@ -14,13 +14,13 @@
 #include <time.h>
 #include <sys/time.h>
 
-#include <user/manifest.h>
+#include <rimage/sof/user/manifest.h>
 
-#include "rimage.h"
-#include "css.h"
-#include "cse.h"
-#include "plat_auth.h"
-#include "manifest.h"
+#include <rimage/rimage.h>
+#include <rimage/css.h>
+#include <rimage/cse.h>
+#include <rimage/plat_auth.h>
+#include <rimage/manifest.h>
 
 static int man_open_rom_file(struct image *image)
 {

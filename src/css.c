@@ -7,9 +7,9 @@
 
 #include <stdio.h>
 #include <sys/time.h>
-#include "rimage.h"
-#include "css.h"
-#include "manifest.h"
+#include <rimage/rimage.h>
+#include <rimage/css.h>
+#include <rimage/manifest.h>
 
 void ri_css_v1_8_hdr_create(struct image *image)
 {

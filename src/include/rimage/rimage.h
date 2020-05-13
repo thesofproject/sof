@@ -14,7 +14,7 @@
 #include <openssl/conf.h>
 #include <openssl/evp.h>
 #include <openssl/err.h>
-#include <kernel/fw.h>
+#include <rimage/sof/kernel/fw.h>
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
 #define MAX_MODULES		32

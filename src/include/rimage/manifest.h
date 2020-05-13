@@ -7,10 +7,10 @@
 #define __MANIFEST_H__
 
 #include <stdint.h>
-#include <user/manifest.h>
-#include "css.h"
-#include "cse.h"
-#include "plat_auth.h"
+#include <rimage/sof/user/manifest.h>
+#include <rimage/css.h>
+#include <rimage/cse.h>
+#include <rimage/plat_auth.h>
 
 #define MAN_PAGE_SIZE		4096
 

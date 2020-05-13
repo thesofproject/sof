@@ -17,8 +17,8 @@
 #include <openssl/evp.h>
 #include <openssl/err.h>
 
-#include "rimage.h"
-#include "manifest.h"
+#include <rimage/rimage.h>
+#include <rimage/manifest.h>
 
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
 void EVP_MD_CTX_free(EVP_MD_CTX *ctx);
