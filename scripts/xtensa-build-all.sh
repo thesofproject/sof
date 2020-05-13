@@ -2,6 +2,9 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2018 Intel Corporation. All rights reserved.
 
+# stop on most errors
+set -e
+
 SUPPORTED_PLATFORMS=(byt cht bdw hsw apl skl kbl cnl sue icl jsl \
                     imx8 imx8x imx8m)
 BUILD_ROM=no
@@ -55,7 +58,7 @@ for arg in "$@"; do
 		if [ x"$i" = x"$arg" ]; then
 			PLATFORMS=("${PLATFORMS[@]}" "$i")
 			platform=$i
-			shift
+			shift || true
 			break
 		fi
 	done
@@ -83,9 +86,6 @@ then
 	fi
 	PRIVATE_KEY_OPTION="-DRIMAGE_PRIVATE_KEY=${RIMAGE_PRIVATE_KEY}"
 fi
-
-# fail on any errors
-set -e
 
 OLDPATH=$PATH
 WORKDIR="$pwd"

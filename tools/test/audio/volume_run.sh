@@ -2,6 +2,9 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2020 Intel Corporation. All rights reserved.
 
+# stop on most errors
+set -e
+
 usage ()
 {
     echo "Usage:   $0 <bits in> <bits out> <rate> <input> <output>"
@@ -14,7 +17,7 @@ main ()
 
     if [ $# -ne 5 ]; then
 	usage "$0"
-	exit
+	exit 1
     fi
 
     COMP=volume

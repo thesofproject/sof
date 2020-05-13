@@ -11,6 +11,9 @@
 # ./scripts/host-testbench.sh
 #
 
+# stop on most errors
+set -e
+
 function filesize() {
   du -b "$1" | awk '{print $1}'
 }
@@ -46,7 +49,7 @@ SOF_DIR=$SCRIPTS_DIR/../
 TESTBENCH_DIR=${SOF_DIR}/tools/test/audio
 INPUT_FILE_SIZE=10240
 
-cd "$TESTBENCH_DIR" || exit 2
+cd "$TESTBENCH_DIR"
 rm -rf ./*.raw
 
 # create input zeros raw file
