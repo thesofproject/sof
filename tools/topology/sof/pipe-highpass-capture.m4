@@ -62,7 +62,7 @@ C_CONTROLBYTES(DEF_EQIIR_COEF, PIPELINE_ID,
 		258 binds the mixer control to bytes get/put handlers,
 		258, 258),
 	, , ,
-	CONTROLBYTES_MAX(, 304),
+	CONTROLBYTES_MAX(, 1024),
 	,
 	DEF_EQIIR_PRIV)
 
