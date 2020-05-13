@@ -42,11 +42,10 @@ build_fuzzer()
 
 main()
 {
-        local DO_BUILD_TEST DO_BUILD_FUZZER SCRIPT_DIR SOF_REPO NO_PROCESSORS
-
+        local DO_BUILD_TEST DO_BUILD_FUZZER SCRIPT_DIR SOF_REPO
         SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
         SOF_REPO=$(dirname "$SCRIPT_DIR")
-        NO_PROCESSORS=$(nproc)
+        : ${NO_PROCESSORS:=$(nproc)}
 
         DO_BUILD_TEST=false
         DO_BUILD_FUZZER=false
