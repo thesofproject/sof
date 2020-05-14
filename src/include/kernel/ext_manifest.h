@@ -30,7 +30,7 @@
 #include <ipc/info.h>
 #include <sof/compiler_attributes.h>
 #include <stdint.h>
-#include <rimage/src/include/sof/kernel/ext_manifest.h>
+#include <sof/kernel/ext_manifest.h>
 
 /* FW version */
 struct ext_man_fw_version {
