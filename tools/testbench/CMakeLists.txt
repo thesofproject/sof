@@ -25,7 +25,7 @@ sof_append_relative_path_definitions(testbench)
 
 target_include_directories(testbench PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
-target_compile_options(testbench PRIVATE -g -O3 -Wall -Werror -Wl,-EL -Wmissing-prototypes -Wimplicit-fallthrough=3)
+target_compile_options(testbench PRIVATE -g -O3 -Wall -Werror -Wl,-EL -Wmissing-prototypes -Wimplicit-fallthrough=3 -DCONFIG_LIBRARY)
 
 target_link_libraries(testbench PRIVATE -ldl -lm)
 
