@@ -253,6 +253,7 @@ zephyr_library_sources(
 	edf_schedule.c
 	ll_schedule.c
 	schedule.c
+	init.c
 )
 
 zephyr_library_link_libraries(SOF)
