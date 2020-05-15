@@ -194,6 +194,27 @@ for i = 1:length(fs_list)
 	end
 end
 
+%% ------------------------------------------------------------------
+%% Example 7: Merge previous desigs to single blob for use as presets
+%% ------------------------------------------------------------------
+
+blob_fn = fullfile(cpath, 'eq_iir_bundle.bin');
+alsa_fn = fullfile(cpath, 'eq_iir_bundle.txt');
+tplg_fn = fullfile(tpath, 'eq_iir_bundle.m4');
+comment = 'Bundle of responses flat/loud/bass/band/high, created with example_iir_eq.m';
+
+%% Build blob
+channels_in_config = 2;     % Setup max 2 channels EQ
+assign_response = [ 2 2 ];  % Switch to response id 2, bass boost
+num_responses = 5;          % 5 responses: flat, loudness, bass boost, bandpass, highpass
+bm = eq_iir_blob_merge(channels_in_config, ...
+		       num_responses, ...
+		       assign_response, ...
+		       [bq_pass bq_loud bq_bass bq_band bq_hp]);
+
+%% Pack and write file
+eq_pack_export(bm, blob_fn, alsa_fn, tplg_fn, priv, comment)
+
 %% ------------------------------------
 %% Done.
 %% ------------------------------------
