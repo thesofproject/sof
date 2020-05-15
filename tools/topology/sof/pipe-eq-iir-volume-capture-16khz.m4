@@ -14,7 +14,7 @@ include(`pipeline.m4')
 include(`bytecontrol.m4')
 include(`eq_iir.m4')
 
-define(`CONTROL_NAME', Capture Volume)
+define(`CONTROL_NAME', 2nd Capture Volume)
 define(`PGA_NAME', Dmic1)
 
 #

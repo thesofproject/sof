@@ -18,7 +18,7 @@ include(`eq_iir.m4')
 define(`PGA_NAME', Dmic0)
 define(`CONTROL_NAME_VOLUME', Capture Volume)
 define(`CONTROL_NAME_SWITCH', Capture Switch)
-define(`CONTROL_NAME', `PIPELINE_ID CONTROL_NAME_VOLUME')
+define(`CONTROL_NAME', `CONTROL_NAME_VOLUME')
 
 #
 # Controls
@@ -36,7 +36,7 @@ C_CONTROLMIXER(Capture Volume, PIPELINE_ID,
 	LIST(`	', KCONTROL_CHANNEL(FL, 1, 0), KCONTROL_CHANNEL(FR, 1, 1)))
 
 undefine(`CONTROL_NAME')
-define(`CONTROL_NAME', `PIPELINE_ID CONTROL_NAME_SWITCH')
+define(`CONTROL_NAME', `CONTROL_NAME_SWITCH')
 
 # Switch type Mixer Control with max value of 1
 C_CONTROLMIXER(Capture Switch, PIPELINE_ID,
@@ -89,8 +89,8 @@ W_PCM_CAPTURE(PCM_ID, Highpass Capture, 0, 2, SCHEDULE_CORE)
 
 # "Volume" has 2 source and 2 sink periods
 W_PGA(0, PIPELINE_FORMAT, 2, 2, DEF_PGA_CONF, SCHEDULE_CORE,
-	LIST(`		', "PIPELINE_ID CONTROL_NAME_VOLUME",
-	"PIPELINE_ID CONTROL_NAME_SWITCH"))
+	LIST(`		', "CONTROL_NAME_VOLUME",
+	"CONTROL_NAME_SWITCH"))
 
 # "EQ 0" has 2 sink period and x source periods
 W_EQ_IIR(0, PIPELINE_FORMAT, 2, DAI_PERIODS, SCHEDULE_CORE,
