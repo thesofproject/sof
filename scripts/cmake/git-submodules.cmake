@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 find_package(Git)
-if(GIT_FOUND AND EXISTS "${PROJECT_SOURCE_DIR}/.git")
+if(GIT_FOUND AND EXISTS "${SOF_ROOT_SOURCE_DIRECTORY}/.git")
 	# Update submodules by default
 	option(GIT_SUBMODULE "Check submodules during build" ON)
 
@@ -18,6 +18,6 @@ if(GIT_FOUND AND EXISTS "${PROJECT_SOURCE_DIR}/.git")
 	endif()
 endif()
 
-if(NOT EXISTS "${PROJECT_SOURCE_DIR}/rimage/CMakeLists.txt")
+if(NOT EXISTS "${SOF_ROOT_SOURCE_DIRECTORY}/rimage/CMakeLists.txt")
 	message(FATAL_ERROR "The submodules were not downloaded! GIT_SUBMODULE was turned off or failed. Please update submodules and try again.")
 endif()
