@@ -371,8 +371,10 @@ void sys_comp_asrc_init(void);
 void sys_comp_dcblock_init(void);
 void sys_comp_eq_iir_init(void);
 
-int task_main_start(struct sof *sof)
+int task_main_start(void)
 {
+	struct sof *sof = sof_get();
+
 	/* init default audio components */
 	sys_comp_init(sof);
 
