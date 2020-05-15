@@ -1013,7 +1013,11 @@ class FwBin(Component):
 def main(args):
     """ main function
     """
-    Attribute.no_colors = args.no_colors
+    if sys.stdout.isatty():
+        Attribute.no_colors = args.no_colors
+    else:
+        Attribute.no_colors = True
+
     Attribute.full_bytes = args.full_bytes
 
     fw_bin = parse_fw_bin(args.sof_ri_path, args.verbose, not args.headers)
