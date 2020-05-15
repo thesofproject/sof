@@ -14,6 +14,9 @@ project(SOF_TOOLS C)
 
 set(SOF_ROOT_SOURCE_DIRECTORY "${PROJECT_SOURCE_DIR}/..")
 
+# checkout submodules
+include(${SOF_ROOT_SOURCE_DIRECTORY}/scripts/cmake/git-submodules.cmake)
+
 add_subdirectory(probes)
 add_subdirectory(logger)
 add_subdirectory(ctl)
