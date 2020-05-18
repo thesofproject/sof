@@ -8,13 +8,12 @@
 #include <xtensa/coreasm.h>
 #include <xtensa/cacheattrasm.h>
 #include <cavs/lps_ctx.h>
+#include <sof/lib/memory.h>
 
 #define MEMCTL_INIT_BIT 23
 #define MEMCTL_INIT_VAL (MEMCTL_L0IBUF_EN | 1 << MEMCTL_INIT_BIT)
 #define SW_INT_NUM 7
 #define SW_INT_MASK (1<<SW_INT_NUM)
-
-#define L1_CACHE_PREFCTL 0x0000
 
 	.section .lps_vector, "ax"
 lps_pic_restore_vector_literals:
@@ -44,7 +43,7 @@ lps_pic_restore_vector:
 	movi    a3, 0x15	/* RCW for non-coherent dcache */
 	wsr     a3, ATOMCTL
 
-	movi a2, L1_CACHE_PREFCTL
+	movi a2, L1_CACHE_PREFCTL_VALUE
 	wsr  a2, PREFCTL
 
 	movi a3, PS_UM|PS_WOE

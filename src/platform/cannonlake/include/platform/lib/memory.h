@@ -421,6 +421,9 @@
 					SOF_STACK_TOTAL_SIZE)
 #define BOOT_LDR_STACK_SIZE		SOF_STACK_TOTAL_SIZE
 
+/* L1 init */
+#define L1_CACHE_PREFCTL_VALUE 0x0000
+
 #endif /* __PLATFORM_LIB_MEMORY_H__ */
 
 #else
