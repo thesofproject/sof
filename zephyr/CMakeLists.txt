@@ -86,6 +86,11 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V15)
 		../src/drivers/intel/cavs/mn.c
 	)
 
+	# Platform includes
+	zephyr_library_sources(
+		../src/platform/intel/cavs/platform.c
+	)
+
 	# CAVS15 include seems to be set in Zephyr. TODO also set common dir.
 	set(PLATFORM "apollolake")
 	target_include_directories(SOF INTERFACE ../zephyr/include/cavs15)
@@ -322,6 +327,8 @@ target_compile_options(SOF INTERFACE -std=gnu99 -fno-inline-functions)
 
 # Toolchain info
 add_definitions(-DXCC_TOOLS_VERSION="${ZEPHYR_TOOLCHAIN_VARIANT}" -DCC_OPTIMIZE_FLAGS="${OPTIMIZATION_FLAG}")
+
+add_definitions(-DSOF_MICRO=0 -DSOF_MINOR=0 -DSOF_MAJOR=2 -DSOF_TAG="faced")
 
 # Create Trace realtive file paths
 sof_append_relative_path_definitions(modules_sof)
