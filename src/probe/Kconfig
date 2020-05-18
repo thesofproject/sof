@@ -20,7 +20,7 @@ config PROBE_POINTS_MAX
 config PROBE_DMA_MAX
 	int "Maximum injection probe DMAs attached"
 	depends on PROBE
-	default 4
+	default 0
 	help
 	  Define maximum number of injection DMAs.
 endmenu
