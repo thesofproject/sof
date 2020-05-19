@@ -30,12 +30,18 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#if SRC_SHORT
+#if SRC_SHORT || CONFIG_COMP_SRC_TINY
 #include <sof/audio/coefficients/src/src_tiny_int16_define.h>
 #include <sof/audio/coefficients/src/src_tiny_int16_table.h>
 #else
+#if CONFIG_COMP_SRC_SMALL
+#include <sof/audio/coefficients/src/src_small_int32_define.h>
+#include <sof/audio/coefficients/src/src_small_int32_table.h>
+#endif
+#if CONFIG_COMP_SRC_STD
 #include <sof/audio/coefficients/src/src_std_int32_define.h>
 #include <sof/audio/coefficients/src/src_std_int32_table.h>
+#endif
 #endif
 
 /* The FIR maximum lengths are per channel so need to multiply them */
