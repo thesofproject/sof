@@ -19,7 +19,6 @@
  * are useful in code debugging.
  */
 #if SRC_AUTOARCH == 0
-#define SRC_SHORT	0
 #define SRC_GENERIC	1
 #define SRC_HIFIEP	0
 #define SRC_HIFI3	0
@@ -31,29 +30,31 @@
 #include <xtensa/config/core-isa.h>
 #define SRC_GENERIC	0
 #if XCHAL_HAVE_HIFI2EP == 1
-#define SRC_SHORT	1  /* Select 16 bit coefficients to save RAM */
 #define SRC_HIFIEP	1
 #define SRC_HIFI3	0
 #endif
 #if XCHAL_HAVE_HIFI3 == 1
-#if CONFIG_COMP_SRC_32BIT_COEF
-#define SRC_SHORT	0  /* Select 32 bit default quality coefficients */
-#else
-#define SRC_SHORT	1
-#endif
 #define SRC_HIFI3	1
 #define SRC_HIFIEP	0
 #endif
 #else
 /* GCC */
-#if CONFIG_LIBRARY
-#define SRC_SHORT	0  /* Use high quality 32 bit filter coefficients */
-#else
-#define SRC_SHORT	1  /* Use 16 bit filter coefficients for speed */
-#endif
 #define SRC_GENERIC	1
 #define SRC_HIFIEP	0
 #define SRC_HIFI3	0
+#if CONFIG_LIBRARY
+#else
+#define SRC_SHORT	1 /* Need to use for generic code version speed */
+#endif
+#endif
+#endif
+
+/* Kconfig option tiny needs 16 bits coefficients, other options use 32 bits */
+#if !defined(SRC_SHORT)
+#if CONFIG_COMP_SRC_TINY
+#define SRC_SHORT	1 /* 16 bit coefficients filter core */
+#else
+#define SRC_SHORT	0 /* 32 bit coefficients filter core */
 #endif
 #endif
 
