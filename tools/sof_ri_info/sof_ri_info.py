@@ -533,8 +533,8 @@ def parse_adsp_manifest_mod_entry(index, reader):
         sys.exit(1)
     reader.info('Module Entry signature found (' + sig + ')', -4)
 
-    mod = Component('mod_entry_'+repr(index), 'Module Entry',
-                    reader.get_offset() -4)
+    mod = AdspModuleEntry('mod_entry_'+repr(index),
+                          reader.get_offset() -4)
     mod.add_a(Astring('sig', sig))
 
     mod.add_a(Astring('mod_name',
@@ -552,10 +552,10 @@ def parse_adsp_manifest_mod_entry(index, reader):
     mod.add_a(Auint('instance_stack_size', reader.read_w()))
     for i in range(0, 3):
         seg_flags = reader.read_dw()
-        mod.add_a(Astring('seg_'+repr(i)+' flags',
+        mod.add_a(Astring('seg_'+repr(i)+'_flags',
                           hex(seg_flags) + ' ' + seg_flags_to_string(seg_flags)))
-        mod.add_a(Ahex('seg_'+repr(i)+' v_base_addr', reader.read_dw()))
-        mod.add_a(Ahex('seg_'+repr(i)+' file_offset', reader.read_dw()))
+        mod.add_a(Ahex('seg_'+repr(i)+'_v_base_addr', reader.read_dw()))
+        mod.add_a(Ahex('seg_'+repr(i)+'_file_offset', reader.read_dw()))
 
     return mod
 
@@ -1003,6 +1003,33 @@ class AdspManifest(Component):
         print('{}  Load offset {}'.format(pref,
                                           hdr.adir['load_offset']))
         self.dump_comp_info(pref, comp_filter + ['ADSP Manifest Header'])
+
+class AdspModuleEntry(Component):
+    """ ADSP Module Entry
+    """
+    def __init__(self, uid, offset):
+        super(AdspModuleEntry, self).__init__(uid, 'Module Entry', offset)
+
+    def dump_info(self, pref, comp_filter):
+        print('{}{:9} {}'.format(pref, str(self.adir['mod_name']),
+            self.adir['uuid']))
+        print('{}  entry point {} type {}'.format(pref, self.adir['entry_point'],
+            self.adir['type']))
+        out = '{}  cfg offset {} count {} affinity {}'.format(pref,
+            self.adir['cfg_offset'], self.adir['cfg_count'],
+            self.adir['affinity_mask'])
+        out += ' instance max count {} stack size {}'.format(
+            self.adir['instance_max_count'], self.adir['instance_stack_size'])
+        print(out)
+        print('{}  .text   {} file offset {} flags {}'.format(pref,
+            self.adir['seg_0_v_base_addr'], self.adir['seg_0_file_offset'],
+            self.adir['seg_0_flags']))
+        print('{}  .rodata {} file offset {} flags {}'.format(pref,
+            self.adir['seg_1_v_base_addr'], self.adir['seg_1_file_offset'],
+            self.adir['seg_1_flags']))
+        print('{}  .bss    {} file offset {} flags {}'.format(pref,
+            self.adir['seg_2_v_base_addr'], self.adir['seg_2_file_offset'],
+            self.adir['seg_2_flags']))
 
 class FwBin(Component):
     """ Parsed sof binary
