@@ -726,7 +726,7 @@ static int dump_ldc_info(struct convert_config *config,
 		  ((uintptr_t)uids_dict + uids_dict->data_offset);
 
 	while (remaining > 0) {
-		name = format_uid_raw(uid_ptr, 0, 0);
+		name = format_uid_raw(&uid_ptr[cnt], 0, 0);
 		uid_addr = (uintptr_t)&uid_ptr[cnt] - (uintptr_t)uids_dict -
 			    uids_dict->data_offset + uids_dict->base_address;
 		fprintf(out_fd, "\t0x%lX  %s\n", uid_addr, name);
