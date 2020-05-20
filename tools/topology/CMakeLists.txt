@@ -154,7 +154,7 @@ foreach(tplg ${TPLGS})
 
 	add_custom_command(
 		OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/${output}.conf
-		COMMAND m4
+		COMMAND m4 --fatal-warnings
 			${DEFINES}
 			-I ${CMAKE_CURRENT_SOURCE_DIR}/m4
 			-I ${CMAKE_CURRENT_SOURCE_DIR}/common
