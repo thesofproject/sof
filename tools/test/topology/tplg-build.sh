@@ -256,14 +256,24 @@ simple_test nocodec src "NoCodec-4" s24le SSP 4 s24le 25 24 2400000 24000000 I2S
 
 if [ "$USE_XARGS" == "yes" ]
 then
-	echo "Batch processing m4 files..."
+	printf '%s generating %s/*.conf files with m4...\n' "$0" "$BUILD_OUTPUT"
 	M4_STRINGS=${M4_STRINGS%?}
 	#m4 processing
-	echo $M4_STRINGS | tr " " "," | tr '\n' '\0' | xargs -P0 -d ',' -n14 bash -c 'm4 "${@:1:${#}-1}" > ${14}.conf' m4
+
+	: ${NO_PROCESSORS:=$(nproc)}
+
+	# Each test is defined by 14 consecutive strings, the last one
+	# is the ${14}.conf output file.
+	shell_name=m4 # $0, only used in error messages
+	echo $M4_STRINGS | tr " " "," | tr '\n' '\0' |
+	  xargs  ${VERBOSE:+-t} -P${NO_PROCESSORS} -d ',' -n14 \
+	    bash ${VERBOSE:+-x} -c 'm4 "${@:1:${#}-1}" > ${14}.conf' $shell_name
 
 	#execute alsatplg to create topology binary
+	printf '%s generating %s/*.tplg files with alsatplg...\n' \
+		"$0" "$BUILD_OUTPUT"
 	TEST_STRINGS=${TEST_STRINGS%?}
-	echo $TEST_STRINGS | tr '\n' ',' |\
-		xargs -d ',' -P0 -n1 -I string alsatplg ${VERBOSE:+-v 1} -c\
-			string".conf" -o string".tplg"
+	echo $TEST_STRINGS | tr '\n' ',' |
+		xargs ${VERBOSE:+-t} -d ',' -P${NO_PROCESSORS} -n1 -I string \
+		    alsatplg ${VERBOSE:+-v 1} -c string".conf" -o string".tplg"
 fi
