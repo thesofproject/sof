@@ -268,7 +268,7 @@ int main(int argc, char *argv[])
 		config.in_file = "/sys/kernel/debug/sof/trace";
 
 	/* default option with no infile is to dump errors/debug data */
-	if (!config.in_file)
+	if (!config.in_file && !config.dump_ldc)
 		config.in_file = "/sys/kernel/debug/sof/etrace";
 
 	if (config.input_std) {
@@ -279,7 +279,7 @@ int main(int argc, char *argv[])
 			ret = -config.serial_fd;
 			goto out;
 		}
-	} else {
+	} else if (config.in_file) {
 		config.in_fd = fopen(config.in_file, "rb");
 		if (!config.in_fd) {
 			fprintf(stderr, "error: Unable to open in file %s\n",
