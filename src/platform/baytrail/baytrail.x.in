@@ -552,7 +552,8 @@ SECTIONS
 
   .fw_metadata (COPY) : ALIGN(1024)
   {
-    KEEP (*(.fw_metadata))
+    KEEP (*(.fw_metadata));
+    KEEP (*(.fw_metadata.align));
   } >fw_metadata_seg :metadata_entries_phdr
 
   .fw_ready : ALIGN(4)
