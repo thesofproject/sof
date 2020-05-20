@@ -34,12 +34,23 @@
 #include <ipc/header.h>
 #include <ipc/info.h>
 #include <kernel/abi.h>
+#include <kernel/ext_manifest.h>
 #include <config.h>
 #include <version.h>
 #include <errno.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+
+/*
+ * following element is created to assure proper section size alignment, besides
+ * of build tools limitation - removing `READONLY` flag when updated `.` value
+ * with `ALIGN(.)` in linker script.
+ */
+const struct {
+	 char elem[0];
+} ext_manifest_align_element
+	__aligned(EXT_MAN_ALIGN) __section(".fw_metadata.align") = {};
 
 static const struct sof_ipc_fw_ready ready
 	__section(".fw_ready") = {
