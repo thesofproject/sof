@@ -169,6 +169,10 @@ def parse_params():
                         action='store_true')
     parser.add_argument('--no_colors', help='disable colors in output',
                         action='store_true')
+    parser.add_argument('--no_headers', help='skip information about headers',
+                        action='store_true')
+    parser.add_argument('--no_modules', help='skip information about modules',
+                        action='store_true')
     parser.add_argument('sof_ri_path', help='path to fw binary file to parse')
     parsed_args = parser.parse_args()
 
@@ -555,7 +559,7 @@ def parse_adsp_manifest_mod_entry(index, reader):
 
     return mod
 
-def parse_adsp_manifest(reader, name, add_module_entries):
+def parse_adsp_manifest(reader, name):
     """ Parses ADSP manifest from sof binary
     """
     adsp_mft = AdspManifest(name, reader.get_offset())
@@ -563,12 +567,11 @@ def parse_adsp_manifest(reader, name, add_module_entries):
     num_module_entries = adsp_mft.cdir['adsp_mft_hdr'].adir['num_module_entries'].val
     for i in range(0, num_module_entries):
         mod_entry = parse_adsp_manifest_mod_entry(i, reader)
-        if add_module_entries:
-            adsp_mft.add_comp(mod_entry)
+        adsp_mft.add_comp(mod_entry)
 
     return adsp_mft
 
-def parse_fw_bin(path, verbose, add_module_entries):
+def parse_fw_bin(path, verbose):
     """ Parses sof binary
     """
     reader = BinReader(path, verbose)
@@ -579,8 +582,7 @@ def parse_fw_bin(path, verbose, add_module_entries):
     parsed_bin.add_comp(parse_extended_manifest(reader))
     parsed_bin.add_comp(parse_cse_manifest(reader))
     reader.set_offset(reader.ext_mft_length + 0x2000)
-    parsed_bin.add_comp(parse_adsp_manifest(reader, 'cavs0015',
-                                            add_module_entries))
+    parsed_bin.add_comp(parse_adsp_manifest(reader, 'cavs0015'))
 
     reader.info('Parsing finished', show_offset = False)
     return parsed_bin
@@ -835,14 +837,14 @@ class Component():
                 return comp
         return None
 
-    def dump_info(self, pref):
+    def dump_info(self, pref, comp_filter):
         """ Prints out the content (name, all attributes, and nested comps)
         """
         print(pref + self.name)
         for attrib in self.attribs:
             print("{:}  {:<{:}} {:}".format(pref, attrib.name,
                                             self.max_attr_name_len, attrib))
-        self.dump_comp_info(pref)
+        self.dump_comp_info(pref, comp_filter)
 
     def dump_attrib_info(self, pref, attr_name):
         """ Prints out a single attribute
@@ -851,14 +853,14 @@ class Component():
         print("{:}  {:<{:}} {:}".format(pref, attrib.name,
                                         self.max_attr_name_len, attrib))
 
-    def dump_comp_info(self, pref, name_filter=''):
+    def dump_comp_info(self, pref, comp_filter=''):
         """ Prints out all nested components (filtered by name set to 'filter')
         """
         for comp in self.components:
-            if comp.name == name_filter:
+            if comp.name in comp_filter:
                 continue
             print()
-            comp.dump_info(pref + '  ')
+            comp.dump_info(pref + '  ', comp_filter)
 
 class ExtendedManifestAE1(Component):
     """ Extended manifest
@@ -867,7 +869,7 @@ class ExtendedManifestAE1(Component):
         super(ExtendedManifestAE1, self).__init__('ext_mft',
                                                'Extended Manifest', 0)
 
-    def dump_info(self, pref):
+    def dump_info(self, pref, comp_filter):
         hdr = self.cdir['ext_mft_hdr']
         if hdr.adir['length'].val == 0:
             return
@@ -875,7 +877,7 @@ class ExtendedManifestAE1(Component):
         out += ' ver {}'.format(hdr.adir['ver'])
         out += ' entries {}'.format(hdr.adir['entries'])
         print(out)
-        self.dump_comp_info(pref, name_filter='Header')
+        self.dump_comp_info(pref, comp_filter + ['Header'])
 
 class ExtendedManifestXMan(Component):
     """ Extended manifest
@@ -884,7 +886,7 @@ class ExtendedManifestXMan(Component):
         super(ExtendedManifestXMan, self).__init__('ext_mft',
                                                'Extended Manifest', 0)
 
-    def dump_info(self, pref):
+    def dump_info(self, pref, comp_filter):
         hdr = self.cdir['ext_mft_hdr']
         if hdr.adir['length'].val == 0:
             return
@@ -892,7 +894,7 @@ class ExtendedManifestXMan(Component):
         out += ' ver {}'.format(hdr.adir['ver'])
         out += ' length {}'.format(hdr.adir['length'].val)
         print(out)
-        self.dump_comp_info(pref, name_filter='Header')
+        self.dump_comp_info(pref, comp_filter + ['Header'])
 
 class CseManifest(Component):
     """ CSE Manifest
@@ -900,13 +902,13 @@ class CseManifest(Component):
     def __init__(self, offset):
         super(CseManifest, self).__init__('cse_mft', 'CSE Manifest', offset)
 
-    def dump_info(self, pref):
+    def dump_info(self, pref, comp_filter):
         hdr = self.cdir['cse_mft_hdr']
         print('{}{} ver {} checksum {} partition name {}'.
               format(pref,
                      self.name, hdr.adir['header_version'],
                      hdr.adir['checksum'], hdr.adir['partition_name']))
-        self.dump_comp_info(pref, name_filter='Header')
+        self.dump_comp_info(pref, comp_filter + ['Header'])
 
 class CssManifest(Component):
     """ CSS Manifest
@@ -914,7 +916,7 @@ class CssManifest(Component):
     def __init__(self, name, offset):
         super(CssManifest, self).__init__('css_mft', name, offset)
 
-    def dump_info(self, pref):
+    def dump_info(self, pref, comp_filter):
         hdr = self.cdir['css_mft_hdr']
         out = '{}{} (CSS Manifest)'.format(pref, self.name)
         out += ' type {}'.format(hdr.adir['type'])
@@ -933,7 +935,7 @@ class CssManifest(Component):
         print('{}  Signature'.format(pref))
         print('{}    {}'.format(pref, hdr.adir['signature']))
         # super().dump_info(pref)
-        self.dump_comp_info(pref, name_filter='Header')
+        self.dump_comp_info(pref, comp_filter + ['Header'])
 
 class MftExtension(Component):
     """ Manifest Extension
@@ -942,7 +944,7 @@ class MftExtension(Component):
         super(MftExtension, self).__init__('mft_ext'+repr(ext_id), name,
                                            offset)
 
-    def dump_info(self, pref):
+    def dump_info(self, pref, comp_filter):
         print('{}{} type {} length {}'.
               format(pref, self.name,
                      self.adir['type'], self.adir['length']))
@@ -954,7 +956,7 @@ class PlatFwAuthExtension(MftExtension):
         super(PlatFwAuthExtension,
               self).__init__(ext_id, 'Plat Fw Auth Extension', offset)
 
-    def dump_info(self, pref):
+    def dump_info(self, pref, comp_filter):
         out = '{}{}'.format(pref, self.name)
         out += ' name {}'.format(self.adir['name'])
         out += ' vcn {}'.format(self.adir['vcn'])
@@ -970,7 +972,7 @@ class AdspMetadataFileExt(MftExtension):
               self).__init__(ext_id, 'ADSP Metadata File Extension',
                              offset)
 
-    def dump_info(self, pref):
+    def dump_info(self, pref, comp_filter):
         out = '{}{}'.format(pref, self.name)
         out += ' ver {}'.format(self.adir['version'])
         out += ' base offset {}'.format(self.adir['base_offset'])
@@ -986,7 +988,7 @@ class AdspManifest(Component):
     def __init__(self, name, offset):
         super(AdspManifest, self).__init__('adsp_mft', name, offset)
 
-    def dump_info(self, pref):
+    def dump_info(self, pref, comp_filter):
         hdr = self.cdir['adsp_mft_hdr']
         out = '{}{} (ADSP Manifest)'.format(pref, self.name)
         out += ' name {}'.format(hdr.adir['name'])
@@ -1000,7 +1002,7 @@ class AdspManifest(Component):
                      hdr.adir['hw_buf_length']))
         print('{}  Load offset {}'.format(pref,
                                           hdr.adir['load_offset']))
-        self.dump_comp_info(pref, 'ADSP Manifest Header')
+        self.dump_comp_info(pref, comp_filter + ['ADSP Manifest Header'])
 
 class FwBin(Component):
     """ Parsed sof binary
@@ -1008,12 +1010,12 @@ class FwBin(Component):
     def __init__(self):
         super(FwBin, self).__init__('bin', 'SOF Binary', 0)
 
-    def dump_info(self, pref):
+    def dump_info(self, pref, comp_filter):
         """ Print out the content
         """
         print('SOF Binary {} size {}'.format(
             self.adir['file_name'], self.adir['file_size']))
-        self.dump_comp_info(pref)
+        self.dump_comp_info(pref, comp_filter)
 
 def main(args):
     """ main function
@@ -1025,8 +1027,14 @@ def main(args):
 
     Attribute.full_bytes = args.full_bytes
 
-    fw_bin = parse_fw_bin(args.sof_ri_path, args.verbose, not args.headers)
-    fw_bin.dump_info('')
+    fw_bin = parse_fw_bin(args.sof_ri_path, args.verbose)
+
+    comp_filter = []
+    if args.headers or args.no_modules:
+        comp_filter.append('Module Entry')
+    if args.no_headers:
+        comp_filter.append('CSE Manifest')
+    fw_bin.dump_info('', comp_filter)
 
 if __name__ == "__main__":
     ARGS = parse_params()
