@@ -578,8 +578,7 @@ def parse_fw_bin(path, verbose, add_module_entries):
     parsed_bin.add_comp(parse_extended_manifest(reader))
     parsed_bin.add_comp(parse_cse_manifest(reader, add_module_entries))
 
-    if verbose:
-        print('Parsing finished')
+    reader.info('Parsing finished', show_offset = False)
     return parsed_bin
 
 class BinReader():
@@ -587,15 +586,13 @@ class BinReader():
     """
     def __init__(self, path, verbose):
         self.verbose = verbose
-        if self.verbose:
-            print('Reading SOF ri image ' + path)
+        self.cur_offset = 0
+        self.info('Reading SOF ri image ' + path)
         self.file_name = path
         # read the content
         self.data = open(path, 'rb').read()
         self.file_size = len(self.data)
-        if self.verbose:
-            print('File size ' + uint_to_string(self.file_size, True))
-        self.cur_offset = 0
+        self.info('File size ' + uint_to_string(self.file_size, True))
 
     def get_offset(self):
         """ Retrieve the offset, the reader is at
@@ -665,12 +662,15 @@ class BinReader():
         """
         return uint_to_string(self.cur_offset+delta)
 
-    def info(self, loginfo, off_delta=0, verb_info=True):
+    def info(self, loginfo, off_delta=0, verb_info=True, show_offset=True):
         """ Prints 'info' log to the output, respects verbose mode
         """
         if verb_info and not self.verbose:
             return
-        print(self.offset_to_string(off_delta) + '\t' + loginfo)
+        if show_offset:
+            print(self.offset_to_string(off_delta) + '\t' + loginfo)
+        else:
+            print(loginfo)
 
     def error(self, logerror, off_delta=0):
         """ Prints 'error' log to the output
