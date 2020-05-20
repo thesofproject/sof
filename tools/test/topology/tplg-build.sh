@@ -267,7 +267,9 @@ then
 	shell_name=m4 # $0, only used in error messages
 	echo $M4_STRINGS | tr " " "," | tr '\n' '\0' |
 	  xargs  ${VERBOSE:+-t} -P${NO_PROCESSORS} -d ',' -n14 \
-	    bash ${VERBOSE:+-x} -c 'm4 "${@:1:${#}-1}" > ${14}.conf' $shell_name
+	    bash ${VERBOSE:+-x} -c \
+		'm4 --fatal-warnings "${@:1:${#}-1}" > ${14}.conf || exit 255' \
+		$shell_name
 
 	#execute alsatplg to create topology binary
 	printf '%s generating %s/*.tplg files with alsatplg...\n' \
