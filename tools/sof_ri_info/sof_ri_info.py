@@ -316,7 +316,7 @@ def parse_extended_manifest(reader):
 
     return ext_mft
 
-def parse_cse_manifest(reader, add_module_entries):
+def parse_cse_manifest(reader):
     """ Parses CSE manifest form sof binary
     """
     cse_mft = CseManifest(reader.get_offset())
@@ -359,6 +359,9 @@ def parse_cse_manifest(reader, add_module_entries):
         hdr_entry.add_a(Ahex('entry_length', entry_length))
         hdr.add_comp(hdr_entry)
 
+        reader.info('CSE Entry name {} length {}'.format(entry_name,
+                    entry_length))
+
         if '.man' in entry_name:
             entry = CssManifest(entry_name, entry_offset)
             cur_off = reader.set_offset(reader.ext_mft_length + entry_offset)
@@ -371,10 +374,8 @@ def parse_cse_manifest(reader, add_module_entries):
             entry.name = '{} ({})'.format(entry_name, entry.name)
             reader.set_offset(cur_off)
         else:
-            # override offset with precise one
-            cur_off = reader.set_offset(reader.ext_mft_length + 0x2000)
-            entry = parse_adsp_manifest(reader, entry_name, add_module_entries)
-            reader.set_offset(cur_off)
+            # indicate the place, the entry is enumerated. mft parsed later
+            entry = Component('adsp_mft_cse_entry', entry_name, entry_offset)
         cse_mft.add_comp(entry)
 
         nb_index += 1
@@ -576,7 +577,10 @@ def parse_fw_bin(path, verbose, add_module_entries):
     parsed_bin.add_a(Astring('file_name', reader.file_name))
     parsed_bin.add_a(Auint('file_size', reader.file_size))
     parsed_bin.add_comp(parse_extended_manifest(reader))
-    parsed_bin.add_comp(parse_cse_manifest(reader, add_module_entries))
+    parsed_bin.add_comp(parse_cse_manifest(reader))
+    reader.set_offset(reader.ext_mft_length + 0x2000)
+    parsed_bin.add_comp(parse_adsp_manifest(reader, 'cavs0015',
+                                            add_module_entries))
 
     reader.info('Parsing finished', show_offset = False)
     return parsed_bin
@@ -587,6 +591,7 @@ class BinReader():
     def __init__(self, path, verbose):
         self.verbose = verbose
         self.cur_offset = 0
+        self.ext_mft_length = 0
         self.info('Reading SOF ri image ' + path)
         self.file_name = path
         # read the content
