@@ -405,6 +405,7 @@ if(MEU_PATH OR DEFINED MEU_NO_SIGN)
 			-i ${RIMAGE_IMR_TYPE}
 			-f ${SOF_MAJOR}.${SOF_MINOR}
 			-b ${SOF_BUILD}
+			-e
 			${RIMAGE_MOD_OFFSET_FLAG}
 			${bootloader_binary_path}
 			sof-${fw_name}
@@ -450,6 +451,7 @@ else()
 			-i ${RIMAGE_IMR_TYPE}
 			-f ${SOF_MAJOR}.${SOF_MINOR}
 			-b ${SOF_BUILD}
+			-e
 			${RIMAGE_MOD_OFFSET_FLAG}
 			${bootloader_binary_path}
 			sof-${fw_name}
@@ -471,6 +473,22 @@ else()
 	set(fw_output_name "${FIRMWARE_NAME}")
 endif()
 
+if(${CMAKE_HOST_WIN32})
+	set(GLUE_CMD copy /b sof-${fw_name}.ri.xman + sof-${fw_name}.ri sof-${fw_name}.rix)
+else()
+	set(GLUE_CMD cat sof-${fw_name}.ri.xman sof-${fw_name}.ri > sof-${fw_name}.rix)
+endif()
+
+add_custom_target(
+	glue_binary_files
+	COMMAND ${GLUE_CMD}
+	COMMAND ${CMAKE_COMMAND} -E remove sof-${fw_name}.ri
+	COMMAND ${CMAKE_COMMAND} -E rename sof-${fw_name}.rix sof-${fw_name}.ri
+	DEPENDS run_meu
+	VERBATIM
+	USES_TERMINAL
+)
+
 if(MEU_NO_SIGN)
 	# copy rimage output that can be used to sign firmware
 	add_custom_target(
@@ -478,7 +496,7 @@ if(MEU_NO_SIGN)
 		COMMAND ${CMAKE_COMMAND} -E copy sof-${fw_name}.ri.uns ${PROJECT_BINARY_DIR}/sof-${fw_output_name}.ri.uns
 		COMMAND ${CMAKE_COMMAND} -E copy sof-${fw_name}.ri.met ${PROJECT_BINARY_DIR}/sof-${fw_output_name}.ri.met
 		COMMAND ${CMAKE_COMMAND} -E copy sof-${fw_name}.ldc ${PROJECT_BINARY_DIR}/sof-${fw_output_name}.ldc
-		DEPENDS run_meu bin_extras
+		DEPENDS run_meu bin_extras glue_binary_files
 		VERBATIM
 		USES_TERMINAL
 	)
@@ -487,7 +505,7 @@ else()
 		bin ALL
 		COMMAND ${CMAKE_COMMAND} -E copy sof-${fw_name}.ri ${PROJECT_BINARY_DIR}/sof-${fw_output_name}.ri
 		COMMAND ${CMAKE_COMMAND} -E copy sof-${fw_name}.ldc ${PROJECT_BINARY_DIR}/sof-${fw_output_name}.ldc
-		DEPENDS run_meu bin_extras
+		DEPENDS run_meu bin_extras glue_binary_files
 		VERBATIM
 		USES_TERMINAL
 	)
