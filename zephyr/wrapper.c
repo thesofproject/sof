@@ -60,7 +60,8 @@ struct __alloc_hdr {
 	void *orig_ptr;
 } __packed;
 
-#define DEBUG_ALLOC 1
+#define DEBUG_ALLOC			1
+#define ALWAYS_USE_ALIGNED_ALLOC	1
 
 static struct k_spinlock lock;
 
@@ -68,36 +69,41 @@ BUILD_ASSERT((sizeof(struct __alloc_hdr) == 32), "Must be 32");
 
 void *rmalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
 {
-	struct __alloc_hdr *hdr;
-	void *new_ptr;
+	if (IS_ENABLED(ALWAYS_USE_ALIGNED_ALLOC)) {
+		return  rballoc_align(flags, caps, bytes,
+				      PLATFORM_DCACHE_ALIGN);
+	} else {
+		struct __alloc_hdr *hdr;
+		void *new_ptr;
 
-	bytes += sizeof(struct __alloc_hdr);
+		bytes += sizeof(struct __alloc_hdr);
 
-	/* TODO: Use different memory areas - & cache line alignment*/
+		/* TODO: Use different memory areas - & cache line alignment*/
 
-	/* Allocation header in the beginning of the memory block */
-	hdr = k_malloc(bytes);
-	if (!hdr) {
-		trace_error(TRACE_CLASS_MEM, "Failed to malloc");
-		return NULL;
+		/* Allocation header in the beginning of the memory block */
+		hdr = k_malloc(bytes);
+		if (!hdr) {
+			trace_error(TRACE_CLASS_MEM, "Failed to malloc");
+			return NULL;
+		}
+
+		/* New pointer starts right after sizeof(*hdr) */
+		new_ptr = hdr + 1;
+
+		hdr->orig_ptr = hdr;
+		hdr->size = bytes;
+
+		tracev_event(TRACE_CLASS_MEM, "rz: hdr %p new_ptr %p sz %u",
+			     hdr, new_ptr, hdr->size);
+
+		if (IS_ENABLED(DEBUG_ALLOC)) {
+			k_spinlock_key_t k = k_spin_lock(&lock);
+			sys_slist_append(&alloc_list, &hdr->snode);
+			k_spin_unlock(&lock, k);
+		}
+
+		return new_ptr;
 	}
-
-	/* New pointer starts right after sizeof(*hdr) */
-	new_ptr = hdr + 1;
-
-	hdr->orig_ptr = hdr;
-	hdr->size = bytes;
-
-	trace_error(TRACE_CLASS_MEM, "rz: hdr %p new_ptr %p sz %u",
-		    hdr, new_ptr, hdr->size);
-
-	if (IS_ENABLED(DEBUG_ALLOC)) {
-		k_spinlock_key_t k = k_spin_lock(&lock);
-		sys_slist_append(&alloc_list, &hdr->snode);
-		k_spin_unlock(&lock, k);
-	}
-
-	return new_ptr;
 }
 
 /* Use SOF_MEM_ZONE_BUFFER at the moment */
@@ -129,7 +135,7 @@ void *rbrealloc_align(void *ptr, uint32_t flags, uint32_t caps, size_t bytes,
 
 	rfree(ptr);
 
-	trace_error(TRACE_CLASS_MEM, "real: new ptr %p", new_ptr);
+	trace_event(TRACE_CLASS_MEM, "realloc: new ptr %p", new_ptr);
 
 	return new_ptr;
 }
@@ -142,37 +148,45 @@ void *rbrealloc_align(void *ptr, uint32_t flags, uint32_t caps, size_t bytes,
  */
 void *rzalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
 {
-	struct __alloc_hdr *hdr;
-	void *new_ptr;
+	if (IS_ENABLED(ALWAYS_USE_ALIGNED_ALLOC)) {
+		void *ptr = rmalloc(zone, flags, caps, bytes);
 
-	bytes += sizeof(struct __alloc_hdr);
+		memset(ptr, 0, bytes);
 
-	/* TODO: Use different memory areas & cache line alignment */
+		return ptr;
+	} else {
+		struct __alloc_hdr *hdr;
+		void *new_ptr;
 
-	/* Allocation header in the beginning of the memory block */
-	hdr = k_calloc(bytes, 1);
-	if (!hdr) {
-		trace_error(TRACE_CLASS_MEM, "Failed to rzalloc");
-		k_panic();
-		return NULL;
+		bytes += sizeof(struct __alloc_hdr);
+
+		/* TODO: Use different memory areas & cache line alignment */
+
+		/* Allocation header in the beginning of the memory block */
+		hdr = k_calloc(bytes, 1);
+		if (!hdr) {
+			trace_error(TRACE_CLASS_MEM, "Failed to rzalloc");
+			k_panic();
+			return NULL;
+		}
+
+		/* New pointer starts right after sizeof(*hdr) */
+		new_ptr = hdr + 1;
+
+		hdr->orig_ptr = hdr;
+		hdr->size = bytes;
+
+		tracev_event(TRACE_CLASS_MEM, "rz: hdr %p new %p sz %u",
+			     hdr, new_ptr, hdr->size);
+
+		if (IS_ENABLED(DEBUG_ALLOC)) {
+			k_spinlock_key_t k = k_spin_lock(&lock);
+			sys_slist_append(&alloc_list, &hdr->snode);
+			k_spin_unlock(&lock, k);
+		}
+
+		return new_ptr;
 	}
-
-	/* New pointer starts right after sizeof(*hdr) */
-	new_ptr = hdr + 1;
-
-	hdr->orig_ptr = hdr;
-	hdr->size = bytes;
-
-	trace_error(TRACE_CLASS_MEM, "rz: hdr %p new_ptr %p sz %u",
-		    hdr, new_ptr, hdr->size);
-
-	if (IS_ENABLED(DEBUG_ALLOC)) {
-		k_spinlock_key_t k = k_spin_lock(&lock);
-		sys_slist_append(&alloc_list, &hdr->snode);
-		k_spin_unlock(&lock, k);
-	}
-
-	return new_ptr;
 }
 
 /**
@@ -212,6 +226,9 @@ void *rballoc_align(uint32_t flags, uint32_t caps, size_t bytes,
 		k_spin_unlock(&lock, k);
 	}
 
+	tracev_event(TRACE_CLASS_MEM, "ra: hdr %p new %p sz %u",
+		     hdr, new_ptr, hdr->size);
+
 	return new_ptr;
 }
 
@@ -228,7 +245,8 @@ void rfree(void *ptr)
 		struct __alloc_hdr *hdr = (struct __alloc_hdr *)ptr - 1;
 		void *orig_ptr = hdr->orig_ptr;
 
-		trace_event(TRACE_CLASS_MEM, "rm: ptr %p orig %p", ptr, orig_ptr);
+		tracev_event(TRACE_CLASS_MEM, "rm: ptr %p orig %p",
+			     ptr, orig_ptr);
 
 		if (IS_ENABLED(DEBUG_ALLOC)) {
 			k_spinlock_key_t k;
