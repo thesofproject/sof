@@ -10,8 +10,9 @@ rm -f dump-*.txt
 print_usage()
 {
 	cat <<EOF
-usage: qemu-check.sh platform(s)
+usage: qemu-check.sh [ platform(s) ]
 	Supported platforms are ${SUPPORTED_PLATFORMS[*]}
+	Runs all supported platforms by default.
 EOF
 }
 
@@ -123,23 +124,24 @@ do
 		ROM+="/src/arch/xtensa/rom-$platform.bin"
 	fi
 
-	./xtensa-host.sh $PLATFORM -k \
-		../sof.git/build_${platform}_gcc/src/arch/xtensa/$FWNAME $ROM \
-		-o 2.0 ../sof.git/dump-$platform.txt
+	./xtensa-host.sh "$PLATFORM" -k \
+		../sof.git/build_"${platform}"_gcc/src/arch/xtensa/"$FWNAME" \
+                $ROM \
+		-o 2.0 ../sof.git/dump-"$platform".txt
 	# dump log into sof.git incase running in docker
 
 	# use regular expression to match the SHM IPC REG file name
 	SHM_IPC_REG_FILE=$(ls /dev/shm/ | grep -E $SHM_IPC_REG)
 
 	# check if ready ipc header is in the ipc regs
-	IPC_REG=$(hexdump -C /dev/shm/$SHM_IPC_REG_FILE | grep "$READY_IPC")
+	IPC_REG=$(hexdump -C /dev/shm/"$SHM_IPC_REG_FILE" | grep "$READY_IPC")
 	# check if ready ipc message is in the mbox
 	IPC_MSG=$(hexdump -C /dev/shm/$SHM_MBOX | grep -A 4 "$READY_MSG" | grep -A 4 "$OUTBOX_OFFSET")
 
 	if [ "$IPC_REG" ]; then
 		echo "ipc reg dump:"
 		# directly output the log to be nice to look
-		hexdump -C /dev/shm/$SHM_IPC_REG_FILE | grep "$READY_IPC"
+		hexdump -C /dev/shm/"$SHM_IPC_REG_FILE" | grep "$READY_IPC"
 		if [ "$IPC_MSG" ]; then
 			echo "ipc message dump:"
 			# directly output the log to be nice to look
@@ -155,7 +157,7 @@ do
 		echo "Boot success";
 	else
 		echo "Error boot failed"
-		tail -n 50 ../sof.git/dump-$platform.txt
+		tail -n 50 ../sof.git/dump-"$platform".txt
 		exit 2;
 	fi
 done
