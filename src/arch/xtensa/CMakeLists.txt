@@ -90,7 +90,7 @@ else()
 endif()
 
 # linker flags
-target_link_libraries(sof_options INTERFACE ${stdlib_flag} -Wl,--no-check-sections -ucall_user_start -Wl,-static)
+target_link_libraries(sof_options INTERFACE ${stdlib_flag} -lgcc -Wl,--no-check-sections -ucall_user_start -Wl,-static)
 
 # C & ASM flags
 target_compile_options(sof_options INTERFACE ${stdlib_flag} -fno-inline-functions ${XTENSA_C_ASM_FLAGS})
@@ -211,7 +211,6 @@ else()
 	target_link_libraries(sof_static_libraries INTERFACE reset)
 endif()
 
-target_link_libraries(sof_ld_flags INTERFACE "-lgcc")
 target_link_libraries(sof_ld_flags INTERFACE "-Wl,-Map=sof.map")
 target_link_libraries(sof_ld_flags INTERFACE "-T${PROJECT_BINARY_DIR}/${platform_ld_script}")
 
@@ -236,7 +235,6 @@ if(build_bootloader)
 	add_local_sources(bootloader xtos/_vectors.S boot_entry.S boot_loader.c)
 	target_link_libraries(bootloader PRIVATE reset)
 	target_link_libraries(bootloader PRIVATE hal)
-	target_link_libraries(bootloader PRIVATE "-lgcc")
 	target_link_libraries(bootloader PRIVATE "-T${PROJECT_BINARY_DIR}/${platform_bootldr_ld_script}")
 	sof_add_ld_script(bootloader ${platform_bootldr_ld_script})
 	sof_append_relative_path_definitions(bootloader)
@@ -274,7 +272,6 @@ endif()
 if(CONFIG_BUILD_VM_ROM)
 	add_executable(rom "")
 	target_link_libraries(rom PRIVATE sof_options)
-	target_link_libraries(rom PRIVATE "-lgcc")
 	target_link_libraries(rom PRIVATE "-T${PROJECT_BINARY_DIR}/${platform_rom_ld_script}")
 	sof_add_ld_script(rom ${platform_rom_ld_script})
 
