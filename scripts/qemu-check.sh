@@ -5,6 +5,10 @@
 SUPPORTED_PLATFORMS=(byt cht bdw hsw apl icl skl kbl cnl imx8 imx8x imx8m)
 READY_MSG="6c 00 00 00 00 00 00 70"
 
+SOF_DIR=$(cd "$(dirname "$0")" && cd .. && pwd)
+
+: "${SOF_BUILDS:=${SOF_DIR}}"
+
 rm -f dump-*.txt
 
 print_usage()
@@ -120,14 +124,14 @@ do
 	esac
 
 	if $has_rom; then
-		ROM="-r ../sof.git/build_${platform}_gcc"
+		ROM="-r ${SOF_BUILDS}/build_${platform}_gcc"
 		ROM+="/src/arch/xtensa/rom-$platform.bin"
 	fi
 
 	./xtensa-host.sh "$PLATFORM" -k \
-		../sof.git/build_"${platform}"_gcc/src/arch/xtensa/"$FWNAME" \
+	   "${SOF_BUILDS}"/build_"${platform}"_gcc/src/arch/xtensa/"$FWNAME" \
                 $ROM \
-		-o 2.0 ../sof.git/dump-"$platform".txt
+		-o 2.0 "${SOF_BUILDS}"/dump-"$platform".txt
 	# dump log into sof.git incase running in docker
 
 	# use regular expression to match the SHM IPC REG file name
@@ -157,7 +161,7 @@ do
 		echo "Boot success";
 	else
 		echo "Error boot failed"
-		tail -n 50 ../sof.git/dump-"$platform".txt
+		tail -n 50 "${SOF_BUILDS}"/dump-"$platform".txt
 		exit 2;
 	fi
 done
