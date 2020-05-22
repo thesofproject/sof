@@ -5,6 +5,7 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  *         Keyon Jie <yang.jie@linux.intel.com>
  *         Artur Kloniecki <arturx.kloniecki@linux.intel.com>
+ *         Karol Trzcinski <karolx.trzcinski@linux.intel.com>
  */
 
 #ifndef __SOF_TRACE_TRACE_H__
@@ -86,6 +87,13 @@ static inline struct trace *trace_get(void)
 #define trace_unused(class, ctx, id_1, id_2, format, ...) \
 	UNUSED(ctx, id_1, id_2, ##__VA_ARGS__)
 
+struct trace_filter {
+	uint32_t uuid_id;	/**< type id, or 0 when not important */
+	int32_t comp_id;	/**< component id or -1 when not important */
+	int32_t pipe_id;	/**< pipeline id or -1 when not important */
+	int32_t log_level;	/**< new log level value */
+};
+
 #if CONFIG_TRACE
 
 /*
@@ -131,6 +139,10 @@ void trace_init(struct sof *sof);
 void trace_log(bool send_atomic, const void *log_entry,
 	       const struct tr_ctx *ctx, uint32_t lvl, uint32_t id_1,
 	       uint32_t id_2, int arg_count, ...);
+struct sof_ipc_trace_filter_elem *trace_filter_fill(struct sof_ipc_trace_filter_elem *elem,
+						    struct sof_ipc_trace_filter_elem *end,
+						    struct trace_filter *filter);
+int trace_filter_update(const struct trace_filter *elem);
 
 #define _trace_event_with_ids(lvl, class, ctx, id_1, id_2, format, ...)	\
 	_log_message(false, lvl, class, ctx, id_1, id_2,		\
@@ -232,6 +244,8 @@ static inline void trace_flush(void) { }
 static inline void trace_on(void) { }
 static inline void trace_off(void) { }
 static inline void trace_init(struct sof *sof) { }
+static inline int trace_filter_update(const struct trace_filter *filter)
+	{ return 0; }
 
 #endif /* CONFIG_TRACE */
 

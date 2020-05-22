@@ -4,8 +4,10 @@
 //
 // Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
 //         Artur Kloniecki <arturx.kloniecki@linux.intel.com>
+//         Karol Trzcinski <karolx.trzcinski@linux.intel.com>
 
 #include <sof/debug/panic.h>
+#include <sof/drivers/ipc.h>
 #include <sof/drivers/timer.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/cache.h>
@@ -153,6 +155,57 @@ void trace_log(bool send_atomic, const void *log_entry,
 	if (lvl == LOG_LEVEL_CRITICAL)
 		mtrace_event((const char *)data, MESSAGE_SIZE(arg_count));
 #endif /* CONFIG_TRACEM */
+}
+
+struct sof_ipc_trace_filter_elem *trace_filter_fill(struct sof_ipc_trace_filter_elem *elem,
+						    struct sof_ipc_trace_filter_elem *end,
+						    struct trace_filter *filter)
+{
+	filter->log_level = -1;
+	filter->uuid_id = 0;
+	filter->comp_id = -1;
+	filter->pipe_id = -1;
+
+	while (elem <= end) {
+		switch (elem->key & SOF_IPC_TRACE_FILTER_ELEM_TYPE_MASK) {
+		case SOF_IPC_TRACE_FILTER_ELEM_SET_LEVEL:
+			filter->log_level = elem->value;
+			break;
+		case SOF_IPC_TRACE_FILTER_ELEM_BY_UUID:
+			filter->uuid_id = elem->value;
+			break;
+		case SOF_IPC_TRACE_FILTER_ELEM_BY_COMP:
+			filter->comp_id = elem->value;
+			break;
+		case SOF_IPC_TRACE_FILTER_ELEM_BY_PIPE:
+			filter->pipe_id = elem->value;
+			break;
+		default:
+			tr_err(&ipc_tr, "Invalid SOF_IPC_TRACE_FILTER_ELEM 0x%x",
+			       elem->key);
+			return NULL;
+		}
+
+		/* each filter set must be terminated with FIN flag and have new log level */
+		if (elem->key & SOF_IPC_TRACE_FILTER_ELEM_FIN) {
+			if (filter->log_level < 0) {
+				tr_err(&ipc_tr, "Each trace filter set must specify new log level");
+				return NULL;
+			} else {
+				return elem + 1;
+			}
+		}
+
+		++elem;
+	}
+
+	tr_err(&ipc_tr, "Trace filter elements set is not properly terminated");
+	return NULL;
+}
+
+int trace_filter_update(const struct trace_filter *filter)
+{
+	return -EINVAL;
 }
 
 void trace_flush(void)

@@ -747,6 +747,55 @@ error:
 	return err;
 }
 
+static int ipc_trace_filter_update(uint32_t header)
+{
+	struct sof_ipc_trace_filter_elem *next_elem;
+	struct sof_ipc_trace_filter_elem *elem;
+	struct sof_ipc_trace_filter_elem *end;
+	struct sof_ipc_trace_filter *packet;
+	struct trace_filter filter;
+	struct ipc *ipc = ipc_get();
+	int ret = 0;
+	int cnt;
+
+	packet = ipc->comp_data;
+	elem = packet->elems;
+	end = &packet->elems[packet->elem_cnt];
+
+	/* validation, packet->hdr.size has already been compared with SOF_IPC_MSG_MAX_SIZE */
+	if (sizeof(*packet) + sizeof(*elem) * packet->elem_cnt != packet->hdr.size) {
+		tr_err(&ipc_tr, "trace_filter_update failed, elem_cnt %d is inconsistent with hdr.size %d",
+		       packet->elem_cnt, packet->hdr.size);
+			return -EINVAL;
+	}
+
+	tr_info(&ipc_tr, "ipc: trace_filter_update received, size %d elems",
+		packet->elem_cnt);
+
+	/* read each filter set and update selected components trace settings */
+	while (elem != end) {
+		next_elem = trace_filter_fill(elem, end, &filter);
+		if (!next_elem)
+			return -EINVAL;
+
+		cnt = trace_filter_update(&filter);
+		if (cnt < 0) {
+			tr_err(&ipc_tr, "trace_filter_update failed for UUID key 0x%X, comp %d.%d and log level %d",
+			       filter.uuid_id, filter.pipe_id, filter.comp_id,
+			       filter.log_level);
+			ret = cnt;
+		} else {
+			tr_info(&ipc_tr, "trace_filter_update for UUID key 0x%X, comp %d.%d affected %d components",
+				filter.uuid_id, filter.pipe_id, filter.comp_id,
+				cnt);
+		}
+
+		elem = next_elem;
+	}
+
+	return ret;
+}
+
 static int ipc_glb_debug_message(uint32_t header)
 {
 	uint32_t cmd = iCS(header);
@@ -757,6 +806,8 @@ static int ipc_glb_debug_message(uint32_t header)
 	case SOF_IPC_TRACE_DMA_PARAMS:
 	case SOF_IPC_TRACE_DMA_PARAMS_EXT:
 		return ipc_dma_trace_config(header);
+	case SOF_IPC_TRACE_FILTER_UPDATE:
+		return ipc_trace_filter_update(header);
 	default:
 		tr_err(&ipc_tr, "ipc: unknown debug cmd 0x%x", cmd);
 		return -EINVAL;

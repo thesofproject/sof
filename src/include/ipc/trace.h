@@ -11,6 +11,7 @@
  * \brief IPC definitions
  * \author Liam Girdwood <liam.r.girdwood@linux.intel.com>
  * \author Keyon Jie <yang.jie@linux.intel.com>
+ * \author Karol Trzcinski <karolx.trzcinski@linux.intel.com>
  */
 
 #ifndef __IPC_TRACE_H__
@@ -49,6 +50,35 @@ struct sof_ipc_dma_trace_posn {
 	uint32_t host_offset;	/* Offset of DMA host buffer */
 	uint32_t overflow;	/* overflow bytes if any */
 	uint32_t messages;	/* total trace messages */
+} __attribute__((packed));
+
+/* Values used in sof_ipc_trace_filter_elem */
+
+/* bits 6..0 */
+#define SOF_IPC_TRACE_FILTER_ELEM_SET_LEVEL	0x01	/**< trace level for selected components */
+#define SOF_IPC_TRACE_FILTER_ELEM_BY_UUID	0x02	/**< filter by uuid key */
+#define SOF_IPC_TRACE_FILTER_ELEM_BY_COMP	0x03	/**< filter by component id */
+#define SOF_IPC_TRACE_FILTER_ELEM_BY_PIPE	0x04	/**< filter by pipeline */
+#define SOF_IPC_TRACE_FILTER_ELEM_TYPE_MASK	0x7F	/**< filter element type mask */
+
+/* bit 7 */
+#define SOF_IPC_TRACE_FILTER_ELEM_FIN	0x80	/**< mark last filter in set */
+
+/* bits 31..8: Unused */
+
+/** part of sof_ipc_trace_filter, ABI3.17 */
+struct sof_ipc_trace_filter_elem {
+	int32_t key;		/**< SOF_IPC_TRACE_FILTER_ELEM_ {LEVEL, UUID, COMP, PIPE} */
+	int32_t value;		/**< element value */
+} __attribute__((packed));
+
+/** Runtime tracing filtration data - SOF_IPC_TRACE_FILTER_UPDATE, ABI3.17 */
+struct sof_ipc_trace_filter {
+	struct sof_ipc_cmd_hdr hdr;	/**< IPC command header */
+	uint32_t elem_cnt;		/**< number of entries in elems[] array */
+	uint32_t reserved[8];		/**< reserved for future usage */
+	/** variable size array with new filtering settings */
+	struct sof_ipc_trace_filter_elem elems[];
 } __attribute__((packed));
 
 /*
