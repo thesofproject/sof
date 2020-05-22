@@ -139,6 +139,7 @@ static int configure_uart(const char *file, unsigned int baud)
 
 int main(int argc, char *argv[])
 {
+	static const char optstring[] = "ho:i:l:ps:c:u:tev:rdLf:";
 	struct convert_config config;
 	unsigned int baud = 0;
 	const char *snapshot_file = 0;
@@ -164,7 +165,7 @@ int main(int argc, char *argv[])
 	config.hide_location = 0;
 	config.float_precision = 6;
 
-	while ((opt = getopt(argc, argv, "ho:i:l:ps:c:u:tev:rdLf:")) != -1) {
+	while ((opt = getopt(argc, argv, optstring)) != -1) {
 		switch (opt) {
 		case 'o':
 			config.out_file = optarg;
