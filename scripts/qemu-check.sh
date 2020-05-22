@@ -1,6 +1,7 @@
 #!/bin/bash
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2018 Intel Corporation. All rights reserved.
+set -e
 
 SUPPORTED_PLATFORMS=(byt cht bdw hsw apl icl skl kbl cnl imx8 imx8x imx8m)
 READY_MSG="6c 00 00 00 00 00 00 70"
@@ -153,7 +154,7 @@ do
 	${xtensa_host_sh} "$PLATFORM" -k \
 	   "${SOF_BUILDS}"/build_"${platform}"_gcc/src/arch/xtensa/"$FWNAME" \
                 $ROM \
-		-o 2.0 "${SOF_BUILDS}"/dump-"$platform".txt
+		-o 2.0 "${SOF_BUILDS}"/dump-"$platform".txt || true # timeout
 	# dump log into sof.git incase running in docker
 
 	# use regular expression to match the SHM IPC REG file name
