@@ -171,6 +171,8 @@ def parse_params():
                         action='store_true')
     parser.add_argument('--no_colors', help='disable colors in output',
                         action='store_true')
+    parser.add_argument('--no_cse', help='disable cse manifest parsing',
+                        action='store_true')
     parser.add_argument('--no_headers', help='skip information about headers',
                         action='store_true')
     parser.add_argument('--no_modules', help='skip information about modules',
@@ -585,7 +587,7 @@ def parse_adsp_manifest(reader, name):
 
     return adsp_mft
 
-def parse_fw_bin(path, verbose):
+def parse_fw_bin(path, no_cse, verbose):
     """ Parses sof binary
     """
     reader = BinReader(path, verbose)
@@ -594,7 +596,8 @@ def parse_fw_bin(path, verbose):
     parsed_bin.add_a(Astring('file_name', reader.file_name))
     parsed_bin.add_a(Auint('file_size', reader.file_size))
     parsed_bin.add_comp(parse_extended_manifest(reader))
-    parsed_bin.add_comp(parse_cse_manifest(reader))
+    if not no_cse:
+        parsed_bin.add_comp(parse_cse_manifest(reader))
     reader.set_offset(reader.ext_mft_length + 0x2000)
     parsed_bin.add_comp(parse_adsp_manifest(reader, 'cavs0015'))
 
@@ -1217,7 +1220,7 @@ def main(args):
 
     Attribute.full_bytes = args.full_bytes
 
-    fw_bin = parse_fw_bin(args.sof_ri_path, args.verbose)
+    fw_bin = parse_fw_bin(args.sof_ri_path, args.no_cse, args.verbose)
 
     comp_filter = []
     if args.headers or args.no_modules:
