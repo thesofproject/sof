@@ -141,6 +141,25 @@ get_uuid_entry(const struct snd_sof_uids_header *uids_dict, uint32_t uid_ptr)
 	       uids_dict->base_address);
 }
 
+/*
+ * Use uids dictionary content, to convert address of uuid `entry` from logger
+ * memory space to corresponding uuid key address used in firmware trace system
+ * (with base UUID_ENTRY_ELF_BASE, 0x1FFFA000 as usual). Function get_uuid_entry
+ * works in oppopsite direction.
+ */
+uint32_t get_uuid_key(const struct snd_sof_uids_header *uids_dict,
+		      const struct sof_uuid_entry *entry)
+{
+	/*
+	 * uids_dict->data_offset and uids_dict->base_address are both constants,
+	 * related with given ldc file.
+	 * Uuid address used in firmware, points unusable memory region,
+	 * so its treated as key value.
+	 */
+	return (uintptr_t)entry - (uintptr_t)uids_dict -
+		uids_dict->data_offset + uids_dict->base_address;
+}
+
 const char *format_uid(const struct snd_sof_uids_header *uids_dict,
 		       uint32_t uid_ptr,
 		       int use_colors)
@@ -715,8 +734,7 @@ static int dump_ldc_info(struct convert_config *config,
 
 	while (remaining > 0) {
 		name = format_uid_raw(&uid_ptr[cnt], 0, 0);
-		uid_addr = (uintptr_t)&uid_ptr[cnt] - (uintptr_t)uids_dict -
-			    uids_dict->data_offset + uids_dict->base_address;
+		uid_addr = get_uuid_key(uids_dict, &uid_ptr[cnt]);
 		fprintf(out_fd, "\t0x%lX  %s\n", uid_addr, name);
 
 		if (name) {
