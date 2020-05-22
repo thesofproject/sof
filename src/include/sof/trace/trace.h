@@ -297,7 +297,11 @@ struct tr_ctx {
 	uint32_t level;		/**< Default log level */
 };
 
-/* todo: put in a section to iterate over later while cfg log levels */
+#if defined(UNIT_TEST)
+#define TRACE_CONTEXT_SECTION
+#else
+#define TRACE_CONTEXT_SECTION __section(".trace_ctx")
+#endif
 
 /**
  * Declares trace context.
@@ -306,7 +310,7 @@ struct tr_ctx {
  * @param default_log_level Default log level.
  */
 #define DECLARE_TR_CTX(ctx_name, uuid, default_log_level) \
-	struct tr_ctx ctx_name = { \
+	struct tr_ctx ctx_name TRACE_CONTEXT_SECTION = { \
 			.uuid_p = uuid, \
 			.level = default_log_level, \
 	}

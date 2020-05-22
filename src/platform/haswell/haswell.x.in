@@ -418,6 +418,9 @@ SECTIONS
     *(.gnu.linkonce.s2.*)
     KEEP(*(.jcr))
     _data_end = ABSOLUTE(.);
+    _trace_ctx_start = ABSOLUTE(.);
+    *(.trace_ctx)
+    _trace_ctx_end = ABSOLUTE(.);
   } >sof_data :sof_data_phdr
 
   .lit4 : ALIGN(4)
