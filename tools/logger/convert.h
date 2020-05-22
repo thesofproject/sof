@@ -13,6 +13,7 @@
 #include <stdio.h>
 #include <ipc/info.h>
 #include <smex/ldc.h>
+#include <sof/lib/uuid.h>
 
 #define KNRM	"\x1B[0m"
 #define KRED	"\x1B[31m"
@@ -42,4 +43,6 @@ struct convert_config {
 	struct snd_sof_uids_header *uids_dict;
 };
 
+uint32_t get_uuid_key(const struct snd_sof_uids_header *uids_dict,
+		      const struct sof_uuid_entry *entry);
 int convert(struct convert_config *config);
