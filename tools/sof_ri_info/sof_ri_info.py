@@ -263,7 +263,7 @@ def parse_extended_manifest_ae1(reader):
     hdr = Component('ext_mft_hdr', 'Header', 0)
     ext_mft.add_comp(hdr)
 
-    sig = reader.read_bytes(4).decode()
+    sig = reader.read_string(4)
     reader.info('Extended Manifest (' + sig + ')', -4)
     hdr.add_a(Astring('sig', sig))
 
@@ -282,7 +282,7 @@ def parse_extended_manifest_xman(reader):
     hdr = Component('ext_mft_hdr', 'Header', 0)
     ext_mft.add_comp(hdr)
 
-    sig = reader.read_bytes(4).decode()
+    sig = reader.read_string(4)
     reader.info('Extended Manifest (' + sig + ')', -4)
     hdr.add_a(Astring('sig', sig))
 
@@ -308,7 +308,7 @@ def parse_extended_manifest(reader):
     """
 
     # Try to detect signature first
-    sig = reader.read_bytes(4).decode()
+    sig = reader.read_string(4)
     reader.set_offset(0)
     if sig == '$AE1':
         ext_mft = parse_extended_manifest_ae1(reader)
@@ -330,7 +330,7 @@ def parse_cse_manifest(reader):
     cse_mft = CseManifest(reader.get_offset())
 
     # Try to detect signature first
-    sig = reader.read_bytes(4).decode()
+    sig = reader.read_string(4)
     if sig != '$CPD':
         reader.error('CSE Manifest NOT found ' + sig + ')', -4)
         sys.exit(1)
@@ -349,13 +349,13 @@ def parse_cse_manifest(reader):
     header_length = reader.read_b()
     hdr.add_a(Ahex('header_length', header_length))
     hdr.add_a(Ahex('checksum', reader.read_b()))
-    hdr.add_a(Astring('partition_name', reader.read_bytes(4).decode()))
+    hdr.add_a(Astring('partition_name', reader.read_string(4)))
 
     reader.set_offset(cse_mft.file_offset + header_length)
     # Read entries
     nb_index = 0
     while nb_index < nb_entries:
-        entry_name = reader.read_bytes(12).decode()
+        entry_name = reader.read_string(12)
         entry_offset = reader.read_dw()
         entry_length = reader.read_dw()
         # reserved field
@@ -418,7 +418,7 @@ def parse_css_manifest_4(css_mft, reader, size_limit):
     hdr.add_a(Adate('date', hex(reader.read_dw())))
     size = reader.read_dw()
     hdr.add_a(Auint('size', size))
-    hdr.add_a(Astring('header_id', reader.read_bytes(4).decode()))
+    hdr.add_a(Astring('header_id', reader.read_string(4)))
     hdr.add_a(Auint('padding', reader.read_dw()))
     hdr.add_a(Aversion('fw_version', reader.read_w(), reader.read_w(),
                        reader.read_w(), reader.read_w()))
@@ -462,7 +462,7 @@ def parse_mft_extension(reader, ext_id):
     if ext_type == 15:
         begin_off = reader.get_offset()
         ext = PlatFwAuthExtension(ext_id, reader.get_offset()-8)
-        ext.add_a(Astring('name', reader.read_bytes(4).decode()))
+        ext.add_a(Astring('name', reader.read_string(4)))
         ext.add_a(Auint('vcn', reader.read_dw()))
         ext.add_a(Abytes('bitmap', reader.read_bytes(16), 'red'))
         ext.add_a(Auint('svn', reader.read_dw()))
@@ -493,7 +493,7 @@ def parse_adsp_manifest_hdr(reader):
     """
     # Verify signature
     try:
-        sig = reader.read_bytes(4).decode()
+        sig = reader.read_string(4)
     except UnicodeDecodeError:
         print('\n' + reader.offset_to_string() + \
               '\terror: Failed to decode signature, wrong position?')
@@ -527,7 +527,7 @@ def parse_adsp_manifest_mod_entry(index, reader):
     """
     # Verify Mod Entry signature
     try:
-        sig = reader.read_bytes(4).decode()
+        sig = reader.read_string(4)
     except UnicodeDecodeError:
         print(reader.offset_to_string() + \
               '\terror: Failed to decode ModuleEntry signature')
@@ -656,6 +656,11 @@ class BinReader():
         byte, = struct.unpack('B', self.get_data(0, 1))
         self.ff_data(1)
         return byte
+
+    def read_string(self, size_in_file):
+        """ Reads a string from the stream, potentially padded with zeroes
+        """
+        return self.read_bytes(size_in_file).decode().rstrip('\0')
 
     def read_uuid(self):
         """ Reads a UUID from the stream and returns as string
