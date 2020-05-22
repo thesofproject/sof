@@ -307,6 +307,7 @@ def parse_extended_manifest(reader):
     """ Parses extended manifest from sof binary
     """
 
+    reader.info('Looking for Extended Manifest')
     # Try to detect signature first
     sig = reader.read_string(4)
     reader.set_offset(0)
@@ -327,6 +328,7 @@ def parse_extended_manifest(reader):
 def parse_cse_manifest(reader):
     """ Parses CSE manifest form sof binary
     """
+    reader.info('Looking for CSE Manifest')
     cse_mft = CseManifest(reader.get_offset())
 
     # Try to detect signature first
@@ -342,6 +344,7 @@ def parse_cse_manifest(reader):
     hdr.add_a(Astring('sig', sig))
     # read number of entries
     nb_entries = reader.read_dw()
+    reader.info('# of entries {}'.format(nb_entries))
     hdr.add_a(Adec('nb_entries', nb_entries))
     # read version (1byte for header ver and 1 byte for entry ver)
     ver = reader.read_w()
@@ -355,6 +358,7 @@ def parse_cse_manifest(reader):
     # Read entries
     nb_index = 0
     while nb_index < nb_entries:
+        reader.info('Looking for CSE Manifest entry')
         entry_name = reader.read_string(12)
         entry_offset = reader.read_dw()
         entry_length = reader.read_dw()
@@ -394,6 +398,7 @@ def parse_cse_manifest(reader):
 def parse_css_manifest(css_mft, reader, limit):
     """ Parses CSS manifest from sof binary
     """
+    reader.info('Parsing CSS Manifest')
     ver, = struct.unpack('I', reader.get_data(0, 4))
     if ver == 4:
         reader.info('CSS Manifest type 4')
@@ -406,6 +411,7 @@ def parse_css_manifest_4(css_mft, reader, size_limit):
     """ Parses CSS manifest type 4 from sof binary
     """
 
+    reader.info('Parsing CSS Manifest type 4')
     # CSS Header
     hdr = Component('css_mft_hdr', 'Header', reader.get_offset())
     css_mft.add_comp(hdr)
@@ -444,9 +450,11 @@ def parse_css_manifest_4(css_mft, reader, size_limit):
     #   that could be parsed if extension type is recognized
     #
     #   or series of 0xffffffff that should be skipped
+    reader.info('Parsing CSS Manifest extensions end 0x{:x}'.format(size_limit))
     ext_idx = 0
     while reader.get_offset() < size_limit:
         ext_type = reader.read_dw()
+        reader.info('Reading extension type 0x{:x}'.format(ext_type))
         if ext_type == 0xffffffff:
             continue
         reader.set_offset(reader.get_offset() - 4)
@@ -600,12 +608,13 @@ class BinReader():
         self.verbose = verbose
         self.cur_offset = 0
         self.ext_mft_length = 0
-        self.info('Reading SOF ri image ' + path)
+        self.info('Reading SOF ri image ' + path, show_offset=False)
         self.file_name = path
         # read the content
         self.data = open(path, 'rb').read()
         self.file_size = len(self.data)
-        self.info('File size ' + uint_to_string(self.file_size, True))
+        self.info('File size ' + uint_to_string(self.file_size, True),
+                  show_offset=False)
 
     def get_offset(self):
         """ Retrieve the offset, the reader is at
