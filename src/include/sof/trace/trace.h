@@ -150,8 +150,8 @@ void trace_on(void);
 void trace_off(void);
 void trace_init(struct sof *sof);
 void trace_log(bool send_atomic, const void *log_entry,
-	       const struct tr_ctx *ctx, uint32_t id_1, uint32_t id_2,
-	       int arg_count, ...);
+	       const struct tr_ctx *ctx, uint32_t lvl, uint32_t id_1,
+	       uint32_t id_2, int arg_count, ...);
 
 #define _trace_event_with_ids(lvl, class, ctx, id_1, id_2, format, ...)       \
 	_log_message(false, lvl, class, ctx, id_1, id_2,		       \
@@ -201,7 +201,7 @@ do {									    \
 			META_COUNT_VARAGS_BEFORE_COMPILE(__VA_ARGS__),	    \
 		BASE_LOG_ASSERT_FAIL_MSG				    \
 	);								    \
-	trace_log(atomic, &log_entry, ctx, id_1, id_2,			    \
+	trace_log(atomic, &log_entry, ctx, lvl, id_1, id_2,		    \
 		  PP_NARG(__VA_ARGS__), ##__VA_ARGS__);			    \
 } while (0)
 
