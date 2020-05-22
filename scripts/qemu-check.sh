@@ -11,6 +11,13 @@ SOF_DIR=$(cd "$(dirname "$0")" && cd .. && pwd)
 
 rm -f dump-*.txt
 
+die()
+{
+	>&2 printf '%s ERROR: ' "$0"
+	>&2 printf "$@"
+	exit 1
+}
+
 print_usage()
 {
 	cat <<EOF
@@ -19,6 +26,19 @@ usage: qemu-check.sh [ platform(s) ]
 	Runs all supported platforms by default.
 EOF
 }
+
+find_qemu_xtensa()
+{
+	local xhs=xtensa-host.sh
+	for d in . ../qemu* qemu*; do
+		if test -e "$d"/$xhs; then
+			printf '%s' "$d"/$xhs;
+			return
+		fi
+	done
+	die '%s not found\n' $xhs
+}
+
 
 while getopts "" OPTION; do
 	case "$OPTION" in
@@ -128,7 +148,9 @@ do
 		ROM+="/src/arch/xtensa/rom-$platform.bin"
 	fi
 
-	./xtensa-host.sh "$PLATFORM" -k \
+        xtensa_host_sh=$(find_qemu_xtensa)
+
+	${xtensa_host_sh} "$PLATFORM" -k \
 	   "${SOF_BUILDS}"/build_"${platform}"_gcc/src/arch/xtensa/"$FWNAME" \
                 $ROM \
 		-o 2.0 "${SOF_BUILDS}"/dump-"$platform".txt
