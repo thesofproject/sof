@@ -96,9 +96,22 @@ static inline void mtrace_event(const char *data, uint32_t length)
 }
 #endif /* CONFIG_TRACEM */
 
+/**
+ * \brief Runtime trace filtering
+ * \param lvl log level (LOG_LEVEL_ ERROR, INFO, DEBUG ...)
+ * \param uuid uuid address
+ * \return false when trace is filtered out, otherwise true
+ */
+static inline bool trace_filter_pass(uint32_t lvl,
+				     const struct tr_ctx *ctx)
+{
+	/* LOG_LEVEL_CRITICAL has low value, LOG_LEVEL_VERBOSE high */
+	return lvl <= ctx->level;
+}
+
 void trace_log(bool send_atomic, const void *log_entry,
-	       const struct tr_ctx *ctx, uint32_t id_1, uint32_t id_2,
-	       int arg_count, ...)
+	       const struct tr_ctx *ctx, uint32_t lvl, uint32_t id_1,
+	       uint32_t id_2, int arg_count, ...)
 {
 	uint32_t data[MESSAGE_SIZE_DWORDS(_TRACE_EVENT_MAX_ARGUMENT_COUNT)];
 	const int message_size = MESSAGE_SIZE(arg_count);
@@ -109,7 +122,7 @@ void trace_log(bool send_atomic, const void *log_entry,
 	unsigned long flags;
 #endif /* CONFIG_TRACEM */
 
-	if (!trace->enable) {
+	if (!trace->enable || !trace_filter_pass(lvl, ctx)) {
 		platform_shared_commit(trace, sizeof(*trace));
 		return;
 	}

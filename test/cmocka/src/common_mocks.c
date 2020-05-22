@@ -76,12 +76,13 @@ void WEAK __panic(uint32_t p, char *filename, uint32_t linenum)
 }
 
 void WEAK trace_log(bool send_atomic, const void *log_entry,
-		    const struct tr_ctx *ctx, uint32_t id_1, uint32_t id_2,
-		    int arg_count, ...)
+		    const struct tr_ctx *ctx, uint32_t lvl, uint32_t id_1,
+		    uint32_t id_2, int arg_count, ...)
 {
 	(void) send_atomic;
 	(void) log_entry;
 	(void) ctx;
+	(void) lvl;
 	(void) id_1;
 	(void) id_2;
 	(void) arg_count;
