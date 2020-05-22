@@ -371,7 +371,8 @@ def parse_cse_manifest(reader):
                     entry_length))
 
         if '.man' in entry_name:
-            entry = CssManifest(entry_name, entry_offset)
+            entry = CssManifest(entry_name,
+                                reader.ext_mft_length + entry_offset)
             cur_off = reader.set_offset(reader.ext_mft_length + entry_offset)
             parse_css_manifest(entry, reader,
                                reader.ext_mft_length + entry_offset + entry_length)
