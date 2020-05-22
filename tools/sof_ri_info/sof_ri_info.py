@@ -17,6 +17,8 @@ import sys
 import argparse
 import struct
 
+# To extend the DSP memory layout list scroll down to DSP_MEM_SPACE_EXT
+
 # Public keys signatures recognized by parse_css_manifest()
 # - add a new one as array of bytes and append entry to KNOWN_KEYS below.
 
@@ -172,6 +174,8 @@ def parse_params():
     parser.add_argument('--no_headers', help='skip information about headers',
                         action='store_true')
     parser.add_argument('--no_modules', help='skip information about modules',
+                        action='store_true')
+    parser.add_argument('--no_memory', help='skip information about memory',
                         action='store_true')
     parser.add_argument('sof_ri_path', help='path to fw binary file to parse')
     parsed_args = parser.parse_args()
@@ -555,6 +559,7 @@ def parse_adsp_manifest_mod_entry(index, reader):
         mod.add_a(Astring('seg_'+repr(i)+'_flags',
                           hex(seg_flags) + ' ' + seg_flags_to_string(seg_flags)))
         mod.add_a(Ahex('seg_'+repr(i)+'_v_base_addr', reader.read_dw()))
+        mod.add_a(Ahex('seg_'+repr(i)+'_size', ((seg_flags>>16)&0xffff)*0x1000))
         mod.add_a(Ahex('seg_'+repr(i)+'_file_offset', reader.read_dw()))
 
     return mod
@@ -862,6 +867,10 @@ class Component():
             print()
             comp.dump_info(pref + '  ', comp_filter)
 
+    def add_comp_to_mem_map(self, mem_map):
+        for comp in self.components:
+            comp.add_comp_to_mem_map(mem_map)
+
 class ExtendedManifestAE1(Component):
     """ Extended manifest
     """
@@ -1031,6 +1040,20 @@ class AdspModuleEntry(Component):
             self.adir['seg_2_v_base_addr'], self.adir['seg_2_file_offset'],
             self.adir['seg_2_flags']))
 
+    def add_comp_to_mem_map(self, mem_map):
+        mem_map.insert_segment(DspMemorySegment(
+            self.adir['mod_name'].val + '.text',
+            self.adir['seg_0_v_base_addr'].val,
+            self.adir['seg_0_size'].val));
+        mem_map.insert_segment(DspMemorySegment(
+            self.adir['mod_name'].val + '.rodata',
+            self.adir['seg_1_v_base_addr'].val,
+            self.adir['seg_1_size'].val));
+        mem_map.insert_segment(DspMemorySegment(
+            self.adir['mod_name'].val + '.bss',
+            self.adir['seg_2_v_base_addr'].val,
+            self.adir['seg_2_size'].val));
+
 class FwBin(Component):
     """ Parsed sof binary
     """
@@ -1043,6 +1066,131 @@ class FwBin(Component):
         print('SOF Binary {} size {}'.format(
             self.adir['file_name'], self.adir['file_size']))
         self.dump_comp_info(pref, comp_filter)
+
+    def populate_mem_map(self, mem_map):
+        """ Adds modules' segments to the memory map
+        """
+        self.add_comp_to_mem_map(mem_map)
+
+# DSP Memory Layout
+def get_mem_map(ri_path):
+    """ Retrieves memory map for platform determined by the file name
+    """
+    for plat_name in DSP_MEM_SPACE_EXT:
+        if plat_name in ri_path:
+            return DSP_MEM_SPACE_EXT[plat_name]
+    return DspMemory('Memory layout undefined', [])
+
+def add_lmap_mem_info(ri_path, mem_map):
+    """ Optional lmap processing
+    """
+    lmap_path = ri_path[0:ri_path.rfind('.')] + '.lmap'
+    try:
+        with open(lmap_path) as lmap:
+            it_lines = iter(lmap.readlines())
+            for line in it_lines:
+                if 'Sections:' in line:
+                    next(it_lines)
+                    break;
+            for line in it_lines:
+                tok = line.split()
+                mem_map.insert_segment(DspMemorySegment(tok[1],
+                    int(tok[3], 16), int(tok[2], 16)))
+                next(it_lines)
+
+    except FileNotFoundError:
+        return
+
+class DspMemorySegment(object):
+    """ Single continuous memory space
+    """
+    def __init__(self, name, base_address, size):
+        self.name = name
+        self.base_address = base_address
+        self.size = size
+        self.used_size = 0
+        self.inner_segments = []
+
+    def is_inner(self, segment):
+        return self.base_address <= segment.base_address and \
+            segment.base_address + segment.size <= self.base_address + self.size
+
+    def insert_segment(self, segment):
+        for seg in self.inner_segments:
+            if seg.is_inner(segment):
+                seg.insert_segment(segment)
+                return
+        self.inner_segments.append(segment)
+        self.used_size += segment.size
+
+    def dump_info(self, pref):
+        free_size = self.size - self.used_size
+        out = '{}{:<35} 0x{:x}'.format(pref, self.name, self.base_address)
+        if self.used_size > 0:
+            out += ' ({} + {}  {:.2f}% used)'.format(self.used_size, free_size,
+                self.used_size*100/self.size)
+        else:
+            out += ' ({})'.format(free_size)
+        print(out)
+        for seg in self.inner_segments:
+            seg.dump_info(pref + '  ')
+
+class DspMemory(object):
+    """ Dsp Memory, all top-level segments
+    """
+    def __init__(self, platform_name, segments):
+        self.platform_name = platform_name
+        self.segments = segments
+
+    def insert_segment(self, segment):
+        """ Inserts segment
+        """
+        for seg in self.segments:
+            if seg.is_inner(segment):
+                seg.insert_segment(segment)
+                return
+
+    def dump_info(self):
+        print(self.platform_name)
+        for seg in self.segments:
+            seg.dump_info('  ')
+
+# Layouts of DSP memory for known platforms
+
+APL_MEMORY_SPACE = DspMemory('Intel Apollolake',
+    [
+        DspMemorySegment('imr', 0xa0000000, 4*1024*1024),
+        DspMemorySegment('l2 hpsram', 0xbe000000, 8*64*1024),
+        DspMemorySegment('l2 lpsram', 0xbe800000, 2*64*1024)
+    ])
+
+CNL_MEMORY_SPACE = DspMemory('Intel Cannonlake',
+    [
+        DspMemorySegment('imr', 0xb0000000, 8*0x1024*0x1024),
+        DspMemorySegment('l2 hpsram', 0xbe000000, 48*64*1024),
+        DspMemorySegment('l2 lpsram', 0xbe800000, 1*64*1024)
+    ])
+
+ICL_MEMORY_SPACE = DspMemory('Intel Icelake',
+    [
+        DspMemorySegment('imr', 0xb0000000, 8*1024*1024),
+        DspMemorySegment('l2 hpsram', 0xbe000000, 47*64*1024),
+        DspMemorySegment('l2 lpsram', 0xbe800000, 1*64*1024)
+    ])
+
+TGL_MEMORY_SPACE = DspMemory('Intel Tigerlake',
+    [
+        DspMemorySegment('imr', 0xb0000000,16*1024*1024),
+        DspMemorySegment('l2 hpsram', 0xbe000000, 46*64*1024),
+        DspMemorySegment('l2 lpsram', 0xbe800000, 1*64*1024)
+    ])
+
+DSP_MEM_SPACE_EXT = {
+    'apl' : APL_MEMORY_SPACE,
+    'cnl' : CNL_MEMORY_SPACE,
+    'icl' : ICL_MEMORY_SPACE,
+    'tgl' : TGL_MEMORY_SPACE
+}
 
 def main(args):
     """ main function
@@ -1062,6 +1210,12 @@ def main(args):
     if args.no_headers:
         comp_filter.append('CSE Manifest')
     fw_bin.dump_info('', comp_filter)
+    if not args.no_memory:
+        mem = get_mem_map(args.sof_ri_path)
+        fw_bin.populate_mem_map(mem)
+        add_lmap_mem_info(args.sof_ri_path, mem)
+        print()
+        mem.dump_info()
 
 if __name__ == "__main__":
     ARGS = parse_params()
