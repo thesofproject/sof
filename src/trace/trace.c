@@ -203,9 +203,99 @@ struct sof_ipc_trace_filter_elem *trace_filter_fill(struct sof_ipc_trace_filter_
 	return NULL;
 }
 
+/* update global components, which tr_ctx is stored inside special section */
+static int trace_filter_update_global(int32_t log_level, uint32_t uuid_id)
+{
+	extern void *_trace_ctx_start;
+	extern void *_trace_ctx_end;
+	struct tr_ctx *ptr = (struct tr_ctx *)&_trace_ctx_start;
+	struct tr_ctx *end = (struct tr_ctx *)&_trace_ctx_end;
+	int cnt = 0;
+
+	/* iterate over global `tr_ctx` entries located in their own section */
+	while (ptr < end) {
+		/*
+		 * when looking for specific uuid element,
+		 * then find, update and stop searching
+		 */
+		if ((uint32_t)ptr->uuid_p == uuid_id) {
+			ptr->level = log_level;
+			return 1;
+		}
+		/* otherwise each element should be updated */
+		if (!ptr->uuid_p) {
+			ptr->level = log_level;
+			++cnt;
+		}
+		++ptr;
+	}
+
+	return cnt;
+}
+
+/* return trace context from any ipc component type */
+static struct tr_ctx *trace_filter_ipc_comp_context(struct ipc_comp_dev *icd)
+{
+	switch (icd->type) {
+	case COMP_TYPE_COMPONENT:
+		return &icd->cd->tctx;
+	case COMP_TYPE_BUFFER:
+		return &icd->cb->tctx;
+	case COMP_TYPE_PIPELINE:
+		return &icd->pipeline->tctx;
+	/* each COMP_TYPE must be specified */
+	default:
+		tr_err(&ipc_tr, "Unknown trace context for ipc component type 0x%X",
+		       icd->type);
+		return NULL;
+	}
+}
+
+/* update ipc components, wchich tr_ctx may be read from ipc_comp_dev structure */
+static int trace_filter_update_instances(int32_t log_level, uint32_t uuid_id,
+					 int32_t pipe_id, int32_t comp_id)
+{
+	struct ipc *ipc = ipc_get();
+	struct ipc_comp_dev *icd;
+	struct list_item *clist;
+	struct tr_ctx *ctx;
+	bool correct_comp;
+	int cnt = 0;
+
+	/* compare each ipc component with filter settings and update log level after pass */
+	list_for_item(clist, &ipc->comp_list) {
+		icd = container_of(clist, struct ipc_comp_dev, list);
+		ctx = trace_filter_ipc_comp_context(icd);
+		correct_comp = comp_id == -1 || icd->id == comp_id; /* todo: icd->topo_id */
+		correct_comp &= uuid_id == 0 || (uint32_t)ctx->uuid_p == uuid_id;
+		correct_comp &= pipe_id == -1 || ipc_comp_pipe_id(icd) == pipe_id;
+		if (correct_comp) {
+			ctx->level = log_level;
+			++cnt;
+		}
+
+		platform_shared_commit(icd, sizeof(*icd));
+	}
+	return cnt;
+}
+
 int trace_filter_update(const struct trace_filter *filter)
 {
-	return -EINVAL;
+	int ret = 0;
+
+	/* validate log level, LOG_LEVEL_CRITICAL has low value, LOG_LEVEL_VERBOSE high */
+	if (filter->log_level < LOG_LEVEL_CRITICAL ||
+	    filter->log_level > LOG_LEVEL_VERBOSE)
+		return -EINVAL;
+
+	/* update `*`, `name*` or global `name` */
+	if (filter->pipe_id == -1 && filter->comp_id == -1)
+		ret = trace_filter_update_global(filter->log_level, filter->uuid_id);
+
+	/* update `*`, `name*`, `nameX.*` or `nameX.Y`, `name` may be '*' */
+	ret += trace_filter_update_instances(filter->log_level, filter->uuid_id,
+					     filter->pipe_id, filter->comp_id);
+	return ret > 0 ? ret : -EINVAL;
 }
 
 void trace_flush(void)
