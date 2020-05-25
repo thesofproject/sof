@@ -89,7 +89,12 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V15)
 	# Platform includes
 	zephyr_library_sources(
 		../src/platform/intel/cavs/platform.c
+		../src/platform/intel/cavs/lib/mem_window.c
+		../src/platform/apollolake/lib/clk.c
+		../src/platform/apollolake/lib/power_down.S
 	)
+
+	set_source_files_properties(../src/platform/apollolake/lib/power_down.S PROPERTIES COMPILE_FLAGS -DASSEMBLY)
 
 	# CAVS15 include seems to be set in Zephyr. TODO also set common dir.
 	set(PLATFORM "apollolake")
