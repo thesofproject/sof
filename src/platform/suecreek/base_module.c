@@ -5,7 +5,7 @@
 // Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
 
 #include <sof/lib/memory.h>
-#include <user/manifest.h>
+#include <rimage/sof/user/manifest.h>
 #include <sof/common.h>
 
 /*
