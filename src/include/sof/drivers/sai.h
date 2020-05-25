@@ -127,7 +127,11 @@
 #define REG_SAI_CSR_FRDE	BIT(0)
 
 /* SAI Transmit and Receive Configuration 1 Register */
+#ifdef CONFIG_IMX8M
+#define REG_SAI_CR1_RFW_MASK	0x7f
+#else
 #define REG_SAI_CR1_RFW_MASK	0x3f
+#endif
 
 /* SAI Transmit and Receive Configuration 2 Register */
 #define REG_SAI_CR2_SYNC	SET_BITS(31, 30, 1)
