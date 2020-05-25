@@ -6,7 +6,7 @@
 //         Janusz Jankowski <janusz.jankowski@linux.intel.com>
 
 #include <sof/lib/memory.h>
-#include <user/manifest.h>
+#include <rimage/sof/user/manifest.h>
 
 /*
  * Each module has an entry in the FW manifest header. This is NOT part of

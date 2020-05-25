@@ -14,7 +14,7 @@
 #include <sof/platform.h>
 #include <sof/sof.h>
 #include <sof/trace/trace.h>
-#include <user/manifest.h>
+#include <rimage/sof/user/manifest.h>
 #include <config.h>
 #include <stddef.h>
 #include <stdint.h>
