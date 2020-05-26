@@ -77,12 +77,8 @@ _start:
 	// each core unpacks xtos structures for itself
 	// nevertheless core 0 initializes shared xtosstruct
 	get_prid 	a5
-#if PLATFORM_MASTER_CORE_ID == 0
-	bnez		a5, xtos_per_core
-#else
 	movi		a4, PLATFORM_MASTER_CORE_ID
 	bne		a5, a4, xtos_per_core
-#endif
 #endif
 
 	//  _start is typically NOT at the beginning of the text segment --
@@ -161,12 +157,8 @@ xtos_per_core:
 
 #if CONFIG_SMP
 	get_prid	a5
-#if PLATFORM_MASTER_CORE_ID == 0
-	beqz		a5, xtos_per_core_obtain_xtos_structs
-#else
 	movi		a4, PLATFORM_MASTER_CORE_ID
 	beq		a5, a4, xtos_per_core_obtain_xtos_structs
-#endif
 
 xtos_per_core_cacheattr:
 #if XCHAL_HAVE_CACHEATTR || XCHAL_HAVE_MIMIC_CACHEATTR || \
