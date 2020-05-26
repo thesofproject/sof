@@ -419,6 +419,9 @@
 
 #endif /* __PLATFORM_LIB_MEMORY_H__ */
 
+/* L1 init */
+#define L1_CACHE_PREFCTL_VALUE 0x0000
+
 #else
 
 #error "This file shouldn't be included from outside of sof/lib/memory.h"
