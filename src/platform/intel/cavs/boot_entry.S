@@ -8,7 +8,7 @@
 /*
  * Entry point from ROM - assumes :-
  *
- * 1) C runtime environment is initalised by ROM.
+ * 1) C runtime environment is initialised by ROM.
  * 2) Stack is in first HPSRAM bank.
  */
 
