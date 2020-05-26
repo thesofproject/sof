@@ -108,12 +108,20 @@ _start:
 #include "reset-unneeded.S"
 #endif
 
+#if !CONFIG_SMP
 	// Init xtos struct ptr
 	movi	a2, master_core_data
 	movi	a3, core_data_ptr
 	s32i	a2, a3, 0
+#else
+	// Init xtos struct ptr
+	movi	a2, 4
+	mull	a2, a2, a5
+	movi	a3, core_data_ptr
+	add	a3, a3, a2
+	movi	a2, master_core_data
+	s32i	a2, a3, 0
 
-#if CONFIG_SMP
 	// Initialize the stack pointer.
 	// See the "ABI and Software Conventions" chapter in the
 	// Xtensa ISA Reference manual for details.
