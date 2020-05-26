@@ -78,14 +78,13 @@ static inline void bbzero(void *dest, size_t bytes)
 }
 
 static void parse_module(struct sof_man_fw_header *hdr,
-	struct sof_man_module *mod)
+			 struct sof_man_module *mod)
 {
 	int i;
 	uint32_t bias;
 
 	/* each module has 3 segments */
 	for (i = 0; i < MANIFEST_SEGMENT_COUNT; i++) {
-
 		trace_point(TRACE_BOOT_LDR_PARSE_SEGMENT + i);
 		switch (mod->segment[i].flags.r.type) {
 		case SOF_MAN_SEGMENT_TEXT:
@@ -160,7 +159,6 @@ static void parse_manifest(void)
 
 	/* copy module to SRAM  - skip bootloader module */
 	for (i = MAN_SKIP_ENTRIES; i < hdr->num_module_entries; i++) {
-
 		trace_point(TRACE_BOOT_LDR_PARSE_MODULE + i);
 		mod = (struct sof_man_module *)((char *)desc +
 						SOF_MAN_MODULE_OFFSET(i));
@@ -192,7 +190,7 @@ static int32_t hp_sram_pm_banks(uint32_t banks)
 		ebb_avail_mask0 = (uint32_t)MASK(EBB_SEGMENT_SIZE - 1, 0);
 		ebb_avail_mask1 = (uint32_t)MASK(total_banks_count -
 		EBB_SEGMENT_SIZE - 1, 0);
-	} else{
+	} else {
 		ebb_avail_mask0 = (uint32_t)MASK(total_banks_count - 1,
 		0);
 		ebb_avail_mask1 = 0;
@@ -203,7 +201,7 @@ static int32_t hp_sram_pm_banks(uint32_t banks)
 		ebb_mask0 = (uint32_t)MASK(EBB_SEGMENT_SIZE - 1, 0);
 		ebb_mask1 = (uint32_t)MASK(banks - EBB_SEGMENT_SIZE - 1,
 		0);
-	} else{
+	} else {
 		/* assumption that ebb_in_use is > 0 */
 		ebb_mask0 = (uint32_t)MASK(banks - 1, 0);
 		ebb_mask1 = 0;
