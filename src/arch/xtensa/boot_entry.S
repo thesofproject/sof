@@ -19,6 +19,7 @@
 #include <config.h>
 #include <xtensa/config/core-isa.h>
 #include <xtensa/corebits.h>
+#include "xtos-internal.h"
 
 	.type   boot_master_core, @function
 
@@ -209,9 +210,9 @@ boot_init:
 #endif
 
 	/* determine core we are running on */
-	rsr.prid	a2
+	get_prid	a2
 	movi		a3, PLATFORM_MASTER_CORE_ID
-	beq			a2, a3, 1f
+	beq		a2, a3, 1f
 
 	/* no core should get here */
 	j dead
