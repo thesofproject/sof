@@ -328,17 +328,6 @@ XTOS_PENDING_OFS:	.space	4	/* _xtos_pending variable */
 	.endm
 
 #if CONFIG_SMP
-	// xtos_stack_addr_percore_basic ax, ay, stack_name, stack_size
-	// Retrieves address of end of stack buffer for certain core to register ax.
-	.macro	xtos_stack_addr_percore_basic ax, ay, stack_name, stack_size
-	get_prid	\ax
-	addi		\ax, \ax, 1
-	movi		\ay, \stack_size
-	mull		\ax, \ax, \ay
-	movi		\ay, \stack_name
-	add		\ax, \ax, \ay
-	.endm
-
 	// xtos_stack_addr_percore ax, ay, stack_master, stack_slave, stack_size
 	// Retrieves address of end of stack buffer for certain core to register ax.
 	.macro	xtos_stack_addr_percore ax, ay, stack_master_addr, mem_blk_slave_addr, stack_size
