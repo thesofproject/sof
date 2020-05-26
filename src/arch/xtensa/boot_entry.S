@@ -48,7 +48,7 @@ l2_cache_pref:
 sof_stack_base:
 	.word __stack
 
-#if !defined CONFIG_SUECREEK
+#if CONFIG_MEM_WND
 wnd0_base:
 	.word DMWBA(0)
 
@@ -66,6 +66,12 @@ wnd0_status_address:
 
 wnd0_error_address:
 	.word HP_SRAM_WIN0_BASE | 0x4
+
+fw_loaded_status_value:
+	.word	0x00000005
+
+fw_no_errors_value:
+	.word	0x00000000
 #endif
 
 #if defined(PLATFORM_MEM_INIT_AT_BOOT)
@@ -96,12 +102,6 @@ hspgists0_address:
 hspgists1_address:
 	.word HSPGISTS1
 #endif
-
-fw_loaded_status_value:
-	.word	0x00000005
-
-fw_no_errors_value:
-	.word	0x00000000
 
 boot_init:
 	.align 4
@@ -176,7 +176,7 @@ boot_init:
 	l32r	a3, sof_stack_base
 	mov	sp, a3
 
-#if !defined CONFIG_SUECREEK
+#if CONFIG_MEM_WND
 	/* set status register to 0x00000005 in wnd0 */
 	l32r	a3, fw_loaded_status_value
 	l32r	a5, wnd0_status_address
