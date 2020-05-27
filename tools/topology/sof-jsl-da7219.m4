@@ -18,6 +18,8 @@ include(`sof/tokens.m4')
 # Include Jasperlake DSP configuration
 include(`platform/intel/'PLATFORM`.m4')
 
+DEBUG_START
+
 # Define pipeline id for intel-generic-dmic-kwd.m4
 # to generate dmic setting with kwd when we have dmic
 # define channel
@@ -128,17 +130,17 @@ DAI_ADD(sof/pipe-dai-playback.m4,
 DAI_ADD(sof/pipe-dai-playback.m4,
 	5, HDA, 0, iDisp1,
 	PIPELINE_SOURCE_5, 2, s16le,
-	1000, 0, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
+	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 DAI_ADD(sof/pipe-dai-playback.m4,
 	6, HDA, 1, iDisp2,
 	PIPELINE_SOURCE_6, 2, s16le,
-	1000, 0, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
+	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 DAI_ADD(sof/pipe-dai-playback.m4,
 	7, HDA, 2, iDisp3,
 	PIPELINE_SOURCE_7, 2, s16le,
-	1000, 0, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
+	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 #
 # Bind PCM with the pipeline
@@ -180,3 +182,5 @@ DAI_CONFIG(HDA, 1, 4, iDisp2,
 	HDA_CONFIG(HDA_CONFIG_DATA(HDA, 1, 48000, 2)))
 DAI_CONFIG(HDA, 2, 5, iDisp3,
 	HDA_CONFIG(HDA_CONFIG_DATA(HDA, 2, 48000, 2)))
+
+DEBUG_END
