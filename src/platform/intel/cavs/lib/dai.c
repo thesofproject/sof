@@ -28,7 +28,7 @@ static SHARED_DATA struct dai ssp[(DAI_NUM_SSP_BASE + DAI_NUM_SSP_EXT)];
 
 #endif
 
-#if CONFIG_CAVS_DMIC
+#if CONFIG_INTEL_DMIC
 
 #include <sof/drivers/dmic.h>
 
@@ -96,7 +96,7 @@ const struct dai_type_info dti[] = {
 		.num_dais = ARRAY_SIZE(ssp)
 	},
 #endif
-#if CONFIG_CAVS_DMIC
+#if CONFIG_INTEL_DMIC
 	{
 		.type = SOF_DAI_INTEL_DMIC,
 		.dai_array = cache_to_uncache((struct dai *)dmic),
@@ -169,7 +169,7 @@ int dai_init(struct sof *sof)
 
 	platform_shared_commit(dai, sizeof(*dai) * ARRAY_SIZE(hda));
 
-#if (CONFIG_CAVS_DMIC)
+#if (CONFIG_INTEL_DMIC)
 	dai = cache_to_uncache((struct dai *)dmic);
 
 	/* init dmic */

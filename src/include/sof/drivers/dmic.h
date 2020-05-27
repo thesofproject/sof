@@ -10,7 +10,7 @@
 
 #include <config.h>
 
-#if CONFIG_CAVS_DMIC
+#if CONFIG_INTEL_DMIC
 
 /* The microphones create a low frequecy thump sound when clock is enabled.
  * The unmute linear gain ramp chacteristic is defined here.
