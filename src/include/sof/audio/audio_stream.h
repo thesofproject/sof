@@ -527,6 +527,23 @@ audio_stream_bytes_without_wrap(const struct audio_stream *source,
 }
 
 /**
+ * @brief Calculates numbers of frames to buffer wrap and return
+ *	  minimum of calculated value.
+ * @param source Stream to get information from.
+ * @param ptr Read or write pointer from source
+ * @return Number of data frames to buffer wrap.
+ */
+static inline uint32_t
+audio_stream_frames_without_wrap(const struct audio_stream *source,
+				 const void *ptr)
+{
+	uint32_t bytes = audio_stream_bytes_without_wrap(source, ptr);
+	uint32_t frame_bytes = audio_stream_frame_bytes(source);
+
+	return bytes / frame_bytes;
+}
+
+/**
  * Copies data from source buffer to sink buffer.
  * @param source Source buffer.
  * @param ioffset_bytes Offset (in bytes) in source buffer to start reading
