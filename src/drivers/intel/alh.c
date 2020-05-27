@@ -44,6 +44,8 @@ static int alh_set_config(struct dai *dai, struct sof_ipc_dai_config *config)
 
 	alh->params.stream_id = config->alh.stream_id;
 
+	platform_shared_commit(alh, sizeof(*alh));
+
 	return 0;
 }
 
@@ -61,6 +63,8 @@ static int alh_get_hw_params(struct dai *dai,
 
 	/* FIFO format is static */
 	params->frame_fmt = SOF_IPC_FRAME_S32_LE;
+
+	platform_shared_commit(alh, sizeof(*alh));
 
 	return 0;
 }
@@ -88,13 +92,15 @@ static int alh_probe(struct dai *dai)
 	if (dai_get_drvdata(dai))
 		return -EEXIST;
 
-	alh = rzalloc(SOF_MEM_ZONE_SYS_RUNTIME, 0, SOF_MEM_CAPS_RAM,
-		      sizeof(*alh));
+	alh = rzalloc(SOF_MEM_ZONE_SYS_RUNTIME, SOF_MEM_FLAG_SHARED,
+		      SOF_MEM_CAPS_RAM, sizeof(*alh));
 	if (!alh) {
 		dai_err(dai, "alh_probe() error: alloc failed");
 		return -ENOMEM;
 	}
 	dai_set_drvdata(dai, alh);
+
+	platform_shared_commit(alh, sizeof(*alh));
 
 	return 0;
 }

@@ -229,6 +229,7 @@ static enum task_state dmic_work(void *data)
 		}
 	}
 
+	platform_shared_commit(dmic, sizeof(*dmic));
 	platform_shared_commit(dai, sizeof(*dai));
 
 	spin_unlock(&dai->lock);
@@ -911,6 +912,8 @@ static int configure_registers(struct dai *dai,
 			dmic_prm[di]->pdm[i].enable_mic_a;
 	}
 
+	platform_shared_commit(pdata, sizeof(*pdata));
+
 	ret = stereo_helper(stereo, swap);
 	if (ret < 0) {
 		dai_err(dai, "configure_registers(): enable conflict");
@@ -1142,6 +1145,8 @@ static int dmic_set_config(struct dai *dai, struct sof_ipc_dai_config *config)
 	dmic->gain_coef = db2lin_fixed(step_db);
 	dai_info(dai, "dmic_set_config(): unmute_ramp_time_ms = %d",
 		 unmute_ramp_time_ms);
+
+	platform_shared_commit(dmic, sizeof(*dmic));
 
 	/*
 	 * "config" might contain pdm controller params for only
@@ -1380,6 +1385,8 @@ static void dmic_start(struct dai *dai)
 	schedule_task(&dmic->dmicwork, DMIC_UNMUTE_RAMP_US,
 		      DMIC_UNMUTE_RAMP_US);
 
+	platform_shared_commit(dmic, sizeof(*dmic));
+
 	dai_info(dai, "dmic_start(), done active_fifos = %d",
 		 dmic_active_fifos);
 }
@@ -1446,6 +1453,7 @@ static void dmic_stop(struct dai *dai)
 
 	schedule_task_cancel(&dmic->dmicwork);
 out:
+	platform_shared_commit(dmic, sizeof(*dmic));
 	spin_unlock(&dai->lock);
 }
 
@@ -1505,6 +1513,8 @@ static int dmic_trigger(struct dai *dai, int cmd, int direction)
 		break;
 	}
 
+	platform_shared_commit(dmic, sizeof(*dmic));
+
 	return 0;
 }
 
@@ -1546,8 +1556,8 @@ static int dmic_probe(struct dai *dai)
 		return -EEXIST; /* already created */
 
 	/* allocate private data */
-	dmic = rzalloc(SOF_MEM_ZONE_SYS_RUNTIME, 0, SOF_MEM_CAPS_RAM,
-		       sizeof(*dmic));
+	dmic = rzalloc(SOF_MEM_ZONE_SYS_RUNTIME, SOF_MEM_FLAG_SHARED,
+		       SOF_MEM_CAPS_RAM, sizeof(*dmic));
 	if (!dmic) {
 		dai_err(dai, "dmic_probe(): alloc failed");
 		return -ENOMEM;
@@ -1584,6 +1594,8 @@ static int dmic_probe(struct dai *dai)
 
 	interrupt_unmask(dmic->irq, cpu_get_id());
 	interrupt_enable(dmic->irq, dai);
+
+	platform_shared_commit(dmic, sizeof(*dmic));
 
 	return 0;
 }
