@@ -3,6 +3,7 @@
 add_local_sources(sof
 	interrupt.c
 	timer.c
+	timestamp.c
 )
 
 if(CONFIG_INTEL_IOMUX)
