@@ -36,28 +36,3 @@ cmocka_test(
 	demux_copy.c
 	mock.c
 )
-
-if(CONFIG_FORMAT_S16LE)
-cmocka_test(
-	mux_generic_calc_sample_s16le
-	mux_generic_calc_sample_s16le.c
-	mock.c
-)
-endif()
-
-if(CONFIG_FORMAT_S24LE)
-cmocka_test(
-	mux_generic_calc_sample_s24le
-	mux_generic_calc_sample_s24le.c
-	mock.c
-)
-endif()
-
-
-if(CONFIG_FORMAT_S32LE)
-cmocka_test(
-	mux_generic_calc_sample_s32le
-	mux_generic_calc_sample_s32le.c
-	mock.c
-)
-endif()
