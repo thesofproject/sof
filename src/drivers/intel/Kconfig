@@ -8,6 +8,21 @@ config INTEL_HDA
 	  Select this to enable Intel HDA driver. The HDA driver provides
 	  interface for host and HD-Audio data transfers.
 
+config INTEL_MCLK
+	bool
+	depends on CAVS
+	default n
+	help
+	  Select this to enable driver for Intel MCLK and M/N dividers.
+
+config INTEL_SSP
+	bool "Intel SSP driver"
+	depends on CAVS
+	select INTEL_MCLK
+	default n
+	help
+	  Select this to enable Intel Synchronous Serial Port (SSP) driver.
+
 config INTEL_ALH
 	bool "Intel ALH driver"
 	depends on CAVS

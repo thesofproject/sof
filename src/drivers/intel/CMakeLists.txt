@@ -13,6 +13,10 @@ if(CONFIG_INTEL_HDA)
 	add_subdirectory(hda)
 endif()
 
+if(CONFIG_INTEL_SSP)
+	add_subdirectory(ssp)
+endif()
+
 if(CONFIG_INTEL_ALH)
 	add_local_sources(sof alh.c)
 endif()
