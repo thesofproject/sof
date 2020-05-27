@@ -79,7 +79,7 @@ static SHARED_DATA struct dai dmic[2] = {
 
 #endif
 
-#if CONFIG_CAVS_ALH
+#if CONFIG_INTEL_ALH
 
 #include <sof/drivers/alh.h>
 
@@ -108,7 +108,7 @@ const struct dai_type_info dti[] = {
 		.dai_array = cache_to_uncache((struct dai *)hda),
 		.num_dais = ARRAY_SIZE(hda)
 	},
-#if CONFIG_CAVS_ALH
+#if CONFIG_INTEL_ALH
 	{
 		.type = SOF_DAI_INTEL_ALH,
 		.dai_array = cache_to_uncache((struct dai *)alh),
@@ -179,7 +179,7 @@ int dai_init(struct sof *sof)
 	platform_shared_commit(dai, sizeof(*dai) * ARRAY_SIZE(dmic));
 #endif
 
-#if CONFIG_CAVS_ALH
+#if CONFIG_INTEL_ALH
 	dai = cache_to_uncache((struct dai *)alh);
 
 	for (i = 0; i < ARRAY_SIZE(alh); i++) {

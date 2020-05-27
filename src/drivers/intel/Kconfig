@@ -7,3 +7,12 @@ config INTEL_HDA
 	help
 	  Select this to enable Intel HDA driver. The HDA driver provides
 	  interface for host and HD-Audio data transfers.
+
+config INTEL_ALH
+	bool "Intel ALH driver"
+	depends on CAVS
+	default n
+	help
+	  Select this to enable Intel ALH driver.
+	  The ALH is an intermediary device, which acts as a hub and provides an
+	  abstracted support for numerous sound interfaces (e.g. SoundWire).
