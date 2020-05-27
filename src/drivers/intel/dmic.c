@@ -1624,101 +1624,6 @@ static int dmic_get_fifo(struct dai *dai, int direction, int stream_id)
 	return dai->plat_data.fifo[SOF_IPC_STREAM_CAPTURE].offset;
 }
 
-/* Functions for HW timestamp */
-
-static inline uint32_t dmic_ts_local_tsctrl_addr(void)
-{
-	return TIMESTAMP_BASE + TS_DMIC_LOCAL_TSCTRL;
-}
-
-static inline uint32_t dmic_ts_local_offs_addr(void)
-{
-	return TIMESTAMP_BASE + TS_DMIC_LOCAL_OFFS;
-}
-
-static inline uint32_t dmic_ts_local_sample_addr(void)
-{
-	return TIMESTAMP_BASE + TS_DMIC_LOCAL_SAMPLE;
-}
-
-static inline uint32_t dmic_ts_local_walclk_addr(void)
-{
-	return TIMESTAMP_BASE + TS_DMIC_LOCAL_WALCLK;
-}
-
-static inline uint32_t dmic_ts_tscc_addr(void)
-{
-	return TIMESTAMP_BASE + TS_DMIC_TSCC;
-}
-
-static int dmic_ts_config(struct dai *dai, struct timestamp_cfg *cfg)
-{
-	if (cfg->type != SOF_DAI_INTEL_DMIC) {
-		dai_err(dai, "dmic_ts_config(): Illegal DAI type");
-		return -EINVAL;
-	}
-
-	cfg->walclk_rate = DMIC_HW_IOCLK;
-
-	return 0;
-}
-
-static int dmic_ts_start(struct dai *dai, struct timestamp_cfg *cfg)
-{
-	uint32_t cdmas;
-	uint32_t addr = dmic_ts_local_tsctrl_addr();
-
-	/* Set DMIC timestamp registers */
-
-	/* First point CDMAS to GPDMA channel that is used by DMIC
-	 * also clear NTK to be sure there is no old timestamp.
-	 */
-	cdmas = TS_LOCAL_TSCTRL_CDMAS(cfg->dma_chan_index +
-		cfg->dma_chan_count * cfg->dma_id);
-	io_reg_write(addr, TS_LOCAL_TSCTRL_NTK_BIT | cdmas);
-
-	/* Request on demand timestamp */
-	io_reg_write(addr, TS_LOCAL_TSCTRL_ODTS_BIT | cdmas);
-
-	return 0;
-}
-
-static int dmic_ts_stop(struct dai *dai, struct timestamp_cfg *cfg)
-{
-	/* Clear NTK and write zero to CDMAS */
-	io_reg_write(dmic_ts_local_tsctrl_addr(), TS_LOCAL_TSCTRL_NTK_BIT);
-	return 0;
-}
-
-static int dmic_ts_get(struct dai *dai, struct timestamp_cfg *cfg,
-		       struct timestamp_data *tsd)
-{
-	/* Read DMIC timestamp registers */
-	uint32_t ntk;
-	uint32_t tsctrl = dmic_ts_local_tsctrl_addr();
-
-	/* Read SSP timestamp registers */
-	ntk = io_reg_read(tsctrl) & TS_LOCAL_TSCTRL_NTK_BIT;
-	if (!ntk)
-		goto out;
-
-	/* NTK was set, get wall clock */
-	tsd->walclk = io_reg_read_64(dmic_ts_local_walclk_addr());
-
-	/* Sample */
-	tsd->sample = io_reg_read_64(dmic_ts_local_sample_addr());
-
-	/* Clear NTK to enable successive timestamps */
-	io_reg_write(tsctrl, TS_LOCAL_TSCTRL_NTK_BIT);
-
-out:
-	tsd->walclk_rate = cfg->walclk_rate;
-	if (!ntk)
-		return -ENODATA;
-
-	return 0;
-}
-
 const struct dai_driver dmic_driver = {
 	.type = SOF_DAI_INTEL_DMIC,
 	.uid = SOF_UUID(dmic_uuid),
@@ -1737,10 +1642,10 @@ const struct dai_driver dmic_driver = {
 		.remove			= dmic_remove,
 	},
 	.ts_ops = {
-		.ts_config		= dmic_ts_config,
-		.ts_start		= dmic_ts_start,
-		.ts_get			= dmic_ts_get,
-		.ts_stop		= dmic_ts_stop,
+		.ts_config		= timestamp_dmic_config,
+		.ts_start		= timestamp_dmic_start,
+		.ts_get			= timestamp_dmic_get,
+		.ts_stop		= timestamp_dmic_stop,
 	},
 };
 
