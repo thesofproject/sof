@@ -16,3 +16,7 @@ endif()
 if(CONFIG_INTEL_ALH)
 	add_local_sources(sof alh.c)
 endif()
+
+if(CONFIG_INTEL_DMIC)
+	add_local_sources(sof dmic.c)
+endif()
