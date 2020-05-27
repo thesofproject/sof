@@ -53,7 +53,7 @@ static void usage(void)
 		APP_NAME);
 	fprintf(stdout, "%s:\t -L\t\t\tHide log location in source code\n",
 		APP_NAME);
-	fprintf(stdout, "%s:\t -f precision\t\t\tset timestamp precision\n",
+	fprintf(stdout, "%s:\t -f precision\t\tSet timestamp precision\n",
 		APP_NAME);
 	fprintf(stdout, "%s:\t -d\t\t\tDump ldc information\n", APP_NAME);
 	exit(0);
