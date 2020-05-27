@@ -27,10 +27,6 @@ if(CONFIG_CAVS_MN)
 	add_local_sources(sof mn.c)
 endif()
 
-if(CONFIG_CAVS_ALH)
-	add_local_sources(sof alh.c)
-endif()
-
 if(CONFIG_SMP)
 	add_local_sources(sof idc.c)
 endif()
