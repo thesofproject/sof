@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
+config INTEL_HDA
+	bool "Intel HDA driver"
+	depends on CAVS
+	default n
+	help
+	  Select this to enable Intel HDA driver. The HDA driver provides
+	  interface for host and HD-Audio data transfers.

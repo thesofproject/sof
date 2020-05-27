@@ -8,3 +8,7 @@ elseif(CONFIG_HASWELL OR CONFIG_BROADWELL)
 elseif(CONFIG_CAVS)
 	add_subdirectory(cavs)
 endif()
+
+if(CONFIG_INTEL_HDA)
+	add_subdirectory(hda)
+endif()

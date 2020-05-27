@@ -2,6 +2,8 @@
 
 menu "Drivers"
 
+source "src/drivers/intel/Kconfig"
+
 source "src/drivers/intel/cavs/Kconfig"
 
 source "src/drivers/dw/Kconfig"
