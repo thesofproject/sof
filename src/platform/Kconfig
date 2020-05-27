@@ -225,6 +225,7 @@ config CAVS
 	select INTEL
 	select INTERRUPT_LEVEL_2
 	select INTERRUPT_LEVEL_5
+	select INTEL_HDA
 
 config CAVS_VERSION_1_5
 	depends on CAVS
