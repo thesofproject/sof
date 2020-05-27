@@ -193,7 +193,7 @@ static inline int set_mclk_divider(uint16_t mclk_id, uint32_t mdivr_val)
 		mdivr = 0x6; /* 1/8 */
 		break;
 	default:
-		tr_err(&mn_tr, "invalid mdivr_val %d", mdivr_val);
+		tr_err(&mn_tr, "invalid ssp_freq %d", ssp_freq[1].freq);
 		return -EINVAL;
 	}
 

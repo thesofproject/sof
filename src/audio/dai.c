@@ -837,7 +837,7 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 				  dai_dma_cb, 0);
 	}
 
-	return dai_set_config(dd->dai, config);
+	return 0;
 }
 
 static int dai_ts_config(struct comp_dev *dev)

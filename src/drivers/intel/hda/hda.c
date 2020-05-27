@@ -35,6 +35,8 @@ static int hda_set_config(struct dai *dai,
 		hda->params.rate = config->hda.rate;
 	}
 
+	platform_shared_commit(hda, sizeof(*hda));
+
 	return 0;
 }
 
@@ -51,6 +53,8 @@ static int hda_get_hw_params(struct dai *dai,
 	params->buffer_fmt = 0;
 	params->frame_fmt = 0;
 
+	platform_shared_commit(hda, sizeof(*hda));
+
 	return 0;
 }
 
@@ -63,13 +67,15 @@ static int hda_probe(struct dai *dai)
 	if (dai_get_drvdata(dai))
 		return -EEXIST;
 
-	hda = rzalloc(SOF_MEM_ZONE_SYS_RUNTIME, 0, SOF_MEM_CAPS_RAM,
-		      sizeof(*hda));
+	hda = rzalloc(SOF_MEM_ZONE_SYS_RUNTIME, SOF_MEM_FLAG_SHARED,
+		      SOF_MEM_CAPS_RAM, sizeof(*hda));
 	if (!hda) {
 		dai_err(dai, "hda_probe() error: alloc failed");
 		return -ENOMEM;
 	}
 	dai_set_drvdata(dai, hda);
+
+	platform_shared_commit(hda, sizeof(*hda));
 
 	return 0;
 }
