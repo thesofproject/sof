@@ -55,7 +55,8 @@ static void usage(void)
 		APP_NAME);
 	fprintf(stdout, "%s:\t -f precision\t\t\tset timestamp precision\n",
 		APP_NAME);
-	fprintf(stdout, "%s:\t -d\t\t\tDump ldc information\n", APP_NAME);
+	fprintf(stdout, "%s:\t -d *.ldc_file \t\tDump ldc_file information\n",
+		APP_NAME);
 	exit(0);
 }
 
@@ -139,7 +140,7 @@ static int configure_uart(const char *file, unsigned int baud)
 
 int main(int argc, char *argv[])
 {
-	static const char optstring[] = "ho:i:l:ps:c:u:tev:rdLf:";
+	static const char optstring[] = "ho:i:l:ps:c:u:tev:rd:Lf:";
 	struct convert_config config;
 	unsigned int baud = 0;
 	const char *snapshot_file = 0;
@@ -183,6 +184,10 @@ int main(int argc, char *argv[])
 			snapshot_file = optarg;
 			break;
 		case 'l':
+			if (config.ldc_file) {
+				fprintf(stderr, "error: Multiple ldc files\n");
+				usage();
+			}
 			config.ldc_file = optarg;
 			break;
 		case 'p':
@@ -217,7 +222,12 @@ int main(int argc, char *argv[])
 			}
 			break;
 		case 'd':
+			if (config.ldc_file) {
+				fprintf(stderr, "error: Multiple ldc files\n");
+				usage();
+			}
 			config.dump_ldc = 1;
+			config.ldc_file = optarg;
 			break;
 		case 'h':
 		default: /* '?' */
