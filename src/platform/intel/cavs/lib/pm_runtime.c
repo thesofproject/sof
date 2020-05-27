@@ -121,7 +121,7 @@ static inline bool cavs_pm_runtime_is_active_dsp(void)
 	return is_active;
 }
 
-#if CONFIG_CAVS_SSP
+#if CONFIG_INTEL_SSP
 static inline void cavs_pm_runtime_dis_ssp_clk_gating(uint32_t index)
 {
 #if CONFIG_APOLLOLAKE
@@ -412,7 +412,7 @@ void platform_pm_runtime_get(enum pm_runtime_context context, uint32_t index,
 	case PM_RUNTIME_HOST_DMA_L1:
 		cavs_pm_runtime_host_dma_l1_entry();
 		break;
-#if CONFIG_CAVS_SSP
+#if CONFIG_INTEL_SSP
 	case SSP_CLK:
 		cavs_pm_runtime_dis_ssp_clk_gating(index);
 		break;
@@ -449,7 +449,7 @@ void platform_pm_runtime_put(enum pm_runtime_context context, uint32_t index,
 	case PM_RUNTIME_HOST_DMA_L1:
 		cavs_pm_runtime_force_host_dma_l1_exit();
 		break;
-#if CONFIG_CAVS_SSP
+#if CONFIG_INTEL_SSP
 	case SSP_CLK:
 		cavs_pm_runtime_en_ssp_clk_gating(index);
 		break;

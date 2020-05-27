@@ -20,7 +20,7 @@
 #include <ipc/stream.h>
 #include <config.h>
 
-#if CONFIG_CAVS_SSP
+#if CONFIG_INTEL_SSP
 
 #include <sof/drivers/ssp.h>
 
@@ -89,7 +89,7 @@ static SHARED_DATA struct dai alh[DAI_NUM_ALH_BI_DIR_LINKS];
 static SHARED_DATA struct dai hda[(DAI_NUM_HDA_OUT + DAI_NUM_HDA_IN)];
 
 const struct dai_type_info dti[] = {
-#if CONFIG_CAVS_SSP
+#if CONFIG_INTEL_SSP
 	{
 		.type = SOF_DAI_INTEL_SSP,
 		.dai_array = cache_to_uncache((struct dai *)ssp),
@@ -129,7 +129,7 @@ int dai_init(struct sof *sof)
 
 	sof->dai_info = &lib_dai;
 
-#if CONFIG_CAVS_SSP
+#if CONFIG_INTEL_SSP
 	dai = cache_to_uncache((struct dai *)ssp);
 
 	/* init ssp */
@@ -154,7 +154,7 @@ int dai_init(struct sof *sof)
 	platform_shared_commit(dai, sizeof(*dai) * ARRAY_SIZE(ssp));
 #endif
 
-#if CONFIG_CAVS_MN
+#if CONFIG_INTEL_MCLK
 	mn_init(sof);
 #endif
 
