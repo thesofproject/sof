@@ -8,6 +8,13 @@ config INTEL_HDA
 	  Select this to enable Intel HDA driver. The HDA driver provides
 	  interface for host and HD-Audio data transfers.
 
+config INTEL_MN
+	bool
+	depends on CAVS
+	default n
+	help
+	  Select this if the platform supports M/N dividers.
+
 config INTEL_MCLK
 	bool
 	depends on CAVS

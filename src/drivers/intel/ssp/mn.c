@@ -13,6 +13,7 @@
 #include <sof/sof.h>
 #include <sof/spinlock.h>
 #include <sof/trace/trace.h>
+#include <config.h>
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -24,6 +25,7 @@ DECLARE_SOF_UUID("mn", mn_uuid, 0xfa3b3763, 0x759c, 0x4c64,
 
 DECLARE_TR_CTX(mn_tr, SOF_UUID(mn_uuid), LOG_LEVEL_INFO);
 
+#if CONFIG_INTEL_MN
 /** \brief BCLKs can be driven by multiple sources - M/N or XTAL directly.
  *	   Even in the case of M/N, the actual clock source can be XTAL,
  *	   Audio cardinal clock (24.576) or 96 MHz PLL.
@@ -40,6 +42,7 @@ enum bclk_source {
 	MN_BCLK_SOURCE_MN, /**< port is using clock driven by M/N */
 	MN_BCLK_SOURCE_XTAL, /**< port is using XTAL directly */
 };
+#endif
 
 struct mn {
 	/**< keep track of which MCLKs are in use to know when it's safe to
@@ -48,8 +51,10 @@ struct mn {
 	bool mclk_sources_used[DAI_NUM_SSP_MCLK];
 	int mclk_source_clock;
 
+#if CONFIG_INTEL_MN
 	enum bclk_source bclk_sources[(DAI_NUM_SSP_BASE + DAI_NUM_SSP_EXT)];
 	int bclk_source_mn_clock;
+#endif
 
 	spinlock_t lock; /**< lock mechanism */
 };
@@ -58,12 +63,16 @@ static SHARED_DATA struct mn mn;
 
 void mn_init(struct sof *sof)
 {
+#if CONFIG_INTEL_MN
 	int i;
+#endif
 
 	sof->mn = cache_to_uncache(&mn);
 
+#if CONFIG_INTEL_MN
 	for (i = 0; i < ARRAY_SIZE(sof->mn->bclk_sources); i++)
 		sof->mn->bclk_sources[i] = MN_BCLK_SOURCE_NONE;
+#endif
 
 	spinlock_init(&sof->mn->lock);
 
@@ -238,6 +247,7 @@ void mn_release_mclk(uint32_t mclk_id)
 	spin_unlock(&mn->lock);
 }
 
+#if CONFIG_INTEL_MN
 /**
  * \brief Finds valid M/(N * SCR) values for given frequencies.
  * \param[in] freq SSP clock frequency.
@@ -523,3 +533,5 @@ void mn_reset_bclk_divider(uint32_t dai_index)
 	mn_reg_write(MN_MDIV_N_VAL(dai_index), 1);
 	spin_unlock(&mn->lock);
 }
+
+#endif
