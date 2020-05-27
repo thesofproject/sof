@@ -27,6 +27,7 @@
 #include <ipc/stream.h>
 #include <ipc/topology.h>
 #include <user/trace.h>
+#include <config.h>
 #include <errno.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -129,7 +130,7 @@ static int ssp_set_config(struct dai *dai,
 	bool inverted_frame = false;
 	bool cfs = false;
 	bool start_delay = false;
-	bool need_ecs;
+	bool need_ecs = false;
 
 	int ret = 0;
 
@@ -305,6 +306,7 @@ static int ssp_set_config(struct dai *dai,
 		goto out;
 	}
 
+#if CONFIG_INTEL_MN
 	/* BCLK config */
 	ret = mn_set_bclk(config->dai_index, config->ssp.bclk_rate,
 			  &mdiv, &need_ecs);
@@ -313,6 +315,7 @@ static int ssp_set_config(struct dai *dai,
 			config->ssp.bclk_rate, config->dai_index);
 		goto out;
 	}
+#endif
 
 	if (need_ecs)
 		sscr0 |= SSCR0_ECS;
@@ -799,8 +802,10 @@ static int ssp_probe(struct dai *dai)
 	ssp->state[DAI_DIR_PLAYBACK] = COMP_STATE_READY;
 	ssp->state[DAI_DIR_CAPTURE] = COMP_STATE_READY;
 
+#if CONFIG_INTEL_MN
 	/* Reset M/N, power-gating functions need it */
 	mn_reset_bclk_divider(dai->index);
+#endif
 
 	/* Enable SSP power */
 	pm_runtime_get_sync(SSP_POW, dai->index);
@@ -822,7 +827,9 @@ static int ssp_remove(struct dai *dai)
 	pm_runtime_put_sync(SSP_CLK, dai->index);
 
 	mn_release_mclk(ssp->config.ssp.mclk_id);
+#if CONFIG_INTEL_MN
 	mn_release_bclk(dai->index);
+#endif
 
 	/* Disable SSP power */
 	pm_runtime_put_sync(SSP_POW, dai->index);
