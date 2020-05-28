@@ -56,10 +56,31 @@ static inline uint64_t io_reg_read_64(uint32_t reg)
 		(((uint64_t)io_reg_read(reg + 4)) << 32);
 }
 
+static inline void io_reg_write_64(uint32_t reg, uint64_t val)
+{
+	*((volatile uint64_t*)reg) = val;
+}
+
 static inline void io_reg_update_bits16(uint32_t reg, uint16_t mask,
 					uint16_t value)
 {
 	io_reg_write16(reg, (io_reg_read16(reg) & (~mask)) | (value & mask));
+}
+
+static inline uint8_t io_reg_read8(uint32_t reg)
+{
+	return *((volatile uint8_t*)reg);
+}
+
+static inline void io_reg_write8(uint32_t reg, uint8_t val)
+{
+	*((volatile uint8_t*)reg) = val;
+}
+
+static inline void io_reg_update_bits8(uint32_t reg, uint8_t mask,
+				       uint8_t value)
+{
+	io_reg_write8(reg, (io_reg_read8(reg) & (~mask)) | (value & mask));
 }
 
 #endif
