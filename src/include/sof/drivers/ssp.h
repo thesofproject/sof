@@ -209,11 +209,6 @@ extern const struct dai_driver ssp_driver;
 #endif
 
 #if CONFIG_CAVS
-#define MNDSS(x)	SET_BITS(21, 20, x)
-#define MCDSS(x)	SET_BITS(17, 16, x)
-#endif
-
-#if CONFIG_CAVS
 
 #include <sof/lib/clk.h>
 
