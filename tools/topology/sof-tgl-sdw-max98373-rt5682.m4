@@ -56,9 +56,13 @@ define(`SMART_BE_ID', 2)
 # Playback related
 define(`SMART_PB_PPL_ID', 3)
 define(`SMART_PB_CH_NUM', 2)
-define(`SMART_TX_CHANNELS', 4)
-define(`SMART_RX_CHANNELS', 8)
-define(`SMART_FB_CHANNELS', 8)
+# channel number for playback on sdw link
+define(`SMART_TX_CHANNELS', 2)
+# channel number for I/V feedback on sdw link
+define(`SMART_RX_CHANNELS', 4)
+# Smart_amp algorithm specific. channel number
+# for feedback provided to smart_amp algorithm
+define(`SMART_FB_CHANNELS', 4)
 # Ref capture related
 define(`SMART_REF_PPL_ID', 4)
 define(`SMART_REF_CH_NUM', 4)
