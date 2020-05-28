@@ -65,7 +65,7 @@
 #define HEAP_BUF_ALIGNMENT		PLATFORM_DCACHE_ALIGN
 
 /** \brief EDF task's default stack size in bytes. */
-#define PLATFORM_TASK_DEFAULT_STACK_SIZE	3072
+#define PLATFORM_TASK_DEFAULT_STACK_SIZE	0x1000
 
 #if !defined(__ASSEMBLER__) && !defined(LINKER)
 
