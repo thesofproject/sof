@@ -20,35 +20,11 @@ function [f, m_db] = mls_freq_resp(id)
 %  The script will return also a text CSV format file with name mls-<id>.txt.
 %
 
-%%
-% Copyright (c) 2018, Intel Corporation
-% All rights reserved.
+% SPDX-License-Identifier: BSD-3-Clause
 %
-% Redistribution and use in source and binary forms, with or without
-% modification, are permitted provided that the following conditions are met:
-%   * Redistributions of source code must retain the above copyright
-%     notice, this list of conditions and the following disclaimer.
-%   * Redistributions in binary form must reproduce the above copyright
-%     notice, this list of conditions and the following disclaimer in the
-%     documentation and/or other materials provided with the distribution.
-%   * Neither the name of the Intel Corporation nor the
-%     names of its contributors may be used to endorse or promote products
-%     derived from this software without specific prior written permission.
-%
-% THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-% AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-% IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-% ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
-% LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-% CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-% SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-% INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
-% CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
-% ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-% POSSIBILITY OF SUCH DAMAGE.
+% Copyright (c) 2018-2020, Intel Corporation. All rights reserved.
 %
 % Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
-%
 
 %% Settings
 np = 1024;                  % Number of frequency points to use
@@ -97,7 +73,7 @@ audiowrite(mlsfn, mls, fs);
 [x1, m1] = sync_chirp(fs, 'up');
 [x2, m2] = sync_chirp(fs, 'down');
 fnd.fs = fs; % Sample rate
-fnd.sm = 3; % Max seek from start
+fnd.sm = 5; % Max seek from start
 fnd.em = 3; % Max seek from end
 fnd.idle_t = 2; % max idle in start or end
 fnd.mark_t = m1.t; % Marker length
@@ -138,7 +114,7 @@ for i=1:play_cfg.nch
 		mixdfn = sprintf('%s/%s', dir, mixfn);
 		audiowrite(mixdfn, x, fs, 'BitsPerSample', bits);
 		copy_playback(mixdfn, play_cfg);
-		tcap = floor(3 + t_mls_s);
+		tcap = floor(6 + t_mls_s); % Capture for MLS +6s
 		remote_capture(recfn, rec_cfg, tcap);
 		pause(1);
 		remote_play(mixfn, play_cfg);
@@ -146,6 +122,20 @@ for i=1:play_cfg.nch
 		r = get_recording(recfn, rec_cfg);
 	end
 	[d, nt] = find_test_signal(r(:,1), fnd);
+	if isempty(d)
+		figure;
+		sr = size(r);
+		ts = (0:sr(1)-1)/fs;
+		plot(ts, r(:,1));
+		grid on;
+		xlabel('Time (s)');
+		ylabel('Sample value');
+		title('Captured audio test waveform');
+		fprintf(1, 'Error: check the plot for skew in capture/playback.\n');
+		f = [];
+		m_db = [];
+		return
+	end
 	for j = 1:rec_cfg.nch
 		y(:, rec_cfg.nch*(i-1) + j) = r(d:d + nt -1, j);
 	end
