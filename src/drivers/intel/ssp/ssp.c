@@ -302,7 +302,7 @@ static int ssp_set_config(struct dai *dai,
 	ret = mn_set_mclk(config->ssp.mclk_id, config->ssp.mclk_rate);
 	if (ret < 0) {
 		dai_err(dai, "invalid mclk_rate = %d for mclk_id = %d",
-			config->ssp.mclk_id, config->ssp.mclk_rate);
+			config->ssp.mclk_rate, config->ssp.mclk_id);
 		goto out;
 	}
 
