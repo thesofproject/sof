@@ -171,5 +171,17 @@ define(`BITS_TO_BYTE',
 `eval(eval($1 << 0) | eval($2 << 1) | eval($3 << 2) | eval($4 << 3)dnl
 | eval($5 << 4) | eval($6 << 5) | eval($7 << 6) | eval($8 << 7))')dnl
 
+dnl macro for component UUID declare, support copying from the FW source directly.
+dnl DECLARE_SOF_RT_UUID(name, macro, a, b, c,
+dnl		 d0, d1, d2, d3, d4, d5, d6, d7)
+define(`DECLARE_SOF_RT_UUID',
+`define(`$2',
+	`format(`%2s:%2s:%2s:%2s:%2s:%2s:%2s:%2s:%2s:%2s:%2s:%2s:%2s:%2s:%2s:%2s',
+		substr($3, 8, 2), substr($3, 6, 2), substr($3, 4, 2), substr($3, 2, 2),
+		substr($4, 4, 2), substr($4, 2, 2), substr($5, 4, 2), substr($5, 2, 2),
+		substr($6, 2, 2), substr($7, 2, 2), substr($8, 2, 2), substr($9, 2, 2),
+		substr($10, 2, 2), substr($11, 2, 2), substr($12, 2, 2), substr($13, 2, 2)
+)')')
+
 divert(0) dnl
 
