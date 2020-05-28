@@ -109,12 +109,13 @@ static inline bool is_mclk_source_in_use(void)
  * \param[in] mclk_rate master clock frequency.
  * \return 0 on success, error code otherwise.
  */
-static inline int setup_initial_mclk_source(uint32_t mclk_rate)
+static inline int setup_initial_mclk_source(uint32_t mclk_id,
+					    uint32_t mclk_rate)
 {
 	struct mn *mn = mn_get();
 	int i;
 	int clk_index = -1;
-	uint32_t mdivc = mn_reg_read(MN_MDIVCTRL);
+	uint32_t mdivc;
 	int ret = 0;
 
 	/* searching the smallest possible mclk source */
@@ -134,13 +135,15 @@ static inline int setup_initial_mclk_source(uint32_t mclk_rate)
 
 	mn->mclk_source_clock = clk_index;
 
+	mdivc = mn_reg_read(MN_MDIVCTRL, mclk_id);
+
 	/* enable MCLK divider */
 	mdivc |= MN_MDIVCTRL_M_DIV_ENABLE;
 
 	/* select source clock */
 	mdivc |= MCDSS(ssp_freq_sources[clk_index]);
 
-	mn_reg_write(MN_MDIVCTRL, mdivc);
+	mn_reg_write(MN_MDIVCTRL, mclk_id, mdivc);
 
 out:
 	platform_shared_commit(mn, sizeof(*mn));
@@ -197,7 +200,7 @@ static inline int set_mclk_divider(uint16_t mclk_id, uint32_t mdivr_val)
 		return -EINVAL;
 	}
 
-	mn_reg_write(MN_MDIVR(mclk_id), mdivr);
+	mn_reg_write(MN_MDIVR(mclk_id), mclk_id, mdivr);
 	return 0;
 }
 
@@ -218,7 +221,7 @@ int mn_set_mclk(uint16_t mclk_id, uint32_t mclk_rate)
 	if (is_mclk_source_in_use())
 		ret = check_current_mclk_source(mclk_rate);
 	else
-		ret = setup_initial_mclk_source(mclk_rate);
+		ret = setup_initial_mclk_source(mclk_id, mclk_rate);
 
 	if (ret < 0)
 		goto out;
@@ -381,8 +384,8 @@ static inline int setup_initial_bclk_mn_source(uint32_t bclk, uint32_t *scr_div,
 
 	mn->bclk_source_mn_clock = clk_index;
 
-	mn_reg_write(MN_MDIVCTRL, (mn_reg_read(MN_MDIVCTRL) |
-				   MNDSS(ssp_freq_sources[clk_index])));
+	mn_reg_write(MN_MDIVCTRL, 0, (mn_reg_read(MN_MDIVCTRL, 0) |
+		     MNDSS(ssp_freq_sources[clk_index])));
 
 	platform_shared_commit(mn, sizeof(*mn));
 
@@ -502,8 +505,8 @@ int mn_set_bclk(uint32_t dai_index, uint32_t bclk_rate,
 	if (ret >= 0) {
 		mn->bclk_sources[dai_index] = MN_BCLK_SOURCE_MN;
 
-		mn_reg_write(MN_MDIV_M_VAL(dai_index), m);
-		mn_reg_write(MN_MDIV_N_VAL(dai_index), n);
+		mn_reg_write(MN_MDIV_M_VAL(dai_index), dai_index, m);
+		mn_reg_write(MN_MDIV_N_VAL(dai_index), dai_index, n);
 	}
 
 out:
@@ -529,8 +532,8 @@ void mn_reset_bclk_divider(uint32_t dai_index)
 	struct mn *mn = mn_get();
 
 	spin_lock(&mn->lock);
-	mn_reg_write(MN_MDIV_M_VAL(dai_index), 1);
-	mn_reg_write(MN_MDIV_N_VAL(dai_index), 1);
+	mn_reg_write(MN_MDIV_M_VAL(dai_index), dai_index, 1);
+	mn_reg_write(MN_MDIV_N_VAL(dai_index), dai_index, 1);
 	spin_unlock(&mn->lock);
 }
 

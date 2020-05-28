@@ -292,12 +292,12 @@ static inline void sw_reg_write(uint32_t reg, uint32_t val)
 		SRAM_ALIAS_OFFSET) + reg)) = val;
 }
 
-static inline uint32_t mn_reg_read(uint32_t reg)
+static inline uint32_t mn_reg_read(uint32_t reg, uint32_t id)
 {
 	return *((volatile uint32_t*)(MN_BASE + reg));
 }
 
-static inline void mn_reg_write(uint32_t reg, uint32_t val)
+static inline void mn_reg_write(uint32_t reg, uint32_t id, uint32_t val)
 {
 	*((volatile uint32_t*)(MN_BASE + reg)) = val;
 }

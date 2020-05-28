@@ -8,24 +8,11 @@
 #ifndef __SOF_DRIVERS_MN_H__
 #define __SOF_DRIVERS_MN_H__
 
+#include <platform/drivers/mn.h>
 #include <sof/sof.h>
+#include <config.h>
 #include <stdbool.h>
 #include <stdint.h>
-
-/** \brief Offset of MCLK Divider Control Register. */
-#define MN_MDIVCTRL 0x0
-
-/** \brief Enables the output of MCLK Divider. */
-#define MN_MDIVCTRL_M_DIV_ENABLE BIT(0)
-
-/** \brief Offset of MCLK Divider x Ratio Register. */
-#define MN_MDIVR(x) (0x80 + (x) * 0x4)
-
-/** \brief Offset of BCLK x M/N Divider M Value Register. */
-#define MN_MDIV_M_VAL(x) (0x100 + (x) * 0x8 + 0x0)
-
-/** \brief Offset of BCLK x M/N Divider N Value Register. */
-#define MN_MDIV_N_VAL(x) (0x100 + (x) * 0x8 + 0x4)
 
 /**
  * \brief Initializes MN driver.
@@ -50,6 +37,7 @@ int mn_set_mclk(uint16_t mclk_id, uint32_t mclk_rate);
  */
 void mn_release_mclk(uint32_t mclk_id);
 
+#if CONFIG_INTEL_MN
 /**
  * \brief Finds and sets valid combination of BCLK source and M/N to
  *	  achieve requested BCLK rate.
@@ -77,6 +65,7 @@ void mn_release_bclk(uint32_t dai_index);
  * \param[in] dai_index DAI index (SSP port).
  */
 void mn_reset_bclk_divider(uint32_t dai_index);
+#endif
 
 /**
  * \brief Retrieves M/N dividers structure.
