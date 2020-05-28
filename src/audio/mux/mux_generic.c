@@ -26,8 +26,8 @@
  * \param[in] offset Offset in source buffer.
  * \param[in] mask Routing bitmask for calculating output sample.
  */
-UT_STATIC inline int32_t calc_sample_s16le(const struct audio_stream *source,
-					   uint32_t offset, uint8_t mask)
+UT_STATIC int32_t calc_sample_s16le(const struct audio_stream *source,
+				    uint32_t offset, uint8_t mask)
 {
 	int32_t sample = 0;
 	int16_t *src;
@@ -136,8 +136,8 @@ static void mux_s16le(struct audio_stream *sink,
  * \param[in] offset Offset in source buffer.
  * \param[in] mask Routing bitmask for calculating output sample.
  */
-UT_STATIC inline int32_t calc_sample_s24le(const struct audio_stream *source,
-					   uint32_t offset, uint8_t mask)
+UT_STATIC int32_t calc_sample_s24le(const struct audio_stream *source,
+				    uint32_t offset, uint8_t mask)
 {
 	int32_t sample = 0;
 	int32_t *src;
@@ -245,8 +245,8 @@ static void mux_s24le(struct audio_stream *sink,
  * \param[in] offset Offset in source buffer.
  * \param[in] mask Routing bitmask for calculating output sample.
  */
-UT_STATIC inline int64_t calc_sample_s32le(const struct audio_stream *source,
-					   uint32_t offset, uint8_t mask)
+UT_STATIC int64_t calc_sample_s32le(const struct audio_stream *source,
+				    uint32_t offset, uint8_t mask)
 {
 	int64_t sample = 0;
 	int32_t *src;
