@@ -14,6 +14,7 @@
 #ifndef __SOF_DRIVERS_IDC_H__
 #define __SOF_DRIVERS_IDC_H__
 
+#include <arch/drivers/idc.h>
 #include <platform/drivers/idc.h>
 #include <sof/schedule/task.h>
 #include <sof/trace/trace.h>
@@ -113,6 +114,9 @@ struct idc {
 	int irq;
 };
 
+/* idc trace context, used by multiple units */
+extern struct tr_ctx idc_tr;
+
 static inline struct idc_payload *idc_payload_get(struct idc *idc,
 						  uint32_t core)
 {
@@ -122,5 +126,15 @@ static inline struct idc_payload *idc_payload_get(struct idc *idc,
 void idc_enable_interrupts(int target_core, int source_core);
 
 void idc_free(void);
+
+int platform_idc_init(void);
+
+enum task_state idc_do_cmd(void *data);
+
+void idc_cmd(struct idc_msg *msg);
+
+int idc_wait_in_blocking_mode(uint32_t target_core, bool (*cond)(int));
+
+int idc_msg_status_get(uint32_t core);
 
 #endif /* __SOF_DRIVERS_IDC_H__ */
