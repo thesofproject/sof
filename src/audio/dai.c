@@ -219,7 +219,8 @@ static int dai_comp_get_hw_params(struct comp_dev *dev,
 	/* fetching hw dai stream params */
 	ret = dai_get_hw_params(dd->dai, params, dir);
 	if (ret < 0) {
-		comp_err(dev, "dai_comp_get_hw_params(): dai_get_hw_params failed");
+		comp_err(dev, "dai_comp_get_hw_params(): dai_get_hw_params failed ret %d",
+			 ret);
 		return ret;
 	}
 
@@ -249,12 +250,14 @@ static int dai_verify_params(struct comp_dev *dev,
 	 * pcm_converter functions.
 	 */
 	if (hw_params.rate && hw_params.rate != params->rate) {
-		comp_err(dev, "dai_verify_params(): pcm rate parameter does not match hardware rate");
+		comp_err(dev, "dai_verify_params(): pcm rate parameter %d does not match hardware rate %d",
+			 params->rate, hw_params.rate);
 		return -EINVAL;
 	}
 
 	if (hw_params.channels && hw_params.channels != params->channels) {
-		comp_err(dev, "dai_verify_params(): pcm channels parameter does not match hardware channels");
+		comp_err(dev, "dai_verify_params(): pcm channels parameter %d does not match hardware channels %d",
+			 params->channels, hw_params.channels);
 		return -EINVAL;
 	}
 
@@ -305,8 +308,8 @@ static int dai_playback_params(struct comp_dev *dev, uint32_t period_bytes,
 				   (uintptr_t)(dd->dma_buffer->stream.addr),
 				   fifo);
 		if (err < 0) {
-			comp_err(dev, "dai_playback_params(): dma_sg_alloc() failed with err = %d",
-				 err);
+			comp_err(dev, "dai_playback_params(): dma_sg_alloc() for period_count %d period_bytes %d failed with err = %d",
+				 period_count, period_bytes, err);
 			return err;
 		}
 	}
@@ -365,8 +368,8 @@ static int dai_capture_params(struct comp_dev *dev, uint32_t period_bytes,
 				   (uintptr_t)(dd->dma_buffer->stream.addr),
 				   fifo);
 		if (err < 0) {
-			comp_err(dev, "dai_capture_params(): dma_sg_alloc() failed with err = %d",
-				 err);
+			comp_err(dev, "dai_capture_params(): dma_sg_alloc() for period_count %d period_bytes %d failed with err = %d",
+				 period_count, period_bytes, err);
 			return err;
 		}
 	}
@@ -411,7 +414,8 @@ static int dai_params(struct comp_dev *dev,
 
 	/* can set params on only init state */
 	if (dev->state != COMP_STATE_READY) {
-		comp_err(dev, "dai_params(): Component is not in init state.");
+		comp_err(dev, "dai_params(): Component is in state %d, expected COMP_STATE_READY.",
+			 dev->state);
 		return -EINVAL;
 	}
 
@@ -806,7 +810,8 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 		break;
 	default:
 		/* other types of DAIs not handled for now */
-		comp_err(dev, "dai_config(): Unknown dai type");
+		comp_err(dev, "dai_config(): Unknown dai type %d",
+			 config->type);
 		break;
 	}
 
