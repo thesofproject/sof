@@ -4,44 +4,6 @@ mainmenu "SOF $(PROJECTVERSION) Configuration"
 
 comment "Compiler: $(CC_VERSION_TEXT)"
 
-menu "CAVS"
-	depends on CAVS
-
-config HP_MEMORY_BANKS
-	int "HP memory banks count"
-	default 8
-	help
-	  Available memory banks count for High Performance memory
-	  Lowering available banks could result in lower power consumption
-	  Too low count should result in unresponsive/crashing image due to not
-	  enough space for FW base image
-	  Banks are 64kb in size.
-
-config LP_MEMORY_BANKS
-	int "LP memory banks count"
-	default 0
-	help
-	  Available memory banks count for Low Power memory.
-	  It can be used to turn ON/OFF LPSRAM bank/s.
-	  Firmware will turn on only as many banks as are defined here.
-
-config LP_SRAM
-	bool
-	default LP_MEMORY_BANKS > 0
-	help
-	  Indicates that platform uses LPSRAM.
-
-config CAVS_LPS
-	bool "Intel cAVS Low Power Sequencer for Power Management"
-	depends on CAVS
-	default n
-	help
-	  Select this to enable Intel cAVS Low Power Sequencer.
-	  This option is required to support S0ix/D0ix mode
-	  on cAVS platforms.
-
-endmenu
-
 config WAITI_DELAY
 	bool
 	default n
