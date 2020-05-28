@@ -1,12 +1,23 @@
 divert(-1)
 
 dnl Define macro for Key Phrase Buffer Manager(kpbm) widget
+DECLARE_SOF_RT_UUID("kpb", kpb_uuid, 0xd8218443, 0x5ff3, 0x4a4c,
+		 0xb3, 0x88, 0x6c, 0xfe, 0x07, 0xb9, 0x56, 0x2e)
 
 dnl N_KPBM(name)
 define(`N_KPBM', `KPBM'$2`.'$1)
 
 dnl W_KPBM(name, format, periods_sink, periods_source, pipeline_id, core, kcontrols_list)
 define(`W_KPBM',
+`SectionVendorTuples."'N_KPBM($1)`_tuples_uuid" {'
+`	tokens "sof_comp_tokens"'
+`	tuples."uuid" {'
+`		SOF_TKN_COMP_UUID'		STR(kpb_uuid)
+`	}'
+`}'
+`SectionData."'N_KPBM($1)`_data_uuid" {'
+`	tuples "'N_KPBM($1)`_tuples_uuid"'
+`}'
 `SectionVendorTuples."'N_KPBM($1, $5)`_tuples_w" {'
 `	tokens "sof_comp_tokens"'
 `	tuples."word" {'
@@ -39,6 +50,7 @@ define(`W_KPBM',
 `	type "effect"'
 `	no_pm "true"'
 `	data ['
+`		"'N_KPBM($1)`_data_uuid"'
 `		"'N_KPBM($1, $5)`_data_w"'
 `		"'N_KPBM($1, $5)`_data_str"'
 `	]'
