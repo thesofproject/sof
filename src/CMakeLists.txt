@@ -24,3 +24,7 @@ endif()
 if (CONFIG_PROBE)
 	add_subdirectory(probe)
 endif()
+
+if (CONFIG_SMP)
+	add_subdirectory(idc)
+endif()
