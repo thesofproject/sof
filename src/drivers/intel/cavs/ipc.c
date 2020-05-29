@@ -24,6 +24,7 @@
 #if CAVS_VERSION >= CAVS_VERSION_1_8
 #include <ipc/header-intel-cavs.h>
 #include <ipc/pm.h>
+#include <cavs/drivers/sideband-ipc.h>
 #endif
 
 #include <stdbool.h>

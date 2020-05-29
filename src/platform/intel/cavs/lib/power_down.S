@@ -14,6 +14,7 @@
 
 
 #include <cavs/version.h>
+#include <cavs/drivers/sideband-ipc.h>
 #include <cavs/lib/asm_ldo_management.h>
 #include <cavs/lib/asm_memory_management.h>
 #include <sof/lib/memory.h>
