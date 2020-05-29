@@ -17,6 +17,10 @@
 #include <sof-config.h>
 #include <stdint.h>
 
+#ifdef __ZEPHYR__
+int memcpy_s(void *dest, size_t dest_size, const void *src, size_t src_size);
+#endif
+
 #define LPSRAM_MAGIC_VALUE 0x13579BDF
 
 #define LPSRAM_HEADER_SIZE 0xc00
