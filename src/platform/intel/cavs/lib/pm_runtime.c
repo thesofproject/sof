@@ -313,8 +313,8 @@ static inline void cavs_pm_runtime_core_dis_memory(uint32_t index)
 	core_memory_ptr = (char *)&_sof_core_s_start
 		+ (index - 1) * SOF_CORE_S_SIZE;
 
-	set_power_gate_for_memory_address_range(core_memory_ptr,
-						SOF_CORE_S_SIZE, 0);
+	cavs_pm_memory_hp_sram_power_gate(core_memory_ptr, SOF_CORE_S_SIZE,
+					  false);
 
 #endif
 }
@@ -331,8 +331,8 @@ static inline void cavs_pm_runtime_core_en_memory(uint32_t index)
 	core_memory_ptr = (char *)&_sof_core_s_start
 		+ (index - 1) * SOF_CORE_S_SIZE;
 
-	set_power_gate_for_memory_address_range(core_memory_ptr,
-						SOF_CORE_S_SIZE, 1);
+	cavs_pm_memory_hp_sram_power_gate(core_memory_ptr, SOF_CORE_S_SIZE,
+					  true);
 
 #endif
 }

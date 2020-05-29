@@ -15,6 +15,8 @@
 #include <sof/lib/wait.h>
 #include <sof/trace/trace.h>
 #include <user/trace.h>
+#include <config.h>
+#include <stdbool.h>
 #include <stdint.h>
 
 /* 14f25ab6-3a4b-4e5d-b343-2a142d4e4d92 */
@@ -27,6 +29,41 @@ DECLARE_TR_CTX(pm_mem_tr, SOF_UUID(pm_mem_uuid), LOG_LEVEL_INFO);
 
 #define EBB_SEGMENT_SIZE_ZERO_BASE (EBB_SEGMENT_SIZE - 1)
 #define MEMORY_POWER_DOWN_DELAY 256
+
+/**
+ * \brief Retrieves memory banks based on start and end pointer.
+ * \param[in,out] start Start address of memory range.
+ * \param[in,out] end End address of memory range.
+ * \param[in] base Base address of memory range.
+ * \param[in,out] start_bank Start bank id calculated by this function.
+ * \param[in,out] end_bank End bank id calculated by this function.
+ */
+static void memory_banks_get(void *start, void *end, uint32_t base,
+			     uint32_t *start_bank, uint32_t *end_bank)
+{
+	/* if ptr is not aligned to bank size change it to
+	 * closest possible memory address at the start of bank
+	 * or end for end address
+	 */
+	if ((uintptr_t)start % SRAM_BANK_SIZE)
+		start = (void *)ALIGN((uintptr_t)start, SRAM_BANK_SIZE);
+
+	if ((uintptr_t)end % SRAM_BANK_SIZE)
+		end = (void *)ALIGN_DOWN((uintptr_t)end, SRAM_BANK_SIZE);
+
+	/* return if no full bank could be found for enabled gate control */
+	if ((char *)end - (char *)start < SRAM_BANK_SIZE) {
+		tr_info(&pm_mem_tr, "cavs_pm_memory_banks_get(): cannot find full bank to perform gating operation");
+		return;
+	}
+
+	*start_bank = ((uintptr_t)start - base) / SRAM_BANK_SIZE;
+	/* Ending bank id has to be lowered by one because it is
+	 * calculated from memory end ptr
+	 */
+	*end_bank = ((uintptr_t)end - base) / SRAM_BANK_SIZE - 1;
+}
+
 /**
  * \brief Read masks from hw registers and prepare new masks from data
  * \param[in] ebb_data All masks data required for calculations.
@@ -137,16 +174,11 @@ static void write_new_masks_and_check_status(struct ebb_data *ebb)
 	idelay(MEMORY_POWER_DOWN_DELAY);
 }
 
-/**
- * \brief Set memory enabled gating hw bit mask for memory banks
- * \param[in] start_bank_id Id of first bank to be managed (inclusive) 0 based.
- * \param[in] ending_bank_id Id of last bank to be managed (inclusive) 0 based.
- * \param[in] enabled Boolean deciding banks desired state (1 powered 0 gated).
- */
-static void set_banks_gating(uint32_t start_bank_id, uint32_t ending_bank_id,
-			     uint32_t enabled)
+void cavs_pm_memory_hp_sram_banks_power_gate(uint32_t start_bank_id,
+					     uint32_t ending_bank_id,
+					     bool enabled)
 {
-	struct ebb_data ebb = {0};
+	struct ebb_data ebb = { 0 };
 
 	ebb.start_bank_id = start_bank_id;
 	ebb.ending_bank_id = ending_bank_id;
@@ -170,37 +202,51 @@ static void set_banks_gating(uint32_t start_bank_id, uint32_t ending_bank_id,
 	shim_write(SHIM_LDOCTL, SHIM_LDOCTL_HPSRAM_LDO_BYPASS);
 }
 
-void set_power_gate_for_memory_address_range(void *ptr,
-					     uint32_t size, uint32_t enabled)
+void cavs_pm_memory_hp_sram_power_gate(void *ptr, uint32_t size, bool enabled)
 {
-	uint32_t start_bank_id;
-	uint32_t ending_bank_id;
-	void *end_ptr = (char *)ptr + size;
+	uint32_t start_bank = 0;
+	uint32_t end_bank = 0;
 
-	/* if ptr is not aligned to bank size change it to
-	 * closest possible memory address at the start of bank
-	 * or end for end address
-	 */
-	if ((uintptr_t)ptr % SRAM_BANK_SIZE)
-		ptr = (void *)ALIGN((uintptr_t)ptr, SRAM_BANK_SIZE);
+	memory_banks_get(ptr, (char *)ptr + size, HP_SRAM_BASE, &start_bank,
+			 &end_bank);
 
-	if ((uintptr_t)end_ptr % SRAM_BANK_SIZE)
-		end_ptr = (void *)ALIGN_DOWN((uintptr_t)ptr, SRAM_BANK_SIZE);
-
-	/* return if no full bank could be found for enabled gate control */
-	if ((char *)end_ptr - (char *)ptr < SRAM_BANK_SIZE) {
-		tr_info(&pm_mem_tr, "Could not find full bank to perform gating operation");
-		return;
-	}
-
-	start_bank_id = ((uintptr_t)ptr - HP_SRAM_BASE) / SRAM_BANK_SIZE;
-	/* Ending bank id has to be lowered by one because it is
-	 * calculated from memory end ptr
-	 */
-	ending_bank_id = ((uintptr_t)end_ptr - HP_SRAM_BASE)
-			/ SRAM_BANK_SIZE - 1;
-
-	set_banks_gating(start_bank_id, ending_bank_id, enabled);
+	cavs_pm_memory_hp_sram_banks_power_gate(start_bank, end_bank, enabled);
 }
 
-#endif
+#if CONFIG_LP_SRAM
+
+void cavs_pm_memory_lp_sram_banks_power_gate(uint32_t start_bank_id,
+					     uint32_t ending_bank_id,
+					     bool enabled)
+{
+	uint32_t mask = MASK(ending_bank_id, start_bank_id);
+	uint32_t expected = enabled ? 0 : mask;
+
+	shim_write(SHIM_LDOCTL, SHIM_LDOCTL_LPSRAM_LDO_ON);
+
+	idelay(MEMORY_POWER_DOWN_DELAY);
+
+	io_reg_update_bits(LSPGCTL, mask, enabled ? 0 : mask);
+
+	idelay(MEMORY_POWER_DOWN_DELAY);
+
+	while ((io_reg_read(LSPGISTS) & mask) != expected)
+		idelay(MEMORY_POWER_DOWN_DELAY);
+
+	shim_write(SHIM_LDOCTL, SHIM_LDOCTL_HPSRAM_LDO_BYPASS);
+}
+
+void cavs_pm_memory_lp_sram_power_gate(void *ptr, uint32_t size, bool enabled)
+{
+	uint32_t start_bank = 0;
+	uint32_t end_bank = 0;
+
+	memory_banks_get(ptr, (char *)ptr + size, LP_SRAM_BASE, &start_bank,
+			 &end_bank);
+
+	cavs_pm_memory_lp_sram_banks_power_gate(start_bank, end_bank, enabled);
+}
+
+#endif /* CONFIG_LP_SRAM */
+
+#endif /* CAVS_VERSION >= CAVS_VERSION_1_8 */
