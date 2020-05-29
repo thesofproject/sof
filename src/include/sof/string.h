@@ -13,6 +13,7 @@
 
 /* C memcpy for arch that don't have arch_memcpy() */
 void cmemcpy(void *dest, void *src, size_t size);
+int memcmp(const void *p, const void *q, size_t count);
 int rstrlen(const char *s);
 int rstrcmp(const char *s1, const char *s2);
 
