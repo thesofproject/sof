@@ -18,6 +18,9 @@ include(`sof/tokens.m4')
 
 include(`platform/intel/tgl.m4')
 
+define(DMIC_PDM_CONFIG, ifelse(CHANNELS, `4', ``FOUR_CH_PDM0_PDM1'',
+	`ifelse(CHANNELS, `2', ``STEREO_PDM0'', `')'))
+
 DEBUG_START
 
 #
@@ -70,7 +73,7 @@ PIPELINE_PCM_ADD(sof/pipe-volume-capture.m4,
 # Passthrough capture pipeline 5 on PCM 4 using max 4 channels.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-volume-capture-16khz.m4,
-        5, 4, 4, s16le,
+        5, 4, CHANNELS, s32le,
         1000, 0, 0,
         16000, 16000, 16000)
 
@@ -140,10 +143,10 @@ DAI_ADD(sof/pipe-dai-capture.m4,
         1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # capture DAI is DMIC16k using 2 periods
-# Buffers use s16le format, with 16 frame per 1000us on core 0 with priority 0
+# Buffers use s32le format, with 16 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
         5, DMIC, 1, dmic16k,
-        PIPELINE_SINK_5, 2, s16le,
+        PIPELINE_SINK_5, 2, s32le,
         1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # playback DAI is iDisp1 using 2 periods
@@ -211,8 +214,8 @@ DAI_CONFIG(DMIC, 0, 3, dmic01,
 # dmic16k (ID: 4)
 DAI_CONFIG(DMIC, 1, 4, dmic16k,
            DMIC_CONFIG(1, 500000, 4800000, 40, 60, 16000,
-                DMIC_WORD_LENGTH(s16le), 400, DMIC, 1,
-                PDM_CONFIG(DMIC, 1, STEREO_PDM0)))
+                DMIC_WORD_LENGTH(s32le), 400, DMIC, 1,
+                PDM_CONFIG(DMIC, 1, DMIC_PDM_CONFIG)))
 
 # 3 HDMI/DP outputs (ID: 5,6,7)
 DAI_CONFIG(HDA, 0, 5, iDisp1,
