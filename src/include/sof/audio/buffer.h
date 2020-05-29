@@ -111,6 +111,7 @@ struct comp_buffer {
 	uint16_t chmap[SOF_IPC_MAX_CHANNELS];	/**< channel map - SOF_CHMAP_ */
 
 	bool hw_params_configured; /**< indicates whether hw params were set */
+	bool walking;	/**< indicates if the buffer is being walking */
 };
 
 struct buffer_cb_transact {

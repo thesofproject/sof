@@ -169,6 +169,10 @@ static int pipeline_for_each_comp(struct comp_dev *current,
 	list_for_item(clist, buffer_list) {
 		buffer = buffer_from_list(clist, struct comp_buffer, dir);
 
+		/* don't go back to the buffer which already walked */
+		if (buffer->walking)
+			continue;
+
 		/* execute operation on buffer */
 		if (ctx->buff_func)
 			ctx->buff_func(buffer, ctx->buff_data);
@@ -182,8 +186,10 @@ static int pipeline_for_each_comp(struct comp_dev *current,
 
 		/* continue further */
 		if (ctx->comp_func) {
+			buffer->walking = true;
 			int err = ctx->comp_func(buffer_comp, buffer,
 						 ctx, dir);
+			buffer->walking = false;
 			if (err < 0)
 				return err;
 		}
