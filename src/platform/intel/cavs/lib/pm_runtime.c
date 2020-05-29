@@ -12,13 +12,13 @@
  * \author Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */
 
+#include <cavs/lib/pm_memory.h>
 #include <sof/debug/panic.h>
 #include <sof/drivers/interrupt.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/dai.h>
 #include <sof/lib/io.h>
 #include <sof/lib/memory.h>
-#include <sof/lib/pm_memory.h>
 #include <sof/lib/pm_runtime.h>
 #include <sof/lib/shim.h>
 #include <sof/lib/uuid.h>
