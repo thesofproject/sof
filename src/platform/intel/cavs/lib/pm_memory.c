@@ -5,11 +5,11 @@
  * Author: Jakub Dabek <jakub.dabek@intel.com>
  */
 
+#include <cavs/lib/pm_memory.h>
 #include <cavs/version.h>
 #include <sof/bit.h>
 #include <sof/lib/io.h>
 #include <sof/lib/memory.h>
-#include <sof/lib/pm_memory.h>
 #include <sof/lib/shim.h>
 #include <sof/lib/uuid.h>
 #include <sof/lib/wait.h>
@@ -203,9 +203,4 @@ void set_power_gate_for_memory_address_range(void *ptr,
 	set_banks_gating(start_bank_id, ending_bank_id, enabled);
 }
 
-#else
-void set_power_gate_for_memory_address_range(void *ptr,
-					     uint32_t size, uint32_t enabled)
-{
-}
 #endif

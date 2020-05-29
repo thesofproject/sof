@@ -11,8 +11,6 @@
  * \author Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */
 
-#ifdef __PLATFORM_LIB_PM_MEMORY_H__
-
 #ifndef __CAVS_LIB_PM_MEMORY_H__
 #define __CAVS_LIB_PM_MEMORY_H__
 
@@ -32,10 +30,17 @@ struct ebb_data {
 	uint32_t ending_bank_id_high;
 };
 
+/**
+ * \brief Set power gating of memory banks in the address range
+ *
+ * Power gates address range only on full banks if given address form mid block
+ * it will try to narrow down power gate to nearest full banks
+ *
+ * \param[in] ptr Ptr to address from which to start gating.
+ * \param[in] size Size of memory to manage.
+ * \param[in] enabled Boolean deciding banks desired state (1 powered 0 gated).
+ */
+void set_power_gate_for_memory_address_range(void *ptr, uint32_t size,
+					     uint32_t enabled);
+
 #endif /* __CAVS_LIB_PM_MEMORY_H__ */
-
-#else
-
-#error "Do not include outside of platform/lib/pm_memory.h"
-
-#endif /* __PLATFORM_LIB_PM_MEMORY_H__ */
