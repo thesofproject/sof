@@ -5,7 +5,6 @@
 // Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
 
 #include <cavs/lib/pm_memory.h>
-#include <cavs/version.h>
 #include <sof/bit.h>
 #include <sof/lib/cache.h>
 #include <sof/lib/io.h>
@@ -119,6 +118,26 @@ static void parse_module(struct sof_man_fw_header *hdr,
 #define MAN_SKIP_ENTRIES 1
 #endif
 
+/* parse FW manifest and copy modules */
+static void parse_manifest(void)
+{
+	struct sof_man_fw_desc *desc =
+		(struct sof_man_fw_desc *)MANIFEST_BASE;
+	struct sof_man_fw_header *hdr = &desc->header;
+	struct sof_man_module *mod;
+	int i;
+
+	/* copy module to SRAM  - skip bootloader module */
+	for (i = MAN_SKIP_ENTRIES; i < hdr->num_module_entries; i++) {
+		trace_point(TRACE_BOOT_LDR_PARSE_MODULE + i);
+		mod = (struct sof_man_module *)((char *)desc +
+						SOF_MAN_MODULE_OFFSET(i));
+		parse_module(hdr, mod);
+	}
+}
+
+#if PLATFORM_MEM_INIT_AT_BOOT
+
 static uint32_t get_fw_size_in_use(void)
 {
 	struct sof_man_fw_desc *desc =
@@ -148,26 +167,6 @@ static uint32_t get_fw_size_in_use(void)
 
 	return fw_size_in_use;
 }
-
-/* parse FW manifest and copy modules */
-static void parse_manifest(void)
-{
-	struct sof_man_fw_desc *desc =
-		(struct sof_man_fw_desc *)MANIFEST_BASE;
-	struct sof_man_fw_header *hdr = &desc->header;
-	struct sof_man_module *mod;
-	int i;
-
-	/* copy module to SRAM  - skip bootloader module */
-	for (i = MAN_SKIP_ENTRIES; i < hdr->num_module_entries; i++) {
-		trace_point(TRACE_BOOT_LDR_PARSE_MODULE + i);
-		mod = (struct sof_man_module *)((char *)desc +
-						SOF_MAN_MODULE_OFFSET(i));
-		parse_module(hdr, mod);
-	}
-}
-
-#if CAVS_VERSION >= CAVS_VERSION_1_8
 
 static uint32_t hp_sram_power_memory(uint32_t memory_size, bool enable)
 {
@@ -201,27 +200,18 @@ static int32_t hp_sram_init(void)
 	return hp_sram_power_memory(HP_SRAM_SIZE, true);
 }
 
-#else
-
-static int32_t hp_sram_power_off_unused_banks(uint32_t memory_size)
-{
-	return 0;
-}
-
-static uint32_t hp_sram_init(void)
-{
-	return 0;
-}
-
 #endif
 
 /* boot master core */
 void boot_master_core(void)
 {
+#if PLATFORM_MEM_INIT_AT_BOOT
 	int32_t result;
+#endif
 
 	trace_point(TRACE_BOOT_LDR_ENTRY);
 
+#if PLATFORM_MEM_INIT_AT_BOOT
 	/* init the HPSRAM */
 	trace_point(TRACE_BOOT_LDR_HPSRAM);
 	result = hp_sram_init();
@@ -229,6 +219,7 @@ void boot_master_core(void)
 		platform_panic(SOF_IPC_PANIC_MEM);
 		return;
 	}
+#endif
 
 #if CONFIG_LP_SRAM
 	/* init the LPSRAM */
@@ -243,7 +234,9 @@ void boot_master_core(void)
 	trace_point(TRACE_BOOT_LDR_MANIFEST);
 	parse_manifest();
 
+#if PLATFORM_MEM_INIT_AT_BOOT
 	hp_sram_power_off_unused_banks(get_fw_size_in_use());
+#endif
 
 	/* now call SOF entry */
 	trace_point(TRACE_BOOT_LDR_JUMP);
