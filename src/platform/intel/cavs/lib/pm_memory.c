@@ -13,6 +13,7 @@
 #include <sof/lib/shim.h>
 #include <sof/lib/uuid.h>
 #include <sof/lib/wait.h>
+#include <sof/math/numbers.h>
 #include <sof/trace/trace.h>
 #include <user/trace.h>
 #include <config.h>
@@ -27,7 +28,6 @@ DECLARE_TR_CTX(pm_mem_tr, SOF_UUID(pm_mem_uuid), LOG_LEVEL_INFO);
 
 #if CAVS_VERSION >= CAVS_VERSION_1_8
 
-#define EBB_SEGMENT_SIZE_ZERO_BASE (EBB_SEGMENT_SIZE - 1)
 #define MEMORY_POWER_DOWN_DELAY 256
 
 /**
@@ -65,139 +65,68 @@ static void memory_banks_get(void *start, void *end, uint32_t base,
 }
 
 /**
- * \brief Read masks from hw registers and prepare new masks from data
- * \param[in] ebb_data All masks data required for calculations.
+ * \brief Retrieves register mask for given segment.
+ * \param[in] start_bank Start bank id.
+ * \param[in] end_bank End bank id.
+ * \param[in] segment Segment id.
+ * \return Register mask.
  */
-static void set_bank_masks(struct ebb_data *ebb)
+static uint32_t cavs_pm_memory_hp_sram_mask_get(uint32_t start_bank,
+						uint32_t end_bank, int segment)
 {
-	/* Bit is set for gated banks in the HSPGISTS register so
-	 * we negate it to have consistent 1 = powered 0 = gated
-	 * convention since HSPGISTS registers have it other way
-	 */
-	ebb->current_mask0 = ~io_reg_read(HSPGISTS0);
-	ebb->current_mask1 = ~io_reg_read(HSPGISTS1);
+	uint32_t first_in_segment;
+	uint32_t last_in_segment;
 
-	/* Calculate mask of bits (banks) to set to powered */
-	ebb->change_mask0 = SET_BITS(ebb->ending_bank_id,
-		ebb->start_bank_id, MASK(ebb->ending_bank_id, 0));
-	ebb->change_mask1 = SET_BITS(ebb->ending_bank_id_high,
-		ebb->start_bank_id_high,
-		MASK(ebb->ending_bank_id_high, 0));
+	first_in_segment = segment * EBB_SEGMENT_SIZE;
+	last_in_segment = ((segment + 1) * EBB_SEGMENT_SIZE) - 1;
+
+	/* not in this segment */
+	if (start_bank > last_in_segment || end_bank < first_in_segment)
+		return 0;
+
+	if (start_bank >= first_in_segment)
+		return MASK(MIN(end_bank, last_in_segment) - first_in_segment,
+			    start_bank - first_in_segment);
+
+	return MASK(end_bank - first_in_segment, 0);
 }
 
 /**
- * \brief Calculates new mask to write to hw register
- * \param[in] ebb_data All masks data required for calculations.
- * \param[in] enabled Boolean deciding banks desired state (1 powered 0 gated).
+ * \brief Sets register mask for given segment.
+ * \param[in] mask Register mask to be set.
+ * \param[in] segment Segment id.
+ * \param[in] enabled True if banks should be enabled, false otherwise.
  */
-static void calculate_new_masks(struct ebb_data *ebb, uint32_t enabled)
+static void cavs_pm_memory_hp_sram_mask_set(uint32_t mask, int segment,
+					    bool enabled)
 {
-	/* check if either start or end bank is in different segment
-	 * and treat it on case by case basis first only banks
-	 * the segments above EBB_SEGMENT_SIZE are managed
-	 * (separate hw register has to be used for ebb
-	 * numbered over 32 different ebb segment)
-	 */
-	if (ebb->start_bank_id > EBB_SEGMENT_SIZE_ZERO_BASE &&
-	    ebb->ending_bank_id > EBB_SEGMENT_SIZE_ZERO_BASE) {
-		/* Set the bits for all powered banks operations
-		 * depend whether we turn on or off the memory
-		 */
-		ebb->new_mask0 =
-			ebb->current_mask0;
-		ebb->new_mask1 = enabled ?
-			ebb->current_mask1
-			| ebb->change_mask1 :
-			ebb->current_mask1
-			& ~ebb->change_mask1;
+	uint32_t expected = enabled ? 0 : mask;
 
-	/* second check if managing spans above and below EBB_SEGMENT_SIZE
-	 * meaning we have to handle both ebb for both segments
-	 */
-	} else if (ebb->start_bank_id > EBB_SEGMENT_SIZE_ZERO_BASE
-		   && ebb->ending_bank_id
-		   < EBB_SEGMENT_SIZE_ZERO_BASE) {
-		ebb->new_mask0 = enabled ?
-			ebb->current_mask0
-			| ebb->change_mask0 :
-			ebb->current_mask0
-			& ~ebb->change_mask0;
-		ebb->new_mask1 = enabled ?
-			ebb->current_mask1
-			| ebb->change_mask1 :
-			ebb->current_mask1
-			& ~ebb->change_mask1;
+	io_reg_update_bits(SHIM_HSPGCTL(segment), mask, enabled ? 0 : mask);
+	io_reg_update_bits(SHIM_HSRMCTL(segment), mask, enabled ? 0 : mask);
 
-	/* if only first segment needs changes */
-	} else {
-		ebb->new_mask0 = enabled ?
-			ebb->current_mask0
-			| ebb->change_mask0 :
-			ebb->current_mask0
-			& ~ebb->change_mask0;
-		ebb->new_mask1 =
-			ebb->current_mask1;
-	}
-}
-
-/**
- * \brief Write calculated masks to HW registers
- * \param[in] ebb_data All masks data with masks to write.
- */
-static void write_new_masks_and_check_status(struct ebb_data *ebb)
-{
-	uint32_t status;
-
-	/* HSPGCTL, HSRMCTL use reverse logic - 0 means EBB is enabled gated */
-	io_reg_write(HSPGCTL0, ~ebb->new_mask0);
-	io_reg_write(HSRMCTL0, ~ebb->new_mask0);
-	io_reg_write(HSPGCTL1, ~ebb->new_mask1);
-	io_reg_write(HSRMCTL1, ~ebb->new_mask1);
-
-	/* Query the enabled status of first part of HP memory
-	 * to check whether it has been powered up. A few
-	 * cycles are needed for it to be powered up
-	 */
-	status = io_reg_read(HSPGISTS0);
-	while (status != ~ebb->new_mask0) {
-		idelay(MEMORY_POWER_DOWN_DELAY);
-		status = io_reg_read(HSPGISTS0);
-	}
-
-	/* Query the enabled status of second part of HP memory */
-	status = io_reg_read(HSPGISTS1);
-	while (status != ~ebb->new_mask1) {
-		idelay(MEMORY_POWER_DOWN_DELAY);
-		status = io_reg_read(HSPGISTS1);
-	}
-	/* add some delay before touch enabled register */
 	idelay(MEMORY_POWER_DOWN_DELAY);
+
+	while ((io_reg_read(SHIM_HSPGISTS(segment)) & mask) != expected)
+		idelay(MEMORY_POWER_DOWN_DELAY);
 }
 
 void cavs_pm_memory_hp_sram_banks_power_gate(uint32_t start_bank_id,
 					     uint32_t ending_bank_id,
 					     bool enabled)
 {
-	struct ebb_data ebb = { 0 };
+	uint32_t mask;
+	int i;
 
-	ebb.start_bank_id = start_bank_id;
-	ebb.ending_bank_id = ending_bank_id;
-	ebb.start_bank_id_high = start_bank_id - EBB_SEGMENT_SIZE;
-	ebb.ending_bank_id_high = ending_bank_id - EBB_SEGMENT_SIZE;
-
-	/* Take note that if there are more banks than EBB_SEGMENT_SIZE
-	 * then those over have to be controlled by second mask
-	 * hence start_bank_id and start_bank_id_high
-	 * for calculating the banks in second segment (currently two
-	 * segments is all HW supports)
-	 */
 	shim_write(SHIM_LDOCTL, SHIM_LDOCTL_HPSRAM_LDO_ON);
 
-	set_bank_masks(&ebb);
+	idelay(MEMORY_POWER_DOWN_DELAY);
 
-	calculate_new_masks(&ebb, enabled);
-
-	write_new_masks_and_check_status(&ebb);
+	for (i = 0; i < PLATFORM_HPSRAM_SEGMENTS; ++i) {
+		mask = cavs_pm_memory_hp_sram_mask_get(start_bank_id,
+						       ending_bank_id, i);
+		cavs_pm_memory_hp_sram_mask_set(mask, i, enabled);
+	}
 
 	shim_write(SHIM_LDOCTL, SHIM_LDOCTL_HPSRAM_LDO_BYPASS);
 }
