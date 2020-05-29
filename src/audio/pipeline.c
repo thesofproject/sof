@@ -109,6 +109,9 @@ struct pipeline *pipeline_new(struct sof_ipc_pipe_new *pipe_desc,
 		return NULL;
 	}
 
+	memcpy_s(&p->tctx, sizeof(struct tr_ctx), &pipe_tr,
+		 sizeof(struct tr_ctx));
+
 	return p;
 }
 
