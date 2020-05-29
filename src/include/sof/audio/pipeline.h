@@ -40,7 +40,7 @@ struct task;
 /* pipeline tracing */
 extern struct tr_ctx pipe_tr;
 
-#define trace_pipe_get_tr_ctx(pipe_p) (&pipe_tr)
+#define trace_pipe_get_tr_ctx(pipe_p) (&pipe_p->tctx)
 #define trace_pipe_get_id(pipe_p) ((pipe_p)->ipc_pipe.pipeline_id)
 #define trace_pipe_get_subid(pipe_p) ((pipe_p)->ipc_pipe.comp_id)
 
@@ -98,6 +98,7 @@ struct pipeline {
 	/* runtime status */
 	int32_t xrun_bytes;		/* last xrun length */
 	uint32_t status;		/* pipeline status */
+	struct tr_ctx tctx;		/* trace settings */
 
 	/* scheduling */
 	struct task *pipe_task;		/* pipeline processing task */
