@@ -266,10 +266,13 @@ static int filter_parse_entry(const struct snd_sof_uids_header *uids_dict,
 }
 
 /**
- * Parse `input_str` content.
+ * Parse `input_str` content and send it to FW via debugFS.
  *
  * `input_str` contain single filter definition element per line.
  * Each line is parsed by `filter_parse_entry`, and saved in list.
+ * List of `sof_ipc_dma_trace_filter_elem` is writend to debugFS,
+ * and then send as IPC to FW (this action is implemented in driver).
+ * Each line in debugFS represents single IPC message.
  *
  * @param dictionary uuid dictionary from ldc file
  * @param format log level settings in format `log_level=component`
@@ -282,6 +285,7 @@ int filter_update_firmware(const struct snd_sof_uids_header *uids_dict,
 	struct list_item *list_elem;
 	struct list_item *list_temp;
 	char *line_end;
+	FILE *out_fd;
 	int ret = 0;
 
 	list_init(&filter_list);
@@ -297,7 +301,27 @@ int filter_update_firmware(const struct snd_sof_uids_header *uids_dict,
 		line_end = strchr(input_str, '\n');
 	}
 
+	/* write output to debugFS */
+	out_fd = fopen(FILTER_KERNEL_PATH, "w");
+	if (!out_fd) {
+		log_err(NULL, "Unable to open out file '%s'\n",
+			FILTER_KERNEL_PATH);
+		ret = -errno;
+		goto err;
+	}
+
+	list_for_item(list_elem, &filter_list) {
+		filter = container_of(list_elem, struct filter_element,
+				      list);
+		fprintf(out_fd, "%d %X %d %d;", filter->log_level,
+			filter->uuid_id, filter->pipe_id, filter->comp_id);
+	}
+	fprintf(stdout, "\n");
+
 err:
+	if (out_fd)
+		fclose(out_fd);
+
 	/* free each component from parsed element list */
 	list_for_item_safe(list_elem, list_temp, &filter_list) {
 		filter = container_of(list_elem, struct filter_element,
