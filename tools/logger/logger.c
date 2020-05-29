@@ -15,6 +15,7 @@
 #include <stdbool.h>
 #include <termios.h>
 #include "convert.h"
+#include "misc.h"
 
 #define APP_NAME "sof-logger"
 
@@ -58,6 +59,8 @@ static void usage(void)
 	fprintf(stdout, "%s:\t -g\t\t\tHide timestamp\n",
 		APP_NAME);
 	fprintf(stdout, "%s:\t -d *.ldc_file \t\tDump ldc_file information\n",
+		APP_NAME);
+	fprintf(stdout, "%s:\t -F path\t\tUpdate trace filtering\n",
 		APP_NAME);
 	exit(0);
 }
@@ -140,9 +143,25 @@ static int configure_uart(const char *file, unsigned int baud)
 	return ret < 0 ? -errno : fd;
 }
 
+/* Concantenate `config->filter_config` with `input` + `\n` */
+static int append_filter_config(struct convert_config *config, const char *input)
+{
+	char *old_config = config->filter_config;
+
+	/* filer_config can't be NULL for following steps */
+	if (!old_config)
+		config->filter_config = asprintf("");
+
+	config->filter_config = asprintf("%s%s\n", config->filter_config, input);
+	free(old_config);
+	if (!config->filter_config)
+		return -ENOMEM;
+	return 0;
+}
+
 int main(int argc, char *argv[])
 {
-	static const char optstring[] = "ho:i:l:ps:c:u:tev:rd:Lf:g";
+	static const char optstring[] = "ho:i:l:ps:c:u:tev:rd:Lf:gF:";
 	struct convert_config config;
 	unsigned int baud = 0;
 	const char *snapshot_file = 0;
@@ -167,6 +186,7 @@ int main(int argc, char *argv[])
 	config.dump_ldc = 0;
 	config.hide_location = 0;
 	config.time_precision = 6;
+	config.filter_config = NULL;
 
 	while ((opt = getopt(argc, argv, optstring)) != -1) {
 		switch (opt) {
@@ -233,6 +253,11 @@ int main(int argc, char *argv[])
 			}
 			config.dump_ldc = 1;
 			config.ldc_file = optarg;
+			break;
+		case 'F':
+			ret = append_filter_config(&config, optarg);
+			if (ret < 0)
+				return ret;
 			break;
 		case 'h':
 		default: /* '?' */
@@ -309,6 +334,10 @@ int main(int argc, char *argv[])
 	ret = -convert(&config);
 
 out:
+	/* free memory */
+	if (config.filter_config)
+		free(config.filter_config);
+
 	/* close files */
 	if (config.out_fd)
 		fclose(config.out_fd);

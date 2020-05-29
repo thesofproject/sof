@@ -30,6 +30,7 @@ struct convert_config {
 	int trace;
 	const char *ldc_file;
 	FILE* ldc_fd;
+	char *filter_config;
 	int input_std;
 	int version_fw;
 	char *version_file;
