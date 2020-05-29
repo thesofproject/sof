@@ -130,7 +130,7 @@ struct dai_hw_params;
 #define trace_comp_drv_get_subid(drv_p) (-1)
 
 /** \brief Retrieves trace context from the component device */
-#define trace_comp_get_tr_ctx(comp_p) ((comp_p)->drv->tctx)
+#define trace_comp_get_tr_ctx(comp_p) (&(comp_p)->tctx)
 
 /** \brief Retrieves id (pipe id) from the component device */
 #define trace_comp_get_id(comp_p) ((comp_p)->comp.pipeline_id)
@@ -428,6 +428,7 @@ struct comp_dev {
 	bool is_shared;		/**< indicates whether component is shared
 				  *  across cores
 				  */
+	struct tr_ctx tctx;	/**< trace settings */
 
 	/* common runtime configuration for downstream/upstream */
 	uint32_t direction;	/**< enum sof_ipc_stream_direction */
@@ -545,6 +546,8 @@ static inline struct comp_dev *comp_alloc(const struct comp_driver *drv,
 		return NULL;
 	dev->size = bytes;
 	dev->drv = drv;
+	memcpy_s(&dev->tctx, sizeof(struct tr_ctx),
+		 trace_comp_drv_get_tr_ctx(dev->drv), sizeof(struct tr_ctx));
 
 	return dev;
 }
