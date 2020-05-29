@@ -43,6 +43,21 @@ int memset_s(void *dest, size_t dest_size, int data, size_t count)
 	return arch_memset_s(dest, dest_size, data, count);
 }
 
+int memcmp(const void *p, const void *q, size_t count)
+{
+	uint8_t *s1 = (uint8_t *)p;
+	uint8_t *s2 = (uint8_t *)q;
+
+	while (count) {
+		if (*s1 != *s2)
+			return *s1 < *s2 ? -1 : 1;
+		s1++;
+		s2++;
+		count--;
+	}
+	return 0;
+}
+
 /* generic strlen - TODO: can be optimsed for ARCH ? */
 int rstrlen(const char *s)
 {
