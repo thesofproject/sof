@@ -40,7 +40,7 @@ struct comp_dev;
 extern struct tr_ctx buffer_tr;
 
 /** \brief Retrieves trace context from the buffer */
-#define trace_buf_get_tr_ctx(buf_ptr) (&buffer_tr)
+#define trace_buf_get_tr_ctx(buf_ptr) (&(buf_ptr)->tctx)
 
 /** \brief Retrieves id (pipe id) from the buffer */
 #define trace_buf_get_id(buf_ptr) ((buf_ptr)->pipeline_id)
@@ -96,6 +96,7 @@ struct comp_buffer {
 	uint32_t caps;
 	uint32_t core;
 	bool inter_core; /* true if connected to a comp from another core */
+	struct tr_ctx tctx;			/* trace settings */
 
 	/* connected components */
 	struct comp_dev *source;	/* source component */
