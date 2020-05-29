@@ -17,6 +17,13 @@
 
 #include <stdint.h>
 
+#ifdef __ZEPHYR__
+#include <cavs/memory.h>
+/* TODO: declare local copy to avoid naming collisions with Zephyr and SOF */
+/* headers until common functions can be separated out */
+int memcpy_s(void *dest, size_t dest_size, const void *src, size_t src_size);
+#endif
+
 #define LPSRAM_MAGIC_VALUE 0x13579BDF
 
 #define LPSRAM_HEADER_SIZE 0xc00
