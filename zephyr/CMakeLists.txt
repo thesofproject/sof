@@ -110,7 +110,6 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V18)
 		../src/drivers/intel/cavs/ipc.c
 		#../src/drivers/intel/cavs/sue-ipc.c
 		../src/drivers/intel/cavs/dmic.c
-		# ../src/drivers/intel/cavs/interrupt.c
 		../src/drivers/intel/cavs/idc.c
 		../src/drivers/intel/cavs/timer.c
 		#../src/drivers/intel/cavs/sue-iomux.c
@@ -118,6 +117,19 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V18)
 		../src/drivers/intel/cavs/mn.c
 		../src/drivers/intel/cavs/alh.c
 	)
+	# Platform includes
+	zephyr_library_sources(
+		../src/platform/intel/cavs/platform.c
+		../src/platform/intel/cavs/lib/mem_window.c
+		../src/platform/cannonlake/lib/clk.c
+		../src/platform/intel/cavs/lib/power_down.S
+	# TODO: move back into SOF.
+	##	../src/platform/intel/cavs/lps_pic_restore_vector.S
+	##	../src/platform/intel/cavs/lps_wait.c
+	)
+
+	set_source_files_properties(../src/platform/intel/cavs/lib/power_down.S PROPERTIES COMPILE_FLAGS -DASSEMBLY)
+	set_source_files_properties(../src/platform/intel/cavs/lps_pic_restore_vector.S PROPERTIES COMPILE_FLAGS -DASSEMBLY)
 
 	set(PLATFORM "cannonlake")
 	target_include_directories(SOF INTERFACE ../zephyr/include/cavs18)
@@ -132,13 +144,25 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V20)
 		../src/drivers/intel/cavs/hda.c
 		../src/drivers/intel/cavs/ipc.c
 		../src/drivers/intel/cavs/dmic.c
-		#../src/drivers/intel/cavs/interrupt.c
 		../src/drivers/intel/cavs/idc.c
 		../src/drivers/intel/cavs/timer.c
 		../src/drivers/intel/cavs/ssp.c
 		../src/drivers/intel/cavs/mn.c
 		../src/drivers/intel/cavs/alh.c
 	)
+
+	# Platform includes
+	zephyr_library_sources(
+		../src/platform/intel/cavs/platform.c
+		../src/platform/intel/cavs/lib/mem_window.c
+		../src/platform/icelake/lib/clk.c
+		../src/platform/intel/cavs/lib/power_down.S
+	#	../src/platform/intel/cavs/lps_pic_restore_vector.S
+	#	../src/platform/intel/cavs/lps_wait.c
+	)
+
+	set_source_files_properties(../src/platform/intel/cavs/lib/power_down.S PROPERTIES COMPILE_FLAGS -DASSEMBLY)
+	set_source_files_properties(../src/platform/intel/cavs/lps_pic_restore_vector.S PROPERTIES COMPILE_FLAGS -DASSEMBLY)
 
 	set(PLATFORM "icelake")
 	target_include_directories(SOF INTERFACE ../zephyr/include/cavs20)
@@ -152,13 +176,25 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V25)
 		../src/drivers/intel/cavs/hda.c
 		../src/drivers/intel/cavs/ipc.c
 		../src/drivers/intel/cavs/dmic.c
-		#../src/drivers/intel/cavs/interrupt.c
 		../src/drivers/intel/cavs/idc.c
 		../src/drivers/intel/cavs/timer.c
 		../src/drivers/intel/cavs/ssp.c
 		../src/drivers/intel/cavs/mn.c
 		../src/drivers/intel/cavs/alh.c
 	)
+
+	# Platform includes
+	zephyr_library_sources(
+		../src/platform/intel/cavs/platform.c
+		../src/platform/intel/cavs/lib/mem_window.c
+		../src/platform/tigerlake/lib/clk.c
+		../src/platform/intel/cavs/lib/power_down.S
+	#	../src/platform/intel/cavs/lps_pic_restore_vector.S
+	#	../src/platform/intel/cavs/lps_wait.c
+	)
+
+	set_source_files_properties(../src/platform/intel/cavs/lib/power_down.S PROPERTIES COMPILE_FLAGS -DASSEMBLY)
+	set_source_files_properties(../src/platform/intel/cavs/lps_pic_restore_vector.S PROPERTIES COMPILE_FLAGS -DASSEMBLY)
 
 	set(PLATFORM "tigerlake")
 	target_include_directories(SOF INTERFACE ../zephyr/include/cavs25)
