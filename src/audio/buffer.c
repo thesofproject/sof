@@ -90,6 +90,9 @@ struct comp_buffer *buffer_new(struct sof_ipc_buffer *desc)
 		buffer->stream.overrun_permitted = desc->flags &
 						   SOF_BUF_OVERRUN_PERMITTED;
 
+		memcpy_s(&buffer->tctx, sizeof(struct tr_ctx),
+			 &buffer_tr, sizeof(struct tr_ctx));
+
 		dcache_writeback_invalidate_region(buffer, sizeof(*buffer));
 	}
 
