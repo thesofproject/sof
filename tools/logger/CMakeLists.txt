@@ -3,6 +3,7 @@
 add_executable(sof-logger
 	logger.c
 	convert.c
+	filter.c
 	misc.c
 )
 
