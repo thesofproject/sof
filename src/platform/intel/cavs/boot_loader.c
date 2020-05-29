@@ -27,7 +27,6 @@
 #define MANIFEST_BASE	IMR_BOOT_LDR_MANIFEST_BASE
 #endif
 
-#if CONFIG_BOOT_LOADER
 #define MANIFEST_SEGMENT_COUNT 3
 
 /* generic string compare cloned into the bootloader to
@@ -167,7 +166,6 @@ static void parse_manifest(void)
 		parse_module(hdr, mod);
 	}
 }
-#endif
 
 #if CAVS_VERSION >= CAVS_VERSION_1_8
 
@@ -241,13 +239,12 @@ void boot_master_core(void)
 						true);
 #endif
 
-#if CONFIG_BOOT_LOADER
 	/* parse manifest and copy modules */
 	trace_point(TRACE_BOOT_LDR_MANIFEST);
 	parse_manifest();
 
 	hp_sram_power_off_unused_banks(get_fw_size_in_use());
-#endif
+
 	/* now call SOF entry */
 	trace_point(TRACE_BOOT_LDR_JUMP);
 	_ResetVector();
