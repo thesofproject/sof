@@ -29,11 +29,32 @@
 #include <ipc/control.h>
 #include <ipc/stream.h>
 #include <ipc/topology.h>
+#ifndef __ZEPHYR__
 #include <xtos-structs.h>
+#endif
 #include <errno.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+
+#ifdef __ZEPHYR__
+
+struct thread_data {
+	int xtos_ptrs;
+	volatile void *xtos_active_task;
+};
+
+struct core_context {
+	struct thread_data td;
+	struct task *main_task;
+	struct schedulers *schedulers;
+	struct notify *notify;
+	struct idc *idc;
+};
+#endif
+
+//TODO: re-enable for zephyr SMP
+#if CONFIG_SMP
 
 /** \brief IDC message payload per core. */
 static SHARED_DATA struct idc_payload payload[PLATFORM_CORE_COUNT];
@@ -494,6 +515,7 @@ static uint32_t idc_get_busy_bit_mask(int core)
 	return busy_mask;
 }
 
+
 /**
  * \brief Initializes IDC data and registers for interrupt.
  */
@@ -559,3 +581,4 @@ void idc_free(void)
 
 	schedule_task_free(&idc->idc_task);
 }
+#endif
