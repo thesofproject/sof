@@ -15,6 +15,7 @@
 #include <user/abi_dbg.h>
 #include <user/trace.h>
 #include "convert.h"
+#include "filter.h"
 #include "misc.h"
 
 #define CEIL(a, b) ((a+b-1)/b)
@@ -762,6 +763,16 @@ int convert(struct convert_config *config)
 
 	if (config->dump_ldc)
 		return dump_ldc_info(config, &snd);
+
+	if (config->filter_config) {
+		ret = filter_update_firmware(config->uids_dict,
+					     config->filter_config);
+		if (ret) {
+			log_err(config->out_fd,
+				"failed to apply trace filter, %d.\n", ret);
+			return ret;
+		}
+	}
 
 	return logger_read(config, &snd);
 }
