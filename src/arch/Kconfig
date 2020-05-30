@@ -2,4 +2,4 @@
 
 # Generic architecture configs
 
-source "src/arch/$(ARCH)/Kconfig"
+rsource "$(ARCH)/Kconfig"

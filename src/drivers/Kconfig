@@ -2,9 +2,9 @@
 
 menu "Drivers"
 
-source "src/drivers/intel/Kconfig"
+rsource "intel/Kconfig"
 
-source "src/drivers/dw/Kconfig"
+rsource "dw/Kconfig"
 
 config DUMMY_DMA
 	bool "Dummy DMA (software DMA driver)"
