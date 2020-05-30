@@ -32,11 +32,9 @@ static void sai_start(struct dai *dai, int direction)
 
 	uint32_t xcsr = 0U;
 
-	dai_update_bits(dai, REG_SAI_XCSR(direction),
-			REG_SAI_CSR_FRDE, REG_SAI_CSR_FRDE);
 	/* enable DMA requests */
 	dai_update_bits(dai, REG_SAI_XCSR(direction),
-			REG_SAI_CSR_FWDE, REG_SAI_CSR_FWDE);
+			REG_SAI_CSR_FRDE, REG_SAI_CSR_FRDE);
 #ifdef CONFIG_IMX8M
 	dai_update_bits(dai, REG_SAI_MCTL, REG_SAI_MCTL_MCLK_EN,
 			REG_SAI_MCTL_MCLK_EN);
