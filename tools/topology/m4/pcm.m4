@@ -1,6 +1,8 @@
 divert(-1)
 
 dnl Define the macro for PCM playback/capture/capabilities
+DECLARE_SOF_RT_UUID("host", host_uuid, 0x8b9d100c, 0x6d78, 0x418f,
+		 0x90, 0xa3, 0xe0, 0xe8, 0x05, 0xd0, 0x85, 0x2b)
 
 dnl N_PCM(name)
 define(`N_PCMP', `PCM'$1`P')
@@ -9,6 +11,15 @@ define(`N_PCMC', `PCM'$1`C')
 dnl W_PCM_PLAYBACK(pcm, stream, periods_sink, periods_source, core)
 dnl  PCM platform configuration
 define(`W_PCM_PLAYBACK',
+`SectionVendorTuples."'N_PCMP($1)`_tuples_uuid" {'
+`	tokens "sof_comp_tokens"'
+`	tuples."uuid" {'
+`		SOF_TKN_COMP_UUID'		STR(host_uuid)
+`	}'
+`}'
+`SectionData."'N_PCMP($1)`_data_uuid" {'
+`	tuples "'N_PCMP($1)`_tuples_uuid"'
+`}'
 `SectionVendorTuples."'N_PCMP($1)`_tuples_w_comp" {'
 `	tokens "sof_comp_tokens"'
 `	tuples."word" {'
@@ -26,6 +37,7 @@ define(`W_PCM_PLAYBACK',
 `	no_pm "true"'
 `	stream_name "'$2` '$1`"'
 `	data ['
+`		"'N_PCMP($1)`_data_uuid"'
 `		"'N_PCMP($1)`_data_w_comp"'
 `	]'
 `}')
@@ -33,6 +45,15 @@ define(`W_PCM_PLAYBACK',
 
 dnl W_PCM_CAPTURE(pcm, stream, periods_sink, periods_source, core)
 define(`W_PCM_CAPTURE',
+`SectionVendorTuples."'N_PCMC($1)`_tuples_uuid" {'
+`	tokens "sof_comp_tokens"'
+`	tuples."uuid" {'
+`		SOF_TKN_COMP_UUID'		STR(host_uuid)
+`	}'
+`}'
+`SectionData."'N_PCMC($1)`_data_uuid" {'
+`	tuples "'N_PCMC($1)`_tuples_uuid"'
+`}'
 `SectionVendorTuples."'N_PCMC($1)`_tuples_w_comp" {'
 `	tokens "sof_comp_tokens"'
 `	tuples."word" {'
@@ -50,6 +71,7 @@ define(`W_PCM_CAPTURE',
 `	no_pm "true"'
 `	stream_name "'$2` '$1`"'
 `	data ['
+`		"'N_PCMC($1)`_data_uuid"'
 `		"'N_PCMC($1)`_data_w_comp"'
 `	]'
 `}')
