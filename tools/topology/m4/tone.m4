@@ -1,12 +1,23 @@
 divert(-1)
 
 dnl Define macro for siggen widget
+DECLARE_SOF_RT_UUID("tone", tone_uuid, 0x04e3f894, 0x2c5c, 0x4f2e,
+		 0x8d, 0xc1, 0x69, 0x4e, 0xea, 0xab, 0x53, 0xfa)
 
 dnl N_TONE(name)
 define(`N_TONE', `TONE'PIPELINE_ID`.'$1)
 
 dnl W_TONE(name, format, periods_sink, periods_source, core, kcontrols_list)
 define(`W_TONE',
+`SectionVendorTuples."'N_TONE($1)`_tuples_uuid" {'
+`	tokens "sof_comp_tokens"'
+`	tuples."uuid" {'
+`		SOF_TKN_COMP_UUID'		STR(tone_uuid)
+`	}'
+`}'
+`SectionData."'N_TONE($1)`_data_uuid" {'
+`	tuples "'N_TONE($1)`_tuples_uuid"'
+`}'
 `SectionVendorTuples."'N_TONE($1)`_tuples_w" {'
 `	tokens "sof_comp_tokens"'
 `	tuples."word" {'
@@ -39,6 +50,7 @@ define(`W_TONE',
 `	type "siggen"'
 `	no_pm "true"'
 `	data ['
+`		"'N_TONE($1)`_data_uuid"'
 `		"'N_TONE($1)`_data_w"'
 `		"'N_TONE($1)`_data_str"'
 `	]'
