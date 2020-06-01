@@ -1,12 +1,23 @@
 divert(-1)
 
 dnl Define macro for DC Blocking Filter widget
+DECLARE_SOF_RT_UUID("dcblock", dcblock_uuid, 0xb809efaf, 0x5681, 0x42b1,
+		 0x9e, 0xd6, 0x04, 0xbb, 0x01, 0x2d, 0xd3, 0x84)
 
 dnl N_DCBLOCK(name)
 define(`N_DCBLOCK', `DCBLOCK'PIPELINE_ID`.'$1)
 
 dnl W_DCBLOCK(name, format, periods_sink, periods_source, core, kcontrols_list)
 define(`W_DCBLOCK',
+`SectionVendorTuples."'N_DCBLOCK($1)`_tuples_uuid" {'
+`	tokens "sof_comp_tokens"'
+`	tuples."uuid" {'
+`		SOF_TKN_COMP_UUID'		STR(dcblock_uuid)
+`	}'
+`}'
+`SectionData."'N_DCBLOCK($1)`_data_uuid" {'
+`	tuples "'N_DCBLOCK($1)`_tuples_uuid"'
+`}'
 `SectionVendorTuples."'N_DCBLOCK($1)`_tuples_w" {'
 `	tokens "sof_comp_tokens"'
 `	tuples."word" {'
@@ -41,6 +52,7 @@ define(`W_DCBLOCK',
 `	type "effect"'
 `	no_pm "true"'
 `	data ['
+`		"'N_DCBLOCK($1)`_data_uuid"'
 `		"'N_DCBLOCK($1)`_data_w"'
 `		"'N_DCBLOCK($1)`_data_str"'
 `		"'N_DCBLOCK($1)`_data_str_type"'
