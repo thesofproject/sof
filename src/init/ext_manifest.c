@@ -11,7 +11,7 @@
 #include <sof/debug/debug.h>
 #include <kernel/abi.h>
 #include <kernel/ext_manifest.h>
-
+#include <user/abi_dbg.h>
 #include <version.h>
 
 const struct ext_man_fw_version ext_man_fw_ver
@@ -68,5 +68,18 @@ const struct ext_man_probe_support ext_man_probe
 		.probe_points_max = CONFIG_PROBE_POINTS_MAX,
 		.injection_dmas_max = CONFIG_PROBE_DMA_MAX
 #endif
+	},
+};
+
+const struct ext_man_dbg_abi ext_man_dbg_info
+	__aligned(EXT_MAN_ALIGN) __section(".fw_metadata") = {
+	.hdr.type = EXT_MAN_ELEM_DBG_ABI,
+	.hdr.elem_size = ALIGN_UP(sizeof(struct ext_man_dbg_abi),
+				  EXT_MAN_ALIGN),
+	.dbg_abi = {
+		.ext_hdr.hdr.size = sizeof(struct sof_ipc_user_abi_version),
+		.ext_hdr.hdr.cmd = SOF_IPC_FW_READY,
+		.ext_hdr.type = SOF_IPC_EXT_USER_ABI_INFO,
+		.abi_dbg_version = SOF_ABI_DBG_VERSION,
 	},
 };
