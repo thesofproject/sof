@@ -1,12 +1,23 @@
 divert(-1)
 
 dnl Define macro for PGA widget
+DECLARE_SOF_RT_UUID("volume", volume_uuid, 0xb77e677e, 0x5ff4, 0x4188,
+		 0xaf, 0x14, 0xfb, 0xa8, 0xbd, 0xbf, 0x86, 0x82)
 
 dnl N_PGA(name)
 define(`N_PGA', `PGA'PIPELINE_ID`.'$1)
 
 dnl W_PGA(name, format, periods_sink, periods_source, core, kcontrol0. kcontrol1...etc)
 define(`W_PGA',
+`SectionVendorTuples."'N_PGA($1)`_tuples_uuid" {'
+`	tokens "sof_comp_tokens"'
+`	tuples."uuid" {'
+`		SOF_TKN_COMP_UUID'		STR(volume_uuid)
+`	}'
+`}'
+`SectionData."'N_PGA($1)`_data_uuid" {'
+`	tuples "'N_PGA($1)`_tuples_uuid"'
+`}'
 `SectionVendorTuples."'N_PGA($1)`_tuples_w" {'
 `	tokens "sof_comp_tokens"'
 `	tuples."word" {'
@@ -32,6 +43,7 @@ define(`W_PGA',
 `	type "pga"'
 `	no_pm "true"'
 `	data ['
+`		"'N_PGA($1)`_data_uuid"'
 `		"'N_PGA($1)`_data_w"'
 `		"'N_PGA($1)`_data_str"'
 `		"'$5`"'
