@@ -3,6 +3,8 @@ divert(-1)
 include(`debug.m4')
 
 dnl Define macros for DAI IN/OUT widgets and DAI config
+DECLARE_SOF_RT_UUID("dai", dai_comp_uuid, 0xc2b00d27, 0xffbc, 0x4150,
+		 0xa5, 0x1a, 0x24, 0x5c, 0x79, 0xc5, 0xe5, 0x4b)
 
 dnl N_DAI(name)
 define(`N_DAI', DAI_NAME)
@@ -11,6 +13,15 @@ define(`N_DAI_IN', DAI_NAME`.IN')
 
 dnl W_DAI_OUT(type, index, dai_link, format, periods_sink, periods_source, core)
 define(`W_DAI_OUT',
+`SectionVendorTuples."'N_DAI_OUT`_tuples_uuid" {'
+`	tokens "sof_comp_tokens"'
+`	tuples."uuid" {'
+`		SOF_TKN_COMP_UUID'		STR(dai_comp_uuid)
+`	}'
+`}'
+`SectionData."'N_DAI_OUT`_data_uuid" {'
+`	tuples "'N_DAI_OUT`_tuples_uuid"'
+`}'
 `SectionVendorTuples."'N_DAI_OUT`_tuples_w_comp" {'
 `	tokens "sof_comp_tokens"'
 `	tuples."word" {'
@@ -56,6 +67,7 @@ define(`W_DAI_OUT',
 `	stream_name' STR($3)
 `	no_pm "true"'
 `	data ['
+`		"'N_DAI_OUT`_data_uuid"'
 `		"'N_DAI_OUT`_data_w"'
 `		"'N_DAI_OUT`_data_w_comp"'
 `		"'N_DAI_OUT`_data_str"'
@@ -65,6 +77,15 @@ define(`W_DAI_OUT',
 
 dnl W_DAI_IN(type, index, dai_link, format, periods_sink, periods_source, core)
 define(`W_DAI_IN',
+`SectionVendorTuples."'N_DAI_IN`_tuples_uuid" {'
+`	tokens "sof_comp_tokens"'
+`	tuples."uuid" {'
+`		SOF_TKN_COMP_UUID'		STR(dai_comp_uuid)
+`	}'
+`}'
+`SectionData."'N_DAI_IN`_data_uuid" {'
+`	tuples "'N_DAI_IN`_tuples_uuid"'
+`}'
 `SectionVendorTuples."'N_DAI_IN`_tuples_w_comp" {'
 `	tokens "sof_comp_tokens"'
 `	tuples."word" {'
@@ -110,6 +131,7 @@ define(`W_DAI_IN',
 `	stream_name' STR($3)
 `	no_pm "true"'
 `	data ['
+`		"'N_DAI_IN`_data_uuid"'
 `		"'N_DAI_IN`_data_w"'
 `		"'N_DAI_IN`_data_w_comp"'
 `		"'N_DAI_IN`_data_str"'
