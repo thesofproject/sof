@@ -99,7 +99,6 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V15)
 	# CAVS15 include seems to be set in Zephyr. TODO also set common dir.
 	set(PLATFORM "apollolake")
 	target_include_directories(SOF INTERFACE ../zephyr/include/cavs15)
-	zephyr_include_directories(../../../../zephyr/soc/xtensa/intel_adsp/common/include)
 endif()
 
 # CNL
@@ -213,6 +212,9 @@ if (CONFIG_SOC_SERIES_NXP_IMX8)
 		#../src/drivers/imx/timer.c
 	)
 endif()
+
+zephyr_include_directories(../src/platform/${PLATFORM}/include)
+zephyr_include_directories(../src/platform/intel/cavs/include)
 
 # Files used on all platforms.
 # Commented files will be added/removed as integration dictates.
