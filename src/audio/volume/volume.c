@@ -41,9 +41,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-/* Shift to use in volume fractional multiplications */
-#define Q_MUL_SHIFT Q_SHIFT_BITS_32(VOL_QXY_Y, VOL_QXY_Y, VOL_QXY_Y)
-
 static const struct comp_driver comp_volume;
 
 /* b77e677e-5ff4-4188-af14-fba8bdbf8682 */
@@ -217,6 +214,7 @@ static void volume_ramp(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	int32_t vol;
+	int32_t ramp_time;
 	int i;
 
 	/* No need to ramp in idle state, jump volume to request. */
@@ -235,21 +233,24 @@ static void volume_ramp(struct comp_dev *dev)
 	 */
 	cd->vol_ramp_active = true;
 
-	/* inc/dec each volume if it's not at target for active channels */
+	/* Current ramp time in milliseconds */
+	ramp_time = cd->vol_ramp_elapsed_frames * 1000 / cd->sample_rate;
+
+	/* Update each volume if it's not at target for active channels */
 	for (i = 0; i < cd->channels; i++) {
 		/* skip if target reached */
 		if (cd->volume[i] == cd->tvolume[i])
 			continue;
 
-		/* Update volume gain with ramp. Linear ramp increment is
-		 * in compatible Q1.16 format with volume.
+		/* Update volume gain with ramp. The ramp gain value is
+		 * calculated from previous gain and ramp time. The slope
+		 * coefficient is calculated in volume_set_chan().
 		 */
-		vol = cd->volume[i];
-		vol += cd->ramp_increment[i];
+		vol = cd->rvolume[i] + ramp_time * cd->ramp_coef[i];
 		if (cd->volume[i] < cd->tvolume[i]) {
 			/* ramp up, check if ramp completed */
 			if (vol >= cd->tvolume[i] || vol >= cd->vol_max) {
-				cd->ramp_increment[i] = 0;
+				cd->ramp_coef[i] = 0;
 				cd->volume[i] = cd->tvolume[i];
 				cd->ramp_finished = true;
 				cd->vol_ramp_active = false;
@@ -260,13 +261,13 @@ static void volume_ramp(struct comp_dev *dev)
 			/* ramp down */
 			if (vol <= 0) {
 				/* cannot ramp down below 0 */
-				cd->ramp_increment[i] = 0;
 				cd->volume[i] = cd->tvolume[i];
+				cd->ramp_coef[i] = 0;
 			} else {
 				/* ramp completed ? */
 				if (vol <= cd->tvolume[i] ||
 				    vol <= cd->vol_min) {
-					cd->ramp_increment[i] = 0;
+					cd->ramp_coef[i] = 0;
 					cd->volume[i] = cd->tvolume[i];
 					cd->ramp_finished = true;
 					cd->vol_ramp_active = false;
@@ -404,7 +405,7 @@ static inline int volume_set_chan(struct comp_dev *dev, int chan,
 	int32_t v = vol;
 	int32_t delta;
 	int32_t delta_abs;
-	int32_t inc;
+	int32_t coef;
 
 	/* Limit received volume gain to MIN..MAX range before applying it.
 	 * MAX is needed for now for the generic C gain arithmetics to prevent
@@ -426,6 +427,8 @@ static inline int volume_set_chan(struct comp_dev *dev, int chan,
 	}
 
 	cd->tvolume[chan] = v;
+	cd->rvolume[chan] = cd->volume[chan];
+	cd->vol_ramp_elapsed_frames = 0;
 
 	/* Check ramp type */
 	switch (pga->ramp) {
@@ -446,33 +449,29 @@ static inline int volume_set_chan(struct comp_dev *dev, int chan,
 		 */
 		if (pga->initial_ramp > 0) {
 			if (constant_rate_ramp && cd->vol_ramp_range > 0)
-				inc = q_multsr_32x32(cd->vol_ramp_range,
-						     VOL_RAMP_STEP_CONST,
-						     Q_MUL_SHIFT);
+				coef = cd->vol_ramp_range;
 			else
-				inc = q_multsr_32x32(delta_abs,
-						     VOL_RAMP_STEP_CONST,
-						     Q_MUL_SHIFT);
+				coef = delta_abs;
 
 			/* Divide and round to nearest. Note that there will
 			 * be some accumulated error in ramp time the longer
 			 * the ramp and the smaller the transition is.
 			 */
-			inc = (2 * inc / pga->initial_ramp + 1) >> 1;
+			coef = (2 * coef / pga->initial_ramp + 1) >> 1;
 		} else {
-			inc = delta_abs;
+			coef = delta_abs;
 		}
 
-		/* Ensure inc is at least one */
-		inc = MAX(inc, 1);
+		/* Ensure ramp coefficient is at least min. non-zero Q16.16 */
+		coef = MAX(coef, 1);
 
 		/* Invert sign for volume down ramp step */
 		if (delta < 0)
-			inc = -inc;
+			coef = -coef;
 
-		cd->ramp_increment[chan] = inc;
-		comp_dbg(dev, "cd->ramp_increment[%d] = %d", chan,
-			 cd->ramp_increment[chan]);
+		cd->ramp_coef[chan] = coef;
+		comp_dbg(dev, "cd->ramp_coef[%d] = %d", chan,
+			 cd->ramp_coef[chan]);
 		break;
 	case SOF_VOLUME_LOG:
 	case SOF_VOLUME_LOG_ZC:
@@ -732,6 +731,9 @@ static int volume_copy(struct comp_dev *dev)
 		comp_update_buffer_produce(sink, sink_bytes);
 		comp_update_buffer_consume(source, source_bytes);
 
+		if (cd->vol_ramp_active)
+			cd->vol_ramp_elapsed_frames += frames;
+
 		if (!cd->ramp_finished)
 			volume_ramp(dev);
 
@@ -830,6 +832,7 @@ static int volume_prepare(struct comp_dev *dev)
 	cd->ramp_finished = true;
 	cd->vol_ramp_frames = dev->frames / (dev->period / VOL_RAMP_UPDATE_US);
 	cd->channels = sinkb->stream.channels;
+	cd->sample_rate = sinkb->stream.rate;
 	for (i = 0; i < cd->channels; i++) {
 		cd->volume[i] = cd->vol_min;
 		volume_set_chan(dev, i, cd->tvolume[i], false);
