@@ -231,6 +231,10 @@ int ipc_comp_free(struct ipc *ipc, uint32_t comp_id)
 	if (!cpu_is_me(icd->core))
 		return ipc_process_on_core(icd->core);
 
+	/* check state */
+	if (icd->cd->state != COMP_STATE_READY)
+		return -EINVAL;
+
 	/* free component and remove from list */
 	comp_free(icd->cd);
 
@@ -304,6 +308,11 @@ int ipc_buffer_free(struct ipc *ipc, uint32_t buffer_id)
 	/* check core */
 	if (!cpu_is_me(ibd->core))
 		return ipc_process_on_core(ibd->core);
+
+	/* check state */
+	if (ibd->cb->sink->state != COMP_STATE_READY ||
+	    ibd->cb->source->state != COMP_STATE_READY)
+		return -EINVAL;
 
 	/* free buffer and remove from list */
 	buffer_free(ibd->cb);
