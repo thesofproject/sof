@@ -703,7 +703,7 @@ static int tone_reset(struct comp_dev *dev)
 
 static const struct comp_driver comp_tone = {
 	.type = SOF_COMP_TONE,
-	.uid = SOF_UUID(tone_uuid),
+	.uid = SOF_RT_UUID(tone_uuid),
 	.tctx = &tone_tr,
 	.ops = {
 		.create = tone_new,

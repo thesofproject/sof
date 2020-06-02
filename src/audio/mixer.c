@@ -439,7 +439,7 @@ static int mixer_prepare(struct comp_dev *dev)
 
 static const struct comp_driver comp_mixer = {
 	.type	= SOF_COMP_MIXER,
-	.uid	= SOF_UUID(mixer_uuid),
+	.uid	= SOF_RT_UUID(mixer_uuid),
 	.tctx	= &mixer_tr,
 	.ops	= {
 		.create		= mixer_new,

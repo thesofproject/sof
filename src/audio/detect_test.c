@@ -785,7 +785,7 @@ static int test_keyword_prepare(struct comp_dev *dev)
 
 static const struct comp_driver comp_keyword = {
 	.type	= SOF_COMP_KEYWORD_DETECT,
-	.uid	= SOF_UUID(keyword_uuid),
+	.uid	= SOF_RT_UUID(keyword_uuid),
 	.tctx	= &keyword_tr,
 	.ops	= {
 		.create		= test_keyword_new,

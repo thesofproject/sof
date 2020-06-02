@@ -1573,7 +1573,7 @@ static inline void kpb_change_state(struct comp_data *kpb,
 
 static const struct comp_driver comp_kpb = {
 	.type = SOF_COMP_KPB,
-	.uid = SOF_UUID(kpb_uuid),
+	.uid = SOF_RT_UUID(kpb_uuid),
 	.tctx = &kpb_tr,
 	.ops = {
 		.create = kpb_new,

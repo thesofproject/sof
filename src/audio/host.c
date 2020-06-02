@@ -896,7 +896,7 @@ static int host_set_attribute(struct comp_dev *dev, uint32_t type,
 
 static const struct comp_driver comp_host = {
 	.type	= SOF_COMP_HOST,
-	.uid	= SOF_UUID(host_uuid),
+	.uid	= SOF_RT_UUID(host_uuid),
 	.tctx	= &host_tr,
 	.ops	= {
 		.create		= host_new,

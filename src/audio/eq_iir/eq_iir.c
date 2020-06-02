@@ -985,7 +985,7 @@ static int eq_iir_reset(struct comp_dev *dev)
 
 static const struct comp_driver comp_eq_iir = {
 	.type = SOF_COMP_EQ_IIR,
-	.uid = SOF_UUID(eq_iir_uuid),
+	.uid = SOF_RT_UUID(eq_iir_uuid),
 	.tctx = &eq_iir_tr,
 	.ops = {
 		.create = eq_iir_new,

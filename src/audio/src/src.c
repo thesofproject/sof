@@ -914,7 +914,7 @@ static int src_reset(struct comp_dev *dev)
 
 static const struct comp_driver comp_src = {
 	.type = SOF_COMP_SRC,
-	.uid = SOF_UUID(src_uuid),
+	.uid = SOF_RT_UUID(src_uuid),
 	.tctx = &src_tr,
 	.ops = {
 		.create = src_new,

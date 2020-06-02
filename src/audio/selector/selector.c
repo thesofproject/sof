@@ -519,7 +519,7 @@ static int selector_reset(struct comp_dev *dev)
 /** \brief Selector component definition. */
 static const struct comp_driver comp_selector = {
 	.type	= SOF_COMP_SELECTOR,
-	.uid	= SOF_UUID(selector_uuid),
+	.uid	= SOF_RT_UUID(selector_uuid),
 	.tctx	= &selector_tr,
 	.ops	= {
 		.create		= selector_new,
