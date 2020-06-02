@@ -9,6 +9,9 @@
 #ifndef __SOF_DRIVERS_IPC_H__
 #define __SOF_DRIVERS_IPC_H__
 
+#include <sof/audio/buffer.h>
+#include <sof/audio/component.h>
+#include <sof/audio/pipeline.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/memory.h>
 #include <sof/list.h>
@@ -26,12 +29,9 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-struct comp_buffer;
-struct comp_dev;
 struct dai_config;
 struct dma;
 struct dma_sg_elem_array;
-struct pipeline;
 struct sof;
 struct sof_ipc_buffer;
 struct sof_ipc_comp;
@@ -125,6 +125,23 @@ static inline uint64_t ipc_task_deadline(void *data)
 	 * to finish processing. This will allow us to calculate task deadline.
 	 */
 	return SOF_TASK_DEADLINE_NOW;
+}
+
+static inline int32_t ipc_comp_pipe_id(const struct ipc_comp_dev *icd)
+{
+	extern struct tr_ctx ipc_tr;
+
+	switch (icd->type) {
+	case COMP_TYPE_COMPONENT:
+		return dev_comp_pipe_id(icd->cd);
+	case COMP_TYPE_BUFFER:
+		return icd->cb->pipeline_id;
+	case COMP_TYPE_PIPELINE:
+		return icd->pipeline->ipc_pipe.pipeline_id;
+	default:
+		tr_err(&ipc_tr, "Unknown ipc component type %u", icd->type);
+		return -EINVAL;
+	};
 }
 
 static inline void ipc_build_stream_posn(struct sof_ipc_stream_posn *posn,

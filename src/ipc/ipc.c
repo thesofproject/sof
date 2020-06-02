@@ -100,20 +100,8 @@ struct ipc_comp_dev *ipc_get_comp_by_ppl_id(struct ipc *ipc, uint16_t type,
 			continue;
 		}
 
-		switch (icd->type) {
-		case COMP_TYPE_COMPONENT:
-			if (dev_comp_pipe_id(icd->cd) == ppl_id)
-				return icd;
-			break;
-		case COMP_TYPE_BUFFER:
-			if (icd->cb->pipeline_id == ppl_id)
-				return icd;
-			break;
-		case COMP_TYPE_PIPELINE:
-			if (icd->pipeline->ipc_pipe.pipeline_id == ppl_id)
-				return icd;
-			break;
-		}
+		if (ipc_comp_pipe_id(icd) == ppl_id)
+			return icd;
 
 		platform_shared_commit(icd, sizeof(*icd));
 	}

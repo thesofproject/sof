@@ -7,6 +7,7 @@
 
 #include <sof/audio/component.h>
 #include <sof/audio/pipeline.h>
+#include <sof/drivers/ipc.h>
 #include <sof/lib/clk.h>
 #include <sof/schedule/edf_schedule.h>
 #include <sof/schedule/ll_schedule.h>
