@@ -8,7 +8,6 @@
 #ifndef __SOF_AUDIO_PIPELINE_H__
 #define __SOF_AUDIO_PIPELINE_H__
 
-#include <sof/drivers/ipc.h>
 #include <sof/lib/cpu.h>
 #include <sof/lib/mailbox.h>
 #include <sof/lib/memory.h>
@@ -26,6 +25,7 @@
 struct comp_buffer;
 struct comp_dev;
 struct ipc;
+struct ipc_msg;
 struct sof_ipc_buffer;
 struct sof_ipc_pcm_params;
 struct task;
