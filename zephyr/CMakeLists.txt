@@ -342,10 +342,19 @@ set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${DEFCONFIGS_DIRE
 foreach(defconfig_path ${DEFCONFIG_PATHS})
 	get_filename_component(defconfig_name ${defconfig_path} NAME)
 	add_custom_target(
+		# Seed the .config with a _defconfig
 		${defconfig_name}
 		COMMAND ${CMAKE_COMMAND} -E copy
 			${defconfig_path}
 			${DOT_CONFIG_PATH}
+		# Expland and normalize the .config
+		COMMAND ${CMAKE_COMMAND} -E env
+			srctree=${SOF_ROOT_SOURCE_DIRECTORY}/../
+			ARCH=${ARCH}
+			KCONFIG_CONFIG=${DOT_CONFIG_PATH}
+			${PYTHON3} ${SOF_ROOT_SOURCE_DIRECTORY}/../scripts/kconfig/olddefconfig.py
+			${SOF_ROOT_SOURCE_DIRECTORY}/../Kconfig
+		# Generate sof-config.h from .config
 		COMMAND ${CMAKE_COMMAND} -E env
 			srctree=${SOF_ROOT_SOURCE_DIRECTORY}/../
 			CC_VERSION_TEXT="zephyr"
@@ -355,7 +364,7 @@ foreach(defconfig_path ${DEFCONFIG_PATHS})
 			--header-path ${CONFIG_H_PATH}
 			${SOF_ROOT_SOURCE_DIRECTORY}/../Kconfig
 		WORKING_DIRECTORY ${GENERATED_DIRECTORY}
-		COMMENT "SOF using ${defconfig_name}"
+		COMMENT "sof/zephyr/CMakeLists.txt using ${defconfig_name}"
 		VERBATIM
 		USES_TERMINAL
 	)
