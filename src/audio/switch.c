@@ -16,7 +16,7 @@
 static const struct comp_driver comp_switch;
 
 /* 385cc44b-f34e-4b9b-8be0-535c5f43a825 */
-DECLARE_SOF_UUID("switch", switch_uuid, 0x385cc44b, 0xf34e, 0x4b9b,
+DECLARE_SOF_RT_UUID("switch", switch_uuid, 0x385cc44b, 0xf34e, 0x4b9b,
 		 0x8b, 0xe0, 0x53, 0x5c, 0x5f, 0x43, 0xa8, 0x25);
 
 DECLARE_TR_CTX(switch_tr, SOF_UUID(switch_uuid), LOG_LEVEL_INFO);

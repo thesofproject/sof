@@ -59,12 +59,18 @@ struct sof_uuid_entry {
 #define DECLARE_SOF_UUID(entity_name, uuid_name,			\
 			 va, vb, vc,					\
 			 vd0, vd1, vd2, vd3, vd4, vd5, vd6, vd7)
+#define DECLARE_SOF_RT_UUID(entity_name, uuid_name,			\
+			 va, vb, vc,					\
+			 vd0, vd1, vd2, vd3, vd4, vd5, vd6, vd7)
 
 #define SOF_UUID(uuid_name) 0
 
 #else
 
 /** \brief Declares UUID (aaaaaaaa-bbbb-cccc-d0d1-d2d3d4d5d6d7) and name.
+ *
+ * UUID value from variables declared with this macro are unaccessible in
+ * runtime code - UUID dictionary from ldc file is needed get UUID value.
  *
  * \param entity_name Name of the object pinted by the software tools.
  * \param uuid_name Uuid symbol name used with SOF_UUID().
@@ -84,17 +90,48 @@ struct sof_uuid_entry {
 			 va, vb, vc,					\
 			 vd0, vd1, vd2, vd3, vd4, vd5, vd6, vd7)	\
 	__section(".static_uuids")					\
-	static const struct sof_uuid_entry uuid_name = {		\
+	static const struct sof_uuid_entry uuid_name ## _ldc = {	\
 		{.a = va, .b = vb, .c = vc,				\
 		 .d = {vd0, vd1, vd2, vd3, vd4, vd5, vd6, vd7}},	\
 		entity_name "\0"					\
 	}
 
+/** \brief Declares runtime UUID (aaaaaaaa-bbbb-cccc-d0d1-d2d3d4d5d6d7) and name.
+ *
+ * UUID value from variables declared with this macro are accessible in
+ * runtime code - to dereference use SOF_RT_UUID()
+ *
+ * \param entity_name Name of the object pinted by the software tools.
+ * \param uuid_name Uuid symbol name used with SOF_UUID() and SOF_RT_UUID().
+ * \param va aaaaaaaa value.
+ * \param vb bbbb value.
+ * \param vc cccc value.
+ * \param vd0 d0 value (note how d0 and d1 are grouped in formatted uuid)
+ * \param vd1 d1 value.
+ * \param vd2 d2 value.
+ * \param vd3 d3 value.
+ * \param vd4 d4 value.
+ * \param vd5 d5 value.
+ * \param vd6 d6 value.
+ * \param vd7 d7 value.
+ */
+#define DECLARE_SOF_RT_UUID(entity_name, uuid_name,			\
+			 va, vb, vc,					\
+			 vd0, vd1, vd2, vd3, vd4, vd5, vd6, vd7)	\
+	DECLARE_SOF_UUID(entity_name, uuid_name,			\
+			 va, vb, vc,					\
+			 vd0, vd1, vd2, vd3, vd4, vd5, vd6, vd7);	\
+	const struct sof_uuid uuid_name = {				\
+		.a = va, .b = vb, .c = vc,				\
+		.d = {vd0, vd1, vd2, vd3, vd4, vd5, vd6, vd7}		\
+	}
+
 /** \brief Creates local unique 32-bit representation of UUID structure.
  *
- * \param uuid_name UUID symbol name declared with DECLARE_SOF_UUID().
+ * \param uuid_name UUID symbol name declared with DECLARE_SOF_UUID() or
+ *		    DECLARE_SOF_RT_UUID().
  */
-#define SOF_UUID(uuid_name) ((uintptr_t)&(uuid_name))
+#define SOF_UUID(uuid_name) ((uintptr_t)&(uuid_name ## _ldc))
 #endif
 
 /** @}*/

@@ -31,7 +31,7 @@
 static const struct comp_driver comp_mixer;
 
 /* bc06c037-12aa-417c-9a97-89282e321a76 */
-DECLARE_SOF_UUID("mixer", mixer_uuid, 0xbc06c037, 0x12aa, 0x417c,
+DECLARE_SOF_RT_UUID("mixer", mixer_uuid, 0xbc06c037, 0x12aa, 0x417c,
 		 0x9a, 0x97, 0x89, 0x28, 0x2e, 0x32, 0x1a, 0x76);
 
 DECLARE_TR_CTX(mixer_tr, SOF_UUID(mixer_uuid), LOG_LEVEL_INFO);

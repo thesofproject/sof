@@ -45,7 +45,7 @@
 static const struct comp_driver comp_tone;
 
 /* 04e3f894-2c5c-4f2e-8dc1-694eeaab53fa */
-DECLARE_SOF_UUID("tone", tone_uuid, 0x04e3f894, 0x2c5c, 0x4f2e,
+DECLARE_SOF_RT_UUID("tone", tone_uuid, 0x04e3f894, 0x2c5c, 0x4f2e,
 		 0x8d, 0xc1, 0x69, 0x4e, 0xea, 0xab, 0x53, 0xfa);
 
 DECLARE_TR_CTX(tone_tr, SOF_UUID(tone_uuid), LOG_LEVEL_INFO);
