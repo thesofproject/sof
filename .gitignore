@@ -21,7 +21,6 @@
 *.dis
 *.lst
 *.log
-.*
 *.html
 *.js
 *.png
