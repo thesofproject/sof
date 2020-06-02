@@ -154,7 +154,7 @@
 #define OUTCONTROL1_TH(x)	SET_BITS(5, 0, x)
 #endif
 
-#if DMIC_HW_VERSION == 2
+#if DMIC_HW_VERSION >= 2
 /* OUTCONTROL0 bits */
 #define OUTCONTROL0_TIE_BIT			BIT(27)
 #define OUTCONTROL0_SIP_BIT			BIT(26)
