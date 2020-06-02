@@ -385,10 +385,10 @@ struct comp_ops {
  * - used by all other component types.
  */
 struct comp_driver {
-	uint32_t type;		/**< SOF_COMP_ for driver */
+	uint32_t type;			/**< SOF_COMP_ for driver */
 	const struct sof_uuid *uid;	/**< Address to UUID value */
-	struct tr_ctx *tctx;	/**< Pointer to trace context */
-	struct comp_ops ops;	/**< component operations */
+	struct tr_ctx *tctx;		/**< Pointer to trace context */
+	struct comp_ops ops;		/**< component operations */
 };
 
 /** \brief Holds constant pointer to component driver */
