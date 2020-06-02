@@ -708,7 +708,7 @@ static inline void ipm_helper1(int *ipm, int di)
 		*ipm = 2;
 }
 
-#if DMIC_HW_VERSION == 2
+#if DMIC_HW_VERSION >= 2
 
 static inline void ipm_helper2(int source[], int *ipm, int di)
 {
@@ -823,7 +823,7 @@ static int configure_registers(struct dai *dai,
 	fir_start_a = 0;
 	fir_start_b = 0;
 
-#if DMIC_HW_VERSION == 2 && DMIC_HW_CONTROLLERS > 2
+#if (DMIC_HW_VERSION == 2 && DMIC_HW_CONTROLLERS > 2) || DMIC_HW_VERSION == 3
 	int source[OUTCONTROLX_IPM_NUMSOURCES];
 #endif
 
@@ -870,7 +870,7 @@ static int configure_registers(struct dai *dai,
 	dai_dbg(dai, "configure_registers(), OUTCONTROL1 = %u", val);
 #endif
 
-#if DMIC_HW_VERSION == 2 && DMIC_HW_CONTROLLERS > 2
+#if DMIC_HW_VERSION == 3 || (DMIC_HW_VERSION == 2 && DMIC_HW_CONTROLLERS > 2)
 	ipm_helper2(source, &ipm, 0);
 	val = OUTCONTROL0_TIE(0) |
 		OUTCONTROL0_SIP(0) |
