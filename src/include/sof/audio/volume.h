@@ -52,17 +52,6 @@ struct sof_ipc_ctrl_value_chan;
 #define VOL_RAMP_UPDATE_US 1000
 
 /**
- * \brief Macro for volume linear gain ramp step computation
- * Volume gain ramp step as Q1.16 is computed with equation
- * step = VOL_RAMP_STEP_CONST / SOF_TKN_VOLUME_RAMP_STEP_MS. This
- * macro defines as Q1.16 value the constant term
- * VOL_RAMP_UPDATE / 1000.0 for step calculation. The value 1000
- * is used to to convert microseconds to milliseconds.
- */
-#define VOL_RAMP_STEP_CONST \
-	Q_CONVERT_FLOAT(VOL_RAMP_UPDATE_US / 1000.0, VOL_QXY_Y)
-
-/**
  * \brief Volume maximum value.
  * TODO: This should be 1 << (VOL_QX_BITS + VOL_QY_BITS - 1) - 1 but
  * the current volume code cannot handle the full Q1.16 range correctly.
@@ -98,12 +87,15 @@ struct comp_data {
 	int32_t volume[SOF_IPC_MAX_CHANNELS];	/**< current volume */
 	int32_t tvolume[SOF_IPC_MAX_CHANNELS];	/**< target volume */
 	int32_t mvolume[SOF_IPC_MAX_CHANNELS];	/**< mute volume */
-	int32_t ramp_increment[SOF_IPC_MAX_CHANNELS]; /**< for linear ramp */
+	int32_t rvolume[SOF_IPC_MAX_CHANNELS];	/**< ramp start volume */
+	int32_t ramp_coef[SOF_IPC_MAX_CHANNELS]; /**< parameter for slope */
 	int32_t vol_min;			/**< minimum volume */
 	int32_t vol_max;			/**< maximum volume */
 	int32_t	vol_ramp_range;			/**< max ramp transition */
 	/**< max number of frames to process per ramp transition */
 	uint32_t vol_ramp_frames;
+	uint32_t vol_ramp_elapsed_frames;	/**< frames since transition */
+	uint32_t sample_rate;			/**< stream sample rate in Hz */
 	unsigned int channels;			/**< current channels count */
 	bool muted[SOF_IPC_MAX_CHANNELS];	/**< set if channel is muted */
 	bool vol_ramp_active;			/**< set if volume is ramped */
