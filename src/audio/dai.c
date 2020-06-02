@@ -894,7 +894,7 @@ static int dai_ts_get(struct comp_dev *dev, struct timestamp_data *tsd)
 
 static const struct comp_driver comp_dai = {
 	.type	= SOF_COMP_DAI,
-	.uid	= SOF_UUID(dai_comp_uuid),
+	.uid	= SOF_RT_UUID(dai_comp_uuid),
 	.tctx	= &dai_comp_tr,
 	.ops	= {
 		.create			= dai_new,

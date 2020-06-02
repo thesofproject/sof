@@ -806,7 +806,7 @@ static int eq_fir_reset(struct comp_dev *dev)
 
 static const struct comp_driver comp_eq_fir = {
 	.type = SOF_COMP_EQ_FIR,
-	.uid = SOF_UUID(eq_fir_uuid),
+	.uid = SOF_RT_UUID(eq_fir_uuid),
 	.tctx = &eq_fir_tr,
 	.ops = {
 		.create = eq_fir_new,

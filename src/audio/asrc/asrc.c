@@ -898,7 +898,7 @@ static int asrc_reset(struct comp_dev *dev)
 
 static const struct comp_driver comp_asrc = {
 	.type = SOF_COMP_ASRC,
-	.uid = SOF_UUID(asrc_uuid),
+	.uid = SOF_RT_UUID(asrc_uuid),
 	.tctx = &asrc_tr,
 	.ops = {
 		.create = asrc_new,

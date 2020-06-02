@@ -66,7 +66,7 @@ static int switch_prepare(struct comp_dev *dev)
 
 static const struct comp_driver comp_switch = {
 	.type	= SOF_COMP_SWITCH,
-	.uid	= SOF_UUID(switch_uuid),
+	.uid	= SOF_RT_UUID(switch_uuid),
 	.tctx	= &switch_tr,
 	.ops	= {
 		.create		= switch_new,

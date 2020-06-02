@@ -860,7 +860,7 @@ static int volume_reset(struct comp_dev *dev)
 /** \brief Volume component definition. */
 static const struct comp_driver comp_volume = {
 	.type	= SOF_COMP_VOLUME,
-	.uid	= SOF_UUID(volume_uuid),
+	.uid	= SOF_RT_UUID(volume_uuid),
 	.tctx	= &volume_tr,
 	.ops	= {
 		.create		= volume_new,

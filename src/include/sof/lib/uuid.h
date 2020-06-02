@@ -64,6 +64,7 @@ struct sof_uuid_entry {
 			 vd0, vd1, vd2, vd3, vd4, vd5, vd6, vd7)
 
 #define SOF_UUID(uuid_name) 0
+#define SOF_RT_UUID(uuid_name) NULL
 
 #else
 
@@ -132,6 +133,12 @@ struct sof_uuid_entry {
  *		    DECLARE_SOF_RT_UUID().
  */
 #define SOF_UUID(uuid_name) ((uintptr_t)&(uuid_name ## _ldc))
+
+/** \brief Dereference unique 32-bit representation of UUID structure in runtime.
+ *
+ * \param uuid_name UUID symbol name declared with DECLARE_SOF_RT_UUID().
+ */
+#define SOF_RT_UUID(uuid_name) (&(uuid_name))
 #endif
 
 /** @}*/

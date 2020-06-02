@@ -395,7 +395,7 @@ static int dcblock_reset(struct comp_dev *dev)
 /** \brief DC Blocking Filter component definition. */
 static const struct comp_driver comp_dcblock = {
 	.type = SOF_COMP_DCBLOCK,
-	.uid  = SOF_UUID(dcblock_uuid),
+	.uid  = SOF_RT_UUID(dcblock_uuid),
 	.tctx = &dcblock_tr,
 	.ops  = {
 		 .create	= dcblock_new,
