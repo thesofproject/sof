@@ -334,47 +334,11 @@ else()
 	set(PYTHON3 "${Python3_EXECUTABLE}")
 endif()
 
-# Looks for defconfig files in arch directory
-set(DEFCONFIGS_DIRECTORY "${SOF_ROOT_SOURCE_DIRECTORY}/../src/arch/${ARCH}/configs")
-file(GLOB DEFCONFIG_PATHS "${DEFCONFIGS_DIRECTORY}/*_defconfig")
-
-# Adds dependency on defconfigs directory
-set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${DEFCONFIGS_DIRECTORY})
-
-# create a sof-config.h for target. 
-foreach(defconfig_path ${DEFCONFIG_PATHS})
-	get_filename_component(defconfig_name ${defconfig_path} NAME)
-	add_custom_target(
-		# Seed the .config with a _defconfig
-		${defconfig_name}
-		COMMAND ${CMAKE_COMMAND} -E copy
-			${defconfig_path}
-			${DOT_CONFIG_PATH}
-		# Expland and normalize the .config
-		COMMAND ${CMAKE_COMMAND} -E env
-			srctree=${SOF_ROOT_SOURCE_DIRECTORY}/../
-			ARCH=${ARCH}
-			KCONFIG_CONFIG=${DOT_CONFIG_PATH}
-			${PYTHON3} ${SOF_ROOT_SOURCE_DIRECTORY}/../scripts/kconfig/olddefconfig.py
-			${SOF_ROOT_SOURCE_DIRECTORY}/../Kconfig
-		# Generate sof-config.h from .config
-		COMMAND ${CMAKE_COMMAND} -E env
-			srctree=${SOF_ROOT_SOURCE_DIRECTORY}/../
-			CC_VERSION_TEXT="zephyr"
-			ARCH=${ARCH}
-			KCONFIG_CONFIG=${DOT_CONFIG_PATH}
-			${PYTHON3} ${SOF_ROOT_SOURCE_DIRECTORY}/../scripts/kconfig/genconfig.py
-			--header-path ${CONFIG_H_PATH}
-			${SOF_ROOT_SOURCE_DIRECTORY}/../Kconfig
-		WORKING_DIRECTORY ${GENERATED_DIRECTORY}
-		COMMENT "sof/zephyr/CMakeLists.txt using ${defconfig_name}"
-		VERBATIM
-		USES_TERMINAL
-	)
-endforeach()
-
-# TODO: detect GCC vs XCC builds and apply DEFCONFIG_PATCH= "_gcc"
-add_dependencies(modules_sof ${PLATFORM}${DEFCONFIG_PATCH}_defconfig)
+# FIXME: after some mileage revert 6d2f666fadd1 and rename sof-config.h
+# back to config.h Also move it out of the source directory.
+file(WRITE ${CONFIG_H_PATH}
+  "// Nothing here: Zephyr gives generated/autoconf.h for free with -imacros
+")
 
 # create version.h
 include(../scripts/cmake/version.cmake)
