@@ -32,7 +32,6 @@
 struct dai_config;
 struct dma;
 struct dma_sg_elem_array;
-struct sof;
 struct sof_ipc_buffer;
 struct sof_ipc_comp;
 struct sof_ipc_comp_event;
