@@ -25,7 +25,7 @@
 #include <stdint.h>
 
 #include <sof/lib/cache.h>
-#include <memory.h>
+#include <sof/lib/memory.h>
 
 /** \addtogroup alloc_api Memory Allocation API
  *  @{
