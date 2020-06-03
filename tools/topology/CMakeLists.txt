@@ -122,6 +122,7 @@ set(TPLGS
 	"sof-tgl-rt711-rt1308\;sof-tgl-rt711-rt1308-2ch\;-DCHANNELS=2"
 	"sof-tgl-rt711-rt1308\;sof-tgl-rt711-rt1308-4ch\;-DCHANNELS=4"
 	"sof-tgl-rt5682\;sof-tgl-rt5682\;-DHDMI=1"
+	"sof-tgl-i2s-rt1308\;sof-tgl-i2s-rt1308"
 	"sof-tgl-nocodec\;sof-ehl-nocodec"
 	"sof-ehl-rt5660\;sof-ehl-rt5660\;-DHDMI=1"
 	"sof-ehl-rt5660\;sof-ehl-rt5660-nohdmi"
