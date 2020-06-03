@@ -92,8 +92,11 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V15)
 		../src/platform/intel/cavs/lib/mem_window.c
 		../src/platform/intel/cavs/lib/pm_runtime.c
 		../src/platform/intel/cavs/lib/pm_memory.c
-		../src/platform/apollolake/lib/clk.c
+		../src/platform/intel/cavs/lib/clk.c
+		../src/platform/intel/cavs/lib/dai.c
+		../src/platform/intel/cavs/lib/dma.c
 		../src/platform/apollolake/lib/power_down.S
+		../src/platform/apollolake/lib/clk.c
 	)
 
 	set_source_files_properties(../src/platform/apollolake/lib/power_down.S PROPERTIES COMPILE_FLAGS -DASSEMBLY)
