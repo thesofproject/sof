@@ -315,6 +315,14 @@ static int ssp_set_config(struct dai *dai,
 			config->ssp.bclk_rate, config->dai_index);
 		goto out;
 	}
+#else
+	if (ssp_freq[SSP_DEFAULT_IDX].freq % config->ssp.bclk_rate != 0) {
+		dai_err(dai, "invalid bclk_rate = %d for dai_index = %d",
+			config->ssp.bclk_rate, config->dai_index);
+		goto out;
+	}
+
+	mdiv = ssp_freq[SSP_DEFAULT_IDX].freq / config->ssp.bclk_rate;
 #endif
 
 	if (need_ecs)
