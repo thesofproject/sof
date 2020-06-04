@@ -22,7 +22,8 @@ DEBUG_START
 #
 # Define the pipelines
 #
-# PCM0 ----> volume -----> SSP5 (wm8804)
+# PCM0P ---> Volume ---> ASRC ---> SSP5 (wm8804)
+# PCM0C <--- ASRC   <--- SSP5 (wm8804)
 #
 
 dnl PIPELINE_PCM_ADD(pipeline,
@@ -37,6 +38,13 @@ PIPELINE_PCM_ADD(sof/pipe-asrc-volume-playback.m4,
 	1, 0, 2, s32le,
 	1000, 0, 0,
 	8000, 48000, 48000)
+
+# Low Latency capture pipeline 2 on PCM 0 using max 2 channels of s32le.
+# 1000us deadline on core 0 with priority 0
+PIPELINE_PCM_ADD(sof/pipe-asrc-capture.m4,
+	2, 0, 2, s32le,
+	1000, 0, 0,
+	8000, 96000, 48000)
 
 #
 # DAIs configuration
@@ -54,8 +62,15 @@ DAI_ADD(sof/pipe-dai-playback.m4,
 	PIPELINE_SOURCE_1, 2, s24le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
+# capture DAI is SSP5 using 2 periods
+# Buffers use s24le format, 1000us deadline on core 0 with priority 0
+DAI_ADD(sof/pipe-dai-capture.m4,
+	2, SSP, 5, SSP5-Codec,
+	PIPELINE_SINK_2, 2, s24le,
+	1000, 0, 0, SCHEDULE_TIME_DOMAIN_DMA)
+
 # PCM Low Latency, id 0
-PCM_PLAYBACK_ADD(Port5, 0, PIPELINE_PCM_1)
+PCM_DUPLEX_ADD(Port5, 0, PIPELINE_PCM_1, PIPELINE_PCM_2)
 
 #
 # BE configurations - overrides config in ACPI if present
