@@ -185,26 +185,6 @@ do {									    \
 } while (0)
 
 #else /* CONFIG_LIBRARY */
-#define _DECLARE_LOG_ENTRY(lvl, format, comp_class, params)	\
-	static const struct {					\
-		uint32_t level;					\
-		uint32_t component_class;			\
-		uint32_t params_num;				\
-		uint32_t line_idx;				\
-		uint32_t file_name_len;				\
-		uint32_t text_len;				\
-		const char file_name[sizeof(RELATIVE_FILE)];	\
-		const char text[sizeof(format)];		\
-	} log_entry = {						\
-		lvl,						\
-		comp_class,					\
-		params,						\
-		__LINE__,					\
-		sizeof(RELATIVE_FILE),				\
-		sizeof(format),					\
-		RELATIVE_FILE,					\
-		format						\
-	}
 extern int test_bench_trace;
 char *get_trace_class(uint32_t trace_class);
 #define _log_message(atomic, level, comp_class, ctx, id_1, id_2,	\
