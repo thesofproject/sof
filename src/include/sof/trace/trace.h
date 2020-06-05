@@ -76,27 +76,6 @@ struct tr_ctx;
 #define TRACE_BOOT_PLATFORM_SPI		(TRACE_BOOT_PLATFORM + 0x200)
 #define TRACE_BOOT_PLATFORM_DMA_TRACE	(TRACE_BOOT_PLATFORM + 0x210)
 
-#if CONFIG_LIBRARY
-
-extern int test_bench_trace;
-char *get_trace_class(uint32_t trace_class);
-#define _log_message(atomic, level, comp_class, ctx, id_1, id_2,	\
-		     format, ...)					\
-do {									\
-	(void)ctx;							\
-	(void)id_1;							\
-	(void)id_2;							\
-	if (test_bench_trace) {						\
-		char *msg = "%s " format;				\
-		fprintf(stderr, msg, get_trace_class(comp_class),	\
-			##__VA_ARGS__);					\
-		fprintf(stderr, "\n");					\
-	}								\
-} while (0)
-
-#endif /* CONFIG_LIBRARY */
-
-
 #define _TRACE_EVENT_MAX_ARGUMENT_COUNT 4
 
 static inline struct trace *trace_get(void)
@@ -226,6 +205,22 @@ do {									    \
 		RELATIVE_FILE,					\
 		format						\
 	}
+extern int test_bench_trace;
+char *get_trace_class(uint32_t trace_class);
+#define _log_message(atomic, level, comp_class, ctx, id_1, id_2,	\
+		     format, ...)					\
+do {									\
+	(void)ctx;							\
+	(void)id_1;							\
+	(void)id_2;							\
+	if (test_bench_trace) {						\
+		char *msg = "%s " format;				\
+		fprintf(stderr, msg, get_trace_class(comp_class),	\
+			##__VA_ARGS__);					\
+		fprintf(stderr, "\n");					\
+	}								\
+} while (0)
+
 #endif /* CONFIG_LIBRARY */
 #else /* CONFIG_TRACE */
 
