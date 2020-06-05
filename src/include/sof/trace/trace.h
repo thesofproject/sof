@@ -94,7 +94,7 @@ do {									\
 	}								\
 } while (0)
 
-#endif
+#endif /* CONFIG_LIBRARY */
 
 
 #define _TRACE_EVENT_MAX_ARGUMENT_COUNT 4
@@ -205,7 +205,7 @@ do {									    \
 		  PP_NARG(__VA_ARGS__), ##__VA_ARGS__);			    \
 } while (0)
 
-#else
+#else /* CONFIG_LIBRARY */
 #define _DECLARE_LOG_ENTRY(lvl, format, comp_class, params)	\
 	static const struct {					\
 		uint32_t level;					\
@@ -226,8 +226,8 @@ do {									    \
 		RELATIVE_FILE,					\
 		format						\
 	}
-#endif
-#else
+#endif /* CONFIG_LIBRARY */
+#else /* CONFIG_TRACE */
 
 #define trace_event_with_ids(class, ctx, id_1, id_2, format, ...) \
 	trace_unused(class, ctx, id_1, id_2, format, ##__VA_ARGS__)
@@ -246,7 +246,7 @@ static inline void trace_on(void) { }
 static inline void trace_off(void) { }
 static inline void trace_init(struct sof *sof) { }
 
-#endif
+#endif /* CONFIG_TRACE */
 
 /* verbose tracing */
 #if CONFIG_TRACEV
@@ -259,13 +259,13 @@ static inline void trace_init(struct sof *sof) { }
 				     ctx, id_1, id_2,			   \
 				     format, ##__VA_ARGS__)
 
-#else
+#else /* CONFIG_TRACEV */
 #define tracev_event_with_ids(class, ctx, id_1, id_2, format, ...) \
 	trace_unused(class, ctx, id_1, id_2, format, ##__VA_ARGS__)
 #define tracev_event_atomic_with_ids(class, ctx, id_1, id_2, format, ...) \
 	trace_unused(class, ctx, id_1, id_2, format, ##__VA_ARGS__)
 
-#endif
+#endif /* CONFIG_TRACEV */
 
 /* error tracing */
 #if CONFIG_TRACEE
@@ -279,12 +279,12 @@ static inline void trace_init(struct sof *sof) { }
 #define trace_error_with_ids(...) trace_event_with_ids(__VA_ARGS__)
 #define trace_error_atomic_with_ids(...) \
 	trace_event_atomic_with_ids(__VA_ARGS__)
-#else
+#else /* CONFIG_TRACEE CONFIG_TRACE */
 #define trace_error_with_ids(class, ctx, id_1, id_2, format, ...) \
 	trace_unused(class, ctx, id_1, id_2, format, ##__VA_ARGS__)
 #define trace_error_atomic_with_ids(class, ctx, id_1, id_2, format, ...) \
 	trace_unused(class, ctx, id_1, id_2, format, ##__VA_ARGS__)
-#endif
+#endif /* CONFIG_TRACEE CONFIG_TRACE */
 
 #define _TRACE_INV_CLASS	TRACE_CLASS_DEPRECATED
 #define _TRACE_INV_ID		-1
