@@ -122,8 +122,8 @@ struct sof_ipc_cmd_hdr *mailbox_validate(void)
 	mailbox_hostbox_read(hdr, SOF_IPC_MSG_MAX_SIZE, 0, sizeof(*hdr));
 
 	/* validate component header */
-	if (hdr->size > SOF_IPC_MSG_MAX_SIZE) {
-		tr_err(&ipc_tr, "ipc: msg too big at 0x%x", hdr->size);
+	if (hdr->size < sizeof(*hdr) || hdr->size > SOF_IPC_MSG_MAX_SIZE) {
+		tr_err(&ipc_tr, "ipc: invalid size 0x%x", hdr->size);
 		return NULL;
 	}
 
