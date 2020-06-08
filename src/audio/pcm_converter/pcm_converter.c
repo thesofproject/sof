@@ -23,7 +23,7 @@ void pcm_convert_as_linear(const struct audio_stream *source, uint32_t ioffset,
 	char *r_ptr = audio_stream_get_frag(source, source->r_ptr, ioffset,
 					    s_size_in);
 	char *w_ptr = audio_stream_get_frag(sink, sink->w_ptr, ooffset,
-					    s_size_in);
+					    s_size_out);
 	int i = 0;
 	int chunk;
 	int N1, N2;
