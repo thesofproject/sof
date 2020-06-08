@@ -103,7 +103,7 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V15)
 
 	# CAVS15 include seems to be set in Zephyr. TODO also set common dir.
 	set(PLATFORM "apollolake")
-	target_include_directories(SOF INTERFACE ../zephyr/include/cavs15)
+	#target_include_directories(SOF INTERFACE ../zephyr/include/cavs15)
 endif()
 
 # CNL
@@ -136,8 +136,8 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V18)
 	set_source_files_properties(../src/platform/intel/cavs/lps_pic_restore_vector.S PROPERTIES COMPILE_FLAGS -DASSEMBLY)
 
 	set(PLATFORM "cannonlake")
-	target_include_directories(SOF INTERFACE ../zephyr/include/cavs18)
-	zephyr_include_directories(../../../../zephyr/soc/xtensa/intel_adsp/common/include)
+	#target_include_directories(SOF INTERFACE ../zephyr/include/cavs18)
+	#zephyr_include_directories(../../../../zephyr/soc/xtensa/intel_adsp/common/include)
 
 endif()
 
