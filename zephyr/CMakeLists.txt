@@ -127,6 +127,11 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V18)
 		../src/platform/intel/cavs/lib/mem_window.c
 		../src/platform/cannonlake/lib/clk.c
 		../src/platform/intel/cavs/lib/power_down.S
+		../src/platform/intel/cavs/lib/pm_runtime.c
+		../src/platform/intel/cavs/lib/pm_memory.c
+		../src/platform/intel/cavs/lib/clk.c
+		../src/platform/intel/cavs/lib/dai.c
+		../src/platform/intel/cavs/lib/dma.c
 	# TODO: move back into SOF.
 	##	../src/platform/intel/cavs/lps_pic_restore_vector.S
 	##	../src/platform/intel/cavs/lps_wait.c
@@ -161,6 +166,11 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V20)
 		../src/platform/intel/cavs/lib/mem_window.c
 		../src/platform/icelake/lib/clk.c
 		../src/platform/intel/cavs/lib/power_down.S
+		../src/platform/intel/cavs/lib/pm_runtime.c
+		../src/platform/intel/cavs/lib/pm_memory.c
+		../src/platform/intel/cavs/lib/clk.c
+		../src/platform/intel/cavs/lib/dai.c
+		../src/platform/intel/cavs/lib/dma.c
 	#	../src/platform/intel/cavs/lps_pic_restore_vector.S
 	#	../src/platform/intel/cavs/lps_wait.c
 	)
@@ -193,6 +203,11 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V25)
 		../src/platform/intel/cavs/lib/mem_window.c
 		../src/platform/tigerlake/lib/clk.c
 		../src/platform/intel/cavs/lib/power_down.S
+		../src/platform/intel/cavs/lib/pm_runtime.c
+		../src/platform/intel/cavs/lib/pm_memory.c
+		../src/platform/intel/cavs/lib/clk.c
+		../src/platform/intel/cavs/lib/dai.c
+		../src/platform/intel/cavs/lib/dma.c
 	#	../src/platform/intel/cavs/lps_pic_restore_vector.S
 	#	../src/platform/intel/cavs/lps_wait.c
 	)
