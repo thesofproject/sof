@@ -269,6 +269,15 @@ config CAVS_LPRO
 	  Select if you want to use 120MHz LPRO as the DSP clock source.
 	  This option is required to support S0ix/D0ix mode.
 
+config CAVS_PM_RO
+	bool "Enable automatic LPRO switch"
+	default n
+	depends on CAVS && !CAVS_VERSION_1_5 && !CAVS_LPRO
+	help
+	  Select if you want the firmware to automatically switch between
+	  high performance and low power clocks during
+	  power management request handling.
+
 config CAVS_USE_LPRO_IN_WAITI
 	bool
 	default n

@@ -56,4 +56,12 @@ static inline struct clock_info *clocks_get(void)
 	return sof_get()->clocks;
 }
 
+#if CONFIG_CAVS_PM_RO
+
+void clock_set_hpro(void);
+
+void clock_set_lpro(void);
+
+#endif /* CONFIG_CAVS_PM_RO */
+
 #endif /* __SOF_LIB_CLK_H__ */

@@ -11,6 +11,7 @@
 #include <sof/lib/clk.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/notifier.h>
+#include <sof/lib/wait.h>
 #include <sof/platform.h>
 #include <sof/spinlock.h>
 #include <sof/trace/trace.h>
@@ -110,3 +111,41 @@ void platform_timer_set_delta(struct timer *timer, uint64_t ns)
 	platform_shared_commit(clk_info, sizeof(*clk_info));
 	platform_shared_commit(timer, sizeof(*timer));
 }
+
+#if CONFIG_CAVS_PM_RO
+
+void clock_set_hpro(void)
+{
+	uint32_t reg;
+
+	shim_write(SHIM_CLKCTL, ((shim_read(SHIM_CLKCTL) &
+		   ~SHIM_CLKCTL_RLROSCC) | SHIM_CLKCTL_RHROSCC));
+
+	reg = io_reg_read(SHIM_BASE + SHIM_CLKCTL);
+	reg = reg & ~(SHIM_CLKCTL_OCS_LP_RING);
+	reg = reg | SHIM_CLKCTL_OCS_HP_RING;
+
+	io_reg_write(SHIM_BASE + SHIM_CLKCTL, reg);
+
+	while (!(shim_read(SHIM_CLKSTS) & SHIM_CLKCTL_RHROSCC))
+		idelay(16);
+}
+
+void clock_set_lpro(void)
+{
+	uint32_t reg;
+
+	shim_write(SHIM_CLKCTL, ((shim_read(SHIM_CLKCTL) &
+		   ~SHIM_CLKCTL_RHROSCC) | SHIM_CLKCTL_RLROSCC));
+
+	reg = io_reg_read(SHIM_BASE + SHIM_CLKCTL);
+	reg = reg & ~(SHIM_CLKCTL_OCS_HP_RING);
+	reg = reg | SHIM_CLKCTL_OCS_LP_RING;
+
+	io_reg_write(SHIM_BASE + SHIM_CLKCTL, reg);
+
+	while (!(shim_read(SHIM_CLKSTS) & SHIM_CLKCTL_RLROSCC))
+		idelay(16);
+}
+
+#endif

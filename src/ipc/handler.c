@@ -665,8 +665,17 @@ static int ipc_pm_core_enable(uint32_t header)
 static int ipc_pm_gate(uint32_t header)
 {
 	struct sof_ipc_pm_gate pm_gate;
+#if CONFIG_CAVS_PM_RO
+	bool pre_gate;
+	bool post_gate;
+#endif
 
 	IPC_COPY_CMD(pm_gate, ipc_get()->comp_data);
+
+#if CONFIG_CAVS_PM_RO
+	pre_gate = pm_runtime_is_active(PM_RUNTIME_DSP,
+					PLATFORM_MASTER_CORE_ID);
+#endif
 
 	/* pause dma trace firstly if needed */
 	if (pm_gate.flags & SOF_PM_NO_TRACE)
@@ -680,6 +689,16 @@ static int ipc_pm_gate(uint32_t header)
 	/* resume dma trace if needed */
 	if (!(pm_gate.flags & SOF_PM_NO_TRACE))
 		trace_on();
+
+#if CONFIG_CAVS_PM_RO
+	post_gate = pm_runtime_is_active(PM_RUNTIME_DSP,
+					 PLATFORM_MASTER_CORE_ID);
+
+	if (pre_gate != post_gate) {
+		ipc_get()->pm_gate_ro = post_gate ?
+					IPC_PM_GATE_HPRO : IPC_PM_GATE_LPRO;
+	}
+#endif
 
 	return 0;
 }

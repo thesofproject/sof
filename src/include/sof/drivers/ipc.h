@@ -83,12 +83,23 @@ struct ipc_msg {
 	struct list_item list;
 };
 
+#if CONFIG_CAVS_PM_RO
+enum ipc_pm_gate_ro {
+	IPC_PM_GATE_NONE = 0,
+	IPC_PM_GATE_LPRO,
+	IPC_PM_GATE_HPRO
+};
+#endif
+
 struct ipc {
 	spinlock_t lock;	/* locking mechanism */
 	void *comp_data;
 
 	/* PM */
 	int pm_prepare_D3;	/* do we need to prepare for D3 */
+#if CONFIG_CAVS_PM_RO
+	enum ipc_pm_gate_ro pm_gate_ro; /**< ring oscillator switch */
+#endif
 
 	struct list_item msg_list;	/* queue of messages to be sent */
 	bool is_notification_pending;	/* notification is being sent to host */

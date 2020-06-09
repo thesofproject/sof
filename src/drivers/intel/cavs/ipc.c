@@ -211,6 +211,18 @@ enum task_state ipc_platform_do_cmd(void *data)
 	platform_shared_commit(ipc, sizeof(*ipc));
 #endif
 
+#if CONFIG_CAVS_PM_RO
+	if (ipc->pm_gate_ro == IPC_PM_GATE_LPRO) {
+		tr_dbg(&ipc_tr, "ipc_platform_do_cmd(), lpro switch");
+		clock_set_lpro();
+	} else if (ipc->pm_gate_ro == IPC_PM_GATE_HPRO) {
+		tr_dbg(&ipc_tr, "ipc_platform_do_cmd(), hpro switch");
+		clock_set_hpro();
+	}
+
+	ipc->pm_gate_ro = IPC_PM_GATE_NONE;
+#endif
+
 	return SOF_TASK_STATE_COMPLETED;
 }
 
