@@ -542,9 +542,10 @@ int ipc_pipeline_complete(struct ipc *ipc, uint32_t comp_id)
 	if (!cpu_is_me(ipc_pipe->core))
 		return ipc_process_on_core(ipc_pipe->core);
 
-	tr_dbg(&ipc_tr, "ipc: pipe %d -> complete", comp_id);
-
 	pipeline_id = ipc_pipe->pipeline->ipc_pipe.pipeline_id;
+
+	tr_dbg(&ipc_tr, "ipc: pipe %d -> complete on comp %d", pipeline_id,
+	       comp_id);
 
 	/* get pipeline source component */
 	ipc_ppl_source = ipc_get_ppl_src_comp(ipc, pipeline_id);
