@@ -16,8 +16,7 @@ include(`common/tlv.m4')
 include(`sof/tokens.m4')
 
 # Include JasperLake DSP configuration
-include(`platform/intel/icl.m4')
-include(`platform/intel/dmic.m4')
+include(`platform/intel/'PLATFORM`.m4')
 
 DEBUG_START
 
@@ -107,10 +106,10 @@ dnl     buffer, periods, format,
 dnl     frames, deadline, priority, core)
 
 # playback DAI is SSP1 using 2 periods
-# Buffers use s16le format, with 48 frame per 1000us on core 0 with priority 0
+# Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
-	1, SSP, 1, SSP1-Codec,
-	PIPELINE_SOURCE_1, 2, s24le,
+	1, SSP, SPK_INDEX, SPK_NAME,
+	PIPELINE_SOURCE_1, 2, SPK_DATA_FORMAT,
 	1000, 0, 0)
 
 # playback DAI is SSP0 using 2 periods
@@ -173,13 +172,9 @@ DAI_CONFIG(SSP, 0, 0, SSP0-Codec,
 		SSP_TDM(2, 25, 3, 3),
 		SSP_CONFIG_DATA(SSP, 0, 24)))
 
-# SSP 1 (ID: 6) ALC1015
-DAI_CONFIG(SSP, 1, 6, SSP1-Codec,
-	SSP_CONFIG(I2S, SSP_CLOCK(mclk, 24000000, codec_mclk_in),
-		SSP_CLOCK(bclk, 2400000, codec_slave),
-		SSP_CLOCK(fsync, 48000, codec_slave),
-		SSP_TDM(2, 25, 3, 3),
-		SSP_CONFIG_DATA(SSP, 1, 24)))
+# SSP 1 (ID: 6)
+DAI_CONFIG(SSP, SPK_INDEX, 6, SPK_NAME,
+	SET_SSP_CONFIG)
 
 # 4 HDMI/DP outputs (ID: 3,4,5)
 DAI_CONFIG(HDA, 0, 3, iDisp1,
