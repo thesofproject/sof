@@ -25,6 +25,14 @@ struct cavs_pm_runtime_data {
 	uint32_t sleep_core_mask; /**< represents cores in waiti state */
 };
 
+/**
+ * \brief CAVS DSP residency counters
+ * R0 - HPRO clock, highest power consumption state
+ * R1 - LPRO clock, low power consumption state
+ * R2 - LPS, lowest power consumption state
+ * with extra priority to R2 (LPS) which cannot be interrupted by R0/R1 changes
+ */
+
 #endif
 
 #else
