@@ -133,6 +133,8 @@ int timer_register(struct timer *timer, void (*handler)(void *arg), void *arg)
 	case TIMER0:
 	case TIMER1:
 	case TIMER2:
+		/* arch timers have no children, so HW IRQ is logical IRQ */
+		timer->logical_irq = timer->irq;
 		ret = arch_timer_register(timer, handler, arg);
 		break;
 	case TIMER3:
