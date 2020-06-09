@@ -331,7 +331,7 @@
 #define LP_SRAM_CODE_SIZE		0x220
 
 #define LP_SRAM_START			(LP_SRAM_CODE_BASE + LP_SRAM_CODE_SIZE)
-#elif
+#else
 #define LP_SRAM_START			LP_SRAM_BASE
 #endif
 
