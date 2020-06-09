@@ -47,6 +47,9 @@ struct ipc_msg;
 #define COMP_TYPE_BUFFER	2
 #define COMP_TYPE_PIPELINE	3
 
+/** \brief Scheduling period for IPC task in microseconds. */
+#define IPC_PERIOD_USEC	100
+
 /* validates internal non tail structures within IPC command structure */
 #define IPC_IS_SIZE_INVALID(object)					\
 	(object).hdr.size == sizeof(object) ? 0 : 1

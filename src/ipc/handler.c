@@ -1385,7 +1385,7 @@ out:
 
 void ipc_schedule_process(struct ipc *ipc)
 {
-	schedule_task(&ipc->ipc_task, 0, 100);
+	schedule_task(&ipc->ipc_task, 0, IPC_PERIOD_USEC);
 
 	platform_shared_commit(ipc, sizeof(*ipc));
 }
