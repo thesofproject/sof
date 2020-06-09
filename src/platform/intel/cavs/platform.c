@@ -454,6 +454,14 @@ int platform_init(struct sof *sof)
 	/* prevent DSP Common power gating */
 	pm_runtime_get(PM_RUNTIME_DSP, PLATFORM_MASTER_CORE_ID);
 
+#if CONFIG_DSP_RESIDENCY_COUNTERS
+#if CONFIG_CAVS_LPRO
+	init_dsp_r_state(r1_r_state);
+#else
+	init_dsp_r_state(r0_r_state);
+#endif
+#endif
+
 #elif CONFIG_SUECREEK
 	/* TODO: need to merge as for APL */
 	clock_set_freq(CLK_CPU(cpu_get_id()), CLK_MAX_CPU_HZ);

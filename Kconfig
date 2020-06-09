@@ -232,4 +232,12 @@ config PERFORMANCE_COUNTERS
 	  use the stamp() macro periodically to find out how long the cpu
 	  was in active/sleep state between the calls and estimate the cpu load.
 
+config DSP_RESIDENCY_COUNTERS
+	bool "DSP residency counters"
+	default n
+	help
+	  Enables simple DSP residency counters in SRAM_REG mailbox.
+	  R0, R1, R2 are abstract states which can be used differently
+	  based on platform implementation.
+
 endmenu

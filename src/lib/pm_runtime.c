@@ -10,6 +10,7 @@
  * \author Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */
 
+#include <sof/drivers/timer.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/pm_runtime.h>
@@ -111,3 +112,50 @@ bool pm_runtime_is_active(enum pm_runtime_context context, uint32_t index)
 		return platform_pm_runtime_is_active(context, index);
 	}
 }
+
+#if CONFIG_DSP_RESIDENCY_COUNTERS
+void init_dsp_r_state(enum dsp_r_state r_state)
+{
+	struct pm_runtime_data *prd = pm_runtime_data_get();
+	struct r_counters_data *r_counters;
+
+	r_counters = rzalloc(SOF_MEM_ZONE_SYS, SOF_MEM_FLAG_SHARED,
+			     SOF_MEM_CAPS_RAM, sizeof(*r_counters));
+	prd->r_counters = r_counters;
+
+	r_counters->ts = platform_timer_get(timer_get());
+	r_counters->cur_r_state = r_state;
+}
+
+void report_dsp_r_state(enum dsp_r_state r_state)
+{
+	struct r_counters_data *r_counters = pm_runtime_data_get()->r_counters;
+	uint64_t ts, delta;
+
+	/* It is possible to call report_dsp_r_state in early platform init from
+	 * pm_runtime_disable so a safe check for r_counters is required
+	 */
+	if (!r_counters || r_counters->cur_r_state == r_state)
+		return;
+
+	ts = platform_timer_get(timer_get());
+	delta = ts - r_counters->ts;
+
+	delta += mailbox_sw_reg_read64(SRAM_REG_R_STATE_TRACE_BASE +
+				       r_counters->cur_r_state *
+				       sizeof(uint64_t));
+
+	mailbox_sw_reg_write64(SRAM_REG_R_STATE_TRACE_BASE + r_counters->cur_r_state
+			       * sizeof(uint64_t), delta);
+
+	r_counters->cur_r_state = r_state;
+	r_counters->ts = ts;
+}
+
+enum dsp_r_state get_dsp_r_state(void)
+{
+	struct r_counters_data *r_counters = pm_runtime_data_get()->r_counters;
+
+	return r_counters ? r_counters->cur_r_state : 0;
+}
+#endif

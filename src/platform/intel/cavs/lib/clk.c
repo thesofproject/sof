@@ -9,6 +9,7 @@
 #include <sof/lib/clk.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/notifier.h>
+#include <sof/lib/pm_runtime.h>
 #include <sof/sof.h>
 #include <sof/spinlock.h>
 
@@ -58,6 +59,15 @@ static inline void select_cpu_clock(int freq_idx, bool release_unused)
 			cpu_disable_core(PLATFORM_CORE_COUNT - 1);
 #endif
 	}
+
+#if CONFIG_DSP_RESIDENCY_COUNTERS
+	if (get_dsp_r_state() != r2_r_state) {
+		if (freq_idx == CPU_LPRO_FREQ_IDX)
+			report_dsp_r_state(r1_r_state);
+		else
+			report_dsp_r_state(r0_r_state);
+	}
+#endif
 }
 #endif
 

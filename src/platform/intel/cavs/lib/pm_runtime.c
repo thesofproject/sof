@@ -107,6 +107,22 @@ static inline void cavs_pm_runtime_enable_dsp(bool enable)
 		pprd->dsp_d0_sref);
 
 	platform_shared_commit(pprd, sizeof(*pprd));
+
+#if CONFIG_DSP_RESIDENCY_COUNTERS
+	struct clock_info *clk_info = clocks_get() + CLK_CPU(cpu_get_id());
+
+	if (!clk_info)
+		return;
+
+	if (pprd->dsp_d0_sref > 0) {
+		if (clk_info->current_freq_idx == CPU_LPRO_FREQ_IDX)
+			report_dsp_r_state(r1_r_state);
+		else
+			report_dsp_r_state(r0_r_state);
+	} else {
+		report_dsp_r_state(r2_r_state);
+	}
+#endif
 }
 
 static inline bool cavs_pm_runtime_is_active_dsp(void)
