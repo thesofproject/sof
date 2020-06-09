@@ -301,6 +301,18 @@ static inline void cavs_pm_runtime_en_dwdma_clk_gating(uint32_t index)
 #endif
 }
 
+#if __ZEPHYR__
+/* TODO: Zephyr has it's own core start */
+static inline void cavs_pm_runtime_core_dis_memory(uint32_t index)
+{
+}
+
+static inline void cavs_pm_runtime_core_en_memory(uint32_t index)
+{
+}
+
+#else
+
 static inline void cavs_pm_runtime_core_dis_memory(uint32_t index)
 {
 #if CAVS_VERSION >= CAVS_VERSION_1_8
@@ -336,7 +348,7 @@ static inline void cavs_pm_runtime_core_en_memory(uint32_t index)
 
 #endif
 }
-
+#endif
 static inline void cavs_pm_runtime_dis_dsp_pg(uint32_t index)
 {
 #if CAVS_VERSION >= CAVS_VERSION_1_8
