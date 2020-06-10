@@ -2,6 +2,6 @@
 
 add_local_sources(sof notifier.c)
 
-if (CONFIG_SMP)
+if (CONFIG_MULTICORE)
 	add_local_sources(sof cpu.c)
 endif()

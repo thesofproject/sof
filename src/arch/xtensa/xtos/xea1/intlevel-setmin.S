@@ -56,7 +56,7 @@ _xtos_set_min_intlevel:
 	addx4	a5, a3, a4	// index mask to use
 	l32i	a3, a5, 0	// get mask of interrupts at requested intlevel and below
 	movi	a5, -1		// all 1's
-#if CONFIG_SMP
+#if CONFIG_MULTICORE
 	xtos_addr_percore	a4, xtos_intstruct
 #else
 	movi	a4, _xtos_intstruct

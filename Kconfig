@@ -129,7 +129,7 @@ rsource "src/Kconfig"
 
 config IDC_TASK_BUDGET
 	int "Cycles budget for IDC task"
-	depends on SMP
+	depends on MULTICORE
 	default 8000
 	help
 	  Cycles budget for IDC task per systick (see config SYSTICK).

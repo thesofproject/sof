@@ -25,6 +25,6 @@ if (CONFIG_PROBE)
 	add_subdirectory(probe)
 endif()
 
-if (CONFIG_SMP)
+if (CONFIG_MULTICORE)
 	add_subdirectory(idc)
 endif()
