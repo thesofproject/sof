@@ -772,7 +772,6 @@ static int src_copy(struct comp_dev *dev)
 	struct comp_buffer *source;
 	struct comp_buffer *sink;
 	int ret;
-	uint32_t flags = 0;
 
 	comp_dbg(dev, "src_copy()");
 
@@ -782,17 +781,14 @@ static int src_copy(struct comp_dev *dev)
 	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
 			       source_list);
 
-	buffer_lock(source, &flags);
-	buffer_lock(sink, &flags);
+	buffer_control_invalidate(source);
+	buffer_control_invalidate(sink);
 
 	/* Get from buffers and SRC conversion specific block constraints
 	 * how many frames can be processed. If sufficient number of samples
 	 * is not available the processing is omitted.
 	 */
 	ret = src_get_copy_limits(cd, source, sink);
-
-	buffer_unlock(sink, flags);
-	buffer_unlock(source, flags);
 
 	if (ret) {
 		comp_info(dev, "No data to process.");

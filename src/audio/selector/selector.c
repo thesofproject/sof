@@ -381,7 +381,6 @@ static int selector_copy(struct comp_dev *dev)
 	uint32_t frames;
 	uint32_t source_bytes;
 	uint32_t sink_bytes;
-	uint32_t flags = 0;
 
 	comp_dbg(dev, "selector_copy()");
 
@@ -391,15 +390,12 @@ static int selector_copy(struct comp_dev *dev)
 	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
 			       source_list);
 
-	buffer_lock(source, &flags);
-	buffer_lock(sink, &flags);
+	buffer_control_invalidate(source);
+	buffer_control_invalidate(sink);
 
 	frames = audio_stream_avail_frames(&source->stream, &sink->stream);
 	source_bytes = frames * audio_stream_frame_bytes(&source->stream);
 	sink_bytes = frames * audio_stream_frame_bytes(&sink->stream);
-
-	buffer_unlock(sink, flags);
-	buffer_unlock(source, flags);
 
 	comp_dbg(dev, "selector_copy(), source_bytes = 0x%x, sink_bytes = 0x%x",
 		 source_bytes, sink_bytes);

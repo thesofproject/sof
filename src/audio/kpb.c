@@ -615,7 +615,6 @@ static int kpb_copy(struct comp_dev *dev)
 	struct comp_buffer *sink = NULL;
 	size_t copy_bytes = 0;
 	size_t sample_width = kpb->config.sampling_width;
-	uint32_t flags = 0;
 	struct draining_data *dd = &kpb->draining_task_data;
 
 	comp_dbg(dev, "kpb_copy()");
@@ -630,17 +629,14 @@ static int kpb_copy(struct comp_dev *dev)
 		goto out;
 	}
 
-	buffer_lock(source, &flags);
+	buffer_control_invalidate(source);
 
 	/* Validate source */
 	if (!source->stream.r_ptr) {
 		comp_err(dev, "kpb_copy(): invalid source pointers.");
 		ret = -EINVAL;
-		buffer_unlock(source, flags);
 		goto out;
 	}
-
-	buffer_unlock(source, flags);
 
 	switch (kpb->state) {
 	case KPB_STATE_RUN:
@@ -653,17 +649,14 @@ static int kpb_copy(struct comp_dev *dev)
 			goto out;
 		}
 
-		buffer_lock(sink, &flags);
+		buffer_control_invalidate(sink);
 
 		/* Validate sink */
 		if (!sink->stream.w_ptr) {
 			comp_err(dev, "kpb_copy(): invalid selector sink pointers.");
 			ret = -EINVAL;
-			buffer_unlock(sink, flags);
 			goto out;
 		}
-
-		buffer_unlock(sink, flags);
 
 		copy_bytes = MIN(sink->stream.free, source->stream.avail);
 		if (!copy_bytes) {
@@ -710,17 +703,14 @@ static int kpb_copy(struct comp_dev *dev)
 			goto out;
 		}
 
-		buffer_lock(sink, &flags);
+		buffer_control_invalidate(sink);
 
 		/* Validate sink */
 		if (!sink->stream.w_ptr) {
 			comp_err(dev, "kpb_copy(): invalid host sink pointers.");
 			ret = -EINVAL;
-			buffer_unlock(sink, flags);
 			goto out;
 		}
-
-		buffer_unlock(sink, flags);
 
 		copy_bytes = MIN(sink->stream.free, source->stream.avail);
 		if (!copy_bytes) {
