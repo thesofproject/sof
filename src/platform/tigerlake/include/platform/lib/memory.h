@@ -317,7 +317,7 @@
 /* LP SRAM */
 #define LP_SRAM_BASE			0xBE800000
 
-#if CONFIG_SMP
+#if CONFIG_MULTICORE
 /* alternate reset vector */
 #define LP_SRAM_ALT_RESET_VEC_BASE	LP_SRAM_BASE
 #define LP_SRAM_ALT_RESET_VEC_SIZE	0x180

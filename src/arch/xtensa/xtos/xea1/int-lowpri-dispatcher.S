@@ -167,7 +167,7 @@ LABEL(.L1,_loop0):
 	neg	a12, a15
 	and	a12, a12, a15
 	wsr.intclear	a12	// clear if edge-trig or s/w or wr/err (else no effect)
-#if CONFIG_SMP
+#if CONFIG_MULTICORE
 	xtos_addr_percore	a13, xtos_interrupt_table
 #else
 	movi	a13, xtos_interrupt_table
