@@ -13,7 +13,7 @@
 #include <sof-config.h>
 #include <xtensa/config/core-isa.h>
 
-#if CONFIG_SMP
+#if CONFIG_MULTICORE
 
 void cpu_power_down_core(void);
 

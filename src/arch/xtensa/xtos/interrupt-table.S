@@ -25,7 +25,7 @@
 #include <xtensa/coreasm.h>
 #include "xtos-internal.h"
 
-#if !CONFIG_SMP
+#if !CONFIG_MULTICORE
 #if XCHAL_HAVE_INTERRUPTS
 
 	.data
@@ -93,7 +93,7 @@ xtos_interrupt_mask_table:
 #endif /* XCHAL_HAVE_INTERRUPTS */
 
 	.text
-#endif /* CONFIG_SMP */
+#endif /* CONFIG_MULTICORE */
 
 #if XCHAL_HAVE_INTERRUPTS
 

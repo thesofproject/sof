@@ -129,7 +129,7 @@ static inline void register_exceptions(void)
  */
 static inline void __memmap_init(void) { }
 
-#if CONFIG_SMP
+#if CONFIG_MULTICORE
 
 int slave_core_init(struct sof *sof);
 
@@ -137,7 +137,7 @@ int slave_core_init(struct sof *sof);
 
 static inline int slave_core_init(struct sof *sof) { return 0; }
 
-#endif /* CONFIG_SMP */
+#endif /* CONFIG_MULTICORE */
 
 #endif /* __ARCH_INIT_H__ */
 

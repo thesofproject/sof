@@ -54,7 +54,7 @@ struct core_context {
 #endif
 
 //TODO: re-enable for zephyr SMP
-#if CONFIG_SMP
+#if CONFIG_MULTICORE
 
 /** \brief IDC message payload per core. */
 static SHARED_DATA struct idc_payload payload[PLATFORM_CORE_COUNT];
