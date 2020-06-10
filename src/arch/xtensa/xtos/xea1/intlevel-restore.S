@@ -55,7 +55,7 @@ _xtos_restore_intlevel:
 	abi_entry
 #if XCHAL_HAVE_INTERRUPTS && XTOS_VIRTUAL_INTENABLE
 	mov	a3, a2
-#if CONFIG_SMP
+#if CONFIG_MULTICORE
 	xtos_addr_percore	a4, xtos_intstruct
 #else
 	movi	a4, _xtos_intstruct

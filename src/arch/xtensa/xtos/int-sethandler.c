@@ -30,7 +30,7 @@
 #include <sof-config.h>
 
 #if XCHAL_HAVE_INTERRUPTS
-#if CONFIG_SMP
+#if CONFIG_MULTICORE
 extern struct xtos_core_data *core_data_ptr[PLATFORM_CORE_COUNT];
 #else
 /*
@@ -58,7 +58,7 @@ _xtos_handler _xtos_set_interrupt_handler_arg( int n, _xtos_handler f, void *arg
         ret = 0;     /* priority level too high to safely handle in C */
     }
     else {
-#if CONFIG_SMP
+#if CONFIG_MULTICORE
         entry = &(core_data_ptr[cpu_get_id()]->xtos_int_data.xtos_interrupt_table.array[MAPINT(n)]);
 #else
         entry = xtos_interrupt_table + MAPINT(n);

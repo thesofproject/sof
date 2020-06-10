@@ -29,7 +29,7 @@
 // SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <sof-config.h>
-#if CONFIG_SMP
+#if CONFIG_MULTICORE
 #include <sof/lib/cpu.h>
 #include <sof/lib/memory.h>
 #endif
@@ -73,7 +73,7 @@
 	.align 4
 
 _start:
-#if CONFIG_SMP
+#if CONFIG_MULTICORE
 	// each core unpacks xtos structures for itself
 	// nevertheless core 0 initializes shared xtosstruct
 	get_prid 	a5
@@ -117,7 +117,7 @@ _start:
 	movi	a3, core_data_ptr
 	s32i	a2, a3, 0
 
-#if CONFIG_SMP
+#if CONFIG_MULTICORE
 	// Initialize the stack pointer.
 	// See the "ABI and Software Conventions" chapter in the
 	// Xtensa ISA Reference manual for details.
@@ -159,7 +159,7 @@ xtos_per_core:
 	writesr	excsave 5 a4
 #endif
 
-#if CONFIG_SMP
+#if CONFIG_MULTICORE
 	get_prid	a5
 #if PLATFORM_MASTER_CORE_ID == 0
 	beqz		a5, xtos_per_core_obtain_xtos_structs
@@ -250,7 +250,7 @@ xtos_per_core_init_interrupt_mask:
 	// Assign stack ptr before PS is initialized to avoid any debugger
 	// side effects and prevent from double exception.
 	xtos_stack_addr_percore sp, a3, _stack_sentry, _sof_core_s_start, SOF_STACK_SIZE
-#else	/* CONFIG_SMP */
+#else	/* CONFIG_MULTICORE */
 	movi	sp, __stack
 #endif
 

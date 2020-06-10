@@ -38,7 +38,7 @@ struct schedulers **arch_schedulers_get(void)
 	return NULL;
 }
 
-#if CONFIG_SMP
+#if CONFIG_MULTICORE
 
 int idc_send_msg(struct idc_msg *msg, uint32_t mode)
 {

@@ -33,6 +33,7 @@ if(CONFIG_CAVS_ALH)
 	add_local_sources(sof alh.c)
 endif()
 
-if(CONFIG_SMP)
+# Build IDC driver only when not building in Zephyr
+if(CONFIG_MULTICORE AND NOT CONFIG_SOC_FAMILY_INTEL_ADSP)
 	add_local_sources(sof idc.c)
 endif()
