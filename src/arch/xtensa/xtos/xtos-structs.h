@@ -26,7 +26,7 @@ struct thread_data {
 };
 
 struct xtos_core_data {
-#if CONFIG_SMP
+#if CONFIG_MULTICORE
 	struct XtosInterruptStructure xtos_int_data;
 #endif
 #if CONFIG_INTERRUPT_LEVEL_1

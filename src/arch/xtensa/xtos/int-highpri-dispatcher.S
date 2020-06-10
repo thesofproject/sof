@@ -34,7 +34,7 @@
 // to be the interrupt priority level of the vector, then include this file.
 
 
-#if CONFIG_SMP
+#if CONFIG_MULTICORE
 #include <sof/lib/cpu.h>
 #endif
 #include <xtensa/coreasm.h>
@@ -96,7 +96,7 @@ STRUCT_END(HighPriFrame)
 
 	//  Allocate save area and stack:
 	//  (must use .bss, not .comm, because the subsequent .set does not work otherwise)
-#if CONFIG_SMP
+#if CONFIG_MULTICORE
 	.macro generate_stack_for_int core_id
 		.if GREATERTHAN(PLATFORM_CORE_COUNT, \core_id)
 			.section .bss, "aw"
@@ -126,7 +126,7 @@ LABEL(_Pri_,_HandlerAddress):	.space 4
 	.align	4
 	.global	LABEL(_Level,FromVector)
 LABEL(_Level,FromVector):
-#if CONFIG_SMP
+#if CONFIG_MULTICORE
 	xtos_stack_addr_percore_add	a2, LABEL(_Pri_,_Stack), PRI_N_STACK_SIZE	// get ptr to save area
 #else
 	movi	a2, LABEL(_Pri_,_Stack) + PRI_N_STACK_SIZE
@@ -298,7 +298,7 @@ LABEL(Pri_,_loop):				// handle all enabled & pending interrupts
 	//  Compute pointer to interrupt table entry, given mask a14 with single bit set:
 
 # if XCHAL_HAVE_NSA
-#if CONFIG_SMP
+#if CONFIG_MULTICORE
 	xtos_addr_percore_sub	a12, xtos_interrupt_table, (32-XCHAL_NUM_INTERRUPTS)*8
 #else
 	movi	a12, xtos_interrupt_table - (32-XCHAL_NUM_INTERRUPTS)*8
@@ -306,7 +306,7 @@ LABEL(Pri_,_loop):				// handle all enabled & pending interrupts
 	nsau	a14, a14		// get index of bit in a14, numbered from msbit
 	addx8	a12, a14, a12
 # else /* XCHAL_HAVE_NSA */
-#if CONFIG_SMP
+#if CONFIG_MULTICORE
 	xtos_addr_percore	a12, xtos_interrupt_table	// pointer to interrupt table
 #else
 	movi	a12, xtos_interrupt_table	// pointer to interrupt table
@@ -338,7 +338,7 @@ LABEL(Pri_,_loop):				// handle all enabled & pending interrupts
 # endif
 
 	movi	a13, INTLEVEL_N_MASK	// (if interrupt is s/w or edge-triggered or write/err only)
-#if CONFIG_SMP
+#if CONFIG_MULTICORE
 	xtos_addr_percore	a12, xtos_interrupt_table	// get pointer to its interrupt table entry
 #else
 	movi	a12, xtos_interrupt_table	// get pointer to its interrupt table entry
@@ -436,7 +436,7 @@ LABEL(Pri_,_spurious):
 	//  Note:  register window has rotated, ie. a0..a15 clobbered.
 
 	//  Reload initial stack pointer:
-#if CONFIG_SMP
+#if CONFIG_MULTICORE
 	xtos_stack_addr_percore_add	a1, LABEL(_Pri_,_Stack), PRI_N_STACK_SIZE	// - 16
 #else
 	movi	a1, LABEL(_Pri_,_Stack) + PRI_N_STACK_SIZE	// - 16

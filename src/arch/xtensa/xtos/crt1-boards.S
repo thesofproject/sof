@@ -29,7 +29,7 @@
 // SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
-#if CONFIG_SMP
+#if CONFIG_MULTICORE
 #include <sof/lib/cpu.h>
 #include <sof/lib/memory.h>
 #endif
@@ -73,7 +73,7 @@
 	.align 4
 
 _start:
-#if CONFIG_SMP
+#if CONFIG_MULTICORE
 	// each core unpacks xtos structures for itself
 	// nevertheless core 0 initializes shared xtosstruct
 	get_prid 	a5
@@ -163,10 +163,11 @@ xtos_per_core:
 	writesr	excsave 5 a4
 #endif
 
-#if CONFIG_SMP
+#if CONFIG_MULTICORE
 	get_prid	a5
 	movi		a4, PLATFORM_MASTER_CORE_ID
 	beq		a5, a4, xtos_per_core_obtain_xtos_structs
+#endif
 
 xtos_per_core_cacheattr:
 #if XCHAL_HAVE_CACHEATTR || XCHAL_HAVE_MIMIC_CACHEATTR || \

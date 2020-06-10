@@ -11,7 +11,7 @@ config CORE_COUNT
 	  Number of used cores
 	  Lowering available core count could result in lower power consumption
 
-config SMP
+config MULTICORE
 	bool
 	default CORE_COUNT > 1
 	help

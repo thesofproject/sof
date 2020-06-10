@@ -31,7 +31,7 @@
 
 enum task_state task_main_slave_core(void *data)
 {
-#if CONFIG_SMP
+#if CONFIG_MULTICORE
 	/* main audio processing loop */
 	while (1) {
 		/* sleep until next IDC or DMA */
