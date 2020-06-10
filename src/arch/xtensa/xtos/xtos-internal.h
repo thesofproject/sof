@@ -28,7 +28,7 @@
 #define XTOS_INTERNAL_H
 
 
-#if CONFIG_SMP
+#if CONFIG_MULTICORE
 #include <sof/lib/cpu.h>
 #endif
 #include <sof/lib/memory.h>
@@ -327,7 +327,7 @@ XTOS_PENDING_OFS:	.space	4	/* _xtos_pending variable */
 #endif
 	.endm
 
-#if CONFIG_SMP
+#if CONFIG_MULTICORE
 	// xtos_stack_addr_percore ax, ay, stack_master, stack_slave, stack_size
 	// Retrieves address of end of stack buffer for certain core to register ax.
 	.macro	xtos_stack_addr_percore ax, ay, stack_master_addr, mem_blk_slave_addr, stack_size
@@ -386,7 +386,7 @@ exit:
 	xtos_addr_percore	\ax, \symbol
 	addi			\ax, \ax, -\offset
 	.endm
-#endif /* CONFIG_SMP */
+#endif /* CONFIG_MULTICORE */
 
 	// xtos_addr_percore ax, structure_name
 	// Pointer to structure per core.
@@ -510,7 +510,7 @@ typedef struct XtosIntMaskEntry {
 } XtosIntMaskEntry;
 # endif
 
-#if CONFIG_SMP
+#if CONFIG_MULTICORE
 struct XtosIntStruct
 {
 	unsigned xtos_enabled;
@@ -608,7 +608,7 @@ extern void xtos_unhandled_interrupt();
 #define GREATERTHAN(a, b)	(((b) - (a)) & ~0xFFF)
 #define EQUAL(a, b)		((1 << (a)) & (1 << (b)))
 
-#if CONFIG_SMP
+#if CONFIG_MULTICORE
 // sizeof(xtos_enabled)
 #define XTOS_ENABLED_SIZE_PER_CORE	(4)
 // sizeof(vpri_enabled)

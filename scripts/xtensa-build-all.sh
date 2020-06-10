@@ -314,7 +314,7 @@ do
 	if [ "x$BUILD_FORCE_UP" == "xyes" ]
 	then
 		echo "Force building UP(xtensa)..."
-		echo "CONFIG_SMP=n" >> override.config
+		echo "CONFIG_MULTICORE=n" >> override.config
 	fi
 
 	if [ -e override.config ]

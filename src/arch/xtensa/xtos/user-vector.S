@@ -94,13 +94,13 @@ _UserExceptionFromVector:
 	 *  entries that have no handler point to xtos_unhandled_exception.
 	 */
 	.data
-#if CONFIG_SMP
+#if CONFIG_MULTICORE
 	.global	xtos_exc_handler_table_r
 #else
 	.global	xtos_exc_handler_table
 #endif
 	.align 4
-#if CONFIG_SMP
+#if CONFIG_MULTICORE
 xtos_exc_handler_table_r:
 #else
 xtos_exc_handler_table:
@@ -152,7 +152,7 @@ xtos_exc_handler_table:
 	.rept	XCHAL_EXCCAUSE_NUM-40
 	.word	xtos_unhandled_exception	//40-63 (reserved for TIE)
 	.endr
-#if CONFIG_SMP
+#if CONFIG_MULTICORE
 	.section .bss
 	.global	xtos_exc_handler_table
 	.align 4

@@ -16,6 +16,6 @@ else()
 	add_local_sources(sof ipc.c)
 endif()
 
-if(CONFIG_SMP)
+if(CONFIG_MULTICORE)
 	add_local_sources(sof idc.c)
 endif()

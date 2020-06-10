@@ -88,7 +88,7 @@ static void initialize_pointers_per_core(void)
 #if CONFIG_INTERRUPT_LEVEL_5
 	p->xtos_stack_for_interrupt_5 = core_data->xtos_stack_for_interrupt_5;
 #endif
-#if CONFIG_SMP
+#if CONFIG_MULTICORE
 	p->xtos_enabled = &core_data->xtos_int_data.xtos_enabled;
 	p->xtos_intstruct = &core_data->xtos_int_data;
 	p->xtos_interrupt_table =
@@ -109,7 +109,7 @@ int arch_init(void)
 	return 0;
 }
 
-#if CONFIG_SMP
+#if CONFIG_MULTICORE
 
 #include <sof/debug/panic.h>
 #include <sof/drivers/idc.h>
