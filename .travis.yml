@@ -92,3 +92,10 @@ jobs:
         # any issue. This time doxygen stops on the first issue.
         - printf 'WARN_AS_ERROR = YES\n' >> doc/sof.doxygen.in
         - ninja -C doxybuild -v doc
+
+notifications:
+  irc:
+    channels:
+      - "chat.freenode.net#sof"
+    on_success: always
+    on_failure: always
