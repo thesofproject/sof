@@ -12,7 +12,7 @@
 #include <sof/lib/notifier.h>
 #include <sof/sof.h>
 #include <sof/spinlock.h>
-#include <config.h>
+
 
 #if CONFIG_BAYTRAIL
 const struct freq_table platform_cpu_freq[] = {

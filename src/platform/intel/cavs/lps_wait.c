@@ -14,7 +14,7 @@
 #include <sof/lib/pm_runtime.h>
 #include <sof/lib/shim.h>
 #include <sof/schedule/task.h>
-#include <config.h>
+
 #include <stdint.h>
 
 #define LPSRAM_MAGIC_VALUE 0x13579BDF

@@ -36,7 +36,7 @@
 #include <ipc/topology.h>
 #include <kernel/abi.h>
 #include <user/trace.h>
-#include <config.h>
+
 #include <errno.h>
 #include <stdbool.h>
 #include <stddef.h>

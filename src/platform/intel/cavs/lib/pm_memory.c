@@ -12,7 +12,7 @@
 #include <sof/lib/uuid.h>
 #include <sof/trace/trace.h>
 #include <user/trace.h>
-#include <config.h>
+
 #include <stdbool.h>
 #include <stdint.h>
 

@@ -3,7 +3,7 @@
  * Copyright(c) 2019 Intel Corporation. All rights reserved.
  */
 
-#include <config.h>
+
 #include <sof/bit.h>
 #include <sof/common.h>
 #include <sof/drivers/interrupt.h>

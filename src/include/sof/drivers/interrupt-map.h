@@ -8,7 +8,7 @@
 #ifndef __SOF_DRIVERS_INTERRUPT_MAP_H__
 #define __SOF_DRIVERS_INTERRUPT_MAP_H__
 
-#include <config.h>
+
 
 #define SOF_IRQ_PASSIVE_LEVEL	0
 #define SOF_IRQ_ID_SHIFT	29

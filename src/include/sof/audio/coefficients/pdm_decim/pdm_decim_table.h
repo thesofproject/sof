@@ -11,7 +11,7 @@
 #define __SOF_AUDIO_COEFFICIENTS_PDM_DECIM_PDM_DECIM_TABLE_H__
 
 #include "pdm_decim_fir.h"
-#include <config.h>
+
 #include <stddef.h>
 
 #if CONFIG_INTEL_DMIC_FIR_DECIMATE_BY_2

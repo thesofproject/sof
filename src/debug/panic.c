@@ -13,7 +13,7 @@
 #include <sof/string.h>
 #include <sof/trace/trace.h>
 #include <ipc/trace.h>
-#include <config.h>
+
 #include <stddef.h>
 #include <stdint.h>
 

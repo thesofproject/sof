@@ -10,7 +10,7 @@
 
 #include <platform/drivers/mn.h>
 #include <sof/sof.h>
-#include <config.h>
+
 #include <stdbool.h>
 #include <stdint.h>
 

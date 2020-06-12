@@ -10,7 +10,7 @@
 #ifndef __ARCH_LIB_CPU_H__
 #define __ARCH_LIB_CPU_H__
 
-#include <config.h>
+
 #include <xtensa/config/core-isa.h>
 
 #if CONFIG_SMP

@@ -16,7 +16,7 @@
 #include <sof/lib/memory.h>
 #include <sof/lib/shim.h>
 #include <sof/platform.h>
-#include <config.h>
+
 #include <xtensa/config/core-isa.h>
 #include <xtensa/corebits.h>
 #include "xtos-internal.h"

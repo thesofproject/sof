@@ -8,7 +8,7 @@
 
 #include <sof/drivers/interrupt.h>
 #include <sof/lib/shim.h>
-#include <config.h>
+
 #include <stdint.h>
 
 void platform_interrupt_init(void) {}

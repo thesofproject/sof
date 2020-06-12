@@ -29,7 +29,7 @@
 // SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <sof/lib/memory.h>
-#include <config.h>
+
 #include <xtensa/coreasm.h>
 
 // Exports

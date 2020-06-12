@@ -20,7 +20,7 @@
 #include <sof/lib/alloc.h>
 #include <sof/lib/cache.h>
 #include <ipc/stream.h>
-#include <config.h>
+
 #include <stdbool.h>
 #include <stdint.h>
 

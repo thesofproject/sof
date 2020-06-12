@@ -20,7 +20,7 @@
 #include <sof/bit.h>
 #include <sof/common.h>
 #include <ipc/stream.h>
-#include <config.h>
+
 #include <stddef.h>
 #include <stdint.h>
 

@@ -12,7 +12,7 @@
 #include <sof/trace/dma-trace.h>
 #include <sof/trace/trace.h>
 #include <user/trace.h>
-#include <config.h>
+
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>

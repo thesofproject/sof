@@ -8,7 +8,7 @@
 #ifndef __SOF_LIB_IO_H__
 #define __SOF_LIB_IO_H__
 
-#include <config.h>
+
 #include <stdint.h>
 
 #if CONFIG_LIBRARY

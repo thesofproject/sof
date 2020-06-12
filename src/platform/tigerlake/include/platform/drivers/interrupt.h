@@ -15,7 +15,7 @@
 #if !defined(__ASSEMBLER__) && !defined(LINKER)
 #include <cavs/drivers/interrupt.h>
 #include <sof/bit.h>
-#include <config.h>
+
 #endif
 
 #define PLATFORM_IRQ_HW_NUM	XCHAL_NUM_INTERRUPTS

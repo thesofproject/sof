@@ -21,7 +21,7 @@
 #include <sof/spinlock.h>
 #include <sof/trace/trace.h>
 #include <user/trace.h>
-#include <config.h>
+
 #include <stddef.h>
 #include <stdint.h>
 
