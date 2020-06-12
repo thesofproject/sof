@@ -10,7 +10,7 @@
 #ifndef __CAVS_DRIVERS_IDC_H__
 #define __CAVS_DRIVERS_IDC_H__
 
-#include <config.h>
+
 #include <stdint.h>
 
 struct idc_msg;

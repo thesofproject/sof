@@ -50,7 +50,7 @@
 #include <user/trace.h>
 #include <ipc/probe.h>
 #include <sof/probe/probe.h>
-#include <config.h>
+
 #include <errno.h>
 #include <stdbool.h>
 #include <stddef.h>

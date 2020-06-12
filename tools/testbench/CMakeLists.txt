@@ -25,15 +25,19 @@ sof_append_relative_path_definitions(testbench)
 
 target_include_directories(testbench PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
-target_compile_options(testbench PRIVATE -g -O3 -Wall -Werror -Wl,-EL -Wmissing-prototypes -Wimplicit-fallthrough=3 -DCONFIG_LIBRARY)
+set(sof_source_directory "${PROJECT_SOURCE_DIR}/../..")
+set(sof_install_directory "${PROJECT_BINARY_DIR}/sof_ep/install")
+set(sof_binary_directory "${PROJECT_BINARY_DIR}/sof_ep/build")
+
+set(config_h ${sof_binary_directory}/library_autoconfig.h)
+
+target_compile_options(testbench PRIVATE -g -O3 -Wall -Werror -Wl,-EL -Wmissing-prototypes
+  -Wimplicit-fallthrough=3 -DCONFIG_LIBRARY -imacros ${config_h})
 
 target_link_libraries(testbench PRIVATE -ldl -lm)
 
 install(TARGETS testbench DESTINATION bin)
 
-set(sof_source_directory "${PROJECT_SOURCE_DIR}/../..")
-set(sof_install_directory "${PROJECT_BINARY_DIR}/sof_ep/install")
-set(sof_binary_directory "${PROJECT_BINARY_DIR}/sof_ep/build")
 
 include(ExternalProject)
 
@@ -45,6 +49,7 @@ ExternalProject_Add(sof_ep
 	CMAKE_ARGS -DCONFIG_LIBRARY=ON
 		-DCMAKE_INSTALL_PREFIX=${sof_install_directory}
 		-DCMAKE_VERBOSE_MAKEFILE=${CMAKE_VERBOSE_MAKEFILE}
+		-DCONFIG_H_PATH=${config_h}
 	BUILD_ALWAYS 1
 	BUILD_BYPRODUCTS "${sof_install_directory}/lib/libsof.so"
 )

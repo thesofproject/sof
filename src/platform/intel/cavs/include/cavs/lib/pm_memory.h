@@ -21,7 +21,7 @@
 #include <sof/lib/shim.h>
 #include <sof/lib/wait.h>
 #include <sof/math/numbers.h>
-#include <config.h>
+
 #include <stdbool.h>
 #include <stdint.h>
 

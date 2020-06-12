@@ -22,7 +22,7 @@
 // TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 // SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-#include <config.h>
+
 #include <xtensa/coreasm.h>
 #include <xtensa/config/system.h>
 #include "xtos-internal.h"

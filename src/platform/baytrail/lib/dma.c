@@ -11,7 +11,7 @@
 #include <sof/lib/memory.h>
 #include <sof/sof.h>
 #include <sof/spinlock.h>
-#include <config.h>
+
 
 const struct dw_drv_plat_data dmac0 = {
 	.chan[0] = {

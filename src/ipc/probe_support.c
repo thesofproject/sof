@@ -7,7 +7,7 @@
 #include <ipc/info.h>
 #include <sof/fw-ready-metadata.h>
 #include <sof/compiler_attributes.h>
-#include <config.h>
+
 
 const struct sof_ipc_probe_support probe_support
 	__section(".fw_ready_metadata") = {

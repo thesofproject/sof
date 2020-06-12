@@ -13,7 +13,7 @@
 #include <sof/lib/perf_cnt.h>
 #include <sof/schedule/task.h>
 #include <sof/sof.h>
-#include <config.h>
+
 #include <stdbool.h>
 #include <stdint.h>
 

@@ -1,4 +1,4 @@
-#include <config.h>
+/* SPDX-License-Identifier: BSD-3-Clause */
 
 #if CONFIG_HASWELL
 #include <xtensa/config/core-isa-hsw.h>

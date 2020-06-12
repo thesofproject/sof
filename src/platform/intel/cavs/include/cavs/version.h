@@ -8,7 +8,7 @@
 #ifndef __CAVS_VERSION_H__
 #define __CAVS_VERSION_H__
 
-#include <config.h>
+
 
 #define CAVS_VERSION_1_5 0x10500
 #define CAVS_VERSION_1_8 0x10800

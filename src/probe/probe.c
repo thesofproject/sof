@@ -5,7 +5,7 @@
 // Author: Artur Kloniecki <arturx.kloniecki@linux.intel.com>
 // Author: Adrian Bonislawski <adrian.bonislawski@linux.intel.com>
 
-#include <config.h>
+
 #include <sof/audio/buffer.h>
 #include <sof/audio/component.h>
 #include <sof/probe/probe.h>

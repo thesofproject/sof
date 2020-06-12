@@ -8,7 +8,7 @@
 #ifndef __SOF_PROBE_PROBE_H__
 #define __SOF_PROBE_PROBE_H__
 
-#include <config.h>
+
 
 #if CONFIG_PROBE
 

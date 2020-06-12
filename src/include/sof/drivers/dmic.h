@@ -8,7 +8,7 @@
 #ifndef __SOF_DRIVERS_DMIC_H__
 #define __SOF_DRIVERS_DMIC_H__
 
-#include <config.h>
+
 
 #if CONFIG_INTEL_DMIC
 

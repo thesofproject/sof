@@ -25,7 +25,7 @@
 #include <sof/schedule/task.h>
 #include <sof/spinlock.h>
 #include <ipc/topology.h>
-#include <config.h>
+
 #include <errno.h>
 #include <stdbool.h>
 #include <stddef.h>

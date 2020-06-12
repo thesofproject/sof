@@ -16,7 +16,7 @@
 #include <ipc/dai.h>
 #include <ipc/dai-intel.h>
 #include <user/trace.h>
-#include <config.h>
+
 #include <stdint.h>
 
 #define SSP_CLOCK_XTAL_OSCILLATOR	0x0

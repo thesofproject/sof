@@ -13,7 +13,7 @@
 #include <sof/sof.h>
 #include <sof/spinlock.h>
 #include <sof/trace/trace.h>
-#include <config.h>
+
 #include <stdbool.h>
 #include <stdint.h>
 

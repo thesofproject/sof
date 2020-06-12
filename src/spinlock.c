@@ -9,7 +9,7 @@
 #include <sof/lib/uuid.h>
 #endif
 #include <sof/spinlock.h>
-#include <config.h>
+
 #include <stdint.h>
 
 #if CONFIG_DEBUG_LOCKS

@@ -14,7 +14,7 @@
 #if !defined(__ASSEMBLER__) && !defined(LINKER)
 #include <sof/lib/cpu.h>
 #endif
-#include <config.h>
+
 
 /* data cache line alignment */
 #define PLATFORM_DCACHE_ALIGN	DCACHE_LINE_SIZE

@@ -35,7 +35,7 @@
 #include <ipc/stream.h>
 #include <ipc/topology.h>
 #include <user/trace.h>
-#include <config.h>
+
 #include <errno.h>
 #include <stdbool.h>
 #include <stddef.h>

@@ -12,7 +12,7 @@
 #include <sof/lib/io.h>
 #include <ipc/dai.h>
 #include <ipc/stream.h>
-#include <config.h>
+
 #include <errno.h>
 #include <stdint.h>
 

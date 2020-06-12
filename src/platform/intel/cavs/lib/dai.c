@@ -18,7 +18,7 @@
 #include <sof/spinlock.h>
 #include <ipc/dai.h>
 #include <ipc/stream.h>
-#include <config.h>
+
 
 #if CONFIG_INTEL_SSP
 

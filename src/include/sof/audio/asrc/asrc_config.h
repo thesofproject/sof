@@ -6,7 +6,7 @@
 #ifndef __SOF_AUDIO_ASRC_ASRC_CONFIG_H__
 #define __SOF_AUDIO_ASRC_ASRC_CONFIG_H__
 
-#include <config.h>
+
 
 /* If next define is set to 1 the ASRC is configured automatically. Setting
  * to zero temporarily is useful is for testing needs.

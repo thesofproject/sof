@@ -10,7 +10,7 @@
 #ifndef __PLATFORM_DRIVERS_PMC_H__
 #define __PLATFORM_DRIVERS_PMC_H__
 
-#include <config.h>
+
 #include <stdint.h>
 
 /* messages */
