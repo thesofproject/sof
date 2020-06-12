@@ -46,7 +46,7 @@ zephyr_include_directories(
 # Files that are commented may not be needed.
 
 # BYT, CHT, BSW
-if (CONFIG_SOC_SERIES_INTEL_BAYTRAIL)
+if (CONFIG_SOC_SERIES_INTEL_ADSP_BAYTRAIL)
 	zephyr_library_sources(
 		../src/drivers/intel/baytrail/ipc.c
 		#../src/drivers/intel/baytrail/interrupt.c
@@ -60,7 +60,7 @@ if (CONFIG_SOC_SERIES_INTEL_BAYTRAIL)
 endif()
 
 # HSW, BDW
-if (CONFIG_SOC_SERIES_INTEL_BROADWELL)
+if (CONFIG_SOC_SERIES_INTEL_ADSP_BROADWELL)
 	zephyr_library_sources(
 		../src/drivers/intel/haswell/ipc.c
 		#../src/drivers/intel/haswell/interrupt.c
