@@ -1,14 +1,14 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 find_package(Git)
+set(RIMAGE_CMAKE "${SOF_ROOT_SOURCE_DIRECTORY}/rimage/CMakeLists.txt")
+
 if(GIT_FOUND AND EXISTS "${SOF_ROOT_SOURCE_DIRECTORY}/.git")
-	# Update submodules by default
-	option(GIT_SUBMODULE "Check submodules during build" ON)
 
-	if(GIT_SUBMODULE)
-		message(STATUS "Git submodule update")
+	if(NOT EXISTS "${RIMAGE_CMAKE}")
+		message(STATUS "Git submodules update")
 
-		execute_process(COMMAND ${GIT_EXECUTABLE} submodule update --init --recursive
+		execute_process(COMMAND ${GIT_EXECUTABLE} submodule update --init --merge --recursive
 				WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 				RESULT_VARIABLE GIT_SUBMOD_RESULT)
 
@@ -18,6 +18,7 @@ if(GIT_FOUND AND EXISTS "${SOF_ROOT_SOURCE_DIRECTORY}/.git")
 	endif()
 endif()
 
-if(NOT EXISTS "${SOF_ROOT_SOURCE_DIRECTORY}/rimage/CMakeLists.txt")
-	message(FATAL_ERROR "The submodules were not downloaded! GIT_SUBMODULE was turned off or failed. Please update submodules and try again.")
+# rimage is not optional, see "git grep include.*rimage"
+if(NOT EXISTS "${RIMAGE_CMAKE}")
+	message(FATAL_ERROR "rimage not found! Please update git submodules and try again.")
 endif()
