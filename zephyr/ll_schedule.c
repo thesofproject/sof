@@ -30,9 +30,10 @@ static void ll_work_handler(struct k_work *work)
 {
 	struct task *task = CONTAINER_OF(work, struct task, z_delayed_work);
 	uint64_t next_start, ticks;
-	uint64_t ticks_us = clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1) * 1000;
+	uint64_t ticks_10usec = 192;
 
 	//_log_message(LOG_LEVEL_INF, 1, " work handler task %p", task);
+
 
 	/* check state prior to start */
 	switch (task->state) {
@@ -42,16 +43,23 @@ static void ll_work_handler(struct k_work *work)
 		task->state = task_run(task);
 		break;
 	default:
-			/* no need to do work now */
-			return;
+		/* no need to do work now */
+		return;
 	}
 
 	/* do we need to reschedule ? */
 	switch (task->state) {
 	case SOF_TASK_STATE_RESCHEDULE:
+
+		/* work out next start time relative to start */
 		ticks = platform_timer_get(NULL) - task->start;
-		next_start = ticks_us / ticks;
-		next_start = task->period - (next_start / 1000);
+
+		next_start = (ticks / ticks_10usec) * 100;
+
+		if (task->period < next_start)
+			next_start = task->period;
+		else
+			next_start = task->period - next_start;
 
 		schedule_task(task, next_start - SCHEDULING_COST, task->period);
 		break;
@@ -64,18 +72,17 @@ static void ll_work_handler(struct k_work *work)
 static int schedule_ll_task(struct task *task, uint64_t start,
 			      uint64_t period)
 {
+	/* convert to millisecs from microsecs */
 	k_timeout_t start_time = K_USEC(start);
-	uint64_t ticks_ms = clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1);
 
-	/* start in local timebase */
-	task->start = (start * ticks_ms) / 1000;
+	/* start in local timebase - TODO use zephyr API */
+	task->start = platform_timer_get(NULL);
 
 	/* SOF start time of task */
 	task->period = period;
-	task->start += platform_timer_get(NULL);
 	task->state = SOF_TASK_STATE_QUEUED;
 
-	/* start work - zephyr using CCOUNT DSP clock domain */
+	/* start work - zephyr using CAVS DSP clock domain */
 	k_delayed_work_submit_to_queue(&ll_workq,
 				       &task->z_delayed_work,
 					   start_time);
