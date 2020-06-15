@@ -21,12 +21,15 @@ pwd=$(pwd)
 print_usage()
 {
     cat <<EOF
+Re-configures and re-builds SOF using the corresponding compiler and
+platform's _defconfig file.
+
 usage: xtensa-build.sh [options] platform(s)
        -r Build rom (gcc only)
        -a Build all platforms
        -u Force UP ARCH
        -d Enable debug build
-       -c Configure defconfig
+       -c Interactive menuconfig
        -k Use private key
        -v Verbose Makefile log
        -j n Set number of make build jobs. Jobs=#cores when no flag. \
