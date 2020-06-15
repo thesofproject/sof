@@ -33,6 +33,10 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#ifdef __ZEPHYR__
+#include <kernel.h>
+#endif
+
 /* 5276b491-5b64-464e-8984-dc228ef9e6a1 */
 DECLARE_SOF_UUID("sa", sa_uuid, 0x5276b491, 0x5b64, 0x464e,
 		 0x89, 0x84, 0xdc, 0x22, 0x8e, 0xf9, 0xe6, 0xa1);
@@ -88,7 +92,11 @@ void sa_init(struct sof *sof, uint64_t timeout)
 			  SOF_MEM_CAPS_RAM, sizeof(*sof->sa));
 
 	/* set default timeouts */
+#ifdef __ZEPHYR__
+	ticks = k_us_to_cyc_ceil64(timeout);
+#else
 	ticks = clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1) * timeout / 1000;
+#endif
 
 	/* TODO: change values after minimal drifts will be assured */
 	sof->sa->panic_timeout = 2 * ticks;	/* 100% delay */
