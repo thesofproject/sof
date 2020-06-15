@@ -51,8 +51,8 @@ static void alloc_shared_slave_cores_objects(void)
 		panic(SOF_IPC_PANIC_MEM);
 
 	shared_vecbase_ptr = dynamic_vectors;
-	dcache_writeback_invalidate_region(shared_vecbase_ptr,
-					   SOF_DYNAMIC_VECTORS_SIZE);
+	dcache_writeback_region(&shared_vecbase_ptr,
+				sizeof(shared_vecbase_ptr));
 }
 
 /**
