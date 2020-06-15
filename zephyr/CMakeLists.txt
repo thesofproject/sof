@@ -272,7 +272,6 @@ zephyr_library_sources(
 	../src/lib/notifier.c
 	../src/lib/lib.c
 	../src/lib/pm_runtime.c
-	../src/lib/agent.c
 	#../src/lib/alloc.c
 	../src/lib/wait.c
 	../src/lib/dma.c
@@ -323,6 +322,8 @@ zephyr_library_sources(
 	schedule.c
 	init.c
 )
+
+zephyr_library_sources_ifdef(CONFIG_HAVE_AGENT ../src/lib/agent.c)
 
 zephyr_library_link_libraries(SOF)
 target_link_libraries(SOF INTERFACE zephyr_interface)
