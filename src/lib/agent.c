@@ -70,8 +70,8 @@ static enum task_state validate(void *data)
 		trace_sa_warn("validate(), ll drift detected, delta = %llu",
 			      delta);
 #else
-		trace_sa_warn("validate(), ll drift detected, delta = %u",
-				      (uint32_t)delta);
+		trace_sa_warn("validate(), ll drift detected, delta = %u to %u",
+				      (uint32_t)delta, (uint32_t)sa->warn_timeout);
 #endif
 	/* update last_check to current */
 	sa->last_check = current;
@@ -85,14 +85,17 @@ void sa_init(struct sof *sof, uint64_t timeout)
 {
 	uint64_t ticks;
 
-	trace_sa("sa_init(), timeout = %u", timeout);
+	trace_sa_error("sa_init(), timeout = %u", (uint32_t)timeout);
 
 	sof->sa = rzalloc(SOF_MEM_ZONE_SYS, SOF_MEM_FLAG_SHARED,
 			  SOF_MEM_CAPS_RAM, sizeof(*sof->sa));
 
+#if __ZEPHYR__
+	ticks = k_us_to_cyc_ceil64(timeout);
+#else
 	/* set default timeouts */
 	ticks = clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1) * timeout / 1000;
-
+#endif
 	/* TODO: change values after minimal drifts will be assured */
 	sof->sa->panic_timeout = 2 * ticks;	/* 100% delay */
 	sof->sa->warn_timeout = ticks + ticks / 20;	/* 5% delay */
@@ -101,8 +104,8 @@ void sa_init(struct sof *sof, uint64_t timeout)
 #if !defined __ZEPHYR__
 	sof->sa->panic_on_delay = true;
 #endif
-	trace_sa("sa_init(), ticks = %u, sof->sa->warn_timeout = %u, sof->sa->panic_timeout = %u",
-		 ticks, sof->sa->warn_timeout, sof->sa->panic_timeout);
+	trace_sa_error("sa_init(), ticks = %u, sof->sa->warn_timeout = %u, sof->sa->panic_timeout = %u",
+		 (uint32_t)ticks, (uint32_t)sof->sa->warn_timeout, (uint32_t)sof->sa->panic_timeout);
 
 	schedule_task_init_ll(&sof->sa->work, SOF_UUID(agent_work_task_uuid),
 			      SOF_SCHEDULE_LL_TIMER,
