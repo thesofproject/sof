@@ -323,14 +323,7 @@ uint32_t interrupt_disable(uint32_t irq, void *arg)
 /* TODO; zephyr should do this. */
 void platform_interrupt_init(void)
 {
-	int core = 0;
-
-	/* mask all external IRQs by default */
-	irq_write(REG_IRQ_IL2MSD(core), REG_IRQ_IL2MD_ALL);
-	irq_write(REG_IRQ_IL3MSD(core), REG_IRQ_IL3MD_ALL);
-	irq_write(REG_IRQ_IL4MSD(core), REG_IRQ_IL4MD_ALL);
-	irq_write(REG_IRQ_IL5MSD(core), REG_IRQ_IL5MD_ALL);
-
+	/* handled by zephyr */
 }
 
 /*
