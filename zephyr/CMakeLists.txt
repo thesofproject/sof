@@ -81,7 +81,7 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V15)
 		../src/drivers/intel/cavs/dmic.c
 		#../src/drivers/intel/cavs/interrupt.c
 		#../src/drivers/intel/cavs/idc.c
-		../src/drivers/intel/cavs/timer.c
+		#../src/drivers/intel/cavs/timer.c
 		../src/drivers/intel/cavs/ssp.c
 		../src/drivers/intel/cavs/mn.c
 	)
@@ -115,7 +115,7 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V18)
 		#../src/drivers/intel/cavs/sue-ipc.c
 		../src/drivers/intel/cavs/dmic.c
 		../src/drivers/intel/cavs/idc.c
-		../src/drivers/intel/cavs/timer.c
+		#../src/drivers/intel/cavs/timer.c
 		#../src/drivers/intel/cavs/sue-iomux.c
 		../src/drivers/intel/cavs/ssp.c
 		../src/drivers/intel/cavs/mn.c
@@ -154,7 +154,7 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V20)
 		../src/drivers/intel/cavs/ipc.c
 		../src/drivers/intel/cavs/dmic.c
 		../src/drivers/intel/cavs/idc.c
-		../src/drivers/intel/cavs/timer.c
+		#../src/drivers/intel/cavs/timer.c
 		../src/drivers/intel/cavs/ssp.c
 		../src/drivers/intel/cavs/mn.c
 		../src/drivers/intel/cavs/alh.c
@@ -191,7 +191,7 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V25)
 		../src/drivers/intel/cavs/ipc.c
 		../src/drivers/intel/cavs/dmic.c
 		../src/drivers/intel/cavs/idc.c
-		../src/drivers/intel/cavs/timer.c
+		#../src/drivers/intel/cavs/timer.c
 		../src/drivers/intel/cavs/ssp.c
 		../src/drivers/intel/cavs/mn.c
 		../src/drivers/intel/cavs/alh.c

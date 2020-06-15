@@ -478,3 +478,67 @@ int task_main_start(void)
 
 	return 0;
 }
+
+void platform_timer_start(struct timer *timer)
+{
+	/* handled by Zephyr */
+}
+
+void platform_timer_stop(struct timer *timer)
+{
+	/* handled by Zephyr */
+}
+
+int64_t platform_timer_set(struct timer *timer, uint64_t ticks)
+{
+	/* TODO: needs BYT and BDW versions - should call Zephyr 64bit API ? */
+	return shim_read64(SHIM_DSPWCT0C);
+}
+
+uint64_t platform_timer_get(struct timer *timer)
+{
+	/* TODO: needs BYT and BDW versions - should call Zephyr 64bit API ? */
+//	return arch_timer_get_system(timer);
+	return (uint64_t)shim_read64(SHIM_DSPWC);
+}
+
+/* get timestamp for host stream DMA position */
+void platform_host_timestamp(struct comp_dev *host,
+			     struct sof_ipc_stream_posn *posn)
+{
+	int err;
+
+	/* get host position */
+	err = comp_position(host, posn);
+	if (err == 0)
+		posn->flags |= SOF_TIME_HOST_VALID;
+}
+
+/* get timestamp for DAI stream DMA position */
+void platform_dai_timestamp(struct comp_dev *dai,
+			    struct sof_ipc_stream_posn *posn)
+{
+	int err;
+
+	/* get DAI position */
+	err = comp_position(dai, posn);
+	if (err == 0)
+		posn->flags |= SOF_TIME_DAI_VALID;
+
+	/* get SSP wallclock - DAI sets this to stream start value */
+	posn->wallclock = platform_timer_get(NULL) - posn->wallclock;
+	posn->wallclock_hz = clock_get_freq(PLATFORM_DEFAULT_CLOCK);
+	posn->flags |= SOF_TIME_WALL_VALID;
+}
+
+/* get current wallclock for componnent */
+void platform_dai_wallclock(struct comp_dev *dai, uint64_t *wallclock)
+{
+	*wallclock = platform_timer_get(NULL);
+}
+
+void platform_timer_clear(struct timer *timer)
+{
+	/* handled by Zephyr */
+}
+
