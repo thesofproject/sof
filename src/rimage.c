@@ -2,6 +2,7 @@
 //
 // Copyright(c) 2015 Intel Corporation. All rights reserved.
 
+#include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -189,10 +190,13 @@ found:
 	}
 
 	/* process and write output */
-	if (image.meu_offset)
+	if (image.meu_offset) {
+		assert(image.adsp->write_firmware_meu);
 		ret = image.adsp->write_firmware_meu(&image);
-	else
+	} else {
+		assert(image.adsp->write_firmware);
 		ret = image.adsp->write_firmware(&image);
+	}
 	if (ret)
 		goto out;
 
