@@ -39,6 +39,9 @@ ifdef(`SMART_SSP_INDEX',`',`errprint(note: Need to define SSP index for sof-smar
 # define(`SMART_SSP_NAME', `SSP1-Codec') define SSP BE dai_link name
 ifdef(`SMART_SSP_NAME',`',`errprint(note: Need to define SSP BE dai_link name for sof-smart-amplifier
 )')
+# define(`SMART_SSP_QUIRK', 0) define SSP quirk for special use, e.g. set SSP_QUIRK_LBM to verify
+# smart_amp nocodec mode. Set it to 0 by default for normal mode.
+ifdef(`SMART_SSP_QUIRK',`',`define(`SMART_SSP_QUIRK', 0)')
 ')
 
 # define(`SMART_BE_ID', 7) define BE dai_link ID
