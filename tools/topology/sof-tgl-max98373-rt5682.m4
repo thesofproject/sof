@@ -45,6 +45,8 @@ define(`SMART_SSP_INDEX', 1)
 define(`SMART_SSP_NAME', `SSP1-Codec')
 #define BE dai_link ID
 define(`SMART_BE_ID', 7)
+#define SSP mclk
+define(`SSP_MCLK', 19200000)
 # Playback related
 define(`SMART_PB_PPL_ID', 1)
 define(`SMART_PB_CH_NUM', 2)
@@ -199,7 +201,7 @@ dnl ssp1-maxmspk, ssp0-RTHeadset
 
 #SSP 0 (ID: 0)
 DAI_CONFIG(SSP, 0, 0, SSP0-Codec,
-        SSP_CONFIG(I2S, SSP_CLOCK(mclk, 19200000, codec_mclk_in),
+        SSP_CONFIG(I2S, SSP_CLOCK(mclk, SSP_MCLK, codec_mclk_in),
                       SSP_CLOCK(bclk, 2400000, codec_slave),
                       SSP_CLOCK(fsync, 48000, codec_slave),
                       SSP_TDM(2, 25, 3, 3),
