@@ -6,7 +6,7 @@
 set -e
 
 SUPPORTED_PLATFORMS=(byt cht bdw hsw apl skl kbl cnl sue icl jsl \
-                    imx8 imx8x imx8m)
+                    imx8 imx8x imx8m tgl)
 BUILD_ROM=no
 BUILD_DEBUG=no
 BUILD_FORCE_UP=no
@@ -25,7 +25,7 @@ Re-configures and re-builds SOF using the corresponding compiler and
 platform's _defconfig file.
 
 usage: xtensa-build.sh [options] platform(s)
-       -r Build rom (gcc only)
+       -r Build rom if available (gcc only)
        -a Build all platforms
        -u Force UP ARCH
        -d Enable debug build
@@ -197,6 +197,14 @@ do
 			XTENSA_TOOLS_VERSION="RG-2017.8-linux"
 			HAVE_ROM='yes'
 			;;
+		tgl)
+			PLATFORM="tigerlake"
+			ARCH="xtensa-smp"
+			XTENSA_CORE="X6H3CNL_2017_8"
+			HOST="xtensa-cnl-elf"
+			XTENSA_TOOLS_VERSION="RG-2017.8-linux"
+			HAVE_ROM='yes'
+			;;
 		jsl)
 			PLATFORM="jasperlake"
 			ARCH="xtensa-smp"
@@ -312,10 +320,18 @@ do
 		make overrideconfig
 	fi
 
-	make bin -j ${BUILD_JOBS} ${BUILD_VERBOSE}
+	if [ 'tgl' != "${platform}" ]; then
+		make bin -j "${BUILD_JOBS}" ${BUILD_VERBOSE}
+	else # FIXME: finish gcc support for tgl
+		make sof -j "${BUILD_JOBS}" ${BUILD_VERBOSE}
+		if [ "$BUILD_ROM" = "yes" ]; then
+			make rom_dump  ${BUILD_VERBOSE}
+		fi
+	fi
 
 	cd "$WORKDIR"
-done
+done # for platform in ...
 
 # list all the images
-ls -l build_*/*.ri
+ls -l build_*/*.ri build_*/src/arch/xtensa/rom*.bin || true
+ls -l build_*/sof
