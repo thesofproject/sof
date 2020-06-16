@@ -87,7 +87,7 @@ set(GENERATED_DIRECTORY ${PROJECT_BINARY_DIR}/generated)
 file(MAKE_DIRECTORY ${GENERATED_DIRECTORY}/include)
 
 set(DOT_CONFIG_PATH ${GENERATED_DIRECTORY}/.config)
-set(CONFIG_H_PATH ${GENERATED_DIRECTORY}/include/config.h CACHE
+set(CONFIG_H_PATH ${GENERATED_DIRECTORY}/include/autoconfig.h CACHE
   PATH "Path to kconfig's .h output file")
 set(VERSION_H_PATH ${GENERATED_DIRECTORY}/include/version.h)
 
