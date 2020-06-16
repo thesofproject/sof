@@ -235,9 +235,6 @@ int ipc_comp_free(struct ipc *ipc, uint32_t comp_id)
 	if (icd->cd->state != COMP_STATE_READY)
 		return -EINVAL;
 
-	/* free component and remove from list */
-	comp_free(icd->cd);
-
 	/* set pipeline sink/source/sched pointers to NULL if needed */
 	if (icd->cd->pipeline) {
 		if (icd->cd == icd->cd->pipeline->source_comp)
@@ -247,6 +244,9 @@ int ipc_comp_free(struct ipc *ipc, uint32_t comp_id)
 		if (icd->cd == icd->cd->pipeline->sched_comp)
 			icd->cd->pipeline->sched_comp = NULL;
 	}
+
+	/* free component and remove from list */
+	comp_free(icd->cd);
 
 	icd->cd = NULL;
 
@@ -299,6 +299,8 @@ int ipc_buffer_new(struct ipc *ipc, struct sof_ipc_buffer *desc)
 int ipc_buffer_free(struct ipc *ipc, uint32_t buffer_id)
 {
 	struct ipc_comp_dev *ibd;
+	struct ipc_comp_dev *icd;
+	struct list_item *clist;
 
 	/* check whether buffer exists */
 	ibd = ipc_get_comp_by_id(ipc, buffer_id);
@@ -309,10 +311,20 @@ int ipc_buffer_free(struct ipc *ipc, uint32_t buffer_id)
 	if (!cpu_is_me(ibd->core))
 		return ipc_process_on_core(ibd->core);
 
-	/* check state */
-	if (ibd->cb->sink->state != COMP_STATE_READY ||
-	    ibd->cb->source->state != COMP_STATE_READY)
-		return -EINVAL;
+	/* try to find sink/source components to check if they still exists */
+	list_for_item(clist, &ipc->comp_list) {
+		icd = container_of(clist, struct ipc_comp_dev, list);
+		if (icd->type != COMP_TYPE_COMPONENT)
+			continue;
+
+		/* check comp state if sink and source are valid */
+		if (ibd->cb->sink == icd->cd &&
+		    ibd->cb->sink->state != COMP_STATE_READY)
+			return -EINVAL;
+		if (ibd->cb->source == icd->cd &&
+		    ibd->cb->source->state != COMP_STATE_READY)
+			return -EINVAL;
+	}
 
 	/* free buffer and remove from list */
 	buffer_free(ibd->cb);
