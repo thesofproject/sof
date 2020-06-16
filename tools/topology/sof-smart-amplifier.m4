@@ -42,6 +42,8 @@ ifdef(`SMART_SSP_NAME',`',`errprint(note: Need to define SSP BE dai_link name fo
 # define(`SMART_SSP_QUIRK', 0) define SSP quirk for special use, e.g. set SSP_QUIRK_LBM to verify
 # smart_amp nocodec mode. Set it to 0 by default for normal mode.
 ifdef(`SMART_SSP_QUIRK',`',`define(`SMART_SSP_QUIRK', 0)')
+# define(`SSP_MCLK', ) define SSP mclk if not done yet
+ifdef(`SSP_MCLK',`',`define(`SSP_MCLK', 19200000)')
 ')
 
 # define(`SMART_BE_ID', 7) define BE dai_link ID
@@ -219,7 +221,7 @@ DAI_CONFIG(ALH, eval(SMART_ALH_INDEX + 1), eval(SMART_BE_ID + 1), SMART_ALH_CAPT
 `
 #SSP SSP_INDEX (ID: SMART_BE_ID)
 DAI_CONFIG(SSP, SMART_SSP_INDEX, SMART_BE_ID, SMART_SSP_NAME,
-	SSP_CONFIG(DSP_B, SSP_CLOCK(mclk, 38400000, codec_mclk_in),
+	SSP_CONFIG(DSP_B, SSP_CLOCK(mclk, SSP_MCLK, codec_mclk_in),
 		      SSP_CLOCK(bclk, 9600000, codec_slave),
 		      SSP_CLOCK(fsync, 48000, codec_slave),
 		      SSP_TDM(8, 25, 15, 255),
