@@ -118,6 +118,9 @@ struct sof_ipc_cmd_hdr *mailbox_validate(void)
 {
 	struct sof_ipc_cmd_hdr *hdr = ipc_get()->comp_data;
 
+	/* reset and clear the stale IPC data */
+	bzero(hdr, SOF_IPC_MSG_MAX_SIZE);
+
 	/* read component values from the inbox */
 	mailbox_hostbox_read(hdr, SOF_IPC_MSG_MAX_SIZE, 0, sizeof(*hdr));
 
