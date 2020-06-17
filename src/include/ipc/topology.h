@@ -94,6 +94,9 @@ struct sof_ipc_comp {
  */
 #define SOF_BUF_UNDERRUN_PERMITTED	BIT(1)
 
+/* the UUID size in bytes, shared between FW and host */
+#define SOF_UUID_SIZE	16
+
 /* create new component buffer - SOF_IPC_TPLG_BUFFER_NEW */
 struct sof_ipc_buffer {
 	struct sof_ipc_comp comp;
@@ -285,6 +288,11 @@ struct sof_ipc_pipe_comp_connect {
 	struct sof_ipc_cmd_hdr hdr;
 	uint32_t source_id;
 	uint32_t sink_id;
+} __attribute__((packed));
+
+/* extended data struct for UUID components */
+struct sof_ipc_comp_ext {
+	uint8_t uuid[SOF_UUID_SIZE];
 } __attribute__((packed));
 
 #endif /* __IPC_TOPOLOGY_H__ */
