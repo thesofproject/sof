@@ -280,11 +280,16 @@ const char irq_name_level5[] = "level5";
 
 int interrupt_get_irq(unsigned int irq, const char *cascade)
 {
+#if defined(CONFIG_SOC_SERIES_INTEL_ADSP_BAYTRAIL)
+	return irq;
+#else
 	if (cascade == irq_name_level2)
 		return SOC_AGGREGATE_IRQ(irq, IRQ_NUM_EXT_LEVEL2);
 	if (cascade == irq_name_level5)
 		return SOC_AGGREGATE_IRQ(irq, IRQ_NUM_EXT_LEVEL5);
+
 	return SOC_AGGREGATE_IRQ(0, irq);
+#endif
 }
 
 int interrupt_register(uint32_t irq, void(*handler)(void *arg), void *arg)
@@ -482,17 +487,37 @@ void platform_timer_stop(struct timer *timer)
 	/* handled by Zephyr */
 }
 
+/* platform_timer_set() should not be called using Zephyr */
 int64_t platform_timer_set(struct timer *timer, uint64_t ticks)
 {
-	/* TODO: needs BYT and BDW versions - should call Zephyr 64bit API ? */
+#if defined(CONFIG_SOC_SERIES_INTEL_ADSP_BAYTRAIL)
+	return ticks;
+#else
+	/* TODO: needs BDW; should call Zephyr 64bit API ? */
 	return shim_read64(SHIM_DSPWCT0C);
+#endif
 }
 
 uint64_t platform_timer_get(struct timer *timer)
 {
+#if defined(CONFIG_SOC_SERIES_INTEL_ADSP_BAYTRAIL)
+	uint32_t low;
+	uint32_t high;
+	uint64_t time;
+
+	/* read low 32 bits */
+	low = shim_read(SHIM_EXT_TIMER_STAT);
+	/* TODO: check and see whether 32bit IRQ is pending for timer */
+	high = timer->hitime;
+
+	time = ((uint64_t)high << 32) | low;
+
+	return time;
+#else
 	/* TODO: needs BYT and BDW versions - should call Zephyr 64bit API ? */
 //	return arch_timer_get_system(timer);
 	return (uint64_t)shim_read64(SHIM_DSPWC);
+#endif
 }
 
 /* get timestamp for host stream DMA position */
