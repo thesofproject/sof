@@ -50,7 +50,7 @@ if (CONFIG_SOC_SERIES_INTEL_ADSP_BAYTRAIL)
 	zephyr_library_sources(
 		../src/drivers/intel/baytrail/ipc.c
 		#../src/drivers/intel/baytrail/interrupt.c
-		../src/drivers/intel/baytrail/timer.c
+		#../src/drivers/intel/baytrail/timer.c
 		../src/drivers/intel/baytrail/ssp.c
 		 ../src/drivers/intel/pmc-ipc.c
 	)
@@ -63,7 +63,7 @@ if (CONFIG_SOC_SERIES_INTEL_ADSP_BROADWELL)
 	zephyr_library_sources(
 		../src/drivers/intel/haswell/ipc.c
 		#../src/drivers/intel/haswell/interrupt.c
-		../src/drivers/intel/haswell/timer.c
+		#../src/drivers/intel/haswell/timer.c
 		../src/drivers/intel/haswell/ssp.c
 	)
 
