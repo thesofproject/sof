@@ -55,7 +55,6 @@ if (CONFIG_SOC_SERIES_INTEL_ADSP_BAYTRAIL)
 		 ../src/drivers/intel/pmc-ipc.c
 	)
 
-	target_include_directories(SOF INTERFACE ../src/platform/baytrail/include)
 	set(PLATFORM "baytrail")
 endif()
 
@@ -68,7 +67,6 @@ if (CONFIG_SOC_SERIES_INTEL_ADSP_BROADWELL)
 		../src/drivers/intel/haswell/ssp.c
 	)
 
-	target_include_directories(SOF INTERFACE ../src/platform/haswell/include)
 	set(PLATFORM "haswell")
 endif()
 
@@ -101,9 +99,8 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V15)
 
 	set_source_files_properties(../src/platform/apollolake/lib/power_down.S PROPERTIES COMPILE_FLAGS -DASSEMBLY)
 
-	# CAVS15 include seems to be set in Zephyr. TODO also set common dir.
 	set(PLATFORM "apollolake")
-	#target_include_directories(SOF INTERFACE ../zephyr/include/cavs15)
+	zephyr_include_directories(../src/platform/intel/cavs/include)
 endif()
 
 # CNL
@@ -141,9 +138,7 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V18)
 	set_source_files_properties(../src/platform/intel/cavs/lps_pic_restore_vector.S PROPERTIES COMPILE_FLAGS -DASSEMBLY)
 
 	set(PLATFORM "cannonlake")
-	#target_include_directories(SOF INTERFACE ../zephyr/include/cavs18)
-	#zephyr_include_directories(../../../../zephyr/soc/xtensa/intel_adsp/common/include)
-
+	zephyr_include_directories(../src/platform/intel/cavs/include)
 endif()
 
 # ICL
@@ -180,6 +175,7 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V20)
 
 	set(PLATFORM "icelake")
 	target_include_directories(SOF INTERFACE ../zephyr/include/cavs20)
+	zephyr_include_directories(../src/platform/intel/cavs/include)
 	zephyr_include_directories(../../../../zephyr/soc/xtensa/intel_adsp/common/include)
 endif()
 
@@ -217,6 +213,7 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V25)
 
 	set(PLATFORM "tigerlake")
 	target_include_directories(SOF INTERFACE ../zephyr/include/cavs25)
+	zephyr_include_directories(../src/platform/intel/cavs/include)
 	zephyr_include_directories(../../../../zephyr/soc/xtensa/intel_adsp/common/include)
 endif()
 
@@ -234,7 +231,6 @@ if (CONFIG_SOC_SERIES_NXP_IMX8)
 endif()
 
 zephyr_include_directories(../src/platform/${PLATFORM}/include)
-zephyr_include_directories(../src/platform/intel/cavs/include)
 
 # Files used on all platforms.
 # Commented files will be added/removed as integration dictates.
