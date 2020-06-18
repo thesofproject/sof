@@ -469,7 +469,10 @@ int task_main_start(void)
 	sys_comp_keyword_init();
 	sys_comp_asrc_init();
 	sys_comp_dcblock_init();
-	sys_comp_mux_init();
+
+	if (IS_ENABLED(CONFIG_COMP_MUX)) {
+		sys_comp_mux_init();
+	}
 
 	/* init pipeline position offsets */
 	pipeline_posn_init(sof);
