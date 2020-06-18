@@ -301,8 +301,8 @@ zephyr_library_sources(
 	../src/audio/asrc/asrc_farrow_generic.c
 	../src/audio/dcblock/dcblock_generic.c
 	../src/audio/dcblock/dcblock.c
-	../src/audio/mux/mux.c
-	../src/audio/mux/mux_generic.c
+	#../src/audio/mux/mux.c
+	#../src/audio/mux/mux_generic.c
 	../src/audio/eq_iir/iir_generic.c
 	../src/audio/eq_iir/iir_hifi3.c
 	../src/audio/eq_iir/iir.c
@@ -320,6 +320,8 @@ zephyr_library_sources(
 )
 
 zephyr_library_sources_ifdef(CONFIG_HAVE_AGENT ../src/lib/agent.c)
+zephyr_library_sources_ifdef(CONFIG_COMP_MUX ../src/audio/mux/mux.c)
+zephyr_library_sources_ifdef(CONFIG_COMP_MUX ../src/audio/mux/mux_generic.c)
 
 zephyr_library_link_libraries(SOF)
 target_link_libraries(SOF INTERFACE zephyr_interface)
