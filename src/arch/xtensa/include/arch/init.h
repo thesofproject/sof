@@ -35,10 +35,9 @@ static inline void exception(void)
 
 	__asm__ __volatile__("rsr %0, EPC1" : "=a" (epc1) : : "memory");
 
-	/* now panic and rewind 8 stack frames. */
+	/* now save panic dump */
 	/* TODO: we could invoke a GDB stub here */
-	panic_rewind(SOF_IPC_PANIC_EXCEPTION, 8 * sizeof(uint32_t),
-		     NULL, &epc1);
+	panic_dump(SOF_IPC_PANIC_EXCEPTION, NULL, &epc1);
 }
 
 /**
