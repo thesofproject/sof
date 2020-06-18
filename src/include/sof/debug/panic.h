@@ -26,8 +26,8 @@
 #endif
 
 void dump_panicinfo(void *addr, struct sof_ipc_panic_info *panic_info);
-void panic_rewind(uint32_t p, uint32_t stack_rewind_frames,
-		  struct sof_ipc_panic_info *panic_info, uintptr_t *data)
+void panic_dump(uint32_t p, struct sof_ipc_panic_info *panic_info,
+		uintptr_t *data)
 	SOF_NORETURN;
 void __panic(uint32_t p, char *filename, uint32_t linenum) SOF_NORETURN;
 

@@ -30,9 +30,8 @@ void dump_panicinfo(void *addr, struct sof_ipc_panic_info *panic_info)
 	dcache_writeback_region(addr, sizeof(struct sof_ipc_panic_info));
 }
 
-/* panic and rewind stack */
-void panic_rewind(uint32_t p, uint32_t stack_rewind_frames,
-		  struct sof_ipc_panic_info *panic_info, uintptr_t *data)
+void panic_dump(uint32_t p, struct sof_ipc_panic_info *panic_info,
+		uintptr_t *data)
 {
 	char *ext_offset;
 	size_t count;
@@ -56,7 +55,7 @@ void panic_rewind(uint32_t p, uint32_t stack_rewind_frames,
 #endif
 
 	/* dump stack frames */
-	p = dump_stack(p, ext_offset, stack_rewind_frames, count, &stack_ptr);
+	p = dump_stack(p, ext_offset, 0, count, &stack_ptr);
 
 	/* dump DSP core registers
 	 * after arch_dump_regs() use only inline funcs if needed
@@ -109,5 +108,5 @@ void __panic(uint32_t p, char *filename, uint32_t linenum)
 			     "a3", "memory");
 #endif
 
-	panic_rewind(p, 0, &panicinfo, NULL);
+	panic_dump(p, &panicinfo, NULL);
 }
