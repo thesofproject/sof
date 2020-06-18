@@ -55,6 +55,15 @@ if (CONFIG_SOC_SERIES_INTEL_ADSP_BAYTRAIL)
 		 ../src/drivers/intel/pmc-ipc.c
 	)
 
+	# Platform includes
+	zephyr_library_sources(
+		../src/platform/baytrail/platform.c
+		../src/platform/baytrail/lib/dai.c
+		../src/platform/baytrail/lib/clk.c
+		../src/platform/baytrail/lib/dma.c
+		../src/schedule/dma_multi_chan_domain.c
+	)
+
 	set(PLATFORM "baytrail")
 endif()
 
