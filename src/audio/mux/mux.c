@@ -296,11 +296,13 @@ static int demux_copy(struct comp_dev *dev)
 	// align sink streams with their respective configurations
 	list_for_item(clist, &dev->bsink_list) {
 		sink = container_of(clist, struct comp_buffer, source_list);
+		buffer_lock(sink, &flags);
 		if (sink->sink->state == dev->state) {
 			num_sinks++;
 			i = get_stream_index(cd, sink->pipeline_id);
 			sinks[i] = sink;
 		}
+		buffer_unlock(sink, flags);
 	}
 
 	/* if there are no sinks active */
