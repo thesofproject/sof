@@ -375,6 +375,9 @@ int comp_set_model(struct comp_dev *dev, struct comp_model_data *model,
 	 * memory for whole model data
 	 */
 	if (!cdata->msg_index) {
+		if (!cdata->data->size)
+			return ret;
+
 		ret = comp_alloc_model_data(dev, model, cdata->data->size);
 		if (ret < 0)
 			return ret;
