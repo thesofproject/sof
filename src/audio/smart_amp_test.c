@@ -527,6 +527,7 @@ static int smart_amp_prepare(struct comp_dev *dev)
 	sad->out_channels = sad->sink_buf->stream.channels;
 
 	sad->feedback_buf->stream.channels = sad->config.feedback_channels;
+	sad->feedback_buf->stream.rate = sad->source_buf->stream.rate;
 
 	/* TODO:
 	 * ATM feedback buffer frame_fmt is hardcoded to s32_le. It should be
