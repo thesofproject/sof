@@ -471,8 +471,9 @@ int comp_get_model(struct comp_dev *dev, struct comp_model_data *model,
 		model->data_pos += bs;
 
 	} else {
-		comp_err(dev, "comp_get_model(): !model->data");
-		ret = -EINVAL;
+		comp_warn(dev, "comp_get_model(): model->data not allocated yet.");
+		cdata->data->abi = SOF_ABI_VERSION;
+		cdata->data->size = 0;
 	}
 
 	return ret;
