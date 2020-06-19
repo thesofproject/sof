@@ -136,25 +136,25 @@ function simple_test {
 echo "Preparing topology build input..."
 
 # Pre-process the simple tests
-simple_test nocodec passthrough "NoCodec-2" s16le SSP 2 s16le 20 16 1920000 19200000 I2S 0 SIMPLE_TESTS[@]
-simple_test nocodec passthrough "NoCodec-2" s24le SSP 2 s24le 25 24 2400000 19200000 I2S 0 SIMPLE_TESTS[@]
-simple_test nocodec volume "NoCodec-2" s16le SSP 2 s16le 20 16 1920000 19200000 I2S 0 SIMPLE_TESTS[@]
-simple_test nocodec volume "NoCodec-2" s24le SSP 2 s24le 25 24 2400000 19200000 I2S 0 SIMPLE_TESTS[@]
-simple_test nocodec volume "NoCodec-2" s16le SSP 2 s24le 25 24 2400000 19200000 I2S 0 SIMPLE_TESTS[@]
-
-simple_test codec passthrough "SSP2-Codec" s16le SSP 2 s16le 20 16 1920000 19200000 I2S 0 SIMPLE_TESTS[@]
-simple_test codec passthrough "SSP2-Codec" s24le SSP 2 s24le 25 24 2400000 19200000 I2S 0 SIMPLE_TESTS[@]
-simple_test codec volume "SSP2-Codec" s16le SSP 2 s16le 20 16 1920000 19200000 I2S 0 SIMPLE_TESTS[@]
-simple_test codec volume "SSP2-Codec" s24le SSP 2 s24le 25 24 2400000 19200000 I2S 0 SIMPLE_TESTS[@]
-simple_test codec volume "SSP2-Codec" s24le SSP 2 s16le 20 16 1920000 19200000 I2S 0 SIMPLE_TESTS[@]
-simple_test codec volume "SSP2-Codec" s16le SSP 2 s24le 25 24 2400000 19200000 I2S 0 SIMPLE_TESTS[@]
+#simple_test nocodec passthrough "NoCodec-2" s16le SSP 2 s16le 20 16 1920000 19200000 I2S 0 SIMPLE_TESTS[@]
+#simple_test nocodec passthrough "NoCodec-2" s24le SSP 2 s24le 25 24 2400000 19200000 I2S 0 SIMPLE_TESTS[@]
+#simple_test nocodec volume "NoCodec-2" s16le SSP 2 s16le 20 16 1920000 19200000 I2S 0 SIMPLE_TESTS[@]
+#simple_test nocodec volume "NoCodec-2" s24le SSP 2 s24le 25 24 2400000 19200000 I2S 0 SIMPLE_TESTS[@]
+#simple_test nocodec volume "NoCodec-2" s16le SSP 2 s24le 25 24 2400000 19200000 I2S 0 SIMPLE_TESTS[@]
+#
+#simple_test codec passthrough "SSP2-Codec" s16le SSP 2 s16le 20 16 1920000 19200000 I2S 0 SIMPLE_TESTS[@]
+#simple_test codec passthrough "SSP2-Codec" s24le SSP 2 s24le 25 24 2400000 19200000 I2S 0 SIMPLE_TESTS[@]
+#simple_test codec volume "SSP2-Codec" s16le SSP 2 s16le 20 16 1920000 19200000 I2S 0 SIMPLE_TESTS[@]
+#simple_test codec volume "SSP2-Codec" s24le SSP 2 s24le 25 24 2400000 19200000 I2S 0 SIMPLE_TESTS[@]
+#simple_test codec volume "SSP2-Codec" s24le SSP 2 s16le 20 16 1920000 19200000 I2S 0 SIMPLE_TESTS[@]
+#simple_test codec volume "SSP2-Codec" s16le SSP 2 s24le 25 24 2400000 19200000 I2S 0 SIMPLE_TESTS[@]
 
 # for APL
-APL_PROTOCOL_TESTS=(I2S LEFT_J DSP_A DSP_B)
-APL_SSP_TESTS=(0 1 2 3 4 5)
-APL_MODE_TESTS=(volume)
-APL_FORMAT_TESTS=(s16le s24le s32le)
-MCLK_IDS=(0 1)
+#APL_PROTOCOL_TESTS=(I2S LEFT_J DSP_A DSP_B)
+#APL_SSP_TESTS=(0 1 2 3 4 5)
+#APL_MODE_TESTS=(volume)
+#APL_FORMAT_TESTS=(s16le s24le s32le)
+#MCLK_IDS=(0 1)
 
 for protocol in ${APL_PROTOCOL_TESTS[@]}
 do
@@ -214,8 +214,10 @@ done
 
 
 # for processing algorithms
-ALG_MODE_TESTS=(asrc eq-fir eq-iir src dcblock)
-ALG_SIMPLE_TESTS=(test-capture test-playback)
+#ALG_MODE_TESTS=(asrc eq-fir eq-iir src dcblock)
+ALG_MODE_TESTS=(crossover dcblock)
+#ALG_SIMPLE_TESTS=(test-capture test-playback)
+ALG_SIMPLE_TESTS=(test-playback)
 ALG_PROTOCOL_TESTS=(I2S)
 ALG_SSP_TESTS=(5)
 ALG_MCLK_IDS=(0)
@@ -237,20 +239,20 @@ do
 done
 
 # for CNL
-simple_test nocodec passthrough "NoCodec-0" s16le SSP 0 s16le 25 16 2400000 24000000 I2S 0 SIMPLE_TESTS[@]
-simple_test nocodec passthrough "NoCodec-2" s24le SSP 0 s24le 25 24 2400000 24000000 I2S 0 SIMPLE_TESTS[@]
-simple_test nocodec volume "NoCodec-0" s16le SSP 0 s16le 25 16 2400000 24000000 I2S 0 SIMPLE_TESTS[@]
-simple_test nocodec volume "NoCodec-0" s16le SSP 0 s24le 25 24 2400000 24000000 I2S 0 SIMPLE_TESTS[@]
-simple_test nocodec volume "NoCodec-0" s24le SSP 0 s24le 25 24 2400000 24000000 I2S 0 SIMPLE_TESTS[@]
-simple_test nocodec volume "NoCodec-0" s24le SSP 0 s16le 25 16 2400000 24000000 I2S 0 SIMPLE_TESTS[@]
-
-simple_test nocodec passthrough "NoCodec-2" s16le SSP 2 s16le 25 16 2400000 24000000 I2S 0 SIMPLE_TESTS[@]
-simple_test nocodec passthrough "NoCodec-2" s24le SSP 2 s24le 25 24 2400000 24000000 I2S 0 SIMPLE_TESTS[@]
-simple_test nocodec volume "NoCodec-2" s16le SSP 2 s16le 25 16 2400000 24000000 I2S 0 SIMPLE_TESTS[@]
-simple_test nocodec volume "NoCodec-2" s16le SSP 2 s24le 25 24 2400000 24000000 I2S 0 SIMPLE_TESTS[@]
-simple_test nocodec volume "NoCodec-2" s24le SSP 2 s24le 25 24 2400000 24000000 I2S 0 SIMPLE_TESTS[@]
-simple_test nocodec volume "NoCodec-2" s24le SSP 2 s16le 25 16 2400000 24000000 I2S 0 SIMPLE_TESTS[@]
-simple_test nocodec src "NoCodec-4" s24le SSP 4 s24le 25 24 2400000 24000000 I2S 0 SIMPLE_TESTS[@]
+#simple_test nocodec passthrough "NoCodec-0" s16le SSP 0 s16le 25 16 2400000 24000000 I2S 0 SIMPLE_TESTS[@]
+#simple_test nocodec passthrough "NoCodec-2" s24le SSP 0 s24le 25 24 2400000 24000000 I2S 0 SIMPLE_TESTS[@]
+#simple_test nocodec volume "NoCodec-0" s16le SSP 0 s16le 25 16 2400000 24000000 I2S 0 SIMPLE_TESTS[@]
+#simple_test nocodec volume "NoCodec-0" s16le SSP 0 s24le 25 24 2400000 24000000 I2S 0 SIMPLE_TESTS[@]
+#simple_test nocodec volume "NoCodec-0" s24le SSP 0 s24le 25 24 2400000 24000000 I2S 0 SIMPLE_TESTS[@]
+#simple_test nocodec volume "NoCodec-0" s24le SSP 0 s16le 25 16 2400000 24000000 I2S 0 SIMPLE_TESTS[@]
+#
+#simple_test nocodec passthrough "NoCodec-2" s16le SSP 2 s16le 25 16 2400000 24000000 I2S 0 SIMPLE_TESTS[@]
+#simple_test nocodec passthrough "NoCodec-2" s24le SSP 2 s24le 25 24 2400000 24000000 I2S 0 SIMPLE_TESTS[@]
+#simple_test nocodec volume "NoCodec-2" s16le SSP 2 s16le 25 16 2400000 24000000 I2S 0 SIMPLE_TESTS[@]
+#simple_test nocodec volume "NoCodec-2" s16le SSP 2 s24le 25 24 2400000 24000000 I2S 0 SIMPLE_TESTS[@]
+#simple_test nocodec volume "NoCodec-2" s24le SSP 2 s24le 25 24 2400000 24000000 I2S 0 SIMPLE_TESTS[@]
+#simple_test nocodec volume "NoCodec-2" s24le SSP 2 s16le 25 16 2400000 24000000 I2S 0 SIMPLE_TESTS[@]
+#simple_test nocodec src "NoCodec-4" s24le SSP 4 s24le 25 24 2400000 24000000 I2S 0 SIMPLE_TESTS[@]
 
 # algorithms tests
 

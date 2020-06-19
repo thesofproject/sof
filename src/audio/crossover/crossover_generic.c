@@ -145,29 +145,47 @@ static void crossover_s16_default(const struct comp_dev *dev,
 	const struct audio_stream *source_stream = &source->stream;
 	struct audio_stream *sink_stream;
 	int16_t *x, *y;
-	int ch, i, j;
+	//int ch, i, j;
+	int i, j;
 	int idx = 0;
 	int nch = source_stream->channels;
 	int32_t out[num_sinks];
 
-	for (ch = 0; ch < nch; ch++) {
-		idx = ch;
-		state = &cd->state[ch];
-		for (i = 0; i < frames; i++) {
-			x = audio_stream_read_frag_s16(source_stream, idx);
-			cd->crossover_split(*x << 16, out, state);
+	//for (ch = 0; ch < nch; ch++) {
+	//	idx = ch;
+	//	state = &cd->state[ch];
+	//	for (i = 0; i < frames; i++) {
+	//		x = audio_stream_read_frag_s16(source_stream, idx);
+	//		cd->crossover_split(*x << 16, out, state);
 
-			for (j = 0; j < num_sinks; j++) {
-				if (!sinks[j])
-					continue;
-				sink_stream = &sinks[j]->stream;
-				y = audio_stream_read_frag_s16(sink_stream,
-							       idx);
-				*y = sat_int16(Q_SHIFT_RND(out[j], 31, 15));
-			}
+	//		for (j = 0; j < num_sinks; j++) {
+	//			if (!sinks[j])
+	//				continue;
+	//			sink_stream = &sinks[j]->stream;
+	//			y = audio_stream_read_frag_s16(sink_stream,
+	//						       idx);
+	//			*y = sat_int16(Q_SHIFT_RND(out[j], 31, 15));
+	//		}
 
-			idx += nch;
+	//		idx += nch;
+	//	}
+	//}
+	/* For testbench, reroute all the outputs to the channels of one buffer */
+	state = &cd->state[0];
+	for (i = 0; i < frames; i++) {
+		x = audio_stream_read_frag_s16(source_stream, idx);
+		cd->crossover_split(*x << 16, out, state);
+
+		for (j = 0; j < num_sinks; j++) {
+			if (!sinks[j])
+				continue;
+			sink_stream = &sinks[0]->stream;
+			y = audio_stream_read_frag_s16(sink_stream,
+						       idx + j);
+			*y = sat_int16(Q_SHIFT_RND(out[j], 31, 15));
 		}
+
+		idx += nch;
 	}
 }
 #endif // CONFIG_FORMAT_S16LE

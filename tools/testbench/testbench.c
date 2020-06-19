@@ -19,12 +19,13 @@
 /* shared library look up table */
 struct shared_lib_table lib_table[NUM_WIDGETS_SUPPORTED] = {
 	{"file", "", SOF_COMP_HOST, 0, NULL}, /* File must be first */
-	{"volume", "libsof_volume.so", SOF_COMP_VOLUME, 0, NULL},
-	{"src", "libsof_src.so", SOF_COMP_SRC, 0, NULL},
+	//{"volume", "libsof_volume.so", SOF_COMP_VOLUME, 0, NULL},
+	//{"src", "libsof_src.so", SOF_COMP_SRC, 0, NULL},
 	{"asrc", "libsof_asrc.so", SOF_COMP_ASRC, 0, NULL},
 	{"eq-fir", "libsof_eq-fir.so", SOF_COMP_EQ_FIR, 0, NULL},
 	{"eq-iir", "libsof_eq-iir.so", SOF_COMP_EQ_IIR, 0, NULL},
-	{"dcblock", "libsof_dcblock.so", SOF_COMP_DCBLOCK, 0, NULL}
+	{"dcblock", "libsof_dcblock.so", SOF_COMP_DCBLOCK, 0, NULL},
+	{"crossover", "libsof_crossover.so", SOF_COMP_CROSSOVER, 0, NULL}
 };
 
 /* main firmware context */
@@ -130,7 +131,7 @@ static void parse_input_args(int argc, char **argv, struct testbench_prm *tp)
 	int option = 0;
 	int ret = 0;
 
-	while ((option = getopt(argc, argv, "hdi:o:t:b:a:r:R:")) != -1) {
+	while ((option = getopt(argc, argv, "hdi:o:t:b:a:r:R:c:")) != -1) {
 		switch (option) {
 		/* input sample file */
 		case 'i':
@@ -166,6 +167,10 @@ static void parse_input_args(int argc, char **argv, struct testbench_prm *tp)
 		/* output sample rate */
 		case 'R':
 			tp->fs_out = atoi(optarg);
+			break;
+
+		case 'c':
+			tp->channels = atoi(optarg);
 			break;
 
 		/* enable debug prints */
@@ -275,7 +280,7 @@ int main(int argc, char **argv)
 	n_in = frcd->fs.n;
 	n_out = fwcd->fs.n;
 	t_exec = (double)(toc - tic) / CLOCKS_PER_SEC;
-	c_realtime = (double)n_out / TESTBENCH_NCH / tp.fs_out / t_exec;
+	c_realtime = (double)n_out / tp.channels / tp.fs_out / t_exec;
 
 	/* free all components/buffers in pipeline */
 	free_comps();
