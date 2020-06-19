@@ -341,10 +341,10 @@ void comp_free_model_data(struct comp_dev *dev, struct comp_model_data *model)
 int  comp_alloc_model_data(struct comp_dev *dev, struct comp_model_data *model,
 			   uint32_t size)
 {
+	comp_free_model_data(dev, model);
+
 	if (!size)
 		return 0;
-
-	comp_free_model_data(dev, model);
 
 	model->data = rballoc(0, SOF_MEM_CAPS_RAM, size);
 
@@ -376,7 +376,10 @@ int comp_set_model(struct comp_dev *dev, struct comp_model_data *model,
 	 */
 	if (!cdata->msg_index) {
 		ret = comp_alloc_model_data(dev, model, cdata->data->size);
-		if (ret < 0)
+		/* in case when required model size is equal to zero we do not
+		 * allocate memory and should just return 0
+		 */
+		if (ret < 0 || !cdata->data->size)
 			return ret;
 	}
 
