@@ -458,6 +458,8 @@ static int smart_amp_copy(struct comp_dev *dev)
 			     sad->config.feedback_ch_map);
 
 		comp_update_buffer_consume(sad->feedback_buf, feedback_bytes);
+	} else {
+		buffer_unlock(sad->feedback_buf, feedback_flags);
 	}
 
 	/* bytes calculation */
