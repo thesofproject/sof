@@ -36,7 +36,7 @@ static int dsp_sref[PLATFORM_CORE_COUNT];	/**< simple ref counter */
 
 #if CONFIG_NO_SLAVE_CORE_ROM
 extern void *shared_vecbase_ptr;
-extern void _WindowOverflow4;
+extern uint8_t _WindowOverflow4[];
 
 /**
  * \brief This function will allocate memory for shared slave cores
@@ -62,7 +62,7 @@ static void alloc_shared_slave_cores_objects(void)
  */
 static void unpack_dynamic_vectors(void)
 {
-	void *dyn_vec_start_addr = (void *)(&_WindowOverflow4);
+	void *dyn_vec_start_addr = _WindowOverflow4;
 
 	memcpy_s(shared_vecbase_ptr, SOF_DYNAMIC_VECTORS_SIZE,
 		 dyn_vec_start_addr, SOF_DYNAMIC_VECTORS_SIZE);
