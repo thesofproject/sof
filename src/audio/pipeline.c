@@ -129,6 +129,7 @@ int pipeline_connect(struct comp_dev *comp, struct comp_buffer *buffer,
 	list_item_prepend(buffer_comp_list(buffer, dir),
 			  comp_buffer_list(comp, dir));
 	buffer_set_comp(buffer, comp, dir);
+	comp_writeback(comp);
 	irq_local_enable(flags);
 
 	return 0;
