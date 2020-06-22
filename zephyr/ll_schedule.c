@@ -39,6 +39,9 @@ static void ll_work_handler(struct k_work *work)
 	switch (task->state) {
 	case SOF_TASK_STATE_QUEUED:
 	case SOF_TASK_STATE_PENDING:
+
+		/* start in local timebase - TODO use zephyr API */
+		task->start = platform_timer_get(NULL);
 		task->state = SOF_TASK_STATE_RUNNING;
 		task->state = task_run(task);
 		break;
@@ -74,9 +77,6 @@ static int schedule_ll_task(struct task *task, uint64_t start,
 {
 	/* convert to millisecs from microsecs */
 	k_timeout_t start_time = K_USEC(start);
-
-	/* start in local timebase - TODO use zephyr API */
-	task->start = platform_timer_get(NULL);
 
 	/* SOF start time of task */
 	task->period = period;
