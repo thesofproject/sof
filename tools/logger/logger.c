@@ -55,6 +55,8 @@ static void usage(void)
 		APP_NAME);
 	fprintf(stdout, "%s:\t -f precision\t\tSet timestamp precision\n",
 		APP_NAME);
+	fprintf(stdout, "%s:\t -g\t\tHide timestamp\n",
+		APP_NAME);
 	fprintf(stdout, "%s:\t -d *.ldc_file \t\tDump ldc_file information\n",
 		APP_NAME);
 	exit(0);
@@ -140,7 +142,7 @@ static int configure_uart(const char *file, unsigned int baud)
 
 int main(int argc, char *argv[])
 {
-	static const char optstring[] = "ho:i:l:ps:c:u:tev:rd:Lf:";
+	static const char optstring[] = "ho:i:l:ps:c:u:tev:rd:Lf:g";
 	struct convert_config config;
 	unsigned int baud = 0;
 	const char *snapshot_file = 0;
@@ -220,6 +222,9 @@ int main(int argc, char *argv[])
 				usage();
 				return -EINVAL;
 			}
+			break;
+		case 'g':
+			config.float_precision = -1;
 			break;
 		case 'd':
 			if (config.ldc_file) {
