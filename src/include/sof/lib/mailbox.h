@@ -9,6 +9,7 @@
 #ifndef __SOF_LIB_MAILBOX_H__
 #define __SOF_LIB_MAILBOX_H__
 
+#include <kernel/mailbox.h>
 #include <platform/lib/mailbox.h>
 #include <sof/debug/panic.h>
 #include <sof/lib/cache.h>
