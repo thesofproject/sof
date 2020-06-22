@@ -1110,6 +1110,7 @@ void pipeline_schedule_cancel(struct pipeline *p)
 		sa_set_panic_on_delay(true);
 }
 
+uint64_t time_last0;
 static enum task_state pipeline_task(void *arg)
 {
 	struct pipeline *p = arg;
@@ -1139,7 +1140,8 @@ static enum task_state pipeline_task(void *arg)
 	}
 
 	time = platform_timer_get(NULL);
-	pipe_cl_info("pipeline_task() sched %d.%d", (uint32_t)(time >> 32), (uint32_t)(time & 0xffffffff));
+	pipe_cl_info("pipeline_task() sched %d", (uint32_t)(time - time_last0));
+	time_last0 = time;
 
 	return SOF_TASK_STATE_RESCHEDULE;
 }
