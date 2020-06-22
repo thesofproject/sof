@@ -31,7 +31,7 @@ void k_free(void *ptr);
 
 int arch_irq_connect_dynamic(unsigned int irq, unsigned int priority,
 			     void (*routine)(void *parameter),
-			     void *parameter, u32_t flags);
+			     void *parameter, uint32_t flags);
 
 #define arch_irq_enable(irq)	z_soc_irq_enable(irq)
 #define arch_irq_disable(irq)	z_soc_irq_disable(irq)
