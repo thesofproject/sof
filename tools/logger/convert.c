@@ -216,9 +216,11 @@ static inline void print_table_header(FILE *out_fd, int hide_location,
 {
 	char time_fmt[32];
 
-	snprintf(time_fmt, sizeof(time_fmt), "%%%ds %%%ds ",
-		 float_precision + 12, float_precision + 12);
-	fprintf(out_fd, time_fmt, "TIMESTAMP", "DELTA");
+	if (float_precision >= 0) {
+		snprintf(time_fmt, sizeof(time_fmt), "%%%ds %%%ds ",
+			 float_precision + 12, float_precision + 12);
+		fprintf(out_fd, time_fmt, "TIMESTAMP", "DELTA");
+	}
 	fprintf(out_fd, "%2s %-18s ", "C#", "COMPONENT");
 	if (!hide_location)
 		fprintf(out_fd, "%-29s ", "LOCATION");
@@ -326,8 +328,9 @@ static void print_entry_params(FILE *out_fd,
 	if (raw_output) {
 		const char *entry_fmt = "%s%u %u %s%s%s ";
 
-		snprintf(time_fmt, sizeof(time_fmt), "%%.%df %%.%df ",
-			 float_precision, float_precision);
+		if (float_precision >= 0)
+			snprintf(time_fmt, sizeof(time_fmt), "%%.%df %%.%df ",
+				 float_precision, float_precision);
 
 		fprintf(out_fd, entry_fmt,
 			entry->header.level == use_colors ?
@@ -339,22 +342,26 @@ static void print_entry_params(FILE *out_fd,
 					   dma_log->uid),
 			raw_output && strlen(ids) ? "-" : "",
 			ids);
-		fprintf(out_fd, time_fmt, to_usecs(dma_log->timestamp, clock),
-			dt);
+		if (float_precision >= 0)
+			fprintf(out_fd, time_fmt,
+				to_usecs(dma_log->timestamp, clock),
+				dt);
 		if (!hide_location)
 			fprintf(out_fd, "(%s:%u) ",
 				format_file_name(entry->file_name, raw_output),
 				entry->header.line_idx);
 	} else {
 		/* timestamp */
-		snprintf(time_fmt, sizeof(time_fmt),
-			 "%%s[%%%d.%df] (%%%d.%df)%%s ",
-			 float_precision + 10, float_precision,
-			 float_precision + 10, float_precision);
-		fprintf(out_fd, time_fmt,
-			use_colors ? KGRN : "",
-			to_usecs(dma_log->timestamp, clock), dt,
-			use_colors ? KNRM : "");
+		if (float_precision >= 0) {
+			snprintf(time_fmt, sizeof(time_fmt),
+				 "%%s[%%%d.%df] (%%%d.%df)%%s ",
+				 float_precision + 10, float_precision,
+				 float_precision + 10, float_precision);
+			fprintf(out_fd, time_fmt,
+				use_colors ? KGRN : "",
+				to_usecs(dma_log->timestamp, clock), dt,
+				use_colors ? KNRM : "");
+		}
 
 		/* core id */
 		fprintf(out_fd, "c%d ", dma_log->core_id);
