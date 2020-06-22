@@ -67,11 +67,12 @@ static int clock_platform_set_cpu_freq(int clock, int freq_idx)
 	return 0;
 }
 
-#if CONFIG_CAVS_USE_LPRO_IN_WAITI
-/* Store clock source that was active before going to waiti,
- * so it can be restored on wake up.
- */
-static SHARED_DATA int active_freq_idx = CPU_DEFAULT_IDX;
+/* Clock source to be used when not waiting for an interrupt. */
+#if CONFIG_CAVS_LPRO
+static SHARED_DATA int active_freq_idx = CPU_LPRO_FREQ_IDX;
+#else
+static SHARED_DATA int active_freq_idx = CPU_HPRO_FREQ_IDX;
+#endif
 
 static inline int get_cpu_current_freq_idx(void)
 {
@@ -106,8 +107,6 @@ void platform_clock_on_waiti(void)
 {
 	int freq_idx = get_cpu_current_freq_idx();
 
-	*cache_to_uncache(&active_freq_idx) = freq_idx;
-
 	if (freq_idx != CPU_LPRO_FREQ_IDX) {
 		/* LPRO requests are fast, but requests for other ROs
 		 * can take a lot of time. That's why it's better to
@@ -118,7 +117,11 @@ void platform_clock_on_waiti(void)
 		set_cpu_current_freq_idx(CPU_LPRO_FREQ_IDX);
 	}
 }
-#endif
+
+void platform_set_active_clock(int index)
+{
+	*cache_to_uncache(&active_freq_idx) = index;
+}
 
 void platform_clock_init(struct sof *sof)
 {
