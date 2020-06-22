@@ -665,6 +665,7 @@ static int dai_copy(struct comp_dev *dev)
 	uint32_t copy_bytes = 0;
 	uint32_t src_samples;
 	uint32_t sink_samples;
+	uint32_t samples;
 	int ret = 0;
 	uint32_t flags = 0;
 
@@ -683,23 +684,25 @@ static int dai_copy(struct comp_dev *dev)
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
 		src_samples = audio_stream_get_avail_samples(&buf->stream);
 		sink_samples = free_bytes / get_sample_bytes(dd->frame_fmt);
-		copy_bytes = MIN(src_samples, sink_samples) *
-			     get_sample_bytes(dd->frame_fmt);
+		samples = MIN(src_samples, sink_samples);
 	} else {
 		src_samples = avail_bytes / get_sample_bytes(dd->frame_fmt);
 		sink_samples = audio_stream_get_free_samples(&buf->stream);
+		samples = MIN(src_samples, sink_samples);
 
 		/* limit bytes per copy to one period for the whole pipeline
 		 * in order to avoid high load spike
 		 */
-		copy_bytes = MIN(dd->period_bytes,
-				 MIN(src_samples, sink_samples) *
-				 get_sample_bytes(dd->frame_fmt));
+		samples = MIN(samples, dd->period_bytes /
+			      get_sample_bytes(dd->frame_fmt));
 	}
+	copy_bytes = samples * get_sample_bytes(dd->frame_fmt);
 
 	buffer_unlock(buf, flags);
 
-	comp_dbg(dev, "dai_copy(), copy_bytes = 0x%x", copy_bytes);
+	comp_dbg(dev, "dai_copy(), dir: %d copy_bytes= 0x%x, frames= %d",
+		 dev->direction, copy_bytes,
+		 samples / buf->stream.channels);
 
 	/* return if it's not stream start */
 	if (!copy_bytes && dd->start_position != dev->position)
