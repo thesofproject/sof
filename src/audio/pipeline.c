@@ -85,18 +85,20 @@ struct pipeline *pipeline_new(struct sof_ipc_pipe_new *pipe_desc,
 	/* init pipeline */
 	p->sched_comp = cd;
 	p->status = COMP_STATE_INIT;
-
-	ret = pipeline_posn_offset_get(&p->posn_offset);
-	if (ret < 0) {
-		pipe_cl_err("pipeline_new(): pipeline_posn_offset_get failed %d",
-			    ret);
-		rfree(p);
-		return NULL;
-	}
-
+	ret = memcpy_s(&p->tctx, sizeof(struct tr_ctx), &pipe_tr,
+		       sizeof(struct tr_ctx));
+	assert(!ret);
 	ret = memcpy_s(&p->ipc_pipe, sizeof(p->ipc_pipe),
 		       pipe_desc, sizeof(*pipe_desc));
 	assert(!ret);
+
+	ret = pipeline_posn_offset_get(&p->posn_offset);
+	if (ret < 0) {
+		pipe_err(p, "pipeline_new(): pipeline_posn_offset_get failed %d",
+			 ret);
+		rfree(p);
+		return NULL;
+	}
 
 	/* just for retrieving valid ipc_msg header */
 	ipc_build_stream_posn(&posn, SOF_IPC_STREAM_TRIG_XRUN,
@@ -104,13 +106,10 @@ struct pipeline *pipeline_new(struct sof_ipc_pipe_new *pipe_desc,
 
 	p->msg = ipc_msg_init(posn.rhdr.hdr.cmd, sizeof(posn));
 	if (!p->msg) {
-		pipe_cl_err("pipeline_new(): ipc_msg_init failed");
+		pipe_err(p, "pipeline_new(): ipc_msg_init failed");
 		rfree(p);
 		return NULL;
 	}
-
-	memcpy_s(&p->tctx, sizeof(struct tr_ctx), &pipe_tr,
-		 sizeof(struct tr_ctx));
 
 	return p;
 }
@@ -256,11 +255,11 @@ static int pipeline_comp_free(struct comp_dev *current,
 	struct pipeline_data *ppl_data = ctx->comp_data;
 	uint32_t flags;
 
-	pipe_cl_dbg("pipeline_comp_free(), current->comp.id = %u, dir = %u",
-		    dev_comp_id(current), dir);
+	pipe_dbg(current->pipeline, "pipeline_comp_free(), current->comp.id = %u, dir = %u",
+		 dev_comp_id(current), dir);
 
 	if (!comp_is_single_pipeline(current, ppl_data->start)) {
-		pipe_cl_dbg("pipeline_comp_free(), current is from another pipeline");
+		pipe_dbg(current->pipeline, "pipeline_comp_free(), current is from another pipeline");
 		return 0;
 	}
 
@@ -349,8 +348,8 @@ static int pipeline_comp_hw_params(struct comp_dev *current,
 	uint32_t flags = 0;
 	int ret;
 
-	pipe_cl_dbg("pipeline_comp_hw_params(), current->comp.id = %u, dir = %u",
-		    dev_comp_id(current), dir);
+	pipe_dbg(current->pipeline, "pipeline_comp_hw_params(), current->comp.id = %u, dir = %u",
+		 dev_comp_id(current), dir);
 
 	pipeline_for_each_comp(current, ctx, dir);
 
@@ -359,7 +358,7 @@ static int pipeline_comp_hw_params(struct comp_dev *current,
 		ret = comp_dai_get_hw_params(current,
 					     &ppl_data->params->params, dir);
 		if (ret < 0) {
-			pipe_cl_err("pipeline_find_dai_comp(): comp_dai_get_hw_params() error.");
+			pipe_err(current->pipeline, "pipeline_find_dai_comp(): comp_dai_get_hw_params() error.");
 			return ret;
 		}
 	}
@@ -384,8 +383,8 @@ static int pipeline_comp_params(struct comp_dev *current,
 	int end_type;
 	int err;
 
-	pipe_cl_dbg("pipeline_comp_params(), current->comp.id = %u, dir = %u",
-		    dev_comp_id(current), dir);
+	pipe_dbg(current->pipeline, "pipeline_comp_params(), current->comp.id = %u, dir = %u",
+		 dev_comp_id(current), dir);
 
 	if (!comp_is_single_pipeline(current, ppl_data->start)) {
 		/* If pipeline connected to the starting one is in improper
@@ -469,8 +468,8 @@ int pipeline_params(struct pipeline *p, struct comp_dev *host,
 
 	ret = hw_param_ctx.comp_func(host, NULL, &hw_param_ctx, dir);
 	if (ret < 0) {
-		pipe_cl_err("pipeline_prepare(): ret = %d, dev->comp.id = %u",
-			    ret, dev_comp_id(host));
+		pipe_err(p, "pipeline_prepare(): ret = %d, dev->comp.id = %u",
+			 ret, dev_comp_id(host));
 		return ret;
 	}
 
@@ -480,8 +479,8 @@ int pipeline_params(struct pipeline *p, struct comp_dev *host,
 
 	ret = param_ctx.comp_func(host, NULL, &param_ctx, dir);
 	if (ret < 0) {
-		pipe_cl_err("pipeline_params(): ret = %d, host->comp.id = %u",
-			    ret, dev_comp_id(host));
+		pipe_err(p, "pipeline_params(): ret = %d, host->comp.id = %u",
+			 ret, dev_comp_id(host));
 	}
 
 	return ret;
@@ -524,7 +523,7 @@ static int pipeline_comp_task_init(struct pipeline *p)
 
 		p->pipe_task = pipeline_task_init(p, type, pipeline_task);
 		if (!p->pipe_task) {
-			pipe_cl_err("pipeline_prepare(): task init failed");
+			pipe_err(p, "pipeline_prepare(): task init failed");
 			return -ENOMEM;
 		}
 	}
@@ -541,8 +540,8 @@ static int pipeline_comp_prepare(struct comp_dev *current,
 	int end_type;
 	int err;
 
-	pipe_cl_dbg("pipeline_comp_prepare(), current->comp.id = %u, dir = %u",
-		    dev_comp_id(current), dir);
+	pipe_dbg(current->pipeline, "pipeline_comp_prepare(), current->comp.id = %u, dir = %u",
+		 dev_comp_id(current), dir);
 
 	if (!comp_is_single_pipeline(current, ppl_data->start)) {
 		/* If pipeline connected to the starting one is in improper
@@ -594,8 +593,8 @@ int pipeline_prepare(struct pipeline *p, struct comp_dev *dev)
 
 	ret = walk_ctx.comp_func(dev, NULL, &walk_ctx, dev->direction);
 	if (ret < 0) {
-		pipe_cl_err("pipeline_prepare(): ret = %d, dev->comp.id = %u",
-			    ret, dev_comp_id(dev));
+		pipe_err(p, "pipeline_prepare(): ret = %d, dev->comp.id = %u",
+			 ret, dev_comp_id(dev));
 		return ret;
 	}
 
@@ -671,8 +670,8 @@ static int pipeline_comp_trigger(struct comp_dev *current,
 					    ppl_data->start->pipeline);
 	int err;
 
-	pipe_cl_dbg("pipeline_comp_trigger(), current->comp.id = %u, dir = %u",
-		    dev_comp_id(current), dir);
+	pipe_dbg(current->pipeline, "pipeline_comp_trigger(), current->comp.id = %u, dir = %u",
+		 dev_comp_id(current), dir);
 
 	/* trigger should propagate to the connected pipelines,
 	 * which need to be scheduled together
@@ -802,8 +801,8 @@ int pipeline_trigger(struct pipeline *p, struct comp_dev *host, int cmd)
 
 	ret = walk_ctx.comp_func(host, NULL, &walk_ctx, host->direction);
 	if (ret < 0) {
-		pipe_cl_err("pipeline_trigger(): ret = %d, host->comp.id = %u, cmd = %d",
-			    ret, dev_comp_id(host), cmd);
+		pipe_err(p, "pipeline_trigger(): ret = %d, host->comp.id = %u, cmd = %d",
+			 ret, dev_comp_id(host), cmd);
 	}
 
 	pipeline_schedule_triggered(&walk_ctx, cmd);
@@ -820,8 +819,8 @@ static int pipeline_comp_reset(struct comp_dev *current,
 	int end_type;
 	int err;
 
-	pipe_cl_dbg("pipeline_comp_reset(), current->comp.id = %u, dir = %u",
-		    dev_comp_id(current), dir);
+	pipe_dbg(current->pipeline, "pipeline_comp_reset(), current->comp.id = %u, dir = %u",
+		 dev_comp_id(current), dir);
 
 	if (!comp_is_single_pipeline(current, p->source_comp)) {
 		/* If pipeline connected to the starting one is in improper
@@ -866,8 +865,8 @@ int pipeline_reset(struct pipeline *p, struct comp_dev *host)
 
 	ret = walk_ctx.comp_func(host, NULL, &walk_ctx, host->direction);
 	if (ret < 0) {
-		pipe_cl_err("pipeline_reset(): ret = %d, host->comp.id = %u",
-			    ret, dev_comp_id(host));
+		pipe_err(p, "pipeline_reset(): ret = %d, host->comp.id = %u",
+			 ret, dev_comp_id(host));
 	}
 
 	return ret;
@@ -881,16 +880,16 @@ static int pipeline_comp_copy(struct comp_dev *current,
 	int is_single_ppl = comp_is_single_pipeline(current, ppl_data->start);
 	int err;
 
-	pipe_cl_dbg("pipeline_comp_copy(), current->comp.id = %u, dir = %u",
-		    dev_comp_id(current), dir);
+	pipe_dbg(current->pipeline, "pipeline_comp_copy(), current->comp.id = %u, dir = %u",
+		 dev_comp_id(current), dir);
 
 	if (!is_single_ppl) {
-		pipe_cl_dbg("pipeline_comp_copy(), current is from another pipeline and can't be scheduled together");
+		pipe_dbg(current->pipeline, "pipeline_comp_copy(), current is from another pipeline and can't be scheduled together");
 		return 0;
 	}
 
 	if (!comp_is_active(current)) {
-		pipe_cl_dbg("pipeline_comp_copy(), current is not active");
+		pipe_dbg(current->pipeline, "pipeline_comp_copy(), current is not active");
 		return 0;
 	}
 
@@ -941,8 +940,8 @@ static int pipeline_copy(struct pipeline *p)
 
 	ret = walk_ctx.comp_func(start, NULL, &walk_ctx, dir);
 	if (ret < 0)
-		pipe_cl_err("pipeline_copy(): ret = %d, start->comp.id = %u, dir = %u",
-			    ret, dev_comp_id(start), dir);
+		pipe_err(p, "pipeline_copy(): ret = %d, start->comp.id = %u, dir = %u",
+			 ret, dev_comp_id(start), dir);
 
 	return ret;
 }
@@ -957,7 +956,7 @@ static int pipeline_comp_timestamp(struct comp_dev *current,
 	struct pipeline_data *ppl_data = ctx->comp_data;
 
 	if (!comp_is_active(current)) {
-		pipe_cl_dbg("pipeline_comp_timestamp(), current is not active");
+		pipe_dbg(current->pipeline, "pipeline_comp_timestamp(), current is not active");
 		return 0;
 	}
 
@@ -1138,7 +1137,7 @@ static enum task_state pipeline_task(void *arg)
 		}
 	}
 
-	pipe_cl_dbg("pipeline_task() sched");
+	pipe_dbg(p, "pipeline_task() sched");
 
 	return SOF_TASK_STATE_RESCHEDULE;
 }
