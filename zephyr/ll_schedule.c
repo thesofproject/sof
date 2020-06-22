@@ -57,8 +57,10 @@ static void ll_work_handler(struct k_work *work)
 		/* work out next start time relative to start */
 		ticks = platform_timer_get(NULL) - task->start;
 
-		next_start = (ticks / ticks_10usec) * 100;
+		/* get task duration in micro secs */
+		next_start = ((ticks / ticks_10usec) + 1) * 10;
 
+		/* have we overshot the period length ?? */
 		if (task->period < next_start)
 			next_start = task->period;
 		else
