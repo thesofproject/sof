@@ -498,6 +498,7 @@ static int smart_amp_prepare(struct comp_dev *dev)
 	struct smart_amp_data *sad = comp_get_drvdata(dev);
 	struct comp_buffer *source_buffer;
 	struct list_item *blist;
+	uint32_t flags = 0;
 	int ret;
 
 	comp_info(dev, "smart_amp_prepare()");
@@ -513,11 +514,12 @@ static int smart_amp_prepare(struct comp_dev *dev)
 	list_for_item(blist, &dev->bsource_list) {
 		source_buffer = container_of(blist, struct comp_buffer,
 					     sink_list);
-
+		buffer_lock(source_buffer, &flags);
 		if (source_buffer->source->comp.type == SOF_COMP_DEMUX)
 			sad->feedback_buf = source_buffer;
 		else
 			sad->source_buf = source_buffer;
+		buffer_unlock(source_buffer, flags);
 	}
 
 	sad->sink_buf = list_first_item(&dev->bsink_list, struct comp_buffer,
@@ -526,6 +528,7 @@ static int smart_amp_prepare(struct comp_dev *dev)
 	sad->in_channels = sad->source_buf->stream.channels;
 	sad->out_channels = sad->sink_buf->stream.channels;
 
+	buffer_lock(sad->feedback_buf, &flags);
 	sad->feedback_buf->stream.channels = sad->config.feedback_channels;
 	sad->feedback_buf->stream.rate = sad->source_buf->stream.rate;
 
@@ -534,6 +537,7 @@ static int smart_amp_prepare(struct comp_dev *dev)
 	 * removed when parameters negotiation between pipelines will prepared
 	 */
 	sad->feedback_buf->stream.frame_fmt = SOF_IPC_FRAME_S32_LE;
+	buffer_unlock(sad->feedback_buf, flags);
 
 	sad->process = get_smart_amp_process(dev);
 	if (!sad->process) {
