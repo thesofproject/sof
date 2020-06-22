@@ -436,9 +436,6 @@ static int smart_amp_copy(struct comp_dev *dev)
 
 	avail_frames = avail_passthrough_frames;
 
-	comp_dbg(dev, "smart_amp_copy(): avail_passthrough_frames: %d",
-		 avail_passthrough_frames);
-
 	buffer_lock(sad->feedback_buf, &feedback_flags);
 	if (sad->feedback_buf->source->state == dev->state) {
 		/* feedback */
@@ -453,8 +450,8 @@ static int smart_amp_copy(struct comp_dev *dev)
 
 		buffer_unlock(sad->feedback_buf, feedback_flags);
 
-		comp_dbg(dev, "smart_amp_copy(): processing %d feedback bytes",
-			 feedback_bytes);
+		comp_dbg(dev, "smart_amp_copy(): processing %d feedback frames (avail_passthrough_frames: %d)",
+			 avail_frames, avail_passthrough_frames);
 
 		sad->process(dev, &sad->feedback_buf->stream,
 			     &sad->sink_buf->stream, avail_frames,
