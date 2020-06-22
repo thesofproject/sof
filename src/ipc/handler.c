@@ -677,6 +677,13 @@ static int ipc_pm_gate(uint32_t header)
 	else
 		pm_runtime_enable(PM_RUNTIME_DSP, PLATFORM_MASTER_CORE_ID);
 
+#if !CONFIG_CAVS_LPRO
+	if (pm_runtime_is_active(PM_RUNTIME_DSP, PLATFORM_MASTER_CORE_ID))
+		platform_set_active_clock(CPU_HPRO_FREQ_IDX);
+	else
+		platform_set_active_clock(CPU_LPRO_FREQ_IDX);
+#endif
+
 	/* resume dma trace if needed */
 	if (!(pm_gate.flags & SOF_PM_NO_TRACE))
 		trace_on();
