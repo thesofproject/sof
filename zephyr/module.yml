@@ -1,2 +1,3 @@
 build:
         cmake: ./zephyr
+        kconfig: Kconfig

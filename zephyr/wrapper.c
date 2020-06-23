@@ -7,16 +7,138 @@
 
 #include <sof/lib/alloc.h>
 #include <sof/drivers/interrupt.h>
+#include <sof/drivers/interrupt-map.h>
 #include <sof/lib/dma.h>
 #include <sof/schedule/schedule.h>
+#include <platform/drivers/interrupt.h>
+#include <sof/platform.h>
+#include <sof/lib/notifier.h>
+#include <sof/audio/pipeline.h>
+#include <sof/audio/component_ext.h>
+#include <sof/trace/trace.h>
+
+/* Zephyr includes */
+#include <soc.h>
+
+/* Including following header
+ * #include <kernel.h>
+ * triggers include chain issue
+ *
+ * TODO: Figure out best way for include
+ */
+void *k_malloc(size_t size);
+void *k_calloc(size_t nmemb, size_t size);
+void k_free(void *ptr);
+
+int arch_irq_connect_dynamic(unsigned int irq, unsigned int priority,
+			     void (*routine)(void *parameter),
+			     void *parameter, uint32_t flags);
+
+#define arch_irq_enable(irq)	z_soc_irq_enable(irq)
+#define arch_irq_disable(irq)	z_soc_irq_disable(irq)
+
+/* TODO: Use ASSERT */
+#if !defined(CONFIG_DYNAMIC_INTERRUPTS)
+#error Define CONFIG_DYNAMIC_INTERRUPTS
+#endif
+
+#if !defined(CONFIG_HEAP_MEM_POOL_SIZE)
+#error Define CONFIG_HEAP_MEM_POOL_SIZE
+#endif
 
 /*
  * Memory
  */
+
+/*  Single-linked alloc list for simple book keeping */
+static sys_slist_t alloc_list;
+
+/* Organized for alignment purposes */
+struct __alloc_hdr {
+	sys_snode_t snode;
+	uint32_t size;
+	char padding[20];
+	void *orig_ptr;
+} __packed;
+
+#define DEBUG_ALLOC			1
+#define ALWAYS_USE_ALIGNED_ALLOC	1
+
+static struct k_spinlock lock;
+
+BUILD_ASSERT((sizeof(struct __alloc_hdr) == 32), "Must be 32");
+
 void *rmalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
 {
-	// TODO: call Zephyr API
-	return NULL;
+	if (IS_ENABLED(ALWAYS_USE_ALIGNED_ALLOC)) {
+		return  rballoc_align(flags, caps, bytes,
+				      PLATFORM_DCACHE_ALIGN);
+	} else {
+		struct __alloc_hdr *hdr;
+		void *new_ptr;
+
+		bytes += sizeof(struct __alloc_hdr);
+
+		/* TODO: Use different memory areas - & cache line alignment*/
+
+		/* Allocation header in the beginning of the memory block */
+		hdr = k_malloc(bytes);
+		if (!hdr) {
+			LOG_ERR("Failed to malloc");
+			return NULL;
+		}
+
+		/* New pointer starts right after sizeof(*hdr) */
+		new_ptr = hdr + 1;
+
+		hdr->orig_ptr = hdr;
+		hdr->size = bytes;
+
+		LOG_ERR("rmalloc: hdr %p new_ptr %p sz %u",
+			     hdr, new_ptr, hdr->size);
+
+		if (IS_ENABLED(DEBUG_ALLOC)) {
+			k_spinlock_key_t k = k_spin_lock(&lock);
+			sys_slist_append(&alloc_list, &hdr->snode);
+			k_spin_unlock(&lock, k);
+		}
+
+		return new_ptr;
+	}
+}
+
+/* Use SOF_MEM_ZONE_BUFFER at the moment */
+void *rbrealloc_align(void *ptr, uint32_t flags, uint32_t caps, size_t bytes,
+		      size_t old_bytes, uint32_t alignment)
+{
+	void *new_ptr;
+
+	if (!ptr) {
+		/* TODO: Use correct zone */
+		return rmalloc(SOF_MEM_ZONE_BUFFER, flags, caps, bytes);
+	}
+
+	/* Original version returns NULL without freeing this memory */
+	if (!bytes) {
+		/* TODO: Should we call rfree(ptr); */
+		LOG_ERR("bytes == 0");
+		return NULL;
+	}
+
+	new_ptr = rmalloc(SOF_MEM_ZONE_BUFFER, flags, caps, bytes);
+	if (!new_ptr) {
+		return NULL;
+	}
+
+	if (!(flags & SOF_MEM_FLAG_NO_COPY)) {
+		memcpy(new_ptr, ptr, MIN(bytes, old_bytes));
+	}
+
+	rfree(ptr);
+
+	LOG_INF("rbealloc: new ptr %p", new_ptr);
+
+	return new_ptr;
 }
 
 /**
@@ -27,8 +149,45 @@ void *rmalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
  */
 void *rzalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
 {
-	// TODO: call Zephyr API
-	return NULL;
+	if (IS_ENABLED(ALWAYS_USE_ALIGNED_ALLOC)) {
+		void *ptr = rmalloc(zone, flags, caps, bytes);
+
+		memset(ptr, 0, bytes);
+
+		return ptr;
+	} else {
+		struct __alloc_hdr *hdr;
+		void *new_ptr;
+
+		bytes += sizeof(struct __alloc_hdr);
+
+		/* TODO: Use different memory areas & cache line alignment */
+
+		/* Allocation header in the beginning of the memory block */
+		hdr = k_calloc(bytes, 1);
+		if (!hdr) {
+			LOG_ERR("Failed to rzalloc");
+			k_panic();
+			return NULL;
+		}
+
+		/* New pointer starts right after sizeof(*hdr) */
+		new_ptr = hdr + 1;
+
+		hdr->orig_ptr = hdr;
+		hdr->size = bytes;
+
+		LOG_INF("rz: hdr %p new %p sz %u",
+			     hdr, new_ptr, hdr->size);
+
+		if (IS_ENABLED(DEBUG_ALLOC)) {
+			k_spinlock_key_t k = k_spin_lock(&lock);
+			sys_slist_append(&alloc_list, &hdr->snode);
+			k_spin_unlock(&lock, k);
+		}
+
+		return new_ptr;
+	}
 }
 
 /**
@@ -42,156 +201,156 @@ void *rzalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
 void *rballoc_align(uint32_t flags, uint32_t caps, size_t bytes,
 		    uint32_t alignment)
 {
-	// TODO: call Zephyr API
-	return NULL;
+	struct __alloc_hdr *hdr;
+	void *ptr, *new_ptr;
+
+	bytes += PLATFORM_DCACHE_ALIGN - 1 + sizeof(struct __alloc_hdr);
+
+	/* TODO: Rewrite with alignment, mem areas, caps */
+	ptr = k_malloc(bytes);
+	if (!ptr) {
+		LOG_ERR("Failed to rballoc_align");
+		return NULL;
+	}
+
+	new_ptr = (void *)ROUND_UP((unsigned long)ptr +
+				   sizeof(struct __alloc_hdr), PLATFORM_DCACHE_ALIGN);
+
+	hdr = (struct __alloc_hdr *)new_ptr - 1;
+
+	hdr->orig_ptr = ptr;
+	hdr->size = bytes;
+
+	if (IS_ENABLED(DEBUG_ALLOC)) {
+		k_spinlock_key_t k = k_spin_lock(&lock);
+		sys_slist_append(&alloc_list, &hdr->snode);
+		k_spin_unlock(&lock, k);
+	}
+
+	LOG_INF("rba: hdr %p new %p sz %u",
+		     hdr, new_ptr, hdr->size);
+
+	return new_ptr;
 }
 
+/*
+ * Free's memory allocated by above alloc calls.
+ */
 void rfree(void *ptr)
 {
-	// TODO: call Zephyr API
+	if (!ptr) {
+		/* Should this be warning? */
+		LOG_ERR("Trying to free NULL");
+		return;
+	} else {
+		struct __alloc_hdr *hdr = (struct __alloc_hdr *)ptr - 1;
+		void *orig_ptr = hdr->orig_ptr;
+
+		LOG_INF("rfree: ptr %p orig %p",
+			     ptr, orig_ptr);
+
+		if (IS_ENABLED(DEBUG_ALLOC)) {
+			k_spinlock_key_t k;
+			bool found;
+
+			k = k_spin_lock(&lock);
+			found = sys_slist_find_and_remove(&alloc_list, &hdr->snode);
+			k_spin_unlock(&lock, k);
+
+			if (!found) {
+				LOG_ERR("Remove unknown %p, size %u",
+					    ptr, hdr->size);
+			}
+
+			return;
+		}
+
+		k_free(orig_ptr);
+	}
 }
 
+/* debug only - only needed for linking */
 void heap_trace_all(int force)
 {
 }
 
-/*
- * Interrupts
- */
-int interrupt_register(uint32_t irq, void(*handler)(void *arg), void *arg)
-{
-	return 0;
-}
-
-void interrupt_unregister(uint32_t irq, const void *arg)
-{
-}
-
-uint32_t interrupt_enable(uint32_t irq, void *arg)
-{
-	return 0;
-}
-
-uint32_t interrupt_disable(uint32_t irq, void *arg)
-{
-	return 0;
-}
-
-void platform_interrupt_init(void)
-{
-}
-
-void platform_interrupt_set(uint32_t irq)
-{
-}
-
-void platform_interrupt_clear(uint32_t irq, uint32_t mask)
-{
-}
-
-uint32_t platform_interrupt_get_enabled(void)
-{
-	return 0;
-}
-
-void interrupt_mask(uint32_t irq, unsigned int cpu)
-{
-}
-
-void interrupt_unmask(uint32_t irq, unsigned int cpu)
-{
-}
-
-void interrupt_init(struct sof *sof)
-{
-}
-
-int interrupt_cascade_register(const struct irq_cascade_tmpl *tmpl)
-{
-	return 0;
-}
-
-struct irq_cascade_desc *interrupt_get_parent(uint32_t irq)
-{
-	return NULL;
-}
-
-int interrupt_get_irq(unsigned int irq, const char *cascade)
-{
-	return 0;
-}
-
+/* needed for linkage only */
 const char irq_name_level2[] = "level2";
 const char irq_name_level5[] = "level5";
 
-/*
- * Scheduler
+int interrupt_get_irq(unsigned int irq, const char *cascade)
+{
+#if defined(CONFIG_SOC_SERIES_INTEL_ADSP_BAYTRAIL)
+	return irq;
+#else
+	if (cascade == irq_name_level2)
+		return SOC_AGGREGATE_IRQ(irq, IRQ_NUM_EXT_LEVEL2);
+	if (cascade == irq_name_level5)
+		return SOC_AGGREGATE_IRQ(irq, IRQ_NUM_EXT_LEVEL5);
+
+	return SOC_AGGREGATE_IRQ(0, irq);
+#endif
+}
+
+int interrupt_register(uint32_t irq, void(*handler)(void *arg), void *arg)
+{
+	return arch_irq_connect_dynamic(irq, 0, handler, arg, 0);
+}
+
+/* unregister an IRQ handler - matches on IRQ number and data ptr */
+void interrupt_unregister(uint32_t irq, const void *arg)
+{
+	/*
+	 * There is no "unregister" (or "disconnect") for
+         * interrupts in Zephyr.
+         */
+	arch_irq_disable(irq);
+}
+
+/* enable an interrupt source - IRQ needs mapped to Zephyr,
+ * arg is used to match.
  */
-
-struct schedulers **arch_schedulers_get(void)
+uint32_t interrupt_enable(uint32_t irq, void *arg)
 {
-	return NULL;
-}
+	arch_irq_enable(irq);
 
-int scheduler_init_ll(struct ll_schedule_domain *domain)
-{
 	return 0;
 }
 
-int schedule_task_init_ll(struct task *task,
-			  uint32_t uid, uint16_t type, uint16_t priority,
-			  enum task_state (*run)(void *data), void *data,
-			  uint16_t core, uint32_t flags)
+/* disable interrupt */
+uint32_t interrupt_disable(uint32_t irq, void *arg)
 {
+	arch_irq_disable(irq);
+
 	return 0;
 }
 
-int scheduler_init_edf(void)
+/* TODO; zephyr should do this. */
+void platform_interrupt_init(void)
 {
-	return 0;
-}
-
-int schedule_task_init_edf(struct task *task, uint32_t uid,
-			   const struct task_ops *ops,
-			   void *data, uint16_t core, uint32_t flags)
-{
-	return 0;
-}
-
-struct ll_schedule_domain *timer_domain_init(struct timer *timer, int clk,
-					     uint64_t timeout)
-{
-	return NULL;
-}
-
-struct ll_schedule_domain *dma_single_chan_domain_init(struct dma *dma_array,
-						       uint32_t num_dma,
-						       int clk)
-{
-	return NULL;
-}
-
-volatile void *task_context_get(void)
-{
-	return NULL;
+	/* handled by zephyr */
 }
 
 /*
  * Timers
  */
 
-uint32_t arch_timer_get_system(struct timer *timer)
+uint64_t arch_timer_get_system(struct timer *timer)
 {
-	return 0;
+	return platform_timer_get(timer);
 }
 
 /*
  * Notifier
  */
 
+static struct notify *host_notify;
+
 struct notify **arch_notify_get(void)
 {
-	return NULL;
+	if (!host_notify)
+		host_notify = k_calloc(sizeof(*host_notify), 1);
+	return &host_notify;
 }
 
 /*
@@ -199,22 +358,190 @@ struct notify **arch_notify_get(void)
  */
 void arch_dump_regs_a(void *dump_buf)
 {
+	/* needed for linkage only */
+}
 
+/* used by panic code only - should not use this as zephyr register handlers */
+volatile void *task_context_get(void)
+{
+	return NULL;
 }
 
 /*
  * Xtensa
  */
-
 unsigned int _xtos_ints_off( unsigned int mask )
 {
+	/* turn all local IRQs OFF */
+	irq_lock();
 	return 0;
 }
 
 /*
- * entry
+ * init audio components.
  */
-int task_main_start(struct sof *sof)
+
+/* TODO: this is not yet working with Zephyr - section hase been created but
+ *  no symbols are being loaded into ELF file.
+ */
+extern intptr_t _module_init_start;
+extern intptr_t _module_init_end;
+
+static void sys_module_init(void)
 {
+	intptr_t *module_init = (intptr_t *)(&_module_init_start);
+
+	for (; module_init < (intptr_t *)&_module_init_end; ++module_init)
+		((void(*)(void))(*module_init))();
+}
+
+/*
+ * TODO: all the audio processing components/modules constructor should be
+ * linked to the module_init section, but this is not happening. Just call
+ * constructors directly atm.
+ */
+
+void sys_comp_volume_init(void);
+void sys_comp_host_init(void);
+void sys_comp_mixer_init(void);
+void sys_comp_dai_init(void);
+void sys_comp_src_init(void);
+void sys_comp_mux_init(void);
+void sys_comp_selector_init(void);
+void sys_comp_switch_init(void);
+void sys_comp_tone_init(void);
+void sys_comp_eq_fir_init(void);
+void sys_comp_keyword_init(void);
+void sys_comp_asrc_init(void);
+void sys_comp_dcblock_init(void);
+void sys_comp_eq_iir_init(void);
+
+int task_main_start(void)
+{
+	struct sof *sof = sof_get();
+
+	/* init default audio components */
+	sys_comp_init(sof);
+
+	/* init self-registered modules */
+	sys_module_init();
+
+	sys_comp_volume_init();
+	sys_comp_host_init();
+	sys_comp_mixer_init();
+	sys_comp_dai_init();
+	sys_comp_src_init();
+
+	sys_comp_selector_init();
+	sys_comp_switch_init();
+	sys_comp_tone_init();
+	sys_comp_eq_fir_init();
+	sys_comp_eq_iir_init();
+	sys_comp_keyword_init();
+	sys_comp_asrc_init();
+	sys_comp_dcblock_init();
+
+	if (IS_ENABLED(CONFIG_COMP_MUX)) {
+		sys_comp_mux_init();
+	}
+
+	/* init pipeline position offsets */
+	pipeline_posn_init(sof);
+
 	return 0;
+}
+
+void platform_timer_start(struct timer *timer)
+{
+	/* handled by Zephyr */
+}
+
+void platform_timer_stop(struct timer *timer)
+{
+	/* handled by Zephyr */
+}
+
+/* platform_timer_set() should not be called using Zephyr */
+int64_t platform_timer_set(struct timer *timer, uint64_t ticks)
+{
+#if defined(CONFIG_SOC_SERIES_INTEL_ADSP_BAYTRAIL)
+	return ticks;
+#else
+	/* TODO: needs BDW; should call Zephyr 64bit API ? */
+	return shim_read64(SHIM_DSPWCT0C);
+#endif
+}
+
+uint64_t platform_timer_get(struct timer *timer)
+{
+#if defined(CONFIG_SOC_SERIES_INTEL_ADSP_BAYTRAIL)
+	uint32_t low;
+	uint32_t high;
+	uint64_t time;
+
+	/* read low 32 bits */
+	low = shim_read(SHIM_EXT_TIMER_STAT);
+	/* TODO: check and see whether 32bit IRQ is pending for timer */
+	high = timer->hitime;
+
+	time = ((uint64_t)high << 32) | low;
+
+	return time;
+#else
+	/* TODO: needs BYT and BDW versions - should call Zephyr 64bit API ? */
+//	return arch_timer_get_system(timer);
+	return (uint64_t)shim_read64(SHIM_DSPWC);
+#endif
+}
+
+/* get timestamp for host stream DMA position */
+void platform_host_timestamp(struct comp_dev *host,
+			     struct sof_ipc_stream_posn *posn)
+{
+	int err;
+
+	/* get host position */
+	err = comp_position(host, posn);
+	if (err == 0)
+		posn->flags |= SOF_TIME_HOST_VALID;
+}
+
+/* get timestamp for DAI stream DMA position */
+void platform_dai_timestamp(struct comp_dev *dai,
+			    struct sof_ipc_stream_posn *posn)
+{
+	int err;
+
+	/* get DAI position */
+	err = comp_position(dai, posn);
+	if (err == 0)
+		posn->flags |= SOF_TIME_DAI_VALID;
+
+	/* get SSP wallclock - DAI sets this to stream start value */
+	posn->wallclock = platform_timer_get(NULL) - posn->wallclock;
+	posn->wallclock_hz = clock_get_freq(PLATFORM_DEFAULT_CLOCK);
+	posn->flags |= SOF_TIME_WALL_VALID;
+}
+
+/* get current wallclock for componnent */
+void platform_dai_wallclock(struct comp_dev *dai, uint64_t *wallclock)
+{
+	*wallclock = platform_timer_get(NULL);
+}
+
+void platform_timer_clear(struct timer *timer)
+{
+	/* handled by Zephyr */
+}
+
+void trace_flush(void)
+{
+}
+
+void trace_on(void)
+{
+}
+
+void trace_off(void)
+{
 }
