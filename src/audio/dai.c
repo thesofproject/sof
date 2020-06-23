@@ -738,7 +738,7 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 	int channel = 0;
 	int handshake;
 
-	comp_info(dev, "dai_config() dai %d.%d",
+	comp_info(dev, "dai_config() dai type = %d index = %d",
 		  config->type, config->dai_index);
 
 	/* cannot configure DAI while active */
