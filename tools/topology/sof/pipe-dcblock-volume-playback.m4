@@ -33,8 +33,8 @@ C_CONTROLMIXER(Master Playback Volume, PIPELINE_ID,
 define(MY_PGA_TOKENS, concat(`pga_tokens_', PIPELINE_ID))
 define(MY_PGA_CONF, concat(`pga_conf_', PIPELINE_ID))
 W_VENDORTUPLES(MY_PGA_TOKENS, sof_volume_tokens,
-LIST(`		', `SOF_TKN_VOLUME_RAMP_STEP_TYPE	"0"'
-     `		', `SOF_TKN_VOLUME_RAMP_STEP_MS		"250"'))
+LIST(`		', `SOF_TKN_VOLUME_RAMP_STEP_TYPE	"2"'
+     `		', `SOF_TKN_VOLUME_RAMP_STEP_MS		"20"'))
 
 W_DATA(MY_PGA_CONF, MY_PGA_TOKENS)
 

@@ -35,8 +35,8 @@ define(DEF_PGA_TOKENS, concat(`pga_tokens_', PIPELINE_ID))
 define(DEF_PGA_CONF, concat(`pga_conf_', PIPELINE_ID))
 
 W_VENDORTUPLES(DEF_PGA_TOKENS, sof_volume_tokens,
-LIST(`		', `SOF_TKN_VOLUME_RAMP_STEP_TYPE	"0"'
-     `		', `SOF_TKN_VOLUME_RAMP_STEP_MS		"250"'))
+LIST(`		', `SOF_TKN_VOLUME_RAMP_STEP_TYPE	"2"'
+     `		', `SOF_TKN_VOLUME_RAMP_STEP_MS		"20"'))
 
 W_DATA(DEF_PGA_CONF, DEF_PGA_TOKENS)
 

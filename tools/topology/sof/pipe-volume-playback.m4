@@ -29,11 +29,14 @@ C_CONTROLMIXER(Master Playback Volume, PIPELINE_ID,
 # Volume configuration
 #
 
-W_VENDORTUPLES(playback_pga_tokens, sof_volume_tokens,
-LIST(`		', `SOF_TKN_VOLUME_RAMP_STEP_TYPE	"0"'
-     `		', `SOF_TKN_VOLUME_RAMP_STEP_MS		"250"'))
+define(DEF_PGA_TOKENS, concat(`pga_tokens_', PIPELINE_ID))
+define(DEF_PGA_CONF, concat(`pga_conf_', PIPELINE_ID))
 
-W_DATA(playback_pga_conf, playback_pga_tokens)
+W_VENDORTUPLES(DEF_PGA_TOKENS, sof_volume_tokens,
+LIST(`		', `SOF_TKN_VOLUME_RAMP_STEP_TYPE	"2"'
+     `		', `SOF_TKN_VOLUME_RAMP_STEP_MS		"20"'))
+
+W_DATA(DEF_PGA_CONF, DEF_PGA_TOKENS)
 
 #
 # Components and Buffers
@@ -44,7 +47,7 @@ W_DATA(playback_pga_conf, playback_pga_tokens)
 W_PCM_PLAYBACK(PCM_ID, Passthrough Playback, 2, 0, SCHEDULE_CORE)
 
 # "Volume" has 2 source and x sink periods
-W_PGA(0, PIPELINE_FORMAT, DAI_PERIODS, 2, playback_pga_conf, SCHEDULE_CORE,
+W_PGA(0, PIPELINE_FORMAT, DAI_PERIODS, 2, DEF_PGA_CONF, SCHEDULE_CORE,
 	LIST(`		', "PIPELINE_ID Master Playback Volume"))
 
 # Playback Buffers
@@ -79,3 +82,5 @@ indir(`define', concat(`PIPELINE_PCM_', PIPELINE_ID), Passthrough Playback PCM_I
 #
 PCM_CAPABILITIES(Passthrough Playback PCM_ID, `S32_LE,S24_LE,S16_LE', PCM_MIN_RATE, PCM_MAX_RATE, 2, PIPELINE_CHANNELS, 2, 16, 192, 16384, 65536, 65536)
 
+undefine(`DEF_PGA_TOKENS')
+undefine(`DEF_PGA_CONF')
