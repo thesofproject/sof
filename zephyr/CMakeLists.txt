@@ -31,9 +31,22 @@ endfunction()
 # 4. RTOS logic - scheduler, allocator, notifier - as with 2 & 3.
 zephyr_interface_library_named(SOF)
 
+# SOF source paths.
+set(SOF_SRC_PATH "../src")
+set(SOF_PLATFORM_PATH "${SOF_SRC_PATH}/platform")
+set(SOF_AUDIO_PATH "${SOF_SRC_PATH}/audio")
+set(SOF_LIB_PATH "${SOF_SRC_PATH}/lib")
+set(SOF_DRIVERS_PATH "${SOF_SRC_PATH}/drivers")
+set(SOF_IPC_PATH "${SOF_SRC_PATH}/ipc")
+set(SOF_DEBUG_PATH "${SOF_SRC_PATH}/debug")
+set(SOF_MATH_PATH "${SOF_SRC_PATH}/math")
+set(SOF_TRACE_PATH "${SOF_SRC_PATH}/trace")
+
 # default SOF includes
-target_include_directories(SOF INTERFACE ../src/include)
-target_include_directories(SOF INTERFACE ../src/arch/xtensa/include)
+target_include_directories(SOF INTERFACE ../rimage/src/include)
+target_include_directories(SOF INTERFACE ../zephyr/include)
+target_include_directories(SOF INTERFACE ${SOF_SRC_PATH}/include)
+target_include_directories(SOF INTERFACE ${SOF_SRC_PATH}/arch/xtensa/include)
 
 # SOF module init
 zephyr_library_named(modules_sof)
@@ -44,195 +57,429 @@ zephyr_include_directories(
 # SOC level sources
 # Files that are commented may not be needed.
 
-# BYT, CHT, BSW
-if (CONFIG_SOC_SERIES_INTEL_BAYTRAIL)
+# Intel BYT, CHT, BSW platforms
+if (CONFIG_SOC_SERIES_INTEL_ADSP_BAYTRAIL)
+
+	# Driver sources
 	zephyr_library_sources(
-		../src/drivers/intel/baytrail/ipc.c
-		#../src/drivers/intel/baytrail/interrupt.c
-		../src/drivers/intel/baytrail/timer.c
-		../src/drivers/intel/baytrail/ssp.c
-		 ../src/drivers/intel/pmc-ipc.c
+		${SOF_DRIVERS_PATH}/intel/baytrail/ipc.c
+		${SOF_DRIVERS_PATH}/intel/baytrail/ssp.c
+		${SOF_DRIVERS_PATH}/intel/pmc-ipc.c
 	)
 
-	target_include_directories(SOF INTERFACE ../src/platform/baytrail/include)
-endif()
-
-# HSW, BDW
-if (CONFIG_SOC_SERIES_INTEL_BROADWELL)
+	# Platform sources
 	zephyr_library_sources(
-		../src/drivers/intel/haswell/ipc.c
-		#../src/drivers/intel/haswell/interrupt.c
-		../src/drivers/intel/haswell/timer.c
-		../src/drivers/intel/haswell/ssp.c
+		${SOF_PLATFORM_PATH}/baytrail/platform.c
+		${SOF_PLATFORM_PATH}/baytrail/lib/dai.c
+		${SOF_PLATFORM_PATH}/baytrail/lib/clk.c
+		${SOF_PLATFORM_PATH}/baytrail/lib/dma.c
+		${SOF_SRC_PATH}/schedule/dma_multi_chan_domain.c
 	)
 
-	target_include_directories(SOF INTERFACE ../src/platform/haswell/include)
+	set(PLATFORM "baytrail")
 endif()
 
-# APL, KBL, SKL
+# Intel HSW, BDW platforms
+if (CONFIG_SOC_SERIES_INTEL_ADSP_BROADWELL)
+	zephyr_library_sources(
+		${SOF_DRIVERS_PATH}/intel/haswell/ipc.c
+		${SOF_DRIVERS_PATH}/intel/haswell/ssp.c
+	)
+
+	set(PLATFORM "haswell")
+endif()
+
+# Intel APL, KBL, SKL CAVS 1.5 platforms
 if (CONFIG_SOC_SERIES_INTEL_CAVS_V15)
+
+	# Driver sources
 	zephyr_library_sources(
-		../src/drivers/intel/cavs/hda-dma.c
-		../src/drivers/intel/cavs/hda.c
-		../src/drivers/intel/cavs/ipc.c
-		../src/drivers/intel/cavs/dmic.c
-		#../src/drivers/intel/cavs/interrupt.c
-		#../src/drivers/intel/cavs/idc.c
-		../src/drivers/intel/cavs/timer.c
-		../src/drivers/intel/cavs/ssp.c
-		../src/drivers/intel/cavs/mn.c
+		${SOF_DRIVERS_PATH}/intel/cavs/ipc.c
+		${SOF_DRIVERS_PATH}/intel/cavs/timestamp.c
 	)
 
-	# CAVS15 include seems to be set in Zephyr. TODO also set common dir.
+	zephyr_library_sources_ifdef(CONFIG_MULTICORE
+		${SOF_DRIVERS_PATH}/intel/cavs/idc.c
+	)
+
+	zephyr_library_sources_ifdef(CONFIG_INTEL_HDA
+		${SOF_DRIVERS_PATH}/intel/hda/hda-dma.c
+		${SOF_DRIVERS_PATH}/intel/hda/hda.c
+	)
+
+	zephyr_library_sources_ifdef(CONFIG_INTEL_MN
+		${SOF_DRIVERS_PATH}/intel/ssp/mn.c
+	)
+
+	zephyr_library_sources_ifdef(CONFIG_INTEL_SSP
+		${SOF_DRIVERS_PATH}/intel/ssp/ssp.c
+	)
+
+	zephyr_library_sources_ifdef(CONFIG_INTEL_ALH
+		${SOF_DRIVERS_PATH}/intel/alh.c
+	)
+
+	zephyr_library_sources_ifdef(CONFIG_INTEL_DMIC
+		${SOF_DRIVERS_PATH}/intel/dmic.c
+	)
+
+	# Platform sources
+	zephyr_library_sources(
+		${SOF_PLATFORM_PATH}/intel/cavs/platform.c
+		${SOF_PLATFORM_PATH}/intel/cavs/lib/mem_window.c
+		${SOF_PLATFORM_PATH}/intel/cavs/lib/pm_runtime.c
+		${SOF_PLATFORM_PATH}/intel/cavs/lib/pm_memory.c
+		${SOF_PLATFORM_PATH}/intel/cavs/lib/clk.c
+		${SOF_PLATFORM_PATH}/intel/cavs/lib/dai.c
+		${SOF_PLATFORM_PATH}/intel/cavs/lib/dma.c
+		${SOF_PLATFORM_PATH}/apollolake/lib/power_down.S
+		${SOF_PLATFORM_PATH}/apollolake/lib/clk.c
+	)
+
+	set_source_files_properties(${SOF_PLATFORM_PATH}/apollolake/lib/power_down.S PROPERTIES COMPILE_FLAGS -DASSEMBLY)
+
+	set(PLATFORM "apollolake")
+	zephyr_include_directories(${SOF_PLATFORM_PATH}/intel/cavs/include)
+endif()
+
+# Intel CNL and CAVS 1.8 platfroms
+if (CONFIG_SOC_SERIES_INTEL_CAVS_V18)
+
+	# Driver sources
+	zephyr_library_sources(
+		${SOF_DRIVERS_PATH}/intel/cavs/ipc.c
+		${SOF_DRIVERS_PATH}/intel/cavs/timestamp.c
+	)
+
+	zephyr_library_sources_ifdef(CONFIG_MULTICORE
+		${SOF_DRIVERS_PATH}/intel/cavs/idc.c
+	)
+
+	# Sue Creek - S100 only - already in Zephyr.
+	#${SOF_DRIVERS_PATH}/intel/cavs/sue-ipc.c
+	#${SOF_DRIVERS_PATH}/intel/cavs/sue-iomux.c
+
+	zephyr_library_sources_ifdef(CONFIG_INTEL_HDA
+		${SOF_DRIVERS_PATH}/intel/hda/hda-dma.c
+		${SOF_DRIVERS_PATH}/intel/hda/hda.c
+	)
+
+	zephyr_library_sources_ifdef(CONFIG_INTEL_MN
+		${SOF_DRIVERS_PATH}/intel/ssp/mn.c
+	)
+
+	zephyr_library_sources_ifdef(CONFIG_INTEL_SSP
+		${SOF_DRIVERS_PATH}/intel/ssp/ssp.c
+	)
+
+	zephyr_library_sources_ifdef(CONFIG_INTEL_ALH
+		${SOF_DRIVERS_PATH}/intel/alh.c
+	)
+
+	zephyr_library_sources_ifdef(CONFIG_INTEL_DMIC
+		${SOF_DRIVERS_PATH}/intel/dmic.c
+	)
+
+	# Platform sources
+	zephyr_library_sources(
+		${SOF_PLATFORM_PATH}/intel/cavs/platform.c
+		${SOF_PLATFORM_PATH}/intel/cavs/lib/mem_window.c
+		${SOF_PLATFORM_PATH}/cannonlake/lib/clk.c
+		${SOF_PLATFORM_PATH}/intel/cavs/lib/power_down.S
+		${SOF_PLATFORM_PATH}/intel/cavs/lib/pm_runtime.c
+		${SOF_PLATFORM_PATH}/intel/cavs/lib/pm_memory.c
+		${SOF_PLATFORM_PATH}/intel/cavs/lib/clk.c
+		${SOF_PLATFORM_PATH}/intel/cavs/lib/dai.c
+		${SOF_PLATFORM_PATH}/intel/cavs/lib/dma.c
+		#${SOF_PLATFORM_PATH}/intel/cavs/lps_pic_restore_vector.S
+		${SOF_PLATFORM_PATH}/intel/cavs/lps_wait.c
+	)
+
+	set_source_files_properties(${SOF_PLATFORM_PATH}/intel/cavs/lib/power_down.S PROPERTIES COMPILE_FLAGS -DASSEMBLY)
+	set_source_files_properties(${SOF_PLATFORM_PATH}/intel/cavs/lps_pic_restore_vector.S PROPERTIES COMPILE_FLAGS -DASSEMBLY)
+
+	set(PLATFORM "cannonlake")
+	zephyr_include_directories(${SOF_PLATFORM_PATH}/intel/cavs/include)
+endif()
+
+# Intel ICL and CAVS 2.0 platforms
+if (CONFIG_SOC_SERIES_INTEL_CAVS_V20)
+
+	# Driver sources
+	zephyr_library_sources(
+		${SOF_DRIVERS_PATH}/intel/cavs/ipc.c
+		${SOF_DRIVERS_PATH}/intel/cavs/timestamp.c
+	)
+
+	zephyr_library_sources_ifdef(CONFIG_MULTICORE
+		${SOF_DRIVERS_PATH}/intel/cavs/idc.c
+	)
+
+	zephyr_library_sources_ifdef(CONFIG_INTEL_HDA
+		${SOF_DRIVERS_PATH}/intel/hda/hda-dma.c
+		${SOF_DRIVERS_PATH}/intel/hda/hda.c
+	)
+
+	zephyr_library_sources_ifdef(CONFIG_INTEL_MN
+		${SOF_DRIVERS_PATH}/intel/ssp/mn.c
+	)
+
+	zephyr_library_sources_ifdef(CONFIG_INTEL_SSP
+		${SOF_DRIVERS_PATH}/intel/ssp/ssp.c
+	)
+
+	zephyr_library_sources_ifdef(CONFIG_INTEL_ALH
+		${SOF_DRIVERS_PATH}/intel/alh.c
+	)
+
+	zephyr_library_sources_ifdef(CONFIG_INTEL_DMIC
+		${SOF_DRIVERS_PATH}/intel/dmic.c
+	)
+
+	# Platform sources
+	zephyr_library_sources(
+		${SOF_PLATFORM_PATH}/intel/cavs/platform.c
+		${SOF_PLATFORM_PATH}/intel/cavs/lib/mem_window.c
+		${SOF_PLATFORM_PATH}/icelake/lib/clk.c
+		${SOF_PLATFORM_PATH}/intel/cavs/lib/power_down.S
+		${SOF_PLATFORM_PATH}/intel/cavs/lib/pm_runtime.c
+		${SOF_PLATFORM_PATH}/intel/cavs/lib/pm_memory.c
+		${SOF_PLATFORM_PATH}/intel/cavs/lib/clk.c
+		${SOF_PLATFORM_PATH}/intel/cavs/lib/dai.c
+		${SOF_PLATFORM_PATH}/intel/cavs/lib/dma.c
+		#${SOF_PLATFORM_PATH}/intel/cavs/lps_pic_restore_vector.S
+		${SOF_PLATFORM_PATH}/intel/cavs/lps_wait.c
+	)
+
+	set_source_files_properties(${SOF_PLATFORM_PATH}/intel/cavs/lib/power_down.S PROPERTIES COMPILE_FLAGS -DASSEMBLY)
+	set_source_files_properties(${SOF_PLATFORM_PATH}/intel/cavs/lps_pic_restore_vector.S PROPERTIES COMPILE_FLAGS -DASSEMBLY)
+
+	set(PLATFORM "icelake")
+	target_include_directories(SOF INTERFACE ../zephyr/include/cavs20)
+	zephyr_include_directories(${SOF_PLATFORM_PATH}/intel/cavs/include)
 	zephyr_include_directories(../../../../zephyr/soc/xtensa/intel_adsp/common/include)
 endif()
 
-# CNL
-if (CONFIG_SOC_SERIES_INTEL_CAVS_V18)
-	zephyr_library_sources(
-		../src/drivers/intel/cavs/hda-dma.c
-		../src/drivers/intel/cavs/hda.c
-		../src/drivers/intel/cavs/ipc.c
-		#../src/drivers/intel/cavs/sue-ipc.c
-		../src/drivers/intel/cavs/dmic.c
-		# ../src/drivers/intel/cavs/interrupt.c
-		../src/drivers/intel/cavs/idc.c
-		../src/drivers/intel/cavs/timer.c
-		#../src/drivers/intel/cavs/sue-iomux.c
-		../src/drivers/intel/cavs/ssp.c
-		../src/drivers/intel/cavs/mn.c
-		../src/drivers/intel/cavs/alh.c
-	)
-
-endif()
-
-# ICL
-if (CONFIG_SOC_SERIES_INTEL_CAVS_V20)
-	zephyr_library_sources(
-		../src/drivers/intel/cavs/hda-dma.c
-		../src/drivers/intel/cavs/hda.c
-		../src/drivers/intel/cavs/ipc.c
-		../src/drivers/intel/cavs/dmic.c
-		#../src/drivers/intel/cavs/interrupt.c
-		../src/drivers/intel/cavs/idc.c
-		../src/drivers/intel/cavs/timer.c
-		../src/drivers/intel/cavs/ssp.c
-		../src/drivers/intel/cavs/mn.c
-		../src/drivers/intel/cavs/alh.c
-	)
-endif()
-
-# TGL
+# Intel TGL and CAVS 2.5 platforms
 if (CONFIG_SOC_SERIES_INTEL_CAVS_V25)
+
+	# Driver sources
 	zephyr_library_sources(
-		../src/drivers/intel/cavs/hda-dma.c
-		../src/drivers/intel/cavs/hda.c
-		../src/drivers/intel/cavs/ipc.c
-		../src/drivers/intel/cavs/dmic.c
-		#../src/drivers/intel/cavs/interrupt.c
-		../src/drivers/intel/cavs/idc.c
-		../src/drivers/intel/cavs/timer.c
-		../src/drivers/intel/cavs/ssp.c
-		../src/drivers/intel/cavs/mn.c
-		../src/drivers/intel/cavs/alh.c
+		${SOF_DRIVERS_PATH}/intel/cavs/ipc.c
+		${SOF_DRIVERS_PATH}/intel/cavs/timestamp.c
 	)
+
+	zephyr_library_sources_ifdef(CONFIG_MULTICORE
+		${SOF_DRIVERS_PATH}/intel/cavs/idc.c
+	)
+
+	zephyr_library_sources_ifdef(CONFIG_INTEL_HDA
+		${SOF_DRIVERS_PATH}/intel/hda/hda-dma.c
+		${SOF_DRIVERS_PATH}/intel/hda/hda.c
+	)
+
+	zephyr_library_sources_ifdef(CONFIG_INTEL_MN
+		${SOF_DRIVERS_PATH}/intel/ssp/mn.c
+	)
+
+	zephyr_library_sources_ifdef(CONFIG_INTEL_SSP
+		${SOF_DRIVERS_PATH}/intel/ssp/ssp.c
+	)
+
+	zephyr_library_sources_ifdef(CONFIG_INTEL_ALH
+		${SOF_DRIVERS_PATH}/intel/alh.c
+	)
+
+	zephyr_library_sources_ifdef(CONFIG_INTEL_DMIC
+		${SOF_DRIVERS_PATH}/intel/dmic.c
+	)
+
+	# Platform sources
+	zephyr_library_sources(
+		${SOF_PLATFORM_PATH}/intel/cavs/platform.c
+		${SOF_PLATFORM_PATH}/intel/cavs/lib/mem_window.c
+		${SOF_PLATFORM_PATH}/tigerlake/lib/clk.c
+		${SOF_PLATFORM_PATH}/intel/cavs/lib/power_down.S
+		${SOF_PLATFORM_PATH}/intel/cavs/lib/pm_runtime.c
+		${SOF_PLATFORM_PATH}/intel/cavs/lib/pm_memory.c
+		${SOF_PLATFORM_PATH}/intel/cavs/lib/clk.c
+		${SOF_PLATFORM_PATH}/intel/cavs/lib/dai.c
+		${SOF_PLATFORM_PATH}/intel/cavs/lib/dma.c
+		#${SOF_PLATFORM_PATH}/intel/cavs/lps_pic_restore_vector.S
+		${SOF_PLATFORM_PATH}/intel/cavs/lps_wait.c
+	)
+
+	set_source_files_properties(${SOF_PLATFORM_PATH}/intel/cavs/lib/power_down.S PROPERTIES COMPILE_FLAGS -DASSEMBLY)
+	set_source_files_properties(${SOF_PLATFORM_PATH}/intel/cavs/lps_pic_restore_vector.S PROPERTIES COMPILE_FLAGS -DASSEMBLY)
+
+	set(PLATFORM "tigerlake")
+	target_include_directories(SOF INTERFACE ../zephyr/include/cavs25)
+	zephyr_include_directories(${SOF_PLATFORM_PATH}/intel/cavs/include)
+	zephyr_include_directories(../../../../zephyr/soc/xtensa/intel_adsp/common/include)
 endif()
 
-# IMX8
+# NXP IMX8 platforms
 if (CONFIG_SOC_SERIES_NXP_IMX8)
 	zephyr_library_sources(
-		#../src/drivers/imx/sdma.c
-		#../src/drivers/imx/edma.c
-		#../src/drivers/imx/sai.c
-		#../src/drivers/imx/ipc.c
-		#../src/drivers/imx/esai.c
-		#../src/drivers/imx/interrupt.c
-		#../src/drivers/imx/timer.c
+		#${SOF_DRIVERS_PATH}/generic/dummy-dma.c
+		#${SOF_DRIVERS_PATH}/imx/sdma.c
+		#${SOF_DRIVERS_PATH}/imx/edma.c
+		#${SOF_DRIVERS_PATH}/imx/sai.c
+		#${SOF_DRIVERS_PATH}/imx/ipc.c
+		#${SOF_DRIVERS_PATH}/imx/esai.c
 	)
 endif()
 
-# Files used on all platforms.
+zephyr_include_directories(${SOF_PLATFORM_PATH}/${PLATFORM}/include)
+
+# Mandatory Files used on all platforms.
 # Commented files will be added/removed as integration dictates.
 zephyr_library_sources(
-	../src/trace/dma-trace.c
-	../src/trace/trace.c
-	#../src/drivers/dw/ssi-spi.c
-	#../src/drivers/dw/gpio.c
-	../src/drivers/dw/dma.c
-	#../src/drivers/interrupt.c
-	../src/drivers/generic/dummy-dma.c
-	../src/ipc/dma-copy.c
-	../src/ipc/ipc.c
-	../src/ipc/handler.c
-	../src/ipc/probe_support.c
-	../src/ipc/user_abi_version.c
-	../src/ipc/ipc-host-ptable.c
-	../src/ipc/cc_version.c
-	../src/debug/gdb/gdb.c
-	../src/debug/gdb/ringbuffer.c
-	../src/debug/panic.c
-	../src/spinlock.c
-	../src/math/decibels.c
-	../src/math/numbers.c
-	../src/math/trig.c
-	#../src/init/init.c
-	#../src/schedule/task.c
-	#../src/schedule/timer_domain.c
-	#../src/schedule/schedule.c
-	#../src/schedule/edf_schedule.c
-	#../src/schedule/dma_single_chan_domain.c
-	#../src/schedule/dma_multi_chan_domain.c
-	#../src/schedule/ll_schedule.c
-	../src/lib/clk.c
-	../src/lib/notifier.c
-	../src/lib/lib.c
-	../src/lib/pm_runtime.c
-	../src/lib/agent.c
-	#../src/lib/alloc.c
-	../src/lib/wait.c
-	../src/lib/dma.c
-	../src/lib/dai.c
-	../src/audio/kpb.c
-	../src/audio/pipeline_static.c
-	../src/audio/selector/selector_generic.c
-	../src/audio/selector/selector.c
-	../src/audio/channel_map.c
-	../src/audio/switch.c
-	../src/audio/src/src_hifi2ep.c
-	../src/audio/src/src_generic.c
-	../src/audio/src/src_hifi3.c
-	../src/audio/src/src.c
-	../src/audio/pcm_converter/pcm_converter_hifi3.c
-	../src/audio/pcm_converter/pcm_converter_generic.c
-	../src/audio/volume/volume_hifi3.c
-	../src/audio/volume/volume_generic.c
-	../src/audio/volume/volume.c
-	../src/audio/mixer.c
-	../src/audio/tone.c
-	../src/audio/eq_fir/fir_hifi3.c
-	../src/audio/eq_fir/fir_hifi2ep.c
-	../src/audio/eq_fir/eq_fir.c
-	../src/audio/eq_fir/fir.c
-	../src/audio/detect_test.c
-	../src/audio/host.c
-	../src/audio/asrc/asrc.c
-	../src/audio/asrc/asrc_farrow_hifi3.c
-	../src/audio/asrc/asrc_farrow.c
-	../src/audio/asrc/asrc_farrow_generic.c
-	../src/audio/dcblock/dcblock_generic.c
-	../src/audio/dcblock/dcblock.c
-	../src/audio/mux/mux.c
-	../src/audio/mux/mux_generic.c
-	../src/audio/eq_iir/iir_generic.c
-	../src/audio/eq_iir/iir_hifi3.c
-	../src/audio/eq_iir/iir.c
-	../src/audio/eq_iir/eq_iir.c
-	../src/audio/buffer.c
-	../src/audio/component.c
-	../src/audio/dai.c
-	../src/audio/pipeline.c
-	#../src/probe/probe.c
+	${SOF_SRC_PATH}/trace/dma-trace.c
+	${SOF_IPC_PATH}/dma-copy.c
+	${SOF_IPC_PATH}/ipc.c
+	${SOF_IPC_PATH}/handler.c
+	${SOF_IPC_PATH}/probe_support.c
+	${SOF_IPC_PATH}/user_abi_version.c
+	${SOF_IPC_PATH}/ipc-host-ptable.c
+	${SOF_IPC_PATH}/cc_version.c
+	${SOF_SRC_PATH}/spinlock.c
+
+	# SOF math utilities
+	${SOF_MATH_PATH}/decibels.c
+	${SOF_MATH_PATH}/numbers.c
+	${SOF_MATH_PATH}/trig.c
+
+	# SOF library - parts to transition to Zephyr over time
+	${SOF_LIB_PATH}/clk.c
+	${SOF_LIB_PATH}/notifier.c
+	${SOF_LIB_PATH}/lib.c
+	${SOF_LIB_PATH}/pm_runtime.c
+	${SOF_LIB_PATH}/wait.c
+	${SOF_LIB_PATH}/dma.c
+	${SOF_LIB_PATH}/dai.c
+
+	# SOF mandatory audio processing
+	${SOF_AUDIO_PATH}/pipeline_static.c
+	${SOF_AUDIO_PATH}/channel_map.c
+	${SOF_AUDIO_PATH}/pcm_converter/pcm_converter_hifi3.c
+	${SOF_AUDIO_PATH}/pcm_converter/pcm_converter.c
+	${SOF_AUDIO_PATH}/pcm_converter/pcm_converter_generic.c
+	${SOF_AUDIO_PATH}/buffer.c
+	${SOF_AUDIO_PATH}/component.c
+	${SOF_AUDIO_PATH}/pipeline.c
+	${SOF_AUDIO_PATH}/host.c
+
+	# SOF core infrastructure - runs on top of Zephyr
+	${SOF_SRC_PATH}/init/init.c
+	${SOF_SRC_PATH}/init/ext_manifest.c
+	${SOF_SRC_PATH}/schedule/timer_domain.c
+	${SOF_SRC_PATH}/schedule/schedule.c
+	${SOF_SRC_PATH}/schedule/dma_single_chan_domain.c
+	${SOF_SRC_PATH}/schedule/dma_multi_chan_domain.c
+	${SOF_SRC_PATH}/schedule/ll_schedule.c
+	${SOF_SRC_PATH}/trace/trace.c
+
+	# Bridge wrapper between SOF and Zephyr APIs - Will shrink over time.
 	wrapper.c
+	edf_schedule.c
+	schedule.c
+)
+
+# Optional SOF sources - depends on Kconfig - WIP
+
+zephyr_library_sources_ifdef(CONFIG_COMP_FIR
+	${SOF_AUDIO_PATH}/eq_fir/fir_hifi3.c
+	${SOF_AUDIO_PATH}/eq_fir/fir_hifi2ep.c
+	${SOF_AUDIO_PATH}/eq_fir/eq_fir.c
+	${SOF_AUDIO_PATH}/eq_fir/fir.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_COMP_IIR
+	${SOF_AUDIO_PATH}/eq_iir/iir_generic.c
+	${SOF_AUDIO_PATH}/eq_iir/iir_hifi3.c
+	${SOF_AUDIO_PATH}/eq_iir/iir.c
+	${SOF_AUDIO_PATH}/eq_iir/eq_iir.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_COMP_ASRC
+	${SOF_AUDIO_PATH}/asrc/asrc.c
+	${SOF_AUDIO_PATH}/asrc/asrc_farrow_hifi3.c
+	${SOF_AUDIO_PATH}/asrc/asrc_farrow.c
+	${SOF_AUDIO_PATH}/asrc/asrc_farrow_generic.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_COMP_DCBLOCK
+	${SOF_AUDIO_PATH}/dcblock/dcblock_generic.c
+	${SOF_AUDIO_PATH}/dcblock/dcblock.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_COMP_SEL
+	${SOF_AUDIO_PATH}/selector/selector_generic.c
+	${SOF_AUDIO_PATH}/selector/selector.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_COMP_KPB
+	${SOF_AUDIO_PATH}/kpb.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_COMP_SWITCH
+	${SOF_AUDIO_PATH}/switch.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_COMP_MIXER
+	${SOF_AUDIO_PATH}/mixer.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_COMP_TONE
+	${SOF_AUDIO_PATH}/tone.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_COMP_DAI
+	${SOF_AUDIO_PATH}/dai.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_COMP_TEST_KEYPHRASE
+	${SOF_AUDIO_PATH}/detect_test.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_COMP_VOLUME
+	${SOF_AUDIO_PATH}/volume/volume_hifi3.c
+	${SOF_AUDIO_PATH}/volume/volume_generic.c
+	${SOF_AUDIO_PATH}/volume/volume.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_COMP_SRC
+	${SOF_AUDIO_PATH}/src/src_hifi2ep.c
+	${SOF_AUDIO_PATH}/src/src_generic.c
+	${SOF_AUDIO_PATH}/src/src_hifi3.c
+	${SOF_AUDIO_PATH}/src/src.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_COMP_MUX
+	${SOF_AUDIO_PATH}/mux/mux.c
+	${SOF_AUDIO_PATH}/mux/mux_generic.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_PROBE
+	${SOF_SRC_PATH}/probe/probe.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_MULTICORE
+	${SOF_SRC_PATH}/idc/idc.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_HAVE_AGENT
+	${SOF_LIB_PATH}/agent.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_GDB_DEBUG
+	${SOF_DEBUG_PATH}/gdb/gdb.c
+	${SOF_DEBUG_PATH}/gdb/ringbuffer.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_DW_DMA
+	${SOF_DRIVERS_PATH}/dw/dma.c
 )
 
 zephyr_library_link_libraries(SOF)
@@ -247,16 +494,27 @@ file(MAKE_DIRECTORY ${GENERATED_DIRECTORY}/include)
 # generated files
 set(VERSION_H_PATH ${GENERATED_DIRECTORY}/include/version.h)
 set(DOT_CONFIG_PATH ${GENERATED_DIRECTORY}/.config)
-set(CONFIG_H_PATH ${GENERATED_DIRECTORY}/include/config.h)
 
-# create version.h
-include(../scripts/cmake/version.cmake)
+if(${CMAKE_VERSION} VERSION_LESS "3.12.0")
+	# FindPythonInterp is bugged and may sometimes be unable to find
+	# Python 3 when both Python 2 & 3 are in PATH,
+	# so it's always better to use CMake 3.12+
+	find_package(PythonInterp 3.0)
+	set(PYTHON3 "${PYTHON_EXECUTABLE}")
+else()
+	find_package(Python3 COMPONENTS Interpreter)
+	set(PYTHON3 "${Python3_EXECUTABLE}")
+endif()
 
 # SOF uses GNU C99 extensions. TODO other flags required ?
 target_compile_options(SOF INTERFACE -std=gnu99 -fno-inline-functions)
 
 # Toolchain info
 add_definitions(-DXCC_TOOLS_VERSION="${ZEPHYR_TOOLCHAIN_VARIANT}" -DCC_OPTIMIZE_FLAGS="${OPTIMIZATION_FLAG}")
+
+# create version information
+include(../scripts/cmake/version.cmake)
+add_definitions(-DSOF_MICRO=${SOF_MICRO} -DSOF_MINOR=${SOF_MINOR} -DSOF_MAJOR=${SOF_MAJOR} -DSOF_TAG="${SOF_TAG}")
 
 # Create Trace realtive file paths
 sof_append_relative_path_definitions(modules_sof)
