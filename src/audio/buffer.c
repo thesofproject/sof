@@ -75,8 +75,8 @@ struct comp_buffer *buffer_new(struct sof_ipc_buffer *desc)
 {
 	struct comp_buffer *buffer;
 
-	tr_info(&buffer_tr, "buffer new size 0x%x id %d.%d", desc->size,
-		    desc->comp.pipeline_id, desc->comp.id);
+	tr_info(&buffer_tr, "buffer new size 0x%x id %d.%d flags 0x%X",
+		desc->size, desc->comp.pipeline_id, desc->comp.id, desc->flags);
 
 	/* allocate buffer */
 	buffer = buffer_alloc(desc->size, desc->caps, PLATFORM_DCACHE_ALIGN);
