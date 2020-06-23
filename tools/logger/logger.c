@@ -166,7 +166,7 @@ int main(int argc, char *argv[])
 	config.raw_output = 0;
 	config.dump_ldc = 0;
 	config.hide_location = 0;
-	config.float_precision = 6;
+	config.time_precision = 6;
 
 	while ((opt = getopt(argc, argv, optstring)) != -1) {
 		switch (opt) {
@@ -217,14 +217,14 @@ int main(int argc, char *argv[])
 			config.hide_location = 1;
 			break;
 		case 'f':
-			config.float_precision = atoi(optarg);
-			if (config.float_precision < 0) {
+			config.time_precision = atoi(optarg);
+			if (config.time_precision < 0) {
 				usage();
 				return -EINVAL;
 			}
 			break;
 		case 'g':
-			config.float_precision = -1;
+			config.time_precision = -1;
 			break;
 		case 'd':
 			if (config.ldc_file) {
