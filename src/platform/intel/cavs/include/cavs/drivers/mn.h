@@ -33,6 +33,9 @@
 /** \brief Bits for setting M/N source clock. */
 #define MNDSS(x)	SET_BITS(21, 20, x)
 
+/** \brief Mask for clearing mclk and bclk source in MN_MDIVCTRL */
+#define MN_SOURCE_CLKS_MASK 0x3
+
 #endif /* __CAVS_DRIVERS_MN_H__ */
 
 #else

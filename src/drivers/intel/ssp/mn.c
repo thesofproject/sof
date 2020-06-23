@@ -140,6 +140,9 @@ static inline int setup_initial_mclk_source(uint32_t mclk_id,
 	/* enable MCLK divider */
 	mdivc |= MN_MDIVCTRL_M_DIV_ENABLE;
 
+	/* clear source mclk clock - bits 17-16 */
+	mdivc &= ~MCDSS(MN_SOURCE_CLKS_MASK);
+
 	/* select source clock */
 	mdivc |= MCDSS(ssp_freq_sources[clk_index]);
 
@@ -375,6 +378,7 @@ static inline int setup_initial_bclk_mn_source(uint32_t bclk, uint32_t *scr_div,
 					       uint32_t *m, uint32_t *n)
 {
 	struct mn *mn = mn_get();
+	uint32_t mdivc;
 	int clk_index = find_bclk_source(bclk, scr_div, m, n);
 
 	if (clk_index < 0) {
@@ -384,8 +388,15 @@ static inline int setup_initial_bclk_mn_source(uint32_t bclk, uint32_t *scr_div,
 
 	mn->bclk_source_mn_clock = clk_index;
 
-	mn_reg_write(MN_MDIVCTRL, 0, (mn_reg_read(MN_MDIVCTRL, 0) |
-		     MNDSS(ssp_freq_sources[clk_index])));
+	mdivc = mn_reg_read(MN_MDIVCTRL, 0);
+
+	/* clear source bclk clock - 21-20 bits */
+	mdivc &= ~MNDSS(MN_SOURCE_CLKS_MASK);
+
+	/* select source clock */
+	mdivc |= MNDSS(ssp_freq_sources[clk_index]);
+
+	mn_reg_write(MN_MDIVCTRL, 0, mdivc);
 
 	platform_shared_commit(mn, sizeof(*mn));
 
