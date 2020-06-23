@@ -49,15 +49,17 @@ W_SRC(0, PIPELINE_FORMAT, 3, 3, media_src_conf)
 # Volume Configuration
 #
 
-W_VENDORTUPLES(playback_pga_tokens, sof_volume_tokens,
-LIST(`		', `SOF_TKN_VOLUME_RAMP_STEP_TYPE	"0"'
-     `		', `SOF_TKN_VOLUME_RAMP_STEP_MS		"250"'))
+define(DEF_PGA_TOKENS, concat(`pga_tokens_', PIPELINE_ID))
+define(DEF_PGA_CONF, concat(`pga_conf_', PIPELINE_ID))
 
+W_VENDORTUPLES(DEF_PGA_TOKENS, sof_volume_tokens,
+LIST(`		', `SOF_TKN_VOLUME_RAMP_STEP_TYPE	"2"'
+     `		', `SOF_TKN_VOLUME_RAMP_STEP_MS		"20"'))
 
-W_DATA(playback_pga_conf, playback_pga_tokens)
+W_DATA(DEF_PGA_CONF, DEF_PGA_TOKENS)
 
 # "Volume" has 3 source and x sink periods
-W_PGA(0, PIPELINE_FORMAT, DAI_PERIODS, 3, playback_pga_conf, SCHEDULE_CORE,
+W_PGA(0, PIPELINE_FORMAT, DAI_PERIODS, 3, DEF_PGA_CONF, SCHEDULE_CORE,
 	 LIST(`		', "PIPELINE_ID Master Playback Volume"))
 
 # Playback Buffers
@@ -96,3 +98,5 @@ indir(`define', concat(`PIPELINE_PCM_', PIPELINE_ID), SRC Playback PCM_ID)
 
 PCM_CAPABILITIES(SRC Playback PCM_ID, `S32_LE,S24_LE,S16_LE', 8000, 192000, 2, PIPELINE_CHANNELS, 2, 16, 192, 16384, 65536, 65536)
 
+undefine(`DEF_PGA_TOKENS')
+undefine(`DEF_PGA_CONF')
