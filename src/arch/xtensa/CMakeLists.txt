@@ -109,7 +109,10 @@ target_compile_options(sof_options INTERFACE ${stdlib_flag} -fno-inline-function
 #      better to have set of default flags and change it only for special cases
 #   3) custom function that is used instead of target_sources and sets flags
 #      for each added source based on file extension
-target_compile_options(sof_options INTERFACE $<$<COMPILE_LANGUAGE:C>: -${optimization_flag} -g -Wall -Werror -Wl,-EL -Wmissing-prototypes -Wpointer-arith ${XTENSA_C_FLAGS}> -imacros ${CONFIG_H_PATH})
+
+# No space between -imacros and its argument to avoid CMake
+# de-duplication "feature"
+target_compile_options(sof_options INTERFACE $<$<COMPILE_LANGUAGE:C>: -${optimization_flag} -g -Wall -Werror -Wl,-EL -Wmissing-prototypes -Wpointer-arith ${XTENSA_C_FLAGS}> -imacros${CONFIG_H_PATH})
 
 if(BUILD_UNIT_TESTS)
 	# rest of this file is not needed for unit tests
@@ -154,7 +157,7 @@ function(sof_add_ld_script binary_name script_name)
 
 	add_custom_command(OUTPUT ${lds_out}
 		COMMAND ${CMAKE_C_COMPILER} -E -DLINKER -P ${iflags} -o ${lds_out} -x c ${lds_in}
-			-imacros ${CONFIG_H_PATH}
+			-imacros${CONFIG_H_PATH}
 		DEPENDS ${lds_in} ${LINK_DEPS} genconfig ${CONFIG_H_PATH} ${lds_headers}
 		WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
 		COMMENT "Generating linker script: ${lds_out}"

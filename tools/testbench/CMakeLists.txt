@@ -32,7 +32,7 @@ set(sof_binary_directory "${PROJECT_BINARY_DIR}/sof_ep/build")
 set(config_h ${sof_binary_directory}/library_autoconfig.h)
 
 target_compile_options(testbench PRIVATE -g -O3 -Wall -Werror -Wl,-EL -Wmissing-prototypes
-  -Wimplicit-fallthrough=3 -DCONFIG_LIBRARY -imacros ${config_h})
+  -Wimplicit-fallthrough=3 -DCONFIG_LIBRARY -imacros${config_h})
 
 target_link_libraries(testbench PRIVATE -ldl -lm)
 
