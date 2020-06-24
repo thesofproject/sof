@@ -82,6 +82,39 @@ struct perf_cnt_data {
 		}							  \
 	} while (0)
 
+/**
+ * For simple performance measurement and optimization in development stage,
+ * tic-toc api is provided. Performance data are traced at each tok call,
+ * to allow fast clocks usage deviation estimation. Example:
+ *
+ * \code{.c}
+ * void foo(struct comp_dev *dev) {
+ *	static struct perf_cnt_data pcd;
+ *
+ *	perf_tic(&pcd);
+ *	bar();
+ *	perf_toc(&pcd, dev);
+ * }
+ * \endcode
+ */
+
+/** \brief Save start timestamp in pcd structure
+ *
+ * \param pcd Performance counters data.
+ */
+#define perf_tic(pcd) \
+	perf_cnt_init(pcd)
+
+/** \brief Save start timestamp in pcd structure
+ *
+ * \param pcd Performance counters data.
+ * \param comp Component used to get corresponding trace context.
+ */
+#define perf_toc(pcd, comp) do { \
+	perf_cnt_stamp(pcd, perf_trace_null, NULL); \
+	perf_trace_simple(pcd, trace_comp_get_tr_ctx(comp)); \
+	} while (0)
+
 #else
 #define perf_cnt_clear(pcd)
 #define perf_cnt_init(pcd)
