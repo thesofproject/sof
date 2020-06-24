@@ -25,17 +25,25 @@ include(`platform/intel/'PLATFORM`.m4')
 # PCM0 <---- Volume <---- SSP2
 #
 
-# Low Latency playback pipeline 1 on PCM 0 using max 2 channels of s32le.
+# playback pipeline 1 on PCM 0 using max 2 channels of s32le.
 # 1000us deadline on core 0 with priority 1
-PIPELINE_PCM_ADD(sof/pipe-low-latency-playback.m4,
+PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
 	1, 0, 2, s32le,
 	1000, 1, 0,
 	48000, 48000, 48000)
 
-# Low Latency capture pipeline 2 on PCM 0 using max 2 channels of s32le.
+# playback pipeline 2 on PCM 1 using max 2 channels of s32le.
+# 1000us deadline on core 0 with priority 1
+PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
+	2, 1, 2, s32le,
+	1000, 1, 0,
+	48000, 48000, 48000)
+#FIXME: for these pipelines, do we need information on scheduling?
+
+# Low Latency capture pipeline 3 on PCM 0 using max 2 channels of s32le.
 # 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-low-latency-capture.m4,
-	2, 0, 2, s32le,
+	3, 0, 2, s32le,
 	1000, 0, 0,
 	48000, 48000, 48000)
 
@@ -47,19 +55,22 @@ PIPELINE_PCM_ADD(sof/pipe-low-latency-capture.m4,
 
 # playback DAI is SSP2 using 2 periods
 # Buffers use s24le format, 1000us deadline on core 0 with priority 1
-DAI_ADD(sof/pipe-dai-playback.m4,
+# 2 channels, 48 kHz needed for DAI configuration
+DAI_ADD(sof/pipe-mixer-dai-playback.m4,
 	1, SSP, SSP_NUM, SSP2-Codec,
 	PIPELINE_SOURCE_1, 2, s24le,
-	1000, 1, 0, SCHEDULE_TIME_DOMAIN_DMA)
+	1000, 1, 0, SCHEDULE_TIME_DOMAIN_DMA,
+	2, 48000)
 
-# PCM Media Playback pipeline 3 on PCM 1 using max 2 channels of s32le.
-# 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_ADD(sof/pipe-pcm-media.m4,
-	3, 1, 2, s32le,
-	1000, 0, 0,
-	8000, 48000, 48000,
-	SCHEDULE_TIME_DOMAIN_DMA,
-	PIPELINE_PLAYBACK_SCHED_COMP_1)
+# FIXME: REMOVE ME
+# # PCM Media Playback pipeline 3 on PCM 1 using max 2 channels of s32le.
+# # 1000us deadline on core 0 with priority 0
+# PIPELINE_PCM_ADD(sof/pipe-low-latency-playback.m4,
+# 	3, 1, 2, s32le,
+# 	1000, 0, 0,
+# 	48000, 48000, 48000,
+# 	SCHEDULE_TIME_DOMAIN_DMA,
+# 	PIPELINE_PLAYBACK_SCHED_COMP_1)
 
 # Connect pipelines together
 SectionGraph."PIPE_NAME" {
@@ -67,7 +78,7 @@ SectionGraph."PIPE_NAME" {
 
 	lines [
 		# media 0
-		dapm(PIPELINE_MIXER_1, PIPELINE_SOURCE_3)
+		dapm(MIXER1.0, PIPELINE_SOURCE_2)
 	]
 }
 
@@ -75,11 +86,11 @@ SectionGraph."PIPE_NAME" {
 # Buffers use s24le format, 1000us deadline on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
 	2, SSP, SSP_NUM, SSP2-Codec,
-	PIPELINE_SINK_2, 2, s24le,
+	PIPELINE_SINK_3, 2, s24le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_DMA)
 
 # PCM Low Latency
-PCM_DUPLEX_ADD(Low Latency, 0, PIPELINE_PCM_1, PIPELINE_PCM_2)
+PCM_DUPLEX_ADD(Low Latency, 0, PIPELINE_PCM_1, PIPELINE_PCM_3)
 
 #
 # BE configurations - overrides config in ACPI if present
