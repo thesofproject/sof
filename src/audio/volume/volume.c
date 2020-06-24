@@ -233,8 +233,13 @@ static void volume_ramp(struct comp_dev *dev)
 	 */
 	cd->vol_ramp_active = true;
 
-	/* Current ramp time in milliseconds */
-	ramp_time = cd->vol_ramp_elapsed_frames * 1000 / cd->sample_rate;
+	/* Current ramp time in Q29.3 milliseconds. Note that max. ramp length
+	 * can be 1.3s at 192 kHz rate and 5.5s at 48 kHz rate without
+	 * exceeding int32_t range. Value 8000 is 1000 for converting to
+	 * milliseconds times 8 (2 ^ 3) for fraction.
+	 */
+	ramp_time = cd->vol_ramp_elapsed_frames * 8000 / cd->sample_rate;
+
 
 	/* Update each volume if it's not at target for active channels */
 	for (i = 0; i < cd->channels; i++) {
@@ -462,7 +467,12 @@ static inline int volume_set_chan(struct comp_dev *dev, int chan,
 			coef = delta_abs;
 		}
 
-		/* Ensure ramp coefficient is at least min. non-zero Q16.16 */
+		/* Scale coefficient by 1/8, round */
+		coef = ((coef >> 2) + 1) >> 1;
+
+		/* Ensure ramp coefficient is at least min. non-zero
+		 * fractional value.
+		 */
 		coef = MAX(coef, 1);
 
 		/* Invert sign for volume down ramp step */
