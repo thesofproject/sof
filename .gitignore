@@ -60,6 +60,11 @@ doc/*.cmake
 doc/*.ninja
 doc/Makefile
 
+# Eclipse project metadata
+.settings
+.project
+.cproject
+
 /tags
 /TAGS
 
