@@ -789,9 +789,11 @@ static int volume_prepare(struct comp_dev *dev)
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *sinkb;
 	struct sof_ipc_comp_config *config = dev_comp_config(dev);
+	struct sof_ipc_comp_volume *pga;
 	uint32_t sink_period_bytes;
-	int i;
+	int ramp_update_us;
 	int ret;
+	int i;
 
 	comp_dbg(dev, "volume_prepare()");
 
@@ -840,7 +842,6 @@ static int volume_prepare(struct comp_dev *dev)
 	 * for entire topology specified time.
 	 */
 	cd->ramp_finished = true;
-	cd->vol_ramp_frames = dev->frames / (dev->period / VOL_RAMP_UPDATE_US);
 	cd->channels = sinkb->stream.channels;
 	cd->sample_rate = sinkb->stream.rate;
 	for (i = 0; i < cd->channels; i++) {
@@ -850,6 +851,21 @@ static int volume_prepare(struct comp_dev *dev)
 			cd->ramp_finished = false;
 	}
 
+	/* Determine ramp update rate depending on requested ramp length. To
+	 * ensure evenly updated gain envelope with limited fraction resolution
+	 * four presets are used.
+	 */
+	pga = COMP_GET_IPC(dev, sof_ipc_comp_volume);
+	if (pga->initial_ramp < VOL_RAMP_UPDATE_THRESHOLD_FASTEST_MS)
+		ramp_update_us = VOL_RAMP_UPDATE_FASTEST_US;
+	else if (pga->initial_ramp < VOL_RAMP_UPDATE_THRESHOLD_FAST_MS)
+		ramp_update_us = VOL_RAMP_UPDATE_FAST_US;
+	else if (pga->initial_ramp < VOL_RAMP_UPDATE_THRESHOLD_SLOW_MS)
+		ramp_update_us = VOL_RAMP_UPDATE_SLOW_US;
+	else
+		ramp_update_us = VOL_RAMP_UPDATE_SLOWEST_US;
+
+	cd->vol_ramp_frames = dev->frames / (dev->period / ramp_update_us);
 	return 0;
 
 err:
