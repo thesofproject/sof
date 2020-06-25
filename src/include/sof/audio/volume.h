@@ -47,9 +47,19 @@ struct sof_ipc_ctrl_value_chan;
 
 /**
  * \brief Volume ramp update rate in microseconds.
- * Update volume gain value every 1 ms.
+ * Update volume gain value every 125 to 1000 us. The faster gain ramps need
+ * higher update rate to avoid annoying zipper noise sound. The below
+ * values were tested subjectively for constraint of 125 microseconds
+ * multiple gain update rate.
  */
-#define VOL_RAMP_UPDATE_US 1000
+#define VOL_RAMP_UPDATE_SLOWEST_US	1000
+#define VOL_RAMP_UPDATE_SLOW_US		500
+#define VOL_RAMP_UPDATE_FAST_US		250
+#define VOL_RAMP_UPDATE_FASTEST_US	125
+
+#define VOL_RAMP_UPDATE_THRESHOLD_SLOW_MS	128
+#define VOL_RAMP_UPDATE_THRESHOLD_FAST_MS	64
+#define VOL_RAMP_UPDATE_THRESHOLD_FASTEST_MS	32
 
 /**
  * \brief Volume maximum value.
