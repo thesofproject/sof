@@ -80,7 +80,7 @@ void sa_init(struct sof *sof, uint64_t timeout)
 {
 	uint64_t ticks;
 
-	tr_info(&sa_tr, "sa_init(), timeout = %u", timeout);
+	tr_info(&sa_tr, "sa_init(), timeout = %llu", timeout);
 
 	sof->sa = rzalloc(SOF_MEM_ZONE_SYS, SOF_MEM_FLAG_SHARED,
 			  SOF_MEM_CAPS_RAM, sizeof(*sof->sa));

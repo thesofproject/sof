@@ -76,8 +76,8 @@ struct comp_dev *comp_new(struct sof_ipc_comp *comp)
 		return NULL;
 	}
 
-	tr_info(&comp_tr, "comp new %s type %d id %d.%d",
-		drv->tctx->uuid_p, comp->type, comp->pipeline_id, comp->id);
+	tr_info(&comp_tr, "comp new %p type %d id %d.%d",
+		(void*)drv->tctx->uuid_p, comp->type, comp->pipeline_id, comp->id);
 
 	/* create the new component */
 	cdev = drv->ops.create(drv, comp);
