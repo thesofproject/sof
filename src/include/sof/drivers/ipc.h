@@ -128,8 +128,6 @@ static inline uint64_t ipc_task_deadline(void *data)
 
 static inline int32_t ipc_comp_pipe_id(const struct ipc_comp_dev *icd)
 {
-	extern struct tr_ctx ipc_tr;
-
 	switch (icd->type) {
 	case COMP_TYPE_COMPONENT:
 		return dev_comp_pipe_id(icd->cd);
