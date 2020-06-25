@@ -6,10 +6,13 @@
  */
 
 #include <sof/lib/cpu.h>
+#ifndef __ZEPHYR__
 #include <xtos-structs.h>
+#endif
 
 struct idc;
 
+#ifndef __ZEPHYR__
 /**
  * \brief Returns IDC data.
  * \return Pointer to pointer of IDC data.
@@ -20,3 +23,9 @@ static inline struct idc **idc_get(void)
 
 	return &ctx->idc;
 }
+
+#else
+
+struct idc **idc_get(void);
+
+#endif
