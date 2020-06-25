@@ -143,7 +143,7 @@ void dma_put(struct dma *dma)
 			       dma->plat_data.id, ret);
 		}
 	}
-	tr_info(&dma_tr, "dma_put(), dma = %p, sref = %d",
+	tr_info(&dma_tr, "dma_put(), dma = %ld, sref = %d",
 		(uintptr_t)dma, dma->sref);
 	platform_shared_commit(dma, sizeof(*dma));
 	spin_unlock(&dma->lock);
