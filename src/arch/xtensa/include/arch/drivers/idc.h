@@ -6,6 +6,7 @@
  */
 
 #include <sof/lib/cpu.h>
+#ifndef __ZEPHYR__
 #include <xtos-structs.h>
 
 struct idc;
@@ -20,3 +21,4 @@ static inline struct idc **idc_get(void)
 
 	return &ctx->idc;
 }
+#endif
