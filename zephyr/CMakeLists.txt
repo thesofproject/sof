@@ -128,14 +128,14 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V18)
 
 	# Driver sources
 	zephyr_library_sources(
-		${SOF_DRIVERS_PATH}/intel/cavs/hda-dma.c
-		${SOF_DRIVERS_PATH}/intel/cavs/hda.c
+		${SOF_DRIVERS_PATH}/intel/hda/hda-dma.c
+		${SOF_DRIVERS_PATH}/intel/hda/hda.c
 		${SOF_DRIVERS_PATH}/intel/cavs/ipc.c
-		${SOF_DRIVERS_PATH}/intel/cavs/dmic.c
+		${SOF_DRIVERS_PATH}/intel/dmic.c
 		${SOF_DRIVERS_PATH}/intel/cavs/idc.c
-		${SOF_DRIVERS_PATH}/intel/cavs/ssp.c
-		${SOF_DRIVERS_PATH}/intel/cavs/mn.c
-		${SOF_DRIVERS_PATH}/intel/cavs/alh.c
+		${SOF_DRIVERS_PATH}/intel/ssp/ssp.c
+		${SOF_DRIVERS_PATH}/intel/ssp/mn.c
+		${SOF_DRIVERS_PATH}/intel/alh.c
 		${SOF_DRIVERS_PATH}/intel/cavs/timestamp.c
 
 		# Sue Creek - S100 only - already in Zephyr.
@@ -154,9 +154,8 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V18)
 		${SOF_PLATFORM_PATH}/intel/cavs/lib/clk.c
 		${SOF_PLATFORM_PATH}/intel/cavs/lib/dai.c
 		${SOF_PLATFORM_PATH}/intel/cavs/lib/dma.c
-	# TODO: move back into SOF.
-	##	${SOF_PLATFORM_PATH}/intel/cavs/lps_pic_restore_vector.S
-	##	${SOF_PLATFORM_PATH}/intel/cavs/lps_wait.c
+		#${SOF_PLATFORM_PATH}/intel/cavs/lps_pic_restore_vector.S
+		${SOF_PLATFORM_PATH}/intel/cavs/lps_wait.c
 	)
 
 	set_source_files_properties(${SOF_PLATFORM_PATH}/intel/cavs/lib/power_down.S PROPERTIES COMPILE_FLAGS -DASSEMBLY)
@@ -171,14 +170,14 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V20)
 
 	# Driver sources
 	zephyr_library_sources(
-		${SOF_DRIVERS_PATH}/intel/cavs/hda-dma.c
-		${SOF_DRIVERS_PATH}/intel/cavs/hda.c
+		${SOF_DRIVERS_PATH}/intel/hda/hda-dma.c
+		${SOF_DRIVERS_PATH}/intel/hda/hda.c
 		${SOF_DRIVERS_PATH}/intel/cavs/ipc.c
-		${SOF_DRIVERS_PATH}/intel/cavs/dmic.c
+		${SOF_DRIVERS_PATH}/intel/dmic.c
 		${SOF_DRIVERS_PATH}/intel/cavs/idc.c
-		${SOF_DRIVERS_PATH}/intel/cavs/ssp.c
-		${SOF_DRIVERS_PATH}/intel/cavs/mn.c
-		${SOF_DRIVERS_PATH}/intel/cavs/alh.c
+		${SOF_DRIVERS_PATH}/intel/ssp/ssp.c
+		${SOF_DRIVERS_PATH}/intel/ssp/mn.c
+		${SOF_DRIVERS_PATH}/intel/alh.c
 		${SOF_DRIVERS_PATH}/intel/cavs/timestamp.c
 	)
 
@@ -193,8 +192,8 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V20)
 		${SOF_PLATFORM_PATH}/intel/cavs/lib/clk.c
 		${SOF_PLATFORM_PATH}/intel/cavs/lib/dai.c
 		${SOF_PLATFORM_PATH}/intel/cavs/lib/dma.c
-	#	${SOF_PLATFORM_PATH}/intel/cavs/lps_pic_restore_vector.S
-	#	${SOF_PLATFORM_PATH}/intel/cavs/lps_wait.c
+		#${SOF_PLATFORM_PATH}/intel/cavs/lps_pic_restore_vector.S
+		${SOF_PLATFORM_PATH}/intel/cavs/lps_wait.c
 	)
 
 	set_source_files_properties(${SOF_PLATFORM_PATH}/intel/cavs/lib/power_down.S PROPERTIES COMPILE_FLAGS -DASSEMBLY)
@@ -211,14 +210,14 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V25)
 
 	# Driver sources
 	zephyr_library_sources(
-		${SOF_DRIVERS_PATH}/intel/cavs/hda-dma.c
-		${SOF_DRIVERS_PATH}/intel/cavs/hda.c
+		${SOF_DRIVERS_PATH}/intel/hda/hda-dma.c
+		${SOF_DRIVERS_PATH}/intel/hda/hda.c
 		${SOF_DRIVERS_PATH}/intel/cavs/ipc.c
-		${SOF_DRIVERS_PATH}/intel/cavs/dmic.c
+		${SOF_DRIVERS_PATH}/intel/dmic.c
 		${SOF_DRIVERS_PATH}/intel/cavs/idc.c
-		${SOF_DRIVERS_PATH}/intel/cavs/ssp.c
-		${SOF_DRIVERS_PATH}/intel/cavs/mn.c
-		${SOF_DRIVERS_PATH}/intel/cavs/alh.c
+		${SOF_DRIVERS_PATH}/intel/ssp/ssp.c
+		${SOF_DRIVERS_PATH}/intel/ssp/mn.c
+		${SOF_DRIVERS_PATH}/intel/alh.c
 		${SOF_DRIVERS_PATH}/intel/cavs/timestamp.c
 	)
 
@@ -233,8 +232,8 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V25)
 		${SOF_PLATFORM_PATH}/intel/cavs/lib/clk.c
 		${SOF_PLATFORM_PATH}/intel/cavs/lib/dai.c
 		${SOF_PLATFORM_PATH}/intel/cavs/lib/dma.c
-	#	${SOF_PLATFORM_PATH}/intel/cavs/lps_pic_restore_vector.S
-	#	${SOF_PLATFORM_PATH}/intel/cavs/lps_wait.c
+		#${SOF_PLATFORM_PATH}/intel/cavs/lps_pic_restore_vector.S
+		${SOF_PLATFORM_PATH}/intel/cavs/lps_wait.c
 	)
 
 	set_source_files_properties(${SOF_PLATFORM_PATH}/intel/cavs/lib/power_down.S PROPERTIES COMPILE_FLAGS -DASSEMBLY)
@@ -346,6 +345,7 @@ zephyr_library_sources(
 )
 
 # Optional SOF sources - depends on Kconfig - WIP
+zephyr_library_sources_ifdef(CONFIG_MULTICORE ${SOF_SRC_PATH}/idc/idc.c)
 zephyr_library_sources_ifdef(CONFIG_HAVE_AGENT ${SOF_LIB_PATH}/agent.c)
 zephyr_library_sources_ifdef(CONFIG_COMP_MUX ${SOF_AUDIO_PATH}/mux/mux.c)
 zephyr_library_sources_ifdef(CONFIG_COMP_MUX ${SOF_AUDIO_PATH}/mux/mux_generic.c)
