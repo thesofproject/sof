@@ -8,6 +8,7 @@
 #include <cavs/lps_ctx.h>
 #include <cavs/lps_wait.h>
 #include <cavs/mem_window.h>
+#include <cavs/memory.h>
 #include <sof/common.h>
 #include <sof/platform.h>
 #include <sof/drivers/interrupt.h>
