@@ -351,17 +351,21 @@ static int mixer_copy(struct comp_dev *dev)
 
 static int mixer_reset(struct comp_dev *dev)
 {
+	int dir = dev->pipeline->source_comp->direction;
 	struct list_item *blist;
 	struct comp_buffer *source;
 
 	comp_dbg(dev, "mixer_reset()");
 
-	list_for_item(blist, &dev->bsource_list) {
-		source = container_of(blist, struct comp_buffer, sink_list);
-		/* only mix the sources with the same state with mixer*/
-		if (source->source->state > COMP_STATE_READY)
-			/* should not reset the downstream components */
-			return 1;
+	if (dir == SOF_IPC_STREAM_PLAYBACK) {
+		list_for_item(blist, &dev->bsource_list) {
+			source = container_of(blist, struct comp_buffer,
+					      sink_list);
+			/* only mix the sources with the same state with mixer*/
+			if (source->source->state > COMP_STATE_READY)
+				/* should not reset the downstream components */
+				return 1;
+		}
 	}
 
 	comp_set_state(dev, COMP_TRIGGER_RESET);
