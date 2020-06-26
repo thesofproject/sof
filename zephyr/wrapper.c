@@ -545,3 +545,22 @@ void trace_on(void)
 void trace_off(void)
 {
 }
+
+#if CONFIG_MULTICORE
+int arch_cpu_enable_core(int id)
+{
+	/* TODO: call Zephyr API */
+	return 0;
+}
+
+void arch_cpu_disable_core(int id)
+{
+	/* TODO: call Zephyr API */
+}
+
+int arch_cpu_is_core_enabled(int id)
+{
+	/* TODO: call Zephyr API */
+	return 1;
+}
+#endif
