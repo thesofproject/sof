@@ -18,19 +18,11 @@ include(`platform/intel/'PLATFORM`.m4')
 #
 # Define the pipelines
 #
-# PCM0 ----> volume ---------------+
-#                                  |--low latency mixer ----> volume ---->  SSP2
-# PCM1 -----> volume ----> SRC ----+
-#
+# PCM0 -----> volume -------v
+#                            low latency mixer ----> volume ---->  SSP2
+# PCM1 -----> volume -------^
 # PCM0 <---- Volume <---- SSP2
 #
-
-# Low Latency playback pipeline 1 on PCM 0 using max 2 channels of s32le.
-# 1000us deadline on core 0 with priority 1
-PIPELINE_PCM_ADD(sof/pipe-low-latency-playback.m4,
-	1, 0, 2, s32le,
-	1000, 1, 0,
-	48000, 48000, 48000)
 
 # Low Latency capture pipeline 2 on PCM 0 using max 2 channels of s32le.
 # 1000us deadline on core 0 with priority 0
@@ -47,17 +39,31 @@ PIPELINE_PCM_ADD(sof/pipe-low-latency-capture.m4,
 
 # playback DAI is SSP2 using 2 periods
 # Buffers use s24le format, 1000us deadline on core 0 with priority 1
-DAI_ADD(sof/pipe-dai-playback.m4,
+# this defines pipeline 1. The 'NOT_USED_IGNORED' is due to dependencies
+# and is adjusted later with an explicit dapm line.
+DAI_ADD(sof/pipe-mixer-dai-playback.m4,
 	1, SSP, SSP_NUM, SSP2-Codec,
-	PIPELINE_SOURCE_1, 2, s24le,
-	1000, 1, 0, SCHEDULE_TIME_DOMAIN_DMA)
+	NOT_USED_IGNORED, 2, s24le,
+	1000, 1, 0, SCHEDULE_TIME_DOMAIN_DMA,
+	2, 48000)
 
-# PCM Media Playback pipeline 3 on PCM 1 using max 2 channels of s32le.
+# PCM Playback pipeline 3 on PCM 0 using max 2 channels of s32le.
 # 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_ADD(sof/pipe-pcm-media.m4,
-	3, 1, 2, s32le,
+# this is connected to pipeline DAI 1
+PIPELINE_PCM_ADD(sof/pipe-host-volume-playback.m4,
+	3, 0, 2, s32le,
 	1000, 0, 0,
-	8000, 48000, 48000,
+	48000, 48000, 48000,
+	SCHEDULE_TIME_DOMAIN_DMA,
+	PIPELINE_PLAYBACK_SCHED_COMP_1)
+
+# PCM Playback pipeline 4 on PCM 1 using max 2 channels of s32le.
+# 10ms deadline on core 0 with priority 0
+# this is connected to pipeline DAI 1
+PIPELINE_PCM_ADD(sof/pipe-host-volume-playback.m4,
+	4, 1, 2, s32le,
+	10000, 0, 0,
+	48000, 48000, 48000,
 	SCHEDULE_TIME_DOMAIN_DMA,
 	PIPELINE_PLAYBACK_SCHED_COMP_1)
 
@@ -66,20 +72,26 @@ SectionGraph."PIPE_NAME" {
 	index "0"
 
 	lines [
-		# media 0
+		# PCM pipeline 3 to DAI pipeline 1
 		dapm(PIPELINE_MIXER_1, PIPELINE_SOURCE_3)
+		# PCM pipeline 4 to DAI pipeline 1
+		dapm(PIPELINE_MIXER_1, PIPELINE_SOURCE_4)
+
 	]
 }
 
 # capture DAI is SSP2 using 2 periods
 # Buffers use s24le format, 1000us deadline on core 0 with priority 0
+# this is part of pipeline 2
 DAI_ADD(sof/pipe-dai-capture.m4,
 	2, SSP, SSP_NUM, SSP2-Codec,
 	PIPELINE_SINK_2, 2, s24le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_DMA)
 
-# PCM Low Latency
-PCM_DUPLEX_ADD(Low Latency, 0, PIPELINE_PCM_1, PIPELINE_PCM_2)
+
+# PCM definitions
+PCM_DUPLEX_ADD(PCM, 0, PIPELINE_PCM_3, PIPELINE_PCM_2)
+PCM_PLAYBACK_ADD(PCM Deep Buffer, 1, PIPELINE_PCM_4)
 
 #
 # BE configurations - overrides config in ACPI if present
