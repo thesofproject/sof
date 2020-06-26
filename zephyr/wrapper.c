@@ -563,4 +563,16 @@ int arch_cpu_is_core_enabled(int id)
 	/* TODO: call Zephyr API */
 	return 1;
 }
+
+void cpu_power_down_core(void)
+{
+	/* TODO: use Zephyr version */
+}
+
+struct idc;
+struct idc **idc_get(void)
+{
+	/* TODO: this should return per core data */
+	return NULL;
+}
 #endif
