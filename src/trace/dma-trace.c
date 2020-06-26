@@ -24,6 +24,9 @@
 #include <sof/trace/dma-trace.h>
 #include <ipc/topology.h>
 #include <ipc/trace.h>
+#include <kernel/abi.h>
+#include <user/abi_dbg.h>
+#include <version.h>
 
 #include <errno.h>
 #include <stddef.h>
@@ -334,6 +337,11 @@ int dma_trace_enable(struct dma_trace_data *d)
 
 	d->enabled = 1;
 	schedule_task(&d->dmat_work, DMA_TRACE_PERIOD, DMA_TRACE_PERIOD);
+
+	/* it should be the very first sent log for easily identification */
+	tr_info(&dt_tr, "FW ABI 0x%x DBG ABI 0x%x tag " SOF_GIT_TAG " src hash 0x%x (ldc hash " META_QUOTE(SOF_SRC_HASH) ")",
+		SOF_ABI_VERSION, SOF_ABI_DBG_VERSION, SOF_SRC_HASH);
+	trace_flush();
 
 out:
 	platform_shared_commit(d, sizeof(*d));
