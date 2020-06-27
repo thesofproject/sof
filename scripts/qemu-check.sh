@@ -15,6 +15,8 @@ rm -f dump-*.txt
 die()
 {
 	>&2 printf '%s ERROR: ' "$0"
+	# We want die() to be usable exactly like printf
+	# shellcheck disable=SC2059
 	>&2 printf "$@"
 	exit 1
 }
@@ -145,15 +147,14 @@ do
 	esac
 
 	if $has_rom; then
-		ROM="-r ${SOF_BUILDS}/build_${platform}_gcc"
-		ROM+="/src/arch/xtensa/rom-$platform.bin"
+		ROM=(-r "${SOF_BUILDS}/build_${platform}_gcc/src/arch/xtensa/rom-$platform.bin")
 	fi
 
         xtensa_host_sh=$(find_qemu_xtensa)
 
 	${xtensa_host_sh} "$PLATFORM" -k \
 	   "${SOF_BUILDS}"/build_"${platform}"_gcc/src/arch/xtensa/"$FWNAME" \
-                $ROM \
+                "${ROM[@]}" \
 		-o 2.0 "${SOF_BUILDS}"/dump-"$platform".txt || true # timeout
 	# dump log into sof.git incase running in docker
 
