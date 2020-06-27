@@ -21,7 +21,6 @@ set(TPLGS
 	"sof-cht-nocodec\;sof-byt-nocodec\;-DPLATFORM=byt-nocodec\;-DSSP_NUM=2"
 	"sof-bdw-nocodec\;sof-bdw-nocodec"
 	"sof-cht-max98090\;sof-cht-max98090"
-	"sof-cht-src-50khz-pcm512x\;sof-cht-src-50khz-pcm512x"
 	"sof-hda-generic\;sof-hda-generic\;-DCHANNELS=0\;-DPPROC=volume"
 	"sof-hda-generic\;sof-hda-generic-2ch\;-DCHANNELS=2\;-DPPROC=volume\;-DDMICPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_48khz.m4\;-DDMIC16KPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_16khz.m4"
 	"sof-hda-generic\;sof-hda-generic-4ch\;-DCHANNELS=4\;-DPPROC=volume\;-DDMICPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_48khz.m4\;-DDMIC16KPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_16khz.m4"
