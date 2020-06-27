@@ -162,9 +162,12 @@ do
 	SHM_IPC_REG_FILE=$(ls /dev/shm/ | grep -E $SHM_IPC_REG)
 
 	# check if ready ipc header is in the ipc regs
-	IPC_REG=$(hexdump -C /dev/shm/"$SHM_IPC_REG_FILE" | grep "$READY_IPC")
+	IPC_REG=$(hexdump -C /dev/shm/"$SHM_IPC_REG_FILE" |
+		      grep "$READY_IPC") || true
+
 	# check if ready ipc message is in the mbox
-	IPC_MSG=$(hexdump -C /dev/shm/$SHM_MBOX | grep -A 4 "$READY_MSG" | grep -A 4 "$OUTBOX_OFFSET")
+	IPC_MSG=$(hexdump -C /dev/shm/$SHM_MBOX | grep -A 4 "$READY_MSG" |
+		      grep -A 4 "$OUTBOX_OFFSET") || true
 
 	if [ "$IPC_REG" ]; then
 		echo "ipc reg dump:"
