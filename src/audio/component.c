@@ -35,25 +35,17 @@ static const struct comp_driver *get_drv(uint32_t type)
 	struct list_item *clist;
 	const struct comp_driver *drv = NULL;
 	struct comp_driver_info *info;
-	uint32_t flags;
-
-	irq_local_disable(flags);
 
 	/* search driver list for driver type */
 	list_for_item(clist, &drivers->list) {
 		info = container_of(clist, struct comp_driver_info, list);
 		if (info->drv->type == type) {
 			drv = info->drv;
-			platform_shared_commit(info, sizeof(*info));
 			goto out;
 		}
-
-		platform_shared_commit(info, sizeof(*info));
 	}
 
 out:
-	platform_shared_commit(drivers, sizeof(*drivers));
-	irq_local_enable(flags);
 	return drv;
 }
 
