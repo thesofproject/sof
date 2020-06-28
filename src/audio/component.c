@@ -29,20 +29,70 @@ DECLARE_SOF_UUID("component", comp_uuid, 0x7c42ce8b, 0x0108, 0x43d0,
 
 DECLARE_TR_CTX(comp_tr, SOF_UUID(comp_uuid), LOG_LEVEL_INFO);
 
-static const struct comp_driver *get_drv(uint32_t type)
+static const struct comp_driver *get_drv(struct sof_ipc_comp *comp)
 {
 	struct comp_driver_list *drivers = comp_drivers_get();
 	struct list_item *clist;
 	const struct comp_driver *drv = NULL;
 	struct comp_driver_info *info;
+	struct sof_ipc_comp_ext *comp_ext;
 	uint32_t flags;
 
 	irq_local_disable(flags);
 
+	/* do we have extended data ? */
+	if (!comp->ext_data_length)
+		goto comp_type_match;
+
+	/* Basic sanity check of the total size and extended data
+	 * length. A bit lax because in this generic code we don't know
+	 * which derived comp we have and how much its specific members
+	 * add.
+	 */
+	if (comp->hdr.size < sizeof(*comp) + comp->ext_data_length) {
+		tr_err(&comp_tr, "Invalid size, hdr.size=0x%x, ext_data_length=0x%x\n",
+		       comp->hdr.size, comp->ext_data_length);
+		goto out;
+	}
+
+	comp_ext = (struct sof_ipc_comp_ext *)
+		   ((uint8_t *)comp + comp->hdr.size -
+		    comp->ext_data_length);
+
+	/* UUID is first item in extended data - check its big enough */
+	if (comp->ext_data_length < UUID_SIZE) {
+		tr_err(&comp_tr, "UUID is invalid!\n");
+		goto out;
+	}
+
+	/* search driver list with UUID */
+	list_for_item(clist, &drivers->list) {
+		info = container_of(clist, struct comp_driver_info,
+				    list);
+		if (!memcmp(info->drv->uid, comp_ext->uuid,
+			    UUID_SIZE)) {
+			tr_dbg(&comp_tr,
+			       "get_drv_from_uuid(), found driver type %d, uuid %s",
+			       info->drv->type,
+			       info->drv->tctx->uuid_p);
+			drv = info->drv;
+			goto out;
+		}
+	}
+
+	tr_err(&comp_tr, "get_drv(): the provided UUID (%8x%8x%8x%8x) doesn't match to any driver!",
+	       *(uint32_t *)(&comp_ext->uuid[0]),
+	       *(uint32_t *)(&comp_ext->uuid[4]),
+	       *(uint32_t *)(&comp_ext->uuid[8]),
+	       *(uint32_t *)(&comp_ext->uuid[12]));
+
+	goto out;
+
+comp_type_match:
 	/* search driver list for driver type */
 	list_for_item(clist, &drivers->list) {
 		info = container_of(clist, struct comp_driver_info, list);
-		if (info->drv->type == type) {
+		if (info->drv->type == comp->type) {
 			drv = info->drv;
 			platform_shared_commit(info, sizeof(*info));
 			goto out;
@@ -63,7 +113,7 @@ struct comp_dev *comp_new(struct sof_ipc_comp *comp)
 	const struct comp_driver *drv;
 
 	/* find the driver for our new component */
-	drv = get_drv(comp->type);
+	drv = get_drv(comp);
 	if (!drv) {
 		tr_err(&comp_tr, "comp_new(): driver not found, comp->type = %u",
 		       comp->type);
