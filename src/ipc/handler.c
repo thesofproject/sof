@@ -668,6 +668,8 @@ static int ipc_pm_gate(uint32_t header)
 
 	IPC_COPY_CMD(pm_gate, ipc_get()->comp_data);
 
+	tr_info(&ipc_tr, "ipc: pm gate flags 0x%x", pm_gate.flags);
+
 	/* pause dma trace firstly if needed */
 	if (pm_gate.flags & SOF_PM_NO_TRACE)
 		trace_off();
