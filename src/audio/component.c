@@ -346,10 +346,10 @@ int  comp_alloc_model_data(struct comp_dev *dev, struct comp_model_data *model,
 	if (!size)
 		return 0;
 
-	model->data = rballoc(0, SOF_MEM_CAPS_RAM, size);
+	model->data = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, size);
 
 	if (!model->data) {
-		comp_err(dev, "comp_alloc_model_data(): model->data rballoc failed");
+		comp_err(dev, "comp_alloc_model_data(): model->data rzalloc failed");
 		return -ENOMEM;
 	}
 
