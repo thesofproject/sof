@@ -32,8 +32,9 @@ static inline void select_cpu_clock_hw(int freq_idx, bool release_unused)
 	uint32_t status_mask = cpu_freq_status_mask[freq_idx];
 
 #if CONFIG_TIGERLAKE
+	/* TGL specific HW recommended flow */
 	if (freq_idx == CPU_HPRO_FREQ_IDX)
-		cpu_enable_core(PLATFORM_CORE_COUNT - 1);
+		pm_runtime_get(PM_RUNTIME_DSP, PWRD_BY_HPRO | (PLATFORM_CORE_COUNT - 1));
 #endif
 
 	/* request clock */
@@ -55,8 +56,9 @@ static inline void select_cpu_clock_hw(int freq_idx, bool release_unused)
 			     (io_reg_read(SHIM_BASE + SHIM_CLKCTL) &
 			      ~SHIM_CLKCTL_OSC_REQUEST_MASK) | enc);
 #if CONFIG_TIGERLAKE
+		/* TGL specific HW recommended flow */
 		if (freq_idx != CPU_HPRO_FREQ_IDX)
-			cpu_disable_core(PLATFORM_CORE_COUNT - 1);
+			pm_runtime_put(PM_RUNTIME_DSP, PWRD_BY_HPRO | (PLATFORM_CORE_COUNT - 1));
 #endif
 	}
 
