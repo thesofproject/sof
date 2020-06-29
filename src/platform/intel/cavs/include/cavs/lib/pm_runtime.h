@@ -16,12 +16,21 @@
 #ifndef __CAVS_LIB_PM_RUNTIME_H__
 #define __CAVS_LIB_PM_RUNTIME_H__
 
+/**
+ * \brief extra pwr flag to power up a core with a specific reason
+ * it can be powered down only with the same reason (flag)
+ */
+#define PWRD_MASK	MASK(31, 30)
+#define PWRD_BY_HPRO	BIT(31)		/**< requested by HPRO */
+#define PWRD_BY_TPLG	BIT(30)		/**< typical power up */
+
 struct pm_runtime_data;
 
 /** \brief cAVS specific runtime power management data. */
 struct cavs_pm_runtime_data {
 	int dsp_d0_sref; /**< simple ref counter, accessed by core 0 only */
 	int host_dma_l1_sref; /**< ref counter for Host DMA accesses */
+	int dsp_client_bitmap[PLATFORM_CORE_COUNT]; /**< simple pwr override */
 };
 
 #endif
