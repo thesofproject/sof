@@ -396,7 +396,12 @@ static inline void cavs_pm_runtime_core_en_hp_clk(uint32_t index)
 static inline void cavs_pm_runtime_dis_dsp_pg(uint32_t index)
 {
 #if CAVS_VERSION >= CAVS_VERSION_1_8
+	struct pm_runtime_data *prd = pm_runtime_data_get();
+	struct cavs_pm_runtime_data *pprd = prd->platform_data;
 	uint32_t lps_ctl, tries = PLATFORM_PM_RUNTIME_DSP_TRIES;
+	uint32_t flag = PWRD_MASK & index;
+
+	index &= ~(PWRD_MASK);
 
 	if (index == PLATFORM_MASTER_CORE_ID) {
 		lps_ctl = shim_read(SHIM_LPSCTL);
@@ -424,6 +429,7 @@ static inline void cavs_pm_runtime_dis_dsp_pg(uint32_t index)
 		if (tries == 0)
 			tr_err(&power_tr, "cavs_pm_runtime_dis_dsp_pg(): failed to power up core %d",
 			       index);
+		pprd->dsp_client_bitmap[index] |= flag;
 	}
 #endif
 }
@@ -431,7 +437,12 @@ static inline void cavs_pm_runtime_dis_dsp_pg(uint32_t index)
 static inline void cavs_pm_runtime_en_dsp_pg(uint32_t index)
 {
 #if CAVS_VERSION >= CAVS_VERSION_1_8
+	struct pm_runtime_data *prd = pm_runtime_data_get();
+	struct cavs_pm_runtime_data *pprd = prd->platform_data;
 	uint32_t lps_ctl;
+	uint32_t flag = PWRD_MASK & index;
+
+	index &= ~(PWRD_MASK);
 
 	if (index == PLATFORM_MASTER_CORE_ID) {
 		lps_ctl = shim_read(SHIM_LPSCTL);
@@ -445,8 +456,11 @@ static inline void cavs_pm_runtime_en_dsp_pg(uint32_t index)
 		lps_ctl &= ~SHIM_LPSCTL_FDSPRUN;
 		shim_write(SHIM_LPSCTL, lps_ctl);
 	} else {
-		shim_write16(SHIM_PWRCTL, shim_read16(SHIM_PWRCTL) &
-			     ~SHIM_PWRCTL_TCPDSPPG(index));
+		pprd->dsp_client_bitmap[index] &= ~(flag);
+
+		if (pprd->dsp_client_bitmap[index] == 0)
+			shim_write16(SHIM_PWRCTL, shim_read16(SHIM_PWRCTL) &
+				     ~SHIM_PWRCTL_TCPDSPPG(index));
 	}
 #endif
 }

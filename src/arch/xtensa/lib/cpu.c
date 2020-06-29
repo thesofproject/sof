@@ -32,7 +32,6 @@ extern struct core_context *core_ctx_ptr[PLATFORM_CORE_COUNT];
 extern struct xtos_core_data *core_data_ptr[PLATFORM_CORE_COUNT];
 
 static uint32_t active_cores_mask = BIT(PLATFORM_MASTER_CORE_ID);
-static int dsp_sref[PLATFORM_CORE_COUNT];	/**< simple ref counter */
 
 #if CONFIG_NO_SLAVE_CORE_ROM
 extern void *shared_vecbase_ptr;
@@ -82,7 +81,7 @@ int arch_cpu_enable_core(int id)
 		pm_runtime_get(CORE_MEMORY_POW, id);
 
 		/* Power up slave core */
-		pm_runtime_get(PM_RUNTIME_DSP, id);
+		pm_runtime_get(PM_RUNTIME_DSP, PWRD_BY_TPLG | id);
 
 		/* allocate resources for core */
 		cpu_alloc_core_context(id);
@@ -104,7 +103,6 @@ int arch_cpu_enable_core(int id)
 
 		active_cores_mask |= (1 << id);
 	}
-	++dsp_sref[id];
 
 	return 0;
 }
@@ -114,8 +112,7 @@ void arch_cpu_disable_core(int id)
 	struct idc_msg power_down = {
 		IDC_MSG_POWER_DOWN, IDC_MSG_POWER_DOWN_EXT, id };
 
-	--dsp_sref[id];
-	if (arch_cpu_is_core_enabled(id) && dsp_sref[id] == 0) {
+	if (arch_cpu_is_core_enabled(id)) {
 		idc_send_msg(&power_down, IDC_NON_BLOCKING);
 
 		active_cores_mask ^= (1 << id);
@@ -181,7 +178,7 @@ void cpu_power_down_core(void)
 	/* Turn off stack memory for core */
 	pm_runtime_put(CORE_MEMORY_POW, cpu_get_id());
 
-	pm_runtime_put(PM_RUNTIME_DSP, cpu_get_id());
+	pm_runtime_put(PM_RUNTIME_DSP, PWRD_BY_TPLG | cpu_get_id());
 
 	/* arch_wait_for_interrupt() not used, because it will cause panic.
 	 * This code is executed on irq lvl > 0, which is expected.
