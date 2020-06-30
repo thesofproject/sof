@@ -33,15 +33,14 @@
 #include <stdlib.h>
 
 #define ACTIVATION_DEFAULT_SHIFT 3
-#define ACTIVATION_DEFAULT_DIVIDER_S16 0.5
-#define ACTIVATION_DEFAULT_DIVIDER_S24 0.05
+#define ACTIVATION_DEFAULT_COEF 0.05
 
 #define ACTIVATION_DEFAULT_THRESHOLD_S16 \
-	((int16_t)((INT16_MAX) * (ACTIVATION_DEFAULT_DIVIDER_S16)))
+	Q_CONVERT_FLOAT(ACTIVATION_DEFAULT_COEF, 15) /* Q1.15 */
 #define ACTIVATION_DEFAULT_THRESHOLD_S24 \
-	((int32_t)((INT24_MAXVALUE) * (ACTIVATION_DEFAULT_DIVIDER_S24)))
+		Q_CONVERT_FLOAT(ACTIVATION_DEFAULT_COEF, 23) /* Q1.23 */
 #define ACTIVATION_DEFAULT_THRESHOLD_S32 \
-	ACTIVATION_DEFAULT_THRESHOLD_S24
+		Q_CONVERT_FLOAT(ACTIVATION_DEFAULT_COEF, 31) /* Q1.31 */
 
 #define INITIAL_MODEL_DATA_SIZE 64
 
@@ -383,6 +382,9 @@ static int test_keyword_params(struct comp_dev *dev,
 	} else {
 		cd->keyphrase_samples = KEYPHRASE_DEFAULT_PREAMBLE_LENGTH;
 	}
+
+	cd->config.activation_threshold =
+		test_keyword_get_threshold(dev, params->sample_valid_bytes * 8);
 
 	return 0;
 }
