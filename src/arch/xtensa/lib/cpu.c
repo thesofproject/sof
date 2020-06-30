@@ -31,7 +31,7 @@
 extern struct core_context *core_ctx_ptr[PLATFORM_CORE_COUNT];
 extern struct xtos_core_data *core_data_ptr[PLATFORM_CORE_COUNT];
 
-static uint32_t active_cores_mask;
+static uint32_t active_cores_mask = BIT(PLATFORM_MASTER_CORE_ID);
 static int dsp_sref[PLATFORM_CORE_COUNT];	/**< simple ref counter */
 
 #if CONFIG_NO_SLAVE_CORE_ROM
@@ -131,8 +131,7 @@ void arch_cpu_disable_core(int id)
 
 int arch_cpu_is_core_enabled(int id)
 {
-	return id == PLATFORM_MASTER_CORE_ID ||
-		active_cores_mask & (1 << id);
+	return active_cores_mask & BIT(id);
 }
 
 void cpu_alloc_core_context(int core)
