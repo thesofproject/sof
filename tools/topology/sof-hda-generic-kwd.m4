@@ -38,7 +38,7 @@ include(`platform/intel/bxt.m4')
 # define pcm to 6,7, pipeline to 10,11,12 and dai id to 6,7
 ifelse(CHANNELS, `0', ,
 `
-define(KFBM_TYPE, `kfbm')
+define(KFBM_TYPE, `vol-kfbm')
 define(DMIC_PCM_48k_ID, `6')
 define(DMIC_PCM_16k_ID, `7')
 define(DMIC_PIPELINE_48k_ID, `10')
