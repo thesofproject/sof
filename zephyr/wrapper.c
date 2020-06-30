@@ -18,6 +18,7 @@
 #include <sof/trace/trace.h>
 
 /* Zephyr includes */
+#include <device.h>
 #include <soc.h>
 
 /* Including following header
@@ -26,9 +27,6 @@
  *
  * TODO: Figure out best way for include
  */
-void *k_malloc(size_t size);
-void *k_calloc(size_t nmemb, size_t size);
-void k_free(void *ptr);
 
 int arch_irq_connect_dynamic(unsigned int irq, unsigned int priority,
 			     void (*routine)(void *parameter),
@@ -42,69 +40,63 @@ int arch_irq_connect_dynamic(unsigned int irq, unsigned int priority,
 #error Define CONFIG_DYNAMIC_INTERRUPTS
 #endif
 
-#if !defined(CONFIG_HEAP_MEM_POOL_SIZE)
-#error Define CONFIG_HEAP_MEM_POOL_SIZE
+#if !defined(CONFIG_SYS_HEAP_ALIGNED_ALLOC)
+#error Define CONFIG_SYS_HEAP_ALIGNED_ALLOC
 #endif
 
 /*
  * Memory
  */
 
-/*  Single-linked alloc list for simple book keeping */
-static sys_slist_t alloc_list;
+/* TODO: Use special section */
+#define HEAP_SIZE	180000
+uint8_t __aligned(64) heapmem[HEAP_SIZE];
 
-/* Organized for alignment purposes */
-struct __alloc_hdr {
-	sys_snode_t snode;
-	uint32_t size;
-	char padding[20];
-	void *orig_ptr;
-} __packed;
+/* Use k_heap structure */
+static struct k_heap sof_heap;
 
-#define DEBUG_ALLOC			1
+static int statics_init(struct device *unused)
+{
+	ARG_UNUSED(unused);
+
+	sys_heap_init(&sof_heap.heap, heapmem, HEAP_SIZE);
+
+	return 0;
+}
+
+SYS_INIT(statics_init, PRE_KERNEL_1, CONFIG_KERNEL_INIT_PRIORITY_OBJECTS);
+
+static void *heap_alloc_aligned(struct k_heap *h, size_t align, size_t bytes)
+{
+	void *ret = NULL;
+	k_spinlock_key_t key = k_spin_lock(&h->lock);
+
+	ret = sys_heap_aligned_alloc(&h->heap, align, bytes);
+
+	k_spin_unlock(&h->lock, key);
+
+	return ret;
+}
+
+static void heap_free(struct k_heap *h, void *mem)
+{
+	k_spinlock_key_t key = k_spin_lock(&h->lock);
+
+	sys_heap_free(&h->heap, mem);
+
+	k_spin_unlock(&h->lock, key);
+}
+
 #define ALWAYS_USE_ALIGNED_ALLOC	1
-
-static struct k_spinlock lock;
-
-BUILD_ASSERT((sizeof(struct __alloc_hdr) == 32), "Must be 32");
 
 void *rmalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
 {
 	if (IS_ENABLED(ALWAYS_USE_ALIGNED_ALLOC)) {
 		return  rballoc_align(flags, caps, bytes,
 				      PLATFORM_DCACHE_ALIGN);
-	} else {
-		struct __alloc_hdr *hdr;
-		void *new_ptr;
-
-		bytes += sizeof(struct __alloc_hdr);
-
-		/* TODO: Use different memory areas - & cache line alignment*/
-
-		/* Allocation header in the beginning of the memory block */
-		hdr = k_malloc(bytes);
-		if (!hdr) {
-			LOG_ERR("Failed to malloc");
-			return NULL;
-		}
-
-		/* New pointer starts right after sizeof(*hdr) */
-		new_ptr = hdr + 1;
-
-		hdr->orig_ptr = hdr;
-		hdr->size = bytes;
-
-		LOG_ERR("rmalloc: hdr %p new_ptr %p sz %u",
-			     hdr, new_ptr, hdr->size);
-
-		if (IS_ENABLED(DEBUG_ALLOC)) {
-			k_spinlock_key_t k = k_spin_lock(&lock);
-			sys_slist_append(&alloc_list, &hdr->snode);
-			k_spin_unlock(&lock, k);
-		}
-
-		return new_ptr;
 	}
+
+	return heap_alloc_aligned(&sof_heap, 8, bytes);
 }
 
 /* Use SOF_MEM_ZONE_BUFFER at the moment */
@@ -115,7 +107,7 @@ void *rbrealloc_align(void *ptr, uint32_t flags, uint32_t caps, size_t bytes,
 
 	if (!ptr) {
 		/* TODO: Use correct zone */
-		return rmalloc(SOF_MEM_ZONE_BUFFER, flags, caps, bytes);
+		return rballoc_align(flags, caps, bytes, alignment);
 	}
 
 	/* Original version returns NULL without freeing this memory */
@@ -125,7 +117,7 @@ void *rbrealloc_align(void *ptr, uint32_t flags, uint32_t caps, size_t bytes,
 		return NULL;
 	}
 
-	new_ptr = rmalloc(SOF_MEM_ZONE_BUFFER, flags, caps, bytes);
+	new_ptr = rballoc_align(flags, caps, bytes, alignment);
 	if (!new_ptr) {
 		return NULL;
 	}
@@ -149,45 +141,11 @@ void *rbrealloc_align(void *ptr, uint32_t flags, uint32_t caps, size_t bytes,
  */
 void *rzalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
 {
-	if (IS_ENABLED(ALWAYS_USE_ALIGNED_ALLOC)) {
-		void *ptr = rmalloc(zone, flags, caps, bytes);
+	void *ptr = rmalloc(zone, flags, caps, bytes);
 
-		memset(ptr, 0, bytes);
+	memset(ptr, 0, bytes);
 
-		return ptr;
-	} else {
-		struct __alloc_hdr *hdr;
-		void *new_ptr;
-
-		bytes += sizeof(struct __alloc_hdr);
-
-		/* TODO: Use different memory areas & cache line alignment */
-
-		/* Allocation header in the beginning of the memory block */
-		hdr = k_calloc(bytes, 1);
-		if (!hdr) {
-			LOG_ERR("Failed to rzalloc");
-			k_panic();
-			return NULL;
-		}
-
-		/* New pointer starts right after sizeof(*hdr) */
-		new_ptr = hdr + 1;
-
-		hdr->orig_ptr = hdr;
-		hdr->size = bytes;
-
-		LOG_INF("rz: hdr %p new %p sz %u",
-			     hdr, new_ptr, hdr->size);
-
-		if (IS_ENABLED(DEBUG_ALLOC)) {
-			k_spinlock_key_t k = k_spin_lock(&lock);
-			sys_slist_append(&alloc_list, &hdr->snode);
-			k_spin_unlock(&lock, k);
-		}
-
-		return new_ptr;
-	}
+	return ptr;
 }
 
 /**
@@ -201,36 +159,7 @@ void *rzalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
 void *rballoc_align(uint32_t flags, uint32_t caps, size_t bytes,
 		    uint32_t alignment)
 {
-	struct __alloc_hdr *hdr;
-	void *ptr, *new_ptr;
-
-	bytes += PLATFORM_DCACHE_ALIGN - 1 + sizeof(struct __alloc_hdr);
-
-	/* TODO: Rewrite with alignment, mem areas, caps */
-	ptr = k_malloc(bytes);
-	if (!ptr) {
-		LOG_ERR("Failed to rballoc_align");
-		return NULL;
-	}
-
-	new_ptr = (void *)ROUND_UP((unsigned long)ptr +
-				   sizeof(struct __alloc_hdr), PLATFORM_DCACHE_ALIGN);
-
-	hdr = (struct __alloc_hdr *)new_ptr - 1;
-
-	hdr->orig_ptr = ptr;
-	hdr->size = bytes;
-
-	if (IS_ENABLED(DEBUG_ALLOC)) {
-		k_spinlock_key_t k = k_spin_lock(&lock);
-		sys_slist_append(&alloc_list, &hdr->snode);
-		k_spin_unlock(&lock, k);
-	}
-
-	LOG_INF("rba: hdr %p new %p sz %u",
-		     hdr, new_ptr, hdr->size);
-
-	return new_ptr;
+	return heap_alloc_aligned(&sof_heap, alignment, bytes);
 }
 
 /*
@@ -242,31 +171,9 @@ void rfree(void *ptr)
 		/* Should this be warning? */
 		LOG_ERR("Trying to free NULL");
 		return;
-	} else {
-		struct __alloc_hdr *hdr = (struct __alloc_hdr *)ptr - 1;
-		void *orig_ptr = hdr->orig_ptr;
-
-		LOG_INF("rfree: ptr %p orig %p",
-			     ptr, orig_ptr);
-
-		if (IS_ENABLED(DEBUG_ALLOC)) {
-			k_spinlock_key_t k;
-			bool found;
-
-			k = k_spin_lock(&lock);
-			found = sys_slist_find_and_remove(&alloc_list, &hdr->snode);
-			k_spin_unlock(&lock, k);
-
-			if (!found) {
-				LOG_ERR("Remove unknown %p, size %u",
-					    ptr, hdr->size);
-			}
-
-			return;
-		}
-
-		k_free(orig_ptr);
 	}
+
+	heap_free(&sof_heap, ptr);
 }
 
 /* debug only - only needed for linking */
