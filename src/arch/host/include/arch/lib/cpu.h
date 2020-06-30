@@ -24,6 +24,11 @@ static inline int arch_cpu_is_core_enabled(int id)
 	return 0;
 }
 
+static inline int arch_cpu_enabled_cores(void)
+{
+	return 1;
+}
+
 static inline int arch_cpu_get_id(void)
 {
 	return 0;

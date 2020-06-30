@@ -55,6 +55,11 @@ static inline int cpu_is_core_enabled(int id)
 	return arch_cpu_is_core_enabled(id);
 }
 
+static inline int cpu_enabled_cores(void)
+{
+	return arch_cpu_enabled_cores();
+}
+
 #endif
 
 #endif /* __SOF_LIB_CPU_H__ */

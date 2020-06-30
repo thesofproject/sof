@@ -134,6 +134,11 @@ int arch_cpu_is_core_enabled(int id)
 	return active_cores_mask & BIT(id);
 }
 
+int arch_cpu_enabled_cores(void)
+{
+	return active_cores_mask;
+}
+
 void cpu_alloc_core_context(int core)
 {
 	struct core_context *core_ctx;
