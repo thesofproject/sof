@@ -112,7 +112,8 @@ static void src_copy_s32(struct comp_dev *dev,
 	int n;
 	int ret;
 	int i;
-	int frames = 0;
+	int in_frames = 0;
+	int out_frames = 0;
 	int idx = 0;
 
 	/* TODO: Optimize buffer size by circular write to snk directly */
@@ -133,26 +134,24 @@ static void src_copy_s32(struct comp_dev *dev,
 	}
 
 	/* Run ASRC */
-	if (cd->mode == ASRC_OM_PUSH) {
-		ret = asrc_process_push32(dev,
-					  cd->asrc_obj, (int32_t **)cd->ibuf,
-					  cd->source_frames,
-					  (int32_t **)cd->obuf, &frames,
+	in_frames = cd->source_frames;
+	out_frames = cd->sink_frames;
+	if (cd->mode == ASRC_OM_PUSH)
+		ret = asrc_process_push32(dev, cd->asrc_obj,
+					  (int32_t **)cd->ibuf, &in_frames,
+					  (int32_t **)cd->obuf, &out_frames,
 					  &idx, 0);
-		n = frames * sink->channels;
-	} else {
+	else
 		ret = asrc_process_pull32(dev, cd->asrc_obj,
-					  (int32_t **)cd->ibuf,
-					  &frames, (int32_t **)cd->obuf,
-					  cd->sink_frames, cd->source_frames,
-					  &idx);
-		n = cd->sink_frames * sink->channels;
-	}
+					  (int32_t **)cd->ibuf, &in_frames,
+					  (int32_t **)cd->obuf, &out_frames,
+					  out_frames, &idx);
 
 	if (ret)
 		comp_err(dev, "src_copy_s32(), error %d", ret);
 
 	buf = (int32_t *)cd->obuf[0];
+	n = out_frames * sink->channels;
 	while (n > 0) {
 		n_wrap_snk = (int32_t *)sink->end_addr - snk;
 		n_copy = (n < n_wrap_snk) ? n : n_wrap_snk;
@@ -164,13 +163,8 @@ static void src_copy_s32(struct comp_dev *dev,
 		src_inc_wrap(&snk, sink->end_addr, sink->size);
 	}
 
-	if (cd->mode == ASRC_OM_PUSH) {
-		*n_read = cd->source_frames;
-		*n_written = frames;
-	} else {
-		*n_read = frames;
-		*n_written = cd->sink_frames;
-	}
+	*n_read = in_frames;
+	*n_written = out_frames;
 }
 
 static void src_copy_s16(struct comp_dev *dev,
@@ -188,7 +182,8 @@ static void src_copy_s16(struct comp_dev *dev,
 	int s_copy;
 	int ret;
 	int n;
-	int frames = 0;
+	int in_frames = 0;
+	int out_frames = 0;
 	int idx = 0;
 
 	/* TODO: Optimize buffer size by circular write to snk directly */
@@ -211,26 +206,25 @@ static void src_copy_s16(struct comp_dev *dev,
 	}
 
 	/* Run ASRC */
-	if (cd->mode == ASRC_OM_PUSH) {
-		ret = asrc_process_push16(dev,
-					  cd->asrc_obj, (int16_t **)cd->ibuf,
-					  cd->source_frames,
-					  (int16_t **)cd->obuf, &frames,
+	in_frames = cd->source_frames;
+	out_frames = cd->sink_frames;
+
+	if (cd->mode == ASRC_OM_PUSH)
+		ret = asrc_process_push16(dev, cd->asrc_obj,
+					  (int16_t **)cd->ibuf, &in_frames,
+					  (int16_t **)cd->obuf, &out_frames,
 					  &idx, 0);
-		n = frames * sink->channels;
-	} else {
-		ret = asrc_process_pull16(dev,
-					  cd->asrc_obj, (int16_t **)cd->ibuf,
-					  &frames, (int16_t **)cd->obuf,
-					  cd->sink_frames, cd->source_frames,
-					  &idx);
-		n = cd->sink_frames * sink->channels;
-	}
+	else
+		ret = asrc_process_pull16(dev, cd->asrc_obj,
+					  (int16_t **)cd->ibuf, &in_frames,
+					  (int16_t **)cd->obuf, &out_frames,
+					  out_frames, &idx);
 
 	if (ret)
 		comp_err(dev, "src_copy_s16(), error %d", ret);
 
 	buf = (int16_t *)cd->obuf[0];
+	n = out_frames * sink->channels;
 	while (n > 0) {
 		n_wrap_snk = (int16_t *)sink->end_addr - snk;
 		n_copy = (n < n_wrap_snk) ? n : n_wrap_snk;
@@ -245,13 +239,8 @@ static void src_copy_s16(struct comp_dev *dev,
 		src_inc_wrap_s16(&snk, sink->end_addr, sink->size);
 	}
 
-	if (cd->mode == ASRC_OM_PUSH) {
-		*n_read = cd->source_frames;
-		*n_written = frames;
-	} else {
-		*n_read = frames;
-		*n_written = cd->sink_frames;
-	}
+	*n_read = in_frames;
+	*n_written = out_frames;
 }
 
 static struct comp_dev *asrc_new(const struct comp_driver *drv,
