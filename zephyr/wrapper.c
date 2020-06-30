@@ -87,15 +87,8 @@ static void heap_free(struct k_heap *h, void *mem)
 	k_spin_unlock(&h->lock, key);
 }
 
-#define ALWAYS_USE_ALIGNED_ALLOC	1
-
 void *rmalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
 {
-	if (IS_ENABLED(ALWAYS_USE_ALIGNED_ALLOC)) {
-		return  rballoc_align(flags, caps, bytes,
-				      PLATFORM_DCACHE_ALIGN);
-	}
-
 	return heap_alloc_aligned(&sof_heap, 8, bytes);
 }
 
