@@ -14,6 +14,7 @@
 #include <sof/drivers/timer.h>
 #include <sof/lib/agent.h>
 #include <sof/lib/alloc.h>
+#include <sof/lib/clk.h>
 #include <sof/lib/mailbox.h>
 #include <sof/lib/mm_heap.h>
 #include <sof/lib/uuid.h>
@@ -222,7 +223,13 @@ int pipeline_complete(struct pipeline *p, struct comp_dev *source,
 		.comp_data = &data,
 	};
 
-	pipe_info(p, "pipeline complete");
+#if !UNIT_TEST && !CONFIG_LIBRARY
+	int freq = clock_get_freq(cpu_get_id());
+#else
+	int freq = 0;
+#endif
+
+	pipe_info(p, "pipeline complete, clock freq %dHz", freq);
 
 	/* check whether pipeline is already completed */
 	if (p->status != COMP_STATE_INIT) {
