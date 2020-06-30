@@ -349,7 +349,8 @@ static struct notify *host_notify;
 struct notify **arch_notify_get(void)
 {
 	if (!host_notify)
-		host_notify = k_calloc(sizeof(*host_notify), 1);
+		host_notify = rzalloc(SOF_MEM_ZONE_SYS, 0, SOF_MEM_CAPS_RAM,
+				      sizeof(*host_notify));
 	return &host_notify;
 }
 

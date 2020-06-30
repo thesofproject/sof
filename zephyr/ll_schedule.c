@@ -176,7 +176,8 @@ struct ll_schedule_domain *timer_domain_init(struct timer *timer, int clk,
 {
 	struct ll_schedule_domain *d;
 
-	d = k_malloc(sizeof(*d));
+	d = rzalloc(SOF_MEM_ZONE_SYS, SOF_MEM_FLAG_SHARED,
+		    SOF_MEM_CAPS_RAM, sizeof(*d));
 	d->type = SOF_SCHEDULE_LL_TIMER;
 
 	return d;
@@ -188,7 +189,8 @@ struct ll_schedule_domain *dma_single_chan_domain_init(struct dma *dma_array,
 {
 	struct ll_schedule_domain *d;
 
-	d = k_malloc(sizeof(*d));
+	d = rzalloc(SOF_MEM_ZONE_SYS, SOF_MEM_FLAG_SHARED,
+		    SOF_MEM_CAPS_RAM, sizeof(*d));
 	d->type = SOF_SCHEDULE_LL_DMA;
 
 	return d;
