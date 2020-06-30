@@ -975,7 +975,7 @@ void asrc_write_to_ring_buffer32(struct asrc_farrow  *src_obj,
 enum asrc_error_code asrc_process_push16(struct comp_dev *dev,
 					 struct asrc_farrow *src_obj,
 					 int16_t **__restrict input_buffers,
-					 int input_num_frames,
+					 int *input_num_frames,
 					 int16_t **__restrict output_buffers,
 					 int *output_num_frames,
 					 int *write_index,
@@ -1013,34 +1013,30 @@ enum asrc_error_code asrc_process_push16(struct comp_dev *dev,
 	index_input_frame = 0;
 
 	/* Run the state machine until all input samples are read */
-	while (index_input_frame < input_num_frames) {
+	while (index_input_frame < *input_num_frames) {
 		if (src_obj->time_value < TIME_VALUE_ONE) {
-			if (*output_num_frames < max_num_free_frames) {
-				/* Calculate impulse response */
-				(*src_obj->calc_ir)(src_obj);
-
-				/* Filter and write one output sample for each
-				 * channel to the output_buffer
-				 */
-				asrc_fir_filter16(src_obj, output_buffers,
-						  src_obj->io_buffer_idx);
-
-				/* Update time and buffer index */
-				src_obj->time_value += src_obj->fs_ratio;
-				src_obj->io_buffer_idx++;
-				if (src_obj->io_buffer_idx >=
-				    src_obj->io_buffer_length &&
-				    src_obj->io_buffer_mode == ASRC_BM_CIRCULAR)
-					/* Wrap around */
-					src_obj->io_buffer_idx = 0;
-
-				(*output_num_frames)++;
-			} else {
-				comp_err(dev, "error onf=%d, max=%d",
-					 *output_num_frames,
-					 max_num_free_frames);
+			if (*output_num_frames == max_num_free_frames)
 				break;
-			}
+
+			/* Calculate impulse response */
+			(*src_obj->calc_ir)(src_obj);
+
+			/* Filter and write one output sample for each
+			 * channel to the output_buffer
+			 */
+			asrc_fir_filter16(src_obj, output_buffers,
+					  src_obj->io_buffer_idx);
+
+			/* Update time and buffer index */
+			src_obj->time_value += src_obj->fs_ratio;
+			src_obj->io_buffer_idx++;
+
+			/* Wrap around */
+			if (src_obj->io_buffer_mode == ASRC_BM_CIRCULAR &&
+			    src_obj->io_buffer_idx >= src_obj->io_buffer_length)
+				src_obj->io_buffer_idx = 0;
+
+			(*output_num_frames)++;
 		} else {
 			/* Consume one input sample */
 			asrc_write_to_ring_buffer16(src_obj, input_buffers,
@@ -1052,12 +1048,13 @@ enum asrc_error_code asrc_process_push16(struct comp_dev *dev,
 		}
 	}
 	*write_index = src_obj->io_buffer_idx;
+	*input_num_frames = index_input_frame;
 
 	/* if fixed control mode, update the frames counters and check
 	 * if we have reached end of control cycle.
 	 */
 	if (src_obj->control_mode == ASRC_CM_FIXED) {
-		src_obj->prim_num_frames += input_num_frames;
+		src_obj->prim_num_frames += *input_num_frames;
 		src_obj->sec_num_frames += *output_num_frames;
 		if (src_obj->prim_num_frames >= src_obj->prim_num_frames_targ &&
 		    src_obj->sec_num_frames >= src_obj->sec_num_frames_targ) {
@@ -1088,7 +1085,7 @@ enum asrc_error_code asrc_process_push16(struct comp_dev *dev,
 enum asrc_error_code asrc_process_push32(struct comp_dev *dev,
 					 struct asrc_farrow *src_obj,
 					 int32_t **__restrict input_buffers,
-					 int input_num_frames,
+					 int *input_num_frames,
 					 int32_t **__restrict output_buffers,
 					 int *output_num_frames,
 					 int *write_index,
@@ -1124,36 +1121,30 @@ enum asrc_error_code asrc_process_push32(struct comp_dev *dev,
 
 	*output_num_frames = 0;
 	index_input_frame = 0;
-	while (index_input_frame < input_num_frames) {
+	while (index_input_frame < *input_num_frames) {
 		if (src_obj->time_value < TIME_VALUE_ONE) {
-			if (*output_num_frames < max_num_free_frames) {
-				/* Calculate impulse response */
-				(*src_obj->calc_ir)(src_obj);
-
-				/* Filter and write output sample to
-				 * output_buffer
-				 */
-				asrc_fir_filter32(src_obj, output_buffers,
-						  src_obj->io_buffer_idx);
-
-				/* Update time and index */
-				src_obj->time_value += src_obj->fs_ratio;
-				src_obj->io_buffer_idx++;
-
-				/* Wrap around */
-				if (src_obj->io_buffer_mode ==
-				    ASRC_BM_CIRCULAR &&
-				    src_obj->io_buffer_idx >=
-				    src_obj->io_buffer_length)
-					src_obj->io_buffer_idx = 0;
-
-				(*output_num_frames)++;
-			} else {
-				comp_err(dev, "error onf=%d, max=%d",
-					 *output_num_frames,
-					 max_num_free_frames);
+			if (*output_num_frames == max_num_free_frames)
 				break;
-			}
+
+			/* Calculate impulse response */
+			(*src_obj->calc_ir)(src_obj);
+
+			/* Filter and write output sample to
+			 * output_buffer
+			 */
+			asrc_fir_filter32(src_obj, output_buffers,
+					  src_obj->io_buffer_idx);
+
+			/* Update time and index */
+			src_obj->time_value += src_obj->fs_ratio;
+			src_obj->io_buffer_idx++;
+
+			/* Wrap around */
+			if (src_obj->io_buffer_mode == ASRC_BM_CIRCULAR &&
+			    src_obj->io_buffer_idx >= src_obj->io_buffer_length)
+				src_obj->io_buffer_idx = 0;
+
+			(*output_num_frames)++;
 		} else {
 			/* Consume input sample */
 			asrc_write_to_ring_buffer32(src_obj, input_buffers,
@@ -1164,14 +1155,15 @@ enum asrc_error_code asrc_process_push32(struct comp_dev *dev,
 			src_obj->time_value -= TIME_VALUE_ONE;
 		}
 	}
-
 	*write_index = src_obj->io_buffer_idx;
+	*input_num_frames = index_input_frame;
+
 
 	/* if fixed control mode, update the frames counters and check if we
 	 * have reached end of control cycle.
 	 */
 	if (src_obj->control_mode == ASRC_CM_FIXED) {
-		src_obj->prim_num_frames += input_num_frames;
+		src_obj->prim_num_frames += *input_num_frames;
 		src_obj->sec_num_frames += *output_num_frames;
 		if (src_obj->prim_num_frames >= src_obj->prim_num_frames_targ &&
 		    src_obj->sec_num_frames >= src_obj->sec_num_frames_targ) {
@@ -1204,7 +1196,7 @@ enum asrc_error_code asrc_process_pull16(struct comp_dev *dev,
 					 int16_t **__restrict input_buffers,
 					 int *input_num_frames,
 					 int16_t **__restrict output_buffers,
-					 int output_num_frames,
+					 int *output_num_frames,
 					 int write_index,
 					 int *read_index)
 {
@@ -1230,23 +1222,23 @@ enum asrc_error_code asrc_process_pull16(struct comp_dev *dev,
 	*input_num_frames = 0;
 
 	/* Run state machine until number of output samples are written */
-	while (index_output_frame < output_num_frames) {
+	while (index_output_frame < *output_num_frames) {
 		if (src_obj->time_value_pull < TIME_VALUE_ONE) {
 			/* Consume one input sample */
-			if (src_obj->io_buffer_idx != write_index) {
-				asrc_write_to_ring_buffer16(src_obj,
-							    input_buffers,
-							    src_obj->io_buffer_idx);
-				src_obj->io_buffer_idx++;
+			if (src_obj->io_buffer_idx == write_index)
+				break;
 
-				/* Wrap around */
-				if (src_obj->io_buffer_idx >=
-				    src_obj->io_buffer_length &&
-				    src_obj->io_buffer_mode == ASRC_BM_CIRCULAR)
-					src_obj->io_buffer_idx = 0;
+			asrc_write_to_ring_buffer16(src_obj,
+						    input_buffers,
+						    src_obj->io_buffer_idx);
+			src_obj->io_buffer_idx++;
 
-				(*input_num_frames)++;
-			}
+			/* Wrap around */
+			if (src_obj->io_buffer_mode == ASRC_BM_CIRCULAR &&
+			    src_obj->io_buffer_idx >= src_obj->io_buffer_length)
+				src_obj->io_buffer_idx = 0;
+
+			(*input_num_frames)++;
 
 			/* Update time as Q5.27 */
 			src_obj->time_value = (((int64_t)TIME_VALUE_ONE -
@@ -1268,12 +1260,13 @@ enum asrc_error_code asrc_process_pull16(struct comp_dev *dev,
 		}
 	}
 	*read_index = src_obj->io_buffer_idx;
+	*output_num_frames = index_output_frame;
 
 	/* if fixed control mode, update the frames counters and check if we
 	 * have reached end of control cycle.
 	 */
 	if (src_obj->control_mode == ASRC_CM_FIXED) {
-		src_obj->prim_num_frames += output_num_frames;
+		src_obj->prim_num_frames += *output_num_frames;
 		src_obj->sec_num_frames += *input_num_frames;
 		if (src_obj->prim_num_frames >= src_obj->prim_num_frames_targ &&
 		    src_obj->sec_num_frames >= src_obj->sec_num_frames_targ) {
@@ -1306,7 +1299,7 @@ enum asrc_error_code asrc_process_pull32(struct comp_dev *dev,
 					 int32_t **__restrict input_buffers,
 					 int *input_num_frames,
 					 int32_t **__restrict output_buffers,
-					 int output_num_frames,
+					 int *output_num_frames,
 					 int write_index,
 					 int *read_index)
 {
@@ -1333,23 +1326,23 @@ enum asrc_error_code asrc_process_pull32(struct comp_dev *dev,
 		src_obj->io_buffer_idx = 0;
 
 	*input_num_frames = 0;
-	while (index_output_frame < output_num_frames) {
+	while (index_output_frame < *output_num_frames) {
 		if (src_obj->time_value_pull < TIME_VALUE_ONE) {
 			/* Consume input sample */
-			if (src_obj->io_buffer_idx != write_index) {
-				asrc_write_to_ring_buffer32(src_obj,
-							    input_buffers,
-							    src_obj->io_buffer_idx);
-				src_obj->io_buffer_idx++;
+			if (src_obj->io_buffer_idx == write_index)
+				break;
 
-				/* Wrap around */
-				if (src_obj->io_buffer_idx >=
-				    src_obj->io_buffer_length &&
-				    src_obj->io_buffer_mode == ASRC_BM_CIRCULAR)
-					src_obj->io_buffer_idx = 0;
+			asrc_write_to_ring_buffer32(src_obj,
+						    input_buffers,
+						    src_obj->io_buffer_idx);
+			src_obj->io_buffer_idx++;
 
-				(*input_num_frames)++;
-			}
+			/* Wrap around */
+			if (src_obj->io_buffer_mode == ASRC_BM_CIRCULAR &&
+			    src_obj->io_buffer_idx >= src_obj->io_buffer_length)
+				src_obj->io_buffer_idx = 0;
+
+			(*input_num_frames)++;
 
 			/* Update time as Q5.27 */
 			src_obj->time_value = (((int64_t)TIME_VALUE_ONE -
@@ -1371,12 +1364,13 @@ enum asrc_error_code asrc_process_pull32(struct comp_dev *dev,
 		}
 	}
 	*read_index = src_obj->io_buffer_idx;
+	*output_num_frames = index_output_frame;
 
 	/* if fixed control mode, update the frames counters and check
 	 * if we have reached end of control cycle.
 	 */
 	if (src_obj->control_mode == ASRC_CM_FIXED) {
-		src_obj->prim_num_frames += output_num_frames;
+		src_obj->prim_num_frames += *output_num_frames;
 		src_obj->sec_num_frames += *input_num_frames;
 		if (src_obj->prim_num_frames >= src_obj->prim_num_frames_targ &&
 		    src_obj->sec_num_frames >= src_obj->sec_num_frames_targ) {

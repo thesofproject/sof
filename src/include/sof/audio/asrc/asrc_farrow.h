@@ -310,7 +310,8 @@ enum asrc_error_code asrc_initialise(struct comp_dev *dev,
  *                               interleaved or deinterleaved format,
  *                               this should also be correctly
  *                               configured in the @p src_obj.
- * @param[in] input_num_frames   Number of samples in each channel of input
+ * @param[in, out] input_num_frames
+ *				 Number of samples in each channel of input
  *                               data (NOT the number of total samples).
  * @param[out] output_buffers    Pointer to the pointers to the 16 bit
  *                               buffers the generated samples should
@@ -342,7 +343,7 @@ enum asrc_error_code asrc_initialise(struct comp_dev *dev,
 enum asrc_error_code asrc_process_push16(struct comp_dev *dev,
 					 struct asrc_farrow *src_obj,
 					 int16_t **__restrict input_buffers,
-					 int input_num_frames,
+					 int *input_num_frames,
 					 int16_t **__restrict output_buffers,
 					 int *output_num_frames,
 					 int *write_index,
@@ -368,7 +369,8 @@ enum asrc_error_code asrc_process_push16(struct comp_dev *dev,
  *                                interleaved or deinterleaved format,
  *                                this should also be correctly
  *                                configured in the @p src_obj.
- * @param[in] input_num_frames    Number of samples in each channel of
+ * @param[in, out] input_num_frames
+ *				  Number of samples in each channel of
  *                                input data (NOT the number of total samples).
  * @param[out] output_buffers     Pointer to the pointers to the 32 bit
  *                                buffers the generated samples should
@@ -400,7 +402,7 @@ enum asrc_error_code asrc_process_push16(struct comp_dev *dev,
 enum asrc_error_code asrc_process_push32(struct comp_dev *dev,
 					 struct asrc_farrow *src_obj,
 					 int32_t **__restrict input_buffers,
-					 int input_num_frames,
+					 int *input_num_frames,
 					 int32_t **__restrict output_buffers,
 					 int *output_num_frames,
 					 int *write_index,
@@ -434,7 +436,8 @@ enum asrc_error_code asrc_process_push32(struct comp_dev *dev,
  *                              or deinterleaved format, depending on
  *                              the configuration in @p src_obj.  No
  *                              support for output ring buffers yet.
- * @param[in] output_num_frames Number of samples that shall be written
+ * @param[in, out] output_num_frames
+ *				Number of samples that shall be written
  *                              to the output buffer for each channel.
  * @param[in] write_index       Index within the input ring buffer, must
  *                              point to the next frame, which has not
@@ -467,7 +470,7 @@ enum asrc_error_code asrc_process_pull16(struct comp_dev *dev,
 					 int16_t **__restrict input_buffers,
 					 int *input_num_frames,
 					 int16_t **__restrict output_buffers,
-					 int output_num_frames,
+					 int *output_num_frames,
 					 int write_index,
 					 int *read_index);
 
@@ -498,7 +501,8 @@ enum asrc_error_code asrc_process_pull16(struct comp_dev *dev,
  *                              or deinterleaved format, depending on
  *                              the configuration in @p src_obj.  No
  *                              support for output ring buffers yet.
- * @param[in] output_num_frames Number of samples that shall be written
+ * @param[in, out] output_num_frames
+ *				Number of samples that shall be written
  *                              to the output buffer for each channel.
  * @param[in] write_index       Index within the input ring buffer, must
  *                              point to the next frame, which has not
@@ -531,7 +535,7 @@ enum asrc_error_code asrc_process_pull32(struct comp_dev *dev,
 					 int32_t **__restrict input_buffers,
 					 int *input_num_frames,
 					 int32_t **__restrict output_buffers,
-					 int output_num_frames,
+					 int *output_num_frames,
 					 int write_index,
 					 int *read_index);
 
