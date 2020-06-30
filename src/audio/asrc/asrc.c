@@ -66,6 +66,8 @@ struct comp_data {
 	int32_t ts_prev;
 	int32_t sample_prev;
 	int32_t skew;		/* Rate factor in Q2.30 */
+	int32_t skew_min;
+	int32_t skew_max;
 	int ts_count;
 	int asrc_size;		/* ASRC object size */
 	int buf_size;		/* Samples buffer size */
@@ -676,6 +678,9 @@ static int asrc_prepare(struct comp_dev *dev)
 	if (!cd->skew)
 		cd->skew = Q_CONVERT_FLOAT(1.0, 30);
 
+	cd->skew_min = cd->skew;
+	cd->skew_max = cd->skew;
+
 	comp_info(dev, "asrc_prepare(), skew = %d", cd->skew);
 	ret = asrc_update_drift(dev, cd->asrc_obj, cd->skew);
 	if (ret) {
@@ -776,6 +781,12 @@ static int asrc_control_loop(struct comp_dev *dev, struct comp_data *cd)
 	tmp = ((int64_t)COEF_C1) * skew + ((int64_t)COEF_C2) * cd->skew;
 	cd->skew = sat_int32(Q_SHIFT_RND(tmp, 60, 30));
 	asrc_update_drift(dev, cd->asrc_obj, cd->skew);
+
+	/* Track skew variation, it helps to analyze possible problems
+	 * with slave DAI frame clock stability.
+	 */
+	cd->skew_min = MIN(cd->skew, cd->skew_min);
+	cd->skew_max = MAX(cd->skew, cd->skew_max);
 	comp_cl_dbg(&comp_asrc, "skew %d %d %d %d", delta_sample, delta_ts,
 		    skew, cd->skew);
 	return 0;
@@ -870,6 +881,9 @@ static int asrc_reset(struct comp_dev *dev)
 	struct comp_data *cd = comp_get_drvdata(dev);
 
 	comp_info(dev, "asrc_reset()");
+	comp_info(dev, "asrc_reset(), skew_min=%d, skew_max=%d", cd->skew_min,
+		  cd->skew_max);
+
 
 	/* If any resources feasible to stop */
 	if (cd->track_drift)
