@@ -11,11 +11,18 @@
 #include <sof/lib/clk.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/notifier.h>
+#include <sof/lib/uuid.h>
 #include <sof/platform.h>
 #include <sof/spinlock.h>
 #include <sof/trace/trace.h>
 #include <user/trace.h>
 #include <stdint.h>
+
+/* 8890ea76-0df9-44ae-87e6-994f4c15e9fa */
+DECLARE_SOF_UUID("clock", clock_uuid, 0x8890ea76, 0x0df9, 0x44ae,
+		 0x87, 0xe6, 0x99, 0x4f, 0x4c, 0x15, 0xe9, 0xfa);
+
+DECLARE_TR_CTX(clock_tr, SOF_UUID(clock_uuid), LOG_LEVEL_INFO);
 
 struct clock_notify_data clk_notify_data;
 
@@ -62,6 +69,9 @@ void clock_set_freq(int clock, uint32_t hz)
 	idx = clock_get_nearest_freq_idx(clk_info->freqs, clk_info->freqs_num,
 					 hz);
 	clk_notify_data.freq = clk_info->freqs[idx].freq;
+
+	tr_info(&clock_tr, "clock %d set freq %dHz freq_idx %d",
+		clock, hz, idx);
 
 	/* tell anyone interested we are about to change freq */
 	clk_notify_data.message = CLOCK_NOTIFY_PRE;
