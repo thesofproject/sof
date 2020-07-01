@@ -299,7 +299,7 @@ static int dai_playback_params(struct comp_dev *dev, uint32_t period_bytes,
 		fifo = dai_get_fifo(dd->dai, dev->direction,
 				    dd->stream_id);
 
-		comp_info(dev, "dai_playback_params() fifo %X", fifo);
+		comp_info(dev, "dai_playback_params() fifo 0x%x", fifo);
 
 		err = dma_sg_alloc(&config->elem_array, SOF_MEM_ZONE_RUNTIME,
 				   config->direction,
@@ -359,7 +359,7 @@ static int dai_capture_params(struct comp_dev *dev, uint32_t period_bytes,
 		fifo = dai_get_fifo(dd->dai, dev->direction,
 				    dd->stream_id);
 
-		comp_info(dev, "dai_capture_params() fifo %X", fifo);
+		comp_info(dev, "dai_capture_params() fifo 0x%x", fifo);
 
 		err = dma_sg_alloc(&config->elem_array, SOF_MEM_ZONE_RUNTIME,
 				   config->direction,

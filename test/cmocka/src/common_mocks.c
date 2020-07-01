@@ -72,7 +72,7 @@ int WEAK memcpy_s(void *dest, size_t dest_size,
 
 void WEAK __panic(uint32_t p, char *filename, uint32_t linenum)
 {
-	fail_msg("panic: %s:%d (code 0x%X)\n", filename, linenum, p);
+	fail_msg("panic: %s:%d (code 0x%x)\n", filename, linenum, p);
 }
 
 void WEAK trace_log(bool send_atomic, const void *log_entry,
