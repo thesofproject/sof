@@ -15,7 +15,7 @@
 static SHARED_DATA struct clock_info platform_clocks_info[NUM_CLOCKS];
 
 #if CAVS_VERSION == CAVS_VERSION_1_5
-static inline void select_cpu_clock(int freq_idx, bool release_unused)
+static inline void select_cpu_clock_hw(int freq_idx, bool release_unused)
 {
 	uint32_t enc = cpu_freq_enc[freq_idx];
 
@@ -25,7 +25,7 @@ static inline void select_cpu_clock(int freq_idx, bool release_unused)
 			   enc);
 }
 #else
-static inline void select_cpu_clock(int freq_idx, bool release_unused)
+static inline void select_cpu_clock_hw(int freq_idx, bool release_unused)
 {
 	uint32_t enc = cpu_freq_enc[freq_idx];
 	uint32_t status_mask = cpu_freq_status_mask[freq_idx];
@@ -61,6 +61,29 @@ static inline void select_cpu_clock(int freq_idx, bool release_unused)
 }
 #endif
 
+static inline void select_cpu_clock(int freq_idx, bool release_unused)
+{
+	struct clock_info *clk_info = clocks_get();
+	int flags[PLATFORM_CORE_COUNT];
+	int i;
+
+	/* lock clock for all cores */
+	for (i = 0; i < PLATFORM_CORE_COUNT; i++)
+		spin_lock_irq(&clk_info[CLK_CPU(i)].lock, flags[i]);
+
+	/* change clock */
+	select_cpu_clock_hw(freq_idx, release_unused);
+	for (i = 0; i < PLATFORM_CORE_COUNT; i++)
+		clk_info[CLK_CPU(i)].current_freq_idx = freq_idx;
+
+	/* unlock clock for all cores */
+	for (i = PLATFORM_CORE_COUNT - 1; i >= 0; i--)
+		spin_unlock_irq(&clk_info[CLK_CPU(i)].lock, flags[i]);
+
+	platform_shared_commit(clk_info,
+			       sizeof(*clk_info) * PLATFORM_CORE_COUNT);
+}
+
 #if CONFIG_CAVS_USE_LPRO_IN_WAITI
 /* Store clock source that was active before going to waiti,
  * so it can be restored on wake up.
@@ -74,16 +97,16 @@ static inline int get_cpu_current_freq_idx(void)
 	return clk_info->current_freq_idx;
 }
 
-static inline void set_cpu_current_freq_idx(int freq_idx)
+/*
+ * This is call from public API, so overwrite currently used frequency index
+ * in 'active' state with new value. This value will be used in each wakeup.
+ */
+static inline void set_cpu_current_freq_idx(int freq_idx, bool release_unused)
 {
-	int i;
-	struct clock_info *clk_info = clocks_get();
+	int *uncached_freq_idx = cache_to_uncache(&active_freq_idx);
 
-	for (i = 0; i < PLATFORM_CORE_COUNT; i++)
-		clk_info[i].current_freq_idx = freq_idx;
-
-	platform_shared_commit(clk_info,
-			       sizeof(*clk_info) * PLATFORM_CORE_COUNT);
+	select_cpu_clock(freq_idx, release_unused);
+	*uncached_freq_idx = freq_idx;
 }
 
 void platform_clock_on_wakeup(void)
@@ -92,7 +115,6 @@ void platform_clock_on_wakeup(void)
 
 	if (freq_idx != get_cpu_current_freq_idx()) {
 		select_cpu_clock(freq_idx, true);
-		set_cpu_current_freq_idx(freq_idx);
 	}
 }
 
@@ -107,26 +129,24 @@ void platform_clock_on_waiti(void)
 		 * so they can be switched without delay on wake up.
 		 */
 		select_cpu_clock(CPU_LPRO_FREQ_IDX, false);
-		set_cpu_current_freq_idx(CPU_LPRO_FREQ_IDX);
 	}
 }
 
-static inline void clock_platform_update_active_freq_idx(int freq_idx)
-{
-	int *uncached_freq_idx = cache_to_uncache(&active_freq_idx);
-
-	*uncached_freq_idx = freq_idx;
-}
 #else
-static inline void clock_platform_update_active_freq_idx(int freq_idx)
+/*
+ * This is call from public API, there is no clock switch for core waiti, so
+ * value of value frequency index in 'active' state doesn't need to be saved in
+ * any additional variable and restored in future.
+ */
+static inline void set_cpu_current_freq_idx(int freq_idx, bool release_unused)
 {
+	select_cpu_clock(freq_idx, true);
 }
 #endif
 
 static int clock_platform_set_cpu_freq(int clock, int freq_idx)
 {
-	select_cpu_clock(freq_idx, true);
-	clock_platform_update_active_freq_idx(freq_idx);
+	set_cpu_current_freq_idx(freq_idx, true);
 	return 0;
 }
 
