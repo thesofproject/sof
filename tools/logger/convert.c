@@ -724,7 +724,7 @@ static int dump_ldc_info(struct convert_config *config,
 	fprintf(out_fd, "\n");
 	fprintf(out_fd, "Components uuid dictionary size:\t%ld bytes\n",
 		remaining);
-	fprintf(out_fd, "Components uuid base address:   \t0x%X\n",
+	fprintf(out_fd, "Components uuid base address:   \t0x%x\n",
 		uids_dict->base_address);
 	fprintf(out_fd, "Components uuid entries:\n");
 	fprintf(out_fd, "\t%10s  %38s %s\n", "ADDRESS", "UUID", "NAME");
