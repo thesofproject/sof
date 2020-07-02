@@ -41,7 +41,7 @@ add_executable(sof-fuzzer
 )
 
 add_executable(sof-afl-fuzzer
-	main.c
+	afl-main.c
 	qemu-bridge.c
 	topology.c
 	platform/byt-host.c
