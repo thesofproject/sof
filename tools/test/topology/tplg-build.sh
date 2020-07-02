@@ -215,9 +215,11 @@ done
 
 # for processing algorithms
 #ALG_MODE_TESTS=(asrc eq-fir eq-iir src dcblock)
-ALG_MODE_TESTS=(crossover dcblock)
+ALG_MODE_TESTS=(dcblock)
+ALG_MODE_MULTI_TESTS=(crossover)
 #ALG_SIMPLE_TESTS=(test-capture test-playback)
 ALG_SIMPLE_TESTS=(test-playback)
+ALG_MULTI_TESTS=(test-multi-playback)
 ALG_PROTOCOL_TESTS=(I2S)
 ALG_SSP_TESTS=(5)
 ALG_MCLK_IDS=(0)
@@ -233,6 +235,15 @@ do
 				simple_test codec $mode "SSP${ssp}-Codec" s16le SSP $ssp s16le 16 16 1536000 24576000 $protocol $mclk_id ALG_SIMPLE_TESTS[@]
 				simple_test codec $mode "SSP${ssp}-Codec" s24le SSP $ssp s24le 32 24 3072000 24576000 $protocol $mclk_id ALG_SIMPLE_TESTS[@]
 				simple_test codec $mode "SSP${ssp}-Codec" s32le SSP $ssp s32le 32 32 3072000 24576000 $protocol $mclk_id ALG_SIMPLE_TESTS[@]
+			done
+		done
+		for mode in ${ALG_MODE_MULTI_TESTS[@]}
+		do
+			for mclk_id in ${ALG_MCLK_IDS[@]}
+			do
+				simple_test codec $mode "SSP${ssp}-Codec" s16le SSP $ssp s16le 16 16 1536000 24576000 $protocol $mclk_id ALG_MULTI_TESTS[@]
+				simple_test codec $mode "SSP${ssp}-Codec" s24le SSP $ssp s24le 32 24 3072000 24576000 $protocol $mclk_id ALG_MULTI_TESTS[@]
+				simple_test codec $mode "SSP${ssp}-Codec" s32le SSP $ssp s32le 32 32 3072000 24576000 $protocol $mclk_id ALG_MULTI_TESTS[@]
 			done
 		done
 	done
