@@ -31,8 +31,8 @@ static inline void timer_report_delay(int id, uint64_t delay)
 	uint32_t ll_delay_us = (delay * 1000) /
 				clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1);
 
-	tr_err(&ll_tr, "timer_report_delay(): timer %d delayed by %d uS %d ticks",
-	       id, ll_delay_us, delay);
+	tr_err(&ll_tr, "timer_report_delay(): timer %d delayed by %d uS %u ticks",
+	       id, ll_delay_us, (uint32_t)delay);
 
 	/* Fix compile error when traces are disabled */
 	(void)ll_delay_us;
