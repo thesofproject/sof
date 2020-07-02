@@ -66,7 +66,7 @@ static enum task_state validate(void *data)
 	/* warning timeout */
 	if (delta > sa->warn_timeout)
 		tr_warn(&sa_tr, "validate(), ll drift detected, delta = %u",
-			delta);
+			(uint32_t)delta);
 
 	/* update last_check to current */
 	sa->last_check = current;
