@@ -151,7 +151,7 @@ struct sof_eq_iir_biquad_df2t {
 	int32_t b0; /* Q2.30 */
 	int32_t output_shift; /* Number of right shifts */
 	int32_t output_gain;  /* Q2.14 */
-} __attribute__((packed));
+} __attribute__((packed, aligned(4)));
 
 /* A full 22th order equalizer with 11 biquads cover octave bands 1-11 in
  * in the 0 - 20 kHz bandwidth.
