@@ -40,19 +40,33 @@ add_executable(sof-fuzzer
 	platform/hsw-host.c
 )
 
+add_executable(sof-afl-fuzzer
+	main.c
+	qemu-bridge.c
+	topology.c
+	platform/byt-host.c
+	platform/hsw-host.c
+)
+
 target_link_libraries(sof-fuzzer PRIVATE sof_parser)
 target_include_directories(sof-fuzzer PRIVATE "${parser_install_dir}/include")
+target_link_libraries(sof-afl-fuzzer PRIVATE sof_parser)
+target_include_directories(sof-afl-fuzzer PRIVATE "${parser_install_dir}/include")
 
 add_dependencies(sof-fuzzer sof_parser)
+add_dependencies(sof-afl-fuzzer sof_parser)
 
 find_package(PkgConfig REQUIRED)
 pkg_search_module(GLIB REQUIRED glib-2.0)
 target_include_directories(sof-fuzzer PRIVATE ${GLIB_INCLUDE_DIRS})
 target_link_libraries(sof-fuzzer PRIVATE ${GLIB_LDFLAGS})
+target_include_directories(sof-afl-fuzzer PRIVATE ${GLIB_INCLUDE_DIRS})
+target_link_libraries(sof-afl-fuzzer PRIVATE ${GLIB_LDFLAGS})
 
 find_library(LIBRT rt)
 if(LIBRT)
 	target_link_libraries(sof-fuzzer PRIVATE ${LIBRT})
+	target_link_libraries(sof-afl-fuzzer PRIVATE ${LIBRT})
 endif()
 
 set(SOF_ROOT_SOURCE_DIRECTORY "${PROJECT_SOURCE_DIR}/../..")
@@ -62,5 +76,11 @@ target_include_directories(sof-fuzzer PRIVATE
 	"${SOF_ROOT_SOURCE_DIRECTORY}/src/arch/host/include"
 	"${SOF_ROOT_SOURCE_DIRECTORY}"
 )
+target_include_directories(sof-afl-fuzzer PRIVATE
+	"${SOF_ROOT_SOURCE_DIRECTORY}/src/include"
+	"${SOF_ROOT_SOURCE_DIRECTORY}/src/arch/host/include"
+	"${SOF_ROOT_SOURCE_DIRECTORY}"
+)
 
 install(TARGETS sof-fuzzer DESTINATION bin)
+install(TARGETS sof-afl-fuzzer DESTINATION bin)
