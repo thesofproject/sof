@@ -172,9 +172,11 @@ static void schedule_ll_tasks_run(void *data)
 	/* TODO: no need for atomic operations,
 	 * already protected by spin_lock
 	 */
-	num_clients = atomic_sub(&sch->domain->num_clients, 1);
-	if (!num_clients)
-		domain_clear(sch->domain);
+	if (atomic_read(&sch->domain->num_clients)) {
+		num_clients = atomic_sub(&sch->domain->num_clients, 1);
+		if (!num_clients)
+			domain_clear(sch->domain);
+	}
 
 	platform_shared_commit(sch->domain, sizeof(*sch->domain));
 
