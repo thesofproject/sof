@@ -22,6 +22,7 @@
 FILE *file;
 char pipeline_string[DEBUG_MSG_LEN];
 struct shared_lib_table *lib_table;
+int output_file_index;
 
 const struct sof_dai_types sof_dais[] = {
 	{"SSP", SOF_DAI_INTEL_SSP},
@@ -332,8 +333,13 @@ static int load_filewrite(struct sof *sof, int comp_id, int pipeline_id,
 		return -EINVAL;
 	}
 
-	/* configure filewrite */
-	filewrite.fn = strdup(tp->output_file);
+	/* configure filewrite (only single output is valid so far) */
+	if (!tp->output_file[output_file_index]) {
+		fprintf(stderr, "error: output[%d] file name is null\n",
+			output_file_index);
+		return -EINVAL;
+	}
+	filewrite.fn = strdup(tp->output_file[output_file_index]);
 	tp->fw_id = comp_id;
 
 	/* Set format from testbench command line*/
@@ -670,6 +676,9 @@ int parse_topology(struct sof *sof, struct shared_lib_table *library_table,
 		   struct testbench_prm *tp, char *pipeline_msg)
 {
 	struct snd_soc_tplg_hdr *hdr;
+
+	/* initialize output file index */
+	output_file_index = 0;
 
 	struct comp_info *temp_comp_list = NULL;
 	char message[DEBUG_MSG_LEN];
