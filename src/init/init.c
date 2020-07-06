@@ -71,6 +71,7 @@ int master_core_init(int argc, char *argv[], struct sof *sof)
 	sof->argc = argc;
 	sof->argv = argv;
 
+#ifndef __ZEPHYR__
 	/* init architecture */
 	trace_point(TRACE_BOOT_ARCH);
 	err = arch_init();
@@ -83,6 +84,7 @@ int master_core_init(int argc, char *argv[], struct sof *sof)
 	init_heap(sof);
 
 	interrupt_init(sof);
+#endif /* __ZEPHYR__ */
 
 #if CONFIG_TRACE
 	trace_point(TRACE_BOOT_SYS_TRACES);
@@ -112,7 +114,11 @@ int master_core_init(int argc, char *argv[], struct sof *sof)
 	return err;
 }
 
+#ifdef __ZEPHYR__
+int sof_main(int argc, char *argv[])
+#else
 int main(int argc, char *argv[])
+#endif
 {
 	int err;
 
@@ -123,7 +129,9 @@ int main(int argc, char *argv[])
 	else
 		err = slave_core_init(&sof);
 
+#ifndef __ZEPHYR__
 	/* should never get here */
 	panic(SOF_IPC_PANIC_TASK);
+#endif
 	return err;
 }

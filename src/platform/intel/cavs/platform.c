@@ -391,9 +391,11 @@ int platform_init(struct sof *sof)
 	platform_memory_windows_init(MEM_WND_INIT_CLEAR);
 #endif
 
+#ifndef __ZEPHYR__
 	/* init timers, clocks and schedulers */
 	trace_point(TRACE_BOOT_PLATFORM_TIMER);
 	platform_timer_start(sof->platform_timer);
+#endif
 
 	trace_point(TRACE_BOOT_PLATFORM_CLOCK);
 	platform_clock_init(sof);
@@ -511,6 +513,7 @@ int platform_init(struct sof *sof)
 	if (ret < 0)
 		return ret;
 
+#ifndef __ZEPHYR__
 #if CONFIG_DW_SPI
 	/* initialize the SPI slave */
 	trace_point(TRACE_BOOT_PLATFORM_SPI);
@@ -535,10 +538,11 @@ int platform_init(struct sof *sof)
 
 	/* show heap status */
 	heap_trace_all(1);
-
+#endif /* __ZEPHYR__ */
 	return 0;
 }
 
+#ifndef __ZEPHYR__
 void platform_wait_for_interrupt(int level)
 {
 #if CONFIG_CAVS_USE_LPRO_IN_WAITI
@@ -553,3 +557,4 @@ void platform_wait_for_interrupt(int level)
 	arch_wait_for_interrupt(level);
 #endif
 }
+#endif
