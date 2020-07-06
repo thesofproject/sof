@@ -594,6 +594,8 @@ static int ipc_pm_context_save(uint32_t header)
 
 	tr_info(&ipc_tr, "ipc: pm -> save");
 
+	/* TODO use Zephyr calls for shutdown */
+#ifndef __ZEPHYR__
 	/* TODO: check we are inactive - all streams are suspended */
 
 	/* TODO: mask ALL platform interrupts except DMA */
@@ -618,7 +620,7 @@ static int ipc_pm_context_save(uint32_t header)
 
 	/* write the context to the host driver */
 	//mailbox_hostbox_write(0, pm_ctx, sizeof(*pm_ctx));
-
+#endif
 	ipc_get()->pm_prepare_D3 = 1;
 
 	return 0;
