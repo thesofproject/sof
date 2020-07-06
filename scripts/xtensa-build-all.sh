@@ -284,12 +284,14 @@ do
 	mkdir $BUILD_DIR
 	cd $BUILD_DIR
 
+	( set -x # log the main commands and their parameters
 	cmake -DTOOLCHAIN=$TOOLCHAIN \
 		-DROOT_DIR=$ROOT \
 		${PRIVATE_KEY_OPTION} \
 		..
 
 	make ${PLATFORM}${DEFCONFIG_PATCH}_defconfig
+	)
 
 	if [[ "x$MAKE_MENUCONFIG" == "xyes" ]]
 	then
