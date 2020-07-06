@@ -11,6 +11,9 @@ cmake_minimum_required(VERSION 3.10)
 
 set(VERSION_CMAKE_PATH ${CMAKE_CURRENT_LIST_DIR}/version.cmake)
 
+# Don't confuse this manual _input_ file with the other, output file of
+# the same name auto-generated in the top _build_ directory by "make
+# dist", see dist.cmake
 set(TARBALL_VERSION_FILE_NAME ".tarball-version")
 set(TARBALL_VERSION_SOURCE_PATH "${SOF_ROOT_SOURCE_DIRECTORY}/${TARBALL_VERSION_FILE_NAME}")
 
@@ -19,9 +22,8 @@ if(EXISTS ${TARBALL_VERSION_SOURCE_PATH})
 	list(GET lines 0 GIT_TAG)
 	list(GET lines 1 GIT_LOG_HASH)
 	message(STATUS "Found ${TARBALL_VERSION_FILE_NAME}")
-	message(STATUS "Version: ${GIT_TAG} / ${GIT_LOG_HASH}")
 else()
-	execute_process(COMMAND git describe --tags --abbrev=4
+	execute_process(COMMAND git describe --tags --abbrev=12 --match v*
 		WORKING_DIRECTORY ${SOF_ROOT_SOURCE_DIRECTORY}
 		OUTPUT_VARIABLE GIT_TAG
 		OUTPUT_STRIP_TRAILING_WHITESPACE
@@ -36,9 +38,12 @@ else()
 	)
 endif()
 
+# We have ERROR_QUIET above so git issues are not fatal
 if(NOT GIT_TAG MATCHES "^v")
 	set(GIT_TAG "v0.0-0-g0000")
 endif()
+
+message(STATUS "GIT_TAG / GIT_LOG_HASH : ${GIT_TAG} / ${GIT_LOG_HASH}")
 
 string(REGEX MATCH "^v([0-9]+)[.]([0-9]+)([.]([0-9]+))?" ignored "${GIT_TAG}")
 set(SOF_MAJOR ${CMAKE_MATCH_1})
