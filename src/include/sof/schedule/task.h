@@ -14,6 +14,10 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#ifdef __ZEPHYR__
+#include <kernel.h>
+#endif
+
 struct comp_dev;
 struct sof;
 
@@ -60,6 +64,9 @@ struct task {
 	struct list_item list;	/**< used by schedulers to hold tasks */
 	void *priv_data;	/**< task private data */
 	struct task_ops ops;	/**< task operations */
+#ifdef __ZEPHYR__
+	struct k_delayed_work z_delayed_work;
+#endif
 };
 
 /** \brief Task type registered by pipelines. */

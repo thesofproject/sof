@@ -224,7 +224,7 @@ static int dma_single_chan_domain_register(struct ll_schedule_domain *domain,
 		register_needed = false;
 	}
 
-	tr_info(&ll_tr, "dma_single_chan_domain_register(): registering on channel with period %u",
+	tr_info(&ll_tr, "dma_single_chan_domain_register(): registering on channel with period %llu",
 		channel->period);
 
 	/* register for interrupt */

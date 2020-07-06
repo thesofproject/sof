@@ -111,15 +111,21 @@ static void schedule_ll_tasks_execute(struct ll_schedule_data *sch,
 			atomic_sub(&sch->domain->total_num_tasks, 1);
 
 			/* don't enable irq, if no more tasks to do */
+#ifdef __ZEPHYR__
+			if (atomic_sub(&sch->num_tasks, 1) == 1)
+#else
 			if (!atomic_sub(&sch->num_tasks, 1))
+#endif
 				sch->domain->registered[cpu] = false;
-			tr_info(&ll_tr, "task complete %p %s", (uintptr_t)task,
+			tr_info(&ll_tr, "task complete %p %x", (void *)task,
 				task->uid);
 			tr_info(&ll_tr, "num_tasks %d total_num_tasks %d",
 				atomic_read(&sch->num_tasks),
 				atomic_read(&sch->domain->total_num_tasks));
 		} else {
 			/* update task's start time */
+			tr_info(&ll_tr, "task reschedule %p %x", (void *)task,
+							task->uid);
 			schedule_ll_task_update_start(sch, task, last_tick);
 		}
 	}
@@ -140,7 +146,8 @@ static void schedule_ll_clients_enable(struct ll_schedule_data *sch)
 	}
 }
 
-static void schedule_ll_clients_reschedule(struct ll_schedule_data *sch)
+static void schedule_ll_clients_reschedule(struct ll_schedule_data *sch,
+					   int core)
 {
 	/* rearm only if there is work to do */
 	if (atomic_read(&sch->domain->total_num_tasks)) {
@@ -173,6 +180,9 @@ static void schedule_ll_tasks_run(void *data)
 	 * already protected by spin_lock
 	 */
 	num_clients = atomic_sub(&sch->domain->num_clients, 1);
+#if __ZEPHYR__
+	num_clients--;
+#endif
 	if (!num_clients)
 		domain_clear(sch->domain);
 
@@ -198,7 +208,7 @@ static void schedule_ll_tasks_run(void *data)
 
 	/* reschedule only if all clients are done */
 	if (!num_clients)
-		schedule_ll_clients_reschedule(sch);
+		schedule_ll_clients_reschedule(sch, cpu_get_id());
 
 	spin_unlock(&sch->domain->lock);
 
@@ -224,11 +234,17 @@ static int schedule_ll_domain_set(struct ll_schedule_data *sch,
 	spin_lock(&sch->domain->lock);
 
 	registered = sch->domain->registered[core];
+#ifdef __ZEPHYR__
+	if (atomic_add(&sch->num_tasks, 1) == 0)
+#else
 	if (atomic_add(&sch->num_tasks, 1) == 1)
+#endif
 		sch->domain->registered[core] = true;
 
 	total = atomic_add(&sch->domain->total_num_tasks, 1);
-
+#ifdef __ZEPHYR__
+	total++;
+#endif
 	if (total == 1)
 		/* First task in domain over all cores: actiivate it */
 		domain_set(sch->domain, platform_timer_get(timer_get()));
@@ -255,7 +271,23 @@ static void schedule_ll_domain_clear(struct ll_schedule_data *sch,
 				     struct task *task)
 {
 	spin_lock(&sch->domain->lock);
+#ifdef __ZEPHYR__
+	if (atomic_sub(&sch->domain->total_num_tasks, 1) == 1) {
+		domain_clear(sch->domain);
+		sch->domain->last_tick = 0;
+	}
 
+	if (atomic_sub(&sch->num_tasks, 1) == 1) {
+		sch->domain->registered[cpu_get_id()] = false;
+
+		/* reschedule if we are the last client */
+		if (atomic_read(&sch->domain->num_clients) &&
+		    atomic_sub(&sch->domain->num_clients, 1) == 1) {
+			domain_clear(sch->domain);
+			schedule_ll_clients_reschedule(sch, cpu_get_id());
+		}
+	}
+#else
 	if (!atomic_sub(&sch->domain->total_num_tasks, 1)) {
 		domain_clear(sch->domain);
 		sch->domain->last_tick = 0;
@@ -268,10 +300,10 @@ static void schedule_ll_domain_clear(struct ll_schedule_data *sch,
 		if (atomic_read(&sch->domain->num_clients) &&
 		    !atomic_sub(&sch->domain->num_clients, 1)) {
 			domain_clear(sch->domain);
-			schedule_ll_clients_reschedule(sch);
+			schedule_ll_clients_reschedule(sch, cpu_get_id());
 		}
 	}
-
+#endif
 	tr_info(&ll_tr, "num_tasks %d total_num_tasks %d",
 		atomic_read(&sch->num_tasks),
 		atomic_read(&sch->domain->total_num_tasks));
@@ -329,9 +361,9 @@ static int schedule_ll_task(void *data, struct task *task, uint64_t start,
 
 	pdata = ll_sch_get_pdata(task);
 
-	tr_info(&ll_tr, "task add %p %s", (uintptr_t)task, task->uid);
+	tr_info(&ll_tr, "task add %p %x", (void *)task, task->uid);
 	tr_info(&ll_tr, "task params pri %d flags %d start %u period %u",
-		task->priority, task->flags, start, period);
+		task->priority, task->flags, (uint32_t)start, (uint32_t)period);
 
 	pdata->period = period;
 
@@ -416,7 +448,7 @@ static int schedule_ll_task_cancel(void *data, struct task *task)
 
 	irq_local_disable(flags);
 
-	tr_info(&ll_tr, "task cancel %p %s", (uintptr_t)task, task->uid);
+	tr_info(&ll_tr, "task cancel %ld %d", (uintptr_t)task, task->uid);
 
 	/* check to see if we are scheduled */
 	list_for_item(tlist, &sch->tasks) {
@@ -534,7 +566,7 @@ static void ll_scheduler_notify(void *arg, enum notify_id type, void *data)
 int scheduler_init_ll(struct ll_schedule_domain *domain)
 {
 	struct ll_schedule_data *sch;
-
+	tr_err(&ll_tr, "LL sched init");
 	/* initialize scheduler private data */
 	sch = rzalloc(SOF_MEM_ZONE_SYS, 0, SOF_MEM_CAPS_RAM, sizeof(*sch));
 	list_init(&sch->tasks);
