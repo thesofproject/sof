@@ -29,6 +29,18 @@ void dump_panicinfo(void *addr, struct sof_ipc_panic_info *panic_info);
 void panic_dump(uint32_t p, struct sof_ipc_panic_info *panic_info,
 		uintptr_t *data)
 	SOF_NORETURN;
+
+#ifdef __ZEPHYR__
+#include <kernel.h>
+#define panic(x) k_panic()
+
+#define assert(x) \
+	do {			\
+		if (!(x))	\
+			k_oops();\
+	} while (0)
+#else
+
 void __panic(uint32_t p, char *filename, uint32_t linenum) SOF_NORETURN;
 
 /* panic dump filename and linenumber of the call */
@@ -36,5 +48,7 @@ void __panic(uint32_t p, char *filename, uint32_t linenum) SOF_NORETURN;
 
 /* runtime assertion */
 #define assert(cond) (void)((cond) || (panic(SOF_IPC_PANIC_ASSERT), 0))
+
+#endif
 
 #endif /* __SOF_DEBUG_PANIC_H__ */
