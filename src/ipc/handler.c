@@ -707,7 +707,7 @@ static int ipc_dma_trace_config(uint32_t header)
 
 	platform_shared_commit(timer, sizeof(*timer));
 
-#if CONFIG_SUECREEK
+#if CONFIG_SUECREEK || defined __ZEPHYR__
 	return 0;
 #endif
 
