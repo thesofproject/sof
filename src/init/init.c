@@ -21,6 +21,11 @@
 #include <sof/schedule/task.h>
 #include <sof/sof.h>
 #include <sof/trace/trace.h>
+#include <sof/drivers/idc.h>
+#include <sof/schedule/schedule.h>
+#include <sof/schedule/edf_schedule.h>
+#include <sof/schedule/ll_schedule.h>
+#include <sof/schedule/ll_schedule_domain.h>
 #include <ipc/trace.h>
 
 /* main firmware context */
@@ -61,6 +66,52 @@ static inline void lp_sram_unpack(void)
 		dcache_writeback_region(dst, size);
 	}
 }
+#endif
+
+#if CONFIG_MULTICORE
+
+int slave_core_init(struct sof *sof)
+{
+	int err;
+
+#ifndef __ZEPHYR__
+	/* init architecture */
+	trace_point(TRACE_BOOT_ARCH);
+	err = arch_init();
+	if (err < 0)
+		panic(SOF_IPC_PANIC_ARCH);
+#endif
+
+	trace_point(TRACE_BOOT_SYS_NOTIFIER);
+	init_system_notify(sof);
+
+#ifndef __ZEPHYR__
+	/* interrupts need to be initialized before any usage */
+	trace_point(TRACE_BOOT_PLATFORM_IRQ);
+	platform_interrupt_init();
+#endif
+
+	trace_point(TRACE_BOOT_PLATFORM_SCHED);
+	scheduler_init_edf();
+	scheduler_init_ll(timer_domain_get());
+	scheduler_init_ll(dma_domain_get());
+
+	/* initialize IDC mechanism */
+	trace_point(TRACE_BOOT_PLATFORM_IDC);
+	err = idc_init();
+	if (err < 0)
+		return err;
+
+	trace_point(TRACE_BOOT_PLATFORM);
+
+#ifndef __ZEPHYR__
+	/* task initialized in edf_scheduler_init */
+	schedule_task(*task_main_get(), 0, UINT64_MAX);
+#endif
+
+	return err;
+}
+
 #endif
 
 int master_core_init(int argc, char *argv[], struct sof *sof)
