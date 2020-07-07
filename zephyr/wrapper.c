@@ -248,6 +248,11 @@ void platform_interrupt_set(uint32_t irq)
 	/* TODO: set SW IRQ via zephyr method */
 }
 
+void platform_interrupt_clear(uint32_t irq, uint32_t mask)
+{
+	/* TODO: clear interrupt via zephyr method */
+}
+
 /*
  * Timers
  */
