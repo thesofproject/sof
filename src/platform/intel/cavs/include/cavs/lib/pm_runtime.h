@@ -22,6 +22,7 @@ struct pm_runtime_data;
 struct cavs_pm_runtime_data {
 	int dsp_d0_sref; /**< simple ref counter, accessed by core 0 only */
 	int host_dma_l1_sref; /**< ref counter for Host DMA accesses */
+	uint32_t sleep_core_mask; /**< represents cores in waiti state */
 };
 
 #endif

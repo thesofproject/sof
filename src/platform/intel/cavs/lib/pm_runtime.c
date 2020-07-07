@@ -337,6 +337,47 @@ static inline void cavs_pm_runtime_core_en_memory(uint32_t index)
 #endif
 }
 
+static inline void cavs_pm_runtime_core_dis_hp_clk(uint32_t index)
+{
+	int all_active_cores_sleep;
+	int enabled_cores = cpu_enabled_cores();
+	struct pm_runtime_data *prd = pm_runtime_data_get();
+	struct cavs_pm_runtime_data *pprd = prd->platform_data;
+	uint32_t flags;
+
+	spin_lock_irq(&prd->lock, flags);
+
+	pprd->sleep_core_mask |= BIT(index);
+
+	all_active_cores_sleep =
+		(enabled_cores & pprd->sleep_core_mask) == enabled_cores;
+
+	if (all_active_cores_sleep)
+		clock_low_power_mode(CLK_CPU(index), true);
+
+	platform_shared_commit(prd, sizeof(*prd));
+	platform_shared_commit(pprd, sizeof(*pprd));
+
+	spin_unlock_irq(&prd->lock, flags);
+}
+
+static inline void cavs_pm_runtime_core_en_hp_clk(uint32_t index)
+{
+	struct pm_runtime_data *prd = pm_runtime_data_get();
+	struct cavs_pm_runtime_data *pprd = prd->platform_data;
+	uint32_t flags;
+
+	spin_lock_irq(&prd->lock, flags);
+
+	pprd->sleep_core_mask &= ~BIT(index);
+	clock_low_power_mode(CLK_CPU(index), false);
+
+	platform_shared_commit(prd, sizeof(*prd));
+	platform_shared_commit(pprd, sizeof(*pprd));
+
+	spin_unlock_irq(&prd->lock, flags);
+}
+
 static inline void cavs_pm_runtime_dis_dsp_pg(uint32_t index)
 {
 #if CAVS_VERSION >= CAVS_VERSION_1_8
@@ -434,6 +475,9 @@ void platform_pm_runtime_get(enum pm_runtime_context context, uint32_t index,
 	case CORE_MEMORY_POW:
 		cavs_pm_runtime_core_en_memory(index);
 		break;
+	case CORE_HP_CLK:
+		cavs_pm_runtime_core_en_hp_clk(index);
+		break;
 	case PM_RUNTIME_DSP:
 		cavs_pm_runtime_dis_dsp_pg(index);
 		break;
@@ -470,6 +514,9 @@ void platform_pm_runtime_put(enum pm_runtime_context context, uint32_t index,
 		break;
 	case CORE_MEMORY_POW:
 		cavs_pm_runtime_core_dis_memory(index);
+		break;
+	case CORE_HP_CLK:
+		cavs_pm_runtime_core_dis_hp_clk(index);
 		break;
 	case PM_RUNTIME_DSP:
 		cavs_pm_runtime_en_dsp_pg(index);
