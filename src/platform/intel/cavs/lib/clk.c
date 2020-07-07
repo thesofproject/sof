@@ -9,6 +9,7 @@
 #include <sof/lib/clk.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/notifier.h>
+#include <sof/lib/pm_runtime.h>
 #include <sof/sof.h>
 #include <sof/spinlock.h>
 
@@ -127,12 +128,12 @@ static void platform_clock_low_power_mode(int clock, bool enable)
 
 void platform_clock_on_wakeup(void)
 {
-	clock_low_power_mode(CLK_CPU(cpu_get_id()), false);
+	pm_runtime_get(CORE_HP_CLK, cpu_get_id());
 }
 
 void platform_clock_on_waiti(void)
 {
-	clock_low_power_mode(CLK_CPU(cpu_get_id()), true);
+	pm_runtime_put(CORE_HP_CLK, cpu_get_id());
 }
 
 #else

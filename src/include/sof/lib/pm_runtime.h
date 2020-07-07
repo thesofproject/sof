@@ -40,6 +40,7 @@ enum pm_runtime_context {
 	DMIC_POW,			/**< DMIC Power */
 	DW_DMAC_CLK,			/**< DW DMAC Clock */
 	CORE_MEMORY_POW,		/**< Core Memory power */
+	CORE_HP_CLK,			/**< High Performance Clock*/
 	PM_RUNTIME_DSP			/**< DSP */
 };
 
