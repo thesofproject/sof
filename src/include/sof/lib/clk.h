@@ -12,6 +12,7 @@
 #include <platform/lib/clk.h>
 #include <sof/sof.h>
 #include <sof/spinlock.h>
+#include <stdbool.h>
 #include <stdint.h>
 
 struct timer;
@@ -40,12 +41,19 @@ struct clock_info {
 	uint32_t notification_id;
 	uint32_t notification_mask;
 	spinlock_t lock;
+
+	/* persistent change clock value in active state */
 	int (*set_freq)(int clock, int freq_idx);
+
+	/* temporary change clock - don't modify default clock settings */
+	void (*low_power_mode)(int clock, bool enable);
 };
 
 uint32_t clock_get_freq(int clock);
 
 void clock_set_freq(int clock, uint32_t hz);
+
+void clock_low_power_mode(int clock, bool enable);
 
 uint64_t clock_ms_to_ticks(int clock, uint64_t ms);
 

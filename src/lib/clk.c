@@ -95,6 +95,14 @@ void clock_set_freq(int clock, uint32_t hz)
 	spin_unlock_irq(&clk_info->lock, flags);
 }
 
+void clock_low_power_mode(int clock, bool enable)
+{
+	struct clock_info *clk_info = clocks_get() + clock;
+
+	if (clk_info->low_power_mode)
+		clk_info->low_power_mode(clock, enable);
+}
+
 uint64_t clock_ms_to_ticks(int clock, uint64_t ms)
 {
 	struct clock_info *clk_info = clocks_get() + clock;

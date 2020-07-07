@@ -90,9 +90,9 @@ static inline void select_cpu_clock(int freq_idx, bool release_unused)
  */
 static SHARED_DATA int active_freq_idx = CPU_DEFAULT_IDX;
 
-static inline int get_cpu_current_freq_idx(void)
+static inline int get_current_freq_idx(int clock)
 {
-	struct clock_info *clk_info = clocks_get() + CLK_CPU(cpu_get_id());
+	struct clock_info *clk_info = clocks_get() + clock;
 
 	return clk_info->current_freq_idx;
 }
@@ -109,27 +109,30 @@ static inline void set_cpu_current_freq_idx(int freq_idx, bool release_unused)
 	*uncached_freq_idx = freq_idx;
 }
 
-void platform_clock_on_wakeup(void)
+static void platform_clock_low_power_mode(int clock, bool enable)
 {
+	int current_freq_idx = get_current_freq_idx(clock);
 	int freq_idx = *cache_to_uncache(&active_freq_idx);
 
-	if (freq_idx != get_cpu_current_freq_idx()) {
-		select_cpu_clock(freq_idx, true);
-	}
-}
-
-void platform_clock_on_waiti(void)
-{
-	int freq_idx = get_cpu_current_freq_idx();
-
-	if (freq_idx != CPU_LPRO_FREQ_IDX) {
+	if (enable && current_freq_idx != CPU_LPRO_FREQ_IDX)
 		/* LPRO requests are fast, but requests for other ROs
 		 * can take a lot of time. That's why it's better to
 		 * not release active clock just for waiti,
 		 * so they can be switched without delay on wake up.
 		 */
 		select_cpu_clock(CPU_LPRO_FREQ_IDX, false);
-	}
+	else if (!enable && current_freq_idx != freq_idx)
+		select_cpu_clock(freq_idx, false);
+}
+
+void platform_clock_on_wakeup(void)
+{
+	clock_low_power_mode(CLK_CPU(cpu_get_id()), false);
+}
+
+void platform_clock_on_waiti(void)
+{
+	clock_low_power_mode(CLK_CPU(cpu_get_id()), true);
 }
 
 #else
@@ -141,6 +144,10 @@ void platform_clock_on_waiti(void)
 static inline void set_cpu_current_freq_idx(int freq_idx, bool release_unused)
 {
 	select_cpu_clock(freq_idx, true);
+}
+
+static void platform_clock_low_power_mode(int clock, bool enable)
+{
 }
 #endif
 
@@ -166,6 +173,7 @@ void platform_clock_init(struct sof *sof)
 			.notification_id = NOTIFIER_ID_CPU_FREQ,
 			.notification_mask = NOTIFIER_TARGET_CORE_MASK(i),
 			.set_freq = clock_platform_set_cpu_freq,
+			.low_power_mode = platform_clock_low_power_mode,
 		};
 
 		spinlock_init(&sof->clocks[i].lock);
