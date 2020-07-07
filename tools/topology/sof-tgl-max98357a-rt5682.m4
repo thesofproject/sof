@@ -154,7 +154,7 @@ dnl     frames, deadline, priority, core)
 DAI_ADD(sof/pipe-dai-playback.m4,
 	1, SSP, 1, SSP1-Codec,
 	PIPELINE_SOURCE_1, 2, s16le,
-	1000, 0, 0)
+	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # currently this dai is here as "virtual" capture backend
 W_DAI_IN(SSP, 1, SSP1-Codec, s16le, 3, 0)
@@ -192,14 +192,14 @@ SectionGraph."PIPE_CAP_VIRT" {
 DAI_ADD(sof/pipe-dai-playback.m4,
 	2, SSP, 0, SSP0-Codec,
 	PIPELINE_SOURCE_2, 2, s24le,
-	1000, 0, 0)
+	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # capture DAI is SSP0 using 2 periods
 # Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
 	3, SSP, 0, SSP0-Codec,
 	PIPELINE_SINK_3, 2, s24le,
-	1000, 0, 0)
+	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # playback DAI is iDisp1 using 2 periods
 # Buffers use s32le format, with 48 frame per 1000us on core 0 with priority 0
