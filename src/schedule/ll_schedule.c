@@ -124,8 +124,6 @@ static void schedule_ll_tasks_execute(struct ll_schedule_data *sch,
 				atomic_read(&sch->domain->total_num_tasks));
 		} else {
 			/* update task's start time */
-			tr_info(&ll_tr, "task reschedule %p %x", (void *)task,
-							task->uid);
 			schedule_ll_task_update_start(sch, task, last_tick);
 		}
 	}
