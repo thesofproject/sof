@@ -34,11 +34,6 @@ DEBUG_START
 # TEST_SSP_MODE - SSP mode e.g. I2S, LEFT_J, DSP_A and DSP_B
 #
 
-# Apply a non-trivial filter blob IIR and FIR tests. TODO: Note that the
-# PIPELINE_FILTERx notation will be updated in future for better flexibility.
-define(PIPELINE_FILTER1, ifelse(TEST_PIPE_NAME, `eq-iir', `eq_iir_coef_loudness.m4'))
-define(PIPELINE_FILTER2, ifelse(TEST_PIPE_NAME, `eq-fir', `eq_fir_coef_loudness.m4'))
-
 #
 # Define the pipeline
 #
@@ -53,10 +48,10 @@ PIPELINE_PCM_ADD(sof/pipe-TEST_PIPE_NAME-playback.m4,
 	8000, 192000, 48000)
 
 # Playback pipeline 2 on PCM 1 using max 2 channels of s32le.
-# Set 1000us deadline on core 0 with priority 1
-PIPELINE_PCM_ADD(sof/pipe-passthrough-playback.m4,
+# Set 1000us deadline on core 0 with priority 0
+PIPELINE_PCM_ADD(sof/pipe-dai-endpoint.m4,
 	2, 1, 2, s32le,
-	1000, 1, 0,
+	1000, 0, 0,
 	8000, 192000, 48000)
 
 # DAI configuration
@@ -72,11 +67,16 @@ DAI_ADD(sof/pipe-dai-playback.m4,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # playback DAI is SSP TEST_DAI_PORT using 2 periods
-# Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 1
+# Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
 	2, TEST_DAI_TYPE, TEST_DAI_PORT, TEST_DAI_LINK_NAME,
 	PIPELINE_SOURCE_2, 2, TEST_DAI_FORMAT,
-	1000, 1, 0, SCHEDULE_TIME_DOMAIN_TIMER)
+	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
+#DAI_ADD_SCHED(sof/pipe-dai-sched-playback.m4,
+#	2, TEST_DAI_TYPE, TEST_DAI_PORT, TEST_DAI_LINK_NAME,
+#	PIPELINE_SOURCE_2, 2, TEST_DAI_FORMAT,
+#	1000, 1, 0, SCHEDULE_TIME_DOMAIN_TIMER,
+#	PIPELINE_PLAYBACK_SCHED_COMP_1)
 
 # connect pipelines together
 SectionGraph."pipe-sof-second-pipe" {
@@ -84,7 +84,7 @@ SectionGraph."pipe-sof-second-pipe" {
 
         lines [
 		# keyword detect
-                dapm(PIPELINE_CROSSOVER_1, PIPELINE_PCM_2)
+                dapm(PIPELINE_SOURCE_2, PIPELINE_CROSSOVER_1)
         ]
 }
 
