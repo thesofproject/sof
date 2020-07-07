@@ -217,9 +217,11 @@ int platform_init(struct sof *sof)
 	trace_point(TRACE_BOOT_PLATFORM_PMC);
 	platform_ipc_pmc_init();
 
+#ifndef __ZEPHYR__
 	/* init timers, clocks and schedulers */
 	trace_point(TRACE_BOOT_PLATFORM_TIMER);
 	platform_timer_start(sof->platform_timer);
+#endif
 
 	trace_point(TRACE_BOOT_PLATFORM_CLOCK);
 	platform_clock_init(sof);
@@ -319,6 +321,7 @@ int platform_init(struct sof *sof)
 		return -ENODEV;
 #endif
 
+#ifndef __ZEPHYR__
 #if CONFIG_TRACE
 	/* Initialize DMA for Trace*/
 	trace_point(TRACE_BOOT_PLATFORM_DMA_TRACE);
@@ -327,6 +330,7 @@ int platform_init(struct sof *sof)
 
 	/* show heap status */
 	heap_trace_all(1);
+#endif /* __ZEPHYR__ */
 
 	return 0;
 }
