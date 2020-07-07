@@ -509,16 +509,15 @@ else()
 	set(PYTHON3 "${Python3_EXECUTABLE}")
 endif()
 
-# create version.h
-include(../scripts/cmake/version.cmake)
-
 # SOF uses GNU C99 extensions. TODO other flags required ?
 target_compile_options(SOF INTERFACE -std=gnu99 -fno-inline-functions)
 
 # Toolchain info
 add_definitions(-DXCC_TOOLS_VERSION="${ZEPHYR_TOOLCHAIN_VARIANT}" -DCC_OPTIMIZE_FLAGS="${OPTIMIZATION_FLAG}")
 
-add_definitions(-DSOF_MICRO=0 -DSOF_MINOR=0 -DSOF_MAJOR=2 -DSOF_TAG="faced")
+# create version information
+include(../scripts/cmake/version.cmake)
+add_definitions(-DSOF_MICRO=${SOF_MICRO} -DSOF_MINOR=${SOF_MINOR} -DSOF_MAJOR=${SOF_MAJOR} -DSOF_TAG="${SOF_TAG}")
 
 # Create Trace realtive file paths
 sof_append_relative_path_definitions(modules_sof)
