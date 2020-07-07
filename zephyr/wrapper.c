@@ -327,7 +327,7 @@ unsigned int _xtos_ints_off( unsigned int mask )
  * init audio components.
  */
 
-/* TODO: this is not yet working with Zephyr - section hase been created but
+/* TODO: this is not yet working with Zephyr - section has been created but
  *  no symbols are being loaded into ELF file.
  */
 extern intptr_t _module_init_start;
@@ -372,20 +372,57 @@ int task_main_start(struct sof *sof)
 	/* init self-registered modules */
 	sys_module_init();
 
-	sys_comp_volume_init();
-	sys_comp_host_init();
-	sys_comp_mixer_init();
-	sys_comp_dai_init();
-	sys_comp_src_init();
+	if (IS_ENABLED(CONFIG_COMP_VOLUME)) {
+		sys_comp_volume_init();
+	}
 
-	sys_comp_selector_init();
-	sys_comp_switch_init();
-	sys_comp_tone_init();
-	sys_comp_eq_fir_init();
-	sys_comp_eq_iir_init();
-	sys_comp_keyword_init();
-	sys_comp_asrc_init();
-	sys_comp_dcblock_init();
+	if (IS_ENABLED(CONFIG_COMP_HOST)) {
+		sys_comp_host_init();
+	}
+
+	if (IS_ENABLED(CONFIG_COMP_MIXER)) {
+		sys_comp_mixer_init();
+	}
+
+	if (IS_ENABLED(CONFIG_COMP_DAI)) {
+		sys_comp_dai_init();
+	}
+
+	if (IS_ENABLED(CONFIG_COMP_SRC)) {
+		sys_comp_src_init();
+	}
+
+	if (IS_ENABLED(CONFIG_COMP_SEL)) {
+		sys_comp_selector_init();
+	}
+
+	if (IS_ENABLED(CONFIG_COMP_SWITCH)) {
+		sys_comp_switch_init();
+	}
+
+	if (IS_ENABLED(CONFIG_COMP_TONE)) {
+		sys_comp_tone_init();
+	}
+
+	if (IS_ENABLED(CONFIG_COMP_FIR)) {
+		sys_comp_eq_fir_init();
+	}
+
+	if (IS_ENABLED(CONFIG_COMP_IIR)) {
+		sys_comp_eq_iir_init();
+	}
+
+	if (IS_ENABLED(CONFIG_COMP_MUX)) {
+		sys_comp_keyword_init();
+	}
+
+	if (IS_ENABLED(CONFIG_COMP_MUX)) {
+		sys_comp_asrc_init();
+	}
+
+	if (IS_ENABLED(CONFIG_COMP_DCBLOCK)) {
+		sys_comp_dcblock_init();
+	}
 
 	if (IS_ENABLED(CONFIG_COMP_MUX)) {
 		sys_comp_mux_init();

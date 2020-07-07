@@ -94,14 +94,33 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V15)
 
 	# Driver sources
 	zephyr_library_sources(
-		${SOF_DRIVERS_PATH}/intel/hda/hda-dma.c
-		${SOF_DRIVERS_PATH}/intel/hda/hda.c
 		${SOF_DRIVERS_PATH}/intel/cavs/ipc.c
 		${SOF_DRIVERS_PATH}/intel/cavs/timestamp.c
-		${SOF_DRIVERS_PATH}/intel/dmic.c
-		${SOF_DRIVERS_PATH}/intel/ssp/ssp.c
+	)
+
+	zephyr_library_sources_ifdef(CONFIG_MULTICORE
+		${SOF_DRIVERS_PATH}/intel/cavs/idc.c
+	)
+
+	zephyr_library_sources_ifdef(CONFIG_INTEL_HDA
+		${SOF_DRIVERS_PATH}/intel/hda/hda-dma.c
+		${SOF_DRIVERS_PATH}/intel/hda/hda.c
+	)
+
+	zephyr_library_sources_ifdef(CONFIG_INTEL_MN
 		${SOF_DRIVERS_PATH}/intel/ssp/mn.c
-		#${SOF_DRIVERS_PATH}/intel/cavs/idc.c
+	)
+
+	zephyr_library_sources_ifdef(CONFIG_INTEL_SSP
+		${SOF_DRIVERS_PATH}/intel/ssp/ssp.c
+	)
+
+	zephyr_library_sources_ifdef(CONFIG_INTEL_ALH
+		${SOF_DRIVERS_PATH}/intel/alh.c
+	)
+
+	zephyr_library_sources_ifdef(CONFIG_INTEL_DMIC
+		${SOF_DRIVERS_PATH}/intel/dmic.c
 	)
 
 	# Platform sources
@@ -128,19 +147,37 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V18)
 
 	# Driver sources
 	zephyr_library_sources(
+		${SOF_DRIVERS_PATH}/intel/cavs/ipc.c
+		${SOF_DRIVERS_PATH}/intel/cavs/timestamp.c
+	)
+
+	zephyr_library_sources_ifdef(CONFIG_MULTICORE
+		${SOF_DRIVERS_PATH}/intel/cavs/idc.c
+	)
+
+	# Sue Creek - S100 only - already in Zephyr.
+	#${SOF_DRIVERS_PATH}/intel/cavs/sue-ipc.c
+	#${SOF_DRIVERS_PATH}/intel/cavs/sue-iomux.c
+
+	zephyr_library_sources_ifdef(CONFIG_INTEL_HDA
 		${SOF_DRIVERS_PATH}/intel/hda/hda-dma.c
 		${SOF_DRIVERS_PATH}/intel/hda/hda.c
-		${SOF_DRIVERS_PATH}/intel/cavs/ipc.c
-		${SOF_DRIVERS_PATH}/intel/dmic.c
-		${SOF_DRIVERS_PATH}/intel/cavs/idc.c
-		${SOF_DRIVERS_PATH}/intel/ssp/ssp.c
-		${SOF_DRIVERS_PATH}/intel/ssp/mn.c
-		${SOF_DRIVERS_PATH}/intel/alh.c
-		${SOF_DRIVERS_PATH}/intel/cavs/timestamp.c
+	)
 
-		# Sue Creek - S100 only - already in Zephyr.
-		#${SOF_DRIVERS_PATH}/intel/cavs/sue-ipc.c
-		#${SOF_DRIVERS_PATH}/intel/cavs/sue-iomux.c
+	zephyr_library_sources_ifdef(CONFIG_INTEL_MN
+		${SOF_DRIVERS_PATH}/intel/ssp/mn.c
+	)
+
+	zephyr_library_sources_ifdef(CONFIG_INTEL_SSP
+		${SOF_DRIVERS_PATH}/intel/ssp/ssp.c
+	)
+
+	zephyr_library_sources_ifdef(CONFIG_INTEL_ALH
+		${SOF_DRIVERS_PATH}/intel/alh.c
+	)
+
+	zephyr_library_sources_ifdef(CONFIG_INTEL_DMIC
+		${SOF_DRIVERS_PATH}/intel/dmic.c
 	)
 
 	# Platform sources
@@ -170,15 +207,33 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V20)
 
 	# Driver sources
 	zephyr_library_sources(
+		${SOF_DRIVERS_PATH}/intel/cavs/ipc.c
+		${SOF_DRIVERS_PATH}/intel/cavs/timestamp.c
+	)
+
+	zephyr_library_sources_ifdef(CONFIG_MULTICORE
+		${SOF_DRIVERS_PATH}/intel/cavs/idc.c
+	)
+
+	zephyr_library_sources_ifdef(CONFIG_INTEL_HDA
 		${SOF_DRIVERS_PATH}/intel/hda/hda-dma.c
 		${SOF_DRIVERS_PATH}/intel/hda/hda.c
-		${SOF_DRIVERS_PATH}/intel/cavs/ipc.c
-		${SOF_DRIVERS_PATH}/intel/dmic.c
-		${SOF_DRIVERS_PATH}/intel/cavs/idc.c
-		${SOF_DRIVERS_PATH}/intel/ssp/ssp.c
+	)
+
+	zephyr_library_sources_ifdef(CONFIG_INTEL_MN
 		${SOF_DRIVERS_PATH}/intel/ssp/mn.c
+	)
+
+	zephyr_library_sources_ifdef(CONFIG_INTEL_SSP
+		${SOF_DRIVERS_PATH}/intel/ssp/ssp.c
+	)
+
+	zephyr_library_sources_ifdef(CONFIG_INTEL_ALH
 		${SOF_DRIVERS_PATH}/intel/alh.c
-		${SOF_DRIVERS_PATH}/intel/cavs/timestamp.c
+	)
+
+	zephyr_library_sources_ifdef(CONFIG_INTEL_DMIC
+		${SOF_DRIVERS_PATH}/intel/dmic.c
 	)
 
 	# Platform sources
@@ -210,15 +265,33 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V25)
 
 	# Driver sources
 	zephyr_library_sources(
+		${SOF_DRIVERS_PATH}/intel/cavs/ipc.c
+		${SOF_DRIVERS_PATH}/intel/cavs/timestamp.c
+	)
+
+	zephyr_library_sources_ifdef(CONFIG_MULTICORE
+		${SOF_DRIVERS_PATH}/intel/cavs/idc.c
+	)
+
+	zephyr_library_sources_ifdef(CONFIG_INTEL_HDA
 		${SOF_DRIVERS_PATH}/intel/hda/hda-dma.c
 		${SOF_DRIVERS_PATH}/intel/hda/hda.c
-		${SOF_DRIVERS_PATH}/intel/cavs/ipc.c
-		${SOF_DRIVERS_PATH}/intel/dmic.c
-		${SOF_DRIVERS_PATH}/intel/cavs/idc.c
-		${SOF_DRIVERS_PATH}/intel/ssp/ssp.c
+	)
+
+	zephyr_library_sources_ifdef(CONFIG_INTEL_MN
 		${SOF_DRIVERS_PATH}/intel/ssp/mn.c
+	)
+
+	zephyr_library_sources_ifdef(CONFIG_INTEL_SSP
+		${SOF_DRIVERS_PATH}/intel/ssp/ssp.c
+	)
+
+	zephyr_library_sources_ifdef(CONFIG_INTEL_ALH
 		${SOF_DRIVERS_PATH}/intel/alh.c
-		${SOF_DRIVERS_PATH}/intel/cavs/timestamp.c
+	)
+
+	zephyr_library_sources_ifdef(CONFIG_INTEL_DMIC
+		${SOF_DRIVERS_PATH}/intel/dmic.c
 	)
 
 	# Platform sources
@@ -248,6 +321,7 @@ endif()
 # NXP IMX8 platforms
 if (CONFIG_SOC_SERIES_NXP_IMX8)
 	zephyr_library_sources(
+		#${SOF_DRIVERS_PATH}/generic/dummy-dma.c
 		#${SOF_DRIVERS_PATH}/imx/sdma.c
 		#${SOF_DRIVERS_PATH}/imx/edma.c
 		#${SOF_DRIVERS_PATH}/imx/sai.c
@@ -262,8 +336,6 @@ zephyr_include_directories(${SOF_PLATFORM_PATH}/${PLATFORM}/include)
 # Commented files will be added/removed as integration dictates.
 zephyr_library_sources(
 	${SOF_SRC_PATH}/trace/dma-trace.c
-	${SOF_DRIVERS_PATH}/dw/dma.c
-	${SOF_DRIVERS_PATH}/generic/dummy-dma.c
 	${SOF_IPC_PATH}/dma-copy.c
 	${SOF_IPC_PATH}/ipc.c
 	${SOF_IPC_PATH}/handler.c
@@ -271,13 +343,14 @@ zephyr_library_sources(
 	${SOF_IPC_PATH}/user_abi_version.c
 	${SOF_IPC_PATH}/ipc-host-ptable.c
 	${SOF_IPC_PATH}/cc_version.c
-	${SOF_DEBUG_PATH}/gdb/gdb.c
-	${SOF_DEBUG_PATH}/gdb/ringbuffer.c
-	#${SOF_DEBUG_PATH}/panic.c
 	${SOF_SRC_PATH}/spinlock.c
+
+	# SOF math utilities
 	${SOF_MATH_PATH}/decibels.c
 	${SOF_MATH_PATH}/numbers.c
 	${SOF_MATH_PATH}/trig.c
+
+	# SOF library - parts to transition to Zephyr over time
 	${SOF_LIB_PATH}/clk.c
 	${SOF_LIB_PATH}/notifier.c
 	${SOF_LIB_PATH}/lib.c
@@ -285,52 +358,22 @@ zephyr_library_sources(
 	${SOF_LIB_PATH}/wait.c
 	${SOF_LIB_PATH}/dma.c
 	${SOF_LIB_PATH}/dai.c
-	${SOF_AUDIO_PATH}/kpb.c
+
+	# SOF mandatory audio processing
 	${SOF_AUDIO_PATH}/pipeline_static.c
-	${SOF_AUDIO_PATH}/selector/selector_generic.c
-	${SOF_AUDIO_PATH}/selector/selector.c
 	${SOF_AUDIO_PATH}/channel_map.c
-	${SOF_AUDIO_PATH}/switch.c
-	${SOF_AUDIO_PATH}/src/src_hifi2ep.c
-	${SOF_AUDIO_PATH}/src/src_generic.c
-	${SOF_AUDIO_PATH}/src/src_hifi3.c
-	${SOF_AUDIO_PATH}/src/src.c
 	${SOF_AUDIO_PATH}/pcm_converter/pcm_converter_hifi3.c
 	${SOF_AUDIO_PATH}/pcm_converter/pcm_converter.c
 	${SOF_AUDIO_PATH}/pcm_converter/pcm_converter_generic.c
-	${SOF_AUDIO_PATH}/volume/volume_hifi3.c
-	${SOF_AUDIO_PATH}/volume/volume_generic.c
-	${SOF_AUDIO_PATH}/volume/volume.c
-	${SOF_AUDIO_PATH}/mixer.c
-	${SOF_AUDIO_PATH}/tone.c
-	${SOF_AUDIO_PATH}/eq_fir/fir_hifi3.c
-	${SOF_AUDIO_PATH}/eq_fir/fir_hifi2ep.c
-	${SOF_AUDIO_PATH}/eq_fir/eq_fir.c
-	${SOF_AUDIO_PATH}/eq_fir/fir.c
-	${SOF_AUDIO_PATH}/detect_test.c
-	${SOF_AUDIO_PATH}/host.c
-	${SOF_AUDIO_PATH}/asrc/asrc.c
-	${SOF_AUDIO_PATH}/asrc/asrc_farrow_hifi3.c
-	${SOF_AUDIO_PATH}/asrc/asrc_farrow.c
-	${SOF_AUDIO_PATH}/asrc/asrc_farrow_generic.c
-	${SOF_AUDIO_PATH}/dcblock/dcblock_generic.c
-	${SOF_AUDIO_PATH}/dcblock/dcblock.c
-	${SOF_AUDIO_PATH}/eq_iir/iir_generic.c
-	${SOF_AUDIO_PATH}/eq_iir/iir_hifi3.c
-	${SOF_AUDIO_PATH}/eq_iir/iir.c
-	${SOF_AUDIO_PATH}/eq_iir/eq_iir.c
 	${SOF_AUDIO_PATH}/buffer.c
 	${SOF_AUDIO_PATH}/component.c
-	${SOF_AUDIO_PATH}/dai.c
 	${SOF_AUDIO_PATH}/pipeline.c
 
-	# SOF core infrastructure supplied by Zephyr
+	# SOF core infrastructure - runs on top of Zephyr
 	${SOF_SRC_PATH}/init/init.c
 	${SOF_SRC_PATH}/init/ext_manifest.c
-	#${SOF_SRC_PATH}/schedule/task.c
 	${SOF_SRC_PATH}/schedule/timer_domain.c
 	${SOF_SRC_PATH}/schedule/schedule.c
-	#${SOF_SRC_PATH}/schedule/edf_schedule.c
 	${SOF_SRC_PATH}/schedule/dma_single_chan_domain.c
 	${SOF_SRC_PATH}/schedule/dma_multi_chan_domain.c
 	${SOF_SRC_PATH}/schedule/ll_schedule.c
@@ -339,17 +382,108 @@ zephyr_library_sources(
 	# Bridge wrapper between SOF and Zephyr APIs - Will shrink over time.
 	wrapper.c
 	edf_schedule.c
-	#ll_schedule.c
 	schedule.c
-	#init.c
 )
 
 # Optional SOF sources - depends on Kconfig - WIP
-zephyr_library_sources_ifdef(CONFIG_PROBE ${SOF_SRC_PATH}/probe/probe.c)
-zephyr_library_sources_ifdef(CONFIG_MULTICORE ${SOF_SRC_PATH}/idc/idc.c)
-zephyr_library_sources_ifdef(CONFIG_HAVE_AGENT ${SOF_LIB_PATH}/agent.c)
-zephyr_library_sources_ifdef(CONFIG_COMP_MUX ${SOF_AUDIO_PATH}/mux/mux.c)
-zephyr_library_sources_ifdef(CONFIG_COMP_MUX ${SOF_AUDIO_PATH}/mux/mux_generic.c)
+
+zephyr_library_sources_ifdef(CONFIG_COMP_FIR
+	${SOF_AUDIO_PATH}/eq_fir/fir_hifi3.c
+	${SOF_AUDIO_PATH}/eq_fir/fir_hifi2ep.c
+	${SOF_AUDIO_PATH}/eq_fir/eq_fir.c
+	${SOF_AUDIO_PATH}/eq_fir/fir.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_COMP_IIR
+	${SOF_AUDIO_PATH}/eq_iir/iir_generic.c
+	${SOF_AUDIO_PATH}/eq_iir/iir_hifi3.c
+	${SOF_AUDIO_PATH}/eq_iir/iir.c
+	${SOF_AUDIO_PATH}/eq_iir/eq_iir.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_COMP_ASRC
+	${SOF_AUDIO_PATH}/asrc/asrc.c
+	${SOF_AUDIO_PATH}/asrc/asrc_farrow_hifi3.c
+	${SOF_AUDIO_PATH}/asrc/asrc_farrow.c
+	${SOF_AUDIO_PATH}/asrc/asrc_farrow_generic.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_COMP_DCBLOCK
+	${SOF_AUDIO_PATH}/dcblock/dcblock_generic.c
+	${SOF_AUDIO_PATH}/dcblock/dcblock.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_COMP_SEL
+	${SOF_AUDIO_PATH}/selector/selector_generic.c
+	${SOF_AUDIO_PATH}/selector/selector.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_COMP_KPB
+	${SOF_AUDIO_PATH}/kpb.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_COMP_SWITCH
+	${SOF_AUDIO_PATH}/switch.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_COMP_MIXER
+	${SOF_AUDIO_PATH}/mixer.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_COMP_TONE
+	${SOF_AUDIO_PATH}/tone.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_COMP_HOST
+	${SOF_AUDIO_PATH}/host.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_COMP_DAI
+	${SOF_AUDIO_PATH}/dai.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_COMP_TEST_KEYPHRASE
+	${SOF_AUDIO_PATH}/detect_test.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_COMP_VOLUME
+	${SOF_AUDIO_PATH}/volume/volume_hifi3.c
+	${SOF_AUDIO_PATH}/volume/volume_generic.c
+	${SOF_AUDIO_PATH}/volume/volume.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_COMP_SRC
+	${SOF_AUDIO_PATH}/src/src_hifi2ep.c
+	${SOF_AUDIO_PATH}/src/src_generic.c
+	${SOF_AUDIO_PATH}/src/src_hifi3.c
+	${SOF_AUDIO_PATH}/src/src.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_COMP_MUX
+	${SOF_AUDIO_PATH}/mux/mux.c
+	${SOF_AUDIO_PATH}/mux/mux_generic.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_PROBE
+	${SOF_SRC_PATH}/probe/probe.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_MULTICORE
+	${SOF_SRC_PATH}/idc/idc.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_HAVE_AGENT
+	${SOF_LIB_PATH}/agent.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_GDB_DEBUG
+	${SOF_DEBUG_PATH}/gdb/gdb.c
+	${SOF_DEBUG_PATH}/gdb/ringbuffer.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_DW_DMA
+	${SOF_DRIVERS_PATH}/dw/dma.c
+)
 
 zephyr_library_link_libraries(SOF)
 target_link_libraries(SOF INTERFACE zephyr_interface)
