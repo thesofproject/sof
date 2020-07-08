@@ -84,15 +84,25 @@ static void usage(char *name)
 {
 	int i;
 
-	fprintf(stdout, "Usage %s -p platform -i ipc <option(s)>\n", name);
-	fprintf(stdout, "		-p platform name\n");
-	fprintf(stdout, "		-i ipc message file\n");
-	fprintf(stdout, "		-h print help message\n");
-	fprintf(stdout, "		supported platforms: ");
+	fprintf(stdout, "Usage: %s -p platform -i ipc [options]\n", name);
+	fprintf(stdout, "\
+ -p platform   run the fuzzer on the platform\n\
+               supported platforms: ");
+
 	for (i = 0; i < ARRAY_SIZE(platform); i++)
 		fprintf(stdout, "%s ", platform[i]->name);
 	fprintf(stdout, "\n");
-	fprintf(stdout, "Qemu must be started before the fuzzer is run.\n");
+
+	fprintf(stdout, "\
+ -i file       run the fuzzer with an ipc message from given file\n");
+	fprintf(stdout, "\
+ -h            display this help and exit\n");
+
+	fprintf(stdout, "\nOptions: \n");
+	fprintf(stdout, "\
+ -w N          wait for N secs for qemu to start (default 5 secs)\n\n");
+
+	fprintf(stdout, "Note: Qemu must be started before the fuzzer is run.\n");
 
 	exit(0);
 }
@@ -280,6 +290,20 @@ int fuzzer_send_msg(struct fuzz *fuzzer)
 	return ret;
 }
 
+static unsigned int parse_qemu_wait(const char *arg)
+{
+	char *endptr = NULL;
+	unsigned int wait;
+
+	wait = strtoul(arg, &endptr, 0);
+	if (endptr == NULL || *endptr != '\0') {
+		fprintf(stderr, "error: invalid qemu wait time\n");
+		exit(EXIT_FAILURE);
+	}
+
+	return wait;
+}
+
 /* parse ipc message file and fill fuzzer's msg variable */
 int parse_ipcmsg(struct fuzz *fuzzer, char *ipcmsg_filename)
 {
@@ -336,20 +360,23 @@ int parse_ipcmsg(struct fuzz *fuzzer, char *ipcmsg_filename)
 int main(int argc, char *argv[])
 {
 	struct fuzz fuzzer;
-	int ret;
+	int i, ret;
+	unsigned int qemu_wait = 5;
 	char opt;
 	char *platform_name = NULL, *ipcmsg_file = NULL;
-	int i;
 	FILE *fp = NULL;
 
 	/* parse arguments */
-	while ((opt = getopt(argc, argv, "hi:p:")) != -1) {
+	while ((opt = getopt(argc, argv, "hi:p:w:")) != -1) {
 		switch (opt) {
 		case 'i':
 			ipcmsg_file = optarg;
 			break;
 		case 'p':
 			platform_name = optarg;
+			break;
+		case 'w':
+			qemu_wait = parse_qemu_wait(optarg);
 			break;
 		case 'h':
 			usage(argv[0]);
@@ -412,7 +439,8 @@ int main(int argc, char *argv[])
 	}
 
 	/* TODO: Need to make sure that child is executed first. */
-	sleep(5);
+	fprintf(stdout, "Waiting for %u secs for qemu DSP to start\n", qemu_wait);
+	sleep(qemu_wait);
 
 	/* init plaform */
 	fprintf(stdout, "initialising platform %s\n", platform[i]->name);
