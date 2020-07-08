@@ -998,13 +998,13 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 	size_t period_bytes_limit;
 	uint32_t flags;
 
-
 	/* Calculate history depth */
 	cli->history_depth = (cli->history_depth > KPB_MAX_HISTORY_DEPTH) ?
 			     KPB_MAX_HISTORY_DEPTH : cli->history_depth;
 	history_depth = cli->history_depth * kpb->config.channels *
 			       (kpb->config.sampling_freq / 1000) *
 			       (KPB_SAMPLE_CONTAINER_SIZE(sample_width) / 8);
+
 	comp_info(dev, "kpb_init_draining(): requested draining of %d [ms] from history buffer",
 		  cli->history_depth);
 
@@ -1164,6 +1164,7 @@ static enum task_state kpb_draining_task(void *arg)
 	struct comp_data *kpb = comp_get_drvdata(draining_data->dev);
 	bool sync_mode_on = &draining_data->sync_mode_on;
 
+
 	comp_cl_info(&comp_kpb, "kpb_draining_task(), start.");
 
 	pm_runtime_disable(PM_RUNTIME_DSP, PLATFORM_MASTER_CORE_ID);
@@ -1172,6 +1173,9 @@ static enum task_state kpb_draining_task(void *arg)
 	kpb_change_state(kpb, KPB_STATE_DRAINING);
 
 	draining_time_start = platform_timer_get(timer);
+
+	while (sof_get()->host_state_suspened)
+		asm volatile("nop");
 
 	while (history_depth > 0) {
 		/* Have we received reset request? */

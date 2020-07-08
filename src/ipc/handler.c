@@ -668,6 +668,12 @@ static int ipc_pm_gate(uint32_t header)
 
 	IPC_COPY_CMD(pm_gate, ipc_get()->comp_data);
 
+	if (pm_gate.flags & SOF_PM_HOST_RESUME)
+		sof_get()->host_state_suspened = 0;
+
+	if (pm_gate.flags & SOF_PM_HOST_SUSPEND)
+		sof_get()->host_state_suspened = 1;
+
 	/* pause dma trace firstly if needed */
 	if (pm_gate.flags & SOF_PM_NO_TRACE)
 		trace_off();
@@ -679,8 +685,9 @@ static int ipc_pm_gate(uint32_t header)
 		pm_runtime_enable(PM_RUNTIME_DSP, PLATFORM_MASTER_CORE_ID);
 
 	/* resume dma trace if needed */
-	if (!(pm_gate.flags & SOF_PM_NO_TRACE))
+	if (!(pm_gate.flags & SOF_PM_NO_TRACE)) {
 		trace_on();
+	}
 
 	return 0;
 }
