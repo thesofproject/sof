@@ -21,18 +21,97 @@
 /** \addtogroup sof_uapi uAPI
  * SOF uAPI specification
  *
- * Message structure
- * -----------------
+ * **Overview**
  *
- * IPC messages have a prefixed 32 bit identifier made up as follows :-
+ * The SOF Audio DSP firmware defines an Inter-Process Communication
+ * (IPC) interface to facilitate communication with the host.
  *
- * 0xGCCCNNNN where
- * - G is global cmd type (4 bits)
- * - C is command type (12 bits)
- * - N is the ID number (16 bits) - monotonic and overflows
+ * The SOF IPC is bi-directional. Messages can be initiated by the
+ * host and acknowledged by the DSP. Similarly, they can be initiated
+ * by the DSP and acknowledged by the host.
  *
- * IPC ABI version compatibility rules
- * -----------------------------------
+ * IPC messages are divided into several groups: global, topology,
+ * power management, component, stream, DAI, trace, and a separate
+ * "firmware ready" message. Multiple messages can also be grouped
+ * into a message that belong to a compound group. Most messages are
+ * sent by the host to the DSP; only the following messages are sent
+ * by the DSP to the host:
+ *  - firmware ready: sent only once during initialization
+ *  - trace: optional, contains firmware trace data
+ *  - position update: only used if position data cannot be
+ *    transferred in a memory window or if forced by the kernel
+ *    configuration
+ *
+ * **Message encoding**
+ *
+ * All multi-byte protocol fields are encoded with little-endian
+ * byte-order.
+ *
+ * **Message structure**
+ *
+ * IPC messages have a fixed header and variable length payload.
+ *
+ *      0                   1                   2                   3
+ *      0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+ *     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *     | Size                                                          |
+ *     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *     | Command                                                       |
+ *     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *
+ * The header contains size of the IPC message and a 32bit Command
+ * identifier with following structure:
+ *
+ * 0xGCCCNNNN is little-endian value where
+ * - G is the Global Type (4 bits)
+ * - C is the Command Type (12 bits)
+ * - N is the ID Number (16 bits) - monotonic and overflows
+ *
+ * The Global and Command Types together define the structure of the
+ * payload. E.g. for topology IPC message COMP_NEW structure is (ABI
+ * 3.17.0 example):
+ *
+ *      0                   1                   2                   3
+ *      0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+ *     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *     | Size                                                          |
+ *     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *     | Command (G=TPLG_MSG, C=COMP_NEW)                              |
+ *     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *     | Component Id                                                  |
+ *     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *     | Type                                                          |
+ *     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *     | Pipeline ID                                                   |
+ *     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *     | Core                                                          |
+ *     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *     | Reserved                                                      |
+ *     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *     | (Type specific payload, size varies based on Component ID)    |
+ *     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *
+ * \see sof_ipc_comp
+ *
+ * **Reply Messages**
+ *
+ * Reply messages are defined per Command. The response IPC messages
+ * have a common layout, but some Commands have extended fields
+ * defined. The common format is:
+ *
+ *      0                   1                   2                   3
+ *      0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+ *     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *     | Size                                                          |
+ *     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *     | Command (G=REPLY, C=0)                                        |
+ *     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *     | Error                                                         |
+ *     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *
+ * \see sof_ipc_reply
+ *
+ * **IPC ABI version compatibility rules**
  *
  * 1. FW binaries will only support one MAJOR ABI version which is advertised
  *    to host at FW boot.
@@ -47,11 +126,13 @@
  *    PATCH ABI versions differ as new fields can be added to the end of
  *    messages.
  *
- *    i) Sender > receiver: receiver only copies its own ABI structure size.
+ *    i) SenderVersion > ReceiverVersion:
+ *           Receiver only copies its own ABI structure size.
  *
- *    ii) Receiver > sender: receiver copies its own ABI size and zero pads
- *                           new fields. i.e. new structure fields must be non
- *                           zero to be activated.
+ *    ii) ReceiverVersion > SenderVersion:
+ *           Receiver copies its own ABI size and zero pads
+ *           new fields. i.e. new structure fields must be non
+ *           zero to be activated.
  *
  * Guidelines for extending ABI compatible messages :-
  *
