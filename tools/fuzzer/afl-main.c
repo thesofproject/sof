@@ -320,7 +320,7 @@ int parse_ipcmsg(struct fuzz *fuzzer, char *ipcmsg_filename)
 
 	/*
 	 * ipc message file contents:
-	 * header msg_size msg_data
+	 * header reply_size msg_size msg_data
 	 */
 
 	/* read header from file */
@@ -333,6 +333,17 @@ int parse_ipcmsg(struct fuzz *fuzzer, char *ipcmsg_filename)
 
 	if (afl_debug)
 		fprintf(stdout, "header read: %ud\n", fuzzer->msg.header);
+
+	/* read reply msg size from file */
+	ret = fread(&(fuzzer->msg.reply_size), sizeof(unsigned int), 1, fp);
+	if (ret != 1) {
+		fprintf(stderr, "error: reading reply_size of ipc msg from %s\n",
+			ipcmsg_filename);
+		return -EIO;
+	}
+
+	if (afl_debug)
+		fprintf(stdout, "reply_size read: %u\n", fuzzer->msg.reply_size);
 
 	/* read msg size from file */
 	ret = fread(&(fuzzer->msg.msg_size), sizeof(unsigned int), 1, fp);
