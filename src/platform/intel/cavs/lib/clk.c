@@ -102,15 +102,28 @@ void platform_clock_on_wakeup(void)
 }
 #endif
 
-void platform_clock_on_waiti(void)
+void platform_clock_waiti_entry(void)
 {
-	int freq_idx = get_cpu_current_freq_idx();
-#if CONFIG_CAVS_USE_LPRO_IN_WAITI
-	int target_idx = CPU_LPRO_FREQ_IDX;
+	int freq_idx;
+	int target_idx;
 
+	/* update the active clock according to the pm runtime state */
+	if (*cache_to_uncache(&active_freq_idx) != CPU_LPRO_FREQ_IDX &&
+	    !pm_runtime_is_active(PM_RUNTIME_DSP, PLATFORM_MASTER_CORE_ID))
+		platform_set_active_clock(CPU_LPRO_FREQ_IDX);
+	else if (*cache_to_uncache(&active_freq_idx) != CPU_HPRO_FREQ_IDX &&
+		 pm_runtime_is_active(PM_RUNTIME_DSP, PLATFORM_MASTER_CORE_ID))
+		platform_set_active_clock(CPU_HPRO_FREQ_IDX);
+
+	freq_idx = get_cpu_current_freq_idx();
+
+#if CONFIG_CAVS_USE_LPRO_IN_WAITI
+	target_idx = CPU_LPRO_FREQ_IDX;
+
+	/* store the cpu freq_idx */
 	*cache_to_uncache(&active_freq_idx) = freq_idx;
 #else
-	int target_idx = *cache_to_uncache(&active_freq_idx);
+	target_idx = *cache_to_uncache(&active_freq_idx);
 #endif
 
 	if (freq_idx != target_idx) {
@@ -124,8 +137,31 @@ void platform_clock_on_waiti(void)
 	}
 }
 
+void platform_clock_waiti_exit(void)
+{
+	int current_idx = get_cpu_current_freq_idx();
+	int target_idx = *cache_to_uncache(&active_freq_idx);
+
+	/* restore the active cpu freq_idx */
+	if (current_idx != target_idx) {
+		/* LPRO requests are fast, but requests for other ROs
+		 * can take a lot of time. That's why it's better to
+		 * not release active clock just for waiti,
+		 * so they can be switched without delay on wake up.
+		 */
+		select_cpu_clock(target_idx, false);
+		set_cpu_current_freq_idx(target_idx);
+	}
+}
+
 void platform_set_active_clock(int index)
 {
+	if (*cache_to_uncache(&active_freq_idx) == index)
+		return;
+
+	select_cpu_clock(index, true);
+	set_cpu_current_freq_idx(index);
+
 	*cache_to_uncache(&active_freq_idx) = index;
 }
 

@@ -525,7 +525,7 @@ int platform_init(struct sof *sof)
 
 void platform_wait_for_interrupt(int level)
 {
-	platform_clock_on_waiti();
+	platform_clock_waiti_entry();
 
 #if (CONFIG_CAVS_LPS)
 	if (pm_runtime_is_active(PM_RUNTIME_DSP, PLATFORM_MASTER_CORE_ID))
@@ -535,4 +535,6 @@ void platform_wait_for_interrupt(int level)
 #else
 	arch_wait_for_interrupt(level);
 #endif
+
+	platform_clock_waiti_exit();
 }
