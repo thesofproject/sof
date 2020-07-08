@@ -111,7 +111,8 @@ static void schedule_ll_tasks_execute(struct ll_schedule_data *sch,
 			atomic_sub(&sch->domain->total_num_tasks, 1);
 
 			/* don't enable irq, if no more tasks to do */
-			if (!atomic_sub(&sch->num_tasks, 1))
+			atomic_sub(&sch->num_tasks, 1);
+			if (!atomic_read(&sch->num_tasks))
 				sch->domain->registered[cpu] = false;
 			tr_info(&ll_tr, "task complete %p %s", (uintptr_t)task,
 				task->uid);
@@ -172,7 +173,8 @@ static void schedule_ll_tasks_run(void *data)
 	/* TODO: no need for atomic operations,
 	 * already protected by spin_lock
 	 */
-	num_clients = atomic_sub(&sch->domain->num_clients, 1);
+	atomic_sub(&sch->domain->num_clients, 1);
+	num_clients = atomic_read(&sch->domain->num_clients);
 	if (!num_clients)
 		domain_clear(sch->domain);
 
@@ -224,10 +226,12 @@ static int schedule_ll_domain_set(struct ll_schedule_data *sch,
 	spin_lock(&sch->domain->lock);
 
 	registered = sch->domain->registered[core];
-	if (atomic_add(&sch->num_tasks, 1) == 1)
+	atomic_add(&sch->num_tasks, 1);
+	if (atomic_read(&sch->num_tasks) == 1)
 		sch->domain->registered[core] = true;
 
-	total = atomic_add(&sch->domain->total_num_tasks, 1);
+	atomic_add(&sch->domain->total_num_tasks, 1);
+	total = atomic_read(&sch->domain->total_num_tasks);
 
 	if (total == 1)
 		/* First task in domain over all cores: actiivate it */
@@ -256,19 +260,23 @@ static void schedule_ll_domain_clear(struct ll_schedule_data *sch,
 {
 	spin_lock(&sch->domain->lock);
 
-	if (!atomic_sub(&sch->domain->total_num_tasks, 1)) {
+	atomic_sub(&sch->domain->total_num_tasks, 1);
+	if (!atomic_read(&sch->domain->total_num_tasks)) {
 		domain_clear(sch->domain);
 		sch->domain->last_tick = 0;
 	}
 
-	if (!atomic_sub(&sch->num_tasks, 1)) {
+	atomic_sub(&sch->num_tasks, 1);
+	if (!atomic_read(&sch->num_tasks)) {
 		sch->domain->registered[cpu_get_id()] = false;
 
 		/* reschedule if we are the last client */
-		if (atomic_read(&sch->domain->num_clients) &&
-		    !atomic_sub(&sch->domain->num_clients, 1)) {
-			domain_clear(sch->domain);
-			schedule_ll_clients_reschedule(sch);
+		if (atomic_read(&sch->domain->num_clients)) {
+			atomic_sub(&sch->domain->num_clients, 1);
+			if (!atomic_read(&sch->domain->num_clients)) {
+				domain_clear(sch->domain);
+				schedule_ll_clients_reschedule(sch);
+			}
 		}
 	}
 
