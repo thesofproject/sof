@@ -45,7 +45,7 @@ static inline int32_t arch_atomic_add(atomic_t *a, int32_t value)
 		: "a" (&a->value), "a" (value)
 		: "memory");
 
-	return (*(volatile int32_t *)&a->value);
+	return current;
 }
 
 static inline int32_t arch_atomic_sub(atomic_t *a, int32_t value)
@@ -62,7 +62,7 @@ static inline int32_t arch_atomic_sub(atomic_t *a, int32_t value)
 		: "a" (&a->value), "a" (value)
 		: "memory");
 
-	return (*(volatile int32_t *)&a->value);
+	return current;
 }
 
 #endif /* __ARCH_ATOMIC_H__ */
