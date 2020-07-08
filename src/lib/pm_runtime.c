@@ -38,7 +38,7 @@ void pm_runtime_init(struct sof *sof)
 
 void pm_runtime_get(enum pm_runtime_context context, uint32_t index)
 {
-	tr_dbg(&pm_tr, "pm_runtime_get()");
+	tr_dbg(&pm_tr, "pm_runtime_get() context %d index %d", context, index);
 
 	switch (context) {
 	default:
@@ -49,7 +49,8 @@ void pm_runtime_get(enum pm_runtime_context context, uint32_t index)
 
 void pm_runtime_get_sync(enum pm_runtime_context context, uint32_t index)
 {
-	tr_dbg(&pm_tr, "pm_runtime_get_sync()");
+	tr_dbg(&pm_tr, "pm_runtime_get_sync() context %d index %d", context,
+	       index);
 
 	switch (context) {
 	default:
@@ -60,7 +61,7 @@ void pm_runtime_get_sync(enum pm_runtime_context context, uint32_t index)
 
 void pm_runtime_put(enum pm_runtime_context context, uint32_t index)
 {
-	tr_dbg(&pm_tr, "pm_runtime_put()");
+	tr_dbg(&pm_tr, "pm_runtime_put() context %d index %d", context, index);
 
 	switch (context) {
 	default:
@@ -71,7 +72,8 @@ void pm_runtime_put(enum pm_runtime_context context, uint32_t index)
 
 void pm_runtime_put_sync(enum pm_runtime_context context, uint32_t index)
 {
-	tr_dbg(&pm_tr, "pm_runtime_put_sync()");
+	tr_dbg(&pm_tr, "pm_runtime_put_sync() context %d index %d", context,
+	       index);
 
 	switch (context) {
 	default:
@@ -82,7 +84,8 @@ void pm_runtime_put_sync(enum pm_runtime_context context, uint32_t index)
 
 void pm_runtime_enable(enum pm_runtime_context context, uint32_t index)
 {
-	tr_dbg(&pm_tr, "pm_runtime_enable()");
+	tr_dbg(&pm_tr, "pm_runtime_enable() context %d index %d", context,
+	       index);
 
 	switch (context) {
 	default:
@@ -93,7 +96,8 @@ void pm_runtime_enable(enum pm_runtime_context context, uint32_t index)
 
 void pm_runtime_disable(enum pm_runtime_context context, uint32_t index)
 {
-	tr_dbg(&pm_tr, "pm_runtime_disable()");
+	tr_dbg(&pm_tr, "pm_runtime_disable() context %d index %d", context,
+	       index);
 
 	switch (context) {
 	default:
@@ -104,7 +108,8 @@ void pm_runtime_disable(enum pm_runtime_context context, uint32_t index)
 
 bool pm_runtime_is_active(enum pm_runtime_context context, uint32_t index)
 {
-	tr_dbg(&pm_tr, "pm_runtime_is_active()");
+	tr_dbg(&pm_tr, "pm_runtime_is_active() context %d index %d", context,
+	       index);
 
 	switch (context) {
 	default:
