@@ -440,7 +440,7 @@ int main(int argc, char *argv[])
 	/* all done - now free platform */
 	platform[i]->free(&fuzzer);
 
-	/* message sending failed */
+	/* ipc message reply timeout */
 	if (ret == -EINVAL) {
 		fprintf(stderr, "error: failed to receive reply from DSP\n");
 
