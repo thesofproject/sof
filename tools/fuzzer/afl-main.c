@@ -440,24 +440,20 @@ int main(int argc, char *argv[])
 	/* all done - now free platform */
 	platform[i]->free(&fuzzer);
 
+	/* As it's not guaranteed that library functions set it to zero on success */
+	errno = 0;
+
+	/* kill the DSP process created above */
+	if (kill(fid, SIGKILL))
+		fprintf(stderr, "killing child process failed\n");
+
 	/* ipc message reply timeout */
 	if (ret == -EINVAL) {
 		fprintf(stderr, "error: failed to receive reply from DSP\n");
 
-		/* kill the DSP process created above */
-		if (kill(fid, SIGKILL))
-			fprintf(stderr, "killing DSP process failed\n");
-
 		/* raise SIGABRT so that fuzzer sees this as a crash */
 		abort();
-		return -errno;
 	}
 
-	/* kill the DSP process created above */
-	if (kill(fid, SIGKILL)) {
-		fprintf(stderr, "killing child process failed\n");
-		return -errno;
-	}
-
-	return 0;
+	return -errno;
 }
