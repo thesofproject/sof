@@ -296,17 +296,9 @@ config CAVS_LPS
 	  This option is required to support S0ix/D0ix mode
 	  on cAVS platforms.
 
-config CAVS_LPRO
-	bool "Enable low power ring oscillator as the default clock"
-	default n
-	depends on CAVS && !CAVS_VERSION_1_5
-	help
-	  Select if you want to use 120MHz LPRO as the DSP clock source.
-	  This option is required to support S0ix/D0ix mode.
-
 config CAVS_USE_LPRO_IN_WAITI
 	bool
-	default n
+	default y
 	depends on CAVS
 	select WAKEUP_HOOK
 	help
