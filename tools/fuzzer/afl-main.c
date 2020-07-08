@@ -264,7 +264,7 @@ int fuzzer_send_msg(struct fuzz *fuzzer)
 		fprintf(stderr, "error: IPC timeout\n");
 		ipc_dump_err(&fuzzer->msg);
 		pthread_mutex_unlock(&ipc_mutex);
-		exit(0);
+		return ret;
 	}
 
 	pthread_mutex_unlock(&ipc_mutex);
