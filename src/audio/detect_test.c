@@ -62,7 +62,7 @@ struct comp_data {
 	uint32_t detected;
 	uint32_t detect_preamble; /**< current keyphrase preamble length */
 	uint32_t keyphrase_samples; /**< keyphrase length in samples */
-	uint32_t history_depth; /** defines draining size in bytes. */
+	uint32_t history_depth; /** defines draining size in [ms]. */
 
 	uint16_t sample_valid_bytes;
 	struct kpb_event_data event_data;

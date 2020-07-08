@@ -15,7 +15,7 @@
 struct comp_buffer;
 
 /* KPB internal defines */
-#define KPB_MAX_BUFF_TIME 2100 /**< time of buffering in miliseconds */
+#define KPB_MAX_BUFF_TIME 2300 /**< time of buffering in miliseconds */
 #define KPB_MAX_SUPPORTED_CHANNELS 2 /**< number of supported channels */
 /**< number of samples taken each milisecond */
 #define	KPB_SAMPLES_PER_MS (KPB_SAMPLNG_FREQUENCY / 1000)
@@ -36,6 +36,7 @@ struct comp_buffer;
 #define KPB_DRAIN_NUM_OF_PPL_PERIODS_AT_ONCE 2
 /**< Host buffer shall be at least two times bigger than history buffer. */
 #define HOST_BUFFER_MIN_SIZE(hb) (hb * 2)
+#define KPB_MAX_HISTORY_DEPTH 1500
 
 /** All states below as well as relations between them are documented in
  * the sof-dosc in [kpbm-state-diagram]

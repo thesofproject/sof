@@ -983,9 +983,7 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 	struct comp_data *kpb = comp_get_drvdata(dev);
 	bool is_sink_ready = (kpb->host_sink->sink->state == COMP_STATE_ACTIVE);
 	size_t sample_width = kpb->config.sampling_width;
-	size_t history_depth = cli->history_depth * kpb->config.channels *
-			       (kpb->config.sampling_freq / 1000) *
-			       (KPB_SAMPLE_CONTAINER_SIZE(sample_width) / 8);
+	size_t history_depth;
 	struct history_buffer *buff = kpb->hd.c_hb;
 	struct history_buffer *first_buff = buff;
 	size_t buffered = 0;
@@ -1000,6 +998,13 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 	size_t period_bytes_limit;
 	uint32_t flags;
 
+
+	/* Calculate history depth */
+	cli->history_depth = (cli->history_depth > KPB_MAX_HISTORY_DEPTH) ?
+			     KPB_MAX_HISTORY_DEPTH : cli->history_depth;
+	history_depth = cli->history_depth * kpb->config.channels *
+			       (kpb->config.sampling_freq / 1000) *
+			       (KPB_SAMPLE_CONTAINER_SIZE(sample_width) / 8);
 	comp_info(dev, "kpb_init_draining(): requested draining of %d [ms] from history buffer",
 		  cli->history_depth);
 
