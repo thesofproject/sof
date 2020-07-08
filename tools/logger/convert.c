@@ -660,7 +660,7 @@ static int verify_fw_ver(const struct convert_config *config,
 			 const struct snd_sof_logs_header *snd)
 {
 	struct sof_ipc_fw_version ver;
-	int count, ret = 0;
+	int count;
 
 	if (!config->version_fd)
 		return 0;
@@ -673,30 +673,11 @@ static int verify_fw_ver(const struct convert_config *config,
 		return -ferror(config->version_fd);
 	}
 
-	ret = memcmp(&ver, &snd->version, sizeof(struct sof_ipc_fw_version));
-	if (ret) {
+	/* compare source hash value from version file and ldc file */
+	if (ver.src_hash != snd->version.src_hash) {
 		log_err(config->out_fd,
-			"fw version in %s file does not coincide with fw version in %s file.\n",
-			config->ldc_file, config->version_file);
-		return -EINVAL;
-	}
-
-	/* logger and version_file abi dbg verification */
-	if (SOF_ABI_VERSION_INCOMPATIBLE(SOF_ABI_DBG_VERSION,
-					 ver.abi_version)) {
-		log_err(config->out_fd,
-			"abi version in %s file does not coincide with abi version used by logger.\n",
-			config->version_file);
-		log_err(config->out_fd,
-			"logger ABI Version is %d:%d:%d\n",
-			SOF_ABI_VERSION_MAJOR(SOF_ABI_DBG_VERSION),
-			SOF_ABI_VERSION_MINOR(SOF_ABI_DBG_VERSION),
-			SOF_ABI_VERSION_PATCH(SOF_ABI_DBG_VERSION));
-		log_err(config->out_fd,
-			"version_file ABI Version is %d:%d:%d\n",
-			SOF_ABI_VERSION_MAJOR(ver.abi_version),
-			SOF_ABI_VERSION_MINOR(ver.abi_version),
-			SOF_ABI_VERSION_PATCH(ver.abi_version));
+			"src hash value from version file (0x%x) differ from src hash version saved in dictionary (0x%x).\n",
+			ver.src_hash, snd->version.src_hash);
 		return -EINVAL;
 	}
 	return 0;
