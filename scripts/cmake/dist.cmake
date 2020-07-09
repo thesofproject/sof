@@ -26,7 +26,9 @@ add_custom_target(dist
 	COMMAND gzip -9 < "${TARBALL_PATH_TMP}" > "${TARBALL_PATH}"
 
 	WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
-	COMMENT "Creating tarball: ${TARBALL_PATH}"
+	COMMENT "Creating tarball: ${TARBALL_PATH}
+Warning: you must invoke make/ninja 'rebuild_cache' when the version changes, 'clean' is not enough.
+"
 	BYPRODUCTS "$TARBALL_VERSION_BINARY_PATH" "${TARBALL_PATH_TMP}" "${TARBALL_PATH}"
 	VERBATIM
 	USES_TERMINAL
