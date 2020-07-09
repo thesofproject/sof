@@ -15,7 +15,7 @@ fc_med = 1000;
 fc_high = 3000;
 
 % 4 way crossover
-num_sinks = 4;
+num_sinks = 2;
 % This array is an example on how to assign a buffer from pipeline 1 to output 0,
 % buffer from pipeline 2 to output 1, etc...
 % Refer to sof/src/inlude/user/crossover.h for more information on assigning
@@ -27,9 +27,9 @@ assign_sinks(3) = 3; % sink[2]
 assign_sinks(4) = 4; % sink[3]
 
 % Generate zeros, poles and gain for crossover with the given frequencies
-%crossover = crossover_gen_coefs(fs, fc_low); % 2 way crossover
+crossover = crossover_gen_coefs(fs, fc_low); % 2 way crossover
 % crossover = crossover_gen_coefs(fs, fc_low, fc_med); % 3 way crossover
-crossover = crossover_gen_coefs(fs, fc_low, fc_med, fc_high); % 4 way crossover
+%crossover = crossover_gen_coefs(fs, fc_low, fc_med, fc_high); % 4 way crossover
 
 % Convert the [a,b] coefficients to values usable with SOF
 crossover_bqs = crossover_coef_quant(crossover.lp, crossover.hp);
@@ -49,6 +49,7 @@ alsactl_write(alsa_fn, blob8);
 
 % Plot Magnitude and Phase Response of each sink
 crossover_plot_freq(crossover.lp, crossover.hp, fs, num_sinks);
+pause(5);
 rmpath ./../common
 
 endfunction

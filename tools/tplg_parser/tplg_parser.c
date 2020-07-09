@@ -1139,7 +1139,8 @@ int load_widget(void *dev, int dev_type, struct comp_info *temp_comp_list,
 	temp_comp_list[comp_index].type = widget->id;
 	temp_comp_list[comp_index].pipeline_id = pipeline_id;
 
-	printf("debug: loading widget %s id %d\n", widget->name, widget->id);
+	//printf("debug: loading widget %s id %d\n", widget->name, widget->id);
+	printf("debug: loading widget %s id %d; comp id %d\n", widget->name, widget->id, comp_id);
 
 	/* load widget based on type */
 	switch (widget->id) {

@@ -272,6 +272,7 @@ static int load_fileread(void *dev, int comp_id, int pipeline_id,
 			 struct snd_soc_tplg_dapm_widget *widget, int dir,
 			 struct testbench_prm *tp)
 {
+	printf("debug: load_fileread @ comp_id=%d pipe_id=%d\n", comp_id, pipeline_id);
 	struct sof *sof = (struct sof *)dev;
 	struct sof_ipc_comp_file fileread;
 	int size = widget->priv.size;
@@ -320,6 +321,7 @@ static int load_filewrite(struct sof *sof, int comp_id, int pipeline_id,
 			  struct snd_soc_tplg_dapm_widget *widget, int dir,
 			  struct testbench_prm *tp)
 {
+	printf("debug: load_filewrite @ comp_id=%d pipe_id=%d\n", comp_id, pipeline_id);
 	struct sof_ipc_comp_file filewrite;
 	int size = widget->priv.size;
 	int ret;
@@ -339,8 +341,12 @@ static int load_filewrite(struct sof *sof, int comp_id, int pipeline_id,
 			output_file_index);
 		return -EINVAL;
 	}
+	printf("debug: filewrite.fn: %s\n", tp->output_file[output_file_index]);
 	filewrite.fn = strdup(tp->output_file[output_file_index]);
-	tp->fw_id = comp_id;
+	if (output_file_index == 0) {
+		tp->fw_id = comp_id;
+	}
+	output_file_index++;
 
 	/* Set format from testbench command line*/
 	filewrite.rate = tp->fs_out;

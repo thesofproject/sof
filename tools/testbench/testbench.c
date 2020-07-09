@@ -269,17 +269,23 @@ int main(int argc, char **argv)
 		fprintf(stderr, "error: parsing topology\n");
 		exit(EXIT_FAILURE);
 	}
+	printf("Test Pipeline:\n");
+	printf("%s\n", pipeline);
 
 	/* Get pointers to fileread and filewrite */
 	pcm_dev = ipc_get_comp_by_id(sof.ipc, tp.fw_id);
+	printf("debug: fw pcm_dev: type=%u, core=%u, id=%u\n", pcm_dev->type, pcm_dev->core, pcm_dev->id);
 	fwcd = comp_get_drvdata(pcm_dev->cd);
 	pcm_dev = ipc_get_comp_by_id(sof.ipc, tp.fr_id);
+	printf("debug: fr pcm_dev: type=%u, core=%u, id=%u\n", pcm_dev->type, pcm_dev->core, pcm_dev->id);
 	frcd = comp_get_drvdata(pcm_dev->cd);
 
 	/* Run pipeline until EOF from fileread */
 	pcm_dev = ipc_get_comp_by_id(sof.ipc, tp.sched_id);
+	printf("debug: sched pcm_dev: type=%u, core=%u, id=%u\n", pcm_dev->type, pcm_dev->core, pcm_dev->id);
 	p = pcm_dev->cd->pipeline;
 	ipc_pipe = &p->ipc_pipe;
+	printf("debug: ipc_pipe: comp_id=%u, pipe_id=%u, sched_id=%u\n", ipc_pipe->comp_id, ipc_pipe->pipeline_id, ipc_pipe->sched_id);
 
 	/* input and output sample rate */
 	if (!tp.fs_in)

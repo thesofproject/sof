@@ -68,19 +68,19 @@ DAI_ADD(sof/pipe-dai-playback.m4,
 
 # playback DAI is SSP TEST_DAI_PORT using 2 periods
 # Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
-DAI_ADD(sof/pipe-dai-playback.m4,
-	2, TEST_DAI_TYPE, TEST_DAI_PORT, TEST_DAI_LINK_NAME,
-	PIPELINE_SOURCE_2, 2, TEST_DAI_FORMAT,
-	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
-#DAI_ADD_SCHED(sof/pipe-dai-sched-playback.m4,
+#DAI_ADD(sof/pipe-dai-playback.m4,
 #	2, TEST_DAI_TYPE, TEST_DAI_PORT, TEST_DAI_LINK_NAME,
 #	PIPELINE_SOURCE_2, 2, TEST_DAI_FORMAT,
-#	1000, 1, 0, SCHEDULE_TIME_DOMAIN_TIMER,
-#	PIPELINE_PLAYBACK_SCHED_COMP_1)
+#	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
+DAI_ADD_SCHED(sof/pipe-dai-sched-playback.m4,
+	2, TEST_DAI_TYPE, 2, SSP2-Codec,
+	PIPELINE_SOURCE_2, 2, TEST_DAI_FORMAT,
+	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER,
+	PIPELINE_PLAYBACK_SCHED_COMP_1)
 
 # connect pipelines together
 SectionGraph."pipe-sof-second-pipe" {
-        index "0"
+        index "2"
 
         lines [
 		# keyword detect
@@ -110,5 +110,13 @@ DAI_CONFIG(TEST_DAI_TYPE, TEST_DAI_PORT, 0, TEST_DAI_LINK_NAME,
 		      SSP_CONFIG_DATA(TEST_DAI_TYPE, TEST_DAI_PORT,
 				      TEST_SSP_DATA_BITS, TEST_SSP_MCLK_ID)))
 
+DAI_CONFIG(TEST_DAI_TYPE, 2, 1, SSP2-Codec,
+	   SSP_CONFIG(TEST_SSP_MODE,
+		      SSP_CLOCK(mclk, TEST_SSP_MCLK, codec_mclk_in),
+		      SSP_CLOCK(bclk, TEST_SSP_BCLK, codec_slave),
+		      SSP_CLOCK(fsync, 48000, codec_slave),
+		      SSP_TDM(2, TEST_SSP_PHY_BITS, 3, 3),
+		      SSP_CONFIG_DATA(TEST_DAI_TYPE, 2,
+				      TEST_SSP_DATA_BITS, TEST_SSP_MCLK_ID)))
 
 DEBUG_END

@@ -1044,6 +1044,7 @@ static int pipeline_xrun_recover(struct pipeline *p)
 /* notify pipeline that this component requires buffers emptied/filled */
 void pipeline_schedule_copy(struct pipeline *p, uint64_t start)
 {
+	pipe_info(p, "pipeline_schedule_copy");
 	/* disable system agent panic for DMA driven pipelines */
 	if (!pipeline_is_timer_driven(p))
 		sa_set_panic_on_delay(false);

@@ -667,6 +667,8 @@ static int crossover_copy(struct comp_dev *dev)
 	}
 
 	/* Find the number of frames to copy over */
+	//printf("crossover_copy: src frames=%u\n",
+	//       audio_stream_get_avail_frames(&source->stream));
 	for (i = 0; i < num_sinks; i++) {
 		if (!sinks[i])
 			continue;
@@ -674,9 +676,13 @@ static int crossover_copy(struct comp_dev *dev)
 		avail = audio_stream_avail_frames(&source->stream,
 						  &sinks[i]->stream);
 		frames = MIN(frames, avail);
+		printf("crossover_copy: sink[%d] frames avail=%u free=%u\n",
+		       i, audio_stream_get_avail_frames(&sinks[i]->stream),
+		       audio_stream_get_free_frames(&sinks[i]->stream));
 		buffer_unlock(sinks[i], flags);
 	}
 
+	printf("crossover_copy: frames to be proc=%u\n", frames);
 	buffer_unlock(source, flags);
 
 	source_bytes = frames * audio_stream_frame_bytes(&source->stream);
