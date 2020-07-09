@@ -645,6 +645,7 @@ static int kpb_copy(struct comp_dev *dev)
 	case KPB_STATE_RUN:
 		/* In normal RUN state we simply copy to our sink. */
 		sink = kpb->sel_sink;
+		ret = PPL_STATUS_PATH_STOP;
 
 		if (!sink) {
 			comp_err(dev, "kpb_copy(): no sink.");
@@ -668,7 +669,6 @@ static int kpb_copy(struct comp_dev *dev)
 		if (!copy_bytes) {
 			comp_err(dev, "kpb_copy(): nothing to copy sink->free %d source->avail %d",
 				 sink->stream.free, source->stream.avail);
-			ret = PPL_STATUS_PATH_STOP;
 			goto out;
 		}
 
@@ -682,6 +682,8 @@ static int kpb_copy(struct comp_dev *dev)
 			if (ret) {
 				comp_err(dev, "kpb_copy(): internal buffering failed.");
 				goto out;
+			} else {
+				ret = PPL_STATUS_PATH_STOP;
 			}
 
 			/* Update buffered size. NOTE! We only record buffered
@@ -697,7 +699,6 @@ static int kpb_copy(struct comp_dev *dev)
 		comp_update_buffer_produce(sink, copy_bytes);
 		comp_update_buffer_consume(source, copy_bytes);
 
-		ret = 0;
 		break;
 	case KPB_STATE_HOST_COPY:
 		/* In host copy state we only copy to host buffer. */
@@ -740,8 +741,9 @@ static int kpb_copy(struct comp_dev *dev)
 		/* In draining and init draining we only buffer data in
 		 * the internal history buffer.
 		 */
-
+		ret = PPL_STATUS_PATH_STOP;
 		copy_bytes = MIN(source->stream.avail, kpb->hd.free);
+
 		if (copy_bytes) {
 			buffer_invalidate(source, copy_bytes);
 			ret = kpb_buffer_data(dev, source, copy_bytes);
@@ -759,7 +761,6 @@ static int kpb_copy(struct comp_dev *dev)
 				  source->stream.avail, kpb->hd.free);
 		}
 
-		ret = PPL_STATUS_PATH_STOP;
 		break;
 	default:
 		comp_cl_err(&comp_kpb, "kpb_copy(): wrong state (state %d, state log %x)",
