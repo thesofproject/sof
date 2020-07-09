@@ -130,18 +130,13 @@ static uint32_t host_dma_get_split(struct host_data *hd, uint32_t bytes)
 static void host_update_position(struct comp_dev *dev, uint32_t bytes)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
-	uint32_t samples;
-
-	samples = bytes / audio_stream_sample_bytes(&hd->local_buffer->stream);
 
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
-		dma_buffer_copy_from(hd->dma_buffer, bytes,
-				     hd->local_buffer, bytes,
-				     hd->process, samples);
+		dma_buffer_copy_from(hd->dma_buffer, hd->local_buffer,
+				     hd->process, bytes);
 	else
-		dma_buffer_copy_to(hd->local_buffer, bytes,
-				   hd->dma_buffer, bytes,
-				   hd->process, samples);
+		dma_buffer_copy_to(hd->local_buffer, hd->dma_buffer,
+				   hd->process, bytes);
 
 	dev->position += bytes;
 

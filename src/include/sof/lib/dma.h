@@ -607,14 +607,12 @@ typedef void (*dma_process)(const struct audio_stream *,
 			    struct audio_stream *, uint32_t);
 
 /* copies data from DMA buffer using provided processing function */
-void dma_buffer_copy_from(struct comp_buffer *source, uint32_t source_bytes,
-			  struct comp_buffer *sink, uint32_t sink_bytes,
-			  dma_process_func process, uint32_t samples);
+void dma_buffer_copy_from(struct comp_buffer *source, struct comp_buffer *sink,
+			  dma_process_func process, uint32_t source_bytes);
 
 /* copies data to DMA buffer using provided processing function */
-void dma_buffer_copy_to(struct comp_buffer *source, uint32_t source_bytes,
-			struct comp_buffer *sink, uint32_t sink_bytes,
-			dma_process_func process, uint32_t samples);
+void dma_buffer_copy_to(struct comp_buffer *source, struct comp_buffer *sink,
+			dma_process_func process, uint32_t sink_bytes);
 
 /* generic DMA DSP <-> Host copier */
 

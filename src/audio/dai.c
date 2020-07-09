@@ -73,9 +73,6 @@ static void dai_dma_cb(void *arg, enum notify_id type, void *data)
 	struct comp_dev *dev = arg;
 	struct dai_data *dd = comp_get_drvdata(dev);
 	uint32_t bytes = next->elem.size;
-	uint32_t sink_bytes;
-	uint32_t samples = bytes /
-			   audio_stream_sample_bytes(&dd->dma_buffer->stream);
 	void *buffer_ptr;
 
 	comp_dbg(dev, "dai_dma_cb()");
@@ -101,18 +98,14 @@ static void dai_dma_cb(void *arg, enum notify_id type, void *data)
 		return;
 	}
 
-	sink_bytes = samples *
-		     audio_stream_sample_bytes(&dd->local_buffer->stream);
-
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
-		dma_buffer_copy_to(dd->local_buffer, sink_bytes,
-				   dd->dma_buffer, bytes,
-				   dd->process, samples);
+		dma_buffer_copy_to(dd->local_buffer, dd->dma_buffer,
+				   dd->process, bytes);
 
 		buffer_ptr = dd->local_buffer->stream.r_ptr;
 	} else {
-		dma_buffer_copy_from(dd->dma_buffer, bytes, dd->local_buffer,
-				     sink_bytes, dd->process, samples);
+		dma_buffer_copy_from(dd->dma_buffer, dd->local_buffer,
+				     dd->process, bytes);
 
 		buffer_ptr = dd->local_buffer->stream.w_ptr;
 	}
