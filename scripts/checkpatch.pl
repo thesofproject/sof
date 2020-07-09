@@ -2309,6 +2309,7 @@ sub process {
 	my $commit_log_has_diff = 0;
 	my $reported_maintainer_file = 0;
 	my $reported_abi_update = 0;
+	my $last_abi_file = '';
 	my $non_utf8_charset = 0;
 
 	my $last_blank_line = 0;
@@ -3321,10 +3322,11 @@ sub process {
 		}
 
 # UAPI ABI version
-		if ($SOF &&
+		if ($SOF && $realfile ne $last_abi_file &&
 		    $realfile =~ m@^(src/include/ipc/|src/include/kernel/|src/include/user/)@ &&
 		    $rawline =~ /^\+/ &&
 		    !$reported_abi_update) {
+			$last_abi_file = $realfile;
 			WARN("ABI update ??",
 			     "Please update ABI in accordance with http://semver.org\n" . $hereprev);
 		}
