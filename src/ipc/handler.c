@@ -59,35 +59,6 @@
 #define iGS(x) ((x) & SOF_GLB_TYPE_MASK)
 #define iCS(x) ((x) & SOF_CMD_TYPE_MASK)
 
-/*
- * IPC ABI version compatibility rules :-
- *
- * 1) FW binaries will only support one MAJOR ABI version which is advertised
- *    to host at FW boot.
- *
- * 2) Host drivers will support the current and older MAJOR ABI versions of
- *    the IPC ABI (up to a certain age to be determined by market information).
- *
- * 3) MINOR and PATCH ABI versions can differ between host and FW but must be
- *    backwards compatible on both host and FW.
- *
- *    IPC messages sizes can be different for sender and receiver if MINOR or
- *    PATCH ABI versions differ as new fields can be added to the end of
- *    messages.
- *
- *    i) Sender > receiver: receiver only copies it's own ABI structure size.
- *
- *    ii) Receiver > sender: receiver copies its's own ABI size and zero pads
- *                           new fields. i.e. new structure fields must be non
- *                           zero to be activated.
- *
- *    Guidelines for extending ABI compatible messages :-
- *
- *    i) Use reserved fields.
- *    ii) Grow structure at the end.
- *    iii) Iff (i) and (ii) are not possible then MAJOR ABI is bumped.
- */
-
 #define _IPC_COPY_CMD(rx, tx, rx_size)					\
 	do {								\
 		int ___ret;						\
