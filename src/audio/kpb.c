@@ -746,7 +746,8 @@ static int kpb_copy(struct comp_dev *dev)
 			buffer_invalidate(source, copy_bytes);
 			ret = kpb_buffer_data(dev, source, copy_bytes);
 			dd->buffered_while_draining += copy_bytes;
-
+			kpb->hd.free -= MIN(kpb->hd.buffer_size -
+					    kpb->hd.free, copy_bytes);
 			if (ret) {
 				comp_err(dev, "kpb_copy(): internal buffering failed.");
 				goto out;
