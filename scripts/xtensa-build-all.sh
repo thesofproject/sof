@@ -6,7 +6,7 @@
 set -e
 
 SUPPORTED_PLATFORMS=(byt cht bdw hsw apl skl kbl cnl sue icl jsl \
-                    imx8 imx8x imx8m tgl)
+                    imx8 imx8x imx8m tgl imx8ulp)
 BUILD_ROM=no
 BUILD_DEBUG=no
 BUILD_FORCE_UP=no
@@ -234,6 +234,13 @@ do
 			HOST="xtensa-imx8m-elf"
 			XTENSA_TOOLS_VERSION="RF-2016.4-linux"
 			;;
+                imx8ulp)
+                        PLATFORM="imx8ulp"
+                        ARCH="xtensa"
+                        XTENSA_CORE="hifi4_nxp2_s7_v1_1a_prod"
+                        HOST="xtensa-imx8ulp-elf"
+                        XTENSA_TOOLS_VERSION="RF-2016.4-linux"
+                        ;;
 
 	esac
 	ROOT="$pwd/../xtensa-root/$HOST"
