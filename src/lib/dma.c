@@ -189,11 +189,14 @@ void dma_sg_free(struct dma_sg_elem_array *elem_array)
 	dma_sg_init(elem_array);
 }
 
-void dma_buffer_copy_from(struct comp_buffer *source, uint32_t source_bytes,
-			  struct comp_buffer *sink, uint32_t sink_bytes,
-			  dma_process_func process, uint32_t samples)
+void dma_buffer_copy_from(struct comp_buffer *source, struct comp_buffer *sink,
+			  dma_process_func process, uint32_t source_bytes)
 {
 	struct audio_stream *istream = &source->stream;
+	uint32_t samples = source_bytes /
+			   audio_stream_sample_bytes(istream);
+	uint32_t sink_bytes = audio_stream_sample_bytes(&sink->stream) *
+			      samples;
 
 	/* source buffer contains data copied by DMA */
 	audio_stream_invalidate(istream, source_bytes);
@@ -209,11 +212,14 @@ void dma_buffer_copy_from(struct comp_buffer *source, uint32_t source_bytes,
 	comp_update_buffer_produce(sink, sink_bytes);
 }
 
-void dma_buffer_copy_to(struct comp_buffer *source, uint32_t source_bytes,
-			struct comp_buffer *sink, uint32_t sink_bytes,
-			dma_process_func process, uint32_t samples)
+void dma_buffer_copy_to(struct comp_buffer *source, struct comp_buffer *sink,
+			dma_process_func process, uint32_t sink_bytes)
 {
 	struct audio_stream *ostream = &sink->stream;
+	uint32_t samples = sink_bytes /
+			   audio_stream_sample_bytes(ostream);
+	uint32_t source_bytes = audio_stream_sample_bytes(&source->stream) *
+			      samples;
 
 	buffer_invalidate(source, source_bytes);
 
