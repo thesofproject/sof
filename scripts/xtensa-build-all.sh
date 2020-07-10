@@ -65,7 +65,7 @@ for arg in "$@"; do
 			break
 		fi
 	done
-	if [ $platform == "none" ]; then
+	if [ "$platform" == "none" ]; then
 		echo "Error: Unknown platform specified: $arg"
 		echo "Supported platforms are: ${SUPPORTED_PLATFORMS[*]}"
 		exit 1
@@ -238,13 +238,13 @@ do
 	esac
 	ROOT="$pwd/../xtensa-root/$HOST"
 
-	if [ $XTENSA_TOOLS_ROOT ]
+	if [ -n "$XTENSA_TOOLS_ROOT" ]
 	then
 		XTENSA_TOOLS_DIR="$XTENSA_TOOLS_ROOT/install/tools/$XTENSA_TOOLS_VERSION"
 		XTENSA_BUILDS_DIR="$XTENSA_TOOLS_ROOT/install/builds/$XTENSA_TOOLS_VERSION"
 
 		# make sure the required version of xtensa tools is installed
-		if [ -d $XTENSA_TOOLS_DIR ]
+		if [ -d "$XTENSA_TOOLS_DIR" ]
 			then
 				XCC="xt-xcc"
 				XTOBJCOPY="xt-objcopy"
@@ -277,17 +277,17 @@ do
 	fi
 
 	BUILD_DIR=build_${platform}_${COMPILER}
-	echo "Build in "$BUILD_DIR
+	printf "Build in %s\n" "$BUILD_DIR"
 
 	# only delete binary related to this build
-	rm -fr $BUILD_DIR
-	mkdir $BUILD_DIR
-	cd $BUILD_DIR
+	rm -fr "$BUILD_DIR"
+	mkdir "$BUILD_DIR"
+	cd "$BUILD_DIR"
 
 	( set -x # log the main commands and their parameters
-	cmake -DTOOLCHAIN=$TOOLCHAIN \
-		-DROOT_DIR=$ROOT \
-		${PRIVATE_KEY_OPTION} \
+	cmake -DTOOLCHAIN="$TOOLCHAIN" \
+		-DROOT_DIR="$ROOT" \
+		"${PRIVATE_KEY_OPTION}" \
 		..
 
 	make ${PLATFORM}${DEFCONFIG_PATCH}_defconfig
