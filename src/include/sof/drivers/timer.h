@@ -9,6 +9,7 @@
 #define __SOF_DRIVERS_TIMER_H__
 
 #include <arch/drivers/timer.h>
+#include <sof/lib/cpu.h>
 #include <sof/sof.h>
 #include <stdint.h>
 
@@ -33,7 +34,7 @@ static inline struct timer *timer_get(void)
 
 static inline struct timer *cpu_timer_get(void)
 {
-	return sof_get()->cpu_timer;
+	return &(sof_get()->cpu_timers[cpu_get_id()]);
 }
 
 static inline int64_t timer_set(struct timer *timer, uint64_t ticks)
