@@ -256,6 +256,7 @@ static void host_dma_cb(void *arg, enum notify_id type, void *data)
 static uint32_t host_get_copy_bytes_one_shot(struct comp_dev *dev)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
+	struct audio_stream *stream = &hd->local_buffer->stream;
 	struct dma_sg_elem *local_elem = hd->config.elem_array.elems;
 	uint32_t copy_bytes = 0;
 	uint32_t split_value;
@@ -265,9 +266,9 @@ static uint32_t host_get_copy_bytes_one_shot(struct comp_dev *dev)
 
 	/* calculate minimum size to copy */
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
-		copy_bytes = audio_stream_get_free_bytes(&hd->local_buffer->stream);
+		copy_bytes = audio_stream_get_free_bytes(stream);
 	else
-		copy_bytes = audio_stream_get_avail_bytes(&hd->local_buffer->stream);
+		copy_bytes = audio_stream_get_avail_bytes(stream);
 
 	buffer_unlock(hd->local_buffer, flags);
 
@@ -331,6 +332,7 @@ static int host_copy_one_shot(struct comp_dev *dev)
 static uint32_t host_get_copy_bytes_normal(struct comp_dev *dev)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
+	struct audio_stream *stream = &hd->local_buffer->stream;
 	uint32_t avail_bytes = 0;
 	uint32_t free_bytes = 0;
 	uint32_t copy_bytes = 0;
@@ -349,16 +351,17 @@ static uint32_t host_get_copy_bytes_normal(struct comp_dev *dev)
 	buffer_lock(hd->local_buffer, &flags);
 
 	/* calculate minimum size to copy */
-	if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
+	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
+		copy_bytes = audio_stream_get_free_bytes(stream);
+		copy_bytes = MIN(copy_bytes, avail_bytes);
 		/* limit bytes per copy to one period for the whole pipeline
 		 * in order to avoid high load spike
 		 */
-		copy_bytes = MIN(hd->period_bytes,
-				 MIN(avail_bytes,
-				     audio_stream_get_free_bytes(&hd->local_buffer->stream)));
-	else
-		copy_bytes = MIN(
-			audio_stream_get_avail_bytes(&hd->local_buffer->stream), free_bytes);
+		copy_bytes = MIN(copy_bytes, hd->period_bytes);
+	} else {
+		copy_bytes = audio_stream_get_avail_bytes(stream);
+		copy_bytes = MIN(copy_bytes, free_bytes);
+	}
 
 	buffer_unlock(hd->local_buffer, flags);
 
