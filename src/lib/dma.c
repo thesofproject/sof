@@ -189,20 +189,21 @@ void dma_sg_free(struct dma_sg_elem_array *elem_array)
 	dma_sg_init(elem_array);
 }
 
-void dma_buffer_copy_from(struct comp_buffer *source, struct comp_buffer *sink,
-			  dma_process_func process, uint32_t source_bytes)
+int dma_buffer_copy_from(struct comp_buffer *source, struct comp_buffer *sink,
+			 dma_process_func process, uint32_t source_bytes)
 {
 	struct audio_stream *istream = &source->stream;
 	uint32_t samples = source_bytes /
 			   audio_stream_sample_bytes(istream);
 	uint32_t sink_bytes = audio_stream_sample_bytes(&sink->stream) *
 			      samples;
+	int ret;
 
 	/* source buffer contains data copied by DMA */
 	audio_stream_invalidate(istream, source_bytes);
 
 	/* process data */
-	process(istream, 0, &sink->stream, 0, samples);
+	ret = process(istream, 0, &sink->stream, 0, samples);
 
 	buffer_writeback(sink, sink_bytes);
 
@@ -212,21 +213,24 @@ void dma_buffer_copy_from(struct comp_buffer *source, struct comp_buffer *sink,
 	 */
 	audio_stream_consume(istream, source_bytes);
 	comp_update_buffer_produce(sink, sink_bytes);
+
+	return ret;
 }
 
-void dma_buffer_copy_to(struct comp_buffer *source, struct comp_buffer *sink,
-			dma_process_func process, uint32_t sink_bytes)
+int dma_buffer_copy_to(struct comp_buffer *source, struct comp_buffer *sink,
+		       dma_process_func process, uint32_t sink_bytes)
 {
 	struct audio_stream *ostream = &sink->stream;
 	uint32_t samples = sink_bytes /
 			   audio_stream_sample_bytes(ostream);
 	uint32_t source_bytes = audio_stream_sample_bytes(&source->stream) *
 			      samples;
+	int ret;
 
 	buffer_invalidate(source, source_bytes);
 
 	/* process data */
-	process(&source->stream, 0, ostream, 0, samples);
+	ret = process(&source->stream, 0, ostream, 0, samples);
 
 	/* sink buffer contains data meant to copied to DMA */
 	audio_stream_writeback(ostream, sink_bytes);
@@ -237,4 +241,6 @@ void dma_buffer_copy_to(struct comp_buffer *source, struct comp_buffer *sink,
 	 */
 	audio_stream_produce(ostream, sink_bytes);
 	comp_update_buffer_consume(source, source_bytes);
+
+	return ret;
 }
