@@ -14,9 +14,9 @@
 #include <sof/audio/pcm_converter.h>
 #include <sof/debug/panic.h>
 
-void pcm_convert_as_linear(const struct audio_stream *source, uint32_t ioffset,
-			   struct audio_stream *sink, uint32_t ooffset,
-			   uint32_t samples, pcm_converter_lin_func converter)
+int pcm_convert_as_linear(const struct audio_stream *source, uint32_t ioffset,
+			  struct audio_stream *sink, uint32_t ooffset,
+			  uint32_t samples, pcm_converter_lin_func converter)
 {
 	const int s_size_in = audio_stream_sample_bytes(source);
 	const int s_size_out = audio_stream_sample_bytes(sink);
@@ -30,8 +30,11 @@ void pcm_convert_as_linear(const struct audio_stream *source, uint32_t ioffset,
 	int chunk;
 	int N1, N2;
 
-	assert(audio_stream_get_avail_samples(source) >= samples + ioffset);
-	assert(audio_stream_get_free_samples(sink) >= samples + ooffset);
+	/* assert enough avail/free samples in source and sink buffer */
+	if (audio_stream_get_avail_samples(source) < samples + ioffset)
+		return -EINVAL;
+	if (audio_stream_get_free_samples(sink) < samples + ooffset)
+		return -EINVAL;
 
 	while (i < samples) {
 		/* calculate chunk size */
@@ -51,4 +54,6 @@ void pcm_convert_as_linear(const struct audio_stream *source, uint32_t ioffset,
 		w_ptr = audio_stream_wrap(sink, w_ptr + chunk * s_size_out);
 		i += chunk;
 	}
+
+	return samples;
 }

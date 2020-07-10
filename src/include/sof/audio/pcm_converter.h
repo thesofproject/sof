@@ -41,10 +41,11 @@ struct audio_stream;
  * \param sink output buffer, write pointer is not modified
  * \param ooffset offset to first sample in sink stream
  * \param samples number of samples to convert
+ * \return error code or number of processed samples.
  */
-typedef void (*pcm_converter_func)(const struct audio_stream *source,
-				   uint32_t ioffset, struct audio_stream *sink,
-				   uint32_t ooffset, uint32_t samples);
+typedef int (*pcm_converter_func)(const struct audio_stream *source,
+				  uint32_t ioffset, struct audio_stream *sink,
+				  uint32_t ooffset, uint32_t samples);
 
 /**
  * \brief PCM conversion function interface for data in linear buffer
@@ -100,9 +101,10 @@ pcm_get_conversion_function(enum sof_ipc_frame in,
  * \param ooffset offset to first sample in sink stream
  * \param samples number of samples to convert
  * \param converter core conversion function working on linear memory regions
+ * \return error code or number of processed samples
  */
-void pcm_convert_as_linear(const struct audio_stream *source, uint32_t ioffset,
-			   struct audio_stream *sink, uint32_t ooffset,
-			   uint32_t samples, pcm_converter_lin_func converter);
+int pcm_convert_as_linear(const struct audio_stream *source, uint32_t ioffset,
+			  struct audio_stream *sink, uint32_t ooffset,
+			  uint32_t samples, pcm_converter_lin_func converter);
 
 #endif /* __SOF_AUDIO_PCM_CONVERTER_H__ */

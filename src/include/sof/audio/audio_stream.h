@@ -550,8 +550,9 @@ audio_stream_frames_without_wrap(const struct audio_stream *source,
  * @param sink Sink buffer.
  * @param ooffset Offset (in samples) in sink buffer to start writing to.
  * @param samples Number of samples to copy.
+ * @return number of processed samples.
  */
-static inline void audio_stream_copy(const struct audio_stream *source,
+static inline int audio_stream_copy(const struct audio_stream *source,
 				     uint32_t ioffset,
 				     struct audio_stream *sink,
 				     uint32_t ooffset, uint32_t samples)
@@ -582,6 +583,8 @@ static inline void audio_stream_copy(const struct audio_stream *source,
 		src = audio_stream_wrap(source, src);
 		snk = audio_stream_wrap(sink, snk);
 	}
+
+	return samples;
 }
 
 /** @}*/
