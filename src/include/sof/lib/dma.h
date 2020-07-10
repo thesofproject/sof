@@ -222,9 +222,9 @@ struct dma_info {
 };
 
 struct audio_stream;
-typedef void (*dma_process_func)(const struct audio_stream *source,
-				 uint32_t ioffset, struct audio_stream *sink,
-				 uint32_t ooffset, uint32_t frames);
+typedef int (*dma_process_func)(const struct audio_stream *source,
+				uint32_t ioffset, struct audio_stream *sink,
+				uint32_t ooffset, uint32_t frames);
 
 /**
  * \brief API to initialize a platform DMA controllers.

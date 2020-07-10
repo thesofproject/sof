@@ -45,9 +45,9 @@ static void pcm_converter_setup_circular(const struct audio_stream *source)
  * \param[in,out] sink Destination buffer.
  * \param[in] samples Number of samples to process.
  */
-static void pcm_convert_s16_to_s24(const struct audio_stream *source,
-				   uint32_t ioffset, struct audio_stream *sink,
-				   uint32_t ooffset, uint32_t samples)
+static int pcm_convert_s16_to_s24(const struct audio_stream *source,
+				  uint32_t ioffset, struct audio_stream *sink,
+				  uint32_t ooffset, uint32_t samples)
 {
 	ae_int16 *in = audio_stream_read_frag(source, ioffset, sizeof(int16_t));
 	ae_int32 *out = audio_stream_write_frag(sink, ooffset, sizeof(int32_t));
@@ -59,7 +59,7 @@ static void pcm_convert_s16_to_s24(const struct audio_stream *source,
 
 	/* nothing to do */
 	if (!samples)
-		return;
+		return samples;
 
 	/* required alignment for AE_L16X4_XC */
 	while (!IS_ALIGNED((uintptr_t)in, 8)) {
@@ -77,7 +77,7 @@ static void pcm_convert_s16_to_s24(const struct audio_stream *source,
 			    sizeof(ae_int32));
 
 		if (++i == samples)
-			return;
+			return samples;
 	}
 
 	in16x4 = (ae_int16x4 *)in;
@@ -123,6 +123,8 @@ static void pcm_convert_s16_to_s24(const struct audio_stream *source,
 		AE_S32_L_XC(AE_SRAI32(AE_CVT32X2F16_32(sample), 8), out,
 			    sizeof(ae_int32));
 	}
+
+	return samples;
 }
 
 /**
@@ -146,10 +148,11 @@ static ae_int32x2 pcm_shift_s24_to_s16(ae_int32x2 sample)
  * \param[in,out] source Source buffer.
  * \param[in,out] sink Destination buffer.
  * \param[in] samples Number of samples to process.
+ * \return error code or number of processed samples.
  */
-static void pcm_convert_s24_to_s16(const struct audio_stream *source,
-				   uint32_t ioffset, struct audio_stream *sink,
-				   uint32_t ooffset, uint32_t samples)
+static int pcm_convert_s24_to_s16(const struct audio_stream *source,
+				  uint32_t ioffset, struct audio_stream *sink,
+				  uint32_t ooffset, uint32_t samples)
 {
 	ae_int32x2 *in = audio_stream_read_frag(source, ioffset,
 						sizeof(int32_t));
@@ -164,7 +167,7 @@ static void pcm_convert_s24_to_s16(const struct audio_stream *source,
 
 	/* nothing to do */
 	if (!samples)
-		return;
+		return samples;
 
 	/* required alignment for AE_L32X2_XC */
 	if (!IS_ALIGNED((uintptr_t)in, 8)) {
@@ -236,7 +239,7 @@ static void pcm_convert_s24_to_s16(const struct audio_stream *source,
 
 		/* no more samples to process */
 		if (leftover == 1)
-			return;
+			return samples;
 
 		/* store one 16 bit sample */
 		AE_S16_0_XC(AE_MOVAD16_0(sample), (ae_int16 *)out,
@@ -244,6 +247,8 @@ static void pcm_convert_s24_to_s16(const struct audio_stream *source,
 
 		leftover -= 2;
 	}
+
+	return samples;
 }
 
 #endif /* CONFIG_FORMAT_S16LE && CONFIG_FORMAT_S24LE */
@@ -255,10 +260,11 @@ static void pcm_convert_s24_to_s16(const struct audio_stream *source,
  * \param[in,out] source Source buffer.
  * \param[in,out] sink Destination buffer.
  * \param[in] samples Number of samples to process.
+ * \return error code or number of processed samples.
  */
-static void pcm_convert_s16_to_s32(const struct audio_stream *source,
-				   uint32_t ioffset, struct audio_stream *sink,
-				   uint32_t ooffset, uint32_t samples)
+static int pcm_convert_s16_to_s32(const struct audio_stream *source,
+				  uint32_t ioffset, struct audio_stream *sink,
+				  uint32_t ooffset, uint32_t samples)
 {
 	ae_int16 *in = audio_stream_read_frag(source, ioffset,
 					      sizeof(int16_t));
@@ -272,7 +278,7 @@ static void pcm_convert_s16_to_s32(const struct audio_stream *source,
 
 	/* nothing to do */
 	if (!samples)
-		return;
+		return samples;
 
 	/* required alignment for AE_L16X4_XC */
 	while (!IS_ALIGNED((uintptr_t)in, 8)) {
@@ -289,7 +295,7 @@ static void pcm_convert_s16_to_s32(const struct audio_stream *source,
 		AE_S32_L_XC(AE_CVT32X2F16_32(sample), out, sizeof(ae_int32));
 
 		if (++i == samples)
-			return;
+			return samples;
 	}
 
 	in16x4 = (ae_int16x4 *)in;
@@ -332,6 +338,8 @@ static void pcm_convert_s16_to_s32(const struct audio_stream *source,
 		/* store one 32 bit sample */
 		AE_S32_L_XC(AE_CVT32X2F16_32(sample), out, sizeof(ae_int32));
 	}
+
+	return samples;
 }
 
 /**
@@ -339,10 +347,11 @@ static void pcm_convert_s16_to_s32(const struct audio_stream *source,
  * \param[in,out] source Source buffer.
  * \param[in,out] sink Destination buffer.
  * \param[in] samples Number of samples to process.
+ * \return error code or number of processed samples.
  */
-static void pcm_convert_s32_to_s16(const struct audio_stream *source,
-				   uint32_t ioffset, struct audio_stream *sink,
-				   uint32_t ooffset, uint32_t samples)
+static int pcm_convert_s32_to_s16(const struct audio_stream *source,
+				  uint32_t ioffset, struct audio_stream *sink,
+				  uint32_t ooffset, uint32_t samples)
 {
 	ae_int32x2 *in = audio_stream_read_frag(source, ioffset,
 						sizeof(int32_t));
@@ -357,7 +366,7 @@ static void pcm_convert_s32_to_s16(const struct audio_stream *source,
 
 	/* nothing to do */
 	if (!samples)
-		return;
+		return samples;
 
 	/* required alignment for AE_L32X2_XC */
 	if (!IS_ALIGNED((uintptr_t)in, 8)) {
@@ -425,7 +434,7 @@ static void pcm_convert_s32_to_s16(const struct audio_stream *source,
 
 		/* no more samples to process */
 		if (leftover == 1)
-			return;
+			return samples;
 
 		/* store one 16 bit sample */
 		AE_S16_0_XC(AE_MOVAD16_0(sample), (ae_int16 *)out,
@@ -433,6 +442,8 @@ static void pcm_convert_s32_to_s16(const struct audio_stream *source,
 
 		leftover -= 2;
 	}
+
+	return samples;
 }
 
 #endif /* CONFIG_FORMAT_S16LE && CONFIG_FORMAT_S32LE */
@@ -444,10 +455,11 @@ static void pcm_convert_s32_to_s16(const struct audio_stream *source,
  * \param[in,out] source Source buffer.
  * \param[in,out] sink Destination buffer.
  * \param[in] samples Number of samples to process.
+ * \return error code or number of processed samples.
  */
-static void pcm_convert_s24_to_s32(const struct audio_stream *source,
-				   uint32_t ioffset, struct audio_stream *sink,
-				   uint32_t ooffset, uint32_t samples)
+static int pcm_convert_s24_to_s32(const struct audio_stream *source,
+				  uint32_t ioffset, struct audio_stream *sink,
+				  uint32_t ooffset, uint32_t samples)
 {
 	ae_int32x2 *in = audio_stream_read_frag(source, ioffset,
 						sizeof(int32_t));
@@ -459,7 +471,7 @@ static void pcm_convert_s24_to_s32(const struct audio_stream *source,
 
 	/* nothing to do */
 	if (!samples)
-		return;
+		return samples;
 
 	/* required alignment for AE_L32X2_XC */
 	if (!IS_ALIGNED((uintptr_t)in, 8)) {
@@ -499,7 +511,7 @@ static void pcm_convert_s24_to_s32(const struct audio_stream *source,
 
 	/* no more samples to process */
 	if (i == samples)
-		return;
+		return samples;
 
 	/* set source as circular buffer */
 	pcm_converter_setup_circular(source);
@@ -512,6 +524,8 @@ static void pcm_convert_s24_to_s32(const struct audio_stream *source,
 
 	/* shift left and store one 32 bit sample */
 	AE_S32_L_XC(AE_SLAI32(sample, 8), (ae_int32 *)out, 0);
+
+	return samples;
 }
 
 /**
@@ -534,10 +548,11 @@ static ae_int32x2 pcm_shift_s32_to_s24(ae_int32x2 sample)
  * \param[in,out] source Source buffer.
  * \param[in,out] sink Destination buffer.
  * \param[in] samples Number of samples to process.
+ * \return error code or number of processed samples.
  */
-static void pcm_convert_s32_to_s24(const struct audio_stream *source,
-				   uint32_t ioffset, struct audio_stream *sink,
-				   uint32_t ooffset, uint32_t samples)
+static int pcm_convert_s32_to_s24(const struct audio_stream *source,
+				  uint32_t ioffset, struct audio_stream *sink,
+				  uint32_t ooffset, uint32_t samples)
 {
 	ae_int32x2 *in = audio_stream_read_frag(source, ioffset,
 						sizeof(int32_t));
@@ -549,7 +564,7 @@ static void pcm_convert_s32_to_s24(const struct audio_stream *source,
 
 	/* nothing to do */
 	if (!samples)
-		return;
+		return samples;
 
 	/* required alignment for AE_L32X2_XC */
 	if (!IS_ALIGNED((uintptr_t)in, 8)) {
@@ -590,7 +605,7 @@ static void pcm_convert_s32_to_s24(const struct audio_stream *source,
 
 	/* no more samples to process */
 	if (i == samples)
-		return;
+		return samples;
 
 	/* set source as circular buffer */
 	pcm_converter_setup_circular(source);
@@ -604,6 +619,8 @@ static void pcm_convert_s32_to_s24(const struct audio_stream *source,
 	/* shift right and store one 32 bit sample */
 	sample = pcm_shift_s32_to_s24(sample);
 	AE_S32_L_XC(sample, (ae_int32 *)out, 0);
+
+	return samples;
 }
 
 #endif /* CONFIG_FORMAT_S24LE && CONFIG_FORMAT_S32LE */
@@ -675,13 +692,14 @@ static void pcm_convert_f_to_s16_lin(const void *psrc, void *pdst,
  * \param[in] source Source buffer.
  * \param[in,out] sink Destination buffer.
  * \param[in] samples Number of samples to process.
+ * \return error code or number of processed samples.
  */
-static void pcm_convert_s16_to_f(const struct audio_stream *source,
-				 uint32_t ioffset, struct audio_stream *sink,
-				 uint32_t ooffset, uint32_t samples)
+static int pcm_convert_s16_to_f(const struct audio_stream *source,
+				uint32_t ioffset, struct audio_stream *sink,
+				uint32_t ooffset, uint32_t samples)
 {
-	pcm_convert_as_linear(source, ioffset, sink, ooffset, samples,
-			      pcm_convert_s16_to_f_lin);
+	return pcm_convert_as_linear(source, ioffset, sink, ooffset, samples,
+				     pcm_convert_s16_to_f_lin);
 }
 
 /**
@@ -689,13 +707,14 @@ static void pcm_convert_s16_to_f(const struct audio_stream *source,
  * \param[in] source Source buffer.
  * \param[in,out] sink Destination buffer.
  * \param[in] samples Number of samples to process.
+ * \return error code or number of processed samples.
  */
-static void pcm_convert_f_to_s16(const struct audio_stream *source,
-				 uint32_t ioffset, struct audio_stream *sink,
-				 uint32_t ooffset, uint32_t samples)
+static int pcm_convert_f_to_s16(const struct audio_stream *source,
+				uint32_t ioffset, struct audio_stream *sink,
+				uint32_t ooffset, uint32_t samples)
 {
-	pcm_convert_as_linear(source, ioffset, sink, ooffset, samples,
-			      pcm_convert_f_to_s16_lin);
+	return pcm_convert_as_linear(source, ioffset, sink, ooffset, samples,
+				     pcm_convert_f_to_s16_lin);
 }
 #endif /* CONFIG_FORMAT_FLOAT && CONFIG_FORMAT_S16LE */
 
@@ -773,13 +792,14 @@ static void pcm_convert_f_to_s24_lin(const void *psrc, void *pdst,
  * \param[in] psrc source linear buffer.
  * \param[out] pdst destination linear buffer.
  * \param[in] samples Number of samples to process.
+ * \return error code or number of processed samples.
  */
-static void pcm_convert_s24_to_f(const struct audio_stream *source,
-				 uint32_t ioffset, struct audio_stream *sink,
-				 uint32_t ooffset, uint32_t samples)
+static int pcm_convert_s24_to_f(const struct audio_stream *source,
+				uint32_t ioffset, struct audio_stream *sink,
+				uint32_t ooffset, uint32_t samples)
 {
-	pcm_convert_as_linear(source, ioffset, sink, ooffset, samples,
-			      pcm_convert_s24_to_f_lin);
+	return pcm_convert_as_linear(source, ioffset, sink, ooffset, samples,
+				     pcm_convert_s24_to_f_lin);
 }
 
 /**
@@ -787,13 +807,14 @@ static void pcm_convert_s24_to_f(const struct audio_stream *source,
  * \param[in] psrc source linear buffer.
  * \param[out] pdst destination linear buffer.
  * \param[in] samples Number of samples to process.
+ * \return error code or number of processed samples.
  */
-static void pcm_convert_f_to_s24(const struct audio_stream *source,
-				 uint32_t ioffset, struct audio_stream *sink,
-				 uint32_t ooffset, uint32_t samples)
+static int pcm_convert_f_to_s24(const struct audio_stream *source,
+				uint32_t ioffset, struct audio_stream *sink,
+				uint32_t ooffset, uint32_t samples)
 {
-	pcm_convert_as_linear(source, ioffset, sink, ooffset, samples,
-			      pcm_convert_f_to_s24_lin);
+	return pcm_convert_as_linear(source, ioffset, sink, ooffset, samples,
+				     pcm_convert_f_to_s24_lin);
 }
 #endif /* CONFIG_FORMAT_FLOAT && CONFIG_FORMAT_24LE */
 
@@ -868,13 +889,14 @@ static void pcm_convert_f_to_s32_lin(const void *psrc, void *pdst,
  * \param[in] source Source buffer.
  * \param[in,out] sink Destination buffer.
  * \param[in] samples Number of samples to process.
+ * \return error code or number of processed samples.
  */
-static void pcm_convert_s32_to_f(const struct audio_stream *source,
-				 uint32_t ioffset, struct audio_stream *sink,
-				 uint32_t ooffset, uint32_t samples)
+static int pcm_convert_s32_to_f(const struct audio_stream *source,
+				uint32_t ioffset, struct audio_stream *sink,
+				uint32_t ooffset, uint32_t samples)
 {
-	pcm_convert_as_linear(source, ioffset, sink, ooffset, samples,
-			      pcm_convert_s32_to_f_lin);
+	return pcm_convert_as_linear(source, ioffset, sink, ooffset, samples,
+				     pcm_convert_s32_to_f_lin);
 }
 
 /**
@@ -882,13 +904,14 @@ static void pcm_convert_s32_to_f(const struct audio_stream *source,
  * \param[in] source Source buffer.
  * \param[in,out] sink Destination buffer.
  * \param[in] samples Number of samples to process.
+ * \return error code or number of processed samples.
  */
-static void pcm_convert_f_to_s32(const struct audio_stream *source,
-				 uint32_t ioffset, struct audio_stream *sink,
-				 uint32_t ooffset, uint32_t samples)
+static int pcm_convert_f_to_s32(const struct audio_stream *source,
+				uint32_t ioffset, struct audio_stream *sink,
+				uint32_t ooffset, uint32_t samples)
 {
-	pcm_convert_as_linear(source, ioffset, sink, ooffset, samples,
-			      pcm_convert_f_to_s32_lin);
+	return pcm_convert_as_linear(source, ioffset, sink, ooffset, samples,
+				     pcm_convert_f_to_s32_lin);
 }
 #endif /* CONFIG_FORMAT_FLOAT && CONFIG_FORMAT_32LE */
 #endif /* XCHAL_HAVE_FP */
