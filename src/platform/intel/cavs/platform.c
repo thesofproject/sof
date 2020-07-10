@@ -265,10 +265,7 @@ SHARED_DATA struct timer timer = {
 	.irq_name = irq_name_level2,
 };
 
-SHARED_DATA struct timer arch_timer = {
-	.id = TIMER1, /* internal timer */
-	.irq = IRQ_NUM_TIMER2,
-};
+SHARED_DATA struct timer arch_timers[PLATFORM_CORE_COUNT];
 
 #if CONFIG_DW_SPI
 
@@ -363,7 +360,13 @@ int platform_init(struct sof *sof)
 	int i;
 
 	sof->platform_timer = cache_to_uncache(&timer);
-	sof->cpu_timer = cache_to_uncache(&arch_timer);
+	sof->cpu_timers = (struct timer *)cache_to_uncache(&arch_timers);
+
+	for (i = 0; i < PLATFORM_CORE_COUNT; i++)
+		sof->cpu_timers[i] = (struct timer) {
+			.id = TIMER1, /* internal timer */
+			.irq = IRQ_NUM_TIMER2,
+		};
 
 	/* Turn off memory for all unused cores */
 	for (i = 0; i < PLATFORM_CORE_COUNT; i++)
