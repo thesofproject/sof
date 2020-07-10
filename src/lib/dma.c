@@ -206,9 +206,11 @@ void dma_buffer_copy_from(struct comp_buffer *source, struct comp_buffer *sink,
 
 	buffer_writeback(sink, sink_bytes);
 
-	istream->r_ptr = (char *)istream->r_ptr + source_bytes;
-	istream->r_ptr = audio_stream_wrap(istream, istream->r_ptr);
-
+	/*
+	 * consume istream using audio_stream API because this buffer doesn't
+	 * appear in topology so notifier event is not needed
+	 */
+	audio_stream_consume(istream, source_bytes);
 	comp_update_buffer_produce(sink, sink_bytes);
 }
 
@@ -229,8 +231,10 @@ void dma_buffer_copy_to(struct comp_buffer *source, struct comp_buffer *sink,
 	/* sink buffer contains data meant to copied to DMA */
 	audio_stream_writeback(ostream, sink_bytes);
 
-	ostream->w_ptr = (char *)ostream->w_ptr + sink_bytes;
-	ostream->w_ptr = audio_stream_wrap(ostream, ostream->w_ptr);
-
+	/*
+	 * produce ostream using audio_stream API because this buffer doesn't
+	 * appear in topology so notifier event is not needed
+	 */
+	audio_stream_produce(ostream, sink_bytes);
 	comp_update_buffer_consume(source, source_bytes);
 }
