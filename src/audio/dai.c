@@ -73,7 +73,10 @@ static void dai_dma_cb(void *arg, enum notify_id type, void *data)
 	struct comp_dev *dev = arg;
 	struct dai_data *dd = comp_get_drvdata(dev);
 	uint32_t bytes = next->elem.size;
+	struct comp_buffer *source;
+	struct comp_buffer *sink;
 	void *buffer_ptr;
+	int ret;
 
 	comp_dbg(dev, "dai_dma_cb()");
 
@@ -99,15 +102,30 @@ static void dai_dma_cb(void *arg, enum notify_id type, void *data)
 	}
 
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
-		dma_buffer_copy_to(dd->local_buffer, dd->dma_buffer,
-				   dd->process, bytes);
+		ret = dma_buffer_copy_to(dd->local_buffer, dd->dma_buffer,
+					 dd->process, bytes);
 
 		buffer_ptr = dd->local_buffer->stream.r_ptr;
 	} else {
-		dma_buffer_copy_from(dd->dma_buffer, dd->local_buffer,
-				     dd->process, bytes);
+		ret = dma_buffer_copy_from(dd->dma_buffer, dd->local_buffer,
+					   dd->process, bytes);
 
 		buffer_ptr = dd->local_buffer->stream.w_ptr;
+	}
+
+	/* assert dma_buffer_copy succeed */
+	if (ret < 0) {
+		source = dev->direction == SOF_IPC_STREAM_PLAYBACK ?
+					dd->local_buffer : dd->dma_buffer;
+		sink = dev->direction == SOF_IPC_STREAM_PLAYBACK ?
+					dd->dma_buffer : dd->local_buffer;
+		comp_err(dev, "dai_dma_cb() dma buffer copy failed, dir %d bytes %d avail %d free %d",
+			 dev->direction, bytes,
+			 audio_stream_get_avail_samples(&source->stream) *
+				audio_stream_frame_bytes(&source->stream),
+			 audio_stream_get_free_samples(&sink->stream) *
+				audio_stream_frame_bytes(&sink->stream));
+		return;
 	}
 
 	/* update host position (in bytes offset) for drivers */
