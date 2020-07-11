@@ -77,6 +77,7 @@ if [ ${#PLATFORMS[@]} -eq 0 ];
 then
 	echo "Error: No platforms specified. Supported are: " \
 		"${SUPPORTED_PLATFORMS[*]}"
+	print_usage
 	exit 1
 fi
 
