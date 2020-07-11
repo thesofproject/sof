@@ -45,12 +45,13 @@ usage: xtensa-build.sh [options] platform(s)
        -v Verbose Makefile log
        -j n Set number of make build jobs. Jobs=#cores when no flag. \
 Infinte when not specified.
+	-m path to MEU tool. Switches signing step to use MEU instead of rimage.
        Supported platforms ${SUPPORTED_PLATFORMS[*]}
 EOF
 }
 
 # parse the args
-while getopts "rudj:ckvo:a" OPTION; do
+while getopts "rudj:ckvao:m:" OPTION; do
         case "$OPTION" in
 		r) BUILD_ROM=yes ;;
 		u) BUILD_FORCE_UP=yes ;;
@@ -61,15 +62,26 @@ while getopts "rudj:ckvo:a" OPTION; do
 		o) OVERRIDE_CONFIG=$OPTARG ;;
 		v) BUILD_VERBOSE='VERBOSE=1' ;;
 		a) PLATFORMS=("${SUPPORTED_PLATFORMS[@]}") ;;
+		m) MEU_TOOL_PATH=$OPTARG ;;
 		*) print_usage; exit 1 ;;
         esac
 done
 shift $((OPTIND-1))
 
+#default signing tool
+SIGNING_TOOL=RIMAGE
+
 if [ -n "${OVERRIDE_CONFIG}" ]
 then
 	OVERRIDE_CONFIG="src/arch/xtensa/configs/override/$OVERRIDE_CONFIG.config"
 	[ -f "${OVERRIDE_CONFIG}" ] || die 'Invalid override config file %s\n' "${OVERRIDE_CONFIG}"
+fi
+
+if [ -n "${MEU_TOOL_PATH}" ]
+then
+	[ -d "${MEU_TOOL_PATH}" ] || die 'Invalid MEU TOOL PATH %s\n' "${MEU_TOOL_PATH}"
+	MEU_PATH_OPTION=-DMEU_PATH="${MEU_TOOL_PATH}"
+	SIGNING_TOOL=MEU
 fi
 
 # parse platform args
@@ -219,10 +231,15 @@ do
 		tgl)
 			PLATFORM="tigerlake"
 			ARCH="xtensa-smp"
-			XTENSA_CORE="X6H3CNL_2017_8"
+			XTENSA_CORE="cavs2x_LX6HiFi3_2017_8"
 			HOST="xtensa-cnl-elf"
 			XTENSA_TOOLS_VERSION="RG-2017.8-linux"
 			HAVE_ROM='yes'
+			# default key for TGL
+			if [ -z "$PRIVATE_KEY_OPTION" ]
+			then
+				PRIVATE_KEY_OPTION="-D${SIGNING_TOOL}_PRIVATE_KEY=$pwd/keys/otc_private_key_3k.pem"
+			fi
 			;;
 		jsl)
 			PLATFORM="jasperlake"
@@ -306,6 +323,8 @@ do
 	( set -x # log the main commands and their parameters
 	cmake -DTOOLCHAIN="$TOOLCHAIN" \
 		-DROOT_DIR="$ROOT" \
+		-DMEU_OPENSSL="${MEU_OPENSSL}" \
+		"${MEU_PATH_OPTION}" \
 		"${PRIVATE_KEY_OPTION}" \
 		..
 
@@ -344,13 +363,15 @@ do
 		make overrideconfig
 	fi
 
-	if [ 'tgl' != "${platform}" ]; then
-		make bin -j "${BUILD_JOBS}" ${BUILD_VERBOSE}
-	else # FIXME: finish gcc support for tgl
+	# TGL needs MEU tool for signing
+	if [ 'tgl' = "${platform}" ] && [ "${SIGNING_TOOL}" = "RIMAGE" ]
+	then # build unsigned FW binary
 		make sof -j "${BUILD_JOBS}" ${BUILD_VERBOSE}
 		if [ "$BUILD_ROM" = "yes" ]; then
 			make rom_dump  ${BUILD_VERBOSE}
 		fi
+	else # build signed FW binary
+		make bin -j "${BUILD_JOBS}" ${BUILD_VERBOSE}
 	fi
 
 	cd "$WORKDIR"
