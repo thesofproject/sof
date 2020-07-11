@@ -18,6 +18,15 @@ PATH=$pwd/local/bin:$PATH
 
 pwd=$(pwd)
 
+die()
+{
+	>&2 printf '%s ERROR: ' "$0"
+	# We want die() to be usable exactly like printf
+	# shellcheck disable=SC2059
+	>&2 printf "$@"
+	exit 1
+}
+
 print_usage()
 {
     cat <<EOF
@@ -30,6 +39,8 @@ usage: xtensa-build.sh [options] platform(s)
        -u Force UP ARCH
        -d Enable debug build
        -c Interactive menuconfig
+       -o copies the file argument from src/arch/xtensa/configs/override/$arg.config
+	  to the build directory after invoking CMake and before Make.
        -k Use private key
        -v Verbose Makefile log
        -j n Set number of make build jobs. Jobs=#cores when no flag. \
@@ -39,7 +50,7 @@ EOF
 }
 
 # parse the args
-while getopts "rudj:ckva" OPTION; do
+while getopts "rudj:ckvo:a" OPTION; do
         case "$OPTION" in
 		r) BUILD_ROM=yes ;;
 		u) BUILD_FORCE_UP=yes ;;
@@ -47,12 +58,19 @@ while getopts "rudj:ckva" OPTION; do
 		j) BUILD_JOBS=$OPTARG ;;
 		c) MAKE_MENUCONFIG=yes ;;
 		k) USE_PRIVATE_KEY=yes ;;
+		o) OVERRIDE_CONFIG=$OPTARG ;;
 		v) BUILD_VERBOSE='VERBOSE=1' ;;
 		a) PLATFORMS=("${SUPPORTED_PLATFORMS[@]}") ;;
 		*) print_usage; exit 1 ;;
         esac
 done
 shift $((OPTIND-1))
+
+if [ -n "${OVERRIDE_CONFIG}" ]
+then
+	OVERRIDE_CONFIG="src/arch/xtensa/configs/override/$OVERRIDE_CONFIG.config"
+	[ -f "${OVERRIDE_CONFIG}" ] || die 'Invalid override config file %s\n' "${OVERRIDE_CONFIG}"
+fi
 
 # parse platform args
 for arg in "$@"; do
@@ -294,12 +312,15 @@ do
 	make ${PLATFORM}${DEFCONFIG_PATCH}_defconfig
 	)
 
+	if [ -n "$OVERRIDE_CONFIG" ]
+	then
+		cp "../$OVERRIDE_CONFIG" override.config
+	fi
+
 	if [[ "x$MAKE_MENUCONFIG" == "xyes" ]]
 	then
 		make menuconfig
 	fi
-
-	rm -fr override.config
 
 	if [[ "x$BUILD_DEBUG" == "xyes" ]]
 	then
