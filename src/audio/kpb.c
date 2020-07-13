@@ -1017,7 +1017,7 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 	} else if (!is_sink_ready) {
 		comp_err(dev, "kpb_init_draining(): sink not ready for draining");
 	} else if (kpb->hd.buffered < drain_req ||
-		   kpb->hd.buffer_size < drain_req) {
+		   cli->drain_req > KPB_MAX_DRAINING_REQ) {
 		comp_cl_err(&comp_kpb, "kpb_init_draining(): not enough data in history buffer");
 	} else {
 		/* Draining accepted, find proper buffer to start reading
