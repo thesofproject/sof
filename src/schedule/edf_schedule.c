@@ -104,9 +104,9 @@ static int schedule_edf_task(void *data, struct task *task, uint64_t start,
 			     uint64_t period)
 {
 	struct edf_schedule_data *edf_sch = data;
-	uint64_t ticks_per_ms;
-	uint64_t current;
 	uint32_t flags;
+	(void) period; /* not used */
+	(void) start; /* not used */
 
 	irq_local_disable(flags);
 
@@ -118,15 +118,6 @@ static int schedule_edf_task(void *data, struct task *task, uint64_t start,
 		irq_local_enable(flags);
 		return -EALREADY;
 	}
-
-	/* get current time */
-	current = platform_timer_get(timer_get());
-
-	ticks_per_ms = clock_ms_to_ticks(edf_sch->clock, 1);
-
-	/* calculate start time */
-	task->start = start ? task->start + ticks_per_ms * start / 1000 :
-		current;
 
 	/* add task to the list */
 	list_item_append(&task->list, &edf_sch->list);
