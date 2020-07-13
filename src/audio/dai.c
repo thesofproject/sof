@@ -51,7 +51,6 @@ struct dai_data {
 	struct timestamp_cfg ts_config;
 	struct dai *dai;
 	struct dma *dma;
-	enum sof_ipc_frame frame_fmt;
 	int xrun;		/* true if we are doing xrun recovery */
 
 	pcm_converter_func process;	/* processing function */
@@ -74,7 +73,8 @@ static void dai_dma_cb(void *arg, enum notify_id type, void *data)
 	struct dai_data *dd = comp_get_drvdata(dev);
 	uint32_t bytes = next->elem.size;
 	uint32_t sink_bytes;
-	uint32_t samples = bytes / get_sample_bytes(dd->frame_fmt);
+	uint32_t samples = bytes /
+			   audio_stream_sample_bytes(&dd->dma_buffer->stream);
 	void *buffer_ptr;
 
 	comp_dbg(dev, "dai_dma_cb()");
@@ -175,7 +175,6 @@ static struct comp_dev *dai_new(const struct comp_driver *drv,
 	}
 
 	dma_sg_init(&dd->config.elem_array);
-	dd->frame_fmt = ipc_dai->config.frame_fmt;
 	dd->dai_pos = NULL;
 	dd->dai_pos_blks = 0;
 	dd->xrun = 0;
@@ -211,6 +210,7 @@ static int dai_comp_get_hw_params(struct comp_dev *dev,
 				  struct sof_ipc_stream_params *params,
 				  int dir)
 {
+	struct sof_ipc_comp_config *dconfig = dev_comp_config(dev);
 	struct dai_data *dd = comp_get_drvdata(dev);
 	int ret = 0;
 
@@ -230,7 +230,7 @@ static int dai_comp_get_hw_params(struct comp_dev *dev,
 	 * frame_fmt hardware parameter as DAI component is able to convert
 	 * stream with different frame_fmt's (using pcm converter)
 	 */
-	params->frame_fmt = dd->frame_fmt;
+	params->frame_fmt = dconfig->frame_fmt;
 
 	return 0;
 }
@@ -273,15 +273,16 @@ static int dai_playback_params(struct comp_dev *dev, uint32_t period_bytes,
 	struct dai_data *dd = comp_get_drvdata(dev);
 	struct dma_sg_config *config = &dd->config;
 	uint32_t local_fmt = dd->local_buffer->stream.frame_fmt;
+	uint32_t dma_fmt = dd->dma_buffer->stream.frame_fmt;
 	uint32_t fifo;
 	int err;
 
 	/* set processing function */
-	dd->process = pcm_get_conversion_function(local_fmt, dd->frame_fmt);
+	dd->process = pcm_get_conversion_function(local_fmt, dma_fmt);
 
 	/* set up DMA configuration */
 	config->direction = DMA_DIR_MEM_TO_DEV;
-	config->src_width = get_sample_bytes(dd->frame_fmt);
+	config->src_width = get_sample_bytes(dma_fmt);
 	config->dest_width = config->src_width;
 	config->cyclic = 1;
 	config->irq_disabled = pipeline_is_timer_driven(dev->pipeline);
@@ -322,11 +323,12 @@ static int dai_capture_params(struct comp_dev *dev, uint32_t period_bytes,
 	struct dai_data *dd = comp_get_drvdata(dev);
 	struct dma_sg_config *config = &dd->config;
 	uint32_t local_fmt = dd->local_buffer->stream.frame_fmt;
+	uint32_t dma_fmt = dd->dma_buffer->stream.frame_fmt;
 	uint32_t fifo;
 	int err;
 
 	/* set processing function */
-	dd->process = pcm_get_conversion_function(dd->frame_fmt, local_fmt);
+	dd->process = pcm_get_conversion_function(dma_fmt, local_fmt);
 
 	/* set up DMA configuration */
 	config->direction = DMA_DIR_DEV_TO_MEM;
@@ -346,7 +348,7 @@ static int dai_capture_params(struct comp_dev *dev, uint32_t period_bytes,
 		config->src_width = 4;
 		config->dest_width = 4;
 	} else {
-		config->src_width = get_sample_bytes(dd->frame_fmt);
+		config->src_width = get_sample_bytes(dma_fmt);
 		config->dest_width = config->src_width;
 	}
 
@@ -444,7 +446,7 @@ static int dai_params(struct comp_dev *dev,
 	}
 
 	/* calculate frame size */
-	frame_size = get_frame_bytes(dd->frame_fmt,
+	frame_size = get_frame_bytes(dconfig->frame_fmt,
 				     dd->local_buffer->stream.channels);
 
 	/* calculate period size */
@@ -670,6 +672,7 @@ static void dai_report_xrun(struct comp_dev *dev, uint32_t bytes)
 static int dai_copy(struct comp_dev *dev)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
+	uint32_t dma_fmt = dd->dma_buffer->stream.frame_fmt;
 	struct comp_buffer *buf = dd->local_buffer;
 	uint32_t avail_bytes = 0;
 	uint32_t free_bytes = 0;
@@ -694,10 +697,10 @@ static int dai_copy(struct comp_dev *dev)
 	/* calculate minimum size to copy */
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
 		src_samples = audio_stream_get_avail_samples(&buf->stream);
-		sink_samples = free_bytes / get_sample_bytes(dd->frame_fmt);
+		sink_samples = free_bytes / get_sample_bytes(dma_fmt);
 		samples = MIN(src_samples, sink_samples);
 	} else {
-		src_samples = avail_bytes / get_sample_bytes(dd->frame_fmt);
+		src_samples = avail_bytes / get_sample_bytes(dma_fmt);
 		sink_samples = audio_stream_get_free_samples(&buf->stream);
 		samples = MIN(src_samples, sink_samples);
 
@@ -705,9 +708,9 @@ static int dai_copy(struct comp_dev *dev)
 		 * in order to avoid high load spike
 		 */
 		samples = MIN(samples, dd->period_bytes /
-			      get_sample_bytes(dd->frame_fmt));
+			      get_sample_bytes(dma_fmt));
 	}
-	copy_bytes = samples * get_sample_bytes(dd->frame_fmt);
+	copy_bytes = samples * get_sample_bytes(dma_fmt);
 
 	buffer_unlock(buf, flags);
 
@@ -794,7 +797,7 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 		 * all formats, such as 8/16/24/32 bits.
 		 */
 		dconfig->frame_fmt = SOF_IPC_FRAME_S32_LE;
-		dd->frame_fmt = dconfig->frame_fmt;
+		dd->dma_buffer->stream.frame_fmt = dconfig->frame_fmt;
 
 		dd->config.burst_elems =
 			dd->dai->plat_data.fifo[dai->direction].depth;
