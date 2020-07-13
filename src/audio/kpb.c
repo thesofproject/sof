@@ -31,7 +31,8 @@
 #include <sof/list.h>
 #include <sof/math/numbers.h>
 #include <sof/platform.h>
-#include <sof/schedule/edf_schedule.h>
+//#include <sof/schedule/edf_schedule.h>
+#include <sof/schedule/ll_schedule.h>
 #include <sof/schedule/schedule.h>
 #include <sof/schedule/task.h>
 #include <sof/string.h>
@@ -106,10 +107,12 @@ static inline bool validate_host_params(struct comp_dev *dev,
 static inline void kpb_change_state(struct comp_data *kpb,
 				    enum kpb_state state);
 
+#if 0
 static uint64_t kpb_task_deadline(void *data)
 {
 	return SOF_TASK_DEADLINE_ALMOST_IDLE;
 }
+#endif
 
 /**
  * \brief Create a key phrase buffer component.
@@ -122,10 +125,12 @@ static struct comp_dev *kpb_new(const struct comp_driver *drv,
 {
 	struct sof_ipc_comp_process *ipc_process =
 					(struct sof_ipc_comp_process *)comp;
+#if 0
 	struct task_ops ops = {
 		.run = kpb_draining_task,
 		.get_deadline = kpb_task_deadline,
 	};
+#endif
 	size_t bs = ipc_process->size;
 	struct comp_dev *dev;
 	struct comp_data *kpb;
@@ -172,10 +177,21 @@ static struct comp_dev *kpb_new(const struct comp_driver *drv,
 		return NULL;
 	}
 
+#if 0
 	/* Initialize draining task */
 	schedule_task_init_edf(&kpb->draining_task, /* task structure */
 			       SOF_UUID(kpb_task_uuid), /* task uuid */
 			       &ops, /* task ops */
+			       &kpb->draining_task_data, /* task private data */
+			       0, /* core on which we should run */
+			       0); /* no flags */
+#endif
+
+	schedule_task_init_ll(&kpb->draining_task, /* task structure */
+			       SOF_UUID(kpb_task_uuid), /* task uuid */
+			       SOF_SCHEDULE_LL_TIMER,
+			       SOF_TASK_PRI_MED,
+			       kpb_draining_task,
 			       &kpb->draining_task_data, /* task private data */
 			       0, /* core on which we should run */
 			       0); /* no flags */
@@ -1121,8 +1137,13 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 		/* Pause selector copy. */
 		kpb->sel_sink->sink->state = COMP_STATE_PAUSED;
 
-		/* Schedule draining task */
-		schedule_task(&kpb->draining_task, 0, 0);
+		comp_info(dev, "kpb_init_draining(), active freq: %d",
+			platform_get_active_freq());
+
+		/* Schedule draining task after sometime,
+		 * to make sure the HPRO switching is done.
+		 */
+		schedule_task(&kpb->draining_task, 10000, 0);
 	}
 }
 
@@ -1160,9 +1181,12 @@ static enum task_state kpb_draining_task(void *arg)
 	struct comp_data *kpb = comp_get_drvdata(draining_data->dev);
 	bool sync_mode_on = &draining_data->sync_mode_on;
 
+	comp_cl_info(&comp_kpb, "kpb_draining_task(), active freq: %d",
+		platform_get_active_freq());
 	comp_cl_info(&comp_kpb, "kpb_draining_task(), start.");
 
-	pm_runtime_disable(PM_RUNTIME_DSP, PLATFORM_MASTER_CORE_ID);
+//	pm_runtime_disable(PM_RUNTIME_DSP, PLATFORM_MASTER_CORE_ID);
+	pm_runtime_get(PM_RUNTIME_HOST_DMA_L1, 0);
 
 	/* Change KPB internal state to DRAINING */
 	kpb_change_state(kpb, KPB_STATE_DRAINING);
@@ -1273,7 +1297,10 @@ out:
 	 */
 	(void)(draining_time_end - draining_time_start);
 
-	pm_runtime_enable(PM_RUNTIME_DSP, PLATFORM_MASTER_CORE_ID);
+//	pm_runtime_enable(PM_RUNTIME_DSP, PLATFORM_MASTER_CORE_ID);
+
+	/* Force Host DMA to exit L1 */
+	pm_runtime_put(PM_RUNTIME_HOST_DMA_L1, 0);
 
 	return SOF_TASK_STATE_COMPLETED;
 }
@@ -1300,30 +1327,35 @@ static void kpb_drain_samples(void *source, struct audio_stream *sink,
 	size_t channel;
 	size_t frames = KPB_BYTES_TO_FRAMES(size, sample_width);
 
-	for (i = 0; i < frames; i++) {
-		for (channel = 0; channel < KPB_NUM_OF_CHANNELS; channel++) {
-			switch (sample_width) {
+	switch (sample_width) {
 #if CONFIG_FORMAT_S16LE
-			case 16:
+	case 16:
+		for (i = 0; i < frames; i++) {
+			for (channel = 0; channel < KPB_NUM_OF_CHANNELS; channel++) {
 				dst = audio_stream_write_frag_s16(sink, j);
 				*((int16_t *)dst) = *((int16_t *)src);
 				src = ((int16_t *)src) + 1;
-				break;
-#endif /* CONFIG_FORMAT_S16LE */
+				j++;
+			}
+		}
+		break;
+#endif
 #if CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE
-			case 24:
-			case 32:
+	case 24:
+	case 32:
+		for (i = 0; i < frames; i++) {
+			for (channel = 0; channel < KPB_NUM_OF_CHANNELS; channel++) {
 				dst = audio_stream_write_frag_s32(sink, j);
 				*((int32_t *)dst) = *((int32_t *)src);
 				src = ((int32_t *)src) + 1;
-				break;
-#endif /* CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE */
-			default:
-				comp_cl_err(&comp_kpb, "KPB: An attempt to copy not supported format!");
-				return;
+				j++;
 			}
-			j++;
 		}
+		break;
+#endif
+	default:
+		comp_cl_err(&comp_kpb, "KPB: An attempt to copy not supported format!");
+		return;
 	}
 }
 

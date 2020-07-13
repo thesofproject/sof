@@ -16,6 +16,7 @@
 #include <sof/lib/notifier.h>
 #include <sof/lib/wait.h>
 #include <sof/lib/uuid.h>
+#include <sof/lib/pm_runtime.h>
 #include <sof/list.h>
 #include <sof/math/numbers.h>
 #include <sof/string.h>
@@ -134,6 +135,8 @@ static void notify_kpb(const struct comp_dev *dev)
 
 static void detect_test_notify(const struct comp_dev *dev)
 {
+	pm_runtime_disable(PM_RUNTIME_DSP, PLATFORM_MASTER_CORE_ID);
+
 	notify_host(dev);
 	notify_kpb(dev);
 }
