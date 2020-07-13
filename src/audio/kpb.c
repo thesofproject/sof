@@ -1162,6 +1162,7 @@ static enum task_state kpb_draining_task(void *arg)
 	size_t *rt_stream_update = &draining_data->buffered_while_draining;
 	struct comp_data *kpb = comp_get_drvdata(draining_data->dev);
 	bool sync_mode_on = &draining_data->sync_mode_on;
+	uint32_t flags;
 
 	comp_cl_info(&comp_kpb, "kpb_draining_task(), start.");
 
@@ -1248,20 +1249,24 @@ static enum task_state kpb_draining_task(void *arg)
 		 */
 			comp_cl_info(&comp_kpb, "kpb: update history_depth by %d",
 				     *rt_stream_update);
+			spin_lock_irq(&kpb->lock, flags);
 			history_depth += *rt_stream_update;
 			*rt_stream_update = 0;
+			if (!history_depth && kpb->state == KPB_STATE_DRAINING) {
+			/* Draining is done. Now switch KPB to copy real time
+			 * stream to client's sink. This state is called
+			 * "draining on demand"
+			 * Note! If KPB state changed during draining due to
+			 * i.e reset request we should not change that state.
+			 */
+				kpb_change_state(kpb, KPB_STATE_HOST_COPY);
+			}
+			spin_unlock_irq(&kpb->lock, flags);
 		}
 	}
+
 out:
 	draining_time_end = platform_timer_get(timer);
-
-	/* Draining is done. Now switch KPB to copy real time stream
-	 * to client's sink. This state is called "draining on demand"
-	 * Note! If KPB state changed during draining due to i.e reset request
-	 * we should not change that state.
-	 */
-	if (kpb->state == KPB_STATE_DRAINING)
-		kpb_change_state(kpb, KPB_STATE_HOST_COPY);
 
 	/* Reset host-sink copy mode back to unblocking */
 	comp_set_attribute(sink->sink, COMP_ATTR_COPY_TYPE, &copy_type);
