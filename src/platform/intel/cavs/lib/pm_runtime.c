@@ -97,7 +97,7 @@ static inline void cavs_pm_runtime_enable_dsp(bool enable)
 	 */
 	irq_local_disable(flags);
 
-	enable ? --pprd->dsp_d0_sref : ++pprd->dsp_d0_sref;
+	pprd->dsp_d0_sref = enable ? 0 : 1;
 
 	platform_shared_commit(prd, sizeof(*prd));
 
