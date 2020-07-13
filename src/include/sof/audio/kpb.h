@@ -16,6 +16,8 @@ struct comp_buffer;
 
 /* KPB internal defines */
 #define KPB_MAX_BUFF_TIME 2100 /**< time of buffering in miliseconds */
+#define HOST_WAKEUP_TIME 300 /* aprox. time of host DMA wakup from suspend [ms] */
+#define KPB_MAX_DRAINING_REQ (KPB_MAX_BUFF_TIME - HOST_WAKEUP_TIME)
 #define KPB_MAX_SUPPORTED_CHANNELS 2 /**< number of supported channels */
 /**< number of samples taken each milisecond */
 #define	KPB_SAMPLES_PER_MS (KPB_SAMPLNG_FREQUENCY / 1000)
