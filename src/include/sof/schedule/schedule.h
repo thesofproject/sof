@@ -294,20 +294,6 @@ static inline void schedule_free(void)
 	}
 }
 
-/** See scheduler_ops::scheduler_run */
-static inline void schedule(void)
-{
-	struct schedulers *schedulers = *arch_schedulers_get();
-	struct schedule_data *sch;
-	struct list_item *slist;
-
-	list_for_item(slist, &schedulers->list) {
-		sch = container_of(slist, struct schedule_data, list);
-		if (sch->ops->scheduler_run)
-			sch->ops->scheduler_run(sch->data);
-	}
-}
-
 /**
  * Initializes scheduling task.
  * @param task Task to be initialized.
