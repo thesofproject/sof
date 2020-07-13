@@ -45,6 +45,7 @@ void platform_clock_init(struct sof *sof);
 
 void platform_clock_waiti_entry(void);
 void platform_clock_waiti_exit(void);
+int platform_get_active_freq(void);
 
 #if CONFIG_CAVS_USE_LPRO_IN_WAITI
 void platform_clock_on_wakeup(void);

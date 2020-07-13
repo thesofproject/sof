@@ -674,8 +674,7 @@ static int ipc_pm_gate(uint32_t header)
 
 	if (pm_gate.flags & SOF_PM_PPG)
 		pm_runtime_disable(PM_RUNTIME_DSP, PLATFORM_MASTER_CORE_ID);
-	else if (platform_pm_runtime_is_active(PM_RUNTIME_DSP,
-					       PLATFORM_MASTER_CORE_ID))
+	else
 		pm_runtime_enable(PM_RUNTIME_DSP, PLATFORM_MASTER_CORE_ID);
 
 	/* resume dma trace if needed */

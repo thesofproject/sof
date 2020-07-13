@@ -7,11 +7,18 @@
 #include <sof/common.h>
 #include <sof/drivers/ssp.h>
 #include <sof/lib/clk.h>
+#include <sof/lib/uuid.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/notifier.h>
 #include <sof/lib/pm_runtime.h>
 #include <sof/sof.h>
 #include <sof/spinlock.h>
+
+/* 77de2074-828c-4044-a40b-420b72749e8b */
+DECLARE_SOF_UUID("clk", clk_uuid, 0x77de2075, 0x828c, 0x4044,
+		 0xa4, 0x0b, 0x42, 0x0b, 0x72, 0x74, 0x9e, 0x8b);
+
+DECLARE_TR_CTX(clk_tr, SOF_UUID(clk_uuid), LOG_LEVEL_INFO);
 
 static SHARED_DATA struct clock_info platform_clocks_info[NUM_CLOCKS];
 
@@ -93,14 +100,21 @@ static inline void set_cpu_current_freq_idx(int freq_idx)
 #if CONFIG_CAVS_USE_LPRO_IN_WAITI
 void platform_clock_on_wakeup(void)
 {
+#if 1
 	int freq_idx = *cache_to_uncache(&active_freq_idx);
 
 	if (freq_idx != get_cpu_current_freq_idx()) {
 		select_cpu_clock(freq_idx, true);
 		set_cpu_current_freq_idx(freq_idx);
 	}
+#endif
 }
 #endif
+
+int platform_get_active_freq(void)
+{
+	return *cache_to_uncache(&active_freq_idx);
+}
 
 void platform_clock_waiti_entry(void)
 {
@@ -159,8 +173,16 @@ void platform_set_active_clock(int index)
 	if (*cache_to_uncache(&active_freq_idx) == index)
 		return;
 
+	tr_info(&clk_tr, "platform_set_active_clock start at %u",
+		platform_timer_get(timer_get()));
+
 	select_cpu_clock(index, true);
+	tr_info(&clk_tr, "platform_set_active_clock cpu clock switched done at %u",
+		platform_timer_get(timer_get()));
 	set_cpu_current_freq_idx(index);
+
+	tr_info(&clk_tr, "platform_set_active_clock current freq updated at %u",
+		platform_timer_get(timer_get()));
 
 	*cache_to_uncache(&active_freq_idx) = index;
 }
