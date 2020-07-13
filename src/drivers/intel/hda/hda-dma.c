@@ -330,8 +330,8 @@ static void hda_dma_post_copy(struct dma_chan_data *chan, int bytes)
 
 static int hda_dma_link_copy_ch(struct dma_chan_data *chan, int bytes)
 {
-	tr_dbg(&hdma_tr, "hda-dmac: %d channel %d -> copy 0x%x bytes",
-	       chan->dma->plat_data.id, chan->index, bytes);
+	tr_info(&hdma_tr, "hda-dmac: %d channel %d -> copy 0x%x bytes",
+		chan->dma->plat_data.id, chan->index, bytes);
 
 	hda_dma_get_dbg_vals(chan, HDA_DBG_PRE, HDA_DBG_LINK);
 
@@ -436,7 +436,7 @@ static int hda_dma_host_copy(struct dma_chan_data *channel, int bytes,
 {
 	int ret;
 
-	tr_dbg(&hdma_tr, "hda-dmac: %d channel %d -> copy 0x%x bytes",
+	tr_info(&hdma_tr, "hda-dmac: %d channel %d -> copy 0x%x bytes",
 	       channel->dma->plat_data.id, channel->index, bytes);
 
 	hda_dma_get_dbg_vals(channel, HDA_DBG_PRE, HDA_DBG_HOST);

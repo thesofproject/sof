@@ -863,8 +863,8 @@ static int dw_dma_copy(struct dma_chan_data *channel, int bytes,
 	};
 	uint32_t irq_flags;
 
-	tr_dbg(&dwdma_tr, "dw_dma_copy(): dma %d channel %d copy",
-	       channel->dma->plat_data.id, channel->index);
+	tr_info(&dwdma_tr, "dw_dma_copy(): dma %d channel %d copy",
+		channel->dma->plat_data.id, channel->index);
 
 	notifier_event(channel, NOTIFIER_ID_DMA_COPY,
 		       NOTIFIER_TARGET_CORE_LOCAL, &next, sizeof(next));
