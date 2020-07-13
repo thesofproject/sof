@@ -270,7 +270,7 @@ do
 		PATH=$pwd/../$HOST/bin:$OLDPATH
 		COMPILER="gcc"
 
-		case $j in
+		case "$platform" in
 			byt|cht|cnl|sue) DEFCONFIG_PATCH="_gcc";;
 			*)	     DEFCONFIG_PATCH="";;
 		esac
