@@ -1258,6 +1258,15 @@ static enum task_state kpb_draining_task(void *arg)
 
 		}
 	}
+
+	while (!sink->stream.free) {
+		/* This is to workaround HW problem of no DMA complete
+		 * IRQ. Because of that we have to be be sure HOST DMA
+		 * has some free space otherwise real time copy may be
+		 * stuck.
+		 */
+		comp_copy(sink->sink);
+	}
 out:
 	draining_time_end = platform_timer_get(timer);
 
