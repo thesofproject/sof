@@ -19,7 +19,7 @@ include(`abi.h')
 # Include Platform specific DSP configuration
 include(`platform/intel/'PLATFORM`.m4')
 
-define(KWD_PIPE_SCH_DEADLINE_US, 20000)
+define(KWD_PIPE_SCH_DEADLINE_US, 5000)
 
 DEBUG_START
 
