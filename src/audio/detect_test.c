@@ -62,8 +62,7 @@ struct comp_data {
 	uint32_t detected;
 	uint32_t detect_preamble; /**< current keyphrase preamble length */
 	uint32_t keyphrase_samples; /**< keyphrase length in samples */
-	uint32_t history_depth; /** defines draining size in bytes. */
-
+	uint32_t drain_req; /** defines draining size in bytes. */
 	uint16_t sample_valid_bytes;
 	struct kpb_event_data event_data;
 	struct kpb_client client_data;
@@ -121,9 +120,9 @@ static void notify_kpb(const struct comp_dev *dev)
 	cd->client_data.sink = NULL;
 	cd->client_data.id = 0; /**< TODO: acquire proper id from kpb */
 	/* time in milliseconds */
-	cd->client_data.history_depth = (cd->history_depth != 0) ?
-					 cd->history_depth :
-					 cd->config.history_depth;
+	cd->client_data.drain_req = (cd->drain_req != 0) ?
+					 cd->drain_req :
+					 cd->config.drain_req;
 	cd->event_data.event_id = KPB_EVENT_BEGIN_DRAINING;
 	cd->event_data.client_data = &cd->client_data;
 
@@ -176,12 +175,12 @@ static void default_detect_test(struct comp_dev *dev,
 
 		if (cd->detect_preamble >= cd->keyphrase_samples) {
 			if (cd->activation >= activation_threshold) {
-				/* The algorithm shall use cd->history_depth
+				/* The algorithm shall use cd->drain_req
 				 * to specify its draining size request.
 				 * Zero value means default config value
 				 * will be used.
 				 */
-				cd->history_depth = 0;
+				cd->drain_req = 0;
 				detect_test_notify(dev);
 				cd->detected = 1;
 			}

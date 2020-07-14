@@ -33,7 +33,7 @@ struct sof_detect_test_config {
 	int32_t activation_threshold;
 
 	/** default draining size in bytes */
-	uint32_t history_depth;
+	uint32_t drain_req;
 
 	/** reserved for future use */
 	uint32_t reserved[1];
