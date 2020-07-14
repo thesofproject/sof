@@ -37,6 +37,7 @@ static inline void select_cpu_clock(int freq_idx, bool release_unused)
 {
 	uint32_t enc = cpu_freq_enc[freq_idx];
 	uint32_t status_mask = cpu_freq_status_mask[freq_idx];
+	uint32_t count = 20;
 
 #if CONFIG_TIGERLAKE
 	if (freq_idx == CPU_HPRO_FREQ_IDX)
@@ -49,7 +50,7 @@ static inline void select_cpu_clock(int freq_idx, bool release_unused)
 
 	/* wait for requested clock to be on */
 	while ((io_reg_read(SHIM_BASE + SHIM_CLKSTS) &
-		status_mask) != status_mask)
+		status_mask) != status_mask && --count)
 		idelay(PLATFORM_DEFAULT_DELAY);
 
 	/* switch to requested clock */
