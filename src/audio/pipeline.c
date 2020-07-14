@@ -164,6 +164,8 @@ static int pipeline_for_each_comp(struct comp_dev *current,
 	list_for_item(clist, buffer_list) {
 		buffer = buffer_from_list(clist, struct comp_buffer, dir);
 
+		//printf("buffer id=%u pipe_id=%u\n", buffer->id, buffer->pipeline_id);
+
 		/* execute operation on buffer */
 		if (ctx->buff_func)
 			ctx->buff_func(buffer, ctx->buff_data);
@@ -613,6 +615,7 @@ static void pipeline_comp_trigger_sched_comp(struct pipeline *p,
 		return;
 
 	/* add for later schedule */
+	printf("pipeline_comp_trigger_sched_comp\n");
 	list_item_append(&p->list, &ctx->pipelines);
 }
 
@@ -627,13 +630,17 @@ static int pipeline_comp_trigger(struct comp_dev *current,
 					    ppl_data->start->pipeline);
 	int err;
 
+	printf("pipeline_comp_trigger(), current->comp.id = %u, dir = %u\n",
+		    dev_comp_id(current), dir);
 	pipe_cl_dbg("pipeline_comp_trigger(), current->comp.id = %u, dir = %u",
 		    dev_comp_id(current), dir);
 
+	printf("is_single_ppl=%d, is_same_sched=%d\n", is_single_ppl, is_same_sched);
 	/* trigger should propagate to the connected pipelines,
 	 * which need to be scheduled together
 	 */
 	if (!is_single_ppl && !is_same_sched) {
+		printf("pipeline_comp_trigger(), current is from another pipeline\n");
 		pipe_dbg(current->pipeline, "pipeline_comp_trigger(), current is from another pipeline");
 		return 0;
 	}
@@ -694,12 +701,14 @@ static void pipeline_schedule_triggered(struct pipeline_walk_context *ctx,
 	struct list_item *tlist;
 	struct pipeline *p;
 	uint32_t flags;
+	int i = 1;
 
 	irq_local_disable(flags);
 
 	list_for_item(tlist, &ctx->pipelines) {
 		p = container_of(tlist, struct pipeline, list);
-
+		printf("pipeline_schedule_triggered: pipeline number %d\n", i);
+		i++;
 		switch (cmd) {
 		case COMP_TRIGGER_PAUSE:
 		case COMP_TRIGGER_STOP:

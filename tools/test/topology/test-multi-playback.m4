@@ -54,6 +54,16 @@ PIPELINE_PCM_ADD(sof/pipe-dai-endpoint.m4,
 	1000, 0, 0,
 	8000, 192000, 48000)
 
+# connect pipelines together
+SectionGraph."pipe-sof-second-pipe" {
+        index "2"
+
+        lines [
+		# keyword detect
+                dapm(PIPELINE_SOURCE_2, PIPELINE_CROSSOVER_1)
+        ]
+}
+
 # DAI configuration
 #
 # SSP port TEST_DAI_PORT is our only pipeline DAI
@@ -77,16 +87,6 @@ DAI_ADD_SCHED(sof/pipe-dai-sched-playback.m4,
 	PIPELINE_SOURCE_2, 2, TEST_DAI_FORMAT,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER,
 	PIPELINE_PLAYBACK_SCHED_COMP_1)
-
-# connect pipelines together
-SectionGraph."pipe-sof-second-pipe" {
-        index "2"
-
-        lines [
-		# keyword detect
-                dapm(PIPELINE_SOURCE_2, PIPELINE_CROSSOVER_1)
-        ]
-}
 
 # PCM Passthrough
 PCM_PLAYBACK_ADD(Passthrough, 0, PIPELINE_PCM_1)

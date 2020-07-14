@@ -306,6 +306,7 @@ int main(int argc, char **argv)
 
 	while (frcd->fs.reached_eof == 0)
 		pipeline_schedule_copy(p, 0);
+		// should we add pipeline_schedule_copy to the second pipeline?
 
 	if (!frcd->fs.reached_eof)
 		printf("warning: possible pipeline xrun\n");
