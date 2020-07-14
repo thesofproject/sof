@@ -15,10 +15,11 @@
 
 #include <cavs/version.h>
 
+extern struct tr_ctx clock_tr;
 static SHARED_DATA struct clock_info platform_clocks_info[NUM_CLOCKS];
 
 #if CAVS_VERSION == CAVS_VERSION_1_5
-static inline void select_cpu_clock_hw(int freq_idx, bool release_unused)
+static inline int select_cpu_clock_hw(int freq_idx, bool release_unused)
 {
 	uint32_t enc = cpu_freq_enc[freq_idx];
 
@@ -26,12 +27,16 @@ static inline void select_cpu_clock_hw(int freq_idx, bool release_unused)
 	io_reg_update_bits(SHIM_BASE + SHIM_CLKCTL,
 			   SHIM_CLKCTL_DPCS_MASK(cpu_get_id()),
 			   enc);
+
+	return 0;
 }
 #else
-static inline void select_cpu_clock_hw(int freq_idx, bool release_unused)
+static inline int select_cpu_clock_hw(int freq_idx, bool release_unused)
 {
 	uint32_t enc = cpu_freq_enc[freq_idx];
 	uint32_t status_mask = cpu_freq_status_mask[freq_idx];
+	uint32_t count = 20;
+	int ret = 0;
 
 #if CONFIG_TIGERLAKE
 	/* TGL specific HW recommended flow */
@@ -45,8 +50,14 @@ static inline void select_cpu_clock_hw(int freq_idx, bool release_unused)
 
 	/* wait for requested clock to be on */
 	while ((io_reg_read(SHIM_BASE + SHIM_CLKSTS) &
-		status_mask) != status_mask)
+		status_mask) != status_mask && --count)
 		idelay(PLATFORM_DEFAULT_DELAY);
+
+	if (!count) {
+		tr_err(&clock_tr, "failed on setting cpu clock to freq_idx %d", freq_idx);
+		ret = -ETIMEDOUT;
+		goto out;
+	}
 
 	/* switch to requested clock */
 	io_reg_update_bits(SHIM_BASE + SHIM_CLKCTL,
@@ -59,6 +70,7 @@ static inline void select_cpu_clock_hw(int freq_idx, bool release_unused)
 			      ~SHIM_CLKCTL_OSC_REQUEST_MASK) | enc);
 	}
 
+out:
 #if CONFIG_TIGERLAKE
 	/* TGL specific HW recommended flow */
 	if (freq_idx != CPU_HPRO_FREQ_IDX)
@@ -73,6 +85,7 @@ static inline void select_cpu_clock_hw(int freq_idx, bool release_unused)
 			report_dsp_r_state(r0_r_state);
 	}
 #endif
+	return ret;
 }
 #endif
 
@@ -80,6 +93,7 @@ static inline void select_cpu_clock(int freq_idx, bool release_unused)
 {
 	struct clock_info *clk_info = clocks_get();
 	int flags[CONFIG_CORE_COUNT];
+	int ret;
 	int i;
 
 	/* lock clock for all cores */
@@ -87,9 +101,12 @@ static inline void select_cpu_clock(int freq_idx, bool release_unused)
 		spin_lock_irq(&clk_info[CLK_CPU(i)].lock, flags[i]);
 
 	/* change clock */
-	select_cpu_clock_hw(freq_idx, release_unused);
-	for (i = 0; i < CONFIG_CORE_COUNT; i++)
-		clk_info[CLK_CPU(i)].current_freq_idx = freq_idx;
+	ret = select_cpu_clock_hw(freq_idx, release_unused);
+	if (!ret) {
+		/* clock switch succeed, update current_freq_idx */
+		for (i = 0; i < CONFIG_CORE_COUNT; i++)
+			clk_info[CLK_CPU(i)].current_freq_idx = freq_idx;
+	}
 
 	/* unlock clock for all cores */
 	for (i = CONFIG_CORE_COUNT - 1; i >= 0; i--)
