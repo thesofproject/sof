@@ -964,7 +964,7 @@ static int kpb_register_client(struct comp_data *kpb, struct kpb_client *cli)
 	} else {
 		/* Client accepted, let's store his data */
 		kpb->clients[cli->id].id  = cli->id;
-		kpb->clients[cli->id].history_depth = cli->history_depth;
+		kpb->clients[cli->id].drain_req = cli->drain_req;
 		kpb->clients[cli->id].sink = cli->sink;
 		kpb->clients[cli->id].r_ptr = NULL;
 		kpb->clients[cli->id].state = KPB_CLIENT_BUFFERING;
@@ -987,7 +987,7 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 	struct comp_data *kpb = comp_get_drvdata(dev);
 	bool is_sink_ready = (kpb->host_sink->sink->state == COMP_STATE_ACTIVE);
 	size_t sample_width = kpb->config.sampling_width;
-	size_t history_depth = cli->history_depth * kpb->config.channels *
+	size_t drain_req = cli->drain_req * kpb->config.channels *
 			       (kpb->config.sampling_freq / 1000) *
 			       (KPB_SAMPLE_CONTAINER_SIZE(sample_width) / 8);
 	struct history_buffer *buff = kpb->hd.c_hb;
@@ -1005,7 +1005,7 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 	uint32_t flags;
 
 	comp_info(dev, "kpb_init_draining(): requested draining of %d [ms] from history buffer",
-		  cli->history_depth);
+		  cli->drain_req);
 
 	if (kpb->state != KPB_STATE_RUN) {
 		comp_err(dev, "kpb_init_draining(): wrong KPB state");
@@ -1014,8 +1014,8 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 	/* TODO: check also if client is registered */
 	} else if (!is_sink_ready) {
 		comp_err(dev, "kpb_init_draining(): sink not ready for draining");
-	} else if (kpb->hd.buffered < history_depth ||
-		   kpb->hd.buffer_size < history_depth) {
+	} else if (kpb->hd.buffered < drain_req ||
+		   kpb->hd.buffer_size < drain_req) {
 		comp_cl_err(&comp_kpb, "kpb_init_draining(): not enough data in history buffer");
 	} else {
 		/* Draining accepted, find proper buffer to start reading
@@ -1030,7 +1030,7 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 		/* Set history buffer size so new data won't overwrite those
 		 * staged for draining.
 		 */
-		kpb->hd.free = kpb->hd.buffer_size - history_depth;
+		kpb->hd.free = kpb->hd.buffer_size - drain_req;
 
 		/* Find buffer to start draining from */
 		do {
@@ -1053,7 +1053,7 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 			 * if not, go to previous buffer and continue
 			 * calculations.
 			 */
-			if (history_depth > buffered) {
+			if (drain_req > buffered) {
 				if (buff->prev == first_buff) {
 					/* We went full circle and still don't
 					 * have sufficient data for draining.
@@ -1066,16 +1066,16 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 					buffered += (uint32_t)buff->end_addr -
 						    (uint32_t)buff->w_ptr;
 					buff->r_ptr = (char *)buff->w_ptr +
-						      (buffered - history_depth);
+						      (buffered - drain_req);
 					break;
 				}
 				buff = buff->prev;
-			} else if (history_depth == buffered) {
+			} else if (drain_req == buffered) {
 				buff->r_ptr = buff->start_addr;
 				break;
 			} else {
 				buff->r_ptr = (char *)buff->start_addr +
-					      (buffered - history_depth);
+					      (buffered - drain_req);
 				break;
 			}
 
@@ -1110,7 +1110,7 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 		/* Add one-time draining task into the scheduler. */
 		kpb->draining_task_data.sink = kpb->host_sink;
 		kpb->draining_task_data.hb = buff;
-		kpb->draining_task_data.history_depth = history_depth;
+		kpb->draining_task_data.drain_req = drain_req;
 		kpb->draining_task_data.sample_width = sample_width;
 		kpb->draining_task_data.drain_interval = drain_interval;
 		kpb->draining_task_data.pb_limit = period_bytes_limit;
@@ -1142,7 +1142,7 @@ static enum task_state kpb_draining_task(void *arg)
 	struct draining_data *draining_data = (struct draining_data *)arg;
 	struct comp_buffer *sink = draining_data->sink;
 	struct history_buffer *buff = draining_data->hb;
-	size_t history_depth = draining_data->history_depth;
+	size_t drain_req = draining_data->drain_req;
 	size_t sample_width = draining_data->sample_width;
 	size_t size_to_read;
 	size_t size_to_copy;
@@ -1163,6 +1163,7 @@ static enum task_state kpb_draining_task(void *arg)
 	struct comp_data *kpb = comp_get_drvdata(draining_data->dev);
 	bool sync_mode_on = &draining_data->sync_mode_on;
 	uint32_t flags;
+	uint32_t free_bytes;
 
 	comp_cl_info(&comp_kpb, "kpb_draining_task(), start.");
 
@@ -1173,7 +1174,7 @@ static enum task_state kpb_draining_task(void *arg)
 
 	draining_time_start = platform_timer_get(timer);
 
-	while (history_depth > 0) {
+	while (drain_req > 0) {
 		/* Have we received reset request? */
 		if (kpb->state == KPB_STATE_RESETTING) {
 			kpb_change_state(kpb, KPB_STATE_RESET_FINISHING);
@@ -1193,15 +1194,16 @@ static enum task_state kpb_draining_task(void *arg)
 		}
 
 		size_to_read = (uint32_t)buff->end_addr - (uint32_t)buff->r_ptr;
+		free_bytes = audio_stream_get_free_bytes(&sink->stream);
 
-		if (size_to_read > audio_stream_get_free_bytes(&sink->stream)) {
-			if (audio_stream_get_free_bytes(&sink->stream) >= history_depth)
-				size_to_copy = history_depth;
+		if (size_to_read > free_bytes) {
+			if (free_bytes >= drain_req)
+				size_to_copy = drain_req;
 			else
-				size_to_copy = audio_stream_get_free_bytes(&sink->stream);
+				size_to_copy = free_bytes;
 		} else {
-			if (size_to_read > history_depth) {
-				size_to_copy = history_depth;
+			if (size_to_read > drain_req) {
+				size_to_copy = drain_req;
 			} else {
 				size_to_copy = size_to_read;
 				move_buffer = true;
@@ -1212,7 +1214,7 @@ static enum task_state kpb_draining_task(void *arg)
 				  sample_width);
 
 		buff->r_ptr = (char *)buff->r_ptr + (uint32_t)size_to_copy;
-		history_depth -= size_to_copy;
+		drain_req -= size_to_copy;
 		drained += size_to_copy;
 		period_bytes += size_to_copy;
 		kpb->hd.free += MIN(kpb->hd.buffer_size -
@@ -1242,17 +1244,17 @@ static enum task_state kpb_draining_task(void *arg)
 					 time_taken;
 		}
 
-		if (history_depth == 0) {
+		if (drain_req == 0) {
 		/* We have finished draining of requested data however
 		 * while we were draining real time stream could provided
 		 * new data which needs to be copy to host.
 		 */
-			comp_cl_info(&comp_kpb, "kpb: update history_depth by %d",
+			comp_cl_info(&comp_kpb, "kpb: update drain_req by %d",
 				     *rt_stream_update);
 			spin_lock_irq(&kpb->lock, flags);
-			history_depth += *rt_stream_update;
+			drain_req += *rt_stream_update;
 			*rt_stream_update = 0;
-			if (!history_depth && kpb->state == KPB_STATE_DRAINING) {
+			if (!drain_req && kpb->state == KPB_STATE_DRAINING) {
 			/* Draining is done. Now switch KPB to copy real time
 			 * stream to client's sink. This state is called
 			 * "draining on demand"
