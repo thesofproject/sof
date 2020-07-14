@@ -176,6 +176,9 @@ install(
 add_library(sof_ld_flags INTERFACE)
 add_library(sof_ld_scripts INTERFACE)
 
+target_include_directories(sof_public_headers INTERFACE ${PROJECT_SOURCE_DIR}/third_party_include)
+link_directories(${PROJECT_SOURCE_DIR}/third_party_libraries)
+
 # declare target with no sources to let cmake know about it
 add_executable(sof "")
 target_link_libraries(sof PRIVATE sof_options)
