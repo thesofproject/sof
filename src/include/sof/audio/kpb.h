@@ -80,7 +80,7 @@ enum kpb_client_state {
 
 struct kpb_client {
 	uint8_t id; /**< id associated with output sink */
-	uint32_t history_depth; /**< normalized value of buffered bytes */
+	uint32_t drain_req; /**< normalized value of buffered bytes */
 	enum kpb_client_state state; /**< current state of a client */
 	void *r_ptr; /**< current read position */
 	struct comp_buffer *sink; /**< client's sink */
@@ -111,7 +111,7 @@ struct history_buffer {
 struct draining_data {
 	struct comp_buffer *sink;
 	struct history_buffer *hb;
-	size_t history_depth;
+	size_t drain_req;
 	uint8_t is_draining_active;
 	size_t sample_width;
 	size_t buffered_while_draining;
