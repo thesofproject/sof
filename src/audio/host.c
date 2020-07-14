@@ -721,6 +721,8 @@ static int host_params(struct comp_dev *dev,
 			comp_err(dev, "host_params(): failed to alloc dma buffer");
 			return -ENOMEM;
 		}
+
+		buffer_set_params(hd->dma_buffer, params, BUFFER_UPDATE_FORCE);
 	}
 
 	/* create SG DMA elems for local DMA buffer */
