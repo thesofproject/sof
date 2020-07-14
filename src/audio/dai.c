@@ -230,8 +230,7 @@ static int dai_comp_get_hw_params(struct comp_dev *dev,
 	 * frame_fmt hardware parameter as DAI component is able to convert
 	 * stream with different frame_fmt's (using pcm converter)
 	 */
-	if (dd->frame_fmt)
-		params->frame_fmt = dd->frame_fmt;
+	params->frame_fmt = dd->frame_fmt;
 
 	return 0;
 }
