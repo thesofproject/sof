@@ -379,6 +379,8 @@ static int dai_capture_params(struct comp_dev *dev, uint32_t period_bytes,
 static int dai_params(struct comp_dev *dev,
 		      struct sof_ipc_stream_params *params)
 {
+	struct sof_ipc_comp_config *dconfig = dev_comp_config(dev);
+	struct sof_ipc_stream_params hw_params = *params;
 	struct dai_data *dd = comp_get_drvdata(dev);
 	uint32_t frame_size;
 	uint32_t period_count;
@@ -472,6 +474,16 @@ static int dai_params(struct comp_dev *dev,
 			comp_err(dev, "dai_params(): failed to alloc dma buffer");
 			return -ENOMEM;
 		}
+
+		/*
+		 * dma_buffer should reffer to hardware dai parameters.
+		 * Here, we overwrite frame_fmt hardware parameter as DAI
+		 * component is able to convert stream with different
+		 * frame_fmt's (using pcm converter).
+		 */
+		hw_params.frame_fmt = dconfig->frame_fmt;
+		buffer_set_params(dd->dma_buffer, &hw_params,
+				  BUFFER_UPDATE_FORCE);
 	}
 
 	return dev->direction == SOF_IPC_STREAM_PLAYBACK ?
