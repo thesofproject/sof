@@ -344,7 +344,6 @@ static int sai_get_hw_params(struct dai *dai,
 	/* SAI only currently supports these parameters */
 	params->rate = 48000;
 	params->channels = 2;
-	params->buffer_fmt = 0;
 	params->frame_fmt = SOF_IPC_FRAME_S32_LE;
 
 	return 0;

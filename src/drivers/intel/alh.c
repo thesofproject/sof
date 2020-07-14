@@ -58,9 +58,6 @@ static int alh_get_hw_params(struct dai *dai,
 	params->rate = alh->params.rate;
 	params->channels = alh->params.channels;
 
-	/* 0 means variable */
-	params->buffer_fmt = 0;
-
 	/* FIFO format is static */
 	params->frame_fmt = SOF_IPC_FRAME_S32_LE;
 

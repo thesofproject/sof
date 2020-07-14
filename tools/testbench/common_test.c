@@ -109,7 +109,6 @@ int tb_pipeline_params(struct ipc *ipc, struct sof_ipc_pipe_new *ipc_pipe,
 
 	/* set pcm params */
 	params.comp_id = ipc_pipe->comp_id;
-	params.params.buffer_fmt = SOF_IPC_BUFFER_INTERLEAVED;
 	params.params.frame_fmt = tp->frame_fmt;
 	params.params.direction = SOF_IPC_STREAM_PLAYBACK;
 	params.params.rate = tp->fs_in;

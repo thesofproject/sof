@@ -1067,7 +1067,6 @@ static int dmic_get_hw_params(struct dai *dai,
 	int di = dai->index;
 
 	params->rate = dmic_prm[di]->fifo_fs;
-	params->buffer_fmt = 0;
 
 	switch (dmic_prm[di]->num_pdm_active) {
 	case 1:

@@ -57,13 +57,6 @@ enum sof_ipc_frame {
 	/* other formats here */
 };
 
-/* stream buffer format */
-enum sof_ipc_buffer_format {
-	SOF_IPC_BUFFER_INTERLEAVED,
-	SOF_IPC_BUFFER_NONINTERLEAVED,
-	/* other formats here */
-};
-
 /* stream direction */
 enum sof_ipc_stream_direction {
 	SOF_IPC_STREAM_PLAYBACK = 0,
@@ -84,7 +77,7 @@ struct sof_ipc_stream_params {
 	struct sof_ipc_host_buffer buffer;
 	uint32_t direction;	/**< enum sof_ipc_stream_direction */
 	uint32_t frame_fmt;	/**< enum sof_ipc_frame */
-	uint32_t buffer_fmt;	/**< enum sof_ipc_buffer_format */
+	uint32_t buffer_fmt_deprecated;	/**< deprecated since ABI 3.17 */
 	uint32_t rate;
 	uint16_t stream_tag;
 	uint16_t channels;

@@ -79,7 +79,6 @@ extern struct tr_ctx buffer_tr;
 
 /* buffer parameters */
 #define BUFF_PARAMS_FRAME_FMT	BIT(0)
-#define BUFF_PARAMS_BUFFER_FMT	BIT(1)
 #define BUFF_PARAMS_RATE	BIT(2)
 #define BUFF_PARAMS_CHANNELS	BIT(3)
 
@@ -107,7 +106,6 @@ struct comp_buffer {
 	struct list_item sink_list;	/* list in comp buffers */
 
 	/* runtime stream params */
-	uint32_t buffer_fmt;	/**< enum sof_ipc_buffer_format */
 	uint16_t chmap[SOF_IPC_MAX_CHANNELS];	/**< channel map - SOF_CHMAP_ */
 
 	bool hw_params_configured; /**< indicates whether hw params were set */
@@ -286,7 +284,6 @@ static inline int buffer_set_params(struct comp_buffer *buffer,
 		return -EINVAL;
 	}
 
-	buffer->buffer_fmt = params->buffer_fmt;
 	for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
 		buffer->chmap[i] = params->chmap[i];
 

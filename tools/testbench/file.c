@@ -757,7 +757,6 @@ static int file_get_hw_params(struct comp_dev *dev,
 	params->direction = dir;
 	params->rate = cd->rate;
 	params->channels = cd->channels;
-	params->buffer_fmt = 0;
 	params->frame_fmt = cd->frame_fmt;
 	return 0;
 }

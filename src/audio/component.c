@@ -219,7 +219,7 @@ void comp_get_copy_limits(struct comp_buffer *source, struct comp_buffer *sink,
 	cl->sink_bytes = cl->frames * cl->sink_frame_bytes;
 }
 
-/* Function overwrites PCM parameters (frame_fmt, buffer_fmt, channels, rate)
+/* Function overwrites PCM parameters (frame_fmt, channels, rate)
  * with buffer parameters when specific flag is set.
  */
 static void comp_update_params(uint32_t flag,
@@ -228,9 +228,6 @@ static void comp_update_params(uint32_t flag,
 {
 	if (flag & BUFF_PARAMS_FRAME_FMT)
 		params->frame_fmt = buffer->stream.frame_fmt;
-
-	if (flag & BUFF_PARAMS_BUFFER_FMT)
-		params->buffer_fmt = buffer->buffer_fmt;
 
 	if (flag & BUFF_PARAMS_CHANNELS)
 		params->channels = buffer->stream.channels;

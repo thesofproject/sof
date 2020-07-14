@@ -336,7 +336,6 @@ static void pipeline_update_buffer_pcm_params(struct comp_buffer *buffer,
 	struct sof_ipc_stream_params *params = data;
 	int i;
 
-	params->buffer_fmt = buffer->buffer_fmt;
 	params->frame_fmt = buffer->stream.frame_fmt;
 	params->rate = buffer->stream.rate;
 	params->channels = buffer->stream.channels;
@@ -461,9 +460,9 @@ int pipeline_params(struct pipeline *p, struct comp_dev *host,
 	int dir = params->params.direction;
 	int ret;
 
-	pipe_info(p, "pipe params dir %d frame_fmt %d buffer_fmt %d rate %d",
+	pipe_info(p, "pipe params dir %d frame_fmt %d rate %d",
 		  params->params.direction, params->params.frame_fmt,
-		  params->params.buffer_fmt, params->params.rate);
+		  params->params.rate);
 	pipe_info(p, "pipe params stream_tag %d channels %d sample_valid_bytes %d sample_container_bytes %d",
 		  params->params.stream_tag, params->params.channels,
 		  params->params.sample_valid_bytes,

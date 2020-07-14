@@ -395,7 +395,6 @@ static int ssp_get_hw_params(struct dai *dai,
 	struct ssp_pdata *ssp = dai_get_drvdata(dai);
 
 	params->rate = ssp->params.fsync_rate;
-	params->buffer_fmt = 0;
 
 	if (dir == SOF_IPC_STREAM_PLAYBACK)
 		params->channels = popcount(ssp->params.tx_slots);

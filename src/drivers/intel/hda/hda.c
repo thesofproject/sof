@@ -50,7 +50,6 @@ static int hda_get_hw_params(struct dai *dai,
 	params->channels = hda->params.channels;
 
 	/* 0 means variable */
-	params->buffer_fmt = 0;
 	params->frame_fmt = 0;
 
 	platform_shared_commit(hda, sizeof(*hda));

@@ -440,7 +440,6 @@ static int esai_get_hw_params(struct dai *dai,
 	/* ESAI only currently supports these parameters */
 	params->rate = 48000;
 	params->channels = 2;
-	params->buffer_fmt = 0;
 	params->frame_fmt = SOF_IPC_FRAME_S24_4LE;
 
 	return 0;
