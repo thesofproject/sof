@@ -8,6 +8,7 @@ include(`dai.m4')
 include(`pipeline.m4')
 include(`alh.m4')
 include(`hda.m4')
+include(`muxdemux.m4')
 include(`platform/intel/dmic.m4')
 
 # Include TLV library
@@ -24,11 +25,46 @@ define(DMIC_PDM_CONFIG, ifelse(CHANNELS, `4', ``FOUR_CH_PDM0_PDM1'',
 DEBUG_START
 
 #
+# Define the demux configure
+#
+dnl Configure demux
+dnl name, pipeline_id, routing_matrix_rows
+dnl Diagonal 1's in routing matrix mean that every input channel is
+dnl copied to corresponding output channels in all output streams.
+dnl I.e. row index is the input channel, 1 means it is copied to
+dnl corresponding output channel (column index), 0 means it is discarded.
+dnl There's a separate matrix for all outputs.
+define(matrix1, `ROUTE_MATRIX(3,
+			     `BITS_TO_BYTE(1, 0, 0 ,0 ,0 ,0 ,0 ,0)',
+			     `BITS_TO_BYTE(0, 1, 0 ,0 ,0 ,0 ,0 ,0)',
+			     `BITS_TO_BYTE(0, 0, 1 ,0 ,0 ,0 ,0 ,0)',
+			     `BITS_TO_BYTE(0, 0, 0 ,1 ,0 ,0 ,0 ,0)',
+			     `BITS_TO_BYTE(0, 0, 0 ,0 ,1 ,0 ,0 ,0)',
+			     `BITS_TO_BYTE(0, 0, 0 ,0 ,0 ,1 ,0 ,0)',
+			     `BITS_TO_BYTE(0, 0, 0 ,0 ,0 ,0 ,1 ,0)',
+			     `BITS_TO_BYTE(0, 0, 0 ,0 ,0 ,0 ,0 ,1)')')
+
+define(matrix2, `ROUTE_MATRIX(10,
+			     `BITS_TO_BYTE(1, 0, 0 ,0 ,0 ,0 ,0 ,0)',
+			     `BITS_TO_BYTE(0, 1, 0 ,0 ,0 ,0 ,0 ,0)',
+			     `BITS_TO_BYTE(0, 0, 1 ,0 ,0 ,0 ,0 ,0)',
+			     `BITS_TO_BYTE(0, 0, 0 ,1 ,0 ,0 ,0 ,0)',
+			     `BITS_TO_BYTE(0, 0, 0 ,0 ,1 ,0 ,0 ,0)',
+			     `BITS_TO_BYTE(0, 0, 0 ,0 ,0 ,1 ,0 ,0)',
+			     `BITS_TO_BYTE(0, 0, 0 ,0 ,0 ,0 ,1 ,0)',
+			     `BITS_TO_BYTE(0, 0, 0 ,0 ,0 ,0 ,0 ,1)')')
+
+dnl name, num_streams, route_matrix list
+MUXDEMUX_CONFIG(demux_priv, 2, LIST(`	', `matrix1,', `matrix2'))
+
+#
 # Define the pipelines
 #
-# PCM0 ---> volume ----> ALH 2 BE dailink 0
-# PCM1 <--- volume <---- ALH 3 BE dailink 1
-# PCM2 <--- volume <---- ALH 2 BE dailink 2
+# PCM0 ---> volume ----> ALH 0 BE dailink 0
+# PCM1 <--- volume <---- ALH 0 BE dailink 1
+# PCM2 ---> volume --> demux --> ALH 1 BE dailink 0
+#                       |
+# PCM9 <----------------+
 # PCM3 <----volume <---- DMIC01
 # PCM4 <----volume <---- DMIC16k
 # PCM5 ---> volume <---- iDisp1
@@ -58,7 +94,7 @@ PIPELINE_PCM_ADD(sof/pipe-volume-capture.m4,
 
 # Low Latency playback pipeline 3 on PCM 2 using max 2 channels of s32le.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
+PIPELINE_PCM_ADD(sof/pipe-volume-demux-playback.m4,
 	3, 2, 2, s32le,
 	1000, 0, 0,
 	48000, 48000, 48000)
@@ -135,6 +171,35 @@ DAI_ADD(sof/pipe-dai-playback.m4,
 	PIPELINE_SOURCE_3, 2, s24le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
+# Capture pipeline 9 from demux on PCM 6 using max 2 channels of s32le.
+PIPELINE_PCM_ADD(sof/pipe-passthrough-capture-sched.m4,
+	10, 9, 2, s32le,
+	1000, 1, 0,
+	48000, 48000, 48000,
+	SCHEDULE_TIME_DOMAIN_TIMER,
+	PIPELINE_PLAYBACK_SCHED_COMP_3)
+
+# Connect demux to capture
+SectionGraph."PIPE_CAP" {
+	index "0"
+
+	lines [
+		# mux to capture
+		dapm(PIPELINE_SINK_10, PIPELINE_DEMUX_3)
+	]
+}
+
+# Connect headset capture BE to dai
+# To use headset BE dai to avoid ALH virtual issue
+SectionGraph."PIPE_CAP_VIRT" {
+	index "10"
+
+	lines [
+		# mux to capture
+		dapm(ECHO REF 10, ALH3.IN)
+	]
+}
+
 # capture DAI is DMIC01 using 2 periods
 # Buffers use s32le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
@@ -188,6 +253,7 @@ PCM_PLAYBACK_ADD(HDMI1, 5, PIPELINE_PCM_6)
 PCM_PLAYBACK_ADD(HDMI2, 6, PIPELINE_PCM_7)
 PCM_PLAYBACK_ADD(HDMI3, 7, PIPELINE_PCM_8)
 PCM_PLAYBACK_ADD(HDMI4, 8, PIPELINE_PCM_9)
+PCM_CAPTURE_ADD(EchoRef, 9, PIPELINE_PCM_10)
 #
 # BE configurations - overrides config in ACPI if present
 #
