@@ -13,7 +13,7 @@ config PROBE
 config PROBE_POINTS_MAX
 	int "Maximum probe points"
 	depends on PROBE
-	default 16
+	default 4
 	help
 	  Define maximum number of probes, extraction and injection combined.
 
