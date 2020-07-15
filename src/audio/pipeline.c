@@ -824,12 +824,18 @@ static int pipeline_comp_reset(struct comp_dev *current,
 	struct pipeline *p = ctx->comp_data;
 	int stream_direction = dir;
 	int end_type;
+	int is_single_ppl = comp_is_single_pipeline(current, p->source_comp);
+	int is_same_sched =
+		pipeline_is_same_sched_comp(current->pipeline, p);
 	int err;
 
 	pipe_dbg(current->pipeline, "pipeline_comp_reset(), current->comp.id = %u, dir = %u",
 		 dev_comp_id(current), dir);
 
-	if (!comp_is_single_pipeline(current, p->source_comp)) {
+	/* reset should propagate to the connected pipelines,
+	 * which need to be scheduled together
+	 */
+	if (!is_single_ppl && !is_same_sched) {
 		/* If pipeline connected to the starting one is in improper
 		 * direction (CAPTURE towards DAI, PLAYBACK towards HOST),
 		 * stop propagation. Direction param of the pipeline can not be
