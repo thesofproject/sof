@@ -92,7 +92,7 @@ int arch_cpu_enable_core(int id)
 
 #if CONFIG_NO_SLAVE_CORE_ROM
 		/* unpack dynamic vectors if it is the first slave core */
-		if (active_cores_mask == 0) {
+		if (active_cores_mask == BIT(PLATFORM_MASTER_CORE_ID)) {
 			alloc_shared_slave_cores_objects();
 			unpack_dynamic_vectors();
 		}
@@ -121,7 +121,7 @@ void arch_cpu_disable_core(int id)
 		active_cores_mask ^= (1 << id);
 #if CONFIG_NO_SLAVE_CORE_ROM
 		/* free shared dynamic vectors it was the last slave core */
-		if (active_cores_mask == 0) {
+		if (active_cores_mask == BIT(PLATFORM_MASTER_CORE_ID)) {
 			rfree(shared_vecbase_ptr);
 			shared_vecbase_ptr = NULL;
 		}
