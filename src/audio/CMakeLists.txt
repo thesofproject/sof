@@ -110,7 +110,6 @@ check_optimization(fma -mfma -DOPS_FMA)
 check_optimization(hifi2ep -mhifi2ep -DOPS_HIFI2EP)
 check_optimization(hifi3 -mhifi3 -DOPS_HIFI3)
 
-#set(sof_audio_modules volume src asrc eq-fir eq-iir dcblock)
 set(sof_audio_modules volume src asrc eq-fir eq-iir dcblock crossover)
 
 # sources for each module

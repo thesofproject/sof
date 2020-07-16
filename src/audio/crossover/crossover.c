@@ -643,12 +643,9 @@ static int crossover_copy(struct comp_dev *dev)
 	 * to be assigned: sink[i] can be NULL, 0 <= i <= config->num_sinks
 	 */
 	num_assigned_sinks = crossover_assign_sinks(dev, cd->config, sinks);
-	/* For testbench use, we do not expect the number of actual sink buffers to match
-	 * the config
-	 */
-	//if (cd->config && num_assigned_sinks != cd->config->num_sinks)
-	//	comp_dbg(dev, "crossover_copy(), number of assigned sinks (%i) does not match number of sinks in config (%i).",
-	//		 num_assigned_sinks, cd->config->num_sinks);
+	if (cd->config && num_assigned_sinks != cd->config->num_sinks)
+		comp_dbg(dev, "crossover_copy(), number of assigned sinks (%i) does not match number of sinks in config (%i).",
+			 num_assigned_sinks, cd->config->num_sinks);
 
 	/* If no config is set then assign the number of sinks to the number
 	 * of sinks that were assigned
@@ -766,15 +763,10 @@ static int crossover_prepare(struct comp_dev *dev)
 		  source->stream.channels);
 
 	/* Initialize Crossover */
-	/* When running crossover on testbench, the config will always be
-	 * invalid since we can only have one sink buffer.
-	 * The number of assigned sinks will not match the number of actual sink buffers.
-	 * Therefore, do not take any action.
-	 */
 	if (cd->config && crossover_validate_config(dev, cd->config) < 0) {
 		/* If config is invalid then delete it.*/
 		comp_err(dev, "crossover_prepare(), invalid binary config format");
-		//crossover_free_config(&cd->config);
+		crossover_free_config(&cd->config);
 	}
 
 	if (cd->config) {

@@ -19,8 +19,8 @@
 /* shared library look up table */
 struct shared_lib_table lib_table[NUM_WIDGETS_SUPPORTED] = {
 	{"file", "", SOF_COMP_HOST, 0, NULL}, /* File must be first */
-	//{"volume", "libsof_volume.so", SOF_COMP_VOLUME, 0, NULL},
-	//{"src", "libsof_src.so", SOF_COMP_SRC, 0, NULL},
+	{"volume", "libsof_volume.so", SOF_COMP_VOLUME, 0, NULL},
+	{"src", "libsof_src.so", SOF_COMP_SRC, 0, NULL},
 	{"asrc", "libsof_asrc.so", SOF_COMP_ASRC, 0, NULL},
 	{"eq-fir", "libsof_eq-fir.so", SOF_COMP_EQ_FIR, 0, NULL},
 	{"eq-iir", "libsof_eq-iir.so", SOF_COMP_EQ_IIR, 0, NULL},
@@ -229,6 +229,7 @@ int main(int argc, char **argv)
 	struct testbench_prm tp;
 	struct ipc_comp_dev *pcm_dev;
 	struct pipeline *p;
+	struct pipeline *curr_p;
 	struct sof_ipc_pipe_new *ipc_pipe;
 	struct comp_dev *cd;
 	struct file_comp_data *frcd, *fwcd;
@@ -247,6 +248,7 @@ int main(int argc, char **argv)
 		tp.output_file[i] = NULL;
 	tp.output_file_num = 0;
 	tp.channels = TESTBENCH_NCH;
+	tp.max_pipeline_id = 0;
 
 	/* command line arguments*/
 	parse_input_args(argc, argv, &tp);
@@ -304,9 +306,22 @@ int main(int argc, char **argv)
 	tb_enable_trace(false); /* reduce trace output */
 	tic = clock();
 
-	while (frcd->fs.reached_eof == 0)
-		pipeline_schedule_copy(p, 0);
-		// should we add pipeline_schedule_copy to the second pipeline?
+	while (frcd->fs.reached_eof == 0) {
+		/*
+		 * schedule copy for all pipelines which have the same schedule
+		 * component as the working one.
+		 */
+		for (i = 1; i <= tp.max_pipeline_id; i++) {
+			pcm_dev = ipc_get_comp_by_ppl_id(sof.ipc,
+							 COMP_TYPE_PIPELINE, i);
+			if (pcm_dev) {
+				curr_p = pcm_dev->pipeline;
+				if (pipeline_is_same_sched_comp(p, curr_p)) {
+					pipeline_schedule_copy(curr_p, 0);
+				}
+			}
+		}
+	}
 
 	if (!frcd->fs.reached_eof)
 		printf("warning: possible pipeline xrun\n");

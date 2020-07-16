@@ -744,6 +744,10 @@ int parse_topology(struct sof *sof, struct shared_lib_table *library_table,
 
 			debug_print(message);
 
+			/* update max pipeline_id */
+			if (hdr->index > tp->max_pipeline_id)
+				tp->max_pipeline_id = hdr->index;
+
 			num_comps += hdr->count;
 			size = sizeof(struct comp_info) * num_comps;
 			temp_comp_list = (struct comp_info *)
