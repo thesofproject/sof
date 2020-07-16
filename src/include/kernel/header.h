@@ -34,6 +34,6 @@ struct sof_abi_hdr {
 	uint32_t abi;		/**< SOF ABI version */
 	uint32_t reserved[4];	/**< reserved for future use */
 	uint32_t data[0];	/**< Component data - opaque to core */
-} __attribute__((packed));
+} __attribute__((packed, aligned(4)));
 
 #endif /* __KERNEL_HEADER_H__ */
