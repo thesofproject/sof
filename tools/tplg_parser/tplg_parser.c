@@ -33,7 +33,8 @@ static const struct sof_process_types sof_process[] = {
 	{"CHAN_SELECTOR", SOF_PROCESS_CHAN_SELECTOR, SOF_COMP_SELECTOR},
 	{"MUX", SOF_PROCESS_MUX, SOF_COMP_MUX},
 	{"DEMUX", SOF_PROCESS_DEMUX, SOF_COMP_DEMUX},
-	{"DCBLOCK", SOF_PROCESS_DCBLOCK, SOF_COMP_DCBLOCK}
+	{"DCBLOCK", SOF_PROCESS_DCBLOCK, SOF_COMP_DCBLOCK},
+	{"CROSSOVER", SOF_PROCESS_CROSSOVER, SOF_COMP_CROSSOVER}
 };
 
 static enum sof_ipc_process_type find_process(const char *name)
@@ -1097,8 +1098,10 @@ int tplg_load_graph(int num_comps, int pipeline_id,
 	strcat(pipeline_string, graph_elem->source);
 	strcat(pipeline_string, "->");
 
-	if (route_num == (count - 1))
+	if (route_num == (count - 1)) {
 		strcat(pipeline_string, graph_elem->sink);
+		strcat(pipeline_string, "\n");
+	}
 
 	free(graph_elem);
 	return 0;
@@ -1138,7 +1141,8 @@ int load_widget(void *dev, int dev_type, struct comp_info *temp_comp_list,
 	temp_comp_list[comp_index].type = widget->id;
 	temp_comp_list[comp_index].pipeline_id = pipeline_id;
 
-	printf("debug: loading widget %s id %d\n", widget->name, widget->id);
+	printf("debug: loading comp_id %d: widget %s id %d\n",
+	       comp_id, widget->name, widget->id);
 
 	/* load widget based on type */
 	switch (widget->id) {

@@ -53,6 +53,7 @@ enum sof_ipc_process_type {
 	SOF_PROCESS_MUX,
 	SOF_PROCESS_DEMUX,
 	SOF_PROCESS_DCBLOCK,
+	SOF_PROCESS_CROSSOVER,
 };
 
 struct sof_topology_token {
