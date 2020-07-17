@@ -32,6 +32,7 @@ const struct ext_man_fw_version ext_man_fw_ver
 #endif
 		.tag = SOF_TAG,
 		.abi_version = SOF_ABI_VERSION,
+		.src_hash = SOF_SRC_HASH,
 	},
 	.flags = DEBUG_SET_FW_READY_FLAGS,
 };
