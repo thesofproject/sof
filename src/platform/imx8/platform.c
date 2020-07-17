@@ -57,6 +57,7 @@ static const struct sof_ipc_fw_ready ready
 #endif
 		.tag = SOF_TAG,
 		.abi_version = SOF_ABI_VERSION,
+		.src_hash = SOF_SRC_HASH,
 	},
 	.flags = DEBUG_SET_FW_READY_FLAGS,
 };

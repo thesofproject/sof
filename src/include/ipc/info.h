@@ -54,9 +54,11 @@ struct sof_ipc_fw_version {
 	uint8_t time[10];
 	uint8_t tag[6];
 	uint32_t abi_version;
+	/* used to check FW and ldc file compatibility, reproducible value */
+	uint32_t src_hash;
 
 	/* reserved for future use */
-	uint32_t reserved[4];
+	uint32_t reserved[3];
 } __attribute__((packed));
 
 /* FW ready Message - sent by firmware when boot has completed */
