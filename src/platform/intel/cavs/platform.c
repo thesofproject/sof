@@ -146,7 +146,7 @@ EXT_MAN_PORT(
 #endif
 
 #if CONFIG_CANNONLAKE || CONFIG_ICELAKE || CONFIG_TIGERLAKE
-#if CONFIG_CAVS_LPRO
+#if CONFIG_CAVS_LPRO_ONLY
 #define CAVS_DEFAULT_RO		SHIM_CLKCTL_RLROSCC
 #define CAVS_DEFAULT_RO_FOR_MEM	SHIM_CLKCTL_OCS_LP_RING
 #else
@@ -293,7 +293,7 @@ int platform_boot_complete(uint32_t boot_message)
 {
 	uint32_t mb_offset = 0;
 
-#if CONFIG_TIGERLAKE && !CONFIG_CAVS_LPRO
+#if CONFIG_TIGERLAKE && !CONFIG_CAVS_LPRO_ONLY
 	cpu_enable_core(PLATFORM_CORE_COUNT - 1);
 #endif
 
@@ -460,7 +460,7 @@ int platform_init(struct sof *sof)
 	pm_runtime_get(PM_RUNTIME_DSP, PLATFORM_MASTER_CORE_ID);
 
 #if CONFIG_DSP_RESIDENCY_COUNTERS
-#if CONFIG_CAVS_LPRO
+#if CONFIG_CAVS_LPRO_ONLY
 	init_dsp_r_state(r1_r_state);
 #else
 	init_dsp_r_state(r0_r_state);
