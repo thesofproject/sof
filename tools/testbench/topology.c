@@ -272,7 +272,7 @@ static int load_fileread(void *dev, int comp_id, int pipeline_id,
 			 struct testbench_prm *tp)
 {
 	struct sof *sof = (struct sof *)dev;
-	struct sof_ipc_comp_file fileread;
+	struct sof_ipc_comp_file fileread = {0};
 	int size = widget->priv.size;
 	int ret;
 
@@ -319,7 +319,7 @@ static int load_filewrite(struct sof *sof, int comp_id, int pipeline_id,
 			  struct snd_soc_tplg_dapm_widget *widget, int dir,
 			  struct testbench_prm *tp)
 {
-	struct sof_ipc_comp_file filewrite;
+	struct sof_ipc_comp_file filewrite = {0};
 	int size = widget->priv.size;
 	int ret;
 
