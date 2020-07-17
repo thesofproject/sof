@@ -59,6 +59,34 @@ if(NOT SOF_TAG)
 	set(SOF_TAG 0)
 endif()
 
+# Calculate source hash value, used to check ldc file and firmware compatibility
+if(EXISTS ${CMAKE_SOURCE_DIR}/.git/)
+	# list tracked files from src directory
+	execute_process(COMMAND git ls-files src
+			WORKING_DIRECTORY ${SOF_ROOT_SOURCE_DIRECTORY}
+			OUTPUT_FILE tracked_file_list
+		)
+	# calculate hash of each listed files (from file version saved in file system)
+	execute_process(COMMAND git hash-object --stdin-paths
+			WORKING_DIRECTORY ${SOF_ROOT_SOURCE_DIRECTORY}
+			INPUT_FILE tracked_file_list
+			OUTPUT_FILE tracked_file_hash_list
+		)
+	# then calculate single hash of previously calculated hash list
+	execute_process(COMMAND git hash-object --stdin
+			WORKING_DIRECTORY ${SOF_ROOT_SOURCE_DIRECTORY}
+			OUTPUT_STRIP_TRAILING_WHITESPACE
+			INPUT_FILE tracked_file_hash_list
+			OUTPUT_VARIABLE SOF_SRC_HASH_LONG
+		)
+	file(REMOVE tracked_file_list tracked_file_hash_list)
+	string(SUBSTRING ${SOF_SRC_HASH_LONG} 0 8 SOF_SRC_HASH)
+	message(STATUS "Source content hash: ${SOF_SRC_HASH}")
+else()
+	set(SOF_SRC_HASH ${GIT_LOG_HASH})
+	message(WARNING "Source content hash can't be calculated, use GIT_LOG_HASH")
+endif()
+
 # for SOF_BUILD
 include(${CMAKE_CURRENT_LIST_DIR}/version-build-counter.cmake)
 
@@ -69,6 +97,7 @@ function(sof_check_version_h)
 		"#define SOF_MICRO ${SOF_MICRO}\n"
 		"#define SOF_TAG \"${SOF_TAG}\"\n"
 		"#define SOF_BUILD ${SOF_BUILD}\n"
+		"#define SOF_SRC_HASH 0x${SOF_SRC_HASH}\n"
 	)
 
 	if(EXISTS "${VERSION_H_PATH}")
