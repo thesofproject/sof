@@ -227,6 +227,7 @@ config CAVS
 	select INTERRUPT_LEVEL_5
 	select INTEL_HDA
 	select INTEL_MN
+	select WAKEUP_HOOK
 
 config CAVS_VERSION_1_5
 	depends on CAVS
@@ -308,7 +309,6 @@ config CAVS_USE_LPRO_IN_WAITI
 	bool "Use low power ring oscillator in WFI"
 	default n
 	depends on CAVS && !CAVS_LPRO_ONLY
-	select WAKEUP_HOOK
 	help
 	  Select if we want to use LPRO clock in waiti.
 	  After waiti exit clock source will be restored.
