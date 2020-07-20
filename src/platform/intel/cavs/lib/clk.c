@@ -94,18 +94,41 @@ static inline void select_cpu_clock(int freq_idx, bool release_unused)
 			       sizeof(*clk_info) * PLATFORM_CORE_COUNT);
 }
 
-#if CONFIG_CAVS_USE_LPRO_IN_WAITI
+/* LPRO_ONLY mode */
+#if CONFIG_CAVS_LPRO_ONLY
+
+/*
+ * This is call from public API, there is no clock switch for core waiti, so
+ * value of value frequency index in 'active' state doesn't need to be saved in
+ * any additional variable and restored in future.
+ */
+static inline void set_cpu_current_freq_idx(int freq_idx, bool release_unused)
+{
+	select_cpu_clock(freq_idx, true);
+}
+
+static void platform_clock_low_power_mode(int clock, bool enable)
+{
+	/* do nothing for LPRO_ONLY mode */
+}
+
+void platform_clock_on_waiti(void)
+{
+/* do nothing for LPRO_ONLY mode */
+}
+
+void platform_clock_on_wakeup(void)
+{
+/* do nothing for LPRO_ONLY mode */
+}
+
+/* USE_LPRO_IN_WAITI mode */
+#elif CONFIG_CAVS_USE_LPRO_IN_WAITI
+
 /* Store clock source that was active before going to waiti,
  * so it can be restored on wake up.
  */
 static SHARED_DATA int active_freq_idx = CPU_DEFAULT_IDX;
-
-static inline int get_current_freq_idx(int clock)
-{
-	struct clock_info *clk_info = clocks_get() + clock;
-
-	return clk_info->current_freq_idx;
-}
 
 /*
  * This is call from public API, so overwrite currently used frequency index
@@ -117,6 +140,13 @@ static inline void set_cpu_current_freq_idx(int freq_idx, bool release_unused)
 
 	select_cpu_clock(freq_idx, release_unused);
 	*uncached_freq_idx = freq_idx;
+}
+
+static inline int get_current_freq_idx(int clock)
+{
+	struct clock_info *clk_info = clocks_get() + clock;
+
+	return clk_info->current_freq_idx;
 }
 
 static void platform_clock_low_power_mode(int clock, bool enable)
@@ -135,30 +165,77 @@ static void platform_clock_low_power_mode(int clock, bool enable)
 		select_cpu_clock(freq_idx, false);
 }
 
-void platform_clock_on_wakeup(void)
-{
-	pm_runtime_get(CORE_HP_CLK, cpu_get_id());
-}
-
 void platform_clock_on_waiti(void)
 {
+	/* perform the possible dynamic clock switching */
+	if (*cache_to_uncache(&active_freq_idx) != CPU_LPRO_FREQ_IDX &&
+	    !pm_runtime_is_active(PM_RUNTIME_DSP, PLATFORM_MASTER_CORE_ID))
+		set_cpu_current_freq_idx(CPU_LPRO_FREQ_IDX, true);
+	else if (*cache_to_uncache(&active_freq_idx) != CPU_HPRO_FREQ_IDX &&
+		 pm_runtime_is_active(PM_RUNTIME_DSP, PLATFORM_MASTER_CORE_ID))
+		set_cpu_current_freq_idx(CPU_HPRO_FREQ_IDX, true);
+
+	/* check if waiti HPRO->LPRO switching is needed */
 	pm_runtime_put(CORE_HP_CLK, cpu_get_id());
 }
 
+void platform_clock_on_wakeup(void)
+{
+	/* check if LPRO->HPRO switching back is needed */
+	pm_runtime_get(CORE_HP_CLK, cpu_get_id());
+}
+
 #else
+
+/* Store clock source that was active before going to waiti,
+ * so it can be restored on wake up.
+ */
+static SHARED_DATA int active_freq_idx = CPU_DEFAULT_IDX;
+
 /*
- * This is call from public API, there is no clock switch for core waiti, so
- * value of value frequency index in 'active' state doesn't need to be saved in
- * any additional variable and restored in future.
+ * This is call from public API, so overwrite currently used frequency index
+ * in 'active' state with new value. This value will be used in each wakeup.
  */
 static inline void set_cpu_current_freq_idx(int freq_idx, bool release_unused)
 {
-	select_cpu_clock(freq_idx, true);
+	int *uncached_freq_idx = cache_to_uncache(&active_freq_idx);
+
+	select_cpu_clock(freq_idx, release_unused);
+	*uncached_freq_idx = freq_idx;
+}
+
+static inline int get_current_freq_idx(int clock)
+{
+	struct clock_info *clk_info = clocks_get() + clock;
+
+	return clk_info->current_freq_idx;
 }
 
 static void platform_clock_low_power_mode(int clock, bool enable)
 {
 }
+
+void platform_clock_on_waiti(void)
+{
+	/* perform the possible dynamic clock switching */
+	if (*cache_to_uncache(&active_freq_idx) != CPU_LPRO_FREQ_IDX &&
+	    !pm_runtime_is_active(PM_RUNTIME_DSP, PLATFORM_MASTER_CORE_ID))
+		set_cpu_current_freq_idx(CPU_LPRO_FREQ_IDX, true);
+	else if (*cache_to_uncache(&active_freq_idx) != CPU_HPRO_FREQ_IDX &&
+		 pm_runtime_is_active(PM_RUNTIME_DSP, PLATFORM_MASTER_CORE_ID))
+		set_cpu_current_freq_idx(CPU_HPRO_FREQ_IDX, true);
+}
+
+void platform_clock_on_wakeup(void)
+{
+	int current_idx = get_current_freq_idx(CLK_CPU(cpu_get_id()));
+	int target_idx = *cache_to_uncache(&active_freq_idx);
+
+	/* restore the active cpu freq_idx manually */
+	if (current_idx != target_idx)
+		set_cpu_current_freq_idx(target_idx, true);
+}
+
 #endif
 
 static int clock_platform_set_cpu_freq(int clock, int freq_idx)
