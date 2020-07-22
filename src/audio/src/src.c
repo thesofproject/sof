@@ -325,8 +325,8 @@ static void src_2s(struct comp_dev *dev, const struct audio_stream *source,
 	size_t sbuf_size = cd->param.sbuf_length * sizeof(int32_t);
 	int nch = source->channels;
 	int sbuf_free = cd->param.sbuf_length - cd->sbuf_avail;
-	int avail_b = source->avail;
-	int free_b = sink->free;
+	int avail_b = audio_stream_get_avail_bytes(source);
+	int free_b = audio_stream_get_free_bytes(sink);
 	int sz = cd->sample_container_bytes;
 
 	*n_read = 0;

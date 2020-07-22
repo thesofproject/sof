@@ -15,9 +15,18 @@
 static inline struct comp_buffer *create_test_sink(struct comp_dev *dev,
 						   uint32_t pipeline_id,
 						   uint32_t frame_fmt,
-						   uint16_t channels)
+						   uint16_t channels,
+						   uint16_t buffer_size)
 {
-	struct comp_buffer *buffer = calloc(1, sizeof(struct comp_buffer));
+	struct sof_ipc_buffer desc = {
+		.comp = {
+			.pipeline_id = pipeline_id,
+		},
+		.size = buffer_size,
+	};
+	struct comp_buffer *buffer = buffer_new(&desc);
+
+	memset(buffer->stream.addr, 0, buffer_size);
 
 	/* set bsink list */
 	list_item_append(&buffer->source_list, &dev->bsink_list);
@@ -27,9 +36,6 @@ static inline struct comp_buffer *create_test_sink(struct comp_dev *dev,
 	buffer->sink->state = COMP_STATE_PREPARE;
 	buffer->stream.frame_fmt = frame_fmt;
 	buffer->stream.channels = channels;
-	buffer->stream.free = 0;
-	buffer->stream.avail = 0;
-	buffer->pipeline_id = pipeline_id;
 
 	return buffer;
 }
@@ -37,15 +43,24 @@ static inline struct comp_buffer *create_test_sink(struct comp_dev *dev,
 static inline void free_test_sink(struct comp_buffer *buffer)
 {
 	free(buffer->sink);
-	free(buffer);
+	buffer_free(buffer);
 }
 
 static inline struct comp_buffer *create_test_source(struct comp_dev *dev,
 						     uint32_t pipeline_id,
 						     uint32_t frame_fmt,
-						     uint16_t channels)
+						     uint16_t channels,
+						     uint16_t buffer_size)
 {
-	struct comp_buffer *buffer = calloc(1, sizeof(struct comp_buffer));
+	struct sof_ipc_buffer desc = {
+		.comp = {
+			.pipeline_id = pipeline_id,
+		},
+		.size = buffer_size,
+	};
+	struct comp_buffer *buffer = buffer_new(&desc);
+
+	memset(buffer->stream.addr, 0, buffer_size);
 
 	/*set bsource list */
 	list_item_append(&buffer->sink_list, &dev->bsource_list);
@@ -55,9 +70,6 @@ static inline struct comp_buffer *create_test_source(struct comp_dev *dev,
 	buffer->source->state = COMP_STATE_PREPARE;
 	buffer->stream.frame_fmt = frame_fmt;
 	buffer->stream.channels = channels;
-	buffer->stream.free = 0;
-	buffer->stream.avail = 0;
-	buffer->pipeline_id = pipeline_id;
 
 	return buffer;
 }
@@ -65,5 +77,5 @@ static inline struct comp_buffer *create_test_source(struct comp_dev *dev,
 static inline void free_test_source(struct comp_buffer *buffer)
 {
 	free(buffer->source);
-	free(buffer);
+	buffer_free(buffer);
 }

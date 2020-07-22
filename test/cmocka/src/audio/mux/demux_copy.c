@@ -115,34 +115,33 @@ static struct sof_ipc_comp_process *create_demux_comp_ipc(struct test_data *td)
 static void prepare_sinks(struct test_data *td, size_t sample_size)
 {
 	int i;
+	uint16_t buffer_size = sample_size * PLATFORM_MAX_CHANNELS;
 
 	for (i = 0; i < MUX_MAX_STREAMS; ++i) {
-		td->sinks[i] = create_test_sink(td->dev,
-						i,
-						td->format,
-						PLATFORM_MAX_CHANNELS);
-		td->sinks[i]->stream.free = sample_size * PLATFORM_MAX_CHANNELS;
-		td->outputs[i] = malloc(sample_size * PLATFORM_MAX_CHANNELS);
-		td->sinks[i]->stream.w_ptr = td->outputs[i];
+		td->sinks[i] = create_test_sink(td->dev, i, td->format, PLATFORM_MAX_CHANNELS,
+						buffer_size);
 
-		memset(td->outputs[i], 0, td->sinks[i]->stream.free);
+		td->outputs[i] = td->sinks[i]->stream.addr;
+		assert_int_equal(audio_stream_get_free_bytes(&td->sinks[i]->stream), buffer_size);
 	}
 }
 
 static void prepare_source(struct test_data *td, size_t sample_size)
 {
-	td->source = create_test_source(td->dev,
-					MUX_MAX_STREAMS + 1,
-					td->format,
-					PLATFORM_MAX_CHANNELS);
-	td->source->stream.avail = sample_size * PLATFORM_MAX_CHANNELS;
+	uint16_t buffer_size = sample_size * PLATFORM_MAX_CHANNELS;
+
+	td->source = create_test_source(td->dev, MUX_MAX_STREAMS + 1, td->format,
+					PLATFORM_MAX_CHANNELS, buffer_size);
 
 	if (td->format == SOF_IPC_FRAME_S16_LE)
-		td->source->stream.r_ptr = input_16b;
+		memcpy_s(td->source->stream.addr, buffer_size, input_16b, buffer_size);
 	else if (td->format == SOF_IPC_FRAME_S24_4LE)
-		td->source->stream.r_ptr = input_24b;
+		memcpy_s(td->source->stream.addr, buffer_size, input_24b, buffer_size);
 	else
-		td->source->stream.r_ptr = input_32b;
+		memcpy_s(td->source->stream.addr, buffer_size, input_32b, buffer_size);
+
+	audio_stream_produce(&td->source->stream, buffer_size);
+	assert_int_equal(audio_stream_get_avail_bytes(&td->source->stream), buffer_size);
 }
 
 static int setup_test_case(void **state)
@@ -177,10 +176,8 @@ static int teardown_test_case(void **state)
 
 	free_test_source(td->source);
 
-	for (i = 0; i < MUX_MAX_STREAMS; ++i) {
-		free(td->outputs[i]);
+	for (i = 0; i < MUX_MAX_STREAMS; ++i)
 		free_test_sink(td->sinks[i]);
-	}
 
 	comp_free(td->dev);
 

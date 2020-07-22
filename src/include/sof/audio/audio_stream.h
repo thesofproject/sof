@@ -393,7 +393,7 @@ static inline void audio_stream_produce(struct audio_stream *buffer,
 					  (char *)buffer->w_ptr + bytes);
 
 	/* "overwrite" old data in circular wrap case */
-	if (bytes > buffer->free)
+	if (bytes > audio_stream_get_free_bytes(buffer))
 		buffer->r_ptr = buffer->w_ptr;
 
 	/* calculate available bytes */

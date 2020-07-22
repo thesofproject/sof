@@ -27,8 +27,8 @@ static void test_audio_buffer_new(void **state)
 	struct comp_buffer *buf = buffer_new(&test_buf_desc);
 
 	assert_non_null(buf);
-	assert_int_equal(buf->stream.avail, 0);
-	assert_int_equal(buf->stream.free, 256);
+	assert_int_equal(audio_stream_get_avail_bytes(&buf->stream), 0);
+	assert_int_equal(audio_stream_get_free_bytes(&buf->stream), 256);
 	assert_ptr_equal(buf->stream.w_ptr, buf->stream.r_ptr);
 
 	buffer_free(buf);
