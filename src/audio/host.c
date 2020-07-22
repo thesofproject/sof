@@ -246,9 +246,9 @@ static uint32_t host_get_copy_bytes_one_shot(struct comp_dev *dev)
 
 	/* calculate minimum size to copy */
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
-		copy_bytes = hd->local_buffer->stream.free;
+		copy_bytes = audio_stream_get_free_bytes(&hd->local_buffer->stream);
 	else
-		copy_bytes = hd->local_buffer->stream.avail;
+		copy_bytes = audio_stream_get_avail_bytes(&hd->local_buffer->stream);
 
 	buffer_unlock(hd->local_buffer, flags);
 
@@ -340,10 +340,10 @@ static uint32_t host_get_copy_bytes_normal(struct comp_dev *dev)
 		 */
 		copy_bytes = MIN(hd->period_bytes,
 				 MIN(avail_bytes,
-				     hd->local_buffer->stream.free));
+				     audio_stream_get_free_bytes(&hd->local_buffer->stream)));
 	else
-		copy_bytes = MIN(hd->local_buffer->stream.avail,
-				 free_bytes);
+		copy_bytes = MIN(
+			audio_stream_get_avail_bytes(&hd->local_buffer->stream), free_bytes);
 
 	buffer_unlock(hd->local_buffer, flags);
 

@@ -664,10 +664,11 @@ static int kpb_copy(struct comp_dev *dev)
 
 		buffer_unlock(sink, flags);
 
-		copy_bytes = MIN(sink->stream.free, source->stream.avail);
+		copy_bytes = audio_stream_get_copy_bytes(&source->stream, &sink->stream);
 		if (!copy_bytes) {
 			comp_err(dev, "kpb_copy(): nothing to copy sink->free %d source->avail %d",
-				 sink->stream.free, source->stream.avail);
+				 audio_stream_get_free_bytes(&sink->stream),
+				 audio_stream_get_avail_bytes(&source->stream));
 			ret = PPL_STATUS_PATH_STOP;
 			goto out;
 		}
@@ -677,7 +678,7 @@ static int kpb_copy(struct comp_dev *dev)
 		/* Buffer source data internally in history buffer for future
 		 * use by clients.
 		 */
-		if (source->stream.avail <= kpb->hd.buffer_size) {
+		if (audio_stream_get_avail_bytes(&source->stream) <= kpb->hd.buffer_size) {
 			ret = kpb_buffer_data(dev, source, copy_bytes);
 			if (ret) {
 				comp_err(dev, "kpb_copy(): internal buffering failed.");
@@ -721,10 +722,11 @@ static int kpb_copy(struct comp_dev *dev)
 
 		buffer_unlock(sink, flags);
 
-		copy_bytes = MIN(sink->stream.free, source->stream.avail);
+		copy_bytes = audio_stream_get_copy_bytes(&source->stream, &sink->stream);
 		if (!copy_bytes) {
 			comp_err(dev, "kpb_copy(): nothing to copy sink->free %d source->avail %d",
-				 sink->stream.free, source->stream.avail);
+				 audio_stream_get_free_bytes(&sink->stream),
+				 audio_stream_get_avail_bytes(&source->stream));
 			ret = PPL_STATUS_PATH_STOP;
 			goto out;
 		}
@@ -741,7 +743,7 @@ static int kpb_copy(struct comp_dev *dev)
 		 * the internal history buffer.
 		 */
 
-		copy_bytes = MIN(source->stream.avail, kpb->hd.free);
+		copy_bytes = MIN(audio_stream_get_avail_bytes(&source->stream), kpb->hd.free);
 		if (copy_bytes) {
 			buffer_invalidate(source, copy_bytes);
 			ret = kpb_buffer_data(dev, source, copy_bytes);
@@ -756,7 +758,8 @@ static int kpb_copy(struct comp_dev *dev)
 			comp_update_buffer_consume(source, copy_bytes);
 		} else {
 			comp_warn(dev, "kpb_copy(): buffering skipped (no data to copy, avail %d, free %d",
-				  source->stream.avail, kpb->hd.free);
+				  audio_stream_get_avail_bytes(&source->stream),
+				  kpb->hd.free);
 		}
 
 		ret = PPL_STATUS_PATH_STOP;
@@ -1190,11 +1193,11 @@ static enum task_state kpb_draining_task(void *arg)
 
 		size_to_read = (uint32_t)buff->end_addr - (uint32_t)buff->r_ptr;
 
-		if (size_to_read > sink->stream.free) {
-			if (sink->stream.free >= history_depth)
+		if (size_to_read > audio_stream_get_free_bytes(&sink->stream)) {
+			if (audio_stream_get_free_bytes(&sink->stream) >= history_depth)
 				size_to_copy = history_depth;
 			else
-				size_to_copy = sink->stream.free;
+				size_to_copy = audio_stream_get_free_bytes(&sink->stream);
 		} else {
 			if (size_to_read > history_depth) {
 				size_to_copy = history_depth;
@@ -1223,7 +1226,7 @@ static enum task_state kpb_draining_task(void *arg)
 		if (size_to_copy) {
 			comp_update_buffer_produce(sink, size_to_copy);
 			comp_copy(sink->sink);
-		} else if (!sink->stream.free) {
+		} else if (!audio_stream_get_free_bytes(&sink->stream)) {
 			/* There is no free space in sink buffer.
 			 * Call .copy() on sink component so it can
 			 * process its data further.

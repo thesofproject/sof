@@ -36,7 +36,7 @@ static void test_audio_buffer_copy_underrun(void **state)
 	copy_bytes =
 		audio_stream_can_copy_bytes(&src->stream, &snk->stream, 16);
 
-	assert_int_equal(src->stream.avail, 10);
+	assert_int_equal(audio_stream_get_avail_bytes(&src->stream), 10);
 	assert_int_equal(copy_bytes, -1);
 
 	buffer_free(src);
@@ -64,8 +64,8 @@ static void test_audio_buffer_copy_overrun(void **state)
 	copy_bytes =
 		audio_stream_can_copy_bytes(&src->stream, &snk->stream, 16);
 
-	assert_int_equal(src->stream.avail, 16);
-	assert_int_equal(snk->stream.free, 10);
+	assert_int_equal(audio_stream_get_avail_bytes(&src->stream), 16);
+	assert_int_equal(audio_stream_get_free_bytes(&snk->stream), 10);
 	assert_int_equal(copy_bytes, 1);
 
 	buffer_free(src);
@@ -91,7 +91,7 @@ static void test_audio_buffer_copy_success(void **state)
 	comp_update_buffer_produce(src, 10);
 	copy_bytes = audio_stream_can_copy_bytes(&src->stream, &snk->stream, 0);
 
-	assert_int_equal(src->stream.avail, 10);
+	assert_int_equal(audio_stream_get_avail_bytes(&src->stream), 10);
 	assert_int_equal(copy_bytes, 0);
 
 	buffer_free(src);
@@ -118,8 +118,8 @@ static void test_audio_buffer_copy_fit_space_constraint(void **state)
 	comp_update_buffer_produce(snk, 246);
 	copy_bytes = audio_stream_get_copy_bytes(&src->stream, &snk->stream);
 
-	assert_int_equal(src->stream.avail, 16);
-	assert_int_equal(snk->stream.free, 10);
+	assert_int_equal(audio_stream_get_avail_bytes(&src->stream), 16);
+	assert_int_equal(audio_stream_get_free_bytes(&snk->stream), 10);
 	assert_int_equal(copy_bytes, 10);
 
 	buffer_free(src);
@@ -145,7 +145,7 @@ static void test_audio_buffer_copy_fit_no_space_constraint(void **state)
 	comp_update_buffer_produce(src, 16);
 	copy_bytes = audio_stream_get_copy_bytes(&src->stream, &snk->stream);
 
-	assert_int_equal(src->stream.avail, 16);
+	assert_int_equal(audio_stream_get_avail_bytes(&src->stream), 16);
 	assert_int_equal(copy_bytes, 16);
 
 	buffer_free(src);

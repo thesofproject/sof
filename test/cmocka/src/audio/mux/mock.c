@@ -16,17 +16,7 @@
 
 static struct sof sof;
 
-struct tr_ctx buffer_tr;
-
 void pipeline_xrun(struct pipeline *p, struct comp_dev *dev, int32_t bytes)
-{
-}
-
-void comp_update_buffer_produce(struct comp_buffer *buffer, uint32_t bytes)
-{
-}
-
-void comp_update_buffer_consume(struct comp_buffer *buffer, uint32_t bytes)
 {
 }
 

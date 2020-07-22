@@ -594,16 +594,15 @@ static int test_keyword_copy(struct comp_dev *dev)
 				 struct comp_buffer, sink_list);
 
 	buffer_lock(source, &flags);
-	frames = source->stream.avail /
-		audio_stream_frame_bytes(&source->stream);
+	frames = audio_stream_get_avail_frames(&source->stream);
 	buffer_unlock(source, flags);
 
 	/* copy and perform detection */
-	buffer_invalidate(source, source->stream.avail);
+	buffer_invalidate(source, audio_stream_get_avail_bytes(&source->stream));
 	cd->detect_func(dev, &source->stream, frames);
 
 	/* calc new available */
-	comp_update_buffer_consume(source, source->stream.avail);
+	comp_update_buffer_consume(source, audio_stream_get_avail_bytes(&source->stream));
 
 	return 0;
 }

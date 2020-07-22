@@ -69,32 +69,32 @@ static uint16_t valid_formats[] = {
 
 static uint8_t masks[][MUX_MAX_STREAMS][PLATFORM_MAX_CHANNELS] = {
 	{ { 0x01, }, },
-	{ { 0x01, 0x02, 0x04, 0x10, 0x20, 0x40, 0x80}, },
+	{ { 0x01, 0x02, 0x04, 0x10, 0x20, 0x40, 0x80 }, },
 	{ { },
-	  { 0x01, 0x02, 0x04, 0x10, 0x20, 0x40, 0x80}, },
-	{ { },
-	  { },
-	  { 0x01, 0x02, 0x04, 0x10, 0x20, 0x40, 0x80}, },
+	  { 0x01, 0x02, 0x04, 0x10, 0x20, 0x40, 0x80 }, },
 	{ { },
 	  { },
+	  { 0x01, 0x02, 0x04, 0x10, 0x20, 0x40, 0x80 }, },
+	{ { },
 	  { },
-	  { 0x01, 0x02, 0x04, 0x10, 0x20, 0x40, 0x80}, },
+	  { },
+	  { 0x01, 0x02, 0x04, 0x10, 0x20, 0x40, 0x80 }, },
 	{ { 0x01, },
 	  { 0x00, 0x01, },
 	  { 0x00, 0x00, 0x01, },
-	  { 0x00, 0x00, 0x00, 0x01, 0x02, 0x04, 0x08, 0x10}, },
-	{ { 0x00, 0x00, 0x00, 0x01, 0x02, 0x04, 0x08, 0x10},
+	  { 0x00, 0x00, 0x00, 0x01, 0x02, 0x04, 0x08, 0x10 }, },
+	{ { 0x00, 0x00, 0x00, 0x01, 0x02, 0x04, 0x08, 0x10 },
 	  { 0x00, 0x00, 0x01, },
 	  { 0x00, 0x01, },
 	  { 0x01, }, },
 	{ { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, },
 	  { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, },
 	  { 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, },
-	  { 0x10, 0x08, 0x04, 0x02, 0x01, },},
+	  { 0x10, 0x08, 0x04, 0x02, 0x01, }, },
 	{ { 0x01, },
 	  { 0x00, 0x01, },
 	  { 0x00, 0x00, 0x01, },
-	  { 0x00, 0x00, 0x00, 0x01, },},
+	  { 0x00, 0x00, 0x00, 0x01, }, },
 };
 
 static int setup_group(void **state)
@@ -132,35 +132,37 @@ static struct sof_ipc_comp_process *create_mux_comp_ipc(struct test_data *td)
 
 static void prepare_sink(struct test_data *td, size_t sample_size)
 {
-	td->sink = create_test_sink(td->dev,
-				    MUX_MAX_STREAMS + 1,
-				    td->format,
-				    PLATFORM_MAX_CHANNELS);
-	td->sink->stream.free = sample_size * PLATFORM_MAX_CHANNELS;
-	td->output = malloc(sample_size * PLATFORM_MAX_CHANNELS);
-	td->sink->stream.w_ptr = td->output;
+	uint16_t buffer_size = sample_size * PLATFORM_MAX_CHANNELS;
 
-	memset(td->output, 0, td->sink->stream.free);
+	td->sink = create_test_sink(td->dev, MUX_MAX_STREAMS + 1, td->format, PLATFORM_MAX_CHANNELS,
+				    buffer_size);
+	td->output = td->sink->stream.addr;
+
+	assert_int_equal(audio_stream_get_free_bytes(&td->sink->stream), buffer_size);
 }
 
 static void prepare_sources(struct test_data *td, size_t sample_size)
 {
 	int i;
+	uint16_t buffer_size = sample_size * PLATFORM_MAX_CHANNELS;
 
 	for (i = 0; i < MUX_MAX_STREAMS; ++i) {
-		td->sources[i] = create_test_source(td->dev,
-						    i,
-						    td->format,
-						    PLATFORM_MAX_CHANNELS);
-		td->sources[i]->stream.avail = sample_size *
-					       PLATFORM_MAX_CHANNELS;
+		td->sources[i] = create_test_source(td->dev, i, td->format, PLATFORM_MAX_CHANNELS,
+						    buffer_size);
 
 		if (td->format == SOF_IPC_FRAME_S16_LE)
-			td->sources[i]->stream.r_ptr = input_16b[i];
+			memcpy_s(td->sources[i]->stream.addr, buffer_size, &input_16b[i],
+				 buffer_size);
 		else if (td->format == SOF_IPC_FRAME_S24_4LE)
-			td->sources[i]->stream.r_ptr = input_24b[i];
+			memcpy_s(td->sources[i]->stream.addr, buffer_size, &input_24b[i],
+				 buffer_size);
 		else
-			td->sources[i]->stream.r_ptr = input_32b[i];
+			memcpy_s(td->sources[i]->stream.addr, buffer_size, &input_32b[i],
+				 buffer_size);
+
+		audio_stream_produce(&td->sources[i]->stream, buffer_size);
+		assert_int_equal(audio_stream_get_avail_bytes(&td->sources[i]->stream),
+				 buffer_size);
 	}
 }
 
@@ -197,7 +199,6 @@ static int teardown_test_case(void **state)
 	for (i = 0; i < MUX_MAX_STREAMS; ++i)
 		free_test_source(td->sources[i]);
 
-	free(td->output);
 	free_test_sink(td->sink);
 
 	comp_free(td->dev);

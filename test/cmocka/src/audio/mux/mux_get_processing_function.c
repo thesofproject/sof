@@ -54,7 +54,7 @@ static int setup_test_case(void **state)
 
 	td->cd = (struct comp_data *)td->dev->priv_data;
 
-	td->sink = create_test_sink(td->dev, 0, 0, 0);
+	td->sink = create_test_sink(td->dev, 0, 0, 0, 4);
 
 	*state = td;
 
@@ -65,8 +65,8 @@ static int teardown_test_case(void **state)
 {
 	struct test_data *td = *state;
 
+	free_test_sink(td->sink);
 	comp_free(td->dev);
-	free(td->sink);
 	free(td);
 
 	return 0;

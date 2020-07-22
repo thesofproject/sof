@@ -599,8 +599,7 @@ static int file_copy(struct comp_dev *dev)
 					 source_list);
 
 		/* test sink has enough free frames */
-		snk_frames = buffer->stream.free /
-			     audio_stream_frame_bytes(&buffer->stream);
+		snk_frames = audio_stream_get_free_frames(&buffer->stream);
 		if (snk_frames > 0 && !cd->fs.reached_eof) {
 			/* read PCM samples from file */
 			ret = cd->file_func(dev, &buffer->stream, NULL,
@@ -618,8 +617,7 @@ static int file_copy(struct comp_dev *dev)
 					 struct comp_buffer, sink_list);
 
 		/* test source has enough free frames */
-		src_frames = buffer->stream.avail /
-			     audio_stream_frame_bytes(&buffer->stream);
+		src_frames = audio_stream_get_avail_frames(&buffer->stream);
 		if (src_frames > 0) {
 			/* write PCM samples into file */
 			ret = cd->file_func(dev, NULL, &buffer->stream,
