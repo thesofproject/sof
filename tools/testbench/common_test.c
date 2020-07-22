@@ -99,8 +99,15 @@ int tb_pipeline_params(struct ipc *ipc, struct sof_ipc_pipe_new *ipc_pipe,
 	struct sof_ipc_pcm_params params;
 	char message[DEBUG_MSG_LEN];
 	int fs_period;
-	int period = ipc_pipe->period;
+	int period;
 	int ret = 0;
+
+	if (!ipc_pipe) {
+		fprintf(stderr, "error: ipc_pipe NULL\n");
+		return -EINVAL;
+	}
+
+	period = ipc_pipe->period;
 
 	/* Compute period from sample rates */
 	fs_period = (int)(0.9999 + tp->fs_in * period / 1e6);
