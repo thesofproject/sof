@@ -50,20 +50,20 @@ RUN apt-get -y update && \
 		python3 \
 		libglib2.0-dev
 
-
 ARG CLONE_DEFAULTS="--depth 5"
-# Use ToT alsa utils for the latest topology patches.
-RUN mkdir -p /root/alsa-build && cd /root/alsa-build && \
-git clone $CLONE_DEFAULTS https://github.com/thesofproject/alsa-lib.git && \
-git clone $CLONE_DEFAULTS https://github.com/thesofproject/alsa-utils.git && \
-cd /root/alsa-build/alsa-lib && ./gitcompile &&  make install && \
-cd /root/alsa-build/alsa-utils && ./gitcompile &&  make install && \
-cd /root/ && rm -rf alsa-build
 
 # Set up sof user
 RUN useradd --create-home -d /home/sof -u $UID -G sudo sof && \
 echo "sof:test0000" | chpasswd && adduser sof sudo
 ENV HOME /home/sof
+
+# Use ToT alsa utils for the latest topology patches.
+RUN mkdir -p /home/sof/work/alsa && cd /home/sof/work/alsa && \
+git clone $CLONE_DEFAULTS https://github.com/thesofproject/alsa-lib.git && \
+git clone $CLONE_DEFAULTS https://github.com/thesofproject/alsa-utils.git && \
+cd /home/sof/work/alsa/alsa-lib && ./gitcompile &&  make install && \
+cd /home/sof/work/alsa/alsa-utils && ./gitcompile &&  make install &&\
+chown -R sof:sof /home/sof
 
 ARG GITHUB_SOF=https://github.com/thesofproject
 ARG XT_OVERLAY_REPO=$GITHUB_SOF/xtensa-overlay.git
