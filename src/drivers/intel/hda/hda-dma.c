@@ -139,6 +139,9 @@ struct hda_chan_data {
 	bool irq_disabled;	/**< indicates whether channel is used by the
 				  * pipeline scheduled on DMA
 				  */
+	bool l1_exit_needed;	/**< indicates if l1 exit needed at ll
+				  * scheduler post run
+				  */
 
 #if HDA_DMA_PTR_DBG
 	struct hda_dbg_data dbg_data;
@@ -221,16 +224,15 @@ static void hda_dma_get_dbg_vals(struct dma_chan_data *chan,
 #define hda_dma_ptr_trace(...)
 #endif
 
-static void hda_dma_l1_entry_notify(void *arg, enum notify_id type, void *data)
-{
-	/* Notify about Host DMA usage */
-	pm_runtime_get(PM_RUNTIME_HOST_DMA_L1, 0);
-}
-
 static void hda_dma_l1_exit_notify(void *arg, enum notify_id type, void *data)
 {
-	/* Force Host DMA to exit L1 */
-	pm_runtime_put(PM_RUNTIME_HOST_DMA_L1, 0);
+	struct hda_chan_data *hda_chan = arg;
+
+	/* Force Host DMA to exit L1 if needed */
+	if (hda_chan->l1_exit_needed) {
+		pm_runtime_put(PM_RUNTIME_HOST_DMA_L1, 0);
+		hda_chan->l1_exit_needed = false;
+	}
 }
 
 static inline int hda_dma_is_buffer_full(struct dma_chan_data *chan)
@@ -309,9 +311,14 @@ static void hda_dma_post_copy(struct dma_chan_data *chan, int bytes)
 		 */
 		hda_dma_inc_fp(chan, bytes);
 
-		/* Force Host DMA to exit L1 if scheduled on DMA */
+		/*
+		 * Force Host DMA to exit L1 if scheduled on DMA,
+		 * otherwise, perform L1 exit at LL scheduler powt run.
+		 */
 		if (!hda_chan->irq_disabled)
 			pm_runtime_put(PM_RUNTIME_HOST_DMA_L1, 0);
+		else if (bytes)
+			hda_chan->l1_exit_needed = true;
 	} else {
 		/*
 		 * set BFPI to let link gateway know we have read size,
@@ -348,17 +355,8 @@ static int hda_dma_host_start(struct dma_chan_data *channel)
 	if (!hda_chan->irq_disabled)
 		return ret;
 
-	/* Inform about Host DMA usage */
-	ret = notifier_register(NULL, scheduler_get_data(SOF_SCHEDULE_LL_TIMER),
-				NOTIFIER_ID_LL_PRE_RUN, hda_dma_l1_entry_notify,
-				NOTIFIER_FLAG_AGGREGATE);
-	if (ret < 0)
-		tr_err(&hdma_tr, "hda-dmac: %d channel %d, cannot register notification %d",
-		       channel->dma->plat_data.id, channel->index,
-		       ret);
-
 	/* Register common L1 exit for all channels */
-	ret = notifier_register(NULL, scheduler_get_data(SOF_SCHEDULE_LL_TIMER),
+	ret = notifier_register(hda_chan, scheduler_get_data(SOF_SCHEDULE_LL_TIMER),
 				NOTIFIER_ID_LL_POST_RUN, hda_dma_l1_exit_notify,
 				NOTIFIER_FLAG_AGGREGATE);
 	if (ret < 0)
@@ -436,7 +434,6 @@ static int hda_dma_link_copy(struct dma_chan_data *channel, int bytes,
 static int hda_dma_host_copy(struct dma_chan_data *channel, int bytes,
 			     uint32_t flags)
 {
-	struct hda_chan_data *hda_chan = dma_chan_get_data(channel);
 	int ret;
 
 	tr_dbg(&hdma_tr, "hda-dmac: %d channel %d -> copy 0x%x bytes",
@@ -445,8 +442,7 @@ static int hda_dma_host_copy(struct dma_chan_data *channel, int bytes,
 	hda_dma_get_dbg_vals(channel, HDA_DBG_PRE, HDA_DBG_HOST);
 
 	/* Register Host DMA usage */
-	if (!hda_chan->irq_disabled)
-		pm_runtime_get(PM_RUNTIME_HOST_DMA_L1, 0);
+	pm_runtime_get(PM_RUNTIME_HOST_DMA_L1, 0);
 
 	/* blocking mode copy */
 	if (flags & DMA_COPY_BLOCKING) {
