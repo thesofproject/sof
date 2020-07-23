@@ -73,12 +73,12 @@ USER sof
 RUN cd /home/sof && \
 	git clone $CLONE_DEFAULTS --branch sof-gcc8.1 $XT_OVERLAY_REPO && \
 	cd xtensa-overlay && cd ../ && \
-	git clone $CLONE_DEFAULTS --branch sof-gcc8.1 $CT_NG_REPO && \
+	git clone $CLONE_DEFAULTS --branch sof-gcc9x $CT_NG_REPO && \
 	mkdir -p /home/sof/work/ && \
 	cd crosstool-ng && \
 	./bootstrap && ./configure --prefix=`pwd` && make && make install && \
 	for arch in byt hsw apl cnl imx imx8m; do \
-		cp config-${arch}-gcc8.1-gdb8.1 .config && \
+		cp config-${arch}-gcc9.2-gdb8.3 .config && \
 # replace the build dist to save space
 		sed -i 's#${CT_TOP_DIR}\/builds#\/home\/sof\/work#g' .config && \
 # gl_cv_func_getcwd_path_max=yes is used to avoid too-long confdir3/confdir3/...
