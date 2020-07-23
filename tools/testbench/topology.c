@@ -734,6 +734,9 @@ int parse_topology(struct sof *sof, struct shared_lib_table *library_table,
 			temp_comp_list = (struct comp_info *)
 					 realloc(temp_comp_list, size);
 
+			for (i = (num_comps - hdr->count); i < num_comps; i++)
+				temp_comp_list[i].name = NULL;
+
 			for (i = (num_comps - hdr->count); i < num_comps; i++) {
 				ret = load_widget(sof, SOF_DEV,
 						  temp_comp_list,
