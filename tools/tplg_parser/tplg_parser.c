@@ -1125,8 +1125,10 @@ int load_widget(void *dev, int dev_type, struct comp_info *temp_comp_list,
 	/* read widget data */
 	read_size = sizeof(struct snd_soc_tplg_dapm_widget);
 	ret = fread(widget, read_size, 1, file);
-	if (ret != 1)
-		return -EINVAL;
+	if (ret != 1) {
+		ret = -EINVAL;
+		goto exit;
+	}
 
 	/*
 	 * create a list with all widget info
@@ -1147,41 +1149,47 @@ int load_widget(void *dev, int dev_type, struct comp_info *temp_comp_list,
 	case(SND_SOC_TPLG_DAPM_PGA):
 		if (load_pga(dev, comp_id, pipeline_id, widget) < 0) {
 			fprintf(stderr, "error: load pga\n");
-			return -EINVAL;
+			ret = -EINVAL;
+			goto exit;
 		}
 		break;
 	case(SND_SOC_TPLG_DAPM_AIF_IN):
 		if (load_aif_in_out(dev, comp_id, pipeline_id, widget,
 				    SOF_IPC_STREAM_PLAYBACK, tp) < 0) {
 			fprintf(stderr, "error: load AIF IN failed\n");
-			return -EINVAL;
+			ret = -EINVAL;
+			goto exit;
 		}
 		break;
 	case(SND_SOC_TPLG_DAPM_AIF_OUT):
 		if (load_aif_in_out(dev, comp_id, pipeline_id, widget,
 				    SOF_IPC_STREAM_CAPTURE, tp) < 0) {
 			fprintf(stderr, "error: load AIF OUT failed\n");
-			return -EINVAL;
+			ret = -EINVAL;
+			goto exit;
 		}
 		break;
 	case(SND_SOC_TPLG_DAPM_DAI_IN):
 		if (load_dai_in_out(dev, comp_id, pipeline_id, widget,
 				    SOF_IPC_STREAM_PLAYBACK, tp) < 0) {
 			fprintf(stderr, "error: load filewrite\n");
-			return -EINVAL;
+			ret = -EINVAL;
+			goto exit;
 		}
 		break;
 	case(SND_SOC_TPLG_DAPM_DAI_OUT):
 		if (load_dai_in_out(dev, comp_id, pipeline_id, widget,
 				    SOF_IPC_STREAM_CAPTURE, tp) < 0) {
 			fprintf(stderr, "error: load filewrite\n");
-			return -EINVAL;
+			ret = -EINVAL;
+			goto exit;
 		}
 		break;
 	case(SND_SOC_TPLG_DAPM_BUFFER):
 		if (load_buffer(dev, comp_id, pipeline_id, widget) < 0) {
 			fprintf(stderr, "error: load buffer\n");
-			return -EINVAL;
+			ret = -EINVAL;
+			goto exit;
 		}
 		break;
 	case(SND_SOC_TPLG_DAPM_SCHEDULER):
@@ -1193,51 +1201,61 @@ int load_widget(void *dev, int dev_type, struct comp_info *temp_comp_list,
 		if (load_pipeline(dev, comp_id, pipeline_id, widget,
 				  *sched_id) < 0) {
 			fprintf(stderr, "error: load pipeline\n");
-			return -EINVAL;
+			ret = -EINVAL;
+			goto exit;
 		}
 		break;
 	case(SND_SOC_TPLG_DAPM_SRC):
 		if (load_src(dev, comp_id, pipeline_id, widget, tp) < 0) {
 			fprintf(stderr, "error: load src\n");
-			return -EINVAL;
+			ret = -EINVAL;
+			goto exit;
 		}
 		break;
 	case(SND_SOC_TPLG_DAPM_ASRC):
 		if (load_asrc(dev, comp_id, pipeline_id, widget, tp) < 0) {
 			fprintf(stderr, "error: load src\n");
-			return -EINVAL;
+			ret = -EINVAL;
+			goto exit;
 		}
 		break;
 	case(SND_SOC_TPLG_DAPM_MIXER):
 		if (load_mixer(dev, comp_id, pipeline_id, widget) < 0) {
 			fprintf(stderr, "error: load mixer\n");
-			return -EINVAL;
+			ret = -EINVAL;
+			goto exit;
 		}
 		break;
 	case(SND_SOC_TPLG_DAPM_EFFECT):
 		if (load_process(dev, comp_id, pipeline_id, widget) < 0) {
 			fprintf(stderr, "error: load effect\n");
-			return -EINVAL;
+			ret = -EINVAL;
+			goto exit;
 		}
 		break;
 	/* unsupported widgets */
 	default:
 		if (fseek(file, widget->priv.size, SEEK_CUR)) {
 			fprintf(stderr, "error: fseek unsupported widget\n");
-			return -errno;
+			ret = -errno;
+			goto exit;
 		}
 
 		printf("info: Widget type not supported %d\n", widget->id);
 		ret = tplg_load_controls(widget->num_kcontrols, file);
 		if (ret < 0) {
 			fprintf(stderr, "error: loading controls\n");
-			return ret;
+			goto exit;
 		}
 		break;
 	}
 
+	ret = 0;
+
+exit:
+	/* free allocated widget data */
 	free(widget);
-	return 0;
+	return ret;
 }
 
 /* parse vendor tokens in topology */
