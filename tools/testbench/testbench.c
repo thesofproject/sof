@@ -228,10 +228,20 @@ int main(int argc, char **argv)
 		exit(EXIT_FAILURE);
 	}
 
-	/* Get pointers to fileread and filewrite */
+	/* Get pointer to filewrite */
 	pcm_dev = ipc_get_comp_by_id(sof.ipc, tp.fw_id);
+	if (!pcm_dev) {
+		fprintf(stderr, "error: failed to get pointers to filewrite\n");
+		exit(EXIT_FAILURE);
+	}
 	fwcd = comp_get_drvdata(pcm_dev->cd);
+
+	/* Get pointer to fileread */
 	pcm_dev = ipc_get_comp_by_id(sof.ipc, tp.fr_id);
+	if (!pcm_dev) {
+		fprintf(stderr, "error: failed to get pointers to fileread\n");
+		exit(EXIT_FAILURE);
+	}
 	frcd = comp_get_drvdata(pcm_dev->cd);
 
 	/* Run pipeline until EOF from fileread */
