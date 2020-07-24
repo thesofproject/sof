@@ -39,6 +39,39 @@ struct sof *sof_get()
 }
 
 /*
+ * Parse output filenames from user input
+ * This function takes in the output filenames as an input in the format:
+ * "output_file1,output_file2,..."
+ * The max supported output filename number is 4, min is 1.
+ */
+static int parse_output_files(char *outputs, struct testbench_prm *tp)
+{
+	char *output_token = NULL;
+	char *token = strtok_r(outputs, ",", &output_token);
+	int index;
+
+	for (index = 0; index < MAX_OUTPUT_FILE_NUM && token; index++) {
+		/* get output file name with current index */
+		tp->output_file[index] = strdup(token);
+
+		/* next output */
+		token = strtok_r(NULL, ",", &output_token);
+	}
+
+	if (index == MAX_OUTPUT_FILE_NUM && token) {
+		fprintf(stderr, "error: max output file number is %d\n",
+			MAX_OUTPUT_FILE_NUM);
+		for (index = 0; index < MAX_OUTPUT_FILE_NUM; index++)
+			free(tp->output_file[index]);
+		return -EINVAL;
+	}
+
+	/* set total output file number */
+	tp->output_file_num = index;
+	return 0;
+}
+
+/*
  * Parse shared library from user input
  * Currently only handles volume and src comp
  * This function takes in the libraries to be used as an input in the format:
@@ -85,13 +118,14 @@ static int parse_libraries(char *libs)
 /* print usage for testbench */
 static void print_usage(char *executable)
 {
-	printf("Usage: %s -i <input_file> -o <output_file> ", executable);
+	printf("Usage: %s -i <input_file> ", executable);
+	printf("-o <output_file1,output_file2,...> ");
 	printf("-t <tplg_file> -b <input_format> ");
 	printf("-a <comp1=comp1_library,comp2=comp2_library>\n");
 	printf("input_format should be S16_LE, S32_LE, S24_LE or FLOAT_LE\n");
 	printf("Example Usage:\n");
 	printf("%s -i in.txt -o out.txt -t test.tplg ", executable);
-	printf("-r 48000 -R 96000 ");
+	printf("-r 48000 -R 96000");
 	printf("-b S16_LE -a vol=libsof_volume.so\n");
 }
 
@@ -137,9 +171,9 @@ static void parse_input_args(int argc, char **argv, struct testbench_prm *tp)
 			tp->input_file = strdup(optarg);
 			break;
 
-		/* output sample file */
+		/* output sample files */
 		case 'o':
-			tp->output_file = strdup(optarg);
+			ret = parse_output_files(optarg, tp);
 			break;
 
 		/* topology file */
@@ -190,6 +224,7 @@ int main(int argc, char **argv)
 	struct testbench_prm tp;
 	struct ipc_comp_dev *pcm_dev;
 	struct pipeline *p;
+	struct pipeline *curr_p;
 	struct sof_ipc_pipe_new *ipc_pipe;
 	struct comp_dev *cd;
 	struct file_comp_data *frcd, *fwcd;
@@ -204,14 +239,18 @@ int main(int argc, char **argv)
 	tp.fs_out = 0;
 	tp.bits_in = 0;
 	tp.input_file = NULL;
-	tp.output_file = NULL;
+	for (i = 0; i < MAX_OUTPUT_FILE_NUM; i++)
+		tp.output_file[i] = NULL;
+	tp.output_file_num = 0;
 	tp.channels = TESTBENCH_NCH;
+	tp.max_pipeline_id = 0;
 
 	/* command line arguments*/
 	parse_input_args(argc, argv, &tp);
 
 	/* check args */
-	if (!tp.tplg_file || !tp.input_file || !tp.output_file || !tp.bits_in) {
+	if (!tp.tplg_file || !tp.input_file || !tp.output_file_num ||
+	    !tp.bits_in) {
 		print_usage(argv[0]);
 		exit(EXIT_FAILURE);
 	}
@@ -256,8 +295,25 @@ int main(int argc, char **argv)
 	tb_enable_trace(false); /* reduce trace output */
 	tic = clock();
 
-	while (frcd->fs.reached_eof == 0)
-		pipeline_schedule_copy(p, 0);
+	while (frcd->fs.reached_eof == 0) {
+		/*
+		 * Schedule copy for all pipelines which have the same schedule
+		 * component as the working one.
+		 *
+		 * In common convention pipelines are added with monotonic
+		 * increasing IDs started from 1, we could take care of it in
+		 * test topologies so this for-loop will walk all pipelines.
+		 */
+		for (i = 1; i <= tp.max_pipeline_id; i++) {
+			pcm_dev = ipc_get_comp_by_ppl_id(sof.ipc,
+							 COMP_TYPE_PIPELINE, i);
+			if (pcm_dev) {
+				curr_p = pcm_dev->pipeline;
+				if (pipeline_is_same_sched_comp(p, curr_p))
+					pipeline_schedule_copy(curr_p, 0);
+			}
+		}
+	}
 
 	if (!frcd->fs.reached_eof)
 		printf("warning: possible pipeline xrun\n");
@@ -289,7 +345,10 @@ int main(int argc, char **argv)
 	printf("Input bit format: %s\n", tp.bits_in);
 	printf("Input sample rate: %d\n", tp.fs_in);
 	printf("Output sample rate: %d\n", tp.fs_out);
-	printf("Output written to file: \"%s\"\n", tp.output_file);
+	for (i = 0; i < tp.output_file_num; i++) {
+		printf("Output[%d] written to file: \"%s\"\n",
+		       i, tp.output_file[i]);
+	}
 	printf("Input sample count: %d\n", n_in);
 	printf("Output sample count: %d\n", n_out);
 	printf("Total execution time: %.2f us, %.2f x realtime\n",
@@ -299,7 +358,8 @@ int main(int argc, char **argv)
 	free(tp.bits_in);
 	free(tp.input_file);
 	free(tp.tplg_file);
-	free(tp.output_file);
+	for (i = 0; i < tp.output_file_num; i++)
+		free(tp.output_file[i]);
 
 	/* close shared library objects */
 	for (i = 0; i < NUM_WIDGETS_SUPPORTED; i++) {
