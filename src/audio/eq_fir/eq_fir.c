@@ -167,7 +167,7 @@ static inline int set_fir_func(struct comp_dev *dev)
 	return 0;
 }
 
-/* Pass-trough functions to replace FIR core while not configured for
+/* Pass-through function to replace FIR core while not configured for
  * response.
  */
 
