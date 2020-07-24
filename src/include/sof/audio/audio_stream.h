@@ -584,46 +584,6 @@ static inline void audio_stream_copy(const struct audio_stream *source,
 	}
 }
 
-#if CONFIG_FORMAT_S16LE
-
-/**
- * Copies signed 16-bit samples from source buffer to sink buffer.
- * @param source Source buffer.
- * @param ioffset Offset (in samples) in source buffer to start reading from.
- * @param sink Sink buffer.
- * @param ooffset Offset (in samples) in sink buffer to start writing to.
- * @param samples Number of samples to copy.
- */
-static inline void audio_stream_copy_s16(const struct audio_stream *source,
-					 uint32_t ioffset,
-					 struct audio_stream *sink,
-					 uint32_t ooffset, uint32_t samples)
-{
-	audio_stream_copy(source, ioffset, sink, ooffset, samples);
-}
-
-#endif /* CONFIG_FORMAT_S16LE */
-
-#if CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE || CONFIG_FORMAT_FLOAT
-
-/**
- * Copies signed 32-bit samples from source buffer to sink buffer.
- * @param source Source buffer.
- * @param ioffset Offset (in samples) in source buffer to start reading from.
- * @param sink Sink buffer.
- * @param ooffset Offset (in samples) in sink buffer to start writing to.
- * @param samples Number of samples to copy.
- */
-static inline void audio_stream_copy_s32(const struct audio_stream *source,
-					 uint32_t ioffset,
-					 struct audio_stream *sink,
-					 uint32_t ooffset, uint32_t samples)
-{
-	audio_stream_copy(source, ioffset, sink, ooffset, samples);
-}
-
-#endif /* CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE || CONFIG_FORMAT_FLOAT */
-
 /** @}*/
 
 #endif /* __SOF_AUDIO_AUDIO_STREAM_H__ */

@@ -210,25 +210,13 @@ static void eq_iir_s32_24_default(const struct comp_dev *dev,
 }
 #endif /* CONFIG_FORMAT_S32LE && CONFIG_FORMAT_S24LE */
 
-#if CONFIG_FORMAT_S16LE
-static void eq_iir_s16_pass(const struct comp_dev *dev,
-			    const struct audio_stream *source,
-			    struct audio_stream *sink,
-			    uint32_t frames)
+static void eq_iir_pass(const struct comp_dev *dev,
+			const struct audio_stream *source,
+			struct audio_stream *sink,
+			uint32_t frames)
 {
-	audio_stream_copy_s16(source, 0, sink, 0, frames * source->channels);
+	audio_stream_copy(source, 0, sink, 0, frames * source->channels);
 }
-#endif /* CONFIG_FORMAT_S16LE */
-
-#if CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE
-static void eq_iir_s32_pass(const struct comp_dev *dev,
-			    const struct audio_stream *source,
-			    struct audio_stream *sink,
-			    uint32_t frames)
-{
-	audio_stream_copy_s32(source, 0, sink, 0, frames * source->channels);
-}
-#endif /* CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE */
 
 #if CONFIG_FORMAT_S16LE && CONFIG_FORMAT_S32LE
 static void eq_iir_s32_s16_pass(const struct comp_dev *dev,
@@ -295,7 +283,7 @@ const struct eq_iir_func_map fm_configured[] = {
 
 const struct eq_iir_func_map fm_passthrough[] = {
 #if CONFIG_FORMAT_S16LE
-	{SOF_IPC_FRAME_S16_LE,  SOF_IPC_FRAME_S16_LE,  eq_iir_s16_pass},
+	{SOF_IPC_FRAME_S16_LE,  SOF_IPC_FRAME_S16_LE,  eq_iir_pass},
 #endif /* CONFIG_FORMAT_S16LE */
 #if CONFIG_FORMAT_S16LE && CONFIG_FORMAT_S24LE
 	{SOF_IPC_FRAME_S16_LE,  SOF_IPC_FRAME_S24_4LE, NULL},
@@ -307,14 +295,14 @@ const struct eq_iir_func_map fm_passthrough[] = {
 	{SOF_IPC_FRAME_S32_LE,  SOF_IPC_FRAME_S16_LE,  eq_iir_s32_s16_pass},
 #endif /* CONFIG_FORMAT_S16LE && CONFIG_FORMAT_S32LE*/
 #if CONFIG_FORMAT_S24LE
-	{SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S24_4LE, eq_iir_s32_pass},
+	{SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S24_4LE, eq_iir_pass},
 #endif /* CONFIG_FORMAT_S24LE */
 #if CONFIG_FORMAT_S24LE && CONFIG_FORMAT_S32LE
 	{SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S32_LE,  NULL},
 	{SOF_IPC_FRAME_S32_LE,  SOF_IPC_FRAME_S24_4LE, eq_iir_s32_s24_pass},
 #endif /* CONFIG_FORMAT_S24LE */
 #if CONFIG_FORMAT_S32LE
-	{SOF_IPC_FRAME_S32_LE,  SOF_IPC_FRAME_S32_LE,  eq_iir_s32_pass},
+	{SOF_IPC_FRAME_S32_LE,  SOF_IPC_FRAME_S32_LE,  eq_iir_pass},
 #endif /* CONFIG_FORMAT_S32LE */
 };
 

@@ -436,23 +436,14 @@ static void src_copy_sxx(struct comp_dev *dev,
 	int frames = cd->param.blk_in;
 
 	switch (sink->frame_fmt) {
-#if CONFIG_FORMAT_S16LE
 	case SOF_IPC_FRAME_S16_LE:
-		audio_stream_copy_s16(source, 0, sink, 0,
-				      frames * source->channels);
-		*n_read = frames;
-		*n_written = frames;
-		break;
-#endif
-#if CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE
 	case SOF_IPC_FRAME_S24_4LE:
 	case SOF_IPC_FRAME_S32_LE:
-		audio_stream_copy_s32(source, 0, sink, 0,
-				      frames * source->channels);
+		audio_stream_copy(source, 0, sink, 0,
+				  frames * source->channels);
 		*n_read = frames;
 		*n_written = frames;
 		break;
-#endif
 	default:
 		*n_read = 0;
 		*n_written = 0;
