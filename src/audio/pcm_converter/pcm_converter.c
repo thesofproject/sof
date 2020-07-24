@@ -20,6 +20,8 @@ void pcm_convert_as_linear(const struct audio_stream *source, uint32_t ioffset,
 {
 	const int s_size_in = audio_stream_sample_bytes(source);
 	const int s_size_out = audio_stream_sample_bytes(sink);
+	const int log2_s_size_in = ffs(s_size_in) - 1;
+	const int log2_s_size_out = ffs(s_size_out) - 1;
 	char *r_ptr = audio_stream_get_frag(source, source->r_ptr, ioffset,
 					    s_size_in);
 	char *w_ptr = audio_stream_get_frag(sink, sink->w_ptr, ooffset,
@@ -33,9 +35,12 @@ void pcm_convert_as_linear(const struct audio_stream *source, uint32_t ioffset,
 
 	while (i < samples) {
 		/* calculate chunk size */
-		N1 = audio_stream_bytes_without_wrap(source, r_ptr);
-		N2 = audio_stream_bytes_without_wrap(sink, w_ptr);
-		chunk = MIN(N1, N2) * s_size_out;
+		/* "">> log2_s_size" is equal "/ s_size" here */
+		N1 = audio_stream_bytes_without_wrap(source, r_ptr) >>
+			log2_s_size_in;
+		N2 = audio_stream_bytes_without_wrap(sink, w_ptr) >>
+			log2_s_size_out;
+		chunk = MIN(N1, N2);
 		chunk = MIN(chunk, samples - i);
 
 		/* run conversion on linear memory region */
