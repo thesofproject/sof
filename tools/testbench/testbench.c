@@ -120,12 +120,12 @@ static void print_usage(char *executable)
 {
 	printf("Usage: %s -i <input_file> ", executable);
 	printf("-o <output_file1,output_file2,...> ");
-	printf("-t <tplg_file> -b <input_format> ");
+	printf("-t <tplg_file> -b <input_format> -c <channels>");
 	printf("-a <comp1=comp1_library,comp2=comp2_library>\n");
 	printf("input_format should be S16_LE, S32_LE, S24_LE or FLOAT_LE\n");
 	printf("Example Usage:\n");
 	printf("%s -i in.txt -o out.txt -t test.tplg ", executable);
-	printf("-r 48000 -R 96000");
+	printf("-r 48000 -R 96000 -c 2");
 	printf("-b S16_LE -a vol=libsof_volume.so\n");
 }
 
@@ -164,7 +164,7 @@ static void parse_input_args(int argc, char **argv, struct testbench_prm *tp)
 	int option = 0;
 	int ret = 0;
 
-	while ((option = getopt(argc, argv, "hdi:o:t:b:a:r:R:")) != -1) {
+	while ((option = getopt(argc, argv, "hdi:o:t:b:a:r:R:c:")) != -1) {
 		switch (option) {
 		/* input sample file */
 		case 'i':
@@ -200,6 +200,11 @@ static void parse_input_args(int argc, char **argv, struct testbench_prm *tp)
 		/* output sample rate */
 		case 'R':
 			tp->fs_out = atoi(optarg);
+			break;
+
+		/* input/output channels */
+		case 'c':
+			tp->channels = atoi(optarg);
 			break;
 
 		/* enable debug prints */
@@ -341,7 +346,7 @@ int main(int argc, char **argv)
 	n_in = frcd->fs.n;
 	n_out = fwcd->fs.n;
 	t_exec = (double)(toc - tic) / CLOCKS_PER_SEC;
-	c_realtime = (double)n_out / TESTBENCH_NCH / tp.fs_out / t_exec;
+	c_realtime = (double)n_out / tp.channels / tp.fs_out / t_exec;
 
 	/* free all components/buffers in pipeline */
 	free_comps();
