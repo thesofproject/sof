@@ -166,59 +166,16 @@ static inline int set_fir_func(struct comp_dev *dev)
 	return 0;
 }
 
-/* Pass-through function to replace FIR core while not configured for
+/* Pass-through functions to replace FIR core while not configured for
  * response.
  */
 
-#if CONFIG_FORMAT_S16LE
-static void eq_fir_s16_passthrough(struct fir_state_32x16 fir[],
-				   const struct audio_stream *source,
-				   struct audio_stream *sink,
-				   int frames, int nch)
+static void eq_fir_passthrough(struct fir_state_32x16 fir[],
+			       const struct audio_stream *source,
+			       struct audio_stream *sink,
+			       int frames, int nch)
 {
-	audio_stream_copy_s16(source, 0, sink, 0, frames * nch);
-}
-#endif /* CONFIG_FORMAT_S16LE */
-
-#if CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE
-static void eq_fir_s32_passthrough(struct fir_state_32x16 fir[],
-				   const struct audio_stream *source,
-				   struct audio_stream *sink,
-				   int frames, int nch)
-{
-	audio_stream_copy_s32(source, 0, sink, 0, frames * nch);
-}
-#endif /* CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE */
-
-/* Function to select pass-trough depending on PCM format */
-
-static inline int set_pass_func(struct comp_dev *dev)
-{
-	struct comp_data *cd = comp_get_drvdata(dev);
-	struct comp_buffer *sourceb;
-
-	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer,
-				  sink_list);
-
-	switch (sourceb->stream.frame_fmt) {
-#if CONFIG_FORMAT_S16LE
-	case SOF_IPC_FRAME_S16_LE:
-		comp_info(dev, "set_pass_func(), SOF_IPC_FRAME_S16_LE");
-		cd->eq_fir_func = eq_fir_s16_passthrough;
-		break;
-#endif /* CONFIG_FORMAT_S32LE */
-#if CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE
-	case SOF_IPC_FRAME_S24_4LE:
-	case SOF_IPC_FRAME_S32_LE:
-		comp_info(dev, "set_pass_func(), SOF_IPC_FRAME_S32_LE");
-		cd->eq_fir_func = eq_fir_s32_passthrough;
-		break;
-#endif /* CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE */
-	default:
-		comp_err(dev, "set_pass_func(): invalid dev->params.frame_fmt");
-		return -EINVAL;
-	}
-	return 0;
+	audio_stream_copy(source, 0, sink, 0, frames * nch);
 }
 
 /*
@@ -779,7 +736,8 @@ static int eq_fir_prepare(struct comp_dev *dev)
 		return ret;
 	}
 
-	ret = set_pass_func(dev);
+	cd->eq_fir_func = eq_fir_passthrough;
+
 	return ret;
 
 err:
