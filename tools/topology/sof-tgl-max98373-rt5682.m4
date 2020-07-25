@@ -1,5 +1,5 @@
 #
-# Topology for Tigerlake with Max98373 amp + rt5682 codec + DMIC + 4 HDMI
+# Topology for Tigerlake with Max98373 amp (SSP: $AMP_SSP)  + rt5682 codec + DMIC + 4 HDMI
 #
 
 # Include topology builder
@@ -24,11 +24,11 @@ DEBUG_START
 #
 # Define the pipelines
 #
-# PCM0 ----> smart_amp ----> SSP1 (Speaker -max98373)
+# PCM0 ----> smart_amp ----> SSP$AMP_SSP (Speaker -max98373)
 #              ^
 #              |
 #              |
-# PCM0 <---- demux <----- SSP1 (Speaker -max98373)
+# PCM0 <---- demux <----- SSP$AMP_SSP (Speaker -max98373)
 # PCM1 <---> volume <----> SSP0  (Headset - ALC5682)
 # PCM2 ----> volume -----> iDisp1
 # PCM3 ----> volume -----> iDisp2
@@ -37,12 +37,14 @@ DEBUG_START
 # PCM99 <---- volume <---- DMIC01 (dmic 48k capture)
 # PCM100 <---- kpb <---- DMIC16K (dmic 16k capture)
 
+
+ifdef(`AMP_SSP',`',`errprint(note: Define AMP_SSP for speaker amp SSP Index)')
 # Smart amplifier related
 # SSP related
 #define smart amplifier SSP index
-define(`SMART_SSP_INDEX', 1)
+define(`SMART_SSP_INDEX', AMP_SSP)
 #define SSP BE dai_link name
-define(`SMART_SSP_NAME', `SSP1-Codec')
+define(`SMART_SSP_NAME', concat(concat(`SSP', AMP_SSP),`-Codec'))
 #define BE dai_link ID
 define(`SMART_BE_ID', 7)
 #define SSP mclk
