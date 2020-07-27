@@ -23,13 +23,12 @@ include(`mixercontrol.m4')
 include(`bytecontrol.m4')
 
 # demux Bytes control with max value of 255
-C_CONTROLBYTES(DEMUX, PIPELINE_ID,
+C_CONTROLBYTES(concat(`DEMUX', PIPELINE_ID), PIPELINE_ID,
 	CONTROLBYTES_OPS(bytes, 258 binds the mixer control to bytes get/put handlers, 258, 258),
 	CONTROLBYTES_EXTOPS(258 binds the mixer control to bytes get/put handlers, 258, 258),
 	, , ,
 	CONTROLBYTES_MAX(, 304),
-	,
-	demux_priv)
+	,	concat(`demux_priv_', PIPELINE_ID))
 
 # Volume Mixer control with max value of 32
 C_CONTROLMIXER(Master Playback Volume, PIPELINE_ID,
@@ -64,7 +63,7 @@ W_PGA(1, PIPELINE_FORMAT, DAI_PERIODS, 2, playback_pga_conf, SCHEDULE_CORE,
 
 # Mux 0 has 2 sink and source periods.
 W_MUXDEMUX(0, 1, PIPELINE_FORMAT, 2, 2, SCHEDULE_CORE,
-	LIST(`         ', "DEMUX"))
+	LIST(`         ', concat(`DEMUX', PIPELINE_ID)))
 
 # Low Latency Buffers
 W_BUFFER(0, COMP_BUFFER_SIZE(2,
