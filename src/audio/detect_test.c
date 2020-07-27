@@ -58,7 +58,11 @@ DECLARE_TR_CTX(keyword_tr, SOF_UUID(keyword_uuid), LOG_LEVEL_INFO);
 
 struct comp_data {
 	struct sof_detect_test_config config;
-	struct comp_model_data model;
+	struct comp_data_blob_handler *model_handler;
+	void *data_blob;
+	size_t data_blob_size;
+	uint32_t data_blob_crc;
+
 	int32_t activation;
 	uint32_t detected;
 	uint32_t detect_preamble; /**< current keyphrase preamble length */
@@ -270,6 +274,9 @@ static struct comp_dev *test_keyword_new(const struct comp_driver *drv,
 
 	comp_set_drvdata(dev, cd);
 
+	/* component model data handler */
+	cd->model_handler = comp_data_blob_handler_new(dev);
+
 	cfg = (struct sof_detect_test_config *)ipc_keyword->data;
 	bs = ipc_keyword->size;
 
@@ -285,7 +292,8 @@ static struct comp_dev *test_keyword_new(const struct comp_driver *drv,
 		}
 	}
 
-	ret = comp_alloc_model_data(dev, &cd->model, INITIAL_MODEL_DATA_SIZE);
+	ret = comp_init_data_blob(cd->model_handler, INITIAL_MODEL_DATA_SIZE,
+				  NULL);
 	if (ret < 0) {
 		comp_err(dev, "test_keyword_new(): model data initial failed");
 		goto fail;
@@ -319,7 +327,7 @@ static void test_keyword_free(struct comp_dev *dev)
 	comp_info(dev, "test_keyword_free()");
 
 	ipc_msg_free(cd->msg);
-	comp_free_model_data(dev, &cd->model);
+	comp_data_blob_handler_free(cd->model_handler);
 	rfree(cd);
 	rfree(dev);
 }
@@ -433,7 +441,7 @@ static int test_keyword_ctrl_set_bin_data(struct comp_dev *dev,
 		ret = test_keyword_set_config(dev, cdata);
 		break;
 	case SOF_DETECT_TEST_MODEL:
-		ret = comp_set_model(dev, &cd->model, cdata);
+		ret = comp_data_blob_set_cmd(cd->model_handler, cdata);
 		break;
 	default:
 		comp_err(dev, "keyword_ctrl_set_bin_data(): unknown binary data type");
@@ -510,7 +518,7 @@ static int test_keyword_ctrl_get_bin_data(struct comp_dev *dev,
 		ret = test_keyword_get_config(dev, cdata, size);
 		break;
 	case SOF_DETECT_TEST_MODEL:
-		ret = comp_get_model(dev, &cd->model, cdata, size);
+		ret = comp_data_blob_get_cmd(cd->model_handler, cdata, size);
 		break;
 	default:
 		comp_err(dev, "test_keyword_ctrl_get_bin_data(): unknown binary data type");
@@ -637,6 +645,10 @@ static int test_keyword_prepare(struct comp_dev *dev)
 		cd->config.activation_threshold =
 			test_keyword_get_threshold(dev, valid_bits);
 	}
+
+	cd->data_blob = comp_get_data_blob(cd->model_handler,
+					   &cd->data_blob_size,
+					   &cd->data_blob_crc);
 
 	return comp_set_state(dev, COMP_TRIGGER_PREPARE);
 }

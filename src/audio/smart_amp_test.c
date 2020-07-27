@@ -20,7 +20,9 @@ DECLARE_TR_CTX(smart_amp_comp_tr, SOF_UUID(smart_amp_comp_uuid),
 
 struct smart_amp_data {
 	struct sof_smart_amp_config config;
-	struct comp_model_data model;
+	struct comp_data_blob_handler *model_handler;
+	void *data_blob;
+	size_t data_blob_size;
 
 	struct comp_buffer *source_buf; /**< stream source buffer */
 	struct comp_buffer *feedback_buf; /**< feedback source buffer */
@@ -62,6 +64,9 @@ static struct comp_dev *smart_amp_new(const struct comp_driver *drv,
 	ret = memcpy_s(sa, sizeof(*sa), ipc_sa,
 		       sizeof(struct sof_ipc_comp_process));
 	assert(!ret);
+
+	/* component model data handler */
+	sad->model_handler = comp_data_blob_handler_new(dev);
 
 	cfg = (struct sof_smart_amp_config *)ipc_sa->data;
 	bs = ipc_sa->size;
@@ -148,7 +153,7 @@ static int smart_amp_ctrl_get_bin_data(struct comp_dev *dev,
 		ret = smart_amp_get_config(dev, cdata, size);
 		break;
 	case SOF_SMART_AMP_MODEL:
-		ret = comp_get_model(dev, &sad->model, cdata, size);
+		ret = comp_data_blob_get_cmd(sad->model_handler, cdata, size);
 		break;
 	default:
 		comp_err(dev, "smart_amp_ctrl_get_bin_data(): unknown binary data type");
@@ -195,7 +200,7 @@ static int smart_amp_ctrl_set_bin_data(struct comp_dev *dev,
 		ret = smart_amp_set_config(dev, cdata);
 		break;
 	case SOF_SMART_AMP_MODEL:
-		ret = comp_set_model(dev, &sad->model, cdata);
+		ret = comp_data_blob_set_cmd(sad->model_handler, cdata);
 		break;
 	default:
 		comp_err(dev, "smart_amp_ctrl_set_bin_data(): unknown binary data type");
@@ -257,7 +262,8 @@ static void smart_amp_free(struct comp_dev *dev)
 
 	comp_info(dev, "smart_amp_free()");
 
-	comp_free_model_data(dev, &sad->model);
+	comp_data_blob_handler_free(sad->model_handler);
+
 	rfree(sad);
 	rfree(dev);
 }
