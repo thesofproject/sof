@@ -151,6 +151,7 @@ static int sdma_register_init(struct dma *dma)
 {
 	int ret;
 	struct sdma_pdata *pdata = dma_get_drvdata(dma);
+	int i;
 
 	tr_dbg(&sdma_tr, "sdma_register_init");
 	dma_reg_write(dma, SDMA_RESET, 1);
@@ -189,10 +190,10 @@ static int sdma_register_init(struct dma *dma)
 	 * It shall be updated whenever channels need to be activated by
 	 * hardware events.
 	 */
-	for (int i = 0; i < SDMA_HWEVENTS_COUNT; i++)
+	for (i = 0; i < SDMA_HWEVENTS_COUNT; i++)
 		dma_reg_write(dma, SDMA_CHNENBL(i), 0);
 
-	for (int i = 0; i < dma->plat_data.channels; i++)
+	for (i = 0; i < dma->plat_data.channels; i++)
 		dma_reg_write(dma, SDMA_CHNPRI(i), 0);
 
 	/* Write ccb_array pointer to SDMA controller */
