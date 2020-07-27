@@ -378,160 +378,290 @@ int comp_verify_params(struct comp_dev *dev, uint32_t flag,
 	return 0;
 }
 
-void comp_free_model_data(struct comp_dev *dev, struct comp_model_data *model)
+/** \brief Struct handler for large component configs */
+struct comp_data_blob_handler {
+	struct comp_dev *dev;	/**< audio component device */
+	uint32_t data_size;	/**< size of component's data blob */
+	void *data;		/**< pointer to data blob */
+	void *data_new;		/**< pointer to new data blob */
+	bool data_ready;	/**< set when data blob is fully received */
+	uint32_t data_pos;	/**< indicates a data position in data
+				  *  sending/receiving process
+				  */
+};
+
+static void comp_free_data_blob(struct comp_data_blob_handler *blob_handler)
 {
-	if (!model->data)
+	assert(blob_handler);
+
+	if (!blob_handler->data)
 		return;
 
-	rfree(model->data);
-	model->data = NULL;
-	model->data_size = 0;
-	model->crc = 0;
-	model->data_pos = 0;
+	rfree(blob_handler->data);
+	rfree(blob_handler->data_new);
+	blob_handler->data = NULL;
+	blob_handler->data_new = NULL;
+	blob_handler->data_size = 0;
 }
 
-int  comp_alloc_model_data(struct comp_dev *dev, struct comp_model_data *model,
-			   uint32_t size)
+void *comp_get_data_blob(struct comp_data_blob_handler *blob_handler,
+			 size_t *size, uint32_t *crc)
 {
-	comp_free_model_data(dev, model);
+	assert(blob_handler);
+
+	comp_dbg(blob_handler->dev, "comp_get_data_blob()");
+
+	if (size)
+		*size = 0;
+
+	/* Function returns new data blob if available */
+	if (comp_is_new_data_blob_available(blob_handler)) {
+		comp_dbg(blob_handler->dev, "comp_get_data_blob(): new data available");
+
+		/* Free "old" data blob and set data to data_new pointer */
+		rfree(blob_handler->data);
+		blob_handler->data = blob_handler->data_new;
+		blob_handler->data_new = NULL;
+		blob_handler->data_ready = false;
+	}
+
+	/* If data is available we calculate crc32 when crc pointer is given */
+	if (blob_handler->data) {
+		if (crc)
+			*crc = crc32(0, blob_handler->data,
+				     blob_handler->data_size);
+	} else {
+		/* If blob_handler->data is equal to NULL and there is no new
+		 * data blob it means that component hasn't got any config yet.
+		 * Function returns NULL in that case.
+		 */
+		comp_warn(blob_handler->dev, "comp_get_data_blob(): blob_handler->data is not set.");
+	}
+
+	if (size)
+		*size = blob_handler->data_size;
+
+	return blob_handler->data;
+}
+
+bool comp_is_new_data_blob_available(struct comp_data_blob_handler
+					*blob_handler)
+{
+	assert(blob_handler);
+
+	comp_dbg(blob_handler->dev, "comp_is_new_data_blob_available()");
+
+	/* New data blob is available when new data blob is allocated (data_new
+	 * is not NULL) nd component received all required chunks of data
+	 * (data_ready is set to TRUE)
+	 */
+	if (blob_handler->data_new && blob_handler->data_ready)
+		return true;
+
+	return false;
+}
+
+int comp_init_data_blob(struct comp_data_blob_handler *blob_handler,
+			uint32_t size, void *init_data)
+{
+	int ret;
+
+	assert(blob_handler);
+
+	comp_free_data_blob(blob_handler);
 
 	if (!size)
 		return 0;
 
-	model->data = rballoc(0, SOF_MEM_CAPS_RAM, size);
-
-	if (!model->data) {
-		comp_err(dev, "comp_alloc_model_data(): model->data rballoc failed");
+	/* Data blob allocation */
+	blob_handler->data = rballoc(0, SOF_MEM_CAPS_RAM, size);
+	if (!blob_handler->data) {
+		comp_err(blob_handler->dev, "comp_init_data_blob(): model->data rballoc failed");
 		return -ENOMEM;
 	}
 
-	bzero(model->data, size);
-	model->data_size = size;
-	model->data_pos = 0;
-	model->crc = 0;
+	/* If init_data is given, data will be initialized with it. In other
+	 * case, data will be set to zero.
+	 */
+	if (init_data) {
+		ret = memcpy_s(blob_handler->data, size, init_data, size);
+		assert(!ret);
+	} else {
+		bzero(blob_handler->data, size);
+	}
+
+	blob_handler->data_new = NULL;
+	blob_handler->data_size = size;
+	blob_handler->data_ready = true;
 
 	return 0;
 }
 
-int comp_set_model(struct comp_dev *dev, struct comp_model_data *model,
-		   struct sof_ipc_ctrl_data *cdata)
+int comp_data_blob_set_cmd(struct comp_data_blob_handler *blob_handler,
+			   struct sof_ipc_ctrl_data *cdata)
 {
-	bool done = false;
 	int ret = 0;
 
-	comp_dbg(dev, "comp_set_model() msg_index = %d, num_elems = %d, remaining = %d ",
+	assert(blob_handler);
+
+	comp_dbg(blob_handler->dev, "comp_data_blob_set_cmd() msg_index = %d, num_elems = %d, remaining = %d ",
 		 cdata->msg_index, cdata->num_elems,
 		 cdata->elems_remaining);
+
+	/* Check that there is no work-in-progress previous request */
+	if (blob_handler->data_new && cdata->msg_index == 0) {
+		comp_err(blob_handler->dev, "comp_data_blob_set_cmd(), busy with previous request");
+		return -EBUSY;
+	}
 
 	/* in case when the current package is the first, we should allocate
 	 * memory for whole model data
 	 */
 	if (!cdata->msg_index) {
-		ret = comp_alloc_model_data(dev, model, cdata->data->size);
 		/* in case when required model size is equal to zero we do not
-		 * allocate memory and should just return 0
+		 * allocate memory and should just return 0.
+		 *
+		 * Set cmd with cdata->data->size equal to 0 is possible in
+		 * following situation:
+		 * 1. At first boot and topology parsing stage, the driver will
+		 * read all initial values of DSP kcontrols via IPC. Driver send
+		 * get_model() cmd to components. If we do not initialize
+		 * component earlier driver will get "model" with size 0.
+		 * 2. When resuming from runtime suspended, the driver will
+		 * restore all pipelines and kcontrols, for the tlv binary
+		 * kcontrols, it will call the set_model() with the cached value
+		 * and size (0 if it is not updated by any actual end user
+		 * sof-ctl settings) - basically driver will send set_model()
+		 * command with size equal to 0.
 		 */
-		if (ret < 0 || !cdata->data->size)
-			return ret;
+		if (!cdata->data->size)
+			return 0;
+
+		blob_handler->data_new = rballoc(0, SOF_MEM_CAPS_RAM,
+						 cdata->data->size);
+		if (!blob_handler->data_new) {
+			comp_err(blob_handler->dev, "comp_data_blob_set_cmd(): blob_handler->data_new allocation failed.");
+			return -ENOMEM;
+		}
+
+		blob_handler->data_size = cdata->data->size;
+		blob_handler->data_ready = false;
+		blob_handler->data_pos = 0;
 	}
 
 	/* return an error in case when we do not have allocated memory for
 	 * model data
 	 */
-	if (!model->data) {
-		comp_err(dev, "comp_set_model(): buffer not allocated");
+	if (!blob_handler->data_new) {
+		comp_err(blob_handler->dev, "comp_data_blob_set_cmd(): buffer not allocated");
 		return -ENOMEM;
 	}
 
-	if (!cdata->elems_remaining) {
-		/* when we receive the last package and do not fill the whole
-		 * allocated buffer, we return an error
-		 */
-		if (cdata->num_elems + model->data_pos < model->data_size) {
-			comp_err(dev, "comp_set_model(): not enough data to fill the buffer");
-			// TODO: handle this situation
-
-			return -EINVAL;
-		}
-
-		/* the whole data were received properly */
-		done = true;
-		comp_dbg(dev, "comp_set_model(): final package received");
-	}
-
-	/* return an error in case when received data exceed allocated
-	 * memory
-	 */
-	if (cdata->num_elems > model->data_size - model->data_pos) {
-		comp_err(dev, "comp_set_model(): too much data");
-		return -EINVAL;
-	}
-
-	ret = memcpy_s((char *)model->data + model->data_pos,
-		       model->data_size - model->data_pos,
+	ret = memcpy_s((char *)blob_handler->data_new + blob_handler->data_pos,
+		       blob_handler->data_size - blob_handler->data_pos,
 		       cdata->data->data, cdata->num_elems);
 	assert(!ret);
 
-	/* update data_pos variable with received number of elements (num_elem)
-	 */
-	model->data_pos += cdata->num_elems;
+	blob_handler->data_pos += cdata->num_elems;
 
-	/* Update crc value when done */
-	if (done) {
-		model->crc = crc32(0, model->data, model->data_size);
-		comp_dbg(dev, "comp_set_model() done, memory_size = 0x%x, crc = 0x%08x",
-			 model->data_size, model->crc);
+	if (!cdata->elems_remaining) {
+		comp_dbg(blob_handler->dev, "comp_data_blob_set_cmd(): final package received");
+
+		/* The new configuration is OK to be applied */
+		blob_handler->data_ready = true;
+
+		/* If component state is READY we can omit old
+		 * configuration immediately. When in playback/capture
+		 * the new configuration presence is checked in copy().
+		 */
+		if (blob_handler->dev->state ==  COMP_STATE_READY) {
+			rfree(blob_handler->data);
+			blob_handler->data = NULL;
+		}
+
+		/* If there is no existing configuration the received
+		 * can be set to current immediately. It will be
+		 * applied in prepare() when streaming starts.
+		 */
+		if (!blob_handler->data) {
+			blob_handler->data = blob_handler->data_new;
+			blob_handler->data_new = NULL;
+		}
 	}
 
 	return 0;
 }
 
-int comp_get_model(struct comp_dev *dev, struct comp_model_data *model,
-		   struct sof_ipc_ctrl_data *cdata, int size)
+int comp_data_blob_get_cmd(struct comp_data_blob_handler *blob_handler,
+			   struct sof_ipc_ctrl_data *cdata, int size)
 {
-	size_t bs;
 	int ret = 0;
 
-	comp_dbg(dev, "comp_get_model() msg_index = %d, num_elems = %d, remaining = %d ",
+	assert(blob_handler);
+
+	comp_dbg(blob_handler->dev, "comp_data_blob_get_cmd() msg_index = %d, num_elems = %d, remaining = %d ",
 		 cdata->msg_index, cdata->num_elems,
 		 cdata->elems_remaining);
 
 	/* Copy back to user space */
-	if (model->data) {
+	if (blob_handler->data) {
 		/* reset data_pos variable in case of copying first element */
 		if (!cdata->msg_index) {
-			model->data_pos = 0;
-			comp_dbg(dev, "comp_get_model() model data_size = 0x%x",
-				 model->data_size);
+			blob_handler->data_pos = 0;
+			comp_dbg(blob_handler->dev, "comp_data_blob_get_cmd() model data_size = 0x%x",
+				 blob_handler->data_size);
 		}
-
-		bs = cdata->num_elems;
 
 		/* return an error in case of mismatch between num_elems and
 		 * required size
 		 */
-		if (bs > size) {
-			comp_err(dev, "comp_get_model(): invalid size %d", bs);
+		if (cdata->num_elems > size) {
+			comp_err(blob_handler->dev, "comp_data_blob_get_cmd(): invalid cdata->num_elems %d",
+				 cdata->num_elems);
 			return -EINVAL;
 		}
 
 		/* copy required size of data */
 		ret = memcpy_s(cdata->data->data, size,
-			       (char *)model->data + model->data_pos,
-			       bs);
+			       (char *)blob_handler->data + blob_handler->data_pos,
+			       cdata->num_elems);
 		assert(!ret);
 
 		cdata->data->abi = SOF_ABI_VERSION;
-		cdata->data->size = model->data_size;
-		model->data_pos += bs;
-
+		cdata->data->size = blob_handler->data_size;
+		blob_handler->data_pos += cdata->num_elems;
 	} else {
-		comp_warn(dev, "comp_get_model(): model->data not allocated yet.");
+		comp_warn(blob_handler->dev, "comp_data_blob_get_cmd(): model->data not allocated yet.");
 		cdata->data->abi = SOF_ABI_VERSION;
 		cdata->data->size = 0;
 	}
 
 	return ret;
+}
+
+struct comp_data_blob_handler *comp_data_blob_handler_new(struct comp_dev *dev)
+{
+	struct comp_data_blob_handler *handler;
+
+	comp_dbg(dev, "comp_data_blob_handler_new()");
+
+	handler = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+			  sizeof(struct comp_data_blob_handler));
+
+	if (handler)
+		handler->dev = dev;
+
+	return handler;
+}
+
+void comp_data_blob_handler_free(struct comp_data_blob_handler *blob_handler)
+{
+	if (!blob_handler)
+		return;
+
+	comp_free_data_blob(blob_handler);
+
+	rfree(blob_handler);
 }
 
 struct comp_dev *comp_make_shared(struct comp_dev *dev)

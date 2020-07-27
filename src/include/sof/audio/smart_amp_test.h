@@ -15,7 +15,7 @@
 
 /** IPC blob types */
 #define SOF_SMART_AMP_CONFIG	0
-#define SOF_SMART_AMP_MODEL     1
+#define SOF_SMART_AMP_MODEL	1
 
 struct smart_amp_model_data {
 	uint32_t data_size;
