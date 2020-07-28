@@ -55,26 +55,6 @@ static void schedule_edf_task_run(struct task *task, void *data)
 	}
 }
 
-static inline uint64_t edf_eval_task_deadline(struct task *task,
-					      uint64_t systick)
-{
-	struct edf_task_pdata *edf_pdata = edf_sch_get_pdata(task);
-
-	if (!edf_pdata->budget)
-		return task_get_deadline(task);
-
-	/* check if task was already executed in current systick */
-	if (edf_pdata->last_systick != systick) {
-		edf_pdata->last_systick = systick;
-		return task_get_deadline(task);
-	}
-
-	/* when there are no other tasks to run,
-	 * task can be executed even if it used systick's budget,
-	 */
-	return SOF_TASK_DEADLINE_ALMOST_IDLE;
-}
-
 static void edf_scheduler_run(void *data)
 {
 	struct edf_schedule_data *edf_sch = data;
@@ -84,19 +64,8 @@ static void edf_scheduler_run(void *data)
 	struct task *task;
 	uint64_t deadline;
 	uint32_t flags;
-	uint64_t systick;
 
 	tr_dbg(&edf_tr, "edf_scheduler_run()");
-
-	timer_disable(cpu_timer_get(), edf_sch, cpu_get_id());
-
-	/* budget is given per systick, for example if systick is configured
-	 * as 1ms and budget is 8000 cycles, then task will be able to use
-	 * up to 8MCPS (or more if there are no other tasks)
-	 */
-	systick = platform_timer_get(timer_get()) /
-		  (clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1)
-		   * (CONFIG_SYSTICK_PERIOD / 1000));
 
 	irq_local_disable(flags);
 
@@ -108,7 +77,7 @@ static void edf_scheduler_run(void *data)
 		    task->state != SOF_TASK_STATE_RUNNING)
 			continue;
 
-		deadline = edf_eval_task_deadline(task, systick);
+		deadline = task_get_deadline(task);
 
 		if (deadline == SOF_TASK_DEADLINE_NOW) {
 			/* task needs to be scheduled ASAP */
@@ -166,15 +135,6 @@ int schedule_task_init_edf(struct task *task, uint32_t uid,
 			   const struct task_ops *ops,
 			   void *data, uint16_t core, uint32_t flags)
 {
-	return schedule_task_init_edf_with_budget(task, uid, ops, data,
-						  core, flags, 0);
-}
-
-int schedule_task_init_edf_with_budget(struct task *task, uint32_t uid,
-				       const struct task_ops *ops,
-				       void *data, uint16_t core,
-				       uint32_t flags, uint32_t cycles_budget)
-{
 	struct edf_task_pdata *edf_pdata = NULL;
 	int ret = 0;
 
@@ -205,8 +165,6 @@ int schedule_task_init_edf_with_budget(struct task *task, uint32_t uid,
 			      task->core, NULL, 0) < 0)
 		goto error;
 
-	edf_pdata->budget = cycles_budget;
-
 	/* flush for slave core */
 	if (cpu_is_slave(task->core))
 		dcache_writeback_invalidate_region(edf_pdata,
@@ -224,7 +182,6 @@ error:
 
 static int schedule_edf_task_running(void *data, struct task *task)
 {
-	struct edf_schedule_data *edf_sch = data;
 	struct edf_task_pdata *edf_pdata = edf_sch_get_pdata(task);
 	uint32_t flags;
 
@@ -234,13 +191,6 @@ static int schedule_edf_task_running(void *data, struct task *task)
 
 	task_context_set(edf_pdata->ctx);
 	task->state = SOF_TASK_STATE_RUNNING;
-
-	/* if budget is not set then it's not budgeted task */
-	if (edf_pdata->budget) {
-		timer_set(cpu_timer_get(), timer_get_system(cpu_timer_get())
-			  + edf_pdata->budget);
-		timer_enable(cpu_timer_get(), edf_sch, cpu_get_id());
-	}
 
 	irq_local_enable(flags);
 
@@ -328,8 +278,6 @@ int scheduler_init_edf(void)
 	interrupt_register(edf_sch->irq, edf_scheduler_run, edf_sch);
 	interrupt_enable(edf_sch->irq, edf_sch);
 
-	timer_register(cpu_timer_get(), edf_scheduler_run, edf_sch);
-
 	return 0;
 }
 
@@ -339,8 +287,6 @@ static void scheduler_free_edf(void *data)
 	uint32_t flags;
 
 	irq_local_disable(flags);
-
-	timer_unregister(cpu_timer_get(), edf_sch);
 
 	/* disable and unregister EDF scheduler interrupt */
 	interrupt_disable(edf_sch->irq, edf_sch);
