@@ -325,10 +325,8 @@ int idc_init(void)
 	(*idc)->payload = cache_to_uncache((struct idc_payload *)payload);
 
 	/* process task */
-	schedule_task_init_edf_with_budget(&(*idc)->idc_task,
-					   SOF_UUID(idc_cmd_task_uuid),
-					   &ops, *idc, cpu_get_id(), 0,
-					   CONFIG_IDC_TASK_BUDGET);
+	schedule_task_init_edf(&(*idc)->idc_task, SOF_UUID(idc_cmd_task_uuid),
+			       &ops, *idc, cpu_get_id(), 0);
 
 	return platform_idc_init();
 }
