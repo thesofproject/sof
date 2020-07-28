@@ -296,10 +296,8 @@ int platform_ipc_init(struct ipc *ipc)
 	ipc_set_drvdata(ipc, NULL);
 
 	/* schedule */
-	schedule_task_init_edf_with_budget(&ipc->ipc_task,
-					   SOF_UUID(ipc_task_uuid),
-					   &ipc_task_ops, ipc, 0, 0,
-					   CONFIG_INTEL_CAVS_IPC_TASK_BUDGET);
+	schedule_task_init_edf(&ipc->ipc_task, SOF_UUID(ipc_task_uuid),
+			       &ipc_task_ops, ipc, 0, 0);
 
 	/* configure interrupt */
 	irq = interrupt_get_irq(PLATFORM_IPC_INTERRUPT,

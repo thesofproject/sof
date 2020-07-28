@@ -47,13 +47,6 @@ config INTEL_DMIC
 	  Select this to enable Intel DMIC driver. The DMIC driver provides
 	  as DAI the SoC direct attach digital microphones interface.
 
-config INTEL_CAVS_IPC_TASK_BUDGET
-	int "Intel cycles budget for IPC task"
-	depends on CAVS
-	default 8000
-	help
-	  Cycles budget for IPC task per systick (see config SYSTICK).
-
 if INTEL_DMIC
 
 choice
