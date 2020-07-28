@@ -200,18 +200,18 @@ int sof_parse_tokens(void *object,
 		     const struct sof_topology_token *tokens,
 		     int count, struct snd_soc_tplg_vendor_array *array,
 		     int priv_size);
-void sof_parse_string_tokens(void *object,
-			     const struct sof_topology_token *tokens,
-			     int count,
-			     struct snd_soc_tplg_vendor_array *array);
-void sof_parse_uuid_tokens(void *object,
-			   const struct sof_topology_token *tokens,
-			   int count,
-			   struct snd_soc_tplg_vendor_array *array);
-void sof_parse_word_tokens(void *object,
-			   const struct sof_topology_token *tokens,
-			   int count,
-			   struct snd_soc_tplg_vendor_array *array);
+int sof_parse_string_tokens(void *object,
+			    const struct sof_topology_token *tokens,
+			    int count,
+			    struct snd_soc_tplg_vendor_array *array);
+int sof_parse_uuid_tokens(void *object,
+			  const struct sof_topology_token *tokens,
+			  int count,
+			  struct snd_soc_tplg_vendor_array *array);
+int sof_parse_word_tokens(void *object,
+			  const struct sof_topology_token *tokens,
+			  int count,
+			  struct snd_soc_tplg_vendor_array *array);
 int get_token_dai_type(void *elem, void *object, uint32_t offset,
 		       uint32_t size);
 enum sof_ipc_dai_type find_dai(const char *name);

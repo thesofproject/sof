@@ -1246,8 +1246,9 @@ int sof_parse_tokens(void *object, const struct sof_topology_token *tokens,
 		     int priv_size)
 {
 	int asize;
+	int ret = 0;
 
-	while (priv_size > 0) {
+	while (priv_size > 0 && ret == 0) {
 		asize = array->size;
 
 		/* validate asize */
@@ -1269,19 +1270,16 @@ int sof_parse_tokens(void *object, const struct sof_topology_token *tokens,
 		/* call correct parser depending on type */
 		switch (array->type) {
 		case SND_SOC_TPLG_TUPLE_TYPE_UUID:
-			sof_parse_uuid_tokens(object, tokens, count,
-					      array);
+			ret = sof_parse_uuid_tokens(object, tokens, count, array);
 			break;
 		case SND_SOC_TPLG_TUPLE_TYPE_STRING:
-			sof_parse_string_tokens(object, tokens, count,
-						array);
+			ret = sof_parse_string_tokens(object, tokens, count, array);
 			break;
 		case SND_SOC_TPLG_TUPLE_TYPE_BOOL:
 		case SND_SOC_TPLG_TUPLE_TYPE_BYTE:
 		case SND_SOC_TPLG_TUPLE_TYPE_WORD:
 		case SND_SOC_TPLG_TUPLE_TYPE_SHORT:
-			sof_parse_word_tokens(object, tokens, count,
-					      array);
+			ret = sof_parse_word_tokens(object, tokens, count, array);
 			break;
 		default:
 			fprintf(stderr, "error: unknown token type %d\n",
@@ -1289,17 +1287,24 @@ int sof_parse_tokens(void *object, const struct sof_topology_token *tokens,
 			return -EINVAL;
 		}
 	}
-	return 0;
+	return ret;
 }
 
 /* parse word tokens */
-void sof_parse_word_tokens(void *object,
-			   const struct sof_topology_token *tokens,
-			   int count,
-			   struct snd_soc_tplg_vendor_array *array)
+int sof_parse_word_tokens(void *object,
+			  const struct sof_topology_token *tokens,
+			  int count,
+			  struct snd_soc_tplg_vendor_array *array)
 {
 	struct snd_soc_tplg_vendor_value_elem *elem;
 	int i, j;
+
+	if (sizeof(struct snd_soc_tplg_vendor_value_elem) * array->num_elems +
+		sizeof(struct snd_soc_tplg_vendor_array) > array->size) {
+		fprintf(stderr, "error: illegal array number of elements %d\n",
+			array->num_elems);
+		return -EINVAL;
+	}
 
 	/* parse element by element */
 	for (i = 0; i < array->num_elems; i++) {
@@ -1320,16 +1325,25 @@ void sof_parse_word_tokens(void *object,
 					    tokens[j].size);
 		}
 	}
+
+	return 0;
 }
 
 /* parse uuid tokens */
-void sof_parse_uuid_tokens(void *object,
-			   const struct sof_topology_token *tokens,
-			   int count,
-			   struct snd_soc_tplg_vendor_array *array)
+int sof_parse_uuid_tokens(void *object,
+			  const struct sof_topology_token *tokens,
+			  int count,
+			  struct snd_soc_tplg_vendor_array *array)
 {
 	struct snd_soc_tplg_vendor_uuid_elem *elem;
 	int i, j;
+
+	if (sizeof(struct snd_soc_tplg_vendor_uuid_elem) * array->num_elems +
+		sizeof(struct snd_soc_tplg_vendor_array) > array->size) {
+		fprintf(stderr, "error: illegal array number of elements %d\n",
+			array->num_elems);
+		return -EINVAL;
+	}
 
 	/* parse element by element */
 	for (i = 0; i < array->num_elems; i++) {
@@ -1350,16 +1364,25 @@ void sof_parse_uuid_tokens(void *object,
 					    tokens[j].size);
 		}
 	}
+
+	return 0;
 }
 
 /* parse string tokens */
-void sof_parse_string_tokens(void *object,
-			     const struct sof_topology_token *tokens,
-			     int count,
-			     struct snd_soc_tplg_vendor_array *array)
+int sof_parse_string_tokens(void *object,
+			    const struct sof_topology_token *tokens,
+			    int count,
+			    struct snd_soc_tplg_vendor_array *array)
 {
 	struct snd_soc_tplg_vendor_string_elem *elem;
 	int i, j;
+
+	if (sizeof(struct snd_soc_tplg_vendor_string_elem) * array->num_elems +
+		sizeof(struct snd_soc_tplg_vendor_array) > array->size) {
+		fprintf(stderr, "error: illegal array number of elements %d\n",
+			array->num_elems);
+		return -EINVAL;
+	}
 
 	/* parse element by element */
 	for (i = 0; i < array->num_elems; i++) {
@@ -1380,6 +1403,8 @@ void sof_parse_string_tokens(void *object,
 					    tokens[j].size);
 		}
 	}
+
+	return 0;
 }
 
 enum sof_ipc_frame find_format(const char *name)
