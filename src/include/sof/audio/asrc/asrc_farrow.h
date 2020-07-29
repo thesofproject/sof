@@ -47,6 +47,13 @@
 #include <stdint.h>
 
 /*
+ * @brief FIR filter is max 128 taps and delay lines per channel are
+ * max 256 samples long.
+ */
+#define ASRC_MAX_FILTER_LENGTH	128
+#define ASRC_MAX_BUFFER_LENGTH	256
+
+/*
  * @brief Define whether the input and output buffers shall be
  * interleaved or not.
  */
@@ -136,8 +143,9 @@ enum asrc_error_code {
 						/*!< control mode. */
 	ASRC_EC_FAILED_PUSH_MODE = -13,		/*!< Push mode operation */
 						/*!< failed. */
-	ASRC_EC_FAILED_PULL_MODE = -14		/*!< Pull mode operation */
+	ASRC_EC_FAILED_PULL_MODE = -14,		/*!< Pull mode operation */
 						/*!< failed. */
+	ASRC_EC_INVALID_FILTER_LENGTH = -15,    /*!< Length exceeds max. */
 };
 
 /*

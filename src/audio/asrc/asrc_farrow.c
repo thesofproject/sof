@@ -193,7 +193,8 @@ static const struct asrc_filter_params c_filter_params[CR_NUM] = {
 /*
  * Initialises the pointers to the buffers and zeroes their content
  */
-static enum asrc_error_code initialise_buffer(struct asrc_farrow *src_obj);
+static enum asrc_error_code initialise_buffer(struct comp_dev *dev,
+					      struct asrc_farrow *src_obj);
 
 /*
  * Initialise the pointers to the filters, set the number of filters
@@ -212,15 +213,14 @@ static enum asrc_error_code initialise_filter(struct comp_dev *dev,
  * ------------------------------|-------------------------------------|
  * 0x0000                        |asrc_farrow src_obj                  |
  * ------------------------------|-------------------------------------|
- * &src_obj + sizeof(src_obj)    |int_x *buffer_pointer[num_channels]  |
- *                               |                                     |
+ * &src_obj + 1                  |int32 impulse_response[filter_length]|
  * ------------------------------|-------------------------------------|
- * &buffer_pointer[0]            |int_x ring_buffer[num_channels       |
+ * &impulse_response[0] +        |int_x *buffer_pointer[num_channels]  |
+ * filter_length                 |                                     |
+ * ------------------------------|-------------------------------------|
+ * &buffer_pointer[0] +          | int_x ring_buffer[num_channels *    |
  * + num_channels*sizeof(int_x *)|               *buffer_size]         |
- * ------------------------------|---------------------------------_---|
- * &ring_buffer[0]               |int32 impulse_response[filter_length]|
- * + num_channels*buffer_size    |                                     |
- * *sizeof(int_x)                |                                     |
+ * ------------------------------|-------------------------------------|
  *
  * Info:
  *
@@ -237,8 +237,6 @@ enum asrc_error_code asrc_get_required_size(struct comp_dev *dev,
 					    int num_channels,
 					    int bit_depth)
 {
-	int filter_length = 128;
-	int buffer_length = 256;
 	int size;
 
 	/* check for parameter errors */
@@ -273,14 +271,17 @@ enum asrc_error_code asrc_get_required_size(struct comp_dev *dev,
 
 	/* accumulate the size */
 	size = sizeof(struct asrc_farrow);
-	size += sizeof(int32_t *) * num_channels; /* pointers the the buffers */
-	/* size of the ring buffers */
-	size += buffer_length * num_channels * (bit_depth / 8);
+
 	/* size of the impulse response */
-	size += filter_length * sizeof(int32_t);
+	size += ASRC_MAX_FILTER_LENGTH * sizeof(int32_t);
+
+	/* size of pointers to the buffers */
+	size += sizeof(int32_t *) * num_channels;
+
+	/* size of the ring buffers */
+	size += ASRC_MAX_BUFFER_LENGTH * num_channels * (bit_depth / 8);
 
 	*required_size = size;
-
 	return ASRC_EC_OK;
 }
 
@@ -366,18 +367,10 @@ enum asrc_error_code asrc_initialise(struct comp_dev *dev,
 	}
 
 	/*
-	 * The pointer to the internal ring buffer pointers is
-	 * pointing to the memory subsequently to the memory where the
-	 * src_obj lies.  Only one of the buffers is initialised,
-	 * depending on the specified bit depth.
+	 * Set the pointer for the impulse response. It is just after
+	 * src_obj in memory.
 	 */
-	if (src_obj->bit_depth == 32) {
-		src_obj->ring_buffers32 = (int32_t **)(src_obj + 1);
-		src_obj->ring_buffers16 = NULL;
-	} else if (src_obj->bit_depth == 16) {
-		src_obj->ring_buffers16 = (int16_t **)(src_obj + 1);
-		src_obj->ring_buffers32 = NULL;
-	}
+	src_obj->impulse_response = (int32_t *)(src_obj + 1);
 
 	/*
 	 * Load the filter coefficients and parameters.  This function
@@ -392,33 +385,28 @@ enum asrc_error_code asrc_initialise(struct comp_dev *dev,
 		return error_code;
 	}
 
+	/*
+	 * The pointer to the internal ring buffer pointers is
+	 * after impulse_response. Only one of the buffers is initialised,
+	 * depending on the specified bit depth.
+	 */
+	if (src_obj->bit_depth == 32) {
+		src_obj->ring_buffers16 = NULL;
+		src_obj->ring_buffers32 = (int32_t **)(src_obj->impulse_response +
+			src_obj->filter_length);
+	} else if (src_obj->bit_depth == 16) {
+		src_obj->ring_buffers32 = NULL;
+		src_obj->ring_buffers16 = (int16_t **)(src_obj->impulse_response +
+			src_obj->filter_length);
+	}
+
 	/* set the channel pointers and fill buffers with zeros */
-	error_code = initialise_buffer(src_obj);
+	error_code = initialise_buffer(dev, src_obj);
 
 	/* check for errors */
 	if (error_code != ASRC_EC_OK) {
 		comp_err(dev, "asrc_initialise(), failed buffer initialise");
 		return error_code;
-	}
-
-	/*
-	 * Set the pointer for the impulse response.
-	 * &m_impulse_response[0] = ring_buffers_x
-	 * + num_channels * (1 + buffer_length);
-	 * Here ring_buffer_x already points to the memory just behind
-	 * the src_obj.  The offset results from the number of pointers
-	 * pointing to each channel and each channels buffer data.
-	 */
-	if (src_obj->bit_depth == 32) {
-		src_obj->impulse_response =
-			(int32_t *)(src_obj->ring_buffers32 +
-				    src_obj->num_channels *
-				    (1 + src_obj->buffer_length));
-	} else if (src_obj->bit_depth == 16) {
-		src_obj->impulse_response =
-			(int32_t *)(src_obj->ring_buffers16 +
-				    src_obj->num_channels *
-				    (1 + src_obj->buffer_length / 2));
 	}
 
 	/* return ok, if everything worked out */
@@ -486,7 +474,7 @@ enum asrc_error_code asrc_set_fs_ratio(struct comp_dev *dev,
 	}
 
 	/* Set the channel pointers and zero the buffers */
-	error_code = initialise_buffer(src_obj);
+	error_code = initialise_buffer(dev, src_obj);
 	/* check for errors */
 	if (error_code != ASRC_EC_OK) {
 		comp_err(dev, "asrc_set_fs_ratio(), failed buffer initialise");
@@ -551,52 +539,51 @@ enum asrc_error_code asrc_set_output_format(struct comp_dev *dev,
 /*
  * BUFFER FUNCTIONS
  */
-static enum asrc_error_code initialise_buffer(struct asrc_farrow *src_obj)
+static enum asrc_error_code initialise_buffer(struct comp_dev *dev,
+					      struct asrc_farrow *src_obj)
 {
-	uint8_t *buffer;
+	int32_t *start_32;
+	int16_t *start_16;
 	int ch;
-	int n;
 
 	/*
-	 * base_address points to the first address subsequently to the
-	 * memory where the pointers to each ring buffer are stored.
-	 */
-	if (src_obj->bit_depth == 32)
-		buffer = (uint8_t *)(src_obj->ring_buffers32 +
-			src_obj->num_channels);
-	else if (src_obj->bit_depth == 16)
-		buffer = (uint8_t *)(src_obj->ring_buffers16 +
-			src_obj->num_channels);
-
-	/*
-	 * set buffer_length to filter_length * 2 to compensate for
+	 * Set buffer_length to filter_length * 2 to compensate for
 	 * missing element wise wrap around while loading but allowing
 	 * aligned loads.
 	 */
 	src_obj->buffer_length = src_obj->filter_length * 2;
+	if (src_obj->buffer_length > ASRC_MAX_BUFFER_LENGTH) {
+		comp_err(dev, "initialise_buffer(), buffer_length %d exceeds max.",
+			 src_obj->buffer_length);
+		return ASRC_EC_INVALID_BUFFER_LENGTH;
+	}
+
 	src_obj->buffer_write_position = src_obj->filter_length;
 
-	/* set the base addresses for every channel and initialise the
-	 * buffers to zero
+	/*
+	 * Initialize the dynamically allocated 2D array and clear the
+	 * buffers to zero.
 	 */
 	if (src_obj->bit_depth == 32) {
-		for (ch = 0; ch < src_obj->num_channels; ch++) {
-			src_obj->ring_buffers32[ch] = ((int32_t *)buffer) +
+		start_32 = (int32_t *)(src_obj->ring_buffers32 +
+			src_obj->num_channels);
+		for (ch = 0; ch < src_obj->num_channels; ch++)
+			src_obj->ring_buffers32[ch] = start_32 +
 				ch * src_obj->buffer_length;
 
-			/* initialise to zero */
-			for (n = 0; n < src_obj->buffer_length; n++)
-				src_obj->ring_buffers32[ch][n] = 0;
-		}
-	} else if (src_obj->bit_depth == 16) {
-		for (ch = 0; ch < src_obj->num_channels; ch++) {
-			src_obj->ring_buffers16[ch] = ((int16_t *)buffer) +
+		/* initialise to zero */
+		memset(start_32, 0, src_obj->num_channels *
+			src_obj->buffer_length * sizeof(int32_t));
+	} else {
+		start_16 = (int16_t *)(src_obj->ring_buffers16 +
+			src_obj->num_channels);
+		for (ch = 0; ch < src_obj->num_channels; ch++)
+			src_obj->ring_buffers16[ch] = start_16 +
 				ch * src_obj->buffer_length;
 
-			/* initialise to zero */
-			for (n = 0; n < src_obj->buffer_length; n++)
-				src_obj->ring_buffers16[ch][n] = 0;
-		}
+		/* initialise to zero */
+		memset(start_16, 0, src_obj->num_channels *
+			src_obj->buffer_length * sizeof(int16_t));
 	}
 
 	return ASRC_EC_OK;
@@ -762,6 +749,13 @@ static enum asrc_error_code initialise_filter(struct comp_dev *dev,
 		/* Conversion ratio is not supported. */
 		comp_err(dev, "initialise_filter(), fs_in = %d", fs_in);
 		return ASRC_EC_INVALID_SAMPLE_RATE;
+	}
+
+	/* Check that filter length does not exceed allocated */
+	if (src_obj->filter_length > ASRC_MAX_FILTER_LENGTH) {
+		comp_err(dev, "initialise_filter(), filter_length %d exceeds max",
+			 src_obj->filter_length);
+		return ASRC_EC_INVALID_FILTER_LENGTH;
 	}
 
 	/* The function pointer is set according to the number of polyphase
