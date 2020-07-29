@@ -24,6 +24,27 @@ include(`sof/tokens.m4')
 include(`platform/intel/tgl.m4')
 include(`platform/intel/dmic.m4')
 
+# Define pipeline id for intel-generic-dmic-kwd.m4
+# to generate dmic setting with kwd when we have dmic
+# define channel
+define(CHANNELS, `2')
+# define kfbm with volume
+define(KFBM_TYPE, `vol-kfbm')
+# define pcm, pipeline and dai id
+define(DMIC_PCM_48k_ID, `99')
+define(DMIC_PIPELINE_48k_ID, `10')
+define(DMIC_DAI_LINK_48k_ID, `6')
+define(DMIC_DAI_LINK_48k_NAME, `NoCodec-6')
+define(DMIC_PCM_16k_ID, `100')
+define(DMIC_PIPELINE_16k_ID, `11')
+define(DMIC_PIPELINE_KWD_ID, `12')
+define(DMIC_DAI_LINK_16k_ID, `7')
+define(DMIC_DAI_LINK_16k_NAME, `NoCodec-7')
+# define pcm, pipeline and dai id
+define(KWD_PIPE_SCH_DEADLINE_US, 20000)
+# include the generic dmic with kwd
+include(`platform/intel/intel-generic-dmic-kwd.m4')
+
 #
 # Define the demux configure
 #
@@ -70,7 +91,8 @@ MUXDEMUX_CONFIG(demux_priv_1, 2, LIST(`	', `matrix1,', `matrix2'))
 #             |
 #             |
 # PCM2 <---- demux <----- SSP(SSP_INDEX)
-# PCM6 <---- volume <----- DMIC6 (DMIC01)
+# PCM99 <---- volume <---- DMIC01 (dmic 48k capture)
+# PCM100 <---- kpb <---- DMIC16K (dmic 16k capture)
 #
 
 # Smart amplifier related
@@ -134,12 +156,6 @@ PIPELINE_PCM_ADD(sof/pipe-volume-capture.m4,
 	1000, 0, 0,
 	48000, 48000, 48000)
 
-# Passthrough capture pipeline 13 on PCM 6 using max 2 channels.
-# 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_ADD(sof/pipe-passthrough-capture.m4,
-	13, 6, 2, s32le,
-	1000, 0, 0,
-	48000, 48000, 48000)
 #
 # DAIs configuration
 #
@@ -205,17 +221,9 @@ DAI_ADD(sof/pipe-dai-capture.m4,
 	PIPELINE_SINK_4, 2, s16le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
-# capture DAI is DMIC 0 using 2 periods
-# Buffers use s32le format, 1000us deadline on core 0 with priority 0
-DAI_ADD(sof/pipe-dai-capture.m4,
-	13, DMIC, 0, NoCodec-6,
-	PIPELINE_SINK_13, 2, s32le,
-	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
-
 dnl PCM_DUPLEX_ADD(name, pcm_id, playback, capture)
 PCM_DUPLEX_ADD(Port0, 0, PIPELINE_PCM_1, PIPELINE_PCM_2)
 PCM_DUPLEX_ADD(Port1, 1, PIPELINE_PCM_3, PIPELINE_PCM_4)
-PCM_CAPTURE_ADD(DMIC, 6, PIPELINE_PCM_13)
 PCM_CAPTURE_ADD(FWEchoRef, 3, PIPELINE_PCM_7)
 
 #
@@ -235,14 +243,3 @@ DAI_CONFIG(SSP, 1, 1, NoCodec-1,
 		      SSP_CLOCK(fsync, 48000, codec_slave),
 		      SSP_TDM(2, 25, 3, 3),
 		      SSP_CONFIG_DATA(SSP, 1, 24, 0, SSP_QUIRK_LBM)))
-
-DAI_CONFIG(DMIC, 0, 6, NoCodec-6,
-	   dnl DMIC_CONFIG(driver_version, clk_min, clk_mac, duty_min, duty_max,
-	   dnl		   sample_rate, fifo word length, unmute time, type,
-	   dnl		   dai_index, pdm controller config)
-	   DMIC_CONFIG(1, 500000, 4800000, 40, 60, 48000,
-		DMIC_WORD_LENGTH(s32le), 400, DMIC, 0,
-		dnl PDM_CONFIG(type, dai_index, num pdm active, pdm tuples list)
-		dnl STEREO_PDM0 is a pre-defined pdm config for stereo capture
-		PDM_CONFIG(DMIC, 0, STEREO_PDM0)))
-
