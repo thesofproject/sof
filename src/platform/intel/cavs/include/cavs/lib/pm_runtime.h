@@ -20,7 +20,7 @@ struct pm_runtime_data;
 
 /** \brief cAVS specific runtime power management data. */
 struct cavs_pm_runtime_data {
-	int dsp_d0_sref; /**< simple ref counter, accessed by core 0 only */
+	bool dsp_d0; /**< dsp target D0(true) or D0ix(false) */
 	int host_dma_l1_sref; /**< ref counter for Host DMA accesses */
 	uint32_t sleep_core_mask; /**< represents cores in waiti state */
 };
