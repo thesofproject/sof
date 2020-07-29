@@ -1,0 +1,21 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
+menu "Audio component samples"
+	visible if SAMPLES
+
+        config SAMPLE_SMART_AMP
+	        depends on CAVS && !CAVS_VERSION_1_5
+	        bool "Smart amplifier test component"
+	        default y
+	        help
+	                Select for test smart amplifier component
+
+        config SAMPLE_KEYPHRASE
+		depends on CAVS
+	        bool "Keyphrase test component"
+	        default y
+	        help
+	                Select for Keyphrase test component.
+	                Provides basic functionality for use in testing of keyphrase detection pipelines.
+
+endmenu

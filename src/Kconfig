@@ -11,3 +11,5 @@ rsource "audio/Kconfig"
 rsource "trace/Kconfig"
 
 rsource "probe/Kconfig"
+
+rsource "samples/Kconfig"
