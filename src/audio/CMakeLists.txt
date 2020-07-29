@@ -61,16 +61,6 @@ if(NOT CONFIG_LIBRARY)
 	if(CONFIG_COMP_SEL)
 		add_subdirectory(selector)
 	endif()
-	if(CONFIG_COMP_TEST_KEYPHRASE)
-		add_local_sources(sof
-			detect_test.c
-		)
-	endif()
-	if(CONFIG_COMP_TEST_SMART_AMP)
-		add_local_sources(sof
-			smart_amp_test.c
-		)
-	endif()
 	if(CONFIG_MAXIM_DSM)
 		sof_add_static_library(dsm ./smart_amp/dsm_lib/libdsm.a)
 		add_subdirectory(smart_amp)

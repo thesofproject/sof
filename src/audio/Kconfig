@@ -141,13 +141,6 @@ config COMP_DCBLOCK
 	  Select for DC Blocking Filter component. This component filters out
 	  the DC offset which often originates from a microphone's output.
 
-config COMP_TEST_SMART_AMP
-	depends on CAVS && !CAVS_VERSION_1_5
-	bool "Smart amplifier test component"
-	default y
-	help
-	  Select for test smart amplifier component
-
 config MAXIM_DSM
 	depends on CAVS && !CAVS_VERSION_1_5
 	bool "Maxim DSM component"
@@ -159,13 +152,6 @@ config MAXIM_DSM
 	  feedforward processing block running on playback thread and
 	  feedback processing block running on capture thread with
 	  amp current and voltage feedback.
-
-config COMP_TEST_KEYPHRASE
-	bool "KEYPHRASE_TEST component"
-	default y
-	help
-	  Select for KEYPHRASE_TEST component.
-	  Provides basic functionality for use in testing of keyphrase detection pipelines.
 
 config COMP_ASRC
 	bool "ASRC component"
