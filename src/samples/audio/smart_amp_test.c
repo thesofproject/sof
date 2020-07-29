@@ -4,7 +4,7 @@
 //
 // Author: Bartosz Kokoszko <bartoszx.kokoszko@linux.intel.com>
 
-#include <sof/audio/smart_amp_test.h>
+#include <sof/samples/audio/smart_amp_test.h>
 #include <sof/trace/trace.h>
 #include <sof/drivers/ipc.h>
 #include <sof/ut.h>
