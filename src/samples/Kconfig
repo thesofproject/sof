@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
+menu "Samples"
+
+config SAMPLES
+	bool "Build samples"
+	default y
+	help
+		Select to build sample code
+
+rsource "audio/Kconfig"
+
+endmenu

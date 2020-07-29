@@ -25,7 +25,7 @@
 #include <ipc/stream.h>
 #include <ipc/topology.h>
 #include <kernel/abi.h>
-#include <user/detect_test.h>
+#include <sof/samples/audio/detect_test.h>
 #include <user/trace.h>
 #include <errno.h>
 #include <stdbool.h>
