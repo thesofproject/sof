@@ -62,7 +62,7 @@ PIPELINE_PCM_ADD(sof/pipe-host-volume-playback.m4,
 # this is connected to pipeline DAI 1
 PIPELINE_PCM_ADD(sof/pipe-host-volume-playback.m4,
 	4, 1, 2, s32le,
-	10000, 0, 0,
+	5000, 0, 0,
 	48000, 48000, 48000,
 	SCHEDULE_TIME_DOMAIN_DMA,
 	PIPELINE_PLAYBACK_SCHED_COMP_1)
