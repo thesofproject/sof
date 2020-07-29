@@ -97,6 +97,7 @@ function(sof_check_version_h)
 		"#define SOF_MICRO ${SOF_MICRO}\n"
 		"#define SOF_TAG \"${SOF_TAG}\"\n"
 		"#define SOF_BUILD ${SOF_BUILD}\n"
+		"#define SOF_GIT_TAG \"${GIT_TAG}\"\n"
 		"#define SOF_SRC_HASH 0x${SOF_SRC_HASH}\n"
 	)
 
