@@ -5,7 +5,6 @@ add_local_sources(sof
 	sai.c
 	ipc.c
 	timer.c
-	sdma.c
 )
 
 if(CONFIG_IMX_IRQSTEER)
@@ -14,4 +13,8 @@ endif()
 
 if(CONFIG_IMX_EDMA)
 	add_local_sources(sof edma.c)
+endif()
+
+if(CONFIG_IMX_SDMA)
+	add_local_sources(sof sdma.c)
 endif()

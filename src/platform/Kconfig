@@ -203,6 +203,7 @@ config IMX8M
 	select WAITI_DELAY
 	select IMX
 	select IMX_IRQSTEER
+	select IMX_SDMA
 	help
 	  Select if your target platform is imx8m-compatible
 
