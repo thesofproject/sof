@@ -173,6 +173,7 @@ config IMX8
 	select WAITI_DELAY
 	select IMX
 	select IMX_EDMA
+	select IMX_IRQSTEER
 	help
 	  Select if your target platform is imx8-compatible
 
@@ -187,6 +188,7 @@ config IMX8X
 	select WAITI_DELAY
 	select IMX
 	select IMX_EDMA
+	select IMX_IRQSTEER
 	help
 	  Select if your target platform is imx8x-compatible
 
@@ -200,6 +202,7 @@ config IMX8M
 	select DUMMY_DMA
 	select WAITI_DELAY
 	select IMX
+	select IMX_IRQSTEER
 	help
 	  Select if your target platform is imx8m-compatible
 

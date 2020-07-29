@@ -3,11 +3,14 @@
 add_local_sources(sof
 	esai.c
 	sai.c
-	interrupt.c
 	ipc.c
 	timer.c
 	sdma.c
 )
+
+if(CONFIG_IMX_IRQSTEER)
+	add_local_sources(sof interrupt.c)
+endif()
 
 if(CONFIG_IMX_EDMA)
 	add_local_sources(sof edma.c)
