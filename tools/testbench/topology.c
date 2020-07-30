@@ -682,7 +682,7 @@ int parse_topology(struct sof *sof, struct shared_lib_table *library_table,
 	/* initialize output file index */
 	output_file_index = 0;
 
-	struct comp_info *temp_comp_list = NULL;
+	struct comp_info *temp_comp_list = NULL, *comp_list_realloc = NULL;
 	char message[DEBUG_MSG_LEN];
 	int next_comp_id = 0;
 	int num_comps = 0;
@@ -746,8 +746,17 @@ int parse_topology(struct sof *sof, struct shared_lib_table *library_table,
 
 			num_comps += hdr->count;
 			size = sizeof(struct comp_info) * num_comps;
-			temp_comp_list = (struct comp_info *)
+			comp_list_realloc = (struct comp_info *)
 					 realloc(temp_comp_list, size);
+
+			if (!comp_list_realloc && size) {
+				free(temp_comp_list);
+				free(hdr);
+				fclose(file);
+				fprintf(stderr, "error: mem realloc\n");
+				return -errno;
+			}
+			temp_comp_list = comp_list_realloc;
 
 			for (i = (num_comps - hdr->count); i < num_comps; i++)
 				temp_comp_list[i].name = NULL;
