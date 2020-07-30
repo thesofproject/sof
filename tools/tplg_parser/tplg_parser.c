@@ -1114,6 +1114,11 @@ int load_widget(void *dev, int dev_type, struct comp_info *temp_comp_list,
 	size_t size;
 	int ret = 0;
 
+	if (!temp_comp_list) {
+		fprintf(stderr, "load_widget: temp_comp_list argument NULL\n");
+		return -EINVAL;
+	}
+
 	/* allocate memory for widget */
 	size = sizeof(struct snd_soc_tplg_dapm_widget);
 	widget = (struct snd_soc_tplg_dapm_widget *)malloc(size);
