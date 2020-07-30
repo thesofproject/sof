@@ -6,6 +6,8 @@ rsource "intel/Kconfig"
 
 rsource "dw/Kconfig"
 
+rsource "imx/Kconfig"
+
 config DUMMY_DMA
 	bool "Dummy DMA (software DMA driver)"
 	default n
@@ -18,13 +20,6 @@ config DUMMY_DMA
 
 	  If unsure, select "n".
 
-config IMX_EDMA
-	bool "i.MX EDMA driver"
-	default n
-	depends on IMX
-	help
-	  Select this to enable support for i.MX EDMA DMA controller.
-
 config IPC_POLLING
 	bool "Enable IPC Polling support"
 	default n
@@ -32,28 +27,6 @@ config IPC_POLLING
 	  Select this to enable support for simple IPC polling. This allows
 	  users like GDB and boot loader a simple IPC mechanism that does not
 	  depend on IRQ or a scheduler.
-
-	  If unsure, select "n".
-
-config IMX_IRQSTEER
-	bool "Enable i.MX IRQ_STEER driver support"
-	default n
-	depends on IMX8 || IMX8X || IMX8M
-	help
-	  Select this to enable the i.MX IRQ_STEER controller. Note that this
-	  should automatically be selected if you have picked one of the
-	  platforms that has this controller.
-
-	  If unsure, select "n".
-
-config IMX_SDMA
-	bool "Enable i.MX SDMA controller support"
-	default n
-	depends on IMX8M
-	help
-	  Select this if the platform has a SDMA (Smart DMA) controller for
-	  i.MX. Note that this should automatically be selected if you have
-	  picked one of the platforms that has this controller.
 
 	  If unsure, select "n".
 
