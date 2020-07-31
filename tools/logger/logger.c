@@ -55,7 +55,7 @@ static void usage(void)
 		APP_NAME);
 	fprintf(stdout, "%s:\t -f precision\t\tSet timestamp precision\n",
 		APP_NAME);
-	fprintf(stdout, "%s:\t -g\t\tHide timestamp\n",
+	fprintf(stdout, "%s:\t -g\t\t\tHide timestamp\n",
 		APP_NAME);
 	fprintf(stdout, "%s:\t -d *.ldc_file \t\tDump ldc_file information\n",
 		APP_NAME);
