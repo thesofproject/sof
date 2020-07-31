@@ -38,6 +38,9 @@ ifdef(`DMIC_DAI_LINK_16k_ID',`',`errprint(note: Need to define dmic16k dai id fo
 ifdef(`KWD_PIPE_SCH_DEADLINE_US',`',`errprint(note: Need to define schedule for intel-generic-dmic-kwd
 )')
 
+# DMICPROC is set by makefile, available type: passthrough/eq-iir-volume
+ifdef(`DMICPROC', , `define(DMICPROC, passthrough)')
+
 #
 # Define the pipelines
 #
@@ -51,7 +54,7 @@ dnl     time_domain, sched_comp)
 # Passthrough capture pipeline using max channels defined by CHANNELS.
 
 # Set 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_ADD(sof/pipe-passthrough-capture.m4,
+PIPELINE_PCM_ADD(sof/pipe-`DMICPROC'-capture.m4,
         DMIC_PIPELINE_48k_ID, DMIC_PCM_48k_ID, CHANNELS, s32le,
         1000, 0, 0, 48000, 48000, 48000)
 
