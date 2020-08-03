@@ -11,7 +11,6 @@
 #define __PLATFORM_DRIVERS_INTERRUPT_H__
 
 #include <sof/bit.h>
-#include <config.h>
 
 /* IRQ numbers */
 #if CONFIG_INTERRUPT_LEVEL_1
