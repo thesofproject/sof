@@ -154,7 +154,7 @@ static void schedule_ll_clients_reschedule(struct ll_schedule_data *sch)
 static void schedule_ll_tasks_run(void *data)
 {
 	struct ll_schedule_data *sch = data;
-	uint32_t num_clients;
+	uint32_t num_clients = 0;
 	uint64_t last_tick;
 	uint32_t flags;
 
