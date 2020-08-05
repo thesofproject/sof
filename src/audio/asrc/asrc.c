@@ -148,7 +148,7 @@ static void src_copy_s32(struct comp_dev *dev,
 		ret = asrc_process_pull32(dev, cd->asrc_obj,
 					  (int32_t **)cd->ibuf, &in_frames,
 					  (int32_t **)cd->obuf, &out_frames,
-					  out_frames, &idx);
+					  in_frames, &idx);
 
 	if (ret)
 		comp_err(dev, "src_copy_s32(), error %d", ret);
@@ -221,7 +221,7 @@ static void src_copy_s16(struct comp_dev *dev,
 		ret = asrc_process_pull16(dev, cd->asrc_obj,
 					  (int16_t **)cd->ibuf, &in_frames,
 					  (int16_t **)cd->obuf, &out_frames,
-					  out_frames, &idx);
+					  in_frames, &idx);
 
 	if (ret)
 		comp_err(dev, "src_copy_s16(), error %d", ret);
