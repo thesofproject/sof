@@ -139,7 +139,7 @@ DAI_ADD(sof/pipe-dai-capture.m4,
 # capture DAI is DMIC 0 using 2 periods
 # Buffers use s32le format, 1000us deadline on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
-	13, DMIC, 0, NoCodec-6,
+	13, DMIC, 0, dmic01,
 	PIPELINE_SINK_13, 2, s32le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
@@ -174,7 +174,7 @@ DAI_CONFIG(SSP, 2, 2, NoCodec-2,
 		      SSP_TDM(2, 25, 3, 3),
 		      SSP_CONFIG_DATA(SSP, 2, 24, 0, SSP_QUIRK_LBM)))
 
-DAI_CONFIG(DMIC, 0, 6, NoCodec-6,
+DAI_CONFIG(DMIC, 0, 6, dmic01,
 	   dnl DMIC_CONFIG(driver_version, clk_min, clk_mac, duty_min, duty_max,
 	   dnl		   sample_rate, fifo word length, unmute time, type,
 	   dnl		   dai_index, pdm controller config)

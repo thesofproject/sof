@@ -53,7 +53,7 @@ dnl     deadline, priority, core, time_domain)
 # capture DAI is DMIC 0 using 2 periods
 # Buffers use s16le format, with 320 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
-	1, DMIC, 1, NoCodec-6,
+	1, DMIC, 1, dmic01,
 	PIPELINE_SINK_1, 2, s16le,
 	KWD_PIPE_SCH_DEADLINE_US,
 	0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
@@ -87,7 +87,7 @@ SectionGraph."pipe-sof-apl-keyword-detect" {
 #
 
 dnl DAI_CONFIG(type, dai_index, link_id, name, ssp_config/dmic_config)
-DAI_CONFIG(DMIC, 1, 6, NoCodec-6,
+DAI_CONFIG(DMIC, 1, 6, dmic01,
            dnl DMIC_CONFIG(driver_version, clk_min, clk_mac, duty_min, duty_max,
            dnl             sample_rate, fifo word length, unmute time, type,
            dnl             dai_index, pdm controller config)

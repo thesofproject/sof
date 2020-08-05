@@ -62,14 +62,14 @@ dnl     deadline, priority, core, time_domain)
 # capture DAI is DMIC 0 using 2 periods
 # Buffers use s32le format, 1000us deadline on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
-	6, DMIC, 0, NoCodec-6,
+	6, DMIC, 0, dmic01,
 	PIPELINE_SINK_6, 2, s32le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # capture DAI is DMIC 1 using 2 periods
 # Buffers use s32le format, 1000us deadline on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
-	7, DMIC, 1, NoCodec-7,
+	7, DMIC, 1, dmic16k,
 	PIPELINE_SINK_7, 2, s32le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
@@ -84,7 +84,7 @@ PCM_CAPTURE_ADD(DMIC16kHz, 7, PIPELINE_PCM_7)
 
 dnl DAI_CONFIG(type, dai_index, link_id, name, ssp_config/dmic_config)
 
-DAI_CONFIG(DMIC, 0, 6, NoCodec-6,
+DAI_CONFIG(DMIC, 0, 6, dmic01,
 	   dnl DMIC_CONFIG(driver_version, clk_min, clk_mac, duty_min, duty_max,
 	   dnl		   sample_rate, fifo word length, unmute time, type,
 	   dnl             dai_index, pdm controller config)
@@ -92,7 +92,7 @@ DAI_CONFIG(DMIC, 0, 6, NoCodec-6,
 		DMIC_WORD_LENGTH(s32le), 400, DMIC, 0,
 		PDM_CONFIG(DMIC, 0, STEREO_PDM0)))
 
-DAI_CONFIG(DMIC, 1, 7, NoCodec-7,
+DAI_CONFIG(DMIC, 1, 7, dmic16k,
 	   dnl DMIC_CONFIG(driver_version, clk_min, clk_mac, duty_min, duty_max,
 	   dnl		   sample_rate, fifo word length, unmute time, type,
 	   dnl             dai_index, pdm controller config)
