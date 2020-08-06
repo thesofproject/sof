@@ -67,7 +67,7 @@ void mn_init(struct sof *sof)
 	int i;
 #endif
 
-	sof->mn = cache_to_uncache(&mn);
+	sof->mn = platform_shared_get(&mn, sizeof(mn));
 
 #if CONFIG_INTEL_MN
 	for (i = 0; i < ARRAY_SIZE(sof->mn->bclk_sources); i++)
