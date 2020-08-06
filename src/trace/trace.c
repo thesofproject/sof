@@ -65,7 +65,6 @@ static void put_header(uint32_t *dst, uint32_t id_0,
 	platform_shared_commit(timer, sizeof(*timer));
 }
 
-#if CONFIG_TRACEM
 static inline void mtrace_event(const char *data, uint32_t length)
 {
 	struct trace *trace = trace_get();
@@ -94,7 +93,6 @@ static inline void mtrace_event(const char *data, uint32_t length)
 
 	platform_shared_commit(trace, sizeof(*trace));
 }
-#endif /* CONFIG_TRACEM */
 
 /**
  * \brief Runtime trace filtering
@@ -150,6 +148,10 @@ void trace_log(bool send_atomic, const void *log_entry,
 	} else {
 		mtrace_event((const char *)data, MESSAGE_SIZE(arg_count));
 	}
+#else
+	/* send event by mail box if level is LOG_LEVEL_CRITICAL. */
+	if (lvl == LOG_LEVEL_CRITICAL)
+		mtrace_event((const char *)data, MESSAGE_SIZE(arg_count));
 #endif /* CONFIG_TRACEM */
 }
 
