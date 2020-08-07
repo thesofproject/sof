@@ -110,41 +110,25 @@ enum asrc_operation_mode {
  */
 enum asrc_error_code {
 	ASRC_EC_OK = 0,				/*!< Operation successful. */
-	ASRC_EC_INIT_FAILED = -1,		/*!< Initialization of the */
-						/*!< component failed. */
-	ASRC_EC_UPDATE_FS_FAILED = -2,		/*!< Control mode is set to */
-						/*!< CM_FIXED and update */
-						/*!< drift is not called in */
-						/*!< time. */
-	ASRC_EC_INVALID_POINTER = -3,		/*!< Couldn't allocate */
-						/*!< memory. Bad pointer. */
-	ASRC_EC_INVALID_BUFFER_POINTER = -4,	/*!< Internal buffer pointers */
-						/*!< are invalid. */
-	ASRC_EC_INVALID_SAMPLE_RATE = -5,	/*!< Sample rate is not */
-						/*!< supported. */
-	ASRC_EC_INVALID_CONVERSION_RATIO = -6,	/*!< Conversion ratio is not */
-						/*!< supported. */
-	ASRC_EC_INVALID_BIT_DEPTH = -7,		/*!< Bit depth is not */
-						/*!< supported. Choose either */
+	ASRC_EC_INIT_FAILED = -1,		/*!< Initialization of the component failed. */
+	ASRC_EC_UPDATE_FS_FAILED = -2,		/*!< Control mode is set to CM_FIXED and update */
+						/*!< drift is not called in time. */
+	ASRC_EC_INVALID_POINTER = -3,		/*!< Couldn't allocate memory. Bad pointer. */
+	ASRC_EC_INVALID_BUFFER_POINTER = -4,	/*!< Internal buffer pointers are invalid. */
+	ASRC_EC_INVALID_SAMPLE_RATE = -5,	/*!< Sample rate is not supported. */
+	ASRC_EC_INVALID_CONVERSION_RATIO = -6,	/*!< Conversion ratio is not supported. */
+	ASRC_EC_INVALID_BIT_DEPTH = -7,		/*!< Bit depth is not supported. Choose either */
 						/*!< 16 or 32 bit. */
-	ASRC_EC_INVALID_NUM_CHANNELS = -8,	/*!< Nummber of channels must */
-						/*!< be larger than zero. */
-	ASRC_EC_INVALID_BUFFER_LENGTH = -9,	/*!< Buffer length must be */
-						/*!< larger than one. */
-	ASRC_EC_INVALID_FRAME_SIZE = -10,	/*!< Invalid frame size: must */
-						/*!< be greater than 0 for */
-						/*!< primary side and */
-						/*!< secondary side. */
-	ASRC_EC_INVALID_CLOCK_SKEW = -11,	/*!< The clock drift is out */
-						/*!< of bounds. */
-	ASRC_EC_INVALID_CONTROL_MODE = -12,	/*!< Call update_fs_ratio() */
-						/*!< for feedback, and */
-						/*!< update_drift() for fixed */
-						/*!< control mode. */
-	ASRC_EC_FAILED_PUSH_MODE = -13,		/*!< Push mode operation */
-						/*!< failed. */
-	ASRC_EC_FAILED_PULL_MODE = -14,		/*!< Pull mode operation */
-						/*!< failed. */
+	ASRC_EC_INVALID_NUM_CHANNELS = -8,	/*!< Nummber of channels must be larger */
+						/*!< than zero. */
+	ASRC_EC_INVALID_BUFFER_LENGTH = -9,	/*!< Buffer length must be larger than one. */
+	ASRC_EC_INVALID_FRAME_SIZE = -10,	/*!< Invalid frame size: must be greater than 0 */
+						/*!< for primary side and secondary side. */
+	ASRC_EC_INVALID_CLOCK_SKEW = -11,	/*!< The clock drift is out of bounds. */
+	ASRC_EC_INVALID_CONTROL_MODE = -12,	/*!< Call update_fs_ratio() for feedback, and */
+						/*!< update_drift() for fixed control mode. */
+	ASRC_EC_FAILED_PUSH_MODE = -13,		/*!< Push mode operation failed. */
+	ASRC_EC_FAILED_PULL_MODE = -14,		/*!< Pull mode operation failed. */
 	ASRC_EC_INVALID_FILTER_LENGTH = -15,    /*!< Length exceeds max. */
 };
 
