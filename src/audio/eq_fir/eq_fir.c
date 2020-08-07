@@ -54,13 +54,12 @@ DECLARE_TR_CTX(eq_fir_tr, SOF_UUID(eq_fir_uuid), LOG_LEVEL_INFO);
 /* src component private data */
 struct comp_data {
 	struct fir_state_32x16 fir[PLATFORM_MAX_CHANNELS]; /**< filters state */
-	struct sof_eq_fir_config *config;	/**< pointer to setup blob */
-	struct sof_eq_fir_config *config_new;	/**< pointer to new setup */
+	struct comp_data_blob_handler *model_handler;
+	struct sof_eq_fir_config *config;
 	enum sof_ipc_frame source_format;	/**< source frame format */
 	enum sof_ipc_frame sink_format;		/**< sink frame format */
 	int32_t *fir_delay;			/**< pointer to allocated RAM */
 	size_t fir_delay_size;			/**< allocated size */
-	bool config_ready;			/**< set when fully received */
 	void (*eq_fir_func)(struct fir_state_32x16 fir[],
 			    const struct audio_stream *source,
 			    struct audio_stream *sink,
@@ -177,16 +176,6 @@ static void eq_fir_passthrough(struct fir_state_32x16 fir[],
 			       int frames, int nch)
 {
 	audio_stream_copy(source, 0, sink, 0, frames * nch);
-}
-
-/*
- * EQ control code is next. The processing is in fir_ C modules.
- */
-
-static void eq_fir_free_parameters(struct sof_eq_fir_config **config)
-{
-	rfree(*config);
-	*config = NULL;
 }
 
 static void eq_fir_free_delaylines(struct comp_data *cd)
@@ -394,26 +383,27 @@ static struct comp_dev *eq_fir_new(const struct comp_driver *drv,
 	comp_set_drvdata(dev, cd);
 
 	cd->eq_fir_func = NULL;
-	cd->config = NULL;
-	cd->config_new = NULL;
-	cd->config_ready = false;
 	cd->fir_delay = NULL;
 	cd->fir_delay_size = 0;
+
+	/* component model data handler */
+	cd->model_handler = comp_data_blob_handler_new(dev);
+	if (!cd->model_handler) {
+		comp_cl_err(&comp_eq_fir, "eq_fir_new(): comp_data_blob_handler_new() failed.");
+		rfree(dev);
+		rfree(cd);
+		return NULL;
+	}
 
 	/* Allocate and make a copy of the coefficients blob and reset FIR. If
 	 * the EQ is configured later in run-time the size is zero.
 	 */
-	if (bs) {
-		cd->config = rballoc(0, SOF_MEM_CAPS_RAM, bs);
-		if (!cd->config) {
-			rfree(dev);
-			rfree(cd);
-			return NULL;
-		}
-
-		ret = memcpy_s(cd->config, bs, ipc_fir->data, bs);
-		assert(!ret);
-		cd->config_ready = true;
+	ret = comp_init_data_blob(cd->model_handler, bs, ipc_fir->data);
+	if (ret < 0) {
+		comp_cl_err(&comp_eq_fir, "eq_fir_new(): comp_init_data_blob() failed.");
+		rfree(dev);
+		rfree(cd);
+		return NULL;
 	}
 
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
@@ -430,8 +420,7 @@ static void eq_fir_free(struct comp_dev *dev)
 	comp_info(dev, "eq_fir_free()");
 
 	eq_fir_free_delaylines(cd);
-	eq_fir_free_parameters(&cd->config);
-	eq_fir_free_parameters(&cd->config_new);
+	comp_data_blob_handler_free(cd->model_handler);
 
 	rfree(cd);
 	rfree(dev);
@@ -441,47 +430,13 @@ static int fir_cmd_get_data(struct comp_dev *dev,
 			    struct sof_ipc_ctrl_data *cdata, int max_size)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	unsigned char *dst, *src;
-	size_t offset;
-	size_t bs;
 	int ret = 0;
 
 	switch (cdata->cmd) {
 	case SOF_CTRL_CMD_BINARY:
 		comp_info(dev, "fir_cmd_get_data(), SOF_CTRL_CMD_BINARY");
-
-		max_size -= sizeof(struct sof_ipc_ctrl_data) +
-			sizeof(struct sof_abi_hdr);
-
-		/* Copy back to user space */
-		if (cd->config) {
-			src = (unsigned char *)cd->config;
-			dst = (unsigned char *)cdata->data->data;
-			bs = cd->config->size;
-			cdata->elems_remaining = 0;
-			offset = 0;
-			if (bs > max_size) {
-				bs = (cdata->msg_index + 1) * max_size > bs ?
-					bs - cdata->msg_index * max_size :
-					max_size;
-				offset = cdata->msg_index * max_size;
-				cdata->elems_remaining = cd->config->size -
-					offset;
-			}
-			cdata->num_elems = bs;
-			comp_info(dev, "fir_cmd_get_data(), blob size %zu msg index %u max size %u offset %zu",
-				  bs, cdata->msg_index, max_size, offset);
-			ret = memcpy_s(dst, ((struct sof_abi_hdr *)
-				       (cdata->data))->size, src + offset,
-				       bs);
-			assert(!ret);
-
-			cdata->data->abi = SOF_ABI_VERSION;
-			cdata->data->size = bs;
-		} else {
-			comp_err(dev, "fir_cmd_get_data(): invalid cd->config");
-			ret = -EINVAL;
-		}
+		ret = comp_data_blob_get_cmd(cd->model_handler, cdata,
+					     max_size);
 		break;
 	default:
 		comp_err(dev, "fir_cmd_get_data(): invalid cdata->cmd");
@@ -495,81 +450,12 @@ static int fir_cmd_set_data(struct comp_dev *dev,
 			    struct sof_ipc_ctrl_data *cdata)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	unsigned char *dst, *src;
-	uint32_t offset;
-	size_t size;
 	int ret = 0;
 
 	switch (cdata->cmd) {
 	case SOF_CTRL_CMD_BINARY:
 		comp_info(dev, "fir_cmd_set_data(), SOF_CTRL_CMD_BINARY");
-
-		/* Check that there is no work-in-progress previous request */
-		if (cd->config_new && cdata->msg_index == 0) {
-			comp_err(dev, "fir_cmd_set_data(), busy with previous request");
-			return -EBUSY;
-		}
-
-		/* Copy new configuration */
-		if (cdata->msg_index == 0) {
-			/* Allocate buffer for copy of the blob. */
-			size = cdata->num_elems + cdata->elems_remaining;
-			comp_info(dev, "fir_cmd_set_data(), allocating %d for configuration blob",
-				  size);
-			if (size > SOF_EQ_FIR_MAX_SIZE) {
-				comp_err(dev, "fir_cmd_set_data(), size exceeds %d",
-					 SOF_EQ_FIR_MAX_SIZE);
-				return -EINVAL;
-			}
-
-			cd->config_new = rballoc(0, SOF_MEM_CAPS_RAM, size);
-			if (!cd->config_new) {
-				comp_err(dev, "fir_cmd_set_data(): buffer allocation failed");
-				return -EINVAL;
-			}
-
-			cd->config_ready = false;
-			offset = 0;
-		} else {
-			assert(cd->config_new);
-			size = cd->config_new->size;
-			offset = size - cdata->elems_remaining -
-				cdata->num_elems;
-		}
-
-		comp_info(dev, "fir_cmd_set_data(), chunk size: %u msg_index %u",
-			  cdata->num_elems, cdata->msg_index);
-		dst = (unsigned char *)cd->config_new;
-		src = (unsigned char *)cdata->data->data;
-
-		/* Just copy the configuration. The EQ will be initialized in
-		 * prepare().
-		 */
-		ret = memcpy_s(dst + offset, size - offset, src,
-			       cdata->num_elems);
-		assert(!ret);
-
-		/* we can check data when elems_remaining == 0 */
-		if (cdata->elems_remaining == 0) {
-			/* The new configuration is OK to be applied */
-			cd->config_ready = true;
-
-			/* If component state is READY we can omit old
-			 * configuration immediately. When in playback/capture
-			 * the new configuration presence is checked in copy().
-			 */
-			if (dev->state ==  COMP_STATE_READY)
-				eq_fir_free_parameters(&cd->config);
-
-			/* If there is no existing configuration the received
-			 * can be set to current immediately. It will be
-			 * applied in prepare() when streaming starts.
-			 */
-			if (!cd->config) {
-				cd->config = cd->config_new;
-				cd->config_new = NULL;
-			}
-		}
+		ret = comp_data_blob_set_cmd(cd->model_handler, cdata);
 		break;
 	default:
 		comp_err(dev, "fir_cmd_set_data(): invalid cdata->cmd");
@@ -650,10 +536,8 @@ static int eq_fir_copy(struct comp_dev *dev)
 				  sink_list);
 
 	/* Check for changed configuration */
-	if (cd->config_new && cd->config_ready) {
-		eq_fir_free_parameters(&cd->config);
-		cd->config = cd->config_new;
-		cd->config_new = NULL;
+	if (comp_is_new_data_blob_available(cd->model_handler)) {
+		cd->config = comp_get_data_blob(cd->model_handler, NULL, NULL);
 		ret = eq_fir_setup(cd, sourceb->stream.channels);
 		if (ret < 0) {
 			comp_err(dev, "eq_fir_copy(), failed FIR setup");
@@ -726,8 +610,9 @@ static int eq_fir_prepare(struct comp_dev *dev)
 		goto err;
 	}
 
-	/* Initialize EQ */
-	if (cd->config && cd->config_ready) {
+	cd->config = comp_get_data_blob(cd->model_handler, NULL, NULL);
+
+	if (cd->config) {
 		ret = eq_fir_setup(cd, sourceb->stream.channels);
 		if (ret < 0) {
 			comp_err(dev, "eq_fir_prepare(): eq_fir_setup failed.");

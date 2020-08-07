@@ -44,13 +44,12 @@ DECLARE_TR_CTX(eq_iir_tr, SOF_UUID(eq_iir_uuid), LOG_LEVEL_INFO);
 /* IIR component private data */
 struct comp_data {
 	struct iir_state_df2t iir[PLATFORM_MAX_CHANNELS]; /**< filters state */
-	struct sof_eq_iir_config *config;	/**< pointer to setup blob */
-	struct sof_eq_iir_config *config_new;	/**< pointer to new setup */
+	struct comp_data_blob_handler *model_handler;
+	struct sof_eq_iir_config *config;
 	enum sof_ipc_frame source_format;	/**< source frame format */
 	enum sof_ipc_frame sink_format;		/**< sink frame format */
 	int64_t *iir_delay;			/**< pointer to allocated RAM */
 	size_t iir_delay_size;			/**< allocated size */
-	bool config_ready;			/**< set when fully received */
 	eq_iir_func eq_iir_func;		/**< processing function */
 };
 
@@ -327,12 +326,6 @@ static eq_iir_func eq_iir_find_func(enum sof_ipc_frame source_format,
 	return NULL;
 }
 
-static void eq_iir_free_parameters(struct sof_eq_iir_config **config)
-{
-	rfree(*config);
-	*config = NULL;
-}
-
 static void eq_iir_free_delaylines(struct comp_data *cd)
 {
 	struct iir_state_df2t *iir = cd->iir;
@@ -535,25 +528,25 @@ static struct comp_dev *eq_iir_new(const struct comp_driver *drv,
 	cd->eq_iir_func = NULL;
 	cd->iir_delay = NULL;
 	cd->iir_delay_size = 0;
-	cd->config = NULL;
-	cd->config_new = NULL;
-	cd->config_ready = false;
+
+	/* component model data handler */
+	cd->model_handler = comp_data_blob_handler_new(dev);
+	if (!cd->model_handler) {
+		comp_cl_err(&comp_eq_iir, "eq_iir_new(): comp_data_blob_handler_new() failed.");
+		rfree(dev);
+		rfree(cd);
+		return NULL;
+	}
 
 	/* Allocate and make a copy of the coefficients blob and reset IIR. If
 	 * the EQ is configured later in run-time the size is zero.
 	 */
-	if (bs) {
-		cd->config = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
-				     bs);
-		if (!cd->config) {
-			rfree(dev);
-			rfree(cd);
-			return NULL;
-		}
-
-		ret = memcpy_s(cd->config, bs, ipc_iir->data, bs);
-		assert(!ret);
-		cd->config_ready = true;
+	ret = comp_init_data_blob(cd->model_handler, bs, ipc_iir->data);
+	if (ret < 0) {
+		comp_cl_err(&comp_eq_iir, "eq_iir_new(): comp_init_data_blob() failed.");
+		rfree(dev);
+		rfree(cd);
+		return NULL;
 	}
 
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
@@ -570,8 +563,7 @@ static void eq_iir_free(struct comp_dev *dev)
 	comp_info(dev, "eq_iir_free()");
 
 	eq_iir_free_delaylines(cd);
-	eq_iir_free_parameters(&cd->config);
-	eq_iir_free_parameters(&cd->config_new);
+	comp_data_blob_handler_free(cd->model_handler);
 
 	rfree(cd);
 	rfree(dev);
@@ -635,58 +627,13 @@ static int iir_cmd_get_data(struct comp_dev *dev,
 			    struct sof_ipc_ctrl_data *cdata, int max_size)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	unsigned char *dst;
-	unsigned char *src;
-	size_t offset;
-	size_t bs;
 	int ret = 0;
 
 	switch (cdata->cmd) {
 	case SOF_CTRL_CMD_BINARY:
 		comp_info(dev, "iir_cmd_get_data(), SOF_CTRL_CMD_BINARY");
-
-		/* Need subtract headers to calculate payload chunk size */
-		max_size -= sizeof(struct sof_ipc_ctrl_data) +
-			sizeof(struct sof_abi_hdr);
-
-		/* Copy back to user space */
-		if (cd->config) {
-			src = (unsigned char *)cd->config;
-			dst = (unsigned char *)cdata->data->data;
-
-			/* Get size of stored entire configuration payload
-			 * into bs.
-			 */
-			bs = cd->config->size;
-			cdata->elems_remaining = 0;
-			offset = 0;
-			if (bs > max_size) {
-				/* Use max_size or remaining data size if at
-				 * last chunk of data.
-				 */
-				bs = (cdata->msg_index + 1) * max_size > bs ?
-					bs - cdata->msg_index * max_size :
-					max_size;
-				/* Start from end of previous chunk */
-				offset = cdata->msg_index * max_size;
-				/* Remaining amount of data for next IPC */
-				cdata->elems_remaining = cd->config->size -
-					offset;
-			}
-
-			/* Payload size for this IPC response is set from bs */
-			cdata->num_elems = bs;
-			comp_info(dev, "iir_cmd_get_data(), chunk size %zu msg index %u max size %u offset %zu",
-				  bs, cdata->msg_index, max_size, offset);
-			ret = memcpy_s(dst, max_size, src + offset, bs);
-			assert(!ret);
-
-			cdata->data->abi = SOF_ABI_VERSION;
-			cdata->data->size = bs;
-		} else {
-			comp_err(dev, "iir_cmd_get_data(): no config");
-			ret = -EINVAL;
-		}
+		ret = comp_data_blob_get_cmd(cd->model_handler, cdata,
+					     max_size);
 		break;
 	default:
 		comp_err(dev, "iir_cmd_get_data(), invalid command");
@@ -700,83 +647,12 @@ static int iir_cmd_set_data(struct comp_dev *dev,
 			    struct sof_ipc_ctrl_data *cdata)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	unsigned char *dst;
-	unsigned char *src;
-	uint32_t offset;
-	size_t size;
 	int ret = 0;
 
 	switch (cdata->cmd) {
 	case SOF_CTRL_CMD_BINARY:
 		comp_info(dev, "iir_cmd_set_data(), SOF_CTRL_CMD_BINARY");
-
-		/* Check that there is no work-in-progress previous request */
-		if (cd->config_new && cdata->msg_index == 0) {
-			comp_err(dev, "iir_cmd_set_data(), busy with previous request");
-			return -EBUSY;
-		}
-
-		/* Copy new configuration */
-		if (cdata->msg_index == 0) {
-			/* Allocate buffer for copy of the blob. */
-			size = cdata->num_elems + cdata->elems_remaining;
-			comp_info(dev, "iir_cmd_set_data(), allocating %d for configuration blob",
-				  size);
-			if (size > SOF_EQ_IIR_MAX_SIZE) {
-				comp_err(dev, "iir_cmd_set_data(), size exceeds %d",
-					 SOF_EQ_IIR_MAX_SIZE);
-				return -EINVAL;
-			}
-
-			cd->config_new = rzalloc(SOF_MEM_ZONE_RUNTIME, 0,
-						 SOF_MEM_CAPS_RAM, size);
-			if (!cd->config_new) {
-				comp_err(dev, "iir_cmd_set_data(): buffer allocation failed");
-				return -EINVAL;
-			}
-
-			cd->config_ready = false;
-			offset = 0;
-		} else {
-			assert(cd->config_new);
-			size = cd->config_new->size;
-			offset = size - cdata->elems_remaining -
-				cdata->num_elems;
-		}
-
-		comp_info(dev, "iir_cmd_set_data(), chunk size: %u msg_index %u",
-			  cdata->num_elems, cdata->msg_index);
-		dst = (unsigned char *)cd->config_new;
-		src = (unsigned char *)cdata->data->data;
-
-		/* Just copy the configuration. The EQ will be initialized in
-		 * prepare().
-		 */
-		ret = memcpy_s(dst + offset, size - offset, src,
-			       cdata->num_elems);
-		assert(!ret);
-
-		/* we can check data when elems_remaining == 0 */
-		if (cdata->elems_remaining == 0) {
-			/* The new configuration is OK to be applied */
-			cd->config_ready = true;
-
-			/* If component state is READY we can omit old
-			 * configuration immediately. When in playback/capture
-			 * the new configuration presence is checked in copy().
-			 */
-			if (dev->state ==  COMP_STATE_READY)
-				eq_iir_free_parameters(&cd->config);
-
-			/* If there is no existing configuration the received
-			 * can be set to current immediately. It will be
-			 * applied in prepare() when streaming starts.
-			 */
-			if (!cd->config) {
-				cd->config = cd->config_new;
-				cd->config_new = NULL;
-			}
-		}
+		ret = comp_data_blob_set_cmd(cd->model_handler, cdata);
 		break;
 	default:
 		comp_err(dev, "iir_cmd_set_data(), invalid command");
@@ -855,10 +731,8 @@ static int eq_iir_copy(struct comp_dev *dev)
 				  sink_list);
 
 	/* Check for changed configuration */
-	if (cd->config_new && cd->config_ready) {
-		eq_iir_free_parameters(&cd->config);
-		cd->config = cd->config_new;
-		cd->config_new = NULL;
+	if (comp_is_new_data_blob_available(cd->model_handler)) {
+		cd->config = comp_get_data_blob(cd->model_handler, NULL, NULL);
 		ret = eq_iir_setup(cd, sourceb->stream.channels);
 		if (ret < 0) {
 			comp_err(dev, "eq_iir_copy(), failed IIR setup");
@@ -918,10 +792,12 @@ static int eq_iir_prepare(struct comp_dev *dev)
 		goto err;
 	}
 
+	cd->config = comp_get_data_blob(cd->model_handler, NULL, NULL);
+
 	/* Initialize EQ */
 	comp_info(dev, "eq_iir_prepare(), source_format=%d, sink_format=%d",
 		  cd->source_format, cd->sink_format);
-	if (cd->config && cd->config_ready) {
+	if (cd->config) {
 		ret = eq_iir_setup(cd, sourceb->stream.channels);
 		if (ret < 0) {
 			comp_err(dev, "eq_iir_prepare(), setup failed.");
