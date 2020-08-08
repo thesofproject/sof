@@ -15,6 +15,7 @@
 #include <arch/lib/wait.h>
 #include <sof/drivers/interrupt.h>
 #include <sof/lib/clk.h>
+#include <sof/drivers/mu.h>
 #include <sof/lib/mailbox.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -59,9 +60,19 @@ struct timer;
 /* DSP default delay in cycles */
 #define PLATFORM_DEFAULT_DELAY	12
 
+#define SRAM_REG_FW_STATUS     0x4
+
 /* Platform defined panic code */
 static inline void platform_panic(uint32_t p)
 {
+	/* Store the error code in the debug box so the
+	 * application processor can pick it up. Takes up 4 bytes
+	 * from the debug box.
+	 */
+	mailbox_sw_reg_write(SRAM_REG_FW_STATUS, p);
+
+	/* Notify application processor */
+	imx_mu_xcr_rmw(IMX_MU_xCR_GIRn(1), 0);
 }
 
 /**
