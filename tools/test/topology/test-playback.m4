@@ -3,10 +3,10 @@
 #
 
 # Include topology builder
+include(`utils.m4')
 include(`pipeline.m4')
 include(`dai.m4')
 include(`ssp.m4')
-include(`utils.m4')
 
 # Include TLV library
 include(`common/tlv.m4')
