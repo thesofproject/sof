@@ -18,11 +18,59 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#ifdef __ZEPHYR__
+
+#include <kernel.h>
+#include <sys_clock.h>
+
+/*
+ * Currently the Zephyr clock rate is part it's Kconfig known at build time.
+ * SOF on Intel CAVS platforms currently only aligns with Zephyr when both
+ * use the CAVS 19.2 MHz SSP clock. TODO - needs runtime alignment.
+ */
+#if defined(CONFIG_CAVS) && !defined(CONFIG_INTEL_SSP)
+#error "Zephyr uses 19.2MHz clock derived from SSP which must be enabled."
+#endif
+
+#define ZEPHYR_LL_WORKQ_SIZE	8192
+
+#define CYC_PER_TICK	(CONFIG_SYS_CLOCK_HW_CYCLES_PER_SEC	\
+			/ CONFIG_SYS_CLOCK_TICKS_PER_SEC)
+
+/* zephyr alignment to nearest kernel tick */
+#define ZEPHYR_SCHED_COST	(CYC_PER_TICK + (CYC_PER_TICK >> 1))
+
+K_THREAD_STACK_DEFINE(ll_workq_stack0, ZEPHYR_LL_WORKQ_SIZE);
+#if CONFIG_CORE_COUNT > 1
+K_THREAD_STACK_DEFINE(ll_workq_stack1, ZEPHYR_LL_WORKQ_SIZE);
+#endif
+#if CONFIG_CORE_COUNT > 2
+K_THREAD_STACK_DEFINE(ll_workq_stack2, ZEPHYR_LL_WORKQ_SIZE);
+#endif
+#if CONFIG_CORE_COUNT > 3
+K_THREAD_STACK_DEFINE(ll_workq_stack3, ZEPHYR_LL_WORKQ_SIZE);
+#endif
+#endif
+
 struct timer_domain {
+#ifdef __ZEPHYR__
+	struct k_work_q ll_workq[CONFIG_CORE_COUNT];
+	int ll_workq_registered[CONFIG_CORE_COUNT];
+#endif
 	struct timer *timer;
-	uint64_t timeout;
-	void *arg[PLATFORM_CORE_COUNT];
+	void *arg[CONFIG_CORE_COUNT];
+	uint64_t timeout; /* in microseconds */
 };
+
+#ifdef __ZEPHYR__
+struct timer_zdata {
+	struct k_delayed_work work;
+	void (*handler)(void *arg);
+	void *arg;
+};
+
+struct timer_zdata zdata[CONFIG_CORE_COUNT];
+#endif
 
 const struct ll_schedule_domain_ops timer_domain_ops;
 
@@ -31,12 +79,27 @@ static inline void timer_report_delay(int id, uint64_t delay)
 	uint32_t ll_delay_us = (delay * 1000) /
 				clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1);
 
+#ifdef __ZEPHYR__
+	/* Zephyr schedules on nearest kernel tick not HW cycle */
+	if (delay <= CYC_PER_TICK)
+		return;
+#endif
+
 	tr_err(&ll_tr, "timer_report_delay(): timer %d delayed by %d uS %d ticks",
 	       id, ll_delay_us, delay);
 
 	/* Fix compile error when traces are disabled */
 	(void)ll_delay_us;
 }
+
+#ifdef __ZEPHYR__
+static void timer_z_handler(struct k_work *work)
+{
+	struct timer_zdata *zd = CONTAINER_OF(work, struct timer_zdata, work);
+
+	zd->handler(zd->arg);
+}
+#endif
 
 static int timer_domain_register(struct ll_schedule_domain *domain,
 				 uint64_t period, struct task *task,
@@ -45,20 +108,67 @@ static int timer_domain_register(struct ll_schedule_domain *domain,
 	struct timer_domain *timer_domain = ll_sch_domain_get_pdata(domain);
 	int core = cpu_get_id();
 	int ret = 0;
+#ifdef __ZEPHYR__
+	void *stack;
+	char *qname;
+#endif
 
 	tr_dbg(&ll_tr, "timer_domain_register()");
 
+#ifdef __ZEPHYR__
+
+	/* domain work only needs registered once */
+	if (timer_domain->ll_workq_registered[core])
+		goto out;
+
+	switch (core) {
+	case 0:
+		stack = ll_workq_stack0;
+		qname = "ll_workq0";
+		break;
+#if CONFIG_CORE_COUNT > 1
+	case 1:
+		stack = ll_workq_stack1;
+		qname = "ll_workq1";
+		break;
+#endif
+#if CONFIG_CORE_COUNT > 2
+	case 2:
+		stack = ll_workq_stack2;
+		qname = "ll_workq2";
+		break;
+#endif
+#if CONFIG_CORE_COUNT > 3
+	case 3:
+		stack = ll_workq_stack3;
+		qname = "ll_workq3";
+		break;
+#endif
+	default:
+		tr_err(&ll_tr, "invalid timer domain core %d\n", core);
+		return -EINVAL;
+	}
+
+	zdata[core].handler = handler;
+	zdata[core].arg = arg;
+	k_work_q_start(&timer_domain->ll_workq[core], stack,
+		       ZEPHYR_LL_WORKQ_SIZE, -CONFIG_NUM_COOP_PRIORITIES);
+	k_thread_name_set(&timer_domain->ll_workq[core].thread, qname);
+	timer_domain->ll_workq_registered[core] = 1;
+
+	k_delayed_work_init(&zdata[core].work, timer_z_handler);
+
+#else
 	/* tasks already registered on this core */
 	if (timer_domain->arg[core])
 		goto out;
 
-	tr_info(&ll_tr, "timer_domain_register domain->type %d domain->clk %d domain->ticks_per_ms %d period %d",
-		domain->type, domain->clk, domain->ticks_per_ms, period);
-
 	timer_domain->arg[core] = arg;
-
 	ret = timer_register(timer_domain->timer, handler, arg);
+#endif
 
+	tr_info(&ll_tr, "timer_domain_register domain->type %d domain->clk %d domain->ticks_per_ms %d period %d",
+		domain->type, domain->clk, domain->ticks_per_ms, (uint32_t)period);
 out:
 	platform_shared_commit(timer_domain, sizeof(*timer_domain));
 
@@ -79,9 +189,9 @@ static void timer_domain_unregister(struct ll_schedule_domain *domain,
 
 	tr_info(&ll_tr, "timer_domain_unregister domain->type %d domain->clk %d",
 		domain->type, domain->clk);
-
+#ifndef __ZEPHYR__
 	timer_unregister(timer_domain->timer, timer_domain->arg[core]);
-
+#endif
 	timer_domain->arg[core] = NULL;
 
 out:
@@ -90,29 +200,49 @@ out:
 
 static void timer_domain_enable(struct ll_schedule_domain *domain, int core)
 {
+#ifndef __ZEPHYR__
 	struct timer_domain *timer_domain = ll_sch_domain_get_pdata(domain);
 
 	timer_enable(timer_domain->timer, timer_domain->arg[core], core);
 
 	platform_shared_commit(timer_domain, sizeof(*timer_domain));
+#endif
 }
 
 static void timer_domain_disable(struct ll_schedule_domain *domain, int core)
 {
+#ifndef __ZEPHYR__
 	struct timer_domain *timer_domain = ll_sch_domain_get_pdata(domain);
 
 	timer_disable(timer_domain->timer, timer_domain->arg[core], core);
 
 	platform_shared_commit(timer_domain, sizeof(*timer_domain));
+#endif
 }
 
 static void timer_domain_set(struct ll_schedule_domain *domain, uint64_t start)
 {
 	struct timer_domain *timer_domain = ll_sch_domain_get_pdata(domain);
-	uint64_t ticks_req = domain->ticks_per_ms * timer_domain->timeout /
-			     1000 + start;
+	uint64_t ticks_tout = domain->ticks_per_ms * timer_domain->timeout /
+			     1000;
+	uint64_t ticks_req = ticks_tout + start;
 	uint64_t ticks_set;
 
+#ifdef __ZEPHYR__
+	uint64_t ticks_delta;
+	int core = cpu_get_id();
+
+	/* work out next start time relative to start */
+	ticks_delta = ticks_req - platform_timer_get(timer_domain->timer);
+
+	/* have we overshot the period length ?? */
+	if (ticks_delta > ticks_tout)
+		ticks_delta = ticks_tout;
+
+	k_delayed_work_submit_to_queue(&timer_domain[core].ll_workq[core],
+				       &zdata[core].work,
+				       K_CYC(ticks_delta - ZEPHYR_SCHED_COST));
+#endif
 	ticks_set = platform_timer_set(timer_domain->timer, ticks_req);
 
 	/* Was timer set to the value we requested? If no it means some
@@ -129,11 +259,13 @@ static void timer_domain_set(struct ll_schedule_domain *domain, uint64_t start)
 
 static void timer_domain_clear(struct ll_schedule_domain *domain)
 {
+#ifndef __ZEPHYR__
 	struct timer_domain *timer_domain = ll_sch_domain_get_pdata(domain);
 
 	platform_timer_clear(timer_domain->timer);
 
 	platform_shared_commit(timer_domain, sizeof(*timer_domain));
+#endif
 }
 
 static bool timer_domain_is_pending(struct ll_schedule_domain *domain,
