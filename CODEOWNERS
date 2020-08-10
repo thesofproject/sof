@@ -53,6 +53,7 @@ src/schedule				@mrajwa
 
 # other helpers
 test/**					@jajanusz
+# Mostly overridden by *.(ba)sh below
 scripts/*				@xiulipan @marc-hb
 
 # tools(old soft)
@@ -70,8 +71,8 @@ tools/tune/*				@singalsu
 scripts/cmake/**			@jajanusz
 scripts/kconfig/**			@jajanusz
 
-# related files
-*.sh					@jajanusz
+*.sh					@jajanusz @marc-hb
+*.bash					@jajanusz @marc-hb
 *trace.*				@xiulipan @akloniex
 
 # You can also use email addresses if you prefer.
