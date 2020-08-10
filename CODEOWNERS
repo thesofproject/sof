@@ -37,7 +37,7 @@ src/arch/xtensa/debug/gdb/*		@mrajwa
 src/platform/imx8/**			@dbaluta
 
 # drivers
-src/drivers/intel/cavs/dmic.c		@singalsu
+src/drivers/intel/dmic.c		@singalsu
 src/drivers/intel/cavs/sue-iomux.c	@lyakh
 src/drivers/intel/haswell/*		@randerwang
 src/drivers/imx/**			@dbaluta
