@@ -47,6 +47,7 @@ enum sof_comp_type {
 	SOF_COMP_ASRC,		/**< Asynchronous sample rate converter */
 	SOF_COMP_DCBLOCK,
 	SOF_COMP_SMART_AMP,		/**< smart amplifier component */
+	SOF_COMP_POST_PROCESS,
 	/* keep FILEREAD/FILEWRITE as the last ones */
 	SOF_COMP_FILEREAD = 10000,	/**< host test based file IO */
 	SOF_COMP_FILEWRITE = 10001,	/**< host test based file IO */
@@ -219,6 +220,23 @@ struct sof_ipc_comp_tone {
 	int32_t repeats;
 	int32_t ramp_step;
 } __attribute__((packed));
+
+/** \brief Types of processing components */
+enum sof_ipc_process_type {
+	SOF_PROCESS_NONE = 0,		/**< None */
+	SOF_PROCESS_EQFIR,		/**< Intel FIR */
+	SOF_PROCESS_EQIIR,		/**< Intel IIR */
+	SOF_PROCESS_KEYWORD_DETECT,	/**< Keyword Detection */
+	SOF_PROCESS_KPB,		/**< KeyPhrase Buffer Manager */
+	SOF_PROCESS_CHAN_SELECTOR,	/**< Channel Selector */
+	SOF_PROCESS_MUX,
+	SOF_PROCESS_DEMUX,
+	SOF_PROCESS_DCBLOCK,
+	SOF_PROCESS_SMART_AMP,	/**< Smart Amplifier */
+	SOF_PROCESS_CODEC_PCM,  /**< Codecs */
+	SOF_PROCESS_CODEC_MP3,
+	SOF_PROCESS_CODEC_AAC,
+};
 
 /* generic "effect", "codec" or proprietary processing component */
 struct sof_ipc_comp_process {
