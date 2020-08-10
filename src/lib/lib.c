@@ -43,6 +43,7 @@ int memset_s(void *dest, size_t dest_size, int data, size_t count)
 	return arch_memset_s(dest, dest_size, data, count);
 }
 
+#if !CONFIG_LIBRARY && !__ZEPHYR__
 int memcmp(const void *p, const void *q, size_t count)
 {
 	uint8_t *s1 = (uint8_t *)p;
@@ -57,6 +58,7 @@ int memcmp(const void *p, const void *q, size_t count)
 	}
 	return 0;
 }
+#endif
 
 /* generic strlen - TODO: can be optimsed for ARCH ? */
 int rstrlen(const char *s)
