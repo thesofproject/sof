@@ -801,9 +801,10 @@ static void dw_dma_verify_transfer(struct dma_chan_data *channel,
 {
 	struct dw_dma_chan_data *dw_chan = dma_chan_get_data(channel);
 #if CONFIG_HW_LLI
-	struct dw_lli *lli = platform_dw_dma_lli_get(dw_chan->lli_current);
 #if defined __ZEPHYR__
 	int i;
+#else
+	struct dw_lli *lli = platform_dw_dma_lli_get(dw_chan->lli_current);
 #endif
 	switch (next->status) {
 	case DMA_CB_STATUS_END:
@@ -820,7 +821,7 @@ static void dw_dma_verify_transfer(struct dma_chan_data *channel,
 					 sizeof(struct dw_lli) * channel->desc_count);
 
 		for (i = 0; i < channel->desc_count; i++)
-			dw_chan->lli[i].ctrl_hi &= lli->ctrl_hi &= ~DW_CTLH_DONE(1);
+			dw_chan->lli[i].ctrl_hi &= ~DW_CTLH_DONE(1);
 
 		dcache_writeback_region(dw_chan->lli,
 					sizeof(struct dw_lli) * channel->desc_count);
