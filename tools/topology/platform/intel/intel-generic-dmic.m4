@@ -5,8 +5,10 @@
 include(`platform/intel/dmic.m4')
 
 # defined in machine driver
-define(DMIC_DAI_LINK_48k_ID, `6')
-define(DMIC_DAI_LINK_16k_ID, `7')
+ifdef(`DMIC_DAI_LINK_48k_ID',`',
+`define(DMIC_DAI_LINK_48k_ID, `6')')
+ifdef(`DMIC_DAI_LINK_16k_ID',`',
+`define(DMIC_DAI_LINK_16k_ID, `7')')
 
 #
 # Define the pipelines
