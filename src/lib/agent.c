@@ -29,6 +29,7 @@
 #include <ipc/topology.h>
 #include <ipc/trace.h>
 #include <user/trace.h>
+#include <limits.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -70,9 +71,13 @@ static enum task_state validate(void *data)
 #endif
 
 	/* warning timeout */
-	if (delta > sa->warn_timeout)
-		tr_warn(&sa_tr, "validate(), ll drift detected, delta = %u",
-			delta);
+	if (delta > sa->warn_timeout) {
+		if (delta > UINT_MAX)
+			tr_warn(&sa_tr, "validate(), ll drift detected, delta > %u", UINT_MAX);
+		else
+			tr_warn(&sa_tr, "validate(), ll drift detected, delta = %u",
+				(unsigned int)delta);
+	}
 
 	/* update last_check to current */
 	sa->last_check = current;
@@ -86,7 +91,10 @@ void sa_init(struct sof *sof, uint64_t timeout)
 {
 	uint64_t ticks;
 
-	tr_info(&sa_tr, "sa_init(), timeout = %u", timeout);
+	if (timeout > UINT_MAX)
+		tr_warn(&sa_tr, "sa_init(), timeout > %u", UINT_MAX);
+	else
+		tr_info(&sa_tr, "sa_init(), timeout = %u", (unsigned int)timeout);
 
 	sof->sa = rzalloc(SOF_MEM_ZONE_SYS, SOF_MEM_FLAG_SHARED,
 			  SOF_MEM_CAPS_RAM, sizeof(*sof->sa));
@@ -105,8 +113,15 @@ void sa_init(struct sof *sof, uint64_t timeout)
 	atomic_init(&sof->sa->panic_cnt, 0);
 	sof->sa->panic_on_delay = true;
 
-	tr_info(&sa_tr, "sa_init(), ticks = %u, sof->sa->warn_timeout = %u, sof->sa->panic_timeout = %u",
-		ticks, sof->sa->warn_timeout, sof->sa->panic_timeout);
+	if (ticks > UINT_MAX || sof->sa->warn_timeout > UINT_MAX ||
+	    sof->sa->panic_timeout > UINT_MAX)
+		tr_info(&sa_tr,
+			"sa_init(), some of the values are > %u", UINT_MAX);
+	else
+		tr_info(&sa_tr,
+			"sa_init(), ticks = %u, sof->sa->warn_timeout = %u, sof->sa->panic_timeout = %u",
+			(unsigned int)ticks, (unsigned int)sof->sa->warn_timeout,
+			(unsigned int)sof->sa->panic_timeout);
 
 	schedule_task_init_ll(&sof->sa->work, SOF_UUID(agent_work_task_uuid),
 			      SOF_SCHEDULE_LL_TIMER,
