@@ -14,6 +14,7 @@
 #include <sof/schedule/schedule.h>
 #include <sof/schedule/task.h>
 #include <ipc/topology.h>
+#include <limits.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -85,8 +86,12 @@ static inline void timer_report_delay(int id, uint64_t delay)
 		return;
 #endif
 
-	tr_err(&ll_tr, "timer_report_delay(): timer %d delayed by %d uS %d ticks",
-	       id, ll_delay_us, delay);
+	if (delay <= UINT_MAX)
+		tr_err(&ll_tr, "timer_report_delay(): timer %d delayed by %d uS %d ticks",
+		       id, ll_delay_us, (unsigned int)delay);
+	else
+		tr_err(&ll_tr, "timer_report_delay(): timer %d delayed by %d uS, ticks > %u",
+		       id, ll_delay_us, UINT_MAX);
 
 	/* Fix compile error when traces are disabled */
 	(void)ll_delay_us;
@@ -280,7 +285,11 @@ struct ll_schedule_domain *timer_domain_init(struct timer *timer, int clk,
 	struct ll_schedule_domain *domain;
 	struct timer_domain *timer_domain;
 
-	tr_info(&ll_tr, "timer_domain_init clk %d timeout %u", clk, timeout);
+	if (timeout <= UINT_MAX)
+		tr_info(&ll_tr, "timer_domain_init clk %d timeout %u", clk,
+			(unsigned int)timeout);
+	else
+		tr_info(&ll_tr, "timer_domain_init clk %d timeout > %u", clk, UINT_MAX);
 
 	domain = domain_init(SOF_SCHEDULE_LL_TIMER, clk, false,
 			     &timer_domain_ops);

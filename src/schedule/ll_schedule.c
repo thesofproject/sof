@@ -27,6 +27,7 @@
 #include <ipc/topology.h>
 
 #include <errno.h>
+#include <limits.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -343,8 +344,13 @@ static int schedule_ll_task(void *data, struct task *task, uint64_t start,
 	pdata = ll_sch_get_pdata(task);
 
 	tr_info(&ll_tr, "task add %p %pU", (uintptr_t)task, task->uid);
-	tr_info(&ll_tr, "task params pri %d flags %d start %u period %u",
-		task->priority, task->flags, start, period);
+	if (start <= UINT_MAX && period <= UINT_MAX)
+		tr_info(&ll_tr, "task params pri %d flags %d start %u period %u",
+			task->priority, task->flags,
+			(unsigned int)start, (unsigned int)period);
+	else
+		tr_info(&ll_tr, "task params pri %d flags %d start or period > %u",
+			task->priority, task->flags, UINT_MAX);
 
 	pdata->period = period;
 

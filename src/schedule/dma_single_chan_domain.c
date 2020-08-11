@@ -20,6 +20,7 @@
 #include <sof/schedule/task.h>
 #include <ipc/topology.h>
 #include <errno.h>
+#include <limits.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -224,8 +225,14 @@ static int dma_single_chan_domain_register(struct ll_schedule_domain *domain,
 		register_needed = false;
 	}
 
-	tr_info(&ll_tr, "dma_single_chan_domain_register(): registering on channel with period %u",
-		channel->period);
+	if (channel->period <= UINT_MAX)
+		tr_info(&ll_tr,
+			"dma_single_chan_domain_register(): registering on channel with period %u",
+			(unsigned int)channel->period);
+	else
+		tr_info(&ll_tr,
+			"dma_single_chan_domain_register(): registering on channel with period > %u",
+			UINT_MAX);
 
 	/* register for interrupt */
 	ret = dma_single_chan_domain_irq_register(channel, data, handler, arg);
