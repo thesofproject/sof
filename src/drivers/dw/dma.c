@@ -911,9 +911,6 @@ static int dw_dma_setup(struct dma *dma)
 		return -EIO;
 	}
 
-	for (i = 0; i < dma->plat_data.channels; i++)
-		dma_reg_read(dma, DW_DMA_CHAN_EN);
-
 	/* enable the DMA controller */
 	dma_reg_write(dma, DW_DMA_CFG, 1);
 
