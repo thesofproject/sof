@@ -19,6 +19,7 @@
 #include <sof/lib/memory.h>
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
+#include <sof/math/iir_df2t.h>
 #include <sof/platform.h>
 #include <sof/string.h>
 #include <sof/ut.h>

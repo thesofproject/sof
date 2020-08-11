@@ -10,7 +10,7 @@
 #include <stddef.h>
 #include <errno.h>
 #include <sof/audio/format.h>
-#include <sof/audio/eq_iir/iir.h>
+#include <sof/math/iir_df2t.h>
 #include <user/eq.h>
 
 #if IIR_HIFI3
