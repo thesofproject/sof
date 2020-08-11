@@ -316,7 +316,6 @@ static void dma_domain_unregister_owner(struct ll_schedule_domain *domain,
 	struct dma_domain *dma_domain = ll_sch_domain_get_pdata(domain);
 	struct dma *dmas = dma_domain->dma_array;
 	struct dma_chan_data *channel;
-	int core = cpu_get_id();
 
 	tr_info(&ll_tr, "dma_domain_unregister_owner()");
 
@@ -324,42 +323,42 @@ static void dma_domain_unregister_owner(struct ll_schedule_domain *domain,
 	if (data->channel->status == COMP_STATE_ACTIVE)
 		return;
 
+	channel = dma_chan_min_period(dma_domain);
+	if (channel && dma_chan_is_any_running(dmas, dma_domain->num_dma)) {
+		/* another channel is running */
+		tr_info(&ll_tr, "dma_domain_unregister_owner(): domain in use, change owner");
+
+		/* change owner */
+		dma_domain->owner = channel->core;
+
+		/* notify scheduling channel change */
+		dma_domain_notify_change(channel);
+
+		data->channel = channel;
+		dma_domain->channel_changed = true;
+
+		return;
+	}
+
+	/* no other channel is running */
 	dma_single_chan_domain_irq_unregister(data);
 	dma_interrupt(data->channel, DMA_IRQ_MASK);
 	dma_interrupt(data->channel, DMA_IRQ_CLEAR);
 	data->channel = NULL;
 
-	channel = dma_chan_min_period(dma_domain);
-	if (!channel) {
-		dma_domain->owner = DMA_DOMAIN_OWNER_INVALID;
-		notifier_unregister(domain, NULL,
-				    NOTIFIER_ID_DMA_DOMAIN_CHANGE);
+	if (channel) {
+		/* change owner */
+		dma_domain->owner = channel->core;
+
+		/* notify scheduling channel change */
+		dma_domain_notify_change(channel);
 
 		return;
 	}
 
-	/* change owner */
-	dma_domain->owner = channel->core;
+	dma_domain->owner = DMA_DOMAIN_OWNER_INVALID;
 
-	/* notify scheduling channel change */
-	dma_domain_notify_change(channel);
-
-	/* check if there is another channel running */
-	if (dma_chan_is_any_running(dmas, dma_domain->num_dma)) {
-		tr_info(&ll_tr, "dma_domain_unregister_owner(): some channel is still running, registering again");
-
-		/* register again and enable */
-		if (dma_single_chan_domain_irq_register(channel, data,
-							data->handler,
-							data->arg) < 0) {
-			tr_err(&ll_tr, "dma_domain_unregister_owner(): couldn't register irq");
-			return;
-		}
-
-		dma_interrupt(data->channel, DMA_IRQ_CLEAR);
-		dma_single_chan_domain_enable(domain, core);
-		dma_domain->channel_changed = true;
-	}
+	notifier_unregister(domain, NULL, NOTIFIER_ID_DMA_DOMAIN_CHANGE);
 }
 
 /**
