@@ -19,9 +19,8 @@ include(`sof/tokens.m4')
 include(`platform/intel/bxt.m4')
 include(`platform/intel/dmic.m4')
 
-ifdef(`CODEC_MASTER',
-define(SSP_SCHEDULE_TIME_DOMAIN, SCHEDULE_TIME_DOMAIN_DMA),
-define(SSP_SCHEDULE_TIME_DOMAIN, SCHEDULE_TIME_DOMAIN_TIMER))
+define(`SSP_SCHEDULE_TIME_DOMAIN',
+	ifdef(`CODEC_MASTER', SCHEDULE_TIME_DOMAIN_DMA, SCHEDULE_TIME_DOMAIN_TIMER))
 
 DEBUG_START
 
