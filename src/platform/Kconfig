@@ -353,4 +353,13 @@ config HAVE_AGENT
 	  with DMA based scheduling, where asynchronous interrupts
 	  can potentially starve the agent.
 
+config AGENT_PANIC_ON_DELAY
+	bool "Enable system agent time verification panic"
+	default n
+	depends on HAVE_AGENT
+	help
+	  Enables system agent time verification panic.
+	  If scheduler timing verification fails, SA will
+	  call a DSP panic.
+
 endmenu
