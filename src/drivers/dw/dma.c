@@ -860,6 +860,7 @@ static int dw_dma_copy(struct dma_chan_data *channel, int bytes,
 		.elem = { .size = bytes },
 		.status = DMA_CB_STATUS_END,
 	};
+	uint32_t irq_flags;
 
 	tr_dbg(&dwdma_tr, "dw_dma_copy(): dma %d channel %d copy",
 	       channel->dma->plat_data.id, channel->index);
@@ -887,7 +888,9 @@ static int dw_dma_copy(struct dma_chan_data *channel, int bytes,
 	dw_dma_verify_transfer(channel, &next);
 
 	/* increment current pointer */
+	spin_lock_irq(&channel->dma->lock, irq_flags);
 	dw_dma_increment_pointer(dw_chan, bytes);
+	spin_unlock_irq(&channel->dma->lock, irq_flags);
 
 	return ret;
 }
@@ -1073,7 +1076,7 @@ static int dw_dma_get_data_size(struct dma_chan_data *channel,
 	tr_dbg(&dwdma_tr, "dw_dma_get_data_size(): dma %d channel %d get data size",
 	       channel->dma->plat_data.id, channel->index);
 
-	irq_local_disable(flags);
+	spin_lock_irq(&channel->dma->lock, flags);
 
 	if (channel->direction == DMA_DIR_HMEM_TO_LMEM ||
 	    channel->direction == DMA_DIR_DEV_TO_MEM) {
@@ -1083,7 +1086,7 @@ static int dw_dma_get_data_size(struct dma_chan_data *channel,
 		*free = dw_dma_free_data_size(channel);
 		*avail = dw_chan->ptr_data.buffer_bytes - *free;
 	}
-	irq_local_enable(flags);
+	spin_unlock_irq(&channel->dma->lock, flags);
 
 #if CONFIG_HW_LLI
 	if (!(dma_reg_read(channel->dma, DW_DMA_CHAN_EN) &
