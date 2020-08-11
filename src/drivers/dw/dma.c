@@ -549,7 +549,7 @@ static int dw_dma_set_config(struct dma_chan_data *channel,
 		if (dw_chan->lli)
 			rfree(dw_chan->lli);
 
-		dw_chan->lli = rzalloc(SOF_MEM_ZONE_SYS_RUNTIME, 0,
+		dw_chan->lli = rmalloc(SOF_MEM_ZONE_SYS_RUNTIME, 0,
 				       SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_DMA,
 				       sizeof(struct dw_lli) *
 				       channel->desc_count);
