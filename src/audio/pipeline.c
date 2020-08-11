@@ -63,6 +63,7 @@ void pipeline_posn_init(struct sof *sof)
 }
 
 static enum task_state pipeline_task(void *arg);
+static void pipeline_schedule_cancel(struct pipeline *p);
 
 /* create new pipeline - returns pipeline id or negative error */
 struct pipeline *pipeline_new(struct sof_ipc_pipe_new *pipe_desc,
@@ -1113,7 +1114,7 @@ void pipeline_schedule_copy(struct pipeline *p, uint64_t start)
 	schedule_task(p->pipe_task, start, p->ipc_pipe.period);
 }
 
-void pipeline_schedule_cancel(struct pipeline *p)
+static void pipeline_schedule_cancel(struct pipeline *p)
 {
 	schedule_task_cancel(p->pipe_task);
 
