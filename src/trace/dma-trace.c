@@ -469,7 +469,7 @@ static void dtrace_add_event(const char *e, uint32_t length)
 	struct dma_trace_data *trace_data = dma_trace_data_get();
 	struct dma_trace_buf *buffer = &trace_data->dmatb;
 	uint32_t margin;
-	uint32_t overflow = 0;
+	uint32_t overflow;
 	int ret;
 
 	margin = dtrace_calc_buf_margin(buffer);
