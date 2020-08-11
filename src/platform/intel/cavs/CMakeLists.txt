@@ -28,3 +28,10 @@ endif()
 add_local_sources(sof platform.c)
 
 target_include_directories(sof_options INTERFACE ${PROJECT_SOURCE_DIR}/src/platform/intel/cavs/include)
+
+add_library(cavs_ext_manifest STATIC "")
+add_local_sources(cavs_ext_manifest ext_manifest.c)
+sof_append_relative_path_definitions(cavs_ext_manifest)
+
+target_link_libraries(cavs_ext_manifest sof_options)
+target_link_libraries(sof_static_libraries INTERFACE cavs_ext_manifest)
