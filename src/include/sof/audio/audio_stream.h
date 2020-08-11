@@ -584,6 +584,83 @@ static inline void audio_stream_copy(const struct audio_stream *source,
 	}
 }
 
+/**
+ * Copies data from source buffer to sink buffer.
+ * @param source Source buffer.
+ * @param ioffset_bytes Offset (in bytes) in source buffer to start reading
+ *	from.
+ * @param sink Sink buffer.
+ * @param ooffset_bytes Offset (in bytes) in sink buffer to start writing to.
+ * @param bytes Number of bytes to copy.
+ */
+static inline void audio_stream_copy_to_buf(const struct audio_stream *source,
+					    uint32_t ioffset_bytes,
+					    void *snk, uint32_t bytes_snk,
+					    uint32_t bytes)
+{
+	void *src = audio_stream_wrap(source,
+				      (char *)source->r_ptr + ioffset_bytes);
+	uint32_t bytes_src;
+	uint32_t bytes_copied;
+	int ret;
+
+	/* sink buf is linear, don't go over its limit */
+	if (bytes > bytes_snk)
+		bytes = bytes_snk;
+
+	while (bytes) {
+		bytes_src = audio_stream_bytes_without_wrap(source, src);
+		bytes_copied = MIN(bytes, MIN(bytes_src, bytes_snk));
+
+		ret = memcpy_s(snk, bytes_snk, src, bytes_copied);
+		assert(!ret);
+
+		bytes -= bytes_copied;
+		src = (char *)src + bytes_copied;
+		snk = (char *)snk + bytes_copied;
+
+		src = audio_stream_wrap(source, src);
+	}
+}
+
+/**
+ * Copies data from source buffer to sink buffer.
+ * @param source Source buffer.
+ * @param ioffset_bytes Offset (in bytes) in source buffer to start reading
+ *	from.
+ * @param sink Sink buffer.
+ * @param ooffset_bytes Offset (in bytes) in sink buffer to start writing to.
+ * @param bytes Number of bytes to copy.
+ */
+static inline void audio_stream_copy_from_buf(void *src, uint32_t bytes_src,
+					      struct audio_stream *sink,
+					      uint32_t ooffset_bytes, uint32_t bytes)
+{
+	void *snk = audio_stream_wrap(sink,
+				      (char *)sink->w_ptr + ooffset_bytes);
+	uint32_t bytes_snk;
+	uint32_t bytes_copied;
+	int ret;
+
+	/* source buffer is linear, don't go over its limit */
+	if (bytes > bytes_src)
+		bytes_src = bytes;
+
+	while (bytes) {
+		bytes_snk = audio_stream_bytes_without_wrap(sink, snk);
+		bytes_copied = MIN(bytes, MIN(bytes_src, bytes_snk));
+
+		ret = memcpy_s(snk, bytes_snk, src, bytes_copied);
+		assert(!ret);
+
+		bytes -= bytes_copied;
+		src = (char *)src + bytes_copied;
+		snk = (char *)snk + bytes_copied;
+
+		snk = audio_stream_wrap(sink, snk);
+	}
+}
+
 /** @}*/
 
 #endif /* __SOF_AUDIO_AUDIO_STREAM_H__ */
