@@ -51,7 +51,19 @@ enum ext_man_elem_type {
 	EXT_MAN_ELEM_CC_VERSION		= SOF_IPC_EXT_CC_INFO,
 	EXT_MAN_ELEM_PROBE_INFO		= SOF_IPC_EXT_PROBE_INFO,
 	EXT_MAN_ELEM_DBG_ABI		= SOF_IPC_EXT_USER_ABI_INFO,
+	EXT_MAN_ELEM_CONFIG_DATA	= 5,
 };
+
+/* EXT_MAN_ELEM_CONFIG_DATA elements identificators */
+enum config_elem_type {
+	EXT_MAN_CONFIG_IPC_MSG_SIZE	= 1,
+	EXT_MAN_CONFIG_LAST_ELEM,	/**< keep it at the end of enum list */
+};
+
+struct config_elem {
+	uint32_t token;
+	uint32_t value;
+} __packed;
 
 /* FW version */
 struct ext_man_fw_version {
@@ -85,6 +97,13 @@ struct ext_man_dbg_abi {
 	struct ext_man_elem_header hdr;
 	/* use sof_ipc struct because of code re-use */
 	struct sof_ipc_user_abi_version dbg_abi;
+} __packed;
+
+/* EXT_MAN_ELEM_CONFIG_DATA elements */
+struct ext_man_config_data {
+	struct ext_man_elem_header hdr;
+
+	struct config_elem elems[EXT_MAN_CONFIG_LAST_ELEM];
 } __packed;
 
 #endif /* __KERNEL_EXT_MANIFEST_H__ */

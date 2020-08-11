@@ -83,3 +83,13 @@ const struct ext_man_dbg_abi ext_man_dbg_info
 		.abi_dbg_version = SOF_ABI_DBG_VERSION,
 	},
 };
+
+const struct ext_man_config_data ext_man_config
+	__aligned(EXT_MAN_ALIGN) __section(".fw_metadata") = {
+	.hdr.type = EXT_MAN_ELEM_CONFIG_DATA,
+	.hdr.elem_size = ALIGN_UP(sizeof(struct ext_man_config_data),
+				  EXT_MAN_ALIGN),
+	.elems = {
+		{EXT_MAN_CONFIG_IPC_MSG_SIZE, SOF_IPC_MSG_MAX_SIZE},
+	},
+};
