@@ -40,6 +40,7 @@
 #include <user/kpb.h>
 #include <user/trace.h>
 #include <errno.h>
+#include <limits.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -59,7 +60,7 @@ DECLARE_SOF_UUID("kpb-task", kpb_task_uuid, 0xe50057a5, 0x8b27, 0x4db4,
 /* KPB private data, runtime data */
 struct comp_data {
 	enum kpb_state state; /**< current state of KPB component */
-	uint64_t state_log; /**< keeps record of KPB recent states */
+	uint32_t state_log; /**< keeps record of KPB recent states */
 	spinlock_t lock; /**< locking mechanism for read pointer calculations */
 	struct sof_kpb_config config;   /**< component configuration data */
 	struct history_data hd; /** data related to history buffer */
@@ -835,9 +836,16 @@ static int kpb_buffer_data(struct comp_dev *dev,
 		/* Are we stuck in buffering? */
 		current_time = platform_timer_get(timer);
 		if (timeout < current_time) {
-			comp_err(dev, "kpb_buffer_data(): timeout of %d [ms] (current state %d, state log %x)",
-				 current_time - timeout, kpb->state,
-				 kpb->state_log);
+			if (current_time - timeout <= UINT_MAX)
+				comp_err(dev,
+					 "kpb_buffer_data(): timeout of %u [ms] (current state %d, state log %x)",
+					 (unsigned int)(current_time - timeout), kpb->state,
+					 kpb->state_log);
+			else
+				comp_err(dev,
+					 "kpb_buffer_data(): timeout > %u [ms] (current state %d, state log %x)",
+					 UINT_MAX, kpb->state,
+					 kpb->state_log);
 			return -ETIME;
 		}
 
@@ -1153,17 +1161,18 @@ static enum task_state kpb_draining_task(void *arg)
 	size_t size_to_copy;
 	bool move_buffer = false;
 	uint32_t drained = 0;
-	uint64_t draining_time_start = 0;
-	uint64_t draining_time_end = 0;
+	uint64_t draining_time_start;
+	uint64_t draining_time_end;
+	uint64_t draining_time_ms;
 	enum comp_copy_type copy_type = COMP_COPY_NORMAL;
 	uint64_t drain_interval = draining_data->drain_interval;
 	uint64_t next_copy_time = 0;
-	uint64_t current_time = 0;
+	uint64_t current_time;
 	size_t period_bytes = 0;
 	size_t period_bytes_limit = draining_data->pb_limit;
 	struct timer *timer = timer_get();
 	size_t period_copy_start = platform_timer_get(timer);
-	size_t time_taken = 0;
+	size_t time_taken;
 	size_t *rt_stream_update = &draining_data->buffered_while_draining;
 	struct comp_data *kpb = comp_get_drvdata(draining_data->dev);
 	bool sync_mode_on = &draining_data->sync_mode_on;
@@ -1276,15 +1285,14 @@ out:
 	/* Reset host-sink copy mode back to unblocking */
 	comp_set_attribute(sink->sink, COMP_ATTR_COPY_TYPE, &copy_type);
 
-	comp_cl_info(&comp_kpb, "KPB: kpb_draining_task(), done. %u drained in %d ms",
-		     drained,
-		     (draining_time_end - draining_time_start)
-		     / clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1));
-
-	/* If traces are disabled, prevent compile error from unused
-	 * variables.
-	 */
-	(void)(draining_time_end - draining_time_start);
+	draining_time_ms = (draining_time_end - draining_time_start)
+		/ clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1);
+	if (draining_time_ms <= UINT_MAX)
+		comp_cl_info(&comp_kpb, "KPB: kpb_draining_task(), done. %u drained in %u ms",
+			     drained, (unsigned int)draining_time_ms);
+	else
+		comp_cl_info(&comp_kpb, "KPB: kpb_draining_task(), done. %u drained in > %u ms",
+			     drained, UINT_MAX);
 
 	pm_runtime_enable(PM_RUNTIME_DSP, PLATFORM_MASTER_CORE_ID);
 
