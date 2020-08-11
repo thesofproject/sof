@@ -59,9 +59,11 @@ static enum task_state validate(void *data)
 
 	perf_cnt_stamp(&sa->pcd, perf_sa_trace, sa);
 
+#if CONFIG_AGENT_PANIC_ON_DELAY
 	/* panic timeout */
 	if (sa->panic_on_delay && delta > sa->panic_timeout)
 		panic(SOF_IPC_PANIC_IDLE);
+#endif
 
 	/* warning timeout */
 	if (delta > sa->warn_timeout)
