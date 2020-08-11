@@ -9,7 +9,7 @@
 
 #include <stdint.h>
 #include <sof/platform.h>
-#include <sof/audio/eq_iir/iir.h>
+#include <sof/math/iir_df2t.h>
 #include <user/crossover.h>
 
 struct comp_buffer;
@@ -148,13 +148,8 @@ static inline crossover_split crossover_find_split_func(int32_t num_sinks)
 static inline int32_t crossover_generic_process_lr4(int32_t in,
 						    struct iir_state_df2t *lr4)
 {
-	int i;
-
 	/* Cascade two biquads with same coefficients in series. */
-	for (i = 0; i < lr4->biquads_in_series; i++)
-		in = iir_df2t_biquad(in, lr4->coef, &lr4->delay[2 * i]);
-
-	return in;
+	return iir_df2t(lr4, in);
 }
 
 #endif //  __SOF_AUDIO_CROSSOVER_CROSSOVER_H__
