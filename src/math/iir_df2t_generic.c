@@ -6,8 +6,8 @@
 //         Liam Girdwood <liam.r.girdwood@linux.intel.com>
 //         Keyon Jie <yang.jie@linux.intel.com>
 
-#include <sof/audio/eq_iir/iir.h>
 #include <sof/audio/format.h>
+#include <sof/math/iir_df2t.h>
 #include <user/eq.h>
 #include <errno.h>
 #include <stddef.h>
@@ -105,4 +105,3 @@ int32_t iir_df2t(struct iir_state_df2t *iir, int32_t x)
 }
 
 #endif
-

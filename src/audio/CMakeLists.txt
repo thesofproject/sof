@@ -119,7 +119,7 @@ set(volume_sources volume/volume.c volume/volume_generic.c)
 set(src_sources src/src.c src/src_generic.c)
 set(asrc_sources asrc/asrc.c asrc/asrc_farrow.c asrc/asrc_farrow_generic.c)
 set(eq-fir_sources eq_fir/eq_fir.c eq_fir/fir.c)
-set(eq-iir_sources eq_iir/eq_iir.c eq_iir/iir.c eq_iir/iir_generic.c)
+set(eq-iir_sources eq_iir/eq_iir.c eq_iir/iir.c)
 set(dcblock_sources dcblock/dcblock.c dcblock/dcblock_generic.c)
 
 foreach(audio_module ${sof_audio_modules})
