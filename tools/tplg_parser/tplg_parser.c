@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <stddef.h>
+#include <stdbool.h>
 #include <errno.h>
 #include <unistd.h>
 #include <string.h>
@@ -58,6 +59,40 @@ static enum sof_comp_type find_process_comp_type(enum sof_ipc_process_type type)
 	}
 
 	return SOF_COMP_NONE;
+}
+
+static bool is_valid_priv_size(size_t size_read, size_t priv_size,
+			      struct snd_soc_tplg_vendor_array *array)
+{
+	size_t arr_size, elem_size, arr_elems_size;
+
+	arr_size = sizeof(struct snd_soc_tplg_vendor_array);
+
+	switch (array->type) {
+	case SND_SOC_TPLG_TUPLE_TYPE_UUID:
+		elem_size = sizeof(struct snd_soc_tplg_vendor_uuid_elem);
+		break;
+	case SND_SOC_TPLG_TUPLE_TYPE_STRING:
+		elem_size = sizeof(struct snd_soc_tplg_vendor_string_elem);
+		break;
+	case SND_SOC_TPLG_TUPLE_TYPE_BOOL:
+	case SND_SOC_TPLG_TUPLE_TYPE_BYTE:
+	case SND_SOC_TPLG_TUPLE_TYPE_WORD:
+	case SND_SOC_TPLG_TUPLE_TYPE_SHORT:
+		elem_size = sizeof(struct snd_soc_tplg_vendor_value_elem);
+		break;
+	default:
+		/* This is handled in the further calls */
+		return true;
+	}
+
+	arr_elems_size = array->num_elems * elem_size;
+
+	/*
+	 * check if size of data to be read from widget's private data
+	 * doesn't exceed private data's size.
+	 */
+	return size_read + arr_size + arr_elems_size <= priv_size;
 }
 
 /* read vendor tuples array from topology */
@@ -335,6 +370,13 @@ int tplg_load_pga(int comp_id, int pipeline_id, int size,
 		read_size = sizeof(struct snd_soc_tplg_vendor_array);
 		ret = fread(array, read_size, 1, file);
 		if (ret != 1) {
+			free(array);
+			return -EINVAL;
+		}
+
+		/* check for array size mismatch */
+		if (!is_valid_priv_size(total_array_size, size, array)) {
+			fprintf(stderr, "error: pga array size mismatch\n");
 			free(array);
 			return -EINVAL;
 		}
