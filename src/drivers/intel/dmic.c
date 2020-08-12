@@ -1071,7 +1071,11 @@ static int dmic_get_hw_params(struct dai *dai,
 
 	switch (dmic_prm[di]->num_pdm_active) {
 	case 1:
-		params->channels = 2;
+		params->channels =
+			dmic_prm[di]->pdm[0].enable_mic_a +
+			dmic_prm[di]->pdm[0].enable_mic_b +
+			dmic_prm[di]->pdm[1].enable_mic_a +
+			dmic_prm[di]->pdm[1].enable_mic_b;
 		break;
 	case 2:
 		params->channels = 4;
