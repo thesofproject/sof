@@ -4,6 +4,8 @@
 //
 // Author: Tomasz Lauda <tomasz.lauda@linux.intel.com>
 
+#include "../../util.h"
+
 #include <stdarg.h>
 #include <stddef.h>
 #include <setjmp.h>
@@ -31,8 +33,7 @@ struct vol_test_state {
 	struct comp_dev *dev;
 	struct comp_buffer *sink;
 	struct comp_buffer *source;
-	void (*verify)(struct comp_dev *dev, struct comp_buffer *sink,
-		       struct comp_buffer *source);
+	void (*verify)(struct comp_dev *dev, struct comp_buffer *sink, struct comp_buffer *source);
 };
 
 struct vol_test_parameters {
@@ -42,8 +43,7 @@ struct vol_test_parameters {
 	uint32_t buffer_size_ms;
 	uint32_t source_format;
 	uint32_t sink_format;
-	void (*verify)(struct comp_dev *dev, struct comp_buffer *sink,
-		       struct comp_buffer *source);
+	void (*verify)(struct comp_dev *dev, struct comp_buffer *sink, struct comp_buffer *source);
 };
 
 static void set_volume(int32_t *vol, int32_t value, uint32_t channels)
@@ -76,31 +76,18 @@ static int setup(void **state)
 	list_init(&vol_state->dev->bsink_list);
 
 	/* allocate new sink buffer */
-	vol_state->sink = test_malloc(sizeof(*vol_state->sink));
-	vol_state->sink->stream.frame_fmt = parameters->sink_format;
-	vol_state->sink->stream.channels = parameters->channels;
-	size = parameters->frames *
-	       audio_stream_frame_bytes(&vol_state->sink->stream);
+	size = parameters->frames * get_frame_bytes(parameters->sink_format, parameters->channels) *
+	       parameters->buffer_size_ms;
 
-	vol_state->sink->stream.addr = test_calloc(parameters->buffer_size_ms,
-						   size);
-	buffer_init(vol_state->sink, parameters->buffer_size_ms * size, 0);
-
-	list_item_prepend(&vol_state->sink->source_list,
-			  &vol_state->dev->bsink_list);
+	vol_state->sink = create_test_sink(vol_state->dev, 0, parameters->sink_format,
+					   parameters->channels, size);
 
 	/* allocate new source buffer */
-	vol_state->source = test_malloc(sizeof(*vol_state->source));
-	vol_state->source->stream.frame_fmt = parameters->source_format;
-	vol_state->source->stream.channels = parameters->channels;
-	size = parameters->frames *
-	       audio_stream_frame_bytes(&vol_state->source->stream);
-	vol_state->source->stream.addr = test_calloc(parameters->buffer_size_ms,
-						     size);
-	buffer_init(vol_state->source, parameters->buffer_size_ms * size, 0);
+	size = parameters->frames * get_frame_bytes(parameters->source_format,
+	       parameters->channels) * parameters->buffer_size_ms;
 
-	list_item_prepend(&vol_state->source->sink_list,
-			  &vol_state->dev->bsource_list);
+	vol_state->source = create_test_source(vol_state->dev, 0, parameters->source_format,
+					       parameters->channels, size);
 
 	/* set processing function and volume */
 	cd->scale_vol = vol_get_processing_function(vol_state->dev);
@@ -123,10 +110,8 @@ static int teardown(void **state)
 	/* free everything */
 	test_free(cd);
 	test_free(vol_state->dev);
-	test_free(vol_state->sink->stream.addr);
-	test_free(vol_state->sink);
-	test_free(vol_state->source->stream.addr);
-	test_free(vol_state->source);
+	free_test_sink(vol_state->sink);
+	free_test_source(vol_state->source);
 	test_free(vol_state);
 
 	return 0;

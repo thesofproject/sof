@@ -7,7 +7,6 @@
 
 #include <sof/sof.h>
 #include <sof/audio/component.h>
-#include <sof/audio/mux.h>
 #include <sof/lib/alloc.h>
 
 #include <stdlib.h>
