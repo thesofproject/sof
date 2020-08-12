@@ -38,6 +38,12 @@ ifdef(`DMIC_DAI_LINK_16k_ID',`',`errprint(note: Need to define dmic16k dai id fo
 ifdef(`KWD_PIPE_SCH_DEADLINE_US',`',`errprint(note: Need to define schedule for intel-generic-dmic-kwd
 )')
 
+# define(DMIC_DAI_LINK_48k_NAME, `dmic01')
+ifdef(`DMIC_DAI_LINK_48k_NAME',`',define(DMIC_DAI_LINK_48k_NAME, `dmic01'))
+
+# define(DMIC_DAI_LINK_16k_NAME, `dmic16k')
+ifdef(`DMIC_DAI_LINK_16k_NAME',`',define(DMIC_DAI_LINK_16k_NAME, `dmic16k'))
+
 #
 # Define the pipelines
 #
@@ -80,14 +86,14 @@ dnl     deadline, priority, core, time_domain)
 # capture DAI is DMIC 0 using 2 periods
 # Buffers use s32le format, 1000us deadline on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
-        DMIC_PIPELINE_48k_ID, DMIC, 0, dmic01,
+        DMIC_PIPELINE_48k_ID, DMIC, 0, DMIC_DAI_LINK_48k_NAME,
         concat(`PIPELINE_SINK_', DMIC_PIPELINE_48k_ID), 2, s32le,
         1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # capture DAI is DMIC 1 using 3 periods
 # Buffers use s32le format, with 320 frame per 20000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
-        DMIC_PIPELINE_16k_ID, DMIC, 1, dmic16k,
+        DMIC_PIPELINE_16k_ID, DMIC, 1, DMIC_DAI_LINK_16k_NAME,
         `PIPELINE_SINK_'DMIC_PIPELINE_16k_ID, 3, s32le,
         KWD_PIPE_SCH_DEADLINE_US, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
@@ -125,17 +131,17 @@ SectionGraph."pipe-sof-generic-keyword-detect" {
 
 dnl DAI_CONFIG(type, dai_index, link_id, name, ssp_config/dmic_config)
 ifelse(CHANNELS, 4,
-`DAI_CONFIG(DMIC, 0, DMIC_DAI_LINK_48k_ID, dmic01,
+`DAI_CONFIG(DMIC, 0, DMIC_DAI_LINK_48k_ID, DMIC_DAI_LINK_48k_NAME,
                 DMIC_CONFIG(1, 500000, 4800000, 40, 60, 48000,
                 DMIC_WORD_LENGTH(s32le), 200, DMIC, 0,
                 PDM_CONFIG(DMIC, 0, FOUR_CH_PDM0_PDM1)))',
-`DAI_CONFIG(DMIC, 0, DMIC_DAI_LINK_48k_ID, dmic01,
+`DAI_CONFIG(DMIC, 0, DMIC_DAI_LINK_48k_ID, DMIC_DAI_LINK_48k_NAME,
                 DMIC_CONFIG(1, 500000, 4800000, 40, 60, 48000,
                 DMIC_WORD_LENGTH(s32le), 200, DMIC, 0,
                 PDM_CONFIG(DMIC, 0, STEREO_PDM0)))')
 
 # dmic16k (ID: 2)
-DAI_CONFIG(DMIC, 1, DMIC_DAI_LINK_16k_ID, dmic16k,
+DAI_CONFIG(DMIC, 1, DMIC_DAI_LINK_16k_ID, DMIC_DAI_LINK_16k_NAME,
                 DMIC_CONFIG(1, 500000, 4800000, 40, 60, 16000,
                 DMIC_WORD_LENGTH(s32le), 400, DMIC, 1,
                 PDM_CONFIG(DMIC, 1, STEREO_PDM0)))
