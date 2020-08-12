@@ -4,19 +4,22 @@
 //
 // Author: Lech Betlej <lech.betlej@linux.intel.com>
 
+#include "../../util.h"
+
 #include <stdarg.h>
 #include <stddef.h>
 #include <setjmp.h>
 #include <stdint.h>
 #include <cmocka.h>
+#include <sof/audio/buffer.h>
 #include <sof/audio/component.h>
 #include <sof/audio/selector.h>
 
 
 struct sel_test_state {
 	struct comp_dev *dev;
-	struct audio_stream *sink;
-	struct audio_stream *source;
+	struct comp_buffer *sink;
+	struct comp_buffer *source;
 	void (*verify)(struct comp_dev *dev, struct audio_stream *sink,
 		       struct audio_stream *source);
 };
@@ -39,7 +42,6 @@ static int setup(void **state)
 	struct sel_test_state *sel_state;
 	struct comp_data *cd;
 	uint32_t size = 0;
-	void *pbuff;
 
 	/* allocate new state */
 	sel_state = test_malloc(sizeof(*sel_state));
@@ -47,6 +49,9 @@ static int setup(void **state)
 	/* allocate and set new device */
 	sel_state->dev = test_malloc(COMP_SIZE(struct sof_ipc_comp_volume));
 	sel_state->dev->frames = parameters->frames;
+
+	list_init(&sel_state->dev->bsink_list);
+	list_init(&sel_state->dev->bsource_list);
 
 	/* allocate and set new data */
 	cd = test_malloc(sizeof(*cd));
@@ -62,22 +67,18 @@ static int setup(void **state)
 	cd->sel_func = sel_get_processing_function(sel_state->dev);
 
 	/* allocate new sink buffer */
-	sel_state->sink = test_malloc(sizeof(*sel_state->sink));
-	sel_state->sink->frame_fmt = parameters->sink_format;
-	sel_state->sink->channels = parameters->out_channels;
-	size = parameters->frames * audio_stream_frame_bytes(sel_state->sink);
-	pbuff = test_calloc(parameters->buffer_size_ms, size);
-	audio_stream_init(sel_state->sink, pbuff,
-			  parameters->buffer_size_ms * size);
+	size = parameters->frames * get_frame_bytes(parameters->sink_format,
+	       parameters->out_channels) * parameters->buffer_size_ms;
+
+	sel_state->sink = create_test_sink(sel_state->dev, 0, parameters->sink_format,
+					   parameters->out_channels, size);
 
 	/* allocate new source buffer */
-	sel_state->source = test_malloc(sizeof(*sel_state->source));
-	sel_state->source->frame_fmt = parameters->source_format;
-	sel_state->source->channels = parameters->in_channels;
-	size = parameters->frames * audio_stream_frame_bytes(sel_state->source);
-	pbuff = test_calloc(parameters->buffer_size_ms, size);
-	audio_stream_init(sel_state->source, pbuff,
-			  parameters->buffer_size_ms * size);
+	size = parameters->frames * get_frame_bytes(parameters->source_format,
+	       parameters->in_channels) * parameters->buffer_size_ms;
+
+	sel_state->source = create_test_source(sel_state->dev, 0, parameters->source_format,
+					       parameters->in_channels, size);
 
 	/* assigns verification function */
 	sel_state->verify = parameters->verify;
@@ -96,10 +97,8 @@ static int teardown(void **state)
 	/* free everything */
 	test_free(cd);
 	test_free(sel_state->dev);
-	test_free(sel_state->sink->addr);
-	test_free(sel_state->sink);
-	test_free(sel_state->source->addr);
-	test_free(sel_state->source);
+	free_test_sink(sel_state->sink);
+	free_test_source(sel_state->source);
 	test_free(sel_state);
 
 	return 0;
@@ -108,12 +107,16 @@ static int teardown(void **state)
 #if CONFIG_FORMAT_S16LE
 static void fill_source_s16(struct sel_test_state *sel_state)
 {
-	int16_t *src = (int16_t *)sel_state->source->r_ptr;
+	struct audio_stream *stream = &sel_state->source->stream;
+	int16_t *w_ptr;
 	int i;
 
-	for (i = 0; i < sel_state->source->size / sizeof(int16_t); i++)
-		src[i] = i;
+	for (i = 0; i < audio_stream_get_free_samples(stream); i++) {
+		w_ptr = audio_stream_write_frag_s16(stream, i);
+		*w_ptr = i;
+	}
 
+	audio_stream_produce(stream, audio_stream_get_free_bytes(stream));
 }
 
 static void verify_s16le_Xch_to_1ch(struct comp_dev *dev,
@@ -184,11 +187,16 @@ static void verify_s16le_4ch_to_4ch(struct comp_dev *dev,
 #if CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE
 static void fill_source_s32(struct sel_test_state *sel_state)
 {
-	int32_t *src = (int32_t *)sel_state->source->r_ptr;
+	struct audio_stream *stream = &sel_state->source->stream;
+	int32_t *w_ptr;
 	int i;
 
-	for (i = 0; i < sel_state->source->size / sizeof(int32_t); i++)
-		src[i] = i << 16;
+	for (i = 0; i < audio_stream_get_free_samples(stream); i++) {
+		w_ptr = audio_stream_write_frag_s32(stream, i);
+		*w_ptr = i << 16;
+	}
+
+	audio_stream_produce(stream, audio_stream_get_free_bytes(stream));
 }
 
 static void verify_s32le_Xch_to_1ch(struct comp_dev *dev,
@@ -275,10 +283,10 @@ static void test_audio_sel(void **state)
 #endif /* CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE */
 	}
 
-	cd->sel_func(sel_state->dev, sel_state->sink, sel_state->source,
+	cd->sel_func(sel_state->dev, &sel_state->sink->stream, &sel_state->source->stream,
 		     sel_state->dev->frames);
 
-	sel_state->verify(sel_state->dev, sel_state->sink, sel_state->source);
+	sel_state->verify(sel_state->dev, &sel_state->sink->stream, &sel_state->source->stream);
 }
 
 

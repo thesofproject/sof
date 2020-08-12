@@ -14,6 +14,8 @@ add_compile_options(-DUNIT_TEST)
 add_library(audio_for_selector STATIC
 	${PROJECT_SOURCE_DIR}/src/audio/selector/selector.c
 	${PROJECT_SOURCE_DIR}/src/audio/selector/selector_generic.c
+	${PROJECT_SOURCE_DIR}/src/audio/buffer.c
+	${PROJECT_SOURCE_DIR}/test/cmocka/src/notifier_mocks.c
 )
 sof_append_relative_path_definitions(audio_for_selector)
 
