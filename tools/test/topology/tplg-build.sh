@@ -229,8 +229,8 @@ done
 # for processing algorithms
 ALG_SINGLE_MODE_TESTS=(asrc eq-fir eq-iir src dcblock)
 ALG_SINGLE_SIMPLE_TESTS=(test-capture test-playback)
-ALG_MULTI_MODE_TESTS=()
-ALG_MULTI_SIMPLE_TESTS=()
+ALG_MULTI_MODE_TESTS=(crossover)
+ALG_MULTI_SIMPLE_TESTS=(test-playback)
 ALG_MULTI_PIPE_AMOUNT=(2 3 4)
 ALG_PROTOCOL_TESTS=(I2S)
 ALG_SSP_TESTS=(5)
