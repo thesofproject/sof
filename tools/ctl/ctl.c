@@ -355,12 +355,9 @@ static int ctl_setup(struct ctl_data *ctl_data)
 	read = snd_ctl_elem_info_is_tlv_readable(ctl_data->info);
 	write = snd_ctl_elem_info_is_tlv_writable(ctl_data->info);
 	type = snd_ctl_elem_info_get_type(ctl_data->info);
-	if (!read) {
-		fprintf(stderr, "Error: No read capability.\n");
-		goto value_free;
-	}
-	if (!write) {
-		fprintf(stderr, "Error: No write capability.\n");
+
+	if (!read && !write) {
+		fprintf(stderr, "Error: Not a read/write control\n");
 		goto value_free;
 	}
 	if (type != SND_CTL_ELEM_TYPE_BYTES) {
