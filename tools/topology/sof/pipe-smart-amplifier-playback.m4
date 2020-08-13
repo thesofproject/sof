@@ -69,6 +69,16 @@ C_CONTROLBYTES(Smart_amp Model, PIPELINE_ID,
         ,
         MODEL_priv)
 
+
+ifelse(SOF_ABI_VERSION_3_17_OR_GRT, `1',
+C_CONTROLBYTES_VOLATILE_READONLY(Smart_amp Model_Get_params, PIPELINE_ID,
+        CONTROLBYTES_OPS(bytes, 258 binds the mixer control to bytes get handlers, 258, 258),
+        CONTROLBYTES_EXTOPS_READONLY(260 binds the mixer control to bytes get handlers, 260),
+        , , ,
+        CONTROLBYTES_MAX(, 300000),
+        ,
+        MODEL_priv))
+
 #
 # Components and Buffers
 #
@@ -78,7 +88,8 @@ C_CONTROLBYTES(Smart_amp Model, PIPELINE_ID,
 W_PCM_PLAYBACK(PCM_ID, Smart Amplifier Playback, 2, 0)
 
 # Mux 0 has 2 sink and source periods.
-W_SMART_AMP(0, PIPELINE_FORMAT, 2, 2, LIST(`             ', "Smart_amp Config", "Smart_amp Model"))
+W_SMART_AMP(0, PIPELINE_FORMAT, 2, 2, LIST(`             ', "Smart_amp Config", "Smart_amp Model",
+	    ifelse(SOF_ABI_VERSION_3_17_OR_GRT, `1', "Smart_amp Model_Get_params")))
 
 # Low Latency Buffers
 W_BUFFER(0, COMP_BUFFER_SIZE(2,
