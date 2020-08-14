@@ -10,7 +10,6 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <stddef.h>
-#include <stdbool.h>
 #include <errno.h>
 #include <unistd.h>
 #include <string.h>
@@ -178,6 +177,13 @@ int tplg_load_buffer(int comp_id, int pipeline_id, int size,
 		if (ret != 1) {
 			fprintf(stderr,
 				"error: fread fail during load_buffer\n");
+			free(array);
+			return -EINVAL;
+		}
+
+		/* check for array size mismatch */
+		if (!is_valid_priv_size(parsed_size, size, array)) {
+			fprintf(stderr, "error: load buffer array size mismatch\n");
 			free(array);
 			return -EINVAL;
 		}

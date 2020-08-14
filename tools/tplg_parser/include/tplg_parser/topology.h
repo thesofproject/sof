@@ -10,6 +10,7 @@
 #ifndef _COMMON_TPLG_H
 #define _COMMON_TPLG_H
 
+#include <stdbool.h>
 #include <sound/asoc.h>
 #include <ipc/dai.h>
 #include <kernel/tokens.h>
