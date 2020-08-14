@@ -61,7 +61,7 @@ static enum sof_comp_type find_process_comp_type(enum sof_ipc_process_type type)
 	return SOF_COMP_NONE;
 }
 
-static bool is_valid_priv_size(size_t size_read, size_t priv_size,
+bool is_valid_priv_size(size_t size_read, size_t priv_size,
 			      struct snd_soc_tplg_vendor_array *array)
 {
 	size_t arr_size, elem_size, arr_elems_size;

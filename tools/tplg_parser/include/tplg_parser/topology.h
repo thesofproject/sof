@@ -269,5 +269,7 @@ int load_widget(void *dev, int dev_type, struct comp_info *temp_comp_list,
 
 void register_comp(int comp_type);
 int find_widget(struct comp_info *temp_comp_list, int count, char *name);
+bool is_valid_priv_size(size_t size_read, size_t priv_size,
+			struct snd_soc_tplg_vendor_array *array);
 
 #endif
