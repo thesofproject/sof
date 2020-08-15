@@ -254,6 +254,13 @@ int tplg_load_pcm(int comp_id, int pipeline_id, int size, int dir,
 		if (ret != 1)
 			return -EINVAL;
 
+		/* check for array size mismatch */
+		if (!is_valid_priv_size(total_array_size, size, array)) {
+			fprintf(stderr, "error: load pcm array size mismatch\n");
+			free(array);
+			return -EINVAL;
+		}
+
 		ret = tplg_read_array(array, file);
 		if (ret) {
 			fprintf(stderr, "error: read array fail\n");
@@ -318,6 +325,13 @@ int tplg_load_dai(int comp_id, int pipeline_id, int size,
 		read_size = sizeof(struct snd_soc_tplg_vendor_array);
 		ret = fread(array, read_size, 1, file);
 		if (ret != 1) {
+			free(array);
+			return -EINVAL;
+		}
+
+		/* check for array size mismatch */
+		if (!is_valid_priv_size(total_array_size, size, array)) {
+			fprintf(stderr, "error: load dai array size mismatch\n");
 			free(array);
 			return -EINVAL;
 		}
@@ -458,14 +472,21 @@ int tplg_load_pipeline(int comp_id, int pipeline_id, int size,
 		read_size = sizeof(struct snd_soc_tplg_vendor_array);
 		ret = fread(array, read_size, 1, file);
 		if (ret != 1) {
-			free(array);
+			free((void *)array - total_array_size);
+			return -EINVAL;
+		}
+
+		/* check for array size mismatch */
+		if (!is_valid_priv_size(total_array_size, size, array)) {
+			fprintf(stderr, "error: load pipeline array size mismatch\n");
+			free((void *)array - total_array_size);
 			return -EINVAL;
 		}
 
 		ret = tplg_read_array(array, file);
 		if (ret) {
 			fprintf(stderr, "error: read array fail\n");
-			free(array);
+			free((void *)array - total_array_size);
 			return -EINVAL;
 		}
 
@@ -476,7 +497,7 @@ int tplg_load_pipeline(int comp_id, int pipeline_id, int size,
 		if (ret != 0) {
 			fprintf(stderr, "error: parse pipeline tokens %d\n",
 				size);
-			free(array);
+			free((void *)array - total_array_size);
 			return -EINVAL;
 		}
 
@@ -827,6 +848,13 @@ int tplg_load_src(int comp_id, int pipeline_id, int size,
 			return -EINVAL;
 		}
 
+		/* check for array size mismatch */
+		if (!is_valid_priv_size(total_array_size, size, array)) {
+			fprintf(stderr, "error: load src array size mismatch\n");
+			free(array);
+			return -EINVAL;
+		}
+
 		ret = tplg_read_array(array, file);
 		if (ret) {
 			fprintf(stderr, "error: read array fail\n");
@@ -895,6 +923,13 @@ int tplg_load_asrc(int comp_id, int pipeline_id, int size,
 		read_size = sizeof(struct snd_soc_tplg_vendor_array);
 		ret = fread(array, read_size, 1, file);
 		if (ret != 1) {
+			free(array);
+			return -EINVAL;
+		}
+
+		/* check for array size mismatch */
+		if (!is_valid_priv_size(total_array_size, size, array)) {
+			fprintf(stderr, "error: load asrc array size mismatch\n");
 			free(array);
 			return -EINVAL;
 		}
@@ -972,6 +1007,13 @@ int tplg_load_process(int comp_id, int pipeline_id, int size,
 			return -EINVAL;
 		}
 
+		/* check for array size mismatch */
+		if (!is_valid_priv_size(total_array_size, size, array)) {
+			fprintf(stderr, "error: load process array size mismatch\n");
+			free(array);
+			return -EINVAL;
+		}
+
 		ret = tplg_read_array(array, file);
 		if (ret) {
 			fprintf(stderr, "error: read array fail\n");
@@ -1041,6 +1083,13 @@ int tplg_load_mixer(int comp_id, int pipeline_id, int size,
 		read_size = sizeof(struct snd_soc_tplg_vendor_array);
 		ret = fread(array, read_size, 1, file);
 		if (ret != 1) {
+			free(array);
+			return -EINVAL;
+		}
+
+		/* check for array size mismatch */
+		if (!is_valid_priv_size(total_array_size, size, array)) {
+			fprintf(stderr, "error: load mixer array size mismatch\n");
 			free(array);
 			return -EINVAL;
 		}
