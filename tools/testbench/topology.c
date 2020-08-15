@@ -184,6 +184,12 @@ static int tplg_load_fileread(int comp_id, int pipeline_id, int size,
 			return -EINVAL;
 		}
 
+		if (!is_valid_priv_size(total_array_size, size, array)) {
+			fprintf(stderr, "error: filewrite array size mismatch\n");
+			free(array);
+			return -EINVAL;
+		}
+
 		tplg_read_array(array, file);
 
 		/* parse comp tokens */
