@@ -284,10 +284,6 @@ static int host_copy_one_shot(struct comp_dev *dev)
 
 	comp_dbg(dev, "host_copy_one_shot()");
 
-	/* update first transfer manually */
-	if (!dev->position)
-		host_one_shot_cb(dev, hd->dma_buffer->stream.size);
-
 	copy_bytes = host_get_copy_bytes_one_shot(dev);
 	if (!copy_bytes) {
 		comp_info(dev, "host_copy_one_shot(): no bytes to copy");
