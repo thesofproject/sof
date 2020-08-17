@@ -146,7 +146,7 @@ EXT_MAN_PORT(
 ));
 #endif
 
-#if CONFIG_CANNONLAKE || CONFIG_ICELAKE || CONFIG_TIGERLAKE
+#if CAVS_VERSION >= CAVS_VERSION_1_8 && !CONFIG_SUECREEK
 #if CONFIG_CAVS_LPRO_ONLY
 #define CAVS_DEFAULT_RO		SHIM_CLKCTL_RLROSCC
 #define CAVS_DEFAULT_RO_FOR_MEM	SHIM_CLKCTL_OCS_LP_RING
@@ -294,7 +294,7 @@ int platform_boot_complete(uint32_t boot_message)
 {
 	uint32_t mb_offset = 0;
 
-#if CONFIG_TIGERLAKE && !CONFIG_CAVS_LPRO_ONLY
+#if CAVS_VERSION == CAVS_VERSION_2_5 && !CONFIG_CAVS_LPRO_ONLY
 	/* TGL specific HW recommended flow */
 	pm_runtime_get(PM_RUNTIME_DSP, PWRD_BY_HPRO | (PLATFORM_CORE_COUNT - 1));
 #endif
@@ -380,7 +380,7 @@ int platform_init(struct sof *sof)
 	 */
 	pm_runtime_disable(PM_RUNTIME_DSP, 0);
 
-#if CONFIG_CANNONLAKE || CONFIG_ICELAKE || CONFIG_SUECREEK || CONFIG_TIGERLAKE
+#if CAVS_VERSION >= CAVS_VERSION_1_8
 	trace_point(TRACE_BOOT_PLATFORM_ENTRY);
 	platform_init_hw();
 #endif
@@ -436,7 +436,22 @@ int platform_init(struct sof *sof)
 
 	shim_write(SHIM_LPSCTL, shim_read(SHIM_LPSCTL));
 
-#elif CONFIG_CANNONLAKE || CONFIG_ICELAKE || CONFIG_TIGERLAKE
+#elif CONFIG_SUECREEK
+	/* TODO: need to merge as for APL */
+	clock_set_freq(CLK_CPU(cpu_get_id()), CLK_MAX_CPU_HZ);
+
+	/* prevent Core0 clock gating. */
+	shim_write(SHIM_CLKCTL, shim_read(SHIM_CLKCTL) |
+		SHIM_CLKCTL_TCPLCG(0));
+
+	/* prevent LP GPDMA 0&1 clock gating */
+	shim_write(SHIM_GPDMA_CLKCTL(0), SHIM_CLKCTL_LPGPDMAFDCGB);
+	shim_write(SHIM_GPDMA_CLKCTL(1), SHIM_CLKCTL_LPGPDMAFDCGB);
+
+	/* prevent DSP Common power gating */
+	pm_runtime_get(PM_RUNTIME_DSP, PLATFORM_MASTER_CORE_ID);
+
+#elif CAVS_VERSION >= CAVS_VERSION_1_8
 
 	/* initialize PM for boot */
 
@@ -469,20 +484,6 @@ int platform_init(struct sof *sof)
 #endif
 #endif
 
-#elif CONFIG_SUECREEK
-	/* TODO: need to merge as for APL */
-	clock_set_freq(CLK_CPU(cpu_get_id()), CLK_MAX_CPU_HZ);
-
-	/* prevent Core0 clock gating. */
-	shim_write(SHIM_CLKCTL, shim_read(SHIM_CLKCTL) |
-		SHIM_CLKCTL_TCPLCG(0));
-
-	/* prevent LP GPDMA 0&1 clock gating */
-	shim_write(SHIM_GPDMA_CLKCTL(0), SHIM_CLKCTL_LPGPDMAFDCGB);
-	shim_write(SHIM_GPDMA_CLKCTL(1), SHIM_CLKCTL_LPGPDMAFDCGB);
-
-	/* prevent DSP Common power gating */
-	pm_runtime_get(PM_RUNTIME_DSP, PLATFORM_PRIMARY_CORE_ID);
 #endif
 
 	/* init DMACs */

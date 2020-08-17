@@ -20,32 +20,28 @@
 #define DMIC_UNMUTE_CIC		1	/* Unmute CIC at 1 ms */
 #define DMIC_UNMUTE_FIR		2	/* Unmute FIR at 2 ms */
 
-#if CONFIG_APOLLOLAKE
+#if CAVS_VERSION == CAVS_VERSION_1_5
 #define DMIC_HW_VERSION		1
 #define DMIC_HW_CONTROLLERS	2
 #define DMIC_HW_IOCLK		19200000
 #define DMIC_HW_FIFOS		2
-#endif
-
-#if CONFIG_CANNONLAKE
+#elif CAVS_VERSION == CAVS_VERSION_1_8
 #define DMIC_HW_VERSION		1
 #define DMIC_HW_CONTROLLERS	2
 #define DMIC_HW_IOCLK		24000000
 #define DMIC_HW_FIFOS		2
-#endif
-
+#elif CAVS_VERSION >= CAVS_VERSION_2_0
 #if CONFIG_SUECREEK
 #define DMIC_HW_VERSION		2
 #define DMIC_HW_CONTROLLERS	4
 #define DMIC_HW_IOCLK		19200000
 #define DMIC_HW_FIFOS		2
-#endif
-
-#if CONFIG_ICELAKE || CONFIG_TIGERLAKE
+#else
 #define DMIC_HW_VERSION		1
 #define DMIC_HW_CONTROLLERS	2
 #define DMIC_HW_IOCLK		38400000
 #define DMIC_HW_FIFOS		2
+#endif
 #endif
 
 #endif
