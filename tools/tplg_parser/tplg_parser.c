@@ -507,7 +507,8 @@ int tplg_load_pipeline(int comp_id, int pipeline_id, int size,
 		array = (void *)array + array->size;
 	}
 
-	array = (void *)array - size;
+	/* point to the start of array so it gets freed properly */
+	array = (void *)array - total_array_size;
 
 	free(array);
 	return 0;
@@ -844,21 +845,21 @@ int tplg_load_src(int comp_id, int pipeline_id, int size,
 		read_size = sizeof(struct snd_soc_tplg_vendor_array);
 		ret = fread(array, read_size, 1, file);
 		if (ret != 1) {
-			free(array);
+			free((void *)array - total_array_size);
 			return -EINVAL;
 		}
 
 		/* check for array size mismatch */
 		if (!is_valid_priv_size(total_array_size, size, array)) {
 			fprintf(stderr, "error: load src array size mismatch\n");
-			free(array);
+			free((void *)array - total_array_size);
 			return -EINVAL;
 		}
 
 		ret = tplg_read_array(array, file);
 		if (ret) {
 			fprintf(stderr, "error: read array fail\n");
-			free(array);
+			free((void *)array - total_array_size);
 			return ret;
 		}
 
@@ -869,7 +870,7 @@ int tplg_load_src(int comp_id, int pipeline_id, int size,
 		if (ret != 0) {
 			fprintf(stderr, "error: parse src comp_tokens %d\n",
 				size);
-			free(array);
+			free((void *)array - total_array_size);
 			return -EINVAL;
 		}
 
@@ -879,7 +880,7 @@ int tplg_load_src(int comp_id, int pipeline_id, int size,
 				       array->size);
 		if (ret != 0) {
 			fprintf(stderr, "error: parse src tokens %d\n", size);
-			free(array);
+			free((void *)array - total_array_size);
 			return -EINVAL;
 		}
 
@@ -889,7 +890,8 @@ int tplg_load_src(int comp_id, int pipeline_id, int size,
 		array = (void *)array + array->size;
 	}
 
-	array = (void *)array - size;
+	/* point to the start of array so it gets freed properly */
+	array = (void *)array - total_array_size;
 
 	/* configure src */
 	src->comp.hdr.cmd = SOF_IPC_GLB_TPLG_MSG | SOF_IPC_TPLG_COMP_NEW;
@@ -923,21 +925,21 @@ int tplg_load_asrc(int comp_id, int pipeline_id, int size,
 		read_size = sizeof(struct snd_soc_tplg_vendor_array);
 		ret = fread(array, read_size, 1, file);
 		if (ret != 1) {
-			free(array);
+			free((void *)array - total_array_size);
 			return -EINVAL;
 		}
 
 		/* check for array size mismatch */
 		if (!is_valid_priv_size(total_array_size, size, array)) {
 			fprintf(stderr, "error: load asrc array size mismatch\n");
-			free(array);
+			free((void *)array - total_array_size);
 			return -EINVAL;
 		}
 
 		ret = tplg_read_array(array, file);
 		if (ret) {
 			fprintf(stderr, "error: read array fail\n");
-			free(array);
+			free((void *)array - total_array_size);
 			return ret;
 		}
 
@@ -948,7 +950,7 @@ int tplg_load_asrc(int comp_id, int pipeline_id, int size,
 		if (ret != 0) {
 			fprintf(stderr, "error: parse asrc comp_tokens %d\n",
 				size);
-			free(array);
+			free((void *)array - total_array_size);
 			return -EINVAL;
 		}
 
@@ -958,7 +960,7 @@ int tplg_load_asrc(int comp_id, int pipeline_id, int size,
 				       array->size);
 		if (ret != 0) {
 			fprintf(stderr, "error: parse asrc tokens %d\n", size);
-			free(array);
+			free((void *)array - total_array_size);
 			return -EINVAL;
 		}
 
@@ -968,7 +970,8 @@ int tplg_load_asrc(int comp_id, int pipeline_id, int size,
 		array = (void *)array + array->size;
 	}
 
-	array = (void *)array - size;
+	/* point to the start of array so it gets freed properly */
+	array = (void *)array - total_array_size;
 
 	/* configure asrc */
 	asrc->comp.hdr.cmd = SOF_IPC_GLB_TPLG_MSG | SOF_IPC_TPLG_COMP_NEW;
@@ -1003,21 +1006,21 @@ int tplg_load_process(int comp_id, int pipeline_id, int size,
 		read_size = sizeof(struct snd_soc_tplg_vendor_array);
 		ret = fread(array, read_size, 1, file);
 		if (ret != 1) {
-			free(array);
+			free((void *)array - total_array_size);
 			return -EINVAL;
 		}
 
 		/* check for array size mismatch */
 		if (!is_valid_priv_size(total_array_size, size, array)) {
 			fprintf(stderr, "error: load process array size mismatch\n");
-			free(array);
+			free((void *)array - total_array_size);
 			return -EINVAL;
 		}
 
 		ret = tplg_read_array(array, file);
 		if (ret) {
 			fprintf(stderr, "error: read array fail\n");
-			free(array);
+			free((void *)array - total_array_size);
 			return ret;
 		}
 
@@ -1028,7 +1031,7 @@ int tplg_load_process(int comp_id, int pipeline_id, int size,
 		if (ret != 0) {
 			fprintf(stderr, "error: parse process comp_tokens %d\n",
 				size);
-			free(array);
+			free((void *)array - total_array_size);
 			return -EINVAL;
 		}
 
@@ -1039,7 +1042,7 @@ int tplg_load_process(int comp_id, int pipeline_id, int size,
 		if (ret != 0) {
 			fprintf(stderr, "error: parse process tokens %d\n",
 				size);
-			free(array);
+			free((void *)array - total_array_size);
 			return -EINVAL;
 		}
 
@@ -1049,7 +1052,8 @@ int tplg_load_process(int comp_id, int pipeline_id, int size,
 		array = (void *)array + array->size;
 	}
 
-	array = (void *)array - size;
+	/* point to the start of array so it gets freed properly */
+	array = (void *)array - total_array_size;
 
 	/* configure asrc */
 	process->comp.hdr.cmd = SOF_IPC_GLB_TPLG_MSG | SOF_IPC_TPLG_COMP_NEW;
@@ -1083,21 +1087,21 @@ int tplg_load_mixer(int comp_id, int pipeline_id, int size,
 		read_size = sizeof(struct snd_soc_tplg_vendor_array);
 		ret = fread(array, read_size, 1, file);
 		if (ret != 1) {
-			free(array);
+			free((void *)array - total_array_size);
 			return -EINVAL;
 		}
 
 		/* check for array size mismatch */
 		if (!is_valid_priv_size(total_array_size, size, array)) {
 			fprintf(stderr, "error: load mixer array size mismatch\n");
-			free(array);
+			free((void *)array - total_array_size);
 			return -EINVAL;
 		}
 
 		ret = tplg_read_array(array, file);
 		if (ret) {
 			fprintf(stderr, "error: read array fail\n");
-			free(array);
+			free((void *)array - total_array_size);
 			return ret;
 		}
 
@@ -1108,7 +1112,7 @@ int tplg_load_mixer(int comp_id, int pipeline_id, int size,
 		if (ret != 0) {
 			fprintf(stderr, "error: parse src comp_tokens %d\n",
 				size);
-			free(array);
+			free((void *)array - total_array_size);
 			return -EINVAL;
 		}
 
@@ -1119,7 +1123,7 @@ int tplg_load_mixer(int comp_id, int pipeline_id, int size,
 	}
 
 	/* point to the start of array so it gets freed properly */
-	array = (void *)array - size;
+	array = (void *)array - total_array_size;
 
 	/* configure src */
 	mixer->comp.hdr.cmd = SOF_IPC_GLB_TPLG_MSG | SOF_IPC_TPLG_COMP_NEW;
