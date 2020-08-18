@@ -318,6 +318,10 @@ int dma_trace_enable(struct dma_trace_data *d)
 	if (err < 0)
 		goto out;
 
+	/* it should be the very first sent log for easily identification */
+	tr_info(&dt_tr, "FW ABI 0x%x DBG ABI 0x%x tag " SOF_GIT_TAG " src hash 0x%x (ldc hash " META_QUOTE(SOF_SRC_HASH) ")",
+		SOF_ABI_VERSION, SOF_ABI_DBG_VERSION, SOF_SRC_HASH);
+
 #if CONFIG_DMA_GW
 	/*
 	 * GW DMA need finish DMA config and start before
@@ -328,6 +332,9 @@ int dma_trace_enable(struct dma_trace_data *d)
 		goto out;
 #endif
 
+	/* flush fw description message */
+	trace_flush();
+
 	/* validate DMA context */
 	if (!d->dc.dmac || !d->dc.chan) {
 		tr_err_atomic(&dt_tr, "dma_trace_enable(): not valid");
@@ -337,11 +344,6 @@ int dma_trace_enable(struct dma_trace_data *d)
 
 	d->enabled = 1;
 	schedule_task(&d->dmat_work, DMA_TRACE_PERIOD, DMA_TRACE_PERIOD);
-
-	/* it should be the very first sent log for easily identification */
-	tr_info(&dt_tr, "FW ABI 0x%x DBG ABI 0x%x tag " SOF_GIT_TAG " src hash 0x%x (ldc hash " META_QUOTE(SOF_SRC_HASH) ")",
-		SOF_ABI_VERSION, SOF_ABI_DBG_VERSION, SOF_SRC_HASH);
-	trace_flush();
 
 out:
 	platform_shared_commit(d, sizeof(*d));
