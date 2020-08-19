@@ -41,6 +41,8 @@ static void usage(void)
 	fprintf(stdout, "%s:\t -p \t\t\tInput from stdin\n", APP_NAME);
 	fprintf(stdout, "%s:\t -v ver_file\t\tEnable checking firmware version "
 		"with ver_file file\n", APP_NAME);
+	fprintf(stdout, "%s:\t -n\t\t\tDisable checking firmware version\n",
+		APP_NAME);
 	fprintf(stdout, "%s:\t -c clock\t\tSet timestamp clock in MHz\n",
 		APP_NAME);
 	fprintf(stdout, "%s:\t -s state_name\t\tTake a snapshot of state\n",
@@ -159,7 +161,7 @@ static int append_filter_config(struct convert_config *config, const char *input
 
 int main(int argc, char *argv[])
 {
-	static const char optstring[] = "ho:i:l:ps:c:u:tv:rd:Lf:gF";
+	static const char optstring[] = "ho:i:l:ps:c:u:tv:rd:Lf:gFn";
 	struct convert_config config;
 	unsigned int baud = 0;
 	const char *snapshot_file = 0;
@@ -222,6 +224,9 @@ int main(int argc, char *argv[])
 		case 'v':
 			/* enabling checking fw version with ver_file file */
 			config.version_file = optarg;
+			break;
+		case 'n':
+			config.version_fw = 0;
 			break;
 		case 'L':
 			config.hide_location = 1;
