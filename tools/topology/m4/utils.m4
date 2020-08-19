@@ -57,6 +57,15 @@ define(`COMP_FORMAT_VALUE',
 	$1, `s32le', `0x02',
 	)')
 
+dnl CAPABILITY_FORMAT_NAME(BUF_FMT)
+define(`CAPABILITY_FORMAT_NAME',
+`ifelse(
+	$1, `s16le', `S16_LE',
+	$1, `s24le', ``S24_LE,S16_LE'',
+	$1, `s32le', ``S32_LE,S24_LE,S16_LE'',
+	$1, `float', `FLOAT_LE',
+	)')
+
 # note: only support number < 256 at the moment
 dnl DEC2HEX(dec_num)
 define(`DEC2HEX',
