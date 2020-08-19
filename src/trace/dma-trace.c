@@ -319,7 +319,7 @@ int dma_trace_enable(struct dma_trace_data *d)
 		goto out;
 
 	/* it should be the very first sent log for easily identification */
-	tr_info(&dt_tr, "FW ABI 0x%x DBG ABI 0x%x tag " SOF_GIT_TAG " src hash 0x%x (ldc hash " META_QUOTE(SOF_SRC_HASH) ")",
+	tr_info(&dt_tr, "FW ABI 0x%x DBG ABI 0x%x tag " SOF_GIT_TAG " src hash 0x%08x (ldc hash " META_QUOTE(SOF_SRC_HASH) ")",
 		SOF_ABI_VERSION, SOF_ABI_DBG_VERSION, SOF_SRC_HASH);
 
 #if CONFIG_DMA_GW
