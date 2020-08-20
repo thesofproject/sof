@@ -18,11 +18,48 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <sof/audio/smart_amp/smart_amp.h>
+#include "dsm_api_public.h"
 
 static int maxim_dsm_init(struct smart_amp_mod_struct_t *hspk, struct comp_dev *dev)
 {
-	/* Maxim Dynamic Speaker Manangement initialization */
+	int *circularbuffersize = hspk->circularbuffersize;
+	int *delayedsamples = hspk->delayedsamples;
+	struct dsm_api_init_ext_t initparam;
+	enum DSM_API_MESSAGE retcode;
+
+	comp_dbg(dev, BUILD_TIME);
+
+	initparam.isamplebitwidth       = DSM_DEFAULT_CH_SIZE;
+	initparam.ichannels             = DSM_DEFAULT_NUM_CHANNEL;
+	initparam.ipcircbuffersizebytes = circularbuffersize;
+	initparam.ipdelayedsamples      = delayedsamples;
+	initparam.isamplingrate         = DSM_DEFAULT_SAMPLE_RATE;
+
+	retcode = dsm_api_init(hspk->dsmhandle, &initparam,
+			       sizeof(struct dsm_api_init_ext_t));
+	if (retcode != DSM_API_OK) {
+		goto exit;
+	} else	{
+		hspk->ff_fr_sz_samples =
+			initparam.off_framesizesamples;
+		hspk->fb_fr_sz_samples =
+			initparam.ofb_framesizesamples;
+		hspk->channelmask = 0;
+		hspk->nchannels = initparam.ichannels;
+		hspk->ifsamples = hspk->ff_fr_sz_samples
+			* initparam.ichannels;
+		hspk->ibsamples = hspk->fb_fr_sz_samples
+			* initparam.ichannels;
+	}
+
+	comp_dbg(dev, "[DSM] Initialization completed. (module:%p, dsm:%p)",
+		 (uintptr_t)hspk,
+		 (uintptr_t)hspk->dsmhandle);
+
 	return 0;
+exit:
+	comp_err(dev, "[DSM] Initialization failed. ret:%d", retcode);
+	return (int)retcode;
 }
 
 static void maxim_dsm_ff_proc(struct smart_amp_mod_struct_t *hspk,
@@ -91,9 +128,10 @@ static void maxim_dsm_ff_proc(struct smart_amp_mod_struct_t *hspk,
 		}
 		*w_ptr -= DSM_FF_BUF_SZ;
 
-		/* Do DSM feed forward processing here. Currently bypassed */
-		memcpy_s(output, DSM_FF_BUF_SZ * szsample,
-			 input, DSM_FF_BUF_SZ * szsample);
+		hspk->ifsamples = hspk->nchannels * hspk->ff_fr_sz_samples;
+		dsm_api_ff_process(hspk->dsmhandle, hspk->channelmask,
+				   input, &hspk->ifsamples,
+				   output, &hspk->ofsamples);
 
 		if (is_16bit) {
 			for (x = 0; x < DSM_FRM_SZ; x++) {
@@ -173,20 +211,20 @@ static void maxim_dsm_fb_proc(struct smart_amp_mod_struct_t *hspk,
 	if (*w_ptr >= DSM_FB_BUF_SZ) {
 		if (is_16bit) {
 			for (x = 0; x < DSM_FRM_SZ; x++) {
-			/* Buffer ordering for DSM : IVIV... -> VV... II...*/
-				v[x] = buf.buf16[4 * x + 1];
-				i[x] = buf.buf16[4 * x];
-				v[x + DSM_FRM_SZ] = buf.buf16[4 * x + 3];
-				i[x + DSM_FRM_SZ] = buf.buf16[4 * x + 2];
+			/* Buffer ordering for DSM : VIVI... -> VV... II...*/
+				v[x] = buf.buf16[4 * x];
+				i[x] = buf.buf16[4 * x + 1];
+				v[x + DSM_FRM_SZ] = buf.buf16[4 * x + 2];
+				i[x + DSM_FRM_SZ] = buf.buf16[4 * x + 3];
 			}
 		} else {
 			for (x = 0; x < DSM_FRM_SZ; x++) {
-				v[x] = (buf.buf32[4 * x + 1] >> 16);
-				i[x] = (buf.buf32[4 * x] >> 16);
+				v[x] = (buf.buf32[4 * x] >> 16);
+				i[x] = (buf.buf32[4 * x + 1] >> 16);
 				v[x + DSM_FRM_SZ] =
-					(buf.buf32[4 * x + 3] >> 16);
-				i[x + DSM_FRM_SZ] =
 					(buf.buf32[4 * x + 2] >> 16);
+				i[x + DSM_FRM_SZ] =
+					(buf.buf32[4 * x + 3] >> 16);
 			}
 		}
 
@@ -203,7 +241,11 @@ static void maxim_dsm_fb_proc(struct smart_amp_mod_struct_t *hspk,
 		}
 		*w_ptr -= DSM_FB_BUF_SZ;
 
-		/* Do DSM feedback processing here */
+		hspk->ibsamples = hspk->fb_fr_sz_samples * hspk->nchannels;
+		dsm_api_fb_process(hspk->dsmhandle,
+				   hspk->channelmask,
+				   i, v, &hspk->ibsamples);
+
 	}
 }
 
@@ -237,6 +279,37 @@ int smart_amp_flush(struct smart_amp_mod_struct_t *hspk, struct comp_dev *dev)
 int smart_amp_init(struct smart_amp_mod_struct_t *hspk, struct comp_dev *dev)
 {
 	return maxim_dsm_init(hspk, dev);
+}
+
+int smart_amp_get_memory_size(struct smart_amp_mod_struct_t *hspk,
+			      struct comp_dev *dev)
+{
+	enum DSM_API_MESSAGE retcode;
+	struct dsm_api_memory_size_ext_t memsize;
+	int *circularbuffersize = hspk->circularbuffersize;
+
+	memsize.ichannels = DSM_DEFAULT_NUM_CHANNEL;
+	memsize.ipcircbuffersizebytes = circularbuffersize;
+	memsize.isamplingrate = DSM_DEFAULT_SAMPLE_RATE;
+	memsize.omemsizerequestedbytes = 0;
+	memsize.numeqfilters = DSM_DEFAULT_NUM_EQ;
+	retcode = dsm_api_get_mem(&memsize,
+				  sizeof(struct dsm_api_memory_size_ext_t));
+	if (retcode != DSM_API_OK)
+		return 0;
+
+	return memsize.omemsizerequestedbytes;
+}
+
+int smart_amp_check_audio_fmt(int sample_rate, int ch_num)
+{
+	/* Return error if the format is not supported by DSM component */
+	if (sample_rate != DSM_DEFAULT_SAMPLE_RATE)
+		return -EINVAL;
+	if (ch_num > DSM_DEFAULT_NUM_CHANNEL)
+		return -EINVAL;
+
+	return 0;
 }
 
 static int smart_amp_get_buffer(int32_t *buf, uint32_t frames,

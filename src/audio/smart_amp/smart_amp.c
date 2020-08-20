@@ -31,6 +31,7 @@ typedef int(*smart_amp_proc)(struct comp_dev *dev,
 struct smart_amp_data {
 	struct sof_smart_amp_config config;
 	struct comp_model_data model;
+
 	struct comp_buffer *source_buf; /**< stream source buffer */
 	struct comp_buffer *feedback_buf; /**< feedback source buffer */
 	struct comp_buffer *sink_buf; /**< sink buffer */
@@ -152,6 +153,13 @@ static inline int smart_amp_alloc_memory(struct smart_amp_data *sad,
 	size = DSM_FB_BUF_DB_SZ * sizeof(int32_t);
 	hspk->buf.fb.buf = rballoc(0, SOF_MEM_CAPS_RAM, size);
 	if (!hspk->buf.fb.buf)
+		goto err;
+	mem_sz += size;
+
+	/* memory allocation of DSM handle */
+	size = smart_amp_get_memory_size(hspk, dev);
+	hspk->dsmhandle = rballoc(0, SOF_MEM_CAPS_RAM, size);
+	if (!hspk->dsmhandle)
 		goto err;
 	mem_sz += size;
 
@@ -612,6 +620,14 @@ static int smart_amp_prepare(struct comp_dev *dev)
 	sad->out_channels = sad->sink_buf->stream.channels;
 
 	sad->feedback_buf->stream.channels = sad->config.feedback_channels;
+
+	if (smart_amp_check_audio_fmt(sad->source_buf->stream.rate,
+				      sad->source_buf->stream.channels)) {
+		comp_err(dev, "[DSM] Format not supported, sample rate: %d, ch: %d",
+			 sad->source_buf->stream.rate,
+			 sad->source_buf->stream.channels);
+		return -EINVAL;
+	}
 
 	/* TODO:
 	 * ATM feedback buffer frame_fmt is hardcoded to s32_le. It should be
