@@ -244,6 +244,7 @@ int main(int argc, char **argv)
 	tp.fs_out = 0;
 	tp.bits_in = 0;
 	tp.input_file = NULL;
+	tp.tplg_file = NULL;
 	for (i = 0; i < MAX_OUTPUT_FILE_NUM; i++)
 		tp.output_file[i] = NULL;
 	tp.output_file_num = 0;
