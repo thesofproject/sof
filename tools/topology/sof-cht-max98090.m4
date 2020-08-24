@@ -38,12 +38,12 @@ PIPELINE_PCM_ADD(sof/pipe-low-latency-capture.m4,
 #
 
 # playback DAI is SSP2 using 2 periods
-# Buffers use s16le format, 1000us deadline on core 0 with priority 1
+# Buffers use s32le format, 1000us deadline on core 0 with priority 1
 # this defines pipeline 1. The 'NOT_USED_IGNORED' is due to dependencies
 # and is adjusted later with an explicit dapm line.
 DAI_ADD(sof/pipe-mixer-dai-playback.m4,
 	1, SSP, SSP_NUM, SSP2-Codec,
-	NOT_USED_IGNORED, 2, s16le,
+	NOT_USED_IGNORED, 2, s32le,
 	1000, 1, 0, SCHEDULE_TIME_DOMAIN_DMA,
 	2, 48000)
 
