@@ -5,6 +5,7 @@
  * Author: Karol Trzcinski	<karolx.trzcinski@linux.intel.com>
  */
 
+#include <ctype.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -69,4 +70,30 @@ void log_err(FILE *out_fd, const char *fmt, ...)
 	}
 
 	va_end(args);
+}
+
+/* trim whitespaces from string begin */
+char *ltrim(char *s)
+{
+	while (isspace(*s))
+		s++;
+	return s;
+}
+
+/* trim whitespaces from string end */
+char *rtrim(char *s)
+{
+	char *ptr = s + strlen(s) - 1;
+
+	while (ptr >= s && isspace(*ptr)) {
+		*ptr = '\0';
+		--ptr;
+	}
+	return s;
+}
+
+/* trim whitespaces from string begin and end*/
+char *trim(char *s)
+{
+	return ltrim(rtrim(s));
 }
