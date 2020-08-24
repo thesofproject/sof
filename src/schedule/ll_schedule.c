@@ -99,6 +99,7 @@ static void schedule_ll_tasks_execute(struct ll_schedule_data *sch,
 	struct list_item *tlist;
 	struct task *task;
 	int cpu = cpu_get_id();
+	int count;
 
 	/* check each task in the list for pending */
 	list_for_item_safe(wlist, tlist, &sch->tasks) {
@@ -116,8 +117,8 @@ static void schedule_ll_tasks_execute(struct ll_schedule_data *sch,
 			atomic_sub(&sch->domain->total_num_tasks, 1);
 
 			/* don't enable irq, if no more tasks to do */
-			atomic_sub(&sch->num_tasks, 1);
-			if (!atomic_read(&sch->num_tasks))
+			count = atomic_sub(&sch->num_tasks, 1);
+			if (count == 1)
 				sch->domain->registered[cpu] = false;
 			tr_info(&ll_tr, "task complete %p %s", (uintptr_t)task,
 				task->uid);
@@ -178,8 +179,7 @@ static void schedule_ll_tasks_run(void *data)
 	/* TODO: no need for atomic operations,
 	 * already protected by spin_lock
 	 */
-	atomic_sub(&sch->domain->num_clients, 1);
-	num_clients = atomic_read(&sch->domain->num_clients);
+	num_clients = atomic_sub(&sch->domain->num_clients, 1) - 1;
 	if (!num_clients)
 		domain_clear(sch->domain);
 
@@ -231,18 +231,16 @@ static int schedule_ll_domain_set(struct ll_schedule_data *sch,
 	spin_lock(&sch->domain->lock);
 
 	registered = sch->domain->registered[core];
-	atomic_add(&sch->num_tasks, 1);
-	if (atomic_read(&sch->num_tasks) == 1)
+	total = atomic_add(&sch->num_tasks, 1);
+	if (total == 0)
 		sch->domain->registered[core] = true;
 
-	atomic_add(&sch->domain->total_num_tasks, 1);
-	total = atomic_read(&sch->domain->total_num_tasks);
-
-	if (total == 1)
+	total = atomic_add(&sch->domain->total_num_tasks, 1);
+	if (total == 0)
 		/* First task in domain over all cores: actiivate it */
 		domain_set(sch->domain, platform_timer_get(timer_get()));
 
-	if (total == 1 || !registered) {
+	if (total == 0 || !registered) {
 		/* First task on core: count and enable it */
 		atomic_add(&sch->domain->num_clients, 1);
 		domain_enable(sch->domain, core);
@@ -263,22 +261,24 @@ static int schedule_ll_domain_set(struct ll_schedule_data *sch,
 static void schedule_ll_domain_clear(struct ll_schedule_data *sch,
 				     struct task *task)
 {
+	int count;
+
 	spin_lock(&sch->domain->lock);
 
-	atomic_sub(&sch->domain->total_num_tasks, 1);
-	if (!atomic_read(&sch->domain->total_num_tasks)) {
+	count = atomic_sub(&sch->domain->total_num_tasks, 1);
+	if (count == 1) {
 		domain_clear(sch->domain);
 		sch->domain->last_tick = 0;
 	}
 
-	atomic_sub(&sch->num_tasks, 1);
-	if (!atomic_read(&sch->num_tasks)) {
+	count = atomic_sub(&sch->num_tasks, 1);
+	if (count == 1) {
 		sch->domain->registered[cpu_get_id()] = false;
 
 		/* reschedule if we are the last client */
 		if (atomic_read(&sch->domain->num_clients)) {
-			atomic_sub(&sch->domain->num_clients, 1);
-			if (!atomic_read(&sch->domain->num_clients)) {
+			count = atomic_sub(&sch->domain->num_clients, 1);
+			if (count == 1) {
 				domain_clear(sch->domain);
 				schedule_ll_clients_reschedule(sch);
 			}
