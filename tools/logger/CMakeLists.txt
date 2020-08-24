@@ -3,6 +3,7 @@
 add_executable(sof-logger
 	logger.c
 	convert.c
+	misc.c
 )
 
 target_compile_options(sof-logger PRIVATE
