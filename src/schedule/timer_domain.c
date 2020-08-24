@@ -269,7 +269,7 @@ static void timer_domain_clear(struct ll_schedule_domain *domain)
 }
 
 static bool timer_domain_is_pending(struct ll_schedule_domain *domain,
-				    struct task *task)
+				    struct task *task, struct comp_dev **comp)
 {
 	return task->start <= platform_timer_get(timer_get());
 }

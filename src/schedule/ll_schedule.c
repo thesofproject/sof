@@ -59,16 +59,21 @@ static bool schedule_ll_is_pending(struct ll_schedule_data *sch)
 	struct list_item *tlist;
 	struct task *task;
 	uint32_t pending_count = 0;
+	struct comp_dev *sched_comp;
 
-	/* mark each valid task as pending */
-	list_for_item(tlist, &sch->tasks) {
-		task = container_of(tlist, struct task, list);
+	do {
+		sched_comp = NULL;
 
-		if (domain_is_pending(sch->domain, task)) {
-			task->state = SOF_TASK_STATE_PENDING;
-			pending_count++;
+		/* mark each valid task as pending */
+		list_for_item(tlist, &sch->tasks) {
+			task = container_of(tlist, struct task, list);
+
+			if (domain_is_pending(sch->domain, task, &sched_comp)) {
+				task->state = SOF_TASK_STATE_PENDING;
+				pending_count++;
+			}
 		}
-	}
+	} while (sched_comp);
 
 	return pending_count > 0;
 }

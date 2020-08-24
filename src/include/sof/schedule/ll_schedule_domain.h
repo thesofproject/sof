@@ -38,7 +38,7 @@ struct ll_schedule_domain_ops {
 	void (*domain_set)(struct ll_schedule_domain *domain, uint64_t start);
 	void (*domain_clear)(struct ll_schedule_domain *domain);
 	bool (*domain_is_pending)(struct ll_schedule_domain *domain,
-				  struct task *task);
+				  struct task *task, struct comp_dev **comp);
 };
 
 struct ll_schedule_domain {
@@ -151,13 +151,13 @@ static inline void domain_clear(struct ll_schedule_domain *domain)
 }
 
 static inline bool domain_is_pending(struct ll_schedule_domain *domain,
-				     struct task *task)
+				     struct task *task, struct comp_dev **comp)
 {
 	bool ret;
 
 	assert(domain->ops->domain_is_pending);
 
-	ret = domain->ops->domain_is_pending(domain, task);
+	ret = domain->ops->domain_is_pending(domain, task, comp);
 
 	platform_shared_commit(domain, sizeof(*domain));
 

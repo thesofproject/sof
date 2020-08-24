@@ -275,7 +275,7 @@ out:
  * \return True is task should be executed, false otherwise.
  */
 static bool dma_multi_chan_domain_is_pending(struct ll_schedule_domain *domain,
-					     struct task *task)
+					     struct task *task, struct comp_dev **comp)
 {
 	struct dma_domain *dma_domain = ll_sch_domain_get_pdata(domain);
 	struct pipeline_task *pipe_task = pipeline_task_get(task);
@@ -286,10 +286,16 @@ static bool dma_multi_chan_domain_is_pending(struct ll_schedule_domain *domain,
 
 	for (i = 0; i < dma_domain->num_dma; ++i) {
 		for (j = 0; j < dmas[i].plat_data.channels; ++j) {
-			status = dma_interrupt(&dmas[i].chan[j],
-					       DMA_IRQ_STATUS_GET);
-			if (!status)
+			if (!*comp) {
+				status = dma_interrupt(&dmas[i].chan[j],
+						       DMA_IRQ_STATUS_GET);
+				if (!status)
+					continue;
+
+				*comp = dma_domain->data[i][j].task->sched_comp;
+			} else if (dma_domain->data[i][j].task->sched_comp != *comp) {
 				continue;
+			}
 
 			/* not the same scheduling component */
 			if (dma_domain->data[i][j].task->sched_comp !=

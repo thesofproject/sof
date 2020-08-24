@@ -509,7 +509,7 @@ out:
  * \return True is task should be executed, false otherwise.
  */
 static bool dma_single_chan_domain_is_pending(struct ll_schedule_domain *domain,
-					      struct task *task)
+					      struct task *task, struct comp_dev **comp)
 {
 	return task->start <= platform_timer_get(timer_get());
 }
