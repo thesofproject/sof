@@ -5,7 +5,6 @@
 // Author: Bartosz Kokoszko	<bartoszx.kokoszko@linux.intel.com>
 //	   Artur Kloniecki	<arturx.kloniecki@linux.intel.com>
 
-#include <stdarg.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
@@ -16,6 +15,7 @@
 #include <user/abi_dbg.h>
 #include <user/trace.h>
 #include "convert.h"
+#include "misc.h"
 
 #define CEIL(a, b) ((a+b-1)/b)
 
@@ -51,67 +51,6 @@ struct proc_ldc_entry {
 };
 
 static const char *BAD_PTR_STR = "<bad uid ptr %x>";
-
-char *vasprintf(const char *format, va_list args)
-{
-	va_list args_copy;
-	int size;
-	char localbuf[1];
-	char *result;
-
-	va_copy(args_copy, args);
-	size = vsnprintf(localbuf, 1, format, args_copy);
-	va_end(args_copy);
-
-	result = calloc(1, size + 1);
-	if (result)
-		vsnprintf(result, size + 1, format, args);
-	return result;
-}
-
-char *asprintf(const char *format, ...)
-{
-	va_list args;
-	char *result;
-
-	va_start(args, format);
-	result = vasprintf(format, args);
-	va_end(args);
-
-	return result;
-}
-
-static void log_err(FILE *out_fd, const char *fmt, ...)
-{
-	static const char prefix[] = "error: ";
-	ssize_t needed_size;
-	va_list args, args_alloc;
-	char *buff;
-
-	va_start(args, fmt);
-
-	va_copy(args_alloc, args);
-	needed_size = vsnprintf(NULL, 0, fmt, args_alloc) + 1;
-	buff = malloc(needed_size);
-	va_end(args_alloc);
-
-	if (buff) {
-		vsprintf(buff, fmt, args);
-		fprintf(stderr, "%s%s", prefix, buff);
-
-		/* take care about out_fd validity and duplicated logging */
-		if (out_fd && out_fd != stderr && out_fd != stdout) {
-			fprintf(out_fd, "%s%s", prefix, buff);
-			fflush(out_fd);
-		}
-		free(buff);
-	} else {
-		fprintf(stderr, "%s", prefix);
-		vfprintf(stderr, fmt, args);
-	}
-
-	va_end(args);
-}
 
 char *format_uid_raw(const struct sof_uuid_entry *uid_entry, int use_colors,
 		     int name_first)

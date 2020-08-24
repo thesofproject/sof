@@ -1,0 +1,72 @@
+/* SPDX-License-Identifier: BSD-3-Clause
+ *
+ * Copyright(c) 2020 Intel Corporation. All rights reserved.
+ *
+ * Author: Karol Trzcinski	<karolx.trzcinski@linux.intel.com>
+ */
+
+#include <stdarg.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+char *vasprintf(const char *format, va_list args)
+{
+	va_list args_copy;
+	int size;
+	char localbuf[1];
+	char *result;
+
+	va_copy(args_copy, args);
+	size = vsnprintf(localbuf, 1, format, args_copy);
+	va_end(args_copy);
+
+	result = malloc(size + 1);
+	if (result)
+		vsnprintf(result, size + 1, format, args);
+	return result;
+}
+
+char *asprintf(const char *format, ...)
+{
+	va_list args;
+	char *result;
+
+	va_start(args, format);
+	result = vasprintf(format, args);
+	va_end(args);
+
+	return result;
+}
+
+void log_err(FILE *out_fd, const char *fmt, ...)
+{
+	static const char prefix[] = "error: ";
+	ssize_t needed_size;
+	va_list args, args_alloc;
+	char *buff;
+
+	va_start(args, fmt);
+
+	va_copy(args_alloc, args);
+	needed_size = vsnprintf(NULL, 0, fmt, args_alloc) + 1;
+	buff = malloc(needed_size);
+	va_end(args_alloc);
+
+	if (buff) {
+		vsprintf(buff, fmt, args);
+		fprintf(stderr, "%s%s", prefix, buff);
+
+		/* take care about out_fd validity and duplicated logging */
+		if (out_fd && out_fd != stderr && out_fd != stdout) {
+			fprintf(out_fd, "%s%s", prefix, buff);
+			fflush(out_fd);
+		}
+		free(buff);
+	} else {
+		fprintf(stderr, "%s", prefix);
+		vfprintf(stderr, fmt, args);
+	}
+
+	va_end(args);
+}
