@@ -177,7 +177,7 @@ static int mixer_params(struct comp_dev *dev,
 {
 	struct sof_ipc_comp_config *config = dev_comp_config(dev);
 	struct comp_buffer *sinkb;
-	uint32_t period_bytes;
+	uint32_t sink_period_bytes;
 	int err;
 
 	comp_dbg(dev, "mixer_params()");
@@ -192,14 +192,15 @@ static int mixer_params(struct comp_dev *dev,
 				source_list);
 
 	/* calculate period size based on config */
-	period_bytes = dev->frames * audio_stream_frame_bytes(&sinkb->stream);
-	if (period_bytes == 0) {
+	sink_period_bytes = dev->frames * audio_stream_frame_bytes(&sinkb->stream);
+	if (sink_period_bytes == 0) {
 		comp_err(dev, "mixer_params(): period_bytes = 0");
 		return -EINVAL;
 	}
 
-	if (sinkb->stream.size < config->periods_sink * period_bytes) {
-		comp_err(dev, "mixer_params(): sink buffer size is insufficient");
+	if (sinkb->stream.size < config->periods_sink * sink_period_bytes) {
+		comp_err(dev, "mixer_params(): sink buffer size %d is insufficient < %d * %d",
+			 sinkb->stream.size, config->periods_sink, sink_period_bytes);
 		return -ENOMEM;
 	}
 

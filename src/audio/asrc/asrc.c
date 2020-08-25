@@ -569,9 +569,8 @@ static int asrc_prepare(struct comp_dev *dev)
 						      cd->sink_frames);
 
 	if (sinkb->stream.size < config->periods_sink * sink_period_bytes) {
-		comp_err(dev, "asrc_prepare(), sink size=%d is insufficient, when periods=%d, period_bytes=%d",
-			 sinkb->stream.size, config->periods_sink,
-			 sink_period_bytes);
+		comp_err(dev, "asrc_prepare(): sink buffer size %d is insufficient < %d * %d",
+			 sinkb->stream.size, config->periods_sink, sink_period_bytes);
 		ret = -ENOMEM;
 		goto err;
 	}

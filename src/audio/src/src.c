@@ -833,7 +833,8 @@ static int src_prepare(struct comp_dev *dev)
 						      dev->frames);
 
 	if (sinkb->stream.size < config->periods_sink * sink_period_bytes) {
-		comp_err(dev, "src_prepare(): sink buffer size is insufficient");
+		comp_err(dev, "src_prepare(): sink buffer size %d is insufficient < %d * %d",
+			 sinkb->stream.size, config->periods_sink, sink_period_bytes);
 		ret = -ENOMEM;
 		goto err;
 	}
