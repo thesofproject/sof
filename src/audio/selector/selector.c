@@ -464,7 +464,8 @@ static int selector_prepare(struct comp_dev *dev)
 		  sinkb->stream.channels);
 
 	if (sinkb->stream.size < config->periods_sink * cd->sink_period_bytes) {
-		comp_err(dev, "selector_prepare(): sink buffer size is insufficient");
+		comp_err(dev, "selector_prepare(): sink buffer size %d is insufficient < %d * %d",
+			 sinkb->stream.size, config->periods_sink, cd->sink_period_bytes);
 		ret = -ENOMEM;
 		goto err;
 	}

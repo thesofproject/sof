@@ -911,8 +911,8 @@ static int eq_iir_prepare(struct comp_dev *dev)
 						      dev->frames);
 
 	if (sinkb->stream.size < config->periods_sink * sink_period_bytes) {
-		comp_err(dev, "eq_iir_prepare(), sink buffer size %d is insufficient",
-			 sinkb->stream.size);
+		comp_err(dev, "eq_iir_prepare(): sink buffer size %d is insufficient < %d * %d",
+			 sinkb->stream.size, config->periods_sink, sink_period_bytes);
 		ret = -ENOMEM;
 		goto err;
 	}
