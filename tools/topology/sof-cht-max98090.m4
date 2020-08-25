@@ -24,10 +24,10 @@ include(`platform/intel/'PLATFORM`.m4')
 # PCM0 <---- Volume <---- SSP2
 #
 
-# Low Latency capture pipeline 2 on PCM 0 using max 2 channels of s32le.
+# Low Latency capture pipeline 2 on PCM 0 using max 2 channels of s16le.
 # 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-low-latency-capture.m4,
-	2, 0, 2, s32le,
+	2, 0, 2, s16le,
 	1000, 0, 0,
 	48000, 48000, 48000)
 
@@ -47,21 +47,21 @@ DAI_ADD(sof/pipe-mixer-dai-playback.m4,
 	1000, 1, 0, SCHEDULE_TIME_DOMAIN_DMA,
 	2, 48000)
 
-# PCM Playback pipeline 3 on PCM 0 using max 2 channels of s32le.
+# PCM Playback pipeline 3 on PCM 0 using max 2 channels of s16le.
 # 1000us deadline on core 0 with priority 0
 # this is connected to pipeline DAI 1
 PIPELINE_PCM_ADD(sof/pipe-host-volume-playback.m4,
-	3, 0, 2, s32le,
+	3, 0, 2, s16le,
 	1000, 0, 0,
 	48000, 48000, 48000,
 	SCHEDULE_TIME_DOMAIN_DMA,
 	PIPELINE_PLAYBACK_SCHED_COMP_1)
 
-# PCM Playback pipeline 4 on PCM 1 using max 2 channels of s32le.
+# PCM Playback pipeline 4 on PCM 1 using max 2 channels of s16le.
 # 10ms deadline on core 0 with priority 0
 # this is connected to pipeline DAI 1
 PIPELINE_PCM_ADD(sof/pipe-host-volume-playback.m4,
-	4, 1, 2, s32le,
+	4, 1, 2, s16le,
 	10000, 0, 0,
 	48000, 48000, 48000,
 	SCHEDULE_TIME_DOMAIN_DMA,
