@@ -192,7 +192,8 @@ static int mixer_params(struct comp_dev *dev,
 				source_list);
 
 	/* calculate period size based on config */
-	sink_period_bytes = dev->frames * audio_stream_frame_bytes(&sinkb->stream);
+	sink_period_bytes = audio_stream_period_bytes(&sinkb->stream,
+						      dev->frames);
 	if (sink_period_bytes == 0) {
 		comp_err(dev, "mixer_params(): period_bytes = 0");
 		return -EINVAL;
