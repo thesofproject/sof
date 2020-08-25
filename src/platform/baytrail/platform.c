@@ -139,9 +139,14 @@ EXT_MAN_PORT(
 	},
 ));
 
-SHARED_DATA struct timer timer = {
+static SHARED_DATA struct timer timer = {
 	.id = TIMER3, /* external timer */
 	.irq = IRQ_NUM_EXT_TIMER,
+};
+
+static SHARED_DATA struct timer arch_timer = {
+	.id = TIMER1, /* internal timer */
+	.irq = IRQ_NUM_TIMER1,
 };
 
 int platform_boot_complete(uint32_t boot_message)
@@ -200,7 +205,7 @@ int platform_init(struct sof *sof)
 	int ret;
 
 	sof->platform_timer = &timer;
-	sof->cpu_timers = &timer;
+	sof->cpu_timers = &arch_timer;
 
 	/* clear mailbox for early trace and debug */
 	trace_point(TRACE_BOOT_PLATFORM_MBOX);
