@@ -462,7 +462,7 @@ static struct comp_dev *src_new(const struct comp_driver *drv,
 	comp_cl_info(&comp_src, "src_new()");
 
 	/* validate init data - either SRC sink or source rate must be set */
-	if (ipc_src->source_rate == 0 && ipc_src->sink_rate == 0) {
+	if (ipc_src->source_rate == 0 || ipc_src->sink_rate == 0) {
 		comp_cl_err(&comp_src, "src_new(): SRC sink and source rate are not set");
 		return NULL;
 	}
