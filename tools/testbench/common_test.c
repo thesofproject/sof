@@ -14,6 +14,7 @@
 #include <sof/lib/alloc.h>
 #include <sof/lib/notifier.h>
 #include <sof/drivers/ipc.h>
+#include <sof/lib/agent.h>
 #include <sof/lib/dai.h>
 #include <sof/lib/dma.h>
 #include <sof/schedule/edf_schedule.h>
@@ -33,6 +34,8 @@ int tb_pipeline_setup(struct sof *sof)
 	/* other necessary initializations, todo: follow better SOF init */
 	pipeline_posn_init(sof);
 	init_system_notify(sof);
+	scheduler_init_edf();
+	sa_init(sof, CONFIG_SYSTICK_PERIOD);
 
 	/* init IPC */
 	if (ipc_init(sof) < 0) {
@@ -229,4 +232,14 @@ void dma_sg_free(struct dma_sg_elem_array *elem_array)
 
 void pipeline_xrun(struct pipeline *p, struct comp_dev *dev, int32_t bytes)
 {
+}
+
+uint64_t platform_timer_get(struct timer *timer)
+{
+	return 0;
+}
+
+uint64_t clock_ms_to_ticks(int clock, uint64_t ms)
+{
+	return 0;
 }

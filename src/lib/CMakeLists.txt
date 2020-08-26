@@ -3,7 +3,8 @@
 if(CONFIG_LIBRARY)
 	add_local_sources(sof
 		lib.c
-		notifier.c)
+		notifier.c
+                agent.c)
 	return()
 endif()
 
