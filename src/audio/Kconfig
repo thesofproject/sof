@@ -314,6 +314,26 @@ config COMP_TDFB
           for channels selection, channel filter coefficients, and output
           streams mixing.
 
+config COMP_CODEC_ADAPTER
+	bool "Codec adapter"
+	default n
+	help
+	  This component is an adapter between SoF components and any external third
+	  party codecs/libraries. In order to make use of it the library itself should
+	  be statically linked to the SoF FW binary image and the codec details filled in
+	  the codec_lib[] object. It is possible to link several different codecs and use
+	  them in parallel.
+
+if COMP_CODEC_ADAPTER
+config CADENCE_CODEC
+	bool "Cadence codec"
+	default n
+	help
+		Select for codecs which conforms to the Cacence API.
+		This will cause codec adapter component to include header
+		files specific to CADENCE base codecs.
+endif
+
 endmenu # "Audio components"
 
 menu "Data formats"
