@@ -866,7 +866,17 @@ static int volume_prepare(struct comp_dev *dev)
 	else
 		ramp_update_us = VOL_RAMP_UPDATE_SLOWEST_US;
 
-	cd->vol_ramp_frames = dev->frames / (dev->period / ramp_update_us);
+	/* The volume ramp is updated at least once per copy(). If the ramp update
+	 * period is larger than schedule period the frames count for update is set
+	 * to copy schedule equivalent number of frames. This also prevents a divide
+	 * by zero to happen with a combinations of topology parameters for the volume
+	 * component and the pipeline.
+	 */
+	if (ramp_update_us > dev->period)
+		cd->vol_ramp_frames = dev->frames;
+	else
+		cd->vol_ramp_frames = dev->frames / (dev->period / ramp_update_us);
+
 	return 0;
 
 err:
