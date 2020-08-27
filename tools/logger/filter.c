@@ -316,7 +316,7 @@ int filter_update_firmware(const struct snd_sof_uids_header *uids_dict,
 		fprintf(out_fd, "%d %X %d %d;", filter->log_level,
 			filter->uuid_id, filter->pipe_id, filter->comp_id);
 	}
-	fprintf(stdout, "\n");
+	fprintf(out_fd, "\n");
 
 err:
 	if (out_fd)
