@@ -19,6 +19,8 @@ endif()
 
 option(BUILD_UNIT_TESTS "Build unit tests" OFF)
 option(BUILD_CLANG_SCAN "Build for clang's scan-build" OFF)
+option(BUILD_DETERMINISTIC "Disables build counter(s), build timestamps
+and other non-deterministic features" OFF)
 
 if(CONFIG_LIBRARY)
 	set(ARCH host)
@@ -64,6 +66,12 @@ target_include_directories(sof_public_headers INTERFACE ${PROJECT_SOURCE_DIR}/ri
 add_library(sof_options INTERFACE)
 
 target_link_libraries(sof_options INTERFACE sof_public_headers)
+
+if(BUILD_DETERMINISTIC)
+target_compile_definitions(sof_options INTERFACE DETERMINISTIC_BLD=1)
+else()
+target_compile_definitions(sof_options INTERFACE DETERMINISTIC_BLD=0)
+endif()
 
 # interface library that is used only as container for sof statically
 # linked libraries
@@ -182,7 +190,9 @@ target_link_libraries(sof PRIVATE sof_ld_scripts)
 target_link_libraries(sof PRIVATE sof_ld_flags)
 target_link_libraries(sof PRIVATE sof_static_libraries)
 
+if (NOT BUILD_DETERMINISTIC)
 sof_add_build_counter_rule()
+endif()
 
 add_subdirectory(src)
 

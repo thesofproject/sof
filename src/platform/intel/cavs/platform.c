@@ -60,11 +60,15 @@ static const struct sof_ipc_fw_ready ready
 		.micro = SOF_MICRO,
 		.minor = SOF_MINOR,
 		.major = SOF_MAJOR,
-#if CONFIG_DEBUG
+#if CONFIG_DEBUG && !DETERMINISTIC_BLD
 		/* only added in debug for reproducability in releases */
-		.build = SOF_BUILD,
+		.build = SOF_BUILD, // build counter
 		.date = __DATE__,
 		.time = __TIME__,
+#else
+		.build = -1,
+		.date = "dtermin.\0",
+		.time = "build\0",
 #endif
 		.tag = SOF_TAG,
 		.abi_version = SOF_ABI_VERSION,
