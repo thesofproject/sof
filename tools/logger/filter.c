@@ -82,7 +82,7 @@ static int filter_parse_log_level(const char *value_start)
 	int i;
 
 	for (i = 0; i < ARRAY_SIZE(log_level_dict); ++i) {
-		if (strstr(log_level_dict[i].name, value_start))
+		if (!strcmp(log_level_dict[i].name, value_start))
 			return log_level_dict[i].log_level;
 	}
 	return -1;
