@@ -480,7 +480,7 @@ static void pcm_convert_s24_to_s32(const struct audio_stream *source,
 	}
 
 	/* main loop processes 2 samples at a time */
-	for (i = 0; i < samples / 2; i++) {
+	for (i = 0; i < samples - 1; i += 2) {
 		/* set source as circular buffer */
 		pcm_converter_setup_circular(source);
 
@@ -498,7 +498,7 @@ static void pcm_convert_s24_to_s32(const struct audio_stream *source,
 	AE_SA64POS_FC(align_out, out);
 
 	/* no more samples to process */
-	if (!(samples % 2))
+	if (i == samples)
 		return;
 
 	/* set source as circular buffer */
@@ -570,7 +570,7 @@ static void pcm_convert_s32_to_s24(const struct audio_stream *source,
 	}
 
 	/* main loop processes 2 samples at a time */
-	for (i = 0; i < samples / 2; i++) {
+	for (i = 0; i < samples - 1; i += 2) {
 		/* set source as circular buffer */
 		pcm_converter_setup_circular(source);
 
@@ -589,7 +589,7 @@ static void pcm_convert_s32_to_s24(const struct audio_stream *source,
 	AE_SA64POS_FC(align_out, out);
 
 	/* no more samples to process */
-	if (!(samples % 2))
+	if (i == samples)
 		return;
 
 	/* set source as circular buffer */
