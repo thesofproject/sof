@@ -147,7 +147,7 @@ BUILD_SOF_RIS := \
       ${UNSIGNED_list:%=${BUILDS_ROOT}/build_%_${TOOLCHAIN}/sof.ri} \
         ${SIGNED_list:%=${BUILDS_ROOT}/build_%_${TOOLCHAIN}/sof.ri}
 
-# The build is not deterministic; use this to reduce noise when testing
+# When the build is not deterministic use this to reduce noise when testing
 # this Makefile.
 # Also very useful with XCC, see next comment.
 ifneq (true,${BUILD_ONLY_ONCE})
