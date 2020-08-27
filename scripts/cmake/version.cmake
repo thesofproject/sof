@@ -84,7 +84,7 @@ if(EXISTS ${CMAKE_SOURCE_DIR}/.git/)
 	message(STATUS "Source content hash: ${SOF_SRC_HASH}")
 else()
 	string(SUBSTRING ${GIT_LOG_HASH} 0 8 SOF_SRC_HASH)
-	message(WARNING "Source content hash can't be calculated, use GIT_LOG_HASH")
+	message(WARNING "Source content hash not computed without git, using GIT_LOG_HASH instead")
 endif()
 
 # for SOF_BUILD
