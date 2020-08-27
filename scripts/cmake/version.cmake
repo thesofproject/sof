@@ -61,25 +61,26 @@ endif()
 
 # Calculate source hash value, used to check ldc file and firmware compatibility
 if(EXISTS ${SOF_ROOT_SOURCE_DIRECTORY}/.git/)
+	set(SOURCE_HASH_DIR "${SOF_ROOT_BINARY_DIRECTORY}/source_hash")
+	file(MAKE_DIRECTORY ${SOURCE_HASH_DIR})
 	# list tracked files from src directory
 	execute_process(COMMAND git ls-files src
 			WORKING_DIRECTORY ${SOF_ROOT_SOURCE_DIRECTORY}
-			OUTPUT_FILE tracked_file_list
+			OUTPUT_FILE "${SOURCE_HASH_DIR}/tracked_file_list"
 		)
 	# calculate hash of each listed files (from file version saved in file system)
 	execute_process(COMMAND git hash-object --stdin-paths
 			WORKING_DIRECTORY ${SOF_ROOT_SOURCE_DIRECTORY}
-			INPUT_FILE tracked_file_list
-			OUTPUT_FILE tracked_file_hash_list
+			INPUT_FILE "${SOURCE_HASH_DIR}/tracked_file_list"
+			OUTPUT_FILE "${SOURCE_HASH_DIR}/tracked_file_hash_list"
 		)
 	# then calculate single hash of previously calculated hash list
 	execute_process(COMMAND git hash-object --stdin
 			WORKING_DIRECTORY ${SOF_ROOT_SOURCE_DIRECTORY}
 			OUTPUT_STRIP_TRAILING_WHITESPACE
-			INPUT_FILE tracked_file_hash_list
+			INPUT_FILE "${SOURCE_HASH_DIR}/tracked_file_hash_list"
 			OUTPUT_VARIABLE SOF_SRC_HASH_LONG
 		)
-	file(REMOVE tracked_file_list tracked_file_hash_list)
 	string(SUBSTRING ${SOF_SRC_HASH_LONG} 0 8 SOF_SRC_HASH)
 	message(STATUS "Source content hash: ${SOF_SRC_HASH}")
 else()
