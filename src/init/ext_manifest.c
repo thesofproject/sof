@@ -24,11 +24,15 @@ const struct ext_man_fw_version ext_man_fw_ver
 		.micro = SOF_MICRO,
 		.minor = SOF_MINOR,
 		.major = SOF_MAJOR,
-#if CONFIG_DEBUG
-		/* only added in debug for reproducibility in releases */
+/* opt-in; reproducible build by default */
+#if BLD_COUNTERS
 		.build = SOF_BUILD,
 		.date = __DATE__,
 		.time = __TIME__,
+#else
+		.build = -1,
+		.date = "dtermin.\0",
+		.time = "extman\0",
 #endif
 		.tag = SOF_TAG,
 		.abi_version = SOF_ABI_VERSION,

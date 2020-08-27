@@ -60,11 +60,15 @@ static const struct sof_ipc_fw_ready ready
 		.micro = SOF_MICRO,
 		.minor = SOF_MINOR,
 		.major = SOF_MAJOR,
-#if CONFIG_DEBUG
-		/* only added in debug for reproducability in releases */
-		.build = SOF_BUILD,
+/* opt-in; reproducible build by default */
+#if BLD_COUNTERS
+		.build = SOF_BUILD, /* See version-build-counter.cmake */
 		.date = __DATE__,
 		.time = __TIME__,
+#else
+		.build = -1,
+		.date = "dtermin.\0",
+		.time = "fwready.\0",
 #endif
 		.tag = SOF_TAG,
 		.abi_version = SOF_ABI_VERSION,

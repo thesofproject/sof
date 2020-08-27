@@ -32,6 +32,8 @@ option(BUILD_UNIT_TESTS "Build unit tests" OFF)
 option(BUILD_UNIT_TESTS_HOST "Build unit tests for host" OFF)
 option(BUILD_UNIT_TESTS_XTENSA_GCC "Build xtensa unit test using GCC" OFF)
 option(BUILD_CLANG_SCAN "Build for clang's scan-build" OFF)
+option(BUILD_COUNTERS "Enable build counter(s), timestamps and any other
+non-deterministic build features" OFF)
 
 if(CONFIG_LIBRARY OR BUILD_UNIT_TESTS_HOST)
 	set(ARCH host)
@@ -77,6 +79,12 @@ target_include_directories(sof_public_headers INTERFACE ${PROJECT_SOURCE_DIR}/ri
 add_library(sof_options INTERFACE)
 
 target_link_libraries(sof_options INTERFACE sof_public_headers)
+
+if(BUILD_COUNTERS)
+target_compile_definitions(sof_options INTERFACE BLD_COUNTERS=1)
+else()
+target_compile_definitions(sof_options INTERFACE BLD_COUNTERS=0)
+endif()
 
 # interface library that is used only as container for sof statically
 # linked libraries
@@ -183,7 +191,9 @@ target_link_libraries(sof PRIVATE sof_ld_scripts)
 target_link_libraries(sof PRIVATE sof_ld_flags)
 target_link_libraries(sof PRIVATE sof_static_libraries)
 
+if (BUILD_COUNTERS)
 sof_add_build_counter_rule()
+endif()
 
 add_subdirectory(src)
 
