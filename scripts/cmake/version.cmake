@@ -60,7 +60,7 @@ if(NOT SOF_TAG)
 endif()
 
 # Calculate source hash value, used to check ldc file and firmware compatibility
-if(EXISTS ${CMAKE_SOURCE_DIR}/.git/)
+if(EXISTS ${SOF_ROOT_SOURCE_DIRECTORY}/.git/)
 	# list tracked files from src directory
 	execute_process(COMMAND git ls-files src
 			WORKING_DIRECTORY ${SOF_ROOT_SOURCE_DIRECTORY}
