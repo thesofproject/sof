@@ -76,8 +76,9 @@ jobs:
     - name: testbench
       before_install: *docker-pull-sof
       script:
-        - ./scripts/docker-run.sh ./scripts/build-tools.sh -t &> /dev/null
-        - ./scripts/docker-run.sh ./scripts/host-build-all.sh
+        # testbench needs some topologies
+        - ./scripts/docker-run.sh ./scripts/build-tools.sh -t
+        - ./scripts/docker-run.sh ./scripts/rebuild-testbench.sh
         - ./scripts/host-testbench.sh
 
 
