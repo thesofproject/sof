@@ -65,7 +65,7 @@ EOFUSAGE
 main()
 {
         local DO_BUILD_ctl DO_BUILD_fuzzer DO_BUILD_logger DO_BUILD_probes \
-                DO_BUILD_test DO_BUILD_topology SCRIPT_DIR SOF_REPO CMAKE_ONLY \
+                DO_BUILD_tests DO_BUILD_topologies SCRIPT_DIR SOF_REPO CMAKE_ONLY \
                 BUILD_ALL
         SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
         SOF_REPO=$(dirname "$SCRIPT_DIR")
