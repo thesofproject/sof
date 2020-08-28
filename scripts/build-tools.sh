@@ -39,6 +39,7 @@ make_tool()
         # if no argument provided, all the tools will be built. Empty tool is
         # okay.
         tool=$1
+        # shellcheck disable=SC2086
         make -C "$BUILD_TOOLS_DIR" -j "$NO_PROCESSORS" $tool
 }
 
@@ -69,7 +70,7 @@ main()
         SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
         SOF_REPO=$(dirname "$SCRIPT_DIR")
         BUILD_TOOLS_DIR="$SOF_REPO"/tools/build_tools
-        : ${NO_PROCESSORS:=$(nproc)}
+        : "${NO_PROCESSORS:=$(nproc)}"
         BUILD_ALL=false
 
         if [ $# -eq 0 ]; then
@@ -84,6 +85,8 @@ main()
         DO_BUILD_topologies=false
         CMAKE_ONLY=false
 
+        # eval is a sometimes necessary evil
+        # shellcheck disable=SC2034
         while getopts "cfhlptTC" OPTION; do
                 case "$OPTION" in
                 c) DO_BUILD_ctl=true ;;
@@ -97,7 +100,7 @@ main()
                 *) print_usage; exit 1;;
                 esac
         done
-        shift "$(($OPTIND - 1))"
+        shift "$((OPTIND - 1))"
         reconfigure_build
 
         if "$CMAKE_ONLY"; then
