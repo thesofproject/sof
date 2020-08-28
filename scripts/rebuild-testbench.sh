@@ -23,11 +23,9 @@ rebuild_testbench()
     mkdir build_testbench
     cd build_testbench
 
-    cmake -DCMAKE_INSTALL_PREFIX=install \
-	  -DCMAKE_VERBOSE_MAKEFILE=ON \
-	  ..
+    cmake -DCMAKE_INSTALL_PREFIX=install  ..
 
-    make -j"$(nproc --all)"
+    make -j"$(nproc)"
     make install
 }
 
