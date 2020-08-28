@@ -73,6 +73,7 @@ else
   cat vol.log
   exit 1
 fi
+rm volume_out.raw vol.log
 
 # test with src
 echo "=========================================================="
@@ -92,6 +93,7 @@ else
   cat src.log
   exit 1
 fi
+rm src_out.raw src.log
 
 # test with eq
 echo "=========================================================="
@@ -112,3 +114,6 @@ else
   cat eqiir.log
   exit 1
 fi
+rm eqiir_out.raw eqiir.log
+
+rm zeros_in.raw
