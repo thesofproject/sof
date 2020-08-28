@@ -5,6 +5,14 @@
 # fail on any errors
 set -e
 
+deprecated()
+{
+    >&2 printf "\nWARNING: %s is deprecated, use newer rebuild-testbench.sh\n\n" \
+	"$0"
+}
+
+deprecated
+
 cd tools
 cd testbench
 
@@ -19,3 +27,5 @@ cmake -DCMAKE_INSTALL_PREFIX=install \
 
 make -j$(nproc --all)
 make install
+
+deprecated
