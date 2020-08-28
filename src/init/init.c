@@ -153,6 +153,8 @@ int master_core_init(int argc, char *argv[], struct sof *sof)
 	if (err < 0)
 		panic(SOF_IPC_PANIC_PLATFORM);
 
+	trace_ratelimit_init(sof);
+
 	trace_point(TRACE_BOOT_PLATFORM);
 
 #if CONFIG_NO_SLAVE_CORE_ROM

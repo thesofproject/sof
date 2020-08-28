@@ -28,6 +28,7 @@ struct trace {
 	uint32_t pos ;	/* trace position */
 	uint32_t enable;
 	spinlock_t lock; /* locking mechanism */
+	uint64_t ratelimit_timeout;
 };
 
 /* calculates total message size, both header and payload in bytes */
@@ -219,4 +220,35 @@ void trace_init(struct sof *sof)
 	bzero((void *)MAILBOX_TRACE_BASE, MAILBOX_TRACE_SIZE);
 	dcache_writeback_invalidate_region((void *)MAILBOX_TRACE_BASE,
 					   MAILBOX_TRACE_SIZE);
+}
+
+void trace_ratelimit_init(struct sof *sof)
+{
+	sof->trace->ratelimit_timeout = clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK,
+						1) / 1000 * TRACE_RATELIMIT_INTERVAL;
+}
+
+bool trace_ratelimit_time(struct trace_ratelimit *trtl)
+{
+	uint64_t now = platform_timer_get(timer_get());
+	struct trace *trace = trace_get();
+	bool ret = true;
+
+	if (now - trtl->last < trace->ratelimit_timeout) {
+		/*
+		 * If we're within the rate-limiting interval and we've already
+		 * logged "burst" trace entries, stop further traces from this
+		 * source until the interval ends.
+		 */
+		if (trtl->count++ > TRACE_RATELIMIT_BURST)
+			ret = false;
+	} else {
+		trtl->missed = trtl->count;
+		trtl->count = 0;
+	}
+
+	if (ret)
+		trtl->last = now;
+
+	return ret;
 }

@@ -11,6 +11,7 @@
 #include <sof/lib/mm_heap.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <setjmp.h>
 #include <stdint.h>
@@ -86,6 +87,13 @@ void WEAK trace_log(bool send_atomic, const void *log_entry,
 	(void) id_1;
 	(void) id_2;
 	(void) arg_count;
+}
+
+bool WEAK trace_ratelimit_time(struct trace_ratelimit *trtl)
+{
+	(void) trtl;
+
+	return true;
 }
 
 uint32_t WEAK _spin_lock_irq(spinlock_t *lock)

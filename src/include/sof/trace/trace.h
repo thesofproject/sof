@@ -86,6 +86,12 @@ static inline struct trace *trace_get(void)
 #define trace_unused(class, ctx, id_1, id_2, format, ...) \
 	UNUSED(ctx, id_1, id_2, ##__VA_ARGS__)
 
+struct trace_ratelimit {
+	unsigned int count;
+	unsigned int missed;
+	uint64_t last;
+};
+
 #if CONFIG_TRACE
 
 /*
@@ -184,6 +190,34 @@ do {									\
 		  PP_NARG(__VA_ARGS__), ##__VA_ARGS__);			\
 } while (0)
 
+#define trace_dev_info_ratelimit(fn, get_ctx_m, get_id_m, get_subid_m,	\
+				dev, fmt, ...)				\
+do {									\
+	static struct trace_ratelimit __trtl;				\
+	if (fn(&__trtl)) {						\
+		if (__trtl.missed) {					\
+			trace_dev_info(get_ctx_m, get_id_m,		\
+				get_subid_m, dev,			\
+				"suppressed %u traces", __trtl.missed);	\
+			__trtl.missed = 0;				\
+		}							\
+		trace_dev_info(get_ctx_m, get_id_m, get_subid_m,	\
+				dev, fmt, ##__VA_ARGS__);		\
+	}								\
+} while (0)
+
+#define tr_info_ratelimit(fn, ctx, fmt, ...) do {			\
+	static struct trace_ratelimit __trtl;				\
+	if (fn(&__trtl)) {						\
+		if (__trtl.missed) {					\
+			tr_info(ctx, "suppressed %u traces",		\
+				__trtl.missed);				\
+			__trtl.missed = 0;				\
+		}							\
+		tr_info(ctx, fmt, ##__VA_ARGS__);			\
+	}								\
+} while (0)
+
 #else /* CONFIG_LIBRARY */
 
 extern int test_bench_trace;
@@ -202,7 +236,29 @@ do {									\
 	}								\
 } while (0)
 
+#define trace_dev_info_ratelimit(fn, get_ctx_m, get_id_m, get_subid_m, dev, fmt, ...) \
+		trace_dev_info(get_ctx_m, get_id_m, get_subid_m, dev, fmt, ##__VA_ARGS__)
+
+#define tr_info_ratelimit(fn, ctx, fmt, ...) tr_info(ctx, fmt, ##__VA_ARGS__)
+
 #endif /* CONFIG_LIBRARY */
+
+/*
+ * Rate-limited tracing is a tracing mode, when trace messages, issued too
+ * frequently and "flooding" the trace log are first allowed to take effect,
+ * until the TRACE_RATELIMIT_BURST limit is reached. Then a decision is made,
+ * whether further traces should be allowed or blocked. If further messages are
+ * blocked, they are counted. When those messages are unblocked, a message is
+ * printed, containing the number of blocked messages.
+ * To use time-based rate-limiting, one of *_t_ratelimit() macros should be
+ * called. It calls trace_ratelimit_time() to decide whether the messages
+ * should be temporarily blocked. trace_ratelimit_time() allows up to
+ * TRACE_RATELIMIT_BURST messages in a row with a shorter than
+ * TRACE_RATELIMIT_INTERVAL microsecond interval between them. Further messages
+ * during the same interval are blocked.
+ */
+void trace_ratelimit_init(struct sof *sof);
+bool trace_ratelimit_time(struct trace_ratelimit *trtl);
 
 #else /* CONFIG_TRACE */
 
@@ -218,10 +274,16 @@ do {									\
 
 #define trace_point(x)  do {} while (0)
 
+#define trace_dev_info_ratelimit(fn, get_ctx_m, get_id_m, get_subid_m, dev, fmt, ...) \
+	trace_unused(0, dev, dev, fmt, ##__VA_ARGS__)
+
+#define tr_info_ratelimit(fn, ctx, fmt, ...) trace_unused(0, ctx, ctx, fmt, ##__VA_ARGS__)
+
 static inline void trace_flush(void) { }
 static inline void trace_on(void) { }
 static inline void trace_off(void) { }
 static inline void trace_init(struct sof *sof) { }
+static inline void trace_ratelimit_init(struct sof *sof) { }
 
 #endif /* CONFIG_TRACE */
 
@@ -293,6 +355,10 @@ struct tr_ctx {
 		.level = default_log_level,			\
 	}
 
+/* Ratelimit interval in microseconds */
+#define TRACE_RATELIMIT_INTERVAL	2000
+#define TRACE_RATELIMIT_BURST		4
+
 /* tracing from device (component, pipeline, dai, ...) */
 
 /** \brief Trace from a device on err level.
@@ -320,6 +386,10 @@ struct tr_ctx {
 	trace_event_with_ids(_TRACE_INV_CLASS, get_ctx_m(dev),		\
 			     get_id_m(dev), get_subid_m(dev),		\
 			     fmt, ##__VA_ARGS__)
+
+#define trace_dev_info_t_ratelimit(get_ctx_m, get_id_m, get_subid_m, dev, fmt, ...) \
+	trace_dev_info_ratelimit(trace_ratelimit_time, get_ctx_m, get_id_m,	    \
+				get_subid_m, dev, fmt, ##__VA_ARGS__)
 
 /** \brief Trace from a device on dbg level. */
 #define trace_dev_dbg(get_ctx_m, get_id_m, get_subid_m, dev, fmt, ...)	\
@@ -364,5 +434,8 @@ struct tr_ctx {
 	tracev_event_atomic_with_ids(_TRACE_INV_CLASS, ctx, \
 				     _TRACE_INV_ID, _TRACE_INV_ID, \
 				     fmt, ##__VA_ARGS__)
+
+#define tr_info_t_ratelimit(ctx, fmt, ...) tr_info_ratelimit(trace_ratelimit_time, \
+		ctx, fmt, ##__VA_ARGS__)
 
 #endif /* __SOF_TRACE_TRACE_H__ */
