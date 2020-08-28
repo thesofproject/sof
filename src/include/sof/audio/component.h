@@ -756,6 +756,23 @@ static inline void comp_writeback(struct comp_dev *dev)
 }
 
 /**
+ * Get component state.
+ *
+ * @param req_dev Requesting component
+ * @param dev Component from which user wants to read status.
+ */
+static inline int comp_get_state(struct comp_dev *req_dev, struct comp_dev *dev)
+{
+	/* we should not invalidate data when components are on the same
+	 * core, because we could invalidate data not previously writebacked
+	 */
+	if (req_dev->comp.core != dev->comp.core)
+		comp_invalidate(dev);
+
+	return dev->state;
+}
+
+/**
  * Frees data for large component configurations.
  *
  * @param dev Component device
