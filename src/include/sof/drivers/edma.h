@@ -8,6 +8,9 @@
 #ifndef __SOF_DRIVERS_EDMA_H__
 #define __SOF_DRIVERS_EDMA_H__
 
+#if IS_ENABLED(CONFIG_IMX_EDMA)
+
+#include <platform/drivers/edma.h>
 #include <sof/bit.h>
 #include <sof/trace/trace.h>
 #include <user/trace.h>
@@ -84,15 +87,6 @@
 #define EDMA_HANDSHAKE(irq, channel)\
 	(EDMA_HS_SET_CHAN(channel) | EDMA_HS_SET_IRQ(irq))
 
-#define EDMA0_ESAI_CHAN_RX	6
-#define EDMA0_ESAI_CHAN_TX	7
-#define EDMA0_SAI_CHAN_RX	14
-#define EDMA0_SAI_CHAN_TX	15
-#define EDMA0_CHAN_MAX		32
-
-#define EDMA0_ESAI_CHAN_RX_IRQ	442
-#define EDMA0_ESAI_CHAN_TX_IRQ	442
-#define EDMA0_SAI_CHAN_RX_IRQ	349
-#define EDMA0_SAI_CHAN_TX_IRQ	349
+#endif /* IS_ENABLED(CONFIG_IMX_EDMA) */
 
 #endif /* __SOF_DRIVERS_EDMA_H__ */

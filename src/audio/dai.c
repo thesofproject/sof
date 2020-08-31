@@ -936,6 +936,7 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 		dd->stream_id = config->alh.stream_id;
 		comp_info(dev, "dai_config(), channel = %d", channel);
 		break;
+#if IS_ENABLED(IMX)
 	case SOF_DAI_IMX_SAI:
 		handshake = dai_get_handshake(dd->dai, dai->direction,
 					      dd->stream_id);
@@ -952,6 +953,7 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 		dd->config.burst_elems =
 			dd->dai->plat_data.fifo[dai->direction].depth;
 		break;
+#endif
 	default:
 		/* other types of DAIs not handled for now */
 		comp_err(dev, "dai_config(): Unknown dai type %d",
