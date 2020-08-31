@@ -106,7 +106,7 @@ static inline bool is_mclk_source_in_use(void)
  * \brief Configures source clock for MCLK.
  *	  All MCLKs share the same source, so it should be changed
  *	  only if there are no other ports using it already.
- * \param[in] mclk_rate master clock frequency.
+ * \param[in] mclk_rate main clock frequency.
  * \return 0 on success, error code otherwise.
  */
 static inline int setup_initial_mclk_source(uint32_t mclk_id,
@@ -156,7 +156,7 @@ out:
 
 /**
  * \brief Checks if requested MCLK can be achieved with current source.
- * \param[in] mclk_rate master clock frequency.
+ * \param[in] mclk_rate main clock frequency.
  * \return 0 on success, error code otherwise.
  */
 static inline int check_current_mclk_source(uint32_t mclk_rate)
