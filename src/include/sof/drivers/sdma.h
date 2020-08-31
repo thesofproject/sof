@@ -8,6 +8,10 @@
 #ifndef __SOF_DRIVERS_SDMA_H__
 #define __SOF_DRIVERS_SDMA_H__
 
+#if IS_ENABLED(IMX_SDMA)
+
+#include <platform/drivers/sdma.h>
+
 #define SDMA_MC0PTR		0x0000 /* platform 0 control block */
 #define SDMA_INTR		0x0004 /* Active interrupts, W1C */
 #define SDMA_STOP_STAT		0x0008 /* Channel stop/status, W1C */
@@ -144,11 +148,6 @@
 #define SDMA_CHAN_TYPE_SHP2MCU		3
 #define SDMA_CHAN_TYPE_MCU2SHP		4
 
-/* TODO check and move these to platform data */
-#define SDMA_SCRIPT_AP2AP_OFF		644
-#define SDMA_SCRIPT_AP2MCU_OFF		685
-#define SDMA_SCRIPT_MCU2AP_OFF		749
-#define SDMA_SCRIPT_SHP2MCU_OFF		893
-#define SDMA_SCRIPT_MCU2SHP_OFF		962
+#endif /* IS_ENABLED(IMX_SDMA) */
 
 #endif /* __SOF_DRIVERS_SDMA_H__ */
