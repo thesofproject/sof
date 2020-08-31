@@ -11,7 +11,7 @@
 char *vasprintf(const char *format, va_list args);
 char *asprintf(const char *format, ...);
 
-void log_err(FILE *out_fd, const char *fmt, ...);
+void log_err(const char *fmt, ...);
 
 /* trim whitespaces from string begin */
 char *ltrim(char *s);

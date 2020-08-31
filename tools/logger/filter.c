@@ -22,6 +22,8 @@
 #define COMPONENTS_SEPARATOR ','
 #define COMPONENT_NAME_SCAN_STRING_LENGTH 32
 
+extern struct convert_config *global_config;
+
 /** map between log level given by user and enum value */
 static const struct {
 	const char name[16];
@@ -51,14 +53,12 @@ struct filter_element {
 
 /**
  * Search for uuid entry with given component name in given uids dictionary
- * @param uids_dict dictionary to search in
  * @param name of uuid entry
  * @return pointer to sof_uuid_entry with given name
  */
-static struct sof_uuid_entry *
-get_uuid_by_name(const struct snd_sof_uids_header *uids_dict,
-		 const char *name)
+static struct sof_uuid_entry *get_uuid_by_name(const char *name)
 {
+	const struct snd_sof_uids_header *uids_dict = global_config->uids_dict;
 	uintptr_t beg = (uintptr_t)uids_dict + uids_dict->data_offset;
 	uintptr_t end = beg + uids_dict->data_length;
 	struct sof_uuid_entry *ptr = (struct sof_uuid_entry *)beg;
@@ -88,9 +88,7 @@ static int filter_parse_log_level(const char *value_start)
 	return -1;
 }
 
-static char *filter_parse_component_name(const struct snd_sof_uids_header *uids_dict,
-					 char *input_str,
-					 struct filter_element *out)
+static char *filter_parse_component_name(char *input_str, struct filter_element *out)
 {
 	static char scan_format_string[COMPONENT_NAME_SCAN_STRING_LENGTH] = "";
 	char comp_name[UUID_NAME_MAX_LEN];
@@ -117,12 +115,12 @@ static char *filter_parse_component_name(const struct snd_sof_uids_header *uids_
 		return NULL;
 
 	/* find component uuid key */
-	uuid_entry = get_uuid_by_name(uids_dict, comp_name);
+	uuid_entry = get_uuid_by_name(comp_name);
 	if (!uuid_entry) {
-		log_err(NULL, "unknown component name `%s`\n", comp_name);
+		log_err("unknown component name `%s`\n", comp_name);
 		return NULL;
 	}
-	out->uuid_id = get_uuid_key(uids_dict, uuid_entry);
+	out->uuid_id = get_uuid_key(uuid_entry);
 	return strstr(input_str, comp_name) + strlen(comp_name);
 }
 
@@ -141,13 +139,10 @@ static char *filter_parse_component_name(const struct snd_sof_uids_header *uids_
  * `name` must refer to values from given UUID dictionary,
  *        (so name comes from DECLARE_SOF_UUID macro usage)
 
- * @param uids_dict dictionary with list of possible `name` values
  * @param input_str formatted component definition
  * @param out element where component definition should be saved
  */
-static int filter_parse_component(const struct snd_sof_uids_header *uids_dict,
-				  char *input_str,
-				  struct filter_element *out)
+static int filter_parse_component(char *input_str, struct filter_element *out)
 {
 	char *instance_info;
 	int ret;
@@ -161,10 +156,9 @@ static int filter_parse_component(const struct snd_sof_uids_header *uids_dict,
 	out->comp_id = -1;
 
 	/* parse component name and store pointer after component name, pointer to instance info */
-	instance_info = filter_parse_component_name(uids_dict, input_str, out);
+	instance_info = filter_parse_component_name(input_str, out);
 	if (!instance_info) {
-		log_err(NULL, "component name parsing `%s`\n",
-			input_str);
+		log_err("component name parsing `%s`\n", input_str);
 		return -EINVAL;
 	}
 
@@ -185,7 +179,7 @@ static int filter_parse_component(const struct snd_sof_uids_header *uids_dict,
 	/* pipeline id parsed but component id is not a number */
 	if (instance_info[strlen(instance_info) - 1] == '*')
 		return 0;
-	log_err(NULL, "Use * to specify each component on particular pipeline\n");
+	log_err("Use * to specify each component on particular pipeline\n");
 	return -EINVAL;
 }
 
@@ -202,12 +196,10 @@ static int filter_parse_component(const struct snd_sof_uids_header *uids_dict,
  *   `d="pipe1, dai2.3"` - as above, but also for dai2.3
  *   `error="FIR*"` - for each FIR component set log level to error
  *
- * @param dictionary uuid dictionary from ldc file
  * @param input_str log level settings in format `log_level=component`
  * @param out_list output list with filter_element elements
  */
-static int filter_parse_entry(const struct snd_sof_uids_header *uids_dict,
-			      char *input_str, struct list_item *out_list)
+static int filter_parse_entry(char *input_str, struct list_item *out_list)
 {
 	struct filter_element *filter;
 	char *comp_fmt_end;
@@ -221,7 +213,7 @@ static int filter_parse_entry(const struct snd_sof_uids_header *uids_dict,
 	 */
 	comp_fmt = strchr(input_str, '=');
 	if (!comp_fmt) {
-		log_err(NULL, "unable to find `=` in `%s`\n", input_str);
+		log_err("unable to find `=` in `%s`\n", input_str);
 		return -EINVAL;
 	}
 	*comp_fmt = 0;
@@ -230,8 +222,7 @@ static int filter_parse_entry(const struct snd_sof_uids_header *uids_dict,
 	/* find correct log level in given conf string - string before `=` */
 	log_level = filter_parse_log_level(input_str);
 	if (log_level < 0) {
-		log_err(NULL, "unable to parse log level from `%s`\n",
-			input_str);
+		log_err("unable to parse log level from `%s`\n", input_str);
 		return log_level;
 	}
 
@@ -242,17 +233,16 @@ static int filter_parse_entry(const struct snd_sof_uids_header *uids_dict,
 	while (comp_fmt) {
 		filter = malloc(sizeof(struct filter_element));
 		if (!filter) {
-			log_err(NULL, "unable to malloc memory\n");
+			log_err("unable to malloc memory\n");
 			return -ENOMEM;
 		}
 
 		comp_fmt_end = strchr(comp_fmt, COMPONENTS_SEPARATOR);
 		if (comp_fmt_end)
 			*comp_fmt_end = '\0';
-		ret = filter_parse_component(uids_dict, comp_fmt, filter);
+		ret = filter_parse_component(comp_fmt, filter);
 		if (ret < 0) {
-			log_err(NULL, "unable to parse component from `%s`\n",
-				comp_fmt);
+			log_err("unable to parse component from `%s`\n", comp_fmt);
 			free(filter);
 			return ret;
 		}
@@ -274,12 +264,11 @@ static int filter_parse_entry(const struct snd_sof_uids_header *uids_dict,
  * and then send as IPC to FW (this action is implemented in driver).
  * Each line in debugFS represents single IPC message.
  *
- * @param dictionary uuid dictionary from ldc file
  * @param format log level settings in format `log_level=component`
  */
-int filter_update_firmware(const struct snd_sof_uids_header *uids_dict,
-			   char *input_str)
+int filter_update_firmware(void)
 {
+	char *input_str = global_config->filter_config;
 	struct filter_element *filter;
 	struct list_item filter_list;
 	struct list_item *list_elem;
@@ -294,7 +283,7 @@ int filter_update_firmware(const struct snd_sof_uids_header *uids_dict,
 	line_end = strchr(input_str, '\n');
 	while (line_end) {
 		line_end[0] = '\0';
-		ret = filter_parse_entry(uids_dict, input_str, &filter_list);
+		ret = filter_parse_entry(input_str, &filter_list);
 		if (ret < 0)
 			goto err;
 		input_str = line_end + 1;
@@ -304,15 +293,13 @@ int filter_update_firmware(const struct snd_sof_uids_header *uids_dict,
 	/* write output to debugFS */
 	out_fd = fopen(FILTER_KERNEL_PATH, "w");
 	if (!out_fd) {
-		log_err(NULL, "Unable to open out file '%s'\n",
-			FILTER_KERNEL_PATH);
+		log_err("Unable to open out file '%s'\n", FILTER_KERNEL_PATH);
 		ret = -errno;
 		goto err;
 	}
 
 	list_for_item(list_elem, &filter_list) {
-		filter = container_of(list_elem, struct filter_element,
-				      list);
+		filter = container_of(list_elem, struct filter_element, list);
 		fprintf(out_fd, "%d %X %d %d;", filter->log_level,
 			filter->uuid_id, filter->pipe_id, filter->comp_id);
 	}
@@ -324,8 +311,7 @@ err:
 
 	/* free each component from parsed element list */
 	list_for_item_safe(list_elem, list_temp, &filter_list) {
-		filter = container_of(list_elem, struct filter_element,
-				      list);
+		filter = container_of(list_elem, struct filter_element, list);
 		free(filter);
 	}
 

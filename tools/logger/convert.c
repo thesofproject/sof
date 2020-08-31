@@ -53,8 +53,10 @@ struct proc_ldc_entry {
 
 static const char *BAD_PTR_STR = "<bad uid ptr %x>";
 
-char *format_uid_raw(const struct sof_uuid_entry *uid_entry, int use_colors,
-		     int name_first)
+/* pointer to config for global context */
+struct convert_config *global_config;
+
+char *format_uid_raw(const struct sof_uuid_entry *uid_entry, int use_colors, int name_first)
 {
 	const struct sof_uuid *uid_val = &uid_entry->id;
 	char *str;
@@ -73,9 +75,10 @@ char *format_uid_raw(const struct sof_uuid_entry *uid_entry, int use_colors,
 	return str;
 }
 
-static const struct sof_uuid_entry *
-get_uuid_entry(const struct snd_sof_uids_header *uids_dict, uint32_t uid_ptr)
+static const struct sof_uuid_entry *get_uuid_entry(uint32_t uid_ptr)
 {
+	const struct snd_sof_uids_header *uids_dict = global_config->uids_dict;
+
 	return (const struct sof_uuid_entry *)
 	       ((uint8_t *)uids_dict + uids_dict->data_offset + uid_ptr -
 	       uids_dict->base_address);
@@ -87,9 +90,10 @@ get_uuid_entry(const struct snd_sof_uids_header *uids_dict, uint32_t uid_ptr)
  * (with base UUID_ENTRY_ELF_BASE, 0x1FFFA000 as usual). Function get_uuid_entry
  * works in oppopsite direction.
  */
-uint32_t get_uuid_key(const struct snd_sof_uids_header *uids_dict,
-		      const struct sof_uuid_entry *entry)
+uint32_t get_uuid_key(const struct sof_uuid_entry *entry)
 {
+	const struct snd_sof_uids_header *uids_dict = global_config->uids_dict;
+
 	/*
 	 * uids_dict->data_offset and uids_dict->base_address are both constants,
 	 * related with given ldc file.
@@ -100,10 +104,9 @@ uint32_t get_uuid_key(const struct snd_sof_uids_header *uids_dict,
 		uids_dict->data_offset + uids_dict->base_address;
 }
 
-const char *format_uid(const struct snd_sof_uids_header *uids_dict,
-		       uint32_t uid_ptr,
-		       int use_colors)
+const char *format_uid(uint32_t uid_ptr, int use_colors)
 {
+	const struct snd_sof_uids_header *uids_dict = global_config->uids_dict;
 	const struct sof_uuid_entry *uid_entry;
 	char *str;
 
@@ -112,7 +115,7 @@ const char *format_uid(const struct snd_sof_uids_header *uids_dict,
 		str = calloc(1, strlen(BAD_PTR_STR) + 1 + 6);
 		sprintf(str, BAD_PTR_STR, uid_ptr);
 	} else {
-		uid_entry = get_uuid_entry(uids_dict, uid_ptr);
+		uid_entry = get_uuid_entry(uid_ptr);
 		str = format_uid_raw(uid_entry, use_colors, 1);
 
 	}
@@ -121,7 +124,6 @@ const char *format_uid(const struct snd_sof_uids_header *uids_dict,
 
 static void process_params(struct proc_ldc_entry *pe,
 			   const struct ldc_entry *e,
-			   const struct snd_sof_uids_header *uids_dict,
 			   int use_colors)
 {
 	const char *p = e->text;
@@ -145,9 +147,7 @@ static void process_params(struct proc_ldc_entry *pe,
 	for (i = 0; i < e->header.params_num; i++) {
 		pe->params[i] = e->params[i];
 		if (pe->subst_mask & (1 << i))
-			pe->params[i] = (uintptr_t)format_uid(uids_dict,
-							      e->params[i],
-							      use_colors);
+			pe->params[i] = (uintptr_t)format_uid(e->params[i], use_colors);
 	}
 }
 
@@ -162,17 +162,18 @@ static void free_proc_ldc_entry(struct proc_ldc_entry *pe)
 	}
 }
 
-static double to_usecs(uint64_t time, double clk)
+static double to_usecs(uint64_t time)
 {
 	/* trace timestamp uses CPU system clock at default 25MHz ticks */
 	// TODO: support variable clock rates
-	return (double)time / clk;
+	return (double)time / global_config->clock;
 }
 
-
-static inline void print_table_header(FILE *out_fd, int hide_location,
-				      int time_precision)
+static inline void print_table_header(void)
 {
+	FILE *out_fd = global_config->out_fd;
+	int hide_location = global_config->hide_location;
+	int time_precision = global_config->time_precision;
 	char time_fmt[32];
 
 	if (time_precision >= 0) {
@@ -212,10 +213,9 @@ static const char *get_level_name(uint32_t level)
 	}
 }
 
-static
-const char *get_component_name(const struct snd_sof_uids_header *uids_dict,
-			       uint32_t trace_class, uint32_t uid_ptr)
+static const char *get_component_name(uint32_t trace_class, uint32_t uid_ptr)
 {
+	const struct snd_sof_uids_header *uids_dict = global_config->uids_dict;
 	const struct sof_uuid_entry *uid_entry;
 
 	/* if uid_ptr is non-zero, find name in the ldc file */
@@ -224,7 +224,7 @@ const char *get_component_name(const struct snd_sof_uids_header *uids_dict,
 		    uid_ptr >= uids_dict->base_address +
 		    uids_dict->data_length)
 			return "<uid?>";
-		uid_entry = get_uuid_entry(uids_dict, uid_ptr);
+		uid_entry = get_uuid_entry(uid_ptr);
 		return uid_entry->name;
 	}
 
@@ -260,14 +260,17 @@ static char *format_file_name(char *file_name_raw, int full_name)
 		return name;
 }
 
-static void print_entry_params(FILE *out_fd,
-	const struct snd_sof_uids_header *uids_dict,
-	const struct log_entry_header *dma_log, const struct ldc_entry *entry,
-	uint64_t last_timestamp, double clock, int use_colors, int raw_output,
-	int hide_location, int time_precision)
+static void print_entry_params(const struct log_entry_header *dma_log,
+			       const struct ldc_entry *entry, uint64_t last_timestamp)
 {
+	FILE *out_fd = global_config->out_fd;
+	int use_colors = global_config->use_colors;
+	int raw_output = global_config->raw_output;
+	int hide_location = global_config->hide_location;
+	int time_precision = global_config->time_precision;
+
 	char ids[TRACE_MAX_IDS_STR];
-	float dt = to_usecs(dma_log->timestamp - last_timestamp, clock);
+	float dt = to_usecs(dma_log->timestamp - last_timestamp);
 	struct proc_ldc_entry proc_entry;
 	static char time_fmt[32];
 
@@ -296,15 +299,11 @@ static void print_entry_params(FILE *out_fd,
 				(LOG_LEVEL_CRITICAL ? KRED : KNRM) : "",
 			dma_log->core_id,
 			entry->header.level,
-			get_component_name(uids_dict,
-					   entry->header.component_class,
-					   dma_log->uid),
+			get_component_name(entry->header.component_class, dma_log->uid),
 			raw_output && strlen(ids) ? "-" : "",
 			ids);
 		if (time_precision >= 0)
-			fprintf(out_fd, time_fmt,
-				to_usecs(dma_log->timestamp, clock),
-				dt);
+			fprintf(out_fd, time_fmt, to_usecs(dma_log->timestamp), dt);
 		if (!hide_location)
 			fprintf(out_fd, "(%s:%u) ",
 				format_file_name(entry->file_name, raw_output),
@@ -318,7 +317,7 @@ static void print_entry_params(FILE *out_fd,
 				 time_precision + 10, time_precision);
 			fprintf(out_fd, time_fmt,
 				use_colors ? KGRN : "",
-				to_usecs(dma_log->timestamp, clock), dt,
+				to_usecs(dma_log->timestamp), dt,
 				use_colors ? KNRM : "");
 		}
 
@@ -328,9 +327,7 @@ static void print_entry_params(FILE *out_fd,
 		/* component name and id */
 		fprintf(out_fd, "%s%-12s %-5s%s ",
 			use_colors ? KYEL : "",
-			get_component_name(uids_dict,
-					   entry->header.component_class,
-					   dma_log->uid),
+			get_component_name(entry->header.component_class, dma_log->uid),
 			ids,
 			use_colors ? KNRM : "");
 
@@ -346,7 +343,7 @@ static void print_entry_params(FILE *out_fd,
 			get_level_name(entry->header.level));
 	}
 
-	process_params(&proc_entry, entry, uids_dict, use_colors);
+	process_params(&proc_entry, entry, use_colors);
 
 	switch (proc_entry.header.params_num) {
 	case 0:
@@ -356,17 +353,15 @@ static void print_entry_params(FILE *out_fd,
 		fprintf(out_fd, proc_entry.text, proc_entry.params[0]);
 		break;
 	case 2:
-		fprintf(out_fd, proc_entry.text, proc_entry.params[0],
-			proc_entry.params[1]);
+		fprintf(out_fd, proc_entry.text, proc_entry.params[0], proc_entry.params[1]);
 		break;
 	case 3:
-		fprintf(out_fd, proc_entry.text, proc_entry.params[0],
-			proc_entry.params[1], proc_entry.params[2]);
+		fprintf(out_fd, proc_entry.text, proc_entry.params[0], proc_entry.params[1],
+			proc_entry.params[2]);
 		break;
 	case 4:
-		fprintf(out_fd, proc_entry.text, proc_entry.params[0],
-			proc_entry.params[1], proc_entry.params[2],
-			proc_entry.params[3]);
+		fprintf(out_fd, proc_entry.text, proc_entry.params[0], proc_entry.params[1],
+			proc_entry.params[2], proc_entry.params[3]);
 		break;
 	}
 	free_proc_ldc_entry(&proc_entry);
@@ -374,12 +369,12 @@ static void print_entry_params(FILE *out_fd,
 	fflush(out_fd);
 }
 
-static int fetch_entry(const struct convert_config *config,
-	uint32_t base_address, uint32_t data_offset,
-	const struct log_entry_header *dma_log, uint64_t *last_timestamp)
+static int fetch_entry(const struct log_entry_header *dma_log, uint64_t *last_timestamp)
 {
 	struct ldc_entry entry;
 	uint32_t entry_offset;
+	uint32_t base_address = global_config->logs_header->base_address;
+	uint32_t data_offset = global_config->logs_header->data_offset;
 
 	int ret;
 
@@ -391,111 +386,94 @@ static int fetch_entry(const struct convert_config *config,
 	entry_offset = dma_log->log_entry_address - base_address;
 
 	/* set file position to beginning of processed entry */
-	fseek(config->ldc_fd, entry_offset + data_offset, SEEK_SET);
+	fseek(global_config->ldc_fd, entry_offset + data_offset, SEEK_SET);
 
 	/* fetching elf header params */
-	ret = fread(&entry.header, sizeof(entry.header), 1, config->ldc_fd);
+	ret = fread(&entry.header, sizeof(entry.header), 1, global_config->ldc_fd);
 	if (!ret) {
-		ret = -ferror(config->ldc_fd);
+		ret = -ferror(global_config->ldc_fd);
 		goto out;
 	}
 	if (entry.header.file_name_len > TRACE_MAX_FILENAME_LEN) {
-		log_err(config->out_fd,
-			"Invalid filename length or ldc file does not match firmware\n");
+		log_err("Invalid filename length or ldc file does not match firmware\n");
 		ret = -EINVAL;
 		goto out;
 	}
 	entry.file_name = (char *)malloc(entry.header.file_name_len);
 
 	if (!entry.file_name) {
-		log_err(config->out_fd,
-			"can't allocate %d byte for entry.file_name\n",
-			entry.header.file_name_len);
+		log_err("can't allocate %d byte for entry.file_name\n", entry.header.file_name_len);
 		ret = -ENOMEM;
 		goto out;
 	}
 
 	ret = fread(entry.file_name, sizeof(char), entry.header.file_name_len,
-		config->ldc_fd);
+		    global_config->ldc_fd);
 	if (ret != entry.header.file_name_len) {
-		ret = -ferror(config->ldc_fd);
+		ret = -ferror(global_config->ldc_fd);
 		goto out;
 	}
 
 	/* fetching text */
 	if (entry.header.text_len > TRACE_MAX_TEXT_LEN) {
-		log_err(config->out_fd,
-			"Invalid text length.\n");
+		log_err("Invalid text length.\n");
 		ret = -EINVAL;
 		goto out;
 	}
 	entry.text = (char *)malloc(entry.header.text_len);
 	if (!entry.text) {
-		log_err(config->out_fd,
-			"can't allocate %d byte for entry.text\n",
-			entry.header.text_len);
+		log_err("can't allocate %d byte for entry.text\n", entry.header.text_len);
 		ret = -ENOMEM;
 		goto out;
 	}
-	ret = fread(entry.text, sizeof(char), entry.header.text_len, config->ldc_fd);
+	ret = fread(entry.text, sizeof(char), entry.header.text_len, global_config->ldc_fd);
 	if (ret != entry.header.text_len) {
-		ret = -ferror(config->ldc_fd);
+		ret = -ferror(global_config->ldc_fd);
 		goto out;
 	}
 
 	/* fetching entry params from dma dump */
 	if (entry.header.params_num > TRACE_MAX_PARAMS_COUNT) {
-		log_err(config->out_fd,
-			"Invalid number of parameters.\n");
+		log_err("Invalid number of parameters.\n");
 		ret = -EINVAL;
 		goto out;
 	}
-	entry.params = (uint32_t *)malloc(sizeof(uint32_t) *
-		entry.header.params_num);
+	entry.params = (uint32_t *)malloc(sizeof(uint32_t) * entry.header.params_num);
 	if (!entry.params) {
-		log_err(config->out_fd,
-			"can't allocate %d byte for entry.params\n",
+		log_err("can't allocate %d byte for entry.params\n",
 			(int)(sizeof(uint32_t) * entry.header.params_num));
 		ret = -ENOMEM;
 		goto out;
 	}
 
-	if (config->serial_fd < 0) {
-		ret = fread(entry.params, sizeof(uint32_t),
-			    entry.header.params_num, config->in_fd);
+	if (global_config->serial_fd < 0) {
+		ret = fread(entry.params, sizeof(uint32_t), entry.header.params_num,
+			    global_config->in_fd);
 		if (ret != entry.header.params_num) {
-			ret = -ferror(config->in_fd);
+			ret = -ferror(global_config->in_fd);
 			goto out;
 		}
 	} else {
 		size_t size = sizeof(uint32_t) * entry.header.params_num;
 		uint8_t *n;
 
-		for (n = (uint8_t *)entry.params; size;
-		     n += ret, size -= ret) {
-			ret = read(config->serial_fd, n, size);
+		for (n = (uint8_t *)entry.params; size; n += ret, size -= ret) {
+			ret = read(global_config->serial_fd, n, size);
 			if (ret < 0) {
 				ret = -errno;
 				goto out;
 			}
 			if (ret != size)
-				log_err(config->out_fd,
-					"Partial read of %u bytes of %lu.\n",
-					ret, size);
+				log_err("Partial read of %u bytes of %lu.\n", ret, size);
 		}
 	}
 
 	/* printing entry content */
-	print_entry_params(config->out_fd,
-			   config->uids_dict,
-			   dma_log, &entry, *last_timestamp,
-			   config->clock, config->use_colors,
-			   config->raw_output, config->hide_location,
-			   config->time_precision);
+	print_entry_params(dma_log, &entry, *last_timestamp);
 	*last_timestamp = dma_log->timestamp;
 
 	/* set f_ldc file position to the beginning */
-	rewind(config->ldc_fd);
+	rewind(global_config->ldc_fd);
 
 	ret = 0;
 out:
@@ -507,18 +485,15 @@ out:
 	return ret;
 }
 
-static int serial_read(const struct convert_config *config,
-	struct snd_sof_logs_header *snd, uint64_t *last_timestamp)
+static int serial_read(uint64_t *last_timestamp)
 {
 	struct log_entry_header dma_log;
 	size_t len;
 	uint8_t *n;
 	int ret;
 
-	for (len = 0, n = (uint8_t *)&dma_log; len < sizeof(dma_log);
-		n += sizeof(uint32_t)) {
-
-		ret = read(config->serial_fd, n, sizeof(*n) * sizeof(uint32_t));
+	for (len = 0, n = (uint8_t *)&dma_log; len < sizeof(dma_log); n += sizeof(uint32_t)) {
+		ret = read(global_config->serial_fd, n, sizeof(*n) * sizeof(uint32_t));
 		if (ret < 0)
 			return -errno;
 
@@ -530,8 +505,9 @@ static int serial_read(const struct convert_config *config,
 	}
 
 	/* Skip all trace_point() values, although this test isn't 100% reliable */
-	while ((dma_log.log_entry_address < snd->base_address) ||
-	       dma_log.log_entry_address > snd->base_address + snd->data_length) {
+	while ((dma_log.log_entry_address < global_config->logs_header->base_address) ||
+	       dma_log.log_entry_address > global_config->logs_header->base_address +
+	       global_config->logs_header->data_length) {
 		/*
 		 * 8 characters and a '\n' come from the serial port, append a
 		 * '\0'
@@ -544,69 +520,67 @@ static int serial_read(const struct convert_config *config,
 
 		memcpy(s, c, sizeof(s) - 1);
 		s[sizeof(s) - 1] = '\0';
-		fprintf(config->out_fd, "Trace point %s", s);
+		fprintf(global_config->out_fd, "Trace point %s", s);
 
 		memmove(&dma_log, c + 9, sizeof(dma_log) - 9);
 
 		c = (uint8_t *)(&dma_log + 1) - 9;
 		for (len = 9; len; len -= ret, c += ret) {
-			ret = read(config->serial_fd, c, len);
+			ret = read(global_config->serial_fd, c, len);
 			if (ret < 0)
 				return ret;
 		}
 	}
 
 	/* fetching entry from elf dump */
-	return fetch_entry(config, snd->base_address, snd->data_offset,
-			   &dma_log, last_timestamp);
+	return fetch_entry(&dma_log, last_timestamp);
 }
 
-static int logger_read(const struct convert_config *config,
-	struct snd_sof_logs_header *snd)
+static int logger_read(void)
 {
 	struct log_entry_header dma_log;
 	int ret = 0;
 	uint64_t last_timestamp = 0;
 
-	if (!config->raw_output)
-		print_table_header(config->out_fd, config->hide_location,
-				   config->time_precision);
+	if (!global_config->raw_output)
+		print_table_header();
 
-	if (config->serial_fd >= 0)
+	if (global_config->serial_fd >= 0)
 		/* Wait for CTRL-C */
 		for (;;) {
-			ret = serial_read(config, snd, &last_timestamp);
+			ret = serial_read(&last_timestamp);
 			if (ret < 0)
 				return ret;
 		}
 
-	while (!ferror(config->in_fd)) {
+	while (!ferror(global_config->in_fd)) {
 		/* getting entry parameters from dma dump */
-		ret = fread(&dma_log, sizeof(dma_log), 1, config->in_fd);
+		ret = fread(&dma_log, sizeof(dma_log), 1, global_config->in_fd);
 		if (!ret) {
-			if (config->trace && !ferror(config->in_fd)) {
-				freopen(NULL, "r", config->in_fd);
+			if (global_config->trace && !ferror(global_config->in_fd)) {
+				freopen(NULL, "r", global_config->in_fd);
 				continue;
 			}
 
-			return -ferror(config->in_fd);
+			return -ferror(global_config->in_fd);
 		}
 
 		/* checking if received trace address is located in
 		 * entry section in elf file.
 		 */
-		if ((dma_log.log_entry_address < snd->base_address) ||
-			dma_log.log_entry_address > snd->base_address + snd->data_length) {
+		if (dma_log.log_entry_address < global_config->logs_header->base_address ||
+		    dma_log.log_entry_address > global_config->logs_header->base_address +
+		    global_config->logs_header->data_length) {
 			/* in case the address is not correct input fd should be
 			 * move forward by one DWORD, not entire struct dma_log
 			 */
-			fseek(config->in_fd, -(sizeof(dma_log) - sizeof(uint32_t)), SEEK_CUR);
+			fseek(global_config->in_fd, -(sizeof(dma_log) - sizeof(uint32_t)),
+			      SEEK_CUR);
 			continue;
 		}
 
 		/* fetching entry from elf dump */
-		ret = fetch_entry(config, snd->base_address, snd->data_offset,
-				  &dma_log, &last_timestamp);
+		ret = fetch_entry(&dma_log, &last_timestamp);
 		if (ret)
 			break;
 	}
@@ -615,40 +589,36 @@ static int logger_read(const struct convert_config *config,
 }
 
 /* fw verification */
-static int verify_fw_ver(const struct convert_config *config,
-			 const struct snd_sof_logs_header *snd)
+static int verify_fw_ver(void)
 {
 	struct sof_ipc_fw_version ver;
 	int count;
 
-	if (!config->version_fd)
+	if (!global_config->version_fd)
 		return 0;
 
 	/* here fw verification should be exploited */
-	count = fread(&ver, sizeof(ver), 1, config->version_fd);
+	count = fread(&ver, sizeof(ver), 1, global_config->version_fd);
 	if (!count) {
-		log_err(config->out_fd, "Error while reading %s.\n",
-			config->version_file);
-		return -ferror(config->version_fd);
+		log_err("Error while reading %s.\n", global_config->version_file);
+		return -ferror(global_config->version_fd);
 	}
 
 	/* compare source hash value from version file and ldc file */
-	if (ver.src_hash != snd->version.src_hash) {
-		log_err(config->out_fd,
-			"src hash value from version file (0x%x) differ from src hash version saved in dictionary (0x%x).\n",
-			ver.src_hash, snd->version.src_hash);
+	if (ver.src_hash != global_config->logs_header->version.src_hash) {
+		log_err("src hash value from version file (0x%x) differ from src hash version saved in dictionary (0x%x).\n",
+			ver.src_hash, global_config->logs_header->version.src_hash);
 		return -EINVAL;
 	}
 	return 0;
 }
 
-static int dump_ldc_info(struct convert_config *config,
-			 const struct snd_sof_logs_header *snd)
+static int dump_ldc_info(void)
 {
-	struct snd_sof_uids_header *uids_dict = config->uids_dict;
+	struct snd_sof_uids_header *uids_dict = global_config->uids_dict;
 	ssize_t remaining = uids_dict->data_length;
 	const struct sof_uuid_entry *uid_ptr;
-	FILE *out_fd = config->out_fd;
+	FILE *out_fd = global_config->out_fd;
 	uintptr_t uid_addr;
 	int cnt = 0;
 	char *name;
@@ -658,9 +628,9 @@ static int dump_ldc_info(struct convert_config *config,
 		SOF_ABI_VERSION_MINOR(SOF_ABI_DBG_VERSION),
 		SOF_ABI_VERSION_PATCH(SOF_ABI_DBG_VERSION));
 	fprintf(out_fd, "ldc_file ABI Version is\t%d:%d:%d\n",
-		SOF_ABI_VERSION_MAJOR(snd->version.abi_version),
-		SOF_ABI_VERSION_MINOR(snd->version.abi_version),
-		SOF_ABI_VERSION_PATCH(snd->version.abi_version));
+		SOF_ABI_VERSION_MAJOR(global_config->logs_header->version.abi_version),
+		SOF_ABI_VERSION_MINOR(global_config->logs_header->version.abi_version),
+		SOF_ABI_VERSION_PATCH(global_config->logs_header->version.abi_version));
 	fprintf(out_fd, "\n");
 	fprintf(out_fd, "Components uuid dictionary size:\t%ld bytes\n",
 		remaining);
@@ -674,7 +644,7 @@ static int dump_ldc_info(struct convert_config *config,
 
 	while (remaining > 0) {
 		name = format_uid_raw(&uid_ptr[cnt], 0, 0);
-		uid_addr = get_uuid_key(uids_dict, &uid_ptr[cnt]);
+		uid_addr = get_uuid_key(&uid_ptr[cnt]);
 		fprintf(out_fd, "\t0x%lX  %s\n", uid_addr, name);
 
 		if (name) {
@@ -697,34 +667,34 @@ int convert(struct convert_config *config)
 	struct snd_sof_uids_header uids_hdr;
 	int count, ret = 0;
 
+	config->logs_header = &snd;
+	global_config = config;
+
 	count = fread(&snd, sizeof(snd), 1, config->ldc_fd);
 	if (!count) {
-		log_err(config->out_fd, "Error while reading %s.\n",
-			config->ldc_file);
+		log_err("Error while reading %s.\n", config->ldc_file);
 		return -ferror(config->ldc_fd);
 	}
 
 	if (strncmp((char *) snd.sig, SND_SOF_LOGS_SIG, SND_SOF_LOGS_SIG_SIZE)) {
-		log_err(config->out_fd,
-			"Invalid ldc file signature.\n");
+		log_err("Invalid ldc file signature.\n");
 		return -EINVAL;
 	}
 
-	ret = verify_fw_ver(config, &snd);
+	ret = verify_fw_ver();
 	if (ret)
 		return ret;
 
 	/* default logger and ldc_file abi verification */
 	if (SOF_ABI_VERSION_INCOMPATIBLE(SOF_ABI_DBG_VERSION,
 					 snd.version.abi_version)) {
-		log_err(config->out_fd,
-			"abi version in %s file does not coincide with abi version used by logger.\n",
+		log_err("abi version in %s file does not coincide with abi version used by logger.\n",
 			config->ldc_file);
-		log_err(config->out_fd, "logger ABI Version is %d:%d:%d\n",
+		log_err("logger ABI Version is %d:%d:%d\n",
 			SOF_ABI_VERSION_MAJOR(SOF_ABI_DBG_VERSION),
 			SOF_ABI_VERSION_MINOR(SOF_ABI_DBG_VERSION),
 			SOF_ABI_VERSION_PATCH(SOF_ABI_DBG_VERSION));
-		log_err(config->out_fd, "ldc_file ABI Version is %d:%d:%d\n",
+		log_err("ldc_file ABI Version is %d:%d:%d\n",
 			SOF_ABI_VERSION_MAJOR(snd.version.abi_version),
 			SOF_ABI_VERSION_MINOR(snd.version.abi_version),
 			SOF_ABI_VERSION_PATCH(snd.version.abi_version));
@@ -735,44 +705,37 @@ int convert(struct convert_config *config)
 	fseek(config->ldc_fd, snd.data_offset + snd.data_length, SEEK_SET);
 	count = fread(&uids_hdr, sizeof(uids_hdr), 1, config->ldc_fd);
 	if (!count) {
-		log_err(config->out_fd,
-			"Error while reading uuids header from %s.\n",
-			config->ldc_file);
+		log_err("Error while reading uuids header from %s.\n", config->ldc_file);
 		return -ferror(config->ldc_fd);
 	}
 	if (strncmp((char *)uids_hdr.sig, SND_SOF_UIDS_SIG,
 		    SND_SOF_UIDS_SIG_SIZE)) {
-		log_err(config->out_fd,
-			"invalid uuid section signature.\n");
+		log_err("invalid uuid section signature.\n");
 		return -EINVAL;
 	}
 	config->uids_dict = calloc(1, sizeof(uids_hdr) + uids_hdr.data_length);
 	if (!config->uids_dict) {
-		log_err(config->out_fd,
-			"failed to alloc memory for uuids.\n");
+		log_err("failed to alloc memory for uuids.\n");
 		return -ENOMEM;
 	}
 	memcpy(config->uids_dict, &uids_hdr, sizeof(uids_hdr));
 	count = fread(config->uids_dict + 1, uids_hdr.data_length, 1,
 		      config->ldc_fd);
 	if (!count) {
-		log_err(config->out_fd,
-			"failed to read uuid section data.\n");
+		log_err("failed to read uuid section data.\n");
 		return -ferror(config->ldc_fd);
 	}
 
 	if (config->dump_ldc)
-		return dump_ldc_info(config, &snd);
+		return dump_ldc_info();
 
 	if (config->filter_config) {
-		ret = filter_update_firmware(config->uids_dict,
-					     config->filter_config);
+		ret = filter_update_firmware();
 		if (ret) {
-			log_err(config->out_fd,
-				"failed to apply trace filter, %d.\n", ret);
+			log_err("failed to apply trace filter, %d.\n", ret);
 			return ret;
 		}
 	}
 
-	return logger_read(config, &snd);
+	return logger_read();
 }

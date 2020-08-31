@@ -10,7 +10,6 @@
 
 #define FILTER_KERNEL_PATH "/sys/kernel/debug/sof/filter"
 
-int filter_update_firmware(const struct snd_sof_uids_header *uids_dict,
-			   char *input_str);
+int filter_update_firmware(void);
 
 #endif /* __LOGGER_FILTER_H__ */
