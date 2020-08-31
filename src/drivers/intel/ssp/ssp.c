@@ -199,26 +199,26 @@ static int ssp_set_config(struct dai *dai,
 	/* ssrsa dynamic setting is RTSA, default 2 slots */
 	ssrsa = SSRSA_SSRSA(config->ssp.rx_slots);
 
-	switch (config->format & SOF_DAI_FMT_MASTER_MASK) {
-	case SOF_DAI_FMT_CBM_CFM:
+	switch (config->format & SOF_DAI_FMT_CLOCK_PROVIDER_MASK) {
+	case SOF_DAI_FMT_CBP_CFP:
 		sscr1 |= SSCR1_SCLKDIR | SSCR1_SFRMDIR;
 		break;
-	case SOF_DAI_FMT_CBS_CFS:
+	case SOF_DAI_FMT_CBC_CFC:
 		sscr1 |= SSCR1_SCFR;
 		cfs = true;
 		break;
-	case SOF_DAI_FMT_CBM_CFS:
+	case SOF_DAI_FMT_CBP_CFC:
 		sscr1 |= SSCR1_SCLKDIR;
 		/* FIXME: this mode has not been tested */
 
 		cfs = true;
 		break;
-	case SOF_DAI_FMT_CBS_CFM:
+	case SOF_DAI_FMT_CBC_CFP:
 		sscr1 |= SSCR1_SCFR | SSCR1_SFRMDIR;
 		/* FIXME: this mode has not been tested */
 		break;
 	default:
-		dai_err(dai, "ssp_set_config(): format & MASTER_MASK EINVAL");
+		dai_err(dai, "ssp_set_config(): format & PROVIDER_MASK EINVAL");
 		ret = -EINVAL;
 		goto out;
 	}
@@ -283,13 +283,13 @@ static int ssp_set_config(struct dai *dai,
 	sscr2 |= (ssp->params.quirks & SOF_DAI_INTEL_SSP_QUIRK_MMRATF) ?
 		SSCR2_MMRATF : 0;
 
-	/* Enable/disable the fix for PSP slave mode TXD wait for frame
+	/* Enable/disable the fix for PSP consumer mode TXD wait for frame
 	 * de-assertion before starting the second channel
 	 */
 	sscr2 |= (ssp->params.quirks & SOF_DAI_INTEL_SSP_QUIRK_PSPSTWFDFD) ?
 		SSCR2_PSPSTWFDFD : 0;
 
-	/* Enable/disable the fix for PSP master mode FSRT with dummy stop &
+	/* Enable/disable the fix for PSP provider mode FSRT with dummy stop &
 	 * frame end padding capability
 	 */
 	sscr2 |= (ssp->params.quirks & SOF_DAI_INTEL_SSP_QUIRK_PSPSRWFDFD) ?

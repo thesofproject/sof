@@ -166,24 +166,24 @@ static int ssp_set_config(struct dai *dai,
 	ssp->config = *config;
 	ssp->params = config->ssp;
 
-	/* clock masters */
+	/* clock providers */
 	/*
-	 * On TNG/BYT/CHT, the SSP wrapper generates the fs even in master mode,
-	 * the master/slave choice depends on the clock type
+	 * On TNG/BYT/CHT, the SSP wrapper generates the fs even in provider mode,
+	 * the provider/consumer choice depends on the clock type
 	 */
 	sscr1 |= SSCR1_SFRMDIR;
 
-	switch (config->format & SOF_DAI_FMT_MASTER_MASK) {
-	case SOF_DAI_FMT_CBM_CFM:
+	switch (config->format & SOF_DAI_FMT_CLOCK_PROVIDER_MASK) {
+	case SOF_DAI_FMT_CBP_CFP:
 		sscr0 |= SSCR0_ECS; /* external clock used */
 		sscr1 |= SSCR1_SCLKDIR;
 		/*
 		 * FIXME: does SSRC1.SCFR need to be set
-		 * when codec is master ?
+		 * when codec is provider ?
 		 */
 		sscr2 |= SSCR2_SLV_EXT_CLK_RUN_EN;
 		break;
-	case SOF_DAI_FMT_CBS_CFS:
+	case SOF_DAI_FMT_CBC_CFC:
 #ifdef ENABLE_SSRCR1_SCFR /* FIXME: is this needed ? */
 		sscr1 |= SSCR1_SCFR;
 #endif
@@ -191,19 +191,19 @@ static int ssp_set_config(struct dai *dai,
 		cfs = true;
 		cbs = true;
 		break;
-	case SOF_DAI_FMT_CBM_CFS:
+	case SOF_DAI_FMT_CBP_CFC:
 		sscr0 |= SSCR0_ECS; /* external clock used */
 		sscr1 |= SSCR1_SCLKDIR;
 		/*
 		 * FIXME: does SSRC1.SCFR need to be set
-		 * when codec is master ?
+		 * when codec is provider ?
 		 */
 		sscr2 |= SSCR2_SLV_EXT_CLK_RUN_EN;
 		sscr3 |= SSCR3_FRM_MST_EN;
 		cfs = true;
 		/* FIXME: this mode has not been tested */
 		break;
-	case SOF_DAI_FMT_CBS_CFM:
+	case SOF_DAI_FMT_CBC_CFP:
 #ifdef ENABLE_SSRCR1_SCFR /* FIXME: is this needed ? */
 		sscr1 |= SSCR1_SCFR;
 #endif
@@ -211,7 +211,7 @@ static int ssp_set_config(struct dai *dai,
 		cbs = true;
 		break;
 	default:
-		dai_err(dai, "ssp_set_config(): format & MASTER_MASK EINVAL");
+		dai_err(dai, "ssp_set_config(): format & PROVIDER_MASK EINVAL");
 		ret = -EINVAL;
 		goto out;
 	}
@@ -337,7 +337,7 @@ static int ssp_set_config(struct dai *dai,
 		if (cbs) {
 			/*
 			 * keep RX functioning on a TX underflow
-			 * (I2S/LEFT_J master only)
+			 * (I2S/LEFT_J provider only)
 			 */
 			sscr3 |= SSCR3_MST_CLK_EN;
 
@@ -367,7 +367,7 @@ static int ssp_set_config(struct dai *dai,
 		if (cbs) {
 			/*
 			 * keep RX functioning on a TX underflow
-			 * (I2S/LEFT_J master only)
+			 * (I2S/LEFT_J provider only)
 			 */
 			sscr3 |= SSCR3_MST_CLK_EN;
 
@@ -391,7 +391,7 @@ static int ssp_set_config(struct dai *dai,
 		/* handle frame polarity, DSP_A default is rising/active high */
 		sspsp |= SSPSP_SFRMP(!inverted_frame);
 		if (cfs) {
-			/* set sscr frame polarity in DSP/master mode only */
+			/* set sscr frame polarity in DSP/provider mode only */
 			sscr5 |= SSCR5_FRM_POLARITY(inverted_frame);
 		}
 
@@ -419,7 +419,7 @@ static int ssp_set_config(struct dai *dai,
 		/* handle frame polarity, DSP_A default is rising/active high */
 		sspsp |= SSPSP_SFRMP(!inverted_frame);
 		if (cfs) {
-			/* set sscr frame polarity in DSP/master mode only */
+			/* set sscr frame polarity in DSP/provider mode only */
 			sscr5 |= SSCR5_FRM_POLARITY(inverted_frame);
 		}
 
