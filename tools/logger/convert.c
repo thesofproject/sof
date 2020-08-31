@@ -5,6 +5,8 @@
 // Author: Bartosz Kokoszko	<bartoszx.kokoszko@linux.intel.com>
 //	   Artur Kloniecki	<arturx.kloniecki@linux.intel.com>
 
+#include <endian.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
@@ -53,19 +55,26 @@ struct proc_ldc_entry {
 
 static const char *BAD_PTR_STR = "<bad uid ptr %x>";
 
+#define UUID_LOWER "%s%s%s<%08x-%04x-%04x-%02x%02x-%02x%02x%02x%02x%02x%02x>%s%s%s"
+#define UUID_UPPER "%s%s%s<%08X-%04X-%04X-%02X%02X-%02X%02X%02X%02X%02X%02X>%s%s%s"
+
 /* pointer to config for global context */
 struct convert_config *global_config;
 
-char *format_uid_raw(const struct sof_uuid_entry *uid_entry, int use_colors, int name_first)
+char *format_uid_raw(const struct sof_uuid_entry *uid_entry, int use_colors, int name_first,
+		     bool be, bool upper)
 {
 	const struct sof_uuid *uid_val = &uid_entry->id;
+	uint32_t a = be ? htobe32(uid_val->a) : uid_val->a;
+	uint16_t b = be ? htobe16(uid_val->b) : uid_val->b;
+	uint16_t c = be ? htobe16(uid_val->c) : uid_val->c;
 	char *str;
 
-	str = asprintf("%s%s%s<%08x-%04x-%04x-%02x%02x-%02x%02x%02x%02x%02x%02x>%s%s%s",
+	str = asprintf(upper ? UUID_UPPER : UUID_LOWER,
 		use_colors ? KBLU : "",
 		name_first ? uid_entry->name : "",
 		name_first ? " " : "",
-		uid_val->a, uid_val->b, uid_val->c,
+		a, b, c,
 		uid_val->d[0], uid_val->d[1], uid_val->d[2],
 		uid_val->d[3], uid_val->d[4], uid_val->d[5],
 		uid_val->d[6], uid_val->d[7],
@@ -104,7 +113,7 @@ uint32_t get_uuid_key(const struct sof_uuid_entry *entry)
 		uids_dict->data_offset + uids_dict->base_address;
 }
 
-const char *format_uid(uint32_t uid_ptr, int use_colors)
+static const char *format_uid(uint32_t uid_ptr, int use_colors, bool be, bool upper)
 {
 	const struct snd_sof_uids_header *uids_dict = global_config->uids_dict;
 	const struct sof_uuid_entry *uid_entry;
@@ -116,9 +125,9 @@ const char *format_uid(uint32_t uid_ptr, int use_colors)
 		sprintf(str, BAD_PTR_STR, uid_ptr);
 	} else {
 		uid_entry = get_uuid_entry(uid_ptr);
-		str = format_uid_raw(uid_entry, use_colors, 1);
-
+		str = format_uid_raw(uid_entry, use_colors, 1, be, upper);
 	}
+
 	return str;
 }
 
@@ -126,9 +135,9 @@ static void process_params(struct proc_ldc_entry *pe,
 			   const struct ldc_entry *e,
 			   int use_colors)
 {
-	const char *p = e->text;
+	char *p = e->text;
 	const char *t_end = p + strlen(e->text);
-	unsigned int par_bit = 1;
+	unsigned int par_bit = 1, be = 0, upper = 0;
 	int i;
 
 	pe->subst_mask = 0;
@@ -136,18 +145,59 @@ static void process_params(struct proc_ldc_entry *pe,
 	pe->file_name = e->file_name;
 	pe->text = e->text;
 
-	/* scan the text for possible replacements */
+	/*
+	 * Scan the text for possible replacements. We follow the Linux kernel
+	 * that uses %pUx formats for UUID / GUID printing, where 'x' is
+	 * optional and can be one of 'b', 'B', 'l' (default), and 'L'.
+	 */
 	while ((p = strchr(p, '%'))) {
-		if (p < t_end - 1 && *(p + 1) == 's')
+		if (p < t_end - 2 && *(p + 1) == 'p' && *(p + 2) == 'U') {
+			unsigned int skip;
+			char *s = p + 2;
+
 			pe->subst_mask += par_bit;
-		par_bit <<= 1;
-		++p;
+			p[1] = 's';
+			switch (p[2]) {
+			case 'b':
+				be |= par_bit;
+				skip = 2;
+				break;
+			case 'B':
+				be |= par_bit;
+				upper |= par_bit;
+				skip = 2;
+				break;
+			case 'l':
+				skip = 2;
+				break;
+			case 'L':
+				upper |= par_bit;
+				skip = 2;
+				break;
+			default:
+				skip = 1;
+				break;
+			}
+			p += skip;
+			t_end -= skip;
+			memmove(s, p + 2, strlen(p + 2) + 1);
+		}
+
+		/* Skip "%%" */
+		if (p[1] == '%') {
+			p += 2;
+		} else {
+			++p;
+			par_bit <<= 1;
+		}
 	}
 
 	for (i = 0; i < e->header.params_num; i++) {
 		pe->params[i] = e->params[i];
 		if (pe->subst_mask & (1 << i))
-			pe->params[i] = (uintptr_t)format_uid(e->params[i], use_colors);
+			pe->params[i] = (uintptr_t)format_uid(e->params[i], use_colors,
+							      (be >> i) & 1,
+							      (upper >> i) & 1);
 	}
 }
 
@@ -643,7 +693,7 @@ static int dump_ldc_info(void)
 		  ((uintptr_t)uids_dict + uids_dict->data_offset);
 
 	while (remaining > 0) {
-		name = format_uid_raw(&uid_ptr[cnt], 0, 0);
+		name = format_uid_raw(&uid_ptr[cnt], 0, 0, false, false);
 		uid_addr = get_uuid_key(&uid_ptr[cnt]);
 		fprintf(out_fd, "\t0x%lX  %s\n", uid_addr, name);
 
