@@ -42,8 +42,8 @@ struct convert_config {
 	int hide_location;
 	int time_precision;
 	struct snd_sof_uids_header *uids_dict;
+	struct snd_sof_logs_header *logs_header;
 };
 
-uint32_t get_uuid_key(const struct snd_sof_uids_header *uids_dict,
-		      const struct sof_uuid_entry *entry);
+uint32_t get_uuid_key(const struct sof_uuid_entry *entry);
 int convert(struct convert_config *config);

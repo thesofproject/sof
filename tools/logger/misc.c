@@ -5,6 +5,7 @@
  * Author: Karol Trzcinski	<karolx.trzcinski@linux.intel.com>
  */
 
+#include "convert.h"
 #include <ctype.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -40,8 +41,11 @@ char *asprintf(const char *format, ...)
 	return result;
 }
 
-void log_err(FILE *out_fd, const char *fmt, ...)
+extern struct convert_config *global_config;
+
+void log_err(const char *fmt, ...)
 {
+	FILE *out_fd = global_config->out_fd;
 	static const char prefix[] = "error: ";
 	ssize_t needed_size;
 	va_list args, args_alloc;
