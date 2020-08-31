@@ -162,21 +162,21 @@ static inline int esai_set_config(struct dai *dai,
 		return -EINVAL;
 	}
 
-	switch (config->format & SOF_DAI_FMT_MASTER_MASK) {
-	case SOF_DAI_FMT_CBM_CFM:
+	switch (config->format & SOF_DAI_FMT_CLOCK_PROVIDER_MASK) {
+	case SOF_DAI_FMT_CBP_CFP:
 		/* Nothing to do in the registers */
 		break;
-	case SOF_DAI_FMT_CBM_CFS:
+	case SOF_DAI_FMT_CBP_CFC:
 		xccr |= ESAI_xCCR_xFSD;
 		break;
-	case SOF_DAI_FMT_CBS_CFM:
+	case SOF_DAI_FMT_CBC_CFP:
 		xccr |= ESAI_xCCR_xCKD;
 		break;
-	case SOF_DAI_FMT_CBS_CFS:
+	case SOF_DAI_FMT_CBC_CFC:
 		xccr |= ESAI_xCCR_xFSD | ESAI_xCCR_xCKD;
 		break;
 	default:
-		dai_err(dai, "ESAI: Invalid clock master-slave configuration");
+		dai_err(dai, "ESAI: Invalid clock provider-consumer configuration");
 		return -EINVAL;
 	}
 
@@ -204,8 +204,8 @@ static inline int esai_set_config(struct dai *dai,
 
 	dai_update_bits(dai, REG_ESAI_TCCR, mask, xccr);
 	/* There is a hardware limitation which prevents tx and rx to be
-	 * simultaneously master or simultaneously slave. As a workaround,
-	 * we will leave tx as master and set rx as slave.
+	 * simultaneously provider or simultaneously consumer. As a workaround,
+	 * we will leave tx as provider and set rx as consumer.
 	 */
 	xccr &= ~(ESAI_xCCR_xCKD | ESAI_xCCR_xFSD);
 	dai_update_bits(dai, REG_ESAI_RCCR, mask, xccr);
