@@ -72,7 +72,7 @@ static const struct comp_driver *get_drv(struct sof_ipc_comp *comp)
 		if (!memcmp(info->drv->uid, comp_ext->uuid,
 			    UUID_SIZE)) {
 			tr_dbg(&comp_tr,
-			       "get_drv_from_uuid(), found driver type %d, uuid %s",
+			       "get_drv_from_uuid(), found driver type %d, uuid %pU",
 			       info->drv->type,
 			       info->drv->tctx->uuid_p);
 			drv = info->drv;
@@ -126,7 +126,7 @@ struct comp_dev *comp_new(struct sof_ipc_comp *comp)
 		return NULL;
 	}
 
-	tr_info(&comp_tr, "comp new %s type %d id %d.%d",
+	tr_info(&comp_tr, "comp new %pU type %d id %d.%d",
 		drv->tctx->uuid_p, comp->type, comp->pipeline_id, comp->id);
 
 	/* create the new component */
