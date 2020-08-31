@@ -8,6 +8,7 @@
 #ifndef __SOF_DRIVERS_ESAI_H__
 #define __SOF_DRIVERS_ESAI_H__
 
+#include <platform/drivers/esai.h>
 #include <sof/bit.h>
 #include <sof/lib/dai.h>
 #include <sof/trace/trace.h>
@@ -185,11 +186,6 @@
 #define ESAI_PCRC_PC(v)		SET_BITS(11, 0, v)
 
 #define ESAI_GPIO		MASK(11, 0)
-
-#define EDMA_ESAI_IRQ		442
-
-#define EDMA_ESAI_TX_CHAN	7
-#define EDMA_ESAI_RX_CHAN	6
 
 extern const struct dai_driver esai_driver;
 #endif /* __SOF_DRIVERS_ESAI_H__ */

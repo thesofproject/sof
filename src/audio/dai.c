@@ -869,7 +869,9 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 	struct dai_data *dd = comp_get_drvdata(dev);
 	struct sof_ipc_comp_dai *dai = COMP_GET_IPC(dev, sof_ipc_comp_dai);
 	int channel = 0;
+#if IS_ENABLED(IMX)
 	int handshake;
+#endif
 	int ret = 0;
 
 	comp_info(dev, "dai_config() dai type = %d index = %d",
