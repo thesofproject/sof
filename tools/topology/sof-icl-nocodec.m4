@@ -14,8 +14,8 @@ include(`common/tlv.m4')
 # Include Token library
 include(`sof/tokens.m4')
 
-# Include Icelake DSP configuration
-include(`platform/intel/icl.m4')
+# Include DSP configuration
+include(`platform/intel/'PLATFORM`.m4')
 
 #
 # Define the pipelines
