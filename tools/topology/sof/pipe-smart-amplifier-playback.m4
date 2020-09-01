@@ -28,6 +28,9 @@ ifdef(`SMART_TX_CHANNELS',`',`errprint(note: Need to define DAI TX channel numbe
 ifdef(`SMART_FB_CHANNELS',`',`errprint(note: Need to define feedback channel number for sof-smart-amplifier
 )')
 
+DECLARE_SOF_RT_UUID("smart_amp-test", smart_amp_comp_uuid, 0x167a961e, 0x8ae4,
+		 0x11ea, 0x89, 0xf1, 0x00, 0x0c, 0x29, 0xce, 0x16, 0x35)
+ifdef(`SMART_UUID',`', `define(`SMART_UUID', smart_amp_comp_uuid)');
 #
 # Controls
 #
@@ -88,7 +91,7 @@ C_CONTROLBYTES_VOLATILE_READONLY(Smart_amp Model_Get_params, PIPELINE_ID,
 W_PCM_PLAYBACK(PCM_ID, Smart Amplifier Playback, 2, 0)
 
 # Mux 0 has 2 sink and source periods.
-W_SMART_AMP(0, PIPELINE_FORMAT, 2, 2, LIST(`             ', "Smart_amp Config", "Smart_amp Model",
+W_SMART_AMP(0, SMART_UUID, PIPELINE_FORMAT, 2, 2, LIST(`             ', "Smart_amp Config", "Smart_amp Model",
 	    ifelse(SOF_ABI_VERSION_3_17_OR_GRT, `1', "Smart_amp Model_Get_params")))
 
 # Low Latency Buffers
