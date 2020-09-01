@@ -12,9 +12,9 @@
 
 static const struct comp_driver comp_smart_amp;
 
-/* 167a961e-8ae4-11ea-89f1-000c29ce1635 */
-DECLARE_SOF_RT_UUID("Maxim DSM", maxim_dsm_comp_uuid, 0x167a961e, 0x8ae4,
-		    0x11ea, 0x89, 0xf1, 0x00, 0x0c, 0x29, 0xce, 0x16, 0x35);
+/* 0cd84e80-ebd3-11ea-adc1-0242ac120002 */
+DECLARE_SOF_RT_UUID("Maxim DSM", maxim_dsm_comp_uuid, 0x0cd84e80, 0xebd3,
+		    0x11ea, 0xad, 0xc1, 0x02, 0x42, 0xac, 0x12, 0x00, 0x02);
 
 DECLARE_TR_CTX(maxim_dsm_comp_tr, SOF_UUID(maxim_dsm_comp_uuid),
 	       LOG_LEVEL_INFO);
