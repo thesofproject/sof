@@ -1069,3 +1069,46 @@ void init_heap(struct sof *sof)
 
 	platform_shared_commit(memmap, sizeof(*memmap));
 }
+
+int heap_info(enum mem_zone zone, int index, struct mm_info *out)
+{
+	struct mm *memmap = memmap_get();
+	struct mm_heap *heap;
+
+	if (!out)
+		goto error;
+
+	switch (zone) {
+	case SOF_MEM_ZONE_SYS:
+		if (index >= PLATFORM_HEAP_SYSTEM)
+			goto error;
+		heap = memmap->system + index;
+		break;
+	case SOF_MEM_ZONE_SYS_RUNTIME:
+		if (index >= PLATFORM_HEAP_SYSTEM_RUNTIME)
+			goto error;
+		heap = memmap->system_runtime + index;
+		break;
+	case SOF_MEM_ZONE_RUNTIME:
+		if (index >= PLATFORM_HEAP_RUNTIME)
+			goto error;
+		heap = memmap->runtime + index;
+		break;
+	case SOF_MEM_ZONE_BUFFER:
+		if (index >= PLATFORM_HEAP_BUFFER)
+			goto error;
+		heap = memmap->buffer + index;
+		break;
+	default:
+		goto error;
+	}
+
+	spin_lock(&memmap->lock);
+	*out = heap->info;
+	spin_unlock(&memmap->lock);
+	return 0;
+error:
+	tr_err(&mem_tr, "heap_info(): failed for zone 0x%x index %d out ptr 0x%x", zone, index,
+	       (uint32_t)out);
+	return -EINVAL;
+}

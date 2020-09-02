@@ -86,6 +86,14 @@ void free_heap(enum mem_zone zone);
 void heap_trace_all(int force);
 void heap_trace(struct mm_heap *heap, int size);
 
+/** Fetch runtime information about heap, like used and free memory space
+ * @param zone to check, see enum mem_zone.
+ * @param index heap index, eg. cpu core index for any *SYS* zone
+ * @param out output variable
+ * @return error code or zero
+ */
+int heap_info(enum mem_zone zone, int index, struct mm_info *out);
+
 /* retrieve memory map pointer */
 static inline struct mm *memmap_get(void)
 {
