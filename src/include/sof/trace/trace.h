@@ -170,6 +170,34 @@ void trace_log(bool send_atomic, const void *log_entry,
 unsupported_amount_of_params_in_trace_event\
 _thrown_from_macro_BASE_LOG_in_trace_h
 
+#define trace_check_size_uint32_0() do { } while (0)
+
+#define trace_check_size_uint32_1(a) do {				\
+	STATIC_ASSERT(sizeof(a) <= sizeof(uint32_t),			\
+	trace_parameter_too_large);					\
+} while (0)
+
+#define trace_check_size_uint32_2(a, b) do {				\
+	  trace_check_size_uint32_1(a);					\
+	  trace_check_size_uint32_1(b);					\
+} while (0)
+
+#define trace_check_size_uint32_3(a, b, c) do {				\
+	  trace_check_size_uint32_1(a);					\
+	  trace_check_size_uint32_1(b);					\
+	  trace_check_size_uint32_1(c);					\
+} while (0)
+
+#define trace_check_size_uint32_4(a, b, c, d) do {			\
+	  trace_check_size_uint32_1(a);					\
+	  trace_check_size_uint32_1(b);					\
+	  trace_check_size_uint32_1(c);					\
+	  trace_check_size_uint32_1(d);					\
+} while (0)
+
+#define trace_check_args(...) META_CONCAT(trace_check_size_uint32_,	\
+	META_COUNT_VARAGS_BEFORE_COMPILE(__VA_ARGS__))(__VA_ARGS__)
+
 #define _log_message(atomic, lvl, comp_class, ctx, id_1, id_2,		\
 		     format, ...)					\
 do {									\
@@ -180,6 +208,7 @@ do {									\
 			META_COUNT_VARAGS_BEFORE_COMPILE(__VA_ARGS__),	\
 		BASE_LOG_ASSERT_FAIL_MSG				\
 	);								\
+	trace_check_args(__VA_ARGS__);					\
 	trace_log(atomic, &log_entry, ctx, lvl, id_1, id_2,		\
 		  PP_NARG(__VA_ARGS__), ##__VA_ARGS__);			\
 } while (0)
