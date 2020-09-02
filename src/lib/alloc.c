@@ -64,10 +64,10 @@ static void validate_memory(void *ptr, size_t size)
 
 	if (not_matching) {
 		tr_info(&mem_tr, "validate_memory() pointer: %p freed pattern not detected",
-			(uintptr_t)ptr);
+			ptr);
 	} else {
 		tr_err(&mem_tr, "validate_memory() freeing pointer: %p double free detected",
-		       (uintptr_t)ptr);
+		       ptr);
 	}
 }
 #endif
@@ -449,7 +449,7 @@ static void free_block(void *ptr)
 	heap = get_heap_from_ptr(ptr);
 	if (!heap) {
 		tr_err(&mem_tr, "free_block(): invalid heap = %p, cpu = %d",
-		       (uintptr_t)ptr, cpu_get_id());
+		       ptr, cpu_get_id());
 		return;
 	}
 
@@ -470,7 +470,7 @@ static void free_block(void *ptr)
 
 		/* not found */
 		tr_err(&mem_tr, "free_block(): invalid ptr = %p cpu = %d",
-		       (uintptr_t)ptr, cpu_get_id());
+		       ptr, cpu_get_id());
 		return;
 	}
 
@@ -890,7 +890,7 @@ static void _rfree_unlocked(void *ptr)
 	if (ptr >= (void *)cpu_heap->heap &&
 	    (char *)ptr < (char *)cpu_heap->heap + cpu_heap->size) {
 		tr_err(&mem_tr, "rfree(): attempt to free system heap = %p, cpu = %d",
-		       (uintptr_t)ptr, cpu_get_id());
+		       ptr, cpu_get_id());
 		panic(SOF_IPC_PANIC_MEM);
 	}
 

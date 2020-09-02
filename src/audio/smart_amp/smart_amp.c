@@ -163,7 +163,7 @@ static inline int smart_amp_alloc_memory(struct smart_amp_data *sad,
 	mem_sz += size;
 
 	comp_dbg(dev, "[DSM] module:%p (%d bytes used)",
-		 (uintptr_t)hspk, mem_sz);
+		 hspk, mem_sz);
 
 	return 0;
 err:
