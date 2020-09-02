@@ -155,6 +155,13 @@ static inline int smart_amp_alloc_memory(struct smart_amp_data *sad,
 		goto err;
 	mem_sz += size;
 
+	/* memory allocation of DSM handle */
+	size = smart_amp_get_memory_size(hspk, dev);
+	hspk->dsmhandle = rballoc(0, SOF_MEM_CAPS_RAM, size);
+	if (!hspk->dsmhandle)
+		goto err;
+	mem_sz += size;
+
 	comp_dbg(dev, "[DSM] module:%p (%d bytes used)",
 		 (uintptr_t)hspk, mem_sz);
 
@@ -612,6 +619,14 @@ static int smart_amp_prepare(struct comp_dev *dev)
 	sad->out_channels = sad->sink_buf->stream.channels;
 
 	sad->feedback_buf->stream.channels = sad->config.feedback_channels;
+
+	if (smart_amp_check_audio_fmt(sad->source_buf->stream.rate,
+				      sad->source_buf->stream.channels)) {
+		comp_err(dev, "[DSM] Format not supported, sample rate: %d, ch: %d",
+			 sad->source_buf->stream.rate,
+			 sad->source_buf->stream.channels);
+		return -EINVAL;
+	}
 
 	/* TODO:
 	 * ATM feedback buffer frame_fmt is hardcoded to s32_le. It should be
