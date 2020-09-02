@@ -75,6 +75,22 @@ struct smart_amp_buf_struct_t {
 
 struct smart_amp_mod_struct_t {
 	struct smart_amp_buf_struct_t buf;
+	void *dsmhandle;
+	/* DSM variables for the initialization */
+	int delayedsamples[SMART_AMP_FF_MAX_CH_NUM << 2];
+	int circularbuffersize[SMART_AMP_FF_MAX_CH_NUM << 2];
+	/* Number of samples of feed forward and feedback frame */
+	int ff_fr_sz_samples;
+	int fb_fr_sz_samples;
+	int channelmask;
+	/* Number of channels of DSM */
+	int nchannels;
+	/* Number of samples of feed forward channel */
+	int ifsamples;
+	/* Number of samples of feedback channel */
+	int ibsamples;
+	/* Number of processed samples */
+	int ofsamples;
 };
 
 typedef void (*smart_amp_func)(const struct comp_dev *dev,
@@ -87,16 +103,26 @@ struct smart_amp_func_map {
 	smart_amp_func func;
 };
 
+/* Component initialization */
 int smart_amp_init(struct smart_amp_mod_struct_t *hspk, struct comp_dev *dev);
+/* Component memory flush */
 int smart_amp_flush(struct smart_amp_mod_struct_t *hspk, struct comp_dev *dev);
+/* Feed forward processing function */
 int smart_amp_ff_copy(struct comp_dev *dev, uint32_t frames,
 		      struct comp_buffer *source,
 		      struct comp_buffer *sink, int8_t *chan_map,
 		      struct smart_amp_mod_struct_t *hspk,
 		      uint32_t num_ch_in, uint32_t num_ch_out);
+/* Feedback processing function */
 int smart_amp_fb_copy(struct comp_dev *dev, uint32_t frames,
 		      struct comp_buffer *source,
 		      struct comp_buffer *sink, int8_t *chan_map,
 		      struct smart_amp_mod_struct_t *hspk,
 		      uint32_t num_ch);
+/* memory usage calculation for the component */
+int smart_amp_get_memory_size(struct smart_amp_mod_struct_t *hspk,
+			      struct comp_dev *dev);
+/* supported audio format check */
+int smart_amp_check_audio_fmt(int sample_rate, int ch_num);
+
 #endif
