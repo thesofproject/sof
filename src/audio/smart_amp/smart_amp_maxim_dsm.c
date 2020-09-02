@@ -209,20 +209,20 @@ static void maxim_dsm_fb_proc(struct smart_amp_mod_struct_t *hspk,
 	if (*w_ptr >= DSM_FB_BUF_SZ) {
 		if (is_16bit) {
 			for (x = 0; x < DSM_FRM_SZ; x++) {
-			/* Buffer ordering for DSM : IVIV... -> VV... II...*/
-				v[x] = buf.buf16[4 * x + 1];
-				i[x] = buf.buf16[4 * x];
-				v[x + DSM_FRM_SZ] = buf.buf16[4 * x + 3];
-				i[x + DSM_FRM_SZ] = buf.buf16[4 * x + 2];
+			/* Buffer ordering for DSM : VIVI... -> VV... II...*/
+				v[x] = buf.buf16[4 * x];
+				i[x] = buf.buf16[4 * x + 1];
+				v[x + DSM_FRM_SZ] = buf.buf16[4 * x + 2];
+				i[x + DSM_FRM_SZ] = buf.buf16[4 * x + 3];
 			}
 		} else {
 			for (x = 0; x < DSM_FRM_SZ; x++) {
-				v[x] = (buf.buf32[4 * x + 1] >> 16);
-				i[x] = (buf.buf32[4 * x] >> 16);
+				v[x] = (buf.buf32[4 * x] >> 16);
+				i[x] = (buf.buf32[4 * x + 1] >> 16);
 				v[x + DSM_FRM_SZ] =
-					(buf.buf32[4 * x + 3] >> 16);
-				i[x + DSM_FRM_SZ] =
 					(buf.buf32[4 * x + 2] >> 16);
+				i[x + DSM_FRM_SZ] =
+					(buf.buf32[4 * x + 3] >> 16);
 			}
 		}
 
