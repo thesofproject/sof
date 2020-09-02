@@ -27,6 +27,9 @@ struct comp_buffer;
 #define KPB_MAX_BUFFER_SIZE(sw) ((KPB_SAMPLNG_FREQUENCY / 1000) * \
 	(KPB_SAMPLE_CONTAINER_SIZE(sw) / 8) * KPB_MAX_BUFF_TIME * \
 	KPB_NUM_OF_CHANNELS)
+#define KPB_MAX_DRAINING_SIZE(sw) ((KPB_SAMPLNG_FREQUENCY / 1000) * \
+		(KPB_SAMPLE_CONTAINER_SIZE(sw) / 8) * KPB_MAX_DRAINING_REQ * \
+		KPB_NUM_OF_CHANNELS)
 #define KPB_MAX_NO_OF_CLIENTS 2
 #define KPB_NO_OF_HISTORY_BUFFERS 2 /**< no of internal buffers */
 #define KPB_ALLOCATION_STEP 0x100
@@ -36,8 +39,8 @@ struct comp_buffer;
 	KPB_NUM_OF_CHANNELS))
 /**< Defines how much faster draining is in comparison to pipeline copy. */
 #define KPB_DRAIN_NUM_OF_PPL_PERIODS_AT_ONCE 2
-/**< Host buffer shall be at least two times bigger than history buffer. */
-#define HOST_BUFFER_MIN_SIZE(hb) (hb * 2)
+/**< Host buffer shall be at least two times bigger than max draining data size. */
+#define HOST_BUFFER_MIN_SIZE(ds) ((ds) * 2)
 
 /** All states below as well as relations between them are documented in
  * the sof-dosc in [kpbm-state-diagram]

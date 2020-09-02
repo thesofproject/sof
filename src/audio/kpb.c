@@ -430,6 +430,7 @@ static int kpb_prepare(struct comp_dev *dev)
 	struct list_item *blist;
 	struct comp_buffer *sink;
 	size_t hb_size_req = KPB_MAX_BUFFER_SIZE(kpb->config.sampling_width);
+	size_t hb_drain_size = KPB_MAX_DRAINING_SIZE(kpb->config.sampling_width);
 
 	comp_info(dev, "kpb_prepare()");
 
@@ -448,7 +449,7 @@ static int kpb_prepare(struct comp_dev *dev)
 		return PPL_STATUS_PATH_STOP;
 
 	if (!validate_host_params(dev, kpb->host_period_size,
-				  kpb->host_buffer_size, hb_size_req)) {
+				  kpb->host_buffer_size, hb_drain_size)) {
 		return -EINVAL;
 	}
 
@@ -1527,7 +1528,7 @@ static void kpb_reset_history_buffer(struct history_buffer *buff)
 static inline bool validate_host_params(struct comp_dev *dev,
 					size_t host_period_size,
 					size_t host_buffer_size,
-					size_t hb_size_req)
+					size_t hb_drain_size)
 {
 	/* The aim of this function is to perform basic check of host params
 	 * and reject them if they won't allow for stable draining.
@@ -1551,14 +1552,14 @@ static inline bool validate_host_params(struct comp_dev *dev,
 		comp_err(dev, "kpb: host_period_size (%d) cannot be 0 and host_buffer_size (%d) cannot be 0",
 			 host_period_size, host_buffer_size);
 		return false;
-	} else if (HOST_BUFFER_MIN_SIZE(hb_size_req) >
+	} else if (HOST_BUFFER_MIN_SIZE(hb_drain_size) >
 		   host_buffer_size) {
 		/* Host buffer size is too small - history data
 		 * may get overwritten.
 		 */
-		comp_err(dev, "kpb: host_buffer_size (%d) must be at least %d",
-			 host_buffer_size, HOST_BUFFER_MIN_SIZE(hb_size_req));
-		return false;
+		comp_warn(dev, "kpb: host_buffer_size (%d) should be at least %d to avoid being overwritten",
+			  host_buffer_size, HOST_BUFFER_MIN_SIZE(hb_drain_size));
+		return true;
 	} else if (kpb->sync_draining_mode) {
 		/* Sync draining allowed. Check if we can perform draining
 		 * with current settings.
