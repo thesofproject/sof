@@ -229,7 +229,7 @@ int smart_amp_flush(struct smart_amp_mod_struct_t *hspk, struct comp_dev *dev)
 	hspk->buf.ff_out.avail = 0;
 	hspk->buf.fb.avail = 0;
 
-	comp_dbg(dev, "[DSM] Reset (handle:%p)", (uintptr_t)hspk);
+	comp_dbg(dev, "[DSM] Reset (handle:%p)", hspk);
 
 	return 0;
 }
