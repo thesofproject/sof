@@ -24,6 +24,9 @@
 
 #define SOF_TB_UUID(uuid_name) (&(uuid_name))
 
+DECLARE_SOF_TB_UUID("crossover", crossover_uuid, 0x948c9ad1, 0x806a, 0x4131,
+		    0xad, 0x6c, 0xb2, 0xbd, 0xa9, 0xe3, 0x5a, 0x9f);
+
 #define TESTBENCH_NCH 2 /* Stereo */
 
 /* shared library look up table */
@@ -35,6 +38,7 @@ struct shared_lib_table lib_table[NUM_WIDGETS_SUPPORTED] = {
 	{"eq-fir", "libsof_eq-fir.so", SOF_COMP_EQ_FIR, NULL, 0, NULL},
 	{"eq-iir", "libsof_eq-iir.so", SOF_COMP_EQ_IIR, NULL, 0, NULL},
 	{"dcblock", "libsof_dcblock.so", SOF_COMP_DCBLOCK, NULL, 0, NULL},
+	{"crossover", "libsof_crossover.so", SOF_COMP_NONE, SOF_TB_UUID(crossover_uuid), 0, NULL}
 };
 
 /* main firmware context */
