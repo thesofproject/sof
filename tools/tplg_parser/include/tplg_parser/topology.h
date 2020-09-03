@@ -73,6 +73,8 @@ int get_token_uint32_t(void *elem, void *object, uint32_t offset,
 int get_token_comp_format(void *elem, void *object, uint32_t offset,
 			  uint32_t size);
 
+int get_token_uuid(void *elem, void *object, uint32_t offset, uint32_t size);
+
 /* Buffers */
 static const struct sof_topology_token buffer_tokens[] = {
 	{SOF_TKN_BUF_SIZE, SND_SOC_TPLG_TUPLE_TYPE_WORD, get_token_uint32_t,
@@ -192,6 +194,13 @@ static const struct sof_topology_token dai_tokens[] = {
 	offsetof(struct sof_ipc_comp_dai, direction), 0},
 };
 
+/* Component extended tokens */
+static const struct sof_topology_token comp_ext_tokens[] = {
+	{SOF_TKN_COMP_UUID,
+		SND_SOC_TPLG_TUPLE_TYPE_UUID, get_token_uuid,
+		offsetof(struct sof_ipc_comp_ext, uuid), 0},
+};
+
 struct sof_dai_types {
 	const char *name;
 	enum sof_ipc_dai_type type;
@@ -238,7 +247,8 @@ int tplg_load_asrc(int comp_id, int pipeline_id, int size,
 int tplg_load_mixer(int comp_id, int pipeline_id, int size,
 		    struct sof_ipc_comp_mixer *mixer, FILE *file);
 int tplg_load_process(int comp_id, int pipeline_id, int size,
-		      struct sof_ipc_comp_process *process, FILE *file);
+		      struct sof_ipc_comp_process *process, FILE *file,
+		      struct sof_ipc_comp_ext *comp_ext);
 int tplg_load_graph(int num_comps, int pipeline_id,
 		    struct comp_info *temp_comp_list, char *pipeline_string,
 		    struct sof_ipc_pipe_comp_connect *connection, FILE *file,
@@ -268,7 +278,7 @@ int load_widget(void *dev, int dev_type, struct comp_info *temp_comp_list,
 		int comp_id, int comp_index, int pipeline_id, void *tp,
 		int *sched_id, FILE *file);
 
-void register_comp(int comp_type);
+void register_comp(int comp_type, struct sof_ipc_comp_ext *comp_ext);
 int find_widget(struct comp_info *temp_comp_list, int count, char *name);
 bool is_valid_priv_size(size_t size_read, size_t priv_size,
 			struct snd_soc_tplg_vendor_array *array);
