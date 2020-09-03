@@ -2,6 +2,10 @@
 # Topology for SKL+ HDA Generic machine w/ iDISP codec only
 #
 
+# if XPROC is not defined, define with default pipe
+ifdef(`DMICPROC', , `define(DMICPROC, eq-iir-volume)')
+ifdef(`DMIC16KPROC', , `define(DMIC16KPROC, eq-iir-volume)')
+
 # Include topology builder
 include(`utils.m4')
 include(`dai.m4')

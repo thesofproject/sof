@@ -16,6 +16,12 @@ ifdef(`DMIC_DAI_LINK_48k_NAME',`',define(DMIC_DAI_LINK_48k_NAME, `dmic01'))
 # define(DMIC_DAI_LINK_16k_NAME, `dmic16k')
 ifdef(`DMIC_DAI_LINK_16k_NAME',`',define(DMIC_DAI_LINK_16k_NAME, `dmic16k'))
 
+# Handle possible different channels count for PCM and DAI
+ifdef(`DMIC_DAI_CHANNELS', `', `define(DMIC_DAI_CHANNELS, CHANNELS)')
+ifdef(`DMIC_PCM_CHANNELS', `', `define(DMIC_PCM_CHANNELS, CHANNELS)')
+ifdef(`DMIC16K_DAI_CHANNELS', `', `define(DMIC16K_DAI_CHANNELS, CHANNELS)')
+ifdef(`DMIC16K_PCM_CHANNELS', `', `define(DMIC16K_PCM_CHANNELS, CHANNELS)')
+
 #
 # Define the pipelines
 #
@@ -26,19 +32,31 @@ dnl     period, priority, core,
 dnl     pcm_min_rate, pcm_max_rate, pipeline_rate,
 dnl     time_domain, sched_comp)
 
-# Passthrough capture pipeline using max channels defined by CHANNELS.
+# Passthrough capture pipeline using max channels defined by DMIC_PCM_CHANNELS.
 
 # Set 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_ADD(sof/pipe-eq-iir-volume-capture.m4,
-	DMIC_PIPELINE_48k_ID, DMIC_DAI_LINK_48k_ID, CHANNELS, s32le,
+ifdef(`DMICPROC_FILTER1', `define(PIPELINE_FILTER1, DMICPROC_FILTER1)')
+ifdef(`DMICPROC_FILTER2', `define(PIPELINE_FILTER2, DMICPROC_FILTER2)')
+
+PIPELINE_PCM_ADD(sof/pipe-DMICPROC-capture.m4,
+	DMIC_PIPELINE_48k_ID, DMIC_DAI_LINK_48k_ID, DMIC_PCM_CHANNELS, s32le,
 	1000, 0, 0, 48000, 48000, 48000)
+
+undefine(`PIPELINE_FILTER1')
+undefine(`PIPELINE_FILTER2')
 
 # Passthrough capture pipeline using max channels defined by CHANNELS.
 
 # Schedule with 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_ADD(sof/pipe-eq-iir-volume-capture-16khz.m4,
-	DMIC_PIPELINE_16k_ID, DMIC_DAI_LINK_16k_ID, CHANNELS, s32le,
+ifdef(`DMIC16KPROC_FILTER1', `define(PIPELINE_FILTER1, DMIC16KPROC_FILTER1)')
+ifdef(`DMIC16KPROC_FILTER2', `define(PIPELINE_FILTER2, DMIC16KPROC_FILTER2)')
+
+PIPELINE_PCM_ADD(sof/pipe-DMIC16KPROC-capture-16khz.m4,
+	DMIC_PIPELINE_16k_ID, DMIC_DAI_LINK_16k_ID, DMIC16K_PCM_CHANNELS, s32le,
 	1000, 0, 0, 16000, 16000, 16000)
+
+undefine(`PIPELINE_FILTER1')
+undefine(`PIPELINE_FILTER2')
 
 #
 # DAIs configuration
@@ -73,7 +91,7 @@ PCM_CAPTURE_ADD(DMIC16kHz, DMIC_DAI_LINK_16k_ID, concat(`PIPELINE_PCM_', DMIC_PI
 #
 
 dnl DAI_CONFIG(type, dai_index, link_id, name, ssp_config/dmic_config)
-ifelse(CHANNELS, 4,
+ifelse(DMIC_DAI_CHANNELS, 4,
 `DAI_CONFIG(DMIC, 0, DMIC_DAI_LINK_48k_ID, DMIC_DAI_LINK_48k_NAME,
 	   DMIC_CONFIG(1, 500000, 4800000, 40, 60, 48000,
 		DMIC_WORD_LENGTH(s32le), 200, DMIC, 0,
@@ -83,7 +101,7 @@ ifelse(CHANNELS, 4,
                 DMIC_WORD_LENGTH(s32le), 200, DMIC, 0,
                 PDM_CONFIG(DMIC, 0, STEREO_PDM0)))')
 
-ifelse(CHANNELS, 4,
+ifelse(DMIC16K_DAI_CHANNELS, 4,
 `DAI_CONFIG(DMIC, 1, DMIC_DAI_LINK_16k_ID, DMIC_DAI_LINK_16k_NAME,
 	   DMIC_CONFIG(1, 500000, 4800000, 40, 60, 16000,
 		DMIC_WORD_LENGTH(s32le), 400, DMIC, 1,
