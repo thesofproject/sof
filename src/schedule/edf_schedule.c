@@ -165,8 +165,8 @@ int schedule_task_init_edf(struct task *task, uint32_t uid,
 			      task->core, NULL, 0) < 0)
 		goto error;
 
-	/* flush for slave core */
-	if (cpu_is_slave(task->core))
+	/* flush for secondary core */
+	if (cpu_is_secondary(task->core))
 		dcache_writeback_invalidate_region(edf_pdata,
 						   sizeof(*edf_pdata));
 	return 0;

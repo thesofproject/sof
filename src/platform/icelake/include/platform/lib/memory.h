@@ -166,9 +166,9 @@
  * +------------------+-------------------------+-----------------------------+
  * |                  | Master core Stack       |  SOF_STACK_SIZE             |
  * +------------------+-------------------------+-----------------------------+
- * |                  | Slave core Sys Heap     |  SOF_CORE_S_T_SIZE          |
- * |                  | Slave Sys Runtime Heap  |                             |
- * |                  | Slave core Stack        |                             |
+ * |                  | Sec. core Sys Heap      |  SOF_CORE_S_T_SIZE          |
+ * |                  | Sec. Sys Runtime Heap   |                             |
+ * |                  | Secondary core Stack    |                             |
  * +------------------+-------------------------+-----------------------------+
  */
 
@@ -232,7 +232,7 @@
 #define HEAP_SYS_RT_0_COUNT512		16
 #define HEAP_SYS_RT_0_COUNT1024		4
 
-/* Heap section sizes for system runtime heap for slave core */
+/* Heap section sizes for system runtime heap for secondary core */
 #define HEAP_SYS_RT_X_COUNT64		64
 #define HEAP_SYS_RT_X_COUNT512		8
 #define HEAP_SYS_RT_X_COUNT1024		4
@@ -258,7 +258,7 @@
 #define HEAP_BUFFER_COUNT	(HEAP_BUFFER_SIZE / HEAP_BUFFER_BLOCK_SIZE)
 
 #define HEAP_SYSTEM_M_SIZE		0x8000	/* heap master core size */
-#define HEAP_SYSTEM_S_SIZE		0x6000	/* heap slave core size */
+#define HEAP_SYSTEM_S_SIZE		0x6000	/* heap secondary core size */
 #define HEAP_SYSTEM_T_SIZE \
 	(HEAP_SYSTEM_M_SIZE + ((PLATFORM_CORE_COUNT - 1) * HEAP_SYSTEM_S_SIZE))
 

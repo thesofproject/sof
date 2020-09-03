@@ -335,7 +335,7 @@ static inline void cavs_pm_runtime_core_dis_memory(uint32_t index)
 	extern uintptr_t _sof_core_s_start;
 
 	/* Address is calculated for index (0 for the master core) minus one
-	 * since _sof_core_s_start is first slave core stack address
+	 * since _sof_core_s_start is first secondary core stack address
 	 */
 	core_memory_ptr = (char *)&_sof_core_s_start
 		+ (index - 1) * SOF_CORE_S_SIZE;
@@ -353,7 +353,7 @@ static inline void cavs_pm_runtime_core_en_memory(uint32_t index)
 	extern uintptr_t _sof_core_s_start;
 
 	/* Address is calculated for index (0 for the master core) minus one
-	 * since _sof_core_s_start is first slave core stack address
+	 * since _sof_core_s_start is first secondary core stack address
 	 */
 	core_memory_ptr = (char *)&_sof_core_s_start
 		+ (index - 1) * SOF_CORE_S_SIZE;
@@ -428,7 +428,7 @@ static inline void cavs_pm_runtime_dis_dsp_pg(uint32_t index)
 		lps_ctl |= SHIM_LPSCTL_FDSPRUN;
 		shim_write(SHIM_LPSCTL, lps_ctl);
 	} else {
-		/* Slave core power up */
+		/* Secondary core power up */
 		shim_write16(SHIM_PWRCTL, shim_read16(SHIM_PWRCTL) |
 			     SHIM_PWRCTL_TCPDSPPG(index) |
 			     SHIM_PWRCTL_TCPCTLPG);

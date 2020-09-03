@@ -617,7 +617,7 @@ int ipc_comp_dai_config(struct ipc *ipc, struct sof_ipc_dai_config *config)
 	}
 
 	/* message forwarded only by master core */
-	if (!cpu_is_slave(cpu_get_id())) {
+	if (!cpu_is_secondary(cpu_get_id())) {
 		for (i = 0; i < PLATFORM_CORE_COUNT; ++i) {
 			if (!comp_on_core[i])
 				continue;
@@ -626,7 +626,7 @@ int ipc_comp_dai_config(struct ipc *ipc, struct sof_ipc_dai_config *config)
 			if (ret < 0)
 				return ret;
 
-			/* check whether IPC failed on slave core */
+			/* check whether IPC failed on secondary core */
 			mailbox_hostbox_read(&reply, sizeof(reply), 0,
 					     sizeof(reply));
 			if (reply.error < 0)

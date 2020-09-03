@@ -15,8 +15,8 @@
 #include <sof/lib/memory.h>
 #include <stdint.h>
 
-#define PLATFORM_TRACEP_SLAVE_CORE(x) \
-	(SRAM_REG_FW_TRACEP_SLAVE_CORE_BASE + ((x) - 1) * 0x4)
+#define PLATFORM_TRACEP_SECONDARY_CORE(x) \
+	(SRAM_REG_FW_TRACEP_SECONDARY_CORE_BASE + ((x) - 1) * 0x4)
 
 /* Platform defined trace code */
 static inline void platform_trace_point(uint32_t x)
@@ -27,7 +27,7 @@ static inline void platform_trace_point(uint32_t x)
 	if (cpu == PLATFORM_MASTER_CORE_ID)
 		offset = SRAM_REG_FW_TRACEP;
 	else
-		offset = PLATFORM_TRACEP_SLAVE_CORE(cpu);
+		offset = PLATFORM_TRACEP_SECONDARY_CORE(cpu);
 
 	mailbox_sw_reg_write(offset, x);
 }

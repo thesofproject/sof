@@ -36,7 +36,7 @@ struct sof *sof_get(void)
 	return &sof;
 }
 
-#if CONFIG_NO_SLAVE_CORE_ROM
+#if CONFIG_NO_SECONDARY_CORE_ROM
 /**
  * \brief This function will unpack lpsram text sections from AltBootManifest
 	  created in linker script.
@@ -70,7 +70,7 @@ static inline void lp_sram_unpack(void)
 
 #if CONFIG_MULTICORE
 
-int slave_core_init(struct sof *sof)
+int secondary_core_init(struct sof *sof)
 {
 	int err;
 
@@ -155,7 +155,7 @@ int master_core_init(int argc, char *argv[], struct sof *sof)
 
 	trace_point(TRACE_BOOT_PLATFORM);
 
-#if CONFIG_NO_SLAVE_CORE_ROM
+#if CONFIG_NO_SECONDARY_CORE_ROM
 	lp_sram_unpack();
 #endif
 
@@ -178,7 +178,7 @@ int main(int argc, char *argv[])
 	if (cpu_get_id() == PLATFORM_MASTER_CORE_ID)
 		err = master_core_init(argc, argv, &sof);
 	else
-		err = slave_core_init(&sof);
+		err = secondary_core_init(&sof);
 
 #ifndef __ZEPHYR__
 	/* should never get here */

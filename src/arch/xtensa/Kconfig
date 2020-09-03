@@ -17,11 +17,12 @@ config MULTICORE
 	help
 	  Indicates that architecture uses multiple cores
 
-config NO_SLAVE_CORE_ROM
+config NO_SECONDARY_CORE_ROM
 	bool
 	default n
 	help
-	  Indicates that slave core have rom, alternate reset vector is needed if not
+	  Indicates that secondary core have rom, alternate reset vector
+	  is needed if not
 
 config WAKEUP_HOOK
 	bool

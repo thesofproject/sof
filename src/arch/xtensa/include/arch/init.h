@@ -130,11 +130,11 @@ static inline void __memmap_init(void) { }
 
 #if CONFIG_MULTICORE
 
-int slave_core_init(struct sof *sof);
+int secondary_core_init(struct sof *sof);
 
 #else
 
-static inline int slave_core_init(struct sof *sof) { return 0; }
+static inline int secondary_core_init(struct sof *sof) { return 0; }
 
 #endif /* CONFIG_MULTICORE */
 

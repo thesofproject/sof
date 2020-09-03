@@ -552,7 +552,7 @@ void dtrace_event(const char *e, uint32_t length)
 	spin_lock_irq(&trace_data->lock, flags);
 	dtrace_add_event(e, length);
 
-	/* if DMA trace copying is working or slave core
+	/* if DMA trace copying is working or secondary core
 	 * don't check if local buffer is half full
 	 */
 	if (trace_data->copy_in_progress ||

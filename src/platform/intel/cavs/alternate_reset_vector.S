@@ -21,7 +21,7 @@
 
 #include "xtos-internal.h"
 
-.type   slave_core_init, @function
+.type   secondary_core_init, @function
 .type   shared_vecbase_ptr, @object
 
 .section        .AlternateResetVector.text, "ax"
@@ -59,12 +59,12 @@ _AltResetVector:
 
 	get_prid a5
 	movi a6, PLATFORM_MASTER_CORE_ID
-	bne a5, a6, slave_init //core0 handle restore, core1 always starts from scratch
+	bne a5, a6, secondary_init //core0 handle restore, core1 always starts from scratch
 	/* Currently no implementation for core 0:
 	   - shutoff restore should be put either here on in L1SRAM */
 	j alt_boot_error_loop
 
-slave_init:
+secondary_init:
 	/* Block interrupt but not enable WOE */
 	movi a3, PS_UM | PS_INTLEVEL(5)
 	wsr a3, PS
@@ -74,7 +74,7 @@ slave_init:
 	call0 _l1_cache_init
 	movi a0, 0
 
-alt_boot_slave_core_idc_receiver:
+alt_boot_secondary_core_idc_receiver:
 	get_prid a5
 	movi a3, IPC_DSP_BASE(0)
 	movi a4, IPC_DSP_SIZE
@@ -84,7 +84,7 @@ alt_boot_slave_core_idc_receiver:
 	l32i a2, a3, 0
 	bbsi a2, 31, alt_boot_validate_idc_msg
 
-alt_boot_slave_core_enter_waiti:
+alt_boot_secondary_core_enter_waiti:
 
 	/* Setup int vector to be local */
 	movi a2, _LpsramHeader
@@ -116,16 +116,16 @@ alt_boot_slave_core_enter_waiti:
 
 	movi a2, 128
 
-alt_boot_slave_wait_for_waiti:
+alt_boot_secondary_wait_for_waiti:
 	addi a2, a2, -1
 	nop
-	bnez a2, alt_boot_slave_wait_for_waiti
+	bnez a2, alt_boot_secondary_wait_for_waiti
 
-alt_boot_slave_enter_waiti:
+alt_boot_secondary_enter_waiti:
 	isync
 	extw
 	waiti 1
-	j alt_boot_slave_core_idc_receiver
+	j alt_boot_secondary_core_idc_receiver
 
 alt_boot_validate_idc_msg:
 	/*  Core wake version: bits 0-8 (9 - bits) - core wake version must be 0x2. */
@@ -179,7 +179,7 @@ lp_reset_setup_vecbase:
 	init_vector    4
 	init_vector    5
 
-alt_boot_slave_core_wakeup:
+alt_boot_secondary_core_wakeup:
 	movi a2, 0
 	wsr a2, INTENABLE
 	rsync
@@ -200,7 +200,7 @@ alt_boot_handle_incorrect_idc:
 	memw
 	// HW limitation read the register
 	l32i a4, a3, 0
-	j alt_boot_slave_core_idc_receiver
+	j alt_boot_secondary_core_idc_receiver
 
 alt_boot_error_loop:
 	// TODO: consider some kind of status reporting here.
