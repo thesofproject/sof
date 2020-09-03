@@ -35,7 +35,7 @@ if(CONFIG_CAVS)
 	set(family_path intel/cavs)
 endif()
 
-set(fw_name ${CONFIG_FIRMWARE_SHORT_NAME})
+set(fw_name ${CONFIG_RIMAGE_SIGNING_SCHEMA})
 
 if(CONFIG_BOOT_LOADER)
 	set(build_bootloader y)
