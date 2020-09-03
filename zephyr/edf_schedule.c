@@ -104,7 +104,7 @@ int scheduler_init_edf(void)
 	return 0;
 }
 
-int schedule_task_init_edf(struct task *task, uint32_t uid,
+int schedule_task_init_edf(struct task *task, const struct sof_uuid_entry *uid,
 			   const struct task_ops *ops,
 			   void *data, uint16_t core, uint32_t flags)
 {
@@ -122,7 +122,8 @@ int schedule_task_init_edf(struct task *task, uint32_t uid,
 	return 0;
 }
 
-int schedule_task_init_edf_with_budget(struct task *task, uint32_t uid,
+int schedule_task_init_edf_with_budget(struct task *task,
+				       const struct sof_uuid_entry *uid,
 				       const struct task_ops *ops,
 				       void *data, uint16_t core,
 				       uint32_t flags, uint32_t cycles_budget)

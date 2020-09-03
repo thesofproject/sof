@@ -132,7 +132,7 @@ struct sof_uuid_entry {
  * \param uuid_name UUID symbol name declared with DECLARE_SOF_UUID() or
  *		    DECLARE_SOF_RT_UUID().
  */
-#define SOF_UUID(uuid_name) ((uintptr_t)&(uuid_name ## _ldc))
+#define SOF_UUID(uuid_name) (&(uuid_name ## _ldc))
 
 /** \brief Dereference unique 32-bit representation of UUID structure in runtime.
  *

@@ -54,7 +54,7 @@ struct task_ops {
 /** \brief Task used by schedulers. */
 struct task {
 	uint64_t start;		/**< start time in [ms] since now (LL only) */
-	uint32_t uid;		/**< Uuid */
+	const struct sof_uuid_entry *uid; /**< Uuid */
 	uint16_t type;		/**< type of the task (LL or EDF) */
 	uint16_t priority;	/**< priority of the task (used by LL) */
 	uint16_t core;		/**< execution core */

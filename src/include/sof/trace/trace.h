@@ -281,8 +281,8 @@ static inline void trace_init(struct sof *sof) { }
  * Trace context.
  */
 struct tr_ctx {
-	uintptr_t uuid_p;	/**< UUID pointer, use SOF_UUID() to init */
-	uint32_t level;		/**< Default log level */
+	const struct sof_uuid_entry *uuid_p;	/**< UUID pointer, use SOF_UUID() to init */
+	uint32_t level;				/**< Default log level */
 };
 
 #if defined(UNIT_TEST)
