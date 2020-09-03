@@ -38,7 +38,7 @@ enum sof_ipc_dai_type find_dai(const char *name)
 	return SOF_DAI_INTEL_NONE;
 }
 
-void register_comp(int comp_type) {}
+void register_comp(int comp_type, struct sof_ipc_comp_ext *comp_ext) {}
 
 int find_widget(struct comp_info *temp_comp_list, int count, char *name)
 {

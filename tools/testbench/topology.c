@@ -47,7 +47,7 @@ enum sof_ipc_dai_type find_dai(const char *name)
  * Register component driver
  * Only needed once per component type
  */
-void register_comp(int comp_type)
+void register_comp(int comp_type, struct sof_ipc_comp_ext *comp_ext)
 {
 	int index;
 	char message[DEBUG_MSG_LEN + MAX_LIB_NAME_LEN];
@@ -64,8 +64,11 @@ void register_comp(int comp_type)
 
 	/* get index of comp in shared library table */
 	index = get_index_by_type(comp_type, lib_table);
-	if (index < 0)
-		return;
+	if (index == SOF_COMP_NONE && comp_ext) {
+		index = get_index_by_uuid(comp_ext, lib_table);
+		if (index < 0)
+			return;
+	}
 
 	/* register comp driver if not already registered */
 	if (!lib_table[index].register_drv) {
@@ -317,7 +320,7 @@ static int load_fileread(void *dev, int comp_id, int pipeline_id,
 		SOF_COMP_HOST : SOF_COMP_DAI;
 
 	/* create fileread component */
-	register_comp(fileread.comp.type);
+	register_comp(fileread.comp.type, NULL);
 	if (ipc_comp_new(sof->ipc, (struct sof_ipc_comp *)&fileread) < 0) {
 		fprintf(stderr, "error: comp register\n");
 		return -EINVAL;
@@ -366,7 +369,7 @@ static int load_filewrite(struct sof *sof, int comp_id, int pipeline_id,
 		SOF_COMP_DAI : SOF_COMP_HOST;
 
 	/* create filewrite component */
-	register_comp(filewrite.comp.type);
+	register_comp(filewrite.comp.type, NULL);
 	if (ipc_comp_new(sof->ipc, (struct sof_ipc_comp *)&filewrite) < 0) {
 		fprintf(stderr, "error: comp register\n");
 		return -EINVAL;
@@ -452,7 +455,7 @@ int load_pga(void *dev, int comp_id, int pipeline_id,
 	free(priv_data);
 
 	/* load volume component */
-	register_comp(volume.comp.type);
+	register_comp(volume.comp.type, NULL);
 	if (ipc_comp_new(sof->ipc, (struct sof_ipc_comp *)&volume) < 0) {
 		fprintf(stderr, "error: comp register\n");
 		return -EINVAL;
@@ -523,7 +526,7 @@ int load_src(void *dev, int comp_id, int pipeline_id,
 	}
 
 	/* load src component */
-	register_comp(src.comp.type);
+	register_comp(src.comp.type, NULL);
 	if (ipc_comp_new(sof->ipc, (struct sof_ipc_comp *)&src) < 0) {
 		fprintf(stderr, "error: new src comp\n");
 		return -EINVAL;
@@ -565,7 +568,7 @@ int load_asrc(void *dev, int comp_id, int pipeline_id,
 	}
 
 	/* load asrc component */
-	register_comp(asrc.comp.type);
+	register_comp(asrc.comp.type, NULL);
 	if (ipc_comp_new(sof->ipc, (struct sof_ipc_comp *)&asrc) < 0) {
 		fprintf(stderr, "error: new asrc comp\n");
 		return -EINVAL;
@@ -614,19 +617,21 @@ int load_process(void *dev, int comp_id, int pipeline_id,
 	struct sof_ipc_comp_process process = {0};
 	struct sof_ipc_comp_process *process_ipc;
 	struct snd_soc_tplg_ctl_hdr *ctl = NULL;
+	struct sof_ipc_comp_ext comp_ext;
 	char *priv_data = NULL;
 	int size;
 	int ret = 0;
+	int i;
 
 	size = widget->priv.size;
-	ret = tplg_load_process(comp_id, pipeline_id, size, &process, file);
+	ret = tplg_load_process(comp_id, pipeline_id, size, &process, file, &comp_ext);
 	if (ret < 0)
 		return ret;
 
-	if (process.comp.type == SOF_COMP_NONE) {
-		fprintf(stderr, "Invalid process comp type SOF_COMP_NONE\n");
-		return -EINVAL;
-	}
+	printf("debug uuid:\n");
+	for (i = 0; i < SOF_UUID_SIZE; i++)
+		printf("%u ", comp_ext.uuid[i]);
+	printf("\n");
 
 	/* Only one control is supported*/
 	if (widget->num_kcontrols > 1) {
@@ -653,7 +658,7 @@ int load_process(void *dev, int comp_id, int pipeline_id,
 	}
 
 	/* load process component */
-	register_comp(process_ipc->comp.type);
+	register_comp(process_ipc->comp.type, &comp_ext);
 
 	/* Instantiate */
 	ret = ipc_comp_new(sof->ipc, (struct sof_ipc_comp *)process_ipc);
