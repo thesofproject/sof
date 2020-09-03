@@ -316,8 +316,8 @@ config CAVS_USE_LPRO_IN_WAITI
 	  Choose n if unclear.
 
 # TODO: it should just take manifest version and offsets
-config FIRMWARE_SHORT_NAME
-	string "Rimage firmware name"
+config RIMAGE_SIGNING_SCHEMA
+	string "Rimage firmware signing schema name"
 	default "byt" if BAYTRAIL
 	default "cht" if CHERRYTRAIL
 	default "hsw" if HASWELL
@@ -332,8 +332,7 @@ config FIRMWARE_SHORT_NAME
 	default "imx8m" if IMX8M
 	default ""
 	help
-	  3-characters long firmware identifer
-	  used by rimage to decide how to build final binary
+	  Signing schema name used by rimage to decide how to build final binary
 
 config SYSTICK_PERIOD
 	int "System tick period in microseconds"
