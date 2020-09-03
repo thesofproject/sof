@@ -2,11 +2,16 @@
 # Topology for Cometlake with rt1011 spk on SSP1
 #
 
+# if XPROC is not defined, define with default pipe
+# Note: DMIC16KPROC is hard coded in sof-cml-rt5682-kwd.m4
+ifdef(`DMICPROC', , `define(DMICPROC, passthrough)')
+
 # Include SOF CML RT5682 Topology
 # This includes topology for RT5682, DMIC and 3 HDMI Pass through pipeline
 include(`sof-cml-rt5682-kwd.m4')
 include(`abi.h')
 DEBUG_START
+
 #
 # Define the Speaker pipeline
 #

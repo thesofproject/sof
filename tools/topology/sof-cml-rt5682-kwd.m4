@@ -23,11 +23,17 @@ define(KWD_PIPE_SCH_DEADLINE_US, 5000)
 
 DEBUG_START
 
+# if XPROC is not defined, define with default pipe
+ifdef(`HSMICPROC', , `define(HSMICPROC, volume)')
+ifdef(`HSEARPROC', , `define(HSEARPROC, volume)')
+ifdef(`DMICPROC', , `define(DMICPROC, passthrough)')
+ifdef(`DMIC16KPROC', , `define(DMIC16KPROC, passthrough)')
+
 #
 # Define the pipelines
 #
 # PCM0 <---> volume <----> SSP(SSP_INDEX, BE link 0)
-# PCM1 <------------------ DMIC01 (dmic0 capture, , BE link 1)
+# PCM1 <---- DMICPROC <--- DMIC01 (dmic0 capture, , BE link 1)
 # PCM2 ----> volume -----> iDisp1 (HDMI/DP playback, BE link 3)
 # PCM3 ----> volume -----> iDisp2 (HDMI/DP playback, BE link 4)
 # PCM4 ----> volume -----> iDisp3 (HDMI/DP playback, BE link 5)
@@ -56,12 +62,18 @@ PIPELINE_PCM_ADD(sof/pipe-volume-capture.m4,
 	1000, 0, 0,
 	48000, 48000, 48000)
 
-# Passthrough capture pipeline 3 on PCM 1 using max 4 channels.
+# DMICPROC capture pipeline 3 on PCM 1 using max 4 channels.
 # Schedule 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_ADD(sof/pipe-passthrough-capture.m4,
+ifdef(`DMICPROC_FILTER1', `define(PIPELINE_FILTER1, DMICPROC_FILTER1)')
+ifdef(`DMICPROC_FILTER2', `define(PIPELINE_FILTER2, DMICPROC_FILTER2)')
+
+PIPELINE_PCM_ADD(sof/pipe-DMICPROC-capture.m4,
 	3, 1, 4, s32le,
 	1000, 0, 0,
 	48000, 48000, 48000)
+
+undefine(`PIPELINE_FILTER1')
+undefine(`PIPELINE_FILTER2')
 
 # Low Latency playback pipeline 4 on PCM 2 using max 2 channels of s32le.
 # Schedule 1000us deadline on core 0 with priority 0

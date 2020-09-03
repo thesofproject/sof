@@ -2,6 +2,15 @@
 # Topology for generic Apollolake UP^2 with pcm512x codec and HDMI.
 #
 
+# if XPROC is not defined, define with default pipe
+ifdef(`DMICPROC', , `define(DMICPROC, eq-iir-volume)')
+ifdef(`DMIC16KPROC', , `define(DMIC16KPROC, eq-iir-volume)')
+
+# if CHANNELS is not defined, define with default 2ch. Note that
+# it can be overrode with DMIC_DAI_CHANNELS, DMIC_PCM_CHANNELS
+# in intel-generic-dmic.m4. Same macros exist for DMIC16K too.
+ifdef(`CHANNELS', , `define(CHANNELS, 2)')
+
 # Include topology builder
 include(`utils.m4')
 include(`dai.m4')
@@ -78,12 +87,16 @@ PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
 
 # platform/intel/intel-generic-dmic.m4 uses DAI link IDs for PCM IDs so we have
 # to use PCM1 and PCM2 for DMICs.
-define(CHANNELS, `2')
+
+ifelse(CHANNELS, `0', ,
+`
 define(DMIC_PIPELINE_48k_ID, `7')
 define(DMIC_PIPELINE_16k_ID, `8')
 define(DMIC_DAI_LINK_48k_ID, `1')
 define(DMIC_DAI_LINK_16k_ID, `2')
 include(`platform/intel/intel-generic-dmic.m4')
+'
+)
 
 #
 # DAIs configuration
