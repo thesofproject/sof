@@ -511,8 +511,8 @@ static int ipc_dai_config(uint32_t header)
 	tr_dbg(&ipc_tr, "ipc: dai %d.%d -> config ", config.type,
 	       config.dai_index);
 
-	/* only master core configures dai */
-	if (cpu_get_id() == PLATFORM_MASTER_CORE_ID) {
+	/* only primary core configures dai */
+	if (cpu_get_id() == PLATFORM_PRIMARY_CORE_ID) {
 		ret = ipc_dai_config_set(
 			(struct sof_ipc_dai_config *)ipc->comp_data);
 		if (ret < 0)
@@ -624,7 +624,7 @@ static int ipc_pm_core_enable(uint32_t header)
 		pm_core_config.enable_mask);
 
 	for (i = 0; i < PLATFORM_CORE_COUNT; i++) {
-		if (i != PLATFORM_MASTER_CORE_ID) {
+		if (i != PLATFORM_PRIMARY_CORE_ID) {
 			if (pm_core_config.enable_mask & (1 << i))
 				ret = cpu_enable_core(i);
 			else
@@ -648,9 +648,9 @@ static int ipc_pm_gate(uint32_t header)
 		trace_off();
 
 	if (pm_gate.flags & SOF_PM_PPG)
-		pm_runtime_disable(PM_RUNTIME_DSP, PLATFORM_MASTER_CORE_ID);
+		pm_runtime_disable(PM_RUNTIME_DSP, PLATFORM_PRIMARY_CORE_ID);
 	else
-		pm_runtime_enable(PM_RUNTIME_DSP, PLATFORM_MASTER_CORE_ID);
+		pm_runtime_enable(PM_RUNTIME_DSP, PLATFORM_PRIMARY_CORE_ID);
 
 	/* resume dma trace if needed */
 	if (!(pm_gate.flags & SOF_PM_NO_TRACE))

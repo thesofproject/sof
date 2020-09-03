@@ -556,7 +556,7 @@ void dtrace_event(const char *e, uint32_t length)
 	 * don't check if local buffer is half full
 	 */
 	if (trace_data->copy_in_progress ||
-	    cpu_get_id() != PLATFORM_MASTER_CORE_ID) {
+	    cpu_get_id() != PLATFORM_PRIMARY_CORE_ID) {
 		platform_shared_commit(trace_data, sizeof(*trace_data));
 		spin_unlock_irq(&trace_data->lock, flags);
 		return;

@@ -32,7 +32,7 @@ static inline int cpu_get_id(void)
 
 static inline bool cpu_is_secondary(int id)
 {
-	return id != PLATFORM_MASTER_CORE_ID;
+	return id != PLATFORM_PRIMARY_CORE_ID;
 }
 
 static inline bool cpu_is_me(int id)

@@ -107,13 +107,13 @@ static void platform_pg_int_handler(void *arg)
 	uint32_t dir = (uint32_t)arg;
 
 	if (dir == LPS_POWER_FLOW_D0_D0I3) {
-		pm_runtime_put(PM_RUNTIME_DSP, PLATFORM_MASTER_CORE_ID);
+		pm_runtime_put(PM_RUNTIME_DSP, PLATFORM_PRIMARY_CORE_ID);
 
 		/* init power flow task */
 		if (!pg_task_ctx)
 			task_context_alloc(&pg_task_ctx);
 		task_context_init(pg_task_ctx, platform_pg_task, NULL, NULL,
-				  PLATFORM_MASTER_CORE_ID,
+				  PLATFORM_PRIMARY_CORE_ID,
 				  pg_task_stack, sizeof(pg_task_stack));
 
 		/* set TCB to power flow task */
@@ -121,7 +121,7 @@ static void platform_pg_int_handler(void *arg)
 
 		arch_interrupt_disable_mask(0xffffffff);
 	} else {
-		pm_runtime_get(PM_RUNTIME_DSP, PLATFORM_MASTER_CORE_ID);
+		pm_runtime_get(PM_RUNTIME_DSP, PLATFORM_PRIMARY_CORE_ID);
 
 		/* set TCB to the one stored in platform_power_gate() */
 		task_context_set(lps_restore.task_ctx);

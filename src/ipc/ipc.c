@@ -616,7 +616,7 @@ int ipc_comp_dai_config(struct ipc *ipc, struct sof_ipc_dai_config *config)
 		return ret;
 	}
 
-	/* message forwarded only by master core */
+	/* message forwarded only by primary core */
 	if (!cpu_is_secondary(cpu_get_id())) {
 		for (i = 0; i < PLATFORM_CORE_COUNT; ++i) {
 			if (!comp_on_core[i])

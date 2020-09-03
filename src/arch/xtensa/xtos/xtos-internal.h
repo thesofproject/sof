@@ -323,17 +323,17 @@ XTOS_PENDING_OFS:	.space	4	/* _xtos_pending variable */
 	rsr.prid	\ax
 	extui		\ax, \ax, 0, 8
 #else
-	movi		\ax, PLATFORM_MASTER_CORE_ID
+	movi		\ax, PLATFORM_PRIMARY_CORE_ID
 #endif
 	.endm
 
 #if CONFIG_MULTICORE
-	// xtos_stack_addr_percore ax, ay, stack_master, stack_secondary, stack_size
+	// xtos_stack_addr_percore ax, ay, stack_primary, stack_secondary, stack_size
 	// Retrieves address of end of stack buffer for certain core to register ax.
-	.macro	xtos_stack_addr_percore ax, ay, stack_master_addr, mem_blk_secondary_addr, stack_size
+	.macro	xtos_stack_addr_percore ax, ay, stack_primary_addr, mem_blk_secondary_addr, stack_size
 	get_prid	\ax
-	bnei		\ax, PLATFORM_MASTER_CORE_ID, core_s
-	movi		\ax, \stack_master_addr
+	bnei		\ax, PLATFORM_PRIMARY_CORE_ID, core_s
+	movi		\ax, \stack_primary_addr
 	j		exit
 core_s:
 	addi		\ax, \ax, -1

@@ -171,11 +171,11 @@
  * |                  ||-----------------------++-----------------------------+
  * |                  ||Module Buffers         ||  HEAP_BUFFER_SIZE           |
  * |                  ||-----------------------++-----------------------------+
- * |                  ||Master core Sys Heap   ||  HEAP_SYSTEM_M_SIZE         |
+ * |                  ||Primary core Sys Heap  ||  HEAP_SYSTEM_M_SIZE         |
  * |                  ||-----------------------++-----------------------------+
- * |                  ||Master Sys Runtime Heap||  HEAP_SYS_RUNTIME_M_SIZE    |
+ * |                  ||Pri. Sys Runtime Heap  ||  HEAP_SYS_RUNTIME_M_SIZE    |
  * |                  ||-----------------------++-----------------------------+
- * |                  ||Master core Stack      ||  SOF_STACK_SIZE             |
+ * |                  ||Primary core Stack     ||  SOF_STACK_SIZE             |
  * |                  ||-----------------------++-----------------------------+
  * |                  ||Sec. core Sys Heap     ||  SOF_CORE_S_T_SIZE          |
  * |                  ||Sec. Sys Runtime Heap  ||                             |
@@ -233,7 +233,7 @@
 /* max size for all var-size sections (text/rodata/bss) */
 #define SOF_FW_MAX_SIZE		(HP_SRAM_BASE + HP_SRAM_SIZE - SOF_FW_BASE)
 
-/* Heap section sizes for system runtime heap for master core */
+/* Heap section sizes for system runtime heap for  core */
 #define HEAP_SYS_RT_0_COUNT64		64
 #define HEAP_SYS_RT_0_COUNT512		16
 #define HEAP_SYS_RT_0_COUNT1024		4
@@ -263,7 +263,7 @@
 #define HEAP_BUFFER_BLOCK_SIZE	0x100
 #define HEAP_BUFFER_COUNT	(HEAP_BUFFER_SIZE / HEAP_BUFFER_BLOCK_SIZE)
 
-#define HEAP_SYSTEM_M_SIZE		0x8000	/* heap master core size */
+#define HEAP_SYSTEM_M_SIZE		0x8000	/* heap  core size */
 #define HEAP_SYSTEM_S_SIZE		0x6000	/* heap secondary core size */
 #define HEAP_SYSTEM_T_SIZE \
 	(HEAP_SYSTEM_M_SIZE + ((PLATFORM_CORE_COUNT - 1) * HEAP_SYSTEM_S_SIZE))

@@ -202,8 +202,8 @@ static int32_t hp_sram_init(void)
 
 #endif
 
-/* boot master core */
-void boot_master_core(void)
+/* boot primary core */
+void boot_primary_core(void)
 {
 #if PLATFORM_MEM_INIT_AT_BOOT
 	int32_t result;

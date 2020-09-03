@@ -21,7 +21,7 @@
 #include <xtensa/corebits.h>
 #include "xtos-internal.h"
 
-	.type   boot_master_core, @function
+	.type   boot_primary_core, @function
 
 	.begin	literal_prefix	.boot_entry
 	.section .boot_entry.text, "ax"
@@ -211,7 +211,7 @@ boot_init:
 
 	/* determine core we are running on */
 	get_prid	a2
-	movi		a3, PLATFORM_MASTER_CORE_ID
+	movi		a3, PLATFORM_PRIMARY_CORE_ID
 	beq		a2, a3, 1f
 
 	/* no core should get here */
@@ -219,7 +219,7 @@ boot_init:
 
 1:
 	/* we are primary core so boot it */
-	call8 boot_master_core
+	call8 boot_primary_core
 
 dead:
 	/* should never get here - we are dead */

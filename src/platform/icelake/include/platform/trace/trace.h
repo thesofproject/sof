@@ -24,7 +24,7 @@ static inline void platform_trace_point(uint32_t x)
 	int cpu = cpu_get_id();
 	uint32_t offset;
 
-	if (cpu == PLATFORM_MASTER_CORE_ID)
+	if (cpu == PLATFORM_PRIMARY_CORE_ID)
 		offset = SRAM_REG_FW_TRACEP;
 	else
 		offset = PLATFORM_TRACEP_SECONDARY_CORE(cpu);

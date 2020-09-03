@@ -179,7 +179,7 @@ void platform_clock_on_waiti(void)
 	spin_lock_irq(&prd->lock, flags);
 
 	freq_idx = *cache_to_uncache(&active_freq_idx);
-	pm_is_active = pm_runtime_is_active(PM_RUNTIME_DSP, PLATFORM_MASTER_CORE_ID);
+	pm_is_active = pm_runtime_is_active(PM_RUNTIME_DSP, PLATFORM_PRIMARY_CORE_ID);
 
 	if (pm_is_active) {
 		/* set HPRO clock if not already enabled */
@@ -245,7 +245,7 @@ void platform_clock_on_waiti(void)
 	spin_lock_irq(&prd->lock, flags);
 
 	freq_idx = *cache_to_uncache(&active_freq_idx);
-	pm_is_active = pm_runtime_is_active(PM_RUNTIME_DSP, PLATFORM_MASTER_CORE_ID);
+	pm_is_active = pm_runtime_is_active(PM_RUNTIME_DSP, PLATFORM_PRIMARY_CORE_ID);
 
 	if (pm_is_active) {
 		/* set HPRO clock if not already enabled */

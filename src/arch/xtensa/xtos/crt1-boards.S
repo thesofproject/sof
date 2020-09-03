@@ -54,7 +54,7 @@
 
 .type	main, @function
 
-.type	master_core_data, @object
+.type	primary_core_data, @object
 .type	core_data_ptr, @object
 
 // Macros to abstract away ABI differences
@@ -77,7 +77,7 @@ _start:
 	// each core unpacks xtos structures for itself
 	// nevertheless core 0 initializes shared xtosstruct
 	get_prid 	a5
-	movi		a4, PLATFORM_MASTER_CORE_ID
+	movi		a4, PLATFORM_PRIMARY_CORE_ID
 	bne		a5, a4, xtos_per_core
 #endif
 
@@ -110,7 +110,7 @@ _start:
 
 #if !CONFIG_MULTICORE
 	// Init xtos struct ptr
-	movi	a2, master_core_data
+	movi	a2, primary_core_data
 	movi	a3, core_data_ptr
 	s32i	a2, a3, 0
 #else
@@ -119,7 +119,7 @@ _start:
 	mull	a2, a2, a5
 	movi	a3, core_data_ptr
 	add	a3, a3, a2
-	movi	a2, master_core_data
+	movi	a2, primary_core_data
 	s32i	a2, a3, 0
 
 	// Initialize the stack pointer.
@@ -165,7 +165,7 @@ xtos_per_core:
 
 #if CONFIG_MULTICORE
 	get_prid	a5
-	movi		a4, PLATFORM_MASTER_CORE_ID
+	movi		a4, PLATFORM_PRIMARY_CORE_ID
 	beq		a5, a4, xtos_per_core_obtain_xtos_structs
 
 xtos_per_core_cacheattr:

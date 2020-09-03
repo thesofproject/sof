@@ -21,7 +21,7 @@
 extern uintptr_t _system_heap, _system_runtime_heap, _module_heap;
 extern uintptr_t _buffer_heap, _sof_core_s_start;
 
-/* Heap blocks for system runtime for master core */
+/* Heap blocks for system runtime for primary core */
 static SHARED_DATA struct block_hdr sys_rt_0_block64[HEAP_SYS_RT_0_COUNT64];
 static SHARED_DATA struct block_hdr sys_rt_0_block512[HEAP_SYS_RT_0_COUNT512];
 static SHARED_DATA struct block_hdr sys_rt_0_block1024[HEAP_SYS_RT_0_COUNT1024];
@@ -114,14 +114,14 @@ void platform_init_memmap(struct sof *sof)
 	/* access memory map through uncached region */
 	sof->memory_map = cache_to_uncache(&memmap);
 
-	/* .system master core initialization */
+	/* .system primary core initialization */
 	sof->memory_map->system[0].heap = (uintptr_t)&_system_heap;
 	sof->memory_map->system[0].size = HEAP_SYSTEM_M_SIZE;
 	sof->memory_map->system[0].info.free = HEAP_SYSTEM_M_SIZE;
 	sof->memory_map->system[0].caps = SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_EXT |
 		SOF_MEM_CAPS_CACHE;
 
-	/* .system_runtime master core initialization */
+	/* .system_runtime primary core initialization */
 	sof->memory_map->system_runtime[0].blocks =
 		ARRAY_SIZE(sys_rt_heap_map[0]);
 	sof->memory_map->system_runtime[0].map =

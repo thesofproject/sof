@@ -23,8 +23,8 @@
 /** \brief Maximum allowed number of DSP cores */
 #define MAX_CORE_COUNT	1
 
-/** \brief Id of master DSP core */
-#define PLATFORM_MASTER_CORE_ID	0
+/** \brief Id of primary DSP core */
+#define PLATFORM_PRIMARY_CORE_ID	0
 
 #endif /* __PLATFORM_LIB_CPU_H__ */
 

@@ -39,14 +39,14 @@ uint32_t lock_dbg_user[DBG_LOCK_USERS] = {0};
 #if CONFIG_NO_SECONDARY_CORE_ROM
 void *shared_vecbase_ptr __aligned(PLATFORM_DCACHE_ALIGN);
 #endif
-/** \brief Core context for master core. */
-static struct core_context master_core_ctx;
+/** \brief Core context for primary core. */
+static struct core_context primary_core_ctx;
 
 /** \brief Core context pointers for all the cores. */
 struct core_context *core_ctx_ptr[PLATFORM_CORE_COUNT] = { 0 };
 
-/** \brief Xtos core data for master core. */
-struct xtos_core_data master_core_data;
+/** \brief Xtos core data for primary core. */
+struct xtos_core_data primary_core_data;
 
 /** \brief Xtos core data pointers for all the cores. */
 struct xtos_core_data *core_data_ptr[PLATFORM_CORE_COUNT] = { 0 };
@@ -60,10 +60,10 @@ static void initialize_pointers_per_core(void)
 	struct xtos_core_data *core_data;
 	xtos_structures_pointers *p;
 
-	if (core == PLATFORM_MASTER_CORE_ID) {
-		master_core_data.thread_data_ptr = &master_core_ctx.td;
-		core_ctx_ptr[PLATFORM_MASTER_CORE_ID] = &master_core_ctx;
-		core_data_ptr[PLATFORM_MASTER_CORE_ID] = &master_core_data;
+	if (core == PLATFORM_PRIMARY_CORE_ID) {
+		primary_core_data.thread_data_ptr = &primary_core_ctx.td;
+		core_ctx_ptr[PLATFORM_PRIMARY_CORE_ID] = &primary_core_ctx;
+		core_data_ptr[PLATFORM_PRIMARY_CORE_ID] = &primary_core_data;
 	}
 
 	cpu_write_threadptr((int)core_ctx_ptr[core]);

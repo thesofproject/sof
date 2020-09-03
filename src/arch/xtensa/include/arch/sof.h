@@ -18,7 +18,7 @@
 /* entry point to main firmware */
 void _ResetVector(void);
 
-void boot_master_core(void);
+void boot_primary_core(void);
 
 static inline void *arch_get_stack_ptr(void)
 {

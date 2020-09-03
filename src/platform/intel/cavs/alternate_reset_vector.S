@@ -58,7 +58,7 @@ _AltResetVector:
 	rsync
 
 	get_prid a5
-	movi a6, PLATFORM_MASTER_CORE_ID
+	movi a6, PLATFORM_PRIMARY_CORE_ID
 	bne a5, a6, secondary_init //core0 handle restore, core1 always starts from scratch
 	/* Currently no implementation for core 0:
 	   - shutoff restore should be put either here on in L1SRAM */
