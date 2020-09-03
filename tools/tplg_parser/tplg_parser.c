@@ -18,6 +18,7 @@
 #include <ipc/dai.h>
 #include <sof/common.h>
 #include <tplg_parser/topology.h>
+#include <sof/lib/uuid.h>
 
 struct sof_process_types {
 	const char *name;
@@ -987,7 +988,8 @@ int tplg_load_asrc(int comp_id, int pipeline_id, int size,
 
 /* load asrc dapm widget */
 int tplg_load_process(int comp_id, int pipeline_id, int size,
-		      struct sof_ipc_comp_process *process, FILE *file)
+		      struct sof_ipc_comp_process *process, FILE *file,
+		      struct sof_ipc_comp_ext *comp_ext)
 {
 	struct snd_soc_tplg_vendor_array *array = NULL;
 	size_t total_array_size = 0;
@@ -1041,6 +1043,18 @@ int tplg_load_process(int comp_id, int pipeline_id, int size,
 				       array->size);
 		if (ret != 0) {
 			fprintf(stderr, "error: parse process tokens %d\n",
+				size);
+			free((void *)array - total_array_size);
+			return -EINVAL;
+		}
+
+		/* parse uuid tokes */
+		ret = sof_parse_tokens(comp_ext, comp_ext_tokens,
+				       ARRAY_SIZE(comp_ext_tokens), array,
+				       array->size);
+
+		if (ret != 0) {
+			fprintf(stderr, "error: parse comp extended tokens %d\n",
 				size);
 			free((void *)array - total_array_size);
 			return -EINVAL;
@@ -1555,6 +1569,17 @@ int get_token_uint32_t(void *elem, void *object, uint32_t offset,
 	uint32_t *val = object + offset;
 
 	*val = velem->value;
+	return 0;
+}
+
+int get_token_uuid(void *elem, void *object, uint32_t offset,
+		   uint32_t size)
+{
+	struct snd_soc_tplg_vendor_uuid_elem *velem = elem;
+	uint8_t *dst = (uint8_t *)object + offset;
+
+	memcpy(dst, velem->uuid, UUID_SIZE);
+
 	return 0;
 }
 
