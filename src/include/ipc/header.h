@@ -186,6 +186,7 @@
 #define SOF_IPC_GLB_GDB_DEBUG                   SOF_GLB_TYPE(0xAU)
 #define SOF_IPC_GLB_TEST			SOF_GLB_TYPE(0xBU)
 #define SOF_IPC_GLB_PROBE			SOF_GLB_TYPE(0xCU)
+#define SOF_IPC_GLB_DEBUG			SOF_GLB_TYPE(0xDU)
 
 /** @} */
 
@@ -284,6 +285,14 @@
 #define SOF_IPC_PROBE_POINT_REMOVE		SOF_CMD_TYPE(0x008)
 
  /** @} */
+
+/** \name DSP Command: Debug - additional services
+ *  @{
+ */
+
+#define SOF_IPC_DEBUG_MEM_USAGE			SOF_CMD_TYPE(0x001)
+
+/** @} */
 
 /** \name DSP Command: Test - Debug build only
  *  @{
