@@ -48,7 +48,7 @@ static struct dai_group *dai_group_find(uint32_t group_id)
 {
 	struct list_item *dai_groups;
 	struct list_item *group_item;
-	struct dai_group *group;
+	struct dai_group *group = NULL;
 
 	dai_groups = &dai_group_list_get(cpu_get_id())->list;
 
