@@ -52,7 +52,7 @@ static uint64_t task_main_deadline(void *data)
 	return SOF_TASK_DEADLINE_IDLE;
 }
 
-enum task_state task_main_master_core(void *data)
+enum task_state task_main_primary_core(void *data)
 {
 	struct ipc *ipc = ipc_get();
 
@@ -75,8 +75,8 @@ void task_main_init(void)
 	struct task **main_task = task_main_get();
 	int cpu = cpu_get_id();
 	int ret;
-	task_main main_main = cpu == PLATFORM_MASTER_CORE_ID ?
-		&task_main_master_core : &task_main_secondary_core;
+	task_main main_main = cpu == PLATFORM_PRIMARY_CORE_ID ?
+		&task_main_primary_core : &task_main_secondary_core;
 	struct task_ops ops = {
 		.run = main_main,
 		.get_deadline = task_main_deadline,

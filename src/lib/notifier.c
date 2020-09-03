@@ -202,7 +202,7 @@ void init_system_notify(struct sof *sof)
 	for (i = NOTIFIER_ID_CPU_FREQ; i < NOTIFIER_ID_COUNT; i++)
 		list_init(&(*notify)->list[i]);
 
-	if (cpu_get_id() == PLATFORM_MASTER_CORE_ID)
+	if (cpu_get_id() == PLATFORM_PRIMARY_CORE_ID)
 		sof->notify_data = platform_shared_get(notify_data,
 						       sizeof(notify_data));
 }

@@ -372,7 +372,7 @@ int platform_init(struct sof *sof)
 
 	/* Turn off memory for all unused cores */
 	for (i = 0; i < PLATFORM_CORE_COUNT; i++)
-		if (i != PLATFORM_MASTER_CORE_ID)
+		if (i != PLATFORM_PRIMARY_CORE_ID)
 			pm_runtime_put(CORE_MEMORY_POW, i);
 
 	/* pm runtime already initialized, request the DSP to stay in D0
@@ -459,7 +459,7 @@ int platform_init(struct sof *sof)
 	shim_write(SHIM_GPDMA_CLKCTL(1), SHIM_CLKCTL_LPGPDMAFDCGB);
 
 	/* prevent DSP Common power gating */
-	pm_runtime_get(PM_RUNTIME_DSP, PLATFORM_MASTER_CORE_ID);
+	pm_runtime_get(PM_RUNTIME_DSP, PLATFORM_PRIMARY_CORE_ID);
 
 #if CONFIG_DSP_RESIDENCY_COUNTERS
 #if CONFIG_CAVS_LPRO_ONLY
@@ -482,7 +482,7 @@ int platform_init(struct sof *sof)
 	shim_write(SHIM_GPDMA_CLKCTL(1), SHIM_CLKCTL_LPGPDMAFDCGB);
 
 	/* prevent DSP Common power gating */
-	pm_runtime_get(PM_RUNTIME_DSP, PLATFORM_MASTER_CORE_ID);
+	pm_runtime_get(PM_RUNTIME_DSP, PLATFORM_PRIMARY_CORE_ID);
 #endif
 
 	/* init DMACs */
@@ -550,7 +550,7 @@ void platform_wait_for_interrupt(int level)
 	platform_clock_on_waiti();
 
 #if (CONFIG_CAVS_LPS)
-	if (pm_runtime_is_active(PM_RUNTIME_DSP, PLATFORM_MASTER_CORE_ID))
+	if (pm_runtime_is_active(PM_RUNTIME_DSP, PLATFORM_PRIMARY_CORE_ID))
 		arch_wait_for_interrupt(level);
 	else
 		lps_wait_for_interrupt(level);

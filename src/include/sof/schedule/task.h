@@ -98,7 +98,7 @@ static inline uint64_t task_get_deadline(struct task *task)
 	return task->ops.get_deadline(task->data);
 }
 
-enum task_state task_main_master_core(void *data);
+enum task_state task_main_primary_core(void *data);
 
 enum task_state task_main_secondary_core(void *data);
 

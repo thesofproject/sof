@@ -114,7 +114,7 @@ int secondary_core_init(struct sof *sof)
 
 #endif
 
-int master_core_init(int argc, char *argv[], struct sof *sof)
+int primary_core_init(int argc, char *argv[], struct sof *sof)
 {
 	int err;
 
@@ -175,8 +175,8 @@ int main(int argc, char *argv[])
 
 	trace_point(TRACE_BOOT_START);
 
-	if (cpu_get_id() == PLATFORM_MASTER_CORE_ID)
-		err = master_core_init(argc, argv, &sof);
+	if (cpu_get_id() == PLATFORM_PRIMARY_CORE_ID)
+		err = primary_core_init(argc, argv, &sof);
 	else
 		err = secondary_core_init(&sof);
 

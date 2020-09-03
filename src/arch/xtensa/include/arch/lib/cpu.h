@@ -45,7 +45,7 @@ static inline int arch_cpu_get_id(void)
 #if XCHAL_HAVE_PRID
 	__asm__("rsr.prid %0" : "=a"(prid));
 #else
-	prid = PLATFORM_MASTER_CORE_ID;
+	prid = PLATFORM_PRIMARY_CORE_ID;
 #endif
 	return prid;
 }

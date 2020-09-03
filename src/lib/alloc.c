@@ -972,7 +972,7 @@ void free_heap(enum mem_zone zone)
 	/* to be called by secondary cores only for sys heap,
 	 * otherwise this is critical flow issue.
 	 */
-	if (cpu_get_id() == PLATFORM_MASTER_CORE_ID ||
+	if (cpu_get_id() == PLATFORM_PRIMARY_CORE_ID ||
 	    zone != SOF_MEM_ZONE_SYS) {
 		tr_err(&mem_tr, "free_heap(): critical flow issue");
 		panic(SOF_IPC_PANIC_MEM);

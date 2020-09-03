@@ -31,7 +31,7 @@
 extern struct core_context *core_ctx_ptr[PLATFORM_CORE_COUNT];
 extern struct xtos_core_data *core_data_ptr[PLATFORM_CORE_COUNT];
 
-static uint32_t active_cores_mask = BIT(PLATFORM_MASTER_CORE_ID);
+static uint32_t active_cores_mask = BIT(PLATFORM_PRIMARY_CORE_ID);
 
 #if CONFIG_NO_SECONDARY_CORE_ROM
 extern void *shared_vecbase_ptr;
@@ -91,7 +91,7 @@ int arch_cpu_enable_core(int id)
 
 #if CONFIG_NO_SECONDARY_CORE_ROM
 		/* unpack dynamic vectors if it is the first secondary core */
-		if (active_cores_mask == BIT(PLATFORM_MASTER_CORE_ID)) {
+		if (active_cores_mask == BIT(PLATFORM_PRIMARY_CORE_ID)) {
 			alloc_shared_secondary_cores_objects();
 			unpack_dynamic_vectors();
 		}
@@ -118,7 +118,7 @@ void arch_cpu_disable_core(int id)
 		active_cores_mask ^= (1 << id);
 #if CONFIG_NO_SECONDARY_CORE_ROM
 		/* free shared dynamic vectors it was the last secondary core */
-		if (active_cores_mask == BIT(PLATFORM_MASTER_CORE_ID)) {
+		if (active_cores_mask == BIT(PLATFORM_PRIMARY_CORE_ID)) {
 			rfree(shared_vecbase_ptr);
 			shared_vecbase_ptr = NULL;
 		}

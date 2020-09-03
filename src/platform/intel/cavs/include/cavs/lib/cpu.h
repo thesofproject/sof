@@ -20,8 +20,8 @@
 /** \brief Number of available DSP cores (conf. by kconfig) */
 #define PLATFORM_CORE_COUNT	CONFIG_CORE_COUNT
 
-/** \brief Id of master DSP core */
-#define PLATFORM_MASTER_CORE_ID	0
+/** \brief Id of primary DSP core */
+#define PLATFORM_PRIMARY_CORE_ID	0
 
 #endif /* __CAVS_LIB_CPU_H__ */
 

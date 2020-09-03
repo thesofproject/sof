@@ -15,7 +15,7 @@ struct sof;
 /* main firmware entry point - argc and argv not currently used */
 int main(int argc, char *argv[]);
 
-int master_core_init(int argc, char *argv[], struct sof *sof);
+int primary_core_init(int argc, char *argv[], struct sof *sof);
 
 int arch_init(void);
 

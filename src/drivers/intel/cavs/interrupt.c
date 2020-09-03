@@ -313,7 +313,7 @@ void platform_interrupt_init(void)
 	irq_write(REG_IRQ_IL4MSD(core), REG_IRQ_IL4MD_ALL);
 	irq_write(REG_IRQ_IL5MSD(core), REG_IRQ_IL5MD_ALL);
 
-	if (core != PLATFORM_MASTER_CORE_ID)
+	if (core != PLATFORM_PRIMARY_CORE_ID)
 		return;
 
 	for (i = 0; i < ARRAY_SIZE(dsp_irq); i++)

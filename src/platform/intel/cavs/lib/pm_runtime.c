@@ -322,7 +322,7 @@ static inline void cavs_pm_runtime_core_dis_memory(uint32_t index)
 	void *core_memory_ptr;
 	extern uintptr_t _sof_core_s_start;
 
-	/* Address is calculated for index (0 for the master core) minus one
+	/* Address is calculated for index (0 for the primary core) minus one
 	 * since _sof_core_s_start is first secondary core stack address
 	 */
 	core_memory_ptr = (char *)&_sof_core_s_start
@@ -340,7 +340,7 @@ static inline void cavs_pm_runtime_core_en_memory(uint32_t index)
 	void *core_memory_ptr;
 	extern uintptr_t _sof_core_s_start;
 
-	/* Address is calculated for index (0 for the master core) minus one
+	/* Address is calculated for index (0 for the primary core) minus one
 	 * since _sof_core_s_start is first secondary core stack address
 	 */
 	core_memory_ptr = (char *)&_sof_core_s_start
@@ -403,7 +403,7 @@ static inline void cavs_pm_runtime_dis_dsp_pg(uint32_t index)
 
 	index &= ~(PWRD_MASK);
 
-	if (index == PLATFORM_MASTER_CORE_ID) {
+	if (index == PLATFORM_PRIMARY_CORE_ID) {
 		lps_ctl = shim_read(SHIM_LPSCTL);
 
 		shim_write16(SHIM_PWRCTL, shim_read16(SHIM_PWRCTL) |
@@ -444,7 +444,7 @@ static inline void cavs_pm_runtime_en_dsp_pg(uint32_t index)
 
 	index &= ~(PWRD_MASK);
 
-	if (index == PLATFORM_MASTER_CORE_ID) {
+	if (index == PLATFORM_PRIMARY_CORE_ID) {
 		lps_ctl = shim_read(SHIM_LPSCTL);
 
 #if CONFIG_ICELAKE
