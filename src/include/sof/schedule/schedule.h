@@ -307,9 +307,9 @@ static inline void schedule_free(void)
  * @return 0 if succeeded, error code otherwise.
  */
 int schedule_task_init(struct task *task,
-		       uint32_t uid, uint16_t type, uint16_t priority,
-		       enum task_state (*run)(void *data), void *data,
-		       uint16_t core, uint32_t flags);
+		       const struct sof_uuid_entry *uid, uint16_t type,
+		       uint16_t priority, enum task_state (*run)(void *data),
+		       void *data, uint16_t core, uint32_t flags);
 
 /**
  * Initializes scheduler

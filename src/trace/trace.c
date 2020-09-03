@@ -44,7 +44,7 @@ struct trace {
 
 #define TRACE_ID_MASK ((1 << TRACE_ID_LENGTH) - 1)
 
-static void put_header(uint32_t *dst, uint32_t id_0,
+static void put_header(uint32_t *dst, const struct sof_uuid_entry *uid,
 		       uint32_t id_1, uint32_t id_2,
 		       uint32_t entry, uint64_t timestamp)
 {
@@ -52,7 +52,7 @@ static void put_header(uint32_t *dst, uint32_t id_0,
 	struct log_entry_header header;
 	int ret;
 
-	header.uid = id_0;
+	header.uid = (uintptr_t)uid;
 	header.id_0 = id_1 & TRACE_ID_MASK;
 	header.id_1 = id_2 & TRACE_ID_MASK;
 	header.core_id = cpu_get_id();

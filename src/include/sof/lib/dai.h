@@ -107,7 +107,7 @@ struct timestamp_ops {
 
 struct dai_driver {
 	uint32_t type;	/**< type, one of SOF_DAI_... */
-	uint32_t uid;
+	const struct sof_uuid_entry *uid;
 	struct tr_ctx *tctx;
 	uint32_t dma_caps;
 	uint32_t dma_dev;

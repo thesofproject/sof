@@ -20,7 +20,8 @@ struct schedulers **arch_schedulers_get(void)
 	return &testbench_schedulers_ptr;
 }
 
-int schedule_task_init(struct task *task, uint32_t uid, uint16_t type,
+int schedule_task_init(struct task *task,
+		       const struct sof_uuid_entry *uid, uint16_t type,
 		       uint16_t priority, enum task_state (*run)(void *data),
 		       void *data, uint16_t core, uint32_t flags)
 {
