@@ -26,7 +26,7 @@ static SHARED_DATA struct block_hdr sys_rt_0_block64[HEAP_SYS_RT_0_COUNT64];
 static SHARED_DATA struct block_hdr sys_rt_0_block512[HEAP_SYS_RT_0_COUNT512];
 static SHARED_DATA struct block_hdr sys_rt_0_block1024[HEAP_SYS_RT_0_COUNT1024];
 
-/* Heap blocks for system runtime for slave core */
+/* Heap blocks for system runtime for secondary core */
 #if PLATFORM_CORE_COUNT > 1
 static SHARED_DATA struct block_hdr
 	sys_rt_x_block64[PLATFORM_CORE_COUNT - 1][HEAP_SYS_RT_X_COUNT64];
@@ -134,7 +134,7 @@ void platform_init_memmap(struct sof *sof)
 		SOF_MEM_CAPS_EXT | SOF_MEM_CAPS_CACHE |
 		SOF_MEM_CAPS_DMA;
 
-	/* .system and .system_runtime  slave core initialization */
+	/* .system and .system_runtime secondary core initialization */
 	for (i = 1; i < PLATFORM_CORE_COUNT; i++) {
 		/* .system init */
 		sof->memory_map->system[i].heap =

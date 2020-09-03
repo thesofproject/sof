@@ -30,7 +30,7 @@ static inline int cpu_get_id(void)
 	return arch_cpu_get_id();
 }
 
-static inline bool cpu_is_slave(int id)
+static inline bool cpu_is_secondary(int id)
 {
 	return id != PLATFORM_MASTER_CORE_ID;
 }

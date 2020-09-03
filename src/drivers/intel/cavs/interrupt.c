@@ -301,7 +301,7 @@ void platform_interrupt_clear(uint32_t irq, uint32_t mask)
 		arch_interrupt_clear(irq);
 }
 
-/* Called on each core: from platform_init() and from slave_core_init() */
+/* Called on each core: from platform_init() and from secondary_core_init() */
 void platform_interrupt_init(void)
 {
 	int i;

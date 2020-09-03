@@ -131,7 +131,7 @@
 #define XER_SYSCFGID        0x01A0
 
 
-/* RunStall to slave processors
+/* RunStall to secondary processors
 
    RER read
    WER write

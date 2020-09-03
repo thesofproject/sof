@@ -524,7 +524,7 @@ SECTIONS
   _stack_sentry = _sof_stack_start;
   __stack = _sof_stack_end;
 
-  /* Slave core size */
+  /* Secondary core size */
   _core_s_size = SOF_CORE_S_SIZE;
 
   /* System Heap */

@@ -79,7 +79,7 @@ int mm_pm_context_restore(struct dma_copy *dc, struct dma_sg_config *sg);
 /* heap initialisation */
 void init_heap(struct sof *sof);
 
-/* frees entire heap (supported for slave core system heap atm) */
+/* frees entire heap (supported for secondary core system heap atm) */
 void free_heap(enum mem_zone zone);
 
 /* status */

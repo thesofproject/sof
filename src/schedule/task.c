@@ -76,7 +76,7 @@ void task_main_init(void)
 	int cpu = cpu_get_id();
 	int ret;
 	task_main main_main = cpu == PLATFORM_MASTER_CORE_ID ?
-		&task_main_master_core : &task_main_slave_core;
+		&task_main_master_core : &task_main_secondary_core;
 	struct task_ops ops = {
 		.run = main_main,
 		.get_deadline = task_main_deadline,

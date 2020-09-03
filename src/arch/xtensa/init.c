@@ -36,7 +36,7 @@ uint32_t lock_dbg_atomic;
 /** \brief Debug locks per user. */
 uint32_t lock_dbg_user[DBG_LOCK_USERS] = {0};
 #endif
-#if CONFIG_NO_SLAVE_CORE_ROM
+#if CONFIG_NO_SECONDARY_CORE_ROM
 void *shared_vecbase_ptr __aligned(PLATFORM_DCACHE_ALIGN);
 #endif
 /** \brief Core context for master core. */

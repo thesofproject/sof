@@ -969,7 +969,7 @@ void free_heap(enum mem_zone zone)
 	struct mm *memmap = memmap_get();
 	struct mm_heap *cpu_heap;
 
-	/* to be called by slave cores only for sys heap,
+	/* to be called by secondary cores only for sys heap,
 	 * otherwise this is critical flow issue.
 	 */
 	if (cpu_get_id() == PLATFORM_MASTER_CORE_ID ||

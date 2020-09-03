@@ -100,7 +100,7 @@ static inline uint64_t task_get_deadline(struct task *task)
 
 enum task_state task_main_master_core(void *data);
 
-enum task_state task_main_slave_core(void *data);
+enum task_state task_main_secondary_core(void *data);
 
 void task_main_init(void);
 

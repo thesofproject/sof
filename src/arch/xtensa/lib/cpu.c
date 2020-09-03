@@ -33,15 +33,15 @@ extern struct xtos_core_data *core_data_ptr[PLATFORM_CORE_COUNT];
 
 static uint32_t active_cores_mask = BIT(PLATFORM_MASTER_CORE_ID);
 
-#if CONFIG_NO_SLAVE_CORE_ROM
+#if CONFIG_NO_SECONDARY_CORE_ROM
 extern void *shared_vecbase_ptr;
 extern uint8_t _WindowOverflow4[];
 
 /**
- * \brief This function will allocate memory for shared slave cores
+ * \brief This function will allocate memory for shared secondary cores
  *	  dynamic vectors and set global pointer shared_vecbase_ptr
  */
-static void alloc_shared_slave_cores_objects(void)
+static void alloc_shared_secondary_cores_objects(void)
 {
 	uint8_t *dynamic_vectors;
 
@@ -80,19 +80,19 @@ int arch_cpu_enable_core(int id)
 		/* Turn on stack memory for core */
 		pm_runtime_get(CORE_MEMORY_POW, id);
 
-		/* Power up slave core */
+		/* Power up secondary core */
 		pm_runtime_get(PM_RUNTIME_DSP, PWRD_BY_TPLG | id);
 
 		/* allocate resources for core */
 		cpu_alloc_core_context(id);
 
-		/* enable IDC interrupt for the the slave core */
+		/* enable IDC interrupt for the the secondary core */
 		idc_enable_interrupts(id, cpu_get_id());
 
-#if CONFIG_NO_SLAVE_CORE_ROM
-		/* unpack dynamic vectors if it is the first slave core */
+#if CONFIG_NO_SECONDARY_CORE_ROM
+		/* unpack dynamic vectors if it is the first secondary core */
 		if (active_cores_mask == BIT(PLATFORM_MASTER_CORE_ID)) {
-			alloc_shared_slave_cores_objects();
+			alloc_shared_secondary_cores_objects();
 			unpack_dynamic_vectors();
 		}
 #endif
@@ -116,8 +116,8 @@ void arch_cpu_disable_core(int id)
 		idc_send_msg(&power_down, IDC_NON_BLOCKING);
 
 		active_cores_mask ^= (1 << id);
-#if CONFIG_NO_SLAVE_CORE_ROM
-		/* free shared dynamic vectors it was the last slave core */
+#if CONFIG_NO_SECONDARY_CORE_ROM
+		/* free shared dynamic vectors it was the last secondary core */
 		if (active_cores_mask == BIT(PLATFORM_MASTER_CORE_ID)) {
 			rfree(shared_vecbase_ptr);
 			shared_vecbase_ptr = NULL;

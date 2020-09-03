@@ -91,7 +91,7 @@ static bool idc_is_received(int target_core)
  */
 static bool idc_is_powered_up(int target_core)
 {
-	return mailbox_sw_reg_read(PLATFORM_TRACEP_SLAVE_CORE(target_core)) ==
+	return mailbox_sw_reg_read(PLATFORM_TRACEP_SECONDARY_CORE(target_core)) ==
 		TRACE_BOOT_PLATFORM;
 }
 

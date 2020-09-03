@@ -10,7 +10,7 @@
 #ifndef __PLATFORM_TRACE_TRACE_H__
 #define __PLATFORM_TRACE_TRACE_H__
 
-#define PLATFORM_TRACEP_SLAVE_CORE(x) 0
+#define PLATFORM_TRACEP_SECONDARY_CORE(x) 0
 
 /* Platform defined trace code */
 #define platform_trace_point(__x)

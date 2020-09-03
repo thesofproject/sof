@@ -29,7 +29,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-enum task_state task_main_slave_core(void *data)
+enum task_state task_main_secondary_core(void *data)
 {
 #if CONFIG_MULTICORE
 	/* main audio processing loop */

@@ -15,7 +15,7 @@ target_link_libraries(sof_static_libraries INTERFACE lps_vector)
 add_local_sources(sof lps_wait.c)
 endif()
 
-if(CONFIG_NO_SLAVE_CORE_ROM)
+if(CONFIG_NO_SECONDARY_CORE_ROM)
     add_library(altreset STATIC "")
     target_link_libraries(altreset sof_options)
     target_compile_options(altreset PRIVATE -mtext-section-literals)
