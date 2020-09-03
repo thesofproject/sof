@@ -15,13 +15,15 @@
 #include <sof/math/numbers.h>
 #include <sof/audio/format.h>
 
+#include <sof/lib/uuid.h>
+
 #define DEBUG_MSG_LEN		256
 #define MAX_LIB_NAME_LEN	256
 
 #define MAX_OUTPUT_FILE_NUM	4
 
 /* number of widgets types supported in testbench */
-#define NUM_WIDGETS_SUPPORTED	7
+#define NUM_WIDGETS_SUPPORTED	8
 
 struct testbench_prm {
 	char *tplg_file; /* topology file to use */
@@ -49,6 +51,7 @@ struct shared_lib_table {
 	char *comp_name;
 	char library_name[MAX_LIB_NAME_LEN];
 	uint32_t widget_type;
+	struct sof_uuid *uid;
 	int register_drv;
 	void *handle;
 };
@@ -75,6 +78,9 @@ int get_index_by_name(char *comp_name,
 		      struct shared_lib_table *lib_table);
 
 int get_index_by_type(uint32_t comp_type,
+		      struct shared_lib_table *lib_table);
+
+int get_index_by_uuid(struct sof_ipc_comp_ext *comp_ext,
 		      struct shared_lib_table *lib_table);
 
 int parse_topology(struct sof *sof, struct shared_lib_table *library_table,

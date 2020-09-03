@@ -14,17 +14,27 @@
 #include "testbench/trace.h"
 #include "testbench/file.h"
 
+#define DECLARE_SOF_TB_UUID(entity_name, uuid_name,			\
+			 va, vb, vc,					\
+			 vd0, vd1, vd2, vd3, vd4, vd5, vd6, vd7)	\
+	struct sof_uuid uuid_name = {					\
+		.a = va, .b = vb, .c = vc,				\
+		.d = {vd0, vd1, vd2, vd3, vd4, vd5, vd6, vd7}		\
+	}
+
+#define SOF_TB_UUID(uuid_name) (&(uuid_name))
+
 #define TESTBENCH_NCH 2 /* Stereo */
 
 /* shared library look up table */
 struct shared_lib_table lib_table[NUM_WIDGETS_SUPPORTED] = {
-	{"file", "", SOF_COMP_HOST, 0, NULL}, /* File must be first */
-	{"volume", "libsof_volume.so", SOF_COMP_VOLUME, 0, NULL},
-	{"src", "libsof_src.so", SOF_COMP_SRC, 0, NULL},
-	{"asrc", "libsof_asrc.so", SOF_COMP_ASRC, 0, NULL},
-	{"eq-fir", "libsof_eq-fir.so", SOF_COMP_EQ_FIR, 0, NULL},
-	{"eq-iir", "libsof_eq-iir.so", SOF_COMP_EQ_IIR, 0, NULL},
-	{"dcblock", "libsof_dcblock.so", SOF_COMP_DCBLOCK, 0, NULL}
+	{"file", "", SOF_COMP_HOST, NULL, 0, NULL}, /* File must be first */
+	{"volume", "libsof_volume.so", SOF_COMP_VOLUME, NULL, 0, NULL},
+	{"src", "libsof_src.so", SOF_COMP_SRC, NULL, 0, NULL},
+	{"asrc", "libsof_asrc.so", SOF_COMP_ASRC, NULL, 0, NULL},
+	{"eq-fir", "libsof_eq-fir.so", SOF_COMP_EQ_FIR, NULL, 0, NULL},
+	{"eq-iir", "libsof_eq-iir.so", SOF_COMP_EQ_IIR, NULL, 0, NULL},
+	{"dcblock", "libsof_dcblock.so", SOF_COMP_DCBLOCK, NULL, 0, NULL},
 };
 
 /* main firmware context */

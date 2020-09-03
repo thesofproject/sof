@@ -197,6 +197,22 @@ int get_index_by_type(uint32_t comp_type, struct shared_lib_table *lib_table)
 	return -EINVAL;
 }
 
+/* get index of shared library from table by uuid */
+int get_index_by_uuid(struct sof_ipc_comp_ext *comp_ext,
+		      struct shared_lib_table *lib_table)
+{
+	int i;
+
+	for (i = 0; i < NUM_WIDGETS_SUPPORTED; i++) {
+		if (lib_table[i].uid) {
+			if (!memcmp(lib_table[i].uid, comp_ext->uuid, UUID_SIZE))
+				return i;
+		}
+	}
+
+	return -EINVAL;
+}
+
 /* The following definitions are to satisfy libsof linker errors */
 
 struct dai *dai_get(uint32_t type, uint32_t index, uint32_t flags)
