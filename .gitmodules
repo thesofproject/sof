@@ -1,0 +1,4 @@
+[submodule "tomlc99"]
+	path = tomlc99
+	url = https://github.com/thesofproject/tomlc99.git
+	branch = master
