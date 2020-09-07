@@ -419,68 +419,87 @@ static void print_entry_params(const struct log_entry_header *dma_log,
 	fflush(out_fd);
 }
 
-static int fetch_entry(const struct log_entry_header *dma_log, uint64_t *last_timestamp)
+static int read_entry_from_ldc_file(struct ldc_entry *entry, uint32_t log_entry_address)
 {
-	struct ldc_entry entry;
-	uint32_t entry_offset;
 	uint32_t base_address = global_config->logs_header->base_address;
 	uint32_t data_offset = global_config->logs_header->data_offset;
 
 	int ret;
 
-	entry.file_name = NULL;
-	entry.text = NULL;
-	entry.params = NULL;
-
 	/* evaluate entry offset in input file */
-	entry_offset = dma_log->log_entry_address - base_address;
+	uint32_t entry_offset = (log_entry_address - base_address) + data_offset;
+
+	entry->file_name = NULL;
+	entry->text = NULL;
+	entry->params = NULL;
 
 	/* set file position to beginning of processed entry */
-	fseek(global_config->ldc_fd, entry_offset + data_offset, SEEK_SET);
+	fseek(global_config->ldc_fd, entry_offset, SEEK_SET);
 
 	/* fetching elf header params */
-	ret = fread(&entry.header, sizeof(entry.header), 1, global_config->ldc_fd);
+	ret = fread(&entry->header, sizeof(entry->header), 1, global_config->ldc_fd);
 	if (!ret) {
 		ret = -ferror(global_config->ldc_fd);
 		goto out;
 	}
-	if (entry.header.file_name_len > TRACE_MAX_FILENAME_LEN) {
+	if (entry->header.file_name_len > TRACE_MAX_FILENAME_LEN) {
 		log_err("Invalid filename length or ldc file does not match firmware\n");
 		ret = -EINVAL;
 		goto out;
 	}
-	entry.file_name = (char *)malloc(entry.header.file_name_len);
+	entry->file_name = (char *)malloc(entry->header.file_name_len);
 
-	if (!entry.file_name) {
-		log_err("can't allocate %d byte for entry.file_name\n", entry.header.file_name_len);
+	if (!entry->file_name) {
+		log_err("can't allocate %d byte for entry.file_name\n",
+			entry->header.file_name_len);
 		ret = -ENOMEM;
 		goto out;
 	}
 
-	ret = fread(entry.file_name, sizeof(char), entry.header.file_name_len,
+	ret = fread(entry->file_name, sizeof(char), entry->header.file_name_len,
 		    global_config->ldc_fd);
-	if (ret != entry.header.file_name_len) {
+	if (ret != entry->header.file_name_len) {
 		ret = -ferror(global_config->ldc_fd);
 		goto out;
 	}
 
 	/* fetching text */
-	if (entry.header.text_len > TRACE_MAX_TEXT_LEN) {
+	if (entry->header.text_len > TRACE_MAX_TEXT_LEN) {
 		log_err("Invalid text length.\n");
 		ret = -EINVAL;
 		goto out;
 	}
-	entry.text = (char *)malloc(entry.header.text_len);
-	if (!entry.text) {
-		log_err("can't allocate %d byte for entry.text\n", entry.header.text_len);
+	entry->text = (char *)malloc(entry->header.text_len);
+	if (!entry->text) {
+		log_err("can't allocate %d byte for entry.text\n", entry->header.text_len);
 		ret = -ENOMEM;
 		goto out;
 	}
-	ret = fread(entry.text, sizeof(char), entry.header.text_len, global_config->ldc_fd);
-	if (ret != entry.header.text_len) {
+	ret = fread(entry->text, sizeof(char), entry->header.text_len, global_config->ldc_fd);
+	if (ret != entry->header.text_len) {
 		ret = -ferror(global_config->ldc_fd);
 		goto out;
 	}
+
+	return 0;
+
+out:
+	free(entry->text);
+	entry->text = NULL;
+	free(entry->file_name);
+	entry->file_name = NULL;
+
+	return ret;
+}
+
+static int fetch_entry(const struct log_entry_header *dma_log, uint64_t *last_timestamp)
+{
+	struct ldc_entry entry;
+	int ret;
+
+	ret = read_entry_from_ldc_file(&entry, dma_log->log_entry_address);
+	if (ret < 0)
+		goto out;
 
 	/* fetching entry params from dma dump */
 	if (entry.header.params_num > TRACE_MAX_PARAMS_COUNT) {
