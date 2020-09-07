@@ -25,6 +25,8 @@ add_executable(rimage
 	src/ext_manifest.c
 	src/elf.c
 	src/rimage.c
+	src/adsp_config.c
+	tomlc99/toml.c
 )
 
 target_compile_options(rimage PRIVATE
@@ -35,6 +37,7 @@ target_link_libraries(rimage PRIVATE "-lcrypto")
 
 target_include_directories(rimage PRIVATE
 	src/include/
+	tomlc99/
 )
 
 install(TARGETS rimage DESTINATION bin)
