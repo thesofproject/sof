@@ -13,24 +13,6 @@
 #include <rimage/rimage.h>
 #include <rimage/manifest.h>
 
-static const struct adsp *machine[] = {
-	&machine_byt,
-	&machine_cht,
-	&machine_bsw,
-	&machine_hsw,
-	&machine_bdw,
-	&machine_apl,
-	&machine_cnl,
-	&machine_icl,
-	&machine_jsl,
-	&machine_tgl,
-	&machine_sue,
-	&machine_kbl,
-	&machine_skl,
-	&machine_imx8,
-	&machine_imx8x,
-	&machine_imx8m,
-};
 
 static void usage(char *name)
 {
@@ -45,6 +27,40 @@ static void usage(char *name)
 	fprintf(stdout, "\t -b build version\n");
 	fprintf(stdout, "\t -e build extended manifest\n");
 	exit(0);
+}
+
+static const struct adsp *find_adsp(const char *mach)
+{
+	static const struct adsp *machine[] = {
+		&machine_byt,
+		&machine_cht,
+		&machine_bsw,
+		&machine_hsw,
+		&machine_bdw,
+		&machine_apl,
+		&machine_cnl,
+		&machine_icl,
+		&machine_jsl,
+		&machine_tgl,
+		&machine_sue,
+		&machine_kbl,
+		&machine_skl,
+		&machine_imx8,
+		&machine_imx8x,
+		&machine_imx8m,
+	};
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(machine); i++) {
+		if (!strcmp(mach, machine[i]->name))
+			return machine[i];
+	}
+	fprintf(stderr, "error: machine %s not found\n", mach);
+	fprintf(stderr, "error: available machines ");
+	for (i = 0; i < ARRAY_SIZE(machine); i++)
+		fprintf(stderr, "%s, ", machine[i]->name);
+	fprintf(stderr, "\n");
+	return NULL;
 }
 
 int main(int argc, char *argv[])
@@ -141,22 +157,9 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	/* find machine */
-	for (i = 0; i < ARRAY_SIZE(machine); i++) {
-		if (!strcmp(mach, machine[i]->name)) {
-			image.adsp = machine[i];
-			goto found;
-		}
-	}
-	fprintf(stderr, "error: machine %s not found\n", mach);
-	fprintf(stderr, "error: available machines ");
-	for (i = 0; i < ARRAY_SIZE(machine); i++)
-		fprintf(stderr, "%s, ", machine[i]->name);
-	fprintf(stderr, "\n");
-
-	return -EINVAL;
-
-found:
+	image.adsp = find_adsp(mach);
+	if (!image.adsp)
+		return -EINVAL;
 
 	/* set IMR Type in found machine definition */
 	if (image.adsp->man_v1_8)
