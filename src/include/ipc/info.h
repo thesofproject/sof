@@ -54,7 +54,7 @@ struct sof_ipc_fw_version {
 	uint8_t time[10];
 	uint8_t tag[6];
 	uint32_t abi_version;
-	/* used to check FW and ldc file compatibility, reproducible value */
+	/** used to check FW and ldc file compatibility, reproducible value (ABI3.17) */
 	uint32_t src_hash;
 
 	/* reserved for future use */
@@ -109,7 +109,7 @@ struct sof_ipc_window_elem {
 struct sof_ipc_window {
 	struct sof_ipc_ext_data_hdr ext_hdr;
 	uint32_t num_windows;
-	struct sof_ipc_window_elem window[SOF_IPC_MAX_ELEMS];
+	struct sof_ipc_window_elem window[SOF_IPC_MAX_ELEMS]; /**< ABI3.17: Fixed size */
 } __attribute__((packed));
 
 /* extended data, compiler version */

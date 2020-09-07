@@ -50,9 +50,9 @@ enum ext_man_elem_type {
 	EXT_MAN_ELEM_WINDOW		= SOF_IPC_EXT_WINDOW,
 	EXT_MAN_ELEM_CC_VERSION		= SOF_IPC_EXT_CC_INFO,
 	EXT_MAN_ELEM_PROBE_INFO		= SOF_IPC_EXT_PROBE_INFO,
-	EXT_MAN_ELEM_DBG_ABI		= SOF_IPC_EXT_USER_ABI_INFO,
-	EXT_MAN_ELEM_CONFIG_DATA	= 5,
-	EXT_MAN_ELEM_PLATFORM_CONFIG_DATA = 6,
+	EXT_MAN_ELEM_DBG_ABI		= SOF_IPC_EXT_USER_ABI_INFO, /**< ABI3.17 */
+	EXT_MAN_ELEM_CONFIG_DATA	= 5,    /**< ABI3.17 */
+	EXT_MAN_ELEM_PLATFORM_CONFIG_DATA = 6,  /**< ABI3.17 */
 };
 
 /* EXT_MAN_ELEM_CONFIG_DATA elements identificators */
@@ -100,7 +100,7 @@ struct ext_man_dbg_abi {
 	struct sof_ipc_user_abi_version dbg_abi;
 } __packed;
 
-/* EXT_MAN_ELEM_CONFIG_DATA elements */
+/** EXT_MAN_ELEM_CONFIG_DATA elements (ABI3.17) */
 struct ext_man_config_data {
 	struct ext_man_elem_header hdr;
 

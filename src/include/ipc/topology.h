@@ -65,7 +65,7 @@ struct sof_ipc_comp {
 	uint32_t pipeline_id;
 	uint32_t core;
 
-	/* extended data length, 0 if no extended data */
+	/** extended data length, 0 if no extended data (ABI3.17) */
 	uint32_t ext_data_length;
 } __attribute__((packed));
 
