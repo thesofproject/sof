@@ -187,24 +187,24 @@
 /* implements MAP(1, m, ...) */
 #define _META_MAP_1(m, arg1, ...)\
 	m(arg1)\
-	_META_MAP_BODY(1, m, __VA_ARGS__)
+	_META_DEFER_2(_META_MAP_BODY_TMP)()(1, m, __VA_ARGS__)
 
 /* implements MAP(2, m, ...) */
 #define _META_MAP_2(m, arg1, arg2, ...)\
 	m(arg1, arg2)\
-	_META_MAP_BODY(2, m, __VA_ARGS__)
+	_META_DEFER_2(_META_MAP_BODY_TMP)()(2, m, __VA_ARGS__)
 
 /* implements MAP(3, m, ...) */
 #define _META_MAP_3(m, arg1, arg2, arg3, ...)\
 	m(arg1, arg2, arg3)\
-	_META_MAP_BODY(3, m, __VA_ARGS__)
+	_META_DEFER_2(_META_MAP_BODY_TMP)()(3, m, __VA_ARGS__)
 
 /* used by macro MAP, don't use on its own */
 #define _META_MAP_BODY(arg_count, m, ...)\
 	META_IF_ELSE(META_COUNT_VARAGS_BEFORE_COMPILE(__VA_ARGS__))(\
-		_META_DEFER_2(_META_MAP)()\
-			(arg_count, m, __VA_ARGS__)\
+		META_CONCAT(_META_MAP_, arg_count)(m, __VA_ARGS__) \
 	)()
+#define _META_MAP_BODY_TMP() _META_MAP_BODY
 
 /* map aggregator and every group of arg_count arguments onto function m
  * i.e. aggr=x;arg_count=1;m=ADD;args=1,2,3,4,5,6,7...

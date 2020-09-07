@@ -102,8 +102,8 @@
  * results in ADD(1,2) ADD(3,4) ADD(5,6) and so on
  * MAP##N must exist for arg_count == N to work
  */
-#define META_MAP(arg_count, m, ...)\
-	META_CONCAT(_META_MAP_, arg_count)(m, __VA_ARGS__)
+#define META_MAP(arg_count, m, ...) META_RECURSE(\
+	_META_MAP_BODY(arg_count, m, __VA_ARGS__))
 
 /* map aggregator and every group of arg_count arguments onto function m
  * i.e. aggr=x;arg_count=1;m=ADD;args=1,2,3,4,5,6,7...
