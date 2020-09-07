@@ -440,6 +440,16 @@ int platform_init(struct sof *sof)
 
 	/* initialize PM for boot */
 
+#if CAVS_VERSION == CAVS_VERSION_2_5
+	/* Check minimal HW version supported */
+
+	shim_write(SHIM_CLKCTL, shim_read(SHIM_CLKCTL) | SHIM_CLKCTL_WOV_CRO_REQUEST);
+	if (shim_read(SHIM_CLKCTL) & SHIM_CLKCTL_WOV_CRO_REQUEST)
+		shim_write(SHIM_CLKCTL, shim_read(SHIM_CLKCTL) & ~SHIM_CLKCTL_WOV_CRO_REQUEST);
+	else
+		panic(SOF_IPC_PANIC_PLATFORM);
+#endif
+
 	/* request configured ring oscillator and wait for status ready */
 	shim_write(SHIM_CLKCTL, shim_read(SHIM_CLKCTL) | CAVS_DEFAULT_RO);
 	while (!(shim_read(SHIM_CLKSTS) & CAVS_DEFAULT_RO))
