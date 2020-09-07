@@ -170,11 +170,21 @@ void trace_log(bool send_atomic, const void *log_entry,
 unsupported_amount_of_params_in_trace_event\
 _thrown_from_macro_BASE_LOG_in_trace_h
 
+#define CT_ASSERT(COND, MESSAGE) \
+	((void)sizeof(char[1 - 2 * !(COND)]))
+
+#define trace_check_size_uint32(a) \
+	CT_ASSERT(sizeof(a) <= sizeof(uint32_t), "error: trace argument is bigger than a uint32_t");
+
+#define STATIC_ASSERT_ARG_SIZE(...) \
+	META_MAP(1, trace_check_size_uint32, __VA_ARGS__)
+
 #define _log_message(atomic, lvl, comp_class, ctx, id_1, id_2,		\
 		     format, ...)					\
 do {									\
 	_DECLARE_LOG_ENTRY(lvl, format, comp_class,			\
 			   PP_NARG(__VA_ARGS__));			\
+	STATIC_ASSERT_ARG_SIZE(__VA_ARGS__);				\
 	STATIC_ASSERT(							\
 		_TRACE_EVENT_MAX_ARGUMENT_COUNT >=			\
 			META_COUNT_VARAGS_BEFORE_COMPILE(__VA_ARGS__),	\
