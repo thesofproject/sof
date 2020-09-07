@@ -796,7 +796,7 @@ static int ipc_trace_filter_update(uint32_t header)
 	return ret;
 }
 
-static int ipc_glb_debug_message(uint32_t header)
+static int ipc_glb_trace_message(uint32_t header)
 {
 	uint32_t cmd = iCS(header);
 
@@ -814,7 +814,7 @@ static int ipc_glb_debug_message(uint32_t header)
 	}
 }
 #else
-static int ipc_glb_debug_message(uint32_t header)
+static int ipc_glb_trace_message(uint32_t header)
 {
 	/* traces are disabled - CONFIG_TRACE is not set */
 
@@ -1337,7 +1337,7 @@ void ipc_cmd(struct sof_ipc_cmd_hdr *hdr)
 		ret = ipc_glb_dai_message(hdr->cmd);
 		break;
 	case SOF_IPC_GLB_TRACE_MSG:
-		ret = ipc_glb_debug_message(hdr->cmd);
+		ret = ipc_glb_trace_message(hdr->cmd);
 		break;
 	case SOF_IPC_GLB_GDB_DEBUG:
 		ret = ipc_glb_gdb_debug(hdr->cmd);
