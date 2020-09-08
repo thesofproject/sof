@@ -140,7 +140,7 @@ config COMP_TEST_SMART_AMP
 config MAXIM_DSM
 	depends on CAVS && !CAVS_VERSION_1_5
 	bool "Maxim DSM component"
-	default y
+	default n
 	help
 	  Select for Maxim DSM(Dynamic Speaker Management) component.
 	  This component protect the speaker from overheating and
