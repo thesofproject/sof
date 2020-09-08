@@ -687,6 +687,9 @@ static int iir_cmd_get_data(struct comp_dev *dev,
 			ret = -EINVAL;
 		}
 		break;
+	case SOF_CTRL_CMD_ENUM:
+		comp_info(dev, "iir_cmd_get_data(), SOF_CTRL_CMD_ENUM");
+		break;
 	default:
 		comp_err(dev, "iir_cmd_get_data(), invalid command");
 		ret = -EINVAL;
@@ -777,6 +780,9 @@ static int iir_cmd_set_data(struct comp_dev *dev,
 			}
 		}
 		break;
+	case SOF_CTRL_CMD_ENUM:
+		comp_info(dev, "iir_cmd_set_data(), SOF_CTRL_CMD_ENUM");
+		break;
 	default:
 		comp_err(dev, "iir_cmd_set_data(), invalid command");
 		ret = -EINVAL;
@@ -800,6 +806,12 @@ static int eq_iir_cmd(struct comp_dev *dev, int cmd, void *data,
 		ret = iir_cmd_set_data(dev, cdata);
 		break;
 	case COMP_CMD_GET_DATA:
+		ret = iir_cmd_get_data(dev, cdata, max_data_size);
+		break;
+	case COMP_CMD_SET_VALUE:
+		ret = iir_cmd_set_data(dev, cdata);
+		break;
+	case COMP_CMD_GET_VALUE:
 		ret = iir_cmd_get_data(dev, cdata, max_data_size);
 		break;
 	default:
