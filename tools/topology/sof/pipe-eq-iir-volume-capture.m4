@@ -13,6 +13,7 @@ include(`dai.m4')
 include(`pipeline.m4')
 include(`bytecontrol.m4')
 include(`mixercontrol.m4')
+include(`enumcontrol.m4')
 include(`eq_iir.m4')
 
 define(`PGA_NAME', Dmic0)
@@ -61,6 +62,7 @@ W_DATA(DEF_PGA_CONF, DEF_PGA_TOKENS)
 define(DEF_EQIIR_COEF, concat(`eqiir_coef_', PIPELINE_ID))
 define(DEF_EQIIR_PRIV, concat(`eqiir_priv_', PIPELINE_ID))
 
+define(DEF_EQIIR_ENUM, concat(`eqiir_enum_', PIPELINE_ID))
 # By default, use 40 Hz highpass response with +0 dB gain for 48khz
 # TODO: need to implement middle level macro handler per pipeline
 ifdef(`DMICPROC_FILTER1', , `define(DMICPROC_FILTER1, eq_iir_coef_highpass_40hz_0db_48khz.m4)')
@@ -79,6 +81,17 @@ C_CONTROLBYTES(DEF_EQIIR_COEF, PIPELINE_ID,
 	,
 	DEF_EQIIR_PRIV)
 
+# EQ enum list
+CONTROLENUM_LIST(eq_preset, LIST(`	', `"preset1"', `"preset2"'))
+
+# EQ enum control
+C_CONTROLENUM(DEF_EQIIR_ENUM, PIPELINE_ID,
+	eq_preset,
+	LIST(`	', ENUM_CHANNEL(FL, 3, 0), ENUM_CHANNEL(FR, 3, 1)),
+	CONTROLENUM_OPS(enum,
+		257 binds the mixer control to enum get/put handlers,
+		257, 257))
+
 #
 # Components and Buffers
 #
@@ -94,7 +107,7 @@ W_PGA(0, PIPELINE_FORMAT, 2, 2, DEF_PGA_CONF, SCHEDULE_CORE,
 
 # "EQ 0" has 2 sink period and x source periods
 W_EQ_IIR(0, PIPELINE_FORMAT, 2, DAI_PERIODS, SCHEDULE_CORE,
-	LIST(`		', "DEF_EQIIR_COEF"))
+	LIST(`		', "DEF_EQIIR_COEF"), LIST(`		', "DEF_EQIIR_ENUM"))
 
 # Capture Buffers
 W_BUFFER(0, COMP_BUFFER_SIZE(2,
