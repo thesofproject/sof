@@ -709,7 +709,7 @@ static int man_hash_modules(struct image *image, struct sof_man_fw_desc *desc)
 }
 
 /* used by others */
-static int man_write_fw_v1_5(struct image *image)
+int man_write_fw_v1_5(struct image *image)
 {
 	struct sof_man_fw_desc *desc;
 	struct fw_image_manifest_v1_5 *m;
@@ -789,7 +789,7 @@ err:
 }
 
 /* used by others */
-static int man_write_fw_v1_5_sue(struct image *image)
+int man_write_fw_v1_5_sue(struct image *image)
 {
 	struct fw_image_manifest_v1_5_sue *m;
 	uint32_t preload_size;
@@ -845,7 +845,7 @@ err:
 }
 
 /* used by others */
-static int man_write_fw_v1_8(struct image *image)
+int man_write_fw_v1_8(struct image *image)
 {
 	struct sof_man_fw_desc *desc;
 	struct fw_image_manifest_v1_8 *m;
@@ -949,7 +949,7 @@ err:
 }
 
 /* used to sign with MEU */
-static int man_write_fw_meu_v1_5(struct image *image)
+int man_write_fw_meu_v1_5(struct image *image)
 {
 	const int meta_start_offset = image->meu_offset -
 		sizeof(struct sof_man_adsp_meta_file_ext_v1_8) - MAN_EXT_PADDING;
@@ -1027,7 +1027,7 @@ err:
 }
 
 /* used to sign with MEU */
-static int man_write_fw_meu_v1_8(struct image *image)
+int man_write_fw_meu_v1_8(struct image *image)
 {
 	const int meta_start_offset = image->meu_offset -
 		sizeof(struct sof_man_adsp_meta_file_ext_v1_8) - MAN_EXT_PADDING;
@@ -1107,7 +1107,7 @@ err:
 }
 
 /* used to sign with MEU */
-static int man_write_fw_meu_v2_5(struct image *image)
+int man_write_fw_meu_v2_5(struct image *image)
 {
 	const int meta_start_offset = image->meu_offset -
 		sizeof(struct sof_man_adsp_meta_file_ext_v2_5) - MAN_EXT_PADDING;

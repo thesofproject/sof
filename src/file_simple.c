@@ -9,6 +9,7 @@
 #include <string.h>
 
 #include <rimage/rimage.h>
+#include <rimage/manifest.h>
 
 #define BYT_IRAM_BASE		0xff2c0000
 #define BYT_IRAM_HOST_OFFSET	0x0C0000
@@ -316,7 +317,7 @@ static int simple_write_module_reloc(struct image *image, struct module *module)
 }
 
 /* used by others */
-static int simple_write_firmware(struct image *image)
+int simple_write_firmware(struct image *image)
 {
 	struct snd_sof_fw_header hdr;
 	struct module *module;

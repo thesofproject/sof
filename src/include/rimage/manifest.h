@@ -154,4 +154,14 @@ struct fw_image_manifest_v1_5_sue {
 extern struct fw_image_manifest_v1_5 skl_manifest;
 extern struct fw_image_manifest_v1_5 kbl_manifest;
 extern struct fw_image_manifest_v1_5_sue sue_manifest;
+
+struct image;
+int simple_write_firmware(struct image *image);
+int man_write_fw_v1_5(struct image *image);
+int man_write_fw_v1_5_sue(struct image *image);
+int man_write_fw_v1_8(struct image *image);
+int man_write_fw_meu_v1_5(struct image *image);
+int man_write_fw_meu_v1_8(struct image *image);
+int man_write_fw_meu_v2_5(struct image *image);
+
 #endif
