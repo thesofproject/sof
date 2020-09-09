@@ -797,9 +797,7 @@ static int sdma_prep_desc(struct dma_chan_data *channel,
 		if (!config->irq_disabled)
 			bd->config |= SDMA_BD_INT;
 
-		bd->config |= SDMA_BD_CONT;
-		if (pdata->next_bd == i)
-			bd->config |= SDMA_BD_DONE;
+		bd->config |= SDMA_BD_CONT | SDMA_BD_DONE;
 	}
 
 	/* Configure last BD to account for cyclic transfers */
