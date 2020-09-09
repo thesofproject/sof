@@ -302,7 +302,10 @@ static int codec_adapter_copy(struct comp_dev *dev)
 	struct comp_buffer *source = cd->ca_source;
 	struct comp_buffer *sink = cd->ca_sink;
         uint32_t lib_buff_size = codec->cpd.in_buff_size;
+	struct comp_copy_limits c;
 
+	comp_get_copy_limits_with_lock(source, sink, &c);
+	bytes_to_process = c.frames * audio_stream_frame_bytes(&source->stream);
 
         bytes_to_process = MIN(sink->stream.free, source->stream.avail);
 	copy_bytes = MIN(sink->stream.free, source->stream.avail);
@@ -310,6 +313,7 @@ static int codec_adapter_copy(struct comp_dev *dev)
         comp_dbg(dev, "codec_adapter_copy() start lib_buff_size: %d, copy_bytes: %d",
         	  lib_buff_size, copy_bytes);
 
+	buffer_invalidate(source, MIN(lib_buff_size, bytes_to_process));
 	while (bytes_to_process) {
 		if (bytes_to_process < lib_buff_size) {
 			comp_dbg(dev, "codec_adapter_copy(): processed %d in this call %d bytes left for next period",
@@ -350,7 +354,7 @@ static int codec_adapter_copy(struct comp_dev *dev)
 		comp_dbg(dev, "codec_adapter_copy: codec processed %d bytes", processed);
 	}
 
-
+	buffer_writeback(sink, processed);
 	comp_update_buffer_produce(sink, processed);
 	comp_update_buffer_consume(source, processed);
 end:
