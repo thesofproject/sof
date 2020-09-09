@@ -394,15 +394,15 @@ int ipc_comp_connect(struct ipc *ipc,
 	/* check whether the components already exist */
 	icd_source = ipc_get_comp_by_id(ipc, connect->source_id);
 	if (!icd_source) {
-		tr_err(&ipc_tr, "ipc_comp_connect(): components already exist, connect->source_id = %u",
-		       connect->source_id);
+		tr_err(&ipc_tr, "ipc_comp_connect(): source component does not exist, source_id = %u sink_id = %u",
+		       connect->source_id, connect->sink_id);
 		return -EINVAL;
 	}
 
 	icd_sink = ipc_get_comp_by_id(ipc, connect->sink_id);
 	if (!icd_sink) {
-		tr_err(&ipc_tr, "ipc_comp_connect(): components already exist, connect->sink_id = %u",
-		       connect->sink_id);
+		tr_err(&ipc_tr, "ipc_comp_connect(): sink component does not exist, source_id = %d sink_id = %u",
+		       connect->sink_id, connect->source_id);
 		return -EINVAL;
 	}
 
