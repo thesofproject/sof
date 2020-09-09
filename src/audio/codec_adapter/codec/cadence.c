@@ -110,7 +110,8 @@ static int apply_config(struct comp_dev *dev, enum codec_cfg_type type)
 	comp_dbg(dev, "apply_config() done");
 
 ret:
-	//rfree(cfg->data);
+	/*if (type == CODEC_CFG_RUNTIME)
+		rfree(cfg->data);*/
 	//cfg->size = 0;
 	cfg->avail = false;
 	return ret;
