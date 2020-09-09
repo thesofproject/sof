@@ -41,7 +41,8 @@ codec_load_config(struct comp_dev *dev, void *cfg, size_t size,
 	dst = (type == CODEC_CFG_SETUP) ? &codec->s_cfg :
 					  &codec->r_cfg;
 
-	dst->data = rballoc(0, SOF_MEM_CAPS_RAM, size);
+	if (!dst->data)
+		dst->data = rballoc(0, SOF_MEM_CAPS_RAM, size);
 
 	if (!dst->data) {
 		comp_err(dev, "codec_load_config() error: failed to allocate space for setup config.");
