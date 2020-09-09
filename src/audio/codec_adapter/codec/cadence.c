@@ -73,10 +73,9 @@ static int apply_config(struct comp_dev *dev, enum codec_cfg_type type)
 	cfg = (type == CODEC_CFG_SETUP) ? &codec->s_cfg :
 					  &codec->r_cfg;
 	data = cfg->data;
+	size = cfg->size;
 
-
-
-	if (!cfg->avail) {
+	if (!cfg->avail || !size) {
 		comp_err(dev, "apply_config() error: no config available, requested conf. type %d",
 			 type);
 		ret = -EIO;
@@ -84,7 +83,6 @@ static int apply_config(struct comp_dev *dev, enum codec_cfg_type type)
 		goto ret;
 	}
 
-	size = cfg->size;
 
 	while (size > 0) {
 		param = data;
