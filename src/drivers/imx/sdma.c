@@ -528,9 +528,8 @@ static int sdma_start(struct dma_chan_data *channel)
 		sdma_enable_event(channel);
 		dma_reg_update_bits(channel->dma, SDMA_HOSTOVR,
 				    BIT(channel->index), BIT(channel->index));
-	} else {
-		dma_reg_write(channel->dma, SDMA_HSTART, BIT(channel->index));
 	}
+	dma_reg_write(channel->dma, SDMA_HSTART, BIT(channel->index));
 
 	/* Set a runnable channel priority (channel 0 requires maximum priority)
 	 * so it remains usable even if others are schedulable.
