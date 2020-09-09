@@ -64,7 +64,7 @@ void register_comp(int comp_type, struct sof_ipc_comp_ext *comp_ext)
 
 	/* get index of comp in shared library table */
 	index = get_index_by_type(comp_type, lib_table);
-	if (index == SOF_COMP_NONE && comp_ext) {
+	if (comp_type == SOF_COMP_NONE && comp_ext) {
 		index = get_index_by_uuid(comp_ext, lib_table);
 		if (index < 0)
 			return;
