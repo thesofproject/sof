@@ -15,8 +15,16 @@
 struct comp_buffer;
 
 /* KPB internal defines */
+
+#ifdef CONFIG_TIGERLAKE
 #define KPB_MAX_BUFF_TIME 3000 /**< time of buffering in miliseconds */
 #define HOST_WAKEUP_TIME 1000 /* aprox. time of host DMA wakup from suspend [ms] */
+#else
+/** Due to memory constraints on non-TGL platforms, the buffers are smaller. */
+#define KPB_MAX_BUFF_TIME 2100 /**< time of buffering in miliseconds */
+#define HOST_WAKEUP_TIME 0 /* aprox. time of host DMA wakup from suspend [ms] */
+#endif
+
 #define KPB_MAX_DRAINING_REQ (KPB_MAX_BUFF_TIME - HOST_WAKEUP_TIME)
 #define KPB_MAX_SUPPORTED_CHANNELS 2 /**< number of supported channels */
 /**< number of samples taken each milisecond */
