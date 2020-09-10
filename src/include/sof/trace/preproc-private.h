@@ -117,13 +117,6 @@
 #define _META_IIF_1(x, ...) x
 
 /* primitive recursion */
-#define _META_REQRS_1024(...) _META_REQRS_512(_META_REQRS_512(__VA_ARGS__))
-#define _META_REQRS_512(...)  _META_REQRS_256(_META_REQRS_256(__VA_ARGS__))
-#define _META_REQRS_256(...)  _META_REQRS_128(_META_REQRS_128(__VA_ARGS__))
-#define _META_REQRS_128(...)  _META_REQRS_64( _META_REQRS_64 (__VA_ARGS__))
-#define _META_REQRS_64(...)   _META_REQRS_32( _META_REQRS_32 (__VA_ARGS__))
-#define _META_REQRS_32(...)   _META_REQRS_16( _META_REQRS_16 (__VA_ARGS__))
-#define _META_REQRS_16(...)   _META_REQRS_8(  _META_REQRS_8  (__VA_ARGS__))
 #define _META_REQRS_8(...)    _META_REQRS_4(  _META_REQRS_4  (__VA_ARGS__))
 #define _META_REQRS_4(...)    _META_REQRS_2(  _META_REQRS_2  (__VA_ARGS__))
 #define _META_REQRS_2(...)    _META_REQRS_1(  _META_REQRS_1  (__VA_ARGS__))
@@ -158,8 +151,8 @@
 * would break.
  */
 #define _META_DEFER_N(depth) \
-	META_RECURSE_N(16, META_REPEAT(depth, _META_EMPTY_GEN, ~)) \
-	META_RECURSE_N(16, META_REPEAT(depth, _META_PAREN_GEN, ~))
+	META_RECURSE_N(8, META_REPEAT(depth, _META_EMPTY_GEN, ~)) \
+	META_RECURSE_N(8, META_REPEAT(depth, _META_PAREN_GEN, ~))
 
 /* Special, implicit defer implementation for META_REPEAT to work */
 #define _META_DEFER_2(m) m _META_EMPTY _META_EMPTY () ()
