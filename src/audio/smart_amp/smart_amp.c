@@ -171,6 +171,41 @@ err:
 	return -ENOMEM;
 }
 
+static void smart_amp_free_caldata(struct comp_dev *dev,
+				   struct smart_amp_caldata *caldata)
+{
+	if (!caldata->data)
+		return;
+
+	rfree(caldata->data);
+	caldata->data = NULL;
+	caldata->data_size = 0;
+	caldata->data_pos = 0;
+}
+
+static inline int smart_amp_alloc_caldata(struct comp_dev *dev,
+					  struct smart_amp_caldata *caldata,
+					  uint32_t size)
+{
+	smart_amp_free_caldata(dev, caldata);
+
+	if (!size)
+		return 0;
+
+	caldata->data = rballoc(0, SOF_MEM_CAPS_RAM, size);
+
+	if (!caldata->data) {
+		comp_err(dev, "smart_amp_alloc_caldata(): model->data rballoc failed");
+		return -ENOMEM;
+	}
+
+	bzero(caldata->data, size);
+	caldata->data_size = size;
+	caldata->data_pos = 0;
+
+	return 0;
+}
+
 static struct comp_dev *smart_amp_new(const struct comp_driver *drv,
 				      struct sof_ipc_comp *comp)
 {
@@ -181,6 +216,7 @@ static struct comp_dev *smart_amp_new(const struct comp_driver *drv,
 	struct smart_amp_data *sad;
 	struct sof_smart_amp_config *cfg;
 	size_t bs;
+	int sz_caldata;
 	int ret;
 
 	dev = comp_alloc(drv, COMP_SIZE(struct sof_ipc_comp_process));
@@ -205,28 +241,46 @@ static struct comp_dev *smart_amp_new(const struct comp_driver *drv,
 	cfg = (struct sof_smart_amp_config *)ipc_sa->data;
 	bs = ipc_sa->size;
 
-	/* component model data handler */
-	sad->model_handler = comp_data_blob_handler_new(dev);
-
 	if (bs > 0 && bs < sizeof(struct sof_smart_amp_config)) {
 		comp_err(dev, "smart_amp_new(): failed to apply config");
 
 		if (sad)
 			rfree(sad);
 		rfree(sad);
-		return NULL;
+		goto error;
 	}
 
 	memcpy_s(&sad->config, sizeof(struct sof_smart_amp_config), cfg, bs);
 
 	if (smart_amp_alloc_memory(sad, dev) != 0)
-		return NULL;
+		goto error;
 	if (smart_amp_init(sad->mod_handle, dev))
-		return NULL;
+		goto error;
+
+	/* Get the max. number of parameter to allocate memory for model data */
+	sad->mod_handle->param.max_param =
+		smart_amp_get_num_param(sad->mod_handle, dev);
+	sz_caldata = sad->mod_handle->param.max_param * DSM_SINGLE_PARAM_SZ;
+
+	if (sz_caldata > 0) {
+		ret = smart_amp_alloc_caldata(dev, &sad->mod_handle->param.caldata,
+					      sz_caldata * sizeof(int32_t));
+		if (ret < 0) {
+			comp_err(dev, "smart_amp_new(): caldata initial failed");
+			goto error;
+		}
+	}
+
+	/* update full parameter values */
+	if (smart_amp_get_all_param(sad->mod_handle, dev) < 0)
+		goto error;
 
 	dev->state = COMP_STATE_READY;
 
 	return dev;
+
+error:
+	return NULL;
 }
 
 static int smart_amp_set_config(struct comp_dev *dev,
@@ -266,7 +320,7 @@ static int smart_amp_get_config(struct comp_dev *dev,
 	/* Copy back to user space */
 	bs = sad->config.size;
 
-	comp_dbg(dev, "smart_amp_set_config(), actual blob size = %u, expected blob size = %u",
+	comp_dbg(dev, "smart_amp_get_config(), actual blob size = %u, expected blob size = %u",
 		 bs, sizeof(struct sof_smart_amp_config));
 
 	if (bs == 0 || bs > size)
@@ -295,7 +349,11 @@ static int smart_amp_ctrl_get_bin_data(struct comp_dev *dev,
 		ret = smart_amp_get_config(dev, cdata, size);
 		break;
 	case SOF_SMART_AMP_MODEL:
-		ret = comp_data_blob_get_cmd(sad->model_handler, cdata, size);
+		ret = maxim_dsm_get_param(sad->mod_handle, dev, cdata, size);
+		if (ret < 0) {
+			comp_err(dev, "smart_amp_ctrl_get_bin_data(): parameter read error!");
+			return ret;
+		}
 		break;
 	default:
 		comp_err(dev, "smart_amp_ctrl_get_bin_data(): unknown binary data type");
@@ -348,7 +406,11 @@ static int smart_amp_ctrl_set_bin_data(struct comp_dev *dev,
 		ret = smart_amp_set_config(dev, cdata);
 		break;
 	case SOF_SMART_AMP_MODEL:
-		ret = comp_data_blob_set_cmd(sad->model_handler, cdata);
+		ret = maxim_dsm_set_param(sad->mod_handle, dev, cdata);
+		if (ret < 0) {
+			comp_err(dev, "smart_amp_ctrl_set_bin_data(): parameter write error!");
+			return ret;
+		}
 		break;
 	default:
 		comp_err(dev, "smart_amp_ctrl_set_bin_data(): unknown binary data type");
@@ -407,9 +469,8 @@ static void smart_amp_free(struct comp_dev *dev)
 
 	comp_dbg(dev, "smart_amp_free()");
 
+	smart_amp_free_caldata(dev, &sad->mod_handle->param.caldata);
 	smart_amp_free_memory(sad, dev);
-
-	comp_data_blob_handler_free(sad->model_handler);
 
 	rfree(sad);
 	rfree(dev);

@@ -34,6 +34,27 @@
 #define DSM_FF_BUF_DB_SZ	(DSM_FF_BUF_SZ * SMART_AMP_FF_MAX_CH_NUM)
 #define DSM_FB_BUF_DB_SZ	(DSM_FB_BUF_SZ * SMART_AMP_FB_MAX_CH_NUM)
 
+/* DSM parameter table structure
+ * +--------------+-----------------+---------------------------------+
+ * | ID (4 bytes) | VALUE (4 bytes) | 1st channel :                   |
+ * |              |                 | 8 bytes per single parameter    |
+ * +--------------+-----------------+---------------------------------+
+ * | ...          | ...             | Repeat N times for N parameters |
+ * +--------------+-----------------+---------------------------------+
+ * | ID (4 bytes) | VALUE (4 bytes) | 2nd channel :                   |
+ * |              |                 | 8 bytes per single parameter    |
+ * +--------------+-----------------+---------------------------------+
+ * | ...          | ...             | Repeat N times for N parameters |
+ * +--------------+-----------------+---------------------------------+
+ */
+enum dsm_param {
+	DSM_PARAM_ID = 0,
+	DSM_PARAM_VALUE,
+	DSM_PARAM_MAX
+};
+
+#define DSM_SINGLE_PARAM_SZ	(DSM_PARAM_MAX * SMART_AMP_FF_MAX_CH_NUM)
+
 union smart_amp_buf {
 	int16_t *buf16;
 	int32_t *buf32;
@@ -73,6 +94,24 @@ struct smart_amp_buf_struct_t {
 	struct smart_amp_fb_buf_struct_t fb;
 };
 
+struct param_buf_struct_t {
+	int id;
+	int value;
+};
+
+struct smart_amp_caldata {
+	uint32_t data_size;			/* size of component's model data */
+	void *data;				/* model data pointer */
+	uint32_t data_pos;			/* data position for read/write */
+};
+
+struct smart_amp_param_struct_t {
+	struct param_buf_struct_t param;	/* variable to keep last parameter ID/value */
+	struct smart_amp_caldata caldata;	/* model data buffer */
+	int pos;				/* data position for read/write */
+	int max_param;				/* keep max number of DSM parameters */
+};
+
 struct smart_amp_mod_struct_t {
 	struct smart_amp_buf_struct_t buf;
 	void *dsmhandle;
@@ -91,6 +130,7 @@ struct smart_amp_mod_struct_t {
 	int ibsamples;
 	/* Number of processed samples */
 	int ofsamples;
+	struct smart_amp_param_struct_t param;
 };
 
 typedef void (*smart_amp_func)(const struct comp_dev *dev,
@@ -125,4 +165,18 @@ int smart_amp_get_memory_size(struct smart_amp_mod_struct_t *hspk,
 /* supported audio format check */
 int smart_amp_check_audio_fmt(int sample_rate, int ch_num);
 
+/* this function return number of parameters supported */
+int smart_amp_get_num_param(struct smart_amp_mod_struct_t *hspk,
+			    struct comp_dev *dev);
+/* this function update whole parameter table */
+int smart_amp_get_all_param(struct smart_amp_mod_struct_t *hspk,
+			    struct comp_dev *dev);
+/* parameter read function */
+int maxim_dsm_get_param(struct smart_amp_mod_struct_t *hspk,
+			struct comp_dev *dev,
+			struct sof_ipc_ctrl_data *cdata, int size);
+/* parameter write function */
+int maxim_dsm_set_param(struct smart_amp_mod_struct_t *hspk,
+			struct comp_dev *dev,
+			struct sof_ipc_ctrl_data *cdata);
 #endif
