@@ -60,6 +60,179 @@ exit:
 	return (int)retcode;
 }
 
+static int maxim_dsm_get_all_param(struct smart_amp_mod_struct_t *hspk,
+				   struct comp_dev *dev)
+{
+	struct smart_amp_caldata *caldata = &hspk->param.caldata;
+	int32_t *db = (int32_t *)caldata->data;
+	enum DSM_API_MESSAGE retcode;
+	int cmdblock[DSM_GET_PARAM_SZ_PAYLOAD];
+	int num_param = hspk->param.max_param;
+	int x;
+
+	for (x = 0 ; x < num_param ;  x++) {
+		/* Read all DSM parameters - Please refer to the API header file
+		 * for more details about get_params() usage info.
+		 */
+		cmdblock[DSM_GET_ID_IDX] = DSM_SET_CMD_ID(x);
+		retcode = dsm_api_get_params(hspk->dsmhandle, 1, (void *)cmdblock);
+		if (retcode != DSM_API_OK) {
+			/* set zero if the parameter is not readable */
+			cmdblock[DSM_GET_CH1_IDX] = 0;
+			cmdblock[DSM_GET_CH2_IDX] = 0;
+		}
+
+		/* fill the data for the 1st channel 4 byte ID + 4 byte value */
+		db[x * DSM_PARAM_MAX + DSM_PARAM_ID] = DSM_CH1_BITMASK | x;
+		db[x * DSM_PARAM_MAX + DSM_PARAM_VALUE] = cmdblock[DSM_GET_CH1_IDX];
+		/* fill the data for the 2nd channel 4 byte ID + 4 byte value
+		 * 2nd channel data have offset for num_param * DSM_PARAM_MAX
+		 */
+		db[(x + num_param) * DSM_PARAM_MAX + DSM_PARAM_ID] = DSM_CH2_BITMASK | x;
+		db[(x + num_param) * DSM_PARAM_MAX + DSM_PARAM_VALUE] = cmdblock[DSM_GET_CH2_IDX];
+	}
+
+	return 0;
+}
+
+static int maxim_dsm_get_volatile_param(struct smart_amp_mod_struct_t *hspk,
+					struct comp_dev *dev)
+{
+	struct smart_amp_caldata *caldata = &hspk->param.caldata;
+	int32_t *db = (int32_t *)caldata->data;
+	enum DSM_API_MESSAGE retcode;
+	int cmdblock[DSM_GET_PARAM_SZ_PAYLOAD];
+	int num_param = hspk->param.max_param;
+	int x;
+
+	/* Update all volatile parameter values */
+	for (x = DSM_API_ADAPTIVE_PARAM_START ; x < DSM_API_ADAPTIVE_PARAM_END ;  x++) {
+		cmdblock[0] = DSM_SET_CMD_ID(x);
+		retcode = dsm_api_get_params(hspk->dsmhandle, 1, (void *)cmdblock);
+		if (retcode != DSM_API_OK)
+			return -EINVAL;
+
+		/* fill the data for the 1st channel 4 byte ID + 4 byte value */
+		db[x * DSM_PARAM_MAX + DSM_PARAM_ID] = DSM_CH1_BITMASK | x;
+		db[x * DSM_PARAM_MAX + DSM_PARAM_VALUE] = cmdblock[DSM_GET_CH1_IDX];
+		/* fill the data for the 2nd channel 4 byte ID + 4 byte value
+		 * 2nd channel data have offset for num_param * DSM_PARAM_MAX
+		 */
+		db[(x + num_param) * DSM_PARAM_MAX + DSM_PARAM_ID] = DSM_CH2_BITMASK | x;
+		db[(x + num_param) * DSM_PARAM_MAX + DSM_PARAM_VALUE] = cmdblock[DSM_GET_CH2_IDX];
+	}
+
+	return 0;
+}
+
+int maxim_dsm_get_param(struct smart_amp_mod_struct_t *hspk,
+			struct comp_dev *dev,
+			struct sof_ipc_ctrl_data *cdata, int size)
+{
+	struct smart_amp_caldata *caldata = &hspk->param.caldata;
+	size_t bs;
+	int ret = 0;
+
+	if (caldata->data) {
+		/* reset data_pos variable in case of copying first element */
+		if (!cdata->msg_index) {
+			caldata->data_pos = 0;
+			/* update volatile parameters */
+			ret = maxim_dsm_get_volatile_param(hspk, dev);
+			if (ret)
+				return -EINVAL;
+		}
+
+		bs = cdata->num_elems;
+
+		/* return an error in case of mismatch between num_elems and
+		 * required size
+		 */
+		if (bs > size) {
+			comp_err(dev, "[DSM] maxim_dsm_get_param(): invalid size %d", bs);
+			return -EINVAL;
+		}
+
+		/* copy required size of data */
+		ret = memcpy_s(cdata->data->data, size,
+			       (char *)caldata->data + caldata->data_pos,
+			       bs);
+
+		assert(!ret);
+
+		cdata->data->abi = SOF_ABI_VERSION;
+		cdata->data->size = caldata->data_size;
+		caldata->data_pos += bs;
+	} else {
+		comp_warn(dev, "[DSM] caldata->data not allocated yet.");
+		cdata->data->abi = SOF_ABI_VERSION;
+		cdata->data->size = 0;
+	}
+	return 0;
+}
+
+int maxim_dsm_set_param(struct smart_amp_mod_struct_t *hspk,
+			struct comp_dev *dev,
+			struct sof_ipc_ctrl_data *cdata)
+{
+	struct smart_amp_param_struct_t *param = &hspk->param;
+	struct smart_amp_caldata *caldata = &hspk->param.caldata;
+	/* Model database */
+	int32_t *db = (int32_t *)caldata->data;
+	/* Payload buffer */
+	int *wparam = (int *)cdata->data->data;
+	/* number of parameters to read */
+	int num_param = (cdata->num_elems >> 2);
+	int x, id, ch;
+
+	if (!cdata->msg_index) {
+		/* reset variables for the first set_param frame is arrived */
+		param->pos = 0;		/* number of received parameters */
+		param->param.id = 0;	/* variable to keep last parameter ID */
+		param->param.value = 0;	/* variable to keep last parameter value */
+	}
+
+	for (x = 0 ; x < num_param ; x++) {
+		/* Single DSM parameter consists of ID and value field (total 8 bytes)
+		 * It is even number aligned, but actual payload could be odd number.
+		 * Actual setparam operation is performed when both ID and value are
+		 * ready
+		 */
+		if (param->pos % 2 == 0) {
+			/* even field is ID */
+			param->param.id = wparam[x];
+		} else {
+			/* odd field is value */
+			int value[DSM_SET_PARAM_SZ_PAYLOAD];
+			enum DSM_API_MESSAGE retcode;
+
+			param->param.value = wparam[x];
+			value[DSM_SET_ID_IDX] = param->param.id;
+			value[DSM_SET_VALUE_IDX] = param->param.value;
+
+			id = DSM_CH_MASK(param->param.id);
+			ch = param->param.id & DSM_CH1_BITMASK ? 0 : 1;
+
+			/* 2nd channel has (hspk->param.max_param * DSM_PARAM_MAX) sized offset */
+			db[(id + ch * hspk->param.max_param) * DSM_PARAM_MAX + DSM_PARAM_VALUE] =
+				param->param.value;
+
+			/* More detailed information about set_params() function is available
+			 * in the api header file
+			 */
+			retcode = dsm_api_set_params(hspk->dsmhandle, 1, value);
+			if (retcode != DSM_API_OK) {
+				comp_err(dev, "[DSM] maxim_dsm_set_param() write failure. (id:%x, ret:%x)",
+					 id, retcode);
+				return -EINVAL;
+			}
+		}
+		param->pos++;
+	}
+
+	return 0;
+}
+
 static void maxim_dsm_ff_proc(struct smart_amp_mod_struct_t *hspk,
 			      struct comp_dev *dev, void *in, void *out,
 			      int nsamples, int szsample)
@@ -277,6 +450,29 @@ int smart_amp_flush(struct smart_amp_mod_struct_t *hspk, struct comp_dev *dev)
 int smart_amp_init(struct smart_amp_mod_struct_t *hspk, struct comp_dev *dev)
 {
 	return maxim_dsm_init(hspk, dev);
+}
+
+int smart_amp_get_all_param(struct smart_amp_mod_struct_t *hspk,
+			    struct comp_dev *dev)
+{
+	if (maxim_dsm_get_all_param(hspk, dev) < 0)
+		return -EINVAL;
+	return 0;
+}
+
+int smart_amp_get_num_param(struct smart_amp_mod_struct_t *hspk,
+			    struct comp_dev *dev)
+{
+	enum DSM_API_MESSAGE retcode;
+	int cmdblock[DSM_GET_PARAM_SZ_PAYLOAD];
+
+	/* Get number of parameters */
+	cmdblock[DSM_GET_ID_IDX] = DSM_SET_CMD_ID(DSM_API_GET_MAXIMUM_CMD_ID);
+	retcode = dsm_api_get_params(hspk->dsmhandle, 1, (void *)cmdblock);
+	if (retcode != DSM_API_OK)
+		return 0;
+
+	return MIN(DSM_DEFAULT_MAX_NUM_PARAM, cmdblock[DSM_GET_CH1_IDX]);
 }
 
 int smart_amp_get_memory_size(struct smart_amp_mod_struct_t *hspk,

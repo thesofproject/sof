@@ -7,14 +7,35 @@
 #ifndef _DSM_API_PUBLIC_H_
 #define _DSM_API_PUBLIC_H_
 
-#define DSM_SET_STEREO_CMD_ID(cmd_id) (((cmd_id) & 0x00FFFFFF) | 0x03000000)
-#define DSM_SET_CMD_ID(cmd_id) DSM_SET_STEREO_CMD_ID(cmd_id)
+#define DSM_CH_MASK(cmd_id)		((cmd_id) & 0x00FFFFFF)
+#define DSM_CH1_BITMASK			0x1000000
+#define DSM_CH2_BITMASK			0x2000000
+#define DSM_SET_STEREO_CMD_ID(cmd_id)	(DSM_CH_MASK(cmd_id) | 0x03000000)
+#define DSM_SET_CMD_ID(cmd_id)		DSM_SET_STEREO_CMD_ID(cmd_id)
 
 #define DSM_DEFAULT_NUM_CHANNEL		2
 #define DSM_DEFAULT_CH_SIZE		16
 #define DSM_DEFAULT_SAMPLE_RATE		48000
 #define DSM_DEFAULT_NUM_EQ		8
 #define DSM_DEFAULT_MAX_NUM_PARAM	250
+
+#define DSM_GET_PARAM_SZ_PAYLOAD	(1 + DSM_DEFAULT_NUM_CHANNEL)
+#define DSM_SET_PARAM_SZ_PAYLOAD	(DSM_DEFAULT_NUM_CHANNEL * 2 + 1)
+
+#define DSM_API_GET_MAXIMUM_CMD_ID	0
+
+enum dsm_getparam_payload_index {
+	DSM_GET_ID_IDX = 0,
+	DSM_GET_CH1_IDX,
+	DSM_GET_CH2_IDX,
+	DSM_GET_IDX_MAX
+};
+
+enum dsm_setparam_payload_index {
+	DSM_SET_ID_IDX = 0,
+	DSM_SET_VALUE_IDX,
+	DSM_SET_IDX_MAX
+};
 
 struct dsm_api_memory_size_ext_t {
 	int isamplingrate;
@@ -60,6 +81,9 @@ enum DSM_API_MESSAGE {
 	DSM_API_MSG_FF_NOT_START = 1 << 22,
 	DSM_API_MSG_INVALID
 };
+
+#define DSM_API_ADAPTIVE_PARAM_START	0x10
+#define DSM_API_ADAPTIVE_PARAM_END	0x14
 
 /*******************************************************************************
  *    dsm_api_get_mem()
