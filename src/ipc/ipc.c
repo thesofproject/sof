@@ -48,8 +48,10 @@ int ipc_process_on_core(uint32_t core)
 	int ret;
 
 	/* check if requested core is enabled */
-	if (!cpu_is_core_enabled(core))
-		return -EINVAL;
+	if (!cpu_is_core_enabled(core)) {
+		tr_err(&ipc_tr, "ipc_process_on_core(): core #%d is disabled", core);
+		return -EACCES;
+	}
 
 	/* send IDC message */
 	ret = idc_send_msg(&msg, IDC_BLOCKING);
