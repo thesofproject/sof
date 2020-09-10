@@ -62,9 +62,9 @@
 #define META_IF(condition) _META_IIF(META_BOOL(condition))
 
 /* primitive recursion
- * default depth is 1024
+ * default depth is 8
  */
-#define META_RECURSE(...) _META_REQRS_1024(__VA_ARGS__)
+#define META_RECURSE(...) _META_REQRS_8(__VA_ARGS__)
 /* choose explicitly depth of recursion
  */
 #define META_RECURSE_N(depth, ...)\
