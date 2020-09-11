@@ -28,7 +28,8 @@ static inline struct comp_buffer *create_test_sink(struct comp_dev *dev,
 	memset(buffer->stream.addr, 0, buffer_size);
 
 	/* set bsink list */
-	list_item_append(&buffer->source_list, &dev->bsink_list);
+	if (dev)
+		list_item_append(&buffer->source_list, &dev->bsink_list);
 
 	/* alloc sink and set default parameters */
 	buffer->sink = calloc(1, sizeof(struct comp_dev));
@@ -62,7 +63,8 @@ static inline struct comp_buffer *create_test_source(struct comp_dev *dev,
 	memset(buffer->stream.addr, 0, buffer_size);
 
 	/*set bsource list */
-	list_item_append(&buffer->sink_list, &dev->bsource_list);
+	if (dev)
+		list_item_append(&buffer->sink_list, &dev->bsource_list);
 
 	/* alloc source and set default parameters */
 	buffer->source = calloc(1, sizeof(struct comp_dev));
