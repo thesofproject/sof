@@ -27,11 +27,11 @@ reconfigure_build()
         mkdir "$BUILD_TOOLS_DIR"
 
         cd "$BUILD_TOOLS_DIR"
-        cmake ..
+        cmake -DCMAKE_BUILD_TYPE="$CMAKE_BUILD_TYPE" ..
 
         mkdir "$BUILD_TOOLS_DIR/fuzzer"
         cd "$BUILD_TOOLS_DIR/fuzzer"
-        cmake ../../fuzzer
+        cmake -DCMAKE_BUILD_TYPE="$CMAKE_BUILD_TYPE" ../../fuzzer
 }
 
 make_tool()
