@@ -356,6 +356,17 @@ static uint32_t host_get_copy_bytes_normal(struct comp_dev *dev)
 	 */
 	copy_bytes = ALIGN_DOWN(copy_bytes, hd->dma_copy_align);
 
+	if (!copy_bytes) {
+		if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
+			comp_info(dev, "no bytes to copy, %d free in buffer, %d available in DMA",
+				  audio_stream_get_free_bytes(&hd->local_buffer->stream),
+				  avail_bytes);
+		else
+			comp_info(dev, "no bytes to copy, %d avail in buffer, %d free in DMA",
+				  audio_stream_get_avail_bytes(&hd->local_buffer->stream),
+				  free_bytes);
+	}
+
 	return copy_bytes;
 }
 
@@ -378,10 +389,8 @@ static int host_copy_normal(struct comp_dev *dev)
 		flags |= DMA_COPY_BLOCKING;
 
 	copy_bytes = host_get_copy_bytes_normal(dev);
-	if (!copy_bytes) {
-		comp_info(dev, "host_copy_normal(): no bytes to copy");
+	if (!copy_bytes)
 		return ret;
-	}
 
 	ret = dma_copy(hd->chan, copy_bytes, flags);
 	if (ret < 0) {
