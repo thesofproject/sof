@@ -297,15 +297,13 @@ static int host_copy_one_shot(struct comp_dev *dev)
 	/* reconfigure transfer */
 	ret = dma_set_config(hd->chan, &hd->config);
 	if (ret < 0) {
-		comp_cl_err(&comp_host, "host_copy_one_shot(): dma_set_config() failed, ret = %u",
-			    ret);
+		comp_err(dev, "host_copy_one_shot(): dma_set_config() failed, ret = %u", ret);
 		return ret;
 	}
 
 	ret = dma_copy(hd->chan, copy_bytes, DMA_COPY_ONE_SHOT);
 	if (ret < 0) {
-		comp_cl_err(&comp_host, "host_copy_one_shot(): dma_copy() failed, ret = %u",
-			    ret);
+		comp_err(dev, "host_copy_one_shot(): dma_copy() failed, ret = %u", ret);
 		return ret;
 	}
 
@@ -330,8 +328,8 @@ static uint32_t host_get_copy_bytes_normal(struct comp_dev *dev)
 	ret = dma_get_data_size(hd->chan, &avail_bytes,
 				&free_bytes);
 	if (ret < 0) {
-		comp_cl_err(&comp_host, "host_get_copy_bytes_normal(): dma_get_data_size() failed, ret = %u",
-			    ret);
+		comp_err(dev, "host_get_copy_bytes_normal(): dma_get_data_size() failed, ret = %u",
+			 ret);
 		return 0;
 	}
 
@@ -394,8 +392,7 @@ static int host_copy_normal(struct comp_dev *dev)
 
 	ret = dma_copy(hd->chan, copy_bytes, flags);
 	if (ret < 0) {
-		comp_cl_err(&comp_host, "host_copy_normal(): dma_copy() failed, ret = %u",
-			    ret);
+		comp_err(dev, "host_copy_normal(): dma_copy() failed, ret = %u", ret);
 		return ret;
 	}
 
