@@ -12,6 +12,11 @@ endif()
 
 project(SOF_TOOLS C)
 
+if (NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+  message(STATUS "No CMAKE_BUILD_TYPE, defaulting to Debug")
+  set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "Build Type" FORCE)
+endif()
+
 set(SOF_ROOT_SOURCE_DIRECTORY "${PROJECT_SOURCE_DIR}/..")
 
 # checkout submodules
