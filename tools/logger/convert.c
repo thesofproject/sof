@@ -630,8 +630,10 @@ static int logger_read(void)
 				freopen(NULL, "r", global_config->in_fd);
 				continue;
 			}
-
-			return -ferror(global_config->in_fd);
+			log_err("in %s(), fread(..., %s) failed: %s(%d)\n",
+				 __func__, global_config->in_file,
+				strerror(errno), errno);
+			return -errno;
 		}
 
 		/* checking if received trace address is located in
