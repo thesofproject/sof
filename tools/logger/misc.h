@@ -9,8 +9,15 @@
 #include <stdlib.h>
 
 char *vasprintf(const char *format, va_list args);
+
+#ifdef __GNUC__
+__attribute__((format(printf, 1, 2)))
+#endif
 char *asprintf(const char *format, ...);
 
+#ifdef __GNUC__
+__attribute__((format(printf, 1, 2)))
+#endif
 void log_err(const char *fmt, ...);
 
 /* trim whitespaces from string begin */
