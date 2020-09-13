@@ -172,7 +172,7 @@ static int codec_adapter_prepare(struct comp_dev *dev)
 	if (ret == COMP_STATUS_STATE_ALREADY_SET) {
 		comp_err(dev, "codec_adapter_prepare() error %x: codec_adapter has already been prepared",
 			 ret);
-		return 0;
+		return PPL_STATUS_PATH_STOP;
 	}
 
 	/* Prepare codec */
@@ -302,6 +302,7 @@ static int codec_adapter_copy(struct comp_dev *dev)
 	struct comp_buffer *source = cd->ca_source;
 	struct comp_buffer *sink = cd->ca_sink;
         uint32_t lib_buff_size = codec->cpd.in_buff_size;
+
 	struct comp_copy_limits c;
 
 	comp_get_copy_limits_with_lock(source, sink, &c);
@@ -310,13 +311,14 @@ static int codec_adapter_copy(struct comp_dev *dev)
         bytes_to_process = MIN(sink->stream.free, source->stream.avail);
 	copy_bytes = MIN(sink->stream.free, source->stream.avail);
 
-        comp_dbg(dev, "codec_adapter_copy() start lib_buff_size: %d, copy_bytes: %d",
-        	  lib_buff_size, copy_bytes);
+        comp_info(dev, "codec_adapter_copy() start lib_buff_size: %d, sink free: %d source avail %d copy_bytes %d",
+        	  lib_buff_size, sink->stream.free, source->stream.avail, copy_bytes);
 
-	buffer_invalidate(source, MIN(lib_buff_size, bytes_to_process));
+
+	buffer_invalidate(source, lib_buff_size);
 	while (bytes_to_process) {
 		if (bytes_to_process < lib_buff_size) {
-			comp_dbg(dev, "codec_adapter_copy(): processed %d in this call %d bytes left for next period",
+			comp_info(dev, "codec_adapter_copy(): processed %d in this call %d bytes left for next period",
 			        processed, bytes_to_process);
 			break;
 		}
@@ -335,30 +337,30 @@ static int codec_adapter_copy(struct comp_dev *dev)
 			break;
 		} else if (codec->cpd.produced == 0) {
 			/* skipping as lib has not produced anything */
-                        comp_dbg(dev, "codec_adapter_copy() error %x: lib hasn't processed anything",
+                        comp_info(dev, "codec_adapter_copy() error %x: lib hasn't processed anything",
                                  ret);
 			break;
 		}
 
                 codec_adapter_copy_from_lib_to_sink(codec->cpd.out_buff,
                 				    &sink->stream, codec->cpd.produced);
-
 		bytes_to_process -= codec->cpd.produced;
 		processed += codec->cpd.produced;
 	}
 
+        //kpb_copy_samples(sink, source, copy_bytes);
 	if (!processed) {
-		comp_dbg(dev, "codec_adapter_copy() error: failed to process anything in this call!");
+		comp_info(dev, "codec_adapter_copy() error: failed to process anything in this call!");
 		goto end;
 	} else {
-		comp_dbg(dev, "codec_adapter_copy: codec processed %d bytes", processed);
+		comp_info(dev, "codec_adapter_copy: codec processed %d bytes", processed);
 	}
 
 	buffer_writeback(sink, processed);
-	comp_update_buffer_produce(sink, processed);
-	comp_update_buffer_consume(source, processed);
+	comp_update_buffer_produce(sink, lib_buff_size);
+	comp_update_buffer_consume(source, lib_buff_size);
 end:
-        comp_dbg(dev, "codec_adapter_copy() end processed: %d", processed);
+        comp_info(dev, "codec_adapter_copy() end processed: %d", processed);
 	return ret;
 }
 
@@ -406,7 +408,9 @@ static int ca_set_params(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata,
 	static uint32_t size;
 	uint32_t offset;
         struct comp_data *cd = comp_get_drvdata(dev);
-        static int i;
+
+	comp_info(dev, "ca_set_runtime_params(): start: num_of_elem %d, elem remain %d msg_index %u",
+		  cdata->num_elems, cdata->elems_remaining, cdata->msg_index);
 
 	/* Stage 1 load whole config locally */
 	/* Check that there is no work-in-progress previous request */
@@ -416,8 +420,6 @@ static int ca_set_params(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata,
 		goto end;
 	}
 
-	comp_info(dev, "ca_set_runtime_params(): num_of_elem %d, elem remain %d msg_index %u",
-		  cdata->num_elems, cdata->elems_remaining, cdata->msg_index);
 
 	if (cdata->num_elems + cdata->elems_remaining > MAX_BLOB_SIZE)
 	{
@@ -429,6 +431,7 @@ static int ca_set_params(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata,
 	if (cdata->msg_index == 0) {
 		/* Allocate buffer for new params */
 		size = cdata->num_elems + cdata->elems_remaining;
+		//todo: potentuial leakage again here
 		cd->runtime_params = rballoc(0, SOF_MEM_CAPS_RAM, size);
 
 		if (!cd->runtime_params) {
@@ -449,17 +452,46 @@ static int ca_set_params(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata,
 
 	assert(!ret);
 
-	if (cdata->elems_remaining == 0) {
+	if (cdata->elems_remaining == 0 && size) {
 		/* Config has been copied now we can load & apply it
 		 * depending on lib status.
 		 */
-		ret = codec_load_config(dev, cd->runtime_params, size,
-					type);
-		if (ret) {
-			comp_err(dev, "ca_set_runtime_params() error %x: lib params load failed",
-				 ret);
+		//rework to switch case here!!
+		if (type == CODEC_CFG_SETUP) {
+			ret = memcpy_s(&cd->ca_config, sizeof(cd->ca_config), cd->runtime_params,
+				       sizeof(cd->ca_config));
+			assert(!ret);
+			ret = validate_setup_config(&cd->ca_config);
+			if (ret) {
+				comp_err(dev, "XXXX(): error: validation of setup config failed");
+				goto end;
+			}
+
+			/* Pass config further to the codec */
+			void *lib_cfg;
+			uint32_t lib_cfg_size;
+			lib_cfg = (char *)cd->runtime_params + sizeof(struct ca_config);
+			lib_cfg_size = size - sizeof(struct ca_config);
+			ret = codec_load_config(dev, lib_cfg, lib_cfg_size,
+						CODEC_CFG_SETUP);
+			if (ret) {
+				comp_err(dev, "XXXX(): error %d: failed to load setup config for codec",
+					 ret);
+			} else {
+				comp_dbg(dev, "XXXX() codec config loaded successfully");
+			}
 			goto end;
-        	}
+		} else {
+			ret = codec_load_config(dev, cd->runtime_params, size,
+						type);
+			if (ret) {
+				comp_err(dev, "ca_set_runtime_params() error %x: lib params load failed",
+					 ret);
+				goto end;
+	        	}
+
+		}
+
 		if (cd->state >= PP_STATE_PREPARED && type == CODEC_CFG_RUNTIME) {
 			/* Post processing is already prepared so we can apply runtime
 			 * config right away.
@@ -476,6 +508,8 @@ static int ca_set_params(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata,
 	}
 
 end:
+//THIS need to reworked in 3 labels err & done both freee the memory but normal end does not
+// since if w load large blob of data we need this pointer to stay in concecutive calls
 	if (cd->runtime_params)
 		rfree(cd->runtime_params);
 	cd->runtime_params = NULL;
