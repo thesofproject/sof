@@ -389,15 +389,18 @@ zephyr_library_sources(
 # Optional SOF sources - depends on Kconfig - WIP
 
 zephyr_library_sources_ifdef(CONFIG_COMP_FIR
-	${SOF_AUDIO_PATH}/eq_fir/fir_hifi3.c
-	${SOF_AUDIO_PATH}/eq_fir/fir_hifi2ep.c
+	${SOF_AUDIO_PATH}/eq_fir/eq_fir_hifi3.c
+	${SOF_AUDIO_PATH}/eq_fir/eq_fir_hifi2ep.c
+	${SOF_AUDIO_PATH}/eq_fir/eq_fir_generic.c
 	${SOF_AUDIO_PATH}/eq_fir/eq_fir.c
-	${SOF_AUDIO_PATH}/eq_fir/fir.c
+	${SOF_MATH_PATH}/fir_generic.c
+	${SOF_MATH_PATH}/fir_hifi2ep.c
+	${SOF_MATH_PATH}/fir_hifi3.c
 )
 
 zephyr_library_sources_ifdef(CONFIG_COMP_IIR
-	${SOF_AUDIO_PATH}/eq_iir/iir_generic.c
-	${SOF_AUDIO_PATH}/eq_iir/iir_hifi3.c
+	${SOF_MATH_PATH}/iir_df2t_generic.c
+	${SOF_MATH_PATH}/iir_df2t_hifi3.c
 	${SOF_AUDIO_PATH}/eq_iir/iir.c
 	${SOF_AUDIO_PATH}/eq_iir/eq_iir.c
 )
