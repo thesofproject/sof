@@ -99,6 +99,7 @@ set(TPLGS
 	"sof-icl-rt711-rt1308-rt715-hdmi\;sof-cml-rt711-rt1308-rt715\;-DPLATFORM=cml"
 	"sof-icl-rt711-rt1308-rt715-hdmi\;sof-icl-rt711-rt1308-rt715\;-DPLATFORM=icl"
 	"sof-icl-rt711-rt1308-rt715-hdmi\;sof-tgl-rt711-rt1308-mono-rt715\;-DPLATFORM=tgl\;-DMONO"
+	"sof-tgl-rt715-rt711-rt1308-hdmi\;sof-tgl-rt715-rt711-rt1308-mono\;-DPLATFORM=tgl"
 	"sof-icl-rt711-rt1308-rt715-hdmi\;sof-tgl-rt711-rt1308-rt715\;-DPLATFORM=tgl"
 	"sof-icl-rt711-rt1308-rt715-hdmi\;sof-tgl-rt711-rt1316-rt714\;-DPLATFORM=tgl"
 	"sof-cnl-rt5682-sdw2\;sof-cnl-rt5682-sdw2\;-DPLATFORM=cnl"
