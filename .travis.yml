@@ -1,4 +1,9 @@
-sudo: required
+---
+# Suggested tools that can save round-trips to github and a lot of time:
+#
+# yamllint .travis.yml
+# ~/.gem/ruby/2.7.0/bin/travis lint .travis.yml
+# yaml merge-expand .travis.yml exp.yml && diff -b -u .travis.yml exp.yml
 
 language: c
 
