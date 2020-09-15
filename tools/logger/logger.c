@@ -150,9 +150,9 @@ static int append_filter_config(struct convert_config *config, const char *input
 
 	/* filer_config can't be NULL for following steps */
 	if (!old_config)
-		config->filter_config = asprintf("%s", "");
+		old_config = asprintf("%s", "");
 
-	config->filter_config = asprintf("%s%s\n", config->filter_config, input);
+	config->filter_config = asprintf("%s%s\n", old_config, input);
 	free(old_config);
 	if (!config->filter_config)
 		return -ENOMEM;
