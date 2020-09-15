@@ -44,11 +44,6 @@ jobs:
       before_install: *docker-pull-sof
       script: CMAKE_BUILD_TYPE=Release ./scripts/docker-run.sh ./scripts/build-tools.sh
 
-    - name: "./scripts/host-build-all.sh"
-      before_install: *docker-pull-sof
-      script: ./scripts/docker-run.sh ./scripts/host-build-all.sh -l
-
-
     # stage tests
 
     - &qemuboottest
