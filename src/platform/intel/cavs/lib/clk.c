@@ -152,18 +152,26 @@ static inline int get_current_freq_idx(int clock)
 	return clk_info->current_freq_idx;
 }
 
+static inline int get_waiti_freq_idx(int clock)
+{
+	struct clock_info *clk_info = clocks_get() + clock;
+
+	return clk_info->waiti_freq_idx;
+}
+
 static void platform_clock_low_power_mode(int clock, bool enable)
 {
+	int waiti_freq_idx = get_waiti_freq_idx(clock);
 	int current_freq_idx = get_current_freq_idx(clock);
 	int freq_idx = *cache_to_uncache(&active_freq_idx);
 
-	if (enable && current_freq_idx != CPU_LPRO_FREQ_IDX)
+	if (enable && current_freq_idx != waiti_freq_idx)
 		/* LPRO requests are fast, but requests for other ROs
 		 * can take a lot of time. That's why it's better to
 		 * not release active clock just for waiti,
 		 * so they can be switched without delay on wake up.
 		 */
-		select_cpu_clock(CPU_LPRO_FREQ_IDX, false);
+		select_cpu_clock(waiti_freq_idx, false);
 	else if (!enable && current_freq_idx != freq_idx)
 		select_cpu_clock(freq_idx, false);
 }
@@ -193,13 +201,13 @@ void platform_clock_on_waiti(void)
 
 	spin_unlock_irq(&prd->lock, flags);
 
-	/* check if waiti HPRO->LPRO switching is needed */
+	/* check if waiti clock switching is needed */
 	pm_runtime_put(CORE_HP_CLK, cpu_get_id());
 }
 
 void platform_clock_on_wakeup(void)
 {
-	/* check if LPRO->HPRO switching back is needed */
+	/* check if HPRO switching back is needed */
 	pm_runtime_get(CORE_HP_CLK, cpu_get_id());
 }
 
@@ -301,6 +309,7 @@ void platform_clock_init(struct sof *sof)
 			.freqs = cpu_freq,
 			.default_freq_idx = CPU_DEFAULT_IDX,
 			.current_freq_idx = CPU_DEFAULT_IDX,
+			.waiti_freq_idx = CPU_WAITI_FREQ_IDX,
 			.notification_id = NOTIFIER_ID_CPU_FREQ,
 			.notification_mask = NOTIFIER_TARGET_CORE_MASK(i),
 			.set_freq = clock_platform_set_cpu_freq,
