@@ -11,4 +11,5 @@
 #  ./scripts/docker-run.sh ./scripts/build-tools.sh
 
 docker run -i -t -v "$(pwd)":/home/sof/work/sof.git \
+	--env CMAKE_BUILD_TYPE \
 	   --user "$(id -u)" sof "$@"
