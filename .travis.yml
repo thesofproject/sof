@@ -38,9 +38,9 @@ jobs:
     - <<: *build-platform
       env: PLATFORM='tgl'
 
-    - name: "./scripts/build-tools.sh"
+    - name: "./scripts/build-tools.sh Release"
       before_install: *docker-pull-sof
-      script: ./scripts/docker-run.sh ./scripts/build-tools.sh
+      script: CMAKE_BUILD_TYPE=Release ./scripts/docker-run.sh ./scripts/build-tools.sh
 
     - name: "./scripts/host-build-all.sh"
       before_install: *docker-pull-sof
