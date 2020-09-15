@@ -360,7 +360,11 @@ static void print_entry_params(const struct log_entry_header *dma_log,
 				entry->header.line_idx);
 	} else {
 		/* timestamp */
-		if (time_precision >= 0) {
+		/* 64bits yields less than 20 digits precision. As
+		 * reported by gcc 9.3, this avoids a very long
+		 * precision causing snprintf() to truncate time_fmt
+		 */
+		if (time_precision >= 0 && time_precision < 20) {
 			snprintf(time_fmt, sizeof(time_fmt),
 				 "%%s[%%%d.%df] (%%%d.%df)%%s ",
 				 time_precision + 10, time_precision,
