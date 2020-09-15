@@ -837,6 +837,16 @@ static int dai_copy(struct comp_dev *dev)
 		 dev->direction, copy_bytes,
 		 samples / buf->stream.channels);
 
+	/* Check possibility of glitch occurrence */
+	if (dev->direction == SOF_IPC_STREAM_PLAYBACK &&
+	    copy_bytes + avail_bytes < dd->period_bytes)
+		comp_warn(dev, "dai_copy(): Copy_bytes %d + avail bytes %d < period bytes %d, possible glitch",
+			  copy_bytes, avail_bytes, dd->period_bytes);
+	else if (dev->direction == SOF_IPC_STREAM_CAPTURE &&
+		 copy_bytes + free_bytes < dd->period_bytes)
+		comp_warn(dev, "dai_copy(): Copy_bytes %d + free bytes %d < period bytes %d, possible glitch",
+			  copy_bytes, free_bytes, dd->period_bytes);
+
 	/* return if nothing to copy */
 	if (!copy_bytes) {
 		comp_warn(dev, "dai_copy(): nothing to copy");
