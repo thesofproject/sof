@@ -186,20 +186,20 @@ void platform_clock_on_waiti(void)
 		if (freq_idx != CPU_HPRO_FREQ_IDX)
 			set_cpu_current_freq_idx(CPU_HPRO_FREQ_IDX, true);
 	} else {
-		/* set LPRO clock if not already enabled */
-		if (freq_idx != CPU_LPRO_FREQ_IDX)
-			set_cpu_current_freq_idx(CPU_LPRO_FREQ_IDX, true);
+		/* set lowest waiti clock if not already enabled */
+		if (freq_idx != CPU_WAITI_FREQ_IDX)
+			set_cpu_current_freq_idx(CPU_WAITI_FREQ_IDX, true);
 	}
 
 	spin_unlock_irq(&prd->lock, flags);
 
-	/* check if waiti HPRO->LPRO switching is needed */
+	/* check if waiti clock switching is needed */
 	pm_runtime_put(CORE_HP_CLK, cpu_get_id());
 }
 
 void platform_clock_on_wakeup(void)
 {
-	/* check if LPRO->HPRO switching back is needed */
+	/* check if HPRO switching back is needed */
 	pm_runtime_get(CORE_HP_CLK, cpu_get_id());
 }
 
