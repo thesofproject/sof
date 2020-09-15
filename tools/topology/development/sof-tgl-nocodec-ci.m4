@@ -144,15 +144,16 @@ PIPELINE_PCM_ADD(sof/pipe-passthrough-capture.m4,
 
 # Low Latency playback pipeline 3 on PCM 1 using max 2 channels of s16le.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
-	3, 1, 2, s16le,
+#PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
+PIPELINE_PCM_ADD(sof/pipe-processing-playback.m4,
+	3, 1, 2, s32le,
 	1000, 0, 0,
 	48000, 48000, 48000)
 
 # Low Latency capture pipeline 4 on PCM 1 using max 2 channels of s16le.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-volume-capture.m4,
-	4, 1, 2, s16le,
+	4, 1, 2, s32le,
 	1000, 0, 0,
 	48000, 48000, 48000)
 
@@ -211,14 +212,14 @@ SectionGraph."PIPE_CAP_VIRT" {
 # Buffers use s16le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
 	3, SSP, 1, NoCodec-1,
-	PIPELINE_SOURCE_3, 2, s16le,
+	PIPELINE_SOURCE_3, 2, s32le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # capture DAI is SSP1 using 2 periods
 # Buffers use s16le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
 	4, SSP, 1, NoCodec-1,
-	PIPELINE_SINK_4, 2, s16le,
+	PIPELINE_SINK_4, 2, s32le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 dnl PCM_DUPLEX_ADD(name, pcm_id, playback, capture)
