@@ -392,7 +392,7 @@ if(MEU_PATH OR DEFINED MEU_NO_SIGN)
 		run_rimage
 		COMMAND ${PROJECT_BINARY_DIR}/rimage_ep/build/rimage
 			-o sof-${fw_name}.ri
-			-m ${fw_name}
+			-c "${PROJECT_SOURCE_DIR}/rimage/config/${fw_name}.toml"
 			-s ${MEU_OFFSET}
 			-k ${RIMAGE_PRIVATE_KEY}
 			-i ${RIMAGE_IMR_TYPE}
@@ -442,7 +442,7 @@ else()
 		run_rimage
 		COMMAND ${PROJECT_BINARY_DIR}/rimage_ep/build/rimage
 			-o sof-${fw_name}.ri
-			-m ${fw_name}
+			-c "${PROJECT_SOURCE_DIR}/rimage/config/${fw_name}.toml"
 			-k ${RIMAGE_PRIVATE_KEY}
 			-i ${RIMAGE_IMR_TYPE}
 			-f ${SOF_MAJOR}.${SOF_MINOR}
