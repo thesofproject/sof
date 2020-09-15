@@ -274,7 +274,7 @@ int filter_update_firmware(void)
 	struct list_item *list_elem;
 	struct list_item *list_temp;
 	char *line_end;
-	FILE *out_fd;
+	FILE *out_fd = NULL;
 	int ret = 0;
 
 	list_init(&filter_list);
