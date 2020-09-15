@@ -39,13 +39,21 @@ make_tool()
         # if no argument provided, all the tools will be built. Empty tool is
         # okay.
         tool=$1
-        # shellcheck disable=SC2086
-        make -C "$BUILD_TOOLS_DIR" -j "$NO_PROCESSORS" $tool
+
+        # 'cd' is unfortunately much less verbose than 'make -C'.
+        # 'MAKEFLAGS=--no-print-directory' works too but let's not
+        # interfere with the user's environment.
+        ( cd "$BUILD_TOOLS_DIR"
+         # shellcheck disable=SC2086
+          make -j "$NO_PROCESSORS" $tool
+        )
 }
 
 make_fuzzer()
 {
-        make -C "$BUILD_TOOLS_DIR/fuzzer" -j "$NO_PROCESSORS"
+        ( cd "$BUILD_TOOLS_DIR"/fuzzer
+          make -j "$NO_PROCESSORS"
+        )
 }
 
 print_build_info()
