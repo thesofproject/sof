@@ -1,0 +1,21 @@
+version = [1, 0]  # use simple file write
+
+[adsp]
+name = "imx8x"
+machine_id = 13
+
+[[adsp.mem_zone]]
+type = "IRAM"
+base = "0x596F8000"
+size = "0x800"
+host_offset = "0x10000"
+[[adsp.mem_zone]]
+type = "DRAM"
+base = "0x596e8000"
+size = "0x8000"
+host_offset = "0x0"
+[[adsp.mem_zone]]
+type = "SRAM"
+base = "0x92400000"
+size = "0x800000"
+host_offset = "0x0"

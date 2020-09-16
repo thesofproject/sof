@@ -1,0 +1,24 @@
+version = [1, 5]
+
+[adsp]
+name = "sue"
+machine_id = 11
+image_size = "0x100000"
+exec_boot_ldr = 1
+
+[[adsp.mem_zone]]
+type = "ROM"
+base = "0xBEFE0000"
+size = "0x00002000"
+[[adsp.mem_zone]]
+type = "IMR"
+base = "0xb0038000"
+size = "0x100000"
+[[adsp.mem_zone]]
+type = "SRAM"
+base = "0xbe000000"
+size = "0x100000"
+
+[fw_desc.header]
+name = "ADSPFW"
+load_offset = "0x2000"

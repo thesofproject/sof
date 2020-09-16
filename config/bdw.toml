@@ -1,0 +1,16 @@
+version = [1, 0]  # use simple file write
+
+[adsp]
+name = "bdw"
+machine_id = 4
+
+[[adsp.mem_zone]]
+type = "IRAM"
+base = "0"
+size = "0x50000"
+host_offset = "0x000A0000"
+[[adsp.mem_zone]]
+type = "DRAM"
+base = "0x00400000"
+size = "0xA0000"
+host_offset = "0x0"

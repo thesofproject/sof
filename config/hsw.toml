@@ -1,0 +1,16 @@
+version = [1, 0]  # use simple file write
+
+[adsp]
+name = "hsw"
+machine_id = 3
+
+[[adsp.mem_zone]]
+type = "IRAM"
+base = "0"
+size = "0x60000"
+host_offset = "0x80000"
+[[adsp.mem_zone]]
+type = "DRAM"
+base = "0x00400000"
+size = "0x80000"
+host_offset = "0x0"

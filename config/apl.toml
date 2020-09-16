@@ -1,0 +1,50 @@
+version = [1, 8]
+
+[adsp]
+name = "apl"
+machine_id = 5
+image_size = "0x100000"
+
+[[adsp.mem_zone]]
+type = "ROM"
+base = "0xBEFE0000"
+size = "0x00002000"
+[[adsp.mem_zone]]
+type = "SRAM"
+base = "0xA000A000"
+size = "0x100000"
+
+[cse]
+partition_name = "ADSP"
+[[cse.entry]]
+name = "ADSP.man"
+offset = "0x58"
+length = "0x378"
+[[cse.entry]]
+name = "cavs0015.met"
+offset = "0x400"
+length = "0x60"
+[[cse.entry]]
+name = "cavs0015"
+offset = "0x480"
+length = "0x0"  # calculated by rimage
+
+[css]
+
+[signed_pkg]
+name = "ADSP"
+[[signed_pkg.module]]
+name = "cavs0015.met"
+
+[partition_info]
+name = "ADSP"
+[[partition_info.module]]
+name = "cavs0015.met"
+
+[adsp_file]
+[[adsp_file.comp]]
+base_offset = "0x2000"
+
+[fw_desc.header]
+name = "ADSPFW"
+load_offset = "0x2000"

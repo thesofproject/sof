@@ -1,0 +1,16 @@
+version = [1, 0]  # use simple file write
+
+[adsp]
+name = "byt"
+machine_id = 0
+
+[[adsp.mem_zone]]
+type = "IRAM"
+base = "0xFF2C0000"
+size = "0x14000"
+host_offset = "0x0C0000"
+[[adsp.mem_zone]]
+type = "DRAM"
+base = "0xFF300000"
+size = "0x28000"
+host_offset = "0x100000"

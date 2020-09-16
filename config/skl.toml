@@ -1,0 +1,23 @@
+version = [1, 5]
+
+[adsp]
+name = "skl"
+machine_id = 7
+image_size = "0x100000"
+
+[[adsp.mem_zone]]
+type = "ROM"
+base = "0xBEFE0000"
+size = "0x00002000"
+[[adsp.mem_zone]]
+type = "SRAM"
+base = "0xA000A000"
+size = "0x100000"
+
+[css]
+
+[fw_desc.header]
+name = "ADSPFW"
+load_offset = "0"
+hw_buf_base_addr = "0xBE500000"
+hw_buf_length = "0x4A000"
