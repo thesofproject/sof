@@ -68,7 +68,7 @@ PIPELINE_PCM_ADD(sof/pipe-passthrough-capture.m4,
 # Passthrough capture pipeline 7 on PCM 7 using max 2 channels.
 # Schedule 20000us deadline on core 0 with priority 0
 PIPELINE_PCM_DAI_ADD(sof/pipe-KFBM_TYPE-capture.m4,
-        DMIC_PIPELINE_16k_ID, DMIC_PCM_16k_ID, 2, s24le,
+        DMIC_PIPELINE_16k_ID, DMIC_PCM_16k_ID, 2, s32le,
         KWD_PIPE_SCH_DEADLINE_US, 0, 0, DMIC, 1, s32le, 3,
         16000, 16000, 16000)
 
