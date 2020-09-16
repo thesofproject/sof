@@ -17,7 +17,7 @@ stages:
   - tests
 
 
-# 'name:'-less jobs appear with their env, e.g.: PLATFORM=sue
+# 'name:'-less jobs appear with their env, e.g.: PLATFORM=tgl
 jobs:
   include:
 
@@ -30,9 +30,6 @@ jobs:
         docker pull thesofproject/sof && docker tag thesofproject/sof sof
       script:
         ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -r $PLATFORM
-      env: PLATFORM='sue'
-
-    - <<: *build-platform
       env: PLATFORM='jsl'
 
     - <<: *build-platform
