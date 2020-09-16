@@ -11,11 +11,6 @@ endif()
 
 add_executable(rimage
 	src/file_simple.c
-	src/man_apl.c
-	src/man_cnl.c
-	src/man_kbl.c
-	src/man_sue.c
-	src/man_tgl.c
 	src/cse.c
 	src/css.c
 	src/plat_auth.c

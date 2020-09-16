@@ -31,63 +31,23 @@ static void usage(char *name)
 	exit(0);
 }
 
-/* deprecated, use ads_config instead for new machines */
-static const struct adsp *find_adsp(const char *mach)
-{
-	static const struct adsp *machine[] = {
-		&machine_byt,
-		&machine_cht,
-		&machine_bsw,
-		&machine_hsw,
-		&machine_bdw,
-		&machine_apl,
-		&machine_cnl,
-		&machine_icl,
-		&machine_jsl,
-		&machine_tgl,
-		&machine_sue,
-		&machine_kbl,
-		&machine_skl,
-		&machine_imx8,
-		&machine_imx8x,
-		&machine_imx8m,
-	};
-	int i;
-
-	for (i = 0; i < ARRAY_SIZE(machine); i++) {
-		if (!strcmp(mach, machine[i]->name))
-			return machine[i];
-	}
-	fprintf(stderr, "error: machine %s not found\n", mach);
-	fprintf(stderr, "error: available machines ");
-	for (i = 0; i < ARRAY_SIZE(machine); i++)
-		fprintf(stderr, "%s, ", machine[i]->name);
-	fprintf(stderr, "\n");
-	return NULL;
-}
-
 int main(int argc, char *argv[])
 {
 	struct image image;
 	struct adsp *heap_adsp;
-	const char *mach = NULL;
 	const char *adsp_config = NULL;
 	int opt, ret, i, elf_argc = 0;
 	int imr_type = MAN_DEFAULT_IMR_TYPE;
 	int use_ext_man = 0;
-	bool free_adsp_config = false;
 
 	memset(&image, 0, sizeof(image));
 
 	image.xcc_mod_offset = DEFAULT_XCC_MOD_OFFSET;
 
-	while ((opt = getopt(argc, argv, "ho:m:va:s:k:l:ri:x:f:b:ec:")) != -1) {
+	while ((opt = getopt(argc, argv, "ho:va:s:k:l:ri:x:f:b:ec:")) != -1) {
 		switch (opt) {
 		case 'o':
 			image.out_file = optarg;
-			break;
-		case 'm':
-			mach = optarg;
 			break;
 		case 'v':
 			image.verbose = 1;
@@ -133,7 +93,7 @@ int main(int argc, char *argv[])
 	elf_argc = optind;
 
 	/* make sure we have an outfile and machine */
-	if (!image.out_file || (!mach && !adsp_config))
+	if (!image.out_file || !adsp_config)
 		usage(argv[0]);
 
 	/* requires private key */
@@ -166,25 +126,15 @@ int main(int argc, char *argv[])
 		}
 	}
 	/* find machine */
-	if (adsp_config) {
-		heap_adsp = malloc(sizeof(struct adsp));
-		if (!heap_adsp) {
-			fprintf(stderr, "error: cannot parse build version\n");
-			return -ENOMEM;
-		}
-		free_adsp_config = true;
-		image.adsp = heap_adsp;
-		ret = adsp_parse_config(adsp_config, heap_adsp, image.verbose);
-		if (ret < 0)
-			goto out;
-	} else if (mach) {
-		image.adsp = find_adsp(mach);
-		if (!image.adsp)
-			return -EINVAL;
-	} else {
-		fprintf(stderr, "error: Specify target machine\n");
-		return -EINVAL;
+	heap_adsp = malloc(sizeof(struct adsp));
+	if (!heap_adsp) {
+		fprintf(stderr, "error: cannot parse build version\n");
+		return -ENOMEM;
 	}
+	image.adsp = heap_adsp;
+	ret = adsp_parse_config(adsp_config, heap_adsp, image.verbose);
+	if (ret < 0)
+		goto out;
 
 	/* set IMR Type in found machine definition */
 	if (image.adsp->man_v1_8)
@@ -240,8 +190,7 @@ int main(int argc, char *argv[])
 
 out:
 	/* free memory */
-	if (free_adsp_config)
-		adsp_free(heap_adsp);
+	adsp_free(heap_adsp);
 
 	/* close files */
 	if (image.out_fd)
