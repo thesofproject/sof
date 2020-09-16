@@ -13,6 +13,7 @@ include(`pipeline.m4')
 include(`codec_adapter.m4')
 include(`bytecontrol.m4')
 
+ifdef(`PP_CORE',`', `define(`PP_CORE', 1)')
 
 #
 # Controls
@@ -74,7 +75,7 @@ C_CONTROLBYTES(Post Process Runtime Params, PIPELINE_ID,
 W_PCM_PLAYBACK(PCM_ID, Passthrough Playback, 2, 0, SCHEDULE_CORE)
 
 
-W_CODEC_ADAPTER(0, PIPELINE_FORMAT, DAI_PERIODS, 2, SCHEDULE_CORE,
+W_CODEC_ADAPTER(0, PIPELINE_FORMAT, DAI_PERIODS, 2, PP_CORE,
         LIST(`          ', "Post Process Setup Config", "Post Process Runtime Params"))
 
 # Playback Buffers
