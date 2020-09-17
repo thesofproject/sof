@@ -1391,7 +1391,7 @@ static int parse_adsp_config_v1_5(const toml_table_t *toml, struct adsp *out,
 		memset(out->man_v1_5, 0, sizeof(*out->man_v1_5));
 
 		/* assign correct write functions */
-		out->write_firmware = man_write_fw_meu_v1_5;
+		out->write_firmware = man_write_fw_v1_5;
 		out->write_firmware_meu = man_write_fw_meu_v1_5;
 
 		/* parse others sibtables */
