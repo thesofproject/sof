@@ -346,14 +346,14 @@ static int codec_adapter_copy(struct comp_dev *dev)
 	comp_get_copy_limits_with_lock(source, sink, &c);
 	bytes_to_process = c.frames * audio_stream_frame_bytes(&source->stream);
 
-        comp_info(dev, "codec_adapter_copy() start lib_buff_size: %d, sink free: %d source avail %d",
+        comp_dbg(dev, "codec_adapter_copy() start lib_buff_size: %d, sink free: %d source avail %d",
         	  lib_buff_size, sink->stream.free, source->stream.avail);
 
 
 	buffer_invalidate(source, bytes_to_process);
 	while (bytes_to_process) {
 		if (bytes_to_process < lib_buff_size) {
-			comp_info(dev, "codec_adapter_copy(): processed %d in this call %d bytes left for next period",
+			comp_dbg(dev, "codec_adapter_copy(): processed %d in this call %d bytes left for next period",
 			        processed, bytes_to_process);
 			break;
 		}
@@ -372,7 +372,7 @@ static int codec_adapter_copy(struct comp_dev *dev)
 			break;
 		} else if (codec->cpd.produced == 0) {
 			/* skipping as lib has not produced anything */
-                        comp_info(dev, "codec_adapter_copy() error %x: lib hasn't processed anything",
+                        comp_err(dev, "codec_adapter_copy() error %x: lib hasn't processed anything",
                                  ret);
 			break;
 		}
@@ -385,7 +385,7 @@ static int codec_adapter_copy(struct comp_dev *dev)
 	}
 
 	if (!processed) {
-		comp_warn(dev, "codec_adapter_copy() error: failed to process anything in this call!");
+		comp_dbg(dev, "codec_adapter_copy() warning: failed to process anything in this call!");
 		goto end;
 	}
 
