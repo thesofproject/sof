@@ -532,7 +532,7 @@ static int parse_cse(const toml_table_t *toml, struct parse_ctx *pctx,
 
 static void dump_css_v1_5(const struct css_header_v1_5 *css)
 {
-	DUMP("\ncss");
+	DUMP("\ncss 1.5");
 	DUMP_KEY("module_type", "%d", css->module_type);
 	DUMP_KEY("header_len", "%d", css->header_len);
 	DUMP_KEY("header_version", "0x%x", css->header_version);
@@ -617,7 +617,7 @@ static int parse_css_v1_5(const toml_table_t *toml, struct parse_ctx *pctx,
 
 static void dump_css_v1_8(const struct css_header_v1_8 *css)
 {
-	DUMP("\ncss");
+	DUMP("\ncss 1.8");
 	DUMP_KEY("header_type", "%d", css->header_type);
 	DUMP_KEY("header_len", "%d", css->header_len);
 	DUMP_KEY("header_version", "0x%x", css->header_version);
@@ -994,7 +994,7 @@ static void dump_adsp_file_ext_v1_8(const struct sof_man_adsp_meta_file_ext_v1_8
 {
 	int i;
 
-	DUMP("\nadsp_file_ext");
+	DUMP("\nadsp_file_ext 1.8");
 	DUMP_KEY("imr_type", "0x%x", adsp_file->imr_type);
 	for (i = 0; i < ARRAY_SIZE(adsp_file->comp_desc); ++i) {
 		DUMP_KEY("comp.version", "0x%x", adsp_file->comp_desc[i].version);
@@ -1087,7 +1087,7 @@ static void dump_adsp_file_ext_v2_5(const struct sof_man_adsp_meta_file_ext_v2_5
 {
 	int i;
 
-	DUMP("\nadsp_file");
+	DUMP("\nadsp_file 2.5");
 	DUMP_KEY("imr_type", "0x%x", adsp_file->imr_type);
 	for (i = 0; i < ARRAY_SIZE(adsp_file->comp_desc); ++i) {
 		DUMP_KEY("comp.version", "0x%x", adsp_file->comp_desc[i].version);
