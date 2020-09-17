@@ -42,6 +42,71 @@ DECLARE_SOF_RT_UUID("codec_adapter", ca_uuid, 0xd8218443, 0x5ff3, 0x4a4c,
 
 DECLARE_TR_CTX(ca_tr, SOF_UUID(ca_uuid), LOG_LEVEL_INFO);
 
+/**
+ * \brief Load setup config for both codec adapter and codec library.
+ * \param[in] dev - codec adapter component device pointer.
+ * \param[in] cfg - pointer to the configuration data.
+ * \param[in] size - size of config.
+ *
+ * The setup config comprises of two parts - one contains essential data
+ * for the initialization of codec_adapter and follows struct ca_config.
+ * Second contains codec specific data needed to setup the codec itself.
+ * The leter is send in a TLV format organized by struct codec_param.
+ *
+ * \return integer representing either:
+ *	0 -> success
+ *	negative value -> failure.
+ */
+static int load_setup_config(struct comp_dev *dev, void *cfg, uint32_t size)
+{
+	int ret;
+	void *lib_cfg;
+	size_t lib_cfg_size;
+	struct comp_data *cd = comp_get_drvdata(dev);
+
+	comp_dbg(dev, "load_setup_config() start.");
+
+	if (!dev) {
+		comp_err(dev, "load_setup_config() error: no component device.");
+		ret = -EINVAL;
+		goto end;
+	} else if (!cfg || !size) {
+		comp_err(dev, "load_setup_config() error: no config available cfg: %x, size: %d",
+			 (uintptr_t)cfg, size);
+		ret = -EINVAL;
+		goto end;
+	} else if (size <= sizeof(struct ca_config)) {
+		comp_err(dev, "load_setup_config() error: no codec config available.");
+		ret = -EIO;
+		goto end;
+	}
+
+	/* Copy codec_adapter part */
+	ret = memcpy_s(&cd->ca_config, sizeof(cd->ca_config), cfg,
+		       sizeof(struct ca_config));
+	assert(!ret);
+	ret = validate_setup_config(&cd->ca_config);
+	if (ret) {
+		comp_err(dev, "load_setup_config(): error: validation of setup config for codec_adapter failed.");
+		goto end;
+	}
+	/* Copy codec specific part */
+	lib_cfg = (char *)cfg + sizeof(struct ca_config);
+	lib_cfg_size = size - sizeof(struct ca_config);
+	ret = codec_load_config(dev, lib_cfg, lib_cfg_size, CODEC_CFG_SETUP);
+	if (ret) {
+		comp_err(dev, "load_setup_config(): error %d: failed to load setup config for codec id %x",
+			 ret, cd->ca_config.codec_id);
+		goto end;
+	} else {
+		comp_dbg(dev, "load_setup_config() codec config loaded successfully.");
+	}
+
+	comp_dbg(dev, "load_setup_config() done.");
+end:
+	return ret;
+}
+
 static struct comp_dev *codec_adapter_new(const struct comp_driver *drv,
 					      struct sof_ipc_comp *comp)
 {
@@ -50,12 +115,8 @@ static struct comp_dev *codec_adapter_new(const struct comp_driver *drv,
 	struct comp_data *cd;
 	struct sof_ipc_comp_process *ipc_codec_adapter =
 		(struct sof_ipc_comp_process *)comp;
-	struct ca_config *cfg;
-	size_t bs;
-	void *lib_cfg;
-	size_t lib_cfg_size;
 
-	comp_cl_info(&comp_codec_adapter, "codec_adapter_new()");
+	comp_cl_info(&comp_codec_adapter, "codec_adapter_new() start");
 
 	if (!drv || !comp) {
 		comp_cl_err(&comp_codec_adapter, "codec_adapter_new(), wrong input params! drv = %x comp = %x",
@@ -84,36 +145,11 @@ static struct comp_dev *codec_adapter_new(const struct comp_driver *drv,
 
 	comp_set_drvdata(dev, cd);
 
-	/* Copy setup config of codec_adapter */
-	cfg = (struct ca_config *)ipc_codec_adapter->data;
-	bs = ipc_codec_adapter->size;
-	if (bs) {
-		if (bs < sizeof(struct ca_config)) {
-			comp_info(dev, "codec_adapter_new() error: wrong size of setup config");
-			goto err;
-		}
-		ret = memcpy_s(&cd->ca_config, sizeof(cd->ca_config), cfg,
-			       sizeof(struct ca_config));
-		assert(!ret);
-		ret = validate_setup_config(&cd->ca_config);
-		if (ret) {
-			comp_err(dev, "codec_adapter_new(): error: validation of setup config failed");
-			goto err;
-		}
-
-		/* Pass config further to the codec */
-		lib_cfg = (char *)cfg + sizeof(struct ca_config);
-		lib_cfg_size = bs - sizeof(struct ca_config);
-		ret = codec_load_config(dev, lib_cfg, lib_cfg_size,
-					CODEC_CFG_SETUP);
-		if (ret) {
-			comp_err(dev, "codec_adapter_new(): error %d: failed to load setup config for codec",
-				 ret);
-		} else {
-			comp_dbg(dev, "codec_adapter_new() codec config loaded successfully");
-		}
-	} else {
-		comp_err(dev, "codec_adapter_new(): no configuration available");
+	/* Copy setup config for both codec_adapter & codec */
+	ret = load_setup_config(dev, ipc_codec_adapter->data, ipc_codec_adapter->size);
+	if (ret) {
+		comp_err(dev, "codec_adapter_new() error %d: config loading has failed.",
+			 ret);
 		goto err;
 	}
 
@@ -127,10 +163,13 @@ static struct comp_dev *codec_adapter_new(const struct comp_driver *drv,
 
 	dev->state = COMP_STATE_READY;
 	cd->state = PP_STATE_CREATED;
+	cd->runtime_params = NULL;
 
+	comp_cl_info(&comp_codec_adapter, "codec_adapter_new() done.");
 	return dev;
 err:
-	//TODO: handle errors
+	rfree(cd);
+	rfree(dev);
 	return NULL;
 }
 
