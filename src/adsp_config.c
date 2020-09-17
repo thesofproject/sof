@@ -993,12 +993,15 @@ static int parse_partition_info_ext(const toml_table_t *toml, struct parse_ctx *
 static void dump_adsp_file_ext_v1_8(const struct sof_man_adsp_meta_file_ext_v1_8 *adsp_file)
 {
 	int i;
+	int j;
 
 	DUMP("\nadsp_file_ext 1.8");
 	DUMP_KEY("imr_type", "0x%x", adsp_file->imr_type);
 	for (i = 0; i < ARRAY_SIZE(adsp_file->comp_desc); ++i) {
 		DUMP_KEY("comp.version", "0x%x", adsp_file->comp_desc[i].version);
 		DUMP_KEY("comp.base_offset", "0x%x", adsp_file->comp_desc[i].base_offset);
+		for (j = 0; j < ARRAY_SIZE(adsp_file->comp_desc->attributes); ++j)
+			DUMP_KEY("comp.atributes[]", "%d", adsp_file->comp_desc[i].attributes[j]);
 	}
 }
 
@@ -1006,12 +1009,16 @@ static int parse_adsp_file_ext_v1_8(const toml_table_t *toml, struct parse_ctx *
 				    struct sof_man_adsp_meta_file_ext_v1_8 *out, bool verbose)
 {
 	struct sof_man_component_desc_v1_8 *desc;
+	toml_array_t *attributes_array;
 	toml_table_t *adsp_file_ext;
 	toml_array_t *comp_array;
 	struct parse_ctx ctx;
+	toml_raw_t attribute;
 	toml_table_t *comp;
+	int64_t temp_i;
 	int ret;
 	int i;
+	int j;
 
 	/* look for subtable in toml, increment pctx parsed table cnt and initialize local ctx */
 	adsp_file_ext = toml_table_in(toml, "adsp_file");
@@ -1065,6 +1072,27 @@ static int parse_adsp_file_ext_v1_8(const toml_table_t *toml, struct parse_ctx *
 		if (ret < 0)
 			return err_key_parse("comp", NULL);
 
+		/* parse attributes array */
+		attributes_array = toml_array_in(comp, "attributes");
+		if (attributes_array) {
+			++ctx.array_cnt;
+			if (toml_array_nelem(attributes_array) > ARRAY_SIZE(desc->attributes) ||
+			    toml_array_kind(attributes_array) != 'v' ||
+			    toml_array_type(attributes_array) != 'i')
+				return err_key_parse("comp.attributes",
+						     "wrong array type or length > %d",
+						     ARRAY_SIZE(desc->attributes));
+			for (j = 0; j < toml_array_nelem(attributes_array); ++j) {
+				attribute = toml_raw_at(attributes_array, j);
+				if (!attribute)
+					err_key_parse("comp.attributes", NULL);
+				ret = toml_rtoi(attribute, &temp_i);
+				if (ret < 0 || temp_i < 0 || temp_i > UINT32_MAX)
+					err_key_parse("comp.attributes", NULL);
+				desc->attributes[j] = (uint32_t)temp_i;
+			}
+		}
+
 		/* check everything parsed */
 		ret = assert_everything_parsed(comp, &ctx);
 		if (ret < 0)
@@ -1086,12 +1114,15 @@ static int parse_adsp_file_ext_v1_8(const toml_table_t *toml, struct parse_ctx *
 static void dump_adsp_file_ext_v2_5(const struct sof_man_adsp_meta_file_ext_v2_5 *adsp_file)
 {
 	int i;
+	int j;
 
 	DUMP("\nadsp_file 2.5");
 	DUMP_KEY("imr_type", "0x%x", adsp_file->imr_type);
 	for (i = 0; i < ARRAY_SIZE(adsp_file->comp_desc); ++i) {
 		DUMP_KEY("comp.version", "0x%x", adsp_file->comp_desc[i].version);
 		DUMP_KEY("comp.base_offset", "0x%x", adsp_file->comp_desc[i].base_offset);
+		for (j = 0; j < ARRAY_SIZE(adsp_file->comp_desc->attributes); ++j)
+			DUMP_KEY("comp.atributes[]", "%d", adsp_file->comp_desc[i].attributes[j]);
 	}
 }
 
@@ -1099,12 +1130,16 @@ static int parse_adsp_file_ext_v2_5(const toml_table_t *toml, struct parse_ctx *
 				    struct sof_man_adsp_meta_file_ext_v2_5 *out, bool verbose)
 {
 	struct sof_man_component_desc_v2_5 *desc;
+	toml_array_t *attributes_array;
 	toml_table_t *adsp_file_ext;
 	toml_array_t *comp_array;
 	struct parse_ctx ctx;
+	toml_raw_t attribute;
 	toml_table_t *comp;
+	int64_t temp_i;
 	int ret;
 	int i;
+	int j;
 
 	/* look for subtable in toml, increment pctx parsed table cnt and initialize local ctx */
 	adsp_file_ext = toml_table_in(toml, "adsp_file");
@@ -1156,6 +1191,27 @@ static int parse_adsp_file_ext_v2_5(const toml_table_t *toml, struct parse_ctx *
 		desc->base_offset = parse_uint32_hex_key(comp, &ctx, "base_offset", 0x2000, &ret);
 		if (ret < 0)
 			return err_key_parse("comp", NULL);
+
+		/* parse attributes array */
+		attributes_array = toml_array_in(comp, "attributes");
+		if (attributes_array) {
+			++ctx.array_cnt;
+			if (toml_array_nelem(attributes_array) > ARRAY_SIZE(desc->attributes) ||
+			    toml_array_kind(attributes_array) != 'v' ||
+			    toml_array_type(attributes_array) != 'i')
+				return err_key_parse("comp.attributes",
+						     "wrong array type or length > %d",
+						     ARRAY_SIZE(desc->attributes));
+			for (j = 0; j < toml_array_nelem(attributes_array); ++j) {
+				attribute = toml_raw_at(attributes_array, j);
+				if (!attribute)
+					err_key_parse("comp.attributes", NULL);
+				ret = toml_rtoi(attribute, &temp_i);
+				if (ret < 0 || temp_i < 0 || temp_i > UINT32_MAX)
+					err_key_parse("comp.attributes", NULL);
+				desc->attributes[j] = (uint32_t)temp_i;
+			}
+		}
 
 		/* check everything parsed */
 		ret = assert_everything_parsed(comp, &ctx);
