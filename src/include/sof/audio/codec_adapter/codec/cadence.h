@@ -31,12 +31,6 @@ extern xa_codec_func_t cadence_api_function;
 #define LIB_NAME_MAX_LEN 30
 #define LIB_NO_ERROR XA_NO_ERROR
 
-struct cadence_codec_param {
-	uint32_t id;
-	uint32_t size;
-	int32_t data[];
-};
-
 struct cadence_codec_data {
 	char name[LIB_NAME_MAX_LEN];
 	void *self;
@@ -47,5 +41,7 @@ int cadence_codec_init(struct comp_dev *dev);
 int cadence_codec_prepare(struct comp_dev *dev);
 int cadence_codec_process(struct comp_dev *dev);
 int cadence_codec_apply_config(struct comp_dev *dev);
+int cadence_codec_reset(struct comp_dev *dev);
+int cadence_codec_free(struct comp_dev *dev);
 
 #endif /* __SOF_AUDIO_CADENCE_CODEC__ */
