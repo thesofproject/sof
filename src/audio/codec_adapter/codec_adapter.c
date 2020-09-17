@@ -401,9 +401,9 @@ static void codec_adapter_free(struct comp_dev *dev)
 
 	comp_cl_info(&comp_codec_adapter, "codec_adapter_free(): start");
 
+	codec_free(dev);
 	rfree(cd);
 	rfree(dev);
-	//TODO: call lib API to free its resources
 
 	comp_cl_info(&comp_codec_adapter, "codec_adapter_free(): component memory freed");
 
@@ -414,19 +414,25 @@ static int codec_adapter_trigger(struct comp_dev *dev, int cmd)
 	comp_cl_info(&comp_codec_adapter, "codec_adapter_trigger(): component got trigger cmd %x",
 		     cmd);
 
-	//TODO: ask lib if pp parameters has been aplied and if not log it!
-        //likely here change detect COMP_TRIGGER_START cmd and change state to PP_STATE_RUN
+	//TODO: ask lib if pp parameters has been applied and if not react accordingly.
 	return comp_set_state(dev, cmd);
 }
 
 static int codec_adapter_reset(struct comp_dev *dev)
 {
+	int ret;
         struct comp_data *cd = comp_get_drvdata(dev);
 
 	comp_cl_info(&comp_codec_adapter, "codec_adapter_reset(): resetting");
 
+	ret = codec_reset(dev);
+	if (ret) {
+		comp_cl_info(&comp_codec_adapter, "codec_adapter_reset(): error %d, codec reset has failed",
+			     ret);
+	}
+
         cd->state = PP_STATE_CREATED;
-        //TODO: reset codec params
+	comp_cl_info(&comp_codec_adapter, "codec_adapter_reset(): done");
 
 	return comp_set_state(dev, COMP_TRIGGER_RESET);
 }
@@ -440,110 +446,109 @@ static int ca_set_params(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata,
 	uint32_t offset;
         struct comp_data *cd = comp_get_drvdata(dev);
 
-	comp_info(dev, "ca_set_runtime_params(): start: num_of_elem %d, elem remain %d msg_index %u",
-		  cdata->num_elems, cdata->elems_remaining, cdata->msg_index);
+	comp_dbg(dev, "ca_set_params(): start: num_of_elem %d, elem remain %d msg_index %u",
+		 cdata->num_elems, cdata->elems_remaining, cdata->msg_index);
 
-	/* Stage 1 load whole config locally */
-	/* Check that there is no work-in-progress previous request */
-	if (cd->runtime_params && cdata->msg_index == 0) {
-		comp_err(dev, "ca_set_runtime_params() error: busy with previous request");
-		ret = -EINVAL;
-		goto end;
-	}
-
-
-	if (cdata->num_elems + cdata->elems_remaining > MAX_BLOB_SIZE)
-	{
-		comp_err(dev, "ca_set_runtime_params() error: blob size is too big!");
-		ret = -EINVAL;
-		goto end;
-	}
-
+	/* Stage 1 verify input params & allocate memory for the config blob */
 	if (cdata->msg_index == 0) {
-		/* Allocate buffer for new params */
 		size = cdata->num_elems + cdata->elems_remaining;
-		//todo: potentuial leakage again here
-		cd->runtime_params = rballoc(0, SOF_MEM_CAPS_RAM, size);
+		/* Check that there is no work-in-progress on previous request */
+		if (cd->runtime_params) {
+			comp_err(dev, "ca_set_params() error: busy with previous request");
+			ret = -EBUSY;
+			goto end;
+		} else if (!size) {
+			comp_err(dev, "ca_set_params() error: no configuration size %d",
+				 size);
+			ret = 0; //TODO: return -EINVAL. This is temporary until driver fixes its issue
+			goto end;
+		} else if (size > MAX_BLOB_SIZE) {
+			comp_err(dev, "ca_set_params() error: blob size is too big cfg size %d, allowed %d",
+				 size, MAX_BLOB_SIZE);
+			ret = -EINVAL;
+			goto end;
+		} else if (type != CODEC_CFG_SETUP && type != CODEC_CFG_RUNTIME) {
+			comp_err(dev, "ca_set_params() error: unknown config type");
+			ret = -EINVAL;
+			goto end;
+		}
 
+		/* Allocate buffer for new params */
+		cd->runtime_params = rballoc(0, SOF_MEM_CAPS_RAM, size);
 		if (!cd->runtime_params) {
-			comp_err(dev, "ca_set_runtime_params(): space allocation for new params failed");
+			comp_err(dev, "ca_set_params(): space allocation for new params failed");
 			ret = -ENOMEM;
 			goto end;
 		}
+
 		memset(cd->runtime_params, 0, size);
+	} else if (!cd->runtime_params) {
+		comp_err(dev, "ca_set_params() error: no memory available for runtime params in consecutive load");
+		ret = -EIO;
+		goto end;
 	}
 
 	offset = size - (cdata->num_elems + cdata->elems_remaining);
 	dst = (char *)cd->runtime_params + offset;
 	src = (char *)cdata->data->data;
 
-	ret = memcpy_s(dst,
-		       size - offset,
-		       src, cdata->num_elems);
-
+	ret = memcpy_s(dst, size - offset, src, cdata->num_elems);
 	assert(!ret);
 
-	if (cdata->elems_remaining == 0 && size) {
-		/* Config has been copied now we can load & apply it
-		 * depending on lib status.
-		 */
-		//rework to switch case here!!
-		if (type == CODEC_CFG_SETUP) {
-			ret = memcpy_s(&cd->ca_config, sizeof(cd->ca_config), cd->runtime_params,
-				       sizeof(cd->ca_config));
-			assert(!ret);
-			ret = validate_setup_config(&cd->ca_config);
+	/* Config has been copied now we can load & apply it depending on
+	 * codec state.
+	 */
+	if (!cdata->elems_remaining) {
+		switch (type) {
+		case CODEC_CFG_SETUP:
+			ret = load_setup_config(dev, cd->runtime_params, size);
 			if (ret) {
-				comp_err(dev, "XXXX(): error: validation of setup config failed");
-				goto end;
-			}
-
-			/* Pass config further to the codec */
-			void *lib_cfg;
-			uint32_t lib_cfg_size;
-			lib_cfg = (char *)cd->runtime_params + sizeof(struct ca_config);
-			lib_cfg_size = size - sizeof(struct ca_config);
-			ret = codec_load_config(dev, lib_cfg, lib_cfg_size,
-						CODEC_CFG_SETUP);
-			if (ret) {
-				comp_err(dev, "XXXX(): error %d: failed to load setup config for codec",
+				comp_err(dev, "ca_set_params(): error %d: load of setup config failed.",
 					 ret);
 			} else {
-				comp_dbg(dev, "XXXX() codec config loaded successfully");
+				comp_dbg(dev, "ca_set_params() load of setup config done.");
 			}
-			goto end;
-		} else {
+
+			break;
+		case CODEC_CFG_RUNTIME:
 			ret = codec_load_config(dev, cd->runtime_params, size,
-						type);
+						CODEC_CFG_RUNTIME);
 			if (ret) {
-				comp_err(dev, "ca_set_runtime_params() error %x: lib params load failed",
+				comp_err(dev, "ca_set_params() error %d: load of runtime config failed.",
 					 ret);
-				goto end;
-	        	}
-
-		}
-
-		if (cd->state >= PP_STATE_PREPARED && type == CODEC_CFG_RUNTIME) {
-			/* Post processing is already prepared so we can apply runtime
-			 * config right away.
-			 */
-			ret = codec_apply_runtime_config(dev);
-			if (ret) {
-				comp_err(dev, "codec_adapter_ctrl_set_data() error %x: lib config apply failed",
-					 ret);
-				goto end;
+				goto done;
+	        	} else {
+				comp_dbg(dev, "ca_set_params() load of runtime config done.");
 			}
-		} else {
-			cd->codec.r_cfg.avail = true;
+
+			if (cd->state >= PP_STATE_PREPARED) {
+				/* We are already prepared so we can apply runtime
+				 * config right away.
+				 */
+				ret = codec_apply_runtime_config(dev);
+				if (ret) {
+					comp_err(dev, "ca_set_params() error %x: codec runtime config apply failed",
+						 ret);
+					goto done;
+				}  else {
+					comp_dbg(dev, "ca_set_params() apply of runtime config done.");
+				}
+			} else {
+				cd->codec.r_cfg.avail = true;
+			}
+
+			break;
+		default:
+			comp_err(dev,"ca_set_params(): error: unknown config type.");
+			break;
 		}
 	}
-
-end:
-//THIS need to reworked in 3 labels err & done both freee the memory but normal end does not
-// since if w load large blob of data we need this pointer to stay in concecutive calls
+done:
 	if (cd->runtime_params)
 		rfree(cd->runtime_params);
 	cd->runtime_params = NULL;
+	return ret;
+end:
 	return ret;
 }
 
