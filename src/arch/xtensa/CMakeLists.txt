@@ -368,6 +368,13 @@ if(NOT DEFINED RIMAGE_IMR_TYPE)
 	set(RIMAGE_IMR_TYPE 3)
 endif()
 
+if(NOT MEU_OPENSSL)
+	set(MEU_OPENSSL "/usr/bin/openssl")
+endif()
+# Don't ask users to keep secret their openssl location depending on
+# what they build in the moment.
+set(silenceUnusedWarning "${MEU_OPENSSL}")
+
 if(MEU_PATH OR DEFINED MEU_NO_SIGN)
 	if(NOT DEFINED MEU_OFFSET)
 		execute_process(
@@ -408,10 +415,6 @@ if(MEU_PATH OR DEFINED MEU_NO_SIGN)
 
 	if(CONFIG_TRACE)
 		add_dependencies(run_rimage run_smex)
-	endif()
-
-	if(NOT DEFINED MEU_OPENSSL)
-		set(MEU_OPENSSL "/usr/bin/openssl")
 	endif()
 
 	if(NOT DEFINED MEU_FLAGS)
