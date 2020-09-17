@@ -495,7 +495,6 @@ static int parse_cse(const toml_table_t *toml, struct parse_ctx *pctx,
 		parse_ctx_init(&ctx);
 
 		/* non-configurable fields */
-		out[i].reserved = 0;
 
 		/* configurable fields */
 		parse_str_key(cse_entry, &ctx, "name", (char *)out[i].entry_name,
@@ -558,8 +557,6 @@ static int parse_css_v1_5(const toml_table_t *toml, struct parse_ctx *pctx,
 	parse_ctx_init(&ctx);
 
 	/* non-configurable fields */
-	out->reserved0 = 0;
-	memset(out->reserved, 0, sizeof(out->reserved));
 
 	/* configurable fields */
 	out->module_type = parse_uint32_key(css, &ctx, "module_type", MAN_CSS_LT_MODULE_TYPE, &ret);
@@ -645,9 +642,6 @@ static int parse_css_v1_8(const toml_table_t *toml, struct parse_ctx *pctx,
 
 	/* non-configurable fields */
 	memcpy(out->header_id, hdr_id, sizeof(out->header_id));
-	out->padding = 0;
-	out->reserved0 = 0;
-	memset(out->reserved1, 0xff, sizeof(out->reserved1));
 
 	/* configurable fields */
 	out->header_type = parse_uint32_key(css, &ctx, "header_type", MAN_CSS_MOD_TYPE, &ret);
@@ -748,7 +742,6 @@ static int parse_signed_pkg(const toml_table_t *toml, struct parse_ctx *pctx,
 	/* non-configurable fields */
 	out->ext_type = SIGN_PKG_EXT_TYPE;
 	out->ext_len = sizeof(struct signed_pkg_info_ext);
-	memset(out->reserved, 0, sizeof(out->reserved));
 
 	/* configurable fields */
 	parse_str_key(signed_pkg, &ctx, "name", (char *)out->name, sizeof(out->name), &ret);
@@ -775,7 +768,6 @@ static int parse_signed_pkg(const toml_table_t *toml, struct parse_ctx *pctx,
 	bitmap_array = toml_array_in(signed_pkg, "bitmap");
 	if (!bitmap_array) {
 		/* default value */
-		memset(out->bitmap, 0, sizeof(out->bitmap));
 		out->bitmap[4] = 8;
 	} else {
 		++ctx.array_cnt;
@@ -1060,7 +1052,6 @@ static int parse_adsp_file_ext_v1_8(const toml_table_t *toml, struct parse_ctx *
 		parse_ctx_init(&ctx);
 
 		/* non-configurable fields */
-		desc->limit_offset = 0;
 
 		/* configurable fields */
 		desc->version = parse_uint32_key(comp, &ctx, "version", 0, &ret);
@@ -1181,7 +1172,6 @@ static int parse_adsp_file_ext_v2_5(const toml_table_t *toml, struct parse_ctx *
 		parse_ctx_init(&ctx);
 
 		/* non configurable flieds */
-		desc->limit_offset = 0;
 
 		/* configurable fields */
 		desc->version = parse_uint32_key(comp, &ctx, "version", 0, &ret);
@@ -1380,6 +1370,9 @@ static int parse_adsp_config_v1_5(const toml_table_t *toml, struct adsp *out,
 		if (!out->man_v1_5_sue)
 			return err_malloc("man_v1_5_sue");
 
+		/* clear memory */
+		memset(out->man_v1_5_sue, 0, sizeof(*out->man_v1_5_sue));
+
 		/* assign correct write functions */
 		out->write_firmware = man_write_fw_v1_5_sue;
 		out->write_firmware_meu = man_write_fw_meu_v1_5;
@@ -1393,6 +1386,9 @@ static int parse_adsp_config_v1_5(const toml_table_t *toml, struct adsp *out,
 		out->man_v1_5 = malloc(sizeof(struct fw_image_manifest_v1_5));
 		if (!out->man_v1_5)
 			return err_malloc("man_v1_5");
+
+		/* clear memory */
+		memset(out->man_v1_5, 0, sizeof(*out->man_v1_5));
 
 		/* assign correct write functions */
 		out->write_firmware = man_write_fw_meu_v1_5;
@@ -1426,6 +1422,9 @@ static int parse_adsp_config_v1_8(const toml_table_t *toml, struct adsp *out,
 	out->man_v1_8 = malloc(sizeof(struct fw_image_manifest_v1_8));
 	if (!out->man_v1_8)
 		return err_malloc("man_v1_8");
+
+	/* clear memory */
+	memset(out->man_v1_8, 0, sizeof(*out->man_v1_8));
 
 	/* assign correct write functions */
 	out->write_firmware = man_write_fw_v1_8;
@@ -1483,6 +1482,9 @@ static int parse_adsp_config_v2_5(const toml_table_t *toml, struct adsp *out,
 	out->man_v2_5 = malloc(sizeof(struct fw_image_manifest_v2_5));
 	if (!out->man_v2_5)
 		return err_malloc("man_v2_5");
+
+	/* clear memory */
+	memset(out->man_v2_5, 0, sizeof(*out->man_v2_5));
 
 	/* assign correct write functions */
 	out->write_firmware = NULL;

@@ -132,6 +132,7 @@ int main(int argc, char *argv[])
 		return -ENOMEM;
 	}
 	image.adsp = heap_adsp;
+	memset(heap_adsp, 0, sizeof(*heap_adsp));
 	ret = adsp_parse_config(adsp_config, heap_adsp, image.verbose);
 	if (ret < 0)
 		goto out;
