@@ -65,7 +65,7 @@ define(`SMART_PCM_NAME', `smart373-spk')
 # UUID related
 DECLARE_SOF_RT_UUID("Maxim DSM", maxim_dsm_comp_uuid, 0x0cd84e80, 0xebd3,
                     0x11ea, 0xad, 0xc1, 0x02, 0x42, 0xac, 0x12, 0x00, 0x02);
-define(`SMART_UUID', maxim_dsm_comp_uuid)
+#define(`SMART_UUID', maxim_dsm_comp_uuid)
 # Include Smart Amplifier support
 include(`sof-smart-amplifier.m4')
 
