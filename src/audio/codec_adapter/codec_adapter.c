@@ -617,8 +617,8 @@ static int codec_adapter_cmd(struct comp_dev *dev, int cmd, void *data,
 	case COMP_CMD_SET_DATA:
 		return codec_adapter_ctrl_set_data(dev, cdata);
 	case COMP_CMD_GET_DATA:
-		//TODO
-		return -EINVAL;
+		comp_warn(dev, "codec_adapter_cmd() get_data not implemented yet.");
+		return 0;
 	default:
 		comp_err(dev, "codec_adapter_cmd() error: unknown command");
 		return -EINVAL;
