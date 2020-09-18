@@ -86,6 +86,11 @@ int codec_init(struct comp_dev *dev)
 
 	comp_info(dev, "codec_init() start");
 
+	if (cd->codec.state == CODEC_INITIALIZED)
+		return 0;
+	if (cd->codec.state > CODEC_INITIALIZED)
+		return -EPERM;
+
 	/* Find proper interface */
 	for (i = 0; i < no_of_interfaces; i++) {
 		if (interfaces[i].id == codec_id) {
@@ -129,11 +134,10 @@ int codec_prepare(struct comp_dev *dev)
 
 	comp_dbg(dev, "codec_prepare() start");
 
-	if (cd->codec.state != CODEC_INITIALIZED && 0) {
-		comp_err(dev, "codec_prepare() error: wrong state of codec %d",
-			 cd->codec.state);
+	if (cd->codec.state == CODEC_PREPARED)
+		return 0;
+	if (cd->codec.state < CODEC_INITIALIZED)
 		return -EPERM;
-	}
 
 	ret = codec->call->prepare(dev);
 	if (ret) {
@@ -147,8 +151,8 @@ int codec_prepare(struct comp_dev *dev)
 	rfree(codec->r_cfg.data);
 	codec->r_cfg.data = NULL;
 
-	comp_dbg(dev, "codec_prepare() done");
 	codec->state = CODEC_PREPARED;
+	comp_dbg(dev, "codec_prepare() done");
 end:
 	return ret;
 }
@@ -187,6 +191,9 @@ int codec_apply_runtime_config(struct comp_dev *dev) {
 	struct codec_data *codec = &cd->codec;
 
 	comp_dbg(dev, "codec_apply_config() start");
+
+	if (cd->codec.state < CODEC_PREPARED)
+		return -EPERM;
 
 	if (cd->codec.state < CODEC_PREPARED) {
 		comp_err(dev, "codec_prepare() error: wrong state of codec %x, state %d",
@@ -345,6 +352,8 @@ void codec_free(struct comp_dev *dev)
 	rfree(codec->s_cfg.data);
 	if (cd->runtime_params)
 		rfree(cd->runtime_params);
+
+	codec->state = CODEC_DISABLED;
 }
 
 int codec_reset(struct comp_dev *dev)
@@ -363,6 +372,8 @@ int codec_reset(struct comp_dev *dev)
 	codec->r_cfg.avail = false;
 	codec->r_cfg.size = 0;
 	rfree(codec->r_cfg.data);
+
+	codec->state = CODEC_PREPARED;
 
 	return 0;
 }

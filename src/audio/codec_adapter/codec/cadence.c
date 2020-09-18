@@ -304,6 +304,8 @@ int cadence_codec_prepare(struct comp_dev *dev)
 		comp_dbg(dev, "cadence_codec_prepare(): lib has been initialized properly");
 	}
 
+	comp_dbg(dev, "cadence_codec_prepare() done");
+
 	return 0;
 err:
 	return ret;
