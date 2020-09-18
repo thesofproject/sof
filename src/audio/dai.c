@@ -837,9 +837,11 @@ static int dai_copy(struct comp_dev *dev)
 		 dev->direction, copy_bytes,
 		 samples / buf->stream.channels);
 
-	/* return if it's not stream start */
-	if (!copy_bytes && dd->start_position != dev->position)
+	/* return if nothing to copy */
+	if (!copy_bytes) {
+		comp_warn(dev, "dai_copy(): nothing to copy");
 		return 0;
+	}
 
 	ret = dma_copy(dd->chan, copy_bytes, 0);
 	if (ret < 0) {
