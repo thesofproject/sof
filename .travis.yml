@@ -6,6 +6,8 @@
 # yaml merge-expand .travis.yml exp.yml && diff -b -u .travis.yml exp.yml
 
 language: c
+# Ubuntu 20.04 LTS
+dist: focal
 
 git:
   depth: false
