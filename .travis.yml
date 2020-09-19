@@ -52,13 +52,15 @@ jobs:
     - &qemuboottest
       stage: tests
       script:
-        - sed -i $(($(grep "config HAVE_AGENT" -n src/platform/Kconfig | cut -f1 -d:)+2))"s/default y/default n/" src/platform/Kconfig
+        - sed -i $(($(grep "config HAVE_AGENT" -n src/platform/Kconfig |
+             cut -f1 -d:)+2))"s/default y/default n/" src/platform/Kconfig
         - ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -r $PLATFORM
         - ./scripts/docker-qemu.sh ../sof.git/scripts/qemu-check.sh $PLATFORM
       env: PLATFORM='byt cht'
       before_install:
         - *docker-pull-sof
-        - docker pull thesofproject/sofqemu && docker tag thesofproject/sofqemu sofqemu
+        - docker pull thesofproject/sofqemu &&
+            docker tag thesofproject/sofqemu sofqemu
 
     - <<: *qemuboottest
       env: PLATFORM='bdw hsw'
@@ -91,7 +93,8 @@ jobs:
       script:
 
         # Show ALL warnings. Warnings don't cause doxygen to fail (yet).
-        - mkdir -p doxybuild && pushd doxybuild && cmake -GNinja -S ../doc && ninja -v doc
+        - mkdir -p doxybuild && pushd doxybuild && cmake -GNinja -S ../doc &&
+             ninja -v doc
         - popd
 
         # Build again (it's very quick) and report a failure in Travis if
