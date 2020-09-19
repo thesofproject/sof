@@ -44,7 +44,7 @@ int main(int argc, char *argv[])
 
 	image.xcc_mod_offset = DEFAULT_XCC_MOD_OFFSET;
 
-	while ((opt = getopt(argc, argv, "ho:va:s:k:l:ri:x:f:b:ec:")) != -1) {
+	while ((opt = getopt(argc, argv, "ho:va:s:k:ri:x:f:b:ec:")) != -1) {
 		switch (opt) {
 		case 'o':
 			image.out_file = optarg;
