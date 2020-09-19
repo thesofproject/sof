@@ -43,8 +43,9 @@ jobs:
       env: PLATFORM='tgl'
 
     - name: "./scripts/build-tools.sh Release"
-      before_install: *docker-pull-sof
-      script: CMAKE_BUILD_TYPE=Release ./scripts/docker-run.sh ./scripts/build-tools.sh
+      before_install:
+        - &apt-alsa sudo apt-get -y install libasound2-dev alsa-utils
+      script: CMAKE_BUILD_TYPE=Release ./scripts/build-tools.sh
 
     # stage tests
 
@@ -73,11 +74,13 @@ jobs:
 
 
     - name: testbench
-      before_install: *docker-pull-sof
+      before_install:
+        - *apt-alsa
+
       script:
         # testbench needs some topologies
-        - ./scripts/docker-run.sh ./scripts/build-tools.sh -t
-        - ./scripts/docker-run.sh ./scripts/rebuild-testbench.sh
+        - ./scripts/build-tools.sh -t
+        - ./scripts/rebuild-testbench.sh
         - ./scripts/host-testbench.sh
 
 
