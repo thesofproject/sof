@@ -56,12 +56,7 @@ static void dcblock_set_passthrough(struct comp_data *cd)
  */
 static void dcblock_init_state(struct comp_data *cd)
 {
-	int i;
-
-	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++) {
-		cd->state[i].y_prev = 0;
-		cd->state[i].x_prev = 0;
-	}
+	memset(cd->state, 0, sizeof(cd->state));
 }
 
 /**
@@ -387,9 +382,13 @@ err:
  */
 static int dcblock_reset(struct comp_dev *dev)
 {
+	struct comp_data *cd = comp_get_drvdata(dev);
+
 	comp_info(dev, "dcblock_reset()");
 
+	dcblock_init_state(cd);
 	comp_set_state(dev, COMP_TRIGGER_RESET);
+
 	return 0;
 }
 
