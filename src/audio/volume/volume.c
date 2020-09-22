@@ -629,10 +629,8 @@ static int volume_ctrl_get_cmd(struct comp_dev *dev,
 		return -EINVAL;
 	}
 
-	if (cdata->cmd == SOF_CTRL_CMD_VOLUME ||
-	    cdata->cmd ==  SOF_CTRL_CMD_SWITCH) {
-		comp_dbg(dev, "volume_ctrl_get_cmd(), SOF_CTRL_CMD_VOLUME / SOF_CTRL_CMD_SWITCH, cdata->comp_id = %u",
-			 cdata->comp_id);
+	switch (cdata->cmd) {
+	case SOF_CTRL_CMD_VOLUME:
 		for (j = 0; j < cdata->num_elems; j++) {
 			cdata->chanv[j].channel = j;
 			cdata->chanv[j].value = cd->tvolume[j];
@@ -640,7 +638,17 @@ static int volume_ctrl_get_cmd(struct comp_dev *dev,
 				  cdata->chanv[j].channel,
 				  cdata->chanv[j].value);
 		}
-	} else {
+		break;
+	case SOF_CTRL_CMD_SWITCH:
+		for (j = 0; j < cdata->num_elems; j++) {
+			cdata->chanv[j].channel = j;
+			cdata->chanv[j].value = !cd->muted[j];
+			comp_info(dev, "volume_ctrl_get_cmd(), channel = %u, value = %u",
+				  cdata->chanv[j].channel,
+				  cdata->chanv[j].value);
+		}
+		break;
+	default:
 		comp_err(dev, "volume_ctrl_get_cmd(): invalid cdata->cmd");
 		return -EINVAL;
 	}
