@@ -216,6 +216,7 @@ static void volume_ramp(struct comp_dev *dev)
 	int32_t vol;
 	int32_t ramp_time;
 	int i;
+	bool ramp_finished = true;
 
 	/* No need to ramp in idle state, jump volume to request. */
 	if (dev->state == COMP_STATE_READY) {
@@ -257,9 +258,8 @@ static void volume_ramp(struct comp_dev *dev)
 			if (vol >= cd->tvolume[i] || vol >= cd->vol_max) {
 				cd->ramp_coef[i] = 0;
 				cd->volume[i] = cd->tvolume[i];
-				cd->ramp_finished = true;
-				cd->vol_ramp_active = false;
 			} else {
+				ramp_finished = false;
 				cd->volume[i] = vol;
 			}
 		} else {
@@ -274,14 +274,18 @@ static void volume_ramp(struct comp_dev *dev)
 				    vol <= cd->vol_min) {
 					cd->ramp_coef[i] = 0;
 					cd->volume[i] = cd->tvolume[i];
-					cd->ramp_finished = true;
-					cd->vol_ramp_active = false;
 				} else {
+					ramp_finished = false;
 					cd->volume[i] = vol;
 				}
 			}
 		}
 
+	}
+
+	if (ramp_finished) {
+		cd->ramp_finished = true;
+		cd->vol_ramp_active = false;
 	}
 
 	/* sync host with new value */
