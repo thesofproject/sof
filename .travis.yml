@@ -11,5 +11,5 @@ jobs:
     - name: "Build Test"
       before_install: docker pull thesofproject/sof && docker tag thesofproject/sof sof
       script:
-        - echo -e '#!/bin/bash\nmkdir build && cd build && cmake .. && make' > build.sh && chmod +x build.sh
+        - echo -e '#!/bin/bash\nmkdir build && cd build && cmake .. && make -Wall -Wmissing-prototypes -Wimplicit-fallthrough=3 -Wpointer-arith' > build.sh && chmod +x build.sh
         - docker run -i -t -v `pwd`:/home/sof/work/sof.git --user `id -u` sof ./build.sh
