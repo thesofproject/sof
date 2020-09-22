@@ -57,13 +57,13 @@ static int err_malloc(const char *key)
 /** log key not found error */
 static int err_key_not_found(const char *key)
 {
-	return log_err(-ENOKEY, "error: '%s' not found\n", key);
+	return log_err(-EINVAL, "error: '%s' not found\n", key);
 }
 
 /** error during parsing key value, possible detailed message */
 static int err_key_parse(const char *key, const char *extra_msg, ...)
 {
-	int ret = -EBADE;
+	int ret = -EINVAL;
 	va_list vl;
 
 	if (extra_msg) {
