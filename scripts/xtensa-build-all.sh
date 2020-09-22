@@ -229,7 +229,7 @@ do
 			HAVE_ROM='yes'
 			;;
 		tgl)
-			PLATFORM="tigerlake"
+			PLATFORM="tgplp"
 			ARCH="xtensa-smp"
 			XTENSA_CORE="cavs2x_LX6HiFi3_2017_8"
 			HOST="xtensa-cnl-elf"
