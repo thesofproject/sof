@@ -164,6 +164,7 @@ static int pipeline_for_each_comp(struct comp_dev *current,
 	struct list_item *clist;
 	struct comp_buffer *buffer;
 	struct comp_dev *buffer_comp;
+	uint32_t flags;
 
 	/* run this operation further */
 	list_for_item(clist, buffer_list) {
@@ -186,10 +187,15 @@ static int pipeline_for_each_comp(struct comp_dev *current,
 
 		/* continue further */
 		if (ctx->comp_func) {
+			buffer_lock(buffer, &flags);
 			buffer->walking = true;
+			buffer_unlock(buffer, flags);
+
 			int err = ctx->comp_func(buffer_comp, buffer,
 						 ctx, dir);
+			buffer_lock(buffer, &flags);
 			buffer->walking = false;
+			buffer_unlock(buffer, flags);
 			if (err < 0)
 				return err;
 		}
