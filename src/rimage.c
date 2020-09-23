@@ -36,7 +36,7 @@ int main(int argc, char *argv[])
 	struct image image;
 	struct adsp *heap_adsp;
 	const char *adsp_config = NULL;
-	int opt, ret, i, elf_argc = 0;
+	int opt, ret, i, first_non_opt;
 	int imr_type = MAN_DEFAULT_IMR_TYPE;
 	int use_ext_man = 0;
 
@@ -86,11 +86,12 @@ int main(int argc, char *argv[])
 			usage(argv[0]);
 			break;
 		default:
+		 /* getopt's default error message is good enough */
 			break;
 		}
 	}
 
-	elf_argc = optind;
+	first_non_opt = optind;
 
 	/* make sure we have an outfile and machine */
 	if (!image.out_file || !adsp_config)
@@ -145,10 +146,18 @@ int main(int argc, char *argv[])
 		image.adsp->man_v2_5->adsp_file_ext.imr_type = imr_type;
 
 	/* parse input ELF files */
-	image.num_modules = argc - elf_argc;
-	for (i = elf_argc; i < argc; i++) {
+	image.num_modules = argc - first_non_opt;
+
+	if (image.num_modules <= 0) {
+		fprintf(stderr,
+			"error: requires at least one ELF input module\n");
+		return -EINVAL;
+	}
+
+	/* getopt reorders argv[] */
+	for (i = first_non_opt; i < argc; i++) {
 		fprintf(stdout, "\nModule Reading %s\n", argv[i]);
-		ret = elf_parse_module(&image, i - elf_argc, argv[i]);
+		ret = elf_parse_module(&image, i - first_non_opt, argv[i]);
 		if (ret < 0)
 			goto out;
 	}

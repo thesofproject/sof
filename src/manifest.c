@@ -6,6 +6,7 @@
 //         Keyon Jie <yang.jie@linux.intel.com>
 //         Janusz Jankowski <janusz.jankowski@linux.intel.com>
 
+#include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -905,6 +906,8 @@ int man_write_fw_v1_8(struct image *image)
 	man_hash_modules(image, desc);
 
 	/* calculate hash for ADSP meta data extension - 0x480 to end */
+	/* image_end is updated every time a section is added */
+	assert(image->image_end > MAN_FW_DESC_OFFSET_V1_8);
 	ri_sha256(image, MAN_FW_DESC_OFFSET_V1_8, image->image_end
 		  - MAN_FW_DESC_OFFSET_V1_8,
 		  m->adsp_file_ext.comp_desc[0].hash);
