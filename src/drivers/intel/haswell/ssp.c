@@ -462,6 +462,7 @@ static void ssp_stop(struct dai *dai, int direction)
 	    ssp->state[SOF_IPC_STREAM_CAPTURE] != COMP_STATE_PREPARE) {
 		ssp_update_bits(dai, SSCR1, SSCR1_RSRE, 0);
 		ssp_update_bits(dai, SSCR0, SSCR0_RIM, SSCR0_RIM);
+		ssp_update_bits(dai, SSRSA, SSRSA_RSEN, 0);
 		ssp->state[SOF_IPC_STREAM_CAPTURE] = COMP_STATE_PREPARE;
 		dai_info(dai, "ssp_stop(), RX stop");
 	}
@@ -471,6 +472,7 @@ static void ssp_stop(struct dai *dai, int direction)
 	    ssp->state[SOF_IPC_STREAM_PLAYBACK] != COMP_STATE_PREPARE) {
 		ssp_update_bits(dai, SSCR1, SSCR1_TSRE, 0);
 		ssp_update_bits(dai, SSCR0, SSCR0_TIM, SSCR0_TIM);
+		ssp_update_bits(dai, SSTSA, SSTSA_TSEN, 0);
 		ssp->state[SOF_IPC_STREAM_PLAYBACK] = COMP_STATE_PREPARE;
 		dai_info(dai, "ssp_stop(), TX stop");
 	}
