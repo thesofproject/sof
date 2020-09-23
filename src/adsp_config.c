@@ -1565,11 +1565,15 @@ static int adsp_parse_config_fd(FILE *fd, struct adsp *out, bool verbose)
 	/* parse "version" array elements */
 	for (i = 0; i < ARRAY_SIZE(manifest_version); ++i) {
 		raw = toml_raw_at(arr, i);
-		if (ret < 0)
+		if (raw == 0) {
 			ret = err_key_parse("version", NULL);
+			goto error;
+		}
 		ret = toml_rtoi(raw, &manifest_version[i]);
-		if (ret < 0)
+		if (ret < 0) {
 			ret = err_key_parse("version", "can't convert element to integer");
+			goto error;
+		}
 	}
 
 	/* parsing function depends on manifest_version */
