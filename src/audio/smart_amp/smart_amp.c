@@ -601,8 +601,7 @@ static int smart_amp_copy(struct comp_dev *dev)
 	buffer_lock(sad->feedback_buf, &feedback_flags);
 	if (sad->feedback_buf->source->state == dev->state) {
 		/* feedback */
-		avail_feedback_frames = sad->feedback_buf->stream.avail /
-			audio_stream_frame_bytes(&sad->feedback_buf->stream);
+		avail_feedback_frames = audio_stream_get_avail_frames(&sad->feedback_buf->stream);
 
 		avail_frames = MIN(avail_passthrough_frames,
 				   avail_feedback_frames);
