@@ -5,6 +5,7 @@
 // Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
 //         Keyon Jie <yang.jie@linux.intel.com>
 
+#include <assert.h>
 #include <stdio.h>
 #include <string.h>
 #include <rimage/rimage.h>
@@ -29,7 +30,7 @@ static int elf_read_sections(struct image *image, struct module *module,
 	}
 
 	/* allocate space for each section header */
-	section = calloc(sizeof(Elf32_Shdr), hdr->shnum);
+	section = calloc(hdr->shnum, sizeof(Elf32_Shdr));
 	if (!section)
 		return -ENOMEM;
 	module->section = section;
@@ -43,6 +44,7 @@ static int elf_read_sections(struct image *image, struct module *module,
 	}
 
 	/* read in strings */
+	assert(hdr->shstrndx < count);
 	module->strings = calloc(1, section[hdr->shstrndx].size);
 	if (!module->strings) {
 		fprintf(stderr, "error: failed %s to read ELF strings for %d\n",
@@ -199,6 +201,11 @@ static int elf_read_hdr(struct image *image, struct module *module)
 		fprintf(stderr, "error: failed to read %s elf header %d\n",
 			module->elf_file, -errno);
 		return -errno;
+	}
+
+	if (strncmp((char *)hdr->ident, "\177ELF\001\001", 5)) {
+		fprintf(stderr, "Not a 32 bits ELF-LE file\n");
+		return -EINVAL;
 	}
 
 	if (!image->verbose)
@@ -513,8 +520,8 @@ int elf_find_section(const struct module *module, const char *name)
 		}
 	}
 
-	fprintf(stderr, "warning: can't find section %s in module %s\n", name,
-		module->elf_file);
+	fprintf(stderr, "warning: can't find section named '%s' in module %s\n",
+		name, module->elf_file);
 	ret = -EINVAL;
 
 out:
