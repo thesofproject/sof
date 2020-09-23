@@ -110,31 +110,22 @@ static inline bool trace_filter_pass(uint32_t lvl,
 	return lvl <= ctx->level;
 }
 
-void trace_log(bool send_atomic, const void *log_entry,
-	       const struct tr_ctx *ctx, uint32_t lvl, uint32_t id_1,
-	       uint32_t id_2, int arg_count, ...)
+static void vatrace_log(bool send_atomic, uint32_t log_entry, const struct tr_ctx *ctx,
+			uint32_t lvl, uint32_t id_1, uint32_t id_2, int arg_count, va_list vargs)
 {
 	uint32_t data[MESSAGE_SIZE_DWORDS(_TRACE_EVENT_MAX_ARGUMENT_COUNT)];
 	const int message_size = MESSAGE_SIZE(arg_count);
-	struct trace *trace = trace_get();
-	va_list vl;
 	int i;
+
 #if CONFIG_TRACEM
 	unsigned long flags;
-#endif /* CONFIG_TRACEM */
-
-	if (!trace->enable || !trace_filter_pass(lvl, ctx)) {
-		platform_shared_commit(trace, sizeof(*trace));
-		return;
-	}
+#endif /* CONFIG TRACEM */
 
 	/* fill log content */
-	put_header(data, ctx->uuid_p, id_1, id_2, (uintptr_t)log_entry,
-		   platform_timer_get(timer_get()));
-	va_start(vl, arg_count);
+	put_header(data, ctx->uuid_p, id_1, id_2, log_entry, platform_timer_get(timer_get()));
+
 	for (i = 0; i < arg_count; ++i)
-		data[PAYLOAD_OFFSET(i)] = va_arg(vl, uint32_t);
-	va_end(vl);
+		data[PAYLOAD_OFFSET(i)] = va_arg(vargs, uint32_t);
 
 	/* send event by */
 	if (send_atomic)
@@ -156,6 +147,23 @@ void trace_log(bool send_atomic, const void *log_entry,
 	if (lvl == LOG_LEVEL_CRITICAL)
 		mtrace_event((const char *)data, MESSAGE_SIZE(arg_count));
 #endif /* CONFIG_TRACEM */
+}
+
+void trace_log(bool send_atomic, const void *log_entry,
+	       const struct tr_ctx *ctx, uint32_t lvl, uint32_t id_1,
+	       uint32_t id_2, int arg_count, ...)
+{
+	struct trace *trace = trace_get();
+	va_list vl;
+
+	if (!trace->enable || !trace_filter_pass(lvl, ctx)) {
+		platform_shared_commit(trace, sizeof(*trace));
+		return;
+	}
+
+	va_start(vl, arg_count);
+	vatrace_log(send_atomic, (uint32_t)log_entry, ctx, lvl, id_1, id_2, arg_count, vl);
+	va_end(vl);
 }
 
 struct sof_ipc_trace_filter_elem *trace_filter_fill(struct sof_ipc_trace_filter_elem *elem,
