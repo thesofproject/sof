@@ -31,4 +31,52 @@ config TRACEM
 	help
 	  Sending all traces by mailbox additionally.
 
+config TRACE_FILTERING
+	bool "Trace filtering"
+	depends on TRACE
+	default y
+	help
+		Filtering of trace messages based on their verbosity level and frequency.
+
+config TRACE_FILTERING_VERBOSITY
+	bool "Filter by verbosity"
+	depends on TRACE_FILTERING
+	default y
+	help
+		Filtering by log verbosity level, where maximum verbosity allowed is specified for each
+		context and may be adjusted in runtime.
+
+config TRACE_FILTERING_ADAPTIVE
+	bool "Adaptive rate limiting"
+	depends on TRACE_FILTERING
+	default y
+	help
+		Adaptive filtering of trace messages, tracking up to CONFIG_TRACE_RECENT_ENTRIES_COUNT,
+		suppressing all repeated messages for up to CONFIG_TRACE_RECENT_TIME_THRESHOLD cycles.
+
+config TRACE_RECENT_ENTRIES_COUNT
+	int "Amount of entries considered recent"
+	depends on TRACE_FILTERING_ADAPTIVE
+	default 5
+	help
+		Recent entries are used to determine whether currently processed message was sent in the
+		past. Size of that filtering window affects effectiveness and performance. More recent
+		entries allow to better filter repetitive messeges out, but also slightly decrease
+		performance due to increased number of comparisions necessary.
+
+config TRACE_RECENT_TIME_THRESHOLD
+	int "Period of time considered recent (microseconds)"
+	depends on TRACE_FILTERING_ADAPTIVE
+	default 1500
+	range 1 TRACE_RECENT_MAX_TIME
+	help
+		Period of time during which entries are tracked and will be suppressed if reported again.
+
+config TRACE_RECENT_MAX_TIME
+	int "Maximum period of time that message can be suppressed (microseconds)"
+	depends on TRACE_FILTERING_ADAPTIVE
+	default 5000000
+	help
+		Maximum amount of time message can be suppressed for, due to repeated suppression.
+
 endmenu
