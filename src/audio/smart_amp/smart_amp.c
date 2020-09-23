@@ -614,11 +614,15 @@ static int smart_amp_copy(struct comp_dev *dev)
 		comp_dbg(dev, "smart_amp_copy(): processing %d feedback frames (avail_passthrough_frames: %d)",
 			 avail_frames, avail_passthrough_frames);
 
+		/* perform buffer writeback after source_buf process */
+		buffer_invalidate(sad->feedback_buf, feedback_bytes);
 		sad->process(dev, &sad->feedback_buf->stream,
 			     &sad->sink_buf->stream, avail_frames,
 			     sad->config.feedback_ch_map, true);
 
 		comp_update_buffer_consume(sad->feedback_buf, feedback_bytes);
+	} else {
+		buffer_unlock(sad->feedback_buf, feedback_flags);
 	}
 
 	/* bytes calculation */
@@ -633,8 +637,10 @@ static int smart_amp_copy(struct comp_dev *dev)
 	buffer_unlock(sad->sink_buf, sink_flags);
 
 	/* process data */
+	buffer_invalidate(sad->source_buf, source_bytes);
 	sad->process(dev, &sad->source_buf->stream, &sad->sink_buf->stream,
 		     avail_frames, sad->config.source_ch_map, false);
+	buffer_writeback(sad->sink_buf, sink_bytes);
 
 	/* source/sink buffer pointers update */
 	comp_update_buffer_consume(sad->source_buf, source_bytes);
@@ -657,6 +663,7 @@ static int smart_amp_prepare(struct comp_dev *dev)
 	struct smart_amp_data *sad = comp_get_drvdata(dev);
 	struct comp_buffer *source_buffer;
 	struct list_item *blist;
+	uint32_t flags = 0;
 	int ret;
 
 	comp_dbg(dev, "smart_amp_prepare()");
@@ -669,11 +676,12 @@ static int smart_amp_prepare(struct comp_dev *dev)
 	list_for_item(blist, &dev->bsource_list) {
 		source_buffer = container_of(blist, struct comp_buffer,
 					     sink_list);
-
+		buffer_lock(source_buffer, &flags);
 		if (source_buffer->source->comp.type == SOF_COMP_DEMUX)
 			sad->feedback_buf = source_buffer;
 		else
 			sad->source_buf = source_buffer;
+		buffer_unlock(source_buffer, flags);
 	}
 
 	sad->sink_buf = list_first_item(&dev->bsink_list, struct comp_buffer,
@@ -682,6 +690,7 @@ static int smart_amp_prepare(struct comp_dev *dev)
 	sad->in_channels = sad->source_buf->stream.channels;
 	sad->out_channels = sad->sink_buf->stream.channels;
 
+	buffer_lock(sad->feedback_buf, &flags);
 	sad->feedback_buf->stream.channels = sad->config.feedback_channels;
 	sad->feedback_buf->stream.rate = sad->source_buf->stream.rate;
 
@@ -692,6 +701,7 @@ static int smart_amp_prepare(struct comp_dev *dev)
 			 sad->source_buf->stream.channels);
 		return -EINVAL;
 	}
+	buffer_unlock(sad->feedback_buf, flags);
 
 	sad->process = get_smart_amp_process(dev);
 	if (!sad->process) {
