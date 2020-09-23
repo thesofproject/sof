@@ -683,6 +683,7 @@ static int smart_amp_prepare(struct comp_dev *dev)
 	sad->out_channels = sad->sink_buf->stream.channels;
 
 	sad->feedback_buf->stream.channels = sad->config.feedback_channels;
+	sad->feedback_buf->stream.rate = sad->source_buf->stream.rate;
 
 	if (smart_amp_check_audio_fmt(sad->source_buf->stream.rate,
 				      sad->source_buf->stream.channels)) {
