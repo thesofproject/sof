@@ -149,9 +149,24 @@ static void vatrace_log(bool send_atomic, uint32_t log_entry, const struct tr_ct
 #endif /* CONFIG_TRACEM */
 }
 
-void trace_log(bool send_atomic, const void *log_entry,
-	       const struct tr_ctx *ctx, uint32_t lvl, uint32_t id_1,
-	       uint32_t id_2, int arg_count, ...)
+void trace_log_unfiltered(bool send_atomic, const void *log_entry, const struct tr_ctx *ctx,
+			  uint32_t lvl, uint32_t id_1, uint32_t id_2, int arg_count, ...)
+{
+	struct trace *trace = trace_get();
+	va_list vl;
+
+	if (!trace->enable) {
+		platform_shared_commit(trace, sizeof(*trace));
+		return;
+	}
+
+	va_start(vl, arg_count);
+	vatrace_log(send_atomic, (uint32_t)log_entry, ctx, lvl, id_1, id_2, arg_count, vl);
+	va_end(vl);
+}
+
+void trace_log_filtered(bool send_atomic, const void *log_entry, const struct tr_ctx *ctx,
+			uint32_t lvl, uint32_t id_1, uint32_t id_2, int arg_count, ...)
 {
 	struct trace *trace = trace_get();
 	va_list vl;

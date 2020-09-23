@@ -136,9 +136,10 @@ void trace_flush(void);
 void trace_on(void);
 void trace_off(void);
 void trace_init(struct sof *sof);
-void trace_log(bool send_atomic, const void *log_entry,
-	       const struct tr_ctx *ctx, uint32_t lvl, uint32_t id_1,
-	       uint32_t id_2, int arg_count, ...);
+void trace_log_filtered(bool send_atomic, const void *log_entry, const struct tr_ctx *ctx,
+			uint32_t lvl, uint32_t id_1, uint32_t id_2, int arg_count, ...);
+void trace_log_unfiltered(bool send_atomic, const void *log_entry, const struct tr_ctx *ctx,
+			  uint32_t lvl, uint32_t id_1, uint32_t id_2, int arg_count, ...);
 struct sof_ipc_trace_filter_elem *trace_filter_fill(struct sof_ipc_trace_filter_elem *elem,
 						    struct sof_ipc_trace_filter_elem *end,
 						    struct trace_filter *filter);
@@ -191,19 +192,19 @@ _thrown_from_macro_BASE_LOG_in_trace_h
 #define STATIC_ASSERT_ARG_SIZE(...) \
 	META_MAP(1, trace_check_size_uint32, __VA_ARGS__)
 
-#define _log_message(atomic, lvl, comp_class, ctx, id_1, id_2,		\
-		     format, ...)					\
-do {									\
-	_DECLARE_LOG_ENTRY(lvl, format, comp_class,			\
-			META_COUNT_VARAGS_BEFORE_COMPILE(__VA_ARGS__));	\
-	STATIC_ASSERT_ARG_SIZE(__VA_ARGS__);				\
-	STATIC_ASSERT(_TRACE_EVENT_MAX_ARGUMENT_COUNT >=		\
-			META_COUNT_VARAGS_BEFORE_COMPILE(__VA_ARGS__),	\
-		BASE_LOG_ASSERT_FAIL_MSG				\
-	);								\
-	trace_log(atomic, &log_entry, ctx, lvl, id_1, id_2,		\
-		  META_COUNT_VARAGS_BEFORE_COMPILE(__VA_ARGS__),	\
-		  ##__VA_ARGS__);					\
+#define _log_message(atomic, lvl, comp_class, ctx, id_1, id_2,			\
+		     format, ...)						\
+do {										\
+	_DECLARE_LOG_ENTRY(lvl, format, comp_class,				\
+			   META_COUNT_VARAGS_BEFORE_COMPILE(__VA_ARGS__));	\
+	STATIC_ASSERT_ARG_SIZE(__VA_ARGS__);					\
+	STATIC_ASSERT(_TRACE_EVENT_MAX_ARGUMENT_COUNT >=			\
+			META_COUNT_VARAGS_BEFORE_COMPILE(__VA_ARGS__),		\
+		BASE_LOG_ASSERT_FAIL_MSG					\
+	);									\
+	trace_log_filtered(atomic, &log_entry, ctx, lvl, id_1, id_2,		\
+			   META_COUNT_VARAGS_BEFORE_COMPILE(__VA_ARGS__),	\
+			   ##__VA_ARGS__);					\
 } while (0)
 
 #else /* CONFIG_LIBRARY */
