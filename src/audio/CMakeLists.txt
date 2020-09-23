@@ -110,7 +110,7 @@ macro(check_optimization opt_name flag extra_define)
 	check_c_compiler_flag(${flag} compiles_flag_${opt_name})
 	if(compiles_flag_${opt_name})
 		list(APPEND available_optimizations ${opt_name})
-		set(${opt_name}_flags ${flag} ${extra_define} -ffast-math -ftree-vectorizer-verbose=0)
+		set(${opt_name}_flags ${flag} ${extra_define} -ffast-math)
 	endif()
 endmacro()
 
