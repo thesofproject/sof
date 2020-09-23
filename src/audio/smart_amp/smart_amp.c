@@ -692,15 +692,6 @@ static int smart_amp_prepare(struct comp_dev *dev)
 		return -EINVAL;
 	}
 
-	/* TODO:
-	 * ATM feedback buffer frame_fmt is hardcoded to s32_le. It should be
-	 * removed when parameters negotiation between pipelines will prepared
-	 */
-	if (sad->feedback_buf->stream.frame_fmt != SOF_IPC_FRAME_S32_LE) {
-		sad->feedback_buf->stream.frame_fmt = SOF_IPC_FRAME_S32_LE;
-		comp_err(dev, "smart_amp_prepare(): S32_LE format is hardcoded as workaround");
-	}
-
 	sad->process = get_smart_amp_process(dev);
 	if (!sad->process) {
 		comp_err(dev, "smart_amp_prepare(): get_smart_amp_process failed");
