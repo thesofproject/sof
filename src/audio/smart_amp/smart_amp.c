@@ -390,14 +390,8 @@ static int smart_amp_ctrl_set_bin_data(struct comp_dev *dev,
 
 	assert(sad);
 
-	if (dev->state != COMP_STATE_READY) {
-		/* It is a valid request but currently this is not
-		 * supported during playback/capture. The driver will
-		 * re-send data in next resume when idle and the new
-		 * configuration will be used when playback/capture
-		 * starts.
-		 */
-		comp_err(dev, "smart_amp_ctrl_set_bin_data(): driver is busy");
+	if (dev->state < COMP_STATE_READY) {
+		comp_err(dev, "smart_amp_ctrl_set_bin_data(): driver in init!");
 		return -EBUSY;
 	}
 
