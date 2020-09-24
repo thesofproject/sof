@@ -105,7 +105,8 @@ static inline void mtrace_event(const char *data, uint32_t length)
 static inline bool trace_filter_pass(uint32_t lvl,
 				     const struct tr_ctx *ctx)
 {
-	/* LOG_LEVEL_CRITICAL has low value, LOG_LEVEL_VERBOSE high */
+	STATIC_ASSERT(LOG_LEVEL_CRITICAL < LOG_LEVEL_VERBOSE,
+		      LOG_LEVEL_CRITICAL_MUST_HAVE_LOWEST_VALUE);
 	return lvl <= ctx->level;
 }
 
