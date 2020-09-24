@@ -475,6 +475,18 @@ SECTIONS
     . = . + HEAP_SYS_RUNTIME_M_SIZE;
     _system_runtime_heap_end = ABSOLUTE(.);
 
+    . = ALIGN (PLATFORM_DCACHE_ALIGN);
+    _runtime_shared_heap_start = ABSOLUTE(.);
+    . = . + HEAP_RUNTIME_SHARED_SIZE;
+    . = ALIGN (PLATFORM_DCACHE_ALIGN);
+    _runtime_shared_heap_end = ABSOLUTE(.);
+
+    . = ALIGN (PLATFORM_DCACHE_ALIGN);
+    _system_shared_heap_start = ABSOLUTE(.);
+    . = . + HEAP_SYSTEM_SHARED_SIZE;
+    . = ALIGN (PLATFORM_DCACHE_ALIGN);
+    _system_shared_heap_end = ABSOLUTE(.);
+
     . = ALIGN (4096);
     _sof_stack_start = ABSOLUTE(.);
     . = . + SOF_STACK_SIZE;
@@ -502,6 +514,10 @@ SECTIONS
 
   /* system runtime heap */
   _system_runtime_heap = _system_runtime_heap_start;
+
+  /* Shared Heap */
+  _runtime_shared_heap = _runtime_shared_heap_start;
+  _system_shared_heap = _system_shared_heap_start;
 
   /* module heap */
   _module_heap = _runtime_heap_start;

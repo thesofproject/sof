@@ -151,6 +151,10 @@
  * |                  ||-----------------------++-----------------------------+
  * |                  ||Runtime Heap           ||  HEAP_RUNTIME_SIZE          |
  * |                  ||-----------------------++-----------------------------+
+ * |                  ||Runtime shared Heap    ||  HEAP_RUNTIME_SHARED_SIZE   |
+ * |                  ||-----------------------++-----------------------------+
+ * |                  ||System shared Heap     ||  HEAP_SYSTEM_SHARED_SIZE    |
+ * |                  ||-----------------------++-----------------------------+
  * |                  ||Module Buffers         ||  HEAP_BUFFER_SIZE           |
  * |                  ||-----------------------++-----------------------------+
  * |                  ||Primary core Sys Heap  ||  HEAP_SYSTEM_M_SIZE         |
@@ -271,6 +275,21 @@
 	HEAP_RT_COUNT1024 * 1024 + HEAP_RT_COUNT2048 * 2048 + \
 	HEAP_RT_COUNT4096 * 4096)
 
+/* Heap section sizes for runtime shared heap */
+#define HEAP_RUNTIME_SHARED_COUNT64	(64 + 32 * CONFIG_CORE_COUNT)
+#define HEAP_RUNTIME_SHARED_COUNT128	64
+#define HEAP_RUNTIME_SHARED_COUNT256	4
+#define HEAP_RUNTIME_SHARED_COUNT512	16
+#define HEAP_RUNTIME_SHARED_COUNT1024	4
+
+#define HEAP_RUNTIME_SHARED_SIZE \
+	(HEAP_RUNTIME_SHARED_COUNT64 * 64 + HEAP_RUNTIME_SHARED_COUNT128 * 128 + \
+	HEAP_RUNTIME_SHARED_COUNT256 * 256 + HEAP_RUNTIME_SHARED_COUNT512 * 512 + \
+	HEAP_RUNTIME_SHARED_COUNT1024 * 1024)
+
+/* Heap section sizes for system shared heap */
+#define HEAP_SYSTEM_SHARED_SIZE		0x1500
+
 #define HEAP_BUFFER_SIZE	0x10000
 
 #define HEAP_BUFFER_BLOCK_SIZE	0x100
@@ -367,6 +386,8 @@
 #define PLATFORM_HEAP_SYSTEM		CONFIG_CORE_COUNT /* one per core */
 #define PLATFORM_HEAP_SYSTEM_RUNTIME	CONFIG_CORE_COUNT /* one per core */
 #define PLATFORM_HEAP_RUNTIME		1
+#define PLATFORM_HEAP_RUNTIME_SHARED	1
+#define PLATFORM_HEAP_SYSTEM_SHARED	1
 #define PLATFORM_HEAP_BUFFER		2
 
 /* Stack configuration */

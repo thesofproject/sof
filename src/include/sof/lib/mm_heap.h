@@ -61,6 +61,12 @@ struct mm {
 	struct mm_heap system[PLATFORM_HEAP_SYSTEM];
 	/* system runtime heap - used for runtime system components */
 	struct mm_heap system_runtime[PLATFORM_HEAP_SYSTEM_RUNTIME];
+#if CONFIG_CORE_COUNT > 1
+	/* object shared between different cores - used during init cannot be freed */
+	struct mm_heap system_shared[PLATFORM_HEAP_SYSTEM_SHARED];
+	/* object shared between different cores */
+	struct mm_heap runtime_shared[PLATFORM_HEAP_RUNTIME_SHARED];
+#endif
 	/* general heap for components */
 	struct mm_heap runtime[PLATFORM_HEAP_RUNTIME];
 	/* general component buffer heap */
