@@ -20,5 +20,7 @@ SECTIONS
     _system_heap_start = HEAP_SYSTEM_0_BASE;
     _system_runtime_heap = HEAP_SYS_RUNTIME_0_BASE;
     _sof_core_s_start = SOF_CORE_S_START;
+    _runtime_shared_heap = HEAP_RUNTIME_SHARED_BASE;
+    _system_shared_heap = HEAP_SYSTEM_SHARED_BASE;
 }
 INSERT AFTER .text;

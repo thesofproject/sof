@@ -44,6 +44,12 @@
  *
  * 4) Buffer Zone. Largest heap zone intended for audio buffers.
  *
+ * 5) Runtime Shared Zone. Similar to Runtime Zone, but content may be used and
+ * fred from any enabled core.
+ *
+ * 6) System Shared Zone. Similar to System Zone, but content may be used from
+ * any enabled core.
+ *
  * See platform/memory.h for heap size configuration and mappings.
  */
 enum mem_zone {
@@ -51,6 +57,8 @@ enum mem_zone {
 	SOF_MEM_ZONE_SYS_RUNTIME,	/**< System-runtime zone */
 	SOF_MEM_ZONE_RUNTIME,		/**< Runtime zone */
 	SOF_MEM_ZONE_BUFFER,		/**< Buffer zone */
+	SOF_MEM_ZONE_RUNTIME_SHARED,	/**< Runtime shared zone */
+	SOF_MEM_ZONE_SYS_SHARED,	/**< System shared zone */
 };
 
 /** \name Heap zone flags

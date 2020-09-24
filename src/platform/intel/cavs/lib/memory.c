@@ -20,6 +20,9 @@
 
 extern uintptr_t _system_heap, _system_runtime_heap, _module_heap;
 extern uintptr_t _buffer_heap, _sof_core_s_start;
+#if CONFIG_CORE_COUNT > 1
+extern uintptr_t _runtime_shared_heap, _system_shared_heap;
+#endif
 
 /* Heap blocks for system runtime for primary core */
 static SHARED_DATA struct block_hdr sys_rt_0_block64[HEAP_SYS_RT_0_COUNT64];
@@ -89,6 +92,24 @@ static SHARED_DATA struct block_map rt_heap_map[] = {
 	BLOCK_DEF(2048, HEAP_RT_COUNT2048, uncached_block_hdr(mod_block2048)),
 	BLOCK_DEF(4096, HEAP_RT_COUNT4096, uncached_block_hdr(mod_block4096)),
 };
+
+#if CONFIG_CORE_COUNT > 1
+/* Heap blocks for runtime shared */
+static SHARED_DATA struct block_hdr rt_shared_block64[HEAP_RUNTIME_SHARED_COUNT64];
+static SHARED_DATA struct block_hdr rt_shared_block128[HEAP_RUNTIME_SHARED_COUNT128];
+static SHARED_DATA struct block_hdr rt_shared_block256[HEAP_RUNTIME_SHARED_COUNT256];
+static SHARED_DATA struct block_hdr rt_shared_block512[HEAP_RUNTIME_SHARED_COUNT512];
+static SHARED_DATA struct block_hdr rt_shared_block1024[HEAP_RUNTIME_SHARED_COUNT1024];
+
+/* Heap memory map for runtime shared */
+static SHARED_DATA struct block_map rt_shared_heap_map[] = {
+	BLOCK_DEF(64, HEAP_RUNTIME_SHARED_COUNT64, uncached_block_hdr(rt_shared_block64)),
+	BLOCK_DEF(128, HEAP_RUNTIME_SHARED_COUNT128, uncached_block_hdr(rt_shared_block128)),
+	BLOCK_DEF(256, HEAP_RUNTIME_SHARED_COUNT256, uncached_block_hdr(rt_shared_block256)),
+	BLOCK_DEF(512, HEAP_RUNTIME_SHARED_COUNT512, uncached_block_hdr(rt_shared_block512)),
+	BLOCK_DEF(1024, HEAP_RUNTIME_SHARED_COUNT1024, uncached_block_hdr(rt_shared_block1024)),
+};
+#endif
 
 /* Heap blocks for buffers */
 static SHARED_DATA struct block_hdr buf_block[HEAP_BUFFER_COUNT];
@@ -165,6 +186,31 @@ void platform_init_memmap(struct sof *sof)
 	platform_shared_commit(sof->memory_map->system,
 			       sizeof(*sof->memory_map->system) *
 			       CONFIG_CORE_COUNT);
+
+#if CONFIG_CORE_COUNT > 1
+	/* .runtime_shared init */
+	sof->memory_map->runtime_shared[0].blocks = ARRAY_SIZE(rt_shared_heap_map);
+	sof->memory_map->runtime_shared[0].map = uncached_block_map(rt_shared_heap_map);
+	sof->memory_map->runtime_shared[0].heap =
+			cache_to_uncache((uintptr_t)&_runtime_shared_heap);
+	sof->memory_map->runtime_shared[0].size = HEAP_RUNTIME_SHARED_SIZE;
+	sof->memory_map->runtime_shared[0].info.free = HEAP_RUNTIME_SHARED_SIZE;
+	sof->memory_map->runtime_shared[0].caps = SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_EXT |
+		SOF_MEM_CAPS_CACHE;
+
+	platform_shared_commit(sof->memory_map->runtime_shared,
+			       sizeof(*sof->memory_map->runtime_shared));
+
+	/* .system_shared init */
+	sof->memory_map->system_shared[0].heap = cache_to_uncache((uintptr_t)&_system_shared_heap);
+	sof->memory_map->system_shared[0].size = HEAP_SYSTEM_SHARED_SIZE;
+	sof->memory_map->system_shared[0].info.free = HEAP_SYSTEM_SHARED_SIZE;
+	sof->memory_map->system_shared[0].caps = SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_EXT |
+		SOF_MEM_CAPS_CACHE;
+
+	platform_shared_commit(sof->memory_map->system_shared,
+			       sizeof(*sof->memory_map->system_shared));
+#endif
 
 	/* .runtime init*/
 	sof->memory_map->runtime[0].blocks = ARRAY_SIZE(rt_heap_map);
