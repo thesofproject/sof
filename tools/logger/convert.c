@@ -323,6 +323,7 @@ static void print_entry_params(const struct log_entry_header *dma_log,
 	float dt = to_usecs(dma_log->timestamp - last_timestamp);
 	struct proc_ldc_entry proc_entry;
 	static char time_fmt[32];
+	int ret;
 
 	if (raw_output)
 		use_colors = 0;
@@ -401,24 +402,32 @@ static void print_entry_params(const struct log_entry_header *dma_log,
 
 	switch (proc_entry.header.params_num) {
 	case 0:
-		fprintf(out_fd, "%s", proc_entry.text);
+		ret = fprintf(out_fd, "%s", proc_entry.text);
 		break;
 	case 1:
-		fprintf(out_fd, proc_entry.text, proc_entry.params[0]);
+		ret = fprintf(out_fd, proc_entry.text, proc_entry.params[0]);
 		break;
 	case 2:
-		fprintf(out_fd, proc_entry.text, proc_entry.params[0], proc_entry.params[1]);
+		ret = fprintf(out_fd, proc_entry.text, proc_entry.params[0], proc_entry.params[1]);
 		break;
 	case 3:
-		fprintf(out_fd, proc_entry.text, proc_entry.params[0], proc_entry.params[1],
-			proc_entry.params[2]);
+		ret = fprintf(out_fd, proc_entry.text, proc_entry.params[0], proc_entry.params[1],
+			      proc_entry.params[2]);
 		break;
 	case 4:
-		fprintf(out_fd, proc_entry.text, proc_entry.params[0], proc_entry.params[1],
-			proc_entry.params[2], proc_entry.params[3]);
+		ret = fprintf(out_fd, proc_entry.text, proc_entry.params[0], proc_entry.params[1],
+			      proc_entry.params[2], proc_entry.params[3]);
+		break;
+	default:
+		log_err("Unsupported number of arguments for '%s'", proc_entry.text);
+		ret = 0; /* don't log ferror */
 		break;
 	}
 	free_proc_ldc_entry(&proc_entry);
+	/* log format text comes from ldc file (may be invalid), so error check is needed here */
+	if (ret < 0)
+		log_err("trace fprintf failed for '%s', %d '%s'",
+			proc_entry.text, ferror(out_fd), strerror(ferror(out_fd)));
 	fprintf(out_fd, "%s\n", use_colors ? KNRM : "");
 	fflush(out_fd);
 }
