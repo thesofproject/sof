@@ -36,7 +36,8 @@ jobs:
         &docker-pull-sof
         docker pull thesofproject/sof && docker tag thesofproject/sof sof
       script:
-        ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -r $PLATFORM
+        docker run -it -v "$(pwd)":/home/sof/work/sof.git --user 0 sof
+          ./scripts/elftools-and-run.sh $(id -u) ./scripts/xtensa-build-all.sh -r $PLATFORM
       env: PLATFORM='jsl'
 
     - <<: *build-platform
@@ -53,7 +54,8 @@ jobs:
       script:
         - sed -i $(($(grep "config HAVE_AGENT" -n src/platform/Kconfig |
              cut -f1 -d:)+2))"s/default y/default n/" src/platform/Kconfig
-        - ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -r $PLATFORM
+        - docker run -it -v "$(pwd)":/home/sof/work/sof.git --user 0  sof
+          ./scripts/elftools-and-run.sh $(id -u) ./scripts/xtensa-build-all.sh -r $PLATFORM
         - ./scripts/docker-qemu.sh ../sof.git/scripts/qemu-check.sh $PLATFORM
       env: PLATFORM='byt cht'
       before_install:

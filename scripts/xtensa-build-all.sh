@@ -5,6 +5,8 @@
 # stop on most errors
 set -e
 
+GIT_TOP=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+
 SUPPORTED_PLATFORMS=(byt cht bdw hsw apl skl kbl cnl sue icl jsl \
                     imx8 imx8x imx8m tgl)
 BUILD_ROM=no
@@ -372,6 +374,18 @@ do
 		fi
 	else # build signed FW binary
 		make bin -j "${BUILD_JOBS}" ${BUILD_VERBOSE}
+	fi
+
+	printf '\n\n -------- ELF size DEMO 1 --------\n\n'
+	( set -x; "$GIT_TOP"/scripts/elf-size-range.py \
+		-r "$GIT_TOP"/sof_nightly_build_pretend  sof ) || true
+
+	sz_limits="$GIT_TOP"/src/platform/"${platform}"_limits.conf
+	if test -e "$sz_limits"; then
+	    printf '\n\n -------- ELF size DEMO 2 --------\n\n'
+	    ( set -x; "$GIT_TOP"/scripts/elf-size-range.py \
+				-r "$GIT_TOP"/sof_nightly_build_pretend \
+				-l "$sz_limits" sof )
 	fi
 
 	cd "$WORKDIR"
