@@ -398,7 +398,7 @@ static int pipeline_comp_params_neg(struct comp_dev *current,
 	uint32_t flags = 0;
 	int err = 0;
 
-	pipe_dbg(ppl_data->p, "pipeline_comp_params_neg(), current->comp.id = %u, dir = %u",
+	pipe_dbg(current->pipeline, "pipeline_comp_params_neg(), current->comp.id = %u, dir = %u",
 		 dev_comp_id(current), dir);
 
 	/* check if 'current' is already configured */
@@ -414,7 +414,7 @@ static int pipeline_comp_params_neg(struct comp_dev *current,
 		 * the param is conflict with an active pipeline,
 		 * drop an error and reject the .params() command.
 		 */
-		pipe_err(ppl_data->p, "pipeline_comp_params_neg(): params conflict with existed active pipeline!");
+		pipe_err(current->pipeline, "pipeline_comp_params_neg(): params conflict with existed active pipeline!");
 		return -EINVAL;
 	}
 
