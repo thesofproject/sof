@@ -131,14 +131,53 @@ static const char *format_uid(uint32_t uid_ptr, int use_colors, bool be, bool up
 	return str;
 }
 
+/* fmt should point '%pUx`, return pointer to UUID string or zero */
+static const char *asprintf_uuid(const char *fmt, uint32_t uuid_key, bool use_colors, int *fmt_len)
+{
+	const char *fmt_end = fmt + strlen(fmt);
+	int be, upper;
+	int len = 4; /* assure full formating, with x */
+
+	if (fmt + 2 >= fmt_end || fmt[1] != 'p' || fmt[2] != 'U') {
+		*fmt_len = 0;
+		return NULL;
+	}
+	/* check 'x' value */
+	switch (fmt + 3 < fmt_end ? fmt[3] : 0) {
+	case 'b':
+		be = 1;
+		upper = 0;
+		break;
+	case 'B':
+		be = 1;
+		upper = 1;
+		break;
+	case 'l':
+		be = 0;
+		upper = 0;
+		break;
+	case 'L':
+		be = 0;
+		upper = 1;
+		break;
+	default:
+		be = 0;
+		upper = 0;
+		--len;
+		break;
+	}
+	*fmt_len = len;
+	return format_uid(uuid_key, use_colors, be, upper);
+}
+
 static void process_params(struct proc_ldc_entry *pe,
 			   const struct ldc_entry *e,
 			   int use_colors)
 {
 	char *p = e->text;
 	const char *t_end = p + strlen(e->text);
-	unsigned int par_bit = 1, be = 0, upper = 0;
-	int i;
+	int uuid_fmt_len;
+	int i = 0;
 
 	pe->subst_mask = 0;
 	pe->header =  e->header;
@@ -151,53 +190,33 @@ static void process_params(struct proc_ldc_entry *pe,
 	 * optional and can be one of 'b', 'B', 'l' (default), and 'L'.
 	 */
 	while ((p = strchr(p, '%'))) {
-		if (p < t_end - 2 && *(p + 1) == 'p' && *(p + 2) == 'U') {
-			unsigned int skip;
-			char *s = p + 2;
-
-			pe->subst_mask += par_bit;
-			p[1] = 's';
-			switch (p[2]) {
-			case 'b':
-				be |= par_bit;
-				skip = 2;
-				break;
-			case 'B':
-				be |= par_bit;
-				upper |= par_bit;
-				skip = 2;
-				break;
-			case 'l':
-				skip = 2;
-				break;
-			case 'L':
-				upper |= par_bit;
-				skip = 2;
-				break;
-			default:
-				skip = 1;
-				break;
-			}
-			p += skip;
-			t_end -= skip;
-			memmove(s, p + 2, strlen(p + 2) + 1);
+		/* % can't be the last char */
+		if (p + 1 >= t_end) {
+			log_err("Invalid format string");
+			break;
 		}
 
-		/* Skip "%%" */
+		/* scan format string */
 		if (p[1] == '%') {
+			/* Skip "%%" */
 			p += 2;
+		} else if (p + 2 >= t_end && p[1] == 'p' && p[2] == 'U') {
+			/* substitute UUID entry address with formatted string pointer from heap */
+			pe->params[i] = (uintptr_t)asprintf_uuid(p, e->params[i], use_colors,
+								 &uuid_fmt_len);
+			pe->subst_mask |= 1 << i;
+			++i;
+			/* replace uuid formatter with %s */
+			p[1] = 's';
+			memmove(&p[2], &p[uuid_fmt_len], (int)(t_end - &p[uuid_fmt_len]));
+			p += uuid_fmt_len - 2;
+			t_end -= uuid_fmt_len - 2;
 		} else {
-			++p;
-			par_bit <<= 1;
+			/* arguments different from %pU should be passed without modification */
+			pe->params[i] = e->params[i];
+			++i;
+			p += 2;
 		}
-	}
-
-	for (i = 0; i < e->header.params_num; i++) {
-		pe->params[i] = e->params[i];
-		if (pe->subst_mask & (1 << i))
-			pe->params[i] = (uintptr_t)format_uid(e->params[i], use_colors,
-							      (be >> i) & 1,
-							      (upper >> i) & 1);
 	}
 }
 
