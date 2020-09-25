@@ -52,7 +52,7 @@ C_CONTROLMIXER(Capture Volume, PIPELINE_ID,
 	false,
 	CONTROLMIXER_TLV(TLV 80 steps from -50dB to +20dB for 1dB, vtlv_m50s1),
 	Channel register and shift for Front Left/Right,
-	LIST(`	', KCONTROL_CHANNEL(FL, 1, 0), KCONTROL_CHANNEL(FR, 1, 1)))
+	DMIC_VOL_CH_MAPS)
 
 undefine(`CONTROL_NAME')
 define(`CONTROL_NAME', `CONTROL_NAME_SWITCH')
@@ -64,7 +64,7 @@ C_CONTROLMIXER(Capture Switch, PIPELINE_ID,
 	false,
 	,
 	Channel register and shift for Front Left/Right,
-	LIST(`	', KCONTROL_CHANNEL(FL, 2, 0), KCONTROL_CHANNEL(FR, 2, 1)),
+	DMIC_SW_CH_MAPS),
 	"1", "1")
 
 # Volume Configuration
