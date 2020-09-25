@@ -12,4 +12,5 @@
 
 docker run -i -t -v "$(pwd)":/home/sof/work/sof.git \
 	--env CMAKE_BUILD_TYPE \
+	--env PRIVATE_KEY_OPTION \
 	   --user "$(id -u)" sof "$@"
