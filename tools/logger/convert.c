@@ -200,6 +200,13 @@ static void process_params(struct proc_ldc_entry *pe,
 		if (p[1] == '%') {
 			/* Skip "%%" */
 			p += 2;
+		} else if (p[1] == 's') {
+			/* check for string printing, because it leads to logger crash */
+			log_err("String printing is not supported\n");
+			pe->params[i] = (uintptr_t)asprintf("<String @ 0x%08x>", e->params[i]);
+			pe->subst_mask |= 1 << i;
+			++i;
+			p += 2;
 		} else if (p + 2 >= t_end && p[1] == 'p' && p[2] == 'U') {
 			/* substitute UUID entry address with formatted string pointer from heap */
 			pe->params[i] = (uintptr_t)asprintf_uuid(p, e->params[i], use_colors,
