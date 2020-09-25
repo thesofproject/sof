@@ -640,7 +640,7 @@ static int logger_read(void)
 		ret = fread(&dma_log, sizeof(dma_log), 1, global_config->in_fd);
 		if (!ret) {
 			if (global_config->trace && !ferror(global_config->in_fd)) {
-				if (freopen(NULL, "r", global_config->in_fd)) {
+				if (freopen(NULL, "rb", global_config->in_fd)) {
 					continue;
 				} else {
 					log_err("in %s(), freopen(..., %s) failed: %s(%d)\n",
