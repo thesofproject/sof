@@ -170,6 +170,7 @@ PROVIDE(_memmap_cacheattr_reset = _memmap_cacheattr_wbna_trapnull);
 
 _EXT_MAN_ALIGN_ = 16;
 EXTERN(ext_man_fw_ver)
+EXTERN(ext_man_cavs_config)
 EXTERN(_LpsramHeader)
 EXTERN(_AltResetVector)
 
