@@ -853,19 +853,25 @@ int convert(struct convert_config *config)
 		      config->ldc_fd);
 	if (!count) {
 		log_err("failed to read uuid section data.\n");
-		return -ferror(config->ldc_fd);
+		ret = -ferror(config->ldc_fd);
+		goto out;
 	}
 
-	if (config->dump_ldc)
-		return dump_ldc_info();
+	if (config->dump_ldc) {
+		ret = dump_ldc_info();
+		goto out;
+	}
 
 	if (config->filter_config) {
 		ret = filter_update_firmware();
 		if (ret) {
 			log_err("failed to apply trace filter, %d.\n", ret);
-			return ret;
+			goto out;
 		}
 	}
 
-	return logger_read();
+	ret = logger_read();
+out:
+	free(config->uids_dict);
+	return ret;
 }
