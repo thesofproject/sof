@@ -638,8 +638,20 @@ static int logger_read(void)
 	while (!ferror(global_config->in_fd)) {
 		/* getting entry parameters from dma dump */
 		ret = fread(&dma_log, sizeof(dma_log), 1, global_config->in_fd);
-		if (!ret) {
-			if (global_config->trace && !ferror(global_config->in_fd)) {
+		if (ret != 1) {
+			/*
+			 * use ferror (not errno) to check fread fail -
+			 * see https://www.gnu.org/software/gnulib/manual/html_node/fread.html
+			 */
+			ret = -ferror(global_config->in_fd);
+			if (ret) {
+				log_err("in %s(), fread(..., %s) failed: %s(%d)\n",
+					__func__, global_config->in_file,
+					strerror(-ret), ret);
+				return ret;
+			}
+			/* for trace mode, try to reopen */
+			if (global_config->trace) {
 				if (freopen(NULL, "rb", global_config->in_fd)) {
 					continue;
 				} else {
@@ -648,13 +660,13 @@ static int logger_read(void)
 						strerror(errno), errno);
 					return -errno;
 				}
+			} else {
+				/* EOF */
+				if (!feof(global_config->in_fd))
+					log_err("file '%s' is unaligned with trace entry size (%ld)\n",
+						global_config->in_file, sizeof(dma_log));
+				break;
 			}
-			ret = -ferror(global_config->in_fd);
-			if (ret)
-				log_err("in %s(), fread(..., %s) failed: %s(%d)\n",
-					__func__, global_config->in_file,
-					strerror(-ret), ret);
-			return ret;
 		}
 
 		/* checking if received trace address is located in
