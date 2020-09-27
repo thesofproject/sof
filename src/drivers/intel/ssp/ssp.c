@@ -67,22 +67,27 @@ static void ssp_empty_tx_fifo(struct dai *dai)
 /* empty SSP receive FIFO */
 static void ssp_empty_rx_fifo(struct dai *dai)
 {
-	uint32_t sssr;
-	uint32_t entries;
-	uint32_t i;
+	struct timer *timer = timer_get();
+	uint64_t deadline = platform_timer_get(timer) +
+		clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1) *
+		SSP_RX_FLUSH_TIMEOUT / 1000;
 
-	sssr = ssp_read(dai, SSSR);
+	/*
+	 * To make sure all the RX FIFO entries are read out for the flushing,
+	 * we need to wait until the SSSR_RNE is cleared after the SSP link is
+	 * stopped (the SSSR_BSY is cleared), otherwise, there might be
+	 * obsoleted entries remained in the FIFO, which will impact the next
+	 * run with the SSP RX and lead to samples mismatched issue.
+	 */
+	do {
+		while (ssp_read(dai, SSSR) & SSSR_RNE)
+			/* read to empty the fifo */
+			ssp_read(dai, SSDR);
+	} while ((ssp_read(dai, SSSR) & SSSR_BSY) &&
+		 platform_timer_get(timer) < deadline);
 
 	/* clear interrupt */
-	if (sssr & SSSR_ROR)
-		ssp_write(dai, SSSR, sssr);
-
-	/* empty fifo */
-	if (sssr & SSSR_RNE) {
-		entries = SSCR3_RFL_VAL(ssp_read(dai, SSCR3));
-		for (i = 0; i < entries + 1; i++)
-			ssp_read(dai, SSDR);
-	}
+	ssp_update_bits(dai, SSSR, SSSR_ROR, SSSR_ROR);
 }
 
 /* save SSP context prior to entering D3 */
