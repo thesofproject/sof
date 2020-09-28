@@ -138,8 +138,7 @@ static inline void platform_shared_commit(void *ptr, int bytes) { }
  */
 static inline void *platform_rfree_prepare(void *ptr)
 {
-	/* free should operate only on cached addresses */
-	return is_uncached(ptr) ? uncache_to_cache(ptr) : ptr;
+	return ptr;
 }
 
 void platform_init_memmap(struct sof *sof);

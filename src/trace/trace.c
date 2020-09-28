@@ -358,8 +358,7 @@ void trace_init(struct sof *sof)
 {
 	dma_trace_init_early(sof);
 
-	sof->trace = rzalloc(SOF_MEM_ZONE_SYS, SOF_MEM_FLAG_SHARED,
-			     SOF_MEM_CAPS_RAM, sizeof(*sof->trace));
+	sof->trace = rzalloc(SOF_MEM_ZONE_SYS_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*sof->trace));
 	sof->trace->enable = 1;
 	sof->trace->pos = 0;
 	spinlock_init(&sof->trace->lock);

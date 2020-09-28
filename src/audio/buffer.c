@@ -45,8 +45,8 @@ struct comp_buffer *buffer_alloc(uint32_t size, uint32_t caps, uint32_t align)
 		return NULL;
 	}
 
-	buffer->lock = rzalloc(SOF_MEM_ZONE_RUNTIME, SOF_MEM_FLAG_SHARED,
-			       SOF_MEM_CAPS_RAM, sizeof(*buffer->lock));
+	buffer->lock = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM,
+			       sizeof(*buffer->lock));
 	if (!buffer->lock) {
 		rfree(buffer);
 		tr_err(&buffer_tr, "buffer_alloc(): could not alloc lock");

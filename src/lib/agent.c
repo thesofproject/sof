@@ -96,8 +96,7 @@ void sa_init(struct sof *sof, uint64_t timeout)
 	else
 		tr_info(&sa_tr, "sa_init(), timeout = %u", (unsigned int)timeout);
 
-	sof->sa = rzalloc(SOF_MEM_ZONE_SYS, SOF_MEM_FLAG_SHARED,
-			  SOF_MEM_CAPS_RAM, sizeof(*sof->sa));
+	sof->sa = rzalloc(SOF_MEM_ZONE_SYS_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*sof->sa));
 
 	/* set default timeouts */
 #ifdef __ZEPHYR__

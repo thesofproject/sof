@@ -58,8 +58,7 @@ int interrupt_cascade_register(const struct irq_cascade_tmpl *tmpl)
 		platform_shared_commit(*cascade, sizeof(**cascade));
 	}
 
-	*cascade = rzalloc(SOF_MEM_ZONE_SYS, SOF_MEM_FLAG_SHARED,
-			   SOF_MEM_CAPS_RAM, sizeof(**cascade));
+	*cascade = rzalloc(SOF_MEM_ZONE_SYS_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(**cascade));
 
 	spinlock_init(&(*cascade)->lock);
 
@@ -201,8 +200,8 @@ static int irq_register_child(struct irq_cascade_desc *cascade, int irq,
 		/* init child from run-time, may be registered and unregistered
 		 * many times at run-time
 		 */
-		child = rzalloc(SOF_MEM_ZONE_SYS_RUNTIME, SOF_MEM_FLAG_SHARED,
-				SOF_MEM_CAPS_RAM, sizeof(struct irq_desc));
+		child = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM,
+				sizeof(struct irq_desc));
 		if (!child) {
 			ret = -ENOMEM;
 			goto out;
