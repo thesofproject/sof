@@ -66,8 +66,8 @@ struct sof_ipc_stream_params;
  * which can be set with 'dai_set_drvdata' and retrieved with 'dai_get_drvdata'.
  * If a single DAI instance can have multiple DMA links and/or there is
  * some other possibility of the same instance being used in multiple
- * contexts at the same time, the private data should be allocated
- * with the SOF_MEM_FLAG_SHARED flag.
+ * contexts at the same time, the private data should be allocated in the
+ * SOF_MEM_ZONE_SHARED.
  */
 struct dai_ops {
 	int (*set_config)(struct dai *dai, struct sof_ipc_dai_config *config);

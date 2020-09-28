@@ -435,8 +435,7 @@ static int dummy_dma_probe(struct dma *dma)
 		return -EEXIST; /* already created */
 	}
 
-	dma->chan = rzalloc(SOF_MEM_ZONE_SYS_RUNTIME, SOF_MEM_FLAG_SHARED,
-			    SOF_MEM_CAPS_RAM,
+	dma->chan = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM,
 			    dma->plat_data.channels * sizeof(dma->chan[0]));
 	if (!dma->chan) {
 		tr_err(&ddma_tr, "dummy-dmac %d: Out of memory!",

@@ -179,9 +179,6 @@ static void *rmalloc_sys(struct mm_heap *heap, uint32_t flags, int caps, size_t 
 	heap->info.used += bytes;
 	heap->info.free -= alignment + bytes;
 
-	if (flags & SOF_MEM_FLAG_SHARED)
-		ptr = platform_shared_get(ptr, bytes);
-
 	platform_shared_commit(heap, sizeof(*heap));
 
 	return ptr;
@@ -428,9 +425,6 @@ static void *get_ptr_from_heap(struct mm_heap *heap, uint32_t flags,
 
 		break;
 	}
-
-	if (ptr && (flags & SOF_MEM_FLAG_SHARED))
-		ptr = platform_shared_get(ptr, bytes);
 
 	return ptr;
 }
@@ -846,9 +840,6 @@ static void *alloc_heap_buffer(struct mm_heap *heap, uint32_t flags,
 			platform_shared_commit(map, sizeof(*map));
 		}
 	}
-
-	if (ptr && (flags & SOF_MEM_FLAG_SHARED))
-		ptr = platform_shared_get(ptr, bytes);
 
 #if CONFIG_DEBUG_BLOCK_FREE
 	if (ptr)

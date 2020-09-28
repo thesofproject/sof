@@ -67,8 +67,7 @@ static int hda_probe(struct dai *dai)
 	if (dai_get_drvdata(dai))
 		return -EEXIST;
 
-	hda = rzalloc(SOF_MEM_ZONE_SYS_RUNTIME, SOF_MEM_FLAG_SHARED,
-		      SOF_MEM_CAPS_RAM, sizeof(*hda));
+	hda = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*hda));
 	if (!hda) {
 		dai_err(dai, "hda_probe() error: alloc failed");
 		return -ENOMEM;

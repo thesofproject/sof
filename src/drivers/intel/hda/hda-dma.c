@@ -798,9 +798,8 @@ static int hda_dma_probe(struct dma *dma)
 	if (dma->chan)
 		return -EEXIST; /* already created */
 
-	dma->chan = rzalloc(SOF_MEM_ZONE_SYS_RUNTIME, SOF_MEM_FLAG_SHARED,
-			    SOF_MEM_CAPS_RAM, sizeof(struct dma_chan_data) *
-			    dma->plat_data.channels);
+	dma->chan = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM,
+			    sizeof(struct dma_chan_data) * dma->plat_data.channels);
 
 	if (!dma->chan) {
 		tr_err(&hdma_tr, "hda-dmac: %d channels alloc failed",

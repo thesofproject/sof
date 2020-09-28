@@ -170,13 +170,11 @@ static inline struct ipc_msg *ipc_msg_init(uint32_t header, uint32_t size)
 {
 	struct ipc_msg *msg;
 
-	msg = rzalloc(SOF_MEM_ZONE_RUNTIME, SOF_MEM_FLAG_SHARED,
-		      SOF_MEM_CAPS_RAM, sizeof(*msg));
+	msg = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*msg));
 	if (!msg)
 		return NULL;
 
-	msg->tx_data = rzalloc(SOF_MEM_ZONE_RUNTIME, SOF_MEM_FLAG_SHARED,
-			       SOF_MEM_CAPS_RAM, size);
+	msg->tx_data = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM, size);
 	if (!msg->tx_data) {
 		rfree(msg);
 		return NULL;
