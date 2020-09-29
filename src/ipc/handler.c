@@ -1283,6 +1283,7 @@ static int ipc_glb_tplg_message(uint32_t header)
 	}
 }
 
+#if CONFIG_DEBUG_MEMORY_USAGE_SCAN
 static int fill_mem_usage_elems(int zone, int elem_number,
 				struct sof_ipc_dbg_mem_usage_elem *elems)
 {
@@ -1333,14 +1334,17 @@ static int ipc_glb_test_mem_usage(uint32_t header)
 	rfree(mem_usage);
 	return 1;
 }
+#endif
 
 static int ipc_glb_debug_message(uint32_t header)
 {
 	uint32_t cmd = iCS(header);
 
 	switch (cmd) {
+#if CONFIG_DEBUG_MEMORY_USAGE_SCAN
 	case SOF_IPC_DEBUG_MEM_USAGE:
 		return ipc_glb_test_mem_usage(header);
+#endif
 	default:
 		tr_err(&ipc_tr, "ipc: unknown debug header 0x%x", header);
 		return -EINVAL;

@@ -1070,6 +1070,7 @@ void init_heap(struct sof *sof)
 	platform_shared_commit(memmap, sizeof(*memmap));
 }
 
+#if CONFIG_DEBUG_MEMORY_USAGE_SCAN
 int heap_info(enum mem_zone zone, int index, struct mm_info *out)
 {
 	struct mm *memmap = memmap_get();
@@ -1112,3 +1113,4 @@ error:
 	       (uint32_t)out);
 	return -EINVAL;
 }
+#endif

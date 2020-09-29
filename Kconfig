@@ -181,6 +181,14 @@ config DEBUG_HEAP
 	help
 	  Select for enable heap alloc debugging
 
+config DEBUG_MEMORY_USAGE_SCAN
+	bool "Memory usage scan"
+	default y
+	help
+	  It enables memory usage scan at demand in runtime.
+	  This feature does not affect standard memory operations,
+	  especially allocation and deallocation.
+
 config DEBUG_BLOCK_FREE
 	bool "Blocks freeing debug"
 	default n
