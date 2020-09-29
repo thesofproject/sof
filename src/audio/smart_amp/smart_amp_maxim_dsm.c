@@ -106,7 +106,7 @@ static int maxim_dsm_get_volatile_param(struct smart_amp_mod_struct_t *hspk,
 	int x;
 
 	/* Update all volatile parameter values */
-	for (x = DSM_API_ADAPTIVE_PARAM_START ; x < DSM_API_ADAPTIVE_PARAM_END ;  x++) {
+	for (x = DSM_API_ADAPTIVE_PARAM_START ; x <= DSM_API_ADAPTIVE_PARAM_END ;  x++) {
 		cmdblock[0] = DSM_SET_CMD_ID(x);
 		retcode = dsm_api_get_params(hspk->dsmhandle, 1, (void *)cmdblock);
 		if (retcode != DSM_API_OK)
