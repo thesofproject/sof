@@ -44,6 +44,9 @@ struct recent_trace_context {
 struct trace {
 	uintptr_t pos ;	/* trace position */
 	uint32_t enable;
+#if CONFIG_TRACE_FILTERING_ADAPTIVE
+	bool user_filter_override;	/* whether filtering was overridden by user or not */
+#endif /* CONFIG_TRACE_FILTERING_ADAPTIVE */
 	spinlock_t lock; /* locking mechanism */
 
 #if CONFIG_TRACE_FILTERING_ADAPTIVE
@@ -296,12 +299,14 @@ void trace_log_filtered(bool send_atomic, const void *log_entry, const struct tr
 #endif /* CONFIG_TRACE_FILTERING_VERBOSITY */
 
 #if CONFIG_TRACE_FILTERING_ADAPTIVE
-	current_ts = platform_timer_get(timer_get());
+	if (!trace->user_filter_override) {
+		current_ts = platform_timer_get(timer_get());
 
-	emit_recent_entries(current_ts);
+		emit_recent_entries(current_ts);
 
-	if (!trace_filter_flood(lvl, (uint32_t)log_entry, current_ts))
-		return;
+		if (!trace_filter_flood(lvl, (uint32_t)log_entry, current_ts))
+			return;
+	}
 #endif /* CONFIG_TRACE_FILTERING_ADAPTIVE */
 
 	va_start(vl, arg_count);
@@ -440,6 +445,12 @@ static int trace_filter_update_instances(int32_t log_level, uint32_t uuid_id,
 int trace_filter_update(const struct trace_filter *filter)
 {
 	int ret = 0;
+#if CONFIG_TRACE_FILTERING_ADAPTIVE
+	struct trace *trace = trace_get();
+
+	trace->user_filter_override = true;
+	platform_shared_commit(trace, sizeof(*trace));
+#endif /* CONFIG_TRACE_FILTERING_ADAPTIVE */
 
 	/* validate log level, LOG_LEVEL_CRITICAL has low value, LOG_LEVEL_VERBOSE high */
 	if (filter->log_level < LOG_LEVEL_CRITICAL ||
@@ -512,6 +523,9 @@ void trace_init(struct sof *sof)
 	sof->trace = rzalloc(SOF_MEM_ZONE_SYS_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*sof->trace));
 	sof->trace->enable = 1;
 	sof->trace->pos = 0;
+#if CONFIG_TRACE_FILTERING_ADAPTIVE
+	sof->trace->user_filter_override = false;
+#endif /* CONFIG_TRACE_FILTERING_ADAPTIVE */
 	spinlock_init(&sof->trace->lock);
 
 	platform_shared_commit(sof->trace, sizeof(*sof->trace));
