@@ -1253,11 +1253,19 @@ TGL_MEMORY_SPACE = DspMemory('Intel Tigerlake',
         DspMemorySegment('l2 lpsram', 0xbe800000, 1*64*1024)
     ])
 
+JSL_MEMORY_SPACE = DspMemory('Intel Jasperlake',
+    [
+        DspMemorySegment('imr', 0xb0000000, 8*1024*1024),
+        DspMemorySegment('l2 hpsram', 0xbe000000, 16*64*1024),
+        DspMemorySegment('l2 lpsram', 0xbe800000, 1*64*1024)
+    ])
+
 DSP_MEM_SPACE_EXT = {
     'apl' : APL_MEMORY_SPACE,
     'cnl' : CNL_MEMORY_SPACE,
     'icl' : ICL_MEMORY_SPACE,
-    'tgl' : TGL_MEMORY_SPACE
+    'tgl' : TGL_MEMORY_SPACE,
+    'jsl' : JSL_MEMORY_SPACE,
 }
 
 def main(args):
