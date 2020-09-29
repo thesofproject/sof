@@ -92,5 +92,6 @@ const struct ext_man_config_data ext_man_config
 				  EXT_MAN_ALIGN),
 	.elems = {
 		{EXT_MAN_CONFIG_IPC_MSG_SIZE, SOF_IPC_MSG_MAX_SIZE},
+		{EXT_MAN_CONFIG_MEMORY_USAGE_SCAN, IS_ENABLED(CONFIG_DEBUG_MEMORY_USAGE_SCAN)},
 	},
 };
