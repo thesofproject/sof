@@ -10,13 +10,13 @@ if(CONFIG_SAMPLES)
 	add_subdirectory(samples)
 endif()
 add_local_sources(sof spinlock.c)
+add_subdirectory(drivers)
 
 if(CONFIG_LIBRARY)
 	return()
 endif()
 
 add_subdirectory(debug)
-add_subdirectory(drivers)
 add_subdirectory(init)
 add_subdirectory(schedule)
 

@@ -1,5 +1,10 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
+if(CONFIG_LIBRARY)
+	add_subdirectory(library)
+	return()
+endif()
+
 if(CONFIG_BAYTRAIL OR CONFIG_CHERRYTRAIL)
 	add_subdirectory(baytrail)
 elseif(CONFIG_HASWELL OR CONFIG_BROADWELL)
