@@ -247,6 +247,7 @@ int main(int argc, char *argv[])
 				usage();
 			}
 			config.dump_ldc = 1;
+			config.version_fw = 0;
 			config.ldc_file = optarg;
 			break;
 		case 'F':
