@@ -264,17 +264,6 @@ uint64_t arch_timer_get_system(struct timer *timer)
 	return platform_timer_get(timer);
 }
 
-/* platform_timer_set() should not be called using Zephyr */
-int64_t platform_timer_set(struct timer *timer, uint64_t ticks)
-{
-#if defined(CONFIG_SOC_SERIES_INTEL_ADSP_BAYTRAIL)
-	return ticks;
-#else
-	/* TODO: needs BDW; should call Zephyr 64bit API ? */
-	return shim_read64(SHIM_DSPWCT0C);
-#endif
-}
-
 uint64_t platform_timer_get(struct timer *timer)
 {
 #if defined(CONFIG_SOC_SERIES_INTEL_ADSP_BAYTRAIL)
