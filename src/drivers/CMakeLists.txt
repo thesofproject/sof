@@ -8,6 +8,11 @@ if(CONFIG_INTEL)
 	add_subdirectory(intel)
 endif()
 
+if(CONFIG_LIBRARY)
+	add_subdirectory(host)
+	return()
+endif()
+
 if(CONFIG_DW)
 	add_subdirectory(dw)
 endif()

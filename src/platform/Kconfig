@@ -213,6 +213,12 @@ config INTEL
 	  This has to be selected for every Intel platform.
 	  It enables Intel platforms-specific features.
 
+config HOST
+	bool
+	default n
+	help
+	  This has to be selected for building linux test targets.
+
 config IMX
 	bool
 	default n

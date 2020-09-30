@@ -8,17 +8,10 @@ include(../../scripts/cmake/misc.cmake)
 
 add_executable(testbench
 	testbench.c
-	alloc.c
 	common_test.c
 	file.c
-	ipc.c
-	schedule.c
-	ll_schedule.c
 	edf_schedule.c
-	panic.c
-	timer.c
 	topology.c
-	trace.c
 )
 
 sof_append_relative_path_definitions(testbench)

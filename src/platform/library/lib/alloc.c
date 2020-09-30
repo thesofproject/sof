@@ -13,7 +13,6 @@
 #include <malloc.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/mm_heap.h>
-#include "testbench/common_test.h"
 
 /* testbench mem alloc definition */
 

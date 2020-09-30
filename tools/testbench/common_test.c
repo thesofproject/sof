@@ -22,6 +22,7 @@
 #include <sof/lib/wait.h>
 #include <sof/audio/pipeline.h>
 #include "testbench/common_test.h"
+#include "testbench/trace.h"
 #include <tplg_parser/topology.h>
 
 /* testbench helper functions for pipeline setup and trigger */
@@ -250,12 +251,19 @@ void pipeline_xrun(struct pipeline *p, struct comp_dev *dev, int32_t bytes)
 {
 }
 
-uint64_t platform_timer_get(struct timer *timer)
+/* print debug messages */
+void debug_print(char *message)
 {
-	return 0;
+	if (debug)
+		printf("debug: %s", message);
 }
 
-uint64_t clock_ms_to_ticks(int clock, uint64_t ms)
+/* enable trace in testbench */
+void tb_enable_trace(bool enable)
 {
-	return 0;
+	test_bench_trace = enable;
+	if (enable)
+		debug_print("trace print enabled\n");
+	else
+		debug_print("trace print disabled\n");
 }

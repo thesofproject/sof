@@ -7,13 +7,13 @@ add_subdirectory(audio)
 add_subdirectory(lib)
 add_subdirectory(math)
 add_local_sources(sof spinlock.c)
+add_subdirectory(drivers)
 
 if(CONFIG_LIBRARY)
 	return()
 endif()
 
 add_subdirectory(debug)
-add_subdirectory(drivers)
 add_subdirectory(init)
 add_subdirectory(schedule)
 
