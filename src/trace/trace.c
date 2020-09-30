@@ -207,10 +207,14 @@ struct sof_ipc_trace_filter_elem *trace_filter_fill(struct sof_ipc_trace_filter_
 /* update global components, which tr_ctx is stored inside special section */
 static int trace_filter_update_global(int32_t log_level, uint32_t uuid_id)
 {
+#ifndef __ZEPHYR__
 	extern void *_trace_ctx_start;
 	extern void *_trace_ctx_end;
 	struct tr_ctx *ptr = (struct tr_ctx *)&_trace_ctx_start;
 	struct tr_ctx *end = (struct tr_ctx *)&_trace_ctx_end;
+#else
+	struct tr_ctx *ptr = NULL, *end = ptr;
+#endif
 	int cnt = 0;
 
 	/* iterate over global `tr_ctx` entries located in their own section */
