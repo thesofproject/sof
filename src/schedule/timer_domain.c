@@ -39,7 +39,7 @@
 			/ CONFIG_SYS_CLOCK_TICKS_PER_SEC)
 
 /* zephyr alignment to nearest kernel tick */
-#define ZEPHYR_SCHED_COST	(CYC_PER_TICK + (CYC_PER_TICK >> 1))
+#define ZEPHYR_SCHED_COST	CYC_PER_TICK
 
 K_THREAD_STACK_DEFINE(ll_workq_stack0, ZEPHYR_LL_WORKQ_SIZE);
 #if CONFIG_CORE_COUNT > 1
@@ -230,25 +230,51 @@ static void timer_domain_set(struct ll_schedule_domain *domain, uint64_t start)
 	struct timer_domain *timer_domain = ll_sch_domain_get_pdata(domain);
 	uint64_t ticks_tout = domain->ticks_per_ms * timer_domain->timeout /
 			     1000;
-	uint64_t ticks_req = ticks_tout + start;
 	uint64_t ticks_set;
+#ifndef __ZEPHYR__
+	uint64_t ticks_req = start + ticks_tout;
 
-#ifdef __ZEPHYR__
+	ticks_set = platform_timer_set(timer_domain->timer, ticks_req);
+#else
+	uint64_t current = platform_timer_get(timer_domain->timer);
+	uint64_t earliest_next = current + 1 + ZEPHYR_SCHED_COST;
+	uint64_t ticks_req = domain->last_tick ? start + ticks_tout :
+		MAX(start, earliest_next);
+	int ret, core = cpu_get_id();
 	uint64_t ticks_delta;
-	int core = cpu_get_id();
 
-	/* work out next start time relative to start */
-	ticks_delta = ticks_req - platform_timer_get(timer_domain->timer);
+	if (ticks_tout < CYC_PER_TICK)
+		ticks_tout = CYC_PER_TICK;
 
 	/* have we overshot the period length ?? */
-	if (ticks_delta > ticks_tout)
-		ticks_delta = ticks_tout;
+	if (ticks_req > current + ticks_tout)
+		ticks_req = current + ticks_tout;
 
-	k_delayed_work_submit_to_queue(&timer_domain[core].ll_workq[core],
-				       &zdata[core].work,
-				       K_CYC(ticks_delta - ZEPHYR_SCHED_COST));
+	ticks_req -= ticks_req % CYC_PER_TICK;
+	if (ticks_req < earliest_next) {
+		/* The earliest schedule point has to be rounded up */
+		ticks_req = earliest_next + CYC_PER_TICK - 1;
+		ticks_req -= ticks_req % CYC_PER_TICK;
+	}
+
+	/* work out next start time relative to start */
+	ticks_delta = ticks_req - current;
+
+	/* This actually sets the timer and the next call only reads it back */
+	/* using K_CYC(ticks_delta - 885) brings "requested - set" to about 180-700
+	 * cycles, audio sounds very slow and distorted.
+	 */
+	ret = k_delayed_work_submit_to_queue(&timer_domain[core].ll_workq[core],
+					     &zdata[core].work,
+					     K_CYC(ticks_delta - ZEPHYR_SCHED_COST));
+	if (ret < 0) {
+		tr_err(&ll_tr, "queue submission error %d", ret);
+		return;
+	}
+
+	ticks_set = k_delayed_work_remaining_ticks(&zdata[core].work) * CYC_PER_TICK +
+		current - current % CYC_PER_TICK;
 #endif
-	ticks_set = platform_timer_set(timer_domain->timer, ticks_req);
 
 	/* Was timer set to the value we requested? If no it means some
 	 * delay occurred and we should report that in error log.
