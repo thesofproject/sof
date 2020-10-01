@@ -30,7 +30,8 @@ void timer_64_handler(void *arg)
 		arch_timer_clear(timer);
 	} else {
 		/* no roll over, run the handler */
-		timer->handler(timer->data);
+		if (timer->handler)
+			timer->handler(timer->data);
 	}
 
 	/* get next timeout value */
