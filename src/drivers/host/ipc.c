@@ -45,9 +45,3 @@ int platform_ipc_init(struct ipc *ipc)
 
 	return 0;
 }
-
-/* The following definition is to satisfy libsof linker errors */
-
-void ipc_msg_send(struct ipc_msg *msg, void *data, bool high_priority)
-{
-}
