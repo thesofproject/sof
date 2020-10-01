@@ -153,41 +153,36 @@ static void init_heap_map(struct mm_heap *heap, int count)
 }
 
 /* allocate from system memory pool */
-static void *rmalloc_sys(uint32_t flags, int caps, int core, size_t bytes)
+static void *rmalloc_sys(struct mm_heap *heap, uint32_t flags, int caps, size_t bytes)
 {
-	struct mm *memmap = memmap_get();
 	void *ptr;
-	struct mm_heap *cpu_heap;
 	size_t alignment = 0;
 
-	/* use the heap dedicated for the selected core */
-	cpu_heap = memmap->system + core;
-	if ((cpu_heap->caps & caps) != caps)
+	if ((heap->caps & caps) != caps)
 		panic(SOF_IPC_PANIC_MEM);
 
 	/* align address to dcache line size */
-	if (cpu_heap->info.used % PLATFORM_DCACHE_ALIGN)
+	if (heap->info.used % PLATFORM_DCACHE_ALIGN)
 		alignment = PLATFORM_DCACHE_ALIGN -
-			(cpu_heap->info.used % PLATFORM_DCACHE_ALIGN);
+			(heap->info.used % PLATFORM_DCACHE_ALIGN);
 
 	/* always succeeds or panics */
-	if (alignment + bytes > cpu_heap->info.free) {
+	if (alignment + bytes > heap->info.free) {
 		tr_err(&mem_tr, "rmalloc_sys(): core = %d, bytes = %d",
-		       core, bytes);
+		       cpu_get_id(), bytes);
 		panic(SOF_IPC_PANIC_MEM);
 	}
-	cpu_heap->info.used += alignment;
+	heap->info.used += alignment;
 
-	ptr = (void *)(cpu_heap->heap + cpu_heap->info.used);
+	ptr = (void *)(heap->heap + heap->info.used);
 
-	cpu_heap->info.used += bytes;
-	cpu_heap->info.free -= alignment + bytes;
+	heap->info.used += bytes;
+	heap->info.free -= alignment + bytes;
 
 	if (flags & SOF_MEM_FLAG_SHARED)
 		ptr = platform_shared_get(ptr, bytes);
 
-	platform_shared_commit(cpu_heap, sizeof(*cpu_heap));
-	platform_shared_commit(memmap, sizeof(*memmap));
+	platform_shared_commit(heap, sizeof(*heap));
 
 	return ptr;
 }
@@ -674,7 +669,7 @@ static void *_malloc_unlocked(enum mem_zone zone, uint32_t flags, uint32_t caps,
 
 	switch (zone) {
 	case SOF_MEM_ZONE_SYS:
-		ptr = rmalloc_sys(flags, caps, cpu_get_id(), bytes);
+		ptr = rmalloc_sys(memmap->system + cpu_get_id(), flags, caps, bytes);
 		break;
 	case SOF_MEM_ZONE_SYS_RUNTIME:
 		ptr = rmalloc_sys_runtime(flags, caps, cpu_get_id(), bytes);
@@ -737,12 +732,12 @@ void *rzalloc_core_sys(int core, size_t bytes)
 
 	spin_lock_irq(&memmap->lock, flags);
 
-	ptr = rmalloc_sys(0, 0, core, bytes);
+	ptr = rmalloc_sys(memmap->system + core, 0, 0, bytes);
 	if (ptr)
 		bzero(ptr, bytes);
 
 	spin_unlock_irq(&memmap->lock, flags);
-
+	platform_shared_commit(memmap, sizeof(*memmap));
 	return ptr;
 }
 
