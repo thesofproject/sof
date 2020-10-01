@@ -207,7 +207,7 @@ static void process_params(struct proc_ldc_entry *pe,
 			pe->subst_mask |= 1 << i;
 			++i;
 			p += 2;
-		} else if (p + 2 >= t_end && p[1] == 'p' && p[2] == 'U') {
+		} else if (p + 2 < t_end && p[1] == 'p' && p[2] == 'U') {
 			/* substitute UUID entry address with formatted string pointer from heap */
 			pe->params[i] = (uintptr_t)asprintf_uuid(p, e->params[i], use_colors,
 								 &uuid_fmt_len);
@@ -215,7 +215,7 @@ static void process_params(struct proc_ldc_entry *pe,
 			++i;
 			/* replace uuid formatter with %s */
 			p[1] = 's';
-			memmove(&p[2], &p[uuid_fmt_len], (int)(t_end - &p[uuid_fmt_len]));
+			memmove(&p[2], &p[uuid_fmt_len], (int)(t_end - &p[uuid_fmt_len]) + 1);
 			p += uuid_fmt_len - 2;
 			t_end -= uuid_fmt_len - 2;
 		} else {
