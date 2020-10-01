@@ -13,6 +13,7 @@
 #include <stdint.h>
 
 struct timer {
+	uint64_t delta;
 };
 
 static inline int arch_timer_register(struct timer *timer,
