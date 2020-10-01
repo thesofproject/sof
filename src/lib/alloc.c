@@ -317,39 +317,38 @@ out:
 	return ptr;
 }
 
+static inline struct mm_heap *find_in_heap_arr(struct mm_heap *heap_arr, int arr_len, void *ptr)
+{
+	struct mm_heap *heap;
+	int i;
+
+	for (i = 0; i < arr_len; i++) {
+		heap = &heap_arr[i];
+		if ((uint32_t)ptr >= heap->heap &&
+		    (uint32_t)ptr < heap->heap + heap->size)
+			return heap;
+		platform_shared_commit(heap, sizeof(*heap));
+	}
+	return NULL;
+}
+
 static struct mm_heap *get_heap_from_ptr(void *ptr)
 {
 	struct mm *memmap = memmap_get();
 	struct mm_heap *heap;
-	int i;
 
 	/* find mm_heap that ptr belongs to */
-	heap = memmap->system_runtime + cpu_get_id();
-	if ((uint32_t)ptr >= heap->heap &&
-	    (uint32_t)ptr < heap->heap + heap->size)
+	heap = find_in_heap_arr(memmap->system_runtime + cpu_get_id(), 1, ptr);
+	if (heap)
 		goto out;
 
-	platform_shared_commit(heap, sizeof(*heap));
+	heap = find_in_heap_arr(memmap->runtime, PLATFORM_HEAP_RUNTIME, ptr);
+	if (heap)
+		goto out;
 
-	for (i = 0; i < PLATFORM_HEAP_RUNTIME; i++) {
-		heap = &memmap->runtime[i];
-
-		if ((uint32_t)ptr >= heap->heap &&
-		    (uint32_t)ptr < heap->heap + heap->size)
-			goto out;
-
-		platform_shared_commit(heap, sizeof(*heap));
-	}
-
-	for (i = 0; i < PLATFORM_HEAP_BUFFER; i++) {
-		heap = &memmap->buffer[i];
-
-		if ((uint32_t)ptr >= heap->heap &&
-		    (uint32_t)ptr < heap->heap + heap->size)
-			goto out;
-
-		platform_shared_commit(heap, sizeof(*heap));
-	}
+	heap = find_in_heap_arr(memmap->buffer, PLATFORM_HEAP_BUFFER, ptr);
+	if (heap)
+		goto out;
 
 	platform_shared_commit(memmap, sizeof(*memmap));
 
