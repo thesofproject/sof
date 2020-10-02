@@ -12,20 +12,20 @@ addpath('../../tune/tdfb');
 
 %% Beam pattern test 16 kHz
 % Get configuration, this needs to match topology
-config_fn = 'tdfb_coef_line2_50mm_az0el0deg_48khz.mat'
+config_fn = 'tdfb_coef_line2_50mm_az0el0deg_48khz.mat';
 simcap_fn = 'simcap_sinerot_line2_50mm_az0el0deg_48khz.raw';
 test_beampattern(cfg, config_fn, simcap_fn);
 
 %% Diffuse noise test
 
-config_fn = 'tdfb_coef_line2_50mm_az0el0deg_48khz.mat'
+config_fn = 'tdfb_coef_line2_50mm_az0el0deg_48khz.mat';
 simcap_fn = 'simcap_diffuse_line2_50mm_az0el0deg_48khz.raw';
 desc = 'Diffuse field noise';
 [dfin_dbfs, dfout_dbfs, dfd_db] = test_noise_suppression(cfg, config_fn, simcap_fn, desc);
 
 %% Random noise
 
-config_fn = 'tdfb_coef_line2_50mm_az0el0deg_48khz.mat'
+config_fn = 'tdfb_coef_line2_50mm_az0el0deg_48khz.mat';
 simcap_fn = 'simcap_random_line2_50mm_az0el0deg_48khz.raw';
 desc = 'Random noise';
 [rnin_dbfs, rnout_dbfs, drn_db] = test_noise_suppression(cfg, config_fn, simcap_fn, desc);
