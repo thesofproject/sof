@@ -1,5 +1,17 @@
 function tdfb_test()
 
+% tdfb_test()
+% Inputs
+%   None
+%
+% Outputs
+%   None, to be added later when automatic pass/fail is possible to
+%   determine. So far only visual check enabled.
+
+% SPDX-License-Identifier: BSD-3-Clause
+% Copyright(c) 2020 Intel Corporation. All rights reserved.
+% Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
+
 % General settings
 cfg.delete_files = 1;
 cfg.do_plots = 1;
