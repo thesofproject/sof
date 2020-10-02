@@ -88,7 +88,14 @@ end
 
 function test_beampattern(cfg, config_fn, simcap_fn);
 
-load(fullfile(cfg.tunepath, config_fn));
+fn = fullfile(cfg.tunepath, config_fn);
+if isfile(fn)
+	load(fn);
+else
+	fprintf(1, 'Array configuration file %s does not exist.\n', config_fn);
+	fprintf(1, 'Please run the script example_line_array in tools/tune/tdfb directory.\n');
+	error('Stopping.');
+end
 
 % Create input file
 test = test_defaults(bf);
