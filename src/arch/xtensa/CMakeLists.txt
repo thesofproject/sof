@@ -405,6 +405,7 @@ if(MEU_PATH OR DEFINED MEU_NO_SIGN)
 			-i ${RIMAGE_IMR_TYPE}
 			-f ${SOF_MAJOR}.${SOF_MINOR}
 			-b ${SOF_BUILD}
+			-v
 			${RIMAGE_MOD_OFFSET_FLAG}
 			${bootloader_binary_path}
 			sof-${fw_name}
