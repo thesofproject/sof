@@ -17,6 +17,7 @@
 #define __PLATFORM_LIB_PM_RUNTIME_H__
 
 #include <stdint.h>
+#include <stdbool.h>
 
 struct pm_runtime_data;
 
