@@ -9,6 +9,7 @@
 
 #include <stdint.h>
 #include <sof/trace/trace.h>
+#include <sof/trace/dma-trace.h>
 
 /* enable trace by default in testbench */
 int test_bench_trace = 1;
@@ -24,3 +25,22 @@ char *get_trace_class(uint32_t trace_class)
 	return "unknown";
 }
 
+struct sof_ipc_trace_filter_elem *trace_filter_fill(struct sof_ipc_trace_filter_elem *elem,
+						    struct sof_ipc_trace_filter_elem *end,
+						    struct trace_filter *filter)
+{
+	return NULL;
+}
+
+int trace_filter_update(const struct trace_filter *filter)
+{
+	return 0;
+}
+
+int dma_trace_enable(struct dma_trace_data *d)
+{
+	return 0;
+}
+
+void trace_off(void) { }
+void trace_on(void) { }
