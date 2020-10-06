@@ -32,16 +32,6 @@
 #include <rimage/sof/kernel/ext_manifest.h>
 #include <stdint.h>
 
-/* Macro used to creeate copy of some structure in extended manifest */
-#define EXT_MAN_PORT(XENUM, XSIZE, IPC_ELEM, XNAME, IPC_NAME, CONTENT)	\
-	XNAME __aligned(EXT_MAN_ALIGN) __section(".fw_metadata")	\
-		__attribute__ ((unused)) = {				\
-		.hdr.type = XENUM,					\
-		.hdr.elem_size = ALIGN_UP(XSIZE, EXT_MAN_ALIGN),	\
-		.IPC_ELEM = { CONTENT }					\
-	};								\
-	IPC_NAME = { CONTENT }
-
 /* Now define extended manifest elements */
 
 /* Extended manifest elements identificators */
