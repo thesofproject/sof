@@ -78,72 +78,72 @@ static const struct sof_ipc_fw_ready ready
 
 #define NUM_WINDOWS 7
 
-EXT_MAN_PORT(
-	EXT_MAN_ELEM_WINDOW,
-	sizeof(struct ext_man_windows),
-	window,
-	static const struct ext_man_windows xsram_window,
-	static const struct sof_ipc_window sram_window
-		__section(".fw_ready_metadata"),
-	_META_EXPAND(
-	.ext_hdr	= {
-		.hdr.cmd = SOF_IPC_FW_READY,
-		.hdr.size = sizeof(struct sof_ipc_window),
-		.type	= SOF_IPC_EXT_WINDOW,
+const struct ext_man_windows xsram_window
+		__aligned(EXT_MAN_ALIGN) __section(".fw_metadata") __unused = {
+	.hdr = {
+		.type = EXT_MAN_ELEM_WINDOW,
+		.elem_size = ALIGN_UP(sizeof(struct ext_man_windows), EXT_MAN_ALIGN),
 	},
-	.num_windows	= NUM_WINDOWS,
-	.window	= {
-		{
-			.type	= SOF_IPC_REGION_REGS,
-			.id	= 0,	/* map to host window 0 */
-			.flags	= 0, // TODO: set later
-			.size	= MAILBOX_SW_REG_SIZE,
-			.offset	= 0,
+	.window = {
+		.ext_hdr	= {
+			.hdr.cmd = SOF_IPC_FW_READY,
+			.hdr.size = sizeof(struct sof_ipc_window),
+			.type	= SOF_IPC_EXT_WINDOW,
 		},
-		{
-			.type	= SOF_IPC_REGION_UPBOX,
-			.id	= 0,	/* map to host window 0 */
-			.flags	= 0, // TODO: set later
-			.size	= MAILBOX_DSPBOX_SIZE,
-			.offset	= MAILBOX_SW_REG_SIZE,
-		},
-		{
-			.type	= SOF_IPC_REGION_DOWNBOX,
-			.id	= 1,	/* map to host window 1 */
-			.flags	= 0, // TODO: set later
-			.size	= MAILBOX_HOSTBOX_SIZE,
-			.offset	= 0,
-		},
-		{
-			.type	= SOF_IPC_REGION_DEBUG,
-			.id	= 2,	/* map to host window 2 */
-			.flags	= 0, // TODO: set later
-			.size	= MAILBOX_DEBUG_SIZE,
-			.offset	= 0,
-		},
-		{
-			.type	= SOF_IPC_REGION_EXCEPTION,
-			.id	= 2,	/* map to host window 2 */
-			.flags	= 0, // TODO: set later
-			.size	= MAILBOX_EXCEPTION_SIZE,
-			.offset	= MAILBOX_EXCEPTION_OFFSET,
-		},
-		{
-			.type	= SOF_IPC_REGION_STREAM,
-			.id	= 2,	/* map to host window 2 */
-			.flags	= 0, // TODO: set later
-			.size	= MAILBOX_STREAM_SIZE,
-			.offset	= MAILBOX_STREAM_OFFSET,
-		},
-		{
-			.type	= SOF_IPC_REGION_TRACE,
-			.id	= 3,	/* map to host window 3 */
-			.flags	= 0, // TODO: set later
-			.size	= MAILBOX_TRACE_SIZE,
-			.offset	= 0,
+		.num_windows	= NUM_WINDOWS,
+		.window	= {
+			{
+				.type	= SOF_IPC_REGION_REGS,
+				.id	= 0,	/* map to host window 0 */
+				.flags	= 0, // TODO: set later
+				.size	= MAILBOX_SW_REG_SIZE,
+				.offset	= 0,
+			},
+			{
+				.type	= SOF_IPC_REGION_UPBOX,
+				.id	= 0,	/* map to host window 0 */
+				.flags	= 0, // TODO: set later
+				.size	= MAILBOX_DSPBOX_SIZE,
+				.offset	= MAILBOX_SW_REG_SIZE,
+			},
+			{
+				.type	= SOF_IPC_REGION_DOWNBOX,
+				.id	= 1,	/* map to host window 1 */
+				.flags	= 0, // TODO: set later
+				.size	= MAILBOX_HOSTBOX_SIZE,
+				.offset	= 0,
+			},
+			{
+				.type	= SOF_IPC_REGION_DEBUG,
+				.id	= 2,	/* map to host window 2 */
+				.flags	= 0, // TODO: set later
+				.size	= MAILBOX_DEBUG_SIZE,
+				.offset	= 0,
+			},
+			{
+				.type	= SOF_IPC_REGION_EXCEPTION,
+				.id	= 2,	/* map to host window 2 */
+				.flags	= 0, // TODO: set later
+				.size	= MAILBOX_EXCEPTION_SIZE,
+				.offset	= MAILBOX_EXCEPTION_OFFSET,
+			},
+			{
+				.type	= SOF_IPC_REGION_STREAM,
+				.id	= 2,	/* map to host window 2 */
+				.flags	= 0, // TODO: set later
+				.size	= MAILBOX_STREAM_SIZE,
+				.offset	= MAILBOX_STREAM_OFFSET,
+			},
+			{
+				.type	= SOF_IPC_REGION_TRACE,
+				.id	= 3,	/* map to host window 3 */
+				.flags	= 0, // TODO: set later
+				.size	= MAILBOX_TRACE_SIZE,
+				.offset	= 0,
+			},
 		},
 	},
-));
+};
 #endif
 
 #if CONFIG_CANNONLAKE || CONFIG_ICELAKE || CONFIG_TIGERLAKE
@@ -301,12 +301,6 @@ int platform_boot_complete(uint32_t boot_message)
 
 	mailbox_dspbox_write(mb_offset, &ready, sizeof(ready));
 	mb_offset = mb_offset + sizeof(ready);
-
-#if CONFIG_MEM_WND
-	mailbox_dspbox_write(mb_offset, &sram_window,
-			     sram_window.ext_hdr.hdr.size);
-	mb_offset = mb_offset + sram_window.ext_hdr.hdr.size;
-#endif
 
 	mailbox_dspbox_write(mb_offset, &user_abi_version,
 			     user_abi_version.ext_hdr.hdr.size);
