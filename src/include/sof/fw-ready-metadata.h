@@ -10,6 +10,4 @@
 
 #include <ipc/info.h>
 
-extern const struct sof_ipc_user_abi_version user_abi_version;
-
 #endif /* __IPC_FW_READY_METADATA_H__ */

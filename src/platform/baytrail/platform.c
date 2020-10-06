@@ -151,14 +151,9 @@ static SHARED_DATA struct timer arch_timer = {
 
 int platform_boot_complete(uint32_t boot_message)
 {
-	uint32_t mb_offset = 0;
 	uint64_t outbox = MAILBOX_HOST_OFFSET >> 3;
 
-	mailbox_dspbox_write(mb_offset, &ready, sizeof(ready));
-	mb_offset = mb_offset + sizeof(ready);
-
-	mailbox_dspbox_write(mb_offset, &user_abi_version,
-			     user_abi_version.ext_hdr.hdr.size);
+	mailbox_dspbox_write(0, &ready, sizeof(ready));
 
 	/* now interrupt host to tell it we are done booting */
 	shim_write(SHIM_IPCDL, SOF_IPC_FW_READY | outbox);

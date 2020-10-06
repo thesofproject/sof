@@ -5,6 +5,7 @@
 // Author: Karol Trzcinski <karolx.trzcinski@linux.intel.com>
 
 #include <kernel/abi.h>
+#include <kernel/ext_manifest.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -16,7 +17,7 @@
 static int fw_version_copy(const struct elf_module *src,
 			   struct snd_sof_logs_header *header)
 {
-	struct sof_ipc_ext_data_hdr *ext_hdr = NULL;
+	struct ext_man_elem_header *ext_hdr = NULL;
 	void *buffer = NULL;
 	int section_size;
 
@@ -28,6 +29,7 @@ static int fw_version_copy(const struct elf_module *src,
 	memcpy(&header->version,
 	       &((struct sof_ipc_fw_ready *)buffer)->version,
 	       sizeof(header->version));
+	free(buffer);
 
 	/* fw_ready structure contains main (primarily kernel)
 	 * ABI version.
@@ -42,25 +44,30 @@ static int fw_version_copy(const struct elf_module *src,
 	 *
 	 * skip the base fw-ready record and begin from the first extension.
 	 */
-	ext_hdr = buffer + ((struct sof_ipc_fw_ready *)buffer)->hdr.size;
+	section_size = elf_read_section(src, ".fw_metadata", NULL, &buffer);
+
+	if (section_size < 0)
+		return section_size;
+
+	ext_hdr = (struct ext_man_elem_header *)buffer;
 	while ((uintptr_t)ext_hdr < (uintptr_t)buffer + section_size) {
-		if (ext_hdr->type == SOF_IPC_EXT_USER_ABI_INFO) {
+		if (ext_hdr->type == EXT_MAN_ELEM_DBG_ABI) {
 			header->version.abi_version =
-				((struct sof_ipc_user_abi_version *)
-						ext_hdr)->abi_dbg_version;
+				((struct ext_man_dbg_abi *)
+						ext_hdr)->dbg_abi.abi_dbg_version;
 			break;
 		}
 		//move to the next entry
-		ext_hdr = (struct sof_ipc_ext_data_hdr *)
-				((uint8_t *)ext_hdr + ext_hdr->hdr.size);
+		ext_hdr = (struct ext_man_elem_header *)
+				((uint8_t *)ext_hdr + ext_hdr->elem_size);
 	}
+	free(buffer);
 
 	fprintf(stdout, "fw abi dbg version:\t%d:%d:%d\n",
 		SOF_ABI_VERSION_MAJOR(header->version.abi_version),
 		SOF_ABI_VERSION_MINOR(header->version.abi_version),
 		SOF_ABI_VERSION_PATCH(header->version.abi_version));
 
-	free(buffer);
 
 	return 0;
 }
