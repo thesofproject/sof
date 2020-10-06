@@ -10,7 +10,6 @@ add_executable(testbench
 	testbench.c
 	common_test.c
 	file.c
-	edf_schedule.c
 	topology.c
 )
 
