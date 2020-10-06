@@ -18,6 +18,7 @@
 
 #include <platform/lib/dai.h>
 #include <sof/bit.h>
+#include <sof/list.h>
 #include <sof/lib/io.h>
 #include <sof/lib/memory.h>
 #include <sof/sof.h>
