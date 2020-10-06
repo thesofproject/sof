@@ -36,7 +36,6 @@ set_property(TARGET data_structs APPEND
 	     CC_OPTIMIZE_FLAGS="-${optimization_flag}")
 
 add_local_sources(data_structs
-	probe_support.c
 	user_abi_version.c)
 
 target_link_libraries(data_structs sof_options)

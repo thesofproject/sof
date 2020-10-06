@@ -161,10 +161,6 @@ int platform_boot_complete(uint32_t boot_message)
 			     sram_window.ext_hdr.hdr.size);
 	mb_offset = mb_offset + sram_window.ext_hdr.hdr.size;
 
-	mailbox_dspbox_write(mb_offset, &probe_support,
-			     probe_support.ext_hdr.hdr.size);
-	mb_offset = mb_offset + probe_support.ext_hdr.hdr.size;
-
 	mailbox_dspbox_write(mb_offset, &user_abi_version,
 			     user_abi_version.ext_hdr.hdr.size);
 

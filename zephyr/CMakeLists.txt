@@ -339,7 +339,6 @@ zephyr_library_sources(
 	${SOF_IPC_PATH}/dma-copy.c
 	${SOF_IPC_PATH}/ipc.c
 	${SOF_IPC_PATH}/handler.c
-	${SOF_IPC_PATH}/probe_support.c
 	${SOF_IPC_PATH}/ipc-host-ptable.c
 	${SOF_SRC_PATH}/spinlock.c
 
