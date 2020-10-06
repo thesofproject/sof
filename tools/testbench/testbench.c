@@ -49,16 +49,8 @@ struct shared_lib_table lib_table[NUM_WIDGETS_SUPPORTED] = {
 	{"drc", "libsof_drc.so", SOF_COMP_NONE, SOF_TB_UUID(drc_uuid), 0, NULL},
 };
 
-/* main firmware context */
-static struct sof sof;
-
 /* compatible variables, not used */
 intptr_t _comp_init_start, _comp_init_end;
-
-struct sof *sof_get()
-{
-	return &sof;
-}
 
 /*
  * Parse output filenames from user input
@@ -158,7 +150,7 @@ static void free_comps(void)
 	struct list_item *temp;
 	struct ipc_comp_dev *icd = NULL;
 
-	list_for_item_safe(clist, temp, &sof.ipc->comp_list) {
+	list_for_item_safe(clist, temp, &sof_get()->ipc->comp_list) {
 		icd = container_of(clist, struct ipc_comp_dev, list);
 		switch (icd->type) {
 		case COMP_TYPE_COMPONENT:
@@ -284,19 +276,19 @@ int main(int argc, char **argv)
 	}
 
 	/* initialize ipc and scheduler */
-	if (tb_pipeline_setup(&sof) < 0) {
+	if (tb_pipeline_setup(sof_get()) < 0) {
 		fprintf(stderr, "error: pipeline init\n");
 		exit(EXIT_FAILURE);
 	}
 
 	/* parse topology file and create pipeline */
-	if (parse_topology(&sof, lib_table, &tp, pipeline) < 0) {
+	if (parse_topology(sof_get(), lib_table, &tp, pipeline) < 0) {
 		fprintf(stderr, "error: parsing topology\n");
 		exit(EXIT_FAILURE);
 	}
 
 	/* Get pointer to filewrite */
-	pcm_dev = ipc_get_comp_by_id(sof.ipc, tp.fw_id);
+	pcm_dev = ipc_get_comp_by_id(sof_get()->ipc, tp.fw_id);
 	if (!pcm_dev) {
 		fprintf(stderr, "error: failed to get pointers to filewrite\n");
 		exit(EXIT_FAILURE);
@@ -304,7 +296,7 @@ int main(int argc, char **argv)
 	fwcd = comp_get_drvdata(pcm_dev->cd);
 
 	/* Get pointer to fileread */
-	pcm_dev = ipc_get_comp_by_id(sof.ipc, tp.fr_id);
+	pcm_dev = ipc_get_comp_by_id(sof_get()->ipc, tp.fr_id);
 	if (!pcm_dev) {
 		fprintf(stderr, "error: failed to get pointers to fileread\n");
 		exit(EXIT_FAILURE);
@@ -312,7 +304,7 @@ int main(int argc, char **argv)
 	frcd = comp_get_drvdata(pcm_dev->cd);
 
 	/* Run pipeline until EOF from fileread */
-	pcm_dev = ipc_get_comp_by_id(sof.ipc, tp.sched_id);
+	pcm_dev = ipc_get_comp_by_id(sof_get()->ipc, tp.sched_id);
 	p = pcm_dev->cd->pipeline;
 	ipc_pipe = &p->ipc_pipe;
 
@@ -324,7 +316,7 @@ int main(int argc, char **argv)
 		tp.fs_out = ipc_pipe->period * ipc_pipe->frames_per_sched;
 
 	/* set pipeline params and trigger start */
-	if (tb_pipeline_start(sof.ipc, ipc_pipe, &tp) < 0) {
+	if (tb_pipeline_start(sof_get()->ipc, ipc_pipe, &tp) < 0) {
 		fprintf(stderr, "error: pipeline params\n");
 		exit(EXIT_FAILURE);
 	}
@@ -343,7 +335,7 @@ int main(int argc, char **argv)
 		 * test topologies so this for-loop will walk all pipelines.
 		 */
 		for (i = 1; i <= tp.max_pipeline_id; i++) {
-			pcm_dev = ipc_get_comp_by_ppl_id(sof.ipc,
+			pcm_dev = ipc_get_comp_by_ppl_id(sof_get()->ipc,
 							 COMP_TYPE_PIPELINE, i);
 			if (pcm_dev) {
 				curr_p = pcm_dev->pipeline;
