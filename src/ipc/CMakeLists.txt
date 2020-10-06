@@ -33,7 +33,7 @@ set_property(TARGET data_structs APPEND
 get_optimization_flag(optimization_flag)
 set_property(TARGET data_structs APPEND
 	     PROPERTY COMPILE_DEFINITIONS
-	     CC_OPTIMIZE_FLAGS="${optimization_flag}")
+	     CC_OPTIMIZE_FLAGS="-${optimization_flag}")
 
 add_local_sources(data_structs
 	cc_version.c

@@ -13,7 +13,7 @@ set_property(TARGET ext_manifest APPEND
 get_optimization_flag(optimization_flag)
 set_property(TARGET ext_manifest APPEND
 	PROPERTY COMPILE_DEFINITIONS
-	CC_OPTIMIZE_FLAGS="${optimization_flag}")
+	CC_OPTIMIZE_FLAGS="-${optimization_flag}")
 
 add_local_sources(ext_manifest
 	ext_manifest.c)
