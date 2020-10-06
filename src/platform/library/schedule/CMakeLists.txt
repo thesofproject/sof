@@ -3,4 +3,5 @@
 add_local_sources(sof
 	schedule.c
 	ll_schedule.c
+	edf_schedule.c
 )
