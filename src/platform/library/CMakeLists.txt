@@ -3,5 +3,4 @@
 add_subdirectory(lib)
 add_subdirectory(schedule)
 
-add_local_sources(sof panic.c)
-
+add_local_sources(sof panic.c init.c)
