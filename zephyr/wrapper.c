@@ -50,7 +50,7 @@ uint8_t __aligned(64) heapmem[HEAP_SIZE];
 /* Use k_heap structure */
 static struct k_heap sof_heap;
 
-static int statics_init(struct device *unused)
+static int statics_init(const struct device *unused)
 {
 	ARG_UNUSED(unused);
 
@@ -197,7 +197,8 @@ int interrupt_get_irq(unsigned int irq, const char *cascade)
 
 int interrupt_register(uint32_t irq, void(*handler)(void *arg), void *arg)
 {
-	return arch_irq_connect_dynamic(irq, 0, handler, arg, 0);
+	return arch_irq_connect_dynamic(irq, 0, (void (*)(const void *))handler,
+					arg, 0);
 }
 
 /* unregister an IRQ handler - matches on IRQ number and data ptr */
