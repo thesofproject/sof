@@ -13,6 +13,7 @@
  */
 
 #include <cavs/lib/pm_memory.h>
+#include <cavs/version.h>
 #include <sof/debug/panic.h>
 #include <sof/drivers/interrupt.h>
 #include <sof/lib/alloc.h>
