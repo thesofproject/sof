@@ -125,8 +125,16 @@ int64_t arch_timer_set(struct timer *timer, uint64_t ticks)
 		goto out;
 	}
 
-	/* set for checking at next timeout */
-	time = ticks;
+	/* check whether new timeout requires timer
+	 * rollover. If so, ccompare value should
+	 * be set to 1 in order to increment timer->hitime
+	 * properly in timer_64_handler().
+	 */
+	if (timer->hitime < hitimeout)
+		time = 1;
+	else
+		time = ticks;
+
 	timer->hitimeout = hitimeout;
 	timer->lowtimeout = ticks;
 
