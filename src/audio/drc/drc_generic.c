@@ -391,8 +391,40 @@ static void drc_s16_default(const struct comp_dev *dev,
 	const struct sof_drc_params *p = &cd->config->params; /* Read-only */
 
 	if (!p->enabled) {
-		// TODO
-		//drc_s16_process_delay_only(state, source, sink, frames);
+		/* Delay the input sample only and don't do other processing. This is used when the
+		 * DRC is disabled. We want to do this to match the processing delay of other bands
+		 * in multi-band DRC kernel case. */
+		for (ch = 0; ch < nch; ++ch) {
+			pd_write_index = state->pre_delay_write_index;
+			pd_read_index = state->pre_delay_read_index;
+			pd_write = (int16_t *)state->pre_delay_buffers[ch] + pd_write_index;
+			pd_read = (int16_t *)state->pre_delay_buffers[ch] + pd_read_index;
+			idx = ch;
+			for (i = 0; i < frames; ++i) {
+				x = audio_stream_read_frag_s16(source, idx);
+				y = audio_stream_read_frag_s16(sink, idx);
+				*pd_write = *x;
+				*y = *pd_read;
+				if (++pd_write_index == DRC_MAX_PRE_DELAY_FRAMES) {
+					pd_write_index = 0;
+					pd_write = (int16_t *)state->pre_delay_buffers[ch];
+				} else {
+					pd_write++;
+				}
+				if (++pd_read_index == DRC_MAX_PRE_DELAY_FRAMES) {
+					pd_read_index = 0;
+					pd_read = (int16_t *)state->pre_delay_buffers[ch];
+				} else {
+					pd_read++;
+				}
+				idx += nch;
+			}
+		}
+
+		state->pre_delay_write_index += frames;
+		state->pre_delay_write_index &= DRC_MAX_PRE_DELAY_FRAMES_MASK;
+		state->pre_delay_read_index += frames;
+		state->pre_delay_read_index &= DRC_MAX_PRE_DELAY_FRAMES_MASK;
 		return;
 	}
 
