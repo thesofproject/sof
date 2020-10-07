@@ -13,6 +13,8 @@
 #include <sof/sof.h>
 #include <sof/spinlock.h>
 
+#include <cavs/version.h>
+
 static SHARED_DATA struct clock_info platform_clocks_info[NUM_CLOCKS];
 
 #if CAVS_VERSION == CAVS_VERSION_1_5

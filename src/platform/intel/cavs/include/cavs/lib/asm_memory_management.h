@@ -20,6 +20,8 @@
 #warning "The file is intended to be included in assembly files only."
 #endif
 
+#include <cavs/version.h>
+
 #include <sof/lib/memory.h>
 #include <sof/lib/shim.h>
 

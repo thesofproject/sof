@@ -14,6 +14,8 @@
 #include <sof/spinlock.h>
 #include <sof/trace/trace.h>
 
+#include <cavs/version.h>
+
 #include <stdbool.h>
 #include <stdint.h>
 
