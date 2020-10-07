@@ -81,6 +81,13 @@ static struct comp_dev *codec_adapter_new(const struct comp_driver *drv,
 			 ret);
 		goto err;
 	}
+	/* Init processing codec */
+	ret = codec_init(dev);
+	if (ret) {
+		comp_err(dev, "codec_adapter_new() %d: codec initialization failed",
+			 ret);
+		goto err;
+	}
 
 	dev->state = COMP_STATE_READY;
 	cd->state = PP_STATE_CREATED;
@@ -117,6 +124,8 @@ static inline int validate_setup_config(struct ca_config *cfg)
 static int load_setup_config(struct comp_dev *dev, void *cfg, uint32_t size)
 {
 	int ret;
+	void *lib_cfg;
+	size_t lib_cfg_size;
 	struct comp_data *cd = comp_get_drvdata(dev);
 
 	comp_dbg(dev, "load_setup_config() start.");
@@ -142,6 +151,15 @@ static int load_setup_config(struct comp_dev *dev, void *cfg, uint32_t size)
 	ret = validate_setup_config(&cd->ca_config);
 	if (ret) {
 		comp_err(dev, "load_setup_config(): validation of setup config for codec_adapter failed.");
+		goto end;
+	}
+	/* Copy codec specific part */
+	lib_cfg = (char *)cfg + sizeof(struct ca_config);
+	lib_cfg_size = size - sizeof(struct ca_config);
+	ret = codec_load_config(dev, lib_cfg, lib_cfg_size, CODEC_CFG_SETUP);
+	if (ret) {
+		comp_err(dev, "load_setup_config(): %d: failed to load setup config for codec id %x",
+			 ret, cd->ca_config.codec_id);
 		goto end;
 	}
 
@@ -189,6 +207,15 @@ static int codec_adapter_prepare(struct comp_dev *dev)
 		return PPL_STATUS_PATH_STOP;
 	}
 
+	/* Prepare codec */
+	ret = codec_prepare(dev);
+	if (ret) {
+		comp_err(dev, "codec_adapter_prepare() error %x: codec prepare failed",
+			 ret);
+
+		return -EIO;
+	}
+
 	comp_info(dev, "codec_adapter_prepare() done");
 	cd->state = PP_STATE_PREPARED;
 
@@ -196,9 +223,10 @@ static int codec_adapter_prepare(struct comp_dev *dev)
 }
 
 static int codec_adapter_params(struct comp_dev *dev,
-				struct sof_ipc_stream_params *params)
+				    struct sof_ipc_stream_params *params)
 {
 	comp_dbg(dev, "codec_adapter_params(): codec_adapter doesn't support .params() method.");
+
 	return 0;
 }
 
@@ -279,7 +307,17 @@ static int codec_adapter_copy(struct comp_dev *dev)
 						      codec_buff_size);
 		buffer_invalidate(source, codec_buff_size);
 		codec->cpd.avail = codec_buff_size;
-		/* TODO: call codec specific processing here */
+		ret = codec_process(dev);
+		if (ret) {
+			comp_err(dev, "codec_adapter_copy() error %x: lib processing failed",
+				 ret);
+			break;
+		} else if (codec->cpd.produced == 0) {
+			/* skipping as lib has not produced anything */
+			comp_err(dev, "codec_adapter_copy() error %x: lib hasn't processed anything",
+				 ret);
+			break;
+		}
 		codec_adapter_copy_from_lib_to_sink(&codec->cpd, &sink->stream,
 						    codec->cpd.produced);
 		buffer_writeback(sink, codec->cpd.produced);
@@ -374,12 +412,43 @@ static int codec_adapter_set_params(struct comp_dev *dev, struct sof_ipc_ctrl_da
 
 			break;
 		case CODEC_CFG_RUNTIME:
+			ret = codec_load_config(dev, cd->runtime_params, size,
+						CODEC_CFG_RUNTIME);
+			if (ret) {
+				comp_err(dev, "codec_adapter_set_params() error %d: load of runtime config failed.",
+					 ret);
+				goto done;
+			} else {
+				comp_dbg(dev, "codec_adapter_set_params() load of runtime config done.");
+			}
+
+			if (cd->state >= PP_STATE_PREPARED) {
+				/* We are already prepared so we can apply runtime
+				 * config right away.
+				 */
+				ret = codec_apply_runtime_config(dev);
+				if (ret) {
+					comp_err(dev, "codec_adapter_set_params() error %x: codec runtime config apply failed",
+						 ret);
+					goto done;
+				}  else {
+					comp_dbg(dev, "codec_adapter_set_params() apply of runtime config done.");
+				}
+			} else {
+				cd->codec.r_cfg.avail = true;
+			}
+
 			break;
 		default:
 			comp_err(dev, "codec_adapter_set_params(): error: unknown config type.");
 			break;
 		}
 	}
+done:
+	if (cd->runtime_params)
+		rfree(cd->runtime_params);
+	cd->runtime_params = NULL;
+	return ret;
 end:
 	return ret;
 }
@@ -475,9 +544,16 @@ static int codec_adapter_trigger(struct comp_dev *dev, int cmd)
 
 static int codec_adapter_reset(struct comp_dev *dev)
 {
+	int ret;
 	struct comp_data *cd = comp_get_drvdata(dev);
 
 	comp_cl_info(&comp_codec_adapter, "codec_adapter_reset(): resetting");
+
+	ret = codec_reset(dev);
+	if (ret) {
+		comp_cl_info(&comp_codec_adapter, "codec_adapter_reset(): error %d, codec reset has failed",
+			     ret);
+	}
 
 	cd->state = PP_STATE_CREATED;
 
@@ -488,10 +564,16 @@ static int codec_adapter_reset(struct comp_dev *dev)
 
 static void codec_adapter_free(struct comp_dev *dev)
 {
+	int ret;
 	struct comp_data *cd = comp_get_drvdata(dev);
 
 	comp_cl_info(&comp_codec_adapter, "codec_adapter_free(): start");
 
+	ret = codec_free(dev);
+	if (ret) {
+		comp_cl_info(&comp_codec_adapter, "codec_adapter_reset(): error %d, codec reset has failed",
+			     ret);
+	}
 	rfree(cd);
 	rfree(dev);
 
