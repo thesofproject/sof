@@ -185,4 +185,19 @@ struct comp_data {
 	void *runtime_params;
 };
 
+/*****************************************************************************/
+/* Codec generic interfaces						     */
+/*****************************************************************************/
+int codec_load_config(struct comp_dev *dev, void *cfg, size_t size,
+		      enum codec_cfg_type type);
+int codec_init(struct comp_dev *dev);
+void *codec_allocate_memory(struct comp_dev *dev, uint32_t size,
+			    uint32_t alignment);
+int codec_free_memory(struct comp_dev *dev, void *ptr);
+int codec_prepare(struct comp_dev *dev);
+int codec_process(struct comp_dev *dev);
+int codec_apply_runtime_config(struct comp_dev *dev);
+int codec_reset(struct comp_dev *dev);
+int codec_free(struct comp_dev *dev);
+
 #endif /* __SOF_AUDIO_CODEC_GENERIC__ */
