@@ -64,6 +64,14 @@ void mailbox_dspbox_read(void *dest, size_t dest_size,
 	assert(!ret);
 }
 
+#if CONFIG_LIBRARY
+
+static inline
+void mailbox_hostbox_write(size_t offset, const void *src, size_t bytes)
+{}
+
+#else
+
 static inline
 void mailbox_hostbox_write(size_t offset, const void *src, size_t bytes)
 {
@@ -73,6 +81,8 @@ void mailbox_hostbox_write(size_t offset, const void *src, size_t bytes)
 	assert(!ret);
 	dcache_writeback_region((void *)(MAILBOX_HOSTBOX_BASE + offset), bytes);
 }
+
+#endif
 
 static inline
 void mailbox_hostbox_read(void *dest, size_t dest_size,
