@@ -44,6 +44,9 @@ ifdef(`DMIC_DAI_LINK_48k_NAME',`',define(DMIC_DAI_LINK_48k_NAME, `dmic01'))
 # define(DMIC_DAI_LINK_16k_NAME, `dmic16k')
 ifdef(`DMIC_DAI_LINK_16k_NAME',`',define(DMIC_DAI_LINK_16k_NAME, `dmic16k'))
 
+# DMICPROC is set by makefile, available type: passthrough/eq-iir-volume
+ifdef(`DMICPROC', , `define(DMICPROC, passthrough)')
+
 #
 # Define the pipelines
 #
@@ -57,7 +60,7 @@ dnl     time_domain, sched_comp)
 # Passthrough capture pipeline using max channels defined by CHANNELS.
 
 # Set 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_ADD(sof/pipe-passthrough-capture.m4,
+PIPELINE_PCM_ADD(sof/pipe-`DMICPROC'-capture.m4,
         DMIC_PIPELINE_48k_ID, DMIC_PCM_48k_ID, CHANNELS, s32le,
         1000, 0, 0, 48000, 48000, 48000)
 
