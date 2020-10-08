@@ -35,6 +35,7 @@ zephyr_interface_library_named(SOF)
 set(SOF_SRC_PATH "../src")
 set(SOF_PLATFORM_PATH "${SOF_SRC_PATH}/platform")
 set(SOF_AUDIO_PATH "${SOF_SRC_PATH}/audio")
+set(SOF_SAMPLES_PATH "${SOF_SRC_PATH}/samples")
 set(SOF_LIB_PATH "${SOF_SRC_PATH}/lib")
 set(SOF_DRIVERS_PATH "${SOF_SRC_PATH}/drivers")
 set(SOF_IPC_PATH "${SOF_SRC_PATH}/ipc")
@@ -439,8 +440,8 @@ zephyr_library_sources_ifdef(CONFIG_COMP_DAI
 	${SOF_AUDIO_PATH}/dai.c
 )
 
-zephyr_library_sources_ifdef(CONFIG_COMP_TEST_KEYPHRASE
-	${SOF_AUDIO_PATH}/detect_test.c
+zephyr_library_sources_ifdef(CONFIG_SAMPLE_KEYPHRASE
+	${SOF_SAMPLES_PATH}/audio/detect_test.c
 )
 
 zephyr_library_sources_ifdef(CONFIG_COMP_VOLUME

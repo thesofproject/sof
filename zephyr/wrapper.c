@@ -415,7 +415,7 @@ int task_main_start(struct sof *sof)
 		sys_comp_eq_iir_init();
 	}
 
-	if (IS_ENABLED(CONFIG_COMP_KPB)) {
+	if (IS_ENABLED(CONFIG_SAMPLE_KEYPHRASE)) {
 		sys_comp_keyword_init();
 	}
 
