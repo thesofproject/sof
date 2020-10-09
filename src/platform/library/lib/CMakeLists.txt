@@ -3,5 +3,8 @@
 add_local_sources(sof
 	alloc.c
 	clk.c
-	trace.c
 )
+
+if (CONFIG_TRACE)
+	add_local_sources(sof trace.c)
+endif()
