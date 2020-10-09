@@ -21,10 +21,6 @@
 #include <arch/lib/cpu.h>
 #include <stdbool.h>
 
-#if CONFIG_CORE_COUNT > MAX_CORE_COUNT
-#error "Invalid core count - exceeding core limit"
-#endif
-
 static inline int cpu_get_id(void)
 {
 	return arch_cpu_get_id();

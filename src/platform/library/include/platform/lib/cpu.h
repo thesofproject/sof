@@ -10,8 +10,6 @@
 #ifndef __PLATFORM_LIB_CPU_H__
 #define __PLATFORM_LIB_CPU_H__
 
-#define MAX_CORE_COUNT	1
-
 #define PLATFORM_PRIMARY_CORE_ID	0
 
 #endif /* __PLATFORM_LIB_CPU_H__ */

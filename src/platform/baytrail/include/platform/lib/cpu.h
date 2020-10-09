@@ -15,9 +15,6 @@
 #ifndef __PLATFORM_LIB_CPU_H__
 #define __PLATFORM_LIB_CPU_H__
 
-/** \brief Maximum allowed number of DSP cores */
-#define MAX_CORE_COUNT	1
-
 /** \brief Id of primary DSP core */
 #define PLATFORM_PRIMARY_CORE_ID	0
 
