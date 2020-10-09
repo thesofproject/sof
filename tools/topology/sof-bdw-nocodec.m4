@@ -34,9 +34,9 @@ PIPELINE_PCM_ADD(sof/pipe-low-latency-playback.m4,
 	1000, 0, 0,
 	48000, 48000, 48000)
 
-# Low Latency capture pipeline 2 on PCM 0 using max 2 channels of s32le.
+# Volume switch capture pipeline 2 on PCM 0 using max 2 channels of s32le.
 # 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_ADD(sof/pipe-low-latency-capture.m4,
+PIPELINE_PCM_ADD(sof/pipe-volume-switch-capture.m4,
 	2, 0, 2, s32le,
 	1000, 0, 0,
 	48000, 48000, 48000)
