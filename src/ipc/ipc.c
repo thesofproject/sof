@@ -571,7 +571,7 @@ int ipc_pipeline_complete(struct ipc *ipc, uint32_t comp_id)
 
 int ipc_comp_dai_config(struct ipc *ipc, struct sof_ipc_dai_config *config)
 {
-	bool comp_on_core[PLATFORM_CORE_COUNT] = { false };
+	bool comp_on_core[CONFIG_CORE_COUNT] = { false };
 	struct sof_ipc_comp_dai *dai;
 	struct sof_ipc_reply reply;
 	struct ipc_comp_dev *icd;
@@ -620,7 +620,7 @@ int ipc_comp_dai_config(struct ipc *ipc, struct sof_ipc_dai_config *config)
 
 	/* message forwarded only by primary core */
 	if (!cpu_is_secondary(cpu_get_id())) {
-		for (i = 0; i < PLATFORM_CORE_COUNT; ++i) {
+		for (i = 0; i < CONFIG_CORE_COUNT; ++i) {
 			if (!comp_on_core[i])
 				continue;
 

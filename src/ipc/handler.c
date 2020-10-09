@@ -625,7 +625,7 @@ static int ipc_pm_core_enable(uint32_t header)
 	tr_info(&ipc_tr, "ipc: pm core mask 0x%x -> enable",
 		pm_core_config.enable_mask);
 
-	for (i = 0; i < PLATFORM_CORE_COUNT; i++) {
+	for (i = 0; i < CONFIG_CORE_COUNT; i++) {
 		if (i != PLATFORM_PRIMARY_CORE_ID) {
 			if (pm_core_config.enable_mask & (1 << i))
 				ret = cpu_enable_core(i);

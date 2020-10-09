@@ -27,7 +27,7 @@ struct dai_group_list {
 	struct list_item list;
 } __aligned(PLATFORM_DCACHE_ALIGN);
 
-static struct dai_group_list *groups[PLATFORM_CORE_COUNT];
+static struct dai_group_list *groups[CONFIG_CORE_COUNT];
 
 static struct dai_group_list *dai_group_list_get(int core_id)
 {

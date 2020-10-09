@@ -28,8 +28,8 @@
 #include <xtos-structs.h>
 #include <stdint.h>
 
-extern struct core_context *core_ctx_ptr[PLATFORM_CORE_COUNT];
-extern struct xtos_core_data *core_data_ptr[PLATFORM_CORE_COUNT];
+extern struct core_context *core_ctx_ptr[CONFIG_CORE_COUNT];
+extern struct xtos_core_data *core_data_ptr[CONFIG_CORE_COUNT];
 
 static uint32_t active_cores_mask = BIT(PLATFORM_PRIMARY_CORE_ID);
 

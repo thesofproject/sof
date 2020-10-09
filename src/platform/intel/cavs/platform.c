@@ -266,7 +266,7 @@ SHARED_DATA struct timer timer = {
 	.irq_name = irq_name_level2,
 };
 
-SHARED_DATA struct timer arch_timers[PLATFORM_CORE_COUNT];
+SHARED_DATA struct timer arch_timers[CONFIG_CORE_COUNT];
 
 #if CONFIG_DW_SPI
 
@@ -296,7 +296,7 @@ int platform_boot_complete(uint32_t boot_message)
 
 #if CONFIG_TIGERLAKE && !CONFIG_CAVS_LPRO_ONLY
 	/* TGL specific HW recommended flow */
-	pm_runtime_get(PM_RUNTIME_DSP, PWRD_BY_HPRO | (PLATFORM_CORE_COUNT - 1));
+	pm_runtime_get(PM_RUNTIME_DSP, PWRD_BY_HPRO | (CONFIG_CORE_COUNT - 1));
 #endif
 
 	mailbox_dspbox_write(mb_offset, &ready, sizeof(ready));
@@ -364,14 +364,14 @@ int platform_init(struct sof *sof)
 	sof->platform_timer = cache_to_uncache(&timer);
 	sof->cpu_timers = (struct timer *)cache_to_uncache(&arch_timers);
 
-	for (i = 0; i < PLATFORM_CORE_COUNT; i++)
+	for (i = 0; i < CONFIG_CORE_COUNT; i++)
 		sof->cpu_timers[i] = (struct timer) {
 			.id = TIMER1, /* internal timer */
 			.irq = IRQ_NUM_TIMER2,
 		};
 
 	/* Turn off memory for all unused cores */
-	for (i = 0; i < PLATFORM_CORE_COUNT; i++)
+	for (i = 0; i < CONFIG_CORE_COUNT; i++)
 		if (i != PLATFORM_PRIMARY_CORE_ID)
 			pm_runtime_put(CORE_MEMORY_POW, i);
 

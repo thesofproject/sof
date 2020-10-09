@@ -34,7 +34,7 @@ static inline void select_cpu_clock_hw(int freq_idx, bool release_unused)
 #if CONFIG_TIGERLAKE
 	/* TGL specific HW recommended flow */
 	if (freq_idx == CPU_HPRO_FREQ_IDX)
-		pm_runtime_get(PM_RUNTIME_DSP, PWRD_BY_HPRO | (PLATFORM_CORE_COUNT - 1));
+		pm_runtime_get(PM_RUNTIME_DSP, PWRD_BY_HPRO | (CONFIG_CORE_COUNT - 1));
 #endif
 
 	/* request clock */
@@ -58,7 +58,7 @@ static inline void select_cpu_clock_hw(int freq_idx, bool release_unused)
 #if CONFIG_TIGERLAKE
 		/* TGL specific HW recommended flow */
 		if (freq_idx != CPU_HPRO_FREQ_IDX)
-			pm_runtime_put(PM_RUNTIME_DSP, PWRD_BY_HPRO | (PLATFORM_CORE_COUNT - 1));
+			pm_runtime_put(PM_RUNTIME_DSP, PWRD_BY_HPRO | (CONFIG_CORE_COUNT - 1));
 #endif
 	}
 
@@ -76,24 +76,24 @@ static inline void select_cpu_clock_hw(int freq_idx, bool release_unused)
 static inline void select_cpu_clock(int freq_idx, bool release_unused)
 {
 	struct clock_info *clk_info = clocks_get();
-	int flags[PLATFORM_CORE_COUNT];
+	int flags[CONFIG_CORE_COUNT];
 	int i;
 
 	/* lock clock for all cores */
-	for (i = 0; i < PLATFORM_CORE_COUNT; i++)
+	for (i = 0; i < CONFIG_CORE_COUNT; i++)
 		spin_lock_irq(&clk_info[CLK_CPU(i)].lock, flags[i]);
 
 	/* change clock */
 	select_cpu_clock_hw(freq_idx, release_unused);
-	for (i = 0; i < PLATFORM_CORE_COUNT; i++)
+	for (i = 0; i < CONFIG_CORE_COUNT; i++)
 		clk_info[CLK_CPU(i)].current_freq_idx = freq_idx;
 
 	/* unlock clock for all cores */
-	for (i = PLATFORM_CORE_COUNT - 1; i >= 0; i--)
+	for (i = CONFIG_CORE_COUNT - 1; i >= 0; i--)
 		spin_unlock_irq(&clk_info[CLK_CPU(i)].lock, flags[i]);
 
 	platform_shared_commit(clk_info,
-			       sizeof(*clk_info) * PLATFORM_CORE_COUNT);
+			       sizeof(*clk_info) * CONFIG_CORE_COUNT);
 }
 
 /* LPRO_ONLY mode */
@@ -295,7 +295,7 @@ void platform_clock_init(struct sof *sof)
 	sof->clocks =
 		cache_to_uncache((struct clock_info *)platform_clocks_info);
 
-	for (i = 0; i < PLATFORM_CORE_COUNT; i++) {
+	for (i = 0; i < CONFIG_CORE_COUNT; i++) {
 		sof->clocks[i] = (struct clock_info) {
 			.freqs_num = NUM_CPU_FREQ,
 			.freqs = cpu_freq,

@@ -36,9 +36,9 @@ struct dma_domain {
 	bool aggregated_irq;	/* true if aggregated interrupts */
 
 	/* mask of currently running channels */
-	uint32_t channel_mask[PLATFORM_NUM_DMACS][PLATFORM_CORE_COUNT];
+	uint32_t channel_mask[PLATFORM_NUM_DMACS][CONFIG_CORE_COUNT];
 	/* array of arguments for aggregated mode */
-	struct dma_domain_data *arg[PLATFORM_NUM_DMACS][PLATFORM_CORE_COUNT];
+	struct dma_domain_data *arg[PLATFORM_NUM_DMACS][CONFIG_CORE_COUNT];
 	/* array of registered channels data */
 	struct dma_domain_data data[PLATFORM_NUM_DMACS][PLATFORM_MAX_DMA_CHAN];
 };

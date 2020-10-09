@@ -27,24 +27,24 @@ static SHARED_DATA struct block_hdr sys_rt_0_block512[HEAP_SYS_RT_0_COUNT512];
 static SHARED_DATA struct block_hdr sys_rt_0_block1024[HEAP_SYS_RT_0_COUNT1024];
 
 /* Heap blocks for system runtime for secondary core */
-#if PLATFORM_CORE_COUNT > 1
+#if CONFIG_CORE_COUNT > 1
 static SHARED_DATA struct block_hdr
-	sys_rt_x_block64[PLATFORM_CORE_COUNT - 1][HEAP_SYS_RT_X_COUNT64];
+	sys_rt_x_block64[CONFIG_CORE_COUNT - 1][HEAP_SYS_RT_X_COUNT64];
 static SHARED_DATA struct block_hdr
-	sys_rt_x_block512[PLATFORM_CORE_COUNT - 1][HEAP_SYS_RT_X_COUNT512];
+	sys_rt_x_block512[CONFIG_CORE_COUNT - 1][HEAP_SYS_RT_X_COUNT512];
 static SHARED_DATA struct block_hdr
-	sys_rt_x_block1024[PLATFORM_CORE_COUNT - 1][HEAP_SYS_RT_X_COUNT1024];
+	sys_rt_x_block1024[CONFIG_CORE_COUNT - 1][HEAP_SYS_RT_X_COUNT1024];
 #endif
 
 /* Heap memory for system runtime */
-static SHARED_DATA struct block_map sys_rt_heap_map[PLATFORM_CORE_COUNT][3] = {
+static SHARED_DATA struct block_map sys_rt_heap_map[CONFIG_CORE_COUNT][3] = {
 	{ BLOCK_DEF(64, HEAP_SYS_RT_0_COUNT64,
 		    uncached_block_hdr(sys_rt_0_block64)),
 	  BLOCK_DEF(512, HEAP_SYS_RT_0_COUNT512,
 		    uncached_block_hdr(sys_rt_0_block512)),
 	  BLOCK_DEF(1024, HEAP_SYS_RT_0_COUNT1024,
 		    uncached_block_hdr(sys_rt_0_block1024)), },
-#if PLATFORM_CORE_COUNT > 1
+#if CONFIG_CORE_COUNT > 1
 	{ BLOCK_DEF(64, HEAP_SYS_RT_X_COUNT64,
 		    uncached_block_hdr(sys_rt_x_block64[0])),
 	  BLOCK_DEF(512, HEAP_SYS_RT_X_COUNT512,
@@ -52,7 +52,7 @@ static SHARED_DATA struct block_map sys_rt_heap_map[PLATFORM_CORE_COUNT][3] = {
 	  BLOCK_DEF(1024, HEAP_SYS_RT_X_COUNT1024,
 		    uncached_block_hdr(sys_rt_x_block1024[0])), },
 #endif
-#if PLATFORM_CORE_COUNT > 2
+#if CONFIG_CORE_COUNT > 2
 	{ BLOCK_DEF(64, HEAP_SYS_RT_X_COUNT64,
 		    uncached_block_hdr(sys_rt_x_block64[1])),
 	  BLOCK_DEF(512, HEAP_SYS_RT_X_COUNT512,
@@ -60,7 +60,7 @@ static SHARED_DATA struct block_map sys_rt_heap_map[PLATFORM_CORE_COUNT][3] = {
 	  BLOCK_DEF(1024, HEAP_SYS_RT_X_COUNT1024,
 		    uncached_block_hdr(sys_rt_x_block1024[1])), },
 #endif
-#if PLATFORM_CORE_COUNT > 3
+#if CONFIG_CORE_COUNT > 3
 	{ BLOCK_DEF(64, HEAP_SYS_RT_X_COUNT64,
 		    uncached_block_hdr(sys_rt_x_block64[2])),
 	  BLOCK_DEF(512, HEAP_SYS_RT_X_COUNT512,
@@ -135,7 +135,7 @@ void platform_init_memmap(struct sof *sof)
 		SOF_MEM_CAPS_DMA;
 
 	/* .system and .system_runtime secondary core initialization */
-	for (i = 1; i < PLATFORM_CORE_COUNT; i++) {
+	for (i = 1; i < CONFIG_CORE_COUNT; i++) {
 		/* .system init */
 		sof->memory_map->system[i].heap =
 			(uintptr_t)&_sof_core_s_start +
@@ -164,7 +164,7 @@ void platform_init_memmap(struct sof *sof)
 
 	platform_shared_commit(sof->memory_map->system,
 			       sizeof(*sof->memory_map->system) *
-			       PLATFORM_CORE_COUNT);
+			       CONFIG_CORE_COUNT);
 
 	/* .runtime init*/
 	sof->memory_map->runtime[0].blocks = ARRAY_SIZE(rt_heap_map);

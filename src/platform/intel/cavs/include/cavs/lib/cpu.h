@@ -15,11 +15,6 @@
 #ifndef __CAVS_LIB_CPU_H__
 #define __CAVS_LIB_CPU_H__
 
-
-
-/** \brief Number of available DSP cores (conf. by kconfig) */
-#define PLATFORM_CORE_COUNT	CONFIG_CORE_COUNT
-
 /** \brief Id of primary DSP core */
 #define PLATFORM_PRIMARY_CORE_ID	0
 

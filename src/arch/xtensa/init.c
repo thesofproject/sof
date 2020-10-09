@@ -43,13 +43,13 @@ void *shared_vecbase_ptr __aligned(PLATFORM_DCACHE_ALIGN);
 static struct core_context primary_core_ctx;
 
 /** \brief Core context pointers for all the cores. */
-struct core_context *core_ctx_ptr[PLATFORM_CORE_COUNT] = { 0 };
+struct core_context *core_ctx_ptr[CONFIG_CORE_COUNT] = { 0 };
 
 /** \brief Xtos core data for primary core. */
 struct xtos_core_data primary_core_data;
 
 /** \brief Xtos core data pointers for all the cores. */
-struct xtos_core_data *core_data_ptr[PLATFORM_CORE_COUNT] = { 0 };
+struct xtos_core_data *core_data_ptr[CONFIG_CORE_COUNT] = { 0 };
 
 /**
  * \brief Initializes core specific data.

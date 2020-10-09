@@ -25,7 +25,7 @@
  * \brief child IRQ descriptor for cascading IRQ controllers.
  */
 struct irq_child {
-	int enable_count[PLATFORM_CORE_COUNT];	/**< IRQ enable counter */
+	int enable_count[CONFIG_CORE_COUNT];	/**< IRQ enable counter */
 	struct list_item list;			/**< head for IRQ descriptors,
 						  * sharing this interrupt
 						  */
@@ -85,10 +85,10 @@ struct irq_cascade_desc {
 							  * lists, enable and
 							  * child counters
 							  */
-	int enable_count[PLATFORM_CORE_COUNT];		/**< enabled child
+	int enable_count[CONFIG_CORE_COUNT];		/**< enabled child
 							  * interrupt counter
 							  */
-	unsigned int num_children[PLATFORM_CORE_COUNT];	/**< number of children
+	unsigned int num_children[CONFIG_CORE_COUNT];	/**< number of children
 							  */
 	struct irq_child child[PLATFORM_IRQ_CHILDREN];	/**< array of child
 							  * lists - one per

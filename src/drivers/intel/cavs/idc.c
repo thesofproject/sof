@@ -47,7 +47,7 @@ static void idc_irq_handler(void *arg)
 
 	tr_dbg(&idc_tr, "idc_irq_handler()");
 
-	for (i = 0; i < PLATFORM_CORE_COUNT; i++) {
+	for (i = 0; i < CONFIG_CORE_COUNT; i++) {
 		/* skip current core */
 		if (core == i)
 			continue;
@@ -182,7 +182,7 @@ static uint32_t idc_get_busy_bit_mask(int core)
 	uint32_t busy_mask = 0;
 	int i;
 
-	for (i = 0; i < PLATFORM_CORE_COUNT; i++) {
+	for (i = 0; i < CONFIG_CORE_COUNT; i++) {
 		if (i != core)
 			busy_mask |= IPC_IDCCTL_IDCTBIE(i);
 	}
@@ -235,7 +235,7 @@ void idc_free(void)
 	interrupt_unregister(idc->irq, idc);
 
 	/* clear BUSY bits */
-	for (i = 0; i < PLATFORM_CORE_COUNT; i++) {
+	for (i = 0; i < CONFIG_CORE_COUNT; i++) {
 		idctfc = idc_read(IPC_IDCTFC(i), core);
 		if (idctfc & IPC_IDCTFC_BUSY)
 			idc_write(IPC_IDCTFC(i), core, idctfc);

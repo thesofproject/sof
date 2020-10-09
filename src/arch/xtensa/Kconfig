@@ -7,6 +7,7 @@ menu "Xtensa Architecture"
 config CORE_COUNT
 	int "Number of cores"
 	default 1
+	range 1 1 if KERNEL_BIN_NAME = "zephyr" || LIBRARY
 	help
 	  Number of used cores
 	  Lowering available core count could result in lower power consumption

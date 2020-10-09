@@ -25,7 +25,7 @@ DECLARE_SOF_UUID("notifier", notifier_uuid, 0x1fb15a7a, 0x83cd, 0x4c2e,
 
 DECLARE_TR_CTX(nt_tr, SOF_UUID(notifier_uuid), LOG_LEVEL_INFO);
 
-static SHARED_DATA struct notify_data notify_data[PLATFORM_CORE_COUNT];
+static SHARED_DATA struct notify_data notify_data[CONFIG_CORE_COUNT];
 
 struct callback_handle {
 	void *receiver;
@@ -164,7 +164,7 @@ void notifier_event(const void *caller, enum notify_id type, uint32_t core_mask,
 	int i;
 
 	/* notify selected targets */
-	for (i = 0; i < PLATFORM_CORE_COUNT; i++) {
+	for (i = 0; i < CONFIG_CORE_COUNT; i++) {
 		if (core_mask & NOTIFIER_TARGET_CORE_MASK(i)) {
 			if (i == cpu_get_id()) {
 				notifier_notify(caller, type, data);
