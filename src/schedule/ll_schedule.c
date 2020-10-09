@@ -138,7 +138,7 @@ static void schedule_ll_clients_enable(struct ll_schedule_data *sch)
 {
 	int i;
 
-	for (i = 0; i < PLATFORM_CORE_COUNT; i++) {
+	for (i = 0; i < CONFIG_CORE_COUNT; i++) {
 		if (sch->domain->registered[i] && !sch->domain->enabled[i]) {
 			atomic_add(&sch->domain->num_clients, 1);
 			domain_enable(sch->domain, i);

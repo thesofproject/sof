@@ -31,7 +31,7 @@ struct cavs_pm_runtime_data {
 	bool dsp_d0; /**< dsp target D0(true) or D0ix(false) */
 	int host_dma_l1_sref; /**< ref counter for Host DMA accesses */
 	uint32_t sleep_core_mask; /**< represents cores in waiti state */
-	int dsp_client_bitmap[PLATFORM_CORE_COUNT]; /**< simple pwr override */
+	int dsp_client_bitmap[CONFIG_CORE_COUNT]; /**< simple pwr override */
 };
 
 /**

@@ -41,7 +41,7 @@ struct dma_domain {
 	bool channel_changed;	/* true if we needed to re-register */
 
 	/* data per core */
-	struct dma_domain_data data[PLATFORM_CORE_COUNT];
+	struct dma_domain_data data[CONFIG_CORE_COUNT];
 };
 
 const struct ll_schedule_domain_ops dma_single_chan_domain_ops;

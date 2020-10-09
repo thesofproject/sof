@@ -51,8 +51,8 @@ struct ll_schedule_domain {
 	int clk;			/**< source clock */
 	bool synchronous;		/**< are tasks should be synchronous */
 	void *priv_data;		/**< pointer to private data */
-	bool registered[PLATFORM_CORE_COUNT];		/**< registered cores */
-	bool enabled[PLATFORM_CORE_COUNT];		/**< enabled cores */
+	bool registered[CONFIG_CORE_COUNT];		/**< registered cores */
+	bool enabled[CONFIG_CORE_COUNT];		/**< enabled cores */
 	const struct ll_schedule_domain_ops *ops;	/**< domain ops */
 };
 

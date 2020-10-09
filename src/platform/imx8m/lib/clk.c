@@ -27,7 +27,7 @@ void platform_clock_init(struct sof *sof)
 
 	sof->clocks = platform_clocks_info;
 
-	for (i = 0; i < PLATFORM_CORE_COUNT; i++) {
+	for (i = 0; i < CONFIG_CORE_COUNT; i++) {
 		sof->clocks[i] = (struct clock_info) {
 			.freqs_num = NUM_CPU_FREQ,
 			.freqs = platform_cpu_freq,

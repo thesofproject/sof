@@ -98,7 +98,7 @@ STRUCT_END(HighPriFrame)
 	//  (must use .bss, not .comm, because the subsequent .set does not work otherwise)
 #if CONFIG_MULTICORE
 	.macro generate_stack_for_int core_id
-		.if GREATERTHAN(PLATFORM_CORE_COUNT, \core_id)
+		.if GREATERTHAN(CONFIG_CORE_COUNT, \core_id)
 			.section .bss, "aw"
 			.align	16
 LABEL(_Pri_,_Stack&core_id):	.space	PRI_N_STACK_SIZE + HESF_TOTALSIZE

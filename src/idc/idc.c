@@ -28,7 +28,7 @@
 #include <stdint.h>
 
 /** \brief IDC message payload per core. */
-static SHARED_DATA struct idc_payload payload[PLATFORM_CORE_COUNT];
+static SHARED_DATA struct idc_payload payload[CONFIG_CORE_COUNT];
 
 /* 379a60ae-cedb-4777-aaf2-5659b0a85735 */
 DECLARE_SOF_UUID("idc", idc_uuid, 0x379a60ae, 0xcedb, 0x4777,

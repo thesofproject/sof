@@ -21,7 +21,7 @@
 #include <arch/lib/cpu.h>
 #include <stdbool.h>
 
-#if PLATFORM_CORE_COUNT > MAX_CORE_COUNT
+#if CONFIG_CORE_COUNT > MAX_CORE_COUNT
 #error "Invalid core count - exceeding core limit"
 #endif
 

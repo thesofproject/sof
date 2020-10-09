@@ -31,7 +31,7 @@
 
 #if XCHAL_HAVE_INTERRUPTS
 #if CONFIG_MULTICORE
-extern struct xtos_core_data *core_data_ptr[PLATFORM_CORE_COUNT];
+extern struct xtos_core_data *core_data_ptr[CONFIG_CORE_COUNT];
 #else
 /*
  *  Table of interrupt handlers.

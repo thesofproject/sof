@@ -15,11 +15,6 @@
 #ifndef __PLATFORM_LIB_CPU_H__
 #define __PLATFORM_LIB_CPU_H__
 
-
-
-/** \brief Number of available DSP cores (conf. by kconfig) */
-#define PLATFORM_CORE_COUNT	CONFIG_CORE_COUNT
-
 /** \brief Maximum allowed number of DSP cores */
 #define MAX_CORE_COUNT	1
 

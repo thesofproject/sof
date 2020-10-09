@@ -26,11 +26,11 @@
 
 struct sof;
 
-/** \brief Core(s) settings, up to PLATFORM_CORE_COUNT */
+/** \brief Core(s) settings, up to CONFIG_CORE_COUNT */
 #define CLK_CPU(x)	(x)
 
 /** \brief SSP clock r-t settings are after the core(s) settings */
-#define CLK_SSP		PLATFORM_CORE_COUNT
+#define CLK_SSP		CONFIG_CORE_COUNT
 
 /* SSP clock run-time data is the last one, so total number is ssp idx +1 */
 
