@@ -33,7 +33,8 @@ print_usage()
 Re-configures and re-builds SOF using the corresponding compiler and
 platform's _defconfig file.
 
-usage: xtensa-build.sh [options] platform(s)
+usage: $0 [options] platform(s)
+
        -r Build rom if available (gcc only)
        -a Build all platforms
        -u Force UP ARCH
@@ -41,12 +42,23 @@ usage: xtensa-build.sh [options] platform(s)
        -c Interactive menuconfig
        -o copies the file argument from src/arch/xtensa/configs/override/$arg.config
 	  to the build directory after invoking CMake and before Make.
-       -k Use private key
+       -k Configure rimage to use a non-default \${RIMAGE_PRIVATE_KEY}
+           DEPRECATED: use the more flexible \${PRIVATE_KEY_OPTION} below.
        -v Verbose Makefile log
        -j n Set number of make build jobs. Jobs=#cores when no flag. \
 Infinte when not specified.
 	-m path to MEU tool. Switches signing step to use MEU instead of rimage.
-       Supported platforms ${SUPPORTED_PLATFORMS[*]}
+           To use a non-default key define PRIVATE_KEY_OPTION, see below.
+
+To use a non-default key you must define the right CMake parameter in the
+following environment variable:
+
+     PRIVATE_KEY_OPTION='-DMEU_PRIVATE_KEY=path/to/key'  $0  -m /path/to/meu ...
+or:
+     PRIVATE_KEY_OPTION='-DRIMAGE_PRIVATE_KEY=path/to/key'  $0 ...
+
+Supported platforms ${SUPPORTED_PLATFORMS[*]}
+
 EOF
 }
 
@@ -113,6 +125,8 @@ fi
 
 if [ "x$USE_PRIVATE_KEY" == "xyes" ]
 then
+	>&2 printf \
+	    'WARNING: -k and RIMAGE_PRIVATE_KEY are deprecated, see usage.\n'
 	if [ -z ${RIMAGE_PRIVATE_KEY+x} ]
 	then
 		echo "Error: No variable specified for RIMAGE_PRIVATE_KEY"
