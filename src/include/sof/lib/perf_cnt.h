@@ -17,12 +17,12 @@
 #include <sof/drivers/timer.h>
 
 struct perf_cnt_data {
-	uint64_t plat_ts;
-	uint64_t cpu_ts;
-	uint64_t plat_delta_last;
-	uint64_t plat_delta_peak;
-	uint64_t cpu_delta_last;
-	uint64_t cpu_delta_peak;
+	uint32_t plat_ts;
+	uint32_t cpu_ts;
+	uint32_t plat_delta_last;
+	uint32_t plat_delta_peak;
+	uint32_t cpu_delta_last;
+	uint32_t cpu_delta_peak;
 };
 
 #if CONFIG_PERFORMANCE_COUNTERS
@@ -66,8 +66,10 @@ struct perf_cnt_data {
  *  \param arg Argument passed to trace_m as arg.
  */
 #define perf_cnt_stamp(pcd, trace_m, arg) do {				  \
-		uint64_t plat_ts = platform_timer_get(timer_get());	  \
-		uint64_t cpu_ts = arch_timer_get_system(cpu_timer_get()); \
+		uint32_t plat_ts =					  \
+			(uint32_t) platform_timer_get(timer_get());	  \
+		uint32_t cpu_ts =					  \
+			(uint32_t) arch_timer_get_system(cpu_timer_get());\
 		if ((pcd)->plat_ts) {					  \
 			(pcd)->plat_delta_last = plat_ts - (pcd)->plat_ts;\
 			(pcd)->cpu_delta_last = cpu_ts - (pcd)->cpu_ts;   \
