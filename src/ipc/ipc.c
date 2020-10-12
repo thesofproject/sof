@@ -463,12 +463,14 @@ int ipc_pipeline_new(struct ipc *ipc,
 	}
 
 	if (icd->type != COMP_TYPE_COMPONENT) {
-		tr_err(&ipc_tr, "ipc_pipeline_new(): icd->type != COMP_TYPE_COMPONENT");
+		tr_err(&ipc_tr, "ipc_pipeline_new(): icd->type (%d) != COMP_TYPE_COMPONENT for pipeline scheduling component icd->id %d",
+		       icd->type, icd->id);
 		return -EINVAL;
 	}
 
 	if (icd->core != pipe_desc->core) {
-		tr_err(&ipc_tr, "ipc_pipeline_new(): icd->core != pipe_desc->core");
+		tr_err(&ipc_tr, "ipc_pipeline_new(): icd->core (%d) != pipe_desc->core (%d) for pipeline scheduling component icd->id %d",
+		       icd->core, pipe_desc->core, icd->id);
 		return -EINVAL;
 	}
 
