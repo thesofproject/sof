@@ -6,14 +6,14 @@ menu "Xtensa Architecture"
 
 config MAX_CORE_COUNT
 	int
-	default 1 if KERNEL_BIN_NAME = "zephyr" || LIBRARY || IMX8 || IMX8X || \
-		IMX8M || BAYTRAIL || HASWELL || CHERRYTRAIL || BROADWELL || HOST
+	default 1 if KERNEL_BIN_NAME = "zephyr"
 	default 2 if APOLLOLAKE
 	default 4 if ICELAKE || CANNONLAKE || SUECREEK || TIGERLAKE
+	default 1
 
 config CORE_COUNT
 	int "Number of cores"
-	default 1
+	default MAX_CORE_COUNT
 	range 1 MAX_CORE_COUNT
 	help
 	  Number of used cores
