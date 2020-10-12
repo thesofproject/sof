@@ -271,6 +271,8 @@ static int trace_filter_update_instances(int32_t log_level, uint32_t uuid_id,
 	list_for_item(clist, &ipc->comp_list) {
 		icd = container_of(clist, struct ipc_comp_dev, list);
 		ctx = trace_filter_ipc_comp_context(icd);
+		if (!ctx)
+			return -EINVAL;
 		correct_comp = comp_id == -1 || icd->id == comp_id; /* todo: icd->topo_id */
 		correct_comp &= uuid_id == 0 || (uint32_t)ctx->uuid_p == uuid_id;
 		correct_comp &= pipe_id == -1 || ipc_comp_pipe_id(icd) == pipe_id;
