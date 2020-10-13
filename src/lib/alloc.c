@@ -1064,6 +1064,10 @@ void heap_trace_all(int force)
 		heap_trace(memmap->buffer, PLATFORM_HEAP_BUFFER);
 		tr_info(&mem_tr, "heap: runtime status");
 		heap_trace(memmap->runtime, PLATFORM_HEAP_RUNTIME);
+#if CONFIG_CORE_COUNT > 1
+		tr_info(&mem_tr, "heap: runtime shared status");
+		heap_trace(memmap->runtime_shared, PLATFORM_HEAP_RUNTIME_SHARED);
+#endif
 	}
 
 	memmap->heap_trace_updated = 0;
