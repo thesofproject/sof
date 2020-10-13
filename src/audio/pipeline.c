@@ -145,26 +145,58 @@ struct pipeline_walk_context {
 	/**< pipelines to be scheduled after trigger walk */
 	struct list_item pipelines;
 	/*
-	 * If this flag is set, pipeline_for_each_comp() will skip all
+	 * If this flag is set, pipeline_for_each_element() will skip all
 	 * incompletely initialised components, i.e. those, whose .pipeline ==
 	 * NULL. Such coomponents should not be skipped during initialisation
 	 * and clean up, but they should be skipped during streaming.
 	 */
 	bool skip_incomplete;
+
+	/**
+	 * Select when given initial component should be processed as a last one,
+	 * so it reverts operations order on components and buffers.
+	 * When true, then comp_func and buff_func are called after processing
+	 * currently handled and following components, otherwise comp_func and
+	 * buff_func are called at first place.
+	 *
+	 * Example:
+	 * For topology: c1 -> b2 -> c3 +-> b4 -> c5
+	 * context functions will be applied in the same order for
+	 * run_from_endpoint set to false with c1 as initial component and for
+	 * run_from_endpoint set to true with c5 as initial component.
+	 */
+	bool run_from_endpoint;
 };
 
-/* Generic method for walking the graph upstream or downstream.
+/**
+ * Generic method for walking the graph upstream or downstream.
  * It requires function pointer for recursion.
+ * @param current initial node of components graph
+ * @param calling_buf trace for ancestor, passed as one of ctx.comp_func() argument
+ * @param ctx target function pointers holder and graph walk-style description
+ * @param dir PPL_DIR_DOWNSTREAM when walking through sinks, PPL_DIR_UPSTREAM otherwise
+ * @param max_recursion_depth:
+ *	-1 for infinite max recursion depth,
+ *	0 walk only for 'current' component and buffers connected to 'current'
+ *	N walk also through N levels of connected components and their buffers
  */
-static int pipeline_for_each_comp(struct comp_dev *current,
-				  struct pipeline_walk_context *ctx,
-				  int dir)
+static int pipeline_for_each_element(struct comp_dev *current, struct comp_buffer *calling_buf,
+				     struct pipeline_walk_context *ctx, int dir,
+				     int max_recursion_depth)
 {
 	struct list_item *buffer_list = comp_buffer_list(current, dir);
 	struct list_item *clist;
 	struct comp_buffer *buffer;
 	struct comp_dev *buffer_comp;
 	uint32_t flags;
+	int err;
+
+	/* call comp_func on current component entry - standard flow, work while walkin in */
+	if (ctx->comp_func && !ctx->run_from_endpoint) {
+		err = ctx->comp_func(current, calling_buf, ctx, dir);
+		if (err < 0 || err == PPL_STATUS_PATH_STOP)
+			return err;
+	}
 
 	/* run this operation further */
 	list_for_item(clist, buffer_list) {
@@ -174,8 +206,8 @@ static int pipeline_for_each_comp(struct comp_dev *current,
 		if (buffer->walking)
 			continue;
 
-		/* execute operation on buffer */
-		if (ctx->buff_func)
+		/* execute operation on buffer entry - standard flow, work while walkin in */
+		if (ctx->buff_func && !ctx->run_from_endpoint)
 			ctx->buff_func(buffer, ctx->buff_data);
 
 		buffer_comp = buffer_get_comp(buffer, dir);
@@ -185,20 +217,34 @@ static int pipeline_for_each_comp(struct comp_dev *current,
 		    (ctx->skip_incomplete && !buffer_comp->pipeline))
 			continue;
 
-		/* continue further */
-		if (ctx->comp_func) {
+		if (max_recursion_depth != 0) {
+			/* set buffer state as walking, to prevent loops */
 			buffer_lock(buffer, &flags);
 			buffer->walking = true;
 			buffer_unlock(buffer, flags);
 
-			int err = ctx->comp_func(buffer_comp, buffer,
-						 ctx, dir);
+			/* continue from next component */
+			err = pipeline_for_each_element(buffer_comp, buffer, ctx, dir,
+							max_recursion_depth - 1);
+
 			buffer_lock(buffer, &flags);
 			buffer->walking = false;
 			buffer_unlock(buffer, flags);
+
 			if (err < 0)
 				return err;
 		}
+
+		/* execute operation on buffer exit - reverted flow, work while walkin out */
+		if (ctx->buff_func && ctx->run_from_endpoint)
+			ctx->buff_func(buffer, ctx->buff_data);
+	}
+
+	/* call comp_func on current component exit - reverted flow, work while walkin out */
+	if (ctx->comp_func && ctx->run_from_endpoint) {
+		err = ctx->comp_func(current, calling_buf, ctx, dir);
+		if (err < 0 || err == PPL_STATUS_PATH_STOP)
+			return err;
 	}
 
 	return 0;
@@ -215,15 +261,13 @@ static int pipeline_comp_complete(struct comp_dev *current,
 
 	if (!comp_is_single_pipeline(current, ppl_data->start)) {
 		pipe_dbg(ppl_data->p, "pipeline_comp_complete(), current is from another pipeline");
-		return 0;
+		return PPL_STATUS_PATH_STOP;
 	}
 
 	/* complete component init */
 	current->pipeline = ppl_data->p;
 	current->period = ppl_data->p->ipc_pipe.period;
 	current->priority = ppl_data->p->ipc_pipe.priority;
-
-	pipeline_for_each_comp(current, ctx, dir);
 
 	return 0;
 }
@@ -257,7 +301,7 @@ int pipeline_complete(struct pipeline *p, struct comp_dev *source,
 	/* now walk downstream from source component and
 	 * complete component task and pipeline initialization
 	 */
-	walk_ctx.comp_func(source, NULL, &walk_ctx, PPL_DIR_DOWNSTREAM);
+	pipeline_for_each_element(source, NULL, &walk_ctx, PPL_DIR_DOWNSTREAM, -1);
 
 	p->source_comp = source;
 	p->sink_comp = sink;
@@ -287,8 +331,6 @@ static int pipeline_comp_free(struct comp_dev *current,
 	/* complete component free */
 	current->pipeline = NULL;
 
-	pipeline_for_each_comp(current, ctx, dir);
-
 	/* disconnect source from buffer */
 	irq_local_disable(flags);
 	list_item_del(comp_buffer_list(current, dir));
@@ -304,6 +346,7 @@ int pipeline_free(struct pipeline *p)
 	struct pipeline_walk_context walk_ctx = {
 		.comp_func = pipeline_comp_free,
 		.comp_data = &data,
+		.run_from_endpoint = true,
 	};
 
 	pipe_info(p, "pipeline_free()");
@@ -320,8 +363,7 @@ int pipeline_free(struct pipeline *p)
 		data.start = p->source_comp;
 
 		/* disconnect components */
-		walk_ctx.comp_func(p->source_comp, NULL, &walk_ctx,
-				   PPL_DIR_DOWNSTREAM);
+		pipeline_for_each_element(p->source_comp, NULL, &walk_ctx, PPL_DIR_DOWNSTREAM, -1);
 	}
 
 	/* remove from any scheduling */
@@ -372,8 +414,6 @@ static int pipeline_comp_hw_params(struct comp_dev *current,
 	pipe_dbg(current->pipeline, "pipeline_comp_hw_params(), current->comp.id = %u, dir = %u",
 		 dev_comp_id(current), dir);
 
-	pipeline_for_each_comp(current, ctx, dir);
-
 	/* Fetch hardware stream parameters from DAI component */
 	if (dev_comp_type(current) == SOF_COMP_DAI) {
 		ret = comp_dai_get_hw_params(current,
@@ -406,6 +446,10 @@ static int pipeline_comp_params_neg(struct comp_dev *current,
 
 	pipe_dbg(current->pipeline, "pipeline_comp_params_neg(), current->comp.id = %u, dir = %u",
 		 dev_comp_id(current), dir);
+
+	/* component shouldn't negotiate with itself */
+	if (!calling_buf)
+		return 0;
 
 	/* check if 'current' is already configured */
 	if (current->state != COMP_STATE_INIT &&
@@ -452,6 +496,7 @@ static int pipeline_comp_params(struct comp_dev *current,
 		.comp_func = pipeline_comp_params_neg,
 		.comp_data = ppl_data,
 		.skip_incomplete = true,
+		.run_from_endpoint = true,
 	};
 	int stream_direction = ppl_data->params->params.direction;
 	int end_type;
@@ -472,22 +517,22 @@ static int pipeline_comp_params(struct comp_dev *current,
 		if (stream_direction == SOF_IPC_STREAM_PLAYBACK) {
 			if (end_type == COMP_ENDPOINT_HOST ||
 			    end_type == COMP_ENDPOINT_NODE)
-				return 0;
+				return PPL_STATUS_PATH_STOP;
 		}
 
 		if (stream_direction == SOF_IPC_STREAM_CAPTURE) {
 			if (end_type == COMP_ENDPOINT_DAI ||
 			    end_type == COMP_ENDPOINT_NODE)
-				return 0;
+				return PPL_STATUS_PATH_STOP;
 		}
 	}
 
 	/* don't do any params if current is running */
 	if (current->state == COMP_STATE_ACTIVE)
-		return 0;
+		return PPL_STATUS_PATH_STOP;
 
-	/* do params negotiation with other branches(opposite direction) */
-	err = pipeline_for_each_comp(current, &param_neg_ctx, !dir);
+	/* do params negotiation with child components (opposite direction) */
+	err = pipeline_for_each_element(current, NULL, &param_neg_ctx, !dir, 1);
 	if (err < 0 || err == PPL_STATUS_PATH_STOP)
 		return err;
 
@@ -498,7 +543,7 @@ static int pipeline_comp_params(struct comp_dev *current,
 	if (err < 0 || err == PPL_STATUS_PATH_STOP)
 		return err;
 
-	return pipeline_for_each_comp(current, ctx, dir);
+	return 0;
 }
 
 /* Send pipeline component params from host to endpoints.
@@ -522,6 +567,7 @@ int pipeline_params(struct pipeline *p, struct comp_dev *host,
 		.comp_func = pipeline_comp_hw_params,
 		.comp_data = &data,
 		.skip_incomplete = true,
+		.run_from_endpoint = true,
 	};
 	struct pipeline_walk_context param_ctx = {
 		.comp_func = pipeline_comp_params,
@@ -545,7 +591,7 @@ int pipeline_params(struct pipeline *p, struct comp_dev *host,
 	data.start = host;
 	data.params = &hw_params;
 
-	ret = hw_param_ctx.comp_func(host, NULL, &hw_param_ctx, dir);
+	ret = pipeline_for_each_element(host, NULL, &hw_param_ctx, dir, -1);
 	if (ret < 0) {
 		pipe_err(p, "pipeline_prepare(): ret = %d, dev->comp.id = %u",
 			 ret, dev_comp_id(host));
@@ -556,7 +602,7 @@ int pipeline_params(struct pipeline *p, struct comp_dev *host,
 	data.params = params;
 	data.start = host;
 
-	ret = param_ctx.comp_func(host, NULL, &param_ctx, dir);
+	ret = pipeline_for_each_element(host, NULL, &param_ctx, dir, -1);
 	if (ret < 0) {
 		pipe_err(p, "pipeline_params(): ret = %d, host->comp.id = %u",
 			 ret, dev_comp_id(host));
@@ -633,25 +679,30 @@ static int pipeline_comp_prepare(struct comp_dev *current,
 		if (stream_direction == SOF_IPC_STREAM_PLAYBACK) {
 			if (end_type == COMP_ENDPOINT_HOST ||
 			    end_type == COMP_ENDPOINT_NODE)
-				return 0;
+				return PPL_STATUS_PATH_STOP;
 		}
 
 		if (stream_direction == SOF_IPC_STREAM_CAPTURE) {
 			if (end_type == COMP_ENDPOINT_DAI ||
 			    end_type == COMP_ENDPOINT_NODE)
-				return 0;
+				return PPL_STATUS_PATH_STOP;
 		}
 	}
 
 	err = pipeline_comp_task_init(current->pipeline);
 	if (err < 0)
-		return err;
+		goto error;
 
 	err = comp_prepare(current);
 	if (err < 0 || err == PPL_STATUS_PATH_STOP)
-		return err;
+		goto error;
 
-	return pipeline_for_each_comp(current, ctx, dir);
+error:
+	if (err < 0) {
+		pipe_err(current->pipeline, "pipeline_comp_prepare(): ret = %d, current->comp.id = %u",
+			 err, dev_comp_id(current));
+	}
+	return err;
 }
 
 /* prepare the pipeline for usage */
@@ -670,12 +721,9 @@ int pipeline_prepare(struct pipeline *p, struct comp_dev *dev)
 
 	ppl_data.start = dev;
 
-	ret = walk_ctx.comp_func(dev, NULL, &walk_ctx, dev->direction);
-	if (ret < 0) {
-		pipe_err(p, "pipeline_prepare(): ret = %d, dev->comp.id = %u",
-			 ret, dev_comp_id(dev));
+	ret = pipeline_for_each_element(dev, NULL, &walk_ctx, dev->direction, -1);
+	if (ret < 0)
 		return ret;
-	}
 
 	p->status = COMP_STATE_PREPARE;
 
@@ -762,17 +810,20 @@ static int pipeline_comp_trigger(struct comp_dev *current,
 							      dir))
 			return -ENODATA;
 
-		return 0;
+		return PPL_STATUS_PATH_STOP;
 	}
 
 	/* send command to the component and update pipeline state */
 	err = comp_trigger(current, ppl_data->cmd);
-	if (err < 0 || err == PPL_STATUS_PATH_STOP)
+	if (err < 0 || err == PPL_STATUS_PATH_STOP) {
+		pipe_err(current->pipeline, "pipeline_comp_trigger(): ret = %d, current->comp.id = %u, ppl_data->cmd = %d",
+			 err, dev_comp_id(current), ppl_data->cmd);
 		return err;
+	}
 
 	pipeline_comp_trigger_sched_comp(current->pipeline, current, ctx);
 
-	return pipeline_for_each_comp(current, ctx, dir);
+	return 0;
 }
 
 /*
@@ -878,15 +929,11 @@ int pipeline_trigger(struct pipeline *p, struct comp_dev *host, int cmd)
 	data.start = host;
 	data.cmd = cmd;
 
-	ret = walk_ctx.comp_func(host, NULL, &walk_ctx, host->direction);
-	if (ret < 0) {
-		pipe_err(p, "pipeline_trigger(): ret = %d, host->comp.id = %u, cmd = %d",
-			 ret, dev_comp_id(host), cmd);
-	}
+	pipeline_for_each_element(host, NULL, &walk_ctx, host->direction, -1);
 
 	pipeline_schedule_triggered(&walk_ctx, cmd);
 
-	return ret;
+	return 0;
 }
 
 static int pipeline_comp_reset(struct comp_dev *current,
@@ -918,21 +965,24 @@ static int pipeline_comp_reset(struct comp_dev *current,
 		if (stream_direction == SOF_IPC_STREAM_PLAYBACK) {
 			if (end_type == COMP_ENDPOINT_HOST ||
 			    end_type == COMP_ENDPOINT_NODE)
-				return 0;
+				return PPL_STATUS_PATH_STOP;
 		}
 
 		if (stream_direction == SOF_IPC_STREAM_CAPTURE) {
 			if (end_type == COMP_ENDPOINT_DAI ||
 			    end_type == COMP_ENDPOINT_NODE)
-				return 0;
+				return PPL_STATUS_PATH_STOP;
 		}
 	}
 
 	err = comp_reset(current);
-	if (err < 0 || err == PPL_STATUS_PATH_STOP)
+	if (err < 0) {
+		pipe_err(p, "pipeline_comp_reset(): ret = %d, current->comp.id = %u",
+			 err, dev_comp_id(current));
+	}
 		return err;
 
-	return pipeline_for_each_comp(current, ctx, dir);
+	return 0;
 }
 
 /* reset the whole pipeline */
@@ -948,11 +998,7 @@ int pipeline_reset(struct pipeline *p, struct comp_dev *host)
 
 	pipe_info(p, "pipe reset");
 
-	ret = walk_ctx.comp_func(host, NULL, &walk_ctx, host->direction);
-	if (ret < 0) {
-		pipe_err(p, "pipeline_reset(): ret = %d, host->comp.id = %u",
-			 ret, dev_comp_id(host));
-	}
+	ret = pipeline_for_each_element(host, NULL, &walk_ctx, host->direction, -1);
 
 	return ret;
 }
@@ -963,36 +1009,21 @@ static int pipeline_comp_copy(struct comp_dev *current,
 {
 	struct pipeline_data *ppl_data = ctx->comp_data;
 	int is_single_ppl = comp_is_single_pipeline(current, ppl_data->start);
-	int err;
 
 	pipe_dbg(current->pipeline, "pipeline_comp_copy(), current->comp.id = %u, dir = %u",
 		 dev_comp_id(current), dir);
 
 	if (!is_single_ppl) {
 		pipe_dbg(current->pipeline, "pipeline_comp_copy(), current is from another pipeline and can't be scheduled together");
-		return 0;
+		return PPL_STATUS_PATH_STOP;
 	}
 
 	if (!comp_is_active(current)) {
 		pipe_dbg(current->pipeline, "pipeline_comp_copy(), current is not active");
-		return 0;
+		return PPL_STATUS_PATH_STOP;
 	}
 
-	/* copy to downstream immediately */
-	if (dir == PPL_DIR_DOWNSTREAM) {
-		err = comp_copy(current);
-		if (err < 0 || err == PPL_STATUS_PATH_STOP)
-			return err;
-	}
-
-	err = pipeline_for_each_comp(current, ctx, dir);
-	if (err < 0 || err == PPL_STATUS_PATH_STOP)
-		return err;
-
-	if (dir == PPL_DIR_UPSTREAM)
-		err = comp_copy(current);
-
-	return err;
+	return comp_copy(current);
 }
 
 /* Copy data across all pipeline components.
@@ -1007,6 +1038,7 @@ static int pipeline_copy(struct pipeline *p)
 		.comp_func = pipeline_comp_copy,
 		.comp_data = &data,
 		.skip_incomplete = true,
+		.run_from_endpoint = p->source_comp->direction == SOF_IPC_STREAM_PLAYBACK,
 	};
 	struct comp_dev *start;
 	uint32_t dir;
@@ -1023,7 +1055,7 @@ static int pipeline_copy(struct pipeline *p)
 	data.start = start;
 	data.p = p;
 
-	ret = walk_ctx.comp_func(start, NULL, &walk_ctx, dir);
+	ret = pipeline_for_each_element(start, NULL, &walk_ctx, dir, -1);
 	if (ret < 0)
 		pipe_err(p, "pipeline_copy(): ret = %d, start->comp.id = %u, dir = %u",
 			 ret, dev_comp_id(start), dir);
@@ -1042,7 +1074,7 @@ static int pipeline_comp_timestamp(struct comp_dev *current,
 
 	if (!comp_is_active(current)) {
 		pipe_dbg(current->pipeline, "pipeline_comp_timestamp(), current is not active");
-		return 0;
+		return PPL_STATUS_PATH_STOP;
 	}
 
 	/* is component a DAI endpoint? */
@@ -1053,7 +1085,7 @@ static int pipeline_comp_timestamp(struct comp_dev *current,
 		return -1;
 	}
 
-	return pipeline_for_each_comp(current, ctx, dir);
+	return 0;
 }
 
 /* Get the timestamps for host and first active DAI found. */
@@ -1072,7 +1104,7 @@ void pipeline_get_timestamp(struct pipeline *p, struct comp_dev *host,
 	data.start = host;
 	data.posn = posn;
 
-	walk_ctx.comp_func(host, NULL, &walk_ctx, host->direction);
+	pipeline_for_each_element(host, NULL, &walk_ctx, host->direction, -1);
 
 	/* set timestamp resolution */
 	posn->timestamp_ns = p->ipc_pipe.period * 1000;
@@ -1094,7 +1126,7 @@ static int pipeline_comp_xrun(struct comp_dev *current,
 		ipc_msg_send(ppl_data->p->msg, ppl_data->posn, true);
 	}
 
-	return pipeline_for_each_comp(current, ctx, dir);
+	return 0;
 }
 
 /* Send an XRUN to each host for this component. */
@@ -1133,7 +1165,7 @@ void pipeline_xrun(struct pipeline *p, struct comp_dev *dev,
 	data.posn = &posn;
 	data.p = p;
 
-	walk_ctx.comp_func(dev, NULL, &walk_ctx, dev->direction);
+	pipeline_for_each_element(dev, NULL, &walk_ctx, dev->direction, -1);
 }
 
 #if NO_XRUN_RECOVERY
