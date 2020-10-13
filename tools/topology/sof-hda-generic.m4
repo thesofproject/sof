@@ -52,7 +52,7 @@ define(POST_PROCESSING_PIPE, `sof/pipe-processing-playback.m4')
 # 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(POST_PROCESSING_PIPE,
 	1, 99, 2, s32le,
-	1000, 0, 0,
+	2000, 0, 0,
 	48000, 48000, 48000)
 
 # Low Latency capture pipeline 2 on PCM 0 using max 2 channels of s24le.
