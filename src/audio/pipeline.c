@@ -147,7 +147,7 @@ struct pipeline_walk_context {
 	/*
 	 * If this flag is set, pipeline_for_each_comp() will skip all
 	 * incompletely initialised components, i.e. those, whose .pipeline ==
-	 * NULL. Such coomponents should not be skipped during initialisation
+	 * NULL. Such components should not be skipped during initialisation
 	 * and clean up, but they should be skipped during streaming.
 	 */
 	bool skip_incomplete;
