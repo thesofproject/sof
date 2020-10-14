@@ -136,8 +136,6 @@ static struct comp_dev *mux_new(const struct comp_driver *drv,
 	if (!dev)
 		return NULL;
 
-	dev->state = COMP_STATE_INIT;
-
 	memcpy_s(COMP_GET_IPC(dev, sof_ipc_comp_process),
 		 sizeof(struct sof_ipc_comp_process),
 		 comp, sizeof(struct sof_ipc_comp_process));

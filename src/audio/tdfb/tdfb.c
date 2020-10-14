@@ -269,8 +269,6 @@ static struct comp_dev *tdfb_new(const struct comp_driver *drv,
 		 sizeof(struct sof_ipc_comp_process), ipc_tdfb,
 		 sizeof(struct sof_ipc_comp_process));
 
-	dev->state = COMP_STATE_INIT;
-
 	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
 	if (!cd) {
 		rfree(dev);
