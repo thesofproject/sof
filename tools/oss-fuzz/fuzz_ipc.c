@@ -9,8 +9,6 @@
 #include <sof/math/numbers.h>
 #include <sof/audio/component_ext.h>
 #include <sof/lib/notifier.h>
-#include <sof/schedule/edf_schedule.h>
-#include <sof/lib/agent.h>
 
 int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size);
 int LLVMFuzzerInitialize(int *argc, char ***argv);
@@ -35,26 +33,18 @@ done:
 
 int LLVMFuzzerInitialize(int *argc, char ***argv)
 {
+	init_system_notify(sof_get());
+
+	platform_init(sof_get());
+
 	/* init components */
 	sys_comp_init(sof_get());
 
+	/* init self-registered modules */
+	/* sys_module_init(); */
+
 	/* other necessary initializations, todo: follow better SOF init */
 	pipeline_posn_init(sof_get());
-	init_system_notify(sof_get());
-	scheduler_init_edf();
-	sa_init(sof_get(), CONFIG_SYSTICK_PERIOD);
-
-	/* init IPC */
-	if (ipc_init(sof_get()) < 0) {
-		fprintf(stderr, "error: IPC init\n");
-		exit(EXIT_FAILURE);
-	}
-
-	/* init scheduler */
-	if (scheduler_init_edf() < 0) {
-		fprintf(stderr, "error: edf scheduler init\n");
-		exit(EXIT_FAILURE);
-	}
 
 	return 0;
 }

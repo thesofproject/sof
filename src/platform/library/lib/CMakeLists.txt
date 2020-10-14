@@ -3,6 +3,7 @@
 add_local_sources(sof
 	alloc.c
 	clk.c
+	dai.c
 	pm_runtime.c
 )
 
