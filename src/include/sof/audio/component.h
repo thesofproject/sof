@@ -546,6 +546,7 @@ static inline struct comp_dev *comp_alloc(const struct comp_driver *drv,
 		return NULL;
 	dev->size = bytes;
 	dev->drv = drv;
+	dev->state = COMP_STATE_INIT;
 	memcpy_s(&dev->tctx, sizeof(struct tr_ctx),
 		 trace_comp_drv_get_tr_ctx(dev->drv), sizeof(struct tr_ctx));
 
