@@ -2,7 +2,7 @@
  *
  * Copyright(c) 2016 Intel Corporation. All rights reserved.
  *
- * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
+ * Author: Curtis Malainey <cujomalainey@chromium.org>
  */
 
 #ifdef __SOF_LIB_DMA_H__
