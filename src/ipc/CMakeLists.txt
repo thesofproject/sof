@@ -5,13 +5,13 @@ add_local_sources(sof
 	handler.c
 )
 
-if (CONFIG_LIBRARY)
-	return()
-endif()
-
 if (CONFIG_TRACE)
 	add_local_sources(sof
 		dma-copy.c)
+endif()
+
+if (CONFIG_LIBRARY)
+	return()
 endif()
 
 if (CONFIG_HOST_PTABLE)

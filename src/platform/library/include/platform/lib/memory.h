@@ -17,12 +17,9 @@
 #define HEAP_BUFFER_SIZE	(1024 * 128)
 #define SOF_STACK_SIZE		0x1000
 
-#define MAILBOX_DSPBOX_BASE	0
-#define MAILBOX_DSPBOX_SIZE	0x400
-#define MAILBOX_HOSTBOX_BASE	0
-#define MAILBOX_HOSTBOX_SIZE	0x400
-#define MAILBOX_BASE		0
-#define MAILBOX_BASE_SIZE	0x400
+uint8_t *get_library_mailbox(void);
+
+#define MAILBOX_BASE	get_library_mailbox()
 
 #define PLATFORM_HEAP_SYSTEM		1
 #define PLATFORM_HEAP_SYSTEM_RUNTIME	1

@@ -35,6 +35,8 @@ int LLVMFuzzerInitialize(int *argc, char ***argv)
 {
 	init_system_notify(sof_get());
 
+	trace_init(sof_get());
+
 	platform_init(sof_get());
 
 	/* init components */

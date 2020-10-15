@@ -10,8 +10,21 @@
 #include <sof/lib/agent.h>
 #include <sof/schedule/edf_schedule.h>
 #include <sof/schedule/ll_schedule_domain.h>
+#include <sof/lib/mailbox.h>
 
 SHARED_DATA struct timer timer = {};
+
+static uint8_t mailbox[MAILBOX_DSPBOX_SIZE +
+		       MAILBOX_HOSTBOX_SIZE +
+		       MAILBOX_EXCEPTION_SIZE +
+		       MAILBOX_DEBUG_SIZE +
+		       MAILBOX_STREAM_SIZE +
+		       MAILBOX_TRACE_SIZE];
+
+uint8_t *get_library_mailbox()
+{
+	return mailbox;
+}
 
 static void platform_clock_init(struct sof *sof) {}
 

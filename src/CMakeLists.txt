@@ -12,6 +12,10 @@ endif()
 add_local_sources(sof spinlock.c)
 add_subdirectory(drivers)
 
+if (CONFIG_TRACE)
+	add_subdirectory(trace)
+endif()
+
 if(CONFIG_LIBRARY)
 	return()
 endif()
@@ -19,10 +23,6 @@ endif()
 add_subdirectory(debug)
 add_subdirectory(init)
 add_subdirectory(schedule)
-
-if (CONFIG_TRACE)
-	add_subdirectory(trace)
-endif()
 
 if (CONFIG_PROBE)
 	add_subdirectory(probe)
