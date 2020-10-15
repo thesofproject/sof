@@ -1532,6 +1532,36 @@ static int parse_adsp_config_v2_5(const toml_table_t *toml, struct adsp *out,
 	return 0;
 }
 
+/** version is stored as toml array with integer number, something like:
+ *   "version = [1, 8]"
+ */
+static int parse_version(toml_table_t *toml, int64_t version[2])
+{
+	toml_array_t *arr;
+	toml_raw_t raw;
+	int ret;
+	int i;
+
+	/* check "version" key */
+	arr = toml_array_in(toml, "version");
+	if (!arr)
+		return err_key_not_found("version");
+	if (toml_array_type(arr) != 'i'  || toml_array_nelem(arr) != 2 ||
+	    toml_array_kind(arr) != 'v')
+		return err_key_parse("version", "wrong array type or length != 2");
+
+	/* parse "version" array elements */
+	for (i = 0; i < 2; ++i) {
+		raw = toml_raw_at(arr, i);
+		if (raw == 0)
+			return err_key_parse("version", NULL);
+		ret = toml_rtoi(raw, &version[i]);
+		if (ret < 0)
+			return err_key_parse("version", "can't convert element to integer");
+	}
+	return 0;
+}
+
 static inline bool check_config_version(int major, int minor, const int64_t *version)
 {
 	return version[0] == major && version[1] == minor;
@@ -1541,40 +1571,18 @@ static int adsp_parse_config_fd(FILE *fd, struct adsp *out, bool verbose)
 {
 	int64_t manifest_version[2];
 	toml_table_t *toml;
-	toml_array_t *arr;
-	toml_raw_t raw;
 	char errbuf[256];
 	int ret;
-	int i;
 
 	/* whole toml file is parsed to global toml table at once */
 	toml = toml_parse_file(fd, errbuf, ARRAY_SIZE(errbuf));
 	if (!toml)
 		return log_err(-EINVAL, "error: toml file parsing, %s\n", errbuf);
 
-	/* check "version" key */
-	arr = toml_array_in(toml, "version");
-	if (!arr)
-		return err_key_not_found("version");
-	if (toml_array_type(arr) != 'i'  || toml_array_nelem(arr) != 2 ||
-	    toml_array_kind(arr) != 'v') {
-		ret = err_key_parse("version", "wrong array type or length != 2");
+	/* manifest version is in toml root */
+	ret = parse_version(toml, manifest_version);
+	if (ret < 0)
 		goto error;
-	}
-
-	/* parse "version" array elements */
-	for (i = 0; i < ARRAY_SIZE(manifest_version); ++i) {
-		raw = toml_raw_at(arr, i);
-		if (raw == 0) {
-			ret = err_key_parse("version", NULL);
-			goto error;
-		}
-		ret = toml_rtoi(raw, &manifest_version[i]);
-		if (ret < 0) {
-			ret = err_key_parse("version", "can't convert element to integer");
-			goto error;
-		}
-	}
 
 	/* parsing function depends on manifest_version */
 	if (check_config_version(1, 0, manifest_version)) {
