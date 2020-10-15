@@ -247,8 +247,7 @@ int ri_manifest_sign_v1_5(struct image *image)
 	char *const data1 = (char *)man + MAN_CSS_MAN_SIZE_V1_5;
 	unsigned const size1 = image->image_end - sizeof(*man);
 
-	pkcs_v1_5_sign_man_v1_5(image, man, data1, size1);
-	return 0;
+	return pkcs_v1_5_sign_man_v1_5(image, man, data1, size1);
 }
 
 int ri_manifest_sign_v1_8(struct image *image)
@@ -265,6 +264,5 @@ int ri_manifest_sign_v1_8(struct image *image)
 	unsigned const size2 =
 		(man->css.size - man->css.header_len) * sizeof(uint32_t);
 
-	pkcs_v1_5_sign_man_v1_8(image, man, data1, size1, data2, size2);
-	return 0;
+	return pkcs_v1_5_sign_man_v1_8(image, man, data1, size1, data2, size2);
 }
