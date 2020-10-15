@@ -244,9 +244,10 @@ int ri_manifest_sign_v1_5(struct image *image)
 {
 	struct fw_image_manifest_v1_5 *man = image->fw_image;
 
-	pkcs_v1_5_sign_man_v1_5(image, man,
-				(void *)man + MAN_CSS_MAN_SIZE_V1_5,
-				image->image_end - sizeof(*man));
+	char *const data1 = (char *)man + MAN_CSS_MAN_SIZE_V1_5;
+	unsigned const size1 = image->image_end - sizeof(*man);
+
+	pkcs_v1_5_sign_man_v1_5(image, man, data1, size1);
 	return 0;
 }
 
@@ -254,13 +255,16 @@ int ri_manifest_sign_v1_8(struct image *image)
 {
 	struct fw_image_manifest_v1_8 *man = image->fw_image;
 
-	pkcs_v1_5_sign_man_v1_8(image, man, (void *)man + MAN_CSS_HDR_OFFSET,
-				sizeof(struct css_header_v1_8) -
-				(MAN_RSA_KEY_MODULUS_LEN +
-				 MAN_RSA_KEY_EXPONENT_LEN +
-				 MAN_RSA_SIGNATURE_LEN),
-				(void *)man + MAN_SIG_PKG_OFFSET_V1_8,
-				(man->css.size - man->css.header_len)
-				 * sizeof(uint32_t));
+	char *const data1 = (char *)man + MAN_CSS_HDR_OFFSET;
+	unsigned const size1 =
+		sizeof(struct css_header_v1_8) -
+		(MAN_RSA_KEY_MODULUS_LEN + MAN_RSA_KEY_EXPONENT_LEN +
+		 MAN_RSA_SIGNATURE_LEN);
+
+	char *const data2 = (char *)man + MAN_SIG_PKG_OFFSET_V1_8;
+	unsigned const size2 =
+		(man->css.size - man->css.header_len) * sizeof(uint32_t);
+
+	pkcs_v1_5_sign_man_v1_8(image, man, data1, size1, data2, size2);
 	return 0;
 }
