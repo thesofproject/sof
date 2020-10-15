@@ -123,6 +123,7 @@ set(TPLGS
 	"sof-cml-demux-rt5682-max98357a\;sof-cml-demux-rt5682-max98357a\;-DPLATFORM=cml"
 	"sof-cml-rt1011-rt5682\;sof-cml-rt1011-rt5682\;-DPLATFORM=cml\;-DPPROC=volume"
 	"sof-cml-rt1011-rt5682\;sof-cml-eq-rt1011-rt5682\;-DPLATFORM=cml\;-DPPROC=eq-iir-eq-fir-volume"
+	"sof-cml-rt1011-rt5682\;sof-cml-rt1015-rt5682\;-DPLATFORM=cml\;-DPPROC=volume\;-DCML_RT1015=1"
 	"sof-tgl-nocodec\;sof-tgl-nocodec"
 	"sof-tgl-rt711-i2s-rt1308\;sof-tgl-rt711-i2s-rt1308-2ch\;-DHDMI=1\;-DCHANNELS=2"
 	"sof-tgl-rt711-i2s-rt1308\;sof-tgl-rt711-i2s-rt1308-4ch\;-DHDMI=1\;-DCHANNELS=4"
