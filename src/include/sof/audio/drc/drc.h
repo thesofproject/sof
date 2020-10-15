@@ -48,6 +48,13 @@ struct drc_state {
 	int32_t processed; /* switch */
 
 	int32_t max_attack_compression_diff_db; /* Q8.24 */
+
+	float max_l2d;
+	float max_l2d_o, min_l2d_o;
+	float max_logf;
+	float max_logf_o, min_logf_o;
+	float max_asin;
+	float max_pow_x;
 };
 
 typedef void (*drc_func)(const struct comp_dev *dev,

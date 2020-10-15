@@ -60,6 +60,15 @@ static inline void drc_reset_state(struct drc_state *state)
 	state->processed = 0;
 
 	state->max_attack_compression_diff_db = INT32_MIN;
+
+	state->max_l2d = 0;
+	state->max_l2d_o = 0;
+	state->min_l2d_o = 0;
+	state->max_logf = 0;
+	state->max_logf_o = 0;
+	state->min_logf_o = 0;
+	state->max_asin = 0;
+	state->max_pow_x = 0;
 }
 
 static inline int drc_init_pre_delay_buffers(struct drc_state *state,
@@ -444,6 +453,13 @@ static int drc_reset(struct comp_dev *dev)
 	struct drc_comp_data *cd = comp_get_drvdata(dev);
 
 	comp_info(dev, "drc_reset()");
+
+	comp_err(dev, "drc_reset(): max lin2db input = %f", cd->state.max_l2d);
+	comp_err(dev, "drc_reset(): max lin2db output = %f, min = %f", cd->state.max_l2d_o, cd->state.min_l2d_o);
+	comp_err(dev, "drc_reset(): max logf input = %f", cd->state.max_logf);
+	comp_err(dev, "drc_reset(): max logf output = %f, min = %f", cd->state.max_logf_o, cd->state.min_logf_o);
+	comp_err(dev, "drc_reset(): max asin input = %f", cd->state.max_asin);
+	comp_err(dev, "drc_reset(): max powf input x = %f", cd->state.max_pow_x);
 
 	drc_reset_state(&cd->state);
 

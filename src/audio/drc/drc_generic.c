@@ -31,7 +31,7 @@ static float knee_curveK(const struct sof_drc_params *p, float x)
 
 /* Full compression curve with constant ratio after knee. Returns the ratio of
  * output and input signal. */
-static float volume_gain(const struct sof_drc_params *p, float x)
+static float volume_gain(struct drc_state *state, const struct sof_drc_params *p, float x)
 {
 	const float knee_threshold = Q_CONVERT_QTOF(p->knee_threshold, 24);
 	const float linear_threshold = Q_CONVERT_QTOF(p->linear_threshold, 30);
@@ -53,6 +53,9 @@ static float volume_gain(const struct sof_drc_params *p, float x)
 		 * => y/x = ratio_base * e^(log(x) * (s - 1))
 		 */
 		y = ratio_base * knee_expf(warp_logf(x) * (slope - 1));
+		state->max_logf = MAX(x, state->max_logf);
+		state->max_logf_o = MAX(warp_logf(x), state->max_logf_o);
+		state->min_logf_o = MIN(warp_logf(x), state->min_logf_o);
 	}
 
 	return y;
@@ -100,7 +103,7 @@ static void drc_update_detector_average(struct drc_state *state, const struct so
 		 * derivative matched). The transition from the knee to the
 		 * ratio portion is smooth (1st derivative matched).
 		 */
-		gain = volume_gain(p, abs_input_array[i]);
+		gain = volume_gain(state, p, abs_input_array[i]);
 		is_release = (gain > detector_average);
 		if (is_release) {
 			if (gain > DRC_NEG_TWO_DB) {
@@ -110,6 +113,12 @@ static void drc_update_detector_average(struct drc_state *state, const struct so
 			} else {
 				db_per_frame =
 					linear_to_decibels(gain) * sat_release_frames_inv_neg;
+				if (!isbadf(gain)) {
+					state->max_l2d = MAX(gain, state->max_l2d);
+					state->max_l2d_o = MAX(linear_to_decibels(gain), state->max_l2d_o);
+					state->min_l2d_o = MIN(linear_to_decibels(gain), state->min_l2d_o);
+				}
+
 				sat_release_rate =
 					decibels_to_linear(db_per_frame) - 1;
 				detector_average += (gain - detector_average) *
@@ -145,6 +154,7 @@ static void drc_update_envelope(struct drc_state *state, const struct sof_drc_pa
 
 	/* Pre-warp so we get desired_gain after sin() warp below. */
 	float scaled_desired_gain = warp_asinf(desired_gain);
+	state->max_asin = MAX(ABS(desired_gain), state->max_asin);
 
 	/* Deal with envelopes */
 
@@ -158,8 +168,13 @@ static void drc_update_envelope(struct drc_state *state, const struct sof_drc_pa
 
 	/* compression_diff_db is the difference between current compression
 	 * level and the desired level. */
-	float compression_diff_db = linear_to_decibels(
-		Q_CONVERT_QTOF(state->compressor_gain, 30) / scaled_desired_gain);
+	float l2d_input = Q_CONVERT_QTOF(state->compressor_gain, 30) / scaled_desired_gain;
+	float compression_diff_db = linear_to_decibels(l2d_input);
+	if (!isbadf(l2d_input)) {
+		state->max_l2d = MAX(l2d_input, state->max_l2d);
+		state->max_l2d_o = MAX(compression_diff_db, state->max_l2d_o);
+		state->min_l2d_o = MIN(compression_diff_db, state->min_l2d_o);
+	}
 
 	float x, x2, x3, x4;
 	float release_frames;
@@ -213,6 +228,7 @@ static void drc_update_envelope(struct drc_state *state, const struct sof_drc_pa
 
 		x = 0.25f / eff_atten_diff_db;
 		envelope_rate = 1 - warp_powf(x, one_over_attack_frames);
+		state->max_pow_x = MAX(x, state->max_pow_x);
 	}
 
 	state->envelope_rate = Q_CONVERT_FLOAT(envelope_rate, 30);
