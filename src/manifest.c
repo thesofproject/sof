@@ -167,6 +167,8 @@ static int man_copy_sram(struct image *image, Elf32_Shdr *section,
 	void *buffer = image->fw_image + offset;
 	size_t count;
 
+	assert((uint64_t)offset + section->size <= image->adsp->image_size);
+
 	switch (section->type) {
 	case SHT_INIT_ARRAY:
 		/* fall through */
