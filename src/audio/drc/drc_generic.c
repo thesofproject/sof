@@ -52,7 +52,7 @@ static float volume_gain(const struct sof_drc_params *p, float x)
 		 * => y/x = ratio_base * x^(s - 1)
 		 * => y/x = ratio_base * e^(log(x) * (s - 1))
 		 */
-		y = ratio_base * knee_expf(logf(x) * (slope - 1));
+		y = ratio_base * knee_expf(warp_logf(x) * (slope - 1));
 	}
 
 	return y;
@@ -212,7 +212,7 @@ static void drc_update_envelope(struct drc_state *state, const struct sof_drc_pa
 			MAX(0.5f, Q_CONVERT_QTOF(state->max_attack_compression_diff_db, 24));
 
 		x = 0.25f / eff_atten_diff_db;
-		envelope_rate = 1 - powf(x, 1 / attack_frames);
+		envelope_rate = 1 - warp_powf(x, 1 / attack_frames);
 	}
 
 	state->envelope_rate = Q_CONVERT_FLOAT(envelope_rate, 30);

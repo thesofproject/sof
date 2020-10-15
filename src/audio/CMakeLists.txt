@@ -126,7 +126,7 @@ set(eq-iir_sources eq_iir/eq_iir.c eq_iir/iir.c)
 set(dcblock_sources dcblock/dcblock.c dcblock/dcblock_generic.c)
 set(crossover_sources crossover/crossover.c crossover/crossover_generic.c)
 set(tdfb_sources tdfb/tdfb.c tdfb/tdfb_generic.c)
-set(drc_sources drc/drc.c drc/drc_generic.c)
+set(drc_sources drc/drc.c drc/drc_generic.c drc/drc_math_generic.c)
 
 foreach(audio_module ${sof_audio_modules})
 	# first compile with no optimizations
