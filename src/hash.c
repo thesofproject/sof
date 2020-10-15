@@ -5,6 +5,7 @@
 // Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
 //         Keyon Jie <yang.jie@linux.intel.com>
 
+#include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -82,6 +83,7 @@ void module_sha_complete(struct image *image, uint8_t *hash)
 void ri_sha256(struct image *image, unsigned int offset, unsigned int size,
 	       uint8_t *hash)
 {
+	assert((uint64_t)size + offset <= image->adsp->image_size);
 	module_sha256_create(image);
 	module_sha_update(image, image->fw_image + offset, size);
 	module_sha_complete(image, hash);
@@ -98,6 +100,7 @@ static void module_sha384_create(struct image *image)
 void ri_sha384(struct image *image, unsigned int offset, unsigned int size,
 	       uint8_t *hash)
 {
+	assert((uint64_t)size + offset <= image->adsp->image_size);
 	module_sha384_create(image);
 	module_sha_update(image, image->fw_image + offset, size);
 	module_sha_complete(image, hash);
