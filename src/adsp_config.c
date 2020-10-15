@@ -1562,13 +1562,35 @@ static int parse_version(toml_table_t *toml, int64_t version[2])
 	return 0;
 }
 
-static inline bool check_config_version(int major, int minor, const int64_t *version)
+struct config_parser {
+	int major;
+	int minor;
+	int (*parse)(const toml_table_t *toml, struct adsp *out, bool verbose);
+};
+
+static const struct config_parser *find_config_parser(int64_t version[2])
 {
-	return version[0] == major && version[1] == minor;
+	/* list of supported configuration version with handler to parser */
+	static const struct config_parser parsers[] = {
+		{1, 0, parse_adsp_config_v1_0},
+		{1, 5, parse_adsp_config_v1_5},
+		{1, 8, parse_adsp_config_v1_8},
+		{2, 5, parse_adsp_config_v2_5},
+	};
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(parsers); ++i) {
+		if (parsers[i].major == version[0] &&
+		    parsers[i].minor == version[1]) {
+			return &parsers[i];
+		}
+	}
+	return NULL;
 }
 
 static int adsp_parse_config_fd(FILE *fd, struct adsp *out, bool verbose)
 {
+	const struct config_parser *parser;
 	int64_t manifest_version[2];
 	toml_table_t *toml;
 	char errbuf[256];
@@ -1584,21 +1606,16 @@ static int adsp_parse_config_fd(FILE *fd, struct adsp *out, bool verbose)
 	if (ret < 0)
 		goto error;
 
-	/* parsing function depends on manifest_version */
-	if (check_config_version(1, 0, manifest_version)) {
-		ret = parse_adsp_config_v1_0(toml, out, verbose);
-	} else if (check_config_version(1, 5, manifest_version)) {
-		ret = parse_adsp_config_v1_5(toml, out, verbose);
-	} else if (check_config_version(1, 8, manifest_version)) {
-		ret = parse_adsp_config_v1_8(toml, out, verbose);
-	} else if (check_config_version(2, 5, manifest_version)) {
-		ret = parse_adsp_config_v2_5(toml, out, verbose);
-	} else {
+	/* find parser compatible with manifest version */
+	parser = find_config_parser(manifest_version);
+	if (!parser) {
 		ret = log_err(-EINVAL, "error: Unsupported config version %d.%d\n",
 			      manifest_version[0], manifest_version[1]);
 		goto error;
 	}
 
+	/* run dedicated parser */
+	ret = parser->parse(toml, out, verbose);
 error:
 	toml_free(toml);
 	return ret;
