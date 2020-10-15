@@ -1,8 +1,8 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
- * Copyright(c) 2016 Intel Corporation. All rights reserved.
+ * Copyright(c) 2020 Google Inc. All rights reserved.
  *
- * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
+ * Author: Curtis Malainey <cujomalainey@chromium.org>
  */
 
 #ifdef __SOF_LIB_MAILBOX_H__
@@ -14,20 +14,19 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define MAILBOX_HOST_OFFSET	0x144000
+#define MAILBOX_DSPBOX_OFFSET	0x0
+#define MAILBOX_DSPBOX_SIZE	0x400
+#define MAILBOX_DSPBOX_BASE \
+	(MAILBOX_BASE + MAILBOX_DSPBOX_OFFSET)
 
-#define MAILBOX_OUTBOX_OFFSET	0x0
-#define MAILBOX_OUTBOX_SIZE	0x400
-#define MAILBOX_OUTBOX_BASE \
-	(MAILBOX_BASE + MAILBOX_OUTBOX_OFFSET)
-
-#define MAILBOX_INBOX_OFFSET	MAILBOX_OUTBOX_SIZE
-#define MAILBOX_INBOX_SIZE	0x400
-#define MAILBOX_INBOX_BASE \
-	(MAILBOX_BASE + MAILBOX_INBOX_OFFSET)
+#define MAILBOX_HOSTBOX_OFFSET \
+	(MAILBOX_DSPBOX_SIZE + MAILBOX_DSPBOX_OFFSET)
+#define MAILBOX_HOSTBOX_SIZE	0x400
+#define MAILBOX_HOSTBOX_BASE \
+	(MAILBOX_BASE + MAILBOX_HOSTBOX_OFFSET)
 
 #define MAILBOX_EXCEPTION_OFFSET \
-	(MAILBOX_INBOX_SIZE + MAILBOX_OUTBOX_SIZE)
+	(MAILBOX_HOSTBOX_SIZE + MAILBOX_HOSTBOX_OFFSET)
 #define MAILBOX_EXCEPTION_SIZE	0x100
 #define MAILBOX_EXCEPTION_BASE \
 	(MAILBOX_BASE + MAILBOX_EXCEPTION_OFFSET)
