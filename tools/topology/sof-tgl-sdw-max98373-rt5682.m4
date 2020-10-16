@@ -65,7 +65,7 @@ define(`SMART_RX_CHANNELS', 4)
 define(`SMART_FB_CHANNELS', 4)
 # Ref capture related
 define(`SMART_REF_PPL_ID', 4)
-define(`SMART_REF_CH_NUM', 4)
+define(`SMART_REF_CH_NUM', 2)
 # PCM related
 define(`SMART_PCM_ID', 2)
 define(`SMART_PCM_NAME', `smart373-spk')
