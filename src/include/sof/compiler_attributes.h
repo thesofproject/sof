@@ -14,5 +14,3 @@
 #define __aligned(x) __attribute__((__aligned__(x)))
 
 #define __section(x) __attribute__((section(x)))
-
-#define __unused __attribute__((unused))
