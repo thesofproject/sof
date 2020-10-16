@@ -130,3 +130,12 @@ int comp_verify_params(struct comp_dev *dev, uint32_t flag,
 	(void)params;
 	return 0;
 }
+
+bool buffer_params_match(struct comp_buffer *buffer, struct sof_ipc_stream_params *params,
+			 uint32_t flag)
+{
+	(void)buffer;
+	(void)params;
+	(void)flag;
+	return 0;
+}

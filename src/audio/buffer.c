@@ -131,6 +131,26 @@ int buffer_set_size(struct comp_buffer *buffer, uint32_t size)
 	return 0;
 }
 
+bool buffer_params_match(struct comp_buffer *buffer, struct sof_ipc_stream_params *params,
+			 uint32_t flag)
+{
+	assert(params && buffer);
+
+	if ((flag & BUFF_PARAMS_FRAME_FMT) &&
+	    buffer->stream.frame_fmt != params->frame_fmt)
+		return false;
+
+	if ((flag & BUFF_PARAMS_RATE) &&
+	    buffer->stream.rate != params->rate)
+		return false;
+
+	if ((flag & BUFF_PARAMS_CHANNELS) &&
+	    buffer->stream.channels != params->channels)
+		return false;
+
+	return true;
+}
+
 /* free component in the pipeline */
 void buffer_free(struct comp_buffer *buffer)
 {
