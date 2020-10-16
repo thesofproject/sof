@@ -183,7 +183,7 @@ config DEBUG_HEAP
 
 config DEBUG_MEMORY_USAGE_SCAN
 	bool "Memory usage scan"
-	default y
+	default y if KERNEL_BIN_NAME != "zephyr"
 	help
 	  It enables memory usage scan at demand in runtime.
 	  This feature does not affect standard memory operations,
