@@ -292,12 +292,18 @@ int platform_boot_complete(uint32_t boot_message)
 
 int platform_boot_complete(uint32_t boot_message)
 {
+	uint32_t mb_offset = 0;
+
 #if CONFIG_TIGERLAKE && !CONFIG_CAVS_LPRO_ONLY
 	/* TGL specific HW recommended flow */
 	pm_runtime_get(PM_RUNTIME_DSP, PWRD_BY_HPRO | (CONFIG_CORE_COUNT - 1));
 #endif
 
-	mailbox_dspbox_write(0, &ready, sizeof(ready));
+	mailbox_dspbox_write(mb_offset, &ready, sizeof(ready));
+	mb_offset = mb_offset + sizeof(ready);
+
+	mailbox_dspbox_write(mb_offset, &user_abi_version,
+			     user_abi_version.ext_hdr.hdr.size);
 
 	/* tell host we are ready */
 #if CAVS_VERSION == CAVS_VERSION_1_5
