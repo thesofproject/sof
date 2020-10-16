@@ -47,6 +47,7 @@ enum ext_man_elem_type {
 
 /* EXT_MAN_ELEM_CONFIG_DATA elements identificators */
 enum config_elem_type {
+	EXT_MAN_CONFIG_FIRST_ELEM = 1,
 	EXT_MAN_CONFIG_IPC_MSG_SIZE	= 1,
 	EXT_MAN_CONFIG_MEMORY_USAGE_SCAN = 2, /**< ABI3.18 */
 	EXT_MAN_CONFIG_LAST_ELEM,	/**< keep it at the end of enum list */
@@ -95,7 +96,7 @@ struct ext_man_dbg_abi {
 struct ext_man_config_data {
 	struct ext_man_elem_header hdr;
 
-	struct config_elem elems[EXT_MAN_CONFIG_LAST_ELEM];
+	struct config_elem elems[EXT_MAN_CONFIG_LAST_ELEM - EXT_MAN_CONFIG_FIRST_ELEM];
 } __packed;
 
 #endif /* __KERNEL_EXT_MANIFEST_H__ */
