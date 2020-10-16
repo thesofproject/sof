@@ -165,6 +165,9 @@ void comp_update_buffer_produce(struct comp_buffer *buffer, uint32_t bytes);
 /* called by a component after consuming data from this buffer */
 void comp_update_buffer_consume(struct comp_buffer *buffer, uint32_t bytes);
 
+bool buffer_params_match(struct comp_buffer *buffer, struct sof_ipc_stream_params *params,
+			 uint32_t flag);
+
 static inline void buffer_invalidate(struct comp_buffer *buffer, uint32_t bytes)
 {
 	if (!buffer->inter_core)
@@ -294,27 +297,6 @@ static inline int buffer_set_params(struct comp_buffer *buffer,
 	buffer->hw_params_configured = true;
 
 	return 0;
-}
-
-static inline bool buffer_params_match(struct comp_buffer *buffer,
-				       struct sof_ipc_stream_params *params,
-				       uint32_t flag)
-{
-	assert(params && buffer);
-
-	if ((flag & BUFF_PARAMS_FRAME_FMT) &&
-	    buffer->stream.frame_fmt != params->frame_fmt)
-		return false;
-
-	if ((flag & BUFF_PARAMS_RATE) &&
-	    buffer->stream.rate != params->rate)
-		return false;
-
-	if ((flag & BUFF_PARAMS_CHANNELS) &&
-	    buffer->stream.channels != params->channels)
-		return false;
-
-	return true;
 }
 
 #endif /* __SOF_AUDIO_BUFFER_H__ */
