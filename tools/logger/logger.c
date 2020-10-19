@@ -161,7 +161,7 @@ static int append_filter_config(struct convert_config *config, const char *input
 
 int main(int argc, char *argv[])
 {
-	static const char optstring[] = "ho:i:l:ps:c:u:tv:rd:Lf:gFn";
+	static const char optstring[] = "ho:i:l:ps:c:u:tv:rd:Lf:gF:n";
 	struct convert_config config;
 	unsigned int baud = 0;
 	const char *snapshot_file = 0;
