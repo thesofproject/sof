@@ -47,7 +47,7 @@ blob8(j:j+3) = word2byte(blob_struct.knee_beta, sh); j=j+4;
 blob8(j:j+3) = word2byte(blob_struct.knee_threshold, sh); j=j+4;
 blob8(j:j+3) = word2byte(blob_struct.ratio_base, sh); j=j+4;
 blob8(j:j+3) = word2byte(blob_struct.master_linear_gain, sh); j=j+4;
-blob8(j:j+3) = word2byte(blob_struct.attack_frames, sh); j=j+4;
+blob8(j:j+3) = word2byte(blob_struct.one_over_attack_frames, sh); j=j+4;
 blob8(j:j+3) = word2byte(blob_struct.sat_release_frames_inv_neg, sh); j=j+4;
 blob8(j:j+3) = word2byte(blob_struct.sat_release_rate_at_neg_two_db, sh); j=j+4;
 blob8(j:j+3) = word2byte(blob_struct.kSpacingDb, sh); j=j+4;

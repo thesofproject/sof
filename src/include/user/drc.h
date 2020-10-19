@@ -45,7 +45,7 @@ struct sof_drc_params {
 	int32_t ratio_base;     /* Q2.30 */
 
 	int32_t master_linear_gain;             /* Q8.24 */
-	int32_t attack_frames;                  /* Q12.20 */
+	int32_t one_over_attack_frames;         /* Q2.30 */
 	int32_t sat_release_frames_inv_neg;     /* Q2.30 */
 	int32_t sat_release_rate_at_neg_two_db; /* Q2.30 */
 

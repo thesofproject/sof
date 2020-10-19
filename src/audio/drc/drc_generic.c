@@ -138,7 +138,7 @@ static void drc_update_envelope(struct drc_state *state, const struct sof_drc_pa
 	const float kC = Q_CONVERT_QTOF(p->kC, 12);
 	const float kD = Q_CONVERT_QTOF(p->kD, 12);
 	const float kE = Q_CONVERT_QTOF(p->kE, 12);
-	const float attack_frames = Q_CONVERT_QTOF(p->attack_frames, 20);
+	const float one_over_attack_frames = Q_CONVERT_QTOF(p->one_over_attack_frames, 30);
 
 	/* Calculate desired gain */
 	float desired_gain = Q_CONVERT_QTOF(state->detector_average, 30);
@@ -212,7 +212,7 @@ static void drc_update_envelope(struct drc_state *state, const struct sof_drc_pa
 			MAX(0.5f, Q_CONVERT_QTOF(state->max_attack_compression_diff_db, 24));
 
 		x = 0.25f / eff_atten_diff_db;
-		envelope_rate = 1 - warp_powf(x, 1 / attack_frames);
+		envelope_rate = 1 - warp_powf(x, one_over_attack_frames);
 	}
 
 	state->envelope_rate = Q_CONVERT_FLOAT(envelope_rate, 30);
