@@ -61,6 +61,8 @@ static const char *BAD_PTR_STR = "<bad uid ptr %x>";
 /* pointer to config for global context */
 struct convert_config *global_config;
 
+static int read_entry_from_ldc_file(struct ldc_entry *entry, uint32_t log_entry_address);
+
 char *format_uid_raw(const struct sof_uuid_entry *uid_entry, int use_colors, int name_first,
 		     bool be, bool upper)
 {
@@ -170,6 +172,20 @@ static const char *asprintf_uuid(const char *fmt, uint32_t uuid_key, bool use_co
 	return format_uid(uuid_key, use_colors, be, upper);
 }
 
+static const char *asprintf_entry_text(uint32_t entry_address)
+{
+	struct ldc_entry entry;
+	int ret;
+
+	ret = read_entry_from_ldc_file(&entry, entry_address);
+	if (ret)
+		return NULL;
+
+	free(entry.file_name);
+
+	return entry.text;
+}
+
 static void process_params(struct proc_ldc_entry *pe,
 			   const struct ldc_entry *e,
 			   int use_colors)
@@ -188,6 +204,7 @@ static void process_params(struct proc_ldc_entry *pe,
 	 * Scan the text for possible replacements. We follow the Linux kernel
 	 * that uses %pUx formats for UUID / GUID printing, where 'x' is
 	 * optional and can be one of 'b', 'B', 'l' (default), and 'L'.
+	 * For decoding log entry text from pointer %pQ is used.
 	 */
 	while ((p = strchr(p, '%'))) {
 		/* % can't be the last char */
@@ -201,6 +218,7 @@ static void process_params(struct proc_ldc_entry *pe,
 			/* Skip "%%" */
 			p += 2;
 		} else if (p[1] == 's') {
+			/* %s format specifier */
 			/* check for string printing, because it leads to logger crash */
 			log_err("String printing is not supported\n");
 			pe->params[i] = (uintptr_t)asprintf("<String @ 0x%08x>", e->params[i]);
@@ -208,6 +226,7 @@ static void process_params(struct proc_ldc_entry *pe,
 			++i;
 			p += 2;
 		} else if (p + 2 < t_end && p[1] == 'p' && p[2] == 'U') {
+			/* %pUx format specifier */
 			/* substitute UUID entry address with formatted string pointer from heap */
 			pe->params[i] = (uintptr_t)asprintf_uuid(p, e->params[i], use_colors,
 								 &uuid_fmt_len);
@@ -218,8 +237,22 @@ static void process_params(struct proc_ldc_entry *pe,
 			memmove(&p[2], &p[uuid_fmt_len], (int)(t_end - &p[uuid_fmt_len]) + 1);
 			p += uuid_fmt_len - 2;
 			t_end -= uuid_fmt_len - 2;
+		} else if (p + 2 < t_end && p[1] == 'p' && p[2] == 'Q') {
+			/* %pQ format specifier */
+			/* substitute log entry address with formatted entry text */
+			pe->params[i] = (uintptr_t)asprintf_entry_text(e->params[i]);
+			pe->subst_mask |= 1 << i;
+			++i;
+
+			/* replace entry formatter with %s */
+			p[1] = 's';
+			memmove(&p[2], &p[3], t_end - &p[2]);
+			p++;
+			t_end--;
 		} else {
-			/* arguments different from %pU should be passed without modification */
+			/* arguments different from %pU and %pQ should be passed without
+			 * modification
+			 */
 			pe->params[i] = e->params[i];
 			++i;
 			p += 2;
