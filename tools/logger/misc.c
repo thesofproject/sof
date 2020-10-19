@@ -45,7 +45,7 @@ extern struct convert_config *global_config;
 
 void log_err(const char *fmt, ...)
 {
-	FILE *out_fd = global_config->out_fd;
+	FILE *out_fd = global_config ? global_config->out_fd : NULL;
 	static const char prefix[] = "error: ";
 	ssize_t needed_size;
 	va_list args, args_alloc;
