@@ -516,20 +516,31 @@ static int ssp_get_hw_params(struct dai *dai,
 static void ssp_start(struct dai *dai, int direction)
 {
 	struct ssp_pdata *ssp = dai_get_drvdata(dai);
+	uint32_t sscr0 = ssp_read(dai, SSCR0);
+	uint32_t sspsp = ssp_read(dai, SSPSP);
+	uint32_t sssr = ssp_read(dai, SSSR);
 
 	spin_lock(&dai->lock);
 
-	/* enable port */
-	ssp_update_bits(dai, SSCR0, SSCR0_SSE, SSCR0_SSE);
-	ssp->state[direction] = COMP_STATE_ACTIVE;
-
 	dai_info(dai, "ssp_start()");
+
+	if (sscr0 & SSCR0_SSE)
+		/* disable SSP to load new configuration */
+		ssp_update_bits(dai, SSCR0, SSCR0_SSE, 0);
 
 	/* enable DMA */
 	if (direction == DAI_DIR_PLAYBACK)
 		ssp_update_bits(dai, SSCR1, SSCR1_TSRE, SSCR1_TSRE);
 	else
 		ssp_update_bits(dai, SSCR1, SSCR1_RSRE, SSCR1_RSRE);
+
+	/* restore ssp status */
+	ssp_write(dai, SSSR, sssr);
+	ssp_write(dai, SSPSP, sspsp);
+
+	/* enable port */
+	ssp_write(dai, SSCR0, sscr0 | SSCR0_SSE);
+	ssp->state[direction] = COMP_STATE_ACTIVE;
 
 	spin_unlock(&dai->lock);
 }
