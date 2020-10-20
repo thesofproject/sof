@@ -12,6 +12,7 @@
 #include <sof/drivers/sai.h>
 #include <sof/lib/dai.h>
 #include <sof/lib/dma.h>
+#include <sof/lib/wait.h>
 #include <sof/lib/uuid.h>
 #include <ipc/dai.h>
 #include <errno.h>
@@ -85,7 +86,12 @@ static void sai_stop(struct dai *dai, int direction)
 	if (!(xcsr & REG_SAI_CSR_FRDE)) {
 		/* Disable both directions and reset their FIFOs */
 		dai_update_bits(dai, REG_SAI_TCSR, REG_SAI_CSR_TERE, 0);
+		poll_for_register_delay(dai_base(dai) + REG_SAI_TCSR,
+					REG_SAI_CSR_TERE, 0, 100);
+
 		dai_update_bits(dai, REG_SAI_RCSR, REG_SAI_CSR_TERE, 0);
+		poll_for_register_delay(dai_base(dai) + REG_SAI_RCSR,
+					REG_SAI_CSR_TERE, 0, 100);
 
 		/* Software Reset for both Tx and Rx */
 		dai_update_bits(dai, REG_SAI_TCSR, REG_SAI_CSR_SR,
