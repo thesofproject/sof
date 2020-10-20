@@ -261,6 +261,11 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	if (argc != optind) {
+		fprintf(stderr, "error: Unused parameter '%s'\n", argv[optind]);
+		usage();
+	}
+
 	if (snapshot_file)
 		return baud ? EINVAL : -snapshot(snapshot_file);
 
