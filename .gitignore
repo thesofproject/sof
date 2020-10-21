@@ -51,6 +51,7 @@ test-driver
 *.trs
 
 __pycache__
+.checkpatch-camelcase.git.*
 
 build*/
 CMakeCache.txt
