@@ -5,14 +5,15 @@
  * Author: Karol Trzcinski <karolx.trzcinski@linux.intel.com>
  */
 
-/* Zephyr defines this - remove local copy once Zephyr integration complete */
-#ifdef __packed
-#undef __packed
-#endif
+#ifndef __ZEPHYR__
+
 #define __packed __attribute__((packed))
+
+#define __unused __attribute__((unused))
+
+#endif
 
 #define __aligned(x) __attribute__((__aligned__(x)))
 
 #define __section(x) __attribute__((section(x)))
 
-#define __unused __attribute__((unused))
