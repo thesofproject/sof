@@ -10,15 +10,11 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define DRC_NEG_TWO_DB 0.7943282347242815f /* -2dB = 10^(-2/20) */
-
-float decibels_to_linear(float decibels);
-float linear_to_decibels(float linear);
-float warp_logf(float x);
-float warp_sinf(float x);
-float warp_asinf(float x);
-float warp_powf(float x, float y);
-float knee_expf(float input);
-int isbadf(float x);
+int32_t drc_lin2db_fixed(int32_t linear); /* Input:Q6.26 Output:Q11.21 */
+int32_t drc_log_fixed(int32_t x); /* Input:Q6.26 Output:Q6.26 */
+int32_t drc_sin_fixed(int32_t x); /* Input:Q2.30 Output:Q1.31 */
+int32_t drc_asin_fixed(int32_t x); /* Input:Q2.30 Output:Q2.30 */
+int32_t drc_pow_fixed(int32_t x, int32_t y); /* Input:Q6.26, Q2.30 Output:Q12.20 */
+int32_t drc_inv_fixed(int32_t x, int precision_x, int precision_y);
 
 #endif //  __SOF_AUDIO_DRC_DRC_MATH_H__

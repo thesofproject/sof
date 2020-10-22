@@ -8,17 +8,21 @@
 #include <sof/audio/drc/drc.h>
 #include <sof/audio/drc/drc_math.h>
 #include <sof/audio/format.h>
+#include <sof/math/decibels.h>
 #include <sof/math/numbers.h>
 #include <stdint.h>
 
+#define ONE_Q20        Q_CONVERT_FLOAT(1.0f, 20)                /* Q12.20 */
+#define ONE_Q21        Q_CONVERT_FLOAT(1.0f, 21)                /* Q11.21 */
+#define ONE_Q30        Q_CONVERT_FLOAT(1.0f, 30)                /* Q2.30 */
+#define TWELVE_Q21     Q_CONVERT_FLOAT(12.0f, 21)               /* Q11.21 */
+#define HALF_Q24       Q_CONVERT_FLOAT(0.5f, 24)                /* Q8.24 */
+#define NEG_TWO_DB_Q30 Q_CONVERT_FLOAT(0.7943282347242815f, 30) /* -2dB = 10^(-2/20); Q2.30 */
+
 /* This is the knee part of the compression curve. Returns the output level
  * given the input level x. */
-static float knee_curveK(const struct sof_drc_params *p, float x)
+static int32_t knee_curveK(const struct sof_drc_params *p, int32_t x)
 {
-	const float knee_alpha = Q_CONVERT_QTOF(p->knee_alpha, 24);
-	const float knee_beta = Q_CONVERT_QTOF(p->knee_beta, 24);
-	const float K = Q_CONVERT_QTOF(p->K, 20);
-
 	/* The formula in knee_curveK is linear_threshold +
 	 * (1 - expf(-k * (x - linear_threshold))) / k
 	 * which simplifies to (alpha + beta * expf(gamma))
@@ -26,23 +30,27 @@ static float knee_curveK(const struct sof_drc_params *p, float x)
 	 *	 beta = -expf(k * linear_threshold) / k
 	 *	 gamma = -k * x
 	 */
-	return knee_alpha + knee_beta * knee_expf(-K * x);
+	int32_t knee_exp_gamma =
+		exp_fixed(Q_MULTSR_32X32((int64_t)x, -p->K, 15, 20, 27)); /* Q12.20 */
+
+	return p->knee_alpha + Q_MULTSR_32X32((int64_t)p->knee_beta, knee_exp_gamma, 24, 20, 24);
 }
 
 /* Full compression curve with constant ratio after knee. Returns the ratio of
  * output and input signal. */
-static float volume_gain(const struct sof_drc_params *p, float x)
+static int32_t volume_gain(const struct sof_drc_params *p, int32_t x)
 {
-	const float knee_threshold = Q_CONVERT_QTOF(p->knee_threshold, 24);
-	const float linear_threshold = Q_CONVERT_QTOF(p->linear_threshold, 30);
-	const float ratio_base = Q_CONVERT_QTOF(p->ratio_base, 30);
-	const float slope = Q_CONVERT_QTOF(p->slope, 30);
-	float y;
+	const int32_t knee_threshold = Q_SHIFT_RND(p->knee_threshold, 24, 15);
+	const int32_t linear_threshold = Q_SHIFT_RND(p->linear_threshold, 30, 15);
+	int32_t exp_knee;
+	int32_t y;
 
 	if (x < knee_threshold) {
 		if (x < linear_threshold)
-			return 1;
-		y = knee_curveK(p, x) / x;
+			return ONE_Q30;
+		/* y = knee_curveK(x) / x */
+		y = Q_MULTSR_32X32((int64_t)knee_curveK(p, x), drc_inv_fixed(x, 15, 20),
+				   24, 20, 30);
 	} else {
 		/* Constant ratio after knee.
 		 * log(y/y0) = s * log(x/x0)
@@ -52,26 +60,29 @@ static float volume_gain(const struct sof_drc_params *p, float x)
 		 * => y/x = ratio_base * x^(s - 1)
 		 * => y/x = ratio_base * e^(log(x) * (s - 1))
 		 */
-		y = ratio_base * knee_expf(warp_logf(x) * (slope - 1));
+		exp_knee = exp_fixed(Q_MULTSR_32X32((int64_t)drc_log_fixed(Q_SHIFT_LEFT(x, 15, 26)),
+						    (p->slope - ONE_Q30), 26, 30, 27)); /* Q12.20 */
+		y = Q_MULTSR_32X32((int64_t)p->ratio_base, exp_knee, 30, 20, 30);
 	}
 
 	return y;
 }
 
 /* Update detector_average from the last input division. */
-static void drc_update_detector_average(struct drc_state *state, const struct sof_drc_params *p, int nch)
+static void drc_update_detector_average(struct drc_state *state,
+					const struct sof_drc_params *p,
+					int nch)
 {
-	float abs_input_array[DRC_DIVISION_FRAMES];
-	const float sat_release_frames_inv_neg = Q_CONVERT_QTOF(p->sat_release_frames_inv_neg, 30);
-	const float sat_release_rate_at_neg_two_db = Q_CONVERT_QTOF(p->sat_release_rate_at_neg_two_db, 30);
-	float detector_average = Q_CONVERT_QTOF(state->detector_average, 30);
+	int32_t detector_average = state->detector_average; /* Q2.30 */
+	int32_t abs_input_array[DRC_DIVISION_FRAMES];
 	int div_start, i, ch;
 	int16_t *sample_p; /* only support s16 case for now */
-	float sample;
-	float gain;
+	int16_t sample;
+	int32_t gain;
+	int32_t gain_diff;
 	int is_release;
-	float db_per_frame;
-	float sat_release_rate;
+	int32_t db_per_frame;
+	int32_t sat_release_rate;
 
 	/* Calculate the start index of the last input division */
 	if (state->pre_delay_write_index == 0) {
@@ -82,11 +93,11 @@ static void drc_update_detector_average(struct drc_state *state, const struct so
 
 	/* The max abs value across all channels for this frame */
 	for (i = 0; i < DRC_DIVISION_FRAMES; i++) {
-		abs_input_array[i] = 0.0f;
+		abs_input_array[i] = 0;
 		for (ch = 0; ch < nch; ch++) {
 			sample_p = (int16_t *)state->pre_delay_buffers[ch] + div_start + i;
-			sample = Q_CONVERT_QTOF((int32_t)*sample_p, 15);
-			abs_input_array[i] = MAX(abs_input_array[i], ABS(sample));
+			sample = *sample_p;
+			abs_input_array[i] = MAX(abs_input_array[i], ABS((int32_t)sample));
 		}
 	}
 
@@ -100,51 +111,44 @@ static void drc_update_detector_average(struct drc_state *state, const struct so
 		 * derivative matched). The transition from the knee to the
 		 * ratio portion is smooth (1st derivative matched).
 		 */
-		gain = volume_gain(p, abs_input_array[i]);
-		is_release = (gain > detector_average);
+		gain = volume_gain(p, abs_input_array[i]); /* Q2.30 */
+		gain_diff = gain - detector_average; /* Q2.30 */
+		is_release = (gain_diff > 0);
 		if (is_release) {
-			if (gain > DRC_NEG_TWO_DB) {
+			if (gain > NEG_TWO_DB_Q30) {
 				detector_average +=
-					(gain - detector_average) *
-					sat_release_rate_at_neg_two_db;
+					Q_MULTSR_32X32((int64_t)gain_diff,
+						       p->sat_release_rate_at_neg_two_db,
+						       30, 30, 30);
 			} else {
 				db_per_frame =
-					linear_to_decibels(gain) * sat_release_frames_inv_neg;
+					Q_MULTSR_32X32((int64_t)drc_lin2db_fixed(Q_SHIFT_RND(gain,
+											     30,
+											     26)),
+						       p->sat_release_frames_inv_neg,
+						       21, 30, 24); /* Q8.24 */
 				sat_release_rate =
-					decibels_to_linear(db_per_frame) - 1;
-				detector_average += (gain - detector_average) *
-						    sat_release_rate;
+					db2lin_fixed(db_per_frame) - ONE_Q20; /* Q12.20 */
+				detector_average += Q_MULTSR_32X32((int64_t)gain_diff,
+								   sat_release_rate, 30, 20, 30);
 			}
 		} else {
 			detector_average = gain;
 		}
 
-		/* Fix gremlins. */
-		if (isbadf(detector_average))
-			detector_average = 1.0f;
-		else
-			detector_average = MIN(detector_average, 1.0f);
+		detector_average = MIN(detector_average, ONE_Q30);
 	}
 
-	state->detector_average = Q_CONVERT_FLOAT(detector_average, 30);
+	state->detector_average = detector_average;
 }
 
 /* Updates the envelope_rate used for the next division */
 static void drc_update_envelope(struct drc_state *state, const struct sof_drc_params *p)
 {
-	const float kSpacingDb = (float)p->kSpacingDb;
-	const float kA = Q_CONVERT_QTOF(p->kA, 12);
-	const float kB = Q_CONVERT_QTOF(p->kB, 12);
-	const float kC = Q_CONVERT_QTOF(p->kC, 12);
-	const float kD = Q_CONVERT_QTOF(p->kD, 12);
-	const float kE = Q_CONVERT_QTOF(p->kE, 12);
-	const float one_over_attack_frames = Q_CONVERT_QTOF(p->one_over_attack_frames, 30);
-
 	/* Calculate desired gain */
-	float desired_gain = Q_CONVERT_QTOF(state->detector_average, 30);
 
 	/* Pre-warp so we get desired_gain after sin() warp below. */
-	float scaled_desired_gain = warp_asinf(desired_gain);
+	int32_t scaled_desired_gain = drc_asin_fixed(state->detector_average); /* Q2.30 */
 
 	/* Deal with envelopes */
 
@@ -152,117 +156,111 @@ static void drc_update_envelope(struct drc_state *state, const struct sof_drc_pa
 	 * the desired level.  The exact rate depends on if we're attacking or
 	 * releasing and by how much.
 	 */
-	float envelope_rate;
+	int32_t envelope_rate;
 
-	int is_releasing = scaled_desired_gain > Q_CONVERT_QTOF(state->compressor_gain, 30);
+	int is_releasing = scaled_desired_gain > state->compressor_gain;
 
 	/* compression_diff_db is the difference between current compression
 	 * level and the desired level. */
-	float compression_diff_db = linear_to_decibels(
-		Q_CONVERT_QTOF(state->compressor_gain, 30) / scaled_desired_gain);
+	int is_bad_db = (state->compressor_gain == 0 || scaled_desired_gain == 0);
+	int32_t compression_diff_db =
+		drc_lin2db_fixed(Q_SHIFT_RND(state->compressor_gain, 30, 26)) -
+			drc_lin2db_fixed(Q_SHIFT_RND(scaled_desired_gain, 30, 26)); /* Q11.21 */
 
-	float x, x2, x3, x4;
-	float release_frames;
-	float db_per_frame;
-	float eff_atten_diff_db;
+	int32_t x, x2, x3, x4;
+	int32_t release_frames;
+	int32_t db_per_frame;
+	int32_t eff_atten_diff_db;
 
 	if (is_releasing) {
 		/* Release mode - compression_diff_db should be negative dB */
 		state->max_attack_compression_diff_db = INT32_MIN;
 
 		/* Fix gremlins. */
-		if (isbadf(compression_diff_db))
-			compression_diff_db = -1;
+		if (is_bad_db)
+			compression_diff_db = -ONE_Q21;
 
 		/* Adaptive release - higher compression (lower
 		 * compression_diff_db) releases faster. Contain within range:
 		 * -12 -> 0 then scale to go from 0 -> 3
 		 */
-		x = compression_diff_db;
-		x = MAX(-12.0f, x);
-		x = MIN(0.0f, x);
-		x = 0.25f * (x + 12);
+		x = compression_diff_db; /* Q11.21 */
+		x = MAX(-TWELVE_Q21, x);
+		x = MIN(0, x);
+		/* x = 0.25f * (x + 12) */
+		x = Q_SHIFT_RND(x + TWELVE_Q21, 21, 19);
 
 		/* Compute adaptive release curve using 4th order polynomial.
 		 * Normal values for the polynomial coefficients would create a
 		 * monotonically increasing function.
 		 */
-		x2 = x * x;
-		x3 = x2 * x;
-		x4 = x2 * x2;
-		release_frames = kA + kB * x + kC * x2 + kD * x3 + kE * x4;
+		x2 = Q_MULTSR_32X32((int64_t)x, x, 21, 21, 21); /* Q11.21 */
+		x3 = Q_MULTSR_32X32((int64_t)x2, x, 21, 21, 21); /* Q11.21 */
+		x4 = Q_MULTSR_32X32((int64_t)x2, x2, 21, 21, 21); /* Q11.21 */
 
-		db_per_frame = kSpacingDb / release_frames;
-		envelope_rate = decibels_to_linear(db_per_frame);
+		release_frames = Q_MULTSR_32X32((int64_t)p->kE, x4, 12, 21, 12) +
+			Q_MULTSR_32X32((int64_t)p->kD, x3, 12, 21, 12) +
+				Q_MULTSR_32X32((int64_t)p->kC, x2, 12, 21, 12) +
+					Q_MULTSR_32X32((int64_t)p->kB, x, 12, 21, 12) + p->kA;
+		/* db_per_frame = kSpacingDb / release_frames */
+		db_per_frame = drc_inv_fixed(release_frames, 12, 30); /* Q2.30 */
+		db_per_frame = Q_MULTSR_32X32((int64_t)db_per_frame, p->kSpacingDb, 30, 0, 24);
+		envelope_rate = db2lin_fixed(db_per_frame); /* Q12.20 */
 	} else {
 		/* Attack mode - compression_diff_db should be positive dB */
 
 		/* Fix gremlins. */
-		if (isbadf(compression_diff_db))
-			compression_diff_db = 1;
+		if (is_bad_db)
+			compression_diff_db = ONE_Q21;
 
 		/* As long as we're still in attack mode, use a rate based off
 		 * the largest compression_diff_db we've encountered so far.
 		 */
 		state->max_attack_compression_diff_db =
 			MAX(state->max_attack_compression_diff_db,
-			    Q_CONVERT_FLOAT(compression_diff_db, 24));
+			    Q_SHIFT_LEFT(compression_diff_db, 21, 24));
 
 		eff_atten_diff_db =
-			MAX(0.5f, Q_CONVERT_QTOF(state->max_attack_compression_diff_db, 24));
+			MAX(HALF_Q24, state->max_attack_compression_diff_db); /* Q8.24 */
 
-		x = 0.25f / eff_atten_diff_db;
-		envelope_rate = 1 - warp_powf(x, one_over_attack_frames);
+		/* x = 0.25f / eff_atten_diff_db;
+		 * => x = 1.0f / (eff_atten_diff_db << 2);
+		 */
+		x = drc_inv_fixed(eff_atten_diff_db, 22 /* Q8.24 << 2 */, 26); /* Q6.26 */
+		envelope_rate = ONE_Q20 - drc_pow_fixed(x, p->one_over_attack_frames); /* Q12.20 */
 	}
 
-	state->envelope_rate = Q_CONVERT_FLOAT(envelope_rate, 30);
-	state->scaled_desired_gain = Q_CONVERT_FLOAT(scaled_desired_gain, 30);
-}
-
-/* Convert an audio sample from floating point format to s16 format and saturate to [-1.0, 1.0].*/
-static int16_t drc_float2s16(float f)
-{
-	int i;
-
-	f *= 32768;
-	i = (int)((f > 0) ? (f + 0.5f) : (f - 0.5f));
-	if (i < -32768)
-		i = -32768;
-	else if (i > 32767)
-		i = 32767;
-	return (int16_t)i;
+	state->envelope_rate = Q_SHIFT_LEFT(envelope_rate, 20, 30);
+	state->scaled_desired_gain = scaled_desired_gain;
 }
 
 /* Calculate compress_gain from the envelope and apply total_gain to compress
  * the next output division. */
 static void drc_compress_output(struct drc_state *state, const struct sof_drc_params *p, int nch)
 {
-	const float master_linear_gain = Q_CONVERT_QTOF(p->master_linear_gain, 24);
-	const float envelope_rate = Q_CONVERT_QTOF(state->envelope_rate, 30);
-	const float scaled_desired_gain = Q_CONVERT_QTOF(state->scaled_desired_gain, 30);
-	const float compressor_gain = Q_CONVERT_QTOF(state->compressor_gain, 30);
 	const int div_start = state->pre_delay_read_index;
-	int count = DRC_DIVISION_FRAMES / 4;
+	int count = DRC_DIVISION_FRAMES >> 2;
 
-	float c, base, r, r4;
-	float x[4];
-	float post_warp_compressor_gain;
-	float total_gain;
+	int32_t c, base, r, r2, r4; /* Q2.30 */
+	int32_t x[4]; /* Q2.30 */
+	int32_t post_warp_compressor_gain;
+	int32_t total_gain;
 
 	int i, j, ch, inc;
 	int16_t *sample_p; /* only support s16 case for now */
-	float sample;
+	int16_t sample;
 
 	/* Exponential approach to desired gain. */
-	if (envelope_rate < 1) {
+	if (state->envelope_rate < ONE_Q30) {
 		/* Attack - reduce gain to desired. */
-		c = compressor_gain - scaled_desired_gain;
-		base = scaled_desired_gain;
-		r = 1 - envelope_rate;
-		x[0] = c * r;
+		c = state->compressor_gain - state->scaled_desired_gain;
+		base = state->scaled_desired_gain;
+		r = ONE_Q30 - state->envelope_rate;
+		x[0] = Q_MULTSR_32X32((int64_t)c,  r, 30, 30, 30);
 		for (j = 1; j < 4; j++)
-			x[j] = x[j - 1] * r;
-		r4 = r * r * r * r;
+			x[j] = Q_MULTSR_32X32((int64_t)x[j - 1], r, 30, 30, 30);
+		r2 = Q_MULTSR_32X32((int64_t)r, r, 30, 30, 30);
+		r4 = Q_MULTSR_32X32((int64_t)r2, r2, 30, 30, 30);
 
 		i = 0;
 		inc = 0;
@@ -271,16 +269,21 @@ static void drc_compress_output(struct drc_state *state, const struct sof_drc_pa
 				/* Warp pre-compression gain to smooth out sharp
 				 * exponential transition points.
 				 */
-				post_warp_compressor_gain = warp_sinf(x[j] + base);
+				post_warp_compressor_gain = drc_sin_fixed(x[j] + base); /* Q1.31 */
 
 				/* Calculate total gain using master gain. */
-				total_gain = master_linear_gain * post_warp_compressor_gain;
+				total_gain = Q_MULTSR_32X32((int64_t)p->master_linear_gain,
+							    post_warp_compressor_gain,
+							    24, 31, 24); /* Q8.24 */
 
 				/* Apply final gain. */
 				for (ch = 0; ch < nch; ch++) {
-					sample_p = (int16_t *)state->pre_delay_buffers[ch] + div_start + inc;
-					sample = Q_CONVERT_QTOF((int32_t)*sample_p, 15);
-					*sample_p = drc_float2s16(sample * total_gain);
+					sample_p = (int16_t *)state->pre_delay_buffers[ch] +
+						div_start + inc;
+					sample = *sample_p;
+					*sample_p = sat_int16(Q_MULTSR_32X32((int64_t)sample,
+									     total_gain,
+									     15, 24, 15));
 				}
 				inc++;
 			}
@@ -289,18 +292,19 @@ static void drc_compress_output(struct drc_state *state, const struct sof_drc_pa
 				break;
 
 			for (j = 0; j < 4; j++)
-				x[j] = x[j] * r4;
+				x[j] = Q_MULTSR_32X32((int64_t)x[j], r4, 30, 30, 30);
 		}
 
-		state->compressor_gain = Q_CONVERT_FLOAT(x[3] + base, 30);
+		state->compressor_gain = x[3] + base;
 	} else {
 		/* Release - exponentially increase gain to 1.0 */
-		c = compressor_gain;
-		r = envelope_rate;
-		x[0] = c * r;
+		c = state->compressor_gain;
+		r = state->envelope_rate;
+		x[0] = Q_MULTSR_32X32((int64_t)c,  r, 30, 30, 30);
 		for (j = 1; j < 4; j++)
-			x[j] = x[j - 1] * r;
-		r4 = r * r * r * r;
+			x[j] = Q_MULTSR_32X32((int64_t)x[j - 1], r, 30, 30, 30);
+		r2 = Q_MULTSR_32X32((int64_t)r, r, 30, 30, 30);
+		r4 = Q_MULTSR_32X32((int64_t)r2, r2, 30, 30, 30);
 
 		i = 0;
 		inc = 0;
@@ -309,16 +313,21 @@ static void drc_compress_output(struct drc_state *state, const struct sof_drc_pa
 				/* Warp pre-compression gain to smooth out sharp
 				 * exponential transition points.
 				 */
-				post_warp_compressor_gain = warp_sinf(x[j]);
+				post_warp_compressor_gain = drc_sin_fixed(x[j]); /* Q1.31 */
 
 				/* Calculate total gain using master gain. */
-				total_gain = master_linear_gain * post_warp_compressor_gain;
+				total_gain = Q_MULTSR_32X32((int64_t)p->master_linear_gain,
+							    post_warp_compressor_gain,
+							    24, 31, 24); /* Q8.24 */
 
 				/* Apply final gain. */
 				for (ch = 0; ch < nch; ch++) {
-					sample_p = (int16_t *)state->pre_delay_buffers[ch] + div_start + inc;
-					sample = Q_CONVERT_QTOF((int32_t)*sample_p, 15);
-					*sample_p = drc_float2s16(sample * total_gain);
+					sample_p = (int16_t *)state->pre_delay_buffers[ch] +
+						div_start + inc;
+					sample = *sample_p;
+					*sample_p = sat_int16(Q_MULTSR_32X32((int64_t)sample,
+									     total_gain,
+									     15, 24, 15));
 				}
 				inc++;
 			}
@@ -327,10 +336,10 @@ static void drc_compress_output(struct drc_state *state, const struct sof_drc_pa
 				break;
 
 			for (j = 0; j < 4; j++)
-				x[j] = MIN(1.0f, x[j] * r4);
+				x[j] = MIN(ONE_Q30, Q_MULTSR_32X32((int64_t)x[j], r4, 30, 30, 30));
 		}
 
-		state->compressor_gain = Q_CONVERT_FLOAT(x[3], 30);
+		state->compressor_gain = x[3];
 	}
 }
 
@@ -340,7 +349,9 @@ static void drc_compress_output(struct drc_state *state, const struct sof_drc_pa
  * detector_average, then prepare the next output division by applying the
  * envelope to compress the samples.
  */
-static void drc_process_one_division(struct drc_state *state, const struct sof_drc_params *p, int nch)
+static void drc_process_one_division(struct drc_state *state,
+				     const struct sof_drc_params *p,
+				     int nch)
 {
 	drc_update_detector_average(state, p, nch);
 	drc_update_envelope(state, p);
@@ -455,8 +466,10 @@ static void drc_s16_default(const struct comp_dev *dev,
 				idx += nch;
 			}
 		}
-		state->pre_delay_write_index = (pd_write_index + fragment) & DRC_MAX_PRE_DELAY_FRAMES_MASK;
-		state->pre_delay_read_index = (pd_read_index + fragment) & DRC_MAX_PRE_DELAY_FRAMES_MASK;
+		state->pre_delay_write_index =
+			(pd_write_index + fragment) & DRC_MAX_PRE_DELAY_FRAMES_MASK;
+		state->pre_delay_read_index =
+			(pd_read_index + fragment) & DRC_MAX_PRE_DELAY_FRAMES_MASK;
 
 		i += fragment;
 		offset = (offset + fragment) & DRC_DIVISION_FRAMES_MASK;
