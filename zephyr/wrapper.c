@@ -28,10 +28,6 @@
 #error Define CONFIG_DYNAMIC_INTERRUPTS
 #endif
 
-#if !defined(CONFIG_SYS_HEAP_ALIGNED_ALLOC)
-#error Define CONFIG_SYS_HEAP_ALIGNED_ALLOC
-#endif
-
 /*
  * Memory - Create Zephyr HEAP for SOF.
  *
