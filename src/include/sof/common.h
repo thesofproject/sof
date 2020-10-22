@@ -24,11 +24,9 @@
 #include <stddef.h>
 
 /* use same syntax as Linux for simplicity */
-/* Zephyr defines this - remove local copy once Zephyr integration complete */
-#ifdef ARRAY_SIZE
-#undef ARRAY_SIZE
-#endif
+#ifndef __ZEPHYR__ /* Already present and compatible via Zephyr headers */
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
+#endif
 #define container_of(ptr, type, member) \
 	({const typeof(((type *)0)->member)*__memberptr = (ptr); \
 	(type *)((char *)__memberptr - offsetof(type, member)); })
@@ -62,14 +60,13 @@
  * error for other types, except positive integers, but it shouldn't be
  * used with them.
  */
-#ifdef IS_ENABLED
-#undef IS_ENABLED
-#endif
+#ifndef __ZEPHYR__ /* Already present and compatible via Zephyr headers */
 #define IS_ENABLED(config) IS_ENABLED_STEP_1(config)
 #define IS_ENABLED_DUMMY_1 0,
 #define IS_ENABLED_STEP_1(config) IS_ENABLED_STEP_2(IS_ENABLED_DUMMY_ ## config)
 #define IS_ENABLED_STEP_2(values) IS_ENABLED_STEP_3(values 1, 0)
 #define IS_ENABLED_STEP_3(ignore, value, ...) (!!(value))
+#endif
 
 #if defined __XCC__
 /* XCC does not currently check alignment for packed data so no need for any
