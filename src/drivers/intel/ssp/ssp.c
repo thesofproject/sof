@@ -67,24 +67,32 @@ static void ssp_empty_tx_fifo(struct dai *dai)
 /* empty SSP receive FIFO */
 static void ssp_empty_rx_fifo(struct dai *dai)
 {
-	struct timer *timer = timer_get();
-	uint64_t deadline = platform_timer_get(timer) +
-		clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1) *
-		SSP_RX_FLUSH_TIMEOUT / 1000;
+	struct ssp_pdata *ssp = dai_get_drvdata(dai);
+	uint64_t sample_ticks = clock_ticks_per_sample(PLATFORM_DEFAULT_CLOCK,
+						       ssp->params.fsync_rate);
+	uint32_t retry = SSP_RX_FLUSH_RETRY_MAX;
+	uint32_t entries;
+	uint32_t i;
 
 	/*
 	 * To make sure all the RX FIFO entries are read out for the flushing,
-	 * we need to wait until the SSSR_RNE is cleared after the SSP link is
-	 * stopped (the SSSR_BSY is cleared), otherwise, there might be
-	 * obsoleted entries remained in the FIFO, which will impact the next
-	 * run with the SSP RX and lead to samples mismatched issue.
+	 * we need to wait a minimal SSP port delay after entries are all read,
+	 * and then re-check to see if there is any subsequent entries written
+	 * to the FIFO. This will help to make sure there is no sample mismatched
+	 * issue for the next run with the SSP RX.
 	 */
-	do {
-		while (ssp_read(dai, SSSR) & SSSR_RNE)
-			/* read to empty the fifo */
+	while ((ssp_read(dai, SSSR) & SSSR_RNE) && retry--) {
+		entries = SSCR3_RFL_VAL(ssp_read(dai, SSCR3));
+		dai_dbg(dai, "ssp_empty_rx_fifo(), before flushing, entries %d", entries);
+		for (i = 0; i < entries + 1; i++)
+			/* read to try empty fifo */
 			ssp_read(dai, SSDR);
-	} while ((ssp_read(dai, SSSR) & SSSR_BSY) &&
-		 platform_timer_get(timer) < deadline);
+
+		/* wait to get valid fifo status and re-check */
+		wait_delay(sample_ticks);
+		entries = SSCR3_RFL_VAL(ssp_read(dai, SSCR3));
+		dai_dbg(dai, "ssp_empty_rx_fifo(), after flushing, entries %d", entries);
+	}
 
 	/* clear interrupt */
 	ssp_update_bits(dai, SSSR, SSSR_ROR, SSSR_ROR);
