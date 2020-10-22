@@ -220,8 +220,8 @@ extern const struct dai_driver ssp_driver;
 /* For 8000 Hz rate one sample is transmitted within 125us */
 #define SSP_MAX_SEND_TIME_PER_SAMPLE 125
 
-/* SSP flush timeout in microseconds */
-#define SSP_RX_FLUSH_TIMEOUT	200
+/* SSP flush retry counts maximum */
+#define SSP_RX_FLUSH_RETRY_MAX	16
 
 #define ssp_irq(ssp) \
 	ssp->plat_data.irq
