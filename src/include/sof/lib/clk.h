@@ -57,6 +57,8 @@ void clock_low_power_mode(int clock, bool enable);
 
 uint64_t clock_ms_to_ticks(int clock, uint64_t ms);
 
+uint64_t clock_ticks_per_sample(int clock, uint32_t sample_rate);
+
 void platform_timer_set_delta(struct timer *timer, uint64_t ns);
 
 static inline struct clock_info *clocks_get(void)

@@ -115,6 +115,19 @@ uint64_t clock_ms_to_ticks(int clock, uint64_t ms)
 	return ticks;
 }
 
+uint64_t clock_ticks_per_sample(int clock, uint32_t sample_rate)
+{
+	struct clock_info *clk_info = clocks_get() + clock;
+	uint32_t ticks_per_msec;
+	uint64_t ticks_per_sample;
+
+	platform_shared_get(clk_info, sizeof(*clk_info));
+	ticks_per_msec = clk_info->freqs[clk_info->current_freq_idx].ticks_per_msec;
+	ticks_per_sample = sample_rate ? ticks_per_msec * 1000 / sample_rate : 0;
+
+	return ticks_per_sample;
+}
+
 void platform_timer_set_delta(struct timer *timer, uint64_t ns)
 {
 	struct clock_info *clk_info = clocks_get() + PLATFORM_DEFAULT_CLOCK;
