@@ -95,6 +95,11 @@ static void sdma_enable_channel(struct dma *dma, int channel)
 	dma_reg_write(dma, SDMA_HSTART, BIT(channel));
 }
 
+static void sdma_disable_channel(struct dma *dma, int channel)
+{
+	dma_reg_write(dma, SDMA_STOP_STAT, BIT(channel));
+}
+
 static int sdma_run_c0(struct dma *dma, uint8_t cmd, uint32_t buf_addr,
 		       uint16_t sdma_addr, uint16_t count)
 {
@@ -506,8 +511,6 @@ static int sdma_start(struct dma_chan_data *channel)
 
 static int sdma_stop(struct dma_chan_data *channel)
 {
-	struct sdma_chan *pdata = dma_chan_get_data(channel);
-
 	/* do not try to stop multiple times */
 	if (channel->status != COMP_STATE_ACTIVE &&
 	    channel->status != COMP_STATE_PAUSED)
@@ -516,19 +519,8 @@ static int sdma_stop(struct dma_chan_data *channel)
 	channel->status = COMP_STATE_READY;
 
 	tr_dbg(&sdma_tr, "sdma_stop(%d)", channel->index);
-	if (pdata->hw_event != -1) {
-		/* For event driven channels, disable them from running by
-		 * setting HOSTOVR to 0. Manually controlled channels need not
-		 * be stopped as they will finish their transfer and stop on
-		 * their own.
-		 */
-		dma_reg_update_bits(channel->dma, SDMA_HOSTOVR,
-				    BIT(channel->index), 0);
 
-		/* Reset channel, making it ready to start over */
-		pdata->ccb->current_bd_paddr = pdata->ccb->base_bd_paddr;
-		return sdma_upload_context(channel);
-	}
+	sdma_disable_channel(channel->dma, channel->index);
 
 	return 0;
 }
