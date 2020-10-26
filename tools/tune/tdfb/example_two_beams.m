@@ -17,14 +17,6 @@ function example_two_beams()
 %
 % Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 
-%% Paths
-p.tplg_path = '../../topology/m4/tdfb';
-p.sofctl_path = '../../ctl/tdfb';
-p.data_path = './data';
-
-addpath('../../test/audio/test_utils');
-mkdir_check(p.tplg_path);
-mkdir_check(p.sofctl_path);
 for fs = [16e3 48e3]
 	for az = [10 25 90]
 		%% Close all plots to avoid issues with large number of windows
@@ -36,7 +28,7 @@ for fs = [16e3 48e3]
 		d = 50e-3;  % 50 mm spacing
 		a1 = az;   % Azimuth +az deg
 		a2 = -az;  % Azimuth -az deg
-		line2_two_beams(fs, d, a1, a2, tplg_fn, sofctl_fn, p);
+		line2_two_beams(fs, d, a1, a2, tplg_fn, sofctl_fn);
 
 		%% 4 mic 28 mm spaced array
 		tplg_fn = sprintf('coef_line4_28mm_pm%ddeg_%dkhz.m4', az, fs/1e3);
@@ -44,13 +36,13 @@ for fs = [16e3 48e3]
 		d = 28e-3;  % 28 mm spacing
 		a1 = az;   % Azimuth +az deg
 		a2 = -az;  % Azimuth -az deg
-		line4_two_beams(fs, d, a1, a2, tplg_fn, sofctl_fn, p);
+		line4_two_beams(fs, d, a1, a2, tplg_fn, sofctl_fn);
 	end
 end
 
 end
 
-function line2_two_beams(fs, d, a1, a2, tplg_fn, sofctl_fn, p);
+function line2_two_beams(fs, d, a1, a2, tplg_fn, sofctl_fn);
 
 % Get defaults
 bf1 = bf_defaults();
@@ -70,7 +62,7 @@ bf1.input_channel_select = [0 1];  % Input two channels
 bf1.output_channel_mix   = [1 1];  % Mix both filters to channel 2^0
 bf1.output_stream_mix    = [0 0];  % Mix both filters to stream 0
 bf1.fn = 10;                       % Figs 10....
-bf1 = bf_filenames_helper(bf1, p.tplg_path, p.sofctl_path, p.data_path);
+bf1 = bf_filenames_helper(bf1);
 bf1 = bf_design(bf1);
 
 % Design beamformer 2 (right)
@@ -79,13 +71,13 @@ bf2.input_channel_select = [0 1];  % Input two channels
 bf2.output_channel_mix   = [2 2];  % Mix both filters to channel 2^1
 bf2.output_stream_mix    = [0 0];  % Mix both filters to stream 0
 bf2.fn = 20;                       % Figs 20....
-bf2 = bf_filenames_helper(bf2, p.tplg_path, p.sofctl_path, p.data_path);
+bf2 = bf_filenames_helper(bf2);
 bf2 = bf_design(bf2);
 
 % Merge two beamformers into single description, set file names
 bfm = bf_merge(bf1, bf2);
-bfm.sofctl_fn = fullfile(p.sofctl_path, sofctl_fn);
-bfm.tplg_fn = fullfile(p.tplg_path, tplg_fn);
+bfm.sofctl_fn = fullfile(bfm.sofctl_path, sofctl_fn);
+bfm.tplg_fn = fullfile(bfm.tplg_path, tplg_fn);
 
 % Export files for topology and sof-ctl
 bf_export(bfm);
@@ -112,7 +104,7 @@ bf1.input_channel_select = [0 1 2 3];  % Input four channels
 bf1.output_channel_mix   = [5 5 5 5];  % Mix filters to channel 2^0 and 2^2
 bf1.output_stream_mix    = [0 0 0 0];  % Mix filters to stream 0
 bf1.fn = 10;                           % Figs 10....
-bf1 = bf_filenames_helper(bf1, p.tplg_path, p.sofctl_path, p.data_path);
+bf1 = bf_filenames_helper(bf1);
 bf1 = bf_design(bf1);
 
 % Design beamformer 2 (right)
@@ -121,13 +113,13 @@ bf2.input_channel_select = [ 0  1  2  3];  % Input two channels
 bf2.output_channel_mix   = [10 10 10 10];  % Mix filters to channel 2^1 and 2^3
 bf2.output_stream_mix    = [ 0  0  0  0];  % Mix filters to stream 0
 bf2.fn = 20;                               % Figs 20....
-bf2 = bf_filenames_helper(bf2, p.tplg_path, p.sofctl_path, p.data_path);
+bf2 = bf_filenames_helper(bf2);
 bf2 = bf_design(bf2);
 
 % Merge two beamformers into single description, set file names
 bfm = bf_merge(bf1, bf2);
-bfm.sofctl_fn = fullfile(p.sofctl_path, sofctl_fn);
-bfm.tplg_fn = fullfile(p.tplg_path, tplg_fn);
+bfm.sofctl_fn = fullfile(bfm.sofctl_path, sofctl_fn);
+bfm.tplg_fn = fullfile(bfm.tplg_path, tplg_fn);
 
 % Export files for topology and sof-ctl
 bf_export(bfm);
