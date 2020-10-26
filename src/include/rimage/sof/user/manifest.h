@@ -73,6 +73,7 @@ struct sof_man_segment_desc {
 #define SOF_MAN_MOD_ID_LEN		4
 #define SOF_MAN_MOD_NAME_LEN		8
 #define SOF_MAN_MOD_SHA256_LEN		32
+#define SOF_MAN_MOD_SHA384_LEN		48
 #define SOF_MAN_MOD_ID			{'$', 'A', 'M', 'E'}
 
 /*
