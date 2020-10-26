@@ -441,7 +441,7 @@ static struct dma_chan_data *sdma_channel_get(struct dma *dma,
 		dma_chan_set_data(channel, cdata);
 
 		/* Allow events, allow manual */
-		sdma_set_overrides(channel, true, false);
+		sdma_set_overrides(channel, false, false);
 		return channel;
 	}
 	tr_err(&sdma_tr, "sdma no channel free");
