@@ -467,21 +467,12 @@ static void sdma_set_event(struct dma_chan_data *channel, int eventnum)
 	if (eventnum < -1 || eventnum > SDMA_HWEVENTS_COUNT)
 		return; /* No change if request is invalid */
 	sdma_clear_event(channel);
-	if (eventnum == -1) {
-		sdma_set_overrides(channel, true, false);
-		return;
-	}
 
 	tr_dbg(&sdma_tr, "sdma_set_event(%d, %d)", channel->index, eventnum);
 
 	dma_reg_update_bits(channel->dma, SDMA_CHNENBL(eventnum),
 			    BIT(channel->index), BIT(channel->index));
 	pdata->hw_event = eventnum;
-
-	/* Set correct overrides for event-driven channels:
-	 * EVTOVR=0 HOSTOVR=1
-	 */
-	sdma_set_overrides(channel, false, true);
 }
 
 static void sdma_channel_put(struct dma_chan_data *channel)
@@ -829,6 +820,9 @@ static int sdma_set_config(struct dma_chan_data *channel,
 	ret = sdma_prep_desc(channel, config);
 	if (ret < 0)
 		return ret;
+
+	/* allow events + allow manual start */
+	sdma_set_overrides(channel, false, false);
 
 	/* Upload context */
 	ret = sdma_upload_context(channel);
