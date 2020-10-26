@@ -10,7 +10,7 @@ function blob8 = bf_blob_pack(bf)
 
 % SPDX-License-Identifier: BSD-3-Clause
 %
-% Copyright(c) 2016 Intel Corporation. All rights reserved.
+% Copyright(c) 2020 Intel Corporation. All rights reserved.
 %
 % Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 
