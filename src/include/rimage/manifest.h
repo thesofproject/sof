@@ -41,8 +41,13 @@
 	sizeof(struct CsePartitionDirHeader) + \
 	MAN_CSE_PARTS * sizeof(struct CsePartitionDirEntry))
 
+#define MAN_CSS_HDR_OFFSET_2_5 \
+	(MAN_CSE_HDR_OFFSET + \
+	sizeof(struct CsePartitionDirHeader_v2_5) + \
+	MAN_CSE_PARTS * sizeof(struct CsePartitionDirEntry))
+
 #define MAN_FW_DESC_OFFSET_V2_5 \
-	(MAN_META_EXT_OFFSET_V1_8 + \
+	(MAN_META_EXT_OFFSET_V2_5 + \
 	sizeof(struct sof_man_adsp_meta_file_ext_v2_5) + \
 	MAN_EXT_PADDING)
 
@@ -53,15 +58,29 @@
 	(MAN_CSS_HDR_OFFSET + \
 	sizeof(struct css_header_v1_8))
 
+#define MAN_SIG_PKG_OFFSET_V2_5 \
+	(MAN_CSS_HDR_OFFSET_2_5 + \
+	sizeof(struct css_header_v2_5))
+
 #define MAN_PART_INFO_OFFSET_V1_8 \
 	(MAN_SIG_PKG_OFFSET_V1_8 + \
 	sizeof(struct signed_pkg_info_ext))
+
+#define MAN_PART_INFO_OFFSET_V2_5 \
+	(MAN_SIG_PKG_OFFSET_V2_5 + \
+	sizeof(struct signed_pkg_info_ext_v2_5))
 
 #define MAN_META_EXT_OFFSET_V1_8 \
 	(MAN_SIG_PKG_OFFSET_V1_8 + \
 	sizeof(struct signed_pkg_info_ext) + \
 	sizeof(struct partition_info_ext) + \
 	MAN_CSE_PADDING_SIZE)
+
+#define MAN_META_EXT_OFFSET_V2_5 \
+	(MAN_SIG_PKG_OFFSET_V2_5 + \
+	sizeof(struct signed_pkg_info_ext_v2_5) + \
+	sizeof(struct info_ext_0x16) + \
+	0)
 
 #define MAN_FW_DESC_OFFSET_V1_8 \
 	(MAN_META_EXT_OFFSET_V1_8 + \
@@ -91,12 +110,12 @@
  */
 struct fw_image_manifest_v2_5 {
 	/* MEU tool needs these sections to be 0s */
-	struct CsePartitionDirHeader cse_partition_dir_header;
+	struct CsePartitionDirHeader_v2_5 cse_partition_dir_header;
 	struct CsePartitionDirEntry cse_partition_dir_entry[MAN_CSE_PARTS];
-	struct css_header_v1_8 css;
-	struct signed_pkg_info_ext signed_pkg;
-	struct partition_info_ext partition_info;
-	uint8_t cse_padding[MAN_CSE_PADDING_SIZE];
+	struct css_header_v2_5 css;
+	struct signed_pkg_info_ext_v2_5 signed_pkg;
+	struct info_ext_0x16 info_0x16;
+
 	struct sof_man_adsp_meta_file_ext_v2_5 adsp_file_ext;
 
 	/* reserved / pading at end of ext data - all 0s*/
