@@ -448,40 +448,37 @@ static struct dma_chan_data *sdma_channel_get(struct dma *dma,
 	return NULL;
 }
 
-static void sdma_clear_event(struct dma_chan_data *channel)
+static void sdma_enable_event(struct dma_chan_data *channel, int eventnum)
 {
-	struct sdma_chan *pdata = dma_chan_get_data(channel);
+	tr_dbg(&sdma_tr, "sdma_enable_event(%d, %d)", channel->index, eventnum);
 
-	tr_dbg(&sdma_tr, "sdma_clear_event(%d); old event is %d",
-	       channel->index, pdata->hw_event);
-	if (pdata->hw_event != -1)
-		dma_reg_update_bits(channel->dma, SDMA_CHNENBL(pdata->hw_event),
-				    BIT(channel->index), 0);
-	pdata->hw_event = -1;
-}
-
-static void sdma_set_event(struct dma_chan_data *channel, int eventnum)
-{
-	struct sdma_chan *pdata = dma_chan_get_data(channel);
-
-	if (eventnum < -1 || eventnum > SDMA_HWEVENTS_COUNT)
+	if (eventnum < 0 || eventnum > SDMA_HWEVENTS_COUNT)
 		return; /* No change if request is invalid */
-	sdma_clear_event(channel);
-
-	tr_dbg(&sdma_tr, "sdma_set_event(%d, %d)", channel->index, eventnum);
 
 	dma_reg_update_bits(channel->dma, SDMA_CHNENBL(eventnum),
 			    BIT(channel->index), BIT(channel->index));
-	pdata->hw_event = eventnum;
+}
+
+static void sdma_disable_event(struct dma_chan_data *channel, int eventnum)
+{
+	tr_dbg(&sdma_tr, "sdma_disable_event(%d, %d)", channel->index, eventnum);
+
+	if (eventnum < 0 || eventnum > SDMA_HWEVENTS_COUNT)
+		return; /* No change if request is invalid */
+
+	dma_reg_update_bits(channel->dma, SDMA_CHNENBL(eventnum),
+			    BIT(channel->index), 0);
 }
 
 static void sdma_channel_put(struct dma_chan_data *channel)
 {
+	struct sdma_chan *pdata = dma_chan_get_data(channel);
 	if (channel->status == COMP_STATE_INIT)
 		return; /* Channel was already free */
 	tr_dbg(&sdma_tr, "sdma_channel_put(%d)", channel->index);
+
 	dma_interrupt(channel, DMA_IRQ_CLEAR);
-	sdma_clear_event(channel);
+	sdma_disable_event(channel, pdata->hw_event);
 	sdma_set_overrides(channel, false, false);
 	channel->status = COMP_STATE_INIT;
 }
@@ -833,7 +830,7 @@ static int sdma_set_config(struct dma_chan_data *channel,
 
 	tr_dbg(&sdma_tr, "SDMA context uploaded");
 	/* Context uploaded, we can set up events now */
-	sdma_set_event(channel, pdata->hw_event);
+	sdma_enable_event(channel, pdata->hw_event);
 
 	/* Finally set channel priority */
 	dma_reg_write(channel->dma, SDMA_CHNPRI(channel->index), SDMA_DEFPRI);
