@@ -437,6 +437,7 @@ static struct dma_chan_data *sdma_channel_get(struct dma *dma,
 		cdata->hw_event = -1;
 
 		channel->status = COMP_STATE_READY;
+		channel->index = i;
 		dma_chan_set_data(channel, cdata);
 
 		/* Allow events, allow manual */
