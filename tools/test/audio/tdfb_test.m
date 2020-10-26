@@ -16,29 +16,27 @@ function tdfb_test()
 cfg.delete_files = 1;
 cfg.do_plots = 1;
 cfg.tunepath = '../../tune/tdfb/data';
+array = 'line2_50mm_az0el0deg_48khz';
 
 %% Prepare
 addpath('std_utils');
 addpath('test_utils');
 addpath('../../tune/tdfb');
 
-%% Beam pattern test 16 kHz
-% Get configuration, this needs to match topology
-config_fn = 'tdfb_coef_line2_50mm_az0el0deg_48khz.mat';
-simcap_fn = 'simcap_sinerot_line2_50mm_az0el0deg_48khz.raw';
+%% Beam pattern test
+% Get configuration, this needs to match array geometry and rate
+% beam direction can be any, use (0, 0) deg.
+config_fn = sprintf('tdfb_coef_%s.mat', array);
+simcap_fn = sprintf('simcap_sinerot_%s.raw', array);
 test_beampattern(cfg, config_fn, simcap_fn);
 
 %% Diffuse noise test
-
-config_fn = 'tdfb_coef_line2_50mm_az0el0deg_48khz.mat';
-simcap_fn = 'simcap_diffuse_line2_50mm_az0el0deg_48khz.raw';
+simcap_fn = sprintf('simcap_diffuse_%s.raw', array);
 desc = 'Diffuse field noise';
 [dfin_dbfs, dfout_dbfs, dfd_db] = test_noise_suppression(cfg, config_fn, simcap_fn, desc);
 
 %% Random noise
-
-config_fn = 'tdfb_coef_line2_50mm_az0el0deg_48khz.mat';
-simcap_fn = 'simcap_random_line2_50mm_az0el0deg_48khz.raw';
+simcap_fn = sprintf('simcap_random_%s.raw', array);
 desc = 'Random noise';
 [rnin_dbfs, rnout_dbfs, drn_db] = test_noise_suppression(cfg, config_fn, simcap_fn, desc);
 
