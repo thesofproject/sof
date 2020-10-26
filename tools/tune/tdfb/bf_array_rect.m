@@ -30,6 +30,9 @@ for y = 1:bf.mic_nxy(2)
 	end
 end
 
+bf.mic_x = bf.mic_x - mean(bf.mic_x);
+bf.mic_y = bf.mic_y - mean(bf.mic_y);
+bf.mic_z = bf.mic_z - mean(bf.mic_z);
 bf.mic_d = max(bf.mic_dxy);
 
 end

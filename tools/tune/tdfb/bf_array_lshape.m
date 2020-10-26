@@ -30,7 +30,7 @@ for x = 0:(bf.mic_nxy(1) -1)
 end
 
 for y = 1:(bf.mic_nxy(2) -1)
-	bf.mic_x(n) = -y * bf.mic_dxy(2);
+	bf.mic_x(n) = y * bf.mic_dxy(2);
 	bf.mic_y(n) = 0;
 	n = n + 1;
 end
