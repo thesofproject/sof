@@ -173,6 +173,10 @@ int pkcs_v1_5_sign_man_v1_8(struct image *image,
 			    struct fw_image_manifest_v1_8 *man,
 			    void *ptr1, unsigned int size1, void *ptr2,
 			    unsigned int size2);
+int pkcs_v1_5_sign_man_v2_5(struct image *image,
+			    struct fw_image_manifest_v2_5 *man,
+			    void *ptr1, unsigned int size1, void *ptr2,
+			    unsigned int size2);
 
 int elf_parse_module(struct image *image, int module_index, const char *name);
 void elf_free_module(struct image *image, int module_index);
