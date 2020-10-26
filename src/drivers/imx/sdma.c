@@ -582,6 +582,8 @@ static int sdma_copy(struct dma_chan_data *channel, int bytes, uint32_t flags)
 	notifier_event(channel, NOTIFIER_ID_DMA_COPY,
 		       NOTIFIER_TARGET_CORE_LOCAL, &next, sizeof(next));
 
+	sdma_enable_channel(channel->dma, channel->index);
+
 	return 0;
 }
 
