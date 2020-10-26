@@ -12,21 +12,12 @@ function example_line_array()
 %
 % Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 
-% Paths
-p.tplg_path = '../../topology/m4/tdfb';
-p.sofctl_path = '../../ctl/tdfb';
-p.data_path = './data';
-addpath('../../test/audio/test_utils');
-
-mkdir_check(p.tplg_path);
-mkdir_check(p.sofctl_path);
-
 %% 2 mic arrays
 for fs = [16e3 48e3]
 	for az = [0 10 25 90 -10 -25 -90]
 		for d = [50e-3 67e-3];
 			close all;
-			line2_one_beam(fs, d, az, p);
+			line2_one_beam(fs, d, az);
 		end
 	end
 end
@@ -35,14 +26,14 @@ end
 for fs = [16e3 48e3]
 	for az = [0 10 25 90 -10 -25 -90]
 		for d = [28e-3 78e-3];
-			line4_one_beam(fs, d, az, p);
+			line4_one_beam(fs, d, az);
 		end
 	end
 end
 
 end
 
-function line2_one_beam(fs, d, az, p);
+function line2_one_beam(fs, d, az);
 
 % Get defaults
 bf = bf_defaults();
@@ -60,12 +51,12 @@ bf.mic_d = d;
 bf.steer_az = az;
 
 % Design
-bf = bf_filenames_helper(bf, p.tplg_path, p.sofctl_path, p.data_path);
+bf = bf_filenames_helper(bf);
 bf = bf_design(bf);
 bf_export(bf);
 end
 
-function line4_one_beam(fs, d, az, p);
+function line4_one_beam(fs, d, az);
 
 % Get defaults
 bf = bf_defaults();
@@ -83,7 +74,7 @@ bf.mic_d = d;
 bf.steer_az = az;
 
 % Design
-bf = bf_filenames_helper(bf, p.tplg_path, p.sofctl_path, p.data_path);
+bf = bf_filenames_helper(bf);
 bf = bf_design(bf);
 bf_export(bf);
 

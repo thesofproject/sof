@@ -16,6 +16,14 @@ addpath('../../test/audio/std_utils');
 mkdir_check('plots');
 mkdir_check('data');
 
+if isempty(bf.num_filters)
+	if isempty(bf.input_channel_select)
+		bf.num_filters = bf.mic_n;
+	else
+		bf.num_filters = length(bf.input_channel_select);
+	end
+end
+
 switch lower(bf.array)
 	case 'line'
 		bf = bf_array_line(bf);
@@ -36,8 +44,7 @@ bf = bf_array_rot(bf);
 %% Defaults
 j = complex(0,-1);
 fs = bf.fs;
-%N = bf.fir_length;
-N = 512;
+N = 1024;
 N_half = N/2+1;
 f = (0:N/2)*fs/N';
 phi_rad = (-180:180)*pi/180;
@@ -51,13 +58,13 @@ mu = ones(1,N_half) * 10^(bf.mu_db/20);
 [src_x, src_y, src_z] = source_xyz(bf.steer_r, steer_az, steer_el);
 
 %% Default frequency domain weights
-W = zeros(N_half, bf.mic_n);
+W = zeros(N_half, bf.num_filters);
 
 %% Coherence matrix, diffuse field
 % Equation 2.11
-Gamma_vv = zeros(N_half, bf.mic_n, bf.mic_n);
-for n=1:bf.mic_n
-    for m=1:bf.mic_n
+Gamma_vv = zeros(N_half, bf.num_filters, bf.num_filters);
+for n=1:bf.num_filters
+    for m=1:bf.num_filters
         % Equation 2.17
             lnm = sqrt( (bf.mic_x(n) - bf.mic_x(m))^2 ...
 			+(bf.mic_y(n) - bf.mic_y(m))^2 ...
@@ -71,10 +78,10 @@ dt = delay_from_source(bf, src_x, src_y, src_z);
 dt = dt-min(dt);
 
 %% Create array vector
-tau0 = zeros(n_phi, bf.mic_n);
-A = zeros(N_half, n_phi, bf.mic_n);
-d = zeros(N_half, bf.mic_n);
-for n=1:bf.mic_n
+tau0 = zeros(n_phi, bf.num_filters);
+A = zeros(N_half, n_phi, bf.num_filters);
+d = zeros(N_half, bf.num_filters);
+for n=1:bf.num_filters
 	% Equation 2.27
 	d(:,n) = exp(-j*2*pi*f*dt(n)); % Delays to steer direction
 	for ip = 1:n_phi;
@@ -89,7 +96,7 @@ for n=1:bf.mic_n
 end
 tau = tau0-min(min(tau0));
 
-for n=1:bf.mic_n
+for n=1:bf.num_filters
 	for ip = 1:n_phi
 		% N_half x n_phi x Nm
 		A(:, ip, n) = exp(-j*2*pi*f*tau(ip, n));
@@ -99,7 +106,7 @@ end
 %% Superdirective
 for iw = 1:N_half
        % Equation 2.33
-        I = eye(bf.mic_n, bf.mic_n);
+        I = eye(bf.num_filters, bf.num_filters);
         d_w = d(iw,:).';
         Gamma_vv_w = squeeze(Gamma_vv(iw, :, :));
         Gamma_vv_w_diagload = Gamma_vv_w + mu(iw)*I;
@@ -112,22 +119,22 @@ for iw = 1:N_half
 end
 
 %% Convert w to time domain
-W_full = zeros(N, bf.mic_n);
+W_full = zeros(N, bf.num_filters);
 W_full = W(1:N_half, :);
 for i=N_half+1:N
 	W_full(i,:) = conj(W(N_half-(i-N_half),:));
 end
 skip = floor((N - bf.fir_length)/2);
 win = kaiser(bf.fir_length,bf.fir_beta);
-bf.w = zeros(bf.fir_length, bf.mic_n);
-for i=1:bf.mic_n
+bf.w = zeros(bf.fir_length, bf.num_filters);
+for i=1:bf.num_filters
 	w_tmp = real(fftshift(ifft(W_full(:,i))));
 	bf.w(:,i) = w_tmp(skip + 1:skip + bf.fir_length) .* win;
 end
 
 %% Back to frequency domain to check spatial response
-W2_full = zeros(N, bf.mic_n);
-for i=1:bf.mic_n
+W2_full = zeros(N, bf.num_filters);
+for i=1:bf.num_filters
 	% Zero pad
 	h2 = zeros(1,N);
 	h2(skip + 1:skip + bf.fir_length) = bf.w(:,i);
@@ -175,9 +182,6 @@ for iw = 1:N_half
 end
 bf.wng_db = wng_db;
 
-%% Info about filters for blob packing
-bf.num_filters = bf.mic_n;
-
 if bf.do_plots
 	%% Array
 	bf.fh(1) = figure(bf.fn);
@@ -186,7 +190,7 @@ if bf.do_plots
 	plot3(bf.mic_x(2:end), bf.mic_y(2:end), bf.mic_z(2:end), 'bo');
 	plot3(src_x, src_y, src_z, 'gx');
 	plot3([0 src_x],[0 src_y],[0 src_z],'c--')
-	for n=1:bf.mic_n
+	for n=1:bf.num_filters
 		text(bf.mic_x(n),  bf.mic_y(n),  bf.mic_z(n) + 20e-3, ...
 		     num2str(n));
 	end
@@ -251,7 +255,9 @@ end
 
 %% Create data for simulation 1s per angle
 
-if ~isempty(bf.sinerot_fn)
+if isempty(bf.sinerot_fn)
+	fprintf(1, 'No file for 360 degree sine source rotate specified\n');
+else
 	fprintf(1, 'Creating 360 degree sine source rotate...\n');
 	fsi = 384e3; % Target interpolated rate
 	p = round(fsi / bf.fs); % Interpolation factor
@@ -271,17 +277,17 @@ if ~isempty(bf.sinerot_fn)
 	test_n = length(test_az);
 	test_el = zeros(1, test_n);
 	[test_x, test_y, test_z] = source_xyz(bf.steer_r, test_az, test_el);
-	td = zeros(test_n * nt, bf.mic_n);
+	td = zeros(test_n * nt, bf.num_filters);
 	for i = 1:length(test_az)
 		dt = delay_from_source(bf, test_x(i), test_y(i), test_z(i));
 		dn = round(dt / ti);
-		mi = zeros(nti, bf.mic_n);
-		for j = 1:bf.mic_n
+		mi = zeros(nti, bf.num_filters);
+		for j = 1:bf.num_filters
 			mi(:,j) = mi(:,j) + si(dn(j):dn(j) + nti -1);
 		end
 		i1 = (i - 1) * nt + 1;
 		i2 = i1 + nt -1;
-		for j = 1:bf.mic_n
+		for j = 1:bf.num_filters
 			m = mi(1:p:end, j) .* win;
 			td(i1:i2, j) = m;
 		end
@@ -289,7 +295,9 @@ if ~isempty(bf.sinerot_fn)
 	audiowrite(bf.sinerot_fn, td, bf.fs);
 end
 
-if ~isempty(bf.diffuse_fn)
+if isempty(bf.diffuse_fn)
+	fprintf(1, 'No file for diffuse noise field specified\n');
+else
 	fprintf(1, 'Creating diffuse noise field...\n');
 	fsi = 384e3; % Target interpolated rate
 	p = round(fsi / bf.fs); % Interpolation factor
@@ -308,8 +316,8 @@ if ~isempty(bf.diffuse_fn)
 		dn = round(dt / ti);
 		ns = rand(n0, 1) + rand(n0, 1) - 1;
 		nsi = interp(ns, p);
-		nmi = zeros(nti, bf.mic_n);
-		for j = 1:bf.mic_n
+		nmi = zeros(nti, bf.num_filters);
+		for j = 1:bf.num_filters
 			nmi(:,j) = nmi(:,j) + nsi(dn(j):dn(j) + nti -1);
 		end
 	end
@@ -319,19 +327,23 @@ if ~isempty(bf.diffuse_fn)
 	audiowrite(bf.diffuse_fn, nm, bf.fs);
 end
 
-if ~isempty(bf.random_fn)
+if isempty(bf.random_fn)
+	fprintf(1, 'No file for random noise specified\n');
+else
 	fprintf(1, 'Creating random noise ...\n');
 	nt = bf.fs * bf.random_t;
-	rn = rand(nt, bf.mic_n) + rand(nt, bf.mic_n) - 1;
+	rn = rand(nt, bf.num_filters) + rand(nt, bf.num_filters) - 1;
 
 	nlev = level_dbfs(rn(:,1));
 	rn = rn * 10^((bf.random_lev - nlev)/20);
 	audiowrite(bf.random_fn, rn, bf.fs);
 end
 
-
-if ~isempty(bf.mat_fn)
-	fprintf(1, 'Saving design...\n');
+if isempty(bf.mat_fn)
+	fprintf(1, 'No file for beam pattern simulation data specified.\n');
+else
+	fprintf(1, 'Saving design to %s\n', bf.mat_fn);
+	mkdir_check(bf.data_path);
 	save(bf.mat_fn, 'bf');
 end
 
@@ -351,8 +363,8 @@ end
 
 function dt = delay_from_source(bf, src_x, src_y, src_z)
 
-dm = zeros(1,bf.mic_n);
-for n=1:bf.mic_n
+dm = zeros(1,bf.num_filters);
+for n=1:bf.num_filters
 	dm(n) = sqrt((src_x - bf.mic_x(n))^2 ...
 		     + (src_y - bf.mic_y(n))^2 ...
 		     + (src_z - bf.mic_z(n))^2);

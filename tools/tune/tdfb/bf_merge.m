@@ -38,6 +38,12 @@ bfm.input_channel_select = [bf1.input_channel_select bf2.input_channel_select];
 
 % Merge filter outputs specification
 bfm.output_channel_mix = [bf1.output_channel_mix bf2.output_channel_mix];
+if isempty(bf1.output_stream_mix)
+	bf1.output_stream_mix = zeros(1, bf1.num_filters);
+end
+if isempty(bf2.output_stream_mix)
+	bf2.output_stream_mix = zeros(1, bf2.num_filters);
+end
 bfm.output_stream_mix = [bf1.output_stream_mix bf2.output_stream_mix];
 
 bfm.num_filters = bf1.num_filters + bf2.num_filters;
