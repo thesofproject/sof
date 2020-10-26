@@ -491,8 +491,6 @@ static void sdma_channel_put(struct dma_chan_data *channel)
 
 static int sdma_start(struct dma_chan_data *channel)
 {
-	struct sdma_chan *pdata = dma_chan_get_data(channel);
-
 	tr_dbg(&sdma_tr, "sdma_start(%d)", channel->index);
 
 	if (channel->status != COMP_STATE_PREPARE &&
@@ -501,14 +499,7 @@ static int sdma_start(struct dma_chan_data *channel)
 
 	channel->status = COMP_STATE_ACTIVE;
 
-	/* If channel is event driven, allow it to run by setting HOSTOVR.
-	 * If it's manually controlled, kickstart it by writing to SDMA_HSTART.
-	 */
-	if (pdata->hw_event != -1)
-		dma_reg_update_bits(channel->dma, SDMA_HOSTOVR,
-				    BIT(channel->index), BIT(channel->index));
-	else
-		dma_reg_write(channel->dma, SDMA_HSTART, BIT(channel->index));
+	sdma_enable_channel(channel->dma, channel->index);
 
 	return 0;
 }
