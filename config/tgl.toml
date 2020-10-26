@@ -22,15 +22,15 @@ size = "0x100000"
 partition_name = "ADSP"
 [[cse.entry]]
 name = "ADSP.man"
-offset = "0x58"
-length = "0x378"
+offset = "0x5c"
+length = "0x464"
 [[cse.entry]]
 name = "cavs0015.met"
-offset = "0x400"
+offset = "0x4c0"
 length = "0x70"
 [[cse.entry]]
 name = "cavs0015"
-offset = "0x490"
+offset = "0x540"
 length = "0x0"  # calculated by rimage
 
 [css]
@@ -38,11 +38,6 @@ length = "0x0"  # calculated by rimage
 [signed_pkg]
 name = "ADSP"
 [[signed_pkg.module]]
-name = "cavs0015.met"
-
-[partition_info]
-name = "ADSP"
-[[partition_info.module]]
 name = "cavs0015.met"
 
 [adsp_file]
