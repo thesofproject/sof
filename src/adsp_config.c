@@ -529,6 +529,118 @@ static int parse_cse(const toml_table_t *toml, struct parse_ctx *pctx,
 	return 0;
 }
 
+static void dump_cse_v2_5(const struct CsePartitionDirHeader_v2_5 *cse_header,
+		     const struct CsePartitionDirEntry *cse_entry)
+{
+	int i;
+
+	DUMP("\ncse");
+	DUMP_KEY("partition_name", "'%s'", cse_header->partition_name);
+	DUMP_KEY("header_version", "%d", cse_header->header_version);
+	DUMP_KEY("entry_version", "%d", cse_header->entry_version);
+	DUMP_KEY("nb_entries", "%d", cse_header->nb_entries);
+	for (i = 0; i < cse_header->nb_entries; ++i) {
+		DUMP_KEY("entry.name", "'%s'", cse_entry[i].entry_name);
+		DUMP_KEY("entry.offset", "0x%x", cse_entry[i].offset);
+		DUMP_KEY("entry.length", "0x%x", cse_entry[i].length);
+	}
+}
+
+/* TODO: fix up constants in headers for v2.5 */
+static int parse_cse_v2_5(const toml_table_t *toml, struct parse_ctx *pctx,
+		     struct CsePartitionDirHeader_v2_5 *hdr, struct CsePartitionDirEntry *out,
+		     int entry_capacity, bool verbose)
+{
+	toml_array_t *cse_entry_array;
+	toml_table_t *cse_entry;
+	struct parse_ctx ctx;
+	toml_table_t *cse;
+	int ret;
+	int i;
+
+	/* look for subtable in toml, increment pctx parsed table cnt and initialize local ctx */
+	cse = toml_table_in(toml, "cse");
+	if (!cse)
+		return err_key_not_found("cse");
+	++pctx->table_cnt;
+	parse_ctx_init(&ctx);
+
+	/* non-configurable fields */
+	hdr->header_marker = CSE_HEADER_MAKER;
+	hdr->header_length = sizeof(struct CsePartitionDirHeader_v2_5);
+
+	/* configurable fields */
+	hdr->header_version = parse_uint32_key(cse, &ctx, "header_version", 2, &ret);
+	if (ret < 0)
+		return ret;
+
+	hdr->entry_version = parse_uint32_key(cse, &ctx, "entry_version", 1, &ret);
+	if (ret < 0)
+		return ret;
+
+	parse_str_key(cse, &ctx, "partition_name", (char *)hdr->partition_name,
+		      sizeof(hdr->partition_name), &ret);
+	if (ret < 0)
+		return ret;
+
+	/* check everything parsed, expect 1 table */
+	ctx.array_cnt += 1;
+	ret = assert_everything_parsed(cse, &ctx);
+	if (ret < 0)
+		return ret;
+
+	/* entry array */
+	cse_entry_array = toml_array_in(cse, "entry");
+	if (!cse_entry_array)
+		return err_key_not_found("entry");
+	if (toml_array_kind(cse_entry_array) != 't' ||
+	    toml_array_nelem(cse_entry_array) != entry_capacity)
+		return err_key_parse("entry", "wrong array type or length != %d", entry_capacity);
+
+	/* parse entry array elements */
+	for (i = 0; i < toml_array_nelem(cse_entry_array); ++i) {
+		cse_entry = toml_table_at(cse_entry_array, i);
+		if (!cse_entry)
+			return err_key_parse("entry", NULL);
+
+		/* initialize parse context for each array element */
+		parse_ctx_init(&ctx);
+
+		/* non-configurable fields */
+
+		/* configurable fields */
+		parse_str_key(cse_entry, &ctx, "name", (char *)out[i].entry_name,
+			      sizeof(out[i].entry_name), &ret);
+		if (ret < 0)
+			return err_key_parse("entry", NULL);
+
+		out[i].offset = parse_uint32_hex_key(cse_entry, &ctx, "offset", -1, &ret);
+		if (ret < 0)
+			return err_key_parse("offset", NULL);
+
+		out[i].length = parse_uint32_hex_key(cse_entry, &ctx, "length", -1, &ret);
+		if (ret < 0)
+			return err_key_parse("length", NULL);
+
+		/* check everything parsed */
+		ret = assert_everything_parsed(cse_entry, &ctx);
+		if (ret < 0)
+			return ret;
+	}
+
+	hdr->nb_entries = toml_array_nelem(cse_entry_array);
+
+	if (1 || verbose)
+		dump_cse_v2_5(hdr, out);
+
+	/*
+	 * values set in other places in code:
+	 * - checksum
+	 */
+
+	return 0;
+}
+
 static void dump_css_v1_5(const struct css_header_v1_5 *css)
 {
 	DUMP("\ncss 1.5");
@@ -684,6 +796,96 @@ static int parse_css_v1_8(const toml_table_t *toml, struct parse_ctx *pctx,
 
 	if (verbose)
 		dump_css_v1_8(out);
+
+	/*
+	 * values set in other places in code:
+	 * - date
+	 * - version
+	 * - modulus
+	 * - exponent
+	 * - signature
+	 */
+
+	return 0;
+}
+
+static void dump_css_v2_5(const struct css_header_v2_5 *css)
+{
+	DUMP("\ncss 2.5");
+	DUMP_KEY("header_type", "%d", css->header_type);
+	DUMP_KEY("header_len", "%d", css->header_len);
+	DUMP_KEY("header_version", "0x%x", css->header_version);
+	DUMP_KEY("module_vendor", "0x%x", css->module_vendor);
+	DUMP_KEY("size", "%d", css->size);
+	DUMP_KEY("svn", "%d", css->svn);
+	DUMP_KEY("modulus_size", "%d", css->modulus_size);
+	DUMP_KEY("exponent_size", "%d", css->exponent_size);
+}
+
+static int parse_css_v2_5(const toml_table_t *toml, struct parse_ctx *pctx,
+			  struct css_header_v2_5 *out, bool verbose)
+{
+	static const uint8_t hdr_id[4] = MAN_CSS_HDR_ID;
+	struct parse_ctx ctx;
+	toml_table_t *css;
+	int ret;
+
+	/* look for subtable in toml, increment pctx parsed table cnt and initialize local ctx */
+	css = toml_table_in(toml, "css");
+	if (!css)
+		return err_key_not_found("css");
+	++pctx->table_cnt;
+	parse_ctx_init(&ctx);
+
+	/* non-configurable fields */
+	memcpy(out->header_id, hdr_id, sizeof(out->header_id));
+
+	/* configurable fields */
+	out->header_type = parse_uint32_key(css, &ctx, "header_type", MAN_CSS_MOD_TYPE, &ret);
+	if (ret < 0)
+		return ret;
+
+	out->header_len = parse_uint32_key(css, &ctx, "header_len", MAN_CSS_HDR_SIZE_2_5, &ret);
+	if (ret < 0)
+		return ret;
+
+	out->header_version = parse_uint32_hex_key(css, &ctx, "header_version", MAN_CSS_HDR_VERSION_2_5,
+						   &ret);
+	if (ret < 0)
+		return ret;
+	out->module_vendor = parse_uint32_hex_key(css, &ctx, "module_vendor", MAN_CSS_MOD_VENDOR,
+						  &ret);
+	if (ret < 0)
+		return ret;
+
+	out->size = parse_uint32_key(css, &ctx, "size", 281, &ret);
+	if (ret < 0)
+		return ret;
+
+	out->svn = parse_uint32_key(css, &ctx, "svn", 0, &ret);
+	if (ret < 0)
+		return ret;
+
+	out->modulus_size = parse_uint32_key(css, &ctx, "modulus_size", MAN_CSS_MOD_SIZE_2_5, &ret);
+	if (ret < 0)
+		return ret;
+
+	out->exponent_size = parse_uint32_key(css, &ctx, "exponent_size", MAN_CSS_EXP_SIZE, &ret);
+	if (ret < 0)
+		return ret;
+
+	/* hardcoded to align with meu */
+	out->reserved0 = 0;
+	out->reserved1[0] = 0xf;
+	out->reserved1[1] = 0x048e0000; // TODO: what is this ?
+
+	/* check everything parsed */
+	ret = assert_everything_parsed(css, &ctx);
+	if (ret < 0)
+		return ret;
+
+	if (verbose)
+		dump_css_v2_5(out);
 
 	/*
 	 * values set in other places in code:
@@ -853,6 +1055,163 @@ static int parse_signed_pkg(const toml_table_t *toml, struct parse_ctx *pctx,
 	return 0;
 }
 
+static void dump_signed_pkg_v2_5(const struct signed_pkg_info_ext_v2_5 *signed_pkg)
+{
+	int i;
+
+	DUMP("\nsigned_pkg");
+	DUMP_KEY("name", "'%s'", signed_pkg->name);
+	DUMP_KEY("vcn", "%d", signed_pkg->vcn);
+	DUMP_KEY("svn", "%d", signed_pkg->svn);
+	DUMP_KEY("fw_type", "%d", signed_pkg->fw_type);
+	DUMP_KEY("fw_sub_type", "%d", signed_pkg->fw_sub_type);
+	for (i = 0; i < ARRAY_SIZE(signed_pkg->bitmap); ++i)
+		DUMP_KEY("bitmap", "%d", signed_pkg->bitmap[i]);
+	for (i = 0; i < ARRAY_SIZE(signed_pkg->module); ++i) {
+		DUMP_KEY("meta.name", "'%s'", signed_pkg->module[i].name);
+		DUMP_KEY("meta.type", "0x%x", signed_pkg->module[i].type);
+		DUMP_KEY("meta.hash_algo", "0x%x", signed_pkg->module[i].hash_algo);
+		DUMP_KEY("meta.hash_size", "0x%x", signed_pkg->module[i].hash_size);
+		DUMP_KEY("meta.meta_size", "%d", signed_pkg->module[i].meta_size);
+	}
+}
+
+static int parse_signed_pkg_v2_5(const toml_table_t *toml, struct parse_ctx *pctx,
+			    struct signed_pkg_info_ext_v2_5 *out, bool verbose)
+{
+	struct signed_pkg_info_module_v2_5 *mod;
+	toml_array_t *bitmap_array;
+	toml_array_t *module_array;
+	toml_table_t *signed_pkg;
+	struct parse_ctx ctx;
+	toml_table_t *module;
+	toml_raw_t raw;
+	int64_t temp_i;
+	int ret;
+	int i;
+
+	/* look for subtable in toml, increment pctx parsed table cnt and initialize local ctx */
+	signed_pkg = toml_table_in(toml, "signed_pkg");
+	if (!signed_pkg)
+		return err_key_not_found("signed_pkg");
+	++pctx->table_cnt;
+	parse_ctx_init(&ctx);
+
+	/* non-configurable fields */
+	out->ext_type = SIGN_PKG_EXT_TYPE;
+	out->ext_len = sizeof(struct signed_pkg_info_ext_v2_5);
+
+	/* configurable fields */
+	parse_str_key(signed_pkg, &ctx, "name", (char *)out->name, sizeof(out->name), &ret);
+	if (ret < 0)
+		return ret;
+
+	out->vcn = parse_uint32_key(signed_pkg, &ctx, "vcn", 0, &ret);
+	if (ret < 0)
+		return ret;
+
+	out->svn = parse_uint32_key(signed_pkg, &ctx, "svn", 0, &ret);
+	if (ret < 0)
+		return ret;
+
+	out->fw_type = parse_uint32_hex_key(signed_pkg, &ctx, "fw_type", 0, &ret);
+	if (ret < 0)
+		return ret;
+
+	out->fw_sub_type = parse_uint32_hex_key(signed_pkg, &ctx, "fw_sub_type", 0, &ret);
+	if (ret < 0)
+		return ret;
+
+	/* bitmap array */
+	bitmap_array = toml_array_in(signed_pkg, "bitmap");
+	if (!bitmap_array) {
+		/* default value - some use 0x10*/
+		out->bitmap[4] = 0x8;
+	} else {
+		++ctx.array_cnt;
+		if (toml_array_kind(bitmap_array) != 'v' || toml_array_type(bitmap_array) != 'i' ||
+		    toml_array_nelem(bitmap_array) > ARRAY_SIZE(out->bitmap))
+			return err_key_parse("bitmap", "wrong array type or length > %d",
+					     ARRAY_SIZE(out->bitmap));
+
+		for (i = 0; i < toml_array_nelem(bitmap_array); ++i) {
+			raw = toml_raw_at(bitmap_array, i);
+			if (!raw)
+				return err_key_parse("bitmap", NULL);
+
+			ret = toml_rtoi(raw, &temp_i);
+			if (ret < 0 || temp_i < 0)
+				return err_key_parse("bitmap", "values can't be negative");
+			out->bitmap[i] = temp_i;
+		}
+	}
+
+	/* check everything parsed, expect 1 more array */
+	ctx.array_cnt += 1;
+	ret = assert_everything_parsed(signed_pkg, &ctx);
+	if (ret < 0)
+		return ret;
+
+	/* modules array */
+	module_array = toml_array_in(signed_pkg, "module");
+	if (!module_array)
+		return err_key_not_found("module");
+	if (toml_array_kind(module_array) != 't' ||
+	    toml_array_nelem(module_array) != ARRAY_SIZE(out->module))
+		return err_key_parse("module", "wrong array type or length != %d",
+				     ARRAY_SIZE(out->module));
+
+	/* parse modules array elements */
+	for (i = 0; i < toml_array_nelem(module_array); ++i) {
+		module = toml_table_at(module_array, i);
+		if (!module)
+			return err_key_parse("module", NULL);
+		mod = &out->module[i];
+
+		/* initialize parse context for each array element */
+		parse_ctx_init(&ctx);
+
+		/* non-configurable fields */
+
+		/* configurable fields */
+		parse_str_key(module, &ctx, "name", (char *)mod->name, sizeof(mod->name), &ret);
+		if (ret < 0)
+			return err_key_parse("module", NULL);
+
+		mod->type = parse_uint32_hex_key(module, &ctx, "type", 0x03, &ret);
+		if (ret < 0)
+			return err_key_parse("module", NULL);
+
+		mod->hash_algo = parse_uint32_hex_key(module, &ctx, "hash_algo", 0x00, &ret);
+		if (ret < 0)
+			return err_key_parse("module", NULL);
+
+		mod->hash_size = parse_uint32_hex_key(module, &ctx, "hash_size", 0x30, &ret);
+		if (ret < 0)
+			return err_key_parse("module", NULL);
+
+		mod->meta_size = parse_uint32_key(module, &ctx, "meta_size", 112, &ret);
+		if (ret < 0)
+			return err_key_parse("module", NULL);
+
+		/* check everything parsed */
+		ret = assert_everything_parsed(module, &ctx);
+		if (ret < 0)
+			return ret;
+	}
+
+	if (verbose)
+		dump_signed_pkg_v2_5(out);
+
+	/*
+	 * values set in other places in code:
+	 * - module.hash
+	 */
+
+	return 0;
+}
+
+
 static void dump_partition_info_ext(const struct partition_info_ext *part_info)
 {
 	int i;
@@ -978,6 +1337,26 @@ static int parse_partition_info_ext(const toml_table_t *toml, struct parse_ctx *
 	 * - hash
 	 * - module.hash
 	 */
+
+	return 0;
+}
+
+static int parse_info_ext_0x16(const toml_table_t *toml, struct parse_ctx *pctx,
+				    struct info_ext_0x16 *out, bool verbose)
+{
+	/* known */
+	out->ext_type = 0x16;
+	out->ext_len = sizeof(*out);
+	out->name[0] = 'A';
+	out->name[1] = 'D';
+	out->name[2] = 'S';
+	out->name[3] = 'P';
+
+	/* copied from meu - unknown */
+	out->data[0] = 0x10000000;
+	out->data[2] = 0x1;
+	out->data[3] = 0x0;
+	out->data[4] = 0x3003;
 
 	return 0;
 }
@@ -1487,7 +1866,7 @@ static int parse_adsp_config_v2_5(const toml_table_t *toml, struct adsp *out,
 	memset(out->man_v2_5, 0, sizeof(*out->man_v2_5));
 
 	/* assign correct write functions */
-	out->write_firmware = NULL;
+	out->write_firmware = man_write_fw_v2_5;
 	out->write_firmware_meu = man_write_fw_meu_v2_5;
 
 	/* version array has already been parsed, so increment ctx.array_cnt */
@@ -1499,20 +1878,20 @@ static int parse_adsp_config_v2_5(const toml_table_t *toml, struct adsp *out,
 	if (ret < 0)
 		return err_key_parse("adsp", NULL);
 
-	ret = parse_cse(toml, &ctx, &out->man_v2_5->cse_partition_dir_header,
+	ret = parse_cse_v2_5(toml, &ctx, &out->man_v2_5->cse_partition_dir_header,
 			out->man_v2_5->cse_partition_dir_entry, MAN_CSE_PARTS, verbose);
 	if (ret < 0)
 		return err_key_parse("cse", NULL);
 
-	ret = parse_css_v1_8(toml, &ctx, &out->man_v2_5->css, verbose);
+	ret = parse_css_v2_5(toml, &ctx, &out->man_v2_5->css, verbose);
 	if (ret < 0)
 		return err_key_parse("css", NULL);
 
-	ret = parse_signed_pkg(toml, &ctx, &out->man_v2_5->signed_pkg, verbose);
+	ret = parse_signed_pkg_v2_5(toml, &ctx, &out->man_v2_5->signed_pkg, verbose);
 	if (ret < 0)
 		return err_key_parse("signed_pkg", NULL);
 
-	ret = parse_partition_info_ext(toml, &ctx, &out->man_v2_5->partition_info, verbose);
+	ret = parse_info_ext_0x16(toml, &ctx, &out->man_v2_5->info_0x16, verbose);
 	if (ret < 0)
 		return err_key_parse("partition_info", NULL);
 

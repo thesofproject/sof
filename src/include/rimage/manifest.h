@@ -179,6 +179,7 @@ int simple_write_firmware(struct image *image);
 int man_write_fw_v1_5(struct image *image);
 int man_write_fw_v1_5_sue(struct image *image);
 int man_write_fw_v1_8(struct image *image);
+int man_write_fw_v2_5(struct image *image);
 int man_write_fw_meu_v1_5(struct image *image);
 int man_write_fw_meu_v1_8(struct image *image);
 int man_write_fw_meu_v2_5(struct image *image);
