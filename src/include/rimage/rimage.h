@@ -157,6 +157,7 @@ struct adsp {
 };
 
 void module_sha256_create(struct image *image);
+void module_sha384_create(struct image *image);
 void module_sha_update(struct image *image, uint8_t *data, size_t bytes);
 void module_sha_complete(struct image *image, uint8_t *hash);
 int ri_manifest_sign_v1_5(struct image *image);

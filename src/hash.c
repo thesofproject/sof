@@ -89,7 +89,7 @@ void ri_sha256(struct image *image, unsigned int offset, unsigned int size,
 	module_sha_complete(image, hash);
 }
 
-static void module_sha384_create(struct image *image)
+void module_sha384_create(struct image *image)
 {
 	image->md = EVP_sha384();
 	image->mdctx = EVP_MD_CTX_new();
