@@ -401,6 +401,8 @@ void dma_trace_flush(void *t)
 				(char *)buffer->addr;
 	}
 
+	size = MIN(size, MAILBOX_TRACE_SIZE);
+
 	/* invalidate trace data */
 	dcache_invalidate_region((void *)t, size);
 
