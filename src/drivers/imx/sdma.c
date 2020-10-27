@@ -773,7 +773,7 @@ static int sdma_prep_desc(struct dma_chan_data *channel,
 		return -EINVAL;
 	}
 
-	watermark = config->burst_elems;
+	watermark = (config->burst_elems * width) / 8;
 
 	memset(pdata->ctx, 0, sizeof(*pdata->ctx));
 	pdata->ctx->pc = sdma_script_addr;
