@@ -19,7 +19,7 @@
 /* read used compilator name and version */
 /* CC_NAME must consist of 3 characters with null termination */
 /* See declaration of sof_ipc_cc_version. */
-#ifndef __GNUC__
+#ifdef __XCC__
 #define CC_MAJOR (XTHAL_RELEASE_MAJOR / 1000)
 #define CC_MINOR ((XTHAL_RELEASE_MAJOR % 1000) / 10)
 #define CC_MICRO XTHAL_RELEASE_MINOR
