@@ -23,6 +23,8 @@
  * given the input level x. */
 static int32_t knee_curveK(const struct sof_drc_params *p, int32_t x)
 {
+	int32_t knee_exp_gamma;
+
 	/* The formula in knee_curveK is linear_threshold +
 	 * (1 - expf(-k * (x - linear_threshold))) / k
 	 * which simplifies to (alpha + beta * expf(gamma))
@@ -30,9 +32,7 @@ static int32_t knee_curveK(const struct sof_drc_params *p, int32_t x)
 	 *	 beta = -expf(k * linear_threshold) / k
 	 *	 gamma = -k * x
 	 */
-	int32_t knee_exp_gamma =
-		exp_fixed(Q_MULTSR_32X32((int64_t)x, -p->K, 15, 20, 27)); /* Q12.20 */
-
+	knee_exp_gamma = exp_fixed(Q_MULTSR_32X32((int64_t)x, -p->K, 31, 20, 27)); /* Q12.20 */
 	return p->knee_alpha + Q_MULTSR_32X32((int64_t)p->knee_beta, knee_exp_gamma, 24, 20, 24);
 }
 
@@ -40,8 +40,8 @@ static int32_t knee_curveK(const struct sof_drc_params *p, int32_t x)
  * output and input signal. */
 static int32_t volume_gain(const struct sof_drc_params *p, int32_t x)
 {
-	const int32_t knee_threshold = Q_SHIFT_RND(p->knee_threshold, 24, 15);
-	const int32_t linear_threshold = Q_SHIFT_RND(p->linear_threshold, 30, 15);
+	const int32_t knee_threshold = Q_SHIFT_LEFT(p->knee_threshold, 24, 31);
+	const int32_t linear_threshold = Q_SHIFT_LEFT(p->linear_threshold, 30, 31);
 	int32_t exp_knee;
 	int32_t y;
 
@@ -49,7 +49,7 @@ static int32_t volume_gain(const struct sof_drc_params *p, int32_t x)
 		if (x < linear_threshold)
 			return ONE_Q30;
 		/* y = knee_curveK(x) / x */
-		y = Q_MULTSR_32X32((int64_t)knee_curveK(p, x), drc_inv_fixed(x, 15, 20),
+		y = Q_MULTSR_32X32((int64_t)knee_curveK(p, x), drc_inv_fixed(x, 31, 20),
 				   24, 20, 30);
 	} else {
 		/* Constant ratio after knee.
@@ -60,7 +60,7 @@ static int32_t volume_gain(const struct sof_drc_params *p, int32_t x)
 		 * => y/x = ratio_base * x^(s - 1)
 		 * => y/x = ratio_base * e^(log(x) * (s - 1))
 		 */
-		exp_knee = exp_fixed(Q_MULTSR_32X32((int64_t)drc_log_fixed(Q_SHIFT_LEFT(x, 15, 26)),
+		exp_knee = exp_fixed(Q_MULTSR_32X32((int64_t)drc_log_fixed(Q_SHIFT_RND(x, 31, 26)),
 						    (p->slope - ONE_Q30), 26, 30, 27)); /* Q12.20 */
 		y = Q_MULTSR_32X32((int64_t)p->ratio_base, exp_knee, 30, 20, 30);
 	}
@@ -71,13 +71,15 @@ static int32_t volume_gain(const struct sof_drc_params *p, int32_t x)
 /* Update detector_average from the last input division. */
 static void drc_update_detector_average(struct drc_state *state,
 					const struct sof_drc_params *p,
+					int nbyte,
 					int nch)
 {
 	int32_t detector_average = state->detector_average; /* Q2.30 */
-	int32_t abs_input_array[DRC_DIVISION_FRAMES];
+	int32_t abs_input_array[DRC_DIVISION_FRAMES]; /* Q1.31 */
 	int div_start, i, ch;
-	int16_t *sample_p; /* only support s16 case for now */
-	int16_t sample;
+	int16_t *sample16_p; /* for s16 format case */
+	int32_t *sample32_p; /* for s24 and s32 format cases */
+	int32_t sample;
 	int32_t gain;
 	int32_t gain_diff;
 	int is_release;
@@ -92,12 +94,25 @@ static void drc_update_detector_average(struct drc_state *state,
 	}
 
 	/* The max abs value across all channels for this frame */
-	for (i = 0; i < DRC_DIVISION_FRAMES; i++) {
-		abs_input_array[i] = 0;
-		for (ch = 0; ch < nch; ch++) {
-			sample_p = (int16_t *)state->pre_delay_buffers[ch] + div_start + i;
-			sample = *sample_p;
-			abs_input_array[i] = MAX(abs_input_array[i], ABS((int32_t)sample));
+	if (nbyte == 2) { /* 2 bytes per sample */
+		for (i = 0; i < DRC_DIVISION_FRAMES; i++) {
+			abs_input_array[i] = 0;
+			for (ch = 0; ch < nch; ch++) {
+				sample16_p =
+					(int16_t *)state->pre_delay_buffers[ch] + div_start + i;
+				sample = Q_SHIFT_LEFT((int32_t)*sample16_p, 15, 31);
+				abs_input_array[i] = MAX(abs_input_array[i], ABS(sample));
+			}
+		}
+	} else { /* 4 bytes per sample */
+		for (i = 0; i < DRC_DIVISION_FRAMES; i++) {
+			abs_input_array[i] = 0;
+			for (ch = 0; ch < nch; ch++) {
+				sample32_p =
+					(int32_t *)state->pre_delay_buffers[ch] + div_start + i;
+				sample = *sample32_p;
+				abs_input_array[i] = MAX(abs_input_array[i], ABS(sample));
+			}
 		}
 	}
 
@@ -236,7 +251,10 @@ static void drc_update_envelope(struct drc_state *state, const struct sof_drc_pa
 
 /* Calculate compress_gain from the envelope and apply total_gain to compress
  * the next output division. */
-static void drc_compress_output(struct drc_state *state, const struct sof_drc_params *p, int nch)
+static void drc_compress_output(struct drc_state *state,
+				const struct sof_drc_params *p,
+				int nbyte,
+				int nch)
 {
 	const int div_start = state->pre_delay_read_index;
 	int count = DRC_DIVISION_FRAMES >> 2;
@@ -247,8 +265,10 @@ static void drc_compress_output(struct drc_state *state, const struct sof_drc_pa
 	int32_t total_gain;
 
 	int i, j, ch, inc;
-	int16_t *sample_p; /* only support s16 case for now */
-	int16_t sample;
+	int16_t *sample16_p; /* for s16 format case */
+	int32_t *sample32_p; /* for s24 and s32 format cases */
+	int32_t sample;
+	int is_2byte = (nbyte == 2); /* otherwise is 4-bytes */
 
 	/* Exponential approach to desired gain. */
 	if (state->envelope_rate < ONE_Q30) {
@@ -265,27 +285,58 @@ static void drc_compress_output(struct drc_state *state, const struct sof_drc_pa
 		i = 0;
 		inc = 0;
 		while (1) {
-			for (j = 0; j < 4; j++) {
-				/* Warp pre-compression gain to smooth out sharp
-				 * exponential transition points.
-				 */
-				post_warp_compressor_gain = drc_sin_fixed(x[j] + base); /* Q1.31 */
+			if (is_2byte) { /* 2 bytes per sample */
+				for (j = 0; j < 4; j++) {
+					/* Warp pre-compression gain to smooth out sharp
+					 * exponential transition points.
+					 */
+					post_warp_compressor_gain =
+						drc_sin_fixed(x[j] + base); /* Q1.31 */
 
-				/* Calculate total gain using master gain. */
-				total_gain = Q_MULTSR_32X32((int64_t)p->master_linear_gain,
-							    post_warp_compressor_gain,
-							    24, 31, 24); /* Q8.24 */
+					/* Calculate total gain using master gain. */
+					total_gain = Q_MULTSR_32X32((int64_t)p->master_linear_gain,
+								    post_warp_compressor_gain,
+								    24, 31, 24); /* Q8.24 */
 
-				/* Apply final gain. */
-				for (ch = 0; ch < nch; ch++) {
-					sample_p = (int16_t *)state->pre_delay_buffers[ch] +
-						div_start + inc;
-					sample = *sample_p;
-					*sample_p = sat_int16(Q_MULTSR_32X32((int64_t)sample,
-									     total_gain,
-									     15, 24, 15));
+					/* Apply final gain. */
+					for (ch = 0; ch < nch; ch++) {
+						sample16_p =
+							(int16_t *)state->pre_delay_buffers[ch] +
+								div_start + inc;
+						sample = (int32_t)*sample16_p;
+						*sample16_p =
+							sat_int16(Q_MULTSR_32X32((int64_t)sample,
+										 total_gain,
+										 15, 24, 15));
+					}
+					inc++;
 				}
-				inc++;
+			} else { /* 4 bytes per sample */
+				for (j = 0; j < 4; j++) {
+					/* Warp pre-compression gain to smooth out sharp
+					 * exponential transition points.
+					 */
+					post_warp_compressor_gain =
+						drc_sin_fixed(x[j] + base); /* Q1.31 */
+
+					/* Calculate total gain using master gain. */
+					total_gain = Q_MULTSR_32X32((int64_t)p->master_linear_gain,
+								    post_warp_compressor_gain,
+								    24, 31, 24); /* Q8.24 */
+
+					/* Apply final gain. */
+					for (ch = 0; ch < nch; ch++) {
+						sample32_p =
+							(int32_t *)state->pre_delay_buffers[ch] +
+								div_start + inc;
+						sample = *sample32_p;
+						*sample32_p =
+							sat_int32(Q_MULTSR_32X32((int64_t)sample,
+										 total_gain,
+										 31, 24, 31));
+					}
+					inc++;
+				}
 			}
 
 			if (++i == count)
@@ -309,27 +360,56 @@ static void drc_compress_output(struct drc_state *state, const struct sof_drc_pa
 		i = 0;
 		inc = 0;
 		while (1) {
-			for (j = 0; j < 4; j++) {
-				/* Warp pre-compression gain to smooth out sharp
-				 * exponential transition points.
-				 */
-				post_warp_compressor_gain = drc_sin_fixed(x[j]); /* Q1.31 */
+			if (is_2byte) { /* 2 bytes per sample */
+				for (j = 0; j < 4; j++) {
+					/* Warp pre-compression gain to smooth out sharp
+					 * exponential transition points.
+					 */
+					post_warp_compressor_gain = drc_sin_fixed(x[j]); /* Q1.31 */
 
-				/* Calculate total gain using master gain. */
-				total_gain = Q_MULTSR_32X32((int64_t)p->master_linear_gain,
-							    post_warp_compressor_gain,
-							    24, 31, 24); /* Q8.24 */
+					/* Calculate total gain using master gain. */
+					total_gain = Q_MULTSR_32X32((int64_t)p->master_linear_gain,
+								    post_warp_compressor_gain,
+								    24, 31, 24); /* Q8.24 */
 
-				/* Apply final gain. */
-				for (ch = 0; ch < nch; ch++) {
-					sample_p = (int16_t *)state->pre_delay_buffers[ch] +
-						div_start + inc;
-					sample = *sample_p;
-					*sample_p = sat_int16(Q_MULTSR_32X32((int64_t)sample,
-									     total_gain,
-									     15, 24, 15));
+					/* Apply final gain. */
+					for (ch = 0; ch < nch; ch++) {
+						sample16_p =
+							(int16_t *)state->pre_delay_buffers[ch] +
+								div_start + inc;
+						sample = (int32_t)*sample16_p;
+						*sample16_p =
+							sat_int16(Q_MULTSR_32X32((int64_t)sample,
+										 total_gain,
+										 15, 24, 15));
+					}
+					inc++;
 				}
-				inc++;
+			} else { /* 4 bytes per sample */
+				for (j = 0; j < 4; j++) {
+					/* Warp pre-compression gain to smooth out sharp
+					 * exponential transition points.
+					 */
+					post_warp_compressor_gain = drc_sin_fixed(x[j]); /* Q1.31 */
+
+					/* Calculate total gain using master gain. */
+					total_gain = Q_MULTSR_32X32((int64_t)p->master_linear_gain,
+								    post_warp_compressor_gain,
+								    24, 31, 24); /* Q8.24 */
+
+					/* Apply final gain. */
+					for (ch = 0; ch < nch; ch++) {
+						sample32_p =
+							(int32_t *)state->pre_delay_buffers[ch] +
+								div_start + inc;
+						sample = *sample32_p;
+						*sample32_p =
+							sat_int32(Q_MULTSR_32X32((int64_t)sample,
+										 total_gain,
+										 31, 24, 31));
+					}
+					inc++;
+				}
 			}
 
 			if (++i == count)
@@ -351,11 +431,12 @@ static void drc_compress_output(struct drc_state *state, const struct sof_drc_pa
  */
 static void drc_process_one_division(struct drc_state *state,
 				     const struct sof_drc_params *p,
+				     int nbyte,
 				     int nch)
 {
-	drc_update_detector_average(state, p, nch);
+	drc_update_detector_average(state, p, nbyte, nch);
 	drc_update_envelope(state, p);
-	drc_compress_output(state, p, nch);
+	drc_compress_output(state, p, nbyte, nch);
 }
 
 #if CONFIG_FORMAT_S16LE
@@ -371,11 +452,30 @@ static void drc_s16_default_pass(const struct comp_dev *dev,
 
 	for (i = 0; i < n; i++) {
 		x = audio_stream_read_frag_s16(source, i);
-		y = audio_stream_read_frag_s16(sink, i);
+		y = audio_stream_write_frag_s16(sink, i);
 		*y = *x;
 	}
 }
 #endif /* CONFIG_FORMAT_S16LE */
+
+#if CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE
+static void drc_s32_default_pass(const struct comp_dev *dev,
+				 const struct audio_stream *source,
+				 struct audio_stream *sink,
+				 uint32_t frames)
+{
+	int32_t *x;
+	int32_t *y;
+	int i;
+	int n = source->channels * frames;
+
+	for (i = 0; i < n; i++) {
+		x = audio_stream_read_frag_s32(source, i);
+		y = audio_stream_write_frag_s32(sink, i);
+		*y = *x;
+	}
+}
+#endif /* CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE */
 
 #if CONFIG_FORMAT_S16LE
 static void drc_s16_default(const struct comp_dev *dev,
@@ -404,7 +504,8 @@ static void drc_s16_default(const struct comp_dev *dev,
 	if (!p->enabled) {
 		/* Delay the input sample only and don't do other processing. This is used when the
 		 * DRC is disabled. We want to do this to match the processing delay of other bands
-		 * in multi-band DRC kernel case. */
+		 * in multi-band DRC kernel case.
+		 */
 		for (ch = 0; ch < nch; ++ch) {
 			pd_write_index = state->pre_delay_write_index;
 			pd_read_index = state->pre_delay_read_index;
@@ -413,7 +514,7 @@ static void drc_s16_default(const struct comp_dev *dev,
 			idx = ch;
 			for (i = 0; i < frames; ++i) {
 				x = audio_stream_read_frag_s16(source, idx);
-				y = audio_stream_read_frag_s16(sink, idx);
+				y = audio_stream_write_frag_s16(sink, idx);
 				*pd_write = *x;
 				*y = *pd_read;
 				if (++pd_write_index == DRC_MAX_PRE_DELAY_FRAMES) {
@@ -441,14 +542,15 @@ static void drc_s16_default(const struct comp_dev *dev,
 
 	if (!state->processed) {
 		drc_update_envelope(state, p);
-		drc_compress_output(state, p, nch);
+		drc_compress_output(state, p, 2, nch);
 		state->processed = 1;
 	}
 
 	offset = state->pre_delay_write_index & DRC_DIVISION_FRAMES_MASK;
 	while (i < frames) {
 		/* Copy fragment data from source to pre-delay buffers, and copy the output fragment
-		 * to sink */
+		 * to sink.
+		 */
 		fragment = MIN(DRC_DIVISION_FRAMES - offset, frames - i);
 		pd_write_index = state->pre_delay_write_index;
 		pd_read_index = state->pre_delay_read_index;
@@ -458,7 +560,7 @@ static void drc_s16_default(const struct comp_dev *dev,
 			idx = i * nch + ch;
 			for (f = 0; f < fragment; ++f) {
 				x = audio_stream_read_frag_s16(source, idx);
-				y = audio_stream_read_frag_s16(sink, idx);
+				y = audio_stream_write_frag_s16(sink, idx);
 				*pd_write = *x;
 				*y = *pd_read;
 				pd_write++;
@@ -476,10 +578,225 @@ static void drc_s16_default(const struct comp_dev *dev,
 
 		/* Process the input division (32 frames). */
 		if (offset == 0)
-			drc_process_one_division(state, p, nch);
+			drc_process_one_division(state, p, 2, nch);
 	}
 }
 #endif /* CONFIG_FORMAT_S16LE */
+
+#if CONFIG_FORMAT_S24LE
+static void drc_s24_default(const struct comp_dev *dev,
+			    const struct audio_stream *source,
+			    struct audio_stream *sink,
+			    uint32_t frames)
+{
+	int32_t *x;
+	int32_t *y;
+	int32_t *pd_write;
+	int32_t *pd_read;
+	int offset;
+	int i = 0;
+	int ch;
+	int idx;
+	int f;
+	int fragment;
+	int pd_write_index;
+	int pd_read_index;
+	int nch = source->channels;
+
+	struct drc_comp_data *cd = comp_get_drvdata(dev);
+	struct drc_state *state = &cd->state;
+	const struct sof_drc_params *p = &cd->config->params; /* Read-only */
+
+	if (!p->enabled) {
+		/* Delay the input sample only and don't do other processing. This is used when the
+		 * DRC is disabled. We want to do this to match the processing delay of other bands
+		 * in multi-band DRC kernel case.
+		 */
+		for (ch = 0; ch < nch; ++ch) {
+			pd_write_index = state->pre_delay_write_index;
+			pd_read_index = state->pre_delay_read_index;
+			pd_write = (int32_t *)state->pre_delay_buffers[ch] + pd_write_index;
+			pd_read = (int32_t *)state->pre_delay_buffers[ch] + pd_read_index;
+			idx = ch;
+			for (i = 0; i < frames; ++i) {
+				x = audio_stream_read_frag_s32(source, idx);
+				y = audio_stream_write_frag_s32(sink, idx);
+				*pd_write = *x;
+				*y = *pd_read;
+				if (++pd_write_index == DRC_MAX_PRE_DELAY_FRAMES) {
+					pd_write_index = 0;
+					pd_write = (int32_t *)state->pre_delay_buffers[ch];
+				} else {
+					pd_write++;
+				}
+				if (++pd_read_index == DRC_MAX_PRE_DELAY_FRAMES) {
+					pd_read_index = 0;
+					pd_read = (int32_t *)state->pre_delay_buffers[ch];
+				} else {
+					pd_read++;
+				}
+				idx += nch;
+			}
+		}
+
+		state->pre_delay_write_index += frames;
+		state->pre_delay_write_index &= DRC_MAX_PRE_DELAY_FRAMES_MASK;
+		state->pre_delay_read_index += frames;
+		state->pre_delay_read_index &= DRC_MAX_PRE_DELAY_FRAMES_MASK;
+		return;
+	}
+
+	if (!state->processed) {
+		drc_update_envelope(state, p);
+		drc_compress_output(state, p, 4, nch);
+		state->processed = 1;
+	}
+
+	offset = state->pre_delay_write_index & DRC_DIVISION_FRAMES_MASK;
+	while (i < frames) {
+		/* Copy fragment data from source to pre-delay buffers, and copy the output fragment
+		 * to sink.
+		 */
+		fragment = MIN(DRC_DIVISION_FRAMES - offset, frames - i);
+		pd_write_index = state->pre_delay_write_index;
+		pd_read_index = state->pre_delay_read_index;
+		for (ch = 0; ch < nch; ++ch) {
+			pd_write = (int32_t *)state->pre_delay_buffers[ch] + pd_write_index;
+			pd_read = (int32_t *)state->pre_delay_buffers[ch] + pd_read_index;
+			idx = i * nch + ch;
+			for (f = 0; f < fragment; ++f) {
+				x = audio_stream_read_frag_s32(source, idx);
+				y = audio_stream_write_frag_s32(sink, idx);
+
+				/* Write/Read pre_delay_buffer as s32 format */
+				*pd_write = *x << 8;
+				*y = sat_int24(Q_SHIFT_RND(*pd_read, 31, 23));
+
+				pd_write++;
+				pd_read++;
+				idx += nch;
+			}
+		}
+		state->pre_delay_write_index =
+			(pd_write_index + fragment) & DRC_MAX_PRE_DELAY_FRAMES_MASK;
+		state->pre_delay_read_index =
+			(pd_read_index + fragment) & DRC_MAX_PRE_DELAY_FRAMES_MASK;
+
+		i += fragment;
+		offset = (offset + fragment) & DRC_DIVISION_FRAMES_MASK;
+
+		/* Process the input division (32 frames). */
+		if (offset == 0)
+			drc_process_one_division(state, p, 4, nch);
+	}
+}
+#endif /* CONFIG_FORMAT_S24LE */
+
+#if CONFIG_FORMAT_S32LE
+static void drc_s32_default(const struct comp_dev *dev,
+			    const struct audio_stream *source,
+			    struct audio_stream *sink,
+			    uint32_t frames)
+{
+	int32_t *x;
+	int32_t *y;
+	int32_t *pd_write;
+	int32_t *pd_read;
+	int offset;
+	int i = 0;
+	int ch;
+	int idx;
+	int f;
+	int fragment;
+	int pd_write_index;
+	int pd_read_index;
+	int nch = source->channels;
+
+	struct drc_comp_data *cd = comp_get_drvdata(dev);
+	struct drc_state *state = &cd->state;
+	const struct sof_drc_params *p = &cd->config->params; /* Read-only */
+
+	if (!p->enabled) {
+		/* Delay the input sample only and don't do other processing. This is used when the
+		 * DRC is disabled. We want to do this to match the processing delay of other bands
+		 * in multi-band DRC kernel case.
+		 */
+		for (ch = 0; ch < nch; ++ch) {
+			pd_write_index = state->pre_delay_write_index;
+			pd_read_index = state->pre_delay_read_index;
+			pd_write = (int32_t *)state->pre_delay_buffers[ch] + pd_write_index;
+			pd_read = (int32_t *)state->pre_delay_buffers[ch] + pd_read_index;
+			idx = ch;
+			for (i = 0; i < frames; ++i) {
+				x = audio_stream_read_frag_s32(source, idx);
+				y = audio_stream_write_frag_s32(sink, idx);
+				*pd_write = *x;
+				*y = *pd_read;
+				if (++pd_write_index == DRC_MAX_PRE_DELAY_FRAMES) {
+					pd_write_index = 0;
+					pd_write = (int32_t *)state->pre_delay_buffers[ch];
+				} else {
+					pd_write++;
+				}
+				if (++pd_read_index == DRC_MAX_PRE_DELAY_FRAMES) {
+					pd_read_index = 0;
+					pd_read = (int32_t *)state->pre_delay_buffers[ch];
+				} else {
+					pd_read++;
+				}
+				idx += nch;
+			}
+		}
+
+		state->pre_delay_write_index += frames;
+		state->pre_delay_write_index &= DRC_MAX_PRE_DELAY_FRAMES_MASK;
+		state->pre_delay_read_index += frames;
+		state->pre_delay_read_index &= DRC_MAX_PRE_DELAY_FRAMES_MASK;
+		return;
+	}
+
+	if (!state->processed) {
+		drc_update_envelope(state, p);
+		drc_compress_output(state, p, 4, nch);
+		state->processed = 1;
+	}
+
+	offset = state->pre_delay_write_index & DRC_DIVISION_FRAMES_MASK;
+	while (i < frames) {
+		/* Copy fragment data from source to pre-delay buffers, and copy the output fragment
+		 * to sink.
+		 */
+		fragment = MIN(DRC_DIVISION_FRAMES - offset, frames - i);
+		pd_write_index = state->pre_delay_write_index;
+		pd_read_index = state->pre_delay_read_index;
+		for (ch = 0; ch < nch; ++ch) {
+			pd_write = (int32_t *)state->pre_delay_buffers[ch] + pd_write_index;
+			pd_read = (int32_t *)state->pre_delay_buffers[ch] + pd_read_index;
+			idx = i * nch + ch;
+			for (f = 0; f < fragment; ++f) {
+				x = audio_stream_read_frag_s32(source, idx);
+				y = audio_stream_write_frag_s32(sink, idx);
+				*pd_write = *x;
+				*y = *pd_read;
+				pd_write++;
+				pd_read++;
+				idx += nch;
+			}
+		}
+		state->pre_delay_write_index =
+			(pd_write_index + fragment) & DRC_MAX_PRE_DELAY_FRAMES_MASK;
+		state->pre_delay_read_index =
+			(pd_read_index + fragment) & DRC_MAX_PRE_DELAY_FRAMES_MASK;
+
+		i += fragment;
+		offset = (offset + fragment) & DRC_DIVISION_FRAMES_MASK;
+
+		/* Process the input division (32 frames). */
+		if (offset == 0)
+			drc_process_one_division(state, p, 4, nch);
+	}
+}
+#endif /* CONFIG_FORMAT_S32LE */
 
 const struct drc_proc_fnmap drc_proc_fnmap[] = {
 /* { SOURCE_FORMAT , PROCESSING FUNCTION } */
@@ -488,11 +805,11 @@ const struct drc_proc_fnmap drc_proc_fnmap[] = {
 #endif /* CONFIG_FORMAT_S16LE */
 
 #if CONFIG_FORMAT_S24LE
-	//{ SOF_IPC_FRAME_S24_4LE, drc_s24_default },
+	{ SOF_IPC_FRAME_S24_4LE, drc_s24_default },
 #endif /* CONFIG_FORMAT_S24LE */
 
 #if CONFIG_FORMAT_S32LE
-	//{ SOF_IPC_FRAME_S32_LE, drc_s32_default },
+	{ SOF_IPC_FRAME_S32_LE, drc_s32_default },
 #endif /* CONFIG_FORMAT_S32LE */
 };
 
@@ -503,11 +820,11 @@ const struct drc_proc_fnmap drc_proc_fnmap_pass[] = {
 #endif /* CONFIG_FORMAT_S16LE */
 
 #if CONFIG_FORMAT_S24LE
-	//{ SOF_IPC_FRAME_S24_4LE, drc_s32_default_pass },
+	{ SOF_IPC_FRAME_S24_4LE, drc_s32_default_pass },
 #endif /* CONFIG_FORMAT_S24LE */
 
 #if CONFIG_FORMAT_S32LE
-	//{ SOF_IPC_FRAME_S32_LE, drc_s32_default_pass },
+	{ SOF_IPC_FRAME_S32_LE, drc_s32_default_pass },
 #endif /* CONFIG_FORMAT_S32LE */
 };
 
