@@ -133,27 +133,10 @@ target_compile_definitions(hal PRIVATE
 )
 
 add_local_sources(hal
-	attribute.c
-	cache.c
 	cache_asm.S
 	clock.S
-	coherence.c
-	debug.c
-	debug_hndlr.S
-	disass.c
 	int_asm.S
 	interrupts.c
 	memcopy.S
-	mem_ecc_parity.S
-	misc.c
-	miscellaneous.S
-	mmu.c
-	mp_asm.S
-	mpu_asm.S
-	mpu.c
-	set_region_translate.c
-	state_asm.S
-	state.c
-	syscache_asm.S
 	windowspill_asm.S
 )
