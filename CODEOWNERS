@@ -65,6 +65,7 @@ tools/test/*				@xiulipan
 tools/test/audio/*			@singalsu
 tools/ctl/*				@singalsu
 tools/tune/*				@singalsu
+tools/oss-fuzz/*			@cujomalainey
 
 # build system
 **/CMakeLists.txt			@jajanusz
