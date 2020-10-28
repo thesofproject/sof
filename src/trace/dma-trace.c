@@ -215,6 +215,19 @@ static int dma_trace_buffer_init(struct dma_trace_data *d)
 	return 0;
 }
 
+static void dma_trace_buffer_free(struct dma_trace_data *d)
+{
+	struct dma_trace_buf *buffer = &d->dmatb;
+	unsigned int flags;
+
+	spin_lock_irq(&d->lock, flags);
+
+	rfree(buffer->addr);
+	memset(buffer, 0, sizeof(*buffer));
+
+	spin_unlock_irq(&d->lock, flags);
+}
+
 #if CONFIG_DMA_GW
 
 static int dma_trace_start(struct dma_trace_data *d)
@@ -349,6 +362,9 @@ int dma_trace_enable(struct dma_trace_data *d)
 	schedule_task(&d->dmat_work, DMA_TRACE_PERIOD, DMA_TRACE_PERIOD);
 
 out:
+	if (err < 0)
+		dma_trace_buffer_free(d);
+
 	platform_shared_commit(d, sizeof(*d));
 
 	return err;
