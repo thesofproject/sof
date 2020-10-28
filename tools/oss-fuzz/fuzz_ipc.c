@@ -19,7 +19,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size)
 {
 	// since we can always assume the mailbox is allocated
 	// copy the buffer to pre allocated buffer
-	struct sof_ipc_cmd_hdr *hdr = malloc(SOF_IPC_MSG_MAX_SIZE);
+	struct sof_ipc_cmd_hdr *hdr = calloc(SOF_IPC_MSG_MAX_SIZE, 1);
 
 	memcpy_s(hdr, SOF_IPC_MSG_MAX_SIZE, Data, MIN(Size, SOF_IPC_MSG_MAX_SIZE));
 
