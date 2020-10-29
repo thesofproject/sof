@@ -99,6 +99,16 @@ struct comp_buffer *buffer_new(struct sof_ipc_buffer *desc)
 	return buffer;
 }
 
+void buffer_zero(struct comp_buffer *buffer)
+{
+	buf_dbg(buffer, "stream_zero()");
+
+	bzero(buffer->stream.addr, buffer->stream.size);
+	if (buffer->caps & SOF_MEM_CAPS_DMA)
+		dcache_writeback_region(buffer->stream.addr,
+					buffer->stream.size);
+}
+
 int buffer_set_size(struct comp_buffer *buffer, uint32_t size)
 {
 	void *new_ptr = NULL;
@@ -127,6 +137,35 @@ int buffer_set_size(struct comp_buffer *buffer, uint32_t size)
 		buffer->stream.addr = new_ptr;
 
 	buffer_init(buffer, size, buffer->caps);
+
+	return 0;
+}
+
+int buffer_set_params(struct comp_buffer *buffer, struct sof_ipc_stream_params *params,
+		      bool force_update)
+{
+	int ret;
+	int i;
+
+	if (!params) {
+		buf_err(buffer, "buffer_set_params(): !params");
+		return -EINVAL;
+	}
+
+	if (buffer->hw_params_configured && !force_update)
+		return 0;
+
+	ret = audio_stream_set_params(&buffer->stream, params);
+	if (ret < 0) {
+		buf_err(buffer, "buffer_set_params(): audio_stream_set_params failed");
+		return -EINVAL;
+	}
+
+	buffer->buffer_fmt = params->buffer_fmt;
+	for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
+		buffer->chmap[i] = params->chmap[i];
+
+	buffer->hw_params_configured = true;
 
 	return 0;
 }

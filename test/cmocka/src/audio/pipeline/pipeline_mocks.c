@@ -131,6 +131,20 @@ int comp_verify_params(struct comp_dev *dev, uint32_t flag,
 	return 0;
 }
 
+void buffer_zero(struct comp_buffer *buffer)
+{
+	(void)buffer;
+}
+
+int buffer_set_params(struct comp_buffer *buffer, struct sof_ipc_stream_params *params,
+		      bool force_update)
+{
+	(void)buffer;
+	(void)params;
+	(void)force_update;
+	return 0;
+}
+
 bool buffer_params_match(struct comp_buffer *buffer, struct sof_ipc_stream_params *params,
 			 uint32_t flag)
 {

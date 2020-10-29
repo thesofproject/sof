@@ -158,12 +158,16 @@ struct comp_buffer *buffer_alloc(uint32_t size, uint32_t caps, uint32_t align);
 struct comp_buffer *buffer_new(struct sof_ipc_buffer *desc);
 int buffer_set_size(struct comp_buffer *buffer, uint32_t size);
 void buffer_free(struct comp_buffer *buffer);
+void buffer_zero(struct comp_buffer *buffer);
 
 /* called by a component after producing data into this buffer */
 void comp_update_buffer_produce(struct comp_buffer *buffer, uint32_t bytes);
 
 /* called by a component after consuming data from this buffer */
 void comp_update_buffer_consume(struct comp_buffer *buffer, uint32_t bytes);
+
+int buffer_set_params(struct comp_buffer *buffer, struct sof_ipc_stream_params *params,
+		      bool force_update);
 
 bool buffer_params_match(struct comp_buffer *buffer, struct sof_ipc_stream_params *params,
 			 uint32_t flag);
@@ -224,16 +228,6 @@ static inline void buffer_unlock(struct comp_buffer *buffer, uint32_t flags)
 	spin_unlock_irq(lock, flags);
 }
 
-static inline void buffer_zero(struct comp_buffer *buffer)
-{
-	buf_dbg(buffer, "stream_zero()");
-
-	bzero(buffer->stream.addr, buffer->stream.size);
-	if (buffer->caps & SOF_MEM_CAPS_DMA)
-		dcache_writeback_region(buffer->stream.addr,
-					buffer->stream.size);
-}
-
 static inline void buffer_reset_pos(struct comp_buffer *buffer, void *data)
 {
 	uint32_t flags = 0;
@@ -267,36 +261,6 @@ static inline void buffer_reset_params(struct comp_buffer *buffer, void *data)
 	buffer->hw_params_configured = false;
 
 	buffer_unlock(buffer, flags);
-}
-
-static inline int buffer_set_params(struct comp_buffer *buffer,
-				    struct sof_ipc_stream_params *params,
-				    bool force_update)
-{
-	int ret;
-	int i;
-
-	if (!params) {
-		buf_err(buffer, "buffer_set_params(): !params");
-		return -EINVAL;
-	}
-
-	if (buffer->hw_params_configured && !force_update)
-		return 0;
-
-	ret = audio_stream_set_params(&buffer->stream, params);
-	if (ret < 0) {
-		buf_err(buffer, "buffer_set_params(): audio_stream_set_params failed");
-		return -EINVAL;
-	}
-
-	buffer->buffer_fmt = params->buffer_fmt;
-	for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
-		buffer->chmap[i] = params->chmap[i];
-
-	buffer->hw_params_configured = true;
-
-	return 0;
 }
 
 #endif /* __SOF_AUDIO_BUFFER_H__ */

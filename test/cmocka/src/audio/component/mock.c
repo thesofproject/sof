@@ -48,4 +48,10 @@ struct sof *sof_get(void)
 	return &sof;
 }
 
+int buffer_set_params(struct comp_buffer *buffer, struct sof_ipc_stream_params *params,
+		      bool force_update)
+{
+	return 0;
+}
+
 #endif
