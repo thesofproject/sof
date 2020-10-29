@@ -32,7 +32,6 @@ static void sai_start(struct dai *dai, int direction)
 	dai_info(dai, "SAI: sai_start");
 
 	uint32_t xcsr = 0U;
-	int i;
 
 	/* enable DMA requests */
 	dai_update_bits(dai, REG_SAI_XCSR(direction),
@@ -43,17 +42,10 @@ static void sai_start(struct dai *dai, int direction)
 #endif
 
 	/* add one word to FIFO before TRCE is enabled */
-	if (direction == DAI_DIR_PLAYBACK) {
+	if (direction == DAI_DIR_PLAYBACK)
 		dai_write(dai, REG_SAI_TDR0, 0x0);
-		/* We could add quite a few more words; let's add
-		 * another 64, to fill the FIFO with a little bit of
-		 * silence...
-		 */
-		for (i = 0; i < 64; i++)
-			dai_write(dai, REG_SAI_TDR0, 0x0);
-	} else {
+	else
 		dai_write(dai, REG_SAI_RDR0, 0x0);
-	}
 
 	/* transmitter enable */
 	dai_update_bits(dai, REG_SAI_XCSR(direction),
