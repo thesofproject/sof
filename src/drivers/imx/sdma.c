@@ -524,13 +524,11 @@ static int sdma_start(struct dma_chan_data *channel)
 	/* If channel is event driven, allow it to run by setting HOSTOVR.
 	 * If it's manually controlled, kickstart it by writing to SDMA_HSTART.
 	 */
-	if (pdata->hw_event != -1) {
-		sdma_enable_event(channel);
+	if (pdata->hw_event != -1)
 		dma_reg_update_bits(channel->dma, SDMA_HOSTOVR,
 				    BIT(channel->index), BIT(channel->index));
-	} else {
+	else
 		dma_reg_write(channel->dma, SDMA_HSTART, BIT(channel->index));
-	}
 
 	/* Set a runnable channel priority (channel 0 requires maximum priority)
 	 * so it remains usable even if others are schedulable.
@@ -557,11 +555,6 @@ static int sdma_stop(struct dma_chan_data *channel)
 
 	tr_dbg(&sdma_tr, "sdma_stop(%d)", channel->index);
 	if (pdata->hw_event != -1) {
-		/* Disable the event so no further requests are coming
-		 * XXX is this safe at this point or should I do it
-		 * after?
-		 */
-		sdma_disable_event(channel);
 		/* For event driven channels, disable them from running by
 		 * setting HOSTOVR to 0. Manually controlled channels need not
 		 * be stopped as they will finish their transfer and stop on
@@ -888,6 +881,7 @@ static int sdma_set_config(struct dma_chan_data *channel,
 	tr_dbg(&sdma_tr, "SDMA context uploaded");
 	/* Context uploaded, we can set up events now */
 	sdma_set_event(channel, pdata->hw_event);
+	sdma_enable_event(channel);
 
 	/* Finally set channel priority */
 	dma_reg_write(channel->dma, SDMA_CHNPRI(channel->index), SDMA_DEFPRI);
