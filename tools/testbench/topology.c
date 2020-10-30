@@ -21,7 +21,7 @@
 
 FILE *file;
 char pipeline_string[DEBUG_MSG_LEN];
-struct shared_lib_table *lib_table;
+static struct shared_lib_table *lib_table;
 int output_file_index;
 
 const struct sof_dai_types sof_dais[] = {
