@@ -973,14 +973,9 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 
 	platform_shared_commit(dd->dai, sizeof(*dd->dai));
 
-	if (channel != DMA_CHAN_INVALID) {
-		if (dd->chan)
-			/* remove callback */
-			notifier_unregister(dev, dd->chan,
-					    NOTIFIER_ID_DMA_COPY);
-		else
-			/* get dma channel at first config only */
-			dd->chan = dma_channel_get(dd->dma, channel);
+	if (channel != DMA_CHAN_INVALID && !dd->chan) {
+		/* get dma channel at first config only */
+		dd->chan = dma_channel_get(dd->dma, channel);
 
 		if (!dd->chan) {
 			comp_err(dev, "dai_config(): dma_channel_get() failed");
