@@ -100,8 +100,7 @@ static int ssp_set_config(struct dai *dai,
 	/* is playback/capture already running */
 	if (ssp->state[DAI_DIR_PLAYBACK] == COMP_STATE_ACTIVE ||
 	    ssp->state[DAI_DIR_CAPTURE] == COMP_STATE_ACTIVE) {
-		dai_err(dai, "ssp_set_config(): playback/capture already running");
-		ret = -EINVAL;
+		dai_info(dai, "ssp_set_config(): playback/capture active. Ignore config");
 		goto out;
 	}
 
