@@ -737,8 +737,8 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 
 	/* cannot configure DAI while active */
 	if (dev->state == COMP_STATE_ACTIVE) {
-		comp_err(dev, "dai_config(): Component is in active state.");
-		return -EINVAL;
+		comp_info(dev, "dai_config(): Component is in active state. Ignore config");
+		return 0;
 	}
 
 	switch (config->type) {
