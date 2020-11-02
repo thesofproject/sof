@@ -282,7 +282,7 @@ int main(int argc, char **argv)
 	}
 
 	/* parse topology file and create pipeline */
-	if (parse_topology(sof_get(), lib_table, &tp, pipeline) < 0) {
+	if (parse_topology(sof_get(), &tp, pipeline) < 0) {
 		fprintf(stderr, "error: parsing topology\n");
 		exit(EXIT_FAILURE);
 	}

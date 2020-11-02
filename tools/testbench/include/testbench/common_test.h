@@ -56,6 +56,8 @@ struct shared_lib_table {
 	void *handle;
 };
 
+extern struct shared_lib_table lib_table[];
+
 extern int debug;
 
 int edf_scheduler_init(void);
@@ -83,6 +85,6 @@ int get_index_by_type(uint32_t comp_type,
 int get_index_by_uuid(struct sof_ipc_comp_ext *comp_ext,
 		      struct shared_lib_table *lib_table);
 
-int parse_topology(struct sof *sof, struct shared_lib_table *library_table,
+int parse_topology(struct sof *sof,
 		   struct testbench_prm *tp, char *pipeline_msg);
 #endif
