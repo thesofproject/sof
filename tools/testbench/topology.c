@@ -21,7 +21,6 @@
 
 FILE *file;
 char pipeline_string[DEBUG_MSG_LEN];
-struct shared_lib_table *lib_table;
 int output_file_index;
 
 const struct sof_dai_types sof_dais[] = {
@@ -691,7 +690,7 @@ int load_mixer(void *dev, int comp_id, int pipeline_id,
 }
 
 /* parse topology file and set up pipeline */
-int parse_topology(struct sof *sof, struct shared_lib_table *library_table,
+int parse_topology(struct sof *sof,
 		   struct testbench_prm *tp, char *pipeline_msg)
 {
 	struct snd_soc_tplg_hdr *hdr;
@@ -714,8 +713,6 @@ int parse_topology(struct sof *sof, struct shared_lib_table *library_table,
 		fprintf(stderr, "error: opening file %s\n", tp->tplg_file);
 		return -EINVAL;
 	}
-
-	lib_table = library_table;
 
 	/* file size */
 	if (fseek(file, 0, SEEK_END)) {
