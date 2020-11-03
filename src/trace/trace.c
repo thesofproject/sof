@@ -27,7 +27,7 @@
 #include <stdint.h>
 
 struct trace {
-	uint32_t pos ;	/* trace position */
+	uintptr_t pos ;	/* trace position */
 	uint32_t enable;
 	spinlock_t lock; /* locking mechanism */
 };
@@ -128,7 +128,7 @@ void trace_log(bool send_atomic, const void *log_entry,
 	}
 
 	/* fill log content */
-	put_header(data, ctx->uuid_p, id_1, id_2, (uint32_t)log_entry,
+	put_header(data, ctx->uuid_p, id_1, id_2, (uintptr_t)log_entry,
 		   platform_timer_get(timer_get()));
 	va_start(vl, arg_count);
 	for (i = 0; i < arg_count; ++i)
@@ -222,7 +222,7 @@ static int trace_filter_update_global(int32_t log_level, uint32_t uuid_id)
 		 * when looking for specific uuid element,
 		 * then find, update and stop searching
 		 */
-		if ((uint32_t)ptr->uuid_p == uuid_id) {
+		if ((uintptr_t)ptr->uuid_p == uuid_id) {
 			ptr->level = log_level;
 			return 1;
 		}
@@ -272,7 +272,7 @@ static int trace_filter_update_instances(int32_t log_level, uint32_t uuid_id,
 		ctx = trace_filter_ipc_comp_context(icd);
 		assert(ctx);
 		correct_comp = comp_id == -1 || icd->id == comp_id; /* todo: icd->topo_id */
-		correct_comp &= uuid_id == 0 || (uint32_t)ctx->uuid_p == uuid_id;
+		correct_comp &= uuid_id == 0 || (uintptr_t)ctx->uuid_p == uuid_id;
 		correct_comp &= pipe_id == -1 || ipc_comp_pipe_id(icd) == pipe_id;
 		if (correct_comp) {
 			ctx->level = log_level;

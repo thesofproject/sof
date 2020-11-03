@@ -103,7 +103,7 @@ int dma_copy_to_host_nowait(struct dma_copy *dc, struct dma_sg_config *host_sg,
 
 	/* configure local DMA elem */
 	local_sg_elem.dest = host_sg_elem->dest + offset;
-	local_sg_elem.src = (uint32_t)local_ptr;
+	local_sg_elem.src = (uintptr_t)local_ptr;
 	if (size >= HOST_PAGE_SIZE - offset)
 		local_sg_elem.size = HOST_PAGE_SIZE - offset;
 	else

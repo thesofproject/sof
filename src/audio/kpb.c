@@ -522,7 +522,7 @@ static int kpb_prepare(struct comp_dev *dev)
 
 	if (!kpb->sel_sink || !kpb->host_sink) {
 		comp_info(dev, "kpb_prepare(): could not find sinks: sel_sink %d host_sink %d",
-			  (uint32_t)kpb->sel_sink, (uint32_t)kpb->host_sink);
+			  (uintptr_t)kpb->sel_sink, (uintptr_t)kpb->host_sink);
 		ret = -EIO;
 	}
 
@@ -850,7 +850,7 @@ static int kpb_buffer_data(struct comp_dev *dev,
 		}
 
 		/* Check how much space there is in current write buffer */
-		space_avail = (uint32_t)buff->end_addr - (uint32_t)buff->w_ptr;
+		space_avail = (uintptr_t)buff->end_addr - (uintptr_t)buff->w_ptr;
 
 		if (size_to_copy > space_avail) {
 			/* We have more data to copy than available space
@@ -1052,12 +1052,12 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 			 */
 			buff->r_ptr = buff->start_addr;
 			if (buff->state == KPB_BUFFER_FREE) {
-				local_buffered = (uint32_t)buff->w_ptr -
-						 (uint32_t)buff->start_addr;
+				local_buffered = (uintptr_t)buff->w_ptr -
+						 (uintptr_t)buff->start_addr;
 				buffered += local_buffered;
 			} else if (buff->state == KPB_BUFFER_FULL) {
-				local_buffered = (uint32_t)buff->end_addr -
-						 (uint32_t)buff->start_addr;
+				local_buffered = (uintptr_t)buff->end_addr -
+						 (uintptr_t)buff->start_addr;
 				buffered += local_buffered;
 			} else {
 				comp_err(dev, "kpb_init_draining(): incorrect buffer label");
@@ -1076,8 +1076,8 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 					 * and buffer's end address.
 					 */
 					buff = buff->prev;
-					buffered += (uint32_t)buff->end_addr -
-						    (uint32_t)buff->w_ptr;
+					buffered += (uintptr_t)buff->end_addr -
+						    (uintptr_t)buff->w_ptr;
 					buff->r_ptr = (char *)buff->w_ptr +
 						      (buffered - drain_req);
 					break;
@@ -1206,7 +1206,7 @@ static enum task_state kpb_draining_task(void *arg)
 			period_copy_start = platform_timer_get(timer);
 		}
 
-		size_to_read = (uint32_t)buff->end_addr - (uint32_t)buff->r_ptr;
+		size_to_read = (uintptr_t)buff->end_addr - (uintptr_t)buff->r_ptr;
 
 		if (size_to_read > audio_stream_get_free_bytes(&sink->stream)) {
 			if (audio_stream_get_free_bytes(&sink->stream) >= drain_req)
@@ -1414,7 +1414,7 @@ static void kpb_clear_history_buffer(struct history_buffer *buff)
 
 	do {
 		start_addr = buff->start_addr;
-		size = (uint32_t)buff->end_addr - (uint32_t)start_addr;
+		size = (uintptr_t)buff->end_addr - (uintptr_t)start_addr;
 
 		bzero(start_addr, size);
 
