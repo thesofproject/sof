@@ -389,7 +389,7 @@ static int hda_dma_enable_unlock(struct dma_chan_data *channel)
 	struct hda_chan_data *hda_chan;
 	int ret;
 
-	tr_info(&hdma_tr, "hda-dmac: %d channel %d -> enable",
+	tr_dbg(&hdma_tr, "hda-dmac: %d channel %d -> enable",
 		channel->dma->plat_data.id, channel->index);
 
 	hda_dma_get_dbg_vals(channel, HDA_DBG_PRE, HDA_DBG_BOTH);
@@ -475,8 +475,7 @@ static struct dma_chan_data *hda_dma_channel_get(struct dma *dma,
 
 	spin_lock_irq(&dma->lock, flags);
 
-	tr_info(&hdma_tr, "hda-dmac: %d channel %d -> get", dma->plat_data.id,
-		channel);
+	tr_dbg(&hdma_tr, "hda-dmac: %d channel %d -> get", dma->plat_data.id, channel);
 
 	/* use channel if it's free */
 	if (dma->chan[channel].status == COMP_STATE_INIT) {
@@ -532,8 +531,8 @@ static int hda_dma_start(struct dma_chan_data *channel)
 
 	irq_local_disable(flags);
 
-	tr_info(&hdma_tr, "hda-dmac: %d channel %d -> start",
-		channel->dma->plat_data.id, channel->index);
+	tr_dbg(&hdma_tr, "hda-dmac: %d channel %d -> start",
+	       channel->dma->plat_data.id, channel->index);
 
 	hda_dma_dbg_count_reset(channel);
 
@@ -567,8 +566,8 @@ static int hda_dma_release(struct dma_chan_data *channel)
 
 	irq_local_disable(flags);
 
-	tr_info(&hdma_tr, "hda-dmac: %d channel %d -> release",
-		channel->dma->plat_data.id, channel->index);
+	tr_dbg(&hdma_tr, "hda-dmac: %d channel %d -> release",
+	       channel->dma->plat_data.id, channel->index);
 
 	/*
 	 * Prepare for the handling of release condition on the first work cb.
@@ -590,8 +589,8 @@ static int hda_dma_pause(struct dma_chan_data *channel)
 
 	irq_local_disable(flags);
 
-	tr_info(&hdma_tr, "hda-dmac: %d channel %d -> pause",
-		channel->dma->plat_data.id, channel->index);
+	tr_dbg(&hdma_tr, "hda-dmac: %d channel %d -> pause",
+	       channel->dma->plat_data.id, channel->index);
 
 	if (channel->status != COMP_STATE_ACTIVE)
 		goto out;
@@ -615,8 +614,8 @@ static int hda_dma_stop(struct dma_chan_data *channel)
 	hda_dma_ptr_trace(channel, "last-copy", HDA_DBG_BOTH);
 	hda_dma_get_dbg_vals(channel, HDA_DBG_PRE, HDA_DBG_BOTH);
 
-	tr_info(&hdma_tr, "hda-dmac: %d channel %d -> stop",
-		channel->dma->plat_data.id, channel->index);
+	tr_dbg(&hdma_tr, "hda-dmac: %d channel %d -> stop",
+	       channel->dma->plat_data.id, channel->index);
 
 	if (channel->direction == DMA_DIR_HMEM_TO_LMEM ||
 	    channel->direction == DMA_DIR_LMEM_TO_HMEM)
@@ -668,8 +667,7 @@ static int hda_dma_set_config(struct dma_chan_data *channel,
 
 	irq_local_disable(flags);
 
-	tr_info(&hdma_tr, "hda-dmac: %d channel %d -> config",
-		dma->plat_data.id, channel->index);
+	tr_dbg(&hdma_tr, "hda-dmac: %d channel %d -> config", dma->plat_data.id, channel->index);
 
 	if (!config->elem_array.count) {
 		tr_err(&hdma_tr, "hda-dmac: %d channel %d no DMA descriptors",
