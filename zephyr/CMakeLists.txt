@@ -2,6 +2,14 @@
 
 if(CONFIG_SOF)
 
+if(CONFIG_LIBRARY)
+	set(ARCH host)
+	zephyr_include_directories(../src/platform/library/include)
+else()
+	# firmware build supports only xtensa arch for now
+	set(ARCH xtensa)
+endif()
+
 # Appends literal with path of the source file relative to the project root
 # It is useful if sources in given target need deterministic relative path
 # to the actually compiled file.
@@ -47,7 +55,7 @@ set(SOF_TRACE_PATH "${SOF_SRC_PATH}/trace")
 target_include_directories(SOF INTERFACE ../rimage/src/include)
 target_include_directories(SOF INTERFACE ../zephyr/include)
 target_include_directories(SOF INTERFACE ${SOF_SRC_PATH}/include)
-target_include_directories(SOF INTERFACE ${SOF_SRC_PATH}/arch/xtensa/include)
+target_include_directories(SOF INTERFACE ${SOF_SRC_PATH}/arch/${ARCH}/include)
 
 # SOF module init
 zephyr_library_named(modules_sof)
@@ -258,7 +266,7 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V20)
 	set(PLATFORM "icelake")
 	target_include_directories(SOF INTERFACE ../zephyr/include/cavs20)
 	zephyr_include_directories(${SOF_PLATFORM_PATH}/intel/cavs/include)
-	zephyr_include_directories(../../../../zephyr/soc/xtensa/intel_adsp/common/include)
+	zephyr_include_directories(../../../../zephyr/soc/${ARCH}/intel_adsp/common/include)
 endif()
 
 # Intel TGL and CAVS 2.5 platforms
@@ -316,7 +324,7 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V25)
 	set(PLATFORM "tigerlake")
 	target_include_directories(SOF INTERFACE ../zephyr/include/cavs25)
 	zephyr_include_directories(${SOF_PLATFORM_PATH}/intel/cavs/include)
-	zephyr_include_directories(../../../../zephyr/soc/xtensa/intel_adsp/common/include)
+	zephyr_include_directories(../../../../zephyr/soc/${ARCH}/intel_adsp/common/include)
 endif()
 
 # NXP IMX8 platforms
@@ -343,6 +351,7 @@ zephyr_library_sources(
 	${SOF_IPC_PATH}/user_abi_version.c
 	${SOF_IPC_PATH}/ipc-host-ptable.c
 	${SOF_IPC_PATH}/cc_version.c
+
 	${SOF_SRC_PATH}/spinlock.c
 
 	# SOF math utilities

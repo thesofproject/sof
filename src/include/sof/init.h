@@ -8,7 +8,9 @@
 #ifndef __SOF_INIT_H__
 #define __SOF_INIT_H__
 
+#if !CONFIG_LIBRARY
 #include <arch/init.h>
+#endif
 
 struct sof;
 

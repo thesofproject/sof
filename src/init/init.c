@@ -16,7 +16,9 @@
 #include <sof/lib/memory.h>
 #include <sof/lib/mm_heap.h>
 #include <sof/lib/notifier.h>
+#if !CONFIG_LIBRARY
 #include <sof/lib/pm_runtime.h>
+#endif
 #include <sof/platform.h>
 #include <sof/schedule/task.h>
 #include <sof/sof.h>
@@ -111,7 +113,11 @@ int secondary_core_init(struct sof *sof)
 
 	return err;
 }
-
+#elif CONFIG_LIBRARY
+int secondary_core_init(struct sof *sof)
+{
+	panic(SOF_IPC_PANIC_PLATFORM);
+}
 #endif
 
 int primary_core_init(int argc, char *argv[], struct sof *sof)
@@ -146,7 +152,9 @@ int primary_core_init(int argc, char *argv[], struct sof *sof)
 	init_system_notify(sof);
 
 	trace_point(TRACE_BOOT_SYS_POWER);
+#if !CONFIG_LIBRARY
 	pm_runtime_init(sof);
+#endif
 
 	/* init the platform */
 	err = platform_init(sof);

@@ -8,8 +8,10 @@
 #ifndef __SOF_DEBUG_GDB_GDB_H__
 #define __SOF_DEBUG_GDB_GDB_H__
 
+#if !defined(__ZEPHYR__) || !CONFIG_LIBRARY
 #include <arch/debug/gdb/init.h>
 #include <arch/debug/gdb/utilities.h>
+#endif
 
 #define GDB_BUFMAX 256
 #define GDB_NUMBER_OF_REGISTERS 64

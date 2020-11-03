@@ -10,7 +10,9 @@
 #ifndef __ARCH_SOF_H__
 #define __ARCH_SOF_H__
 
+#if !defined(__ZEPHYR__) || !CONFIG_LIBRARY
 #include <execinfo.h>
+#endif
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -20,6 +22,7 @@
 
 static inline void *arch_get_stack_ptr(void)
 {
+#if !defined(__ZEPHYR__) || !CONFIG_LIBRARY
 	void *frames[ARCH_STACK_DUMP_FRAMES];
 	size_t frame_count;
 	size_t i;
@@ -34,7 +37,7 @@ static inline void *arch_get_stack_ptr(void)
 		fprintf(stderr, "\t%s\n", symbols[i]);
 
 	free(symbols);
-
+#endif
 	return NULL;
 }
 

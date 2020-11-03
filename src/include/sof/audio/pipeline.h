@@ -86,8 +86,12 @@ extern struct tr_ctx pipe_tr;
 #define PPL_DIR_DOWNSTREAM	0
 #define PPL_DIR_UPSTREAM	1
 
+#ifdef MAILBOX_STREAM_SIZE
 #define PPL_POSN_OFFSETS \
 	(MAILBOX_STREAM_SIZE / sizeof(struct sof_ipc_stream_posn))
+#else
+#define PPL_POSN_OFFSETS 0
+#endif
 
 /*
  * Audio pipeline.

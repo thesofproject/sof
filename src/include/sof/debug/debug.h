@@ -138,6 +138,7 @@
 #define dump_object_ptr(__o) do {} while (0)
 #endif
 
+#if !defined(__ZEPHYR__) || !CONFIG_LIBRARY
 /* dump stack as part of panic */
 static inline uint32_t dump_stack(uint32_t p, void *addr, size_t offset,
 				  size_t limit, uintptr_t *stack_ptr)
@@ -168,5 +169,6 @@ static inline uint32_t dump_stack(uint32_t p, void *addr, size_t offset,
 
 	return p;
 }
+#endif
 
 #endif /* __SOF_DEBUG_DEBUG_H__ */

@@ -16,7 +16,7 @@
 	"Add it to CMake's target with sof_append_relative_path_definitions."
 #endif
 
-#if !CONFIG_LIBRARY
+#if !CONFIG_LIBRARY || defined(__ZEPHYR__)
 #include <platform/trace/trace.h>
 #endif
 #include <sof/common.h>

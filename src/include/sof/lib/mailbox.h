@@ -17,6 +17,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#if !defined(__ZEPHYR__) || !CONFIG_LIBRARY
+
 #define mailbox_get_exception_base() \
 	MAILBOX_EXCEPTION_BASE
 
@@ -97,5 +99,23 @@ void mailbox_stream_write(size_t offset, const void *src, size_t bytes)
 	dcache_writeback_region((void *)(MAILBOX_STREAM_BASE + offset),
 				bytes);
 }
+#else
+static inline
+void mailbox_hostbox_read(void *dest, size_t dest_size,
+			  size_t offset, size_t bytes)
+{
+	memset(dest, 0, dest_size);
+}
+
+static inline
+void mailbox_hostbox_write(size_t offset, const void *src, size_t bytes)
+{
+}
+
+static inline
+void mailbox_stream_write(size_t offset, const void *src, size_t bytes)
+{
+}
+#endif
 
 #endif /* __SOF_LIB_MAILBOX_H__ */

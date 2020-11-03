@@ -13,6 +13,8 @@
 #include <stdint.h>
 
 struct timer {
+	uint32_t id;
+	uint64_t delta;
 };
 
 static inline int arch_timer_register(struct timer *timer,
@@ -20,7 +22,7 @@ static inline int arch_timer_register(struct timer *timer,
 static inline void arch_timer_unregister(struct timer *timer) {}
 static inline void arch_timer_enable(struct timer *timer) {}
 static inline void arch_timer_disable(struct timer *timer) {}
-static inline uint32_t arch_timer_get_system(struct timer *timer) {return 0; }
+static inline uint64_t arch_timer_get_system(struct timer *timer) {return 0; }
 static inline int64_t arch_timer_set(struct timer *timer,
 				     uint64_t ticks) {return 0; }
 static inline void arch_timer_clear(struct timer *timer) {}

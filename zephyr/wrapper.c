@@ -34,6 +34,10 @@
  * Currently functional but some items still WIP.
  */
 
+#ifndef HEAP_RUNTIME_SIZE
+#define HEAP_RUNTIME_SIZE	0
+#endif
+
 /* system size not declared on some platforms */
 #ifndef HEAP_SYSTEM_SIZE
 #define HEAP_SYSTEM_SIZE	0
@@ -41,7 +45,7 @@
 
 /* The Zephyr heap - TODO: split heap */
 #define HEAP_SIZE	(HEAP_SYSTEM_SIZE + HEAP_RUNTIME_SIZE + HEAP_BUFFER_SIZE)
-uint8_t __aligned(64) heapmem[HEAP_SIZE];
+static uint8_t __aligned(64) heapmem[HEAP_SIZE];
 
 /* Use k_heap structure */
 static struct k_heap sof_heap;
@@ -178,8 +182,9 @@ const char irq_name_level5[] = "level5";
  */
 int interrupt_get_irq(unsigned int irq, const char *cascade)
 {
-#if defined(CONFIG_SOC_SERIES_INTEL_ADSP_BAYTRAIL) ||\
-	defined(CONFIG_SOC_SERIES_INTEL_ADSP_BROADWELL)
+#if defined(CONFIG_SOC_SERIES_INTEL_ADSP_BAYTRAIL) || \
+	defined(CONFIG_SOC_SERIES_INTEL_ADSP_BROADWELL) || \
+	defined(CONFIG_LIBRARY)
 	return irq;
 #else
 	if (cascade == irq_name_level2)
@@ -197,6 +202,7 @@ int interrupt_register(uint32_t irq, void(*handler)(void *arg), void *arg)
 					arg, 0);
 }
 
+#ifndef CONFIG_LIBRARY
 /* unregister an IRQ handler - matches on IRQ number and data ptr */
 void interrupt_unregister(uint32_t irq, const void *arg)
 {
@@ -224,6 +230,7 @@ uint32_t interrupt_disable(uint32_t irq, void *arg)
 
 	return 0;
 }
+#endif
 
 void interrupt_mask(uint32_t irq, unsigned int cpu)
 {
@@ -256,10 +263,12 @@ void platform_interrupt_clear(uint32_t irq, uint32_t mask)
  * Mostly mapped. TODO: align with 64bit Zephyr timers when they are upstream.
  */
 
+#ifndef CONFIG_LIBRARY
 uint64_t arch_timer_get_system(struct timer *timer)
 {
 	return platform_timer_get(timer);
 }
+#endif
 
 uint64_t platform_timer_get(struct timer *timer)
 {
@@ -276,7 +285,7 @@ uint64_t platform_timer_get(struct timer *timer)
 	time = ((uint64_t)high << 32) | low;
 
 	return time;
-#elif defined(CONFIG_SOC_SERIES_INTEL_ADSP_BROADWELL)
+#elif defined(CONFIG_SOC_SERIES_INTEL_ADSP_BROADWELL) || defined(CONFIG_LIBRARY)
 	// FIXME!
 	return 0;
 #else
@@ -336,10 +345,12 @@ extern intptr_t _module_init_end;
 
 static void sys_module_init(void)
 {
+#if !CONFIG_LIBRARY
 	intptr_t *module_init = (intptr_t *)(&_module_init_start);
 
 	for (; module_init < (intptr_t *)&_module_init_end; ++module_init)
 		((void(*)(void))(*module_init))();
+#endif
 }
 
 /*
@@ -518,4 +529,22 @@ struct idc **idc_get(void)
 	/* TODO: this should return per core data */
 	return NULL;
 }
+#endif
+
+#ifdef CONFIG_LIBRARY
+/* Dummies for unsupported architectures */
+
+/* Platform */
+int platform_init(struct sof *sof)
+{
+	return 0;
+}
+int platform_boot_complete(uint32_t boot_message)
+{
+	return 0;
+}
+
+/* Logging */
+const struct log_source_const_data log_const_sof;
+
 #endif
