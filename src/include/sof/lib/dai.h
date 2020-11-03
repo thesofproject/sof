@@ -21,6 +21,7 @@
 #include <sof/list.h>
 #include <sof/lib/io.h>
 #include <sof/lib/memory.h>
+#include <sof/list.h>
 #include <sof/sof.h>
 #include <sof/spinlock.h>
 #include <sof/trace/trace.h>
