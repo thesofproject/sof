@@ -273,6 +273,13 @@ static int dw_dma_start(struct dma_chan_data *channel)
 
 	irq_local_disable(flags);
 
+	/*
+	 * it's a case after pause-release, then dma already is in active state after release
+	 * but dai still try to re-start controller, because this step is needed for other dmac.
+	 */
+	if (channel->status == COMP_STATE_ACTIVE)
+		goto out;
+
 	/* check if channel idle, disabled and ready */
 	if ((channel->status != COMP_STATE_PREPARE &&
 	     channel->status != COMP_STATE_PAUSED) ||
@@ -340,7 +347,6 @@ out:
 
 static int dw_dma_release(struct dma_chan_data *channel)
 {
-	struct dw_dma_chan_data *dw_chan = dma_chan_get_data(channel);
 	uint32_t flags;
 
 	tr_info(&dwdma_tr, "dw_dma_release(): dma %d channel %d release",
@@ -348,11 +354,13 @@ static int dw_dma_release(struct dma_chan_data *channel)
 
 	irq_local_disable(flags);
 
-	/* get next lli for proper release */
-	dw_chan->lli_current = (struct dw_lli *)dw_chan->lli_current->llp;
-
-	/* prepare to start */
-	dw_dma_stop(channel);
+	/*
+	 * Dw dma wasn't really paused, so on release just change device status.
+	 * The real pause implementation is done in dma client (eg. SSP) because
+	 * dma pausing is unreliable.
+	 */
+	if (channel->status == COMP_STATE_PAUSED)
+		channel->status = COMP_STATE_ACTIVE;
 
 	irq_local_enable(flags);
 
@@ -361,8 +369,6 @@ static int dw_dma_release(struct dma_chan_data *channel)
 
 static int dw_dma_pause(struct dma_chan_data *channel)
 {
-	struct dw_dma_chan_data *dw_chan = dma_chan_get_data(channel);
-	struct dma *dma = channel->dma;
 	uint32_t flags;
 
 	tr_info(&dwdma_tr, "dw_dma_pause(): dma %d channel %d pause",
@@ -373,10 +379,13 @@ static int dw_dma_pause(struct dma_chan_data *channel)
 	if (channel->status != COMP_STATE_ACTIVE)
 		goto out;
 
-	dma_reg_write(dma, DW_CFG_LOW(channel->index),
-		      dw_chan->cfg_lo | DW_CFGL_SUSPEND);
-
-	/* pause the channel */
+	/*
+	 * The real pause implementation is done in dma client (eg. SSP) because
+	 * dma controller pausing is unreliable. There's problem with resuming
+	 * just after already send data. Moreover there's no need to pause dma
+	 * because when connected device stop consuming / producing data,
+	 * then copy operation just won't be performed.
+	 */
 	channel->status = COMP_STATE_PAUSED;
 
 out:

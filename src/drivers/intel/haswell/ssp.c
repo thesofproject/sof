@@ -491,12 +491,29 @@ static void ssp_pause(struct dai *dai, int direction)
 {
 	struct ssp_pdata *ssp = dai_get_drvdata(dai);
 
-	if (direction == SOF_IPC_STREAM_CAPTURE)
-		dai_info(dai, "ssp_pause(), RX");
-	else
-		dai_info(dai, "ssp_pause(), TX");
+	spin_lock(&dai->lock);
 
-	ssp->state[direction] = COMP_STATE_PAUSED;
+	/* stop Rx if needed */
+	if (direction == DAI_DIR_CAPTURE &&
+	    ssp->state[SOF_IPC_STREAM_CAPTURE] != COMP_STATE_PAUSED) {
+		ssp_update_bits(dai, SSCR1, SSCR1_RSRE, 0);
+		ssp_update_bits(dai, SSCR0, SSCR0_RIM, SSCR0_RIM);
+		ssp_update_bits(dai, SSRSA, SSRSA_RSEN, 0);
+		ssp->state[SOF_IPC_STREAM_CAPTURE] = COMP_STATE_PAUSED;
+		dai_info(dai, "ssp_pause(), RX stop");
+	}
+
+	/* stop Tx if needed */
+	if (direction == DAI_DIR_PLAYBACK &&
+	    ssp->state[SOF_IPC_STREAM_PLAYBACK] != COMP_STATE_PAUSED) {
+		ssp_update_bits(dai, SSCR1, SSCR1_TSRE, 0);
+		ssp_update_bits(dai, SSCR0, SSCR0_TIM, SSCR0_TIM);
+		ssp_update_bits(dai, SSTSA, SSTSA_TSEN, 0);
+		ssp->state[SOF_IPC_STREAM_PLAYBACK] = COMP_STATE_PAUSED;
+		dai_info(dai, "ssp_pause(), TX stop");
+	}
+
+	spin_unlock(&dai->lock);
 }
 
 static int ssp_trigger(struct dai *dai, int cmd, int direction)
