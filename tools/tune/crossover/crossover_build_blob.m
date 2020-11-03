@@ -64,7 +64,8 @@ function [bytes, nbytes] = crossover_get_abi(setsize)
 %% Return current SOF ABI header
 %% Use sof-ctl to write ABI header into a file
 abifn = 'crossover_get_abi.bin';
-cmd = sprintf('sof-ctl -g %d -b -o %s', setsize, abifn);
+cmd = sprintf('./sof-ctl -g %d -b -o %s', setsize, abifn);
+cd ./../../build_tools/ctl/
 system(cmd);
 
 %% Read file and delete it
@@ -75,5 +76,5 @@ end
 [bytes, nbytes] = fread(fh, inf, 'uint8');
 fclose(fh);
 delete(abifn);
-
+cd ./../../tune/crossover/
 end
