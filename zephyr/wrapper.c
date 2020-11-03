@@ -281,7 +281,8 @@ uint64_t platform_timer_get(struct timer *timer)
 
 	return time;
 #elif defined(CONFIG_SOC_SERIES_INTEL_ADSP_BROADWELL)
-	return arch_timer_get_system(timer);
+	// FIXME!
+	return 0;
 #else
 	/* CAVS versions */
 	return shim_read64(SHIM_DSPWC);
