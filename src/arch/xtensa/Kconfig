@@ -2,29 +2,6 @@
 
 # Xtensa-specific architecture configs
 
-menu "Xtensa Architecture"
-
-config MAX_CORE_COUNT
-	int
-	default 1 if KERNEL_BIN_NAME = "zephyr"
-	default 2 if APOLLOLAKE
-	default 4 if ICELAKE || CANNONLAKE || SUECREEK || TIGERLAKE
-	default 1
-
-config CORE_COUNT
-	int "Number of cores"
-	default MAX_CORE_COUNT
-	range 1 MAX_CORE_COUNT
-	help
-	  Number of used cores
-	  Lowering available core count could result in lower power consumption
-
-config MULTICORE
-	bool
-	default CORE_COUNT > 1
-	help
-	  Indicates that architecture uses multiple cores
-
 config NO_SECONDARY_CORE_ROM
 	bool
 	default n
@@ -40,5 +17,3 @@ config WAKEUP_HOOK
 	  This config should be selected by other platform-level configs.
 	  Platforms that use it, have to implement hook function
 	  platform_interrupt_on_wakeup.
-
-endmenu

@@ -206,6 +206,29 @@ config IMX8M
 
 endchoice
 
+config MAX_CORE_COUNT
+	int
+	default 1 if KERNEL_BIN_NAME = "zephyr"
+	default 2 if APOLLOLAKE
+	default 4 if ICELAKE || CANNONLAKE || SUECREEK || TIGERLAKE
+	default 1
+	help
+	  Maximum number of cores per configuration
+
+config CORE_COUNT
+	int "Number of cores"
+	default MAX_CORE_COUNT
+	range 1 MAX_CORE_COUNT
+	help
+	  Number of used cores
+	  Lowering available core count could result in lower power consumption
+
+config MULTICORE
+	bool
+	default CORE_COUNT > 1
+	help
+	  Indicates that architecture uses multiple cores
+
 config INTEL
 	bool
 	default n
