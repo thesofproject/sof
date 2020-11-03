@@ -105,7 +105,7 @@ static int ipc_get_page_descriptors(struct dma *dmac, uint8_t *page_table,
 	dma_sg_init(&config.elem_array);
 
 	/* set up DMA descriptor */
-	elem.dest = (uint32_t)page_table;
+	elem.dest = (uintptr_t)page_table;
 	elem.src = ring->phy_addr;
 
 	/* source buffer size is always PAGE_SIZE bytes */
