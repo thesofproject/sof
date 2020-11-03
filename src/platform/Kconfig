@@ -206,6 +206,19 @@ config IMX8M
 
 endchoice
 
+config CORE_COUNT
+	int "Number of cores"
+	default 1
+	help
+	  Number of used cores
+	  Lowering available core count could result in lower power consumption
+
+config MULTICORE
+	bool
+	default CORE_COUNT > 1
+	help
+	  Indicates that architecture uses multiple cores
+
 config INTEL
 	bool
 	default n
