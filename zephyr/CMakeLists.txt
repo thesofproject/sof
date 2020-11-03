@@ -336,7 +336,6 @@ zephyr_include_directories(${SOF_PLATFORM_PATH}/${PLATFORM}/include)
 # Mandatory Files used on all platforms.
 # Commented files will be added/removed as integration dictates.
 zephyr_library_sources(
-	${SOF_SRC_PATH}/trace/dma-trace.c
 	${SOF_IPC_PATH}/dma-copy.c
 	${SOF_IPC_PATH}/ipc.c
 	${SOF_IPC_PATH}/handler.c
@@ -379,12 +378,16 @@ zephyr_library_sources(
 	${SOF_SRC_PATH}/schedule/dma_single_chan_domain.c
 	${SOF_SRC_PATH}/schedule/dma_multi_chan_domain.c
 	${SOF_SRC_PATH}/schedule/ll_schedule.c
-	${SOF_SRC_PATH}/trace/trace.c
 
 	# Bridge wrapper between SOF and Zephyr APIs - Will shrink over time.
 	wrapper.c
 	edf_schedule.c
 	schedule.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_TRACE
+	${SOF_SRC_PATH}/trace/dma-trace.c
+	${SOF_SRC_PATH}/trace/trace.c
 )
 
 # Optional SOF sources - depends on Kconfig - WIP
