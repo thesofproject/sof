@@ -13,6 +13,7 @@
 #include <sof/common.h>
 #include <sof/debug/panic.h>
 #include <sof/drivers/edma.h>
+#include <sof/drivers/interrupt.h>
 #include <sof/drivers/ipc.h>
 #include <sof/drivers/interrupt.h>
 #include <sof/drivers/timer.h>
