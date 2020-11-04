@@ -103,7 +103,7 @@ PIPELINE_PCM_ADD(ifdef(`NO_AGGREGATION',`sof/pipe-volume-playback.m4',
 	`sof/pipe-volume-demux-playback.m4'),
 	3, 2, 2, s32le,
 	1000, 0, 0,
-	48000, 48000, 48000)
+	48000, 48000, 48000,,,3)
 
 # Low Latency playback pipeline 4 on PCM 3 using max 2 channels of s32le.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
@@ -111,7 +111,7 @@ PIPELINE_PCM_ADD(ifdef(`NO_AGGREGATION', `sof/pipe-volume-playback.m4',
 	`sof/pipe-dai-endpoint.m4'),
 	4, 3, 2, s32le,
 	1000, 0, 0,
-	48000, 48000, 48000)
+	48000, 48000, 48000,,,3)
 ')
 
 # Low Latency capture pipeline 5 on PCM 4 using max 2 channels of s32le.
