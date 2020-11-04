@@ -319,9 +319,9 @@ static int mux_cmd(struct comp_dev *dev, int cmd, void *data,
 	}
 }
 
-static void prepare_active_look_up(struct comp_dev *dev,
-				   struct audio_stream *sink,
-				   const struct audio_stream **sources)
+static void mux_prepare_active_look_up(struct comp_dev *dev,
+				       struct audio_stream *sink,
+				       const struct audio_stream **sources)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	const struct audio_stream *source;
@@ -521,7 +521,7 @@ static int mux_copy(struct comp_dev *dev)
 	}
 	sink_bytes = frames * audio_stream_frame_bytes(&sink->stream);
 
-	prepare_active_look_up(dev, &sink->stream, &sources_stream[0]);
+	mux_prepare_active_look_up(dev, &sink->stream, &sources_stream[0]);
 
 	/* produce output */
 	cd->mux(dev, &sink->stream, &sources_stream[0], frames,
