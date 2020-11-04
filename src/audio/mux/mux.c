@@ -351,6 +351,34 @@ static void mux_prepare_active_look_up(struct comp_dev *dev,
 	}
 }
 
+static void demux_prepare_active_look_up(struct comp_dev *dev,
+					 struct audio_stream *sink,
+					 const struct audio_stream *source,
+					 struct mux_look_up *look_up)
+{
+	struct comp_data *cd = comp_get_drvdata(dev);
+	uint8_t active_elem;
+	uint8_t elem;
+
+	cd->active_lookup.num_elems = 0;
+
+	active_elem = 0;
+
+	/* init pointers */
+	for (elem = 0; elem < look_up->num_elems; elem++) {
+		if ((look_up->copy_elem[elem].in_ch >
+		    (source->channels - 1)) ||
+		    (look_up->copy_elem[elem].out_ch >
+		    (sink->channels - 1)))
+			continue;
+
+		cd->active_lookup.copy_elem[active_elem] =
+			look_up->copy_elem[elem];
+		active_elem++;
+		cd->active_lookup.num_elems = active_elem;
+	}
+}
+
 /* process and copy stream data from source to sink buffers */
 static int demux_copy(struct comp_dev *dev)
 {
@@ -431,9 +459,11 @@ static int demux_copy(struct comp_dev *dev)
 		if (!sinks[i])
 			continue;
 
+		demux_prepare_active_look_up(dev, &sinks[i]->stream,
+					     &source->stream, look_ups[i]);
 		buffer_invalidate(source, source_bytes);
 		cd->demux(dev, &sinks[i]->stream, &source->stream, frames,
-			  look_ups[i]);
+			  &cd->active_lookup);
 		buffer_writeback(sinks[i], sinks_bytes[i]);
 	}
 
