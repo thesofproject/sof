@@ -51,6 +51,7 @@ sram_dis_loop_cnt:
 #define temp_reg1                    a7
 #define temp_reg2                    a8
 #define temp_reg3                    a9
+#define host_base		     a10
 #define pfl_reg                      a15
 
 power_down:
@@ -78,6 +79,8 @@ _PD_DISABLE_LPSRAM:
  *  cavs_lpsram_power_down_entire();
  * }
  */
+	movi host_base, IPC_HOST_BASE
+
 	beqz b_enable_lpsram, _PD_DISABLE_HPSRAM
 	m_cavs_lpsram_power_down_entire temp_reg0, temp_reg1, temp_reg2,\
 					sram_dis_loop_cnt
@@ -138,16 +141,15 @@ _PD_SEND_IPC:
  * bit by writing IPC_DIPCTDR_BUSY to IPC_DIPCTDR
  * and writing IPC_DIPCTDA_DONE to IPC_DIPCTDA
  */
-	movi temp_reg0, IPC_HOST_BASE
-	l32i temp_reg1, temp_reg0, IPC_DIPCTDR
+	l32i temp_reg1, host_base, IPC_DIPCTDR
 	movi temp_reg2, ipc_flag
 	l32i temp_reg2, temp_reg2, 0
 	or temp_reg1, temp_reg1, temp_reg2
-	s32i temp_reg1, temp_reg0, IPC_DIPCTDR
+	s32i temp_reg1, host_base, IPC_DIPCTDR
 
-	l32i temp_reg1, temp_reg0, IPC_DIPCTDA
+	l32i temp_reg1, host_base, IPC_DIPCTDA
 	or temp_reg1, temp_reg1, temp_reg2
-	s32i temp_reg1, temp_reg0, IPC_DIPCTDA
+	s32i temp_reg1, host_base, IPC_DIPCTDA
 
 _PD_SLEEP:
 /* effecfively executes:
