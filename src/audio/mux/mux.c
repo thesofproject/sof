@@ -338,6 +338,12 @@ static void mux_prepare_active_look_up(struct comp_dev *dev,
 		if (!source)
 			continue;
 
+		if ((cd->lookup[0].copy_elem[elem].in_ch >
+		    (source->channels - 1)) ||
+		    (cd->lookup[0].copy_elem[elem].out_ch >
+		    (sink->channels - 1)))
+			continue;
+
 		cd->active_lookup.copy_elem[active_elem] =
 			cd->lookup[0].copy_elem[elem];
 		active_elem++;
