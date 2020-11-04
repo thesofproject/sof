@@ -16,7 +16,8 @@ end
 
 %% Build Blob
 % refer to sof/src/include/user/drc.h for the config struct.
-data_size = 4 * (1 + 4 + blob_struct.num_coeffs);
+num_coefs = length(fieldnames(blob_struct));
+data_size = 4 * (1 + 4 + num_coefs);
 [abi_bytes, abi_size] = drc_get_abi(data_size);
 
 blob_size = data_size + abi_size;
@@ -47,7 +48,7 @@ blob8(j:j+3) = word2byte(blob_struct.knee_beta, sh); j=j+4;
 blob8(j:j+3) = word2byte(blob_struct.knee_threshold, sh); j=j+4;
 blob8(j:j+3) = word2byte(blob_struct.ratio_base, sh); j=j+4;
 blob8(j:j+3) = word2byte(blob_struct.master_linear_gain, sh); j=j+4;
-blob8(j:j+3) = word2byte(blob_struct.attack_frames, sh); j=j+4;
+blob8(j:j+3) = word2byte(blob_struct.one_over_attack_frames, sh); j=j+4;
 blob8(j:j+3) = word2byte(blob_struct.sat_release_frames_inv_neg, sh); j=j+4;
 blob8(j:j+3) = word2byte(blob_struct.sat_release_rate_at_neg_two_db, sh); j=j+4;
 blob8(j:j+3) = word2byte(blob_struct.kSpacingDb, sh); j=j+4;
