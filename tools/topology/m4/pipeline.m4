@@ -72,7 +72,7 @@ define(`PIPELINE_PCM_ADD',
 `define(`SCHEDULE_TIME_DOMAIN', $12)'
 `define(`DAI_FORMAT', $5)'
 `define(`SCHED_COMP', $13)'
-`define(`DAI_PERIODS', DAI_DEFAULT_PERIODS)'
+`define(`DAI_PERIODS', ifelse(`$14', `', `DAI_DEFAULT_PERIODS', `$14'))'
 `include($1)'
 `DEBUG_PCM_ADD($1, $3)'
 ,`fatal_error(`Invalid parameters ($#) to PIPELINE_PCM_ADD')')'
