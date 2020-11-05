@@ -136,6 +136,21 @@ int pipeline_connect(struct comp_dev *comp, struct comp_buffer *buffer,
 	return 0;
 }
 
+void pipeline_disconnect(struct comp_dev *comp, struct comp_buffer *buffer, int dir)
+{
+	uint32_t flags;
+
+	if (dir == PPL_CONN_DIR_COMP_TO_BUFFER)
+		comp_info(comp, "disconnect buffer %d as sink", buffer->id);
+	else
+		comp_info(comp, "disconnect buffer %d as source", buffer->id);
+
+	irq_local_disable(flags);
+	list_item_del(buffer_comp_list(buffer, dir));
+	comp_writeback(comp);
+	irq_local_enable(flags);
+}
+
 struct pipeline_walk_context {
 	int (*comp_func)(struct comp_dev *, struct comp_buffer *,
 			 struct pipeline_walk_context *, int);

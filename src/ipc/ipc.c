@@ -291,6 +291,9 @@ int ipc_buffer_free(struct ipc *ipc, uint32_t buffer_id)
 	struct ipc_comp_dev *ibd;
 	struct ipc_comp_dev *icd;
 	struct list_item *clist;
+	struct comp_dev *sink = NULL, *source = NULL;
+	bool sink_active = false;
+	bool source_active = false;
 
 	/* check whether buffer exists */
 	ibd = ipc_get_comp_by_id(ipc, buffer_id);
@@ -309,12 +312,35 @@ int ipc_buffer_free(struct ipc *ipc, uint32_t buffer_id)
 
 		/* check comp state if sink and source are valid */
 		if (ibd->cb->sink == icd->cd &&
-		    ibd->cb->sink->state != COMP_STATE_READY)
-			return -EINVAL;
+		    ibd->cb->sink->state != COMP_STATE_READY) {
+			sink = ibd->cb->sink;
+			sink_active = true;
+		}
+
 		if (ibd->cb->source == icd->cd &&
-		    ibd->cb->source->state != COMP_STATE_READY)
-			return -EINVAL;
+		    ibd->cb->source->state != COMP_STATE_READY) {
+			source = ibd->cb->source;
+			source_active = true;
+		}
 	}
+
+	/*
+	 * A buffer could be connected to 2 different pipelines. When one pipeline is freed, the
+	 * buffer comp that belongs in this pipeline will need to be freed even when the other
+	 * pipeline that the buffer is connected to is active. Check if both ends are active before
+	 * freeing the buffer.
+	 */
+	if (sink_active && source_active)
+		return -EINVAL;
+
+	/*
+	 * Disconnect the buffer from the active component before freeing it.
+	 */
+	if (sink)
+		pipeline_disconnect(sink, ibd->cb, PPL_CONN_DIR_BUFFER_TO_COMP);
+
+	if (source)
+		pipeline_disconnect(source, ibd->cb, PPL_CONN_DIR_COMP_TO_BUFFER);
 
 	/* free buffer and remove from list */
 	buffer_free(ibd->cb);
