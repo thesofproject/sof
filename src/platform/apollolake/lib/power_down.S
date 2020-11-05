@@ -37,6 +37,7 @@ literals:
 #define temp_reg1                    a7
 #define temp_reg2                    a8
 #define temp_reg3                    a9
+#define host_base                    a10
 #define pfl_reg                      a15
 
     .align 64
@@ -66,6 +67,8 @@ power_down:
     beqz b_enable_lpsram, _PD_DISABLE_HPSRAM
 
 _PD_DISABLE_LPSRAM:
+    movi host_base, IPC_HOST_BASE
+
     movi temp_reg0, SHIM_LDOCTL_LPSRAM_LDO_ON
     m_cavs_set_lpldo_state temp_reg0, temp_reg1, temp_reg2
 
@@ -125,11 +128,10 @@ _PD_RELEASE_VNN:
 _PD_SEND_IPC:
 	// Send IPC to host informing of PD completion - Clear BUSY bit by
 	// writting IPC_DIPCT_BUSY to IPC_DIPCT
-	movi temp_reg0, IPC_HOST_BASE
-	l32i temp_reg1, temp_reg0, IPC_DIPCT
+	l32i temp_reg1, host_base, IPC_DIPCT
 	movi temp_reg2, IPC_DIPCT_BUSY
 	or temp_reg1, temp_reg1, temp_reg2
-	s32i temp_reg1, temp_reg0, IPC_DIPCT
+	s32i temp_reg1, host_base, IPC_DIPCT
 
 _PD_SLEEP:
     // effecfively executes:
