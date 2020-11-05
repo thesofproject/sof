@@ -1284,8 +1284,8 @@ static int ipc_glb_tplg_message(uint32_t header)
 }
 
 #if CONFIG_DEBUG_MEMORY_USAGE_SCAN
-static int fill_mem_usage_elems(int zone, int elem_number,
-				struct sof_ipc_dbg_mem_usage_elem *elems)
+static int fill_mem_usage_elems(enum mem_zone zone, enum sof_ipc_dbg_mem_zone ipc_zone,
+				int elem_number, struct sof_ipc_dbg_mem_usage_elem *elems)
 {
 	struct mm_info info;
 	int ret;
@@ -1293,7 +1293,7 @@ static int fill_mem_usage_elems(int zone, int elem_number,
 
 	for (i = 0; i < elem_number; ++i) {
 		ret = heap_info(zone, i, &info);
-		elems[i].zone = zone;
+		elems[i].zone = ipc_zone;
 		elems[i].id = i;
 		elems[i].used = ret < 0 ? UINT32_MAX : info.used;
 		elems[i].free = ret < 0 ? 0 : info.free;
@@ -1322,11 +1322,14 @@ static int ipc_glb_test_mem_usage(uint32_t header)
 
 	/* fill list of elems */
 	elems = mem_usage->elems;
-	elems += fill_mem_usage_elems(SOF_IPC_MEM_ZONE_SYS, PLATFORM_HEAP_SYSTEM, elems);
-	elems += fill_mem_usage_elems(SOF_IPC_MEM_ZONE_SYS_RUNTIME, PLATFORM_HEAP_SYSTEM_RUNTIME,
-				      elems);
-	elems += fill_mem_usage_elems(SOF_IPC_MEM_ZONE_RUNTIME, PLATFORM_HEAP_RUNTIME, elems);
-	elems += fill_mem_usage_elems(SOF_IPC_MEM_ZONE_BUFFER, PLATFORM_HEAP_BUFFER, elems);
+	elems += fill_mem_usage_elems(SOF_MEM_ZONE_SYS, SOF_IPC_MEM_ZONE_SYS,
+				      PLATFORM_HEAP_SYSTEM, elems);
+	elems += fill_mem_usage_elems(SOF_MEM_ZONE_SYS_RUNTIME, SOF_IPC_MEM_ZONE_SYS_RUNTIME,
+				      PLATFORM_HEAP_SYSTEM_RUNTIME, elems);
+	elems += fill_mem_usage_elems(SOF_MEM_ZONE_RUNTIME, SOF_IPC_MEM_ZONE_RUNTIME,
+				      PLATFORM_HEAP_RUNTIME, elems);
+	elems += fill_mem_usage_elems(SOF_MEM_ZONE_BUFFER, SOF_IPC_MEM_ZONE_BUFFER,
+				      PLATFORM_HEAP_BUFFER, elems);
 
 	/* write component values to the outbox */
 	mailbox_hostbox_write(0, mem_usage, mem_usage->rhdr.hdr.size);
