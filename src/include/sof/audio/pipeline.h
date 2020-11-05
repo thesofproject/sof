@@ -221,9 +221,10 @@ struct pipeline *pipeline_new(struct sof_ipc_pipe_new *pipe_desc,
 	struct comp_dev *cd);
 int pipeline_free(struct pipeline *p);
 
-/* insert component in pipeline */
+/* insert/remove component in pipeline */
 int pipeline_connect(struct comp_dev *comp, struct comp_buffer *buffer,
 		     int dir);
+void pipeline_disconnect(struct comp_dev *comp, struct comp_buffer *buffer, int dir);
 
 /* complete the pipeline */
 int pipeline_complete(struct pipeline *p, struct comp_dev *source,
