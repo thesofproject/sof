@@ -291,6 +291,8 @@ int ipc_buffer_free(struct ipc *ipc, uint32_t buffer_id)
 	struct ipc_comp_dev *ibd;
 	struct ipc_comp_dev *icd;
 	struct list_item *clist;
+	bool sink_state_invalid = false;
+	bool source_state_invalid = false;
 
 	/* check whether buffer exists */
 	ibd = ipc_get_comp_by_id(ipc, buffer_id);
@@ -310,11 +312,21 @@ int ipc_buffer_free(struct ipc *ipc, uint32_t buffer_id)
 		/* check comp state if sink and source are valid */
 		if (ibd->cb->sink == icd->cd &&
 		    ibd->cb->sink->state != COMP_STATE_READY)
-			return -EINVAL;
+			sink_state_invalid = true;
 		if (ibd->cb->source == icd->cd &&
 		    ibd->cb->source->state != COMP_STATE_READY)
-			return -EINVAL;
+			source_state_invalid = true;
 	}
+
+	/*
+	 * A buffer should only be prevented from being freed when both the
+	 * sink and the source widgets are in the active state. In the case
+	 * of dynamic pipelines, a buffer belonging to a pipeline will need to
+	 * be freed when that pipeline is no longer active but the other end
+	 * of the buffer might still be active.
+	 */
+	if (sink_state_invalid && source_state_invalid)
+		return -EINVAL;
 
 	/* free buffer and remove from list */
 	buffer_free(ibd->cb);
