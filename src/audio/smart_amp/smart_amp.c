@@ -107,28 +107,28 @@ static inline int smart_amp_alloc_memory(struct smart_amp_data *sad,
 	mem_sz += size;
 
 	/* buffer : feed forward process input */
-	size = DSM_FF_BUF_SZ * sizeof(int16_t);
+	size = DSM_FF_BUF_SZ * sizeof(int32_t);
 	hspk->buf.input = rballoc(0, SOF_MEM_CAPS_RAM, size);
 	if (!hspk->buf.input)
 		goto err;
 	mem_sz += size;
 
 	/* buffer : feed forward process output */
-	size = DSM_FF_BUF_SZ * sizeof(int16_t);
+	size = DSM_FF_BUF_SZ * sizeof(int32_t);
 	hspk->buf.output = rballoc(0, SOF_MEM_CAPS_RAM, size);
 	if (!hspk->buf.output)
 		goto err;
 	mem_sz += size;
 
 	/* buffer : feedback voltage */
-	size = DSM_FF_BUF_SZ * sizeof(int16_t);
+	size = DSM_FF_BUF_SZ * sizeof(int32_t);
 	hspk->buf.voltage = rballoc(0, SOF_MEM_CAPS_RAM, size);
 	if (!hspk->buf.voltage)
 		goto err;
 	mem_sz += size;
 
 	/* buffer : feedback current */
-	size = DSM_FF_BUF_SZ * sizeof(int16_t);
+	size = DSM_FF_BUF_SZ * sizeof(int32_t);
 	hspk->buf.current = rballoc(0, SOF_MEM_CAPS_RAM, size);
 	if (!hspk->buf.current)
 		goto err;
@@ -254,6 +254,11 @@ static struct comp_dev *smart_amp_new(const struct comp_driver *drv,
 
 	if (smart_amp_alloc_memory(sad, dev) != 0)
 		goto error;
+
+	/* Bitwidth information is not available. Use 16bit as default.
+	 * Re-initialize in the prepare function if ncessary
+	 */
+	sad->mod_handle->bitwidth = 16;
 	if (smart_amp_init(sad->mod_handle, dev))
 		goto error;
 
@@ -659,6 +664,7 @@ static int smart_amp_prepare(struct comp_dev *dev)
 	struct list_item *blist;
 	uint32_t flags = 0;
 	int ret;
+	int bitwdith;
 
 	comp_dbg(dev, "smart_amp_prepare()");
 
@@ -688,24 +694,57 @@ static int smart_amp_prepare(struct comp_dev *dev)
 	sad->feedback_buf->stream.channels = sad->config.feedback_channels;
 	sad->feedback_buf->stream.rate = sad->source_buf->stream.rate;
 
-	if (smart_amp_check_audio_fmt(sad->source_buf->stream.rate,
-				      sad->source_buf->stream.channels)) {
+	ret = smart_amp_check_audio_fmt(sad->source_buf->stream.rate,
+					sad->source_buf->stream.channels);
+	if (ret) {
 		comp_err(dev, "[DSM] Format not supported, sample rate: %d, ch: %d",
 			 sad->source_buf->stream.rate,
 			 sad->source_buf->stream.channels);
-		return -EINVAL;
+		goto error;
 	}
 	buffer_unlock(sad->feedback_buf, flags);
+
+	switch (sad->source_buf->stream.frame_fmt) {
+	case SOF_IPC_FRAME_S16_LE:
+		bitwdith = 16;
+		break;
+	case SOF_IPC_FRAME_S24_4LE:
+		bitwdith = 24;
+		break;
+	case SOF_IPC_FRAME_S32_LE:
+		bitwdith = 32;
+		break;
+	default:
+		comp_err(dev, "[DSM] smart_amp_process() error: not supported frame format %d",
+			 sad->source_buf->stream.frame_fmt);
+		goto error;
+	}
+	if (sad->mod_handle->bitwidth != bitwdith)	{
+		sad->mod_handle->bitwidth = bitwdith;
+		comp_info(dev, "[DSM] Re-initialized for %d bit processing", bitwdith);
+
+		ret = smart_amp_init(sad->mod_handle, dev);
+		if (ret) {
+			comp_err(dev, "[DSM] Re-initialization error.");
+			goto error;
+		}
+		ret = maxim_dsm_restore_param(sad->mod_handle, dev);
+		if (ret) {
+			comp_err(dev, "[DSM] Restoration error.");
+			goto error;
+		}
+	}
 
 	sad->process = get_smart_amp_process(dev);
 	if (!sad->process) {
 		comp_err(dev, "smart_amp_prepare(): get_smart_amp_process failed");
-		return -EINVAL;
+		ret = -EINVAL;
+		goto error;
 	}
 
+error:
 	smart_amp_flush(sad->mod_handle, dev);
-
-	return 0;
+	return ret;
 }
 
 static const struct comp_driver comp_smart_amp = {
