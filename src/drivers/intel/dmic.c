@@ -788,6 +788,7 @@ static int configure_registers(struct dai *dai,
 	int stereo[DMIC_HW_CONTROLLERS];
 	int swap[DMIC_HW_CONTROLLERS];
 	uint32_t val;
+	uint32_t ref;
 	int32_t ci;
 	uint32_t cu;
 	int ipm;
@@ -797,31 +798,24 @@ static int configure_registers(struct dai *dai,
 	int fir_length;
 	int length;
 	int edge;
-	int dccomp;
-	int cic_start_a;
-	int cic_start_b;
-	int fir_start_a;
-	int fir_start_b;
 	int soft_reset;
+	int cic_mute;
+	int fir_mute;
 	int i;
 	int j;
 	int ret;
 	int di = dai->index;
 	struct dmic_pdata *pdata = dai_get_drvdata(dai);
+	int dccomp = 1;
 	int array_a = 0;
 	int array_b = 0;
-	int cic_mute = 1;
-	int fir_mute = 1;
 	int bfth = 3; /* Should be 3 for 8 entries, 1 is 2 entries */
 	int th = 0; /* Used with TIE=1 */
 
 	/* Normal start sequence */
-	dccomp = 1;
 	soft_reset = 1;
-	cic_start_a = 0;
-	cic_start_b = 0;
-	fir_start_a = 0;
-	fir_start_b = 0;
+	cic_mute = 1;
+	fir_mute = 1;
 
 #if (DMIC_HW_VERSION == 2 && DMIC_HW_CONTROLLERS > 2) || DMIC_HW_VERSION == 3
 	int source[OUTCONTROLX_IPM_NUMSOURCES];
@@ -845,63 +839,67 @@ static int configure_registers(struct dai *dai,
 #endif
 
 #if DMIC_HW_VERSION == 1 || (DMIC_HW_VERSION == 2 && DMIC_HW_CONTROLLERS <= 2)
-	ipm_helper1(&ipm, 0);
-	val = OUTCONTROL0_TIE(0) |
-		OUTCONTROL0_SIP(0) |
-		OUTCONTROL0_FINIT(1) |
-		OUTCONTROL0_FCI(0) |
-		OUTCONTROL0_BFTH(bfth) |
-		OUTCONTROL0_OF(of0) |
-		OUTCONTROL0_IPM(ipm) |
-		OUTCONTROL0_TH(th);
-	dai_write(dai, OUTCONTROL0, val);
-	dai_dbg(dai, "configure_registers(), OUTCONTROL0 = %u", val);
-
-	ipm_helper1(&ipm, 1);
-	val = OUTCONTROL1_TIE(0) |
-		OUTCONTROL1_SIP(0) |
-		OUTCONTROL1_FINIT(1) |
-		OUTCONTROL1_FCI(0) |
-		OUTCONTROL1_BFTH(bfth) |
-		OUTCONTROL1_OF(of1) |
-		OUTCONTROL1_IPM(ipm) |
-		OUTCONTROL1_TH(th);
-	dai_write(dai, OUTCONTROL1, val);
-	dai_dbg(dai, "configure_registers(), OUTCONTROL1 = %u", val);
+	if (di == 0) {
+		ipm_helper1(&ipm, 0);
+		val = OUTCONTROL0_TIE(0) |
+			OUTCONTROL0_SIP(0) |
+			OUTCONTROL0_FINIT(1) |
+			OUTCONTROL0_FCI(0) |
+			OUTCONTROL0_BFTH(bfth) |
+			OUTCONTROL0_OF(of0) |
+			OUTCONTROL0_IPM(ipm) |
+			OUTCONTROL0_TH(th);
+		dai_write(dai, OUTCONTROL0, val);
+		dai_dbg(dai, "configure_registers(), OUTCONTROL0 = %08x", val);
+	} else {
+		ipm_helper1(&ipm, 1);
+		val = OUTCONTROL1_TIE(0) |
+			OUTCONTROL1_SIP(0) |
+			OUTCONTROL1_FINIT(1) |
+			OUTCONTROL1_FCI(0) |
+			OUTCONTROL1_BFTH(bfth) |
+			OUTCONTROL1_OF(of1) |
+			OUTCONTROL1_IPM(ipm) |
+			OUTCONTROL1_TH(th);
+		dai_write(dai, OUTCONTROL1, val);
+		dai_dbg(dai, "configure_registers(), OUTCONTROL1 = %08x", val);
+	}
 #endif
 
 #if DMIC_HW_VERSION == 3 || (DMIC_HW_VERSION == 2 && DMIC_HW_CONTROLLERS > 2)
-	ipm_helper2(source, &ipm, 0);
-	val = OUTCONTROL0_TIE(0) |
-		OUTCONTROL0_SIP(0) |
-		OUTCONTROL0_FINIT(1) |
-		OUTCONTROL0_FCI(0) |
-		OUTCONTROL0_BFTH(bfth) |
-		OUTCONTROL0_OF(of0) |
-		OUTCONTROL0_IPM(ipm) |
-		OUTCONTROL0_IPM_SOURCE_1(source[0]) |
-		OUTCONTROL0_IPM_SOURCE_2(source[1]) |
-		OUTCONTROL0_IPM_SOURCE_3(source[2]) |
-		OUTCONTROL0_IPM_SOURCE_4(source[3]) |
-		OUTCONTROL0_TH(th);
-	dai_write(dai, OUTCONTROL0, val);
-	dai_dbg(dai, "configure_registers(), OUTCONTROL0 = %u", val);
-
-	ipm_helper2(source, &ipm, 1);
-	val = OUTCONTROL1_TIE(0) |
-		OUTCONTROL1_SIP(0) |
-		OUTCONTROL1_FINIT(1) |
-		OUTCONTROL1_FCI(0) |
-		OUTCONTROL1_BFTH(bfth) |
-		OUTCONTROL1_OF(of1) |
-		OUTCONTROL1_IPM(ipm) |
-		OUTCONTROL1_IPM_SOURCE_1(source[0]) |
-		OUTCONTROL1_IPM_SOURCE_2(source[1]) |
-		OUTCONTROL1_IPM_SOURCE_3(source[2]) |
-		OUTCONTROL1_IPM_SOURCE_4(source[3]) |
-		OUTCONTROL1_TH(th);
-	dai_write(dai, OUTCONTROL1, val);
-	dai_dbg(dai, "configure_registers(), OUTCONTROL1 = %u", val);
+	if (di == 0) {
+		ipm_helper2(source, &ipm, 0);
+		val = OUTCONTROL0_TIE(0) |
+			OUTCONTROL0_SIP(0) |
+			OUTCONTROL0_FINIT(1) |
+			OUTCONTROL0_FCI(0) |
+			OUTCONTROL0_BFTH(bfth) |
+			OUTCONTROL0_OF(of0) |
+			OUTCONTROL0_IPM(ipm) |
+			OUTCONTROL0_IPM_SOURCE_1(source[0]) |
+			OUTCONTROL0_IPM_SOURCE_2(source[1]) |
+			OUTCONTROL0_IPM_SOURCE_3(source[2]) |
+			OUTCONTROL0_IPM_SOURCE_4(source[3]) |
+			OUTCONTROL0_TH(th);
+		dai_write(dai, OUTCONTROL0, val);
+		dai_dbg(dai, "configure_registers(), OUTCONTROL0 = %08x", val);
+	} else {
+		ipm_helper2(source, &ipm, 1);
+		val = OUTCONTROL1_TIE(0) |
+			OUTCONTROL1_SIP(0) |
+			OUTCONTROL1_FINIT(1) |
+			OUTCONTROL1_FCI(0) |
+			OUTCONTROL1_BFTH(bfth) |
+			OUTCONTROL1_OF(of1) |
+			OUTCONTROL1_IPM(ipm) |
+			OUTCONTROL1_IPM_SOURCE_1(source[0]) |
+			OUTCONTROL1_IPM_SOURCE_2(source[1]) |
+			OUTCONTROL1_IPM_SOURCE_3(source[2]) |
+			OUTCONTROL1_IPM_SOURCE_4(source[3]) |
+			OUTCONTROL1_TH(th);
+		dai_write(dai, OUTCONTROL1, val);
+		dai_dbg(dai, "configure_registers(), OUTCONTROL1 = %08x", val);
+	}
 #endif
 
 	/* Mark enabled microphones into private data to be later used
@@ -921,139 +919,148 @@ static int configure_registers(struct dai *dai,
 	}
 
 	for (i = 0; i < DMIC_HW_CONTROLLERS; i++) {
-		/* CIC */
-		val = CIC_CONTROL_SOFT_RESET(soft_reset) |
-			CIC_CONTROL_CIC_START_B(cic_start_b) |
-			CIC_CONTROL_CIC_START_A(cic_start_a) |
-	CIC_CONTROL_MIC_B_POLARITY(dmic_prm[di]->pdm[i].polarity_mic_a) |
-	CIC_CONTROL_MIC_A_POLARITY(dmic_prm[di]->pdm[i].polarity_mic_b) |
-			CIC_CONTROL_MIC_MUTE(cic_mute) |
-			CIC_CONTROL_STEREO_MODE(stereo[i]);
-		dai_write(dai, base[i] + CIC_CONTROL, val);
-		dai_dbg(dai, "configure_registers(), CIC_CONTROL = %u",
-			val);
+		if (dmic_active_fifos == 0) {
+			/* CIC */
+			val = CIC_CONTROL_SOFT_RESET(soft_reset) |
+				CIC_CONTROL_CIC_START_B(0) |
+				CIC_CONTROL_CIC_START_A(0) |
+				CIC_CONTROL_MIC_B_POLARITY(dmic_prm[di]->pdm[i].polarity_mic_a) |
+				CIC_CONTROL_MIC_A_POLARITY(dmic_prm[di]->pdm[i].polarity_mic_b) |
+				CIC_CONTROL_MIC_MUTE(cic_mute) |
+				CIC_CONTROL_STEREO_MODE(stereo[i]);
+			dai_write(dai, base[i] + CIC_CONTROL, val);
+			dai_dbg(dai, "configure_registers(), CIC_CONTROL = %08x", val);
 
-		val = CIC_CONFIG_CIC_SHIFT(cfg->cic_shift + 8) |
-			CIC_CONFIG_COMB_COUNT(cfg->mcic - 1);
-		dai_write(dai, base[i] + CIC_CONFIG, val);
-		dai_dbg(dai, "configure_registers(), CIC_CONFIG = %u",
-			val);
+			val = CIC_CONFIG_CIC_SHIFT(cfg->cic_shift + 8) |
+				CIC_CONFIG_COMB_COUNT(cfg->mcic - 1);
+			dai_write(dai, base[i] + CIC_CONFIG, val);
+			dai_dbg(dai, "configure_registers(), CIC_CONFIG = %08x", val);
 
-		/* Mono right channel mic usage requires swap of PDM channels
-		 * since the mono decimation is done with only left channel
-		 * processing active.
-		 */
-		edge = dmic_prm[di]->pdm[i].clk_edge;
-		if (swap[i])
-			edge = !edge;
+			/* Mono right channel mic usage requires swap of PDM channels
+			 * since the mono decimation is done with only left channel
+			 * processing active.
+			 */
+			edge = dmic_prm[di]->pdm[i].clk_edge;
+			if (swap[i])
+				edge = !edge;
 
-		val = MIC_CONTROL_PDM_CLKDIV(cfg->clkdiv - 2) |
-			MIC_CONTROL_PDM_SKEW(dmic_prm[di]->pdm[i].skew) |
-			MIC_CONTROL_CLK_EDGE(edge) |
-			MIC_CONTROL_PDM_EN_B(cic_start_b) |
-			MIC_CONTROL_PDM_EN_A(cic_start_a);
-		dai_write(dai, base[i] + MIC_CONTROL, val);
-		dai_dbg(dai, "configure_registers(), MIC_CONTROL = %u",
-			val);
+			val = MIC_CONTROL_PDM_CLKDIV(cfg->clkdiv - 2) |
+				MIC_CONTROL_PDM_SKEW(dmic_prm[di]->pdm[i].skew) |
+				MIC_CONTROL_CLK_EDGE(edge) |
+				MIC_CONTROL_PDM_EN_B(0) |
+				MIC_CONTROL_PDM_EN_A(0);
+			dai_write(dai, base[i] + MIC_CONTROL, val);
+			dai_dbg(dai, "configure_registers(), MIC_CONTROL = %08x", val);
+		} else {
+			/* Check that request is compatible with running configuration:
+			 * CIC decimation factor and shift value check
+			 */
+			val = dai_read(dai, base[i] + CIC_CONFIG);
+			ref = CIC_CONFIG_CIC_SHIFT(cfg->cic_shift + 8) |
+				CIC_CONFIG_COMB_COUNT(cfg->mcic - 1);
+			if ((val &
+			     (CIC_CONFIG_CIC_SHIFT_MASK | CIC_CONFIG_COMB_COUNT_MASK)) != ref) {
+				dai_err(dai, "configure_registers(): CIC_CONFIG %08x block", val);
+				return -EINVAL;
+			}
 
-		/* FIR A */
-		fir_decim = MAX(cfg->mfir_a - 1, 0);
-		fir_length = MAX(cfg->fir_a_length - 1, 0);
-		val = FIR_CONTROL_A_START(fir_start_a) |
-			FIR_CONTROL_A_ARRAY_START_EN(array_a) |
-			FIR_CONTROL_A_DCCOMP(dccomp) |
-			FIR_CONTROL_A_MUTE(fir_mute) |
-			FIR_CONTROL_A_STEREO(stereo[i]);
-		dai_write(dai, base[i] + FIR_CONTROL_A, val);
-		dai_dbg(dai, "configure_registers(), FIR_CONTROL_A = %u",
-			val);
-
-		val = FIR_CONFIG_A_FIR_DECIMATION(fir_decim) |
-			FIR_CONFIG_A_FIR_SHIFT(cfg->fir_a_shift) |
-			FIR_CONFIG_A_FIR_LENGTH(fir_length);
-		dai_write(dai, base[i] + FIR_CONFIG_A, val);
-		dai_dbg(dai, "configure_registers(), FIR_CONFIG_A = %u",
-			val);
-
-		val = DC_OFFSET_LEFT_A_DC_OFFS(DCCOMP_TC0);
-		dai_write(dai, base[i] + DC_OFFSET_LEFT_A, val);
-		dai_dbg(dai, "configure_registers(), DC_OFFSET_LEFT_A = %u",
-			val);
-
-		val = DC_OFFSET_RIGHT_A_DC_OFFS(DCCOMP_TC0);
-		dai_write(dai, base[i] + DC_OFFSET_RIGHT_A, val);
-		dai_dbg(dai, "configure_registers(), DC_OFFSET_RIGHT_A = %u",
-			val);
-
-		val = OUT_GAIN_LEFT_A_GAIN(0);
-		dai_write(dai, base[i] + OUT_GAIN_LEFT_A, val);
-		dai_dbg(dai, "configure_registers(), OUT_GAIN_LEFT_A = %u",
-			val);
-
-		val = OUT_GAIN_RIGHT_A_GAIN(0);
-		dai_write(dai, base[i] + OUT_GAIN_RIGHT_A, val);
-		dai_dbg(dai, "configure_registers(), OUT_GAIN_RIGHT_A = %u",
-			val);
-
-		/* FIR B */
-		fir_decim = MAX(cfg->mfir_b - 1, 0);
-		fir_length = MAX(cfg->fir_b_length - 1, 0);
-		val = FIR_CONTROL_B_START(fir_start_b) |
-			FIR_CONTROL_B_ARRAY_START_EN(array_b) |
-			FIR_CONTROL_B_DCCOMP(dccomp) |
-			FIR_CONTROL_B_MUTE(fir_mute) |
-			FIR_CONTROL_B_STEREO(stereo[i]);
-		dai_write(dai, base[i] + FIR_CONTROL_B, val);
-		dai_dbg(dai, "configure_registers(), FIR_CONTROL_B = %u",
-			val);
-
-		val = FIR_CONFIG_B_FIR_DECIMATION(fir_decim) |
-			FIR_CONFIG_B_FIR_SHIFT(cfg->fir_b_shift) |
-			FIR_CONFIG_B_FIR_LENGTH(fir_length);
-		dai_write(dai, base[i] + FIR_CONFIG_B, val);
-		dai_dbg(dai, "configure_registers(), FIR_CONFIG_B = %u",
-			val);
-
-		val = DC_OFFSET_LEFT_B_DC_OFFS(DCCOMP_TC0);
-		dai_write(dai, base[i] + DC_OFFSET_LEFT_B, val);
-		dai_dbg(dai, "configure_registers(), DC_OFFSET_LEFT_B = %u",
-			val);
-
-		val = DC_OFFSET_RIGHT_B_DC_OFFS(DCCOMP_TC0);
-		dai_write(dai, base[i] + DC_OFFSET_RIGHT_B, val);
-		dai_dbg(dai, "configure_registers(), DC_OFFSET_RIGHT_B = %u",
-			val);
-
-		val = OUT_GAIN_LEFT_B_GAIN(0);
-		dai_write(dai, base[i] + OUT_GAIN_LEFT_B, val);
-		dai_dbg(dai, "configure_registers(), OUT_GAIN_LEFT_B = %u",
-			val);
-
-		val = OUT_GAIN_RIGHT_B_GAIN(0);
-		dai_write(dai, base[i] + OUT_GAIN_RIGHT_B, val);
-		dai_dbg(dai, "configure_registers(), OUT_GAIN_RIGHT_B = %u",
-			val);
-
-		/* Write coef RAM A with scaled coefficient in reverse order */
-		length = cfg->fir_a_length;
-		for (j = 0; j < length; j++) {
-			ci = (int32_t)Q_MULTSR_32X32(
-				(int64_t)cfg->fir_a->coef[j], cfg->fir_a_scale,
-				31, DMIC_FIR_SCALE_Q, DMIC_HW_FIR_COEF_Q);
-			cu = FIR_COEF_A(ci);
-			dai_write(dai, coef_base_a[i]
-				   + ((length - j - 1) << 2), cu);
+			/* Clock divider check */
+			val = dai_read(dai, base[i] + MIC_CONTROL);
+			ref = MIC_CONTROL_PDM_CLKDIV(cfg->clkdiv - 2);
+			if ((val & MIC_CONTROL_PDM_CLKDIV_MASK) != ref) {
+				dai_err(dai, "configure_registers(): MIC_CONTROL %08x block", val);
+				return -EINVAL;
+			}
 		}
 
-		/* Write coef RAM B with scaled coefficient in reverse order */
-		length = cfg->fir_b_length;
-		for (j = 0; j < length; j++) {
-			ci = (int32_t)Q_MULTSR_32X32(
-				(int64_t)cfg->fir_b->coef[j], cfg->fir_b_scale,
-				31, DMIC_FIR_SCALE_Q, DMIC_HW_FIR_COEF_Q);
-			cu = FIR_COEF_B(ci);
-			dai_write(dai, coef_base_b[i]
-				   + ((length - j - 1) << 2), cu);
+		if (di == 0) {
+			/* FIR A */
+			fir_decim = MAX(cfg->mfir_a - 1, 0);
+			fir_length = MAX(cfg->fir_a_length - 1, 0);
+			val = FIR_CONTROL_A_START(0) |
+				FIR_CONTROL_A_ARRAY_START_EN(array_a) |
+				FIR_CONTROL_A_DCCOMP(dccomp) |
+				FIR_CONTROL_A_MUTE(fir_mute) |
+				FIR_CONTROL_A_STEREO(stereo[i]);
+			dai_write(dai, base[i] + FIR_CONTROL_A, val);
+			dai_dbg(dai, "configure_registers(), FIR_CONTROL_A = %08x", val);
+
+			val = FIR_CONFIG_A_FIR_DECIMATION(fir_decim) |
+				FIR_CONFIG_A_FIR_SHIFT(cfg->fir_a_shift) |
+				FIR_CONFIG_A_FIR_LENGTH(fir_length);
+			dai_write(dai, base[i] + FIR_CONFIG_A, val);
+			dai_dbg(dai, "configure_registers(), FIR_CONFIG_A = %08x", val);
+
+			val = DC_OFFSET_LEFT_A_DC_OFFS(DCCOMP_TC0);
+			dai_write(dai, base[i] + DC_OFFSET_LEFT_A, val);
+			dai_dbg(dai, "configure_registers(), DC_OFFSET_LEFT_A = %08x", val);
+
+			val = DC_OFFSET_RIGHT_A_DC_OFFS(DCCOMP_TC0);
+			dai_write(dai, base[i] + DC_OFFSET_RIGHT_A, val);
+			dai_dbg(dai, "configure_registers(), DC_OFFSET_RIGHT_A = %08x", val);
+
+			val = OUT_GAIN_LEFT_A_GAIN(0);
+			dai_write(dai, base[i] + OUT_GAIN_LEFT_A, val);
+			dai_dbg(dai, "configure_registers(), OUT_GAIN_LEFT_A = %08x", val);
+
+			val = OUT_GAIN_RIGHT_A_GAIN(0);
+			dai_write(dai, base[i] + OUT_GAIN_RIGHT_A, val);
+			dai_dbg(dai, "configure_registers(), OUT_GAIN_RIGHT_A = %08x", val);
+
+			/* Write coef RAM A with scaled coefficient in reverse order */
+			length = cfg->fir_a_length;
+			for (j = 0; j < length; j++) {
+				ci = (int32_t)Q_MULTSR_32X32((int64_t)cfg->fir_a->coef[j],
+							     cfg->fir_a_scale, 31,
+							     DMIC_FIR_SCALE_Q, DMIC_HW_FIR_COEF_Q);
+				cu = FIR_COEF_A(ci);
+				dai_write(dai, coef_base_a[i] + ((length - j - 1) << 2), cu);
+			}
+		}
+
+		if (di == 1) {
+			/* FIR B */
+			fir_decim = MAX(cfg->mfir_b - 1, 0);
+			fir_length = MAX(cfg->fir_b_length - 1, 0);
+			val = FIR_CONTROL_B_START(0) |
+				FIR_CONTROL_B_ARRAY_START_EN(array_b) |
+				FIR_CONTROL_B_DCCOMP(dccomp) |
+				FIR_CONTROL_B_MUTE(fir_mute) |
+				FIR_CONTROL_B_STEREO(stereo[i]);
+			dai_write(dai, base[i] + FIR_CONTROL_B, val);
+			dai_dbg(dai, "configure_registers(), FIR_CONTROL_B = %08x", val);
+
+			val = FIR_CONFIG_B_FIR_DECIMATION(fir_decim) |
+				FIR_CONFIG_B_FIR_SHIFT(cfg->fir_b_shift) |
+				FIR_CONFIG_B_FIR_LENGTH(fir_length);
+			dai_write(dai, base[i] + FIR_CONFIG_B, val);
+			dai_dbg(dai, "configure_registers(), FIR_CONFIG_B = %08x", val);
+
+			val = DC_OFFSET_LEFT_B_DC_OFFS(DCCOMP_TC0);
+			dai_write(dai, base[i] + DC_OFFSET_LEFT_B, val);
+			dai_dbg(dai, "configure_registers(), DC_OFFSET_LEFT_B = %08x", val);
+
+			val = DC_OFFSET_RIGHT_B_DC_OFFS(DCCOMP_TC0);
+			dai_write(dai, base[i] + DC_OFFSET_RIGHT_B, val);
+			dai_dbg(dai, "configure_registers(), DC_OFFSET_RIGHT_B = %08x", val);
+
+			val = OUT_GAIN_LEFT_B_GAIN(0);
+			dai_write(dai, base[i] + OUT_GAIN_LEFT_B, val);
+			dai_dbg(dai, "configure_registers(), OUT_GAIN_LEFT_B = %08x", val);
+
+			val = OUT_GAIN_RIGHT_B_GAIN(0);
+			dai_write(dai, base[i] + OUT_GAIN_RIGHT_B, val);
+			dai_dbg(dai, "configure_registers(), OUT_GAIN_RIGHT_B = %08x", val);
+
+			/* Write coef RAM B with scaled coefficient in reverse order */
+			length = cfg->fir_b_length;
+			for (j = 0; j < length; j++) {
+				ci = (int32_t)Q_MULTSR_32X32((int64_t)cfg->fir_b->coef[j],
+							     cfg->fir_b_scale, 31,
+							     DMIC_FIR_SCALE_Q, DMIC_HW_FIR_COEF_Q);
+				cu = FIR_COEF_B(ci);
+				dai_write(dai, coef_base_b[i] + ((length - j - 1) << 2), cu);
+			}
 		}
 	}
 
@@ -1603,18 +1610,24 @@ static int dmic_remove(struct dai *dai)
 	struct dmic_pdata *dmic = dai_get_drvdata(dai);
 	int i;
 
-	interrupt_disable(dmic->irq, dai);
-	interrupt_unregister(dmic->irq, dai);
-
-	pm_runtime_put_sync(DMIC_CLK, dai->index);
-	/* Disable DMIC power */
-	pm_runtime_put_sync(DMIC_POW, dai->index);
+	dai_info(dai, "dmic_remove()");
 
 	/* remove scheduling */
 	schedule_task_free(&dmic->dmicwork);
 
 	rfree(dai_get_drvdata(dai));
 	dai_set_drvdata(dai, NULL);
+
+	interrupt_disable(dmic->irq, dai);
+	interrupt_unregister(dmic->irq, dai);
+
+	/* The next end tasks must be passed if another DAI FIFO still runs */
+	if (dmic_active_fifos)
+		return 0;
+
+	pm_runtime_put_sync(DMIC_CLK, dai->index);
+	/* Disable DMIC power */
+	pm_runtime_put_sync(DMIC_POW, dai->index);
 
 	rfree(dmic_prm[0]);
 	for (i = 0; i < DMIC_HW_FIFOS; i++)
