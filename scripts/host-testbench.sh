@@ -6,7 +6,7 @@
 # Usage:
 # please run following scrits for the test tplg and host build
 # ./scripts/build-tools.sh -t
-# ./scripts/host-build-all.sh
+# ./scripts/rebuild-testbench.sh
 # Run test
 # ./scripts/host-testbench.sh
 #
