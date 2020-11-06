@@ -494,21 +494,18 @@ static void maxim_dsm_fb_proc(struct smart_amp_mod_struct_t *hspk,
 
 int smart_amp_flush(struct smart_amp_mod_struct_t *hspk, struct comp_dev *dev)
 {
-	memset(hspk->buf.frame_in, 0,
-	       SMART_AMP_FF_BUF_DB_SZ * sizeof(int32_t));
-	memset(hspk->buf.frame_out, 0,
-	       SMART_AMP_FF_BUF_DB_SZ * sizeof(int32_t));
-	memset(hspk->buf.frame_iv, 0,
-	       SMART_AMP_FB_BUF_DB_SZ * sizeof(int32_t));
+	bzero(hspk->buf.frame_in, SMART_AMP_FF_BUF_DB_SZ * sizeof(int32_t));
+	bzero(hspk->buf.frame_out, SMART_AMP_FF_BUF_DB_SZ * sizeof(int32_t));
+	bzero(hspk->buf.frame_iv, SMART_AMP_FB_BUF_DB_SZ * sizeof(int32_t));
 
-	memset(hspk->buf.input, 0, DSM_FF_BUF_SZ * sizeof(int32_t));
-	memset(hspk->buf.output, 0, DSM_FF_BUF_SZ * sizeof(int32_t));
-	memset(hspk->buf.voltage, 0, DSM_FF_BUF_SZ * sizeof(int32_t));
-	memset(hspk->buf.current, 0, DSM_FF_BUF_SZ * sizeof(int32_t));
+	bzero(hspk->buf.input, DSM_FF_BUF_SZ * sizeof(int32_t));
+	bzero(hspk->buf.output, DSM_FF_BUF_SZ * sizeof(int32_t));
+	bzero(hspk->buf.voltage, DSM_FF_BUF_SZ * sizeof(int32_t));
+	bzero(hspk->buf.current, DSM_FF_BUF_SZ * sizeof(int32_t));
 
-	memset(hspk->buf.ff.buf, 0, DSM_FF_BUF_DB_SZ * sizeof(int32_t));
-	memset(hspk->buf.ff_out.buf, 0, DSM_FF_BUF_DB_SZ * sizeof(int32_t));
-	memset(hspk->buf.fb.buf, 0, DSM_FB_BUF_DB_SZ * sizeof(int32_t));
+	bzero(hspk->buf.ff.buf, DSM_FF_BUF_DB_SZ * sizeof(int32_t));
+	bzero(hspk->buf.ff_out.buf, DSM_FF_BUF_DB_SZ * sizeof(int32_t));
+	bzero(hspk->buf.fb.buf, DSM_FB_BUF_DB_SZ * sizeof(int32_t));
 
 	hspk->buf.ff.avail = DSM_FF_BUF_SZ;
 	hspk->buf.ff_out.avail = 0;

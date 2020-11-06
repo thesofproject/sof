@@ -84,6 +84,7 @@ static inline int smart_amp_alloc_memory(struct smart_amp_data *sad,
 		goto err;
 
 	hspk = sad->mod_handle;
+	bzero(hspk, mem_sz);
 
 	/* buffer : sof -> spk protection feed forward process */
 	size = SMART_AMP_FF_BUF_DB_SZ * sizeof(int32_t);
@@ -160,6 +161,7 @@ static inline int smart_amp_alloc_memory(struct smart_amp_data *sad,
 	hspk->dsmhandle = rballoc(0, SOF_MEM_CAPS_RAM, size);
 	if (!hspk->dsmhandle)
 		goto err;
+	bzero(hspk->dsmhandle, size);
 	mem_sz += size;
 
 	comp_dbg(dev, "[DSM] module:%p (%d bytes used)",
