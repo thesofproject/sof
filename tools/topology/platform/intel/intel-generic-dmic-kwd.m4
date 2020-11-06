@@ -135,16 +135,16 @@ SectionGraph."pipe-sof-generic-keyword-detect" {
 dnl DAI_CONFIG(type, dai_index, link_id, name, ssp_config/dmic_config)
 ifelse(CHANNELS, 4,
 `DAI_CONFIG(DMIC, 0, DMIC_DAI_LINK_48k_ID, DMIC_DAI_LINK_48k_NAME,
-                DMIC_CONFIG(1, 500000, 4800000, 40, 60, 48000,
+                DMIC_CONFIG(1, 2400000, 4800000, 40, 60, 48000,
                 DMIC_WORD_LENGTH(s32le), 200, DMIC, 0,
                 PDM_CONFIG(DMIC, 0, FOUR_CH_PDM0_PDM1)))',
 `DAI_CONFIG(DMIC, 0, DMIC_DAI_LINK_48k_ID, DMIC_DAI_LINK_48k_NAME,
-                DMIC_CONFIG(1, 500000, 4800000, 40, 60, 48000,
+                DMIC_CONFIG(1, 2400000, 4800000, 40, 60, 48000,
                 DMIC_WORD_LENGTH(s32le), 200, DMIC, 0,
                 PDM_CONFIG(DMIC, 0, STEREO_PDM0)))')
 
 # dmic16k (ID: 2)
 DAI_CONFIG(DMIC, 1, DMIC_DAI_LINK_16k_ID, DMIC_DAI_LINK_16k_NAME,
-                DMIC_CONFIG(1, 500000, 4800000, 40, 60, 16000,
+                DMIC_CONFIG(1, 2400000, 4800000, 40, 60, 16000,
                 DMIC_WORD_LENGTH(s32le), 400, DMIC, 1,
                 PDM_CONFIG(DMIC, 1, STEREO_PDM0)))
