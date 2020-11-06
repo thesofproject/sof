@@ -79,4 +79,12 @@ config TRACE_RECENT_MAX_TIME
 	help
 		Maximum amount of time message can be suppressed for, due to repeated suppression.
 
+config TRACE_BURST_COUNT
+	int "Allowed amount of rapidly repeated messages, that will not be suppressed by the filter"
+	depends on TRACE_FILTERING_ADAPTIVE
+	default 4
+	help
+		Amount of messages that will pass through the filter even if sent in rapid succession.
+		Allowed message burst size before filter suppresses the message.
+
 endmenu

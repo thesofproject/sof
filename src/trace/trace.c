@@ -33,7 +33,7 @@ struct recent_log_entry {
 	uint32_t entry_id;
 	uint64_t message_ts;
 	uint64_t first_suppression_ts;
-	uint32_t suppress_count;
+	uint32_t trigger_count;
 };
 
 struct recent_trace_context {
@@ -138,7 +138,8 @@ static void emit_recent_entry(struct recent_log_entry *entry)
 {
 	_log_message(trace_log_unfiltered, false, LOG_LEVEL_INFO, _TRACE_INV_CLASS, &dt_tr,
 		     _TRACE_INV_ID, _TRACE_INV_ID, "Suppressed %u similar messages: %pQ",
-		     entry->suppress_count, entry->entry_id);
+		     entry->trigger_count - CONFIG_TRACE_BURST_COUNT,
+		     entry->entry_id);
 
 	memset(entry, 0, sizeof(*entry));
 }
@@ -155,8 +156,10 @@ static void emit_recent_entries(uint64_t current_ts)
 		if (recent_entries[i].entry_id) {
 			if (current_ts - recent_entries[i].message_ts >
 			    CONFIG_TRACE_RECENT_TIME_THRESHOLD) {
-				if (recent_entries[i].suppress_count)
+				if (recent_entries[i].trigger_count > CONFIG_TRACE_BURST_COUNT)
 					emit_recent_entry(&recent_entries[i]);
+				else
+					memset(&recent_entries[i], 0, sizeof(recent_entries[i]));
 			}
 		}
 	}
@@ -178,6 +181,7 @@ static bool trace_filter_flood(uint32_t log_level, uint32_t entry, uint64_t mess
 		trace->trace_core_context[cpu_get_id()].recent_entries;
 	struct recent_log_entry *oldest_entry = recent_entries;
 	int i;
+	bool ret;
 
 	/* don't attempt to suppress debug messages using this method, it would be uneffective */
 	if (log_level >= LOG_LEVEL_DEBUG)
@@ -194,15 +198,17 @@ static bool trace_filter_flood(uint32_t log_level, uint32_t entry, uint64_t mess
 			    CONFIG_TRACE_RECENT_MAX_TIME &&
 			    message_ts - recent_entries[i].message_ts <
 			    CONFIG_TRACE_RECENT_TIME_THRESHOLD) {
-				recent_entries[i].suppress_count++;
+				recent_entries[i].trigger_count++;
 				/* refresh suppression timer */
 				recent_entries[i].message_ts = message_ts;
 
+				ret = recent_entries[i].trigger_count <= CONFIG_TRACE_BURST_COUNT;
+
 				platform_shared_commit(trace, sizeof(*trace));
-				return false;
+				return ret;
 			}
 
-			if (recent_entries[i].suppress_count)
+			if (recent_entries[i].trigger_count > CONFIG_TRACE_BURST_COUNT)
 				emit_recent_entry(&recent_entries[i]);
 			else
 				memset(&recent_entries[i], 0, sizeof(recent_entries[i]));
@@ -212,12 +218,13 @@ static bool trace_filter_flood(uint32_t log_level, uint32_t entry, uint64_t mess
 	}
 
 	/* Make room for tracking new entry, by emitting the oldest one in the filter */
-	if (oldest_entry->entry_id && oldest_entry->suppress_count)
+	if (oldest_entry->entry_id && oldest_entry->trigger_count > CONFIG_TRACE_BURST_COUNT)
 		emit_recent_entry(oldest_entry);
 
 	oldest_entry->entry_id = entry;
 	oldest_entry->message_ts = message_ts;
 	oldest_entry->first_suppression_ts = message_ts;
+	oldest_entry->trigger_count = 1;
 
 	platform_shared_commit(trace, sizeof(*trace));
 	return true;
