@@ -207,13 +207,13 @@ DAI_CONFIG(ALH, 0x102, 2, SDW1-Playback,
 
 # dmic01 (ID: 3)
 DAI_CONFIG(DMIC, 0, 3, dmic01,
-           DMIC_CONFIG(1, 500000, 4800000, 40, 60, 48000,
+           DMIC_CONFIG(1, 2400000, 4800000, 40, 60, 48000,
                 DMIC_WORD_LENGTH(s32le), 400, DMIC, 0,
                 PDM_CONFIG(DMIC, 0, FOUR_CH_PDM0_PDM1)))
 
 # dmic16k (ID: 4)
 DAI_CONFIG(DMIC, 1, 4, dmic16k,
-           DMIC_CONFIG(1, 500000, 4800000, 40, 60, 16000,
+           DMIC_CONFIG(1, 2400000, 4800000, 40, 60, 16000,
                 DMIC_WORD_LENGTH(s16le), 400, DMIC, 1,
                 PDM_CONFIG(DMIC, 1, DMIC_PDM_CONFIG)))
 
