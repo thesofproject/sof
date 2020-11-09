@@ -68,13 +68,13 @@ static int maxim_dsm_get_all_param(struct smart_amp_mod_struct_t *hspk,
 	enum DSM_API_MESSAGE retcode;
 	int cmdblock[DSM_GET_PARAM_SZ_PAYLOAD];
 	int num_param = hspk->param.max_param;
-	int x;
+	int idx;
 
-	for (x = 0 ; x < num_param ;  x++) {
+	for (idx = 0 ; idx < num_param ;  idx++) {
 		/* Read all DSM parameters - Please refer to the API header file
 		 * for more details about get_params() usage info.
 		 */
-		cmdblock[DSM_GET_ID_IDX] = DSM_SET_CMD_ID(x);
+		cmdblock[DSM_GET_ID_IDX] = DSM_SET_CMD_ID(idx);
 		retcode = dsm_api_get_params(hspk->dsmhandle, 1, (void *)cmdblock);
 		if (retcode != DSM_API_OK) {
 			/* set zero if the parameter is not readable */
@@ -83,13 +83,13 @@ static int maxim_dsm_get_all_param(struct smart_amp_mod_struct_t *hspk,
 		}
 
 		/* fill the data for the 1st channel 4 byte ID + 4 byte value */
-		db[x * DSM_PARAM_MAX + DSM_PARAM_ID] = DSM_CH1_BITMASK | x;
-		db[x * DSM_PARAM_MAX + DSM_PARAM_VALUE] = cmdblock[DSM_GET_CH1_IDX];
+		db[idx * DSM_PARAM_MAX + DSM_PARAM_ID] = DSM_CH1_BITMASK | idx;
+		db[idx * DSM_PARAM_MAX + DSM_PARAM_VALUE] = cmdblock[DSM_GET_CH1_IDX];
 		/* fill the data for the 2nd channel 4 byte ID + 4 byte value
 		 * 2nd channel data have offset for num_param * DSM_PARAM_MAX
 		 */
-		db[(x + num_param) * DSM_PARAM_MAX + DSM_PARAM_ID] = DSM_CH2_BITMASK | x;
-		db[(x + num_param) * DSM_PARAM_MAX + DSM_PARAM_VALUE] = cmdblock[DSM_GET_CH2_IDX];
+		db[(idx + num_param) * DSM_PARAM_MAX + DSM_PARAM_ID] = DSM_CH2_BITMASK | idx;
+		db[(idx + num_param) * DSM_PARAM_MAX + DSM_PARAM_VALUE] = cmdblock[DSM_GET_CH2_IDX];
 	}
 
 	return 0;
@@ -103,23 +103,23 @@ static int maxim_dsm_get_volatile_param(struct smart_amp_mod_struct_t *hspk,
 	enum DSM_API_MESSAGE retcode;
 	int cmdblock[DSM_GET_PARAM_SZ_PAYLOAD];
 	int num_param = hspk->param.max_param;
-	int x;
+	int idx;
 
 	/* Update all volatile parameter values */
-	for (x = DSM_API_ADAPTIVE_PARAM_START ; x <= DSM_API_ADAPTIVE_PARAM_END ;  x++) {
-		cmdblock[0] = DSM_SET_CMD_ID(x);
+	for (idx = DSM_API_ADAPTIVE_PARAM_START ; idx <= DSM_API_ADAPTIVE_PARAM_END ;  idx++) {
+		cmdblock[0] = DSM_SET_CMD_ID(idx);
 		retcode = dsm_api_get_params(hspk->dsmhandle, 1, (void *)cmdblock);
 		if (retcode != DSM_API_OK)
 			return -EINVAL;
 
 		/* fill the data for the 1st channel 4 byte ID + 4 byte value */
-		db[x * DSM_PARAM_MAX + DSM_PARAM_ID] = DSM_CH1_BITMASK | x;
-		db[x * DSM_PARAM_MAX + DSM_PARAM_VALUE] = cmdblock[DSM_GET_CH1_IDX];
+		db[idx * DSM_PARAM_MAX + DSM_PARAM_ID] = DSM_CH1_BITMASK | idx;
+		db[idx * DSM_PARAM_MAX + DSM_PARAM_VALUE] = cmdblock[DSM_GET_CH1_IDX];
 		/* fill the data for the 2nd channel 4 byte ID + 4 byte value
 		 * 2nd channel data have offset for num_param * DSM_PARAM_MAX
 		 */
-		db[(x + num_param) * DSM_PARAM_MAX + DSM_PARAM_ID] = DSM_CH2_BITMASK | x;
-		db[(x + num_param) * DSM_PARAM_MAX + DSM_PARAM_VALUE] = cmdblock[DSM_GET_CH2_IDX];
+		db[(idx + num_param) * DSM_PARAM_MAX + DSM_PARAM_ID] = DSM_CH2_BITMASK | idx;
+		db[(idx + num_param) * DSM_PARAM_MAX + DSM_PARAM_VALUE] = cmdblock[DSM_GET_CH2_IDX];
 	}
 
 	return 0;
@@ -183,7 +183,7 @@ int maxim_dsm_set_param(struct smart_amp_mod_struct_t *hspk,
 	int *wparam = (int *)cdata->data->data;
 	/* number of parameters to read */
 	int num_param = (cdata->num_elems >> 2);
-	int x, id, ch;
+	int idx, id, ch;
 
 	if (!cdata->msg_index) {
 		/* reset variables for the first set_param frame is arrived */
@@ -192,7 +192,7 @@ int maxim_dsm_set_param(struct smart_amp_mod_struct_t *hspk,
 		param->param.value = 0;	/* variable to keep last parameter value */
 	}
 
-	for (x = 0 ; x < num_param ; x++) {
+	for (idx = 0 ; idx < num_param ; idx++) {
 		/* Single DSM parameter consists of ID and value field (total 8 bytes)
 		 * It is even number aligned, but actual payload could be odd number.
 		 * Actual setparam operation is performed when both ID and value are
@@ -200,13 +200,13 @@ int maxim_dsm_set_param(struct smart_amp_mod_struct_t *hspk,
 		 */
 		if (param->pos % 2 == 0) {
 			/* even field is ID */
-			param->param.id = wparam[x];
+			param->param.id = wparam[idx];
 		} else {
 			/* odd field is value */
 			int value[DSM_SET_PARAM_SZ_PAYLOAD];
 			enum DSM_API_MESSAGE retcode;
 
-			param->param.value = wparam[x];
+			param->param.value = wparam[idx];
 			value[DSM_SET_ID_IDX] = param->param.id;
 			value[DSM_SET_VALUE_IDX] = param->param.value;
 
@@ -244,7 +244,7 @@ static void maxim_dsm_ff_proc(struct smart_amp_mod_struct_t *hspk,
 	int *r_ptr = &hspk->buf.ff_out.avail;
 	bool is_16bit = szsample == 2 ? true : false;
 	int remain;
-	int x;
+	int idx;
 
 	buf.buf16 = (int16_t *)hspk->buf.ff.buf;
 	buf.buf32 = (int32_t *)hspk->buf.ff.buf;
@@ -273,16 +273,16 @@ static void maxim_dsm_ff_proc(struct smart_amp_mod_struct_t *hspk,
 	if (*w_ptr >= DSM_FF_BUF_SZ) {
 		if (is_16bit) {
 			/* Buffer ordering for DSM : LRLR... -> LL...RR... */
-			for (x = 0; x < DSM_FRM_SZ; x++) {
-				input[x] = (buf.buf16[2 * x]);
-				input[x + DSM_FRM_SZ] =
-					(buf.buf16[2 * x + 1]);
+			for (idx = 0; idx < DSM_FRM_SZ; idx++) {
+				input[idx] = (buf.buf16[2 * idx]);
+				input[idx + DSM_FRM_SZ] =
+					(buf.buf16[2 * idx + 1]);
 			}
 		} else {
-			for (x = 0; x < DSM_FRM_SZ; x++) {
-				input[x] = (buf.buf32[2 * x] >> 16);
-				input[x + DSM_FRM_SZ] =
-					(buf.buf32[2 * x + 1] >> 16);
+			for (idx = 0; idx < DSM_FRM_SZ; idx++) {
+				input[idx] = (buf.buf32[2 * idx] >> 16);
+				input[idx + DSM_FRM_SZ] =
+					(buf.buf32[2 * idx + 1] >> 16);
 			}
 		}
 
@@ -305,18 +305,18 @@ static void maxim_dsm_ff_proc(struct smart_amp_mod_struct_t *hspk,
 				   output, &hspk->ofsamples);
 
 		if (is_16bit) {
-			for (x = 0; x < DSM_FRM_SZ; x++) {
+			for (idx = 0; idx < DSM_FRM_SZ; idx++) {
 				/* Buffer re-ordering LR/LR/LR */
-				buf_out.buf16[*r_ptr + 2 * x] = (output[x]);
-				buf_out.buf16[*r_ptr + 2 * x + 1] =
-					(output[x + DSM_FRM_SZ]);
+				buf_out.buf16[*r_ptr + 2 * idx] = (output[idx]);
+				buf_out.buf16[*r_ptr + 2 * idx + 1] =
+					(output[idx + DSM_FRM_SZ]);
 			}
 		} else {
-			for (x = 0; x < DSM_FRM_SZ; x++) {
-				buf_out.buf32[*r_ptr + 2 * x] =
-					(output[x] << 16);
-				buf_out.buf32[*r_ptr + 2 * x + 1] =
-					(output[x + DSM_FRM_SZ] << 16);
+			for (idx = 0; idx < DSM_FRM_SZ; idx++) {
+				buf_out.buf32[*r_ptr + 2 * idx] =
+					(output[idx] << 16);
+				buf_out.buf32[*r_ptr + 2 * idx + 1] =
+					(output[idx + DSM_FRM_SZ] << 16);
 			}
 		}
 
@@ -357,7 +357,7 @@ static void maxim_dsm_fb_proc(struct smart_amp_mod_struct_t *hspk,
 	int16_t *i = hspk->buf.current;
 	bool is_16bit = szsample == 2 ? true : false;
 	int remain;
-	int x;
+	int idx;
 
 	buf.buf16 = (int16_t *)hspk->buf.fb.buf;
 	buf.buf32 = (int32_t *)hspk->buf.fb.buf;
@@ -381,21 +381,21 @@ static void maxim_dsm_fb_proc(struct smart_amp_mod_struct_t *hspk,
 	/* Run DSM Feedback process if the buffer is ready */
 	if (*w_ptr >= DSM_FB_BUF_SZ) {
 		if (is_16bit) {
-			for (x = 0; x < DSM_FRM_SZ; x++) {
+			for (idx = 0; idx < DSM_FRM_SZ; idx++) {
 			/* Buffer ordering for DSM : VIVI... -> VV... II...*/
-				v[x] = buf.buf16[4 * x];
-				i[x] = buf.buf16[4 * x + 1];
-				v[x + DSM_FRM_SZ] = buf.buf16[4 * x + 2];
-				i[x + DSM_FRM_SZ] = buf.buf16[4 * x + 3];
+				v[idx] = buf.buf16[4 * idx];
+				i[idx] = buf.buf16[4 * idx + 1];
+				v[idx + DSM_FRM_SZ] = buf.buf16[4 * idx + 2];
+				i[idx + DSM_FRM_SZ] = buf.buf16[4 * idx + 3];
 			}
 		} else {
-			for (x = 0; x < DSM_FRM_SZ; x++) {
-				v[x] = (buf.buf32[4 * x] >> 16);
-				i[x] = (buf.buf32[4 * x + 1] >> 16);
-				v[x + DSM_FRM_SZ] =
-					(buf.buf32[4 * x + 2] >> 16);
-				i[x + DSM_FRM_SZ] =
-					(buf.buf32[4 * x + 3] >> 16);
+			for (idx = 0; idx < DSM_FRM_SZ; idx++) {
+				v[idx] = (buf.buf32[4 * idx] >> 16);
+				i[idx] = (buf.buf32[4 * idx + 1] >> 16);
+				v[idx + DSM_FRM_SZ] =
+					(buf.buf32[4 * idx + 2] >> 16);
+				i[idx + DSM_FRM_SZ] =
+					(buf.buf32[4 * idx + 3] >> 16);
 			}
 		}
 
@@ -510,7 +510,7 @@ static int smart_amp_get_buffer(int32_t *buf, uint32_t frames,
 				struct audio_stream *stream,
 				int8_t *chan_map, uint32_t num_ch)
 {
-	int x, y;
+	int idx, ch;
 	uint32_t in_frag = 0;
 	union smart_amp_buf input, output;
 	int index;
@@ -522,30 +522,30 @@ static int smart_amp_get_buffer(int32_t *buf, uint32_t frames,
 
 	switch (stream->frame_fmt) {
 	case SOF_IPC_FRAME_S16_LE:
-		for (x = 0 ; x < frames ; x++) {
-			for (y = 0 ; y < num_ch; y++) {
-				if (chan_map[y] == -1)
+		for (idx = 0 ; idx < frames ; idx++) {
+			for (ch = 0 ; ch < num_ch; ch++) {
+				if (chan_map[ch] == -1)
 					continue;
-				index = in_frag + chan_map[y];
+				index = in_frag + chan_map[ch];
 				input.buf16 =
 					audio_stream_read_frag_s16(stream,
 								   index);
-				output.buf16[num_ch * x + y] = *input.buf16;
+				output.buf16[num_ch * idx + ch] = *input.buf16;
 			}
 			in_frag += stream->channels;
 		}
 		break;
 	case SOF_IPC_FRAME_S24_4LE:
 	case SOF_IPC_FRAME_S32_LE:
-		for (x = 0 ; x < frames ; x++) {
-			for (y = 0 ; y < num_ch ; y++) {
-				if (chan_map[y] == -1)
+		for (idx = 0 ; idx < frames ; idx++) {
+			for (ch = 0 ; ch < num_ch ; ch++) {
+				if (chan_map[ch] == -1)
 					continue;
-				index = in_frag + chan_map[y];
+				index = in_frag + chan_map[ch];
 				input.buf32 =
 					audio_stream_read_frag_s32(stream,
 								   index);
-				output.buf32[num_ch * x + y] = *input.buf32;
+				output.buf32[num_ch * idx + ch] = *input.buf32;
 			}
 			in_frag += stream->channels;
 		}
@@ -563,7 +563,7 @@ static int smart_amp_put_buffer(int32_t *buf, uint32_t frames,
 {
 	union smart_amp_buf input, output;
 	uint32_t out_frag = 0;
-	int x, y;
+	int idx, ch;
 
 	input.buf16 = (int16_t *)buf;
 	input.buf32 = (int32_t *)buf;
@@ -572,32 +572,32 @@ static int smart_amp_put_buffer(int32_t *buf, uint32_t frames,
 
 	switch (stream->frame_fmt) {
 	case SOF_IPC_FRAME_S16_LE:
-		for (x = 0 ; x < frames ; x++) {
-			for (y = 0 ; y < num_ch_out; y++) {
-				if (chan_map[y] == -1) {
+		for (idx = 0 ; idx < frames ; idx++) {
+			for (ch = 0 ; ch < num_ch_out; ch++) {
+				if (chan_map[ch] == -1) {
 					out_frag++;
 					continue;
 				}
 				output.buf16 =
 					audio_stream_write_frag_s16(stream,
 								    out_frag);
-				*output.buf16 = input.buf16[num_ch_in * x + y];
+				*output.buf16 = input.buf16[num_ch_in * idx + ch];
 				out_frag++;
 			}
 		}
 		break;
 	case SOF_IPC_FRAME_S24_4LE:
 	case SOF_IPC_FRAME_S32_LE:
-		for (x = 0 ; x < frames ; x++) {
-			for (y = 0 ; y < num_ch_out; y++) {
-				if (chan_map[y] == -1) {
+		for (idx = 0 ; idx < frames ; idx++) {
+			for (ch = 0 ; ch < num_ch_out; ch++) {
+				if (chan_map[ch] == -1) {
 					out_frag++;
 					continue;
 				}
 				output.buf32 =
 					audio_stream_write_frag_s32(stream,
 								    out_frag);
-				*output.buf32 = input.buf32[num_ch_in * x + y];
+				*output.buf32 = input.buf32[num_ch_in * idx + ch];
 				out_frag++;
 			}
 		}
