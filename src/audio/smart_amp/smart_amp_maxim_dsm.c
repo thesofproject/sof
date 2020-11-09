@@ -27,7 +27,7 @@ static int maxim_dsm_init(struct smart_amp_mod_struct_t *hspk, struct comp_dev *
 	struct dsm_api_init_ext_t initparam;
 	enum DSM_API_MESSAGE retcode;
 
-	initparam.isamplebitwidth       = DSM_DEFAULT_CH_SIZE;
+	initparam.isamplebitwidth       = hspk->bitwidth;
 	initparam.ichannels             = DSM_DEFAULT_NUM_CHANNEL;
 	initparam.ipcircbuffersizebytes = circularbuffersize;
 	initparam.ipdelayedsamples      = delayedsamples;
