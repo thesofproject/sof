@@ -240,6 +240,8 @@ static void maxim_dsm_ff_proc(struct smart_amp_mod_struct_t *hspk,
 	union smart_amp_buf buf, buf_out;
 	int16_t *input = (int16_t *)hspk->buf.input;
 	int16_t *output = (int16_t *)hspk->buf.output;
+	int32_t *input32 = hspk->buf.input;
+	int32_t *output32 = hspk->buf.output;
 	int *w_ptr = &hspk->buf.ff.avail;
 	int *r_ptr = &hspk->buf.ff_out.avail;
 	bool is_16bit = szsample == 2 ? true : false;
@@ -280,9 +282,9 @@ static void maxim_dsm_ff_proc(struct smart_amp_mod_struct_t *hspk,
 			}
 		} else {
 			for (idx = 0; idx < DSM_FRM_SZ; idx++) {
-				input[idx] = (buf.buf32[2 * idx] >> 16);
-				input[idx + DSM_FRM_SZ] =
-					(buf.buf32[2 * idx + 1] >> 16);
+				input32[idx] = buf.buf32[2 * idx];
+				input32[idx + DSM_FRM_SZ] =
+					buf.buf32[2 * idx + 1];
 			}
 		}
 
@@ -309,14 +311,16 @@ static void maxim_dsm_ff_proc(struct smart_amp_mod_struct_t *hspk,
 				/* Buffer re-ordering LR/LR/LR */
 				buf_out.buf16[*r_ptr + 2 * idx] = (output[idx]);
 				buf_out.buf16[*r_ptr + 2 * idx + 1] =
-					(output[idx + DSM_FRM_SZ]);
+					output[idx + DSM_FRM_SZ];
 			}
 		} else {
+			dsm_api_ff_process(hspk->dsmhandle, hspk->channelmask,
+					   (short *)input32, &hspk->ifsamples,
+					   (short *)output32, &hspk->ofsamples);
 			for (idx = 0; idx < DSM_FRM_SZ; idx++) {
-				buf_out.buf32[*r_ptr + 2 * idx] =
-					(output[idx] << 16);
+				buf_out.buf32[*r_ptr + 2 * idx] = output32[idx];
 				buf_out.buf32[*r_ptr + 2 * idx + 1] =
-					(output[idx + DSM_FRM_SZ] << 16);
+					output32[idx + DSM_FRM_SZ];
 			}
 		}
 
@@ -325,8 +329,13 @@ static void maxim_dsm_ff_proc(struct smart_amp_mod_struct_t *hspk,
 
 	/* Output buffer preparation */
 	if (*r_ptr >= nsamples) {
-		memcpy_s(out, nsamples * szsample,
-			 buf_out.buf16, nsamples * szsample);
+		if (is_16bit)
+			memcpy_s(out, nsamples * szsample,
+				 buf_out.buf16, nsamples * szsample);
+		else
+			memcpy_s(out, nsamples * szsample,
+				 buf_out.buf32, nsamples * szsample);
+
 		remain = (*r_ptr - nsamples);
 		if (remain) {
 			if (is_16bit)
@@ -353,14 +362,16 @@ static void maxim_dsm_fb_proc(struct smart_amp_mod_struct_t *hspk,
 {
 	union smart_amp_buf buf;
 	int *w_ptr = &hspk->buf.fb.avail;
-	int16_t *v = hspk->buf.voltage;
-	int16_t *i = hspk->buf.current;
+	int16_t *v = (int16_t *)hspk->buf.voltage;
+	int16_t *i = (int16_t *)hspk->buf.current;
+	int32_t *v32 = hspk->buf.voltage;
+	int32_t *i32 = hspk->buf.current;
 	bool is_16bit = szsample == 2 ? true : false;
 	int remain;
 	int idx;
 
 	buf.buf16 = (int16_t *)hspk->buf.fb.buf;
-	buf.buf32 = (int32_t *)hspk->buf.fb.buf;
+	buf.buf32 = hspk->buf.fb.buf;
 
 	/* Current pointer(w_ptr) + number of input frames(nsamples)
 	 * must be smaller than buffer size limit
@@ -390,12 +401,12 @@ static void maxim_dsm_fb_proc(struct smart_amp_mod_struct_t *hspk,
 			}
 		} else {
 			for (idx = 0; idx < DSM_FRM_SZ; idx++) {
-				v[idx] = (buf.buf32[4 * idx] >> 16);
-				i[idx] = (buf.buf32[4 * idx + 1] >> 16);
+				v[idx] = buf.buf32[4 * idx];
+				i[idx] = buf.buf32[4 * idx + 1];
 				v[idx + DSM_FRM_SZ] =
-					(buf.buf32[4 * idx + 2] >> 16);
+					buf.buf32[4 * idx + 2];
 				i[idx + DSM_FRM_SZ] =
-					(buf.buf32[4 * idx + 3] >> 16);
+					buf.buf32[4 * idx + 3];
 			}
 		}
 
@@ -413,10 +424,14 @@ static void maxim_dsm_fb_proc(struct smart_amp_mod_struct_t *hspk,
 		*w_ptr -= DSM_FB_BUF_SZ;
 
 		hspk->ibsamples = hspk->fb_fr_sz_samples * hspk->nchannels;
-		dsm_api_fb_process(hspk->dsmhandle,
-				   hspk->channelmask,
-				   i, v, &hspk->ibsamples);
-
+		if (is_16bit)
+			dsm_api_fb_process(hspk->dsmhandle,
+					   hspk->channelmask,
+					   i, v, &hspk->ibsamples);
+		else
+			dsm_api_fb_process(hspk->dsmhandle,
+					   hspk->channelmask,
+					   (short *)i32, (short *)v32, &hspk->ibsamples);
 	}
 }
 
