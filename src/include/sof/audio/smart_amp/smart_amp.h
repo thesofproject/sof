@@ -181,4 +181,7 @@ int maxim_dsm_get_param(struct smart_amp_mod_struct_t *hspk,
 int maxim_dsm_set_param(struct smart_amp_mod_struct_t *hspk,
 			struct comp_dev *dev,
 			struct sof_ipc_ctrl_data *cdata);
+/* parameter restoration */
+int maxim_dsm_restore_param(struct smart_amp_mod_struct_t *hspk,
+			    struct comp_dev *dev);
 #endif

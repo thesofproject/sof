@@ -233,6 +233,31 @@ int maxim_dsm_set_param(struct smart_amp_mod_struct_t *hspk,
 	return 0;
 }
 
+int maxim_dsm_restore_param(struct smart_amp_mod_struct_t *hspk,
+			    struct comp_dev *dev)
+{
+	struct smart_amp_caldata *caldata = &hspk->param.caldata;
+	int32_t *db = (int32_t *)caldata->data;
+	int num_param = hspk->param.max_param;
+	int value[DSM_SET_PARAM_SZ_PAYLOAD];
+	enum DSM_API_MESSAGE retcode;
+	int idx;
+
+	/* Restore parameter values in db to the DSM component */
+	for (idx = 0 ; (idx < num_param << 1) ; idx++) {
+		value[DSM_SET_ID_IDX] = db[idx * DSM_PARAM_MAX + DSM_PARAM_ID];
+		value[DSM_SET_VALUE_IDX] = db[idx * DSM_PARAM_MAX + DSM_PARAM_VALUE];
+
+		retcode = dsm_api_set_params(hspk->dsmhandle, 1, value);
+		if (retcode != DSM_API_OK) {
+			comp_err(dev, "[DSM] maxim_dsm_restore_param() write failure. (id:%x, ret:%x)",
+				 value[DSM_SET_ID_IDX], retcode);
+			return -EINVAL;
+		}
+	}
+	return 0;
+}
+
 static void maxim_dsm_ff_proc(struct smart_amp_mod_struct_t *hspk,
 			      struct comp_dev *dev, void *in, void *out,
 			      int nsamples, int szsample)
