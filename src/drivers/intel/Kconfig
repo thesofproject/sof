@@ -61,6 +61,7 @@ config INTEL_DMIC_FIR_FULL
 	select INTEL_DMIC_FIR_DECIMATE_BY_5
 	select INTEL_DMIC_FIR_DECIMATE_BY_6
 	select INTEL_DMIC_FIR_DECIMATE_BY_8
+	select INTEL_DMIC_FIR_DECIMATE_BY_10
 	select INTEL_DMIC_FIR_DECIMATE_BY_12
 	help
 	  This option adds to previous all currently defined FIR
@@ -141,6 +142,16 @@ config INTEL_DMIC_FIR_DECIMATE_BY_8
 	default n
 	help
 	  This includes FIR coefficients to decimate by 8 into the build.
+	  The high FIR decimation factors are needed for high microphone clock
+	  rates due to max. decimation factor limitation of CIC. Also dual
+	  FIFO configurations may need for one FIR decimation such high
+	  decimation factor.
+
+config INTEL_DMIC_FIR_DECIMATE_BY_10
+	bool "FIR decimate by 10"
+	default n
+	help
+	  This includes FIR coefficients to decimate by 10 into the build.
 	  The high FIR decimation factors are needed for high microphone clock
 	  rates due to max. decimation factor limitation of CIC. Also dual
 	  FIFO configurations may need for one FIR decimation such high
