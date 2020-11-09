@@ -693,5 +693,3 @@ struct task_ops ipc_task_ops = {
 	.complete	= ipc_platform_complete_cmd,
 	.get_deadline	= ipc_task_deadline,
 };
-
-// Additional comment
