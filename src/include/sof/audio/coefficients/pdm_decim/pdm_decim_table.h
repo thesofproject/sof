@@ -15,27 +15,29 @@
 #include <stddef.h>
 
 #if CONFIG_INTEL_DMIC_FIR_DECIMATE_BY_2
-#include "pdm_decim_int32_02_4288_5100_010_095.h"
+#include "pdm_decim_int32_02_4323_5100_010_095.h"
 #include "pdm_decim_int32_02_4375_5100_010_095.h"
 #endif
 #if CONFIG_INTEL_DMIC_FIR_DECIMATE_BY_3
-#include "pdm_decim_int32_03_3850_5100_010_095.h"
 #include "pdm_decim_int32_03_4375_5100_010_095.h"
 #endif
 #if CONFIG_INTEL_DMIC_FIR_DECIMATE_BY_4
-#include "pdm_decim_int32_04_4375_5100_010_095.h"
+#include "pdm_decim_int32_04_4318_5100_010_095.h"
 #endif
 #if CONFIG_INTEL_DMIC_FIR_DECIMATE_BY_5
-#include "pdm_decim_int32_05_4331_5100_010_095.h"
+#include "pdm_decim_int32_05_4325_5100_010_095.h"
 #endif
 #if CONFIG_INTEL_DMIC_FIR_DECIMATE_BY_6
-#include "pdm_decim_int32_06_4156_5100_010_095.h"
+#include "pdm_decim_int32_06_4172_5100_010_095.h"
 #endif
 #if CONFIG_INTEL_DMIC_FIR_DECIMATE_BY_8
-#include "pdm_decim_int32_08_4156_5380_010_090.h"
+#include "pdm_decim_int32_08_4156_5301_010_090.h"
+#endif
+#if CONFIG_INTEL_DMIC_FIR_DECIMATE_BY_10
+#include "pdm_decim_int32_10_4156_5345_010_090.h"
 #endif
 #if CONFIG_INTEL_DMIC_FIR_DECIMATE_BY_12
-#include "pdm_decim_int32_12_4156_6018_010_090.h"
+#include "pdm_decim_int32_12_4156_5345_010_090.h"
 #endif
 
 /* Note: Higher spec filter must be before lower spec filter
@@ -46,26 +48,28 @@
 struct pdm_decim *fir_list[] = {
 #if CONFIG_INTEL_DMIC_FIR_DECIMATE_BY_2
 	&pdm_decim_int32_02_4375_5100_010_095,
-	&pdm_decim_int32_02_4288_5100_010_095,
+	&pdm_decim_int32_02_4323_5100_010_095,
 #endif
 #if CONFIG_INTEL_DMIC_FIR_DECIMATE_BY_3
 	&pdm_decim_int32_03_4375_5100_010_095,
-	&pdm_decim_int32_03_3850_5100_010_095,
 #endif
 #if CONFIG_INTEL_DMIC_FIR_DECIMATE_BY_4
-	&pdm_decim_int32_04_4375_5100_010_095,
+	&pdm_decim_int32_04_4318_5100_010_095,
 #endif
 #if CONFIG_INTEL_DMIC_FIR_DECIMATE_BY_5
-	&pdm_decim_int32_05_4331_5100_010_095,
+	&pdm_decim_int32_05_4325_5100_010_095,
 #endif
 #if CONFIG_INTEL_DMIC_FIR_DECIMATE_BY_6
-	&pdm_decim_int32_06_4156_5100_010_095,
+	&pdm_decim_int32_06_4172_5100_010_095,
 #endif
 #if CONFIG_INTEL_DMIC_FIR_DECIMATE_BY_8
-	&pdm_decim_int32_08_4156_5380_010_090,
+	&pdm_decim_int32_08_4156_5301_010_090,
+#endif
+#if CONFIG_INTEL_DMIC_FIR_DECIMATE_BY_10
+	&pdm_decim_int32_10_4156_5345_010_090,
 #endif
 #if CONFIG_INTEL_DMIC_FIR_DECIMATE_BY_12
-	&pdm_decim_int32_12_4156_6018_010_090,
+	&pdm_decim_int32_12_4156_5345_010_090,
 #endif
 	NULL, /* This marks the end of coefficients */
 };
