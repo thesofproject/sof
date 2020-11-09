@@ -130,6 +130,8 @@ struct smart_amp_mod_struct_t {
 	int ibsamples;
 	/* Number of processed samples */
 	int ofsamples;
+	/* Channel bit dempth */
+	int bitwidth;
 	struct smart_amp_param_struct_t param;
 };
 
