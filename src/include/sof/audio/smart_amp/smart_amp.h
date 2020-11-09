@@ -184,4 +184,7 @@ int maxim_dsm_set_param(struct smart_amp_mod_struct_t *hspk,
 /* parameter restoration */
 int maxim_dsm_restore_param(struct smart_amp_mod_struct_t *hspk,
 			    struct comp_dev *dev);
+/* parameter forced read, ignore cache */
+int maxim_dsm_get_param_forced(struct smart_amp_mod_struct_t *hspk,
+			       struct comp_dev *dev);
 #endif

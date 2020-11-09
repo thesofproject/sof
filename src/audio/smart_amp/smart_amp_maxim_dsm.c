@@ -125,6 +125,38 @@ static int maxim_dsm_get_volatile_param(struct smart_amp_mod_struct_t *hspk,
 	return 0;
 }
 
+int maxim_dsm_get_param_forced(struct smart_amp_mod_struct_t *hspk,
+			       struct comp_dev *dev)
+{
+	struct smart_amp_caldata *caldata = &hspk->param.caldata;
+	int32_t *db = (int32_t *)caldata->data;
+	enum DSM_API_MESSAGE retcode;
+	int cmdblock[DSM_GET_PARAM_SZ_PAYLOAD];
+	int num_param = hspk->param.max_param;
+	int idx;
+
+	/* Update all parameter values from the DSM component */
+	for (idx = 0 ; idx <= num_param ;  idx++) {
+		cmdblock[0] = DSM_SET_CMD_ID(idx);
+		retcode = dsm_api_get_params(hspk->dsmhandle, 1, (void *)cmdblock);
+		if (retcode != DSM_API_OK) {
+			/* set zero if the parameter is not readable */
+			cmdblock[DSM_GET_CH1_IDX] = 0;
+			cmdblock[DSM_GET_CH2_IDX] = 0;
+		}
+		/* fill the data for the 1st channel 4 byte ID + 4 byte value */
+		db[idx * DSM_PARAM_MAX + DSM_PARAM_ID] = DSM_CH1_BITMASK | idx;
+		db[idx * DSM_PARAM_MAX + DSM_PARAM_VALUE] = cmdblock[DSM_GET_CH1_IDX];
+		/* fill the data for the 2nd channel 4 byte ID + 4 byte value
+		 * 2nd channel data have offset for num_param * DSM_PARAM_MAX
+		 */
+		db[(idx + num_param) * DSM_PARAM_MAX + DSM_PARAM_ID] = DSM_CH2_BITMASK | idx;
+		db[(idx + num_param) * DSM_PARAM_MAX + DSM_PARAM_VALUE] = cmdblock[DSM_GET_CH2_IDX];
+	}
+
+	return 0;
+}
+
 int maxim_dsm_get_param(struct smart_amp_mod_struct_t *hspk,
 			struct comp_dev *dev,
 			struct sof_ipc_ctrl_data *cdata, int size)
