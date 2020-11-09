@@ -728,6 +728,11 @@ static int smart_amp_prepare(struct comp_dev *dev)
 			comp_err(dev, "[DSM] Re-initialization error.");
 			goto error;
 		}
+		ret = maxim_dsm_restore_param(sad->mod_handle, dev);
+		if (ret) {
+			comp_err(dev, "[DSM] Restoration error.");
+			goto error;
+		}
 	}
 
 	sad->process = get_smart_amp_process(dev);
