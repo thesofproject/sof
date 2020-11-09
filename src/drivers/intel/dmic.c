@@ -551,14 +551,13 @@ static int select_mode(struct dai *dai,
 	int32_t gain_to_fir;
 	int16_t idx[DMIC_MAX_MODES];
 	int16_t *mfir;
-	int n = 1;
-	int mmin;
-	int count;
 	int mcic;
 	int bits_cic;
 	int ret;
+	int n;
+	int found = 0;
 
-	/* If there are more than one possibilities select a mode with lowest
+	/* If there are more than one possibilities select a mode with a preferred
 	 * FIR decimation factor. If there are several select mode with highest
 	 * ioclk divider to minimize microphone power consumption. The highest
 	 * clock divisors are in the end of list so select the last of list.
@@ -579,9 +578,21 @@ static int select_mode(struct dai *dai,
 	else
 		mfir = modes->mfir_b;
 
-	mmin = find_min_int16(mfir, modes->num_of_modes);
-	count = find_equal_int16(idx, mfir, mmin, modes->num_of_modes, 0);
-	n = idx[count - 1];
+	/* Search fir_list[] decimation factors from start towards end. The found
+	 * last configuration entry with searched decimation factor will be used.
+	 */
+	for (n = 0; fir_list[n]; n++) {
+		found = find_equal_int16(idx, mfir, fir_list[n]->decim_factor,
+					 modes->num_of_modes, 0);
+		if (found)
+			break;
+	}
+
+	if (!found) {
+		dai_err(dai, "select_mode(): No filter for decimation found");
+		return -EINVAL;
+	}
+	n = idx[found - 1]; /* Option with highest clock divisor and lowest mic clock rate */
 
 	/* Get microphone clock and decimation parameters for used mode from
 	 * the list.
