@@ -79,13 +79,13 @@ struct smart_amp_buf_struct_t {
 	/* buffer : sof -> spk protection feedback process */
 	int32_t *frame_iv;
 	/* buffer : feed forward process input */
-	int16_t *input;
+	int32_t *input;
 	/* buffer : feed forward process output */
-	int16_t *output;
+	int32_t *output;
 	/* buffer : feedback voltage */
-	int16_t *voltage;
+	int32_t *voltage;
 	/* buffer : feedback current */
-	int16_t *current;
+	int32_t *current;
 	/* buffer : feed forward variable length -> fixed length */
 	struct smart_amp_ff_buf_struct_t ff;
 	/* buffer : feed forward variable length <- fixed length */
