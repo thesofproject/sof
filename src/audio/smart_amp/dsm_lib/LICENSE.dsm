@@ -1,0 +1,419 @@
+The Software you have received is provided pursuant to these Software License Terms and Conditions ("Agreement"). By acc
+epting this software, you are entering into, agreeing to, and consenting to be bound by all of the terms of this Agreeme
+nt, which is between you and Maxim Integrated Products, Inc. on behalf of itself and its affiliates and subsidiaries (co
+llectively, "Maxim"). This Agreement is effective as of the date that you received the software (the "Effective Date").
+You represent and warrant that you are at least eighteen (18) years of age if you are a resident of the United States, o
+r the age of majority in the jurisdiction of your residence. If you are accepting these terms on behalf of your employer
+ ("Company"), you represent and warrant that you have full authority to bind the Company to these terms. You and, if app
+licable, the Company may hereinafter be collectively referenced in this Agreement as the "Customer."
+Recitals
+
+A. Maxim, among other things, develops, manufactures, and sells semiconductor products and offers software consisting of
+ certain software development tools, operating systems, driver software, firmware, and example application code. The pro
+vided software contains software or features representative or illustrative of those that can be used with Maxim ICs and
+ can be used for development of software application programs to operate with Maxim ICs or products containing Maxim ICs
+.
+
+B. Customer desires to license the software from Maxim, under the terms and conditions of this Agreement.
+
+C. This Agreement permits Customer to license the software from Maxim or its distributors, representatives, or other par
+tners who are duly authorized by Maxim to offer such licenses and sets forth the basic terms and conditions under which
+the software will be delivered.
+
+1. Definitions.
+
+1.1. "Affiliate" means any entity under the Control of a party where "Control" means ownership of or the right to contro
+l greater than 50% of the voting securities of such entity.
+
+1.2. "Customer Program" means a software program designed to operate with Maxim ICs and developed by Customer using the
+Software.
+
+1.3. "Documentation" means all manuals, documentation, and other written materials that Maxim includes or otherwise prov
+ides as related to the Software or Maxim ICs, whether in printed or electronic form, including without limitation, custo
+mer reference and installation manuals, user's guides, and programmers guide.
+
+1.4. "Executable Code" means software in a machine-readable and executable form which is not generally readable by human
+s without reverse assembly, reverse compiling, or reverse engineering, but which can be combined in an unmodified form w
+ith Source Code and which can be compiled to make a Customer Program.
+
+1.5. "Maxim ICs" means integrated circuits that are separately purchased or obtained by Customer directly from Maxim or
+indirectly from Maxim's distributors, representatives, or other partners who are duly authorized by Maxim to sell such i
+ntegrated circuits.
+
+1.6. "Maxim-Enabled Products" means any product made by or for Customer that incorporates a Maxim IC.
+
+1.7. "Maxim Proprietary Software" means the software provided by Maxim to Customer under and upon Customer's acceptance
+of this Agreement, all permitted copies, modifications, or derivative works thereof made by Customer, and all basic or r
+elated materials pertinent thereto, including without limitation any documentation provided, either in hardcopy form or
+electronic form. Maxim Proprietary Software excludes Open Source Software and Third Party Technology.
+
+1.8. "Object Code" means software in machine-readable and executable form resulting from compilation or assembly of Sour
+ce Code and that is not generally readable by humans without reverse assembly, reverse compiling, or reverse engineering
+.
+
+1.9. "Open Source Software" means any open source, community, or other free software code or libraries of any type, incl
+uding, without limitation, any code that (a) is made generally available for free or that meets
+the definition of "open source" or "free" as defined by the Open Source Initiative or Free Software Foundation or (b) is
+ licensed under any license agreement approved by either such entity (such as, for example purposes only, the GNU GPL, G
+NU LGPL, Mozilla, or Apache license).
+
+1.10. "Site(s)" means the Customer's premises.
+
+1.11. "Software" means the Maxim Proprietary Software, any Third Party Technology, and any Open Source Software delivere
+d to Customer under the terms of this Agreement. Unless otherwise noted, the Software and Documentation are referred to
+collectively herein as "Software".
+
+1.12. "Source Code" means software in human-readable, high-level language form, which can be compiled or assembled into
+Object Code, machine code, or another executable form of code.
+
+1.13. "Third Party Technology" means any software, feature or functionality that requires a license grant and/or payment
+s by Customer to third parties for commercial activities related to Customer Programs and/or Maxim-Enabled Products.
+2. Software Licenses. The Maxim Proprietary Software is licensed to Customer under the license grant set forth in Sectio
+n 3 (Maxim Proprietary Software License Grant) below. Any Open Source Software delivered to Customer is licensed to Cust
+omer under the license specified in such Open Source Software and as further restricted by Section 4. For purposes of cl
+arity, the provisions of this Agreement applying to Source Code shall only apply if Source Code is being provided to Cus
+tomer.
+
+3. Maxim Proprietary Software License Grant.
+
+3.1. License Grant to Maxim Proprietary Software. Subject to the terms of this Agreement, Maxim hereby grants to Custome
+r during the Term a personal, non-exclusive, non-transferable, non-assignable, non-sublicensable (except as expressly gr
+anted herein) license to do the following:
+
+(a) use Object Code versions of Maxim Proprietary Software, internally and only at the Site(s) for the sole purpose of c
+reating Customer Programs;
+
+(b) load, install, run, execute, test, and debug Object Code versions of Maxim Proprietary Software, as incorporated wit
+hin a Customer Program, in a Maxim-Enabled Product internally and only at the Site(s) and only for the purpose of enabli
+ng Maxim ICs in the Maxim-Enabled Product;
+
+(c) grant a personal, non-exclusive, non-transferable, non-assignable, non-sublicensable sublicense to third parties: (i
+) to install, run, load, and execute Object Code versions of Maxim Proprietary Software, as incorporated within a Custom
+er Program, on Maxim-Enabled Products, and (ii) to distribute Object Code versions of Maxim Proprietary Software, as inc
+orporated within a Customer Program, embedded in a Maxim-Enabled Product to such third parties solely for the purpose of
+ and only to the extent needed to carry out such sublicense. The sublicense will subject the third party to the restrict
+ions and obligations of Sections 3.4 (License Restrictions on Maxim Proprietary Software) and 14 (Confidential Informati
+on) as if the third party were in the place of Customer. Customer will be fully responsible for the compliance with and
+liable for the breach of the sublicense by the third party. Upon becoming aware of any breach or suspected breach of the
+ sublicense by the third party, Customer will promptly report such breach or suspected breach to Maxim; and
+
+(d) use unmodified versions of Executable Code of Maxim Proprietary Software, to incorporate such Executable Code within
+ Customer Programs, and to create an Object Code version of Customer Programs.
+In all cases, the rights granted herein shall be exercised in accordance with (i) the Documentation, and (ii) this
+Agreement.
+
+3.2. Source Code License. To the extent that the Maxim Proprietary Software includes any Source Code, subject to the ter
+ms and conditions of this Agreement, Maxim grants to Customer a non-sublicensable, non-exclusive, non-transferable, non-
+assignable license during the Term to use, modify, and compile the Source Code internally and only at the Site(s) solely
+ to the extent necessary to support the development of a Customer Program as permitted under Section 3.1 (License Grant
+to Maxim Proprietary Software) above. Customer will keep track of all Customer employees who have had access to Source C
+ode versions of Maxim Proprietary Software, and will provide a list of such employees to Maxim upon request.
+
+3.3. Copies. Except for purposes of exercising the license granted in this Section 3 (Maxim Proprietary
+Software License Grant) and for back-up purposes, Customer may not copy the Maxim Proprietary Software. Customer agrees
+to reproduce and include Maxim's copyright notice on any copies of the Maxim Proprietary Software, which copies it makes
+ in any form, including partial copies of the Maxim Proprietary Software.
+
+3.4. License Restrictions on Maxim Proprietary Software. Except for the rights expressly granted in this Section 3, Maxi
+m grants no rights in the Maxim Proprietary Software to Customer, whether by implication, estoppel, or otherwise. Subjec
+t to the rights expressly granted in this Section 3, Customer shall not and shall not encourage, allow, or facilitate an
+y third party to:
+
+a.modify, translate, adapt, reverse engineer, decompile, disassemble, or otherwise translate or create derivative works
+based on the Maxim Proprietary Software, except solely to the extent (i) expressly permitted in Section 3.1 (License Gra
+nt to Maxim Proprietary Software) above or (ii) by applicable law and then only with advance written notice of such acti
+vity to Maxim;
+
+b.review, analyze, or evaluate Maxim Proprietary Software for the purpose of determining the infringement, validity, or
+enforceability of any intellectual property, or compare Maxim Proprietary Software to intellectual property in any way;
+
+c.examine, review, evaluate, or otherwise use the Maxim Proprietary Software for the purpose of developing or enabling a
+ product or technology that competes with Maxim;
+
+d.rent, lease, or sublicense the Maxim Proprietary Software to a third party, except as expressly permitted in Section 3
+.1 (License Grant to Maxim Proprietary Software);
+
+e.remove any product identification, proprietary, copyright or other notices contained in the Maxim Proprietary Software
+;
+
+f.disclose or distribute to any third party (i) benchmarks or other comparisons relating to the Maxim Proprietary Softwa
+re or (ii) any information (A) relating to the results of Customer's evaluation of the Maxim Proprietary Software (inclu
+ding relating to performance, function, or deficiencies of the Maxim Proprietary Software) or (B) contained in any docum
+entation, report, or questionnaire of Maxim that constitutes Maxim Confidential Information;
+g.distribute or sell the Maxim Proprietary Software in standalone form or in any manner other than as permitted under Se
+ction 3.1 (License Grant to Maxim Proprietary Software) above; or
+h.USE OR DISTRIBUTE THE MAXIM PROPRIETARY SOFTWARE FOR MEDICAL OR LIFE CRITICAL APPLICATIONS.
+
+3.5. Authorized Users. Customer's consultants and contractors, who are not direct competitors of Maxim and who are under
+ written agreements to provide services to Customer ("Authorized Users"), may use the Maxim Proprietary Software in acco
+rdance with the licenses granted to Customer under this Agreement, provided that:
+
+a.such Authorized Users agree to be bound by terms as protective of Maxim and Maxim Confidential Information as the term
+s set forth in this Agreement,
+
+b.Customer shall remain responsible for the Authorized User's compliance with such confidentiality terms and the applica
+ble terms of this Agreement,
+
+c.if Source Code is licensed under Section 3.2 (Source Code License), Customer keeps track of all Authorized Users who h
+ave had access to Source Code, and provides a list of such Authorized Users to Maxim upon request; and
+
+d.each Authorized User's use of the Maxim Proprietary Software is only for Customer's benefit in accordance with this Ag
+reement.
+
+3.6. No Right to Manufacture. Customer acknowledges and agrees that the license to the Maxim Proprietary Software grante
+d in Section 3.1 (License Grant to Maxim Proprietary Software) does not include any license to any of Maxim's other tech
+nology or intellectual property and that, consequently, it shall not have the right under this Agreement to develop, man
+ufacture, or have manufactured any integrated circuits that incorporate any Maxim technology, and that Customer is requi
+red to separately purchase or obtain Maxim ICs from Maxim or a Maxim certified distributor.
+
+3.7. Form of Delivery. Maxim will provide the Software licensed hereunder to Customer by electronic medium or other form
+ as mutually agreed upon, in the condition as it exists on the Effective Date or date of delivery, if different, without
+ special reformatting.
+
+4. Open Source Licenses. Customer understands and acknowledges that Open Source Software may be delivered pursuant to th
+is Agreement and subject to an Open Source Software license, that each Open Source Software license is a separate agreem
+ent between Customer and the copyright holder of such Open Source Software and that Maxim is not a party to any such Ope
+n Source Software license. The terms and conditions governing Customer's use of the Open Source Software are set forth i
+n the license agreement indicated in the Open Source Software and not in this Agreement. Customer's use of all Open Sour
+ce Software must comply with the terms of each applicable Open Source Software license. This Agreement does not limit Cu
+stomer's rights under, or grant Customer rights that supersede, the license terms of any particular Open Source Software
+ license.
+
+5. Third Party Technology. Customer acknowledges and agrees that Customer Programs and Maxim-Enabled Products, as well a
+s any products based on Maxim Proprietary Software or other Maxim technology, may require certain licenses from certain
+standards bodies and/or other third parties holding intellectual property rights ("IPR") that may cover one or more of a
+forementioned items. Customer acknowledges and agrees that Maxim is not granting a sublicense to IPR of Third Party Tech
+nology, and Customer is solely responsible for procuring such license in connection with any use of such Third Party Tec
+hnology.
+
+6. Representations and Warranties of Customer.
+
+6.1. General. Customer represents and warrants that:
+
+a. Customer's business and its performance under this Agreement are in compliance with all applicable federal, state and
+ local laws and government rules and regulations;
+
+b. None of the Customer Programs, Maxim-Enabled Products, or any portion thereof, excluding any Maxim Proprietary Softwa
+re contained therein, constitutes or may give rise to a claim of infringement of any patent, copyright, trade secret or
+other intellectual property right of a third party anywhere in the world; and
+
+c. No portion of any Customer Program (including any libraries), or any Maxim-Enabled Product, contains or will contain
+any "viral" Open Source Software, or any other software or code which could compromise or interfere in any way with Maxi
+m's rights, including IPR, in or to the Maxim Proprietary Software or other Maxim materials that may come into contact w
+ith such Customer Programs or Maxim-Enabled Products, or require Maxim or Customer to disclose any Source Code to any su
+ch Maxim Proprietary Software integrated in or distributed with any Customer Program or Maxim-Enabled Product.
+
+6.2. Maxim Proprietary Software. Customer on behalf of itself and its Affiliates hereby covenants not to bring suit or o
+therwise assert any intellectual property right against Maxim or any user, distributor, or manufacturer of the Maxim Pro
+prietary Software for the manufacture, use, import, offer for sale, or sale of any products or services based on the Max
+im Proprietary Software.
+
+7. Ownership. Notwithstanding anything to the contrary contained herein and except for the limited license rights expres
+sly provided herein, Maxim and its suppliers have and will retain all rights, title, and interest in and to the Maxim Pr
+oprietary Software (including, without limitation, all patent, copyright, trademark, trade secret, and other intellectua
+l property rights) and all copies, modifications, and derivative works thereof. Customer agrees to assign to Maxim all r
+ights, title, and interest, including but not limited to intellectual property rights, that Customer may now or in the f
+uture have in or to any modifications, improvements, or enhancements to the Maxim Proprietary Software. Customer acknowl
+edges that it is obtaining only a limited license right to the Maxim Proprietary Software and that irrespective of any u
+se of the words "purchase", "sale," or like terms hereunder, no ownership rights are being conveyed to Customer under th
+is Agreement or otherwise. For the avoidance of doubt, as between Maxim and Customer, Customer shall have and retain all
+rights, title, and interest in and to any Customer Programs except to the extent that any Software is incorporated
+therein.
+
+8. Term and Termination.
+
+8.1. Term. This Agreement is effective as of the Effective Date, will continue for three (3) years (the "License
+Term"), and expire when the License Term has elapsed, unless earlier terminated in accordance with this Section (the "Te
+rm").
+
+8.2. Termination. This Agreement (and all licenses and sublicenses granted hereunder) shall terminate on the earlier of:
+
+a.immediately upon Customer's material breach of any term of this Agreement,
+
+b.Maxim's notice of termination, which may be for any reason, to Customer
+
+c.the date upon which Customer discontinues the development, sale or distribution of Customer Programs or Maxim-Enabled
+Products;
+
+d.the date that Customer becomes insolvent, makes a general assignment for the benefit of creditors, suffers or permits
+the appointment of a receiver, becomes subject to any proceeding under any bankruptcy or insolvency law whether domestic
+ or foreign, voluntary or involuntary; or e.Expiration of the Term pursuant to Section 8.1 (Term).
+Upon expiration or termination of this Agreement or upon written request from Maxim, Customer shall certify to Maxim in
+writing that Customer has returned (or, with the consent of Maxim, destroyed) all copies of the Maxim Proprietary Softwa
+re and any other material provided by Maxim (excluding Open Source Software). 8.3. Survival. Sections 3.3 (Copies), 3.4
+(License Restrictions on Maxim Proprietary Software), 3.6 (No Right to Manufacture), 4 (Open Source Licenses), 5 (Third
+Party Technology), 6 (Representations and Warranties of Customer), 7 (Ownership), 8 (Term and Termination), 9 (Warranty
+Disclaimer), 11 (Taxes), 12 (Limitation of Remedies and Damages), 13 (Indemnification by Customer), 14 (Confidential Inf
+ormation) and 15 (General) shall survive any termination or expiration of this Agreement.
+
+8.4. Limited Survival of License. Notwithstanding anything contained herein, unless this Agreement is terminated pursuan
+t to Sections 8.2.a or 8.2.d, Customer shall, after termination or expiration of this Agreement, retain a limited licens
+e to the Maxim Proprietary Software, to use any Maxim-provided Source Code and Object Code versions of Maxim Proprietary
+ Software internally and only at the Site(s) for the sole purpose of maintaining or supporting a Maxim-Enabled Product t
+hat was shipped in conjunction with an Object Code version of a Customer Program during the Term of this Agreement .
+
+9. Warranty Disclaimer.
+TO THE EXTENT PERMITTED BY LAW, THE SOFTWARE AND ALL SERVICES ARE PROVIDED "AS IS" AND "WITH ALL FAULTS." NEITHER MAXIM
+NOR ITS SUPPLIERS MAKES ANY WARRANTIES, EXPRESS OR IMPLIED, STATUTORY OR OTHERWISE, INCLUDING BUT NOT LIMITED TO WARRANT
+IES OF MERCHANTABILITY, TITLE, FITNESS FOR A PARTICULAR PURPOSE, OR NONINFRINGEMENT. CUSTOMER MAY HAVE OTHER STATUTORY R
+IGHTS. HOWEVER, TO THE FULL EXTENT PERMITTED BY LAW, THE DURATION OF STATUTORILY REQUIRED WARRANTIES, IF ANY, SHALL BE L
+IMITED TO THE LIMITED WARRANTY PERIOD.
+
+10. Support & Maintenance. The Software is provided to Customer without any maintenance or support services. Ongoing mai
+ntenance and customer support for Customer's software that is based upon or includes portions of the Maxim Proprietary S
+oftware is the responsibility of the Customer. Maxim may provide to Customer, in Maxim's sole discretion, updates to the
+ Software from time to time. Upon delivery, such updates to the Software are subject to the terms and conditions herein.
+
+11. Taxes. Customer agrees to pay any sales, value-added, withholding or other similar taxes and assessments imposed by
+applicable law that Maxim is required to pay based on the licenses Customer ordered, except for taxes based on Maxim's i
+ncome.
+
+12. Limitation of Remedies and Damages.
+
+12.1. NEITHER PARTY IS LIABLE FOR ANY LOSS OF USE, LOST DATA, FAILURE OF SECURITY MECHANISMS, INTERRUPTION OF BUSINESS,
+OR ANY INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES OF ANY KIND (INCLUDING LOST PROFITS), REGARDLESS OF THE F
+ORM OF ACTION, WHETHER IN CONTRACT, TORT (INCLUDING NEGLIGENCE), STRICT LIABILITY, OR OTHERWISE,
+EVEN IF INFORMED OF THE POSSIBILITY OF SUCH DAMAGES IN ADVANCE.
+
+12.2. NOTWITHSTANDING ANY OTHER PROVISION OF THIS AGREEMENT, MAXIM'S AND ITS LICENSORS' AND SUPPLIERS' ENTIRE CUMULATIVE
+ LIABILITY UNDER THIS AGREEMENT TO CUSTOMER SHALL NOT EXCEED TEN U.S. DOLLARS ($10.00). 12.3. THIS SECTION 12 DOES NOT A
+PPLY TO CUSTOMER WITH RESPECT TO ANY CLAIM ARISING UNDER SECTION 3 (MAXIM PROPRIETARY SOFTWARE LICENSE GRANT), SECTION 6
+ (REPRESENTATIONS AND WARRANTIES OF CUSTOMER), SECTION 13 (INDEMNIFICATION BY CUSTOMER) OR SECTION 14 (CONFIDENTIAL INFO
+RMATION). 12.4. The parties agree that the limitations specified in this Section 12 will survive and apply even if any l
+imited remedy specified in this Agreement is found to have failed of its essential purpose.
+
+13. Indemnification by Customer. Customer shall indemnify, defend, and hold Maxim and its Affiliates harmless from any a
+nd all claims, liabilities, damages, expenses (including reasonable attorney's fees and court, arbitration, and mediatio
+n costs), or associated proceedings ("Claims") in connection with, relating to, or which result from:
+
+a.any allegation of infringement of a third party's intellectual property rights with respect to any Customer Program or
+ Maxim-Enabled Product, but excluding any such claim in either case to the extent based on the Software on a stand-alone
+ basis,
+
+b.the sale, marketing, distribution, or manufacture of any Maxim-Enabled Product, but excluding any such claim to the ex
+tent based on the Software on a stand-alone basis, or c.Customer's breach of any provisions of Section 6 (Representation
+s and Warranties of Customer).
+Maxim shall give Customer prompt notice in writing of any such Claims and the authority, information, and reasonable ass
+istance (at Customer's expense) necessary to defend and settle such Claims, except that Maxim's failure to provide promp
+t notice will not relieve Customer of its indemnity obligations under this Section unless such failure materially prejud
+ices the defense of the Claim, and Customer will not enter into a settlement of the Claim without Maxim's prior written
+consent. If Customer does not diligently pursue resolution of the Claim or provide Maxim with reasonable assurance that
+it will diligently pursue resolution, then Maxim may, without in any way limiting its other rights or remedies, defend o
+r settle the Claim. Nothing herein shall limit or restrict Maxim's, its Affiliates', or its suppliers' rights to defend
+and protect their ownership and intellectual property rights in and to the Maxim Proprietary Software, in whole or in pa
+rt, in connection with any Claim. Each party agrees to provide reasonable cooperation to the other party in the defense
+or settlement of any such Claims, upon the reasonable request of the other party.
+
+14. Confidential Information. Each party agrees that all code, inventions, know-how, business, technical and financial i
+nformation it ("Receiving Party") obtains from the disclosing party ("Disclosing Party") constitute the confidential pro
+perty of the Disclosing Party ("Confidential Information"), provided that it is identified as confidential at the time o
+f disclosure or should be reasonably known by the Receiving Party to be Confidential Information due to the nature of th
+e information disclosed and the circumstances surrounding the disclosure. Any software, documentation, or technical info
+rmation provided by Maxim (or its agents)(excluding Open Source Software), performance information relating to the Maxim
+ Proprietary Software, and the terms of this Agreement are deemed Confidential Information of Maxim without any marking
+or further designation. Except as expressly authorized herein, the Receiving Party will hold in confidence and not use o
+r disclose any Confidential Information. The Receiving Party's nondisclosure obligation does not apply to information th
+at the Receiving Party can document:
+
+a. was rightfully in its possession or known to it without the breach of any confidentiality obligations prior to receip
+t of the Confidential Information;
+
+b. is or has become public knowledge through no fault of the Receiving Party;
+c. is rightfully obtained by the Receiving Party from a third party without breach of any confidentiality obligation;
+d. is independently developed by employees of the Receiving Party who had no access to such information; or
+e. is required to be disclosed pursuant to a regulation, law, or court order (but only to the minimum extent required to
+ comply with such regulation or order and with advance written notice to the Disclosing Party).
+
+15. General.
+
+15.1. Assignment and Delegation. Customer may not assign its rights or delegate its obligations ("Assign" or "Assignment
+") under this Agreement without the prior written consent of Maxim, and any purported Assignment without such consent sh
+all have no force or effect. In the event, Customer desires to Assign this Agreement to a successor in interest by merge
+r or acquisition of its entire business, Customer shall obtain Maxim's prior written approval, which shall be rendered b
+y Maxim in its sole discretion. Subject to the foregoing, this Agreement shall bind and inure to the benefit of the resp
+ective parties hereto and their permitted successors and assigns. In the event of an Assignment or attempted Assignment
+by Customer without Maxim's prior written approval, Maxim may, in its sole discretion, immediately terminate this Agreem
+ent.
+
+15.2. Severability. If any provision of this Agreement is adjudged by any court of competent jurisdiction to be unenforc
+eable or invalid, that provision is limited to the minimum extent necessary so that this Agreement shall otherwise remai
+n in effect.
+
+15.3. Governing Law; Jurisdiction and Venue. This Agreement is governed by the laws of the State of California and the U
+nited States without regard to conflicts of laws provisions thereof, and without regard to the United Nations Convention
+ on the International Sale of Goods. The parties agree to submit any claim or actions arising from and/or related to thi
+s Agreement to the exclusive jurisdiction and venue of the Superior Court of California, Santa Clara County or the Unite
+d States District Court for the Northern District of California, San Jose Branch and agree to waive any right to assert
+the defense of forum non conveniens or to object to such venue in any such proceeding.
+
+15.4. Notices and Reports. Any notice or report to Maxim hereunder shall be in writing to the following notice address:
+Maxim Integrated Products, Inc.
+160 Rio Robles
+San Jose, CA 95134
+Attn: General Counsel
+Any notice or report shall be deemed given:
+
+a. upon receipt if by personal delivery;
+
+b. upon receipt if sent by certified or registered mail (return receipt requested); or
+
+c. one day after it is sent if by next day delivery by a major commercial delivery service.
+
+15.5. Amendments; Waivers. No supplement, modification, or amendment of this Agreement is binding, unless executed in wr
+iting by a duly authorized representative of each party to this Agreement. No waiver will be implied from conduct or fai
+lure to enforce or exercise rights under this Agreement, nor will any waiver be effective unless in a writing signed by
+a duly authorized representative on behalf of the party claimed to have waived. No provision of any purchase order or ot
+her business form employed by Customer will supersede the terms and conditions of this Agreement, and any such document
+relating to this Agreement is for administrative purposes only and shall have no legal effect.
+
+15.6. Entire Agreement. This Agreement is the complete and exclusive statement of the mutual understanding of the partie
+s and supersedes and cancels all previous written and oral agreements and communications relating to the subject matter
+of this Agreement.
+
+15.7. Audit Rights. Upon Maxim's written request, Customer shall certify in a signed writing that Customer's use of the
+Software is in full compliance with the terms of this Agreement (including any copy and user limitations). With prior re
+asonable notice, Maxim may audit the copies of the Software in use by
+Customer provided such audit is during regular business hours; Customer is responsible for such audit costs only in the
+event the audit reveals that Customer's use is not in accordance with the applicable license(s).
+
+15.8. Independent Contractors. The parties to this Agreement are independent contractors. There is no relationship of pa
+rtnership, joint venture, employment, franchise, or agency created hereby between the parties. Neither party will have t
+he power to bind the other or incur obligations on the other party's behalf without the other party's prior written cons
+ent.
+
+15.9. Force Majeure. Neither party is liable to the other for any delay or failure to perform any obligation under this
+Agreement if the delay or failure is due to events that are beyond the reasonable control of such party, including but n
+ot limited to any strike, blockade, war, act of terrorism, riot, natural disaster, failure or diminishment of power, tel
+ecommunications, data networks or services, or refusal of approval or license by a government agency.
+
+15.10. Government End-Users. If the user or licensee of the Software is an agency, department, or other entity of the Un
+ited States Government, the use, duplication, reproduction, release, modification, disclosure, or transfer of this Softw
+are, or any related documentation of any kind, including technical data and manuals, is restricted by a license agreemen
+t or by the terms of this Agreement in accordance with Federal Acquisition Regulation 12.212 for civilian purposes and D
+efense Federal Acquisition Regulation Supplement 227.7202 for military purposes.
+
+15.11. Export Compliance. Customer acknowledges that the Software is subject to export restrictions by the United States
+ government and import restrictions by certain foreign governments. Customer shall not and shall not allow any third-par
+ty to remove or export from the United States or allow the export or re-export of any part of the Software or any direct
+ product thereof:
+
+a. into (or to a national or resident of) any embargoed or terrorist-supporting country;
+
+b. to anyone on the U.S. Commerce Department's Table of Denial Orders or U.S. Treasury Department's list of Specially De
+signated Nationals;
+
+c. to any country to which such export or re-export is restricted or prohibited, or as to which the United States
+government or any agency thereof requires an export license or other governmental approval at the time of export or
+re-export without first obtaining such license or approval; or
+
+d. otherwise in violation of any export or import restrictions, laws, or regulations of any United States or foreign age
+ncy or authority. Customer agrees to the foregoing and warrants that it is not located in, under the control of, or a na
+tional or resident of any such prohibited country or on any such prohibited party list. The Software is further restrict
+ed from being used for the design or development of nuclear, chemical, or biological weapons or missile technology, or f
+or terrorist activity, without the prior permission of the United States government.
+
+15.12. Injunctive Relief. Customer understands and agrees that, notwithstanding any other provision of this Agreement, b
+reach of the provisions of this Agreement by Customer will cause Maxim irreparable damage for which recovery of money da
+mages would be inadequate, and that Maxim shall therefore be entitled to obtain timely equitable relief, including but n
+ot limited to injunctive relief, to protect Maxim's rights under this Agreement in addition to any and all remedies avai
+lable at law.
