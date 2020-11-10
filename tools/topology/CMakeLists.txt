@@ -134,6 +134,7 @@ set(TPLGS
 	"sof-jsl-da7219\;sof-jsl-da7219-mx98360a\;-DPLATFORM=jsl-dedede"
 	"sof-imx8mp-wm8960\;sof-imx8mp-wm8960"
 	"sof-smart-amplifier-nocodec\;sof-smart-amplifier-nocodec"
+	"sof-imx8-wm8960-mixer\;sof-imx8-wm8960-mixer"
 )
 
 add_custom_target(topologies ALL)
