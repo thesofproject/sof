@@ -150,7 +150,7 @@ functionality and quality of processed samples.
 
 #### Compilation steps
 
-Run the host-build-all.sh to build the required libraries for the testbench.
+Run the rebuild-testbench.sh to build the required libraries for the testbench.
 It should also build the testbench executable.
 
 #### Running the Testbench
