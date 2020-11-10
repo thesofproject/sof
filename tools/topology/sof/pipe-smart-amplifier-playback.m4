@@ -137,5 +137,11 @@ indir(`define', concat(`PIPELINE_PCM_', PIPELINE_ID), Smart Amplifier Playback P
 #
 
 # PCM capabilities supported by FW
-PCM_CAPABILITIES(Smart Amplifier Playback PCM_ID, CAPABILITY_FORMAT_NAME(PIPELINE_FORMAT), 48000, 48000, 2, PIPELINE_CHANNELS, 2, 16, 192, 16384, 65536, 65536)
+PCM_CAPABILITIES(Smart Amplifier Playback PCM_ID,
+	CAPABILITY_FORMAT_NAME(PIPELINE_FORMAT),
+	48000, 48000, dnl rate_min, rate_max
+	SMART_PB_CH_NUM, SMART_PB_CH_NUM, dnl channels_min, channels_max
+	2, 16, dnl periods_min, periods_max
+	192, 16384, dnl period_size_min, period_size_max
+	65536, 65536)
 
