@@ -653,6 +653,11 @@ static int ssp_set_config(struct dai *dai,
 	ssp->state[DAI_DIR_CAPTURE] = COMP_STATE_PREPARE;
 
 out:
+	ssp->mdivc = mn_reg_read(MN_MDIVCTRL, 0);
+	mn_reg_write(MN_MDIVCTRL, 0, 0);
+
+	pm_runtime_put_sync(SSP_POW, dai->index);
+
 	platform_shared_commit(ssp, sizeof(*ssp));
 
 	spin_unlock(&dai->lock);
@@ -698,6 +703,10 @@ static void ssp_start(struct dai *dai, int direction)
 	struct ssp_pdata *ssp = dai_get_drvdata(dai);
 
 	spin_lock(&dai->lock);
+
+	pm_runtime_get_sync(SSP_POW, dai->index);
+
+	mn_reg_write(MN_MDIVCTRL, 0, ssp->mdivc);
 
 	/* enable port */
 	ssp_update_bits(dai, SSCR0, SSCR0_SSE, SSCR0_SSE);
@@ -762,6 +771,8 @@ static void ssp_stop(struct dai *dai, int direction)
 	if (ssp->state[SOF_IPC_STREAM_CAPTURE] == COMP_STATE_PREPARE &&
 	    ssp->state[SOF_IPC_STREAM_PLAYBACK] == COMP_STATE_PREPARE) {
 		ssp_update_bits(dai, SSCR0, SSCR0_SSE, 0);
+		mn_reg_write(MN_MDIVCTRL, 0, 0);
+		pm_runtime_put_sync(SSP_POW, dai->index);
 		dai_info(dai, "ssp_stop(), SSP port disabled");
 	}
 
@@ -778,6 +789,12 @@ static void ssp_pause(struct dai *dai, int direction)
 		dai_info(dai, "ssp_pause(), TX");
 
 	ssp->state[direction] = COMP_STATE_PAUSED;
+
+	if (ssp->state[SOF_IPC_STREAM_CAPTURE] == COMP_STATE_PAUSED &&
+	    ssp->state[SOF_IPC_STREAM_PLAYBACK] == COMP_STATE_PAUSED) {
+		mn_reg_write(MN_MDIVCTRL, 0, 0);
+		pm_runtime_put_sync(SSP_POW, dai->index);
+	}
 }
 
 static int ssp_trigger(struct dai *dai, int cmd, int direction)
