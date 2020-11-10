@@ -67,7 +67,7 @@ struct pcm_func_map {
 extern const struct pcm_func_map pcm_func_map[];
 
 /** \brief Number of conversion functions. */
-extern const uint32_t pcm_func_count;
+extern const size_t pcm_func_count;
 
 /**
  * \brief Retrieves PCM conversion function.
