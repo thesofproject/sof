@@ -29,7 +29,7 @@
  * SOF on Intel CAVS platforms currently only aligns with Zephyr when both
  * use the CAVS 19.2 MHz SSP clock. TODO - needs runtime alignment.
  */
-#if defined(CONFIG_CAVS) && !defined(CONFIG_INTEL_SSP)
+#if !defined(CONFIG_CAVS_TIMER)
 #error "Zephyr uses 19.2MHz clock derived from SSP which must be enabled."
 #endif
 
