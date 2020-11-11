@@ -14,7 +14,7 @@
 
 
 /* data cache line alignment */
-#define PLATFORM_DCACHE_ALIGN	DCACHE_LINE_SIZE
+#define PLATFORM_DCACHE_ALIGN	sizeof(void *)
 
 /* physical DSP addresses */
 
@@ -172,7 +172,7 @@
 
 #define SOF_MEM_RO_SIZE			0x8
 
-#define HEAP_BUF_ALIGNMENT		PLATFORM_DCACHE_ALIGN
+#define HEAP_BUF_ALIGNMENT		DCACHE_LINE_SIZE
 
 /** \brief EDF task's default stack size in bytes. */
 #define PLATFORM_TASK_DEFAULT_STACK_SIZE	3072
