@@ -7,6 +7,7 @@
 #include <sof/audio/component.h>
 #include <sof/audio/buffer.h>
 #include <sof/audio/drc/drc.h>
+#include <sof/audio/drc/drc_algorithm.h>
 #include <sof/audio/format.h>
 #include <sof/audio/pipeline.h>
 #include <sof/common.h>
@@ -38,7 +39,7 @@ DECLARE_SOF_RT_UUID("drc", drc_uuid, 0xb36ee4da, 0x006f, 0x47f9,
 
 DECLARE_TR_CTX(drc_tr, SOF_UUID(drc_uuid), LOG_LEVEL_INFO);
 
-static inline void drc_reset_state(struct drc_state *state)
+inline void drc_reset_state(struct drc_state *state)
 {
 	int i;
 
@@ -62,9 +63,9 @@ static inline void drc_reset_state(struct drc_state *state)
 	state->max_attack_compression_diff_db = INT32_MIN;
 }
 
-static inline int drc_init_pre_delay_buffers(struct drc_state *state,
-					     size_t sample_bytes,
-					     int channels)
+inline int drc_init_pre_delay_buffers(struct drc_state *state,
+				      size_t sample_bytes,
+				      int channels)
 {
 	size_t bytes_per_channel = sample_bytes * DRC_MAX_PRE_DELAY_FRAMES;
 	size_t bytes_total = bytes_per_channel * channels;
@@ -86,9 +87,9 @@ static inline int drc_init_pre_delay_buffers(struct drc_state *state,
 	return 0;
 }
 
-static inline int drc_set_pre_delay_time(struct drc_state *state,
-					 int32_t pre_delay_time,
-					 int32_t rate)
+inline int drc_set_pre_delay_time(struct drc_state *state,
+				  int32_t pre_delay_time,
+				  int32_t rate)
 {
 	int32_t pre_delay_frames;
 

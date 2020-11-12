@@ -6,6 +6,7 @@
 
 #include <sof/audio/component.h>
 #include <sof/audio/drc/drc.h>
+#include <sof/audio/drc/drc_algorithm.h>
 #include <sof/audio/drc/drc_math.h>
 #include <sof/audio/format.h>
 #include <sof/math/decibels.h>
@@ -69,10 +70,10 @@ static int32_t volume_gain(const struct sof_drc_params *p, int32_t x)
 }
 
 /* Update detector_average from the last input division. */
-static void drc_update_detector_average(struct drc_state *state,
-					const struct sof_drc_params *p,
-					int nbyte,
-					int nch)
+void drc_update_detector_average(struct drc_state *state,
+				 const struct sof_drc_params *p,
+				 int nbyte,
+				 int nch)
 {
 	int32_t detector_average = state->detector_average; /* Q2.30 */
 	int32_t abs_input_array[DRC_DIVISION_FRAMES]; /* Q1.31 */
@@ -158,7 +159,7 @@ static void drc_update_detector_average(struct drc_state *state,
 }
 
 /* Updates the envelope_rate used for the next division */
-static void drc_update_envelope(struct drc_state *state, const struct sof_drc_params *p)
+void drc_update_envelope(struct drc_state *state, const struct sof_drc_params *p)
 {
 	/* Calculate desired gain */
 
@@ -251,10 +252,10 @@ static void drc_update_envelope(struct drc_state *state, const struct sof_drc_pa
 
 /* Calculate compress_gain from the envelope and apply total_gain to compress
  * the next output division. */
-static void drc_compress_output(struct drc_state *state,
-				const struct sof_drc_params *p,
-				int nbyte,
-				int nch)
+void drc_compress_output(struct drc_state *state,
+			 const struct sof_drc_params *p,
+			 int nbyte,
+			 int nch)
 {
 	const int div_start = state->pre_delay_read_index;
 	int count = DRC_DIVISION_FRAMES >> 2;
