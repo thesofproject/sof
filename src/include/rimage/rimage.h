@@ -104,6 +104,7 @@ struct image {
 	uint32_t image_end;/* module end, equal to output image size */
 	int meu_offset;
 	int xcc_mod_offset;
+	const char *verify_file;
 
 	/* SHA 256 & 384 */
 	const char *key_name;
@@ -149,6 +150,7 @@ struct adsp {
 	enum machine_id machine_id;
 	int (*write_firmware)(struct image *image);
 	int (*write_firmware_meu)(struct image *image);
+	int (*verify_firmware)(struct image *image);
 	struct fw_image_manifest_v2_5 *man_v2_5;
 	struct fw_image_manifest_v1_8 *man_v1_8;
 	struct fw_image_manifest_v1_5 *man_v1_5;
@@ -176,6 +178,22 @@ int pkcs_v1_5_sign_man_v1_8(struct image *image,
 			    void *ptr1, unsigned int size1, void *ptr2,
 			    unsigned int size2);
 int pkcs_v1_5_sign_man_v2_5(struct image *image,
+			    struct fw_image_manifest_v2_5 *man,
+			    void *ptr1, unsigned int size1, void *ptr2,
+			    unsigned int size2);
+
+int verify_image(struct image *image);
+int ri_manifest_verify_v1_5(struct image *image);
+int ri_manifest_verify_v1_8(struct image *image);
+int ri_manifest_verify_v2_5(struct image *image);
+int pkcs_v1_5_verify_man_v1_5(struct image *image,
+			    struct fw_image_manifest_v1_5 *man,
+			    void *ptr1, unsigned int size1);
+int pkcs_v1_5_verify_man_v1_8(struct image *image,
+			    struct fw_image_manifest_v1_8 *man,
+			    void *ptr1, unsigned int size1, void *ptr2,
+			    unsigned int size2);
+int pkcs_v1_5_verify_man_v2_5(struct image *image,
 			    struct fw_image_manifest_v2_5 *man,
 			    void *ptr1, unsigned int size1, void *ptr2,
 			    unsigned int size2);

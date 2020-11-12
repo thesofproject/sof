@@ -386,3 +386,310 @@ int ri_manifest_sign_v2_5(struct image *image)
 
 	return pkcs_v1_5_sign_man_v2_5(image, man, data1, size1, data2, size2);
 }
+
+/*
+ * RSA verify of manifest. The signature is an PKCS
+ * #1-v1_5 of the entire manifest structure, including all
+ * extensions, and excluding the last 3 fields of the
+ * manifest header (Public Key, Exponent and Signature).
+ */
+
+int pkcs_v1_5_verify_man_v1_5(struct image *image,
+			    struct fw_image_manifest_v1_5 *man,
+			    void *ptr1, unsigned int size1)
+{
+	RSA *priv_rsa = NULL;
+	EVP_PKEY *privkey;
+	FILE *fp;
+	unsigned char digest[SHA256_DIGEST_LENGTH];
+	unsigned int siglen = MAN_RSA_SIGNATURE_LEN;
+	char path[256];
+	int ret = -EINVAL, i;
+
+#if DEBUG_PKCS
+	fprintf(stdout, "offsets 0x%lx size 0x%x\n",
+		ptr1 - (void *)man, size1);
+#endif
+
+	/* requires private key */
+	if (!image->key_name) {
+		return -EINVAL;
+	}
+
+	/* create new key */
+	privkey = EVP_PKEY_new();
+	if (!privkey)
+		return -ENOMEM;
+
+	/* load in RSA private key from PEM file */
+	memset(path, 0, sizeof(path));
+	strncpy(path, image->key_name, sizeof(path) - 1);
+
+	fprintf(stdout, " pkcs: verify with key %s\n", path);
+	fp = fopen(path, "rb");
+	if (!fp) {
+		fprintf(stderr, "error: can't open file %s %d\n",
+			path, -errno);
+		return -errno;
+	}
+	PEM_read_PrivateKey(fp, &privkey, NULL, NULL);
+	fclose(fp);
+
+	/* validate RSA private key */
+	priv_rsa = EVP_PKEY_get1_RSA(privkey);
+	if (RSA_check_key(priv_rsa)) {
+		fprintf(stdout, " pkcs: RSA private key is valid.\n");
+	} else {
+		fprintf(stderr, "error: validating RSA private key.\n");
+		return -EINVAL;
+	}
+
+	/* calculate the digest */
+	module_sha256_create(image);
+	module_sha_update(image, ptr1, size1);
+	module_sha_complete(image, digest);
+
+	fprintf(stdout, " pkcs: digest for manifest is ");
+	for (i = 0; i < SHA256_DIGEST_LENGTH; i++)
+		fprintf(stdout, "%02x", digest[i]);
+	fprintf(stdout, "\n");
+
+	/* signature is reversed, swap it */
+	bytes_swap(man->css_header.signature,
+		   sizeof(man->css_header.signature));
+
+	/* sign the manifest */
+	ret = RSA_verify(NID_sha256, digest, SHA256_DIGEST_LENGTH,
+		       (unsigned char *)man->css_header.signature,
+		       siglen, priv_rsa);
+	if (ret <= 0) {
+		ERR_error_string(ERR_get_error(), path);
+		fprintf(stderr, "error: failed to verify manifest %s\n", path);
+	} else
+		fprintf(stdout, "pkcs: signature is valid !\n");
+
+
+	EVP_PKEY_free(privkey);
+	return ret;
+}
+
+/*
+ * RSA verify of manifest. The signature is an PKCS
+ * #1-v1_5 of the entire manifest structure, including all
+ * extensions, and excluding the last 3 fields of the
+ * manifest header (Public Key, Exponent and Signature).
+ */
+
+int pkcs_v1_5_verify_man_v1_8(struct image *image,
+			    struct fw_image_manifest_v1_8 *man,
+			    void *ptr1, unsigned int size1, void *ptr2,
+			    unsigned int size2)
+{
+	RSA *priv_rsa = NULL;
+	EVP_PKEY *privkey;
+	FILE *fp;
+	unsigned char digest[SHA256_DIGEST_LENGTH];
+	unsigned int siglen = MAN_RSA_SIGNATURE_LEN;
+	char path[256];
+	int ret = -EINVAL, i;
+
+#if DEBUG_PKCS
+	fprintf(stdout, "offsets 0x%lx size 0x%x offset 0x%lx size 0x%x\n",
+		ptr1 - (void *)man, size1, ptr2 - (void *)man, size2);
+#endif
+
+	/* require private key */
+	if (!image->key_name) {
+		return -EINVAL;
+	}
+
+	/* create new key */
+	privkey = EVP_PKEY_new();
+	if (!privkey)
+		return -ENOMEM;
+
+	/* load in RSA private key from PEM file */
+	memset(path, 0, sizeof(path));
+	strncpy(path, image->key_name, sizeof(path) - 1);
+
+	fprintf(stdout, " pkcs: verifying with key %s\n", path);
+	fp = fopen(path, "rb");
+	if (!fp) {
+		fprintf(stderr, "error: can't open file %s %d\n",
+			path, -errno);
+		return -errno;
+	}
+	PEM_read_PrivateKey(fp, &privkey, NULL, NULL);
+	fclose(fp);
+
+	/* validate RSA private key */
+	priv_rsa = EVP_PKEY_get1_RSA(privkey);
+	if (RSA_check_key(priv_rsa)) {
+		fprintf(stdout, " pkcs: RSA private key is valid.\n");
+	} else {
+		fprintf(stderr, "error: validating RSA private key.\n");
+		return -EINVAL;
+	}
+
+	/* calculate the digest */
+	module_sha256_create(image);
+	module_sha_update(image, ptr1, size1);
+	module_sha_update(image, ptr2, size2);
+	module_sha_complete(image, digest);
+
+	fprintf(stdout, " pkcs: digest for manifest is ");
+	for (i = 0; i < SHA256_DIGEST_LENGTH; i++)
+		fprintf(stdout, "%02x", digest[i]);
+	fprintf(stdout, "\n");
+
+	/* signature is reveresd, swap it */
+	bytes_swap(man->css.signature, sizeof(man->css.signature));
+
+	/* sign the manifest */
+	ret = RSA_verify(NID_sha256, digest, SHA256_DIGEST_LENGTH,
+		       (unsigned char *)man->css.signature,
+		       siglen, priv_rsa);
+	if (ret <= 0) {
+		ERR_error_string(ERR_get_error(), path);
+		fprintf(stderr, "error: failed to verify manifest %s\n", path);
+	} else
+		fprintf(stdout, "pkcs: signature is valid !\n");
+
+	EVP_PKEY_free(privkey);
+	return ret;
+}
+
+/*
+ * RSA signature of manifest. The signature is an RSA PSS
+ * of the entire manifest structure, including all
+ * extensions, and excluding the last 3 fields of the
+ * manifest header (Public Key, Exponent and Signature).
+ */
+
+int pkcs_v1_5_verify_man_v2_5(struct image *image,
+			    struct fw_image_manifest_v2_5 *man,
+			    void *ptr1, unsigned int size1, void *ptr2,
+			    unsigned int size2)
+{
+	RSA *priv_rsa = NULL;
+	EVP_PKEY *privkey;
+	FILE *fp;
+	unsigned char digest[SHA384_DIGEST_LENGTH];
+	unsigned char sig[MAN_RSA_SIGNATURE_LEN_2_5];
+	char path[256];
+	int ret = -EINVAL, i;
+
+#if DEBUG_PKCS
+	fprintf(stdout, "offsets 0x%lx size 0x%x offset 0x%lx size 0x%x\n",
+		ptr1 - (void *)man, size1, ptr2 - (void *)man, size2);
+#endif
+
+	/* require private key */
+	if (!image->key_name) {
+		return -EINVAL;
+	}
+
+	/* create new PSS key */
+	privkey = EVP_PKEY_new();
+	if (!privkey)
+		return -ENOMEM;
+
+	/* load in RSA private key from PEM file */
+	memset(path, 0, sizeof(path));
+	strncpy(path, image->key_name, sizeof(path) - 1);
+
+	fprintf(stdout, " pkcs: PSS verify with key %s\n", path);
+	fp = fopen(path, "rb");
+	if (!fp) {
+		fprintf(stderr, "error: can't open file %s %d\n",
+			path, -errno);
+		return -errno;
+	}
+	PEM_read_PrivateKey(fp, &privkey, NULL, NULL);
+	fclose(fp);
+
+	/* validate RSA private key */
+	priv_rsa = EVP_PKEY_get1_RSA(privkey);
+	if (RSA_check_key(priv_rsa)) {
+		fprintf(stdout, " pkcs: RSA private key is valid.\n");
+	} else {
+		fprintf(stderr, "error: validating RSA private key.\n");
+		return -EINVAL;
+	}
+
+	/* calculate the digest - SHA384 on CAVS2_5+ */
+	module_sha384_create(image);
+	module_sha_update(image, ptr1, size1);
+	module_sha_update(image, ptr2, size2);
+	module_sha_complete(image, digest);
+
+	fprintf(stdout, " pkcs: digest for manifest is ");
+	for (i = 0; i < SHA384_DIGEST_LENGTH; i++)
+		fprintf(stdout, "%02x", digest[i]);
+	fprintf(stdout, "\n");
+
+	/* signature is reversed, swap it */
+	bytes_swap(man->css.signature, sizeof(man->css.signature));
+
+	/* decrypt signature */
+	ret = RSA_public_decrypt(RSA_size(priv_rsa), (unsigned char *)man->css.signature,
+			     sig, priv_rsa, RSA_NO_PADDING);
+	if (ret <= 0) {
+		ERR_error_string(ERR_get_error(), path);
+		fprintf(stderr, "error: failed to decrypt signature %s\n", path);
+	}
+
+	ret = RSA_verify_PKCS1_PSS(priv_rsa, digest, image->md, sig, 32);
+	if (ret <= 0) {
+		ERR_error_string(ERR_get_error(), path);
+		fprintf(stderr, "error: failed to verify manifest %s\n", path);
+	} else
+		fprintf(stdout, "pkcs: signature is valid !\n");
+
+	EVP_PKEY_free(privkey);
+	return ret;
+}
+
+int ri_manifest_verify_v1_5(struct image *image)
+{
+	struct fw_image_manifest_v1_5 *man = image->fw_image;
+
+	char *const data1 = (char *)man + MAN_CSS_MAN_SIZE_V1_5;
+	unsigned const size1 = image->image_end - sizeof(*man);
+
+	return pkcs_v1_5_verify_man_v1_5(image, man, data1, size1);
+}
+
+int ri_manifest_verify_v1_8(struct image *image)
+{
+	struct fw_image_manifest_v1_8 *man = image->fw_image;
+
+	char *const data1 = (char *)man + MAN_CSS_HDR_OFFSET;
+	unsigned const size1 =
+		sizeof(struct css_header_v1_8) -
+		(MAN_RSA_KEY_MODULUS_LEN + MAN_RSA_KEY_EXPONENT_LEN +
+		 MAN_RSA_SIGNATURE_LEN);
+
+	char *const data2 = (char *)man + MAN_SIG_PKG_OFFSET_V1_8;
+	unsigned const size2 =
+		(man->css.size - man->css.header_len) * sizeof(uint32_t);
+
+	return pkcs_v1_5_verify_man_v1_8(image, man, data1, size1, data2, size2);
+}
+
+int ri_manifest_verify_v2_5(struct image *image)
+{
+	struct fw_image_manifest_v2_5 *man = image->fw_image;
+
+	char *const data1 = (char *)man + MAN_CSS_HDR_OFFSET_2_5;
+	unsigned const size1 =
+		sizeof(struct css_header_v2_5) -
+		(MAN_RSA_KEY_MODULUS_LEN_2_5 + MAN_RSA_KEY_EXPONENT_LEN +
+		 MAN_RSA_SIGNATURE_LEN_2_5);
+
+	char *const data2 = (char *)man + MAN_SIG_PKG_OFFSET_V2_5;
+	unsigned const size2 =
+			(man->css.size - man->css.header_len) * sizeof(uint32_t);
+
+	return pkcs_v1_5_verify_man_v2_5(image, man, data1, size1, data2, size2);
+}

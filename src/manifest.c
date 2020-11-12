@@ -1328,3 +1328,77 @@ err:
 	unlink(image->out_rom_file);
 	return ret;
 }
+
+int verify_image(struct image *image)
+{
+	FILE *in_file;
+	int ret, i;
+	long size;
+	void *buffer;
+	size_t read;
+
+	/* is verify supported for target ? */
+	if (!image->adsp->verify_firmware) {
+		fprintf(stderr, "error: verify not supported for target\n");
+		return -EINVAL;
+	}
+
+	/* open image for reading */
+	in_file = fopen(image->verify_file, "rb");
+	if (!in_file) {
+		fprintf(stderr, "error: unable to open %s for reading %d\n",
+			image->verify_file, errno);
+		return -errno;
+	}
+
+	/* get file size */
+	ret = fseek(in_file, 0, SEEK_END);
+	if (ret < 0) {
+		fprintf(stderr, "error: unable to seek eof %s for reading %d\n",
+			image->verify_file, errno);
+		return -errno;
+	}
+	size = ftell(in_file);
+	if (size < 0) {
+		fprintf(stderr, "error: unable to get file size for %s %d\n",
+			image->verify_file, errno);
+		return -errno;
+	}
+	ret = fseek(in_file, 0, SEEK_SET);
+	if (ret < 0) {
+		fprintf(stderr, "error: unable to seek %s for reading %d\n",
+			image->verify_file, errno);
+		return -errno;
+	}
+
+	/* allocate buffer for parsing */
+	buffer = malloc(size);
+	if (!buffer) {
+		ret = -ENOMEM;
+		goto out;
+	}
+
+	/* find start of fw image and verify */
+	read = fread(buffer, 1, size, in_file);
+	if (read != size) {
+		fprintf(stderr, "error: unable to read %ld bytes from %s err %d\n",
+					size, image->verify_file, errno);
+		ret = errno;
+		goto out;
+	}
+	for (i = 0; i < size; i += sizeof(uint32_t)) {
+		/* find CSE header marker "$CPD" */
+		if (*(uint32_t *)(buffer + i) == CSE_HEADER_MAKER) {
+			image->fw_image = buffer + i;
+			ret = image->adsp->verify_firmware(image);
+			goto out;
+		}
+	}
+
+	/* no header found */
+	fprintf(stderr, "error: could not find valid CSE header $CPD in %s\n",
+		image->verify_file);
+out:
+	fclose(in_file);
+	return 0;
+}

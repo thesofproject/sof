@@ -20,6 +20,8 @@ static void usage(char *name)
 {
 	fprintf(stdout, "%s:\t -c adsp_desc -o outfile -k [key] ELF files\n",
 		name);
+	fprintf(stdout, "%s:\t -c adsp_desc -y infile -k [key]\n",
+			name);
 	fprintf(stdout, "\t -v enable verbose output\n");
 	fprintf(stdout, "\t -r enable relocatable ELF files\n");
 	fprintf(stdout, "\t -s MEU signing offset\n");
@@ -28,6 +30,7 @@ static void usage(char *name)
 	fprintf(stdout, "\t -f firmware version = x.y\n");
 	fprintf(stdout, "\t -b build version\n");
 	fprintf(stdout, "\t -e build extended manifest\n");
+	fprintf(stdout, "\t -y verify signed file\n");
 	exit(0);
 }
 
@@ -44,7 +47,7 @@ int main(int argc, char *argv[])
 
 	image.xcc_mod_offset = DEFAULT_XCC_MOD_OFFSET;
 
-	while ((opt = getopt(argc, argv, "ho:va:s:k:ri:x:f:b:ec:")) != -1) {
+	while ((opt = getopt(argc, argv, "ho:va:s:k:ri:x:f:b:ec:y:")) != -1) {
 		switch (opt) {
 		case 'o':
 			image.out_file = optarg;
@@ -82,6 +85,9 @@ int main(int argc, char *argv[])
 		case 'c':
 			adsp_config = optarg;
 			break;
+		case 'y':
+			image.verify_file = optarg;
+			break;
 		case 'h':
 			usage(argv[0]);
 			break;
@@ -93,15 +99,22 @@ int main(int argc, char *argv[])
 
 	first_non_opt = optind;
 
-	/* make sure we have an outfile and machine */
-	if (!image.out_file || !adsp_config)
+	/* we must have config */
+	if (!adsp_config) {
+		fprintf(stderr, "error: must have adsp desc");
 		usage(argv[0]);
+	}
 
 	/* requires private key */
 	if (!image.key_name) {
 		fprintf(stderr, "error: requires private key\n");
 		return -EINVAL;
 	}
+
+	/* make sure we have an outfile if nt verifying */
+	if ((!image.out_file && !image.verify_file))
+		usage(argv[0]);
+
 
 	/* firmware version and build id */
 	if (image.fw_ver_string) {
@@ -137,6 +150,12 @@ int main(int argc, char *argv[])
 	ret = adsp_parse_config(adsp_config, heap_adsp, image.verbose);
 	if (ret < 0)
 		goto out;
+
+	/* verify mode ? */
+	if (image.verify_file) {
+		ret = verify_image(&image);
+		goto out;
+	}
 
 	/* set IMR Type in found machine definition */
 	if (image.adsp->man_v1_8)

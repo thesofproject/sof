@@ -1755,6 +1755,7 @@ static int parse_adsp_config_v1_5(const toml_table_t *toml, struct adsp *out,
 		/* assign correct write functions */
 		out->write_firmware = man_write_fw_v1_5_sue;
 		out->write_firmware_meu = man_write_fw_meu_v1_5;
+		out->verify_firmware = ri_manifest_verify_v1_5;
 
 		/* parse others sibtables */
 		ret = parse_fw_desc(toml, &ctx, &out->man_v1_5_sue->desc, verbose);
@@ -1772,6 +1773,7 @@ static int parse_adsp_config_v1_5(const toml_table_t *toml, struct adsp *out,
 		/* assign correct write functions */
 		out->write_firmware = man_write_fw_v1_5;
 		out->write_firmware_meu = man_write_fw_meu_v1_5;
+		out->verify_firmware = ri_manifest_verify_v1_5;
 
 		/* parse others sibtables */
 		ret = parse_css_v1_5(toml, &ctx, &out->man_v1_5->css_header, verbose);
@@ -1808,6 +1810,7 @@ static int parse_adsp_config_v1_8(const toml_table_t *toml, struct adsp *out,
 	/* assign correct write functions */
 	out->write_firmware = man_write_fw_v1_8;
 	out->write_firmware_meu = man_write_fw_meu_v1_8;
+	out->verify_firmware = ri_manifest_verify_v1_8;
 
 	/* version array has already been parsed, so increment ctx.array_cnt */
 	parse_ctx_init(&ctx);
@@ -1868,6 +1871,7 @@ static int parse_adsp_config_v2_5(const toml_table_t *toml, struct adsp *out,
 	/* assign correct write functions */
 	out->write_firmware = man_write_fw_v2_5;
 	out->write_firmware_meu = man_write_fw_meu_v2_5;
+	out->verify_firmware = ri_manifest_verify_v2_5;
 
 	/* version array has already been parsed, so increment ctx.array_cnt */
 	parse_ctx_init(&ctx);
