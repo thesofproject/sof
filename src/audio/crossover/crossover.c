@@ -9,6 +9,7 @@
 #include <sof/audio/format.h>
 #include <sof/audio/pipeline.h>
 #include <sof/audio/crossover/crossover.h>
+#include <sof/audio/crossover/crossover_algorithm.h>
 #include <sof/audio/eq_iir/iir.h>
 #include <sof/common.h>
 #include <sof/debug/panic.h>
@@ -61,7 +62,7 @@ static inline void crossover_reset_state_lr4(struct iir_state_df2t *lr4)
  * \brief Reset the state (coefficients and delay) of the crossover filter
  *	  of a single channel.
  */
-static inline void crossover_reset_state_ch(struct crossover_state *ch_state)
+inline void crossover_reset_state_ch(struct crossover_state *ch_state)
 {
 	int i;
 
@@ -215,9 +216,9 @@ static int crossover_init_coef_lr4(struct sof_eq_iir_biquad_df2t *coef,
 /**
  * \brief Initializes the crossover coefficients for one channel
  */
-static int crossover_init_coef_ch(struct sof_eq_iir_biquad_df2t *coef,
-				  struct crossover_state *ch_state,
-				  int32_t num_sinks)
+int crossover_init_coef_ch(struct sof_eq_iir_biquad_df2t *coef,
+			   struct crossover_state *ch_state,
+			   int32_t num_sinks)
 {
 	int32_t i;
 	int32_t j = 0;
