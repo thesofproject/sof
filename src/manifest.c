@@ -1291,6 +1291,21 @@ int man_write_fw_v2_5(struct image *image)
 	if (ret < 0)
 		goto err;
 
+#if 0
+	/* calculate hash - SHA384 on CAVS2_5+ */
+	module_sha384_create(image);
+	module_sha_update(image, image->fw_image,
+			sizeof(struct CsePartitionDirHeader_v2_5) +
+			sizeof(struct CsePartitionDirEntry) * 3);
+	module_sha_update(image, image->fw_image + 0x4c0, image->image_end - 0x4c0);
+	module_sha_complete(image, hash);
+
+	/* hash values in reverse order */
+	for (i = 0; i < SOF_MAN_MOD_SHA384_LEN; i++) {
+		m->info_0x16.hash[i] =
+			hash[SOF_MAN_MOD_SHA384_LEN - 1 - i];
+	}
+#endif
 	/* write the firmware */
 	ret = man_write_fw_mod(image);
 	if (ret < 0)
