@@ -29,6 +29,7 @@ src/audio/dcblock*			@cujomalainey @dgreid
 src/audio/crossover*			@cujomalainey @dgreid
 src/audio/tdfb*                         @singalsu
 src/audio/drc/*				@johnylin76 @cujomalainey @dgreid
+src/audio/multiband_drc/*		@johnylin76 @cujomalainey @dgreid
 
 # platforms
 src/platform/baytrail/*			@xiulipan
