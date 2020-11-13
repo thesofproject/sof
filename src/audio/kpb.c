@@ -1175,7 +1175,7 @@ static enum task_state kpb_draining_task(void *arg)
 	size_t time_taken;
 	size_t *rt_stream_update = &draining_data->buffered_while_draining;
 	struct comp_data *kpb = comp_get_drvdata(draining_data->dev);
-	bool sync_mode_on = &draining_data->sync_mode_on;
+	bool sync_mode_on = draining_data->sync_mode_on;
 	uint32_t flags;
 
 	comp_cl_info(&comp_kpb, "kpb_draining_task(), start.");
