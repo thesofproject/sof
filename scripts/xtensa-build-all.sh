@@ -377,16 +377,7 @@ do
 		make overrideconfig
 	fi
 
-	# TGL needs MEU tool for signing
-	if [ 'tgl' = "${platform}" ] && [ "${SIGNING_TOOL}" = "RIMAGE" ]
-	then # build unsigned FW binary
-		make sof -j "${BUILD_JOBS}" ${BUILD_VERBOSE}
-		if [ "$BUILD_ROM" = "yes" ]; then
-			make rom_dump  ${BUILD_VERBOSE}
-		fi
-	else # build signed FW binary
-		make bin -j "${BUILD_JOBS}" ${BUILD_VERBOSE}
-	fi
+	make bin -j "${BUILD_JOBS}" ${BUILD_VERBOSE}
 
 	cd "$WORKDIR"
 done # for platform in ...
