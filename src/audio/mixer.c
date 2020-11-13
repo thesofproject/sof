@@ -224,15 +224,6 @@ static int mixer_source_status_count(struct comp_dev *mixer, uint32_t status)
 	return count;
 }
 
-static inline int mixer_sink_status(struct comp_dev *mixer)
-{
-	struct comp_buffer *sink;
-
-	sink = list_first_item(&mixer->bsink_list, struct comp_buffer,
-			       source_list);
-	return sink->sink->state;
-}
-
 /* used to pass standard and bespoke commands (with data) to component */
 static int mixer_trigger(struct comp_dev *dev, int cmd)
 {
