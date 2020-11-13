@@ -7,12 +7,11 @@ to generate binary image files.
 
 ## Building
 
-The `rimage` tool can be built with the following commands:
+The `rimage` tool can be built with the usual CMake commands:
 
 ```shell
-$ mkdir build
-$ cd build
-$ cmake ..
-$ make
-$ make install
+$ cmake -B build/
+$ make  -C build/ help # lists all targets
+$ make  -C build/
+$ sudo make -C build/ install # optional
 ```
