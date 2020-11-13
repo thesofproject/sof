@@ -692,7 +692,7 @@ static int dai_comp_trigger_internal(struct comp_dev *dev, int cmd)
 		comp_info(dev, "dai_comp_trigger_internal(), XRUN");
 		dd->xrun = 1;
 
-		/* fallthrough */
+		COMPILER_FALLTHROUGH;
 	case COMP_TRIGGER_STOP:
 		comp_dbg(dev, "dai_comp_trigger_internal(), STOP");
 		ret = dma_stop(dd->chan);
@@ -702,6 +702,7 @@ static int dai_comp_trigger_internal(struct comp_dev *dev, int cmd)
 		comp_dbg(dev, "dai_comp_trigger_internal(), PAUSE");
 		ret = dma_pause(dd->chan);
 		dai_trigger(dd->dai, cmd, dev->direction);
+		break;
 	default:
 		break;
 	}

@@ -17,3 +17,12 @@
 
 #define __section(x) __attribute__((section(x)))
 
+#ifdef __clang__
+
+#define COMPILER_FALLTHROUGH __attribute__((fallthrough))
+
+#else
+
+#define COMPILER_FALLTHROUGH  /* fallthrough */
+
+#endif
