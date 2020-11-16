@@ -82,6 +82,7 @@ static inline int smart_amp_alloc_memory(struct smart_amp_data *sad,
 	sad->mod_handle = rballoc(0, SOF_MEM_CAPS_RAM, mem_sz);
 	if (!sad->mod_handle)
 		goto err;
+	memset(sad->mod_handle, 0, mem_sz);
 
 	hspk = sad->mod_handle;
 
@@ -160,6 +161,7 @@ static inline int smart_amp_alloc_memory(struct smart_amp_data *sad,
 	hspk->dsmhandle = rballoc(0, SOF_MEM_CAPS_RAM, size);
 	if (!hspk->dsmhandle)
 		goto err;
+	memset(hspk->dsmhandle, 0, size);
 	mem_sz += size;
 
 	comp_dbg(dev, "[DSM] module:%p (%d bytes used)",
