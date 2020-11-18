@@ -243,15 +243,12 @@ static int mixer_trigger(struct comp_dev *dev, int cmd)
 	if (dir == SOF_IPC_STREAM_CAPTURE)
 		return ret;
 
-	/* don't stop mixer if at least one source is active */
-	if (mixer_source_status_count(dev, COMP_STATE_ACTIVE) &&
-	    (cmd == COMP_TRIGGER_PAUSE || cmd == COMP_TRIGGER_STOP)) {
+	/* don't stop mixer on pause or if at least one source is active/paused */
+	if (cmd == COMP_TRIGGER_PAUSE ||
+	    (cmd == COMP_TRIGGER_STOP &&
+	     (mixer_source_status_count(dev, COMP_STATE_ACTIVE) ||
+	     mixer_source_status_count(dev, COMP_STATE_PAUSED)))) {
 		dev->state = COMP_STATE_ACTIVE;
-		ret = PPL_STATUS_PATH_STOP;
-	/* don't stop mixer if at least one source is paused */
-	} else if (mixer_source_status_count(dev, COMP_STATE_PAUSED) &&
-		   cmd == COMP_TRIGGER_STOP) {
-		dev->state = COMP_STATE_PAUSED;
 		ret = PPL_STATUS_PATH_STOP;
 	}
 
@@ -299,9 +296,20 @@ static int mixer_copy(struct comp_dev *dev)
 			return 0;
 	}
 
-	/* don't have any work if all sources are inactive */
-	if (num_mix_sources == 0)
+	/* write zeros if all sources are inactive */
+	if (num_mix_sources == 0) {
+		buffer_lock(sink, &flags);
+		frames = MIN(frames, audio_stream_get_free_frames(&sink->stream));
+		sink_bytes = frames * audio_stream_frame_bytes(&sink->stream);
+		buffer_unlock(sink, flags);
+
+		if (!audio_stream_set_zero(&sink->stream, sink_bytes)) {
+			buffer_writeback(sink, sink_bytes);
+			comp_update_buffer_produce(sink, sink_bytes);
+		}
+
 		return 0;
+	}
 
 	buffer_lock(sink, &flags);
 
