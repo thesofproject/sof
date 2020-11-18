@@ -2,4 +2,4 @@
 
 # Generic architecture configs
 
-rsource "$(ARCH)/Kconfig"
+orsource "$(ARCH)/Kconfig"
