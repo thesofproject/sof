@@ -119,6 +119,9 @@ int codec_init(struct comp_dev *dev)
 	}
 	/* Assign interface */
 	codec->ops = interface;
+	/* Init memory list */
+	list_init(&codec->memory.mem_list);
+
 	/* Now we can proceed with codec specific initialization */
 	ret = codec->ops->init(dev);
 	if (ret) {
@@ -232,7 +235,6 @@ int codec_prepare(struct comp_dev *dev)
 	codec->s_cfg.avail = false;
 	codec->r_cfg.avail = false;
 	codec->r_cfg.data = NULL;
-	list_init(&codec->memory.mem_list);
 
 	/* After prepare is done we no longer need runtime configuration
 	 * as it has been applied during the procedure - it is safe to
