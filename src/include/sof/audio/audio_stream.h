@@ -587,6 +587,36 @@ static inline int audio_stream_copy(const struct audio_stream *source,
 	return samples;
 }
 
+/**
+ * Writes zeros in range [w_ptr, w_ptr+bytes], with rollover if necessary.
+ * @param buffer Buffer.
+ * @param bytes Size of the fragment to write zero.
+ * @return 0 if there is enough free space in buffer.
+ * @return 1 if there is not enough free space in buffer.
+ */
+static inline int audio_stream_set_zero(struct audio_stream *buffer,
+					  uint32_t bytes)
+{
+	uint32_t head_size = bytes;
+	uint32_t tail_size = 0;
+
+	/* check for overrun */
+	if (audio_stream_get_free_bytes(buffer) < bytes)
+		return 1;
+
+	/* check for potential wrap */
+	if ((char *)buffer->w_ptr + bytes > (char *)buffer->end_addr) {
+		head_size = (char *)buffer->end_addr - (char *)buffer->w_ptr;
+		tail_size = bytes - head_size;
+	}
+
+	memset(buffer->w_ptr, 0, head_size);
+	if (tail_size)
+		memset(buffer->addr, 0, tail_size);
+
+	return 0;
+}
+
 /** @}*/
 
 #endif /* __SOF_AUDIO_AUDIO_STREAM_H__ */
