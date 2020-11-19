@@ -659,6 +659,93 @@ out:
 	return ret;
 }
 
+/*
+ * Portion of the SSP configuration should be applied just before the
+ * SSP dai is activated, for either power saving or params runtime
+ * configurable flexibility.
+ */
+static int ssp_pre_start(struct dai *dai)
+{
+	struct ssp_pdata *ssp = dai_get_drvdata(dai);
+	struct sof_ipc_dai_config *config = &ssp->config;
+	uint32_t sscr0;
+	uint32_t mdiv;
+	bool need_ecs = false;
+
+	int ret = 0;
+
+	dai_info(dai, "ssp_pre_start()");
+
+	/* SSP active means bclk already configured. */
+	if (ssp->state[SOF_IPC_STREAM_PLAYBACK] == COMP_STATE_ACTIVE ||
+	    ssp->state[SOF_IPC_STREAM_CAPTURE] == COMP_STATE_ACTIVE)
+		return 0;
+
+	sscr0 = ssp_read(dai, SSCR0);
+
+#if CONFIG_INTEL_MN
+	/* BCLK config */
+	ret = mn_set_bclk(config->dai_index, config->ssp.bclk_rate,
+			  &mdiv, &need_ecs);
+	if (ret < 0) {
+		dai_err(dai, "invalid bclk_rate = %d for dai_index = %d",
+			config->ssp.bclk_rate, config->dai_index);
+		goto out;
+	}
+#else
+	if (ssp_freq[SSP_DEFAULT_IDX].freq % config->ssp.bclk_rate != 0) {
+		dai_err(dai, "invalid bclk_rate = %d for dai_index = %d",
+			config->ssp.bclk_rate, config->dai_index);
+		goto out;
+	}
+
+	mdiv = ssp_freq[SSP_DEFAULT_IDX].freq / config->ssp.bclk_rate;
+#endif
+
+	if (need_ecs)
+		sscr0 |= SSCR0_ECS;
+
+	/* clock divisor is SCR + 1 */
+	mdiv -= 1;
+
+	/* divisor must be within SCR range */
+	if (mdiv > (SSCR0_SCR_MASK >> 8)) {
+		dai_err(dai, "ssp_pre_start(): divisor %d is not within SCR range",
+			mdiv);
+		ret = -EINVAL;
+		goto out;
+	}
+
+	/* set the SCR divisor */
+	sscr0 &= ~SSCR0_SCR_MASK;
+	sscr0 |= SSCR0_SCR(mdiv);
+
+	ssp_write(dai, SSCR0, sscr0);
+
+	dai_info(dai, "ssp_set_config(), sscr0 = 0x%08x", sscr0);
+out:
+	platform_shared_commit(ssp, sizeof(*ssp));
+
+	return ret;
+}
+
+/*
+ * For power saving, we should do kinds of power release when the SSP
+ * dai is changed to inactive, though the runtime param configuration
+ * don't have to be reset.
+ */
+static void ssp_post_stop(struct dai *dai)
+{
+#if CONFIG_INTEL_MN
+	struct ssp_pdata *ssp = dai_get_drvdata(dai);
+
+	/* release bclk if SSP is inactive */
+	if (ssp->state[SOF_IPC_STREAM_PLAYBACK] != COMP_STATE_ACTIVE &&
+	    ssp->state[SOF_IPC_STREAM_CAPTURE] != COMP_STATE_ACTIVE)
+		mn_release_bclk(dai->index);
+#endif
+}
+
 /* get SSP hw params */
 static int ssp_get_hw_params(struct dai *dai,
 			     struct sof_ipc_stream_params  *params, int dir)
