@@ -582,10 +582,16 @@ out:
 void mn_release_bclk(uint32_t dai_index)
 {
 	struct mn *mn = mn_get();
+	bool mn_in_use;
 
 	spin_lock(&mn->lock);
 	mn->bclk_sources[dai_index] = MN_BCLK_SOURCE_NONE;
 	platform_shared_commit(mn, sizeof(*mn));
+
+	mn_in_use = is_bclk_source_in_use(MN_BCLK_SOURCE_MN);
+	/* release the M/N clock source if not used */
+	if (!mn_in_use)
+		reset_bclk_mn_source();
 	spin_unlock(&mn->lock);
 }
 
