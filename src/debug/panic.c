@@ -30,6 +30,37 @@ void dump_panicinfo(void *addr, struct sof_ipc_panic_info *panic_info)
 	dcache_writeback_region(addr, sizeof(struct sof_ipc_panic_info));
 }
 
+/* dump stack as part of panic */
+static uint32_t dump_stack(uint32_t p, void *addr, size_t offset,
+			   size_t limit, uintptr_t *stack_ptr)
+{
+	uintptr_t stack_limit = (uintptr_t)arch_get_stack_entry();
+	uintptr_t stack_bottom = stack_limit + arch_get_stack_size() -
+		sizeof(void *);
+	uintptr_t stack_top = (uintptr_t)arch_get_stack_ptr() + offset;
+	size_t size = stack_bottom - stack_top;
+	int ret;
+
+	*stack_ptr = stack_top;
+
+	/* is stack smashed ? */
+	if (stack_top - offset <= stack_limit) {
+		p = SOF_IPC_PANIC_STACK;
+		return p;
+	}
+
+	/* make sure stack size won't overflow dump area */
+	if (size > limit)
+		size = limit;
+
+	/* copy stack contents and writeback */
+	ret = memcpy_s(addr, limit, (void *)stack_top, size - sizeof(void *));
+	assert(!ret);
+	dcache_writeback_region(addr, size - sizeof(void *));
+
+	return p;
+}
+
 void panic_dump(uint32_t p, struct sof_ipc_panic_info *panic_info,
 		uintptr_t *data)
 {
