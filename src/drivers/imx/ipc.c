@@ -22,6 +22,7 @@
 #include <sof/spinlock.h>
 #include <ipc/header.h>
 #include <ipc/topology.h>
+#include <ipc/trace.h>
 
 #include <errno.h>
 #include <stdbool.h>

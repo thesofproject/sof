@@ -14,6 +14,7 @@
 #include <sof/platform.h>
 #include <sof/sof.h>
 #include <sof/trace/trace.h>
+#include <ipc/trace.h>
 #include <rimage/sof/user/manifest.h>
 
 #include <stdbool.h>

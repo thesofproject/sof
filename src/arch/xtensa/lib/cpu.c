@@ -24,6 +24,7 @@
 #include <sof/schedule/schedule.h>
 #include <sof/sof.h>
 #include <sof/trace/trace.h>
+#include <ipc/trace.h>
 #include <user/trace.h>
 #include <xtos-structs.h>
 #include <stdint.h>
