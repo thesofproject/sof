@@ -137,6 +137,7 @@ set(TPLGS
 	"sof-imx8-wm8960-mixer\;sof-imx8-wm8960-mixer"
 	"sof-imx8-cs42888-mixer\;sof-imx8-cs42888-mixer"
 	"sof-imx8mp-wm8960-mixer\;sof-imx8mp-wm8960-mixer"
+	"sof-imx8-keyword-detect\;sof-imx8-keyword-detect"
 )
 
 add_custom_target(topologies ALL)
