@@ -21,6 +21,7 @@
 #include <sof/lib/clk.h>
 #include <sof/lib/mailbox.h>
 #include <sof/lib/shim.h>
+#include <ipc/trace.h>
 #include <stddef.h>
 #include <stdint.h>
 
