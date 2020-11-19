@@ -112,6 +112,13 @@ int secondary_core_init(struct sof *sof)
 	return err;
 }
 
+#else
+
+static int secondary_core_init(struct sof *sof)
+{
+	return 0;
+}
+
 #endif
 
 int primary_core_init(int argc, char *argv[], struct sof *sof)

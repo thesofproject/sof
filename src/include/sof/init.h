@@ -8,14 +8,18 @@
 #ifndef __SOF_INIT_H__
 #define __SOF_INIT_H__
 
-#include <arch/init.h>
-
 struct sof;
 
 /* main firmware entry point - argc and argv not currently used */
 int main(int argc, char *argv[]);
 
 int primary_core_init(int argc, char *argv[], struct sof *sof);
+
+#if CONFIG_MULTICORE
+
+int secondary_core_init(struct sof *sof);
+
+#endif /* CONFIG_MULTICORE */
 
 int arch_init(void);
 
