@@ -423,6 +423,35 @@ static inline int setup_initial_bclk_mn_source(uint32_t bclk, uint32_t *scr_div,
 }
 
 /**
+ * \brief Reset M/N source clock for BCLK.
+ *	  If no port is using bclk, reset to use SSP_CLOCK_XTAL_OSCILLATOR
+ *	  as the default clock source.
+ */
+static inline void reset_bclk_mn_source(void)
+{
+	struct mn *mn = mn_get();
+	uint32_t mdivc;
+	int clk_index = find_clk_ssp_index(SSP_CLOCK_XTAL_OSCILLATOR);
+
+	if (clk_index < 0) {
+		tr_err(&mn_tr, "BCLK reset failed, no SSP_CLOCK_XTAL_OSCILLATOR source!");
+		return;
+	}
+
+	mdivc = mn_reg_read(MN_MDIVCTRL, 0);
+
+	/* reset to use XTAL Oscillator */
+	mdivc &= ~MNDSS(MN_SOURCE_CLKS_MASK);
+	mdivc |= MNDSS(SSP_CLOCK_XTAL_OSCILLATOR);
+
+	mn_reg_write(MN_MDIVCTRL, 0, mdivc);
+
+	mn->bclk_source_mn_clock = clk_index;
+
+	platform_shared_commit(mn, sizeof(*mn));
+}
+
+/**
  * \brief Finds valid M/(N * SCR) values for source clock that is already locked
  *	  because other ports use it.
  * \param[in] bclk Bit clock frequency.
