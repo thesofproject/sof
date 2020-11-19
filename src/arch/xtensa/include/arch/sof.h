@@ -11,40 +11,10 @@
 #ifndef __ARCH_SOF_H__
 #define __ARCH_SOF_H__
 
-#include <sof/schedule/task.h>
-#include <xtensa/xtruntime-frames.h>
-#include <stdint.h>
-
 /* entry point to main firmware */
 void _ResetVector(void);
 
 void boot_primary_core(void);
-
-static inline void *arch_get_stack_ptr(void)
-{
-	void *ptr;
-
-	/* stack pointer is in a1 */
-	__asm__ __volatile__ ("mov %0, a1"
-		: "=a" (ptr)
-		:
-		: "memory");
-	return ptr;
-}
-
-static inline void *arch_get_stack_entry(void)
-{
-	volatile xtos_task_context *task_ctx = task_context_get();
-
-	return task_ctx->stack_base;
-}
-
-static inline uint32_t arch_get_stack_size(void)
-{
-	volatile xtos_task_context *task_ctx = task_context_get();
-
-	return task_ctx->stack_size;
-}
 
 #endif /* __ARCH_SOF_H__ */
 

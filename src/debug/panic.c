@@ -4,6 +4,7 @@
 //
 // Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
 
+#include <sof/debug/backtrace.h>
 #include <sof/debug/debug.h>
 #include <sof/debug/panic.h>
 #include <sof/drivers/interrupt.h>
