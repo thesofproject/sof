@@ -152,9 +152,9 @@ int trace_filter_update(const struct trace_filter *elem);
 	_log_message(true, lvl, class, ctx, id_1,			       \
 		     id_2, format, ##__VA_ARGS__)
 
-#define trace_point(x) platform_trace_point(x)
-
 #ifndef CONFIG_LIBRARY
+
+#define trace_point(x) platform_trace_point(x)
 
 #define _DECLARE_LOG_ENTRY(lvl, format, comp_class, params)	\
 	__section(".static_log." #lvl)				\
@@ -223,6 +223,8 @@ do {									\
 		fprintf(stderr, "\n");					\
 	}								\
 } while (0)
+
+#define trace_point(x)  do {} while (0)
 
 #endif /* CONFIG_LIBRARY */
 
