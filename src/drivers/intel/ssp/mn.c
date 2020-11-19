@@ -345,6 +345,22 @@ static int find_bclk_source(uint32_t bclk,
 }
 
 /**
+ * \brief Finds index of SSP clock with the given clock source encoded index.
+ * \return the index in ssp_freq if could find it, -EINVAL otherwise.
+ */
+static int find_clk_ssp_index(uint32_t src_enc)
+{
+	int i;
+
+	/* searching for the encode value matched bclk source */
+	for (i = 0; i <= MAX_SSP_FREQ_INDEX; i++)
+		if (ssp_freq_sources[i] == src_enc)
+			return i;
+
+	return -EINVAL;
+}
+
+/**
  * \brief Checks if given clock is used as source for any BCLK.
  * \param[in] clk_src Bit clock source.
  * \return true if any port use given clock source, false otherwise.
