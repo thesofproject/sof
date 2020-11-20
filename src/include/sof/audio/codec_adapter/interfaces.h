@@ -13,7 +13,7 @@
 
 #if CONFIG_CADENCE_CODEC
 #include <sof/audio/codec_adapter/codec/cadence.h>
-#endif
+#endif /* CONFIG_CADENCE_CODEC */
 
 #define CADENCE_ID 0xCADE01
 
@@ -21,6 +21,7 @@
 /* Linked codecs interfaces						     */
 /*****************************************************************************/
 static struct codec_interface interfaces[] = {
+#if CONFIG_CADENCE_CODEC
 	{
 		.id = CADENCE_ID, /**< Cadence interface */
 		.init  = cadence_codec_init,
@@ -30,6 +31,7 @@ static struct codec_interface interfaces[] = {
 		.reset = cadence_codec_reset,
 		.free = cadence_codec_free
 	},
+#endif /* CONFIG_CADENCE_CODEC */
 };
 
 #endif /* __SOF_AUDIO_CODEC_INTERFACES__ */
