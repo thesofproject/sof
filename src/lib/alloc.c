@@ -809,13 +809,16 @@ static void *alloc_heap_buffer(struct mm_heap *heap, uint32_t flags,
 		platform_shared_commit(map, sizeof(*map));
 	}
 
-	/* size of requested buffer is adjusted for alignment purposes
-	 * since we span more blocks we have to assume worst case scenario
-	 */
-	bytes += alignment;
-
 	/* request spans > 1 block */
 	if (!ptr) {
+		/* size of requested buffer is adjusted for alignment purposes
+		 * since we span more blocks we have to assume worst case scenario
+		 */
+		bytes += alignment;
+
+		if (heap->size < bytes)
+			return NULL;
+
 		/*
 		 * Find the best block size for request. We know, that we failed
 		 * to find a single large enough block, so, skip those.
@@ -824,7 +827,7 @@ static void *alloc_heap_buffer(struct mm_heap *heap, uint32_t flags,
 			map = &heap->map[i];
 
 			/* allocate if block size is smaller than request */
-			if (heap->size >= bytes	&& map->block_size < bytes) {
+			if (map->block_size < bytes) {
 				ptr = alloc_cont_blocks(heap, i, caps,
 							bytes, alignment);
 				if (ptr) {
@@ -842,8 +845,6 @@ static void *alloc_heap_buffer(struct mm_heap *heap, uint32_t flags,
 	if (ptr)
 		bzero(ptr, temp_bytes);
 #endif
-
-	platform_shared_commit(heap, sizeof(*heap));
 
 	return ptr;
 }
@@ -865,6 +866,7 @@ static void *_balloc_unlocked(uint32_t flags, uint32_t caps, size_t bytes,
 			break;
 
 		ptr = alloc_heap_buffer(heap, flags, caps, bytes, alignment);
+		platform_shared_commit(heap, sizeof(*heap));
 		if (ptr)
 			break;
 
