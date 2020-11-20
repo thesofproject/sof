@@ -790,6 +790,9 @@ static void *alloc_heap_buffer(struct mm_heap *heap, uint32_t flags,
 	unsigned int i, j, temp_bytes = bytes;
 	void *ptr = NULL;
 
+	if (heap->size < bytes)
+		return NULL;
+
 	/* Only allow alignment as a power of 2 */
 	if ((alignment & (alignment - 1)) != 0)
 		panic(SOF_IPC_PANIC_MEM);
@@ -868,7 +871,7 @@ static void *alloc_heap_buffer(struct mm_heap *heap, uint32_t flags,
 			map = &heap->map[i];
 
 			/* allocate if block size is smaller than request */
-			if (heap->size >= bytes	&& map->block_size < bytes) {
+			if (map->block_size < bytes) {
 				ptr = alloc_cont_blocks(heap, i,
 							bytes, alignment);
 				if (ptr) {
@@ -886,8 +889,6 @@ static void *alloc_heap_buffer(struct mm_heap *heap, uint32_t flags,
 	if (ptr)
 		bzero(ptr, temp_bytes);
 #endif
-
-	platform_shared_commit(heap, sizeof(*heap));
 
 	return ptr;
 }
@@ -909,6 +910,7 @@ static void *_balloc_unlocked(uint32_t flags, uint32_t caps, size_t bytes,
 			break;
 
 		ptr = alloc_heap_buffer(heap, flags, caps, bytes, alignment);
+		platform_shared_commit(heap, sizeof(*heap));
 		if (ptr)
 			break;
 
