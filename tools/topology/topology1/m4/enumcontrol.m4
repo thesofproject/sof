@@ -39,3 +39,20 @@ define(`C_CONTROLENUM',
 `	# control uses bespoke driver get/put/info ID for io ops'
 `	$5'
 `}')
+
+dnl C_CONTROLENUM(name, index, ops, ops, enums)
+define(`C_CONTROLENUM',
+`SectionControlEnum.STR($1) {'
+`'
+`	# control belongs to this index group'
+`	index STR($2)'
+`'
+`	# enum values as text'
+`	texts STR($3)'
+`'
+`	# channel register and shift for Front Left/Right'
+`	$4'
+`'
+`	# control uses bespoke driver get/put/info ID for io ops'
+`	$5'
+`}')

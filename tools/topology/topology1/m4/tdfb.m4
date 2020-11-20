@@ -57,8 +57,16 @@ define(`W_TDFB',
 `		"'N_TDFB($1)`_data_str"'
 `		"'N_TDFB($1)`_data_str_type"'
 `	]'
-`	bytes ['
+`	mixer ['
 		$6
+		$7
+`	]'
+`	enum ['
+		$8
+		$9
+`	]'
+`	bytes ['
+		$10
 `	]'
 `}')
 
