@@ -12,7 +12,7 @@
 /* Align the number to the nearest alignment value */
 #define IS_ALIGNED(size, alignment) ((size) % (alignment) == 0)
 #define ALIGN_UP(size, alignment) \
-	((size) + (((alignment) - ((size) % (alignment))) % (alignment)))
+	((size) + (alignment) - 1 - ((size) + (alignment) - 1) % (alignment))
 #define ALIGN_DOWN(size, alignment) \
 	((size) - ((size) % (alignment)))
 #define ALIGN ALIGN_UP
