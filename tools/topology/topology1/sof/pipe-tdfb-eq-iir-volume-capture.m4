@@ -13,38 +13,30 @@ include(`dai.m4')
 include(`pipeline.m4')
 include(`bytecontrol.m4')
 include(`mixercontrol.m4')
+include(`enumcontrol.m4')
 include(`tdfb.m4')
 include(`eq_iir.m4')
 
 ifdef(`PGA_NAME', `', `define(PGA_NAME, N_PGA(0))')
 define(`CONTROL_NAME_VOLUME', Capture Volume)
 define(`CONTROL_NAME_SWITCH', Capture Switch)
-define(`CONTROL_NAME', `CONTROL_NAME_VOLUME')
 
 #
 # Controls
 #
 
-define(DEF_TDFB_PRIV, concat(`tdfb_priv_', PIPELINE_ID))
+# defines with pipeline ID appended for unique names
+include(`tdfb_defines.m4')
 
 # Define filter. A passthrough is set by default.
 ifdef(`PIPELINE_FILTER1', , `define(PIPELINE_FILTER1, `tdfb/coef_line2_pass.m4')')
 include(PIPELINE_FILTER1)
 
-# TDFB Bytes control with max value of 255
-define(DEF_TDFB_BYTES, concat(`tdfb_bytes_', PIPELINE_ID))
-C_CONTROLBYTES(DEF_TDFB_BYTES, PIPELINE_ID,
-	CONTROLBYTES_OPS(bytes,
-		258 binds the mixer control to bytes get/put handlers,
-		258, 258),
-	CONTROLBYTES_EXTOPS(258 binds the mixer control to bytes get/put handlers,
-		258, 258),
-	, , ,
-	CONTROLBYTES_MAX(, 4096),
-	,
-	DEF_TDFB_PRIV)
+# Include defines for TDBF controls
+include(`tdfb_controls.m4')
 
 # Volume Mixer control with max value of 32
+define(`CONTROL_NAME', `CONTROL_NAME_VOLUME')
 C_CONTROLMIXER(Capture Volume, PIPELINE_ID,
 	CONTROLMIXER_OPS(volsw,
 		256 binds the mixer control to volume get/put handlers,
@@ -56,9 +48,9 @@ C_CONTROLMIXER(Capture Volume, PIPELINE_ID,
 	VOLUME_CHANNEL_MAP)
 
 undefine(`CONTROL_NAME')
-define(`CONTROL_NAME', `CONTROL_NAME_SWITCH')
 
 # Switch type Mixer Control with max value of 1
+define(`CONTROL_NAME', `CONTROL_NAME_SWITCH')
 C_CONTROLMIXER(Capture Switch, PIPELINE_ID,
 	CONTROLMIXER_OPS(volsw, 259 binds the mixer control to switch get/put handlers, 259, 259),
 	CONTROLMIXER_MAX(max 1 indicates switch type control, 1),
@@ -67,6 +59,7 @@ C_CONTROLMIXER(Capture Switch, PIPELINE_ID,
 	Channel register and shift for Front Left/Right,
 	SWITCH_CHANNEL_MAP,
 	"1", "1")
+undefine(`CONTROL_NAME')
 
 # Volume Configuration
 define(DEF_PGA_TOKENS, concat(`pga_tokens_', PIPELINE_ID))
@@ -117,7 +110,12 @@ W_EQ_IIR(0, PIPELINE_FORMAT, 2, 2, SCHEDULE_CORE,
 	LIST(`		', "DEF_EQIIR_COEF"))
 
 # "TDFB 0" has 2 sink period and x source periods
+# Note that the controls will receive index values 0, 1, 2 in the order below
 W_TDFB(0, PIPELINE_FORMAT, 2, DAI_PERIODS, SCHEDULE_CORE,
+	LIST(`		', "DEF_TDFB_BEAM"),
+	LIST(`		', "DEF_TDFB_DIRECTION"),
+	LIST(`		', "DEF_TDFB_AZIMUTH"),
+	LIST(`		', "DEF_TDFB_AZIMUTH_ESTIMATE"),
 	LIST(`		', "DEF_TDFB_BYTES"))
 
 # Capture Buffers
@@ -153,7 +151,6 @@ P_GRAPH(pipe-tdfb-eq-iir-volume-capture, PIPELINE_ID,
 	`dapm(N_TDFB(0), N_BUFFER(3))'))
 
 undefine(`PGA_NAME')
-undefine(`CONTROL_NAME')
 undefine(`CONTROL_NAME_VOLUME')
 undefine(`CONTROL_NAME_SWITCH')
 
@@ -173,7 +170,6 @@ PCM_CAPABILITIES(TDFB Capture PCM_ID, CAPABILITY_FORMAT_NAME(PIPELINE_FORMAT), P
 
 undefine(`DEF_PGA_TOKENS')
 undefine(`DEF_PGA_CONF')
-undefine(`DEF_TDFB_PRIV')
-undefine(`DEF_TDFB_BYTES')
 undefine(`DEF_EQIIR_COEF')
 undefine(`DEF_EQIIR_PRIV')
+include(`tdfb_undefines.m4')
