@@ -62,4 +62,11 @@ define(`W_TDFB',
 `	]'
 `}')
 
+dnl More than single control needs multiple controls kernel patch.
+dnl Add this after bytes[] to test.
+dnl `	enum ['
+dnl 		$7
+dnl 		$8
+dnl `	]'
+
 divert(0)dnl
