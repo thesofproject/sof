@@ -190,17 +190,14 @@ static void *rmalloc_sys(struct mm_heap *heap, uint32_t flags, int caps, size_t 
 static void *align_ptr(struct mm_heap *heap, uint32_t alignment,
 		       void *ptr, struct block_hdr *hdr)
 {
-	int mod_align = 0;
-
 	/* Save unaligned ptr to block hdr */
 	hdr->unaligned_ptr = ptr;
 
 	/* If ptr is not already aligned we calculate alignment shift */
-	if (alignment && (uintptr_t)ptr % alignment)
-		mod_align = alignment - ((uintptr_t)ptr % alignment);
+	if (alignment <= 1)
+		return ptr;
 
-	/* Calculate aligned pointer */
-	return (char *)ptr + mod_align;
+	return (void *)ALIGN((uintptr_t)ptr, alignment);
 }
 
 /* allocate single block */
