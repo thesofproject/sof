@@ -254,56 +254,84 @@ static void *alloc_cont_blocks(struct mm_heap *heap, int level,
 {
 	struct block_map *map = &heap->map[level];
 	struct block_hdr *hdr;
-	void *ptr = NULL;
-	void *unaligned_ptr;
-	unsigned int start = map->first_free;
+	void *ptr = NULL, *unaligned_ptr;
 	unsigned int current;
-	unsigned int count = bytes / map->block_size;
-	unsigned int remaining = 0;
-
-	if (bytes % map->block_size)
-		count++;
+	unsigned int count = 0;			/* keep compiler quiet */
+	unsigned int start = 0;			/* keep compiler quiet */
+	uintptr_t blk_start = 0, aligned = 0;	/* keep compiler quiet */
+	size_t found = 0, total_bytes = bytes;
 
 	/* check if we have enough consecutive blocks for requested
 	 * allocation size.
 	 */
-	for (current = map->first_free; current < map->count &&
-	     remaining < count; current++) {
-		hdr = &map->block[current];
+	for (current = map->first_free, hdr = map->block + current;
+	     current < map->count && found < total_bytes;
+	     current++, hdr++) {
+		if (hdr->used) {
+			/* Restart the search */
+			found = 0;
+			count = 0;
+			total_bytes = bytes;
+			continue;
+		}
 
-		if (hdr->used)
-			remaining = 0;/* used, not suitable, reset */
-		else if (!remaining++)
-			start = current;/* new start */
+		if (!found) {
+			blk_start = map->base + current * map->block_size;
+			start = current;
+
+			/* Check if we can start a range here */
+			if (alignment) {
+				aligned = ALIGN(blk_start, alignment);
+
+				if (blk_start & (alignment - 1) &&
+				    aligned >= blk_start + map->block_size)
+					/*
+					 * This block doesn't contain an address
+					 * with required alignment, it is useless
+					 * as the beginning of the range
+					 */
+					continue;
+
+				/*
+				 * Found a potentially suitable beginning of a range,
+				 * from here we'll check if we get enough blocks
+				 */
+				total_bytes += aligned - blk_start;
+			} else {
+				aligned = blk_start;
+			}
+		}
+
+		count++;
+		found += map->block_size;
 	}
 
-	if (count > map->count || remaining < count) {
-		tr_err(&mem_tr, "%d blocks needed for allocation but only %d blocks are remaining",
-		       count, remaining);
+	if (found < total_bytes) {
+		tr_err(&mem_tr, "failed to allocate %u", total_bytes);
 		goto out;
 	}
 
+	ptr = (void *)aligned;
+
 	/* we found enough space, let's allocate it */
 	map->free_count -= count;
-	ptr = (void *)(map->base + start * map->block_size);
-	unaligned_ptr = ptr;
+	unaligned_ptr = (void *)blk_start;
 
 	hdr = &map->block[start];
 	hdr->size = count;
-
-	ptr = align_ptr(heap, alignment, ptr, hdr);
 
 	heap->info.used += count * map->block_size;
 	heap->info.free -= count * map->block_size;
 	/* update first_free if needed */
 	if (map->first_free == start)
 		/* find first available free block */
-		for (map->first_free += count; map->first_free < map->count;
-			map->first_free++) {
-			hdr = &map->block[map->first_free];
-
-			if (!hdr->used)
+		for (current = map->first_free + count, hdr = &map->block[current];
+		     current < map->count;
+		     current++, hdr++) {
+			if (!hdr->used) {
+				map->first_free = current;
 				break;
+			}
 		}
 
 	/* update each block */
@@ -858,11 +886,6 @@ static void *alloc_heap_buffer(struct mm_heap *heap, uint32_t flags,
 
 	/* request spans > 1 block */
 	if (!ptr) {
-		/* size of requested buffer is adjusted for alignment purposes
-		 * since we span more blocks we have to assume worst case scenario
-		 */
-		bytes += alignment;
-
 		/*
 		 * Find the best block size for request. We know, that we failed
 		 * to find a single large enough block, so, skip those.
