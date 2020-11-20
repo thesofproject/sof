@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stddef.h>
+#include <stdlib.h>
 #include <errno.h>
 #include <inttypes.h>
 #include <sof/sof.h>
