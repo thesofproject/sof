@@ -60,6 +60,10 @@ define(`W_TDFB',
 `	bytes ['
 		$6
 `	]'
+`	enum ['
+		$7
+		$8
+`	]'
 `}')
 
 divert(0)dnl

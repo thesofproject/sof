@@ -13,6 +13,7 @@ include(`dai.m4')
 include(`pipeline.m4')
 include(`bytecontrol.m4')
 include(`mixercontrol.m4')
+include(`enumcontrol.m4')
 include(`tdfb.m4')
 include(`eq_iir.m4')
 
@@ -25,24 +26,17 @@ define(`CONTROL_NAME', `CONTROL_NAME_VOLUME')
 # Controls
 #
 
-define(DEF_TDFB_PRIV, concat(`tdfb_priv_', PIPELINE_ID))
+# defines with pipeline ID appended for unique names
+include(`tdfb_defines.m4')
 
 # Define filter. A passthrough is set by default.
 ifdef(`PIPELINE_FILTER1', , `define(PIPELINE_FILTER1, `tdfb/coef_line2_pass.m4')')
 include(PIPELINE_FILTER1)
 
-# TDFB Bytes control with max value of 255
-define(DEF_TDFB_BYTES, concat(`tdfb_bytes_', PIPELINE_ID))
-C_CONTROLBYTES(DEF_TDFB_BYTES, PIPELINE_ID,
-	CONTROLBYTES_OPS(bytes,
-		258 binds the mixer control to bytes get/put handlers,
-		258, 258),
-	CONTROLBYTES_EXTOPS(258 binds the mixer control to bytes get/put handlers,
-		258, 258),
-	, , ,
-	CONTROLBYTES_MAX(, 4096),
-	,
-	DEF_TDFB_PRIV)
+# Include controls: binary, enums
+# byte control in DEF_TDFB_BYTES
+# enum controls in DEF_TDFB_ONOFF_ENUM, DEF_TDFB_DIRECTION_ENUM
+include(`tdfb_controls.m4')
 
 # Volume Mixer control with max value of 32
 C_CONTROLMIXER(Capture Volume, PIPELINE_ID,
@@ -118,7 +112,9 @@ W_EQ_IIR(0, PIPELINE_FORMAT, 2, 2, SCHEDULE_CORE,
 
 # "TDFB 0" has 2 sink period and x source periods
 W_TDFB(0, PIPELINE_FORMAT, 2, DAI_PERIODS, SCHEDULE_CORE,
-	LIST(`		', "DEF_TDFB_BYTES"))
+	LIST(`		', "DEF_TDFB_BYTES"),
+	LIST(`		', "DEF_TDFB_ONOFF_ENUM"),
+	LIST(`		', "DEF_TDFB_DIRECTION_ENUM"))
 
 # Capture Buffers
 W_BUFFER(0, COMP_BUFFER_SIZE(2,
@@ -173,7 +169,6 @@ PCM_CAPABILITIES(TDFB Capture PCM_ID, CAPABILITY_FORMAT_NAME(PIPELINE_FORMAT), P
 
 undefine(`DEF_PGA_TOKENS')
 undefine(`DEF_PGA_CONF')
-undefine(`DEF_TDFB_PRIV')
-undefine(`DEF_TDFB_BYTES')
 undefine(`DEF_EQIIR_COEF')
 undefine(`DEF_EQIIR_PRIV')
+include(`tdfb_undefines.m4')
