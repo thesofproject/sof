@@ -202,7 +202,7 @@ static void *align_ptr(struct mm_heap *heap, uint32_t alignment,
 
 /* allocate single block */
 static void *alloc_block(struct mm_heap *heap, int level,
-			 uint32_t caps, uint32_t alignment)
+			 uint32_t alignment)
 {
 	struct block_map *map = &heap->map[level];
 	struct block_hdr *hdr;
@@ -240,7 +240,7 @@ static void *alloc_block(struct mm_heap *heap, int level,
 
 /* allocates continuous blocks */
 static void *alloc_cont_blocks(struct mm_heap *heap, int level,
-			       uint32_t caps, size_t bytes, uint32_t alignment)
+			       size_t bytes, uint32_t alignment)
 {
 	struct block_map *map = &heap->map[level];
 	struct block_hdr *hdr;
@@ -416,7 +416,7 @@ static void *get_ptr_from_heap(struct mm_heap *heap, uint32_t flags,
 		}
 
 		/* free block space exists */
-		ptr = alloc_block(heap, i, caps, alignment);
+		ptr = alloc_block(heap, i, alignment);
 
 		platform_shared_commit(map, sizeof(*map));
 
@@ -801,7 +801,7 @@ static void *alloc_heap_buffer(struct mm_heap *heap, uint32_t flags,
 			platform_shared_commit(map, sizeof(*map));
 
 			/* found: grab a block */
-			ptr = alloc_block(heap, i, caps, alignment);
+			ptr = alloc_block(heap, i, alignment);
 			break;
 		}
 		temp_bytes = bytes;
@@ -825,7 +825,7 @@ static void *alloc_heap_buffer(struct mm_heap *heap, uint32_t flags,
 
 			/* allocate if block size is smaller than request */
 			if (heap->size >= bytes	&& map->block_size < bytes) {
-				ptr = alloc_cont_blocks(heap, i, caps,
+				ptr = alloc_cont_blocks(heap, i,
 							bytes, alignment);
 				if (ptr) {
 					platform_shared_commit(map,
