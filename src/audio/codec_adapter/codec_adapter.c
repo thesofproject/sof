@@ -338,22 +338,46 @@ codec_adapter_copy_from_lib_to_sink(const struct codec_processing_data *cpd,
 			 (char *)cpd->out_buff + head_size, tail_size);
 }
 
+/**
+ * \brief Generate zero samples of "bytes" size for the sink.
+ * \param[in] sink - a pointer to sink buffer.
+ * \param[in] bytes - number of zero bytes to produce.
+ *
+ * \return: none.
+ */
+static void generate_zeroes(struct comp_buffer *sink, uint32_t bytes)
+{
+	uint32_t tmp, copy_bytes = bytes;
+	void *ptr;
+
+	while (copy_bytes) {
+		ptr = audio_stream_wrap(&sink->stream, sink->stream.w_ptr);
+		tmp = audio_stream_bytes_without_wrap(&sink->stream,
+						      ptr);
+		tmp = MIN(tmp, copy_bytes);
+		ptr = (char *)ptr + tmp;
+		copy_bytes -= tmp;
+	}
+	comp_update_buffer_produce(sink, bytes);
+}
+
 static int codec_adapter_copy(struct comp_dev *dev)
 {
 	int ret = 0;
-	uint32_t bytes_to_process, processed = 0;
+	uint32_t bytes_to_process, copy_bytes, processed = 0;
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct codec_data *codec = &cd->codec;
 	struct comp_buffer *source = cd->ca_source;
 	struct comp_buffer *sink = cd->ca_sink;
 	uint32_t codec_buff_size = codec->cpd.in_buff_size;
+	struct comp_buffer *local_buff = cd->local_buff;
 	struct comp_copy_limits cl;
 
-	comp_get_copy_limits_with_lock(source, sink, &cl);
+	comp_get_copy_limits_with_lock(source, local_buff, &cl);
 	bytes_to_process = cl.frames * cl.source_frame_bytes;
 
-	comp_dbg(dev, "codec_adapter_copy() start: codec_buff_size: %d, sink free: %d source avail %d",
-		 codec_buff_size, sink->stream.free, source->stream.avail);
+	comp_dbg(dev, "codec_adapter_copy() start: codec_buff_size: %d, local_buff free: %d source avail %d",
+		 codec_buff_size, local_buff->stream.free, source->stream.avail);
 
 	while (bytes_to_process) {
 		/* Proceed only if we have enough data to fill the lib buffer
@@ -361,14 +385,13 @@ static int codec_adapter_copy(struct comp_dev *dev)
 		 * the lib won't process it.
 		 */
 		if (bytes_to_process < codec_buff_size) {
-			comp_dbg(dev, "codec_adapter_copy(): processed %d in this call %d bytes left for next period",
-				 processed, bytes_to_process);
+			comp_dbg(dev, "codec_adapter_copy(): source has less data than codec buffer size - processing terminated.");
 			break;
 		}
 
+		buffer_invalidate(source, codec_buff_size);
 		codec_adapter_copy_from_source_to_lib(&source->stream, &codec->cpd,
 						      codec_buff_size);
-		buffer_invalidate(source, codec_buff_size);
 		codec->cpd.avail = codec_buff_size;
 		ret = codec_process(dev);
 		if (ret) {
@@ -381,22 +404,47 @@ static int codec_adapter_copy(struct comp_dev *dev)
 				 ret);
 			break;
 		}
-		codec_adapter_copy_from_lib_to_sink(&codec->cpd, &sink->stream,
+		codec_adapter_copy_from_lib_to_sink(&codec->cpd, &local_buff->stream,
 						    codec->cpd.produced);
-		buffer_writeback(sink, codec->cpd.produced);
 
 		bytes_to_process -= codec->cpd.produced;
 		processed += codec->cpd.produced;
 	}
 
-	if (!processed) {
+	if (!processed && !cd->deep_buff_bytes) {
 		comp_dbg(dev, "codec_adapter_copy(): nothing processed in this call");
 		goto end;
+	} else if (!processed && cd->deep_buff_bytes) {
+		goto db_verify;
 	}
 
-	comp_update_buffer_produce(sink, processed);
+	audio_stream_produce(&local_buff->stream, processed);
 	comp_update_buffer_consume(source, processed);
+
+db_verify:
+	if (cd->deep_buff_bytes) {
+		if (cd->deep_buff_bytes >= audio_stream_get_avail_bytes(&local_buff->stream)) {
+			generate_zeroes(sink, cd->period_bytes);
+			goto end;
+		} else {
+			comp_dbg(dev, "codec_adapter_copy(): deep buffering has ended after gathering %d bytes of processed data",
+				 audio_stream_get_avail_bytes(&local_buff->stream));
+			cd->deep_buff_bytes = 0;
+		}
+	}
+
+	comp_get_copy_limits_with_lock(local_buff, sink, &cl);
+	copy_bytes = cl.frames * cl.source_frame_bytes;
+	audio_stream_copy(&local_buff->stream, 0,
+			  &sink->stream, 0,
+			  copy_bytes / cd->stream_params.sample_container_bytes);
+	buffer_writeback(sink, copy_bytes);
+
+	comp_update_buffer_produce(sink, copy_bytes);
+	comp_update_buffer_consume(local_buff, copy_bytes);
 end:
+	comp_dbg(dev, "codec_adapter_copy(): processed %d in this call %d bytes left for next period",
+		 processed, bytes_to_process);
 	return ret;
 }
 
