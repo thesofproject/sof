@@ -183,6 +183,7 @@ struct comp_data {
 	struct codec_data codec; /**< codec private data */
 	struct comp_buffer *ca_sink;
 	struct comp_buffer *ca_source;
+	struct comp_buffer *local_buff;
 	struct sof_ipc_stream_params stream_params;
 	uint32_t period_bytes; /** pipeline period bytes */
 	uint32_t deep_buff_bytes; /**< copy start threshold */

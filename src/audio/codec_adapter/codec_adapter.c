@@ -181,7 +181,10 @@ static int codec_adapter_prepare(struct comp_dev *dev)
 	int ret;
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct codec_data *codec = &cd->codec;
-	uint32_t buff_periods; /* number of deep buffering periods */
+	uint32_t buff_periods = 2; /* default periods of local buffer,
+				    * may change if case of deep buffering
+				    */
+	uint32_t buff_size; /* size of local buffer */
 
 	comp_info(dev, "codec_adapter_prepare() start");
 
@@ -241,8 +244,30 @@ static int codec_adapter_prepare(struct comp_dev *dev)
 		cd->deep_buff_bytes = 0;
 	}
 
-	comp_info(dev, "codec_adapter_prepare() done");
+	/* Allocate local buffer */
+	buff_size = MAX(cd->period_bytes, codec->cpd.in_buff_size) * buff_periods;
+	if (cd->local_buff) {
+		ret = buffer_set_size(cd->local_buff, buff_size);
+		if (ret < 0) {
+			comp_err(dev, "codec_adapter_prepare(): buffer_set_size() failed, buff_size = %u",
+				 buff_size);
+			return ret;
+		}
+	} else {
+		cd->local_buff = buffer_alloc(buff_size, SOF_MEM_CAPS_RAM,
+					      PLATFORM_DCACHE_ALIGN);
+		if (!cd->local_buff) {
+			comp_err(dev, "codec_adapter_prepare(): failed to allocate local buffer");
+			return -ENOMEM;
+		}
+
+		buffer_set_params(cd->local_buff, &cd->stream_params,
+				  BUFFER_UPDATE_FORCE);
+	}
+	buffer_reset_pos(cd->local_buff, NULL);
+
 	cd->state = PP_STATE_PREPARED;
+	comp_info(dev, "codec_adapter_prepare() done");
 
 	return 0;
 }
@@ -594,7 +619,7 @@ static int codec_adapter_reset(struct comp_dev *dev)
 		comp_cl_info(&comp_codec_adapter, "codec_adapter_reset(): error %d, codec reset has failed",
 			     ret);
 	}
-
+	buffer_zero(cd->local_buff);
 	cd->state = PP_STATE_CREATED;
 
 	comp_cl_info(&comp_codec_adapter, "codec_adapter_reset(): done");
@@ -614,6 +639,7 @@ static void codec_adapter_free(struct comp_dev *dev)
 		comp_cl_info(&comp_codec_adapter, "codec_adapter_reset(): error %d, codec reset has failed",
 			     ret);
 	}
+	buffer_free(cd->local_buff);
 	rfree(cd);
 	rfree(dev);
 
