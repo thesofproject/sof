@@ -74,6 +74,7 @@ set(TPLGS
 	"sof-apl-pcm512x\;sof-apl-pcm512x-master-44100\;-DCODEC_MASTER\;-DFSYNC=44100"
 	"sof-apl-pcm512x\;sof-apl-pcm512x-tdfb_28mm-4ch\;-DFSYNC=48000\;-DCHANNELS=4\;-DDMIC16KPROC=tdfb-eq-iir-volume\;-DDMIC16KPROC_FILTER1=tdfb/coef_line4_28mm_pm10deg_16khz.m4\;-DDMICPROC=tdfb-eq-iir-volume\;-DDMICPROC_FILTER1=tdfb/coef_line4_28mm_pm10deg_48khz.m4"
 	"sof-apl-pcm512x-nohdmi\;sof-apl-pcm512x-nohdmi\;-DPPROC=volume"
+	"sof-apl-pcm512x-dual-ssp\;sof-apl-pcm512x-dual-ssp\;-DFSYNC=48000"
 	"sof-apl-demux-pcm512x\;sof-apl-demux-pcm512x"
 	"sof-apl-rt298\;sof-apl-rt298"
 	"sof-apl-wm8804\;sof-apl-wm8804"
