@@ -183,6 +183,8 @@ struct comp_data {
 	struct comp_buffer *ca_sink;
 	struct comp_buffer *ca_source;
 	void *runtime_params;
+	struct sof_ipc_stream_params stream_params;
+	uint32_t period_bytes; /** pipeline period bytes */
 };
 
 /*****************************************************************************/
