@@ -369,8 +369,8 @@ int codec_free(struct comp_dev *dev)
 	codec->r_cfg.size = 0;
 	rfree(codec->r_cfg.data);
 	rfree(codec->s_cfg.data);
-	if (cd->runtime_params)
-		rfree(cd->runtime_params);
+	if (codec->runtime_params)
+		rfree(codec->runtime_params);
 
 	codec->state = CODEC_DISABLED;
 
