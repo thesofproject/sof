@@ -121,8 +121,12 @@ static inline int sai_set_config(struct dai *dai,
 	dai_info(dai, "SAI: sai_set_config");
 	uint32_t val_cr2 = 0, val_cr4 = 0, val_cr5 = 0;
 	uint32_t mask_cr2 = 0, mask_cr4 = 0, mask_cr5 = 0;
+	struct sai_pdata *sai = dai_get_drvdata(dai);
 	/* TODO: this value will be provided by config */
 	uint32_t sywd = 32;
+
+	sai->config = *config;
+	sai->params = config->sai;
 
 	switch (config->format & SOF_DAI_FMT_FORMAT_MASK) {
 	case SOF_DAI_FMT_I2S:
@@ -299,7 +303,18 @@ static int sai_trigger(struct dai *dai, int cmd, int direction)
 
 static int sai_probe(struct dai *dai)
 {
+	struct sai_pdata *sai;
+
 	dai_info(dai, "SAI: sai_probe");
+
+	/* allocate private data */
+	sai = rzalloc(SOF_MEM_ZONE_SYS_RUNTIME, SOF_MEM_FLAG_SHARED,
+		      SOF_MEM_CAPS_RAM, sizeof(*sai));
+	if (!sai) {
+		dai_err(dai, "sai_probe(): alloc failed");
+		return -ENOMEM;
+	}
+	dai_set_drvdata(dai, sai);
 
 	/* Software Reset for both Tx and Rx */
 	dai_update_bits(dai, REG_SAI_TCSR, REG_SAI_CSR_SR, REG_SAI_CSR_SR);
