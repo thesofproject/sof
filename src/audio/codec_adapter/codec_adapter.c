@@ -180,6 +180,8 @@ static int codec_adapter_prepare(struct comp_dev *dev)
 {
 	int ret;
 	struct comp_data *cd = comp_get_drvdata(dev);
+	struct codec_data *codec = &cd->codec;
+	uint32_t buff_periods; /* number of deep buffering periods */
 
 	comp_info(dev, "codec_adapter_prepare() start");
 
@@ -214,6 +216,29 @@ static int codec_adapter_prepare(struct comp_dev *dev)
 			 ret);
 
 		return -EIO;
+	}
+
+	/* Codec is prepared, now we need to configure processing settings.
+	 * If codec internal buffer is not equal to natural multiple of pipeline
+	 * buffer we have a situation where CA have to deep buffer certain amount
+	 * of samples on its start (typically few periods) in order to regularly
+	 * generate output once started (same situation happens for compress streams
+	 * as well).
+	 */
+	if (codec->cpd.in_buff_size != cd->period_bytes) {
+		if (codec->cpd.in_buff_size > cd->period_bytes) {
+			buff_periods = (codec->cpd.in_buff_size % cd->period_bytes) ?
+				       (codec->cpd.in_buff_size / cd->period_bytes) + 2 :
+				       (codec->cpd.in_buff_size / cd->period_bytes) + 1;
+		} else {
+			buff_periods = (cd->period_bytes % codec->cpd.in_buff_size) ?
+				       (cd->period_bytes / codec->cpd.in_buff_size) + 2 :
+				       (cd->period_bytes / codec->cpd.in_buff_size) + 1;
+		}
+
+		cd->deep_buff_bytes = cd->period_bytes * buff_periods;
+	} else {
+		cd->deep_buff_bytes = 0;
 	}
 
 	comp_info(dev, "codec_adapter_prepare() done");
