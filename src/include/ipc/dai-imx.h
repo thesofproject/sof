@@ -37,8 +37,11 @@ struct sof_ipc_dai_sai_params {
 	/* MCLK */
 	uint16_t reserved1;
 	uint16_t mclk_id;
-	uint32_t mclk_rate; /* MCLK frequency in Hz */
 	uint32_t mclk_direction;
+
+	uint32_t mclk_rate; /* MCLK frequency in Hz */
+	uint32_t fsync_rate;
+	uint32_t bclk_rate;
 
 	/* TDM */
 	uint32_t tdm_slots;
