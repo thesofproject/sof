@@ -358,6 +358,7 @@ static int codec_adapter_set_params(struct comp_dev *dev, struct sof_ipc_ctrl_da
 	static uint32_t size;
 	uint32_t offset;
 	struct comp_data *cd = comp_get_drvdata(dev);
+	struct codec_data *codec = &cd->codec;
 
 	comp_dbg(dev, "codec_adapter_set_params(): start: num_of_elem %d, elem remain %d msg_index %u",
 		 cdata->num_elems, cdata->elems_remaining, cdata->msg_index);
@@ -366,7 +367,7 @@ static int codec_adapter_set_params(struct comp_dev *dev, struct sof_ipc_ctrl_da
 	if (cdata->msg_index == 0) {
 		size = cdata->num_elems + cdata->elems_remaining;
 		/* Check that there is no work-in-progress on previous request */
-		if (cd->runtime_params) {
+		if (codec->runtime_params) {
 			comp_err(dev, "codec_adapter_set_params() error: busy with previous request");
 			ret = -EBUSY;
 			goto end;
@@ -388,22 +389,22 @@ static int codec_adapter_set_params(struct comp_dev *dev, struct sof_ipc_ctrl_da
 		}
 
 		/* Allocate buffer for new params */
-		cd->runtime_params = rballoc(0, SOF_MEM_CAPS_RAM, size);
-		if (!cd->runtime_params) {
+		codec->runtime_params = rballoc(0, SOF_MEM_CAPS_RAM, size);
+		if (!codec->runtime_params) {
 			comp_err(dev, "codec_adapter_set_params(): space allocation for new params failed");
 			ret = -ENOMEM;
 			goto end;
 		}
 
-		memset(cd->runtime_params, 0, size);
-	} else if (!cd->runtime_params) {
+		memset(codec->runtime_params, 0, size);
+	} else if (!codec->runtime_params) {
 		comp_err(dev, "codec_adapter_set_params() error: no memory available for runtime params in consecutive load");
 		ret = -EIO;
 		goto end;
 	}
 
 	offset = size - (cdata->num_elems + cdata->elems_remaining);
-	dst = (char *)cd->runtime_params + offset;
+	dst = (char *)codec->runtime_params + offset;
 	src = (char *)cdata->data->data;
 
 	ret = memcpy_s(dst, size - offset, src, cdata->num_elems);
@@ -415,7 +416,7 @@ static int codec_adapter_set_params(struct comp_dev *dev, struct sof_ipc_ctrl_da
 	if (!cdata->elems_remaining) {
 		switch (type) {
 		case CODEC_CFG_SETUP:
-			ret = load_setup_config(dev, cd->runtime_params, size);
+			ret = load_setup_config(dev, codec->runtime_params, size);
 			if (ret) {
 				comp_err(dev, "codec_adapter_set_params(): error %d: load of setup config failed.",
 					 ret);
@@ -425,7 +426,7 @@ static int codec_adapter_set_params(struct comp_dev *dev, struct sof_ipc_ctrl_da
 
 			break;
 		case CODEC_CFG_RUNTIME:
-			ret = codec_load_config(dev, cd->runtime_params, size,
+			ret = codec_load_config(dev, codec->runtime_params, size,
 						CODEC_CFG_RUNTIME);
 			if (ret) {
 				comp_err(dev, "codec_adapter_set_params() error %d: load of runtime config failed.",
@@ -459,9 +460,9 @@ static int codec_adapter_set_params(struct comp_dev *dev, struct sof_ipc_ctrl_da
 		goto end;
 
 done:
-	if (cd->runtime_params)
-		rfree(cd->runtime_params);
-	cd->runtime_params = NULL;
+	if (codec->runtime_params)
+		rfree(codec->runtime_params);
+	codec->runtime_params = NULL;
 	return ret;
 end:
 	return ret;
