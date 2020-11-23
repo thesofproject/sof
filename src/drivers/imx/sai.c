@@ -362,8 +362,10 @@ static int sai_get_hw_params(struct dai *dai,
 			     struct sof_ipc_stream_params *params,
 			     int dir)
 {
+	struct sai_pdata *sai = dai_get_drvdata(dai);
+
 	/* SAI only currently supports these parameters */
-	params->rate = 48000;
+	params->rate = sai->params.fsync_rate;
 	params->channels = 2;
 	params->buffer_fmt = 0;
 	params->frame_fmt = SOF_IPC_FRAME_S32_LE;
