@@ -254,11 +254,14 @@ err:
 
 int cadence_codec_prepare(struct comp_dev *dev)
 {
-	int ret, mem_tabs_size, lib_init_status;
+	int ret = 0, mem_tabs_size, lib_init_status;
 	struct codec_data *codec = comp_get_codec(dev);
 	struct cadence_codec_data *cd = codec->private;
 
 	comp_dbg(dev, "cadence_codec_prepare() start");
+
+	if (codec->state == CODEC_PREPARED)
+		goto done;
 
 	API_CALL(cd, XA_API_CMD_INIT, XA_CMD_TYPE_INIT_API_PRE_CONFIG_PARAMS,
 		 NULL, ret);
@@ -345,6 +348,7 @@ int cadence_codec_prepare(struct comp_dev *dev)
 free:
 	codec_free_memory(dev, cd->mem_tabs);
 err:
+done:
 	return ret;
 }
 
@@ -391,8 +395,19 @@ int cadence_codec_apply_config(struct comp_dev *dev)
 
 int cadence_codec_reset(struct comp_dev *dev)
 {
-	/* Nothing to do */
-	return 0;
+	int ret;
+	/* Current CADENCE API doesn't support reset of codec's
+	 * runtime parameters therefore we need to free all the resources
+	 * and start over.
+	 */
+	codec_free_all_memory(dev);
+	ret = cadence_codec_init(dev);
+	if (ret) {
+		comp_err(dev, "cadence_codec_reset() error %x: could not reinitialize codec after reset",
+			 ret);
+	}
+
+	return ret;
 }
 
 int cadence_codec_free(struct comp_dev *dev)
