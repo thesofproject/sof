@@ -165,12 +165,11 @@ static void platform_clock_low_power_mode(int clock, bool enable)
 {
 	int waiti_freq_idx = get_waiti_freq_idx(clock);
 	int current_freq_idx = get_current_freq_idx(clock);
-	int freq_idx = *cache_to_uncache(&active_freq_idx);
 
 	if (enable && current_freq_idx > waiti_freq_idx)
 		select_cpu_clock(waiti_freq_idx, true);
-	else if (!enable && current_freq_idx != freq_idx)
-		select_cpu_clock(freq_idx, true);
+	else if (!enable && current_freq_idx != CPU_HPRO_FREQ_IDX)
+		select_cpu_clock(CPU_HPRO_FREQ_IDX, true);
 }
 
 void platform_clock_on_waiti(void)
