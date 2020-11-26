@@ -1176,11 +1176,15 @@ static enum task_state kpb_draining_task(void *arg)
 	size_t *rt_stream_update = &draining_data->buffered_while_draining;
 	struct comp_data *kpb = comp_get_drvdata(draining_data->dev);
 	bool sync_mode_on = draining_data->sync_mode_on;
+	bool pm_is_active;
 	uint32_t flags;
 
 	comp_cl_info(&comp_kpb, "kpb_draining_task(), start.");
 
-	pm_runtime_disable(PM_RUNTIME_DSP, PLATFORM_PRIMARY_CORE_ID);
+	pm_is_active = pm_runtime_is_active(PM_RUNTIME_DSP, PLATFORM_PRIMARY_CORE_ID);
+
+	if (!pm_is_active)
+		pm_runtime_disable(PM_RUNTIME_DSP, PLATFORM_PRIMARY_CORE_ID);
 
 	/* Change KPB internal state to DRAINING */
 	kpb_change_state(kpb, KPB_STATE_DRAINING);
@@ -1293,8 +1297,6 @@ out:
 	else
 		comp_cl_info(&comp_kpb, "KPB: kpb_draining_task(), done. %u drained in > %u ms",
 			     drained, UINT_MAX);
-
-	pm_runtime_enable(PM_RUNTIME_DSP, PLATFORM_PRIMARY_CORE_ID);
 
 	return SOF_TASK_STATE_COMPLETED;
 }
