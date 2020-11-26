@@ -178,14 +178,12 @@ void platform_clock_on_waiti(void)
 	struct pm_runtime_data *prd = pm_runtime_data_get();
 	uint32_t flags;
 	int freq_idx;
-	int waiti_freq_idx;
 	bool pm_is_active;
 
 	/* hold the prd->lock for possible active_freq_idx switching */
 	spin_lock_irq(&prd->lock, flags);
 
 	freq_idx = *cache_to_uncache(&active_freq_idx);
-	waiti_freq_idx = get_waiti_freq_idx(CLK_CPU(cpu_get_id()));
 	pm_is_active = pm_runtime_is_active(PM_RUNTIME_DSP, PLATFORM_PRIMARY_CORE_ID);
 
 	if (pm_is_active) {
