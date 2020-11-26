@@ -546,14 +546,20 @@ static int dw_dma_set_config(struct dma_chan_data *channel,
 
 		channel->desc_count = config->elem_array.count;
 
-		/* allocate descriptors for channel */
+		/*
+		 * Allocate descriptors for channel. They must be cache-line
+		 * size aligned to avoid corrupting adjacent memory when
+		 * synchronizing caches. Such corruption has been observed with
+		 * Zephyr. A generic fix will be implemented for all SOF DMA
+		 * allocations on Zephyr to always force cache-line size
+		 * alignment.
+		 */
 		if (dw_chan->lli)
 			rfree(dw_chan->lli);
 
-		dw_chan->lli = rmalloc(SOF_MEM_ZONE_SYS_RUNTIME, 0,
-				       SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_DMA,
-				       sizeof(struct dw_lli) *
-				       channel->desc_count);
+		dw_chan->lli = rballoc_align(0, SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_DMA,
+					sizeof(struct dw_lli) * channel->desc_count,
+					PLATFORM_DCACHE_ALIGN);
 		if (!dw_chan->lli) {
 			tr_err(&dwdma_tr, "dw_dma_set_config(): dma %d channel %d lli alloc failed",
 			       channel->dma->plat_data.id,
