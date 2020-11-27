@@ -1,0 +1,3 @@
+if SOF
+rsource "../Kconfig"
+endif
