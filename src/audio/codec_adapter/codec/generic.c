@@ -333,7 +333,7 @@ int codec_reset(struct comp_dev *dev)
 	return 0;
 }
 
-static void codec_free_all_memory(struct comp_dev *dev)
+void codec_free_all_memory(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct codec_memory *mem;
