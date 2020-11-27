@@ -14,6 +14,8 @@ include(`codec_adapter.m4')
 include(`bytecontrol.m4')
 
 ifdef(`PP_CORE',`', `define(`PP_CORE', 1)')
+undefine(`DAI_PERIODS')
+define(`DAI_PERIODS', 8)
 
 #
 # Controls
