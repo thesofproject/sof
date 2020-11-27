@@ -155,6 +155,126 @@ static int mux_set_values(struct comp_dev *dev, struct comp_data *cd,
 	return 0;
 }
 
+/*
+ * (N:1) Select channels from multiple sources to one sink with enum control.
+ *
+ * There's one multi channel enum kcontrol for sink channels that lists all source channels
+ * including a mute option, (value 0). For example if you have 2 stereo streams as input, enum
+ * control will be 2 channel, with 5 values in both channels (2 + 2 + mute for both channels).
+ */
+static int mux_set_enum_values(struct comp_dev *dev, struct comp_data *cd,
+			       struct sof_ipc_ctrl_data *cdata)
+{
+	int channels = cdata->num_elems;
+	uint32_t val;
+	int index;
+	int row;
+	int ch;
+	int i;
+	int j;
+
+	comp_info(dev, "mux_set_enum_values()");
+
+	/* clear previous settings */
+	for (i = 0; i < MUX_MAX_STREAMS; i++) {
+		for (j = 0; j < PLATFORM_MAX_CHANNELS; j++)
+			cd->config.streams[i].mask[j] = 0;
+	}
+
+	for (i = 0; i < channels; i++) {
+		ch = cdata->chanv[i].channel;
+		val = cdata->chanv[i].value;
+		comp_info(dev, "mux_set_enum_values(), channel = %d, value = %u",
+			  ch, val);
+		if (ch < 0 || ch >= SOF_IPC_MAX_CHANNELS) {
+			comp_err(dev, "mux_set_enum_values(), illegal channel = %d",
+				 ch);
+			return -EINVAL;
+		}
+
+		if (val) {
+			index = (val - 1) / channels;
+			row = (val - 1) % channels;
+			cd->config.streams[index].mask[row] |= BIT(ch);
+		}
+	}
+
+	mux_prepare_look_up_table(dev);
+
+	if (dev->state > COMP_STATE_INIT)
+		cd->mux = mux_get_processing_function(dev);
+
+	return 0;
+}
+
+/*
+ * (1:N) Select channels from 1 source to multiple sinks with enum control.
+ *
+ * There are multiple enum controls corresponding to each sink. These enums are multi channel
+ * corresponding to sink channel count and list all source channels. So for example 1 source
+ * channel can be duplicated to both input channels. Enum contain also mute (value 0). Controls
+ * are separated by index in sof_ipc_ctrl_data.
+ */
+static int demux_set_enum_values(struct comp_dev *dev, struct comp_data *cd,
+				 struct sof_ipc_ctrl_data *cdata)
+{
+	int channels = cdata->num_elems;
+	uint32_t val;
+	int row;
+	int ch;
+	int i;
+
+	/* clear previous settings */
+	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
+		cd->config.streams[cdata->index].mask[i] = 0;
+
+	for (i = 0; i < channels; i++) {
+		ch = cdata->chanv[i].channel;
+		val = cdata->chanv[i].value;
+		comp_info(dev, "demux_set_enum_values(), channel = %d, value = %u",
+			  ch, val);
+		if (ch < 0 || ch >= SOF_IPC_MAX_CHANNELS) {
+			comp_err(dev, "demux_set_enum_values(), illegal channel = %d",
+				 ch);
+			return -EINVAL;
+		}
+
+		if (val) {
+			row = (val - 1);
+			cd->config.streams[cdata->index].mask[row] |= BIT(ch);
+		}
+	}
+
+	demux_prepare_look_up_table(dev);
+
+	if (dev->state > COMP_STATE_INIT)
+		cd->demux = demux_get_processing_function(dev);
+
+	return 0;
+}
+
+static int mux_get_enum_values(struct comp_dev *dev, struct comp_data *cd,
+			       struct sof_ipc_ctrl_data *cdata)
+{
+	int i;
+	int j;
+
+	comp_info(dev, "mux_ctrl_get_enum_cmd() elems %d", cdata->num_elems);
+
+	for (i = 0; i < cdata->num_elems; i++) {
+		cdata->chanv[i].channel = i;
+		for (j = 0; j < PLATFORM_MAX_CHANNELS; j++) {
+			if (cd->config.streams[cdata->index].mask[i] & BIT(j))
+				cdata->chanv[i].value = j + 1;
+		}
+		comp_info(dev, "mux_ctrl_get_enum_cmd(), channel = %u, value = %u",
+			  cdata->chanv[i].channel,
+			  cdata->chanv[i].value);
+	}
+
+	return 0;
+}
+
 static struct comp_dev *mux_new(const struct comp_driver *drv,
 				struct sof_ipc_comp *comp)
 {
@@ -290,6 +410,16 @@ static int mux_ctrl_set_cmd(struct comp_dev *dev,
 
 		ret = mux_set_values(dev, cd, cfg);
 		break;
+	case SOF_CTRL_CMD_ENUM:
+		comp_info(dev, "mux_ctrl_set_enum_cmd() elems %d", cdata->num_elems);
+		cfg = (struct sof_mux_config *)
+		      ASSUME_ALIGNED(cdata->data->data, 4);
+
+		if (dev->comp.type == SOF_COMP_MUX)
+			ret = mux_set_enum_values(dev, cd, cdata);
+		else
+			ret = demux_set_enum_values(dev, cd, cdata);
+		break;
 	default:
 		comp_err(dev, "mux_ctrl_set_cmd(): invalid cdata->cmd = 0x%08x",
 			 cdata->cmd);
@@ -324,6 +454,9 @@ static int mux_ctrl_get_cmd(struct comp_dev *dev,
 		cdata->data->abi = SOF_ABI_VERSION;
 		cdata->data->size = reply_size;
 		break;
+	case SOF_CTRL_CMD_ENUM:
+		mux_get_enum_values(dev, cd, cdata);
+		break;
 	default:
 		comp_cl_err(&comp_mux, "mux_ctrl_set_cmd(): invalid cdata->cmd = 0x%08x",
 			    cdata->cmd);
@@ -344,8 +477,10 @@ static int mux_cmd(struct comp_dev *dev, int cmd, void *data,
 
 	switch (cmd) {
 	case COMP_CMD_SET_DATA:
+	case COMP_CMD_SET_VALUE:
 		return mux_ctrl_set_cmd(dev, cdata);
 	case COMP_CMD_GET_DATA:
+	case COMP_CMD_GET_VALUE:
 		return mux_ctrl_get_cmd(dev, cdata, max_data_size);
 	default:
 		return -EINVAL;
