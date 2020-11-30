@@ -44,12 +44,58 @@ DECLARE_SOF_RT_UUID("demux", demux_uuid, 0xc4b26868, 0x1430, 0x470e,
 
 DECLARE_TR_CTX(demux_tr, SOF_UUID(demux_uuid), LOG_LEVEL_INFO);
 
+/*
+ * Check that we are not configuring routing matrix for mixing.
+ *
+ * In mux case this means, that muxed streams' configuration matrices don't
+ * have 1's in corresponding matrix indices. Also single stream matrix can't
+ * have 1's in same column as that corresponds to mixing also.
+ */
+static bool mux_mix_check(struct sof_mux_config *cfg)
+{
+	bool channel_set;
+	int i;
+	int j;
+	int k;
+
+	/* check for single matrix mixing, i.e multiple column bits are not set */
+	for (i = 0 ; i < cfg->num_streams; i++) {
+		for (j = 0 ; j < PLATFORM_MAX_CHANNELS; j++) {
+			channel_set = false;
+			for (k = 0 ; k < PLATFORM_MAX_CHANNELS; k++) {
+				if (cfg->streams[i].mask[k] & (1 << j)) {
+					if (!channel_set)
+						channel_set = true;
+					else
+						return true;
+				}
+			}
+		}
+	}
+
+	/* check for inter matrix mixing, i.e corresponding bits are not set */
+	for (i = 0 ; i < PLATFORM_MAX_CHANNELS; i++) {
+		for (j = 0 ; j < PLATFORM_MAX_CHANNELS; j++) {
+			channel_set = false;
+			for (k = 0 ; k < cfg->num_streams; k++) {
+				if (cfg->streams[k].mask[i] & (1 << j)) {
+					if (!channel_set)
+						channel_set = true;
+					else
+						return true;
+				}
+			}
+		}
+	}
+
+	return false;
+}
+
 static int mux_set_values(struct comp_dev *dev, struct comp_data *cd,
 			  struct sof_mux_config *cfg)
 {
 	uint8_t i;
 	uint8_t j;
-	bool channel_set;
 
 	comp_info(dev, "mux_set_values()");
 
@@ -82,19 +128,8 @@ static int mux_set_values(struct comp_dev *dev, struct comp_data *cd,
 	}
 
 	if (dev->comp.type == SOF_COMP_MUX) {
-		for (j = 0 ; j < PLATFORM_MAX_CHANNELS; j++) {
-			channel_set = false;
-			for (i = 0 ; i < cfg->num_streams; i++) {
-				if (popcount(cfg->streams[i].mask[j])) {
-					if (!channel_set) {
-						channel_set = true;
-					} else {
-						comp_cl_err(&comp_mux, "mux_set_values(): mux component is not able to mix channels");
-						return -EINVAL;
-					}
-				}
-			}
-		}
+		if (mux_mix_check(cfg))
+			comp_cl_err(&comp_mux, "mux_set_values(): mux component is not able to mix channels");
 	}
 
 	for (i = 0; i < cfg->num_streams; i++) {
