@@ -59,8 +59,8 @@ ENV HOME /home/sof
 
 # Use ToT alsa utils for the latest topology patches.
 RUN mkdir -p /home/sof/work/alsa && cd /home/sof/work/alsa && \
-git clone $CLONE_DEFAULTS https://github.com/thesofproject/alsa-lib.git && \
-git clone $CLONE_DEFAULTS https://github.com/thesofproject/alsa-utils.git && \
+git clone $CLONE_DEFAULTS https://github.com/alsa-project/alsa-lib.git && \
+git clone $CLONE_DEFAULTS https://github.com/alsa-project/alsa-utils.git && \
 cd /home/sof/work/alsa/alsa-lib && ./gitcompile &&  make install && \
 cd /home/sof/work/alsa/alsa-utils && ./gitcompile &&  make install &&\
 chown -R sof:sof /home/sof
