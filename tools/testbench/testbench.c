@@ -33,6 +33,9 @@ DECLARE_SOF_TB_UUID("tdfb", tdfb_uuid,  0xdd511749, 0xd9fa, 0x455c,
 DECLARE_SOF_TB_UUID("drc", drc_uuid, 0xb36ee4da, 0x006f, 0x47f9,
 		    0xa0, 0x6d, 0xfe, 0xcb, 0xe2, 0xd8, 0xb6, 0xce);
 
+DECLARE_SOF_TB_UUID("multiband_drc", multiband_drc_uuid, 0x0d9f2256, 0x8e4f, 0x47b3,
+		    0x84, 0x48, 0x23, 0x9a, 0x33, 0x4f, 0x11, 0x91);
+
 #define TESTBENCH_NCH 2 /* Stereo */
 
 /* shared library look up table */
@@ -47,6 +50,7 @@ struct shared_lib_table lib_table[NUM_WIDGETS_SUPPORTED] = {
 	{"crossover", "libsof_crossover.so", SOF_COMP_NONE, SOF_TB_UUID(crossover_uuid), 0, NULL},
 	{"tdfb", "libsof_tdfb.so", SOF_COMP_NONE, SOF_TB_UUID(tdfb_uuid), 0, NULL},
 	{"drc", "libsof_drc.so", SOF_COMP_NONE, SOF_TB_UUID(drc_uuid), 0, NULL},
+	{"multiband_drc", "libsof_multiband_drc.so", SOF_COMP_NONE, SOF_TB_UUID(multiband_drc_uuid), 0, NULL},
 };
 
 /* compatible variables, not used */
