@@ -396,7 +396,8 @@ for i = 1:length(test.ph)
 end
 
 for i = 1:length(test.fh)
-	figure(test.fh(i), 'visible', test.plot_visible);
+	figure(test.fh(i));
+	set(test.fh(i), 'visible', test.plot_visible);
 	pfn = sprintf('plots/%s_%s_%d_%d_%d_%d.png', ...
 		      testacronym, t.comp, ...
 		      t.bits_in, t.bits_out, t.fs, i);
