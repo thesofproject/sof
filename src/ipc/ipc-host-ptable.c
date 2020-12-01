@@ -110,7 +110,7 @@ static int ipc_get_page_descriptors(struct dma *dmac, uint8_t *page_table,
 
 	/* source buffer size is always PAGE_SIZE bytes */
 	/* 20 bits for each page, round up to 32 */
-	elem.size = (ring->pages * 5 * 16 + 31) / 32;
+	elem.size = 4 * ((ring->pages * 20 + 31) / 32);
 	config.elem_array.elems = &elem;
 	config.elem_array.count = 1;
 
