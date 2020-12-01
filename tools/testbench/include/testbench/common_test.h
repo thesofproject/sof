@@ -23,7 +23,7 @@
 #define MAX_OUTPUT_FILE_NUM	4
 
 /* number of widgets types supported in testbench */
-#define NUM_WIDGETS_SUPPORTED	10
+#define NUM_WIDGETS_SUPPORTED	11
 
 struct testbench_prm {
 	char *tplg_file; /* topology file to use */
