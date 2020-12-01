@@ -137,8 +137,8 @@ set(TPLGS
 	"sof-imx8qxp-nocodec-sai\;sof-imx8qxp-nocodec-sai"
 	"sof-imx8qxp-wm8960\;sof-imx8qxp-wm8960"
 	"sof-tgl-max98357a-rt5682\;sof-tgl-max98357a-rt5682"
-	"sof-tgl-max98373-rt5682\;sof-tgl-max98373-rt5682\;-DAMP_SSP=1"
-	"sof-tgl-max98373-rt5682\;sof-tgl-rt5682-ssp0-max98373-ssp2\;-DAMP_SSP=2"
+	"sof-tgl-max98373-rt5682-test\;sof-tgl-max98373-rt5682-test\;-DAMP_SSP=1"
+	"sof-tgl-max98373-rt5682-test\;sof-tgl-rt5682-ssp0-max98373-ssp2-test\;-DAMP_SSP=2"
 	"sof-tgl-sdw-max98373-rt5682\;sof-tgl-sdw-max98373-rt5682-2ch\;-DCHANNELS=2"
 	"sof-tgl-sdw-max98373-rt5682\;sof-tgl-sdw-max98373-rt5682-4ch\;-DCHANNELS=4"
 	"sof-jsl-da7219\;sof-jsl-da7219\;-DPLATFORM=jsl"
@@ -208,3 +208,4 @@ foreach(tplg ${TPLGS})
 endforeach()
 
 add_subdirectory(development)
+add_subdirectory(third_party)
