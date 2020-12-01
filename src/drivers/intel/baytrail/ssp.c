@@ -25,22 +25,36 @@
 /* empty SSP receive FIFO */
 static void ssp_empty_rx_fifo(struct dai *dai)
 {
-	uint32_t sssr;
+	struct ssp_pdata *ssp = dai_get_drvdata(dai);
+	uint64_t sample_ticks = clock_ticks_per_sample(PLATFORM_DEFAULT_CLOCK,
+						       ssp->params.fsync_rate);
+	uint32_t retry = SSP_RX_FLUSH_RETRY_MAX;
 	uint32_t entries;
 	uint32_t i;
 
-	sssr = ssp_read(dai, SSSR);
+	/*
+	 * To make sure all the RX FIFO entries are read out for the flushing,
+	 * we need to wait a minimal SSP port delay after entries are all read,
+	 * and then re-check to see if there is any subsequent entries written
+	 * to the FIFO. This will help to make sure there is no sample mismatched
+	 * issue for the next run with the SSP RX.
+	 */
+	while ((ssp_read(dai, SSSR) & SSSR_RNE) && retry--) {
+		entries = SFIFOL_RFL(ssp_read(dai, SFIFOL));
+		dai_dbg(dai, "ssp_empty_rx_fifo(), before flushing, entries %d", entries);
+		for (i = 0; i < entries + 1; i++)
+			/* read to try empty fifo */
+			ssp_read(dai, SSDR);
+
+		/* wait to get valid fifo status and re-check */
+		wait_delay(sample_ticks);
+		entries = SFIFOL_RFL(ssp_read(dai, SFIFOL));
+		dai_dbg(dai, "ssp_empty_rx_fifo(), after flushing, entries %d", entries);
+	}
 
 	/* clear interrupt */
-	if (sssr & SSSR_ROR)
-		ssp_write(dai, SSSR, sssr);
+	ssp_update_bits(dai, SSSR, SSSR_ROR, SSSR_ROR);
 
-	/* empty fifo */
-	if (sssr & SSSR_RNE) {
-		entries = SFIFOL_RFL(ssp_read(dai, SFIFOL));
-		for (i = 0; i < entries + 1; i++)
-			ssp_read(dai, SSDR);
-	}
 }
 
 /* save SSP context prior to entering D3 */
