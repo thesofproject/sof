@@ -1229,6 +1229,18 @@ int heap_info(enum mem_zone zone, int index, struct mm_info *out)
 			goto error;
 		heap = memmap->buffer + index;
 		break;
+#if CONFIG_CORE_COUNT > 1
+	case SOF_MEM_ZONE_SYS_SHARED:
+		if (index >= PLATFORM_HEAP_SYSTEM_SHARED)
+			goto error;
+		heap = memmap->system_shared + index;
+		break;
+	case SOF_MEM_ZONE_RUNTIME_SHARED:
+		if (index >= PLATFORM_HEAP_RUNTIME_SHARED)
+			goto error;
+		heap = memmap->runtime_shared + index;
+		break;
+#endif
 	default:
 		goto error;
 	}
