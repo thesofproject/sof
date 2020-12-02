@@ -22,6 +22,28 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+/* empty SSP transmit FIFO */
+static void ssp_empty_tx_fifo(struct dai *dai)
+{
+	int ret;
+	uint32_t sssr;
+
+	/*
+	 * SSSR_TNF is cleared when TX FIFO is empty or full,
+	 * so wait for set TNF then for TFL zero - order matter.
+	 */
+	ret = poll_for_register_delay(dai_base(dai) + SSSR, SSSR_TNF, SSSR_TNF,
+				      SSP_MAX_SEND_TIME_PER_SAMPLE);
+	if (ret)
+		dai_warn(dai, "ssp_empty_tx_fifo() warning: timeout");
+
+	sssr = ssp_read(dai, SSSR);
+
+	/* clear interrupt */
+	if (sssr & SSSR_TUR)
+		ssp_write(dai, SSSR, sssr);
+}
+
 /* empty SSP receive FIFO */
 static void ssp_empty_rx_fifo(struct dai *dai)
 {
@@ -556,6 +578,7 @@ static void ssp_stop(struct dai *dai, int direction)
 	/* stop Tx if needed */
 	if (direction == DAI_DIR_PLAYBACK &&
 	    ssp->state[SOF_IPC_STREAM_PLAYBACK] != COMP_STATE_PREPARE) {
+		ssp_empty_tx_fifo(dai);
 		ssp_update_bits(dai, SSCR1, SSCR1_TSRE, 0);
 		ssp_update_bits(dai, SSTSA, SSTSA_TXEN, 0);
 		ssp->state[SOF_IPC_STREAM_PLAYBACK] = COMP_STATE_PREPARE;
