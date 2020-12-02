@@ -1,6 +1,7 @@
 # Sound Open Firmware
 
 TEST PR
+TEST NEW PR
 
 ### Status
 [![Build Status](https://travis-ci.org/thesofproject/sof.svg?branch=master)](https://travis-ci.org/thesofproject/sof/branches)
