@@ -525,10 +525,13 @@ static void ssp_start(struct dai *dai, int direction)
 	dai_info(dai, "ssp_start()");
 
 	/* enable DMA */
-	if (direction == DAI_DIR_PLAYBACK)
+	if (direction == DAI_DIR_PLAYBACK) {
 		ssp_update_bits(dai, SSCR1, SSCR1_TSRE, SSCR1_TSRE);
-	else
+		ssp_update_bits(dai, SSTSA, SSTSA_TXEN, SSTSA_TXEN);
+	} else {
 		ssp_update_bits(dai, SSCR1, SSCR1_RSRE, SSCR1_RSRE);
+		ssp_update_bits(dai, SSRSA, SSRSA_RXEN, SSRSA_RXEN);
+	}
 
 	spin_unlock(&dai->lock);
 }
@@ -544,6 +547,7 @@ static void ssp_stop(struct dai *dai, int direction)
 	if (direction == DAI_DIR_CAPTURE &&
 	    ssp->state[SOF_IPC_STREAM_CAPTURE] != COMP_STATE_PREPARE) {
 		ssp_update_bits(dai, SSCR1, SSCR1_RSRE, 0);
+		ssp_update_bits(dai, SSRSA, SSRSA_RXEN, 0);
 		ssp_empty_rx_fifo(dai);
 		ssp->state[SOF_IPC_STREAM_CAPTURE] = COMP_STATE_PREPARE;
 		dai_info(dai, "ssp_stop(), RX stop");
@@ -553,6 +557,7 @@ static void ssp_stop(struct dai *dai, int direction)
 	if (direction == DAI_DIR_PLAYBACK &&
 	    ssp->state[SOF_IPC_STREAM_PLAYBACK] != COMP_STATE_PREPARE) {
 		ssp_update_bits(dai, SSCR1, SSCR1_TSRE, 0);
+		ssp_update_bits(dai, SSTSA, SSTSA_TXEN, 0);
 		ssp->state[SOF_IPC_STREAM_PLAYBACK] = COMP_STATE_PREPARE;
 		dai_info(dai, "ssp_stop(), TX stop");
 	}
