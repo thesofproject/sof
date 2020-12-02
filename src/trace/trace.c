@@ -240,6 +240,7 @@ static void vatrace_log(bool send_atomic, uint32_t log_entry, const struct tr_ct
 
 #if CONFIG_TRACEM
 	unsigned long flags;
+	struct trace *trace = trace_get();
 #endif /* CONFIG TRACEM */
 
 	/* fill log content */
