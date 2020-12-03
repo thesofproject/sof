@@ -189,6 +189,8 @@ int platform_init(struct sof *sof)
 	sof->platform_timer = &timer;
 	sof->cpu_timers = &arch_timer;
 
+	byt build fail test
+
 	/* clear mailbox for early trace and debug */
 	trace_point(TRACE_BOOT_PLATFORM_MBOX);
 	bzero((void *)MAILBOX_BASE, MAILBOX_SIZE);
