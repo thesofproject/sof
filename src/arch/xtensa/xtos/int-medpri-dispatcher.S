@@ -271,6 +271,7 @@ LABEL(.L1,_loop0):
 
 restore_cp:
 #if __XCC__
+	xcc build fail test
 #if (XCHAL_CP_MASK & CP0_MASK)
 	xtos_task_ctx_percore	a11
 	beqz	a11, no_context_2
