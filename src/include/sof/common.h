@@ -13,10 +13,70 @@
 
 /* Align the number to the nearest alignment value */
 #define IS_ALIGNED(size, alignment) ((size) % (alignment) == 0)
-#define ALIGN_UP(size, alignment) \
-	((size) + (alignment) - 1 - ((size) + (alignment) - 1) % (alignment))
-#define ALIGN_DOWN(size, alignment) \
-	((size) - ((size) % (alignment)))
+
+#define is_non0_power_of_2(x) ((x) && !((x) & ((x) - 1)))
+
+#define compile_fail_zero_or_true(x) (sizeof(struct{int _f : 1 - !(x); }))
+#define compile_fail_zero_or_false_fn(x) ({int _f[(x) - 1]; 0 & _f[0]; })
+
+#define ALIGN_UP_INTERNAL(val, align) (((val) + (align) - 1) & ~((align) - 1))
+
+#define VERIFY_ALIGN
+#ifdef VERIFY_ALIGN
+
+/* For data initializers etc. */
+#define ALIGN_UP_COMPILE(size, alignment)					\
+	(compile_fail_zero_or_true(is_non0_power_of_2(alignment)) ?		\
+	 ALIGN_UP_INTERNAL(size, alignment) : 0)
+
+#ifdef __XCC__
+
+/*
+ * xcc doesn't support __builtin_constant_p() so we can only do run-time
+ * verification
+ */
+
+#define ALIGN_UP(size, alignment) ({						\
+	if (!is_non0_power_of_2(alignment))					\
+		panic(SOF_IPC_PANIC_ASSERT);					\
+	ALIGN_UP_INTERNAL(size, alignment);					\
+})
+
+#define ALIGN_DOWN(size, alignment) ({						\
+	if (!is_non0_power_of_2(alignment))					\
+		panic(SOF_IPC_PANIC_ASSERT);					\
+	(size) & ~((alignment) - 1);						\
+})
+
+#else
+
+#define COMPILE_TIME_ALIGNED(align) (!__builtin_constant_p(align) ||		\
+				     is_non0_power_of_2(align))
+
+#define ALIGN_UP(size, alignment) ({						\
+	if (compile_fail_zero_or_false_fn(COMPILE_TIME_ALIGNED(alignment)) ||	\
+	    !is_non0_power_of_2(alignment))					\
+		panic(SOF_IPC_PANIC_ASSERT);					\
+	ALIGN_UP_INTERNAL(size, alignment);					\
+})
+
+#define ALIGN_DOWN(size, alignment) ({						\
+	if (compile_fail_zero_or_false_fn(COMPILE_TIME_ALIGNED(alignment)) ||	\
+	    !is_non0_power_of_2(alignment))					\
+		panic(SOF_IPC_PANIC_ASSERT);					\
+	(size) & ~((alignment) - 1);						\
+})
+
+#endif
+
+#else
+
+#define ALIGN_UP(size, alignment) ALIGN_UP_INTERNAL(size, alignment)
+#define ALIGN_UP_COMPILE ALIGN_UP
+#define ALIGN_DOWN(size, alignment) ((size) & ~((alignment) - 1))
+
+#endif
+
 #define ALIGN ALIGN_UP
 #define DIV_ROUND_UP(val, div) (((val) + (div) - 1) / (div))
 
