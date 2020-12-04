@@ -328,7 +328,7 @@ static bool find_mn(uint32_t freq, uint32_t bclk,
  * \param[out] scr_div SCR divisor.
  * \param[out] m M value of M/N divider.
  * \param[out] n N value of M/N divider.
- * \return index of suitable clock if could find it, -1 otherwise.
+ * \return index of suitable clock if could find it, -EINVAL otherwise.
  */
 static int find_bclk_source(uint32_t bclk,
 			    uint32_t *scr_div, uint32_t *m, uint32_t *n)
@@ -348,7 +348,7 @@ static int find_bclk_source(uint32_t bclk,
 			    scr_div, m, n))
 			return i;
 
-	return -1;
+	return -EINVAL;
 }
 
 /**
