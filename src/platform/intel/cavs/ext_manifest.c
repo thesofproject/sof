@@ -16,9 +16,9 @@
 const struct ext_man_cavs_config_data ext_man_cavs_config
 	__aligned(EXT_MAN_ALIGN) __section(".fw_metadata") = {
 	.hdr.type = EXT_MAN_ELEM_PLATFORM_CONFIG_DATA,
-	.hdr.elem_size = ALIGN_UP(sizeof(struct ext_man_cavs_config_data) +
-				  sizeof(struct config_elem) * CAVS_CONFIG_ELEM_CNT,
-				  EXT_MAN_ALIGN),
+	.hdr.elem_size = ALIGN_UP_COMPILE(sizeof(struct ext_man_cavs_config_data) +
+					  sizeof(struct config_elem) * CAVS_CONFIG_ELEM_CNT,
+					  EXT_MAN_ALIGN),
 	.elems = {
 		{EXT_MAN_CAVS_CONFIG_LPRO,  IS_ENABLED(CONFIG_CAVS_LPRO_ONLY)},
 		{EXT_MAN_CAVS_CONFIG_OUTBOX_SIZE, SRAM_OUTBOX_SIZE},

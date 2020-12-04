@@ -69,7 +69,7 @@ const struct ext_man_windows xsram_window
 		__aligned(EXT_MAN_ALIGN) __section(".fw_metadata") __unused = {
 	.hdr = {
 		.type = EXT_MAN_ELEM_WINDOW,
-		.elem_size = ALIGN_UP(sizeof(struct ext_man_windows), EXT_MAN_ALIGN),
+		.elem_size = ALIGN_UP_COMPILE(sizeof(struct ext_man_windows), EXT_MAN_ALIGN),
 	},
 	.window = {
 		.ext_hdr	= {

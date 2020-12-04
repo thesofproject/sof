@@ -17,8 +17,8 @@
 const struct ext_man_fw_version ext_man_fw_ver
 	__aligned(EXT_MAN_ALIGN) __section(".fw_metadata") = {
 	.hdr.type = EXT_MAN_ELEM_FW_VERSION,
-	.hdr.elem_size = ALIGN_UP(sizeof(struct ext_man_fw_version),
-				  EXT_MAN_ALIGN),
+	.hdr.elem_size = ALIGN_UP_COMPILE(sizeof(struct ext_man_fw_version),
+					  EXT_MAN_ALIGN),
 	.version = {
 		.hdr.size = sizeof(struct sof_ipc_fw_version),
 		.micro = SOF_MICRO,
@@ -40,8 +40,8 @@ const struct ext_man_fw_version ext_man_fw_ver
 const struct ext_man_cc_version ext_man_cc_ver
 	__aligned(EXT_MAN_ALIGN) __section(".fw_metadata") = {
 	.hdr.type = EXT_MAN_ELEM_CC_VERSION,
-	.hdr.elem_size = ALIGN_UP(sizeof(struct ext_man_cc_version),
-				  EXT_MAN_ALIGN),
+	.hdr.elem_size = ALIGN_UP_COMPILE(sizeof(struct ext_man_cc_version),
+					  EXT_MAN_ALIGN),
 	.cc_version = {
 		.ext_hdr.hdr.size = sizeof(struct sof_ipc_cc_version),
 		.ext_hdr.hdr.cmd = SOF_IPC_FW_READY,
@@ -59,8 +59,8 @@ const struct ext_man_cc_version ext_man_cc_ver
 const struct ext_man_probe_support ext_man_probe
 	__aligned(EXT_MAN_ALIGN) __section(".fw_metadata") = {
 	.hdr.type = EXT_MAN_ELEM_PROBE_INFO,
-	.hdr.elem_size = ALIGN_UP(sizeof(struct ext_man_probe_support),
-				  EXT_MAN_ALIGN),
+	.hdr.elem_size = ALIGN_UP_COMPILE(sizeof(struct ext_man_probe_support),
+					  EXT_MAN_ALIGN),
 	.probe = {
 		.ext_hdr.hdr.size = sizeof(struct sof_ipc_probe_support),
 		.ext_hdr.hdr.cmd = SOF_IPC_FW_READY,
@@ -75,8 +75,8 @@ const struct ext_man_probe_support ext_man_probe
 const struct ext_man_dbg_abi ext_man_dbg_info
 	__aligned(EXT_MAN_ALIGN) __section(".fw_metadata") = {
 	.hdr.type = EXT_MAN_ELEM_DBG_ABI,
-	.hdr.elem_size = ALIGN_UP(sizeof(struct ext_man_dbg_abi),
-				  EXT_MAN_ALIGN),
+	.hdr.elem_size = ALIGN_UP_COMPILE(sizeof(struct ext_man_dbg_abi),
+					  EXT_MAN_ALIGN),
 	.dbg_abi = {
 		.ext_hdr.hdr.size = sizeof(struct sof_ipc_user_abi_version),
 		.ext_hdr.hdr.cmd = SOF_IPC_FW_READY,
@@ -91,9 +91,9 @@ const struct ext_man_dbg_abi ext_man_dbg_info
 const struct ext_man_config_data ext_man_config
 	__aligned(EXT_MAN_ALIGN) __section(".fw_metadata") = {
 	.hdr.type = EXT_MAN_ELEM_CONFIG_DATA,
-	.hdr.elem_size = ALIGN_UP(sizeof(struct ext_man_config_data) +
-				  sizeof(struct config_elem) * CONFIG_ELEM_CNT,
-				  EXT_MAN_ALIGN),
+	.hdr.elem_size = ALIGN_UP_COMPILE(sizeof(struct ext_man_config_data) +
+					  sizeof(struct config_elem) * CONFIG_ELEM_CNT,
+					  EXT_MAN_ALIGN),
 	.elems = {
 		{EXT_MAN_CONFIG_IPC_MSG_SIZE, SOF_IPC_MSG_MAX_SIZE},
 		{EXT_MAN_CONFIG_MEMORY_USAGE_SCAN, IS_ENABLED(CONFIG_DEBUG_MEMORY_USAGE_SCAN)},
