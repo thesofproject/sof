@@ -6,7 +6,7 @@
 set -e
 
 SUPPORTED_PLATFORMS=(byt cht bdw hsw apl skl kbl cnl sue icl jsl \
-                    imx8 imx8x imx8m tgl)
+                    imx8 imx8x imx8m tgl tgl-h)
 BUILD_ROM=no
 BUILD_DEBUG=no
 BUILD_FORCE_UP=no
@@ -244,6 +244,19 @@ do
 			;;
 		tgl)
 			PLATFORM="tgplp"
+			ARCH="xtensa-smp"
+			XTENSA_CORE="cavs2x_LX6HiFi3_2017_8"
+			HOST="xtensa-cnl-elf"
+			XTENSA_TOOLS_VERSION="RG-2017.8-linux"
+			HAVE_ROM='yes'
+			# default key for TGL
+			if [ -z "$PRIVATE_KEY_OPTION" ]
+			then
+				PRIVATE_KEY_OPTION="-D${SIGNING_TOOL}_PRIVATE_KEY=$pwd/keys/otc_private_key_3k.pem"
+			fi
+			;;
+		tgl-h)
+			PLATFORM="tgph"
 			ARCH="xtensa-smp"
 			XTENSA_CORE="cavs2x_LX6HiFi3_2017_8"
 			HOST="xtensa-cnl-elf"
