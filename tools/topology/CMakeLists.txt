@@ -63,6 +63,7 @@ set(TPLGS
 	"sof-byt-codec\;sof-cht-da7213\;-DCODEC=DA7213\;-DPLATFORM=cht-codec\;-DSSP_NUM=2"
 	"sof-byt-codec\;sof-cht-cx2072x\;-DCODEC=CX2072X\;-DPLATFORM=cht-codec\;-DSSP_NUM=2"
 	"sof-byt-codec\;sof-cht-es8316\;-DCODEC=ES8316\;-DPLATFORM=cht-codec\;-DSSP_NUM=2"
+	"sof-byt-codec\;sof-cht-nau8824\;-DCODEC=NAU8824\;-DPLATFORM=cht-codec\;-DSSP_NUM=2"
 	"sof-cht-max98090\;sof-cht-max98090\;-DCODEC=MAX98090\;-DPLATFORM=cht-codec\;-DSSP_NUM=2"
 	"sof-cnl-rt274\;sof-cnl-rt274"
 	"sof-apl-tdf8532\;sof-apl-tdf8532"
