@@ -197,7 +197,7 @@ static void test_demux_copy_proc_16(void **state)
 			int64_t sample = 0;
 
 			for (k = 0; k < PLATFORM_MAX_CHANNELS; ++k)
-				if (td->mask[i][j] & BIT(k))
+				if (td->mask[i][k] & BIT(j))
 					sample = input_16b[k];
 
 			expected_results[i][j] = sample;
@@ -222,7 +222,7 @@ static void test_demux_copy_proc_24(void **state)
 			int32_t sample = 0;
 
 			for (k = 0; k < PLATFORM_MAX_CHANNELS; ++k)
-				if (td->mask[i][j] & BIT(k))
+				if (td->mask[i][k] & BIT(j))
 					sample = input_24b[k];
 
 			expected_results[i][j] = sample;
@@ -247,7 +247,7 @@ static void test_demux_copy_proc_32(void **state)
 			int32_t sample = 0;
 
 			for (k = 0; k < PLATFORM_MAX_CHANNELS; ++k)
-				if (td->mask[i][j] & BIT(k))
+				if (td->mask[i][k] & BIT(j))
 					sample = input_32b[k];
 
 			expected_results[i][j] = sample;

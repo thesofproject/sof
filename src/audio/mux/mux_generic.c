@@ -499,8 +499,8 @@ void mux_prepare_look_up_table(struct comp_dev *dev)
 			for (k = 0; k < PLATFORM_MAX_CHANNELS; k++) {
 				if (cd->config.streams[i].mask[j] & BIT(k)) {
 					/* MUX component has only one sink */
-					cd->lookup[0].copy_elem[idx].in_ch = k;
-					cd->lookup[0].copy_elem[idx].out_ch = j;
+					cd->lookup[0].copy_elem[idx].in_ch = j;
+					cd->lookup[0].copy_elem[idx].out_ch = k;
 					cd->lookup[0].copy_elem[idx].stream_id =
 						i;
 					cd->lookup[0].num_elems = ++idx;
@@ -525,8 +525,8 @@ void demux_prepare_look_up_table(struct comp_dev *dev)
 			for (k = 0; k < PLATFORM_MAX_CHANNELS; k++) {
 				if (cd->config.streams[i].mask[j] & BIT(k)) {
 					/* MUX component has only one sink */
-					cd->lookup[i].copy_elem[idx].in_ch = k;
-					cd->lookup[i].copy_elem[idx].out_ch = j;
+					cd->lookup[i].copy_elem[idx].in_ch = j;
+					cd->lookup[i].copy_elem[idx].out_ch = k;
 					cd->lookup[i].copy_elem[idx].stream_id =
 						i;
 					cd->lookup[i].num_elems = ++idx;
