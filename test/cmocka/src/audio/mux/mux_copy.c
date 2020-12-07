@@ -219,7 +219,7 @@ static void test_mux_copy_proc_16(void **state)
 
 		for (j = 0; j < MUX_MAX_STREAMS; ++j) {
 			for (k = 0; k < PLATFORM_MAX_CHANNELS; ++k) {
-				if (td->mask[j][i] & BIT(k))
+				if (td->mask[j][k] & BIT(i))
 					sample = input_16b[j][k];
 			}
 		}
@@ -243,7 +243,7 @@ static void test_mux_copy_proc_24(void **state)
 
 		for (j = 0; j < MUX_MAX_STREAMS; ++j) {
 			for (k = 0; k < PLATFORM_MAX_CHANNELS; ++k) {
-				if (td->mask[j][i] & BIT(k))
+				if (td->mask[j][k] & BIT(i))
 					sample = input_24b[j][k];
 			}
 		}
@@ -267,7 +267,7 @@ static void test_mux_copy_proc_32(void **state)
 
 		for (j = 0; j < MUX_MAX_STREAMS; ++j) {
 			for (k = 0; k < PLATFORM_MAX_CHANNELS; ++k) {
-				if (td->mask[j][i] & BIT(k))
+				if (td->mask[j][k] & BIT(i))
 					sample = input_32b[j][k];
 			}
 		}
