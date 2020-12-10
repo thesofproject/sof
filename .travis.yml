@@ -42,6 +42,9 @@ jobs:
     - <<: *build-platform
       env: PLATFORM='tgl'
 
+    - <<: *build-platform
+      env: PLATFORM='tgl-h'
+
     - name: "./scripts/build-tools.sh Release"
       before_install: *docker-pull-sof
       script: CMAKE_BUILD_TYPE=Release ./scripts/docker-run.sh ./scripts/build-tools.sh
