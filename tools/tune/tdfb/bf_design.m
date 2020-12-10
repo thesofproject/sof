@@ -16,6 +16,18 @@ addpath('../../test/audio/std_utils');
 mkdir_check('plots');
 mkdir_check('data');
 
+if length(bf.steer_az) ~= length(bf.steer_el)
+	error('The steer_az and steer_el lengths need to be equal.');
+end
+
+if length(find(bf.steer_az > 180)) || length(find(bf.steer_az < -180))
+	error('The steer_az angles need to be -180 to +180 degrees');
+end
+
+if length(find(bf.steer_el > 90)) || length(find(bf.steer_el < -90))
+	error('The steer_el angles need to be -90 to +90 degrees');
+end
+
 if isempty(bf.num_filters)
 	if isempty(bf.input_channel_select)
 		bf.num_filters = bf.mic_n;
@@ -40,6 +52,43 @@ switch lower(bf.array)
 end
 
 bf = bf_array_rot(bf);
+
+% The design function handles only single (az, el) value, so need to
+% loop every steer angle.
+bf.num_angles = length(bf.steer_az);
+all_az = bf.steer_az;
+all_el = bf.steer_el;
+all_array_id = bf.array_id;
+all_sinerot_fn = bf.sinerot_fn;
+all_diffuse_fn = bf.diffuse_fn;
+all_random_fn = bf.random_fn;
+all_mat_fn = bf.mat_fn;
+
+for n = 1:bf.num_angles
+	bf.steer_az = all_az(n);
+	bf.steer_el = all_el(n);
+	bf.array_id = all_array_id{n};
+	bf.sinerot_fn = all_sinerot_fn{n};
+	bf.diffuse_fn = all_diffuse_fn{n};
+	bf.random_fn = all_random_fn{n};
+	bf.mat_fn = all_mat_fn{n};
+	bf = bf_one_design(bf);
+	w_all(:,:,n) = bf.w;
+end
+
+bf.steer_az = all_az;
+bf.steer_el = all_el;
+bf.array_id = all_array_id;
+bf.sinerot_fn = all_sinerot_fn;
+bf.diffuse_fn = all_diffuse_fn;
+bf.random_fn = all_random_fn;
+bf.mat_fn = all_mat_fn;
+bf.w = w_all;
+
+end
+
+function bf = bf_one_design(bf)
+
 
 %% Defaults
 j = complex(0,-1);
@@ -206,7 +255,7 @@ bf.wng_db = wng_db;
 
 if bf.do_plots
 	%% Array
-	bf.fh(1) = figure(bf.fn);
+	fh(1) = figure(bf.fn);
 	plot3(bf.mic_x(1), bf.mic_y(1), bf.mic_z(1), 'ro');
 	hold on;
 	plot3(bf.mic_x(2:end), bf.mic_y(2:end), bf.mic_z(2:end), 'bo');
@@ -226,7 +275,7 @@ if bf.do_plots
 	title(['Geometry ' bf.array_id], 'Interpreter','none');
 
 	%% Coef
-	bf.fh(2) = figure(bf.fn + 1);
+	fh(2) = figure(bf.fn + 1);
 	plot(bf.w)
 	grid on;
 	xlabel('FIR coefficient'); ylabel('Tap value');
@@ -342,7 +391,7 @@ else
 			td(i1:i2, j) = m;
 		end
 	end
-	audiowrite(bf.sinerot_fn, td, bf.fs);
+	myaudiowrite(bf.sinerot_fn, td, bf.fs);
 end
 
 if isempty(bf.diffuse_fn)
@@ -374,7 +423,7 @@ else
 	nm = nmi(1:p:end, :);
 	nlev = level_dbfs(nm(:,1));
 	nm = nm * 10^((bf.diffuse_lev - nlev)/20);
-	audiowrite(bf.diffuse_fn, nm, bf.fs);
+	myaudiowrite(bf.diffuse_fn, nm, bf.fs);
 end
 
 if isempty(bf.random_fn)
@@ -386,7 +435,7 @@ else
 
 	nlev = level_dbfs(rn(:,1));
 	rn = rn * 10^((bf.random_lev - nlev)/20);
-	audiowrite(bf.random_fn, rn, bf.fs);
+	myaudiowrite(bf.random_fn, rn, bf.fs);
 end
 
 if isempty(bf.mat_fn)
@@ -439,5 +488,25 @@ switch n
 		legend('1', '2', '3', '4', '5', '6', '7');
 	otherwise
 		legend('1', '2', '3', '4', '5', '6', '7', '8');
+end
+end
+
+function myaudiowrite(fn, x, fs)
+[~, ~, ext] = fileparts(fn);
+if strcmp(lower(ext), '.raw')
+	s = size(x);
+	xq = zeros(s(1) * s(2), 1, 'int16');
+	scale = 2^15;
+	xs = round(x * scale);
+	xs(xs > scale - 1) = scale -1;
+	xs(xs < -scale) = -scale;
+	for i = 1:s(2)
+		xq(i:s(2):end) = xs(:,i);
+	end
+	fh = fopen(fn, 'wb');
+	fwrite(fh, xq, 'int16');
+	fclose(fh);
+else
+	audiowrite(fn, x, fs);
 end
 end

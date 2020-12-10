@@ -14,8 +14,8 @@ function example_line_array()
 
 %% 2 mic arrays
 for fs = [16e3 48e3]
-	for az = [0 10 25 90 -10 -25 -90]
-		for d = [50e-3 67e-3];
+	for az = [0 30 60 90 -30 -60 -90]
+		for d = [50e-3 68e-3];
 			close all;
 			line2_one_beam(fs, d, az);
 		end
@@ -24,10 +24,11 @@ end
 
 %% 4 mic arrays
 for fs = [16e3 48e3]
-	for az = [0 10 25 90 -10 -25 -90]
-		for d = [28e-3 78e-3];
-			line4_one_beam(fs, d, az);
-		end
+	for az = [0 30 60 90 -30 -60 -90]
+		close all;
+		line4_one_beam(fs, 28e-3, az, 64);
+		close all;
+		line4_one_beam(fs, 78e-3, az, 100);
 	end
 end
 
@@ -56,17 +57,18 @@ bf = bf_design(bf);
 bf_export(bf);
 end
 
-function line4_one_beam(fs, d, az);
+function line4_one_beam(fs, d, az, n);
 
 % Get defaults
 bf = bf_defaults();
 bf.input_channel_select = [ 0  1  2  3]; % Input four channels
 bf.output_channel_mix   = [15 15 15 15]; % Mix filters to channel 2^0, 2^1, 2^2, 2^3
 bf.output_stream_mix    = [ 0  0  0  0]; % Mix filters to stream 0
-bf.num_output_channels = 4;               % Four channels
-bf.num_output_streams = 1;                % One sink stream
-bf.array = 'line';                        % Calculate xyz coordinates for line
-bf.mic_n = 4;                             % with two microphones
+bf.num_output_channels = 4;              % Four channels
+bf.num_output_streams = 1;               % One sink stream
+bf.array = 'line';                       % Calculate xyz coordinates for line
+bf.mic_n = 4;                            % with two microphones
+bf.fir_length = n;                       % Get from paraneters
 
 % From parameters
 bf.fs = fs;
