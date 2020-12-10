@@ -33,6 +33,7 @@ end
 
 if nargin < 4 || isempty(f)
 	eq.f = logspace(log10(10),log10(fs/2), 1000);
+	f_single = [];
 else
 	% Freqz() needs two frequency points or more
 	if length(f) < 2
