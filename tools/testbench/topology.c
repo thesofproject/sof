@@ -614,7 +614,7 @@ int load_process(void *dev, int comp_id, int pipeline_id,
 {
 	struct sof *sof = (struct sof *)dev;
 	struct sof_ipc_comp_process process = {0};
-	struct sof_ipc_comp_process *process_ipc;
+	struct sof_ipc_comp_process *process_ipc = NULL;
 	struct snd_soc_tplg_ctl_hdr *ctl = NULL;
 	struct sof_ipc_comp_ext comp_ext;
 	char *priv_data = NULL;
@@ -632,28 +632,26 @@ int load_process(void *dev, int comp_id, int pipeline_id,
 		printf("%u ", comp_ext.uuid[i]);
 	printf("\n");
 
-	/* Only one control is supported*/
-	if (widget->num_kcontrols > 1) {
-		fprintf(stderr, "error: more than one kcontrol defined\n");
-		return -EINVAL;
-	}
-
 	/* Get control into ctl and priv_data */
-	if (widget->num_kcontrols) {
+	for (i = 0; i < widget->num_kcontrols; i++) {
 		ret = tplg_load_one_control(&ctl, &priv_data, file);
 		if (ret < 0) {
 			fprintf(stderr, "error: failed control load\n");
 			return ret;
 		}
-	}
 
-	/* Merge process and priv_data into process_ipc */
-	ret = process_append_data(&process_ipc, &process, ctl, priv_data);
-	free(ctl);
-	free(priv_data);
-	if (ret) {
-		fprintf(stderr, "error: private data append failed\n");
-		return ret;
+		/* Merge process and priv_data into process_ipc */
+		if (priv_data)
+			ret = process_append_data(&process_ipc, &process, ctl, priv_data);
+		else
+			ret = 0;
+
+		free(ctl);
+		free(priv_data);
+		if (ret) {
+			fprintf(stderr, "error: private data append failed\n");
+			return ret;
+		}
 	}
 
 	/* load process component */
