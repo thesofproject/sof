@@ -99,7 +99,7 @@ end
 function test_beampattern(cfg, config_fn, simcap_fn);
 
 fn = fullfile(cfg.tunepath, config_fn);
-if isfile(fn)
+if exist(fn, 'file')
 	load(fn);
 else
 	fprintf(1, 'Array configuration file %s does not exist.\n', config_fn);
