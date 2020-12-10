@@ -31,6 +31,13 @@
 #include <stddef.h>
 #include <stdint.h>
 
+/* The driver assigns running numbers for control index, bytes control has for this
+ * component index 0. Enum controls receive indices 1 and 2. Make sure the on/off
+ * control is first in topology.
+ */
+#define ENUM_CTRL_ONOFF		0
+#define ENUM_CTRL_DIRECTION	1
+
 static const struct comp_driver comp_tdfb;
 
 /* dd511749-d9fa-455c-b3a7-13585693f1af */
@@ -116,14 +123,36 @@ static void tdfb_free_delaylines(struct tdfb_comp_data *cd)
 		fir[i].delay = NULL;
 }
 
+static int16_t *tdfb_filter_seek(struct sof_tdfb_config *config, int num_filters)
+{
+	struct sof_fir_coef_data *coef_data;
+	int i;
+	int16_t *coefp = ASSUME_ALIGNED(&config->data[0], 2);
+
+	for (i = 0; i < num_filters; i++) {
+		coef_data = (struct sof_fir_coef_data *)coefp;
+		coefp += SOF_FIR_COEF_NHEADER + coef_data->length;
+	}
+
+	return coefp;
+}
+
 static int tdfb_init_coef(struct tdfb_comp_data *cd, int source_nch,
 			  int sink_nch)
 {
 	struct sof_fir_coef_data *coef_data;
 	struct sof_tdfb_config *config = cd->config;
+	int16_t *output_channel_mix_beam_off = NULL;
 	int16_t *coefp;
 	int size_sum = 0;
+	int legacy = 0;
+	int min_delta_idx;
+	int min_delta;
 	int max_ch;
+	int num_filters;
+	int target_az;
+	int delta;
+	int idx;
 	int s;
 	int i;
 
@@ -147,7 +176,103 @@ static int tdfb_init_coef(struct tdfb_comp_data *cd, int source_nch,
 		return -EINVAL;
 	}
 
-	coefp = ASSUME_ALIGNED(&config->data[0], 2);
+	if (config->num_angles > SOF_TDFB_MAX_ANGLES) {
+		comp_cl_err(&comp_tdfb, "tdfb_init_coef(), invalid num_angles %d",
+			    config->num_angles);
+		return -EINVAL;
+	}
+
+	if (config->beam_off_defined > 1) {
+		comp_cl_err(&comp_tdfb, "tdfb_init_coef(), invalid beam_off_defined %d",
+			    config->beam_off_defined);
+		return -EINVAL;
+	}
+
+	if (config->num_mic_locations > SOF_TDFB_MAX_MICROPHONES) {
+		comp_cl_err(&comp_tdfb, "tdfb_init_coef(), invalid num_mic_locations %d",
+			    config->num_mic_locations);
+		return -EINVAL;
+	}
+
+	if (config->num_angles == 0 && config->num_mic_locations == 0) {
+		legacy = 1;
+		num_filters = config->num_filters;
+	} else {
+		num_filters = config->num_filters * (config->num_angles + config->beam_off_defined);
+	}
+
+	/* Skip filter coefficients */
+	coefp = tdfb_filter_seek(config, num_filters);
+
+	/* Get shortcuts to input and output configuration */
+	cd->input_channel_select = coefp;
+	coefp += config->num_filters;
+	cd->output_channel_mix = coefp;
+	coefp += config->num_filters;
+	cd->output_stream_mix = coefp;
+	coefp += config->num_filters;
+
+	if (legacy) {
+		cd->filter_angles = NULL;
+		cd->mic_locations = NULL;
+		if ((char *)coefp != (char *)config + config->size) {
+			comp_cl_err(&comp_tdfb, "tdfb_init_coef(), invalid config size");
+			return -EINVAL;
+		}
+	} else {
+		if (config->beam_off_defined) {
+			output_channel_mix_beam_off = coefp;
+			coefp += config->num_filters;
+		}
+		cd->filter_angles = (struct sof_tdfb_angle *)coefp;
+		cd->mic_locations = (struct sof_tdfb_mic_location *)
+			(&cd->filter_angles[config->num_angles]);
+		if ((char *)&cd->mic_locations[config->num_mic_locations] !=
+		    (char *)config + config->size) {
+			comp_cl_err(&comp_tdfb, "tdfb_init_coef(), invalid config size");
+			return -EINVAL;
+		}
+	}
+
+	/* Skip to requested coefficient set */
+	if (legacy) {
+		idx = 0;
+		comp_cl_info(&comp_tdfb, "tdfb_init_coef(), configure legacy mode");
+	} else {
+		min_delta = 360;
+		min_delta_idx = 0;
+		target_az = cd->az_value * config->angle_enum_mult + config->angle_enum_offs;
+		if (target_az > 180)
+			target_az -= 360;
+
+		for (i = 0; i < config->num_angles; i++) {
+			delta = ABS(target_az - cd->filter_angles[i].azimuth);
+			if (delta < min_delta) {
+				min_delta = delta;
+				min_delta_idx = i;
+			}
+		}
+
+		idx = cd->filter_angles[min_delta_idx].filter_index;
+		if (cd->beam_off)
+			if (config->beam_off_defined) {
+				cd->output_channel_mix = output_channel_mix_beam_off;
+				idx = config->num_filters * config->num_angles;
+				comp_cl_info(&comp_tdfb, "tdfb_init_coef(), configure beam off");
+
+			} else {
+				comp_cl_err(&comp_tdfb, "tdfb_init_coef(), no beam off defined");
+				return -EINVAL;
+			}
+		else
+			comp_cl_info(&comp_tdfb, "tdfb_init_coef(), angle request %d, found %d, idx %d",
+				     target_az, cd->filter_angles[min_delta_idx].azimuth, idx);
+	}
+
+	/* Seek to proper filter for requested angle or beam off configuration */
+	coefp = tdfb_filter_seek(config, idx);
+
+	/* Initialize filter bank */
 	for (i = 0; i < config->num_filters; i++) {
 		/* Get delay line size */
 		coef_data = (struct sof_fir_coef_data *)coefp;
@@ -166,11 +291,6 @@ static int tdfb_init_coef(struct tdfb_comp_data *cd, int source_nch,
 		fir_init_coef(&cd->fir[i], coef_data);
 		coefp += SOF_FIR_COEF_NHEADER + coef_data->length;
 	}
-
-	/* Get shortcuts to input and output configuration */
-	cd->input_channel_select = coefp;
-	cd->output_channel_mix = coefp + config->num_filters;
-	cd->output_stream_mix = coefp + 2 * config->num_filters;
 
 	/* Find max used input channel */
 	max_ch = 0;
@@ -207,9 +327,6 @@ static int tdfb_setup(struct tdfb_comp_data *cd, int source_nch, int sink_nch)
 {
 	int delay_size;
 
-	/* Free existing FIR channels data if it was allocated */
-	tdfb_free_delaylines(cd);
-
 	/* Set coefficients for each channel from coefficient blob */
 	delay_size = tdfb_init_coef(cd, source_nch, sink_nch);
 	if (delay_size < 0)
@@ -221,19 +338,25 @@ static int tdfb_setup(struct tdfb_comp_data *cd, int source_nch, int sink_nch)
 	if (!delay_size)
 		return 0;
 
-	/* Allocate all FIR channels data in a big chunk and clear it */
-	cd->fir_delay = rballoc(0, SOF_MEM_CAPS_RAM, delay_size);
-	if (!cd->fir_delay) {
-		comp_cl_err(&comp_tdfb, "tdfb_setup(), delay allocation failed for size %d",
-			    delay_size);
-		return -ENOMEM;
-	}
+	if (delay_size > cd->fir_delay_size) {
+		/* Free existing FIR channels data if it was allocated */
+		tdfb_free_delaylines(cd);
 
-	memset(cd->fir_delay, 0, delay_size);
-	cd->fir_delay_size = delay_size;
+		/* Allocate all FIR channels data in a big chunk and clear it */
+		cd->fir_delay = rballoc(0, SOF_MEM_CAPS_RAM, delay_size);
+		if (!cd->fir_delay) {
+			comp_cl_err(&comp_tdfb, "tdfb_setup(), delay allocation failed for size %d",
+				    delay_size);
+			return -ENOMEM;
+		}
+
+		memset(cd->fir_delay, 0, delay_size);
+		cd->fir_delay_size = delay_size;
+	}
 
 	/* Assign delay line to all channel filters */
 	tdfb_init_delay(cd);
+
 	return 0;
 }
 
@@ -280,6 +403,12 @@ static struct comp_dev *tdfb_new(const struct comp_driver *drv,
 	cd->tdfb_func = NULL;
 	cd->fir_delay = NULL;
 	cd->fir_delay_size = 0;
+	cd->count = 0;
+
+	/* Defaults for enum controls */
+	cd->az_value = 0;
+	cd->beam_off = 0;
+	cd->update = false;
 
 	/* Handler for configuration data */
 	cd->model_handler = comp_data_blob_handler_new(dev);
@@ -338,6 +467,36 @@ static int tdfb_cmd_get_data(struct comp_dev *dev,
 	return ret;
 }
 
+static int tdfb_cmd_get_value(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata)
+{
+	struct tdfb_comp_data *cd = comp_get_drvdata(dev);
+	int j;
+	int ret = 0;
+
+	switch (cdata->cmd) {
+	case SOF_CTRL_CMD_ENUM:
+		comp_info(dev, "tdfb_cmd_get_data(), SOF_CTRL_CMD_ENUM index=%d", cdata->index);
+		switch (cdata->index) {
+		case ENUM_CTRL_DIRECTION:
+			for (j = 0; j < cdata->num_elems; j++)
+				cdata->chanv[j].value = cd->az_value;
+
+			break;
+		case ENUM_CTRL_ONOFF:
+			for (j = 0; j < cdata->num_elems; j++)
+				cdata->chanv[j].value = cd->beam_off;
+
+			break;
+		}
+		break;
+	default:
+		comp_err(dev, "tdfb_cmd_get_value() error: invalid cdata->cmd");
+		ret = -EINVAL;
+		break;
+	}
+	return ret;
+}
+
 static int tdfb_cmd_set_data(struct comp_dev *dev,
 			     struct sof_ipc_ctrl_data *cdata)
 {
@@ -358,6 +517,39 @@ static int tdfb_cmd_set_data(struct comp_dev *dev,
 	return ret;
 }
 
+static int tdfb_cmd_set_value(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata)
+{
+	struct tdfb_comp_data *cd = comp_get_drvdata(dev);
+	int ret = 0;
+
+	switch (cdata->cmd) {
+		break;
+	case SOF_CTRL_CMD_ENUM:
+		comp_info(dev, "tdfb_cmd_get_data(), SOF_CTRL_CMD_ENUM index=%d", cdata->index);
+		switch (cdata->index) {
+		case ENUM_CTRL_DIRECTION:
+			if (cdata->num_elems) {
+				cd->az_value = cdata->chanv[0].value;
+				cd->update = true;
+			}
+			break;
+		case ENUM_CTRL_ONOFF:
+			if (cdata->num_elems) {
+				cd->beam_off = cdata->chanv[0].value;
+				cd->update = true;
+			}
+			break;
+		}
+		break;
+	default:
+		comp_err(dev, "tdfb_cmd_set_value() error: invalid cdata->cmd");
+		ret = -EINVAL;
+		break;
+	}
+
+	return ret;
+}
+
 /* used to pass standard and bespoke commands (with data) to component */
 static int tdfb_cmd(struct comp_dev *dev, int cmd, void *data,
 		    int max_data_size)
@@ -369,10 +561,20 @@ static int tdfb_cmd(struct comp_dev *dev, int cmd, void *data,
 
 	switch (cmd) {
 	case COMP_CMD_SET_DATA:
+		//comp_info(dev, "tdfb_cmd(): COMP_CMD_SET_DATA");
 		ret = tdfb_cmd_set_data(dev, cdata);
 		break;
 	case COMP_CMD_GET_DATA:
+		//comp_info(dev, "tdfb_cmd(): COMP_CMD_GET_DATA");
 		ret = tdfb_cmd_get_data(dev, cdata, max_data_size);
+		break;
+	case COMP_CMD_SET_VALUE:
+		//comp_info(dev, "tdfb_cmd(): COMP_CMD_SET_VALUE");
+		ret = tdfb_cmd_set_value(dev, cdata);
+		break;
+	case COMP_CMD_GET_VALUE:
+		//comp_info(dev, "tdfb_cmd(): COMP_CMD_GET_VALUE");
+		ret = tdfb_cmd_get_value(dev, cdata);
 		break;
 	default:
 		comp_err(dev, "tdfb_cmd() error: invalid command");
@@ -426,6 +628,16 @@ static int tdfb_copy(struct comp_dev *dev)
 		}
 	}
 
+	/* Handle enum controls */
+	if (cd->update) {
+		cd->update = false;
+		ret = tdfb_setup(cd, sourceb->stream.channels, sinkb->stream.channels);
+		if (ret < 0) {
+			comp_err(dev, "tdfb_copy(), failed FIR setup");
+			return ret;
+		}
+	}
+
 	/* Get source, sink, number of frames etc. to process. */
 	comp_get_copy_limits(sourceb, sinkb, &cl);
 
@@ -442,6 +654,15 @@ static int tdfb_copy(struct comp_dev *dev)
 			     n * cl.source_frame_bytes,
 			     n * cl.sink_frame_bytes);
 	}
+
+	/* Update every 1s the the direction angle */
+	//cd->count++;
+	//if (cd->count > 999) {
+	//	cd->count = 0;
+	//	cd->az_value++;
+	//	if (cd->az_value > 11)
+	//		cd->az_value = 0;
+	//}
 
 	return 0;
 }

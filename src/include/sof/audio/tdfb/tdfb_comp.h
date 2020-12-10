@@ -43,16 +43,24 @@
 
 struct tdfb_comp_data {
 	struct fir_state_32x16 fir[SOF_TDFB_FIR_MAX_COUNT]; /**< FIR state */
+	//struct sof_ipc_comp_event event;
+	//struct ipc_msg *msg;
 	struct comp_data_blob_handler *model_handler;
 	struct sof_tdfb_config *config;	    /**< pointer to setup blob */
+	struct sof_tdfb_angle *filter_angles;
+	struct sof_tdfb_mic_location *mic_locations;
 	int32_t in[TDFB_IN_BUF_LENGTH];	    /**< input samples buffer */
 	int32_t out[TDFB_IN_BUF_LENGTH];    /**< output samples mix buffer */
+	uint32_t az_value;		    /**< beam steer azimuth as in control enum */
 	int32_t *fir_delay;		    /**< pointer to allocated RAM */
 	int16_t *input_channel_select;	    /**< For each FIR define in ch */
 	int16_t *output_channel_mix;	    /**< For each FIR define out ch */
 	int16_t *output_stream_mix;         /**< for each FIR define stream */
+	int count;
 	size_t fir_delay_size;              /**< allocated size */
 	bool config_ready;                  /**< set when fully received */
+	bool beam_off;			    /**< set true if beam is off */
+	bool update;			    /**< set true if control enum has been received */
 	void (*tdfb_func)(struct tdfb_comp_data *cd,
 			  const struct audio_stream *source,
 			  struct audio_stream *sink,

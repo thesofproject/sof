@@ -12,8 +12,10 @@
 
 #define SOF_TDFB_MAX_SIZE 4096		/* Max size for coef data in bytes */
 #define SOF_TDFB_FIR_MAX_LENGTH 256	/* Max length for individual filter */
-#define SOF_TDFB_FIR_MAX_COUNT 16	/* A blob can define max 8 FIR EQs */
+#define SOF_TDFB_FIR_MAX_COUNT 16	/* A blob can define max 16 FIR EQs */
 #define SOF_TDFB_MAX_STREAMS 8		/* Support 1..8 sinks */
+#define SOF_TDFB_MAX_ANGLES 360		/* Up to 1 degree precision for 360 degrees coverage */
+#define SOF_TDFB_MAX_MICROPHONES 16	/* Up to 16 microphone locations */
 
 /*
  * sof_tdfb_config data[]
@@ -31,14 +33,36 @@
 struct sof_tdfb_config {
 	uint32_t size;			/* Size of entire struct */
 	uint16_t num_filters;		/* Total number of filters */
-	uint16_t num_output_channels;    /* Total number of output channels */
+	uint16_t num_output_channels;   /* Total number of output channels */
 	uint16_t num_output_streams;	/* one source, N output sinks */
 	uint16_t reserved16;		/* To keep data 32 bit aligned */
 
+	/* Since ABI version 3.X.1 */
+	uint16_t num_mic_locations;	/* Number of microphones locations entries */
+	uint16_t num_angles;		/* Number of steer angles in data, not counting beam off */
+	uint16_t beam_off_defined;	/* Set if a beam off filters configuration is present */
+	uint16_t track_doa;		/* Track direction of arrival angle */
+	int16_t angle_enum_mult;	/* Multiply enum value (0..15) to get angle in degrees */
+	int16_t angle_enum_offs;	/* After multiplication add this degrees offset to angle */
+
 	/* reserved */
-	uint32_t reserved32[4];		/* For future */
+	uint32_t reserved32[1];		/* For future */
 
 	int16_t data[];
+} __attribute__((packed));
+
+struct sof_tdfb_angle {
+	int16_t azimuth;
+	int16_t elevation;
+	int16_t filter_index;
+	int16_t reserved;
+} __attribute__((packed));
+
+struct sof_tdfb_mic_location {
+	int16_t x;
+	int16_t y;
+	int16_t z;
+	int16_t reserved;
 } __attribute__((packed));
 
 #endif /* __USER_TDFB_H__ */
