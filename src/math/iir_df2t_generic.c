@@ -65,10 +65,10 @@ int32_t iir_df2t(struct iir_state_df2t *iir, int32_t x)
 		for (i = 0; i < iir->biquads_in_series; i++) {
 			/* Compute output: Delay is Q3.61
 			 * Q2.30 x Q1.31 -> Q3.61
-			 * Shift Q3.61 to Q3.31 with rounding
+			 * Shift Q3.61 to Q3.31 with rounding, saturate to Q1.31
 			 */
-			acc = ((int64_t)iir->coef[c + 4]) * in + iir->delay[d];
-			tmp = (int32_t)Q_SHIFT_RND(acc, 61, 31);
+			acc = ((int64_t)iir->coef[c + 4]) * in + iir->delay[d]; /* Coef b0 */
+			tmp = (int32_t)sat_int32(Q_SHIFT_RND(acc, 61, 31));
 
 			/* Compute first delay */
 			acc = iir->delay[d + 1];
