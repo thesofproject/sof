@@ -576,6 +576,21 @@ int load_asrc(void *dev, int comp_id, int pipeline_id,
 	return ret;
 }
 
+static int process_init_data(struct sof_ipc_comp_process **process_ipc,
+			     struct sof_ipc_comp_process *process)
+{
+	*process_ipc = malloc(sizeof(struct sof_ipc_comp_process));
+	if (!(*process_ipc)) {
+		fprintf(stderr, "error: Failed to allocate IPC\n");
+		return -errno;
+	}
+
+	/* Copy header */
+	memcpy(*process_ipc, process, sizeof(struct sof_ipc_comp_process));
+	(*process_ipc)->size = 0;
+	return 0;
+}
+
 static int process_append_data(struct sof_ipc_comp_process **process_ipc,
 			       struct sof_ipc_comp_process *process,
 			       struct snd_soc_tplg_ctl_hdr *ctl,
@@ -584,6 +599,11 @@ static int process_append_data(struct sof_ipc_comp_process **process_ipc,
 	int ipc_size;
 	int size = 0;
 	struct snd_soc_tplg_bytes_control *bytes_ctl;
+
+	if (*process_ipc) {
+		fprintf(stderr, "error: Only single private data append to IPC is supported\n");
+		return -EINVAL;
+	}
 
 	/* Size is process IPC plus private data minus ABI header */
 	ipc_size = sizeof(struct sof_ipc_comp_process);
@@ -614,7 +634,7 @@ int load_process(void *dev, int comp_id, int pipeline_id,
 {
 	struct sof *sof = (struct sof *)dev;
 	struct sof_ipc_comp_process process = {0};
-	struct sof_ipc_comp_process *process_ipc;
+	struct sof_ipc_comp_process *process_ipc = NULL;
 	struct snd_soc_tplg_ctl_hdr *ctl = NULL;
 	struct sof_ipc_comp_ext comp_ext;
 	char *priv_data = NULL;
@@ -632,28 +652,32 @@ int load_process(void *dev, int comp_id, int pipeline_id,
 		printf("%u ", comp_ext.uuid[i]);
 	printf("\n");
 
-	/* Only one control is supported*/
-	if (widget->num_kcontrols > 1) {
-		fprintf(stderr, "error: more than one kcontrol defined\n");
-		return -EINVAL;
-	}
-
 	/* Get control into ctl and priv_data */
-	if (widget->num_kcontrols) {
+	for (i = 0; i < widget->num_kcontrols; i++) {
 		ret = tplg_load_one_control(&ctl, &priv_data, file);
 		if (ret < 0) {
 			fprintf(stderr, "error: failed control load\n");
 			return ret;
 		}
+
+		/* Merge process and priv_data into process_ipc */
+		if (priv_data)
+			ret = process_append_data(&process_ipc, &process, ctl, priv_data);
+
+		free(ctl);
+		free(priv_data);
+		if (ret) {
+			fprintf(stderr, "error: private data append failed\n");
+			free(process_ipc);
+			return ret;
+		}
 	}
 
-	/* Merge process and priv_data into process_ipc */
-	ret = process_append_data(&process_ipc, &process, ctl, priv_data);
-	free(ctl);
-	free(priv_data);
-	if (ret) {
-		fprintf(stderr, "error: private data append failed\n");
-		return ret;
+	/* Default IPC without appended data */
+	if (!process_ipc) {
+		ret = process_init_data(&process_ipc, &process);
+		if (ret)
+			return ret;
 	}
 
 	/* load process component */
