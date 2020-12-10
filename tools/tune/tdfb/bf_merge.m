@@ -12,32 +12,49 @@ if nargin > 2
 	error('Current implementation can merge only two beams configuration');
 end
 
-% Check that filter lengths match
+% Check that filter lengths match, the size values are [filter length, filters count, angles count]
 s1 = size(bf1.w);
 n1 = s1(2);
 s2 = size(bf2.w);
 n2 = s2(2);
 if s1(1) ~= s2(1)
-	error();
+	error('Mismatch in filteres length');
+end
+if length(s1) == 3 && length(s2) == 3
+	if s1(3) ~= s2(3)
+		error('Mismatch in angles count');
+	end
 end
 
 % Get data from bf1, then update fields impacted by merge
 bfm = bf1;
 
 % Merge coefficients
-bfm.w = zeros(s1(1), n1 + n2);
-for i = 1:n1
-	bfm.w(:,i) = bf1.w(:,i);
-end
-for i = 1:n2
-	bfm.w(:,n1 + i) = bf2.w(:,i);
+if length(s1) == 3
+	bfm.w = zeros(s1(1), n1 + n2, s1(3));
+	for i = 1:n1
+		bfm.w(:,i,:) = bf1.w(:,i,:);
+	end
+	for i = 1:n2
+		bfm.w(:,n1 + i,:) = bf2.w(:,i,:);
+	end
+else
+	bfm.w = zeros(s1(1), n1 + n2);
+	for i = 1:n1
+		bfm.w(:,i) = bf1.w(:,i);
+	end
+	for i = 1:n2
+		bfm.w(:,n1 + i) = bf2.w(:,i);
+	end
 end
 
 % Merge filter inputs specification
 bfm.input_channel_select = [bf1.input_channel_select bf2.input_channel_select];
 
-% Merge filter outputs specification
+% Merge filter outputs specificatio
 bfm.output_channel_mix = [bf1.output_channel_mix bf2.output_channel_mix];
+bfm.output_channel_mix_beam_off = [bf1.output_channel_mix_beam_off bf2.output_channel_mix_beam_off];
+
 if isempty(bf1.output_stream_mix)
 	bf1.output_stream_mix = zeros(1, bf1.num_filters);
 end

@@ -73,13 +73,27 @@ end
 nh16 = 14;
 h16 = zeros(1, nh16, 'int16');
 nc16 = length(bf.all_filters);
-nm16 = 3 * bf.num_filters;
-nb16 = ceil((nh16 + nc16 + nm16)/2)*2;
+na16 = 4 * bf.num_angles;
+nl16 = 4 * bf.mic_n;
+if bf.beam_off_defined
+	nm16 = 4 * bf.num_filters;
+else
+	nm16 = 3 * bf.num_filters;
+end
+
+nb16 = ceil((nh16 + nc16 + nm16 + na16 + nl16)/2)*2;
 h16(1) = 2 * nb16;
 h16(2) = 0;
 h16(3) = bf.num_filters;
 h16(4) = bf.num_output_channels;
 h16(5) = bf.num_output_streams;
+h16(6) = 0;
+h16(7) = bf.mic_n;
+h16(8) = bf.num_angles;
+h16(9) = bf.beam_off_defined;
+h16(10) = bf.track_doa;
+h16(11) = bf.angle_enum_mult;
+h16(12) = bf.angle_enum_offs;
 
 %% Merge header and coefficients, make even number of int16 to make it
 %  multiple of int32
@@ -97,6 +111,27 @@ blob16(i1:i2) = int16(bf.output_channel_mix);
 i1 = i2 + 1;
 i2 = i1 + bf.num_filters - 1;
 blob16(i1:i2) = int16(bf.output_stream_mix);
+
+if (bf.beam_off_defined)
+	i1 = i2 + 1;
+	i2 = i1 + bf.num_filters - 1;
+	blob16(i1:i2) = int16(bf.output_channel_mix_beam_off);
+end
+
+for i = 1:bf.num_angles
+	i1 = i2 + 1;
+	i2 = i1 + 4 - 1;
+	blob16(i1:i2) = int16([ bf.steer_az(i) bf.steer_el(i) (i - 1)*bf.num_filters 0 ]);
+end
+
+% Coordinates are Q4.12 m
+scale=2^12;
+for i = 1:bf.mic_n
+	i1 = i2 + 1;
+	i2 = i1 + 4 - 1;
+	loc = [ round(bf.mic_x(i)*scale) round(bf.mic_y(i)*scale) round(bf.mic_z(i)*scale) 0 ];
+	blob16(i1:i2) = int16(loc);
+end
 
 %% Pack as 8 bits
 nbytes_data = nb16 * 2;
