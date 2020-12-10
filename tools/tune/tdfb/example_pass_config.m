@@ -19,9 +19,11 @@ bf.output_channel_mix   = [1 2]; % Filter1 -> ch0, filter2 -> ch1
 bf.output_stream_mix    = [0 0]; % Mix both filters to stream 0
 bf.num_output_channels  = 2;     % Two channels
 bf.num_output_streams   = 1;     % One sink stream
+bf.beam_off_defined     = 0;     % No need for separate bypass definition
+bf.num_angles           = 0;     % No beams defined
+bf.num_filters          = 2;     % Two filters
 
 % Minimal manual design fields for successful export
-bf.num_filters = 2;
 bf.w = [1 0 0 0; 1 0 0 0]'; % Two FIR filters with first tap set to one
 
 % Files
