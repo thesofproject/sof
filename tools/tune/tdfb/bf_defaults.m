@@ -37,8 +37,17 @@ bf.random_lev = -20;
 bf.num_output_channels = 1;
 bf.num_output_streams = 1;
 bf.input_channel_select = [];
+bf.output_channel_mix_beam_off = [];
 bf.output_channel_mix = [];
 bf.output_stream_mix = [];
 bf.num_filters = [];
+bf.angle_enum_mult = 30;
+bf.angle_enum_offs = 0;
+bf.track_doa = 0;
+bf.beam_off_defined = 1;
+bf.mic_x = [];
+bf.mic_y = [];
+bf.mic_z = [];
+bf.mic_n = 0;
 
 end

@@ -18,7 +18,7 @@ function example_two_beams()
 % Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 
 for fs = [16e3 48e3]
-	for az = [10 25 90]
+	for az = [30 60 90]
 		%% Close all plots to avoid issues with large number of windows
 		close all;
 
@@ -26,6 +26,14 @@ for fs = [16e3 48e3]
 		tplg_fn = sprintf('coef_line2_50mm_pm%ddeg_%dkhz.m4', az, fs/1e3);
 		sofctl_fn = sprintf('coef_line2_50mm_pm%ddeg_%dkhz.txt', az, fs/1e3);
 		d = 50e-3;  % 50 mm spacing
+		a1 = az;   % Azimuth +az deg
+		a2 = -az;  % Azimuth -az deg
+		line2_two_beams(fs, d, a1, a2, tplg_fn, sofctl_fn);
+
+		%% 2 mic 68 mm array
+		tplg_fn = sprintf('coef_line2_68mm_pm%ddeg_%dkhz.m4', az, fs/1e3);
+		sofctl_fn = sprintf('coef_line2_68mm_pm%ddeg_%dkhz.txt', az, fs/1e3);
+		d = 68e-3;  % 50 mm spacing
 		a1 = az;   % Azimuth +az deg
 		a2 = -az;  % Azimuth -az deg
 		line2_two_beams(fs, d, a1, a2, tplg_fn, sofctl_fn);
@@ -58,19 +66,21 @@ bf2 = bf1;
 
 % Design beamformer 1 (left)
 bf1.steer_az = a1;
-bf1.input_channel_select = [0 1];  % Input two channels
-bf1.output_channel_mix   = [1 1];  % Mix both filters to channel 2^0
-bf1.output_stream_mix    = [0 0];  % Mix both filters to stream 0
-bf1.fn = 10;                       % Figs 10....
+bf1.input_channel_select        = [0 1];  % Input two channels
+bf1.output_channel_mix          = [1 1];  % Mix both filters to channel 2^0
+bf1.output_channel_mix_beam_off = [1 2];  % Filter 1 to channel 2^0, etc.
+bf1.output_stream_mix           = [0 0];  % Mix both filters to stream 0
+bf1.fn = 10;                              % Figs 10....
 bf1 = bf_filenames_helper(bf1);
 bf1 = bf_design(bf1);
 
 % Design beamformer 2 (right)
 bf2.steer_az = a2;
-bf2.input_channel_select = [0 1];  % Input two channels
-bf2.output_channel_mix   = [2 2];  % Mix both filters to channel 2^1
-bf2.output_stream_mix    = [0 0];  % Mix both filters to stream 0
-bf2.fn = 20;                       % Figs 20....
+bf2.input_channel_select        = [0 1];  % Input two channels
+bf2.output_channel_mix          = [2 2];  % Mix both filters to channel 2^1
+bf2.output_channel_mix_beam_off = [0 0];  % Filters omitted
+bf2.output_stream_mix           = [0 0];  % Mix both filters to stream 0
+bf2.fn = 20;                              % Figs 20....
 bf2 = bf_filenames_helper(bf2);
 bf2 = bf_design(bf2);
 
@@ -100,19 +110,21 @@ bf2 = bf1;
 
 % Design beamformer 1 (left)
 bf1.steer_az = a1;
-bf1.input_channel_select = [0 1 2 3];  % Input four channels
-bf1.output_channel_mix   = [5 5 5 5];  % Mix filters to channel 2^0 and 2^2
-bf1.output_stream_mix    = [0 0 0 0];  % Mix filters to stream 0
-bf1.fn = 10;                           % Figs 10....
+bf1.input_channel_select        = [0 1 2 3];  % Input four channels
+bf1.output_channel_mix          = [5 5 5 5];  % Mix filters to channel 2^0
+bf1.output_channel_mix_beam_off = [1 2 4 8];  % Filter 1 to channel 2^0 etc.
+bf1.output_stream_mix           = [0 0 0 0];  % Mix filters to stream 0
+bf1.fn = 10;                                  % Figs 10....
 bf1 = bf_filenames_helper(bf1);
 bf1 = bf_design(bf1);
 
 % Design beamformer 2 (right)
 bf2.steer_az = a2;
-bf2.input_channel_select = [ 0  1  2  3];  % Input two channels
-bf2.output_channel_mix   = [10 10 10 10];  % Mix filters to channel 2^1 and 2^3
-bf2.output_stream_mix    = [ 0  0  0  0];  % Mix filters to stream 0
-bf2.fn = 20;                               % Figs 20....
+bf2.input_channel_select        = [ 0  1  2  3];  % Input two channels
+bf2.output_channel_mix          = [10 10 10 10];  % Mix filters to channel 2^1 and 2^3
+bf2.output_channel_mix_beam_off = [ 0  0  0  0];  % Filters omitted
+bf2.output_stream_mix           = [ 0  0  0  0];  % Mix filters to stream 0
+bf2.fn = 20;                                      % Figs 20....
 bf2 = bf_filenames_helper(bf2);
 bf2 = bf_design(bf2);
 
