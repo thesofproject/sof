@@ -39,20 +39,40 @@
 #define TDFB_IN_BUF_LENGTH (2 * PLATFORM_MAX_CHANNELS)
 #define TDFB_OUT_BUF_LENGTH (2 * PLATFORM_MAX_CHANNELS)
 
+/* When set to one only one IPC is sent to host. There is not other requests
+ * triggered. If set to zero the IPC sent will be empty and the driver will
+ * issue an actual control get. In simple  case with known # of control channels
+ * including is more efficient.
+ */
+#define TDFB_ADD_DIRECTION_TO_GET_CMD 1
+
+/* Allocate size is header plus single control value */
+#define TDFB_GET_CTRL_DATA_SIZE (sizeof(struct sof_ipc_ctrl_data) + \
+	sizeof(struct sof_ipc_ctrl_value_chan))
+
 /* TDFB component private data */
 
 struct tdfb_comp_data {
 	struct fir_state_32x16 fir[SOF_TDFB_FIR_MAX_COUNT]; /**< FIR state */
 	struct comp_data_blob_handler *model_handler;
 	struct sof_tdfb_config *config;	    /**< pointer to setup blob */
+	struct sof_tdfb_angle *filter_angles;
+	struct sof_tdfb_mic_location *mic_locations;
+	struct sof_ipc_ctrl_data *ctrl_data;
+	struct ipc_msg *msg;
 	int32_t in[TDFB_IN_BUF_LENGTH];	    /**< input samples buffer */
 	int32_t out[TDFB_IN_BUF_LENGTH];    /**< output samples mix buffer */
 	int32_t *fir_delay;		    /**< pointer to allocated RAM */
 	int16_t *input_channel_select;	    /**< For each FIR define in ch */
 	int16_t *output_channel_mix;	    /**< For each FIR define out ch */
 	int16_t *output_stream_mix;         /**< for each FIR define stream */
+	int16_t az_value;		    /**< beam steer azimuth as in control enum */
+	int16_t az_value_estimate;	    /**< beam steer azimuth as in control enum */
 	size_t fir_delay_size;              /**< allocated size */
-	bool config_ready;                  /**< set when fully received */
+	int direction_updates:1;	    /**< set true if direction angle control is updated */
+	int direction_change:1;		    /**< set if direction value has significant change */
+	int beam_on:1;			    /**< set true if beam is off */
+	int update:1;			    /**< set true if control enum has been received */
 	void (*tdfb_func)(struct tdfb_comp_data *cd,
 			  const struct audio_stream *source,
 			  struct audio_stream *sink,
