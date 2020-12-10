@@ -1,4 +1,4 @@
-% bfm = bf_merge(bf1, bf2, bf3, bf4)
+% bfm = bf_merge(bf1, bf2)
 
 % SPDX-License-Identifier: BSD-3-Clause
 %
@@ -6,7 +6,7 @@
 %
 % Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 
-function bfm = bf_merge(bf1, bf2, bf3, bf4)
+function bfm = bf_merge(bf1, bf2)
 
 if nargin > 2
 	error('Current implementation can merge only two beams configuration');

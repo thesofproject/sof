@@ -28,14 +28,6 @@ if length(find(bf.steer_el > 90)) || length(find(bf.steer_el < -90))
 	error('The steer_el angles need to be -90 to +90 degrees');
 end
 
-if isempty(bf.num_filters)
-	if isempty(bf.input_channel_select)
-		bf.num_filters = bf.mic_n;
-	else
-		bf.num_filters = length(bf.input_channel_select);
-	end
-end
-
 switch lower(bf.array)
 	case 'line'
 		bf = bf_array_line(bf);
@@ -49,6 +41,14 @@ switch lower(bf.array)
 		bf = bf_array_xyz(bf);
 	otherwise
 		error('Invalid array type')
+end
+
+if isempty(bf.num_filters)
+	if isempty(bf.input_channel_select)
+		bf.num_filters = bf.mic_n;
+	else
+		bf.num_filters = length(bf.input_channel_select);
+	end
 end
 
 bf = bf_array_rot(bf);
@@ -195,11 +195,6 @@ for i=1:bf.num_filters
 	else
 		win(-win_shift:end) = win0(1:end+win_shift+1);
 	end
-	bf.w(:,i) = w_tmp(start:start + bf.fir_length - 1, i) .* win;
-end
-
-start = round(mean(idx_max) - bf.fir_length/2);
-for i=1:bf.num_filters
 	bf.w(:,i) = w_tmp(start:start + bf.fir_length - 1, i) .* win;
 end
 
