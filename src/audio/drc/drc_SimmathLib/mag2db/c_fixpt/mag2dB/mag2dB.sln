@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.30717.126
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "mag2dB", "mag2dB.vcxproj", "{9E4E2B37-B468-4858-959C-41C122180ED7}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+		Debug|x86 = Debug|x86
+		Release|x64 = Release|x64
+		Release|x86 = Release|x86
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{9E4E2B37-B468-4858-959C-41C122180ED7}.Debug|x64.ActiveCfg = Debug|x64
+		{9E4E2B37-B468-4858-959C-41C122180ED7}.Debug|x64.Build.0 = Debug|x64
+		{9E4E2B37-B468-4858-959C-41C122180ED7}.Debug|x86.ActiveCfg = Debug|Win32
+		{9E4E2B37-B468-4858-959C-41C122180ED7}.Debug|x86.Build.0 = Debug|Win32
+		{9E4E2B37-B468-4858-959C-41C122180ED7}.Release|x64.ActiveCfg = Release|x64
+		{9E4E2B37-B468-4858-959C-41C122180ED7}.Release|x64.Build.0 = Release|x64
+		{9E4E2B37-B468-4858-959C-41C122180ED7}.Release|x86.ActiveCfg = Release|Win32
+		{9E4E2B37-B468-4858-959C-41C122180ED7}.Release|x86.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {9AEEAA09-B3B6-4AA5-9A4A-69680FFA3748}
+	EndGlobalSection
+EndGlobal
