@@ -43,9 +43,7 @@ define(`W_MUXDEMUX',
 `SectionVendorTuples."'N_MUXDEMUX($1)`_tuples_uuid" {'
 `	tokens "sof_comp_tokens"'
 `	tuples."uuid" {'
-ifelse(`$2', `0',
-`		SOF_TKN_COMP_UUID'	STR(mux_uuid),
-`		SOF_TKN_COMP_UUID'	STR(demux_uuid))
+`ifelse(`$2', `0',`		SOF_TKN_COMP_UUID'	STR(mux_uuid),`		SOF_TKN_COMP_UUID'	STR(demux_uuid))'
 `	}'
 `}'
 `SectionData."'N_MUXDEMUX($1)`_data_uuid" {'
