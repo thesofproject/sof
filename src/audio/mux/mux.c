@@ -610,47 +610,115 @@ static int mux_copy(struct comp_dev *dev)
 
 static int mux_reset(struct comp_dev *dev)
 {
+	int dir = dev->pipeline->source_comp->direction;
+	struct list_item *blist;
+	struct comp_buffer *source;
+
 	comp_info(dev, "mux_reset()");
 
-	return comp_set_state(dev, COMP_TRIGGER_RESET);
+	if (dir == SOF_IPC_STREAM_PLAYBACK) {
+		list_for_item(blist, &dev->bsource_list) {
+			source = container_of(blist, struct comp_buffer,
+					      sink_list);
+			/* only mux the sources with the same state with mux */
+			if (source->source->state > COMP_STATE_READY)
+				/* should not reset the downstream components */
+				return PPL_STATUS_PATH_STOP;
+		}
+	}
+
+	comp_set_state(dev, COMP_TRIGGER_RESET);
+	return 0;
 }
 
 static int mux_prepare(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
+	struct list_item *blist;
+	struct comp_buffer *source;
+	int downstream = 0;
 	int ret;
 
 	comp_info(dev, "mux_prepare()");
 
-	if (dev->comp.type == SOF_COMP_MUX)
-		cd->mux = mux_get_processing_function(dev);
-	else
-		cd->demux = demux_get_processing_function(dev);
+	if (dev->state != COMP_STATE_ACTIVE) {
+		if (dev->comp.type == SOF_COMP_MUX)
+			cd->mux = mux_get_processing_function(dev);
+		else
+			cd->demux = demux_get_processing_function(dev);
 
-	if (!cd->mux && !cd->demux) {
-		comp_err(dev, "mux_prepare(): Invalid configuration, couldn't find suitable processing function.");
-		return -EINVAL;
+		if (!cd->mux && !cd->demux) {
+			comp_err(dev, "mux_prepare(): Invalid configuration, couldn't find suitable processing function.");
+			return -EINVAL;
+		}
+
+		ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
+		if (ret) {
+			comp_info(dev, "mux_prepare() comp_set_state() returned non-zero.");
+			return ret;
+		}
 	}
 
-	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
-	if (ret) {
-		comp_info(dev, "mux_prepare() comp_set_state() returned non-zero.");
-		return ret;
+	/* check each mux source state */
+	list_for_item(blist, &dev->bsource_list) {
+		source = container_of(blist, struct comp_buffer, sink_list);
+
+		/* only prepare downstream if we have no active sources */
+		if (source->source->state == COMP_STATE_PAUSED ||
+		    source->source->state == COMP_STATE_ACTIVE) {
+			downstream = 1;
+		}
 	}
 
-	return 0;
+	/* prepare downstream */
+	return downstream;
+}
+
+static int mux_source_status_count(struct comp_dev *mux, uint32_t status)
+{
+	struct comp_buffer *source;
+	struct list_item *blist;
+	int count = 0;
+
+	/* count source with state == status */
+	list_for_item(blist, &mux->bsource_list) {
+		source = container_of(blist, struct comp_buffer, sink_list);
+		if (source->source->state == status)
+			count++;
+	}
+
+	return count;
 }
 
 static int mux_trigger(struct comp_dev *dev, int cmd)
 {
+	int dir = dev->pipeline->source_comp->direction;
 	int ret = 0;
 
 	comp_info(dev, "mux_trigger(), command = %u", cmd);
 
 	ret = comp_set_state(dev, cmd);
+	if (ret < 0)
+		return ret;
 
 	if (ret == COMP_STATUS_STATE_ALREADY_SET)
 		ret = PPL_STATUS_PATH_STOP;
+
+	/* nothing else to check for capture streams */
+	if (dir == SOF_IPC_STREAM_CAPTURE)
+		return ret;
+
+	/* don't stop mux if at least one source is active */
+	if (mux_source_status_count(dev, COMP_STATE_ACTIVE) &&
+	    (cmd == COMP_TRIGGER_PAUSE || cmd == COMP_TRIGGER_STOP)) {
+		dev->state = COMP_STATE_ACTIVE;
+		ret = PPL_STATUS_PATH_STOP;
+	/* don't stop mux if at least one source is paused */
+	} else if (mux_source_status_count(dev, COMP_STATE_PAUSED) &&
+		   cmd == COMP_TRIGGER_STOP) {
+		dev->state = COMP_STATE_PAUSED;
+		ret = PPL_STATUS_PATH_STOP;
+	}
 
 	return ret;
 }
