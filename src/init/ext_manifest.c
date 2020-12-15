@@ -85,10 +85,14 @@ const struct ext_man_dbg_abi ext_man_dbg_info
 	},
 };
 
+/* increment this value after adding any element to ext_man_config dictionary */
+#define CONFIG_ELEM_CNT (EXT_MAN_CONFIG_LAST_ELEM - 1)
+
 const struct ext_man_config_data ext_man_config
 	__aligned(EXT_MAN_ALIGN) __section(".fw_metadata") = {
 	.hdr.type = EXT_MAN_ELEM_CONFIG_DATA,
-	.hdr.elem_size = ALIGN_UP(sizeof(struct ext_man_config_data),
+	.hdr.elem_size = ALIGN_UP(sizeof(struct ext_man_config_data) +
+				  sizeof(struct config_elem) * CONFIG_ELEM_CNT,
 				  EXT_MAN_ALIGN),
 	.elems = {
 		{EXT_MAN_CONFIG_IPC_MSG_SIZE, SOF_IPC_MSG_MAX_SIZE},
