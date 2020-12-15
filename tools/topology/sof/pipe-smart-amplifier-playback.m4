@@ -92,10 +92,11 @@ C_CONTROLBYTES_VOLATILE_READONLY(Smart_amp Model_Get_params, PIPELINE_ID,
 
 # Host "Low latency Playback" PCM
 # with 2 sink and 0 source periods
-W_PCM_PLAYBACK(PCM_ID, Smart Amplifier Playback, 2, 0)
+W_PCM_PLAYBACK(PCM_ID, Smart Amplifier Playback, 2, 0, SCHEDULE_CORE)
 
 # Mux 0 has 2 sink and source periods.
-W_SMART_AMP(0, SMART_UUID, PIPELINE_FORMAT, 2, 2, LIST(`             ', "Smart_amp Config", "Smart_amp Model",
+W_SMART_AMP(0, SMART_UUID, PIPELINE_FORMAT, 2, 2, SCHEDULE_CORE,
+	    LIST(`             ', "Smart_amp Config", "Smart_amp Model",
 	    ifelse(SOF_ABI_VERSION_3_17_OR_GRT, `1', "Smart_amp Model_Get_params")))
 
 # Low Latency Buffers

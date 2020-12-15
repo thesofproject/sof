@@ -19,6 +19,10 @@ DEBUG_START
 # define the default macros.
 # define them in your specific platform .m4 if needed.
 
+# define(`SMART_AMP_CORE', 1) define the DSP core that the DSM pipeline will be run on, if not done yet
+ifdef(`SMART_AMP_CORE',`',`define(`SMART_AMP_CORE', 0)')
+
+dnl define smart amplifier ALH index
 
 ifelse(SDW, `1',
 `
@@ -119,7 +123,7 @@ dnl     time_domain, sched_comp)
 # Set 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-smart-amplifier-playback.m4,
 	SMART_PB_PPL_ID, SMART_PCM_ID, SMART_PB_CH_NUM, s32le,
-	1000, 0, 0,
+	1000, 0, SMART_AMP_CORE,
 	48000, 48000, 48000)
 
 # Low Latency capture pipeline 2 on PCM 0 using max 2 channels of s32le.
@@ -134,7 +138,7 @@ PIPELINE_PCM_ADD(sof/pipe-amp-ref-capture.m4,
 `
 PIPELINE_PCM_ADD(sof/pipe-amp-ref-capture.m4,
 	SMART_REF_PPL_ID, SMART_PCM_ID, SMART_REF_CH_NUM, s32le,
-	1000, 0, 0,
+	1000, 0, SMART_AMP_CORE,
 	48000, 48000, 48000)
 ')
 
@@ -169,14 +173,14 @@ DAI_ADD(sof/pipe-dai-capture.m4,
 DAI_ADD(sof/pipe-dai-playback.m4,
 	SMART_PB_PPL_ID, SSP, SMART_SSP_INDEX, SMART_SSP_NAME,
 	SMART_PIPE_SOURCE, 2, s32le,
-	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
+	1000, 0, SMART_AMP_CORE, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # capture DAI is SSP(SSP_INDEX) using 2 periods
 # Buffers use s32le format, 1000us deadline on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
 	SMART_REF_PPL_ID, SSP, SMART_SSP_INDEX, SMART_SSP_NAME,
 	SMART_PIPE_SINK, 2, s32le,
-	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
+	1000, 0, SMART_AMP_CORE, SCHEDULE_TIME_DOMAIN_TIMER)
 ')
 
 # Connect demux to smart_amp

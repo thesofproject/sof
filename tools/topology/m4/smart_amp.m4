@@ -5,7 +5,7 @@ dnl Define macro for smart_amp(Smart Amplifier) widget
 dnl SMART_AMP name)
 define(`N_SMART_AMP', `SMART_AMP'PIPELINE_ID`.'$1)
 
-dnl W_SMART_AMP(name, uuid, format, periods_sink, periods_source, kcontrols_list)
+dnl W_SMART_AMP(name, uuid, format, periods_sink, periods_source, core, kcontrols_list)
 define(`W_SMART_AMP',
 `SectionVendorTuples."'N_SMART_AMP($1)`_tuples_uuid" {'
 `	tokens "sof_comp_tokens"'
@@ -21,6 +21,7 @@ define(`W_SMART_AMP',
 `	tuples."word" {'
 `		SOF_TKN_COMP_PERIOD_SINK_COUNT'		STR($4)
 `		SOF_TKN_COMP_PERIOD_SOURCE_COUNT'	STR($5)
+`               SOF_TKN_COMP_CORE_ID'                   STR($6)
 `	}'
 `}'
 `SectionData."'N_SMART_AMP($1)`_data_w" {'
@@ -52,7 +53,7 @@ define(`W_SMART_AMP',
 `		"'N_SMART_AMP($1)`_data_str"'
 `	]'
 `	bytes ['
-		$6
+		$7
 `	]'
 `}')
 

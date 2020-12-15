@@ -74,7 +74,7 @@ C_CONTROLBYTES(DEMUX, PIPELINE_ID,
 
 # Host "Echo Reference Capture" PCM
 # with 0 sink and 2 source periods
-W_PCM_CAPTURE(PCM_ID, Echo Reference Capture, 0, 2)
+W_PCM_CAPTURE(PCM_ID, Echo Reference Capture, 0, 2, SCHEDULE_CORE)
 
 # Mux 0 has 2 sink and source periods.
 W_MUXDEMUX(0, 1, PIPELINE_FORMAT, 2, 2, SCHEDULE_CORE, LIST(`         ', "DEMUX"))
