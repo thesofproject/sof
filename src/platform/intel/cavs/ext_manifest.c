@@ -16,9 +16,7 @@ const struct ext_man_cavs_config_data ext_man_cavs_config
 	.hdr.elem_size = ALIGN_UP(sizeof(struct ext_man_cavs_config_data),
 				  EXT_MAN_ALIGN),
 	.elems = {
-#if CONFIG_CAVS_LPRO_ONLY
-		{EXT_MAN_CAVS_CONFIG_LPRO,  CONFIG_CAVS_LPRO_ONLY},
-#endif
+		{EXT_MAN_CAVS_CONFIG_LPRO,  IS_ENABLED(CONFIG_CAVS_LPRO_ONLY)},
 		{EXT_MAN_CAVS_CONFIG_OUTBOX_SIZE, SRAM_OUTBOX_SIZE},
 		{EXT_MAN_CAVS_CONFIG_INBOX_SIZE, SRAM_INBOX_SIZE},
 	},
