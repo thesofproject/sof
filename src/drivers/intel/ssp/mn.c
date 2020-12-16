@@ -166,6 +166,8 @@ static inline int check_current_mclk_source(uint32_t mclk_rate)
 	struct mn *mn = mn_get();
 	int ret = 0;
 
+	tr_info(&mn_tr, "MCLK %d, source = %d",	mclk_rate, mn->mclk_source_clock);
+
 	if (ssp_freq[mn->mclk_source_clock].freq % mclk_rate != 0) {
 		tr_err(&mn_tr, "MCLK %d, no valid configuration for already selected source = %d",
 		       mclk_rate, mn->mclk_source_clock);
@@ -187,6 +189,7 @@ static inline int set_mclk_divider(uint16_t mclk_id, uint32_t mdivr_val)
 {
 	uint32_t mdivr;
 
+	tr_info(&mn_tr, "mclk_id %d mdivr_val %d", mclk_id, mdivr_val);
 	switch (mdivr_val) {
 	case 1:
 		mdivr = 0x00000fff; /* bypass divider for MCLK */
@@ -233,6 +236,9 @@ int mn_set_mclk(uint16_t mclk_id, uint32_t mclk_rate)
 
 	mn->mclk_sources_used[mclk_id] = true;
 
+	tr_info(&mn_tr, "mclk_rate %d, mclk_source_clock %d",
+		mclk_rate, mn->mclk_source_clock);
+
 	ret = set_mclk_divider(mclk_id,
 			       ssp_freq[mn->mclk_source_clock].freq /
 			       mclk_rate);
@@ -271,6 +277,7 @@ static bool find_mn(uint32_t freq, uint32_t bclk,
 	uint32_t m, n, mn_div;
 	uint32_t scr_div = freq / bclk;
 
+	tr_info(&mn_tr, "find_mn for freq %d bclk %d", freq, bclk);
 	/* check if just SCR is enough */
 	if (freq % bclk == 0 && scr_div < (SSCR0_SCR_MASK >> 8) + 1) {
 		*out_scr_div = scr_div;
@@ -309,6 +316,7 @@ static bool find_mn(uint32_t freq, uint32_t bclk,
 	*out_m = m;
 	*out_n = n;
 
+	tr_info(&mn_tr, "find_mn m %d n %d", m, n);
 	return true;
 }
 
@@ -517,6 +525,9 @@ int mn_set_bclk(uint32_t dai_index, uint32_t bclk_rate,
 
 	if (ret >= 0) {
 		mn->bclk_sources[dai_index] = MN_BCLK_SOURCE_MN;
+
+		tr_info(&mn_tr, "bclk_rate %d, *out_scr_div %d, m %d, n %d",
+			bclk_rate, *out_scr_div, m, n);
 
 		mn_reg_write(MN_MDIV_M_VAL(dai_index), dai_index, m);
 		mn_reg_write(MN_MDIV_N_VAL(dai_index), dai_index, n);
