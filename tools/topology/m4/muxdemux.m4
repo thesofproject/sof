@@ -90,6 +90,9 @@ ifelse(`$2', `0',
 `	bytes ['
 		$7
 `	]'
+`	enum ['
+		$8
+`	]'
 `}')
 
 divert(0)dnl
