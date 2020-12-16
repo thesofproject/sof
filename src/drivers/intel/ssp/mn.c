@@ -122,6 +122,9 @@ static inline int setup_initial_mclk_source(uint32_t mclk_id,
 
 	/* searching the smallest possible mclk source */
 	for (i = MAX_SSP_FREQ_INDEX; i >= 0; i--) {
+		if (mclk_rate > ssp_freq[i].freq)
+			break;
+
 		if (ssp_freq[i].freq % mclk_rate == 0)
 			clk_index = i;
 	}
