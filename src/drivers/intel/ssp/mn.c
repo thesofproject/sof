@@ -193,14 +193,8 @@ static inline int set_mclk_divider(uint16_t mclk_id, uint32_t mdivr_val)
 	case 1:
 		mdivr = 0x00000fff; /* bypass divider for MCLK */
 		break;
-	case 2:
-		mdivr = 0x0; /* 1/2 */
-		break;
-	case 4:
-		mdivr = 0x2; /* 1/4 */
-		break;
-	case 8:
-		mdivr = 0x6; /* 1/8 */
+	case 2 ... 8:
+		mdivr = mdivr_val - 2; /* 1/n */
 		break;
 	default:
 		tr_err(&mn_tr, "invalid mdivr_val %d", mdivr_val);
