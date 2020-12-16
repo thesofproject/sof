@@ -293,7 +293,8 @@ static bool dma_multi_chan_domain_is_pending(struct ll_schedule_domain *domain,
 					continue;
 
 				*comp = dma_domain->data[i][j].task->sched_comp;
-			} else if (dma_domain->data[i][j].task->sched_comp != *comp) {
+			} else if (!dma_domain->data[i][j].task ||
+				   dma_domain->data[i][j].task->sched_comp != *comp) {
 				continue;
 			}
 
