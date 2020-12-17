@@ -313,7 +313,7 @@ int pkcs_v1_5_sign_man_v2_5(struct image *image,
 
 	/* sign the manifest */
 	ret = RSA_padding_add_PKCS1_PSS(priv_rsa, sig,
-			digest, image->md, 32);
+			digest, image->md, /* salt length */ 32);
 	if (ret <= 0) {
 		ERR_error_string(ERR_get_error(), path);
 		fprintf(stderr, "error: failed to sign manifest %s\n", path);
