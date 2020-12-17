@@ -2,6 +2,7 @@
 
 TEST PR
 TEST NEW PR
+TEST PR 2
 
 ### Status
 [![Build Status](https://travis-ci.org/thesofproject/sof.svg?branch=master)](https://travis-ci.org/thesofproject/sof/branches)
