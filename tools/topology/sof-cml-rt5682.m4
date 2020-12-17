@@ -59,7 +59,11 @@ PIPELINE_PCM_ADD(sof/pipe-passthrough-capture.m4,
 
 # Low Latency playback pipeline 4 on PCM 2 using max 2 channels of s32le.
 # 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
+#PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
+#	4, 2, 2, s32le,
+#	1000, 0, 0,
+#	48000, 48000, 48000)
+PIPELINE_PCM_ADD(sof/pipe-dcblock-volume-playback.m4,
 	4, 2, 2, s32le,
 	1000, 0, 0,
 	48000, 48000, 48000)

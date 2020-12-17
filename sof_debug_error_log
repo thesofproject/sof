@@ -1,0 +1,131 @@
+2020-12-17T08:09:27.664076Z INFO kernel: [    3.870595] sof_rt5682 sof_rt5682: info: override FE DAI link SSP0-Codec
+2020-12-17T08:09:27.664107Z INFO kernel: [    3.870599] sof_rt5682 sof_rt5682: info: override FE DAI link dmic01
+2020-12-17T08:09:27.664109Z INFO kernel: [    3.870600] sof_rt5682 sof_rt5682: info: override FE DAI link dmic16k
+2020-12-17T08:09:27.664110Z INFO kernel: [    3.870602] sof_rt5682 sof_rt5682: info: override FE DAI link iDisp1
+2020-12-17T08:09:27.664111Z INFO kernel: [    3.870603] sof_rt5682 sof_rt5682: info: override FE DAI link iDisp2
+2020-12-17T08:09:27.664112Z INFO kernel: [    3.870604] sof_rt5682 sof_rt5682: info: override FE DAI link iDisp3
+2020-12-17T08:09:27.664112Z DEBUG kernel: [    3.870656] sof-audio-pci 0000:00:1f.3: loading topology:intel/sof-tplg/sof-cml-rt5682.tplg
+2020-12-17T08:09:27.665022Z INFO kernel: [    3.871228] sof-audio-pci 0000:00:1f.3: Topology: ABI 3:14:0 Kernel ABI 3:11:0
+2020-12-17T08:09:27.665030Z WARNING kernel: [    3.871231] sof-audio-pci 0000:00:1f.3: warn: topology ABI is more recent than kernel
+2020-12-17T08:09:27.665031Z DEBUG kernel: [    3.871235] sof-audio-pci 0000:00:1f.3: tplg: ready widget id 0 pipe 1 type 23 name : PCM0P stream Passthrough Playback 0
+2020-12-17T08:09:27.665032Z DEBUG kernel: [    3.871237] sof-audio-pci 0000:00:1f.3: loaded host PCM0P
+2020-12-17T08:09:27.665033Z DEBUG kernel: [    3.871238] sof-audio-pci 0000:00:1f.3:  config: periods snk 2 src 0 fmt 0
+2020-12-17T08:09:27.665033Z DEBUG kernel: [    3.871258] sof-audio-pci 0000:00:1f.3: ipc tx: 0x30010000
+2020-12-17T08:09:27.665034Z DEBUG kernel: [    3.871521] sof-audio-pci 0000:00:1f.3: ipc tx succeeded: 0x30010000
+2020-12-17T08:09:27.665035Z DEBUG kernel: [    3.871525] sof-audio-pci 0000:00:1f.3: tplg: load control type 1 name : 1 Master Playback Volume
+2020-12-17T08:09:27.665036Z DEBUG kernel: [    3.871542] sof-audio-pci 0000:00:1f.3: tplg: load kcontrol index 1 chans 2
+2020-12-17T08:09:27.665037Z DEBUG kernel: [    3.871543] sof-audio-pci 0000:00:1f.3: tplg: ready widget id 1 pipe 1 type 6 name : PGA1.0 stream none
+2020-12-17T08:09:27.665038Z DEBUG kernel: [    3.871545] sof-audio-pci 0000:00:1f.3:  config: periods snk 2 src 2 fmt 1
+2020-12-17T08:09:27.665038Z DEBUG kernel: [    3.871567] sof-audio-pci 0000:00:1f.3: ipc tx: 0x30010000
+2020-12-17T08:09:27.665039Z DEBUG kernel: [    3.871793] sof-audio-pci 0000:00:1f.3: ipc tx succeeded: 0x30010000
+2020-12-17T08:09:27.665040Z DEBUG kernel: [    3.871796] sof-audio-pci 0000:00:1f.3: tplg: ready widget id 2 pipe 1 type 31 name : BUF1.0 stream none
+2020-12-17T08:09:27.665041Z DEBUG kernel: [    3.871797] sof-audio-pci 0000:00:1f.3: buffer BUF1.0: size 768 caps 0x71
+2020-12-17T08:09:27.665042Z DEBUG kernel: [    3.871801] sof-audio-pci 0000:00:1f.3: ipc tx: 0x30200000
+2020-12-17T08:09:27.666022Z DEBUG kernel: [    3.872300] sof-audio-pci 0000:00:1f.3: ipc tx succeeded: 0x30200000
+2020-12-17T08:09:27.666029Z DEBUG kernel: [    3.872303] sof-audio-pci 0000:00:1f.3: tplg: ready widget id 3 pipe 1 type 31 name : BUF1.1 stream none
+2020-12-17T08:09:27.666030Z DEBUG kernel: [    3.872310] sof-audio-pci 0000:00:1f.3: buffer BUF1.1: size 768 caps 0x71
+2020-12-17T08:09:27.666031Z DEBUG kernel: [    3.872351] sof-audio-pci 0000:00:1f.3: ipc tx: 0x30200000
+2020-12-17T08:09:27.666031Z DEBUG kernel: [    3.872495] sof-audio-pci 0000:00:1f.3: ipc tx succeeded: 0x30200000
+2020-12-17T08:09:27.666032Z DEBUG kernel: [    3.872497] sof-audio-pci 0000:00:1f.3: tplg: ready widget id 4 pipe 1 type 27 name : SSP0.OUT stream SSP0-Codec
+2020-12-17T08:09:27.666033Z DEBUG kernel: [    3.872504] sof-audio-pci 0000:00:1f.3: dai SSP0.OUT: type 1 index 0
+2020-12-17T08:09:27.666034Z DEBUG kernel: [    3.872505] sof-audio-pci 0000:00:1f.3:  config: periods snk 0 src 2 fmt 1
+2020-12-17T08:09:27.666034Z DEBUG kernel: [    3.872526] sof-audio-pci 0000:00:1f.3: ipc tx: 0x30010000
+2020-12-17T08:09:27.666035Z DEBUG kernel: [    3.872758] sof-audio-pci 0000:00:1f.3: ipc tx succeeded: 0x30010000
+2020-12-17T08:09:27.666036Z DEBUG kernel: [    3.872760] sof-audio-pci 0000:00:1f.3: tplg: connected widget SSP0.OUT -> DAI link SSP0-Codec
+2020-12-17T08:09:27.666037Z DEBUG kernel: [    3.872763] sof-audio-pci 0000:00:1f.3: tplg: ready widget id 5 pipe 1 type 32 name : PIPELINE.1.SSP0.OUT stream SSP0.OUT
+2020-12-17T08:09:27.666038Z DEBUG kernel: [    3.872764] sof-audio-pci 0000:00:1f.3: tplg: pipeline id 1 comp 5 scheduling comp id 4
+2020-12-17T08:09:27.666038Z DEBUG kernel: [    3.872766] sof-audio-pci 0000:00:1f.3: pipeline PIPELINE.1.SSP0.OUT: period 1000 pri 0 mips 5000 core 0 frames 0
+2020-12-17T08:09:27.666039Z DEBUG kernel: [    3.872770] sof-audio-pci 0000:00:1f.3: ipc tx: 0x30100000
+2020-12-17T08:09:27.667018Z DEBUG kernel: [    3.872991] sof-audio-pci 0000:00:1f.3: ipc tx succeeded: 0x30100000
+2020-12-17T08:09:27.667024Z DEBUG kernel: [    3.872997] sof-audio-pci 0000:00:1f.3: DSP core(s) enabled? 1 : core_mask 1
+2020-12-17T08:09:27.667025Z DEBUG kernel: [    3.872999] sof-audio-pci 0000:00:1f.3: ipc tx: 0x40070000
+2020-12-17T08:09:27.667026Z DEBUG kernel: [    3.873259] sof-audio-pci 0000:00:1f.3: ipc tx succeeded: 0x40070000
+2020-12-17T08:09:27.667027Z DEBUG kernel: [    3.873261] sof-audio-pci 0000:00:1f.3: tplg: ready widget id 6 pipe 2 type 24 name : PCM0C stream Passthrough Capture 0
+2020-12-17T08:09:27.667028Z DEBUG kernel: [    3.873263] sof-audio-pci 0000:00:1f.3: loaded host PCM0C
+2020-12-17T08:09:27.667028Z DEBUG kernel: [    3.873263] sof-audio-pci 0000:00:1f.3:  config: periods snk 0 src 2 fmt 0
+2020-12-17T08:09:27.667029Z DEBUG kernel: [    3.873283] sof-audio-pci 0000:00:1f.3: ipc tx: 0x30010000
+2020-12-17T08:09:27.667030Z DEBUG kernel: [    3.873526] sof-audio-pci 0000:00:1f.3: ipc tx succeeded: 0x30010000
+2020-12-17T08:09:27.667031Z DEBUG kernel: [    3.873529] sof-audio-pci 0000:00:1f.3: tplg: load control type 1 name : 2 Master Capture Volume
+2020-12-17T08:09:27.667031Z DEBUG kernel: [    3.873534] sof-audio-pci 0000:00:1f.3: tplg: load kcontrol index 7 chans 2
+2020-12-17T08:09:27.667032Z DEBUG kernel: [    3.873535] sof-audio-pci 0000:00:1f.3: tplg: ready widget id 7 pipe 2 type 6 name : PGA2.0 stream none
+2020-12-17T08:09:27.667033Z DEBUG kernel: [    3.873537] sof-audio-pci 0000:00:1f.3:  config: periods snk 2 src 2 fmt 1
+2020-12-17T08:09:27.667034Z DEBUG kernel: [    3.873544] sof-audio-pci 0000:00:1f.3: ipc tx: 0x30010000
+2020-12-17T08:09:27.667034Z DEBUG kernel: [    3.873749] sof-audio-pci 0000:00:1f.3: ipc tx succeeded: 0x30010000
+2020-12-17T08:09:27.667035Z DEBUG kernel: [    3.873752] sof-audio-pci 0000:00:1f.3: tplg: ready widget id 8 pipe 2 type 31 name : BUF2.0 stream none
+2020-12-17T08:09:27.667036Z DEBUG kernel: [    3.873753] sof-audio-pci 0000:00:1f.3: buffer BUF2.0: size 768 caps 0x71
+2020-12-17T08:09:27.667037Z DEBUG kernel: [    3.873781] sof-audio-pci 0000:00:1f.3: ipc tx: 0x30200000
+2020-12-17T08:09:27.668149Z DEBUG kernel: [    3.874022] sof-audio-pci 0000:00:1f.3: ipc tx succeeded: 0x30200000
+2020-12-17T08:09:27.668156Z DEBUG kernel: [    3.874025] sof-audio-pci 0000:00:1f.3: tplg: ready widget id 9 pipe 2 type 31 name : BUF2.1 stream none
+2020-12-17T08:09:27.668157Z DEBUG kernel: [    3.874026] sof-audio-pci 0000:00:1f.3: buffer BUF2.1: size 768 caps 0x71
+2020-12-17T08:09:27.668158Z DEBUG kernel: [    3.874029] sof-audio-pci 0000:00:1f.3: ipc tx: 0x30200000
+2020-12-17T08:09:27.668158Z DEBUG kernel: [    3.874246] sof-audio-pci 0000:00:1f.3: ipc tx succeeded: 0x30200000
+2020-12-17T08:09:27.668159Z DEBUG kernel: [    3.874249] sof-audio-pci 0000:00:1f.3: tplg: ready widget id 10 pipe 2 type 28 name : SSP0.IN stream SSP0-Codec
+2020-12-17T08:09:27.668160Z DEBUG kernel: [    3.874251] sof-audio-pci 0000:00:1f.3: dai SSP0.IN: type 1 index 0
+2020-12-17T08:09:27.668161Z DEBUG kernel: [    3.874252] sof-audio-pci 0000:00:1f.3:  config: periods snk 2 src 0 fmt 1
+2020-12-17T08:09:27.668162Z DEBUG kernel: [    3.874272] sof-audio-pci 0000:00:1f.3: ipc tx: 0x30010000
+2020-12-17T08:09:27.668162Z DEBUG kernel: [    3.874644] sof-audio-pci 0000:00:1f.3: ipc tx succeeded: 0x30010000
+2020-12-17T08:09:27.668163Z DEBUG kernel: [    3.874645] sof-audio-pci 0000:00:1f.3: tplg: connected widget SSP0.IN -> DAI link SSP0-Codec
+2020-12-17T08:09:27.668164Z DEBUG kernel: [    3.874648] sof-audio-pci 0000:00:1f.3: tplg: ready widget id 11 pipe 2 type 32 name : PIPELINE.2.SSP0.IN stream SSP0.IN
+2020-12-17T08:09:27.668165Z DEBUG kernel: [    3.874649] sof-audio-pci 0000:00:1f.3: tplg: pipeline id 2 comp 11 scheduling comp id 10
+2020-12-17T08:09:27.668165Z DEBUG kernel: [    3.874651] sof-audio-pci 0000:00:1f.3: pipeline PIPELINE.2.SSP0.IN: period 1000 pri 0 mips 5000 core 0 frames 0
+2020-12-17T08:09:27.668166Z DEBUG kernel: [    3.874655] sof-audio-pci 0000:00:1f.3: ipc tx: 0x30100000
+2020-12-17T08:09:27.668167Z DEBUG kernel: [    3.874978] sof-audio-pci 0000:00:1f.3: ipc tx succeeded: 0x30100000
+2020-12-17T08:09:27.668168Z DEBUG kernel: [    3.874981] sof-audio-pci 0000:00:1f.3: DSP core(s) enabled? 1 : core_mask 1
+2020-12-17T08:09:27.668168Z DEBUG kernel: [    3.874983] sof-audio-pci 0000:00:1f.3: ipc tx: 0x40070000
+2020-12-17T08:09:27.669026Z DEBUG kernel: [    3.875110] sof-audio-pci 0000:00:1f.3: ipc tx succeeded: 0x40070000
+2020-12-17T08:09:27.669033Z DEBUG kernel: [    3.875112] sof-audio-pci 0000:00:1f.3: tplg: ready widget id 12 pipe 3 type 24 name : PCM1C stream Passthrough Capture 1
+2020-12-17T08:09:27.669035Z DEBUG kernel: [    3.875114] sof-audio-pci 0000:00:1f.3: loaded host PCM1C
+2020-12-17T08:09:27.669035Z DEBUG kernel: [    3.875114] sof-audio-pci 0000:00:1f.3:  config: periods snk 0 src 2 fmt 0
+2020-12-17T08:09:27.669036Z DEBUG kernel: [    3.875137] sof-audio-pci 0000:00:1f.3: ipc tx: 0x30010000
+2020-12-17T08:09:27.669037Z DEBUG kernel: [    3.875380] sof-audio-pci 0000:00:1f.3: ipc tx succeeded: 0x30010000
+2020-12-17T08:09:27.669037Z DEBUG kernel: [    3.875382] sof-audio-pci 0000:00:1f.3: tplg: ready widget id 13 pipe 3 type 31 name : BUF3.0 stream none
+2020-12-17T08:09:27.669038Z DEBUG kernel: [    3.875383] sof-audio-pci 0000:00:1f.3: buffer BUF3.0: size 1536 caps 0x71
+2020-12-17T08:09:27.669039Z DEBUG kernel: [    3.875412] sof-audio-pci 0000:00:1f.3: ipc tx: 0x30200000
+2020-12-17T08:09:27.669040Z DEBUG kernel: [    3.875576] sof-audio-pci 0000:00:1f.3: ipc tx succeeded: 0x30200000
+2020-12-17T08:09:27.669040Z DEBUG kernel: [    3.875578] sof-audio-pci 0000:00:1f.3: tplg: ready widget id 14 pipe 3 type 28 name : DMIC0.IN stream dmic01
+2020-12-17T08:09:27.669041Z DEBUG kernel: [    3.875580] sof-audio-pci 0000:00:1f.3: dai DMIC0.IN: type 2 index 0
+2020-12-17T08:09:27.669042Z DEBUG kernel: [    3.875586] sof-audio-pci 0000:00:1f.3:  config: periods snk 2 src 0 fmt 2
+2020-12-17T08:09:27.669043Z DEBUG kernel: [    3.875655] sof-audio-pci 0000:00:1f.3: ipc tx: 0x30010000
+2020-12-17T08:09:27.669043Z DEBUG kernel: [    3.875844] sof-audio-pci 0000:00:1f.3: ipc tx succeeded: 0x30010000
+2020-12-17T08:09:27.669044Z DEBUG kernel: [    3.875846] sof-audio-pci 0000:00:1f.3: tplg: connected widget DMIC0.IN -> DAI link dmic01
+2020-12-17T08:09:27.669045Z DEBUG kernel: [    3.875853] sof-audio-pci 0000:00:1f.3: tplg: ready widget id 15 pipe 3 type 32 name : PIPELINE.3.DMIC0.IN stream DMIC0.IN
+2020-12-17T08:09:27.669046Z DEBUG kernel: [    3.875854] sof-audio-pci 0000:00:1f.3: tplg: pipeline id 3 comp 15 scheduling comp id 14
+2020-12-17T08:09:27.669046Z DEBUG kernel: [    3.875856] sof-audio-pci 0000:00:1f.3: pipeline PIPELINE.3.DMIC0.IN: period 1000 pri 0 mips 5000 core 0 frames 0
+2020-12-17T08:09:27.669047Z DEBUG kernel: [    3.875860] sof-audio-pci 0000:00:1f.3: ipc tx: 0x30100000
+2020-12-17T08:09:27.670172Z DEBUG kernel: [    3.876245] sof-audio-pci 0000:00:1f.3: ipc tx succeeded: 0x30100000
+2020-12-17T08:09:27.670182Z DEBUG kernel: [    3.876249] sof-audio-pci 0000:00:1f.3: DSP core(s) enabled? 1 : core_mask 1
+2020-12-17T08:09:27.670183Z DEBUG kernel: [    3.876251] sof-audio-pci 0000:00:1f.3: ipc tx: 0x40070000
+2020-12-17T08:09:27.670183Z DEBUG kernel: [    3.876368] sof-audio-pci 0000:00:1f.3: ipc tx succeeded: 0x40070000
+2020-12-17T08:09:27.670184Z DEBUG kernel: [    3.876371] sof-audio-pci 0000:00:1f.3: tplg: ready widget id 16 pipe 4 type 23 name : PCM2P stream Passthrough Playback 2
+2020-12-17T08:09:27.670185Z DEBUG kernel: [    3.876372] sof-audio-pci 0000:00:1f.3: loaded host PCM2P
+2020-12-17T08:09:27.670186Z DEBUG kernel: [    3.876373] sof-audio-pci 0000:00:1f.3:  config: periods snk 2 src 0 fmt 0
+2020-12-17T08:09:27.670187Z DEBUG kernel: [    3.876392] sof-audio-pci 0000:00:1f.3: ipc tx: 0x30010000
+2020-12-17T08:09:27.670187Z DEBUG kernel: [    3.876554] sof-audio-pci 0000:00:1f.3: ipc tx succeeded: 0x30010000
+2020-12-17T08:09:27.670188Z DEBUG kernel: [    3.876556] sof-audio-pci 0000:00:1f.3: tplg: load control type 1 name : 4 Master Playback Volume
+2020-12-17T08:09:27.670189Z DEBUG kernel: [    3.876560] sof-audio-pci 0000:00:1f.3: tplg: load kcontrol index 17 chans 2
+2020-12-17T08:09:27.670190Z DEBUG kernel: [    3.876561] sof-audio-pci 0000:00:1f.3: tplg: ready widget id 17 pipe 4 type 6 name : PGA4.0 stream none
+2020-12-17T08:09:27.670190Z DEBUG kernel: [    3.876563] sof-audio-pci 0000:00:1f.3:  config: periods snk 2 src 2 fmt 2
+2020-12-17T08:09:27.670191Z DEBUG kernel: [    3.876586] sof-audio-pci 0000:00:1f.3: ipc tx: 0x30010000
+2020-12-17T08:09:27.670192Z DEBUG kernel: [    3.876800] sof-audio-pci 0000:00:1f.3: ipc tx succeeded: 0x30010000
+2020-12-17T08:09:27.670193Z DEBUG kernel: [    3.876803] sof-audio-pci 0000:00:1f.3: tplg: load control type 2 name : dcblock_control_4
+2020-12-17T08:09:27.670193Z DEBUG kernel: [    3.876809] sof-audio-pci 0000:00:1f.3: tplg: load kcontrol index 18 chans 0
+2020-12-17T08:09:27.670194Z DEBUG kernel: [    3.876811] sof-audio-pci 0000:00:1f.3: tplg: ready widget id 18 pipe 4 type 33 name : DCBLOCK4.0 stream none
+2020-12-17T08:09:27.670195Z ERR kernel: [    3.876812] sof-audio-pci 0000:00:1f.3: error: invalid process comp type 0
+2020-12-17T08:09:27.670196Z ERR kernel: [    3.876814] sof-audio-pci 0000:00:1f.3: error: process loading failed
+2020-12-17T08:09:27.670196Z ERR kernel: [    3.876830] sof-audio-pci 0000:00:1f.3: error: DSP failed to add widget id 0 type 33 name : DCBLOCK4.0 stream none reply 0
+2020-12-17T08:09:27.670197Z ERR kernel: [    3.876832] sof-audio-pci 0000:00:1f.3: ASoC: failed to load widget DCBLOCK4.0
+2020-12-17T08:09:27.670198Z DEBUG kernel: [    3.876839] sof-audio-pci 0000:00:1f.3: FW Poll Status: reg=0x1010f0f successful
+2020-12-17T08:09:27.670199Z DEBUG kernel: [    3.876842] sof-audio-pci 0000:00:1f.3: FW Poll Status: reg=0x1000f0f successful
+2020-12-17T08:09:27.670200Z DEBUG kernel: [    3.876843] sof-audio-pci 0000:00:1f.3: DSP core(s) enabled? 0 : core_mask 1
+2020-12-17T08:09:27.670200Z DEBUG kernel: [    3.876847] sof-audio-pci 0000:00:1f.3: FW Poll Status: reg=0xf0f successful
+2020-12-17T08:09:27.670201Z DEBUG kernel: [    3.876861] sof-audio-pci 0000:00:1f.3: FW Poll Status: reg=0xf0f successful
+2020-12-17T08:09:27.670202Z DEBUG kernel: [    3.876863] sof-audio-pci 0000:00:1f.3: DSP core(s) enabled? 0 : core_mask 1
+2020-12-17T08:09:27.670203Z DEBUG kernel: [    3.876867] sof-audio-pci 0000:00:1f.3: FW Poll Status: reg=0xf0f successful
+2020-12-17T08:09:27.670203Z DEBUG kernel: [    3.876870] sof-audio-pci 0000:00:1f.3: FW Poll Status: reg=0xf0f successful
+2020-12-17T08:09:27.670204Z DEBUG kernel: [    3.876872] sof-audio-pci 0000:00:1f.3: DSP core(s) enabled? 0 : core_mask 1
+2020-12-17T08:09:27.670205Z ERR kernel: [    3.876873] sof-audio-pci 0000:00:1f.3: error: tplg component load failed -22
+2020-12-17T08:09:27.670206Z ERR kernel: [    3.876878] sof-audio-pci 0000:00:1f.3: error: failed to load DSP topology -22
+2020-12-17T08:09:27.670206Z ERR kernel: [    3.876879] sof-audio-pci 0000:00:1f.3: ASoC: failed to probe component -22
+2020-12-17T08:09:27.670207Z ERR kernel: [    3.876889] sof_rt5682 sof_rt5682: ASoC: failed to instantiate card -22
+2020-12-17T08:09:27.670208Z WARNING kernel: [    3.876908] sof_rt5682: probe of sof_rt5682 failed with error -22
+
