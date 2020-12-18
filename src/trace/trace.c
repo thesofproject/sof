@@ -139,7 +139,7 @@ static void emit_recent_entry(struct recent_log_entry *entry)
 	_log_message(trace_log_unfiltered, false, LOG_LEVEL_INFO, _TRACE_INV_CLASS, &dt_tr,
 		     _TRACE_INV_ID, _TRACE_INV_ID, "Suppressed %u similar messages: %pQ",
 		     entry->trigger_count - CONFIG_TRACE_BURST_COUNT,
-		     entry->entry_id);
+		     (void *)entry->entry_id);
 
 	memset(entry, 0, sizeof(*entry));
 }
