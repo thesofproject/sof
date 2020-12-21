@@ -22,7 +22,7 @@ enum cavs_config_elem_type {
 struct ext_man_cavs_config_data {
 	struct ext_man_elem_header hdr;
 
-	struct config_elem elems[EXT_MAN_CAVS_CONFIG_LAST_ELEM];
+	struct config_elem elems[];
 } __packed;
 
 #endif /* __KERNEL_EXT_MANIFEST_H__ */
