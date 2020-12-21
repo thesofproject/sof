@@ -231,16 +231,44 @@ if bf.do_plots
 	grid on;
 	xlabel('FIR coefficient'); ylabel('Tap value');
 	title(['FIR filters ' bf.array_id], 'Interpreter','none');
+	ch_legend(bf.num_filters);
+
+	%% Frequency responses
+	fh(3) = figure(bf.fn + 2);
+	f = linspace(0, bf.fs/2, 256);
+	h = zeros(256, bf.num_filters);
+	for i = 1:bf.num_filters
+		h(:,i) = freqz(bf.w(:,i), 1, f, bf.fs);
+	end
+	plot(f, 20*log10(abs(h)));
+	grid on
+	ylabel('Magnitude (dB)');
+	xlabel('Frequency (Hz)');
+	title(['FIR magnitude responses ' bf.array_id], 'Interpreter','none');
+	ch_legend(bf.num_filters);
+
+	%% Group delays
+	fh(4) = figure(bf.fn + 3);
+	gd = zeros(256, bf.num_filters);
+	for i = 1:bf.num_filters
+		gd(:,i) = grpdelay(bf.w(:,i), 1, f, bf.fs);
+	end
+	plot(f, gd/bf.fs*1e6);
+	grid on
+	ylabel('Group delay (us)');
+	xlabel('Frequency (Hz)');
+	title(['FIR group delays ' bf.array_id], 'Interpreter','none');
+	ch_legend(bf.num_filters);
 
 	%% DI
-	bf.fh(3) = figure(bf.fn + 2);
+	bf.fh(5) = figure(bf.fn + 4);
 	semilogx(bf.f(2:end), bf.di_db(2:end))
 	xlabel('Frequency (Hz)'); ylabel('DI (dB)'); grid on;
 	legend('Suppression of diffuse field noise','Location','SouthEast');
 	title(['Directivity Index ' bf.array_id], 'Interpreter','none');
 
 	%% WNG
-	bf.fh(4) = figure(bf.fn + 3);
+	bf.fh(6) = figure(bf.fn + 5);
 	semilogx(bf.f(2:end), bf.wng_db(2:end))
 	xlabel('Frequency (Hz)'); ylabel('WNG (dB)'); grid on;
 	legend('Attenuation of uncorrelated noise','Location','SouthEast');
@@ -248,7 +276,7 @@ if bf.do_plots
 	drawnow;
 
 	%% 2D
-	bf.fh(5) = figure(bf.fn + 4);
+	bf.fh(7) = figure(bf.fn + 6);
 	colormap(jet);
 	phi_deg = phi_rad*180/pi;
 	imagesc(bf.f, bf.resp_angle, 20*log10(abs(bf.resp_fa)), [-30 0]);
@@ -259,7 +287,7 @@ if bf.do_plots
 	title(['Spatial response ' bf.array_id], 'Interpreter','none');
 
 	%% Polar
-	bf.fh(6) = figure(bf.fn + 5);
+	bf.fh(8) = figure(bf.fn + 7);
 	flist = [1000 2000 3000 4000];
 	idx = [];
 	for i = 1:length(flist)
@@ -393,4 +421,23 @@ for n=1:bf.num_filters
 end
 dt = dm/bf.c;
 
+end
+
+function ch_legend(n)
+switch n
+	case 2
+		legend('1', '2');
+	case 3
+		legend('1', '2', '3');
+	case 4
+		legend('1', '2', '3', '4');
+	case 5
+		legend('1', '2', '3', '4', '5');
+	case 6
+		legend('1', '2', '3', '4', '5', '6');
+	case 7
+		legend('1', '2', '3', '4', '5', '6', '7');
+	otherwise
+		legend('1', '2', '3', '4', '5', '6', '7', '8');
+end
 end
