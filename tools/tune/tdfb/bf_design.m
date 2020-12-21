@@ -327,17 +327,17 @@ else
 	test_n = length(test_az);
 	test_el = zeros(1, test_n);
 	[test_x, test_y, test_z] = source_xyz(bf.steer_r, test_az, test_el);
-	td = zeros(test_n * nt, bf.num_filters);
+	td = zeros(test_n * nt, bf.mic_n);
 	for i = 1:length(test_az)
 		dt = delay_from_source(bf, test_x(i), test_y(i), test_z(i));
 		dn = round(dt / ti);
 		mi = zeros(nti, bf.num_filters);
-		for j = 1:bf.num_filters
-			mi(:,j) = mi(:,j) + si(dn(j):dn(j) + nti -1);
+		for j = 1:bf.mic_n
+			mi(:,j) = mi(:,j) + si(end-dn(j)-nti+1:end-dn(j));
 		end
 		i1 = (i - 1) * nt + 1;
 		i2 = i1 + nt -1;
-		for j = 1:bf.num_filters
+		for j = 1:bf.mic_n
 			m = mi(1:p:end, j) .* win;
 			td(i1:i2, j) = m;
 		end
@@ -366,9 +366,9 @@ else
 		dn = round(dt / ti);
 		ns = rand(n0, 1) + rand(n0, 1) - 1;
 		nsi = interp(ns, p);
-		nmi = zeros(nti, bf.num_filters);
-		for j = 1:bf.num_filters
-			nmi(:,j) = nmi(:,j) + nsi(dn(j):dn(j) + nti -1);
+		nmi = zeros(nti, bf.mic_n);
+		for j = 1:bf.mic_n
+			nmi(:,j) = nmi(:,j) + nsi(end-dn(j)-nti+1:end-dn(j));
 		end
 	end
 	nm = nmi(1:p:end, :);
