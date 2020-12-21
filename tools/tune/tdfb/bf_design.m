@@ -124,12 +124,34 @@ W_full = W(1:N_half, :);
 for i=N_half+1:N
 	W_full(i,:) = conj(W(N_half-(i-N_half),:));
 end
-skip = floor((N - bf.fir_length)/2);
+
 win = kaiser(bf.fir_length,bf.fir_beta);
 bf.w = zeros(bf.fir_length, bf.num_filters);
+w_tmp = zeros(N, bf.num_filters);
+idx_max = zeros(bf.num_filters, 1);
 for i=1:bf.num_filters
-	w_tmp = real(fftshift(ifft(W_full(:,i))));
-	bf.w(:,i) = w_tmp(skip + 1:skip + bf.fir_length) .* win;
+	h = real(fftshift(ifft(W_full(:,i))));
+	w_tmp(:,i) = h;
+	idx_max(i) = find(h == max(h));
+end
+
+center_idx = round(mean(idx_max));
+start = center_idx - floor(bf.fir_length/2);
+win0 = kaiser(bf.fir_length,bf.fir_beta);
+for i=1:bf.num_filters
+	win = zeros(bf.fir_length, 1);
+	win_shift = center_idx - idx_max(i) - 1;
+	if (win_shift >= 0)
+		win(1:end-win_shift) = win0(win_shift+1:end);
+	else
+		win(-win_shift:end) = win0(1:end+win_shift+1);
+	end
+	bf.w(:,i) = w_tmp(start:start + bf.fir_length - 1, i) .* win;
+end
+
+start = round(mean(idx_max) - bf.fir_length/2);
+for i=1:bf.num_filters
+	bf.w(:,i) = w_tmp(start:start + bf.fir_length - 1, i) .* win;
 end
 
 %% Back to frequency domain to check spatial response
@@ -137,7 +159,7 @@ W2_full = zeros(N, bf.num_filters);
 for i=1:bf.num_filters
 	% Zero pad
 	h2 = zeros(1,N);
-	h2(skip + 1:skip + bf.fir_length) = bf.w(:,i);
+	h2(start:start + bf.fir_length - 1) = bf.w(:,i);
 	W2_full(:,i) = fft(h2);
 end
 W2 = W2_full(1:N_half, :);
