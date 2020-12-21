@@ -54,8 +54,8 @@ static inline void lp_sram_unpack(void)
 	uint32_t *src, *dst;
 	uint32_t size, i;
 
-	uint32_t *ptr = (uintptr_t *)&_loader_storage_manifest_start;
-	uint32_t entries = (uint32_t)*ptr++;
+	uint32_t *ptr = (uint32_t *)&_loader_storage_manifest_start;
+	uint32_t entries = *ptr++;
 
 	for (i = 0; i < entries; i++) {
 		src = (uint32_t *)*ptr++;
