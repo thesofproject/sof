@@ -267,49 +267,38 @@ void mn_release_mclk(uint32_t mclk_id)
 static bool find_mn(uint32_t freq, uint32_t bclk,
 		    uint32_t *out_scr_div, uint32_t *out_m, uint32_t *out_n)
 {
-	uint32_t m, n, mn_div;
 	uint32_t scr_div = freq / bclk;
+	uint32_t m = 1;
+	uint32_t n = 1;
+	uint32_t mn_div;
 
 	tr_info(&mn_tr, "find_mn for freq %d bclk %d", freq, bclk);
 	/* check if just SCR is enough */
-	if (freq % bclk == 0 && scr_div < (SSCR0_SCR_MASK >> 8) + 1) {
-		*out_scr_div = scr_div;
-		*out_m = 1;
-		*out_n = 1;
-
-		return true;
-	}
+	if (freq % bclk == 0 && scr_div < (SSCR0_SCR_MASK >> 8) + 1)
+		goto found;
 
 	/* M/(N * scr_div) has to be less than 1/2 */
 	if ((bclk * 2) >= freq)
 		return false;
 
-	/* odd SCR gives lower duty cycle */
-	if (scr_div > 1 && scr_div % 2 != 0)
-		--scr_div;
-
-	/* clamp to valid SCR range */
-	scr_div = MIN(scr_div, (SSCR0_SCR_MASK >> 8) + 1);
-
-	/* find highest even divisor */
-	while (scr_div > 1 && freq % scr_div != 0)
-		scr_div -= 2;
-
-	/* compute M/N with smallest dividend and divisor */
-	mn_div = gcd(bclk, freq / scr_div);
-
-	m = bclk / mn_div;
-	n = freq / scr_div / mn_div;
+	/* use M/N only, SCR set to 1 to avoid divide twice */
+	scr_div = 1;
+	mn_div = gcd(freq, bclk);
+	if (mn_div) {
+		m = bclk / mn_div;
+		n = freq / mn_div;
+	}
 
 	/* M/N values can be up to 24 bits */
 	if (n & (~0xffffff))
 		return false;
 
+found:
 	*out_scr_div = scr_div;
 	*out_m = m;
 	*out_n = n;
 
-	tr_info(&mn_tr, "find_mn m %d n %d", m, n);
+	tr_info(&mn_tr, "find_mn m %d n %d scr %d", m, n, scr_div);
 	return true;
 }
 
