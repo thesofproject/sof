@@ -53,7 +53,7 @@ extern const size_t multiband_drc_proc_fncount;
 /**
  * \brief Returns Multiband DRC processing function.
  */
-static multiband_drc_func multiband_drc_find_proc_func(enum sof_ipc_frame src_fmt)
+static inline multiband_drc_func multiband_drc_find_proc_func(enum sof_ipc_frame src_fmt)
 {
 	int i;
 
@@ -68,7 +68,7 @@ static multiband_drc_func multiband_drc_find_proc_func(enum sof_ipc_frame src_fm
 /**
  * \brief Returns Multiband DRC passthrough functions.
  */
-static multiband_drc_func multiband_drc_find_proc_func_pass(enum sof_ipc_frame src_fmt)
+static inline multiband_drc_func multiband_drc_find_proc_func_pass(enum sof_ipc_frame src_fmt)
 {
 	int i;
 
