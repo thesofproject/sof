@@ -56,6 +56,7 @@ set(TPLGS
 	"sof-byt-codec\;sof-byt-da7213-ssp0\;-DCODEC=DA7213\;-DPLATFORM=byt-codec\;-DSSP_NUM=0"
 	"sof-byt-codec\;sof-byt-cx2072x-ssp0\;-DCODEC=CX2072X\;-DPLATFORM=byt-codec\;-DSSP_NUM=0"
 	"sof-byt-codec\;sof-byt-es8316-ssp0\;-DCODEC=ES8316\;-DPLATFORM=byt-codec\;-DSSP_NUM=0"
+	"sof-byt-codec\;sof-byt-wm5102-ssp0\;-DCODEC=WM5102\;-DPLATFORM=byt-codec\;-DSSP_NUM=0"
 	"sof-byt-codec\;sof-cht-rt5640\;-DCODEC=RT5640\;-DPLATFORM=cht-codec\;-DSSP_NUM=2"
 	"sof-byt-codec\;sof-cht-rt5645\;-DCODEC=RT5645\;-DPLATFORM=cht-codec\;-DSSP_NUM=2"
 	"sof-byt-codec\;sof-cht-rt5651\;-DCODEC=RT5651\;-DPLATFORM=cht-codec\;-DSSP_NUM=2"
