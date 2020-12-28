@@ -1,0 +1,23 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
+menu "Codec Adapter codecs"
+	visible if COMP_CODEC_ADAPTER
+
+	config CADENCE_CODEC
+		depends on COMP_CODEC_ADAPTER
+		bool "Cadence codec"
+		default n
+		help
+			Select for codecs which conforms to the Cadence API.
+			This will cause codec adapter component to include header
+			files specific to CADENCE base codecs.
+
+	config DCBLOCK_CODEC
+		depends on COMP_CODEC_ADAPTER
+		bool "DCBlock codec"
+		default n
+		help
+			Select for codecs which conforms to DC filter.
+			This will cause codec adapter component to include header
+			files specific to DC filter.
+endmenu
