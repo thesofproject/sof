@@ -30,4 +30,11 @@ struct fft_plan *fft_plan_new(struct icomplex32 *inb, struct icomplex32 *outb, u
 void fft_plan_free(struct fft_plan *plan);
 void fft_execute(struct fft_plan *plan, bool ifft);
 
+#ifdef UNIT_TEST
+void fft_real(struct comp_buffer *src, struct comp_buffer *dst, uint32_t size);
+void fft_real_2(struct comp_buffer *src, struct comp_buffer *dst1,
+		struct comp_buffer *dst2, uint32_t size);
+void ifft_complex(struct comp_buffer *src, struct comp_buffer *dst, uint32_t size);
+#endif
+
 #endif /* __SOF_FFT_H__ */
