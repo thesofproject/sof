@@ -67,7 +67,8 @@ DECLARE_SOF_RT_UUID("Maxim DSM", maxim_dsm_comp_uuid, 0x0cd84e80, 0xebd3,
                     0x11ea, 0xad, 0xc1, 0x02, 0x42, 0xac, 0x12, 0x00, 0x02);
 define(`SMART_UUID', maxim_dsm_comp_uuid)
 # Include Smart Amplifier support
-include(`sof-smart-amplifier.m4')
+# debug: skip Smart Amplifier
+#include(`sof-smart-amplifier.m4')
 
 # Define pipeline id for intel-generic-dmic-kwd.m4
 # to generate dmic setting with kwd when we have dmic
@@ -92,6 +93,13 @@ dnl PIPELINE_PCM_ADD(pipeline,
 dnl     pipe id, pcm, max channels, format,
 dnl     frames, deadline, priority, core)
 
+# Demux pipeline 1 on PCM 0 using max 2 channels of s32le.
+# Set 1000us deadline on core 0 with priority 0
+PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
+	SMART_PB_PPL_ID, SMART_PCM_ID, SMART_PB_CH_NUM, s32le,
+	1000, 0, 0,
+	48000, 48000, 48000)
+
 # Low Latency playback pipeline 2 on PCM 1 using max 2 channels of s32le.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
@@ -108,7 +116,7 @@ PIPELINE_PCM_ADD(sof/pipe-volume-capture.m4,
 
 # Low Latency playback pipeline 5 on PCM 2 using max 2 channels of s32le.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
+PIPELINE_PCM_ADD(sof/pipe-ca-dcblock-playback.m4,
 	5, 2, 2, s32le,
 	1000, 0, 0,
 	48000, 48000, 48000)
@@ -142,6 +150,13 @@ dnl DAI_ADD(pipeline,
 dnl     pipe id, dai type, dai_index, dai_be,
 dnl     buffer, periods, format,
 dnl     frames, deadline, priority, core)
+
+# playback DAI is SSP(SPP_INDEX) using 2 periods
+# Buffers use s32le format, 1000us deadline on core 0 with priority 0
+DAI_ADD(sof/pipe-dai-playback.m4,
+	SMART_PB_PPL_ID, SSP, SMART_SSP_INDEX, SMART_SSP_NAME,
+	PIPELINE_SOURCE_1, 2, s32le,
+	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # playback DAI is SSP0 using 2 periods
 # Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
@@ -189,6 +204,7 @@ DAI_ADD(sof/pipe-dai-playback.m4,
 # Bind PCM with the pipeline
 #
 dnl PCM_PLAYBACK_ADD(name, pcm_id, playback)
+PCM_PLAYBACK_ADD(SMART_PCM_NAME, SMART_PCM_ID, PIPELINE_PCM_1)
 PCM_DUPLEX_ADD(Headset, 1, PIPELINE_PCM_2, PIPELINE_PCM_3)
 PCM_PLAYBACK_ADD(HDMI1, 2, PIPELINE_PCM_5)
 PCM_PLAYBACK_ADD(HDMI2, 3, PIPELINE_PCM_6)
@@ -205,6 +221,13 @@ dnl SSP_CONFIG_DATA(type, idx, valid bits, mclk_id)
 dnl mclk_id is optional
 dnl ssp1-maxmspk, ssp0-RTHeadset
 
+#SSP SSP_INDEX (ID: SMART_BE_ID)
+DAI_CONFIG(SSP, SMART_SSP_INDEX, SMART_BE_ID, SMART_SSP_NAME,
+	SSP_CONFIG(DSP_B, SSP_CLOCK(mclk, SSP_MCLK, codec_mclk_in),
+		      SSP_CLOCK(bclk, 12288000, codec_slave),
+		      SSP_CLOCK(fsync, 48000, codec_slave),
+		      SSP_TDM(8, 32, 15, 255),
+		      SSP_CONFIG_DATA(SSP, SMART_SSP_INDEX, 32, 0, 0)))
 #SSP 0 (ID: 0)
 DAI_CONFIG(SSP, 0, 0, SSP0-Codec,
         SSP_CONFIG(I2S, SSP_CLOCK(mclk, SSP_MCLK, codec_mclk_in),
