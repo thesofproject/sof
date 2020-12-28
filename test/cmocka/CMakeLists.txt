@@ -60,6 +60,7 @@ add_library(common_mock STATIC ${PROJECT_SOURCE_DIR}/test/cmocka/src/common_mock
 add_dependencies(common_mock cmocka)
 target_include_directories(common_mock PRIVATE ${CMOCKA_INCLUDE_DIR})
 target_link_libraries(common_mock PRIVATE sof_options)
+target_link_libraries(common_mock PRIVATE m)
 link_libraries(common_mock)
 sof_append_relative_path_definitions(common_mock)
 
