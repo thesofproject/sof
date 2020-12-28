@@ -2,3 +2,4 @@
 
 add_subdirectory(numbers)
 add_subdirectory(trig)
+add_subdirectory(fft)
