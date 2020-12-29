@@ -344,29 +344,29 @@ static const char *get_component_name(uint32_t trace_class, uint32_t uid_ptr)
 /* remove superfluous leading file path and shrink to last 20 chars */
 static char *format_file_name(char *file_name_raw, int full_name)
 {
-		char *name;
-		int len;
+	char *name;
+	int len;
 
-		/* most/all string should have "src" */
-		name = strstr(file_name_raw, "src");
-		if (!name)
-			name = file_name_raw;
+	/* most/all string should have "src" */
+	name = strstr(file_name_raw, "src");
+	if (!name)
+		name = file_name_raw;
 
-		if (full_name)
-			return name;
-		/* keep the last 24 chars */
-		len = strlen(name);
-		if (len > 24) {
-			char *sep_pos = NULL;
-
-			name += (len - 24);
-			sep_pos = strchr(name, '/');
-			if (!sep_pos)
-				return name;
-			while (--sep_pos >= name)
-				*sep_pos = '.';
-		}
+	if (full_name)
 		return name;
+	/* keep the last 24 chars */
+	len = strlen(name);
+	if (len > 24) {
+		char *sep_pos = NULL;
+
+		name += (len - 24);
+		sep_pos = strchr(name, '/');
+		if (!sep_pos)
+			return name;
+		while (--sep_pos >= name)
+			*sep_pos = '.';
+	}
+	return name;
 }
 
 static void print_entry_params(const struct log_entry_header *dma_log,
