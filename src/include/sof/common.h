@@ -9,6 +9,8 @@
 #ifndef __SOF_COMMON_H__
 #define __SOF_COMMON_H__
 
+#if !defined(LINKER)
+
 /* Align the number to the nearest alignment value */
 #define IS_ALIGNED(size, alignment) ((size) % (alignment) == 0)
 #define ALIGN_UP(size, alignment) \
@@ -18,7 +20,7 @@
 #define ALIGN ALIGN_UP
 #define DIV_ROUND_UP(val, div) (((val) + (div) - 1) / (div))
 
-#ifndef __ASSEMBLER__
+#if !defined(__ASSEMBLER__)
 
 #include <sof/trace/preproc.h>
 #include <sof/compiler_attributes.h>
@@ -84,4 +86,5 @@
 #endif /* __XCC__ */
 
 #endif /* __ASSEMBLER__ */
+#endif /* LINKER */
 #endif /* __SOF_COMMON_H__ */
