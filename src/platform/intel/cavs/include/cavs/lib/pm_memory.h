@@ -50,11 +50,13 @@ static inline uint32_t cavs_pm_memory_hp_sram_mask_get(uint32_t start_bank,
 	if (start_bank > last_in_segment || end_bank < first_in_segment)
 		return 0;
 
-	if (start_bank >= first_in_segment)
-		return MASK(MIN(end_bank, last_in_segment) - first_in_segment,
-			    start_bank - first_in_segment);
+	if (start_bank < first_in_segment)
+		start_bank = first_in_segment;
 
-	return MASK(end_bank - first_in_segment, 0);
+	if (end_bank > last_in_segment)
+		end_bank = last_in_segment;
+
+	return MASK(end_bank - first_in_segment, start_bank - first_in_segment);
 }
 
 /**
