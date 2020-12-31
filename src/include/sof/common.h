@@ -16,6 +16,7 @@
 #define ALIGN_DOWN(size, alignment) \
 	((size) - ((size) % (alignment)))
 #define ALIGN ALIGN_UP
+#define DIV_ROUND_UP(val, div) (((val) + (div) - 1) / (div))
 
 #ifndef __ASSEMBLER__
 
