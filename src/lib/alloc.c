@@ -859,8 +859,6 @@ static void *alloc_heap_buffer(struct mm_heap *heap, uint32_t flags,
 			continue;
 
 		if (alignment <= 1) {
-			platform_shared_commit(map, sizeof(*map));
-
 			/* found: grab a block */
 			ptr = alloc_block(heap, i, caps, alignment);
 			break;
