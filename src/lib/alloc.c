@@ -827,7 +827,10 @@ static void *alloc_heap_buffer(struct mm_heap *heap, uint32_t flags,
 			       uint32_t caps, size_t bytes, uint32_t alignment)
 {
 	struct block_map *map;
-	unsigned int j, temp_bytes = bytes;
+#if CONFIG_DEBUG_BLOCK_FREE
+	unsigned int temp_bytes = bytes;
+#endif
+	unsigned int j;
 	int i;
 	void *ptr = NULL;
 
@@ -887,7 +890,9 @@ static void *alloc_heap_buffer(struct mm_heap *heap, uint32_t flags,
 
 			/* Found, alloc_block_index() cannot fail */
 			ptr = alloc_block_index(heap, i, alignment, j);
+#if CONFIG_DEBUG_BLOCK_FREE
 			temp_bytes += aligned - free_start;
+#endif
 			break;
 		}
 
