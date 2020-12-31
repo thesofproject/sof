@@ -178,9 +178,7 @@ static uint32_t hp_sram_power_memory(uint32_t memory_size, bool enable)
 	/* calculate total number of used SRAM banks (EBB)
 	 * to power up only necessary banks
 	 */
-	ebb_in_use = (!(memory_size % SRAM_BANK_SIZE)) ?
-		(memory_size / SRAM_BANK_SIZE) :
-		(memory_size / SRAM_BANK_SIZE) + 1;
+	ebb_in_use = DIV_ROUND_UP(memory_size, SRAM_BANK_SIZE);
 
 	start_bank = enable ? 0 : ebb_in_use;
 	end_bank = (enable ? ebb_in_use : PLATFORM_HPSRAM_EBB_COUNT) - 1;

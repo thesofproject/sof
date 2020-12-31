@@ -10,6 +10,7 @@
 #ifndef __CAVS_LIB_MEMORY_H__
 #define __CAVS_LIB_MEMORY_H__
 
+#include <sof/common.h>
 #include <sof/lib/cache.h>
 #if !defined(__ASSEMBLER__) && !defined(LINKER)
 #include <sof/lib/cpu.h>
@@ -45,8 +46,8 @@
 #define HP_SRAM_SIZE \
 	(CONFIG_HP_MEMORY_BANKS * SRAM_BANK_SIZE)
 
-#define PLATFORM_HPSRAM_SEGMENTS	((PLATFORM_HPSRAM_EBB_COUNT \
-	+ EBB_BANKS_IN_SEGMENT - 1) / EBB_BANKS_IN_SEGMENT)
+#define PLATFORM_HPSRAM_SEGMENTS DIV_ROUND_UP(PLATFORM_HPSRAM_EBB_COUNT, \
+					      EBB_BANKS_IN_SEGMENT)
 
 #if defined(__ASSEMBLER__)
 #define LPSRAM_MASK(ignored)	((1 << PLATFORM_LPSRAM_EBB_COUNT) - 1)
