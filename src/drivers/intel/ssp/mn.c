@@ -326,7 +326,17 @@ static bool find_mn(uint32_t freq, uint32_t bclk,
 static int find_bclk_source(uint32_t bclk,
 			    uint32_t *scr_div, uint32_t *m, uint32_t *n)
 {
+	struct mn *mn = mn_get();
 	int i;
+
+	/* check if we can use MCLK source clock */
+	if (is_mclk_source_in_use()) {
+		if (find_mn(ssp_freq[mn->mclk_source_clock].freq, bclk, scr_div, m, n))
+			return mn->mclk_source_clock;
+
+		tr_warn(&mn_tr, "BCLK %d warning: cannot use MCLK source %d",
+			bclk, ssp_freq[mn->mclk_source_clock].freq);
+	}
 
 	/* searching the smallest possible bclk source */
 	for (i = 0; i <= MAX_SSP_FREQ_INDEX; i++)
