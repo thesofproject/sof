@@ -242,7 +242,7 @@ type(fn);
 end
 
 function d = mkdir_check(d)
-if exist(d) ~= 7
+if ~exist(fullfile('.', d),'dir')
         mkdir(d);
 end
 end

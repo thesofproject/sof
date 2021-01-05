@@ -31,7 +31,7 @@ switch test.bits_out
 end
 
 %% Check that output file exists
-if exist(test.fn_out)
+if exist(fullfile('.', test.fn_out),'file') == 2
 	fprintf('Reading output data file %s...\n', test.fn_out);
 	switch lower(test.fmt)
 		case 'txt'

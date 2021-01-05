@@ -273,7 +273,7 @@ function rec = meas_remote_rec_config(fs, fmt)
 	fprintf('Channels         : %d\n', rec.nch);
 	fprintf('Calibration Data : %s\n', rec.cal);
 
-	if length(rec.cal) > 0
+	if ~isempty(rec.cal)
 		if exist(rec.cal, 'file')
 			[rec.cf, rec.cm, rec.sens, rec.cs] = get_calibration(rec.cal);
 		else

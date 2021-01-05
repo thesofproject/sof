@@ -30,7 +30,7 @@
 
 function test = test_run(test)
 
-if exist(test.ex) == 2
+if exist(fullfile('./', test.ex),'file') == 2
 	%fcmd = sprintf('file %s', test.ex);
 	%[status, output]=system(fcmd);
 	%if findstr(output, "Tensilica Xtensa")
