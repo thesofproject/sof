@@ -689,7 +689,7 @@ int smart_amp_ff_copy(struct comp_dev *dev, uint32_t frames,
 	int ret;
 
 	if (frames == 0) {
-		comp_dbg(dev, "[DSM] feed forward frame size zero warning.");
+		comp_warn(dev, "[DSM] feed forward frame size zero warning.");
 		return 0;
 	}
 
@@ -749,7 +749,7 @@ int smart_amp_fb_copy(struct comp_dev *dev, uint32_t frames,
 	int ret;
 
 	if (frames == 0) {
-		comp_dbg(dev, "[DSM] feedback frame size zero warning.");
+		comp_warn(dev, "[DSM] feedback frame size zero warning.");
 		return 0;
 	}
 
