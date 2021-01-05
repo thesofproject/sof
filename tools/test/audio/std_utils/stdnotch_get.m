@@ -43,7 +43,7 @@ function [b, a] = stdnotch_get(fn, fs)
 
 target_q = 2.1;
 bw = (2*fn/fs)/target_q;
-if exist('iirnotch.m') == 2
+if exist(fullfile('.', 'iirnotch.m'),'file') == 2
         [b, a] = iirnotch(2*fn/fs, bw);
 else
         [b, a] = pei_tseng_notch(2*fn/fs, bw);
