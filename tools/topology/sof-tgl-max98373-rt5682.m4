@@ -48,7 +48,7 @@ define(`SMART_SSP_NAME', concat(concat(`SSP', AMP_SSP),`-Codec'))
 #define BE dai_link ID
 define(`SMART_BE_ID', 7)
 #define SSP mclk
-define(`SSP_MCLK', 19200000)
+define(`SSP_MCLK', 24576000)
 # Playback related
 define(`SMART_PB_PPL_ID', 1)
 define(`SMART_PB_CH_NUM', 2)
@@ -147,14 +147,14 @@ dnl     frames, deadline, priority, core)
 # Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
         2, SSP, 0, SSP0-Codec,
-        PIPELINE_SOURCE_2, 2, s24le,
+        PIPELINE_SOURCE_2, 2, s32le,
         1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # capture DAI is SSP0 using 2 periods
 # Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
         3, SSP, 0, SSP0-Codec,
-        PIPELINE_SINK_3, 2, s24le,
+        PIPELINE_SINK_3, 2, s32le,
         1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # playback DAI is iDisp1 using 2 periods
@@ -208,10 +208,10 @@ dnl ssp1-maxmspk, ssp0-RTHeadset
 #SSP 0 (ID: 0)
 DAI_CONFIG(SSP, 0, 0, SSP0-Codec,
         SSP_CONFIG(I2S, SSP_CLOCK(mclk, SSP_MCLK, codec_mclk_in),
-                      SSP_CLOCK(bclk, 2400000, codec_slave),
+                      SSP_CLOCK(bclk, 3072000, codec_slave),
                       SSP_CLOCK(fsync, 48000, codec_slave),
-                      SSP_TDM(2, 25, 3, 3),
-                      SSP_CONFIG_DATA(SSP, 0, 24)))
+                      SSP_TDM(2, 32, 3, 3),
+                      SSP_CONFIG_DATA(SSP, 0, 32)))
 
 # 4 HDMI/DP outputs (ID: 3,4,5,6)
 DAI_CONFIG(HDA, 0, 3, iDisp1,
