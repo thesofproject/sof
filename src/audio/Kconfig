@@ -336,6 +336,14 @@ config CADENCE_CODEC
 		Select for codecs which conforms to the Cadence API.
 		This will cause codec adapter component to include header
 		files specific to CADENCE base codecs.
+
+config DUMMY_CODEC
+	bool "Dummy codec"
+	default n
+	help
+	  Select for a dummy API codec implementation.
+	  This will cause codec adapter component to include header
+	  files specific to DUMMY base codecs.
 endif
 endmenu # "Audio components"
 
