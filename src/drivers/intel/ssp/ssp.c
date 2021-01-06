@@ -322,14 +322,6 @@ static int ssp_set_config(struct dai *dai,
 		goto out;
 	}
 
-	/* MCLK config */
-	ret = mn_set_mclk(config->ssp.mclk_id, config->ssp.mclk_rate);
-	if (ret < 0) {
-		dai_err(dai, "invalid mclk_rate = %d for mclk_id = %d",
-			config->ssp.mclk_rate, config->ssp.mclk_id);
-		goto out;
-	}
-
 	/* calc frame width based on BCLK and rate - must be divisable */
 	if (config->ssp.bclk_rate % config->ssp.fsync_rate) {
 		dai_err(dai, "ssp_set_config(): BCLK %d is not divisable by rate %d",
@@ -643,6 +635,14 @@ static int ssp_pre_start(struct dai *dai)
 	    ssp->state[SOF_IPC_STREAM_CAPTURE] == COMP_STATE_ACTIVE)
 		return 0;
 
+	/* MCLK config */
+	ret = mn_set_mclk(config->ssp.mclk_id, config->ssp.mclk_rate);
+	if (ret < 0) {
+		dai_err(dai, "invalid mclk_rate = %d for mclk_id = %d",
+			config->ssp.mclk_rate, config->ssp.mclk_id);
+		goto out;
+	}
+
 	sscr0 = ssp_read(dai, SSCR0);
 
 #if CONFIG_INTEL_MN
@@ -698,14 +698,17 @@ out:
  */
 static void ssp_post_stop(struct dai *dai)
 {
-#if CONFIG_INTEL_MN
 	struct ssp_pdata *ssp = dai_get_drvdata(dai);
 
-	/* release bclk if SSP is inactive */
+	/* release clocks if SSP is inactive */
 	if (ssp->state[SOF_IPC_STREAM_PLAYBACK] != COMP_STATE_ACTIVE &&
-	    ssp->state[SOF_IPC_STREAM_CAPTURE] != COMP_STATE_ACTIVE)
+	    ssp->state[SOF_IPC_STREAM_CAPTURE] != COMP_STATE_ACTIVE) {
+		dai_info(dai, "releasing BCLK/MCLK clocks for SSP%d...", dai->index);
+#if CONFIG_INTEL_MN
 		mn_release_bclk(dai->index);
 #endif
+		mn_release_mclk(ssp->config.ssp.mclk_id);
+	}
 }
 
 /* get SSP hw params */
