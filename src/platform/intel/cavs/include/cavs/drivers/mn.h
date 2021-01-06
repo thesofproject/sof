@@ -16,7 +16,7 @@
 #define MN_MDIVCTRL 0x0
 
 /** \brief Enables the output of MCLK Divider. */
-#define MN_MDIVCTRL_M_DIV_ENABLE BIT(0)
+#define MN_MDIVCTRL_M_DIV_ENABLE(x) BIT(x)
 
 /** \brief Offset of MCLK Divider x Ratio Register. */
 #define MN_MDIVR(x) (0x80 + (x) * 0x4)
