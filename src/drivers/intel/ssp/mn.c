@@ -50,7 +50,8 @@ struct mn {
 	/**< keep track of which MCLKs are in use to know when it's safe to
 	 * change shared clock
 	 */
-	bool mclk_sources_used[DAI_NUM_SSP_MCLK];
+	int mclk_sources_ref[DAI_NUM_SSP_MCLK];
+	int mclk_rate[DAI_NUM_SSP_MCLK];
 	int mclk_source_clock;
 
 #if CONFIG_INTEL_MN
@@ -65,11 +66,17 @@ static SHARED_DATA struct mn mn;
 
 void mn_init(struct sof *sof)
 {
-#if CONFIG_INTEL_MN
 	int i;
-#endif
 
 	sof->mn = platform_shared_get(&mn, sizeof(mn));
+
+	sof->mn->mclk_source_clock = 0;
+
+	/* initialize the ref counts for mclk */
+	for (i = 0; i < DAI_NUM_SSP_MCLK; i++) {
+		sof->mn->mclk_sources_ref[i] = 0;
+		sof->mn->mclk_rate[i] = 0;
+	}
 
 #if CONFIG_INTEL_MN
 	for (i = 0; i < ARRAY_SIZE(sof->mn->bclk_sources); i++)
@@ -92,8 +99,8 @@ static inline bool is_mclk_source_in_use(void)
 	bool ret = false;
 	int i;
 
-	for (i = 0; i < ARRAY_SIZE(mn->mclk_sources_used); i++) {
-		if (mn->mclk_sources_used[i]) {
+	for (i = 0; i < ARRAY_SIZE(mn->mclk_sources_ref); i++) {
+		if (mn->mclk_sources_ref[i] > 0) {
 			ret = true;
 			break;
 		}
@@ -120,6 +127,13 @@ static inline int setup_initial_mclk_source(uint32_t mclk_id,
 	uint32_t mdivc;
 	int ret = 0;
 
+	if (mclk_id >= DAI_NUM_SSP_MCLK) {
+		tr_err(&mn_tr, "can't configure MCLK %d, only %d mclk[s] existed!",
+		       mclk_id, DAI_NUM_SSP_MCLK);
+		ret = -EINVAL;
+		goto out;
+	}
+
 	/* searching the smallest possible mclk source */
 	for (i = 0; i <= MAX_SSP_FREQ_INDEX; i++) {
 		if (ssp_freq[i].freq % mclk_rate == 0) {
@@ -139,7 +153,7 @@ static inline int setup_initial_mclk_source(uint32_t mclk_id,
 	mdivc = mn_reg_read(MN_MDIVCTRL, mclk_id);
 
 	/* enable MCLK divider */
-	mdivc |= MN_MDIVCTRL_M_DIV_ENABLE;
+	mdivc |= MN_MDIVCTRL_M_DIV_ENABLE(mclk_id);
 
 	/* clear source mclk clock - bits 17-16 */
 	mdivc &= ~MCDSS(MN_SOURCE_CLKS_MASK);
@@ -149,6 +163,7 @@ static inline int setup_initial_mclk_source(uint32_t mclk_id,
 
 	mn_reg_write(MN_MDIVCTRL, mclk_id, mdivc);
 
+	mn->mclk_sources_ref[mclk_id]++;
 out:
 	platform_shared_commit(mn, sizeof(*mn));
 
@@ -160,9 +175,10 @@ out:
  * \param[in] mclk_rate main clock frequency.
  * \return 0 on success, error code otherwise.
  */
-static inline int check_current_mclk_source(uint32_t mclk_rate)
+static inline int check_current_mclk_source(uint16_t mclk_id, uint32_t mclk_rate)
 {
 	struct mn *mn = mn_get();
+	uint32_t mdivc;
 	int ret = 0;
 
 	tr_info(&mn_tr, "MCLK %d, source = %d",	mclk_rate, mn->mclk_source_clock);
@@ -171,6 +187,25 @@ static inline int check_current_mclk_source(uint32_t mclk_rate)
 		tr_err(&mn_tr, "MCLK %d, no valid configuration for already selected source = %d",
 		       mclk_rate, mn->mclk_source_clock);
 		ret = -EINVAL;
+	}
+
+	/* if the mclk is already used, can't change its divider, just increase ref count */
+	if (mn->mclk_sources_ref[mclk_id] > 0) {
+		if (mn->mclk_rate[mclk_id] != mclk_rate) {
+			tr_err(&mn_tr, "Can't set MCLK %d to %d, it is already configured to %d",
+			       mclk_id, mclk_rate, mn->mclk_rate[mclk_id]);
+			return -EINVAL;
+		}
+
+		mn->mclk_sources_ref[mclk_id]++;
+	} else {
+		mdivc = mn_reg_read(MN_MDIVCTRL, mclk_id);
+
+		/* enable MCLK divider */
+		mdivc |= MN_MDIVCTRL_M_DIV_ENABLE(mclk_id);
+		mn_reg_write(MN_MDIVCTRL, mclk_id, mdivc);
+
+		mn->mclk_sources_ref[mclk_id]++;
 	}
 
 	platform_shared_commit(mn, sizeof(*mn));
@@ -217,17 +252,13 @@ int mn_set_mclk(uint16_t mclk_id, uint32_t mclk_rate)
 
 	spin_lock(&mn->lock);
 
-	mn->mclk_sources_used[mclk_id] = false;
-
 	if (is_mclk_source_in_use())
-		ret = check_current_mclk_source(mclk_rate);
+		ret = check_current_mclk_source(mclk_id, mclk_rate);
 	else
 		ret = setup_initial_mclk_source(mclk_id, mclk_rate);
 
 	if (ret < 0)
 		goto out;
-
-	mn->mclk_sources_used[mclk_id] = true;
 
 	tr_info(&mn_tr, "mclk_rate %d, mclk_source_clock %d",
 		mclk_rate, mn->mclk_source_clock);
@@ -235,6 +266,8 @@ int mn_set_mclk(uint16_t mclk_id, uint32_t mclk_rate)
 	ret = set_mclk_divider(mclk_id,
 			       ssp_freq[mn->mclk_source_clock].freq /
 			       mclk_rate);
+	if (!ret)
+		mn->mclk_rate[mclk_id] = mclk_rate;
 
 out:
 	platform_shared_commit(mn, sizeof(*mn));
@@ -247,9 +280,31 @@ out:
 void mn_release_mclk(uint32_t mclk_id)
 {
 	struct mn *mn = mn_get();
+	uint32_t mdivc;
 
 	spin_lock(&mn->lock);
-	mn->mclk_sources_used[mclk_id] = false;
+
+	mn->mclk_sources_ref[mclk_id]--;
+
+	/* disable MCLK divider if nobody use it */
+	if (!mn->mclk_sources_ref[mclk_id]) {
+		mdivc = mn_reg_read(MN_MDIVCTRL, mclk_id);
+
+		mdivc |= ~MN_MDIVCTRL_M_DIV_ENABLE(mclk_id);
+		mn_reg_write(MN_MDIVCTRL, mclk_id, mdivc);
+	}
+
+	/* release the clock source if all mclks are released */
+	if (!is_mclk_source_in_use()) {
+		mdivc = mn_reg_read(MN_MDIVCTRL, mclk_id);
+
+		/* clear source mclk clock - bits 17-16 */
+		mdivc &= ~MCDSS(MN_SOURCE_CLKS_MASK);
+
+		mn_reg_write(MN_MDIVCTRL, mclk_id, mdivc);
+
+		mn->mclk_source_clock = 0;
+	}
 	platform_shared_commit(mn, sizeof(*mn));
 	spin_unlock(&mn->lock);
 }
