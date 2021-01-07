@@ -2,7 +2,7 @@
 # Each line is a file pattern followed by one or more owners.
 
 # These owners will be the default owners for everything in the repo.
-*       @lgirdwood @plbossart @mmaka1 @lbetlej @dbaluta @jajanusz
+*       @lgirdwood @plbossart @mmaka1 @lbetlej @dbaluta
 
 # Order is important. The last matching pattern has the most precedence.
 # So if a pull request only touches javascript files, only these owners
@@ -54,11 +54,10 @@ src/debug/gdb/*				@mrajwa
 src/schedule				@mrajwa
 
 # other helpers
-test/**					@jajanusz
 # Mostly overridden by *.(ba)sh below
 scripts/*				@xiulipan @marc-hb
 
-# tools(old soft)
+# tools(old 'soft' repo)
 tools/logger/*				@xiulipan @bkokoszx @akloniex
 tools/topology/*			@ranj063 @xiulipan
 tools/testbench/*			@ranj063
@@ -72,13 +71,13 @@ tools/tune/drc/*			@cujomalainey @johnylin76 @dgreid
 tools/oss-fuzz/*			@cujomalainey
 
 # build system
-**/CMakeLists.txt			@jajanusz
-**/Kconfig				@jajanusz
-scripts/cmake/**			@jajanusz
-scripts/kconfig/**			@jajanusz
+# **/CMakeLists.txt
+# **/Kconfig
+# scripts/cmake/**
+# scripts/kconfig/**
 
-*.sh					@jajanusz @marc-hb
-*.bash					@jajanusz @marc-hb
+*.sh					@marc-hb
+*.bash					@marc-hb
 *trace.*				@xiulipan @akloniex
 
 # You can also use email addresses if you prefer.
