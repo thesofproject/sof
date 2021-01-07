@@ -57,7 +57,8 @@ struct codec_interface {
 	int (*process)(struct comp_dev *dev);
 	/**
 	 * Codec specific apply config procedure, called by codec_adapter every time
-	 * new configuration has been loaded.
+	 * a new RUNTIME configuration has been sent if the adapter has been
+	 * prepared. This will not be called for SETUP cfg.
 	 */
 	int (*apply_config)(struct comp_dev *dev);
 	/**
