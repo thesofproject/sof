@@ -21,8 +21,7 @@
 
 #define ALIGN_UP_INTERNAL(val, align) (((val) + (align) - 1) & ~((align) - 1))
 
-#define VERIFY_ALIGN
-#ifdef VERIFY_ALIGN
+#if CONFIG_DEBUG_ALIGNMENT
 
 /* For data initializers etc. */
 #define ALIGN_UP_COMPILE(size, alignment)					\

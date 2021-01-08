@@ -228,6 +228,13 @@ config DEBUG_IPC_COUNTERS
 	help
 	  Select for enabling tracing IPC counter in SRAM_REG mailbox
 
+config DEBUG_ALIGNMENT
+	bool "Power of 2 alignment"
+	default n
+	help
+	  Select to enable compile- and run-time power-of-2 alignment checks
+	  in macros ALIGN(), ALIGN_UP() etc.
+
 config PERFORMANCE_COUNTERS
 	bool "Performance counters"
 	default n
