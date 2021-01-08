@@ -354,6 +354,12 @@ if (CONFIG_SOC_SERIES_NXP_IMX8)
 	)
 endif()
 
+zephyr_library_sources_ifdef(CONFIG_LIBRARY
+	${SOF_PLATFORM_PATH}/library/platform.c
+	${SOF_PLATFORM_PATH}/library/lib/dai.c
+	${SOF_DRIVERS_PATH}/host/ipc.c
+)
+
 zephyr_include_directories(${SOF_PLATFORM_PATH}/${PLATFORM}/include)
 
 # Mandatory Files used on all platforms.
