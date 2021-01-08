@@ -535,11 +535,6 @@ struct idc **idc_get(void)
 /* Dummies for unsupported architectures */
 
 /* Platform */
-int platform_init(struct sof *sof)
-{
-	return 0;
-}
-
 int platform_boot_complete(uint32_t boot_message)
 {
 	return 0;
