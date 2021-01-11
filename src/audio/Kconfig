@@ -328,23 +328,8 @@ config COMP_CODEC_ADAPTER
 	  "src\include\sof\audio\codec_adapter\interfaces.h". It is possible to link several
 	  different codecs and use them in parallel.
 
-if COMP_CODEC_ADAPTER
-config CADENCE_CODEC
-	bool "Cadence codec"
-	default n
-	help
-		Select for codecs which conforms to the Cadence API.
-		This will cause codec adapter component to include header
-		files specific to CADENCE base codecs.
+rsource "codec_adapter/Kconfig"
 
-config DUMMY_CODEC
-	bool "Dummy codec"
-	default n
-	help
-	  Select for a dummy API codec implementation.
-	  This will cause codec adapter component to include header
-	  files specific to DUMMY base codecs.
-endif
 endmenu # "Audio components"
 
 menu "Data formats"
