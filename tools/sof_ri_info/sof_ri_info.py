@@ -1203,7 +1203,8 @@ def get_mem_map(ri_path):
     """ Retrieves memory map for platform determined by the file name
     """
     for plat_name in DSP_MEM_SPACE_EXT:
-        if plat_name in ri_path:
+        # use full firmware name for match
+        if "sof-{}.ri".format(plat_name) in ri_path:
             return DSP_MEM_SPACE_EXT[plat_name]
     return DspMemory('Memory layout undefined', [])
 
