@@ -21,6 +21,7 @@ import struct
 
 # Public keys signatures recognized by parse_css_manifest()
 # - add a new one as array of bytes and append entry to KNOWN_KEYS below.
+#   you can use --full_bytes to dump the bytes in below format
 
 APL_INTEL_PROD_KEY = bytes([0x1f, 0xf4, 0x58, 0x74, 0x64, 0xd4, 0xae, 0x90,
                             0x03, 0xb6, 0x71, 0x0d, 0xb5, 0xaf, 0x6d, 0xd6,
@@ -818,8 +819,15 @@ class Abytes(Attribute):
             out = ''
         else:
             out = '{}'.format(change_color(self.color))
-        if Attribute.full_bytes or length <= 16:
+        if length <= 16:
             out += ' '.join(['{:02x}'.format(b) for b in self.val])
+        elif Attribute.full_bytes:
+            """ n is num pre row
+                print 8 num pre line, useful for add more KEY
+            """
+            n = 8
+            out += '\n'
+            out += ',\n'.join([', '.join(['0x{:02x}'.format(b) for b in self.val[i:i + n]]) for i in range(0, length, n)])
         else:
             out += ' '.join('{:02x}'.format(b) for b in self.val[:8])
             out += ' ... '
