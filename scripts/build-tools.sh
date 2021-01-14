@@ -40,20 +40,14 @@ make_tool()
         # okay.
         tool=$1
 
-        # 'cd' is unfortunately much less verbose than 'make -C'.
-        # 'MAKEFLAGS=--no-print-directory' works too but let's not
-        # interfere with the user's environment.
-        ( cd "$BUILD_TOOLS_DIR"
-         # shellcheck disable=SC2086
-          make -j "$NO_PROCESSORS" $tool
-        )
+        # shellcheck disable=SC2086
+        cmake --build $BUILD_TOOLS_DIR  --  -j "$NO_PROCESSORS" $tool
+
 }
 
 make_fuzzer()
 {
-        ( cd "$BUILD_TOOLS_DIR"/fuzzer
-          make -j "$NO_PROCESSORS"
-        )
+        cmake --build "$BUILD_TOOLS_DIR"/fuzzer  --  -j "$NO_PROCESSORS"
 }
 
 print_build_info()

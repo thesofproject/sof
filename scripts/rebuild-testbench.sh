@@ -25,7 +25,7 @@ rebuild_testbench()
 
     cmake -DCMAKE_INSTALL_PREFIX=install  ..
 
-    make -j"$(nproc)" install
+    cmake --build .  --  -j"$(nproc)" install
 }
 
 export_CC_with_afl()
