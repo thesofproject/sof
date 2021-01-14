@@ -53,6 +53,7 @@ struct clock_info {
 uint32_t clock_get_freq(int clock);
 
 void clock_set_freq(int clock, uint32_t hz);
+void clock_set_idx(int clock, int freq_idx);
 
 void clock_low_power_mode(int clock, bool enable);
 

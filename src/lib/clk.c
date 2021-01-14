@@ -95,6 +95,39 @@ void clock_set_freq(int clock, uint32_t hz)
 	spin_unlock_irq(&clk_info->lock, flags);
 }
 
+void clock_set_idx(int clock, int freq_idx)
+{
+	struct clock_info *clk_info = clocks_get() + clock;
+
+	clk_notify_data.old_freq =
+		clk_info->freqs[clk_info->current_freq_idx].freq;
+	clk_notify_data.old_ticks_per_msec =
+		clk_info->freqs[clk_info->current_freq_idx].ticks_per_msec;
+
+	clk_notify_data.freq = clk_info->freqs[freq_idx].freq;
+
+	tr_info(&clock_tr, "clock %d set freq_idx %d", clock, freq_idx);
+
+	/* tell anyone interested we are about to change freq */
+	clk_notify_data.message = CLOCK_NOTIFY_PRE;
+	notifier_event(clk_info, clk_info->notification_id,
+		       clk_info->notification_mask, &clk_notify_data,
+		       sizeof(clk_notify_data));
+
+	if (!clk_info->set_freq ||
+	    clk_info->set_freq(clock, freq_idx) == 0)
+		/* update clock frequency */
+		clk_info->current_freq_idx = freq_idx;
+
+	/* tell anyone interested we have now changed freq */
+	clk_notify_data.message = CLOCK_NOTIFY_POST;
+	notifier_event(clk_info, clk_info->notification_id,
+		       clk_info->notification_mask, &clk_notify_data,
+		       sizeof(clk_notify_data));
+
+	platform_shared_commit(clk_info, sizeof(*clk_info));
+}
+
 void clock_low_power_mode(int clock, bool enable)
 {
 	struct clock_info *clk_info = clocks_get() + clock;
