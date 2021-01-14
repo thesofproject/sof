@@ -17,6 +17,10 @@
 
 static SHARED_DATA struct clock_info platform_clocks_info[NUM_CLOCKS];
 
+uint32_t _debug_clk_time;
+uint32_t _debug_last_clk_time;
+int _debug_cur_clk;
+
 #if CAVS_VERSION == CAVS_VERSION_1_5
 static inline void select_cpu_clock_hw(int freq_idx, bool release_unused)
 {
@@ -32,6 +36,8 @@ static inline void select_cpu_clock_hw(int freq_idx, bool release_unused)
 {
 	uint32_t enc = cpu_freq_enc[freq_idx];
 	uint32_t status_mask = cpu_freq_status_mask[freq_idx];
+	uint64_t t_begin = 0;
+	uint64_t t_end = 0;
 
 #if CONFIG_TIGERLAKE
 	/* TGL specific HW recommended flow */
@@ -43,10 +49,20 @@ static inline void select_cpu_clock_hw(int freq_idx, bool release_unused)
 	io_reg_write(SHIM_BASE + SHIM_CLKCTL,
 		     io_reg_read(SHIM_BASE + SHIM_CLKCTL) | enc);
 
+	t_begin = platform_timer_get(timer_get());
+
 	/* wait for requested clock to be on */
 	while ((io_reg_read(SHIM_BASE + SHIM_CLKSTS) &
 		status_mask) != status_mask)
 		idelay(PLATFORM_DEFAULT_DELAY);
+
+	t_end = platform_timer_get(timer_get());
+
+	_debug_last_clk_time = t_end - t_begin;
+	_debug_cur_clk = freq_idx;
+
+	if (_debug_last_clk_time > _debug_clk_time)
+		_debug_clk_time = _debug_last_clk_time;
 
 	/* switch to requested clock */
 	io_reg_update_bits(SHIM_BASE + SHIM_CLKCTL,

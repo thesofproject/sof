@@ -432,6 +432,62 @@ static int dai_capture_params(struct comp_dev *dev, uint32_t period_bytes,
 	return 0;
 }
 
+struct _debug_ll_schedule_domain {
+	uint64_t last_tick;		/**< timestamp of last run */
+	spinlock_t lock;		/**< standard lock */
+	atomic_t total_num_tasks;	/**< total number of registered tasks */
+	atomic_t num_clients;		/**< number of registered cores */
+	uint32_t ticks_per_ms;		/**< number of clock ticks per ms */
+	int type;			/**< domain type */
+	int clk;			/**< source clock */
+	bool synchronous;		/**< are tasks should be synchronous */
+	void *priv_data;		/**< pointer to private data */
+	bool registered[CONFIG_CORE_COUNT];		/**< registered cores */
+	bool enabled[CONFIG_CORE_COUNT];		/**< enabled cores */
+	const void *ops;	/**< domain ops */
+};
+
+extern atomic_t *_debug_num_tasks;
+extern void *_debug_ll_domain;
+
+static void _debug_debug_ll(struct comp_dev *dev)
+{
+	uint64_t REG_SHIM_DSPWCT0C = shim_read64(SHIM_DSPWCT0C);
+	uint32_t REG_SHIM_DSPWCT0C_HI = REG_SHIM_DSPWCT0C >> 32;
+	uint32_t REG_SHIM_DSPWCT0C_LO = REG_SHIM_DSPWCT0C;
+
+	comp_err(dev, "@@@ SHIM_DSPWCT0C %X%X",
+		 REG_SHIM_DSPWCT0C_HI, REG_SHIM_DSPWCT0C_LO);
+
+	comp_err(dev, "@@@ SHIM_DSPWCTCS %X",
+		 shim_read(SHIM_DSPWCTCS));
+
+	uint64_t REG_SHIM_DSPWC = shim_read64(SHIM_DSPWC);
+	uint32_t REG_SHIM_DSPWC_HI = REG_SHIM_DSPWC >> 32;
+	uint32_t REG_SHIM_DSPWC_LO = REG_SHIM_DSPWC;
+
+	comp_err(dev, "@@@ SHIM_DSPWC %X%X",
+		 REG_SHIM_DSPWC_HI, REG_SHIM_DSPWC_LO);
+
+	struct _debug_ll_schedule_domain *ll =
+		(struct _debug_ll_schedule_domain *)_debug_ll_domain;
+
+	int cpu = cpu_get_id();
+
+	if (_debug_num_tasks && ll) {
+		comp_err(dev, "@@@ NUM TASKS %d TOTAL NUM TASKS %d NUM CLIENTS %d REG %d",
+			atomic_read(_debug_num_tasks),
+			atomic_read(&ll->total_num_tasks),
+			atomic_read(&ll->num_clients),
+			ll->registered[cpu]);
+
+		comp_err(dev, "@@@ LL ENABLED %d LL CLK %d TYPE %d",
+			 ll->enabled[cpu],
+			 ll->clk,
+			 ll->type);
+	}
+}
+
 static int dai_params(struct comp_dev *dev,
 		      struct sof_ipc_stream_params *params)
 {
@@ -447,6 +503,8 @@ static int dai_params(struct comp_dev *dev,
 	int err;
 
 	comp_dbg(dev, "dai_params()");
+
+	_debug_debug_ll(dev);
 
 	err = dai_verify_params(dev, params);
 	if (err < 0) {

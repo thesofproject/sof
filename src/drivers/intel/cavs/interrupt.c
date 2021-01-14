@@ -125,6 +125,8 @@ static inline void irq_lvl2_handler(void *data, int level, uint32_t ilxsd,
 	}
 }
 
+uint64_t _debug_irqs = 0;
+
 #define IRQ_LVL2_HANDLER(n) int core = cpu_get_id(); \
 				irq_lvl2_handler(data, \
 				 IRQ_NUM_EXT_LEVEL##n, \
@@ -134,6 +136,7 @@ static inline void irq_lvl2_handler(void *data, int level, uint32_t ilxsd,
 #if CONFIG_INTERRUPT_LEVEL_2
 static void irq_lvl2_level2_handler(void *data)
 {
+	_debug_irqs++;
 	IRQ_LVL2_HANDLER(2);
 }
 #endif
@@ -155,6 +158,7 @@ static void irq_lvl2_level4_handler(void *data)
 #if CONFIG_INTERRUPT_LEVEL_5
 static void irq_lvl2_level5_handler(void *data)
 {
+	_debug_irqs++;
 	IRQ_LVL2_HANDLER(5);
 }
 #endif

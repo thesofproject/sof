@@ -33,6 +33,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+extern void *_debug_task_watch;
+
 /* generic pipeline data used by pipeline_comp_* functions */
 struct pipeline_data {
 	struct comp_dev *start;
@@ -72,6 +74,8 @@ struct pipeline *pipeline_new(struct sof_ipc_pipe_new *pipe_desc,
 	struct sof_ipc_stream_posn posn;
 	struct pipeline *p;
 	int ret;
+
+	pipe_cl_err("@@@ SCHED MARGIN FIX");
 
 	pipe_cl_info("pipeline new pipe_id %d period %d priority %d",
 		     pipe_desc->pipeline_id, pipe_desc->period,
@@ -1181,6 +1185,7 @@ void pipeline_schedule_copy(struct pipeline *p, uint64_t start)
 	if (!pipeline_is_timer_driven(p))
 		sa_set_panic_on_delay(false);
 
+	_debug_task_watch = p->pipe_task;
 	schedule_task(p->pipe_task, start, p->ipc_pipe.period);
 }
 
@@ -1195,12 +1200,30 @@ static void pipeline_schedule_cancel(struct pipeline *p)
 		sa_set_panic_on_delay(true);
 }
 
+extern uint64_t _debug_irqs;
+extern uint32_t _debug_clk_time;
+extern int _debug_cur_clk;
+
 static enum task_state pipeline_task(void *arg)
 {
 	struct pipeline *p = arg;
 	int err;
+	uint32_t _debug_irq_delta;
 
 	pipe_dbg(p, "pipeline_task()");
+
+	p->heartbeat++;
+
+	if (p->heartbeat > 2000) {
+		_debug_irq_delta = _debug_irqs - p->last_irqs;
+
+		pipe_err(p, "@@@ PIPELINE HEARTBEAT, IRQ DELTA %d, CLK TIME %d, CUR CLK %d",
+			 _debug_irq_delta, _debug_clk_time, _debug_cur_clk);
+
+		p->last_irqs = _debug_irqs;
+		p->heartbeat = 0;
+		_debug_clk_time = 0;
+	}
 
 	/* are we in xrun ? */
 	if (p->xrun_bytes) {
