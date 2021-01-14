@@ -69,7 +69,6 @@ ExternalProject_Add(parser_ep
 	CMAKE_ARGS -DCONFIG_LIBRARY=ON
 		-DCMAKE_INSTALL_PREFIX=${PROJECT_BINARY_DIR}/sof_parser/install
 		-DCMAKE_VERBOSE_MAKEFILE=${CMAKE_VERBOSE_MAKEFILE}
-	BUILD_COMMAND make
 	BUILD_ALWAYS 1
 	BUILD_BYPRODUCTS "${parser_install_dir}/lib/libsof_tplg_parser.so"
 )
