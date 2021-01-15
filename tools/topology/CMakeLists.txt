@@ -137,6 +137,7 @@ set(TPLGS
 	"sof-imx8qxp-cs42888\;sof-imx8qxp-cs42888"
 	"sof-imx8qxp-nocodec-sai\;sof-imx8qxp-nocodec-sai"
 	"sof-imx8qxp-wm8960\;sof-imx8qxp-wm8960"
+	"sof-imx8-wm8960-mixer\;sof-imx8-wm8960-mixer"
 	"sof-tgl-max98357a-rt5682\;sof-tgl-max98357a-rt5682\;-DCODEC=MAX98357A\;-DFMT=s16le"
 	"sof-tgl-max98357a-rt5682\;sof-tgl-rt1011-rt5682\;-DCODEC=RT1011\;-DFMT=s24le"
 	"sof-tgl-max98373-rt5682\;sof-tgl-max98373-rt5682\;-DAMP_SSP=1"
