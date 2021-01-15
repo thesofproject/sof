@@ -197,7 +197,7 @@ static void *align_ptr(struct mm_heap *heap, uint32_t alignment,
 	if (alignment <= 1)
 		return ptr;
 
-	return (void *)ALIGN((uintptr_t)ptr, alignment);
+	return (void *)ALIGN_UP((uintptr_t)ptr, alignment);
 }
 
 /* allocate single block */
@@ -290,7 +290,7 @@ static void *alloc_cont_blocks(struct mm_heap *heap, int level,
 
 			/* Check if we can start a sequence here */
 			if (alignment) {
-				aligned = ALIGN(blk_start, alignment);
+				aligned = ALIGN_UP(blk_start, alignment);
 
 				if (blk_start & (alignment - 1) &&
 				    aligned >= blk_start + map->block_size)
@@ -881,7 +881,7 @@ static void *alloc_heap_buffer(struct mm_heap *heap, uint32_t flags,
 			if (hdr->used)
 				continue;
 
-			aligned = ALIGN(free_start, alignment);
+			aligned = ALIGN_UP(free_start, alignment);
 
 			if (aligned + bytes > free_start + map->block_size)
 				continue;
