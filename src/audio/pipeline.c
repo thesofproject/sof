@@ -517,7 +517,10 @@ int pipeline_params(struct pipeline *p, struct comp_dev *host,
 		    struct sof_ipc_pcm_params *params)
 {
 	struct sof_ipc_pcm_params hw_params;
-	struct pipeline_data data;
+	struct pipeline_data data = {
+		.start = host,
+		.params = &hw_params,
+	};
 	struct pipeline_walk_context hw_param_ctx = {
 		.comp_func = pipeline_comp_hw_params,
 		.comp_data = &data,
@@ -540,10 +543,6 @@ int pipeline_params(struct pipeline *p, struct comp_dev *host,
 		  params->params.stream_tag, params->params.channels,
 		  params->params.sample_valid_bytes,
 		  params->params.sample_container_bytes);
-
-	/* settin hw params */
-	data.start = host;
-	data.params = &hw_params;
 
 	ret = hw_param_ctx.comp_func(host, NULL, &hw_param_ctx, dir);
 	if (ret < 0) {
