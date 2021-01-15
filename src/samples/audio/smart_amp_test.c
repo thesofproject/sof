@@ -74,8 +74,6 @@ static struct comp_dev *smart_amp_new(const struct comp_driver *drv,
 	if ((bs > 0) && (bs < sizeof(struct sof_smart_amp_config))) {
 		comp_err(dev, "smart_amp_new(): failed to apply config");
 
-		if (sad)
-			rfree(sad);
 		rfree(sad);
 		return NULL;
 	}
