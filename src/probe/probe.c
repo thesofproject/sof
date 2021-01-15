@@ -755,7 +755,8 @@ static void probe_cb_produce(void *arg, enum notify_id type, void *data)
 	uint32_t head, tail;
 	uint32_t free_bytes = 0;
 	int32_t copy_bytes = 0;
-	uint32_t ret, i, j;
+	int ret;
+	uint32_t i, j;
 	uint32_t format;
 
 	buffer_id = buffer->id;
@@ -897,7 +898,7 @@ static void probe_cb_free(void *arg, enum notify_id type, void *data)
 {
 	struct buffer_cb_free *cb_data = data;
 	uint32_t buffer_id = cb_data->buffer->id;
-	uint32_t ret;
+	int ret;
 
 	tr_dbg(&pr_tr, "probe_cb_free() buffer_id = %u", buffer_id);
 
