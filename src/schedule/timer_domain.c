@@ -231,9 +231,20 @@ static void timer_domain_set(struct ll_schedule_domain *domain, uint64_t start)
 	uint64_t ticks_tout = domain->ticks_per_ms * timer_domain->timeout /
 			     1000;
 	uint64_t ticks_set;
+	uint64_t ticks_now = platform_timer_get(timer_domain->timer);
 #ifndef __ZEPHYR__
 	uint64_t ticks_req = start + ticks_tout;
 
+	/* check we are not scheduling in the past ? */
+	if (ticks_req <= ticks_now) {
+		/* LL work has overshot the LL period duration meaning it's
+		 * taking too long to complete the work. Reschedule in 1 periods
+		 * time and let driver/userspace deal with the delay.
+		 */
+		tr_err(&ll_tr, "timer_domain_set(): overshoot by %d ticks",
+		       (uint32_t)(ticks_now - ticks_req));
+		ticks_req = ticks_now + ticks_tout;
+	}
 	ticks_set = platform_timer_set(timer_domain->timer, ticks_req);
 #else
 	uint64_t current = platform_timer_get(timer_domain->timer);
