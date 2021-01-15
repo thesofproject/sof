@@ -77,7 +77,12 @@
 
 #endif
 
-#define ALIGN ALIGN_UP
+/* This most basic ALIGN() must be used in header files that are
+ * included in both C and assembly code. memory.h files require this
+ * exact spelling matching the linker function because memory.h values
+ * are _also_ copied unprocessed to the .x[.in] linker script
+ */
+#define ALIGN(val, align) ALIGN_UP_INTERNAL(val, align)
 #define DIV_ROUND_UP(val, div) (((val) + (div) - 1) / (div))
 
 #if !defined(__ASSEMBLER__)

@@ -38,7 +38,7 @@ static void memory_banks_get(void *start, void *end, uint32_t base,
 	 * or end for end address
 	 */
 	if ((uintptr_t)start % SRAM_BANK_SIZE)
-		start = (void *)ALIGN((uintptr_t)start, SRAM_BANK_SIZE);
+		start = (void *)ALIGN_UP((uintptr_t)start, SRAM_BANK_SIZE);
 
 	if ((uintptr_t)end % SRAM_BANK_SIZE)
 		end = (void *)ALIGN_DOWN((uintptr_t)end, SRAM_BANK_SIZE);
