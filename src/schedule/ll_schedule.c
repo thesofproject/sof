@@ -164,6 +164,7 @@ static void schedule_ll_tasks_run(void *data)
 	uint32_t num_clients = 0;
 	uint64_t last_tick;
 	uint32_t flags;
+	uint64_t tick_now;
 
 	domain_disable(sch->domain, cpu_get_id());
 
@@ -174,6 +175,17 @@ static void schedule_ll_tasks_run(void *data)
 	sch->domain->enabled[cpu_get_id()] = false;
 
 	last_tick = sch->domain->last_tick;
+
+	/* last_tick is the time we asked the timer to run the LL scheduler,
+	 * let give it a quick sanity check to see if we have been blocked
+	 * for any reason. TODO: determine a tolerance - uses ~62.5uS now
+	 */
+	tick_now = platform_timer_get(timer_get());
+	if ((tick_now - last_tick) > (sch->domain->ticks_per_ms >> 4)) {
+		/* we have started late - shout about it */
+		tr_err(&ll_tr, "schedule_ll_tasks_run: started %d ticks late",
+		       (uint32_t)(tick_now - last_tick));
+	}
 
 	/* clear domain only if all clients are done */
 	/* TODO: no need for atomic operations,
