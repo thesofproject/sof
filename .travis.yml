@@ -40,6 +40,9 @@ jobs:
       env: PLATFORM='jsl'
 
     - <<: *build-platform
+      env: PLATFORM='sue'
+
+    - <<: *build-platform
       env: PLATFORM='tgl'
 
     - <<: *build-platform
