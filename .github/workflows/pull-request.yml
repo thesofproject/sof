@@ -1,0 +1,146 @@
+---
+# Tools that can save round-trips to github and a lot of time:
+#
+# yamllint -f parsable pull_request.yml
+# pip3 install ruamel.yaml.cmd
+# yaml merge-expand pull_request.yml exp.yml &&
+#    diff -w -u pull_request.yml exp.yml
+#
+# github.com also has a powerful web editor that can be used without
+# committing.
+
+name: Pull Requests
+
+# yamllint disable-line rule:truthy
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# Some jobs may not need submodules but for now our CMakeLists.txt
+# systemically downloads them anyway when missing at build time. Easier
+# and cleaner to clone everything at once.
+
+jobs:
+
+  doxygen:
+    runs-on: ubuntu-20.04
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: apt get doxygen graphviz
+        run: sudo apt-get -y install ninja-build doxygen graphviz
+
+      - name: list all warnings, warnings are not failures
+        run: cmake -GNinja -S doc -B docbuild && ninja -C docbuild -v doc
+
+      # Build again (it's very quick) so warnings don't go unnoticed
+      - name: fail and stop on first warning
+        run: printf 'WARN_AS_ERROR = YES\n' >> doc/sof.doxygen.in &&
+          ninja -C docbuild -v doc
+
+
+  testbench:
+    runs-on: ubuntu-20.04
+
+    steps:
+      - uses: actions/checkout@v2
+        with: {fetch-depth: 0, submodules: recursive}
+
+      - name: docker
+        run: docker pull thesofproject/sof && docker tag thesofproject/sof sof
+
+      # testbench needs some topologies
+      - name: build topologies
+        run: ./scripts/docker-run.sh ./scripts/build-tools.sh -t
+      - name: build testbench
+        run: ./scripts/docker-run.sh ./scripts/rebuild-testbench.sh
+      - name: test
+        run: ./scripts/host-testbench.sh
+
+
+  SOF-build-only:
+    runs-on: ubuntu-20.04
+
+    strategy:
+      matrix:
+        platform: [sue jsl tgl]
+
+    steps:
+
+      - uses: actions/checkout@v2
+        with: {fetch-depth: 0, submodules: recursive}
+
+      - name: docker
+        run: docker pull thesofproject/sof && docker tag thesofproject/sof sof
+
+      - name: xtensa-build-all
+        env:
+          PLATFORM: ${{ matrix.platform }}
+        run: ./scripts/docker-run.sh
+          ./scripts/xtensa-build-all.sh -r ${PLATFORM}
+
+  # Warning: there is a fair amount of duplication between 'build-only'
+  # and 'qemu-boot' because github does not support YAML anchors as of Jan
+  # 2021.  Defining our new actions would be overkill. Another popular
+  # option is to generate this file from a source with YAML anchors
+  # before committing it; also deemed overkill for the current amount of
+  # duplication.
+
+  SOF-qemu-boot:
+    runs-on: ubuntu-20.04
+
+    strategy:
+      matrix:
+        # Compiler-based grouping, see HOST= in xtensa-build-all.sh The
+        # only reason for grouping is to avoid the matrix swarming the
+        # user interface and burying other checks.
+        platform: [imx8 imx8x imx8m,
+                   byt cht, bdw hsw, apl skl kbl, cnl icl]
+
+    steps:
+
+      - uses: actions/checkout@v2
+        with: {fetch-depth: 0, submodules: recursive}
+
+      # FIXME: could/should probably use ./scripts/xtensa-build-all.sh
+      # -o agent.config instead of hiding this here.
+      - name: turn off HAVE_AGENT
+        run: sed -i $(($(grep "config HAVE_AGENT" -n src/platform/Kconfig |
+          cut -f1 -d:)+2))"s/default y/default n/" src/platform/Kconfig
+
+      - name: docker SOF
+        run: docker pull thesofproject/sof && docker tag thesofproject/sof sof
+
+      - name: xtensa-build-all
+        env:
+          PLATFORM: ${{ matrix.platform }}
+        run: ./scripts/docker-run.sh
+          ./scripts/xtensa-build-all.sh -r ${PLATFORM}
+
+      - name: docker QEMU
+        run: docker pull thesofproject/sofqemu &&
+          docker tag thesofproject/sofqemu sofqemu
+
+      - name: qemu-check
+        env:
+          PLATFORM: ${{ matrix.platform }}
+        run: ./scripts/docker-qemu.sh
+          ../sof.git/scripts/qemu-check.sh ${PLATFORM}
+
+  yamllint-actions:
+    runs-on: ubuntu-20.04
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: apt install yamllint
+        run: sudo apt-get -y install yamllint
+
+      - name: yamllint github actions
+        run: yamllint .github/workflows/pull-request.yml
