@@ -10,6 +10,8 @@
 #include <sof/math/trig.h>
 #include <stdint.h>
 
+#if CONFIG_MATH_SIN_FIXED || UNIT_TEST
+
 #define SINE_C_Q20 341782638 /* 2*SINE_NQUART/pi in Q12.20 */
 #define SINE_NQUART 512 /* Must be 2^N */
 #define SINE_TABLE_SIZE (SINE_NQUART + 1)
@@ -574,3 +576,5 @@ int32_t sin_fixed(int32_t w)
 
 	return (int32_t)sine;
 }
+
+#endif /* CONFIG_MATH_CONFIG_SIN_FIXED || UNIT_TEST */

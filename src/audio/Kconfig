@@ -90,9 +90,19 @@ config COMP_IIR
 	help
 	  Select for IIR component
 
+config MATH_SIN_FIXED
+	bool "Sine library function"
+	default n
+	help
+	  This option builds the 32 bit sin_fixed() library function. The input
+	  is Q4.28 format and the output is Q1.31. The algorithm consists of
+	  lookup table and first order interpolation. The lookup table is
+	  a 1/4 wave sample with 513 points.
+
 config COMP_TONE
 	bool "Tone component"
-	default y
+	select MATH_SIN_FIXED
+	default n
 	help
 	  Select for Tone component
 
@@ -136,6 +146,7 @@ config COMP_CROSSOVER
 
 config COMP_DRC
 	bool "Dynamic Range Compressor component"
+	select MATH_SIN_FIXED
 	default n
 	help
 	  Select for Dynamic Range Compressor (DRC) component. A DRC can be used
