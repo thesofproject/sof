@@ -1,0 +1,32 @@
+---
+# Tools that can save round-trips to github and a lot of time:
+#
+# yamllint -f parsable pull_request.yml
+# pip3 install ruamel.yaml.cmd
+# yaml merge-expand pull_request.yml exp.yml &&
+#    diff -w -u pull_request.yml exp.yml
+#
+# github.com also has a powerful web editor that can be used without
+# committing.
+
+name: Pull Requests
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  build-only:
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        include:
+          - platform: apl
+          - platform: tgl
+    steps:
+      - name: xtensa-build-all.sh
+        env:
+          PLATFORM: ${{ matrix.platform }}
+        run: ./scripts/xtensa-build-all.sh -r ${PLATFORM}
