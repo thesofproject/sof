@@ -17,15 +17,14 @@ include(`sof/tokens.m4')
 # Include Broadwell DSP configuration
 include(`platform/intel/bdw.m4')
 
-
 define(PIPE_NAME, pipe-bdw-`'CODEC`')
 
 #
 # Define the pipelines
 #
-# PCM0 ----> volume ---------------+
-#                                  |--low latency mixer ----> volume ---->  SSP0
-# PCM1 -----> volume -----> SRC ---+
+# PCM0 ----> volume ------+
+#                         |--low latency mixer ----> volume ---->  SSP0
+# PCM1 -----> volume -----+
 #
 # PCM0 <---- Volume <---- SSP0
 #
@@ -59,10 +58,10 @@ DAI_ADD(sof/pipe-dai-playback.m4,
 
 # PCM Media Playback pipeline 3 on PCM 1 using max 2 channels of s32le.
 # 2000us deadline on core 0 with priority 0
-PIPELINE_PCM_ADD(sof/pipe-pcm-media.m4,
+PIPELINE_PCM_ADD(sof/pipe-host-volume-playback.m4,
 	3, 1, 2, s32le,
 	2000, 0, 0,
-	8000, 96000, 48000,
+	48000, 48000, 48000,
 	SCHEDULE_TIME_DOMAIN_DMA,
 	PIPELINE_PLAYBACK_SCHED_COMP_1)
 
