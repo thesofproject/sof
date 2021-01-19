@@ -168,7 +168,12 @@ static void platform_clock_low_power_mode(int clock, bool enable)
 	int freq_idx = *cache_to_uncache(&active_freq_idx);
 
 	if (enable && current_freq_idx > waiti_freq_idx)
-		select_cpu_clock(waiti_freq_idx, true);
+		/* LPRO requests are fast, but requests for other ROs
+		 * can take a lot of time. That's why it's better to
+		 * not release active clock just for waiti,
+		 * so they can be switched without delay on wake up.
+		 */
+		select_cpu_clock(waiti_freq_idx, false);
 	else if (!enable && current_freq_idx != freq_idx)
 		select_cpu_clock(freq_idx, true);
 }
