@@ -10,7 +10,15 @@
 #  To build topology:
 #  ./scripts/docker-run.sh ./scripts/build-tools.sh
 
-docker run -i -t -v "$(pwd)":/home/sof/work/sof.git \
+# set -x
+
+if tty --quiet; then
+    SOF_DOCKER_RUN="$SOF_DOCKER_RUN --tty"
+fi
+
+docker run -i -v "$(pwd)":/home/sof/work/sof.git \
 	--env CMAKE_BUILD_TYPE \
 	--env PRIVATE_KEY_OPTION \
-	   --user "$(id -u)" sof "$@"
+	   --user "$(id -u)" \
+	$SOF_DOCKER_RUN \
+	   sof "$@"
