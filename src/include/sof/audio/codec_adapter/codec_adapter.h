@@ -10,7 +10,7 @@
 
 #include <sof/audio/codec_adapter/codec/generic.h>
 
-#define MAX_BLOB_SIZE 4096
+#define MAX_BLOB_SIZE 8192
 /*****************************************************************************/
 /* Codec adapter internal functions							     */
 /*****************************************************************************/
