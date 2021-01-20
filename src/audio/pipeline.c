@@ -689,8 +689,9 @@ static void pipeline_comp_trigger_sched_comp(struct pipeline *p,
 	/* only required by the scheduling component or sink component
 	 * on pipeline without one
 	 */
-	if (p->sched_comp != comp &&
-	    (p == p->sched_comp->pipeline || p->sink_comp != comp))
+	if (dev_comp_id(p->sched_comp) != dev_comp_id(comp) &&
+	    (pipeline_id(p) == pipeline_id(p->sched_comp->pipeline) ||
+	     dev_comp_id(p->sink_comp) != dev_comp_id(comp)))
 		return;
 
 	/* add for later schedule */
