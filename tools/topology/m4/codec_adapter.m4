@@ -50,6 +50,9 @@ define(`W_CODEC_ADAPTER',
 `	bytes ['
 		$6
 `	]'
+`	enum ['
+		$7
+`	]'
 
 `}')
 

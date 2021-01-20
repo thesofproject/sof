@@ -12,6 +12,7 @@ include(`dai.m4')
 include(`pipeline.m4')
 include(`codec_adapter.m4')
 include(`bytecontrol.m4')
+include(`enumcontrol.m4')
 
 #
 # Controls
@@ -99,6 +100,20 @@ C_CONTROLBYTES(CA_RUNTIME_CONTROLBYTES_NAME_PIPE, PIPELINE_ID,
         ,
         CA_RUNTIME_PARAMS)
 
+define(CA_PASSTHRU_ENUM, concat(`ca_passthru_enum_', PIPELINE_ID))
+define(CA_PASSTHRU_CONTROL, concat(`CA PassThrough', PIPELINE_ID))
+
+# Codec adapter passthrough enum list
+CONTROLENUM_LIST(CA_PASSTHRU_ENUM, LIST(`	', `"passthru off"', `"passthru on"'))
+
+# Codec adapter passthrough enum control
+C_CONTROLENUM(CA_PASSTHRU_CONTROL, PIPELINE_ID,
+	CA_PASSTHRU_ENUM,
+	LIST(`	', ENUM_CHANNEL(FC, 3, 0)),
+	CONTROLENUM_OPS(enum,
+		257 binds the mixer control to enum get/put handlers,
+		257, 257))
+
 #
 # Components and Buffers
 #
@@ -112,7 +127,8 @@ ifdef(`CA_SCHEDULE_CORE',`', `define(`CA_SCHEDULE_CORE', `SCHEDULE_CORE')')
 W_PCM_PLAYBACK(PCM_ID, Passthrough Playback, DAI_PERIODS, 0, SCHEDULE_CORE)
 
 W_CODEC_ADAPTER(0, PIPELINE_FORMAT, DAI_PERIODS, DAI_PERIODS, CA_SCHEDULE_CORE,
-        LIST(`          ', "CA_SETUP_CONTROLBYTES_NAME_PIPE", "CA_RUNTIME_CONTROLBYTES_NAME_PIPE"))
+	LIST(`          ', "CA_SETUP_CONTROLBYTES_NAME_PIPE", "CA_RUNTIME_CONTROLBYTES_NAME_PIPE"),
+	LIST(`          ', "CA_PASSTHRU_CONTROL"))
 
 # Playback Buffers
 W_BUFFER(0, COMP_BUFFER_SIZE(DAI_PERIODS,
@@ -145,6 +161,8 @@ indir(`define', concat(`PIPELINE_PCM_', PIPELINE_ID), Passthrough Playback PCM_I
 
 PCM_CAPABILITIES(Passthrough Playback PCM_ID, CAPABILITY_FORMAT_NAME(PIPELINE_FORMAT), PCM_MIN_RATE, PCM_MAX_RATE, 2, PIPELINE_CHANNELS, 2, 16, 192, 16384, 65536, 65536)
 
+undefine(`CA_PASSTHRU_CONTROL')
+undefine(`CA_PASSTHRU_ENUM')
 undefine(`CA_RUNTIME_CONTROLBYTES_NAME_PIPE')
 undefine(`CA_RUNTIME_PARAMS')
 undefine(`CA_SETUP_CONTROLBYTES_NAME_PIPE')

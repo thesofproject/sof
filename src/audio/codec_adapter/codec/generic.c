@@ -245,6 +245,22 @@ end:
 	return ret;
 }
 
+static int process_passthrough(struct comp_dev *dev)
+{
+	int ret;
+	struct codec_data *codec = comp_get_codec(dev);
+
+	ret = memcpy_s(codec->cpd.out_buff, codec->cpd.avail, codec->cpd.in_buff, codec->cpd.avail);
+	if (ret) {
+		comp_err(dev, "process_through() error %d: failed to copy data from in to out",
+			 ret);
+		codec->cpd.produced = 0;
+		return ret;
+	}
+	codec->cpd.produced = codec->cpd.avail;
+	return 0;
+}
+
 int codec_process(struct comp_dev *dev)
 {
 	int ret;
@@ -260,7 +276,12 @@ int codec_process(struct comp_dev *dev)
 		return -EPERM;
 	}
 
-	ret = codec->ops->process(dev);
+	// TODO: how to set cd->passthrough flag?
+	if (cd->passthrough) {
+		ret = process_passthrough(dev);
+	} else {
+		ret = codec->ops->process(dev);
+	}
 	if (ret) {
 		comp_err(dev, "codec_prepare() error %d: codec process failed for codec_id %x",
 			 ret, codec_id);

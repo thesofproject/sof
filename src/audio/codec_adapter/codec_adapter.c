@@ -30,6 +30,8 @@ DECLARE_SOF_RT_UUID("codec_adapter", ca_uuid, 0xd8218443, 0x5ff3, 0x4a4c,
 
 DECLARE_TR_CTX(ca_tr, SOF_UUID(ca_uuid), LOG_LEVEL_INFO);
 
+#define ENUM_CTRL_PASSTHROUGH 0
+
 /**
  * \brief Create a codec adapter component.
  * \param[in] drv - component driver pointer.
@@ -91,6 +93,7 @@ static struct comp_dev *codec_adapter_new(const struct comp_driver *drv,
 
 	dev->state = COMP_STATE_READY;
 	cd->state = PP_STATE_CREATED;
+	cd->passthrough = 0;
 
 	comp_cl_info(&comp_codec_adapter, "codec_adapter_new() done");
 	return dev;
@@ -620,6 +623,89 @@ static int codec_adapter_ctrl_set_data(struct comp_dev *dev,
 	return ret;
 }
 
+static int codec_adapter_ctrl_enum_set(struct sof_ipc_ctrl_data *cdata, struct comp_data *cd)
+{
+	int ret;
+
+	switch (cdata->index) {
+	case ENUM_CTRL_PASSTHROUGH:
+		if (cdata->num_elems)
+			cd->passthrough = cdata->chanv[0].value;
+		break;
+	default:
+		comp_cl_err(&comp_codec_adapter,
+			    "codec_adapter_ctrl_enum_set() error: invalid index=%d",
+			    cdata->index);
+		ret = -EINVAL;
+		break;
+	}
+
+	return ret;
+}
+
+static int codec_adapter_set_value(struct comp_dev *dev,
+				   struct sof_ipc_ctrl_data *cdata)
+{
+	int ret;
+	struct comp_data *cd = comp_get_drvdata(dev);
+
+	switch (cdata->cmd) {
+	case SOF_CTRL_CMD_ENUM:
+		comp_dbg(dev, "codec_adapter_set_value(): SOF_CTRL_CMD_ENUM index=%d",
+			 cdata->index);
+		ret = codec_adapter_ctrl_enum_set(cdata, cd);
+		break;
+	default:
+		comp_err(dev, "codec_adapter_set_value() error: invalid cdata->cmd");
+		ret = -EINVAL;
+		break;
+	}
+
+	return ret;
+}
+
+static int codec_adapter_ctrl_enum_get(struct sof_ipc_ctrl_data *cdata, struct comp_data *cd)
+{
+	int ret;
+	int j;
+
+	switch (cdata->index) {
+	case ENUM_CTRL_PASSTHROUGH:
+		for (j = 0; j < cdata->num_elems; j++)
+			cdata->chanv[j].value = cd->passthrough;
+		break;
+	default:
+		comp_cl_err(&comp_codec_adapter,
+			    "codec_adapter_ctrl_enum_get() error: invalid index=%d",
+			    cdata->index);
+		ret = -EINVAL;
+		break;
+	}
+
+	return ret;
+}
+
+static int codec_adapter_get_value(struct comp_dev *dev,
+				   struct sof_ipc_ctrl_data *cdata)
+{
+	int ret;
+	struct comp_data *cd = comp_get_drvdata(dev);
+
+	switch (cdata->cmd) {
+	case SOF_CTRL_CMD_ENUM:
+		comp_dbg(dev, "codec_adapter_get_value(): SOF_CTRL_CMD_ENUM index=%d",
+			 cdata->index);
+		ret = codec_adapter_ctrl_enum_get(cdata, cd);
+		break;
+	default:
+		comp_err(dev, "codec_adapter_get_value() error: invalid cdata->cmd");
+		ret = -EINVAL;
+		break;
+	}
+
+	return ret;
+}
+
 /* Used to pass standard and bespoke commands (with data) to component */
 static int codec_adapter_cmd(struct comp_dev *dev, int cmd, void *data,
 			     int max_data_size)
@@ -636,6 +722,12 @@ static int codec_adapter_cmd(struct comp_dev *dev, int cmd, void *data,
 	case COMP_CMD_GET_DATA:
 		comp_err(dev, "codec_adapter_cmd() get_data not implemented yet.");
 		ret = -ENODATA;
+		break;
+	case COMP_CMD_SET_VALUE:
+		ret = codec_adapter_set_value(dev, cdata);
+		break;
+	case COMP_CMD_GET_VALUE:
+		ret = codec_adapter_get_value(dev, cdata);
 		break;
 	default:
 		comp_err(dev, "codec_adapter_cmd() error: unknown command");
