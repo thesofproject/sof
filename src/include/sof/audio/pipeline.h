@@ -206,6 +206,16 @@ static inline bool pipeline_is_this_cpu(struct pipeline *p)
 	return p->ipc_pipe.core == cpu_get_id();
 }
 
+/**
+ * Retrieves pipeline id from pipeline.
+ * @param p pipeline.
+ * @return pipeline id.
+ */
+static inline uint32_t pipeline_id(struct pipeline *p)
+{
+	return p->ipc_pipe.pipeline_id;
+}
+
 /* pipeline creation and destruction */
 struct pipeline *pipeline_new(struct sof_ipc_pipe_new *pipe_desc,
 	struct comp_dev *cd);
