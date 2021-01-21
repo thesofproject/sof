@@ -322,9 +322,9 @@ static void maxim_dsm_ff_proc(struct smart_amp_mod_struct_t *hspk,
 				 in, nsamples * szsample);
 		*w_ptr += nsamples;
 	} else {
-		comp_err(dev,
-			 "[DSM] Feed Forward buffer overflow. (w_ptr : %d + %d > %d)",
-			 *w_ptr, nsamples, DSM_FF_BUF_DB_SZ);
+		comp_warn(dev,
+			  "[DSM] Feed Forward buffer overflow. (w_ptr : %d + %d > %d)",
+			  *w_ptr, nsamples, DSM_FF_BUF_DB_SZ);
 		return;
 	}
 
@@ -442,8 +442,8 @@ static void maxim_dsm_fb_proc(struct smart_amp_mod_struct_t *hspk,
 				 in, nsamples * szsample);
 		*w_ptr += nsamples;
 	} else {
-		comp_err(dev, "[DSM] Feedback buffer overflow. w_ptr : %d",
-			 *w_ptr);
+		comp_warn(dev, "[DSM] Feedback buffer overflow. w_ptr : %d",
+			  *w_ptr);
 		return;
 	}
 	/* Run DSM Feedback process if the buffer is ready */
