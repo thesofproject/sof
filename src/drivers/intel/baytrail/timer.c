@@ -141,6 +141,11 @@ uint64_t platform_timer_get(struct timer *timer)
 	return time;
 }
 
+uint64_t platform_timer_get_noirq(struct timer *timer)
+{
+	return platform_timer_get(timer);
+}
+
 /* get timestamp for host stream DMA position */
 void platform_host_timestamp(struct comp_dev *host,
 			     struct sof_ipc_stream_posn *posn)

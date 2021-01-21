@@ -98,6 +98,8 @@
 
 /* DSP Shim Registers */
 #define SHIM_DSPWC		0x20 /* DSP Wall Clock */
+#define SHIM_DSPWCL		0x20 /* DSP Wall Clock Low */
+#define SHIM_DSPWCH		0x24 /* DSP Wall Clock High */
 #define SHIM_DSPWCTCS		0x28 /* DSP Wall Clock Timer Control & Status */
 #define SHIM_DSPWCT0C		0x30 /* DSP Wall Clock Timer 0 Compare */
 #define SHIM_DSPWCT1C		0x38 /* DSP Wall Clock Timer 1 Compare */

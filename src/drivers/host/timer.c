@@ -25,6 +25,11 @@ uint64_t platform_timer_get(struct timer *timer)
 	return 0;
 }
 
+uint64_t platform_timer_get_noirq(struct timer *timer)
+{
+	return 0;
+}
+
 void platform_timer_stop(struct timer *timer)
 {
 }
