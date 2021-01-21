@@ -39,6 +39,12 @@ uint64_t platform_timer_get(struct timer *timer)
 	return arch_timer_get_system(timer);
 }
 
+/* IRQs off in arch_timer_get_system() */
+uint64_t platform_timer_get_noirq(struct timer *timer)
+{
+	return arch_timer_get_system(timer);
+}
+
 /* get timestamp for host stream DMA position */
 void platform_host_timestamp(struct comp_dev *host,
 			     struct sof_ipc_stream_posn *posn)

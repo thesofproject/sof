@@ -238,7 +238,7 @@ static int schedule_ll_domain_set(struct ll_schedule_data *sch,
 	total = atomic_add(&sch->domain->total_num_tasks, 1);
 	if (total == 0)
 		/* First task in domain over all cores: actiivate it */
-		domain_set(sch->domain, platform_timer_get(timer_get()));
+		domain_set(sch->domain, platform_timer_get_noirq(timer_get()));
 
 	if (total == 0 || !registered) {
 		/* First task on core: count and enable it */
@@ -366,7 +366,7 @@ static int schedule_ll_task(void *data, struct task *task, uint64_t start,
 	task->start = sch->domain->ticks_per_ms * start / 1000;
 
 	if (sch->domain->synchronous)
-		task->start += platform_timer_get(timer_get());
+		task->start += platform_timer_get_noirq(timer_get());
 	else
 		task->start += sch->domain->last_tick;
 
@@ -467,7 +467,7 @@ static int reschedule_ll_task(void *data, struct task *task, uint64_t start)
 	time = sch->domain->ticks_per_ms * start / 1000;
 
 	if (sch->domain->synchronous)
-		time += platform_timer_get(timer_get());
+		time += platform_timer_get_noirq(timer_get());
 	else
 		time += sch->domain->last_tick;
 
@@ -514,7 +514,7 @@ static void scheduler_free_ll(void *data)
 static void ll_scheduler_recalculate_tasks(struct ll_schedule_data *sch,
 					   struct clock_notify_data *clk_data)
 {
-	uint64_t current = platform_timer_get(timer_get());
+	uint64_t current = platform_timer_get_noirq(timer_get());
 	struct list_item *tlist;
 	struct task *task;
 	uint64_t delta_ms;

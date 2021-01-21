@@ -236,7 +236,7 @@ static void timer_domain_set(struct ll_schedule_domain *domain, uint64_t start)
 
 	ticks_set = platform_timer_set(timer_domain->timer, ticks_req);
 #else
-	uint64_t current = platform_timer_get(timer_domain->timer);
+	uint64_t current = platform_timer_get_noirq(timer_domain->timer);
 	uint64_t earliest_next = current + 1 + ZEPHYR_SCHED_COST;
 	uint64_t ticks_req = domain->last_tick ? start + ticks_tout :
 		MAX(start, earliest_next);
@@ -302,7 +302,7 @@ static void timer_domain_clear(struct ll_schedule_domain *domain)
 static bool timer_domain_is_pending(struct ll_schedule_domain *domain,
 				    struct task *task, struct comp_dev **comp)
 {
-	return task->start <= platform_timer_get(timer_get());
+	return task->start <= platform_timer_get_noirq(timer_get());
 }
 
 struct ll_schedule_domain *timer_domain_init(struct timer *timer, int clk,
