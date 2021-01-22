@@ -536,6 +536,9 @@ static void ll_scheduler_notify(void *arg, enum notify_id type, void *data)
 	struct clock_notify_data *clk_data = data;
 	uint32_t flags;
 
+	if (clk_data->clk_id != sch->domain->clk)
+		return;
+
 	irq_local_disable(flags);
 
 	/* we need to recalculate tasks when clock frequency changes */

@@ -57,6 +57,8 @@ void clock_set_freq(int clock, uint32_t hz)
 	uint32_t idx;
 	uint32_t flags;
 
+	clk_notify_data.clk_id = clock;
+
 	clk_notify_data.old_freq =
 		clk_info->freqs[clk_info->current_freq_idx].freq;
 	clk_notify_data.old_ticks_per_msec =

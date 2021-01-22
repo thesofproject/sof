@@ -21,6 +21,7 @@ struct timer;
 #define CLOCK_NOTIFY_POST	1
 
 struct clock_notify_data {
+	uint32_t clk_id;
 	uint32_t old_freq;
 	uint32_t old_ticks_per_msec;
 	uint32_t freq;
