@@ -747,7 +747,7 @@ static int hda_dma_set_config(struct dma_chan_data *channel,
 	if (config->direction == DMA_DIR_LMEM_TO_HMEM ||
 	    config->direction == DMA_DIR_HMEM_TO_LMEM)
 		dma_chan_reg_write(channel, DGMBS,
-				   ALIGN_UP(buffer_bytes,
+				   ALIGN_UP_COMPILE(buffer_bytes,
 					    HDA_DMA_BUFFER_ALIGNMENT));
 
 	/* firmware control buffer */
