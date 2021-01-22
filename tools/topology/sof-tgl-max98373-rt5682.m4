@@ -40,6 +40,8 @@ DEBUG_START
 
 ifdef(`AMP_SSP',`',`errprint(note: Define AMP_SSP for speaker amp SSP Index)')
 # Smart amplifier related
+define(`SMART_AMP_CORE', 1)
+
 # SSP related
 #define smart amplifier SSP index
 define(`SMART_SSP_INDEX', AMP_SSP)
