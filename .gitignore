@@ -60,6 +60,8 @@ doc/*.cmake
 doc/*.ninja
 doc/Makefile
 
+/install/intel/sof*
+
 # Eclipse project metadata
 .settings
 .project
