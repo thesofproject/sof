@@ -69,7 +69,7 @@ static void platform_pg_task(void)
 
 	offset_to_entry = (uint32_t)&lps_pic_restore_vector
 			- (uint32_t)&lps_pic_restore_vector_literals;
-	vector_size = ALIGN_UP((size_t)&lps_pic_restore_vector_end
+	vector_size = ALIGN_UP_COMPILE((size_t)&lps_pic_restore_vector_end
 			       - (size_t)&lps_pic_restore_vector_literals, 4);
 
 	/* Half of area is available,
