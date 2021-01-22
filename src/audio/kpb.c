@@ -945,6 +945,41 @@ static void kpb_event_handler(void *arg, enum notify_id type, void *event_data)
 }
 
 /**
+ * \brief cpu clock event dispatcher.
+ * \param[in] arg - KPB component internal data.
+ * \param[in] type - notification type
+ * \param[in] event_data - event specific data.
+ * \return none.
+ */
+static void kpb_drain_notify(void *arg, enum notify_id type, void *data)
+{
+	struct comp_dev *dev = arg;
+	struct comp_data *kpb = comp_get_drvdata(dev);
+	struct clock_notify_data *clk_data = data;
+	uint32_t flags;
+
+	comp_info(dev, "kpb_drain_notify(): received event with type: %d ", type);
+
+	if (type != NOTIFIER_ID_CPU_FREQ)
+		return;
+
+	irq_local_disable(flags);
+
+	/* we need to recalculate tasks when clock frequency changes */
+	if (clk_data->message == CLOCK_NOTIFY_POST) {
+		comp_info(dev, "kpb_drain_notify(): old_freq: %d freq: %d",
+			  clk_data->old_freq, clk_data->freq, type);
+		/* Schedule draining task */
+		schedule_task(&kpb->draining_task, 0, 0);
+
+		/* Unregister KPB from notifications */
+		notifier_unregister(dev, NULL, NOTIFIER_CLK_CHANGE_ID(CLK_CPU(0)));
+	}
+
+	irq_local_enable(flags);
+}
+
+/**
  * \brief Register clients in the system.
  *
  * \param[in] dev - kpb device component pointer.
@@ -1015,7 +1050,9 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 			      (KPB_SAMPLE_CONTAINER_SIZE(sample_width) / 8) *
 			      kpb->config.channels;
 	size_t period_bytes_limit;
+	bool pm_is_active;
 	uint32_t flags;
+	int ret = 0;
 
 	comp_info(dev, "kpb_init_draining(): requested draining of %d [ms] from history buffer",
 		  cli->drain_req);
@@ -1137,8 +1174,21 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 		/* Pause selector copy. */
 		kpb->sel_sink->sink->state = COMP_STATE_PAUSED;
 
-		/* Schedule draining task */
-		schedule_task(&kpb->draining_task, 0, 0);
+		pm_is_active = pm_runtime_is_active(PM_RUNTIME_DSP, PLATFORM_PRIMARY_CORE_ID);
+
+		if (!pm_is_active) {
+			/* Register KPB for clock switching notification */
+			ret = notifier_register(dev, NULL, NOTIFIER_CLK_CHANGE_ID(CLK_CPU(0)),
+						kpb_drain_notify, 0);
+			if (ret < 0)
+				comp_err(dev, "Can't register clk_change notifier, may use low frequency for draining.");
+
+			/* initiate the switching to HPRO. */
+			pm_runtime_disable(PM_RUNTIME_DSP, PLATFORM_PRIMARY_CORE_ID);
+		} else {
+			/* Schedule draining task */
+			schedule_task(&kpb->draining_task, 0, 0);
+		}
 	}
 }
 
@@ -1176,15 +1226,9 @@ static enum task_state kpb_draining_task(void *arg)
 	size_t *rt_stream_update = &draining_data->buffered_while_draining;
 	struct comp_data *kpb = comp_get_drvdata(draining_data->dev);
 	bool sync_mode_on = draining_data->sync_mode_on;
-	bool pm_is_active;
 	uint32_t flags;
 
 	comp_cl_info(&comp_kpb, "kpb_draining_task(), start.");
-
-	pm_is_active = pm_runtime_is_active(PM_RUNTIME_DSP, PLATFORM_PRIMARY_CORE_ID);
-
-	if (!pm_is_active)
-		pm_runtime_disable(PM_RUNTIME_DSP, PLATFORM_PRIMARY_CORE_ID);
 
 	/* Change KPB internal state to DRAINING */
 	kpb_change_state(kpb, KPB_STATE_DRAINING);
