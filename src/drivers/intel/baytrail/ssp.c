@@ -140,14 +140,6 @@ static int ssp_set_config(struct dai *dai,
 	 * I2S_TX_EN, I2S_RX_EN, I2S_CLK_MST
 	 */
 	sscr3 = SSCR3_SYN_FIX_EN;
-#ifdef ENABLE_SSRC3_FIXES
-	/*
-	 * this seems to prevent DSP modes from working but is harmless for
-	 * I2S and LEFT_J. Keep with ifdef in case it's ever needed.
-	 */
-	sscr3 |= SSCR3_I2S_TX_SS_FIX_EN | SSCR3_I2S_RX_SS_FIX_EN |
-		SSCR3_STRETCH_TX | SSCR3_STRETCH_RX;
-#endif
 
 #ifdef ENABLE_CLK_EDGE_SEL /* FIXME: is this needed ? */
 	sscr3 |= SSCR3_CLK_EDGE_SEL;
@@ -331,7 +323,9 @@ static int ssp_set_config(struct dai *dai,
 
 		/* handle frame polarity, I2S default is falling/active low */
 		sspsp |= SSPSP_SFRMP(!inverted_frame);
-		sscr3 |= SSCR3_I2S_FRM_POL(!inverted_frame);
+		sscr3 |= SSCR3_I2S_FRM_POL(!inverted_frame) |
+			SSCR3_I2S_TX_SS_FIX_EN | SSCR3_I2S_RX_SS_FIX_EN |
+			SSCR3_STRETCH_TX | SSCR3_STRETCH_RX;
 
 		if (cbs) {
 			/*
@@ -361,7 +355,9 @@ static int ssp_set_config(struct dai *dai,
 
 		/* LEFT_J default is rising/active high, opposite of I2S */
 		sspsp |= SSPSP_SFRMP(inverted_frame);
-		sscr3 |= SSCR3_I2S_FRM_POL(inverted_frame);
+		sscr3 |= SSCR3_I2S_FRM_POL(inverted_frame) |
+			SSCR3_I2S_TX_SS_FIX_EN | SSCR3_I2S_RX_SS_FIX_EN |
+			SSCR3_STRETCH_TX | SSCR3_STRETCH_RX;
 
 		if (cbs) {
 			/*
