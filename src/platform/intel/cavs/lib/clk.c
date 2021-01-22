@@ -190,11 +190,11 @@ void platform_clock_on_waiti(void)
 	if (pm_is_active) {
 		/* set HPRO clock if not already enabled */
 		if (freq_idx != CPU_HPRO_FREQ_IDX)
-			set_cpu_current_freq_idx(CPU_HPRO_FREQ_IDX, true);
+			clock_set_idx(CLK_CPU(cpu_get_id()), CPU_HPRO_FREQ_IDX);
 	} else {
 		/* set lowest clock if not already enabled */
 		if (freq_idx != lowest_freq_idx)
-			set_cpu_current_freq_idx(lowest_freq_idx, true);
+			clock_set_idx(CLK_CPU(cpu_get_id()), lowest_freq_idx);
 	}
 
 	spin_unlock_irq(&prd->lock, flags);
@@ -265,11 +265,11 @@ void platform_clock_on_waiti(void)
 	if (pm_is_active) {
 		/* set HPRO clock if not already enabled */
 		if (freq_idx != CPU_HPRO_FREQ_IDX)
-			set_cpu_current_freq_idx(CPU_HPRO_FREQ_IDX, true);
+			clock_set_idx(CLK_CPU(cpu_get_id()), CPU_HPRO_FREQ_IDX);
 	} else {
 		/* set lowest clock if not already enabled */
 		if (freq_idx != lowest_freq_idx)
-			set_cpu_current_freq_idx(lowest_freq_idx, true);
+			clock_set_idx(CLK_CPU(cpu_get_id()), lowest_freq_idx);
 	}
 
 	spin_unlock_irq(&prd->lock, flags);
@@ -290,7 +290,7 @@ void platform_clock_on_wakeup(void)
 
 	/* restore the active cpu freq_idx manually */
 	if (current_idx != target_idx)
-		set_cpu_current_freq_idx(target_idx, true);
+		clock_set_idx(CLK_CPU(cpu_get_id()), target_idx);
 
 	spin_unlock_irq(&prd->lock, flags);
 }
