@@ -26,6 +26,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+struct comp_buffer;
+
 /** \addtogroup sof_dma_drivers DMA Drivers
  *  DMA Drivers API specification.
  *  @{
@@ -64,9 +66,8 @@
 #define DMA_CB_TYPE_COPY	BIT(1)
 
 /* DMA copy flags */
-#define DMA_COPY_PRELOAD	BIT(0)
-#define DMA_COPY_BLOCKING	BIT(1)
-#define DMA_COPY_ONE_SHOT	BIT(2)
+#define DMA_COPY_BLOCKING	BIT(0)
+#define DMA_COPY_ONE_SHOT	BIT(1)
 
 /* We will use this enum in cb handler to inform dma what
  * action we need to perform.
@@ -88,8 +89,10 @@ enum dma_irq_cmd {
 #define DMA_CORE_INVALID	0xFFFFFFFF
 
 /* DMA attributes */
-#define DMA_ATTR_BUFFER_ALIGNMENT	0
-#define DMA_ATTR_COPY_ALIGNMENT		1
+#define DMA_ATTR_BUFFER_ALIGNMENT		0
+#define DMA_ATTR_COPY_ALIGNMENT			1
+#define DMA_ATTR_BUFFER_ADDRESS_ALIGNMENT	2
+#define DMA_ATTR_BUFFER_PERIOD_COUNT		3
 
 struct dma;
 
@@ -127,6 +130,7 @@ struct dma_sg_config {
 	uint32_t src_dev;
 	uint32_t dest_dev;
 	uint32_t cyclic;			/* circular buffer */
+	uint64_t period;
 	struct dma_sg_elem_array elem_array;	/* array of dma_sg elems */
 	bool scatter;
 	bool irq_disabled;
@@ -210,6 +214,7 @@ struct dma_chan_data {
 	uint32_t desc_count;
 	uint32_t index;
 	uint32_t core;
+	uint64_t period;	/* DMA channel's transfer period */
 	/* true if this DMA channel is the scheduling source */
 	bool is_scheduling_source;
 
@@ -497,6 +502,16 @@ static inline uint32_t dma_sg_get_size(struct dma_sg_elem_array *ea)
 
 	return size;
 }
+
+/* copies data from DMA buffer using provided processing function */
+void dma_buffer_copy_from(struct comp_buffer *source, struct comp_buffer *sink,
+	void (*process)(struct comp_buffer *, struct comp_buffer *, uint32_t),
+	uint32_t bytes);
+
+/* copies data to DMA buffer using provided processing function */
+void dma_buffer_copy_to(struct comp_buffer *source, struct comp_buffer *sink,
+	void (*process)(struct comp_buffer *, struct comp_buffer *, uint32_t),
+	uint32_t bytes);
 
 /* generic DMA DSP <-> Host copier */
 

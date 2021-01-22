@@ -22,11 +22,4 @@
 /* invalidate data */
 #define CACHE_INVALIDATE	1
 
-/* data cache line alignment */
-#if DCACHE_LINE_SIZE > 0
-#define PLATFORM_DCACHE_ALIGN	DCACHE_LINE_SIZE
-#else
-#define PLATFORM_DCACHE_ALIGN	sizeof(void *)
-#endif
-
 #endif /* __SOF_LIB_CACHE_H__ */

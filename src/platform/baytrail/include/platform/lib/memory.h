@@ -16,6 +16,8 @@
 void platform_init_memmap(void);
 #endif
 
+#define PLATFORM_DCACHE_ALIGN	sizeof(void *)
+
 /* physical DSP addresses */
 
 #define SHIM_BASE	0xFF340000
@@ -86,13 +88,13 @@ void platform_init_memmap(void);
 
 /* Heap section sizes for module pool */
 #define HEAP_RT_COUNT8		0
-#define HEAP_RT_COUNT16		48
-#define HEAP_RT_COUNT32		48
+#define HEAP_RT_COUNT16		32
+#define HEAP_RT_COUNT32		32
 #define HEAP_RT_COUNT64		32
 #define HEAP_RT_COUNT128	32
 #define HEAP_RT_COUNT256	32
-#define HEAP_RT_COUNT512	4
-#define HEAP_RT_COUNT1024	4
+#define HEAP_RT_COUNT512	2
+#define HEAP_RT_COUNT1024	1
 
 /* Heap section sizes for system runtime heap */
 #define HEAP_SYS_RT_COUNT64	64

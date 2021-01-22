@@ -65,10 +65,20 @@ void cpu_power_down_core(void) { }
 
 void notifier_notify(void) { }
 
-struct ipc_comp_dev *ipc_get_comp(struct ipc *ipc, uint32_t id)
+struct ipc_comp_dev *ipc_get_comp_by_id(struct ipc *ipc, uint32_t id)
 {
 	(void)ipc;
 	(void)id;
+
+	return NULL;
+}
+
+struct ipc_comp_dev *ipc_get_comp_by_ppl_id(struct ipc *ipc, uint16_t type,
+					    uint32_t ppl_id)
+{
+	(void)ipc;
+	(void)type;
+	(void)ppl_id;
 
 	return NULL;
 }

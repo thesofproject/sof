@@ -65,6 +65,12 @@ struct dw_dma_chan_data {
  */
 static const uint32_t burst_elems[] = {1, 2, 4, 8};
 
+#if CONFIG_HW_LLI
+#define DW_DMA_BUFFER_PERIOD_COUNT	3
+#else
+#define DW_DMA_BUFFER_PERIOD_COUNT	2
+#endif
+
 static void dw_dma_interrupt_mask(struct dma_chan_data *channel)
 {
 	/* mask block, transfer and error interrupts for channel */
@@ -462,6 +468,7 @@ static int dw_dma_set_config(struct dma_chan_data *channel,
 	/* default channel config */
 	channel->direction = config->direction;
 	channel->is_scheduling_source = config->is_scheduling_source;
+	channel->period = config->period;
 	dw_chan->cfg_lo = DW_CFG_LOW_DEF;
 	dw_chan->cfg_hi = DW_CFG_HIGH_DEF;
 
@@ -840,12 +847,21 @@ static int dw_dma_copy(struct dma_chan_data *channel, int bytes,
 		.status = DMA_CB_STATUS_END
 	};
 
-	/* for preload and one shot copy just start the DMA and wait */
-	if (flags & (DMA_COPY_PRELOAD | DMA_COPY_ONE_SHOT)) {
+	tracev_dwdma("dw_dma_copy(): dma %d channel %d copy",
+		     channel->dma->plat_data.id, channel->index);
+
+	if (channel->cb && channel->cb_type & DMA_CB_TYPE_COPY)
+		channel->cb(channel->cb_data, DMA_CB_TYPE_COPY, &next);
+
+	if (flags & DMA_COPY_ONE_SHOT) {
+		/* for one shot copy start the DMA */
 		ret = dw_dma_start(channel);
 		if (ret < 0)
 			return ret;
+	}
 
+	if (flags & DMA_COPY_BLOCKING) {
+		/* wait for transfer finish */
 		ret = poll_for_register_delay(dma_base(channel->dma) +
 					      DW_DMA_CHAN_EN,
 					      DW_CHAN(channel->index), 0,
@@ -853,12 +869,6 @@ static int dw_dma_copy(struct dma_chan_data *channel, int bytes,
 		if (ret < 0)
 			return ret;
 	}
-
-	tracev_dwdma("dw_dma_copy(): dma %d channel %d copy",
-		     channel->dma->plat_data.id, channel->index);
-
-	if (channel->cb && channel->cb_type & DMA_CB_TYPE_COPY)
-		channel->cb(channel->cb_data, DMA_CB_TYPE_COPY, &next);
 
 	dw_dma_verify_transfer(channel, &next);
 
@@ -1077,6 +1087,12 @@ static int dw_dma_get_attribute(struct dma *dma, uint32_t type,
 		break;
 	case DMA_ATTR_COPY_ALIGNMENT:
 		*value = DW_DMA_COPY_ALIGNMENT;
+		break;
+	case DMA_ATTR_BUFFER_ADDRESS_ALIGNMENT:
+		*value = PLATFORM_DCACHE_ALIGN;
+		break;
+	case DMA_ATTR_BUFFER_PERIOD_COUNT:
+		*value = DW_DMA_BUFFER_PERIOD_COUNT;
 		break;
 	default:
 		ret = -EINVAL;

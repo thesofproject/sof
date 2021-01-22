@@ -13,6 +13,9 @@
 #include <sof/lib/cache.h>
 #include <config.h>
 
+/* data cache line alignment */
+#define PLATFORM_DCACHE_ALIGN	DCACHE_LINE_SIZE
+
 #define SRAM_BANK_SIZE			(64 * 1024)
 
 #define EBB_BANKS_IN_SEGMENT		32

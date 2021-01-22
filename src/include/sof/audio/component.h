@@ -233,7 +233,6 @@ struct comp_dev {
 
 	/* runtime */
 	uint16_t state;		   /**< COMP_STATE_ */
-	uint16_t is_dma_connected; /**< component is connected to DMA */
 	uint64_t position;	   /**< component rendering position */
 	uint32_t frames;	   /**< number of frames we copy to sink */
 	uint32_t output_rate;      /**< 0 means all output rates are fine */
@@ -378,15 +377,6 @@ static inline void comp_free(struct comp_dev *dev)
  * @return 0 if succeeded, error code otherwise.
  */
 int comp_set_state(struct comp_dev *dev, int cmd);
-
-/**
- * Set component's sink buffer size
- * @param dev Component device.
- * @param period_bytes Amount of bytes in one period.
- * @param periods Amount of periods.
- */
-int comp_set_sink_buffer(struct comp_dev *dev, uint32_t period_bytes,
-			 uint32_t periods);
 
 /**
  * Component parameter init.

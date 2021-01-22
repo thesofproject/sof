@@ -48,8 +48,10 @@ struct comp_buffer {
 	void *addr;		/* buffer base address */
 	void *end_addr;		/* buffer end address */
 
-	/* IPC configuration */
-	struct sof_ipc_buffer ipc_buffer;
+	/* configuration */
+	uint32_t id;
+	uint32_t pipeline_id;
+	uint32_t caps;
 
 	/* connected components */
 	struct comp_dev *source;	/* source component */
@@ -114,6 +116,7 @@ struct comp_buffer {
 typedef void (*cache_buff_op)(struct comp_buffer *);
 
 /* pipeline buffer creation and destruction */
+struct comp_buffer *buffer_alloc(uint32_t size, uint32_t caps, uint32_t align);
 struct comp_buffer *buffer_new(struct sof_ipc_buffer *desc);
 int buffer_set_size(struct comp_buffer *buffer, uint32_t size);
 void buffer_free(struct comp_buffer *buffer);
@@ -129,7 +132,7 @@ static inline void buffer_zero(struct comp_buffer *buffer)
 	tracev_buffer("buffer_zero()");
 
 	bzero(buffer->addr, buffer->size);
-	if (buffer->ipc_buffer.caps & SOF_MEM_CAPS_DMA)
+	if (buffer->caps & SOF_MEM_CAPS_DMA)
 		dcache_writeback_region(buffer->addr, buffer->size);
 }
 
@@ -211,10 +214,12 @@ static inline void *buffer_get_frag(struct comp_buffer *buffer, void *ptr,
 	return current;
 }
 
-static inline void buffer_init(struct comp_buffer *buffer, uint32_t size)
+static inline void buffer_init(struct comp_buffer *buffer, uint32_t size,
+			       uint32_t caps)
 {
 	buffer->alloc_size = size;
 	buffer->size = size;
+	buffer->caps = caps;
 	buffer->w_ptr = buffer->addr;
 	buffer->r_ptr = buffer->addr;
 	buffer->end_addr = buffer->addr + size;
@@ -222,4 +227,41 @@ static inline void buffer_init(struct comp_buffer *buffer, uint32_t size)
 	buffer->avail = 0;
 	buffer_zero(buffer);
 }
+
+static inline void buffer_copy_s16(struct comp_buffer *source,
+				   struct comp_buffer *sink, uint32_t bytes)
+{
+	uint32_t frames = bytes / sizeof(int16_t);
+	uint32_t buff_frag = 0;
+	int16_t *src;
+	int16_t *dst;
+	uint32_t i;
+
+	for (i = 0; i < frames; i++) {
+		src = buffer_read_frag_s16(source, buff_frag);
+		dst = buffer_write_frag_s16(sink, buff_frag);
+		*dst = *src;
+
+		buff_frag++;
+	}
+}
+
+static inline void buffer_copy_s32(struct comp_buffer *source,
+				   struct comp_buffer *sink, uint32_t bytes)
+{
+	uint32_t frames = bytes / sizeof(int32_t);
+	uint32_t buff_frag = 0;
+	int32_t *src;
+	int32_t *dst;
+	uint32_t i;
+
+	for (i = 0; i < frames; i++) {
+		src = buffer_read_frag_s32(source, buff_frag);
+		dst = buffer_write_frag_s32(sink, buff_frag);
+		*dst = *src;
+
+		buff_frag++;
+	}
+}
+
 #endif /* __SOF_AUDIO_BUFFER_H__ */

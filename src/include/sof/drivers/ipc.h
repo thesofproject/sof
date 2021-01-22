@@ -224,7 +224,13 @@ int ipc_comp_connect(struct ipc *ipc,
 /*
  * Get component by ID.
  */
-struct ipc_comp_dev *ipc_get_comp(struct ipc *ipc, uint32_t id);
+struct ipc_comp_dev *ipc_get_comp_by_id(struct ipc *ipc, uint32_t id);
+
+/*
+ * Get component by pipeline ID.
+ */
+struct ipc_comp_dev *ipc_get_comp_by_ppl_id(struct ipc *ipc, uint16_t type,
+					    uint32_t ppl_id);
 
 /*
  * Configure all DAI components attached to DAI.

@@ -115,9 +115,6 @@ static void schedule_ll_clients_enable(struct ll_schedule_data *sch)
 
 static void schedule_ll_clients_reschedule(struct ll_schedule_data *sch)
 {
-	/* clear domain */
-	domain_clear(sch->domain);
-
 	/* rearm only if there is work to do */
 	if (atomic_read(&sch->domain->total_num_tasks)) {
 		domain_set(sch->domain, sch->domain->last_tick);
@@ -128,11 +125,21 @@ static void schedule_ll_clients_reschedule(struct ll_schedule_data *sch)
 static void schedule_ll_tasks_run(void *data)
 {
 	struct ll_schedule_data *sch = data;
+	uint32_t num_clients;
 	uint32_t flags;
 
 	domain_disable(sch->domain, cpu_get_id());
 
 	irq_local_disable(flags);
+
+	spin_lock(sch->domain->lock);
+
+	/* clear domain only if all clients are done */
+	num_clients = atomic_sub(&sch->domain->num_clients, 1);
+	if (!num_clients)
+		domain_clear(sch->domain);
+
+	spin_unlock(sch->domain->lock);
 
 	/* run tasks if there are any pending */
 	if (schedule_ll_is_pending(sch))
@@ -141,7 +148,7 @@ static void schedule_ll_tasks_run(void *data)
 	spin_lock(sch->domain->lock);
 
 	/* reschedule only if all clients are done */
-	if (!atomic_sub(&sch->domain->num_clients, 1))
+	if (!num_clients)
 		schedule_ll_clients_reschedule(sch);
 
 	spin_unlock(sch->domain->lock);
@@ -192,8 +199,10 @@ static void schedule_ll_domain_clear(struct ll_schedule_data *sch)
 		sch->domain->registered[cpu_get_id()] = false;
 
 		/* reschedule if there is no more clients waiting */
-		if (!atomic_sub(&sch->domain->num_clients, 1))
+		if (!atomic_sub(&sch->domain->num_clients, 1)) {
+			domain_clear(sch->domain);
 			schedule_ll_clients_reschedule(sch);
+		}
 	}
 
 	spin_unlock(sch->domain->lock);

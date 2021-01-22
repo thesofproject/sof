@@ -65,6 +65,10 @@
 /* DGMBS align value */
 #define HDA_DMA_BUFFER_ALIGNMENT	0x20
 #define HDA_DMA_COPY_ALIGNMENT		0x20
+#define HDA_DMA_BUFFER_ADDRESS_ALIGNMENT 0x80
+
+/* DMA number of buffer periods */
+#define HDA_DMA_BUFFER_PERIOD_COUNT	2
 
 /*
  * DMA Pointer Trace
@@ -270,10 +274,22 @@ static void hda_dma_post_copy(struct dma_chan_data *chan, int bytes)
 	if (chan->cb)
 		chan->cb(chan->cb_data, DMA_CB_TYPE_COPY, &next);
 
-	/* Force Host DMA to exit L1 */
 	if (chan->direction == DMA_DIR_HMEM_TO_LMEM ||
-	    chan->direction == DMA_DIR_LMEM_TO_HMEM)
+	    chan->direction == DMA_DIR_LMEM_TO_HMEM) {
+		/* set BFPI to let host gateway know we have read size,
+		 * which will trigger next copy start.
+		 */
+		hda_dma_inc_fp(chan, bytes);
+
+		/* Force Host DMA to exit L1 */
 		pm_runtime_put(PM_RUNTIME_HOST_DMA_L1, 0);
+	} else {
+		/*
+		 * set BFPI to let link gateway know we have read size,
+		 * which will trigger next copy start.
+		 */
+		hda_dma_inc_link_fp(chan, bytes);
+	}
 }
 
 static int hda_dma_link_copy_ch(struct dma_chan_data *chan, int bytes)
@@ -291,11 +307,6 @@ static int hda_dma_link_copy_ch(struct dma_chan_data *chan, int bytes)
 	if (dgcs & DGCS_BOR)
 		dma_chan_reg_update_bits(chan, DGCS, DGCS_BOR, DGCS_BOR);
 
-	/*
-	 * set BFPI to let link gateway know we have read size,
-	 * which will trigger next copy start.
-	 */
-	hda_dma_inc_link_fp(chan, bytes);
 	hda_dma_post_copy(chan, bytes);
 
 	hda_dma_get_dbg_vals(chan, HDA_DBG_POST, HDA_DBG_LINK);
@@ -355,20 +366,6 @@ static int hda_dma_host_copy(struct dma_chan_data *channel, int bytes,
 		     channel->dma->plat_data.id, channel->index, bytes);
 
 	hda_dma_get_dbg_vals(channel, HDA_DBG_PRE, HDA_DBG_HOST);
-
-	if (flags & DMA_COPY_PRELOAD) {
-		/* report lack of data if preload is not yet finished */
-		ret = channel->direction == DMA_DIR_HMEM_TO_LMEM ?
-			hda_dma_is_buffer_full(channel) :
-			hda_dma_is_buffer_empty(channel);
-		if (!ret)
-			return -ENODATA;
-	} else {
-		/* set BFPI to let host gateway know we have read size,
-		 * which will trigger next copy start.
-		 */
-		hda_dma_inc_fp(channel, bytes);
-	}
 
 	/* blocking mode copy */
 	if (flags & DMA_COPY_BLOCKING) {
@@ -606,6 +603,7 @@ static int hda_dma_set_config(struct dma_chan_data *channel,
 	channel->direction = config->direction;
 	channel->desc_count = config->elem_array.count;
 	channel->is_scheduling_source = config->is_scheduling_source;
+	channel->period = config->period;
 
 	/* validate - HDA only supports continuous elems of same size  */
 	for (i = 0; i < config->elem_array.count; i++) {
@@ -874,6 +872,12 @@ static int hda_dma_get_attribute(struct dma *dma, uint32_t type,
 		break;
 	case DMA_ATTR_COPY_ALIGNMENT:
 		*value = HDA_DMA_COPY_ALIGNMENT;
+		break;
+	case DMA_ATTR_BUFFER_ADDRESS_ALIGNMENT:
+		*value = HDA_DMA_BUFFER_ADDRESS_ALIGNMENT;
+		break;
+	case DMA_ATTR_BUFFER_PERIOD_COUNT:
+		*value = HDA_DMA_BUFFER_PERIOD_COUNT;
 		break;
 	default:
 		ret = -EINVAL;

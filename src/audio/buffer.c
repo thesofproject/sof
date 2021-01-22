@@ -7,17 +7,54 @@
 
 #include <sof/audio/buffer.h>
 #include <sof/audio/component.h>
-#include <sof/debug/panic.h>
 #include <sof/drivers/interrupt.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/cache.h>
 #include <sof/lib/memory.h>
 #include <sof/list.h>
-#include <sof/string.h>
 #include <ipc/topology.h>
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
+
+struct comp_buffer *buffer_alloc(uint32_t size, uint32_t caps, uint32_t align)
+{
+	struct comp_buffer *buffer;
+
+	trace_buffer("buffer_alloc()");
+
+	/* validate request */
+	if (size == 0 || size > HEAP_BUFFER_SIZE) {
+		trace_buffer_error("buffer_alloc() error: "
+				   "new size = %u is invalid", size);
+		return NULL;
+	}
+
+	/* allocate new buffer */
+	buffer = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*buffer));
+	if (!buffer) {
+		trace_buffer_error("buffer_alloc() error: "
+				   "could not alloc structure");
+		return NULL;
+	}
+
+	buffer->addr = rballoc_align(RZONE_BUFFER, caps, size, align);
+	if (!buffer->addr) {
+		rfree(buffer);
+		trace_buffer_error("buffer_alloc() error: "
+				   "could not alloc size = %u "
+				   "bytes of type = %u",
+				   size, caps);
+		return NULL;
+	}
+
+	buffer_init(buffer, size, caps);
+
+	list_init(&buffer->source_list);
+	list_init(&buffer->sink_list);
+
+	return buffer;
+}
 
 /* create a new component in the pipeline */
 struct comp_buffer *buffer_new(struct sof_ipc_buffer *desc)
@@ -26,35 +63,12 @@ struct comp_buffer *buffer_new(struct sof_ipc_buffer *desc)
 
 	trace_buffer("buffer_new()");
 
-	/* validate request */
-	if (desc->size == 0 || desc->size > HEAP_BUFFER_SIZE) {
-		trace_buffer_error("buffer_new() error: "
-				   "new size = %u is invalid", desc->size);
-		return NULL;
+	/* allocate buffer */
+	buffer = buffer_alloc(desc->size, desc->caps, PLATFORM_DCACHE_ALIGN);
+	if (buffer) {
+		buffer->id = desc->comp.id;
+		buffer->pipeline_id = desc->comp.pipeline_id;
 	}
-
-	/* allocate new buffer */
-	buffer = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*buffer));
-	if (!buffer) {
-		trace_buffer_error("buffer_new() error: "
-				   "could not alloc structure");
-		return NULL;
-	}
-
-	buffer->addr = rballoc(RZONE_BUFFER, desc->caps, desc->size);
-	if (!buffer->addr) {
-		rfree(buffer);
-		trace_buffer_error("buffer_new() error: "
-				   "could not alloc size = %u "
-				   "bytes of type = %u",
-				   desc->size, desc->caps);
-		return NULL;
-	}
-
-	assert(!memcpy_s(&buffer->ipc_buffer, sizeof(buffer->ipc_buffer),
-		       desc, sizeof(*desc)));
-
-	buffer_init(buffer, desc->size);
 
 	return buffer;
 }
@@ -62,7 +76,6 @@ struct comp_buffer *buffer_new(struct sof_ipc_buffer *desc)
 int buffer_set_size(struct comp_buffer *buffer, uint32_t size)
 {
 	void *new_ptr = NULL;
-	struct sof_ipc_buffer *desc = NULL;
 
 	/* validate request */
 	if (size == 0 || size > HEAP_BUFFER_SIZE) {
@@ -70,21 +83,15 @@ int buffer_set_size(struct comp_buffer *buffer, uint32_t size)
 		return -EINVAL;
 	}
 
-	desc = &buffer->ipc_buffer;
-	if (!desc) {
-		trace_buffer_error("resize error: invalid buffer desc");
-		return -EINVAL;
-	}
-
-	if (size == desc->size)
+	if (size == buffer->size)
 		return 0;
 
-	new_ptr = rbrealloc(buffer->addr, RZONE_BUFFER, desc->caps, size);
+	new_ptr = rbrealloc(buffer->addr, RZONE_BUFFER, buffer->caps, size);
 
 	/* we couldn't allocate bigger chunk */
-	if (!new_ptr && size > desc->size) {
+	if (!new_ptr && size > buffer->size) {
 		trace_buffer_error("resize error: can't alloc %u bytes type %u",
-				   desc->size, desc->caps);
+				   buffer->size, buffer->caps);
 		return -ENOMEM;
 	}
 
@@ -92,9 +99,7 @@ int buffer_set_size(struct comp_buffer *buffer, uint32_t size)
 	if (new_ptr)
 		buffer->addr = new_ptr;
 
-	desc->size = size;
-
-	buffer_init(buffer, desc->size);
+	buffer_init(buffer, size, buffer->caps);
 
 	return 0;
 }
@@ -113,8 +118,6 @@ void buffer_free(struct comp_buffer *buffer)
 void comp_update_buffer_produce(struct comp_buffer *buffer, uint32_t bytes)
 {
 	uint32_t flags;
-	uint32_t head = bytes;
-	uint32_t tail = 0;
 
 	/* return if no bytes */
 	if (!bytes) {
@@ -128,33 +131,6 @@ void comp_update_buffer_produce(struct comp_buffer *buffer, uint32_t bytes)
 	}
 
 	irq_local_disable(flags);
-
-	/* calculate head and tail size for dcache circular wrap ops */
-	if (buffer->w_ptr + bytes > buffer->end_addr) {
-		head = buffer->end_addr - buffer->w_ptr;
-		tail = bytes - head;
-	}
-
-	/*
-	 * new data produce, handle consistency for buffer and cache:
-	 * 1. source(DMA) --> buffer --> sink(non-DMA): invalidate cache.
-	 * 2. source(non-DMA) --> buffer --> sink(DMA): write back to memory.
-	 * 3. source(DMA) --> buffer --> sink(DMA): do nothing.
-	 * 4. source(non-DMA) --> buffer --> sink(non-DMA): do nothing.
-	 */
-	if (buffer->source->is_dma_connected &&
-	    !buffer->sink->is_dma_connected) {
-		/* need invalidate cache for sink component to use */
-		dcache_invalidate_region(buffer->w_ptr, head);
-		if (tail)
-			dcache_invalidate_region(buffer->addr, tail);
-	} else if (!buffer->source->is_dma_connected &&
-		   buffer->sink->is_dma_connected) {
-		/* need write back to memory for sink component to use */
-		dcache_writeback_region(buffer->w_ptr, head);
-		if (tail)
-			dcache_writeback_region(buffer->addr, tail);
-	}
 
 	buffer->w_ptr += bytes;
 
@@ -184,10 +160,10 @@ void comp_update_buffer_produce(struct comp_buffer *buffer, uint32_t bytes)
 	irq_local_enable(flags);
 
 	tracev_buffer("comp_update_buffer_produce(), ((buffer->avail << 16) | "
-		      "buffer->free) = %08x, ((buffer->ipc_buffer.comp.id << "
-		      "16) | buffer->size) = %08x",
+		      "buffer->free) = %08x, ((buffer->id << 16) | "
+		      "buffer->size) = %08x",
 		      (buffer->avail << 16) | buffer->free,
-		      (buffer->ipc_buffer.comp.id << 16) | buffer->size);
+		      (buffer->id << 16) | buffer->size);
 	tracev_buffer("comp_update_buffer_produce(), ((buffer->r_ptr - buffer"
 		      "->addr) << 16 | (buffer->w_ptr - buffer->addr)) = %08x",
 		      (buffer->r_ptr - buffer->addr) << 16 |
@@ -229,10 +205,6 @@ void comp_update_buffer_consume(struct comp_buffer *buffer, uint32_t bytes)
 	/* calculate free bytes */
 	buffer->free = buffer->size - buffer->avail;
 
-	if (buffer->sink->is_dma_connected &&
-	    !buffer->source->is_dma_connected)
-		dcache_writeback_region(buffer->r_ptr, bytes);
-
 	if (buffer->cb && buffer->cb_type & BUFF_CB_TYPE_CONSUME)
 		buffer->cb(buffer->cb_data, bytes);
 
@@ -240,11 +212,11 @@ void comp_update_buffer_consume(struct comp_buffer *buffer, uint32_t bytes)
 
 	tracev_buffer("comp_update_buffer_consume(), "
 		      "(buffer->avail << 16) | buffer->free = %08x, "
-		      "(buffer->ipc_buffer.comp.id << 16) | buffer->size = "
-		      " %08x, (buffer->r_ptr - buffer->addr) << 16 | "
+		      "(buffer->id << 16) | buffer->size = %08x, "
+		      "(buffer->r_ptr - buffer->addr) << 16 | "
 		      "(buffer->w_ptr - buffer->addr)) = %08x",
 		      (buffer->avail << 16) | buffer->free,
-		      (buffer->ipc_buffer.comp.id << 16) | buffer->size,
+		      (buffer->id << 16) | buffer->size,
 		      (buffer->r_ptr - buffer->addr) << 16 |
 		      (buffer->w_ptr - buffer->addr));
 }

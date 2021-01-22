@@ -59,7 +59,7 @@ do
 	then
 		READY_IPC="00 00 00 f0"
 		SHM_IPC_REG=qemu-bridge-ipc-io
-		OUTBOX_OFFSET="11000"
+		OUTBOX_OFFSET="7000"
 		SHM_MBOX=qemu-bridge-hp-sram-mem
 		ROM="-r ../sof.git/build_${j}_gcc/src/arch/xtensa/rom-$j.bin"
 	fi
@@ -67,7 +67,7 @@ do
 	then
 		READY_IPC="00 00 00 f0"
 		SHM_IPC_REG=qemu-bridge-ipc-io
-		OUTBOX_OFFSET="11000"
+		OUTBOX_OFFSET="7000"
 		SHM_MBOX=qemu-bridge-hp-sram-mem
 		ROM="-r ../sof.git/build_${j}_gcc/src/arch/xtensa/rom-$j.bin"
 	fi
@@ -75,7 +75,7 @@ do
 	then
 		READY_IPC="00 00 00 f0"
 		SHM_IPC_REG=qemu-bridge-ipc-io
-		OUTBOX_OFFSET="11000"
+		OUTBOX_OFFSET="7000"
 		SHM_MBOX=qemu-bridge-hp-sram-mem
 		ROM="-r ../sof.git/build_${j}_gcc/src/arch/xtensa/rom-$j.bin"
 	fi
