@@ -14,9 +14,10 @@
 /* Align the number to the nearest alignment value */
 #define IS_ALIGNED(size, alignment) ((size) % (alignment) == 0)
 
-#define is_non0_power_of_2(x) ((x) && !((x) & ((x) - 1)))
+/* Treat zero as a special case because it wraps around */
+#define is_power_of_2(x) ((x) && !((x) & ((x) - 1)))
 
-#define compile_fail_zero_or_true(x) (sizeof(struct{int _f : 1 - !(x); }))
+#define compile_check(x) (sizeof(struct{int _f : 1 - !(x); }))
 #define compile_fail_zero_or_false_fn(x) ({int _f[(x) - 1]; 0 & _f[0]; })
 
 #define ALIGN_UP_INTERNAL(val, align) (((val) + (align) - 1) & ~((align) - 1))
@@ -24,10 +25,14 @@
 #define VERIFY_ALIGN
 #ifdef VERIFY_ALIGN
 
-/* For data initializers etc. */
+/* Using this when 'alignment' is a constant and when compiling with gcc
+ * -O0 saves about 30 bytes of .text and a few CPU cycles compared to
+ * the ALIGN_UP() combined check. There's no .text difference when
+ * optimizing.
+ */
 #define ALIGN_UP_COMPILE(size, alignment)					\
-	(compile_fail_zero_or_true(is_non0_power_of_2(alignment)) ?		\
-	 ALIGN_UP_INTERNAL(size, alignment) : 0)
+	(compile_check(is_power_of_2(alignment)) ?		\
+	 ALIGN_UP_INTERNAL(size, alignment) : 0xBADCAFE)
 
 #ifdef __XCC__
 
@@ -37,39 +42,40 @@
  */
 
 #define ALIGN_UP(size, alignment) ({						\
-	if (!is_non0_power_of_2(alignment))					\
+	if (!is_power_of_2(alignment))					\
 		panic(SOF_IPC_PANIC_ASSERT);					\
 	ALIGN_UP_INTERNAL(size, alignment);					\
 })
 
 #define ALIGN_DOWN(size, alignment) ({						\
-	if (!is_non0_power_of_2(alignment))					\
+	if (!is_power_of_2(alignment))					\
 		panic(SOF_IPC_PANIC_ASSERT);					\
 	(size) & ~((alignment) - 1);						\
 })
 
-#else
+#else /* not __XCC__ */
 
+/* If we can't tell at compile time, assume it's OK and defer to run-time */
 #define COMPILE_TIME_ALIGNED(align) (!__builtin_constant_p(align) ||		\
-				     is_non0_power_of_2(align))
+				     is_power_of_2(align))
 
 #define ALIGN_UP(size, alignment) ({						\
 	if (compile_fail_zero_or_false_fn(COMPILE_TIME_ALIGNED(alignment)) ||	\
-	    !is_non0_power_of_2(alignment))					\
+	    !is_power_of_2(alignment))						\
 		panic(SOF_IPC_PANIC_ASSERT);					\
 	ALIGN_UP_INTERNAL(size, alignment);					\
 })
 
 #define ALIGN_DOWN(size, alignment) ({						\
 	if (compile_fail_zero_or_false_fn(COMPILE_TIME_ALIGNED(alignment)) ||	\
-	    !is_non0_power_of_2(alignment))					\
+	    !is_power_of_2(alignment))					\
 		panic(SOF_IPC_PANIC_ASSERT);					\
 	(size) & ~((alignment) - 1);						\
 })
 
-#endif
+#endif /* not __XCC__ */
 
-#else
+#else /* not RUNTIME_ALIGN_CHECK */
 
 #define ALIGN_UP(size, alignment) ALIGN_UP_INTERNAL(size, alignment)
 #define ALIGN_UP_COMPILE ALIGN_UP
