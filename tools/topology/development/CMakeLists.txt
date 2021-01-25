@@ -2,6 +2,11 @@
 
 set(TPLGS
 	"sof-tgl-nocodec-ci\;sof-tgl-nocodec-ci"
+		"sof-hda-generic-nohdmi\;sof-hda-generic-nohdmi\;-DCHANNELS=0\;-DPPROC=volume"
+		"sof-hda-generic-nohdmi\;sof-hda-generic-nohdmi-1ch\;-DCHANNELS=2\;-DPPROC=volume\;-DDMICPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_48khz.m4\;-DDMIC16KPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_16khz.m4"
+		"sof-hda-generic-nohdmi\;sof-hda-generic-nohdmi-2ch\;-DCHANNELS=2\;-DPPROC=volume\;-DDMICPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_48khz.m4\;-DDMIC16KPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_16khz.m4"
+		"sof-hda-generic-nohdmi\;sof-hda-generic-nohdmi-3ch\;-DCHANNELS=4\;-DPPROC=volume\;-DDMICPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_48khz.m4\;-DDMIC16KPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_16khz.m4"
+		"sof-hda-generic-nohdmi\;sof-hda-generic-nohdmi-4ch\;-DCHANNELS=4\;-DPPROC=volume\;-DDMICPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_48khz.m4\;-DDMIC16KPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_16khz.m4"
 )
 
 add_custom_target(dev_topologies ALL)
