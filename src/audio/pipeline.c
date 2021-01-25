@@ -547,7 +547,7 @@ int pipeline_params(struct pipeline *p, struct comp_dev *host,
 
 	ret = hw_param_ctx.comp_func(host, NULL, &hw_param_ctx, dir);
 	if (ret < 0) {
-		pipe_err(p, "pipeline_prepare(): ret = %d, dev->comp.id = %u",
+		pipe_err(p, "pipeline_params(): ret = %d, dev->comp.id = %u",
 			 ret, dev_comp_id(host));
 		return ret;
 	}
@@ -602,7 +602,7 @@ static int pipeline_comp_task_init(struct pipeline *p)
 
 		p->pipe_task = pipeline_task_init(p, type, pipeline_task);
 		if (!p->pipe_task) {
-			pipe_err(p, "pipeline_prepare(): task init failed");
+			pipe_err(p, "pipeline_comp_task_init(): task init failed");
 			return -ENOMEM;
 		}
 	}
