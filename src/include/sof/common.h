@@ -146,5 +146,9 @@
 #endif /* __XCC__ */
 
 #endif /* __ASSEMBLER__ */
+#else /* LINKER */
+
+#define ALIGN_UP_INTERNAL(val, align) (((val) + (align) - 1) & ~((align) - 1))
+
 #endif /* LINKER */
 #endif /* __SOF_COMMON_H__ */
