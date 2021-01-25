@@ -22,6 +22,7 @@ DECLARE_SOF_UUID("pm-memory", pm_mem_uuid, 0x14f25ab6, 0x3a4b, 0x4e5d,
 
 DECLARE_TR_CTX(pm_mem_tr, SOF_UUID(pm_mem_uuid), LOG_LEVEL_INFO);
 
+#if (CAVS_VERSION >= CAVS_VERSION_1_8) || CONFIG_LP_SRAM
 /**
  * \brief Retrieves memory banks based on start and end pointer.
  * \param[in,out] start Start address of memory range.
@@ -55,6 +56,7 @@ static void memory_banks_get(void *start, void *end, uint32_t base,
 	 */
 	*end_bank = ((uintptr_t)end - base) / SRAM_BANK_SIZE - 1;
 }
+#endif
 
 #if CAVS_VERSION >= CAVS_VERSION_1_8
 
