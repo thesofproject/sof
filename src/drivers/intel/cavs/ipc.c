@@ -278,7 +278,7 @@ int ipc_platform_send_msg(struct ipc_msg *msg)
 	ipc_write(IPC_DIPCI, IPC_DIPCI_BUSY | msg->header);
 #else
 	ipc_write(IPC_DIPCIDD, 0);
-	ipc_write(IPC_DIPCIDR, 0x80000000 | msg->header);
+	ipc_write(IPC_DIPCIDR, IPC_DIPCIDR_BUSY | msg->header);
 #endif
 
 	platform_shared_commit(msg, sizeof(*msg));
@@ -446,7 +446,7 @@ int ipc_platform_poll_tx_host_msg(struct ipc_msg *msg)
 	ipc_write(IPC_DIPCI, IPC_DIPCI_BUSY | msg->header);
 #else
 	ipc_write(IPC_DIPCIDD, 0);
-	ipc_write(IPC_DIPCIDR, 0x80000000 | msg->header);
+	ipc_write(IPC_DIPCIDR, IPC_DIPCIDR_BUSY | msg->header);
 #endif
 
 	/* message sent */
