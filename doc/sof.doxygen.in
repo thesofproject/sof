@@ -13,7 +13,7 @@ INPUT            = @top_srcdir@/src/include/ipc \
 EXCLUDE		 =
 RECURSIVE	 = YES
 FILE_PATTERNS    = *.c *.h
-EXAMPLE_PATH     = ../test
+EXAMPLE_PATH     = @top_srcdir@/test
 IMAGE_PATH	 =
 QUIET            = YES
 
