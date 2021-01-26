@@ -29,6 +29,9 @@
 #include <sof/trace/trace.h>
 #include <ipc/topology.h>
 #include <user/trace.h>
+#if CAVS_VERSION >= CAVS_VERSION_1_8
+#include <cavs/drivers/sideband-ipc.h>
+#endif
 
 #include <version.h>
 #include <stdint.h>
@@ -606,6 +609,17 @@ bool platform_pm_runtime_is_active(uint32_t context, uint32_t index)
 void platform_pm_runtime_power_off(void)
 {
 	uint32_t hpsram_mask[PLATFORM_HPSRAM_SEGMENTS], i;
+#if CAVS_VERSION >= CAVS_VERSION_1_8
+	int ret;
+
+	/* check if DSP is busy sending IPC for 10ms */
+	ret = poll_for_register_delay(IPC_HOST_BASE + IPC_DIPCIDR,
+				      IPC_DIPCIDR_MSG_MASK, ~IPC_DIPCIDR_BUSY,
+				      10000);
+	/* did command succeed */
+	if (ret < 0)
+		tr_err(&power_tr, "failed to wait for DSP sent IPC handled.");
+#endif
 	/* power down entire HPSRAM */
 	for (i = 0; i < PLATFORM_HPSRAM_SEGMENTS; i++)
 		hpsram_mask[i] = HPSRAM_MASK(i);
