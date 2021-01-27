@@ -9,7 +9,7 @@
 # github.com also has a powerful web editor that can be used without
 # committing.
 
-name: Pull Requests
+name: GitHub Action CI
 
 # yamllint disable-line rule:truthy
 on:
@@ -70,7 +70,7 @@ jobs:
         run: ./scripts/host-testbench.sh
 
 
-  SOF-build-only:
+  gcc-build-only:
     runs-on: ubuntu-20.04
 
     strategy:
@@ -98,7 +98,7 @@ jobs:
   # before committing it; also deemed overkill for the current amount of
   # duplication.
 
-  SOF-qemu-boot:
+  qemu-boot-test:
     runs-on: ubuntu-20.04
 
     strategy:
