@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
+config SCHEDULE_DMA_SINGLE_CHANNEL
+	bool
+	default n
+	help
+	  Enable single-channel DMA scheduler
+
+config SCHEDULE_DMA_MULTI_CHANNEL
+	bool
+	default n
+	help
+	  Enable multi-channel DMA scheduler
