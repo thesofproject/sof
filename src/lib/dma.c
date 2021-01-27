@@ -32,6 +32,7 @@ struct dma *dma_get(uint32_t dir, uint32_t cap, uint32_t dev, uint32_t flags)
 	int users, ret;
 	int min_users = INT32_MAX;
 	struct dma *d = NULL, *dmin = NULL;
+	unsigned int flags_irq;
 
 	if (!info->num_dmas) {
 		tr_err(&dma_tr, "dma_get(): No DMACs installed");
@@ -108,7 +109,7 @@ struct dma *dma_get(uint32_t dir, uint32_t cap, uint32_t dev, uint32_t flags)
 	 * may be requested many times, let the probe()
 	 * do on-first-use initialization.
 	 */
-	spin_lock(&dmin->lock);
+	spin_lock_irq(&dmin->lock, flags_irq);
 
 	ret = 0;
 	if (!dmin->sref) {
@@ -127,15 +128,16 @@ struct dma *dma_get(uint32_t dir, uint32_t cap, uint32_t dev, uint32_t flags)
 
 	platform_shared_commit(dmin, sizeof(*dmin));
 
-	spin_unlock(&dmin->lock);
+	spin_unlock_irq(&dmin->lock, flags_irq);
 	return !ret ? dmin : NULL;
 }
 
 void dma_put(struct dma *dma)
 {
+	unsigned int flags_irq;
 	int ret;
 
-	spin_lock(&dma->lock);
+	spin_lock_irq(&dma->lock, flags_irq);
 	if (--dma->sref == 0) {
 		ret = dma_remove(dma);
 		if (ret < 0) {
@@ -146,7 +148,7 @@ void dma_put(struct dma *dma)
 	tr_info(&dma_tr, "dma_put(), dma = %p, sref = %d",
 		dma, dma->sref);
 	platform_shared_commit(dma, sizeof(*dma));
-	spin_unlock(&dma->lock);
+	spin_unlock_irq(&dma->lock, flags_irq);
 }
 
 int dma_sg_alloc(struct dma_sg_elem_array *elem_array,
