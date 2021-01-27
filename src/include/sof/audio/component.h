@@ -311,12 +311,20 @@ struct comp_ops {
 	/**
 	 * Prepares component after params are set.
 	 * @param dev Component device.
+	 *
+	 * Prepare should be used to get the component ready for starting
+	 * processing after it's hw_params are known or after an XRUN.
 	 */
 	int (*prepare)(struct comp_dev *dev);
 
 	/**
 	 * Resets component.
 	 * @param dev Component device.
+	 *
+	 * Resets the component state and any hw_params to default component
+	 * state. Should also free any resources acquired during hw_params.
+	 * TODO: Some components are not compliant here wrt reset(). Fix this
+	 * in v1.8.
 	 */
 	int (*reset)(struct comp_dev *dev);
 
