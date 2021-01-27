@@ -14,9 +14,15 @@ name: Pull Requests
 # yamllint disable-line rule:truthy
 on:
   push:
-    branches: [master]
+    branches:
+      - 'master'
+      - 'stable-**'
+      - '**-stable'
   pull_request:
-    branches: [master]
+    branches:
+      - 'master'
+      - 'stable-**'
+      - '**-stable'
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
