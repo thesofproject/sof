@@ -142,6 +142,11 @@ int idc_send_msg(struct idc_msg *msg, uint32_t mode)
 
 	case IDC_POWER_UP:
 		ret = idc_wait_in_blocking_mode(msg->core, idc_is_powered_up);
+		if (ret < 0) {
+			tr_err(&idc_tr, "idc_send_msg(), power up core %d failed, reason 0x%x",
+			       msg->core,
+			       mailbox_sw_reg_read(PLATFORM_TRACEP_SECONDARY_CORE(msg->core)));
+		}
 		break;
 	}
 
