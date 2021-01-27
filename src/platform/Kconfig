@@ -19,6 +19,7 @@ config BAYTRAIL
 	select INTERRUPT_LEVEL_4
 	select INTERRUPT_LEVEL_5
 	select INTEL
+	select SCHEDULE_DMA_MULTI_CHANNEL
 	help
 	  Select if your target platform is Baytrail-compatible
 
@@ -35,6 +36,7 @@ config CHERRYTRAIL
 	select INTERRUPT_LEVEL_4
 	select INTERRUPT_LEVEL_5
 	select INTEL
+	select SCHEDULE_DMA_MULTI_CHANNEL
 	help
 	  Select if your target platform is Cherrytrail-compatible
 
@@ -49,6 +51,7 @@ config HASWELL
 	select INTERRUPT_LEVEL_2
 	select INTERRUPT_LEVEL_3
 	select INTEL
+	select SCHEDULE_DMA_MULTI_CHANNEL
 	help
 	  Select if your target platform is Haswell-compatible
 
@@ -63,6 +66,7 @@ config BROADWELL
 	select INTERRUPT_LEVEL_2
 	select INTERRUPT_LEVEL_3
 	select INTEL
+	select SCHEDULE_DMA_MULTI_CHANNEL
 	help
 	  Select if your target platform is Broadwell-compatible
 
@@ -174,6 +178,7 @@ config IMX8
 	select WAITI_DELAY
 	select IMX
 	select IMX_EDMA
+	select SCHEDULE_DMA_MULTI_CHANNEL
 	help
 	  Select if your target platform is imx8-compatible
 
@@ -188,6 +193,7 @@ config IMX8X
 	select WAITI_DELAY
 	select IMX
 	select IMX_EDMA
+	select SCHEDULE_DMA_MULTI_CHANNEL
 	help
 	  Select if your target platform is imx8x-compatible
 
@@ -201,6 +207,7 @@ config IMX8M
 	select DUMMY_DMA
 	select WAITI_DELAY
 	select IMX
+	select SCHEDULE_DMA_MULTI_CHANNEL
 	help
 	  Select if your target platform is imx8m-compatible
 
@@ -258,6 +265,7 @@ config CAVS
 	select INTEL_HDA
 	select INTEL_MN
 	select WAKEUP_HOOK
+	select SCHEDULE_DMA_SINGLE_CHANNEL
 
 config CAVS_VERSION_1_5
 	depends on CAVS
