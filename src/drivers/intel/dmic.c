@@ -1116,6 +1116,8 @@ static int dmic_set_config(struct dai *dai, struct sof_ipc_dai_config *config)
 		return -EINVAL;
 	}
 
+	spin_lock(&dai->lock);
+
 	/* Compute unmute ramp gain update coefficient. Use the value from
 	 * topology if it is non-zero, otherwise use default length.
 	 */
@@ -1128,17 +1130,20 @@ static int dmic_set_config(struct dai *dai, struct sof_ipc_dai_config *config)
 	    unmute_ramp_time_ms > LOGRAMP_TIME_MAX_MS) {
 		dai_err(dai, "dmic_set_config(): Illegal ramp time = %d",
 			unmute_ramp_time_ms);
-		return -EINVAL;
+		ret = -EINVAL;
+		goto out;
 	}
 
 	if (di >= DMIC_HW_FIFOS) {
 		dai_err(dai, "dmic_set_config(): dai->index exceeds number of FIFOs");
-		return -EINVAL;
+		ret = -EINVAL;
+		goto out;
 	}
 
 	if (config->dmic.num_pdm_active > DMIC_HW_CONTROLLERS) {
 		dai_err(dai, "dmic_set_config(): the requested PDM controllers count exceeds platform capability");
-		return -EINVAL;
+		ret = -EINVAL;
+		goto out;
 	}
 
 	step_db = LOGRAMP_CONST_TERM / unmute_ramp_time_ms;
@@ -1160,7 +1165,8 @@ static int dmic_set_config(struct dai *dai, struct sof_ipc_dai_config *config)
 				      DMIC_HW_FIFOS * size);
 		if (!dmic_prm[0]) {
 			dai_err(dai, "dmic_set_config(): prm not initialized");
-			return -ENOMEM;
+			ret = -ENOMEM;
+			goto out;
 		}
 		for (i = 1; i < DMIC_HW_FIFOS; i++)
 			dmic_prm[i] = (struct sof_ipc_dai_dmic_params *)
@@ -1206,7 +1212,8 @@ static int dmic_set_config(struct dai *dai, struct sof_ipc_dai_config *config)
 		break;
 	default:
 		dai_err(dai, "dmic_set_config(): fifo_bits EINVAL");
-		return -EINVAL;
+		ret = -EINVAL;
+		goto out;
 	}
 
 	/* Match and select optimal decimators configuration for FIFOs A and B
@@ -1218,20 +1225,23 @@ static int dmic_set_config(struct dai *dai, struct sof_ipc_dai_config *config)
 	find_modes(dai, &modes_a, dmic_prm[0]->fifo_fs, di);
 	if (modes_a.num_of_modes == 0 && dmic_prm[0]->fifo_fs > 0) {
 		dai_err(dai, "dmic_set_config(): No modes found found for FIFO A");
-		return -EINVAL;
+		ret = -EINVAL;
+		goto out;
 	}
 
 	find_modes(dai, &modes_b, dmic_prm[1]->fifo_fs, di);
 	if (modes_b.num_of_modes == 0 && dmic_prm[1]->fifo_fs > 0) {
 		dai_err(dai, "dmic_set_config(): No modes found for FIFO B");
-		return -EINVAL;
+		ret = -EINVAL;
+		goto out;
 	}
 
 	match_modes(&modes_ab, &modes_a, &modes_b);
 	ret = select_mode(dai, &cfg, &modes_ab);
 	if (ret < 0) {
 		dai_err(dai, "dmic_set_config(): select_mode() failed");
-		return -EINVAL;
+		ret = -EINVAL;
+		goto out;
 	}
 
 	dai_info(dai, "dmic_set_config(), cfg clkdiv = %u, mcic = %u",
@@ -1252,10 +1262,14 @@ static int dmic_set_config(struct dai *dai, struct sof_ipc_dai_config *config)
 	ret = configure_registers(dai, &cfg);
 	if (ret < 0) {
 		dai_err(dai, "dmic_set_config(): cannot configure registers");
-		return -EINVAL;
+		ret = -EINVAL;
+		goto out;
 	}
 
 	dmic->state = COMP_STATE_PREPARE;
+
+out:
+	spin_unlock(&dai->lock);
 
 	return ret;
 }
