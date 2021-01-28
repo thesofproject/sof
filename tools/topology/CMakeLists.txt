@@ -94,8 +94,14 @@ set(TPLGS
 	"sof-apl-dmic\;sof-apl-dmic-2ch\;-DCHANNELS=2\;-DCPROC=volume"
 	"sof-apl-src-50khz-pcm512x\;sof-apl-src-50khz-pcm512x"
 	"sof-icl-dmic-4ch\;sof-icl-dmic-4ch"
-	"sof-icl-rt700\;sof-icl-rt700\;-DPLATFORM=icl"
-	"sof-cml-rt700\;sof-cml-rt700\;-DPLATFORM=cml"
+	# sof-icl-r700 is kept for compatibility with CI and previous versions of the kernel.
+	"sof-icl-rt700\;sof-icl-rt700\;-DCHANNELS=4\;-DPLATFORM=icl"
+	"sof-icl-rt700\;sof-icl-rt700-4ch\;-DCHANNELS=4\;-DPLATFORM=icl"
+	"sof-icl-rt700\;sof-icl-rt700-2ch\;-DCHANNELS=2\;-DPLATFORM=icl"
+	# sof-cml-r700 is kept for compatibility with CI and previous versions of the kernel.
+	"sof-cml-rt700\;sof-cml-rt700\;-DCHANNELS=4\;-DPLATFORM=cml"
+	"sof-cml-rt700\;sof-cml-rt700-4ch\;-DCHANNELS=4\;-DPLATFORM=cml"
+	"sof-cml-rt700\;sof-cml-rt700-2ch\;-DCHANNELS=2\;-DPLATFORM=cml"
 	"sof-icl-rt711-rt1308-rt715-hdmi\;sof-cml-rt711-rt1308-mono-rt715\;-DPLATFORM=cml\;-DMONO"
 	"sof-icl-rt711-rt1308-rt715-hdmi\;sof-cml-rt711-rt1308-rt715\;-DPLATFORM=cml"
 	"sof-icl-rt711-rt1308-rt715-hdmi\;sof-icl-rt711-rt1308-rt715\;-DPLATFORM=icl"
