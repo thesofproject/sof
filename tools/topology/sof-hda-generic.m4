@@ -4,6 +4,7 @@
 # if XPROC is not defined, define with default pipe
 ifdef(`DMICPROC', , `define(DMICPROC, eq-iir-volume)')
 ifdef(`DMIC16KPROC', , `define(DMIC16KPROC, eq-iir-volume)')
+ifdef(`HSPROC', , `define(DMICPROC, volume)')
 
 # Include topology builder
 include(`utils.m4')
@@ -33,8 +34,8 @@ include(`platform/intel/intel-generic-dmic.m4')
 )
 
 # The pipeline naming notation is pipe-PROCESSING-DIRECTION.m4
-# PPROC is set by makefile
-define(PIPE_HEADSET_PLAYBACK, `sof/pipe-`PPROC'-playback.m4')
+# HSPROC is set by makefile, if not the default above is applied
+define(PIPE_HEADSET_PLAYBACK, `sof/pipe-`HSPROC'-playback.m4')
 
 #
 # Define the pipelines
@@ -48,12 +49,21 @@ define(PIPE_HEADSET_PLAYBACK, `sof/pipe-`PPROC'-playback.m4')
 # PCM5  ----> volume (pipe 9) ----> iDisp3 (HDMI/DP playback, BE link 5)
 #
 
+# If HSPROC_FILTERx is defined set PIPELINE_FILTERx
+ifdef(`HSPROC_FILTER1', `define(PIPELINE_FILTER1, HSPROC_FILTER1)', `undefine(`PIPELINE_FILTER1')')
+ifdef(`HSPROC_FILTER2', `define(PIPELINE_FILTER2, HSPROC_FILTER2)', `undefine(`PIPELINE_FILTER2')')
+
 # Low Latency playback pipeline 1 on PCM 0 using max 2 channels of s24le.
 # 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(PIPE_HEADSET_PLAYBACK,
 	1, 0, 2, s24le,
 	1000, 0, 0,
 	48000, 48000, 48000)
+
+# Undefine PIPELINE_FILTERx to avoid to propagate elsewhere, other endpoints
+# with filters blobs will need similar handling as HSPROC_FILTERx.
+undefine(`PIPELINE_FILTER1')
+undefine(`PIPELINE_FILTER2')
 
 # Low Latency capture pipeline 2 on PCM 0 using max 2 channels of s24le.
 # 1000us deadline on core 0 with priority 0
