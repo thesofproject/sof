@@ -9,7 +9,10 @@
 # github.com also has a powerful web editor that can be used without
 # committing.
 
-name: GitHub Action CI
+# This is the name of this workflow and should technically be called
+# something like "Main Workflow" but the place where most people see
+# this name is the Checks window next to other, non-github checks.
+name: GitHub Actions
 
 # yamllint disable-line rule:truthy
 on:
@@ -139,7 +142,8 @@ jobs:
         run: ./scripts/docker-qemu.sh
           ../sof.git/scripts/qemu-check.sh ${PLATFORM}
 
-  yamllint-actions:
+  yamllint-gh:
+    name: yamllint /.github/workflows/
     runs-on: ubuntu-20.04
 
     steps:
