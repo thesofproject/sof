@@ -614,7 +614,7 @@ void platform_pm_runtime_power_off(void)
 
 	/* check if DSP is busy sending IPC for 10ms */
 	ret = poll_for_register_delay(IPC_HOST_BASE + IPC_DIPCIDR,
-				      IPC_DIPCIDR_MSG_MASK, ~IPC_DIPCIDR_BUSY,
+				      IPC_DIPCIDR_BUSY, 0,
 				      10000);
 	/* did command succeed */
 	if (ret < 0)
