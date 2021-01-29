@@ -138,6 +138,7 @@ set(TPLGS
 	"sof-imx8qxp-wm8960\;sof-imx8qxp-wm8960"
 	"sof-imx8-wm8960-mixer\;sof-imx8-wm8960-mixer"
 	"sof-imx8-cs42888-mixer\;sof-imx8-cs42888-mixer"
+	"sof-imx8mp-wm8960-mixer\;sof-imx8mp-wm8960-mixer"
 	"sof-tgl-max98357a-rt5682\;sof-tgl-max98357a-rt5682"
 	"sof-tgl-max98373-rt5682\;sof-tgl-max98373-rt5682\;-DAMP_SSP=1"
 	"sof-tgl-max98373-rt5682\;sof-tgl-rt5682-ssp0-max98373-ssp2\;-DAMP_SSP=2"
