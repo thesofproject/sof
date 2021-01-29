@@ -1,6 +1,7 @@
 function bf = bf_defaults()
 
 % Recording array general setup
+bf.type = 'SDB';     % SDB for superdirectivem, DSB for delay and sum
 bf.fs = 16e3;        % Design for 16 kHz sample rate
 bf.c = 343;          % Speed of sound in 20C
 bf.steer_az = 0;     % Azimuth 0 deg
