@@ -152,19 +152,33 @@ for n=1:bf.num_filters
 	end
 end
 
-%% Superdirective
-for iw = 1:N_half
-       % Equation 2.33
-        I = eye(bf.num_filters, bf.num_filters);
-        d_w = d(iw,:).';
-        Gamma_vv_w = squeeze(Gamma_vv(iw, :, :));
-        Gamma_vv_w_diagload = Gamma_vv_w + mu(iw)*I;
-        Gamma_vv_w_inv = inv(Gamma_vv_w_diagload);
-        num = Gamma_vv_w_inv * d_w;
-        denom1 = d_w' * Gamma_vv_w_inv;
-        denom2 = denom1 * d_w;
-        W_w = num / denom2;
-        W(iw, :) = W_w.';
+switch lower(bf.type)
+	case 'sdb'
+		% Superdirective
+		for iw = 1:N_half
+			% Equation 2.33
+			I = eye(bf.num_filters, bf.num_filters);
+			d_w = d(iw,:).';
+			Gamma_vv_w = squeeze(Gamma_vv(iw, :, :));
+			Gamma_vv_w_diagload = Gamma_vv_w + mu(iw)*I;
+			Gamma_vv_w_inv = inv(Gamma_vv_w_diagload);
+			num = Gamma_vv_w_inv * d_w;
+			denom1 = d_w' * Gamma_vv_w_inv;
+			denom2 = denom1 * d_w;
+			W_w = num / denom2;
+			W(iw, :) = W_w.';
+		end
+	case 'dsb'
+		% Delay and sum
+		for iw = 1:N_half
+			% Equation 2.31
+			% W = 1/N*d
+			d_w = d(iw, :);
+			W_w = 1/bf.num_filters * d_w;
+			W(iw, :) = W_w.';
+		end
+	otherwise
+		error('Invalid type, use SDB or DSB');
 end
 
 %% Convert w to time domain
