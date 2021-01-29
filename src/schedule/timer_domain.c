@@ -283,7 +283,7 @@ static void timer_domain_set(struct ll_schedule_domain *domain, uint64_t start)
 		timer_report_delay(timer_domain->timer->id,
 				   ticks_set - ticks_req);
 
-	domain->last_tick = ticks_set;
+	domain->last_tick = ticks_req;
 
 	platform_shared_commit(timer_domain, sizeof(*timer_domain));
 }
