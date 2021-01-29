@@ -136,6 +136,7 @@ set(TPLGS
 	"sof-imx8qxp-cs42888\;sof-imx8qxp-cs42888"
 	"sof-imx8qxp-nocodec-sai\;sof-imx8qxp-nocodec-sai"
 	"sof-imx8qxp-wm8960\;sof-imx8qxp-wm8960"
+	"sof-imx8-wm8960-mixer\;sof-imx8-wm8960-mixer"
 	"sof-tgl-max98357a-rt5682\;sof-tgl-max98357a-rt5682"
 	"sof-tgl-max98373-rt5682\;sof-tgl-max98373-rt5682\;-DAMP_SSP=1"
 	"sof-tgl-max98373-rt5682\;sof-tgl-rt5682-ssp0-max98373-ssp2\;-DAMP_SSP=2"
@@ -147,7 +148,6 @@ set(TPLGS
 	"sof-smart-amplifier-nocodec\;sof-smart-amplifier-nocodec"
 	"sof-jsl-rt5682\;sof-jsl-rt5682-rt1015\;-DPLATFORM=jsl-rt1015"
 	"sof-jsl-rt5682\;sof-jsl-rt5682-mx98360a\;-DPLATFORM=jsl-dedede"
-	"sof-imx8-wm8960-mixer\;sof-imx8-wm8960-mixer"
 )
 
 add_custom_target(topologies ALL)
