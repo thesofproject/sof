@@ -80,7 +80,7 @@ tools/oss-fuzz/*			@cujomalainey
 *.bash					@marc-hb
 *trace.*				@xiulipan @akloniex
 
-/.github/				@dbaluta @cujomalainey @xiulipan @lgirdwood @marc-hb
+/.github/				@dbaluta @cujomalainey @xiulipan @lgirdwood @marc-hb @zrombel
 
 # You can also use email addresses if you prefer.
 #docs/*  docs@example.com
