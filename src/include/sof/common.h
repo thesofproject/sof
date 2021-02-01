@@ -9,6 +9,12 @@
 #ifndef __SOF_COMMON_H__
 #define __SOF_COMMON_H__
 
+/*
+ * The most basic alignment macro with no checks, should only be used where no
+ * other checking macros are allowed, e.g. for values, used in assembly.
+ */
+#define ALIGN_UP_INTERNAL(val, align) (((val) + (align) - 1) & ~((align) - 1))
+
 #if !defined(LINKER)
 
 /* Align the number to the nearest alignment value */
@@ -19,8 +25,6 @@
 
 #define compile_check(x) (sizeof(struct{int _f : 1 - !(x); }))
 #define compile_fail_zero_or_false_fn(x) ({int _f[(x) - 1]; 0 & _f[0]; })
-
-#define ALIGN_UP_INTERNAL(val, align) (((val) + (align) - 1) & ~((align) - 1))
 
 #define VERIFY_ALIGN
 #ifdef VERIFY_ALIGN
@@ -83,12 +87,12 @@
 
 #endif
 
-/* This most basic ALIGN() must be used in header files that are
- * included in both C and assembly code. memory.h files require this
- * exact spelling matching the linker function because memory.h values
- * are _also_ copied unprocessed to the .x[.in] linker script
+/*
+ * memory.h files require this exact spelling of the ALIGN() macro, matching the
+ * linker function name because memory.h values are _also_ copied unprocessed to
+ * the .x[.in] linker script
  */
-#define ALIGN(val, align) ALIGN_UP_INTERNAL(val, align)
+#define ALIGN ALIGN_UP
 #define DIV_ROUND_UP(val, div) (((val) + (div) - 1) / (div))
 
 #if !defined(__ASSEMBLER__)
@@ -157,9 +161,6 @@
 #endif /* __XCC__ */
 
 #endif /* __ASSEMBLER__ */
-#else /* LINKER */
-
-#define ALIGN_UP_INTERNAL(val, align) (((val) + (align) - 1) & ~((align) - 1))
 
 #endif /* LINKER */
 #endif /* __SOF_COMMON_H__ */
