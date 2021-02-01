@@ -101,7 +101,7 @@ uint64_t platform_timer_get(struct timer *timer)
 	return ticks_now;
 }
 
-uint64_t platform_timer_get_noirq(struct timer *timer)
+uint64_t platform_timer_get_atomic(struct timer *timer)
 {
 	uint32_t flags;
 	uint64_t ticks_now;

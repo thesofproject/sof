@@ -61,7 +61,7 @@ static inline uint64_t timer_get_system(struct timer *timer)
 int64_t platform_timer_set(struct timer *timer, uint64_t ticks);
 void platform_timer_clear(struct timer *timer);
 uint64_t platform_timer_get(struct timer *timer);
-uint64_t platform_timer_get_noirq(struct timer *timer);
+uint64_t platform_timer_get_atomic(struct timer *timer);
 void platform_timer_start(struct timer *timer);
 void platform_timer_stop(struct timer *timer);
 
