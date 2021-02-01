@@ -612,10 +612,10 @@ void platform_pm_runtime_power_off(void)
 #if CAVS_VERSION >= CAVS_VERSION_1_8
 	int ret;
 
-	/* check if DSP is busy sending IPC for 100us */
+	/* check if DSP is busy sending IPC for 2ms */
 	ret = poll_for_register_delay(IPC_HOST_BASE + IPC_DIPCIDR,
 				      IPC_DIPCIDR_BUSY, 0,
-				      100);
+				      2000);
 	/* did command succeed */
 	if (ret < 0)
 		tr_err(&power_tr, "failed to wait for DSP sent IPC handled.");
