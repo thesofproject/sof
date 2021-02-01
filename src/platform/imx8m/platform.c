@@ -175,6 +175,9 @@ int platform_init(struct sof *sof)
 	sof->platform_dma_domain =
 		dma_multi_chan_domain_init(&sof->dma_info->dma_array[1],
 					   1, PLATFORM_DEFAULT_CLOCK, true);
+
+	/* i.MX platform DMA domain will be full synchronous, no time dependent */
+	sof->platform_dma_domain->full_sync = true;
 	scheduler_init_ll(sof->platform_dma_domain);
 
 	/* initialize the host IPC mechanims */
