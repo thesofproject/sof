@@ -34,12 +34,13 @@ DEBUG_START
 #              |
 #              |
 # PCM3 <---- demux  <----- ALH0x103 (Speaker -max98373)
-# PCM4 <---- volume <---- DMIC01  (dmic 48k capture)
-# PCM5 <---- kpb <---- DMIC16k  (dmic 16k capture)
-# PCM6 ----> volume -----> iDisp1
-# PCM7 ----> volume -----> iDisp2
-# PCM8 ----> volume -----> iDisp3
+# PCM5 ----> volume -----> iDisp1
+# PCM6 ----> volume -----> iDisp2
+# PCM7 ----> volume -----> iDisp3
 # PCM9 ----> volume -----> iDisp4
+# PCM10 <---- volume <---- DMIC01  (dmic 48k capture)
+# PCM12 <---- kpb <---- DMIC16k  (dmic 16k capture)
+
 
 define(`SDW', 1)
 
@@ -75,7 +76,9 @@ include(`sof-smart-amplifier.m4')
 
 dnl PIPELINE_PCM_ADD(pipeline,
 dnl     pipe id, pcm, max channels, format,
-dnl     frames, deadline, priority, core)
+dnl     period, priority, core,
+dnl     pcm_min_rate, pcm_max_rate, pipeline_rate,
+dnl     time_domain, sched_comp)
 
 # Low Latency playback pipeline 1 on PCM 0 using max 2 channels of s32le.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
@@ -98,10 +101,10 @@ define(CHANNELS, `4')
 # define kfbm with volume
 define(KFBM_TYPE, `vol-kfbm')
 # define pcm, pipeline and dai id
-define(DMIC_PCM_48k_ID, `4')
+define(DMIC_PCM_48k_ID, `10')
 define(DMIC_PIPELINE_48k_ID, `11')
 define(DMIC_DAI_LINK_48k_ID, `4')
-define(DMIC_PCM_16k_ID, `5')
+define(DMIC_PCM_16k_ID, `12')
 define(DMIC_PIPELINE_16k_ID, `12')
 define(DMIC_PIPELINE_KWD_ID, `13')
 define(DMIC_DAI_LINK_16k_ID, `5')
@@ -109,6 +112,13 @@ define(DMIC_DAI_LINK_16k_ID, `5')
 define(KWD_PIPE_SCH_DEADLINE_US, 5000)
 # include the generic dmic with kwd
 include(`platform/intel/intel-generic-dmic-kwd.m4')
+
+# Low Latency playback pipeline 6 on PCM 5 using max 2 channels of s32le.
+# Schedule 48 frames per 1000us deadline on core 0 with priority 0
+PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
+	6, 5, 2, s32le,
+	1000, 0, 0,
+	48000, 48000, 48000)
 
 # Low Latency playback pipeline 7 on PCM 6 using max 2 channels of s32le.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
@@ -131,13 +141,6 @@ PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
 	1000, 0, 0,
 	48000, 48000, 48000)
 
-# Low Latency playback pipeline 10 on PCM 9 using max 2 channels of s32le.
-# Schedule 48 frames per 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
-	10, 9, 2, s32le,
-	1000, 0, 0,
-	48000, 48000, 48000)
-
 #
 # DAIs configuration
 #
@@ -145,7 +148,7 @@ PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
 dnl DAI_ADD(pipeline,
 dnl     pipe id, dai type, dai_index, dai_be,
 dnl     buffer, periods, format,
-dnl     frames, deadline, priority, core)
+dnl     deadline, priority, core, time_domain)
 
 # playback DAI is ALH(ALH0 PIN2) using 2 periods
 # Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
@@ -164,29 +167,29 @@ DAI_ADD(sof/pipe-dai-capture.m4,
 # playback DAI is iDisp1 using 2 periods
 # Buffers use s32le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
-	7, HDA, 0, iDisp1,
-	PIPELINE_SOURCE_7, 2, s32le,
+	6, HDA, 0, iDisp1,
+	PIPELINE_SOURCE_6, 2, s32le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # playback DAI is iDisp2 using 2 periods
 # Buffers use s32le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
-	8, HDA, 1, iDisp2,
-	PIPELINE_SOURCE_8, 2, s32le,
+	7, HDA, 1, iDisp2,
+	PIPELINE_SOURCE_7, 2, s32le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # playback DAI is iDisp3 using 2 periods
 # Buffers use s32le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
-	9, HDA, 2, iDisp3,
-	PIPELINE_SOURCE_9, 2, s32le,
+	8, HDA, 2, iDisp3,
+	PIPELINE_SOURCE_8, 2, s32le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # playback DAI is iDisp4 using 2 periods
 # Buffers use s32le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
-	10, HDA, 3, iDisp4,
-	PIPELINE_SOURCE_10, 2, s32le,
+	9, HDA, 3, iDisp4,
+	PIPELINE_SOURCE_9, 2, s32le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 #
@@ -195,10 +198,10 @@ DAI_ADD(sof/pipe-dai-playback.m4,
 dnl PCM_PLAYBACK_ADD(name, pcm_id, playback)
 PCM_PLAYBACK_ADD(Headphone, 0, PIPELINE_PCM_1)
 PCM_CAPTURE_ADD(Headset mic, 1, PIPELINE_PCM_2)
-PCM_PLAYBACK_ADD(HDMI1, 6, PIPELINE_PCM_7)
-PCM_PLAYBACK_ADD(HDMI2, 7, PIPELINE_PCM_8)
-PCM_PLAYBACK_ADD(HDMI3, 8, PIPELINE_PCM_9)
-PCM_PLAYBACK_ADD(HDMI4, 9, PIPELINE_PCM_10)
+PCM_PLAYBACK_ADD(HDMI1, 5, PIPELINE_PCM_6)
+PCM_PLAYBACK_ADD(HDMI2, 6, PIPELINE_PCM_7)
+PCM_PLAYBACK_ADD(HDMI3, 7, PIPELINE_PCM_8)
+PCM_PLAYBACK_ADD(HDMI4, 8, PIPELINE_PCM_9)
 
 #
 # BE configurations - overrides config in ACPI if present

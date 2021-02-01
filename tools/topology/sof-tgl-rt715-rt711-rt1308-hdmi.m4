@@ -28,9 +28,9 @@ DEBUG_START
 # PCM1 <--- volume <---- ALH 0x103 BE dailink 1
 # PCM2 ---> volume ----> ALH 0x202 BE dailink 2
 # PCM4 <--- volume <---- ALH 0x2 BE dailink 4
-# PCM5 ---> volume <---- iDisp1
-# PCM6 ---> volume <---- iDisp2
-# PCM7 ---> volume <---- iDisp3
+# PCM5 ---> volume ----> iDisp1
+# PCM6 ---> volume ----> iDisp2
+# PCM7 ---> volume ----> iDisp3
 
 dnl PIPELINE_PCM_ADD(pipeline,
 dnl     pipe id, pcm, max channels, format,
