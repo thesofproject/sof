@@ -141,7 +141,7 @@ uint64_t platform_timer_get(struct timer *timer)
 	return time;
 }
 
-uint64_t platform_timer_get_noirq(struct timer *timer)
+uint64_t platform_timer_get_atomic(struct timer *timer)
 {
 	return platform_timer_get(timer);
 }

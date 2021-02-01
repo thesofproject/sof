@@ -25,7 +25,7 @@ uint64_t platform_timer_get(struct timer *timer)
 	return 0;
 }
 
-uint64_t platform_timer_get_noirq(struct timer *timer)
+uint64_t platform_timer_get_atomic(struct timer *timer)
 {
 	return 0;
 }

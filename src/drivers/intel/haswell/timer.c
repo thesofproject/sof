@@ -40,7 +40,7 @@ uint64_t platform_timer_get(struct timer *timer)
 }
 
 /* IRQs off in arch_timer_get_system() */
-uint64_t platform_timer_get_noirq(struct timer *timer)
+uint64_t platform_timer_get_atomic(struct timer *timer)
 {
 	return arch_timer_get_system(timer);
 }
