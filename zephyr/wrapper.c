@@ -294,6 +294,18 @@ uint64_t platform_timer_get(struct timer *timer)
 #endif
 }
 
+uint64_t platform_timer_get_atomic(struct timer *timer)
+{
+	uint32_t flags;
+	uint64_t ticks_now;
+
+	irq_local_disable(flags);
+	ticks_now = platform_timer_get(timer);
+	irq_local_enable(flags);
+
+	return ticks_now;
+}
+
 /*
  * Notifier.
  *
