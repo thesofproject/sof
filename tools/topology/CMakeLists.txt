@@ -135,7 +135,6 @@ set(TPLGS
 	"sof-tgl-nocodec\;sof-tgl-nocodec"
 	"sof-tgl-rt711-rt1308\;sof-tgl-rt711-rt1308-2ch\;-DCHANNELS=2\;-DDMICPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_48khz.m4\;-DDMIC16KPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_16khz.m4"
 	"sof-tgl-rt711-rt1308\;sof-tgl-rt711-rt1308-4ch\;-DCHANNELS=4\;-DDMICPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_48khz.m4\;-DDMIC16KPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_16khz.m4"
-	"sof-tgl-rt5682\;sof-tgl-rt5682\;-DHDMI=1"
 	"sof-tgl-nocodec\;sof-ehl-nocodec"
 	"sof-ehl-rt5660\;sof-ehl-rt5660\;-DHDMI=1"
 	"sof-ehl-rt5660\;sof-ehl-rt5660-nohdmi"
