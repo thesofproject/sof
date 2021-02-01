@@ -277,10 +277,12 @@ uint64_t platform_timer_get(struct timer *timer)
 	uint32_t high;
 	uint64_t time;
 
-	/* read low 32 bits */
-	low = shim_read(SHIM_EXT_TIMER_STAT);
-	/* TODO: check and see whether 32bit IRQ is pending for timer */
-	high = timer->hitime;
+	do {
+		/* TODO: check and see whether 32bit IRQ is pending for timer */
+		high = timer->hitime;
+		/* read low 32 bits */
+		low = shim_read(SHIM_EXT_TIMER_STAT);
+	} while (high != timer->hitime);
 
 	time = ((uint64_t)high << 32) | low;
 
