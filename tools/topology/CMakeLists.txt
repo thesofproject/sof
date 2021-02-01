@@ -132,8 +132,6 @@ set(TPLGS
 	"sof-cml-rt1011-rt5682\;sof-cml-rt1011-rt5682\;-DPLATFORM=cml\;-DPPROC=volume"
 	"sof-cml-rt1011-rt5682\;sof-cml-eq-rt1011-rt5682\;-DPLATFORM=cml\;-DPPROC=eq-iir-eq-fir-volume"
 	"sof-tgl-nocodec\;sof-tgl-nocodec"
-	"sof-tgl-rt711-i2s-rt1308\;sof-tgl-rt711-i2s-rt1308-2ch\;-DHDMI=1\;-DCHANNELS=2"
-	"sof-tgl-rt711-i2s-rt1308\;sof-tgl-rt711-i2s-rt1308-4ch\;-DHDMI=1\;-DCHANNELS=4"
 	"sof-tgl-rt711-rt1308\;sof-tgl-rt711-rt1308-2ch\;-DCHANNELS=2\;-DDMICPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_48khz.m4\;-DDMIC16KPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_16khz.m4"
 	"sof-tgl-rt711-rt1308\;sof-tgl-rt711-rt1308-4ch\;-DCHANNELS=4\;-DDMICPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_48khz.m4\;-DDMIC16KPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_16khz.m4"
 	"sof-tgl-rt5682\;sof-tgl-rt5682\;-DHDMI=1"
