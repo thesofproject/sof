@@ -521,7 +521,8 @@ static int smart_amp_trigger(struct comp_dev *dev, int cmd)
 	switch (cmd) {
 	case COMP_TRIGGER_START:
 	case COMP_TRIGGER_RELEASE:
-		buffer_zero(sad->feedback_buf);
+		if (sad->feedback_buf)
+			buffer_zero(sad->feedback_buf);
 		break;
 	case COMP_TRIGGER_PAUSE:
 	case COMP_TRIGGER_STOP:
@@ -599,31 +600,34 @@ static int smart_amp_copy(struct comp_dev *dev)
 
 	avail_frames = avail_passthrough_frames;
 
-	buffer_lock(sad->feedback_buf, &feedback_flags);
-	if (comp_get_state(dev, sad->feedback_buf->source) == dev->state) {
-		/* feedback */
-		avail_feedback_frames = audio_stream_get_avail_frames(&sad->feedback_buf->stream);
+	if (sad->feedback_buf) {
+		buffer_lock(sad->feedback_buf, &feedback_flags);
+		if (comp_get_state(dev, sad->feedback_buf->source) == dev->state) {
+			/* feedback */
+			avail_feedback_frames =
+				audio_stream_get_avail_frames(&sad->feedback_buf->stream);
 
-		avail_frames = MIN(avail_passthrough_frames,
-				   avail_feedback_frames);
+			avail_frames = MIN(avail_passthrough_frames,
+					   avail_feedback_frames);
 
-		feedback_bytes = avail_frames *
-			audio_stream_frame_bytes(&sad->feedback_buf->stream);
+			feedback_bytes = avail_frames *
+				audio_stream_frame_bytes(&sad->feedback_buf->stream);
 
-		buffer_unlock(sad->feedback_buf, feedback_flags);
+			buffer_unlock(sad->feedback_buf, feedback_flags);
 
-		comp_dbg(dev, "smart_amp_copy(): processing %d feedback frames (avail_passthrough_frames: %d)",
-			 avail_frames, avail_passthrough_frames);
+			comp_dbg(dev, "smart_amp_copy(): processing %d feedback frames (avail_passthrough_frames: %d)",
+				 avail_frames, avail_passthrough_frames);
 
-		/* perform buffer writeback after source_buf process */
-		buffer_invalidate(sad->feedback_buf, feedback_bytes);
-		sad->process(dev, &sad->feedback_buf->stream,
-			     &sad->sink_buf->stream, avail_frames,
-			     sad->config.feedback_ch_map, true);
+			/* perform buffer writeback after source_buf process */
+			buffer_invalidate(sad->feedback_buf, feedback_bytes);
+			sad->process(dev, &sad->feedback_buf->stream,
+				     &sad->sink_buf->stream, avail_frames,
+				     sad->config.feedback_ch_map, true);
 
-		comp_update_buffer_consume(sad->feedback_buf, feedback_bytes);
-	} else {
-		buffer_unlock(sad->feedback_buf, feedback_flags);
+			comp_update_buffer_consume(sad->feedback_buf, feedback_bytes);
+		} else {
+			buffer_unlock(sad->feedback_buf, feedback_flags);
+		}
 	}
 
 	/* bytes calculation */
@@ -692,19 +696,21 @@ static int smart_amp_prepare(struct comp_dev *dev)
 	sad->in_channels = sad->source_buf->stream.channels;
 	sad->out_channels = sad->sink_buf->stream.channels;
 
-	buffer_lock(sad->feedback_buf, &flags);
-	sad->feedback_buf->stream.channels = sad->config.feedback_channels;
-	sad->feedback_buf->stream.rate = sad->source_buf->stream.rate;
+	if (sad->feedback_buf) {
+		buffer_lock(sad->feedback_buf, &flags);
+		sad->feedback_buf->stream.channels = sad->config.feedback_channels;
+		sad->feedback_buf->stream.rate = sad->source_buf->stream.rate;
 
-	ret = smart_amp_check_audio_fmt(sad->source_buf->stream.rate,
-					sad->source_buf->stream.channels);
-	if (ret) {
-		comp_err(dev, "[DSM] Format not supported, sample rate: %d, ch: %d",
-			 sad->source_buf->stream.rate,
-			 sad->source_buf->stream.channels);
-		goto error;
+		ret = smart_amp_check_audio_fmt(sad->source_buf->stream.rate,
+						sad->source_buf->stream.channels);
+		if (ret) {
+			comp_err(dev, "[DSM] Format not supported, sample rate: %d, ch: %d",
+				 sad->source_buf->stream.rate,
+				 sad->source_buf->stream.channels);
+			goto error;
+		}
+		buffer_unlock(sad->feedback_buf, flags);
 	}
-	buffer_unlock(sad->feedback_buf, flags);
 
 	switch (sad->source_buf->stream.frame_fmt) {
 	case SOF_IPC_FRAME_S16_LE:
