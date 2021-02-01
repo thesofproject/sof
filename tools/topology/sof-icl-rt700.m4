@@ -28,11 +28,11 @@ include(`platform/intel/icl.m4')
 
 ifelse(CHANNELS, `0', ,
 `
-define(DMIC_PCM_48k_ID, `2')
+define(DMIC_PCM_48k_ID, `10')
 define(DMIC_PIPELINE_48k_ID, `3')
 define(DMIC_DAI_LINK_48k_ID, `2')
 
-define(DMIC_PCM_16k_ID, `3')
+define(DMIC_PCM_16k_ID, `11')
 define(DMIC_PIPELINE_16k_ID, `4')
 define(DMIC_DAI_LINK_16k_ID, `3')
 
@@ -47,11 +47,11 @@ DEBUG_START
 #
 # PCM0 ---> volume ----> ALH 2 BE dailink 0
 # PCM1 <--- volume <---- ALH 3 BE dailink 1
-# PCM2 <---------------- DMIC01 (dmic0 capture, BE dailink 2)
-# PCM3 <---------------- DMIC16k (dmic16k, BE dailink 3)
-# PCM4 ----> volume -----> iDisp1 (HDMI/DP playback, BE link 4)
-# PCM5 ----> volume -----> iDisp2 (HDMI/DP playback, BE link 5)
-# PCM6 ----> volume -----> iDisp3 (HDMI/DP playback, BE link 6)
+# PCM10 <---------------- DMIC01 (dmic0 capture, BE dailink 2)
+# PCM11 <---------------- DMIC16k (dmic16k, BE dailink 3)
+# PCM5 ----> volume -----> iDisp1 (HDMI/DP playback, BE link 4)
+# PCM6 ----> volume -----> iDisp2 (HDMI/DP playback, BE link 5)
+# PCM7 ----> volume -----> iDisp3 (HDMI/DP playback, BE link 6)
 #
 
 dnl PIPELINE_PCM_ADD(pipeline,
@@ -74,13 +74,6 @@ PIPELINE_PCM_ADD(sof/pipe-volume-capture.m4,
 	1000, 0, 0,
 	48000, 48000, 48000)
 
-# Low Latency playback pipeline 5 on PCM 4 using max 2 channels of s32le.
-# Schedule 48 frames per 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
-	5, 4, 2, s32le,
-	1000, 0, 0,
-	48000, 48000, 48000)
-
 # Low Latency playback pipeline 6 on PCM 5 using max 2 channels of s32le.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
@@ -92,6 +85,13 @@ PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
 	7, 6, 2, s32le,
+	1000, 0, 0,
+	48000, 48000, 48000)
+
+# Low Latency playback pipeline 8 on PCM 7 using max 2 channels of s32le.
+# Schedule 48 frames per 1000us deadline on core 0 with priority 0
+PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
+	8, 7, 2, s32le,
 	1000, 0, 0,
 	48000, 48000, 48000)
 
@@ -121,31 +121,31 @@ DAI_ADD(sof/pipe-dai-capture.m4,
 # playback DAI is iDisp1 using 2 periods
 # Buffers use s32le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
-	5, HDA, 0, iDisp1,
-	PIPELINE_SOURCE_5, 2, s32le,
+	6, HDA, 0, iDisp1,
+	PIPELINE_SOURCE_6, 2, s32le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # playback DAI is iDisp2 using 2 periods
 # Buffers use s32le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
-	6, HDA, 1, iDisp2,
-	PIPELINE_SOURCE_6, 2, s32le,
+	7, HDA, 1, iDisp2,
+	PIPELINE_SOURCE_7, 2, s32le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # playback DAI is iDisp3 using 2 periods
 # Buffers use s32le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
-	7, HDA, 2, iDisp3,
-	PIPELINE_SOURCE_7, 2, s32le,
+	8, HDA, 2, iDisp3,
+	PIPELINE_SOURCE_8, 2, s32le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # PCM Low Latency, id 0
 dnl PCM_PLAYBACK_ADD(name, pcm_id, playback)
 PCM_PLAYBACK_ADD(SDW0-speakers, 0, PIPELINE_PCM_1)
 PCM_CAPTURE_ADD(SDW0-mics, 1, PIPELINE_PCM_2)
-PCM_PLAYBACK_ADD(HDMI1, 4, PIPELINE_PCM_5)
-PCM_PLAYBACK_ADD(HDMI2, 5, PIPELINE_PCM_6)
-PCM_PLAYBACK_ADD(HDMI3, 6, PIPELINE_PCM_7)
+PCM_PLAYBACK_ADD(HDMI1, 5, PIPELINE_PCM_6)
+PCM_PLAYBACK_ADD(HDMI2, 6, PIPELINE_PCM_7)
+PCM_PLAYBACK_ADD(HDMI3, 7, PIPELINE_PCM_8)
 
 #
 # BE configurations - overrides config in ACPI if present
