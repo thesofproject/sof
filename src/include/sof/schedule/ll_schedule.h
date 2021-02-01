@@ -30,6 +30,8 @@ extern struct tr_ctx ll_tr;
 
 struct ll_task_pdata {
 	uint64_t period;
+	uint16_t ratio;		/**< ratio of periods compared to the registrable task */
+	uint16_t skip_cnt;	/**< how many times the task was skipped for execution */
 };
 
 int scheduler_init_ll(struct ll_schedule_domain *domain);
