@@ -18,7 +18,7 @@
 #include <stdint.h>
 
 /** \brief Minimum number of timer recovery cycles in case of delay. */
-#define TIMER_MIN_RECOVER_CYCLES	100
+#define TIMER_MIN_RECOVER_CYCLES	240	/* ~10us at 24.576MHz */
 
 void platform_timer_start(struct timer *timer)
 {
@@ -36,12 +36,6 @@ void platform_timer_stop(struct timer *timer)
 		   shim_read(SHIM_DSPWCTCS) & ~SHIM_DSPWCTCS_T0A);
 }
 
-/* clock ticks it takes to set clock and enable IRQ */
-#define TIMER_OVERHEAD	500
-
-/* global timer lock */
-//static spinlock_t timer_lock = {0};
-
 int64_t platform_timer_set(struct timer *timer, uint64_t ticks)
 {
 	uint64_t ticks_now;
@@ -58,7 +52,7 @@ int64_t platform_timer_set(struct timer *timer, uint64_t ticks)
 	/* Check if requested time is not past time and include the
 	 * overhead of changing the timer
 	 */
-	if (ticks > ticks_now + TIMER_OVERHEAD) {
+	if (ticks > ticks_now + TIMER_MIN_RECOVER_CYCLES) {
 		shim_write64(SHIM_DSPWCT0C, ticks);
 	} else {
 		ticks = ticks_now + TIMER_MIN_RECOVER_CYCLES;
