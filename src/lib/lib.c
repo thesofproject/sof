@@ -43,6 +43,18 @@ int memset_s(void *dest, size_t dest_size, int data, size_t count)
 	return arch_memset_s(dest, dest_size, data, count);
 }
 
+#if !__XCC || !XCHAL_HAVE_HIFI3 || !CONFIG_LIBRARY
+void *__vec_memcpy(void *dst, const void *src, size_t len)
+{
+	return memcpy(dst, src, len);
+}
+
+void *__vec_memset(void *dest, int data, size_t src_size)
+{
+	return memset(dest, data, src_size);
+}
+#endif
+
 #if !CONFIG_LIBRARY && !__ZEPHYR__
 int memcmp(const void *p, const void *q, size_t count)
 {
