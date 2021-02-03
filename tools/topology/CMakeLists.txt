@@ -129,6 +129,7 @@ set(TPLGS
 	"sof-jsl-da7219\;sof-jsl-da7219\;-DPLATFORM=jsl"
 	"sof-jsl-da7219\;sof-jsl-da7219-mx98360a\;-DPLATFORM=jsl-dedede"
 	"sof-imx8mp-wm8960\;sof-imx8mp-wm8960"
+	"sof-imx8-processing-wm8960\;sof-imx8-processing-wm8960\;-DPP_CORE=0"
 	"sof-smart-amplifier-nocodec\;sof-smart-amplifier-nocodec"
 	"sof-jsl-rt5682\;sof-jsl-rt5682-rt1015\;-DPLATFORM=jsl-rt1015"
 	"sof-jsl-rt5682\;sof-jsl-rt5682-mx98360a\;-DPLATFORM=jsl-dedede"
