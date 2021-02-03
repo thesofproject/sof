@@ -22,6 +22,8 @@ set(TPLGS
 	"sof-imx8mp-src-wm8960\;sof-imx8mp-src-wm8960"
 	"sof-imx8-src-wm8960\;sof-imx8-src-wm8960"
 	"sof-imx8-src-cs42888\;sof-imx8-src-cs42888"
+	"sof-imx8-compr-aac-wm8960\;sof-imx8-compr-aac-wm8960"
+	"sof-imx8-compr-mp3-wm8960\;sof-imx8-compr-mp3-wm8960"
 )
 
 
