@@ -28,6 +28,9 @@ int memset_s(void *dest, size_t dest_size,
 int memcpy_s(void *dest, size_t dest_size,
 	     const void *src, size_t src_size);
 
+void *__vec_memcpy(void *dst, const void *src, size_t len);
+void *__vec_memset(void *dest, int data, size_t src_size);
+
 static inline int arch_memcpy_s(void *dest, size_t dest_size,
 				const void *src, size_t src_size)
 {

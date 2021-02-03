@@ -36,10 +36,8 @@ int memset_s(void *dest, size_t dest_size,
 int memcpy_s(void *dest, size_t dest_size,
 	     const void *src, size_t src_size);
 
-#if __XCC__ && XCHAL_HAVE_HIFI3 && !CONFIG_LIBRARY
 void *__vec_memcpy(void *dst, const void *src, size_t len);
 void *__vec_memset(void *dest, int data, size_t src_size);
-#endif
 
 static inline int arch_memcpy_s(void *dest, size_t dest_size,
 				const void *src, size_t src_size)
