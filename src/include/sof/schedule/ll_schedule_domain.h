@@ -82,6 +82,8 @@ static inline struct ll_schedule_domain *domain_init
 	domain->synchronous = synchronous;
 	domain->ticks_per_ms = clock_ms_to_ticks(clk, 1);
 	domain->ops = ops;
+	/* maximum value means no tick has been set to timer */
+	domain->next_tick = UINT64_MAX;
 
 	spinlock_init(&domain->lock);
 	atomic_init(&domain->total_num_tasks, 0);
@@ -133,18 +135,25 @@ static inline void domain_disable(struct ll_schedule_domain *domain, int core)
 	platform_shared_commit(domain, sizeof(*domain));
 }
 
+/* configure the next interrupt for domain */
 static inline void domain_set(struct ll_schedule_domain *domain, uint64_t start)
 {
 	if (domain->ops->domain_set)
 		domain->ops->domain_set(domain, start);
+	else
+		domain->next_tick = start;
 
 	platform_shared_commit(domain, sizeof(*domain));
 }
 
+/* clear the interrupt for domain */
 static inline void domain_clear(struct ll_schedule_domain *domain)
 {
 	if (domain->ops->domain_clear)
 		domain->ops->domain_clear(domain);
+
+	/* reset to denote no tick/interrupt is set */
+	domain->next_tick = UINT64_MAX;
 
 	platform_shared_commit(domain, sizeof(*domain));
 }

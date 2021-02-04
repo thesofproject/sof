@@ -213,10 +213,15 @@ static void schedule_ll_tasks_run(void *data)
 }
 
 static int schedule_ll_domain_set(struct ll_schedule_data *sch,
-				  struct task *task, uint64_t period)
+				  struct task *task, uint64_t start,
+				  uint64_t period)
 {
 	int core = cpu_get_id();
 	unsigned int total;
+	uint64_t task_start_us;
+	uint64_t task_start_ticks;
+	uint64_t task_start;
+	uint64_t offset;
 	bool registered;
 	int ret;
 
@@ -230,16 +235,41 @@ static int schedule_ll_domain_set(struct ll_schedule_data *sch,
 
 	spin_lock(&sch->domain->lock);
 
+	tr_dbg(&ll_tr, "task->start %u next_tick %u",
+	       (unsigned int)task->start,
+	       (unsigned int)sch->domain->next_tick);
+
+	task_start_us = period ? period : start;
+	task_start_ticks = sch->domain->ticks_per_ms * task_start_us / 1000;
+	task_start = task_start_ticks + platform_timer_get_atomic(timer_get());
+
+	if (sch->domain->next_tick == UINT64_MAX) {
+		/* first task, set domain */
+		domain_set(sch->domain, task_start);
+		task->start = sch->domain->next_tick;
+	} else if (!period) {
+		/* one shot task, set domain if it is earlier */
+		task->start = task_start;
+		if (task->start < sch->domain->next_tick)
+			domain_set(sch->domain, task_start);
+	} else if (task_start < sch->domain->next_tick) {
+		/* earlier periodic task, try to make it cadence-aligned with the existed task */
+		offset = (sch->domain->next_tick - task_start) %
+			 (sch->domain->ticks_per_ms * period / 1000);
+		task_start = task_start - task_start_ticks + offset;
+		domain_set(sch->domain, task_start);
+		task->start = sch->domain->next_tick;
+	} else {
+		/* later periodic task, simplify and cover it by the coming interrupt */
+		task->start = sch->domain->next_tick;
+	}
+
 	registered = sch->domain->registered[core];
 	total = atomic_add(&sch->num_tasks, 1);
 	if (total == 0)
 		sch->domain->registered[core] = true;
 
 	total = atomic_add(&sch->domain->total_num_tasks, 1);
-	if (total == 0)
-		/* First task in domain over all cores: actiivate it */
-		domain_set(sch->domain, platform_timer_get(timer_get()));
-
 	if (total == 0 || !registered) {
 		/* First task on core: count and enable it */
 		atomic_add(&sch->domain->num_clients, 1);
@@ -247,6 +277,7 @@ static int schedule_ll_domain_set(struct ll_schedule_data *sch,
 		sch->domain->enabled[core] = true;
 	}
 
+	tr_info(&ll_tr, "new added task->start %u", (unsigned int)task->start);
 	tr_info(&ll_tr, "num_tasks %d total_num_tasks %d",
 		atomic_read(&sch->num_tasks),
 		atomic_read(&sch->domain->total_num_tasks));
@@ -265,24 +296,15 @@ static void schedule_ll_domain_clear(struct ll_schedule_data *sch,
 
 	spin_lock(&sch->domain->lock);
 
-	count = atomic_sub(&sch->domain->total_num_tasks, 1);
-	if (count == 1) {
-		domain_clear(sch->domain);
-		sch->domain->next_tick = 0;
-	}
+	atomic_sub(&sch->domain->total_num_tasks, 1);
 
 	count = atomic_sub(&sch->num_tasks, 1);
 	if (count == 1) {
 		sch->domain->registered[cpu_get_id()] = false;
 
-		/* reschedule if we are the last client */
-		if (atomic_read(&sch->domain->num_clients)) {
-			count = atomic_sub(&sch->domain->num_clients, 1);
-			if (count == 1) {
-				domain_clear(sch->domain);
-				schedule_ll_clients_reschedule(sch);
-			}
-		}
+		count = atomic_sub(&sch->domain->num_clients, 1);
+		if (count == 1)
+			domain_clear(sch->domain);
 	}
 
 	tr_info(&ll_tr, "num_tasks %d total_num_tasks %d",
@@ -357,18 +379,11 @@ static int schedule_ll_task(void *data, struct task *task, uint64_t start,
 	schedule_ll_task_insert(task, &sch->tasks);
 
 	/* set schedule domain */
-	ret = schedule_ll_domain_set(sch, task, period);
+	ret = schedule_ll_domain_set(sch, task, start, period);
 	if (ret < 0) {
 		list_item_del(&task->list);
 		goto out;
 	}
-
-	task->start = sch->domain->ticks_per_ms * start / 1000;
-
-	if (sch->domain->synchronous)
-		task->start += platform_timer_get(timer_get());
-	else
-		task->start += sch->domain->next_tick;
 
 	platform_shared_commit(sch->domain, sizeof(*sch->domain));
 
