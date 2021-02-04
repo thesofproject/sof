@@ -80,7 +80,7 @@ static bool schedule_ll_is_pending(struct ll_schedule_data *sch)
 }
 
 static void schedule_ll_task_update_start(struct ll_schedule_data *sch,
-					  struct task *task, uint64_t last_tick)
+					  struct task *task, uint64_t next_tick)
 {
 	struct ll_task_pdata *pdata = ll_sch_get_pdata(task);
 	uint64_t next;
@@ -90,11 +90,11 @@ static void schedule_ll_task_update_start(struct ll_schedule_data *sch,
 	if (sch->domain->synchronous)
 		task->start += next;
 	else
-		task->start = next + last_tick;
+		task->start = next + next_tick;
 }
 
 static void schedule_ll_tasks_execute(struct ll_schedule_data *sch,
-				      uint64_t last_tick)
+				      uint64_t next_tick)
 {
 	struct list_item *wlist;
 	struct list_item *tlist;
@@ -127,7 +127,7 @@ static void schedule_ll_tasks_execute(struct ll_schedule_data *sch,
 				atomic_read(&sch->domain->total_num_tasks));
 		} else {
 			/* update task's start time */
-			schedule_ll_task_update_start(sch, task, last_tick);
+			schedule_ll_task_update_start(sch, task, next_tick);
 		}
 	}
 
@@ -151,7 +151,7 @@ static void schedule_ll_clients_reschedule(struct ll_schedule_data *sch)
 {
 	/* rearm only if there is work to do */
 	if (atomic_read(&sch->domain->total_num_tasks)) {
-		domain_set(sch->domain, sch->domain->last_tick);
+		domain_set(sch->domain, sch->domain->next_tick);
 		schedule_ll_clients_enable(sch);
 	}
 
@@ -162,7 +162,7 @@ static void schedule_ll_tasks_run(void *data)
 {
 	struct ll_schedule_data *sch = data;
 	uint32_t num_clients = 0;
-	uint64_t last_tick;
+	uint64_t next_tick;
 	uint32_t flags;
 
 	domain_disable(sch->domain, cpu_get_id());
@@ -173,7 +173,7 @@ static void schedule_ll_tasks_run(void *data)
 
 	sch->domain->enabled[cpu_get_id()] = false;
 
-	last_tick = sch->domain->last_tick;
+	next_tick = sch->domain->next_tick;
 
 	/* clear domain only if all clients are done */
 	/* TODO: no need for atomic operations,
@@ -194,7 +194,7 @@ static void schedule_ll_tasks_run(void *data)
 
 	/* run tasks if there are any pending */
 	if (schedule_ll_is_pending(sch))
-		schedule_ll_tasks_execute(sch, last_tick);
+		schedule_ll_tasks_execute(sch, next_tick);
 
 	notifier_event(sch, NOTIFIER_ID_LL_POST_RUN,
 		       NOTIFIER_TARGET_CORE_LOCAL, NULL, 0);
@@ -268,7 +268,7 @@ static void schedule_ll_domain_clear(struct ll_schedule_data *sch,
 	count = atomic_sub(&sch->domain->total_num_tasks, 1);
 	if (count == 1) {
 		domain_clear(sch->domain);
-		sch->domain->last_tick = 0;
+		sch->domain->next_tick = 0;
 	}
 
 	count = atomic_sub(&sch->num_tasks, 1);
@@ -368,7 +368,7 @@ static int schedule_ll_task(void *data, struct task *task, uint64_t start,
 	if (sch->domain->synchronous)
 		task->start += platform_timer_get(timer_get());
 	else
-		task->start += sch->domain->last_tick;
+		task->start += sch->domain->next_tick;
 
 	platform_shared_commit(sch->domain, sizeof(*sch->domain));
 
@@ -469,7 +469,7 @@ static int reschedule_ll_task(void *data, struct task *task, uint64_t start)
 	if (sch->domain->synchronous)
 		time += platform_timer_get(timer_get());
 	else
-		time += sch->domain->last_tick;
+		time += sch->domain->next_tick;
 
 	irq_local_disable(flags);
 

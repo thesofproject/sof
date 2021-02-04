@@ -459,7 +459,7 @@ out:
 }
 
 /**
- * \brief Calculates domain's last tick.
+ * \brief Calculates domain's next tick.
  * \param[in,out] domain Pointer to schedule domain.
  * \param[in] start Offset of last calculated tick.
  */
@@ -475,14 +475,14 @@ static void dma_single_chan_domain_set(struct ll_schedule_domain *domain,
 		goto out;
 
 	if (dma_domain->channel_changed) {
-		domain->last_tick = platform_timer_get(timer_get());
+		domain->next_tick = platform_timer_get(timer_get());
 
 		dma_domain->channel_changed = false;
 	} else {
 		ticks = domain->ticks_per_ms * data->channel->period / 1000 +
 			start;
 
-		domain->last_tick = domain->last_tick ? ticks : start;
+		domain->next_tick = domain->next_tick ? ticks : start;
 	}
 
 out:
