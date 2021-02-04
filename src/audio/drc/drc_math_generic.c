@@ -183,6 +183,10 @@ inline int32_t drc_asin_fixed(int32_t x)
  */
 inline int32_t drc_pow_fixed(int32_t x, int32_t y)
 {
+	/* Negative or zero input x is not supported, just return 0. */
+	if (x <= 0)
+		return 0;
+
 	/* x^y = expf(y * log(x)) */
 	return exp_fixed(q_mult(y, drc_log_fixed(x), 30, 26, 27));
 }
