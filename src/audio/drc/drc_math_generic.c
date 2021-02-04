@@ -118,7 +118,7 @@ inline int32_t drc_sin_fixed(int32_t x)
 }
 
 /*
- * Input is Q2.30: (-2.0, 2.0)
+ * Input is Q2.30; valid range: [-1.0, 1.0]
  * Output range: [-1.0, 1.0]; regulated to Q2.30: (-2.0, 2.0)
  */
 inline int32_t drc_asin_fixed(int32_t x)
@@ -177,7 +177,7 @@ inline int32_t drc_asin_fixed(int32_t x)
 }
 
 /*
- * Input x is Q6.26: (-32.0, 32.0)
+ * Input x is Q6.26; valid range: (0.0, 32.0); x <= 0 is not supported
  *       y is Q2.30: (-2.0, 2.0)
  * Output is Q12.20: max 2048.0
  */
