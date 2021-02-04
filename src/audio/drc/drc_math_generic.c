@@ -207,6 +207,7 @@ inline int32_t drc_inv_fixed(int32_t x, int precision_x, int precision_y)
 	const int32_t A1 = Q_CONVERT_FLOAT(-21.25031280517578125f, qc);
 	const int32_t A0 = Q_CONVERT_FLOAT(7.152250766754150390625f, qc);
 	int e;
+	int precision_inv;
 	int sqrt2_extracted = 0;
 	int32_t x2, x4; /* Q2.30 */
 	int32_t A5Xx, A3Xx;
@@ -214,7 +215,7 @@ inline int32_t drc_inv_fixed(int32_t x, int precision_x, int precision_y)
 
 	x = rexp_fixed(x, precision_x, &e); /* Q2.30 */
 
-	if (x < ONE_OVER_SQRT2) {
+	if (ABS(x) < ONE_OVER_SQRT2) {
 		x = q_mult(x, SQRT2, 30, 30, 30);
 		sqrt2_extracted = 1;
 	}
@@ -229,11 +230,11 @@ inline int32_t drc_inv_fixed(int32_t x, int precision_x, int precision_y)
 	if (sqrt2_extracted)
 		inv = q_mult(inv, SQRT2, qc, 30, qc);
 
-	e += qc;
-	if (e > precision_y)
-		return Q_SHIFT_RND(inv, e, precision_y);
-	if (e < precision_y)
-		return Q_SHIFT_LEFT(inv, e, precision_y);
+	precision_inv = e + qc;
+	if (precision_inv > precision_y)
+		return Q_SHIFT_RND(inv, precision_inv, precision_y);
+	if (precision_inv < precision_y)
+		return Q_SHIFT_LEFT(inv, precision_inv, precision_y);
 	return inv;
 #undef qc
 }
