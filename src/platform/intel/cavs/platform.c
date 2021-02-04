@@ -386,8 +386,7 @@ int platform_init(struct sof *sof)
 
 	/* init low latency timer domain and scheduler */
 	sof->platform_timer_domain =
-		timer_domain_init(sof->platform_timer, PLATFORM_DEFAULT_CLOCK,
-				  CONFIG_SYSTICK_PERIOD);
+		timer_domain_init(sof->platform_timer, PLATFORM_DEFAULT_CLOCK);
 	scheduler_init_ll(sof->platform_timer_domain);
 
 	/* init the system agent */
