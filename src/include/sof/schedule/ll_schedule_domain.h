@@ -42,7 +42,7 @@ struct ll_schedule_domain_ops {
 };
 
 struct ll_schedule_domain {
-	uint64_t last_tick;		/**< timestamp of last run */
+	uint64_t next_tick;		/**< ticks just set for next run */
 	spinlock_t lock;		/**< standard lock */
 	atomic_t total_num_tasks;	/**< total number of registered tasks */
 	atomic_t num_clients;		/**< number of registered cores */
