@@ -8,6 +8,7 @@
 #include <sof/lib/alloc.h>
 #include <sof/lib/cpu.h>
 #include <sof/lib/memory.h>
+#include <sof/math/numbers.h>
 #include <sof/platform.h>
 #include <sof/schedule/ll_schedule.h>
 #include <sof/schedule/ll_schedule_domain.h>
@@ -53,6 +54,8 @@ K_THREAD_STACK_DEFINE(ll_workq_stack3, ZEPHYR_LL_WORKQ_SIZE);
 #endif
 #endif
 
+#define LL_TIMER_SET_OVERHEAD_TICKS  1000 /* overhead/delay to set the tick, in ticks */
+
 struct timer_domain {
 #ifdef __ZEPHYR__
 	struct k_work_q ll_workq[CONFIG_CORE_COUNT];
@@ -60,7 +63,7 @@ struct timer_domain {
 #endif
 	struct timer *timer;
 	void *arg[CONFIG_CORE_COUNT];
-	uint64_t timeout; /* in microseconds */
+	uint64_t timeout; /* in ticks */
 };
 
 #ifdef __ZEPHYR__
@@ -228,11 +231,13 @@ static void timer_domain_disable(struct ll_schedule_domain *domain, int core)
 static void timer_domain_set(struct ll_schedule_domain *domain, uint64_t start)
 {
 	struct timer_domain *timer_domain = ll_sch_domain_get_pdata(domain);
-	uint64_t ticks_tout = domain->ticks_per_ms * timer_domain->timeout /
-			     1000;
+	uint64_t ticks_tout = timer_domain->timeout;
 	uint64_t ticks_set;
 #ifndef __ZEPHYR__
-	uint64_t ticks_req = start + ticks_tout;
+	uint64_t ticks_req;
+
+	/* make sure to require for ticks later than tout from now */
+	ticks_req = MAX(start, platform_timer_get_atomic(timer_domain->timer) + ticks_tout);
 
 	ticks_set = platform_timer_set(timer_domain->timer, ticks_req);
 #else
@@ -276,6 +281,10 @@ static void timer_domain_set(struct ll_schedule_domain *domain, uint64_t start)
 		current - current % CYC_PER_TICK;
 #endif
 
+	tr_dbg(&ll_tr, "timer_domain_set(): ticks_set %u ticks_req %u current %u",
+	       (unsigned int)ticks_set, (unsigned int)ticks_req,
+	       (unsigned int)platform_timer_get_atomic(timer_get()));
+
 	/* Was timer set to the value we requested? If no it means some
 	 * delay occurred and we should report that in error log.
 	 */
@@ -305,24 +314,17 @@ static bool timer_domain_is_pending(struct ll_schedule_domain *domain,
 	return task->start <= platform_timer_get(timer_get());
 }
 
-struct ll_schedule_domain *timer_domain_init(struct timer *timer, int clk,
-					     uint64_t timeout)
+struct ll_schedule_domain *timer_domain_init(struct timer *timer, int clk)
 {
 	struct ll_schedule_domain *domain;
 	struct timer_domain *timer_domain;
-
-	if (timeout <= UINT_MAX)
-		tr_info(&ll_tr, "timer_domain_init clk %d timeout %u", clk,
-			(unsigned int)timeout);
-	else
-		tr_info(&ll_tr, "timer_domain_init clk %d timeout > %u", clk, UINT_MAX);
 
 	domain = domain_init(SOF_SCHEDULE_LL_TIMER, clk, false,
 			     &timer_domain_ops);
 
 	timer_domain = rzalloc(SOF_MEM_ZONE_SYS_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*timer_domain));
 	timer_domain->timer = timer;
-	timer_domain->timeout = timeout;
+	timer_domain->timeout = LL_TIMER_SET_OVERHEAD_TICKS;
 
 	ll_sch_domain_set_pdata(domain, timer_domain);
 
