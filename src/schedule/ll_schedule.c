@@ -62,6 +62,8 @@ static bool schedule_ll_is_pending(struct ll_schedule_data *sch)
 	uint32_t pending_count = 0;
 	struct comp_dev *sched_comp;
 
+	spin_lock(&sch->domain->lock);
+
 	do {
 		sched_comp = NULL;
 
@@ -76,25 +78,23 @@ static bool schedule_ll_is_pending(struct ll_schedule_data *sch)
 		}
 	} while (sched_comp);
 
+	spin_unlock(&sch->domain->lock);
+
 	return pending_count > 0;
 }
 
 static void schedule_ll_task_update_start(struct ll_schedule_data *sch,
-					  struct task *task, uint64_t next_tick)
+					  struct task *task)
 {
 	struct ll_task_pdata *pdata = ll_sch_get_pdata(task);
 	uint64_t next;
 
 	next = sch->domain->ticks_per_ms * pdata->period / 1000;
 
-	if (sch->domain->synchronous)
-		task->start += next;
-	else
-		task->start = next + next_tick;
+	task->start += next;
 }
 
-static void schedule_ll_tasks_execute(struct ll_schedule_data *sch,
-				      uint64_t next_tick)
+static void schedule_ll_tasks_execute(struct ll_schedule_data *sch)
 {
 	struct list_item *wlist;
 	struct list_item *tlist;
@@ -106,11 +106,14 @@ static void schedule_ll_tasks_execute(struct ll_schedule_data *sch,
 	list_for_item_safe(wlist, tlist, &sch->tasks) {
 		task = container_of(wlist, struct task, list);
 
-		/* run task if its pending and remove from the list */
 		if (task->state != SOF_TASK_STATE_PENDING)
 			continue;
 
+		tr_dbg(&ll_tr, "task %p %pU being started...", task, task->uid);
+
 		task->state = task_run(task);
+
+		spin_lock(&sch->domain->lock);
 
 		/* do we need to reschedule this task */
 		if (task->state == SOF_TASK_STATE_COMPLETED) {
@@ -127,11 +130,16 @@ static void schedule_ll_tasks_execute(struct ll_schedule_data *sch,
 				atomic_read(&sch->domain->total_num_tasks));
 		} else {
 			/* update task's start time */
-			schedule_ll_task_update_start(sch, task, next_tick);
+			schedule_ll_task_update_start(sch, task);
+			tr_dbg(&ll_tr, "task %p uid %pU finished, next period ticks %u, domain->next_tick %u",
+			       task, task->uid, (uint32_t)task->start,
+			       (uint32_t)sch->domain->next_tick);
 		}
-	}
 
-	platform_shared_commit(sch->domain, sizeof(*sch->domain));
+		platform_shared_commit(sch->domain, sizeof(*sch->domain));
+
+		spin_unlock(&sch->domain->lock);
+	}
 }
 
 static void schedule_ll_clients_enable(struct ll_schedule_data *sch)
@@ -162,8 +170,12 @@ static void schedule_ll_tasks_run(void *data)
 {
 	struct ll_schedule_data *sch = data;
 	uint32_t num_clients = 0;
-	uint64_t next_tick;
 	uint32_t flags;
+
+	tr_dbg(&ll_tr, "timer interrupt on core %d, at %u, previous next_tick %u",
+	       cpu_get_id(),
+	       (unsigned int)platform_timer_get_atomic(timer_get()),
+	       (unsigned int)sch->domain->next_tick);
 
 	domain_disable(sch->domain, cpu_get_id());
 
@@ -172,8 +184,6 @@ static void schedule_ll_tasks_run(void *data)
 	spin_lock(&sch->domain->lock);
 
 	sch->domain->enabled[cpu_get_id()] = false;
-
-	next_tick = sch->domain->next_tick;
 
 	/* clear domain only if all clients are done */
 	/* TODO: no need for atomic operations,
@@ -194,7 +204,7 @@ static void schedule_ll_tasks_run(void *data)
 
 	/* run tasks if there are any pending */
 	if (schedule_ll_is_pending(sch))
-		schedule_ll_tasks_execute(sch, next_tick);
+		schedule_ll_tasks_execute(sch);
 
 	notifier_event(sch, NOTIFIER_ID_LL_POST_RUN,
 		       NOTIFIER_TARGET_CORE_LOCAL, NULL, 0);
