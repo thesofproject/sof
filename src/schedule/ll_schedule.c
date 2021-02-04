@@ -3,8 +3,8 @@
 // Copyright(c) 2016 Intel Corporation. All rights reserved.
 //
 // Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
-//         Keyon Jie <yang.jie@linux.intel.com>
-//         Tomasz Lauda <tomasz.lauda@linux.intel.com>
+//	 Keyon Jie <yang.jie@linux.intel.com>
+//	 Tomasz Lauda <tomasz.lauda@linux.intel.com>
 
 #include <sof/atomic.h>
 #include <sof/common.h>
@@ -157,10 +157,29 @@ static void schedule_ll_clients_enable(struct ll_schedule_data *sch)
 
 static void schedule_ll_clients_reschedule(struct ll_schedule_data *sch)
 {
+	struct list_item *wlist;
+	struct list_item *tlist;
+	struct task *task, *task_take;
+	uint64_t next_tick = UINT64_MAX;
+
 	/* rearm only if there is work to do */
 	if (atomic_read(&sch->domain->total_num_tasks)) {
 		domain_set(sch->domain, sch->domain->next_tick);
 		schedule_ll_clients_enable(sch);
+		/* traverse to set timer according to the earliest task */
+		list_for_item_safe(wlist, tlist, &sch->tasks) {
+			task = container_of(wlist, struct task, list);
+
+			/* update to use the earlier tick */
+			if (task->start < next_tick) {
+				next_tick = task->start;
+				task_take = task;
+			}
+		}
+
+		tr_dbg(&ll_tr, "schedule_ll_clients_reschedule next_tick %u task_take %p",
+		       (unsigned int)next_tick, task_take);
+		domain_set(sch->domain, next_tick);
 	}
 
 	platform_shared_commit(sch->domain, sizeof(*sch->domain));
@@ -174,7 +193,7 @@ static void schedule_ll_tasks_run(void *data)
 
 	tr_dbg(&ll_tr, "timer interrupt on core %d, at %u, previous next_tick %u",
 	       cpu_get_id(),
-	       (unsigned int)platform_timer_get_atomic(timer_get()),
+	       (unsigned int)platform_timer_get(timer_get()),
 	       (unsigned int)sch->domain->next_tick);
 
 	domain_disable(sch->domain, cpu_get_id());
@@ -213,9 +232,11 @@ static void schedule_ll_tasks_run(void *data)
 
 	spin_lock(&sch->domain->lock);
 
-	/* reschedule only if all clients are done */
+	schedule_ll_clients_reschedule(sch);
+
+	/* re-enable domain only if all clients are done */
 	if (!num_clients)
-		schedule_ll_clients_reschedule(sch);
+		schedule_ll_clients_enable(sch);
 
 	spin_unlock(&sch->domain->lock);
 
@@ -251,7 +272,7 @@ static int schedule_ll_domain_set(struct ll_schedule_data *sch,
 
 	task_start_us = period ? period : start;
 	task_start_ticks = sch->domain->ticks_per_ms * task_start_us / 1000;
-	task_start = task_start_ticks + platform_timer_get_atomic(timer_get());
+	task_start = task_start_ticks + platform_timer_get(timer_get());
 
 	if (sch->domain->next_tick == UINT64_MAX) {
 		/* first task, set domain */
@@ -491,10 +512,7 @@ static int reschedule_ll_task(void *data, struct task *task, uint64_t start)
 
 	time = sch->domain->ticks_per_ms * start / 1000;
 
-	if (sch->domain->synchronous)
-		time += platform_timer_get(timer_get());
-	else
-		time += sch->domain->next_tick;
+	time += platform_timer_get(timer_get());
 
 	irq_local_disable(flags);
 

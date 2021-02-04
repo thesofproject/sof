@@ -237,7 +237,7 @@ static void timer_domain_set(struct ll_schedule_domain *domain, uint64_t start)
 	uint64_t ticks_req;
 
 	/* make sure to require for ticks later than tout from now */
-	ticks_req = MAX(start, platform_timer_get_atomic(timer_domain->timer) + ticks_tout);
+	ticks_req = MAX(start, platform_timer_get(timer_domain->timer) + ticks_tout);
 
 	ticks_set = platform_timer_set(timer_domain->timer, ticks_req);
 #else
@@ -283,7 +283,7 @@ static void timer_domain_set(struct ll_schedule_domain *domain, uint64_t start)
 
 	tr_dbg(&ll_tr, "timer_domain_set(): ticks_set %u ticks_req %u current %u",
 	       (unsigned int)ticks_set, (unsigned int)ticks_req,
-	       (unsigned int)platform_timer_get_atomic(timer_get()));
+	       (unsigned int)platform_timer_get(timer_get()));
 
 	/* Was timer set to the value we requested? If no it means some
 	 * delay occurred and we should report that in error log.
