@@ -482,7 +482,8 @@ static void dma_single_chan_domain_set(struct ll_schedule_domain *domain,
 		ticks = domain->ticks_per_ms * data->channel->period / 1000 +
 			start;
 
-		domain->next_tick = domain->next_tick ? ticks : start;
+		domain->next_tick = domain->next_tick != UINT64_MAX ?
+				    ticks : start;
 	}
 
 out:
