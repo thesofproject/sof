@@ -57,6 +57,11 @@ add_dependencies(sof_library sof_ep)
 target_link_libraries(fuzz_ipc PRIVATE sof_library)
 target_include_directories(fuzz_ipc PRIVATE ${sof_install_directory}/include)
 target_link_options(fuzz_ipc PUBLIC $ENV{LIB_FUZZING_ENGINE})
+if(NOT DEFINED ENV{OUT})
+message(FATAL_ERROR
+	"Missing $OUT environment variable, try: OUT=... cmake ..."
+)
+endif()
 set_target_properties(fuzz_ipc PROPERTIES RUNTIME_OUTPUT_DIRECTORY $ENV{OUT})
 
 set_target_properties(fuzz_ipc
