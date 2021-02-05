@@ -352,9 +352,8 @@ do
 		-DMEU_OPENSSL="${MEU_OPENSSL}" \
 		"${MEU_PATH_OPTION}" \
 		"${PRIVATE_KEY_OPTION}" \
+		-DINIT_CONFIG=${PLATFORM}${DEFCONFIG_PATCH}_defconfig \
 		"$SOF_TOP"
-
-	cmake --build .  --  ${PLATFORM}${DEFCONFIG_PATCH}_defconfig
 	)
 
 	if [ -n "$OVERRIDE_CONFIG" ]

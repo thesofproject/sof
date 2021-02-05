@@ -35,6 +35,8 @@ function(get_optimization_flag OUT_VAR)
 		set(${OUT_VAR} "Og" PARENT_SCOPE)
 	elseif(CONFIG_OPTIMIZE_FOR_NONE)
 		set(${OUT_VAR} "O0" PARENT_SCOPE)
+	else()
+		message(FATAL_ERROR "no CONFIG_OPTIMIZE_ found")
 	endif()
 endfunction()
 
@@ -54,6 +56,12 @@ function(add_local_sources target)
 		endif()
 
 		target_sources(${target} PRIVATE ${path})
+	# -imacros${CONFIG_H_PATH} escapes regular .h dep scanning
+	#	add_dependencies(${target} genconfig) # has no effect?
+		set_source_files_properties(${path}
+			PROPERTIES
+			OBJECT_DEPENDS ${CONFIG_H_PATH}
+		)
 	endforeach()
 endfunction()
 
