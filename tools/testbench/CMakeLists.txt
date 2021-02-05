@@ -41,17 +41,10 @@ ExternalProject_Add(sof_ep
 	CMAKE_ARGS -DCONFIG_LIBRARY=ON
 		-DCMAKE_INSTALL_PREFIX=${sof_install_directory}
 		-DCMAKE_VERBOSE_MAKEFILE=${CMAKE_VERBOSE_MAKEFILE}
+		-DINIT_CONFIG=library_defconfig
 		-DCONFIG_H_PATH=${config_h}
 	BUILD_ALWAYS 1
 	BUILD_BYPRODUCTS "${sof_install_directory}/lib/libsof.so"
-)
-
-ExternalProject_Add_Step(
-	sof_ep defconfig
-	COMMAND ${CMAKE_COMMAND} --build . --target library_defconfig
-	DEPENDEES configure
-	DEPENDERS build
-	WORKING_DIRECTORY "${sof_binary_directory}"
 )
 
 add_library(sof_library SHARED IMPORTED)

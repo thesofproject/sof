@@ -130,9 +130,6 @@ endif()
 # linker scripts
 
 function(sof_add_ld_script binary_name script_name)
-	if(NOT EXISTS ${DOT_CONFIG_PATH})
-		return()
-	endif()
 
 	set(lds_in ${PROJECT_SOURCE_DIR}/src/platform/${platform_folder}/${script_name}.in)
 	set(lds_out ${PROJECT_BINARY_DIR}/${script_name})

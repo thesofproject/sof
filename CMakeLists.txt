@@ -17,6 +17,17 @@ if(NOT (${CMAKE_VERSION} VERSION_LESS "3.13.0"))
 	cmake_policy(SET CMP0079 OLD)
 endif()
 
+if(${CMAKE_VERSION} VERSION_LESS "3.12.0")
+	# FindPythonInterp is bugged and may sometimes be unable to find
+	# Python 3 when both Python 2 & 3 are in PATH,
+	# so it's always better to use CMake 3.12+
+	find_package(PythonInterp 3.0)
+	set(PYTHON3 "${PYTHON_EXECUTABLE}")
+else()
+	find_package(Python3 COMPONENTS Interpreter)
+	set(PYTHON3 "${Python3_EXECUTABLE}")
+endif()
+
 option(BUILD_UNIT_TESTS "Build unit tests" OFF)
 option(BUILD_CLANG_SCAN "Build for clang's scan-build" OFF)
 
@@ -95,30 +106,14 @@ include(scripts/cmake/version.cmake)
 
 include(scripts/cmake/dist.cmake)
 
-# cmake itself cannot depend on files that don't exist
-# so to make it regenerate when .config file is created,
-# we make it depend on containing directory
-# NOTE: some filesystems may be unable to watch directory change,
-#       in that case cmake may need to be regenerated from CLI
-set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
-	${GENERATED_DIRECTORY} ${DOT_CONFIG_PATH})
-
-if(EXISTS ${DOT_CONFIG_PATH})
-	read_kconfig_config(${DOT_CONFIG_PATH})
-endif()
-
-if(${CMAKE_VERSION} VERSION_LESS "3.12.0")
-	# FindPythonInterp is bugged and may sometimes be unable to find
-	# Python 3 when both Python 2 & 3 are in PATH,
-	# so it's always better to use CMake 3.12+
-	find_package(PythonInterp 3.0)
-	set(PYTHON3 "${PYTHON_EXECUTABLE}")
-else()
-	find_package(Python3 COMPONENTS Interpreter)
-	set(PYTHON3 "${Python3_EXECUTABLE}")
-endif()
-
 include(scripts/cmake/kconfig.cmake)
+read_kconfig_config(${DOT_CONFIG_PATH})
+
+# FIXME: this successful triggers CMake to re-run, however -imacros
+# hides the generated .h dependency from CMake and most sources are NOT
+# recompiled.
+set_property(DIRECTORY APPEND
+	PROPERTY CMAKE_CONFIGURE_DEPENDS ${DOT_CONFIG_PATH})
 
 add_dependencies(sof_public_headers genconfig check_version_h)
 target_include_directories(sof_public_headers INTERFACE ${GENERATED_DIRECTORY}/include)
