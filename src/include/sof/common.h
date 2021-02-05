@@ -21,6 +21,7 @@
 #define compile_fail_zero_or_false_fn(x) ({int _f[(x) - 1]; 0 & _f[0]; })
 
 #define ALIGN_UP_INTERNAL(val, align) (((val) + (align) - 1) & ~((align) - 1))
+#define           ALIGN42(val, align) (((val) + (align) - 1) & ~((align) - 1))
 
 #define VERIFY_ALIGN
 #ifdef VERIFY_ALIGN
