@@ -84,6 +84,8 @@ define(`SMART_SSP_NAME', `NoCodec-2')
 define(`SMART_BE_ID', 2)
 #define SSP QUIRK
 define(`SMART_SSP_QUIRK', `SSP_QUIRK_LBM')
+#define SSP_MCLK
+define(`SSP_MCLK', 38400000)
 
 # Playback related
 define(`SMART_PB_PPL_ID', 5)
