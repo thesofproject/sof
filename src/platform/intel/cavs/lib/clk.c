@@ -187,15 +187,10 @@ void platform_clock_on_waiti(void)
 	lowest_freq_idx = get_lowest_freq_idx(CLK_CPU(cpu_get_id()));
 	pm_is_active = pm_runtime_is_active(PM_RUNTIME_DSP, PLATFORM_PRIMARY_CORE_ID);
 
-	if (pm_is_active) {
-		/* set HPRO clock if not already enabled */
-		if (freq_idx != CPU_HPRO_FREQ_IDX)
-			set_cpu_current_freq_idx(CPU_HPRO_FREQ_IDX, true);
-	} else {
-		/* set lowest clock if not already enabled */
-		if (freq_idx != lowest_freq_idx)
-			set_cpu_current_freq_idx(lowest_freq_idx, true);
-	}
+	/* set to <= WFI clock */
+	if (!pm_is_active && freq_idx != lowest_freq_idx)
+		/* set lowest clock if not set */
+		set_cpu_current_freq_idx(lowest_freq_idx, true);
 
 	spin_unlock_irq(&prd->lock, flags);
 
@@ -205,6 +200,22 @@ void platform_clock_on_waiti(void)
 
 void platform_clock_on_wakeup(void)
 {
+	struct pm_runtime_data *prd = pm_runtime_data_get();
+	int *uncached_freq_idx = cache_to_uncache(&active_freq_idx);
+	uint32_t flags;
+	bool pm_is_active;
+
+	/* hold the prd->lock for possible active_freq_idx switching */
+	spin_lock_irq(&prd->lock, flags);
+
+	pm_is_active = pm_runtime_is_active(PM_RUNTIME_DSP, PLATFORM_PRIMARY_CORE_ID);
+
+	if (pm_is_active && *uncached_freq_idx != CPU_HPRO_FREQ_IDX)
+		/* update to select HPRO clock, will be set at _wakeup() */
+		*uncached_freq_idx = CPU_HPRO_FREQ_IDX;
+
+	spin_unlock_irq(&prd->lock, flags);
+
 	/* check if HPRO switching back is needed */
 	pm_runtime_get(CORE_HP_CLK, cpu_get_id());
 }
