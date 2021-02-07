@@ -113,9 +113,6 @@
 /** \brief Request HP RING Oscillator Clock */
 #define SHIM_CLKCTL_RHROSCC	BIT(31)
 
-/** \brief Request WOVCRO Clock */
-#define SHIM_CLKCTL_WOV_CRO_REQUEST	BIT(4)
-
 /** \brief Request XTAL Oscillator Clock */
 #define SHIM_CLKCTL_RXOSCC	BIT(30)
 
@@ -133,7 +130,6 @@
 /** \brief Oscillator Clock Select*/
 #define SHIM_CLKCTL_OCS_HP_RING		BIT(2)
 #define SHIM_CLKCTL_OCS_LP_RING		0
-#define SHIM_CLKCTL_WOVCROSC		BIT(3)
 
 /** \brief LP Memory Clock Select */
 #define SHIM_CLKCTL_LMCS_DIV2	0
