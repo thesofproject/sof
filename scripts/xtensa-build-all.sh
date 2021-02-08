@@ -40,7 +40,7 @@ usage: $0 [options] platform(s)
        -u Force UP ARCH
        -d Enable debug build
        -c Interactive menuconfig
-       -o copies the file argument from src/arch/xtensa/configs/override/$arg.config
+       -o arg, copies src/arch/xtensa/configs/override/<arg>.config
 	  to the build directory after invoking CMake and before Make.
        -k Configure rimage to use a non-default \${RIMAGE_PRIVATE_KEY}
            DEPRECATED: use the more flexible \${PRIVATE_KEY_OPTION} below.
@@ -347,6 +347,7 @@ do
 	mkdir "$BUILD_DIR"
 	cd "$BUILD_DIR"
 
+	printf 'PATH=%s\n' "$PATH"
 	( set -x # log the main commands and their parameters
 	cmake -DTOOLCHAIN="$TOOLCHAIN" \
 		-DROOT_DIR="$ROOT" \
