@@ -25,6 +25,10 @@ target_link_libraries(fuzz_ipc PRIVATE -ldl -lm)
 
 install(TARGETS fuzz_ipc DESTINATION bin)
 
+if(NOT DEFINED ENV{OUT})
+	message(FATAL_ERROR
+		"Missing key env vars, please only build with oss-fuzz, see README in tools/oss-fuzz")
+endif()
 
 include(ExternalProject)
 
