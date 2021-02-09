@@ -11,6 +11,16 @@ menu "Codec Adapter codecs"
 		  This will cause codec adapter component to include header
 		  files specific to CADENCE base codecs.
 
+if CADENCE_CODEC
+	config CADENCE_CODEC_WRAPPER
+		bool 'Cadence codec wrapper'
+		default n
+		help
+		  Select for cadence_codec_api wrapper function that will allow
+		  users to call into codecs which conforms to the Cadence API without
+		  explicitly knowing/using the entry function symbol name.
+endif
+
 	config DUMMY_CODEC
 		bool "Dummy codec"
 		default n
