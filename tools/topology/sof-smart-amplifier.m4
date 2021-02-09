@@ -200,7 +200,7 @@ SectionGraph."PIPE_SMART_AMP" {
 ifelse(SDW, `1',
 `
 PCM_PLAYBACK_ADD(SMART_PCM_NAME, SMART_PCM_ID, SMART_PB_PPL_NAME)
-PCM_CAPTURE_ADD(echo, eval(SMART_PCM_ID + 1), SMART_REF_PPL_NAME)
+PCM_CAPTURE_ADD(Amplifier Reference, eval(SMART_PCM_ID + 1), SMART_REF_PPL_NAME)
 ',
 `
 dnl PCM_DUPLEX_ADD(name, pcm_id, playback, capture)

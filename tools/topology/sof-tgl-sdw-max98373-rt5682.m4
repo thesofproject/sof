@@ -69,7 +69,7 @@ define(`SMART_REF_PPL_ID', 4)
 define(`SMART_REF_CH_NUM', 2)
 # PCM related
 define(`SMART_PCM_ID', 2)
-define(`SMART_PCM_NAME', `smart373-spk')
+define(`SMART_PCM_NAME', `Speaker')
 
 # Include Smart Amplifier support
 include(`sof-smart-amplifier.m4')
@@ -112,6 +112,7 @@ define(DMIC_DAI_LINK_16k_ID, `5')
 define(KWD_PIPE_SCH_DEADLINE_US, 5000)
 # include the generic dmic with kwd
 include(`platform/intel/intel-generic-dmic-kwd.m4')
+define(DMIC_16k_PCM_NAME, `BufferedMic')
 
 # Low Latency playback pipeline 6 on PCM 5 using max 2 channels of s32le.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
@@ -196,12 +197,12 @@ DAI_ADD(sof/pipe-dai-playback.m4,
 # Bind PCM with the pipeline
 #
 dnl PCM_PLAYBACK_ADD(name, pcm_id, playback)
-PCM_PLAYBACK_ADD(Headphone, 0, PIPELINE_PCM_1)
-PCM_CAPTURE_ADD(Headset mic, 1, PIPELINE_PCM_2)
-PCM_PLAYBACK_ADD(HDMI1, 5, PIPELINE_PCM_6)
-PCM_PLAYBACK_ADD(HDMI2, 6, PIPELINE_PCM_7)
-PCM_PLAYBACK_ADD(HDMI3, 7, PIPELINE_PCM_8)
-PCM_PLAYBACK_ADD(HDMI4, 8, PIPELINE_PCM_9)
+PCM_PLAYBACK_ADD(Jack, 0, PIPELINE_PCM_1)
+PCM_CAPTURE_ADD(Jack, 1, PIPELINE_PCM_2)
+PCM_PLAYBACK_ADD(HDMI 1, 5, PIPELINE_PCM_6)
+PCM_PLAYBACK_ADD(HDMI 2, 6, PIPELINE_PCM_7)
+PCM_PLAYBACK_ADD(HDMI 3, 7, PIPELINE_PCM_8)
+PCM_PLAYBACK_ADD(HDMI 4, 8, PIPELINE_PCM_9)
 
 #
 # BE configurations - overrides config in ACPI if present
