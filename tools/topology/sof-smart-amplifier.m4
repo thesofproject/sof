@@ -85,8 +85,7 @@ define(`SMART_REF_PPL_NAME', concat(`PIPELINE_PCM_', SMART_REF_PPL_ID))
 # define(`SMART_PCM_ID', 0)
 ifdef(`SMART_PCM_ID',`',`errprint(note: Need to define PCM ID for sof-smart-amplifier
 )')
-# define(`SMART_PCM_NAME', `smart373-spk')
-ifdef(`SMART_PCM_NAME',`',`errprint(note: Need to define Echo Ref pipeline ID for sof-smart-amplifier
+ifdef(`SMART_PCM_NAME',`',`errprint(note: Need to define Speaker PCM name for sof-smart-amplifier
 )')
 
 ifelse(SDW, `1',
