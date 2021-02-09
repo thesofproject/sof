@@ -18,10 +18,12 @@
 /* Cadence API functions array						     */
 /*****************************************************************************/
 static struct cadence_api cadence_api_table[] = {
+#ifdef CONFIG_CADENCE_CODEC_WRAPPER
 	{
 		.id = 0x01,
 		.api = cadence_api_function
 	},
+#endif
 };
 
 int cadence_codec_init(struct comp_dev *dev)
