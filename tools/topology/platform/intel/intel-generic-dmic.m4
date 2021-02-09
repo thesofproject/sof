@@ -4,6 +4,12 @@
 
 include(`platform/intel/dmic.m4')
 
+# define default PCM names
+ifdef(`DMIC_48K_PCM_NAME',`',
+`define(DMIC_48k_PCM_NAME, `DMIC')')
+ifdef(`DMIC_16K_PCM_NAME',`',
+`define(DMIC_16k_PCM_NAME, `DMIC16kHz')')
+
 # defined in machine driver
 ifdef(`DMIC_DAI_LINK_48k_ID',`',
 `define(DMIC_DAI_LINK_48k_ID, `6')')
@@ -104,8 +110,8 @@ DAI_ADD(sof/pipe-dai-capture.m4,
 
 dnl PCM_DUPLEX_ADD(name, pcm_id, playback, capture)
 dnl PCM_CAPTURE_ADD(name, pipeline, capture)
-PCM_CAPTURE_ADD(DMIC, DMIC_DAI_LINK_48k_ID, concat(`PIPELINE_PCM_', DMIC_PIPELINE_48k_ID))
-PCM_CAPTURE_ADD(DMIC16kHz, DMIC_DAI_LINK_16k_ID, concat(`PIPELINE_PCM_', DMIC_PIPELINE_16k_ID))
+PCM_CAPTURE_ADD(DMIC_48k_PCM_NAME, DMIC_DAI_LINK_48k_ID, concat(`PIPELINE_PCM_', DMIC_PIPELINE_48k_ID))
+PCM_CAPTURE_ADD(DMIC_16k_PCM_NAME, DMIC_DAI_LINK_16k_ID, concat(`PIPELINE_PCM_', DMIC_PIPELINE_16k_ID))
 
 #
 # BE configurations - overrides config in ACPI if present
