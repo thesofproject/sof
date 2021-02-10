@@ -509,6 +509,17 @@ static int smart_amp_params(struct comp_dev *dev,
 	return 0;
 }
 
+static bool smart_amp_feedback_incompatible_status(struct comp_dev *dev, uint32_t status)
+{
+	struct smart_amp_data *sad = comp_get_drvdata(dev);
+
+	if (sad->feedback_buf)
+		if (comp_get_state(dev, sad->feedback_buf->source) == status)
+			return true;
+
+	return false;
+}
+
 static int smart_amp_trigger(struct comp_dev *dev, int cmd)
 {
 	struct smart_amp_data *sad = comp_get_drvdata(dev);
@@ -517,6 +528,20 @@ static int smart_amp_trigger(struct comp_dev *dev, int cmd)
 	comp_dbg(dev, "smart_amp_trigger(), command = %u", cmd);
 
 	ret = comp_set_state(dev, cmd);
+	if (ret < 0)
+		return ret;
+
+	if (ret == COMP_STATUS_STATE_ALREADY_SET)
+		return PPL_STATUS_PATH_STOP;
+
+	/* don't stop smart_amp on pause or if the feedback source is active/paused */
+	if (cmd == COMP_TRIGGER_PAUSE ||
+	    (cmd == COMP_TRIGGER_STOP &&
+	     (smart_amp_feedback_incompatible_status(dev, COMP_STATE_ACTIVE) ||
+	      smart_amp_feedback_incompatible_status(dev, COMP_STATE_PAUSED)))) {
+		dev->state = COMP_STATE_ACTIVE;
+		ret = PPL_STATUS_PATH_STOP;
+	}
 
 	switch (cmd) {
 	case COMP_TRIGGER_START:
