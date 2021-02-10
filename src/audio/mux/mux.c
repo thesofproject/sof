@@ -461,18 +461,16 @@ static int demux_copy(struct comp_dev *dev)
 
 	buffer_lock(source, &flags);
 
-	/* check if source is active */
-	if (source->source->state != dev->state) {
-		buffer_unlock(source, flags);
-		return 0;
-	}
-
 	for (i = 0; i < MUX_MAX_STREAMS; i++) {
 		if (!sinks[i])
 			continue;
 		buffer_lock(sinks[i], &flags);
-		avail = audio_stream_avail_frames(&source->stream,
-						  &sinks[i]->stream);
+		/* if source is not active -> check sizes only from sinks */
+		if (source->source->state != dev->state)
+			avail = audio_stream_get_free_frames(&sinks[i]->stream);
+		else
+			avail = audio_stream_avail_frames(&source->stream,
+							  &sinks[i]->stream);
 		frames = MIN(frames, avail);
 		buffer_unlock(sinks[i], flags);
 	}
@@ -485,6 +483,17 @@ static int demux_copy(struct comp_dev *dev)
 			continue;
 		sinks_bytes[i] = frames *
 				 audio_stream_frame_bytes(&sinks[i]->stream);
+	}
+
+	/* check if source is active -> produce zeros */
+	if (source->source->state != dev->state) {
+		for (i = 0; i < MUX_MAX_STREAMS; i++) {
+			if (!audio_stream_set_zero(&sinks[i]->stream, sinks_bytes[i])) {
+				buffer_writeback(sinks[i], sinks_bytes[i]);
+				comp_update_buffer_produce(sinks[i], sinks_bytes[i]);
+			}
+		}
+		return 0;
 	}
 
 	/* produce output, one sink at a time */
@@ -506,6 +515,7 @@ static int demux_copy(struct comp_dev *dev)
 			continue;
 		comp_update_buffer_produce(sinks[i], sinks_bytes[i]);
 	}
+
 	comp_update_buffer_consume(source, source_bytes);
 
 	return 0;
@@ -549,12 +559,23 @@ static int mux_copy(struct comp_dev *dev)
 		}
 	}
 
-	/* check if there are any sources active */
-	if (num_sources == 0)
-		return 0;
-
 	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
 			       source_list);
+
+	/* write zeros if all sources are inactive */
+	if (num_sources == 0) {
+		buffer_lock(sink, &flags);
+		frames = MIN(frames, audio_stream_get_free_frames(&sink->stream));
+		sink_bytes = frames * audio_stream_frame_bytes(&sink->stream);
+		buffer_unlock(sink, flags);
+
+		if (!audio_stream_set_zero(&sink->stream, sink_bytes)) {
+			buffer_writeback(sink, sink_bytes);
+			comp_update_buffer_produce(sink, sink_bytes);
+		}
+
+		return 0;
+	}
 
 	buffer_lock(sink, &flags);
 
@@ -595,6 +616,7 @@ static int mux_copy(struct comp_dev *dev)
 	/* produce output */
 	cd->mux(dev, &sink->stream, &sources_stream[0], frames,
 		&cd->active_lookup);
+
 	buffer_writeback(sink, sink_bytes);
 
 	/* update components */
@@ -708,15 +730,12 @@ static int mux_trigger(struct comp_dev *dev, int cmd)
 	if (dir == SOF_IPC_STREAM_CAPTURE)
 		return ret;
 
-	/* don't stop mux if at least one source is active */
-	if (mux_source_status_count(dev, COMP_STATE_ACTIVE) &&
-	    (cmd == COMP_TRIGGER_PAUSE || cmd == COMP_TRIGGER_STOP)) {
+	/* don't stop mux on pause or if at least one source is active/paused */
+	if (cmd == COMP_TRIGGER_PAUSE ||
+	    (cmd == COMP_TRIGGER_STOP &&
+	     (mux_source_status_count(dev, COMP_STATE_ACTIVE) ||
+	     mux_source_status_count(dev, COMP_STATE_PAUSED)))) {
 		dev->state = COMP_STATE_ACTIVE;
-		ret = PPL_STATUS_PATH_STOP;
-	/* don't stop mux if at least one source is paused */
-	} else if (mux_source_status_count(dev, COMP_STATE_PAUSED) &&
-		   cmd == COMP_TRIGGER_STOP) {
-		dev->state = COMP_STATE_PAUSED;
 		ret = PPL_STATUS_PATH_STOP;
 	}
 
