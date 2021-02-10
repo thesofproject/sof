@@ -50,6 +50,7 @@ struct ll_schedule_domain {
 	int type;			/**< domain type */
 	int clk;			/**< source clock */
 	bool synchronous;		/**< are tasks should be synchronous */
+	bool full_sync;			/**< tasks should be full synchronous, no time dependent */
 	void *priv_data;		/**< pointer to private data */
 	bool registered[PLATFORM_CORE_COUNT];		/**< registered cores */
 	bool enabled[PLATFORM_CORE_COUNT];		/**< enabled cores */
@@ -81,6 +82,7 @@ static inline struct ll_schedule_domain *domain_init
 	domain->type = type;
 	domain->clk = clk;
 	domain->synchronous = synchronous;
+	domain->full_sync = false;
 	domain->ticks_per_ms = clock_ms_to_ticks(clk, 1);
 	domain->ops = ops;
 

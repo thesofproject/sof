@@ -31,6 +31,9 @@ struct sof;
 #define SOF_TASK_DEADLINE_ALMOST_IDLE	(SOF_TASK_DEADLINE_IDLE - 1)
 #define SOF_TASK_DEADLINE_NOW		0
 
+/** \brief Task counter initial value. */
+#define SOF_TASK_SKIP_COUNT		0xFFFFu
+
 /** \brief Task states. */
 enum task_state {
 	SOF_TASK_STATE_INIT = 0,
