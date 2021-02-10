@@ -280,6 +280,7 @@ static bool dma_multi_chan_domain_is_pending(struct ll_schedule_domain *domain,
 	struct dma_domain *dma_domain = ll_sch_domain_get_pdata(domain);
 	struct pipeline_task *pipe_task = pipeline_task_get(task);
 	struct dma *dmas = dma_domain->dma_array;
+	struct ll_task_pdata *pdata;
 	uint32_t status;
 	int i;
 	int j;
@@ -296,11 +297,29 @@ static bool dma_multi_chan_domain_is_pending(struct ll_schedule_domain *domain,
 			    pipe_task->sched_comp)
 				continue;
 
-			/* it's too soon for this task */
-			if (!pipe_task->registrable &&
-			    pipe_task->task.start >
-			    platform_timer_get(timer_get()))
-				continue;
+			/* Schedule task based on the frequency they
+			 * were configured with, not time (task.start)
+			 *
+			 * There are cases when a DMA transfer from a DAI
+			 * is finished earlier than task.start and,
+			 * without full_sync mode, this task will not
+			 * be scheduled
+			 */
+			if (domain->full_sync) {
+				pdata = ll_sch_get_pdata(&pipe_task->task);
+				pdata->skip_cnt++;
+				if (pdata->skip_cnt == pdata->ratio)
+					pdata->skip_cnt = 0;
+
+				if (pdata->skip_cnt != 0)
+					continue;
+			} else {
+				/* it's too soon for this task */
+				if (!pipe_task->registrable &&
+				    pipe_task->task.start >
+				    platform_timer_get(timer_get()))
+					continue;
+			}
 
 			notifier_event(&dmas[i].chan[j], NOTIFIER_ID_DMA_IRQ,
 				       NOTIFIER_TARGET_CORE_LOCAL,

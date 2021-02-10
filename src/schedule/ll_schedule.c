@@ -311,8 +311,11 @@ static int schedule_ll_task(void *data, struct task *task, uint64_t start,
 {
 	struct ll_schedule_data *sch = data;
 	struct ll_task_pdata *pdata;
+	struct ll_task_pdata *reg_pdata;
 	struct list_item *tlist;
 	struct task *curr_task;
+	struct task *registrable_task = NULL;
+	struct pipeline_task *pipe_task;
 	uint32_t flags;
 	int ret = 0;
 
@@ -334,6 +337,47 @@ static int schedule_ll_task(void *data, struct task *task, uint64_t start,
 		task->priority, task->flags, start, period);
 
 	pdata->period = period;
+
+	/* for full synchronous domain, calculate ratio and initialize skip_cnt for task */
+	if (sch->domain->full_sync) {
+		pdata->ratio = 1;
+		pdata->skip_cnt = (uint16_t)SOF_TASK_SKIP_COUNT;
+
+		/* get the registrable task */
+		list_for_item(tlist, &sch->tasks) {
+			curr_task = container_of(tlist, struct task, list);
+			pipe_task = pipeline_task_get(curr_task);
+
+			/* registrable task found */
+			if (pipe_task->registrable) {
+				registrable_task = curr_task;
+				break;
+			}
+		}
+
+		/* we found a registrable task */
+		if (registrable_task) {
+			reg_pdata = ll_sch_get_pdata(registrable_task);
+
+			/* update ratio for all tasks */
+			list_for_item(tlist, &sch->tasks) {
+				curr_task = container_of(tlist, struct task, list);
+				pdata = ll_sch_get_pdata(curr_task);
+
+				/* the assumption is that the registrable
+				 * task has the smallest period
+				 */
+				if (pdata->period >= reg_pdata->period) {
+					pdata->ratio = period / reg_pdata->period;
+				} else {
+					tr_err(&ll_tr,
+					       "schedule_ll_task(): registrable task has a period longer than current task");
+					ret = -EINVAL;
+					goto out;
+				}
+			}
+		}
+	}
 
 	/* insert task into the list */
 	schedule_ll_task_insert(task, &sch->tasks);
