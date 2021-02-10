@@ -38,6 +38,8 @@ DECLARE_SOF_UUID("ll-schedule", ll_sched_uuid, 0x4f9c3ec7, 0x7b55, 0x400c,
 
 DECLARE_TR_CTX(ll_tr, SOF_UUID(ll_sched_uuid), LOG_LEVEL_INFO);
 
+void *_debug_task_watch;
+
 /* one instance of data allocated per core */
 struct ll_schedule_data {
 	struct list_item tasks;			/* list of ll tasks */
@@ -48,12 +50,40 @@ struct ll_schedule_data {
 	struct ll_schedule_domain *domain;	/* scheduling domain */
 };
 
+atomic_t *_debug_num_tasks;
+void *_debug_ll_domain;
+
 const struct scheduler_ops schedule_ll_ops;
 
 #define perf_ll_sched_trace(pcd, ll_sched)			\
 	tr_info(&ll_tr, "perf ll_work peak plat %u cpu %u",	\
 		(uint32_t)((pcd)->plat_delta_peak),		\
 		(uint32_t)((pcd)->cpu_delta_peak))
+
+static void _debug_dump_ll_regs(struct ll_schedule_data *sch, uint32_t line)
+{
+	int cpu = cpu_get_id();
+
+	mailbox_sw_reg_write(SRAM_FOO_START, 0x1337); // Magic word
+	mailbox_sw_reg_write(SRAM_FOO_NUM_TASKS, atomic_read(&sch->num_tasks));
+	mailbox_sw_reg_write(SRAM_FOO_TOTAL_TASKS,
+			     atomic_read(&sch->domain->total_num_tasks));
+	mailbox_sw_reg_write(SRAM_FOO_CLIENTS,
+			     atomic_read(&sch->domain->num_clients));
+	mailbox_sw_reg_write(SRAM_FOO_REGISTERED, sch->domain->registered[cpu]);
+	mailbox_sw_reg_write(SRAM_FOO_ENABLED, sch->domain->enabled[cpu]);
+	mailbox_sw_reg_write64(SRAM_FOO_LAST_TICK, sch->domain->last_tick);
+	mailbox_sw_reg_write(SRAM_FOO_CLK, sch->domain->clk);
+	mailbox_sw_reg_write(SRAM_FOO_LINE, line);
+}
+
+static inline void _debug_dump_task_state(struct task *task, uint32_t line)
+{
+	if (task == _debug_task_watch) {
+		mailbox_sw_reg_write(SRAM_FOO_LL_TASK_STATE, task->state);
+		mailbox_sw_reg_write(SRAM_FOO_LL_TASK_LINE, line);
+	}
+}
 
 static bool schedule_ll_is_pending(struct ll_schedule_data *sch)
 {
@@ -71,6 +101,7 @@ static bool schedule_ll_is_pending(struct ll_schedule_data *sch)
 
 			if (domain_is_pending(sch->domain, task, &sched_comp)) {
 				task->state = SOF_TASK_STATE_PENDING;
+				_debug_dump_task_state(task, __LINE__);
 				pending_count++;
 			}
 		}
@@ -102,9 +133,14 @@ static void schedule_ll_tasks_execute(struct ll_schedule_data *sch,
 	int cpu = cpu_get_id();
 	int count;
 
+	_debug_num_tasks = &sch->num_tasks;
+	_debug_ll_domain = sch->domain;
+
 	/* check each task in the list for pending */
 	list_for_item_safe(wlist, tlist, &sch->tasks) {
 		task = container_of(wlist, struct task, list);
+
+		_debug_dump_task_state(task, __LINE__);
 
 		/* run task if its pending and remove from the list */
 		if (task->state != SOF_TASK_STATE_PENDING)
@@ -129,9 +165,13 @@ static void schedule_ll_tasks_execute(struct ll_schedule_data *sch,
 			/* update task's start time */
 			schedule_ll_task_update_start(sch, task, last_tick);
 		}
+
+		_debug_dump_task_state(task, __LINE__);
 	}
 
 	platform_shared_commit(sch->domain, sizeof(*sch->domain));
+
+	_debug_dump_ll_regs(sch, __LINE__);
 }
 
 static void schedule_ll_clients_enable(struct ll_schedule_data *sch)
@@ -145,6 +185,8 @@ static void schedule_ll_clients_enable(struct ll_schedule_data *sch)
 			sch->domain->enabled[i] = true;
 		}
 	}
+
+	_debug_dump_ll_regs(sch, __LINE__);
 }
 
 static void schedule_ll_clients_reschedule(struct ll_schedule_data *sch)
@@ -156,6 +198,8 @@ static void schedule_ll_clients_reschedule(struct ll_schedule_data *sch)
 	}
 
 	platform_shared_commit(sch->domain, sizeof(*sch->domain));
+
+	_debug_dump_ll_regs(sch, __LINE__);
 }
 
 static void schedule_ll_tasks_run(void *data)
@@ -164,6 +208,7 @@ static void schedule_ll_tasks_run(void *data)
 	uint32_t num_clients = 0;
 	uint64_t last_tick;
 	uint32_t flags;
+	bool pending;
 
 	domain_disable(sch->domain, cpu_get_id());
 
@@ -192,8 +237,11 @@ static void schedule_ll_tasks_run(void *data)
 	notifier_event(sch, NOTIFIER_ID_LL_PRE_RUN,
 		       NOTIFIER_TARGET_CORE_LOCAL, NULL, 0);
 
+	pending = schedule_ll_is_pending(sch);
+	mailbox_sw_reg_write(SRAM_FOO_LL_PENDING, pending);
+
 	/* run tasks if there are any pending */
-	if (schedule_ll_is_pending(sch))
+	if (pending)
 		schedule_ll_tasks_execute(sch, last_tick);
 
 	notifier_event(sch, NOTIFIER_ID_LL_POST_RUN,
@@ -206,6 +254,8 @@ static void schedule_ll_tasks_run(void *data)
 	/* reschedule only if all clients are done */
 	if (!num_clients)
 		schedule_ll_clients_reschedule(sch);
+
+	_debug_dump_ll_regs(sch, __LINE__);
 
 	spin_unlock(&sch->domain->lock);
 
@@ -253,6 +303,9 @@ static int schedule_ll_domain_set(struct ll_schedule_data *sch,
 
 	platform_shared_commit(sch->domain, sizeof(*sch->domain));
 
+	_debug_dump_ll_regs(sch, __LINE__);
+	_debug_dump_task_state(task, __LINE__);
+
 	spin_unlock(&sch->domain->lock);
 
 	return 0;
@@ -291,6 +344,9 @@ static void schedule_ll_domain_clear(struct ll_schedule_data *sch,
 
 	platform_shared_commit(sch->domain, sizeof(*sch->domain));
 
+	_debug_dump_ll_regs(sch, __LINE__);
+	_debug_dump_task_state(task, __LINE__);
+
 	spin_unlock(&sch->domain->lock);
 
 	domain_unregister(sch->domain, task, atomic_read(&sch->num_tasks));
@@ -322,6 +378,8 @@ static void schedule_ll_task_insert(struct task *task, struct list_item *tasks)
 static int schedule_ll_task(void *data, struct task *task, uint64_t start,
 			    uint64_t period)
 {
+	static uint32_t _debug_num_sched = 0;
+	static uint32_t _debug_num_set_fail = 0;
 	struct ll_schedule_data *sch = data;
 	struct ll_task_pdata *pdata;
 	struct list_item *tlist;
@@ -330,6 +388,10 @@ static int schedule_ll_task(void *data, struct task *task, uint64_t start,
 	int ret = 0;
 
 	irq_local_disable(flags);
+
+	if (task == _debug_task_watch) {
+		mailbox_sw_reg_write(SRAM_FOO_LL_TASK_SCHED, ++_debug_num_sched);
+	}
 
 	/* check if task is already scheduled */
 	list_for_item(tlist, &sch->tasks) {
@@ -359,6 +421,7 @@ static int schedule_ll_task(void *data, struct task *task, uint64_t start,
 	/* set schedule domain */
 	ret = schedule_ll_domain_set(sch, task, period);
 	if (ret < 0) {
+		mailbox_sw_reg_write(SRAM_FOO_LL_SET_FAIL, ++_debug_num_set_fail);
 		list_item_del(&task->list);
 		goto out;
 	}
@@ -371,6 +434,9 @@ static int schedule_ll_task(void *data, struct task *task, uint64_t start,
 		task->start += sch->domain->last_tick;
 
 	platform_shared_commit(sch->domain, sizeof(*sch->domain));
+
+	_debug_dump_ll_regs(sch, __LINE__);
+	_debug_dump_task_state(task, __LINE__);
 
 out:
 	irq_local_enable(flags);
@@ -416,6 +482,7 @@ static int schedule_ll_task_free(void *data, struct task *task)
 
 	/* release the resources */
 	task->state = SOF_TASK_STATE_FREE;
+	_debug_dump_task_state(task, __LINE__);
 	ll_pdata = ll_sch_get_pdata(task);
 	rfree(ll_pdata);
 	ll_sch_set_pdata(task, NULL);
@@ -427,6 +494,7 @@ static int schedule_ll_task_free(void *data, struct task *task)
 
 static int schedule_ll_task_cancel(void *data, struct task *task)
 {
+	static uint32_t _debug_num_cancel = 0;
 	struct ll_schedule_data *sch = data;
 	struct list_item *tlist;
 	struct task *curr_task;
@@ -447,9 +515,15 @@ static int schedule_ll_task_cancel(void *data, struct task *task)
 		}
 	}
 
+	if (task == _debug_task_watch)
+		mailbox_sw_reg_write(SRAM_FOO_LL_CANCEL, ++_debug_num_cancel);
+
 	/* remove work from list */
 	task->state = SOF_TASK_STATE_CANCEL;
+	_debug_dump_task_state(task, __LINE__);
 	list_item_del(&task->list);
+
+	_debug_dump_ll_regs(sch, __LINE__);
 
 	irq_local_enable(flags);
 
@@ -489,6 +563,8 @@ static int reschedule_ll_task(void *data, struct task *task, uint64_t start)
 out:
 	platform_shared_commit(sch->domain, sizeof(*sch->domain));
 
+	_debug_dump_ll_regs(sch, __LINE__);
+
 	irq_local_enable(flags);
 
 	return 0;
@@ -514,10 +590,13 @@ static void scheduler_free_ll(void *data)
 static void ll_scheduler_recalculate_tasks(struct ll_schedule_data *sch,
 					   struct clock_notify_data *clk_data)
 {
+	static uint32_t _debug_num_recalc = 0;
 	uint64_t current = platform_timer_get(timer_get());
 	struct list_item *tlist;
 	struct task *task;
 	uint64_t delta_ms;
+
+	mailbox_sw_reg_write(SRAM_FOO_LL_RECALC, ++_debug_num_recalc);
 
 	list_for_item(tlist, &sch->tasks) {
 		task = container_of(tlist, struct task, list);
@@ -527,6 +606,8 @@ static void ll_scheduler_recalculate_tasks(struct ll_schedule_data *sch,
 		task->start = delta_ms ?
 			current + sch->domain->ticks_per_ms * delta_ms :
 			current + (sch->domain->ticks_per_ms >> 3);
+
+		_debug_dump_task_state(task, __LINE__);
 	}
 }
 

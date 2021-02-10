@@ -110,6 +110,9 @@ struct pipeline {
 	/* sink component for this pipe */
 	struct comp_dev *sink_comp;
 
+	uint32_t heartbeat;
+	uint64_t last_irqs;
+
 	struct list_item list;	/**< list in walk context */
 
 	/* position update */

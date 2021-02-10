@@ -75,6 +75,8 @@ struct timer_zdata zdata[CONFIG_CORE_COUNT];
 
 const struct ll_schedule_domain_ops timer_domain_ops;
 
+extern uint32_t _debug_last_clk_time;
+
 static inline void timer_report_delay(int id, uint64_t delay)
 {
 	uint32_t ll_delay_us = (delay * 1000) /
@@ -86,12 +88,15 @@ static inline void timer_report_delay(int id, uint64_t delay)
 		return;
 #endif
 
-	if (delay <= UINT_MAX)
-		tr_err(&ll_tr, "timer_report_delay(): timer %d delayed by %d uS %d ticks",
-		       id, ll_delay_us, (unsigned int)delay);
-	else
-		tr_err(&ll_tr, "timer_report_delay(): timer %d delayed by %d uS, ticks > %u",
-		       id, ll_delay_us, UINT_MAX);
+	//if (delay <= UINT_MAX)
+	//	tr_err(&ll_tr, "timer_report_delay(): timer %d delayed by %d uS %d ticks",
+	//	       id, ll_delay_us, (unsigned int)delay);
+	//else
+	//	tr_err(&ll_tr, "timer_report_delay(): timer %d delayed by %d uS, ticks > %u",
+	//	       id, ll_delay_us, UINT_MAX);
+
+	tr_err(&ll_tr, "timer_report_delay(): @@@ lask clk time %d",
+	       _debug_last_clk_time);
 
 	/* Fix compile error when traces are disabled */
 	(void)ll_delay_us;

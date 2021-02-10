@@ -107,7 +107,7 @@ static inline bool trace_filter_pass(uint32_t lvl,
 {
 	STATIC_ASSERT(LOG_LEVEL_CRITICAL < LOG_LEVEL_VERBOSE,
 		      LOG_LEVEL_CRITICAL_MUST_HAVE_LOWEST_VALUE);
-	return lvl <= ctx->level;
+	return lvl <= LOG_LEVEL_WARNING;
 }
 
 void trace_log(bool send_atomic, const void *log_entry,

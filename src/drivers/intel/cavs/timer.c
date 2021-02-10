@@ -42,6 +42,9 @@ int64_t platform_timer_set(struct timer *timer, uint64_t ticks)
 	if (ticks == 0)
 		ticks = 1;
 
+	mailbox_sw_reg_write64(SRAM_FOO_CUR_TIME, shim_read64(SHIM_DSPWC));
+	mailbox_sw_reg_write64(SRAM_FOO_REQ_TIME, ticks);
+
 	/* Check if requested time is not past time */
 	if (ticks > shim_read64(SHIM_DSPWC) + TIMER_MIN_RECOVER_CYCLES)
 		shim_write64(SHIM_DSPWCT0C, ticks);
