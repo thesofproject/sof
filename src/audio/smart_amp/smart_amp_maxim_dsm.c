@@ -163,7 +163,7 @@ int maxim_dsm_get_param(struct smart_amp_mod_struct_t *hspk,
 {
 	struct smart_amp_caldata *caldata = &hspk->param.caldata;
 	size_t bs;
-	int ret = 0;
+	int ret;
 
 	if (caldata->data) {
 		/* reset data_pos variable in case of copying first element */
