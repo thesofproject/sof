@@ -147,7 +147,7 @@ static void crossover_s16_default(const struct comp_dev *dev,
 	struct audio_stream *sink_stream;
 	int16_t *x, *y;
 	int ch, i, j;
-	int idx = 0;
+	int idx;
 	int nch = source_stream->channels;
 	int32_t out[num_sinks];
 
@@ -186,7 +186,7 @@ static void crossover_s24_default(const struct comp_dev *dev,
 	struct audio_stream *sink_stream;
 	int32_t *x, *y;
 	int ch, i, j;
-	int idx = 0;
+	int idx;
 	int nch = source_stream->channels;
 	int32_t out[num_sinks];
 
@@ -225,7 +225,7 @@ static void crossover_s32_default(const struct comp_dev *dev,
 	struct audio_stream *sink_stream;
 	int32_t *x, *y;
 	int ch, i, j;
-	int idx = 0;
+	int idx;
 	int nch = source_stream->channels;
 	int32_t out[num_sinks];
 
