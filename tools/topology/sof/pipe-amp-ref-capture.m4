@@ -21,21 +21,21 @@ include(`muxdemux.m4')
 include(`mixercontrol.m4')
 include(`bytecontrol.m4')
 
-ifdef(`SMART_TX_CHANNELS',`',`errprint(note: Need to define DAI TX channel number for sof-smart-amplifier
+ifdef(`SMART_TX_CHANNELS',`',`fatal_error(note: Need to define DAI TX channel number for sof-smart-amplifier
 )')
-ifdef(`SMART_RX_CHANNELS',`',`errprint(note: Need to define DAI RX channel number for sof-smart-amplifier
+ifdef(`SMART_RX_CHANNELS',`',`fatal_error(note: Need to define DAI RX channel number for sof-smart-amplifier
 )')
-ifdef(`SMART_FB_CHANNELS',`',`errprint(note: Need to define feedback channel number for sof-smart-amplifier
-)')
-
-ifdef(`SMART_PB_PPL_ID',`',`errprint(note: Need to define playback pipeline ID for sof-smart-amplifier
-)')
-ifdef(`SMART_PB_CH_NUM',`',`errprint(note: Need to define playback channel number for sof-smart-amplifier
+ifdef(`SMART_FB_CHANNELS',`',`fatal_error(note: Need to define feedback channel number for sof-smart-amplifier
 )')
 
-ifdef(`SMART_REF_PPL_ID',`',`errprint(note: Need to define Echo Ref pipeline ID for sof-smart-amplifier
+ifdef(`SMART_PB_PPL_ID',`',`fatal_error(note: Need to define playback pipeline ID for sof-smart-amplifier
 )')
-ifdef(`SMART_REF_CH_NUM',`',`errprint(note: Need to define Echo Ref channel number for sof-smart-amplifier
+ifdef(`SMART_PB_CH_NUM',`',`fatal_error(note: Need to define playback channel number for sof-smart-amplifier
+)')
+
+ifdef(`SMART_REF_PPL_ID',`',`fatal_error(note: Need to define Echo Ref pipeline ID for sof-smart-amplifier
+)')
+ifdef(`SMART_REF_CH_NUM',`',`fatal_error(note: Need to define Echo Ref channel number for sof-smart-amplifier
 )')
 
 ifelse(SMART_FB_CHANNELS, `8',
