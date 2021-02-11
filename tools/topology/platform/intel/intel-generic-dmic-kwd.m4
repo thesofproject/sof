@@ -4,6 +4,12 @@
 
 include(`platform/intel/dmic.m4')
 
+# define default PCM names
+ifdef(`DMIC_48k_PCM_NAME',`',
+`define(DMIC_48k_PCM_NAME, `DMIC')')
+ifdef(`DMIC_16k_PCM_NAME',`',
+`define(DMIC_16k_PCM_NAME, `DMIC16kHz')')
+
 # variable that need to be defined in upper m4
 # define(CHANNELS, `4') define channel for the dmic
 ifdef(`CHANNELS',`',`fatal_error(note: Need to define channel number for intel-generic-dmic-kwd
@@ -102,7 +108,7 @@ DAI_ADD(sof/pipe-dai-capture.m4,
 
 dnl PCM_DUPLEX_ADD(name, pcm_id, playback, capture)
 dnl PCM_CAPTURE_ADD(name, pipeline, capture)
-PCM_CAPTURE_ADD(DMIC48kHz, DMIC_PCM_48k_ID, concat(`PIPELINE_PCM_', DMIC_PIPELINE_48k_ID))
+PCM_CAPTURE_ADD(DMIC_48k_PCM_NAME, DMIC_PCM_48k_ID, concat(`PIPELINE_PCM_', DMIC_PIPELINE_48k_ID))
 
 # keyword detector pipe
 dnl PIPELINE_ADD(pipeline,
