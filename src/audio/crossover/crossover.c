@@ -223,7 +223,7 @@ int crossover_init_coef_ch(struct sof_eq_iir_biquad_df2t *coef,
 	int32_t i;
 	int32_t j = 0;
 	int32_t num_lr4s = num_sinks == CROSSOVER_2WAY_NUM_SINKS ? 1 : 3;
-	int err = 0;
+	int err;
 
 	for (i = 0; i < num_lr4s; i++) {
 		/* Get the low pass coefficients */
