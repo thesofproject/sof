@@ -38,7 +38,7 @@ DEBUG_START
 # PCM100 <---- kpb <---- DMIC16K (dmic 16k capture)
 
 
-ifdef(`AMP_SSP',`',`errprint(note: Define AMP_SSP for speaker amp SSP Index)')
+ifdef(`AMP_SSP',`',`fatal_error(note: Define AMP_SSP for speaker amp SSP Index)')
 # Smart amplifier related
 # SSP related
 #define smart amplifier SSP index
