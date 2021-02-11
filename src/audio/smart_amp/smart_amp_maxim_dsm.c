@@ -243,7 +243,7 @@ int maxim_dsm_set_param(struct smart_amp_mod_struct_t *hspk,
 			value[DSM_SET_VALUE_IDX] = param->param.value;
 
 			id = DSM_CH_MASK(param->param.id);
-			ch = param->param.id & DSM_CH1_BITMASK ? 0 : 1;
+			ch = (param->param.id & DSM_CH1_BITMASK) ? 0 : 1;
 
 			/* 2nd channel has (hspk->param.max_param * DSM_PARAM_MAX) sized offset */
 			db[(id + ch * hspk->param.max_param) * DSM_PARAM_MAX + DSM_PARAM_VALUE] =
