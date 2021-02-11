@@ -5,9 +5,9 @@
 include(`platform/intel/dmic.m4')
 
 # define default PCM names
-ifdef(`DMIC_48K_PCM_NAME',`',
+ifdef(`DMIC_48k_PCM_NAME',`',
 `define(DMIC_48k_PCM_NAME, `DMIC')')
-ifdef(`DMIC_16K_PCM_NAME',`',
+ifdef(`DMIC_16k_PCM_NAME',`',
 `define(DMIC_16k_PCM_NAME, `DMIC16kHz')')
 
 # define(DMIC_DAI_LINK_48k_NAME, `dmic01')
