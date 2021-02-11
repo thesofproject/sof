@@ -229,16 +229,16 @@ int codec_prepare(struct comp_dev *dev)
 		goto end;
 	}
 
-	codec->s_cfg.avail = false;
-	codec->r_cfg.avail = false;
-	codec->r_cfg.data = NULL;
-
 	/* After prepare is done we no longer need runtime configuration
 	 * as it has been applied during the procedure - it is safe to
 	 * free it.
 	 */
 	if (codec->r_cfg.data)
 		rfree(codec->r_cfg.data);
+
+	codec->s_cfg.avail = false;
+	codec->r_cfg.avail = false;
+	codec->r_cfg.data = NULL;
 
 	codec->state = CODEC_PREPARED;
 	comp_dbg(dev, "codec_prepare() done");
