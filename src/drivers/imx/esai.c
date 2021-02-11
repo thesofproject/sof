@@ -41,6 +41,7 @@ struct esai_pdata {
 		uint32_t prrc;
 		uint32_t pcrc;
 	} regs;
+	struct sof_ipc_dai_esai_params params;
 };
 
 static int esai_context_store(struct dai *dai)
@@ -99,9 +100,13 @@ static inline int esai_set_config(struct dai *dai,
 				 struct sof_ipc_dai_config *config)
 {
 	uint32_t xcr = 0, xccr = 0, mask;
+	struct esai_pdata *esai = dai_get_drvdata(dai);
 
 	dai_dbg(dai, "ESAI: set_config format 0x%04x",
 		config->format);
+
+	esai->params = config->esai;
+
 	switch (config->format & SOF_DAI_FMT_FORMAT_MASK) {
 	case SOF_DAI_FMT_I2S:
 		/* Data on rising edge of bclk, frame low, 1clk before
@@ -436,11 +441,16 @@ static int esai_get_hw_params(struct dai *dai,
 			      struct sof_ipc_stream_params *params,
 			      int dir)
 {
+	struct esai_pdata *esai = dai_get_drvdata(dai);
+
 	/* ESAI only currently supports these parameters */
-	params->rate = 48000;
+	params->rate = esai->params.fsync_rate;
 	params->channels = 2;
 	params->buffer_fmt = 0;
 	params->frame_fmt = SOF_IPC_FRAME_S24_4LE;
+
+	dai_info(dai, "esai_get_hw_params(): params->rate = %d, fsync_rate = %d",
+		 params->rate, esai->params.fsync_rate);
 
 	return 0;
 }
