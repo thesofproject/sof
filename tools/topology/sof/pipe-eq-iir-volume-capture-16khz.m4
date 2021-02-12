@@ -15,7 +15,7 @@ include(`bytecontrol.m4')
 include(`eq_iir.m4')
 
 define(`CONTROL_NAME', 2nd Capture Volume)
-define(`PGA_NAME', Dmic1)
+ifdef(`PGA_NAME', `', `define(PGA_NAME, N_PGA(0))')
 
 #
 # Controls
