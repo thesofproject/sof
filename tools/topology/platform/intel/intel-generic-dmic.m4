@@ -10,12 +10,6 @@ ifdef(`DMIC_48K_PCM_NAME',`',
 ifdef(`DMIC_16K_PCM_NAME',`',
 `define(DMIC_16k_PCM_NAME, `DMIC16kHz')')
 
-# defined in machine driver
-ifdef(`DMIC_DAI_LINK_48k_ID',`',
-`define(DMIC_DAI_LINK_48k_ID, `6')')
-ifdef(`DMIC_DAI_LINK_16k_ID',`',
-`define(DMIC_DAI_LINK_16k_ID, `7')')
-
 # define(DMIC_DAI_LINK_48k_NAME, `dmic01')
 ifdef(`DMIC_DAI_LINK_48k_NAME',`',define(DMIC_DAI_LINK_48k_NAME, `dmic01'))
 
