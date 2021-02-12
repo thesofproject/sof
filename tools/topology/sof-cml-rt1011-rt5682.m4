@@ -6,6 +6,8 @@
 # Note: DMIC16KPROC is hard coded in sof-cml-rt5682-kwd.m4
 ifdef(`DMICPROC', , `define(DMICPROC, passthrough)')
 
+define(DMIC_16k_PCM_NAME, `DMIC16k')
+
 # Include SOF CML RT5682 Topology
 # This includes topology for RT5682, DMIC and 3 HDMI Pass through pipeline
 include(`sof-cml-rt5682-kwd.m4')

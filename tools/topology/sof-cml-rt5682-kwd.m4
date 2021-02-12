@@ -29,6 +29,9 @@ ifdef(`HSEARPROC', , `define(HSEARPROC, volume)')
 ifdef(`DMICPROC', , `define(DMICPROC, passthrough)')
 ifdef(`DMIC16KPROC', , `define(DMIC16KPROC, passthrough)')
 
+# FIXME: Using DMIC16kHz instead of DMIC16k, otherwise M4 does not return.
+define(DMIC_16k_PCM_NAME, DMIC16kHz)
+
 #
 # Define the pipelines
 #

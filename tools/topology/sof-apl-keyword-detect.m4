@@ -20,6 +20,8 @@ include(`platform/intel/dmic.m4')
 
 define(KWD_PIPE_SCH_DEADLINE_US, 20000)
 
+define(DMIC_16k_PCM_NAME, `DMIC16k')
+
 #
 # Define the pipelines
 #
