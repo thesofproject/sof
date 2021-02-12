@@ -10,6 +10,23 @@ ifdef(`DMIC_48k_PCM_NAME',`',
 ifdef(`DMIC_16k_PCM_NAME',`',
 `define(DMIC_16k_PCM_NAME, `DMIC16kHz')')
 
+# variable that need to be defined in upper m4
+ifdef(`CHANNELS',`',`fatal_error(note: Need to define channel number for intel-generic-dmic
+)')
+ifdef(`DMIC_PCM_48k_ID',`',`fatal_error(note: Need to define dmic48k pcm id for intel-generic-dmic
+)')
+ifdef(`DMIC_PIPELINE_48k_ID',`',`fatal_error(note: Need to define dmic48k pipeline id for intel-generic-dmic
+)')
+ifdef(`DMIC_DAI_LINK_48k_ID',`',`fatal_error(note: Need to define dmic48k dai id for intel-generic-dmic
+)')
+
+ifdef(`DMIC_PCM_16k_ID',`',`fatal_error(note: Need to define dmic16k pcm id for intel-generic-dmic
+)')
+ifdef(`DMIC_PIPELINE_16k_ID',`',`fatal_error(note: Need to define dmic16k pipeline id for intel-generic-dmic
+)')
+ifdef(`DMIC_DAI_LINK_16k_ID',`',`fatal_error(note: Need to define dmic16k dai id for intel-generic-dmic
+)')
+
 # define(DMIC_DAI_LINK_48k_NAME, `dmic01')
 ifdef(`DMIC_DAI_LINK_48k_NAME',`',define(DMIC_DAI_LINK_48k_NAME, `dmic01'))
 
