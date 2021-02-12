@@ -90,10 +90,12 @@ PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
 
 ifelse(CHANNELS, `0', ,
 `
-define(DMIC_PIPELINE_48k_ID, `7')
-define(DMIC_PIPELINE_16k_ID, `8')
+define(DMIC_PCM_48k_ID, `1')
+define(DMIC_PCM_16k_ID, `2')
 define(DMIC_DAI_LINK_48k_ID, `1')
 define(DMIC_DAI_LINK_16k_ID, `2')
+define(DMIC_PIPELINE_48k_ID, `7')
+define(DMIC_PIPELINE_16k_ID, `8')
 include(`platform/intel/intel-generic-dmic.m4')
 '
 )

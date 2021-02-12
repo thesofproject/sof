@@ -26,6 +26,10 @@ include(`platform/intel/bxt.m4')
 
 ifelse(CHANNELS, `0', ,
 `
+define(DMIC_PCM_48k_ID, `6')
+define(DMIC_PCM_16k_ID, `7')
+define(DMIC_DAI_LINK_48k_ID, `6')
+define(DMIC_DAI_LINK_16k_ID, `7')
 define(DMIC_PIPELINE_48k_ID, `5')
 define(DMIC_PIPELINE_16k_ID, `6')
 
