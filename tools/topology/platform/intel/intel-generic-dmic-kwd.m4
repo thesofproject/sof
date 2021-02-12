@@ -11,32 +11,23 @@ ifdef(`DMIC_16k_PCM_NAME',`',
 `define(DMIC_16k_PCM_NAME, `DMIC16kHz')')
 
 # variable that need to be defined in upper m4
-# define(CHANNELS, `4') define channel for the dmic
 ifdef(`CHANNELS',`',`fatal_error(note: Need to define channel number for intel-generic-dmic-kwd
 )')
-# define(KFBM_TYPE, `vol-kfbm') define kfbm type, available type: vol-kfbm/kfbm
 ifdef(`KFBM_TYPE',`',`fatal_error(note: Need to define kfbm type for intel-generic-dmic-kwd, available type: vol-kfbm/kfbm
 )')
-# define(DMIC_PCM_48k_ID, `99')
 ifdef(`DMIC_PCM_48k_ID',`',`fatal_error(note: Need to define dmic48k pcm id for intel-generic-dmic-kwd
 )')
-# define(DMIC_PIPELINE_48k_ID, `4')
 ifdef(`DMIC_PIPELINE_48k_ID',`',`fatal_error(note: Need to define dmic48k pipeline id for intel-generic-dmic-kwd
 )')
-# define(DMIC_DAI_LINK_48k_ID, `1')
 ifdef(`DMIC_DAI_LINK_48k_ID',`',`fatal_error(note: Need to define dmic48k dai id for intel-generic-dmic-kwd
 )')
 
-# define(DMIC_PCM_16k_ID, `7')
 ifdef(`DMIC_PCM_16k_ID',`',`fatal_error(note: Need to define dmic16k pcm id for intel-generic-dmic-kwd
 )')
-# define(DMIC_PIPELINE_16k_ID, `9')
 ifdef(`DMIC_PIPELINE_16k_ID',`',`fatal_error(note: Need to define dmic16k pipeline id for intel-generic-dmic-kwd
 )')
-# define(DMIC_PIPELINE_KWD_ID, `10')
 ifdef(`DMIC_PIPELINE_KWD_ID',`',`fatal_error(note: Need to define kwd pipeline id for intel-generic-dmic-kwd
 )')
-# define(DMIC_DAI_LINK_16k_ID, `2')
 ifdef(`DMIC_DAI_LINK_16k_ID',`',`fatal_error(note: Need to define dmic16k dai id for intel-generic-dmic-kwd
 )')
 
