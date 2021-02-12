@@ -60,10 +60,18 @@ PIPELINE_PCM_ADD(sof/pipe-`HSMICPROC'-capture.m4,
 
 # Passthrough capture pipeline 3 on PCM 1 using max 4 channels.
 # 1000us deadline on core 0 with priority 0
+ifdef(`DMICPROC_FILTER1', `define(PIPELINE_FILTER1, DMICPROC_FILTER1)', `undefine(`PIPELINE_FILTER1')')
+ifdef(`DMICPROC_FILTER2', `define(PIPELINE_FILTER2, DMICPROC_FILTER2)', `undefine(`PIPELINE_FILTER2')')
+define(`PGA_NAME', Dmic0)
+
 PIPELINE_PCM_ADD(sof/pipe-`DMICPROC'-capture.m4,
 	3, 1, 4, s32le,
 	1000, 0, 0,
 	48000, 48000, 48000)
+
+undefine(`PGA_NAME')
+undefine(`PIPELINE_FILTER1')
+undefine(`PIPELINE_FILTER2')
 
 # Low Latency playback pipeline 4 on PCM 2 using max 2 channels of s32le.
 # 1000us deadline on core 0 with priority 0
@@ -88,10 +96,18 @@ PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
 
 # Passthrough capture pipeline 7 on PCM 5 using max 2 channels.
 # Schedule 1000us deadline on core 0 with priority 0
+ifdef(`DMIC16KPROC_FILTER1', `define(PIPELINE_FILTER1, DMIC16KPROC_FILTER1)', `undefine(`PIPELINE_FILTER1')')
+ifdef(`DMIC16KPROC_FILTER2', `define(PIPELINE_FILTER2, DMIC16KPROC_FILTER2)', `undefine(`PIPELINE_FILTER2')')
+define(`PGA_NAME', Dmic1)
+
 PIPELINE_PCM_ADD(sof/pipe-`DMIC16KPROC'-capture-16khz.m4,
 	8, 8, 2, s24le,
 	1000, 0, 0,
 	16000, 16000, 16000)
+
+undefine(`PGA_NAME')
+undefine(`PIPELINE_FILTER1')
+undefine(`PIPELINE_FILTER2')
 
 #
 # DAIs configuration

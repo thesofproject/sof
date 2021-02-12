@@ -16,7 +16,7 @@ include(`mixercontrol.m4')
 include(`tdfb.m4')
 include(`eq_iir.m4')
 
-define(`PGA_NAME', Dmic1)
+ifdef(`PGA_NAME', `', `define(PGA_NAME, N_PGA(0))')
 define(`CONTROL_NAME_VOLUME', 2nd Capture Volume)
 define(`CONTROL_NAME_SWITCH', 2nd Capture Switch)
 define(`CONTROL_NAME', `CONTROL_NAME_VOLUME')
