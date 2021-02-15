@@ -132,6 +132,12 @@ PCM_CAPTURE_ADD(DMIC_16k_PCM_NAME, DMIC_PCM_16k_ID, concat(`PIPELINE_PCM_', DMIC
 # BE configurations - overrides config in ACPI if present
 #
 
+# Address case where two microphones are connected to PDM1 controller, default is PDM0
+ifdef(`DMICPDM', `', `define(`DMICPDM', `PDM0')')
+ifelse(DMICPDM, `PDM1',
+`define(`DEF_STEREO_PDMX', `STEREO_PDM1')',
+`define(`DEF_STEREO_PDMX', `STEREO_PDM0')')
+
 dnl DAI_CONFIG(type, dai_index, link_id, name, ssp_config/dmic_config)
 ifelse(DMIC_DAI_CHANNELS, 4,
 `DAI_CONFIG(DMIC, 0, DMIC_DAI_LINK_48k_ID, DMIC_DAI_LINK_48k_NAME,
@@ -141,7 +147,7 @@ ifelse(DMIC_DAI_CHANNELS, 4,
 `DAI_CONFIG(DMIC, 0, DMIC_DAI_LINK_48k_ID, DMIC_DAI_LINK_48k_NAME,
            DMIC_CONFIG(1, 500000, 4800000, 40, 60, 48000,
                 DMIC_WORD_LENGTH(s32le), 200, DMIC, 0,
-                PDM_CONFIG(DMIC, 0, STEREO_PDM0)))')
+                PDM_CONFIG(DMIC, 0, DEF_STEREO_PDMX)))')
 
 ifelse(DMIC16K_DAI_CHANNELS, 4,
 `DAI_CONFIG(DMIC, 1, DMIC_DAI_LINK_16k_ID, DMIC_DAI_LINK_16k_NAME,
@@ -151,4 +157,6 @@ ifelse(DMIC16K_DAI_CHANNELS, 4,
 `DAI_CONFIG(DMIC, 1, DMIC_DAI_LINK_16k_ID, DMIC_DAI_LINK_16k_NAME,
            DMIC_CONFIG(1, 500000, 4800000, 40, 60, 16000,
                 DMIC_WORD_LENGTH(s32le), 400, DMIC, 1,
-                PDM_CONFIG(DMIC, 1, STEREO_PDM0)))')
+                PDM_CONFIG(DMIC, 1, DEF_STEREO_PDMX)))')
+
+undefine(`DEF_STEREO_PDMX')
