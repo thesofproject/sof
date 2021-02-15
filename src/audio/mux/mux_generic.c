@@ -524,9 +524,9 @@ void demux_prepare_look_up_table(struct comp_dev *dev)
 		for (j = 0; j < PLATFORM_MAX_CHANNELS; j++) {
 			for (k = 0; k < PLATFORM_MAX_CHANNELS; k++) {
 				if (cd->config.streams[i].mask[j] & BIT(k)) {
-					/* MUX component has only one sink */
-					cd->lookup[i].copy_elem[idx].in_ch = j;
-					cd->lookup[i].copy_elem[idx].out_ch = k;
+					/* DEMUX component has only one source */
+					cd->lookup[i].copy_elem[idx].in_ch = k;
+					cd->lookup[i].copy_elem[idx].out_ch = j;
 					cd->lookup[i].copy_elem[idx].stream_id =
 						i;
 					cd->lookup[i].num_elems = ++idx;
