@@ -255,7 +255,11 @@ static int sdma_upload_context(struct dma_chan_data *chan)
 	 */
 	return sdma_run_c0(chan->dma, SDMA_CMD_C0_SET_DM, (uint32_t)pdata->ctx,
 			   SDMA_SRAM_CONTEXTS_BASE +
+				 /* https://trac.cppcheck.net/ticket/10179 */
+				 /* cppcheck-suppress divideSizeof */
 			   chan->index * sizeof(*pdata->ctx) / 4,
+				 /* https://trac.cppcheck.net/ticket/10179 */
+				 /* cppcheck-suppress divideSizeof */
 			   sizeof(*pdata->ctx) / 4);
 }
 
@@ -272,6 +276,8 @@ static int sdma_upload_contexts_all(struct dma *dma)
 	return sdma_run_c0(dma, SDMA_CMD_C0_SET_DM, (uint32_t)pdata->contexts,
 			   SDMA_SRAM_CONTEXTS_BASE,
 			   dma->plat_data.channels *
+				 /* https://trac.cppcheck.net/ticket/10179 */
+				 /* cppcheck-suppress divideSizeof */
 			   sizeof(*pdata->contexts) / 4);
 }
 
@@ -288,6 +294,8 @@ static int sdma_download_contexts_all(struct dma *dma)
 	ret = sdma_run_c0(dma, SDMA_CMD_C0_GET_DM, (uint32_t)pdata->contexts,
 			  SDMA_SRAM_CONTEXTS_BASE,
 			  dma->plat_data.channels *
+				 /* https://trac.cppcheck.net/ticket/10179 */
+				 /* cppcheck-suppress divideSizeof */
 			  sizeof(*pdata->contexts) / 4);
 
 	dcache_invalidate_region(pdata->contexts, sizeof(*pdata->contexts));
