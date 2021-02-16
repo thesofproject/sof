@@ -85,24 +85,6 @@ struct dmic_configuration {
 	int32_t fir_b_scale;
 };
 
-struct pdm_controllers_configuration {
-	uint32_t cic_control;
-	uint32_t cic_config;
-	uint32_t mic_control;
-	uint32_t fir_control_a;
-	uint32_t fir_config_a;
-	uint32_t dc_offset_left_a;
-	uint32_t dc_offset_right_a;
-	uint32_t out_gain_left_a;
-	uint32_t out_gain_right_a;
-	uint32_t fir_control_b;
-	uint32_t fir_config_b;
-	uint32_t dc_offset_left_b;
-	uint32_t dc_offset_right_b;
-	uint32_t out_gain_left_b;
-	uint32_t out_gain_right_b;
-};
-
 /* Configuration ABI version, increment if not compatible with previous
  * version.
  */
