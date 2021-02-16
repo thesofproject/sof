@@ -651,11 +651,11 @@ static int dai_comp_trigger_internal(struct comp_dev *dev, int cmd)
 
 		/* only start the DAI if we are not XRUN handling */
 		if (dd->xrun == 0) {
-			/* start the DAI */
-			dai_trigger(dd->dai, cmd, dev->direction);
 			ret = dma_start(dd->chan);
 			if (ret < 0)
 				return ret;
+			/* start the DAI */
+			dai_trigger(dd->dai, cmd, dev->direction);
 		} else {
 			dd->xrun = 0;
 		}
@@ -695,8 +695,21 @@ static int dai_comp_trigger_internal(struct comp_dev *dev, int cmd)
 		COMPILER_FALLTHROUGH;
 	case COMP_TRIGGER_STOP:
 		comp_dbg(dev, "dai_comp_trigger_internal(), STOP");
+/*
+ * Some platforms cannot just simple disable
+ * DMA channel during the transfer,
+ * because it will hang the whole DMA controller.
+ * Therefore, stop the DMA first and let the DAI
+ * drain the FIFO in order to stop the channel
+ * as soon as possible.
+ */
+#if CONFIG_DMA_SUSPEND_DRAIN
 		ret = dma_stop(dd->chan);
 		dai_trigger(dd->dai, cmd, dev->direction);
+#else
+		dai_trigger(dd->dai, cmd, dev->direction);
+		ret = dma_stop(dd->chan);
+#endif
 		break;
 	case COMP_TRIGGER_PAUSE:
 		comp_dbg(dev, "dai_comp_trigger_internal(), PAUSE");
