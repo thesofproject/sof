@@ -346,15 +346,8 @@ static int edma_setup_tcd(struct dma_chan_data *channel, int16_t soff,
 static int edma_set_config(struct dma_chan_data *channel,
 			   struct dma_sg_config *config)
 {
-	int handshake, irq;
 	int16_t soff = 0;
 	int16_t doff = 0;
-
-	/* We may need to pass some data through the handshake in the
-	 * future, so we just have them here, even if unused for now
-	 */
-	(void)handshake;
-	(void)irq;
 
 	tr_info(&edma_tr, "EDMA: set config");
 
@@ -365,12 +358,10 @@ static int edma_set_config(struct dma_chan_data *channel,
 	case DMA_DIR_MEM_TO_DEV:
 		soff = config->src_width;
 		doff = 0;
-		handshake = config->dest_dev;
 		break;
 	case DMA_DIR_DEV_TO_MEM:
 		soff = 0;
 		doff = config->dest_width;
-		handshake = config->src_dev;
 		break;
 	default:
 		tr_err(&edma_tr, "edma_set_config() unsupported config direction");
