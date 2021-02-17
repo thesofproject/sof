@@ -67,6 +67,45 @@ typedef void(*mux_func)(struct comp_dev *dev, struct audio_stream *sink,
 			const struct audio_stream **sources, uint32_t frames,
 			struct mux_look_up *look_up);
 
+/**
+ * \brief Mux/Demux component config structure.
+ *
+ * The multiplexer/demultiplexer component copies its input audio channels
+ * into output audio channels according to a specific routing matrix.
+ * Multiplexer has multiple input audio streams and a single audio output
+ * stream. Demultiplexer has a single input stream and multiple output streams.
+ *
+ * Struct sof_mux_config includes array of mux_stream_data struct elements -
+ * streams[]. Each element of streams[] array refers to streams on "many" side
+ * of mux/demux component i.e. input streams for mux and output streams for
+ * demux.
+ *
+ * Struct mux_stream_data consists mask[] array.
+ * In the mux case, one mask[] element per input channel - each mask shows, to
+ * which output channel data should be copied.
+ * In the demux case, one mask[] element per output channel - each mask shows,
+ * from which input channel data should be taken.
+ *
+ * Mux example:
+ * Assuming that below mask array refers to x input stream:
+ * mask[] = {	0b00000001,
+ *		0b00000100 }
+ * it means that:
+ * - first input channel of stream x (mask[0]) will be copied to first output
+ *   channel (0b00000001 & BIT(0));
+ * - second input channel of stream x (mask[1]) will be copied to third output
+ *   channel (0b00000100 & BIT(2)).
+ *
+ * Demux example:
+ * Assuming that below mask array refers to x output stream:
+ * mask[] = {	0b00000001,
+ *		0b00000100 }
+ * it means that:
+ * - first input channel (0b00000001 & BIT(0)) will be copied to first output
+ *   (mask[0]) channel of stream x;
+ * - third input channel (0b00000100 & BIT(2)) will be copied to second output
+ *   (mask[1]) channel of stream x.
+ */
 struct sof_mux_config {
 	uint16_t frame_format_deprecated;	/* deprecated in ABI 3.15 */
 	uint16_t num_channels_deprecated;	/* deprecated in ABI 3.15 */
