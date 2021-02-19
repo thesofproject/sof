@@ -15,6 +15,6 @@ int32_t drc_log_fixed(int32_t x); /* Input:Q6.26 Output:Q6.26 */
 int32_t drc_sin_fixed(int32_t x); /* Input:Q2.30 Output:Q1.31 */
 int32_t drc_asin_fixed(int32_t x); /* Input:Q2.30 Output:Q2.30 */
 int32_t drc_pow_fixed(int32_t x, int32_t y); /* Input:Q6.26, Q2.30 Output:Q12.20 */
-int32_t drc_inv_fixed(int32_t x, int precision_x, int precision_y);
+int32_t drc_inv_fixed(int32_t x, int32_t precision_x, int32_t precision_y);
 
 #endif //  __SOF_AUDIO_DRC_DRC_MATH_H__
