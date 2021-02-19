@@ -170,7 +170,7 @@ uint32_t crc32(uint32_t base, const void *data, uint32_t bytes)
 		cur = (crc ^ ((const uint8_t *)data)[i]) & 0xFF;
 
 		for (j = 0; j < 8; ++j)
-			cur = cur & 1 ? (cur >> 1) ^ 0xEDB88320 : cur >> 1;
+			cur = (cur & 1) ? (cur >> 1) ^ 0xEDB88320 : cur >> 1;
 
 		crc = cur ^ (crc >> 8);
 	}
