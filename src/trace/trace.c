@@ -379,6 +379,7 @@ static int trace_filter_update_global(int32_t log_level, uint32_t uuid_id)
 	struct tr_ctx *end = (struct tr_ctx *)&_trace_ctx_end;
 
 	/* iterate over global `tr_ctx` entries located in their own section */
+	/* cppcheck-suppress comparePointers */
 	while (ptr < end) {
 		/*
 		 * when looking for specific uuid element,
