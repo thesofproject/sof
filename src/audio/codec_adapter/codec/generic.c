@@ -182,8 +182,7 @@ int codec_free_memory(struct comp_dev *dev, void *ptr)
 	struct list_item *_mem_list;
 
 	if (!ptr) {
-		comp_err(dev, "codec_free_memory: error: NULL pointer passed.");
-		return -EINVAL;
+		return 0;
 	}
 	/* Find which container keeps this memory */
 	list_for_item_safe(mem_list, _mem_list, &cd->codec.memory.mem_list) {
