@@ -50,6 +50,7 @@ endif
 
 # Our input:  build_*_?cc/ directories
 BUILDS_ROOT ?= ../
+BUILD_TOOLS ?= ${BUILDS_ROOT}/build_tools
 
 STAGING_SOF ?= staging/sof
 STAGING_SOF_VERSION := ${STAGING_SOF}${VERSION_SUFFIX}
@@ -85,7 +86,7 @@ ifneq (${USER_DESTDIR},)
 	# TODO: add more user space binaries: sof-ctl, probes,...
 	# absorbe scripts/sof-target-install.sh
 	# Requires ./scripts/build-tools.sh -l ...
-	rsync -a ${BUILDS_ROOT}/tools/build_tools/logger/sof-logger ${USER_DESTDIR}
+	rsync -a ${BUILD_TOOLS}/logger/sof-logger ${USER_DESTDIR}
 endif
 
 clean:
@@ -166,7 +167,7 @@ ${SIGNED_ALIASES}: ${STAGING_SOF_VERSION}/sof-%.ri:
 topologies:
 	# This requires ./scripts/build-tools.sh -T ...
 	install ${INSTALL_OPTS}  -t ${STAGING_SOF_TPLG}${VERSION_SUFFIX}/ \
-               ${BUILDS_ROOT}/tools/build_tools/topology/sof-*.tplg
+               ${BUILD_TOOLS}/topology/sof-*.tplg
 ifneq (,${VERSION_SUFFIX})
 	ln -sfT sof-tplg${VERSION_SUFFIX} ${STAGING_SOF_TPLG}
 	test -e ${STAGING_SOF_TPLG}
