@@ -24,14 +24,16 @@ EOFUSAGE
 reconfigure_build()
 {
         rm -rf "$BUILD_TOOLS_DIR"
-        mkdir "$BUILD_TOOLS_DIR"
+        mkdir -p "$BUILD_TOOLS_DIR"
 
-        cd "$BUILD_TOOLS_DIR"
-        cmake -DCMAKE_BUILD_TYPE="$CMAKE_BUILD_TYPE" ..
+        ( cd "$BUILD_TOOLS_DIR"
+          cmake -DCMAKE_BUILD_TYPE="$CMAKE_BUILD_TYPE" "${SOF_REPO}/tools"
+        )
 
         mkdir "$BUILD_TOOLS_DIR/fuzzer"
-        cd "$BUILD_TOOLS_DIR/fuzzer"
-        cmake -DCMAKE_BUILD_TYPE="$CMAKE_BUILD_TYPE" ../../fuzzer
+        ( cd "$BUILD_TOOLS_DIR/fuzzer"
+          cmake -DCMAKE_BUILD_TYPE="$CMAKE_BUILD_TYPE" "${SOF_REPO}/tools/fuzzer"
+        )
 }
 
 make_tool()
@@ -71,7 +73,7 @@ main()
                 BUILD_ALL
         SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
         SOF_REPO=$(dirname "$SCRIPT_DIR")
-        BUILD_TOOLS_DIR="$SOF_REPO"/tools/build_tools
+        : "${BUILD_TOOLS_DIR:=$SOF_REPO/tools/build_tools}"
         : "${NO_PROCESSORS:=$(nproc)}"
         BUILD_ALL=false
 
