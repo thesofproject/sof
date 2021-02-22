@@ -49,7 +49,7 @@ endif
       ################################
 
 # Our input:  build_*_?cc/ directories
-BUILDS_ROOT ?= ../
+BUILDS_ROOT ?= ${CURDIR}/../installer-builds
 BUILD_TOOLS ?= ${BUILDS_ROOT}/build_tools
 
 STAGING_SOF ?= staging/sof
@@ -67,7 +67,7 @@ endif
 
 COMMUNITY	:= ${STAGING_SOF_VERSION}/community
 INTEL_SIGNED	:= ${STAGING_SOF_VERSION}/intel-signed
-${COMMUNITY} ${INTEL_SIGNED}:
+${COMMUNITY} ${INTEL_SIGNED} ${BUILDS_ROOT}:
 	mkdir -p $@
 
 
@@ -85,13 +85,14 @@ rsync:
 ifneq (${USER_DESTDIR},)
 	# TODO: add more user space binaries: sof-ctl, probes,...
 	# absorbe scripts/sof-target-install.sh
-	# Requires ./scripts/build-tools.sh -l ...
 	rsync -a ${BUILD_TOOLS}/logger/sof-logger ${USER_DESTDIR}
 endif
 
 clean:
 	${RM} -r staging/sof*
 
+cleanall: clean
+	${RM} -r "${BUILD_TOOLS}/" "${BUILDS_ROOT}"/build_*_?cc/
 
    ##########################################################
    ###  Stage sof-*.ri firmware files and symbolic links ####
@@ -124,6 +125,22 @@ ${UNSIGNED_FWS}: ${STAGING_SOF_VERSION}/sof-%.ri:   \
 	install ${INSTALL_OPTS} $< $@
 
 
+BUILD_SOF_RIS := \
+      ${UNSIGNED_list:%=${BUILDS_ROOT}/build_%_${TOOLCHAIN}/sof.ri} \
+        ${SIGNED_list:%=${BUILDS_ROOT}/build_%_${TOOLCHAIN}/sof.ri}
+
+# The build is not deterministic; use this to reduce noise when testing
+# this Makefile
+ifneq (true,${BUILD_ONLY_ONCE})
+.PHONY: ${BUILD_SOF_RIS}
+endif
+
+${BUILD_SOF_RIS}: ${BUILDS_ROOT}/build_%_${TOOLCHAIN}/sof.ri: | ${BUILDS_ROOT}
+	cd ${BUILDS_ROOT} && bdir="$$(dirname $@)" &&  \
+    if test -d $${bdir}; then cmake --build $${bdir} -- sof; else \
+      $(CURDIR)/../scripts/xtensa-build-all.sh $*; fi
+
+
        ########################################
        ###  Stage *.ldc logger dictionaries ###
        ########################################
@@ -134,8 +151,8 @@ LDICTS := ${UNSIGNED_list:%=${STAGING_SOF_VERSION}/sof-%.ldc} \
 # $(info LDICTS = ${LDICTS})
 ldicts: ${LDICTS}
 ${LDICTS}: ${STAGING_SOF_VERSION}/sof-%.ldc:  \
-             ${BUILDS_ROOT}/build_%_${TOOLCHAIN}/sof.ldc
-	install ${INSTALL_OPTS} $< $@
+                                ${BUILDS_ROOT}/build_%_${TOOLCHAIN}/sof.ri
+	install ${INSTALL_OPTS} ${BUILDS_ROOT}/build_$*_${TOOLCHAIN}/sof.ldc $@
 
 
         #######################################
@@ -164,8 +181,13 @@ ${SIGNED_ALIASES}: ${STAGING_SOF_VERSION}/sof-%.ri:
             ### Stage sof-tplg/ topologies ###
             ##################################
 
-topologies:
-	# This requires ./scripts/build-tools.sh -T ...
+# The build is not deterministic; use this to reduce noise when testing
+# this Makefile
+ifneq (true,${BUILD_ONLY_ONCE})
+.PHONY: ${BUILD_TOOLS}
+endif
+
+topologies: ${BUILD_TOOLS}
 	install ${INSTALL_OPTS}  -t ${STAGING_SOF_TPLG}${VERSION_SUFFIX}/ \
                ${BUILD_TOOLS}/topology/sof-*.tplg
 ifneq (,${VERSION_SUFFIX})
@@ -175,6 +197,15 @@ endif
 	@file ${STAGING_SOF_TPLG}
 	@tree ${TREE_OPTS} ${STAGING_SOF_TPLG}${VERSION_SUFFIX} | \
             head -n 10; printf '├── ...\n..\n'
+
+# We should use more targets rather than set -e and a multi-lines script
+# but that would be verbose.
+${BUILD_TOOLS}:
+	set -e; if test -d ${BUILD_TOOLS}; then \
+        for i in topologies sof-logger; do \
+          cmake --build ${BUILD_TOOLS} -- $$i; done; else         \
+          BUILD_TOOLS_DIR=${BUILD_TOOLS} ../scripts/build-tools.sh -T -l ; \
+        fi
 
 
              ####################
