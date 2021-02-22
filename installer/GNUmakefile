@@ -90,6 +90,7 @@ endif
 
 clean:
 	${RM} -r staging/sof*
+	${RM} ${BUILDS_ROOT}/staging_sof_tree.txt
 
 cleanall: clean
 	${RM} -r "${BUILD_TOOLS}/" "${BUILDS_ROOT}"/build_*_?cc/
@@ -214,7 +215,16 @@ ${BUILD_TOOLS}:
 
 COMPARE_REFS ?= /lib/firmware/intel
 
-# Useful for testing this Makefile. Can be used against /lib/firmware,
+checktree:
+	cd ${STAGING_SOF_VERSION} && \
+             tree -a --dirsfirst . >  ${BUILDS_ROOT}/staging_sof_tree.txt
+	# Update sof-apl-nocodec.tplg when adding or removing a default platform
+	diff -u tests/staging_sof_ref.txt ${BUILDS_ROOT}/staging_sof_tree.txt
+	# Check two random topologies are there
+	test -f ${STAGING_SOF_TPLG}/sof-apl-nocodec.tplg
+	test -f ${STAGING_SOF_TPLG}/sof-imx8qxp-nocodec.tplg
+
+# Useful for testing this Makefile. COMPARE_REFS can be /lib/firmware,
 # sof-bin, a previous version of this Makefile,...
 # As the first arguments maybe symbolic links, their trailing slash is
 # critical.
