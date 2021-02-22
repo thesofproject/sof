@@ -21,3 +21,10 @@
 #
 # SOF_VERSION := $(shell git describe --tags )
 # SOF_VERSION := v1.6.14
+
+# Uncomment this to have the build_*_?cc/ directories at the top-level
+# BUILDS_ROOT := ${CURDIR}/..
+
+# The build is not deterministic; use this to reduce noise when testing
+# the installer/ itself
+# BUILD_ONLY_ONCE := true
