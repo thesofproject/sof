@@ -57,12 +57,13 @@ static inline void select_cpu_clock_hw(int freq_idx, bool release_unused)
 		io_reg_write(SHIM_BASE + SHIM_CLKCTL,
 			     (io_reg_read(SHIM_BASE + SHIM_CLKCTL) &
 			      ~SHIM_CLKCTL_OSC_REQUEST_MASK) | enc);
-#if CONFIG_TIGERLAKE
-		/* TGL specific HW recommended flow */
-		if (freq_idx != CPU_HPRO_FREQ_IDX)
-			pm_runtime_put(PM_RUNTIME_DSP, PWRD_BY_HPRO | (CONFIG_CORE_COUNT - 1));
-#endif
 	}
+
+#if CONFIG_TIGERLAKE
+	/* TGL specific HW recommended flow */
+	if (freq_idx != CPU_HPRO_FREQ_IDX)
+		pm_runtime_put(PM_RUNTIME_DSP, PWRD_BY_HPRO | (CONFIG_CORE_COUNT - 1));
+#endif
 
 #if CONFIG_DSP_RESIDENCY_COUNTERS
 	if (get_dsp_r_state() != r2_r_state) {
