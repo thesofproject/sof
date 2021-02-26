@@ -2,8 +2,10 @@ The GNUmakefile in this directory prepares ``/lib/firmware/intel/sof/`` and
 ``/lib/firmware/intel/sof-tplg/`` directories.
 
 It extracts what's needed from the output of the scripts
-``./scripts/xtensa-build-all.sh -a`` and ``./scripts/build-tools.sh
--T -l``; running these scripts is a pre-requisite.
+``./scripts/xtensa-build-all.sh`` and ``./scripts/build-tools.sh -T
+-l``. It automatically runs these scripts when needed for the platforms
+listed in config.mk and performs incremental builds when they have
+already been run.
 
 It does not copy anything to ``/lib/firmware/`` directly but to local,
 "staging" subdirectory first. The staging area can then be installed with
@@ -35,6 +37,11 @@ To stage and install in one go:
 firmware, dictionaries and topologies. As usual with Make, it's possible
 to invoke individual targets. Find a list of targets at the top of
 GNUMakefile.
+
+You can use `make -jN stage` to build multiple platforms faster but do
+*not* `make -jN stage rsync` as this will start deploying before the
+builds are all complete. That's because we want the rsync target to be
+able to deploy subsets. Instead do: `make -jN somethings && make rsync`.
 
 Sample output:
 
