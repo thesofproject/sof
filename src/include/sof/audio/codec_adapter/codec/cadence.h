@@ -15,6 +15,7 @@
 
 #define LIB_NAME_MAX_LEN 30
 #define LIB_NO_ERROR XA_NO_ERROR
+#define LIB_IS_FATAL_ERROR(e) ((e) & XA_FATAL_ERROR)
 
 /*****************************************************************************/
 /* Cadence API functions							     */
