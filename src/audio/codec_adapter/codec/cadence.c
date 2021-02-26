@@ -50,7 +50,7 @@ int cadence_codec_init(struct comp_dev *dev)
 	/* Find and assign API function */
 	for (i = 0; i < no_of_api; i++) {
 		if (cadence_api_table[i].id == api_id) {
-			cd->api = cadence_api_table[0].api;
+			cd->api = cadence_api_table[i].api;
 			break;
 		}
 	}
