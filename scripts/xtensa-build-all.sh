@@ -55,6 +55,25 @@ following environment variable:
 or:
      PRIVATE_KEY_OPTION='-DRIMAGE_PRIVATE_KEY=path/to/key'  $0 ...
 
+This script supports XtensaTools but only when installed in a specific
+directory structure, example:
+
+myXtensa/
+└── install/
+    ├── builds/
+    │   ├── RD-2012.5-linux/
+    │   │   └── Intel_HiFiEP/
+    │   └── RG-2017.8-linux/
+    │       ├── LX4_langwell_audio_17_8/
+    │       └── X4H3I16w2D48w3a_2017_8/
+    └── tools/
+        ├── RD-2012.5-linux/
+        │   └── XtensaTools/
+        └── RG-2017.8-linux/
+            └── XtensaTools/
+
+$ XTENSA_TOOLS_ROOT=/path/to/myXtensa $0 ...
+
 Supported platforms ${SUPPORTED_PLATFORMS[*]}
 
 EOF
@@ -297,7 +316,6 @@ do
 			;;
 
 	esac
-	ROOT="$SOF_TOP/../xtensa-root/$HOST"
 
 	if [ -n "$XTENSA_TOOLS_ROOT" ]
 	then
@@ -314,11 +332,15 @@ do
 				XCC="none"
 				XTOBJCOPY="none"
 				XTOBJDUMP="none"
-				echo "XTENSA_TOOLS_DIR is not a directory"
+				>&2 printf 'WARNING: %s
+\t is not a directory, reverting to gcc\n' "$XTENSA_TOOLS_DIR"
 		fi
 	fi
 
-	# update ROOT directory for xt-xcc
+	# CMake uses ROOT_DIR for includes and libraries a bit like
+	# --sysroot would.
+	ROOT="$SOF_TOP/../xtensa-root/$HOST"
+
 	if [ "$XCC" == "xt-xcc" ]
 	then
 		TOOLCHAIN=xt
