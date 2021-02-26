@@ -238,7 +238,7 @@ inline int32_t drc_inv_fixed(int32_t x, int32_t precision_x, int32_t precision_y
 	if (precision_inv > precision_y)
 		return Q_SHIFT_RND(inv, precision_inv, precision_y);
 	if (precision_inv < precision_y)
-		return Q_SHIFT_LEFT(inv, precision_inv, precision_y);
+		return sat_int32(Q_SHIFT_LEFT((int64_t)inv, precision_inv, precision_y));
 	return inv;
 #undef qc
 }

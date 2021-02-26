@@ -41,8 +41,10 @@ static int32_t knee_curveK(const struct sof_drc_params *p, int32_t x)
  * output and input signal. */
 static int32_t volume_gain(const struct sof_drc_params *p, int32_t x)
 {
-	const int32_t knee_threshold = Q_SHIFT_LEFT(p->knee_threshold, 24, 31);
-	const int32_t linear_threshold = Q_SHIFT_LEFT(p->linear_threshold, 30, 31);
+	const int32_t knee_threshold =
+		sat_int32(Q_SHIFT_LEFT((int64_t)p->knee_threshold, 24, 31));
+	const int32_t linear_threshold =
+		sat_int32(Q_SHIFT_LEFT((int64_t)p->linear_threshold, 30, 31));
 	int32_t exp_knee;
 	int32_t y;
 
@@ -234,7 +236,7 @@ void drc_update_envelope(struct drc_state *state, const struct sof_drc_params *p
 		 */
 		state->max_attack_compression_diff_db =
 			MAX(state->max_attack_compression_diff_db,
-			    Q_SHIFT_LEFT(compression_diff_db, 21, 24));
+			    sat_int32(Q_SHIFT_LEFT((int64_t)compression_diff_db, 21, 24)));
 
 		eff_atten_diff_db =
 			MAX(HALF_Q24, state->max_attack_compression_diff_db); /* Q8.24 */
@@ -246,7 +248,7 @@ void drc_update_envelope(struct drc_state *state, const struct sof_drc_params *p
 		envelope_rate = ONE_Q20 - drc_pow_fixed(x, p->one_over_attack_frames); /* Q12.20 */
 	}
 
-	state->envelope_rate = Q_SHIFT_LEFT(envelope_rate, 20, 30);
+	state->envelope_rate = sat_int32(Q_SHIFT_LEFT((int64_t)envelope_rate, 20, 30));
 	state->scaled_desired_gain = scaled_desired_gain;
 }
 
