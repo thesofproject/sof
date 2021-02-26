@@ -97,7 +97,7 @@ out:
 
 static int apply_config(struct comp_dev *dev, enum codec_cfg_type type)
 {
-	int ret;
+	int ret = 0;
 	int size;
 	struct codec_config *cfg;
 	void *data;
@@ -133,7 +133,8 @@ static int apply_config(struct comp_dev *dev, enum codec_cfg_type type)
 		if (ret != LIB_NO_ERROR) {
 			comp_err(dev, "apply_config() error %x: failed to apply parameter %d value %d",
 				 ret, param->id, *(int32_t *)param->data);
-			goto ret;
+			if (LIB_IS_FATAL_ERROR(ret))
+				goto ret;
 		}
 		/* Obtain next parameter, it starts right after the preceding one */
 		data = (char *)data + param->size;
@@ -141,6 +142,7 @@ static int apply_config(struct comp_dev *dev, enum codec_cfg_type type)
 	}
 
 	comp_dbg(dev, "apply_config() done");
+	ret  = 0;
 ret:
 	return ret;
 }
