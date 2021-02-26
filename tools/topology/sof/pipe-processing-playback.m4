@@ -37,7 +37,7 @@ define(`CA_RUNTIME_CONTROLBYTES_MAX', 157)
 define(`CA_SCHEDULE_CORE', 1)
 
 define(`CA_SETUP_CONTROLBYTES_NAME', `Post Process Setup Config')
-define(`CA_RUNTIME_CONTROLBYTES_NAME', `Post Process Setup Config')
+define(`CA_RUNTIME_CONTROLBYTES_NAME', `Post Process Runtime Config')
 
 undefine(`DAI_PERIODS')
 define(`DAI_PERIODS', 8)
