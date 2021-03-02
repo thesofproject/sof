@@ -46,17 +46,17 @@ static struct comp_dev *codec_adapter_new(const struct comp_driver *drv,
 	struct sof_ipc_comp_process *ipc_codec_adapter =
 		(struct sof_ipc_comp_process *)comp;
 
-	comp_cl_info(&comp_codec_adapter, "codec_adapter_new() start");
+	comp_cl_dbg(drv, "codec_adapter_new() start");
 
 	if (!drv || !comp) {
-		comp_cl_err(&comp_codec_adapter, "codec_adapter_new(), wrong input params! drv = %x comp = %x",
+		comp_cl_err(drv, "codec_adapter_new(), wrong input params! drv = %x comp = %x",
 			    (uint32_t)drv, (uint32_t)comp);
 		return NULL;
 	}
 
 	dev = comp_alloc(drv, COMP_SIZE(struct sof_ipc_comp_process));
 	if (!dev) {
-		comp_cl_err(&comp_codec_adapter, "codec_adapter_new(), failed to allocate memory for comp_dev");
+		comp_cl_err(drv, "codec_adapter_new(), failed to allocate memory for comp_dev");
 		return NULL;
 	}
 
@@ -68,7 +68,7 @@ static struct comp_dev *codec_adapter_new(const struct comp_driver *drv,
 
 	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
 	if (!cd) {
-		comp_cl_err(&comp_codec_adapter, "codec_adapter_new(), failed to allocate memory for comp_data");
+		comp_err(dev, "codec_adapter_new(), failed to allocate memory for comp_data");
 		rfree(dev);
 		return NULL;
 	}
@@ -92,7 +92,7 @@ static struct comp_dev *codec_adapter_new(const struct comp_driver *drv,
 	dev->state = COMP_STATE_READY;
 	cd->state = PP_STATE_CREATED;
 
-	comp_cl_info(&comp_codec_adapter, "codec_adapter_new() done");
+	comp_dbg(dev, "codec_adapter_new() done");
 	return dev;
 err:
 	rfree(cd);
@@ -188,7 +188,7 @@ static int codec_adapter_prepare(struct comp_dev *dev)
 				    */
 	uint32_t buff_size; /* size of local buffer */
 
-	comp_info(dev, "codec_adapter_prepare() start");
+	comp_dbg(dev, "codec_adapter_prepare() start");
 
 	/* Init sink & source buffers */
 	cd->ca_sink = list_first_item(&dev->bsink_list, struct comp_buffer,
@@ -269,7 +269,7 @@ static int codec_adapter_prepare(struct comp_dev *dev)
 	buffer_reset_pos(cd->local_buff, NULL);
 
 	cd->state = PP_STATE_PREPARED;
-	comp_info(dev, "codec_adapter_prepare() done");
+	comp_dbg(dev, "codec_adapter_prepare() done");
 
 	return 0;
 }
@@ -590,8 +590,7 @@ static int ca_set_binary_data(struct comp_dev *dev,
 {
 	int ret;
 
-	comp_info(dev, "ca_set_binary_data() start, data type %d",
-		  cdata->data->type);
+	comp_dbg(dev, "ca_set_binary_data() start, data type %d", cdata->data->type);
 
 	switch (cdata->data->type) {
 	case CODEC_CFG_SETUP:
@@ -613,8 +612,8 @@ static int codec_adapter_ctrl_set_data(struct comp_dev *dev,
 	int ret;
 	struct comp_data *cd = comp_get_drvdata(dev);
 
-	comp_info(dev, "codec_adapter_ctrl_set_data() start, state %d, cmd %d",
-		  cd->state, cdata->cmd);
+	comp_dbg(dev, "codec_adapter_ctrl_set_data() start, state %d, cmd %d",
+		 cd->state, cdata->cmd);
 
 	/* Check version from ABI header */
 	if (SOF_ABI_VERSION_INCOMPATIBLE(SOF_ABI_VERSION, cdata->data->abi)) {
@@ -646,7 +645,7 @@ static int codec_adapter_cmd(struct comp_dev *dev, int cmd, void *data,
 	int ret;
 	struct sof_ipc_ctrl_data *cdata = data;
 
-	comp_info(dev, "codec_adapter_cmd() %d start", cmd);
+	comp_dbg(dev, "codec_adapter_cmd() %d start", cmd);
 
 	switch (cmd) {
 	case COMP_CMD_SET_DATA:
@@ -662,14 +661,13 @@ static int codec_adapter_cmd(struct comp_dev *dev, int cmd, void *data,
 		break;
 	}
 
-	comp_info(dev, "codec_adapter_cmd() done");
+	comp_dbg(dev, "codec_adapter_cmd() done");
 	return ret;
 }
 
 static int codec_adapter_trigger(struct comp_dev *dev, int cmd)
 {
-	comp_cl_info(&comp_codec_adapter, "codec_adapter_trigger(): component got trigger cmd %x",
-		     cmd);
+	comp_dbg(dev, "codec_adapter_trigger(): component got trigger cmd %x", cmd);
 
 	return comp_set_state(dev, cmd);
 }
@@ -679,17 +677,17 @@ static int codec_adapter_reset(struct comp_dev *dev)
 	int ret;
 	struct comp_data *cd = comp_get_drvdata(dev);
 
-	comp_cl_info(&comp_codec_adapter, "codec_adapter_reset(): resetting");
+	comp_dbg(dev, "codec_adapter_reset(): resetting");
 
 	ret = codec_reset(dev);
 	if (ret) {
-		comp_cl_info(&comp_codec_adapter, "codec_adapter_reset(): error %d, codec reset has failed",
-			     ret);
+		comp_err(dev, "codec_adapter_reset(): error %d, codec reset has failed",
+			 ret);
 	}
 	buffer_zero(cd->local_buff);
 	cd->state = PP_STATE_CREATED;
 
-	comp_cl_info(&comp_codec_adapter, "codec_adapter_reset(): done");
+	comp_dbg(dev, "codec_adapter_reset(): done");
 
 	return comp_set_state(dev, COMP_TRIGGER_RESET);
 }
@@ -699,18 +697,16 @@ static void codec_adapter_free(struct comp_dev *dev)
 	int ret;
 	struct comp_data *cd = comp_get_drvdata(dev);
 
-	comp_cl_info(&comp_codec_adapter, "codec_adapter_free(): start");
+	comp_dbg(dev, "codec_adapter_free(): start");
 
 	ret = codec_free(dev);
 	if (ret) {
-		comp_cl_info(&comp_codec_adapter, "codec_adapter_reset(): error %d, codec reset has failed",
-			     ret);
+		comp_err(dev, "codec_adapter_free(): error %d, codec reset has failed",
+			 ret);
 	}
 	buffer_free(cd->local_buff);
 	rfree(cd);
 	rfree(dev);
-
-	comp_cl_info(&comp_codec_adapter, "codec_adapter_free(): component memory freed");
 }
 
 static const struct comp_driver comp_codec_adapter = {
