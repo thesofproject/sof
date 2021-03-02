@@ -19,6 +19,14 @@ if CADENCE_CODEC
 		  Select for cadence_codec_api wrapper function that will allow
 		  users to call into codecs which conforms to the Cadence API without
 		  explicitly knowing/using the entry function symbol name.
+
+	if CADENCE_CODEC_WRAPPER
+		config CADENCE_CODEC_WRAPPER_LIB
+		string "Cadence codec wrapper library name"
+		help
+		  This option is a string and takes the full name of the codec wrapper library binary.
+	endif
+
 	config CADENCE_CODEC_AAC_DEC
 		bool "Cadence AAC decoder"
 		default n
@@ -26,6 +34,14 @@ if CADENCE_CODEC
 		  Select for Cadence AAC decoder support.
 		  This will cause Cadence codec to include Cadence AAC library
 		  api symbol.
+
+	if CADENCE_CODEC_AAC_DEC
+		config CADENCE_CODEC_AAC_DEC_LIB
+		string "Cadence AAC decoder library name"
+		help
+		  This option is a string and takes the full name of the AAC decoder library binary.
+	endif
+
 	config CADENCE_CODEC_BSAC_DEC
 		bool "Cadence BSAC decoder"
 		default n
@@ -33,6 +49,14 @@ if CADENCE_CODEC
 		  Select for Cadence BSAC decoder support.
 		  This will cause Cadence codec to include Cadence BSAC library
 		  api symbol.
+
+	if CADENCE_CODEC_BSAC_DEC
+		config CADENCE_CODEC_BSAC_DEC_LIB
+		string "Cadence BSAC decoder library name"
+		help
+		  This option is a string and takes the full name of the BSAC decoder library
+	endif
+
 	config CADENCE_CODEC_DAB_DEC
 		bool "Cadence DAB decoder"
 		default n
@@ -40,6 +64,14 @@ if CADENCE_CODEC
 		  Select for Cadence DAB decoder support.
 		  This will cause Cadence codec to include Cadence DAB library
 		  api symbol.
+
+	if CADENCE_CODEC_DAB_DEC
+		config CADENCE_CODEC_DAB_DEC_LIB
+		string "Cadence DAB decoder library name"
+		help
+		  This option is a string and takes the full name of the DAB library binary.
+	endif
+
 	config CADENCE_CODEC_DRM_DEC
 		bool "Cadence DRM decoder"
 		default n
@@ -47,6 +79,14 @@ if CADENCE_CODEC
 		  Select for Cadence DRM decoder support.
 		  This will cause Cadence codec to include Cadence DRM library
 		  api symbol.
+
+	if CADENCE_CODEC_DRM_DEC
+		config CADENCE_CODEC_DRM_DEC_LIB
+		string "Cadence DRM decoder library name"
+		help
+		  This option is a string and takes the full name of the DRM library binary.
+	endif
+
 	config CADENCE_CODEC_MP3_DEC
 		bool "Cadence MP3 decoder"
 		default n
@@ -54,6 +94,14 @@ if CADENCE_CODEC
 		  Select for Cadence MP3 decoder support.
 		  This will cause Cadence codec to include Cadence MP3 library
 		  api symbol.
+
+	if CADENCE_CODEC_MP3_DEC
+		config CADENCE_CODEC_MP3_DEC_LIB
+		string "Cadence MP3 decoder library name"
+		help
+		  This option is a string and takes the full name of the MP3 library binary.
+	endif
+
 	config CADENCE_CODEC_SBC_DEC
 		bool "Cadence SBC decoder"
 		default n
@@ -61,6 +109,14 @@ if CADENCE_CODEC
 		  Select for Cadence SBC decoder support.
 		  This will cause Cadence codec to include Cadence SBC library
 		  api symbol.
+
+	if CADENCE_CODEC_SBC_DEC
+		config CADENCE_CODEC_SBC_DEC_LIB
+		string "Cadence SBC decoder library name"
+		help
+		  This option is a string and takes the full name of the SBC library binary.
+	endif
+
 endif
 
 	config PASSTHROUGH_CODEC
