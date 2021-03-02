@@ -298,6 +298,13 @@ int cadence_codec_init_process(struct comp_dev *dev)
 	struct codec_data *codec = comp_get_codec(dev);
 	struct cadence_codec_data *cd = codec->private;
 
+	API_CALL(cd, XA_API_CMD_SET_INPUT_BYTES, 0, &codec->cpd.avail, ret);
+	if (ret != LIB_NO_ERROR) {
+		comp_err(dev, "cadence_codec_init_process() error %x: failed to set size of input data",
+			 ret);
+		return ret;
+	}
+
 	API_CALL(cd, XA_API_CMD_INIT, XA_CMD_TYPE_INIT_PROCESS, NULL, ret);
 	if (ret != LIB_NO_ERROR) {
 		comp_err(dev, "cadence_codec_init_process() error %x: failed to initialize codec",
@@ -311,12 +318,13 @@ int cadence_codec_init_process(struct comp_dev *dev)
 		comp_err(dev, "cadence_codec_init_process() error %x: failed to get lib init status",
 			 ret);
 		return ret;
-	} else if (!lib_init_status) {
-		comp_err(dev, "cadence_codec_init_process() error: lib has not been initiated properly");
-		ret = -EINVAL;
+	}
+
+	API_CALL(cd, XA_API_CMD_GET_CURIDX_INPUT_BUF, 0, &codec->cpd.consumed, ret);
+	if (ret != LIB_NO_ERROR) {
+		comp_err(dev, "cadence_codec_init_process() error %x: could not get consumed bytes",
+			 ret);
 		return ret;
-	} else {
-		comp_dbg(dev, "cadence_codec_init_process(): lib has been initialized properly");
 	}
 
 	return 0;
