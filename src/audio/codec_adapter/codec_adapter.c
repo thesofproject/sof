@@ -379,6 +379,22 @@ static int codec_adapter_copy(struct comp_dev *dev)
 	comp_dbg(dev, "codec_adapter_copy() start: codec_buff_size: %d, local_buff free: %d source avail %d",
 		 codec_buff_size, local_buff->stream.free, source->stream.avail);
 
+	if (!codec->cpd.init_done) {
+		if (bytes_to_process < codec_buff_size)
+			goto db_verify;
+
+		buffer_invalidate(source, codec_buff_size);
+		codec_adapter_copy_from_source_to_lib(&source->stream, &codec->cpd,
+						      codec_buff_size);
+		codec->cpd.avail = codec_buff_size;
+		ret = codec_init_process(dev);
+		if (ret)
+			return ret;
+
+		bytes_to_process -= codec->cpd.consumed;
+		comp_update_buffer_consume(source, codec->cpd.consumed);
+	}
+
 	while (bytes_to_process) {
 		/* Proceed only if we have enough data to fill the lib buffer
 		 * completely. If you don't fill whole buffer
