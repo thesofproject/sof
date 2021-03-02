@@ -256,7 +256,7 @@ err:
 
 int cadence_codec_init_process(struct comp_dev *dev)
 {
-	int ret, lib_init_status;
+	int ret;
 	struct codec_data *codec = comp_get_codec(dev);
 	struct cadence_codec_data *cd = codec->private;
 
@@ -275,7 +275,7 @@ int cadence_codec_init_process(struct comp_dev *dev)
 	}
 
 	API_CALL(cd, XA_API_CMD_INIT, XA_CMD_TYPE_INIT_DONE_QUERY,
-		 &lib_init_status, ret);
+		 &codec->cpd.init_done, ret);
 	if (ret != LIB_NO_ERROR) {
 		comp_err(dev, "cadence_codec_init_process() error %x: failed to get lib init status",
 			 ret);
