@@ -13,6 +13,8 @@
 #define __SOF_AUDIO_CODEC_GENERIC__
 
 #include <sof/audio/component.h>
+#include <sof/ut.h>
+#include <sof/lib/memory.h>
 
 #define comp_get_codec(d) (&(((struct comp_data *)((d)->priv_data))->codec))
 #define CODEC_GET_INTERFACE_ID(id) ((id) >> 0x8)
@@ -24,6 +26,41 @@
 				(sub_cmd), \
 				(value)); \
 	} while (0)
+
+#define DECLARE_CODEC_ADAPTER(adapter, uuid, tr) \
+static struct comp_dev *adapter_shim_new(const struct comp_driver *drv, \
+					 struct sof_ipc_comp *comp)\
+{ \
+	return codec_adapter_new(drv, comp, &adapter);\
+} \
+\
+static const struct comp_driver comp_codec_adapter = { \
+	.type = SOF_COMP_NONE, \
+	.uid = SOF_RT_UUID(uuid), \
+	.tctx = &tr, \
+	.ops = { \
+		.create = adapter_shim_new, \
+		.prepare = codec_adapter_prepare, \
+		.params = codec_adapter_params, \
+		.copy = codec_adapter_copy, \
+		.cmd = codec_adapter_cmd, \
+		.trigger = codec_adapter_trigger, \
+		.reset = codec_adapter_reset, \
+		.free = codec_adapter_free, \
+	}, \
+}; \
+\
+static SHARED_DATA struct comp_driver_info comp_codec_adapter_info = { \
+	.drv = &comp_codec_adapter, \
+}; \
+\
+UT_STATIC void sys_comp_codec_##adapter_init(void) \
+{ \
+	comp_register(platform_shared_get(&comp_codec_adapter_info, \
+					  sizeof(comp_codec_adapter_info))); \
+} \
+\
+DECLARE_MODULE(sys_comp_codec_##adapter_init)
 
 /*****************************************************************************/
 /* Codec generic data types						     */
@@ -216,5 +253,17 @@ int codec_process(struct comp_dev *dev);
 int codec_apply_runtime_config(struct comp_dev *dev);
 int codec_reset(struct comp_dev *dev);
 int codec_free(struct comp_dev *dev);
+
+struct comp_dev *codec_adapter_new(const struct comp_driver *drv,
+					  struct sof_ipc_comp *comp, struct codec_interface *codec);
+int codec_adapter_prepare(struct comp_dev *dev);
+int codec_adapter_params(struct comp_dev *dev,
+				    struct sof_ipc_stream_params *params);
+int codec_adapter_copy(struct comp_dev *dev);
+int codec_adapter_cmd(struct comp_dev *dev, int cmd, void *data,
+			     int max_data_size);
+int codec_adapter_trigger(struct comp_dev *dev, int cmd);
+void codec_adapter_free(struct comp_dev *dev);
+int codec_adapter_reset(struct comp_dev *dev);
 
 #endif /* __SOF_AUDIO_CODEC_GENERIC__ */
