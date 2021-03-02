@@ -161,6 +161,7 @@ struct codec_processing_data {
 	uint32_t avail; /**< Specifies how much data is available for codec to process.*/
 	uint32_t produced; /**< Specifies how much data the codec produced in its last task.*/
 	uint32_t consumed; /**< Specified how much data the codec consumed in its last task */
+	uint32_t init_done; /**< Specifies if the codec initialization is finished */
 	void *in_buff; /**< A pointer to codec input buffer. */
 	void *out_buff; /**< A pointer to codec output buffer. */
 };
