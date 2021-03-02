@@ -245,6 +245,25 @@ end:
 	return ret;
 }
 
+int codec_init_process(struct comp_dev *dev)
+{
+	int ret;
+	struct comp_data *cd = comp_get_drvdata(dev);
+	struct codec_data *codec = &cd->codec;
+
+	comp_dbg(dev, "codec_init_process() start");
+
+	ret = codec->ops->init_process(dev);
+	if (ret) {
+		comp_err(dev, "codec_init_process() error %x", ret);
+		goto out;
+	}
+
+	comp_dbg(dev, "codec_init_process() done");
+out:
+	return ret;
+}
+
 int codec_process(struct comp_dev *dev)
 {
 	int ret;
