@@ -4,7 +4,7 @@
 # if XPROC is not defined, define with default pipe
 ifdef(`DMICPROC', , `define(DMICPROC, eq-iir-volume)')
 ifdef(`DMIC16KPROC', , `define(DMIC16KPROC, eq-iir-volume)')
-ifdef(`HSPROC', , `define(DMICPROC, volume)')
+ifdef(`HSPROC', , `define(HSPROC, volume)')
 
 # Include topology builder
 include(`utils.m4')
