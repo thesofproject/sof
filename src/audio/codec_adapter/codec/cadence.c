@@ -383,6 +383,13 @@ int cadence_codec_process(struct comp_dev *dev)
 		goto err;
 	}
 
+	API_CALL(cd, XA_API_CMD_GET_CURIDX_INPUT_BUF, 0, &codec->cpd.consumed, ret);
+	if (ret != LIB_NO_ERROR) {
+		comp_err(dev, "cadence_codec_process() error %x: could not get consumed bytes",
+			 ret);
+		goto err;
+	}
+
 	comp_dbg(dev, "cadence_codec_process() done");
 
 	return 0;

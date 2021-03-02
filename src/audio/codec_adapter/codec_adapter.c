@@ -364,7 +364,7 @@ static void generate_zeroes(struct comp_buffer *sink, uint32_t bytes)
 static int codec_adapter_copy(struct comp_dev *dev)
 {
 	int ret = 0;
-	uint32_t bytes_to_process, copy_bytes, processed = 0;
+	uint32_t bytes_to_process, copy_bytes, processed = 0, produced = 0;
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct codec_data *codec = &cd->codec;
 	struct comp_buffer *source = cd->ca_source;
@@ -407,18 +407,19 @@ static int codec_adapter_copy(struct comp_dev *dev)
 		codec_adapter_copy_from_lib_to_sink(&codec->cpd, &local_buff->stream,
 						    codec->cpd.produced);
 
-		bytes_to_process -= codec->cpd.produced;
-		processed += codec->cpd.produced;
+		bytes_to_process -= codec->cpd.consumed;
+		processed += codec->cpd.consumed;
+		produced += codec->cpd.produced;
 	}
 
-	if (!processed && !cd->deep_buff_bytes) {
+	if (!produced && !cd->deep_buff_bytes) {
 		comp_dbg(dev, "codec_adapter_copy(): nothing processed in this call");
 		goto end;
-	} else if (!processed && cd->deep_buff_bytes) {
+	} else if (!produced && cd->deep_buff_bytes) {
 		goto db_verify;
 	}
 
-	audio_stream_produce(&local_buff->stream, processed);
+	audio_stream_produce(&local_buff->stream, produced);
 	comp_update_buffer_consume(source, processed);
 
 db_verify:
