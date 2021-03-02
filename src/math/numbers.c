@@ -130,28 +130,16 @@ int32_t find_max_abs_int32(int32_t vec[], int vec_length)
  */
 int norm_int32(int32_t val)
 {
-	int s;
-	int32_t n;
+	int c = 0;
 
-	if (!val)
-		return 31;
+	/* count number of bits c that val can be right-shifted arithmetically
+	 * until there is -1 (if val is negative) or 0 (if val is positive)
+	 * norm of val will be 31-c
+	 */
+	for (; val != -1 && val != 0; c++)
+		val >>= 1;
 
-	if (val > 0) {
-		n = val << 1;
-		s = 0;
-		while (n > 0) {
-			n = n << 1;
-			s++;
-		}
-	} else {
-		n = val << 1;
-		s = 0;
-		while (n < 0) {
-			n = n << 1;
-			s++;
-		}
-	}
-	return s;
+	return 31 - c;
 }
 
 /**
