@@ -12,6 +12,7 @@ include(`pga.m4')
 include(`dai.m4')
 include(`pipeline.m4')
 include(`bytecontrol.m4')
+include(`mixercontrol.m4')
 include(`eq_iir.m4')
 
 define(`CONTROL_NAME', 2nd Capture Volume)
