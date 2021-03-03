@@ -16,8 +16,9 @@ set(TPLGS
 	"sof-tgl-nocodec-ci\;sof-tgl-nocodec-ci"
 	"sof-cml-rt1011-rt5682-nokwd\;sof-cml-rt1011-rt5682-nokwd\;-DCHANNELS=2\;-DDMICPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_48khz.m4\;-DDMIC16KPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_16khz.m4"
 	"sof-cml-rt1011-rt5682-nokwd\;sof-cml-rt1011-rt5682-eq\;-DCHANNELS=2\;-DDMICPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_48khz.m4\;-DDMIC16KPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_16khz.m4\;-DHSEARPROC=eq-iir-eq-fir-volume\;-DHSMICPROC=eq-fir-volume\;-DSPKPROC=eq-iir-eq-fir-volume"
+	"sof-cml-rt1011-rt5682-nokwd\;sof-cml-rt1011-rt5682-aec16k\;-DCHANNELS=2\;-DDMICPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_48khz.m4\;-DSPKPROC=volume-aec\;-DDMIC16KPROC=aec"
+	"sof-cml-rt1011-rt5682-nokwd\;sof-cml-rt1011-rt5682-aec48k\;-DCHANNELS=2\;-DDMIC16KPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_16khz.m4\;-DSPKPROC=volume-aec\;-DDMICPROC=aec"
 )
-
 
 # The topologies those are built from topology in the parent directory
 set(TPLGS_UP
@@ -27,6 +28,8 @@ set(TPLGS_UP
 	"sof-cml-rt5682\;sof-cml-eq-fir-rt5682\;-DPLATFORM=cml\;-DHSMICPROC=eq-fir-volume\;-DDMICPROC=eq-iir-volume\;-DDMIC16KPROC=eq-iir-volume"
 	"sof-cml-rt5682\;sof-cml-eq-iir-rt5682\;-DPLATFORM=cml\;-DHSEARPROC=eq-iir-volume\;-DDMICPROC=eq-iir-volume\;-DDMIC16KPROC=eq-iir-volume"
 	"sof-glk-da7219\;sof-glk-eq-da7219\;-DDMICPROC=eq-iir-volume"
+	"sof-hda-generic\;sof-hda-generic-2ch-aec16k\;-DCHANNELS=2\;-DHSPROC=volume-aec\;-DDMIC16KPROC=aec"
+	"sof-hda-generic\;sof-hda-generic-2ch-aec48k\;-DCHANNELS=2\;-DHSPROC=volume-aec\;-DDMICPROC=aec"
 	"sof-hda-generic\;sof-hda-generic-tdfb_50mm-2ch\;-DCHANNELS=2\;-DHSPROC=volume\;-DDMIC16KPROC=tdfb-eq-iir-volume\;-DDMIC16KPROC_FILTER1=tdfb/coef_line2_50mm_pm10deg_16khz.m4\;-DDMICPROC=tdfb-eq-iir-volume\;-DDMICPROC_FILTER1=tdfb/coef_line2_50mm_pm10deg_48khz.m4\;-DDMICPROC_FILTER2=eq_iir_coef_highpass_40hz_20db_48khz.m4\;-DDMIC16KPROC_FILTER2=eq_iir_coef_highpass_40hz_20db_16khz.m4"
 )
 

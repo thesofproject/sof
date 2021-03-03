@@ -330,6 +330,20 @@ config COMP_CODEC_ADAPTER
 
 rsource "codec_adapter/Kconfig"
 
+config COMP_AEC
+	bool "AEC component"
+	default n
+	help
+	  Select for acoustical echo canceler (AEC) component. It enhances microphone
+	  capture by attenuating the acoustical coupling from from speaker(s) to
+	  microphone(s). AEC algorithm models the acoustical transfer function and
+	  subtracts the model created echo signal from microphone capture. Therefore
+	  it needs a reference stream from speaker output.
+	  Note: This AEC version is a mockup to test data flows and topology for
+	  simple 48 kHz playback and capture and multi-rate AEC configurations with
+	  48 kHz playback and 16 kHz capture. The component will be later updated
+	  to a simple AEC with adaptive filtering.
+
 endmenu # "Audio components"
 
 menu "Data formats"
