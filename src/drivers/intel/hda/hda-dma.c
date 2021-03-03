@@ -67,8 +67,8 @@ DECLARE_TR_CTX(hdma_tr, SOF_UUID(hda_dma_uuid), LOG_LEVEL_INFO);
 #define HDA_STATE_RELEASE	BIT(0)
 
 /* DGMBS align value */
-#define HDA_DMA_BUFFER_ALIGNMENT	0x20
-#define HDA_DMA_COPY_ALIGNMENT		0x20
+#define HDA_DMA_BUFFER_ALIGNMENT	0x8
+#define HDA_DMA_COPY_ALIGNMENT		0x8
 #define HDA_DMA_BUFFER_ADDRESS_ALIGNMENT 0x80
 
 /* DMA host transfer timeout in microseconds */
