@@ -71,12 +71,18 @@ if(XCC)
 		COMMAND ${CMAKE_C_COMPILER} --show-config=config
 		OUTPUT_VARIABLE cc_config_output
 		OUTPUT_STRIP_TRAILING_WHITESPACE
-		ERROR_QUIET
+		RESULT_VARIABLE show_config_res
 	)
+	if(NOT ${show_config_res} EQUAL 0)
+		message(WARNING "${CMAKE_C_COMPILER} --show-config "
+		  "failed with: ${show_config_res}")
+	endif()
 
 	string(REGEX MATCH "[a-zA-Z]+-[0-9]+.[0-9]+-[a-zA-Z]*" XCC_TOOLS_VERSION "${cc_config_output}")
 	if(NOT XCC_TOOLS_VERSION)
-		message(WARNING "Couldn't get compiler description from '${cc_config_output}'")
+		message(WARNING
+		  "Couldn't get ${CMAKE_C_COMPILER} description,"
+		  " --show-config printed: '${cc_config_output}'")
 		set(XCC_TOOLS_VERSION "UNKNOWN-${CMAKE_SYSTEM_NAME}")
 	endif()
 else()
