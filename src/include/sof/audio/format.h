@@ -79,6 +79,13 @@
 #define SATP_INT32(x) (((x) > INT32_MAX) ? INT32_MAX : (x))
 #define SATM_INT32(x) (((x) < INT32_MIN) ? INT32_MIN : (x))
 
+/* Arithmetic shift right */
+#define ARITHMETIC_SHIFT_RIGHT(u, n) ({	\
+	(u > 0) ?	\
+		(int32_t)((uint32_t)(((uint32_t)u) >> ((uint32_t)n))) :	\
+		(-((int32_t)((uint32_t)(((uint32_t)((int32_t)(-1 - u))) >> ((uint32_t)n))))) - 1; \
+})
+
 static inline int64_t q_mults_32x32(int32_t x, int32_t y, const int shift_bits)
 {
 	return ((int64_t)x * y) >> shift_bits;
