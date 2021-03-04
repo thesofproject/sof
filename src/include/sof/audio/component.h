@@ -344,6 +344,16 @@ struct comp_ops {
 		struct sof_ipc_stream_posn *posn);
 
 	/**
+	 * Gets attribute in component.
+	 * @param dev Component device.
+	 * @param type Attribute type.
+	 * @param value Attribute value.
+	 * @return 0 if succeeded, error code otherwise.
+	 */
+	int (*get_attribute)(struct comp_dev *dev, uint32_t type,
+			     void *value);
+
+	/**
 	 * Sets attribute in component.
 	 * @param dev Component device.
 	 * @param type Attribute type.
