@@ -119,6 +119,16 @@ config COMP_KPB
 	default y
 	help
 	  Select for KPB component
+if COMP_KPB
+
+config KPB_FORCE_COPY_TYPE_NORMAL
+	bool "KPB force copy type normal"
+	default y
+	help
+	   Select this to force the kpb draining copy type to normal.
+	   Unselecting this will keep the kpb sink copy type unchanged.
+
+endif # COMP_KPB
 
 config COMP_SEL
 	bool "Channel selector component"
