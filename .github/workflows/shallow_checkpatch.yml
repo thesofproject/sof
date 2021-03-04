@@ -1,0 +1,55 @@
+---
+# SPDX-License-Identifier: BSD-3-Clause
+# Tools that can save round-trips to github and a lot of time:
+#
+# yamllint -f parsable this.yml
+# pip3 install ruamel.yaml.cmd
+# yaml merge-expand this.yml exp.yml && diff -w -u this.yml exp.yml
+#
+# github.com also has a powerful web editor that can be used without
+# committing.
+
+name: checkpatch
+
+# yamllint disable-line rule:truthy
+on: [pull_request]
+
+jobs:
+  checkpatch:
+    runs-on: ubuntu-20.04
+    env:
+      PR_NUM: ${{github.event.number}}
+      CHK_CMD: ./scripts/checkpatch.pl --codespell --codespellfile
+          /usr/lib/python3/dist-packages/codespell_lib/data/dictionary.txt
+    steps:
+      # depth 2 so:
+      # ^1. we can show the Subject of the current target branch tip
+      # ^2. we reconnect/graft to the later fetch pull/1234/head,
+      - uses: actions/checkout@v2
+        with: {fetch-depth: 2}
+
+      - name: yamllint ourselves
+        run: yamllint .github/workflows/shallow_checkpatch.yml
+
+      - name: install codespell
+        run: sudo apt-get -y install codespell && dpkg -L codespell | grep dict
+
+      # See shallowness issue https://github.com/thesofproject/linux/issues/2556
+      - name: fetch PR commits
+        run: |
+           .github/workflows/shallowfetchPRcommits.sh \
+              ${GITHUB_REPOSITORY} "$PR_NUM"
+           # show what we got
+           git --no-pager log --oneline --graph --decorate --max-count=50
+
+      - name: checkpatch
+        run: while read -r sha ; do
+              printf '\n    -------------- \n\n';
+              ${CHK_CMD} -g $sha;
+             done < PR_SHAs.txt
+
+      - name: checkpatch --strict
+        run: while read -r sha ; do
+              printf '\n    -------------- \n\n';
+              ${CHK_CMD} --strict -g $sha;
+             done < PR_SHAs.txt
