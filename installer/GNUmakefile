@@ -29,7 +29,13 @@ target_of_cml := cnl
 # Same code, different Intel key
 target_of_ehl := tgl
 
-TOOLCHAIN ?= gcc
+ifeq (,${TOOLCHAIN})
+  ifeq (,${XTENSA_TOOLS_ROOT})
+    TOOLCHAIN := gcc
+  else
+    TOOLCHAIN := xcc
+  endif
+endif
 
 TREE_OPTS ?= --sort=size --dirsfirst
 INSTALL_OPTS ?= -D -p -m 0664
