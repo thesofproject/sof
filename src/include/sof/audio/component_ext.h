@@ -210,6 +210,20 @@ static inline int comp_copy(struct comp_dev *dev)
 	return ret;
 }
 
+/** See comp_ops::get_attribute */
+static inline int comp_get_attribute(struct comp_dev *dev, uint32_t type,
+				     void *value)
+{
+	int ret = 0;
+
+	if (dev->drv->ops.get_attribute)
+		ret = dev->drv->ops.get_attribute(dev, type, value);
+
+	comp_shared_commit(dev);
+
+	return ret;
+}
+
 /** See comp_ops::set_attribute */
 static inline int comp_set_attribute(struct comp_dev *dev, uint32_t type,
 				     void *value)

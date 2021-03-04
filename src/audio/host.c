@@ -894,6 +894,22 @@ static int host_copy(struct comp_dev *dev)
 	return hd->copy(dev);
 }
 
+static int host_get_attribute(struct comp_dev *dev, uint32_t type,
+			      void *value)
+{
+	struct host_data *hd = comp_get_drvdata(dev);
+
+	switch (type) {
+	case COMP_ATTR_COPY_TYPE:
+		*(enum comp_copy_type *)value = hd->copy_type;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 static int host_set_attribute(struct comp_dev *dev, uint32_t type,
 			      void *value)
 {
@@ -926,6 +942,7 @@ static const struct comp_driver comp_host = {
 		.copy		= host_copy,
 		.prepare	= host_prepare,
 		.position	= host_position,
+		.get_attribute	= host_get_attribute,
 		.set_attribute	= host_set_attribute,
 	},
 };
