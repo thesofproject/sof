@@ -22,6 +22,7 @@ define(`W_PIPELINE',
 `		SOF_TKN_SCHED_CORE'		STR($4)
 `		SOF_TKN_SCHED_FRAMES'		"0"
 `		SOF_TKN_SCHED_TIME_DOMAIN'	STR($5)
+`		SOF_TKN_SCHED_DYNAMIC'		ifdef(`DYNAMIC', "1", ifelse(DYNAMIC_PIPE, `1', "1", "0"))
 `	}'
 `}'
 `SectionData."'N_PIPELINE($1)`_data" {'
@@ -42,7 +43,7 @@ dnl PIPELINE_PCM_ADD(pipeline,
 dnl     pipe id, pcm, max channels, format,
 dnl     period, priority, core,
 dnl     pcm_min_rate, pcm_max_rate, pipeline_rate,
-dnl     time_domain, sched_comp)
+dnl     time_domain, sched_comp, dynamic)
 define(`PIPELINE_PCM_ADD',
 `ifelse(eval(`$# > 10'), `1',
 `undefine(`PCM_ID')'
@@ -59,6 +60,7 @@ define(`PIPELINE_PCM_ADD',
 `undefine(`DAI_FORMAT')'
 `undefine(`SCHED_COMP')'
 `undefine(`DAI_PERIODS')'
+`undefine(`DYNAMIC_PIPE')'
 `define(`PIPELINE_ID', $2)'
 `define(`PCM_ID', $3)'
 `define(`PIPELINE_CHANNELS', $4)'
@@ -72,6 +74,7 @@ define(`PIPELINE_PCM_ADD',
 `define(`SCHEDULE_TIME_DOMAIN', $12)'
 `define(`DAI_FORMAT', $5)'
 `define(`SCHED_COMP', $13)'
+`define(`DYNAMIC_PIPE', $14)'
 `define(`DAI_PERIODS', DAI_DEFAULT_PERIODS)'
 `include($1)'
 `DEBUG_PCM_ADD($1, $3)'
@@ -124,7 +127,7 @@ dnl PIPELINE_ADD(pipeline,
 dnl     pipe id, max channels, format,
 dnl     period, priority, core,
 dnl     sched_comp, time_domain,
-dnl     pcm_min_rate, pcm_max_rate, pipeline_rate)
+dnl     pcm_min_rate, pcm_max_rate, pipeline_rate, dynamic)
 define(`PIPELINE_ADD',
 `ifelse(`$#', `12',
 `undefine(`PIPELINE_ID')'
@@ -137,6 +140,7 @@ define(`PIPELINE_ADD',
 `undefine(`PCM_MIN_RATE')'
 `undefine(`PCM_MAX_RATE')'
 `undefine(`PIPELINE_RATE')'
+`undefine(`DYNAMIC_PIPE')'
 `define(`PIPELINE_ID', $2)'
 `define(`PIPELINE_CHANNELS', $3)'
 `define(`PIPELINE_FORMAT', $4)'
@@ -148,6 +152,7 @@ define(`PIPELINE_ADD',
 `define(`PCM_MIN_RATE', $10)'
 `define(`PCM_MAX_RATE', $11)'
 `define(`PIPELINE_RATE', $12)'
+`define(`DYNAMIC_PIPE', $13)'
 `include($1)'
 ,`fatal_error(`Invalid parameters ($#) to PIPELINE_ADD')')'
 )

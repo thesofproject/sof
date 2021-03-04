@@ -196,7 +196,7 @@ dnl DAI_ADD(pipeline,
 dnl     pipe id, dai type, dai_index, dai_be,
 dnl     buffer, periods, format,
 dnl     period , priority, core, time_domain,
-dnl     channels, rate)
+dnl     channels, rate, dynamic_pipe)
 define(`DAI_ADD',
 `undefine(`PIPELINE_ID')'
 `undefine(`DAI_TYPE')'
@@ -211,6 +211,7 @@ define(`DAI_ADD',
 `undefine(`SCHEDULE_TIME_DOMAIN')'
 `undefine(`DAI_CHANNELS')'
 `undefine(`DAI_RATE')'
+`undefine(`DYNAMIC_PIPE')'
 `define(`PIPELINE_ID', $2)'
 `define(`DAI_TYPE', STR($3))'
 `define(`DAI_INDEX', STR($4))'
@@ -225,6 +226,7 @@ define(`DAI_ADD',
 `define(`SCHEDULE_TIME_DOMAIN', $12)'
 `define(`DAI_CHANNELS', $13)'
 `define(`DAI_RATE', $14)'
+`define(`DYNAMIC_PIPE', $15)'
 `include($1)'
 `DEBUG_DAI($3, $4)'
 )

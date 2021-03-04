@@ -29,6 +29,7 @@ SectionVendorTokens."sof_sched_tokens" {
 	SOF_TKN_SCHED_CORE			"203"
 	SOF_TKN_SCHED_FRAMES			"204"
 	SOF_TKN_SCHED_TIME_DOMAIN		"205"
+	SOF_TKN_SCHED_DYNAMIC			"206"
 }
 
 SectionVendorTokens."sof_volume_tokens" {
