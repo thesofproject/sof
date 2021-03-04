@@ -50,9 +50,7 @@ static void sai_start(struct dai *dai, int direction)
 	/* transmitter enable */
 	dai_update_bits(dai, REG_SAI_XCSR(direction),
 			REG_SAI_CSR_TERE, REG_SAI_CSR_TERE);
-	/* TODO: for the time being use half FIFO size as watermark */
-	dai_update_bits(dai, REG_SAI_XCR1(direction),
-			REG_SAI_CR1_RFW_MASK, SAI_FIFO_WORD_SIZE / 2);
+
 	dai_update_bits(dai, REG_SAI_XCR3(direction),
 			REG_SAI_CR3_TRCE_MASK, REG_SAI_CR3_TRCE(1));
 
@@ -255,6 +253,9 @@ static inline int sai_set_config(struct dai *dai,
 	mask_cr5  = REG_SAI_CR5_WNW_MASK | REG_SAI_CR5_W0W_MASK |
 			REG_SAI_CR5_FBT_MASK;
 
+	/* TODO: for the time being use half FIFO size as watermark */
+	dai_update_bits(dai, REG_SAI_XCR1(REG_TX_DIR),
+			REG_SAI_CR1_RFW_MASK, SAI_FIFO_WORD_SIZE / 2);
 	dai_update_bits(dai, REG_SAI_XCR2(REG_TX_DIR), mask_cr2, val_cr2);
 	dai_update_bits(dai, REG_SAI_XCR4(REG_TX_DIR), mask_cr4, val_cr4);
 	dai_update_bits(dai, REG_SAI_XCR5(REG_TX_DIR), mask_cr5, val_cr5);
@@ -264,6 +265,10 @@ static inline int sai_set_config(struct dai *dai,
 
 	val_cr2 |= REG_SAI_CR2_SYNC;
 	mask_cr2 |= REG_SAI_CR2_SYNC_MASK;
+
+	/* TODO: for the time being use half FIFO size as watermark */
+	dai_update_bits(dai, REG_SAI_XCR1(REG_RX_DIR),
+			REG_SAI_CR1_RFW_MASK, SAI_FIFO_WORD_SIZE / 2);
 	dai_update_bits(dai, REG_SAI_XCR2(REG_RX_DIR), mask_cr2, val_cr2);
 	dai_update_bits(dai, REG_SAI_XCR4(REG_RX_DIR), mask_cr4, val_cr4);
 	dai_update_bits(dai, REG_SAI_XCR5(REG_RX_DIR), mask_cr5, val_cr5);
