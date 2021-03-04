@@ -131,14 +131,21 @@ BUILD_SOF_RIS := \
         ${SIGNED_list:%=${BUILDS_ROOT}/build_%_${TOOLCHAIN}/sof.ri}
 
 # The build is not deterministic; use this to reduce noise when testing
-# this Makefile
+# this Makefile.
+# Also very useful with XCC, see next comment.
 ifneq (true,${BUILD_ONLY_ONCE})
 .PHONY: ${BUILD_SOF_RIS}
 endif
 
+# Incremental builds are not possible with XCC because the entire
+# toolchain requires $XTENSA_SYSTEM but CMake does not support
+# build-time environment variables. In the future we could move the
+# XTENSA_SYSTEM values out of xtensa-build-all.sh and into some shared
+# config file included here.
 ${BUILD_SOF_RIS}: ${BUILDS_ROOT}/build_%_${TOOLCHAIN}/sof.ri: | ${BUILDS_ROOT}
 	cd ${BUILDS_ROOT} && bdir="$$(dirname $@)" &&  \
-    if test -d $${bdir}; then cmake --build $${bdir} -- sof; else \
+      if [ -d $${bdir} ] && [ xcc != "${TOOLCHAIN}" ] ; then \
+        cmake --build $${bdir} -- sof; else \
       $(CURDIR)/../scripts/xtensa-build-all.sh $*; fi
 
 
