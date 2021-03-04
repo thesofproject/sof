@@ -33,6 +33,45 @@ static void sai_start(struct dai *dai, int direction)
 
 	uint32_t xcsr = 0U;
 
+	if (direction == DAI_DIR_CAPTURE) {
+		/* Software Reset */
+		dai_update_bits(dai, REG_SAI_XCSR(DAI_DIR_CAPTURE),
+				REG_SAI_CSR_SR, REG_SAI_CSR_SR);
+		/* Clear SR bit to finish the reset */
+		dai_update_bits(dai, REG_SAI_XCSR(DAI_DIR_CAPTURE),
+				REG_SAI_CSR_SR, 0U);
+		/* Check if the opposite direction is also disabled */
+		xcsr = dai_read(dai, REG_SAI_XCSR(DAI_DIR_PLAYBACK));
+		if (!(xcsr & REG_SAI_CSR_FRDE)) {
+			/* Software Reset */
+			dai_update_bits(dai, REG_SAI_XCSR(DAI_DIR_PLAYBACK),
+					REG_SAI_CSR_SR, REG_SAI_CSR_SR);
+			/* Clear SR bit to finish the reset */
+			dai_update_bits(dai, REG_SAI_XCSR(DAI_DIR_PLAYBACK),
+					REG_SAI_CSR_SR, 0U);
+			/* Transmitter enable */
+			dai_update_bits(dai, REG_SAI_XCSR(DAI_DIR_PLAYBACK),
+					REG_SAI_CSR_TERE, REG_SAI_CSR_TERE);
+		}
+	} else {
+		/* Check if the opposite direction is also disabled */
+		xcsr = dai_read(dai, REG_SAI_XCSR(DAI_DIR_CAPTURE));
+		if (!(xcsr & REG_SAI_CSR_FRDE)) {
+			/* Software Reset */
+			dai_update_bits(dai, REG_SAI_XCSR(DAI_DIR_PLAYBACK),
+					REG_SAI_CSR_SR, REG_SAI_CSR_SR);
+			/* Clear SR bit to finish the reset */
+			dai_update_bits(dai, REG_SAI_XCSR(DAI_DIR_PLAYBACK),
+					REG_SAI_CSR_SR, 0U);
+		}
+	}
+
+	/* add one word to FIFO before TRCE is enabled */
+	if (direction == DAI_DIR_PLAYBACK)
+		dai_write(dai, REG_SAI_TDR0, 0x0);
+	else
+		dai_write(dai, REG_SAI_RDR0, 0x0);
+
 	/* enable DMA requests */
 	dai_update_bits(dai, REG_SAI_XCSR(direction),
 			REG_SAI_CSR_FRDE, REG_SAI_CSR_FRDE);
@@ -41,31 +80,13 @@ static void sai_start(struct dai *dai, int direction)
 			REG_SAI_MCTL_MCLK_EN);
 #endif
 
-	/* add one word to FIFO before TRCE is enabled */
-	if (direction == DAI_DIR_PLAYBACK)
-		dai_write(dai, REG_SAI_TDR0, 0x0);
-	else
-		dai_write(dai, REG_SAI_RDR0, 0x0);
-
-	/* transmitter enable */
-	dai_update_bits(dai, REG_SAI_XCSR(direction),
-			REG_SAI_CSR_TERE, REG_SAI_CSR_TERE);
-
+	/* transmit/receive data channel enable */
 	dai_update_bits(dai, REG_SAI_XCR3(direction),
 			REG_SAI_CR3_TRCE_MASK, REG_SAI_CR3_TRCE(1));
 
-	if (direction == DAI_DIR_CAPTURE) {
-		xcsr = dai_read(dai, REG_SAI_XCSR(DAI_DIR_PLAYBACK));
-		if (!(xcsr & REG_SAI_CSR_FRDE)) {
-
-			dai_update_bits(dai, REG_SAI_XCSR(DAI_DIR_PLAYBACK),
-					REG_SAI_CSR_TERE, REG_SAI_CSR_TERE);
-			dai_update_bits(dai, REG_SAI_XCR3(DAI_DIR_PLAYBACK),
-					REG_SAI_CR3_TRCE_MASK,
-					REG_SAI_CR3_TRCE(1));
-		}
-	}
-
+	/* transmitter/receiver enable */
+	dai_update_bits(dai, REG_SAI_XCSR(direction),
+			REG_SAI_CSR_TERE, REG_SAI_CSR_TERE);
 }
 
 static void sai_stop(struct dai *dai, int direction)
@@ -74,32 +95,39 @@ static void sai_stop(struct dai *dai, int direction)
 
 	uint32_t xcsr = 0U;
 
+	/* Disable DMA request */
 	dai_update_bits(dai, REG_SAI_XCSR(direction),
 			REG_SAI_CSR_FRDE, 0);
+
+	/* Transmit/Receive data channel disable */
+	dai_update_bits(dai, REG_SAI_XCR3(direction),
+			REG_SAI_CR3_TRCE_MASK,
+			REG_SAI_CR3_TRCE(0));
+
+	/* Disable interrupts */
 	dai_update_bits(dai, REG_SAI_XCSR(direction),
 			REG_SAI_CSR_XIE_MASK, 0);
 
-	/* Check if the opposite direction is also disabled */
-	xcsr = dai_read(dai, REG_SAI_XCSR(!direction));
-	if (!(xcsr & REG_SAI_CSR_FRDE)) {
-		/* Disable both directions and reset their FIFOs */
-		dai_update_bits(dai, REG_SAI_TCSR, REG_SAI_CSR_TERE, 0);
-		poll_for_register_delay(dai_base(dai) + REG_SAI_TCSR,
+	/* Disable transmitter/receiver */
+	if (direction == DAI_DIR_CAPTURE) {
+		dai_update_bits(dai, REG_SAI_XCSR(DAI_DIR_CAPTURE), REG_SAI_CSR_TERE, 0);
+		poll_for_register_delay(dai_base(dai) + REG_SAI_XCSR(DAI_DIR_CAPTURE),
 					REG_SAI_CSR_TERE, 0, 100);
-
-		dai_update_bits(dai, REG_SAI_RCSR, REG_SAI_CSR_TERE, 0);
-		poll_for_register_delay(dai_base(dai) + REG_SAI_RCSR,
-					REG_SAI_CSR_TERE, 0, 100);
-
-		/* Software Reset for both Tx and Rx */
-		dai_update_bits(dai, REG_SAI_TCSR, REG_SAI_CSR_SR,
-				REG_SAI_CSR_SR);
-		dai_update_bits(dai, REG_SAI_RCSR, REG_SAI_CSR_SR,
-				REG_SAI_CSR_SR);
-
-		/* Clear SR bit to finish the reset */
-		dai_update_bits(dai, REG_SAI_TCSR, REG_SAI_CSR_SR, 0U);
-		dai_update_bits(dai, REG_SAI_RCSR, REG_SAI_CSR_SR, 0U);
+		/* Check if the opposite direction is also disabled */
+		xcsr = dai_read(dai, REG_SAI_XCSR(DAI_DIR_PLAYBACK));
+		if (!(xcsr & REG_SAI_CSR_FRDE)) {
+			dai_update_bits(dai, REG_SAI_XCSR(DAI_DIR_PLAYBACK), REG_SAI_CSR_TERE, 0);
+			poll_for_register_delay(dai_base(dai) + REG_SAI_XCSR(DAI_DIR_PLAYBACK),
+						REG_SAI_CSR_TERE, 0, 100);
+		}
+	} else {
+		/* Check if the opposite direction is also disabled */
+		xcsr = dai_read(dai, REG_SAI_XCSR(DAI_DIR_CAPTURE));
+		if (!(xcsr & REG_SAI_CSR_FRDE)) {
+			dai_update_bits(dai, REG_SAI_XCSR(DAI_DIR_PLAYBACK), REG_SAI_CSR_TERE, 0);
+			poll_for_register_delay(dai_base(dai) + REG_SAI_XCSR(DAI_DIR_PLAYBACK),
+						REG_SAI_CSR_TERE, 0, 100);
+		}
 	}
 }
 
