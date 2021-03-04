@@ -279,21 +279,21 @@ do
 			ARCH="xtensa"
 			XTENSA_CORE="hifi4_nxp_v3_3_1_2_dev"
 			HOST="xtensa-imx-elf"
-			XTENSA_TOOLS_VERSION="RF-2017.8-linux"
+			XTENSA_TOOLS_VERSION="RG-2017.8-linux"
 			;;
 		imx8x)
 			PLATFORM="imx8x"
 			ARCH="xtensa"
 			XTENSA_CORE="hifi4_nxp_v3_3_1_2_dev"
 			HOST="xtensa-imx-elf"
-			XTENSA_TOOLS_VERSION="RF-2017.8-linux"
+			XTENSA_TOOLS_VERSION="RG-2017.8-linux"
 			;;
 		imx8m)
 			PLATFORM="imx8m"
 			ARCH="xtensa"
 			XTENSA_CORE="hifi4_mscale_v0_0_2_prod"
 			HOST="xtensa-imx8m-elf"
-			XTENSA_TOOLS_VERSION="RF-2017.8-linux"
+			XTENSA_TOOLS_VERSION="RG-2017.8-linux"
 			;;
 
 	esac
