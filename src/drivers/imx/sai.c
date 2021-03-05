@@ -66,6 +66,14 @@ static void sai_start(struct dai *dai, int direction)
 		}
 	}
 
+	/* W1C */
+	dai_update_bits(dai, REG_SAI_XCSR(direction),
+			REG_SAI_CSR_FEF, 1);
+	dai_update_bits(dai, REG_SAI_XCSR(direction),
+			REG_SAI_CSR_SEF, 1);
+	dai_update_bits(dai, REG_SAI_XCSR(direction),
+			REG_SAI_CSR_WSF, 1);
+
 	/* add one word to FIFO before TRCE is enabled */
 	if (direction == DAI_DIR_PLAYBACK)
 		dai_write(dai, REG_SAI_TDR0, 0x0);
