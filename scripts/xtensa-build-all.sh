@@ -83,7 +83,7 @@ SIGNING_TOOL=RIMAGE
 
 if [ -n "${OVERRIDE_CONFIG}" ]
 then
-	OVERRIDE_CONFIG="src/arch/xtensa/configs/override/$OVERRIDE_CONFIG.config"
+	OVERRIDE_CONFIG="${SOF_TOP}/src/arch/xtensa/configs/override/$OVERRIDE_CONFIG.config"
 	[ -f "${OVERRIDE_CONFIG}" ] || die 'Invalid override config file %s\n' "${OVERRIDE_CONFIG}"
 fi
 
@@ -359,7 +359,7 @@ do
 
 	if [ -n "$OVERRIDE_CONFIG" ]
 	then
-		cp "../$OVERRIDE_CONFIG" override.config
+		cp "$OVERRIDE_CONFIG" override.config
 	fi
 
 	if [[ "x$MAKE_MENUCONFIG" == "xyes" ]]
