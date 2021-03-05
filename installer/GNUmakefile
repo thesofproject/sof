@@ -73,7 +73,7 @@ endif
 
 COMMUNITY	:= ${STAGING_SOF_VERSION}/community
 INTEL_SIGNED	:= ${STAGING_SOF_VERSION}/intel-signed
-${COMMUNITY} ${INTEL_SIGNED} ${BUILDS_ROOT}:
+${COMMUNITY} ${INTEL_SIGNED} ${BUILDS_ROOT} ${STAGING_SOF_VERSION}:
 	mkdir -p $@
 
 
@@ -179,15 +179,15 @@ DICT_ALIASES   := ${ALIAS_list:%=${STAGING_SOF_VERSION}/sof-%.ldc}
 SIGNED_ALIASES := ${ALIAS_list:%=${STAGING_SOF_VERSION}/sof-%.ri}
 aliases: ${SIGNED_ALIASES} ${COMM_ALIASES} ${DICT_ALIASES}
 
-${COMM_ALIASES}: ${STAGING_SOF_VERSION}/community/sof-%.ri:
+${COMM_ALIASES}: ${STAGING_SOF_VERSION}/community/sof-%.ri: | ${COMMUNITY}
 	ln -sfT sof-${target_of_$*}.ri $@
 
-${DICT_ALIASES}: ${STAGING_SOF_VERSION}/sof-%.ldc:
+${DICT_ALIASES}: ${STAGING_SOF_VERSION}/sof-%.ldc: | ${STAGING_SOF_VERSION}
 	ln -sfT sof-${target_of_$*}.ldc $@
 
 # Some have the same key, others just the code. We don't make any
 # difference here and let the intel-signed/ directory handle this.
-${SIGNED_ALIASES}: ${STAGING_SOF_VERSION}/sof-%.ri:
+${SIGNED_ALIASES}: ${STAGING_SOF_VERSION}/sof-%.ri: | ${STAGING_SOF_VERSION}
 	ln -sfT intel-signed/sof-$*.ri $@
 
 
