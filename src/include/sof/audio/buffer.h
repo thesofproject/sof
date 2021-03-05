@@ -197,9 +197,15 @@ static inline void buffer_writeback(struct comp_buffer *buffer, uint32_t bytes)
  */
 static inline void buffer_lock(struct comp_buffer *buffer, uint32_t *flags)
 {
-	if (!buffer->inter_core)
+	if (!buffer->inter_core) {
+		/* Ignored by buffer_unlock() below, silences "may be
+		 * used uninitialized" warning.
+		 */
+		*flags = 0xffffffff;
 		return;
+	}
 
+	/* Expands to: *flags = ... */
 	spin_lock_irq(buffer->lock, *flags);
 
 	/* invalidate in case something has changed during our wait */
