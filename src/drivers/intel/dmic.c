@@ -1269,7 +1269,6 @@ static void dmic_start(struct dai *dai)
 	/* enable port */
 	spin_lock(&dai->lock);
 	dai_dbg(dai, "dmic_start()");
-	dmic->state = COMP_STATE_ACTIVE;
 	dmic->startcount = 0;
 
 	/* Initial gain value, convert Q12.20 to Q2.30 */
@@ -1368,7 +1367,10 @@ static void dmic_start(struct dai *dai)
 				CIC_CONTROL_SOFT_RESET_BIT, 0);
 	}
 
-	dmic_active_fifos++;
+	if (dmic->state == COMP_STATE_PREPARE)
+		dmic_active_fifos++;
+
+	dmic->state = COMP_STATE_ACTIVE;
 
 	spin_unlock(&dai->lock);
 
@@ -1395,13 +1397,6 @@ static void dmic_stop(struct dai *dai)
 
 	dai_dbg(dai, "dmic_stop()");
 	spin_lock(&dai->lock);
-
-	if (dmic->state != COMP_STATE_ACTIVE) {
-		dai_info(dai, "dmic_stop(), already stopped");
-		goto out;
-	}
-
-	dmic->state = COMP_STATE_PREPARE;
 
 	/* Stop FIFO packers and set FIFO initialize bits */
 	switch (dai->index) {
@@ -1445,10 +1440,10 @@ static void dmic_stop(struct dai *dai)
 		}
 	}
 
-	dmic_active_fifos--;
+	if (dmic->state == COMP_STATE_PREPARE)
+		dmic_active_fifos--;
 
 	schedule_task_cancel(&dmic->dmicwork);
-out:
 	platform_shared_commit(dmic, sizeof(*dmic));
 	spin_unlock(&dai->lock);
 }
@@ -1496,7 +1491,11 @@ static int dmic_trigger(struct dai *dai, int cmd, int direction)
 		}
 		break;
 	case COMP_TRIGGER_STOP:
+		dmic->state = COMP_STATE_PREPARE;
+		dmic_stop(dai);
+		break;
 	case COMP_TRIGGER_PAUSE:
+		dmic->state = COMP_STATE_PAUSED;
 		dmic_stop(dai);
 		break;
 	case COMP_TRIGGER_RESUME:
@@ -1520,6 +1519,7 @@ static int dmic_trigger(struct dai *dai, int cmd, int direction)
 static void dmic_irq_handler(void *data)
 {
 	struct dai *dai = data;
+	struct dmic_pdata *dmic = dai_get_drvdata(dai);
 	uint32_t val0;
 	uint32_t val1;
 
@@ -1532,12 +1532,14 @@ static void dmic_irq_handler(void *data)
 	if (val0 & OUTSTAT0_ROR_BIT) {
 		dai_err(dai, "dmic_irq_handler(): full fifo A or PDM overrun");
 		dai_write(dai, OUTSTAT0, val0);
+		dmic->state = COMP_STATE_PREPARE;
 		dmic_stop(dai);
 	}
 
 	if (val1 & OUTSTAT1_ROR_BIT) {
 		dai_err(dai, "dmic_irq_handler(): full fifo B or PDM overrun");
 		dai_write(dai, OUTSTAT1, val1);
+		dmic->state = COMP_STATE_PREPARE;
 		dmic_stop(dai);
 	}
 }
