@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-20.04
     env:
       PR_NUM: ${{github.event.number}}
-      CHK_CMD: ./scripts/checkpatch.pl --codespell --codespellfile
+      CHK_CMD_OPTS: --codespell --codespellfile
           /usr/lib/python3/dist-packages/codespell_lib/data/dictionary.txt
     steps:
       # depth 2 so:
@@ -42,14 +42,9 @@ jobs:
            # show what we got
            git --no-pager log --oneline --graph --decorate --max-count=50
 
-      - name: checkpatch
-        run: while read -r sha ; do
-              printf '\n    -------------- \n\n';
-              ${CHK_CMD} -g $sha;
-             done < PR_SHAs.txt
+      - name: normal checkpatch
+        run: .github/workflows/checkpatch_list.sh ${CHK_CMD_OPTS} < PR_SHAs.txt
 
       - name: checkpatch --strict
-        run: while read -r sha ; do
-              printf '\n    -------------- \n\n';
-              ${CHK_CMD} --strict -g $sha;
-             done < PR_SHAs.txt
+        run: .github/workflows/checkpatch_list.sh ${CHK_CMD_OPTS}
+                 --strict < PR_SHAs.txt
