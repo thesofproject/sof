@@ -62,7 +62,7 @@ main()
     # faster so keep a single and simple fetch for now.
 
     set -x # this command may take a while so show it
-    git fetch --depth "$((PRlen+1))" "http://github.com/$gh_project" "pull/$pr_number/head"
+    git fetch --depth "$((PRlen+1))" "https://github.com/$gh_project" "pull/$pr_number/head"
 
 }
 
