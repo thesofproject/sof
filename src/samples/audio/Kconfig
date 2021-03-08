@@ -11,7 +11,7 @@ menu "Audio component samples"
 	                Select for test smart amplifier component
 
         config SAMPLE_KEYPHRASE
-		depends on CAVS
+		depends on CAVS || IMX
 	        bool "Keyphrase test component"
 	        default y
 	        help
