@@ -23,6 +23,9 @@ jobs:
         # From time to time this will catch a git tag and change SOF_VERSION
         with: {fetch-depth: 50, submodules: recursive}
 
+      - name: yamllint ourselves
+        run: yamllint .github/workflows/installer.yml
+
       - name: docker
         run: docker pull thesofproject/sof && docker tag thesofproject/sof sof
 
