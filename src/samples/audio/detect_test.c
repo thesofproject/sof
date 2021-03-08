@@ -124,6 +124,7 @@ static void notify_kpb(const struct comp_dev *dev)
 	cd->client_data.r_ptr = NULL;
 	cd->client_data.sink = NULL;
 	cd->client_data.id = 0; /**< TODO: acquire proper id from kpb */
+	cd->client_data.task_deadline = SOF_TASK_DEADLINE_ALMOST_IDLE;
 	/* time in milliseconds */
 	cd->client_data.drain_req = (cd->drain_req != 0) ?
 					 cd->drain_req :

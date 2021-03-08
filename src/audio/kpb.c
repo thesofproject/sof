@@ -110,7 +110,9 @@ static inline void kpb_change_state(struct comp_data *kpb,
 
 static uint64_t kpb_task_deadline(void *data)
 {
-	return SOF_TASK_DEADLINE_ALMOST_IDLE;
+	struct draining_data *draining_data = (struct draining_data *)data;
+
+	return draining_data->task_deadline;
 }
 
 /**
@@ -1135,6 +1137,7 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 		kpb->draining_task_data.pb_limit = period_bytes_limit;
 		kpb->draining_task_data.dev = dev;
 		kpb->draining_task_data.sync_mode_on = kpb->sync_draining_mode;
+		kpb->draining_task_data.task_deadline = cli->task_deadline;
 
 		/* save current sink copy type */
 		comp_get_attribute(kpb->host_sink->sink, COMP_ATTR_COPY_TYPE,

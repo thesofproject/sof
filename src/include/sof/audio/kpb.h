@@ -94,6 +94,7 @@ struct kpb_client {
 	enum kpb_client_state state; /**< current state of a client */
 	void *r_ptr; /**< current read position */
 	struct comp_buffer *sink; /**< client's sink */
+	uint64_t task_deadline;
 };
 
 enum buffer_state {
@@ -130,6 +131,7 @@ struct draining_data {
 	struct comp_dev *dev;
 	bool sync_mode_on;
 	enum comp_copy_type copy_type;
+	uint64_t task_deadline;
 };
 
 struct history_data {
