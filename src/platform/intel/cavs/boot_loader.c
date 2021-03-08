@@ -29,6 +29,20 @@
 
 #define MANIFEST_SEGMENT_COUNT 3
 
+/* GCC10: memset linker error */
+/* generic memset */
+void *memset(void *s, int c, size_t n)
+{
+	uint8_t *d8 = s;
+	uint8_t v = c;
+	int i;
+
+	for (i = 0; i < n; i++)
+		d8[i] = v;
+
+	return s;
+}
+
 /* generic string compare cloned into the bootloader to
  * compact code and make it more readable
  */
