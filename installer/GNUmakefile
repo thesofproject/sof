@@ -12,9 +12,12 @@
 -include config.mk
 
 UNSIGNED_list ?= bdw byt cht
-SIGNED_list  ?= apl cnl icl jsl tgl
+SIGNED_list  ?= apl cnl icl jsl tgl tgl-h
 # older SOF versions
 # SIGNED_list += hsw kbl skl sue
+
+# In a Linux kernel git clone, try:
+#   git grep 'sof-.*\.ri' -- sound/soc/
 ALIAS_list ?= glk cfl cml ehl
 
 $(info UNSIGNED_list = ${UNSIGNED_list} )
