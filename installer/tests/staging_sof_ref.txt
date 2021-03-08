@@ -8,6 +8,7 @@
 │   ├── sof-glk.ri -> sof-apl.ri
 │   ├── sof-icl.ri
 │   ├── sof-jsl.ri
+│   ├── sof-tgl-h.ri
 │   └── sof-tgl.ri
 ├── intel-signed
 ├── sof-apl.ldc
@@ -32,7 +33,9 @@
 ├── sof-icl.ri -> intel-signed/sof-icl.ri
 ├── sof-jsl.ldc
 ├── sof-jsl.ri -> intel-signed/sof-jsl.ri
+├── sof-tgl-h.ldc
+├── sof-tgl-h.ri -> intel-signed/sof-tgl-h.ri
 ├── sof-tgl.ldc
 └── sof-tgl.ri -> intel-signed/sof-tgl.ri
 
-2 directories, 33 files
+2 directories, 36 files
