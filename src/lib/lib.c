@@ -30,6 +30,26 @@ void *memset(void *s, int c, size_t n)
 
 	return s;
 }
+
+/* generic memmove */
+void *memmove(void *dest, const void *src, size_t n)
+{
+	char *d = dest;
+	const char *s = src;
+
+	if (d < s) {
+		/* same as memcpy */
+		arch_memcpy_s(d, n, s, n);
+	} else {
+		char *lasts = (char *)s + (n - 1);
+		char *lastd = d + (n - 1);
+
+		for (; n > 0; n--)
+			*lastd-- = *lasts--;
+	}
+
+	return dest;
+}
 #endif
 
 int memcpy_s(void *dest, size_t dest_size,
