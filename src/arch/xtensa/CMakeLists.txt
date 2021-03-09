@@ -372,13 +372,18 @@ endif()
 # what they build in the moment.
 set(silenceUnusedWarning "${MEU_OPENSSL}")
 
-if(MEU_PATH OR DEFINED MEU_NO_SIGN)
+if(MEU_PATH OR DEFINED MEU_NO_SIGN) # Don't sign with rimage
 	if(NOT DEFINED MEU_OFFSET)
 		execute_process(
 			COMMAND ${MEU_PATH}/meu -ver
 			OUTPUT_VARIABLE MEU_VERSION_FULL_TEXT
 			OUTPUT_STRIP_TRAILING_WHITESPACE
+			RESULT_VARIABLE meu_ver_res
 		)
+		if(NOT ${meu_ver_res} EQUAL 0)
+			message(WARNING "${MEU_PATH}/meu -ver"
+			  " failed with: ${meu_ver_res}")
+		endif()
 
 		string(REGEX MATCH "Version:[\t\n ]*([^\t\n ]+)" ignored "${MEU_VERSION_FULL_TEXT}")
 		set(MEU_VERSION ${CMAKE_MATCH_1})
@@ -391,7 +396,10 @@ if(MEU_PATH OR DEFINED MEU_NO_SIGN)
 			set(MEU_OFFSET 1344)
 		endif()
 	endif()
+	message(STATUS MEU_OFFSET=${MEU_OFFSET})
 
+	# Passing -s ${MEU_OFFSET} disables rimage signing and produces
+	# one .uns file and one .met file instead of a .ri file.
 	add_custom_target(
 		run_rimage
 		COMMAND ${PROJECT_BINARY_DIR}/rimage_ep/build/rimage
@@ -438,7 +446,7 @@ if(MEU_PATH OR DEFINED MEU_NO_SIGN)
 			USES_TERMINAL
 		)
 	endif()
-else()
+else() # sign with rimage
 	add_custom_target(
 		run_rimage
 		COMMAND ${PROJECT_BINARY_DIR}/rimage_ep/build/rimage
@@ -462,7 +470,7 @@ else()
 	endif()
 
 	add_custom_target(run_meu DEPENDS run_rimage)
-endif()
+endif() # sign with MEU / nothing / rimage
 
 if(NOT DEFINED FIRMWARE_NAME)
 	set(fw_output_name "${fw_name}")
