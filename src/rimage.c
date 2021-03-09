@@ -24,7 +24,7 @@ static void usage(char *name)
 			name);
 	fprintf(stdout, "\t -v enable verbose output\n");
 	fprintf(stdout, "\t -r enable relocatable ELF files\n");
-	fprintf(stdout, "\t -s MEU signing offset\n");
+	fprintf(stdout, "\t -s MEU signing offset, disables rimage signing\n");
 	fprintf(stdout, "\t -i set IMR type\n");
 	fprintf(stdout, "\t -x set xcc module offset\n");
 	fprintf(stdout, "\t -f firmware version = x.y\n");
