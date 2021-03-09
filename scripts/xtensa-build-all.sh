@@ -45,8 +45,9 @@ usage: $0 [options] platform(s)
        -v Verbose Makefile log
        -j n Set number of make build jobs. Jobs=#cores when no flag. \
 Infinte when not specified.
-	-m path to MEU tool. Switches signing step to use MEU instead of rimage.
-           To use a non-default key define PRIVATE_KEY_OPTION, see below.
+       -m path to MEU tool. CMake disables rimage signing which produces a
+          .uns[igned] file signed by MEU. For a non-default key use the
+          PRIVATE_KEY_OPTION, see below.
 
 To use a non-default key you must define the right CMake parameter in the
 following environment variable:
