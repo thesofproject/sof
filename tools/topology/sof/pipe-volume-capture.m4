@@ -13,10 +13,15 @@ include(`dai.m4')
 include(`mixercontrol.m4')
 include(`pipeline.m4')
 
+ifdef(`PGA_NAME', `', `define(PGA_NAME, N_PGA(0))')
+ifdef(`CONTROL_NAME_VOLUME', `', `define(CONTROL_NAME_VOLUME, PIPELINE_ID Master Capture Volume)')
+
 #
 # Controls
 #
 # Volume Mixer control with max value of 32
+define(`CONTROL_NAME', `CONTROL_NAME_VOLUME')
+
 C_CONTROLMIXER(Master Capture Volume, PIPELINE_ID,
 	CONTROLMIXER_OPS(volsw, 256 binds the mixer control to volume get/put handlers, 256, 256),
 	CONTROLMIXER_MAX(, 80),
@@ -24,6 +29,8 @@ C_CONTROLMIXER(Master Capture Volume, PIPELINE_ID,
 	CONTROLMIXER_TLV(TLV 80 steps from -50dB to +30dB for 1dB, vtlv_m50s1),
 	Channel register and shift for Front Left/Right,
 	LIST(`	', KCONTROL_CHANNEL(FL, 1, 0), KCONTROL_CHANNEL(FR, 1, 1)))
+
+undefine(`CONTROL_NAME')
 
 #
 # Volume Configuration
@@ -45,7 +52,7 @@ W_PCM_CAPTURE(PCM_ID, Passthrough Capture, 0, 2, SCHEDULE_CORE)
 
 # "Volume" has x source and 2 sink periods
 W_PGA(0, PIPELINE_FORMAT, 2, DAI_PERIODS, capture_pga_conf, SCHEDULE_CORE,
-	LIST(`		', "PIPELINE_ID Master Capture Volume"))
+	LIST(`		', "CONTROL_NAME_VOLUME"))
 
 # Capture Buffers
 W_BUFFER(0, COMP_BUFFER_SIZE(2,
@@ -63,8 +70,11 @@ W_BUFFER(1, COMP_BUFFER_SIZE(DAI_PERIODS,
 P_GRAPH(pipe-pass-vol-capture-PIPELINE_ID, PIPELINE_ID,
 	LIST(`		',
 	`dapm(N_PCMC(PCM_ID), N_BUFFER(0))',
-	`dapm(N_BUFFER(0), N_PGA(0))',
-	`dapm(N_PGA(0), N_BUFFER(1))'))
+	`dapm(N_BUFFER(0), PGA_NAME)',
+	`dapm(PGA_NAME, N_BUFFER(1))'))
+
+undefine(`PGA_NAME')
+undefine(`CONTROL_NAME_VOLUME')
 
 #
 # Pipeline Source and Sinks

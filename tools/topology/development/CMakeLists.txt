@@ -31,6 +31,8 @@ set(TPLGS_UP
 	"sof-cml-rt5682\;sof-cml-eq-iir-rt5682\;-DPLATFORM=cml\;-DHSEARPROC=eq-iir-volume\;-DDMICPROC=eq-iir-volume\;-DDMIC16KPROC=eq-iir-volume"
 	"sof-glk-da7219\;sof-glk-eq-da7219\;-DDMICPROC=eq-iir-volume"
 	"sof-hda-generic\;sof-hda-generic-tdfb_50mm-2ch\;-DCHANNELS=2\;-DHSPROC=volume\;-DDMIC16KPROC=tdfb-eq-iir-volume\;-DDMIC16KPROC_FILTER1=tdfb/coef_line2_50mm_pm10deg_16khz.m4\;-DDMICPROC=tdfb-eq-iir-volume\;-DDMICPROC_FILTER1=tdfb/coef_line2_50mm_pm10deg_48khz.m4\;-DDMICPROC_FILTER2=eq_iir_coef_highpass_40hz_20db_48khz.m4\;-DDMIC16KPROC_FILTER2=eq_iir_coef_highpass_40hz_20db_16khz.m4"
+	"sof-hda-generic\;sof-hda-generic-2ch-passthrough\;-DCHANNELS=2\;-DHSPROC=volume\;-DDMICPROC=passthrough\;-DDMIC16KPROC=passthrough"
+	"sof-hda-generic\;sof-hda-generic-2ch-volume\;-DCHANNELS=2\;-DHSPROC=volume\;-DDMICPROC=volume-switch\;-DDMIC16KPROC=volume"
 )
 
 add_custom_target(dev_topologies ALL)

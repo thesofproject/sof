@@ -16,16 +16,17 @@ include(`mixercontrol.m4')
 include(`eq_iir.m4')
 
 ifdef(`PGA_NAME', `', `define(PGA_NAME, N_PGA(0))')
-define(`CONTROL_NAME_VOLUME', Capture Volume)
-define(`CONTROL_NAME_SWITCH', Capture Switch)
-define(`CONTROL_NAME', `CONTROL_NAME_VOLUME')
+ifdef(`CONTROL_NAME_VOLUME', `', `define(CONTROL_NAME_VOLUME, PIPELINE_ID Master Capture Volume)')
+ifdef(`CONTROL_NAME_SWITCH', `', `define(CONTROL_NAME_SWITCH, PIPELINE_ID Master Capture Switch)')
 
 #
 # Controls
 #
 
 # Volume Mixer control with max value of 32
-C_CONTROLMIXER(Capture Volume, PIPELINE_ID,
+define(`CONTROL_NAME', `CONTROL_NAME_VOLUME')
+
+C_CONTROLMIXER(Master Capture Volume, PIPELINE_ID,
 	CONTROLMIXER_OPS(volsw,
 		256 binds the mixer control to volume get/put handlers,
 		256, 256),
@@ -36,10 +37,11 @@ C_CONTROLMIXER(Capture Volume, PIPELINE_ID,
 	DMIC_VOL_CH_MAPS)
 
 undefine(`CONTROL_NAME')
-define(`CONTROL_NAME', `CONTROL_NAME_SWITCH')
 
 # Switch type Mixer Control with max value of 1
-C_CONTROLMIXER(Capture Switch, PIPELINE_ID,
+define(`CONTROL_NAME', `CONTROL_NAME_SWITCH')
+
+C_CONTROLMIXER(Master Capture Switch, PIPELINE_ID,
 	CONTROLMIXER_OPS(volsw, 259 binds the mixer control to switch get/put handlers, 259, 259),
 	CONTROLMIXER_MAX(max 1 indicates switch type control, 1),
 	false,
