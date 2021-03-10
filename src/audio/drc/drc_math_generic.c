@@ -22,13 +22,13 @@
 /* Convert fractional Qnx.ny number x to float and offset correction for precision              */
 /* #define Q_CONVERT_FLOAT_PRECISION(f, qy, offset) \                                           */
 /* 	((int32_t)(((const double)f) * ((int64_t)1 << (const int)qy) + ((const double)offset)))   */
-   
+
 
 #define PIQ20OFFSET0   1647099                  /* Q12.20 */
 #define PIQ21OFFSET0   3294199                  /* Q11.21 */
 #define PIQ22OFFSET0   6588397                  /* Q10.22 */
 #define PIQ28OFFSET4   326016644                /* Q4.28  */
-#define PIQ29OFFSET1   1073741823               /* Q3.29  */   
+#define PIQ29OFFSET1   1073741823               /* Q3.29  */
 #define PIQ30OFFSET0   1073741824               /* Q2.30  */
 
 /*
@@ -124,14 +124,14 @@ inline int32_t drc_log_fixed(int32_t x)
 
 /*
  * function [cdcSinTh] = drc_sin_fixed(thRadFxp)
- * compute the sine theta.thRadFxp contains angle values in radians in the range of [-2pi,2pi] 
+ * compute the sine theta.thRadFxp contains angle values in radians in the range of [-2pi,2pi]
  * cdcSinTh is the CORDIC-based approximation of the sine of theta
  * rotate the vector over given angle. vector co ordinate ( x & y ) is rotated through angle
  * and obtain new vector co ordinate.
  * Use Q12.20-bit quantized inputs and with max error 0.
  *  Compare the fixed-point cordicsin function results to the
  *  results of the double-precision sin function.
- * 
+ *
  * +--------------+---------+----------+----------+---------+
  * |              |thRadFxp |cdcSinTh  |QthRadFxp |QcdcSinTh|
  * +--------------+---------+----------+----------+---------+
@@ -163,7 +163,7 @@ inline int32_t drc_sin_fixed(int32_t thRadFxp)
   int32_t z;
   int32_t cdcSinTh;
   boolean_t negate;
-  
+
 
     if (thRadFxp > PIQ20OFFSET0) {                                 /* >20bits */
       if (((thRadFxp - PIQ21OFFSET0) & PIQ30OFFSET0) != 0) {       /* NonZero thRadFxp - 21bits & 30bits */
@@ -177,7 +177,7 @@ inline int32_t drc_sin_fixed(int32_t thRadFxp)
         negate = true;
       } else {
         if (((thRadFxp - PIQ22OFFSET0) & PIQ30OFFSET0) != 0) {     /*  thRadFxp - 22bits & 30bits */
-          thRadFxp = (thRadFxp - PIQ22OFFSET0) | -PIQ30OFFSET0;    
+          thRadFxp = (thRadFxp - PIQ22OFFSET0) | -PIQ30OFFSET0;
         } else {
           thRadFxp = (thRadFxp - PIQ22OFFSET0) & PIQ29OFFSET1;
         }
