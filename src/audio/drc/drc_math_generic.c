@@ -130,7 +130,7 @@ inline int32_t drc_log_fixed(int32_t x)
  * and obtain new vector co ordinate.
  * Use Q12.20-bit quantized inputs and with max error 0.
  *	 Compare the fixed-point cordicsin function results to the
- *	 results of the double-precision sin function.
+ *	 results of the double-precision sin function.Expected ERROR = 0 
  *
  * +--------------+---------+----------+----------+---------+
  * |					|thRadFxp |cdcSinTh	|QthRadFxp |QcdcSinTh|
