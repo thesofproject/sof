@@ -80,10 +80,10 @@ static inline int32_t log10_fixed(int32_t x)
 		exp += 1; /* Q_CONVERT_FLOAT(0.5, 1) */
 	}
 
-	x2 = q_mult(x, x, 30, 30, 30);
-	x4 = q_mult(x2, x2, 30, 30, 30);
-	A5Xx = q_mult(A5, x, qc, 30, qc);
-	A3Xx = q_mult(A3, x, qc, 30, qc);
+  x2 = q_mult(x, x, 30, 30, 30);
+  x4 = q_mult(x2, x2, 30, 30, 30);
+  A5Xx = q_mult(A5, x, qc, 30, qc);
+  A3Xx = q_mult(A3, x, qc, 30, qc);
 	return q_mult((A5Xx + A4), x4, qc, 30, qc) + q_mult((A3Xx + A2), x2, qc, 30, qc)
 		+ q_mult(A1, x, qc, 30, qc) + A0 + q_mult(exp, LOG10_2, 1, qc, qc);
 #undef qc
@@ -130,7 +130,7 @@ inline int32_t drc_log_fixed(int32_t x)
  * and obtain new vector co ordinate.
  * Use Q12.20-bit quantized inputs and with max error 0.
  *	 Compare the fixed-point cordicsin function results to the
- *	 results of the double-precision sin function.
+ *	 results of the double-precision sin function.Expected ERROR = 0
  *
  * +--------------+---------+----------+----------+---------+
  * |					|thRadFxp |cdcSinTh	|QthRadFxp |QcdcSinTh|
@@ -164,19 +164,20 @@ inline int32_t drc_sin_fixed(int32_t thRadFxp)
   int32_t cdcSinTh;
   boolean_t negate;
 
-
-	if (thRadFxp > PIQ20OFFSET0) {											/* >20bits */
-		if (((thRadFxp - PIQ21OFFSET0) & PIQ30OFFSET0) != 0) {		 /* NonZero thRadFxp - 21bits & 30bits */
-		  z = (thRadFxp - PIQ21OFFSET0) | -PIQ30OFFSET0;
+	/* >20bits */
+	if (thRadFxp > PIQ20OFFSET0) {
+		if (((thRadFxp - PIQ21OFFSET0) & PIQ30OFFSET0) != 0) {
+			z = (thRadFxp - PIQ21OFFSET0) | -PIQ30OFFSET0;
 		} else {
 		  z = (thRadFxp - PIQ21OFFSET0) & PIQ29OFFSET1;
 		}
-
-		if (z <= PIQ20OFFSET0) {												 /*  <20 bits*/
+		/*	 <20 bits*/
+		if (z <= PIQ20OFFSET0) {
 		  thRadFxp = z;
 		  negate = true;
 		} else {
-		  if (((thRadFxp - PIQ22OFFSET0) & PIQ30OFFSET0) != 0) {		 /*  thRadFxp - 22bits & 30bits */
+		  /*	thRadFxp - 22bits & 30bits */
+		  if (((thRadFxp - PIQ22OFFSET0) & PIQ30OFFSET0) != 0) {
 			 thRadFxp = (thRadFxp - PIQ22OFFSET0) | -PIQ30OFFSET0;
 		  } else {
 			 thRadFxp = (thRadFxp - PIQ22OFFSET0) & PIQ29OFFSET1;
