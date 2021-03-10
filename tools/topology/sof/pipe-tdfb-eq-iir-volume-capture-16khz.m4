@@ -17,9 +17,8 @@ include(`tdfb.m4')
 include(`eq_iir.m4')
 
 ifdef(`PGA_NAME', `', `define(PGA_NAME, N_PGA(0))')
-define(`CONTROL_NAME_VOLUME', 2nd Capture Volume)
-define(`CONTROL_NAME_SWITCH', 2nd Capture Switch)
-define(`CONTROL_NAME', `CONTROL_NAME_VOLUME')
+ifdef(`CONTROL_NAME_VOLUME', `', `define(CONTROL_NAME_VOLUME, PIPELINE_ID Master Capture Volume)')
+ifdef(`CONTROL_NAME_SWITCH', `', `define(CONTROL_NAME_SWITCH, PIPELINE_ID Master Capture Switch)')
 
 #
 # Controls
@@ -45,7 +44,9 @@ C_CONTROLBYTES(DEF_TDFB_BYTES, PIPELINE_ID,
 	DEF_TDFB_PRIV)
 
 # Volume Mixer control with max value of 32
-C_CONTROLMIXER(Capture Volume, PIPELINE_ID,
+define(`CONTROL_NAME', `CONTROL_NAME_VOLUME')
+
+C_CONTROLMIXER(Master Capture Volume, PIPELINE_ID,
 	CONTROLMIXER_OPS(volsw,
 		256 binds the mixer control to volume get/put handlers,
 		256, 256),
@@ -56,10 +57,11 @@ C_CONTROLMIXER(Capture Volume, PIPELINE_ID,
 	DMIC_VOL_CH_MAPS)
 
 undefine(`CONTROL_NAME')
-define(`CONTROL_NAME', `CONTROL_NAME_SWITCH')
 
 # Switch type Mixer Control with max value of 1
-C_CONTROLMIXER(Capture Switch, PIPELINE_ID,
+define(`CONTROL_NAME', `CONTROL_NAME_SWITCH')
+
+C_CONTROLMIXER(Master Capture Switch, PIPELINE_ID,
 	CONTROLMIXER_OPS(volsw, 259 binds the mixer control to switch get/put handlers, 259, 259),
 	CONTROLMIXER_MAX(max 1 indicates switch type control, 1),
 	false,
@@ -67,6 +69,8 @@ C_CONTROLMIXER(Capture Switch, PIPELINE_ID,
 	Channel register and shift for Front Left/Right,
 	DMIC_SW_CH_MAPS,
 	"1", "1")
+
+undefine(`CONTROL_NAME')
 
 # Volume Configuration
 define(DEF_PGA_TOKENS, concat(`pga_tokens_', PIPELINE_ID))
@@ -153,7 +157,6 @@ P_GRAPH(pipe-pass-capture-PIPELINE_ID, PIPELINE_ID,
 	`dapm(N_TDFB(0), N_BUFFER(3))'))
 
 undefine(`PGA_NAME')
-undefine(`CONTROL_NAME')
 undefine(`CONTROL_NAME_VOLUME')
 undefine(`CONTROL_NAME_SWITCH')
 

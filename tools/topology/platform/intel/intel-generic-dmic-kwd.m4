@@ -60,12 +60,16 @@ dnl     time_domain, sched_comp)
 ifdef(`DMICPROC_FILTER1', `define(PIPELINE_FILTER1, DMICPROC_FILTER1)', `undefine(`PIPELINE_FILTER1')')
 ifdef(`DMICPROC_FILTER2', `define(PIPELINE_FILTER2, DMICPROC_FILTER2)', `undefine(`PIPELINE_FILTER2')')
 define(`PGA_NAME', Dmic0)
+define(`CONTROL_NAME_VOLUME', Capture Volume)
+define(`CONTROL_NAME_SWITCH', Capture Switch)
 
 PIPELINE_PCM_ADD(sof/pipe-`DMICPROC'-capture.m4,
         DMIC_PIPELINE_48k_ID, DMIC_PCM_48k_ID, CHANNELS, s32le,
         1000, 0, 0, 48000, 48000, 48000)
 
 undefine(`PGA_NAME')
+undefine(`CONTROL_NAME_VOLUME')
+undefine(`CONTROL_NAME_SWITCH')
 undefine(`PIPELINE_FILTER1')
 undefine(`PIPELINE_FILTER2')
 

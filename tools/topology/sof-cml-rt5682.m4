@@ -63,6 +63,8 @@ PIPELINE_PCM_ADD(sof/pipe-`HSMICPROC'-capture.m4,
 ifdef(`DMICPROC_FILTER1', `define(PIPELINE_FILTER1, DMICPROC_FILTER1)', `undefine(`PIPELINE_FILTER1')')
 ifdef(`DMICPROC_FILTER2', `define(PIPELINE_FILTER2, DMICPROC_FILTER2)', `undefine(`PIPELINE_FILTER2')')
 define(`PGA_NAME', Dmic0)
+define(`CONTROL_NAME_VOLUME', Capture Volume)
+define(`CONTROL_NAME_SWITCH', Capture Switch)
 
 PIPELINE_PCM_ADD(sof/pipe-`DMICPROC'-capture.m4,
 	3, 1, 4, s32le,
@@ -70,6 +72,8 @@ PIPELINE_PCM_ADD(sof/pipe-`DMICPROC'-capture.m4,
 	48000, 48000, 48000)
 
 undefine(`PGA_NAME')
+undefine(`CONTROL_NAME_VOLUME')
+undefine(`CONTROL_NAME_SWITCH')
 undefine(`PIPELINE_FILTER1')
 undefine(`PIPELINE_FILTER2')
 
@@ -99,6 +103,7 @@ PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
 ifdef(`DMIC16KPROC_FILTER1', `define(PIPELINE_FILTER1, DMIC16KPROC_FILTER1)', `undefine(`PIPELINE_FILTER1')')
 ifdef(`DMIC16KPROC_FILTER2', `define(PIPELINE_FILTER2, DMIC16KPROC_FILTER2)', `undefine(`PIPELINE_FILTER2')')
 define(`PGA_NAME', Dmic1)
+define(`CONTROL_NAME_VOLUME', 2nd Capture Volume)
 
 PIPELINE_PCM_ADD(sof/pipe-`DMIC16KPROC'-capture-16khz.m4,
 	8, 8, 2, s24le,
@@ -106,6 +111,7 @@ PIPELINE_PCM_ADD(sof/pipe-`DMIC16KPROC'-capture-16khz.m4,
 	16000, 16000, 16000)
 
 undefine(`PGA_NAME')
+undefine(`CONTROL_NAME_VOLUME')
 undefine(`PIPELINE_FILTER1')
 undefine(`PIPELINE_FILTER2')
 
