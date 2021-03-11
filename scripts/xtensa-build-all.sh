@@ -311,12 +311,8 @@ do
 		if [ -d "$XTENSA_TOOLS_DIR" ]
 			then
 				XCC="xt-xcc"
-				XTOBJCOPY="xt-objcopy"
-				XTOBJDUMP="xt-objdump"
 			else
 				XCC="none"
-				XTOBJCOPY="none"
-				XTOBJDUMP="none"
 				>&2 printf 'WARNING: %s
 \t is not a directory, reverting to gcc\n' "$XTENSA_TOOLS_DIR"
 		fi
