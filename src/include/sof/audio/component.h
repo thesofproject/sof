@@ -215,6 +215,7 @@ enum comp_endpoint_type {
  * to comp_set_attribute().
  */
 enum comp_copy_type {
+	COMP_COPY_INVALID = -1,	/**< Invalid */
 	COMP_COPY_NORMAL = 0,	/**< Normal */
 	COMP_COPY_BLOCKING,	/**< Blocking */
 	COMP_COPY_ONE_SHOT,	/**< One-shot */

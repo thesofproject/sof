@@ -190,7 +190,7 @@ static struct comp_dev *kpb_new(const struct comp_driver *drv,
 #ifdef CONFIG_KPB_FORCE_COPY_TYPE_NORMAL
 	kpb->force_copy_type = COMP_COPY_NORMAL;
 #else
-	kpb->force_copy_type = -1; /* do not change kpb sink copy type */
+	kpb->force_copy_type = COMP_COPY_INVALID; /* do not change kpb sink copy type */
 #endif
 
 	/* Kpb has been created successfully */
@@ -1140,7 +1140,7 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 		comp_get_attribute(kpb->host_sink->sink, COMP_ATTR_COPY_TYPE,
 				   &kpb->draining_task_data.copy_type);
 
-		if (kpb->force_copy_type >= 0)
+		if (kpb->force_copy_type != COMP_COPY_INVALID)
 			comp_set_attribute(kpb->host_sink->sink, COMP_ATTR_COPY_TYPE,
 					   &kpb->force_copy_type);
 
