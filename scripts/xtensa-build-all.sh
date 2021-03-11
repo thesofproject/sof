@@ -16,6 +16,21 @@ PLATFORMS=()
 
 SOF_TOP=$(cd "$(dirname "$0")/.." && pwd)
 
+# As CMake forks one compiler process for each source file, the XTensa
+# compiler spends much more time idle waiting for the license server
+# over the network than actually using CPU or disk. A factor 3 has been
+# found optimal for 16 nproc 25ms away from the server; your mileage may
+# vary.
+#
+# The entire, purely local gcc build is so fast (~ 1s) that observing
+# any difference between -j nproc and -j nproc*N is practically
+# impossible so let's not waste RAM when building with gcc.
+
+if [ -n "$XTENSA_TOOLS_ROOT" ]; then
+    BUILD_JOBS=$((BUILD_JOBS * 3))
+fi
+
+
 die()
 {
 	>&2 printf '%s ERROR: ' "$0"
@@ -29,7 +44,7 @@ print_usage()
 {
     cat <<EOF
 Re-configures and re-builds SOF using the corresponding compiler and
-platform's _defconfig file.
+the <platform>_defconfig file.
 
 usage: $0 [options] platform(s)
 
@@ -346,6 +361,7 @@ do
 		TOOLCHAIN=xt
 		ROOT="$XTENSA_BUILDS_DIR/$XTENSA_CORE/xtensa-elf"
 		export XTENSA_SYSTEM=$XTENSA_BUILDS_DIR/$XTENSA_CORE/config
+		printf 'XTENSA_SYSTEM=%s\n' "${XTENSA_SYSTEM}"
 		PATH=$XTENSA_TOOLS_DIR/XtensaTools/bin:$OLDPATH
 		COMPILER="xcc"
 	else
