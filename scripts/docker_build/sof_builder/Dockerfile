@@ -43,6 +43,7 @@ RUN apt-get -y update && \
 		software-properties-common \
 		sudo \
 		texinfo \
+		tree \
 		udev \
 		wget \
 		unzip \
