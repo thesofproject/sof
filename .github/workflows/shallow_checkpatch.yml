@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-20.04
     env:
       PR_NUM: ${{github.event.number}}
-      CHK_CMD_OPTS: --codespell --codespellfile
+      CHK_CMD_OPTS: --ignore UNKNOWN_COMMIT_ID --codespell --codespellfile
           /usr/lib/python3/dist-packages/codespell_lib/data/dictionary.txt
     steps:
       # depth 2 so:
