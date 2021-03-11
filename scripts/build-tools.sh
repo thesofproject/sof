@@ -37,12 +37,12 @@ reconfigure_build()
         mkdir -p "$BUILD_TOOLS_DIR"
 
         ( cd "$BUILD_TOOLS_DIR"
-          cmake -DCMAKE_BUILD_TYPE="$CMAKE_BUILD_TYPE" "${SOF_REPO}/tools"
+          cmake -GNinja -DCMAKE_BUILD_TYPE="$CMAKE_BUILD_TYPE" "${SOF_REPO}/tools"
         )
 
         mkdir "$BUILD_TOOLS_DIR/fuzzer"
         ( cd "$BUILD_TOOLS_DIR/fuzzer"
-          cmake -DCMAKE_BUILD_TYPE="$CMAKE_BUILD_TYPE" "${SOF_REPO}/tools/fuzzer"
+          cmake -GNinja -DCMAKE_BUILD_TYPE="$CMAKE_BUILD_TYPE" "${SOF_REPO}/tools/fuzzer"
         )
 }
 
@@ -70,17 +70,17 @@ print_build_info()
        cat <<EOFUSAGE
 
 Build commands for respective tools:
-        ctl:        make -C "$BUILD_TOOLS_DIR" sof-ctl
-        logger:     make -C "$BUILD_TOOLS_DIR" sof-logger
-        probes:     make -C "$BUILD_TOOLS_DIR" sof-probes
-        topologies: make -C "$BUILD_TOOLS_DIR" topologies
-        test tplgs: make -C "$BUILD_TOOLS_DIR" tests
+        ctl:        ninja -C "$BUILD_TOOLS_DIR" sof-ctl
+        logger:     ninja -C "$BUILD_TOOLS_DIR" sof-logger
+        probes:     ninja -C "$BUILD_TOOLS_DIR" sof-probes
+        topologies: ninja -C "$BUILD_TOOLS_DIR" topologies
+        test tplgs: ninja -C "$BUILD_TOOLS_DIR" tests
                (or ./tools/test/topology/tplg-build.sh directly)
 
-        fuzzer:     make -C "$BUILD_TOOLS_DIR/fuzzer"
+        fuzzer:     ninja -C "$BUILD_TOOLS_DIR/fuzzer"
 
         list of targets:
-                    make -C "$BUILD_TOOLS_DIR/" help
+                    ninja -C "$BUILD_TOOLS_DIR/" help
 EOFUSAGE
 }
 
