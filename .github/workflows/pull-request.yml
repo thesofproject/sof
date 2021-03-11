@@ -108,7 +108,7 @@ jobs:
 
       - name: apt get
         run: sudo apt-get update &&
-             sudo apt-get -y install valgrind alsa-utils libasound2-dev
+             sudo apt-get -y install valgrind alsa-utils libasound2-dev ninja-build
              octave octave-io octave-signal
 
       # testbench needs some topologies.
