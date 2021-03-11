@@ -180,35 +180,30 @@ do
 	case $platform in
 		byt)
 			PLATFORM="baytrail"
-			ARCH="xtensa"
 			XTENSA_CORE="Intel_HiFiEP"
 			HOST="xtensa-byt-elf"
 			XTENSA_TOOLS_VERSION="RD-2012.5-linux"
 			;;
 		cht)
 			PLATFORM="cherrytrail"
-			ARCH="xtensa"
 			XTENSA_CORE="CHT_audio_hifiep"
 			HOST="xtensa-byt-elf"
 			XTENSA_TOOLS_VERSION="RD-2012.5-linux"
 			;;
 		bdw)
 			PLATFORM="broadwell"
-			ARCH="xtensa"
 			XTENSA_CORE="LX4_langwell_audio_17_8"
 			HOST="xtensa-hsw-elf"
 			XTENSA_TOOLS_VERSION="RG-2017.8-linux"
 			;;
 		hsw)
 			PLATFORM="haswell"
-			ARCH="xtensa"
 			XTENSA_CORE="LX4_langwell_audio_17_8"
 			HOST="xtensa-hsw-elf"
 			XTENSA_TOOLS_VERSION="RG-2017.8-linux"
 			;;
 		apl)
 			PLATFORM="apollolake"
-			ARCH="xtensa-smp"
 			XTENSA_CORE="X4H3I16w2D48w3a_2017_8"
 
 			# test APL compiler aliases and ignore set -e here
@@ -223,7 +218,6 @@ do
 			;;
 		skl)
 			PLATFORM="skylake"
-			ARCH="xtensa"
 			XTENSA_CORE="X4H3I16w2D48w3a_2017_8"
 
 			# test APL compiler aliases and ignore set -e here
@@ -238,7 +232,6 @@ do
 			;;
 		kbl)
 			PLATFORM="kabylake"
-			ARCH="xtensa"
 			XTENSA_CORE="X4H3I16w2D48w3a_2017_8"
 
 			# test APL compiler aliases and ignore set -e here
@@ -253,7 +246,6 @@ do
 			;;
 		cnl)
 			PLATFORM="cannonlake"
-			ARCH="xtensa-smp"
 			XTENSA_CORE="X6H3CNL_2017_8"
 			HOST="xtensa-cnl-elf"
 			XTENSA_TOOLS_VERSION="RG-2017.8-linux"
@@ -261,7 +253,6 @@ do
 			;;
 		sue)
 			PLATFORM="suecreek"
-			ARCH="xtensa"
 			XTENSA_CORE="X6H3CNL_2017_8"
 			HOST="xtensa-cnl-elf"
 			XTENSA_TOOLS_VERSION="RG-2017.8-linux"
@@ -269,7 +260,6 @@ do
 			;;
 		icl)
 			PLATFORM="icelake"
-			ARCH="xtensa-smp"
 			XTENSA_CORE="X6H3CNL_2017_8"
 			HOST="xtensa-cnl-elf"
 			XTENSA_TOOLS_VERSION="RG-2017.8-linux"
@@ -277,7 +267,6 @@ do
 			;;
 		tgl)
 			PLATFORM="tgplp"
-			ARCH="xtensa-smp"
 			XTENSA_CORE="cavs2x_LX6HiFi3_2017_8"
 			HOST="xtensa-cnl-elf"
 			XTENSA_TOOLS_VERSION="RG-2017.8-linux"
@@ -290,7 +279,6 @@ do
 			;;
 		tgl-h)
 			PLATFORM="tgph"
-			ARCH="xtensa-smp"
 			XTENSA_CORE="cavs2x_LX6HiFi3_2017_8"
 			HOST="xtensa-cnl-elf"
 			XTENSA_TOOLS_VERSION="RG-2017.8-linux"
@@ -303,7 +291,6 @@ do
 			;;
 		jsl)
 			PLATFORM="jasperlake"
-			ARCH="xtensa-smp"
 			XTENSA_CORE="X6H3CNL_2017_8"
 			HOST="xtensa-cnl-elf"
 			XTENSA_TOOLS_VERSION="RG-2017.8-linux"
@@ -311,21 +298,18 @@ do
 			;;
 		imx8)
 			PLATFORM="imx8"
-			ARCH="xtensa"
 			XTENSA_CORE="hifi4_nxp_v3_3_1_2_dev"
 			HOST="xtensa-imx-elf"
 			XTENSA_TOOLS_VERSION="RG-2017.8-linux"
 			;;
 		imx8x)
 			PLATFORM="imx8x"
-			ARCH="xtensa"
 			XTENSA_CORE="hifi4_nxp_v3_3_1_2_dev"
 			HOST="xtensa-imx-elf"
 			XTENSA_TOOLS_VERSION="RG-2017.8-linux"
 			;;
 		imx8m)
 			PLATFORM="imx8m"
-			ARCH="xtensa"
 			XTENSA_CORE="hifi4_mscale_v0_0_2_prod"
 			HOST="xtensa-imx8m-elf"
 			XTENSA_TOOLS_VERSION="RG-2017.8-linux"
