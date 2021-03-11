@@ -157,7 +157,7 @@ endif
 ${BUILD_SOF_RIS}: ${BUILDS_ROOT}/build_%_${TOOLCHAIN}/sof.ri: | ${BUILDS_ROOT}
 	cd ${BUILDS_ROOT} && bdir="$$(dirname $@)" &&  \
       if [ -d $${bdir} ] && [ xcc != "${TOOLCHAIN}" ] ; then \
-        cmake --build $${bdir} -- sof; else \
+        cmake --build $${bdir} -- bin; else \
       $(CURDIR)/../scripts/xtensa-build-all.sh $*; fi
 
 
