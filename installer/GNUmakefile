@@ -79,6 +79,9 @@ INTEL_SIGNED	:= ${STAGING_SOF_VERSION}/intel-signed
 ${COMMUNITY} ${INTEL_SIGNED} ${BUILDS_ROOT} ${STAGING_SOF_VERSION}:
 	mkdir -p $@
 
+# The noise for incremental, do-nothing builds is incredible otherwise,
+# especially for build_tools
+GNUMAKEFLAGS = --no-print-directory
 
       #####################################
       ###    rsync to local or remote  ####
