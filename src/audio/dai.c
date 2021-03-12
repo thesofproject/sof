@@ -926,10 +926,6 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 
 		/* We can use always the largest burst length. */
 		dd->config.burst_elems = 8;
-
-		comp_info(dev, "dai_config(), config->dmic.fifo_bits = %u config->dmic.num_pdm_active = %u",
-			  config->dmic.fifo_bits,
-			  config->dmic.num_pdm_active);
 		break;
 	case SOF_DAI_INTEL_HDA:
 		channel = config->hda.link_dma_ch;

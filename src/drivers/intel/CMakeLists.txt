@@ -22,5 +22,5 @@ if(CONFIG_INTEL_ALH)
 endif()
 
 if(CONFIG_INTEL_DMIC)
-	add_local_sources(sof dmic.c)
+	add_subdirectory(dmic)
 endif()
