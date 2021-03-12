@@ -1051,6 +1051,14 @@ static int dai_ts_get(struct comp_dev *dev, struct timestamp_data *tsd)
 	return dd->dai->drv->ts_ops.ts_get(dd->dai, &dd->ts_config, tsd);
 }
 
+static int dai_cmd(struct comp_dev *dev, int cmd, void *data,
+		   int max_data_size)
+{
+	comp_dbg(dev, "dai_cmd()");
+
+	return 0;
+}
+
 static const struct comp_driver comp_dai = {
 	.type	= SOF_COMP_DAI,
 	.uid	= SOF_RT_UUID(dai_comp_uuid),
@@ -1058,6 +1066,7 @@ static const struct comp_driver comp_dai = {
 	.ops	= {
 		.create			= dai_new,
 		.free			= dai_free,
+		.cmd			= dai_cmd,
 		.params			= dai_params,
 		.dai_get_hw_params	= dai_comp_get_hw_params,
 		.trigger		= dai_comp_trigger,
