@@ -73,6 +73,10 @@ define(`W_DAI_OUT',
 `		"'N_DAI_OUT`_data_str"'
 `		"'N_DAI_OUT`_data_comp_str"'
 `	]'
+ifelse(defn(`DAI_CONTROL'), `',`',
+`	enum ['
+		DAI_CONTROL
+`	]')
 `}')
 
 dnl W_DAI_IN(type, index, dai_link, format, periods_sink, periods_source, core)
@@ -137,6 +141,10 @@ define(`W_DAI_IN',
 `		"'N_DAI_IN`_data_str"'
 `		"'N_DAI_IN`_data_comp_str"'
 `	]'
+ifelse(defn(`DAI_CONTROL'), `',`',
+`	enum ['
+		DAI_CONTROL
+`	]')
 `}')
 
 dnl D_DAI(id, playback, capture, data))
@@ -256,6 +264,7 @@ define(`DAI_ADD',
 `undefine(`DAI_CHANNELS')'
 `undefine(`DAI_RATE')'
 `undefine(`DYNAMIC_PIPE')'
+`undefine(`DAI_CONTROL')'
 `define(`PIPELINE_ID', $2)'
 `define(`DAI_TYPE', STR($3))'
 `define(`DAI_INDEX', STR($4))'
@@ -271,6 +280,7 @@ define(`DAI_ADD',
 `define(`DAI_CHANNELS', $13)'
 `define(`DAI_RATE', $14)'
 `define(`DYNAMIC_PIPE', $15)'
+`define(`DAI_CONTROL', $16)'
 `include($1)'
 `DEBUG_DAI($3, $4)'
 )
