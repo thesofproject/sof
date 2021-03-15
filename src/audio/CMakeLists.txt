@@ -62,6 +62,11 @@ if(NOT CONFIG_LIBRARY)
 			kpb.c
 		)
 	endif()
+	if(CONFIG_COMP_GOOGLE_HOTWORD_DETECT)
+		add_local_sources(sof
+			google_hotword_detect.c
+		)
+	endif()
 	if(CONFIG_COMP_SEL)
 		add_subdirectory(selector)
 	endif()

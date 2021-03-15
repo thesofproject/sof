@@ -55,6 +55,9 @@ ifdef(`IGO', `define(`INTEL_GENERIC_DMIC_KWD_PERIOD', 16000)', `define(`INTEL_GE
 # define(DMIC_DAI_LINK_16k_PDM, `STEREO_PDM0') define the PDM port, default is STEREO_PDM0
 ifdef(`DMIC_DAI_LINK_16k_PDM',`',`define(DMIC_DAI_LINK_16k_PDM, `STEREO_PDM0')')
 
+# define(DETECTOR_TYPE, `google-hotword-detect') define the detector type, default is the test detector
+ifdef(`DETECTOR_TYPE',`',define(DETECTOR_TYPE, `detect'))
+
 #
 # Define the pipelines
 #
@@ -127,7 +130,7 @@ dnl     pipe id, max channels, format,
 dnl     period, priority, core,
 dnl     sched_comp, time_domain,
 dnl     pcm_min_rate, pcm_max_rate, pipeline_rate)
-PIPELINE_ADD(sof/pipe-detect.m4,
+PIPELINE_ADD(sof/pipe-DETECTOR_TYPE.m4,
         DMIC_PIPELINE_KWD_ID, 2, s24le,
         KWD_PIPE_SCH_DEADLINE_US, 1, 0,
         `PIPELINE_SCHED_COMP_'DMIC_PIPELINE_16k_ID,
