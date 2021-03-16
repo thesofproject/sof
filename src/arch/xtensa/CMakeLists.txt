@@ -93,8 +93,12 @@ else()
 	set(XTENSA_C_FLAGS -mtext-section-literals)
 endif()
 
-# linker flags
-target_link_libraries(sof_options INTERFACE ${stdlib_flag} -lgcc -Wl,--no-check-sections -ucall_user_start -Wl,-static)
+# linker flags - GCC >= 10.x uses libc
+if (CMAKE_COMPILER_IS_GNUCC AND CMAKE_C_COMPILER_VERSION VERSION_GREATER 10.0)
+	target_link_libraries(sof_options INTERFACE ${stdlib_flag} -lgcc -lc -Wl,--no-check-sections -ucall_user_start -Wl,-static)
+else()
+	target_link_libraries(sof_options INTERFACE ${stdlib_flag} -lgcc -Wl,--no-check-sections -ucall_user_start -Wl,-static)
+endif()
 
 # C & ASM flags
 target_compile_options(sof_options INTERFACE ${stdlib_flag} -fno-inline-functions ${XTENSA_C_ASM_FLAGS})

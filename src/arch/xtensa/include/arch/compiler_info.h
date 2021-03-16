@@ -29,6 +29,11 @@
 #define CC_MINOR __GNUC_MINOR__
 #define CC_MICRO __GNUC_PATCHLEVEL__
 #define CC_NAME "GCC"
+
+#if CC_MAJOR >= 10
+#define CC_USE_LIBC
+#endif
+
 #endif
 
 #define CC_DESC " " XCC_TOOLS_VERSION
