@@ -39,6 +39,8 @@ struct sof_detect_test_config {
 	uint32_t reserved[1];
 } __attribute__((packed));
 
+void detect_test_notify(const struct comp_dev *dev);
+
 /** used for binary blob size sanity checks */
 #define SOF_DETECT_TEST_MAX_CFG_SIZE sizeof(struct sof_detect_test_config)
 
