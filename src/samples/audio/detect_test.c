@@ -653,6 +653,41 @@ static int test_keyword_prepare(struct comp_dev *dev)
 	return comp_set_state(dev, COMP_TRIGGER_PREPARE);
 }
 
+uint16_t test_keyword_get_sample_valid_bytes(struct comp_dev *dev)
+{
+	struct comp_data *cd = comp_get_drvdata(dev);
+
+	return cd->sample_valid_bytes;
+}
+
+uint32_t test_keyword_get_detected(struct comp_dev *dev)
+{
+	struct comp_data *cd = comp_get_drvdata(dev);
+
+	return cd->detected;
+}
+
+void test_keyword_set_detected(struct comp_dev *dev, uint32_t detected)
+{
+	struct comp_data *cd = comp_get_drvdata(dev);
+
+	cd->detected = detected;
+}
+
+uint32_t test_keyword_get_drain_req(struct comp_dev *dev)
+{
+	struct comp_data *cd = comp_get_drvdata(dev);
+
+	return cd->drain_req;
+}
+
+void test_keyword_set_drain_req(struct comp_dev *dev, uint32_t drain_req)
+{
+	struct comp_data *cd = comp_get_drvdata(dev);
+
+	cd->drain_req = drain_req;
+}
+
 static const struct comp_driver comp_keyword = {
 	.type	= SOF_COMP_KEYWORD_DETECT,
 	.uid	= SOF_RT_UUID(keyword_uuid),
