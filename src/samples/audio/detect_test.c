@@ -136,7 +136,7 @@ static void notify_kpb(const struct comp_dev *dev)
 		       sizeof(cd->event_data));
 }
 
-static void detect_test_notify(const struct comp_dev *dev)
+void detect_test_notify(const struct comp_dev *dev)
 {
 	notify_host(dev);
 	notify_kpb(dev);
