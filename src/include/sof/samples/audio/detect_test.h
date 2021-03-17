@@ -39,6 +39,14 @@ struct sof_detect_test_config {
 	uint32_t reserved[1];
 } __attribute__((packed));
 
+uint16_t test_keyword_get_sample_valid_bytes(struct comp_dev *dev);
+
+uint32_t test_keyword_get_detected(struct comp_dev *dev);
+void test_keyword_set_detected(struct comp_dev *dev, uint32_t detected);
+
+uint32_t test_keyword_get_drain_req(struct comp_dev *dev);
+void test_keyword_set_drain_req(struct comp_dev *dev, uint32_t drain_req);
+
 void detect_test_notify(const struct comp_dev *dev);
 
 /** used for binary blob size sanity checks */
