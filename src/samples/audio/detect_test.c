@@ -32,6 +32,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <sof/samples/audio/kwd_nn_detect_test.h>
 
 #define ACTIVATION_DEFAULT_SHIFT 3
 #define ACTIVATION_DEFAULT_COEF 0.05
@@ -71,6 +72,9 @@ struct comp_data {
 	uint16_t sample_valid_bytes;
 	struct kpb_event_data event_data;
 	struct kpb_client client_data;
+
+	int16_t *input;
+	size_t input_size;
 
 	struct sof_ipc_comp_event event;
 	struct ipc_msg *msg;	/**< host notification */
@@ -168,6 +172,7 @@ static void default_detect_test(struct comp_dev *dev,
 		src = (valid_bits == 16U) ?
 		      audio_stream_read_frag_s16(source, sample) :
 		      audio_stream_read_frag_s32(source, sample);
+
 		if (valid_bits > 16U) {
 			diff = abs(*(int32_t *)src) - abs(cd->activation);
 		} else {
@@ -194,7 +199,6 @@ static void default_detect_test(struct comp_dev *dev,
 		}
 	}
 }
-
 static int test_keyword_get_threshold(struct comp_dev *dev, int sample_width)
 {
 	switch (sample_width) {
@@ -309,6 +313,18 @@ static struct comp_dev *test_keyword_new(const struct comp_driver *drv,
 		comp_err(dev, "test_keyword_new(): ipc notification init failed");
 		goto fail;
 	}
+
+	/* global buffer where we collect the 990 ms of data
+	 * as required by the algorithm
+	 */
+	cd->input = rballoc_align(0, SOF_MEM_CAPS_RAM,
+				  sizeof(int16_t) * KWD_NN_IN_BUFF_SIZE, 64);
+	if (!cd->input) {
+		comp_err(dev, "test_keyword_new(): input alloc failed");
+		return NULL;
+	}
+	bzero(cd->input, sizeof(int16_t) * KWD_NN_IN_BUFF_SIZE);
+	cd->input_size = 0;
 
 	dev->state = COMP_STATE_READY;
 	return dev;
@@ -672,6 +688,58 @@ void test_keyword_set_detected(struct comp_dev *dev, uint32_t detected)
 	struct comp_data *cd = comp_get_drvdata(dev);
 
 	cd->detected = detected;
+}
+
+const int16_t *test_keyword_get_input(struct comp_dev *dev)
+{
+	struct comp_data *cd = comp_get_drvdata(dev);
+
+	return cd->input;
+}
+
+int16_t test_keyword_get_input_byte(struct comp_dev *dev, uint32_t index)
+{
+	struct comp_data *cd = comp_get_drvdata(dev);
+
+	if (index < 0 || index >= KWD_NN_IN_BUFF_SIZE * sizeof(int16_t))
+		return -EINVAL;
+
+	return *((unsigned char *)cd->input + index);
+}
+
+int16_t test_keyword_get_input_elem(struct comp_dev *dev, uint32_t index)
+{
+	struct comp_data *cd = comp_get_drvdata(dev);
+
+	if (index < 0 || index >= KWD_NN_IN_BUFF_SIZE)
+		return -EINVAL;
+	return cd->input[index];
+}
+
+int test_keyword_set_input_elem(struct comp_dev *dev, uint32_t index, int16_t val)
+{
+	struct comp_data *cd = comp_get_drvdata(dev);
+
+	if (index < 0 || index >= KWD_NN_IN_BUFF_SIZE)
+		return -EINVAL;
+
+	cd->input[index] = val;
+
+	return 0;
+}
+
+size_t test_keyword_get_input_size(struct comp_dev *dev)
+{
+	struct comp_data *cd = comp_get_drvdata(dev);
+
+	return cd->input_size;
+}
+
+void test_keyword_set_input_size(struct comp_dev *dev, size_t input_size)
+{
+	struct comp_data *cd = comp_get_drvdata(dev);
+
+	cd->input_size = input_size;
 }
 
 uint32_t test_keyword_get_drain_req(struct comp_dev *dev)
