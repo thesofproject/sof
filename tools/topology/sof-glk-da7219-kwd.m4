@@ -23,12 +23,19 @@ define(DMIC_16k_PCM_NAME, `DMIC16k')
 
 define(KWD_PIPE_SCH_DEADLINE_US, 20000)
 
+ifelse(CODEC, `MAX98390',`
+define(`SSP1_VALID_BITS_STR', `s32le')
+define(`SSP1_BCLK', 3072000)
+define(`SSP1_VALID_BITS', 32)')
+
 #
 # Define the pipelines
 #
 # PCM0  ----> volume (pipe 1)   -----> SSP1 (speaker - maxim98357a, BE link 0)
 # PCM1  <---> volume (pipe 2,3) <----> SSP(SSP_INDEX) (headset - dailog7219, BE link 1)
 # PCM(DMIC_PCM_NUM) <---- DMIC0 (dmic capture, BE link 2)
+ifelse(CODEC, `MAX98390',`
+# PCM4  <---- passthrough (pipe 10)  <----- SSP1 (echoref - maxim98390, BE link 0)')
 # PCM5  ----> volume (pipe 5)   -----> iDisp1 (HDMI/DP playback, BE link 3)
 # PCM6  ----> volume (pipe 6)   -----> iDisp2 (HDMI/DP playback, BE link 4)
 # PCM7  ----> volume (pipe 7)   -----> iDisp3 (HDMI/DP playback, BE link 5)
@@ -93,6 +100,13 @@ PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
         1000, 0, 0,
 	48000, 48000, 48000)
 
+ifelse(CODEC, `MAX98390',`
+# Capture pipeline 10 on PCM 4 using max 2 channels of s32le.
+PIPELINE_PCM_ADD(sof/pipe-passthrough-capture.m4,
+        10, 4, 2, s32le,
+        1000, 0, 0,
+        48000, 48000, 48000)')
+
 #
 # DAIs configuration
 #
@@ -108,6 +122,14 @@ DAI_ADD(sof/pipe-dai-playback.m4,
 	1, SSP, 1, SSP1-Codec,
 	PIPELINE_SOURCE_1, 2, SSP1_VALID_BITS_STR,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
+
+ifelse(CODEC, `MAX98390',`
+# Capture DAI is SSP1 using 2 periods
+# Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
+DAI_ADD(sof/pipe-dai-capture.m4,
+        10, SSP, 1, SSP1-Codec,
+        PIPELINE_SINK_10, 2, SSP1_VALID_BITS_STR,
+        1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)')
 
 # playback DAI is SSP(SSP_INDEX) using 2 periods
 # Buffers use s16le format, 1000us deadline on core 0 with priority 0
@@ -177,6 +199,8 @@ PCM_CAPTURE_ADD(DMIC, DMIC_PCM_NUM, PIPELINE_PCM_4)
 PCM_PLAYBACK_ADD(HDMI1, 5, PIPELINE_PCM_5)
 PCM_PLAYBACK_ADD(HDMI2, 6, PIPELINE_PCM_6)
 PCM_PLAYBACK_ADD(HDMI3, 7, PIPELINE_PCM_7)
+ifelse(CODEC, `MAX98390',`
+PCM_CAPTURE_ADD(EchoRef, 4, PIPELINE_PCM_10)')
 
 # keyword detector pipe
 dnl PIPELINE_ADD(pipeline,

@@ -73,6 +73,7 @@ set(TPLGS
 	"sof-apl-da7219\;sof-apl-da7219"
 	"sof-glk-da7219-kwd\;sof-glk-da7219-kwd\;-DPLATFORM=glk"
 	"sof-glk-da7219-kwd\;sof-cml-da7219-max98357a\;-DPLATFORM=cml"
+	"sof-glk-da7219-kwd\;sof-cml-da7219-max98390\;-DCODEC=MAX98390\;-DPLATFORM=cml"
 	"sof-glk-da7219\;sof-glk-da7219"
 	"sof-glk-rt5682\;sof-glk-rt5682"
 	"sof-icl-nocodec\;sof-icl-nocodec\;-DPLATFORM=icl"
