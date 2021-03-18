@@ -32,8 +32,7 @@ src/audio/drc/*				@johnylin76 @cujomalainey @dgreid
 src/audio/multiband_drc/*		@johnylin76 @cujomalainey @dgreid
 
 # platforms
-src/platform/baytrail/*			@xiulipan
-src/platform/haswell/*			@xiulipan @randerwang
+src/platform/haswell/*			@randerwang
 src/platform/suecreek/*			@lyakh
 src/arch/xtensa/debug/gdb/*		@mrajwa
 src/platform/imx8/**			@dbaluta
@@ -47,7 +46,7 @@ src/drivers/dw/*			@lyakh
 
 # other libs
 src/math/*				@singalsu
-src/ipc/*				@xiulipan @bardliao
+src/ipc/*				@bardliao
 src/drivers/intel/cavs/sue-ipc.c	@lyakh
 src/lib/*				@libinyang
 src/debug/gdb/*				@mrajwa
@@ -55,13 +54,12 @@ src/schedule				@mrajwa
 
 # other helpers
 # Mostly overridden by *.(ba)sh below
-scripts/*				@xiulipan @marc-hb
+scripts/*				@marc-hb
 
 # tools(old 'soft' repo)
-tools/logger/*				@xiulipan @bkokoszx @akloniex
-tools/topology/*			@ranj063 @xiulipan
+tools/logger/*				@bkokoszx @akloniex
+tools/topology/*			@ranj063
 tools/testbench/*			@ranj063
-tools/test/*				@xiulipan
 tools/test/audio/*			@singalsu
 tools/ctl/*				@singalsu
 tools/tune/*				@singalsu
@@ -78,9 +76,9 @@ tools/oss-fuzz/*			@cujomalainey
 
 *.sh					@marc-hb
 *.bash					@marc-hb
-*trace.*				@xiulipan @akloniex
+*trace.*				@akloniex
 
-/.github/				@dbaluta @cujomalainey @xiulipan @lgirdwood @marc-hb @zrombel
+/.github/				@dbaluta @cujomalainey @lgirdwood @marc-hb @zrombel
 
 # You can also use email addresses if you prefer.
 #docs/*  docs@example.com
