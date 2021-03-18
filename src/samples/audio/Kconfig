@@ -18,4 +18,13 @@ menu "Audio component samples"
 	                Select for Keyphrase test component.
 	                Provides basic functionality for use in testing of keyphrase detection pipelines.
 
+	config KWD_NN_SAMPLE_KEYPHRASE
+                depends on IMX
+                bool "KWD NN Keyphrase test component"
+                default n
+                help
+			Select for KWD NN Keyphrase test component based on neural network.
+			Provides ML functionality for use in testing of keyphrase detection pipelines.
+			Use KWD based on NN as alternative to the default KWD component.
+			Provides neural network as a library.
 endmenu

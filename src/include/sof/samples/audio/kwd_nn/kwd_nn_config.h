@@ -45,6 +45,6 @@
  * this threshold, the probability to be a
  * false-positive is high
  */
-#define KWD_NN_MAX_CONFIDENCE_THRESHOLD        128
+#define KWD_NN_MIN_ACCEPTABLE_CONFIDENCE	128
 
 #endif /* __KWD_NN_CONFIG_H__ */
