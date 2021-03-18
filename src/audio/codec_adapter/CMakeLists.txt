@@ -6,8 +6,8 @@ if(CONFIG_CADENCE_CODEC)
 add_local_sources(sof codec/cadence.c)
 endif()
 
-if(CONFIG_DUMMY_CODEC)
-add_local_sources(sof codec/dummy.c)
+if(CONFIG_PASSTHROUGH_CODEC)
+add_local_sources(sof codec/passthrough.c)
 endif()
 
 if(CONFIG_WAVES_CODEC)

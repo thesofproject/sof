@@ -63,13 +63,13 @@ if CADENCE_CODEC
 		  api symbol.
 endif
 
-	config DUMMY_CODEC
-		bool "Dummy codec"
+	config PASSTHROUGH_CODEC
+		bool "Passthrough codec"
 		default n
 		help
-		  Select for a dummy API codec implementation.
+		  Select for a passthrough API codec implementation.
 		  This will cause codec adapter component to include header
-		  files specific to DUMMY base codecs.
+		  files specific to PASSTHROUGH base codecs.
 
 	config WAVES_CODEC
 	bool "Waves codec"
