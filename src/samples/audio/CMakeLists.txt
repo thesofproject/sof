@@ -11,3 +11,7 @@ if(CONFIG_SAMPLE_KEYPHRASE)
 		detect_test.c
 	)
 endif()
+
+if(CONFIG_KWD_NN_SAMPLE_KEYPHRASE)
+	add_local_sources(sof kwd_nn_detect_test.c)
+endif()

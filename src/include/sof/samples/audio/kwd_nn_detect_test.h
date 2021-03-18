@@ -9,7 +9,8 @@
 #ifndef __USER_KWD_NN_DETECT_TEST_H__
 #define __USER_KWD_NN_DETECT_TEST_H__
 
-#include <sof/samples/audio/kwd_nn/kwd_nn_config.h>
+#include "kwd_nn/kwd_nn_config.h"
+#include <sof/audio/component.h>
 
 #define KWD_NN_SILENCE         0
 #define KWD_NN_UNKNOWN         1

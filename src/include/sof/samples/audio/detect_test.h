@@ -44,6 +44,7 @@ uint16_t test_keyword_get_sample_valid_bytes(struct comp_dev *dev);
 uint32_t test_keyword_get_detected(struct comp_dev *dev);
 void test_keyword_set_detected(struct comp_dev *dev, uint32_t detected);
 
+#if CONFIG_KWD_NN_SAMPLE_KEYPHRASE
 const int16_t *test_keyword_get_input(struct comp_dev *dev);
 
 int16_t test_keyword_get_input_byte(struct comp_dev *dev, uint32_t index);
@@ -52,6 +53,7 @@ int test_keyword_set_input_elem(struct comp_dev *dev, uint32_t index, int16_t va
 
 size_t test_keyword_get_input_size(struct comp_dev *dev);
 void test_keyword_set_input_size(struct comp_dev *dev, size_t input_size);
+#endif
 
 uint32_t test_keyword_get_drain_req(struct comp_dev *dev);
 void test_keyword_set_drain_req(struct comp_dev *dev, uint32_t drain_req);
