@@ -5,6 +5,7 @@
 // Author: Bartosz Kokoszko	<bartoszx.kokoszko@linux.intel.com>
 //	   Artur Kloniecki	<arturx.kloniecki@linux.intel.com>
 
+#include <assert.h>
 #include <endian.h>
 #include <stdbool.h>
 #include <stdlib.h>
@@ -372,6 +373,9 @@ static char *format_file_name(char *file_name_raw, int full_name)
 static void print_entry_params(const struct log_entry_header *dma_log,
 			       const struct ldc_entry *entry, uint64_t last_timestamp)
 {
+	static int entry_number = 1;
+	static uint64_t timestamp_origin;
+
 	FILE *out_fd = global_config->out_fd;
 	int use_colors = global_config->use_colors;
 	int raw_output = global_config->raw_output;
@@ -387,8 +391,26 @@ static void print_entry_params(const struct log_entry_header *dma_log,
 	if (raw_output)
 		use_colors = 0;
 
+	/* Something somewhere went wrong */
 	if (dt < 0 || dt > 1000.0 * 1000.0 * 1000.0)
 		dt = NAN;
+
+	/* The first entry:
+	 *  - is never shown with a relative TIMESTAMP (to itself!?)
+	 *  - shows a zero DELTA
+	 */
+	if (entry_number == 1) {
+		entry_number++;
+		assert(last_timestamp == 0);
+		/* Display absolute (and random) timestamps */
+		timestamp_origin = 0;
+		dt = 0;
+	} else if (entry_number == 2) {
+		entry_number++;
+		if (global_config->relative_timestamps == 1)
+			/* Switch to relative timestamps from now on. */
+			timestamp_origin = last_timestamp;
+	} /* We don't need the exact entry_number after 3 */
 
 	if (dma_log->id_0 != INVALID_TRACE_ID &&
 	    dma_log->id_1 != INVALID_TRACE_ID)
@@ -413,7 +435,8 @@ static void print_entry_params(const struct log_entry_header *dma_log,
 			raw_output && strlen(ids) ? "-" : "",
 			ids);
 		if (time_precision >= 0)
-			fprintf(out_fd, time_fmt, to_usecs(dma_log->timestamp), dt);
+			fprintf(out_fd, time_fmt,
+				to_usecs(dma_log->timestamp - timestamp_origin), dt);
 		if (!hide_location)
 			fprintf(out_fd, "(%s:%u) ",
 				format_file_name(entry->file_name, raw_output),
@@ -431,7 +454,7 @@ static void print_entry_params(const struct log_entry_header *dma_log,
 				 time_precision + 10, time_precision);
 			fprintf(out_fd, time_fmt,
 				use_colors ? KGRN : "",
-				to_usecs(dma_log->timestamp), dt,
+				to_usecs(dma_log->timestamp - timestamp_origin), dt,
 				use_colors ? KNRM : "");
 		}
 

@@ -40,6 +40,7 @@ struct convert_config {
 	int raw_output;
 	int dump_ldc;
 	int hide_location;
+	int relative_timestamps;
 	int time_precision;
 	struct snd_sof_uids_header *uids_dict;
 	struct snd_sof_logs_header *logs_header;
