@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdint.h>
+#include <limits.h>
 #include <errno.h>
 #include <string.h>
 #include <ctype.h>
@@ -53,6 +54,11 @@ static void usage(void)
 		"chained log processors\n",
 		APP_NAME);
 	fprintf(stdout, "%s:\t -L\t\t\tHide log location in source code\n",
+		APP_NAME);
+	fprintf(stdout,
+		"%s:\t -e 0/1\t\t\tTimestamps relative to first entry seen. Defaults to\n",
+		APP_NAME);
+	fprintf(stdout, "%s:\t\t\t\tabsolute when -r(aw), relative otherwise.\n",
 		APP_NAME);
 	fprintf(stdout, "%s:\t -f precision\t\tSet timestamp precision\n",
 		APP_NAME);
@@ -162,7 +168,7 @@ static int append_filter_config(struct convert_config *config, const char *input
 
 int main(int argc, char *argv[])
 {
-	static const char optstring[] = "ho:i:l:ps:c:u:tv:rd:Lf:gF:n";
+	static const char optstring[] = "ho:i:l:ps:c:u:tv:rd:Le:f:gF:n";
 	struct convert_config config;
 	unsigned int baud = 0;
 	const char *snapshot_file = 0;
@@ -187,6 +193,7 @@ int main(int argc, char *argv[])
 	config.dump_ldc = 0;
 	config.hide_location = 0;
 	config.time_precision = 6;
+	config.relative_timestamps = INT_MAX; /* unspecified */
 	config.filter_config = NULL;
 
 	while ((opt = getopt(argc, argv, optstring)) != -1) {
@@ -232,6 +239,16 @@ int main(int argc, char *argv[])
 		case 'L':
 			config.hide_location = 1;
 			break;
+		case 'e': {
+			int i = atoi(optarg);
+
+			if (i < 0 || 1 < i) {
+				fprintf(stderr, "%s: invalid option: -e %s\n",
+					APP_NAME, optarg);
+				return -EINVAL;
+			}
+			config.relative_timestamps = i;
+		}
 		case 'f':
 			config.time_precision = atoi(optarg);
 			if (config.time_precision < 0) {
@@ -309,6 +326,10 @@ int main(int argc, char *argv[])
 	/* trace requested ? */
 	if (config.trace)
 		config.in_file = "/sys/kernel/debug/sof/trace";
+
+	/* Default value when -e is not specified */
+	if (config.relative_timestamps == INT_MAX)
+		config.relative_timestamps = config.raw_output ? 0 : 1;
 
 	/* default option with no infile is to dump errors/debug data */
 	if (!config.in_file && !config.dump_ldc)
