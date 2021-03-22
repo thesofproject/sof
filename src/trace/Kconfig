@@ -15,7 +15,8 @@ config TRACEV
 	depends on TRACE
 	default n
 	help
-	  Enabling verbose traces.
+	  Enabling verbose traces. tr_dbg() statements depend on this at
+	  compile-time and on run-time filtering below too.
 
 config TRACEE
 	bool "Trace error"

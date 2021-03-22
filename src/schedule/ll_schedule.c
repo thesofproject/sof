@@ -159,11 +159,12 @@ static void schedule_ll_clients_reschedule(struct ll_schedule_data *sch)
 {
 	struct list_item *wlist;
 	struct list_item *tlist;
-	struct task *task, *task_take;
+	struct task *task;
 	uint64_t next_tick = UINT64_MAX;
 
 	/* rearm only if there is work to do */
 	if (atomic_read(&sch->domain->total_num_tasks)) {
+		struct task *task_take_dbg = NULL;
 		/* traverse to set timer according to the earliest task */
 		list_for_item_safe(wlist, tlist, &sch->tasks) {
 			task = container_of(wlist, struct task, list);
@@ -171,12 +172,13 @@ static void schedule_ll_clients_reschedule(struct ll_schedule_data *sch)
 			/* update to use the earlier tick */
 			if (task->start < next_tick) {
 				next_tick = task->start;
-				task_take = task;
+				task_take_dbg = task;
 			}
 		}
 
-		tr_dbg(&ll_tr, "schedule_ll_clients_reschedule next_tick %u task_take %p",
-		       (unsigned int)next_tick, task_take);
+		tr_dbg(&ll_tr,
+		       "schedule_ll_clients_reschedule next_tick %u task_take %p",
+		       (unsigned int)next_tick, task_take_dbg);
 		domain_set(sch->domain, next_tick);
 	}
 
