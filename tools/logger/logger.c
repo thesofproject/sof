@@ -286,7 +286,8 @@ int main(int argc, char *argv[])
 	if (config.version_fw) {
 		config.version_fd = fopen(config.version_file, "rb");
 		if (!config.version_fd) {
-			fprintf(stderr, "error: Unable to open version file %s\n",
+			fprintf(stderr,
+				"error: Unable to open version file %s, check permissions\n",
 				config.version_file);
 			ret = errno;
 			goto out;
@@ -324,7 +325,8 @@ int main(int argc, char *argv[])
 	} else if (config.in_file) {
 		config.in_fd = fopen(config.in_file, "rb");
 		if (!config.in_fd) {
-			fprintf(stderr, "error: Unable to open in file %s\n",
+			fprintf(stderr,
+				"error: Unable to open in file %s, check permissions\n",
 				config.in_file);
 			ret = errno;
 			goto out;
