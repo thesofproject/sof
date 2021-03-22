@@ -298,19 +298,19 @@ do
 			;;
 		imx8)
 			PLATFORM="imx8"
-			XTENSA_CORE="hifi4_nxp_v3_3_1_2_dev"
+			XTENSA_CORE="hifi4_nxp_v3_3_1_2_2017"
 			HOST="xtensa-imx-elf"
 			XTENSA_TOOLS_VERSION="RG-2017.8-linux"
 			;;
 		imx8x)
 			PLATFORM="imx8x"
-			XTENSA_CORE="hifi4_nxp_v3_3_1_2_dev"
+			XTENSA_CORE="hifi4_nxp_v3_3_1_2_2017"
 			HOST="xtensa-imx-elf"
 			XTENSA_TOOLS_VERSION="RG-2017.8-linux"
 			;;
 		imx8m)
 			PLATFORM="imx8m"
-			XTENSA_CORE="hifi4_mscale_v0_0_2_prod"
+			XTENSA_CORE="hifi4_mscale_v0_0_2_2017"
 			HOST="xtensa-imx8m-elf"
 			XTENSA_TOOLS_VERSION="RG-2017.8-linux"
 			;;
