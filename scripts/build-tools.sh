@@ -60,8 +60,8 @@ Build commands for respective tools:
         ctl:        make -C "$BUILD_TOOLS_DIR" sof-ctl
         logger:     make -C "$BUILD_TOOLS_DIR" sof-logger
         probes:     make -C "$BUILD_TOOLS_DIR" sof-probes
-        tests:      make -C "$BUILD_TOOLS_DIR" tests
         topologies: make -C "$BUILD_TOOLS_DIR" topologies
+        test tplgs: make -C "$BUILD_TOOLS_DIR" tests
         fuzzer:     make -C "$BUILD_TOOLS_DIR/fuzzer"
 EOFUSAGE
 }
