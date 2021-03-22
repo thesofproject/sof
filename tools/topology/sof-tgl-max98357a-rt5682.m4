@@ -101,7 +101,7 @@ PIPELINE_PCM_ADD(sof/pipe-volume-demux-playback.m4,
 
 # Low Latency playback pipeline 2 on PCM 1 using max 2 channels of s24le.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
+PIPELINE_PCM_ADD(sof/pipe-waves-playback.m4,
 	2, 1, 2, s32le,
 	1000, 0, 0,
 	48000, 48000, 48000)
