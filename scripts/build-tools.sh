@@ -16,6 +16,7 @@ usage: $0 [-c|-f|-h|-l|-p|-t|-T]
        -p Rebuild probes
        -t Rebuild test topologies
        -T Rebuild topologies
+       -z Rebuild topology2
        -C No build, only CMake re-configuration
 EOFUSAGE
 }
@@ -62,6 +63,7 @@ Build commands for respective tools:
         probes:     make -C "$BUILD_TOOLS_DIR" sof-probes
         topologies: make -C "$BUILD_TOOLS_DIR" topologies
         test tplgs: make -C "$BUILD_TOOLS_DIR" tests
+        topology2:  make -C "$BUILD_TOOLS_DIR" topology2
         fuzzer:     make -C "$BUILD_TOOLS_DIR/fuzzer"
 EOFUSAGE
 }
@@ -70,7 +72,7 @@ main()
 {
         local DO_BUILD_ctl DO_BUILD_fuzzer DO_BUILD_logger DO_BUILD_probes \
                 DO_BUILD_tests DO_BUILD_topologies SCRIPT_DIR SOF_REPO CMAKE_ONLY \
-                BUILD_ALL
+		 DO_BUILD_topology2 BUILD_ALL
         SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
         SOF_REPO=$(dirname "$SCRIPT_DIR")
         : "${BUILD_TOOLS_DIR:=$SOF_REPO/tools/build_tools}"
@@ -87,11 +89,12 @@ main()
         DO_BUILD_probes=false
         DO_BUILD_tests=false
         DO_BUILD_topologies=false
+        DO_BUILD_topology2=false
         CMAKE_ONLY=false
 
         # eval is a sometimes necessary evil
         # shellcheck disable=SC2034
-        while getopts "cfhlptTC" OPTION; do
+        while getopts "cfhlptTzC" OPTION; do
                 case "$OPTION" in
                 c) DO_BUILD_ctl=true ;;
                 f) DO_BUILD_fuzzer=true ;;
@@ -99,6 +102,7 @@ main()
                 p) DO_BUILD_probes=true ;;
                 t) DO_BUILD_tests=true ;;
                 T) DO_BUILD_topologies=true ;;
+                z) DO_BUILD_topology2=true ;;
                 C) CMAKE_ONLY=true ;;
                 h) print_usage; exit 1;;
                 *) print_usage; exit 1;;
@@ -124,7 +128,7 @@ main()
                 fi
         done
 
-        for util in tests topologies; do
+        for util in tests topologies topology2; do
                 if eval '$DO_BUILD_'$util; then
                         make_tool $util
                 fi
