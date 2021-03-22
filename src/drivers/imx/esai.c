@@ -398,6 +398,8 @@ static int esai_probe(struct dai *dai)
 		dai_err(dai, "ESAI probe failure, out of memory");
 		return -ENOMEM;
 	}
+	dai_set_drvdata(dai, pdata);
+
 	/* ESAI core reset */
 	dai_write(dai, REG_ESAI_ECR, ESAI_ECR_ERST | ESAI_ECR_ESAIEN);
 	dai_write(dai, REG_ESAI_ECR, ESAI_ECR_ESAIEN);
