@@ -87,16 +87,16 @@ static int snapshot(const char *name)
 		/* open debugfs for reading */
 		in_fd = fopen(pinname, "rb");
 		if (!in_fd) {
-			fprintf(stderr, "error: unable to open %s for reading %d\n",
-				pinname, errno);
+			fprintf(stderr, "error: unable to open %s for reading: %s\n",
+				pinname, strerror(errno));
 			continue;
 		}
 
 		/* open outfile for writing */
 		out_fd = fopen(poutname, "wb");
 		if (!out_fd) {
-			fprintf(stderr, "error: unable to open %s for writing %d\n",
-				poutname, errno);
+			fprintf(stderr, "error: unable to open %s for writing: %s\n",
+				poutname, strerror(errno));
 			fclose(in_fd);
 			continue;
 		}
@@ -277,18 +277,19 @@ int main(int argc, char *argv[])
 
 	config.ldc_fd = fopen(config.ldc_file, "rb");
 	if (!config.ldc_fd) {
-		fprintf(stderr, "error: Unable to open ldc file %s\n",
-			config.ldc_file);
 		ret = errno;
+		fprintf(stderr, "error: Unable to open ldc file %s: %s\n",
+			config.ldc_file, strerror(ret));
 		goto out;
 	}
 
 	if (config.version_fw) {
 		config.version_fd = fopen(config.version_file, "rb");
 		if (!config.version_fd) {
-			fprintf(stderr, "error: Unable to open version file %s\n",
-				config.version_file);
 			ret = errno;
+			fprintf(stderr,
+				"error: Unable to open version file %s: %s\n",
+				config.version_file, strerror(ret));
 			goto out;
 		}
 	}
@@ -296,9 +297,9 @@ int main(int argc, char *argv[])
 	if (config.out_file) {
 		config.out_fd = fopen(config.out_file, "w");
 		if (!config.out_fd) {
-			fprintf(stderr, "error: Unable to open out file %s\n",
-				config.out_file);
 			ret = errno;
+			fprintf(stderr, "error: Unable to open out file %s: %s\n",
+				config.out_file, strerror(ret));
 			goto out;
 		}
 	} else {
@@ -324,9 +325,10 @@ int main(int argc, char *argv[])
 	} else if (config.in_file) {
 		config.in_fd = fopen(config.in_file, "rb");
 		if (!config.in_fd) {
-			fprintf(stderr, "error: Unable to open in file %s\n",
-				config.in_file);
 			ret = errno;
+			fprintf(stderr,
+				"error: Unable to open in file %s: %s\n",
+				config.in_file, strerror(ret));
 			goto out;
 		}
 	}
