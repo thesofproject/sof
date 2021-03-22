@@ -150,7 +150,7 @@ foreach(tplg ${TPLGS})
 	endif()
 
 	add_custom_command(
-		OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/${output}.conf
+		OUTPUT ${output}.conf
 		COMMAND m4 --fatal-warnings
 			${DEFINES}
 			-I ${CMAKE_CURRENT_SOURCE_DIR}/m4
@@ -161,6 +161,7 @@ foreach(tplg ${TPLGS})
 			${CMAKE_CURRENT_SOURCE_DIR}/common/abi.m4
 			${CMAKE_CURRENT_SOURCE_DIR}/${input}.m4
 			> ${output}.conf
+		MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/${input}.m4
 		DEPENDS abi
 		VERBATIM
 		USES_TERMINAL
@@ -184,7 +185,7 @@ foreach(tplg ${TPLGS})
 	add_custom_command(
 		OUTPUT ${output}.tplg
 		COMMAND alsatplg \$\${VERBOSE:+-v 1} -c ${output}.conf -o ${output}.tplg
-		DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/${output}.conf
+		MAIN_DEPENDENCY ${output}.conf
 		USES_TERMINAL
 	)
 
