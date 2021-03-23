@@ -23,7 +23,8 @@ if(EXISTS ${TARBALL_VERSION_SOURCE_PATH})
 	list(GET lines 1 GIT_LOG_HASH)
 	message(STATUS "Found ${TARBALL_VERSION_FILE_NAME}")
 else()
-	execute_process(COMMAND git describe --tags --abbrev=12 --match v*
+	execute_process(
+	        COMMAND git describe --tags --abbrev=12 --match v* --dirty
 		WORKING_DIRECTORY ${SOF_ROOT_SOURCE_DIRECTORY}
 		OUTPUT_VARIABLE GIT_TAG
 		OUTPUT_STRIP_TRAILING_WHITESPACE
