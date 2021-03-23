@@ -57,9 +57,8 @@ jobs:
     - &qemuboottest
       stage: tests
       script:
-        - sed -i $(($(grep "config HAVE_AGENT" -n src/platform/Kconfig |
-             cut -f1 -d:)+2))"s/default y/default n/" src/platform/Kconfig
-        - ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -r $PLATFORM
+        - echo CONFIG_HAVE_AGENT=n > src/arch/xtensa/configs/override/no-agent.config
+        - ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -o no-agent -r $PLATFORM
         - ./scripts/docker-qemu.sh ../sof.git/scripts/qemu-check.sh $PLATFORM
       env: PLATFORM='byt cht'
       before_install:

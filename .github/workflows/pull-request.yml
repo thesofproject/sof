@@ -117,20 +117,18 @@ jobs:
       - uses: actions/checkout@v2
         with: {fetch-depth: 0, submodules: recursive}
 
-      # FIXME: could/should probably use ./scripts/xtensa-build-all.sh
-      # -o agent.config instead of hiding this here.
       - name: turn off HAVE_AGENT
-        run: sed -i $(($(grep "config HAVE_AGENT" -n src/platform/Kconfig |
-          cut -f1 -d:)+2))"s/default y/default n/" src/platform/Kconfig
+        run: echo CONFIG_HAVE_AGENT=n >
+          src/arch/xtensa/configs/override/no-agent.config
 
       - name: docker SOF
         run: docker pull thesofproject/sof && docker tag thesofproject/sof sof
 
-      - name: xtensa-build-all
+      - name: xtensa-build-all -o no-agent
         env:
           PLATFORM: ${{ matrix.platform }}
         run: ./scripts/docker-run.sh
-          ./scripts/xtensa-build-all.sh -r ${PLATFORM}
+          ./scripts/xtensa-build-all.sh -o no-agent -r ${PLATFORM}
 
       - name: docker QEMU
         run: docker pull thesofproject/sofqemu &&
