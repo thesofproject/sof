@@ -139,8 +139,8 @@ static int load_setup_config(struct comp_dev *dev, void *cfg, uint32_t size)
 			 (uintptr_t)cfg, size);
 		ret = -EINVAL;
 		goto end;
-	} else if (size <= sizeof(struct ca_config)) {
-		comp_err(dev, "load_setup_config(): no codec config available.");
+	} else if (size < sizeof(struct ca_config)) {
+		comp_err(dev, "load_setup_config(): no codec config available, size %d", size);
 		ret = -EIO;
 		goto end;
 	}
@@ -154,13 +154,15 @@ static int load_setup_config(struct comp_dev *dev, void *cfg, uint32_t size)
 		goto end;
 	}
 	/* Copy codec specific part */
-	lib_cfg = (char *)cfg + sizeof(struct ca_config);
 	lib_cfg_size = size - sizeof(struct ca_config);
-	ret = codec_load_config(dev, lib_cfg, lib_cfg_size, CODEC_CFG_SETUP);
-	if (ret) {
-		comp_err(dev, "load_setup_config(): %d: failed to load setup config for codec id %x",
-			 ret, cd->ca_config.codec_id);
-		goto end;
+	if (lib_cfg_size) {
+		lib_cfg = (char *)cfg + sizeof(struct ca_config);
+		ret = codec_load_config(dev, lib_cfg, lib_cfg_size, CODEC_CFG_SETUP);
+		if (ret) {
+			comp_err(dev, "load_setup_config(): %d: failed to load setup config for codec id %x",
+				 ret, cd->ca_config.codec_id);
+			goto end;
+		}
 	}
 
 	comp_dbg(dev, "load_setup_config() done.");
