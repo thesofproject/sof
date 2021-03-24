@@ -247,7 +247,7 @@ static int schedule_ll_domain_set(struct ll_schedule_data *sch,
 {
 	int core = cpu_get_id();
 	unsigned int total;
-	uint64_t task_start_us;
+	uint64_t deadline_delay_us;
 	uint64_t task_start_ticks;
 	uint64_t task_start;
 	uint64_t offset;
@@ -268,8 +268,7 @@ static int schedule_ll_domain_set(struct ll_schedule_data *sch,
 	       (unsigned int)task->start,
 	       (unsigned int)sch->domain->next_tick);
 
-	task_start_us = period ? period : start;
-	task_start_ticks = sch->domain->ticks_per_ms * task_start_us / 1000;
+	task_start_ticks = sch->domain->ticks_per_ms * start / 1000;
 	task_start = task_start_ticks + platform_timer_get_atomic(timer_get());
 
 	if (sch->domain->next_tick == UINT64_MAX) {
@@ -285,7 +284,13 @@ static int schedule_ll_domain_set(struct ll_schedule_data *sch,
 		/* earlier periodic task, try to make it cadence-aligned with the existed task */
 		offset = (sch->domain->next_tick - task_start) %
 			 (sch->domain->ticks_per_ms * period / 1000);
-		task_start = task_start - task_start_ticks + offset;
+
+		/* start the period task not later than half period to avoid xrun */
+		deadline_delay_us = period >> 1;
+		if (offset > sch->domain->ticks_per_ms * deadline_delay_us)
+			offset -= sch->domain->ticks_per_ms * deadline_delay_us;
+		task_start += offset;
+
 		domain_set(sch->domain, task_start);
 		task->start = sch->domain->next_tick;
 	} else {
