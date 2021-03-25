@@ -429,7 +429,13 @@ int codec_adapter_copy(struct comp_dev *dev)
 
 	if (!produced && !cd->deep_buff_bytes) {
 		comp_dbg(dev, "codec_adapter_copy(): nothing processed in this call");
-		goto end;
+		/* we haven't produced anything in this period but we
+		 * still have data in the local buffer to copy to sink
+		 */
+		if (audio_stream_get_avail_bytes(&local_buff->stream) >= cd->period_bytes)
+			goto copy_period;
+		else
+			goto end;
 	} else if (!produced && cd->deep_buff_bytes) {
 		goto db_verify;
 	}
@@ -449,6 +455,7 @@ db_verify:
 		}
 	}
 
+copy_period:
 	comp_get_copy_limits_with_lock(local_buff, sink, &cl);
 	copy_bytes = cl.frames * cl.source_frame_bytes;
 	audio_stream_copy(&local_buff->stream, 0,
