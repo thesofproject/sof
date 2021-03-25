@@ -406,6 +406,13 @@ static int codec_adapter_copy(struct comp_dev *dev)
 			break;
 		}
 
+		/* TODO: remove magic number and use possible maximum output per
+		 * decoding algorithm type
+		 * 9216 is maximum frame length bytes for mp3 at 192Khz, 24bits,
+		 */
+		if (local_buff->stream.free < 9217)
+			goto db_verify;
+
 		buffer_invalidate(source, codec_buff_size);
 		codec_adapter_copy_from_source_to_lib(&source->stream, &codec->cpd,
 						      codec_buff_size);
