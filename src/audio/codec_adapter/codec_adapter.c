@@ -434,6 +434,9 @@ static int codec_adapter_copy(struct comp_dev *dev)
 		bytes_to_process -= codec->cpd.consumed;
 		processed += codec->cpd.consumed;
 		produced += codec->cpd.produced;
+
+		audio_stream_produce(&local_buff->stream, codec->cpd.produced);
+		comp_update_buffer_consume(source, codec->cpd.consumed);
 	}
 
 	if (!produced && !cd->deep_buff_bytes) {
@@ -445,12 +448,7 @@ static int codec_adapter_copy(struct comp_dev *dev)
 			goto copy_period;
 		else
 			goto end;
-	} else if (!produced && cd->deep_buff_bytes) {
-		goto db_verify;
 	}
-
-	audio_stream_produce(&local_buff->stream, produced);
-	comp_update_buffer_consume(source, processed);
 
 db_verify:
 	if (cd->deep_buff_bytes) {
