@@ -94,6 +94,7 @@ dnl     frames, deadline, priority, core)
 
 # Low Latency playback pipeline 2 on PCM 1 using max 2 channels of s32le.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
+
 ifelse(XPERI, `1',
 `
 PIPELINE_PCM_ADD(sof/pipe-eq-iir-volume-playback.m4,
