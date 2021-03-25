@@ -77,6 +77,7 @@ struct dai_ops {
 	int (*pm_context_store)(struct dai *dai);
 	int (*get_hw_params)(struct dai *dai,
 			     struct sof_ipc_stream_params *params, int dir);
+	int (*hw_params)(struct dai *dai, struct sof_ipc_stream_params *params);
 	int (*get_handshake)(struct dai *dai, int direction, int stream_id);
 	int (*get_fifo)(struct dai *dai, int direction, int stream_id);
 	int (*probe)(struct dai *dai);
@@ -374,6 +375,20 @@ static inline int dai_get_hw_params(struct dai *dai,
 {
 	int ret = dai->drv->ops.get_hw_params(dai, params, dir);
 
+
+	return ret;
+}
+
+/**
+ * \brief Configure Digital Audio interface stream parameters
+ */
+static inline int dai_hw_params(struct dai *dai,
+				struct sof_ipc_stream_params *params)
+{
+	int ret = 0;
+
+	if (dai->drv->ops.hw_params)
+		ret = dai->drv->ops.hw_params(dai, params);
 
 	return ret;
 }
