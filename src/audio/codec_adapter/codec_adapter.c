@@ -392,6 +392,7 @@ static int codec_adapter_copy(struct comp_dev *dev)
 			return ret;
 
 		bytes_to_process -= codec->cpd.consumed;
+		processed += codec->cpd.consumed;
 		comp_update_buffer_consume(source, codec->cpd.consumed);
 	}
 
