@@ -36,6 +36,7 @@ static struct codec_interface interfaces[] = {
 		.id = CADENCE_ID, /**< Cadence interface */
 		.init  = cadence_codec_init,
 		.prepare = cadence_codec_prepare,
+		.init_process = cadence_codec_init_process,
 		.process = cadence_codec_process,
 		.apply_config = cadence_codec_apply_config,
 		.reset = cadence_codec_reset,
