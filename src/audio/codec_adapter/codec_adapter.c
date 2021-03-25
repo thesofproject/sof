@@ -247,7 +247,7 @@ static int codec_adapter_prepare(struct comp_dev *dev)
 	}
 
 	/* Allocate local buffer */
-	buff_size = MAX(cd->period_bytes, codec->cpd.in_buff_size) * buff_periods;
+	buff_size = MAX(cd->period_bytes, codec->cpd.out_buff_size) * buff_periods;
 	if (cd->local_buff) {
 		ret = buffer_set_size(cd->local_buff, buff_size);
 		if (ret < 0) {
