@@ -399,10 +399,6 @@ int cadence_codec_prepare(struct comp_dev *dev)
 		goto free;
 	}
 
-	ret = cadence_codec_init_process(dev);
-	if (ret)
-		goto free;
-
 	comp_dbg(dev, "cadence_codec_prepare() done");
 	return 0;
 free:
