@@ -15,8 +15,8 @@
 #include <sof/audio/codec_adapter/codec/cadence.h>
 #endif /* CONFIG_CADENCE_CODEC */
 
-#if CONFIG_DUMMY_CODEC
-#include <sof/audio/codec_adapter/codec/dummy.h>
+#if CONFIG_PASSTHROUGH_CODEC
+#include <sof/audio/codec_adapter/codec/passthrough.h>
 #endif
 
 #if CONFIG_WAVES_CODEC
@@ -24,7 +24,7 @@
 #endif
 
 #define CADENCE_ID 0xCADE01
-#define DUMMY_ID   0xD03311
+#define PASSTHROUGH_ID   0xD03311
 #define WAVES_ID   0x574101
 
 /*****************************************************************************/
@@ -43,15 +43,15 @@ static struct codec_interface interfaces[] = {
 	},
 #endif /* CONFIG_CADENCE_CODEC */
 
-#ifdef CONFIG_DUMMY_CODEC
+#ifdef CONFIG_PASSTHROUGH_CODEC
 	{
-		.id = DUMMY_ID, /** dummy interface */
-		.init  = dummy_codec_init,
-		.prepare = dummy_codec_prepare,
-		.process = dummy_codec_process,
-		.apply_config = dummy_codec_apply_config,
-		.reset = dummy_codec_reset,
-		.free = dummy_codec_free
+		.id = PASSTHROUGH_ID, /** dummy interface */
+		.init  = passthrough_codec_init,
+		.prepare = passthrough_codec_prepare,
+		.process = passthrough_codec_process,
+		.apply_config = passthrough_codec_apply_config,
+		.reset = passthrough_codec_reset,
+		.free = passthrough_codec_free
 	},
 #endif /* CONFIG_DUMMY_CODEC */
 
