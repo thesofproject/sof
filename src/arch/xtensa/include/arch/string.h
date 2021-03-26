@@ -27,8 +27,6 @@
 	memset(ptr, 0, size)
 #endif
 
-void *memcpy(void *dest, const void *src, size_t length);
-void *memset(void *dest, int data, size_t count);
 void *xthal_memcpy(void *dst, const void *src, size_t len);
 
 int memset_s(void *dest, size_t dest_size,
