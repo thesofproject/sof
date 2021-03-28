@@ -3,7 +3,6 @@
 if(NOT CONFIG_LIBRARY)
 	add_local_sources(sof
 		host.c
-		pipeline.c
 		pipeline_static.c
 		component.c
 		buffer.c
@@ -78,11 +77,15 @@ if(NOT CONFIG_LIBRARY)
 	if(CONFIG_COMP_CODEC_ADAPTER)
 		add_subdirectory(codec_adapter)
 	endif()
+
+	subdirs(pipeline)
+
 	return()
 endif()
 
+subdirs(pipeline)
+
 add_local_sources(sof
-	pipeline.c
 	component.c
 	buffer.c
 )

@@ -393,7 +393,11 @@ zephyr_library_sources(
 	${SOF_AUDIO_PATH}/pcm_converter/pcm_converter_generic.c
 	${SOF_AUDIO_PATH}/buffer.c
 	${SOF_AUDIO_PATH}/component.c
-	${SOF_AUDIO_PATH}/pipeline.c
+	${SOF_AUDIO_PATH}/pipeline/pipeline-graph.c
+	${SOF_AUDIO_PATH}/pipeline/pipeline-params.c
+	${SOF_AUDIO_PATH}/pipeline/pipeline-schedule.c
+	${SOF_AUDIO_PATH}/pipeline/pipeline-stream.c
+	${SOF_AUDIO_PATH}/pipeline/pipeline-xrun.c
 	${SOF_AUDIO_PATH}/host.c
 
 	# SOF core infrastructure - runs on top of Zephyr
