@@ -22,7 +22,11 @@ cmocka_test(pipeline_new
 	pipeline_mocks.c
 	pipeline_mocks_rzalloc.c
 	${PROJECT_SOURCE_DIR}/test/cmocka/src/notifier_mocks.c
-	${PROJECT_SOURCE_DIR}/src/audio/pipeline.c
+	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-graph.c
+	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-params.c
+	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-schedule.c
+	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-stream.c
+	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-xrun.c
 )
 
 cmocka_test(pipeline_connect_upstream
@@ -31,7 +35,11 @@ cmocka_test(pipeline_connect_upstream
 	pipeline_mocks_rzalloc.c
 	pipeline_connection_mocks.c
 	${PROJECT_SOURCE_DIR}/test/cmocka/src/notifier_mocks.c
-	${PROJECT_SOURCE_DIR}/src/audio/pipeline.c
+	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-graph.c
+	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-params.c
+	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-schedule.c
+	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-stream.c
+	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-xrun.c
 )
 
 cmocka_test(pipeline_free
@@ -40,5 +48,9 @@ cmocka_test(pipeline_free
 	pipeline_mocks_rzalloc.c
 	pipeline_connection_mocks.c
 	${PROJECT_SOURCE_DIR}/test/cmocka/src/notifier_mocks.c
-	${PROJECT_SOURCE_DIR}/src/audio/pipeline.c
+	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-graph.c
+	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-params.c
+	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-schedule.c
+	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-stream.c
+	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-xrun.c
 )

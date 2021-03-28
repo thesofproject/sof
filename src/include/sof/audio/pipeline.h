@@ -120,6 +120,32 @@ struct pipeline {
 /* static pipeline */
 extern struct pipeline *pipeline_static;
 
+struct pipeline_walk_context {
+	int (*comp_func)(struct comp_dev *cd, struct comp_buffer *buffer,
+			 struct pipeline_walk_context *ctx, int dir);
+	void *comp_data;
+	void (*buff_func)(struct comp_buffer *buffer, void *data);
+	void *buff_data;
+	/**< pipelines to be scheduled after trigger walk */
+	struct list_item pipelines;
+	/*
+	 * If this flag is set, pipeline_for_each_comp() will skip all
+	 * incompletely initialised components, i.e. those, whose .pipeline ==
+	 * NULL. Such components should not be skipped during initialisation
+	 * and clean up, but they should be skipped during streaming.
+	 */
+	bool skip_incomplete;
+};
+
+/* generic pipeline data used by pipeline_comp_* functions */
+struct pipeline_data {
+	struct comp_dev *start;
+	struct sof_ipc_pcm_params *params;
+	struct sof_ipc_stream_posn *posn;
+	struct pipeline *p;
+	int cmd;
+};
+
 struct pipeline_posn {
 	bool posn_offset[PPL_POSN_OFFSETS];	/**< available offsets */
 	spinlock_t lock;			/**< lock mechanism */
@@ -251,6 +277,31 @@ int init_static_pipeline(struct ipc *ipc);
 
 /* pipeline creation */
 int init_pipeline(void);
+
+/* recover the pipeline from a XRUN condition */
+int pipeline_xrun_recover(struct pipeline *p);
+
+/* init pipeline scheduler task */
+int pipeline_comp_task_init(struct pipeline *p);
+
+/* copy data on pipeline */
+int pipeline_copy(struct pipeline *p);
+
+/* perform xrun recovery */
+int pipeline_xrun_handle_trigger(struct pipeline *p, int cmd);
+
+/* trigger pipeline's scheduling component  */
+void pipeline_comp_trigger_sched_comp(struct pipeline *p,
+				      struct comp_dev *comp,
+				      struct pipeline_walk_context *ctx);
+
+/* schedule all triggered pipelines */
+void pipeline_schedule_triggered(struct pipeline_walk_context *ctx,
+				 int cmd);
+
+/* walk pipeline */
+int pipeline_for_each_comp(struct comp_dev *current,
+			   struct pipeline_walk_context *ctx, int dir);
 
 /* schedule a copy operation for this pipeline */
 void pipeline_schedule_copy(struct pipeline *p, uint64_t start);
