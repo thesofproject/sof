@@ -30,14 +30,6 @@ struct sof_ipc_buffer;
 struct sof_ipc_pcm_params;
 struct task;
 
-/*
- * This flag disables firmware-side xrun recovery.
- * It should remain enabled in the situation when the
- * recovery is delegated to the outside of firmware.
- */
-#define NO_XRUN_RECOVERY 1
-
-
 /* Pipeline status to stop execution of current path */
 #define PPL_STATUS_PATH_STOP	1
 

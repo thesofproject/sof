@@ -20,6 +20,13 @@
 #include <stddef.h>
 #include <stdint.h>
 
+/*
+ * This flag disables firmware-side xrun recovery.
+ * It should remain enabled in the situation when the
+ * recovery is delegated to the outside of firmware.
+ */
+#define NO_XRUN_RECOVERY 1
+
 static int pipeline_comp_xrun(struct comp_dev *current,
 			      struct comp_buffer *calling_buf,
 			      struct pipeline_walk_context *ctx, int dir)
