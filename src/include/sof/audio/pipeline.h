@@ -176,9 +176,6 @@ void pipeline_cache(struct pipeline *p, struct comp_dev *dev, int cmd);
 /* trigger pipeline - atomic */
 int pipeline_trigger(struct pipeline *p, struct comp_dev *host_cd, int cmd);
 
-/* pipeline creation */
-int init_pipeline(void);
-
 /* recover the pipeline from a XRUN condition */
 int pipeline_xrun_recover(struct pipeline *p);
 
