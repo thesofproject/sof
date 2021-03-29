@@ -112,66 +112,10 @@ struct pipeline_posn {
 };
 
 /**
- * \brief Retrieves pipeline position structure.
- * \return Pointer to pipeline position structure.
- */
-static inline struct pipeline_posn *pipeline_posn_get(void)
-{
-	return sof_get()->pipeline_posn;
-}
-
-/**
  * \brief Initializes pipeline position structure.
  * \param[in,out] sof Pointer to sof structure.
  */
 void pipeline_posn_init(struct sof *sof);
-
-/**
- * \brief Retrieves first free pipeline position offset.
- * \param[in,out] posn_offset Pipeline position offset to be set.
- * \return Error code.
- */
-static inline int pipeline_posn_offset_get(uint32_t *posn_offset)
-{
-	struct pipeline_posn *pipeline_posn = pipeline_posn_get();
-	int ret = -EINVAL;
-	uint32_t i;
-
-	spin_lock(&pipeline_posn->lock);
-
-	for (i = 0; i < PPL_POSN_OFFSETS; ++i) {
-		if (!pipeline_posn->posn_offset[i]) {
-			*posn_offset = i * sizeof(struct sof_ipc_stream_posn);
-			pipeline_posn->posn_offset[i] = true;
-			ret = 0;
-			break;
-		}
-	}
-
-	platform_shared_commit(pipeline_posn, sizeof(*pipeline_posn));
-
-	spin_unlock(&pipeline_posn->lock);
-
-	return ret;
-}
-
-/**
- * \brief Frees pipeline position offset.
- * \param[in] posn_offset Pipeline position offset to be freed.
- */
-static inline void pipeline_posn_offset_put(uint32_t posn_offset)
-{
-	struct pipeline_posn *pipeline_posn = pipeline_posn_get();
-	int i = posn_offset / sizeof(struct sof_ipc_stream_posn);
-
-	spin_lock(&pipeline_posn->lock);
-
-	pipeline_posn->posn_offset[i] = false;
-
-	platform_shared_commit(pipeline_posn, sizeof(*pipeline_posn));
-
-	spin_unlock(&pipeline_posn->lock);
-}
 
 /* checks if two pipelines have the same scheduling component */
 static inline bool pipeline_is_same_sched_comp(struct pipeline *current,
