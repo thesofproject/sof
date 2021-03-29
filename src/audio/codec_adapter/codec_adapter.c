@@ -263,9 +263,9 @@ static int codec_adapter_prepare(struct comp_dev *dev)
 			return -ENOMEM;
 		}
 
-		buffer_set_params(cd->local_buff, &cd->stream_params,
-				  BUFFER_UPDATE_FORCE);
 	}
+	buffer_set_params(cd->local_buff, &cd->stream_params,
+			  BUFFER_UPDATE_FORCE);
 	buffer_reset_pos(cd->local_buff, NULL);
 
 	cd->state = PP_STATE_PREPARED;
