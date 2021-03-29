@@ -41,9 +41,6 @@ struct task;
 #define PPL_DIR_DOWNSTREAM	0
 #define PPL_DIR_UPSTREAM	1
 
-#define PPL_POSN_OFFSETS \
-	(MAILBOX_STREAM_SIZE / sizeof(struct sof_ipc_stream_posn))
-
 /*
  * Audio pipeline.
  */
@@ -96,11 +93,6 @@ struct pipeline_data {
 	struct sof_ipc_stream_posn *posn;
 	struct pipeline *p;
 	int cmd;
-};
-
-struct pipeline_posn {
-	bool posn_offset[PPL_POSN_OFFSETS];	/**< available offsets */
-	spinlock_t lock;			/**< lock mechanism */
 };
 
 /**
