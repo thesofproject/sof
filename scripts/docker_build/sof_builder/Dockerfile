@@ -29,6 +29,7 @@ RUN apt-get -y update && \
 	    	autoconf \
 		bison \
 		build-essential \
+		python3-pyelftools \
 		flex \
 		gawk \
 		gettext \
