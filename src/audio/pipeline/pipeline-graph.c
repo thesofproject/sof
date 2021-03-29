@@ -29,6 +29,16 @@ DECLARE_SOF_RT_UUID("pipe", pipe_uuid, 0x4e934adb, 0xb0ec, 0x4d33,
 
 DECLARE_TR_CTX(pipe_tr, SOF_UUID(pipe_uuid), LOG_LEVEL_INFO);
 
+/* number of pipeline stream metadata objects we export in mailbox */
+#define PPL_POSN_OFFSETS \
+	(MAILBOX_STREAM_SIZE / sizeof(struct sof_ipc_stream_posn))
+
+/* lookup table to determine busy/free pipeline metadata objects */
+struct pipeline_posn {
+	bool posn_offset[PPL_POSN_OFFSETS];	/**< available offsets */
+	spinlock_t lock;			/**< lock mechanism */
+};
+/* the pipeline position lookup table */
 static SHARED_DATA struct pipeline_posn pipeline_posn;
 
 /**
