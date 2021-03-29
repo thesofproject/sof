@@ -57,8 +57,11 @@ MUXDEMUX_CONFIG(demux_priv_3, 2, LIST(`	', `matrix1,', `matrix2'))
 #
 # Define the pipelines
 #
+ifdef(`NOJACK', `',
+`
 # PCM0 ---> volume ----> ALH 2 BE dailink 0
 # PCM1 <--- volume <---- ALH 3 BE dailink 1
+')
 # PCM2 ---> volume ----> ALH 2 BE dailink 2
 ifdef(`MONO', `',
 `# PCM40 ---> volume ----> ALH 2 BE dailink 3')
@@ -73,6 +76,8 @@ dnl     period, priority, core,
 dnl     pcm_min_rate, pcm_max_rate, pipeline_rate,
 dnl     time_domain, sched_comp)
 
+ifdef(`NOJACK', `',
+`
 # Low Latency playback pipeline 1 on PCM 0 using max 2 channels of s32le.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
@@ -86,6 +91,7 @@ PIPELINE_PCM_ADD(sof/pipe-volume-switch-capture.m4,
 	2, 1, 2, s32le,
 	1000, 0, 0,
 	48000, 48000, 48000)
+')
 
 ifdef(`MONO',
 `
@@ -151,6 +157,8 @@ dnl     pipe id, dai type, dai_index, dai_be,
 dnl     buffer, periods, format,
 dnl     deadline, priority, core, time_domain)
 
+ifdef(`NOJACK', `',
+`
 # playback DAI is ALH(SDW0 PIN2) using 2 periods
 # Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
@@ -164,6 +172,7 @@ DAI_ADD(sof/pipe-dai-capture.m4,
 	2, ALH, eval(0 * 256 + 3), SDW0-Capture,
 	PIPELINE_SINK_2, 2, s24le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
+')
 
 # playback DAI is ALH(SDW1 PIN2) using 2 periods
 # Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
@@ -227,8 +236,13 @@ DAI_ADD(sof/pipe-dai-playback.m4,
 
 # PCM Low Latency, id 0
 dnl PCM_PLAYBACK_ADD(name, pcm_id, playback)
+
+ifdef(`NOJACK', `',
+`
 PCM_PLAYBACK_ADD(Jack Out, 0, PIPELINE_PCM_1)
 PCM_CAPTURE_ADD(Jack In, 1, PIPELINE_PCM_2)
+')
+
 PCM_PLAYBACK_ADD(Speaker, 2, PIPELINE_PCM_3)
 ifdef(`NO_AGGREGATION', `PCM_PLAYBACK_ADD(Speaker 2, 40, PIPELINE_PCM_4)',`')
 PCM_CAPTURE_ADD(Microphone, 4, PIPELINE_PCM_5)
@@ -240,6 +254,8 @@ PCM_PLAYBACK_ADD(HDMI 3, 7, PIPELINE_PCM_8)
 # BE configurations - overrides config in ACPI if present
 #
 
+ifdef(`NOJACK', `',
+`
 #ALH dai index = ((link_id << 8) | PDI id)
 #ALH SDW0 Pin2 (ID: 0)
 DAI_CONFIG(ALH, eval(0 * 256 + 2), 0, SDW0-Playback,
@@ -248,6 +264,7 @@ DAI_CONFIG(ALH, eval(0 * 256 + 2), 0, SDW0-Playback,
 #ALH SDW0 Pin3 (ID: 1)
 DAI_CONFIG(ALH, eval(0 * 256 + 3), 1, SDW0-Capture,
 	ALH_CONFIG(ALH_CONFIG_DATA(ALH, eval(0 * 256 + 3), 48000, 2)))
+')
 
 #ALH SDW1 Pin2 (ID: 2)
 DAI_CONFIG(ALH, eval(1 * 256 + 2), 2, SDW1-Playback,
