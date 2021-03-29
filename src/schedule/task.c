@@ -28,11 +28,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#if STATIC_PIPE
-#include <sof/audio/pipeline.h>
-#include <ipc/trace.h>
-#endif
-
 typedef enum task_state (*task_main)(void *);
 
 /* 37f1d41f-252d-448d-b9c4-1e2bee8e1bf1 */
@@ -108,12 +103,6 @@ int task_main_start(struct sof *sof)
 	/* init pipeline position offsets */
 	pipeline_posn_init(sof);
 
-#if STATIC_PIPE
-	/* init static pipeline */
-	ret = init_static_pipeline(sof->ipc);
-	if (ret < 0)
-		panic(SOF_IPC_PANIC_TASK);
-#endif
 	/* let host know DSP boot is complete */
 	ret = platform_boot_complete(0);
 	if (ret < 0)

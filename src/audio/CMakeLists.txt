@@ -3,7 +3,6 @@
 if(NOT CONFIG_LIBRARY)
 	add_local_sources(sof
 		host.c
-		pipeline_static.c
 		component.c
 		buffer.c
 		channel_map.c
