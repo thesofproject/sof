@@ -95,30 +95,81 @@ struct pipeline_data {
 	int cmd;
 };
 
+/*
+ * Pipeline Graph APIs
+ *
+ * These APIs are used to construct and bind pipeline graphs. They are also
+ * used to query pipeline fundamental configuration.
+ */
+
+/**
+ * \brief Creates a new pipeline.
+ * \param[in] pipe_desc IPC pipeline description.
+ * \param[in,out] cd Pipeline component device.
+ * \return New pipeline pointer or NULL.
+ */
+struct pipeline *pipeline_new(struct sof_ipc_pipe_new *pipe_desc,
+			      struct comp_dev *cd);
+
+/**
+ * \brief Free's a pipeline.
+ * \param[in] p pipeline.
+ * \return 0 on success.
+ */
+int pipeline_free(struct pipeline *p);
+
+/**
+ * \brief Connect components in a pipeline.
+ * \param[in] comp connecting component.
+ * \param[in] buffer connecting buffer.
+ * \param[in] dir Connection direction.
+ * \return 0 on success.
+ */
+int pipeline_connect(struct comp_dev *comp, struct comp_buffer *buffer,
+		     int dir);
+
+/**
+ * \brief Creates a new pipeline.
+ * \param[in] comp connecting component.
+ * \param[in] buffer connecting buffer.
+ * \param[in] dir Connection direction.
+ */
+void pipeline_disconnect(struct comp_dev *comp, struct comp_buffer *buffer,
+			 int dir);
+
+/**
+ * \brief Completes a pipeline.
+ * \param[in] p pipeline.
+ * \param[in] source Pipeline component device.
+ * \param[in] sink Pipeline component device.
+ * \return 0 on success.
+ */
+int pipeline_complete(struct pipeline *p, struct comp_dev *source,
+		      struct comp_dev *sink);
+
 /**
  * \brief Initializes pipeline position structure.
  * \param[in,out] sof Pointer to sof structure.
  */
 void pipeline_posn_init(struct sof *sof);
 
-/* checks if two pipelines have the same scheduling component */
-static inline bool pipeline_is_same_sched_comp(struct pipeline *current,
-					       struct pipeline *previous)
-{
-	return current->sched_comp == previous->sched_comp;
-}
+/**
+ * \brief Resets the pipeline and free runtime resources.
+ * \param[in] p pipeline.
+ * \param[in] host_cd Host DMA component device.
+ * \return 0 on success.
+ */
+int pipeline_reset(struct pipeline *p, struct comp_dev *host_cd);
 
-/* checks if pipeline is scheduled with timer */
-static inline bool pipeline_is_timer_driven(struct pipeline *p)
-{
-	return p->ipc_pipe.time_domain == SOF_TIME_DOMAIN_TIMER;
-}
-
-/* checks if pipeline is scheduled on this core */
-static inline bool pipeline_is_this_cpu(struct pipeline *p)
-{
-	return p->ipc_pipe.core == cpu_get_id();
-}
+/**
+ * \brief Walks the pipeline graph for each component.
+ * \param[in] current Current pipeline component.
+ * \param[in] ctx Pipeline graph walk context.
+ * \param[in] dir Walk direction.
+ * \return 0 on success.
+ */
+int pipeline_for_each_comp(struct comp_dev *current,
+			   struct pipeline_walk_context *ctx, int dir);
 
 /**
  * Retrieves pipeline id from pipeline.
@@ -130,69 +181,160 @@ static inline uint32_t pipeline_id(struct pipeline *p)
 	return p->ipc_pipe.pipeline_id;
 }
 
-/* pipeline creation and destruction */
-struct pipeline *pipeline_new(struct sof_ipc_pipe_new *pipe_desc,
-	struct comp_dev *cd);
-int pipeline_free(struct pipeline *p);
+/*
+ * Pipeline configuration APIs
+ *
+ * These APIs are used to configure the runtime parameters of a pipeline.
+ */
 
-/* insert/remove component in pipeline */
-int pipeline_connect(struct comp_dev *comp, struct comp_buffer *buffer,
-		     int dir);
-void pipeline_disconnect(struct comp_dev *comp, struct comp_buffer *buffer, int dir);
-
-/* complete the pipeline */
-int pipeline_complete(struct pipeline *p, struct comp_dev *source,
-		      struct comp_dev *sink);
-
-/* pipeline parameters */
+/**
+ * \brief Creates a new pipeline.
+ * \param[in] p pipeline.
+ * \param[in] cd Pipeline component device.
+ * \param[in] params Pipeline parameters.
+ * \return 0 on success.
+ */
 int pipeline_params(struct pipeline *p, struct comp_dev *cd,
 		    struct sof_ipc_pcm_params *params);
 
-/* prepare the pipeline for usage */
+/**
+ * \brief Creates a new pipeline.
+ * \param[in] p pipeline.
+ * \param[in,out] cd Pipeline component device.
+ * \return 0 on success.
+ */
 int pipeline_prepare(struct pipeline *p, struct comp_dev *cd);
 
-/* reset the pipeline and free resources */
-int pipeline_reset(struct pipeline *p, struct comp_dev *host_cd);
 
-/* perform selected cache command on pipeline */
-void pipeline_cache(struct pipeline *p, struct comp_dev *dev, int cmd);
+/*
+ * Pipeline stream APIs
+ *
+ * These APIs are used to control pipeline processing work.
+ */
 
-/* trigger pipeline - atomic */
+/**
+ * \brief Trigger pipeline - atomic
+ * \param[in] p pipeline.
+ * \param[in] host_cd Host DMA component.
+ * \param[in] cmd Pipeline trigger command.
+ * \return 0 on success.
+ */
+/*  */
 int pipeline_trigger(struct pipeline *p, struct comp_dev *host_cd, int cmd);
 
-/* recover the pipeline from a XRUN condition */
-int pipeline_xrun_recover(struct pipeline *p);
-
-/* init pipeline scheduler task */
-int pipeline_comp_task_init(struct pipeline *p);
-
-/* copy data on pipeline */
+/**
+ * \brief Copy data along a pipeline.
+ * \param[in] p pipeline.
+ * \return 0 on success.
+ */
 int pipeline_copy(struct pipeline *p);
 
-/* perform xrun recovery */
-int pipeline_xrun_handle_trigger(struct pipeline *p, int cmd);
+/**
+ * \brief Get time pipeline timestamps from host to dai.
+ * \param[in] p pipeline.
+ * \param[in] host_dev Host DMA component.
+ * \param[in,out] posn Pipeline stream position.
+ */
+void pipeline_get_timestamp(struct pipeline *p, struct comp_dev *host_dev,
+			    struct sof_ipc_stream_posn *posn);
 
-/* trigger pipeline's scheduling component  */
+/*
+ * Pipeline scheduling APIs
+ *
+ * These APIs are used to schedule pipeline processing work.
+ */
+
+/**
+ * \brief Checks if two pipelines have the same scheduling component.
+ * \param[in] current This pipeline.
+ * \param[in] previous Other pipeline.
+ * \return true if both pipelines are scheduled together.
+ */
+static inline bool pipeline_is_same_sched_comp(struct pipeline *current,
+					       struct pipeline *previous)
+{
+	return current->sched_comp == previous->sched_comp;
+}
+
+/**
+ * \brief Is pipeline is scheduled with timer.
+ * \param[in] p pipeline.
+ * \return true if pipeline uses timer based scheduling.
+ */
+static inline bool pipeline_is_timer_driven(struct pipeline *p)
+{
+	return p->ipc_pipe.time_domain == SOF_TIME_DOMAIN_TIMER;
+}
+
+/**
+ * \brief Is pipeline is scheduled on this core.
+ * \param[in] p pipeline.
+ * \return true if pipeline core ID == current core ID.
+ */
+static inline bool pipeline_is_this_cpu(struct pipeline *p)
+{
+	return p->ipc_pipe.core == cpu_get_id();
+}
+
+/**
+ * \brief Free's a pipeline.
+ * \param[in] p pipeline.
+ * \return 0 on success.
+ */
+int pipeline_comp_task_init(struct pipeline *p);
+
+/**
+ * \brief Free's a pipeline.
+ * \param[in] p pipeline.
+ * \param[in] start Pipelien start time in microseconds.
+ */
+void pipeline_schedule_copy(struct pipeline *p, uint64_t start);
+
+/**
+ * \brief Trigger pipeline's scheduling component.
+ * \param[in] p pipeline.
+ * \param[in,out] comp Pipeline component device.
+ * \param[in] ctx Pipeline graph walk context.
+ */
 void pipeline_comp_trigger_sched_comp(struct pipeline *p,
 				      struct comp_dev *comp,
 				      struct pipeline_walk_context *ctx);
 
-/* schedule all triggered pipelines */
+/**
+ * \brief Schedule all triggered pipelines.
+ * \param[in] ctx Pipeline graph walk context.
+ * \param[in] cmd Trigger command.
+ */
 void pipeline_schedule_triggered(struct pipeline_walk_context *ctx,
 				 int cmd);
 
-/* walk pipeline */
-int pipeline_for_each_comp(struct comp_dev *current,
-			   struct pipeline_walk_context *ctx, int dir);
+/*
+ * Pipeline error handling APIs
+ *
+ * These APIs are used to handle, report and recover from pipeline errors.
+ */
 
-/* schedule a copy operation for this pipeline */
-void pipeline_schedule_copy(struct pipeline *p, uint64_t start);
+/**
+ * \brief Recover the pipeline from a XRUN condition.
+ * \param[in] p pipeline.
+ * \return 0 on success.
+ */
+int pipeline_xrun_recover(struct pipeline *p);
 
-/* get time pipeline timestamps from host to dai */
-void pipeline_get_timestamp(struct pipeline *p, struct comp_dev *host_dev,
-			    struct sof_ipc_stream_posn *posn);
+/**
+ * \brief Perform xrun recovery.
+ * \param[in] p pipeline.
+ * \param[in] cmd Trigger command.
+ * \return 0 on success.
+ */
+int pipeline_xrun_handle_trigger(struct pipeline *p, int cmd);
 
-/* notify host that we have XRUN */
+/**
+ * \brief notify host that we have XRUN.
+ * \param[in] p pipeline.
+ * \param[in] dev Pipeline component device.
+ * \param[in] bytes Number of bytes we have over or under run.
+ */
 void pipeline_xrun(struct pipeline *p, struct comp_dev *dev, int32_t bytes);
 
 #endif /* __SOF_AUDIO_PIPELINE_H__ */
