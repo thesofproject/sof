@@ -174,14 +174,14 @@ ifdef(`NOJACK', `',
 # playback DAI is ALH(SDW0 PIN2) using 2 periods
 # Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
-	1, ALH, eval(UAJ_LINK * 256 + 2), SDW0-Playback,
+	1, ALH, eval(UAJ_LINK * 256 + 2), `SDW'eval(UAJ_LINK)`-Playback',
 	PIPELINE_SOURCE_1, 2, s24le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # capture DAI is ALH(SDW0 PIN2) using 2 periods
 # Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
-	2, ALH, eval(UAJ_LINK * 256 + 3), SDW0-Capture,
+	2, ALH, eval(UAJ_LINK * 256 + 3), `SDW'eval(UAJ_LINK)`-Capture',
 	PIPELINE_SINK_2, 2, s24le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 ')
@@ -189,7 +189,7 @@ DAI_ADD(sof/pipe-dai-capture.m4,
 # playback DAI is ALH(SDW1 PIN2) using 2 periods
 # Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
-	3, ALH, eval(AMP_1_LINK * 256 + 2), SDW1-Playback,
+	3, ALH, eval(AMP_1_LINK * 256 + 2), `SDW'eval(AMP_1_LINK)`-Playback',
 	PIPELINE_SOURCE_3, 2, s24le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
@@ -197,12 +197,12 @@ ifdef(`NO_AGGREGATION',
 `# playback DAI is ALH(SDW2 PIN2) using 2 periods
 # Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
-	4, ALH, eval(AMP_2_LINK * 256 + 2), SDW2-Playback,
+	4, ALH, eval(AMP_2_LINK * 256 + 2), `SDW'eval(AMP_2_LINK)`-Playback',
 	PIPELINE_SOURCE_4, 2, s24le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)',
 `ifdef(`MONO', `',
 `DAI_ADD_SCHED(sof/pipe-dai-sched-playback.m4,
-	4, ALH, eval(AMP_2_LINK * 256 + 2), SDW1-Playback,
+	4, ALH, eval(AMP_2_LINK * 256 + 2), `SDW'eval(AMP_1_LINK)`-Playback',
 	PIPELINE_SOURCE_4, 2, s24le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER,
 	PIPELINE_PLAYBACK_SCHED_COMP_3)
@@ -221,7 +221,7 @@ SectionGraph."PIPE_DEMUX" {
 # capture DAI is ALH(SDW3 PIN2) using 2 periods
 # Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
-	5, ALH, eval(MIC_LINK * 256 + 2), SDW3-Capture,
+	5, ALH, eval(MIC_LINK * 256 + 2), `SDW'eval(MIC_LINK)`-Capture',
 	PIPELINE_SINK_5, 2, s24le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
@@ -270,26 +270,26 @@ ifdef(`NOJACK', `',
 `
 #ALH dai index = ((link_id << 8) | PDI id)
 #ALH SDW0 Pin2 (ID: 0)
-DAI_CONFIG(ALH, eval(UAJ_LINK * 256 + 2), 0, SDW0-Playback,
+DAI_CONFIG(ALH, eval(UAJ_LINK * 256 + 2), 0, `SDW'eval(UAJ_LINK)`-Playback',
 	ALH_CONFIG(ALH_CONFIG_DATA(ALH, eval(UAJ_LINK * 256 + 2), 48000, 2)))
 
 #ALH SDW0 Pin3 (ID: 1)
-DAI_CONFIG(ALH, eval(UAJ_LINK * 256 + 3), 1, SDW0-Capture,
+DAI_CONFIG(ALH, eval(UAJ_LINK * 256 + 3), 1, `SDW'eval(UAJ_LINK)`-Capture',
 	ALH_CONFIG(ALH_CONFIG_DATA(ALH, eval(UAJ_LINK * 256 + 3), 48000, 2)))
 ')
 
 #ALH SDW1 Pin2 (ID: 2)
-DAI_CONFIG(ALH, eval(AMP_1_LINK * 256 + 2), 2, SDW1-Playback,
+DAI_CONFIG(ALH, eval(AMP_1_LINK * 256 + 2), 2, `SDW'eval(AMP_1_LINK)`-Playback',
 	ALH_CONFIG(ALH_CONFIG_DATA(ALH, eval(AMP_1_LINK * 256 + 2), 48000, 2)))
 
 ifdef(`NO_AGGREGATION',
 `#ALH SDW2 Pin2 (ID: 3)
-DAI_CONFIG(ALH, eval(AMP_2_LINK * 256 + 2), 3, SDW2-Playback,
+DAI_CONFIG(ALH, eval(AMP_2_LINK * 256 + 2), 3, `SDW'eval(AMP_2_LINK)`-Playback',
 	ALH_CONFIG(ALH_CONFIG_DATA(ALH, eval(AMP_2_LINK * 256 + 2), 48000, 2)))',
 `')
 
 #ALH SDW3 Pin2 (ID: 4)
-DAI_CONFIG(ALH, eval(MIC_LINK * 256 + 2), 4, SDW3-Capture,
+DAI_CONFIG(ALH, eval(MIC_LINK * 256 + 2), 4, `SDW'eval(MIC_LINK)`-Capture',
 	ALH_CONFIG(ALH_CONFIG_DATA(ALH, eval(MIC_LINK * 256 + 2), 48000, 2)))
 
 # 3 HDMI/DP outputs (ID: 5,6,7)
