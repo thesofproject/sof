@@ -80,9 +80,6 @@ struct pipeline {
 	struct ipc_msg *msg;
 };
 
-/* static pipeline */
-extern struct pipeline *pipeline_static;
-
 struct pipeline_walk_context {
 	int (*comp_func)(struct comp_dev *cd, struct comp_buffer *buffer,
 			 struct pipeline_walk_context *ctx, int dir);
@@ -234,9 +231,6 @@ void pipeline_cache(struct pipeline *p, struct comp_dev *dev, int cmd);
 
 /* trigger pipeline - atomic */
 int pipeline_trigger(struct pipeline *p, struct comp_dev *host_cd, int cmd);
-
-/* static pipeline creation */
-int init_static_pipeline(struct ipc *ipc);
 
 /* pipeline creation */
 int init_pipeline(void);
