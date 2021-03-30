@@ -109,7 +109,7 @@ int codec_init(struct comp_dev *dev)
 			 codec_id);
 		ret = -EIO;
 		goto out;
-	} else if (!interface->init || !interface->prepare ||
+	} else if (!interface->init || !interface->prepare || !interface->init_process ||
 		   !interface->process || !interface->apply_config ||
 		   !interface->reset || !interface->free) {
 		comp_err(dev, "codec_init(): codec %x is missing mandatory interfaces",
