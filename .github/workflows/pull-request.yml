@@ -18,12 +18,12 @@ name: GitHub Actions
 on:
   push:
     branches:
-      - 'master'
+      - 'main'
       - 'stable-**'
       - '**-stable'
   pull_request:
     branches:
-      - 'master'
+      - 'main'
       - 'stable-**'
       - '**-stable'
 
