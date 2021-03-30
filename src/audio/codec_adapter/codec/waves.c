@@ -702,6 +702,7 @@ int waves_codec_process(struct comp_dev *dev)
 	} else {
 		codec->cpd.produced = waves_codec->o_stream.numAvailableSamples *
 			waves_codec->o_format.numChannels * waves_codec->sample_size_in_bytes;
+		codec->cpd.consumed = codec->cpd.produced;
 		ret = 0;
 	}
 
