@@ -84,6 +84,7 @@ static inline struct trace *trace_get(void)
 	return sof_get()->trace;
 }
 
+/* Silences compiler warnings about unused variables */
 #define trace_unused(class, ctx, id_1, id_2, format, ...) \
 	UNUSED(ctx, id_1, id_2, ##__VA_ARGS__)
 
@@ -377,6 +378,7 @@ struct tr_ctx {
 				    _TRACE_INV_ID, _TRACE_INV_ID, \
 				    fmt, ##__VA_ARGS__)
 
+/* tracev_ output depends on CONFIG_TRACEV=y */
 #define tr_dbg(ctx, fmt, ...) \
 	tracev_event_with_ids(_TRACE_INV_CLASS, ctx, \
 			      _TRACE_INV_ID, _TRACE_INV_ID, fmt, ##__VA_ARGS__)
