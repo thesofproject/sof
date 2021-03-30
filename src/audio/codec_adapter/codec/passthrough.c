@@ -63,6 +63,7 @@ int passthrough_codec_process(struct comp_dev *dev)
 	memcpy_s(codec->cpd.out_buff, codec->cpd.out_buff_size,
 		 codec->cpd.in_buff, codec->cpd.in_buff_size);
 	codec->cpd.produced = cd->period_bytes;
+	codec->cpd.consumed = cd->period_bytes;
 
 	return 0;
 }
