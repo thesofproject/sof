@@ -16,6 +16,6 @@
 #define PI_Q4_28      843314857
 #define PI_MUL2_Q4_28     1686629713
 
-int32_t sin_fixed(int32_t w); /* Input is Q4.28, output is Q1.31 */
+int32_t sin_fixed(int32_t th_rad_fxp); /* Input is Q4.28, output is Q1.31 */
 
 #endif /* __SOF_MATH_TRIG_H__ */
