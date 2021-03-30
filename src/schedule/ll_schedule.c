@@ -306,7 +306,9 @@ static int schedule_ll_domain_set(struct ll_schedule_data *sch,
 		sch->domain->enabled[core] = true;
 	}
 
-	tr_info(&ll_tr, "new added task->start %u", (unsigned int)task->start);
+	tr_info(&ll_tr, "new added task->start %u at %u",
+		(unsigned int)task->start,
+		(unsigned int)platform_timer_get_atomic(timer_get()));
 	tr_info(&ll_tr, "num_tasks %d total_num_tasks %d",
 		atomic_read(&sch->num_tasks),
 		atomic_read(&sch->domain->total_num_tasks));
