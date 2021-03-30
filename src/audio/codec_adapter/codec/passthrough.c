@@ -40,6 +40,19 @@ int passthrough_codec_prepare(struct comp_dev *dev)
 	return 0;
 }
 
+int passthrough_codec_init_process(struct comp_dev *dev)
+{
+	struct codec_data *codec = comp_get_codec(dev);
+
+	comp_dbg(dev, "passthrough_codec_init_process()");
+
+	codec->cpd.produced = 0;
+	codec->cpd.consumed = 0;
+	codec->cpd.init_done = 1;
+
+	return 0;
+}
+
 int passthrough_codec_process(struct comp_dev *dev)
 {
 	struct codec_data *codec = comp_get_codec(dev);
