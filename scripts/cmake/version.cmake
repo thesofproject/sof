@@ -23,24 +23,24 @@ if(EXISTS ${TARBALL_VERSION_SOURCE_PATH})
 	list(GET lines 1 GIT_LOG_HASH)
 	message(STATUS "Found ${TARBALL_VERSION_FILE_NAME}")
 else()
+	# execute_process() errors are not fatal by default!
 	execute_process(
 	        COMMAND git describe --tags --abbrev=12 --match v* --dirty
 		WORKING_DIRECTORY ${SOF_ROOT_SOURCE_DIRECTORY}
 		OUTPUT_VARIABLE GIT_TAG
 		OUTPUT_STRIP_TRAILING_WHITESPACE
-		ERROR_QUIET
 	)
 
 	execute_process(COMMAND git log --pretty=format:%h -1
 		WORKING_DIRECTORY ${SOF_ROOT_SOURCE_DIRECTORY}
 		OUTPUT_VARIABLE GIT_LOG_HASH
 		OUTPUT_STRIP_TRAILING_WHITESPACE
-		ERROR_QUIET
 	)
 endif()
 
-# We have ERROR_QUIET above so git issues are not fatal
 if(NOT GIT_TAG MATCHES "^v")
+	message(WARNING
+	  "git describe found ${GIT_TAG} / nothing starting with 'v'. Shallow clone?")
 	set(GIT_TAG "v0.0-0-g0000")
 endif()
 
