@@ -11,6 +11,29 @@ cmake_minimum_required(VERSION 3.10)
 
 set(VERSION_CMAKE_PATH ${CMAKE_CURRENT_LIST_DIR}/version.cmake)
 
+
+# In an ideal world, every CI engine records the most basic and most
+# important information:
+# - current date and time
+# - git version of the pull request
+# - git version of the moving branch it's being merged with
+#
+# In the real world, some CI results use a random timezone without
+# telling which one or don't provide any time at all.
+string(TIMESTAMP build_start_time UTC)
+message(STATUS "version.cmake starting SOF build at ${build_start_time} UTC")
+
+# Most CI engines test a temporary merge of the pull request with a
+# moving target: the latest target branch. In that case the SHA version
+# gathered by git describe is disposable hence useless. Only the
+# --parents SHA are useful.
+message(STATUS "Building git commit with parent(s):")
+# Note execute_process() failures are ignored by default (missing git...)
+execute_process(
+	COMMAND git log --parents --oneline --decorate -n 1 HEAD
+	)
+
+
 # Don't confuse this manual _input_ file with the other, output file of
 # the same name auto-generated in the top _build_ directory by "make
 # dist", see dist.cmake
