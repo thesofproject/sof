@@ -122,6 +122,7 @@ target_compile_options(sof_options INTERFACE
 		-Wall -Werror
 		-Wl,-EL
 		-Wmissing-prototypes
+		-Wdeclaration-after-statement
 		-Wpointer-arith
 		${XTENSA_C_FLAGS}
 	>
