@@ -9,6 +9,7 @@ add_executable(sof-logger
 
 target_compile_options(sof-logger PRIVATE
 	-Wall -Werror
+	-Wdeclaration-after-statement
 )
 
 target_include_directories(sof-logger PRIVATE

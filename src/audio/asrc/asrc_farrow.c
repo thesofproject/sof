@@ -418,6 +418,8 @@ enum asrc_error_code asrc_set_fs_ratio(struct comp_dev *dev,
 				       struct asrc_farrow *src_obj,
 				       int32_t fs_prim, int32_t fs_sec)
 {
+	enum asrc_error_code error_code;
+
 	/* Check for parameter errors */
 	if (!src_obj) {
 		comp_err(dev, "asrc_set_fs_ratio(), null src_obj");
@@ -466,7 +468,7 @@ enum asrc_error_code asrc_set_fs_ratio(struct comp_dev *dev,
 	/* See initialise_asrc(...) for further information
 	 * Update the filters accordingly
 	 */
-	enum asrc_error_code error_code = initialise_filter(dev, src_obj);
+	error_code = initialise_filter(dev, src_obj);
 	/* check for errors */
 	if (error_code != ASRC_EC_OK) {
 		comp_err(dev, "asrc_set_fs_ratio(), failed filter initialise");

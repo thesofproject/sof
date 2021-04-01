@@ -216,8 +216,8 @@ static inline void cavs_pm_runtime_dis_ssp_power(uint32_t index)
 static inline void cavs_pm_runtime_dis_dmic_clk_gating(uint32_t index)
 {
 #if CONFIG_APOLLOLAKE || CONFIG_CANNONLAKE
-	(void)index;
 	uint32_t shim_reg;
+	(void)index;
 
 	shim_reg = shim_read(SHIM_CLKCTL) | SHIM_CLKCTL_DMICFDCGB;
 
@@ -236,8 +236,8 @@ static inline void cavs_pm_runtime_dis_dmic_clk_gating(uint32_t index)
 static inline void cavs_pm_runtime_en_dmic_clk_gating(uint32_t index)
 {
 #if CONFIG_APOLLOLAKE || CONFIG_CANNONLAKE
-	(void)index;
 	uint32_t shim_reg;
+	(void)index;
 
 	shim_reg = shim_read(SHIM_CLKCTL) & ~SHIM_CLKCTL_DMICFDCGB;
 

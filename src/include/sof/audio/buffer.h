@@ -222,11 +222,11 @@ static inline void buffer_lock(struct comp_buffer *buffer, uint32_t *flags)
  */
 static inline void buffer_unlock(struct comp_buffer *buffer, uint32_t flags)
 {
-	if (!buffer->inter_core)
-		return;
-
 	/* save lock pointer to avoid memory access after cache flushing */
 	spinlock_t *lock = buffer->lock;
+
+	if (!buffer->inter_core)
+		return;
 
 	/* wtb and inv to avoid buffer locking in read only situations */
 	dcache_writeback_invalidate_region(buffer, sizeof(*buffer));

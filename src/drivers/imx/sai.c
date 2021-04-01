@@ -29,9 +29,9 @@ DECLARE_TR_CTX(sai_tr, SOF_UUID(sai_uuid), LOG_LEVEL_INFO);
 
 static void sai_start(struct dai *dai, int direction)
 {
-	dai_info(dai, "SAI: sai_start");
-
 	uint32_t xcsr = 0U;
+
+	dai_info(dai, "SAI: sai_start");
 
 	if (direction == DAI_DIR_CAPTURE) {
 		/* Software Reset */
@@ -99,9 +99,9 @@ static void sai_start(struct dai *dai, int direction)
 
 static void sai_stop(struct dai *dai, int direction)
 {
-	dai_info(dai, "SAI: sai_stop");
-
 	uint32_t xcsr = 0U;
+
+	dai_info(dai, "SAI: sai_stop");
 
 	/* Disable DMA request */
 	dai_update_bits(dai, REG_SAI_XCSR(direction),
@@ -152,12 +152,13 @@ static int sai_context_restore(struct dai *dai)
 static inline int sai_set_config(struct dai *dai,
 				 struct sof_ipc_dai_config *config)
 {
-	dai_info(dai, "SAI: sai_set_config");
 	uint32_t val_cr2 = 0, val_cr4 = 0, val_cr5 = 0;
 	uint32_t mask_cr2 = 0, mask_cr4 = 0, mask_cr5 = 0;
 	struct sai_pdata *sai = dai_get_drvdata(dai);
 	/* TODO: this value will be provided by config */
 	uint32_t sywd = 32;
+
+	dai_info(dai, "SAI: sai_set_config");
 
 	sai->config = *config;
 	sai->params = config->sai;

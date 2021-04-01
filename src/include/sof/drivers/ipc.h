@@ -191,11 +191,11 @@ static inline struct ipc_msg *ipc_msg_init(uint32_t header, uint32_t size)
 
 static inline void ipc_msg_free(struct ipc_msg *msg)
 {
-	if (!msg)
-		return;
-
 	struct ipc *ipc = ipc_get();
 	uint32_t flags;
+
+	if (!msg)
+		return;
 
 	spin_lock_irq(&ipc->lock, flags);
 

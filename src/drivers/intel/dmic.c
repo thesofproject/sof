@@ -778,6 +778,9 @@ static int stereo_helper(int stereo[], int swap[])
 static int configure_registers(struct dai *dai,
 			       struct dmic_configuration *cfg)
 {
+#if (DMIC_HW_VERSION == 2 && DMIC_HW_CONTROLLERS > 2) || DMIC_HW_VERSION == 3
+	int source[OUTCONTROLX_IPM_NUMSOURCES];
+#endif
 	int stereo[DMIC_HW_CONTROLLERS];
 	int swap[DMIC_HW_CONTROLLERS];
 	uint32_t val;
@@ -809,10 +812,6 @@ static int configure_registers(struct dai *dai,
 	soft_reset = 1;
 	cic_mute = 1;
 	fir_mute = 1;
-
-#if (DMIC_HW_VERSION == 2 && DMIC_HW_CONTROLLERS > 2) || DMIC_HW_VERSION == 3
-	int source[OUTCONTROLX_IPM_NUMSOURCES];
-#endif
 
 	/* pdata is set by dmic_probe(), error if it has not been set */
 	if (!pdata) {
