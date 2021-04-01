@@ -46,7 +46,7 @@ i0 = n_idle+mark_start.n+1;
 nn = 1;
 for m=1:test.na
         for n=1:test.nf
-                i1 = i0 + (nn-1)*test.nt+1;
+                i1 = i0 + (nn-1)*test.nt;
                 i2 = i1+test.nt-1;
                 nn = nn+1;
                 if length(test.f) > 1
