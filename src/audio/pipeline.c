@@ -202,11 +202,13 @@ static int pipeline_for_each_comp(struct comp_dev *current,
 
 		/* continue further */
 		if (ctx->comp_func) {
+			int err;
+
 			buffer_lock(buffer, &flags);
 			buffer->walking = true;
 			buffer_unlock(buffer, flags);
 
-			int err = ctx->comp_func(buffer_comp, buffer,
+			err = ctx->comp_func(buffer_comp, buffer,
 						 ctx, dir);
 			buffer_lock(buffer, &flags);
 			buffer->walking = false;

@@ -22,6 +22,9 @@
 
 int gcd(int a, int b)
 {
+	int aux;
+	int k;
+
 	if (a == 0)
 		return b;
 
@@ -37,9 +40,6 @@ int gcd(int a, int b)
 
 	if (b < 0)
 		b = -b;
-
-	int aux;
-	int k;
 
 	/* Find the greatest power of 2 that devides both a and b */
 	for (k = 0; ((a | b) & 1) == 0; k++) {

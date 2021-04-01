@@ -44,8 +44,9 @@ DECLARE_TR_CTX(dcblock_tr, SOF_UUID(dcblock_uuid), LOG_LEVEL_INFO);
  */
 static void dcblock_set_passthrough(struct comp_data *cd)
 {
-	comp_cl_info(&comp_dcblock, "dcblock_set_passthrough()");
 	int i;
+
+	comp_cl_info(&comp_dcblock, "dcblock_set_passthrough()");
 
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
 		cd->R_coeffs[i] = ONE_Q2_30;

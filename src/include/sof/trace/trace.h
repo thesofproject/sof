@@ -194,11 +194,11 @@ _thrown_from_macro_BASE_LOG_in_trace_h
 do {											\
 	_DECLARE_LOG_ENTRY(lvl, format, comp_class,					\
 			   META_COUNT_VARAGS_BEFORE_COMPILE(__VA_ARGS__));		\
-	STATIC_ASSERT_ARG_SIZE(__VA_ARGS__);						\
 	STATIC_ASSERT(_TRACE_EVENT_MAX_ARGUMENT_COUNT >=				\
 			META_COUNT_VARAGS_BEFORE_COMPILE(__VA_ARGS__),			\
 		BASE_LOG_ASSERT_FAIL_MSG						\
 	);										\
+	STATIC_ASSERT_ARG_SIZE(__VA_ARGS__);						\
 	log_func(atomic, &log_entry, ctx, lvl, id_1, id_2,				\
 		 META_COUNT_VARAGS_BEFORE_COMPILE(__VA_ARGS__), ##__VA_ARGS__);		\
 } while (0)

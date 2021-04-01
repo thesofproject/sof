@@ -16,8 +16,6 @@ void asrc_fir_filter16(struct asrc_farrow *src_obj, int16_t **output_buffers,
 	ae_f32x2 filter01 = AE_ZERO32(); /* Note: Init is not needed */
 	ae_f32x2 filter23 = AE_ZERO32(); /* Note: Init is not needed */
 	ae_f16x4 buffer0123 = AE_ZERO16(); /* Note: Init is not needed */
-	ae_f32x2 *filter_p;
-	ae_f16x4 *buffer_p;
 	int n_limit;
 	int ch;
 	int n;
@@ -37,10 +35,10 @@ void asrc_fir_filter16(struct asrc_farrow *src_obj, int16_t **output_buffers,
 	/* Iterate over each channel */
 	for (ch = 0; ch < src_obj->num_channels; ch++) {
 		/* Pointer to the beginning of the impulse response */
-		filter_p = (ae_f32x2 *)&src_obj->impulse_response[0];
+		ae_f32x2 *filter_p = (ae_f32x2 *)&src_obj->impulse_response[0];
 
 		/* Pointer to the buffered input data */
-		buffer_p =
+		ae_f16x4 *buffer_p =
 			(ae_f16x4 *)&src_obj->ring_buffers16[ch]
 			[src_obj->buffer_write_position];
 
@@ -101,8 +99,6 @@ void asrc_fir_filter32(struct asrc_farrow *src_obj, int32_t **output_buffers,
 	ae_f32x2 prod;
 	ae_f32x2 buffer01 = AE_ZERO32(); /* Note: Init is not needed */
 	ae_f32x2 filter01 = AE_ZERO32(); /* Note: Init is not needed */
-	ae_f32x2 *filter_p;
-	ae_f32x2 *buffer_p;
 	int n_limit;
 	int ch;
 	int n;
@@ -122,10 +118,10 @@ void asrc_fir_filter32(struct asrc_farrow *src_obj, int32_t **output_buffers,
 	/* Iterate over each channel */
 	for (ch = 0; ch < src_obj->num_channels; ch++) {
 		/* Pointer to the beginning of the impulse response */
-		filter_p = (ae_f32x2 *)&src_obj->impulse_response[0];
+		ae_f32x2 *filter_p = (ae_f32x2 *)&src_obj->impulse_response[0];
 
 		/* Pointer to the buffered input data */
-		buffer_p =
+		ae_f32x2 *buffer_p =
 			(ae_f32x2 *)&src_obj->ring_buffers32[ch]
 			[src_obj->buffer_write_position];
 
