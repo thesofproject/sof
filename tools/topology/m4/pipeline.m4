@@ -22,7 +22,7 @@ define(`W_PIPELINE',
 `		SOF_TKN_SCHED_CORE'		STR($4)
 `		SOF_TKN_SCHED_FRAMES'		"0"
 `		SOF_TKN_SCHED_TIME_DOMAIN'	STR($5)
-`		SOF_TKN_SCHED_DYNAMIC'		ifdef(`DYNAMIC', "1", ifelse(DYNAMIC_PIPE, `1', "1", "0"))
+`		SOF_TKN_SCHED_DYNAMIC_PIPELINE'	ifdef(`DYNAMIC', "1", ifelse(DYNAMIC_PIPE, `1', "1", "0"))
 `	}'
 `}'
 `SectionData."'N_PIPELINE($1)`_data" {'
