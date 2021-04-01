@@ -169,6 +169,26 @@ static inline void interrupt_global_enable(uint32_t flags)
 	arch_interrupt_global_enable(flags);
 }
 
+#if CONFIG_LIBRARY
+
+/* temporary fix to remove build warning for testbench that will need shortly
+ * realigned when Zephyr native APIs are used.
+ */
+static inline void __irq_local_disable(unsigned long flags) {}
+static inline void __irq_local_enable(unsigned long flags) {}
+
+/* disables all IRQ sources on current core - NO effect on library */
+#define irq_local_disable(flags)		\
+	do {					\
+		flags = 0;			\
+		__irq_local_disable(flags);	\
+	} while (0)
+
+/* re-enables IRQ sources on current core - NO effect on library*/
+#define irq_local_enable(flags) \
+	__irq_local_enable(flags)
+
+#else
 /* disables all IRQ sources on current core */
 #define irq_local_disable(flags) \
 	(flags = interrupt_global_disable())
@@ -176,5 +196,6 @@ static inline void interrupt_global_enable(uint32_t flags)
 /* re-enables IRQ sources on current core */
 #define irq_local_enable(flags) \
 	interrupt_global_enable(flags)
+#endif
 #endif
 #endif /* __SOF_DRIVERS_INTERRUPT_H__ */
