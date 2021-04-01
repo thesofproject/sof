@@ -51,7 +51,7 @@ id = floor(rand(1,1) * 1e6);
 test.fn_in = sprintf('thdnf_test_in_%d.%s', id, test.fmt);
 test.fn_out = sprintf('thdnf_test_out_%d.%s', id, test.fmt);
 noct = ceil(log(test.f_end/test.f_start)/log(2)); % Max 1 octave steps
-test.f = logspace(log10(test.f_start),log10(test.f_end), noct);
+test.f = logspace(log10(test.f_start),log10(test.f_end), noct+1);
 
 %% Tone sweep parameters
 test.is = 20e-3; % Ignore signal from tone start
