@@ -116,7 +116,17 @@ target_compile_options(sof_options INTERFACE ${stdlib_flag} -fno-inline-function
 
 # No space between -imacros and its argument to avoid CMake
 # de-duplication "feature"
-target_compile_options(sof_options INTERFACE $<$<COMPILE_LANGUAGE:C>: -${optimization_flag} -g -Wall -Werror -Wl,-EL -Wmissing-prototypes -Wpointer-arith ${XTENSA_C_FLAGS}> -imacros${CONFIG_H_PATH})
+target_compile_options(sof_options INTERFACE
+	$<$<COMPILE_LANGUAGE:C>:
+		-${optimization_flag} -g
+		-Wall -Werror
+		-Wl,-EL
+		-Wmissing-prototypes
+		-Wpointer-arith
+		${XTENSA_C_FLAGS}
+	>
+	-imacros${CONFIG_H_PATH}
+	)
 
 if(BUILD_UNIT_TESTS)
 	# rest of this file is not needed for unit tests
