@@ -14,6 +14,12 @@
 #include <sof/audio/codec_adapter/codec/generic.h>
 #include <sof/audio/codec_adapter/codec/cadence.h>
 
+/* d8218443-5ff3-4a4c-b388-6cfe07b956aa */
+DECLARE_SOF_RT_UUID("cadence_codec", cadence_uuid, 0xd8218443, 0x5ff3, 0x4a4c,
+		    0xb3, 0x88, 0x6c, 0xfe, 0x07, 0xb9, 0x56, 0xaa);
+
+DECLARE_TR_CTX(cadence_tr, SOF_UUID(cadence_uuid), LOG_LEVEL_INFO);
+
 /*****************************************************************************/
 /* Cadence API functions array						     */
 /*****************************************************************************/
@@ -478,3 +484,15 @@ int cadence_codec_free(struct comp_dev *dev)
 	/* Nothing to do */
 	return 0;
 }
+
+static struct codec_interface cadence_interface = {
+	.init  = cadence_codec_init,
+	.prepare = cadence_codec_prepare,
+	.init_process = cadence_codec_init_process,
+	.process = cadence_codec_process,
+	.apply_config = cadence_codec_apply_config,
+	.reset = cadence_codec_reset,
+	.free = cadence_codec_free
+};
+
+DECLARE_CODEC_ADAPTER(cadence_interface, cadence_uuid, cadence_tr);

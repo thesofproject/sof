@@ -12,7 +12,6 @@
  */
 
 #include <sof/audio/codec_adapter/codec/generic.h>
-#include <sof/audio/codec_adapter/interfaces.h>
 
 /*****************************************************************************/
 /* Local helper functions						     */
@@ -77,16 +76,12 @@ err:
 	return ret;
 }
 
-int codec_init(struct comp_dev *dev)
+int codec_init(struct comp_dev *dev, struct codec_interface *interface)
 {
 	int ret;
 	struct comp_data *cd = comp_get_drvdata(dev);
 	uint32_t codec_id = cd->ca_config.codec_id;
-	uint32_t interface_id = CODEC_GET_INTERFACE_ID(codec_id);
 	struct codec_data *codec = &cd->codec;
-	struct codec_interface *interface = NULL;
-	uint32_t i;
-	uint32_t no_of_interfaces = ARRAY_SIZE(interfaces);
 
 	comp_info(dev, "codec_init() start");
 
@@ -97,13 +92,6 @@ int codec_init(struct comp_dev *dev)
 
 	codec->id = codec_id;
 
-	/* Find proper interface */
-	for (i = 0; i < no_of_interfaces; i++) {
-		if (interfaces[i].id == interface_id) {
-			interface = &interfaces[i];
-			break;
-		}
-	}
 	if (!interface) {
 		comp_err(dev, "codec_init(): could not find codec interface for codec id %x",
 			 codec_id);
