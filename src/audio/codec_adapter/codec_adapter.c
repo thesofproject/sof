@@ -22,13 +22,8 @@
 #include <sof/platform.h>
 #include <sof/ut.h>
 
-static const struct comp_driver comp_codec_adapter;
-
-/* d8218443-5ff3-4a4c-b388-6cfe07b956aa */
-DECLARE_SOF_RT_UUID("codec_adapter", ca_uuid, 0xd8218443, 0x5ff3, 0x4a4c,
-		    0xb3, 0x88, 0x6c, 0xfe, 0x07, 0xb9, 0x56, 0xaa);
-
-DECLARE_TR_CTX(ca_tr, SOF_UUID(ca_uuid), LOG_LEVEL_INFO);
+int load_setup_config(struct comp_dev *dev, void *cfg, uint32_t size);
+int validate_setup_config(struct ca_config *cfg);
 
 /**
  * \brief Create a codec adapter component.
@@ -37,8 +32,9 @@ DECLARE_TR_CTX(ca_tr, SOF_UUID(ca_uuid), LOG_LEVEL_INFO);
  *
  * \return: a pointer to newly created codec adapter component.
  */
-static struct comp_dev *codec_adapter_new(const struct comp_driver *drv,
-					  struct sof_ipc_comp *comp)
+struct comp_dev *codec_adapter_new(const struct comp_driver *drv,
+				   struct sof_ipc_comp *comp,
+				   struct codec_interface *interface)
 {
 	int ret;
 	struct comp_dev *dev;
@@ -82,7 +78,7 @@ static struct comp_dev *codec_adapter_new(const struct comp_driver *drv,
 		goto err;
 	}
 	/* Init processing codec */
-	ret = codec_init(dev);
+	ret = codec_init(dev, interface);
 	if (ret) {
 		comp_err(dev, "codec_adapter_new() %d: codec initialization failed",
 			 ret);
@@ -100,7 +96,7 @@ err:
 	return NULL;
 }
 
-static inline int validate_setup_config(struct ca_config *cfg)
+int validate_setup_config(struct ca_config *cfg)
 {
 	/* TODO: validate codec_adapter setup parameters */
 	return 0;
@@ -121,7 +117,7 @@ static inline int validate_setup_config(struct ca_config *cfg)
  *	0 -> success
  *	negative value -> failure.
  */
-static int load_setup_config(struct comp_dev *dev, void *cfg, uint32_t size)
+int load_setup_config(struct comp_dev *dev, void *cfg, uint32_t size)
 {
 	int ret;
 	void *lib_cfg;
@@ -178,7 +174,7 @@ end:
  *	0 - success
  *	value < 0 - failure.
  */
-static int codec_adapter_prepare(struct comp_dev *dev)
+int codec_adapter_prepare(struct comp_dev *dev)
 {
 	int ret;
 	struct comp_data *cd = comp_get_drvdata(dev);
@@ -274,8 +270,8 @@ static int codec_adapter_prepare(struct comp_dev *dev)
 	return 0;
 }
 
-static int codec_adapter_params(struct comp_dev *dev,
-				    struct sof_ipc_stream_params *params)
+int codec_adapter_params(struct comp_dev *dev,
+			 struct sof_ipc_stream_params *params)
 {
 	int ret;
 	struct comp_data *cd = comp_get_drvdata(dev);
@@ -363,7 +359,7 @@ static void generate_zeroes(struct comp_buffer *sink, uint32_t bytes)
 	comp_update_buffer_produce(sink, bytes);
 }
 
-static int codec_adapter_copy(struct comp_dev *dev)
+int codec_adapter_copy(struct comp_dev *dev)
 {
 	int ret = 0;
 	uint32_t bytes_to_process, copy_bytes, processed = 0, produced = 0;
@@ -639,8 +635,8 @@ static int codec_adapter_ctrl_set_data(struct comp_dev *dev,
 }
 
 /* Used to pass standard and bespoke commands (with data) to component */
-static int codec_adapter_cmd(struct comp_dev *dev, int cmd, void *data,
-			     int max_data_size)
+int codec_adapter_cmd(struct comp_dev *dev, int cmd, void *data,
+		      int max_data_size)
 {
 	int ret;
 	struct sof_ipc_ctrl_data *cdata = data;
@@ -665,14 +661,14 @@ static int codec_adapter_cmd(struct comp_dev *dev, int cmd, void *data,
 	return ret;
 }
 
-static int codec_adapter_trigger(struct comp_dev *dev, int cmd)
+int codec_adapter_trigger(struct comp_dev *dev, int cmd)
 {
 	comp_dbg(dev, "codec_adapter_trigger(): component got trigger cmd %x", cmd);
 
 	return comp_set_state(dev, cmd);
 }
 
-static int codec_adapter_reset(struct comp_dev *dev)
+int codec_adapter_reset(struct comp_dev *dev)
 {
 	int ret;
 	struct comp_data *cd = comp_get_drvdata(dev);
@@ -692,7 +688,7 @@ static int codec_adapter_reset(struct comp_dev *dev)
 	return comp_set_state(dev, COMP_TRIGGER_RESET);
 }
 
-static void codec_adapter_free(struct comp_dev *dev)
+void codec_adapter_free(struct comp_dev *dev)
 {
 	int ret;
 	struct comp_data *cd = comp_get_drvdata(dev);
@@ -708,31 +704,3 @@ static void codec_adapter_free(struct comp_dev *dev)
 	rfree(cd);
 	rfree(dev);
 }
-
-static const struct comp_driver comp_codec_adapter = {
-	.type = SOF_COMP_NONE,
-	.uid = SOF_RT_UUID(ca_uuid),
-	.tctx = &ca_tr,
-	.ops = {
-		.create = codec_adapter_new,
-		.prepare = codec_adapter_prepare,
-		.params = codec_adapter_params,
-		.copy = codec_adapter_copy,
-		.cmd = codec_adapter_cmd,
-		.trigger = codec_adapter_trigger,
-		.reset = codec_adapter_reset,
-		.free = codec_adapter_free,
-	},
-};
-
-static SHARED_DATA struct comp_driver_info comp_codec_adapter_info = {
-	.drv = &comp_codec_adapter,
-};
-
-UT_STATIC void sys_comp_codec_adapter_init(void)
-{
-	comp_register(platform_shared_get(&comp_codec_adapter_info,
-					  sizeof(comp_codec_adapter_info)));
-}
-
-DECLARE_MODULE(sys_comp_codec_adapter_init);

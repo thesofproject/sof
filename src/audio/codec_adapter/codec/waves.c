@@ -21,6 +21,11 @@
 #define MAX_CONFIG_SIZE_BYTES (8192)
 #define NUM_IO_STREAMS (1)
 
+/* d944281a-afe9-4695-a043-d7f62b89538e*/
+DECLARE_SOF_RT_UUID("waves_codec", waves_uuid, 0xd944281a, 0xafe9, 0x4695,
+		    0xa0, 0x43, 0xd7, 0xf6, 0x2b, 0x89, 0x53, 0x8e);
+DECLARE_TR_CTX(waves_tr, SOF_UUID(waves_uuid), LOG_LEVEL_INFO);
+
 struct waves_codec_data {
 	uint32_t                sample_rate;
 	uint32_t                buffer_bytes;
@@ -758,3 +763,15 @@ int waves_codec_free(struct comp_dev *dev)
 	comp_dbg(dev, "waves_codec_free()");
 	return 0;
 }
+
+static struct codec_interface waves_interface = {
+	.init  = waves_codec_init,
+	.prepare = waves_codec_prepare,
+	.init_process = waves_codec_init_process,
+	.process = waves_codec_process,
+	.apply_config = waves_codec_apply_config,
+	.reset = waves_codec_reset,
+	.free = waves_codec_free
+};
+
+DECLARE_CODEC_ADAPTER(waves_interface, waves_uuid, waves_tr);
