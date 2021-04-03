@@ -30,7 +30,7 @@ struct sof_ipc_pm_ctx_elem {
 	uint32_t type;
 	uint32_t size;
 	uint64_t addr;
-} __attribute__((packed));
+} __attribute__((packed, aligned(4)));
 
 /*
  * PM context - SOF_IPC_PM_CTX_SAVE, SOF_IPC_PM_CTX_RESTORE,
@@ -46,13 +46,13 @@ struct sof_ipc_pm_ctx {
 	uint32_t reserved[8];
 
 	struct sof_ipc_pm_ctx_elem elems[];
-} __attribute__((packed));
+} __attribute__((packed, aligned(4)));
 
 /* enable or disable cores - SOF_IPC_PM_CORE_ENABLE */
 struct sof_ipc_pm_core_config {
 	struct sof_ipc_cmd_hdr hdr;
 	uint32_t enable_mask;
-} __attribute__((packed));
+} __attribute__((packed, aligned(4)));
 
 struct sof_ipc_pm_gate {
 	struct sof_ipc_cmd_hdr hdr;
@@ -60,7 +60,7 @@ struct sof_ipc_pm_gate {
 
 	/* reserved for future use */
 	uint32_t reserved[5];
-} __attribute__((packed));
+} __attribute__((packed, aligned(4)));
 
 #define SOF_PM_PG_RSVD		BIT(0)
 

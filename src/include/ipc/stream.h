@@ -77,7 +77,7 @@ struct sof_ipc_host_buffer {
 	uint32_t pages;
 	uint32_t size;
 	uint32_t reserved[3];
-} __attribute__((packed));
+} __attribute__((packed, aligned(4)));
 
 struct sof_ipc_stream_params {
 	struct sof_ipc_hdr hdr;
@@ -96,7 +96,7 @@ struct sof_ipc_stream_params {
 
 	uint16_t reserved[3];
 	uint16_t chmap[SOF_IPC_MAX_CHANNELS];	/**< channel map - SOF_CHMAP_ */
-} __attribute__((packed));
+} __attribute__((packed, aligned(4)));
 
 /* PCM params info - SOF_IPC_STREAM_PCM_PARAMS */
 struct sof_ipc_pcm_params {
@@ -105,20 +105,20 @@ struct sof_ipc_pcm_params {
 	uint32_t flags;		/**< generic PCM flags - SOF_PCM_FLAG_ */
 	uint32_t reserved[2];
 	struct sof_ipc_stream_params params;
-} __attribute__((packed));
+} __attribute__((packed, aligned(4)));
 
 /* PCM params info reply - SOF_IPC_STREAM_PCM_PARAMS_REPLY */
 struct sof_ipc_pcm_params_reply {
 	struct sof_ipc_reply rhdr;
 	uint32_t comp_id;
 	uint32_t posn_offset;
-} __attribute__((packed));
+} __attribute__((packed, aligned(4)));
 
 /* free stream - SOF_IPC_STREAM_PCM_PARAMS */
 struct sof_ipc_stream {
 	struct sof_ipc_cmd_hdr hdr;
 	uint32_t comp_id;
-} __attribute__((packed));
+} __attribute__((packed, aligned(4)));
 
 /* flags indicating which time stamps are in sync with each other */
 #define	SOF_TIME_HOST_SYNC	(1 << 0)
@@ -151,6 +151,6 @@ struct sof_ipc_stream_posn {
 	uint64_t timestamp;	/**< system time stamp */
 	uint32_t xrun_comp_id;	/**< comp ID of XRUN component */
 	int32_t xrun_size;	/**< XRUN size in bytes */
-} __attribute__((packed));
+} __attribute__((packed, aligned(4)));
 
 #endif /* __IPC_STREAM_H__ */

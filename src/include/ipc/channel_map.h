@@ -41,7 +41,7 @@ struct sof_ipc_channel_map {
 	uint32_t ch_mask;
 	uint32_t reserved;
 	int32_t ch_coeffs[0];
-} __attribute__((packed));
+} __attribute__((packed, aligned(4)));
 
 /**
  * \brief Complete map for each channel of a multichannel stream.
@@ -57,6 +57,6 @@ struct sof_ipc_stream_map {
 	uint32_t num_ch_map;
 	uint32_t reserved[3];
 	struct sof_ipc_channel_map ch_map[0];
-} __attribute__((packed));
+} __attribute__((packed, aligned(4)));
 
 #endif /* __IPC_CHANNEL_MAP_H__ */
