@@ -90,7 +90,7 @@ struct sof_ipc_dai_ssp_params {
 	uint32_t bclk_delay;	/* guaranteed time (ms) for which BCLK
 				 * will be driven, before sending data
 				 */
-} __attribute__((packed));
+} __attribute__((packed, aligned(4)));
 
 /* HDA Configuration Request - SOF_IPC_DAI_HDA_CONFIG */
 struct sof_ipc_dai_hda_params {
@@ -98,7 +98,7 @@ struct sof_ipc_dai_hda_params {
 	uint32_t link_dma_ch;
 	uint32_t rate;
 	uint32_t channels;
-} __attribute__((packed));
+} __attribute__((packed, aligned(4)));
 
 /* ALH Configuration Request - SOF_IPC_DAI_ALH_CONFIG */
 struct sof_ipc_dai_alh_params {
@@ -109,7 +109,7 @@ struct sof_ipc_dai_alh_params {
 
 	/* reserved for future use */
 	uint32_t reserved[13];
-} __attribute__((packed));
+} __attribute__((packed, aligned(4)));
 
 /* DMIC Configuration Request - SOF_IPC_DAI_DMIC_CONFIG */
 
@@ -144,7 +144,7 @@ struct sof_ipc_dai_dmic_pdm_ctrl {
 	uint16_t skew;		/**< Adjust PDM data sampling vs. clock (0..15) */
 
 	uint16_t reserved[3];	/**< Make sure the total size is 4 bytes aligned */
-} __attribute__((packed));
+} __attribute__((packed, aligned(4)));
 
 /* This struct contains the global settings for all 2ch PDM controllers. The
  * version number used in configuration data is checked vs. version used by
@@ -203,6 +203,6 @@ struct sof_ipc_dai_dmic_params {
 
 	/**< PDM controllers configuration */
 	struct sof_ipc_dai_dmic_pdm_ctrl pdm[SOF_DAI_INTEL_DMIC_NUM_CTRL];
-} __attribute__((packed));
+} __attribute__((packed, aligned(4)));
 
 #endif /* __IPC_DAI_INTEL_H__ */

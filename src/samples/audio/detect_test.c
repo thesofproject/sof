@@ -574,7 +574,7 @@ static int test_keyword_ctrl_get_data(struct comp_dev *dev,
 static int test_keyword_cmd(struct comp_dev *dev, int cmd, void *data,
 			    int max_data_size)
 {
-	struct sof_ipc_ctrl_data *cdata = data;
+	struct sof_ipc_ctrl_data *cdata = ASSUME_ALIGNED(data, 4);
 
 	comp_info(dev, "test_keyword_cmd()");
 

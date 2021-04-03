@@ -33,7 +33,7 @@ struct sof_ipc_dma_trace_params {
 	struct sof_ipc_cmd_hdr hdr;
 	struct sof_ipc_host_buffer buffer;
 	uint32_t stream_tag;
-} __attribute__((packed));
+} __attribute__((packed, aligned(4)));
 
 /* DMA for Trace params info - SOF_IPC_DEBUG_DMA_PARAMS_EXT */
 struct sof_ipc_dma_trace_params_ext {
@@ -42,7 +42,7 @@ struct sof_ipc_dma_trace_params_ext {
 	uint32_t stream_tag;
 	uint64_t timestamp_ns; /* in nanosecnd */
 	uint32_t reserved[8];
-} __attribute__((packed));
+} __attribute__((packed, aligned(4)));
 
 /* DMA for Trace params info - SOF_IPC_DEBUG_DMA_PARAMS */
 struct sof_ipc_dma_trace_posn {
@@ -50,7 +50,7 @@ struct sof_ipc_dma_trace_posn {
 	uint32_t host_offset;	/* Offset of DMA host buffer */
 	uint32_t overflow;	/* overflow bytes if any */
 	uint32_t messages;	/* total trace messages */
-} __attribute__((packed));
+} __attribute__((packed, aligned(4)));
 
 /* Values used in sof_ipc_trace_filter_elem */
 
@@ -70,7 +70,7 @@ struct sof_ipc_dma_trace_posn {
 struct sof_ipc_trace_filter_elem {
 	int32_t key;		/**< SOF_IPC_TRACE_FILTER_ELEM_ {LEVEL, UUID, COMP, PIPE} */
 	int32_t value;		/**< element value */
-} __attribute__((packed));
+} __attribute__((packed, aligned(4)));
 
 /** Runtime tracing filtration data - SOF_IPC_TRACE_FILTER_UPDATE, ABI3.17 */
 struct sof_ipc_trace_filter {
@@ -79,7 +79,7 @@ struct sof_ipc_trace_filter {
 	uint32_t reserved[8];		/**< reserved for future usage */
 	/** variable size array with new filtering settings */
 	struct sof_ipc_trace_filter_elem elems[];
-} __attribute__((packed));
+} __attribute__((packed, aligned(4)));
 
 /*
  * Commom debug
@@ -112,6 +112,6 @@ struct sof_ipc_panic_info {
 	uint32_t code;			/* SOF_IPC_PANIC_ */
 	char filename[SOF_TRACE_FILENAME_SIZE];
 	uint32_t linenum;
-} __attribute__((packed));
+} __attribute__((packed, aligned(4)));
 
 #endif /* __IPC_TRACE_H__ */

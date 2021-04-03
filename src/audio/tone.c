@@ -530,7 +530,8 @@ static int tone_cmd_set_data(struct comp_dev *dev,
 	case SOF_CTRL_CMD_ENUM:
 		comp_info(dev, "tone_cmd_set_data(), SOF_CTRL_CMD_ENUM, cdata->index = %u",
 			  cdata->index);
-		compv = (struct sof_ipc_ctrl_value_comp *)cdata->data->data;
+		compv = (struct sof_ipc_ctrl_value_comp *)ASSUME_ALIGNED(cdata->data->data, 4);
+
 		for (i = 0; i < (int)cdata->num_elems; i++) {
 			ch = compv[i].index;
 			val = compv[i].svalue;
@@ -587,7 +588,7 @@ static int tone_cmd_set_data(struct comp_dev *dev,
 static int tone_cmd(struct comp_dev *dev, int cmd, void *data,
 		    int max_data_size)
 {
-	struct sof_ipc_ctrl_data *cdata = data;
+	struct sof_ipc_ctrl_data *cdata = ASSUME_ALIGNED(data, 4);
 	int ret = 0;
 
 	comp_info(dev, "tone_cmd()");

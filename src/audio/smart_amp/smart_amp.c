@@ -450,7 +450,7 @@ static int smart_amp_ctrl_set_data(struct comp_dev *dev,
 static int smart_amp_cmd(struct comp_dev *dev, int cmd, void *data,
 			 int max_data_size)
 {
-	struct sof_ipc_ctrl_data *cdata = data;
+	struct sof_ipc_ctrl_data *cdata = ASSUME_ALIGNED(data, 4);
 
 	comp_dbg(dev, "smart_amp_cmd(): cmd: %d", cmd);
 

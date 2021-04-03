@@ -102,7 +102,7 @@ struct probe_data_packet {
 struct probe_dma {
 	uint32_t stream_tag;		/**< Stream tag associated with this DMA */
 	uint32_t dma_buffer_size;	/**< Size of buffer associated with this DMA */
-} __attribute__((packed));
+} __attribute__((packed, aligned(4)));
 
 /**
  * Description of probe point
@@ -114,7 +114,7 @@ struct probe_point {
 				 *   For extraction purposes, stream tag is ignored when received,
 				 *   but returned actual extraction stream tag via INFO function.
 				 */
-} __attribute__((packed));
+} __attribute__((packed, aligned(4)));
 
 /**
  * \brief DMA ADD for probes.
@@ -125,7 +125,7 @@ struct sof_ipc_probe_dma_add_params {
 	struct sof_ipc_cmd_hdr hdr;	/**< Header */
 	uint32_t num_elems;		/**< Count of DMAs specified in array */
 	struct probe_dma probe_dma[];	/**< Array of DMAs to be added */
-} __attribute__((packed));
+} __attribute__((packed, aligned(4)));
 
 /**
  * \brief Reply to INFO functions.
@@ -139,7 +139,7 @@ struct sof_ipc_probe_info_params {
 		struct probe_dma probe_dma[0];		/**< DMA info */
 		struct probe_point probe_point[0];	/**< Probe Point info */
 	};
-} __attribute__((packed));
+} __attribute__((packed, aligned(4)));
 
 /**
  * \brief Probe DMA remove.
@@ -150,7 +150,7 @@ struct sof_ipc_probe_dma_remove_params {
 	struct sof_ipc_cmd_hdr hdr;	/**< Header */
 	uint32_t num_elems;		/**< Count of stream tags specified in array */
 	uint32_t stream_tag[];		/**< Array of stream tags associated with DMAs to remove */
-} __attribute__((packed));
+} __attribute__((packed, aligned(4)));
 
 /**
  * \brief Add probe points.
@@ -161,7 +161,7 @@ struct sof_ipc_probe_point_add_params {
 	struct sof_ipc_cmd_hdr hdr;		/**< Header */
 	uint32_t num_elems;			/**< Count of Probe Points specified in array */
 	struct probe_point probe_point[];	/**< Array of Probe Points to add */
-} __attribute__((packed));
+} __attribute__((packed, aligned(4)));
 
 /**
  * \brief Remove probe point.
@@ -172,6 +172,6 @@ struct sof_ipc_probe_point_remove_params {
 	struct sof_ipc_cmd_hdr hdr;	/**< Header */
 	uint32_t num_elems;		/**< Count of buffer IDs specified in array */
 	uint32_t buffer_id[];		/**< Array of buffer IDs from which Probe Points should be removed */
-} __attribute__((packed));
+} __attribute__((packed, aligned(4)));
 
 #endif /* __IPC_PROBE_H__ */
