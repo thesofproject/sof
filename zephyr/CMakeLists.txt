@@ -386,7 +386,6 @@ zephyr_library_sources(
 	${SOF_LIB_PATH}/dai.c
 
 	# SOF mandatory audio processing
-	${SOF_AUDIO_PATH}/pipeline_static.c
 	${SOF_AUDIO_PATH}/channel_map.c
 	${SOF_AUDIO_PATH}/pcm_converter/pcm_converter_hifi3.c
 	${SOF_AUDIO_PATH}/pcm_converter/pcm_converter.c
