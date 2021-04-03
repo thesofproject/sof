@@ -137,45 +137,6 @@ static void ipc_irq_handler(void *arg)
 	}
 }
 
-#if CAVS_VERSION >= CAVS_VERSION_1_8
-static struct sof_ipc_cmd_hdr *ipc_cavs_read_set_d0ix(uint32_t dr, uint32_t dd)
-{
-	struct sof_ipc_pm_gate *cmd = ipc_get()->comp_data;
-
-	cmd->hdr.cmd = SOF_IPC_GLB_PM_MSG | SOF_IPC_PM_GATE;
-	cmd->hdr.size = sizeof(*cmd);
-	cmd->flags = dd & CAVS_IPC_MOD_SETD0IX_BIT_MASK;
-
-	return &cmd->hdr;
-}
-
-static struct sof_ipc_cmd_hdr *ipc_compact_read_msg(void)
-{
-	struct sof_ipc_cmd_hdr *hdr;
-	uint32_t dr;
-	uint32_t dd;
-
-	dr = ipc_read(IPC_DIPCTDR);
-	dd = ipc_read(IPC_DIPCTDD);
-
-	/* if there is no cAVS module IPC in regs go the previous path */
-	if (!(dr & CAVS_IPC_MSG_TGT))
-		return mailbox_validate();
-
-	switch (CAVS_IPC_TYPE_S(dr)) {
-	case CAVS_IPC_MOD_SET_D0IX:
-		hdr = ipc_cavs_read_set_d0ix(dr, dd);
-		break;
-	default:
-		return NULL;
-	}
-
-	platform_shared_commit(hdr, hdr->size);
-
-	return hdr;
-}
-#endif
-
 enum task_state ipc_platform_do_cmd(void *data)
 {
 #if !CONFIG_SUECREEK

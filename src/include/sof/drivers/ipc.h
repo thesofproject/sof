@@ -248,6 +248,11 @@ void ipc_send_queued_msg(void);
 
 void ipc_msg_send(struct ipc_msg *msg, void *data, bool high_priority);
 
+/*
+ * Read a compact IPC message or return NULL for normal message.
+ */
+struct sof_ipc_cmd_hdr *ipc_compact_read_msg(void);
+
 /**
  * \brief Data provided by the platform which use ipc...page_descriptors().
  *
