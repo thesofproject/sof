@@ -182,7 +182,6 @@ enum task_state ipc_platform_do_cmd(void *data)
 	struct ipc *ipc = data;
 #endif
 	struct sof_ipc_cmd_hdr *hdr;
-	struct sof_ipc_reply reply;
 
 #if CAVS_VERSION >= CAVS_VERSION_1_8
 	hdr = ipc_compact_read_msg();
@@ -190,15 +189,7 @@ enum task_state ipc_platform_do_cmd(void *data)
 	hdr = mailbox_validate();
 #endif
 	/* perform command */
-	if (hdr)
-		ipc_cmd(hdr);
-	else {
-		/* send invalid command error in reply */
-		reply.error = -EINVAL;
-		reply.hdr.cmd = SOF_IPC_GLB_REPLY;
-		reply.hdr.size = sizeof(reply);
-		mailbox_hostbox_write(0, &reply, sizeof(reply));
-	}
+	ipc_cmd(hdr);
 
 	/* are we about to enter D3 ? */
 #if !CONFIG_SUECREEK
