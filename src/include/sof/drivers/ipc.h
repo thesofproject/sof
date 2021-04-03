@@ -61,6 +61,14 @@ extern struct tr_ctx ipc_tr;
 	tr_err(ctx, "ipc: size %d expected %d",		\
 	       (object).hdr.size, sizeof(object))
 
+/* Returns pipeline source component */
+#define ipc_get_ppl_src_comp(ipc, ppl_id) \
+	ipc_get_ppl_comp(ipc, ppl_id, PPL_DIR_UPSTREAM)
+
+/* Returns pipeline sink component */
+#define ipc_get_ppl_sink_comp(ipc, ppl_id) \
+	ipc_get_ppl_comp(ipc, ppl_id, PPL_DIR_DOWNSTREAM)
+
 /* IPC generic component device */
 struct ipc_comp_dev {
 	uint16_t type;	/* COMP_TYPE_ */
@@ -311,6 +319,11 @@ struct ipc_comp_dev *ipc_get_comp_by_id(struct ipc *ipc, uint32_t id);
  */
 struct ipc_comp_dev *ipc_get_comp_by_ppl_id(struct ipc *ipc, uint16_t type,
 					    uint32_t ppl_id);
+/*
+ * Get component device of pipeline.
+ */
+struct ipc_comp_dev *ipc_get_ppl_comp(struct ipc *ipc,
+				      uint32_t pipeline_id, int dir);
 
 /*
  * Configure all DAI components attached to DAI.
