@@ -49,6 +49,10 @@
 #include <ipc/stream.h>
 #include <ipc/topology.h>
 #include <ipc/trace.h>
+#if CAVS_VERSION >= CAVS_VERSION_1_8
+#include <ipc/header-intel-cavs.h>
+#include <cavs/drivers/sideband-ipc.h>
+#endif
 #include <user/trace.h>
 #include <ipc/probe.h>
 #include <sof/probe/probe.h>
@@ -87,7 +91,7 @@
 			((struct sof_ipc_cmd_hdr *)tx),			\
 			sizeof(rx))
 
-struct sof_ipc_cmd_hdr *mailbox_validate(void)
+void *mailbox_validate(void)
 {
 	struct sof_ipc_cmd_hdr *hdr = ipc_get()->comp_data;
 
@@ -272,7 +276,7 @@ pipe_params:
 			(struct sof_ipc_pcm_params *)ipc_get()->comp_data);
 	if (err < 0) {
 		tr_err(&ipc_tr, "ipc: pipe %d comp %d params failed %d",
-		       pcm_dev->cd->pipeline->ipc_pipe.pipeline_id,
+		       pcm_dev->cd->pipeline->pipeline_id,
 		       pcm_params.comp_id, err);
 		goto error;
 	}
@@ -281,7 +285,7 @@ pipe_params:
 	err = pipeline_prepare(pcm_dev->cd->pipeline, pcm_dev->cd);
 	if (err < 0) {
 		tr_err(&ipc_tr, "ipc: pipe %d comp %d prepare failed %d",
-		       pcm_dev->cd->pipeline->ipc_pipe.pipeline_id,
+		       pcm_dev->cd->pipeline->pipeline_id,
 		       pcm_params.comp_id, err);
 		goto error;
 	}
@@ -300,7 +304,7 @@ error:
 	reset_err = pipeline_reset(pcm_dev->cd->pipeline, pcm_dev->cd);
 	if (reset_err < 0)
 		tr_err(&ipc_tr, "ipc: pipe %d comp %d reset failed %d",
-		       pcm_dev->cd->pipeline->ipc_pipe.pipeline_id,
+		       pcm_dev->cd->pipeline->pipeline_id,
 		       pcm_params.comp_id, reset_err);
 	platform_shared_commit(pcm_dev, sizeof(*pcm_dev));
 	return err;
@@ -522,8 +526,7 @@ static int ipc_dai_config(uint32_t header)
 	}
 
 	/* send params to all DAI components who use that physical DAI */
-	return ipc_comp_dai_config(ipc,
-				   (struct sof_ipc_dai_config *)ipc->comp_data);
+	return ipc_comp_dai_config(ipc, (uintptr_t *)ipc->comp_data);
 }
 
 static int ipc_glb_dai_message(uint32_t header)
@@ -1125,7 +1128,7 @@ static int ipc_glb_tplg_comp_new(uint32_t header)
 	       comp->pipeline_id, comp->id, comp->type);
 
 	/* register component */
-	ret = ipc_comp_new(ipc, comp);
+	ret = ipc_comp_new(ipc, (uintptr_t *)comp);
 	if (ret < 0) {
 		tr_err(&ipc_tr, "ipc: pipe %d comp %d creation failed %d",
 		       comp->pipeline_id, comp->id, ret);
@@ -1161,7 +1164,7 @@ static int ipc_glb_tplg_buffer_new(uint32_t header)
 	       ipc_buffer.comp.pipeline_id, ipc_buffer.comp.id,
 	       ipc_buffer.size);
 
-	ret = ipc_buffer_new(ipc, (struct sof_ipc_buffer *)ipc->comp_data);
+	ret = ipc_buffer_new(ipc, ipc->comp_data);
 	if (ret < 0) {
 		tr_err(&ipc_tr, "ipc: pipe %d buffer %d creation failed %d",
 		       ipc_buffer.comp.pipeline_id,
@@ -1196,8 +1199,7 @@ static int ipc_glb_tplg_pipe_new(uint32_t header)
 
 	tr_dbg(&ipc_tr, "ipc: pipe %d -> new", ipc_pipeline.pipeline_id);
 
-	ret = ipc_pipeline_new(ipc,
-			       (struct sof_ipc_pipe_new *)ipc->comp_data);
+	ret = ipc_pipeline_new(ipc, (uintptr_t *)ipc->comp_data);
 	if (ret < 0) {
 		tr_err(&ipc_tr, "ipc: pipe %d creation failed %d",
 		       ipc_pipeline.pipeline_id, ret);
@@ -1229,8 +1231,7 @@ static int ipc_glb_tplg_comp_connect(uint32_t header)
 	/* copy message with ABI safe method */
 	IPC_COPY_CMD(connect, ipc->comp_data);
 
-	return ipc_comp_connect(ipc,
-			(struct sof_ipc_pipe_comp_connect *)ipc->comp_data);
+	return ipc_comp_connect(ipc, (uintptr_t *)ipc->comp_data);
 }
 
 static int ipc_glb_tplg_free(uint32_t header,
@@ -1383,7 +1384,7 @@ static int ipc_glb_test_message(uint32_t header)
 #endif
 
 #if CAVS_VERSION >= CAVS_VERSION_1_8
-static struct sof_ipc_cmd_hdr *ipc_cavs_read_set_d0ix(uint32_t dr, uint32_t dd)
+static uint32_t *ipc_cavs_read_set_d0ix(uint32_t dr, uint32_t dd)
 {
 	struct sof_ipc_pm_gate *cmd = ipc_get()->comp_data;
 
@@ -1391,15 +1392,17 @@ static struct sof_ipc_cmd_hdr *ipc_cavs_read_set_d0ix(uint32_t dr, uint32_t dd)
 	cmd->hdr.size = sizeof(*cmd);
 	cmd->flags = dd & CAVS_IPC_MOD_SETD0IX_BIT_MASK;
 
-	return &cmd->hdr;
+	platform_shared_commit(cmd, cmd->hdr.size);
+
+	return (uint32_t *)&cmd->hdr;
 }
 
 /*
  * Read a compact IPC message or return NULL for normal message.
  */
-struct sof_ipc_cmd_hdr *ipc_compact_read_msg(void)
+uint32_t *ipc_compact_read_msg(void)
 {
-	struct sof_ipc_cmd_hdr *hdr;
+	uint32_t *hdr;
 	uint32_t dr;
 	uint32_t dd;
 
@@ -1410,7 +1413,7 @@ struct sof_ipc_cmd_hdr *ipc_compact_read_msg(void)
 	if (!(dr & CAVS_IPC_MSG_TGT))
 		return mailbox_validate();
 
-	switch (CAVS_IPC_TYPE_S(dr)) {
+	switch (CAVS_IPC_TYPE(dr)) {
 	case CAVS_IPC_MOD_SET_D0IX:
 		hdr = ipc_cavs_read_set_d0ix(dr, dd);
 		break;
@@ -1418,9 +1421,12 @@ struct sof_ipc_cmd_hdr *ipc_compact_read_msg(void)
 		return NULL;
 	}
 
-	platform_shared_commit(hdr, hdr->size);
-
 	return hdr;
+}
+#else
+uint32_t *ipc_compact_read_msg(void)
+{
+	return NULL;
 }
 #endif
 
@@ -1428,8 +1434,9 @@ struct sof_ipc_cmd_hdr *ipc_compact_read_msg(void)
  * Global IPC Operations.
  */
 
-void ipc_cmd(struct sof_ipc_cmd_hdr *hdr)
+void ipc_cmd(uint32_t *_hdr)
 {
+	struct sof_ipc_cmd_hdr *hdr = (struct sof_ipc_cmd_hdr *) _hdr;
 	struct sof_ipc_reply reply;
 	uint32_t type = 0;
 	int ret;
@@ -1501,48 +1508,4 @@ out:
 		reply.hdr.size = sizeof(reply);
 		mailbox_hostbox_write(0, &reply, sizeof(reply));
 	}
-}
-
-void ipc_msg_send(struct ipc_msg *msg, void *data, bool high_priority)
-{
-	struct ipc *ipc = ipc_get();
-	uint32_t flags;
-	int ret;
-
-	spin_lock_irq(&ipc->lock, flags);
-
-	/* copy mailbox data to message */
-	if (msg->tx_size > 0 && msg->tx_size < SOF_IPC_MSG_MAX_SIZE) {
-		ret = memcpy_s(msg->tx_data, msg->tx_size, data, msg->tx_size);
-		assert(!ret);
-	}
-
-	/* try to send critical notifications right away */
-	if (high_priority) {
-		ret = ipc_platform_send_msg(msg);
-		if (!ret)
-			goto out;
-	}
-
-	/* add to queue unless already there */
-	if (list_is_empty(&msg->list)) {
-		if (high_priority)
-			list_item_prepend(&msg->list, &ipc->msg_list);
-		else
-			list_item_append(&msg->list, &ipc->msg_list);
-	}
-
-out:
-	platform_shared_commit(msg->tx_data, msg->tx_size);
-	platform_shared_commit(msg, sizeof(*msg));
-	platform_shared_commit(ipc, sizeof(*ipc));
-
-	spin_unlock_irq(&ipc->lock, flags);
-}
-
-void ipc_schedule_process(struct ipc *ipc)
-{
-	schedule_task(&ipc->ipc_task, 0, IPC_PERIOD_USEC);
-
-	platform_shared_commit(ipc, sizeof(*ipc));
 }

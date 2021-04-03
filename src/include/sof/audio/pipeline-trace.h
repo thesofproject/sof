@@ -19,8 +19,8 @@
 extern struct tr_ctx pipe_tr;
 
 #define trace_pipe_get_tr_ctx(pipe_p) (&(pipe_p)->tctx)
-#define trace_pipe_get_id(pipe_p) ((pipe_p)->ipc_pipe.pipeline_id)
-#define trace_pipe_get_subid(pipe_p) ((pipe_p)->ipc_pipe.comp_id)
+#define trace_pipe_get_id(pipe_p) ((pipe_p)->pipeline_id)
+#define trace_pipe_get_subid(pipe_p) ((pipe_p)->comp_id)
 
 /* class (driver) level (no device object) tracing */
 

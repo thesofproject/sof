@@ -126,7 +126,7 @@ int dma_trace_init_early(struct sof *sof)
 	dma_sg_init(&sof->dmat->config.elem_array);
 	spinlock_init(&sof->dmat->lock);
 
-	ipc_build_trace_posn(&sof->dmat->posn);
+	ipc_build_trace_posn((uintptr_t *)&sof->dmat->posn);
 	sof->dmat->msg = ipc_msg_init(sof->dmat->posn.rhdr.hdr.cmd,
 				      sizeof(sof->dmat->posn));
 	if (!sof->dmat->msg)

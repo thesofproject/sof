@@ -84,6 +84,13 @@ int pipeline_xrun_recover(struct pipeline *p)
 }
 #endif
 
+int pipeline_xrun_set_limit(struct pipeline *p, uint32_t xrun_limit_usecs)
+{
+	/* TODO: these could be validated against min/max permissible values */
+	p->xrun_limit_usecs = xrun_limit_usecs;
+	return 0;
+}
+
 /*
  * trigger handler for pipelines in xrun, used for recovery from host only.
  * return values:
@@ -152,7 +159,7 @@ void pipeline_xrun(struct pipeline *p, struct comp_dev *dev,
 			 ret);
 
 	memset(&posn, 0, sizeof(posn));
-	ipc_build_stream_posn(&posn, SOF_IPC_STREAM_TRIG_XRUN,
+	ipc_build_stream_posn((uintptr_t*)&posn, SOF_IPC_STREAM_TRIG_XRUN,
 			      dev_comp_id(dev));
 	p->xrun_bytes = bytes;
 	posn.xrun_size = bytes;

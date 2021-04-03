@@ -20,11 +20,6 @@
 #include <sof/sof.h>
 #include <sof/spinlock.h>
 #include <sof/trace/trace.h>
-#include <ipc/control.h>
-#include <ipc/header.h>
-#include <ipc/stream.h>
-#include <ipc/topology.h>
-#include <ipc/trace.h>
 #include <user/trace.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -32,14 +27,6 @@
 struct dai_config;
 struct dma;
 struct dma_sg_elem_array;
-struct sof_ipc_buffer;
-struct sof_ipc_comp;
-struct sof_ipc_comp_event;
-struct sof_ipc_dai_config;
-struct sof_ipc_host_buffer;
-struct sof_ipc_pipe_comp_connect;
-struct sof_ipc_pipe_new;
-struct sof_ipc_stream_posn;
 struct ipc_msg;
 
 #define COMP_TYPE_COMPONENT	1
@@ -142,36 +129,11 @@ static inline int32_t ipc_comp_pipe_id(const struct ipc_comp_dev *icd)
 	case COMP_TYPE_BUFFER:
 		return icd->cb->pipeline_id;
 	case COMP_TYPE_PIPELINE:
-		return icd->pipeline->ipc_pipe.pipeline_id;
+		return icd->pipeline->pipeline_id;
 	default:
 		tr_err(&ipc_tr, "Unknown ipc component type %u", icd->type);
 		return -EINVAL;
 	};
-}
-
-static inline void ipc_build_stream_posn(struct sof_ipc_stream_posn *posn,
-					 uint32_t type, uint32_t id)
-{
-	posn->rhdr.hdr.cmd = SOF_IPC_GLB_STREAM_MSG | type | id;
-	posn->rhdr.hdr.size = sizeof(*posn);
-	posn->comp_id = id;
-}
-
-static inline void ipc_build_comp_event(struct sof_ipc_comp_event *event,
-					uint32_t type, uint32_t id)
-{
-	event->rhdr.hdr.cmd = SOF_IPC_GLB_COMP_MSG | SOF_IPC_COMP_NOTIFICATION |
-		id;
-	event->rhdr.hdr.size = sizeof(*event);
-	event->src_comp_type = type;
-	event->src_comp_id = id;
-}
-
-static inline void ipc_build_trace_posn(struct sof_ipc_dma_trace_posn *posn)
-{
-	posn->rhdr.hdr.cmd =  SOF_IPC_GLB_TRACE_MSG |
-		SOF_IPC_TRACE_DMA_POSITION;
-	posn->rhdr.hdr.size = sizeof(*posn);
 }
 
 static inline struct ipc_msg *ipc_msg_init(uint32_t header, uint32_t size)
@@ -251,7 +213,7 @@ void ipc_msg_send(struct ipc_msg *msg, void *data, bool high_priority);
 /*
  * Read a compact IPC message or return NULL for normal message.
  */
-struct sof_ipc_cmd_hdr *ipc_compact_read_msg(void);
+uint32_t *ipc_compact_read_msg(void);
 
 /**
  * \brief Data provided by the platform which use ipc...page_descriptors().
@@ -292,27 +254,26 @@ int ipc_process_host_buffer(struct ipc *ipc,
 /*
  * IPC Component creation and destruction.
  */
-int ipc_comp_new(struct ipc *ipc, struct sof_ipc_comp *new);
+int ipc_comp_new(struct ipc *ipc, uintptr_t *comp);
 int ipc_comp_free(struct ipc *ipc, uint32_t comp_id);
 
 /*
  * IPC Buffer creation and destruction.
  */
-int ipc_buffer_new(struct ipc *ipc, struct sof_ipc_buffer *buffer);
+int ipc_buffer_new(struct ipc *ipc, uintptr_t *buffer);
 int ipc_buffer_free(struct ipc *ipc, uint32_t buffer_id);
 
 /*
  * IPC Pipeline creation and destruction.
  */
-int ipc_pipeline_new(struct ipc *ipc, struct sof_ipc_pipe_new *pipeline);
+int ipc_pipeline_new(struct ipc *ipc, uintptr_t *_pipe_desc);
 int ipc_pipeline_free(struct ipc *ipc, uint32_t comp_id);
 int ipc_pipeline_complete(struct ipc *ipc, uint32_t comp_id);
 
 /*
  * Pipeline component and buffer connections.
  */
-int ipc_comp_connect(struct ipc *ipc,
-	struct sof_ipc_pipe_comp_connect *connect);
+int ipc_comp_connect(struct ipc *ipc, uintptr_t *connect);
 
 /*
  * Get component by ID.
@@ -333,12 +294,12 @@ struct ipc_comp_dev *ipc_get_ppl_comp(struct ipc *ipc,
 /*
  * Configure all DAI components attached to DAI.
  */
-int ipc_comp_dai_config(struct ipc *ipc, struct sof_ipc_dai_config *config);
+int ipc_comp_dai_config(struct ipc *ipc, uintptr_t *config);
 
 /* send DMA trace host buffer position to host */
 int ipc_dma_trace_send_position(void);
 
-struct sof_ipc_cmd_hdr *mailbox_validate(void);
+void *mailbox_validate(void);
 
 /**
  * Generic IPC command handler. Expects that IPC command (the header plus
@@ -347,7 +308,7 @@ struct sof_ipc_cmd_hdr *mailbox_validate(void);
  *
  * @param hdr Points to the IPC command header.
  */
-void ipc_cmd(struct sof_ipc_cmd_hdr *hdr);
+void ipc_cmd(uint32_t *hdr);
 
 /**
  * \brief IPC message to be processed on other core.
@@ -384,5 +345,11 @@ int ipc_platform_poll_is_host_ready(void);
  * @return 0 if successful error code otherwise.
  */
 int ipc_platform_poll_tx_host_msg(struct ipc_msg *msg);
+
+void ipc_build_stream_posn(uintptr_t *_posn, uint32_t type, uint32_t id);
+
+void ipc_build_comp_event(uint32_t *_event, uint32_t type, uint32_t id);
+
+void ipc_build_trace_posn(uintptr_t *_posn);
 
 #endif /* __SOF_DRIVERS_IPC_H__ */

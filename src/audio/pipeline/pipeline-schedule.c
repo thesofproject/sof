@@ -82,8 +82,8 @@ static struct task *pipeline_task_init(struct pipeline *p, uint32_t type,
 		return NULL;
 
 	if (schedule_task_init_ll(&task->task, SOF_UUID(pipe_task_uuid), type,
-				  p->ipc_pipe.priority, func,
-				  p, p->ipc_pipe.core, 0) < 0) {
+				  p->priority, func,
+				  p, p->core, 0) < 0) {
 		rfree(task);
 		return NULL;
 	}
@@ -92,6 +92,21 @@ static struct task *pipeline_task_init(struct pipeline *p, uint32_t type,
 	task->registrable = p == p->sched_comp->pipeline;
 
 	return &task->task;
+}
+
+int pipeline_schedule_config(struct pipeline *p, uint32_t sched_id,
+				 uint32_t core, uint32_t period,
+				 uint32_t period_mips, uint32_t frames_per_sched,
+				 uint32_t time_domain)
+{
+	/* TODO: these could be validated against min/max permissible values */
+	p->sched_id = sched_id;
+	p->core = core;
+	p->period = period;
+	p->period_mips = period_mips;
+	p->frames_per_sched = frames_per_sched;
+	p->time_domain = time_domain;
+	return 0;
 }
 
 void pipeline_schedule_triggered(struct pipeline_walk_context *ctx,
@@ -173,5 +188,5 @@ void pipeline_schedule_copy(struct pipeline *p, uint64_t start)
 	if (!pipeline_is_timer_driven(p))
 		sa_set_panic_on_delay(false);
 
-	schedule_task(p->pipe_task, start, p->ipc_pipe.period);
+	schedule_task(p->pipe_task, start, p->period);
 }

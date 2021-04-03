@@ -344,7 +344,7 @@ static int dai_playback_params(struct comp_dev *dev, uint32_t period_bytes,
 	config->dest_dev = dai_get_handshake(dd->dai, dev->direction,
 					     dd->stream_id);
 	config->is_scheduling_source = comp_is_scheduling_source(dev);
-	config->period = dev->pipeline->ipc_pipe.period;
+	config->period = dev->pipeline->period;
 
 	comp_info(dev, "dai_playback_params() dest_dev = %d stream_id = %d src_width = %d dest_width = %d",
 		  config->dest_dev, dd->stream_id,
@@ -392,7 +392,7 @@ static int dai_capture_params(struct comp_dev *dev, uint32_t period_bytes,
 	config->src_dev = dai_get_handshake(dd->dai, dev->direction,
 					    dd->stream_id);
 	config->is_scheduling_source = comp_is_scheduling_source(dev);
-	config->period = dev->pipeline->ipc_pipe.period;
+	config->period = dev->pipeline->period;
 
 	/* TODO: Make this code platform-specific or move it driver callback */
 	if (dai_get_info(dd->dai, DAI_INFO_TYPE) == SOF_DAI_INTEL_DMIC) {

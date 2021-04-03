@@ -160,84 +160,6 @@ struct ipc_comp_dev *ipc_get_ppl_comp(struct ipc *ipc,
 	return NULL;
 }
 
-int ipc_comp_new(struct ipc *ipc, struct sof_ipc_comp *comp)
-{
-	struct comp_dev *cd;
-	struct ipc_comp_dev *icd;
-
-	/* check whether component already exists */
-	icd = ipc_get_comp_by_id(ipc, comp->id);
-	if (icd != NULL) {
-		tr_err(&ipc_tr, "ipc_comp_new(): comp->id = %u", comp->id);
-		return -EINVAL;
-	}
-
-	/* create component */
-	cd = comp_new(comp);
-	if (!cd) {
-		tr_err(&ipc_tr, "ipc_comp_new(): component cd = NULL");
-		return -EINVAL;
-	}
-
-	/* allocate the IPC component container */
-	icd = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM,
-		      sizeof(struct ipc_comp_dev));
-	if (!icd) {
-		tr_err(&ipc_tr, "ipc_comp_new(): alloc failed");
-		rfree(cd);
-		return -ENOMEM;
-	}
-	icd->cd = cd;
-	icd->type = COMP_TYPE_COMPONENT;
-	icd->core = comp->core;
-	icd->id = comp->id;
-
-	/* add new component to the list */
-	list_item_append(&icd->list, &ipc->comp_list);
-
-	platform_shared_commit(icd, sizeof(*icd));
-
-	return 0;
-}
-
-int ipc_comp_free(struct ipc *ipc, uint32_t comp_id)
-{
-	struct ipc_comp_dev *icd;
-
-	/* check whether component exists */
-	icd = ipc_get_comp_by_id(ipc, comp_id);
-	if (!icd)
-		return -ENODEV;
-
-	/* check core */
-	if (!cpu_is_me(icd->core))
-		return ipc_process_on_core(icd->core);
-
-	/* check state */
-	if (icd->cd->state != COMP_STATE_READY)
-		return -EINVAL;
-
-	/* set pipeline sink/source/sched pointers to NULL if needed */
-	if (icd->cd->pipeline) {
-		if (icd->cd == icd->cd->pipeline->source_comp)
-			icd->cd->pipeline->source_comp = NULL;
-		if (icd->cd == icd->cd->pipeline->sink_comp)
-			icd->cd->pipeline->sink_comp = NULL;
-		if (icd->cd == icd->cd->pipeline->sched_comp)
-			icd->cd->pipeline->sched_comp = NULL;
-	}
-
-	/* free component and remove from list */
-	comp_free(icd->cd);
-
-	icd->cd = NULL;
-
-	list_item_del(&icd->list);
-	rfree(icd);
-
-	return 0;
-}
-
 void ipc_send_queued_msg(void)
 {
 	struct ipc *ipc = ipc_get();
@@ -259,6 +181,50 @@ out:
 	platform_shared_commit(ipc, sizeof(*ipc));
 
 	spin_unlock_irq(&ipc->lock, flags);
+}
+
+void ipc_msg_send(struct ipc_msg *msg, void *data, bool high_priority)
+{
+	struct ipc *ipc = ipc_get();
+	uint32_t flags;
+	int ret;
+
+	spin_lock_irq(&ipc->lock, flags);
+
+	/* copy mailbox data to message */
+	if (msg->tx_size > 0 && msg->tx_size < SOF_IPC_MSG_MAX_SIZE) {
+		ret = memcpy_s(msg->tx_data, msg->tx_size, data, msg->tx_size);
+		assert(!ret);
+	}
+
+	/* try to send critical notifications right away */
+	if (high_priority) {
+		ret = ipc_platform_send_msg(msg);
+		if (!ret)
+			goto out;
+	}
+
+	/* add to queue unless already there */
+	if (list_is_empty(&msg->list)) {
+		if (high_priority)
+			list_item_prepend(&msg->list, &ipc->msg_list);
+		else
+			list_item_append(&msg->list, &ipc->msg_list);
+	}
+
+out:
+	platform_shared_commit(msg->tx_data, msg->tx_size);
+	platform_shared_commit(msg, sizeof(*msg));
+	platform_shared_commit(ipc, sizeof(*ipc));
+
+	spin_unlock_irq(&ipc->lock, flags);
+}
+
+void ipc_schedule_process(struct ipc *ipc)
+{
+	schedule_task(&ipc->ipc_task, 0, IPC_PERIOD_USEC);
+
+	platform_shared_commit(ipc, sizeof(*ipc));
 }
 
 int ipc_init(struct sof *sof)

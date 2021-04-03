@@ -142,7 +142,7 @@ enum task_state ipc_platform_do_cmd(void *data)
 #if !CONFIG_SUECREEK
 	struct ipc *ipc = data;
 #endif
-	struct sof_ipc_cmd_hdr *hdr;
+	uint32_t *hdr;
 
 #if CAVS_VERSION >= CAVS_VERSION_1_8
 	hdr = ipc_compact_read_msg();

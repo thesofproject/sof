@@ -311,7 +311,7 @@ static struct comp_dev *test_keyword_new(const struct comp_driver *drv,
 	}
 
 	/* build component event */
-	ipc_build_comp_event(&cd->event, comp->type, comp->id);
+	ipc_build_comp_event((uintptr_t *)&cd->event, comp->type, comp->id);
 	cd->event.event_type = SOF_CTRL_EVENT_KD;
 	cd->event.num_elems = 0;
 

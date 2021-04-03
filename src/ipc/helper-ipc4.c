@@ -19,10 +19,16 @@
 #include <sof/platform.h>
 #include <sof/sof.h>
 #include <sof/spinlock.h>
+//TODO remove
 #include <ipc/dai.h>
 #include <ipc/header.h>
 #include <ipc/stream.h>
 #include <ipc/topology.h>
+
+#include <ipc4/header.h>
+#include <ipc4/pipeline.h>
+#include <ipc4/module.h>
+
 #include <errno.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -32,15 +38,17 @@ extern struct tr_ctx comp_tr;
 
 void ipc_build_stream_posn(uintptr_t *_posn, uint32_t type, uint32_t id)
 {
+#if 0
 	struct sof_ipc_stream_posn *posn = (struct sof_ipc_stream_posn *)_posn;
-
 	posn->rhdr.hdr.cmd = SOF_IPC_GLB_STREAM_MSG | type | id;
 	posn->rhdr.hdr.size = sizeof(*posn);
 	posn->comp_id = id;
+#endif
 }
 
 void ipc_build_comp_event(uint32_t *_event, uint32_t type, uint32_t id)
 {
+#if 0
 	struct sof_ipc_comp_event *event = (struct sof_ipc_comp_event *)_event;
 
 	event->rhdr.hdr.cmd = SOF_IPC_GLB_COMP_MSG | SOF_IPC_COMP_NOTIFICATION |
@@ -48,16 +56,19 @@ void ipc_build_comp_event(uint32_t *_event, uint32_t type, uint32_t id)
 	event->rhdr.hdr.size = sizeof(*event);
 	event->src_comp_type = type;
 	event->src_comp_id = id;
+#endif
 }
 
 void ipc_build_trace_posn(uintptr_t *_posn)
 {
+#if 0
 	struct sof_ipc_dma_trace_posn *posn =
 			(struct sof_ipc_dma_trace_posn *)_posn;
 
 	posn->rhdr.hdr.cmd =  SOF_IPC_GLB_TRACE_MSG |
 		SOF_IPC_TRACE_DMA_POSITION;
 	posn->rhdr.hdr.size = sizeof(*posn);
+#endif
 }
 
 /* Function overwrites PCM parameters (frame_fmt, buffer_fmt, channels, rate)
@@ -280,76 +291,29 @@ struct comp_dev *comp_new(struct sof_ipc_comp *comp)
 	return cdev;
 }
 
-int ipc_pipeline_new(struct ipc *ipc, uintptr_t *_pipe_desc)
+int ipc_pipeline_new(struct ipc *ipc,
+	uintptr_t *_pipe_desc)
 {
-	struct sof_ipc_pipe_new *pipe_desc =
-		(struct sof_ipc_pipe_new *) _pipe_desc;
+	struct ipc4_pipeline_create *pipe_desc =
+		(struct ipc4_pipeline_create *)_pipe_desc;
 	struct ipc_comp_dev *ipc_pipe;
 	struct pipeline *pipe;
-	struct ipc_comp_dev *icd;
-	int ret;
-
-	/* check whether the pipeline already exists */
-	ipc_pipe = ipc_get_comp_by_id(ipc, pipe_desc->comp_id);
-	if (ipc_pipe != NULL) {
-		tr_err(&ipc_tr, "ipc_pipeline_new(): pipeline already exists, pipe_desc->comp_id = %u",
-		       pipe_desc->comp_id);
-		return -EINVAL;
-	}
 
 	/* check whether pipeline id is already taken */
 	ipc_pipe = ipc_get_comp_by_ppl_id(ipc, COMP_TYPE_PIPELINE,
-					  pipe_desc->pipeline_id);
+					  pipe_desc->instance_id);
 	if (ipc_pipe) {
-		tr_err(&ipc_tr, "ipc_pipeline_new(): pipeline id is already taken, pipe_desc->pipeline_id = %u",
-		       pipe_desc->pipeline_id);
-		return -EINVAL;
-	}
-
-	/* find the scheduling component */
-	icd = ipc_get_comp_by_id(ipc, pipe_desc->sched_id);
-	if (!icd) {
-		tr_err(&ipc_tr, "ipc_pipeline_new(): cannot find the scheduling component, pipe_desc->sched_id = %u",
-		       pipe_desc->sched_id);
-		return -EINVAL;
-	}
-
-	if (icd->type != COMP_TYPE_COMPONENT) {
-		tr_err(&ipc_tr, "ipc_pipeline_new(): icd->type (%d) != COMP_TYPE_COMPONENT for pipeline scheduling component icd->id %d",
-		       icd->type, icd->id);
-		return -EINVAL;
-	}
-
-	if (icd->core != pipe_desc->core) {
-		tr_err(&ipc_tr, "ipc_pipeline_new(): icd->core (%d) != pipe_desc->core (%d) for pipeline scheduling component icd->id %d",
-		       icd->core, pipe_desc->core, icd->id);
+		tr_err(&ipc_tr, "ipc_pipeline_new(): pipeline id is already taken, pipe_desc->instance_id = %u",
+		       (uint32_t)pipe_desc->instance_id);
 		return -EINVAL;
 	}
 
 	/* create the pipeline */
-	pipe = pipeline_new(icd->cd, pipe_desc->pipeline_id, pipe_desc->priority,
-			pipe_desc->comp_id);
+	pipe = pipeline_new(ipc_pipe->cd, pipe_desc->instance_id,
+			    pipe_desc->ppl_priority, 0);
 	if (!pipe) {
 		tr_err(&ipc_tr, "ipc_pipeline_new(): pipeline_new() failed");
 		return -ENOMEM;
-	}
-
-	/* configure pipeline */
-	ret = pipeline_schedule_config(pipe, pipe_desc->sched_id,
-				       pipe_desc->core, pipe_desc->period,
-				       pipe_desc->period_mips,
-				       pipe_desc->frames_per_sched,
-				       pipe_desc->time_domain);
-	if (ret) {
-		tr_err(&ipc_tr, "ipc_pipeline_new(): pipeline_schedule_config() failed");
-		return ret;
-	}
-
-	/* set xrun time limit */
-	ret = pipeline_xrun_set_limit(pipe, pipe_desc->xrun_limit_usecs);
-	if (ret) {
-		tr_err(&ipc_tr, "ipc_pipeline_new(): pipeline_xrun_set_limit() failed");
-		return ret;
 	}
 
 	/* allocate the IPC pipeline container */
@@ -362,8 +326,7 @@ int ipc_pipeline_new(struct ipc *ipc, uintptr_t *_pipe_desc)
 
 	ipc_pipe->pipeline = pipe;
 	ipc_pipe->type = COMP_TYPE_PIPELINE;
-	ipc_pipe->core = pipe_desc->core;
-	ipc_pipe->id = pipe_desc->comp_id;
+	ipc_pipe->id = pipe_desc->instance_id;
 
 	/* add new pipeline to the list */
 	list_item_append(&ipc_pipe->list, &ipc->comp_list);
@@ -403,7 +366,7 @@ int ipc_pipeline_free(struct ipc *ipc, uint32_t comp_id)
 int ipc_pipeline_complete(struct ipc *ipc, uint32_t comp_id)
 {
 	struct ipc_comp_dev *ipc_pipe;
-	uint32_t pipeline_id;
+	uint32_t pipeline_id = 0; //TODO fix
 	struct ipc_comp_dev *ipc_ppl_source;
 	struct ipc_comp_dev *ipc_ppl_sink;
 	int ret;
@@ -420,7 +383,7 @@ int ipc_pipeline_complete(struct ipc *ipc, uint32_t comp_id)
 	if (!cpu_is_me(ipc_pipe->core))
 		return ipc_process_on_core(ipc_pipe->core);
 
-	pipeline_id = ipc_pipe->pipeline->pipeline_id;
+	//pipeline_id = ipc_pipe->pipeline->ipc_pipe.pipeline_id;
 
 	tr_dbg(&ipc_tr, "ipc: pipe %d -> complete on comp %d", pipeline_id,
 	       comp_id);
@@ -449,17 +412,14 @@ int ipc_pipeline_complete(struct ipc *ipc, uint32_t comp_id)
 	return ret;
 }
 
-/*
- * Configure DAI - TODO: this can be simplified to run only on core 0.
- */
 int ipc_comp_dai_config(struct ipc *ipc, uintptr_t *_config)
 {
+#if 0
 	bool comp_on_core[CONFIG_CORE_COUNT] = { false };
 	struct sof_ipc_comp_dai *dai;
 	struct sof_ipc_reply reply;
 	struct ipc_comp_dev *icd;
 	struct list_item *clist;
-	struct sof_ipc_dai_config *config = (struct sof_ipc_dai_config *)_config;
 	int ret = -ENODEV;
 	int i;
 
@@ -472,7 +432,6 @@ int ipc_comp_dai_config(struct ipc *ipc, uintptr_t *_config)
 			continue;
 		}
 
-		/* comp on this core ? TODO: we dont care if it's not a DAI */
 		if (!cpu_is_me(icd->core)) {
 			comp_on_core[icd->core] = true;
 			ret = 0;
@@ -523,11 +482,13 @@ int ipc_comp_dai_config(struct ipc *ipc, uintptr_t *_config)
 	}
 
 	return ret;
+#endif
+	return 0;
 }
 
 int ipc_buffer_new(struct ipc *ipc, uintptr_t *_desc)
 {
-	struct sof_ipc_buffer *desc = (struct sof_ipc_buffer *)_desc;
+#if 0
 	struct ipc_comp_dev *ibd;
 	struct comp_buffer *buffer;
 	int ret = 0;
@@ -541,7 +502,7 @@ int ipc_buffer_new(struct ipc *ipc, uintptr_t *_desc)
 	}
 
 	/* register buffer with pipeline */
-	buffer = buffer_new((uintptr_t *)desc);
+	buffer = buffer_new(desc);
 	if (!buffer) {
 		tr_err(&ipc_tr, "ipc_buffer_new(): buffer_new() failed");
 		return -ENOMEM;
@@ -564,6 +525,8 @@ int ipc_buffer_new(struct ipc *ipc, uintptr_t *_desc)
 	platform_shared_commit(ibd, sizeof(*ibd));
 
 	return ret;
+#endif
+	return 0;
 }
 
 int ipc_buffer_free(struct ipc *ipc, uint32_t buffer_id)
@@ -630,6 +593,7 @@ int ipc_buffer_free(struct ipc *ipc, uint32_t buffer_id)
 	return 0;
 }
 
+#if 0
 static int ipc_comp_to_buffer_connect(struct ipc_comp_dev *comp,
 				      struct ipc_comp_dev *buffer)
 {
@@ -699,11 +663,12 @@ static int ipc_buffer_to_comp_connect(struct ipc_comp_dev *buffer,
 
 	return ret;
 }
+#endif
 
-int ipc_comp_connect(struct ipc *ipc, uintptr_t *_connect)
+int ipc_comp_connect(struct ipc *ipc,
+	uintptr_t *_connect)
 {
-	struct sof_ipc_pipe_comp_connect *connect =
-			(struct sof_ipc_pipe_comp_connect *)_connect;
+#if 0
 	struct ipc_comp_dev *icd_source;
 	struct ipc_comp_dev *icd_sink;
 
@@ -734,19 +699,15 @@ int ipc_comp_connect(struct ipc *ipc, uintptr_t *_connect)
 		       connect->source_id, connect->sink_id);
 		return -EINVAL;
 	}
+#endif
+	return 0;
 }
 
-int ipc_comp_new(struct ipc *ipc, uintptr_t *_comp)
+int ipc_comp_new(struct ipc *ipc, uintptr_t *comp)
 {
-	struct sof_ipc_comp *comp = (struct sof_ipc_comp *)_comp;
+#if 0
 	struct comp_dev *cd;
 	struct ipc_comp_dev *icd;
-
-	/* check core is valid */
-	if (comp->core >= CONFIG_CORE_COUNT) {
-		tr_err(&ipc_tr, "ipc_comp_new(): comp->core = %u", comp->core);
-		return -EINVAL;
-	}
 
 	/* check whether component already exists */
 	icd = ipc_get_comp_by_id(ipc, comp->id);
@@ -779,7 +740,7 @@ int ipc_comp_new(struct ipc *ipc, uintptr_t *_comp)
 	list_item_append(&icd->list, &ipc->comp_list);
 
 	platform_shared_commit(icd, sizeof(*icd));
-
+#endif
 	return 0;
 }
 
@@ -824,7 +785,7 @@ int ipc_comp_free(struct ipc *ipc, uint32_t comp_id)
 /* create a new component in the pipeline */
 struct comp_buffer *buffer_new(uintptr_t *_desc)
 {
-	struct sof_ipc_buffer *desc = (struct sof_ipc_buffer *)_desc;
+#if 0
 	struct comp_buffer *buffer;
 
 	tr_info(&buffer_tr, "buffer new size 0x%x id %d.%d flags 0x%x",
@@ -849,4 +810,6 @@ struct comp_buffer *buffer_new(uintptr_t *_desc)
 	}
 
 	return buffer;
+#endif
+	return NULL;
 }

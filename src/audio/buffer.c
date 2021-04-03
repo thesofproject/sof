@@ -70,35 +70,6 @@ struct comp_buffer *buffer_alloc(uint32_t size, uint32_t caps, uint32_t align)
 	return buffer;
 }
 
-/* create a new component in the pipeline */
-struct comp_buffer *buffer_new(struct sof_ipc_buffer *desc)
-{
-	struct comp_buffer *buffer;
-
-	tr_info(&buffer_tr, "buffer new size 0x%x id %d.%d flags 0x%x",
-		desc->size, desc->comp.pipeline_id, desc->comp.id, desc->flags);
-
-	/* allocate buffer */
-	buffer = buffer_alloc(desc->size, desc->caps, PLATFORM_DCACHE_ALIGN);
-	if (buffer) {
-		buffer->id = desc->comp.id;
-		buffer->pipeline_id = desc->comp.pipeline_id;
-		buffer->core = desc->comp.core;
-
-		buffer->stream.underrun_permitted = desc->flags &
-						    SOF_BUF_UNDERRUN_PERMITTED;
-		buffer->stream.overrun_permitted = desc->flags &
-						   SOF_BUF_OVERRUN_PERMITTED;
-
-		memcpy_s(&buffer->tctx, sizeof(struct tr_ctx),
-			 &buffer_tr, sizeof(struct tr_ctx));
-
-		dcache_writeback_invalidate_region(buffer, sizeof(*buffer));
-	}
-
-	return buffer;
-}
-
 void buffer_zero(struct comp_buffer *buffer)
 {
 	buf_dbg(buffer, "stream_zero()");

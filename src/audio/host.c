@@ -551,7 +551,8 @@ static struct comp_dev *host_new(const struct comp_driver *drv,
 	dma_sg_init(&hd->host.elem_array);
 	dma_sg_init(&hd->local.elem_array);
 
-	ipc_build_stream_posn(&hd->posn, SOF_IPC_STREAM_POSITION, comp->id);
+	ipc_build_stream_posn((uintptr_t*)&hd->posn, SOF_IPC_STREAM_POSITION,
+			      comp->id);
 
 	hd->msg = ipc_msg_init(hd->posn.rhdr.hdr.cmd, sizeof(hd->posn));
 	if (!hd->msg) {
@@ -755,7 +756,7 @@ static int host_params(struct comp_dev *dev,
 	config->cyclic = 0;
 	config->irq_disabled = pipeline_is_timer_driven(dev->pipeline);
 	config->is_scheduling_source = comp_is_scheduling_source(dev);
-	config->period = dev->pipeline->ipc_pipe.period;
+	config->period = dev->pipeline->period;
 
 	host_elements_reset(dev);
 
