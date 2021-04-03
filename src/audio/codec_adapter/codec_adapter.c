@@ -645,7 +645,7 @@ int codec_adapter_cmd(struct comp_dev *dev, int cmd, void *data,
 		      int max_data_size)
 {
 	int ret;
-	struct sof_ipc_ctrl_data *cdata = data;
+	struct sof_ipc_ctrl_data *cdata = ASSUME_ALIGNED(data, 4);
 
 	comp_dbg(dev, "codec_adapter_cmd() %d start", cmd);
 

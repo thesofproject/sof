@@ -322,7 +322,7 @@
  */
 struct sof_ipc_hdr {
 	uint32_t size;			/**< size of structure */
-} __attribute__((packed));
+} __attribute__((packed, aligned(4)));
 
 /**
  * Command Header - Header for all IPC commands. Identifies IPC message.
@@ -333,7 +333,7 @@ struct sof_ipc_hdr {
 struct sof_ipc_cmd_hdr {
 	uint32_t size;			/**< size of structure */
 	uint32_t cmd;			/**< SOF_IPC_GLB_ + cmd */
-} __attribute__((packed));
+} __attribute__((packed, aligned(4)));
 
 /**
  * Generic reply message. Some commands override this with their own reply
@@ -342,7 +342,7 @@ struct sof_ipc_cmd_hdr {
 struct sof_ipc_reply {
 	struct sof_ipc_cmd_hdr hdr;
 	int32_t error;			/**< negative error numbers */
-} __attribute__((packed));
+} __attribute__((packed, aligned(4)));
 
 /**
  * Compound commands - SOF_IPC_GLB_COMPOUND.
@@ -355,7 +355,7 @@ struct sof_ipc_reply {
 struct sof_ipc_compound_hdr {
 	struct sof_ipc_cmd_hdr hdr;
 	uint32_t count;		/**< count of 0 means end of compound sequence */
-} __attribute__((packed));
+} __attribute__((packed, aligned(4)));
 
 /**
  * OOPS header architecture specific data.
@@ -363,7 +363,7 @@ struct sof_ipc_compound_hdr {
 struct sof_ipc_dsp_oops_arch_hdr {
 	uint32_t arch;		/* Identifier of architecture */
 	uint32_t totalsize;	/* Total size of oops message */
-} __attribute__((packed));
+} __attribute__((packed, aligned(4)));
 
 /**
  * OOPS header platform specific data.
@@ -376,7 +376,7 @@ struct sof_ipc_dsp_oops_plat_hdr {
 				 * oops message
 				 */
 	uint32_t stackptr;	/* Stack ptr */
-} __attribute__((packed));
+} __attribute__((packed, aligned(4)));
 
 /** @}*/
 

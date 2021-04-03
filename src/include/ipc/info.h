@@ -59,7 +59,7 @@ struct sof_ipc_fw_version {
 
 	/* reserved for future use */
 	uint32_t reserved[3];
-} __attribute__((packed));
+} __attribute__((packed, aligned(4)));
 
 /* FW ready Message - sent by firmware when boot has completed */
 struct sof_ipc_fw_ready {
@@ -75,7 +75,7 @@ struct sof_ipc_fw_ready {
 
 	/* reserved for future use */
 	uint32_t reserved[4];
-} __attribute__((packed));
+} __attribute__((packed, aligned(4)));
 
 /*
  * Extended Firmware data. All optional, depends on platform/arch.
@@ -93,7 +93,7 @@ enum sof_ipc_region {
 struct sof_ipc_ext_data_hdr {
 	struct sof_ipc_cmd_hdr hdr;
 	uint32_t type;		/**< SOF_IPC_EXT_ */
-} __attribute__((packed));
+} __attribute__((packed, aligned(4)));
 
 struct sof_ipc_window_elem {
 	struct sof_ipc_hdr hdr;
@@ -103,14 +103,14 @@ struct sof_ipc_window_elem {
 	uint32_t size;		/**< size of region in bytes */
 	/* offset in window region as windows can be partitioned */
 	uint32_t offset;
-} __attribute__((packed));
+} __attribute__((packed, aligned(4)));
 
 /* extended data memory windows for IPC, trace and debug */
 struct sof_ipc_window {
 	struct sof_ipc_ext_data_hdr ext_hdr;
 	uint32_t num_windows;
 	struct sof_ipc_window_elem window[SOF_IPC_MAX_ELEMS]; /**< ABI3.17: Fixed size */
-} __attribute__((packed));
+} __attribute__((packed, aligned(4)));
 
 /* extended data, compiler version */
 struct sof_ipc_cc_version {
@@ -125,7 +125,7 @@ struct sof_ipc_cc_version {
 	uint8_t name[16]; /* null terminated compiler name */
 	uint8_t optim[4]; /* null terminated compiler -O flag value */
 	uint8_t desc[32]; /* null terminated compiler description */
-} __attribute__((packed));
+} __attribute__((packed, aligned(4)));
 
 /* extended data: Probe setup */
 struct sof_ipc_probe_support {
@@ -136,13 +136,13 @@ struct sof_ipc_probe_support {
 
 	/* reserved for future use */
 	uint32_t reserved[2];
-} __attribute__((packed));
+} __attribute__((packed, aligned(4)));
 
 /* extended data: user abi version(s) */
 struct sof_ipc_user_abi_version {
 	struct sof_ipc_ext_data_hdr ext_hdr;
 
 	uint32_t abi_dbg_version;
-} __attribute__((packed));
+} __attribute__((packed, aligned(4)));
 
 #endif /* __IPC_INFO_H__ */

@@ -31,7 +31,7 @@ struct sof_ipc_dai_esai_params {
 	uint16_t tdm_slot_width;
 	uint16_t reserved2;	/* alignment */
 
-} __attribute__((packed));
+} __attribute__((packed, aligned(4)));
 
 /* SAI Configuration Request - SOF_IPC_DAI_SAI_CONFIG */
 struct sof_ipc_dai_sai_params {
@@ -53,5 +53,5 @@ struct sof_ipc_dai_sai_params {
 	uint16_t tdm_slot_width;
 	uint16_t reserved2;	/* alignment */
 
-} __attribute__((packed));
+} __attribute__((packed, aligned(4)));
 #endif /* __IPC_DAI_IMX_H__ */

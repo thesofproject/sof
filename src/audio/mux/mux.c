@@ -338,7 +338,7 @@ static int mux_ctrl_get_cmd(struct comp_dev *dev,
 static int mux_cmd(struct comp_dev *dev, int cmd, void *data,
 		   int max_data_size)
 {
-	struct sof_ipc_ctrl_data *cdata = data;
+	struct sof_ipc_ctrl_data *cdata = ASSUME_ALIGNED(data, 4);
 
 	comp_info(dev, "mux_cmd() cmd = 0x%08x", cmd);
 

@@ -86,6 +86,6 @@ struct sof_ipc_dai_config {
 		struct sof_ipc_dai_esai_params esai;
 		struct sof_ipc_dai_sai_params sai;
 	};
-} __attribute__((packed));
+} __attribute__((packed, aligned(4)));
 
 #endif /* __IPC_DAI_H__ */
