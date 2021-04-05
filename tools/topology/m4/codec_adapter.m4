@@ -4,6 +4,8 @@ dnl Define macro for CODEC_ADAPTER widget
 DECLARE_SOF_RT_UUID("codec_adapter", ca_uuid, 0xd8218443, 0x5ff3, 0x4a4c,
 		    0xb3, 0x88, 0x6c, 0xfe, 0x07, 0xb9, 0x56, 0xaa);
 
+ifdef(`CA_UUID', `', `define(`CA_UUID', ca_uuid)');
+
 dnl N_CODEC_ADAPTER(name)
 define(`N_CODEC_ADAPTER', `CODEC_ADAPTER'PIPELINE_ID`.'$1)
 
@@ -12,7 +14,7 @@ define(`W_CODEC_ADAPTER',
 `SectionVendorTuples."'N_CODEC_ADAPTER($1)`_tuples_uuid" {'
 `	tokens "sof_comp_tokens"'
 `	tuples."uuid" {'
-`		SOF_TKN_COMP_UUID'		STR(ca_uuid)
+`		SOF_TKN_COMP_UUID'		STR(CA_UUID)
 `	}'
 `}'
 `SectionData."'N_CODEC_ADAPTER($1)`_data_uuid" {'
