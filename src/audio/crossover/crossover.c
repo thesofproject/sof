@@ -692,7 +692,7 @@ static int crossover_copy(struct comp_dev *dev)
 		buffer_lock(sinks[i], &flags);
 		avail = audio_stream_avail_frames(&source->stream,
 						  &sinks[i]->stream);
-		frames = MIN(frames, avail);
+		frames = Z_MIN(frames, avail);
 		buffer_unlock(sinks[i], flags);
 	}
 

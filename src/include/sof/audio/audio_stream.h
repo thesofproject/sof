@@ -378,7 +378,7 @@ audio_stream_avail_frames(const struct audio_stream *source,
 	uint32_t src_frames = audio_stream_get_avail_frames(source);
 	uint32_t sink_frames = audio_stream_get_free_frames(sink);
 
-	return MIN(src_frames, sink_frames);
+	return Z_MIN(src_frames, sink_frames);
 }
 
 /**
@@ -571,7 +571,7 @@ static inline int audio_stream_copy(const struct audio_stream *source,
 	while (bytes) {
 		bytes_src = audio_stream_bytes_without_wrap(source, src);
 		bytes_snk = audio_stream_bytes_without_wrap(sink, snk);
-		bytes_copied = MIN(bytes, MIN(bytes_src, bytes_snk));
+		bytes_copied = Z_MIN(bytes, Z_MIN(bytes_src, bytes_snk));
 
 		ret = memcpy_s(snk, bytes_snk, src, bytes_copied);
 		assert(!ret);

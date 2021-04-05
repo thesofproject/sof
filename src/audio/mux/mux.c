@@ -473,7 +473,7 @@ static int demux_copy(struct comp_dev *dev)
 		buffer_lock(sinks[i], &flags);
 		avail = audio_stream_avail_frames(&source->stream,
 						  &sinks[i]->stream);
-		frames = MIN(frames, avail);
+		frames = Z_MIN(frames, avail);
 		buffer_unlock(sinks[i], flags);
 	}
 
@@ -573,9 +573,9 @@ static int mux_copy(struct comp_dev *dev)
 	for (i = 0; i < MUX_MAX_STREAMS; i++) {
 		if (!sources[i])
 			continue;
-		frames = MIN(frames,
-			     audio_stream_avail_frames(sources_stream[i],
-						       &sink->stream));
+		frames = Z_MIN(frames,
+			       audio_stream_avail_frames(sources_stream[i],
+							 &sink->stream));
 		buffer_unlock(sources[i], flags);
 	}
 

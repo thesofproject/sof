@@ -1039,7 +1039,7 @@ void *rbrealloc_align(void *ptr, uint32_t flags, uint32_t caps, size_t bytes,
 	struct mm *memmap = memmap_get();
 	void *new_ptr = NULL;
 	uint32_t lock_flags;
-	size_t copy_bytes = MIN(bytes, old_bytes);
+	size_t copy_bytes = Z_MIN(bytes, old_bytes);
 
 	if (!bytes)
 		return new_ptr;

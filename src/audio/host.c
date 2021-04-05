@@ -124,7 +124,7 @@ static uint32_t host_dma_get_split(struct host_data *hd, uint32_t bytes)
 			(hd->sink->current_end - local_elem->dest);
 
 	/* get max split, so the current copy will be minimum */
-	return MAX(split_src, split_dst);
+	return Z_MAX(split_src, split_dst);
 }
 
 static void host_update_position(struct comp_dev *dev, uint32_t bytes)
@@ -351,12 +351,12 @@ static uint32_t host_get_copy_bytes_normal(struct comp_dev *dev)
 		/* limit bytes per copy to one period for the whole pipeline
 		 * in order to avoid high load spike
 		 */
-		copy_bytes = MIN(hd->period_bytes,
-				 MIN(avail_bytes,
-				     audio_stream_get_free_bytes(&hd->local_buffer->stream)));
+		copy_bytes = Z_MIN(hd->period_bytes,
+				   Z_MIN(avail_bytes,
+					 audio_stream_get_free_bytes(&hd->local_buffer->stream)));
 	else
-		copy_bytes = MIN(
-			audio_stream_get_avail_bytes(&hd->local_buffer->stream), free_bytes);
+		copy_bytes = Z_MIN(audio_stream_get_avail_bytes(&hd->local_buffer->stream),
+				   free_bytes);
 
 	buffer_unlock(hd->local_buffer, flags);
 

@@ -43,8 +43,8 @@ int pcm_convert_as_linear(const struct audio_stream *source, uint32_t ioffset,
 			log2_s_size_in;
 		N2 = audio_stream_bytes_without_wrap(sink, w_ptr) >>
 			log2_s_size_out;
-		chunk = MIN(N1, N2);
-		chunk = MIN(chunk, samples - i);
+		chunk = Z_MIN(N1, N2);
+		chunk = Z_MIN(chunk, samples - i);
 
 		/* run conversion on linear memory region */
 		converter(r_ptr, w_ptr, chunk);

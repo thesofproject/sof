@@ -833,16 +833,16 @@ static int dai_copy(struct comp_dev *dev)
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
 		src_samples = audio_stream_get_avail_samples(&buf->stream);
 		sink_samples = free_bytes / get_sample_bytes(dma_fmt);
-		samples = MIN(src_samples, sink_samples);
+		samples = Z_MIN(src_samples, sink_samples);
 	} else {
 		src_samples = avail_bytes / get_sample_bytes(dma_fmt);
 		sink_samples = audio_stream_get_free_samples(&buf->stream);
-		samples = MIN(src_samples, sink_samples);
+		samples = Z_MIN(src_samples, sink_samples);
 
 		/* limit bytes per copy to one period for the whole pipeline
 		 * in order to avoid high load spike
 		 */
-		samples = MIN(samples, dd->period_bytes /
+		samples = Z_MIN(samples, dd->period_bytes /
 			      get_sample_bytes(dma_fmt));
 	}
 	copy_bytes = samples * get_sample_bytes(dma_fmt);

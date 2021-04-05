@@ -710,21 +710,21 @@ static int src_get_copy_limits(struct comp_data *cd,
 	if (s2->filter_length > 1) {
 		/* Two polyphase filters case */
 		frames_snk = audio_stream_get_free_frames(&sink->stream);
-		frames_snk = MIN(frames_snk, cd->sink_frames + s2->blk_out);
+		frames_snk = Z_MIN(frames_snk, cd->sink_frames + s2->blk_out);
 		sp->stage2_times = frames_snk / s2->blk_out;
 		frames_src = audio_stream_get_avail_frames(&source->stream);
-		frames_src = MIN(frames_src, cd->source_frames + s1->blk_in);
+		frames_src = Z_MIN(frames_src, cd->source_frames + s1->blk_in);
 		sp->stage1_times = frames_src / s1->blk_in;
 		sp->blk_in = sp->stage1_times * s1->blk_in;
 		sp->blk_out = sp->stage2_times * s2->blk_out;
 	} else {
 		/* Single polyphase filter case */
 		frames_snk = audio_stream_get_free_frames(&sink->stream);
-		frames_snk = MIN(frames_snk, cd->sink_frames + s1->blk_out);
+		frames_snk = Z_MIN(frames_snk, cd->sink_frames + s1->blk_out);
 		sp->stage1_times = frames_snk / s1->blk_out;
 		frames_src = audio_stream_get_avail_frames(&source->stream);
-		sp->stage1_times = MIN(sp->stage1_times,
-				       frames_src / s1->blk_in);
+		sp->stage1_times = Z_MIN(sp->stage1_times,
+					 frames_src / s1->blk_in);
 		sp->blk_in = sp->stage1_times * s1->blk_in;
 		sp->blk_out = sp->stage1_times * s1->blk_out;
 	}

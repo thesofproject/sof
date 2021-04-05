@@ -288,7 +288,7 @@ static void find_modes(struct dai *dai,
 
 	/* Min and max clock dividers */
 	clkdiv_min = ceil_divide(DMIC_HW_IOCLK, dmic_prm[di]->pdmclk_max);
-	clkdiv_min = MAX(clkdiv_min, DMIC_HW_CIC_DECIM_MIN);
+	clkdiv_min = Z_MAX(clkdiv_min, DMIC_HW_CIC_DECIM_MIN);
 	clkdiv_max = DMIC_HW_IOCLK / dmic_prm[di]->pdmclk_min;
 
 	/* Loop possible clock dividers and check based on resulting
@@ -436,9 +436,9 @@ static struct pdm_decim *get_fir(struct dai *dai,
 	 * length. Exceeding this length sets HW overrun status and
 	 * overwrite of other register.
 	 */
-	fir_max_length = MIN(DMIC_HW_FIR_LENGTH_MAX,
-			     DMIC_HW_IOCLK / fs / 2 -
-			     DMIC_FIR_PIPELINE_OVERHEAD);
+	fir_max_length = Z_MIN(DMIC_HW_FIR_LENGTH_MAX,
+			       DMIC_HW_IOCLK / fs / 2 -
+			       DMIC_FIR_PIPELINE_OVERHEAD);
 
 	i = 0;
 	/* Loop until NULL */
@@ -968,8 +968,8 @@ static int configure_registers(struct dai *dai,
 
 		if (di == 0) {
 			/* FIR A */
-			fir_decim = MAX(cfg->mfir_a - 1, 0);
-			fir_length = MAX(cfg->fir_a_length - 1, 0);
+			fir_decim = Z_MAX(cfg->mfir_a - 1, 0);
+			fir_length = Z_MAX(cfg->fir_a_length - 1, 0);
 			val = FIR_CONTROL_A_START(0) |
 				FIR_CONTROL_A_ARRAY_START_EN(array_a) |
 				FIR_CONTROL_A_DCCOMP(dccomp) |
@@ -1013,8 +1013,8 @@ static int configure_registers(struct dai *dai,
 
 		if (di == 1) {
 			/* FIR B */
-			fir_decim = MAX(cfg->mfir_b - 1, 0);
-			fir_length = MAX(cfg->fir_b_length - 1, 0);
+			fir_decim = Z_MAX(cfg->mfir_b - 1, 0);
+			fir_length = Z_MAX(cfg->fir_b_length - 1, 0);
 			val = FIR_CONTROL_B_START(0) |
 				FIR_CONTROL_B_ARRAY_START_EN(array_b) |
 				FIR_CONTROL_B_DCCOMP(dccomp) |

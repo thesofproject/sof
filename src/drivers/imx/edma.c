@@ -313,7 +313,7 @@ static int edma_setup_tcd(struct dma_chan_data *channel, int16_t soff,
 	 */
 	burst_elems = burst_elems * 4U / 2U;
 
-	size = MIN(elem_size, burst_elems);
+	size = Z_MIN(elem_size, burst_elems);
 	while (size >= 4U) {
 		if ((elem_size % size) == 0UL)
 			break;

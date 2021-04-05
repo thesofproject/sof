@@ -419,7 +419,7 @@ static int asrc_params(struct comp_dev *dev,
 	 */
 	cd->source_frames_max = cd->source_frames + 10;
 	cd->sink_frames_max = cd->sink_frames + 10;
-	cd->frames = MAX(cd->source_frames_max, cd->sink_frames_max);
+	cd->frames = Z_MAX(cd->source_frames_max, cd->sink_frames_max);
 
 	comp_info(dev, "asrc_params(), source_rate=%u, sink_rate=%u, source_frames_max=%d, sink_frames_max=%d",
 		  cd->source_rate, cd->sink_rate,
@@ -785,8 +785,8 @@ static int asrc_control_loop(struct comp_dev *dev, struct comp_data *cd)
 	/* Track skew variation, it helps to analyze possible problems
 	 * with slave DAI frame clock stability.
 	 */
-	cd->skew_min = MIN(cd->skew, cd->skew_min);
-	cd->skew_max = MAX(cd->skew, cd->skew_max);
+	cd->skew_min = Z_MIN(cd->skew, cd->skew_min);
+	cd->skew_max = Z_MAX(cd->skew, cd->skew_max);
 	comp_cl_dbg(&comp_asrc, "skew %d %d %d %d", delta_sample, delta_ts,
 		    skew, cd->skew);
 	return 0;
@@ -852,22 +852,22 @@ static int asrc_copy(struct comp_dev *dev)
 		 * The amount cd->sink_frames will be produced while
 		 * consumption varies.
 		 */
-		cd->source_frames = MIN(frames_src, cd->source_frames_max);
+		cd->source_frames = Z_MIN(frames_src, cd->source_frames_max);
 		cd->sink_frames = cd->source_frames * cd->sink_rate /
 			cd->source_rate;
-		cd->sink_frames = MIN(cd->sink_frames, cd->sink_frames_max);
-		cd->sink_frames = MIN(cd->sink_frames, frames_snk);
+		cd->sink_frames = Z_MIN(cd->sink_frames, cd->sink_frames_max);
+		cd->sink_frames = Z_MIN(cd->sink_frames, frames_snk);
 	} else {
 		/* In push mode maximize the sink buffer write potential.
 		 * ASRC will consume from source cd->source_frames while
 		 * production varies.
 		 */
-		cd->sink_frames = MIN(frames_snk, cd->sink_frames_max);
+		cd->sink_frames = Z_MIN(frames_snk, cd->sink_frames_max);
 		cd->source_frames = cd->sink_frames * cd->source_rate /
 			cd->sink_rate;
-		cd->source_frames = MIN(cd->source_frames,
-					cd->source_frames_max);
-		cd->source_frames = MIN(cd->source_frames, frames_src);
+		cd->source_frames = Z_MIN(cd->source_frames,
+					  cd->source_frames_max);
+		cd->source_frames = Z_MIN(cd->source_frames, frames_src);
 	}
 
 	if (cd->source_frames && cd->sink_frames)

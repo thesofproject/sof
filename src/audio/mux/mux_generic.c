@@ -287,7 +287,7 @@ static void demux_s16le(struct comp_dev *dev, struct audio_stream *sink,
 			demux_calc_frames_without_wrap_s16(dev, sink, source,
 							   lookup);
 
-		frames_without_wrap = MIN(frames, frames_without_wrap);
+		frames_without_wrap = Z_MIN(frames, frames_without_wrap);
 
 		for (i = 0; i < frames_without_wrap; i++) {
 			for (elem = 0; elem < lookup->num_elems; elem++) {
@@ -341,7 +341,7 @@ static void mux_s16le(struct comp_dev *dev, struct audio_stream *sink,
 			mux_calc_frames_without_wrap_s16(dev, sink, sources,
 							 lookup);
 
-		frames_without_wrap = MIN(frames, frames_without_wrap);
+		frames_without_wrap = Z_MIN(frames, frames_without_wrap);
 
 		for (i = 0; i < frames_without_wrap; i++) {
 			for (elem = 0; elem < lookup->num_elems; elem++) {
@@ -397,7 +397,7 @@ static void demux_s32le(struct comp_dev *dev, struct audio_stream *sink,
 			demux_calc_frames_without_wrap_s32(dev, sink, source,
 							   lookup);
 
-		frames_without_wrap = MIN(frames, frames_without_wrap);
+		frames_without_wrap = Z_MIN(frames, frames_without_wrap);
 
 		for (i = 0; i < frames_without_wrap; i++) {
 			for (elem = 0; elem < lookup->num_elems; elem++) {
@@ -451,7 +451,7 @@ static void mux_s32le(struct comp_dev *dev, struct audio_stream *sink,
 			mux_calc_frames_without_wrap_s32(dev, sink, sources,
 							 lookup);
 
-		frames_without_wrap = MIN(frames, frames_without_wrap);
+		frames_without_wrap = Z_MIN(frames, frames_without_wrap);
 
 		for (i = 0; i < frames_without_wrap; i++) {
 			for (elem = 0; elem < lookup->num_elems; elem++) {

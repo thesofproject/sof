@@ -699,7 +699,7 @@ static int kpb_copy(struct comp_dev *dev)
 			/* Update buffered size. NOTE! We only record buffered
 			 * data up to the size of history buffer.
 			 */
-			kpb->hd.buffered += MIN(kpb->hd.buffer_size -
+			kpb->hd.buffered += Z_MIN(kpb->hd.buffer_size -
 						kpb->hd.buffered,
 						copy_bytes);
 		} else {
@@ -756,7 +756,7 @@ static int kpb_copy(struct comp_dev *dev)
 		/* In draining and init draining we only buffer data in
 		 * the internal history buffer.
 		 */
-		copy_bytes = MIN(audio_stream_get_avail_bytes(&source->stream), kpb->hd.free);
+		copy_bytes = Z_MIN(audio_stream_get_avail_bytes(&source->stream), kpb->hd.free);
 		ret = PPL_STATUS_PATH_STOP;
 		if (copy_bytes) {
 			buffer_invalidate(source, copy_bytes);
@@ -1242,7 +1242,7 @@ static enum task_state kpb_draining_task(void *arg)
 		drain_req -= size_to_copy;
 		drained += size_to_copy;
 		period_bytes += size_to_copy;
-		kpb->hd.free += MIN(kpb->hd.buffer_size -
+		kpb->hd.free += Z_MIN(kpb->hd.buffer_size -
 				    kpb->hd.free, size_to_copy);
 
 		if (move_buffer) {

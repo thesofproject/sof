@@ -112,7 +112,7 @@ void *rbrealloc_align(void *ptr, uint32_t flags, uint32_t caps, size_t bytes,
 	}
 
 	if (!(flags & SOF_MEM_FLAG_NO_COPY)) {
-		memcpy(new_ptr, ptr, MIN(bytes, old_bytes));
+		memcpy(new_ptr, ptr, Z_MIN(bytes, old_bytes));
 	}
 
 	rfree(ptr);

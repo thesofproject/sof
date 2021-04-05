@@ -237,14 +237,14 @@ static void timer_domain_set(struct ll_schedule_domain *domain, uint64_t start)
 	uint64_t ticks_req;
 
 	/* make sure to require for ticks later than tout from now */
-	ticks_req = MAX(start, platform_timer_get_atomic(timer_domain->timer) + ticks_tout);
+	ticks_req = Z_MAX(start, platform_timer_get_atomic(timer_domain->timer) + ticks_tout);
 
 	ticks_set = platform_timer_set(timer_domain->timer, ticks_req);
 #else
 	uint64_t current = platform_timer_get_atomic(timer_domain->timer);
 	uint64_t earliest_next = current + 1 + ZEPHYR_SCHED_COST;
 	uint64_t ticks_req = domain->next_tick ? start + ticks_tout :
-		MAX(start, earliest_next);
+		Z_MAX(start, earliest_next);
 	int ret, core = cpu_get_id();
 	uint64_t ticks_delta;
 

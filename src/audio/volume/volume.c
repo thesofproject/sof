@@ -364,8 +364,8 @@ static struct comp_dev *volume_new(const struct comp_driver *drv,
 	}
 
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++) {
-		cd->volume[i]  =  MAX(MIN(cd->vol_max, VOL_ZERO_DB),
-				      cd->vol_min);
+		cd->volume[i]  =  Z_MAX(Z_MIN(cd->vol_max, VOL_ZERO_DB),
+					cd->vol_min);
 		cd->tvolume[i] = cd->volume[i];
 		cd->mvolume[i] = cd->volume[i];
 		cd->muted[i] = false;
@@ -477,7 +477,7 @@ static inline int volume_set_chan(struct comp_dev *dev, int chan,
 		/* Ensure ramp coefficient is at least min. non-zero
 		 * fractional value.
 		 */
-		coef = MAX(coef, 1);
+		coef = Z_MAX(coef, 1);
 
 		/* Invert sign for volume down ramp step */
 		if (delta < 0)

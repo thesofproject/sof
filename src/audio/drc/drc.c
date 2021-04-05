@@ -97,7 +97,7 @@ inline int drc_set_pre_delay_time(struct drc_state *state,
 	pre_delay_frames = Q_MULTSR_32X32((int64_t)pre_delay_time, rate, 30, 0, 0);
 	if (pre_delay_frames < 0)
 		return -EINVAL;
-	pre_delay_frames = MIN(pre_delay_frames, DRC_MAX_PRE_DELAY_FRAMES - 1);
+	pre_delay_frames = Z_MIN(pre_delay_frames, DRC_MAX_PRE_DELAY_FRAMES - 1);
 
 	/* Make pre_delay_frames multiplies of DIVISION_FRAMES. This way we
 	 * won't split a division of samples into two blocks of memory, so it is
@@ -107,7 +107,7 @@ inline int drc_set_pre_delay_time(struct drc_state *state,
 
 	/* We need at least one division buffer, so the incoming data won't
 	 * overwrite the output data */
-	pre_delay_frames = MAX(pre_delay_frames, DRC_DIVISION_FRAMES);
+	pre_delay_frames = Z_MAX(pre_delay_frames, DRC_DIVISION_FRAMES);
 
 	if (state->last_pre_delay_frames != pre_delay_frames) {
 		state->last_pre_delay_frames = pre_delay_frames;

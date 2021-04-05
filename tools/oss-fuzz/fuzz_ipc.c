@@ -19,7 +19,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size)
 	// copy the buffer to pre allocated buffer
 	struct sof_ipc_cmd_hdr *hdr = calloc(SOF_IPC_MSG_MAX_SIZE, 1);
 
-	memcpy_s(hdr, SOF_IPC_MSG_MAX_SIZE, Data, MIN(Size, SOF_IPC_MSG_MAX_SIZE));
+	memcpy_s(hdr, SOF_IPC_MSG_MAX_SIZE, Data, Z_MIN(Size, SOF_IPC_MSG_MAX_SIZE));
 
 	// sanity check performed typically by platform dependent code
 	if (hdr->size < sizeof(*hdr) || hdr->size > SOF_IPC_MSG_MAX_SIZE)

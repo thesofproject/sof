@@ -12,23 +12,32 @@
 
 #include <stdint.h>
 
+/* These macros evaluate their arguments only once. This comes at a
+ * price:
+ * 1. They require a compiler that supports statement-expressions
+ *    (gcc, clang,...)
+ * 2. They cannot be used at compile time, only at run time.
+ *
+ * Z_MIN and Z_MAX are named like the equivalent Zephyr macros.
+ */
+
 /* Zephyr defines this - remove local copy once Zephyr integration complete */
-#ifdef MIN
-#undef MIN
+#ifdef Z_MIN
+#undef Z_MIN
 #endif
 
-#define MIN(a, b) ({		\
+#define Z_MIN(a, b) ({		\
 	typeof(a) __a = (a);	\
 	typeof(b) __b = (b);	\
 	__a > __b ? __b : __a;	\
 })
 
 /* Zephyr defines this - remove local copy once Zephyr integration complete */
-#ifdef MAX
-#undef MAX
+#ifdef Z_MAX
+#undef Z_MAX
 #endif
 
-#define MAX(a, b) ({		\
+#define Z_MAX(a, b) ({		\
 	typeof(a) __a = (a);	\
 	typeof(b) __b = (b);	\
 	__a < __b ? __b : __a;	\

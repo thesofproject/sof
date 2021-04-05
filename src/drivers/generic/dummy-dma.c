@@ -96,7 +96,7 @@ static ssize_t dummy_dma_copy_crt_elem(struct dma_chan_pdata *pdata,
 	wptr = pdata->elems->elems[pdata->sg_elem_curr_idx].dest;
 	orig_size = pdata->elems->elems[pdata->sg_elem_curr_idx].size;
 	remaining_size = orig_size - pdata->elem_progress;
-	copy_size = MIN(remaining_size, bytes);
+	copy_size = Z_MIN(remaining_size, bytes);
 
 	/* On playback, invalidate host buffer (it may lie in a cached area).
 	 * Otherwise we could be playing stale data.

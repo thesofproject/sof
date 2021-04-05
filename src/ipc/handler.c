@@ -993,7 +993,7 @@ static int ipc_probe_info(uint32_t header)
 	} else {
 		tr_err(&ipc_tr, "ipc_probe_get_data(): probes module returned too much payload for cmd %u - returned %d bytes, max %d",
 		       cmd, params->rhdr.hdr.size,
-		       MIN(MAILBOX_HOSTBOX_SIZE, SOF_IPC_MSG_MAX_SIZE));
+		       Z_MIN(MAILBOX_HOSTBOX_SIZE, SOF_IPC_MSG_MAX_SIZE));
 		ret = -EINVAL;
 	}
 
@@ -1079,7 +1079,7 @@ static int ipc_comp_value(uint32_t header, uint32_t cmd)
 	} else {
 		tr_err(&ipc_tr, "ipc: comp %d cmd %u returned %d bytes max %d",
 		       data->comp_id, data->cmd, data->rhdr.hdr.size,
-		       MIN(MAILBOX_HOSTBOX_SIZE, SOF_IPC_MSG_MAX_SIZE));
+		       Z_MIN(MAILBOX_HOSTBOX_SIZE, SOF_IPC_MSG_MAX_SIZE));
 		ret = -EINVAL;
 	}
 

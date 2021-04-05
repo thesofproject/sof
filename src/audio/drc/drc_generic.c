@@ -104,7 +104,7 @@ void drc_update_detector_average(struct drc_state *state,
 				sample16_p =
 					(int16_t *)state->pre_delay_buffers[ch] + div_start + i;
 				sample = Q_SHIFT_LEFT((int32_t)*sample16_p, 15, 31);
-				abs_input_array[i] = MAX(abs_input_array[i], ABS(sample));
+				abs_input_array[i] = Z_MAX(abs_input_array[i], ABS(sample));
 			}
 		}
 	} else { /* 4 bytes per sample */
@@ -114,7 +114,7 @@ void drc_update_detector_average(struct drc_state *state,
 				sample32_p =
 					(int32_t *)state->pre_delay_buffers[ch] + div_start + i;
 				sample = *sample32_p;
-				abs_input_array[i] = MAX(abs_input_array[i], ABS(sample));
+				abs_input_array[i] = Z_MAX(abs_input_array[i], ABS(sample));
 			}
 		}
 	}
@@ -154,7 +154,7 @@ void drc_update_detector_average(struct drc_state *state,
 			detector_average = gain;
 		}
 
-		detector_average = MIN(detector_average, ONE_Q30);
+		detector_average = Z_MIN(detector_average, ONE_Q30);
 	}
 
 	state->detector_average = detector_average;
@@ -203,8 +203,8 @@ void drc_update_envelope(struct drc_state *state, const struct sof_drc_params *p
 		 * -12 -> 0 then scale to go from 0 -> 3
 		 */
 		x = compression_diff_db; /* Q11.21 */
-		x = MAX(-TWELVE_Q21, x);
-		x = MIN(0, x);
+		x = Z_MAX(-TWELVE_Q21, x);
+		x = Z_MIN(0, x);
 		/* x = 0.25f * (x + 12) */
 		x = Q_SHIFT_RND(x + TWELVE_Q21, 21, 19);
 
@@ -235,11 +235,11 @@ void drc_update_envelope(struct drc_state *state, const struct sof_drc_params *p
 		 * the largest compression_diff_db we've encountered so far.
 		 */
 		state->max_attack_compression_diff_db =
-			MAX(state->max_attack_compression_diff_db,
-			    sat_int32(Q_SHIFT_LEFT((int64_t)compression_diff_db, 21, 24)));
+			Z_MAX(state->max_attack_compression_diff_db,
+			      sat_int32(Q_SHIFT_LEFT((int64_t)compression_diff_db, 21, 24)));
 
 		eff_atten_diff_db =
-			MAX(HALF_Q24, state->max_attack_compression_diff_db); /* Q8.24 */
+			Z_MAX(HALF_Q24, state->max_attack_compression_diff_db); /* Q8.24 */
 
 		/* x = 0.25f / eff_atten_diff_db;
 		 * => x = 1.0f / (eff_atten_diff_db << 2);
@@ -419,7 +419,8 @@ void drc_compress_output(struct drc_state *state,
 				break;
 
 			for (j = 0; j < 4; j++)
-				x[j] = MIN(ONE_Q30, Q_MULTSR_32X32((int64_t)x[j], r4, 30, 30, 30));
+				x[j] = Z_MIN(ONE_Q30,
+					     Q_MULTSR_32X32((int64_t)x[j], r4, 30, 30, 30));
 		}
 
 		state->compressor_gain = x[3];
@@ -554,7 +555,7 @@ static void drc_s16_default(const struct comp_dev *dev,
 		/* Copy fragment data from source to pre-delay buffers, and copy the output fragment
 		 * to sink.
 		 */
-		fragment = MIN(DRC_DIVISION_FRAMES - offset, frames - i);
+		fragment = Z_MIN(DRC_DIVISION_FRAMES - offset, frames - i);
 		pd_write_index = state->pre_delay_write_index;
 		pd_read_index = state->pre_delay_read_index;
 		for (ch = 0; ch < nch; ++ch) {
@@ -660,7 +661,7 @@ static void drc_s24_default(const struct comp_dev *dev,
 		/* Copy fragment data from source to pre-delay buffers, and copy the output fragment
 		 * to sink.
 		 */
-		fragment = MIN(DRC_DIVISION_FRAMES - offset, frames - i);
+		fragment = Z_MIN(DRC_DIVISION_FRAMES - offset, frames - i);
 		pd_write_index = state->pre_delay_write_index;
 		pd_read_index = state->pre_delay_read_index;
 		for (ch = 0; ch < nch; ++ch) {
@@ -769,7 +770,7 @@ static void drc_s32_default(const struct comp_dev *dev,
 		/* Copy fragment data from source to pre-delay buffers, and copy the output fragment
 		 * to sink.
 		 */
-		fragment = MIN(DRC_DIVISION_FRAMES - offset, frames - i);
+		fragment = Z_MIN(DRC_DIVISION_FRAMES - offset, frames - i);
 		pd_write_index = state->pre_delay_write_index;
 		pd_read_index = state->pre_delay_read_index;
 		for (ch = 0; ch < nch; ++ch) {

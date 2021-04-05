@@ -544,7 +544,7 @@ int smart_amp_get_num_param(struct smart_amp_mod_struct_t *hspk,
 	if (retcode != DSM_API_OK)
 		return 0;
 
-	return MIN(DSM_DEFAULT_MAX_NUM_PARAM, cmdblock[DSM_GET_CH1_IDX]);
+	return Z_MIN(DSM_DEFAULT_MAX_NUM_PARAM, cmdblock[DSM_GET_CH1_IDX]);
 }
 
 int smart_amp_get_memory_size(struct smart_amp_mod_struct_t *hspk,
@@ -699,8 +699,8 @@ int smart_amp_ff_copy(struct comp_dev *dev, uint32_t frames,
 		return -EINVAL;
 	}
 
-	num_ch_in = MIN(num_ch_in, SMART_AMP_FF_MAX_CH_NUM);
-	num_ch_out = MIN(num_ch_out, SMART_AMP_FF_OUT_MAX_CH_NUM);
+	num_ch_in = Z_MIN(num_ch_in, SMART_AMP_FF_MAX_CH_NUM);
+	num_ch_out = Z_MIN(num_ch_out, SMART_AMP_FF_OUT_MAX_CH_NUM);
 
 	ret = smart_amp_get_buffer(hspk->buf.frame_in,
 				   frames, &source->stream, chan_map,
@@ -729,8 +729,8 @@ int smart_amp_ff_copy(struct comp_dev *dev, uint32_t frames,
 
 	ret = smart_amp_put_buffer(hspk->buf.frame_out,
 				   frames, &sink->stream, chan_map,
-				   MIN(num_ch_in, SMART_AMP_FF_MAX_CH_NUM),
-				   MIN(num_ch_out, SMART_AMP_FF_OUT_MAX_CH_NUM));
+				   Z_MIN(num_ch_in, SMART_AMP_FF_MAX_CH_NUM),
+				   Z_MIN(num_ch_out, SMART_AMP_FF_OUT_MAX_CH_NUM));
 	if (ret)
 		goto err;
 
@@ -759,7 +759,7 @@ int smart_amp_fb_copy(struct comp_dev *dev, uint32_t frames,
 		return -EINVAL;
 	}
 
-	num_ch = MIN(num_ch, SMART_AMP_FB_MAX_CH_NUM);
+	num_ch = Z_MIN(num_ch, SMART_AMP_FB_MAX_CH_NUM);
 
 	ret = smart_amp_get_buffer(hspk->buf.frame_iv,
 				   frames, &source->stream,

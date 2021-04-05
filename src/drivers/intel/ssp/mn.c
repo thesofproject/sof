@@ -344,7 +344,7 @@ static bool find_mn(uint32_t freq, uint32_t bclk,
 		--scr_div;
 
 	/* clamp to valid SCR range */
-	scr_div = MIN(scr_div, (SSCR0_SCR_MASK >> 8) + 1);
+	scr_div = Z_MIN(scr_div, (SSCR0_SCR_MASK >> 8) + 1);
 
 	/* find highest even divisor */
 	while (scr_div > 1 && freq % scr_div != 0)
