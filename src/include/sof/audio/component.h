@@ -221,6 +221,15 @@ enum comp_copy_type {
 	COMP_COPY_ONE_SHOT,	/**< One-shot */
 };
 
+/*! \brief enumeration values of processing mode */
+enum comp_processing_mode {
+    COMP_PROCESS_NORMAL = 0, /*!< Indicates that module is expected to apply its custom processing on signal. */
+    COMP_PROCESS_BYPASS /*!< Indicates that module is expected to not apply its custom processing on signal.
+     	     	     	 * The module is expected to forward as far as possible the input signals unmodified
+     	     	     	 * with respect of the signal continuity at the mode transition.
+     	     	     	 */
+};
+
 struct comp_driver;
 
 /**
@@ -335,6 +344,34 @@ struct comp_ops {
 	 * @return Number of copied frames.
 	 */
 	int (*copy)(struct comp_dev *dev);
+
+    /**
+      * \brief Processes the stream buffers extracted from the input pins and
+      *  produces the resulting signal in stream buffer of the output pins.
+      *
+      * The user-defined implementation of process() is generally expected to
+      * consume all the samples available in the input stream buffers
+      * and should produce the samples for all free room available in the
+      * output stream buffers. Note that in normal condition all connected
+      * input pins will receive "ibs" (i.e. "Input Buffer Size") data bytes in
+      * their input stream buffers and output pins should produce "obs"
+      * (i.e. "Output Buffer Size") data bytes in their output stream buffers.
+      * ("ibs" and "obs" values are given to module at construction time
+      * within the \ref ModuleInitialSettings parameter). However in
+      * "end of stream" condition input stream buffers may be filled with less
+      * data count than "ibs". Therefore less data count than "obs" can be
+      * put in the output buffers.
+      *
+      * \remarks Length of input_stream_buffers and output_stream_buffers
+      * C-arrays don't need to be part of the Process() prototype
+      * as those lengths are well-known by the user-defined implementation
+      * of the ProcessingModuleInterface.
+      * \return Custom implementation can return an user-defined error code
+      * value. This user-defined error code will be transmitted to
+      * host driver if the value is different from 0 (0 is considered as a
+      * "no-error value")
+      */
+	int (*process)(struct comp_dev *dev);
 
 	/**
 	 * Retrieves component rendering position.
