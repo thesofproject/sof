@@ -45,9 +45,10 @@ jobs:
            # show what we got
            git --no-pager log --oneline --graph --decorate --max-count=50
 
-      - name: normal checkpatch
-        run: .github/workflows/checkpatch_list.sh ${CHK_CMD_OPTS} < PR_SHAs.txt
-
-      - name: checkpatch --strict
+      - name: checkpatch --strict (status always white even on failure)
+        continue-on-error: true
         run: .github/workflows/checkpatch_list.sh ${CHK_CMD_OPTS}
                  --strict < PR_SHAs.txt
+
+      - name: normal checkpatch
+        run: .github/workflows/checkpatch_list.sh ${CHK_CMD_OPTS} < PR_SHAs.txt
