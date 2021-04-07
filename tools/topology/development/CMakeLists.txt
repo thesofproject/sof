@@ -17,6 +17,7 @@ set(TPLGS
 	"sof-cml-rt1011-rt5682-nokwd\;sof-cml-rt1011-rt5682-nokwd\;-DCHANNELS=2\;-DDMICPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_48khz.m4\;-DDMIC16KPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_16khz.m4"
 	"sof-cml-rt1011-rt5682-nokwd\;sof-cml-rt1011-rt5682-eq\;-DCHANNELS=2\;-DDMICPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_48khz.m4\;-DDMIC16KPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_16khz.m4\;-DHSEARPROC=eq-iir-eq-fir-volume\;-DHSMICPROC=eq-fir-volume\;-DSPKPROC=eq-iir-eq-fir-volume"
 	"sof-imx8mp-src-wm8960\;sof-imx8mp-src-wm8960"
+	"sof-imx8-src-wm8960\;sof-imx8-src-wm8960"
 )
 
 
