@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
+config IMX_EDMA
+	bool "i.MX EDMA driver"
+	default n
+	depends on IMX
+	help
+	  Select this to enable support for i.MX EDMA DMA controller.
