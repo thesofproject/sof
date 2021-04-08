@@ -6,6 +6,8 @@ rsource "intel/Kconfig"
 
 rsource "dw/Kconfig"
 
+rsource "imx/Kconfig"
+
 config DUMMY_DMA
 	bool "Dummy DMA (software DMA driver)"
 	default n
@@ -17,13 +19,6 @@ config DUMMY_DMA
 	  host memory.
 
 	  If unsure, select "n".
-
-config IMX_EDMA
-	bool "i.MX EDMA driver"
-	default n
-	depends on IMX
-	help
-	  Select this to enable support for i.MX EDMA DMA controller.
 
 config IPC_POLLING
 	bool "Enable IPC Polling support"
