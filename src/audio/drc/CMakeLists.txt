@@ -1,4 +1,5 @@
 add_local_sources(sof drc.c)
 add_local_sources(sof drc_generic.c)
+add_local_sources(sof drc_hifi3.c)
 add_local_sources(sof drc_math_generic.c)
 add_local_sources(sof drc_math_hifi3.c)

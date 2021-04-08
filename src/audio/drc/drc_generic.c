@@ -13,6 +13,8 @@
 #include <sof/math/numbers.h>
 #include <stdint.h>
 
+#if DRC_GENERIC
+
 #define ONE_Q20        Q_CONVERT_FLOAT(1.0f, 20)                /* Q12.20 */
 #define ONE_Q21        Q_CONVERT_FLOAT(1.0f, 21)                /* Q11.21 */
 #define ONE_Q30        Q_CONVERT_FLOAT(1.0f, 30)                /* Q2.30 */
@@ -443,6 +445,8 @@ void drc_compress_output(struct drc_state *state,
 		state->compressor_gain = x[3];
 	}
 }
+
+#endif /* DRC_GENERIC */
 
 /* After one complete divison of samples have been received (and one divison of
  * samples have been output), we calculate shaped power average
