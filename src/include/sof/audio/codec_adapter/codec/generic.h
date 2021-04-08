@@ -105,13 +105,24 @@ enum codec_state {
 	CODEC_RUNNING, /**< Codec is running now. */
 };
 
-/** codec adapter setup config parameters */
+/**
+ * \struct codec_config
+ * \brief codec adapter setup config parameters
+ * This struct should be placed in the topology file under
+ * CA_SETUP_CONTROLBYTES. It defines the ID of the codec,
+ * as well as the IDs of stream parameters. The first one
+ * is used to tie specific codec with the adapter while the
+ * later defines IDs which particular codec shall use to
+ * update stream parameters. Thanks to this codec can keep
+ * the rest of the API closed if they want to, plus we don't
+ * have to define different enums for different codecs.
+ */
 struct ca_config {
 	uint32_t codec_id;
 	uint32_t reserved;
-	uint32_t sample_rate;
-	uint32_t sample_width;
-	uint32_t channels;
+	uint32_t sample_rate_id;
+	uint32_t sample_width_id;
+	uint32_t channels_id;
 };
 
 /**
