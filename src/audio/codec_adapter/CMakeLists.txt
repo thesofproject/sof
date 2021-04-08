@@ -14,5 +14,5 @@ if(CONFIG_WAVES_CODEC)
 add_local_sources(sof codec/waves.c)
 sof_add_static_library(MaxxChrome ${CMAKE_CURRENT_LIST_DIR}/lib/release/libMaxxChrome.a)
 # folder with Waves API must be among include directories
-target_include_directories(sof PUBLIC ${CMAKE_CURRENT_LIST_DIR}/../../include/sof/audio/codec_adapter/codec/)
+target_include_directories(sof PUBLIC ${CMAKE_CURRENT_LIST_DIR}/../../include/sof/audio/)
 endif()
