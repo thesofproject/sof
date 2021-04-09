@@ -88,11 +88,16 @@ GNUMAKEFLAGS = --no-print-directory
       #####################################
 
 # Default value
-FW_DESTDIR ?= /lib/firmware/intel/
-# We don't depend on any other target so:
-# - it's possible to deploy a staging _subset_,
+FW_DESTDIR ?= /lib/firmware/updates/intel/
+
+# The rsync target does not depend on any other target so:
+# - it's possible to deploy a staging _subset_, e.g.: only topologies
+#   only,...
 # - sudo never builds by accident
 rsync:
+# The --mkpath option is too recent, dealing with both remote and local
+# would be complicated and this is also a safety against typos.
+	# The destination directory must already exist
 	rsync -a --info=progress2 staging/sof* "${FW_DESTDIR}"
 ifneq (${USER_DESTDIR},)
 	# TODO: add more user space binaries: sof-ctl, probes,...
