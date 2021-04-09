@@ -88,6 +88,11 @@ ifdef(`SMART_PCM_ID',`',`fatal_error(note: Need to define PCM ID for sof-smart-a
 ifdef(`SMART_PCM_NAME',`',`fatal_error(note: Need to define Speaker PCM name for sof-smart-amplifier
 )')
 
+#The long process time (aprox. 8ms) and process length (16ms in 16k sample rate) of igo_nr starve
+#the scheduler and results in SMART_AMP underflow, ending up with smart_amp component reset and close.
+#So increase the buffer size of SMART_AMP is necessary.
+ifdef(`IGO', `define(`SMART_AMP_PERIOD', 16000)', `define(`SMART_AMP_PERIOD', 1000)')
+
 ifelse(SDW, `1',
 `
 #
@@ -122,7 +127,7 @@ dnl     time_domain, sched_comp)
 # Set 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-smart-amplifier-playback.m4,
 	SMART_PB_PPL_ID, SMART_PCM_ID, SMART_PB_CH_NUM, s32le,
-	1000, 0, SMART_AMP_CORE,
+	SMART_AMP_PERIOD, 0, SMART_AMP_CORE,
 	48000, 48000, 48000)
 
 # Low Latency capture pipeline 2 on PCM 0 using max 2 channels of s32le.
@@ -131,13 +136,13 @@ ifelse(SDW, `1',
 `
 PIPELINE_PCM_ADD(sof/pipe-amp-ref-capture.m4,
         SMART_REF_PPL_ID, eval(SMART_PCM_ID + 1), SMART_REF_CH_NUM, s32le,
-        1000, 0, 0,
+        SMART_AMP_PERIOD, 0, 0,
         48000, 48000, 48000)
 ',
 `
 PIPELINE_PCM_ADD(sof/pipe-amp-ref-capture.m4,
 	SMART_REF_PPL_ID, SMART_PCM_ID, SMART_REF_CH_NUM, s32le,
-	1000, 0, SMART_AMP_CORE,
+	SMART_AMP_PERIOD, 0, SMART_AMP_CORE,
 	48000, 48000, 48000)
 ')
 
@@ -157,14 +162,14 @@ ifelse(SDW, `1',
 DAI_ADD(sof/pipe-dai-playback.m4,
         SMART_PB_PPL_ID, ALH, SMART_ALH_INDEX, SMART_ALH_PLAYBACK_NAME,
         SMART_PIPE_SOURCE, 2, s24le,
-        1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
+        SMART_AMP_PERIOD, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # capture DAI is ALH(ALH_INDEX) using 2 periods
 # Buffers use s32le format, 1000us deadline on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
         SMART_REF_PPL_ID, ALH, eval(SMART_ALH_INDEX + 1), SMART_ALH_CAPTURE_NAME,
         SMART_PIPE_SINK, 2, s24le,
-        1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
+        SMART_AMP_PERIOD, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 ',
 `
 # playback DAI is SSP(SPP_INDEX) using 2 periods
@@ -172,14 +177,14 @@ DAI_ADD(sof/pipe-dai-capture.m4,
 DAI_ADD(sof/pipe-dai-playback.m4,
 	SMART_PB_PPL_ID, SSP, SMART_SSP_INDEX, SMART_SSP_NAME,
 	SMART_PIPE_SOURCE, 2, s32le,
-	1000, 0, SMART_AMP_CORE, SCHEDULE_TIME_DOMAIN_TIMER)
+	SMART_AMP_PERIOD, 0, SMART_AMP_CORE, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # capture DAI is SSP(SSP_INDEX) using 2 periods
 # Buffers use s32le format, 1000us deadline on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
 	SMART_REF_PPL_ID, SSP, SMART_SSP_INDEX, SMART_SSP_NAME,
 	SMART_PIPE_SINK, 2, s32le,
-	1000, 0, SMART_AMP_CORE, SCHEDULE_TIME_DOMAIN_TIMER)
+	SMART_AMP_PERIOD, 0, SMART_AMP_CORE, SCHEDULE_TIME_DOMAIN_TIMER)
 ')
 
 # Connect demux to smart_amp
