@@ -10,9 +10,9 @@
 # UNSIGNED_list :=
 # SIGNED_list := apl tgl
 
-# The default FW_DESTDIR is the local /lib/firmware/intel directory
+# The default FW_DESTDIR is the local /lib/firmware/updates/intel directory
 # _remote := test-system.local
-# FW_DESTDIR     := root@${_remote}:/lib/firmware/intel
+# FW_DESTDIR     := root@${_remote}:/lib/firmware/updates/intel
 # USER_DESTDIR   := ${_remote}:bin/
 
 # Define this empty for a plain sof/ directory and no sof -> sof-v1.2.3
