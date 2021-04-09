@@ -344,6 +344,14 @@ config COMP_CODEC_ADAPTER
 	  "src\include\sof\audio\codec_adapter\interfaces.h". It is possible to link several
 	  different codecs and use them in parallel.
 
+config COMP_IGO_NR
+	bool "IGO NR component"
+	default n
+	help
+	  This option enables Intelligo non-speech noise reduction. The feature links to a proprietary
+	  binary libigonr.a that currently is supported on different Xtensa DSP platforms. Please email
+	  support@intelli-go.ai for any questions about the binary.
+
 rsource "codec_adapter/Kconfig"
 
 endmenu # "Audio components"

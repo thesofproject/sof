@@ -76,6 +76,9 @@ if(NOT CONFIG_LIBRARY)
 	if(CONFIG_COMP_CODEC_ADAPTER)
 		add_subdirectory(codec_adapter)
 	endif()
+	if(CONFIG_COMP_IGO_NR)
+		add_subdirectory(igo_nr)
+	endif()
 
 	subdirs(pipeline)
 
