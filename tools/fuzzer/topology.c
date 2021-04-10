@@ -13,11 +13,12 @@
 #include <errno.h>
 #include <unistd.h>
 #include <string.h>
-#include "../fuzzer/fuzzer.h"
 #include <ipc/topology.h>
 #include <ipc/stream.h>
 #include <sof/common.h>
 #include <tplg_parser/topology.h>
+
+#include "../fuzzer/fuzzer.h"
 
 const struct sof_dai_types sof_dais[] = {
 	{"SSP", SOF_DAI_INTEL_SSP},
