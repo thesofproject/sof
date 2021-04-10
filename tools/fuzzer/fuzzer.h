@@ -30,7 +30,9 @@
 #define IRQ_WAKE_THREAD	1
 #define IRQ_HANDLED	2
 
+#ifndef ARRAY_SIZE
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
+#endif
 
 struct fuzz;
 struct fuzz_platform;
