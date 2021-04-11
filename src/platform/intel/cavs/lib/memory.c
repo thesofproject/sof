@@ -183,10 +183,6 @@ void platform_init_memmap(struct sof *sof)
 			SOF_MEM_CAPS_DMA;
 	}
 
-	platform_shared_commit(sof->memory_map->system,
-			       sizeof(*sof->memory_map->system) *
-			       CONFIG_CORE_COUNT);
-
 #if CONFIG_CORE_COUNT > 1
 	/* .runtime_shared init */
 	sof->memory_map->runtime_shared[0].blocks = ARRAY_SIZE(rt_shared_heap_map);
@@ -198,9 +194,6 @@ void platform_init_memmap(struct sof *sof)
 	sof->memory_map->runtime_shared[0].caps = SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_EXT |
 		SOF_MEM_CAPS_CACHE;
 
-	platform_shared_commit(sof->memory_map->runtime_shared,
-			       sizeof(*sof->memory_map->runtime_shared));
-
 	/* .system_shared init */
 	sof->memory_map->system_shared[0].heap = cache_to_uncache((uintptr_t)&_system_shared_heap);
 	sof->memory_map->system_shared[0].size = HEAP_SYSTEM_SHARED_SIZE;
@@ -208,8 +201,6 @@ void platform_init_memmap(struct sof *sof)
 	sof->memory_map->system_shared[0].caps = SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_EXT |
 		SOF_MEM_CAPS_CACHE;
 
-	platform_shared_commit(sof->memory_map->system_shared,
-			       sizeof(*sof->memory_map->system_shared));
 #endif
 
 	/* .runtime init*/
@@ -220,9 +211,6 @@ void platform_init_memmap(struct sof *sof)
 	sof->memory_map->runtime[0].info.free = HEAP_RUNTIME_SIZE;
 	sof->memory_map->runtime[0].caps = SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_EXT |
 		SOF_MEM_CAPS_CACHE;
-
-	platform_shared_commit(sof->memory_map->runtime,
-			       sizeof(*sof->memory_map->runtime));
 
 	/* heap buffer init */
 	sof->memory_map->buffer[0].blocks = ARRAY_SIZE(buf_heap_map);
@@ -242,14 +230,9 @@ void platform_init_memmap(struct sof *sof)
 	sof->memory_map->buffer[1].caps = SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_LP |
 		SOF_MEM_CAPS_CACHE | SOF_MEM_CAPS_DMA;
 
-	platform_shared_commit(sof->memory_map->buffer,
-			       sizeof(*sof->memory_map->buffer) *
-			       PLATFORM_HEAP_BUFFER);
-
 	/* .total init */
 	sof->memory_map->total.free = HEAP_SYSTEM_T_SIZE +
 		HEAP_SYS_RUNTIME_T_SIZE + HEAP_RUNTIME_SIZE + HEAP_BUFFER_SIZE +
 		HEAP_LP_BUFFER_SIZE;
 
-	platform_shared_commit(sof->memory_map, sizeof(*sof->memory_map));
 }

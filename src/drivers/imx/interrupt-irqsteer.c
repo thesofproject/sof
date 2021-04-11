@@ -304,10 +304,8 @@ static inline void handle_irq_batch(struct irq_cascade_desc *cascade,
 				handled = true;
 			}
 
-			platform_shared_commit(child, sizeof(*child));
 		}
 
-		platform_shared_commit(cascade, sizeof(*cascade));
 
 		spin_unlock(&cascade->lock);
 
@@ -352,7 +350,6 @@ static inline void irq_handler(void *data, uint32_t line_index)
 		}
 	}
 
-	platform_shared_commit(parent, sizeof(*parent));
 }
 
 #define DEFINE_IRQ_HANDLER(n) \
@@ -380,7 +377,6 @@ static void irq_mask(struct irq_desc *desc, uint32_t irq, unsigned int core)
 
 	irqstr_mask_int(irq);
 
-	platform_shared_commit(desc, sizeof(*desc));
 }
 
 static void irq_unmask(struct irq_desc *desc, uint32_t irq, unsigned int core)
@@ -393,7 +389,6 @@ static void irq_unmask(struct irq_desc *desc, uint32_t irq, unsigned int core)
 
 	irqstr_unmask_int(irq);
 
-	platform_shared_commit(desc, sizeof(*desc));
 }
 
 static const struct irq_cascade_ops irq_ops = {
@@ -479,7 +474,6 @@ void interrupt_mask(uint32_t irq, unsigned int cpu)
 		cascade->ops->mask(&cascade->desc, irq - cascade->irq_base,
 				   cpu);
 
-	platform_shared_commit(cascade, sizeof(*cascade));
 }
 
 void interrupt_unmask(uint32_t irq, unsigned int cpu)
@@ -490,5 +484,4 @@ void interrupt_unmask(uint32_t irq, unsigned int cpu)
 		cascade->ops->unmask(&cascade->desc, irq - cascade->irq_base,
 				     cpu);
 
-	platform_shared_commit(cascade, sizeof(*cascade));
 }

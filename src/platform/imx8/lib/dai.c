@@ -90,12 +90,10 @@ int dai_init(struct sof *sof)
 	for (i = 0; i < ARRAY_SIZE(esai); i++)
 		spinlock_init(&esai[i].lock);
 
-	platform_shared_commit(esai, sizeof(*esai));
 
 	for (i = 0; i < ARRAY_SIZE(sai); i++)
 		spinlock_init(&sai[i].lock);
 
-	platform_shared_commit(sai, sizeof(*sai));
 
 	sof->dai_info = &lib_dai;
 

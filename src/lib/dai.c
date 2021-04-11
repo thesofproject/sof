@@ -147,7 +147,6 @@ struct dai *dai_get(uint32_t type, uint32_t index, uint32_t flags)
 
 	for (d = dti->dai_array; d < dti->dai_array + dti->num_dais; d++) {
 		if (d->index != index) {
-			platform_shared_commit(d, sizeof(*d));
 			continue;
 		}
 		/* device created? */
@@ -164,7 +163,6 @@ struct dai *dai_get(uint32_t type, uint32_t index, uint32_t flags)
 		tr_info(&dai_tr, "dai_get type %d index %d new sref %d",
 			type, index, d->sref);
 
-		platform_shared_commit(d, sizeof(*d));
 
 		spin_unlock_irq(&d->lock, flags_irq);
 
@@ -189,6 +187,5 @@ void dai_put(struct dai *dai)
 	}
 	tr_info(&dai_tr, "dai_put type %d index %d new sref %d",
 		dai->drv->type, dai->index, dai->sref);
-	platform_shared_commit(dai, sizeof(*dai));
 	spin_unlock_irq(&dai->lock, flags);
 }

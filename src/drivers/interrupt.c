@@ -55,7 +55,6 @@ int interrupt_cascade_register(const struct irq_cascade_tmpl *tmpl)
 			goto unlock;
 		}
 
-		platform_shared_commit(*cascade, sizeof(**cascade));
 	}
 
 	*cascade = rzalloc(SOF_MEM_ZONE_SYS_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(**cascade));
@@ -78,10 +77,8 @@ int interrupt_cascade_register(const struct irq_cascade_tmpl *tmpl)
 
 	ret = 0;
 
-	platform_shared_commit(*cascade, sizeof(**cascade));
 
 unlock:
-	platform_shared_commit(root, sizeof(*root));
 
 	spin_unlock_irq(&root->lock, flags);
 
@@ -114,11 +111,8 @@ int interrupt_get_irq(unsigned int irq, const char *name)
 			break;
 		}
 
-		platform_shared_commit(cascade, sizeof(*cascade));
 	}
 
-	platform_shared_commit(cascade, sizeof(*cascade));
-	platform_shared_commit(root, sizeof(*root));
 
 	spin_unlock_irq(&root->lock, flags);
 
@@ -143,11 +137,8 @@ struct irq_cascade_desc *interrupt_get_parent(uint32_t irq)
 			break;
 		}
 
-		platform_shared_commit(cascade, sizeof(*cascade));
 	}
 
-	platform_shared_commit(cascade, sizeof(*cascade));
-	platform_shared_commit(root, sizeof(*root));
 
 	spin_unlock_irq(&root->lock, flags);
 
@@ -185,7 +176,6 @@ static int irq_register_child(struct irq_cascade_desc *cascade, int irq,
 		child = container_of(list, struct irq_desc, irq_list);
 
 		if (child->handler_arg == arg) {
-			platform_shared_commit(child, sizeof(*child));
 
 			tr_err(&irq_tr, "IRQ 0x%x handler argument re-used!",
 			       irq);
@@ -193,7 +183,6 @@ static int irq_register_child(struct irq_cascade_desc *cascade, int irq,
 			goto out;
 		}
 
-		platform_shared_commit(child, sizeof(*child));
 	}
 
 	if (!desc) {
@@ -226,10 +215,8 @@ static int irq_register_child(struct irq_cascade_desc *cascade, int irq,
 	if (!ret)
 		cascade->num_children[core]++;
 
-	platform_shared_commit(child, sizeof(*child));
 
 out:
-	platform_shared_commit(cascade, sizeof(*cascade));
 
 	return ret;
 }
@@ -259,15 +246,12 @@ static void irq_unregister_child(struct irq_cascade_desc *cascade, int irq,
 				interrupt_unregister_internal(parent->irq,
 							      parent, parent);
 
-			platform_shared_commit(child, sizeof(*child));
 
 			break;
 		}
 
-		platform_shared_commit(child, sizeof(*child));
 	}
 
-	platform_shared_commit(cascade, sizeof(*cascade));
 }
 
 static uint32_t irq_enable_child(struct irq_cascade_desc *cascade, int irq,
@@ -296,11 +280,9 @@ static uint32_t irq_enable_child(struct irq_cascade_desc *cascade, int irq,
 
 		if (d->handler_arg == arg) {
 			d->cpu_mask |= 1 << core;
-			platform_shared_commit(d, sizeof(*d));
 			break;
 		}
 
-		platform_shared_commit(d, sizeof(*d));
 	}
 
 	if (!child->enable_count[child_idx]++) {
@@ -313,7 +295,6 @@ static uint32_t irq_enable_child(struct irq_cascade_desc *cascade, int irq,
 		interrupt_unmask(irq, core);
 	}
 
-	platform_shared_commit(cascade, sizeof(*cascade));
 
 	spin_unlock_irq(&cascade->lock, flags);
 
@@ -341,11 +322,9 @@ static uint32_t irq_disable_child(struct irq_cascade_desc *cascade, int irq,
 
 		if (d->handler_arg == arg) {
 			d->cpu_mask &= ~(1 << core);
-			platform_shared_commit(d, sizeof(*d));
 			break;
 		}
 
-		platform_shared_commit(d, sizeof(*d));
 	}
 
 	if (!child->enable_count[child_idx]) {
@@ -361,7 +340,6 @@ static uint32_t irq_disable_child(struct irq_cascade_desc *cascade, int irq,
 					  cascade->desc.handler_arg);
 	}
 
-	platform_shared_commit(cascade, sizeof(*cascade));
 
 	spin_unlock_irq(&cascade->lock, flags);
 

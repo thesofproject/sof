@@ -96,7 +96,6 @@ int timer_register(struct timer *timer, void (*handler)(void *arg), void *arg)
 		break;
 	}
 
-	platform_shared_commit(timer, sizeof(*timer));
 
 	return ret;
 }
@@ -105,19 +104,16 @@ void timer_unregister(struct timer *timer, void *arg)
 {
 	interrupt_unregister(timer->irq, arg);
 
-	platform_shared_commit(timer, sizeof(*timer));
 }
 
 void timer_enable(struct timer *timer, void *arg, int core)
 {
 	interrupt_enable(timer->irq, arg);
 
-	platform_shared_commit(timer, sizeof(*timer));
 }
 
 void timer_disable(struct timer *timer, void *arg, int core)
 {
 	interrupt_disable(timer->irq, arg);
 
-	platform_shared_commit(timer, sizeof(*timer));
 }

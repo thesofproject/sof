@@ -50,7 +50,6 @@ static inline void sa_set_panic_on_delay(bool enabled)
 	/* enable panic only if no refs */
 	sa->panic_on_delay = !atomic_read(&sa->panic_cnt);
 
-	platform_shared_commit(sa, sizeof(*sa));
 }
 
 void sa_init(struct sof *sof, uint64_t timeout);

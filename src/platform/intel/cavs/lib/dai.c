@@ -151,7 +151,6 @@ int dai_init(struct sof *sof)
 		spinlock_init(&dai[i].lock);
 	}
 
-	platform_shared_commit(dai, sizeof(*dai) * ARRAY_SIZE(ssp));
 #endif
 
 #if CONFIG_INTEL_MCLK
@@ -167,7 +166,6 @@ int dai_init(struct sof *sof)
 		spinlock_init(&dai[i].lock);
 	}
 
-	platform_shared_commit(dai, sizeof(*dai) * ARRAY_SIZE(hda));
 
 #if (CONFIG_INTEL_DMIC)
 	dai = cache_to_uncache((struct dai *)dmic);
@@ -176,7 +174,6 @@ int dai_init(struct sof *sof)
 	for (i = 0; i < ARRAY_SIZE(dmic); i++)
 		spinlock_init(&dai[i].lock);
 
-	platform_shared_commit(dai, sizeof(*dai) * ARRAY_SIZE(dmic));
 #endif
 
 #if CONFIG_INTEL_ALH
@@ -197,7 +194,6 @@ int dai_init(struct sof *sof)
 		spinlock_init(&dai[i].lock);
 	}
 
-	platform_shared_commit(dai, sizeof(*dai) * ARRAY_SIZE(alh));
 #endif
 
 	return 0;

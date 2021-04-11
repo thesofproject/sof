@@ -92,5 +92,4 @@ void platform_clock_init(struct sof *sof)
 	for (i = 0; i < NUM_CLOCKS; i++)
 		spinlock_init(&sof->clocks[i].lock);
 
-	platform_shared_commit(sof->clocks, sizeof(*sof->clocks) * NUM_CLOCKS);
 }

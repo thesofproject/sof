@@ -60,8 +60,6 @@ static inline void comp_free(struct comp_dev *dev)
  */
 static inline void comp_shared_commit(struct comp_dev *dev)
 {
-	if (dev->is_shared)
-		platform_shared_commit(dev, sizeof(*dev));
 }
 
 /**

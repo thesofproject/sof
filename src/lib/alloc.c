@@ -78,7 +78,6 @@ static inline uint32_t block_get_size(struct block_map *map)
 	uint32_t size = sizeof(*map) + map->count *
 		(map->block_size + sizeof(struct block_hdr));
 
-	platform_shared_commit(map, sizeof(*map));
 
 	return size;
 }
@@ -92,7 +91,6 @@ static inline uint32_t heap_get_size(struct mm_heap *heap)
 	for (i = 0; i < heap->blocks; i++)
 		size += block_get_size(&heap->map[i]);
 
-	platform_shared_commit(heap, sizeof(*heap));
 
 	return size;
 }
@@ -113,11 +111,9 @@ static void write_pattern(struct mm_heap *heap_map, int heap_depth,
 			memset(
 				(void *)current_map->base, pattern,
 				current_map->count * current_map->block_size);
-			platform_shared_commit(current_map,
 					       sizeof(*current_map));
 		}
 
-		platform_shared_commit(heap, sizeof(*heap));
 	}
 }
 #endif
@@ -133,7 +129,6 @@ static void init_heap_map(struct mm_heap *heap, int count)
 		/* init the map[0] */
 		current_map = &heap[i].map[0];
 		current_map->base = heap[i].heap;
-		platform_shared_commit(current_map, sizeof(*current_map));
 
 		/* map[j]'s base is calculated based on map[j-1] */
 		for (j = 1; j < heap[i].blocks; j++) {
@@ -141,14 +136,10 @@ static void init_heap_map(struct mm_heap *heap, int count)
 			next_map->base = current_map->base +
 				current_map->block_size *
 				current_map->count;
-			platform_shared_commit(next_map, sizeof(*next_map));
-			platform_shared_commit(current_map,
-					       sizeof(*current_map));
 
 			current_map = &heap[i].map[j];
 		}
 
-		platform_shared_commit(&heap[i], sizeof(heap[i]));
 	}
 }
 
@@ -179,7 +170,6 @@ static void *rmalloc_sys(struct mm_heap *heap, uint32_t flags, int caps, size_t 
 	heap->info.used += bytes;
 	heap->info.free -= alignment + bytes;
 
-	platform_shared_commit(heap, sizeof(*heap));
 
 	return ptr;
 }
@@ -235,9 +225,6 @@ static void *alloc_block_index(struct mm_heap *heap, int level,
 			}
 		}
 
-	platform_shared_commit(map->block, sizeof(*map->block) * map->count);
-	platform_shared_commit(map, sizeof(*map));
-	platform_shared_commit(heap, sizeof(*heap));
 
 	return ptr;
 }
@@ -354,9 +341,6 @@ static void *alloc_cont_blocks(struct mm_heap *heap, int level,
 	}
 
 out:
-	platform_shared_commit(map->block, sizeof(*map->block) * map->count);
-	platform_shared_commit(map, sizeof(*map));
-	platform_shared_commit(heap, sizeof(*heap));
 
 	return ptr;
 }
@@ -371,7 +355,6 @@ static inline struct mm_heap *find_in_heap_arr(struct mm_heap *heap_arr, int arr
 		if ((uint32_t)ptr >= heap->heap &&
 		    (uint32_t)ptr < heap->heap + heap->size)
 			return heap;
-		platform_shared_commit(heap, sizeof(*heap));
 	}
 	return NULL;
 }
@@ -400,13 +383,10 @@ static struct mm_heap *get_heap_from_ptr(void *ptr)
 	if (heap)
 		goto out;
 
-	platform_shared_commit(memmap, sizeof(*memmap));
 
 	return NULL;
 
 out:
-	platform_shared_commit(heap, sizeof(*heap));
-	platform_shared_commit(memmap, sizeof(*memmap));
 
 	return heap;
 }
@@ -420,7 +400,6 @@ static struct mm_heap *get_heap_from_caps(struct mm_heap *heap, int count,
 	/* find first heap that support type */
 	for (i = 0; i < count; i++) {
 		mask = heap[i].caps & caps;
-		platform_shared_commit(&heap[i], sizeof(heap[i]));
 		if (mask == caps)
 			return &heap[i];
 	}
@@ -453,14 +432,12 @@ static void *get_ptr_from_heap(struct mm_heap *heap, uint32_t flags,
 
 		/* is block big enough */
 		if (map->block_size < temp_bytes) {
-			platform_shared_commit(map, sizeof(*map));
 			temp_bytes = bytes;
 			continue;
 		}
 
 		/* does block have free space */
 		if (map->free_count == 0) {
-			platform_shared_commit(map, sizeof(*map));
 			temp_bytes = bytes;
 			continue;
 		}
@@ -468,7 +445,6 @@ static void *get_ptr_from_heap(struct mm_heap *heap, uint32_t flags,
 		/* free block space exists */
 		ptr = alloc_block(heap, i, caps, alignment);
 
-		platform_shared_commit(map, sizeof(*map));
 
 		break;
 	}
@@ -503,11 +479,9 @@ static void free_block(void *ptr)
 		    (block_map->block_size * block_map->count)))
 			break;
 
-		platform_shared_commit(block_map, sizeof(*block_map));
 	}
 
 	if (i == heap->blocks) {
-		platform_shared_commit(heap, sizeof(*heap));
 
 		/* not found */
 		tr_err(&mem_tr, "free_block(): invalid ptr = %p cpu = %d",
@@ -565,11 +539,6 @@ static void free_block(void *ptr)
 		DEBUG_BLOCK_FREE_VALUE_8BIT, block_map->block_size *
 		(i - block));
 #endif
-
-	platform_shared_commit(block_map->block, sizeof(*block_map->block) *
-			       block_map->count);
-	platform_shared_commit(block_map, sizeof(*block_map));
-	platform_shared_commit(heap, sizeof(*heap));
 }
 
 #if CONFIG_DEBUG_HEAP
@@ -593,10 +562,8 @@ static void trace_heap_blocks(struct mm_heap *heap)
 		tr_err(&mem_tr, "  free %d first at %d",
 		       block_map->free_count, block_map->first_free);
 
-		platform_shared_commit(block_map, sizeof(*block_map));
 	}
 
-	platform_shared_commit(heap, sizeof(*heap));
 }
 
 static void alloc_trace_heap(enum mem_zone zone, uint32_t caps, size_t bytes)
@@ -641,7 +608,6 @@ static void alloc_trace_heap(enum mem_zone zone, uint32_t caps, size_t bytes)
 		tr_err(&mem_tr, "heap: none found for zone %d caps 0x%x, bytes 0x%x",
 		       zone, caps, bytes);
 out:
-	platform_shared_commit(memmap, sizeof(*memmap));
 	return;
 }
 
@@ -673,8 +639,6 @@ static void *rmalloc_sys_runtime(uint32_t flags, int caps, int core,
 	ptr = get_ptr_from_heap(cpu_heap, flags, caps, bytes,
 				PLATFORM_DCACHE_ALIGN);
 
-	platform_shared_commit(cpu_heap, sizeof(*cpu_heap));
-	platform_shared_commit(memmap, sizeof(*memmap));
 
 	return ptr;
 }
@@ -692,7 +656,6 @@ static void *rmalloc_runtime(uint32_t flags, uint32_t caps, size_t bytes)
 		heap = get_heap_from_caps(memmap->buffer, PLATFORM_HEAP_BUFFER,
 					  caps);
 		if (!heap) {
-			platform_shared_commit(memmap, sizeof(*memmap));
 
 			tr_err(&mem_tr, "rmalloc_runtime(): caps = %x, bytes = %d",
 			       caps, bytes);
@@ -701,7 +664,6 @@ static void *rmalloc_runtime(uint32_t flags, uint32_t caps, size_t bytes)
 		}
 	}
 
-	platform_shared_commit(memmap, sizeof(*memmap));
 
 	return get_ptr_from_heap(heap, flags, caps, bytes,
 				 PLATFORM_DCACHE_ALIGN);
@@ -716,7 +678,6 @@ static void *rmalloc_runtime_shared(uint32_t flags, uint32_t caps, size_t bytes)
 
 	/* check shared heap for capabilities */
 	heap = get_heap_from_caps(memmap->runtime_shared, PLATFORM_HEAP_RUNTIME_SHARED, caps);
-	platform_shared_commit(memmap, sizeof(*memmap));
 	if (!heap) {
 		tr_err(&mem_tr, "rmalloc_runtime_shared(): caps = %x, bytes = %d", caps, bytes);
 		return NULL;
@@ -771,7 +732,6 @@ static void *_malloc_unlocked(enum mem_zone zone, uint32_t flags, uint32_t caps,
 
 	memmap->heap_trace_updated = 1;
 
-	platform_shared_commit(memmap, sizeof(*memmap));
 
 	return ptr;
 }
@@ -818,7 +778,6 @@ void *rzalloc_core_sys(int core, size_t bytes)
 		bzero(ptr, bytes);
 
 	spin_unlock_irq(&memmap->lock, flags);
-	platform_shared_commit(memmap, sizeof(*memmap));
 	return ptr;
 }
 
@@ -919,14 +878,9 @@ static void *alloc_heap_buffer(struct mm_heap *heap, uint32_t flags,
 			if (map->block_size < bytes) {
 				ptr = alloc_cont_blocks(heap, i, caps,
 							bytes, alignment);
-				if (ptr) {
-					platform_shared_commit(map,
-							       sizeof(*map));
+				if (ptr)
 					break;
-				}
 			}
-
-			platform_shared_commit(map, sizeof(*map));
 		}
 	}
 
@@ -955,14 +909,12 @@ static void *_balloc_unlocked(uint32_t flags, uint32_t caps, size_t bytes,
 			break;
 
 		ptr = alloc_heap_buffer(heap, flags, caps, bytes, alignment);
-		platform_shared_commit(heap, sizeof(*heap));
 		if (ptr)
 			break;
 
 		/* Continue from the next heap */
 	}
 
-	platform_shared_commit(memmap, sizeof(*memmap));
 
 	return ptr;
 }
@@ -1019,8 +971,6 @@ static void _rfree_unlocked(void *ptr)
 	free_block(ptr);
 	memmap->heap_trace_updated = 1;
 
-	platform_shared_commit(heap, sizeof(*heap));
-	platform_shared_commit(memmap, sizeof(*memmap));
 }
 
 void rfree(void *ptr)
@@ -1103,8 +1053,6 @@ void free_heap(enum mem_zone zone)
 	cpu_heap->info.used = 0;
 	cpu_heap->info.free = cpu_heap->size;
 
-	platform_shared_commit(cpu_heap, sizeof(*cpu_heap));
-	platform_shared_commit(memmap, sizeof(*memmap));
 }
 
 #if CONFIG_TRACE
@@ -1131,12 +1079,7 @@ void heap_trace(struct mm_heap *heap, int size)
 			tr_info(&mem_tr, "   count %d free %d",
 				current_map->count,
 				current_map->free_count);
-
-			platform_shared_commit(current_map,
-					       sizeof(*current_map));
 		}
-
-		platform_shared_commit(heap, sizeof(*heap));
 
 		heap++;
 	}
@@ -1160,7 +1103,6 @@ void heap_trace_all(int force)
 
 	memmap->heap_trace_updated = 0;
 
-	platform_shared_commit(memmap, sizeof(*memmap));
 }
 #else
 void heap_trace_all(int force) { }
@@ -1196,7 +1138,6 @@ void init_heap(struct sof *sof)
 
 	spinlock_init(&memmap->lock);
 
-	platform_shared_commit(memmap, sizeof(*memmap));
 }
 
 #if CONFIG_DEBUG_MEMORY_USAGE_SCAN

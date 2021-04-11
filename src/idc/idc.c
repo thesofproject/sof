@@ -57,7 +57,6 @@ static void idc_msg_status_set(int status, uint32_t core)
 
 	*(uint32_t *)payload->data = status;
 
-	platform_shared_commit(payload, sizeof(*payload));
 }
 
 /**
@@ -73,7 +72,6 @@ int idc_msg_status_get(uint32_t core)
 
 	status = *(uint32_t *)payload->data;
 
-	platform_shared_commit(payload, sizeof(*payload));
 
 	return status;
 }
@@ -144,9 +142,6 @@ static int idc_params(uint32_t comp_id)
 
 	ret = comp_params(ipc_dev->cd, params);
 
-	platform_shared_commit(payload, sizeof(*payload));
-	platform_shared_commit(ipc_dev, sizeof(*ipc_dev));
-	platform_shared_commit(ipc, sizeof(*ipc));
 
 	return ret;
 }
@@ -201,9 +196,6 @@ static int idc_prepare(uint32_t comp_id)
 	ret = comp_prepare(ipc_dev->cd);
 
 out:
-	platform_shared_commit(dev, sizeof(*dev));
-	platform_shared_commit(ipc_dev, sizeof(*ipc_dev));
-	platform_shared_commit(ipc, sizeof(*ipc));
 
 	return ret;
 }
@@ -244,10 +236,6 @@ static int idc_trigger(uint32_t comp_id)
 	}
 
 out:
-	platform_shared_commit(payload, sizeof(*payload));
-	platform_shared_commit(ipc_dev->cd, sizeof(*ipc_dev->cd));
-	platform_shared_commit(ipc_dev, sizeof(*ipc_dev));
-	platform_shared_commit(ipc, sizeof(*ipc));
 
 	return ret;
 }
@@ -269,8 +257,6 @@ static int idc_reset(uint32_t comp_id)
 
 	ret = comp_reset(ipc_dev->cd);
 
-	platform_shared_commit(ipc_dev, sizeof(*ipc_dev));
-	platform_shared_commit(ipc, sizeof(*ipc));
 
 	return ret;
 }

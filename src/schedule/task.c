@@ -59,7 +59,6 @@ enum task_state task_main_primary_core(void *data)
 		if (!ipc->pm_prepare_D3)
 			ipc_send_queued_msg();
 
-		platform_shared_commit(ipc, sizeof(*ipc));
 	}
 
 	return SOF_TASK_STATE_COMPLETED;

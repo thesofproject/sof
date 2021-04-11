@@ -124,7 +124,6 @@ int dma_copy_to_host_nowait(struct dma_copy *dc, struct dma_sg_config *host_sg,
 
 	ipc_msg_send(dmat->msg, &dmat->posn, false);
 
-	platform_shared_commit(dmat, sizeof(*dmat));
 
 	/* bytes copied */
 	return local_sg_elem.size;

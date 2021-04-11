@@ -43,7 +43,6 @@ enum task_state ipc_platform_do_cmd(void *data)
 	// TODO: signal audio work to enter D3 in normal context
 	/* are we about to enter D3 ? */
 	if (ipc->pm_prepare_D3) {
-		platform_shared_commit(ipc, sizeof(*ipc));
 
 		while (1)
 			wait_for_interrupt(0);
@@ -58,16 +57,12 @@ void ipc_platform_complete_cmd(void *data)
 
 int ipc_platform_send_msg(struct ipc_msg *msg)
 {
-	struct ipc *ipc = ipc_get();
-
 	/* now send the message */
 	mailbox_dspbox_write(0, msg->tx_data, msg->tx_size);
 	list_item_del(&msg->list);
 	tr_dbg(&ipc_tr, "ipc: msg tx -> 0x%x", msg->header);
 
 	/* now interrupt host to tell it we have message sent */
-
-	platform_shared_commit(ipc, sizeof(*ipc));
 
 	return 0;
 }
@@ -80,7 +75,6 @@ int platform_ipc_init(struct ipc *ipc)
 	schedule_task_init_edf(&ipc->ipc_task, SOF_UUID(ipc_task_uuid),
 			       &ipc_task_ops, ipc, 0, 0);
 
-	platform_shared_commit(ipc, sizeof(*ipc));
 
 	return 0;
 }

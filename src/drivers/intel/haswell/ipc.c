@@ -69,15 +69,12 @@ static void irq_handler(void *arg)
 
 enum task_state ipc_platform_do_cmd(void *data)
 {
-	struct ipc *ipc = ipc_get();
 	struct sof_ipc_cmd_hdr *hdr;
 	/* Use struct ipc_data *iipc = ipc_get_drvdata(ipc); if needed */
 
 	/* perform command */
 	hdr = mailbox_validate();
 	ipc_cmd(hdr);
-
-	platform_shared_commit(ipc, sizeof(*ipc));
 
 	return SOF_TASK_STATE_COMPLETED;
 }
@@ -95,13 +92,11 @@ void ipc_platform_complete_cmd(void *data)
 	// TODO: signal audio work to enter D3 in normal context
 	/* are we about to enter D3 ? */
 	if (ipc->pm_prepare_D3) {
-		platform_shared_commit(ipc, sizeof(*ipc));
 
 		while (1)
 			wait_for_interrupt(0);
 	}
 
-	platform_shared_commit(ipc, sizeof(*ipc));
 }
 
 int ipc_platform_send_msg(struct ipc_msg *msg)
@@ -126,10 +121,8 @@ int ipc_platform_send_msg(struct ipc_msg *msg)
 	/* now interrupt host to tell it we have message sent */
 	shim_write(SHIM_IPCD, SHIM_IPCD_BUSY);
 
-	platform_shared_commit(msg, sizeof(*msg));
 
 out:
-	platform_shared_commit(ipc, sizeof(*ipc));
 
 	return ret;
 }
@@ -138,7 +131,6 @@ struct ipc_data_host_buffer *ipc_platform_get_host_buffer(struct ipc *ipc)
 {
 	struct ipc_data *iipc = ipc_get_drvdata(ipc);
 
-	platform_shared_commit(ipc, sizeof(*ipc));
 
 	return &iipc->dh_buffer;
 }
@@ -181,7 +173,6 @@ int platform_ipc_init(struct ipc *ipc)
 	imrd &= ~(SHIM_IMRD_BUSY | SHIM_IMRD_DONE);
 	shim_write(SHIM_IMRD, imrd);
 
-	platform_shared_commit(ipc, sizeof(*ipc));
 
 	return 0;
 }
@@ -264,7 +255,6 @@ int ipc_platform_poll_tx_host_msg(struct ipc_msg *msg)
 	shim_write(SHIM_IPCD, SHIM_IPCD_BUSY);
 
 	/* message sent */
-	platform_shared_commit(msg, sizeof(*msg));
 	return 1;
 }
 

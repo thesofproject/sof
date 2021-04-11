@@ -95,7 +95,6 @@ int ipc_pipeline_new(struct ipc *ipc,
 	/* add new pipeline to the list */
 	list_item_append(&ipc_pipe->list, &ipc->comp_list);
 
-	platform_shared_commit(ipc_pipe, sizeof(*ipc_pipe));
 
 	return 0;
 }
@@ -169,9 +168,6 @@ int ipc_pipeline_complete(struct ipc *ipc, uint32_t comp_id)
 	ret = pipeline_complete(ipc_pipe->pipeline, ipc_ppl_source->cd,
 				ipc_ppl_sink->cd);
 
-	platform_shared_commit(ipc_pipe, sizeof(*ipc_pipe));
-	platform_shared_commit(ipc_ppl_source, sizeof(*ipc_ppl_source));
-	platform_shared_commit(ipc_ppl_sink, sizeof(*ipc_ppl_sink));
 
 	return ret;
 }
@@ -191,21 +187,18 @@ int ipc_comp_dai_config(struct ipc *ipc, struct sof_ipc_dai_config *config)
 		icd = container_of(clist, struct ipc_comp_dev, list);
 		/* make sure we only config DAI comps */
 		if (icd->type != COMP_TYPE_COMPONENT) {
-			platform_shared_commit(icd, sizeof(*icd));
 			continue;
 		}
 
 		if (!cpu_is_me(icd->core)) {
 			comp_on_core[icd->core] = true;
 			ret = 0;
-			platform_shared_commit(icd, sizeof(*icd));
 			continue;
 		}
 
 		if (dev_comp_type(icd->cd) == SOF_COMP_DAI ||
 		    dev_comp_type(icd->cd) == SOF_COMP_SG_DAI) {
 			dai = COMP_GET_IPC(icd->cd, sof_ipc_comp_dai);
-			platform_shared_commit(icd, sizeof(*icd));
 			/*
 			 * set config if comp dai_index matches
 			 * config dai_index.
@@ -213,7 +206,6 @@ int ipc_comp_dai_config(struct ipc *ipc, struct sof_ipc_dai_config *config)
 			if (dai->dai_index == config->dai_index &&
 			    dai->type == config->type) {
 				ret = comp_dai_config(icd->cd, config);
-				platform_shared_commit(icd, sizeof(*icd));
 				if (ret < 0)
 					break;
 			}
@@ -282,7 +274,6 @@ int ipc_buffer_new(struct ipc *ipc, struct sof_ipc_buffer *desc)
 	/* add new buffer to the list */
 	list_item_append(&ibd->list, &ipc->comp_list);
 
-	platform_shared_commit(ibd, sizeof(*ibd));
 
 	return ret;
 }
@@ -380,8 +371,6 @@ static int ipc_comp_to_buffer_connect(struct ipc_comp_dev *comp,
 
 	dcache_writeback_invalidate_region(buffer->cb, sizeof(*buffer->cb));
 
-	platform_shared_commit(comp, sizeof(*comp));
-	platform_shared_commit(buffer, sizeof(*buffer));
 
 	return ret;
 }
@@ -415,8 +404,6 @@ static int ipc_buffer_to_comp_connect(struct ipc_comp_dev *buffer,
 
 	dcache_writeback_invalidate_region(buffer->cb, sizeof(*buffer->cb));
 
-	platform_shared_commit(comp, sizeof(*comp));
-	platform_shared_commit(buffer, sizeof(*buffer));
 
 	return ret;
 }

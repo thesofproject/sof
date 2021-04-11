@@ -52,7 +52,6 @@ static void platform_timer_64_handler(void *arg)
 	shim_write(SHIM_EXT_TIMER_CNTLH, SHIM_EXT_TIMER_RUN);
 	shim_write(SHIM_EXT_TIMER_CNTLL, timeout);
 
-	platform_shared_commit(timer, sizeof(*timer));
 }
 
 void platform_timer_start(struct timer *timer)
@@ -136,7 +135,6 @@ uint64_t platform_timer_get(struct timer *timer)
 
 	arch_interrupt_global_enable(flags);
 
-	platform_shared_commit(timer, sizeof(*timer));
 
 	return time;
 }
@@ -218,7 +216,6 @@ int timer_register(struct timer *timer, void (*handler)(void *arg), void *arg)
 		break;
 	}
 
-	platform_shared_commit(timer, sizeof(*timer));
 
 	return ret;
 }
@@ -227,19 +224,16 @@ void timer_unregister(struct timer *timer, void *arg)
 {
 	interrupt_unregister(timer->irq, arg);
 
-	platform_shared_commit(timer, sizeof(*timer));
 }
 
 void timer_enable(struct timer *timer, void *arg, int core)
 {
 	interrupt_enable(timer->irq, arg);
 
-	platform_shared_commit(timer, sizeof(*timer));
 }
 
 void timer_disable(struct timer *timer, void *arg, int core)
 {
 	interrupt_disable(timer->irq, arg);
 
-	platform_shared_commit(timer, sizeof(*timer));
 }

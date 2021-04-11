@@ -171,7 +171,6 @@ static inline void _spin_lock(spinlock_t *lock, int line)
 #endif
 
 	/* spinlock has to be in a shared memory */
-	platform_shared_commit(lock, sizeof(*lock));
 }
 
 #define spin_lock(lock) _spin_lock(lock, __LINE__)
@@ -189,7 +188,6 @@ static inline void _spin_unlock(spinlock_t *lock, int line)
 #endif
 
 	/* spinlock has to be in a shared memory */
-	platform_shared_commit(lock, sizeof(*lock));
 }
 
 #define spin_unlock(lock) _spin_unlock(lock, __LINE__)

@@ -137,7 +137,6 @@ int dai_init(struct sof *sof)
 	for (i = 0; i < ARRAY_SIZE(ssp); i++)
 		spinlock_init(&ssp[i].lock);
 
-	platform_shared_commit(ssp, sizeof(*ssp));
 
 	sof->dai_info = &lib_dai;
 

@@ -192,7 +192,6 @@ static inline struct ipc_msg *ipc_msg_init(uint32_t header, uint32_t size)
 	msg->tx_size = size;
 	list_init(&msg->list);
 
-	platform_shared_commit(msg, sizeof(*msg));
 
 	return msg;
 }
@@ -211,7 +210,6 @@ static inline void ipc_msg_free(struct ipc_msg *msg)
 	rfree(msg->tx_data);
 	rfree(msg);
 
-	platform_shared_commit(ipc, sizeof(*ipc));
 
 	spin_unlock_irq(&ipc->lock, flags);
 }
