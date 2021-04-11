@@ -187,7 +187,6 @@ int dmac_init(struct sof *sof)
 	for (i = 0; i < ARRAY_SIZE(dma); i++)
 		spinlock_init(&dma[i].lock);
 
-	platform_shared_commit(dma, sizeof(*dma));
 
 	sof->dma_info = &lib_dma;
 

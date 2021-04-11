@@ -121,7 +121,6 @@ int idc_send_msg(struct idc_msg *msg, uint32_t mode)
 		ret = memcpy_s(payload->data, IDC_MAX_PAYLOAD_SIZE,
 			       msg->payload, msg->size);
 		assert(!ret);
-		platform_shared_commit(payload, sizeof(*payload));
 	}
 
 	idc_write(IPC_IDCIETC(msg->core), core, msg->extension);

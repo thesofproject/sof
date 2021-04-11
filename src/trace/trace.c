@@ -86,7 +86,6 @@ static void put_header(uint32_t *dst, const struct sof_uuid_entry *uid,
 	ret = memcpy_s(dst, sizeof(header), &header, sizeof(header));
 	assert(!ret);
 
-	platform_shared_commit(timer, sizeof(*timer));
 }
 
 static inline void mtrace_event(const char *data, uint32_t length)
@@ -115,7 +114,6 @@ static inline void mtrace_event(const char *data, uint32_t length)
 		trace->pos = i;
 	}
 
-	platform_shared_commit(trace, sizeof(*trace));
 }
 
 #if CONFIG_TRACE_FILTERING_VERBOSITY
@@ -164,7 +162,6 @@ static void emit_recent_entries(uint64_t current_ts)
 		}
 	}
 
-	platform_shared_commit(trace, sizeof(*trace));
 }
 
 /**
@@ -204,7 +201,6 @@ static bool trace_filter_flood(uint32_t log_level, uint32_t entry, uint64_t mess
 
 				ret = recent_entries[i].trigger_count <= CONFIG_TRACE_BURST_COUNT;
 
-				platform_shared_commit(trace, sizeof(*trace));
 				return ret;
 			}
 
@@ -212,7 +208,6 @@ static bool trace_filter_flood(uint32_t log_level, uint32_t entry, uint64_t mess
 				emit_recent_entry(&recent_entries[i]);
 			else
 				memset(&recent_entries[i], 0, sizeof(recent_entries[i]));
-			platform_shared_commit(trace, sizeof(*trace));
 			return true;
 		}
 	}
@@ -226,7 +221,6 @@ static bool trace_filter_flood(uint32_t log_level, uint32_t entry, uint64_t mess
 	oldest_entry->first_suppression_ts = message_ts;
 	oldest_entry->trigger_count = 1;
 
-	platform_shared_commit(trace, sizeof(*trace));
 	return true;
 }
 #endif /* CONFIG_TRACE_FILTERING_ADAPTIVE */
@@ -278,7 +272,6 @@ void trace_log_unfiltered(bool send_atomic, const void *log_entry, const struct 
 	va_list vl;
 
 	if (!trace->enable) {
-		platform_shared_commit(trace, sizeof(*trace));
 		return;
 	}
 
@@ -297,7 +290,6 @@ void trace_log_filtered(bool send_atomic, const void *log_entry, const struct tr
 #endif /* CONFIG_TRACE_FILTERING_ADAPTIVE */
 
 	if (!trace->enable) {
-		platform_shared_commit(trace, sizeof(*trace));
 		return;
 	}
 
@@ -444,7 +436,6 @@ static int trace_filter_update_instances(int32_t log_level, uint32_t uuid_id,
 			++cnt;
 		}
 
-		platform_shared_commit(icd, sizeof(*icd));
 	}
 	return cnt;
 }
@@ -456,7 +447,6 @@ int trace_filter_update(const struct trace_filter *filter)
 	struct trace *trace = trace_get();
 
 	trace->user_filter_override = true;
-	platform_shared_commit(trace, sizeof(*trace));
 #endif /* CONFIG_TRACE_FILTERING_ADAPTIVE */
 
 	/* validate log level, LOG_LEVEL_CRITICAL has low value, LOG_LEVEL_VERBOSE high */
@@ -488,7 +478,6 @@ void trace_flush(void)
 	/* flush dma trace messages */
 	dma_trace_flush((void *)t);
 
-	platform_shared_commit(trace, sizeof(*trace));
 
 	spin_unlock_irq(&trace->lock, flags);
 }
@@ -503,7 +492,6 @@ void trace_on(void)
 	trace->enable = 1;
 	dma_trace_on();
 
-	platform_shared_commit(trace, sizeof(*trace));
 
 	spin_unlock_irq(&trace->lock, flags);
 }
@@ -518,7 +506,6 @@ void trace_off(void)
 	trace->enable = 0;
 	dma_trace_off();
 
-	platform_shared_commit(trace, sizeof(*trace));
 
 	spin_unlock_irq(&trace->lock, flags);
 }
@@ -535,7 +522,6 @@ void trace_init(struct sof *sof)
 #endif /* CONFIG_TRACE_FILTERING_ADAPTIVE */
 	spinlock_init(&sof->trace->lock);
 
-	platform_shared_commit(sof->trace, sizeof(*sof->trace));
 
 	bzero((void *)MAILBOX_TRACE_BASE, MAILBOX_TRACE_SIZE);
 	dcache_writeback_invalidate_region((void *)MAILBOX_TRACE_BASE,

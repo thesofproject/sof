@@ -178,7 +178,6 @@ static int timer_domain_register(struct ll_schedule_domain *domain,
 	tr_info(&ll_tr, "timer_domain_register domain->type %d domain->clk %d domain->ticks_per_ms %d period %d",
 		domain->type, domain->clk, domain->ticks_per_ms, (uint32_t)period);
 out:
-	platform_shared_commit(timer_domain, sizeof(*timer_domain));
 
 	return ret;
 }
@@ -193,7 +192,7 @@ static void timer_domain_unregister(struct ll_schedule_domain *domain,
 
 	/* tasks still registered on this core */
 	if (!timer_domain->arg[core] || num_tasks)
-		goto out;
+		return;
 
 	tr_info(&ll_tr, "timer_domain_unregister domain->type %d domain->clk %d",
 		domain->type, domain->clk);
@@ -201,9 +200,6 @@ static void timer_domain_unregister(struct ll_schedule_domain *domain,
 	timer_unregister(timer_domain->timer, timer_domain->arg[core]);
 #endif
 	timer_domain->arg[core] = NULL;
-
-out:
-	platform_shared_commit(timer_domain, sizeof(*timer_domain));
 }
 
 static void timer_domain_enable(struct ll_schedule_domain *domain, int core)
@@ -213,7 +209,6 @@ static void timer_domain_enable(struct ll_schedule_domain *domain, int core)
 
 	timer_enable(timer_domain->timer, timer_domain->arg[core], core);
 
-	platform_shared_commit(timer_domain, sizeof(*timer_domain));
 #endif
 }
 
@@ -224,7 +219,6 @@ static void timer_domain_disable(struct ll_schedule_domain *domain, int core)
 
 	timer_disable(timer_domain->timer, timer_domain->arg[core], core);
 
-	platform_shared_commit(timer_domain, sizeof(*timer_domain));
 #endif
 }
 
@@ -294,7 +288,6 @@ static void timer_domain_set(struct ll_schedule_domain *domain, uint64_t start)
 
 	domain->next_tick = ticks_set;
 
-	platform_shared_commit(timer_domain, sizeof(*timer_domain));
 }
 
 static void timer_domain_clear(struct ll_schedule_domain *domain)
@@ -304,7 +297,6 @@ static void timer_domain_clear(struct ll_schedule_domain *domain)
 
 	platform_timer_clear(timer_domain->timer);
 
-	platform_shared_commit(timer_domain, sizeof(*timer_domain));
 #endif
 }
 
@@ -328,8 +320,6 @@ struct ll_schedule_domain *timer_domain_init(struct timer *timer, int clk)
 
 	ll_sch_domain_set_pdata(domain, timer_domain);
 
-	platform_shared_commit(domain, sizeof(*domain));
-	platform_shared_commit(timer_domain, sizeof(*timer_domain));
 
 	return domain;
 }

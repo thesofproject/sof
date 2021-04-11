@@ -94,9 +94,6 @@ static inline void select_cpu_clock(int freq_idx, bool release_unused)
 	/* unlock clock for all cores */
 	for (i = CONFIG_CORE_COUNT - 1; i >= 0; i--)
 		spin_unlock_irq(&clk_info[CLK_CPU(i)].lock, flags[i]);
-
-	platform_shared_commit(clk_info,
-			       sizeof(*clk_info) * CONFIG_CORE_COUNT);
 }
 
 /* LPRO_ONLY mode */
@@ -358,5 +355,4 @@ void platform_clock_init(struct sof *sof)
 
 	spinlock_init(&sof->clocks[CLK_SSP].lock);
 
-	platform_shared_commit(sof->clocks, sizeof(*sof->clocks) * NUM_CLOCKS);
 }

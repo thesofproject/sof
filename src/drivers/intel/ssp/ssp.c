@@ -606,7 +606,6 @@ static int ssp_set_config(struct dai *dai,
 	ssp->state[DAI_DIR_CAPTURE] = COMP_STATE_PREPARE;
 
 out:
-	platform_shared_commit(ssp, sizeof(*ssp));
 
 	spin_unlock(&dai->lock);
 
@@ -686,7 +685,6 @@ static int ssp_pre_start(struct dai *dai)
 
 	dai_info(dai, "ssp_set_config(), sscr0 = 0x%08x", sscr0);
 out:
-	platform_shared_commit(ssp, sizeof(*ssp));
 
 	return ret;
 }
@@ -869,7 +867,6 @@ static int ssp_trigger(struct dai *dai, int cmd, int direction)
 		break;
 	}
 
-	platform_shared_commit(ssp, sizeof(*ssp));
 
 	return 0;
 }
@@ -905,7 +902,6 @@ static int ssp_probe(struct dai *dai)
 
 	ssp_empty_rx_fifo(dai);
 
-	platform_shared_commit(ssp, sizeof(*ssp));
 
 	return 0;
 }

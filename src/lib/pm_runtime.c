@@ -33,7 +33,6 @@ void pm_runtime_init(struct sof *sof)
 
 	platform_pm_runtime_init(sof->prd);
 
-	platform_shared_commit(sof->prd, sizeof(*sof->prd));
 }
 
 void pm_runtime_get(enum pm_runtime_context context, uint32_t index)

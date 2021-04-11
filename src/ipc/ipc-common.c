@@ -70,7 +70,6 @@ struct ipc_comp_dev *ipc_get_comp_by_id(struct ipc *ipc, uint32_t id)
 		if (icd->id == id)
 			return icd;
 
-		platform_shared_commit(icd, sizeof(*icd));
 	}
 
 	return NULL;
@@ -85,19 +84,16 @@ struct ipc_comp_dev *ipc_get_comp_by_ppl_id(struct ipc *ipc, uint16_t type,
 	list_for_item(clist, &ipc->comp_list) {
 		icd = container_of(clist, struct ipc_comp_dev, list);
 		if (icd->type != type) {
-			platform_shared_commit(icd, sizeof(*icd));
 			continue;
 		}
 
 		if (!cpu_is_me(icd->core)) {
-			platform_shared_commit(icd, sizeof(*icd));
 			continue;
 		}
 
 		if (ipc_comp_pipe_id(icd) == ppl_id)
 			return icd;
 
-		platform_shared_commit(icd, sizeof(*icd));
 	}
 
 	return NULL;
@@ -115,12 +111,10 @@ struct ipc_comp_dev *ipc_get_ppl_comp(struct ipc *ipc,
 	list_for_item(clist, &ipc->comp_list) {
 		icd = container_of(clist, struct ipc_comp_dev, list);
 		if (icd->type != COMP_TYPE_COMPONENT) {
-			platform_shared_commit(icd, sizeof(*icd));
 			continue;
 		}
 
 		if (!cpu_is_me(icd->core)) {
-			platform_shared_commit(icd, sizeof(*icd));
 			continue;
 		}
 
@@ -128,19 +122,16 @@ struct ipc_comp_dev *ipc_get_ppl_comp(struct ipc *ipc,
 		    list_is_empty(comp_buffer_list(icd->cd, dir)))
 			return icd;
 
-		platform_shared_commit(icd, sizeof(*icd));
 	}
 
 	/* it's connected pipeline, so find the connected module */
 	list_for_item(clist, &ipc->comp_list) {
 		icd = container_of(clist, struct ipc_comp_dev, list);
 		if (icd->type != COMP_TYPE_COMPONENT) {
-			platform_shared_commit(icd, sizeof(*icd));
 			continue;
 		}
 
 		if (!cpu_is_me(icd->core)) {
-			platform_shared_commit(icd, sizeof(*icd));
 			continue;
 		}
 
@@ -154,7 +145,6 @@ struct ipc_comp_dev *ipc_get_ppl_comp(struct ipc *ipc,
 				return icd;
 		}
 
-		platform_shared_commit(icd, sizeof(*icd));
 	}
 
 	return NULL;
@@ -195,7 +185,6 @@ int ipc_comp_new(struct ipc *ipc, struct sof_ipc_comp *comp)
 	/* add new component to the list */
 	list_item_append(&icd->list, &ipc->comp_list);
 
-	platform_shared_commit(icd, sizeof(*icd));
 
 	return 0;
 }
@@ -256,7 +245,6 @@ void ipc_send_queued_msg(void)
 	ipc_platform_send_msg(msg);
 
 out:
-	platform_shared_commit(ipc, sizeof(*ipc));
 
 	spin_unlock_irq(&ipc->lock, flags);
 }

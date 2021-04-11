@@ -45,7 +45,6 @@ static inline int arch_timer_register(struct timer *timer,
 	ret = arch_interrupt_register(timer->irq, timer_64_handler, timer);
 	arch_interrupt_global_enable(flags);
 
-	platform_shared_commit(timer, sizeof(*timer));
 
 	return ret;
 }

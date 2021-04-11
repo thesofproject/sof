@@ -82,7 +82,6 @@ static enum task_state validate(void *data)
 	/* update last_check to current */
 	sa->last_check = current;
 
-	platform_shared_commit(sa, sizeof(*sa));
 
 	return SOF_TASK_STATE_RESCHEDULE;
 }
@@ -131,5 +130,4 @@ void sa_init(struct sof *sof, uint64_t timeout)
 	/* set last check time to now to give time for boot completion */
 	sof->sa->last_check = platform_timer_get(timer_get());
 
-	platform_shared_commit(sof->sa, sizeof(*sof->sa));
 }

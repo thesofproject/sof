@@ -256,8 +256,5 @@ int dmac_init(struct sof *sof)
 	for (i = 0; i < sof->dma_info->num_dmas; i++)
 		spinlock_init(&sof->dma_info->dma_array[i].lock);
 
-	platform_shared_commit(sof->dma_info->dma_array,
-			       sizeof(struct dma) * sof->dma_info->num_dmas);
-
 	return 0;
 }

@@ -36,7 +36,6 @@ static inline void *platform_shared_get(void *ptr, int bytes)
  * or dynamically allocated with SOF_MEM_FLAG_SHARED flag.
  * Does nothing, since HSW doesn't support SMP.
  */
-static inline void platform_shared_commit(void *ptr, int bytes) { }
 
 static inline void *platform_rfree_prepare(void *ptr)
 {

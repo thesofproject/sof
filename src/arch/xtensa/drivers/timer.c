@@ -18,7 +18,7 @@ void timer_64_handler(void *arg)
 	uint32_t ccompare;
 
 	if (timer->id >= ARCH_TIMER_COUNT)
-		goto out;
+		return;
 
 	/* get comparator value - will tell us timeout reason */
 	ccompare = xthal_get_ccompare(timer->id);
@@ -44,9 +44,6 @@ void timer_64_handler(void *arg)
 	}
 
 	xthal_set_ccompare(timer->id, ccompare);
-
-out:
-	platform_shared_commit(timer, sizeof(*timer));
 }
 
 int timer64_register(struct timer *timer, void(*handler)(void *arg), void *arg)
@@ -94,7 +91,6 @@ uint64_t arch_timer_get_system(struct timer *timer)
 	arch_interrupt_global_enable(flags);
 
 out:
-	platform_shared_commit(timer, sizeof(*timer));
 
 	return time;
 }
@@ -145,7 +141,6 @@ int64_t arch_timer_set(struct timer *timer, uint64_t ticks)
 	ret = ticks;
 
 out:
-	platform_shared_commit(timer, sizeof(*timer));
 
 	return ret;
 }

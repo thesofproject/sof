@@ -202,7 +202,6 @@ static inline void *platform_shared_get(void *ptr, int bytes)
  * Does nothing, since IMX doesn't support SMP.
  */
 
-static inline void platform_shared_commit(void *ptr, int bytes) { }
 
 static inline void *platform_rfree_prepare(void *ptr)
 {

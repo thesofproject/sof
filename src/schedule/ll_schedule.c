@@ -136,7 +136,6 @@ static void schedule_ll_tasks_execute(struct ll_schedule_data *sch)
 			       (uint32_t)sch->domain->next_tick);
 		}
 
-		platform_shared_commit(sch->domain, sizeof(*sch->domain));
 
 		spin_unlock(&sch->domain->lock);
 	}
@@ -182,7 +181,6 @@ static void schedule_ll_clients_reschedule(struct ll_schedule_data *sch)
 		domain_set(sch->domain, next_tick);
 	}
 
-	platform_shared_commit(sch->domain, sizeof(*sch->domain));
 }
 
 static void schedule_ll_tasks_run(void *data)
@@ -212,7 +210,6 @@ static void schedule_ll_tasks_run(void *data)
 	if (!num_clients)
 		domain_clear(sch->domain);
 
-	platform_shared_commit(sch->domain, sizeof(*sch->domain));
 
 	spin_unlock(&sch->domain->lock);
 
@@ -315,7 +312,6 @@ static int schedule_ll_domain_set(struct ll_schedule_data *sch,
 		atomic_read(&sch->num_tasks),
 		atomic_read(&sch->domain->total_num_tasks));
 
-	platform_shared_commit(sch->domain, sizeof(*sch->domain));
 
 	spin_unlock(&sch->domain->lock);
 
@@ -344,7 +340,6 @@ static void schedule_ll_domain_clear(struct ll_schedule_data *sch,
 		atomic_read(&sch->num_tasks),
 		atomic_read(&sch->domain->total_num_tasks));
 
-	platform_shared_commit(sch->domain, sizeof(*sch->domain));
 
 	spin_unlock(&sch->domain->lock);
 
@@ -462,7 +457,6 @@ static int schedule_ll_task(void *data, struct task *task, uint64_t start,
 		goto out;
 	}
 
-	platform_shared_commit(sch->domain, sizeof(*sch->domain));
 
 out:
 	irq_local_enable(flags);
@@ -576,7 +570,6 @@ static int reschedule_ll_task(void *data, struct task *task, uint64_t start)
 	tr_err(&ll_tr, "reschedule_ll_task(): task not found");
 
 out:
-	platform_shared_commit(sch->domain, sizeof(*sch->domain));
 
 	irq_local_enable(flags);
 
@@ -595,7 +588,6 @@ static void scheduler_free_ll(void *data)
 
 	list_item_del(&sch->tasks);
 
-	platform_shared_commit(sch->domain, sizeof(*sch->domain));
 
 	irq_local_enable(flags);
 }
@@ -632,7 +624,6 @@ static void ll_scheduler_notify(void *arg, enum notify_id type, void *data)
 		sch->domain->ticks_per_ms = clock_ms_to_ticks(sch->domain->clk,
 							      1);
 		ll_scheduler_recalculate_tasks(sch, clk_data);
-		platform_shared_commit(sch->domain, sizeof(*sch->domain));
 	}
 
 	irq_local_enable(flags);
@@ -654,7 +645,6 @@ int scheduler_init_ll(struct ll_schedule_domain *domain)
 
 	scheduler_init(domain->type, &schedule_ll_ops, sch);
 
-	platform_shared_commit(domain, sizeof(*domain));
 
 	return 0;
 }

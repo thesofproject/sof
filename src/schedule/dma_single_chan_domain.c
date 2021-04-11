@@ -88,12 +88,8 @@ static struct dma_chan_data *dma_chan_min_period(struct dma_domain *dma_domain)
 
 			channel = &dmas[i].chan[j];
 		}
-
-		platform_shared_commit(dmas[i].chan, sizeof(*dmas[i].chan) *
-				       dmas[i].plat_data.channels);
 	}
 
-	platform_shared_commit(dmas, sizeof(*dmas) * dma_domain->num_dma);
 
 	return channel;
 }
@@ -148,8 +144,6 @@ static int dma_single_chan_domain_irq_register(struct dma_chan_data *channel,
 	data->arg = arg;
 
 out:
-	platform_shared_commit(channel, sizeof(*channel));
-
 	return ret;
 }
 
@@ -162,7 +156,6 @@ static void dma_single_chan_domain_irq_unregister(struct dma_domain_data *data)
 	tr_info(&ll_tr, "dma_single_chan_domain_irq_unregister()");
 
 	interrupt_disable(data->irq, data->arg);
-
 	interrupt_unregister(data->irq, data->arg);
 }
 
@@ -258,8 +251,6 @@ static int dma_single_chan_domain_register(struct ll_schedule_domain *domain,
 	dma_domain->owner = channel->core;
 
 out:
-	platform_shared_commit(dma_domain, sizeof(*dma_domain));
-
 	return ret;
 }
 
@@ -291,21 +282,13 @@ static bool dma_chan_is_any_running(struct dma *dmas, uint32_t num)
 				continue;
 
 			if (dmas[i].chan[j].status == COMP_STATE_ACTIVE) {
-				platform_shared_commit(dmas[i].chan,
-						sizeof(*dmas[i].chan) *
-						dmas[i].plat_data.channels);
 				ret = true;
 				goto out;
 			}
 		}
-
-		platform_shared_commit(dmas[i].chan, sizeof(*dmas[i].chan) *
-				       dmas[i].plat_data.channels);
 	}
 
 out:
-	platform_shared_commit(dmas, sizeof(*dmas) * num);
-
 	return ret;
 }
 
@@ -388,30 +371,27 @@ static void dma_single_chan_domain_unregister(struct ll_schedule_domain *domain,
 
 	/* check if task should be unregistered */
 	if (!pipe_task->registrable)
-		goto out;
+		return;
 
 	/* channel not registered */
 	if (!data->channel)
-		goto out;
+		return;
 
 	/* unregister domain owner */
 	if (dma_domain->owner == core) {
 		dma_domain_unregister_owner(domain, data);
-		goto out;
+		return;
 	}
 
 	/* some channel still running, so return */
 	if (dma_chan_is_any_running(dmas, dma_domain->num_dma))
-		goto out;
+		return;
 
 	/* no more transfers scheduled on this core */
 	dma_single_chan_domain_irq_unregister(data);
 	data->channel = NULL;
 
 	notifier_unregister(domain, NULL, NOTIFIER_ID_DMA_DOMAIN_CHANGE);
-
-out:
-	platform_shared_commit(dma_domain, sizeof(*dma_domain));
 }
 
 /**
@@ -427,14 +407,10 @@ static void dma_single_chan_domain_enable(struct ll_schedule_domain *domain,
 
 	/* channel not registered */
 	if (!data->channel)
-		goto out;
+		return;
 
 	dma_interrupt(data->channel, DMA_IRQ_UNMASK);
-
 	interrupt_unmask(data->irq, core);
-
-out:
-	platform_shared_commit(dma_domain, sizeof(*dma_domain));
 }
 
 /**
@@ -450,12 +426,9 @@ static void dma_single_chan_domain_disable(struct ll_schedule_domain *domain,
 
 	/* channel not registered */
 	if (!data->channel)
-		goto out;
+		return;
 
 	interrupt_mask(data->irq, core);
-
-out:
-	platform_shared_commit(dma_domain, sizeof(*dma_domain));
 }
 
 /**
@@ -472,7 +445,7 @@ static void dma_single_chan_domain_set(struct ll_schedule_domain *domain,
 
 	/* channel not registered */
 	if (!data->channel)
-		goto out;
+		return;
 
 	if (dma_domain->channel_changed) {
 		domain->next_tick = platform_timer_get_atomic(timer_get());
@@ -485,9 +458,6 @@ static void dma_single_chan_domain_set(struct ll_schedule_domain *domain,
 		domain->next_tick = domain->next_tick != UINT64_MAX ?
 				    ticks : start;
 	}
-
-out:
-	platform_shared_commit(dma_domain, sizeof(*dma_domain));
 }
 
 /**
@@ -501,12 +471,9 @@ static void dma_single_chan_domain_clear(struct ll_schedule_domain *domain)
 
 	/* channel not registered */
 	if (!data->channel)
-		goto out;
+		return;
 
 	dma_interrupt(data->channel, DMA_IRQ_CLEAR);
-
-out:
-	platform_shared_commit(dma_domain, sizeof(*dma_domain));
 }
 
 /**
@@ -548,13 +515,9 @@ static void dma_domain_changed(void *arg, enum notify_id type, void *data)
 	if (dma_single_chan_domain_irq_register(data, domain_data,
 						domain_data->handler,
 						domain_data->arg) < 0)
-		goto out;
+		return;
 
 	dma_single_chan_domain_enable(domain, core);
-
-out:
-	platform_shared_commit(domain, sizeof(*domain));
-	platform_shared_commit(dma_domain, sizeof(*dma_domain));
 }
 
 /**
@@ -583,9 +546,6 @@ struct ll_schedule_domain *dma_single_chan_domain_init(struct dma *dma_array,
 	dma_domain->owner = DMA_DOMAIN_OWNER_INVALID;
 
 	ll_sch_domain_set_pdata(domain, dma_domain);
-
-	platform_shared_commit(domain, sizeof(*domain));
-	platform_shared_commit(dma_domain, sizeof(*dma_domain));
 
 	return domain;
 }

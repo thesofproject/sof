@@ -92,14 +92,8 @@ struct dma *dma_get(uint32_t dir, uint32_t cap, uint32_t dev, uint32_t flags)
 			       d->plat_data.caps, d->plat_data.devs);
 		}
 
-		platform_shared_commit(info->dma_array,
-				       sizeof(struct dma) * info->num_dmas);
-
 		return NULL;
 	}
-
-	platform_shared_commit(info->dma_array,
-			       sizeof(struct dma) * info->num_dmas);
 
 	/* return DMAC */
 	tr_dbg(&dma_tr, "dma_get(), dma-probe id = %d",
@@ -126,7 +120,6 @@ struct dma *dma_get(uint32_t dir, uint32_t cap, uint32_t dev, uint32_t flags)
 		dmin->plat_data.id, dmin->sref,
 		atomic_read(&dmin->num_channels_busy));
 
-	platform_shared_commit(dmin, sizeof(*dmin));
 
 	spin_unlock_irq(&dmin->lock, flags_irq);
 	return !ret ? dmin : NULL;
@@ -147,7 +140,6 @@ void dma_put(struct dma *dma)
 	}
 	tr_info(&dma_tr, "dma_put(), dma = %p, sref = %d",
 		dma, dma->sref);
-	platform_shared_commit(dma, sizeof(*dma));
 	spin_unlock_irq(&dma->lock, flags_irq);
 }
 

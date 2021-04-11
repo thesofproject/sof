@@ -104,7 +104,6 @@ struct sof_ipc_cmd_hdr *mailbox_validate(void)
 	mailbox_hostbox_read(hdr + 1, SOF_IPC_MSG_MAX_SIZE - sizeof(*hdr),
 			     sizeof(*hdr), hdr->size - sizeof(*hdr));
 
-	platform_shared_commit(hdr, hdr->size);
 
 	return hdr;
 }
@@ -293,7 +292,6 @@ pipe_params:
 	reply.comp_id = pcm_params.comp_id;
 	reply.posn_offset = pcm_dev->cd->pipeline->posn_offset;
 	mailbox_hostbox_write(0, &reply, sizeof(reply));
-	platform_shared_commit(pcm_dev, sizeof(*pcm_dev));
 	return 1;
 
 error:
@@ -302,7 +300,6 @@ error:
 		tr_err(&ipc_tr, "ipc: pipe %d comp %d reset failed %d",
 		       pcm_dev->cd->pipeline->ipc_pipe.pipeline_id,
 		       pcm_params.comp_id, reset_err);
-	platform_shared_commit(pcm_dev, sizeof(*pcm_dev));
 	return err;
 }
 
@@ -340,7 +337,6 @@ static int ipc_stream_pcm_free(uint32_t header)
 	/* reset the pipeline */
 	ret = pipeline_reset(pcm_dev->cd->pipeline, pcm_dev->cd);
 
-	platform_shared_commit(pcm_dev, sizeof(*pcm_dev));
 
 	return ret;
 }
@@ -384,7 +380,6 @@ static int ipc_stream_position(uint32_t header)
 	mailbox_stream_write(pcm_dev->cd->pipeline->posn_offset,
 			     &posn, sizeof(posn));
 
-	platform_shared_commit(pcm_dev, sizeof(*pcm_dev));
 
 	return 1;
 }
@@ -443,7 +438,6 @@ static int ipc_stream_trigger(uint32_t header)
 		       stream.comp_id, ipc_cmd, ret);
 	}
 
-	platform_shared_commit(pcm_dev, sizeof(*pcm_dev));
 
 	return ret;
 }
@@ -709,7 +703,6 @@ static int ipc_dma_trace_config(uint32_t header)
 	else
 		timer->delta = 0;
 
-	platform_shared_commit(timer, sizeof(*timer));
 
 #if CONFIG_SUECREEK || defined __ZEPHYR__
 	return 0;
@@ -1069,7 +1062,6 @@ static int ipc_comp_value(uint32_t header, uint32_t cmd)
 		return ret;
 	}
 
-	platform_shared_commit(comp_dev, sizeof(*comp_dev));
 
 	/* write component values to the outbox */
 	if (data->rhdr.hdr.size <= MAILBOX_HOSTBOX_SIZE &&
@@ -1445,7 +1437,6 @@ void ipc_cmd(struct sof_ipc_cmd_hdr *hdr)
 		break;
 	}
 
-	platform_shared_commit(hdr, hdr->size);
 
 out:
 	tr_dbg(&ipc_tr, "ipc: last request 0x%x returned %d", type, ret);
@@ -1491,9 +1482,6 @@ void ipc_msg_send(struct ipc_msg *msg, void *data, bool high_priority)
 	}
 
 out:
-	platform_shared_commit(msg->tx_data, msg->tx_size);
-	platform_shared_commit(msg, sizeof(*msg));
-	platform_shared_commit(ipc, sizeof(*ipc));
 
 	spin_unlock_irq(&ipc->lock, flags);
 }
@@ -1502,5 +1490,4 @@ void ipc_schedule_process(struct ipc *ipc)
 {
 	schedule_task(&ipc->ipc_task, 0, IPC_PERIOD_USEC);
 
-	platform_shared_commit(ipc, sizeof(*ipc));
 }

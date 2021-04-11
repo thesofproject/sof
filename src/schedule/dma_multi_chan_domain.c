@@ -56,7 +56,6 @@ static void dma_multi_chan_domain_irq_handler(void *data)
 	/* just call registered handler */
 	domain_data->handler(domain_data->arg);
 
-	platform_shared_commit(domain_data, sizeof(*domain_data));
 }
 
 /**
@@ -141,12 +140,8 @@ static int dma_multi_chan_domain_register(struct ll_schedule_domain *domain,
 				ret = dma_multi_chan_domain_irq_register(
 						&dma_domain->data[i][j],
 						handler);
-				if (ret < 0) {
-					platform_shared_commit(dmas[i].chan,
-						sizeof(*dmas[i].chan) *
-						dmas[i].plat_data.channels);
+				if (ret < 0)
 					goto out;
-				}
 
 				dma_domain->data[i][j].handler = handler;
 				dma_domain->data[i][j].arg = arg;
@@ -164,21 +159,11 @@ static int dma_multi_chan_domain_register(struct ll_schedule_domain *domain,
 			dma_domain->data[i][j].task = pipe_task;
 			dma_domain->channel_mask[i][core] |= BIT(j);
 
-			platform_shared_commit(dmas[i].chan,
-					       sizeof(*dmas[i].chan) *
-					       dmas[i].plat_data.channels);
-
 			goto out;
 		}
-
-		platform_shared_commit(dmas[i].chan, sizeof(*dmas[i].chan) *
-				       dmas[i].plat_data.channels);
 	}
 
 out:
-	platform_shared_commit(dmas, sizeof(*dmas) * dma_domain->num_dma);
-	platform_shared_commit(dma_domain, sizeof(*dma_domain));
-
 	return ret;
 }
 
@@ -216,7 +201,7 @@ static void dma_multi_chan_domain_unregister(struct ll_schedule_domain *domain,
 
 	/* check if task should be unregistered */
 	if (!pipe_task->registrable)
-		goto out;
+		return;
 
 	for (i = 0; i < dma_domain->num_dma; ++i) {
 		for (j = 0; j < dmas[i].plat_data.channels; ++j) {
@@ -251,21 +236,9 @@ static void dma_multi_chan_domain_unregister(struct ll_schedule_domain *domain,
 			else if (!dma_domain->channel_mask[i][core])
 				dma_multi_chan_domain_irq_unregister(
 						dma_domain->arg[i][core]);
-
-			platform_shared_commit(dmas[i].chan,
-					       sizeof(*dmas[i].chan) *
-					       dmas[i].plat_data.channels);
-
-			goto out;
+			return;
 		}
-
-		platform_shared_commit(dmas[i].chan, sizeof(*dmas[i].chan) *
-				       dmas[i].plat_data.channels);
 	}
-
-out:
-	platform_shared_commit(dmas, sizeof(*dmas) * dma_domain->num_dma);
-	platform_shared_commit(dma_domain, sizeof(*dma_domain));
 }
 
 /**
@@ -340,16 +313,10 @@ static bool dma_multi_chan_domain_is_pending(struct ll_schedule_domain *domain,
 						     BIT(j));
 			}
 
-			platform_shared_commit(dmas, sizeof(*dmas) *
-					       dma_domain->num_dma);
-			platform_shared_commit(dma_domain, sizeof(*dma_domain));
-
 			return true;
 		}
 	}
 
-	platform_shared_commit(dmas, sizeof(*dmas) * dma_domain->num_dma);
-	platform_shared_commit(dma_domain, sizeof(*dma_domain));
 
 	return false;
 }
@@ -394,9 +361,6 @@ struct ll_schedule_domain *dma_multi_chan_domain_init(struct dma *dma_array,
 
 	ll_sch_domain_set_pdata(domain, dma_domain);
 
-	platform_shared_commit(dma_array, sizeof(*dma_array) * num_dma);
-	platform_shared_commit(domain, sizeof(*domain));
-	platform_shared_commit(dma_domain, sizeof(*dma_domain));
 
 	return domain;
 }

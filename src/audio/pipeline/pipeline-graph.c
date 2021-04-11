@@ -72,7 +72,6 @@ static inline int pipeline_posn_offset_get(uint32_t *posn_offset)
 		}
 	}
 
-	platform_shared_commit(pipeline_posn, sizeof(*pipeline_posn));
 
 	spin_unlock(&pipeline_posn->lock);
 
@@ -92,7 +91,6 @@ static inline void pipeline_posn_offset_put(uint32_t posn_offset)
 
 	pipeline_posn->posn_offset[i] = false;
 
-	platform_shared_commit(pipeline_posn, sizeof(*pipeline_posn));
 
 	spin_unlock(&pipeline_posn->lock);
 }
@@ -102,7 +100,6 @@ void pipeline_posn_init(struct sof *sof)
 	sof->pipeline_posn = platform_shared_get(&pipeline_posn,
 						 sizeof(pipeline_posn));
 	spinlock_init(&sof->pipeline_posn->lock);
-	platform_shared_commit(sof->pipeline_posn, sizeof(*sof->pipeline_posn));
 }
 
 /* create new pipeline - returns pipeline id or negative error */

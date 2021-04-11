@@ -91,7 +91,6 @@ static inline struct ll_schedule_domain *domain_init
 	atomic_init(&domain->total_num_tasks, 0);
 	atomic_init(&domain->num_clients, 0);
 
-	platform_shared_commit(domain, sizeof(*domain));
 
 	return domain;
 }
@@ -106,7 +105,6 @@ static inline int domain_register(struct ll_schedule_domain *domain,
 
 	ret = domain->ops->domain_register(domain, period, task, handler, arg);
 
-	platform_shared_commit(domain, sizeof(*domain));
 
 	return ret;
 }
@@ -118,7 +116,6 @@ static inline void domain_unregister(struct ll_schedule_domain *domain,
 
 	domain->ops->domain_unregister(domain, task, num_tasks);
 
-	platform_shared_commit(domain, sizeof(*domain));
 }
 
 static inline void domain_enable(struct ll_schedule_domain *domain, int core)
@@ -126,7 +123,6 @@ static inline void domain_enable(struct ll_schedule_domain *domain, int core)
 	if (domain->ops->domain_enable)
 		domain->ops->domain_enable(domain, core);
 
-	platform_shared_commit(domain, sizeof(*domain));
 }
 
 static inline void domain_disable(struct ll_schedule_domain *domain, int core)
@@ -134,7 +130,6 @@ static inline void domain_disable(struct ll_schedule_domain *domain, int core)
 	if (domain->ops->domain_disable)
 		domain->ops->domain_disable(domain, core);
 
-	platform_shared_commit(domain, sizeof(*domain));
 }
 
 /* configure the next interrupt for domain */
@@ -145,7 +140,6 @@ static inline void domain_set(struct ll_schedule_domain *domain, uint64_t start)
 	else
 		domain->next_tick = start;
 
-	platform_shared_commit(domain, sizeof(*domain));
 }
 
 /* clear the interrupt for domain */
@@ -157,7 +151,6 @@ static inline void domain_clear(struct ll_schedule_domain *domain)
 	/* reset to denote no tick/interrupt is set */
 	domain->next_tick = UINT64_MAX;
 
-	platform_shared_commit(domain, sizeof(*domain));
 }
 
 static inline bool domain_is_pending(struct ll_schedule_domain *domain,
@@ -169,7 +162,6 @@ static inline bool domain_is_pending(struct ll_schedule_domain *domain,
 
 	ret = domain->ops->domain_is_pending(domain, task, comp);
 
-	platform_shared_commit(domain, sizeof(*domain));
 
 	return ret;
 }

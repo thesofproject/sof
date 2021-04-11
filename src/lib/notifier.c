@@ -153,7 +153,6 @@ void notifier_notify_remote(void)
 				notify_data->data);
 	}
 
-	platform_shared_commit(notify_data, sizeof(*notify_data));
 }
 
 void notifier_event(const void *caller, enum notify_id type, uint32_t core_mask,
@@ -182,9 +181,6 @@ void notifier_event(const void *caller, enum notify_id type, uint32_t core_mask,
 
 				dcache_writeback_region(notify_data->data,
 							data_size);
-
-				platform_shared_commit(notify_data,
-						       sizeof(*notify_data));
 
 				idc_send_msg(&notify_msg, IDC_NON_BLOCKING);
 			}

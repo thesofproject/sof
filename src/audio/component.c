@@ -94,15 +94,12 @@ comp_type_match:
 		info = container_of(clist, struct comp_driver_info, list);
 		if (info->drv->type == comp->type) {
 			drv = info->drv;
-			platform_shared_commit(info, sizeof(*info));
 			goto out;
 		}
 
-		platform_shared_commit(info, sizeof(*info));
 	}
 
 out:
-	platform_shared_commit(drivers, sizeof(*drivers));
 	irq_local_enable(flags);
 	return drv;
 }
@@ -149,8 +146,6 @@ int comp_register(struct comp_driver_info *drv)
 
 	irq_local_disable(flags);
 	list_item_prepend(&drv->list, &drivers->list);
-	platform_shared_commit(drv, sizeof(*drv));
-	platform_shared_commit(drivers, sizeof(*drivers));
 	irq_local_enable(flags);
 
 	return 0;
@@ -162,7 +157,6 @@ void comp_unregister(struct comp_driver_info *drv)
 
 	irq_local_disable(flags);
 	list_item_del(&drv->list);
-	platform_shared_commit(drv, sizeof(*drv));
 	irq_local_enable(flags);
 }
 
@@ -258,7 +252,6 @@ void sys_comp_init(struct sof *sof)
 
 	list_init(&sof->comp_drivers->list);
 
-	platform_shared_commit(sof->comp_drivers, sizeof(*sof->comp_drivers));
 }
 
 void comp_get_copy_limits(struct comp_buffer *source, struct comp_buffer *sink,
@@ -681,7 +674,6 @@ struct comp_dev *comp_make_shared(struct comp_dev *dev)
 	list_relink(&dev->bsink_list, old_bsink_list);
 	dev->is_shared = true;
 
-	platform_shared_commit(dev, sizeof(*dev));
 
 	return dev;
 }
