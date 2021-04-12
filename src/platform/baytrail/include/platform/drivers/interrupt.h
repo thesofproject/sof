@@ -12,7 +12,6 @@
 
 #include <sof/bit.h>
 
-
 /* IRQ numbers */
 #if CONFIG_INTERRUPT_LEVEL_1
 

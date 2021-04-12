@@ -23,7 +23,6 @@
 #define DMA_GP_LP_DMAC1		1
 #define DMA_GP_LP_DMAC2		2
 
-
 /* mappings - TODO improve API to get type */
 #define DMA_ID_DMAC0	DMA_GP_LP_DMAC0
 #define DMA_ID_DMAC1	DMA_GP_LP_DMAC1

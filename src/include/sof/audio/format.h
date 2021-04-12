@@ -17,7 +17,6 @@
 #define INT24_MAXVALUE  8388607
 #define INT24_MINVALUE -8388608
 
-
 /* Collection of common fractional numbers */
 #define ONE_Q2_30 1073741824 /* Q2.30 1.0 */
 #define ONE_Q1_31 2147483647 /* Q1.31 ~1.0 */

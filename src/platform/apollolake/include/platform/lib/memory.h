@@ -14,7 +14,6 @@
 #include <cavs/lib/memory.h>
 #include <sof/lib/cpu.h>
 
-
 /* physical DSP addresses */
 
 /* shim */

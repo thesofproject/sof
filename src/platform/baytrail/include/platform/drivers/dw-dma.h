@@ -17,7 +17,6 @@
 struct dma;
 struct dma_chan_data;
 
-
 /* number of supported DW-DMACs */
 #if CONFIG_CHERRYTRAIL_EXTRA_DW_DMA
 #define PLATFORM_NUM_DW_DMACS	3

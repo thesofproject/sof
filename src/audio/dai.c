@@ -987,7 +987,6 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 		break;
 	}
 
-
 	if (channel != DMA_CHAN_INVALID) {
 		if (dd->chan)
 			/* remove callback */

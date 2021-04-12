@@ -170,7 +170,6 @@ static struct sof_ipc_cmd_hdr *ipc_compact_read_msg(void)
 		return NULL;
 	}
 
-
 	return hdr;
 }
 #endif
@@ -267,7 +266,6 @@ int ipc_platform_send_msg(struct ipc_msg *msg)
 	ipc_write(IPC_DIPCIDR, IPC_DIPCIDR_BUSY | msg->header);
 #endif
 
-
 out:
 
 	return ret;
@@ -293,7 +291,6 @@ int platform_ipc_init(struct ipc *ipc)
 
 	/* enable IPC interrupts from host */
 	ipc_write(IPC_DIPCCTL, IPC_DIPCCTL_IPCIDIE | IPC_DIPCCTL_IPCTBIE);
-
 
 	return 0;
 }
@@ -332,7 +329,6 @@ int ipc_platform_poll_is_cmd_pending(void)
 	dipct = ipc_read(IPC_DIPCT);
 	dipcctl = ipc_read(IPC_DIPCCTL);
 
-
 #else
 	uint32_t dipctdr;
 
@@ -366,7 +362,6 @@ int ipc_platform_poll_is_host_ready(void)
 
 	dipcie = ipc_read(IPC_DIPCIE);
 	dipcctl = ipc_read(IPC_DIPCCTL);
-
 
 #else
 	uint32_t dipcida;
@@ -405,8 +400,6 @@ int ipc_platform_poll_is_host_ready(void)
 	/* host still pending */
 	return 0;
 }
-
-
 
 int ipc_platform_poll_tx_host_msg(struct ipc_msg *msg)
 {

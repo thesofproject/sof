@@ -286,7 +286,6 @@ static inline struct dma_chan_data *dma_channel_get(struct dma *dma,
 {
 	struct dma_chan_data *chan = dma->ops->channel_get(dma, req_channel);
 
-
 	return chan;
 }
 
@@ -300,14 +299,12 @@ static inline int dma_start(struct dma_chan_data *channel)
 {
 	int ret = channel->dma->ops->start(channel);
 
-
 	return ret;
 }
 
 static inline int dma_stop(struct dma_chan_data *channel)
 {
 	int ret = channel->dma->ops->stop(channel);
-
 
 	return ret;
 }
@@ -323,7 +320,6 @@ static inline int dma_copy(struct dma_chan_data *channel, int bytes,
 {
 	int ret = channel->dma->ops->copy(channel, bytes, flags);
 
-
 	return ret;
 }
 /** @} */
@@ -332,14 +328,12 @@ static inline int dma_pause(struct dma_chan_data *channel)
 {
 	int ret = channel->dma->ops->pause(channel);
 
-
 	return ret;
 }
 
 static inline int dma_release(struct dma_chan_data *channel)
 {
 	int ret = channel->dma->ops->release(channel);
-
 
 	return ret;
 }
@@ -349,7 +343,6 @@ static inline int dma_status(struct dma_chan_data *channel,
 {
 	int ret = channel->dma->ops->status(channel, status, direction);
 
-
 	return ret;
 }
 
@@ -358,7 +351,6 @@ static inline int dma_set_config(struct dma_chan_data *channel,
 {
 	int ret = channel->dma->ops->set_config(channel, config);
 
-
 	return ret;
 }
 
@@ -366,14 +358,12 @@ static inline int dma_pm_context_restore(struct dma *dma)
 {
 	int ret = dma->ops->pm_context_restore(dma);
 
-
 	return ret;
 }
 
 static inline int dma_pm_context_store(struct dma *dma)
 {
 	int ret = dma->ops->pm_context_store(dma);
-
 
 	return ret;
 }
@@ -389,7 +379,6 @@ static inline int dma_remove(struct dma *dma)
 {
 	int ret = dma->ops->remove(dma);
 
-
 	return ret;
 }
 
@@ -397,7 +386,6 @@ static inline int dma_get_data_size(struct dma_chan_data *channel,
 				    uint32_t *avail, uint32_t *free)
 {
 	int ret = channel->dma->ops->get_data_size(channel, avail, free);
-
 
 	return ret;
 }
@@ -407,7 +395,6 @@ static inline int dma_get_attribute(struct dma *dma, uint32_t type,
 {
 	int ret = dma->ops->get_attribute(dma, type, value);
 
-
 	return ret;
 }
 
@@ -415,7 +402,6 @@ static inline int dma_interrupt(struct dma_chan_data *channel,
 				enum dma_irq_cmd cmd)
 {
 	int ret = channel->dma->ops->interrupt(channel, cmd);
-
 
 	return ret;
 }
@@ -427,7 +413,6 @@ static inline uint32_t dma_reg_read(struct dma *dma, uint32_t reg)
 
 	val = io_reg_read(dma_base(dma) + reg);
 
-
 	return val;
 }
 
@@ -436,7 +421,6 @@ static inline uint16_t dma_reg_read16(struct dma *dma, uint32_t reg)
 	uint16_t val;
 
 	val = io_reg_read16(dma_base(dma) + reg);
-
 
 	return val;
 }
@@ -468,7 +452,6 @@ static inline uint32_t dma_chan_reg_read(struct dma_chan_data *channel,
 
 	val = io_reg_read(dma_chan_base(channel->dma, channel->index) + reg);
 
-
 	return val;
 }
 
@@ -478,7 +461,6 @@ static inline uint16_t dma_chan_reg_read16(struct dma_chan_data *channel,
 	uint16_t val;
 
 	val = io_reg_read16(dma_chan_base(channel->dma, channel->index) + reg);
-
 
 	return val;
 }
@@ -519,7 +501,6 @@ static inline void dma_chan_reg_update_bits16(struct dma_chan_data *channel,
 static inline bool dma_is_scheduling_source(struct dma_chan_data *channel)
 {
 	bool ret = channel->is_scheduling_source;
-
 
 	return ret;
 }

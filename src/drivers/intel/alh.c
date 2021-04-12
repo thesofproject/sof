@@ -44,7 +44,6 @@ static int alh_set_config(struct dai *dai, struct sof_ipc_dai_config *config)
 
 	alh->params.stream_id = config->alh.stream_id;
 
-
 	return 0;
 }
 
@@ -62,7 +61,6 @@ static int alh_get_hw_params(struct dai *dai,
 
 	/* FIFO format is static */
 	params->frame_fmt = SOF_IPC_FRAME_S32_LE;
-
 
 	return 0;
 }
@@ -96,7 +94,6 @@ static int alh_probe(struct dai *dai)
 		return -ENOMEM;
 	}
 	dai_set_drvdata(dai, alh);
-
 
 	return 0;
 }

@@ -93,7 +93,6 @@ int timer_register(struct timer *timer, void(*handler)(void *arg), void *arg)
 		break;
 	}
 
-
 	return ret;
 }
 

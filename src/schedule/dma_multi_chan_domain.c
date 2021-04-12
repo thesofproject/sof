@@ -317,7 +317,6 @@ static bool dma_multi_chan_domain_is_pending(struct ll_schedule_domain *domain,
 		}
 	}
 
-
 	return false;
 }
 
@@ -360,7 +359,6 @@ struct ll_schedule_domain *dma_multi_chan_domain_init(struct dma *dma_array,
 	}
 
 	ll_sch_domain_set_pdata(domain, dma_domain);
-
 
 	return domain;
 }

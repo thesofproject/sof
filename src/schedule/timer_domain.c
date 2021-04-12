@@ -320,7 +320,6 @@ struct ll_schedule_domain *timer_domain_init(struct timer *timer, int clk)
 
 	ll_sch_domain_set_pdata(domain, timer_domain);
 
-
 	return domain;
 }
 

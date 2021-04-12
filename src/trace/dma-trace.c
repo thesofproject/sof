@@ -111,7 +111,6 @@ out:
 	/* DMA trace copying is done, allow reschedule */
 	d->copy_in_progress = 0;
 
-
 	spin_unlock_irq(&d->lock, flags);
 
 	/* reschedule the trace copying work */
@@ -129,7 +128,6 @@ int dma_trace_init_early(struct sof *sof)
 				      sizeof(sof->dmat->posn));
 	if (!sof->dmat->msg)
 		return -ENOMEM;
-
 
 	return 0;
 }
@@ -172,7 +170,6 @@ int dma_trace_host_buffer(struct dma_trace_data *d,
 {
 	d->host_size = host_size;
 	d->config.elem_array = *elem_array;
-
 
 	return 0;
 }
@@ -359,7 +356,6 @@ int dma_trace_enable(struct dma_trace_data *d)
 out:
 	if (err < 0)
 		dma_trace_buffer_free(d);
-
 
 	return err;
 }

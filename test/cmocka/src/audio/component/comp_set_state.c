@@ -34,7 +34,6 @@ struct test_case {
 	("test_audio_component_comp_set_state__" \
 	 #type "__" #in_state "__" #cmd "__" #out_state)}
 
-
 /*
  * NULL_STATE enum is used in every case, when new state of component is
  * insignificant due to action of testing function

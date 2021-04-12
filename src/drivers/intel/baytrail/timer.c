@@ -135,7 +135,6 @@ uint64_t platform_timer_get(struct timer *timer)
 
 	arch_interrupt_global_enable(flags);
 
-
 	return time;
 }
 
@@ -215,7 +214,6 @@ int timer_register(struct timer *timer, void (*handler)(void *arg), void *arg)
 		ret = -EINVAL;
 		break;
 	}
-
 
 	return ret;
 }

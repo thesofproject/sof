@@ -46,7 +46,6 @@ uint32_t clock_get_freq(int clock)
 	struct clock_info *clk_info = clocks_get() + clock;
 	uint32_t freq = clk_info->freqs[clk_info->current_freq_idx].freq;
 
-
 	return freq;
 }
 
@@ -89,7 +88,6 @@ void clock_set_freq(int clock, uint32_t hz)
 		       clk_info->notification_mask, &clk_notify_data,
 		       sizeof(clk_notify_data));
 
-
 	spin_unlock_irq(&clk_info->lock, flags);
 }
 
@@ -107,7 +105,6 @@ uint64_t clock_ms_to_ticks(int clock, uint64_t ms)
 	uint64_t ticks;
 
 	ticks = clk_info->freqs[clk_info->current_freq_idx].ticks_per_msec * ms;
-
 
 	return ticks;
 }

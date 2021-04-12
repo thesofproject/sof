@@ -15,7 +15,6 @@
 #include <sof/audio/component.h>
 #include <sof/audio/selector.h>
 
-
 struct sel_test_state {
 	struct comp_dev *dev;
 	struct comp_buffer *sink;
@@ -288,7 +287,6 @@ static void test_audio_sel(void **state)
 
 	sel_state->verify(sel_state->dev, &sel_state->sink->stream, &sel_state->source->stream);
 }
-
 
 static struct sel_test_parameters parameters[] = {
 #if CONFIG_FORMAT_S16LE

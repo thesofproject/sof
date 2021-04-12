@@ -75,6 +75,5 @@ int platform_ipc_init(struct ipc *ipc)
 	schedule_task_init_edf(&ipc->ipc_task, SOF_UUID(ipc_task_uuid),
 			       &ipc_task_ops, ipc, 0, 0);
 
-
 	return 0;
 }

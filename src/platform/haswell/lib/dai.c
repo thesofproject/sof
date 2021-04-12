@@ -70,7 +70,6 @@ int dai_init(struct sof *sof)
 	for (i = 0; i < ARRAY_SIZE(ssp); i++)
 		spinlock_init(&ssp[i].lock);
 
-
 	sof->dai_info = &lib_dai;
 
 	return 0;

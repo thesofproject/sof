@@ -185,7 +185,6 @@ int ipc_comp_new(struct ipc *ipc, struct sof_ipc_comp *comp)
 	/* add new component to the list */
 	list_item_append(&icd->list, &ipc->comp_list);
 
-
 	return 0;
 }
 

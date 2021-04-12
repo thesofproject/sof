@@ -14,7 +14,6 @@
 #include <cavs/drivers/interrupt.h>
 #include <sof/bit.h>
 
-
 #define PLATFORM_IRQ_HW_NUM	XCHAL_NUM_INTERRUPTS
 #define PLATFORM_IRQ_FIRST_CHILD  PLATFORM_IRQ_HW_NUM
 #define PLATFORM_IRQ_CHILDREN	32

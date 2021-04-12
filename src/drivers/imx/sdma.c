@@ -575,7 +575,6 @@ static int sdma_copy(struct dma_chan_data *channel, int bytes, uint32_t flags)
 	dcache_writeback_region(&pdata->desc[idx].config,
 				sizeof(pdata->desc[idx].config));
 
-
 	notifier_event(channel, NOTIFIER_ID_DMA_COPY,
 		       NOTIFIER_TARGET_CORE_LOCAL, &next, sizeof(next));
 

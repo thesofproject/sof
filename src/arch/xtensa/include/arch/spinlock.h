@@ -10,7 +10,6 @@
 #ifndef __ARCH_SPINLOCK_H__
 #define __ARCH_SPINLOCK_H__
 
-
 #include <stdint.h>
 
 typedef struct {

@@ -167,7 +167,6 @@ static int tplg_load_fileread(int comp_id, int pipeline_id, int size,
 	size_t read_size;
 	int ret = 0;
 
-
 	/* allocate memory for vendor tuple array */
 	array = (struct snd_soc_tplg_vendor_array *)malloc(size);
 	if (!array) {

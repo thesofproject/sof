@@ -131,7 +131,6 @@ int dmac_init(struct sof *sof)
 	for (i = 0; i < ARRAY_SIZE(dma); i++)
 		spinlock_init(&dma[i].lock);
 
-
 	/* clear the masks for dsp of the dmacs */
 	io_reg_update_bits(SHIM_BASE + SHIM_IMRD,
 			   SHIM_IMRD_DMAC0, 0);

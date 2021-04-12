@@ -95,7 +95,6 @@ int ipc_pipeline_new(struct ipc *ipc,
 	/* add new pipeline to the list */
 	list_item_append(&ipc_pipe->list, &ipc->comp_list);
 
-
 	return 0;
 }
 
@@ -167,7 +166,6 @@ int ipc_pipeline_complete(struct ipc *ipc, uint32_t comp_id)
 
 	ret = pipeline_complete(ipc_pipe->pipeline, ipc_ppl_source->cd,
 				ipc_ppl_sink->cd);
-
 
 	return ret;
 }
@@ -274,7 +272,6 @@ int ipc_buffer_new(struct ipc *ipc, struct sof_ipc_buffer *desc)
 	/* add new buffer to the list */
 	list_item_append(&ibd->list, &ipc->comp_list);
 
-
 	return ret;
 }
 
@@ -371,7 +368,6 @@ static int ipc_comp_to_buffer_connect(struct ipc_comp_dev *comp,
 
 	dcache_writeback_invalidate_region(buffer->cb, sizeof(*buffer->cb));
 
-
 	return ret;
 }
 
@@ -403,7 +399,6 @@ static int ipc_buffer_to_comp_connect(struct ipc_comp_dev *buffer,
 			       PPL_CONN_DIR_BUFFER_TO_COMP);
 
 	dcache_writeback_invalidate_region(buffer->cb, sizeof(*buffer->cb));
-
 
 	return ret;
 }

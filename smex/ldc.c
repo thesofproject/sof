@@ -68,7 +68,6 @@ static int fw_version_copy(const struct elf_module *src,
 		SOF_ABI_VERSION_MINOR(header->version.abi_version),
 		SOF_ABI_VERSION_PATCH(header->version.abi_version));
 
-
 	return 0;
 }
 

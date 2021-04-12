@@ -132,7 +132,6 @@ int ipc_platform_send_msg(struct ipc_msg *msg)
 	/* now interrupt host to tell it we have sent a message */
 	imx_mu_xcr_rmw(IMX_MU_xCR_GIRn(1), 0);
 
-
 out:
 
 	return ret;
@@ -142,7 +141,6 @@ out:
 struct ipc_data_host_buffer *ipc_platform_get_host_buffer(struct ipc *ipc)
 {
 	struct ipc_data *iipc = ipc_get_drvdata(ipc);
-
 
 	return &iipc->dh_buffer;
 }
@@ -190,7 +188,6 @@ int platform_ipc_init(struct ipc *ipc)
 	 * enable GP #1 for DSP -> Host message notification
 	 */
 	imx_mu_xcr_rmw(IMX_MU_xCR_GIEn(0) | IMX_MU_xCR_GIEn(1), 0);
-
 
 	return 0;
 }

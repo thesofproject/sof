@@ -10,7 +10,6 @@
 #ifndef __ARCH_STRING_H__
 #define __ARCH_STRING_H__
 
-
 #include <xtensa/hal.h>
 #include <errno.h>
 #include <stddef.h>

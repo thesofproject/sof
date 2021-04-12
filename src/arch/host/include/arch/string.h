@@ -20,7 +20,6 @@
 #define arch_bzero(ptr, size) \
 	memset(ptr, 0, size)
 
-
 void *memcpy(void *dest, const void *src, size_t length);
 void *memset(void *dest, int data, size_t count);
 int memset_s(void *dest, size_t dest_size,

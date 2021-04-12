@@ -5,7 +5,6 @@
 // Author: Artur Kloniecki <arturx.kloniecki@linux.intel.com>
 // Author: Adrian Bonislawski <adrian.bonislawski@linux.intel.com>
 
-
 #include <sof/audio/buffer.h>
 #include <sof/audio/component.h>
 #include <sof/probe/probe.h>
@@ -159,7 +158,6 @@ static int probe_dma_init(struct probe_dma_ext *dma, uint32_t direction)
 		return err;
 
 	dma_sg_free(&config.elem_array);
-
 
 	return 0;
 }

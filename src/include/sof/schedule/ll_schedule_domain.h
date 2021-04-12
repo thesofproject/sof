@@ -91,7 +91,6 @@ static inline struct ll_schedule_domain *domain_init
 	atomic_init(&domain->total_num_tasks, 0);
 	atomic_init(&domain->num_clients, 0);
 
-
 	return domain;
 }
 
@@ -104,7 +103,6 @@ static inline int domain_register(struct ll_schedule_domain *domain,
 	assert(domain->ops->domain_register);
 
 	ret = domain->ops->domain_register(domain, period, task, handler, arg);
-
 
 	return ret;
 }
@@ -161,7 +159,6 @@ static inline bool domain_is_pending(struct ll_schedule_domain *domain,
 	assert(domain->ops->domain_is_pending);
 
 	ret = domain->ops->domain_is_pending(domain, task, comp);
-
 
 	return ret;
 }

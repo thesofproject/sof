@@ -867,7 +867,6 @@ static int ssp_trigger(struct dai *dai, int cmd, int direction)
 		break;
 	}
 
-
 	return 0;
 }
 
@@ -901,7 +900,6 @@ static int ssp_probe(struct dai *dai)
 	pm_runtime_get_sync(SSP_CLK, dai->index);
 
 	ssp_empty_rx_fifo(dai);
-
 
 	return 0;
 }

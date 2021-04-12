@@ -16,7 +16,6 @@
 #include <sof/sof.h>
 #include <sof/spinlock.h>
 
-
 #if CONFIG_APOLLOLAKE
 #define DMAC0_CLASS 1
 #define DMAC1_CLASS 2
