@@ -7,7 +7,8 @@
 #include <sof/common.h>
 #include <sof/debug/panic.h>
 #include <sof/drivers/gpio.h>
-#include <sof/drivers/ipc.h>
+#include <sof/ipc/driver.h>
+#include <sof/ipc/schedule.h>
 #include <sof/drivers/spi.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/cache.h>

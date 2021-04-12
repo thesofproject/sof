@@ -10,7 +10,11 @@
 #include <sof/audio/pipeline.h>
 #include <sof/common.h>
 #include <sof/drivers/idc.h>
-#include <sof/drivers/ipc.h>
+#include <sof/ipc/topology.h>
+#include <sof/ipc/common.h>
+#include <sof/ipc/msg.h>
+#include <sof/ipc/driver.h>
+#include <sof/ipc/schedule.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/cache.h>
 #include <sof/lib/cpu.h>

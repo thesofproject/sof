@@ -12,7 +12,10 @@
 #include <malloc.h>
 #include <cmocka.h>
 #include <sof/list.h>
-#include <sof/drivers/ipc.h>
+#include <sof/ipc/driver.h>
+#include <sof/ipc/msg.h>
+#include <sof/ipc/topology.h>
+#include <sof/ipc/schedule.h>
 #include <sof/audio/buffer.h>
 #include <sof/audio/component.h>
 #include <sof/audio/format.h>

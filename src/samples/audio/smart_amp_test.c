@@ -6,7 +6,7 @@
 
 #include <sof/samples/audio/smart_amp_test.h>
 #include <sof/trace/trace.h>
-#include <sof/drivers/ipc.h>
+#include <sof/ipc/msg.h>
 #include <sof/ut.h>
 
 static const struct comp_driver comp_smart_amp;

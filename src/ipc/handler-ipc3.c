@@ -20,7 +20,11 @@
 #include <sof/debug/panic.h>
 #include <sof/drivers/idc.h>
 #include <sof/drivers/interrupt.h>
-#include <sof/drivers/ipc.h>
+#include <sof/ipc/topology.h>
+#include <sof/ipc/common.h>
+#include <sof/ipc/msg.h>
+#include <sof/ipc/driver.h>
+#include <sof/ipc/schedule.h>
 #include <sof/drivers/timer.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/clk.h>

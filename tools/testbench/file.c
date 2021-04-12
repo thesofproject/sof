@@ -14,7 +14,7 @@
 #include <sof/list.h>
 #include <sof/audio/stream.h>
 #include <sof/lib/clk.h>
-#include <sof/drivers/ipc.h>
+#include <sof/ipc/driver.h>
 #include <sof/audio/component.h>
 #include <sof/audio/format.h>
 #include <sof/audio/pipeline.h>

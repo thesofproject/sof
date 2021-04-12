@@ -14,7 +14,8 @@
 #include <sof/common.h>
 #include <sof/string.h>
 #include <sof/audio/component.h>
-#include <sof/drivers/ipc.h>
+#include <sof/ipc/driver.h>
+#include <sof/ipc/topology.h>
 #include <tplg_parser/topology.h>
 #include "testbench/common_test.h"
 #include "testbench/file.h"

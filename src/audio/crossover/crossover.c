@@ -13,7 +13,7 @@
 #include <sof/audio/eq_iir/iir.h>
 #include <sof/common.h>
 #include <sof/debug/panic.h>
-#include <sof/drivers/ipc.h>
+#include <sof/ipc/msg.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/uuid.h>

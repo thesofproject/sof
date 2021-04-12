@@ -7,7 +7,9 @@
 #include <sof/audio/component.h>
 #include <sof/audio/component_ext.h>
 #include <sof/drivers/idc.h>
-#include <sof/drivers/ipc.h>
+#include <sof/ipc/msg.h>
+#include <sof/ipc/topology.h>
+#include <sof/ipc/schedule.h>
 #include <sof/drivers/timer.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/clk.h>

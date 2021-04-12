@@ -5,7 +5,7 @@
 // Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
 
 #include <sof/drivers/interrupt.h>
-#include <sof/drivers/ipc.h>
+#include <sof/ipc/driver.h>
 #include <sof/drivers/pmc.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/shim.h>
