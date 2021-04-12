@@ -169,9 +169,9 @@ int codec_free_memory(struct comp_dev *dev, void *ptr)
 	struct list_item *mem_list;
 	struct list_item *_mem_list;
 
-	if (!ptr) {
+	if (!ptr)
 		return 0;
-	}
+
 	/* Find which container keeps this memory */
 	list_for_item_safe(mem_list, _mem_list, &cd->codec.memory.mem_list) {
 		mem = container_of(mem_list, struct codec_memory, mem_list);
