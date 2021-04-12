@@ -132,7 +132,7 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V15)
 	)
 
 	zephyr_library_sources_ifdef(CONFIG_INTEL_DMIC
-		${SOF_DRIVERS_PATH}/intel/dmic.c
+		${SOF_DRIVERS_PATH}/intel/dmic/dmic.c
 	)
 
 	# Platform sources
@@ -185,7 +185,7 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V18)
 	)
 
 	zephyr_library_sources_ifdef(CONFIG_INTEL_DMIC
-		${SOF_DRIVERS_PATH}/intel/dmic.c
+		${SOF_DRIVERS_PATH}/intel/dmic/dmic.c
 	)
 
 	# Platform sources
@@ -240,7 +240,7 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V20)
 	)
 
 	zephyr_library_sources_ifdef(CONFIG_INTEL_DMIC
-		${SOF_DRIVERS_PATH}/intel/dmic.c
+		${SOF_DRIVERS_PATH}/intel/dmic/dmic.c
 	)
 
 	# Platform sources
@@ -297,7 +297,7 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V25)
 	)
 
 	zephyr_library_sources_ifdef(CONFIG_INTEL_DMIC
-		${SOF_DRIVERS_PATH}/intel/dmic.c
+		${SOF_DRIVERS_PATH}/intel/dmic/dmic.c
 	)
 
 	# Platform sources
