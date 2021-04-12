@@ -13,7 +13,6 @@
 #include <sof/sof.h>
 #include <sof/spinlock.h>
 
-
 #if CONFIG_BAYTRAIL
 const struct freq_table platform_cpu_freq[] = {
 	{ 25000000, 25000 },

@@ -56,7 +56,6 @@ struct comp_func_map {
 /** \brief Map of formats with dedicated processing functions. */
 extern const struct comp_func_map func_map[];
 
-
 /**
  * \brief Retrieves selector processing function.
  * \param[in,out] dev Selector base component device.

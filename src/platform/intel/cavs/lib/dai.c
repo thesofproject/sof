@@ -19,7 +19,6 @@
 #include <ipc/dai.h>
 #include <ipc/stream.h>
 
-
 #if CONFIG_INTEL_SSP
 
 #include <sof/drivers/ssp.h>
@@ -165,7 +164,6 @@ int dai_init(struct sof *sof)
 		dai[i].drv = &hda_driver;
 		spinlock_init(&dai[i].lock);
 	}
-
 
 #if (CONFIG_INTEL_DMIC)
 	dai = cache_to_uncache((struct dai *)dmic);

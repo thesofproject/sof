@@ -10,7 +10,6 @@
 #ifndef __ARCH_LIB_CPU_H__
 #define __ARCH_LIB_CPU_H__
 
-
 #include <xtensa/config/core-isa.h>
 
 #if CONFIG_MULTICORE

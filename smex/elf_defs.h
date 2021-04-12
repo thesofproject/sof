@@ -34,7 +34,6 @@ typedef int32_t int32;
 typedef int16_t int16;
 typedef int8_t int8;
 
-
 typedef struct {
 	uint32	n_namesz;	/* Length of name. */
 	uint32	n_descsz;	/* Length of descriptor. */
@@ -490,7 +489,6 @@ typedef struct {
 
 #define	R_X86_64_COUNT	24	/* Count of defined relocation types. */
 
-
 #define	R_ALPHA_NONE		0	/* No reloc */
 #define	R_ALPHA_REFLONG		1	/* Direct 32 bit */
 #define	R_ALPHA_REFQUAD		2	/* Direct 64 bit */
@@ -521,7 +519,6 @@ typedef struct {
 #define	R_ALPHA_RELATIVE	27	/* Adjust by program base */
 
 #define	R_ALPHA_COUNT		28
-
 
 #define	R_ARM_NONE		0	/* No relocation. */
 #define	R_ARM_PC24		1
@@ -564,7 +561,6 @@ typedef struct {
 #define	R_ARM_RBASE		255
 
 #define	R_ARM_COUNT		38	/* Count of defined relocation types. */
-
 
 #define	R_386_NONE	0	/* No relocation. */
 #define	R_386_32	1	/* Add symbol value. */
@@ -685,7 +681,6 @@ typedef struct {
 					/* Count of defined relocation types. */
 #define	R_PPC_EMB_COUNT		(R_PPC_EMB_RELSDA - R_PPC_EMB_NADDR32 + 1)
 
-
 #define R_SPARC_NONE		0
 #define R_SPARC_8		1
 #define R_SPARC_16		2
@@ -743,13 +738,11 @@ typedef struct {
 #define	R_SPARC_UA64		54
 #define	R_SPARC_UA16		55
 
-
 /*
  * Magic number for the elf trampoline, chosen wisely to be an immediate
  * value.
  */
 #define ARM_MAGIC_TRAMP_NUMBER	0x5c000003
-
 
 /*
  * Symbol table entries.

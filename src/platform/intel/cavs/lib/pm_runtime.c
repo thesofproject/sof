@@ -57,7 +57,6 @@ static void cavs_pm_runtime_host_dma_l1_entry(void)
 
 	pprd->host_dma_l1_sref++;
 
-
 	spin_unlock_irq(&prd->lock, flags);
 }
 
@@ -82,7 +81,6 @@ static inline void cavs_pm_runtime_force_host_dma_l1_exit(void)
 			   shim_read(SHIM_SVCFG) & ~(SHIM_SVCFG_FORCE_L1_EXIT));
 	}
 
-
 	spin_unlock_irq(&prd->lock, flags);
 }
 
@@ -99,12 +97,10 @@ static inline void cavs_pm_runtime_enable_dsp(bool enable)
 
 	pprd->dsp_d0 = !enable;
 
-
 	irq_local_enable(flags);
 
 	tr_info(&power_tr, "pm_runtime_enable_dsp dsp_d0_sref %d",
 		pprd->dsp_d0);
-
 
 #if CONFIG_DSP_RESIDENCY_COUNTERS
 	struct clock_info *clk_info = clocks_get() + CLK_CPU(cpu_get_id());
@@ -127,7 +123,6 @@ static inline bool cavs_pm_runtime_is_active_dsp(void)
 {
 	struct pm_runtime_data *prd = pm_runtime_data_get();
 	struct cavs_pm_runtime_data *pprd = prd->platform_data;
-
 
 	return pprd->dsp_d0;
 }
@@ -379,7 +374,6 @@ static inline void cavs_pm_runtime_core_dis_hp_clk(uint32_t index)
 	if (all_active_cores_sleep)
 		clock_low_power_mode(CLK_CPU(index), true);
 
-
 	spin_unlock_irq(&prd->lock, flags);
 }
 
@@ -393,7 +387,6 @@ static inline void cavs_pm_runtime_core_en_hp_clk(uint32_t index)
 
 	pprd->sleep_core_mask &= ~BIT(index);
 	clock_low_power_mode(CLK_CPU(index), false);
-
 
 	spin_unlock_irq(&prd->lock, flags);
 }

@@ -63,7 +63,6 @@ static inline void irq_lvl2_handler(void *data, int level, uint32_t ilxsd,
 	uint32_t status;
 	uint32_t tries = LVL2_MAX_TRIES;
 
-
 	/* read active interrupt status */
 	status = irq_read(ilxsd);
 	if (!status)
@@ -92,7 +91,6 @@ static inline void irq_lvl2_handler(void *data, int level, uint32_t ilxsd,
 			}
 
 		}
-
 
 		spin_unlock(&cascade->lock);
 

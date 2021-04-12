@@ -78,7 +78,6 @@ static inline uint32_t block_get_size(struct block_map *map)
 	uint32_t size = sizeof(*map) + map->count *
 		(map->block_size + sizeof(struct block_hdr));
 
-
 	return size;
 }
 
@@ -90,7 +89,6 @@ static inline uint32_t heap_get_size(struct mm_heap *heap)
 
 	for (i = 0; i < heap->blocks; i++)
 		size += block_get_size(&heap->map[i]);
-
 
 	return size;
 }
@@ -170,7 +168,6 @@ static void *rmalloc_sys(struct mm_heap *heap, uint32_t flags, int caps, size_t 
 	heap->info.used += bytes;
 	heap->info.free -= alignment + bytes;
 
-
 	return ptr;
 }
 
@@ -224,7 +221,6 @@ static void *alloc_block_index(struct mm_heap *heap, int level,
 				break;
 			}
 		}
-
 
 	return ptr;
 }
@@ -383,7 +379,6 @@ static struct mm_heap *get_heap_from_ptr(void *ptr)
 	if (heap)
 		goto out;
 
-
 	return NULL;
 
 out:
@@ -444,7 +439,6 @@ static void *get_ptr_from_heap(struct mm_heap *heap, uint32_t flags,
 
 		/* free block space exists */
 		ptr = alloc_block(heap, i, caps, alignment);
-
 
 		break;
 	}
@@ -639,7 +633,6 @@ static void *rmalloc_sys_runtime(uint32_t flags, int caps, int core,
 	ptr = get_ptr_from_heap(cpu_heap, flags, caps, bytes,
 				PLATFORM_DCACHE_ALIGN);
 
-
 	return ptr;
 }
 
@@ -663,7 +656,6 @@ static void *rmalloc_runtime(uint32_t flags, uint32_t caps, size_t bytes)
 			return NULL;
 		}
 	}
-
 
 	return get_ptr_from_heap(heap, flags, caps, bytes,
 				 PLATFORM_DCACHE_ALIGN);
@@ -731,7 +723,6 @@ static void *_malloc_unlocked(enum mem_zone zone, uint32_t flags, uint32_t caps,
 #endif
 
 	memmap->heap_trace_updated = 1;
-
 
 	return ptr;
 }
@@ -914,7 +905,6 @@ static void *_balloc_unlocked(uint32_t flags, uint32_t caps, size_t bytes,
 
 		/* Continue from the next heap */
 	}
-
 
 	return ptr;
 }

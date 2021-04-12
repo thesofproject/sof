@@ -8,8 +8,6 @@
 #ifndef __SOF_PROBE_PROBE_H__
 #define __SOF_PROBE_PROBE_H__
 
-
-
 #if CONFIG_PROBE
 
 #include <ipc/probe.h>

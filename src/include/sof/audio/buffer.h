@@ -152,7 +152,6 @@ struct buffer_cb_free {
 		buffer->cb_type = type;	\
 	} while (0)
 
-
 /* pipeline buffer creation and destruction */
 struct comp_buffer *buffer_alloc(uint32_t size, uint32_t caps, uint32_t align);
 struct comp_buffer *buffer_new(struct sof_ipc_buffer *desc);

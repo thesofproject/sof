@@ -122,7 +122,6 @@ int ipc_platform_send_msg(struct ipc_msg *msg)
 	shim_write(SHIM_IPCDL, msg->header);
 	shim_write(SHIM_IPCDH, SHIM_IPCDH_BUSY);
 
-
 out:
 
 	return ret;
@@ -131,7 +130,6 @@ out:
 struct ipc_data_host_buffer *ipc_platform_get_host_buffer(struct ipc *ipc)
 {
 	struct ipc_data *iipc = ipc_get_drvdata(ipc);
-
 
 	return &iipc->dh_buffer;
 }
@@ -173,7 +171,6 @@ int platform_ipc_init(struct ipc *ipc)
 	imrd = shim_read(SHIM_IMRD);
 	imrd &= ~(SHIM_IMRD_BUSY | SHIM_IMRD_DONE);
 	shim_write(SHIM_IMRD, imrd);
-
 
 	return 0;
 }

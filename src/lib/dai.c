@@ -163,7 +163,6 @@ struct dai *dai_get(uint32_t type, uint32_t index, uint32_t flags)
 		tr_info(&dai_tr, "dai_get type %d index %d new sref %d",
 			type, index, d->sref);
 
-
 		spin_unlock_irq(&d->lock, flags_irq);
 
 		return !ret ? d : NULL;

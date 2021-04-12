@@ -4,8 +4,6 @@
 //
 // Author: Artur Kloniecki <arturx.kloniecki@linux.intel.com>
 
-
-
 #if CONFIG_COMP_MUX
 
 #include <sof/audio/buffer.h>

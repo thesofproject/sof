@@ -306,7 +306,6 @@ static inline void handle_irq_batch(struct irq_cascade_desc *cascade,
 
 		}
 
-
 		spin_unlock(&cascade->lock);
 
 		if (!handled) {

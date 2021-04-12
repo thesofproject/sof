@@ -21,7 +21,6 @@
 
 struct audio_stream;
 
-
 #if __XCC__
 #include <xtensa/config/core-isa.h>
 #endif

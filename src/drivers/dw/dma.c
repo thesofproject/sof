@@ -802,7 +802,6 @@ static int dw_dma_pm_context_store(struct dma *dma)
 	return 0;
 }
 
-
 static void dw_dma_verify_transfer(struct dma_chan_data *channel,
 				   struct dma_cb_data *next)
 {

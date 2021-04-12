@@ -241,7 +241,6 @@ static void volume_ramp(struct comp_dev *dev)
 	 */
 	ramp_time = cd->vol_ramp_elapsed_frames * 8000 / cd->sample_rate;
 
-
 	/* Update each volume if it's not at target for active channels */
 	for (i = 0; i < cd->channels; i++) {
 		/* skip if target reached */

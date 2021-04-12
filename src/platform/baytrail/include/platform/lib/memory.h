@@ -10,8 +10,6 @@
 #ifndef __PLATFORM_LIB_MEMORY_H__
 #define __PLATFORM_LIB_MEMORY_H__
 
-
-
 #if !defined(__ASSEMBLER__) && !defined(LINKER)
 
 struct sof;
@@ -121,7 +119,6 @@ static inline void *platform_rfree_prepare(void *ptr)
  * | SOF_STACK_BASE     |                |                                   |
  * +---------------------+----------------+-----------------------------------+
  */
-
 
 /* Heap section sizes for module pool */
 #define HEAP_RT_COUNT8		0

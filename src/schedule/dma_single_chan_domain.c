@@ -90,7 +90,6 @@ static struct dma_chan_data *dma_chan_min_period(struct dma_domain *dma_domain)
 		}
 	}
 
-
 	return channel;
 }
 

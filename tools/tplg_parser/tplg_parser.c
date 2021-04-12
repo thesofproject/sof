@@ -269,7 +269,6 @@ int tplg_load_pcm(int comp_id, int pipeline_id, int size, int dir,
 			return ret;
 		}
 
-
 		/* parse comp tokens */
 		ret = sof_parse_tokens(&host->config, comp_tokens,
 				       ARRAY_SIZE(comp_tokens), array,

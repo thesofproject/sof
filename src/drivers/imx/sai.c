@@ -285,7 +285,6 @@ static inline int sai_set_config(struct dai *dai,
 			REG_SAI_CR4_FRSZ_MASK | REG_SAI_CR4_SYWD_MASK |
 			REG_SAI_CR4_CHMOD_MASK;
 
-
 	mask_cr5  = REG_SAI_CR5_WNW_MASK | REG_SAI_CR5_W0W_MASK |
 			REG_SAI_CR5_FBT_MASK;
 

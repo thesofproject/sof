@@ -16,7 +16,6 @@
 #include <sof/bit.h>
 #include <sof/drivers/interrupt-map.h>
 
-
 #define PLATFORM_IRQ_HW_NUM	XCHAL_NUM_INTERRUPTS
 #define PLATFORM_IRQ_FIRST_CHILD  PLATFORM_IRQ_HW_NUM
 #define PLATFORM_IRQ_CHILDREN	32

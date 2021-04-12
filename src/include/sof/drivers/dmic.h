@@ -8,8 +8,6 @@
 #ifndef __SOF_DRIVERS_DMIC_H__
 #define __SOF_DRIVERS_DMIC_H__
 
-
-
 #if CONFIG_INTEL_DMIC
 
 /* The microphones create a low frequecy thump sound when clock is enabled.

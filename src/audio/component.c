@@ -674,6 +674,5 @@ struct comp_dev *comp_make_shared(struct comp_dev *dev)
 	list_relink(&dev->bsink_list, old_bsink_list);
 	dev->is_shared = true;
 
-
 	return dev;
 }

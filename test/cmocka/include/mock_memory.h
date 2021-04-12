@@ -5,7 +5,6 @@
  * Author: Adrian Bonislawski <adrian.bonislawski@linux.intel.com>
  */
 
-
 /* Memory mock for memmap */
 #define HEAP_RUNTIME_BASE	0xBE200000
 #define HEAP_BUFFER_BASE	0xBE2F0000

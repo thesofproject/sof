@@ -120,7 +120,6 @@ extern const struct dai_driver ssp_driver;
 #define SSCR2_SMTATF		BIT(19)
 #endif
 
-
 /* SSR bits */
 #define SSSR_TNF	BIT(2)
 #define SSSR_RNE	BIT(3)
@@ -175,7 +174,6 @@ extern const struct dai_driver ssp_driver;
 #define SSCR3_STRETCH_RX	BIT(15)
 #define SSCR3_MST_CLK_EN	BIT(16)
 #define SSCR3_SYN_FIX_EN	BIT(17)
-
 
 /* SSCR4 bits */
 #define SSCR4_TOT_FRM_PRD(x)	((x) << 7)

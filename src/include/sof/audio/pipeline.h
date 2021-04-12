@@ -205,7 +205,6 @@ int pipeline_params(struct pipeline *p, struct comp_dev *cd,
  */
 int pipeline_prepare(struct pipeline *p, struct comp_dev *cd);
 
-
 /*
  * Pipeline stream APIs
  *

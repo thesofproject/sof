@@ -12,7 +12,6 @@
 
 #include <sof/lib/cache.h>
 
-
 /* data cache line alignment */
 #define PLATFORM_DCACHE_ALIGN	sizeof(void *)
 
@@ -201,7 +200,6 @@ static inline void *platform_shared_get(void *ptr, int bytes)
  * or dynamically allocated with SOF_MEM_FLAG_SHARED flag.
  * Does nothing, since IMX doesn't support SMP.
  */
-
 
 static inline void *platform_rfree_prepare(void *ptr)
 {

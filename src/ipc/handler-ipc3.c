@@ -104,7 +104,6 @@ struct sof_ipc_cmd_hdr *mailbox_validate(void)
 	mailbox_hostbox_read(hdr + 1, SOF_IPC_MSG_MAX_SIZE - sizeof(*hdr),
 			     sizeof(*hdr), hdr->size - sizeof(*hdr));
 
-
 	return hdr;
 }
 
@@ -337,7 +336,6 @@ static int ipc_stream_pcm_free(uint32_t header)
 	/* reset the pipeline */
 	ret = pipeline_reset(pcm_dev->cd->pipeline, pcm_dev->cd);
 
-
 	return ret;
 }
 
@@ -379,7 +377,6 @@ static int ipc_stream_position(uint32_t header)
 	/* copy positions to stream region */
 	mailbox_stream_write(pcm_dev->cd->pipeline->posn_offset,
 			     &posn, sizeof(posn));
-
 
 	return 1;
 }
@@ -437,7 +434,6 @@ static int ipc_stream_trigger(uint32_t header)
 		tr_err(&ipc_tr, "ipc: comp %d trigger 0x%x failed %d",
 		       stream.comp_id, ipc_cmd, ret);
 	}
-
 
 	return ret;
 }
@@ -702,7 +698,6 @@ static int ipc_dma_trace_config(uint32_t header)
 		platform_timer_set_delta(timer, params.timestamp_ns);
 	else
 		timer->delta = 0;
-
 
 #if CONFIG_SUECREEK || defined __ZEPHYR__
 	return 0;
@@ -1061,7 +1056,6 @@ static int ipc_comp_value(uint32_t header, uint32_t cmd)
 		       data->cmd, ret);
 		return ret;
 	}
-
 
 	/* write component values to the outbox */
 	if (data->rhdr.hdr.size <= MAILBOX_HOSTBOX_SIZE &&
@@ -1436,7 +1430,6 @@ void ipc_cmd(struct sof_ipc_cmd_hdr *hdr)
 		ret = -EINVAL;
 		break;
 	}
-
 
 out:
 	tr_dbg(&ipc_tr, "ipc: last request 0x%x returned %d", type, ret);

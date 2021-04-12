@@ -33,6 +33,4 @@ int timestamp_ssp_stop(struct dai *dai, struct timestamp_cfg *cfg);
 int timestamp_ssp_get(struct dai *dai, struct timestamp_cfg *cfg,
 		      struct timestamp_data *tsd);
 
-
-
 #endif /* __SOF_DRIVERS_TIMESTAMP_H__ */

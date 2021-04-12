@@ -478,7 +478,6 @@ void trace_flush(void)
 	/* flush dma trace messages */
 	dma_trace_flush((void *)t);
 
-
 	spin_unlock_irq(&trace->lock, flags);
 }
 
@@ -492,7 +491,6 @@ void trace_on(void)
 	trace->enable = 1;
 	dma_trace_on();
 
-
 	spin_unlock_irq(&trace->lock, flags);
 }
 
@@ -505,7 +503,6 @@ void trace_off(void)
 
 	trace->enable = 0;
 	dma_trace_off();
-
 
 	spin_unlock_irq(&trace->lock, flags);
 }
@@ -521,7 +518,6 @@ void trace_init(struct sof *sof)
 	sof->trace->user_filter_override = false;
 #endif /* CONFIG_TRACE_FILTERING_ADAPTIVE */
 	spinlock_init(&sof->trace->lock);
-
 
 	bzero((void *)MAILBOX_TRACE_BASE, MAILBOX_TRACE_SIZE);
 	dcache_writeback_invalidate_region((void *)MAILBOX_TRACE_BASE,

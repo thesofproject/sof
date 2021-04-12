@@ -105,7 +105,6 @@ static inline bool is_mclk_source_in_use(void)
 		}
 	}
 
-
 	return ret;
 }
 
@@ -204,7 +203,6 @@ static inline int check_current_mclk_source(uint16_t mclk_id, uint32_t mclk_rate
 
 		mn->mclk_sources_ref[mclk_id]++;
 	}
-
 
 	return ret;
 }
@@ -437,7 +435,6 @@ static inline bool is_bclk_source_in_use(enum bclk_source clk_src)
 		}
 	}
 
-
 	return ret;
 }
 
@@ -474,7 +471,6 @@ static inline int setup_initial_bclk_mn_source(uint32_t bclk, uint32_t *scr_div,
 	mdivc |= MNDSS(ssp_freq_sources[clk_index]);
 
 	mn_reg_write(MN_MDIVCTRL, 0, mdivc);
-
 
 	return 0;
 }
@@ -579,7 +575,6 @@ static inline bool check_bclk_xtal_source(uint32_t bclk, bool mn_in_use,
 		if (!mn_in_use || mn->bclk_source_mn_clock == i)
 			break;
 	}
-
 
 	return ret;
 }

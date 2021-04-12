@@ -15,7 +15,6 @@
 #include <cavs/lib/memory.h>
 #include <sof/lib/cpu.h>
 
-
 /* physical DSP addresses */
 
 /* shim */
@@ -388,7 +387,6 @@
 #define SOF_LP_STACK_SIZE		0x1000
 #define SOF_LP_STACK_BASE		(LP_SRAM_BASE + LP_SRAM_SIZE)
 #define SOF_LP_STACK_END		(SOF_LP_STACK_BASE - SOF_LP_STACK_SIZE)
-
 
 /* Vector and literal sizes - do not use core-isa.h */
 #define SOF_MEM_VECBASE			HP_SRAM_VECBASE_RESET

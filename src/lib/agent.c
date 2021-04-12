@@ -82,7 +82,6 @@ static enum task_state validate(void *data)
 	/* update last_check to current */
 	sa->last_check = current;
 
-
 	return SOF_TASK_STATE_RESCHEDULE;
 }
 

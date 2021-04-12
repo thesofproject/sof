@@ -1152,7 +1152,6 @@ enum asrc_error_code asrc_process_push32(struct comp_dev *dev,
 	*write_index = src_obj->io_buffer_idx;
 	*input_num_frames = index_input_frame;
 
-
 	/* if fixed control mode, update the frames counters and check if we
 	 * have reached end of control cycle.
 	 */
