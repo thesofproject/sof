@@ -62,6 +62,12 @@ int ipc_platform_send_msg(struct ipc_msg *msg);
 struct ipc_data_host_buffer *ipc_platform_get_host_buffer(struct ipc *ipc);
 
 /**
+ * \brief Read a compact IPC message or return NULL for normal message.
+ * @return Pointer to the compact message data.
+ */
+struct sof_ipc_cmd_hdr *ipc_compact_read_msg(void);
+
+/**
  * \brief Initialise IPC hardware for polling mode.
  * @return 0 if successful error code otherwise.
  */
