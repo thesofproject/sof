@@ -8,7 +8,7 @@
 //         Ranjani Sridharan <ranjani.sridharan@linux.intel.com>
 
 #include <sof/lib/alloc.h>
-#include <sof/drivers/ipc.h>
+#include <sof/ipc/driver.h>
 #include <stdlib.h>
 
 /* testbench ipc */

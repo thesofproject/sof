@@ -5,7 +5,7 @@
 // Author: Ryan Lee <ryans.lee@maximintegrated.com>
 
 #include <sof/trace/trace.h>
-#include <sof/drivers/ipc.h>
+#include <sof/ipc/msg.h>
 #include <sof/ut.h>
 #include <user/smart_amp.h>
 #include <sof/audio/smart_amp/smart_amp.h>

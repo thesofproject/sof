@@ -8,7 +8,7 @@
 #include <sof/audio/buffer.h>
 #include <sof/audio/component_ext.h>
 #include <sof/audio/pipeline.h>
-#include <sof/drivers/ipc.h>
+#include <sof/ipc/msg.h>
 #include <sof/drivers/interrupt.h>
 #include <sof/lib/mm_heap.h>
 #include <sof/lib/uuid.h>

@@ -11,7 +11,7 @@
 #include <sof/audio/pipeline.h>
 #include <sof/common.h>
 #include <sof/debug/panic.h>
-#include <sof/drivers/ipc.h>
+#include <sof/ipc/msg.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/dma.h>
 #include <sof/lib/mailbox.h>

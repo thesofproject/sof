@@ -5,7 +5,7 @@
 // Author: Curtis Malainey <cujomalainey@chromium.org>
 
 #include <sof/sof.h>
-#include <sof/drivers/ipc.h>
+#include <sof/ipc/driver.h>
 #include <sof/drivers/timer.h>
 #include <sof/lib/agent.h>
 #include <sof/schedule/edf_schedule.h>

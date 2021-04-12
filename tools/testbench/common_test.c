@@ -13,7 +13,8 @@
 #include <sof/schedule/task.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/notifier.h>
-#include <sof/drivers/ipc.h>
+#include <sof/ipc/driver.h>
+#include <sof/ipc/topology.h>
 #include <sof/lib/agent.h>
 #include <sof/lib/dai.h>
 #include <sof/lib/dma.h>

@@ -8,7 +8,9 @@
 
 #include <cavs/version.h>
 #include <sof/drivers/interrupt.h>
-#include <sof/drivers/ipc.h>
+#include <sof/ipc/driver.h>
+#include <sof/ipc/msg.h>
+#include <sof/ipc/schedule.h>
 #include <sof/lib/mailbox.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/pm_runtime.h>

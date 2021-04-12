@@ -5,7 +5,7 @@
 // Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
 //         Keyon Jie <yang.jie@linux.intel.com>
 
-#include <sof/drivers/ipc.h>
+#include <sof/ipc/msg.h>
 #include <sof/lib/dma.h>
 #include <sof/lib/uuid.h>
 #include <sof/platform.h>

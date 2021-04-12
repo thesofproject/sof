@@ -5,7 +5,7 @@
 
 #include <inttypes.h>
 #include <stdlib.h>
-#include <sof/drivers/ipc.h>
+#include <sof/ipc/driver.h>
 #include <sof/math/numbers.h>
 #include <sof/audio/component_ext.h>
 #include <sof/lib/notifier.h>

@@ -6,7 +6,7 @@
 
 #include <sof/audio/component.h>
 #include <sof/trace/trace.h>
-#include <sof/drivers/ipc.h>
+#include <sof/ipc/msg.h>
 #include <sof/ut.h>
 
 #include <sof/audio/channel_map.h>

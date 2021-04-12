@@ -8,7 +8,7 @@
 #include <sof/common.h>
 #include <sof/debug/panic.h>
 #include <sof/drivers/interrupt.h>
-#include <sof/drivers/ipc.h>
+#include <sof/ipc/msg.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/cache.h>
 #include <sof/lib/memory.h>
