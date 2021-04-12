@@ -700,6 +700,29 @@ static int man_create_modules(struct image *image, struct sof_man_fw_desc *desc,
 	return 0;
 }
 
+static void man_create_modules_in_config(struct image *image, struct sof_man_fw_desc *desc)
+{
+	struct fw_image_manifest_module *modules;
+	struct sof_man_module *man_module;
+	void *cfg_start;
+	int i;
+
+	modules = image->adsp->modules;
+	if (!modules)
+		return;
+
+	/*skip bringup and base module */
+	for (i = 2; i < modules->mod_man_count; i++) {
+		man_module = (void *)desc + SOF_MAN_MODULE_OFFSET(i);
+		memcpy(man_module, &modules->mod_man[i], sizeof(*man_module));
+	}
+
+	cfg_start = (void *)desc + SOF_MAN_MODULE_OFFSET(i);
+	memcpy(cfg_start, modules->mod_cfg, modules->mod_cfg_count * sizeof(struct sof_man_mod_config));
+
+	desc->header.num_module_entries = modules->mod_man_count;
+}
+
 static int man_hash_modules(struct image *image, struct sof_man_fw_desc *desc)
 {
 	struct sof_man_module *man_module;
@@ -1169,6 +1192,8 @@ int man_write_fw_meu_v2_5(struct image *image)
 	/* create each module */
 	desc->header.num_module_entries = image->num_modules;
 	man_create_modules(image, desc, FILE_TEXT_OFFSET_V1_8);
+	/* platform config defines some modules except bringup & base modules */
+	man_create_modules_in_config(image, desc);
 
 	fprintf(stdout, "Firmware completing manifest v2.5\n");
 
@@ -1251,6 +1276,8 @@ int man_write_fw_v2_5(struct image *image)
 	/* create each module */
 	m->desc.header.num_module_entries = image->num_modules;
 	man_create_modules(image, desc, FILE_TEXT_OFFSET_V1_8);
+	/* platform config defines some modules except bringup & base modules */
+	man_create_modules_in_config(image, desc);
 
 	fprintf(stdout, "Firmware completing manifest v2.5\n");
 

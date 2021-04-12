@@ -6,7 +6,9 @@
  */
 
 #include "rimage/sof/user/manifest.h"
+#include "rimage/sof/user/manifest.h"
 #include "rimage/adsp_config.h"
+#include "rimage/ext_manifest_gen.h"
 #include "rimage/plat_auth.h"
 #include "rimage/manifest.h"
 #include "rimage/rimage.h"
@@ -262,8 +264,8 @@ static enum snd_sof_fw_blk_type zone_name_to_idx(const char *name)
 		{"ROM", SOF_FW_BLK_TYPE_ROM},
 		{"IMR", SOF_FW_BLK_TYPE_IMR},
 		{"RSRVD0", SOF_FW_BLK_TYPE_RSRVD0},
-		{"RSRVD6", SOF_FW_BLK_TYPE_RSRVD6},
-		{"RSRVD7", SOF_FW_BLK_TYPE_RSRVD7},
+		{"HP-SRAM", SOF_FW_BLK_TYPE_HPSRAM},
+		{"LP-SRAM", SOF_FW_BLK_TYPE_LPSRAM},
 		{"RSRVD8", SOF_FW_BLK_TYPE_RSRVD8},
 		{"RSRVD9", SOF_FW_BLK_TYPE_RSRVD9},
 		{"RSRVD10", SOF_FW_BLK_TYPE_RSRVD10},
@@ -1701,6 +1703,370 @@ static int parse_fw_desc(const toml_table_t *toml, struct parse_ctx *pctx,
 	return 0;
 }
 
+static int parse_scheduling(const toml_table_t *mod_entry, struct parse_ctx *ctx,
+			    struct fw_image_ext_mod_config *ext_mod_config, int *ext_length)
+{
+	toml_array_t *arr;
+	toml_raw_t raw;
+	int64_t val;
+	int ret;
+
+	/* check "sched_caps" key */
+	arr = toml_array_in(mod_entry, "sched_caps");
+	if (!arr) {
+		ext_mod_config->header.num_scheduling_capabilities = 0;
+		*ext_length = 0;
+		return 0;
+	}
+
+	if (toml_array_type(arr) != 'i'  || toml_array_nelem(arr) != 2 ||
+	    toml_array_kind(arr) != 'v')
+		return err_key_parse("version", "wrong array type or length != 2");
+
+	ctx->array_cnt++;
+
+	raw = toml_raw_at(arr, 0);
+	if (raw == 0)
+		return err_key_parse("frame_length", NULL);
+	ret = toml_rtoi(raw, &val);
+	if (ret < 0)
+		return err_key_parse("frame_length", "can't convert element to integer");
+	ext_mod_config->sched_caps.frame_length = val;
+
+	raw = toml_raw_at(arr, 1);
+	if (raw == 0)
+		return err_key_parse("multiples_supported", NULL);
+	ret = toml_rtoi(raw, &val);
+	if (ret < 0)
+		return err_key_parse("multiples_supported", "can't convert element to integer");
+	ext_mod_config->sched_caps.multiples_supported.ul = val;
+
+	ext_mod_config->header.num_scheduling_capabilities = 1;
+	*ext_length = sizeof(const struct mod_scheduling_caps);
+
+	return 0;
+}
+
+static int parse_pin(const toml_table_t *mod_entry, struct parse_ctx *ctx,
+		     struct fw_image_ext_mod_config *ext_mod_config, int *ext_length)
+{
+	toml_array_t *arr;
+	toml_raw_t raw;
+	int64_t val;
+	int ret;
+	int i, j;
+
+	/* check "pin" key */
+	arr = toml_array_in(mod_entry, "pin");
+	if (!arr) {
+		ext_mod_config->header.num_pin_entries = 0;
+		*ext_length = 0;
+		return 0;
+	}
+
+	if (toml_array_type(arr) != 'i'  || toml_array_kind(arr) != 'v')
+		return err_key_parse("version", "wrong array type");
+
+	ctx->array_cnt++;
+
+	ext_mod_config->header.num_pin_entries = toml_array_nelem(arr) / 6;
+	ext_mod_config->pin_desc = calloc(sizeof(const struct fw_pin_description),
+					  toml_array_nelem(arr) / 6);
+
+	j = 0;
+	for (i = 0; ; i += 6, j++) {
+		raw = toml_raw_at(arr, i);
+		if (raw == 0)
+			break;
+
+		ret = toml_rtoi(raw, &val);
+		if (ret < 0)
+			return err_key_parse("pin", "can't convert element to integer");
+		ext_mod_config->pin_desc[j].caps.ul = (uint16_t)val;
+
+		raw = toml_raw_at(arr, i + 1);
+		ret = toml_rtoi(raw, &val);
+		if (ret < 0)
+			return err_key_parse("pin", "can't convert element to integer");
+		ext_mod_config->pin_desc[j].format_type = (enum mod_stream_type)val;
+
+		raw = toml_raw_at(arr, i + 2);
+		ret = toml_rtoi(raw, &val);
+		if (ret < 0)
+			return err_key_parse("pin", "can't convert element to integer");
+		ext_mod_config->pin_desc[j].sample_rate.ul = (uint32_t)val;
+
+		raw = toml_raw_at(arr, i + 3);
+		ret = toml_rtoi(raw, &val);
+		if (ret < 0)
+			return err_key_parse("pin", "can't convert element to integer");
+		ext_mod_config->pin_desc[j].sample_size.ul = (uint16_t)val;
+
+		raw = toml_raw_at(arr, i + 4);
+		ret = toml_rtoi(raw, &val);
+		if (ret < 0)
+			return err_key_parse("pin", "can't convert element to integer");
+		ext_mod_config->pin_desc[j].sample_container.ul = (uint32_t)val;
+
+		raw = toml_raw_at(arr, i + 5);
+		ret = toml_rtoi(raw, &val);
+		if (ret < 0)
+			return err_key_parse("pin", "can't convert element to integer");
+		ext_mod_config->pin_desc[j].ch_cfg.ul = (uint32_t)val;
+	}
+
+	*ext_length = ext_mod_config->header.num_pin_entries *
+			sizeof(const struct fw_pin_description);
+
+	return 0;
+}
+
+static int parse_mod_config(const toml_table_t *mod_entry, struct parse_ctx *ctx,
+			    struct fw_image_manifest_module *modules,
+			    struct sof_man_module *mod_man)
+{
+	toml_array_t *arr;
+	toml_raw_t raw;
+	int *pin_data;
+	int64_t val;
+	int ret;
+	int i;
+
+	/* check "pin" key */
+	arr = toml_array_in(mod_entry, "mod_cfg");
+	if (!arr) {
+		mod_man->cfg_count = 0;
+		return 0;
+	}
+
+	if (toml_array_type(arr) != 'i' || toml_array_kind(arr) != 'v')
+		return err_key_parse("version", "wrong array type");
+
+	ctx->array_cnt++;
+
+	pin_data = (int *)(modules->mod_cfg + modules->mod_cfg_count);
+	mod_man->cfg_offset = modules->mod_cfg_count;
+	modules->mod_cfg_count += toml_array_nelem(arr) / 11;
+	mod_man->cfg_count = toml_array_nelem(arr) / 11;
+
+	/* parse "pin" array elements */
+	for (i = 0; ; ++i) {
+		raw = toml_raw_at(arr, i);
+		if (raw == 0)
+			break;
+
+		ret = toml_rtoi(raw, &val);
+		if (ret < 0)
+			return err_key_parse("pin", "can't convert element to integer");
+		pin_data[i] = val;
+	}
+
+	return 0;
+}
+
+static void parse_uuid(char *buf, uint8_t *uuid)
+{
+	struct uuid_t id;
+	uint32_t d[9];
+
+	sscanf(buf, "%08x-%04x-%04x-%02x%02x-%02x%02x%02x%02x%02x%02x", &id.d0, &d[0],
+	       &d[1], &d[2], &d[3], &d[4], &d[5], &d[6], &d[7], &d[8], &d[9]);
+	id.d1 = (uint16_t)d[0];
+	id.d2 = (uint16_t)d[1];
+	id.d3 = (uint8_t)d[2];
+	id.d4 = (uint8_t)d[3];
+	id.d5 = (uint8_t)d[4];
+	id.d6 = (uint8_t)d[5];
+	id.d7 = (uint8_t)d[6];
+	id.d8 = (uint8_t)d[7];
+	id.d9 = (uint8_t)d[8];
+	id.d10 = (uint8_t)d[9];
+
+	memcpy(uuid, &id, sizeof(id));
+}
+
+static void dump_module(struct fw_image_manifest_module *man_cavs)
+{
+	int i;
+
+	DUMP("\nmodule");
+	DUMP_KEY("moudle count", "%d", man_cavs->mod_man_count);
+	DUMP_KEY("module config count", "%d", man_cavs->mod_cfg_count);
+
+	for (i = 0; i < man_cavs->mod_man_count; i++) {
+		DUMP_KEY("module name", "%s", man_cavs->mod_man[i].name);
+		DUMP_KEY("load type", "%d", man_cavs->mod_man[i].type.load_type);
+		DUMP_KEY("domain ll", "%d", man_cavs->mod_man[i].type.domain_ll);
+		DUMP_KEY("domain dp", "%d", man_cavs->mod_man[i].type.domain_dp);
+		DUMP_KEY("config count", "%d", man_cavs->mod_man[i].cfg_count);
+		DUMP_KEY("config offset", "%d", man_cavs->mod_man[i].cfg_offset);
+	}
+}
+
+static int parse_module(const toml_table_t *toml, struct parse_ctx *pctx,
+			struct adsp *out, bool verbose)
+{
+	struct fw_image_manifest_module *modules;
+	toml_array_t *mod_entry_array;
+	toml_table_t *module;
+	toml_table_t *mod_entry;
+	struct parse_ctx ctx;
+	int entry_count;
+	int type, ext_length;
+	int tmp_cfg_count;
+	int ret, i;
+
+	/* look for subtable in toml, increment pctx parsed table cnt and initialize local ctx */
+	module = toml_table_in(toml, "module");
+	if (!module)
+		return 0;
+
+	out->write_firmware_ext_man = ext_man_write_cavs_25;
+
+	modules = calloc(sizeof(struct fw_image_manifest_module), 1);
+	if (!modules)
+		return err_malloc("man_cavs");
+	out->modules = modules;
+
+	++pctx->table_cnt;
+	parse_ctx_init(&ctx);
+
+	entry_count = parse_uint32_key(module, &ctx, "count", 2, &ret);
+	if (ret < 0)
+		return ret;
+
+	ctx.array_cnt += 1;
+
+	mod_entry_array = toml_array_in(module, "entry");
+	if (!mod_entry_array)
+		return err_key_not_found("entry");
+	if (toml_array_kind(mod_entry_array) != 't' ||
+	    toml_array_nelem(mod_entry_array) != entry_count)
+		return err_key_parse("entry", "wrong array type or length != %d", entry_count);
+
+	modules->mod_ext.mod_conf_count = entry_count;
+	modules->mod_man = calloc(sizeof(const struct sof_man_module), entry_count);
+	if (!modules->mod_man)
+		return -ENOMEM;
+
+	modules->mod_man_count = toml_array_nelem(mod_entry_array);
+
+	tmp_cfg_count = entry_count * 32;
+	modules->mod_cfg = calloc(sizeof(const struct sof_man_mod_config), tmp_cfg_count);
+
+	/* parse entry array elements */
+	for (i = 0; i < toml_array_nelem(mod_entry_array); ++i) {
+		struct fw_ext_mod_config_header *header;
+		struct sof_man_module *mod_man;
+		struct parse_ctx ctx_entry;
+		char buf[48];
+
+		mod_entry = toml_table_at(mod_entry_array, i);
+		if (!mod_entry)
+			return err_key_parse("entry", NULL);
+
+		/* initialize parse context for each array element */
+		parse_ctx_init(&ctx_entry);
+
+		mod_man = &modules->mod_man[i];
+
+		memcpy(mod_man->struct_id, "$AME", 4);
+
+		/* configurable fields */
+		parse_str_key(mod_entry, &ctx_entry, "name", (char *)mod_man->name,
+			      SOF_MAN_MOD_NAME_LEN, &ret);
+		if (ret < 0)
+			return err_key_parse("name", NULL);
+
+		parse_str_key(mod_entry, &ctx_entry, "uuid", buf, 48, &ret);
+		if (ret < 0)
+			return err_key_parse("uuid", NULL);
+
+		parse_uuid(buf, mod_man->uuid);
+
+		mod_man->affinity_mask = parse_uint32_hex_key(mod_entry, &ctx_entry,
+							      "affinity_mask", 1, &ret);
+		if (ret < 0)
+			return err_key_parse("offset", NULL);
+
+		mod_man->instance_max_count = parse_uint32_hex_key(mod_entry, &ctx_entry,
+								   "instance_count", 1, &ret);
+		if (ret < 0)
+			return err_key_parse("length", NULL);
+
+		type = parse_uint32_hex_key(mod_entry, &ctx_entry, "domain_types", 0, &ret);
+		if (ret < 0)
+			return err_key_parse("domain_types", NULL);
+		if (!type)
+			mod_man->type.domain_ll = 1;
+		else
+			mod_man->type.domain_dp = 1;
+
+		mod_man->type.load_type = parse_uint32_hex_key(mod_entry, &ctx_entry,
+							       "load_type", 1, &ret);
+		if (ret < 0)
+			return err_key_parse("load_type", NULL);
+
+		mod_man->type.auto_start = parse_uint32_hex_key(mod_entry, &ctx_entry,
+								"auto_start", 1, &ret);
+		if (ret < 0)
+			return err_key_parse("auto_start", NULL);
+
+		header = &modules->mod_ext.ext_mod_config_array[i].header;
+		header->version_major = 2;
+		header->version_minor = 5;
+		header->ext_module_config_length = sizeof(struct fw_ext_mod_config_header);
+		memcpy(header->guid, mod_man->uuid, sizeof(mod_man->uuid));
+
+		type = parse_uint32_hex_key(mod_entry, &ctx_entry, "module_type", 1, &ret);
+		if (ret < 0)
+			return err_key_parse("module_type", NULL);
+
+		if (strcmp((char *)mod_man->name, "BRNGUP") &&
+		    strcmp((char *)mod_man->name, "BASEFW")) {
+			if (type != i - 1) {
+				log_err(ret, "error: invalid type %s", type);
+				return -EINVAL;
+			}
+		}
+		header->module_type = type;
+
+		ret = parse_scheduling(mod_entry, &ctx_entry,
+				       modules->mod_ext.ext_mod_config_array + i, &ext_length);
+		if (ret < 0)
+			return err_key_parse("schd_caps", NULL);
+		header->ext_module_config_length += ext_length;
+
+		ret = parse_pin(mod_entry, &ctx_entry, modules->mod_ext.ext_mod_config_array + i,
+				&ext_length);
+		if (ret < 0)
+			return err_key_parse("pin", NULL);
+		header->ext_module_config_length += ext_length;
+
+		ret = parse_mod_config(mod_entry, &ctx_entry, modules, mod_man);
+		if (ret < 0)
+			return err_key_parse("mod_cfg", NULL);
+
+		if (modules->mod_cfg_count > tmp_cfg_count)
+			return -ENOMEM;
+
+		/* check everything parsed */
+		ret = assert_everything_parsed(mod_entry, &ctx_entry);
+		if (ret < 0)
+			return ret;
+	}
+
+	/* check everything parsed */
+	ret = assert_everything_parsed(module, &ctx);
+	if (ret < 0)
+		return ret;
+
+	if (verbose)
+		dump_module(modules);
+
+	return 0;
+}
+
 static int parse_adsp_config_v1_0(const toml_table_t *toml, struct adsp *out,
 				  bool verbose)
 {
@@ -1907,6 +2273,10 @@ static int parse_adsp_config_v2_5(const toml_table_t *toml, struct adsp *out,
 	if (ret < 0)
 		return err_key_parse("fw_desc", NULL);
 
+	ret = parse_module(toml, &ctx, out, verbose);
+	if (ret < 0)
+		return err_key_parse("module", NULL);
+
 	/* check everything parsed */
 	ret = assert_everything_parsed(toml, &ctx);
 	if (ret < 0)
@@ -2035,6 +2405,9 @@ void adsp_free(struct adsp *adsp)
 
 	if (adsp->man_v2_5)
 		free(adsp->man_v2_5);
+
+	if (adsp->modules)
+		free(adsp->modules);
 
 	if (adsp->name)
 		free((char *)adsp->name);

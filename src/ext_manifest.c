@@ -12,6 +12,8 @@
 #include <rimage/ext_manifest_gen.h>
 #include <rimage/sof/kernel/ext_manifest.h>
 #include <rimage/rimage.h>
+#include <rimage/cavs/cavs_ext_manifest.h>
+#include <rimage/manifest.h>
 
 const struct ext_man_header ext_man_template = {
 	.magic = EXT_MAN_MAGIC_NUMBER,
@@ -178,6 +180,51 @@ int ext_man_write(struct image *image)
 out:
 	if (ext_man)
 		free(ext_man);
+	if (image->out_ext_man_fd)
+		fclose(image->out_ext_man_fd);
+	return ret;
+}
+
+int ext_man_write_cavs_25(struct image *image)
+{
+	struct fw_image_ext_module *mod_ext;
+	struct fw_ext_man_cavs_header header;
+	int pin_count;
+	int count, i;
+	int ret;
+
+	ret = ext_man_open_file(image);
+	if (ret)
+		goto out;
+
+	mod_ext = &image->adsp->modules->mod_ext;
+	count = mod_ext->mod_conf_count;
+
+	header.version_major = mod_ext->ext_mod_config_array->header.version_major;
+	header.version_minor = mod_ext->ext_mod_config_array->header.version_minor;
+	header.num_module_entries = count;
+	header.id = EXTENDED_MANIFEST_MAGIC_HEADER_ID;
+	header.len = sizeof(const struct fw_ext_man_cavs_header);
+
+	for (i = 0; i < count; i++)
+		header.len += mod_ext->ext_mod_config_array[i].header.ext_module_config_length;
+	fwrite(&header, 1, sizeof(header), image->out_ext_man_fd);
+
+	for (i = 0; i < count; i++) {
+		fwrite(&mod_ext->ext_mod_config_array[i].header, 1,
+		       sizeof(struct fw_ext_mod_config_header), image->out_ext_man_fd);
+
+		if (mod_ext->ext_mod_config_array[i].header.num_scheduling_capabilities)
+			fwrite(&mod_ext->ext_mod_config_array[i].sched_caps, 1,
+			       sizeof(struct mod_scheduling_caps), image->out_ext_man_fd);
+
+		pin_count = mod_ext->ext_mod_config_array[i].header.num_pin_entries;
+		if (pin_count)
+			fwrite(mod_ext->ext_mod_config_array[i].pin_desc, pin_count,
+			       sizeof(struct fw_pin_description), image->out_ext_man_fd);
+	}
+
+out:
 	if (image->out_ext_man_fd)
 		fclose(image->out_ext_man_fd);
 	return ret;

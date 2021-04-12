@@ -14,6 +14,7 @@
 #include <openssl/conf.h>
 #include <openssl/evp.h>
 #include <openssl/err.h>
+#include <rimage/cavs/cavs_ext_manifest.h>
 #include <rimage/sof/kernel/fw.h>
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
@@ -137,6 +138,28 @@ struct mem_zone {
 	uint32_t host_offset;
 };
 
+struct fw_image_ext_mod_config {
+	struct fw_ext_mod_config_header header;
+	struct mod_scheduling_caps sched_caps;
+	struct fw_pin_description *pin_desc;
+};
+
+struct fw_image_ext_module {
+	uint32_t mod_conf_count;
+	struct fw_image_ext_mod_config ext_mod_config_array[FW_MAX_EXT_MODULE_NUM];
+};
+
+/*
+ * module manifest information defined in config file
+ */
+struct fw_image_manifest_module {
+	struct fw_image_ext_module mod_ext;
+	uint32_t mod_cfg_count;
+	struct sof_man_mod_config *mod_cfg;
+	uint32_t mod_man_count;
+	struct sof_man_module *mod_man;
+};
+
 /*
  * Audio DSP descriptor and operations.
  */
@@ -148,6 +171,7 @@ struct adsp {
 	uint32_t dram_offset;
 
 	enum machine_id machine_id;
+	int (*write_firmware_ext_man)(struct image *image);
 	int (*write_firmware)(struct image *image);
 	int (*write_firmware_meu)(struct image *image);
 	int (*verify_firmware)(struct image *image);
@@ -155,6 +179,7 @@ struct adsp {
 	struct fw_image_manifest_v1_8 *man_v1_8;
 	struct fw_image_manifest_v1_5 *man_v1_5;
 	struct fw_image_manifest_v1_5_sue *man_v1_5_sue;
+	struct fw_image_manifest_module *modules;
 	int exec_boot_ldr;
 };
 
