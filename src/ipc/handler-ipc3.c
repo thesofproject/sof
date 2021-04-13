@@ -683,6 +683,12 @@ static int ipc_glb_pm_message(uint32_t header)
 /*
  * Debug IPC Operations.
  */
+#if CONFIG_SUECREEK || defined __ZEPHYR__
+static int ipc_dma_trace_config(uint32_t header)
+{
+	return 0;
+}
+#else
 static int ipc_dma_trace_config(uint32_t header)
 {
 #if CONFIG_HOST_PTABLE
@@ -702,10 +708,6 @@ static int ipc_dma_trace_config(uint32_t header)
 		platform_timer_set_delta(timer, params.timestamp_ns);
 	else
 		timer->delta = 0;
-
-#if CONFIG_SUECREEK || defined __ZEPHYR__
-	return 0;
-#endif
 
 #if CONFIG_HOST_PTABLE
 	err = ipc_process_host_buffer(ipc, &params.buffer,
@@ -740,6 +742,7 @@ static int ipc_dma_trace_config(uint32_t header)
 error:
 	return err;
 }
+#endif /* CONFIG_SUECREEK || defined __ZEPHYR__ */
 
 static int ipc_trace_filter_update(uint32_t header)
 {
