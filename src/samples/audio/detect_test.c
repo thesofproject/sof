@@ -277,10 +277,11 @@ static struct comp_dev *test_keyword_new(const struct comp_driver *drv,
 	if (!cd)
 		goto fail;
 
-	/* using default processing function */
-	cd->detect_func = default_detect_test;
 #if CONFIG_KWD_NN_SAMPLE_KEYPHRASE
 	cd->detect_func = kwd_nn_detect_test;
+#else
+	/* using default processing function */
+	cd->detect_func = default_detect_test;
 #endif
 
 	comp_set_drvdata(dev, cd);
