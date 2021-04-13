@@ -100,6 +100,9 @@ define(`SMART_REF_CH_NUM', 4)
 define(`SMART_PCM_ID', 2)
 define(`SMART_PCM_NAME', `smart-nocodec')
 
+# run smart amp pipelines on DSP core 1
+define(`SMART_AMP_CORE', 1)
+
 # Include Smart Amplifier support
 include(`sof-smart-amplifier.m4')
 
