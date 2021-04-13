@@ -7,5 +7,6 @@ cmocka_test(mixer
 	${PROJECT_SOURCE_DIR}/test/cmocka/src/notifier_mocks.c
 	${PROJECT_SOURCE_DIR}/src/audio/buffer.c
 	${PROJECT_SOURCE_DIR}/src/audio/mixer.c
+	${PROJECT_SOURCE_DIR}/src/ipc/helper-ipc3.c
 )
 target_link_libraries(mixer PRIVATE -lm)
