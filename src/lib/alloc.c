@@ -109,7 +109,6 @@ static void write_pattern(struct mm_heap *heap_map, int heap_depth,
 			memset(
 				(void *)current_map->base, pattern,
 				current_map->count * current_map->block_size);
-					       sizeof(*current_map));
 		}
 
 	}
