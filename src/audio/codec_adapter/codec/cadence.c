@@ -20,49 +20,59 @@ DECLARE_SOF_RT_UUID("cadence_codec", cadence_uuid, 0xd8218443, 0x5ff3, 0x4a4c,
 
 DECLARE_TR_CTX(cadence_tr, SOF_UUID(cadence_uuid), LOG_LEVEL_INFO);
 
+enum cadence_api_id {
+	CADENCE_CODEC_WRAPPER_ID	= 0x01,
+	CADENCE_CODEC_AAC_DEC_ID	= 0x02,
+	CADENCE_CODEC_BSAC_DEC_ID	= 0x03,
+	CADENCE_CODEC_DAB_DEC_ID	= 0x04,
+	CADENCE_CODEC_DRM_DEC_ID	= 0x05,
+	CADENCE_CODEC_MP3_DEC_ID	= 0x06,
+	CADENCE_CODEC_SBC_DEC_ID	= 0x07,
+};
+
 /*****************************************************************************/
 /* Cadence API functions array						     */
 /*****************************************************************************/
 static struct cadence_api cadence_api_table[] = {
 #ifdef CONFIG_CADENCE_CODEC_WRAPPER
 	{
-		.id = 0x01,
+		.id = CADENCE_CODEC_WRAPPER_ID,
 		.api = cadence_api_function
 	},
 #endif
 #ifdef CONFIG_CADENCE_CODEC_AAC_DEC
 	{
-		.id = 0x02,
+		.id = CADENCE_CODEC_AAC_DEC_ID,
 		.api = xa_aac_dec,
 	},
 #endif
 #ifdef CONFIG_CADENCE_CODEC_BSAC_DEC
 	{
-		.id = 0x03,
+		.id = CADENCE_CODEC_BSAC_DEC_ID,
 		.api = xa_bsac_dec,
 	},
 #endif
 #ifdef CONFIG_CADENCE_CODEC_DAB_DEC
 	{
-		.id = 0x04,
+		.id = CADENCE_CODEC_DAB_DEC_ID,
 		.api = xa_dabplus_dec,
 	},
 #endif
 #ifdef CONFIG_CADENCE_CODEC_DRM_DEC
 	{
-		.id = 0x05,
+		.id = CADENCE_CODEC_DRM_DEC_ID,
 		.api = xa_drm_dec,
 	},
 #endif
 #ifdef CONFIG_CADENCE_CODEC_MP3_DEC
 	{
-		.id = 0x06,
+		.id = CADENCE_CODEC_MP3_DEC_ID,
 		.api = xa_mp3_dec,
 	},
 #endif
 #ifdef CONFIG_CADENCE_CODEC_SBC_DEC
 	{
-		.id = 0x07,
+		.id = CADENCE_CODEC_SBC_DEC_ID,
 		.api = xa_sbc_dec,
 	},
 #endif
