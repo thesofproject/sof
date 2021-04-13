@@ -137,32 +137,65 @@ static enum task_state dmic_work(void *data)
 static int dmic_get_hw_params(struct dai *dai,
 			      struct sof_ipc_stream_params  *params, int dir)
 {
+#if CONFIG_INTEL_DMIC_TPLG_PARAMS
 	return dmic_get_hw_params_computed(dai, params, dir);
+
+#elif CONFIG_INTEL_DMIC_NHLT
+	return dmic_get_hw_params_nhlt(dai, params, dir);
+
+#else
+	return -EINVAL;
+#endif
 }
 
-static int dmic_set_config(struct dai *dai, struct ipc_config_dai *common_config,
-			   void *spec_config)
+static int dmic_set_config(struct dai *dai, struct ipc_config_dai *common_config, void *spec_config)
 {
 	struct dmic_pdata *dmic = dai_get_drvdata(dai);
-	struct sof_ipc_dai_config *config = spec_config;
 	int32_t unmute_ramp_time_ms;
 	int32_t step_db;
-	int i;
-	int j;
 	int ret = 0;
 	int di = dai->index;
+#if CONFIG_INTEL_DMIC_TPLG_PARAMS
+	struct sof_ipc_dai_config *config = spec_config;
+	int i;
+	int j;
+#endif
 
 	dai_info(dai, "dmic_set_config()");
 
-	if (config->dmic.driver_ipc_version != DMIC_IPC_VERSION) {
-		dai_err(dai, "dmic_set_config(): wrong ipc version");
+	if (di >= DMIC_HW_FIFOS) {
+		dai_err(dai, "dmic_set_config(): DAI index exceeds number of FIFOs");
 		return -EINVAL;
 	}
 
+	if (!spec_config) {
+		dai_err(dai, "dmic_set_config(): NULL config");
+		return -EINVAL;
+	}
+
+	assert(dmic);
 	spin_lock(&dai->lock);
 
-	/* Compute unmute ramp gain update coefficient. Use the value from
-	 * topology if it is non-zero, otherwise use default length.
+#if CONFIG_INTEL_DMIC_TPLG_PARAMS
+	/*
+	 * "config" might contain pdm controller params for only
+	 * the active controllers
+	 * "prm" is initialized with default params for all HW controllers
+	 */
+	if (config->dmic.driver_ipc_version != DMIC_IPC_VERSION) {
+		dai_err(dai, "dmic_set_config(): wrong ipc version");
+		ret = -EINVAL;
+		goto out;
+	}
+
+	if (config->dmic.num_pdm_active > DMIC_HW_CONTROLLERS) {
+		dai_err(dai, "dmic_set_config(): the requested PDM controllers count exceeds platform capability");
+		ret = -EINVAL;
+		goto out;
+	}
+
+	/* Get unmute gain ramp duration. Use the value from topology
+	 * if it is non-zero, otherwise use default length.
 	 */
 	if (config->dmic.unmute_ramp_time)
 		unmute_ramp_time_ms = config->dmic.unmute_ramp_time;
@@ -175,30 +208,6 @@ static int dmic_set_config(struct dai *dai, struct ipc_config_dai *common_config
 		ret = -EINVAL;
 		goto out;
 	}
-
-	if (di >= DMIC_HW_FIFOS) {
-		dai_err(dai, "dmic_set_config(): dai->index exceeds number of FIFOs");
-		ret = -EINVAL;
-		goto out;
-	}
-
-	if (config->dmic.num_pdm_active > DMIC_HW_CONTROLLERS) {
-		dai_err(dai, "dmic_set_config(): the requested PDM controllers count exceeds platform capability");
-		ret = -EINVAL;
-		goto out;
-	}
-
-	step_db = LOGRAMP_CONST_TERM / unmute_ramp_time_ms;
-	dmic->gain_coef = db2lin_fixed(step_db);
-	dai_info(dai, "dmic_set_config(): unmute_ramp_time_ms = %d",
-		 unmute_ramp_time_ms);
-
-	/*
-	 * "config" might contain pdm controller params for only
-	 * the active controllers
-	 * "prm" is initialized with default params for all HW controllers
-	 */
-	assert(dmic);
 
 	/* Copy the new DMIC params header (all but not pdm[]) to persistent.
 	 * The last arrived request determines the parameters.
@@ -223,6 +232,26 @@ static int dmic_set_config(struct dai *dai, struct ipc_config_dai *common_config
 	}
 
 	ret = dmic_set_config_computed(dai);
+
+#elif CONFIG_INTEL_DMIC_NHLT
+	ret = dmic_set_config_nhlt(dai, spec_config);
+
+	/* There's no unmute ramp duration in blob, so the default rate dependent is used. */
+	unmute_ramp_time_ms = dmic_get_unmute_ramp_from_samplerate(dmic->dai_rate);
+#else
+	ret = -EINVAL;
+#endif
+
+	if (ret < 0) {
+		dai_err(dai, "dmic_set_config(): Failed to set the requested configuration.");
+		goto out;
+	}
+
+	/* Compute unmute ramp gain update coefficient. */
+	step_db = LOGRAMP_CONST_TERM / unmute_ramp_time_ms;
+	dmic->gain_coef = db2lin_fixed(step_db);
+	dai_info(dai, "dmic_set_config(): unmute_ramp_time_ms = %d", unmute_ramp_time_ms);
+
 	dmic->state = COMP_STATE_PREPARE;
 
 out:
