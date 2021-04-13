@@ -96,4 +96,28 @@ void ipc_send_queued_msg(void);
  */
 void ipc_msg_send(struct ipc_msg *msg, void *data, bool high_priority);
 
+/**
+ * \brief Build stream position IPC message.
+ * @param[in,out] posn Stream position message
+ * @param[in] type Stream message type
+ * @param[in] id Stream ID.
+ */
+void ipc_build_stream_posn(struct sof_ipc_stream_posn *posn, uint32_t type,
+			   uint32_t id);
+
+/**
+ * \brief Build component event IPC message.
+ * @param[in,out] event Component event message
+ * @param[in] type Component event type
+ * @param[in] id Component ID.
+ */
+void ipc_build_comp_event(struct sof_ipc_comp_event *event, uint32_t type,
+			  uint32_t id);
+
+/**
+ * \brief Build trace position IPC message.
+ * @param[in,out] posn Trace position message
+ */
+void ipc_build_trace_posn(struct sof_ipc_dma_trace_posn *posn);
+
 #endif

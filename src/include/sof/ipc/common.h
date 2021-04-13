@@ -97,47 +97,6 @@ static inline struct ipc *ipc_get(void)
 }
 
 /**
- * \brief Build stream position IPC message.
- * @param[in,out] posn Stream position message
- * @param[in] type Stream message type
- * @param[in] id Stream ID.
- */
-static inline void ipc_build_stream_posn(struct sof_ipc_stream_posn *posn,
-					 uint32_t type, uint32_t id)
-{
-	posn->rhdr.hdr.cmd = SOF_IPC_GLB_STREAM_MSG | type | id;
-	posn->rhdr.hdr.size = sizeof(*posn);
-	posn->comp_id = id;
-}
-
-/**
- * \brief Build component event IPC message.
- * @param[in,out] event Component event message
- * @param[in] type Component event type
- * @param[in] id Component ID.
- */
-static inline void ipc_build_comp_event(struct sof_ipc_comp_event *event,
-					uint32_t type, uint32_t id)
-{
-	event->rhdr.hdr.cmd = SOF_IPC_GLB_COMP_MSG | SOF_IPC_COMP_NOTIFICATION |
-		id;
-	event->rhdr.hdr.size = sizeof(*event);
-	event->src_comp_type = type;
-	event->src_comp_id = id;
-}
-
-/**
- * \brief Build trace position IPC message.
- * @param[in,out] posn Trace position message
- */
-static inline void ipc_build_trace_posn(struct sof_ipc_dma_trace_posn *posn)
-{
-	posn->rhdr.hdr.cmd =  SOF_IPC_GLB_TRACE_MSG |
-		SOF_IPC_TRACE_DMA_POSITION;
-	posn->rhdr.hdr.size = sizeof(*posn);
-}
-
-/**
  * \brief Initialise global IPC context.
  * @param[in,out] sof Global SOF context.
  * @return 0 on success.
