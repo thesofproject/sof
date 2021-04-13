@@ -63,6 +63,10 @@
 #define DMIC_HW_FIFOS		2
 #endif
 
+/* For NHLT DMIC configuration parsing */
+#define DMIC_HW_CONTROLLERS_MAX	4
+#define DMIC_HW_FIFOS_MAX	2
+
 #endif
 
 #if DMIC_HW_VERSION
@@ -155,6 +159,15 @@
 #define OUTCONTROL0_IPM(x)	SET_BITS(17, 16, x)
 #define OUTCONTROL0_TH(x)	SET_BITS(5, 0, x)
 
+#define OUTCONTROL0_TIE_GET(x)		GET_BIT(27, x)
+#define OUTCONTROL0_SIP_GET(x)		GET_BIT(26, x)
+#define OUTCONTROL0_FINIT_GET(x)	GET_BIT(25, x)
+#define OUTCONTROL0_FCI_GET(x)		GET_BIT(24, x)
+#define OUTCONTROL0_BFTH_GET(x)		GET_BITS(23, 20, x)
+#define OUTCONTROL0_OF_GET(x)		GET_BITS(19, 18, x)
+#define OUTCONTROL0_IPM_GET(x)		GET_BITS(17, 16, x)
+#define OUTCONTROL0_TH_GET(x)		GET_BITS(5, 0, x)
+
 /* OUTCONTROL1 bits */
 #define OUTCONTROL1_TIE_BIT	BIT(27)
 #define OUTCONTROL1_SIP_BIT	BIT(26)
@@ -168,6 +181,15 @@
 #define OUTCONTROL1_OF(x)	SET_BITS(19, 18, x)
 #define OUTCONTROL1_IPM(x)	SET_BITS(17, 16, x)
 #define OUTCONTROL1_TH(x)	SET_BITS(5, 0, x)
+
+#define OUTCONTROL1_TIE_GET(x)		GET_BIT(27, x)
+#define OUTCONTROL1_SIP_GET(x)		GET_BIT(26, x)
+#define OUTCONTROL1_FINIT_GET(x)	GET_BIT(25, x)
+#define OUTCONTROL1_FCI_GET(x)		GET_BIT(24, x)
+#define OUTCONTROL1_BFTH_GET(x)		GET_BITS(23, 20, x)
+#define OUTCONTROL1_OF_GET(x)		GET_BITS(19, 18, x)
+#define OUTCONTROL1_IPM_GET(x)		GET_BITS(17, 16, x)
+#define OUTCONTROL1_TH_GET(x)		GET_BITS(5, 0, x)
 #endif
 
 #if DMIC_HW_VERSION >= 2
@@ -188,6 +210,18 @@
 #define OUTCONTROL0_IPM_SOURCE_3(x)		SET_BITS(10, 9, x)
 #define OUTCONTROL0_IPM_SOURCE_4(x)		SET_BITS(8, 7, x)
 #define OUTCONTROL0_TH(x)			SET_BITS(5, 0, x)
+#define OUTCONTROL0_TIE_GET(x)			GET_BIT(27, x)
+#define OUTCONTROL0_SIP_GET(x)			GET_BIT(26, x)
+#define OUTCONTROL0_FINIT_GET(x)		GET_BIT(25, x)
+#define OUTCONTROL0_FCI_GET(x)			GET_BIT(24, x)
+#define OUTCONTROL0_BFTH_GET(x)			GET_BITS(23, 20, x)
+#define OUTCONTROL0_OF_GET(x)			GET_BITS(19, 18, x)
+#define OUTCONTROL0_IPM_GET(x)			GET_BITS(17, 15, x)
+#define OUTCONTROL0_IPM_SOURCE_1_GET(x)		GET_BITS(14, 13, x)
+#define OUTCONTROL0_IPM_SOURCE_2_GET(x)		GET_BITS(12, 11, x)
+#define OUTCONTROL0_IPM_SOURCE_3_GET(x)		GET_BITS(10,  9, x)
+#define OUTCONTROL0_IPM_SOURCE_4_GET(x)		GET_BITS(8, 7, x)
+#define OUTCONTROL0_TH_GET(x)			GET_BITS(5, 0, x)
 
 /* OUTCONTROL1 bits */
 #define OUTCONTROL1_TIE_BIT			BIT(27)
@@ -206,6 +240,18 @@
 #define OUTCONTROL1_IPM_SOURCE_3(x)		SET_BITS(10, 9, x)
 #define OUTCONTROL1_IPM_SOURCE_4(x)		SET_BITS(8, 7, x)
 #define OUTCONTROL1_TH(x)			SET_BITS(5, 0, x)
+#define OUTCONTROL1_TIE_GET(x)			GET_BIT(27, x)
+#define OUTCONTROL1_SIP_GET(x)			GET_BIT(26, x)
+#define OUTCONTROL1_FINIT_GET(x)		GET_BIT(25, x)
+#define OUTCONTROL1_FCI_GET(x)			GET_BIT(24, x)
+#define OUTCONTROL1_BFTH_GET(x)			GET_BITS(23, 20, x)
+#define OUTCONTROL1_OF_GET(x)			GET_BITS(19, 18, x)
+#define OUTCONTROL1_IPM_GET(x)			GET_BITS(17, 15, x)
+#define OUTCONTROL1_IPM_SOURCE_1_GET(x)		GET_BITS(14, 13, x)
+#define OUTCONTROL1_IPM_SOURCE_2_GET(x)		GET_BITS(12, 11, x)
+#define OUTCONTROL1_IPM_SOURCE_3_GET(x)		GET_BITS(10,  9, x)
+#define OUTCONTROL1_IPM_SOURCE_4_GET(x)		GET_BITS(8, 7, x)
+#define OUTCONTROL1_TH_GET(x)			GET_BITS(5, 0, x)
 
 #define OUTCONTROLX_IPM_NUMSOURCES		4
 
@@ -242,6 +288,14 @@
 #define CIC_CONTROL_MIC_MUTE(x)		SET_BIT(1, x)
 #define CIC_CONTROL_STEREO_MODE(x)	SET_BIT(0, x)
 
+#define CIC_CONTROL_SOFT_RESET_GET(x)		GET_BIT(16, x)
+#define CIC_CONTROL_CIC_START_B_GET(x)		GET_BIT(15, x)
+#define CIC_CONTROL_CIC_START_A_GET(x)		GET_BIT(14, x)
+#define CIC_CONTROL_MIC_B_POLARITY_GET(x)	GET_BIT(3, x)
+#define CIC_CONTROL_MIC_A_POLARITY_GET(x)	GET_BIT(2, x)
+#define CIC_CONTROL_MIC_MUTE_GET(x)		GET_BIT(1, x)
+#define CIC_CONTROL_STEREO_MODE_GET(x)		GET_BIT(0, x)
+
 /* CIC_CONFIG bits */
 #define CIC_CONFIG_CIC_SHIFT(x)		SET_BITS(27, 24, x)
 #define CIC_CONFIG_COMB_COUNT(x)	SET_BITS(15, 8, x)
@@ -249,6 +303,9 @@
 /* CIC_CONFIG masks */
 #define CIC_CONFIG_CIC_SHIFT_MASK	MASK(27, 24)
 #define CIC_CONFIG_COMB_COUNT_MASK	MASK(15, 8)
+
+#define CIC_CONFIG_CIC_SHIFT_GET(x)	GET_BITS(27, 24, x)
+#define CIC_CONFIG_COMB_COUNT_GET(x)	GET_BITS(15, 8, x)
 
 /* MIC_CONTROL bits */
 #define MIC_CONTROL_PDM_EN_B_BIT	BIT(1)
@@ -262,6 +319,12 @@
 /* MIC_CONTROL masks */
 #define MIC_CONTROL_PDM_CLKDIV_MASK	MASK(15, 8)
 
+#define MIC_CONTROL_PDM_CLKDIV_GET(x)	GET_BITS(15, 8, x)
+#define MIC_CONTROL_PDM_SKEW_GET(x)	GET_BITS(7, 4, x)
+#define MIC_CONTROL_PDM_CLK_EDGE_GET(x)	GET_BIT(3, x)
+#define MIC_CONTROL_PDM_EN_B_GET(x)	GET_BIT(1, x)
+#define MIC_CONTROL_PDM_EN_A_GET(x)	GET_BIT(0, x)
+
 /* FIR_CONTROL_A bits */
 #define FIR_CONTROL_A_START_BIT			BIT(7)
 #define FIR_CONTROL_A_ARRAY_START_EN_BIT	BIT(6)
@@ -272,10 +335,20 @@
 #define FIR_CONTROL_A_MUTE(x)			SET_BIT(1, x)
 #define FIR_CONTROL_A_STEREO(x)			SET_BIT(0, x)
 
+#define FIR_CONTROL_A_START_GET(x)		GET_BIT(7, x)
+#define FIR_CONTROL_A_ARRAY_START_EN_GET(x)	GET_BIT(6, x)
+#define FIR_CONTROL_A_DCCOMP_GET(x)		GET_BIT(4, x)
+#define FIR_CONTROL_A_MUTE_GET(x)		GET_BIT(1, x)
+#define FIR_CONTROL_A_STEREO_GET(x)		GET_BIT(0, x)
+
 /* FIR_CONFIG_A bits */
 #define FIR_CONFIG_A_FIR_DECIMATION(x)		SET_BITS(20, 16, x)
 #define FIR_CONFIG_A_FIR_SHIFT(x)		SET_BITS(11, 8, x)
 #define FIR_CONFIG_A_FIR_LENGTH(x)		SET_BITS(7, 0, x)
+
+#define FIR_CONFIG_A_FIR_DECIMATION_GET(x)	GET_BITS(20, 16, x)
+#define FIR_CONFIG_A_FIR_SHIFT_GET(x)		GET_BITS(11, 8, x)
+#define FIR_CONFIG_A_FIR_LENGTH_GET(x)		GET_BITS(7, 0, x)
 
 /* DC offset compensation time constants */
 #define DCCOMP_TC0	0
@@ -309,10 +382,20 @@
 #define FIR_CONTROL_B_MUTE(x)			SET_BIT(1, x)
 #define FIR_CONTROL_B_STEREO(x)			SET_BIT(0, x)
 
+#define FIR_CONTROL_B_START_GET(x)		GET_BIT(7, x)
+#define FIR_CONTROL_B_ARRAY_START_EN_GET(x)	GET_BIT(6, x)
+#define FIR_CONTROL_B_DCCOMP_GET(x)		GET_BIT(4, x)
+#define FIR_CONTROL_B_MUTE_GET(x)		GET_BIT(1, x)
+#define FIR_CONTROL_B_STEREO_GET(x)		GET_BIT(0, x)
+
 /* FIR_CONFIG_B bits */
 #define FIR_CONFIG_B_FIR_DECIMATION(x)		SET_BITS(20, 16, x)
 #define FIR_CONFIG_B_FIR_SHIFT(x)		SET_BITS(11, 8, x)
 #define FIR_CONFIG_B_FIR_LENGTH(x)		SET_BITS(7, 0, x)
+
+#define FIR_CONFIG_B_FIR_DECIMATION_GET(x)	GET_BITS(20, 16, x)
+#define FIR_CONFIG_B_FIR_SHIFT_GET(x)		GET_BITS(11, 8, x)
+#define FIR_CONFIG_B_FIR_LENGTH_GET(x)		GET_BITS(7, 0, x)
 
 /* DC_OFFSET_LEFT_B bits */
 #define DC_OFFSET_LEFT_B_DC_OFFS(x)		SET_BITS(21, 0, x)
@@ -381,7 +464,9 @@ struct dmic_pdata {
 	int32_t gain_coef;			/* Gain update constant */
 	int32_t gain;				/* Gain value to be applied to HW */
 	int irq;				/* Interrupt number used */
-
+	enum sof_ipc_frame dai_format;		/* PCM format s32_le etc. */
+	int dai_channels;			/* Channels count */
+	int dai_rate;				/* Sample rate in Hz */
 };
 
 struct decim_modes {
@@ -415,8 +500,54 @@ struct dmic_configuration {
 	int32_t fir_b_scale;
 };
 
+struct nhlt_dmic_gateway_attributes {
+	uint32_t dw;
+};
+
+struct nhlt_dmic_ts_group {
+	uint32_t ts_group[4];
+};
+
+struct nhlt_dmic_clock_on_delay {
+	uint32_t clock_on_delay;
+};
+
+struct nhlt_dmic_channel_ctrl_mask {
+	uint32_t channel_ctrl_mask;
+};
+
+struct nhlt_pdm_ctrl_mask {
+	uint32_t pdm_ctrl_mask;
+};
+
+struct nhlt_pdm_ctrl_cfg {
+	uint32_t cic_control;
+	uint32_t cic_config;
+	uint32_t reserved0;
+	uint32_t mic_control;
+	uint32_t pdm_sdw_map;
+	uint32_t reuse_fir_from_pdm;
+	uint32_t reserved1[2];
+};
+
+struct nhlt_pdm_ctrl_fir_cfg {
+	uint32_t fir_control;
+	uint32_t fir_config;
+	int32_t dc_offset_left;
+	int32_t dc_offset_right;
+	int32_t out_gain_left;
+	int32_t out_gain_right;
+	uint32_t reserved[2];
+};
+
+struct nhlt_pdm_fir_coeffs {
+	int32_t fir_coeffs[0];
+};
+
 int dmic_set_config_computed(struct dai *dai);
 int dmic_get_hw_params_computed(struct dai *dai, struct sof_ipc_stream_params *params, int dir);
+int dmic_set_config_nhlt(struct dai *dai, void *spec_config);
+int dmic_get_hw_params_nhlt(struct dai *dai, struct sof_ipc_stream_params *params, int dir);
 
 extern const struct dai_driver dmic_driver;
 
