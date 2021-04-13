@@ -390,7 +390,7 @@ static int ipc_stream_trigger(uint32_t header)
 	struct ipc *ipc = ipc_get();
 	struct ipc_comp_dev *pcm_dev;
 	struct sof_ipc_stream stream;
-	uint32_t ipc_cmd = iCS(header);
+	uint32_t ipc_command = iCS(header);
 	uint32_t cmd;
 	int ret;
 
@@ -409,9 +409,9 @@ static int ipc_stream_trigger(uint32_t header)
 		return ipc_process_on_core(pcm_dev->core);
 
 	tr_dbg(&ipc_tr, "ipc: comp %d -> trigger cmd 0x%x",
-	       stream.comp_id, ipc_cmd);
+	       stream.comp_id, ipc_command);
 
-	switch (ipc_cmd) {
+	switch (ipc_command) {
 	case SOF_IPC_STREAM_TRIG_START:
 		cmd = COMP_TRIGGER_START;
 		break;
@@ -428,7 +428,7 @@ static int ipc_stream_trigger(uint32_t header)
 	case SOF_IPC_STREAM_TRIG_XRUN:
 		return 0;
 	default:
-		tr_err(&ipc_tr, "ipc: invalid trigger cmd 0x%x", ipc_cmd);
+		tr_err(&ipc_tr, "ipc: invalid trigger cmd 0x%x", ipc_command);
 		return -ENODEV;
 	}
 
@@ -436,7 +436,7 @@ static int ipc_stream_trigger(uint32_t header)
 	ret = pipeline_trigger(pcm_dev->cd->pipeline, pcm_dev->cd, cmd);
 	if (ret < 0) {
 		tr_err(&ipc_tr, "ipc: comp %d trigger 0x%x failed %d",
-		       stream.comp_id, ipc_cmd, ret);
+		       stream.comp_id, ipc_command, ret);
 	}
 
 	return ret;
