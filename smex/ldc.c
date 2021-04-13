@@ -34,7 +34,7 @@ static int fw_version_copy(const struct elf_module *src,
 	/* fw_ready structure contains main (primarily kernel)
 	 * ABI version.
 	 */
-	fprintf(stdout, "fw abi main version:\t%d:%d:%d\n",
+	fprintf(stdout, "fw abi main version:\t%d.%d.%d\n",
 		SOF_ABI_VERSION_MAJOR(header->version.abi_version),
 		SOF_ABI_VERSION_MINOR(header->version.abi_version),
 		SOF_ABI_VERSION_PATCH(header->version.abi_version));
@@ -63,7 +63,7 @@ static int fw_version_copy(const struct elf_module *src,
 	}
 	free(buffer);
 
-	fprintf(stdout, "fw abi dbg version:\t%d:%d:%d\n",
+	fprintf(stdout, "fw abi dbg version:\t%d.%d.%d\n",
 		SOF_ABI_VERSION_MAJOR(header->version.abi_version),
 		SOF_ABI_VERSION_MINOR(header->version.abi_version),
 		SOF_ABI_VERSION_PATCH(header->version.abi_version));
