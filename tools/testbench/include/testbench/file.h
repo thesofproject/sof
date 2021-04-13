@@ -56,5 +56,5 @@ struct sof_ipc_comp_file {
 	char *fn;
 	enum file_mode mode;
 	enum sof_ipc_frame frame_fmt;
-} __attribute__((packed));
+} __attribute__((packed, aligned(4)));
 #endif
