@@ -6,6 +6,7 @@ if(CONFIG_FORMAT_FLOAT)
 		${PROJECT_SOURCE_DIR}/src/audio/pcm_converter/pcm_converter.c
 		${PROJECT_SOURCE_DIR}/src/audio/pcm_converter/pcm_converter_generic.c
 		${PROJECT_SOURCE_DIR}/src/audio/buffer.c
+		${PROJECT_SOURCE_DIR}/src/ipc/helper-ipc3.c
 		${PROJECT_SOURCE_DIR}/test/cmocka/src/notifier_mocks.c
 	)
 	target_include_directories(pcm_float_generic PRIVATE ${PROJECT_SOURCE_DIR}/src/include)
