@@ -34,6 +34,7 @@ DEBUG_START
 # PCM3 ----> volume -----> iDisp2
 # PCM4 ----> volume -----> iDisp3
 # PCM5 ----> volume -----> iDisp4
+# PCM6 ----> passthrough ----> SSP2 (Bluetooth)
 # PCM99 <---- volume <---- DMIC01 (dmic 48k capture)
 # PCM100 <---- kpb <---- DMIC16K (dmic 16k capture)
 
@@ -87,6 +88,14 @@ define(DMIC_DAI_LINK_16k_ID, `2')
 define(KWD_PIPE_SCH_DEADLINE_US, 20000)
 # include the generic dmic with kwd
 include(`platform/intel/intel-generic-dmic-kwd.m4')
+
+# BT offload support
+define(`BT_PIPELINE_PB_ID', eval(SMART_REF_PPL_ID + 1))
+define(`BT_PIPELINE_CP_ID', eval(SMART_REF_PPL_ID + 2))
+define(`BT_DAI_LINK_ID', eval(SMART_BE_ID + 1))
+define(`BT_PCM_ID', `6')
+define(`HW_CONFIG_ID', `8')
+include(`platform/intel/intel-generic-bt.m4')
 
 dnl PIPELINE_PCM_ADD(pipeline,
 dnl     pipe id, pcm, max channels, format,
