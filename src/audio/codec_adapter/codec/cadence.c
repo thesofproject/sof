@@ -308,6 +308,28 @@ err:
 	return ret;
 }
 
+int cadence_codec_get_samples(struct comp_dev *dev)
+{
+	struct codec_data *codec = comp_get_codec(dev);
+	uint32_t api_id = CODEC_GET_API_ID(codec->id);
+
+	comp_dbg(dev, "cadence_codec_get_samples() start");
+
+	switch (api_id) {
+	case CADENCE_CODEC_WRAPPER_ID:
+		return 0;
+	case CADENCE_CODEC_MP3_DEC_ID:
+		/* MPEG-1 Layer 3 */
+		return 1152;
+	case CADENCE_CODEC_AAC_DEC_ID:
+		return 1024;
+	default:
+		break;
+	}
+
+	return 0;
+}
+
 int cadence_codec_init_process(struct comp_dev *dev)
 {
 	int ret;
@@ -498,6 +520,7 @@ int cadence_codec_free(struct comp_dev *dev)
 static struct codec_interface cadence_interface = {
 	.init  = cadence_codec_init,
 	.prepare = cadence_codec_prepare,
+	.get_samples = cadence_codec_get_samples,
 	.init_process = cadence_codec_init_process,
 	.process = cadence_codec_process,
 	.apply_config = cadence_codec_apply_config,
