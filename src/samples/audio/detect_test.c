@@ -709,7 +709,7 @@ int16_t test_keyword_get_input_byte(struct comp_dev *dev, uint32_t index)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 
-	if (index < 0 || index >= KWD_NN_IN_BUFF_SIZE * sizeof(int16_t))
+	if (index >= KWD_NN_IN_BUFF_SIZE * sizeof(int16_t))
 		return -EINVAL;
 
 	return *((unsigned char *)cd->input + index);
@@ -719,7 +719,7 @@ int16_t test_keyword_get_input_elem(struct comp_dev *dev, uint32_t index)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 
-	if (index < 0 || index >= KWD_NN_IN_BUFF_SIZE)
+	if (index >= KWD_NN_IN_BUFF_SIZE)
 		return -EINVAL;
 	return cd->input[index];
 }
@@ -728,7 +728,7 @@ int test_keyword_set_input_elem(struct comp_dev *dev, uint32_t index, int16_t va
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 
-	if (index < 0 || index >= KWD_NN_IN_BUFF_SIZE)
+	if (index >= KWD_NN_IN_BUFF_SIZE)
 		return -EINVAL;
 
 	cd->input[index] = val;
