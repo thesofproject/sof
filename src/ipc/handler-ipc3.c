@@ -1328,6 +1328,7 @@ static int ipc_glb_test_mem_usage(uint32_t header)
 				      PLATFORM_HEAP_SYSTEM_RUNTIME, elems);
 	elems += fill_mem_usage_elems(SOF_MEM_ZONE_RUNTIME, SOF_IPC_MEM_ZONE_RUNTIME,
 				      PLATFORM_HEAP_RUNTIME, elems);
+	/* cppcheck-suppress unreadVariable */
 	elems += fill_mem_usage_elems(SOF_MEM_ZONE_BUFFER, SOF_IPC_MEM_ZONE_BUFFER,
 				      PLATFORM_HEAP_BUFFER, elems);
 #if CONFIG_CORE_COUNT > 1
