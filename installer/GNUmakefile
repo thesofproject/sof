@@ -88,7 +88,7 @@ GNUMAKEFLAGS = --no-print-directory
       #####################################
 
 # Default value
-FW_DESTDIR ?= /lib/firmware/updates/intel/
+FW_DESTDIR ?= /lib/firmware/intel/
 
 # The rsync target does not depend on any other target so:
 # - it's possible to deploy a staging _subset_, e.g.: only topologies
