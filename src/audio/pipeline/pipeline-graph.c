@@ -103,16 +103,15 @@ void pipeline_posn_init(struct sof *sof)
 }
 
 /* create new pipeline - returns pipeline id or negative error */
-struct pipeline *pipeline_new(struct sof_ipc_pipe_new *pipe_desc,
-			      struct comp_dev *cd)
+struct pipeline *pipeline_new(struct comp_dev *cd, uint32_t pipeline_id,
+			      uint32_t priority, uint32_t comp_id)
 {
 	struct sof_ipc_stream_posn posn;
 	struct pipeline *p;
 	int ret;
 
-	pipe_cl_info("pipeline new pipe_id %d period %d priority %d",
-		     pipe_desc->pipeline_id, pipe_desc->period,
-		     pipe_desc->priority);
+	pipe_cl_info("pipeline new pipe_id %d priority %d",
+		     pipeline_id, priority);
 
 	/* allocate new pipeline */
 	p = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*p));
@@ -123,12 +122,12 @@ struct pipeline *pipeline_new(struct sof_ipc_pipe_new *pipe_desc,
 
 	/* init pipeline */
 	p->sched_comp = cd;
+	p->comp_id = comp_id;
+	p->priority = priority;
+	p->pipeline_id = pipeline_id;
 	p->status = COMP_STATE_INIT;
 	ret = memcpy_s(&p->tctx, sizeof(struct tr_ctx), &pipe_tr,
 		       sizeof(struct tr_ctx));
-	assert(!ret);
-	ret = memcpy_s(&p->ipc_pipe, sizeof(p->ipc_pipe),
-		       pipe_desc, sizeof(*pipe_desc));
 	assert(!ret);
 
 	ret = pipeline_posn_offset_get(&p->posn_offset);
@@ -140,8 +139,7 @@ struct pipeline *pipeline_new(struct sof_ipc_pipe_new *pipe_desc,
 	}
 
 	/* just for retrieving valid ipc_msg header */
-	ipc_build_stream_posn(&posn, SOF_IPC_STREAM_TRIG_XRUN,
-			      p->ipc_pipe.comp_id);
+	ipc_build_stream_posn(&posn, SOF_IPC_STREAM_TRIG_XRUN, p->comp_id);
 
 	p->msg = ipc_msg_init(posn.rhdr.hdr.cmd, sizeof(posn));
 	if (!p->msg) {
@@ -278,8 +276,8 @@ static int pipeline_comp_complete(struct comp_dev *current,
 
 	/* complete component init */
 	current->pipeline = ppl_data->p;
-	current->period = ppl_data->p->ipc_pipe.period;
-	current->priority = ppl_data->p->ipc_pipe.priority;
+	current->period = ppl_data->p->period;
+	current->priority = ppl_data->p->priority;
 
 	pipeline_for_each_comp(current, ctx, dir);
 

@@ -44,6 +44,8 @@ void platform_host_timestamp(struct comp_dev *host,
 uint64_t platform_timer_get(struct timer *timer);
 
 struct pipeline_new_setup_data {
-	struct sof_ipc_pipe_new ipc_data;
+	uint32_t pipe_id;
+	uint32_t priority;
+	uint32_t comp_id;
 	struct comp_dev *comp_data;
 };

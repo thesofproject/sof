@@ -1563,7 +1563,7 @@ static inline bool validate_host_params(struct comp_dev *dev,
 	size_t bytes_per_ms = KPB_SAMPLES_PER_MS *
 			      (KPB_SAMPLE_CONTAINER_SIZE(sample_width) / 8) *
 			      kpb->config.channels;
-	size_t pipeline_period_size = (dev->pipeline->ipc_pipe.period / 1000)
+	size_t pipeline_period_size = (dev->pipeline->period / 1000)
 					* bytes_per_ms;
 
 	if (!host_period_size || !host_buffer_size) {

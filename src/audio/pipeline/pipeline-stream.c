@@ -254,5 +254,5 @@ void pipeline_get_timestamp(struct pipeline *p, struct comp_dev *host,
 	walk_ctx.comp_func(host, NULL, &walk_ctx, host->direction);
 
 	/* set timestamp resolution */
-	posn->timestamp_ns = p->ipc_pipe.period * 1000;
+	posn->timestamp_ns = p->period * 1000;
 }

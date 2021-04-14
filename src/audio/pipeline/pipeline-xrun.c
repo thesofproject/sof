@@ -84,6 +84,13 @@ int pipeline_xrun_recover(struct pipeline *p)
 }
 #endif
 
+int pipeline_xrun_set_limit(struct pipeline *p, uint32_t xrun_limit_usecs)
+{
+	/* TODO: these could be validated against min/max permissible values */
+	p->xrun_limit_usecs = xrun_limit_usecs;
+	return 0;
+}
+
 /*
  * trigger handler for pipelines in xrun, used for recovery from host only.
  * return values:

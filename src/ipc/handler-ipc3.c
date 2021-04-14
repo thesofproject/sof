@@ -280,7 +280,7 @@ pipe_params:
 			(struct sof_ipc_pcm_params *)ipc_get()->comp_data);
 	if (err < 0) {
 		tr_err(&ipc_tr, "ipc: pipe %d comp %d params failed %d",
-		       pcm_dev->cd->pipeline->ipc_pipe.pipeline_id,
+		       pcm_dev->cd->pipeline->pipeline_id,
 		       pcm_params.comp_id, err);
 		goto error;
 	}
@@ -289,7 +289,7 @@ pipe_params:
 	err = pipeline_prepare(pcm_dev->cd->pipeline, pcm_dev->cd);
 	if (err < 0) {
 		tr_err(&ipc_tr, "ipc: pipe %d comp %d prepare failed %d",
-		       pcm_dev->cd->pipeline->ipc_pipe.pipeline_id,
+		       pcm_dev->cd->pipeline->pipeline_id,
 		       pcm_params.comp_id, err);
 		goto error;
 	}
@@ -307,7 +307,7 @@ error:
 	reset_err = pipeline_reset(pcm_dev->cd->pipeline, pcm_dev->cd);
 	if (reset_err < 0)
 		tr_err(&ipc_tr, "ipc: pipe %d comp %d reset failed %d",
-		       pcm_dev->cd->pipeline->ipc_pipe.pipeline_id,
+		       pcm_dev->cd->pipeline->pipeline_id,
 		       pcm_params.comp_id, reset_err);
 	return err;
 }
