@@ -249,7 +249,6 @@ int main(int argc, char **argv)
 	struct ipc_comp_dev *pcm_dev;
 	struct pipeline *p;
 	struct pipeline *curr_p;
-	struct sof_ipc_pipe_new *ipc_pipe;
 	struct comp_dev *cd;
 	struct file_comp_data *frcd, *fwcd;
 	char pipeline[DEBUG_MSG_LEN];
@@ -311,17 +310,16 @@ int main(int argc, char **argv)
 	/* Run pipeline until EOF from fileread */
 	pcm_dev = ipc_get_comp_by_id(sof_get()->ipc, tp.sched_id);
 	p = pcm_dev->cd->pipeline;
-	ipc_pipe = &p->ipc_pipe;
 
 	/* input and output sample rate */
 	if (!tp.fs_in)
-		tp.fs_in = ipc_pipe->period * ipc_pipe->frames_per_sched;
+		tp.fs_in = p->period * p->frames_per_sched;
 
 	if (!tp.fs_out)
-		tp.fs_out = ipc_pipe->period * ipc_pipe->frames_per_sched;
+		tp.fs_out = p->period * p->frames_per_sched;
 
 	/* set pipeline params and trigger start */
-	if (tb_pipeline_start(sof_get()->ipc, ipc_pipe, &tp) < 0) {
+	if (tb_pipeline_start(sof_get()->ipc, p, &tp) < 0) {
 		fprintf(stderr, "error: pipeline params\n");
 		exit(EXIT_FAILURE);
 	}

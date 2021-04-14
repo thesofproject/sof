@@ -61,7 +61,7 @@ static inline int32_t ipc_comp_pipe_id(const struct ipc_comp_dev *icd)
 	case COMP_TYPE_BUFFER:
 		return icd->cb->pipeline_id;
 	case COMP_TYPE_PIPELINE:
-		return icd->pipeline->ipc_pipe.pipeline_id;
+		return icd->pipeline->pipeline_id;
 	default:
 		tr_err(&ipc_tr, "Unknown ipc component type %u", icd->type);
 		return -EINVAL;

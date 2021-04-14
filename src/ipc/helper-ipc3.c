@@ -282,6 +282,7 @@ int ipc_pipeline_new(struct ipc *ipc,
 	struct ipc_comp_dev *ipc_pipe;
 	struct pipeline *pipe;
 	struct ipc_comp_dev *icd;
+	int ret;
 
 	/* check whether the pipeline already exists */
 	ipc_pipe = ipc_get_comp_by_id(ipc, pipe_desc->comp_id);
@@ -321,10 +322,29 @@ int ipc_pipeline_new(struct ipc *ipc,
 	}
 
 	/* create the pipeline */
-	pipe = pipeline_new(pipe_desc, icd->cd);
+	pipe = pipeline_new(icd->cd, pipe_desc->pipeline_id, pipe_desc->priority,
+			    pipe_desc->comp_id);
 	if (!pipe) {
 		tr_err(&ipc_tr, "ipc_pipeline_new(): pipeline_new() failed");
 		return -ENOMEM;
+	}
+
+	/* configure pipeline */
+	ret = pipeline_schedule_config(pipe, pipe_desc->sched_id,
+				       pipe_desc->core, pipe_desc->period,
+				       pipe_desc->period_mips,
+				       pipe_desc->frames_per_sched,
+				       pipe_desc->time_domain);
+	if (ret) {
+		tr_err(&ipc_tr, "ipc_pipeline_new(): pipeline_schedule_config() failed");
+		return ret;
+	}
+
+	/* set xrun time limit */
+	ret = pipeline_xrun_set_limit(pipe, pipe_desc->xrun_limit_usecs);
+	if (ret) {
+		tr_err(&ipc_tr, "ipc_pipeline_new(): pipeline_xrun_set_limit() failed");
+		return ret;
 	}
 
 	/* allocate the IPC pipeline container */
@@ -393,7 +413,7 @@ int ipc_pipeline_complete(struct ipc *ipc, uint32_t comp_id)
 	if (!cpu_is_me(ipc_pipe->core))
 		return ipc_process_on_core(ipc_pipe->core);
 
-	pipeline_id = ipc_pipe->pipeline->ipc_pipe.pipeline_id;
+	pipeline_id = ipc_pipe->pipeline->pipeline_id;
 
 	tr_dbg(&ipc_tr, "ipc: pipe %d -> complete on comp %d", pipeline_id,
 	       comp_id);

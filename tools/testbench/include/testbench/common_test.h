@@ -68,10 +68,10 @@ void sys_comp_filewrite_init(void);
 
 int tb_pipeline_setup(struct sof *sof);
 
-int tb_pipeline_start(struct ipc *ipc, struct sof_ipc_pipe_new *ipc_pipe,
+int tb_pipeline_start(struct ipc *ipc, struct pipeline *p,
 		      struct testbench_prm *tp);
 
-int tb_pipeline_params(struct ipc *ipc, struct sof_ipc_pipe_new *ipc_pipe,
+int tb_pipeline_params(struct ipc *ipc, struct pipeline *p,
 		       struct testbench_prm *tp);
 
 void debug_print(char *message);

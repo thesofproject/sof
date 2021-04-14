@@ -29,13 +29,10 @@ struct pipeline_connect_data *get_standard_connect_objects(void)
 	struct pipeline_connect_data *pipeline_connect_data = calloc
 		(sizeof(struct pipeline_connect_data), 1);
 
-	struct sof_ipc_pipe_new pipe_desc = {
-		.frames_per_sched = 5,
-		.pipeline_id = PIPELINE_ID_SAME };
-
 	struct pipeline *pipe = calloc(sizeof(struct pipeline), 1);
 
-	pipe->ipc_pipe = pipe_desc;
+	pipe->frames_per_sched = 5;
+	pipe->pipeline_id = PIPELINE_ID_SAME;
 	pipe->status = COMP_STATE_INIT;
 
 	pipe->pipe_task = calloc(sizeof(struct task), 1);

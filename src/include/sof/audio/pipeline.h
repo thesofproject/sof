@@ -15,7 +15,6 @@
 #include <sof/sof.h>
 #include <sof/spinlock.h>
 #include <sof/audio/pipeline-trace.h>
-#include <ipc/stream.h>
 #include <ipc/topology.h>
 #include <user/trace.h>
 #include <errno.h>
@@ -26,8 +25,6 @@ struct comp_buffer;
 struct comp_dev;
 struct ipc;
 struct ipc_msg;
-struct sof_ipc_buffer;
-struct sof_ipc_pcm_params;
 struct task;
 
 /* Pipeline status to stop execution of current path */
@@ -45,7 +42,16 @@ struct task;
  * Audio pipeline.
  */
 struct pipeline {
-	struct sof_ipc_pipe_new ipc_pipe;
+	uint32_t comp_id;	/**< component id for pipeline */
+	uint32_t pipeline_id;	/**< pipeline id */
+	uint32_t sched_id;	/**< Scheduling component id */
+	uint32_t core;		/**< core we run on */
+	uint32_t period;	/**< execution period in us*/
+	uint32_t priority;	/**< priority level 0 (low) to 10 (max) */
+	uint32_t period_mips;	/**< worst case instruction count per period */
+	uint32_t frames_per_sched;/**< output frames of pipeline, 0 is variable */
+	uint32_t xrun_limit_usecs; /**< report xruns greater than limit */
+	uint32_t time_domain;	/**< scheduling time domain */
 
 	/* runtime status */
 	int32_t xrun_bytes;		/* last xrun length */
@@ -104,12 +110,14 @@ struct pipeline_data {
 
 /**
  * \brief Creates a new pipeline.
- * \param[in] pipe_desc IPC pipeline description.
  * \param[in,out] cd Pipeline component device.
+ * \param[in] pipeline_id Pipeline ID number.
+ * \param[in] priority Pipeline scheduling priority.
+ * \param[in] comp_id Pipeline component ID number.
  * \return New pipeline pointer or NULL.
  */
-struct pipeline *pipeline_new(struct sof_ipc_pipe_new *pipe_desc,
-			      struct comp_dev *cd);
+struct pipeline *pipeline_new(struct comp_dev *cd, uint32_t pipeline_id,
+			      uint32_t priority, uint32_t comp_id);
 
 /**
  * \brief Free's a pipeline.
@@ -178,7 +186,7 @@ int pipeline_for_each_comp(struct comp_dev *current,
  */
 static inline uint32_t pipeline_id(struct pipeline *p)
 {
-	return p->ipc_pipe.pipeline_id;
+	return p->pipeline_id;
 }
 
 /*
@@ -262,7 +270,7 @@ static inline bool pipeline_is_same_sched_comp(struct pipeline *current,
  */
 static inline bool pipeline_is_timer_driven(struct pipeline *p)
 {
-	return p->ipc_pipe.time_domain == SOF_TIME_DOMAIN_TIMER;
+	return p->time_domain == SOF_TIME_DOMAIN_TIMER;
 }
 
 /**
@@ -272,7 +280,7 @@ static inline bool pipeline_is_timer_driven(struct pipeline *p)
  */
 static inline bool pipeline_is_this_cpu(struct pipeline *p)
 {
-	return p->ipc_pipe.core == cpu_get_id();
+	return p->core == cpu_get_id();
 }
 
 /**
@@ -307,6 +315,22 @@ void pipeline_comp_trigger_sched_comp(struct pipeline *p,
 void pipeline_schedule_triggered(struct pipeline_walk_context *ctx,
 				 int cmd);
 
+/**
+ * \brief Configure pipeline scheduling.
+ * \param[in] p pipeline.
+ * \param[in] sched_id Scheduling component ID.
+ * \param[in] core DSP core pipeline runs on.
+ * \param[in] period Pipeline scheduling period in us.
+ * \param[in] period_mips Pipeline worst case MCPS per period.
+ * \param[in] frames_per_sched Pipeline frames processed per schedule.
+ * \param[in] time_domain Pipeline scheduling time domain.
+ * \return 0 on success.
+ */
+int pipeline_schedule_config(struct pipeline *p, uint32_t sched_id,
+			     uint32_t core, uint32_t period,
+			     uint32_t period_mips, uint32_t frames_per_sched,
+			     uint32_t time_domain);
+
 /*
  * Pipeline error handling APIs
  *
@@ -335,5 +359,12 @@ int pipeline_xrun_handle_trigger(struct pipeline *p, int cmd);
  * \param[in] bytes Number of bytes we have over or under run.
  */
 void pipeline_xrun(struct pipeline *p, struct comp_dev *dev, int32_t bytes);
+
+/**
+ * \brief Set tolerance for pipeline xrun handling.
+ * \param[in] p pipeline.
+ * \param[in] xrun_limit_usecs Limit in micro secs that pipeline will tolerate.
+ */
+int pipeline_xrun_set_limit(struct pipeline *p, uint32_t xrun_limit_usecs);
 
 #endif /* __SOF_AUDIO_PIPELINE_H__ */
