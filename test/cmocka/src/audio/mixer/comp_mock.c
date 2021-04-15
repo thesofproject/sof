@@ -76,8 +76,3 @@ void sys_comp_mock_init(void)
 	comp_register(&comp_mock_info);
 }
 
-int comp_verify_params(struct comp_dev *dev, uint32_t flag,
-		       struct sof_ipc_stream_params *params)
-{
-	return 0;
-}

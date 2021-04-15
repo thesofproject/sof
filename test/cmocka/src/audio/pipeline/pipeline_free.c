@@ -9,13 +9,17 @@
 #include <sof/audio/pipeline.h>
 #include <sof/schedule/edf_schedule.h>
 #include <sof/schedule/task.h>
-#include "pipeline_mocks.h"
 #include "pipeline_connection_mocks.h"
 #include <stdarg.h>
 #include <stddef.h>
 #include <setjmp.h>
 #include <malloc.h>
 #include <cmocka.h>
+
+/* mock free() - dont free as we inspect contents */
+void rfree(void *ptr)
+{
+}
 
 static int setup(void **state)
 {
