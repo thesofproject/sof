@@ -1,5 +1,6 @@
 #
-# Topology for GeminiLake with Dialog7219.
+# Topology for GeminiLake with Dialog Semiconductor DA7219 or
+#                              Cirrus Logic CS42L42
 #
 
 # Include topology builder
@@ -22,7 +23,7 @@ include(`platform/intel/dmic.m4')
 # Define the pipelines
 #
 # PCM0  ----> volume (pipe 1)   -----> SSP1 (speaker - maxim98357a, BE link 0)
-# PCM1  <---> volume (pipe 2,3) <----> SSP2 (headset - da7219, BE link 1)
+`# PCM1  <---> volume (pipe 2,3) <----> SSP2 (headset - 'HEADPHONE`, BE link 1)'
 # PCM99 <---- DMIC0 (dmic capture, BE link 2)
 # PCM5  ----> volume (pipe 5)   -----> iDisp1 (HDMI/DP playback, BE link 3)
 # PCM6  ----> Volume (pipe 6)   -----> iDisp2 (HDMI/DP playback, BE link 4)
@@ -147,6 +148,7 @@ DAI_CONFIG(SSP, 1, 0, SSP1-Codec,
 		SSP_TDM(2, 16, 3, 3),
 		SSP_CONFIG_DATA(SSP, 1, 16, 1)))
 
+ifelse(HEADPHONE, `da7219', `
 #SSP 2 (ID: 1) with 19.2 MHz mclk with MCLK_ID 1, 1.92 MHz bclk
 DAI_CONFIG(SSP, 2, 1, SSP2-Codec,
 	SSP_CONFIG(I2S, SSP_CLOCK(mclk, 19200000, codec_mclk_in),
@@ -154,6 +156,15 @@ DAI_CONFIG(SSP, 2, 1, SSP2-Codec,
 		SSP_CLOCK(fsync, 48000, codec_slave),
 		SSP_TDM(2, 20, 3, 3),
 		SSP_CONFIG_DATA(SSP, 2, 16, 1)))
+', HEADPHONE, `cs42l42', `
+#SSP 2 (ID: 1) with 19.2 MHz mclk with MCLK_ID 1 (unused), 3.072 MHz bclk
+DAI_CONFIG(SSP, 2, 1, SSP2-Codec,
+	SSP_CONFIG(I2S, SSP_CLOCK(mclk, 19200000, codec_mclk_in),
+		SSP_CLOCK(bclk, 3072000, codec_slave),
+		SSP_CLOCK(fsync, 48000, codec_slave),
+		SSP_TDM(2, 32, 3, 3),
+		SSP_CONFIG_DATA(SSP, 2, 16, 1)))
+', )
 
 # dmic01 (id: 2)
 DAI_CONFIG(DMIC, 0, 2, dmic01,
