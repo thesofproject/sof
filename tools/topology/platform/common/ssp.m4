@@ -68,16 +68,16 @@ define(`SSP_MULTI_CONFIG_DATA',
 `	tokens "sof_ssp_tokens"'
 `	tuples."word" {'
 `		SOF_TKN_INTEL_SSP_SAMPLE_BITS'	STR($2)
-`		SOF_TKN_INTEL_SSP_QUIRKS'	ifelse(defn(`$4'), `', "0", STR($4))
-`		SOF_TKN_INTEL_SSP_BCLK_DELAY'	ifelse(defn(`$5'), `', "0", STR($5))
-`		SOF_TKN_INTEL_SSP_CLKS_CONTROL' ifelse(defn(`$6'), `', "0", STR($6))
+`		SOF_TKN_INTEL_SSP_QUIRKS'	`ifelse(`$4', `', "0", STR($4))'
+`		SOF_TKN_INTEL_SSP_BCLK_DELAY'	`ifelse(`$5', `', "0", STR($5))'
+`		SOF_TKN_INTEL_SSP_CLKS_CONTROL' `ifelse(`$6', `', "0", STR($6))'
 `	}'
 `	tuples."short" {'
-`		SOF_TKN_INTEL_SSP_MCLK_ID'	ifelse(defn(`$3'), `', "0", STR($3))
-`		SOF_TKN_INTEL_SSP_FRAME_PULSE_WIDTH' ifelse(defn(`$7'), `', "0", STR($7))
+`		SOF_TKN_INTEL_SSP_MCLK_ID'	`ifelse(`$3', `', "0", STR($3))'
+`		SOF_TKN_INTEL_SSP_FRAME_PULSE_WIDTH' `ifelse(`$7', `', "0", STR($7))'
 `	}'
 `	tuples."bool" {'
-`		SOF_TKN_INTEL_SSP_TDM_PADDING_PER_SLOT' ifelse(defn(`$8'), `', "false", STR($8))
+`		SOF_TKN_INTEL_SSP_TDM_PADDING_PER_SLOT' `ifelse(`$8', `', "false", STR($8))'
 `	}'
 `}'
 `SectionData."'$1`" {'
