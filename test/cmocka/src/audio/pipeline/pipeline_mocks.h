@@ -21,28 +21,6 @@
 #include <stdint.h>
 #include <cmocka.h>
 
-int ipc_stream_send_xrun(struct comp_dev *cdev,
-	struct sof_ipc_stream_posn *posn);
-
-int arch_cpu_is_core_enabled(int id);
-
-void cpu_power_down_core(void);
-
-struct ipc_comp_dev *ipc_get_comp_by_id(struct ipc *ipc, uint32_t id);
-
-struct ipc_comp_dev *ipc_get_comp_by_ppl_id(struct ipc *ipc, uint16_t type,
-					    uint32_t ppl_id);
-
-void notifier_notify(void);
-
-void platform_dai_timestamp(struct comp_dev *dai,
-	struct sof_ipc_stream_posn *posn);
-
-void platform_host_timestamp(struct comp_dev *host,
-	struct sof_ipc_stream_posn *posn);
-
-uint64_t platform_timer_get(struct timer *timer);
-
 struct pipeline_new_setup_data {
 	uint32_t pipe_id;
 	uint32_t priority;

@@ -5,6 +5,12 @@ cmocka_test(buffer_copy
 	${PROJECT_SOURCE_DIR}/test/cmocka/src/notifier_mocks.c
 	${PROJECT_SOURCE_DIR}/src/audio/buffer.c
 	${PROJECT_SOURCE_DIR}/src/ipc/helper-ipc3.c
+	${PROJECT_SOURCE_DIR}/src/ipc/ipc-common.c
+	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-graph.c
+	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-params.c
+	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-schedule.c
+	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-stream.c
+	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-xrun.c
 )
 
 cmocka_test(buffer_new
@@ -12,6 +18,12 @@ cmocka_test(buffer_new
 	${PROJECT_SOURCE_DIR}/test/cmocka/src/notifier_mocks.c
 	${PROJECT_SOURCE_DIR}/src/audio/buffer.c
 	${PROJECT_SOURCE_DIR}/src/ipc/helper-ipc3.c
+	${PROJECT_SOURCE_DIR}/src/ipc/ipc-common.c
+	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-graph.c
+	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-params.c
+	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-schedule.c
+	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-stream.c
+	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-xrun.c
 )
 
 cmocka_test(buffer_wrap
@@ -19,6 +31,12 @@ cmocka_test(buffer_wrap
 	${PROJECT_SOURCE_DIR}/test/cmocka/src/notifier_mocks.c
 	${PROJECT_SOURCE_DIR}/src/audio/buffer.c
 	${PROJECT_SOURCE_DIR}/src/ipc/helper-ipc3.c
+	${PROJECT_SOURCE_DIR}/src/ipc/ipc-common.c
+	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-graph.c
+	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-params.c
+	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-schedule.c
+	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-stream.c
+	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-xrun.c
 )
 
 cmocka_test(buffer_write
@@ -26,4 +44,10 @@ cmocka_test(buffer_write
 	${PROJECT_SOURCE_DIR}/test/cmocka/src/notifier_mocks.c
 	${PROJECT_SOURCE_DIR}/src/audio/buffer.c
 	${PROJECT_SOURCE_DIR}/src/ipc/helper-ipc3.c
+	${PROJECT_SOURCE_DIR}/src/ipc/ipc-common.c
+	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-graph.c
+	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-params.c
+	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-schedule.c
+	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-stream.c
+	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-xrun.c
 )

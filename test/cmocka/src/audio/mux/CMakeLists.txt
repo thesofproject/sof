@@ -25,17 +25,14 @@ link_libraries(audio_mux)
 cmocka_test(
 	mux_get_processing_function
 	mux_get_processing_function.c
-	mock.c
 )
 
 cmocka_test(
 	mux_copy
 	mux_copy.c
-	mock.c
 )
 
 cmocka_test(
 	demux_copy
 	demux_copy.c
-	mock.c
 )

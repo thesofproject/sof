@@ -2,7 +2,6 @@
 
 cmocka_test(alloc
 	alloc.c
-	mock.c
 	${PROJECT_SOURCE_DIR}/src/lib/alloc.c
 	${PROJECT_SOURCE_DIR}/src/debug/panic.c
 	${PROJECT_SOURCE_DIR}/src/platform/intel/cavs/lib/memory.c
