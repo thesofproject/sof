@@ -37,11 +37,11 @@ define(`SSP_CONFIG_DATA',
 `	tokens "sof_ssp_tokens"'
 `	tuples."word" {'
 `		SOF_TKN_INTEL_SSP_SAMPLE_BITS'	STR($3)
-`		SOF_TKN_INTEL_SSP_QUIRKS'	ifelse($5, `', "0", STR($5))
-`		SOF_TKN_INTEL_SSP_BCLK_DELAY'	ifelse($6, `', "0", STR($6))
+`		SOF_TKN_INTEL_SSP_QUIRKS'	`ifelse(`$5', `', "0", STR($5))'
+`		SOF_TKN_INTEL_SSP_BCLK_DELAY'	`ifelse(`$6', `', "0", STR($6))'
 `	}'
 `	tuples."short" {'
-`		SOF_TKN_INTEL_SSP_MCLK_ID'	ifelse($4, `', "0", STR($4))
+`		SOF_TKN_INTEL_SSP_MCLK_ID'	`ifelse(`$4', `', "0", STR($4))'
 `	}'
 `}'
 `SectionData."'N_DAI_CONFIG($1$2)`_data" {'
