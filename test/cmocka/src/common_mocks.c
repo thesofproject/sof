@@ -115,6 +115,9 @@ void WEAK trace_flush(void)
 {
 }
 
+#if CONFIG_LIBRARY
+volatile void *task_context_get(void);
+#endif
 volatile void * WEAK task_context_get(void)
 {
 	return NULL;
@@ -141,13 +144,18 @@ uint64_t WEAK platform_timer_get(struct timer *timer)
 	return 0;
 }
 
+#if !CONFIG_LIBRARY
 uint64_t WEAK arch_timer_get_system(struct timer *timer)
 {
 	(void)timer;
 
 	return 0;
 }
+#endif
 
+#if CONFIG_LIBRARY
+void WEAK arch_dump_regs_a(void *dump_buf);
+#endif
 void WEAK arch_dump_regs_a(void *dump_buf)
 {
 	(void)dump_buf;
@@ -184,11 +192,11 @@ void WEAK ipc_platform_complete_cmd(void *data)
 {
 }
 
+#if !CONFIG_LIBRARY
 int WEAK ipc_platform_send_msg(struct ipc_msg *msg)
 {
 	return 0;
 }
-
 void WEAK xthal_icache_region_invalidate(void *addr, unsigned size)
 {
 }
@@ -204,6 +212,7 @@ void WEAK xthal_dcache_region_writeback(void *addr, unsigned size)
 void WEAK xthal_dcache_region_writeback_inv(void *addr, unsigned size)
 {
 }
+#endif
 
 struct sof * WEAK sof_get(void)
 {
@@ -290,7 +299,7 @@ uint64_t WEAK clock_ms_to_ticks(int clock, uint64_t ms)
 	return 0;
 }
 
-#if CONFIG_MULTICORE
+#if CONFIG_MULTICORE && !CONFIG_LIBRARY
 
 int WEAK idc_send_msg(struct idc_msg *msg, uint32_t mode)
 {
@@ -305,5 +314,26 @@ int WEAK arch_cpu_is_core_enabled(int id)
 	return 0;
 }
 
+#endif
+
+#if CONFIG_LIBRARY
+/* enable trace by default in testbench */
+int WEAK test_bench_trace = 1;
+int WEAK debug;
+
+/* look up subsystem class name from table */
+char * WEAK get_trace_class(uint32_t trace_class)
+{
+	(void)trace_class;
+	/* todo: trace class is deprecated,
+	 * uuid should be used only
+	 */
+	return "unknown";
+}
+
+uint8_t * WEAK get_library_mailbox(void)
+{
+	return NULL;
+}
 #endif
 

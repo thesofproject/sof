@@ -537,7 +537,7 @@ int main(void)
 	cmocka_set_message_output(CM_OUTPUT_TAP);
 
 	/* log number of converting functions for current configuration */
-	print_message("%s start tests, count(pcm_func_map)=%d\n",
+	print_message("%s start tests, count(pcm_func_map)=%zu\n",
 		      __FILE__, pcm_func_count);
 
 	return cmocka_run_group_tests(tests, NULL, NULL);
