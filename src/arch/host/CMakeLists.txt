@@ -8,4 +8,6 @@ target_include_directories(sof_public_headers INTERFACE ${PROJECT_SOURCE_DIR}/sr
 target_compile_options(sof_options INTERFACE -g -O3 -Wall -Werror -Wmissing-prototypes
   -Wimplicit-fallthrough -Wno-pointer-to-int-cast -Wno-int-to-pointer-cast -Wpointer-arith -DCONFIG_LIBRARY "-imacros${CONFIG_H_PATH}")
 
-add_subdirectory(lib)
+if(NOT BUILD_UNIT_TESTS_HOST)
+	add_subdirectory(lib)
+endif()

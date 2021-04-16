@@ -4,6 +4,13 @@ include(ExternalProject)
 
 add_library(cmocka STATIC IMPORTED)
 
+# Default use XCC unless user asks for GCC
+if(BUILD_UNIT_TESTS_HOST)
+	set(UT_CC_CONFIG ${CMAKE_CURRENT_SOURCE_DIR}/cmocka-host-gcc-toolchain.cmake)
+else()
+	set(UT_CC_CONFIG ${CMAKE_CURRENT_SOURCE_DIR}/cmocka-xtensa-xt-toolchain.cmake)
+endif()
+
 if(DEFINED CMOCKA_DIRECTORY)
 	# Prebuilt Cmocka lib
 	set_property(TARGET cmocka PROPERTY IMPORTED_LOCATION "${CMOCKA_DIRECTORY}/lib/libcmocka-static.a")
@@ -19,7 +26,7 @@ else()
 		PREFIX "${PROJECT_BINARY_DIR}/cmocka_git"
 		BINARY_DIR ${cmocka_binary_directory}
 		CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release
-			-DCMAKE_TOOLCHAIN_FILE=${CMAKE_CURRENT_SOURCE_DIR}/cmocka-xtensa-xt-toolchain.cmake
+			-DCMAKE_TOOLCHAIN_FILE=${UT_CC_CONFIG}
 			-DWITH_SHARED_LIB=OFF
 			-DWITH_STATIC_LIB=ON
 			-DWITH_EXAMPLES=OFF

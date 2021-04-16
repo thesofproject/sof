@@ -29,9 +29,10 @@ else()
 endif()
 
 option(BUILD_UNIT_TESTS "Build unit tests" OFF)
+option(BUILD_UNIT_TESTS_HOST "Build unit tests for host" OFF)
 option(BUILD_CLANG_SCAN "Build for clang's scan-build" OFF)
 
-if(CONFIG_LIBRARY)
+if(CONFIG_LIBRARY OR BUILD_UNIT_TESTS_HOST)
 	set(ARCH host)
 else()
 	# firmware build supports only xtensa arch for now
