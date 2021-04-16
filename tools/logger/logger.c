@@ -248,6 +248,7 @@ int main(int argc, char *argv[])
 				return -EINVAL;
 			}
 			config.relative_timestamps = i;
+			break;
 		}
 		case 'f':
 			config.time_precision = atoi(optarg);
