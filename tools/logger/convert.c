@@ -392,8 +392,14 @@ static void print_entry_params(const struct log_entry_header *dma_log,
 		use_colors = 0;
 
 	/* Something somewhere went wrong */
-	if (dt < 0 || dt > 1000.0 * 1000.0 * 1000.0)
+	if (dt > 1000.0 * 1000.0 * 1000.0)
 		dt = NAN;
+
+	if (dma_log->timestamp < last_timestamp) {
+		fprintf(out_fd,
+			"\n\t\t --- negative DELTA: wrap, IPC_TRACE, other? ---\n\n");
+		entry_number = 1;
+	}
 
 	/* The first entry:
 	 *  - is never shown with a relative TIMESTAMP (to itself!?)
@@ -401,7 +407,6 @@ static void print_entry_params(const struct log_entry_header *dma_log,
 	 */
 	if (entry_number == 1) {
 		entry_number++;
-		assert(last_timestamp == 0);
 		/* Display absolute (and random) timestamps */
 		timestamp_origin = 0;
 		dt = 0;
