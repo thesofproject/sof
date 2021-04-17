@@ -31,6 +31,9 @@ static const char *debugfs[] = {
 	"hda", "pp", "dsp",
 };
 
+/** See PLATFORM_DEFAULT_CLOCK in the firmware code. */
+static const float DEFAULT_CLOCK_MHZ = 19.2;
+
 static void usage(void)
 {
 	fprintf(stdout, "Usage %s <option(s)> <file(s)>\n", APP_NAME);
@@ -44,8 +47,8 @@ static void usage(void)
 		"with ver_file file\n", APP_NAME);
 	fprintf(stdout, "%s:\t -n\t\t\tDisable checking firmware version\n",
 		APP_NAME);
-	fprintf(stdout, "%s:\t -c clock\t\tSet timestamp clock in MHz\n",
-		APP_NAME);
+	fprintf(stdout, "%s:\t -c clock\t\tSet timestamp clock in MHz, %.2f MHz by default\n",
+		APP_NAME, DEFAULT_CLOCK_MHZ);
 	fprintf(stdout, "%s:\t -s state_name\t\tTake a snapshot of state\n",
 		APP_NAME);
 	fprintf(stdout, "%s:\t -t\t\t\tDMA 'trace' stream instead of 'etrace' error mailbox\n",
@@ -176,7 +179,7 @@ int main(int argc, char *argv[])
 	int opt, ret = 0;
 
 	config.trace = 0;
-	config.clock = 19.2;
+	config.clock = DEFAULT_CLOCK_MHZ;
 	config.in_file = NULL;
 	config.out_file = NULL;
 	config.out_fd = NULL;
