@@ -42,8 +42,9 @@ struct recent_trace_context {
 };
 #endif /* CONFIG_TRACE_FILTERING_ADAPTIVE */
 
+/** MAILBOX_TRACE_BASE ring buffer */
 struct trace {
-	uintptr_t pos ;	/* trace position */
+	uintptr_t pos ; /**< offset of the next byte to write */
 	uint32_t enable;
 #if CONFIG_TRACE_FILTERING_ADAPTIVE
 	bool user_filter_override;	/* whether filtering was overridden by user or not */
@@ -89,32 +90,23 @@ static void put_header(uint32_t *dst, const struct sof_uuid_entry *uid,
 
 }
 
+/** Ring buffer for the mailbox trace */
 static inline void mtrace_event(const char *data, uint32_t length)
 {
 	struct trace *trace = trace_get();
-	volatile char *t;
-	uint32_t i, available;
+	char *t = (char *)MAILBOX_TRACE_BASE;
+	const int32_t available = MAILBOX_TRACE_SIZE - trace->pos;
 
-	available = MAILBOX_TRACE_SIZE - trace->pos;
-
-	t = (volatile char *)(MAILBOX_TRACE_BASE);
-
-	/* write until we run out of space */
-	for (i = 0; i < available && i < length; i++)
-		t[trace->pos + i] = data[i];
-
-	dcache_writeback_region((void *)&t[trace->pos], i);
-	trace->pos += length;
-
-	/* if there was more data than space available, wrap back */
-	if (length > available) {
-		for (i = 0; i < length - available; i++)
-			t[i] = data[available + i];
-
-		dcache_writeback_region((void *)t, i);
-		trace->pos = i;
+	if (available < length) { /* wrap */
+		memset(t + trace->pos, 0xff, available);
+		dcache_writeback_region(t + trace->pos, available);
+		trace->pos = 0;
 	}
 
+	memcpy_s(t + trace->pos, MAILBOX_TRACE_SIZE,
+		 data, length);
+	dcache_writeback_region(t + trace->pos, length);
+	trace->pos += length;
 }
 
 #if CONFIG_TRACE_FILTERING_VERBOSITY
