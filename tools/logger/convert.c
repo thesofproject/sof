@@ -279,18 +279,37 @@ static double to_usecs(uint64_t time)
 	return (double)time / global_config->clock;
 }
 
+/** Justified timestamp width for printf format string */
+static unsigned int timestamp_width(unsigned int precision)
+{
+	/* 64bits yields less than 20 digits precision. As reported by
+	 * gcc 9.3, this avoids a very long precision causing snprintf()
+	 * to truncate time_fmt
+	 */
+	assert(precision >= 0 && precision < 20);
+	/*
+	 * 12 digits for units is enough for 1M seconds = 11 days which
+	 * should be enough for most test runs.
+	 *
+	 * Add 1 for the comma when there is one.
+	 */
+	return 12 + (precision > 0 ? 1 : 0) + precision;
+}
+
 static inline void print_table_header(void)
 {
 	FILE *out_fd = global_config->out_fd;
 	int hide_location = global_config->hide_location;
-	int time_precision = global_config->time_precision;
 	char time_fmt[32];
 
-	if (time_precision >= 0) {
-		snprintf(time_fmt, sizeof(time_fmt), "%%%ds %%%ds ",
-			 time_precision + 12, time_precision + 12);
-		fprintf(out_fd, time_fmt, "TIMESTAMP", "DELTA");
+	if (global_config->time_precision >= 0) {
+		const unsigned int ts_width =
+			timestamp_width(global_config->time_precision);
+		snprintf(time_fmt, sizeof(time_fmt), "%%-%ds(us)%%%ds  ",
+			 ts_width, ts_width);
+		fprintf(out_fd, time_fmt, " TIMESTAMP", "DELTA");
 	}
+
 	fprintf(out_fd, "%2s %-18s ", "C#", "COMPONENT");
 	if (!hide_location)
 		fprintf(out_fd, "%-29s ", "LOCATION");
@@ -442,16 +461,13 @@ static void print_entry_params(const struct log_entry_header *dma_log,
 				format_file_name(entry->file_name, raw_output),
 				entry->header.line_idx);
 	} else {
-		/* timestamp */
-		/* 64bits yields less than 20 digits precision. As
-		 * reported by gcc 9.3, this avoids a very long
-		 * precision causing snprintf() to truncate time_fmt
-		 */
-		if (time_precision >= 0 && time_precision < 20) {
+		if (time_precision >= 0) {
+			const unsigned int ts_width = timestamp_width(time_precision);
+
 			snprintf(time_fmt, sizeof(time_fmt),
 				 "%%s[%%%d.%df] (%%%d.%df)%%s ",
-				 time_precision + 10, time_precision,
-				 time_precision + 10, time_precision);
+				 ts_width, time_precision, ts_width, time_precision);
+
 			fprintf(out_fd, time_fmt,
 				use_colors ? KGRN : "",
 				to_usecs(dma_log->timestamp - timestamp_origin), dt,
