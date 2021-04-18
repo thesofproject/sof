@@ -11,6 +11,7 @@
 #define __PLATFORM_LIB_MEMORY_H__
 
 #include <inttypes.h>
+#include <stddef.h>
 
 struct sof;
 

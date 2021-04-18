@@ -7,8 +7,15 @@ add_library(cmocka STATIC IMPORTED)
 # Default use XCC unless user asks for GCC
 if(BUILD_UNIT_TESTS_HOST)
 	set(UT_CC_CONFIG ${CMAKE_CURRENT_SOURCE_DIR}/cmocka-host-gcc-toolchain.cmake)
+	set(UT_TOOLCHAIN "")
+elseif(BUILD_UNIT_TESTS_XTENSA_GCC)
+	# GCC xtensa build for future Qemu.
+	set(UT_CC_CONFIG ${CMAKE_CURRENT_SOURCE_DIR}/cmocka-xtensa-gcc-toolchain.cmake)
+	set(UT_TOOLCHAIN "-DTOOLCHAIN=${TOOLCHAIN}")
 else()
+	# xtensa XCC build for xt-run.
 	set(UT_CC_CONFIG ${CMAKE_CURRENT_SOURCE_DIR}/cmocka-xtensa-xt-toolchain.cmake)
+	set(UT_TOOLCHAIN "")
 endif()
 
 if(DEFINED CMOCKA_DIRECTORY)
@@ -32,6 +39,7 @@ else()
 			-DWITH_EXAMPLES=OFF
 			-DWITH_POSITION_INDEPENDENT_CODE=OFF
 			-DWITH_TINY_CONFIG=ON
+			${UT_TOOLCHAIN}
 		BUILD_BYPRODUCTS "${cmocka_binary_directory}/src/libcmocka-static.a"
 		INSTALL_COMMAND ""
 	)
@@ -68,6 +76,13 @@ add_dependencies(common_mock cmocka)
 target_include_directories(common_mock PRIVATE ${CMOCKA_INCLUDE_DIR})
 target_link_libraries(common_mock PRIVATE sof_options)
 target_link_libraries(common_mock PRIVATE m)
+
+# xtensa GCC require some extra options to link
+if(BUILD_UNIT_TESTS_XTENSA_GCC)
+	target_link_libraries(common_mock PRIVATE gcc)
+	target_link_libraries(common_mock PRIVATE c)
+	target_link_libraries(common_mock PRIVATE -nostdlib)
+endif()
 link_libraries(common_mock)
 sof_append_relative_path_definitions(common_mock)
 
