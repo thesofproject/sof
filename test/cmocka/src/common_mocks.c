@@ -337,3 +337,110 @@ uint8_t * WEAK get_library_mailbox(void)
 }
 #endif
 
+/*
+ * GCC xtensa requires us to fake some of the standard C library calls
+ * as this is "bare metal" support (i.e. with no host OS implementation
+ * methods for these calls).
+ *
+ * None of these IO calls are used in the Mocks for testing.
+ */
+#if !CONFIG_LIBRARY && !__XCC__
+void _exit(int status);
+unsigned int _getpid_r(void);
+int _kill_r(int id, int sig);
+void _sbrk_r(int id);
+int _fstat_r(int fd, void *buf);
+int _open_r(const char *pathname, int flags);
+int _write_r(int fd, char *buf, int count);
+int _read_r(int fd, char *buf, int count);
+int _lseek_r(int fd, int count);
+int _close_r(int fd);
+int _isatty(int fd);
+
+void _exit(int status)
+{
+	while (1);
+}
+
+unsigned int _getpid_r(void)
+{
+	return 0;
+}
+
+int _kill_r(int id, int sig)
+{
+	return 0;
+}
+
+void _sbrk_r(int id)
+{
+}
+
+int _fstat_r(int fd, void *buf)
+{
+	return 0;
+}
+
+int _open_r(const char *pathname, int flags)
+{
+	return 0;
+}
+
+int _write_r(int fd, char *buf, int count)
+{
+	return 0;
+}
+
+int _read_r(int fd, char *buf, int count)
+{
+	return 0;
+}
+
+int _lseek_r(int fd, int count)
+{
+	return 0;
+}
+
+int _close_r(int fd)
+{
+	return 0;
+}
+
+int _isatty(int fd)
+{
+	return 0;
+}
+
+/* TODO: work around some linker warnings. Both will need fixed for qemu. */
+int _start = 0;
+int *__errno _PARAMS ((void));
+
+/*
+ * TODO: Math support for GCC xtensa requires a little more work to use the
+ * newlib versions. This is just to build test only today !
+ */
+double __floatsidf(int i);
+double __divdf3(double a, double b);
+int __ledf2(double a, double b);
+int __eqdf2(double a, double b);
+
+double __floatsidf(int i)
+{
+	return i;
+}
+
+double __divdf3(double a, double b)
+{
+	return a / b;
+}
+
+int WEAK __ledf2(double a, double b)
+{
+	return a <= b ? 0 : 1;
+}
+
+int WEAK __eqdf2(double a, double b)
+{
+	return a == b ? 0 : 1;
+}
+#endif

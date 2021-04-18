@@ -30,6 +30,7 @@ endif()
 
 option(BUILD_UNIT_TESTS "Build unit tests" OFF)
 option(BUILD_UNIT_TESTS_HOST "Build unit tests for host" OFF)
+option(BUILD_UNIT_TESTS_XTENSA_GCC "Build xtensa unit test using GCC" OFF)
 option(BUILD_CLANG_SCAN "Build for clang's scan-build" OFF)
 
 if(CONFIG_LIBRARY OR BUILD_UNIT_TESTS_HOST)
