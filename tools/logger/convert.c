@@ -628,7 +628,8 @@ static int fetch_entry(const struct log_entry_header *dma_log, uint64_t *last_ti
 				goto out;
 			}
 			if (ret != size)
-				log_err("Partial read of %u bytes of %lu.\n", ret, size);
+				log_err("Partial read of %u bytes of %lu, reading more\n",
+					ret, size);
 		}
 	}
 
