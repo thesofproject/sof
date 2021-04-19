@@ -24,7 +24,7 @@ struct dma_trace_buf {
 	void *addr;		/* buffer base address */
 	void *end_addr;		/* buffer end address */
 	uint32_t size;		/* size of buffer in bytes */
-	uint32_t avail;		/* avail bytes in buffer */
+	uint32_t avail;		/* bytes available to read */
 };
 
 struct dma_trace_data {
@@ -33,7 +33,7 @@ struct dma_trace_data {
 	struct dma_copy dc;
 	struct sof_ipc_dma_trace_posn posn;
 	struct ipc_msg *msg;
-	uint32_t old_host_offset;
+	uint32_t old_host_offset; /**< Last posn.offset sent to host */
 	uint32_t host_size;
 	struct task dmat_work;
 	uint32_t enabled;

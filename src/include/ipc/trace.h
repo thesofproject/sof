@@ -27,7 +27,7 @@
 
 #define SOF_TRACE_FILENAME_SIZE		32
 
-/* DMA for Trace params info - SOF_IPC_DEBUG_DMA_PARAMS */
+/* DMA for Trace params info - SOF_IPC_TRACE_DMA_PARAMS */
 /* Deprecated - use sof_ipc_dma_trace_params_ext */
 struct sof_ipc_dma_trace_params {
 	struct sof_ipc_cmd_hdr hdr;
@@ -35,7 +35,7 @@ struct sof_ipc_dma_trace_params {
 	uint32_t stream_tag;
 } __attribute__((packed, aligned(4)));
 
-/* DMA for Trace params info - SOF_IPC_DEBUG_DMA_PARAMS_EXT */
+/* DMA for Trace params info - SOF_IPC_TRACE_DMA_PARAMS_EXT */
 struct sof_ipc_dma_trace_params_ext {
 	struct sof_ipc_cmd_hdr hdr;
 	struct sof_ipc_host_buffer buffer;
@@ -44,7 +44,7 @@ struct sof_ipc_dma_trace_params_ext {
 	uint32_t reserved[8];
 } __attribute__((packed, aligned(4)));
 
-/* DMA for Trace params info - SOF_IPC_DEBUG_DMA_PARAMS */
+/* DMA for Trace params info - SOF_IPC_TRACE_DMA_POSITION */
 struct sof_ipc_dma_trace_posn {
 	struct sof_ipc_reply rhdr;
 	uint32_t host_offset;	/* Offset of DMA host buffer */

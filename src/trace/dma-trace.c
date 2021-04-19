@@ -46,6 +46,9 @@ static int dma_trace_get_avail_data(struct dma_trace_data *d,
 				    struct dma_trace_buf *buffer,
 				    int avail);
 
+/** Periodically runs and starts the DMA even when the buffer is not
+ * full.
+ */
 static enum task_state trace_work(void *data)
 {
 	struct dma_trace_data *d = data;
@@ -311,7 +314,8 @@ static int dma_trace_get_avail_data(struct dma_trace_data *d,
 
 	return size;
 }
-#endif
+
+#endif  /* CONFIG_DMA_GW */
 
 int dma_trace_enable(struct dma_trace_data *d)
 {
@@ -360,6 +364,7 @@ out:
 	return err;
 }
 
+/** Sends all pending DMA messages to mailbox (for emergencies) */
 void dma_trace_flush(void *t)
 {
 	struct dma_trace_data *trace_data = dma_trace_data_get();
@@ -465,6 +470,7 @@ static int dtrace_calc_buf_overflow(struct dma_trace_buf *buffer,
 	return overflow;
 }
 
+/** Ring buffer implementation, drops on overflow. */
 static void dtrace_add_event(const char *e, uint32_t length)
 {
 	struct dma_trace_data *trace_data = dma_trace_data_get();
@@ -535,6 +541,7 @@ static void dtrace_add_event(const char *e, uint32_t length)
 
 }
 
+/** Main dma-trace entry point */
 void dtrace_event(const char *e, uint32_t length)
 {
 	struct dma_trace_data *trace_data = dma_trace_data_get();

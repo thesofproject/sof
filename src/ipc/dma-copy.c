@@ -73,7 +73,7 @@ int dma_copy_to_host_nowait(struct dma_copy *dc, struct dma_sg_config *host_sg,
 	return size;
 }
 
-#else
+#else /* CONFIG_DMA_GW */
 
 int dma_copy_to_host_nowait(struct dma_copy *dc, struct dma_sg_config *host_sg,
 			    int32_t host_offset, void *local_ptr, int32_t size)
@@ -128,7 +128,7 @@ int dma_copy_to_host_nowait(struct dma_copy *dc, struct dma_sg_config *host_sg,
 	return local_sg_elem.size;
 }
 
-#endif
+#endif /* CONFIG_DMA_GW */
 
 int dma_copy_new(struct dma_copy *dc)
 {

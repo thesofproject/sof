@@ -710,6 +710,11 @@ static int ipc_dma_trace_config(uint32_t header)
 	IPC_COPY_CMD(params, ipc->comp_data);
 
 	if (iCS(header) == SOF_IPC_TRACE_DMA_PARAMS_EXT)
+		/* As version 5.12 Linux sends the monotonic
+		 *  ktime_get(). Search for
+		 *  "SOF_IPC_TRACE_DMA_PARAMS_EXT" in your particular
+		 *  kernel version.
+		 */
 		platform_timer_set_delta(timer, params.timestamp_ns);
 	else
 		timer->delta = 0;

@@ -218,6 +218,11 @@ static bool trace_filter_flood(uint32_t log_level, uint32_t entry, uint64_t mess
 }
 #endif /* CONFIG_TRACE_FILTERING_ADAPTIVE */
 
+/** Implementation shared and invoked by both adaptive filtering and
+ * not. Serializes events into trace messages and passes them to
+ * dtrace_event() or to mtrace_event() or to both depending on the log
+ * lvl and the Kconfiguration.
+ */
 static void vatrace_log(bool send_atomic, uint32_t log_entry, const struct tr_ctx *ctx,
 			uint32_t lvl, uint32_t id_1, uint32_t id_2, int arg_count, va_list vargs)
 {
@@ -230,7 +235,7 @@ static void vatrace_log(bool send_atomic, uint32_t log_entry, const struct tr_ct
 	struct trace *trace = trace_get();
 #endif /* CONFIG TRACEM */
 
-	/* fill log content */
+	/* fill log content. arg_count is in the dictionary. */
 	put_header(data, ctx->uuid_p, id_1, id_2, log_entry, platform_timer_get(timer_get()));
 
 	for (i = 0; i < arg_count; ++i)
@@ -457,6 +462,7 @@ int trace_filter_update(const struct trace_filter *filter)
 	return ret > 0 ? ret : -EINVAL;
 }
 
+/** Sends all pending DMA messages to mailbox (for emergencies) */
 void trace_flush(void)
 {
 	struct trace *trace = trace_get();
