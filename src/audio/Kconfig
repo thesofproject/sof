@@ -96,9 +96,22 @@ config COMP_IIR
 	help
 	  Select for IIR component
 
+config CORDIC_FIXED
+       bool "Sine Cosine library function"
+       default n
+       help
+          This option builds the 32 and 16 bit sin_fixed() library function.
+	  The input is Q4.28 format and the output is Q1.31. The cordic sine
+	  cos algorithm converges, when the angle is in the range [-pi/2, pi/2).
+	  If an angle is outside of this range, then a multiple of pi/2 is added
+	  or subtracted from the angle until it is within the range [-pi/2,pi/2).
+	  Start with the angle in the range [-2*pi, 2*pi) and output has range in
+	  [-1.0 to 1.0]
+
 config COMP_TONE
 	bool "Tone component"
 	default y
+	select CORDIC_FIXED
 	help
 	  Select for Tone component
 
@@ -152,6 +165,7 @@ config COMP_CROSSOVER
 
 config COMP_DRC
 	bool "Dynamic Range Compressor component"
+	select CORDIC_FIXED
 	default n
 	help
 	  Select for Dynamic Range Compressor (DRC) component. A DRC can be used
@@ -161,6 +175,7 @@ config COMP_DRC
 config COMP_MULTIBAND_DRC
 	depends on COMP_IIR && COMP_CROSSOVER && COMP_DRC
 	bool "Multiband Dynamic Range Compressor component"
+	select CORDIC_FIXED
 	default n
 	help
 	  Select for Multiband Dynamic Range Compressor (DRC) component. It
