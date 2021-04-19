@@ -366,8 +366,8 @@ zephyr_include_directories(${SOF_PLATFORM_PATH}/${PLATFORM}/include)
 # Commented files will be added/removed as integration dictates.
 zephyr_library_sources(
 	${SOF_IPC_PATH}/dma-copy.c
-	${SOF_IPC_PATH}/ipc.c
-	${SOF_IPC_PATH}/handler.c
+	${SOF_IPC_PATH}/ipc-common.c
+	${SOF_IPC_PATH}/handler-ipc3.c
 	${SOF_IPC_PATH}/ipc-host-ptable.c
 	${SOF_SRC_PATH}/spinlock.c
 
