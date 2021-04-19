@@ -225,12 +225,11 @@ inline int32_t drc_inv_fixed(int32_t x, int32_t precision_x, int32_t precision_y
  */
 inline int32_t drc_sin_fixed(int32_t x)
 {
-	const int32_t PI_OVER_TWO = Q_CONVERT_FLOAT(1.57079632679489661923f, 30);
+	const int32_t PI_OVER_TWO = Q_CONVERT_FLOAT(1.57079632679489661923, 30);
+	/* input range of sin_fixed_16b() is non-negative */
+	int32_t abs_sin_val = sin_fixed_16b(q_mult(ABS(x), PI_OVER_TWO, 30, 30, 28));
 
-	/* input range of sin_fixed() is non-negative */
-	int32_t abs_sin_val = sin_fixed(q_mult(ABS(x), PI_OVER_TWO, 30, 30, 28));
-
-	return SGN(x) < 0 ? -abs_sin_val : abs_sin_val;
+	return x < 0 ? -abs_sin_val << 16 : abs_sin_val << 16;
 }
 
 /*

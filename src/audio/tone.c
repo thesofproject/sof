@@ -143,11 +143,10 @@ static int32_t tonegen(struct tone_state *sg)
 {
 	int64_t sine;
 	int64_t w;
-
 	/* sg->w is angle in Q4.28 radians format, sin() returns Q1.31 */
 	/* sg->a is amplitude as Q1.31 */
 	sine =
-		q_mults_32x32(sin_fixed(sg->w), sg->a,
+		q_mults_32x32(sin_fixed_32b(sg->w), sg->a,
 			      Q_SHIFT_BITS_64(31, 31, 31));
 
 	/* Next point */
