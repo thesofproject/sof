@@ -43,6 +43,9 @@ char *asprintf(const char *format, ...)
 
 extern struct convert_config *global_config;
 
+/** Prints 1. once to stderr. 2. a second time to the global out_fd if
+ * out_fd is neither stderr nor stdout (because the -o option was used).
+ */
 void log_err(const char *fmt, ...)
 {
 	FILE *out_fd = global_config ? global_config->out_fd : NULL;
@@ -53,6 +56,7 @@ void log_err(const char *fmt, ...)
 
 	va_start(args, fmt);
 
+	/* Print into buff first, then outputs buff twice */
 	va_copy(args_alloc, args);
 	needed_size = vsnprintf(NULL, 0, fmt, args_alloc) + 1;
 	buff = malloc(needed_size);

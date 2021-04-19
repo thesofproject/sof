@@ -116,6 +116,10 @@ struct trace_filter {
  * image size. This way more elaborate log messages are possible and encouraged,
  * for better debugging experience, without worrying about runtime performance.
  */
+/* Map the different trace_xxxx_with_ids(... ) levels to the
+ * _trace_event_with_ids(level_xxxx, ...) macro shared across log
+ * levels.
+ */
 #define trace_event_with_ids(class, ctx, id_1, id_2, format, ...)	\
 	_trace_event_with_ids(LOG_LEVEL_INFO, class, ctx, id_1, id_2,	\
 			      format, ##__VA_ARGS__)
@@ -137,6 +141,8 @@ void trace_flush(void);
 void trace_on(void);
 void trace_off(void);
 void trace_init(struct sof *sof);
+
+/* All tracing macros in this file end up calling these functions in the end. */
 void trace_log_filtered(bool send_atomic, const void *log_entry, const struct tr_ctx *ctx,
 			uint32_t lvl, uint32_t id_1, uint32_t id_2, int arg_count, ...);
 void trace_log_unfiltered(bool send_atomic, const void *log_entry, const struct tr_ctx *ctx,
@@ -156,6 +162,9 @@ int trace_filter_update(const struct trace_filter *elem);
 
 #define trace_point(x) platform_trace_point(x)
 
+/** The start of this linker output MUST match the 'ldc_entry_header'
+ *  struct defined in the logger program running in user space.
+ */
 #define _DECLARE_LOG_ENTRY(lvl, format, comp_class, params)	\
 	__section(".static_log." #lvl)				\
 	static const struct {					\
@@ -191,6 +200,10 @@ _thrown_from_macro_BASE_LOG_in_trace_h
 #define STATIC_ASSERT_ARG_SIZE(...) \
 	META_MAP(1, trace_check_size_uint32, __VA_ARGS__)
 
+/** _log_message is where the memory-saving dictionary magic described
+ * above happens: the "format" string argument is moved to a special
+ * linker section and replaced by a &log_entry pointer to it.
+ */
 #define _log_message(log_func, atomic, lvl, comp_class, ctx, id_1, id_2, format, ...)	\
 do {											\
 	_DECLARE_LOG_ENTRY(lvl, format, comp_class,					\
@@ -247,8 +260,8 @@ static inline int trace_filter_update(const struct trace_filter *filter)
 
 #endif /* CONFIG_TRACE */
 
-/* verbose tracing */
 #if CONFIG_TRACEV
+/* Enable tr_dbg() statements by defining tracev_...() */
 #define tracev_event_with_ids(class, ctx, id_1, id_2, format, ...)	\
 	_trace_event_with_ids(LOG_LEVEL_VERBOSE, class,			\
 			      ctx, id_1, id_2,				\
@@ -267,24 +280,30 @@ static inline int trace_filter_update(const struct trace_filter *filter)
 
 #endif /* CONFIG_TRACEV */
 
-/* error tracing */
+/* The _error_ level has 2, 1 or 0 backends depending on Kconfig */
 #if CONFIG_TRACEE
+/* LOG_LEVEL_CRITICAL messages are duplicated to the mail box */
 #define _trace_error_with_ids(class, ctx, id_1, id_2, format, ...)			\
 	_log_message(trace_log_filtered, true, LOG_LEVEL_CRITICAL, class, ctx, id_1,	\
 		     id_2, format, ##__VA_ARGS__)
 #define trace_error_with_ids(class, ctx, id_1, id_2, format, ...)	\
 	_trace_error_with_ids(class, ctx, id_1, id_2, format, ##__VA_ARGS__)
 #define trace_error_atomic_with_ids(...) trace_error_with_ids(__VA_ARGS__)
+
 #elif CONFIG_TRACE
+/* Goes to trace_log_filtered() too but with a downgraded, LOG_INFO level */
 #define trace_error_with_ids(...) trace_event_with_ids(__VA_ARGS__)
 #define trace_error_atomic_with_ids(...) \
 	trace_event_atomic_with_ids(__VA_ARGS__)
-#else /* CONFIG_TRACEE CONFIG_TRACE */
+
+#else /* CONFIG_TRACEE, CONFIG_TRACE */
 #define trace_error_with_ids(class, ctx, id_1, id_2, format, ...)	\
 	trace_unused(class, ctx, id_1, id_2, format, ##__VA_ARGS__)
 #define trace_error_atomic_with_ids(class, ctx, id_1, id_2, format, ...) \
 	trace_unused(class, ctx, id_1, id_2, format, ##__VA_ARGS__)
-#endif /* CONFIG_TRACEE CONFIG_TRACE */
+
+#endif /* CONFIG_TRACEE, CONFIG_TRACE */
+
 
 #define _TRACE_INV_CLASS	TRACE_CLASS_DEPRECATED
 #define _TRACE_INV_ID		-1

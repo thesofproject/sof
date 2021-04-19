@@ -30,6 +30,9 @@
 #define TRACE_IDS_MASK			((1 << TRACE_ID_LENGTH) - 1)
 #define INVALID_TRACE_ID		(-1 & TRACE_IDS_MASK)
 
+/** Dictionary entry. This MUST match the start of the linker output
+ * defined by _DECLARE_LOG_ENTRY().
+ */
 struct ldc_entry_header {
 	uint32_t level;
 	uint32_t component_class;
@@ -39,6 +42,7 @@ struct ldc_entry_header {
 	uint32_t text_len;
 };
 
+/** Dictionary entry + unformatted parameters */
 struct ldc_entry {
 	struct ldc_entry_header header;
 	char *file_name;
@@ -46,6 +50,7 @@ struct ldc_entry {
 	uint32_t *params;
 };
 
+/** Dictionary entry + formatted parameters */
 struct proc_ldc_entry {
 	int subst_mask;
 	struct ldc_entry_header header;
@@ -187,6 +192,15 @@ static const char *asprintf_entry_text(uint32_t entry_address)
 	return entry.text;
 }
 
+/** printf-like formatting from the binary ldc_entry input to the
+ *  formatted proc_lpc_entry output. Also copies the unmodified
+ *  ldc_entry_header from input to output.
+ *
+ * @param[out] pe copy of the header + formatted output
+ * @param[in] e copy of the dictionary entry with unformatted,
+    uint32_t params have been inserted.
+   @param[in] use_colors whether to use ANSI terminal codes
+*/
 static void process_params(struct proc_ldc_entry *pe,
 			   const struct ldc_entry *e,
 			   int use_colors)
@@ -389,6 +403,10 @@ static char *format_file_name(char *file_name_raw, int full_name)
 	return name;
 }
 
+/** Formats and outputs one entry from the trace + the corresponding
+ * ldc_entry from the dictionary passed as arguments. Expects the log
+ * variables to have already been copied into the ldc_entry.
+ */
 static void print_entry_params(const struct log_entry_header *dma_log,
 			       const struct ldc_entry *entry, uint64_t last_timestamp)
 {
@@ -443,7 +461,7 @@ static void print_entry_params(const struct log_entry_header *dma_log,
 	else
 		ids[0] = '\0';
 
-	if (raw_output) {
+	if (raw_output) { /* "raw" means script-friendly (not all hex) */
 		const char *entry_fmt = "%s%u %u %s%s%s ";
 
 		if (time_precision >= 0)
@@ -501,6 +519,7 @@ static void print_entry_params(const struct log_entry_header *dma_log,
 			get_level_name(entry->header.level));
 	}
 
+	/* Minimal, printf-like formatting */
 	process_params(&proc_entry, entry, use_colors);
 
 	switch (proc_entry.header.params_num) {
@@ -608,6 +627,15 @@ out:
 	return ret;
 }
 
+/** Gets the dictionary entry matching the log entry argument, reads
+ * from the log the variable number of arguments needed by this entry
+ * and passes everything to print_entry_params() to finish processing
+ * this log entry. So not just "fetch" but everything else after it too.
+ *
+ * @param[in] dma_log protocol header from any trace (not just from the
+ * "DMA" trace)
+ * @param[out] last_timestamp timestamp found for this entry
+ */
 static int fetch_entry(const struct log_entry_header *dma_log, uint64_t *last_timestamp)
 {
 	struct ldc_entry entry;
@@ -642,6 +670,10 @@ static int fetch_entry(const struct log_entry_header *dma_log, uint64_t *last_ti
 		size_t size = sizeof(uint32_t) * entry.header.params_num;
 		uint8_t *n;
 
+		/* Repeatedly read() how much we still miss until we got
+		 * enough for the number of params needed by this
+		 * particular statement.
+		 */
 		for (n = (uint8_t *)entry.params; size; n += ret, size -= ret) {
 			ret = read(global_config->serial_fd, n, size);
 			if (ret < 0) {
@@ -718,10 +750,13 @@ static int serial_read(uint64_t *last_timestamp)
 		}
 	}
 
-	/* fetching entry from elf dump */
+	/* fetching entry from elf dump and complete processing this log
+	 * line
+	 */
 	return fetch_entry(&dma_log, last_timestamp);
 }
 
+/** Main logger loop */
 static int logger_read(void)
 {
 	struct log_entry_header dma_log;
@@ -742,6 +777,7 @@ static int logger_read(void)
 				return ret;
 		}
 
+	/* One iteration per log statement */
 	while (!ferror(global_config->in_fd)) {
 		/* getting entry parameters from dma dump */
 		ret = fread(&dma_log, sizeof(dma_log), 1, global_config->in_fd);

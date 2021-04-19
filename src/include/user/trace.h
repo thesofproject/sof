@@ -24,10 +24,10 @@
 #define LOG_LEVEL_DEBUG		4
 #define LOG_LEVEL_VERBOSE	LOG_LEVEL_DEBUG
 
-#define TRACE_ID_LENGTH 12
+#define TRACE_ID_LENGTH 12 /* bit field length */
 
 /*
- *  Log entry header.
+ *  Log entry protocol header.
  *
  * The header is followed by an array of arguments (uint32_t[]).
  * Number of arguments is specified by the params_num field of log_entry

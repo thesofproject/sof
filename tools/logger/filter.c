@@ -263,8 +263,6 @@ static int filter_parse_entry(char *input_str, struct list_item *out_list)
  * List of `sof_ipc_dma_trace_filter_elem` is writend to debugFS,
  * and then send as IPC to FW (this action is implemented in driver).
  * Each line in debugFS represents single IPC message.
- *
- * @param format log level settings in format `log_level=component`
  */
 int filter_update_firmware(void)
 {
