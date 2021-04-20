@@ -154,7 +154,7 @@ int tplg_load_buffer(int comp_id, int pipeline_id, int size,
 	struct snd_soc_tplg_vendor_array *array;
 	size_t read_size;
 	size_t parsed_size = 0;
-	int ret = 0;
+	int ret;
 
 	/* configure buffer */
 	buffer->comp.core = 0;
@@ -230,7 +230,7 @@ int tplg_load_pcm(int comp_id, int pipeline_id, int size, int dir,
 {
 	struct snd_soc_tplg_vendor_array *array = NULL;
 	size_t total_array_size = 0, read_size;
-	int ret = 0;
+	int ret;
 
 	/* configure host comp IPC message */
 	host->comp.hdr.size = sizeof(*host);
@@ -376,7 +376,7 @@ int tplg_load_pga(int comp_id, int pipeline_id, int size,
 {
 	struct snd_soc_tplg_vendor_array *array = NULL;
 	size_t total_array_size = 0, read_size;
-	int ret = 0;
+	int ret;
 
 	/* allocate memory for vendor tuple array */
 	array = (struct snd_soc_tplg_vendor_array *)malloc(size);
@@ -450,7 +450,7 @@ int tplg_load_pipeline(int comp_id, int pipeline_id, int size,
 {
 	struct snd_soc_tplg_vendor_array *array = NULL;
 	size_t total_array_size = 0, read_size;
-	int ret = 0;
+	int ret;
 
 	/* configure pipeline */
 	pipeline->comp_id = comp_id;
@@ -524,7 +524,7 @@ int tplg_load_one_control(struct snd_soc_tplg_ctl_hdr **ctl, char **priv_data,
 	size_t rewind_size;
 	size_t read_size;
 	size_t hdr_size;
-	int ret = 0;
+	int ret;
 
 	/* These are set if success */
 	*ctl = NULL;
@@ -831,7 +831,7 @@ int tplg_load_src(int comp_id, int pipeline_id, int size,
 {
 	struct snd_soc_tplg_vendor_array *array = NULL;
 	size_t total_array_size = 0, read_size;
-	int ret = 0;
+	int ret;
 
 	/* allocate memory for vendor tuple array */
 	array = (struct snd_soc_tplg_vendor_array *)malloc(size);
@@ -911,7 +911,7 @@ int tplg_load_asrc(int comp_id, int pipeline_id, int size,
 {
 	struct snd_soc_tplg_vendor_array *array = NULL;
 	size_t total_array_size = 0, read_size;
-	int ret = 0;
+	int ret;
 
 	/* allocate memory for vendor tuple array */
 	array = (struct snd_soc_tplg_vendor_array *)malloc(size);
@@ -993,7 +993,7 @@ int tplg_load_process(int comp_id, int pipeline_id, int size,
 	struct snd_soc_tplg_vendor_array *array = NULL;
 	size_t total_array_size = 0;
 	size_t read_size;
-	int ret = 0;
+	int ret;
 
 	/* allocate memory for vendor tuple array */
 	array = (struct snd_soc_tplg_vendor_array *)malloc(size);
@@ -1086,7 +1086,7 @@ int tplg_load_mixer(int comp_id, int pipeline_id, int size,
 {
 	struct snd_soc_tplg_vendor_array *array = NULL;
 	size_t total_array_size = 0, read_size;
-	int ret = 0;
+	int ret;
 
 	/* allocate memory for vendor tuple array */
 	array = (struct snd_soc_tplg_vendor_array *)malloc(size);
