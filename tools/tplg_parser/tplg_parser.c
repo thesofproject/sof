@@ -555,7 +555,7 @@ int tplg_load_one_control(struct snd_soc_tplg_ctl_hdr **ctl, char **priv_data,
 	case SND_SOC_TPLG_DAPM_CTL_VOLSW:
 		/* load mixer type control */
 		rewind_size = sizeof(struct snd_soc_tplg_ctl_hdr);
-		if (fseek(file, rewind_size * -1, SEEK_CUR)) {
+		if (fseek(file, (long)rewind_size * -1, SEEK_CUR)) {
 			ret = -errno;
 			goto err;
 		}
@@ -590,7 +590,7 @@ int tplg_load_one_control(struct snd_soc_tplg_ctl_hdr **ctl, char **priv_data,
 	case SND_SOC_TPLG_DAPM_CTL_ENUM_VALUE:
 		/* load enum type control */
 		rewind_size = sizeof(struct snd_soc_tplg_ctl_hdr);
-		if (fseek(file, rewind_size * -1, SEEK_CUR)) {
+		if (fseek(file, (long)rewind_size * -1, SEEK_CUR)) {
 			ret = -errno;
 			goto err;
 		}
@@ -621,7 +621,7 @@ int tplg_load_one_control(struct snd_soc_tplg_ctl_hdr **ctl, char **priv_data,
 	case SND_SOC_TPLG_CTL_BYTES:
 		/* load bytes type controls */
 		rewind_size = sizeof(struct snd_soc_tplg_ctl_hdr);
-		if (fseek(file, rewind_size * -1, SEEK_CUR)) {
+		if (fseek(file, (long)rewind_size * -1, SEEK_CUR)) {
 			ret = -errno;
 			goto err;
 		}
@@ -743,7 +743,7 @@ int tplg_load_controls(int num_kcontrols, FILE *file)
 		case SND_SOC_TPLG_DAPM_CTL_VOLSW:
 			/* load mixer type control */
 			read_size = sizeof(struct snd_soc_tplg_ctl_hdr);
-			if (fseek(file, read_size * -1, SEEK_CUR)) {
+			if (fseek(file, (long)read_size * -1, SEEK_CUR)) {
 				return -errno;
 				goto err;
 			}
@@ -769,7 +769,7 @@ int tplg_load_controls(int num_kcontrols, FILE *file)
 		case SND_SOC_TPLG_DAPM_CTL_ENUM_VALUE:
 			/* load enum type control */
 			read_size = sizeof(struct snd_soc_tplg_ctl_hdr);
-			if (fseek(file, read_size * -1, SEEK_CUR)) {
+			if (fseek(file, (long)read_size * -1, SEEK_CUR)) {
 				ret = -errno;
 				goto err;
 			}
@@ -791,7 +791,7 @@ int tplg_load_controls(int num_kcontrols, FILE *file)
 		case SND_SOC_TPLG_CTL_BYTES:
 			/* load bytes type controls */
 			read_size = sizeof(struct snd_soc_tplg_ctl_hdr);
-			if (fseek(file, read_size * -1, SEEK_CUR)) {
+			if (fseek(file, (long)read_size * -1, SEEK_CUR)) {
 				ret = -errno;
 				goto err;
 			}
