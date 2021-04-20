@@ -111,6 +111,12 @@ int pipeline_alloc_memory(struct pipeline *p, uint32_t bytes)
 	return 0;
 }
 
+int pipeline_alloc_memory(struct pipeline *p, uint32_t bytes)
+{
+	// TODO
+	return 0;
+}
+
 /* create new pipeline - returns pipeline id or negative error */
 struct pipeline *pipeline_new(struct comp_dev *cd, uint32_t pipeline_id,
 			      uint32_t priority, uint32_t comp_id)

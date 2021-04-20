@@ -20,7 +20,11 @@
 #include <sof/debug/panic.h>
 #include <sof/drivers/idc.h>
 #include <sof/drivers/interrupt.h>
-#include <sof/drivers/ipc.h>
+#include <sof/ipc/topology.h>
+#include <sof/ipc/common.h>
+#include <sof/ipc/msg.h>
+#include <sof/ipc/driver.h>
+#include <sof/ipc/schedule.h>
 #include <sof/drivers/timer.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/clk.h>
@@ -49,10 +53,6 @@
 #include <ipc/stream.h>
 #include <ipc/topology.h>
 #include <ipc/trace.h>
-#if CAVS_VERSION >= CAVS_VERSION_1_8
-#include <ipc/header-intel-cavs.h>
-#include <cavs/drivers/sideband-ipc.h>
-#endif
 #include <user/trace.h>
 #include <ipc/probe.h>
 #include <sof/probe/probe.h>
@@ -61,6 +61,12 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+
+#if CONFIG_CAVS && CAVS_VERSION >= CAVS_VERSION_1_8
+#include <ipc/header-intel-cavs.h>
+#include <cavs/drivers/sideband-ipc.h>
+#define CAVS_IPC_TYPE_S(x)		((x) & CAVS_IPC_TYPE_MASK)
+#endif
 
 #define iGS(x) ((x) & SOF_GLB_TYPE_MASK)
 #define iCS(x) ((x) & SOF_CMD_TYPE_MASK)
@@ -91,7 +97,7 @@
 			((struct sof_ipc_cmd_hdr *)tx),			\
 			sizeof(rx))
 
-void *mailbox_validate(void)
+struct sof_ipc_cmd_hdr *mailbox_validate(void)
 {
 	struct sof_ipc_cmd_hdr *hdr = ipc_get()->comp_data;
 
@@ -107,8 +113,6 @@ void *mailbox_validate(void)
 	/* read rest of component data */
 	mailbox_hostbox_read(hdr + 1, SOF_IPC_MSG_MAX_SIZE - sizeof(*hdr),
 			     sizeof(*hdr), hdr->size - sizeof(*hdr));
-
-	platform_shared_commit(hdr, hdr->size);
 
 	return hdr;
 }
@@ -297,7 +301,6 @@ pipe_params:
 	reply.comp_id = pcm_params.comp_id;
 	reply.posn_offset = pcm_dev->cd->pipeline->posn_offset;
 	mailbox_hostbox_write(0, &reply, sizeof(reply));
-	platform_shared_commit(pcm_dev, sizeof(*pcm_dev));
 	return 1;
 
 error:
@@ -306,7 +309,6 @@ error:
 		tr_err(&ipc_tr, "ipc: pipe %d comp %d reset failed %d",
 		       pcm_dev->cd->pipeline->pipeline_id,
 		       pcm_params.comp_id, reset_err);
-	platform_shared_commit(pcm_dev, sizeof(*pcm_dev));
 	return err;
 }
 
@@ -343,8 +345,6 @@ static int ipc_stream_pcm_free(uint32_t header)
 
 	/* reset the pipeline */
 	ret = pipeline_reset(pcm_dev->cd->pipeline, pcm_dev->cd);
-
-	platform_shared_commit(pcm_dev, sizeof(*pcm_dev));
 
 	return ret;
 }
@@ -388,8 +388,6 @@ static int ipc_stream_position(uint32_t header)
 	mailbox_stream_write(pcm_dev->cd->pipeline->posn_offset,
 			     &posn, sizeof(posn));
 
-	platform_shared_commit(pcm_dev, sizeof(*pcm_dev));
-
 	return 1;
 }
 
@@ -398,7 +396,7 @@ static int ipc_stream_trigger(uint32_t header)
 	struct ipc *ipc = ipc_get();
 	struct ipc_comp_dev *pcm_dev;
 	struct sof_ipc_stream stream;
-	uint32_t ipc_cmd = iCS(header);
+	uint32_t ipc_command = iCS(header);
 	uint32_t cmd;
 	int ret;
 
@@ -417,9 +415,9 @@ static int ipc_stream_trigger(uint32_t header)
 		return ipc_process_on_core(pcm_dev->core);
 
 	tr_dbg(&ipc_tr, "ipc: comp %d -> trigger cmd 0x%x",
-	       stream.comp_id, ipc_cmd);
+	       stream.comp_id, ipc_command);
 
-	switch (ipc_cmd) {
+	switch (ipc_command) {
 	case SOF_IPC_STREAM_TRIG_START:
 		cmd = COMP_TRIGGER_START;
 		break;
@@ -436,7 +434,7 @@ static int ipc_stream_trigger(uint32_t header)
 	case SOF_IPC_STREAM_TRIG_XRUN:
 		return 0;
 	default:
-		tr_err(&ipc_tr, "ipc: invalid trigger cmd 0x%x", ipc_cmd);
+		tr_err(&ipc_tr, "ipc: invalid trigger cmd 0x%x", ipc_command);
 		return -ENODEV;
 	}
 
@@ -444,10 +442,8 @@ static int ipc_stream_trigger(uint32_t header)
 	ret = pipeline_trigger(pcm_dev->cd->pipeline, pcm_dev->cd, cmd);
 	if (ret < 0) {
 		tr_err(&ipc_tr, "ipc: comp %d trigger 0x%x failed %d",
-		       stream.comp_id, ipc_cmd, ret);
+		       stream.comp_id, ipc_command, ret);
 	}
-
-	platform_shared_commit(pcm_dev, sizeof(*pcm_dev));
 
 	return ret;
 }
@@ -526,7 +522,7 @@ static int ipc_dai_config(uint32_t header)
 	}
 
 	/* send params to all DAI components who use that physical DAI */
-	return ipc_comp_dai_config(ipc, (uintptr_t *)ipc->comp_data);
+	return ipc_comp_dai_config(ipc, ipc->comp_data);
 }
 
 static int ipc_glb_dai_message(uint32_t header)
@@ -692,6 +688,12 @@ static int ipc_glb_pm_message(uint32_t header)
 /*
  * Debug IPC Operations.
  */
+#if CONFIG_SUECREEK || defined __ZEPHYR__
+static int ipc_dma_trace_config(uint32_t header)
+{
+	return 0;
+}
+#else
 static int ipc_dma_trace_config(uint32_t header)
 {
 #if CONFIG_HOST_PTABLE
@@ -711,12 +713,6 @@ static int ipc_dma_trace_config(uint32_t header)
 		platform_timer_set_delta(timer, params.timestamp_ns);
 	else
 		timer->delta = 0;
-
-	platform_shared_commit(timer, sizeof(*timer));
-
-#if CONFIG_SUECREEK || defined __ZEPHYR__
-	return 0;
-#endif
 
 #if CONFIG_HOST_PTABLE
 	err = ipc_process_host_buffer(ipc, &params.buffer,
@@ -751,6 +747,7 @@ static int ipc_dma_trace_config(uint32_t header)
 error:
 	return err;
 }
+#endif /* CONFIG_SUECREEK || defined __ZEPHYR__ */
 
 static int ipc_trace_filter_update(uint32_t header)
 {
@@ -1072,8 +1069,6 @@ static int ipc_comp_value(uint32_t header, uint32_t cmd)
 		return ret;
 	}
 
-	platform_shared_commit(comp_dev, sizeof(*comp_dev));
-
 	/* write component values to the outbox */
 	if (data->rhdr.hdr.size <= MAILBOX_HOSTBOX_SIZE &&
 	    data->rhdr.hdr.size <= SOF_IPC_MSG_MAX_SIZE) {
@@ -1128,7 +1123,7 @@ static int ipc_glb_tplg_comp_new(uint32_t header)
 	       comp->pipeline_id, comp->id, comp->type);
 
 	/* register component */
-	ret = ipc_comp_new(ipc, (uintptr_t *)comp);
+	ret = ipc_comp_new(ipc, comp);
 	if (ret < 0) {
 		tr_err(&ipc_tr, "ipc: pipe %d comp %d creation failed %d",
 		       comp->pipeline_id, comp->id, ret);
@@ -1164,7 +1159,7 @@ static int ipc_glb_tplg_buffer_new(uint32_t header)
 	       ipc_buffer.comp.pipeline_id, ipc_buffer.comp.id,
 	       ipc_buffer.size);
 
-	ret = ipc_buffer_new(ipc, ipc->comp_data);
+	ret = ipc_buffer_new(ipc, (struct sof_ipc_buffer *)ipc->comp_data);
 	if (ret < 0) {
 		tr_err(&ipc_tr, "ipc: pipe %d buffer %d creation failed %d",
 		       ipc_buffer.comp.pipeline_id,
@@ -1199,7 +1194,7 @@ static int ipc_glb_tplg_pipe_new(uint32_t header)
 
 	tr_dbg(&ipc_tr, "ipc: pipe %d -> new", ipc_pipeline.pipeline_id);
 
-	ret = ipc_pipeline_new(ipc, (uintptr_t *)ipc->comp_data);
+	ret = ipc_pipeline_new(ipc, ipc->comp_data);
 	if (ret < 0) {
 		tr_err(&ipc_tr, "ipc: pipe %d creation failed %d",
 		       ipc_pipeline.pipeline_id, ret);
@@ -1231,7 +1226,7 @@ static int ipc_glb_tplg_comp_connect(uint32_t header)
 	/* copy message with ABI safe method */
 	IPC_COPY_CMD(connect, ipc->comp_data);
 
-	return ipc_comp_connect(ipc, (uintptr_t *)ipc->comp_data);
+	return ipc_comp_connect(ipc, ipc->comp_data);
 }
 
 static int ipc_glb_tplg_free(uint32_t header,
@@ -1336,6 +1331,7 @@ static int ipc_glb_test_mem_usage(uint32_t header)
 				      PLATFORM_HEAP_SYSTEM_RUNTIME, elems);
 	elems += fill_mem_usage_elems(SOF_MEM_ZONE_RUNTIME, SOF_IPC_MEM_ZONE_RUNTIME,
 				      PLATFORM_HEAP_RUNTIME, elems);
+	/* cppcheck-suppress unreadVariable */
 	elems += fill_mem_usage_elems(SOF_MEM_ZONE_BUFFER, SOF_IPC_MEM_ZONE_BUFFER,
 				      PLATFORM_HEAP_BUFFER, elems);
 #if CONFIG_CORE_COUNT > 1
@@ -1383,8 +1379,8 @@ static int ipc_glb_test_message(uint32_t header)
 }
 #endif
 
-#if CAVS_VERSION >= CAVS_VERSION_1_8
-static uint32_t *ipc_cavs_read_set_d0ix(uint32_t dr, uint32_t dd)
+#if CONFIG_CAVS && CAVS_VERSION >= CAVS_VERSION_1_8
+static struct sof_ipc_cmd_hdr *ipc_cavs_read_set_d0ix(uint32_t dr, uint32_t dd)
 {
 	struct sof_ipc_pm_gate *cmd = ipc_get()->comp_data;
 
@@ -1392,17 +1388,15 @@ static uint32_t *ipc_cavs_read_set_d0ix(uint32_t dr, uint32_t dd)
 	cmd->hdr.size = sizeof(*cmd);
 	cmd->flags = dd & CAVS_IPC_MOD_SETD0IX_BIT_MASK;
 
-	platform_shared_commit(cmd, cmd->hdr.size);
-
-	return (uint32_t *)&cmd->hdr;
+	return &cmd->hdr;
 }
 
 /*
  * Read a compact IPC message or return NULL for normal message.
  */
-uint32_t *ipc_compact_read_msg(void)
+struct sof_ipc_cmd_hdr *ipc_compact_read_msg(void)
 {
-	uint32_t *hdr;
+	struct sof_ipc_cmd_hdr *hdr;
 	uint32_t dr;
 	uint32_t dd;
 
@@ -1413,7 +1407,7 @@ uint32_t *ipc_compact_read_msg(void)
 	if (!(dr & CAVS_IPC_MSG_TGT))
 		return mailbox_validate();
 
-	switch (CAVS_IPC_TYPE(dr)) {
+	switch (CAVS_IPC_TYPE_S(dr)) {
 	case CAVS_IPC_MOD_SET_D0IX:
 		hdr = ipc_cavs_read_set_d0ix(dr, dd);
 		break;
@@ -1423,20 +1417,14 @@ uint32_t *ipc_compact_read_msg(void)
 
 	return hdr;
 }
-#else
-uint32_t *ipc_compact_read_msg(void)
-{
-	return NULL;
-}
 #endif
 
 /*
  * Global IPC Operations.
  */
 
-void ipc_cmd(uint32_t *_hdr)
+void ipc_cmd(struct sof_ipc_cmd_hdr *hdr)
 {
-	struct sof_ipc_cmd_hdr *hdr = (struct sof_ipc_cmd_hdr *) _hdr;
 	struct sof_ipc_reply reply;
 	uint32_t type = 0;
 	int ret;
@@ -1493,8 +1481,6 @@ void ipc_cmd(uint32_t *_hdr)
 		ret = -EINVAL;
 		break;
 	}
-
-	platform_shared_commit(hdr, hdr->size);
 
 out:
 	tr_dbg(&ipc_tr, "ipc: last request 0x%x returned %d", type, ret);

@@ -10,7 +10,12 @@
 #include <sof/audio/pipeline.h>
 #include <sof/common.h>
 #include <sof/drivers/idc.h>
-#include <sof/drivers/ipc.h>
+#include <sof/drivers/interrupt.h>
+#include <sof/ipc/topology.h>
+#include <sof/ipc/common.h>
+#include <sof/ipc/msg.h>
+#include <sof/ipc/driver.h>
+#include <sof/ipc/schedule.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/cache.h>
 #include <sof/lib/cpu.h>
@@ -30,19 +35,17 @@
 
 extern struct tr_ctx comp_tr;
 
-void ipc_build_stream_posn(uintptr_t *_posn, uint32_t type, uint32_t id)
+void ipc_build_stream_posn(struct sof_ipc_stream_posn *posn, uint32_t type,
+			   uint32_t id)
 {
-	struct sof_ipc_stream_posn *posn = (struct sof_ipc_stream_posn *)_posn;
-
 	posn->rhdr.hdr.cmd = SOF_IPC_GLB_STREAM_MSG | type | id;
 	posn->rhdr.hdr.size = sizeof(*posn);
 	posn->comp_id = id;
 }
 
-void ipc_build_comp_event(uint32_t *_event, uint32_t type, uint32_t id)
+void ipc_build_comp_event(struct sof_ipc_comp_event *event, uint32_t type,
+			  uint32_t id)
 {
-	struct sof_ipc_comp_event *event = (struct sof_ipc_comp_event *)_event;
-
 	event->rhdr.hdr.cmd = SOF_IPC_GLB_COMP_MSG | SOF_IPC_COMP_NOTIFICATION |
 		id;
 	event->rhdr.hdr.size = sizeof(*event);
@@ -50,11 +53,8 @@ void ipc_build_comp_event(uint32_t *_event, uint32_t type, uint32_t id)
 	event->src_comp_id = id;
 }
 
-void ipc_build_trace_posn(uintptr_t *_posn)
+void ipc_build_trace_posn(struct sof_ipc_dma_trace_posn *posn)
 {
-	struct sof_ipc_dma_trace_posn *posn =
-			(struct sof_ipc_dma_trace_posn *)_posn;
-
 	posn->rhdr.hdr.cmd =  SOF_IPC_GLB_TRACE_MSG |
 		SOF_IPC_TRACE_DMA_POSITION;
 	posn->rhdr.hdr.size = sizeof(*posn);
@@ -232,15 +232,11 @@ comp_type_match:
 		info = container_of(clist, struct comp_driver_info, list);
 		if (info->drv->type == comp->type) {
 			drv = info->drv;
-			platform_shared_commit(info, sizeof(*info));
 			goto out;
 		}
-
-		platform_shared_commit(info, sizeof(*info));
 	}
 
 out:
-	platform_shared_commit(drivers, sizeof(*drivers));
 	irq_local_enable(flags);
 	return drv;
 }
@@ -280,10 +276,9 @@ struct comp_dev *comp_new(struct sof_ipc_comp *comp)
 	return cdev;
 }
 
-int ipc_pipeline_new(struct ipc *ipc, uintptr_t *_pipe_desc)
+int ipc_pipeline_new(struct ipc *ipc,
+	struct sof_ipc_pipe_new *pipe_desc)
 {
-	struct sof_ipc_pipe_new *pipe_desc =
-		(struct sof_ipc_pipe_new *) _pipe_desc;
 	struct ipc_comp_dev *ipc_pipe;
 	struct pipeline *pipe;
 	struct ipc_comp_dev *icd;
@@ -328,7 +323,7 @@ int ipc_pipeline_new(struct ipc *ipc, uintptr_t *_pipe_desc)
 
 	/* create the pipeline */
 	pipe = pipeline_new(icd->cd, pipe_desc->pipeline_id, pipe_desc->priority,
-			pipe_desc->comp_id);
+			    pipe_desc->comp_id);
 	if (!pipe) {
 		tr_err(&ipc_tr, "ipc_pipeline_new(): pipeline_new() failed");
 		return -ENOMEM;
@@ -367,8 +362,6 @@ int ipc_pipeline_new(struct ipc *ipc, uintptr_t *_pipe_desc)
 
 	/* add new pipeline to the list */
 	list_item_append(&ipc_pipe->list, &ipc->comp_list);
-
-	platform_shared_commit(ipc_pipe, sizeof(*ipc_pipe));
 
 	return 0;
 }
@@ -442,24 +435,19 @@ int ipc_pipeline_complete(struct ipc *ipc, uint32_t comp_id)
 	ret = pipeline_complete(ipc_pipe->pipeline, ipc_ppl_source->cd,
 				ipc_ppl_sink->cd);
 
-	platform_shared_commit(ipc_pipe, sizeof(*ipc_pipe));
-	platform_shared_commit(ipc_ppl_source, sizeof(*ipc_ppl_source));
-	platform_shared_commit(ipc_ppl_sink, sizeof(*ipc_ppl_sink));
-
 	return ret;
 }
 
 /*
  * Configure DAI - TODO: this can be simplified to run only on core 0.
  */
-int ipc_comp_dai_config(struct ipc *ipc, uintptr_t *_config)
+int ipc_comp_dai_config(struct ipc *ipc, struct sof_ipc_dai_config *config)
 {
 	bool comp_on_core[CONFIG_CORE_COUNT] = { false };
 	struct sof_ipc_comp_dai *dai;
 	struct sof_ipc_reply reply;
 	struct ipc_comp_dev *icd;
 	struct list_item *clist;
-	struct sof_ipc_dai_config *config = (struct sof_ipc_dai_config *)_config;
 	int ret = -ENODEV;
 	int i;
 
@@ -468,7 +456,6 @@ int ipc_comp_dai_config(struct ipc *ipc, uintptr_t *_config)
 		icd = container_of(clist, struct ipc_comp_dev, list);
 		/* make sure we only config DAI comps */
 		if (icd->type != COMP_TYPE_COMPONENT) {
-			platform_shared_commit(icd, sizeof(*icd));
 			continue;
 		}
 
@@ -476,14 +463,12 @@ int ipc_comp_dai_config(struct ipc *ipc, uintptr_t *_config)
 		if (!cpu_is_me(icd->core)) {
 			comp_on_core[icd->core] = true;
 			ret = 0;
-			platform_shared_commit(icd, sizeof(*icd));
 			continue;
 		}
 
 		if (dev_comp_type(icd->cd) == SOF_COMP_DAI ||
 		    dev_comp_type(icd->cd) == SOF_COMP_SG_DAI) {
 			dai = COMP_GET_IPC(icd->cd, sof_ipc_comp_dai);
-			platform_shared_commit(icd, sizeof(*icd));
 			/*
 			 * set config if comp dai_index matches
 			 * config dai_index.
@@ -491,7 +476,6 @@ int ipc_comp_dai_config(struct ipc *ipc, uintptr_t *_config)
 			if (dai->dai_index == config->dai_index &&
 			    dai->type == config->type) {
 				ret = comp_dai_config(icd->cd, config);
-				platform_shared_commit(icd, sizeof(*icd));
 				if (ret < 0)
 					break;
 			}
@@ -525,9 +509,8 @@ int ipc_comp_dai_config(struct ipc *ipc, uintptr_t *_config)
 	return ret;
 }
 
-int ipc_buffer_new(struct ipc *ipc, uintptr_t *_desc)
+int ipc_buffer_new(struct ipc *ipc, struct sof_ipc_buffer *desc)
 {
-	struct sof_ipc_buffer *desc = (struct sof_ipc_buffer *)_desc;
 	struct ipc_comp_dev *ibd;
 	struct comp_buffer *buffer;
 	int ret = 0;
@@ -541,7 +524,7 @@ int ipc_buffer_new(struct ipc *ipc, uintptr_t *_desc)
 	}
 
 	/* register buffer with pipeline */
-	buffer = buffer_new((uintptr_t *)desc);
+	buffer = buffer_new(desc);
 	if (!buffer) {
 		tr_err(&ipc_tr, "ipc_buffer_new(): buffer_new() failed");
 		return -ENOMEM;
@@ -560,8 +543,6 @@ int ipc_buffer_new(struct ipc *ipc, uintptr_t *_desc)
 
 	/* add new buffer to the list */
 	list_item_append(&ibd->list, &ipc->comp_list);
-
-	platform_shared_commit(ibd, sizeof(*ibd));
 
 	return ret;
 }
@@ -659,9 +640,6 @@ static int ipc_comp_to_buffer_connect(struct ipc_comp_dev *comp,
 
 	dcache_writeback_invalidate_region(buffer->cb, sizeof(*buffer->cb));
 
-	platform_shared_commit(comp, sizeof(*comp));
-	platform_shared_commit(buffer, sizeof(*buffer));
-
 	return ret;
 }
 
@@ -694,16 +672,12 @@ static int ipc_buffer_to_comp_connect(struct ipc_comp_dev *buffer,
 
 	dcache_writeback_invalidate_region(buffer->cb, sizeof(*buffer->cb));
 
-	platform_shared_commit(comp, sizeof(*comp));
-	platform_shared_commit(buffer, sizeof(*buffer));
-
 	return ret;
 }
 
-int ipc_comp_connect(struct ipc *ipc, uintptr_t *_connect)
+int ipc_comp_connect(struct ipc *ipc,
+	struct sof_ipc_pipe_comp_connect *connect)
 {
-	struct sof_ipc_pipe_comp_connect *connect =
-			(struct sof_ipc_pipe_comp_connect *)_connect;
 	struct ipc_comp_dev *icd_source;
 	struct ipc_comp_dev *icd_sink;
 
@@ -736,9 +710,8 @@ int ipc_comp_connect(struct ipc *ipc, uintptr_t *_connect)
 	}
 }
 
-int ipc_comp_new(struct ipc *ipc, uintptr_t *_comp)
+int ipc_comp_new(struct ipc *ipc, struct sof_ipc_comp *comp)
 {
-	struct sof_ipc_comp *comp = (struct sof_ipc_comp *)_comp;
 	struct comp_dev *cd;
 	struct ipc_comp_dev *icd;
 
@@ -777,8 +750,6 @@ int ipc_comp_new(struct ipc *ipc, uintptr_t *_comp)
 
 	/* add new component to the list */
 	list_item_append(&icd->list, &ipc->comp_list);
-
-	platform_shared_commit(icd, sizeof(*icd));
 
 	return 0;
 }
@@ -822,9 +793,8 @@ int ipc_comp_free(struct ipc *ipc, uint32_t comp_id)
 }
 
 /* create a new component in the pipeline */
-struct comp_buffer *buffer_new(uintptr_t *_desc)
+struct comp_buffer *buffer_new(struct sof_ipc_buffer *desc)
 {
-	struct sof_ipc_buffer *desc = (struct sof_ipc_buffer *)_desc;
 	struct comp_buffer *buffer;
 
 	tr_info(&buffer_tr, "buffer new size 0x%x id %d.%d flags 0x%x",
