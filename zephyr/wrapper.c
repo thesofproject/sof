@@ -23,11 +23,6 @@
 #include <soc.h>
 #include <kernel.h>
 
-/* Confirm Zephyr config settings - TODO: Use ASSERT */
-#if !CONFIG_DYNAMIC_INTERRUPTS
-#error Define CONFIG_DYNAMIC_INTERRUPTS
-#endif
-
 /*
  * Memory - Create Zephyr HEAP for SOF.
  *
@@ -198,8 +193,14 @@ int interrupt_get_irq(unsigned int irq, const char *cascade)
 
 int interrupt_register(uint32_t irq, void(*handler)(void *arg), void *arg)
 {
+#ifdef CONFIG_DYNAMIC_INTERRUPTS
 	return arch_irq_connect_dynamic(irq, 0, (void (*)(const void *))handler,
 					arg, 0);
+#else
+	LOG_ERR("Cannot register handler for IRQ %u: dynamic IRQs are disabled",
+		irq);
+	return -EOPNOTSUPP;
+#endif
 }
 
 #if !CONFIG_LIBRARY
