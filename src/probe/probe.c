@@ -14,7 +14,7 @@
 #include <sof/lib/dma.h>
 #include <sof/lib/notifier.h>
 #include <sof/lib/uuid.h>
-#include <ipc/topology.h>
+#include <sof/ipc/topology.h>
 #include <sof/ipc/driver.h>
 #include <sof/drivers/timer.h>
 #include <sof/schedule/ll_schedule.h>
