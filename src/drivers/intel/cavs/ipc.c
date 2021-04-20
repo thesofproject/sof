@@ -218,7 +218,9 @@ int ipc_platform_send_msg(struct ipc_msg *msg)
 	}
 
 	/* now send the message */
-	mailbox_dspbox_write(0, msg->tx_data, msg->tx_size);
+	if (msg->tx_size)
+		mailbox_dspbox_write(0, msg->tx_data, msg->tx_size);
+
 	list_item_del(&msg->list);
 	tr_dbg(&ipc_tr, "ipc: msg tx -> 0x%x", msg->header);
 
