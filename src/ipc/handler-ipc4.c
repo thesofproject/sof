@@ -59,6 +59,10 @@
 #include <stddef.h>
 #include <stdint.h>
 
+struct ipc_data {
+	struct ipc_msg msg;
+	uint32_t msg_dat[2];
+};
 
 /*
  * Global IPC Operations.
@@ -86,10 +90,12 @@ static int ipc4_set_pipeline_state(uint32_t *msg)
 
 static int ipc4_process_glb_message(uint32_t *msg)
 {
+	union ipc4_message_header ipc4;
 	uint32_t type;
 	int ret = 0;
 
-	type = SOF_IPC4_MSG_GET_TYPE(*msg);
+	ipc4.dat = msg[0];
+	type = ipc4.r.type;
 
 	switch (type) {
 	case SOF_IPC4_GLB_BOOT_CONFIG:
@@ -168,10 +174,12 @@ static int ipc4_set_large_config_module(uint32_t *msg)
 
 static int ipc4_process_module_message(uint32_t *msg)
 {
+	union ipc4_message_header ipc4;
 	uint32_t type;
 	int ret = 0;
 
-	type = SOF_IPC4_MSG_GET_TYPE(*msg);
+	ipc4.dat = msg[0];
+	type = ipc4.r.type;
 
 	switch (type) {
 	case SOF_IPC4_MOD_INIT_INSTANCE:
@@ -215,14 +223,36 @@ static int ipc4_process_module_message(uint32_t *msg)
  */
 uint32_t *ipc_compact_read_msg(void)
 {
-	return NULL;
-}
+	struct ipc *ipc = ipc_get();
+	struct ipc_data *dat;
 
+	dat = ipc_get_drvdata(ipc);
+	if (!dat) {
+		dat = rzalloc(SOF_MEM_ZONE_SYS, 0, SOF_MEM_CAPS_RAM, sizeof(*dat));
+		if (!dat) {
+			tr_err(&ipc_tr, "Unable to allocate IPC private data");
+			return NULL;
+		}
+		ipc_set_drvdata(ipc, dat);
+	}
+
+	dat->msg_dat[0] = ipc_read(IPC_DIPCTDR);
+	dat->msg_dat[1] = ipc_read(IPC_DIPCTDD);
+
+	return dat->msg_dat;
+}
 
 void ipc_cmd(uint32_t *msg)
 {
-	enum ipc4_message_target target = SOF_IPC4_MSG_GET_TARGET(*msg);
+	union ipc4_message_header ipc4;
+	enum ipc4_message_target target;
 	int err = -EINVAL;
+
+	if (!msg)
+		return;
+
+	ipc4.dat = msg[0];
+	target = ipc4.r.msg_tgt;
 
 	switch (target) {
 	case SOF_IPC4_MESSAGE_TARGET_FW_GEN_MSG:
@@ -237,10 +267,21 @@ void ipc_cmd(uint32_t *msg)
 		err = -EINVAL;
 	}
 
-	if (err) {
-		/* TODO send error reply */
+	/* FW sends a ipc message to host if request bit is set*/
+	if (ipc4.r.rsp == SOF_IPC4_MESSAGE_DIR_MSG_REQUEST) {
+		struct ipc *ipc = ipc_get();
+		struct ipc_data *dat;
 
-	} else {
-		/* TODO send sucess reply */
+		ipc4.dat = 0;
+		ipc4.r.rsp = SOF_IPC4_MESSAGE_DIR_MSG_REPLY;
+
+		dat = ipc_get_drvdata(ipc);
+		dat->msg.header = ipc4.dat;
+		dat->msg.header |= (err & SOF_IPC4_REPLY_STATUS_MASK);
+		dat->msg.data = 0;
+		dat->msg.tx_size = 0;
+
+		list_init(&dat->msg.list);
+		ipc_msg_send(&dat->msg, NULL, true);
 	}
 }
