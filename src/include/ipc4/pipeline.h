@@ -63,27 +63,38 @@ enum ipc4_pipeline_state {
 */
 struct ipc4_pipeline_create {
 
-	//! # pages for pipeline
-	uint32_t ppl_mem_size   : 11;
-	//! priority - uses enum ipc4_pipeline_priority
-	uint32_t ppl_priority   : 5;
-	//! pipeline id
-	uint32_t instance_id    : 8;
-	//! Global::CREATE_PIPELINE
-	uint32_t type           : 5;
-	//! Msg::MSG_REQUEST
-	uint32_t rsp            : 1;
-	//! Msg::FW_GEN_MSG
-	uint32_t msg_tgt        : 1;
-	uint32_t _reserved_0    : 1;
+	union {
+		uint32_t dat;
 
-	//! 1 - is low power
-	uint32_t lp             : 1;
-	uint32_t rsvd1          : 3;
-	uint32_t attributes     : 16;
-	uint32_t rsvd2          : 10;
-	uint32_t _reserved_2    : 2;
+		struct {
+			//! # pages for pipeline
+			uint32_t ppl_mem_size   : 11;
+			//! priority - uses enum ipc4_pipeline_priority
+			uint32_t ppl_priority   : 5;
+			//! pipeline id
+			uint32_t instance_id    : 8;
+			//! Global::CREATE_PIPELINE
+			uint32_t type           : 5;
+			//! Msg::MSG_REQUEST
+			uint32_t rsp            : 1;
+			//! Msg::FW_GEN_MSG
+			uint32_t msg_tgt        : 1;
+			uint32_t _reserved_0    : 1;
+		} r;
+	} header;
 
+	union{
+		uint32_t dat;
+
+		struct {
+			//! 1 - is low power
+			uint32_t lp             : 1;
+			uint32_t rsvd1          : 3;
+			uint32_t attributes     : 16;
+			uint32_t rsvd2          : 10;
+			uint32_t _reserved_2    : 2;
+		} r;
+	} data;
 } __attribute__((packed, aligned(4)));
 
 /*!
@@ -98,19 +109,31 @@ struct ipc4_pipeline_create {
   \remark hide_methods
 */
 struct ipc4_pipeline_delete {
-	uint32_t rsvd0          : 16;
-	//! Ppl instance id
-	uint32_t instance_id    : 8;
-	//! Global::DELETE_PIPELINE
-	uint32_t type           : 5;
-	//! Msg::MSG_REQUEST
-	uint32_t rsp            : 1;
-	//! Msg::FW_GEN_MSG
-	uint32_t msg_tgt        : 1;
-	uint32_t _reserved_0    : 1;
+	union {
+		uint32_t dat;
 
-	uint32_t rsvd1          : 30;
-	uint32_t _reserved_2    : 2;
+		struct {
+			uint32_t rsvd0          : 16;
+			//! Ppl instance id
+			uint32_t instance_id    : 8;
+			//! Global::DELETE_PIPELINE
+			uint32_t type           : 5;
+			//! Msg::MSG_REQUEST
+			uint32_t rsp            : 1;
+			//! Msg::FW_GEN_MSG
+			uint32_t msg_tgt        : 1;
+			uint32_t _reserved_0    : 1;
+		} r;
+	} header;
+
+	union{
+		uint32_t dat;
+
+		struct {
+			uint32_t rsvd1          : 30;
+			uint32_t _reserved_2    : 2;
+		} r;
+	} data;
 } __attribute__((packed, aligned(4)));
 
 /*!
@@ -145,29 +168,40 @@ struct ipc4_pipeline_set_state_data {
 } __attribute__((packed, aligned(4)));
 
 struct ipc4_pipeline_set_state {
+	union {
+		uint32_t dat;
 
-	//! new state, one of enum ipc4_pipeline_state
-	uint32_t ppl_state  : 16;
-	//! pipeline instance id (ignored if multi_ppl =1)
-	uint32_t ppl_id     : 8;
-	//! Global::SET_PIPELINE_STATE
-	uint32_t type       : 5;
-	//! Msg::MSG_REQUEST
-	uint32_t rsp        : 1;
+		struct {
+			//! new state, one of enum ipc4_pipeline_state
+			uint32_t ppl_state  : 16;
+			//! pipeline instance id (ignored if multi_ppl =1)
+			uint32_t ppl_id     : 8;
+			//! Global::SET_PIPELINE_STATE
+			uint32_t type       : 5;
+			//! Msg::MSG_REQUEST
+			uint32_t rsp        : 1;
 
-	//! Msg::FW_GEN_MSG
-	uint32_t msg_tgt    : 1;
-	uint32_t _reserved_0: 1;
+			//! Msg::FW_GEN_MSG
+			uint32_t msg_tgt    : 1;
+			uint32_t _reserved_0: 1;
+		} r;
+	} header;
 
-	//! = 1 if there are more pipeline ids in payload
-	uint32_t multi_ppl  : 1;
-	//! = 1 if FW should sync state change accross multiple ppls
-	uint32_t sync_stop_start : 1;
-	uint32_t rsvd1      : 28;
-	uint32_t _reserved_2: 2;
+	union{
+		uint32_t dat;
+
+		struct {
+			//! = 1 if there are more pipeline ids in payload
+			uint32_t multi_ppl  : 1;
+			//! = 1 if FW should sync state change across multiple ppls
+			uint32_t sync_stop_start : 1;
+			uint32_t rsvd1      : 28;
+			uint32_t _reserved_2: 2;
+		} r;
+	} data;
 
 	/* multiple pipeline states */
-	struct ipc4_pipeline_set_state_data data;
+	struct ipc4_pipeline_set_state_data s_data;
 } __attribute__((packed, aligned(4)));
 
 //! Reply to Set Pipeline State
@@ -177,57 +211,92 @@ struct ipc4_pipeline_set_state {
   \remark hide_methods
 */
 struct ipc4_pipeline_set_state_reply {
-	//! status
-	uint32_t status     : IXC_STATUS_BITS;
-	//! Global::SET_PIPELINE_STATE
-	uint32_t type       : 5;
-	//! Msg::MSG_REPLY
-	uint32_t rsp        : 1;
-	//! Msg::FW_GEN_MSG
-	uint32_t msg_tgt    : 1;
-	uint32_t _reserved_0: 1;
+	union {
+		uint32_t dat;
 
-	//! id of failed pipeline on error
-	uint32_t ppl_id     : 30;
-	uint32_t _reserved_2: 2;
+		struct {
+			//! status
+			uint32_t status     : IXC_STATUS_BITS;
+			//! Global::SET_PIPELINE_STATE
+			uint32_t type       : 5;
+			//! Msg::MSG_REPLY
+			uint32_t rsp        : 1;
+			//! Msg::FW_GEN_MSG
+			uint32_t msg_tgt    : 1;
+			uint32_t _reserved_0: 1;
+		} r;
+	} header;
+
+	union{
+		uint32_t dat;
+
+		struct {
+			//! id of failed pipeline on error
+			uint32_t ppl_id     : 30;
+			uint32_t _reserved_2: 2;
+		} r;
+	} data;
 } __attribute__((packed, aligned(4)));
 
 //! This IPC message is sent to the FW in order to retrieve a pipeline state.
 /*! \remark hide_methods */
 struct ipc4_pipeline_get_state {
-	//! pipeline id
-	uint32_t ppl_id     : 8;
-	uint32_t rsvd       : 16;
-	//! Global::GET_PIPELINE_STATE
-	uint32_t type       : 5;
-	//! Msg::MSG_REQUEST
-	uint32_t rsp        : 1;
-	//! Msg::FW_GEN_MSG
-	uint32_t msg_tgt    : 1;
-	uint32_t _reserved_0: 1;
+	union {
+		uint32_t dat;
 
-	uint32_t rsvd1      : 30;
-	uint32_t _reserved_2: 2;
+		struct {
+			//! pipeline id
+			uint32_t ppl_id     : 8;
+			uint32_t rsvd       : 16;
+			//! Global::GET_PIPELINE_STATE
+			uint32_t type       : 5;
+			//! Msg::MSG_REQUEST
+			uint32_t rsp        : 1;
+			//! Msg::FW_GEN_MSG
+			uint32_t msg_tgt    : 1;
+			uint32_t _reserved_0: 1;
+			} r;
+	} header;
+
+	union{
+		uint32_t dat;
+
+		struct {
+			uint32_t rsvd1      : 30;
+			uint32_t _reserved_2: 2;
+		} r;
+	} data;
 } __attribute__((packed, aligned(4)));
 
 //! Sent by the FW in response to GetPipelineState.
 /*! \remark hide_methods */
 struct ipc4_pipeline_get_state_reply {
+	union {
+		uint32_t dat;
 
-	//! status
-	uint32_t status      :IXC_STATUS_BITS;
-	//! Global::GET_PIPELINE_STATE
-	uint32_t type       : 5;
-	//! Msg::MSG_REPLY
-	uint32_t rsp        : 1;
-	//! Msg::FW_GEN_MSG
-	uint32_t msg_tgt    : 1;
-	uint32_t _reserved_0: 1;
+		struct {
+			//! status
+			uint32_t status      :IXC_STATUS_BITS;
+			//! Global::GET_PIPELINE_STATE
+			uint32_t type       : 5;
+			//! Msg::MSG_REPLY
+			uint32_t rsp        : 1;
+			//! Msg::FW_GEN_MSG
+			uint32_t msg_tgt    : 1;
+			uint32_t _reserved_0: 1;
+		} r;
+	} header;
 
-	//! one of PipelineState
-	uint32_t state      : 5;
-	uint32_t rsvd1      : 25;
-	uint32_t _reserved_2: 2;
+	union{
+		uint32_t dat;
+
+		struct {
+			//! one of PipelineState
+			uint32_t state      : 5;
+			uint32_t rsvd1      : 25;
+			uint32_t _reserved_2: 2;
+		} r;
+	} data;
 } __attribute__((packed, aligned(4)));
 
 /*!
@@ -238,39 +307,62 @@ struct ipc4_pipeline_get_state_reply {
   \remark hide_methods
 */
 struct ipc4_pipeline_get_context_size {
+	union {
+		uint32_t dat;
 
-	uint32_t rsvd0          : 16;
-	//! pipeline id
-	uint32_t instance_id    : 8;
-	//! Global::GET_PIPELINE_CONTEXT_SIZE
-	uint32_t type           : 5;
-	//! Msg::MSG_REQUEST
-	uint32_t rsp            : 1;
-	//! Msg::FW_GEN_MSG
-	uint32_t msg_tgt        : 1;
-	uint32_t _reserved_0    : 1;
+		struct {
+			uint32_t rsvd0          : 16;
+			//! pipeline id
+			uint32_t instance_id    : 8;
+			//! Global::GET_PIPELINE_CONTEXT_SIZE
+			uint32_t type           : 5;
+			//! Msg::MSG_REQUEST
+			uint32_t rsp            : 1;
+			//! Msg::FW_GEN_MSG
+			uint32_t msg_tgt        : 1;
+			uint32_t _reserved_0    : 1;
+		} r;
+	} header;
 
-	uint32_t rsvd1          : 30;
-	uint32_t _reserved_2    : 2;
+	union{
+		uint32_t dat;
+
+		struct {
+			uint32_t rsvd1          : 30;
+			uint32_t _reserved_2    : 2;
+		} r;
+	} data;
 } __attribute__((packed, aligned(4)));
 
 //! Reply to Get Pipeline Context Size.
 /*! \remark hide_methods */
 struct ipc4_pipeline_get_context_size_reply {
-	//! status
-	uint32_t status :IXC_STATUS_BITS;
-	//! Global::GET_PIPELINE_CONTEXT_SIZE
-	uint32_t type       : 5;
-	//! Msg::MSG_REPLY
-	uint32_t rsp        : 1;
-	//! Msg::FW_GEN_MSG
-	uint32_t msg_tgt    : 1;
-	uint32_t _reserved_0: 1;
+	union {
+		uint32_t dat;
 
-	//! size of pipeline context (in number of pages)
-	uint32_t ctx_size   : 16;
-	uint32_t rsvd1      : 14;
-	uint32_t _reserved_2: 2;
+		struct {
+			//! status
+			uint32_t status :IXC_STATUS_BITS;
+			//! Global::GET_PIPELINE_CONTEXT_SIZE
+			uint32_t type       : 5;
+			//! Msg::MSG_REPLY
+			uint32_t rsp        : 1;
+			//! Msg::FW_GEN_MSG
+			uint32_t msg_tgt    : 1;
+			uint32_t _reserved_0: 1;
+		} r;
+	} header;
+
+	union{
+		uint32_t dat;
+
+		struct {
+			//! size of pipeline context (in number of pages)
+			uint32_t ctx_size   : 16;
+			uint32_t rsvd1      : 14;
+			uint32_t _reserved_2: 2;
+		} r;
+	} data;
 } __attribute__((packed, aligned(4)));
 
 #endif

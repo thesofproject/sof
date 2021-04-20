@@ -301,16 +301,16 @@ int ipc_pipeline_new(struct ipc *ipc,
 
 	/* check whether pipeline id is already taken */
 	ipc_pipe = ipc_get_comp_by_ppl_id(ipc, COMP_TYPE_PIPELINE,
-					  pipe_desc->instance_id);
+					  pipe_desc->header.r.instance_id);
 	if (ipc_pipe) {
 		tr_err(&ipc_tr, "ipc_pipeline_new(): pipeline id is already taken, pipe_desc->instance_id = %u",
-		       (uint32_t)pipe_desc->instance_id);
+		       (uint32_t)pipe_desc->header.r.instance_id);
 		return -EINVAL;
 	}
 
 	/* create the pipeline */
-	pipe = pipeline_new(ipc_pipe->cd, pipe_desc->instance_id,
-			    pipe_desc->ppl_priority, 0);
+	pipe = pipeline_new(ipc_pipe->cd, pipe_desc->header.r.instance_id,
+			    pipe_desc->header.r.ppl_priority, 0);
 	if (!pipe) {
 		tr_err(&ipc_tr, "ipc_pipeline_new(): pipeline_new() failed");
 		return -ENOMEM;
@@ -326,7 +326,7 @@ int ipc_pipeline_new(struct ipc *ipc,
 
 	ipc_pipe->pipeline = pipe;
 	ipc_pipe->type = COMP_TYPE_PIPELINE;
-	ipc_pipe->id = pipe_desc->instance_id;
+	ipc_pipe->id = pipe_desc->header.r.instance_id;
 
 	/* add new pipeline to the list */
 	list_item_append(&ipc_pipe->list, &ipc->comp_list);
