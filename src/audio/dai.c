@@ -662,7 +662,7 @@ static int dai_config_dma_channel(struct comp_dev *dev, struct sof_ipc_dai_confi
 static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
-	int ret = 0;
+	int ret;
 
 	comp_info(dev, "dai_config() dai type = %d index = %d dd %p",
 		  config->type, config->dai_index, dd);
