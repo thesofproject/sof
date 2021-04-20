@@ -31,69 +31,6 @@ enum sof_ipc4_module_type {
 	SOF_IPC4_MOD_DELETE_INSTANCE		= 11,
 };
 
-/* common module ipc msg */
-#define SOF_IPC4_MOD_INSTANCE_SHIFT	16
-#define SOF_IPC4_MOD_INSTANCE_MASK	0xFF0000
-#define SOF_IPC4_MOD_INSTANCE(x)	((x) << SOF_IPC4_MOD_INSTANCE_SHIFT)
-
-#define SOF_IPC4_MOD_ID_SHIFT	0
-#define SOF_IPC4_MOD_ID_MASK	0xFFFF
-#define SOF_IPC4_MOD_ID(x)	((x) << SOF_IPC4_MOD_ID_SHIFT)
-
-/* init module ipc msg */
-#define SOF_IPC4_MOD_EXT_PARAM_SIZE_SHIFT	0
-#define SOF_IPC4_MOD_EXT_PARAM_SIZE_MASK	0xFFFF
-#define SOF_IPC4_MOD_EXT_PARAM_SIZE(x)	((x) << SOF_IPC4_MOD_EXT_PARAM_SIZE_SHIFT)
-
-#define SOF_IPC4_MOD_EXT_PPL_ID_SHIFT	16
-#define SOF_IPC4_MOD_EXT_PPL_ID_MASK	0xFF0000
-#define SOF_IPC4_MOD_EXT_PPL_ID(x)	((x) << SOF_IPC4_MOD_EXT_PPL_ID_SHIFT)
-
-#define SOF_IPC4_MOD_EXT_CORE_ID_SHIFT	24
-#define SOF_IPC4_MOD_EXT_CORE_ID_MASK	0xF000000
-#define SOF_IPC4_MOD_EXT_CORE_ID(x)	((x) << SOF_IPC4_MOD_EXT_CORE_ID_SHIFT)
-
-#define SOF_IPC4_MOD_EXT_DOMAIN_SHIFT	28
-#define SOF_IPC4_MOD_EXT_DOMAIN_MASK	BIT(28)
-#define SOF_IPC4_MOD_EXT_DOMAIN(x)	((x) << SOF_IPC4_MOD_EXT_DOMAIN_SHIFT)
-
-/*  bind/unbind module ipc msg */
-#define SOF_IPC4_MOD_EXT_DST_MOD_ID_SHIFT	0
-#define SOF_IPC4_MOD_EXT_DST_MOD_ID_MASK	0xFFFF
-#define SOF_IPC4_MOD_EXT_DST_MOD_ID(x)	((x) << SOF_IPC4_MOD_EXT_DST_MOD_ID_SHIFT)
-
-#define SOF_IPC4_MOD_EXT_DST_MOD_INSTANCE_SHIFT	16
-#define SOF_IPC4_MOD_EXT_DST_MOD_INSTANCE_MASK	0xFF0000
-#define SOF_IPC4_MOD_EXT_DST_MOD_INSTANCE(x)	((x) << SOF_IPC4_MOD_EXT_DST_MOD_INSTANCE_SHIFT)
-
-#define SOF_IPC4_MOD_EXT_DST_MOD_QUEUE_ID_SHIFT	24
-#define SOF_IPC4_MOD_EXT_DST_MOD_QUEUE_ID_MASK	0x7000000
-#define SOF_IPC4_MOD_EXT_DST_MOD_QUEUE_ID(x)	((x) << SOF_IPC4_MOD_EXT_DST_MOD_QUEUE_ID_SHIFT)
-
-#define SOF_IPC4_MOD_EXT_SRC_MOD_QUEUE_ID_SHIFT	27
-#define SOF_IPC4_MOD_EXT_SRC_MOD_QUEUE_ID_MASK	0x38000000
-#define SOF_IPC4_MOD_EXT_SRC_MOD_QUEUE_ID(x)	((x) << SOF_IPC4_MOD_EXT_SRC_MOD_QUEUE_ID_SHIFT)
-
-#define MOD_ENABLE_LOG	6
-#define MOD_SYSTEM_TIME	20
-
-/* set module large config */
-#define SOF_IPC4_MOD_EXT_MSG_SIZE_SHIFT	0
-#define SOF_IPC4_MOD_EXT_MSG_SIZE_MASK	0xFFFFF
-#define SOF_IPC4_MOD_EXT_MSG_SIZE(x)	((x) << SOF_IPC4_MOD_EXT_MSG_SIZE_SHIFT)
-
-#define SOF_IPC4_MOD_EXT_MSG_PARAM_ID_SHIFT	20
-#define SOF_IPC4_MOD_EXT_MSG_PARAM_ID_MASK	0xFF00000
-#define SOF_IPC4_MOD_EXT_MSG_PARAM_ID(x)	((x) << SOF_IPC4_MOD_EXT_MSG_PARAM_ID_SHIFT)
-
-#define SOF_IPC4_MOD_EXT_MSG_LAST_BLOCK_SHIFT	28
-#define SOF_IPC4_MOD_EXT_MSG_LAST_BLOCK_MASK	BIT(28)
-#define SOF_IPC4_MOD_EXT_MSG_LAST_BLOCK(x)	((x) << SOF_IPC4_MOD_EXT_MSG_LAST_BLOCK_SHIFT)
-
-#define SOF_IPC4_MOD_EXT_MSG_FIRST_BLOCK_SHIFT	29
-#define SOF_IPC4_MOD_EXT_MSG_FIRST_BLOCK_MASK	BIT(29)
-#define SOF_IPC4_MOD_EXT_MSG_FIRST_BLOCK(x)	((x) << SOF_IPC4_MOD_EXT_MSG_FIRST_BLOCK_SHIFT)
-
 /*
  * //! Host Driver sends this message to create a new module instance.
  */
@@ -148,34 +85,46 @@ struct ipc4_module_init_data {
 */
 struct ipc4_module_init_instance {
 
-	//! module id
-	uint32_t module_id          : 16;
-	//! instance id
-	uint32_t instance_id        : 8;
-	//! ModuleMsg::INIT_INSTANCE
-	uint32_t type               : 5;
-	//! Msg::MSG_REQUEST
-	uint32_t rsp                : 1;
-	//! Msg::MODULE_MSG
-	uint32_t msg_tgt            : 1;
-	uint32_t _reserved_0        : 1;
+	union {
+		uint32_t dat;
 
-	//! Size of Data::param_data[] (in dwords)
-	uint32_t param_block_size   : 16;
-	//! ID of module instance's parent pipeline
-	uint32_t ppl_instance_id    : 8;
-	//! ID of core that instance will run on
-	uint32_t core_id            : 4;
-	//! Processing domain, 0-LL, 1-DP
-	uint32_t proc_domain        : 1;
-	 // reserved in cAVS
-	uint32_t extended_init      : 1;
-	uint32_t _hw_reserved_2     : 2;
+		struct {
+			//! module id
+			uint32_t module_id          : 16;
+			//! instance id
+			uint32_t instance_id        : 8;
+			//! ModuleMsg::INIT_INSTANCE
+			uint32_t type               : 5;
+			//! Msg::MSG_REQUEST
+			uint32_t rsp                : 1;
+			//! Msg::MODULE_MSG
+			uint32_t msg_tgt            : 1;
+			uint32_t _reserved_0        : 1;
+		} r;
+	} header;
+
+	union {
+		uint32_t dat;
+
+		struct {
+			//! Size of Data::param_data[] (in dwords)
+			uint32_t param_block_size   : 16;
+			//! ID of module instance's parent pipeline
+			uint32_t ppl_instance_id    : 8;
+			//! ID of core that instance will run on
+			uint32_t core_id            : 4;
+			//! Processing domain, 0-LL, 1-DP
+			uint32_t proc_domain        : 1;
+			 // reserved in cAVS
+			uint32_t extended_init      : 1;
+			uint32_t _hw_reserved_2     : 2;
+		} r;
+	} data;
 
 	struct ipc4_module_init_ext_init ext_init;
 	struct ipc4_module_init_ext_data ext_data;
 	struct ipc4_module_init_gna_config gna_config;
-	struct ipc4_module_init_data data;
+	struct ipc4_module_init_data init_data;
 } __attribute__((packed, aligned(4)));
 
 /*!
@@ -193,28 +142,39 @@ struct ipc4_module_init_instance {
   \remark hide_methods
  */
 struct ipc4_module_bind_unbind {
+	union {
+		uint32_t dat;
 
-	//! module id
-	uint32_t module_id          : 16;
-	//! instance id
-	uint32_t instance_id        : 8;
-	//! ModuleMsg::BIND / UNBIND.
-	uint32_t type               : 5;
-	//! Msg::MSG_REQUEST
-	uint32_t rsp                : 1;
-	//! Msg::MODULE_MSG
-	uint32_t msg_tgt            : 1;
-	uint32_t _reserved_0        : 1;
+		struct {
+			//! module id
+			uint32_t module_id          : 16;
+			//! instance id
+			uint32_t instance_id        : 8;
+			//! ModuleMsg::BIND / UNBIND.
+			uint32_t type               : 5;
+			//! Msg::MSG_REQUEST
+			uint32_t rsp                : 1;
+			//! Msg::MODULE_MSG
+			uint32_t msg_tgt            : 1;
+			uint32_t _reserved_0        : 1;
+		} r;
+	} header;
 
-	//! destination module id
-	uint32_t dst_module_id      : 16;
-	//! destination instance id
-	uint32_t dst_instance_id    : 8;
-	//! destination queue (pin) id
-	uint32_t dst_queue          : SOF_IPC4_DST_QUEUE_ID_BITFIELD_SIZE;
-	//! source queue (pin) id
-	uint32_t src_queue          : SOF_IPC4_SRC_QUEUE_ID_BITFIELD_SIZE;
-	uint32_t _reserved_2        : 2;
+	union {
+		uint32_t dat;
+
+		struct {
+			//! destination module id
+			uint32_t dst_module_id      : 16;
+			//! destination instance id
+			uint32_t dst_instance_id    : 8;
+			//! destination queue (pin) id
+			uint32_t dst_queue          : SOF_IPC4_DST_QUEUE_ID_BITFIELD_SIZE;
+			//! source queue (pin) id
+			uint32_t src_queue          : SOF_IPC4_SRC_QUEUE_ID_BITFIELD_SIZE;
+			uint32_t _reserved_2        : 2;
+		} r;
+	} data;
 } __attribute__((packed, aligned(4)));
 
 #endif
