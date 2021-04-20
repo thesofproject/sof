@@ -81,51 +81,23 @@ enum ipc4_message_type {
 	SOF_IPC4_GLB_MAX_IXC_MESSAGE_TYPE = 31
 };
 
-/* global common ipc msg */
-#define SOF_IPC4_MSG_TARGET_SHIFT	30
-#define SOF_IPC4_MSG_TARGET_MASK	BIT(30)
-#define SOF_IPC4_MSG_TARGET(x)	((x) << SOF_IPC4_MSG_TARGET_SHIFT)
-#define SOF_IPC4_MSG_GET_TARGET(x)	\
-	(((x) & SOF_IPC4_MSG_TARGET_MASK) >> SOF_IPC4_MSG_TARGET_SHIFT)
+union ipc4_message_header {
+	uint32_t dat;
 
-#define SOF_IPC4_MSG_DIR_SHIFT	29
-#define SOF_IPC4_MSG_DIR_MASK	BIT(29)
-#define SOF_IPC4_MSG_DIR(x)	((x) << SOF_IPC4_MSG_DIR_SHIFT)
+	struct {
+		uint32_t rsvd0		: 24;
 
-#define SOF_IPC4_MSG_TYPE_SHIFT		24
-#define SOF_IPC4_MSG_TYPE_MASK		0x1F000000
-#define SOF_IPC4_MSG_TYPE(x)	((x) << SOF_IPC4_MSG_TYPE_SHIFT)
-#define SOF_IPC4_MSG_GET_TYPE(x)	\
-	(((x) & SOF_IPC4_MSG_TYPE_MASK) >> SOF_IPC4_MSG_TYPE_SHIFT)
+		//! One of Global::Type
+		uint32_t type		: 5;
 
-/* pipeline creation ipc msg */
-#define SOF_IPC4_GLB_PIPE_INSTANCE_SHIFT	16
-#define SOF_IPC4_GLB_PIPE_INSTANCE_MASK	0xFF0000
-#define SOF_IPC4_GLB_PIPE_INSTANCE_ID(x)	((x) << SOF_IPC4_GLB_PIPE_INSTANCE_SHIFT)
+		//! Msg::MSG_REQUEST
+		uint32_t rsp		: 1;
 
-#define SOF_IPC4_GLB_PIPE_PRIORITY_SHIFT	11
-#define SOF_IPC4_GLB_PIPE_PRIORITY_MASK	0xF800
-#define SOF_IPC4_GLB_PIPE_PRIORITY(x)	((x) << SOF_IPC4_GLB_PIPE_PRIORITY_SHIFT)
+		//! Msg::FW_GEN_MSG
+		uint32_t msg_tgt	: 1;
 
-#define SOF_IPC4_GLB_PIPE_MEM_SIZE_SHIFT	0
-#define SOF_IPC4_GLB_PIPE_MEM_SIZE_MASK	0x7FF
-#define SOF_IPC4_GLB_PIPE_MEM_SIZE(x)	((x) << SOF_IPC4_GLB_PIPE_MEM_SIZE_SHIFT)
-
-#define SOF_IPC4_GLB_PIPE_EXT_LP_SHIFT	0
-#define SOF_IPC4_GLB_PIPE_EXT_LP_MASK	BIT(0)
-#define SOF_IPC4_GLB_PIPE_EXT_LP(x)	((x) << SOF_IPC4_GLB_PIPE_EXT_LP_SHIFT)
-
-/* pipeline set state ipc msg */
-#define SOF_IPC4_GLB_PIPE_STATE_TYPE_SHIFT	24
-#define SOF_IPC4_GLB_PIPE_STATE_TYPE_MASK	0x1F000000
-#define SOF_IPC4_GLB_PIPE_STATE_TYPE(x)	((x) << SOF_IPC4_GLB_PIPE_STATE_TYPE_SHIFT)
-
-#define SOF_IPC4_GLB_PIPE_STATE_ID_SHIFT	16
-#define SOF_IPC4_GLB_PIPE_STATE_ID_MASK	0xFF0000
-#define SOF_IPC4_GLB_PIPE_STATE_ID(x)	((x) << SOF_IPC4_GLB_PIPE_STATE_ID_SHIFT)
-
-#define SOF_IPC4_GLB_PIPE_STATE_SHIFT	0
-#define SOF_IPC4_GLB_PIPE_STATE_MASK	0xFFFF
-#define SOF_IPC4_GLB_PIPE_STATE(x) ((x) << SOF_IPC4_GLB_PIPE_STATE_SHIFT)
+		uint32_t _reserved_0: 1;
+	} r;
+} __attribute__((packed, aligned(4)));
 
 #endif
