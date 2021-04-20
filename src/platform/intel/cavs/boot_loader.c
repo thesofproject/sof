@@ -87,6 +87,11 @@ static void parse_module(struct sof_man_fw_header *hdr,
 	/* each module has 3 segments */
 	for (i = 0; i < MANIFEST_SEGMENT_COUNT; i++) {
 		trace_point(TRACE_BOOT_LDR_PARSE_SEGMENT + i);
+
+		/* built-in modue is included by base fw */
+		if (mod->type.load_type == SOF_MAN_MOD_TYPE_BUILTIN)
+			continue;
+
 		switch (mod->segment[i].flags.r.type) {
 		case SOF_MAN_SEGMENT_TEXT:
 		case SOF_MAN_SEGMENT_DATA:
