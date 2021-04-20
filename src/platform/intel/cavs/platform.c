@@ -41,6 +41,10 @@
 #include <sof/trace/dma-trace.h>
 #include <sof/trace/trace.h>
 #include <ipc/header.h>
+#if CONFIG_IPC_MAJOR_4
+#include <ipc4/notification.h>
+#endif
+
 #include <ipc/info.h>
 #include <kernel/abi.h>
 #include <kernel/ext_manifest.h>
@@ -303,6 +307,9 @@ int platform_boot_complete(uint32_t boot_message)
 #if CAVS_VERSION == CAVS_VERSION_1_5
 	ipc_write(IPC_DIPCIE, SRAM_WINDOW_HOST_OFFSET(0) >> 12);
 	ipc_write(IPC_DIPCI, IPC_DIPCI_BUSY | SOF_IPC_FW_READY);
+#elif CONFIG_IPC_MAJOR_4
+	ipc_write(IPC_DIPCIDD, 0);
+	ipc_write(IPC_DIPCIDR, IPC_DIPCIDR_BUSY | SOF_IPC4_FW_READY);
 #else
 	ipc_write(IPC_DIPCIDD, SRAM_WINDOW_HOST_OFFSET(0) >> 12);
 	ipc_write(IPC_DIPCIDR, IPC_DIPCIDR_BUSY | SOF_IPC_FW_READY);
