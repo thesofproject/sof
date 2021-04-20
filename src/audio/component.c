@@ -94,10 +94,6 @@ int comp_set_state(struct comp_dev *dev, int cmd)
 			ret = -EINVAL;
 		}
 		break;
-	case COMP_TRIGGER_XRUN:
-		/* reset component status to ready at xrun */
-		dev->state = COMP_STATE_READY;
-		break;
 	case COMP_TRIGGER_PAUSE:
 		/* only support pausing for running */
 		if (dev->state == COMP_STATE_ACTIVE) {
