@@ -746,7 +746,7 @@ int tplg_load_controls(int num_kcontrols, FILE *file)
 			/* load mixer type control */
 			read_size = sizeof(struct snd_soc_tplg_ctl_hdr);
 			if (fseek(file, (long)read_size * -1, SEEK_CUR)) {
-				return -errno;
+				ret = -errno;
 				goto err;
 			}
 
