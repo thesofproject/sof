@@ -3,6 +3,7 @@
 if(CONFIG_SOF)
 
 if(CONFIG_LIBRARY)
+	set(PLATFORM "library")
 	set(ARCH host)
 	zephyr_include_directories(../src/platform/library/include)
 else()
