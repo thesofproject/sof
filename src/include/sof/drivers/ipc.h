@@ -75,6 +75,7 @@ struct ipc_comp_dev {
 
 struct ipc_msg {
 	uint32_t header;	/* specific to platform */
+	uint32_t data;		/* ipc data register */
 	uint32_t tx_size;	/* payload size in bytes */
 	void *tx_data;		/* pointer to payload data */
 	struct list_item list;
