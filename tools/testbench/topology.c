@@ -166,7 +166,7 @@ static int tplg_load_fileread(int comp_id, int pipeline_id, int size,
 	struct snd_soc_tplg_vendor_array *array = NULL;
 	size_t total_array_size = 0;
 	size_t read_size;
-	int ret = 0;
+	int ret;
 
 	/* allocate memory for vendor tuple array */
 	array = (struct snd_soc_tplg_vendor_array *)malloc(size);
@@ -230,7 +230,7 @@ static int tplg_load_filewrite(int comp_id, int pipeline_id, int size,
 	struct snd_soc_tplg_vendor_array *array = NULL;
 	size_t read_size;
 	size_t total_array_size = 0;
-	int ret = 0;
+	int ret;
 
 	/* allocate memory for vendor tuple array */
 	array = (struct snd_soc_tplg_vendor_array *)malloc(size);
