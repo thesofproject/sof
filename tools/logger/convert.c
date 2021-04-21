@@ -706,6 +706,9 @@ static int logger_read(void)
 	int ret = 0;
 	uint64_t last_timestamp = 0;
 
+	bool ldc_address_OK = false;
+	unsigned int skipped_dwords = 0;
+
 	if (!global_config->raw_output)
 		print_table_header();
 
@@ -757,12 +760,41 @@ static int logger_read(void)
 		if (dma_log.log_entry_address < global_config->logs_header->base_address ||
 		    dma_log.log_entry_address > global_config->logs_header->base_address +
 		    global_config->logs_header->data_length) {
-			/* in case the address is not correct input fd should be
-			 * move forward by one DWORD, not entire struct dma_log
+			/* Finding uninitialized and incomplete log statements in the
+			 * mailbox ring buffer is routine. Take note in both cases but
+			 * report errors only for the DMA trace.
+			 */
+			if (global_config->trace && ldc_address_OK) {
+				/* FIXME: make this a log_err() */
+				fprintf(global_config->out_fd,
+					"warn: log_entry_address %#8x is not in dictionary range!\n",
+					dma_log.log_entry_address);
+				fprintf(global_config->out_fd,
+					"warn: Seeking forward 4 bytes at a time until re-synchronize.\n");
+			}
+			ldc_address_OK = false;
+			/* When the address is not correct, move forward by one DWORD (not
+			 * entire struct dma_log)
 			 */
 			fseek(global_config->in_fd, -(sizeof(dma_log) - sizeof(uint32_t)),
 			      SEEK_CUR);
+			skipped_dwords++;
 			continue;
+
+		} else if (!ldc_address_OK) {
+			 /* Just found a valid address (again) */
+
+			/* At this point, skipped_dwords can be == 0
+			 * only when we just started to run.
+			 */
+			if (skipped_dwords != 0) {
+				fprintf(global_config->out_fd,
+					"\nFound valid LDC address after skipping %zu bytes (one line uses %zu + 0 to 16 bytes)\n",
+				       sizeof(uint32_t) * skipped_dwords, sizeof(dma_log));
+			}
+
+			ldc_address_OK = true;
+			skipped_dwords = 0;
 		}
 
 		/* fetching entry from elf dump */
@@ -770,6 +802,18 @@ static int logger_read(void)
 		if (ret)
 			break;
 	}
+
+	/* End of (etrace) file */
+	fprintf(global_config->out_fd,
+		"Skipped %zu bytes after the last statement",
+		sizeof(uint32_t) * skipped_dwords);
+
+	/* maximum 4 arguments supported */
+	if (skipped_dwords < sizeof(dma_log) + 4 * sizeof(uint32_t))
+		fprintf(global_config->out_fd,
+			". Wrap possible, check the start of the output for later logs");
+
+	fprintf(global_config->out_fd, ".\n");
 
 	return ret;
 }
