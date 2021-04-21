@@ -522,8 +522,7 @@ static int ipc_dai_config(uint32_t header)
 	}
 
 	/* send params to all DAI components who use that physical DAI */
-	return ipc_comp_dai_config(ipc,
-				   (struct sof_ipc_dai_config *)ipc->comp_data);
+	return ipc_comp_dai_config(ipc, ipc->comp_data);
 }
 
 static int ipc_glb_dai_message(uint32_t header)
@@ -1195,8 +1194,7 @@ static int ipc_glb_tplg_pipe_new(uint32_t header)
 
 	tr_dbg(&ipc_tr, "ipc: pipe %d -> new", ipc_pipeline.pipeline_id);
 
-	ret = ipc_pipeline_new(ipc,
-			       (struct sof_ipc_pipe_new *)ipc->comp_data);
+	ret = ipc_pipeline_new(ipc, ipc->comp_data);
 	if (ret < 0) {
 		tr_err(&ipc_tr, "ipc: pipe %d creation failed %d",
 		       ipc_pipeline.pipeline_id, ret);
@@ -1228,8 +1226,7 @@ static int ipc_glb_tplg_comp_connect(uint32_t header)
 	/* copy message with ABI safe method */
 	IPC_COPY_CMD(connect, ipc->comp_data);
 
-	return ipc_comp_connect(ipc,
-			(struct sof_ipc_pipe_comp_connect *)ipc->comp_data);
+	return ipc_comp_connect(ipc, ipc->comp_data);
 }
 
 static int ipc_glb_tplg_free(uint32_t header,
