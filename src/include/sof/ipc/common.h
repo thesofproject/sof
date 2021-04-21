@@ -9,37 +9,16 @@
 #ifndef __SOF_IPC_COMMON_H__
 #define __SOF_IPC_COMMON_H__
 
-#include <sof/audio/buffer.h>
-#include <sof/audio/component.h>
-#include <sof/audio/pipeline.h>
 #include <sof/lib/alloc.h>
-#include <sof/lib/memory.h>
 #include <sof/list.h>
-#include <sof/platform.h>
 #include <sof/schedule/task.h>
 #include <sof/sof.h>
-#include <sof/spinlock.h>
-#include <sof/trace/trace.h>
-#include <ipc/control.h>
 #include <ipc/header.h>
-#include <ipc/stream.h>
-#include <ipc/topology.h>
-#include <ipc/trace.h>
 #include <user/trace.h>
 #include <stdbool.h>
 #include <stdint.h>
 
-struct dai_config;
-struct dma;
 struct dma_sg_elem_array;
-struct sof_ipc_buffer;
-struct sof_ipc_comp;
-struct sof_ipc_comp_event;
-struct sof_ipc_dai_config;
-struct sof_ipc_host_buffer;
-struct sof_ipc_pipe_comp_connect;
-struct sof_ipc_pipe_new;
-struct sof_ipc_stream_posn;
 struct ipc_msg;
 
 /* validates internal non tail structures within IPC command structure */
