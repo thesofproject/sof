@@ -20,22 +20,41 @@ include(`common/tlv.m4')
 # Include Token library
 include(`sof/tokens.m4')
 
-include(`platform/intel/tgl.m4')
+include(`platform/intel/'PLATFORM`.m4')
 
 # Define pipeline id for intel-generic-dmic.m4
 # to generate dmic setting
 
 ifelse(CHANNELS, `0', ,
 `
-define(DMIC_PCM_48k_ID, `10')
-define(DMIC_PIPELINE_48k_ID, `4')
-define(DMIC_DAI_LINK_48k_ID, `3')
+ define(DMIC_PCM_48k_ID, `10')
+ define(DMIC_PCM_16k_ID, `11')
+ define(DMIC_PIPELINE_48k_ID, `4')
+ define(DMIC_PIPELINE_16k_ID, `5')
+')
 
-define(DMIC_PCM_16k_ID, `11')
-define(DMIC_PIPELINE_16k_ID, `5')
-define(DMIC_DAI_LINK_16k_ID, `4')
+# if there is an external RT1308 amplifier connected over SoundWire,
+# enable "EXT_AMP" option in the CMakefile.
+ifdef(`EXT_AMP',
+`
+ ifelse(CHANNELS,`0', `define(HDMI_BE_ID_BASE, `3')',
+ `
+  define(HDMI_BE_ID_BASE, `5')
 
-include(`platform/intel/intel-generic-dmic.m4')
+  define(DMIC_DAI_LINK_48k_ID, `3')
+  define(DMIC_DAI_LINK_16k_ID, `4')
+  include(`platform/intel/intel-generic-dmic.m4')
+  ')
+',
+`
+ ifelse(CHANNELS,`0', `define(HDMI_BE_ID_BASE, `2')',
+ `
+  define(HDMI_BE_ID_BASE, `4')
+
+  define(DMIC_DAI_LINK_48k_ID, `2')
+  define(DMIC_DAI_LINK_16k_ID, `3')
+  include(`platform/intel/intel-generic-dmic.m4')
+ ')
 '
 )
 
@@ -46,7 +65,9 @@ DEBUG_START
 #
 # PCM0 ---> volume ----> ALH 2 BE dailink 0
 # PCM1 <--- volume <---- ALH 3 BE dailink 1
+ifdef(`EXT_AMP', `
 # PCM2 ---> volume ----> ALH 2 BE dailink 2
+')
 # PCM5 ---> volume <---- iDisp1
 # PCM6 ---> volume <---- iDisp2
 # PCM7 ---> volume <---- iDisp3
@@ -74,13 +95,15 @@ PIPELINE_PCM_ADD(sof/pipe-volume-capture.m4,
 	1000, 0, 0,
 	48000, 48000, 48000)
 
+ifdef(`EXT_AMP',
+`
 # Low Latency playback pipeline 3 on PCM 2 using max 2 channels of s32le.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
 	3, 2, 2, s32le,
 	1000, 0, 0,
 	48000, 48000, 48000)
-
+')
 # Low Latency playback pipeline 6 on PCM 5 using max 2 channels of s32le.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
@@ -132,12 +155,15 @@ DAI_ADD(sof/pipe-dai-capture.m4,
 	PIPELINE_SINK_2, 2, s24le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
+ifdef(`EXT_AMP',
+`
 # playback DAI is ALH(SDW1 PIN2) using 2 periods
 # Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
 	3, ALH, 0x102, SDW1-Playback,
 	PIPELINE_SOURCE_3, 2, s24le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
+')
 
 # playback DAI is iDisp1 using 2 periods
 # Buffers use s32le format, 1000us deadline on core 0 with priority 0
@@ -171,7 +197,10 @@ DAI_ADD(sof/pipe-dai-playback.m4,
 dnl PCM_PLAYBACK_ADD(name, pcm_id, playback)
 PCM_PLAYBACK_ADD(Jack Out, 0, PIPELINE_PCM_1)
 PCM_CAPTURE_ADD(Jack In, 1, PIPELINE_PCM_2)
+ifdef(`EXT_AMP',
+`
 PCM_PLAYBACK_ADD(Speaker, 2, PIPELINE_PCM_3)
+')
 PCM_PLAYBACK_ADD(HDMI 1, 5, PIPELINE_PCM_6)
 PCM_PLAYBACK_ADD(HDMI 2, 6, PIPELINE_PCM_7)
 PCM_PLAYBACK_ADD(HDMI 3, 7, PIPELINE_PCM_8)
@@ -189,18 +218,21 @@ DAI_CONFIG(ALH, 2, 0, SDW0-Playback,
 DAI_CONFIG(ALH, 3, 1, SDW0-Capture,
 	ALH_CONFIG(ALH_CONFIG_DATA(ALH, 3, 48000, 2)))
 
+ifdef(`EXT_AMP',
+`
 #ALH SDW1 Pin2 (ID: 2)
 DAI_CONFIG(ALH, 0x102, 2, SDW1-Playback,
 	ALH_CONFIG(ALH_CONFIG_DATA(ALH, 0x102, 48000, 2)))
+')
 
-# 3 HDMI/DP outputs (ID: 5,6,7)
-DAI_CONFIG(HDA, 0, 5, iDisp1,
+# 3 HDMI/DP outputs
+DAI_CONFIG(HDA, 0, HDMI_BE_ID_BASE, iDisp1,
 	HDA_CONFIG(HDA_CONFIG_DATA(HDA, 0, 48000, 2)))
-DAI_CONFIG(HDA, 1, 6, iDisp2,
+DAI_CONFIG(HDA, 1, eval(HDMI_BE_ID_BASE + 1), iDisp2,
 	HDA_CONFIG(HDA_CONFIG_DATA(HDA, 1, 48000, 2)))
-DAI_CONFIG(HDA, 2, 7, iDisp3,
+DAI_CONFIG(HDA, 2, eval(HDMI_BE_ID_BASE + 2), iDisp3,
 	HDA_CONFIG(HDA_CONFIG_DATA(HDA, 2, 48000, 2)))
-DAI_CONFIG(HDA, 3, 8, iDisp4,
+DAI_CONFIG(HDA, 3, eval(HDMI_BE_ID_BASE + 3), iDisp4,
 	HDA_CONFIG(HDA_CONFIG_DATA(HDA, 3, 48000, 2)))
 
 DEBUG_END
