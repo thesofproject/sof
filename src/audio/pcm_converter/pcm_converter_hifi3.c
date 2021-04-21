@@ -658,12 +658,71 @@ static void pcm_convert_s16_to_f_lin(const void *psrc, void *pdst,
 	}
 }
 
+#if !defined(XT_ROUND_S)
+/**
+ * shift d value left (for positive a) or right (for negative a)
+ * and take care about overflows
+ */
+static inline int32_t _pcm_shift(int32_t d, int32_t a)
+{
+	int64_t dd = d;
+
+	if (a > 32)
+		a = 32;
+	else if (a < -32)
+		a = -32;
+
+	dd = a >= 0 ? dd << a : dd >> -a;
+	/* dd and d is a positive number */
+	/* no need to check for INT32_MIN */
+	if (dd > INT32_MAX)
+		dd = INT32_MAX;
+
+	return (int32_t)dd;
+}
+/**
+ * \brief convert float number to fixed point
+ *
+ * Do not relay on compiler built-in float<=>int conversion in generic
+ * implementation, because "floating types float, double, and long double whose
+ * radix is not specified by the C standard but is usually two"
+ * ~https://gcc.gnu.org/onlinedocs/gcc/Decimal-Float.html
+ *
+ * \param src integer number to convert, it is int32_t to omit software float
+ *            operations library inclusion by compiler, when in whole topology
+ *            only external component needs float input.
+ * \param pow additional exponent component,
+ *            number of fractional bits in fixed point value.
+ *            Use '0' for normal conversion to integers
+ * \return (int32_t)src * 2**pow
+ */
+static int32_t _pcm_convert_f_to_i(int32_t src, int32_t pow)
+{
+	int32_t exponent;
+	int32_t mantissa;
+	int32_t dst;
+
+	exponent = (src >> 23);
+	exponent = (exponent & 0xFF) + pow - 127; /* exponential */
+	mantissa = BIT(23) | (MASK(22, 0) & src); /* mantissa + 1.0 [Q9.22] */
+	/* calculate power */
+	dst = _pcm_shift(mantissa, exponent - 23);
+	/* add 0.5 to round correctly but assert it doesn't lead to overflow */
+	if (exponent - 22 < 9 || (src & BIT(31)) == BIT(31))
+		dst += _pcm_shift(mantissa, exponent - 22) & 1;
+	/* copy sign to dst */
+	dst = (dst ^ (src >> 31)) + (int)((unsigned int)src >> 31);
+
+	return dst;
+}
+#endif
 /**
  * \brief HiFi3 enabled PCM conversion from IEEE-754 float to 16 bit.
  * \param[in] psrc source linear buffer.
  * \param[out] pdst destination linear buffer.
  * \param[in] samples Number of samples to process.
  */
+#if defined(XT_ROUND_S)
 static void pcm_convert_f_to_s16_lin(const void *psrc, void *pdst,
 				     uint32_t samples)
 {
@@ -686,6 +745,20 @@ static void pcm_convert_f_to_s16_lin(const void *psrc, void *pdst,
 		++i;
 	}
 }
+#else
+static void pcm_convert_f_to_s16_lin(const void *psrc, void *pdst,
+				     uint32_t samples)
+{
+	const int32_t *src = psrc; /* float */
+	int16_t *dst = pdst;
+	int i;
+
+	/* s16 is in format Q1.15 so during */
+	/* conversion add 15 from exponent */
+	for (i = 0; i < samples; i++)
+		dst[i] = sat_int16(_pcm_convert_f_to_i(src[i], 15));
+}
+#endif
 
 /**
  * \brief HiFi3 enabled PCM conversion from 16 bit to IEEE-754 float.
@@ -760,6 +833,7 @@ static void pcm_convert_s24_to_f_lin(const void *psrc, void *pdst,
  * \param[out] pdst destination linear buffer.
  * \param[in] samples Number of samples to process.
  */
+#if defined(XT_ROUND_S)
 static void pcm_convert_f_to_s24_lin(const void *psrc, void *pdst,
 				     uint32_t samples)
 {
@@ -786,7 +860,20 @@ static void pcm_convert_f_to_s24_lin(const void *psrc, void *pdst,
 		++i;
 	}
 }
+#else
+static void pcm_convert_f_to_s24_lin(const void *psrc, void *pdst,
+				     uint32_t samples)
+{
+	const int32_t *src = psrc; /* float */
+	int32_t *dst = pdst;
+	int i;
 
+	/* s24 is in format Q1.23 so during */
+	/* conversion add 23 to exponent */
+	for (i = 0; i < samples; i++)
+		dst[i] = sat_int24(_pcm_convert_f_to_i(src[i], 23));
+}
+#endif
 /**
  * \brief HiFi3 enabled PCM conversion from 24 bit to IEEE-754 float.
  * \param[in] psrc source linear buffer.
@@ -858,6 +945,7 @@ static void pcm_convert_s32_to_f_lin(const void *psrc, void *pdst,
  * \param[out] pdst destination linear buffer.
  * \param[in] samples Number of samples to process.
  */
+#if defined(XT_ROUND_S)
 static void pcm_convert_f_to_s32_lin(const void *psrc, void *pdst,
 				     uint32_t samples)
 {
@@ -883,7 +971,20 @@ static void pcm_convert_f_to_s32_lin(const void *psrc, void *pdst,
 		++i;
 	}
 }
+#else
+static void pcm_convert_f_to_s32_lin(const void *psrc, void *pdst,
+				     uint32_t samples)
+{
+	const int32_t *src = psrc; /* float */
+	int32_t *dst = pdst;
+	int i;
 
+	/* s32 is in format Q1.31 so during */
+	/* conversion add 31 to exponent */
+	for (i = 0; i < samples; i++)
+		dst[i] = _pcm_convert_f_to_i(src[i], 31);
+}
+#endif
 /**
  * \brief HiFi3 enabled PCM conversion from 32 bit to IEEE-754 float.
  * \param[in] source Source buffer.
