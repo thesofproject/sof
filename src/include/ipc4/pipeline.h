@@ -39,6 +39,8 @@ enum ipc4_pipeline_priority {
 
 //! Pipeline State
 enum ipc4_pipeline_state {
+	//! Invalid value
+	SOF_IPC4_PIPELINE_STATE_INVALID = 0,
 	//! Created but initialization incomplete
 	SOF_IPC4_PIPELINE_STATE_UNINITIALIZED = 1,
 	//! Resets pipeline
