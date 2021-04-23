@@ -10,7 +10,7 @@
 #ifndef __PLATFORM_LIB_DMA_H__
 #define __PLATFORM_LIB_DMA_H__
 
-#define PLATFORM_NUM_DMACS	3
+#define PLATFORM_NUM_DMACS	2
 
 /* max number of supported DMA channels */
 #define PLATFORM_MAX_DMA_CHAN	32
