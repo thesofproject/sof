@@ -288,8 +288,8 @@ void drc_compress_output(struct drc_state *state,
 
 		i = 0;
 		inc = 0;
-		while (1) {
-			if (is_2byte) { /* 2 bytes per sample */
+		if (is_2byte) { /* 2 bytes per sample */
+			while (1) {
 				for (j = 0; j < 4; j++) {
 					/* Warp pre-compression gain to smooth out sharp
 					 * exponential transition points.
@@ -315,7 +315,15 @@ void drc_compress_output(struct drc_state *state,
 					}
 					inc++;
 				}
-			} else { /* 4 bytes per sample */
+
+				if (++i == count)
+					break;
+
+				for (j = 0; j < 4; j++)
+					x[j] = Q_MULTSR_32X32((int64_t)x[j], r4, 30, 30, 30);
+			}
+		} else { /* 4 bytes per sample */
+			while (1) {
 				for (j = 0; j < 4; j++) {
 					/* Warp pre-compression gain to smooth out sharp
 					 * exponential transition points.
@@ -341,13 +349,13 @@ void drc_compress_output(struct drc_state *state,
 					}
 					inc++;
 				}
+
+				if (++i == count)
+					break;
+
+				for (j = 0; j < 4; j++)
+					x[j] = Q_MULTSR_32X32((int64_t)x[j], r4, 30, 30, 30);
 			}
-
-			if (++i == count)
-				break;
-
-			for (j = 0; j < 4; j++)
-				x[j] = Q_MULTSR_32X32((int64_t)x[j], r4, 30, 30, 30);
 		}
 
 		state->compressor_gain = x[3] + base;
@@ -363,8 +371,8 @@ void drc_compress_output(struct drc_state *state,
 
 		i = 0;
 		inc = 0;
-		while (1) {
-			if (is_2byte) { /* 2 bytes per sample */
+		if (is_2byte) { /* 2 bytes per sample */
+			while (1) {
 				for (j = 0; j < 4; j++) {
 					/* Warp pre-compression gain to smooth out sharp
 					 * exponential transition points.
@@ -389,7 +397,16 @@ void drc_compress_output(struct drc_state *state,
 					}
 					inc++;
 				}
-			} else { /* 4 bytes per sample */
+
+				if (++i == count)
+					break;
+
+				for (j = 0; j < 4; j++)
+					x[j] = MIN(ONE_Q30,
+						   Q_MULTSR_32X32((int64_t)x[j], r4, 30, 30, 30));
+			}
+		} else { /* 4 bytes per sample */
+			while (1) {
 				for (j = 0; j < 4; j++) {
 					/* Warp pre-compression gain to smooth out sharp
 					 * exponential transition points.
@@ -414,13 +431,14 @@ void drc_compress_output(struct drc_state *state,
 					}
 					inc++;
 				}
+
+				if (++i == count)
+					break;
+
+				for (j = 0; j < 4; j++)
+					x[j] = MIN(ONE_Q30,
+						   Q_MULTSR_32X32((int64_t)x[j], r4, 30, 30, 30));
 			}
-
-			if (++i == count)
-				break;
-
-			for (j = 0; j < 4; j++)
-				x[j] = MIN(ONE_Q30, Q_MULTSR_32X32((int64_t)x[j], r4, 30, 30, 30));
 		}
 
 		state->compressor_gain = x[3];
