@@ -331,9 +331,11 @@ static void schedule_ll_domain_clear(struct ll_schedule_data *sch,
 	if (count == 1) {
 		sch->domain->registered[cpu_get_id()] = false;
 
-		count = atomic_sub(&sch->domain->num_clients, 1);
-		if (count == 1)
-			domain_clear(sch->domain);
+		if (atomic_read(&sch->domain->num_clients)) {
+			count = atomic_sub(&sch->domain->num_clients, 1);
+			if (count == 1)
+				domain_clear(sch->domain);
+		}
 	}
 
 	tr_info(&ll_tr, "num_tasks %d total_num_tasks %d",
