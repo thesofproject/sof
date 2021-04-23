@@ -626,6 +626,16 @@ static int pcm_convert_s32_to_s24(const struct audio_stream *source,
 #endif /* CONFIG_FORMAT_S24LE && CONFIG_FORMAT_S32LE */
 
 #if XCHAL_HAVE_FP
+
+static inline int _round_s(xtfloat x)
+{
+#if defined(XT_ROUND_S)
+	return XT_ROUND_S(x, 15);
+#else
+	return XT_TRUNC_S(XT_FIROUND_S(x), 15);
+#endif
+}
+
 #if CONFIG_FORMAT_FLOAT && CONFIG_FORMAT_S16LE
 
 /**
@@ -678,7 +688,7 @@ static void pcm_convert_f_to_s16_lin(const void *psrc, void *pdst,
 		XT_xtfloat_loadip(x, in, sizeof(x));
 
 		/* shift and round */
-		y = XT_ROUND_S(x, 15);
+		y = _round_s(x);
 
 		/* store one 16 bit sample */
 		AE_S16_0_IP(y, (ae_int16 *)out, sizeof(ae_int16));
@@ -777,7 +787,8 @@ static void pcm_convert_f_to_s24_lin(const void *psrc, void *pdst,
 
 		/* shift and round */
 		x = x * ratio;
-		y1 = XT_ROUND_S(x, 15);
+		y1 = _round_s(x);
+
 		y1 = AE_SAT24S((ae_f32x2)y1);
 
 		/* store one 24 bit sample in 32 bit memory size */
@@ -875,7 +886,7 @@ static void pcm_convert_f_to_s32_lin(const void *psrc, void *pdst,
 
 		/* shift and round */
 		x = x * ratio;
-		y1 = XT_ROUND_S(x, 15);
+		y1 = _round_s(x);
 
 		/* store one 32 bit sample */
 		AE_S32_L_IP(y1, (ae_int32 *)out, sizeof(*out));
