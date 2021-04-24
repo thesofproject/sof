@@ -5,6 +5,9 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
+#ifdef __ZEPHYR__
+#include <sys/atomic.h>
+#else
 #ifndef __SOF_ATOMIC_H__
 #define __SOF_ATOMIC_H__
 
@@ -37,3 +40,5 @@ static inline int32_t atomic_sub(atomic_t *a, int32_t value)
 }
 
 #endif /* __SOF_ATOMIC_H__ */
+
+#endif /*__ZEPHYR__ */
