@@ -1,0 +1,26 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
+menu "IPC Major Version"
+
+choice
+        prompt "IPC Major Version"
+        default IPC_MAJOR_3
+
+config IPC_MAJOR_3
+	bool "IPC Major Version 3"
+	help
+	  This is the default IPC version used on most SOF based devices.
+	  If unsure say Y.
+
+config IPC_MAJOR_4
+	bool "IPC Major Version 4"
+	help
+	  This is an IPC version used by certain middleware on some IOT
+	  Intel devices. Not for general use.
+	  NOTE: This IPC ABI is not guranteed to work on any platforms other
+	  than a specific Intel platform due to use of bit fields in the IPC ABI.
+	  If unsure say N.
+
+endchoice
+
+endmenu

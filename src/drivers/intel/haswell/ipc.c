@@ -69,9 +69,19 @@ static void irq_handler(void *arg)
 	}
 }
 
+int ipc_platform_compact_write_msg(ipc_cmd_hdr *hdr, int words)
+{
+	return 0; /* number of words read - not currently used on this platform */
+}
+
+int ipc_platform_compact_read_msg(ipc_cmd_hdr *hdr, int words)
+{
+	return 0; /* number of words read - not currently used on this platform */
+}
+
 enum task_state ipc_platform_do_cmd(void *data)
 {
-	struct sof_ipc_cmd_hdr *hdr;
+	ipc_cmd_hdr *hdr;
 	/* Use struct ipc_data *iipc = ipc_get_drvdata(ipc); if needed */
 
 	/* perform command */

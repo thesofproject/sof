@@ -15,3 +15,5 @@ rsource "probe/Kconfig"
 rsource "samples/Kconfig"
 
 rsource "schedule/Kconfig"
+
+rsource "ipc/Kconfig"
