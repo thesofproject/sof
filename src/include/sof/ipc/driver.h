@@ -62,10 +62,20 @@ int ipc_platform_send_msg(struct ipc_msg *msg);
 struct ipc_data_host_buffer *ipc_platform_get_host_buffer(struct ipc *ipc);
 
 /**
- * \brief Read a compact IPC message or return NULL for normal message.
- * @return Pointer to the compact message data.
+ * \brief Read a compact IPC message from hardware.
+ * @param[in] hdr IPC header data
+ * @param[in] words Number of words to read in header.
+ * @return Number of word written.
  */
-struct sof_ipc_cmd_hdr *ipc_compact_read_msg(void);
+int ipc_platform_compact_read_msg(ipc_cmd_hdr *hdr, int words);
+
+/**
+ * \brief Write a compact IPC message to hardware.
+ * @param[in] hdr Compact message header data.
+ * @param[in] words Number of words to be written from header.
+ * @return Number of word written.
+ */
+int ipc_platform_compact_write_msg(ipc_cmd_hdr *hdr, int words);
 
 /**
  * \brief Initialise IPC hardware for polling mode.
