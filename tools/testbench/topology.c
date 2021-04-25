@@ -484,7 +484,7 @@ int load_pipeline(void *dev, int comp_id, int pipeline_id,
 	pipeline.sched_id = sched_id;
 
 	/* Create pipeline */
-	if (ipc_pipeline_new(sof->ipc, &pipeline) < 0) {
+	if (ipc_pipeline_new(sof->ipc, (ipc_pipe_new *)&pipeline) < 0) {
 		fprintf(stderr, "error: pipeline new\n");
 		return -EINVAL;
 	}
