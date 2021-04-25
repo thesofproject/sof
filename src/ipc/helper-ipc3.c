@@ -438,6 +438,9 @@ int ipc_pipeline_complete(struct ipc *ipc, uint32_t comp_id)
 	return ret;
 }
 
+/*
+ * Configure DAI - TODO: this can be simplified to run only on core 0.
+ */
 int ipc_comp_dai_config(struct ipc *ipc, struct sof_ipc_dai_config *config)
 {
 	bool comp_on_core[CONFIG_CORE_COUNT] = { false };
@@ -456,6 +459,7 @@ int ipc_comp_dai_config(struct ipc *ipc, struct sof_ipc_dai_config *config)
 			continue;
 		}
 
+		/* comp on this core ? TODO: we dont care if it's not a DAI */
 		if (!cpu_is_me(icd->core)) {
 			comp_on_core[icd->core] = true;
 			ret = 0;
