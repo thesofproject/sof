@@ -13,13 +13,31 @@
 #include <sof/list.h>
 #include <sof/schedule/task.h>
 #include <sof/sof.h>
-#include <ipc/header.h>
 #include <user/trace.h>
 #include <stdbool.h>
 #include <stdint.h>
 
 struct dma_sg_elem_array;
 struct ipc_msg;
+
+/* generic IPC header regardless of ABI MAJOR type that is always 4 byte aligned */
+typedef uint32_t ipc_cmd_hdr;
+
+/*
+ * Common IPC logic uses standard types for abstract IPC features. This means all ABI MAJOR
+ * abstraction is done in the IPC layer only and not in the surrounding infrastructure.
+ */
+#if CONFIG_IPC_MAJOR_3
+#include <ipc/header.h>
+#define ipc_from_hdr(x) ((struct sof_ipc_cmd_hdr *)x)
+#elif CONFIG_IPC_MAJOR_4
+#include <ipc4/header.h>
+#define ipc_from_hdr(x) ((union ipc4_message_header *)x)
+#else
+#error "No or invalid IPC MAJOR version selected."
+#endif
+
+#define ipc_to_hdr(x) ((ipc_cmd_hdr *)x)
 
 /* validates internal non tail structures within IPC command structure */
 #define IPC_IS_SIZE_INVALID(object)					\
@@ -122,10 +140,23 @@ int ipc_process_host_buffer(struct ipc *ipc,
 int ipc_dma_trace_send_position(void);
 
 /**
+ * \brief Read a compact IPC message or return NULL for normal message.
+ * @return Pointer to the compact message data.
+ */
+ipc_cmd_hdr *ipc_compact_read_msg(void);
+
+/**
+ * \brief Write a compact IPC message.
+ * @param[in] hdr Compact message header data.
+ * @return Number of words written.
+ */
+int ipc_compact_write_msg(ipc_cmd_hdr *hdr);
+
+/**
  * \brief Validate mailbox contents for valid IPC header.
  * @return pointer to header if valid or NULL.
  */
-struct sof_ipc_cmd_hdr *mailbox_validate(void);
+ipc_cmd_hdr *mailbox_validate(void);
 
 /**
  * Generic IPC command handler. Expects that IPC command (the header plus
@@ -134,7 +165,7 @@ struct sof_ipc_cmd_hdr *mailbox_validate(void);
  *
  * @param hdr Points to the IPC command header.
  */
-void ipc_cmd(struct sof_ipc_cmd_hdr *hdr);
+void ipc_cmd(ipc_cmd_hdr *hdr);
 
 /**
  * \brief IPC message to be processed on other core.

@@ -128,12 +128,54 @@ static void ipc_irq_handler(void *arg)
 	}
 }
 
+#if CAVS_VERSION >= CAVS_VERSION_1_8
+int ipc_platform_compact_read_msg(ipc_cmd_hdr *hdr, int words)
+{
+	uint32_t *chdr = (uint32_t *)hdr;
+
+	/* compact messages are 2 words on CAVS 1.8 onwards */
+	if (words != 2)
+		return 0;
+
+	chdr[0] = ipc_read(IPC_DIPCTDR);
+	chdr[1] = ipc_read(IPC_DIPCTDD);
+
+	return 2; /* number of words read */
+}
+
+int ipc_platform_compact_write_msg(ipc_cmd_hdr *hdr, int words)
+{
+	uint32_t *chdr = (uint32_t *)hdr;
+
+	/* compact messages are 2 words on CAVS 1.8 onwards */
+	if (words != 2)
+		return 0;
+
+	/* command complete will set the busy/done bits */
+	ipc_write(IPC_DIPCTDR, chdr[0] & ~IPC_DIPCTDR_BUSY);
+	ipc_write(IPC_DIPCTDD, chdr[1]);
+
+	return 2; /* number of words written */
+}
+
+#else
+int ipc_platform_compact_write_msg(ipc_cmd_hdr *hdr, int words)
+{
+	return 0; /* number of words written - not used on CAVS1.5 */
+}
+
+int ipc_platform_compact_read_msg(ipc_cmd_hdr *hdr, int words)
+{
+	return 0; /* number of words read - not used on CAVS1.5 */
+}
+#endif
+
 enum task_state ipc_platform_do_cmd(void *data)
 {
 #if !CONFIG_SUECREEK
 	struct ipc *ipc = data;
 #endif
-	struct sof_ipc_cmd_hdr *hdr;
+	ipc_cmd_hdr *hdr;
 
 #if CAVS_VERSION >= CAVS_VERSION_1_8
 	hdr = ipc_compact_read_msg();
