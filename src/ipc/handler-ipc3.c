@@ -97,7 +97,7 @@
 			((struct sof_ipc_cmd_hdr *)tx),			\
 			sizeof(rx))
 
-struct sof_ipc_cmd_hdr *mailbox_validate(void)
+ipc_cmd_hdr *mailbox_validate(void)
 {
 	struct sof_ipc_cmd_hdr *hdr = ipc_get()->comp_data;
 
@@ -114,7 +114,7 @@ struct sof_ipc_cmd_hdr *mailbox_validate(void)
 	mailbox_hostbox_read(hdr + 1, SOF_IPC_MSG_MAX_SIZE - sizeof(*hdr),
 			     sizeof(*hdr), hdr->size - sizeof(*hdr));
 
-	return hdr;
+	return ipc_to_hdr(hdr);
 }
 
 /*
@@ -1380,36 +1380,38 @@ static int ipc_glb_test_message(uint32_t header)
 #endif
 
 #if CONFIG_CAVS && CAVS_VERSION >= CAVS_VERSION_1_8
-static struct sof_ipc_cmd_hdr *ipc_cavs_read_set_d0ix(uint32_t dr, uint32_t dd)
+static ipc_cmd_hdr *ipc_cavs_read_set_d0ix(ipc_cmd_hdr *hdr)
 {
 	struct sof_ipc_pm_gate *cmd = ipc_get()->comp_data;
+	uint32_t *chdr = (uint32_t *)hdr;
 
 	cmd->hdr.cmd = SOF_IPC_GLB_PM_MSG | SOF_IPC_PM_GATE;
 	cmd->hdr.size = sizeof(*cmd);
-	cmd->flags = dd & CAVS_IPC_MOD_SETD0IX_BIT_MASK;
+	cmd->flags = chdr[1] & CAVS_IPC_MOD_SETD0IX_BIT_MASK;
 
-	return &cmd->hdr;
+	return ipc_to_hdr(&cmd->hdr);
 }
 
 /*
  * Read a compact IPC message or return NULL for normal message.
  */
-struct sof_ipc_cmd_hdr *ipc_compact_read_msg(void)
+ipc_cmd_hdr *ipc_compact_read_msg(void)
 {
-	struct sof_ipc_cmd_hdr *hdr;
-	uint32_t dr;
-	uint32_t dd;
+	uint32_t chdr[2];
+	ipc_cmd_hdr *hdr = (ipc_cmd_hdr *)chdr;
+	int words;
 
-	dr = ipc_read(IPC_DIPCTDR);
-	dd = ipc_read(IPC_DIPCTDD);
-
-	/* if there is no cAVS module IPC in regs go the previous path */
-	if (!(dr & CAVS_IPC_MSG_TGT))
+	words = ipc_platform_compact_read_msg(hdr, 2);
+	if (!words)
 		return mailbox_validate();
 
-	switch (CAVS_IPC_TYPE_S(dr)) {
+	/* if there is no cAVS module IPC in regs go the previous path */
+	if (!(chdr[0] & CAVS_IPC_MSG_TGT))
+		return mailbox_validate();
+
+	switch (CAVS_IPC_TYPE_S(chdr[0])) {
 	case CAVS_IPC_MOD_SET_D0IX:
-		hdr = ipc_cavs_read_set_d0ix(dr, dd);
+		hdr = ipc_cavs_read_set_d0ix(hdr);
 		break;
 	default:
 		return NULL;
@@ -1423,8 +1425,9 @@ struct sof_ipc_cmd_hdr *ipc_compact_read_msg(void)
  * Global IPC Operations.
  */
 
-void ipc_cmd(struct sof_ipc_cmd_hdr *hdr)
+void ipc_cmd(ipc_cmd_hdr *_hdr)
 {
+	struct sof_ipc_cmd_hdr *hdr = ipc_from_hdr(_hdr);
 	struct sof_ipc_reply reply;
 	uint32_t type = 0;
 	int ret;
