@@ -14,6 +14,7 @@
 /**
  * \file include/ipc4/pipeline.h
  * \brief IPC4 pipeline definitions
+ * NOTE: This ABI uses bit fields and is non portable.
  */
 
 #ifndef __SOF_IPC4_PIPELINE_H__
