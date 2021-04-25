@@ -83,6 +83,41 @@ extern struct tr_ctx buffer_tr;
 #define BUFF_PARAMS_RATE	BIT(2)
 #define BUFF_PARAMS_CHANNELS	BIT(3)
 
+/*! \brief defines the bitfield structure of flags associated to an InputStreamBuffer
+   */
+struct buffer_stream_flags {
+    const bool end_of_stream : 1; /*!< indicates that End Of Stream condition has occured on the input stream */
+};
+
+struct buffer_input_stream {
+    uint8_t* const data; /*!< data stream buffer */
+    /*!
+     * \brief size indicator about the data in the stream buffer
+     *
+     * - When read, it indicates the size of available data in the data stream buffer
+     * - When written, it reports the size of data which has actually be considered during the buffer processing
+     *   (can be less than the given available data size)
+     */
+    size_t size;
+    struct  buffer_stream_flags flags; /*!< readonly status flags about the input stream */
+};
+
+/*! \brief Descriptor of the data stream buffer to inject into an output module pin
+ * \see ProcessingModuleInterface::Process()
+ */
+struct buffer_output_stream {
+    uint8_t* const data; /*!< data stream buffer */
+    /*!
+     * \brief size indicator about the data in the stream buffer
+     *
+     * - When read, it indicates the size of available room in the stream buffer
+     * - When written, it reports the size of data which has actually be produced into the buffer during the buffer processing
+     *   (can be less than the given available room size)
+     */
+    size_t size;
+};
+
+
 /* audio component buffer - connects 2 audio components together in pipeline */
 struct comp_buffer {
 	spinlock_t *lock;		/* locking mechanism */
