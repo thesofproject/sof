@@ -276,9 +276,9 @@ struct comp_dev *comp_new(struct sof_ipc_comp *comp)
 	return cdev;
 }
 
-int ipc_pipeline_new(struct ipc *ipc,
-	struct sof_ipc_pipe_new *pipe_desc)
+int ipc_pipeline_new(struct ipc *ipc, ipc_pipe_new *_pipe_desc)
 {
+	struct sof_ipc_pipe_new *pipe_desc = ipc_get_pipe_new(_pipe_desc);
 	struct ipc_comp_dev *ipc_pipe;
 	struct pipeline *pipe;
 	struct ipc_comp_dev *icd;

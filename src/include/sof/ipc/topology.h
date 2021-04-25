@@ -24,6 +24,23 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+/* generic IPC pipeline regardless of ABI MAJOR type that is always 4 byte aligned */
+typedef uint32_t ipc_pipe_new;
+
+/*
+ * Topology IPC logic uses standard types for abstract IPC features. This means all ABI MAJOR
+ * abstraction is done in the IPC layer only and not in the surrounding infrastructure.
+ */
+#if CONFIG_IPC_MAJOR_3
+#include <ipc/topology.h>
+#define ipc_get_pipe_new(x) ((struct sof_ipc_pipe_new *)x)
+#elif CONFIG_IPC_MAJOR_4
+#include <ipc4/pipeline.h>
+#define ipc_get_pipe_new(x) ((struct ipc4_pipeline_create *)x)
+#else
+#error "No or invalid IPC MAJOR version selected."
+#endif
+
 struct dai_config;
 struct ipc_msg;
 
@@ -106,7 +123,7 @@ int ipc_buffer_free(struct ipc *ipc, uint32_t buffer_id);
  * @param pipeline New IPC pipeline descriptor.
  * @return 0 on success or negative error.
  */
-int ipc_pipeline_new(struct ipc *ipc, struct sof_ipc_pipe_new *pipeline);
+int ipc_pipeline_new(struct ipc *ipc, ipc_pipe_new *pipeline);
 
 /**
  * \brief Free an IPC pipeline.
