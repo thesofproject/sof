@@ -130,6 +130,7 @@ static int ext_man_build(const struct module *module,
 	*dst_buff = (struct ext_man_header *)buffer;
 
 out:
+	free(sec_buffer);
 	return ret;
 }
 
