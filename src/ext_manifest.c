@@ -125,7 +125,7 @@ static int ext_man_build(const struct module *module,
 	memcpy(buffer, &ext_man, ext_man.header_size);
 	offset = ext_man.header_size;
 
-	memcpy(&buffer[offset],sec_buffer, section->size);
+	memcpy(&buffer[offset], sec_buffer, section->size);
 
 	*dst_buff = (struct ext_man_header *)buffer;
 
