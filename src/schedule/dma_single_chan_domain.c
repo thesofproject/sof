@@ -355,10 +355,11 @@ static void dma_domain_unregister_owner(struct ll_schedule_domain *domain,
  * \param[in,out] domain Pointer to schedule domain.
  * \param[in,out] task Task to be unregistered from the domain.
  * \param[in] num_tasks Number of currently scheduled tasks.
+ * \return Error code.
  */
-static void dma_single_chan_domain_unregister(struct ll_schedule_domain *domain,
-					      struct task *task,
-					      uint32_t num_tasks)
+static int dma_single_chan_domain_unregister(struct ll_schedule_domain *domain,
+					     struct task *task,
+					     uint32_t num_tasks)
 {
 	struct dma_domain *dma_domain = ll_sch_domain_get_pdata(domain);
 	struct pipeline_task *pipe_task = pipeline_task_get(task);
@@ -370,27 +371,29 @@ static void dma_single_chan_domain_unregister(struct ll_schedule_domain *domain,
 
 	/* check if task should be unregistered */
 	if (!pipe_task->registrable)
-		return;
+		return 0;
 
 	/* channel not registered */
 	if (!data->channel)
-		return;
+		return -EINVAL;
 
 	/* unregister domain owner */
 	if (dma_domain->owner == core) {
 		dma_domain_unregister_owner(domain, data);
-		return;
+		return 0;
 	}
 
 	/* some channel still running, so return */
 	if (dma_chan_is_any_running(dmas, dma_domain->num_dma))
-		return;
+		return -EBUSY;
 
 	/* no more transfers scheduled on this core */
 	dma_single_chan_domain_irq_unregister(data);
 	data->channel = NULL;
 
 	notifier_unregister(domain, NULL, NOTIFIER_ID_DMA_DOMAIN_CHANGE);
+
+	return 0;
 }
 
 /**

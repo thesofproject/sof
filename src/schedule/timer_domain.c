@@ -194,8 +194,8 @@ out:
 	return ret;
 }
 
-static void timer_domain_unregister(struct ll_schedule_domain *domain,
-				    struct task *task, uint32_t num_tasks)
+static int timer_domain_unregister(struct ll_schedule_domain *domain,
+				   struct task *task, uint32_t num_tasks)
 {
 	struct timer_domain *timer_domain = ll_sch_domain_get_pdata(domain);
 	int core = cpu_get_id();
@@ -204,7 +204,7 @@ static void timer_domain_unregister(struct ll_schedule_domain *domain,
 
 	/* tasks still registered on this core */
 	if (!timer_domain->arg[core] || num_tasks)
-		return;
+		return 0;
 
 	tr_info(&ll_tr, "timer_domain_unregister domain->type %d domain->clk %d",
 		domain->type, domain->clk);
@@ -212,6 +212,8 @@ static void timer_domain_unregister(struct ll_schedule_domain *domain,
 	timer_unregister(timer_domain->timer, timer_domain->arg[core]);
 #endif
 	timer_domain->arg[core] = NULL;
+
+	return 0;
 }
 
 static void timer_domain_enable(struct ll_schedule_domain *domain, int core)
