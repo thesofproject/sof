@@ -501,7 +501,7 @@ static int ipc_dai_config_set(struct sof_ipc_dai_config *config)
 	return 0;
 }
 
-static int ipc_dai_config(uint32_t header)
+static int ipc_msg_dai_config(uint32_t header)
 {
 	struct ipc *ipc = ipc_get();
 	struct sof_ipc_dai_config config;
@@ -522,7 +522,7 @@ static int ipc_dai_config(uint32_t header)
 	}
 
 	/* send params to all DAI components who use that physical DAI */
-	return ipc_comp_dai_config(ipc, ipc->comp_data);
+	return ipc_comp_dai_config(ipc, ipc_to_dai_config(ipc->comp_data));
 }
 
 static int ipc_glb_dai_message(uint32_t header)
@@ -531,7 +531,7 @@ static int ipc_glb_dai_message(uint32_t header)
 
 	switch (cmd) {
 	case SOF_IPC_DAI_CONFIG:
-		return ipc_dai_config(header);
+		return ipc_msg_dai_config(header);
 	case SOF_IPC_DAI_LOOPBACK:
 		//return ipc_comp_set_value(header, COMP_CMD_LOOPBACK);
 	default:
@@ -1123,7 +1123,7 @@ static int ipc_glb_tplg_comp_new(uint32_t header)
 	       comp->pipeline_id, comp->id, comp->type);
 
 	/* register component */
-	ret = ipc_comp_new(ipc, comp);
+	ret = ipc_comp_new(ipc, ipc_to_comp_new(comp));
 	if (ret < 0) {
 		tr_err(&ipc_tr, "ipc: pipe %d comp %d creation failed %d",
 		       comp->pipeline_id, comp->id, ret);
