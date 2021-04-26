@@ -334,13 +334,6 @@ static int asrc_cmd(struct comp_dev *dev, int cmd, void *data,
 	return ret;
 }
 
-static int asrc_trigger(struct comp_dev *dev, int cmd)
-{
-	comp_info(dev, "asrc_trigger()");
-
-	return comp_set_state(dev, cmd);
-}
-
 static int asrc_verify_params(struct comp_dev *dev,
 			      struct sof_ipc_stream_params *params)
 {
@@ -527,6 +520,38 @@ static int asrc_dai_get_timestamp(struct comp_data *cd,
 	return cd->dai_dev->drv->ops.dai_ts_get(cd->dai_dev, tsd);
 }
 
+static int asrc_trigger(struct comp_dev *dev, int cmd)
+{
+	struct comp_buffer *sinkb;
+	struct comp_buffer *sourceb;
+	struct comp_data *cd = comp_get_drvdata(dev);
+	int ret;
+
+	comp_info(dev, "asrc_trigger()");
+
+	/* Enable timestamping in pipeline DAI */
+	if (cmd == COMP_TRIGGER_START && cd->track_drift) {
+		sourceb = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
+		sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
+		ret = asrc_dai_find(dev, cd, sinkb, sourceb);
+		if (ret) {
+			comp_err(dev, "No DAI found to track");
+			cd->track_drift = false;
+			return ret;
+		}
+
+		cd->ts_count = 0;
+		ret = asrc_dai_configure_timestamp(cd);
+		if (ret) {
+			comp_err(dev, "No timestamp capability in DAI");
+			cd->track_drift = false;
+			return ret;
+		}
+	}
+
+	return comp_set_state(dev, cmd);
+}
+
 static int asrc_prepare(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
@@ -686,24 +711,6 @@ static int asrc_prepare(struct comp_dev *dev)
 	if (ret) {
 		comp_err(dev, "asrc_update_drift(), error %d", ret);
 		goto err_free_asrc;
-	}
-
-	/* Enable timestamping in pipeline DAI */
-	if (cd->track_drift) {
-		ret = asrc_dai_find(dev, cd, sinkb, sourceb);
-		if (ret) {
-			comp_err(dev, "No DAI found to track");
-			cd->track_drift = false;
-			goto err_free_asrc;
-		}
-
-		cd->ts_count = 0;
-		ret = asrc_dai_configure_timestamp(cd);
-		if (ret) {
-			comp_err(dev, "No timestamp capability in DAI");
-			cd->track_drift = false;
-			goto err_free_asrc;
-		}
 	}
 
 	return 0;
