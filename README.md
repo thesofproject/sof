@@ -27,3 +27,4 @@ See [Contributing to the Project](https://thesofproject.github.io/latest/contrib
 This project is licensed under the BSD Clause 3 - see the [LICENCE](LICENCE) file for details
 
 # Not important change line1
+# Not important change line2
