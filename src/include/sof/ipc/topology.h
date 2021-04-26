@@ -26,6 +26,9 @@
 
 /* generic IPC pipeline regardless of ABI MAJOR type that is always 4 byte aligned */
 typedef uint32_t ipc_pipe_new;
+typedef uint32_t ipc_pipe_comp_connect;
+typedef uint32_t ipc_comp;
+typedef uint32_t ipc_dai_config;
 
 /*
  * Topology IPC logic uses standard types for abstract IPC features. This means all ABI MAJOR
@@ -33,13 +36,26 @@ typedef uint32_t ipc_pipe_new;
  */
 #if CONFIG_IPC_MAJOR_3
 #include <ipc/topology.h>
-#define ipc_get_pipe_new(x) ((struct sof_ipc_pipe_new *)x)
+#define ipc_from_pipe_new(x) ((struct sof_ipc_pipe_new *)x)
+#define ipc_from_pipe_connect(x) ((struct sof_ipc_pipe_comp_connect *)x)
+#define ipc_from_comp_new(x) ((struct sof_ipc_comp *)x)
+#define ipc_from_dai_config(x) ((struct sof_ipc_dai_config *)x)
 #elif CONFIG_IPC_MAJOR_4
 #include <ipc4/pipeline.h>
-#define ipc_get_pipe_new(x) ((struct ipc4_pipeline_create *)x)
+#include <ipc4/module.h>
+#include <ipc4/gateway.h>
+#define ipc_from_pipe_new(x) ((struct ipc4_pipeline_create *)x)
+#define ipc_from_pipe_connect(x) ((struct ipc4_module_bind_unbind *)x)
+#define ipc_from_comp_new(x) ((struct ipc4_module_init_instance *)x)
+#define ipc_from_dai_config(x) ((struct CopierGatewayCfg *)x)
 #else
 #error "No or invalid IPC MAJOR version selected."
 #endif
+
+#define ipc_to_pipe_new(x)	((ipc_pipe_new *)x)
+#define ipc_to_pipe_connect(x)	((ipc_pipe_comp_connect *)x)
+#define ipc_to_comp_new(x)	((ipc_comp *)x)
+#define ipc_to_dai_config(x)	((ipc_dai_config *)x)
 
 struct dai_config;
 struct ipc_msg;
@@ -91,7 +107,7 @@ static inline int32_t ipc_comp_pipe_id(const struct ipc_comp_dev *icd)
  * @param new New IPC component descriptor.
  * @return 0 on success or negative error.
  */
-int ipc_comp_new(struct ipc *ipc, struct sof_ipc_comp *new);
+int ipc_comp_new(struct ipc *ipc, ipc_comp *new);
 
 /**
  * \brief Free an IPC component.
@@ -147,8 +163,7 @@ int ipc_pipeline_complete(struct ipc *ipc, uint32_t comp_id);
  * @param connect Components to connect together..
  * @return 0 on success or negative error.
  */
-int ipc_comp_connect(struct ipc *ipc,
-		     struct sof_ipc_pipe_comp_connect *connect);
+int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *connect);
 
 /**
  * \brief Get component device from component ID.
@@ -183,6 +198,6 @@ struct ipc_comp_dev *ipc_get_ppl_comp(struct ipc *ipc,
  * @param config DAI configuration.
  * @return 0 on success or negative error.
  */
-int ipc_comp_dai_config(struct ipc *ipc, struct sof_ipc_dai_config *config);
+int ipc_comp_dai_config(struct ipc *ipc, ipc_dai_config *config);
 
 #endif

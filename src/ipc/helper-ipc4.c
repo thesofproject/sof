@@ -65,7 +65,7 @@ struct comp_dev *comp_new(struct sof_ipc_comp *comp)
 
 int ipc_pipeline_new(struct ipc *ipc, ipc_pipe_new *_pipe_desc)
 {
-	struct ipc4_pipeline_create *pipe_desc = ipc_get_pipe_new(_pipe_desc);
+	struct ipc4_pipeline_create *pipe_desc = ipc_from_pipe_new(_pipe_desc);
 	struct ipc_comp_dev *ipc_pipe;
 	struct pipeline *pipe;
 
