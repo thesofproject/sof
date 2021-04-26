@@ -237,6 +237,12 @@ ipc_cmd_hdr *ipc_compact_read_msg(void)
 	return ipc_to_hdr(msg_in);
 }
 
+void ipc_boot_complete_msg(ipc_cmd_hdr *header, uint32_t *data)
+{
+	*header = SOF_IPC4_FW_READY;
+	*data = 0;
+}
+
 void ipc_cmd(ipc_cmd_hdr *_hdr)
 {
 	union ipc4_message_header *in = ipc_from_hdr(_hdr);
