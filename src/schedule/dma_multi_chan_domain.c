@@ -185,10 +185,11 @@ static void dma_multi_chan_domain_irq_unregister(struct dma_domain_data *data)
  * \param[in,out] domain Pointer to schedule domain.
  * \param[in,out] task Task to be unregistered from the domain..
  * \param[in] num_tasks Number of currently scheduled tasks.
+ * \return Error code.
  */
-static void dma_multi_chan_domain_unregister(struct ll_schedule_domain *domain,
-					     struct task *task,
-					     uint32_t num_tasks)
+static int dma_multi_chan_domain_unregister(struct ll_schedule_domain *domain,
+					    struct task *task,
+					    uint32_t num_tasks)
 {
 	struct dma_domain *dma_domain = ll_sch_domain_get_pdata(domain);
 	struct pipeline_task *pipe_task = pipeline_task_get(task);
@@ -201,7 +202,7 @@ static void dma_multi_chan_domain_unregister(struct ll_schedule_domain *domain,
 
 	/* check if task should be unregistered */
 	if (!pipe_task->registrable)
-		return;
+		return 0;
 
 	for (i = 0; i < dma_domain->num_dma; ++i) {
 		for (j = 0; j < dmas[i].plat_data.channels; ++j) {
@@ -236,9 +237,12 @@ static void dma_multi_chan_domain_unregister(struct ll_schedule_domain *domain,
 			else if (!dma_domain->channel_mask[i][core])
 				dma_multi_chan_domain_irq_unregister(
 						dma_domain->arg[i][core]);
-			return;
+			return 0;
 		}
 	}
+
+	/* task in running or unregistered at all, can't unregister it */
+	return -EINVAL;
 }
 
 /**
