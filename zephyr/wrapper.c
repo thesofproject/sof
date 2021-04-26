@@ -23,6 +23,12 @@
 #include <soc.h>
 #include <kernel.h>
 
+/* 300aaad4-45d2-8313-25d0-5e1d6086cdd1 */
+DECLARE_SOF_RT_UUID("zephyr", zephyr_uuid, 0x300aaad4, 0x45d2, 0x8313,
+		 0x25, 0xd0, 0x5e, 0x1d, 0x60, 0x86, 0xcd, 0xd1);
+
+DECLARE_TR_CTX(zephyr_tr, SOF_UUID(zephyr_uuid), LOG_LEVEL_INFO);
+
 /*
  * Memory - Create Zephyr HEAP for SOF.
  *
@@ -97,7 +103,7 @@ void *rbrealloc_align(void *ptr, uint32_t flags, uint32_t caps, size_t bytes,
 	/* Original version returns NULL without freeing this memory */
 	if (!bytes) {
 		/* TODO: Should we call rfree(ptr); */
-		LOG_ERR("realloc failed for %d bytes", bytes);
+		tr_err(&zephyr_tr, "realloc failed for 0 bytes");
 		return NULL;
 	}
 
@@ -112,7 +118,7 @@ void *rbrealloc_align(void *ptr, uint32_t flags, uint32_t caps, size_t bytes,
 
 	rfree(ptr);
 
-	LOG_INF("rbealloc: new ptr %p", new_ptr);
+	tr_info(&zephyr_tr, "rbealloc: new ptr %p", new_ptr);
 
 	return new_ptr;
 }
@@ -197,7 +203,7 @@ int interrupt_register(uint32_t irq, void(*handler)(void *arg), void *arg)
 	return arch_irq_connect_dynamic(irq, 0, (void (*)(const void *))handler,
 					arg, 0);
 #else
-	LOG_ERR("Cannot register handler for IRQ %u: dynamic IRQs are disabled",
+	tr_err(&zephyr_tr, "Cannot register handler for IRQ %u: dynamic IRQs are disabled",
 		irq);
 	return -EOPNOTSUPP;
 #endif
