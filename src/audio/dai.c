@@ -1150,6 +1150,16 @@ static int dai_position(struct comp_dev *dev, struct sof_ipc_stream_posn *posn)
 	return 0;
 }
 
+/**
+ * \brief Get DAI parameters and configure timestamping
+ * \param[in, out] dev DAI device.
+ * \return Error code.
+ *
+ * This function retrieves various DAI parameters such as type, direction, index, and DMA
+ * controller information those are needed when configuring HW timestamping. Note that
+ * DAI must be prepared before this function is used (for DMA information). If not, an error
+ * is returned.
+ */
 static int dai_ts_config(struct comp_dev *dev)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
@@ -1157,6 +1167,11 @@ static int dai_ts_config(struct comp_dev *dev)
 	struct sof_ipc_comp_dai *dai = COMP_GET_IPC(dev, sof_ipc_comp_dai);
 
 	comp_dbg(dev, "dai_ts_config()");
+	if (!dd->chan) {
+		comp_err(dev, "dai_ts_config(), No DMA channel information");
+		return -EINVAL;
+	}
+
 	cfg->type = dd->dai->drv->type;
 	cfg->direction = dai->direction;
 	cfg->index = dd->dai->index;
