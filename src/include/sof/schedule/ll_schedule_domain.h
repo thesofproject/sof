@@ -31,8 +31,8 @@ struct ll_schedule_domain_ops {
 	int (*domain_register)(struct ll_schedule_domain *domain,
 			       uint64_t period, struct task *task,
 			       void (*handler)(void *arg), void *arg);
-	void (*domain_unregister)(struct ll_schedule_domain *domain,
-				  struct task *task, uint32_t num_tasks);
+	int (*domain_unregister)(struct ll_schedule_domain *domain,
+				 struct task *task, uint32_t num_tasks);
 	void (*domain_enable)(struct ll_schedule_domain *domain, int core);
 	void (*domain_disable)(struct ll_schedule_domain *domain, int core);
 	void (*domain_set)(struct ll_schedule_domain *domain, uint64_t start);
