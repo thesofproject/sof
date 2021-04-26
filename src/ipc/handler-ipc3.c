@@ -1421,6 +1421,11 @@ ipc_cmd_hdr *ipc_compact_read_msg(void)
 }
 #endif
 
+int ipc_boot_complete_msg(uint32_t *header, , uint32_t *data)
+{
+	*header = SOF_IPC_FW_READY;
+}
+
 /*
  * Global IPC Operations.
  */

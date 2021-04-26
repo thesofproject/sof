@@ -140,6 +140,14 @@ int ipc_process_host_buffer(struct ipc *ipc,
 int ipc_dma_trace_send_position(void);
 
 /**
+ * \brief create a IPC boot completet message.
+ * @header[in] msg header.
+ * @data[in] msg data.
+ * @return Number of words written.
+ */
+int ipc_boot_complete_msg(uint32_t *header, uint32_t *data);
+
+/**
  * \brief Read a compact IPC message or return NULL for normal message.
  * @return Pointer to the compact message data.
  */
