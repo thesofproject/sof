@@ -143,6 +143,14 @@ int cadence_codec_init(struct comp_dev *dev)
 		comp_dbg(dev, "cadence_codec_init(): allocated %d bytes for lib object",
 			 obj_size);
 	}
+	/* Set all params to their default values */
+	API_CALL(cd, XA_API_CMD_INIT, XA_CMD_TYPE_INIT_API_PRE_CONFIG_PARAMS,
+		 NULL, ret);
+	if (ret != LIB_NO_ERROR) {
+		comp_err(dev, "cadence_codec_init(): error %x: failed to set default config",
+			 ret);
+		goto out;
+	}
 
 	comp_dbg(dev, "cadence_codec_init() done");
 out:
@@ -377,14 +385,6 @@ int cadence_codec_prepare(struct comp_dev *dev)
 
 	if (codec->state == CODEC_PREPARED)
 		goto done;
-
-	API_CALL(cd, XA_API_CMD_INIT, XA_CMD_TYPE_INIT_API_PRE_CONFIG_PARAMS,
-		 NULL, ret);
-	if (ret != LIB_NO_ERROR) {
-		comp_err(dev, "cadence_codec_prepare(): error %x: failed to set default config",
-			 ret);
-		goto err;
-	}
 
 	if (!codec->s_cfg.avail && !codec->s_cfg.size) {
 		comp_err(dev, "cadence_codec_prepare() no setup configuration available!");
