@@ -570,7 +570,7 @@ static int codec_adapter_set_params(struct comp_dev *dev, struct sof_ipc_ctrl_da
 				comp_dbg(dev, "codec_adapter_set_params() load of runtime config done.");
 			}
 
-			if (cd->state >= PP_STATE_PREPARED) {
+			if (cd->state >= PP_STATE_CREATED) {
 				/* We are already prepared so we can apply runtime
 				 * config right away.
 				 */
