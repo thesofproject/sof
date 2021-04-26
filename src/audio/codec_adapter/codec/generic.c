@@ -301,12 +301,6 @@ int codec_apply_runtime_config(struct comp_dev *dev)
 
 	comp_dbg(dev, "codec_apply_config() start");
 
-	if (cd->codec.state < CODEC_PREPARED) {
-		comp_err(dev, "codec_prepare() wrong state of codec %x, state %d",
-			 cd->ca_config.codec_id, codec->state);
-		return -EPERM;
-	}
-
 	ret = codec->ops->apply_config(dev);
 	if (ret) {
 		comp_err(dev, "codec_apply_config() error %d: codec process failed for codec_id %x",
