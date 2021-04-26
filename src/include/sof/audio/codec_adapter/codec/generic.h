@@ -135,25 +135,14 @@ enum codec_cfg_type {
 };
 
 /**
- * \enum ca_state
- * \brief States of codec_adapter
- */
-enum ca_state {
-	PP_STATE_DISABLED = 0, /**< Codec adapter isn't initialized yet or has just been freed. */
-	PP_STATE_CREATED, /**< Codec adapter created or reset.*/
-	PP_STATE_PREPARED, /**< Codec adapter prepared. */
-	PP_STATE_RUN, /**< Codec adapter is running now. */
-};
-
-/**
  * \enum codec_state
  * \brief Codec specific states
  */
 enum codec_state {
 	CODEC_DISABLED, /**< Codec isn't initialized yet or has been freed.*/
 	CODEC_INITIALIZED, /**< Codec initialized or reset. */
-	CODEC_PREPARED, /**< Codec prepared. */
-	CODEC_RUNNING, /**< Codec is running now. */
+	CODEC_IDLE, /**< Codec is idle now. */
+	CODEC_PROCESSING, /**< Codec is processing samples now. */
 };
 
 /** codec adapter setup config parameters */
@@ -232,7 +221,6 @@ struct codec_data {
 
 /* codec_adapter private, runtime data */
 struct comp_data {
-	enum ca_state state; /**< current state of codec_adapter */
 	struct ca_config ca_config;
 	struct codec_data codec; /**< codec private data */
 	struct comp_buffer *ca_sink;

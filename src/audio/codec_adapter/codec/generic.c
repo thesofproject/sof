@@ -204,7 +204,7 @@ int codec_prepare(struct comp_dev *dev)
 
 	comp_dbg(dev, "codec_prepare() start");
 
-	if (cd->codec.state == CODEC_PREPARED)
+	if (cd->codec.state == CODEC_IDLE)
 		return 0;
 	if (cd->codec.state < CODEC_INITIALIZED)
 		return -EPERM;
@@ -227,7 +227,7 @@ int codec_prepare(struct comp_dev *dev)
 	codec->r_cfg.avail = false;
 	codec->r_cfg.data = NULL;
 
-	codec->state = CODEC_PREPARED;
+	codec->state = CODEC_IDLE;
 	comp_dbg(dev, "codec_prepare() done");
 end:
 	return ret;
@@ -261,7 +261,7 @@ int codec_process(struct comp_dev *dev)
 
 	comp_dbg(dev, "codec_process() start");
 
-	if (cd->codec.state < CODEC_PREPARED) {
+	if (cd->codec.state != CODEC_IDLE) {
 		comp_err(dev, "codec_prepare(): wrong state of codec %x, state %d",
 			 cd->ca_config.codec_id, codec->state);
 		return -EPERM;
@@ -276,6 +276,7 @@ int codec_process(struct comp_dev *dev)
 
 	comp_dbg(dev, "codec_process() done");
 out:
+	codec->state = CODEC_IDLE;
 	return ret;
 }
 

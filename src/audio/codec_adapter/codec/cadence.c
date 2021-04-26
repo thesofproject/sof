@@ -383,9 +383,6 @@ int cadence_codec_prepare(struct comp_dev *dev)
 
 	comp_dbg(dev, "cadence_codec_prepare() start");
 
-	if (codec->state == CODEC_PREPARED)
-		goto done;
-
 	/* Setup config */
 	if (!codec->s_cfg.avail && !codec->s_cfg.size) {
 		comp_err(dev, "cadence_codec_prepare() no setup configuration available!");
@@ -453,7 +450,6 @@ int cadence_codec_prepare(struct comp_dev *dev)
 free:
 	codec_free_memory(dev, cd->mem_tabs);
 err:
-done:
 	return ret;
 }
 

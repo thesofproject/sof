@@ -86,7 +86,6 @@ struct comp_dev *codec_adapter_new(const struct comp_driver *drv,
 	}
 
 	dev->state = COMP_STATE_READY;
-	cd->state = PP_STATE_CREATED;
 
 	comp_dbg(dev, "codec_adapter_new() done");
 	return dev;
@@ -264,7 +263,6 @@ int codec_adapter_prepare(struct comp_dev *dev)
 			  BUFFER_UPDATE_FORCE);
 	buffer_reset_pos(cd->local_buff, NULL);
 
-	cd->state = PP_STATE_PREPARED;
 	comp_dbg(dev, "codec_adapter_prepare() done");
 
 	return 0;
@@ -570,7 +568,7 @@ static int codec_adapter_set_params(struct comp_dev *dev, struct sof_ipc_ctrl_da
 				comp_dbg(dev, "codec_adapter_set_params() load of runtime config done.");
 			}
 
-			if (cd->state >= PP_STATE_CREATED) {
+			if (codec->state >= CODEC_INITIALIZED) {
 				/* We are already prepared so we can apply runtime
 				 * config right away.
 				 */
@@ -630,7 +628,7 @@ static int codec_adapter_ctrl_set_data(struct comp_dev *dev,
 	struct comp_data *cd = comp_get_drvdata(dev);
 
 	comp_dbg(dev, "codec_adapter_ctrl_set_data() start, state %d, cmd %d",
-		 cd->state, cdata->cmd);
+		 cd->codec.state, cdata->cmd);
 
 	/* Check version from ABI header */
 	if (SOF_ABI_VERSION_INCOMPATIBLE(SOF_ABI_VERSION, cdata->data->abi)) {
@@ -702,7 +700,6 @@ int codec_adapter_reset(struct comp_dev *dev)
 			 ret);
 	}
 	buffer_zero(cd->local_buff);
-	cd->state = PP_STATE_CREATED;
 
 	comp_dbg(dev, "codec_adapter_reset(): done");
 
