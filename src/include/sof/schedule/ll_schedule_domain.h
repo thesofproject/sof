@@ -96,42 +96,6 @@ static inline struct ll_schedule_domain *domain_init
 	return domain;
 }
 
-static inline int domain_register(struct ll_schedule_domain *domain,
-				  uint64_t period, struct task *task,
-				  void (*handler)(void *arg), void *arg)
-{
-	int ret;
-
-	assert(domain->ops->domain_register);
-
-	ret = domain->ops->domain_register(domain, period, task, handler, arg);
-
-	return ret;
-}
-
-static inline void domain_unregister(struct ll_schedule_domain *domain,
-				     struct task *task, uint32_t num_tasks)
-{
-	assert(domain->ops->domain_unregister);
-
-	domain->ops->domain_unregister(domain, task, num_tasks);
-
-}
-
-static inline void domain_enable(struct ll_schedule_domain *domain, int core)
-{
-	if (domain->ops->domain_enable)
-		domain->ops->domain_enable(domain, core);
-
-}
-
-static inline void domain_disable(struct ll_schedule_domain *domain, int core)
-{
-	if (domain->ops->domain_disable)
-		domain->ops->domain_disable(domain, core);
-
-}
-
 /* configure the next interrupt for domain */
 static inline void domain_set(struct ll_schedule_domain *domain, uint64_t start)
 {
@@ -139,7 +103,6 @@ static inline void domain_set(struct ll_schedule_domain *domain, uint64_t start)
 		domain->ops->domain_set(domain, start);
 	else
 		domain->next_tick = start;
-
 }
 
 /* clear the interrupt for domain */
@@ -150,7 +113,69 @@ static inline void domain_clear(struct ll_schedule_domain *domain)
 
 	/* reset to denote no tick/interrupt is set */
 	domain->next_tick = UINT64_MAX;
+}
 
+static inline int domain_register(struct ll_schedule_domain *domain,
+				  uint64_t period, struct task *task,
+				  void (*handler)(void *arg), void *arg)
+{
+	int ret;
+
+	assert(domain->ops->domain_register);
+
+	ret = domain->ops->domain_register(domain, period, task, handler, arg);
+
+	if (!ret) {
+		/* registered one more task, increase the count */
+		atomic_add(&domain->total_num_tasks, 1);
+
+		if (!domain->registered[cpu_get_id()]) {
+			/* first task of the core, new client registered */
+			domain->registered[cpu_get_id()] = true;
+			atomic_add(&domain->registered_cores, 1);
+		}
+	}
+
+	return ret;
+}
+
+static inline void domain_unregister(struct ll_schedule_domain *domain,
+				     struct task *task, uint32_t num_tasks)
+{
+	int ret;
+
+	assert(domain->ops->domain_unregister);
+
+	ret = domain->ops->domain_unregister(domain, task, num_tasks);
+
+	if (!ret) {
+		/* unregistered the task, decrease the count */
+		atomic_sub(&domain->total_num_tasks, 1);
+
+		/* the last task of the core, unregister the client/core */
+		if (!num_tasks && domain->registered[cpu_get_id()]) {
+			domain->registered[cpu_get_id()] = false;
+			atomic_sub(&domain->registered_cores, 1);
+		}
+	}
+}
+
+static inline void domain_enable(struct ll_schedule_domain *domain, int core)
+{
+	if (!domain->enabled[core] && domain->ops->domain_enable) {
+		domain->ops->domain_enable(domain, core);
+		domain->enabled[core] = true;
+		atomic_add(&domain->enabled_cores, 1);
+	}
+}
+
+static inline void domain_disable(struct ll_schedule_domain *domain, int core)
+{
+	if (domain->enabled[core] && domain->ops->domain_disable) {
+		domain->ops->domain_disable(domain, core);
+		domain->enabled[core] = false;
+		atomic_sub(&domain->enabled_cores, 1);
+	}
 }
 
 static inline bool domain_is_pending(struct ll_schedule_domain *domain,
