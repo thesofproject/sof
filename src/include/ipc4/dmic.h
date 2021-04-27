@@ -30,7 +30,7 @@
  * The driver needs to make sure that all mics are disabled
  * before starting to program PDM controllers.
  */
-struct sof_fir_config {
+struct ipc4_dmic_fir_config {
 	uint32_t fir_control;
 	uint32_t fir_config;
 	uint32_t dc_offset_left;
@@ -47,7 +47,7 @@ struct sof_fir_config {
  * it is possible to provide it in a single copy inside the BLOB and refer
  * to that from other PDM configurations \see reuse_fir_from_pdm.
  */
-struct sof_pdm_ctrl_cfg {
+struct ipc4_dmic_pdm_ctrl_cfg {
 	uint32_t cic_control;
 	uint32_t cic_config;
 	uint32_t rsvd_0;
@@ -65,7 +65,7 @@ struct sof_pdm_ctrl_cfg {
 	*/
 	uint32_t reuse_fir_from_pdm;
 	uint32_t rsvd_1[2];
-	struct sof_fir_config fir_config[2];
+	struct ipc4_dmic_fir_config fir_config[2];
 
 	/*
 	 * Array of FIR coefficients, channel A goes first, then channel B.
@@ -77,7 +77,7 @@ struct sof_pdm_ctrl_cfg {
 	uint32_t fir_coeffs[0];
 } __attribute__((packed, aligned(4)));
 
-struct sof_dmic_config_blob {
+struct ipc4_dmic_config_blob {
 	/* time-slot mappings */
 	uint32_t ts_group[4];
 
@@ -106,13 +106,13 @@ struct sof_dmic_config_blob {
 	/*!
 	  Actual number of items depends on pdm_ctrl_mask (# of 1's).
 	*/
-	struct sof_pdm_ctrl_cfg pdm_ctrl_cfg[0];
+	struct ipc4_dmic_pdm_ctrl_cfg pdm_ctrl_cfg[0];
 } __attribute__((packed, aligned(4)));
 
 //DMIC gateway configuration data
-struct sof_dmic_config_data {
-	GatewayAttributes gtw_attributes;
-	struct sof_dmic_config_blob dmic_config_blob;
+struct ipc4_dmic_config_data {
+	union ipc4_gateway_attributes gtw_attributes;
+	struct ipc4_dmic_config_blob dmic_config_blob;
 } __attribute__((packed, aligned(4)));
 
 #endif

@@ -23,7 +23,7 @@
 #include <stdint.h>
 
 //! Type of the gateway.
-typedef enum _ConnectorNodeIdType
+enum ipc4_connector_node_id_type
 {
     //! HD/A host output (-> DSP).
     kHdaHostOutputClass = 0,
@@ -77,7 +77,7 @@ typedef enum _ConnectorNodeIdType
     kSpiOutputClass = 25,
     kSpiInputClass = 26,
     kMaxConnectorNodeIdType
-} ConnectorNodeIdType;
+};
 
 //! Invalid raw node id (to indicate uninitialized node id).
 #define kInvalidNodeId      0xffffffff
@@ -88,7 +88,7 @@ typedef enum _ConnectorNodeIdType
   is expected to be encoded in a gateway specific way depending on
   the actual type of gateway.
 */
-typedef union _ConnectorNodeId
+union ipc4_connector_node_id
 {
     //! Raw 32-bit value of node id.
     uint32_t dw;
@@ -104,11 +104,11 @@ typedef union _ConnectorNodeId
         //! Rsvd field.
         uint32_t _rsvd      : 19;
     } f; //!< Bits
-} ConnectorNodeId;
+} __attribute__((packed, aligned(4)));
 
 // HD/A Part begins here -> public IO driver
 
-// TODO: The following HD-A DMA Nodes have IDs defined by c-spec
+// TODO: The following HD-A DMA Nodes have IDs defined by spec
 #define kHwHostOutputNodeIdBase     0x00
 #define kHwCodeLoaderNodeId         0x0F
 #define kHwLinkInputNodeIdBase      0x10
@@ -121,7 +121,7 @@ typedef union _ConnectorNodeId
   (buffers and other items used while transferring data, like linked list)
   to be allocated from a special memory area, e.g low power memory.
 */
-typedef union _GatewayAttributes
+union ipc4_gateway_attributes
 {
     //! Raw value
     uint32_t dw;
@@ -137,7 +137,7 @@ typedef union _GatewayAttributes
         //! Reserved field
         uint32_t _rsvd                  : 30;
     } bits; //!< Bits
-} GatewayAttributes;
+} __attribute__((packed, aligned(4)));
 
 //! Configuration for the IPC Gateway
 struct IpcGatewayConfigBlob
@@ -185,7 +185,7 @@ struct IpcGatewayConfigBlob
       about the buffered data level.
      */
     uint32_t threshold_low;
-};
+} __attribute__((packed, aligned(4)));
 
 #endif
 

@@ -30,7 +30,7 @@
 /* i2s Configuration BLOB building blocks */
 
 /* i2s registers for i2s Configuration */
-struct sof_i2s_config {
+struct ipc4_ssp_config {
 	uint32_t ssc0;
 	uint32_t ssc1;
 	uint32_t sscto;
@@ -43,7 +43,7 @@ struct sof_i2s_config {
 	uint32_t ssioc;
 } __attribute__((packed, aligned(4)));
 
-struct sof_mclk_config {
+struct ipc4_ssp_mclk_config {
 	/* master clock divider control register */
 	uint32_t mdivc;
 
@@ -51,12 +51,12 @@ struct sof_mclk_config {
 	uint32_t mdivr;
 } __attribute__((packed, aligned(4)));
 
-struct sof_i2s_driver_config {
-	struct sof_i2s_config i2s_config;
-	struct sof_mclk_config mclk_config;
+struct ipc4_ssp_driver_config {
+	struct ipc4_ssp_config i2s_config;
+	struct ipc4_ssp_mclk_config mclk_config;
 } __attribute__((packed, aligned(4)));
 
-struct sof_i2s_start_control {
+struct ipc4_ssp_start_control {
 	/*
 	  delay in msec between enabling interface (moment when Copier
 	  instance is being attached to the interface) and actual
@@ -75,7 +75,7 @@ struct sof_i2s_start_control {
 	uint32_t rsvd0            : 14;
 } __attribute__((packed, aligned(4)));
 
-struct sof_i2s_stop_control {
+struct ipc4_ssp_stop_control {
 	/*
 	  delay in msec between stopping the interface
 	  (moment when Copier instance is being detached from the interface)
@@ -96,29 +96,29 @@ struct sof_i2s_stop_control {
 	uint32_t rsvd1            : 14;
 } __attribute__((packed, aligned(4)));
 
-union sof_i2s_dma_control {
-	struct ControlData {
-		struct sof_i2s_start_control start_control;
-		struct sof_i2s_stop_control stop_control;
+union ipc4_ssp_dma_control {
+	struct ipc4_ssp_control {
+		struct ipc4_ssp_start_control start_control;
+		struct ipc4_ssp_stop_control stop_control;
 	} control_data;
 
-	struct MnDivControlData {
+	struct ipc4_mn_div_config {
 		uint32_t mval;
 		uint32_t nval;
 	} mndiv_control_data;
 } __attribute__((packed, aligned(4)));
 
-struct sof_i2s_configuration_blob {
-	GatewayAttributes gw_attr;
+struct ipc4_ssp_configuration_blob {
+	union ipc4_gateway_attributes gw_attr;
 
 	/* TDM time slot mappings */
 	uint32_t tdm_ts_group[I2S_TDM_MAX_SLOT_MAP_COUNT];
 
 	/* i2s port configuration */
-	struct sof_i2s_driver_config i2s_driver_config;
+	struct ipc4_ssp_driver_config i2s_driver_config;
 
 	/* optional configuration parameters */
-	union sof_i2s_dma_control i2s_dma_control[0];
+	union ipc4_ssp_dma_control i2s_dma_control[0];
 } __attribute__((packed, aligned(4)));
 
 #endif

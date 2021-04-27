@@ -46,7 +46,7 @@ struct LlpReading
     uint32_t wclk_l;
     //! upper part of 64-bit Wallclock
     uint32_t wclk_u;
-};
+} __attribute__((packed, aligned(4)));
 
 struct LlpReadingExtended
 {
@@ -55,7 +55,7 @@ struct LlpReadingExtended
     uint32_t tpd_low;
     //! total processed data (high part)
     uint32_t tpd_high;
-};
+} __attribute__((packed, aligned(4)));
 
 struct BaseModuleCfgExt
 {
@@ -86,7 +86,7 @@ struct BaseModuleCfgExt
      * \brief Specifies format of output pins.
      */
     intel_adsp::OutputPinFormat    output_pins[1];
-};
+} __attribute__((packed, aligned(4)));
 
 /**
  * This enum defines short 16bit parameters common for all modules.
@@ -122,14 +122,14 @@ struct PinProps
     /*! Unique ID of the physical queue connected to the pin.
         If there is no queue connected, then -1 (invalid queue ID) is set. */
     uint32_t            phys_queue_id;
-};
+} __attribute__((packed, aligned(4)));
 
 
 struct PinListInfo
 {
     uint32_t pin_count;
     PinProps pin_info[1];
-};
+} __attribute__((packed, aligned(4)));
 
 /**
  * Helper structure definition.
@@ -139,7 +139,7 @@ struct InOutGateway
 {
     uint32_t  input_gateway;
     uint32_t  output_gateway;
-};
+} __attribute__((packed, aligned(4)));
 
 /**
  * Structure describing module instance properties used in response
@@ -166,7 +166,7 @@ struct ModuleInstanceProps
     PinListInfo output_queues;
     uint32_t  input_gateway;
     uint32_t  output_gateway;
-};
+} __attribute__((packed, aligned(4)));
 
 /**
  * This structure may be used by modules to carry
@@ -189,7 +189,7 @@ union CfgParamIdData
         f.id = id;
         f.data16 = data16;
     }
-};
+} __attribute__((packed, aligned(4)));
 
 /*!
   \name Copier Module Configuration & Interface
@@ -316,7 +316,7 @@ struct CopierGatewayCfg
     uint32_t config_length;
     //! Gateway node configuration blob.
     uint32_t config_data[1];
-};
+} __attribute__((packed, aligned(4)));
 
 struct CopierModuleCfg : BaseModuleCfg
 {
@@ -329,7 +329,7 @@ struct CopierModuleCfg : BaseModuleCfg
     uint32_t copier_feature_mask;
     //! Gateway Configuration.
     CopierGatewayCfg  gtw_cfg;
-};
+} __attribute__((packed, aligned(4)));
 
 enum CopierModuleConfigParams
 {
@@ -393,7 +393,7 @@ struct CopierConfigTimestampInitData
       corresponding HW i/f from DSP Timestamping Registers.
     */
     uint32_t tsctrl_reg;
-};
+} __attribute__((packed, aligned(4)));
 
 struct CopierConfigSetSinkFormat
 {
@@ -406,7 +406,7 @@ struct CopierConfigSetSinkFormat
     AudioDataFormatIpc source_fmt;
     //! Output format used by the sink
     AudioDataFormatIpc sink_fmt;
-};
+} __attribute__((packed, aligned(4)));
 
 static const uint32_t COPIER_DATA_SEGMENT_DISABLE = (0 << 0);
 static const uint32_t COPIER_DATA_SEGMENT_ENABLE  = (1 << 0);
@@ -431,6 +431,6 @@ struct DataSegmentEnabled
     uint32_t enabled;
     //! Data segment size (in bytes).
     uint32_t data_seg_size;
-};
+} __attribute__((packed, aligned(4)));
 
 #endif
