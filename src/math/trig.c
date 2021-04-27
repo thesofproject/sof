@@ -9,9 +9,7 @@
 #include <sof/audio/format.h>
 #include <sof/math/trig.h>
 #include <stdint.h>
-#define _USE_MATH_DEFINES
-#include <math.h>
-#include <stdint.h>
+
 #define CORDICSINE_TABLE_SIZE	31
 /* Compute fixed point cordicsine with table lookup and interpolation
  *	The cordic sine algorithm converges, when the angle is in the range
@@ -27,6 +25,9 @@
  *	| 32 | 28  |  1	   | 32	| 31 |	 1   | 4.28   | 1.31   |
  *	+------------------+-----------------+--------+--------+
  */
+
+/* Use a local definition to avoid adding a dependency on <math.h> */
+#define _M_PI		3.14159265358979323846	/* pi */
 
 int32_t sin_fixed(int32_t th_rad_fxp)
 {
@@ -47,11 +48,11 @@ int32_t sin_fixed(int32_t th_rad_fxp)
 	/* 652032874 , deg = 69.586061*/
 	const int32_t CORDICSINE_LUT_Q29FL  =  Q_CONVERT_FLOAT(1.214505869895220, 29);
 	/* 421657428 , deg = 90.000000 */
-	const int32_t CORDICSINE_PIOVERTWO_Q28FL  = Q_CONVERT_FLOAT(M_PI / 2, 28);
+	const int32_t CORDICSINE_PIOVERTWO_Q28FL  = Q_CONVERT_FLOAT(_M_PI / 2, 28);
 	/* 843314857,  deg = 90.000000  */
-	const int32_t CORDICSINE_PIOVERTWO_Q29FL  = Q_CONVERT_FLOAT(M_PI / 2, 29);
+	const int32_t CORDICSINE_PIOVERTWO_Q29FL  = Q_CONVERT_FLOAT(_M_PI / 2, 29);
 	/* 1686629713, deg = 90.000000  */
-	const int32_t CORDICSINE_PIOVERTWO_Q30FL  = Q_CONVERT_FLOAT(M_PI / 2, 30);
+	const int32_t CORDICSINE_PIOVERTWO_Q30FL  = Q_CONVERT_FLOAT(_M_PI / 2, 30);
 
 	/*Addition or subtraction by a multiple of pi/2 is done in the data type
 	 *of the input. When the fraction length is 29, then the quantization error
