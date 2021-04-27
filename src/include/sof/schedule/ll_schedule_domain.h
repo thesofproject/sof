@@ -45,7 +45,7 @@ struct ll_schedule_domain {
 	uint64_t next_tick;		/**< ticks just set for next run */
 	spinlock_t lock;		/**< standard lock */
 	atomic_t total_num_tasks;	/**< total number of registered tasks */
-	atomic_t num_clients;		/**< number of registered cores */
+	atomic_t registered_cores;	/**< number of registered cores */
 	uint32_t ticks_per_ms;		/**< number of clock ticks per ms */
 	int type;			/**< domain type */
 	int clk;			/**< source clock */
@@ -89,7 +89,7 @@ static inline struct ll_schedule_domain *domain_init
 
 	spinlock_init(&domain->lock);
 	atomic_init(&domain->total_num_tasks, 0);
-	atomic_init(&domain->num_clients, 0);
+	atomic_init(&domain->registered_cores, 0);
 
 	return domain;
 }
