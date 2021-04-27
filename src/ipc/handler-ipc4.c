@@ -224,6 +224,8 @@ ipc_cmd_hdr *mailbox_validate(void)
  */
 static uint32_t msg_in[2]; /* local copy of current message from host header */
 static uint32_t msg_out[2]; /* local copy of current message to host header */
+static struct ipc_msg msg_reply;
+static uint32_t msg_data;
 
 ipc_cmd_hdr *ipc_compact_read_msg(void)
 {
@@ -244,7 +246,8 @@ ipc_cmd_hdr *ipc_process_msg(struct ipc_msg *msg)
 
 	/* the first uint of msg data is sent by ipc data register for ipc4 */
 	msg->tx_size -= sizeof(uint32_t);
-	mailbox_dspbox_write(0, (uint32_t *)msg->tx_data + 1, msg->tx_size);
+	if (msg->tx_size)
+		mailbox_dspbox_write(0, (uint32_t *)msg->tx_data + 1, msg->tx_size);
 
 	return ipc_to_hdr(msg_out);
 }
@@ -258,7 +261,6 @@ void ipc_boot_complete_msg(ipc_cmd_hdr *header, uint32_t *data)
 void ipc_cmd(ipc_cmd_hdr *_hdr)
 {
 	union ipc4_message_header *in = ipc_from_hdr(_hdr);
-	union ipc4_message_header *out = ipc_from_hdr(msg_out);
 	enum ipc4_message_target target;
 	int err = -EINVAL;
 
@@ -286,16 +288,18 @@ void ipc_cmd(ipc_cmd_hdr *_hdr)
 
 	/* FW sends a ipc message to host if request bit is set*/
 	if (in->r.rsp == SOF_IPC4_MESSAGE_DIR_MSG_REQUEST) {
-		//struct ipc *ipc = ipc_get();
+		struct ipc4_message_reply reply;
 
 		/* copy contents of message received */
-		*out = *in;
-		out->r.rsp = SOF_IPC4_MESSAGE_DIR_MSG_REPLY;
+		reply.header.r.rsp = SOF_IPC4_MESSAGE_DIR_MSG_REPLY;
+		reply.header.r.status = err;
+		reply.header.r.msg_tgt = in->r.msg_tgt;
+		reply.header.r.type = in->r.type;
+		reply.data.dat = 0;
 
-		// TODO: validate and create reply header
-		err = ipc_platform_compact_write_msg(ipc_to_hdr(out), 2);
-		if (err != 2) {
-			tr_err(&ipc_tr, "ipc4: reply %d failed ....", target);
-		}
+		msg_reply.header = reply.header.dat;
+		msg_reply.tx_data = &msg_data;
+		msg_reply.tx_size = sizeof(msg_data);
+		ipc_msg_send(&msg_reply, &reply.data.dat, true);
 	}
 }
