@@ -98,8 +98,6 @@ static int ipc4_process_glb_message(union ipc4_message_header *ipc4)
 	case SOF_IPC4_GLB_BOOT_CONFIG:
 	case SOF_IPC4_GLB_ROM_CONTROL:
 	case SOF_IPC4_GLB_IPCGATEWAY_CMD:
-	case SOF_IPC4_GLB_START_RTOS_EDF_TASK:
-	case SOF_IPC4_GLB_STOP_RTOS_EDF_TASK:
 	case SOF_IPC4_GLB_PERF_MEASUREMENTS_CMD:
 	case SOF_IPC4_GLB_CHAIN_DMA:
 	case SOF_IPC4_GLB_LOAD_MULTIPLE_MODULES:
@@ -241,8 +239,8 @@ ipc_cmd_hdr *ipc_compact_read_msg(void)
 
 void ipc_cmd(ipc_cmd_hdr *_hdr)
 {
-	union ipc4_message_header *in = ipc_get_hdr(_hdr);
-	union ipc4_message_header *out = ipc_get_hdr(msg_out);
+	union ipc4_message_header *in = ipc_from_hdr(_hdr);
+	union ipc4_message_header *out = ipc_from_hdr(msg_out);
 	enum ipc4_message_target target;
 	int err = -EINVAL;
 
