@@ -172,6 +172,47 @@ out:
 	return ret;
 }
 
+static int update_stream_params(struct comp_dev *dev)
+{
+	int ret = 0;
+	struct comp_data *ca_data = comp_get_drvdata(dev);
+	struct codec_data *codec = comp_get_codec(dev);
+	struct cadence_codec_data *cd = codec->private;
+	struct sof_ipc_stream_params *stream = &ca_data->stream_params;
+	/* copy stream params localy to ensure container size is correct */
+	uint32_t sample_width = (stream->frame_fmt == SOF_IPC_FRAME_S16_LE) ? 0x10 : 0x20;
+	uint32_t sample_rate = stream->rate;
+	uint32_t channels = stream->channels;
+
+	comp_err(dev, "update_stream_params() start");
+
+	/* update stream parameters */
+	/* sample rate */
+	API_CALL(cd, XA_API_CMD_SET_CONFIG_PARAM, cd->sample_rate_id,
+		 &sample_rate, ret);
+	if (LIB_IS_FATAL_ERROR(ret)) {
+		comp_err(dev, "update_stream_params(): failed to set sample rate.");
+		goto err;
+	}
+	/* sample width */
+	API_CALL(cd, XA_API_CMD_SET_CONFIG_PARAM, cd->sample_width_id,
+		 &sample_width, ret);
+	if (LIB_IS_FATAL_ERROR(ret)) {
+		comp_err(dev, "update_stream_params(): failed to set sample width.");
+		goto err;
+	}
+	/* number of channels */
+	API_CALL(cd, XA_API_CMD_SET_CONFIG_PARAM, cd->channels_id,
+		 &channels, ret);
+	if (LIB_IS_FATAL_ERROR(ret)) {
+		comp_err(dev, "update_stream_params(): failed to set channel count.");
+		goto err;
+	}
+err:
+	comp_err(dev, "update_stream_params() done, returned %d", ret);
+	return ret;
+}
+
 static int apply_config(struct comp_dev *dev, enum codec_cfg_type type)
 {
 	int ret = 0;
@@ -428,6 +469,13 @@ int cadence_codec_prepare(struct comp_dev *dev)
 	 */
 	codec->s_cfg.avail = false;
 
+	/* Update codec config with stream parameters */
+	ret = update_stream_params(dev);
+	if (ret) {
+		comp_err(dev, "cadence_codec_prepare() error %x: failed to update stream params",
+			 ret);
+		goto err;
+	}
 	/* Allocate memory for the codec */
 	API_CALL(cd, XA_API_CMD_GET_MEMTABS_SIZE, 0, &mem_tabs_size, ret);
 	if (ret != LIB_NO_ERROR) {
