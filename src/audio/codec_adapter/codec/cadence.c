@@ -144,6 +144,29 @@ int cadence_codec_init(struct comp_dev *dev)
 			 obj_size);
 	}
 
+	/* Assign stream params IDs */
+	switch (api_id) {
+#ifdef CONFIG_CADENCE_CODEC_AAC_DEC
+	case CADENCE_CODEC_AAC_DEC_ID:
+		cd->sample_rate_id = XA_AACDEC_CONFIG_PARAM_AAC_SAMPLERATE;
+		cd->sample_width_id = XA_AACDEC_CONFIG_PARAM_PCM_WDSZ;
+		cd->channels_id = XA_AACDEC_CONFIG_PARAM_NUM_CHANNELS;
+		break;
+#endif
+#ifdef CONFIG_CADENCE_CODEC_MP3_DEC
+	case CADENCE_CODEC_MP3_DEC_ID:
+		cd->sample_rate_id = XA_MP3DEC_CONFIG_PARAM_SAMP_FREQ;
+		cd->sample_width_id = XA_MP3DEC_CONFIG_PARAM_PCM_WDSZ;
+		cd->channels_id = XA_MP3DEC_CONFIG_PARAM_NUM_CHANNELS;
+		break;
+#endif
+	default:
+		cd->sample_rate_id = CADENCE_SAMPLE_RATE_ID;
+		cd->sample_width_id = CADENCE_SAMPLE_WIDTH_ID;
+		cd->channels_id = CADENCE_CHANNELS_COUNT_ID;
+		break;
+	}
+
 	comp_dbg(dev, "cadence_codec_init() done");
 out:
 	return ret;
