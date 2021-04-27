@@ -150,7 +150,7 @@ static void schedule_ll_clients_enable(struct ll_schedule_data *sch)
 
 	for (i = 0; i < CONFIG_CORE_COUNT; i++) {
 		if (domain->registered[i] && !domain->enabled[i]) {
-			atomic_add(&domain->num_clients, 1);
+			atomic_add(&domain->registered_cores, 1);
 			domain_enable(domain, i);
 			domain->enabled[i] = true;
 		}
@@ -191,7 +191,7 @@ static void schedule_ll_tasks_run(void *data)
 	struct ll_schedule_data *sch = data;
 	struct ll_schedule_domain *domain = sch->domain;
 #ifndef __ZEPHYR__
-	uint32_t num_clients;
+	uint32_t registered_cores;
 #endif
 	uint32_t flags;
 
@@ -213,12 +213,10 @@ static void schedule_ll_tasks_run(void *data)
 	/* TODO: no need for atomic operations,
 	 * already protected by spin_lock
 	 */
-	num_clients = atomic_sub(&domain->num_clients, 1) - 1;
-	if (!num_clients)
+	registered_cores = atomic_sub(domain->registered_cores, 1) - 1;
+	if (!registered_cores)
 		domain_clear(domain);
 #endif
-
-
 	spin_unlock(&domain->lock);
 
 	perf_cnt_init(&sch->pcd);
@@ -242,7 +240,7 @@ static void schedule_ll_tasks_run(void *data)
 	/* re-enable domain only if all clients are done */
 #ifndef __ZEPHYR__
 	/* Under Zephyr each client has to be enabled separately */
-	if (!num_clients)
+	if (!registered_cores)
 #endif
 		schedule_ll_clients_enable(sch);
 
@@ -320,7 +318,7 @@ static int schedule_ll_domain_set(struct ll_schedule_data *sch,
 	total = atomic_add(&domain->total_num_tasks, 1);
 	if (total == 0 || !registered) {
 		/* First task on core: count and enable it */
-		atomic_add(&domain->num_clients, 1);
+		atomic_add(&domain->registered_cores, 1);
 		domain_enable(domain, core);
 		domain->enabled[core] = true;
 	}
@@ -353,7 +351,7 @@ static void schedule_ll_domain_clear(struct ll_schedule_data *sch,
 		domain->registered[cpu_get_id()] = false;
 
 		if (atomic_read(&domain->num_clients)) {
-			count = atomic_sub(&domain->num_clients, 1);
+			count = atomic_sub(&domain->registered_cores, 1);
 			if (count == 1)
 				domain_clear(domain);
 		}
