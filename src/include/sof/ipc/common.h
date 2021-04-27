@@ -160,6 +160,13 @@ ipc_cmd_hdr *ipc_compact_read_msg(void);
 int ipc_compact_write_msg(ipc_cmd_hdr *hdr);
 
 /**
+ * \brief process a dsp IPC message.
+ * @msg[in] ipc msg.
+ * @return Number of words written.
+ */
+ipc_cmd_hdr *ipc_process_msg(struct ipc_msg *msg);
+
+/**
  * \brief Validate mailbox contents for valid IPC header.
  * @return pointer to header if valid or NULL.
  */
