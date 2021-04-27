@@ -15,6 +15,7 @@
 #include <unistd.h>
 #include <math.h>
 #include <sof/lib/uuid.h>
+#include <time.h>
 #include <user/abi_dbg.h>
 #include <user/trace.h>
 #include "convert.h"
@@ -302,6 +303,18 @@ static inline void print_table_header(void)
 	int hide_location = global_config->hide_location;
 	char time_fmt[32];
 
+	char date_string[64];
+	const time_t epoc_secs = time(NULL);
+	/* See SOF_IPC_TRACE_DMA_PARAMS_EXT in the kernel sources */
+	struct timespec ktime;
+	const int gettime_ret = clock_gettime(CLOCK_MONOTONIC, &ktime);
+
+	if (gettime_ret) {
+		log_err("clock_gettime() failed: %s\n",
+			strerror(gettime_ret));
+		exit(1);
+	}
+
 	if (global_config->time_precision >= 0) {
 		const unsigned int ts_width =
 			timestamp_width(global_config->time_precision);
@@ -313,8 +326,18 @@ static inline void print_table_header(void)
 	fprintf(out_fd, "%2s %-18s ", "C#", "COMPONENT");
 	if (!hide_location)
 		fprintf(out_fd, "%-29s ", "LOCATION");
-	fprintf(out_fd, "%s\n", "CONTENT");
+	fprintf(out_fd, "%s", "CONTENT");
 
+	if (global_config->time_precision >= 0) {
+		/* e.g.: ktime=4263.487s @ 2021-04-27 14:21:13 -0700 PDT */
+		fprintf(out_fd, "\tktime=%lu.%03lus",
+			ktime.tv_sec, ktime.tv_nsec / 1000000);
+		if (strftime(date_string, sizeof(date_string),
+			     "%F %X %z %Z", localtime(&epoc_secs)))
+			fprintf(out_fd, "  @  %s", date_string);
+	}
+
+	fprintf(out_fd, "\n");
 	fflush(out_fd);
 }
 
