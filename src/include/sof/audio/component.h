@@ -426,6 +426,15 @@ struct comp_driver_info {
 };
 
 /**
+ * \struct comp dev memory - used like devm_kzalloc
+ * \brief comp dev memory block - used for every memory allocated by comp
+ */
+struct comp_dev_mem {
+	void *ptr; /**< A pointr to particular memory block */
+	struct list_item mem_list; /**< list of memory allocated by codec */
+};
+
+/**
  * Audio component base device "class"
  * - used by other component types.
  */
@@ -473,6 +482,8 @@ struct comp_dev {
 #if CONFIG_PERFORMANCE_COUNTERS
 	struct perf_cnt_data pcd;
 #endif
+
+	struct comp_dev_mem mem;
 
 	/**
 	 * IPC config object header - MUST be at end as it's
