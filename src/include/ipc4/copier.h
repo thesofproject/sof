@@ -21,6 +21,7 @@
 #define __SOF_IPC4_COPIER_H__
 
 #include <stdint.h>
+#include <ipc4/base-config.h>
 
 /**
  * This is basic module config that may serve as a base for more specialized, module
@@ -321,7 +322,7 @@ struct CopierGatewayCfg
 struct CopierModuleCfg : BaseModuleCfg
 {
     //! Audio format for output pin 0.
-    AudioDataFormatIpc out_fmt;
+    struct ipc4_audio_format out_fmt;
     //! Mask of allowed copier features.
     /*!
       \see CopierFeatures
