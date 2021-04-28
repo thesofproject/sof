@@ -192,6 +192,16 @@ static inline uint32_t pipeline_id(struct pipeline *p)
 }
 
 /**
+ * Retrieves pipeline state/status from pipeline.
+ * @param p pipeline.
+ * @return pipeline status.
+ */
+static inline uint32_t pipeline_status(struct pipeline *p)
+{
+	return p->status;
+}
+
+/**
  * Allocates memory buffers for entire pipeline.
  * @param p pipeline.
  * @param bytes allocation request in bytes.
