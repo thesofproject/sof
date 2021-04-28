@@ -16,7 +16,7 @@ include(`sof/tokens.m4')
 
 include(`sai.m4')
 # Include i.MX8 DSP configuration
-include(`platform/imx/imx8qxp.m4')
+include(`platform/imx/imx8.m4')
 
 define(KWD_PIPE_SCH_DEADLINE_US, 20000)
 

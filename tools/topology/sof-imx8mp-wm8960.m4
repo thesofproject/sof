@@ -17,7 +17,7 @@ include(`common/tlv.m4')
 include(`sof/tokens.m4')
 
 # Include DSP configuration
-include(`platform/imx/imx8qxp.m4')
+include(`platform/imx/imx8.m4')
 
 #
 # Define the pipelines
