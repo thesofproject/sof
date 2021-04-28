@@ -166,6 +166,14 @@ int ipc_pipeline_complete(struct ipc *ipc, uint32_t comp_id);
 int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *connect);
 
 /**
+ * \brief Get status of pipeline.
+ * @param ipc The global IPC context.
+ * @param comp_id Pipeline ID to complete.
+ * @return 0 on success or negative error.
+ */
+int ipc_pipeline_get_status(struct ipc *ipc, uint32_t comp_id);
+
+/**
  * \brief Get component device from component ID.
  * @param ipc The global IPC context.
  * @param id The component ID.

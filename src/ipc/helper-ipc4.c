@@ -138,6 +138,46 @@ int ipc_pipeline_complete(struct ipc *ipc, uint32_t comp_id)
 	return 0;
 }
 
+int ipc_pipeline_get_status(struct ipc *ipc, uint32_t comp_id)
+{
+	struct ipc_comp_dev *ipc_pipe;
+	uint32_t status;
+
+	/* check whether pipeline exists */
+	ipc_pipe = ipc_get_comp_by_id(ipc, comp_id);
+	if (!ipc_pipe)
+		return -ENODEV;
+
+	status = pipeline_status(ipc_pipe->pipeline);
+
+	/* map to ipc4 states */
+	switch (status) {
+	case COMP_STATE_INIT:
+		status = SOF_IPC4_PIPELINE_STATE_UNINITIALIZED;
+		break;
+	case COMP_STATE_READY:
+		status = SOF_IPC4_PIPELINE_STATE_RESET;
+		break;
+	case COMP_STATE_SUSPEND:
+		status = SOF_IPC4_PIPELINE_STATE_RESET;
+		break;
+	case COMP_STATE_PREPARE:
+		status = SOF_IPC4_PIPELINE_STATE_UNINITIALIZED;
+		break;
+	case COMP_STATE_PAUSED:
+		status = SOF_IPC4_PIPELINE_STATE_PAUSED;
+		break;
+	case COMP_STATE_ACTIVE:
+		status = SOF_IPC4_PIPELINE_STATE_RUNNING;
+		break;
+	default:
+		tr_err(&ipc_tr, "ipc_pipeline_get_status(): invalid pipeline state");
+		return -EINVAL;
+	}
+
+	return status;
+}
+
 /* not used with IPC4 - placeholder atm */
 int ipc_comp_dai_config(struct ipc *ipc, struct sof_ipc_dai_config *config)
 {
