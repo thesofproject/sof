@@ -44,8 +44,7 @@ static void test_audio_pipeline_pipeline_new_creation(void **state)
 	struct pipeline_new_setup_data *test_data = *state;
 
 	/*Testing component*/
-	struct pipeline *result = pipeline_new(test_data->comp_data,
-					       test_data->pipe_id,
+	struct pipeline *result = pipeline_new(test_data->pipe_id,
 					       test_data->priority,
 					       test_data->comp_id);
 

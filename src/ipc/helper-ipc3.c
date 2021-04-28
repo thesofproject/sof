@@ -281,7 +281,6 @@ int ipc_pipeline_new(struct ipc *ipc,
 {
 	struct ipc_comp_dev *ipc_pipe;
 	struct pipeline *pipe;
-	struct ipc_comp_dev *icd;
 	int ret;
 
 	/* check whether the pipeline already exists */
@@ -301,28 +300,8 @@ int ipc_pipeline_new(struct ipc *ipc,
 		return -EINVAL;
 	}
 
-	/* find the scheduling component */
-	icd = ipc_get_comp_by_id(ipc, pipe_desc->sched_id);
-	if (!icd) {
-		tr_err(&ipc_tr, "ipc_pipeline_new(): cannot find the scheduling component, pipe_desc->sched_id = %u",
-		       pipe_desc->sched_id);
-		return -EINVAL;
-	}
-
-	if (icd->type != COMP_TYPE_COMPONENT) {
-		tr_err(&ipc_tr, "ipc_pipeline_new(): icd->type (%d) != COMP_TYPE_COMPONENT for pipeline scheduling component icd->id %d",
-		       icd->type, icd->id);
-		return -EINVAL;
-	}
-
-	if (icd->core != pipe_desc->core) {
-		tr_err(&ipc_tr, "ipc_pipeline_new(): icd->core (%d) != pipe_desc->core (%d) for pipeline scheduling component icd->id %d",
-		       icd->core, pipe_desc->core, icd->id);
-		return -EINVAL;
-	}
-
 	/* create the pipeline */
-	pipe = pipeline_new(icd->cd, pipe_desc->pipeline_id, pipe_desc->priority,
+	pipe = pipeline_new(pipe_desc->pipeline_id, pipe_desc->priority,
 			    pipe_desc->comp_id);
 	if (!pipe) {
 		tr_err(&ipc_tr, "ipc_pipeline_new(): pipeline_new() failed");
@@ -396,6 +375,8 @@ int ipc_pipeline_free(struct ipc *ipc, uint32_t comp_id)
 int ipc_pipeline_complete(struct ipc *ipc, uint32_t comp_id)
 {
 	struct ipc_comp_dev *ipc_pipe;
+	struct ipc_comp_dev *icd;
+	struct pipeline *p;
 	uint32_t pipeline_id;
 	struct ipc_comp_dev *ipc_ppl_source;
 	struct ipc_comp_dev *ipc_ppl_sink;
@@ -412,6 +393,30 @@ int ipc_pipeline_complete(struct ipc *ipc, uint32_t comp_id)
 	/* check core */
 	if (!cpu_is_me(ipc_pipe->core))
 		return ipc_process_on_core(ipc_pipe->core);
+
+	p = ipc_pipe->pipeline;
+
+	/* find the scheduling component */
+	icd = ipc_get_comp_by_id(ipc, p->sched_id);
+	if (!icd) {
+		tr_err(&ipc_tr, "ipc_pipeline_complete(): cannot find the scheduling component, p->sched_id = %u",
+		       p->sched_id);
+		return -EINVAL;
+	}
+
+	if (icd->type != COMP_TYPE_COMPONENT) {
+		tr_err(&ipc_tr, "ipc_pipeline_complete(): icd->type (%d) != COMP_TYPE_COMPONENT for pipeline scheduling component icd->id %d",
+		       icd->type, icd->id);
+		return -EINVAL;
+	}
+
+	if (icd->core != ipc_pipe->core) {
+		tr_err(&ipc_tr, "ipc_pipeline_complete(): icd->core (%d) != ipc_pipe->core (%d) for pipeline scheduling component icd->id %d",
+		       icd->core, ipc_pipe->core, icd->id);
+		return -EINVAL;
+	}
+
+	p->sched_comp = icd->cd;
 
 	pipeline_id = ipc_pipe->pipeline->pipeline_id;
 
