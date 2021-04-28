@@ -17,7 +17,8 @@ die()
 	>&2 printf '%s ERROR: ' "$0"
 	# We want die() to be usable exactly like printf
 	# shellcheck disable=SC2059
-	>&2 printf "$@\n"
+	>&2 printf "$@"
+	>&2 printf '\n'
 	exit 1
 }
 
