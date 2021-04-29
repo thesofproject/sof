@@ -123,8 +123,6 @@ static int secondary_core_init(struct sof *sof)
 
 int primary_core_init(int argc, char *argv[], struct sof *sof)
 {
-	int err;
-
 	/* setup context */
 	sof->argc = argc;
 	sof->argv = argv;
@@ -132,8 +130,7 @@ int primary_core_init(int argc, char *argv[], struct sof *sof)
 #ifndef __ZEPHYR__
 	/* init architecture */
 	trace_point(TRACE_BOOT_ARCH);
-	err = arch_init();
-	if (err < 0)
+	if (arch_init() < 0)
 		panic(SOF_IPC_PANIC_ARCH);
 
 	/* initialise system services */
@@ -156,8 +153,7 @@ int primary_core_init(int argc, char *argv[], struct sof *sof)
 	pm_runtime_init(sof);
 
 	/* init the platform */
-	err = platform_init(sof);
-	if (err < 0)
+	if (platform_init(sof) < 0)
 		panic(SOF_IPC_PANIC_PLATFORM);
 
 	trace_point(TRACE_BOOT_PLATFORM);
@@ -166,10 +162,8 @@ int primary_core_init(int argc, char *argv[], struct sof *sof)
 	lp_sram_unpack();
 #endif
 
-	/* should not return */
-	err = task_main_start(sof);
-
-	return err;
+	/* should not return, except with Zephyr */
+	return task_main_start(sof);
 }
 
 #ifdef __ZEPHYR__
