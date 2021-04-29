@@ -246,7 +246,7 @@ checktree:
 	diff -u tests/staging_sof_ref.txt ${BUILDS_ROOT}/staging_sof_tree.txt
 	# Check two random topologies are there
 	test -f ${STAGING_SOF_TPLG}/sof-apl-nocodec.tplg
-	test -f ${STAGING_SOF_TPLG}/sof-imx8qxp-nocodec.tplg
+	test -f ${STAGING_SOF_TPLG}/sof-imx8-wm8960.tplg
 
 # Useful for testing this Makefile. COMPARE_REFS can be /lib/firmware,
 # sof-bin, a previous version of this Makefile,...
