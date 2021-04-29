@@ -46,6 +46,7 @@
 #include <ipc/control.h>
 #include <ipc/dai.h>
 #include <ipc/debug.h>
+#include <ipc4/error_status.h>
 #include <ipc4/header.h>
 #include <ipc4/module.h>
 #include <ipc4/pipeline.h>
@@ -149,6 +150,34 @@ static int ipc4_process_glb_message(union ipc4_message_header *ipc4)
 
 static int ipc4_init_module(union ipc4_message_header *ipc4)
 {
+	struct ipc4_module_init_instance module;
+	const struct comp_driver *drv;
+	struct sof_ipc_comp comp;
+	struct comp_dev *dev;
+
+	module.header.dat = *ipc_to_hdr(ipc4);
+	module.data.dat = *(ipc_to_hdr(ipc4) + 1);
+
+	drv = ipc4_get_comp_drv(module.header.r.module_id);
+	if (!drv)
+		return IPC4_MOD_INVALID_ID;
+
+	memset(&comp, 0, sizeof(comp));
+	comp.id = IPC4_COMP_ID(module.header.r.module_id, module.header.r.instance_id);
+	comp.pipeline_id = module.data.r.ppl_instance_id;
+	comp.core = module.data.r.core_id;
+
+	/*
+	 * todo: rework interface to pass module config in host box
+	 * another solution is to read host box in component directly
+	 */
+	dev = drv->ops.create(drv, &comp);
+
+	if (!dev)
+		return IPC4_MOD_NOT_INITIALIZED;
+
+	ipc4_add_comp_dev(dev);
+
 	return 0;
 }
 
@@ -164,7 +193,24 @@ static int ipc4_unbind_module(union ipc4_message_header *ipc4)
 
 static int ipc4_set_large_config_module(union ipc4_message_header *ipc4)
 {
-	return 0;
+	struct ipc4_module_large_config config;
+	const struct comp_driver *drv;
+	struct comp_dev *dev;
+	int comp_id;
+	int ret;
+
+	config.header.dat = *ipc_to_hdr(ipc4);
+	config.data.dat = *(ipc_to_hdr(ipc4) + 1);
+	drv = ipc4_get_comp_drv(config.header.r.module_id);
+	if (!drv)
+		return IPC4_MOD_INVALID_ID;
+
+	comp_id = IPC4_COMP_ID(config.header.r.module_id, config.header.r.instance_id);
+	dev = ipc4_get_comp_dev(comp_id);
+	ret = drv->ops.cmd(dev, config.data.r.large_param_id, (void *)MAILBOX_HOSTBOX_BASE,
+				config.data.dat);
+
+	return ret;
 }
 
 static int ipc4_process_module_message(union ipc4_message_header *ipc4)
@@ -279,7 +325,7 @@ void ipc_cmd(ipc_cmd_hdr *_hdr)
 	default:
 		/* should not reach here as we only have 2 message tyes */
 		tr_err(&ipc_tr, "ipc4: invalid target %d", target);
-		err = -EINVAL;
+		err = IPC4_UNKNOWN_MESSAGE_TYPE;
 	}
 
 	if (err) {
