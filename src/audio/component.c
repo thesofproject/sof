@@ -455,3 +455,57 @@ struct comp_dev *comp_make_shared(struct comp_dev *dev)
 
 	return dev;
 }
+
+void *comp_devm_alloc(struct comp_dev *dev, uint32_t size,
+		      uint32_t alignment)
+{
+	struct comp_dev_mem *container;
+	void *ptr;
+
+	if (!size) {
+		comp_err(dev, "comp_devm_alloc: requested allocation of 0 bytes.");
+		return NULL;
+	}
+
+	/* Allocate memory container */
+	container = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+			    sizeof(struct comp_dev_mem));
+	if (!container) {
+		comp_err(dev, "comp_devm_alloc: failed to allocate memory container.");
+		return NULL;
+	}
+
+	/* Allocate memory for codec */
+	if (alignment)
+		ptr = rballoc_align(0, SOF_MEM_CAPS_RAM, size, alignment);
+	else
+		ptr = rballoc(0, SOF_MEM_CAPS_RAM, size);
+
+	if (!ptr) {
+		comp_err(dev, "comp_devm_alloc: failed to allocate memory for comp_dev\n");
+		return NULL;
+	}
+
+	/* Store reference to allocated memory */
+	container->ptr = ptr;
+	list_item_prepend(&container->mem_list, &dev->mem.mem_list);
+
+	return ptr;
+}
+
+int comp_devm_free(struct comp_dev *dev)
+{
+	struct comp_dev_mem *mem;
+	struct list_item *mem_list;
+	struct list_item *_mem_list;
+
+	/* Find which container keeps this memory */
+	list_for_item_safe(mem_list, _mem_list, &dev->mem.mem_list) {
+		mem = container_of(mem_list, struct comp_dev_mem, mem_list);
+		rfree(mem->ptr);
+		list_item_del(&mem->mem_list);
+		rfree(mem);
+	}
+
+	return 0;
+}
