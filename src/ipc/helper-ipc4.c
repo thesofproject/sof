@@ -24,6 +24,8 @@
 #include <sof/platform.h>
 #include <sof/sof.h>
 #include <sof/spinlock.h>
+#include <rimage/cavs/cavs_ext_manifest.h>
+#include <rimage/sof/user/manifest.h>
 
 #include <ipc4/header.h>
 #include <ipc4/pipeline.h>
@@ -192,3 +194,66 @@ struct comp_buffer *buffer_new(struct sof_ipc_buffer *desc)
 {
 	return NULL;
 }
+
+static const struct comp_driver *module_driver[FW_MAX_EXT_MODULE_NUM] = {0};
+
+const struct comp_driver *ipc4_get_drv(uint8_t *uuid)
+{
+	struct comp_driver_list *drivers = comp_drivers_get();
+	struct list_item *clist;
+	const struct comp_driver *drv = NULL;
+	struct comp_driver_info *info;
+	uint32_t flags;
+
+	irq_local_disable(flags);
+
+	/* search driver list with UUID */
+	list_for_item(clist, &drivers->list) {
+		info = container_of(clist, struct comp_driver_info,
+				    list);
+		if (!memcmp(info->drv->uid, uuid, UUID_SIZE)) {
+			tr_dbg(&comp_tr,
+			       "get_drv_from_uuid(), found driver type %d, uuid %pU",
+			       info->drv->type,
+			       info->drv->tctx->uuid_p);
+			drv = info->drv;
+			goto out;
+		}
+	}
+
+	tr_err(&comp_tr, "get_drv(): the provided UUID (%8x%8x%8x%8x) doesn't match to any driver!",
+	       *(uint32_t *)(&uuid[0]),
+	       *(uint32_t *)(&uuid[4]),
+	       *(uint32_t *)(&uuid[8]),
+	       *(uint32_t *)(&uuid[12]));
+
+out:
+	irq_local_enable(flags);
+	return drv;
+}
+
+const struct comp_driver *ipc4_get_comp_drv(int module_id)
+{
+	struct sof_man_fw_desc *desc = (struct sof_man_fw_desc *)IMR_BOOT_LDR_MANIFEST_BASE;
+	struct sof_man_module *mod;
+	const struct comp_driver *drv;
+
+	if (module_driver[module_id])
+		return module_driver[module_id];
+
+	/* skip basefw of module 0 in manifest */
+	mod = (struct sof_man_module *)((char *)desc + SOF_MAN_MODULE_OFFSET(module_id + 1));
+	drv = ipc4_get_drv(mod->uuid);
+	module_driver[module_id] = drv;
+
+	return drv;
+}
+
+struct comp_dev *ipc4_get_comp_dev(int comp_id)
+{
+	return NULL;
+}
+
+void ipc4_add_comp_dev(struct comp_dev *dev)
+{
+};
