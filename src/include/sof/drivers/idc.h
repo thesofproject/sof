@@ -137,4 +137,6 @@ int idc_wait_in_blocking_mode(uint32_t target_core, bool (*cond)(int));
 
 int idc_msg_status_get(uint32_t core);
 
+void idc_init_thread(void);
+
 #endif /* __SOF_DRIVERS_IDC_H__ */

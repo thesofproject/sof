@@ -31,7 +31,7 @@
 #include <stdint.h>
 
 /** \brief IDC message payload per core. */
-static SHARED_DATA struct idc_payload payload[CONFIG_CORE_COUNT];
+static SHARED_DATA struct idc_payload static_payload[CONFIG_CORE_COUNT];
 
 /* 379a60ae-cedb-4777-aaf2-5659b0a85735 */
 DECLARE_SOF_UUID("idc", idc_uuid, 0x379a60ae, 0xcedb, 0x4777,
@@ -43,9 +43,11 @@ DECLARE_TR_CTX(idc_tr, SOF_UUID(idc_uuid), LOG_LEVEL_INFO);
 DECLARE_SOF_UUID("comp-task", idc_comp_task_uuid, 0xb90f5a4e, 0x5537, 0x4375,
 		 0xa1, 0xdf, 0x95, 0x48, 0x54, 0x72, 0xff, 0x9e);
 
+#ifndef __ZEPHYR__
 /* a5dacb0e-88dc-415c-a1b5-3e8df77f1976 */
 DECLARE_SOF_UUID("idc-cmd-task", idc_cmd_task_uuid, 0xa5dacb0e, 0x88dc, 0x415c,
 		 0xa1, 0xb5, 0x3e, 0x8d, 0xf7, 0x7f, 0x19, 0x76);
+#endif
 
 /**
  * \brief Sets IDC command status after execution.
@@ -302,23 +304,32 @@ void idc_cmd(struct idc_msg *msg)
 	idc_msg_status_set(ret, cpu_get_id());
 }
 
+/* Runs on each CPU */
 int idc_init(void)
 {
 	struct idc **idc = idc_get();
+#ifndef __ZEPHYR__
 	struct task_ops ops = {
 		.run = idc_do_cmd,
 		.get_deadline = ipc_task_deadline,
 	};
+#endif
 
 	tr_info(&idc_tr, "idc_init()");
 
 	/* initialize idc data */
 	*idc = rzalloc(SOF_MEM_ZONE_SYS, 0, SOF_MEM_CAPS_RAM, sizeof(**idc));
-	(*idc)->payload = cache_to_uncache((struct idc_payload *)payload);
+	(*idc)->payload = cache_to_uncache((struct idc_payload *)static_payload);
 
 	/* process task */
+#ifndef __ZEPHYR__
 	schedule_task_init_edf(&(*idc)->idc_task, SOF_UUID(idc_cmd_task_uuid),
 			       &ops, *idc, cpu_get_id(), 0);
 
 	return platform_idc_init();
+#else
+	idc_init_thread();
+
+	return 0;
+#endif
 }

@@ -6,6 +6,7 @@
  */
 
 #include <sof/lib/alloc.h>
+#include <sof/drivers/idc.h>
 #include <sof/drivers/interrupt.h>
 #include <sof/drivers/interrupt-map.h>
 #include <sof/lib/dma.h>
@@ -544,11 +545,16 @@ int arch_cpu_enabled_cores(void)
 	return 1;
 }
 
-struct idc;
+static struct idc idc[CONFIG_MP_NUM_CPUS];
+static struct idc *p_idc[CONFIG_MP_NUM_CPUS];
+
 struct idc **idc_get(void)
 {
-	/* TODO: this should return per core data */
-	return NULL;
+	int cpu = cpu_get_id();
+
+	p_idc[cpu] = idc + cpu;
+
+	return p_idc + cpu;
 }
 #endif
 
