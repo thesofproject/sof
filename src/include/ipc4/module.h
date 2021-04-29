@@ -186,5 +186,46 @@ struct ipc4_module_bind_unbind {
 	} data;
 } __attribute__((packed, aligned(4)));
 
+struct ipc4_module_large_config {
+	union {
+		uint32_t dat;
+
+		struct {
+			//! module id
+			uint32_t module_id		: 16;
+			//! instance id
+			uint32_t instance_id	: 8;
+			//! ModuleMsg::LARGE_CONFIG_GET / LARGE_CONFIG_SET
+			uint32_t type			: 5;
+			//! Msg::MSG_REQUEST
+			uint32_t rsp			: 1;
+			//! Msg::MODULE_MSG
+			uint32_t msg_tgt		: 1;
+			uint32_t _reserved_0	: 1;
+			} r;
+		} header;
+
+	union {
+		uint32_t dat;
+
+		struct {
+			//! data size/offset
+			uint32_t data_off_size	: 20;
+			//! param type : VENDOR_CONFIG_PARAM / GENERIC_CONFIG_PARAM
+			uint32_t large_param_id : 8;
+			//! 1 if final block
+			uint32_t final_block	: 1;
+			//! 1 if first block
+			uint32_t init_block	: 1;
+			uint32_t _reserved_2	: 2;
+		} r;
+	} data;
+};
+
+#define IPC4_COMP_ID(x, y) ((x) << 16 | (y))
+const struct comp_driver *ipc4_get_comp_drv(int module_id);
+struct comp_dev *ipc4_get_comp_dev(int comp_id);
+void ipc4_add_comp_dev(struct comp_dev *dev);
+
 #endif
 
