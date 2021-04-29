@@ -24,7 +24,7 @@ struct edf_schedule_data {
 	uint32_t clock;
 };
 
-struct scheduler_ops schedule_edf_ops;
+static struct scheduler_ops schedule_edf_ops;
 
 static struct edf_schedule_data *sch;
 
@@ -118,7 +118,7 @@ static int schedule_edf_task_free(void *data, struct task *task)
 	return 0;
 }
 
-struct scheduler_ops schedule_edf_ops = {
+static struct scheduler_ops schedule_edf_ops = {
 	.schedule_task		= schedule_edf_task,
 	.schedule_task_running	= NULL,
 	.schedule_task_complete = NULL,

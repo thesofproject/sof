@@ -48,7 +48,7 @@ struct ll_schedule_data {
 	struct ll_schedule_domain *domain;	/* scheduling domain */
 };
 
-const struct scheduler_ops schedule_ll_ops;
+static const struct scheduler_ops schedule_ll_ops;
 
 #define perf_ll_sched_trace(pcd, ll_sched)			\
 	tr_info(&ll_tr, "perf ll_work peak plat %u cpu %u",	\
@@ -651,7 +651,7 @@ int scheduler_init_ll(struct ll_schedule_domain *domain)
 	return 0;
 }
 
-const struct scheduler_ops schedule_ll_ops = {
+static const struct scheduler_ops schedule_ll_ops = {
 	.schedule_task		= schedule_ll_task,
 	.schedule_task_free	= schedule_ll_task_free,
 	.schedule_task_cancel	= schedule_ll_task_cancel,
