@@ -86,7 +86,7 @@ int arch_cpu_enable_core(int id)
 		/* allocate resources for core */
 		cpu_alloc_core_context(id);
 
-		/* enable IDC interrupt for the the secondary core */
+		/* enable IDC interrupt for the secondary core */
 		idc_enable_interrupts(id, cpu_get_id());
 
 #if CONFIG_NO_SECONDARY_CORE_ROM
