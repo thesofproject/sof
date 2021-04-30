@@ -399,7 +399,7 @@ static inline void cavs_pm_runtime_dis_dsp_pg(uint32_t index)
 	uint32_t lps_ctl, tries = PLATFORM_PM_RUNTIME_DSP_TRIES;
 	uint32_t flag = PWRD_MASK & index;
 
-	index &= ~(PWRD_MASK);
+	index &= ~PWRD_MASK;
 
 	if (index == PLATFORM_PRIMARY_CORE_ID) {
 		lps_ctl = shim_read(SHIM_LPSCTL);
