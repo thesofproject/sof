@@ -61,3 +61,17 @@ int platform_init(struct sof *sof)
 
 	return 0;
 }
+
+#ifdef __ZEPHYR__
+/* Stubs for unsupported architectures */
+
+/* Platform */
+int platform_boot_complete(uint32_t boot_message)
+{
+	return 0;
+}
+
+/* Logging */
+LOG_MODULE_REGISTER(sof);
+
+#endif
