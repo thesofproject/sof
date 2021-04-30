@@ -5,6 +5,7 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
+#include <sof/init.h>
 #include <sof/lib/alloc.h>
 #include <sof/drivers/idc.h>
 #include <sof/drivers/interrupt.h>
@@ -15,6 +16,7 @@
 #include <platform/lib/memory.h>
 #include <sof/platform.h>
 #include <sof/lib/notifier.h>
+#include <sof/lib/pm_runtime.h>
 #include <sof/audio/pipeline.h>
 #include <sof/audio/component_ext.h>
 #include <sof/trace/trace.h>
@@ -23,6 +25,9 @@
 #include <device.h>
 #include <soc.h>
 #include <kernel.h>
+
+extern K_KERNEL_STACK_ARRAY_DEFINE(z_interrupt_stacks, CONFIG_MP_NUM_CPUS,
+				   CONFIG_ISR_STACK_SIZE);
 
 /* 300aaad4-45d2-8313-25d0-5e1d6086cdd1 */
 DECLARE_SOF_RT_UUID("zephyr", zephyr_uuid, 0x300aaad4, 0x45d2, 0x8313,
@@ -516,10 +521,39 @@ void platform_dai_wallclock(struct comp_dev *dai, uint64_t *wallclock)
  *
  * Mostly empty today waiting pending Zephyr CAVS SMP integration.
  */
-#if CONFIG_MULTICORE
+#if CONFIG_MULTICORE && CONFIG_SMP
+static atomic_t start_flag;
+
+static FUNC_NORETURN void secondary_init(void *arg)
+{
+	struct k_thread dummy_thread;
+
+	z_smp_thread_init(arg, &dummy_thread);
+	secondary_core_init(sof_get());
+
+#ifdef CONFIG_THREAD_STACK_INFO
+	dummy_thread.stack_info.start = (uintptr_t)z_interrupt_stacks +
+		arch_curr_cpu()->id * Z_KERNEL_STACK_LEN(CONFIG_ISR_STACK_SIZE);
+	dummy_thread.stack_info.size = Z_KERNEL_STACK_LEN(CONFIG_ISR_STACK_SIZE);
+#endif
+
+	z_smp_thread_swap();
+
+	CODE_UNREACHABLE; /* LCOV_EXCL_LINE */
+}
+
 int arch_cpu_enable_core(int id)
 {
-	/* TODO: call Zephyr API */
+	atomic_clear(&start_flag);
+
+	/* Power up secondary core */
+	pm_runtime_get(PM_RUNTIME_DSP, PWRD_BY_TPLG | id);
+
+	arch_start_cpu(id, z_interrupt_stacks[id], CONFIG_ISR_STACK_SIZE,
+		       secondary_init, &start_flag);
+
+	atomic_set(&start_flag, 1);
+
 	return 0;
 }
 
@@ -530,8 +564,7 @@ void arch_cpu_disable_core(int id)
 
 int arch_cpu_is_core_enabled(int id)
 {
-	/* TODO: call Zephyr API */
-	return 1;
+	return arch_cpu_active(id);
 }
 
 void cpu_power_down_core(void)
@@ -541,8 +574,14 @@ void cpu_power_down_core(void)
 
 int arch_cpu_enabled_cores(void)
 {
-	/* TODO: use zephyr version to get number of running cores */
-	return 1;
+	unsigned int i;
+	int mask = 0;
+
+	for (i = 0; i < CONFIG_MP_NUM_CPUS; i++)
+		if (arch_cpu_active(i))
+			mask |= BIT(i);
+
+	return mask;
 }
 
 static struct idc idc[CONFIG_MP_NUM_CPUS];

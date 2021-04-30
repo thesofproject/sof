@@ -172,11 +172,8 @@ int primary_core_init(int argc, char *argv[], struct sof *sof)
 	return err;
 }
 
-#ifdef __ZEPHYR__
-int sof_main(int argc, char *argv[])
-#else
+#ifndef __ZEPHYR__
 int main(int argc, char *argv[])
-#endif
 {
 	int err;
 
@@ -187,9 +184,17 @@ int main(int argc, char *argv[])
 	else
 		err = secondary_core_init(&sof);
 
-#ifndef __ZEPHYR__
 	/* should never get here */
 	panic(SOF_IPC_PANIC_TASK);
-#endif
 	return err;
 }
+
+#else
+
+int sof_main(int argc, char *argv[])
+{
+	trace_point(TRACE_BOOT_START);
+
+	return primary_core_init(argc, argv, &sof);
+}
+#endif
