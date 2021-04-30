@@ -1,0 +1,43 @@
+---
+
+# This is NOT how to properly compile the fuzzer, this is only to detect
+# earlier and faster problems like
+# https://github.com/thesofproject/sof/pull/3824 (288e228) and
+# https://github.com/thesofproject/sof/pull/4118 (758e7be)
+#
+# In other words, when reverting the oss-fuzz parts of these commits
+# this build fails as desired.
+#
+# For the actual fuzzer see tools/oss-fuzz/README.
+
+name: Scant fuzz compile
+
+# 'workflow_dispatch' allows running this workflow manually from the
+# 'Actions' tab
+# yamllint disable-line rule:truthy
+on: [push, pull_request, workflow_dispatch]
+
+jobs:
+  scant-fuzzer-build:
+    runs-on: ubuntu-20.04
+    env:
+      OUT: unused_runtime_output_dir
+    steps:
+      - uses: actions/checkout@v2
+        # From time to time this will catch a git tag and change SOF_VERSION
+        with: {fetch-depth: 10, submodules: recursive}
+
+      - name: yamllint ourselves
+        run: yamllint .github/workflows/scant_fuzzer.yml
+
+      - name: cmake configuration
+        run: cmake -B fuzz-build/ -S tools/oss-fuzz/
+
+      # Ninja does not give us access to the internal fuzz_ipc.o target
+      # so we use make. TODO: isolate the link target in CMakelists.txt
+      - name: build
+        run: |
+            cd fuzz-build/ # make -C is too verbose
+            # We cannot link because we have no main(); we're not the
+            # real fuzzer
+            make -j6 sof_ep fuzz_ipc.o
