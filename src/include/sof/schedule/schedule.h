@@ -38,8 +38,8 @@ enum {
  * Scheduler operations.
  *
  * Almost all schedule operations must return 0 for success and negative values
- * for errors. Only scheduler_free and scheduler_run operations are allowed
- * to not return any status.
+ * for errors. Only the scheduler_free operation is allowed to not return any
+ * status.
  */
 struct scheduler_ops {
 	/**
@@ -116,14 +116,6 @@ struct scheduler_ops {
 	 * This operation is optional.
 	 */
 	void (*scheduler_free)(void *data);
-
-	/**
-	 * Starts scheduler (not all schedulers require to be manually started).
-	 * @param data Private data of selected scheduler.
-	 *
-	 * This operation is optional.
-	 */
-	void (*scheduler_run)(void *data);
 };
 
 /** \brief Holds information about scheduler. */

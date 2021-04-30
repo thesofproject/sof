@@ -315,5 +315,4 @@ static const struct scheduler_ops schedule_edf_ops = {
 	.schedule_task_cancel	= schedule_edf_task_cancel,
 	.schedule_task_free	= schedule_edf_task_free,
 	.scheduler_free		= scheduler_free_edf,
-	.scheduler_run		= schedule_edf
 };
