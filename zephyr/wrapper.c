@@ -324,19 +324,16 @@ uint64_t platform_timer_get_atomic(struct timer *timer)
 /*
  * Notifier.
  *
- * Use SOF inter component messaging today. Zephy has similar APIs that will
+ * Use SOF inter component messaging today. Zephyr has similar APIs that will
  * need some minor feature updates prior to merge. i.e. FW to host messages.
  * TODO: align with Zephyr API when ready.
  */
 
-static struct notify *host_notify;
+static struct notify *host_notify[CONFIG_CORE_COUNT];
 
 struct notify **arch_notify_get(void)
 {
-	if (!host_notify)
-		host_notify = rzalloc(SOF_MEM_ZONE_SYS, 0, SOF_MEM_CAPS_RAM,
-				      sizeof(*host_notify));
-	return &host_notify;
+	return host_notify + cpu_get_id();
 }
 
 /*
