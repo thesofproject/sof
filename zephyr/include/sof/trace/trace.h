@@ -12,7 +12,6 @@
 /* Level of SOF trace on Zephyr */
 #define SOF_ZEPHYR_TRACE_LEVEL LOG_LEVEL_INF
 
-LOG_MODULE_DECLARE(sof, SOF_ZEPHYR_TRACE_LEVEL);
 #endif
 
 /* printk supports uint64_t so use it until LOG is ready */
