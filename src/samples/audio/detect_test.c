@@ -7,6 +7,7 @@
 #include <sof/audio/buffer.h>
 #include <sof/audio/component.h>
 #include <sof/audio/format.h>
+#include <sof/audio/ipc-config.h>
 #include <sof/audio/kpb.h>
 #include <sof/common.h>
 #include <sof/debug/panic.h>
@@ -250,12 +251,11 @@ static int test_keyword_apply_config(struct comp_dev *dev,
 }
 
 static struct comp_dev *test_keyword_new(const struct comp_driver *drv,
-					 struct sof_ipc_comp *comp)
+					 struct comp_ipc_config *config,
+					 void *spec)
 {
 	struct comp_dev *dev;
-	struct sof_ipc_comp_process *keyword;
-	struct sof_ipc_comp_process *ipc_keyword =
-		(struct sof_ipc_comp_process *)comp;
+	struct ipc_config_process *ipc_keyword = spec;
 	struct comp_data *cd;
 	struct sof_detect_test_config *cfg;
 	int ret = 0;
@@ -263,14 +263,10 @@ static struct comp_dev *test_keyword_new(const struct comp_driver *drv,
 
 	comp_cl_info(&comp_keyword, "test_keyword_new()");
 
-	dev = comp_alloc(drv, COMP_SIZE(struct sof_ipc_comp_process));
+	dev = comp_alloc(drv, sizeof(*dev));
 	if (!dev)
 		return NULL;
-
-	keyword = COMP_GET_IPC(dev, sof_ipc_comp_process);
-	ret = memcpy_s(keyword, sizeof(*keyword), ipc_keyword,
-		       sizeof(struct sof_ipc_comp_process));
-	assert(!ret);
+	dev->ipc_config = *config;
 
 	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
 
@@ -312,7 +308,7 @@ static struct comp_dev *test_keyword_new(const struct comp_driver *drv,
 	}
 
 	/* build component event */
-	ipc_build_comp_event(&cd->event, comp->type, comp->id);
+	ipc_build_comp_event(&cd->event, dev->ipc_config.type, dev->ipc_config.id);
 	cd->event.event_type = SOF_CTRL_EVENT_KD;
 	cd->event.num_elems = 0;
 

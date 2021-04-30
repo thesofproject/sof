@@ -8,6 +8,7 @@
 #include <sof/ipc/msg.h>
 #include <sof/ut.h>
 #include <user/smart_amp.h>
+#include <sof/audio/ipc-config.h>
 #include <sof/audio/smart_amp/smart_amp.h>
 
 static const struct comp_driver comp_smart_amp;
@@ -39,6 +40,7 @@ struct smart_amp_data {
 	uint32_t out_channels;
 	/* module handle for speaker protection algorithm */
 	struct smart_amp_mod_struct_t *mod_handle;
+	struct ipc_config_process ipc_config;
 };
 
 static inline void smart_amp_free_memory(struct smart_amp_data *sad,
@@ -209,36 +211,29 @@ static inline int smart_amp_alloc_caldata(struct comp_dev *dev,
 }
 
 static struct comp_dev *smart_amp_new(const struct comp_driver *drv,
-				      struct sof_ipc_comp *comp)
+				      struct comp_ipc_config *config,
+				      void *spec)
 {
 	struct comp_dev *dev;
-	struct sof_ipc_comp_process *sa;
-	struct sof_ipc_comp_process *ipc_sa =
-		(struct sof_ipc_comp_process *)comp;
+	struct ipc_config_process *ipc_sa = spec;
 	struct smart_amp_data *sad;
 	struct sof_smart_amp_config *cfg;
 	size_t bs;
 	int sz_caldata;
 	int ret;
 
-	dev = comp_alloc(drv, COMP_SIZE(struct sof_ipc_comp_process));
+	dev = comp_alloc(drv, sizeof(*dev));
 	if (!dev)
 		return NULL;
 
 	sad = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*sad));
-
 	if (!sad) {
 		rfree(dev);
 		return NULL;
 	}
 
 	comp_set_drvdata(dev, sad);
-
-	sa = COMP_GET_IPC(dev, sof_ipc_comp_process);
-
-	ret = memcpy_s(sa, sizeof(*sa), ipc_sa,
-		       sizeof(struct sof_ipc_comp_process));
-	assert(!ret);
+	sad->ipc_config = *ipc_sa;
 
 	cfg = (struct sof_smart_amp_config *)ipc_sa->data;
 	bs = ipc_sa->size;
@@ -683,7 +678,7 @@ static int smart_amp_prepare(struct comp_dev *dev)
 		source_buffer = container_of(blist, struct comp_buffer,
 					     sink_list);
 		buffer_lock(source_buffer, &flags);
-		if (source_buffer->source->comp.type == SOF_COMP_DEMUX)
+		if (source_buffer->source->ipc_config.type == SOF_COMP_DEMUX)
 			sad->feedback_buf = source_buffer;
 		else
 			sad->source_buf = source_buffer;

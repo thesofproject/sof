@@ -54,7 +54,7 @@ static inline int32_t vol_mult_s24_to_s24(int32_t x, int32_t vol)
 static void vol_s24_to_s24(struct comp_dev *dev, struct audio_stream *sink,
 			   const struct audio_stream *source, uint32_t frames)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
+	struct vol_data *cd = comp_get_drvdata(dev);
 	int32_t *src;
 	int32_t *dest;
 	int32_t i;
@@ -89,7 +89,7 @@ static void vol_s24_to_s24(struct comp_dev *dev, struct audio_stream *sink,
 static void vol_s32_to_s32(struct comp_dev *dev, struct audio_stream *sink,
 			   const struct audio_stream *source, uint32_t frames)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
+	struct vol_data *cd = comp_get_drvdata(dev);
 	int32_t *src;
 	int32_t *dest;
 	int32_t i;
@@ -126,7 +126,7 @@ static void vol_s32_to_s32(struct comp_dev *dev, struct audio_stream *sink,
 static void vol_s16_to_s16(struct comp_dev *dev, struct audio_stream *sink,
 			   const struct audio_stream *source, uint32_t frames)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
+	struct vol_data *cd = comp_get_drvdata(dev);
 	int16_t *src;
 	int16_t *dest;
 	int32_t i;

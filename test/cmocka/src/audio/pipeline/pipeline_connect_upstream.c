@@ -7,6 +7,7 @@
 #include <stdint.h>
 #include <sof/audio/component.h>
 #include <sof/audio/pipeline.h>
+#include <sof/audio/ipc-config.h>
 #include <sof/schedule/edf_schedule.h>
 #include "pipeline_mocks.h"
 #include "pipeline_connection_mocks.h"
@@ -148,12 +149,12 @@ static void test_audio_pipeline_complete_connect_downstream_full(void **state)
 {
 	struct pipeline_connect_data *test_data = *state;
 	struct pipeline result = test_data->p;
-	struct sof_ipc_comp *comp;
+	struct comp_ipc_config *comp;
 
 	cleanup_test_data(test_data);
 
 	/*Connecting first comp to second*/
-	comp = dev_comp(test_data->second);
+	comp = &test_data->second->ipc_config;
 	comp->pipeline_id = PIPELINE_ID_SAME;
 	list_item_append(&result.sched_comp->bsink_list,
 					 &test_data->b1->source_list);
@@ -179,12 +180,12 @@ static void test_audio_pipeline_complete_connect_upstream_full(void **state)
 {
 	struct pipeline_connect_data *test_data = *state;
 	struct pipeline result = test_data->p;
-	struct sof_ipc_comp *comp;
+	struct comp_ipc_config *comp;
 
 	cleanup_test_data(test_data);
 
 	/*Connecting first comp to second*/
-	comp = dev_comp(test_data->second);
+	comp = &test_data->second->ipc_config;
 	comp->pipeline_id = PIPELINE_ID_SAME;
 	list_item_append(&result.sched_comp->bsource_list,
 					 &test_data->b1->sink_list);
@@ -204,12 +205,12 @@ static void test_audio_pipeline_complete_connect_upstream_other_pipeline
 {
 	struct pipeline_connect_data *test_data = *state;
 	struct pipeline result = test_data->p;
-	struct sof_ipc_comp *comp;
+	struct comp_ipc_config *comp;
 
 	cleanup_test_data(test_data);
 
 	/*Connecting first comp to second*/
-	comp = dev_comp(test_data->second);
+	comp = &test_data->second->ipc_config;
 	comp->pipeline_id = PIPELINE_ID_DIFFERENT;
 	list_item_append(&result.sched_comp->bsource_list,
 					 &test_data->b1->sink_list);

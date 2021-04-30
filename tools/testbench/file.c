@@ -13,6 +13,7 @@
 #include <sof/sof.h>
 #include <sof/list.h>
 #include <sof/audio/stream.h>
+#include <sof/audio/ipc-config.h>
 #include <sof/lib/clk.h>
 #include <sof/ipc/driver.h>
 #include <sof/audio/component.h>
@@ -413,28 +414,20 @@ static enum file_format get_file_format(char *filename)
 }
 
 static struct comp_dev *file_new(const struct comp_driver *drv,
-				 struct sof_ipc_comp *comp)
+				 struct comp_ipc_config *config,
+				 void *spec)
 {
 	struct comp_dev *dev;
-	struct sof_ipc_comp_file *file;
-	struct sof_ipc_comp_file *ipc_file =
-		(struct sof_ipc_comp_file *)comp;
+	struct ipc_comp_file *ipc_file = spec;
 	struct file_comp_data *cd;
 
 	debug_print("file_new()\n");
 
-	if (IPC_IS_SIZE_INVALID(ipc_file->config)) {
-		fprintf(stderr, "error: file_new() Invalid IPC size.\n");
-		return NULL;
-	}
 
-	dev = comp_alloc(drv, COMP_SIZE(struct sof_ipc_comp_file));
+	dev = comp_alloc(drv, sizeof(*dev));
 	if (!dev)
 		return NULL;
-
-	file = COMP_GET_IPC(dev, sof_ipc_comp_file);
-	assert(!memcpy_s(file, sizeof(*file), ipc_file,
-		       sizeof(struct sof_ipc_comp_file)));
+	dev->ipc_config = *config;
 
 	/* allocate  memory for file comp data */
 	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
@@ -640,7 +633,6 @@ static int file_copy(struct comp_dev *dev)
 
 static int file_prepare(struct comp_dev *dev)
 {
-	struct sof_ipc_comp_config *config = dev_comp_config(dev);
 	struct comp_buffer *buffer = NULL;
 	struct file_comp_data *cd = comp_get_drvdata(dev);
 	struct audio_stream *stream;
@@ -679,12 +671,12 @@ static int file_prepare(struct comp_dev *dev)
 	case FILE_READ:
 		buffer = list_first_item(&dev->bsink_list, struct comp_buffer,
 					 source_list);
-		periods = config->periods_sink;
+		periods = dev->ipc_config.periods_sink;
 		break;
 	case FILE_WRITE:
 		buffer = list_first_item(&dev->bsource_list,
 					 struct comp_buffer, sink_list);
-		periods = config->periods_source;
+		periods = dev->ipc_config.periods_source;
 		break;
 	default:
 		/* TODO: duplex mode */
@@ -697,7 +689,7 @@ static int file_prepare(struct comp_dev *dev)
 	}
 
 	/* set downstream buffer size */
-	switch (config->frame_fmt) {
+	switch (dev->ipc_config.frame_fmt) {
 	case(SOF_IPC_FRAME_S16_LE):
 		ret = buffer_set_size(buffer, dev->frames * 2 *
 			periods * buffer->stream.channels);

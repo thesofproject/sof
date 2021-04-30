@@ -10,6 +10,7 @@
 #include <sof/audio/component.h>
 #include <sof/audio/format.h>
 #include <sof/audio/pipeline.h>
+#include <sof/audio/ipc-config.h>
 #include <sof/common.h>
 #include <sof/debug/panic.h>
 #include <sof/ipc/msg.h>
@@ -375,25 +376,20 @@ static int tonegen_init(struct tone_state *sg, int32_t fs, int32_t f, int32_t a)
  */
 
 static struct comp_dev *tone_new(const struct comp_driver *drv,
-				 struct sof_ipc_comp *comp)
+				 struct comp_ipc_config *config,
+				 void *spec)
 {
 	struct comp_dev *dev;
-	struct sof_ipc_comp_tone *tone;
-	struct sof_ipc_comp_tone *ipc_tone = (struct sof_ipc_comp_tone *)comp;
+	struct ipc_config_tone *ipc_tone = spec;
 	struct comp_data *cd;
 	int i;
-	int ret;
 
 	comp_cl_info(&comp_tone, "tone_new()");
 
-	dev = comp_alloc(drv, COMP_SIZE(struct sof_ipc_comp_tone));
+	dev = comp_alloc(drv, sizeof(*dev));
 	if (!dev)
 		return NULL;
-
-	tone = COMP_GET_IPC(dev, sof_ipc_comp_tone);
-	ret = memcpy_s(tone, sizeof(*tone), ipc_tone,
-		       sizeof(struct sof_ipc_comp_tone));
-	assert(!ret);
+	dev->ipc_config = *config;
 
 	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
 	if (!cd) {
@@ -429,7 +425,6 @@ static int tone_params(struct comp_dev *dev,
 		       struct sof_ipc_stream_params *params)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	struct sof_ipc_comp_config *config = dev_comp_config(dev);
 	struct comp_buffer *sourceb;
 	struct comp_buffer *sinkb;
 	uint32_t flags = 0;
@@ -441,17 +436,17 @@ static int tone_params(struct comp_dev *dev,
 				source_list);
 
 	comp_info(dev, "tone_params(), config->frame_fmt = %u",
-		  config->frame_fmt);
+		  dev->ipc_config.frame_fmt);
 
 	/* Tone supports only S32_LE PCM format atm */
-	if (config->frame_fmt != SOF_IPC_FRAME_S32_LE)
+	if (dev->ipc_config.frame_fmt != SOF_IPC_FRAME_S32_LE)
 		return -EINVAL;
 
 	buffer_lock(sourceb, &flags);
 	buffer_lock(sinkb, &flags);
 
-	sourceb->stream.frame_fmt = config->frame_fmt;
-	sinkb->stream.frame_fmt = config->frame_fmt;
+	sourceb->stream.frame_fmt = dev->ipc_config.frame_fmt;
+	sinkb->stream.frame_fmt = dev->ipc_config.frame_fmt;
 
 	/* calculate period size based on config */
 	cd->period_bytes = dev->frames *

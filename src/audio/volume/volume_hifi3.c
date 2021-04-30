@@ -44,7 +44,7 @@ static void vol_s24_to_s24_s32(struct comp_dev *dev, struct audio_stream *sink,
 			       const struct audio_stream *source,
 			       uint32_t frames)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
+	struct vol_data *cd = comp_get_drvdata(dev);
 	ae_f64 mult;
 	ae_f32x2 in_sample = AE_ZERO32();
 	ae_f32x2 out_sample;
@@ -105,7 +105,7 @@ static void vol_s32_to_s24_s32(struct comp_dev *dev, struct audio_stream *sink,
 			       const struct audio_stream *source,
 			       uint32_t frames)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
+	struct vol_data *cd = comp_get_drvdata(dev);
 	ae_f64 mult;
 	ae_f32x2 in_sample = AE_ZERO32();
 	ae_f32x2 out_sample;
@@ -165,7 +165,7 @@ static void vol_s32_to_s24_s32(struct comp_dev *dev, struct audio_stream *sink,
 static void vol_s16_to_s16(struct comp_dev *dev, struct audio_stream *sink,
 			   const struct audio_stream *source, uint32_t frames)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
+	struct vol_data *cd = comp_get_drvdata(dev);
 	ae_f64 mult;
 	ae_f32x2 volume;
 	ae_f32x2 out_sample;

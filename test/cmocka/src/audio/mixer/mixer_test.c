@@ -98,14 +98,13 @@ static struct sof_ipc_comp mock_comp = {
 };
 
 static struct comp_dev *create_comp(struct sof_ipc_comp *comp,
-				    struct comp_driver *drv)
+				    struct comp_driver *drv,
+				    struct comp_ipc_config *ipc_config)
 {
-	struct comp_dev *cd = drv->ops.create(drv, comp);
+	struct comp_dev *cd = drv->ops.create(drv, ipc_config, NULL);
 
 	assert_non_null(cd);
 
-	memcpy_s(COMP_GET_IPC(cd, sof_ipc_comp), sizeof(struct sof_ipc_comp),
-		 comp, sizeof(*comp));
 	cd->drv = drv;
 	list_init(&cd->bsource_list);
 	list_init(&cd->bsink_list);
@@ -130,6 +129,8 @@ static void create_sources(struct mix_test_case *tc)
 
 	tc->sources = malloc(tc->num_sources * sizeof(struct source));
 
+	static struct comp_ipc_config ipc_config = {};
+
 	for (src_idx = 0; src_idx < tc->num_sources; ++src_idx) {
 		struct source *src = &tc->sources[src_idx];
 
@@ -138,7 +139,7 @@ static void create_sources(struct mix_test_case *tc)
 				tc->num_chans
 		};
 
-		src->comp = create_comp(&mock_comp, &drv_mock);
+		src->comp = create_comp(&mock_comp, &drv_mock, &ipc_config);
 		src->buf = buffer_new(&buf);
 		init_buffer_pcm_params(src->buf, tc->num_chans);
 
@@ -193,8 +194,10 @@ static int test_setup(void **state)
 		}
 	};
 
+	static struct comp_ipc_config ipc_config = {};
+
 	mixer_dev_mock = create_comp((struct sof_ipc_comp *)&mixer,
-				     &mixer_drv_mock);
+				     &mixer_drv_mock, &ipc_config);
 
 	struct mix_test_case *tc = *((struct mix_test_case **)state);
 
@@ -207,7 +210,7 @@ static int test_setup(void **state)
 		post_mixer_buf = buffer_new(&buf);
 
 		create_sources(tc);
-		post_mixer_comp = create_comp(&mock_comp, &drv_mock);
+		post_mixer_comp = create_comp(&mock_comp, &drv_mock, &ipc_config);
 
 		post_mixer_buf->source = mixer_dev_mock;
 		post_mixer_buf->sink = post_mixer_comp;

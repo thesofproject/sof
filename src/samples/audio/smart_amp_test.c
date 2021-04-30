@@ -5,6 +5,7 @@
 // Author: Bartosz Kokoszko <bartoszx.kokoszko@linux.intel.com>
 
 #include <sof/samples/audio/smart_amp_test.h>
+#include <sof/audio/ipc-config.h>
 #include <sof/trace/trace.h>
 #include <sof/ipc/msg.h>
 #include <sof/ut.h>
@@ -35,35 +36,27 @@ struct smart_amp_data {
 };
 
 static struct comp_dev *smart_amp_new(const struct comp_driver *drv,
-				      struct sof_ipc_comp *comp)
+				      struct comp_ipc_config *config,
+				      void *spec)
 {
 	struct comp_dev *dev;
-	struct sof_ipc_comp_process *sa;
-	struct sof_ipc_comp_process *ipc_sa =
-		(struct sof_ipc_comp_process *)comp;
+	struct ipc_config_process *ipc_sa = spec;
 	struct smart_amp_data *sad;
 	struct sof_smart_amp_config *cfg;
 	size_t bs;
-	int ret;
 
-	dev = comp_alloc(drv, COMP_SIZE(struct sof_ipc_comp_process));
+	dev = comp_alloc(drv, sizeof(*dev));
 	if (!dev)
 		return NULL;
+	dev->ipc_config = *config;
 
 	sad = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*sad));
-
 	if (!sad) {
 		rfree(dev);
 		return NULL;
 	}
 
 	comp_set_drvdata(dev, sad);
-
-	sa = COMP_GET_IPC(dev, sof_ipc_comp_process);
-
-	ret = memcpy_s(sa, sizeof(*sa), ipc_sa,
-		       sizeof(struct sof_ipc_comp_process));
-	assert(!ret);
 
 	/* component model data handler */
 	sad->model_handler = comp_data_blob_handler_new(dev);
@@ -521,7 +514,7 @@ static int smart_amp_prepare(struct comp_dev *dev)
 		source_buffer = container_of(blist, struct comp_buffer,
 					     sink_list);
 		buffer_lock(source_buffer, &flags);
-		if (source_buffer->source->comp.type == SOF_COMP_DEMUX)
+		if (source_buffer->source->ipc_config.type == SOF_COMP_DEMUX)
 			sad->feedback_buf = source_buffer;
 		else
 			sad->source_buf = source_buffer;

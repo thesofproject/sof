@@ -18,6 +18,7 @@
 #include <sof/audio/format.h>
 #include <sof/audio/pipeline.h>
 #include <sof/audio/volume.h>
+#include <sof/audio/ipc-config.h>
 #include <sof/common.h>
 #include <sof/debug/panic.h>
 #include <sof/ipc/msg.h>
@@ -189,7 +190,7 @@ const struct comp_zc_func_map zc_func_map[] = {
  */
 static void vol_sync_host(struct comp_dev *dev, unsigned int num_channels)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
+	struct vol_data *cd = comp_get_drvdata(dev);
 	int n;
 
 	if (!cd->hvol) {
@@ -212,7 +213,7 @@ static void vol_sync_host(struct comp_dev *dev, unsigned int num_channels)
  */
 static void volume_ramp(struct comp_dev *dev)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
+	struct vol_data *cd = comp_get_drvdata(dev);
 	int32_t vol;
 	int32_t ramp_time;
 	int i;
@@ -298,26 +299,20 @@ static void volume_ramp(struct comp_dev *dev)
  * \return Pointer to volume base component device.
  */
 static struct comp_dev *volume_new(const struct comp_driver *drv,
-				   struct sof_ipc_comp *comp)
+				   struct comp_ipc_config *config,
+				   void *spec)
 {
 	struct comp_dev *dev;
-	struct sof_ipc_comp_volume *vol;
-	struct sof_ipc_comp_volume *ipc_vol =
-		(struct sof_ipc_comp_volume *)comp;
-	struct comp_data *cd;
+	struct ipc_config_volume *vol = spec;
+	struct vol_data *cd;
 	int i;
-	int ret;
 
 	comp_cl_dbg(&comp_volume, "volume_new()");
 
-	dev = comp_alloc(drv, COMP_SIZE(struct sof_ipc_comp_volume));
+	dev = comp_alloc(drv, sizeof(*dev));
 	if (!dev)
 		return NULL;
-
-	vol = COMP_GET_IPC(dev, sof_ipc_comp_volume);
-	ret = memcpy_s(vol, sizeof(*vol), ipc_vol,
-		       sizeof(struct sof_ipc_comp_volume));
-	assert(!ret);
+	dev->ipc_config = *config;
 
 	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
 	if (!cd) {
@@ -326,6 +321,7 @@ static struct comp_dev *volume_new(const struct comp_driver *drv,
 	}
 
 	comp_set_drvdata(dev, cd);
+	cd->ipc_config = *vol;
 
 	/* Set the default volumes. If IPC sets min_value or max_value to
 	 * not-zero, use them. Otherwise set to internal limits and notify
@@ -387,7 +383,7 @@ static struct comp_dev *volume_new(const struct comp_driver *drv,
  */
 static void volume_free(struct comp_dev *dev)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
+	struct vol_data *cd = comp_get_drvdata(dev);
 
 	comp_dbg(dev, "volume_free()");
 
@@ -407,9 +403,7 @@ static void volume_free(struct comp_dev *dev)
 static inline int volume_set_chan(struct comp_dev *dev, int chan,
 				  int32_t vol, bool constant_rate_ramp)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
-	struct sof_ipc_comp_volume *pga =
-		COMP_GET_IPC(dev, sof_ipc_comp_volume);
+	struct vol_data *cd = comp_get_drvdata(dev);
 	int32_t v = vol;
 	int32_t delta;
 	int32_t delta_abs;
@@ -439,7 +433,7 @@ static inline int volume_set_chan(struct comp_dev *dev, int chan,
 	cd->vol_ramp_elapsed_frames = 0;
 
 	/* Check ramp type */
-	switch (pga->ramp) {
+	switch (cd->ipc_config.ramp) {
 	case SOF_VOLUME_LINEAR:
 	case SOF_VOLUME_LINEAR_ZC:
 		/* Get volume transition delta and absolute value */
@@ -455,7 +449,7 @@ static inline int volume_set_chan(struct comp_dev *dev, int chan,
 		 * Note also the legacy mode without known vol_ramp_range where
 		 * the volume transition always uses the topology defined time.
 		 */
-		if (pga->initial_ramp > 0) {
+		if (cd->ipc_config.initial_ramp > 0) {
 			if (constant_rate_ramp && cd->vol_ramp_range > 0)
 				coef = cd->vol_ramp_range;
 			else
@@ -465,7 +459,7 @@ static inline int volume_set_chan(struct comp_dev *dev, int chan,
 			 * be some accumulated error in ramp time the longer
 			 * the ramp and the smaller the transition is.
 			 */
-			coef = (2 * coef / pga->initial_ramp + 1) >> 1;
+			coef = (2 * coef / cd->ipc_config.initial_ramp + 1) >> 1;
 		} else {
 			coef = delta_abs;
 		}
@@ -490,7 +484,7 @@ static inline int volume_set_chan(struct comp_dev *dev, int chan,
 	case SOF_VOLUME_LOG_ZC:
 	default:
 		comp_err(dev, "volume_set_chan(): invalid ramp type %d",
-			 pga->ramp);
+			 cd->ipc_config.ramp);
 		return -EINVAL;
 	}
 
@@ -504,7 +498,7 @@ static inline int volume_set_chan(struct comp_dev *dev, int chan,
  */
 static inline void volume_set_chan_mute(struct comp_dev *dev, int chan)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
+	struct vol_data *cd = comp_get_drvdata(dev);
 
 	if (!cd->muted[chan]) {
 		cd->mvolume[chan] = cd->tvolume[chan];
@@ -520,7 +514,7 @@ static inline void volume_set_chan_mute(struct comp_dev *dev, int chan)
  */
 static inline void volume_set_chan_unmute(struct comp_dev *dev, int chan)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
+	struct vol_data *cd = comp_get_drvdata(dev);
 
 	if (cd->muted[chan]) {
 		cd->muted[chan] = false;
@@ -537,7 +531,7 @@ static inline void volume_set_chan_unmute(struct comp_dev *dev, int chan)
 static int volume_ctrl_set_cmd(struct comp_dev *dev,
 			       struct sof_ipc_ctrl_data *cdata)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
+	struct vol_data *cd = comp_get_drvdata(dev);
 	uint32_t val;
 	int ch;
 	int j;
@@ -622,7 +616,7 @@ static int volume_ctrl_set_cmd(struct comp_dev *dev,
 static int volume_ctrl_get_cmd(struct comp_dev *dev,
 			       struct sof_ipc_ctrl_data *cdata, int size)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
+	struct vol_data *cd = comp_get_drvdata(dev);
 	int j;
 
 	/* validate */
@@ -703,10 +697,8 @@ static int volume_trigger(struct comp_dev *dev, int cmd)
  */
 static int volume_copy(struct comp_dev *dev)
 {
-	struct sof_ipc_comp_volume *pga =
-		COMP_GET_IPC(dev, sof_ipc_comp_volume);
 	struct comp_copy_limits c;
-	struct comp_data *cd = comp_get_drvdata(dev);
+	struct vol_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *source;
 	struct comp_buffer *sink;
 	uint32_t source_bytes;
@@ -731,7 +723,7 @@ static int volume_copy(struct comp_dev *dev)
 		if (cd->ramp_finished || cd->vol_ramp_frames > c.frames) {
 			/* without ramping process all at once */
 			frames = c.frames;
-		} else if (pga->ramp == SOF_VOLUME_LINEAR_ZC) {
+		} else if (cd->ipc_config.ramp == SOF_VOLUME_LINEAR_ZC) {
 			/* with ZC ramping look for next ZC offset */
 			frames = cd->zc_get(&source->stream,
 					    cd->vol_ramp_frames, &prev_sum);
@@ -797,10 +789,8 @@ static vol_zc_func vol_get_zc_function(struct comp_dev *dev)
  */
 static int volume_prepare(struct comp_dev *dev)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
+	struct vol_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *sinkb;
-	struct sof_ipc_comp_config *config = dev_comp_config(dev);
-	struct sof_ipc_comp_volume *pga;
 	uint32_t sink_period_bytes;
 	int ramp_update_us;
 	int ret;
@@ -823,9 +813,9 @@ static int volume_prepare(struct comp_dev *dev)
 	sink_period_bytes = audio_stream_period_bytes(&sinkb->stream,
 						      dev->frames);
 
-	if (sinkb->stream.size < config->periods_sink * sink_period_bytes) {
+	if (sinkb->stream.size < dev->ipc_config.periods_sink * sink_period_bytes) {
 		comp_err(dev, "volume_prepare(): sink buffer size %d is insufficient < %d * %d",
-			 sinkb->stream.size, config->periods_sink, sink_period_bytes);
+			 sinkb->stream.size, dev->ipc_config.periods_sink, sink_period_bytes);
 		ret = -ENOMEM;
 		goto err;
 	}
@@ -867,12 +857,11 @@ static int volume_prepare(struct comp_dev *dev)
 	 * ensure evenly updated gain envelope with limited fraction resolution
 	 * four presets are used.
 	 */
-	pga = COMP_GET_IPC(dev, sof_ipc_comp_volume);
-	if (pga->initial_ramp < VOL_RAMP_UPDATE_THRESHOLD_FASTEST_MS)
+	if (cd->ipc_config.initial_ramp < VOL_RAMP_UPDATE_THRESHOLD_FASTEST_MS)
 		ramp_update_us = VOL_RAMP_UPDATE_FASTEST_US;
-	else if (pga->initial_ramp < VOL_RAMP_UPDATE_THRESHOLD_FAST_MS)
+	else if (cd->ipc_config.initial_ramp < VOL_RAMP_UPDATE_THRESHOLD_FAST_MS)
 		ramp_update_us = VOL_RAMP_UPDATE_FAST_US;
-	else if (pga->initial_ramp < VOL_RAMP_UPDATE_THRESHOLD_SLOW_MS)
+	else if (cd->ipc_config.initial_ramp < VOL_RAMP_UPDATE_THRESHOLD_SLOW_MS)
 		ramp_update_us = VOL_RAMP_UPDATE_SLOW_US;
 	else
 		ramp_update_us = VOL_RAMP_UPDATE_SLOWEST_US;

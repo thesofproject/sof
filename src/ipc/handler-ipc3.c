@@ -128,8 +128,8 @@ static bool is_hostless_downstream(struct comp_dev *current)
 	struct list_item *clist;
 
 	/* check if current is a HOST comp */
-	if (current->comp.type == SOF_COMP_HOST ||
-	    current->comp.type == SOF_COMP_SG_HOST)
+	if (current->ipc_config.type == SOF_COMP_HOST ||
+	    current->ipc_config.type == SOF_COMP_SG_HOST)
 		return false;
 
 	/* check if the pipeline has a HOST comp downstream */
@@ -143,7 +143,8 @@ static bool is_hostless_downstream(struct comp_dev *current)
 			continue;
 
 		/* dont go downstream if this comp belongs to another pipe */
-		if (buffer->sink->comp.pipeline_id != current->comp.pipeline_id)
+		if (buffer->sink->ipc_config.pipeline_id !=
+			current->ipc_config.pipeline_id)
 			continue;
 
 		/* return if there's a host comp downstream */
@@ -160,8 +161,8 @@ static bool is_hostless_upstream(struct comp_dev *current)
 	struct list_item *clist;
 
 	/* check if current is a HOST comp */
-	if (current->comp.type == SOF_COMP_HOST ||
-	    current->comp.type == SOF_COMP_SG_HOST)
+	if (current->ipc_config.type == SOF_COMP_HOST ||
+	    current->ipc_config.type == SOF_COMP_SG_HOST)
 		return false;
 
 	/* check if the pipeline has a HOST comp upstream */
@@ -175,8 +176,8 @@ static bool is_hostless_upstream(struct comp_dev *current)
 			continue;
 
 		/* dont go upstream if this comp belongs to another pipeline */
-		if (buffer->source->comp.pipeline_id !=
-		    current->comp.pipeline_id)
+		if (buffer->source->ipc_config.pipeline_id !=
+		    current->ipc_config.pipeline_id)
 			continue;
 
 		/* return if there is a host comp upstream */

@@ -7,6 +7,7 @@
 #include <stdint.h>
 #include <sof/audio/component.h>
 #include <sof/audio/pipeline.h>
+#include <sof/audio/ipc-config.h>
 #include <sof/schedule/edf_schedule.h>
 #include <sof/schedule/task.h>
 #include "pipeline_connection_mocks.h"
@@ -87,8 +88,8 @@ static void test_audio_pipeline_free_disconnect_full(void **state)
 {
 	struct pipeline_connect_data *test_data = *state;
 	struct pipeline result = test_data->p;
-	struct sof_ipc_comp *first_comp;
-	struct sof_ipc_comp *second_comp;
+	struct comp_ipc_config *first_comp;
+	struct comp_ipc_config *second_comp;
 
 	cleanup_test_data(test_data);
 
@@ -96,8 +97,8 @@ static void test_audio_pipeline_free_disconnect_full(void **state)
 	result.source_comp = test_data->first;
 	test_data->first->pipeline = &result;
 	test_data->second->pipeline = &result;
-	first_comp = dev_comp(test_data->first);
-	second_comp = dev_comp(test_data->second);
+	first_comp = &test_data->first->ipc_config;
+	second_comp = &test_data->second->ipc_config;
 	second_comp->pipeline_id = PIPELINE_ID_SAME;
 	first_comp->pipeline_id = PIPELINE_ID_SAME;
 	test_data->b1->source = test_data->first;

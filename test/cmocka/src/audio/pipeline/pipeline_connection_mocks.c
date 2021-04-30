@@ -4,6 +4,7 @@
 //
 // Author: Jakub Dabek <jakub.dabek@linux.intel.com>
 
+#include <sof/audio/ipc-config.h>
 #include "pipeline_connection_mocks.h"
 
 extern struct schedulers *schedulers;
@@ -49,7 +50,7 @@ struct pipeline_connect_data *get_standard_connect_objects(void)
 	list_item_append(&sch->list, &schedulers->list);
 
 	struct comp_dev *first = calloc(sizeof(struct comp_dev), 1);
-	struct sof_ipc_comp *first_comp = dev_comp(first);
+	struct comp_ipc_config *first_comp = &first->ipc_config;
 
 	first_comp->id = 3;
 	first_comp->pipeline_id = PIPELINE_ID_SAME;
@@ -59,7 +60,7 @@ struct pipeline_connect_data *get_standard_connect_objects(void)
 	pipe->sched_comp = first;
 
 	struct comp_dev *second = calloc(sizeof(struct comp_dev), 1);
-	struct sof_ipc_comp *second_comp = dev_comp(second);
+	struct comp_ipc_config *second_comp = &second->ipc_config;
 
 	second_comp->id = 4;
 	second_comp->pipeline_id = PIPELINE_ID_DIFFERENT;
