@@ -23,7 +23,7 @@
 
 #include <sof/drivers/ssp.h>
 
-static SHARED_DATA struct dai ssp[(DAI_NUM_SSP_BASE + DAI_NUM_SSP_EXT)];
+static SHARED_DATA struct dai ssp[DAI_NUM_SSP_BASE + DAI_NUM_SSP_EXT];
 
 #endif
 
@@ -85,7 +85,7 @@ static SHARED_DATA struct dai dmic[2] = {
 static SHARED_DATA struct dai alh[DAI_NUM_ALH_BI_DIR_LINKS];
 #endif
 
-static SHARED_DATA struct dai hda[(DAI_NUM_HDA_OUT + DAI_NUM_HDA_IN)];
+static SHARED_DATA struct dai hda[DAI_NUM_HDA_OUT + DAI_NUM_HDA_IN];
 
 const struct dai_type_info dti[] = {
 #if CONFIG_INTEL_SSP
