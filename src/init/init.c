@@ -121,7 +121,7 @@ static int secondary_core_init(struct sof *sof)
 
 #endif
 
-int primary_core_init(int argc, char *argv[], struct sof *sof)
+static int primary_core_init(int argc, char *argv[], struct sof *sof)
 {
 	/* setup context */
 	sof->argc = argc;
