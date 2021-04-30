@@ -571,11 +571,12 @@ static int mux_copy(struct comp_dev *dev)
 	}
 
 	for (i = 0; i < MUX_MAX_STREAMS; i++) {
+		uint32_t avail_frames;
 		if (!sources[i])
 			continue;
-		frames = MIN(frames,
-			     audio_stream_avail_frames(sources_stream[i],
-						       &sink->stream));
+		avail_frames = audio_stream_avail_frames(sources_stream[i],
+							 &sink->stream);
+		frames = MIN(frames, avail_frames);
 		buffer_unlock(sources[i], flags);
 	}
 

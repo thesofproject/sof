@@ -624,6 +624,7 @@ static int kpb_copy(struct comp_dev *dev)
 	size_t sample_width = kpb->config.sampling_width;
 	uint32_t flags = 0;
 	struct draining_data *dd = &kpb->draining_task_data;
+	uint32_t avail_bytes;
 
 	comp_dbg(dev, "kpb_copy()");
 
@@ -756,7 +757,8 @@ static int kpb_copy(struct comp_dev *dev)
 		/* In draining and init draining we only buffer data in
 		 * the internal history buffer.
 		 */
-		copy_bytes = MIN(audio_stream_get_avail_bytes(&source->stream), kpb->hd.free);
+		avail_bytes = audio_stream_get_avail_bytes(&source->stream);
+		copy_bytes = MIN(avail_bytes, kpb->hd.free);
 		ret = PPL_STATUS_PATH_STOP;
 		if (copy_bytes) {
 			buffer_invalidate(source, copy_bytes);

@@ -347,17 +347,18 @@ static uint32_t host_get_copy_bytes_normal(struct comp_dev *dev)
 	buffer_lock(hd->local_buffer, &flags);
 
 	/* calculate minimum size to copy */
-	if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
+	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
 		/* limit bytes per copy to one period for the whole pipeline
 		 * in order to avoid high load spike
 		 */
-		copy_bytes = MIN(hd->period_bytes,
-				 MIN(avail_bytes,
-				     audio_stream_get_free_bytes(&hd->local_buffer->stream)));
-	else
-		copy_bytes = MIN(
-			audio_stream_get_avail_bytes(&hd->local_buffer->stream), free_bytes);
-
+		const uint32_t free_bytes =
+			audio_stream_get_free_bytes(&hd->local_buffer->stream);
+		copy_bytes = MIN(hd->period_bytes, MIN(avail_bytes, free_bytes));
+	} else {
+		const uint32_t avail_bytes =
+			audio_stream_get_avail_bytes(&hd->local_buffer->stream);
+		copy_bytes = MIN(avail_bytes, free_bytes);
+	}
 	buffer_unlock(hd->local_buffer, flags);
 
 	/* copy_bytes should be aligned to minimum possible chunk of

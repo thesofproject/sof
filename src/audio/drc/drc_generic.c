@@ -225,6 +225,7 @@ void drc_update_envelope(struct drc_state *state, const struct sof_drc_params *p
 		db_per_frame = Q_MULTSR_32X32((int64_t)db_per_frame, p->kSpacingDb, 30, 0, 24);
 		envelope_rate = db2lin_fixed(db_per_frame); /* Q12.20 */
 	} else {
+		int32_t sat32;
 		/* Attack mode - compression_diff_db should be positive dB */
 
 		/* Fix gremlins. */
@@ -234,9 +235,9 @@ void drc_update_envelope(struct drc_state *state, const struct sof_drc_params *p
 		/* As long as we're still in attack mode, use a rate based off
 		 * the largest compression_diff_db we've encountered so far.
 		 */
+		sat32 = sat_int32(Q_SHIFT_LEFT((int64_t)compression_diff_db, 21, 24));
 		state->max_attack_compression_diff_db =
-			MAX(state->max_attack_compression_diff_db,
-			    sat_int32(Q_SHIFT_LEFT((int64_t)compression_diff_db, 21, 24)));
+			MAX(state->max_attack_compression_diff_db, sat32);
 
 		eff_atten_diff_db =
 			MAX(HALF_Q24, state->max_attack_compression_diff_db); /* Q8.24 */

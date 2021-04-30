@@ -228,10 +228,9 @@ static void timer_domain_set(struct ll_schedule_domain *domain, uint64_t start)
 	uint64_t ticks_tout = timer_domain->timeout;
 	uint64_t ticks_set;
 #ifndef __ZEPHYR__
-	uint64_t ticks_req;
-
 	/* make sure to require for ticks later than tout from now */
-	ticks_req = MAX(start, platform_timer_get_atomic(timer_domain->timer) + ticks_tout);
+	const uint64_t time = platform_timer_get_atomic(timer_domain->timer);
+	const uint64_t ticks_req = MAX(start, time + ticks_tout);
 
 	ticks_set = platform_timer_set(timer_domain->timer, ticks_req);
 #else
