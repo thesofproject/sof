@@ -40,7 +40,7 @@ struct perf_cnt_data {
 /** \brief Initializes timestamps with current timer values. */
 #define perf_cnt_init(pcd) do {						\
 		(pcd)->plat_ts = platform_timer_get(timer_get());	\
-		(pcd)->cpu_ts = arch_timer_get_system(cpu_timer_get());	\
+		(pcd)->cpu_ts = timer_get_system(cpu_timer_get());	\
 	} while (0)
 
 /* Trace macros that can be used as trace_m argument of the perf_cnt_stamp()
