@@ -36,11 +36,20 @@ struct cadence_api {
 	xa_codec_func_t *api;
 };
 
+enum default_stream_params_ids {
+	CADENCE_SAMPLE_RATE_ID = 0x01,
+	CADENCE_SAMPLE_WIDTH_ID = 0x02,
+	CADENCE_CHANNELS_COUNT_ID = 0x04
+};
+
 struct cadence_codec_data {
 	char name[LIB_NAME_MAX_LEN];
 	void *self;
 	xa_codec_func_t *api;
 	void *mem_tabs;
+	uint32_t sample_width_id;
+	uint32_t sample_rate_id;
+	uint32_t channels_id;
 };
 
 /*****************************************************************************/
