@@ -79,7 +79,7 @@ struct pipeline_task {
 	struct comp_dev *sched_comp;	/**< pipeline scheduling component */
 };
 
-#define pipeline_task_get(task) ((struct pipeline_task *)(task))
+#define pipeline_task_get(t) container_of(t, struct pipeline_task, task)
 
 static inline enum task_state task_run(struct task *task)
 {
