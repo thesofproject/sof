@@ -9,9 +9,10 @@
 #include <sof/schedule/edf_schedule.h>
 #include <sof/schedule/ll_schedule.h>
 #include <sof/lib/alloc.h>
+#include <sof/lib/cpu.h>
 #include <ipc/topology.h>
 
-static struct schedulers *_schedulers;
+static struct schedulers *_schedulers[CONFIG_CORE_COUNT];
 
 /**
  * Retrieves registered schedulers.
@@ -19,5 +20,5 @@ static struct schedulers *_schedulers;
  */
 struct schedulers **arch_schedulers_get(void)
 {
-	return &_schedulers;
+	return _schedulers + cpu_get_id();
 }
