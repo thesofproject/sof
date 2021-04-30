@@ -119,6 +119,7 @@ static int timer_domain_register(struct ll_schedule_domain *domain,
 #ifdef __ZEPHYR__
 	void *stack;
 	char *qname;
+	struct k_thread *thread;
 #endif
 
 	tr_dbg(&ll_tr, "timer_domain_register()");
@@ -161,7 +162,17 @@ static int timer_domain_register(struct ll_schedule_domain *domain,
 	zdata[core].arg = arg;
 	k_work_q_start(&timer_domain->ll_workq[core], stack,
 		       ZEPHYR_LL_WORKQ_SIZE, -CONFIG_NUM_COOP_PRIORITIES);
-	k_thread_name_set(&timer_domain->ll_workq[core].thread, qname);
+
+	thread = &timer_domain->ll_workq[core].thread;
+
+	k_thread_suspend(thread);
+
+	k_thread_cpu_mask_clear(thread);
+	k_thread_cpu_mask_enable(thread, core);
+	k_thread_name_set(thread, qname);
+
+	k_thread_resume(thread);
+
 	timer_domain->ll_workq_registered[core] = 1;
 
 	k_delayed_work_init(&zdata[core].work, timer_z_handler);

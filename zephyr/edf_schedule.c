@@ -83,7 +83,7 @@ static int schedule_edf_task_free(void *data, struct task *task)
 	return 0;
 }
 
-struct scheduler_ops schedule_edf_ops = {
+static struct scheduler_ops schedule_edf_ops = {
 	.schedule_task		= schedule_edf_task,
 	.schedule_task_running	= schedule_edf_task_running,
 	.schedule_task_complete = schedule_edf_task_complete,
@@ -93,13 +93,22 @@ struct scheduler_ops schedule_edf_ops = {
 
 int scheduler_init_edf(void)
 {
+	struct k_thread *thread = &edf_workq.thread;
+
 	scheduler_init(SOF_SCHEDULE_EDF, &schedule_edf_ops, NULL);
 
 	k_work_q_start(&edf_workq,
 		       edf_workq_stack,
 		       K_THREAD_STACK_SIZEOF(edf_workq_stack),
 		       1);
-	k_thread_name_set(&edf_workq.thread, "edf_workq");
+
+	k_thread_suspend(thread);
+
+	k_thread_cpu_mask_clear(thread);
+	k_thread_cpu_mask_enable(thread, PLATFORM_PRIMARY_CORE_ID);
+	k_thread_name_set(thread, "edf_workq");
+
+	k_thread_resume(thread);
 
 	return 0;
 }
