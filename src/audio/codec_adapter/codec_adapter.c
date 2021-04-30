@@ -297,8 +297,8 @@ codec_adapter_copy_from_source_to_lib(const struct audio_stream *source,
 				      size_t bytes)
 {
 	/* head_size - available data until end of local buffer */
-	uint32_t head_size = MIN(bytes, audio_stream_bytes_without_wrap(source,
-				 source->r_ptr));
+	const int without_wrap = audio_stream_bytes_without_wrap(source, source->r_ptr);
+	uint32_t head_size = MIN(bytes, without_wrap);
 	/* tail_size - residue data to be copied starting from the beginning
 	 * of the buffer
 	 */
@@ -319,8 +319,9 @@ codec_adapter_copy_from_lib_to_sink(const struct codec_processing_data *cpd,
 				    size_t bytes)
 {
 	/* head_size - free space until end of local buffer */
-	uint32_t head_size = MIN(bytes, audio_stream_bytes_without_wrap(sink,
-				 sink->w_ptr));
+	const int without_wrap =
+		audio_stream_bytes_without_wrap(sink, sink->w_ptr);
+	uint32_t head_size = MIN(bytes, without_wrap);
 	/* tail_size - rest of the bytes that needs to be written
 	 * starting from the beginning of the buffer
 	 */
