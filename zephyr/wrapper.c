@@ -552,16 +552,3 @@ struct idc **idc_get(void)
 }
 #endif
 
-#if CONFIG_LIBRARY
-/* Dummies for unsupported architectures */
-
-/* Platform */
-int platform_boot_complete(uint32_t boot_message)
-{
-	return 0;
-}
-
-/* Logging */
-const struct log_source_const_data log_const_sof;
-
-#endif
