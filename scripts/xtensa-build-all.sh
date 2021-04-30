@@ -206,8 +206,8 @@ do
 			PLATFORM="apollolake"
 			XTENSA_CORE="X4H3I16w2D48w3a_2017_8"
 
-			# test APL compiler aliases and ignore set -e here
-			if type xtensa-bxt-elf-gcc; then
+			# test APL compiler aliases
+			if command -v xtensa-bxt-elf-gcc; then
 				HOST="xtensa-bxt-elf"
 			else
 				HOST="xtensa-apl-elf"
@@ -220,8 +220,8 @@ do
 			PLATFORM="skylake"
 			XTENSA_CORE="X4H3I16w2D48w3a_2017_8"
 
-			# test APL compiler aliases and ignore set -e here
-			if type xtensa-bxt-elf-gcc; then
+			# test APL compiler aliases
+			if command -v xtensa-bxt-elf-gcc; then
 				HOST="xtensa-bxt-elf"
 			else
 				HOST="xtensa-apl-elf"
@@ -234,8 +234,8 @@ do
 			PLATFORM="kabylake"
 			XTENSA_CORE="X4H3I16w2D48w3a_2017_8"
 
-			# test APL compiler aliases and ignore set -e here
-			if type xtensa-bxt-elf-gcc; then
+			# test APL compiler aliases
+			if command -v xtensa-bxt-elf-gcc; then
 				HOST="xtensa-bxt-elf"
 			else
 				HOST="xtensa-apl-elf"
