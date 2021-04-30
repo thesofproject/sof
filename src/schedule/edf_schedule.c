@@ -39,7 +39,7 @@ static const struct scheduler_ops schedule_edf_ops;
 
 static int schedule_edf_task_complete(void *data, struct task *task);
 static int schedule_edf_task_running(void *data, struct task *task);
-static void schedule_edf(void *data);
+static void schedule_edf(struct edf_schedule_data *edf_sch);
 
 static void schedule_edf_task_run(struct task *task, void *data)
 {
@@ -126,7 +126,7 @@ static int schedule_edf_task(void *data, struct task *task, uint64_t start,
 
 	irq_local_enable(flags);
 
-	schedule_edf(data);
+	schedule_edf(edf_sch);
 
 	return 0;
 }
@@ -300,10 +300,8 @@ static void scheduler_free_edf(void *data)
 	irq_local_enable(flags);
 }
 
-static void schedule_edf(void *data)
+static void schedule_edf(struct edf_schedule_data *edf_sch)
 {
-	struct edf_schedule_data *edf_sch = data;
-
 	interrupt_set(edf_sch->irq);
 }
 
