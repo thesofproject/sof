@@ -89,10 +89,10 @@ int secondary_core_init(struct sof *sof)
 	/* interrupts need to be initialized before any usage */
 	trace_point(TRACE_BOOT_PLATFORM_IRQ);
 	platform_interrupt_init();
-#endif
 
-	trace_point(TRACE_BOOT_PLATFORM_SCHED);
 	scheduler_init_edf();
+#endif
+	trace_point(TRACE_BOOT_PLATFORM_SCHED);
 	scheduler_init_ll(timer_domain_get());
 	scheduler_init_ll(dma_domain_get());
 
