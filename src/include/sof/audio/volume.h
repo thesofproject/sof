@@ -17,6 +17,7 @@
 #define __SOF_AUDIO_VOLUME_H__
 
 #include <sof/audio/component.h>
+#include <sof/audio/ipc-config.h>
 #include <sof/bit.h>
 #include <sof/common.h>
 #include <sof/trace/trace.h>
@@ -92,13 +93,14 @@ typedef uint32_t (*vol_zc_func)(const struct audio_stream *source,
  *
  * Gain amplitude value is between 0 (mute) ... 2^16 (0dB) ... 2^24 (~+48dB).
  */
-struct comp_data {
+struct vol_data {
 	struct sof_ipc_ctrl_value_chan *hvol;	/**< host volume readback */
 	int32_t volume[SOF_IPC_MAX_CHANNELS];	/**< current volume */
 	int32_t tvolume[SOF_IPC_MAX_CHANNELS];	/**< target volume */
 	int32_t mvolume[SOF_IPC_MAX_CHANNELS];	/**< mute volume */
 	int32_t rvolume[SOF_IPC_MAX_CHANNELS];	/**< ramp start volume */
 	int32_t ramp_coef[SOF_IPC_MAX_CHANNELS]; /**< parameter for slope */
+	struct ipc_config_volume ipc_config;
 	int32_t vol_min;			/**< minimum volume */
 	int32_t vol_max;			/**< maximum volume */
 	int32_t	vol_ramp_range;			/**< max ramp transition */

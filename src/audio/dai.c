@@ -10,6 +10,7 @@
 #include <sof/audio/format.h>
 #include <sof/audio/pcm_converter.h>
 #include <sof/audio/pipeline.h>
+#include <sof/audio/ipc-config.h>
 #include <sof/common.h>
 #include <sof/debug/panic.h>
 #include <sof/drivers/edma.h>
@@ -67,6 +68,7 @@ struct dai_data {
 	uint64_t *dai_pos;
 
 	struct sof_ipc_dai_config *dai_config;	/* dai_config from the host */
+	struct ipc_config_dai ipc_config;	/* base config at DAI new */
 
 	uint64_t wallclock;	/* wall clock at stream start */
 };
@@ -179,25 +181,20 @@ static void dai_dma_cb(void *arg, enum notify_id type, void *data)
 }
 
 static struct comp_dev *dai_new(const struct comp_driver *drv,
-				struct sof_ipc_comp *comp)
+				struct comp_ipc_config *config,
+				void *spec)
 {
 	struct comp_dev *dev;
-	struct sof_ipc_comp_dai *dai;
-	struct sof_ipc_comp_dai *ipc_dai = (struct sof_ipc_comp_dai *)comp;
+	struct ipc_config_dai *dai = spec;
 	struct dai_data *dd;
 	uint32_t dir, caps, dma_dev;
-	int ret;
 
 	comp_cl_dbg(&comp_dai, "dai_new()");
 
-	dev = comp_alloc(drv, COMP_SIZE(struct sof_ipc_comp_dai));
+	dev = comp_alloc(drv, sizeof(*dev));
 	if (!dev)
 		return NULL;
-
-	dai = COMP_GET_IPC(dev, sof_ipc_comp_dai);
-	ret = memcpy_s(dai, sizeof(*dai), ipc_dai,
-		       sizeof(struct sof_ipc_comp_dai));
-	assert(!ret);
+	dev->ipc_config = *config;
 
 	dd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*dd));
 	if (!dd) {
@@ -212,6 +209,7 @@ static struct comp_dev *dai_new(const struct comp_driver *drv,
 		comp_cl_err(&comp_dai, "dai_new(): dai_get() failed to create DAI.");
 		goto error;
 	}
+	dd->ipc_config = *dai;
 
 	/* request GP LP DMA with shared access privilege */
 	dir = dai->direction == SOF_IPC_STREAM_PLAYBACK ?
@@ -270,7 +268,6 @@ static int dai_comp_get_hw_params(struct comp_dev *dev,
 				  struct sof_ipc_stream_params *params,
 				  int dir)
 {
-	struct sof_ipc_comp_config *dconfig = dev_comp_config(dev);
 	struct dai_data *dd = comp_get_drvdata(dev);
 	int ret = 0;
 
@@ -290,7 +287,7 @@ static int dai_comp_get_hw_params(struct comp_dev *dev,
 	 * frame_fmt hardware parameter as DAI component is able to convert
 	 * stream with different frame_fmt's (using pcm converter)
 	 */
-	params->frame_fmt = dconfig->frame_fmt;
+	params->frame_fmt = dev->ipc_config.frame_fmt;
 
 	return 0;
 }
@@ -347,9 +344,8 @@ static int dai_verify_params(struct comp_dev *dev,
 
 static void dai_data_config(struct comp_dev *dev)
 {
-	struct sof_ipc_comp_config *dconfig = dev_comp_config(dev);
 	struct dai_data *dd = comp_get_drvdata(dev);
-	struct sof_ipc_comp_dai *dai = COMP_GET_IPC(dev, sof_ipc_comp_dai);
+	struct ipc_config_dai *dai = &dd->ipc_config;
 
 	assert(dd->dai_config);
 
@@ -381,8 +377,8 @@ static void dai_data_config(struct comp_dev *dev)
 		/* SDW HW FIFO always requires 32bit MSB aligned sample data for
 		 * all formats, such as 8/16/24/32 bits.
 		 */
-		dconfig->frame_fmt = SOF_IPC_FRAME_S32_LE;
-		dd->dma_buffer->stream.frame_fmt = dconfig->frame_fmt;
+		dev->ipc_config.frame_fmt = SOF_IPC_FRAME_S32_LE;
+		dd->dma_buffer->stream.frame_fmt = dev->ipc_config.frame_fmt;
 
 		dd->config.burst_elems =
 			dd->dai->plat_data.fifo[dai->direction].depth;
@@ -533,7 +529,6 @@ static int dai_capture_params(struct comp_dev *dev, uint32_t period_bytes,
 static int dai_params(struct comp_dev *dev,
 		      struct sof_ipc_stream_params *params)
 {
-	struct sof_ipc_comp_config *dconfig = dev_comp_config(dev);
 	struct sof_ipc_stream_params hw_params = *params;
 	struct dai_data *dd = comp_get_drvdata(dev);
 	uint32_t frame_size;
@@ -608,7 +603,7 @@ static int dai_params(struct comp_dev *dev,
 	}
 
 	/* calculate frame size */
-	frame_size = get_frame_bytes(dconfig->frame_fmt,
+	frame_size = get_frame_bytes(dev->ipc_config.frame_fmt,
 				     dd->local_buffer->stream.channels);
 
 	/* calculate period size */
@@ -645,7 +640,7 @@ static int dai_params(struct comp_dev *dev,
 		 * component is able to convert stream with different
 		 * frame_fmt's (using pcm converter).
 		 */
-		hw_params.frame_fmt = dconfig->frame_fmt;
+		hw_params.frame_fmt = dev->ipc_config.frame_fmt;
 		buffer_set_params(dd->dma_buffer, &hw_params,
 				  BUFFER_UPDATE_FORCE);
 	}
@@ -658,7 +653,7 @@ static int dai_params(struct comp_dev *dev,
 static int dai_config_dma_channel(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
-	struct sof_ipc_comp_dai *dai = COMP_GET_IPC(dev, sof_ipc_comp_dai);
+	struct ipc_config_dai *dai = &dd->ipc_config;
 	int channel;
 	int handshake;
 
@@ -701,6 +696,14 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
 	int ret;
+
+	comp_info(dev, "dai_config() check dai type = %d index = %d dd %p",
+			  config->type, config->dai_index, dd);
+
+	/* ignore if message not for this DAI id/type */
+	if (dd->ipc_config.dai_index != config->dai_index ||
+	    dd->ipc_config.type != config->type)
+		return 0;
 
 	comp_info(dev, "dai_config() dai type = %d index = %d dd %p",
 		  config->type, config->dai_index, dd);
@@ -1176,7 +1179,7 @@ static int dai_ts_config(struct comp_dev *dev)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
 	struct timestamp_cfg *cfg = &dd->ts_config;
-	struct sof_ipc_comp_dai *dai = COMP_GET_IPC(dev, sof_ipc_comp_dai);
+	struct ipc_config_dai *dai = &dd->ipc_config;
 
 	comp_dbg(dev, "dai_ts_config()");
 	if (!dd->chan) {

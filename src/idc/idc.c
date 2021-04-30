@@ -190,7 +190,7 @@ static int idc_prepare(uint32_t comp_id)
 					    SOF_UUID(idc_comp_task_uuid),
 					    SOF_SCHEDULE_LL_TIMER,
 					    dev->priority, comp_task, dev,
-					    dev->comp.core, 0);
+					    dev->ipc_config.core, 0);
 		if (ret < 0) {
 			rfree(dev->task);
 			goto out;

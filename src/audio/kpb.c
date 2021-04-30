@@ -18,6 +18,7 @@
 #include <sof/audio/component_ext.h>
 #include <sof/audio/pipeline.h>
 #include <sof/audio/kpb.h>
+#include <sof/audio/ipc-config.h>
 #include <sof/common.h>
 #include <sof/debug/panic.h>
 #include <sof/ipc/msg.h>
@@ -120,10 +121,10 @@ static uint64_t kpb_task_deadline(void *data)
  * \return: a pointer to newly created KPB component.
  */
 static struct comp_dev *kpb_new(const struct comp_driver *drv,
-				struct sof_ipc_comp *comp)
+				struct comp_ipc_config *config,
+				void *spec)
 {
-	struct sof_ipc_comp_process *ipc_process =
-					(struct sof_ipc_comp_process *)comp;
+	struct ipc_config_process *ipc_process = spec;
 	struct task_ops ops = {
 		.run = kpb_draining_task,
 		.get_deadline = kpb_task_deadline,
@@ -135,14 +136,10 @@ static struct comp_dev *kpb_new(const struct comp_driver *drv,
 
 	comp_cl_info(&comp_kpb, "kpb_new()");
 
-	dev = comp_alloc(drv, COMP_SIZE(struct sof_ipc_comp_process));
+	dev = comp_alloc(drv, sizeof(*dev));
 	if (!dev)
 		return NULL;
-
-	ret = memcpy_s(COMP_GET_IPC(dev, sof_ipc_comp_process),
-		       sizeof(struct sof_ipc_comp_process),
-		       comp, sizeof(struct sof_ipc_comp_process));
-	assert(!ret);
+	dev->ipc_config = *config;
 
 	kpb = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*kpb));
 	if (!kpb) {

@@ -21,6 +21,7 @@
 #include <sof/audio/buffer.h>
 #include <sof/audio/component.h>
 #include <sof/audio/pipeline.h>
+#include <sof/audio/ipc-config.h>
 #include <sof/audio/tdfb/tdfb_comp.h>
 #include <sof/math/fir_generic.h>
 #include <sof/math/fir_hifi2ep.h>
@@ -242,10 +243,10 @@ static int tdfb_setup(struct tdfb_comp_data *cd, int source_nch, int sink_nch)
  */
 
 static struct comp_dev *tdfb_new(const struct comp_driver *drv,
-				 struct sof_ipc_comp *comp)
+				 struct comp_ipc_config *config,
+				 void *spec)
 {
-	struct sof_ipc_comp_process *ipc_tdfb =
-		(struct sof_ipc_comp_process *)comp;
+	struct ipc_config_process *ipc_tdfb = spec;
 	struct comp_dev *dev;
 	struct tdfb_comp_data *cd;
 	size_t bs = ipc_tdfb->size;
@@ -261,13 +262,10 @@ static struct comp_dev *tdfb_new(const struct comp_driver *drv,
 		return NULL;
 	}
 
-	dev = comp_alloc(drv, COMP_SIZE(struct sof_ipc_comp_process));
+	dev = comp_alloc(drv, sizeof(*dev));
 	if (!dev)
 		return NULL;
-
-	memcpy_s(COMP_GET_IPC(dev, sof_ipc_comp_process),
-		 sizeof(struct sof_ipc_comp_process), ipc_tdfb,
-		 sizeof(struct sof_ipc_comp_process));
+	dev->ipc_config = *config;
 
 	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
 	if (!cd) {

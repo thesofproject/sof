@@ -8,6 +8,7 @@
 #include <sof/audio/buffer.h>
 #include <sof/audio/component_ext.h>
 #include <sof/audio/pipeline.h>
+#include <sof/audio/ipc-config.h>
 #include <sof/common.h>
 #include <sof/drivers/idc.h>
 #include <sof/drivers/interrupt.h>
@@ -34,6 +35,16 @@
 #include <stdint.h>
 
 extern struct tr_ctx comp_tr;
+
+/**
+ * Retrieves component config data from component ipc.
+ * @param comp Component ipc data.
+ * @return Pointer to the component config data.
+ */
+static inline struct sof_ipc_comp_config *comp_config(struct sof_ipc_comp *comp)
+{
+	return (struct sof_ipc_comp_config *)(comp + 1);
+}
 
 void ipc_build_stream_posn(struct sof_ipc_stream_posn *posn, uint32_t type,
 			   uint32_t id)
@@ -241,8 +252,133 @@ out:
 	return drv;
 }
 
+/* build generic IPC data for all components */
+static void comp_common_builder(struct sof_ipc_comp *comp,
+				struct comp_ipc_config *config)
+{
+	struct sof_ipc_comp_config *ipc_config;
+
+	/* create the new component */
+	memset(config, 0, sizeof(*config));
+	config->core = comp->core;
+	config->id = comp->id;
+	config->pipeline_id = comp->pipeline_id;
+	config->type = comp->type;
+
+	/* buffers dont have the following data */
+	if (comp->type != SOF_COMP_BUFFER) {
+		/* ipc common config is always after sof_ipc_comp */
+		ipc_config = (struct sof_ipc_comp_config *)(comp + 1);
+		config->frame_fmt = ipc_config->frame_fmt;
+		config->periods_sink = ipc_config->periods_sink;
+		config->periods_source = ipc_config->periods_source;
+		config->xrun_action = ipc_config->xrun_action;
+	}
+}
+/*
+ * Stores all the "legacy" init IPC data locally.
+ */
+union ipc_config_specific {
+	struct ipc_config_host host;
+	struct ipc_config_dai dai;
+	struct ipc_config_volume volume;
+	struct ipc_config_src src;
+	struct ipc_config_asrc asrc;
+	struct ipc_config_tone tone;
+	struct ipc_config_process process;
+	struct ipc_comp_file file;
+} __attribute__((packed, aligned(4)));
+
+/* build component specific data */
+static void comp_specific_builder(struct sof_ipc_comp *comp,
+				  union ipc_config_specific *config)
+{
+#if CONFIG_LIBRARY
+	struct sof_ipc_comp_file *file = (struct sof_ipc_comp_file *)comp;
+#else
+	struct sof_ipc_comp_host *host = (struct sof_ipc_comp_host *)comp;
+	struct sof_ipc_comp_dai *dai = (struct sof_ipc_comp_dai *)comp;
+#endif
+	struct sof_ipc_comp_volume *vol = (struct sof_ipc_comp_volume *)comp;
+	struct sof_ipc_comp_process *proc = (struct sof_ipc_comp_process *)comp;
+	struct sof_ipc_comp_src *src = (struct sof_ipc_comp_src *)comp;
+	struct sof_ipc_comp_tone *tone = (struct sof_ipc_comp_tone *)comp;
+
+	memset(config, 0, sizeof(*config));
+
+	switch (comp->type) {
+#if CONFIG_LIBRARY
+	/* test bench maps host and DAIs to a file */
+	case SOF_COMP_HOST:
+	case SOF_COMP_SG_HOST:
+	case SOF_COMP_DAI:
+	case SOF_COMP_SG_DAI:
+		config->file.channels = file->channels;
+		config->file.fn = file->fn;
+		config->file.frame_fmt = file->frame_fmt;
+		config->file.mode = file->mode;
+		config->file.rate = file->rate;
+		break;
+#else
+	case SOF_COMP_HOST:
+	case SOF_COMP_SG_HOST:
+		config->host.direction = host->direction;
+		config->host.no_irq = host->no_irq;
+		config->host.dmac_config = host->dmac_config;
+		break;
+	case SOF_COMP_DAI:
+	case SOF_COMP_SG_DAI:
+		config->dai.dai_index = dai->dai_index;
+		config->dai.direction = dai->direction;
+		config->dai.type = dai->type;
+		break;
+#endif
+	case SOF_COMP_VOLUME:
+		config->volume.channels = vol->channels;
+		config->volume.initial_ramp = vol->initial_ramp;
+		config->volume.max_value = vol->max_value;
+		config->volume.min_value = vol->min_value;
+		config->volume.ramp = vol->ramp;
+		break;
+	case SOF_COMP_SRC:
+		config->src.rate_mask = src->rate_mask;
+		config->src.sink_rate = src->sink_rate;
+		config->src.source_rate = src->source_rate;
+		break;
+	case SOF_COMP_TONE:
+		config->tone.ampl_mult = tone->ampl_mult;
+		config->tone.amplitude = tone->amplitude;
+		config->tone.freq_mult = tone->freq_mult;
+		config->tone.frequency = tone->frequency;
+		config->tone.length = tone->length;
+		config->tone.period = tone->period;
+		config->tone.ramp_step = tone->ramp_step;
+		config->tone.repeats = tone->repeats;
+		config->tone.sample_rate = tone->sample_rate;
+		break;
+	case SOF_COMP_EQ_IIR:
+	case SOF_COMP_EQ_FIR:
+	case SOF_COMP_KEYWORD_DETECT:
+	case SOF_COMP_KPB:
+	case SOF_COMP_SELECTOR:
+	case SOF_COMP_DEMUX:
+	case SOF_COMP_MUX:
+	case SOF_COMP_ASRC:
+	case SOF_COMP_DCBLOCK:
+	case SOF_COMP_SMART_AMP:
+		config->process.type = proc->type;
+		config->process.size = proc->size;
+		config->process.data = proc->data;
+		break;
+	default:
+		break;
+	}
+}
+
 struct comp_dev *comp_new(struct sof_ipc_comp *comp)
 {
+	struct comp_ipc_config config;
+	union ipc_config_specific spec;
 	struct comp_dev *cdev;
 	const struct comp_driver *drv;
 
@@ -263,8 +399,10 @@ struct comp_dev *comp_new(struct sof_ipc_comp *comp)
 	tr_info(&comp_tr, "comp new %pU type %d id %d.%d",
 		drv->tctx->uuid_p, comp->type, comp->pipeline_id, comp->id);
 
-	/* create the new component */
-	cdev = drv->ops.create(drv, comp);
+	/* build the component */
+	comp_common_builder(comp, &config);
+	comp_specific_builder(comp, &spec);
+	cdev = drv->ops.create(drv, &config, &spec);
 	if (!cdev) {
 		comp_cl_err(drv, "comp_new(): unable to create the new component");
 		return NULL;
@@ -446,12 +584,14 @@ int ipc_pipeline_complete(struct ipc *ipc, uint32_t comp_id)
 int ipc_comp_dai_config(struct ipc *ipc, struct sof_ipc_dai_config *config)
 {
 	bool comp_on_core[CONFIG_CORE_COUNT] = { false };
-	struct sof_ipc_comp_dai *dai;
 	struct sof_ipc_reply reply;
 	struct ipc_comp_dev *icd;
 	struct list_item *clist;
 	int ret = -ENODEV;
 	int i;
+
+	tr_info(&ipc_tr, "ipc_comp_dai_config() dai type = %d index = %d",
+		config->type, config->dai_index);
 
 	/* for each component */
 	list_for_item(clist, &ipc->comp_list) {
@@ -469,17 +609,10 @@ int ipc_comp_dai_config(struct ipc *ipc, struct sof_ipc_dai_config *config)
 
 		if (dev_comp_type(icd->cd) == SOF_COMP_DAI ||
 		    dev_comp_type(icd->cd) == SOF_COMP_SG_DAI) {
-			dai = COMP_GET_IPC(icd->cd, sof_ipc_comp_dai);
-			/*
-			 * set config if comp dai_index matches
-			 * config dai_index.
-			 */
-			if (dai->dai_index == config->dai_index &&
-			    dai->type == config->type) {
-				ret = comp_dai_config(icd->cd, config);
-				if (ret < 0)
-					break;
-			}
+
+			ret = comp_dai_config(icd->cd, config);
+			if (ret < 0)
+				break;
 		}
 	}
 

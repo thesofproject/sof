@@ -134,10 +134,10 @@ struct dai_hw_params;
 #define trace_comp_get_tr_ctx(comp_p) (&(comp_p)->tctx)
 
 /** \brief Retrieves id (pipe id) from the component device */
-#define trace_comp_get_id(comp_p) ((comp_p)->comp.pipeline_id)
+#define trace_comp_get_id(comp_p) ((comp_p)->ipc_config.pipeline_id)
 
 /** \brief Retrieves subid (comp id) from the component device */
-#define trace_comp_get_subid(comp_p) ((comp_p)->comp.id)
+#define trace_comp_get_subid(comp_p) ((comp_p)->ipc_config.id)
 
 /* class (driver) level (no device object) tracing */
 
@@ -223,6 +223,8 @@ enum comp_copy_type {
 };
 
 struct comp_driver;
+struct comp_ipc_config;
+union ipc_config_specific;
 
 /**
  * Audio component operations.
@@ -247,7 +249,8 @@ struct comp_ops {
 	 * All parameters should be initialized to their default values.
 	 */
 	struct comp_dev *(*create)(const struct comp_driver *drv,
-				   struct sof_ipc_comp *comp);
+				   struct comp_ipc_config *ipc_config,
+				   void *ipc_specific_config);
 
 	/**
 	 * Called to delete the specified component device.
@@ -418,6 +421,20 @@ struct comp_driver_info {
 };
 
 /**
+ * Audio component base configuration from IPC at creation.
+ */
+struct comp_ipc_config {
+	uint32_t core;		/**< core we run on */
+	uint32_t id;		/**< component id */
+	uint32_t pipeline_id;	/**< component pipeline id */
+	enum sof_comp_type type;	/**< component type */
+	uint32_t periods_sink;	/**< 0 means variable */
+	uint32_t periods_source;/**< 0 means variable */
+	uint32_t frame_fmt;	/**< SOF_IPC_FRAME_ */
+	uint32_t xrun_action;	/**< action we should take on XRUN */
+};
+
+/**
  * Audio component base device "class"
  * - used by other component types.
  */
@@ -448,6 +465,7 @@ struct comp_dev {
 	bool is_shared;		/**< indicates whether component is shared
 				  *  across cores
 				  */
+	struct comp_ipc_config ipc_config;	/**< Component IPC configuration */
 	struct tr_ctx tctx;	/**< trace settings */
 
 	/* common runtime configuration for downstream/upstream */
@@ -465,12 +483,6 @@ struct comp_dev {
 #if CONFIG_PERFORMANCE_COUNTERS
 	struct perf_cnt_data pcd;
 #endif
-
-	/**
-	 * IPC config object header - MUST be at end as it's
-	 * variable size/type
-	 */
-	struct sof_ipc_comp comp;
 };
 
 /** @}*/
@@ -492,24 +504,6 @@ struct comp_copy_limits {
 	int sink_frame_bytes;
 };
 
-/** \brief Computes size of the component device including ipc config. */
-#define COMP_SIZE(x) \
-	(sizeof(struct comp_dev) - sizeof(struct sof_ipc_comp) + sizeof(x))
-
-/** \brief Retrieves component device IPC configuration. */
-#define COMP_GET_IPC(dev, type) \
-	(struct type *)(&dev->comp)
-
-/**
- * Retrieves component from device.
- * @param dev Device.
- * @return Pointer to the component.
- */
-static inline struct sof_ipc_comp *dev_comp(struct comp_dev *dev)
-{
-	return &dev->comp;
-}
-
 /**
  * Retrieves Component id from device.
  * @param dev Device.
@@ -517,7 +511,7 @@ static inline struct sof_ipc_comp *dev_comp(struct comp_dev *dev)
  */
 static inline uint32_t dev_comp_id(const struct comp_dev *dev)
 {
-	return dev->comp.id;
+	return dev->ipc_config.id;
 }
 
 /**
@@ -527,7 +521,7 @@ static inline uint32_t dev_comp_id(const struct comp_dev *dev)
  */
 static inline uint32_t dev_comp_pipe_id(const struct comp_dev *dev)
 {
-	return dev->comp.pipeline_id;
+	return dev->ipc_config.pipeline_id;
 }
 
 /**
@@ -537,17 +531,7 @@ static inline uint32_t dev_comp_pipe_id(const struct comp_dev *dev)
  */
 static inline enum sof_comp_type dev_comp_type(const struct comp_dev *dev)
 {
-	return dev->comp.type;
-}
-
-/**
- * Retrieves component config data from device.
- * @param dev Device.
- * @return Pointer to the component data.
- */
-static inline struct sof_ipc_comp_config *dev_comp_config(struct comp_dev *dev)
-{
-	return (struct sof_ipc_comp_config *)(&dev->comp + 1);
+	return dev->ipc_config.type;
 }
 
 /**
@@ -571,16 +555,6 @@ static inline struct comp_dev *comp_alloc(const struct comp_driver *drv,
 		 trace_comp_drv_get_tr_ctx(dev->drv), sizeof(struct tr_ctx));
 
 	return dev;
-}
-
-/**
- * Retrieves component config data from component ipc.
- * @param comp Component ipc data.
- * @return Pointer to the component config data.
- */
-static inline struct sof_ipc_comp_config *comp_config(struct sof_ipc_comp *comp)
-{
-	return (struct sof_ipc_comp_config *)(comp + 1);
 }
 
 /**
@@ -777,7 +751,7 @@ static inline int comp_get_state(struct comp_dev *req_dev, struct comp_dev *dev)
 	/* we should not invalidate data when components are on the same
 	 * core, because we could invalidate data not previously writebacked
 	 */
-	if (req_dev->comp.core != dev->comp.core)
+	if (req_dev->ipc_config.core != dev->ipc_config.core)
 		comp_invalidate(dev);
 
 	return dev->state;

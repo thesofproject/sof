@@ -16,6 +16,7 @@
 
 #include <sof/audio/buffer.h>
 #include <sof/audio/component.h>
+#include <sof/audio/ipc-config.h>
 #include <sof/audio/codec_adapter/codec_adapter.h>
 #include <sof/audio/pipeline.h>
 #include <sof/common.h>
@@ -33,34 +34,30 @@ int validate_setup_config(struct ca_config *cfg);
  * \return: a pointer to newly created codec adapter component.
  */
 struct comp_dev *codec_adapter_new(const struct comp_driver *drv,
-				   struct sof_ipc_comp *comp,
-				   struct codec_interface *interface)
+				   struct comp_ipc_config *config,
+				   struct codec_interface *interface,
+				   void *spec)
 {
 	int ret;
 	struct comp_dev *dev;
 	struct comp_data *cd;
-	struct sof_ipc_comp_process *ipc_codec_adapter =
-		(struct sof_ipc_comp_process *)comp;
+	struct ipc_config_process *ipc_codec_adapter = spec;
 
 	comp_cl_dbg(drv, "codec_adapter_new() start");
 
-	if (!drv || !comp) {
-		comp_cl_err(drv, "codec_adapter_new(), wrong input params! drv = %x comp = %x",
-			    (uint32_t)drv, (uint32_t)comp);
+	if (!drv || !config) {
+		comp_cl_err(drv, "codec_adapter_new(), wrong input params! drv = %x config = %x",
+			    (uint32_t)drv, (uint32_t)config);
 		return NULL;
 	}
 
-	dev = comp_alloc(drv, COMP_SIZE(struct sof_ipc_comp_process));
+	dev = comp_alloc(drv, sizeof(*dev));
 	if (!dev) {
 		comp_cl_err(drv, "codec_adapter_new(), failed to allocate memory for comp_dev");
 		return NULL;
 	}
-
+	dev->ipc_config = *config;
 	dev->drv = drv;
-
-	ret = memcpy_s(&dev->comp, sizeof(struct sof_ipc_comp_process),
-		       comp, sizeof(struct sof_ipc_comp_process));
-	assert(!ret);
 
 	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
 	if (!cd) {
@@ -70,6 +67,7 @@ struct comp_dev *codec_adapter_new(const struct comp_driver *drv,
 	}
 
 	comp_set_drvdata(dev, cd);
+
 	/* Copy setup config */
 	ret = load_setup_config(dev, ipc_codec_adapter->data, ipc_codec_adapter->size);
 	if (ret) {

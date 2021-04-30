@@ -29,9 +29,10 @@
 
 #define DECLARE_CODEC_ADAPTER(adapter, uuid, tr) \
 static struct comp_dev *adapter_shim_new(const struct comp_driver *drv, \
-					 struct sof_ipc_comp *comp)\
+					 struct comp_ipc_config *config, \
+					 void *spec) \
 { \
-	return codec_adapter_new(drv, comp, &(adapter));\
+	return codec_adapter_new(drv, config, &(adapter), spec);\
 } \
 \
 static const struct comp_driver comp_codec_adapter = { \
@@ -250,8 +251,9 @@ int codec_reset(struct comp_dev *dev);
 int codec_free(struct comp_dev *dev);
 
 struct comp_dev *codec_adapter_new(const struct comp_driver *drv,
-				   struct sof_ipc_comp *comp,
-				   struct codec_interface *interface);
+				   struct comp_ipc_config *config,
+				   struct codec_interface *interface,
+				   void *spec);
 int codec_adapter_prepare(struct comp_dev *dev);
 int codec_adapter_params(struct comp_dev *dev, struct sof_ipc_stream_params *params);
 int codec_adapter_copy(struct comp_dev *dev);

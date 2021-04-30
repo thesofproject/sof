@@ -7,6 +7,7 @@
 #include <sof/audio/component.h>
 #include <sof/audio/format.h>
 #include <sof/audio/pipeline.h>
+#include <sof/audio/ipc-config.h>
 #include <sof/debug/panic.h>
 #include <sof/ipc/msg.h>
 #include <sof/lib/alloc.h>
@@ -58,6 +59,7 @@ struct comp_data {
 	struct asrc_farrow *asrc_obj;	/* ASRC core data */
 	struct comp_dev *dai_dev;	/* Associated DAI component */
 	enum asrc_operation_mode mode;  /* Control for push or pull mode */
+	struct ipc_config_asrc ipc_config;
 	uint64_t ts;
 	uint32_t sink_rate;	/* Sample rate in Hz */
 	uint32_t source_rate;	/* Sample rate in Hz */
@@ -247,13 +249,12 @@ static void src_copy_s16(struct comp_dev *dev,
 }
 
 static struct comp_dev *asrc_new(const struct comp_driver *drv,
-				 struct sof_ipc_comp *comp)
+				 struct comp_ipc_config *config,
+				 void *spec)
 {
 	struct comp_dev *dev;
-	struct sof_ipc_comp_asrc *asrc;
-	struct sof_ipc_comp_asrc *ipc_asrc = (struct sof_ipc_comp_asrc *)comp;
+	struct ipc_config_asrc *ipc_asrc = spec;
 	struct comp_data *cd;
-	int err;
 
 	comp_cl_info(&comp_asrc, "asrc_new()");
 
@@ -267,14 +268,10 @@ static struct comp_dev *asrc_new(const struct comp_driver *drv,
 		return NULL;
 	}
 
-	dev = comp_alloc(drv, COMP_SIZE(struct sof_ipc_comp_asrc));
+	dev = comp_alloc(drv, sizeof(*dev));
 	if (!dev)
 		return NULL;
-
-	asrc = COMP_GET_IPC(dev, sof_ipc_comp_asrc);
-	err = memcpy_s(asrc, sizeof(*asrc), ipc_asrc,
-		       sizeof(struct sof_ipc_comp_asrc));
-	assert(!err);
+	dev->ipc_config = *config;
 
 	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
 	if (!cd) {
@@ -283,18 +280,19 @@ static struct comp_dev *asrc_new(const struct comp_driver *drv,
 	}
 
 	comp_set_drvdata(dev, cd);
+	cd->ipc_config = *ipc_asrc;
 
 	/* Get operation mode:
 	 * With OM_PUSH (0) use fixed input frames count, variable output.
 	 * With OM_PULL (1) use fixed output frames count, variable input.
 	 */
-	cd->mode = asrc->operation_mode;
+	cd->mode = ipc_asrc->operation_mode;
 
 	/* Use skew tracking for DAI if it was requested. The skew
 	 * is initialized here to zero. It is set later in prepare() to
 	 * to 1.0 if there is no filtered skew factor from previous run.
 	 */
-	cd->track_drift = asrc->asynchronous_mode;
+	cd->track_drift = ipc_asrc->asynchronous_mode;
 	cd->skew = 0;
 
 	dev->state = COMP_STATE_READY;
@@ -337,7 +335,7 @@ static int asrc_cmd(struct comp_dev *dev, int cmd, void *data,
 static int asrc_verify_params(struct comp_dev *dev,
 			      struct sof_ipc_stream_params *params)
 {
-	struct sof_ipc_comp_asrc *asrc = COMP_GET_IPC(dev, sof_ipc_comp_asrc);
+	struct comp_data *cd = comp_get_drvdata(dev);
 	int ret;
 
 	comp_dbg(dev, "asrc_verify_params()");
@@ -348,13 +346,15 @@ static int asrc_verify_params(struct comp_dev *dev,
 	 * src->source/sink_rate = 0 means that source/sink rate can vary.
 	 */
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
-		if (params->rate != asrc->source_rate && asrc->source_rate) {
-			comp_err(dev, "asrc_verify_params(): runtime stream pcm rate does not match rate fetched from ipc.");
+		if (cd->ipc_config.source_rate && (params->rate != cd->ipc_config.source_rate)) {
+			comp_err(dev, "asrc_verify_params(): runtime stream pcm rate %u does not match rate %u fetched from ipc.",
+				 params->rate, cd->ipc_config.source_rate);
 			return -EINVAL;
 		}
 	} else {
-		if (params->rate != asrc->sink_rate && asrc->sink_rate) {
-			comp_err(dev, "asrc_verify_params(): runtime stream pcm rate does not match rate fetched from ipc.");
+		if (cd->ipc_config.sink_rate && (params->rate != cd->ipc_config.sink_rate)) {
+			comp_err(dev, "asrc_verify_params(): runtime stream pcm rate %u does not match rate %u fetched from ipc.",
+				 params->rate, cd->ipc_config.sink_rate);
 			return -EINVAL;
 		}
 	}
@@ -555,7 +555,6 @@ static int asrc_trigger(struct comp_dev *dev, int cmd)
 static int asrc_prepare(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	struct sof_ipc_comp_config *config = dev_comp_config(dev);
 	struct comp_buffer *sinkb;
 	struct comp_buffer *sourceb;
 	uint32_t source_period_bytes;
@@ -593,9 +592,9 @@ static int asrc_prepare(struct comp_dev *dev)
 	sink_period_bytes = audio_stream_period_bytes(&sinkb->stream,
 						      cd->sink_frames);
 
-	if (sinkb->stream.size < config->periods_sink * sink_period_bytes) {
+	if (sinkb->stream.size < dev->ipc_config.periods_sink * sink_period_bytes) {
 		comp_err(dev, "asrc_prepare(): sink buffer size %d is insufficient < %d * %d",
-			 sinkb->stream.size, config->periods_sink, sink_period_bytes);
+			 sinkb->stream.size, dev->ipc_config.periods_sink, sink_period_bytes);
 		ret = -ENOMEM;
 		goto err;
 	}

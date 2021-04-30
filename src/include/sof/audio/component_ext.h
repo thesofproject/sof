@@ -71,8 +71,8 @@ static inline void comp_shared_commit(struct comp_dev *dev)
 static inline int comp_params_remote(struct comp_dev *dev,
 				     struct sof_ipc_stream_params *params)
 {
-	struct idc_msg msg = { IDC_MSG_PARAMS, IDC_MSG_PARAMS_EXT(dev->comp.id),
-		dev->comp.core, sizeof(*params), params, };
+	struct idc_msg msg = { IDC_MSG_PARAMS, IDC_MSG_PARAMS_EXT(dev->ipc_config.id),
+		dev->ipc_config.core, sizeof(*params), params, };
 
 	return idc_send_msg(&msg, IDC_BLOCKING);
 }
@@ -83,7 +83,7 @@ static inline int comp_params(struct comp_dev *dev,
 {
 	int ret = 0;
 
-	if (dev->is_shared && !cpu_is_me(dev->comp.core)) {
+	if (dev->is_shared && !cpu_is_me(dev->ipc_config.core)) {
 		ret = comp_params_remote(dev, params);
 	} else {
 		if (dev->drv->ops.params) {
@@ -146,7 +146,7 @@ out:
 static inline int comp_trigger_remote(struct comp_dev *dev, int cmd)
 {
 	struct idc_msg msg = { IDC_MSG_TRIGGER,
-		IDC_MSG_TRIGGER_EXT(dev->comp.id), dev->comp.core, sizeof(cmd),
+		IDC_MSG_TRIGGER_EXT(dev->ipc_config.id), dev->ipc_config.core, sizeof(cmd),
 		&cmd, };
 
 	return idc_send_msg(&msg, IDC_BLOCKING);
@@ -159,7 +159,7 @@ static inline int comp_trigger(struct comp_dev *dev, int cmd)
 
 	assert(dev->drv->ops.trigger);
 
-	ret = (dev->is_shared && !cpu_is_me(dev->comp.core)) ?
+	ret = (dev->is_shared && !cpu_is_me(dev->ipc_config.core)) ?
 		comp_trigger_remote(dev, cmd) : dev->drv->ops.trigger(dev, cmd);
 
 	comp_shared_commit(dev);
@@ -171,7 +171,7 @@ static inline int comp_trigger(struct comp_dev *dev, int cmd)
 static inline int comp_prepare_remote(struct comp_dev *dev)
 {
 	struct idc_msg msg = { IDC_MSG_PREPARE,
-		IDC_MSG_PREPARE_EXT(dev->comp.id), dev->comp.core, };
+		IDC_MSG_PREPARE_EXT(dev->ipc_config.id), dev->ipc_config.core, };
 
 	return idc_send_msg(&msg, IDC_BLOCKING);
 }
@@ -182,7 +182,7 @@ static inline int comp_prepare(struct comp_dev *dev)
 	int ret = 0;
 
 	if (dev->drv->ops.prepare)
-		ret = (dev->is_shared && !cpu_is_me(dev->comp.core)) ?
+		ret = (dev->is_shared && !cpu_is_me(dev->ipc_config.core)) ?
 			comp_prepare_remote(dev) : dev->drv->ops.prepare(dev);
 
 	comp_shared_commit(dev);
@@ -198,7 +198,7 @@ static inline int comp_copy(struct comp_dev *dev)
 	assert(dev->drv->ops.copy);
 
 	/* copy only if we are the owner of the component */
-	if (cpu_is_me(dev->comp.core)) {
+	if (cpu_is_me(dev->ipc_config.core)) {
 		perf_cnt_init(&dev->pcd);
 		ret = dev->drv->ops.copy(dev);
 		perf_cnt_stamp(&dev->pcd, comp_perf_info, dev);
@@ -240,7 +240,7 @@ static inline int comp_set_attribute(struct comp_dev *dev, uint32_t type,
 static inline int comp_reset_remote(struct comp_dev *dev)
 {
 	struct idc_msg msg = { IDC_MSG_RESET,
-		IDC_MSG_RESET_EXT(dev->comp.id), dev->comp.core, };
+		IDC_MSG_RESET_EXT(dev->ipc_config.id), dev->ipc_config.core, };
 
 	return idc_send_msg(&msg, IDC_BLOCKING);
 }
@@ -255,7 +255,7 @@ static inline int comp_reset(struct comp_dev *dev)
 	int ret = 0;
 
 	if (dev->drv->ops.reset)
-		ret = (dev->is_shared && !cpu_is_me(dev->comp.core)) ?
+		ret = (dev->is_shared && !cpu_is_me(dev->ipc_config.core)) ?
 			comp_reset_remote(dev) : dev->drv->ops.reset(dev);
 
 	comp_shared_commit(dev);
