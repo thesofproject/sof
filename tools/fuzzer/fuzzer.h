@@ -11,6 +11,7 @@
 #define __FUZZER_H__
 
 #include <stdint.h>
+#include <sof/common.h>
 
 #define DEBUG_MSG_LEN 512
 
@@ -29,8 +30,6 @@
 #define IRQ_NONE	0
 #define IRQ_WAKE_THREAD	1
 #define IRQ_HANDLED	2
-
-#define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
 
 struct fuzz;
 struct fuzz_platform;
