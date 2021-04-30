@@ -15,12 +15,12 @@
 #include <sof/lib/memory.h>
 #include <stdint.h>
 
-static inline uint16_t shim_read16(uint16_t reg)
+static inline uint16_t shim_read16(uint32_t reg)
 {
 	return *((volatile uint16_t*)(SHIM_BASE + reg));
 }
 
-static inline void shim_write16(uint16_t reg, uint16_t val)
+static inline void shim_write16(uint32_t reg, uint16_t val)
 {
 	*((volatile uint16_t*)(SHIM_BASE + reg)) = val;
 }
