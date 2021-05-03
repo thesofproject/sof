@@ -4,10 +4,10 @@
 # also see
 # https://google.github.io/oss-fuzz/getting-started/continuous-integration/
 #
-# Build and run fuzzer for 5s to check if it runs properly. If it consistently
-# fails in under 5s you probably did something wrong
+# Build and run fuzzer for 5s just to check that it runs properly. If it
+# consistently fails in under 5s you probably did something wrong
 
-name: Scant fuzz compile
+name: IPC fuzzer compile test
 
 # 'workflow_dispatch' allows running this workflow manually from the
 # 'Actions' tab
@@ -16,7 +16,7 @@ name: Scant fuzz compile
 on: [pull_request, workflow_dispatch]
 
 jobs:
-  scant-fuzzer-build:
+  ipc-fuzzer-build:
     runs-on: ubuntu-latest
     steps:
       - name: Build Fuzzers
