@@ -88,7 +88,6 @@ static int ext_man_build(const struct module *module,
 {
 	struct ext_man_header ext_man;
 	const Elf32_Shdr *section;
-	uint8_t *buffer = NULL;
 	uint8_t *sec_buffer = NULL;
 	size_t offset;
 	int ret;
@@ -114,20 +113,17 @@ static int ext_man_build(const struct module *module,
 		goto out;
 	}
 
-	/* alloc buffer for ext_man */
-	buffer = calloc(1, ext_man.full_size);
-	if (!buffer) {
+	*dst_buff = calloc(1, ext_man.full_size);
+	if (!*dst_buff) {
 		ret = -ENOMEM;
 		goto out;
 	}
 
 	/* fill buffer with ext_man and section content */
-	memcpy(buffer, &ext_man, ext_man.header_size);
+	memcpy(*dst_buff, &ext_man, ext_man.header_size);
 	offset = ext_man.header_size;
 
-	memcpy(&buffer[offset], sec_buffer, section->size);
-
-	*dst_buff = (struct ext_man_header *)buffer;
+	memcpy(((char *)*dst_buff) + offset, sec_buffer, section->size);
 
 out:
 	free(sec_buffer);
