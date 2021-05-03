@@ -420,6 +420,12 @@ static int dai_playback_params(struct comp_dev *dev, uint32_t period_bytes,
 	/* set processing function */
 	dd->process = pcm_get_conversion_function(local_fmt, dma_fmt);
 
+	if (!dd->process) {
+		comp_err(dev, "dai_playback_params(): converter function NULL: local fmt %d dma fmt %d\n",
+			 local_fmt, dma_fmt);
+		return -EINVAL;
+	}
+
 	/* set up DMA configuration */
 	config->direction = DMA_DIR_MEM_TO_DEV;
 	config->src_width = get_sample_bytes(dma_fmt);
@@ -469,6 +475,12 @@ static int dai_capture_params(struct comp_dev *dev, uint32_t period_bytes,
 
 	/* set processing function */
 	dd->process = pcm_get_conversion_function(dma_fmt, local_fmt);
+
+	if (!dd->process) {
+		comp_err(dev, "dai_capture_params(): converter function NULL: local fmt %d dma fmt %d\n",
+			 local_fmt, dma_fmt);
+		return -EINVAL;
+	}
 
 	/* set up DMA configuration */
 	config->direction = DMA_DIR_DEV_TO_MEM;
