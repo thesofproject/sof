@@ -1383,19 +1383,22 @@ int verify_image(struct image *image)
 	if (ret < 0) {
 		fprintf(stderr, "error: unable to seek eof %s for reading %d\n",
 			image->verify_file, errno);
-		return -errno;
+		ret = -errno;
+		goto out;
 	}
 	size = ftell(in_file);
 	if (size < 0) {
 		fprintf(stderr, "error: unable to get file size for %s %d\n",
 			image->verify_file, errno);
-		return -errno;
+		ret = -errno;
+		goto out;
 	}
 	ret = fseek(in_file, 0, SEEK_SET);
 	if (ret < 0) {
 		fprintf(stderr, "error: unable to seek %s for reading %d\n",
 			image->verify_file, errno);
-		return -errno;
+		ret = -errno;
+		goto out;
 	}
 
 	/* allocate buffer for parsing */
