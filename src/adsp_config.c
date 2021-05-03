@@ -1867,7 +1867,7 @@ static int parse_mod_config(const toml_table_t *mod_entry, struct parse_ctx *ctx
 static void parse_uuid(char *buf, uint8_t *uuid)
 {
 	struct uuid_t id;
-	uint32_t d[9];
+	uint32_t d[10];
 
 	sscanf(buf, "%08x-%04x-%04x-%02x%02x-%02x%02x%02x%02x%02x%02x", &id.d0, &d[0],
 	       &d[1], &d[2], &d[3], &d[4], &d[5], &d[6], &d[7], &d[8], &d[9]);
