@@ -15,9 +15,6 @@ jobs:
         # From time to time this will catch a git tag and change SOF_VERSION
         with: {fetch-depth: 10, submodules: recursive}
 
-      - name: yamllint ourselves
-        run: yamllint .github/workflows/zephyr.yml
-
       - name: build
         run: docker run -v "$(pwd)":/workdir
              docker.io/zephyrprojectrtos/zephyr-build:v0.17.3
