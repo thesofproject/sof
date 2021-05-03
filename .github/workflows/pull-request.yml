@@ -139,16 +139,3 @@ jobs:
           PLATFORM: ${{ matrix.platform }}
         run: ./scripts/docker-qemu.sh
           ../sof.git/scripts/qemu-check.sh ${PLATFORM}
-
-  yamllint-gh:
-    name: yamllint /.github/workflows/
-    runs-on: ubuntu-20.04
-
-    steps:
-      - uses: actions/checkout@v2
-
-      - name: apt install yamllint
-        run: sudo apt-get -y install yamllint
-
-      - name: yamllint github actions
-        run: yamllint .github/workflows/pull-request.yml

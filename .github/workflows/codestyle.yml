@@ -9,7 +9,7 @@
 # github.com also has a powerful web editor that can be used without
 # committing.
 
-name: checkpatch
+name: codestyle
 
 # yamllint disable-line rule:truthy
 on: [pull_request]
@@ -31,9 +31,6 @@ jobs:
       - uses: actions/checkout@v2
         with: {fetch-depth: 2}
 
-      - name: yamllint ourselves
-        run: yamllint .github/workflows/shallow_checkpatch.yml
-
       - name: install codespell
         run: sudo apt-get -y install codespell && dpkg -L codespell | grep dict
 
@@ -51,3 +48,10 @@ jobs:
       - name: checkpatch --strict
         run: .github/workflows/checkpatch_list.sh ${CHK_CMD_OPTS}
                  --strict < PR_SHAs.txt
+  yamllint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: run yamllint
+        run: yamllint --strict .github/workflows/*.yml
