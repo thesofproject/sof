@@ -1,0 +1,25 @@
+---
+# Basic build test
+
+name: build
+
+# yamllint disable-line rule:truthy
+on: [pull_request, push, workflow_dispatch]
+
+env:
+  CMAKE_C_FLAGS: "-Werror -Wall -Wmissing-prototypes\
+    -Wimplicit-fallthrough=3 -Wpointer-arith"
+
+jobs:
+  build-test:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v3
+        with: {fetch-depth: 50, submodules: recursive}
+
+      - name: install tools
+        run: sudo apt update && sudo apt install -y ninja-build
+
+      - name: build
+        run: cmake -B build/ -G Ninja
+      - run: cmake --build build/
