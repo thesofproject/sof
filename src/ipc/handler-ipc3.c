@@ -192,11 +192,11 @@ static bool is_hostless_upstream(struct comp_dev *current)
 static int ipc_stream_pcm_params(uint32_t stream)
 {
 #if CONFIG_HOST_PTABLE
-	struct sof_ipc_comp_host *host = NULL;
 	struct dma_sg_elem_array elem_array;
 	uint32_t ring_size;
 	enum comp_copy_type copy_type = COMP_COPY_ONE_SHOT;
 	struct comp_dev *cd;
+	uint32_t direction;
 #endif
 	struct ipc *ipc = ipc_get();
 	struct sof_ipc_pcm_params pcm_params;
@@ -242,16 +242,12 @@ static int ipc_stream_pcm_params(uint32_t stream)
 	if (is_hostless_downstream(cd) && is_hostless_upstream(cd))
 		goto pipe_params;
 
-	/* Parse host tables */
-	host = (struct sof_ipc_comp_host *)&cd->comp;
-	if (IPC_IS_SIZE_INVALID(host->config)) {
-		IPC_SIZE_ERROR_TRACE(&ipc_tr, host->config);
-		err = -EINVAL;
+	err = comp_get_attribute(cd, COMP_ATTR_COPY_DIR, &direction);
+	if (err < 0)
 		goto error;
-	}
 
 	err = ipc_process_host_buffer(ipc, &pcm_params.params.buffer,
-				      host->direction,
+				      direction,
 				      &elem_array,
 				      &ring_size);
 	if (err < 0)

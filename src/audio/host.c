@@ -904,6 +904,9 @@ static int host_get_attribute(struct comp_dev *dev, uint32_t type,
 	case COMP_ATTR_COPY_TYPE:
 		*(enum comp_copy_type *)value = hd->copy_type;
 		break;
+	case COMP_ATTR_COPY_DIR:
+		*(uint32_t *)value = hd->ipc_host.direction;
+		break;
 	default:
 		return -EINVAL;
 	}
