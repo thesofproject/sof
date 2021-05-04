@@ -380,4 +380,34 @@ config FORMAT_CONVERT_HIFI3
 	help
 	  Use HIFI3 extensions for optimized format conversion (experimental).
 
+config PCM_CONVERTER_FORMAT_S16LE
+	bool "Support S16LE"
+	default y
+	help
+	  Support 16 bit processing data format with sign and in little endian format
+
+config PCM_CONVERTER_FORMAT_S24LE
+	bool "Support S24LE"
+	default y
+	help
+	  Support 24 bit processing data format with sign and in little endian format
+
+config PCM_CONVERTER_FORMAT_S32LE
+	bool "Support S32LE"
+	default y
+	help
+	  Support 32 bit processing data format with sign and in little endian format
+
+config PCM_CONVERTER_FORMAT_FLOAT
+	bool "Support float"
+	default y
+	help
+	  Support floating point processing data format
+
+config PCM_CONVERTER_FORMAT_CONVERT_HIFI3
+	bool "HIFI3 optimized conversion"
+	default y
+	help
+	  Use HIFI3 extensions for optimized format conversion (experimental).
+
 endmenu
