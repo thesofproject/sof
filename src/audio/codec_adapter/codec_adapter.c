@@ -401,49 +401,48 @@ int codec_adapter_copy(struct comp_dev *dev)
 		comp_update_buffer_consume(source, codec->cpd.consumed);
 	}
 
-	while (bytes_to_process) {
-		/* Proceed only if we have enough data to fill the lib buffer
-		 * completely. If you don't fill whole buffer
-		 * the lib won't process it.
-		 */
-		if (bytes_to_process < codec_buff_size) {
-			comp_dbg(dev, "codec_adapter_copy(): source has less data than codec buffer size - processing terminated.");
-			break;
-		}
-
-		/* Process only we have enough free data in the local
-		 * buffer. If we don't have enough free space process()
-		 * will override the data in the local buffer
-		 */
-		if (local_buff->stream.free < get_output_bytes(dev))
-			goto db_verify;
-
-		buffer_invalidate(source, codec_buff_size);
-		codec_adapter_copy_from_source_to_lib(&source->stream, &codec->cpd,
-						      codec_buff_size);
-		codec->cpd.avail = codec_buff_size;
-		ret = codec_process(dev);
-		if (ret) {
-			comp_err(dev, "codec_adapter_copy() error %x: lib processing failed",
-				 ret);
-			break;
-		} else if (codec->cpd.produced == 0) {
-			/* skipping as lib has not produced anything */
-			comp_err(dev, "codec_adapter_copy() error %x: lib hasn't processed anything",
-				 ret);
-			break;
-		}
-		codec_adapter_copy_from_lib_to_sink(&codec->cpd, &local_buff->stream,
-						    codec->cpd.produced);
-
-		bytes_to_process -= codec->cpd.consumed;
-		processed += codec->cpd.consumed;
-		produced += codec->cpd.produced;
-
-		audio_stream_produce(&local_buff->stream, codec->cpd.produced);
-		comp_update_buffer_consume(source, codec->cpd.consumed);
+	/* Proceed only if we have enough data to fill the lib buffer
+	 * completely. If you don't fill whole buffer
+	 * the lib won't process it.
+	 */
+	if (bytes_to_process < codec_buff_size) {
+		comp_dbg(dev, "codec_adapter_copy(): source has less data than codec buffer size - processing terminated.");
+		goto db_verify;
 	}
 
+	/* Process only we have enough free data in the local
+	 * buffer. If we don't have enough free space process()
+	 * will override the data in the local buffer
+	 */
+	if (local_buff->stream.free < get_output_bytes(dev))
+		goto db_verify;
+
+	buffer_invalidate(source, codec_buff_size);
+	codec_adapter_copy_from_source_to_lib(&source->stream, &codec->cpd,
+					      codec_buff_size);
+	codec->cpd.avail = codec_buff_size;
+	ret = codec_process(dev);
+	if (ret) {
+		comp_err(dev, "codec_adapter_copy() error %x: lib processing failed",
+			 ret);
+		goto db_verify;
+	} else if (codec->cpd.produced == 0) {
+		/* skipping as lib has not produced anything */
+		comp_err(dev, "codec_adapter_copy() error %x: lib hasn't processed anything",
+			 ret);
+		goto db_verify;
+	}
+	codec_adapter_copy_from_lib_to_sink(&codec->cpd, &local_buff->stream,
+					    codec->cpd.produced);
+
+	bytes_to_process -= codec->cpd.consumed;
+	processed += codec->cpd.consumed;
+	produced += codec->cpd.produced;
+
+	audio_stream_produce(&local_buff->stream, codec->cpd.produced);
+	comp_update_buffer_consume(source, codec->cpd.consumed);
+
+db_verify:
 	if (!produced && !cd->deep_buff_bytes) {
 		comp_dbg(dev, "codec_adapter_copy(): nothing processed in this call");
 		/* we haven't produced anything in this period but we
@@ -455,7 +454,6 @@ int codec_adapter_copy(struct comp_dev *dev)
 			goto end;
 	}
 
-db_verify:
 	if (cd->deep_buff_bytes) {
 		if (cd->deep_buff_bytes >= audio_stream_get_avail_bytes(&local_buff->stream)) {
 			generate_zeroes(sink, cd->period_bytes);
