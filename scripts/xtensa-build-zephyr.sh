@@ -177,7 +177,7 @@ main()
 
 		# Support for submodules in west is too recent, cannot
 		# rely on it
-		test -d "${WEST_TOP}"/modules/audio/sof/rimage/CMakeLists.txt || (
+		test -e "${WEST_TOP}"/modules/audio/sof/rimage/CMakeLists.txt || (
 		    cd "${WEST_TOP}"/modules/audio/sof
 		    git submodule update --init --recursive
 		)
