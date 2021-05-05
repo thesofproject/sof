@@ -58,6 +58,8 @@ clone()
 	mkdir -p "$WEST_TOP"
 	git clone --depth=5 https://github.com/zephyrproject-rtos/zephyr \
 	    "$WEST_TOP"/zephyr
+	git -C "$WEST_TOP"/zephyr --no-pager log --oneline --graph \
+	    --decorate --max-count=20
 	west init -l "${WEST_TOP}"/zephyr
 	( cd "${WEST_TOP}"
 	  mkdir -p modules/audio
