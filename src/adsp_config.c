@@ -1721,7 +1721,7 @@ static int parse_scheduling(const toml_table_t *mod_entry, struct parse_ctx *ctx
 
 	if (toml_array_type(arr) != 'i'  || toml_array_nelem(arr) != 2 ||
 	    toml_array_kind(arr) != 'v')
-		return err_key_parse("version", "wrong array type or length != 2");
+		return err_key_parse("sched_caps", "wrong array type or length != 2");
 
 	ctx->array_cnt++;
 
@@ -1765,7 +1765,7 @@ static int parse_pin(const toml_table_t *mod_entry, struct parse_ctx *ctx,
 	}
 
 	if (toml_array_type(arr) != 'i'  || toml_array_kind(arr) != 'v')
-		return err_key_parse("version", "wrong array type");
+		return err_key_parse("pin", "wrong array type");
 
 	ctx->array_cnt++;
 
@@ -1840,7 +1840,7 @@ static int parse_mod_config(const toml_table_t *mod_entry, struct parse_ctx *ctx
 	}
 
 	if (toml_array_type(arr) != 'i' || toml_array_kind(arr) != 'v')
-		return err_key_parse("version", "wrong array type");
+		return err_key_parse("mod_cfg", "wrong array type");
 
 	ctx->array_cnt++;
 
@@ -1857,7 +1857,7 @@ static int parse_mod_config(const toml_table_t *mod_entry, struct parse_ctx *ctx
 
 		ret = toml_rtoi(raw, &val);
 		if (ret < 0)
-			return err_key_parse("pin", "can't convert element to integer");
+			return err_key_parse("mod_cfg", "can't convert element to integer");
 		pin_data[i] = val;
 	}
 
@@ -1987,12 +1987,12 @@ static int parse_module(const toml_table_t *toml, struct parse_ctx *pctx,
 		mod_man->affinity_mask = parse_uint32_hex_key(mod_entry, &ctx_entry,
 							      "affinity_mask", 1, &ret);
 		if (ret < 0)
-			return err_key_parse("offset", NULL);
+			return err_key_parse("affinity_mask", NULL);
 
 		mod_man->instance_max_count = parse_uint32_hex_key(mod_entry, &ctx_entry,
 								   "instance_count", 1, &ret);
 		if (ret < 0)
-			return err_key_parse("length", NULL);
+			return err_key_parse("instance_count", NULL);
 
 		type = parse_uint32_hex_key(mod_entry, &ctx_entry, "domain_types", 0, &ret);
 		if (ret < 0)
