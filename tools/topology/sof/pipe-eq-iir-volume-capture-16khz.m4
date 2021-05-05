@@ -31,7 +31,7 @@ C_CONTROLMIXER(Master Capture Volume, PIPELINE_ID,
 	false,
 	CONTROLMIXER_TLV(TLV 80 steps from -50dB to +20dB for 1dB, vtlv_m50s1),
 	Channel register and shift for Front Left/Right,
-	LIST(`	', KCONTROL_CHANNEL(FL, 1, 0), KCONTROL_CHANNEL(FR, 1, 1)))
+	VOLUME_CHANNEL_MAP)
 
 # Volume Configuration
 define(DEF_PGA_TOKENS, concat(`pga_tokens_', PIPELINE_ID))

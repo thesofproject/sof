@@ -26,7 +26,7 @@ C_CONTROLMIXER(Master Playback Volume, PIPELINE_ID,
 	false,
 	CONTROLMIXER_TLV(TLV 32 steps from -64dB to 0dB for 2dB, vtlv_m64s2),
 	Channel register and shift for Front Left/Right,
-	LIST(`	', KCONTROL_CHANNEL(FL, 1, 0), KCONTROL_CHANNEL(FR, 1, 1)))
+	VOLUME_CHANNEL_MAP)
 
 
 #
