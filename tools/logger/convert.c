@@ -596,12 +596,15 @@ static int read_entry_from_ldc_file(struct ldc_entry *entry, uint32_t log_entry_
 
 	/* fetching elf header params */
 	ret = fread(&entry->header, sizeof(entry->header), 1, global_config->ldc_fd);
-	if (!ret) {
-		ret = -ferror(global_config->ldc_fd);
+	if (ret != 1) {
+		log_err("Failed to read entry header for offset 0x%x in dictionary.\n",
+			entry_offset);
+		ret = -1;
 		goto out;
 	}
 	if (entry->header.file_name_len > TRACE_MAX_FILENAME_LEN) {
-		log_err("Invalid filename length or ldc file does not match firmware\n");
+		log_err("Invalid filename length %d or ldc file does not match firmware\n",
+			entry->header.file_name_len);
 		ret = -EINVAL;
 		goto out;
 	}
@@ -617,7 +620,9 @@ static int read_entry_from_ldc_file(struct ldc_entry *entry, uint32_t log_entry_
 	ret = fread(entry->file_name, sizeof(char), entry->header.file_name_len,
 		    global_config->ldc_fd);
 	if (ret != entry->header.file_name_len) {
-		ret = -ferror(global_config->ldc_fd);
+		log_err("Failed to read source filename for offset 0x%x in dictionary.\n",
+			entry_offset);
+		ret = -1;
 		goto out;
 	}
 
@@ -635,7 +640,9 @@ static int read_entry_from_ldc_file(struct ldc_entry *entry, uint32_t log_entry_
 	}
 	ret = fread(entry->text, sizeof(char), entry->header.text_len, global_config->ldc_fd);
 	if (ret != entry->header.text_len) {
-		ret = -ferror(global_config->ldc_fd);
+		log_err("Failed to read log message at offset 0x%x from dictionary.\n",
+			entry_offset);
+		ret = -1;
 		goto out;
 	}
 
@@ -665,8 +672,11 @@ static int fetch_entry(const struct log_entry_header *dma_log, uint64_t *last_ti
 	int ret;
 
 	ret = read_entry_from_ldc_file(&entry, dma_log->log_entry_address);
-	if (ret < 0)
+	if (ret < 0) {
+		log_err("read_entry_from_ldc_file(0x%x) returned %d\n",
+			dma_log->log_entry_address, ret);
 		goto out;
+	}
 
 	/* fetching entry params from dma dump */
 	if (entry.header.params_num > TRACE_MAX_PARAMS_COUNT) {
