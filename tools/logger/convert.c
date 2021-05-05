@@ -696,10 +696,20 @@ static int fetch_entry(const struct log_entry_header *dma_log, uint64_t *last_ti
 		ret = fread(entry.params, sizeof(uint32_t), entry.header.params_num,
 			    global_config->in_fd);
 		if (ret != entry.header.params_num) {
-			ret = -ferror(global_config->in_fd);
+			fprintf(global_config->out_fd,
+				"warn: failed to fread() %d params from the log for %s:%d\n",
+				entry.header.params_num,
+				entry.file_name, entry.header.line_idx);
+
+			ret = ferror(global_config->in_fd) ? -1 : 0;
+
+			if (feof(global_config->in_fd))
+				fprintf(global_config->out_fd,
+					"warn: log's End Of File. Device suspend?\n");
+
 			goto out;
 		}
-	} else {
+	} else { /* serial */
 		size_t size = sizeof(uint32_t) * entry.header.params_num;
 		uint8_t *n;
 
@@ -711,13 +721,15 @@ static int fetch_entry(const struct log_entry_header *dma_log, uint64_t *last_ti
 			ret = read(global_config->serial_fd, n, size);
 			if (ret < 0) {
 				ret = -errno;
+				log_err("Failed to fread %d params from serial: %s\n",
+					entry.header.params_num, strerror(errno));
 				goto out;
 			}
 			if (ret != size)
 				log_err("Partial read of %u bytes of %lu, reading more\n",
 					ret, size);
 		}
-	}
+	} /* serial */
 
 	/* printing entry content */
 	print_entry_params(dma_log, &entry, *last_timestamp);
@@ -828,6 +840,10 @@ static int logger_read(void)
 			}
 			/* for trace mode, try to reopen */
 			if (global_config->trace) {
+				fprintf(global_config->out_fd,
+					"\n       ---- %s; %s -----\n\n",
+					"Re-opening trace input file",
+					"device suspend?");
 				if (freopen(NULL, "rb", global_config->in_fd)) {
 					entry_number = 1;
 					continue;
@@ -889,11 +905,16 @@ static int logger_read(void)
 			skipped_dwords = 0;
 		}
 
-		/* fetching entry from elf dump */
+		/* fetching entry from dictionary, read the number of
+		 * arguments needed and finish the entire processing of
+		 * this log line.
+		 */
 		ret = fetch_entry(&dma_log, &last_timestamp);
-		if (ret)
+		if (ret) {
+			log_err("fetch_entry() failed with: %d, aborting\n", ret);
 			break;
-	}
+		}
+	} /* next log entry */
 
 	/* End of (etrace) file */
 	fprintf(global_config->out_fd,
