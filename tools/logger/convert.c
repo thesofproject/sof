@@ -890,10 +890,11 @@ static int logger_read(void)
 		"Skipped %zu bytes after the last statement",
 		sizeof(uint32_t) * skipped_dwords);
 
-	/* maximum 4 arguments supported */
-	if (skipped_dwords < sizeof(dma_log) + 4 * sizeof(uint32_t))
+	if (!global_config->trace &&
+	    /* maximum 4 arguments supported */
+	    skipped_dwords < sizeof(dma_log) + 4 * sizeof(uint32_t))
 		fprintf(global_config->out_fd,
-			". Wrap possible, check the start of the output for later logs");
+			". Potential mailbox wrap, check the start of the output for later logs");
 
 	fprintf(global_config->out_fd, ".\n");
 
