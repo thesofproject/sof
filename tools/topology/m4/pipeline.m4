@@ -7,6 +7,15 @@ define(`SCHEDULE_TIME_DOMAIN_TIMER', 1)
 # default number of DAI periods
 define(`DAI_DEFAULT_PERIODS', 2)
 
+# default stereo channel map
+ifdef(`VOLUME_CHANNEL_MAP', , `define(`VOLUME_CHANNEL_MAP', LIST(`	',
+								KCONTROL_CHANNEL(FL, 1, 0),
+								KCONTROL_CHANNEL(FR, 1, 1)))')
+
+ifdef(`SWITCH_CHANNEL_MAP', , `define(`SWITCH_CHANNEL_MAP', LIST(`	',
+								KCONTROL_CHANNEL(FL, 2, 0),
+								KCONTROL_CHANNEL(FR, 2, 1)))')
+
 dnl Define macro for pipeline widget
 
 dnl Pipeline name)
