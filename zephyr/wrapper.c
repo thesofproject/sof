@@ -397,6 +397,7 @@ void sys_comp_keyword_init(void);
 void sys_comp_asrc_init(void);
 void sys_comp_dcblock_init(void);
 void sys_comp_eq_iir_init(void);
+void sys_comp_kpb_init(void);
 void sys_comp_smart_amp_init(void);
 
 int task_main_start(struct sof *sof)
@@ -450,6 +451,10 @@ int task_main_start(struct sof *sof)
 
 	if (IS_ENABLED(CONFIG_SAMPLE_KEYPHRASE)) {
 		sys_comp_keyword_init();
+	}
+
+	if (IS_ENABLED(CONFIG_COMP_KPB)) {
+		sys_comp_kpb_init();
 	}
 
 	if (IS_ENABLED(CONFIG_SAMPLE_SMART_AMP)) {
