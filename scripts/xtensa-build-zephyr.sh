@@ -28,7 +28,7 @@ print_usage()
 {
     cat <<EOF
 Re-configures and re-builds SOF with Zephyr using a pre-installed Zephyr toolchain and
-platform's _defconfig file.
+the _defconfig file for that platform.
 
 usage: $0 [options] platform(s)
 
@@ -174,8 +174,10 @@ main()
 		clone
 	else
 		# Link to ourselves if no sof module yet
-		test -e "${WEST_TOP}"/modules/audio/sof ||
+		test -e "${WEST_TOP}"/modules/audio/sof || {
+		    mkdir -p "${WEST_TOP}"/modules/audio
 		    ln -s "$SOF_TOP" "${WEST_TOP}"/modules/audio/sof
+		}
 
 		# Support for submodules in west is too recent, cannot
 		# rely on it
