@@ -775,7 +775,7 @@ static SHARED_DATA struct comp_driver_info comp_smart_amp_info = {
 	.drv = &comp_smart_amp,
 };
 
-static void sys_comp_smart_amp_init(void)
+UT_STATIC void sys_comp_smart_amp_init(void)
 {
 	comp_register(platform_shared_get(&comp_smart_amp_info,
 					  sizeof(comp_smart_amp_info)));
