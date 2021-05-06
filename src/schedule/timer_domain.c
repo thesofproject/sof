@@ -252,18 +252,25 @@ static void timer_domain_set(struct ll_schedule_domain *domain, uint64_t start)
 	int ret, core = cpu_get_id();
 	uint64_t ticks_delta;
 
-	if (ticks_tout < CYC_PER_TICK)
-		ticks_tout = CYC_PER_TICK;
+	if (domain->next_tick <= current ||
+	    domain->next_tick > current + ticks_tout ||
+	    !domain->next_tick) {
+		if (ticks_tout < CYC_PER_TICK)
+			ticks_tout = CYC_PER_TICK;
 
-	/* have we overshot the period length ?? */
-	if (ticks_req > current + ticks_tout)
-		ticks_req = current + ticks_tout;
+		/* have we overshot the period length ?? */
+		if (ticks_req > current + ticks_tout)
+			ticks_req = current + ticks_tout;
 
-	ticks_req -= ticks_req % CYC_PER_TICK;
-	if (ticks_req < earliest_next) {
-		/* The earliest schedule point has to be rounded up */
-		ticks_req = earliest_next + CYC_PER_TICK - 1;
 		ticks_req -= ticks_req % CYC_PER_TICK;
+		if (ticks_req < earliest_next) {
+			/* The earliest schedule point has to be rounded up */
+			ticks_req = earliest_next + CYC_PER_TICK - 1;
+			ticks_req -= ticks_req % CYC_PER_TICK;
+		}
+	} else {
+		/* The other core has already calculated the next timer event */
+		ticks_req = domain->next_tick;
 	}
 
 	/* work out next start time relative to start */
