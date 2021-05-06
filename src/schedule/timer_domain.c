@@ -273,7 +273,7 @@ static void timer_domain_set(struct ll_schedule_domain *domain, uint64_t start)
 	/* using K_CYC(ticks_delta - 885) brings "requested - set" to about 180-700
 	 * cycles, audio sounds very slow and distorted.
 	 */
-	ret = k_delayed_work_submit_to_queue(&timer_domain[core].ll_workq[core],
+	ret = k_delayed_work_submit_to_queue(&timer_domain->ll_workq[core],
 					     &zdata[core].work,
 					     K_CYC(ticks_delta - ZEPHYR_SCHED_COST));
 	if (ret < 0) {
