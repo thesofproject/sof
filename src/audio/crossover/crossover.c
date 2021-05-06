@@ -21,6 +21,7 @@
 #include <sof/platform.h>
 #include <sof/string.h>
 #include <sof/trace/trace.h>
+#include <sof/ut.h>
 #include <ipc/control.h>
 #include <ipc/stream.h>
 #include <ipc/topology.h>
@@ -868,7 +869,7 @@ static SHARED_DATA struct comp_driver_info comp_crossover_info = {
 	.drv = &comp_crossover,
 };
 
-static void sys_comp_crossover_init(void)
+UT_STATIC void sys_comp_crossover_init(void)
 {
 	comp_register(platform_shared_get(&comp_crossover_info,
 					  sizeof(comp_crossover_info)));
