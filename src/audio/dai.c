@@ -342,12 +342,16 @@ static int dai_verify_params(struct comp_dev *dev,
 	return 0;
 }
 
-static void dai_data_config(struct comp_dev *dev)
+static int dai_data_config(struct comp_dev *dev)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
 	struct ipc_config_dai *dai = &dd->ipc_config;
 
-	assert(dd->dai_config);
+	if (!dd->dai_config) {
+		comp_err(dev, "dai_data_config(): no config set for dai %d type %d",
+			 dai->dai_index, dai->type);
+		return -EINVAL;
+	}
 
 	comp_info(dev, "dai_data_config() dai type = %d index = %d dd %p",
 		  dai->type, dai->dai_index, dd);
@@ -355,7 +359,7 @@ static void dai_data_config(struct comp_dev *dev)
 	/* cannot configure DAI while active */
 	if (dev->state == COMP_STATE_ACTIVE) {
 		comp_info(dev, "dai_data_config(): Component is in active state.");
-		return;
+		return 0;
 	}
 
 	switch (dd->dai_config->type) {
@@ -400,6 +404,9 @@ static void dai_data_config(struct comp_dev *dev)
 			  dd->dai_config->type);
 		break;
 	}
+
+	/* some DAIs may not need extra config */
+	return 0;
 }
 
 /* set component audio SSP and DMA configuration */
@@ -542,7 +549,9 @@ static int dai_params(struct comp_dev *dev,
 	comp_dbg(dev, "dai_params()");
 
 	/* configure dai_data first */
-	dai_data_config(dev);
+	err = dai_data_config(dev);
+	if (err < 0)
+		return err;
 
 	err = dai_verify_params(dev, params);
 	if (err < 0) {
