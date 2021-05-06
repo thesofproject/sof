@@ -401,7 +401,7 @@ int ipc_pipeline_complete(struct ipc *ipc, uint32_t comp_id)
 	struct ipc_comp_dev *ipc_ppl_sink;
 	int ret;
 
-	/* check whether pipeline exists */
+	/* check whether pipeline exists already */
 	ipc_pipe = ipc_get_comp_by_id(ipc, comp_id);
 	if (!ipc_pipe) {
 		tr_err(&ipc_tr, "ipc: ipc_pipeline_complete looking for pipe component id %d failed",
