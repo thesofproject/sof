@@ -58,6 +58,16 @@ ifdef(`EXT_AMP',
 '
 )
 
+# Add Bluetooth Audio Offload pass-through for ADL
+ifelse(PLATFORM, `adl',
+`	define(`BT_PIPELINE_PB_ID', `13')
+	define(`BT_PIPELINE_CP_ID', `14')
+	define(`BT_DAI_LINK_ID', eval(HDMI_BE_ID_BASE + 4))
+	define(`BT_PCM_ID', `14') dnl use fixed PCM_ID
+	ifelse(CHANNELS,`0', `define(HW_CONFIG_ID, `6')', `define(HW_CONFIG_ID, `8')')
+	include(`platform/intel/intel-generic-bt.m4')
+', `')
+
 DEBUG_START
 
 #
@@ -74,6 +84,9 @@ ifdef(`EXT_AMP', `
 # PCM8 ---> volume <---- iDisp4
 # PCM10 <----volume <---- DMIC01
 # PCM11 <----volume <---- DMIC16k
+ifelse(PLATFORM, `adl', `
+# PCM14 <---> passthrough <---> SSP2 BT playback/capture
+', `')
 
 dnl PIPELINE_PCM_ADD(pipeline,
 dnl     pipe id, pcm, max channels, format,
