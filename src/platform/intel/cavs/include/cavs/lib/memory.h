@@ -85,7 +85,7 @@ struct sof;
 
 #define SRAM_ALIAS_BASE		0x9E000000
 #define SRAM_ALIAS_MASK		0xFF000000
-#define SRAM_ALIAS_OFFSET	0x20000000
+#define SRAM_ALIAS_OFFSET	SRAM_UNCACHED_ALIAS
 
 #if !defined UNIT_TEST && !defined __ZEPHYR__
 #define uncache_to_cache(address) \

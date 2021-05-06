@@ -20,10 +20,15 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#define SRAM_UNCACHED_ALIAS	0x20000000
+
+#define is_cached(address) (!!((uintptr_t)(address) & SRAM_UNCACHED_ALIAS))
+
 static inline void dcache_writeback_region(void *addr, size_t size)
 {
 #if XCHAL_DCACHE_SIZE > 0
-	xthal_dcache_region_writeback(addr, size);
+	if (is_cached(addr))
+		xthal_dcache_region_writeback(addr, size);
 #endif
 }
 
@@ -37,7 +42,8 @@ static inline void dcache_writeback_all(void)
 static inline void dcache_invalidate_region(void *addr, size_t size)
 {
 #if XCHAL_DCACHE_SIZE > 0
-	xthal_dcache_region_invalidate(addr, size);
+	if (is_cached(addr))
+		xthal_dcache_region_invalidate(addr, size);
 #endif
 }
 
@@ -65,7 +71,8 @@ static inline void icache_invalidate_all(void)
 static inline void dcache_writeback_invalidate_region(void *addr, size_t size)
 {
 #if XCHAL_DCACHE_SIZE > 0
-	xthal_dcache_region_writeback_inv(addr, size);
+	if (is_cached(addr))
+		xthal_dcache_region_writeback_inv(addr, size);
 #endif
 }
 
