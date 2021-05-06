@@ -186,7 +186,9 @@ static void schedule_ll_clients_reschedule(struct ll_schedule_data *sch)
 static void schedule_ll_tasks_run(void *data)
 {
 	struct ll_schedule_data *sch = data;
-	uint32_t num_clients = 0;
+#ifndef __ZEPHYR__
+	uint32_t num_clients;
+#endif
 	uint32_t flags;
 
 	tr_dbg(&ll_tr, "timer interrupt on core %d, at %u, previous next_tick %u",
@@ -202,6 +204,7 @@ static void schedule_ll_tasks_run(void *data)
 
 	sch->domain->enabled[cpu_get_id()] = false;
 
+#ifndef __ZEPHYR__
 	/* clear domain only if all clients are done */
 	/* TODO: no need for atomic operations,
 	 * already protected by spin_lock
@@ -209,6 +212,7 @@ static void schedule_ll_tasks_run(void *data)
 	num_clients = atomic_sub(&sch->domain->num_clients, 1) - 1;
 	if (!num_clients)
 		domain_clear(sch->domain);
+#endif
 
 
 	spin_unlock(&sch->domain->lock);
@@ -232,7 +236,10 @@ static void schedule_ll_tasks_run(void *data)
 	schedule_ll_clients_reschedule(sch);
 
 	/* re-enable domain only if all clients are done */
+#ifndef __ZEPHYR__
+	/* Under Zephyr each client has to be enabled separately */
 	if (!num_clients)
+#endif
 		schedule_ll_clients_enable(sch);
 
 	spin_unlock(&sch->domain->lock);
@@ -289,6 +296,14 @@ static int schedule_ll_domain_set(struct ll_schedule_data *sch,
 		task->start = sch->domain->next_tick;
 	} else {
 		/* later periodic task, simplify and cover it by the coming interrupt */
+#ifdef __ZEPHYR__
+		/*
+		 * Under Zephyr domain_set() must be called for each client, if the next
+		 * tick is already set by a different client in the same domain, this
+		 * will just set the new client to the same tick time
+		 */
+		domain_set(sch->domain, sch->domain->next_tick);
+#endif
 		task->start = sch->domain->next_tick;
 	}
 
