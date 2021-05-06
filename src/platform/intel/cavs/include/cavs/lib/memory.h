@@ -77,7 +77,7 @@ struct sof;
  * uncached memory region. SMP platforms without uncache can simply
  * align to cache line size instead.
  */
-#if CONFIG_CORE_COUNT > 1 && !defined(UNIT_TEST)
+#if CONFIG_CORE_COUNT > 1 && !defined(UNIT_TEST) && !defined __ZEPHYR__
 #define SHARED_DATA	__section(".shared_data")
 #else
 #define SHARED_DATA
@@ -112,7 +112,7 @@ struct sof;
  */
 static inline void *platform_shared_get(void *ptr, int bytes)
 {
-#if CONFIG_CORE_COUNT > 1
+#if CONFIG_CORE_COUNT > 1 && !defined __ZEPHYR__
 	dcache_invalidate_region(ptr, bytes);
 	return cache_to_uncache(ptr);
 #else
