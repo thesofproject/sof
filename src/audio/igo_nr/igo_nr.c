@@ -421,20 +421,6 @@ static int32_t igo_nr_cmd_get_value(struct comp_dev *dev, struct sof_ipc_ctrl_da
 	int32_t ret = 0;
 
 	switch (cdata->cmd) {
-	case SOF_CTRL_CMD_ENUM:
-		comp_info(dev, "igo_nr_cmd_get_value(), SOF_CTRL_CMD_ENUM index=%d", cdata->index);
-		switch (cdata->index) {
-		case IGO_NR_ONOFF_SWITCH:
-			for (j = 0; j < cdata->num_elems; j++)
-				cdata->chanv[j].value = cd->process_enable[j];
-			break;
-		default:
-			comp_err(dev, "igo_nr_cmd_get_value() error: invalid cdata->index %d",
-				 cdata->index);
-			ret = -EINVAL;
-			break;
-		}
-		break;
 	case SOF_CTRL_CMD_SWITCH:
 		for (j = 0; j < cdata->num_elems; j++) {
 			cdata->chanv[j].channel = j;
@@ -501,19 +487,6 @@ static int32_t igo_nr_cmd_set_value(struct comp_dev *dev, struct sof_ipc_ctrl_da
 	int32_t ret;
 
 	switch (cdata->cmd) {
-	case SOF_CTRL_CMD_ENUM:
-		comp_dbg(dev, "igo_nr_cmd_set_value(), SOF_CTRL_CMD_ENUM index=%d", cdata->index);
-		switch (cdata->index) {
-		case IGO_NR_ONOFF_SWITCH:
-			ret = igo_nr_set_chan(dev, cdata);
-			break;
-		default:
-			comp_err(dev, "igo_nr_cmd_set_value() error: invalid cdata->index %d",
-				 cdata->index);
-			ret = -EINVAL;
-			break;
-		}
-		break;
 	case SOF_CTRL_CMD_SWITCH:
 		comp_dbg(dev, "igo_nr_cmd_set_value(), SOF_CTRL_CMD_SWITCH, cdata->comp_id = %u",
 			 cdata->comp_id);
