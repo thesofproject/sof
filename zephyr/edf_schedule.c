@@ -40,7 +40,7 @@ static int schedule_edf_task(void *data, struct task *task, uint64_t start,
 	/* start time is microseconds from now */
 	k_timeout_t start_time = K_USEC(start + EDF_SCHEDULE_DELAY);
 
-	k_delayed_work_submit_to_queue(&edf_workq,
+	k_work_reschedule_for_queue(&edf_workq,
 				       &task->z_delayed_work,
 					   start_time);
 
@@ -53,7 +53,7 @@ static int schedule_edf_task_cancel(void *data, struct task *task)
 	int ret = 0;
 
 	if (task->state == SOF_TASK_STATE_QUEUED) {
-		ret = k_delayed_work_cancel(&task->z_delayed_work);
+		ret = k_work_cancel_delayable(&task->z_delayed_work);
 
 		/* delete task */
 		task->state = SOF_TASK_STATE_CANCEL;
@@ -97,10 +97,10 @@ int scheduler_init_edf(void)
 
 	scheduler_init(SOF_SCHEDULE_EDF, &schedule_edf_ops, NULL);
 
-	k_work_q_start(&edf_workq,
+	k_work_queue_start(&edf_workq,
 		       edf_workq_stack,
 		       K_THREAD_STACK_SIZEOF(edf_workq_stack),
-		       1);
+		       1, NULL);
 
 	k_thread_suspend(thread);
 
@@ -126,7 +126,7 @@ int schedule_task_init_edf(struct task *task, const struct sof_uuid_entry *uid,
 
 	task->ops = *ops;
 
-	k_delayed_work_init(&task->z_delayed_work, edf_work_handler);
+	k_work_init_delayable(&task->z_delayed_work, edf_work_handler);
 
 	return 0;
 }
