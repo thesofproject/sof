@@ -29,25 +29,6 @@
 
 #define SOF_IGO_NR_MAX_SIZE 4096		/* Max size for coef data in bytes */
 
-struct IGO_PARAMS {
-	uint32_t igo_params_ver;
-	uint32_t dump_data;
-	uint32_t nr_bypass;
-	uint32_t nr_mode1_en;
-	uint32_t nr_mode3_en;
-	uint32_t nr_ul_enable;
-	uint32_t agc_gain;
-	uint32_t nr_voice_str;
-	uint32_t nr_level;
-	uint32_t nr_mode1_floor;
-	uint32_t nr_mode1_od;
-	uint32_t nr_mode1_pp_param7;
-	uint32_t nr_mode1_pp_param8;
-	uint32_t nr_mode1_pp_param10;
-	uint32_t nr_mode3_floor;
-	uint32_t nr_mode1_pp_param53;
-} __attribute__((packed));
-
 enum IGO_NR_ENUM {
 	IGO_NR_ONOFF_SWITCH = 0,
 	IGO_NR_ENUM_LAST,
