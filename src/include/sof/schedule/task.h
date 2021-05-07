@@ -68,7 +68,7 @@ struct task {
 	void *priv_data;	/**< task private data */
 	struct task_ops ops;	/**< task operations */
 #ifdef __ZEPHYR__
-	struct k_delayed_work z_delayed_work;
+	struct k_work_delayable z_delayed_work;
 #endif
 };
 
