@@ -158,10 +158,6 @@ int trace_filter_update(const struct trace_filter *elem);
 #define _trace_event_atomic_with_ids(lvl, class, ctx, id_1, id_2, format, ...)	\
 	_log_message(trace_log_filtered, true, lvl, class, ctx, id_1, id_2, format, ##__VA_ARGS__)
 
-#ifndef CONFIG_LIBRARY
-
-#define trace_point(x) platform_trace_point(x)
-
 /** The start of this linker output MUST match the 'ldc_entry_header'
  *  struct defined in the logger program running in user space.
  */
@@ -186,6 +182,30 @@ int trace_filter_update(const struct trace_filter *elem);
 		RELATIVE_FILE,					\
 		format						\
 	}
+
+/* _log_message() */
+
+#ifdef CONFIG_LIBRARY
+
+extern int test_bench_trace;
+char *get_trace_class(uint32_t trace_class);
+#define _log_message(ignored_log_func, atomic, level, comp_class, ctx, id_1, id_2, format, ...)	\
+do {											\
+	(void)ctx;									\
+	(void)id_1;									\
+	(void)id_2;									\
+	if (test_bench_trace) {								\
+		char *msg = "%s " format;						\
+		fprintf(stderr, msg, get_trace_class(comp_class), ##__VA_ARGS__);	\
+		fprintf(stderr, "\n");							\
+	}										\
+} while (0)
+
+#define trace_point(x)  do {} while (0)
+
+#else  /* CONFIG_LIBRARY */
+
+#define trace_point(x) platform_trace_point(x)
 
 #define BASE_LOG_ASSERT_FAIL_MSG \
 unsupported_amount_of_params_in_trace_event\
@@ -216,24 +236,6 @@ do {											\
 	log_func(atomic, &log_entry, ctx, lvl, id_1, id_2,				\
 		 META_COUNT_VARAGS_BEFORE_COMPILE(__VA_ARGS__), ##__VA_ARGS__);		\
 } while (0)
-
-#else /* CONFIG_LIBRARY */
-
-extern int test_bench_trace;
-char *get_trace_class(uint32_t trace_class);
-#define _log_message(log_func, atomic, level, comp_class, ctx, id_1, id_2, format, ...)	\
-do {											\
-	(void)ctx;									\
-	(void)id_1;									\
-	(void)id_2;									\
-	if (test_bench_trace) {								\
-		char *msg = "%s " format;						\
-		fprintf(stderr, msg, get_trace_class(comp_class), ##__VA_ARGS__);	\
-		fprintf(stderr, "\n");							\
-	}										\
-} while (0)
-
-#define trace_point(x)  do {} while (0)
 
 #endif /* CONFIG_LIBRARY */
 
