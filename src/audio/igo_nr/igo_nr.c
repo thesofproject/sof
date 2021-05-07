@@ -220,7 +220,7 @@ static struct comp_dev *igo_nr_new(const struct comp_driver *drv,
 	struct sof_ipc_comp_process *ipc_igo_nr =
 		(struct sof_ipc_comp_process *)comp;
 	struct comp_dev *dev;
-	struct comp_data *cd = NULL;
+	struct comp_data *cd;
 	size_t bs = ipc_igo_nr->size;
 	int32_t ret;
 
