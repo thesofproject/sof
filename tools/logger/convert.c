@@ -386,8 +386,12 @@ static const char *get_level_name(uint32_t level)
 		return "ERROR ";
 	case LOG_LEVEL_WARNING:
 		return "WARN ";
+	case LOG_LEVEL_INFO:
+		return "INFO ";
+	case LOG_LEVEL_DEBUG:
+		return "DEBUG ";
 	default:
-		return ""; /* info is usual, do not print anything */
+		return "UNKNOWN ";
 	}
 }
 
