@@ -165,9 +165,6 @@ static int platform_timer_register(struct timer *timer,
 	/* enable timer interrupt */
 	interrupt_enable(timer->logical_irq, arg);
 
-	/* disable timer interrupt on core level */
-	timer_disable(timer, arg, cpu_get_id());
-
 	return err;
 }
 
