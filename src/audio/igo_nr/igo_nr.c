@@ -551,10 +551,9 @@ static void igo_nr_process(struct comp_dev *dev,
 static void igo_nr_get_igo_params(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-
 	struct sof_igo_nr_config *p_config = comp_get_data_blob(cd->model_handler, NULL, NULL);
-	comp_info(dev, "igo_nr_get_igo_params()");
 
+	comp_info(dev, "igo_nr_get_igo_params()");
 	if (p_config) {
 		cd->config = *p_config;
 
