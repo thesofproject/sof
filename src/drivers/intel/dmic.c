@@ -1402,7 +1402,7 @@ static void dmic_start(struct dai *dai)
 }
 
 /* stop the DMIC for capture */
-static void dmic_stop(struct dai *dai)
+static void dmic_stop(struct dai *dai, bool in_active)
 {
 	struct dmic_pdata *dmic = dai_get_drvdata(dai);
 	int i;
@@ -1452,7 +1452,7 @@ static void dmic_stop(struct dai *dai)
 		}
 	}
 
-	if (dmic->state == COMP_STATE_PREPARE)
+	if (in_active)
 		dmic_active_fifos--;
 
 	schedule_task_cancel(&dmic->dmicwork);
@@ -1503,11 +1503,11 @@ static int dmic_trigger(struct dai *dai, int cmd, int direction)
 		break;
 	case COMP_TRIGGER_STOP:
 		dmic->state = COMP_STATE_PREPARE;
-		dmic_stop(dai);
+		dmic_stop(dai, true);
 		break;
 	case COMP_TRIGGER_PAUSE:
 		dmic->state = COMP_STATE_PAUSED;
-		dmic_stop(dai);
+		dmic_stop(dai, true);
 		break;
 	case COMP_TRIGGER_RESUME:
 		dmic_context_restore(dai);
@@ -1542,15 +1542,15 @@ static void dmic_irq_handler(void *data)
 	if (val0 & OUTSTAT0_ROR_BIT) {
 		dai_err(dai, "dmic_irq_handler(): full fifo A or PDM overrun");
 		dai_write(dai, OUTSTAT0, val0);
+		dmic_stop(dai, dmic->state == COMP_STATE_ACTIVE);
 		dmic->state = COMP_STATE_PREPARE;
-		dmic_stop(dai);
 	}
 
 	if (val1 & OUTSTAT1_ROR_BIT) {
 		dai_err(dai, "dmic_irq_handler(): full fifo B or PDM overrun");
 		dai_write(dai, OUTSTAT1, val1);
+		dmic_stop(dai, dmic->state == COMP_STATE_ACTIVE);
 		dmic->state = COMP_STATE_PREPARE;
-		dmic_stop(dai);
 	}
 }
 
