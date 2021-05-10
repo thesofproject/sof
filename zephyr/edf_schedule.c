@@ -50,16 +50,14 @@ static int schedule_edf_task(void *data, struct task *task, uint64_t start,
 
 static int schedule_edf_task_cancel(void *data, struct task *task)
 {
-	int ret = 0;
-
 	if (task->state == SOF_TASK_STATE_QUEUED) {
-		ret = k_work_cancel_delayable(&task->z_delayed_work);
+		k_work_cancel_delayable(&task->z_delayed_work);
 
 		/* delete task */
 		task->state = SOF_TASK_STATE_CANCEL;
 	}
 
-	return ret;
+	return 0;
 }
 
 static int schedule_edf_task_complete(void *data, struct task *task)
