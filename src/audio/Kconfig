@@ -350,7 +350,7 @@ config COMP_IGO_NR
 	help
 	  This option enables Intelligo non-speech noise reduction. The feature links to a proprietary
 	  binary libigonr.a that currently is supported on different Xtensa DSP platforms. Please email
-	  support@intelli-go.ai for any questions about the binary.
+	  info@intelli-go.com for any questions about the binary.
 
 rsource "codec_adapter/Kconfig"
 
