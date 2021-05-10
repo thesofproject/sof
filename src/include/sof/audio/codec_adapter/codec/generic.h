@@ -36,7 +36,7 @@ static struct comp_dev *adapter_shim_new(const struct comp_driver *drv, \
 } \
 \
 static const struct comp_driver comp_codec_adapter = { \
-	.type = SOF_COMP_NONE, \
+	.type = SOF_COMP_CODEC_ADAPTOR, \
 	.uid = SOF_RT_UUID(uuid), \
 	.tctx = &(tr), \
 	.ops = { \
