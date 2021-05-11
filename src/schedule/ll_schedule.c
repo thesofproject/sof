@@ -166,13 +166,13 @@ static void schedule_ll_clients_enable(struct ll_schedule_data *sch)
 	}
 }
 
-static void schedule_ll_clients_reschedule(struct ll_schedule_data *sch)
+static void schedule_ll_client_reschedule(struct ll_schedule_data *sch)
 {
 	struct list_item *wlist;
 	struct list_item *tlist;
 	struct task *task;
 	struct task *task_take_dbg = NULL;
-	uint64_t next_tick = UINT64_MAX;
+	uint64_t next_tick = sch->domain->new_target_tick;
 
 	/* rearm only if there is work to do */
 	if (atomic_read(&sch->domain->total_num_tasks)) {
@@ -190,7 +190,9 @@ static void schedule_ll_clients_reschedule(struct ll_schedule_data *sch)
 		tr_dbg(&ll_tr,
 		       "schedule_ll_clients_reschedule next_tick %u task_take %p",
 		       (unsigned int)next_tick, task_take_dbg);
-		domain_set(sch->domain, next_tick);
+
+		/* update the target_tick */
+		sch->domain->new_target_tick = next_tick;
 	}
 
 }
@@ -227,12 +229,22 @@ static void schedule_ll_tasks_run(void *data)
 	/* tasks on current core finished, disable domain on it */
 	domain_disable(domain, cpu_get_id());
 
+	/* update the next_target_tick according to tasks on current core */
+	schedule_ll_client_reschedule(sch);
+
 	/* re-enable domain and reschedule clients only if all cores are done */
 	if (!atomic_read(&domain->enabled_cores)) {
 		/* clear the domain/interrupts */
 		domain_clear(domain);
 
-		schedule_ll_clients_reschedule(sch);
+		/* set the next interrupt according to the next_target_tick */
+		domain_set(sch->domain, sch->domain->new_target_tick);
+		tr_dbg(&ll_tr, "tasks on all cores done, new_target_tick %u set",
+		       (unsigned int)sch->domain->new_target_tick);
+
+		/* reset the next_target_tick */
+		sch->domain->new_target_tick = UINT64_MAX;
+
 		schedule_ll_clients_enable(sch);
 	}
 
