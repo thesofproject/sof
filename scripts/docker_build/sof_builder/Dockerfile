@@ -17,7 +17,7 @@
 FROM ubuntu:18.04
 ARG UID=1000
 
-# Set up proxy from host
+# Set up proxy from host, this will be deleted at the end
 COPY apt.conf /etc/apt/
 ARG host_http_proxy
 ARG host_https_proxy
@@ -115,3 +115,6 @@ RUN mkdir -p /home/sof/work/sof.git
 
 USER sof
 WORKDIR /home/sof/work/sof.git/
+
+# delete apt proxy setting
+RUN rm /etc/apt/apt.conf
