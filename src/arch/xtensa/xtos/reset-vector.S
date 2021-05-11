@@ -24,7 +24,7 @@
 
 
 #include <sof/common.h>
-#if CONFIG_BOOT_LOADER && !CONFIG_VM_ROM
+#if CONFIG_XT_BOOT_LOADER && !CONFIG_VM_ROM
 #include <sof/lib/memory.h>
 #endif
 #include <xtensa/coreasm.h>
@@ -59,7 +59,7 @@ _ResetVector:
 	//  and a more elaborate j/movi/jx sequence are needed in
 	//  .ResetVector.text to dispatch to the new location.
 
-#if CONFIG_HAVE_RESET_VECTOR_ROM
+#if CONFIG_XT_HAVE_RESET_VECTOR_ROM
 	j	_ResetHandler
 #else
 	// This is our VM ROM, it simply jumps to the reset handler.
@@ -94,7 +94,7 @@ _reset_sram:
 
 	.extern	__memctl_default
 
-#if CONFIG_BOOT_LOADER || CONFIG_VM_ROM
+#if CONFIG_XT_BOOT_LOADER || CONFIG_VM_ROM
 	.section .ResetHandler.text, "ax"
 	j	_ResetHandler
 #endif
@@ -573,7 +573,7 @@ unpackdone:
 	 */
 #if HAVE_XSR && (XCHAL_HAVE_XEA1 || XCHAL_HAVE_XEA2)
 
-#if !CONFIG_BOOT_LOADER || CONFIG_VM_ROM
+#if !CONFIG_XT_BOOT_LOADER || CONFIG_VM_ROM
 # ifndef XCHAL_DEBUGLEVEL		/* debug option not selected? */
 #  define XCHAL_DEBUGLEVEL	99	/* bogus value outside 2..6 */
 # endif
@@ -624,7 +624,7 @@ unpackdone:
 	 *  Note:  This needs to be call0 regardless of the selected ABI.
 	 */
 
-#if CONFIG_BOOT_LOADER && !CONFIG_VM_ROM
+#if CONFIG_XT_BOOT_LOADER && !CONFIG_VM_ROM
 	movi	a0, SOF_TEXT_BASE
 	callx0	a0
 #else

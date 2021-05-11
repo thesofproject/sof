@@ -13,7 +13,7 @@
 #include <sof/bit.h>
 
 /* IRQ numbers */
-#if CONFIG_INTERRUPT_LEVEL_1
+#if CONFIG_XT_INTERRUPT_LEVEL_1
 
 #define IRQ_NUM_SOFTWARE0	0	/* Level 1 */
 #define IRQ_NUM_TIMER1		1	/* Level 1 */
@@ -27,7 +27,7 @@
 
 #endif
 
-#if CONFIG_INTERRUPT_LEVEL_2
+#if CONFIG_XT_INTERRUPT_LEVEL_2
 
 #define IRQ_NUM_TIMER2		5	/* Level 2 */
 #define IRQ_NUM_SOFTWARE3	6	/* Level 2 */
@@ -37,7 +37,7 @@
 
 #endif
 
-#if CONFIG_INTERRUPT_LEVEL_3
+#if CONFIG_XT_INTERRUPT_LEVEL_3
 
 #define IRQ_NUM_TIMER3		7	/* Level 3 */
 #define IRQ_NUM_SOFTWARE4	8	/* Level 3 */
@@ -49,7 +49,7 @@
 
 #endif
 
-#if CONFIG_INTERRUPT_LEVEL_4
+#if CONFIG_XT_INTERRUPT_LEVEL_4
 
 #define IRQ_NUM_EXT_IA		10	/* Level 4 */
 #define IRQ_NUM_EXT_PMC		11	/* Level 4 */
@@ -59,7 +59,7 @@
 
 #endif
 
-#if CONFIG_INTERRUPT_LEVEL_5
+#if CONFIG_XT_INTERRUPT_LEVEL_5
 
 #define IRQ_NUM_SOFTWARE6	12	/* Level 5 */
 #define IRQ_NUM_EXT_DMAC0	13	/* Level 5 */

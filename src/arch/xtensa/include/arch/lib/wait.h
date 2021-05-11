@@ -15,7 +15,7 @@
 
 #include <xtensa/xtruntime.h>
 
-#if (CONFIG_WAITI_DELAY)
+#if (CONFIG_XT_WAITI_DELAY)
 
 static inline void arch_wait_for_interrupt(int level)
 {

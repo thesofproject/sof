@@ -13,7 +13,7 @@
 #include <sof/bit.h>
 
 /* IRQ numbers */
-#if CONFIG_INTERRUPT_LEVEL_1
+#if CONFIG_XT_INTERRUPT_LEVEL_1
 
 #define IRQ_NUM_SOFTWARE0	8	/* Level 1 */
 
@@ -21,7 +21,7 @@
 
 #endif
 
-#if CONFIG_INTERRUPT_LEVEL_2
+#if CONFIG_XT_INTERRUPT_LEVEL_2
 
 #define IRQ_NUM_TIMER0		2	/* Level 2 */
 #define IRQ_NUM_MU		7	/* Level 2 */
@@ -49,7 +49,7 @@
 
 #endif
 
-#if CONFIG_INTERRUPT_LEVEL_3
+#if CONFIG_XT_INTERRUPT_LEVEL_3
 
 #define IRQ_NUM_TIMER1		3	/* Level 3 */
 

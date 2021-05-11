@@ -101,7 +101,7 @@ _start:
 #include "reset-unneeded.S"
 #endif
 
-#if CONFIG_BOOT_LOADER
+#if CONFIG_XT_BOOT_LOADER
 	.weak	_Level2FromVector
 	.weak	_Level3FromVector
 	.weak	_Level4FromVector
