@@ -43,6 +43,7 @@ struct ll_schedule_domain_ops {
 
 struct ll_schedule_domain {
 	uint64_t next_tick;		/**< ticks just set for next run */
+	uint64_t new_target_tick;	/**< for the next set, used during the reschedule stage */
 	spinlock_t lock;		/**< standard lock */
 	atomic_t total_num_tasks;	/**< total number of registered tasks */
 	atomic_t registered_cores;	/**< number of registered cores */
@@ -87,6 +88,7 @@ static inline struct ll_schedule_domain *domain_init
 	domain->ops = ops;
 	/* maximum value means no tick has been set to timer */
 	domain->next_tick = UINT64_MAX;
+	domain->new_target_tick = UINT64_MAX;
 
 	spinlock_init(&domain->lock);
 	atomic_init(&domain->total_num_tasks, 0);
