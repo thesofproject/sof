@@ -14,7 +14,7 @@
 # docker run -it  -v <insert sof dir here>:/home/sof/work/sof.git --user `id -u` sof ./incremental.sh
 #
 
-FROM ubuntu:18.04
+FROM ubuntu:20.04
 ARG UID=1000
 
 # Set up proxy from host, this will be deleted at the end
@@ -24,8 +24,13 @@ ARG host_https_proxy
 ENV http_proxy $host_http_proxy
 ENV https_proxy $host_https_proxy
 
+# for non-interactive package install
+ARG DEBIAN_FRONTEND=noninteractive
+
 RUN apt-get -y update && \
 	    apt-get install -y \
+		dialog \
+		apt-utils \
 	    	vim \
 	    	autoconf \
 		bison \
