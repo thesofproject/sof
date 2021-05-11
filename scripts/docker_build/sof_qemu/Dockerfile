@@ -12,7 +12,7 @@
 # ./scripts/docker-qemu.sh scrpits-or-command-you-want-run
 #
 
-FROM ubuntu:18.04
+FROM ubuntu:20.04
 ARG UID=1000
 
 ARG host_http_proxy
@@ -20,10 +20,15 @@ ARG host_https_proxy
 ENV http_proxy $host_http_proxy
 ENV https_proxy $host_https_proxy
 
+# for non-interactive package install
+ARG DEBIAN_FRONTEND=noninteractive
+
 RUN apt-get -y update && \
 	    apt-get install -y \
 		vim \
 		jed \
+		dialog \
+		apt-utils \
 		autoconf \
 		build-essential \
 		git \
