@@ -426,6 +426,7 @@ static char *format_file_name(char *file_name_raw, int full_name)
 	return name;
 }
 
+static int entry_number = 1;
 /** Formats and outputs one entry from the trace + the corresponding
  * ldc_entry from the dictionary passed as arguments. Expects the log
  * variables to have already been copied into the ldc_entry.
@@ -433,7 +434,6 @@ static char *format_file_name(char *file_name_raw, int full_name)
 static void print_entry_params(const struct log_entry_header *dma_log,
 			       const struct ldc_entry *entry, uint64_t last_timestamp)
 {
-	static int entry_number = 1;
 	static uint64_t timestamp_origin;
 
 	FILE *out_fd = global_config->out_fd;
@@ -657,7 +657,7 @@ out:
  *
  * @param[in] dma_log protocol header from any trace (not just from the
  * "DMA" trace)
- * @param[out] last_timestamp timestamp found for this entry
+ * @param[in,out] last_timestamp timestamp found for this entry
  */
 static int fetch_entry(const struct log_entry_header *dma_log, uint64_t *last_timestamp)
 {
@@ -819,6 +819,7 @@ static int logger_read(void)
 			/* for trace mode, try to reopen */
 			if (global_config->trace) {
 				if (freopen(NULL, "rb", global_config->in_fd)) {
+					entry_number = 1;
 					continue;
 				} else {
 					log_err("in %s(), freopen(..., %s) failed: %s(%d)\n",
