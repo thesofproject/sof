@@ -26,7 +26,7 @@ ENV https_proxy $host_https_proxy
 
 RUN apt-get -y update && \
 	    apt-get install -y \
-	    	autoconf \
+		autoconf \
 		bison \
 		build-essential \
 		python3-pyelftools \
