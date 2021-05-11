@@ -19,6 +19,8 @@ fi
 docker run -i -v "$(pwd)":/home/sof/work/sof.git \
 	--env CMAKE_BUILD_TYPE \
 	--env PRIVATE_KEY_OPTION \
+	--env http_proxy="$http_proxy" \
+	--env https_proxy="$https_proxy" \
 	   --user "$(id -u)" \
 	$SOF_DOCKER_RUN \
 	   sof "$@"
