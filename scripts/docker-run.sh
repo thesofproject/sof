@@ -21,6 +21,6 @@ docker run -i -v "$(pwd)":/home/sof/work/sof.git \
 	--env PRIVATE_KEY_OPTION \
 	--env http_proxy=${http_proxy} \
 	--env https_proxy=${https_proxy} \
-	   --user "$(id -u)" \
+	--user "$(id -u)" \
 	$SOF_DOCKER_RUN \
-	   sof "$@"
+	sof "$@"
