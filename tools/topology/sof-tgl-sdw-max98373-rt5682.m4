@@ -16,7 +16,7 @@ include(`common/tlv.m4')
 include(`sof/tokens.m4')
 
 # Include Tigerlake DSP configuration
-include(`platform/intel/tgl.m4')
+include(`platform/intel/'PLATFORM`.m4')
 include(`platform/intel/dmic.m4')
 
 define(DMIC_PDM_CONFIG, ifelse(CHANNELS, `4', ``FOUR_CH_PDM0_PDM1'',
@@ -29,11 +29,11 @@ DEBUG_START
 #
 # PCM0 <---> volume <----> playback (Headset - ALC5682)
 # PCM1 <---> volume <----> capture  (Headset - ALC5682)
-# PCM2 ----> smart_amp ----> ALH0x102 (Speaker -max98373)
+# PCM2 ----> smart_amp ----> ALH0xy02 (Speaker -max98373)
 #              ^
 #              |
 #              |
-# PCM3 <---- demux  <----- ALH0x103 (Speaker -max98373)
+# PCM3 <---- demux  <----- ALH0xy03 (Speaker -max98373)
 # PCM5 ----> volume -----> iDisp1
 # PCM6 ----> volume -----> iDisp2
 # PCM7 ----> volume -----> iDisp3
@@ -46,11 +46,18 @@ define(`SDW', 1)
 
 # Smart amplifier related
 # ALH related
-#define smart amplifier ALH index
-define(`SMART_ALH_INDEX', 0x102)
-#define ALH BE dai_link name
-define(`SMART_ALH_PLAYBACK_NAME', `SDW1-Playback')
-define(`SMART_ALH_CAPTURE_NAME', `SDW1-Capture')
+ifelse(PLATFORM, `tgl',
+`	#define smart amplifier ALH index
+	define(`SMART_ALH_INDEX', 0x102)
+	#define ALH BE dai_link name
+	define(`SMART_ALH_PLAYBACK_NAME', `SDW1-Playback')
+	define(`SMART_ALH_CAPTURE_NAME', `SDW1-Capture')
+', `')
+ifelse(PLATFORM, `adl',
+`	define(`SMART_ALH_INDEX', 0x202)
+	define(`SMART_ALH_PLAYBACK_NAME', `SDW2-Playback')
+	define(`SMART_ALH_CAPTURE_NAME', `SDW2-Capture')
+', `')
 #define BE dai_link ID
 define(`SMART_BE_ID', 2)
 
