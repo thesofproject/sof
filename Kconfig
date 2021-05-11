@@ -4,7 +4,7 @@ mainmenu "SOF $(PROJECTVERSION) Configuration"
 
 comment "Compiler: $(CC_VERSION_TEXT)"
 
-config WAITI_DELAY
+config XT_WAITI_DELAY
 	bool
 	default n
 	help
@@ -15,18 +15,18 @@ config HOST_PTABLE
 	bool
 	default n
 
-config BOOT_LOADER
+config XT_BOOT_LOADER
 	bool
 	default n
 
-config HAVE_RESET_VECTOR_ROM
+config XT_HAVE_RESET_VECTOR_ROM
 	bool
 	default n
 	help
 	  Select if your platform has the reset vector
 	  in ROM.
 
-config IRQ_MAP
+config XT_IRQ_MAP
 	bool
 	default n
 
@@ -90,35 +90,35 @@ config DMA_FIFO_PARTITION
 	  Any platforms without automatic FIFO partitions
 	  should set this.
 
-config INTERRUPT_LEVEL_1
+config XT_INTERRUPT_LEVEL_1
 	bool
 	default n
 	help
 	  Select if the platform supports any interrupts of level 1.
 	  Disabling this option allows for less memory consumption.
 
-config INTERRUPT_LEVEL_2
+config XT_INTERRUPT_LEVEL_2
 	bool
 	default n
 	help
 	  Select if the platform supports any interrupts of level 2.
 	  Disabling this option allows for less memory consumption.
 
-config INTERRUPT_LEVEL_3
+config XT_INTERRUPT_LEVEL_3
 	bool
 	default n
 	help
 	  Select if the platform supports any interrupts of level 3.
 	  Disabling this option allows for less memory consumption.
 
-config INTERRUPT_LEVEL_4
+config XT_INTERRUPT_LEVEL_4
 	bool
 	default n
 	help
 	  Select if the platform supports any interrupts of level 4.
 	  Disabling this option allows for less memory consumption.
 
-config INTERRUPT_LEVEL_5
+config XT_INTERRUPT_LEVEL_5
 	bool
 	default n
 	help

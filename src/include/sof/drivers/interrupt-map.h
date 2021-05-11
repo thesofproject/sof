@@ -38,7 +38,7 @@
 	 | ((_cpu) << SOF_IRQ_CPU_SHIFT)     \
 	 | ((_number) << SOF_IRQ_NUM_SHIFT))
 
-#if CONFIG_IRQ_MAP
+#if CONFIG_XT_IRQ_MAP
 /*
  * IRQs are mapped on 4 levels.
  *

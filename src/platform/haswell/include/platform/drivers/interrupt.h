@@ -17,7 +17,7 @@
 #define PLATFORM_IRQ_CHILDREN	0
 
 /* IRQ numbers */
-#if CONFIG_INTERRUPT_LEVEL_1
+#if CONFIG_XT_INTERRUPT_LEVEL_1
 
 #define IRQ_NUM_EXT_SSP0	0	/* Level 1 */
 #define IRQ_NUM_EXT_SSP1	1	/* Level 1 */
@@ -35,7 +35,7 @@
 
 #endif
 
-#if CONFIG_INTERRUPT_LEVEL_2
+#if CONFIG_XT_INTERRUPT_LEVEL_2
 
 #define IRQ_NUM_EXT_DMAC0	8	/* Level 2 */
 
@@ -43,7 +43,7 @@
 
 #endif
 
-#if CONFIG_INTERRUPT_LEVEL_3
+#if CONFIG_XT_INTERRUPT_LEVEL_3
 
 #define IRQ_NUM_EXT_DMAC1	9	/* Level 3 */
 #define IRQ_NUM_TIMER2		10	/* Level 3 */
@@ -55,7 +55,7 @@
 
 #endif
 
-#if CONFIG_INTERRUPT_LEVEL_4
+#if CONFIG_XT_INTERRUPT_LEVEL_4
 
 #define IRQ_NUM_EXT_PARITY	12	/* Level 4 */
 
@@ -63,7 +63,7 @@
 
 #endif
 
-#if CONFIG_INTERRUPT_LEVEL_5
+#if CONFIG_XT_INTERRUPT_LEVEL_5
 
 #define IRQ_NUM_TIMER3		13	/* Level 5 */
 
