@@ -14,7 +14,7 @@
 # docker run -it  -v <insert sof dir here>:/home/sof/work/sof.git --user `id -u` sof ./incremental.sh
 #
 
-FROM ubuntu:18.04
+FROM ubuntu:20.04
 ARG UID=1000
 
 ARG host_http_proxy
@@ -22,8 +22,13 @@ ARG host_https_proxy
 ENV http_proxy $host_http_proxy
 ENV https_proxy $host_https_proxy
 
+# for non-interactive package install
+ARG DEBIAN_FRONTEND=noninteractive
+
 RUN apt-get -y update && \
 	    apt-get install -y \
+		dialog \
+		apt-utils \
 		vim \
 		jed \
 		autoconf \
@@ -60,10 +65,14 @@ echo "sof:test0000" | chpasswd && adduser sof sudo
 ENV HOME /home/sof
 
 # Use ToT alsa utils for the latest topology patches.
+# Note: For alsa-lib, set default library directory to /usr/lib/x86_64-linux-gnu.
+#       By default it goes to /usr/lib64, but Ubuntu 20.04's default shared library
+#       path does not have this. Typical build error is like,
+# alsatplg: error while loading shared libraries: libatopology.so.2: cannot open shared object file: No such file or directory
 RUN mkdir -p /home/sof/work/alsa && cd /home/sof/work/alsa && \
 git clone $CLONE_DEFAULTS https://github.com/thesofproject/alsa-lib.git && \
 git clone $CLONE_DEFAULTS https://github.com/thesofproject/alsa-utils.git && \
-cd /home/sof/work/alsa/alsa-lib && ./gitcompile &&  make install && \
+cd /home/sof/work/alsa/alsa-lib && ./gitcompile --prefix=/usr --libdir=/usr/lib/x86_64-linux-gnu/ &&  make install && \
 cd /home/sof/work/alsa/alsa-utils && ./gitcompile &&  make install &&\
 chown -R sof:sof /home/sof
 
