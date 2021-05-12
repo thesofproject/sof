@@ -110,14 +110,12 @@ struct pipeline_data {
 
 /**
  * \brief Creates a new pipeline.
- * \param[in,out] cd Pipeline component device.
  * \param[in] pipeline_id Pipeline ID number.
  * \param[in] priority Pipeline scheduling priority.
  * \param[in] comp_id Pipeline component ID number.
  * \return New pipeline pointer or NULL.
  */
-struct pipeline *pipeline_new(struct comp_dev *cd, uint32_t pipeline_id,
-			      uint32_t priority, uint32_t comp_id);
+struct pipeline *pipeline_new(uint32_t pipeline_id, uint32_t priority, uint32_t comp_id);
 
 /**
  * \brief Free's a pipeline.

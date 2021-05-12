@@ -8,6 +8,7 @@
 #include <sof/audio/component.h>
 #include <sof/audio/format.h>
 #include <sof/audio/pipeline.h>
+#include <sof/audio/ipc-config.h>
 #include <sof/audio/crossover/crossover.h>
 #include <sof/audio/crossover/crossover_algorithm.h>
 #include <sof/audio/eq_iir/iir.h>
@@ -21,6 +22,7 @@
 #include <sof/platform.h>
 #include <sof/string.h>
 #include <sof/trace/trace.h>
+#include <sof/ut.h>
 #include <ipc/control.h>
 #include <ipc/stream.h>
 #include <ipc/topology.h>
@@ -309,13 +311,12 @@ static int crossover_setup(struct comp_data *cd, int nch)
  * \return Pointer to Crossover Filter component device.
  */
 static struct comp_dev *crossover_new(const struct comp_driver *drv,
-				      struct sof_ipc_comp *comp)
+				      struct comp_ipc_config *config,
+				      void *spec)
 {
 	struct comp_dev *dev;
 	struct comp_data *cd;
-	struct sof_ipc_comp_process *crossover;
-	struct sof_ipc_comp_process *ipc_crossover =
-			(struct sof_ipc_comp_process *)comp;
+	struct ipc_config_process *ipc_crossover = spec;;
 	size_t bs = ipc_crossover->size;
 	int ret;
 
@@ -328,14 +329,10 @@ static struct comp_dev *crossover_new(const struct comp_driver *drv,
 		return NULL;
 	}
 
-	dev = comp_alloc(drv, COMP_SIZE(struct sof_ipc_comp_process));
+	dev = comp_alloc(drv, sizeof(*dev));
 	if (!dev)
 		return NULL;
-
-	crossover = COMP_GET_IPC(dev, sof_ipc_comp_process);
-	ret = memcpy_s(crossover, sizeof(*crossover), ipc_crossover,
-		       sizeof(struct sof_ipc_comp_process));
-	assert(!ret);
+	dev->ipc_config = *config;
 
 	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0,
 		     SOF_MEM_CAPS_RAM, sizeof(*cd));
@@ -730,7 +727,6 @@ static int crossover_copy(struct comp_dev *dev)
 static int crossover_prepare(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	struct sof_ipc_comp_config *config = dev_comp_config(dev);
 	struct comp_buffer *source, *sink;
 	struct list_item *sink_list;
 	int32_t sink_period_bytes;
@@ -766,7 +762,7 @@ static int crossover_prepare(struct comp_dev *dev)
 		sink_period_bytes = audio_stream_period_bytes(&sink->stream,
 							      dev->frames);
 		if (sink->stream.size <
-				config->periods_sink * sink_period_bytes) {
+				dev->ipc_config.periods_sink * sink_period_bytes) {
 			comp_err(dev, "crossover_prepare(), sink %d buffer size %d is insufficient",
 				 sink->pipeline_id, sink->stream.size);
 			ret = -ENOMEM;
@@ -868,7 +864,7 @@ static SHARED_DATA struct comp_driver_info comp_crossover_info = {
 	.drv = &comp_crossover,
 };
 
-static void sys_comp_crossover_init(void)
+UT_STATIC void sys_comp_crossover_init(void)
 {
 	comp_register(platform_shared_get(&comp_crossover_info,
 					  sizeof(comp_crossover_info)));

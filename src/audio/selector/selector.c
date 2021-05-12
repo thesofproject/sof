@@ -16,6 +16,7 @@
 #include <sof/audio/component.h>
 #include <sof/audio/pipeline.h>
 #include <sof/audio/selector.h>
+#include <sof/audio/ipc-config.h>
 #include <sof/common.h>
 #include <sof/debug/panic.h>
 #include <sof/ipc/msg.h>
@@ -49,10 +50,10 @@ DECLARE_TR_CTX(selector_tr, SOF_UUID(selector_uuid), LOG_LEVEL_INFO);
  * \return Pointer to selector base component device.
  */
 static struct comp_dev *selector_new(const struct comp_driver *drv,
-				     struct sof_ipc_comp *comp)
+				     struct comp_ipc_config *config,
+				     void *spec)
 {
-	struct sof_ipc_comp_process *ipc_process =
-		(struct sof_ipc_comp_process *)comp;
+	struct ipc_config_process *ipc_process = spec;
 	size_t bs = ipc_process->size;
 	struct comp_dev *dev;
 	struct comp_data *cd;
@@ -60,14 +61,10 @@ static struct comp_dev *selector_new(const struct comp_driver *drv,
 
 	comp_cl_info(&comp_selector, "selector_new()");
 
-	dev = comp_alloc(drv, COMP_SIZE(struct sof_ipc_comp_process));
+	dev = comp_alloc(drv, sizeof(*dev));
 	if (!dev)
 		return NULL;
-
-	ret = memcpy_s(COMP_GET_IPC(dev, sof_ipc_comp_process),
-		       sizeof(struct sof_ipc_comp_process), comp,
-		       sizeof(struct sof_ipc_comp_process));
-	assert(!ret);
+	dev->ipc_config = *config;
 
 	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
 	if (!cd) {
@@ -429,7 +426,6 @@ static int selector_prepare(struct comp_dev *dev)
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *sinkb;
 	struct comp_buffer *sourceb;
-	struct sof_ipc_comp_config *config = dev_comp_config(dev);
 	int ret;
 
 	comp_info(dev, "selector_prepare()");
@@ -466,9 +462,9 @@ static int selector_prepare(struct comp_dev *dev)
 	comp_info(dev, "selector_prepare(): sinkb->channels = %u",
 		  sinkb->stream.channels);
 
-	if (sinkb->stream.size < config->periods_sink * cd->sink_period_bytes) {
+	if (sinkb->stream.size < dev->ipc_config.periods_sink * cd->sink_period_bytes) {
 		comp_err(dev, "selector_prepare(): sink buffer size %d is insufficient < %d * %d",
-			 sinkb->stream.size, config->periods_sink, cd->sink_period_bytes);
+			 sinkb->stream.size, dev->ipc_config.periods_sink, cd->sink_period_bytes);
 		ret = -ENOMEM;
 		goto err;
 	}

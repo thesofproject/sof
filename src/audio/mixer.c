@@ -10,6 +10,7 @@
 #include <sof/audio/format.h>
 #include <sof/audio/mixer.h>
 #include <sof/audio/pipeline.h>
+#include <sof/audio/ipc-config.h>
 #include <sof/common.h>
 #include <sof/debug/panic.h>
 #include <sof/ipc/msg.h>
@@ -114,26 +115,18 @@ static void mix_n_s32(struct comp_dev *dev, struct audio_stream *sink,
 #endif /* CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE */
 
 static struct comp_dev *mixer_new(const struct comp_driver *drv,
-				  struct sof_ipc_comp *comp)
+				  struct comp_ipc_config *config,
+				  void *spec)
 {
 	struct comp_dev *dev;
-	struct sof_ipc_comp_mixer *mixer;
-	struct sof_ipc_comp_mixer *ipc_mixer =
-		(struct sof_ipc_comp_mixer *)comp;
 	struct mixer_data *md;
-	int ret;
 
 	comp_cl_dbg(&comp_mixer, "mixer_new()");
 
-	dev = comp_alloc(drv, COMP_SIZE(struct sof_ipc_comp_mixer));
+	dev = comp_alloc(drv, sizeof(*dev));
 	if (!dev)
 		return NULL;
-
-	mixer = COMP_GET_IPC(dev, sof_ipc_comp_mixer);
-
-	ret = memcpy_s(mixer, sizeof(*mixer), ipc_mixer,
-		       sizeof(struct sof_ipc_comp_mixer));
-	assert(!ret);
+	dev->ipc_config = *config;
 
 	md = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*md));
 	if (!md) {
@@ -175,7 +168,6 @@ static int mixer_verify_params(struct comp_dev *dev,
 static int mixer_params(struct comp_dev *dev,
 			struct sof_ipc_stream_params *params)
 {
-	struct sof_ipc_comp_config *config = dev_comp_config(dev);
 	struct comp_buffer *sinkb;
 	uint32_t sink_period_bytes;
 	int err;
@@ -199,9 +191,9 @@ static int mixer_params(struct comp_dev *dev,
 		return -EINVAL;
 	}
 
-	if (sinkb->stream.size < config->periods_sink * sink_period_bytes) {
+	if (sinkb->stream.size < dev->ipc_config.periods_sink * sink_period_bytes) {
 		comp_err(dev, "mixer_params(): sink buffer size %d is insufficient < %d * %d",
-			 sinkb->stream.size, config->periods_sink, sink_period_bytes);
+			 sinkb->stream.size, dev->ipc_config.periods_sink, sink_period_bytes);
 		return -ENOMEM;
 	}
 

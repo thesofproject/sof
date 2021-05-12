@@ -77,7 +77,7 @@ struct sof;
  * uncached memory region. SMP platforms without uncache can simply
  * align to cache line size instead.
  */
-#if CONFIG_CORE_COUNT > 1 && !defined(UNIT_TEST)
+#if CONFIG_CORE_COUNT > 1 && !defined(UNIT_TEST) && !defined __ZEPHYR__
 #define SHARED_DATA	__section(".shared_data")
 #else
 #define SHARED_DATA
@@ -85,7 +85,7 @@ struct sof;
 
 #define SRAM_ALIAS_BASE		0x9E000000
 #define SRAM_ALIAS_MASK		0xFF000000
-#define SRAM_ALIAS_OFFSET	0x20000000
+#define SRAM_ALIAS_OFFSET	SRAM_UNCACHED_ALIAS
 
 #if !defined UNIT_TEST && !defined __ZEPHYR__
 #define uncache_to_cache(address) \
@@ -112,7 +112,7 @@ struct sof;
  */
 static inline void *platform_shared_get(void *ptr, int bytes)
 {
-#if CONFIG_CORE_COUNT > 1
+#if CONFIG_CORE_COUNT > 1 && !defined __ZEPHYR__
 	dcache_invalidate_region(ptr, bytes);
 	return cache_to_uncache(ptr);
 #else

@@ -14,10 +14,10 @@ config BAYTRAIL
 	select DMA_FIFO_PARTITION
 	select DW
 	select DW_DMA
-	select HAVE_RESET_VECTOR_ROM
-	select INTERRUPT_LEVEL_1
-	select INTERRUPT_LEVEL_4
-	select INTERRUPT_LEVEL_5
+	select XT_HAVE_RESET_VECTOR_ROM
+	select XT_INTERRUPT_LEVEL_1
+	select XT_INTERRUPT_LEVEL_4
+	select XT_INTERRUPT_LEVEL_5
 	select INTEL
 	select SCHEDULE_DMA_MULTI_CHANNEL
 	help
@@ -31,10 +31,10 @@ config CHERRYTRAIL
 	select DMA_FIFO_PARTITION
 	select DW
 	select DW_DMA
-	select HAVE_RESET_VECTOR_ROM
-	select INTERRUPT_LEVEL_1
-	select INTERRUPT_LEVEL_4
-	select INTERRUPT_LEVEL_5
+	select XT_HAVE_RESET_VECTOR_ROM
+	select XT_INTERRUPT_LEVEL_1
+	select XT_INTERRUPT_LEVEL_4
+	select XT_INTERRUPT_LEVEL_5
 	select INTEL
 	select SCHEDULE_DMA_MULTI_CHANNEL
 	help
@@ -46,10 +46,10 @@ config HASWELL
 	select DW_DMA_AGGREGATED_IRQ
 	select DW
 	select DW_DMA
-	select HAVE_RESET_VECTOR_ROM
-	select INTERRUPT_LEVEL_1
-	select INTERRUPT_LEVEL_2
-	select INTERRUPT_LEVEL_3
+	select XT_HAVE_RESET_VECTOR_ROM
+	select XT_INTERRUPT_LEVEL_1
+	select XT_INTERRUPT_LEVEL_2
+	select XT_INTERRUPT_LEVEL_3
 	select INTEL
 	select SCHEDULE_DMA_MULTI_CHANNEL
 	help
@@ -61,10 +61,10 @@ config BROADWELL
 	select DW_DMA_AGGREGATED_IRQ
 	select DW
 	select DW_DMA
-	select HAVE_RESET_VECTOR_ROM
-	select INTERRUPT_LEVEL_1
-	select INTERRUPT_LEVEL_2
-	select INTERRUPT_LEVEL_3
+	select XT_HAVE_RESET_VECTOR_ROM
+	select XT_INTERRUPT_LEVEL_1
+	select XT_INTERRUPT_LEVEL_2
+	select XT_INTERRUPT_LEVEL_3
 	select INTEL
 	select SCHEDULE_DMA_MULTI_CHANNEL
 	help
@@ -72,8 +72,8 @@ config BROADWELL
 
 config APOLLOLAKE
 	bool "Build for Apollolake"
-	select BOOT_LOADER
-	select IRQ_MAP
+	select XT_BOOT_LOADER
+	select XT_IRQ_MAP
 	select DMA_GW
 	select DW
 	select DW_DMA
@@ -87,8 +87,8 @@ config APOLLOLAKE
 
 config CANNONLAKE
 	bool "Build for Cannonlake"
-	select BOOT_LOADER
-	select IRQ_MAP
+	select XT_BOOT_LOADER
+	select XT_IRQ_MAP
 	select DMA_GW
 	select DW
 	select DW_DMA
@@ -98,15 +98,15 @@ config CANNONLAKE
 	select DMA_FIFO_PARTITION
 	select CAVS
 	select CAVS_VERSION_1_8
-	select WAITI_DELAY
+	select XT_WAITI_DELAY
 	select CAVS_USE_LPRO_IN_WAITI
 	help
 	  Select if your target platform is Cannonlake-compatible
 
 config SUECREEK
 	bool "Build for Suecreek"
-	select BOOT_LOADER
-	select IRQ_MAP
+	select XT_BOOT_LOADER
+	select XT_IRQ_MAP
 	select DW
 	select DW_DMA
 	select DW_SPI
@@ -117,15 +117,15 @@ config SUECREEK
 	select DMA_FIFO_PARTITION
 	select CAVS
 	select CAVS_VERSION_2_0
-	select WAITI_DELAY
+	select XT_WAITI_DELAY
 	select CAVS_USE_LPRO_IN_WAITI
 	help
 	  Select if your target platform is Suecreek-compatible
 
 config ICELAKE
 	bool "Build for Icelake"
-	select BOOT_LOADER
-	select IRQ_MAP
+	select XT_BOOT_LOADER
+	select XT_IRQ_MAP
 	select DMA_GW
 	select DW
 	select DW_DMA
@@ -135,15 +135,15 @@ config ICELAKE
 	select DMA_FIFO_PARTITION
 	select CAVS
 	select CAVS_VERSION_2_0
-	select WAITI_DELAY
+	select XT_WAITI_DELAY
 	select CAVS_USE_LPRO_IN_WAITI
 	help
 	  Select if your target platform is Icelake-compatible
 
 config TIGERLAKE
 	bool "Build for Tigerlake"
-	select BOOT_LOADER
-	select IRQ_MAP
+	select XT_BOOT_LOADER
+	select XT_IRQ_MAP
 	select DMA_GW
 	select DW
 	select DW_DMA
@@ -153,7 +153,7 @@ config TIGERLAKE
 	select DMA_FIFO_PARTITION
 	select CAVS
 	select CAVS_VERSION_2_5
-	select WAITI_DELAY
+	select XT_WAITI_DELAY
 	select NO_SECONDARY_CORE_ROM
 	select CAVS_USE_LPRO_IN_WAITI
 	help
@@ -169,13 +169,13 @@ config LIBRARY
 
 config IMX8
 	bool "Build for NXP i.MX8"
-	select HAVE_RESET_VECTOR_ROM
-	select INTERRUPT_LEVEL_1
-	select INTERRUPT_LEVEL_2
-	select INTERRUPT_LEVEL_3
+	select XT_HAVE_RESET_VECTOR_ROM
+	select XT_INTERRUPT_LEVEL_1
+	select XT_INTERRUPT_LEVEL_2
+	select XT_INTERRUPT_LEVEL_3
 	select HOST_PTABLE
 	select DUMMY_DMA
-	select WAITI_DELAY
+	select XT_WAITI_DELAY
 	select IMX
 	select IMX_EDMA
 	select SCHEDULE_DMA_MULTI_CHANNEL
@@ -185,13 +185,13 @@ config IMX8
 
 config IMX8X
 	bool "Build for NXP i.MX8X"
-	select HAVE_RESET_VECTOR_ROM
-	select INTERRUPT_LEVEL_1
-	select INTERRUPT_LEVEL_2
-	select INTERRUPT_LEVEL_3
+	select XT_HAVE_RESET_VECTOR_ROM
+	select XT_INTERRUPT_LEVEL_1
+	select XT_INTERRUPT_LEVEL_2
+	select XT_INTERRUPT_LEVEL_3
 	select HOST_PTABLE
 	select DUMMY_DMA
-	select WAITI_DELAY
+	select XT_WAITI_DELAY
 	select IMX
 	select IMX_EDMA
 	select SCHEDULE_DMA_MULTI_CHANNEL
@@ -201,13 +201,13 @@ config IMX8X
 
 config IMX8M
 	bool "Build for NXP i.MX8M"
-	select HAVE_RESET_VECTOR_ROM
-	select INTERRUPT_LEVEL_1
-	select INTERRUPT_LEVEL_2
-	select INTERRUPT_LEVEL_3
+	select XT_HAVE_RESET_VECTOR_ROM
+	select XT_INTERRUPT_LEVEL_1
+	select XT_INTERRUPT_LEVEL_2
+	select XT_INTERRUPT_LEVEL_3
 	select HOST_PTABLE
 	select DUMMY_DMA
-	select WAITI_DELAY
+	select XT_WAITI_DELAY
 	select IMX
 	select SCHEDULE_DMA_MULTI_CHANNEL
 	select IMX_INTERRUPT_IRQSTEER
@@ -263,8 +263,8 @@ config CAVS
 	bool
 	default n
 	select INTEL
-	select INTERRUPT_LEVEL_2
-	select INTERRUPT_LEVEL_5
+	select XT_INTERRUPT_LEVEL_2
+	select XT_INTERRUPT_LEVEL_5
 	select INTEL_HDA
 	select INTEL_MN
 	select WAKEUP_HOOK

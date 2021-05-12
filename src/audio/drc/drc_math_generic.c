@@ -13,6 +13,8 @@
 #define q_mult(a, b, qa, qb, qy) ((int32_t)Q_MULTSR_32X32((int64_t)(a), b, qa, qb, qy))
 #define q_multq(a, b, q) ((int32_t)Q_MULTSR_32X32((int64_t)(a), b, q, q, q))
 
+#if DRC_GENERIC
+
 /*
  * Input depends on precision_x
  * Output range [0.5, 1); regulated to Q2.30
@@ -105,19 +107,6 @@ inline int32_t drc_log_fixed(int32_t x)
 }
 
 /*
- * Input is Q2.30: (-2.0, 2.0)
- * Output range: (-1.0, 1.0); regulated to Q1.31: (-1.0, 1.0)
- */
-inline int32_t drc_sin_fixed(int32_t x)
-{
-	const int32_t PI_OVER_TWO = Q_CONVERT_FLOAT(1.57079632679489661923f, 30);
-
-	/* input range of sin_fixed() is non-negative */
-	int32_t abs_sin_val = sin_fixed(q_mult(ABS(x), PI_OVER_TWO, 30, 30, 28));
-	return SGN(x) < 0 ? -abs_sin_val : abs_sin_val;
-}
-
-/*
  * Input is Q2.30; valid range: [-1.0, 1.0]
  * Output range: [-1.0, 1.0]; regulated to Q2.30: (-2.0, 2.0)
  */
@@ -177,21 +166,6 @@ inline int32_t drc_asin_fixed(int32_t x)
 }
 
 /*
- * Input x is Q6.26; valid range: (0.0, 32.0); x <= 0 is not supported
- *       y is Q2.30: (-2.0, 2.0)
- * Output is Q12.20: max 2048.0
- */
-inline int32_t drc_pow_fixed(int32_t x, int32_t y)
-{
-	/* Negative or zero input x is not supported, just return 0. */
-	if (x <= 0)
-		return 0;
-
-	/* x^y = expf(y * log(x)) */
-	return exp_fixed(q_mult(y, drc_log_fixed(x), 30, 26, 27));
-}
-
-/*
  * Input depends on precision_x
  * Output depends on precision_y
  */
@@ -241,6 +215,37 @@ inline int32_t drc_inv_fixed(int32_t x, int32_t precision_x, int32_t precision_y
 		return sat_int32(Q_SHIFT_LEFT((int64_t)inv, precision_inv, precision_y));
 	return inv;
 #undef qc
+}
+
+#endif /* DRC_GENERIC */
+
+/*
+ * Input is Q2.30: (-2.0, 2.0)
+ * Output range: (-1.0, 1.0); regulated to Q1.31: (-1.0, 1.0)
+ */
+inline int32_t drc_sin_fixed(int32_t x)
+{
+	const int32_t PI_OVER_TWO = Q_CONVERT_FLOAT(1.57079632679489661923f, 30);
+
+	/* input range of sin_fixed() is non-negative */
+	int32_t abs_sin_val = sin_fixed(q_mult(ABS(x), PI_OVER_TWO, 30, 30, 28));
+
+	return SGN(x) < 0 ? -abs_sin_val : abs_sin_val;
+}
+
+/*
+ * Input x is Q6.26; valid range: (0.0, 32.0); x <= 0 is not supported
+ *       y is Q2.30: (-2.0, 2.0)
+ * Output is Q12.20: max 2048.0
+ */
+inline int32_t drc_pow_fixed(int32_t x, int32_t y)
+{
+	/* Negative or zero input x is not supported, just return 0. */
+	if (x <= 0)
+		return 0;
+
+	/* x^y = expf(y * log(x)) */
+	return exp_fixed(q_mult(y, drc_log_fixed(x), 30, 26, 27));
 }
 
 #undef q_multq

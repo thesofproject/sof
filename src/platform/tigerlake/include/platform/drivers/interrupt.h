@@ -23,7 +23,7 @@
 #define PLATFORM_IRQ_CHILDREN	32
 
 /* IRQ numbers - wrt Tensilica DSP */
-#if CONFIG_INTERRUPT_LEVEL_1
+#if CONFIG_XT_INTERRUPT_LEVEL_1
 
 #define IRQ_NUM_SOFTWARE0	0	/* level 1 */
 #define IRQ_NUM_TIMER1		1	/* level 1 */
@@ -37,7 +37,7 @@
 
 #endif
 
-#if CONFIG_INTERRUPT_LEVEL_2
+#if CONFIG_XT_INTERRUPT_LEVEL_2
 
 #define IRQ_NUM_SOFTWARE2	4	/* level 2 */
 #define IRQ_NUM_TIMER2		5	/* level 2 */
@@ -73,7 +73,7 @@
 
 #endif
 
-#if CONFIG_INTERRUPT_LEVEL_3
+#if CONFIG_XT_INTERRUPT_LEVEL_3
 
 #define IRQ_NUM_SOFTWARE4	8	/* level 3 */
 #define IRQ_NUM_TIMER3		9	/* level 3 */
@@ -97,7 +97,7 @@
 
 #endif
 
-#if CONFIG_INTERRUPT_LEVEL_4
+#if CONFIG_XT_INTERRUPT_LEVEL_4
 
 #define IRQ_NUM_SOFTWARE6	12	/* level 4 */
 #define IRQ_NUM_EXT_LEVEL4	13	/* level 4 */
@@ -117,7 +117,7 @@
 
 #endif
 
-#if CONFIG_INTERRUPT_LEVEL_5
+#if CONFIG_XT_INTERRUPT_LEVEL_5
 
 #define IRQ_NUM_SOFTWARE8	15	/* level 5 */
 #define IRQ_NUM_EXT_LEVEL5	16	/* level 5 */

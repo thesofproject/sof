@@ -8,6 +8,7 @@
 #define __SOF_AUDIO_DRC_DRC_H__
 
 #include <stdint.h>
+#include <sof/audio/drc/drc_plat_conf.h>
 #include <sof/platform.h>
 #include <user/drc.h>
 

@@ -47,6 +47,7 @@ enum sof_comp_type {
 	SOF_COMP_ASRC,		/**< Asynchronous sample rate converter */
 	SOF_COMP_DCBLOCK,
 	SOF_COMP_SMART_AMP,		/**< smart amplifier component */
+	SOF_COMP_CODEC_ADAPTOR,		/**< codec adaptor */
 	/* keep FILEREAD/FILEWRITE as the last ones */
 	SOF_COMP_FILEREAD = 10000,	/**< host test based file IO */
 	SOF_COMP_FILEWRITE = 10001,	/**< host test based file IO */
@@ -231,6 +232,17 @@ struct sof_ipc_comp_process {
 	uint32_t reserved[7];
 
 	unsigned char data[0];
+} __attribute__((packed, aligned(4)));
+
+/* IPC file component used by testbench only */
+struct sof_ipc_comp_file {
+	struct sof_ipc_comp comp;
+	struct sof_ipc_comp_config config;
+	uint32_t rate;
+	uint32_t channels;
+	char *fn;
+	uint32_t mode;
+	uint32_t frame_fmt;
 } __attribute__((packed, aligned(4)));
 
 /* frees components, buffers and pipelines

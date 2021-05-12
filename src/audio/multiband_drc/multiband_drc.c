@@ -10,6 +10,7 @@
 #include <sof/audio/multiband_drc/multiband_drc.h>
 #include <sof/audio/format.h>
 #include <sof/audio/pipeline.h>
+#include <sof/audio/ipc-config.h>
 #include <sof/common.h>
 #include <sof/debug/panic.h>
 #include <sof/ipc/msg.h>
@@ -225,12 +226,12 @@ static int multiband_drc_setup(struct multiband_drc_comp_data *cd, int16_t chann
  */
 
 static struct comp_dev *multiband_drc_new(const struct comp_driver *drv,
-					  struct sof_ipc_comp *comp)
+					  struct comp_ipc_config *config,
+					  void *spec)
 {
 	struct comp_dev *dev;
 	struct multiband_drc_comp_data *cd;
-	struct sof_ipc_comp_process *ipc_multiband_drc =
-		(struct sof_ipc_comp_process *)comp;
+	struct ipc_config_process *ipc_multiband_drc = spec;
 	size_t bs = ipc_multiband_drc->size;
 	int ret;
 
@@ -246,14 +247,10 @@ static struct comp_dev *multiband_drc_new(const struct comp_driver *drv,
 		return NULL;
 	}
 
-	dev = comp_alloc(drv, COMP_SIZE(struct sof_ipc_comp_process));
+	dev = comp_alloc(drv, sizeof(*dev));
 	if (!dev)
 		return NULL;
-
-	ret = memcpy_s(COMP_GET_IPC(dev, sof_ipc_comp_process),
-		       sizeof(struct sof_ipc_comp_process), ipc_multiband_drc,
-		       sizeof(struct sof_ipc_comp_process));
-	assert(!ret);
+	dev->ipc_config = *config;
 
 	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
 	if (!cd) {
@@ -450,7 +447,6 @@ static int multiband_drc_copy(struct comp_dev *dev)
 static int multiband_drc_prepare(struct comp_dev *dev)
 {
 	struct multiband_drc_comp_data *cd = comp_get_drvdata(dev);
-	struct sof_ipc_comp_config *config = dev_comp_config(dev);
 	struct comp_buffer *sourceb;
 	struct comp_buffer *sinkb;
 	uint32_t sink_period_bytes;
@@ -520,7 +516,7 @@ static int multiband_drc_prepare(struct comp_dev *dev)
 	sink_period_bytes = audio_stream_period_bytes(&sinkb->stream,
 						      dev->frames);
 
-	if (sinkb->stream.size < config->periods_sink * sink_period_bytes) {
+	if (sinkb->stream.size < dev->ipc_config.periods_sink * sink_period_bytes) {
 		comp_err(dev, "multiband_drc_prepare(), sink buffer size %d is insufficient",
 			 sinkb->stream.size);
 		ret = -ENOMEM;

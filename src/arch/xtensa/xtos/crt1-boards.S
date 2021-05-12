@@ -147,7 +147,7 @@ xtos_exc_handler_table_loop:
 // Xtos structures initialized per core from rodata.
 xtos_per_core:
 #endif
-#if CONFIG_BOOT_LOADER
+#if CONFIG_XT_BOOT_LOADER
 	.weak	_Level2FromVector
 	.weak	_Level3FromVector
 	.weak	_Level4FromVector
@@ -292,7 +292,7 @@ xtos_per_core_init_interrupt_mask:
 1:
 
 /* bootloader takes care of zeroing BSS */
-#if !CONFIG_BOOT_LOADER
+#if !CONFIG_XT_BOOT_LOADER
 	/*
 	 *  Clear the BSS (uninitialized data) segments.
 	 *  This code supports multiple zeroed sections (*.bss).

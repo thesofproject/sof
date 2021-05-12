@@ -68,7 +68,7 @@ struct timer_domain {
 
 #ifdef __ZEPHYR__
 struct timer_zdata {
-	struct k_delayed_work work;
+	struct k_work_delayable work;
 	void (*handler)(void *arg);
 	void *arg;
 };
@@ -103,7 +103,8 @@ static inline void timer_report_delay(int id, uint64_t delay)
 #ifdef __ZEPHYR__
 static void timer_z_handler(struct k_work *work)
 {
-	struct timer_zdata *zd = CONTAINER_OF(work, struct timer_zdata, work);
+	struct k_work_delayable *dwork = k_work_delayable_from_work(work);
+	struct timer_zdata *zd = CONTAINER_OF(dwork, struct timer_zdata, work);
 
 	zd->handler(zd->arg);
 }
@@ -160,8 +161,8 @@ static int timer_domain_register(struct ll_schedule_domain *domain,
 
 	zdata[core].handler = handler;
 	zdata[core].arg = arg;
-	k_work_q_start(&timer_domain->ll_workq[core], stack,
-		       ZEPHYR_LL_WORKQ_SIZE, -CONFIG_NUM_COOP_PRIORITIES);
+	k_work_queue_start(&timer_domain->ll_workq[core], stack,
+			   ZEPHYR_LL_WORKQ_SIZE, -CONFIG_NUM_COOP_PRIORITIES, NULL);
 
 	thread = &timer_domain->ll_workq[core].thread;
 
@@ -175,7 +176,7 @@ static int timer_domain_register(struct ll_schedule_domain *domain,
 
 	timer_domain->ll_workq_registered[core] = 1;
 
-	k_delayed_work_init(&zdata[core].work, timer_z_handler);
+	k_work_init_delayable(&zdata[core].work, timer_z_handler);
 
 #else
 	/* tasks already registered on this core */
@@ -252,18 +253,25 @@ static void timer_domain_set(struct ll_schedule_domain *domain, uint64_t start)
 	int ret, core = cpu_get_id();
 	uint64_t ticks_delta;
 
-	if (ticks_tout < CYC_PER_TICK)
-		ticks_tout = CYC_PER_TICK;
+	if (domain->next_tick <= current ||
+	    domain->next_tick > current + ticks_tout ||
+	    !domain->next_tick) {
+		if (ticks_tout < CYC_PER_TICK)
+			ticks_tout = CYC_PER_TICK;
 
-	/* have we overshot the period length ?? */
-	if (ticks_req > current + ticks_tout)
-		ticks_req = current + ticks_tout;
+		/* have we overshot the period length ?? */
+		if (ticks_req > current + ticks_tout)
+			ticks_req = current + ticks_tout;
 
-	ticks_req -= ticks_req % CYC_PER_TICK;
-	if (ticks_req < earliest_next) {
-		/* The earliest schedule point has to be rounded up */
-		ticks_req = earliest_next + CYC_PER_TICK - 1;
 		ticks_req -= ticks_req % CYC_PER_TICK;
+		if (ticks_req < earliest_next) {
+			/* The earliest schedule point has to be rounded up */
+			ticks_req = earliest_next + CYC_PER_TICK - 1;
+			ticks_req -= ticks_req % CYC_PER_TICK;
+		}
+	} else {
+		/* The other core has already calculated the next timer event */
+		ticks_req = domain->next_tick;
 	}
 
 	/* work out next start time relative to start */
@@ -273,15 +281,15 @@ static void timer_domain_set(struct ll_schedule_domain *domain, uint64_t start)
 	/* using K_CYC(ticks_delta - 885) brings "requested - set" to about 180-700
 	 * cycles, audio sounds very slow and distorted.
 	 */
-	ret = k_delayed_work_submit_to_queue(&timer_domain[core].ll_workq[core],
-					     &zdata[core].work,
-					     K_CYC(ticks_delta - ZEPHYR_SCHED_COST));
+	ret = k_work_reschedule_for_queue(&timer_domain->ll_workq[core],
+					  &zdata[core].work,
+					  K_CYC(ticks_delta - ZEPHYR_SCHED_COST));
 	if (ret < 0) {
 		tr_err(&ll_tr, "queue submission error %d", ret);
 		return;
 	}
 
-	ticks_set = k_delayed_work_remaining_ticks(&zdata[core].work) * CYC_PER_TICK +
+	ticks_set = k_work_delayable_remaining_get(&zdata[core].work) * CYC_PER_TICK +
 		current - current % CYC_PER_TICK;
 #endif
 

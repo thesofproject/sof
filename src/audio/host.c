@@ -9,6 +9,7 @@
 #include <sof/audio/component_ext.h>
 #include <sof/audio/pcm_converter.h>
 #include <sof/audio/pipeline.h>
+#include <sof/audio/ipc-config.h>
 #include <sof/common.h>
 #include <sof/debug/panic.h>
 #include <sof/ipc/msg.h>
@@ -94,6 +95,9 @@ struct host_data {
 
 	host_copy_func copy;	/**< host copy function */
 	pcm_converter_func process;	/**< processing function */
+
+	/* IPC host init info */
+	struct ipc_config_host ipc_host;
 
 	/* stream info */
 	struct sof_ipc_stream_posn posn; /* TODO: update this */
@@ -507,25 +511,20 @@ static int host_trigger(struct comp_dev *dev, int cmd)
 }
 
 static struct comp_dev *host_new(const struct comp_driver *drv,
-				 struct sof_ipc_comp *comp)
+				 struct comp_ipc_config *config,
+				 void *spec)
 {
-	struct sof_ipc_comp_host *ipc_host = (struct sof_ipc_comp_host *)comp;
-	struct sof_ipc_comp_host *host;
 	struct comp_dev *dev;
 	struct host_data *hd;
+	struct ipc_config_host *ipc_host = spec;
 	uint32_t dir;
-	int ret;
 
 	comp_cl_dbg(&comp_host, "host_new()");
 
-	dev = comp_alloc(drv, COMP_SIZE(struct sof_ipc_comp_host));
+	dev = comp_alloc(drv, sizeof(*dev));
 	if (!dev)
 		return NULL;
-
-	host = COMP_GET_IPC(dev, sof_ipc_comp_host);
-	ret = memcpy_s(host, sizeof(*host),
-		       ipc_host, sizeof(struct sof_ipc_comp_host));
-	assert(!ret);
+	dev->ipc_config = *config;
 
 	hd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*hd));
 	if (!hd) {
@@ -534,9 +533,10 @@ static struct comp_dev *host_new(const struct comp_driver *drv,
 	}
 
 	comp_set_drvdata(dev, hd);
+	hd->ipc_host = *ipc_host;
 
 	/* request HDA DMA with shared access privilege */
-	dir = ipc_host->direction == SOF_IPC_STREAM_PLAYBACK ?
+	dir = hd->ipc_host.direction == SOF_IPC_STREAM_PLAYBACK ?
 		DMA_DIR_HMEM_TO_LMEM : DMA_DIR_LMEM_TO_HMEM;
 
 	hd->dma = dma_get(dir, 0, DMA_DEV_HOST, DMA_ACCESS_SHARED);
@@ -552,7 +552,7 @@ static struct comp_dev *host_new(const struct comp_driver *drv,
 	dma_sg_init(&hd->host.elem_array);
 	dma_sg_init(&hd->local.elem_array);
 
-	ipc_build_stream_posn(&hd->posn, SOF_IPC_STREAM_POSITION, comp->id);
+	ipc_build_stream_posn(&hd->posn, SOF_IPC_STREAM_POSITION, dev->ipc_config.id);
 
 	hd->msg = ipc_msg_init(hd->posn.rhdr.hdr.cmd, sizeof(hd->posn));
 	if (!hd->msg) {
@@ -903,6 +903,9 @@ static int host_get_attribute(struct comp_dev *dev, uint32_t type,
 	switch (type) {
 	case COMP_ATTR_COPY_TYPE:
 		*(enum comp_copy_type *)value = hd->copy_type;
+		break;
+	case COMP_ATTR_COPY_DIR:
+		*(uint32_t *)value = hd->ipc_host.direction;
 		break;
 	default:
 		return -EINVAL;

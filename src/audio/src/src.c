@@ -10,6 +10,7 @@
 #include <sof/audio/buffer.h>
 #include <sof/audio/component.h>
 #include <sof/audio/pipeline.h>
+#include <sof/audio/ipc-config.h>
 #include <sof/audio/src/src.h>
 #include <sof/audio/src/src_config.h>
 #include <sof/debug/panic.h>
@@ -61,6 +62,7 @@ DECLARE_TR_CTX(src_tr, SOF_UUID(src_uuid), LOG_LEVEL_INFO);
 struct comp_data {
 	struct polyphase_src src;
 	struct src_param param;
+	struct ipc_config_src ipc_config;
 	int32_t *delay_lines;
 	uint32_t sink_rate;
 	uint32_t source_rate;
@@ -451,13 +453,12 @@ static void src_copy_sxx(struct comp_dev *dev,
 }
 
 static struct comp_dev *src_new(const struct comp_driver *drv,
-				struct sof_ipc_comp *comp)
+				struct comp_ipc_config *config,
+				void *spec)
 {
 	struct comp_dev *dev;
-	struct sof_ipc_comp_src *src;
-	struct sof_ipc_comp_src *ipc_src = (struct sof_ipc_comp_src *)comp;
 	struct comp_data *cd;
-	int ret;
+	struct ipc_config_src *ipc_src = spec;
 
 	comp_cl_info(&comp_src, "src_new()");
 
@@ -467,15 +468,10 @@ static struct comp_dev *src_new(const struct comp_driver *drv,
 		return NULL;
 	}
 
-	dev = comp_alloc(drv, COMP_SIZE(struct sof_ipc_comp_src));
+	dev = comp_alloc(drv, sizeof(*dev));
 	if (!dev)
 		return NULL;
-
-	src = COMP_GET_IPC(dev, sof_ipc_comp_src);
-
-	ret = memcpy_s(src, sizeof(*src), ipc_src,
-		       sizeof(struct sof_ipc_comp_src));
-	assert(!ret);
+	dev->ipc_config = *config;
 
 	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
 	if (!cd) {
@@ -484,6 +480,7 @@ static struct comp_dev *src_new(const struct comp_driver *drv,
 	}
 
 	comp_set_drvdata(dev, cd);
+	cd->ipc_config = *ipc_src;
 
 	cd->delay_lines = NULL;
 	cd->src_func = src_fallback;
@@ -511,7 +508,7 @@ static void src_free(struct comp_dev *dev)
 static int src_verify_params(struct comp_dev *dev,
 			     struct sof_ipc_stream_params *params)
 {
-	struct sof_ipc_comp_src *src = COMP_GET_IPC(dev, sof_ipc_comp_src);
+	struct comp_data *cd = comp_get_drvdata(dev);
 	int ret;
 
 	comp_dbg(dev, "src_verify_params()");
@@ -522,13 +519,15 @@ static int src_verify_params(struct comp_dev *dev,
 	 * src->source/sink_rate = 0 means that source/sink rate can vary.
 	 */
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
-		if (src->source_rate && (params->rate != src->source_rate)) {
-			comp_err(dev, "src_verify_params(): runtime stream pcm rate does not match rate fetched from ipc.");
+		if (cd->ipc_config.source_rate && (params->rate != cd->ipc_config.source_rate)) {
+			comp_err(dev, "src_verify_params(): runtime stream pcm rate %u does not match rate %u fetched from ipc.",
+				 params->rate, cd->ipc_config.source_rate);
 			return -EINVAL;
 		}
 	} else {
-		if (src->sink_rate && (params->rate != src->sink_rate)) {
-			comp_err(dev, "src_verify_params(): runtime stream pcm rate does not match rate fetched from ipc.");
+		if (cd->ipc_config.sink_rate && (params->rate != cd->ipc_config.sink_rate)) {
+			comp_err(dev, "src_verify_params(): runtime stream pcm rate %u does not match rate %u fetched from ipc.",
+				 params->rate, cd->ipc_config.sink_rate);
 			return -EINVAL;
 		}
 	}
@@ -548,7 +547,6 @@ static int src_verify_params(struct comp_dev *dev,
 static int src_params(struct comp_dev *dev,
 		      struct sof_ipc_stream_params *params)
 {
-	struct sof_ipc_comp_src *src = COMP_GET_IPC(dev, sof_ipc_comp_src);
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *sinkb;
 	struct comp_buffer *sourceb;
@@ -573,8 +571,8 @@ static int src_params(struct comp_dev *dev,
 	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
 				source_list);
 
-	comp_info(dev, "src_params(): src->source_rate: %d", src->source_rate);
-	comp_info(dev, "src_params(): src->sink_rate: %d", src->sink_rate);
+	comp_info(dev, "src_params(): src->source_rate: %d", cd->ipc_config.source_rate);
+	comp_info(dev, "src_params(): src->sink_rate: %d", cd->ipc_config.sink_rate);
 
 	/* Set source/sink_rate/frames */
 	cd->source_rate = sourceb->stream.rate;
@@ -800,7 +798,6 @@ static int src_copy(struct comp_dev *dev)
 static int src_prepare(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	struct sof_ipc_comp_config *config = dev_comp_config(dev);
 	struct comp_buffer *sinkb;
 	struct comp_buffer *sourceb;
 	uint32_t source_period_bytes;
@@ -832,9 +829,9 @@ static int src_prepare(struct comp_dev *dev)
 	sink_period_bytes = audio_stream_period_bytes(&sinkb->stream,
 						      dev->frames);
 
-	if (sinkb->stream.size < config->periods_sink * sink_period_bytes) {
+	if (sinkb->stream.size < dev->ipc_config.periods_sink * sink_period_bytes) {
 		comp_err(dev, "src_prepare(): sink buffer size %d is insufficient < %d * %d",
-			 sinkb->stream.size, config->periods_sink, sink_period_bytes);
+			 sinkb->stream.size, dev->ipc_config.periods_sink, sink_period_bytes);
 		ret = -ENOMEM;
 		goto err;
 	}

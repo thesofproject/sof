@@ -58,14 +58,14 @@ static int setup(void **state)
 {
 	struct vol_test_parameters *parameters = *state;
 	struct vol_test_state *vol_state;
-	struct comp_data *cd;
+	struct vol_data *cd;
 	uint32_t size = 0;
 
 	/* allocate new state */
 	vol_state = test_malloc(sizeof(*vol_state));
 
 	/* allocate and set new device */
-	vol_state->dev = test_malloc(COMP_SIZE(struct sof_ipc_comp_volume));
+	vol_state->dev = test_malloc(sizeof(struct comp_dev));
 	vol_state->dev->frames = parameters->frames;
 
 	/* allocate and set new data */
@@ -105,7 +105,7 @@ static int setup(void **state)
 static int teardown(void **state)
 {
 	struct vol_test_state *vol_state = *state;
-	struct comp_data *cd = comp_get_drvdata(vol_state->dev);
+	struct vol_data *cd = comp_get_drvdata(vol_state->dev);
 
 	/* free everything */
 	test_free(cd);
@@ -136,7 +136,7 @@ static void fill_source_s16(struct vol_test_state *vol_state)
 static void verify_s16_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
 			      struct comp_buffer *source)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
+	struct vol_data *cd = comp_get_drvdata(dev);
 	const int16_t *src = (int16_t *)source->stream.r_ptr;
 	const int16_t *dst = (int16_t *)sink->stream.w_ptr;
 	double processed;
@@ -186,7 +186,7 @@ static void verify_s24_to_s24_s32(struct comp_dev *dev,
 				  struct comp_buffer *sink,
 				  struct comp_buffer *source)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
+	struct vol_data *cd = comp_get_drvdata(dev);
 	const int32_t *src = (int32_t *)source->stream.r_ptr;
 	const int32_t *dst = (int32_t *)sink->stream.w_ptr;
 	double processed;
@@ -243,7 +243,7 @@ static void verify_s32_to_s24_s32(struct comp_dev *dev,
 				  struct comp_buffer *sink,
 				  struct comp_buffer *source)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
+	struct vol_data *cd = comp_get_drvdata(dev);
 	double processed;
 	const int32_t *src = (int32_t *)source->stream.r_ptr;
 	const int32_t *dst = (int32_t *)sink->stream.w_ptr;
@@ -286,7 +286,7 @@ static void verify_s32_to_s24_s32(struct comp_dev *dev,
 static void verify_s16_to_sX(struct comp_dev *dev, struct comp_buffer *sink,
 			     struct comp_buffer *source)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
+	struct vol_data *cd = comp_get_drvdata(dev);
 	const int16_t *src = (int16_t *)source->r_ptr;
 	const int32_t *dst = (int32_t *)sink->w_ptr;
 	double processed;
@@ -331,7 +331,7 @@ static void verify_s16_to_sX(struct comp_dev *dev, struct comp_buffer *sink,
 static void verify_sX_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
 			     struct comp_buffer *source)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
+	struct vol_data *cd = comp_get_drvdata(dev);
 	const int32_t *src = (int32_t *)source->r_ptr;
 	const int16_t *dst = (int16_t *)sink->w_ptr;
 	double processed;
@@ -372,7 +372,7 @@ static void verify_sX_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
 static void test_audio_vol(void **state)
 {
 	struct vol_test_state *vol_state = *state;
-	struct comp_data *cd = comp_get_drvdata(vol_state->dev);
+	struct vol_data *cd = comp_get_drvdata(vol_state->dev);
 
 	switch (vol_state->sink->stream.frame_fmt) {
 	case SOF_IPC_FRAME_S16_LE:

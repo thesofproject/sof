@@ -46,7 +46,7 @@ static int setup(void **state)
 	sel_state = test_malloc(sizeof(*sel_state));
 
 	/* allocate and set new device */
-	sel_state->dev = test_malloc(COMP_SIZE(struct sof_ipc_comp_volume));
+	sel_state->dev = test_malloc(sizeof(struct comp_dev));
 	sel_state->dev->frames = parameters->frames;
 
 	list_init(&sel_state->dev->bsink_list);

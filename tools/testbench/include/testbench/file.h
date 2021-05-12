@@ -47,14 +47,4 @@ struct file_comp_data {
 
 };
 
-/* file IO ipc comp */
-struct sof_ipc_comp_file {
-	struct sof_ipc_comp comp;
-	struct sof_ipc_comp_config config;
-	uint32_t rate;
-	uint32_t channels;
-	char *fn;
-	enum file_mode mode;
-	enum sof_ipc_frame frame_fmt;
-} __attribute__((packed, aligned(4)));
 #endif

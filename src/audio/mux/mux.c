@@ -11,6 +11,7 @@
 
 #include <sof/audio/component.h>
 #include <sof/audio/mux.h>
+#include <sof/audio/ipc-config.h>
 #include <sof/common.h>
 #include <sof/ipc/msg.h>
 #include <sof/lib/alloc.h>
@@ -127,7 +128,7 @@ static int mux_set_values(struct comp_dev *dev, struct comp_data *cd,
 		}
 	}
 
-	if (dev->comp.type == SOF_COMP_MUX) {
+	if (dev->ipc_config.type == SOF_COMP_MUX) {
 		if (mux_mix_check(cfg))
 			comp_cl_err(&comp_mux, "mux_set_values(): mux component is not able to mix channels");
 	}
@@ -140,13 +141,13 @@ static int mux_set_values(struct comp_dev *dev, struct comp_data *cd,
 
 	cd->config.num_streams = cfg->num_streams;
 
-	if (dev->comp.type == SOF_COMP_MUX)
+	if (dev->ipc_config.type == SOF_COMP_MUX)
 		mux_prepare_look_up_table(dev);
 	else
 		demux_prepare_look_up_table(dev);
 
 	if (dev->state > COMP_STATE_INIT) {
-		if (dev->comp.type == SOF_COMP_MUX)
+		if (dev->ipc_config.type == SOF_COMP_MUX)
 			cd->mux = mux_get_processing_function(dev);
 		else
 			cd->demux = demux_get_processing_function(dev);
@@ -156,10 +157,10 @@ static int mux_set_values(struct comp_dev *dev, struct comp_data *cd,
 }
 
 static struct comp_dev *mux_new(const struct comp_driver *drv,
-				struct sof_ipc_comp *comp)
+				struct comp_ipc_config *config,
+				void *spec)
 {
-	struct sof_ipc_comp_process *ipc_process =
-		(struct sof_ipc_comp_process *)comp;
+	struct ipc_config_process *ipc_process = spec;
 	size_t bs = ipc_process->size;
 	struct comp_dev *dev;
 	struct comp_data *cd;
@@ -167,13 +168,10 @@ static struct comp_dev *mux_new(const struct comp_driver *drv,
 
 	comp_cl_info(&comp_mux, "mux_new()");
 
-	dev = comp_alloc(drv, COMP_SIZE(struct sof_ipc_comp_process));
+	dev = comp_alloc(drv, sizeof(*dev));
 	if (!dev)
 		return NULL;
-
-	memcpy_s(COMP_GET_IPC(dev, sof_ipc_comp_process),
-		 sizeof(struct sof_ipc_comp_process),
-		 comp, sizeof(struct sof_ipc_comp_process));
+	dev->ipc_config = *config;
 
 	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
 		     sizeof(*cd) + MUX_MAX_STREAMS * sizeof(struct mux_stream_data));
@@ -215,9 +213,11 @@ static uint8_t get_stream_index(struct comp_data *cd, uint32_t pipe_id)
 {
 	int i;
 
-	for (i = 0; i < MUX_MAX_STREAMS; i++)
+	for (i = 0; i < MUX_MAX_STREAMS; i++) {
+		comp_cl_err(&comp_mux, "got %u", cd->config.streams[i].pipeline_id);
 		if (cd->config.streams[i].pipeline_id == pipe_id)
 			return i;
+	}
 
 	comp_cl_err(&comp_mux, "get_stream_index(): couldn't find configuration for connected pipeline %u",
 		    pipe_id);
@@ -643,7 +643,7 @@ static int mux_prepare(struct comp_dev *dev)
 	comp_info(dev, "mux_prepare()");
 
 	if (dev->state != COMP_STATE_ACTIVE) {
-		if (dev->comp.type == SOF_COMP_MUX)
+		if (dev->ipc_config.type == SOF_COMP_MUX)
 			cd->mux = mux_get_processing_function(dev);
 		else
 			cd->demux = demux_get_processing_function(dev);
