@@ -213,11 +213,9 @@ static uint8_t get_stream_index(struct comp_data *cd, uint32_t pipe_id)
 {
 	int i;
 
-	for (i = 0; i < MUX_MAX_STREAMS; i++) {
-		comp_cl_err(&comp_mux, "got %u", cd->config.streams[i].pipeline_id);
+	for (i = 0; i < MUX_MAX_STREAMS; i++)
 		if (cd->config.streams[i].pipeline_id == pipe_id)
 			return i;
-	}
 
 	comp_cl_err(&comp_mux, "get_stream_index(): couldn't find configuration for connected pipeline %u",
 		    pipe_id);
