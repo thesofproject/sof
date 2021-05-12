@@ -37,9 +37,10 @@ DEBUG_START
 # PCM5 ----> volume -----> iDisp1
 # PCM6 ----> volume -----> iDisp2
 # PCM7 ----> volume -----> iDisp3
-# PCM9 ----> volume -----> iDisp4
+# PCM8 ----> volume -----> iDisp4
 # PCM10 <---- volume <---- DMIC01  (dmic 48k capture)
 # PCM12 <---- kpb <---- DMIC16k  (dmic 16k capture)
+# PCM14 <---> passthrough <---> SSP2 (Bluetooth playback/capture)
 
 
 define(`SDW', 1)
@@ -57,6 +58,13 @@ ifelse(PLATFORM, `adl',
 `	define(`SMART_ALH_INDEX', 0x202)
 	define(`SMART_ALH_PLAYBACK_NAME', `SDW2-Playback')
 	define(`SMART_ALH_CAPTURE_NAME', `SDW2-Capture')
+	# Add BT audio offload support
+	define(`BT_PIPELINE_PB_ID', `14') dnl DMIC_PIPELINE_KWD_ID + 1
+	define(`BT_PIPELINE_CP_ID', `15') dnl DMIC_PIPELINE_KWD_ID + 2
+	define(`BT_DAI_LINK_ID', `10')
+	define(`BT_PCM_ID', `14')
+	define(`HW_CONFIG_ID', `10')
+	include(`platform/intel/intel-generic-bt.m4')
 ', `')
 #define BE dai_link ID
 define(`SMART_BE_ID', 2)
