@@ -20,6 +20,7 @@
 #include <sof/audio/buffer.h>
 #include <sof/audio/component.h>
 #include <sof/audio/pipeline.h>
+#include <sof/audio/ipc-config.h>
 #include <sof/audio/igo_nr/igo_nr_comp.h>
 #include <sof/trace/trace.h>
 #include <sof/ut.h>
@@ -215,10 +216,9 @@ static inline int32_t set_capture_func(struct comp_dev *dev)
 }
 
 static struct comp_dev *igo_nr_new(const struct comp_driver *drv,
-				   struct sof_ipc_comp *comp)
+				   struct comp_ipc_config *config, void *spec)
 {
-	struct sof_ipc_comp_process *ipc_igo_nr =
-		(struct sof_ipc_comp_process *)comp;
+	struct ipc_config_process *ipc_igo_nr = spec;
 	struct comp_dev *dev;
 	struct comp_data *cd;
 	size_t bs = ipc_igo_nr->size;
@@ -233,13 +233,11 @@ static struct comp_dev *igo_nr_new(const struct comp_driver *drv,
 		return NULL;
 	}
 
-	dev = comp_alloc(drv, COMP_SIZE(struct sof_ipc_comp_process));
+	dev = comp_alloc(drv, sizeof(*dev));
 	if (!dev)
 		return NULL;
 
-	memcpy_s(COMP_GET_IPC(dev, sof_ipc_comp_process),
-		 sizeof(struct sof_ipc_comp_process), ipc_igo_nr,
-		 sizeof(struct sof_ipc_comp_process));
+	dev->ipc_config = *config;
 
 	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
 	if (!cd)
