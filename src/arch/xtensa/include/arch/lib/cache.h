@@ -22,7 +22,55 @@
 
 #define SRAM_UNCACHED_ALIAS	0x20000000
 
+#ifdef CONFIG_IMX
+/*
+ * The _memmap_cacheattr_reset linker script variable has
+ * dedicate cache attribute for every 512M in 4GB space
+ * 1: write through
+ * 2: cache bypass
+ * 4: write back
+ * F: invalid access
+ */
+extern uint32_t _memmap_cacheattr_reset;
+
+/*
+ * Since each hex digit keeps the attributes for a 512MB region,
+ * we have the following address ranges:
+ * Address range       - hex digit
+ * 0        - 1FFFFFFF - 0
+ * 20000000 - 3FFFFFFF - 1
+ * 40000000 - 5FFFFFFF - 2
+ * 60000000 - 7FFFFFFF - 3
+ * 80000000 - 9FFFFFFF - 4
+ * A0000000 - BFFFFFFF - 5
+ * C0000000 - DFFFFFFF - 6
+ * E0000000 - FFFFFFFF - 7
+ */
+
+/*
+ * Based on the above information, get the address region id (0-7)
+ */
+#define _addr_range(address) (((uintptr_t)(address) >> 29) & 0x7)
+/*
+ * Get the position of the cache attribute for a certain memory region.
+ * There are 4 bits per hex digit.
+ */
+#define _addr_shift(address) ((_addr_range(address)) << 2)
+/*
+ * For the given address, get the corresponding hex digit
+ * from the linker script variable that contains the cache attributes
+ */
+#define _addr_attr(address) ((((uint32_t)(&_memmap_cacheattr_reset)) >> \
+			     (_addr_shift(address))) & 0xF)
+/*
+ * Check if the address is cacheable or not, by verifying the _addr_attr,
+ * which for cacheable addresses might be 1 or 4
+ */
+#define is_cached(address) ((_addr_attr(address) == 1) || \
+			    (_addr_attr(address) == 4))
+#else
 #define is_cached(address) (!!((uintptr_t)(address) & SRAM_UNCACHED_ALIAS))
+#endif
 
 static inline void dcache_writeback_region(void *addr, size_t size)
 {
