@@ -8,13 +8,7 @@
 set -e
 set -x
 
-# export http_proxy=...
-# export https_proxy=...
-
 unset ZEPHYR_BASE
-
-sudo --preserve-env=http_proxy,https_proxy apt-get update
-sudo --preserve-env=http_proxy,https_proxy apt-get -y install libssl-dev
 
 # Make sure we're in the right place; chgrp -R below.
 test -e ./scripts/xtensa-build-zephyr.sh
