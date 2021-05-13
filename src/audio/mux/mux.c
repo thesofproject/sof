@@ -211,18 +211,18 @@ static void mux_free(struct comp_dev *dev)
 	rfree(dev);
 }
 
-static uint8_t get_stream_index(struct comp_data *cd, uint32_t pipe_id)
+static int get_stream_index(struct comp_data *cd, uint32_t pipe_id)
 {
-	int i;
+	int idx;
 
-	for (i = 0; i < MUX_MAX_STREAMS; i++)
-		if (cd->config.streams[i].pipeline_id == pipe_id)
-			return i;
+	for (idx = 0; idx < MUX_MAX_STREAMS; idx++)
+		if (cd->config.streams[idx].pipeline_id == pipe_id)
+			return idx;
 
 	comp_cl_err(&comp_mux, "get_stream_index(): couldn't find configuration for connected pipeline %u",
 		    pipe_id);
 
-	return 0;
+	return -EINVAL;
 }
 
 static struct mux_look_up *get_lookup_table(struct comp_data *cd,
@@ -423,12 +423,12 @@ static int demux_copy(struct comp_dev *dev)
 	struct mux_look_up *look_up;
 	struct list_item *clist;
 	uint32_t num_sinks = 0;
-	uint32_t i = 0;
 	uint32_t frames = -1;
 	uint32_t source_bytes;
 	uint32_t avail;
 	uint32_t sinks_bytes[MUX_MAX_STREAMS] = { 0 };
 	uint32_t flags = 0;
+	int i;
 
 	comp_dbg(dev, "demux_copy()");
 
@@ -445,6 +445,9 @@ static int demux_copy(struct comp_dev *dev)
 		if (sink->sink->state == dev->state) {
 			num_sinks++;
 			i = get_stream_index(cd, sink->pipeline_id);
+			/* return if index wrong */
+			if (i < 0)
+				return i;
 			look_up = get_lookup_table(cd, sink->pipeline_id);
 			sinks[i] = sink;
 			look_ups[i] = look_up;
@@ -521,11 +524,11 @@ static int mux_copy(struct comp_dev *dev)
 	const struct audio_stream *sources_stream[MUX_MAX_STREAMS] = { NULL };
 	struct list_item *clist;
 	uint32_t num_sources = 0;
-	uint32_t i = 0;
 	uint32_t frames = -1;
 	uint32_t sources_bytes[MUX_MAX_STREAMS] = { 0 };
 	uint32_t sink_bytes;
 	uint32_t flags = 0;
+	int i;
 
 	comp_dbg(dev, "mux_copy()");
 
@@ -542,6 +545,9 @@ static int mux_copy(struct comp_dev *dev)
 		if (source->source->state == dev->state) {
 			num_sources++;
 			i = get_stream_index(cd, source->pipeline_id);
+			/* return if index wrong */
+			if (i < 0)
+				return i;
 			sources[i] = source;
 			sources_stream[i] = &source->stream;
 		} else {
