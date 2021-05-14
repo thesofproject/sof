@@ -104,11 +104,11 @@ static void schedule_ll_task_done(struct ll_schedule_data *sch,
 	/* the task finished, decrease the count */
 	atomic_sub(&sch->domain->total_num_tasks, 1);
 
-	/* decrease task number of the core */
-	atomic_sub(&sch->num_tasks, 1);
-
-	/* the last task of the core, unregister the client/core */
-	if (!atomic_read(&sch->num_tasks) &&
+	/*
+	 * Decrement the number of tasks on the core
+	 * If this was the last task of the core, unregister the client/core
+	 */
+	if (atomic_sub(&sch->num_tasks, 1) == 1 &&
 	    sch->domain->registered[cpu_get_id()]) {
 		sch->domain->registered[cpu_get_id()] = false;
 		atomic_sub(&sch->domain->registered_cores, 1);
@@ -338,11 +338,11 @@ static void schedule_ll_domain_clear(struct ll_schedule_data *sch,
 
 	spin_lock(&domain->lock);
 
-	/* decrease task number of the core */
-	atomic_sub(&sch->num_tasks, 1);
-
-	/* disable domain on the core if needed */
-	if (!atomic_read(&sch->num_tasks))
+	/*
+	 * Decrement the number of tasks on the core.
+	 * Disable domain on the core if needed
+	 */
+	if (atomic_sub(&sch->num_tasks, 1) == 1)
 		domain_disable(domain, cpu_get_id());
 
 	/* unregister the task */
