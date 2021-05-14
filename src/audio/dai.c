@@ -1110,12 +1110,13 @@ static int dai_copy(struct comp_dev *dev)
 		src_samples = avail_bytes / sampling;
 		sink_samples = audio_stream_get_free_samples(&buf->stream);
 		samples = MIN(src_samples, sink_samples);
-
-		/* limit bytes per copy to one period for the whole pipeline
-		 * in order to avoid high load spike
-		 */
-		samples = MIN(samples, dd->period_bytes / sampling);
 	}
+
+	/* limit bytes per copy to one period for the whole pipeline
+	 * in order to avoid high load spike
+	 */
+	samples = MIN(samples, dd->period_bytes / sampling);
+
 	copy_bytes = samples * sampling;
 
 	buffer_unlock(buf, flags);
