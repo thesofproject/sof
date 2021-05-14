@@ -135,8 +135,8 @@ static const uint32_t coef_base_b[4] = {PDM0_COEFFICIENT_B, PDM1_COEFFICIENT_B,
 	PDM2_COEFFICIENT_B, PDM3_COEFFICIENT_B};
 
 /* Global configuration request for DMIC */
-static struct sof_ipc_dai_dmic_params *dmic_prm[DMIC_HW_FIFOS];
-static int dmic_active_fifos;
+static SHARED_DATA struct sof_ipc_dai_dmic_params *dmic_prm[DMIC_HW_FIFOS];
+static SHARED_DATA int dmic_active_fifos;
 
 /* this ramps volume changes over time */
 static enum task_state dmic_work(void *data)
@@ -781,6 +781,7 @@ static int configure_registers(struct dai *dai,
 	uint32_t ref;
 	int32_t ci;
 	uint32_t cu;
+	int uncached_dmic_active_fifos = *cache_to_uncache(&dmic_active_fifos);
 	int ipm;
 	int of0;
 	int of1;
@@ -908,7 +909,7 @@ static int configure_registers(struct dai *dai,
 	}
 
 	for (i = 0; i < DMIC_HW_CONTROLLERS; i++) {
-		if (dmic_active_fifos == 0) {
+		if (uncached_dmic_active_fifos == 0) {
 			/* CIC */
 			val = CIC_CONTROL_SOFT_RESET(soft_reset) |
 				CIC_CONTROL_CIC_START_B(0) |
@@ -1147,7 +1148,6 @@ static int dmic_set_config(struct dai *dai, struct sof_ipc_dai_config *config)
 	dai_info(dai, "dmic_set_config(): unmute_ramp_time_ms = %d",
 		 unmute_ramp_time_ms);
 
-
 	/*
 	 * "config" might contain pdm controller params for only
 	 * the active controllers
@@ -1155,7 +1155,7 @@ static int dmic_set_config(struct dai *dai, struct sof_ipc_dai_config *config)
 	 */
 	if (!dmic_prm[0]) {
 		size = sizeof(struct sof_ipc_dai_dmic_params);
-		dmic_prm[0] = rzalloc(SOF_MEM_ZONE_SYS_RUNTIME, 0,
+		dmic_prm[0] = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0,
 				      SOF_MEM_CAPS_RAM,
 				      DMIC_HW_FIFOS * size);
 		if (!dmic_prm[0]) {
@@ -1273,6 +1273,7 @@ out:
 static void dmic_start(struct dai *dai)
 {
 	struct dmic_pdata *dmic = dai_get_drvdata(dai);
+	int *uncached_dmic_active_fifos = cache_to_uncache(&dmic_active_fifos);
 	int i;
 	int mic_a;
 	int mic_b;
@@ -1381,7 +1382,7 @@ static void dmic_start(struct dai *dai)
 	}
 
 	if (dmic->state == COMP_STATE_PREPARE)
-		dmic_active_fifos++;
+		(*uncached_dmic_active_fifos)++;
 
 	dmic->state = COMP_STATE_ACTIVE;
 
@@ -1398,13 +1399,14 @@ static void dmic_start(struct dai *dai)
 
 
 	dai_info(dai, "dmic_start(), done active_fifos = %d",
-		 dmic_active_fifos);
+		 *uncached_dmic_active_fifos);
 }
 
 /* stop the DMIC for capture */
 static void dmic_stop(struct dai *dai, bool in_active)
 {
 	struct dmic_pdata *dmic = dai_get_drvdata(dai);
+	int *uncached_dmic_active_fifos = cache_to_uncache(&dmic_active_fifos);
 	int i;
 
 	dai_dbg(dai, "dmic_stop()");
@@ -1427,11 +1429,11 @@ static void dmic_stop(struct dai *dai, bool in_active)
 	/* Set soft reset and mute on for all PDM controllers.
 	 */
 	dai_info(dai, "dmic_stop(), dmic_active_fifos = %d",
-		 dmic_active_fifos);
+		 *uncached_dmic_active_fifos);
 
 	for (i = 0; i < DMIC_HW_CONTROLLERS; i++) {
 		/* Don't stop CIC yet if both FIFOs were active */
-		if (dmic_active_fifos == 1) {
+		if (*uncached_dmic_active_fifos == 1) {
 			dai_update_bits(dai, base[i] + CIC_CONTROL,
 					CIC_CONTROL_SOFT_RESET_BIT |
 					CIC_CONTROL_MIC_MUTE_BIT,
@@ -1453,7 +1455,7 @@ static void dmic_stop(struct dai *dai, bool in_active)
 	}
 
 	if (in_active)
-		dmic_active_fifos--;
+		(*uncached_dmic_active_fifos)--;
 
 	schedule_task_cancel(&dmic->dmicwork);
 	spin_unlock(&dai->lock);
@@ -1610,6 +1612,7 @@ static int dmic_probe(struct dai *dai)
 static int dmic_remove(struct dai *dai)
 {
 	struct dmic_pdata *dmic = dai_get_drvdata(dai);
+	int uncached_dmic_active_fifos = *cache_to_uncache(&dmic_active_fifos);
 	int i;
 
 	dai_info(dai, "dmic_remove()");
@@ -1624,7 +1627,7 @@ static int dmic_remove(struct dai *dai)
 	interrupt_unregister(dmic->irq, dai);
 
 	/* The next end tasks must be passed if another DAI FIFO still runs */
-	if (dmic_active_fifos)
+	if (uncached_dmic_active_fifos)
 		return 0;
 
 	pm_runtime_put_sync(DMIC_CLK, dai->index);
