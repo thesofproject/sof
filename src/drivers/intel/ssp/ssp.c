@@ -125,6 +125,8 @@ static int ssp_context_restore(struct dai *dai)
 	return 0;
 }
 
+static int ssp_pre_start(struct dai *dai);
+
 /* Digital Audio interface formatting */
 static int ssp_set_config(struct dai *dai,
 			  struct sof_ipc_dai_config *config)
@@ -602,6 +604,18 @@ static int ssp_set_config(struct dai *dai,
 	dai_info(dai, "ssp_set_config(), ssrsa = 0x%08x, sstsa = 0x%08x",
 		 ssrsa, sstsa);
 
+	/* request mclk/bclk */
+	ssp_pre_start(dai);
+
+	/* enable DMA transfers */
+	ssp_update_bits(dai, SSCR1, SSCR1_TSRE, SSCR1_TSRE);
+	ssp_update_bits(dai, SSCR1, SSCR1_RSRE, SSCR1_RSRE);
+
+	/* enable port */
+	ssp_update_bits(dai, SSCR0, SSCR0_SSE, SSCR0_SSE);
+
+	dai_info(dai, "ssp_set_config() SSE enabled");
+
 	ssp->state[DAI_DIR_PLAYBACK] = COMP_STATE_PREPARE;
 	ssp->state[DAI_DIR_CAPTURE] = COMP_STATE_PREPARE;
 
@@ -628,11 +642,6 @@ static int ssp_pre_start(struct dai *dai)
 	int ret = 0;
 
 	dai_info(dai, "ssp_pre_start()");
-
-	/* SSP active means bclk already configured. */
-	if (ssp->state[SOF_IPC_STREAM_PLAYBACK] == COMP_STATE_ACTIVE ||
-	    ssp->state[SOF_IPC_STREAM_CAPTURE] == COMP_STATE_ACTIVE)
-		return 0;
 
 	/* MCLK config */
 	ret = mn_set_mclk(config->ssp.mclk_id, config->ssp.mclk_rate);
@@ -698,6 +707,8 @@ static void ssp_post_stop(struct dai *dai)
 {
 	struct ssp_pdata *ssp = dai_get_drvdata(dai);
 
+	return;
+
 	/* release clocks if SSP is inactive */
 	if (ssp->state[SOF_IPC_STREAM_PLAYBACK] != COMP_STATE_ACTIVE &&
 	    ssp->state[SOF_IPC_STREAM_CAPTURE] != COMP_STATE_ACTIVE) {
@@ -746,16 +757,11 @@ static void ssp_start(struct dai *dai, int direction)
 {
 	struct ssp_pdata *ssp = dai_get_drvdata(dai);
 
+	dai_info(dai, "ssp_start()");
+
 	spin_lock(&dai->lock);
 
-	/* request mclk/bclk */
-	ssp_pre_start(dai);
-
-	/* enable port */
-	ssp_update_bits(dai, SSCR0, SSCR0_SSE, SSCR0_SSE);
 	ssp->state[direction] = COMP_STATE_ACTIVE;
-
-	dai_info(dai, "ssp_start()");
 
 	if (ssp->params.bclk_delay) {
 		/* drive BCLK early for guaranteed time,
@@ -767,12 +773,11 @@ static void ssp_start(struct dai *dai, int direction)
 
 	/* enable DMA */
 	if (direction == DAI_DIR_PLAYBACK) {
-		ssp_update_bits(dai, SSCR1, SSCR1_TSRE, SSCR1_TSRE);
 		ssp_update_bits(dai, SSTSA, SSTSA_TXEN, SSTSA_TXEN);
 	} else {
-		ssp_update_bits(dai, SSCR1, SSCR1_RSRE, SSCR1_RSRE);
 		ssp_update_bits(dai, SSRSA, SSRSA_RXEN, SSRSA_RXEN);
 	}
+	dai_info(dai, "ssp_start() DMA started");
 
 	/* wait to get valid fifo status */
 	wait_delay(PLATFORM_SSP_DELAY);
@@ -793,7 +798,6 @@ static void ssp_stop(struct dai *dai, int direction)
 	/* stop Rx if neeed */
 	if (direction == DAI_DIR_CAPTURE &&
 	    ssp->state[SOF_IPC_STREAM_CAPTURE] != COMP_STATE_PREPARE) {
-		ssp_update_bits(dai, SSCR1, SSCR1_RSRE, 0);
 		ssp_update_bits(dai, SSRSA, SSRSA_RXEN, 0);
 		ssp_empty_rx_fifo(dai);
 		ssp->state[SOF_IPC_STREAM_CAPTURE] = COMP_STATE_PREPARE;
@@ -804,17 +808,9 @@ static void ssp_stop(struct dai *dai, int direction)
 	if (direction == DAI_DIR_PLAYBACK &&
 	    ssp->state[SOF_IPC_STREAM_PLAYBACK] != COMP_STATE_PREPARE) {
 		ssp_empty_tx_fifo(dai);
-		ssp_update_bits(dai, SSCR1, SSCR1_TSRE, 0);
 		ssp_update_bits(dai, SSTSA, SSTSA_TXEN, 0);
 		ssp->state[SOF_IPC_STREAM_PLAYBACK] = COMP_STATE_PREPARE;
 		dai_info(dai, "ssp_stop(), TX stop");
-	}
-
-	/* disable SSP port if no users */
-	if (ssp->state[SOF_IPC_STREAM_CAPTURE] == COMP_STATE_PREPARE &&
-	    ssp->state[SOF_IPC_STREAM_PLAYBACK] == COMP_STATE_PREPARE) {
-		ssp_update_bits(dai, SSCR0, SSCR0_SSE, 0);
-		dai_info(dai, "ssp_stop(), SSP port disabled");
 	}
 
 	ssp_post_stop(dai);
