@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 //
-// Copyright(c) 2019 Intel Corporation. All rights reserved.
+// Copyright(c) 2021 Intel Corporation. All rights reserved.
 //
 // Author: Tomasz Lauda <tomasz.lauda@linux.intel.com>
 
@@ -53,7 +53,7 @@ K_THREAD_STACK_DEFINE(ll_workq_stack3, ZEPHYR_LL_WORKQ_SIZE);
 
 #define LL_TIMER_SET_OVERHEAD_TICKS  1000 /* overhead/delay to set the tick, in ticks */
 
-struct timer_domain {
+struct zephyr_domain {
 	struct k_work_q ll_workq[CONFIG_CORE_COUNT];
 	int ll_workq_registered[CONFIG_CORE_COUNT];
 	struct timer *timer;
@@ -97,21 +97,21 @@ static void timer_z_handler(struct k_work *work)
 	zd->handler(zd->arg);
 }
 
-static int timer_domain_register(struct ll_schedule_domain *domain,
+static int zephyr_domain_register(struct ll_schedule_domain *domain,
 				 uint64_t period, struct task *task,
 				 void (*handler)(void *arg), void *arg)
 {
-	struct timer_domain *timer_domain = ll_sch_domain_get_pdata(domain);
+	struct zephyr_domain *zephyr_domain = ll_sch_domain_get_pdata(domain);
 	int core = cpu_get_id();
 	int ret = 0;
 	void *stack;
 	char *qname;
 	struct k_thread *thread;
 
-	tr_dbg(&ll_tr, "timer_domain_register()");
+	tr_dbg(&ll_tr, "zephyr_domain_register()");
 
 	/* domain work only needs registered once */
-	if (timer_domain->ll_workq_registered[core])
+	if (zephyr_domain->ll_workq_registered[core])
 		goto out;
 
 	switch (core) {
@@ -144,10 +144,10 @@ static int timer_domain_register(struct ll_schedule_domain *domain,
 
 	zdata[core].handler = handler;
 	zdata[core].arg = arg;
-	k_work_queue_start(&timer_domain->ll_workq[core], stack,
+	k_work_queue_start(&zephyr_domain->ll_workq[core], stack,
 			   ZEPHYR_LL_WORKQ_SIZE, -CONFIG_NUM_COOP_PRIORITIES, NULL);
 
-	thread = &timer_domain->ll_workq[core].thread;
+	thread = &zephyr_domain->ll_workq[core].thread;
 
 	k_thread_suspend(thread);
 
@@ -157,43 +157,43 @@ static int timer_domain_register(struct ll_schedule_domain *domain,
 
 	k_thread_resume(thread);
 
-	timer_domain->ll_workq_registered[core] = 1;
+	zephyr_domain->ll_workq_registered[core] = 1;
 
 	k_work_init_delayable(&zdata[core].work, timer_z_handler);
 
-	tr_info(&ll_tr, "timer_domain_register domain->type %d domain->clk %d domain->ticks_per_ms %d period %d",
+	tr_info(&ll_tr, "zephyr_domain_register domain->type %d domain->clk %d domain->ticks_per_ms %d period %d",
 		domain->type, domain->clk, domain->ticks_per_ms, (uint32_t)period);
 out:
 
 	return ret;
 }
 
-static int timer_domain_unregister(struct ll_schedule_domain *domain,
+static int zephyr_domain_unregister(struct ll_schedule_domain *domain,
 				   struct task *task, uint32_t num_tasks)
 {
-	struct timer_domain *timer_domain = ll_sch_domain_get_pdata(domain);
+	struct zephyr_domain *zephyr_domain = ll_sch_domain_get_pdata(domain);
 	int core = cpu_get_id();
 
-	tr_dbg(&ll_tr, "timer_domain_unregister()");
+	tr_dbg(&ll_tr, "zephyr_domain_unregister()");
 
 	/* tasks still registered on this core */
-	if (!timer_domain->arg[core] || num_tasks)
+	if (!zephyr_domain->arg[core] || num_tasks)
 		return 0;
 
-	tr_info(&ll_tr, "timer_domain_unregister domain->type %d domain->clk %d",
+	tr_info(&ll_tr, "zephyr_domain_unregister domain->type %d domain->clk %d",
 		domain->type, domain->clk);
 
-	timer_domain->arg[core] = NULL;
+	zephyr_domain->arg[core] = NULL;
 
 	return 0;
 }
 
-static void timer_domain_set(struct ll_schedule_domain *domain, uint64_t start)
+static void zephyr_domain_set(struct ll_schedule_domain *domain, uint64_t start)
 {
-	struct timer_domain *timer_domain = ll_sch_domain_get_pdata(domain);
-	uint64_t ticks_tout = timer_domain->timeout;
+	struct zephyr_domain *zephyr_domain = ll_sch_domain_get_pdata(domain);
+	uint64_t ticks_tout = zephyr_domain->timeout;
 	uint64_t ticks_set;
-	uint64_t current = platform_timer_get_atomic(timer_domain->timer);
+	uint64_t current = platform_timer_get_atomic(zephyr_domain->timer);
 	uint64_t earliest_next = current + 1 + ZEPHYR_SCHED_COST;
 	uint64_t ticks_req = domain->next_tick ? start + ticks_tout :
 		MAX(start, earliest_next);
@@ -228,7 +228,7 @@ static void timer_domain_set(struct ll_schedule_domain *domain, uint64_t start)
 	/* using K_CYC(ticks_delta - 885) brings "requested - set" to about 180-700
 	 * cycles, audio sounds very slow and distorted.
 	 */
-	ret = k_work_reschedule_for_queue(&timer_domain->ll_workq[core],
+	ret = k_work_reschedule_for_queue(&zephyr_domain->ll_workq[core],
 					  &zdata[core].work,
 					  K_CYC(ticks_delta - ZEPHYR_SCHED_COST));
 	if (ret < 0) {
@@ -239,7 +239,7 @@ static void timer_domain_set(struct ll_schedule_domain *domain, uint64_t start)
 	ticks_set = k_work_delayable_remaining_get(&zdata[core].work) * CYC_PER_TICK +
 		current - current % CYC_PER_TICK;
 
-	tr_dbg(&ll_tr, "timer_domain_set(): ticks_set %u ticks_req %u current %u",
+	tr_dbg(&ll_tr, "zephyr_domain_set(): ticks_set %u ticks_req %u current %u",
 	       (unsigned int)ticks_set, (unsigned int)ticks_req,
 	       (unsigned int)platform_timer_get_atomic(timer_get()));
 
@@ -247,39 +247,40 @@ static void timer_domain_set(struct ll_schedule_domain *domain, uint64_t start)
 	 * delay occurred and we should report that in error log.
 	 */
 	if (ticks_req < ticks_set)
-		timer_report_delay(timer_domain->timer->id,
+		timer_report_delay(zephyr_domain->timer->id,
 				   ticks_set - ticks_req);
 
 	domain->next_tick = ticks_set;
 
 }
 
-static bool timer_domain_is_pending(struct ll_schedule_domain *domain,
+static bool zephyr_domain_is_pending(struct ll_schedule_domain *domain,
 				    struct task *task, struct comp_dev **comp)
 {
 	return task->start <= platform_timer_get_atomic(timer_get());
 }
 
-static const struct ll_schedule_domain_ops timer_domain_ops = {
-	.domain_register	= timer_domain_register,
-	.domain_unregister	= timer_domain_unregister,
-	.domain_set		= timer_domain_set,
-	.domain_is_pending	= timer_domain_is_pending
+static const struct ll_schedule_domain_ops zephyr_domain_ops = {
+	.domain_register	= zephyr_domain_register,
+	.domain_unregister	= zephyr_domain_unregister,
+	.domain_set		= zephyr_domain_set,
+	.domain_is_pending	= zephyr_domain_is_pending
 };
 
 struct ll_schedule_domain *timer_domain_init(struct timer *timer, int clk)
 {
 	struct ll_schedule_domain *domain;
-	struct timer_domain *timer_domain;
+	struct zephyr_domain *zephyr_domain;
 
 	domain = domain_init(SOF_SCHEDULE_LL_TIMER, clk, false,
-			     &timer_domain_ops);
+			     &zephyr_domain_ops);
 
-	timer_domain = rzalloc(SOF_MEM_ZONE_SYS_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*timer_domain));
-	timer_domain->timer = timer;
-	timer_domain->timeout = LL_TIMER_SET_OVERHEAD_TICKS;
+	zephyr_domain = rzalloc(SOF_MEM_ZONE_SYS_SHARED, 0, SOF_MEM_CAPS_RAM,
+				sizeof(*zephyr_domain));
+	zephyr_domain->timer = timer;
+	zephyr_domain->timeout = LL_TIMER_SET_OVERHEAD_TICKS;
 
-	ll_sch_domain_set_pdata(domain, timer_domain);
+	ll_sch_domain_set_pdata(domain, zephyr_domain);
 
 	return domain;
 }
