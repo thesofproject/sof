@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: BSD-3-Clause
+# Test line 1
 
 file(GLOB TPLG_DEPS
 	platform/intel/*.m4
