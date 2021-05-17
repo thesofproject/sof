@@ -78,7 +78,7 @@ config APOLLOLAKE
 	select DW
 	select DW_DMA
 	select MEM_WND
-	select HW_LLI
+	select DMA_HW_LLI
 	select DMA_FIFO_PARTITION
 	select CAVS
 	select CAVS_VERSION_1_5
@@ -93,7 +93,7 @@ config CANNONLAKE
 	select DW
 	select DW_DMA
 	select MEM_WND
-	select HW_LLI
+	select DMA_HW_LLI
 	select DW_DMA_AGGREGATED_IRQ
 	select DMA_FIFO_PARTITION
 	select CAVS
@@ -112,7 +112,7 @@ config SUECREEK
 	select DW_SPI
 	select INTEL_IOMUX
 	select DW_GPIO
-	select HW_LLI
+	select DMA_HW_LLI
 	select DW_DMA_AGGREGATED_IRQ
 	select DMA_FIFO_PARTITION
 	select CAVS
@@ -130,7 +130,7 @@ config ICELAKE
 	select DW
 	select DW_DMA
 	select MEM_WND
-	select HW_LLI
+	select DMA_HW_LLI
 	select DW_DMA_AGGREGATED_IRQ
 	select DMA_FIFO_PARTITION
 	select CAVS
@@ -148,7 +148,7 @@ config TIGERLAKE
 	select DW
 	select DW_DMA
 	select MEM_WND
-	select HW_LLI
+	select DMA_HW_LLI
 	select DW_DMA_AGGREGATED_IRQ
 	select DMA_FIFO_PARTITION
 	select CAVS
