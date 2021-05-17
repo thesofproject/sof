@@ -33,7 +33,7 @@
 #include <sof/trace/trace.h>
 #include <ipc/control.h>
 #include <ipc/stream.h>
-#include <ipc/topology.h>
+#include <sof/ipc/topology.h>
 #include <kernel/abi.h>
 #include <user/trace.h>
 
@@ -43,9 +43,9 @@
 #include <stdint.h>
 
 struct comp_dev;
-struct sof_ipc_dai_config;
 struct sof_ipc_stream_posn;
 struct dai_hw_params;
+struct timestamp_data;
 
 /** \addtogroup component_api Component API
  *  @{
@@ -292,8 +292,8 @@ struct comp_ops {
 	 *
 	 * Mandatory for components that allocate DAI.
 	 */
-	int (*dai_config)(struct comp_dev *dev,
-			  struct sof_ipc_dai_config *dai_config);
+	int (*dai_config)(struct comp_dev *dev, struct ipc_config_dai *dai_config,
+			  void *dai_spec_config);
 
 	/**
 	 * Used to pass standard and bespoke commands (with optional data).

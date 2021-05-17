@@ -4,6 +4,7 @@ if (CONFIG_IPC_MAJOR_3)
 	add_local_sources(sof
 		handler-ipc3.c
 		helper-ipc3.c
+		dai-ipc3.c
 	)
 endif()
 

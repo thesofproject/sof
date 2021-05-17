@@ -21,16 +21,19 @@
 #include <sof/list.h>
 #include <sof/lib/io.h>
 #include <sof/lib/memory.h>
+#include <sof/lib/dma.h>
 #include <sof/list.h>
 #include <sof/sof.h>
 #include <sof/spinlock.h>
 #include <sof/trace/trace.h>
+#include <sof/ipc/topology.h>
+#include <sof/audio/pcm_converter.h>
+#include <sof/audio/ipc-config.h>
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
 
 struct dai;
-struct sof_ipc_dai_config;
 struct sof_ipc_stream_params;
 
 /** \addtogroup sof_dai_drivers DAI Drivers
@@ -71,7 +74,8 @@ struct sof_ipc_stream_params;
  * SOF_MEM_ZONE_SHARED.
  */
 struct dai_ops {
-	int (*set_config)(struct dai *dai, struct sof_ipc_dai_config *config);
+	int (*set_config)(struct dai *dai, struct ipc_config_dai *config,
+			  void *spec_config);
 	int (*trigger)(struct dai *dai, int cmd, int direction);
 	int (*pm_context_restore)(struct dai *dai);
 	int (*pm_context_store)(struct dai *dai);
@@ -143,6 +147,37 @@ struct dai_plat_data {
 	const char *irq_name;
 	uint32_t flags;
 	struct dai_plat_fifo_data fifo[2];
+};
+
+/**
+ * \brief DAI runtime data
+ */
+struct dai_data {
+	/* local DMA config */
+	struct dma_chan_data *chan;
+	uint32_t stream_id;
+	struct dma_sg_config config;
+	struct comp_buffer *dma_buffer;
+	struct comp_buffer *local_buffer;
+	struct timestamp_cfg ts_config;
+	struct dai *dai;
+	struct dma *dma;
+	struct dai_group *group;	/**< NULL if no group assigned */
+	int xrun;		/* true if we are doing xrun recovery */
+
+	pcm_converter_func process;	/* processing function */
+
+	uint32_t dai_pos_blks;	/* position in bytes (nearest block) */
+	uint64_t start_position;	/* position on start */
+	uint32_t period_bytes;	/**< number of bytes per one period */
+
+	/* host can read back this value without IPC */
+	uint64_t *dai_pos;
+
+	struct ipc_config_dai ipc_config;	/* generic common config */
+	void *dai_spec_config;	/* dai specific config from the host */
+
+	uint64_t wallclock;	/* wall clock at stream start */
 };
 
 struct dai {
@@ -324,11 +359,10 @@ void dai_put(struct dai *dai);
 /**
  * \brief Digital Audio interface formatting
  */
-static inline int dai_set_config(struct dai *dai,
-				 struct sof_ipc_dai_config *config)
+static inline int dai_set_config(struct dai *dai, struct ipc_config_dai *config,
+				 void *spec_config)
 {
-	int ret = dai->drv->ops.set_config(dai, config);
-
+	int ret = dai->drv->ops.set_config(dai, config, spec_config);
 
 	return ret;
 }
@@ -478,6 +512,22 @@ static inline const struct dai_info *dai_info_get(void)
 {
 	return sof_get()->dai_info;
 }
+
+/**
+ * \brief Configure DMA channel for DAI
+ */
+int dai_config_dma_channel(struct comp_dev *dev, void *config);
+
+/**
+ * \brief Configure DAI physical interface.
+ */
+int dai_config(struct comp_dev *dev,  struct ipc_config_dai *common_config,
+	       void *spec_config);
+
+/**
+ * \brief Assign DAI to a group for simultaneous triggering.
+ */
+int dai_assign_group(struct comp_dev *dev, uint32_t group_id);
 
 /** @}*/
 

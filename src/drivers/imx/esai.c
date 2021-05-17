@@ -96,9 +96,10 @@ static int esai_context_restore(struct dai *dai)
 	return 0;
 }
 
-static inline int esai_set_config(struct dai *dai,
-				 struct sof_ipc_dai_config *config)
+static inline int esai_set_config(struct dai *dai, struct ipc_config_dai *common_config,
+				  void *spec_config)
 {
+	struct sof_ipc_dai_config *config = spec_config;
 	uint32_t xcr = 0, xccr = 0, mask;
 	struct esai_pdata *esai = dai_get_drvdata(dai);
 

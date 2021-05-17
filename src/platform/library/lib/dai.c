@@ -15,6 +15,11 @@ const struct dai_info lib_dai = {
 	.num_dai_types = ARRAY_SIZE(dti)
 };
 
+int dai_assign_group(struct comp_dev *dev, uint32_t group_id)
+{
+	return 0;
+}
+
 int dai_init(struct sof *sof)
 {
 	sof->dai_info = &lib_dai;

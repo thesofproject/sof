@@ -25,16 +25,20 @@ static int hda_trigger(struct dai *dai, int cmd, int direction)
 	return 0;
 }
 
-static int hda_set_config(struct dai *dai,
-			  struct sof_ipc_dai_config *config)
+static int hda_set_config(struct dai *dai,  struct ipc_config_dai *common_config,
+			  void *spec_config)
 {
 	struct hda_pdata *hda = dai_get_drvdata(dai);
+	struct sof_ipc_dai_config *dai_config = spec_config;
+	struct sof_ipc_dai_hda_params *params = &dai_config->hda;
 
-	if (config->hda.channels || config->hda.rate) {
-		hda->params.channels = config->hda.channels;
-		hda->params.rate = config->hda.rate;
-	}
+	dai_info(dai, "hda_set_config(): channels %u rate %u", params->channels,
+		 params->rate);
 
+	if (params->channels)
+		hda->params.channels = params->channels;
+	if (params->rate)
+		hda->params.rate = params->rate;
 
 	return 0;
 }
@@ -45,13 +49,15 @@ static int hda_get_hw_params(struct dai *dai,
 {
 	struct hda_pdata *hda = dai_get_drvdata(dai);
 
+	dai_info(dai, "hda_get_hw_params(): channels %u rate %u", hda->params.channels,
+		 hda->params.rate);
+
 	params->rate = hda->params.rate;
 	params->channels = hda->params.channels;
 
 	/* 0 means variable */
 	params->buffer_fmt = 0;
 	params->frame_fmt = 0;
-
 
 	return 0;
 }
@@ -71,7 +77,6 @@ static int hda_probe(struct dai *dai)
 		return -ENOMEM;
 	}
 	dai_set_drvdata(dai, hda);
-
 
 	return 0;
 }

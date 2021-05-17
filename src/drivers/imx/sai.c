@@ -149,10 +149,11 @@ static int sai_context_restore(struct dai *dai)
 	return 0;
 }
 
-static inline int sai_set_config(struct dai *dai,
-				 struct sof_ipc_dai_config *config)
+static inline int sai_set_config(struct dai *dai, struct ipc_config_dai *common_config,
+				 void *spec_config)
 {
 	dai_info(dai, "SAI: sai_set_config");
+	struct sof_ipc_dai_config *config = spec_config;
 	uint32_t val_cr2 = 0, val_cr4 = 0, val_cr5 = 0;
 	uint32_t mask_cr2 = 0, mask_cr4 = 0, mask_cr5 = 0;
 	struct sai_pdata *sai = dai_get_drvdata(dai);

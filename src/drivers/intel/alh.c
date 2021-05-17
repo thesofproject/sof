@@ -30,9 +30,11 @@ static int alh_trigger(struct dai *dai, int cmd, int direction)
 	return 0;
 }
 
-static int alh_set_config(struct dai *dai, struct sof_ipc_dai_config *config)
+static int alh_set_config(struct dai *dai, struct ipc_config_dai *common_config,
+			  void *spec_config)
 {
 	struct alh_pdata *alh = dai_get_drvdata(dai);
+	struct sof_ipc_dai_config *config = spec_config;
 
 	dai_info(dai, "alh_set_config() config->format = 0x%4x",
 		  config->format);

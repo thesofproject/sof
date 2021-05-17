@@ -140,6 +140,19 @@ int ipc_process_host_buffer(struct ipc *ipc,
 int ipc_dma_trace_send_position(void);
 
 /**
+ * \brief Configure DAI.
+ * @return 0 on success.
+ */
+int ipc_dai_data_config(struct comp_dev *dev);
+
+/**
+ * \brief create a IPC boot complete message.
+ * @param[in] header header.
+ * @param[in] data data.
+ */
+void ipc_boot_complete_msg(ipc_cmd_hdr *header, uint32_t *data);
+
+/**
  * \brief Read a compact IPC message or return NULL for normal message.
  * @return Pointer to the compact message data.
  */
@@ -151,6 +164,13 @@ ipc_cmd_hdr *ipc_compact_read_msg(void);
  * @return Number of words written.
  */
 int ipc_compact_write_msg(ipc_cmd_hdr *hdr);
+
+/**
+ * \brief process a dsp IPC message.
+ * @param[in] msg The ipc msg.
+ * @return Number of words written.
+ */
+ipc_cmd_hdr *ipc_process_msg(struct ipc_msg *msg);
 
 /**
  * \brief Validate mailbox contents for valid IPC header.
