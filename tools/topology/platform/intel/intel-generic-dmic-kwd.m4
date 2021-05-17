@@ -49,14 +49,6 @@ ifdef(`IGO',
 # Prolong period to 16ms for igo_nr process
 ifdef(`IGO', `define(`INTEL_GENERIC_DMIC_KWD_PERIOD', 16000)', `define(`INTEL_GENERIC_DMIC_KWD_PERIOD', 1000)')
 
-# PCM is fix 16k for igo_nr
-ifdef(`IGO', `define(`PCM_RATE', 16000)', `define(`PCM_RATE', 48000)')
-
-# DMIC setting for igo_nr
-ifdef(`IGO', `define(`DMIC_CONFIG_CLK_MIN', 500000)', `define(`DMIC_CONFIG_CLK_MIN', 2400000)')
-ifdef(`IGO', `define(`DMIC_CONFIG_CLK_MAX', 1600000)', `define(`DMIC_CONFIG_CLK_MAX', 4800000)')
-ifdef(`IGO', `define(`DMIC_CONFIG_SAMPLE_RATE', 16000)', `define(`DMIC_CONFIG_SAMPLE_RATE', 48000)')
-
 #
 # Define the pipelines
 #
@@ -76,7 +68,7 @@ define(`PGA_NAME', Dmic0)
 
 PIPELINE_PCM_ADD(sof/pipe-`DMICPROC'-capture.m4,
         DMIC_PIPELINE_48k_ID, DMIC_PCM_48k_ID, CHANNELS, s32le,
-        INTEL_GENERIC_DMIC_KWD_PERIOD, 0, 0, PCM_RATE, PCM_RATE, PCM_RATE)
+        INTEL_GENERIC_DMIC_KWD_PERIOD, 0, 0, 48000, 48000, 48000)
 
 undefine(`PGA_NAME')
 undefine(`PIPELINE_FILTER1')
@@ -154,16 +146,16 @@ SectionGraph."pipe-sof-generic-keyword-detect" {
 dnl DAI_CONFIG(type, dai_index, link_id, name, ssp_config/dmic_config)
 ifelse(CHANNELS, 4,
 `DAI_CONFIG(DMIC, 0, DMIC_DAI_LINK_48k_ID, DMIC_DAI_LINK_48k_NAME,
-                DMIC_CONFIG(1, DMIC_CONFIG_CLK_MIN, DMIC_CONFIG_CLK_MAX, 40, 60, DMIC_CONFIG_SAMPLE_RATE,
+                DMIC_CONFIG(1, 2400000, 4800000, 40, 60, 48000,
                 DMIC_WORD_LENGTH(s32le), 200, DMIC, 0,
                 PDM_CONFIG(DMIC, 0, FOUR_CH_PDM0_PDM1)))',
 `DAI_CONFIG(DMIC, 0, DMIC_DAI_LINK_48k_ID, DMIC_DAI_LINK_48k_NAME,
-                DMIC_CONFIG(1, DMIC_CONFIG_CLK_MIN, DMIC_CONFIG_CLK_MAX, 40, 60, DMIC_CONFIG_SAMPLE_RATE,
+                DMIC_CONFIG(1, 2400000, 4800000, 40, 60, 48000,
                 DMIC_WORD_LENGTH(s32le), 200, DMIC, 0,
                 PDM_CONFIG(DMIC, 0, STEREO_PDM0)))')
 
 # dmic16k (ID: 2)
 DAI_CONFIG(DMIC, 1, DMIC_DAI_LINK_16k_ID, DMIC_DAI_LINK_16k_NAME,
-                DMIC_CONFIG(1, DMIC_CONFIG_CLK_MIN, DMIC_CONFIG_CLK_MAX, 40, 60, 16000,
+                DMIC_CONFIG(1, 2400000, 4800000, 40, 60, 16000,
                 DMIC_WORD_LENGTH(s32le), 400, DMIC, 1,
                 PDM_CONFIG(DMIC, 1, STEREO_PDM0)))
