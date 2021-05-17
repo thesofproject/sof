@@ -444,14 +444,14 @@ static int schedule_ll_task(void *data, struct task *task, uint64_t start,
 				/* the assumption is that the registrable
 				 * task has the smallest period
 				 */
-				if (pdata->period >= reg_pdata->period) {
-					pdata->ratio = period / reg_pdata->period;
-				} else {
+				if (pdata->period < reg_pdata->period) {
 					tr_err(&ll_tr,
 					       "schedule_ll_task(): registrable task has a period longer than current task");
 					ret = -EINVAL;
 					goto out;
 				}
+
+				pdata->ratio = period / reg_pdata->period;
 			}
 		}
 	}
