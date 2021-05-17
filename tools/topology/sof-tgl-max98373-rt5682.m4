@@ -49,13 +49,7 @@ define(`SMART_SSP_NAME', concat(concat(`SSP', AMP_SSP),`-Codec'))
 #define BE dai_link ID
 define(`SMART_BE_ID', 7)
 #define SSP mclk
-ifdef(`IGO', `define(`SSP_MCLK', 19200000)', `define(`SSP_MCLK', 24576000)')
-#define SSP bclk
-ifdef(`IGO', `define(`SSP_BCLK', 2400000)', `define(`SSP_BCLK', 3072000)')
-#define SSP_TDM_WIDTH
-ifdef(`IGO', `define(`SSP_TDM_WIDTH', 25)', `define(`SSP_TDM_WIDTH', 32)')
-#define SSP_CONFIG_DATA_VALID_BITS
-ifdef(`IGO', `define(`SSP_CONFIG_DATA_VALID_BITS', 24)', `define(`SSP_CONFIG_DATA_VALID_BITS', 32)')
+define(`SSP_MCLK', 24576000)
 # Playback related
 define(`SMART_PB_PPL_ID', 1)
 define(`SMART_PB_CH_NUM', 2)
@@ -236,10 +230,10 @@ dnl ssp1-maxmspk, ssp0-RTHeadset
 #SSP 0 (ID: 0)
 DAI_CONFIG(SSP, 0, 0, SSP0-Codec,
         SSP_CONFIG(I2S, SSP_CLOCK(mclk, SSP_MCLK, codec_mclk_in),
-                      SSP_CLOCK(bclk, SSP_BCLK, codec_slave),
+                      SSP_CLOCK(bclk, 3072000, codec_slave),
                       SSP_CLOCK(fsync, 48000, codec_slave),
-                      SSP_TDM(2, SSP_TDM_WIDTH, 3, 3),
-                      SSP_CONFIG_DATA(SSP, 0, SSP_CONFIG_DATA_VALID_BITS)))
+                      SSP_TDM(2, 32, 3, 3),
+                      SSP_CONFIG_DATA(SSP, 0, 32)))
 
 # 4 HDMI/DP outputs (ID: 3,4,5,6)
 DAI_CONFIG(HDA, 0, 3, iDisp1,
