@@ -145,12 +145,6 @@ config GDB_DEBUG
 	help
 	  Select for GDB debugging
 
-config DEBUG_HEAP
-	bool "Heap debug"
-	default n
-	help
-	  Select for enable heap alloc debugging
-
 config DEBUG_MEMORY_USAGE_SCAN
 	bool "Memory usage scan"
 	default y
@@ -158,15 +152,6 @@ config DEBUG_MEMORY_USAGE_SCAN
 	  It enables memory usage scan at demand in runtime.
 	  This feature does not affect standard memory operations,
 	  especially allocation and deallocation.
-
-config DEBUG_BLOCK_FREE
-	bool "Blocks freeing debug"
-	default n
-	help
-	  It enables checking if free was called multiple times on
-	  already freed block of memory. Enabling this feature increases
-	  number of memory writes and reads, due to checks for memory patterns
-	  that may be performed on allocation and deallocation.
 
 config DEBUG_LOCKS
 	bool "Spinlock debug"
@@ -217,5 +202,9 @@ config DSP_RESIDENCY_COUNTERS
 	  Enables simple DSP residency counters in SRAM_REG mailbox.
 	  R0, R1, R2 are abstract states which can be used differently
 	  based on platform implementation.
+
+if !ZEPHYR_SOF_MODULE
+	rsource "Kconfig.xtos-dbg"
+endif
 
 endmenu
