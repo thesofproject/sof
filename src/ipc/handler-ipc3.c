@@ -1141,7 +1141,7 @@ static int ipc_glb_tplg_comp_new(uint32_t header)
 	       comp->pipeline_id, comp->id, comp->type);
 
 	/* register component */
-	ret = ipc_comp_new(ipc, comp);
+	ret = ipc_comp_new(ipc, ipc_to_comp_new(comp));
 	if (ret < 0) {
 		tr_err(&ipc_tr, "ipc: pipe %d comp %d creation failed %d",
 		       comp->pipeline_id, comp->id, ret);
@@ -1438,6 +1438,22 @@ ipc_cmd_hdr *ipc_compact_read_msg(void)
 	return hdr;
 }
 #endif
+
+static uint32_t msg_out[2]; /* local copy of current message to host header */
+ipc_cmd_hdr *ipc_process_msg(struct ipc_msg *msg)
+{
+	msg_out[0] = msg->header;
+	msg_out[1] = 0;
+
+	mailbox_dspbox_write(0, msg->tx_data, msg->tx_size);
+
+	return ipc_to_hdr(msg_out);
+}
+
+void ipc_boot_complete_msg(ipc_cmd_hdr *header, uint32_t *data)
+{
+	*header = SOF_IPC_FW_READY;
+}
 
 /*
  * Global IPC Operations.

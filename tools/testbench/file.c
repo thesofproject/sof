@@ -421,8 +421,7 @@ static struct comp_dev *file_new(const struct comp_driver *drv,
 	struct ipc_comp_file *ipc_file = spec;
 	struct file_comp_data *cd;
 
-	debug_print("file_new()\n");
-
+	printf("file_new() %s mode %d\n", ipc_file->fn, ipc_file->mode);
 
 	dev = comp_alloc(drv, sizeof(*dev));
 	if (!dev)
@@ -453,22 +452,24 @@ static struct comp_dev *file_new(const struct comp_driver *drv,
 	cd->rate = ipc_file->rate;
 	cd->channels = ipc_file->channels;
 	cd->frame_fmt = ipc_file->frame_fmt;
-
+printf("rate %d chan %d\n", ipc_file->rate, ipc_file->channels);
 	/* open file handle(s) depending on mode */
 	switch (cd->fs.mode) {
 	case FILE_READ:
 		cd->fs.rfh = fopen(cd->fs.fn, "r");
 		if (!cd->fs.rfh) {
-			fprintf(stderr, "error: opening file %s\n", cd->fs.fn);
+			fprintf(stderr, "error: opening file %s for reading - %s\n",
+				cd->fs.fn, strerror(errno));
 			free(cd);
 			free(dev);
 			return NULL;
 		}
 		break;
 	case FILE_WRITE:
-		cd->fs.wfh = fopen(cd->fs.fn, "w");
+		cd->fs.wfh = fopen(cd->fs.fn, "w+");
 		if (!cd->fs.wfh) {
-			fprintf(stderr, "error: opening file %s\n", cd->fs.fn);
+			fprintf(stderr, "error: opening file %s for writing - %s\n",
+				cd->fs.fn, strerror(errno));
 			free(cd);
 			free(dev);
 			return NULL;

@@ -141,6 +141,8 @@ int load_buffer(void *dev, int comp_id, int pipeline_id,
 	int size = widget->priv.size;
 	int ret;
 
+	memset(&buffer, 0, sizeof(buffer));
+
 	ret = tplg_load_buffer(comp_id, pipeline_id, size, &buffer, file);
 	if (ret < 0)
 		return ret;
@@ -213,7 +215,7 @@ static int tplg_load_fileread(int comp_id, int pipeline_id, int size,
 	/* configure fileread */
 	fileread->mode = FILE_READ;
 	fileread->comp.id = comp_id;
-
+	printf("created fileread\n");
 	/* use fileread comp as scheduling comp */
 	fileread->comp.core = 0;
 	fileread->comp.hdr.size = sizeof(struct sof_ipc_comp_file);
@@ -269,13 +271,13 @@ static int tplg_load_filewrite(int comp_id, int pipeline_id, int size,
 	}
 
 	free(array);
-
+printf("created filewrite\n");
 	/* configure filewrite */
 	filewrite->comp.core = 0;
 	filewrite->comp.id = comp_id;
 	filewrite->mode = FILE_WRITE;
 	filewrite->comp.hdr.size = sizeof(struct sof_ipc_comp_file);
-	filewrite->comp.type = SOF_COMP_FILEREAD;
+	filewrite->comp.type = SOF_COMP_FILEWRITE;
 	filewrite->comp.pipeline_id = pipeline_id;
 	filewrite->config.hdr.size = sizeof(struct sof_ipc_comp_config);
 	return 0;
@@ -320,7 +322,7 @@ static int load_fileread(void *dev, int comp_id, int pipeline_id,
 
 	/* create fileread component */
 	register_comp(fileread.comp.type, NULL);
-	if (ipc_comp_new(sof->ipc, (struct sof_ipc_comp *)&fileread) < 0) {
+	if (ipc_comp_new(sof->ipc, ipc_to_comp_new(&fileread)) < 0) {
 		fprintf(stderr, "error: comp register\n");
 		return -EINVAL;
 	}
@@ -369,7 +371,7 @@ static int load_filewrite(struct sof *sof, int comp_id, int pipeline_id,
 
 	/* create filewrite component */
 	register_comp(filewrite.comp.type, NULL);
-	if (ipc_comp_new(sof->ipc, (struct sof_ipc_comp *)&filewrite) < 0) {
+	if (ipc_comp_new(sof->ipc, ipc_to_comp_new(&filewrite)) < 0) {
 		fprintf(stderr, "error: comp register\n");
 		return -EINVAL;
 	}
@@ -455,7 +457,7 @@ int load_pga(void *dev, int comp_id, int pipeline_id,
 
 	/* load volume component */
 	register_comp(volume.comp.type, NULL);
-	if (ipc_comp_new(sof->ipc, (struct sof_ipc_comp *)&volume) < 0) {
+	if (ipc_comp_new(sof->ipc, ipc_to_comp_new(&volume)) < 0) {
 		fprintf(stderr, "error: comp register\n");
 		return -EINVAL;
 	}
@@ -484,7 +486,7 @@ int load_pipeline(void *dev, int comp_id, int pipeline_id,
 	pipeline.sched_id = sched_id;
 
 	/* Create pipeline */
-	if (ipc_pipeline_new(sof->ipc, &pipeline) < 0) {
+	if (ipc_pipeline_new(sof->ipc, (ipc_pipe_new *)&pipeline) < 0) {
 		fprintf(stderr, "error: pipeline new\n");
 		return -EINVAL;
 	}
@@ -526,7 +528,7 @@ int load_src(void *dev, int comp_id, int pipeline_id,
 
 	/* load src component */
 	register_comp(src.comp.type, NULL);
-	if (ipc_comp_new(sof->ipc, (struct sof_ipc_comp *)&src) < 0) {
+	if (ipc_comp_new(sof->ipc, ipc_to_comp_new(&src)) < 0) {
 		fprintf(stderr, "error: new src comp\n");
 		return -EINVAL;
 	}
@@ -568,7 +570,7 @@ int load_asrc(void *dev, int comp_id, int pipeline_id,
 
 	/* load asrc component */
 	register_comp(asrc.comp.type, NULL);
-	if (ipc_comp_new(sof->ipc, (struct sof_ipc_comp *)&asrc) < 0) {
+	if (ipc_comp_new(sof->ipc, ipc_to_comp_new(&asrc)) < 0) {
 		fprintf(stderr, "error: new asrc comp\n");
 		return -EINVAL;
 	}
@@ -660,7 +662,7 @@ int load_process(void *dev, int comp_id, int pipeline_id,
 	register_comp(process_ipc->comp.type, &comp_ext);
 
 	/* Instantiate */
-	ret = ipc_comp_new(sof->ipc, (struct sof_ipc_comp *)process_ipc);
+	ret = ipc_comp_new(sof->ipc, ipc_to_comp_new(process_ipc));
 	free(process_ipc);
 
 	if (ret < 0)
