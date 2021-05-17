@@ -76,6 +76,8 @@ int main(int argc, char *argv[])
 	if (ret) {
 		fprintf(stderr, "error: unable to write dictionaries, %d\n",
 			ret);
+		/* Don't corrupt the build with an empty or incomplete output */
+		unlink(image.ldc_out_file);
 		goto out;
 	}
 
