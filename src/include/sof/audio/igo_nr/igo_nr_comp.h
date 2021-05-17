@@ -12,7 +12,7 @@
 #include <sof/audio/audio_stream.h>
 #include <sof/audio/igo_nr/igo_lib.h>
 
-#define IGO_FRAME_SIZE (256)
+#define IGO_FRAME_SIZE (768)
 #define IGO_NR_IN_BUF_LENGTH (IGO_FRAME_SIZE)
 #define IGO_NR_OUT_BUF_LENGTH (IGO_FRAME_SIZE)
 
