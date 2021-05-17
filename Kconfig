@@ -169,12 +169,6 @@ config DEBUG_LOCKS_VERBOSE
 	  In addition to DEBUG_LOCKS it also adds spinlock traces
 	  every time the lock is acquired.
 
-config BUILD_VM_ROM
-	bool "Build VM ROM"
-	default n
-	help
-	  Select if you want to build VM ROM
-
 config DEBUG_IPC_COUNTERS
 	bool "IPC counters"
 	depends on CAVS
