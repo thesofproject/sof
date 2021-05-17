@@ -519,9 +519,6 @@ if(MEU_NO_SIGN)
 		COMMAND ${CMAKE_COMMAND} -E copy sof-${fw_name}.ri.met ${PROJECT_BINARY_DIR}/sof-${fw_output_name}.ri.met
 		COMMAND ${CMAKE_COMMAND} -E copy sof-${fw_name}.ri.uns ${PROJECT_BINARY_DIR}/sof.ri.uns
 		COMMAND ${CMAKE_COMMAND} -E copy sof-${fw_name}.ri.met ${PROJECT_BINARY_DIR}/sof.ri.met
-
-		COMMAND ${CMAKE_COMMAND} -E copy sof-${fw_name}.ldc ${PROJECT_BINARY_DIR}/sof-${fw_output_name}.ldc
-		COMMAND ${CMAKE_COMMAND} -E copy sof-${fw_name}.ldc ${PROJECT_BINARY_DIR}/sof.ldc
 		DEPENDS run_meu bin_extras glue_binary_files
 		VERBATIM
 		USES_TERMINAL
@@ -531,14 +528,22 @@ else()
 		bin ALL
 		COMMAND ${CMAKE_COMMAND} -E copy sof-${fw_name}.ri ${PROJECT_BINARY_DIR}/sof-${fw_output_name}.ri
 		COMMAND ${CMAKE_COMMAND} -E copy sof-${fw_name}.ri ${PROJECT_BINARY_DIR}/sof.ri
-
-		COMMAND ${CMAKE_COMMAND} -E copy sof-${fw_name}.ldc ${PROJECT_BINARY_DIR}/sof-${fw_output_name}.ldc
-		COMMAND ${CMAKE_COMMAND} -E copy sof-${fw_name}.ldc ${PROJECT_BINARY_DIR}/sof.ldc
 		DEPENDS run_meu bin_extras glue_binary_files
 		VERBATIM
 		USES_TERMINAL
 	)
 endif()
+
+if(CONFIG_TRACE)
+	add_custom_target(copy_dictionaries
+		COMMAND ${CMAKE_COMMAND} -E copy sof-${fw_name}.ldc  ${PROJECT_BINARY_DIR}/sof-${fw_output_name}.ldc
+		COMMAND ${CMAKE_COMMAND} -E copy sof-${fw_name}.ldc  ${PROJECT_BINARY_DIR}/sof.ldc
+		DEPENDS run_smex
+		VERBATIM
+		USES_TERMINAL
+	)
+	add_dependencies(bin copy_dictionaries)
+ endif()
 
 install(
 	FILES ${PROJECT_BINARY_DIR}/sof-${fw_output_name}.ri
