@@ -475,8 +475,16 @@ static int ipc_glb_stream_message(uint32_t header)
 
 static int ipc_dai_config_set(struct sof_ipc_dai_config *config)
 {
+	struct ipc_config_dai config_dai;
 	struct dai *dai;
 	int ret;
+
+	/* set common configuration */
+	config_dai.dai_index = config->dai_index;
+	config_dai.direction = -1;
+	config_dai.format = config->format;
+	config_dai.group_id = config->group_id;
+	config_dai.type = config->type;
 
 	/* get DAI */
 	dai = dai_get(config->type, config->dai_index, 0 /* existing only */);
@@ -487,7 +495,7 @@ static int ipc_dai_config_set(struct sof_ipc_dai_config *config)
 	}
 
 	/* configure DAI */
-	ret = dai_set_config(dai, config);
+	ret = dai_set_config(dai, &config_dai, config);
 	dai_put(dai); /* free ref immediately */
 	if (ret < 0) {
 		tr_err(&ipc_tr, "ipc: dai %d,%d config failed %d", config->type,
@@ -498,9 +506,10 @@ static int ipc_dai_config_set(struct sof_ipc_dai_config *config)
 	return 0;
 }
 
-static int ipc_dai_config(uint32_t header)
+static int ipc_msg_dai_config(uint32_t header)
 {
 	struct ipc *ipc = ipc_get();
+	struct ipc_config_dai config_dai;
 	struct sof_ipc_dai_config config;
 	int ret;
 
@@ -509,6 +518,13 @@ static int ipc_dai_config(uint32_t header)
 
 	tr_dbg(&ipc_tr, "ipc: dai %d.%d -> config ", config.type,
 	       config.dai_index);
+
+	/* set common configuration */
+	config_dai.dai_index = config.dai_index;
+	config_dai.direction = -1;
+	config_dai.format = config.format;
+	config_dai.group_id = config.group_id;
+	config_dai.type = config.type;
 
 	/* only primary core configures dai */
 	if (cpu_get_id() == PLATFORM_PRIMARY_CORE_ID) {
@@ -519,7 +535,7 @@ static int ipc_dai_config(uint32_t header)
 	}
 
 	/* send params to all DAI components who use that physical DAI */
-	return ipc_comp_dai_config(ipc, ipc->comp_data);
+	return ipc_comp_dai_config(ipc, &config_dai, ipc->comp_data);
 }
 
 static int ipc_glb_dai_message(uint32_t header)
@@ -528,7 +544,7 @@ static int ipc_glb_dai_message(uint32_t header)
 
 	switch (cmd) {
 	case SOF_IPC_DAI_CONFIG:
-		return ipc_dai_config(header);
+		return ipc_msg_dai_config(header);
 	case SOF_IPC_DAI_LOOPBACK:
 		//return ipc_comp_set_value(header, COMP_CMD_LOOPBACK);
 	default:

@@ -25,16 +25,15 @@ static int hda_trigger(struct dai *dai, int cmd, int direction)
 	return 0;
 }
 
-static int hda_set_config(struct dai *dai,
-			  struct sof_ipc_dai_config *config)
+static int hda_set_config(struct dai *dai,  struct ipc_config_dai *common_config,
+			  void *spec_config)
 {
 	struct hda_pdata *hda = dai_get_drvdata(dai);
 
-	if (config->hda.channels || config->hda.rate) {
-		hda->params.channels = config->hda.channels;
-		hda->params.rate = config->hda.rate;
+	if (common_config->channels || common_config->rate) {
+		hda->params.channels = common_config->channels;
+		hda->params.rate = common_config->rate;
 	}
-
 
 	return 0;
 }

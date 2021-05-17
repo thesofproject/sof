@@ -10,6 +10,7 @@
 #define __SOF_IPC_TOPOLOGY_H__
 
 #include <sof/audio/buffer.h>
+#include <sof/audio/ipc-config.h>
 #include <sof/audio/component.h>
 #include <sof/audio/pipeline.h>
 #include <sof/lib/alloc.h>
@@ -24,7 +25,11 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-struct dai_config;
+/* generic IPC pipeline regardless of ABI MAJOR type that is always 4 byte aligned */
+typedef uint32_t ipc_config_dai_spec;
+#include <ipc/topology.h>
+#define ipc_from_dai_config(x) ((struct sof_ipc_dai_config *)x)
+
 struct ipc_msg;
 
 #define COMP_TYPE_COMPONENT	1
@@ -47,26 +52,6 @@ struct ipc_comp_dev {
 	/* lists */
 	struct list_item list;		/* list in components */
 };
-
-/**
- * \brief Get pipeline ID from component.
- * @param icd The component device.
- * @return Pipeline ID or negative error.
- */
-static inline int32_t ipc_comp_pipe_id(const struct ipc_comp_dev *icd)
-{
-	switch (icd->type) {
-	case COMP_TYPE_COMPONENT:
-		return dev_comp_pipe_id(icd->cd);
-	case COMP_TYPE_BUFFER:
-		return icd->cb->pipeline_id;
-	case COMP_TYPE_PIPELINE:
-		return icd->pipeline->pipeline_id;
-	default:
-		tr_err(&ipc_tr, "Unknown ipc component type %u", icd->type);
-		return -EINVAL;
-	};
-}
 
 /**
  * \brief Create a new IPC component.
@@ -161,11 +146,20 @@ struct ipc_comp_dev *ipc_get_ppl_comp(struct ipc *ipc,
 				      uint32_t pipeline_id, int dir);
 
 /**
+ * \brief Get pipeline ID from component.
+ * @param icd The component device.
+ * @return Pipeline ID or negative error.
+ */
+int32_t ipc_comp_pipe_id(const struct ipc_comp_dev *icd);
+
+/**
  * \brief Configure all DAI components attached to DAI.
  * @param ipc Global IPC context.
- * @param config DAI configuration.
+ * @param common_config Common DAI configuration.
+ * @param spec_config Specific DAI configuration.
  * @return 0 on success or negative error.
  */
-int ipc_comp_dai_config(struct ipc *ipc, struct sof_ipc_dai_config *config);
+int ipc_comp_dai_config(struct ipc *ipc, struct ipc_config_dai *common_config,
+			void *spec_config);
 
 #endif

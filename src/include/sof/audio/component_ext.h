@@ -264,13 +264,13 @@ static inline int comp_reset(struct comp_dev *dev)
 }
 
 /** See comp_ops::dai_config */
-static inline int comp_dai_config(struct comp_dev *dev,
-				  struct sof_ipc_dai_config *config)
+static inline int comp_dai_config(struct comp_dev *dev, struct ipc_config_dai *config,
+				  void *spec_config)
 {
 	int ret = 0;
 
 	if (dev->drv->ops.dai_config)
-		ret = dev->drv->ops.dai_config(dev, config);
+		ret = dev->drv->ops.dai_config(dev, config, spec_config);
 
 	comp_shared_commit(dev);
 

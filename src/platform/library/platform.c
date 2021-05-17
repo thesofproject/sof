@@ -29,7 +29,7 @@ uint8_t *get_library_mailbox()
 
 static void platform_clock_init(struct sof *sof) {}
 
-static int dmac_init(struct sof *sof)
+int dmac_init(struct sof *sof)
 {
 	return 0;
 }

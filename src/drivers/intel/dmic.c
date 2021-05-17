@@ -1093,9 +1093,12 @@ static int dmic_get_hw_params(struct dai *dai,
 	return 0;
 }
 
-static int dmic_set_config(struct dai *dai, struct sof_ipc_dai_config *config)
+static int dmic_set_config(struct dai *dai, struct ipc_config_dai *common_config,
+			   void *spec_config)
 {
 	struct dmic_pdata *dmic = dai_get_drvdata(dai);
+	struct sof_ipc_dai_config *config =
+				(struct sof_ipc_dai_config *)spec_config;
 	struct matched_modes modes_ab;
 	struct dmic_configuration cfg;
 	struct decim_modes modes_a;

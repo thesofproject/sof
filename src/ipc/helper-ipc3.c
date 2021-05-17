@@ -71,6 +71,21 @@ void ipc_build_trace_posn(struct sof_ipc_dma_trace_posn *posn)
 	posn->rhdr.hdr.size = sizeof(*posn);
 }
 
+int32_t ipc_comp_pipe_id(const struct ipc_comp_dev *icd)
+{
+	switch (icd->type) {
+	case COMP_TYPE_COMPONENT:
+		return dev_comp_pipe_id(icd->cd);
+	case COMP_TYPE_BUFFER:
+		return icd->cb->pipeline_id;
+	case COMP_TYPE_PIPELINE:
+		return icd->pipeline->pipeline_id;
+	default:
+		tr_err(&ipc_tr, "Unknown ipc component type %u", icd->type);
+		return -EINVAL;
+	};
+}
+
 /* Function overwrites PCM parameters (frame_fmt, buffer_fmt, channels, rate)
  * with buffer parameters when specific flag is set.
  */
@@ -578,68 +593,6 @@ int ipc_pipeline_complete(struct ipc *ipc, uint32_t comp_id)
 
 	ret = pipeline_complete(ipc_pipe->pipeline, ipc_ppl_source->cd,
 				ipc_ppl_sink->cd);
-
-	return ret;
-}
-
-int ipc_comp_dai_config(struct ipc *ipc, struct sof_ipc_dai_config *config)
-{
-	bool comp_on_core[CONFIG_CORE_COUNT] = { false };
-	struct sof_ipc_reply reply;
-	struct ipc_comp_dev *icd;
-	struct list_item *clist;
-	int ret = -ENODEV;
-	int i;
-
-	tr_info(&ipc_tr, "ipc_comp_dai_config() dai type = %d index = %d",
-		config->type, config->dai_index);
-
-	/* for each component */
-	list_for_item(clist, &ipc->comp_list) {
-		icd = container_of(clist, struct ipc_comp_dev, list);
-		/* make sure we only config DAI comps */
-		if (icd->type != COMP_TYPE_COMPONENT) {
-			continue;
-		}
-
-		if (!cpu_is_me(icd->core)) {
-			comp_on_core[icd->core] = true;
-			ret = 0;
-			continue;
-		}
-
-		if (dev_comp_type(icd->cd) == SOF_COMP_DAI ||
-		    dev_comp_type(icd->cd) == SOF_COMP_SG_DAI) {
-
-			ret = comp_dai_config(icd->cd, config);
-			if (ret < 0)
-				break;
-		}
-	}
-
-	if (ret < 0) {
-		tr_err(&ipc_tr, "ipc_comp_dai_config(): comp_dai_config() failed");
-		return ret;
-	}
-
-	/* message forwarded only by primary core */
-	if (!cpu_is_secondary(cpu_get_id())) {
-		for (i = 0; i < CONFIG_CORE_COUNT; ++i) {
-			if (!comp_on_core[i])
-				continue;
-
-			ret = ipc_process_on_core(i);
-			if (ret < 0)
-				return ret;
-
-			/* check whether IPC failed on secondary core */
-			mailbox_hostbox_read(&reply, sizeof(reply), 0,
-					     sizeof(reply));
-			if (reply.error < 0)
-				/* error reply already written */
-				return 1;
-		}
-	}
 
 	return ret;
 }
