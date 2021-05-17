@@ -31,8 +31,7 @@ DECLARE_TR_CTX(wait_tr, SOF_UUID(wait_uuid), LOG_LEVEL_INFO);
 int poll_for_register_delay(uint32_t reg, uint32_t mask,
 			    uint32_t val, uint64_t us)
 {
-	uint64_t tick = clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1) *
-						us / 1000;
+	uint64_t tick = clock_us_to_ticks(PLATFORM_DEFAULT_CLOCK, us);
 	uint32_t tries = DEFAULT_TRY_TIMES;
 	uint64_t delta = tick / tries;
 

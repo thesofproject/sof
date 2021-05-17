@@ -92,8 +92,7 @@ int idc_wait_in_blocking_mode(uint32_t target_core, bool (*cond)(int))
 	uint64_t deadline;
 
 	deadline = platform_timer_get(timer) +
-		clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1) *
-		IDC_TIMEOUT / 1000;
+		clock_us_to_ticks(PLATFORM_DEFAULT_CLOCK, IDC_TIMEOUT);
 
 	while (!cond(target_core)) {
 

@@ -100,7 +100,7 @@ void sa_init(struct sof *sof, uint64_t timeout)
 #ifdef __ZEPHYR__
 	ticks = k_us_to_cyc_ceil64(timeout);
 #else
-	ticks = clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1) * timeout / 1000;
+	ticks = clock_us_to_ticks(PLATFORM_DEFAULT_CLOCK, timeout);
 #endif
 
 	/* TODO: change values after minimal drifts will be assured */

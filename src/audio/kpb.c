@@ -1021,7 +1021,6 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 	size_t local_buffered;
 	size_t drain_interval;
 	size_t host_period_size = kpb->host_period_size;
-	size_t ticks_per_ms = clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1);
 	size_t bytes_per_ms = KPB_SAMPLES_PER_MS *
 			      (KPB_SAMPLE_CONTAINER_SIZE(sample_width) / 8) *
 			      kpb->config.channels;
@@ -1116,12 +1115,13 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 			 * shall take place. This time will be used to
 			 * synchronize us with application interrupts.
 			 */
-			drain_interval = ((host_period_size / bytes_per_ms) *
-					 ticks_per_ms) /
+			drain_interval = clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK,
+							   host_period_size / bytes_per_ms) /
 					 KPB_DRAIN_NUM_OF_PPL_PERIODS_AT_ONCE;
 			period_bytes_limit = host_period_size;
 			comp_info(dev, "kpb_init_draining(): sync_draining_mode selected with interval %d [uS].",
-				  drain_interval * 1000 / ticks_per_ms);
+				  drain_interval * 1000 /
+				  clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1));
 		} else {
 			/* Unlimited draining */
 			drain_interval = 0;
