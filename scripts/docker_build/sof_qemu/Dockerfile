@@ -38,7 +38,9 @@ RUN apt-get -y update && \
 		libpixman-1-dev \
 		pkg-config \
 		sudo \
-		bsdmainutils
+		bsdmainutils \
+		bison \
+		flex
 
 # Set up sof user
 RUN useradd --create-home -d /home/sof -u $UID -G sudo sof && \
