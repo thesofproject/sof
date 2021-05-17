@@ -7,6 +7,7 @@
 #define __SOF_AUDIO_IPC_CONFIG_H__
 
 #include <stdint.h>
+#include <stdbool.h>
 
 /*
  * Generic IPC information for base components. Fields can be added here with NO impact on
@@ -25,6 +26,10 @@ struct ipc_config_dai {
 	uint32_t direction;	/**< SOF_IPC_STREAM_ */
 	uint32_t dai_index;	/**< index of this type dai */
 	uint32_t type;		/**< DAI type - SOF_DAI_ */
+	/* physical protocol and clocking */
+	uint16_t format;	/**< SOF_DAI_FMT_ */
+	uint16_t group_id;	/**< group ID, 0 means no group (ABI 3.17) */
+	bool is_config_blob;	/**< DAI specific configuration is a blob */
 };
 
 /* generic volume component */

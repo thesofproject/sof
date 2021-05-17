@@ -126,10 +126,11 @@ static int ssp_context_restore(struct dai *dai)
 }
 
 /* Digital Audio interface formatting */
-static int ssp_set_config(struct dai *dai,
-			  struct sof_ipc_dai_config *config)
+static int ssp_set_config(struct dai *dai, struct ipc_config_dai *common_config,
+			  void *spec_config)
 {
 	struct ssp_pdata *ssp = dai_get_drvdata(dai);
+	struct sof_ipc_dai_config *config = spec_config;
 	uint32_t sscr0;
 	uint32_t sscr1;
 	uint32_t sscr2;
@@ -169,7 +170,7 @@ static int ssp_set_config(struct dai *dai,
 	}
 
 	dai_info(dai, "ssp_set_config(), config->format = 0x%4x",
-		 config->format);
+		 common_config->format);
 
 	/* reset SSP settings */
 	/* sscr0 dynamic settings are DSS, EDSS, SCR, FRDC, ECS */

@@ -246,6 +246,11 @@ void pipeline_xrun(struct pipeline *p, struct comp_dev *dev, int32_t bytes)
 {
 }
 
+int dai_assign_group(struct comp_dev *dev, uint32_t group_id)
+{
+	return 0;
+}
+
 /* print debug messages */
 void debug_print(char *message)
 {

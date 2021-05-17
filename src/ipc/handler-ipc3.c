@@ -474,7 +474,20 @@ static int ipc_glb_stream_message(uint32_t header)
  * DAI IPC Operations.
  */
 
-static int ipc_dai_config_set(struct sof_ipc_dai_config *config)
+static void build_dai_config(struct sof_ipc_dai_config *config,
+			     struct ipc_config_dai *config_dai)
+{
+	memset(config_dai, 0, sizeof(*config_dai));
+
+	config_dai->dai_index = config->dai_index;
+	config_dai->direction = -1;
+	config_dai->format = config->format;
+	config_dai->group_id = config->group_id;
+	config_dai->type = config->type;
+}
+
+static int ipc_dai_config_set(struct sof_ipc_dai_config *config,
+			      struct ipc_config_dai *config_dai)
 {
 	struct dai *dai;
 	int ret;
@@ -488,7 +501,7 @@ static int ipc_dai_config_set(struct sof_ipc_dai_config *config)
 	}
 
 	/* configure DAI */
-	ret = dai_set_config(dai, config);
+	ret = dai_set_config(dai, config_dai, config);
 	dai_put(dai); /* free ref immediately */
 	if (ret < 0) {
 		tr_err(&ipc_tr, "ipc: dai %d,%d config failed %d", config->type,
@@ -499,28 +512,40 @@ static int ipc_dai_config_set(struct sof_ipc_dai_config *config)
 	return 0;
 }
 
-static int ipc_dai_config(uint32_t header)
+/*
+ * DAI config occurs in several steps (and can be optimised)
+ * 1) IPC arrived from host
+ * 2) Primary core configures the DAI driver HW config via drv->set_config()
+ * 3) Target core then calls comp->dai_config()
+ * 4) Stream params IPC then calls dai_params() which calls
+ *    ipc_dai_data_config() followed by dai_verify_params() to validate
+ *    stream params with physical DAI HW config.
+ */
+static int ipc_msg_dai_config(uint32_t header)
 {
 	struct ipc *ipc = ipc_get();
+	struct ipc_config_dai config_dai;
 	struct sof_ipc_dai_config config;
 	int ret;
 
 	/* copy message with ABI safe method */
 	IPC_COPY_CMD(config, ipc->comp_data);
 
-	tr_dbg(&ipc_tr, "ipc: dai %d.%d -> config ", config.type,
-	       config.dai_index);
+	tr_info(&ipc_tr, "ipc: dai %d.%d -> config ", config.type,
+		config.dai_index);
+
+	/* set common configuration */
+	build_dai_config(&config, &config_dai);
 
 	/* only primary core configures dai */
 	if (cpu_get_id() == PLATFORM_PRIMARY_CORE_ID) {
-		ret = ipc_dai_config_set(
-			(struct sof_ipc_dai_config *)ipc->comp_data);
+		ret = ipc_dai_config_set(&config, &config_dai);
 		if (ret < 0)
 			return ret;
 	}
 
 	/* send params to all DAI components who use that physical DAI */
-	return ipc_comp_dai_config(ipc, ipc->comp_data);
+	return ipc_comp_dai_config(ipc, &config_dai, ipc->comp_data);
 }
 
 static int ipc_glb_dai_message(uint32_t header)
@@ -529,7 +554,7 @@ static int ipc_glb_dai_message(uint32_t header)
 
 	switch (cmd) {
 	case SOF_IPC_DAI_CONFIG:
-		return ipc_dai_config(header);
+		return ipc_msg_dai_config(header);
 	case SOF_IPC_DAI_LOOPBACK:
 		//return ipc_comp_set_value(header, COMP_CMD_LOOPBACK);
 	default:
