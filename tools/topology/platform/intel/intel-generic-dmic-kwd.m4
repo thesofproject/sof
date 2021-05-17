@@ -68,7 +68,7 @@ define(`PGA_NAME', Dmic0)
 
 PIPELINE_PCM_ADD(sof/pipe-`DMICPROC'-capture.m4,
         DMIC_PIPELINE_48k_ID, DMIC_PCM_48k_ID, CHANNELS, s32le,
-        INTEL_GENERIC_DMIC_KWD_PERIOD, 0, 0, 48000, 48000, 48000)
+        INTEL_GENERIC_DMIC_KWD_PERIOD, 0, 1, 48000, 48000, 48000)
 
 undefine(`PGA_NAME')
 undefine(`PIPELINE_FILTER1')
@@ -102,7 +102,7 @@ dnl     deadline, priority, core, time_domain)
 DAI_ADD(sof/pipe-dai-capture.m4,
         DMIC_PIPELINE_48k_ID, DMIC, 0, DMIC_DAI_LINK_48k_NAME,
         concat(`PIPELINE_SINK_', DMIC_PIPELINE_48k_ID), 2, s32le,
-        INTEL_GENERIC_DMIC_KWD_PERIOD, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
+        INTEL_GENERIC_DMIC_KWD_PERIOD, 0, 1, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # capture DAI is DMIC 1 using 3 periods
 # Buffers use s32le format, with 320 frame per 20000us on core 0 with priority 0
