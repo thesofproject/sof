@@ -508,13 +508,20 @@ add_custom_target(
 	USES_TERMINAL
 )
 
+# TODO: get rid of ${fw_output_name} and ${fw_name} below. Different
+# platforms are already built in different build directories, we will
+# never support building multiple platforms in the same build directory.
 if(MEU_NO_SIGN)
-	# copy rimage output that can be used to sign firmware
 	add_custom_target(
 		bin ALL
+		# copy rimage output that can be used to sign firmware
 		COMMAND ${CMAKE_COMMAND} -E copy sof-${fw_name}.ri.uns ${PROJECT_BINARY_DIR}/sof-${fw_output_name}.ri.uns
 		COMMAND ${CMAKE_COMMAND} -E copy sof-${fw_name}.ri.met ${PROJECT_BINARY_DIR}/sof-${fw_output_name}.ri.met
+		COMMAND ${CMAKE_COMMAND} -E copy sof-${fw_name}.ri.uns ${PROJECT_BINARY_DIR}/sof.ri.uns
+		COMMAND ${CMAKE_COMMAND} -E copy sof-${fw_name}.ri.met ${PROJECT_BINARY_DIR}/sof.ri.met
+
 		COMMAND ${CMAKE_COMMAND} -E copy sof-${fw_name}.ldc ${PROJECT_BINARY_DIR}/sof-${fw_output_name}.ldc
+		COMMAND ${CMAKE_COMMAND} -E copy sof-${fw_name}.ldc ${PROJECT_BINARY_DIR}/sof.ldc
 		DEPENDS run_meu bin_extras glue_binary_files
 		VERBATIM
 		USES_TERMINAL
@@ -524,6 +531,7 @@ else()
 		bin ALL
 		COMMAND ${CMAKE_COMMAND} -E copy sof-${fw_name}.ri ${PROJECT_BINARY_DIR}/sof-${fw_output_name}.ri
 		COMMAND ${CMAKE_COMMAND} -E copy sof-${fw_name}.ri ${PROJECT_BINARY_DIR}/sof.ri
+
 		COMMAND ${CMAKE_COMMAND} -E copy sof-${fw_name}.ldc ${PROJECT_BINARY_DIR}/sof-${fw_output_name}.ldc
 		COMMAND ${CMAKE_COMMAND} -E copy sof-${fw_name}.ldc ${PROJECT_BINARY_DIR}/sof.ldc
 		DEPENDS run_meu bin_extras glue_binary_files
