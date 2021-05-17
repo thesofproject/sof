@@ -109,6 +109,16 @@ uint64_t clock_ms_to_ticks(int clock, uint64_t ms)
 	return ticks;
 }
 
+uint64_t clock_us_to_ticks(int clock, uint64_t us)
+{
+	struct clock_info *clk_info = clocks_get() + clock;
+	uint64_t ticks;
+
+	ticks = clk_info->freqs[clk_info->current_freq_idx].ticks_per_msec * us / 1000ULL;
+
+	return ticks;
+}
+
 uint64_t clock_ticks_per_sample(int clock, uint32_t sample_rate)
 {
 	struct clock_info *clk_info = clocks_get() + clock;
