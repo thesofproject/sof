@@ -359,10 +359,10 @@ static int32_t igo_nr_params(struct comp_dev *dev,
 		 cd->source_rate, cd->sink_rate,
 		 cd->source_frames_max, cd->sink_frames_max);
 
-	/* The igo_nr supports sample rate 16000 only. */
+	/* The igo_nr supports sample rate 48000 only. */
 	switch (sourceb->stream.rate) {
-	case 16000:
-		comp_info(dev, "igo_nr_params(), sample rate = 16000");
+	case 48000:
+		comp_info(dev, "igo_nr_params(), sample rate = 48000");
 		cd->invalid_param = false;
 		break;
 	default:
@@ -663,7 +663,7 @@ static void igo_nr_lib_init(struct comp_dev *dev)
 	cd->igo_stream_data_in.data = cd->in;
 	cd->igo_stream_data_in.data_width = IGO_DATA_16BIT;
 	cd->igo_stream_data_in.sample_num = IGO_FRAME_SIZE;
-	cd->igo_stream_data_in.sampling_rate = 16000;
+	cd->igo_stream_data_in.sampling_rate = 48000;
 
 	cd->igo_stream_data_ref.data = NULL;
 	cd->igo_stream_data_ref.data_width = 0;
@@ -673,7 +673,7 @@ static void igo_nr_lib_init(struct comp_dev *dev)
 	cd->igo_stream_data_out.data = cd->out;
 	cd->igo_stream_data_out.data_width = IGO_DATA_16BIT;
 	cd->igo_stream_data_out.sample_num = IGO_FRAME_SIZE;
-	cd->igo_stream_data_out.sampling_rate = 16000;
+	cd->igo_stream_data_out.sampling_rate = 48000;
 }
 
 static int32_t igo_nr_prepare(struct comp_dev *dev)
