@@ -177,7 +177,9 @@ LDICTS := ${UNSIGNED_list:%=${STAGING_SOF_VERSION}/sof-%.ldc} \
 ldicts: ${LDICTS}
 ${LDICTS}: ${STAGING_SOF_VERSION}/sof-%.ldc:  \
                                 ${BUILDS_ROOT}/build_%_${TOOLCHAIN}/sof.ri
-	install ${INSTALL_OPTS} ${BUILDS_ROOT}/build_$*_${TOOLCHAIN}/sof.ldc $@
+	if test -e ${BUILDS_ROOT}/build_$*_${TOOLCHAIN}/sof.ldc; then \
+	install ${INSTALL_OPTS} ${BUILDS_ROOT}/build_$*_${TOOLCHAIN}/sof.ldc $@ ; \
+	else printf '# CONFIG_TRACE was disabled\n' > $@; fi
 
 
         #######################################
