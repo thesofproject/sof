@@ -91,26 +91,26 @@ const struct dai_type_info dti[] = {
 #if CONFIG_INTEL_SSP
 	{
 		.type = SOF_DAI_INTEL_SSP,
-		.dai_array = cache_to_uncache((struct dai *)ssp),
+		.dai_array = cache_to_uncache_init((struct dai *)ssp),
 		.num_dais = ARRAY_SIZE(ssp)
 	},
 #endif
 #if CONFIG_INTEL_DMIC
 	{
 		.type = SOF_DAI_INTEL_DMIC,
-		.dai_array = cache_to_uncache((struct dai *)dmic),
+		.dai_array = cache_to_uncache_init((struct dai *)dmic),
 		.num_dais = ARRAY_SIZE(dmic)
 	},
 #endif
 	{
 		.type = SOF_DAI_INTEL_HDA,
-		.dai_array = cache_to_uncache((struct dai *)hda),
+		.dai_array = cache_to_uncache_init((struct dai *)hda),
 		.num_dais = ARRAY_SIZE(hda)
 	},
 #if CONFIG_INTEL_ALH
 	{
 		.type = SOF_DAI_INTEL_ALH,
-		.dai_array = cache_to_uncache((struct dai *)alh),
+		.dai_array = cache_to_uncache_init((struct dai *)alh),
 		.num_dais = ARRAY_SIZE(alh)
 	}
 #endif

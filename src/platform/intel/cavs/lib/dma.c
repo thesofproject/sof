@@ -237,7 +237,7 @@ SHARED_DATA struct dma dma[PLATFORM_NUM_DMACS] = {
 #endif
 
 const struct dma_info lib_dma = {
-	.dma_array = cache_to_uncache((struct dma *)dma),
+	.dma_array = cache_to_uncache_init((struct dma *)dma),
 	.num_dmas = ARRAY_SIZE(dma)
 };
 
