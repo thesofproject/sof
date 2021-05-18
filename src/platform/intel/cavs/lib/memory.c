@@ -15,7 +15,7 @@
 #include <ipc/topology.h>
 #include <stdint.h>
 
-#define uncached_block_hdr(hdr)	cache_to_uncache((struct block_hdr *)(hdr))
+#define uncached_block_hdr(hdr)	cache_to_uncache_init((struct block_hdr *)(hdr))
 #define uncached_block_map(map)	cache_to_uncache((struct block_map *)(map))
 
 extern uintptr_t _system_heap, _system_runtime_heap, _module_heap;

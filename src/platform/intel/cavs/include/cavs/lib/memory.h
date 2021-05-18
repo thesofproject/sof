@@ -87,17 +87,24 @@ struct sof;
 #define SRAM_ALIAS_MASK		0xFF000000
 #define SRAM_ALIAS_OFFSET	SRAM_UNCACHED_ALIAS
 
-#if !defined UNIT_TEST && !defined __ZEPHYR__
+#if !defined UNIT_TEST
 #define uncache_to_cache(address) \
-	((__typeof__((address)))((uint32_t)((address)) + SRAM_ALIAS_OFFSET))
+	((__typeof__(address))((uint32_t)(address) | SRAM_ALIAS_OFFSET))
 #define cache_to_uncache(address) \
-	((__typeof__((address)))((uint32_t)((address)) - SRAM_ALIAS_OFFSET))
+	((__typeof__(address))((uint32_t)(address) & ~SRAM_ALIAS_OFFSET))
 #define is_uncached(address) \
 	(((uint32_t)(address) & SRAM_ALIAS_MASK) == SRAM_ALIAS_BASE)
 #else
 #define uncache_to_cache(address)	address
 #define cache_to_uncache(address)	address
 #define is_uncached(address)		0
+#endif
+
+#if !defined UNIT_TEST && !defined __ZEPHYR__
+#define cache_to_uncache_init(address) \
+	((__typeof__((address)))((uint32_t)((address)) - SRAM_ALIAS_OFFSET))
+#else
+#define cache_to_uncache_init(address)	address
 #endif
 
 /**
