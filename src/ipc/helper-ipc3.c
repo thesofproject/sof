@@ -302,6 +302,7 @@ static void comp_specific_builder(struct sof_ipc_comp *comp,
 	struct sof_ipc_comp_volume *vol = (struct sof_ipc_comp_volume *)comp;
 	struct sof_ipc_comp_process *proc = (struct sof_ipc_comp_process *)comp;
 	struct sof_ipc_comp_src *src = (struct sof_ipc_comp_src *)comp;
+	struct sof_ipc_comp_asrc *asrc = (struct sof_ipc_comp_asrc *)comp;
 	struct sof_ipc_comp_tone *tone = (struct sof_ipc_comp_tone *)comp;
 
 	memset(config, 0, sizeof(*config));
@@ -356,6 +357,12 @@ static void comp_specific_builder(struct sof_ipc_comp *comp,
 		config->tone.repeats = tone->repeats;
 		config->tone.sample_rate = tone->sample_rate;
 		break;
+	case SOF_COMP_ASRC:
+		config->asrc.source_rate = src->source_rate;
+		config->asrc.sink_rate = src->sink_rate;
+		config->asrc.asynchronous_mode = asrc->asynchronous_mode;
+		config->asrc.operation_mode = asrc->operation_mode;
+		break;
 	case SOF_COMP_EQ_IIR:
 	case SOF_COMP_EQ_FIR:
 	case SOF_COMP_KEYWORD_DETECT:
@@ -363,7 +370,6 @@ static void comp_specific_builder(struct sof_ipc_comp *comp,
 	case SOF_COMP_SELECTOR:
 	case SOF_COMP_DEMUX:
 	case SOF_COMP_MUX:
-	case SOF_COMP_ASRC:
 	case SOF_COMP_DCBLOCK:
 	case SOF_COMP_SMART_AMP:
 	case SOF_COMP_CODEC_ADAPTOR:
