@@ -1,0 +1,26 @@
+---
+name: User space tools/ directory
+
+# 'workflow_dispatch' allows running this workflow manually from the
+# 'Actions' tab
+
+# yamllint disable-line rule:truthy
+on: [pull_request, workflow_dispatch]
+
+jobs:
+  # This is not the same as building every ./build-tools.sh option.
+  top-level_default_CMake_target_ALL:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      # The ALSA version in Ubuntu 20.04 is buggy
+      # (https://github.com/thesofproject/sof/issues/2543) and likely
+      # getting out of date soon
+      - name: docker
+        run: docker pull thesofproject/sof && docker tag thesofproject/sof sof
+
+      # For some reason gcc has more warnings in Release mode
+      - name: build-tools
+        run: CMAKE_BUILD_TYPE=Release ./scripts/docker-run.sh
+          ./scripts/build-tools.sh
