@@ -445,7 +445,7 @@ static void print_entry_params(const struct log_entry_header *dma_log,
 	char ids[TRACE_MAX_IDS_STR];
 	float dt = to_usecs(dma_log->timestamp - last_timestamp);
 	struct proc_ldc_entry proc_entry;
-	static char time_fmt[32];
+	static char time_fmt[64];
 	int ret;
 
 	if (raw_output)
