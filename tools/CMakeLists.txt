@@ -22,8 +22,11 @@ set(SOF_ROOT_SOURCE_DIRECTORY "${PROJECT_SOURCE_DIR}/..")
 # checkout submodules
 include(${SOF_ROOT_SOURCE_DIRECTORY}/scripts/cmake/git-submodules.cmake)
 
+# Most (too) verbose, keep this one first (assuming -j1)
+add_subdirectory(topology)
+# Includes test/topology/
+add_subdirectory(test)
+
 add_subdirectory(probes)
 add_subdirectory(logger)
 add_subdirectory(ctl)
-add_subdirectory(topology)
-add_subdirectory(test)
