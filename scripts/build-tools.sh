@@ -8,15 +8,23 @@ set -e
 print_usage()
 {
         cat <<EOFUSAGE
+Deletes and re-builds from scratch CMake projects in the tools/
+directory.
+Attention: the list below is _not_ exhaustive. To re-build _everything_
+from scratch don't select any particular target; this will build the
+CMake's default target "ALL".
+
 usage: $0 [-c|-f|-h|-l|-p|-t|-T]
-       -c Rebuild ctl
-       -f Rebuild fuzzer
        -h Display help
-       -l Rebuild logger
-       -p Rebuild probes
-       -t Rebuild test topologies
-       -T Rebuild topologies
-       -C No build, only CMake re-configuration
+
+       -c Rebuild ctl/
+       -f Rebuild fuzzer/
+       -l Rebuild logger/
+       -p Rebuild probes/
+       -T Rebuild topology/ (not topology/development/! Use ALL)
+       -t Rebuild test/topology/
+
+       -C No build, only CMake re-configuration. Shows CMake targets.
 EOFUSAGE
 }
 
@@ -42,14 +50,17 @@ make_tool()
         # okay.
         tool=$1
 
+        ( set -x
         # shellcheck disable=SC2086
         cmake --build $BUILD_TOOLS_DIR  --  -j "$NO_PROCESSORS" $tool
-
+        )
 }
 
 make_fuzzer()
 {
+        ( set -x
         cmake --build "$BUILD_TOOLS_DIR"/fuzzer  --  -j "$NO_PROCESSORS"
+        )
 }
 
 print_build_info()
@@ -62,7 +73,11 @@ Build commands for respective tools:
         probes:     make -C "$BUILD_TOOLS_DIR" sof-probes
         topologies: make -C "$BUILD_TOOLS_DIR" topologies
         test tplgs: make -C "$BUILD_TOOLS_DIR" tests
+
         fuzzer:     make -C "$BUILD_TOOLS_DIR/fuzzer"
+
+        list of targets:
+                    make -C "$BUILD_TOOLS_DIR/" help
 EOFUSAGE
 }
 
@@ -113,20 +128,23 @@ main()
         fi
 
         if "$BUILD_ALL"; then
-                make_tool
+                # default CMake targets
+                make_tool # trust set -e
+
                 make_fuzzer
-                exit
+                exit $?
         fi
+
+        # Keep 'topologies' first because it's the noisiest.
+        for util in topologies tests; do
+                if eval '$DO_BUILD_'$util; then
+                        make_tool $util
+                fi
+        done
 
         for tool in ctl logger probes; do
                 if eval '$DO_BUILD_'$tool; then
                         make_tool sof-$tool
-                fi
-        done
-
-        for util in tests topologies; do
-                if eval '$DO_BUILD_'$util; then
-                        make_tool $util
                 fi
         done
 
