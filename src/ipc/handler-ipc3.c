@@ -26,6 +26,7 @@
 #include <sof/ipc/driver.h>
 #include <sof/ipc/schedule.h>
 #include <sof/drivers/timer.h>
+#include <sof/lib/agent.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/clk.h>
 #include <sof/lib/cache.h>
@@ -562,6 +563,8 @@ static int ipc_pm_context_save(uint32_t header)
 	//struct sof_ipc_pm_ctx *pm_ctx = _ipc->comp_data;
 
 	tr_info(&ipc_tr, "ipc: pm -> save");
+
+	sa_exit(sof_get());
 
 	/* TODO use Zephyr calls for shutdown */
 #ifndef __ZEPHYR__
