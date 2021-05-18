@@ -605,6 +605,6 @@ void platform_pm_runtime_power_off(void)
 	for (i = 0; i < PLATFORM_HPSRAM_SEGMENTS; i++)
 		hpsram_mask[i] = HPSRAM_MASK(i);
 
-	power_down(true, hpsram_mask);
+	power_down(true, uncache_to_cache(&hpsram_mask[0]));
 }
 #endif
