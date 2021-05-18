@@ -53,10 +53,12 @@ static inline void sa_set_panic_on_delay(bool enabled)
 }
 
 void sa_init(struct sof *sof, uint64_t timeout);
+void sa_exit(struct sof *sof);
 
 #else
 
 static inline void sa_init(struct sof *sof, uint64_t timeout) { }
+static inline void sa_exit(struct sof *sof) { }
 static inline void sa_set_panic_on_delay(bool enabled) { }
 
 #endif

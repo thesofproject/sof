@@ -130,3 +130,8 @@ void sa_init(struct sof *sof, uint64_t timeout)
 	sof->sa->last_check = platform_timer_get(timer_get());
 
 }
+
+void sa_exit(struct sof *sof)
+{
+	schedule_task_cancel(&sof->sa->work);
+}
