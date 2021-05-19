@@ -88,4 +88,14 @@ struct sof_ipc_dai_config {
 	};
 } __attribute__((packed, aligned(4)));
 
+/* general purpose DAI clock control */
+struct sof_ipc_dai_clkctrl {
+	struct sof_ipc_cmd_hdr hdr;
+	uint32_t type;		/**< DAI type - enum sof_ipc_dai_type */
+	uint32_t dai_index;	/**< index of this type dai */
+
+	uint32_t clk_en;	/**< zero to disable the clock */
+	uint32_t clk_id;	/**< clock id to operate */
+} __attribute__((packed, aligned(4)));
+
 #endif /* __IPC_DAI_H__ */

@@ -523,6 +523,39 @@ static int ipc_dai_config(uint32_t header)
 	return ipc_comp_dai_config(ipc, ipc->comp_data);
 }
 
+static int ipc_dai_clkctrl(uint32_t header)
+{
+	struct ipc *ipc = ipc_get();
+	struct sof_ipc_dai_clkctrl clkctrl;
+	struct dai *dai;
+	int ret;
+
+	/* copy message with ABI safe method */
+	IPC_COPY_CMD(clkctrl, ipc->comp_data);
+
+	tr_dbg(&ipc_tr, "ipc: dai %d.%d -> clkctrl ", clkctrl.type,
+	       clkctrl.dai_index);
+
+	/* get DAI */
+	dai = dai_get(clkctrl.type, clkctrl.dai_index, 0 /* existing only */);
+	if (!dai) {
+		tr_err(&ipc_tr, "ipc: dai %d,%d not found", clkctrl.type,
+		       clkctrl.dai_index);
+		return -ENODEV;
+	}
+
+	/* configure DAI */
+	ret = dai_clkctrl(dai, &clkctrl);
+	dai_put(dai); /* free ref immediately */
+	if (ret < 0) {
+		tr_err(&ipc_tr, "ipc: dai %d,%d clkctrl failed %d", clkctrl.type,
+		       clkctrl.dai_index, ret);
+		return ret;
+	}
+
+	return 0;
+}
+
 static int ipc_glb_dai_message(uint32_t header)
 {
 	uint32_t cmd = iCS(header);
@@ -532,6 +565,9 @@ static int ipc_glb_dai_message(uint32_t header)
 		return ipc_dai_config(header);
 	case SOF_IPC_DAI_LOOPBACK:
 		//return ipc_comp_set_value(header, COMP_CMD_LOOPBACK);
+		return -EINVAL;
+	case SOF_IPC_DAI_CLKCTRL:
+		return ipc_dai_clkctrl(header);
 	default:
 		tr_err(&ipc_tr, "ipc: unknown DAI cmd 0x%x", cmd);
 		return -EINVAL;

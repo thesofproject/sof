@@ -617,7 +617,7 @@ out:
  * SSP dai is activated, for either power saving or params runtime
  * configurable flexibility.
  */
-static int ssp_pre_start(struct dai *dai)
+static int ssp_port_start(struct dai *dai)
 {
 	struct ssp_pdata *ssp = dai_get_drvdata(dai);
 	struct sof_ipc_dai_config *config = &ssp->config;
@@ -627,7 +627,12 @@ static int ssp_pre_start(struct dai *dai)
 
 	int ret = 0;
 
-	dai_info(dai, "ssp_pre_start()");
+	dai_info(dai, "ssp_port_start(), port_ref = %d", ssp->port_ref);
+
+	ssp->port_ref++;
+
+	if (ssp->port_ref > 1)
+		return 0;
 
 	/* SSP active means bclk already configured. */
 	if (ssp->state[SOF_IPC_STREAM_PLAYBACK] == COMP_STATE_ACTIVE ||
@@ -671,7 +676,7 @@ static int ssp_pre_start(struct dai *dai)
 
 	/* divisor must be within SCR range */
 	if (mdiv > (SSCR0_SCR_MASK >> 8)) {
-		dai_err(dai, "ssp_pre_start(): divisor %d is not within SCR range",
+		dai_err(dai, "ssp_port_start(): divisor %d is not within SCR range",
 			mdiv);
 		ret = -EINVAL;
 		goto out;
@@ -683,9 +688,12 @@ static int ssp_pre_start(struct dai *dai)
 
 	ssp_write(dai, SSCR0, sscr0);
 
-	dai_info(dai, "ssp_set_config(), sscr0 = 0x%08x", sscr0);
-out:
+	dai_info(dai, "ssp_port_start(), sscr0 = 0x%08x", sscr0);
 
+	/* enable port */
+	ssp_update_bits(dai, SSCR0, SSCR0_SSE, SSCR0_SSE);
+	dai_info(dai, "ssp_port_start(), SSP%d port enabled", dai->index);
+out:
 	return ret;
 }
 
@@ -694,13 +702,20 @@ out:
  * dai is changed to inactive, though the runtime param configuration
  * don't have to be reset.
  */
-static void ssp_post_stop(struct dai *dai)
+static void ssp_port_stop(struct dai *dai)
 {
 	struct ssp_pdata *ssp = dai_get_drvdata(dai);
 
-	/* release clocks if SSP is inactive */
-	if (ssp->state[SOF_IPC_STREAM_PLAYBACK] != COMP_STATE_ACTIVE &&
-	    ssp->state[SOF_IPC_STREAM_CAPTURE] != COMP_STATE_ACTIVE) {
+	dai_info(dai, "ssp_port_stop(), port_ref = %d", ssp->port_ref);
+
+	ssp->port_ref--;
+
+	if (ssp->port_ref == 0) {
+		/* disable SSP port if no users */
+		ssp_update_bits(dai, SSCR0, SSCR0_SSE, 0);
+		dai_info(dai, "ssp_port_stop(), SSP%d port disabled", dai->index);
+
+		/* release clocks if SSP is inactive */
 		dai_info(dai, "releasing BCLK/MCLK clocks for SSP%d...", dai->index);
 #if CONFIG_INTEL_MN
 		mn_release_bclk(dai->index);
@@ -749,10 +764,8 @@ static void ssp_start(struct dai *dai, int direction)
 	spin_lock(&dai->lock);
 
 	/* request mclk/bclk */
-	ssp_pre_start(dai);
+	ssp_port_start(dai);
 
-	/* enable port */
-	ssp_update_bits(dai, SSCR0, SSCR0_SSE, SSCR0_SSE);
 	ssp->state[direction] = COMP_STATE_ACTIVE;
 
 	dai_info(dai, "ssp_start()");
@@ -810,14 +823,7 @@ static void ssp_stop(struct dai *dai, int direction)
 		dai_info(dai, "ssp_stop(), TX stop");
 	}
 
-	/* disable SSP port if no users */
-	if (ssp->state[SOF_IPC_STREAM_CAPTURE] == COMP_STATE_PREPARE &&
-	    ssp->state[SOF_IPC_STREAM_PLAYBACK] == COMP_STATE_PREPARE) {
-		ssp_update_bits(dai, SSCR0, SSCR0_SSE, 0);
-		dai_info(dai, "ssp_stop(), SSP port disabled");
-	}
-
-	ssp_post_stop(dai);
+	ssp_port_stop(dai);
 
 	spin_unlock(&dai->lock);
 }
@@ -870,6 +876,31 @@ static int ssp_trigger(struct dai *dai, int cmd, int direction)
 	return 0;
 }
 
+static int ssp_clkctrl(struct dai *dai, struct sof_ipc_dai_clkctrl *clkctrl)
+{
+	int ret = 0;
+
+	dai_info(dai, "ssp_clkctrl(): SSP%d clk_en %d clk_id %d",
+		 dai->index, clkctrl->clk_en, clkctrl->clk_id);
+
+	/* enable the entire port instead of checking clk_id */
+	spin_lock(&dai->lock);
+
+	if (clkctrl->clk_en) {
+		ret = ssp_port_start(dai);
+		if (ret) {
+			dai_err(dai,
+				"ssp_clkctrl(): fail to start clk for SSP%d",
+				dai->index);
+		}
+	} else {
+		ssp_port_stop(dai);
+	}
+
+	spin_unlock(&dai->lock);
+	return ret;
+}
+
 static int ssp_probe(struct dai *dai)
 {
 	struct ssp_pdata *ssp;
@@ -887,6 +918,8 @@ static int ssp_probe(struct dai *dai)
 
 	ssp->state[DAI_DIR_PLAYBACK] = COMP_STATE_READY;
 	ssp->state[DAI_DIR_CAPTURE] = COMP_STATE_READY;
+
+	ssp->port_ref = 0;
 
 #if CONFIG_INTEL_MN
 	/* Reset M/N, power-gating functions need it */
@@ -943,6 +976,7 @@ const struct dai_driver ssp_driver = {
 	.ops = {
 		.trigger		= ssp_trigger,
 		.set_config		= ssp_set_config,
+		.clkctrl		= ssp_clkctrl,
 		.pm_context_store	= ssp_context_store,
 		.pm_context_restore	= ssp_context_restore,
 		.get_hw_params		= ssp_get_hw_params,
