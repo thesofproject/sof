@@ -51,12 +51,21 @@ DECLARE_TR_CTX(zephyr_tr, SOF_UUID(zephyr_uuid), LOG_LEVEL_INFO);
 #endif
 
 /* The Zephyr heap */
+#ifdef CONFIG_IMX
+#define HEAPMEM_SIZE		(HEAP_SYSTEM_SIZE + HEAP_RUNTIME_SIZE + HEAP_BUFFER_SIZE)
+/*
+ * Include heapmem variable in .heap_mem section, otherwise the HEAPMEM_SIZE is
+ * duplicated in two sections and the sdram0 region overflows.
+ */
+__section(".heap_mem") static uint8_t __aligned(64) heapmem[HEAPMEM_SIZE];
+#else
 #define HEAPMEM_SIZE		HEAP_BUFFER_SIZE
 #define HEAPMEM_SHARED_SIZE	(HEAP_SYSTEM_SIZE + HEAP_RUNTIME_SIZE + \
 				HEAP_RUNTIME_SHARED_SIZE + HEAP_SYSTEM_SHARED_SIZE)
 
 static uint8_t __aligned(PLATFORM_DCACHE_ALIGN)heapmem[HEAPMEM_SIZE];
 static uint8_t __aligned(PLATFORM_DCACHE_ALIGN)heapmem_shared[HEAPMEM_SHARED_SIZE];
+#endif
 
 /* Use k_heap structure */
 static struct k_heap sof_heap;
@@ -67,7 +76,9 @@ static int statics_init(const struct device *unused)
 	ARG_UNUSED(unused);
 
 	sys_heap_init(&sof_heap.heap, heapmem, HEAPMEM_SIZE);
+#ifndef CONFIG_IMX
 	sys_heap_init(&sof_heap_shared.heap, heapmem_shared, HEAPMEM_SHARED_SIZE);
+#endif
 
 	return 0;
 }
@@ -136,6 +147,8 @@ void *rmalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
 {
 	if (zone_is_cached(zone))
 		return heap_alloc_aligned_cached(&sof_heap, 0, bytes);
+	else
+		return heap_alloc_aligned(&sof_heap, 8, bytes);
 
 	return heap_alloc_aligned(&sof_heap_shared, 8, bytes);
 }
@@ -238,11 +251,14 @@ const char irq_name_level5[] = "level5";
 
 /*
  * CAVS IRQs are multilevel whereas BYT and BDW are DSP level only.
+ *
+ * For i.MX we use the IRQ_STEER
  */
 int interrupt_get_irq(unsigned int irq, const char *cascade)
 {
 #if CONFIG_SOC_SERIES_INTEL_ADSP_BAYTRAIL ||\
 	CONFIG_SOC_SERIES_INTEL_ADSP_BROADWELL || \
+	CONFIG_IMX || \
 	CONFIG_LIBRARY
 	return irq;
 #else
@@ -355,6 +371,35 @@ uint64_t platform_timer_get(struct timer *timer)
 #elif CONFIG_SOC_SERIES_INTEL_ADSP_BROADWELL || CONFIG_LIBRARY
 	// FIXME!
 	return 0;
+#elif CONFIG_IMX
+	/* For i.MX use Xtensa timer, as we do now with SOF */
+	uint64_t time = 0;
+	uint32_t low;
+	uint32_t high;
+	uint32_t ccompare;
+
+	if (!timer || timer->id >= ARCH_TIMER_COUNT)
+		goto out;
+
+	ccompare = xthal_get_ccompare(timer->id);
+
+	/* read low 32 bits */
+	low = xthal_get_ccount();
+
+	/* check and see whether 32bit IRQ is pending for timer */
+	if (arch_interrupt_get_status() & (1 << timer->irq) && ccompare == 1) {
+		/* yes, overflow has occurred but handler has not run */
+		high = timer->hitime + 1;
+	} else {
+		/* no overflow */
+		high = timer->hitime;
+	}
+
+	time = ((uint64_t)high << 32) | low;
+
+out:
+
+	return time;
 #else
 	/* CAVS versions */
 	return shim_read64(SHIM_DSPWC);
