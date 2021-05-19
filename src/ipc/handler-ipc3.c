@@ -1453,13 +1453,10 @@ ipc_cmd_hdr *ipc_compact_read_msg(void)
 
 	switch (CAVS_IPC_TYPE_S(chdr[0])) {
 	case CAVS_IPC_MOD_SET_D0IX:
-		hdr = ipc_cavs_read_set_d0ix(hdr);
-		break;
-	default:
-		return NULL;
+		return ipc_cavs_read_set_d0ix(hdr);
 	}
 
-	return hdr;
+	return NULL;
 }
 #endif
 
