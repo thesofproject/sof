@@ -28,7 +28,7 @@ struct timer_domain {
 	uint64_t timeout; /* in ticks */
 };
 
-static inline void timer_report_delay(int id, uint64_t delay)
+static void timer_report_delay(int id, uint64_t delay)
 {
 	uint32_t ll_delay_us = (delay * 1000) /
 				clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1);

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 //
-// Copyright(c) 2021 Intel Corporation. All rights reserved.
+// Copyright(c) 2019-2021 Intel Corporation. All rights reserved.
 //
 // Author: Tomasz Lauda <tomasz.lauda@linux.intel.com>
 
@@ -57,19 +57,18 @@ struct zephyr_domain {
 	struct k_work_q ll_workq[CONFIG_CORE_COUNT];
 	int ll_workq_registered[CONFIG_CORE_COUNT];
 	struct timer *timer;
-	void *arg[CONFIG_CORE_COUNT];
 	uint64_t timeout; /* in ticks */
 };
 
-struct timer_zdata {
+struct zephyr_domain_work {
 	struct k_work_delayable work;
 	void (*handler)(void *arg);
 	void *arg;
 };
 
-struct timer_zdata zdata[CONFIG_CORE_COUNT];
+struct zephyr_domain_work zdata[CONFIG_CORE_COUNT];
 
-static inline void timer_report_delay(int id, uint64_t delay)
+static void zephyr_domain_report_delay(int id, uint64_t delay)
 {
 	uint32_t ll_delay_us = (delay * 1000) /
 				clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1);
@@ -79,20 +78,20 @@ static inline void timer_report_delay(int id, uint64_t delay)
 		return;
 
 	if (delay <= UINT_MAX)
-		tr_err(&ll_tr, "timer_report_delay(): timer %d delayed by %d uS %d ticks",
+		tr_err(&ll_tr, "zephyr_domain_report_delay(): timer %d delayed by %d uS %d ticks",
 		       id, ll_delay_us, (unsigned int)delay);
 	else
-		tr_err(&ll_tr, "timer_report_delay(): timer %d delayed by %d uS, ticks > %u",
+		tr_err(&ll_tr, "zephyr_domain_report_delay(): timer %d delayed by %d uS, ticks > %u",
 		       id, ll_delay_us, UINT_MAX);
 
 	/* Fix compile error when traces are disabled */
 	(void)ll_delay_us;
 }
 
-static void timer_z_handler(struct k_work *work)
+static void zephyr_domain_handler(struct k_work *work)
 {
 	struct k_work_delayable *dwork = k_work_delayable_from_work(work);
-	struct timer_zdata *zd = CONTAINER_OF(dwork, struct timer_zdata, work);
+	struct zephyr_domain_work *zd = CONTAINER_OF(dwork, struct zephyr_domain_work, work);
 
 	zd->handler(zd->arg);
 }
@@ -159,7 +158,7 @@ static int zephyr_domain_register(struct ll_schedule_domain *domain,
 
 	zephyr_domain->ll_workq_registered[core] = 1;
 
-	k_work_init_delayable(&zdata[core].work, timer_z_handler);
+	k_work_init_delayable(&zdata[core].work, zephyr_domain_handler);
 
 	tr_info(&ll_tr, "zephyr_domain_register domain->type %d domain->clk %d domain->ticks_per_ms %d period %d",
 		domain->type, domain->clk, domain->ticks_per_ms, (uint32_t)period);
@@ -171,19 +170,18 @@ out:
 static int zephyr_domain_unregister(struct ll_schedule_domain *domain,
 				   struct task *task, uint32_t num_tasks)
 {
-	struct zephyr_domain *zephyr_domain = ll_sch_domain_get_pdata(domain);
 	int core = cpu_get_id();
 
 	tr_dbg(&ll_tr, "zephyr_domain_unregister()");
 
 	/* tasks still registered on this core */
-	if (!zephyr_domain->arg[core] || num_tasks)
+	if (num_tasks)
 		return 0;
+
+	k_work_cancel_delayable(&zdata[core].work);
 
 	tr_info(&ll_tr, "zephyr_domain_unregister domain->type %d domain->clk %d",
 		domain->type, domain->clk);
-
-	zephyr_domain->arg[core] = NULL;
 
 	return 0;
 }
@@ -241,14 +239,14 @@ static void zephyr_domain_set(struct ll_schedule_domain *domain, uint64_t start)
 
 	tr_dbg(&ll_tr, "zephyr_domain_set(): ticks_set %u ticks_req %u current %u",
 	       (unsigned int)ticks_set, (unsigned int)ticks_req,
-	       (unsigned int)platform_timer_get_atomic(timer_get()));
+	       (unsigned int)platform_timer_get_atomic(zephyr_domain->timer));
 
 	/* Was timer set to the value we requested? If no it means some
 	 * delay occurred and we should report that in error log.
 	 */
 	if (ticks_req < ticks_set)
-		timer_report_delay(zephyr_domain->timer->id,
-				   ticks_set - ticks_req);
+		zephyr_domain_report_delay(zephyr_domain->timer->id,
+					   ticks_set - ticks_req);
 
 	domain->next_tick = ticks_set;
 
