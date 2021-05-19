@@ -537,13 +537,14 @@ static int schedule_ll_task_cancel(void *data, struct task *task)
 		/* found it */
 		if (curr_task == task) {
 			schedule_ll_domain_clear(sch, task);
+
+			/* remove work from list */
+			task->state = SOF_TASK_STATE_CANCEL;
+			list_item_del(&task->list);
+
 			break;
 		}
 	}
-
-	/* remove work from list */
-	task->state = SOF_TASK_STATE_CANCEL;
-	list_item_del(&task->list);
 
 	irq_local_enable(flags);
 
