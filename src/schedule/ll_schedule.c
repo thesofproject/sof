@@ -479,7 +479,7 @@ int schedule_task_init_ll(struct task *task,
 			  void *data, uint16_t core, uint32_t flags)
 {
 	struct ll_task_pdata *ll_pdata;
-	int ret = 0;
+	int ret;
 
 	ret = schedule_task_init(task, uid, type, priority, run, data, core,
 				 flags);
