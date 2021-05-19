@@ -330,13 +330,45 @@ endif()
 # NXP IMX8 platforms
 if (CONFIG_SOC_SERIES_NXP_IMX8)
 	zephyr_library_sources(
-		#${SOF_DRIVERS_PATH}/generic/dummy-dma.c
-		#${SOF_DRIVERS_PATH}/imx/sdma.c
-		#${SOF_DRIVERS_PATH}/imx/edma.c
-		#${SOF_DRIVERS_PATH}/imx/sai.c
-		#${SOF_DRIVERS_PATH}/imx/ipc.c
-		#${SOF_DRIVERS_PATH}/imx/esai.c
+		${SOF_DRIVERS_PATH}/generic/dummy-dma.c
+		${SOF_DRIVERS_PATH}/imx/edma.c
+		${SOF_DRIVERS_PATH}/imx/sai.c
+		${SOF_DRIVERS_PATH}/imx/ipc.c
+		${SOF_DRIVERS_PATH}/imx/esai.c
 	)
+
+	# Platform sources
+	zephyr_library_sources(
+		${SOF_PLATFORM_PATH}/imx8/platform.c
+		${SOF_PLATFORM_PATH}/imx8/lib/clk.c
+		${SOF_PLATFORM_PATH}/imx8/lib/dai.c
+		${SOF_PLATFORM_PATH}/imx8/lib/dma.c
+		${SOF_PLATFORM_PATH}/imx8/lib/memory.c
+	)
+
+	set(PLATFORM "imx8")
+endif()
+
+if (CONFIG_SOC_SERIES_NXP_IMX8M)
+	zephyr_library_sources(
+		${SOF_DRIVERS_PATH}/generic/dummy-dma.c
+		${SOF_DRIVERS_PATH}/imx/sdma.c
+		${SOF_DRIVERS_PATH}/imx/edma.c
+		${SOF_DRIVERS_PATH}/imx/sai.c
+		${SOF_DRIVERS_PATH}/imx/ipc.c
+		${SOF_DRIVERS_PATH}/imx/esai.c
+	)
+
+	# Platform sources
+	zephyr_library_sources(
+		${SOF_PLATFORM_PATH}/imx8m/platform.c
+		${SOF_PLATFORM_PATH}/imx8m/lib/clk.c
+		${SOF_PLATFORM_PATH}/imx8m/lib/memory.c
+		${SOF_PLATFORM_PATH}/imx8m/lib/dai.c
+		${SOF_PLATFORM_PATH}/imx8m/lib/dma.c
+	)
+
+	set(PLATFORM "imx8m")
 endif()
 
 zephyr_library_sources_ifdef(CONFIG_LIBRARY
