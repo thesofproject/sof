@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<CodePartitionMeta version="2.5" >
+    <Name value="ADSP" />
+    <Length value="0x0" />
+    <Usage value="cAvsImage0Manifest" value_list="CseBupManifest,,CseMainManifest,,PmcManifest,,BootPolicyManifest,,iUnitBootLoaderManifest,,iUnitMainFwManifest,,cAvsImage0Manifest,,cAvsImage1Manifest,,IfwiManifest,,OsBootLoaderManifest,,OsKernelManifest,,OemSmipManifest" />
+    <VendorId value="0x00008086" />
+    <InstanceId value="0x1" />
+    <PartitionFlags value="0x00000001" />
+    <PartitionVersion value="0x10000000" />
+    <VersionControlNumber value="0x00000000" />
+    <SecurityVersionNumber value="0x00000000" />
+    <VersionMajor value="0x0" label="Version Major" />
+    <VersionMinor value="0x0" label="Version Minor" />
+    <VersionHotfix value="0x0" label="Version Hotfix" />
+    <VersionBuild value="0x0" label="Version Build" />
+    <VersionExtraction>
+        <Enabled value="false" value_list="true,,false" help_text="If enabled, the version details will be extracted from the InputFile binary at the offsets specified. If disabled, the version must be specified manually." />
+        <InputFile value="" help_text="Binary file from which to extract the version details." />
+        <VersionMajorByte0Offset value="0" help_text="Offset of Major Version number's LSB in InputFile." />
+        <VersionMajorByte1Offset value="0" help_text="Offset of Major Version number's MSB in InputFile." />
+        <VersionMinorByte0Offset value="0" help_text="Offset of Minor Version number's LSB in InputFile." />
+        <VersionMinorByte1Offset value="0" help_text="Offset of Minor Version number's MSB in InputFile." />
+        <VersionHotfixByte0Offset value="0" help_text="Offset of Hotfix Version number's LSB in InputFile." />
+        <VersionHotfixByte1Offset value="0" help_text="Offset of Hotfix Version number's MSB in InputFile." />
+        <VersionBuildByte0Offset value="0" help_text="Offset of Build Version number's LSB in InputFile." />
+        <VersionBuildByte1Offset value="0" help_text="Offset of Build Version number's MSB in InputFile." />
+    </VersionExtraction>
+    <CodePartitionMetadata>
+        <Name value="cavs0015.met" help_text="Name to use as metadata filename in output binary." />
+        <InputFile value="$SourceDir.manifest" />
+    </CodePartitionMetadata>
+    <CPMModules>
+        <CPMDataModule name="cavs0015" enabled="true">
+            <InputFile value="$SourceDir_unsigned.bin"/>
+            <CompressionType value="NOT_COMPRESSED" value_list="NOT_COMPRESSED,,LZMA" />
+        </CPMDataModule>
+    </CPMModules>
+</CodePartitionMeta>
