@@ -595,8 +595,7 @@ static void scheduler_free_ll(void *data)
 	notifier_unregister(sch, NULL,
 			    NOTIFIER_CLK_CHANGE_ID(sch->domain->clk));
 
-	list_item_del(&sch->tasks);
-
+	list_init(&sch->tasks);
 
 	irq_local_enable(flags);
 }
