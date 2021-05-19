@@ -168,7 +168,6 @@ static void schedule_ll_clients_enable(struct ll_schedule_data *sch)
 
 static void schedule_ll_client_reschedule(struct ll_schedule_data *sch)
 {
-	struct list_item *wlist;
 	struct list_item *tlist;
 	struct task *task;
 	struct task *task_take_dbg = NULL;
@@ -177,8 +176,8 @@ static void schedule_ll_client_reschedule(struct ll_schedule_data *sch)
 	/* rearm only if there is work to do */
 	if (atomic_read(&sch->domain->total_num_tasks)) {
 		/* traverse to set timer according to the earliest task */
-		list_for_item_safe(wlist, tlist, &sch->tasks) {
-			task = container_of(wlist, struct task, list);
+		list_for_item(tlist, &sch->tasks) {
+			task = container_of(tlist, struct task, list);
 
 			/* update to use the earlier tick */
 			if (task->start < next_tick) {
