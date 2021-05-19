@@ -74,3 +74,6 @@ ncscope.*
 
 # zephyr files
 zephyr/include/version.h
+
+# converged sound open fw
+!converged_sound_open_fw_modules_development/*
