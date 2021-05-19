@@ -1,0 +1,38 @@
+module o AMPLI
+uuid 8075F4F8-6214-4A61-8C08-884BE5D14FF8
+name Amplifier module example
+version_major 0x1
+version_minor 0x0
+version_hotfix 0x0
+version_build 0x0
+affinity_mask MASTER_CORE_AFFINITY
+instance_count +2
+domain_types DP
+type FxModule
+stack_size 1000
+
+group text
+section .amplifier_module.text
+section ep .amplifier_module.cmi.text
+group rodata
+section .amplifier_module.rodata
+group bss
+section .amplifier_module.noload
+
+sched_caps 1 all
+
+mod_cfg 0 0 0 0 4096 500000 240 240 0 5000 0
+
+pin in
+stream_type pcm
+sample_rates 44.1k 48k
+sample_sizes sample_16b sample_24b sample_32b
+sample_containers container_16b container_32b
+channel_cfg ch_mono ch_stereo
+
+pin out
+stream_type pcm
+sample_rates 44.1k 48k
+sample_sizes sample_16b sample_24b sample_32b
+sample_containers container_16b container_32b
+channel_cfg ch_mono ch_stereo
