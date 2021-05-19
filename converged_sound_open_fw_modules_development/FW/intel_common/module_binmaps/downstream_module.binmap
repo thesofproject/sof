@@ -1,0 +1,25 @@
+module b DOWNSTR
+uuid 56E5AB18-D642-4C87-B007-49F721D884AA
+name DownstreamTest
+affinity_mask HIFI_CORE_AFFINITY
+instance_count +1
+domain_types LL
+type FxModule
+group text
+section ep .downstream_test_module.cmi.text
+
+sched_caps 1 all
+
+pin in
+stream_type pcm
+sample_rates 8k 16k 44.1k 48k
+sample_sizes sample_16b sample_32b
+sample_containers container_16b container_32b
+channel_cfg ch_mono ch_stereo ch_5_1
+
+pin out
+stream_type pcm
+sample_rates 8k 16k 44.1k 48k
+sample_sizes sample_16b sample_32b
+sample_containers container_16b container_32b
+channel_cfg ch_mono ch_stereo ch_5_1

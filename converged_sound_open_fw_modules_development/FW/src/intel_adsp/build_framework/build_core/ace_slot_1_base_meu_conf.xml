@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<CodePartition version="2.5" >
+    <Name value="ADSP" help_text="Name to use in the output binary's directory. Maximum length is 4 characters. " />
+    <Length value="0x0" help_text="Length of output binary, extra space will be filled with 0xFF's. If length is smaller than required, an error will be reported. If set to 0, the length will be computed as needed by the tool." />
+    <Usage value="audioImage1Manifest" value_list="CseBupManifest,,CseMainManifest,,PmcManifest,,UsbTypeCIOMManifest,,UsbTypeCNphyManifest,,UsbTypeCTBTManifest,,WcodManifest,,LoclManifest,,IntelUtokManifest,,SPHYManifest,,PchcManifest,,SamfManifest,,PphyManifest,,GbstManifest,,BootPolicyManifest,,iUnitBootLoaderManifest,,iUnitMainFwManifest,,audioImage0Manifest,,audioImage1Manifest,,IfwiManifest,,OsBootLoaderManifest,,OsKernelManifest,,OemSmipManifest,,IshManifest,,OemDebugManifest,,OemKeyManifest,,SilentLakeVmmManifest,,OemDnxIfwiManifest" help_text="Indicates the type of data contained in this binary. This value is used during signature verification to validate the public key." />
+    <VendorId value="0x8086" />
+    <InstanceId value="0x1" />
+    <PartitionFlags value="0x00000000" help_text="Refers to flags relevant to manifest for a specific partition. Bit 0 should be set on for partition of PV or post PV release." />
+    <PartitionVersion value="0x10000000" />
+    <VersionControlNumber value="0x00000000" />
+    <SecurityVersionNumber value="0x00000000" />
+    <VersionMajor value="0x0" label="Version Major" help_text="Used to manually set the Major Version field in the manifest" />
+    <VersionMinor value="0x0" label="Version Minor" help_text="Used to manually set the Minor Version field in the manifest" />
+    <VersionHotfix value="0x0" label="Version Hotfix" help_text="Used to manually set the Hotfix Version field in the manifest" />
+    <VersionBuild value="0x0" label="Version Build" help_text="Used to manually set the Build Version field in the manifest" />
+    <VersionExtraction>
+        <Enabled value="false" value_list="true,,false" help_text="If enabled, the version details will be extracted from the InputFile binary at the offsets specified. If disabled, the version must be specified manually." />
+        <InputFile value="" help_text="Binary file from which to extract the version details." />
+        <VersionMajorByte0Offset value="0" help_text="Offset of Major Version number's LSB in InputFile." />
+        <VersionMajorByte1Offset value="0" help_text="Offset of Major Version number's MSB in InputFile." />
+        <VersionMinorByte0Offset value="0" help_text="Offset of Minor Version number's LSB in InputFile." />
+        <VersionMinorByte1Offset value="0" help_text="Offset of Minor Version number's MSB in InputFile." />
+        <VersionHotfixByte0Offset value="0" help_text="Offset of Hotfix Version number's LSB in InputFile." />
+        <VersionHotfixByte1Offset value="0" help_text="Offset of Hotfix Version number's MSB in InputFile." />
+        <VersionBuildByte0Offset value="0" help_text="Offset of Build Version number's LSB in InputFile." />
+        <VersionBuildByte1Offset value="0" help_text="Offset of Build Version number's MSB in InputFile." />
+    </VersionExtraction>
+    <CPModules>
+        <CPDataModule name="ADSP">
+            <InputFile value="$SourceDir_unsigned.bin" help_text="Path to binary file to load for this module's data." />
+            <CompressionType value="NOT_COMPRESSED" value_list="NOT_COMPRESSED,,LZMA" help_text="Select compression type for this module." />
+            <ProcessId value="0x30" />
+        </CPDataModule>
+    </CPModules>
+</CodePartition>

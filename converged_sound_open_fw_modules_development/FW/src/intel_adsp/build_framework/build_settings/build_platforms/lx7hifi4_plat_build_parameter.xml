@@ -1,0 +1,18 @@
+<!--
+SPDX-License-Identifier: BSD-3-Clause
+
+Copyright(c) 2021 Intel Corporation. All rights reserved.
+-->
+<build_parameter soc_name="alderlake">
+    <memory_classes>
+        <memory_class name="hp_sram">
+            <start_address>0xBE000000</start_address>
+            <size>0x800000</size>
+        </memory_class>
+    </memory_classes>
+    <fw_manifest>
+        <memory_class_name>hp_sram</memory_class_name>
+        <size>0x8000</size>
+        <alignment_offset>0x1000</alignment_offset>
+    </fw_manifest>
+</build_parameter>
