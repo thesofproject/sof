@@ -7,11 +7,14 @@
 
 #include <sof/common.h>
 #include <sof/lib/clk.h>
-#include <sof/lib/cpu.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/notifier.h>
 #include <sof/sof.h>
 #include <sof/spinlock.h>
+
+#ifdef __ZEPHYR__
+#include <sys/util.h>
+#endif
 
 const struct freq_table platform_cpu_freq[] = {
 #ifdef CONFIG_IMX8
