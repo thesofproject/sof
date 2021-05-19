@@ -165,7 +165,10 @@ int platform_init(struct sof *sof)
 		timer_domain_init(sof->platform_timer, PLATFORM_DEFAULT_CLOCK);
 	scheduler_init_ll(sof->platform_timer_domain);
 
+#ifndef __ZEPHYR__
 	platform_timer_start(sof->platform_timer);
+#endif
+
 	sa_init(sof, CONFIG_SYSTICK_PERIOD);
 
 	clock_set_freq(CLK_CPU(cpu_get_id()), CLK_MAX_CPU_HZ);
@@ -191,6 +194,7 @@ int platform_init(struct sof *sof)
 	if (ret < 0)
 		return -ENODEV;
 
+#ifndef __ZEPHYR__
 #if CONFIG_TRACE
 	/* Initialize DMA for Trace*/
 	trace_point(TRACE_BOOT_PLATFORM_DMA_TRACE);
@@ -199,6 +203,7 @@ int platform_init(struct sof *sof)
 
 	/* show heap status */
 	heap_trace_all(1);
+#endif /* __ZEPHYR__ */
 
 	return 0;
 }
