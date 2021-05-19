@@ -129,12 +129,18 @@ static struct comp_dev *kpb_new(const struct comp_driver *drv,
 		.run = kpb_draining_task,
 		.get_deadline = kpb_task_deadline,
 	};
-	size_t bs = ipc_process->size;
 	struct comp_dev *dev;
 	struct comp_data *kpb;
 	int ret;
 
 	comp_cl_info(&comp_kpb, "kpb_new()");
+
+	/* make sure data size is not bigger than config space */
+	if (ipc_process->size > sizeof(struct sof_kpb_config)) {
+		comp_cl_err(&comp_kpb, "kpb_new(): data size %u too big",
+			    ipc_process->size);
+		return NULL;
+	}
 
 	dev = comp_alloc(drv, sizeof(*dev));
 	if (!dev)
@@ -150,7 +156,7 @@ static struct comp_dev *kpb_new(const struct comp_driver *drv,
 	comp_set_drvdata(dev, kpb);
 
 	ret = memcpy_s(&kpb->config, sizeof(kpb->config), ipc_process->data,
-		       bs);
+		       ipc_process->size);
 	assert(!ret);
 
 	if (!kpb_is_sample_width_supported(kpb->config.sampling_width)) {
