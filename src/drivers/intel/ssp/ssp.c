@@ -136,6 +136,41 @@ static int ssp_set_config(struct dai *dai,
 
 	spin_lock(&dai->lock);
 
+	/* unlike the implementation in main branch, here the set config
+	 * command sent from host is just for clock control
+	 */
+	switch (config->flags & SOF_DAI_CONFIG_FLAGS_MASK) {
+	case SOF_DAI_CONFIG_FLAGS_HW_PARAMS:
+		if ((ssp->params.clks_control & SOF_DAI_INTEL_SSP_CLKCTRL_BCLK_ES) &&
+		    !(ssp->clk_active & SSP_CLK_BCLK_ES_REQ)) {
+			/* enable port */
+			ssp_update_bits(dai, SSCR0, SSCR0_SSE, SSCR0_SSE);
+			dai_info(dai, "ssp_set_config(), SSP%d port enabled", dai->index);
+
+			ssp->clk_active |= SSP_CLK_BCLK_ES_REQ;
+		}
+
+		goto out;
+	case SOF_DAI_CONFIG_FLAGS_HW_FREE:
+		if ((ssp->params.clks_control & SOF_DAI_INTEL_SSP_CLKCTRL_BCLK_ES) &&
+		    (ssp->clk_active & SSP_CLK_BCLK_ES_REQ)) {
+			/* disable SSP port if no users */
+			if (ssp->state[SOF_IPC_STREAM_CAPTURE] != COMP_STATE_ACTIVE &&
+			    ssp->state[SOF_IPC_STREAM_PLAYBACK] != COMP_STATE_ACTIVE) {
+				ssp_update_bits(dai, SSCR0, SSCR0_SSE, 0);
+				ssp->state[SOF_IPC_STREAM_CAPTURE] = COMP_STATE_PREPARE;
+				ssp->state[SOF_IPC_STREAM_PLAYBACK] = COMP_STATE_PREPARE;
+				dai_info(dai, "ssp_set_config(), SSP%d port disabled", dai->index);
+
+				ssp->clk_active &= ~SSP_CLK_BCLK_ES_REQ;
+			}
+		}
+
+		goto out;
+	default:
+		break;
+	}
+
 	/* is playback/capture already running */
 	if (ssp->state[DAI_DIR_PLAYBACK] == COMP_STATE_ACTIVE ||
 	    ssp->state[DAI_DIR_CAPTURE] == COMP_STATE_ACTIVE) {
@@ -671,8 +706,12 @@ static void ssp_start(struct dai *dai, int direction)
 
 	spin_lock(&dai->lock);
 
-	/* enable port */
-	ssp_update_bits(dai, SSCR0, SSCR0_SSE, SSCR0_SSE);
+	if (!(ssp->clk_active & SSP_CLK_BCLK_ES_REQ)) {
+		/* enable port */
+		ssp_update_bits(dai, SSCR0, SSCR0_SSE, SSCR0_SSE);
+		dai_info(dai, "ssp_start(), SSP%d port enabled", dai->index);
+	}
+
 	ssp->state[direction] = COMP_STATE_ACTIVE;
 
 	dai_info(dai, "ssp_start()");
@@ -733,8 +772,10 @@ static void ssp_stop(struct dai *dai, int direction)
 	/* disable SSP port if no users */
 	if (ssp->state[SOF_IPC_STREAM_CAPTURE] == COMP_STATE_PREPARE &&
 	    ssp->state[SOF_IPC_STREAM_PLAYBACK] == COMP_STATE_PREPARE) {
-		ssp_update_bits(dai, SSCR0, SSCR0_SSE, 0);
-		dai_info(dai, "ssp_stop(), SSP port disabled");
+		if (!(ssp->clk_active & SSP_CLK_BCLK_ES_REQ)) {
+			ssp_update_bits(dai, SSCR0, SSCR0_SSE, 0);
+			dai_info(dai, "ssp_stop(), SSP%d port disabled", dai->index);
+		}
 	}
 
 	spin_unlock(&dai->lock);
