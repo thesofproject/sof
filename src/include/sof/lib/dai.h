@@ -31,6 +31,7 @@
 
 struct dai;
 struct sof_ipc_dai_config;
+struct sof_ipc_dai_clkctrl;
 struct sof_ipc_stream_params;
 
 /** \addtogroup sof_dai_drivers DAI Drivers
@@ -72,6 +73,7 @@ struct sof_ipc_stream_params;
  */
 struct dai_ops {
 	int (*set_config)(struct dai *dai, struct sof_ipc_dai_config *config);
+	int (*clkctrl)(struct dai *dai, struct sof_ipc_dai_clkctrl *clkctrl);
 	int (*trigger)(struct dai *dai, int cmd, int direction);
 	int (*pm_context_restore)(struct dai *dai);
 	int (*pm_context_store)(struct dai *dai);
@@ -329,6 +331,20 @@ static inline int dai_set_config(struct dai *dai,
 {
 	int ret = dai->drv->ops.set_config(dai, config);
 
+
+	return ret;
+}
+
+/**
+ * \brief Digital Audio interface clock control
+ */
+static inline int dai_clkctrl(struct dai *dai,
+			      struct sof_ipc_dai_clkctrl *clkctrl)
+{
+	int ret = 0;
+
+	if (dai->drv->ops.clkctrl)
+		ret = dai->drv->ops.clkctrl(dai, clkctrl);
 
 	return ret;
 }
