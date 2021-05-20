@@ -734,13 +734,19 @@ static int ssp_pre_start(struct dai *dai)
 	 * We will test if mclk/bclk is configured in
 	 * ssp_mclk/bclk_prepare_enable/disable functions
 	 */
+	if (!(ssp->params.clks_control &
+		 SOF_DAI_INTEL_SSP_CLKCTRL_MCLK_ES)) {
+		/* MCLK config */
+		ret = ssp_mclk_prepare_enable(dai);
+		if (ret < 0)
+			return ret;
+	}
 
-	/* MCLK config */
-	ret = ssp_mclk_prepare_enable(dai);
-	if (ret < 0)
-		return ret;
+	if (!(ssp->params.clks_control &
+		 SOF_DAI_INTEL_SSP_CLKCTRL_BCLK_ES))
+		ret = ssp_bclk_prepare_enable(dai);
 
-	return ssp_bclk_prepare_enable(dai);
+	return ret;
 }
 
 /*
@@ -755,9 +761,16 @@ static void ssp_post_stop(struct dai *dai)
 	/* release clocks if SSP is inactive */
 	if (ssp->state[SOF_IPC_STREAM_PLAYBACK] != COMP_STATE_ACTIVE &&
 	    ssp->state[SOF_IPC_STREAM_CAPTURE] != COMP_STATE_ACTIVE) {
-		dai_info(dai, "releasing BCLK/MCLK clocks for SSP%d...", dai->index);
-		ssp_bclk_disable_unprepare(dai);
-		ssp_mclk_disable_unprepare(dai);
+		if (!(ssp->params.clks_control &
+			 SOF_DAI_INTEL_SSP_CLKCTRL_BCLK_ES)) {
+			dai_info(dai, "ssp_post_stop releasing BCLK clocks for SSP%d...", dai->index);
+			ssp_bclk_disable_unprepare(dai);
+		}
+		if (!(ssp->params.clks_control &
+			 SOF_DAI_INTEL_SSP_CLKCTRL_MCLK_ES)) {
+			dai_info(dai, "ssp_post_stop releasing MCLK clocks for SSP%d...", dai->index);
+			ssp_mclk_disable_unprepare(dai);
+		}
 	}
 }
 
@@ -793,19 +806,76 @@ static int ssp_get_hw_params(struct dai *dai,
 	return 0;
 }
 
-/* SSP hw params */
+/*
+ * enabled clock MCLK/BCLK to support codec that need MCLK/BCLK
+ * This is called before trigger(COMP_TRIGGER_START)
+ */
 static int ssp_hw_params(struct dai *dai,
 			 struct sof_ipc_stream_params  *params)
 {
-	dai_info(dai, "ssp_hw_params()");
+	struct ssp_pdata *ssp = dai_get_drvdata(dai);
+	int ret;
 
+	if (ssp->state[SOF_IPC_STREAM_CAPTURE] < COMP_STATE_PREPARE ||
+	    ssp->state[SOF_IPC_STREAM_PLAYBACK] < COMP_STATE_PREPARE) {
+		dai_err(dai, "ssp_hw_params(): Please set config first");
+		return -EINVAL;
+	}
+
+	dai_info(dai, "ssp_hw_params() params.clks_control 0x%x", ssp->params.clks_control);
+
+	spin_lock(&dai->lock);
+
+	if ((ssp->params.clks_control &
+		 SOF_DAI_INTEL_SSP_CLKCTRL_MCLK_ES)) {
+		ret = ssp_mclk_prepare_enable(dai);
+		if (ret < 0)
+			goto out;
+	}
+
+	if ((ssp->params.clks_control &
+		 SOF_DAI_INTEL_SSP_CLKCTRL_BCLK_ES)) {
+		ret = ssp_bclk_prepare_enable(dai);
+		if (ret < 0)
+			goto out;
+		/* enable port */
+		ssp_update_bits(dai, SSCR0, SSCR0_SSE, SSCR0_SSE);
+	}
+out:
+
+	spin_unlock(&dai->lock);
 	return 0;
 }
 
-/* SSP hw free */
+/*
+ * disabled clock MCLK/BCLK to support codec that need MCLK/BCLK
+ * This is called after trigger(COMP_TRIGGER_STOP)
+ */
 static void ssp_hw_free(struct dai *dai)
 {
+	struct ssp_pdata *ssp = dai_get_drvdata(dai);
+
 	dai_info(dai, "ssp_hw_free()");
+
+	spin_lock(&dai->lock);
+
+	/* release clocks if SSP is inactive */
+	if (ssp->state[SOF_IPC_STREAM_CAPTURE] == COMP_STATE_PREPARE &&
+	    ssp->state[SOF_IPC_STREAM_PLAYBACK] == COMP_STATE_PREPARE) {
+		if ((ssp->params.clks_control &
+			 SOF_DAI_INTEL_SSP_CLKCTRL_BCLK_ES)) {
+			dai_info(dai, "ssp_hw_free() releasing BCLK clocks for SSP%d...", dai->index);
+			ssp_update_bits(dai, SSCR0, SSCR0_SSE, 0);
+			ssp_bclk_disable_unprepare(dai);
+		}
+		if ((ssp->params.clks_control &
+			 SOF_DAI_INTEL_SSP_CLKCTRL_MCLK_ES)) {
+			dai_info(dai, "ssp_hw_free releasing MCLK clocks for SSP%d...", dai->index);
+			ssp_mclk_disable_unprepare(dai);
+		}
+	}
+
+	spin_unlock(&dai->lock);
 }
 
 /* start the SSP for either playback or capture */
@@ -818,8 +888,11 @@ static void ssp_start(struct dai *dai, int direction)
 	/* request mclk/bclk */
 	ssp_pre_start(dai);
 
-	/* enable port */
-	ssp_update_bits(dai, SSCR0, SSCR0_SSE, SSCR0_SSE);
+	if (!(ssp->params.clks_control &
+		 SOF_DAI_INTEL_SSP_CLKCTRL_BCLK_ES)) {
+		/* enable port */
+		ssp_update_bits(dai, SSCR0, SSCR0_SSE, SSCR0_SSE);
+	}
 	ssp->state[direction] = COMP_STATE_ACTIVE;
 
 	dai_info(dai, "ssp_start()");
@@ -880,8 +953,11 @@ static void ssp_stop(struct dai *dai, int direction)
 	/* disable SSP port if no users */
 	if (ssp->state[SOF_IPC_STREAM_CAPTURE] == COMP_STATE_PREPARE &&
 	    ssp->state[SOF_IPC_STREAM_PLAYBACK] == COMP_STATE_PREPARE) {
-		ssp_update_bits(dai, SSCR0, SSCR0_SSE, 0);
-		dai_info(dai, "ssp_stop(), SSP port disabled");
+		if (!(ssp->params.clks_control &
+			 SOF_DAI_INTEL_SSP_CLKCTRL_BCLK_ES)) {
+			ssp_update_bits(dai, SSCR0, SSCR0_SSE, 0);
+			dai_info(dai, "ssp_stop(), SSP port disabled");
+		}
 	}
 
 	ssp_post_stop(dai);
