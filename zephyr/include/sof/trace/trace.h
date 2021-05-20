@@ -9,6 +9,10 @@
 #ifndef ZEPHYR_INCLUDE_LOGGING_LOG_H_
 #include <logging/log.h>
 
+#ifdef __ZEPHYR__
+#include <sys/printk.h>
+#endif
+
 /* Level of SOF trace on Zephyr */
 #define SOF_ZEPHYR_TRACE_LEVEL LOG_LEVEL_INF
 
