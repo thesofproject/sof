@@ -742,6 +742,21 @@ static int ssp_get_hw_params(struct dai *dai,
 	return 0;
 }
 
+/* SSP hw params */
+static int ssp_hw_params(struct dai *dai,
+			 struct sof_ipc_stream_params  *params)
+{
+	dai_info(dai, "ssp_hw_params()");
+
+	return 0;
+}
+
+/* SSP hw free */
+static void ssp_hw_free(struct dai *dai)
+{
+	dai_info(dai, "ssp_hw_free()");
+}
+
 /* start the SSP for either playback or capture */
 static void ssp_start(struct dai *dai, int direction)
 {
@@ -949,6 +964,8 @@ const struct dai_driver ssp_driver = {
 		.get_hw_params		= ssp_get_hw_params,
 		.get_handshake		= ssp_get_handshake,
 		.get_fifo		= ssp_get_fifo,
+		.hw_params		= ssp_hw_params,
+		.hw_free		= ssp_hw_free,
 		.probe			= ssp_probe,
 		.remove			= ssp_remove,
 	},
