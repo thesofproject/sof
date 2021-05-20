@@ -82,6 +82,7 @@ struct dai_ops {
 	int (*get_hw_params)(struct dai *dai,
 			     struct sof_ipc_stream_params *params, int dir);
 	int (*hw_params)(struct dai *dai, struct sof_ipc_stream_params *params);
+	void (*hw_free)(struct dai *dai);
 	int (*get_handshake)(struct dai *dai, int direction, int stream_id);
 	int (*get_fifo)(struct dai *dai, int direction, int stream_id);
 	int (*probe)(struct dai *dai);
@@ -421,6 +422,12 @@ static inline int dai_hw_params(struct dai *dai,
 		ret = dai->drv->ops.hw_params(dai, params);
 
 	return ret;
+}
+
+static inline void dai_hw_free(struct dai *dai)
+{
+	if (dai->drv->ops.hw_free)
+		dai->drv->ops.hw_free(dai);
 }
 
 /**
