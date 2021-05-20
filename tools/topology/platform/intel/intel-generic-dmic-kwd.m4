@@ -49,6 +49,9 @@ ifdef(`IGO',
 # Prolong period to 16ms for igo_nr process
 ifdef(`IGO', `define(`INTEL_GENERIC_DMIC_KWD_PERIOD', 16000)', `define(`INTEL_GENERIC_DMIC_KWD_PERIOD', 1000)')
 
+# define(DMIC_DAI_LINK_16k_PDM, `STEREO_PDM0') define the PDM port, default is STEREO_PDM0
+ifdef(`DMIC_DAI_LINK_16k_PDM',`',`define(DMIC_DAI_LINK_16k_PDM, `STEREO_PDM0')')
+
 #
 # Define the pipelines
 #
@@ -158,4 +161,4 @@ ifelse(CHANNELS, 4,
 DAI_CONFIG(DMIC, 1, DMIC_DAI_LINK_16k_ID, DMIC_DAI_LINK_16k_NAME,
                 DMIC_CONFIG(1, 2400000, 4800000, 40, 60, 16000,
                 DMIC_WORD_LENGTH(s32le), 400, DMIC, 1,
-                PDM_CONFIG(DMIC, 1, STEREO_PDM0)))
+                PDM_CONFIG(DMIC, 1, DMIC_DAI_LINK_16k_PDM)))
