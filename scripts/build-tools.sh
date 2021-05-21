@@ -18,7 +18,7 @@ usage: $0 [-c|-f|-h|-l|-p|-t|-T]
        -h Display help
 
        -c Rebuild ctl/
-       -f Rebuild fuzzer/
+       -f Rebuild fuzzer/  # deprecated, see fuzzer/README.md
        -l Rebuild logger/
        -p Rebuild probes/
        -T Rebuild topology/ (not topology/development/! Use ALL)
