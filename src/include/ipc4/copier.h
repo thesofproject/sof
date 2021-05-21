@@ -82,11 +82,11 @@ struct BaseModuleCfgExt
      *          in case pin #1 will not be in use. FW assigned format of the pin based on pin_index,
      *          not on a position of the item in the array. Applies to both input and output pins.
      */
-    intel_adsp::InputPinFormat     input_pins[1];
+    struct ipc4_input_pin_format     input_pins[1];
     /*!
      * \brief Specifies format of output pins.
      */
-    intel_adsp::OutputPinFormat    output_pins[1];
+    struct ipc4_output_pin_format    output_pins[1];
 } __attribute__((packed, aligned(4)));
 
 /**
@@ -114,22 +114,22 @@ static const uint32_t INVALID_QUEUE_ID = 0xFFFFFFFF;
 struct PinProps
 {
     /*! Type of the connected stream. */
-    StreamType          stream_type;
+    enum ipc4_stream_type	stream_type;
 
     /*! Audio format of the stream.
         The content is valid in case of ePcm stream_type. */
-    AudioDataFormatIpc  format;
+    struct ipc4_audio_format	format;
 
     /*! Unique ID of the physical queue connected to the pin.
         If there is no queue connected, then -1 (invalid queue ID) is set. */
-    uint32_t            phys_queue_id;
+	uint32_t	phys_queue_id;
 } __attribute__((packed, aligned(4)));
 
 
 struct PinListInfo
 {
     uint32_t pin_count;
-    PinProps pin_info[1];
+    struct PinProps pin_info[1];
 } __attribute__((packed, aligned(4)));
 
 /**
@@ -163,8 +163,8 @@ struct ModuleInstanceProps
     //       is agreed and aligned between debugAgent, OED and FW
     // uint32_t  cpc_avg;
     // uint32_t  cpc_last;
-    PinListInfo input_queues;
-    PinListInfo output_queues;
+    struct PinListInfo input_queues;
+    struct PinListInfo output_queues;
     uint32_t  input_gateway;
     uint32_t  output_gateway;
 } __attribute__((packed, aligned(4)));
@@ -183,13 +183,6 @@ union CfgParamIdData
         uint32_t id     : 14;   ///< input parameter ID
         uint32_t _rsvd  : 2;
     } f;
-    CfgParamIdData() :dw(0) {}
-    explicit CfgParamIdData(uint32_t param_id_data) :dw(param_id_data) {}
-    CfgParamIdData(uint16_t id, uint16_t data16) :dw(0)
-    {
-        f.id = id;
-        f.data16 = data16;
-    }
 } __attribute__((packed, aligned(4)));
 
 /*!
@@ -319,8 +312,10 @@ struct CopierGatewayCfg
     uint32_t config_data[1];
 } __attribute__((packed, aligned(4)));
 
-struct CopierModuleCfg : BaseModuleCfg
+struct CopierModuleCfg
 {
+	struct BaseModuleCfg base;
+
     //! Audio format for output pin 0.
     struct ipc4_audio_format out_fmt;
     //! Mask of allowed copier features.
@@ -329,8 +324,18 @@ struct CopierModuleCfg : BaseModuleCfg
     */
     uint32_t copier_feature_mask;
     //! Gateway Configuration.
-    CopierGatewayCfg  gtw_cfg;
+    struct CopierGatewayCfg  gtw_cfg;
 } __attribute__((packed, aligned(4)));
+
+struct copier_data {
+	struct comp_dev *host;
+	struct comp_dev *dai;
+	struct comp_buffer *buf;
+	int direction;
+	pcm_converter_func converter;
+
+	struct CopierModuleCfg config;
+};
 
 enum CopierModuleConfigParams
 {
@@ -404,9 +409,9 @@ struct CopierConfigSetSinkFormat
     /*!
       \attention Must be the same as present if already initialized.
     */
-    AudioDataFormatIpc source_fmt;
+    struct ipc4_audio_format source_fmt;
     //! Output format used by the sink
-    AudioDataFormatIpc sink_fmt;
+    struct ipc4_audio_format sink_fmt;
 } __attribute__((packed, aligned(4)));
 
 static const uint32_t COPIER_DATA_SEGMENT_DISABLE = (0 << 0);
