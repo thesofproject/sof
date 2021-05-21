@@ -46,7 +46,7 @@ typedef uint32_t ipc_comp;
 #define ipc_from_pipe_new(x) ((struct ipc4_pipeline_create *)x)
 #define ipc_from_pipe_connect(x) ((struct ipc4_module_bind_unbind *)x)
 #define ipc_from_comp_new(x) ((struct ipc4_module_init_instance *)x)
-#define ipc_from_dai_config(x) ((union ipc4_gateway_attributes *)x)
+#define ipc_from_dai_config(x) ((struct CopierGatewayCfg *)x)
 #else
 #error "No or invalid IPC MAJOR version selected."
 #endif

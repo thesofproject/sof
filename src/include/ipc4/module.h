@@ -223,9 +223,12 @@ struct ipc4_module_large_config {
 };
 
 #define IPC4_COMP_ID(x, y) ((x) << 16 | (y))
+#define IPC4_MOD_ID(x) ((x) >> 16)
+#define IPC4_INST_ID(x) ((x) & 0xffff)
+
 const struct comp_driver *ipc4_get_comp_drv(int module_id);
-struct comp_dev *ipc4_get_comp_dev(int comp_id);
-void ipc4_add_comp_dev(struct comp_dev *dev);
+struct comp_dev *ipc4_get_comp_dev(uint32_t comp_id);
+int ipc4_add_comp_dev(struct comp_dev *dev);
 const struct comp_driver *ipc4_get_drv(uint8_t *uuid);
 
 #endif

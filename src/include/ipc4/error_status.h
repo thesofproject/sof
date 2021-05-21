@@ -81,7 +81,7 @@ enum ipc4_status {
 	IPC4_MOD_LOAD_INVALID_HASH = 102,
 
 	//! Attempt to unload code of the module in use.
-	ADSP_MOD_INSTANCE_EXISTS = 103,
+	IPC4_MOD_INSTANCE_EXISTS = 103,
 	//! Other failure of module instance initialization request.
 	IPC4_MOD_NOT_INITIALIZED = 104,
 	//! Reserved (IPC4_OUT_OF_MIPS removed).

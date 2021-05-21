@@ -103,4 +103,23 @@ struct BaseModuleCfg {
 	struct ipc4_audio_format audio_fmt;
 };
 
+struct ipc4_input_pin_format {
+	uint32_t			pin_index; /*!< \brief Index of the pin.*/
+	uint32_t			ibs;	   /*!< \brief Specifies input frame size (in bytes).*/
+	struct ipc4_audio_format 		audio_fmt; /*!< \brief Format of the input data.*/
+};
+
+struct ipc4_output_pin_format {
+	uint32_t			pin_index; /*!< \brief Index of the pin.*/
+	uint32_t			obs;	   /*!< \brief Specifies output frame size (in bytes).*/
+	struct ipc4_audio_format 		audio_fmt; /*!< \brief Format of the output data.*/
+};
+
+enum ipc4_stream_type {
+    ipc4_pcm = 0,                   ///< PCM stream
+    ipc4_mp3,                       ///< MP3 encoded stream
+    ipc4_aac,                       ///< AAC encoded stream
+    ipc4_max,
+    ipc4_invalid = 0xFF
+};
 #endif
