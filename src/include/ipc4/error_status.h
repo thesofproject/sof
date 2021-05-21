@@ -20,6 +20,8 @@
 #ifndef __SOF_IPC4_ERROR_STATUS_H__
 #define __SOF_IPC4_ERROR_STATUS_H__
 
+#include <ipc4/pipeline.h>
+
 enum ipc4_status {
 	//! The operation was successful.
 	IPC4_SUCCESS = 0,
