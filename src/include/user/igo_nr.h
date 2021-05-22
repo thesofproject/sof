@@ -32,7 +32,7 @@ struct IGO_PARAMS {
 struct sof_igo_nr_config {
 	/* reserved */
 	struct IGO_PARAMS igo_params;
-
+	uint32_t active_channel_idx;
 	int16_t data[];
 } __attribute__((packed));
 

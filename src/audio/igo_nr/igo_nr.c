@@ -45,11 +45,11 @@ DECLARE_TR_CTX(igo_nr_tr, SOF_UUID(igo_nr_uuid), LOG_LEVEL_INFO);
 
 static void igo_nr_lib_process(struct comp_data *cd)
 {
-	/* Pass through the first channel if
+	/* Pass through the active channel if
 	 * 1) It's not enabled, or
 	 * 2) hw parameter is not valid.
 	 */
-	if (!cd->process_enable[0] || cd->invalid_param) {
+	if (!cd->process_enable[cd->config.active_channel_idx] || cd->invalid_param) {
 		memcpy_s(cd->out, IGO_FRAME_SIZE * sizeof(int16_t),
 			 cd->in, IGO_FRAME_SIZE * sizeof(int16_t));
 	} else {
@@ -77,33 +77,42 @@ static void igo_nr_capture_s16(struct comp_data *cd,
 	int16_t *y;
 #if CONFIG_DEBUG
 	int32_t dbg_en = cd->config.igo_params.dump_data == 1 && out_nch > 1;
+	int32_t dbg_ch_idx;
 #endif
 
-	/* Deinterleave the source buffer and keeps the first channel data as input. */
+	/* Deinterleave the source buffer and keeps the active channel data as input. */
 	for (i = 0; i < frames; i++) {
-		x = audio_stream_read_frag_s16(source, idx_in);
-		cd->in[i] = (*x);
 
 		/* Pass through all the other channels */
-		for (j = 1; j < min_nch; j++) {
+		for (j = 0; j < min_nch; j++) {
+			if (j == cd->config.active_channel_idx)
+				continue;
 			x = audio_stream_read_frag_s16(source, idx_in + j);
 			y = audio_stream_write_frag_s16(sink, idx_in + j);
 			*y = (*x);
 		}
+
+		x = audio_stream_read_frag_s16(source, idx_in + cd->config.active_channel_idx);
+		cd->in[i] = (*x);
+
 		idx_in += in_nch;
 	}
 
 	igo_nr_lib_process(cd);
 
-	/* Interleave write the processed data into first output channel. */
+	/* Interleave write the processed data into active output channel. */
 	for (i = 0; i < frames; i++) {
 		y = audio_stream_write_frag_s16(sink, idx_out + cd->config.active_channel_idx);
 		*y = (cd->out[i]);
 
 #if CONFIG_DEBUG
-		/* Under DEBUG mode, overwrite the second channel with input interleavedly. */
+		/* Under DEBUG mode, overwrite the next channel with input interleavedly. */
+		if (cd->config.active_channel_idx >= out_nch)
+			dbg_ch_idx = 0;
+		else
+			dbg_ch_idx = cd->config.active_channel_idx + 1;
 		if (dbg_en) {
-			y = audio_stream_write_frag_s16(sink, idx_out + 1);
+			y = audio_stream_write_frag_s16(sink, idx_out + dbg_ch_idx);
 			*y = (cd->in[i]);
 		}
 #endif
@@ -129,34 +138,42 @@ static void igo_nr_capture_s24(struct comp_data *cd,
 	int32_t *y;
 #if CONFIG_DEBUG
 	int32_t dbg_en = cd->config.igo_params.dump_data == 1 && out_nch > 1;
+	int32_t dbg_ch_idx;
 #endif
 
-	/* Deinterleave the source buffer and keeps the first channel data as input. */
+	/* Deinterleave the source buffer and keeps the active channel data as input. */
 	for (i = 0; i < frames; i++) {
-		x = audio_stream_read_frag_s32(source, idx_in);
-		cd->in[i] = Q_SHIFT_RND(*x, 24, 16);
 
 		/* Pass through all the other channels */
-		for (j = 1; j < min_nch; j++) {
+		for (j = 0; j < min_nch; j++) {
+			if (j == cd->config.active_channel_idx)
+				continue;
 			x = audio_stream_read_frag_s32(source, idx_in + j);
 			y = audio_stream_write_frag_s32(sink, idx_in + j);
 			*y = (*x);
 		}
+
+		x = audio_stream_read_frag_s32(source, idx_in + cd->config.active_channel_idx);
+		cd->in[i] = Q_SHIFT_RND(*x, 24, 16);
 
 		idx_in += in_nch;
 	}
 
 	igo_nr_lib_process(cd);
 
-	/* Interleave write the processed data into first output channel. */
+	/* Interleave write the processed data into active output channel. */
 	for (i = 0; i < frames; i++) {
-		y = audio_stream_write_frag_s32(sink, idx_out);
+		y = audio_stream_write_frag_s32(sink, idx_out + cd->config.active_channel_idx);
 		*y = (cd->out[i]) << 8;
 
 #if CONFIG_DEBUG
-		/* Under DEBUG mode, overwrite the second channel with input interleavedly. */
+		/* Under DEBUG mode, overwrite the next channel with input interleavedly. */
+		if (cd->config.active_channel_idx >= out_nch)
+			dbg_ch_idx = 0;
+		else
+			dbg_ch_idx = cd->config.active_channel_idx + 1;
 		if (dbg_en) {
-			y = audio_stream_write_frag_s32(sink, idx_out + 1);
+			y = audio_stream_write_frag_s32(sink, idx_out + dbg_ch_idx);
 			*y = (cd->in[i]) << 8;
 		}
 #endif
@@ -182,33 +199,41 @@ static void igo_nr_capture_s32(struct comp_data *cd,
 	int32_t *y;
 #if CONFIG_DEBUG
 	int32_t dbg_en = cd->config.igo_params.dump_data == 1 && out_nch > 1;
+	int32_t dbg_ch_idx;
 #endif
 
 	for (i = 0; i < frames; i++) {
-		x = audio_stream_read_frag_s32(source, idx_in);
-		cd->in[i] = Q_SHIFT_RND(*x, 32, 16);
 
 		/* Pass through all the other channels */
-		for (j = 1; j < min_nch; j++) {
+		for (j = 0; j < min_nch; j++) {
+			if (j == cd->config.active_channel_idx)
+				continue;
 			x = audio_stream_read_frag_s32(source, idx_in + j);
 			y = audio_stream_write_frag_s32(sink, idx_in + j);
 			*y = (*x);
 		}
+
+		x = audio_stream_read_frag_s32(source, idx_in + cd->config.active_channel_idx);
+		cd->in[i] = Q_SHIFT_RND(*x, 32, 16);
 
 		idx_in += in_nch;
 	}
 
 	igo_nr_lib_process(cd);
 
-	/* Interleave write the processed data into first output channel. */
+	/* Interleave write the processed data into active output channel. */
 	for (i = 0; i < frames; i++) {
-		y = audio_stream_write_frag_s32(sink, idx_out);
+		y = audio_stream_write_frag_s32(sink, idx_out + cd->config.active_channel_idx);
 		*y = (cd->out[i]) << 16;
 
 #if CONFIG_DEBUG
-		/* Under DEBUG mode, overwrite the second channel with input interleavedly. */
+		/* Under DEBUG mode, overwrite the next channel with input interleavedly. */
+		if (cd->config.active_channel_idx >= out_nch)
+			dbg_ch_idx = 0;
+		else
+			dbg_ch_idx = cd->config.active_channel_idx + 1;
 		if (dbg_en) {
-			y = audio_stream_write_frag_s32(sink, idx_out + 1);
+			y = audio_stream_write_frag_s32(sink, idx_out + dbg_ch_idx);
 			*y = (cd->in[i]) << 16;
 		}
 #endif
@@ -473,6 +498,22 @@ static int32_t igo_nr_cmd_get_value(struct comp_dev *dev, struct sof_ipc_ctrl_da
 	return ret;
 }
 
+static int32_t igo_nr_check_config_validity(struct comp_dev *dev,
+					    struct comp_data *cd)
+{
+	struct sof_igo_nr_config *p_config = comp_get_data_blob(cd->model_handler, NULL, NULL);
+
+	if (!p_config) {
+		comp_err(dev, "igo_nr_check_config_validity() error: invalid cd->model_handler");
+		return -EINVAL;
+	} else if (p_config->active_channel_idx >= SOF_IPC_MAX_CHANNELS) {
+		comp_err(dev, "igo_nr_check_config_validity() error: invalid active_channel_idxs");
+		return -EINVAL;
+	} else {
+		return 0;
+	}
+}
+
 static int32_t igo_nr_cmd_set_data(struct comp_dev *dev,
 				   struct sof_ipc_ctrl_data *cdata)
 {
@@ -489,6 +530,9 @@ static int32_t igo_nr_cmd_set_data(struct comp_dev *dev,
 		ret = -EINVAL;
 		break;
 	}
+
+	if (ret >= 0)
+		ret = igo_nr_check_config_validity(dev, cd);
 
 	return ret;
 }
@@ -620,6 +664,9 @@ static void igo_nr_print_config(struct comp_dev *dev)
 		 cd->config.igo_params.nr_mode3_floor);
 	comp_dbg(dev, "  nr_mode1_pp_param53		%d",
 		 cd->config.igo_params.nr_mode1_pp_param53);
+	comp_dbg(dev, "  active_channel_idx		%d",
+		 cd->config.active_channel_idx);
+
 }
 
 static void igo_nr_set_igo_params(struct comp_dev *dev)
@@ -628,6 +675,8 @@ static void igo_nr_set_igo_params(struct comp_dev *dev)
 	struct sof_igo_nr_config *p_config = comp_get_data_blob(cd->model_handler, NULL, NULL);
 
 	comp_info(dev, "igo_nr_set_igo_params()");
+	igo_nr_check_config_validity(dev, cd);
+
 	if (p_config) {
 		comp_info(dev, "New config detected.");
 		cd->config = *p_config;
@@ -723,7 +772,7 @@ static int32_t igo_nr_prepare(struct comp_dev *dev)
 	memset(cd->out, 0, IGO_NR_OUT_BUF_LENGTH * sizeof(int16_t));
 
 	/* Default NR on */
-	cd->process_enable[0] = true;
+	cd->process_enable[cd->config.active_channel_idx] = true;
 
 	return set_capture_func(dev);
 }
