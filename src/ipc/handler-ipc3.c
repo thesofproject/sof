@@ -379,6 +379,12 @@ static int ipc_stream_position(uint32_t header)
 	posn.rhdr.hdr.size = sizeof(posn);
 	posn.comp_id = stream.comp_id;
 
+	if (!pcm_dev->cd->pipeline) {
+		tr_err(&ipc_tr, "ipc: comp %d pipeline not found",
+		       stream.comp_id);
+		return -EINVAL;
+	}
+
 	/* get the stream positions and timestamps */
 	pipeline_get_timestamp(pcm_dev->cd->pipeline, pcm_dev->cd, &posn);
 
@@ -434,6 +440,12 @@ static int ipc_stream_trigger(uint32_t header)
 	default:
 		tr_err(&ipc_tr, "ipc: invalid trigger cmd 0x%x", ipc_command);
 		return -ENODEV;
+	}
+
+	if (!pcm_dev->cd->pipeline) {
+		tr_err(&ipc_tr, "ipc: comp %d pipeline not found",
+		       stream.comp_id);
+		return -EINVAL;
 	}
 
 	/* trigger the component */
