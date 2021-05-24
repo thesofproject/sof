@@ -106,7 +106,7 @@ void drc_update_detector_average(struct drc_state *state,
 
 	/* Calculate the start index of the last input division */
 	if (state->pre_delay_write_index == 0)
-		div_start = DRC_MAX_PRE_DELAY_FRAMES - DRC_DIVISION_FRAMES;
+		div_start = CONFIG_DRC_MAX_PRE_DELAY_FRAMES - DRC_DIVISION_FRAMES;
 	else
 		div_start = state->pre_delay_write_index - DRC_DIVISION_FRAMES;
 

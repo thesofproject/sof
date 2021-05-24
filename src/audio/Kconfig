@@ -181,6 +181,16 @@ config COMP_DRC
 	  to reduce the volume of loud sounds and amplify silent sounds thus
 	  compressing an audio signal's dynamic range.
 
+config DRC_MAX_PRE_DELAY_FRAMES
+	depends on COMP_DRC
+	int "DRC max number of pre-delay frames"
+	default 512
+	help
+	  Determines the length of pre-delay frame buffers which are allocated
+	  runtime on DRC setup. It requires to be a 2^N number. 512 is
+	  suggested by inference to avoid memory waste and provide reasonable
+	  length for pre-delay frames.
+
 config COMP_MULTIBAND_DRC
 	depends on COMP_IIR && COMP_CROSSOVER && COMP_DRC
 	bool "Multiband Dynamic Range Compressor component"
