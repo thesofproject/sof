@@ -68,13 +68,12 @@ inline int drc_init_pre_delay_buffers(struct drc_state *state,
 				      size_t sample_bytes,
 				      int channels)
 {
-	size_t bytes_per_channel = sample_bytes * DRC_MAX_PRE_DELAY_FRAMES;
+	size_t bytes_per_channel = sample_bytes * CONFIG_DRC_MAX_PRE_DELAY_FRAMES;
 	size_t bytes_total = bytes_per_channel * channels;
 	int i;
 
 	/* Allocate pre-delay (lookahead) buffers */
-	state->pre_delay_buffers[0] =
-		rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, bytes_total);
+	state->pre_delay_buffers[0] = rballoc(0, SOF_MEM_CAPS_RAM, bytes_total);
 	if (!state->pre_delay_buffers[0])
 		return -ENOMEM;
 
@@ -98,7 +97,7 @@ inline int drc_set_pre_delay_time(struct drc_state *state,
 	pre_delay_frames = Q_MULTSR_32X32((int64_t)pre_delay_time, rate, 30, 0, 0);
 	if (pre_delay_frames < 0)
 		return -EINVAL;
-	pre_delay_frames = MIN(pre_delay_frames, DRC_MAX_PRE_DELAY_FRAMES - 1);
+	pre_delay_frames = MIN(pre_delay_frames, CONFIG_DRC_MAX_PRE_DELAY_FRAMES - 1);
 
 	/* Make pre_delay_frames multiplies of DIVISION_FRAMES. This way we
 	 * won't split a division of samples into two blocks of memory, so it is

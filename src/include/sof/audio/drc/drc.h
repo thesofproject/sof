@@ -15,10 +15,16 @@
 struct audio_stream;
 struct comp_dev;
 
-/* DRC_MAX_PRE_DELAY_FRAMES needs to be a 2^N number */
-#define DRC_MAX_PRE_DELAY_FRAMES 1024
-#define DRC_MAX_PRE_DELAY_FRAMES_MASK (DRC_MAX_PRE_DELAY_FRAMES - 1)
-#define DRC_DEFAULT_PRE_DELAY_FRAMES 256
+/* Define CONFIG_DRC_MAX_PRE_DELAY_FRAMES for the build purposes without Kconfig,
+ * e.g. testbench.
+ * TODO: Use Kconfig on building the testbench.
+ */
+#ifdef CONFIG_LIBRARY
+/* CONFIG_DRC_MAX_PRE_DELAY_FRAMES needs to be a 2^N number */
+#define CONFIG_DRC_MAX_PRE_DELAY_FRAMES 512
+#endif
+#define DRC_MAX_PRE_DELAY_FRAMES_MASK (CONFIG_DRC_MAX_PRE_DELAY_FRAMES - 1)
+#define DRC_DEFAULT_PRE_DELAY_FRAMES (CONFIG_DRC_MAX_PRE_DELAY_FRAMES >> 1)
 
 /* DRC_DIVISION_FRAMES needs to be a 2^N number */
 #define DRC_DIVISION_FRAMES 32

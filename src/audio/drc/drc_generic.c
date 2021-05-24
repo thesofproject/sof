@@ -93,7 +93,7 @@ void drc_update_detector_average(struct drc_state *state,
 
 	/* Calculate the start index of the last input division */
 	if (state->pre_delay_write_index == 0) {
-		div_start = DRC_MAX_PRE_DELAY_FRAMES - DRC_DIVISION_FRAMES;
+		div_start = CONFIG_DRC_MAX_PRE_DELAY_FRAMES - DRC_DIVISION_FRAMES;
 	} else {
 		div_start = state->pre_delay_write_index - DRC_DIVISION_FRAMES;
 	}
@@ -543,13 +543,13 @@ static void drc_s16_default(const struct comp_dev *dev,
 				y = audio_stream_write_frag_s16(sink, idx);
 				*pd_write = *x;
 				*y = *pd_read;
-				if (++pd_write_index == DRC_MAX_PRE_DELAY_FRAMES) {
+				if (++pd_write_index == CONFIG_DRC_MAX_PRE_DELAY_FRAMES) {
 					pd_write_index = 0;
 					pd_write = (int16_t *)state->pre_delay_buffers[ch];
 				} else {
 					pd_write++;
 				}
-				if (++pd_read_index == DRC_MAX_PRE_DELAY_FRAMES) {
+				if (++pd_read_index == CONFIG_DRC_MAX_PRE_DELAY_FRAMES) {
 					pd_read_index = 0;
 					pd_read = (int16_t *)state->pre_delay_buffers[ch];
 				} else {
@@ -649,13 +649,13 @@ static void drc_s24_default(const struct comp_dev *dev,
 				y = audio_stream_write_frag_s32(sink, idx);
 				*pd_write = *x;
 				*y = *pd_read;
-				if (++pd_write_index == DRC_MAX_PRE_DELAY_FRAMES) {
+				if (++pd_write_index == CONFIG_DRC_MAX_PRE_DELAY_FRAMES) {
 					pd_write_index = 0;
 					pd_write = (int32_t *)state->pre_delay_buffers[ch];
 				} else {
 					pd_write++;
 				}
-				if (++pd_read_index == DRC_MAX_PRE_DELAY_FRAMES) {
+				if (++pd_read_index == CONFIG_DRC_MAX_PRE_DELAY_FRAMES) {
 					pd_read_index = 0;
 					pd_read = (int32_t *)state->pre_delay_buffers[ch];
 				} else {
@@ -758,13 +758,13 @@ static void drc_s32_default(const struct comp_dev *dev,
 				y = audio_stream_write_frag_s32(sink, idx);
 				*pd_write = *x;
 				*y = *pd_read;
-				if (++pd_write_index == DRC_MAX_PRE_DELAY_FRAMES) {
+				if (++pd_write_index == CONFIG_DRC_MAX_PRE_DELAY_FRAMES) {
 					pd_write_index = 0;
 					pd_write = (int32_t *)state->pre_delay_buffers[ch];
 				} else {
 					pd_write++;
 				}
-				if (++pd_read_index == DRC_MAX_PRE_DELAY_FRAMES) {
+				if (++pd_read_index == CONFIG_DRC_MAX_PRE_DELAY_FRAMES) {
 					pd_read_index = 0;
 					pd_read = (int32_t *)state->pre_delay_buffers[ch];
 				} else {
