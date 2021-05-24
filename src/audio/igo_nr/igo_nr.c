@@ -584,48 +584,54 @@ static void igo_nr_process(struct comp_dev *dev,
 	comp_update_buffer_produce(sink, sink_bytes);
 }
 
-static void igo_nr_get_igo_params(struct comp_dev *dev)
+static void igo_nr_print_config(struct comp_dev *dev)
+{
+	struct comp_data *cd = comp_get_drvdata(dev);
+
+	comp_dbg(dev, "  igo_params_ver		%d",
+		 cd->config.igo_params.igo_params_ver);
+	comp_dbg(dev, "  dump_data			%d",
+		 cd->config.igo_params.dump_data);
+	comp_dbg(dev, "  nr_bypass			%d",
+		 cd->config.igo_params.nr_bypass);
+	comp_dbg(dev, "  nr_mode1_en			%d",
+		 cd->config.igo_params.nr_mode1_en);
+	comp_dbg(dev, "  nr_mode3_en			%d",
+		 cd->config.igo_params.nr_mode3_en);
+	comp_dbg(dev, "  nr_ul_enable		%d",
+		 cd->config.igo_params.nr_ul_enable);
+	comp_dbg(dev, "  agc_gain			%d",
+		 cd->config.igo_params.agc_gain);
+	comp_dbg(dev, "  nr_voice_str		%d",
+		 cd->config.igo_params.nr_voice_str);
+	comp_dbg(dev, "  nr_level			%d",
+		 cd->config.igo_params.nr_level);
+	comp_dbg(dev, "  nr_mode1_floor		%d",
+		 cd->config.igo_params.nr_mode1_floor);
+	comp_dbg(dev, "  nr_mode1_od			%d",
+		 cd->config.igo_params.nr_mode1_od);
+	comp_dbg(dev, "  nr_mode1_pp_param7		%d",
+		 cd->config.igo_params.nr_mode1_pp_param7);
+	comp_dbg(dev, "  nr_mode1_pp_param8		%d",
+		 cd->config.igo_params.nr_mode1_pp_param8);
+	comp_dbg(dev, "  nr_mode1_pp_param10		%d",
+		 cd->config.igo_params.nr_mode1_pp_param10);
+	comp_dbg(dev, "  nr_mode3_floor		%d",
+		 cd->config.igo_params.nr_mode3_floor);
+	comp_dbg(dev, "  nr_mode1_pp_param53		%d",
+		 cd->config.igo_params.nr_mode1_pp_param53);
+}
+
+static void igo_nr_set_igo_params(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct sof_igo_nr_config *p_config = comp_get_data_blob(cd->model_handler, NULL, NULL);
 
-	comp_info(dev, "igo_nr_get_igo_params()");
+	comp_info(dev, "igo_nr_set_igo_params()");
 	if (p_config) {
+		comp_info(dev, "New config detected.");
 		cd->config = *p_config;
-
-		comp_dbg(dev, "config changed");
-		comp_dbg(dev, "  igo_params_ver       %d",
-			 cd->config.igo_params.igo_params_ver);
-		comp_dbg(dev, "  dump_data:           %d",
-			 cd->config.igo_params.dump_data);
-		comp_dbg(dev, "  nr_bypass:           %d",
-			 cd->config.igo_params.nr_bypass);
-		comp_dbg(dev, "  nr_mode1_en          %d",
-			 cd->config.igo_params.nr_mode1_en);
-		comp_dbg(dev, "  nr_mode3_en          %d",
-			 cd->config.igo_params.nr_mode3_en);
-		comp_dbg(dev, "  nr_ul_enable         %d",
-			 cd->config.igo_params.nr_ul_enable);
-		comp_dbg(dev, "  agc_gain             %d",
-			 cd->config.igo_params.agc_gain);
-		comp_dbg(dev, "  nr_voice_str         %d",
-			 cd->config.igo_params.nr_voice_str);
-		comp_dbg(dev, "  nr_level             %d",
-			 cd->config.igo_params.nr_level);
-		comp_dbg(dev, "  nr_mode1_floor       %d",
-			 cd->config.igo_params.nr_mode1_floor);
-		comp_dbg(dev, "  nr_mode1_od          %d",
-			 cd->config.igo_params.nr_mode1_od);
-		comp_dbg(dev, "  nr_mode1_pp_param7   %d",
-			 cd->config.igo_params.nr_mode1_pp_param7);
-		comp_dbg(dev, "  nr_mode1_pp_param8   %d",
-			 cd->config.igo_params.nr_mode1_pp_param8);
-		comp_dbg(dev, "  nr_mode1_pp_param10  %d",
-			 cd->config.igo_params.nr_mode1_pp_param10);
-		comp_dbg(dev, "  nr_mode3_floor       %d",
-			 cd->config.igo_params.nr_mode3_floor);
-		comp_dbg(dev, "  nr_mode1_pp_param53  %d",
-			 cd->config.igo_params.nr_mode1_pp_param53);
+		igo_nr_print_config(dev);
 	}
 }
 
@@ -648,7 +654,7 @@ static int32_t igo_nr_copy(struct comp_dev *dev)
 
 	/* Check for changed configuration */
 	if (comp_is_new_data_blob_available(cd->model_handler))
-		igo_nr_get_igo_params(dev);
+		igo_nr_set_igo_params(dev);
 
 	/* Get source, sink, number of frames etc. to process. */
 	comp_get_copy_limits(sourceb, sinkb, &cl);
@@ -698,9 +704,12 @@ static int32_t igo_nr_prepare(struct comp_dev *dev)
 
 	comp_dbg(dev, "igo_nr_prepare()");
 
-	igo_nr_get_igo_params(dev);
+	igo_nr_set_igo_params(dev);
 
 	igo_nr_lib_init(dev);
+
+	comp_dbg(dev, "post igo_nr_lib_init");
+	igo_nr_print_config(dev);
 
 	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
 	if (ret < 0)
