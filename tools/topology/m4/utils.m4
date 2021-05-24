@@ -35,7 +35,7 @@ dnl COMP_SAMPLE_SIZE(FMT)
 define(`COMP_SAMPLE_SIZE',
 `ifelse(
 	$1, `s16le', `2',
-	$1, `s24_4le', `4',
+	$1, `s24le', `4',
 	$1, `s32le', `4',
 	$1, `float', `4',
 	`4')')
