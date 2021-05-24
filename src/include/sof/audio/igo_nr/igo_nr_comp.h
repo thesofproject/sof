@@ -28,8 +28,6 @@ struct comp_data {
 	struct sof_igo_nr_config config;	    /**< blob data buffer */
 	int16_t in[IGO_NR_IN_BUF_LENGTH];	    /**< input samples buffer */
 	int16_t out[IGO_NR_IN_BUF_LENGTH];    /**< output samples mix buffer */
-	uint16_t in_wpt;
-	uint16_t out_rpt;
 	bool process_enable[SOF_IPC_MAX_CHANNELS];	/**< set if channel process is enabled */
 	bool invalid_param;	/**< sample rate != 16000 */
 	uint32_t sink_rate;	/* Sample rate in Hz */
@@ -44,8 +42,7 @@ struct comp_data {
 	void (*igo_nr_func)(struct comp_data *cd,
 			    const struct audio_stream *source,
 			    struct audio_stream *sink,
-			    int src_frames,
-			    int snk_frames);
+			    int32_t frames);
 };
 
 #endif /* __SOF_AUDIO_IGO_NR_CONFIG_H__ */
