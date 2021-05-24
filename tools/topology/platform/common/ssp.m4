@@ -30,8 +30,9 @@ $6
 dnl SSP_QUIRK_LBM 64 = (1 << 6)
 define(`SSP_QUIRK_LBM', 64)
 
-dnl SSP_CONFIG_DATA(type, idx, valid bits, mclk_id, quirks, bclk_delay)
-dnl mclk_id, quirks, bclk_delay are optional
+dnl SSP_CONFIG_DATA(type, idx, valid bits, mclk_id, quirks, bclk_delay,
+dnl clks_control, pulse_width, padding)
+dnl mclk_id, quirks, bclk_delay clks_control, pulse_width and padding are optional
 define(`SSP_CONFIG_DATA',
 `SectionVendorTuples."'N_DAI_CONFIG($1$2)`_tuples" {'
 `	tokens "sof_ssp_tokens"'
@@ -39,9 +40,14 @@ define(`SSP_CONFIG_DATA',
 `		SOF_TKN_INTEL_SSP_SAMPLE_BITS'	STR($3)
 `		SOF_TKN_INTEL_SSP_QUIRKS'	`ifelse(`$5', `', "0", STR($5))'
 `		SOF_TKN_INTEL_SSP_BCLK_DELAY'	`ifelse(`$6', `', "0", STR($6))'
+`		SOF_TKN_INTEL_SSP_CLKS_CONTROL' `ifelse(`$7', `', "0", STR($7))'
 `	}'
 `	tuples."short" {'
 `		SOF_TKN_INTEL_SSP_MCLK_ID'	`ifelse(`$4', `', "0", STR($4))'
+`		SOF_TKN_INTEL_SSP_FRAME_PULSE_WIDTH' `ifelse(`$8', `', "0", STR($8))'
+`	}'
+`	tuples."bool" {'
+`		SOF_TKN_INTEL_SSP_TDM_PADDING_PER_SLOT' `ifelse(`$9', `', "false", STR($9))'
 `	}'
 `}'
 `SectionData."'N_DAI_CONFIG($1$2)`_data" {'
