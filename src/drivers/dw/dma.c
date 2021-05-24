@@ -985,7 +985,7 @@ static int dw_dma_probe(struct dma *dma)
 		chan->index = i;
 		chan->core = DMA_CORE_INVALID;
 
-		dw_chan = rzalloc(SOF_MEM_ZONE_SYS_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+		dw_chan = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM,
 				  sizeof(*dw_chan));
 
 		if (!dw_chan) {
