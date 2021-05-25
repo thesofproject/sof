@@ -199,7 +199,7 @@ static struct comp_dev *dai_new(const struct comp_driver *drv,
 		       sizeof(struct sof_ipc_comp_dai));
 	assert(!ret);
 
-	dd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*dd));
+	dd = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*dd));
 	if (!dd) {
 		rfree(dev);
 		return NULL;
@@ -730,7 +730,7 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 
 	/* allocated dai_config if not yet */
 	if (!dd->dai_config) {
-		dd->dai_config = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+		dd->dai_config = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM,
 					 sizeof(*dd->dai_config));
 		if (!dd->dai_config) {
 			comp_err(dev, "dai_config(): No memory for dai_config.");
