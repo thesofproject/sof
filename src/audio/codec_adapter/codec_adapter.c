@@ -428,6 +428,7 @@ int codec_adapter_copy(struct comp_dev *dev)
 		/* skipping as lib has not produced anything */
 		comp_err(dev, "codec_adapter_copy() error %x: lib hasn't processed anything",
 			 ret);
+		comp_update_buffer_consume(source, codec->cpd.consumed);
 		goto db_verify;
 	}
 	codec_adapter_copy_from_lib_to_sink(&codec->cpd, &local_buff->stream,
