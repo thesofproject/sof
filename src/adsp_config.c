@@ -1773,6 +1773,9 @@ static int parse_pin(const toml_table_t *mod_entry, struct parse_ctx *ctx,
 	ext_mod_config->pin_desc = calloc(sizeof(const struct fw_pin_description),
 					  toml_array_nelem(arr) / 6);
 
+	if(!ext_mod_config->pin_desc)
+		return err_malloc("pin");
+
 	j = 0;
 	for (i = 0; ; i += 6, j++) {
 		raw = toml_raw_at(arr, i);
