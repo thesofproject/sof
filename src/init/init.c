@@ -112,13 +112,6 @@ int secondary_core_init(struct sof *sof)
 	return err;
 }
 
-#else
-
-static int secondary_core_init(struct sof *sof)
-{
-	return 0;
-}
-
 #endif
 
 static int primary_core_init(int argc, char *argv[], struct sof *sof)
@@ -175,8 +168,10 @@ int main(int argc, char *argv[])
 
 	if (cpu_get_id() == PLATFORM_PRIMARY_CORE_ID)
 		err = primary_core_init(argc, argv, &sof);
+#if CONFIG_MULTICORE
 	else
 		err = secondary_core_init(&sof);
+#endif
 
 	/* should never get here */
 	panic(SOF_IPC_PANIC_TASK);
