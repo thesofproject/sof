@@ -224,12 +224,16 @@ extern const struct dai_driver ssp_driver;
 #define ssp_irq(ssp) \
 	ssp->plat_data.irq
 
+#define SSP_CLK_MCLK_ACTIVE	BIT(0)
+#define SSP_CLK_BCLK_ACTIVE	BIT(1)
+
 /* SSP private data */
 struct ssp_pdata {
 	uint32_t sscr0;
 	uint32_t sscr1;
 	uint32_t psp;
 	uint32_t state[2];		/* SSP_STATE_ for each direction */
+	uint32_t clk_active;
 	struct sof_ipc_dai_config config;
 	struct sof_ipc_dai_ssp_params params;
 };
