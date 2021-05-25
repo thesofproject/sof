@@ -125,6 +125,112 @@ static int ssp_context_restore(struct dai *dai)
 	return 0;
 }
 
+static int ssp_mclk_prepare_enable(struct dai *dai)
+{
+	struct ssp_pdata *ssp = dai_get_drvdata(dai);
+	struct sof_ipc_dai_config *config = &ssp->config;
+	int ret;
+
+	if (ssp->clk_active & SSP_CLK_MCLK_ACTIVE)
+		return 0;
+
+	/* MCLK config */
+	ret = mn_set_mclk(config->ssp.mclk_id, config->ssp.mclk_rate);
+	if (ret < 0)
+		dai_err(dai, "ssp_mclk_prepare_enable(): invalid mclk_rate = %d for mclk_id = %d",
+			config->ssp.mclk_rate, config->ssp.mclk_id);
+	else
+		ssp->clk_active |= SSP_CLK_MCLK_ACTIVE;
+
+	return ret;
+}
+
+static void ssp_mclk_disable_unprepare(struct dai *dai)
+{
+	struct ssp_pdata *ssp = dai_get_drvdata(dai);
+
+	if (!(ssp->clk_active & SSP_CLK_MCLK_ACTIVE))
+		return;
+
+	mn_release_mclk(ssp->config.ssp.mclk_id);
+
+	ssp->clk_active &= ~SSP_CLK_MCLK_ACTIVE;
+}
+
+static int ssp_bclk_prepare_enable(struct dai *dai)
+{
+	struct ssp_pdata *ssp = dai_get_drvdata(dai);
+	struct sof_ipc_dai_config *config = &ssp->config;
+	uint32_t sscr0;
+	uint32_t mdiv;
+	bool need_ecs = false;
+	int ret = 0;
+
+	if (ssp->clk_active & SSP_CLK_BCLK_ACTIVE)
+		return 0;
+
+	sscr0 = ssp_read(dai, SSCR0);
+
+#if CONFIG_INTEL_MN
+	/* BCLK config */
+	ret = mn_set_bclk(config->dai_index, config->ssp.bclk_rate,
+			  &mdiv, &need_ecs);
+	if (ret < 0) {
+		dai_err(dai, "ssp_bclk_prepare_enable(): invalid bclk_rate = %d for dai_index = %d",
+			config->ssp.bclk_rate, config->dai_index);
+		goto out;
+	}
+#else
+	if (ssp_freq[SSP_DEFAULT_IDX].freq % config->ssp.bclk_rate != 0) {
+		dai_err(dai, "ssp_bclk_prepare_enable(): invalid bclk_rate = %d for dai_index = %d",
+			config->ssp.bclk_rate, config->dai_index);
+		ret = -EINVAL;
+		goto out;
+	}
+
+	mdiv = ssp_freq[SSP_DEFAULT_IDX].freq / config->ssp.bclk_rate;
+#endif
+
+	if (need_ecs)
+		sscr0 |= SSCR0_ECS;
+
+	/* clock divisor is SCR + 1 */
+	mdiv -= 1;
+
+	/* divisor must be within SCR range */
+	if (mdiv > (SSCR0_SCR_MASK >> 8)) {
+		dai_err(dai, "ssp_bclk_prepare_enable(): divisor %d is not within SCR range",
+			mdiv);
+		ret = -EINVAL;
+		goto out;
+	}
+
+	/* set the SCR divisor */
+	sscr0 &= ~SSCR0_SCR_MASK;
+	sscr0 |= SSCR0_SCR(mdiv);
+
+	ssp_write(dai, SSCR0, sscr0);
+
+	dai_info(dai, "ssp_bclk_prepare_enable(): sscr0 = 0x%08x", sscr0);
+out:
+	if (!ret)
+		ssp->clk_active |= SSP_CLK_BCLK_ACTIVE;
+
+	return ret;
+}
+
+static void ssp_bclk_disable_unprepare(struct dai *dai)
+{
+	struct ssp_pdata *ssp = dai_get_drvdata(dai);
+
+	if (!(ssp->clk_active & SSP_CLK_BCLK_ACTIVE))
+		return;
+#if CONFIG_INTEL_MN
+	mn_release_bclk(dai->index);
+#endif
+	ssp->clk_active &= ~SSP_CLK_BCLK_ACTIVE;
+}
+
 /* Digital Audio interface formatting */
 static int ssp_set_config(struct dai *dai,
 			  struct sof_ipc_dai_config *config)
@@ -619,75 +725,21 @@ out:
  */
 static int ssp_pre_start(struct dai *dai)
 {
-	struct ssp_pdata *ssp = dai_get_drvdata(dai);
-	struct sof_ipc_dai_config *config = &ssp->config;
-	uint32_t sscr0;
-	uint32_t mdiv;
-	bool need_ecs = false;
-
-	int ret = 0;
+	int ret;
 
 	dai_info(dai, "ssp_pre_start()");
 
-	/* SSP active means bclk already configured. */
-	if (ssp->state[SOF_IPC_STREAM_PLAYBACK] == COMP_STATE_ACTIVE ||
-	    ssp->state[SOF_IPC_STREAM_CAPTURE] == COMP_STATE_ACTIVE)
-		return 0;
+	/*
+	 * We will test if mclk/bclk is configured in
+	 * ssp_mclk/bclk_prepare_enable/disable functions
+	 */
 
 	/* MCLK config */
-	ret = mn_set_mclk(config->ssp.mclk_id, config->ssp.mclk_rate);
-	if (ret < 0) {
-		dai_err(dai, "invalid mclk_rate = %d for mclk_id = %d",
-			config->ssp.mclk_rate, config->ssp.mclk_id);
-		goto out;
-	}
+	ret = ssp_mclk_prepare_enable(dai);
+	if (ret < 0)
+		return ret;
 
-	sscr0 = ssp_read(dai, SSCR0);
-
-#if CONFIG_INTEL_MN
-	/* BCLK config */
-	ret = mn_set_bclk(config->dai_index, config->ssp.bclk_rate,
-			  &mdiv, &need_ecs);
-	if (ret < 0) {
-		dai_err(dai, "invalid bclk_rate = %d for dai_index = %d",
-			config->ssp.bclk_rate, config->dai_index);
-		goto out;
-	}
-#else
-	if (ssp_freq[SSP_DEFAULT_IDX].freq % config->ssp.bclk_rate != 0) {
-		dai_err(dai, "invalid bclk_rate = %d for dai_index = %d",
-			config->ssp.bclk_rate, config->dai_index);
-		ret = -EINVAL;
-		goto out;
-	}
-
-	mdiv = ssp_freq[SSP_DEFAULT_IDX].freq / config->ssp.bclk_rate;
-#endif
-
-	if (need_ecs)
-		sscr0 |= SSCR0_ECS;
-
-	/* clock divisor is SCR + 1 */
-	mdiv -= 1;
-
-	/* divisor must be within SCR range */
-	if (mdiv > (SSCR0_SCR_MASK >> 8)) {
-		dai_err(dai, "ssp_pre_start(): divisor %d is not within SCR range",
-			mdiv);
-		ret = -EINVAL;
-		goto out;
-	}
-
-	/* set the SCR divisor */
-	sscr0 &= ~SSCR0_SCR_MASK;
-	sscr0 |= SSCR0_SCR(mdiv);
-
-	ssp_write(dai, SSCR0, sscr0);
-
-	dai_info(dai, "ssp_set_config(), sscr0 = 0x%08x", sscr0);
-out:
-
-	return ret;
+	return ssp_bclk_prepare_enable(dai);
 }
 
 /*
@@ -703,10 +755,8 @@ static void ssp_post_stop(struct dai *dai)
 	if (ssp->state[SOF_IPC_STREAM_PLAYBACK] != COMP_STATE_ACTIVE &&
 	    ssp->state[SOF_IPC_STREAM_CAPTURE] != COMP_STATE_ACTIVE) {
 		dai_info(dai, "releasing BCLK/MCLK clocks for SSP%d...", dai->index);
-#if CONFIG_INTEL_MN
-		mn_release_bclk(dai->index);
-#endif
-		mn_release_mclk(ssp->config.ssp.mclk_id);
+		ssp_bclk_disable_unprepare(dai);
+		ssp_mclk_disable_unprepare(dai);
 	}
 }
 
@@ -907,14 +957,10 @@ static int ssp_probe(struct dai *dai)
 
 static int ssp_remove(struct dai *dai)
 {
-	struct ssp_pdata *ssp = dai_get_drvdata(dai);
-
 	pm_runtime_put_sync(SSP_CLK, dai->index);
 
-	mn_release_mclk(ssp->config.ssp.mclk_id);
-#if CONFIG_INTEL_MN
-	mn_release_bclk(dai->index);
-#endif
+	ssp_mclk_disable_unprepare(dai);
+	ssp_bclk_disable_unprepare(dai);
 
 	/* Disable SSP power */
 	pm_runtime_put_sync(SSP_POW, dai->index);
