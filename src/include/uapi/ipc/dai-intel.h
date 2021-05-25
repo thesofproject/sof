@@ -78,6 +78,10 @@
 #define SOF_DAI_INTEL_SSP_CLKCTRL_FS_KA			BIT(4)
 /* bclk idle */
 #define SOF_DAI_INTEL_SSP_CLKCTRL_BCLK_IDLE_HIGH	BIT(5)
+/* mclk early start */
+#define SOF_DAI_INTEL_SSP_CLKCTRL_MCLK_ES		BIT(6)
+/* bclk early start */
+#define SOF_DAI_INTEL_SSP_CLKCTRL_BCLK_ES		BIT(7)
 
 /* SSP Configuration Request - SOF_IPC_DAI_SSP_CONFIG */
 struct sof_ipc_dai_ssp_params {
