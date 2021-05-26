@@ -234,6 +234,17 @@ config IMX8ULP
 	 Select if your target platform is imx8ulp-compatible.
 	 imx.8ulp support dsp.
 
+config RENOIR
+	bool "Build for Renoir"
+	select XT_INTERRUPT_LEVEL_5
+	select XT_INTERRUPT_LEVEL_3
+	select XT_INTERRUPT_LEVEL_1
+	select XT_INTERRUPT_LEVEL_4
+	select XT_WAITI_DELAY
+	select SCHEDULE_DMA_MULTI_CHANNEL
+	help
+	 Select if your target platform is renoir-compatible
+
 endchoice
 
 config MAX_CORE_COUNT
@@ -415,6 +426,7 @@ config RIMAGE_SIGNING_SCHEMA
 	default "imx8x" if IMX8X
 	default "imx8m" if IMX8M
 	default "imx8ulp" if IMX8ULP
+	default "rn" if RENOIR
 	default ""
 	help
 	  Signing schema name used by rimage to decide how to build final binary
