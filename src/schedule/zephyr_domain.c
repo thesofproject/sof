@@ -51,13 +51,12 @@ K_THREAD_STACK_DEFINE(ll_workq_stack2, ZEPHYR_LL_WORKQ_SIZE);
 K_THREAD_STACK_DEFINE(ll_workq_stack3, ZEPHYR_LL_WORKQ_SIZE);
 #endif
 
-#define LL_TIMER_SET_OVERHEAD_TICKS  1000 /* overhead/delay to set the tick, in ticks */
+#define LL_TIMER_PERIOD 1000 /* period in microseconds */
 
 struct zephyr_domain {
 	struct k_work_q ll_workq[CONFIG_CORE_COUNT];
 	int ll_workq_registered[CONFIG_CORE_COUNT];
 	struct timer *timer;
-	uint64_t timeout; /* in ticks */
 };
 
 struct zephyr_domain_work {
@@ -189,7 +188,7 @@ static int zephyr_domain_unregister(struct ll_schedule_domain *domain,
 static void zephyr_domain_set(struct ll_schedule_domain *domain, uint64_t start)
 {
 	struct zephyr_domain *zephyr_domain = ll_sch_domain_get_pdata(domain);
-	uint64_t ticks_tout = zephyr_domain->timeout;
+	uint64_t ticks_tout = domain->ticks_per_ms * LL_TIMER_PERIOD / 1000;
 	uint64_t ticks_set;
 	uint64_t current = platform_timer_get_atomic(zephyr_domain->timer);
 	uint64_t earliest_next = current + 1 + ZEPHYR_SCHED_COST;
@@ -276,7 +275,6 @@ struct ll_schedule_domain *timer_domain_init(struct timer *timer, int clk)
 	zephyr_domain = rzalloc(SOF_MEM_ZONE_SYS_SHARED, 0, SOF_MEM_CAPS_RAM,
 				sizeof(*zephyr_domain));
 	zephyr_domain->timer = timer;
-	zephyr_domain->timeout = LL_TIMER_SET_OVERHEAD_TICKS;
 
 	ll_sch_domain_set_pdata(domain, zephyr_domain);
 
