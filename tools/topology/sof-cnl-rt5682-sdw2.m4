@@ -52,21 +52,21 @@ PIPELINE_PCM_ADD(sof/pipe-volume-switch-capture.m4,
 # Low Latency playback pipeline 3 on PCM 2 using max 2 channels of s32le.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
-	3, 2, 2, s32le,
+	3, 5, 2, s32le,
 	1000, 0, 0,
 	48000, 48000, 48000)
 
 # Low Latency playback pipeline 4 on PCM 3 using max 2 channels of s32le.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
-	4, 3, 2, s32le,
+	4, 6, 2, s32le,
 	1000, 0, 0,
 	48000, 48000, 48000)
 
 # Low Latency playback pipeline 5 on PCM 4 using max 2 channels of s32le.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
-	5, 4, 2, s32le,
+	5, 7, 2, s32le,
 	1000, 0, 0,
 	48000, 48000, 48000)
 
@@ -118,9 +118,9 @@ DAI_ADD(sof/pipe-dai-playback.m4,
 dnl PCM_PLAYBACK_ADD(name, pcm_id, playback)
 PCM_PLAYBACK_ADD(Headphone, 0, PIPELINE_PCM_1)
 PCM_CAPTURE_ADD(Headset mic, 1, PIPELINE_PCM_2)
-PCM_PLAYBACK_ADD(HDMI1, 2, PIPELINE_PCM_3)
-PCM_PLAYBACK_ADD(HDMI2, 3, PIPELINE_PCM_4)
-PCM_PLAYBACK_ADD(HDMI3, 4, PIPELINE_PCM_5)
+PCM_PLAYBACK_ADD(HDMI1, 5, PIPELINE_PCM_3)
+PCM_PLAYBACK_ADD(HDMI2, 6, PIPELINE_PCM_4)
+PCM_PLAYBACK_ADD(HDMI3, 7, PIPELINE_PCM_5)
 
 #
 # BE configurations - overrides config in ACPI if present
