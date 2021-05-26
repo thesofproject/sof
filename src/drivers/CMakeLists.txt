@@ -8,6 +8,10 @@ if(CONFIG_INTEL)
 	add_subdirectory(intel)
 endif()
 
+if(CONFIG_RENOIR)
+	add_subdirectory(amd)
+endif()
+
 if(CONFIG_LIBRARY)
 	add_subdirectory(host)
 	return()
