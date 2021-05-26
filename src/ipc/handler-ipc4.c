@@ -102,7 +102,7 @@ static int ipc4_comp_params(struct comp_dev *current,
 	if (err < 0 || err == PPL_STATUS_PATH_STOP)
 		return err;
 
-	return pipeline_for_each_comp(current, ctx, current->direction);
+	return pipeline_for_each_comp(current, ctx, dir);
 
 }
 
@@ -121,7 +121,7 @@ static int ipc4_pipeline_params(struct pipeline *p, struct comp_dev *host,
 		.skip_incomplete = true,
 	};
 
-	return param_ctx.comp_func(host, NULL, &param_ctx, PPL_DIR_DOWNSTREAM);
+	return param_ctx.comp_func(host, NULL, &param_ctx, host->direction);
 }
 
 static int ipc4_pcm_params(struct ipc_comp_dev *pcm_dev)
@@ -190,7 +190,11 @@ static int ipc4_set_pipeline_state(union ipc4_message_header *ipc4)
 		return IPC4_INVALID_RESOURCE_ID;
 	}
 
-	host = ipc_get_comp_by_id(ipc, pcm_dev->pipeline->source_comp->ipc_config.id);
+	if (pcm_dev->pipeline->source_comp->direction == SOF_IPC_STREAM_PLAYBACK)
+		host = ipc_get_comp_by_id(ipc, pcm_dev->pipeline->source_comp->ipc_config.id);
+	else
+		host = ipc_get_comp_by_id(ipc, pcm_dev->pipeline->sink_comp->ipc_config.id);
+
 	if (!host) {
 		tr_err(&ipc_tr, "ipc: comp host not found", 
 			pcm_dev->pipeline->source_comp->ipc_config.id);

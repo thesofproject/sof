@@ -298,6 +298,7 @@ static struct comp_dev *copier_new(const struct comp_driver *drv,
 			goto error_cd;
 	}
 
+	dev->direction = cd->direction;
 	dev->state = COMP_STATE_READY;
 	return dev;
 
@@ -480,6 +481,7 @@ static void update_internal_comp(struct comp_dev *parent, struct comp_dev *child
 	child->period = parent->period;
 	child->pipeline = parent->pipeline;
 	child->priority = parent->priority;
+	child->direction = parent->direction;
 }
 
 /* configure the DMA params */
@@ -533,9 +535,9 @@ static int copier_params(struct comp_dev *dev, struct sof_ipc_stream_params *par
 	if (cd->host) {
 		update_internal_comp(dev, cd->host);
 
-		connect_comp_to_buffer(cd->host, cd->buf, dir);
+		connect_comp_to_buffer(cd->host, buffer, dir);
 		ret = cd->host->drv->ops.params(cd->host, params);
-		connect_comp_to_buffer(dev, cd->buf, dir);
+		connect_comp_to_buffer(dev, buffer, dir);
 	} else if (cd->dai) {
 		update_internal_comp(dev, cd->dai);
 
