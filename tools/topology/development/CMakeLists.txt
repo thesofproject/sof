@@ -31,6 +31,10 @@ set(TPLGS_UP
 	"sof-cml-rt5682\;sof-cml-eq-fir-rt5682\;-DPLATFORM=cml\;-DHSMICPROC=eq-fir-volume\;-DDMICPROC=eq-iir-volume\;-DDMIC16KPROC=eq-iir-volume"
 	"sof-cml-rt5682\;sof-cml-eq-iir-rt5682\;-DPLATFORM=cml\;-DHSEARPROC=eq-iir-volume\;-DDMICPROC=eq-iir-volume\;-DDMIC16KPROC=eq-iir-volume"
 	"sof-glk-da7219\;sof-glk-eq-da7219\;-DHEADPHONE=da7219\;-DDMICPROC=eq-iir-volume"
+	"sof-hda-generic\;sof-hda-generic-2ch-dmic16kcore1-nodynamic\;-DCHANNELS=2\;-DHSPROC=volume\;-DDMICPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_48khz.m4\;-DDMIC16KPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_16khz.m4\;-DDMIC16KCORE=1"
+	"sof-hda-generic\;sof-hda-generic-2ch-dmic48kcore1-nodynamic\;-DCHANNELS=2\;-DHSPROC=volume\;-DDMICPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_48khz.m4\;-DDMIC16KPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_16khz.m4\;-DDMIC48KCORE=1"
+	"sof-hda-generic\;sof-hda-generic-2ch-dmic16kcore1-dynamic\;-DCHANNELS=2\;-DHSPROC=volume\;-DDMICPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_48khz.m4\;-DDMIC16KPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_16khz.m4\;-DDYNAMIC=1\;-DDMIC16KCORE=1"
+	"sof-hda-generic\;sof-hda-generic-2ch-dmic48kcore1-dynamic\;-DCHANNELS=2\;-DHSPROC=volume\;-DDMICPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_48khz.m4\;-DDMIC16KPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_16khz.m4\;-DDYNAMIC=1\;-DDMIC48KCORE=1"
 	"sof-hda-generic\;sof-hda-generic-tdfb_50mm-2ch\;-DCHANNELS=2\;-DHSPROC=volume\;-DDMIC16KPROC=tdfb-eq-iir-volume\;-DDMIC16KPROC_FILTER1=tdfb/coef_line2_50mm_pm10deg_16khz.m4\;-DDMICPROC=tdfb-eq-iir-volume\;-DDMICPROC_FILTER1=tdfb/coef_line2_50mm_pm10deg_48khz.m4\;-DDMICPROC_FILTER2=eq_iir_coef_highpass_40hz_20db_48khz.m4\;-DDMIC16KPROC_FILTER2=eq_iir_coef_highpass_40hz_20db_16khz.m4"
 )
 

@@ -10,6 +10,12 @@ ifdef(`DMIC_48k_PCM_NAME',`',
 ifdef(`DMIC_16k_PCM_NAME',`',
 `define(DMIC_16k_PCM_NAME, `DMIC16kHz')')
 
+# define default core numbers
+ifdef(`DMIC48KCORE',`',
+`define(DMIC48KCORE, `0')')
+ifdef(`DMIC16KCORE',`',
+`define(DMIC16KCORE, `0')')
+
 # variable that need to be defined in upper m4
 ifdef(`CHANNELS',`',`fatal_error(note: Need to define channel number for intel-generic-dmic
 )')
@@ -72,14 +78,14 @@ dnl     time_domain, sched_comp)
 
 # Passthrough capture pipeline using max channels defined by DMIC_PCM_CHANNELS.
 
-# Set 1000us deadline on core 0 with priority 0
+# Set 1000us deadline on core DMIC48KCORE with priority 0
 ifdef(`DMICPROC_FILTER1', `define(PIPELINE_FILTER1, DMICPROC_FILTER1)', `undefine(`PIPELINE_FILTER1')')
 ifdef(`DMICPROC_FILTER2', `define(PIPELINE_FILTER2, DMICPROC_FILTER2)', `undefine(`PIPELINE_FILTER2')')
 define(`PGA_NAME', Dmic0)
 
 PIPELINE_PCM_ADD(sof/pipe-DMICPROC-capture.m4,
 	DMIC_PIPELINE_48k_ID, DMIC_PCM_48k_ID, DMIC_PCM_CHANNELS, s32le,
-	1000, 0, 0, 48000, 48000, 48000)
+	1000, 0, DMIC48KCORE, 48000, 48000, 48000)
 
 undefine(`PGA_NAME')
 undefine(`PIPELINE_FILTER1')
@@ -87,14 +93,14 @@ undefine(`PIPELINE_FILTER2')
 
 # Passthrough capture pipeline using max channels defined by CHANNELS.
 
-# Schedule with 1000us deadline on core 0 with priority 0
+# Schedule with 1000us deadline on core DMIC16KCORE with priority 0
 ifdef(`DMIC16KPROC_FILTER1', `define(PIPELINE_FILTER1, DMIC16KPROC_FILTER1)', `undefine(`PIPELINE_FILTER1')')
 ifdef(`DMIC16KPROC_FILTER2', `define(PIPELINE_FILTER2, DMIC16KPROC_FILTER2)', `undefine(`PIPELINE_FILTER2')')
 define(`PGA_NAME', Dmic1)
 
 PIPELINE_PCM_ADD(sof/pipe-DMIC16KPROC-capture-16khz.m4,
 	DMIC_PIPELINE_16k_ID, DMIC_PCM_16k_ID, DMIC16K_PCM_CHANNELS, s32le,
-	1000, 0, 0, 16000, 16000, 16000)
+	1000, 0, DMIC16KCORE, 16000, 16000, 16000)
 
 undefine(`PGA_NAME')
 undefine(`PIPELINE_FILTER1')
@@ -116,14 +122,14 @@ dnl     deadline, priority, core, time_domain)
 DAI_ADD(sof/pipe-dai-capture.m4,
 	DMIC_PIPELINE_48k_ID, DMIC, 0, DMIC_DAI_LINK_48k_NAME,
 	concat(`PIPELINE_SINK_', DMIC_PIPELINE_48k_ID), 2, s32le,
-	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
+	1000, 0, DMIC48KCORE, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # capture DAI is DMIC 1 using 2 periods
 # Buffers use s32le format, with 16 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
 	DMIC_PIPELINE_16k_ID, DMIC, 1, DMIC_DAI_LINK_16k_NAME,
 	concat(`PIPELINE_SINK_', DMIC_PIPELINE_16k_ID), 2, s32le,
-	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
+	1000, 0, DMIC16KCORE, SCHEDULE_TIME_DOMAIN_TIMER)
 
 dnl PCM_DUPLEX_ADD(name, pcm_id, playback, capture)
 dnl PCM_CAPTURE_ADD(name, pipeline, capture)
