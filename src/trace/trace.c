@@ -250,11 +250,11 @@ static void vatrace_log(bool send_atomic, uint32_t log_entry, const struct tr_ct
 #if CONFIG_TRACEM
 	/* send event by mail box too. */
 	if (send_atomic) {
+		mtrace_event((const char *)data, MESSAGE_SIZE(arg_count));
+	} else {
 		spin_lock_irq(&trace->lock, flags);
 		mtrace_event((const char *)data, MESSAGE_SIZE(arg_count));
 		spin_unlock_irq(&trace->lock, flags);
-	} else {
-		mtrace_event((const char *)data, MESSAGE_SIZE(arg_count));
 	}
 #else
 	/* send event by mail box if level is LOG_LEVEL_CRITICAL. */
