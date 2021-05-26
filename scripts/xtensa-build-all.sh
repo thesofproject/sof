@@ -6,7 +6,7 @@
 set -e
 
 SUPPORTED_PLATFORMS=(byt cht bdw hsw apl skl kbl cnl sue icl jsl \
-                    imx8 imx8x imx8m imx8ulp tgl tgl-h)
+                    imx8 imx8x imx8m imx8ulp tgl tgl-h rn)
 BUILD_ROM=no
 BUILD_DEBUG=no
 BUILD_FORCE_UP=no
@@ -321,6 +321,13 @@ do
 			XTENSA_CORE="hifi4_nxp2_ulp_prod"
 			HOST="xtensa-imx8ulp-elf"
 			XTENSA_TOOLS_VERSION="RG-2017.8-linux"
+			;;
+		rn)
+			PLATFORM="renoir"
+			ARCH="xtensa"
+			XTENSA_CORE="ACP_3_1_001_PROD"
+			HOST="xtensa-rn-elf"
+			XTENSA_TOOLS_VERSION="RF-2016.4-linux"
 			;;
 
 	esac
