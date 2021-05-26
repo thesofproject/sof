@@ -48,6 +48,10 @@ set(platform_ld_script ${platform_folder}.x)
 set(platform_rom_ld_script rom.x)
 set(platform_bootldr_ld_script boot_ldr.x)
 
+if(CONFIG_RENOIR)
+	set(platform_folder amd/renoir)
+	set(platform_ld_script renoir.x)
+endif()
 # includes
 
 target_include_directories(sof_options INTERFACE
