@@ -102,6 +102,7 @@ static void sai_stop(struct dai *dai, int direction)
 	dai_info(dai, "SAI: sai_stop");
 
 	uint32_t xcsr = 0U;
+	int ret = 0;
 
 	/* Disable DMA request */
 	dai_update_bits(dai, REG_SAI_XCSR(direction),
@@ -119,24 +120,31 @@ static void sai_stop(struct dai *dai, int direction)
 	/* Disable transmitter/receiver */
 	if (direction == DAI_DIR_CAPTURE) {
 		dai_update_bits(dai, REG_SAI_XCSR(DAI_DIR_CAPTURE), REG_SAI_CSR_TERE, 0);
-		poll_for_register_delay(dai_base(dai) + REG_SAI_XCSR(DAI_DIR_CAPTURE),
-					REG_SAI_CSR_TERE, 0, 100);
+		ret = poll_for_register_delay(dai_base(dai) +
+					      REG_SAI_XCSR(DAI_DIR_CAPTURE),
+					      REG_SAI_CSR_TERE, 0, 100);
+
 		/* Check if the opposite direction is also disabled */
 		xcsr = dai_read(dai, REG_SAI_XCSR(DAI_DIR_PLAYBACK));
 		if (!(xcsr & REG_SAI_CSR_FRDE)) {
 			dai_update_bits(dai, REG_SAI_XCSR(DAI_DIR_PLAYBACK), REG_SAI_CSR_TERE, 0);
-			poll_for_register_delay(dai_base(dai) + REG_SAI_XCSR(DAI_DIR_PLAYBACK),
-						REG_SAI_CSR_TERE, 0, 100);
+			ret = poll_for_register_delay(dai_base(dai) +
+						      REG_SAI_XCSR(DAI_DIR_PLAYBACK),
+						      REG_SAI_CSR_TERE, 0, 100);
 		}
 	} else {
 		/* Check if the opposite direction is also disabled */
 		xcsr = dai_read(dai, REG_SAI_XCSR(DAI_DIR_CAPTURE));
 		if (!(xcsr & REG_SAI_CSR_FRDE)) {
 			dai_update_bits(dai, REG_SAI_XCSR(DAI_DIR_PLAYBACK), REG_SAI_CSR_TERE, 0);
-			poll_for_register_delay(dai_base(dai) + REG_SAI_XCSR(DAI_DIR_PLAYBACK),
-						REG_SAI_CSR_TERE, 0, 100);
+			ret = poll_for_register_delay(dai_base(dai) +
+						      REG_SAI_XCSR(DAI_DIR_PLAYBACK),
+						      REG_SAI_CSR_TERE, 0, 100);
 		}
 	}
+
+	if (ret < 0)
+		dai_warn(dai, "sai: poll for register delay failed");
 }
 
 static int sai_context_store(struct dai *dai)

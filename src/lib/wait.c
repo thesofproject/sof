@@ -43,7 +43,8 @@ int poll_for_register_delay(uint32_t reg, uint32_t mask,
 
 	while ((io_reg_read(reg) & mask) != val) {
 		if (!tries--) {
-			tr_err(&wait_tr, "ewt");
+			tr_err(&wait_tr, "poll timeout reg %u mask %u val %u us %u",
+			       reg, mask, val, (uint32_t)us);
 			return -EIO;
 		}
 		wait_delay(delta);
