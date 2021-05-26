@@ -888,8 +888,10 @@ static int dw_dma_copy(struct dma_chan_data *channel, int bytes,
 					      DW_DMA_CHAN_EN,
 					      DW_CHAN(channel->index), 0,
 					      DW_DMA_TIMEOUT);
-		if (ret < 0)
+		if (ret < 0) {
+			tr_dbg(&dwdma_tr, "dw_dma_copy(): poll_for_register_delay timeout");
 			return ret;
+		}
 	}
 
 	dw_dma_verify_transfer(channel, &next);
