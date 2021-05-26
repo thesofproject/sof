@@ -25,7 +25,6 @@
 struct timer_domain {
 	struct timer *timer;
 	void *arg[CONFIG_CORE_COUNT];
-	uint64_t timeout; /* in ticks */
 };
 
 static void timer_report_delay(int id, uint64_t delay)
@@ -107,11 +106,10 @@ static void timer_domain_disable(struct ll_schedule_domain *domain, int core)
 static void timer_domain_set(struct ll_schedule_domain *domain, uint64_t start)
 {
 	struct timer_domain *timer_domain = ll_sch_domain_get_pdata(domain);
-	uint64_t ticks_tout = timer_domain->timeout;
 	uint64_t ticks_set;
 	/* make sure to require for ticks later than tout from now */
 	const uint64_t time = platform_timer_get_atomic(timer_domain->timer);
-	const uint64_t ticks_req = MAX(start, time + ticks_tout);
+	const uint64_t ticks_req = MAX(start, time + LL_TIMER_SET_OVERHEAD_TICKS);
 
 	ticks_set = platform_timer_set(timer_domain->timer, ticks_req);
 
@@ -163,7 +161,6 @@ struct ll_schedule_domain *timer_domain_init(struct timer *timer, int clk)
 
 	timer_domain = rzalloc(SOF_MEM_ZONE_SYS_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*timer_domain));
 	timer_domain->timer = timer;
-	timer_domain->timeout = LL_TIMER_SET_OVERHEAD_TICKS;
 
 	ll_sch_domain_set_pdata(domain, timer_domain);
 
