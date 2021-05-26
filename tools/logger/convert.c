@@ -457,7 +457,8 @@ static void print_entry_params(const struct log_entry_header *dma_log,
 
 	if (dma_log->timestamp < last_timestamp) {
 		fprintf(out_fd,
-			"\n\t\t --- negative DELTA: wrap, IPC_TRACE, other? ---\n\n");
+			"\n\t\t --- negative DELTA = %.3f us: wrap, IPC_TRACE, other? ---\n\n",
+			-to_usecs(last_timestamp - dma_log->timestamp));
 		entry_number = 1;
 	}
 
