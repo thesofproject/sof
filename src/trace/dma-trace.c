@@ -126,17 +126,42 @@ out:
  */
 int dma_trace_init_early(struct sof *sof)
 {
+	int ret;
+
+	/* If this assert is wrong then traces have been corrupting
+	 * random parts of memory. Some functions run before _and_ after
+	 * DMA trace initialization and we don't want to ask them to
+	 * never trace. So dma_trace_initialized() must be either
+	 * clearly false/NULL or clearly true, we can't tolerate random
+	 * uninitialized values in sof->dmat etc.
+	 */
+	assert(!dma_trace_initialized(sof->dmat));
+
 	sof->dmat = rzalloc(SOF_MEM_ZONE_SYS_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*sof->dmat));
+
 	dma_sg_init(&sof->dmat->config.elem_array);
 	spinlock_init(&sof->dmat->lock);
 
 	ipc_build_trace_posn(&sof->dmat->posn);
 	sof->dmat->msg = ipc_msg_init(sof->dmat->posn.rhdr.hdr.cmd,
 				      sizeof(sof->dmat->posn));
-	if (!sof->dmat->msg)
-		return -ENOMEM;
+	if (!sof->dmat->msg) {
+		ret = -ENOMEM;
+		goto err;
+	}
 
 	return 0;
+
+err:
+	mtrace_printf(LOG_LEVEL_ERROR,
+		      "dma_trace_init_early() failed: %d", ret);
+
+	/* Cannot rfree(sof->dmat) from the system memory pool, see
+	 * comments in lib/alloc.c
+	 */
+	sof->dmat = NULL;
+
+	return ret;
 }
 
 /** Run after dma_trace_init_early() and before dma_trace_enable() */
@@ -146,10 +171,17 @@ int dma_trace_init_complete(struct dma_trace_data *d)
 
 	tr_info(&dt_tr, "dma_trace_init_complete()");
 
+	if (!d) {
+		mtrace_printf(LOG_LEVEL_ERROR,
+			      "dma_trace_init_complete(): failed, no dma_trace_data");
+		return -ENOMEM;
+	}
+
 	/* init DMA copy context */
 	ret = dma_copy_new(&d->dc);
 	if (ret < 0) {
-		tr_err(&dt_tr, "dma_trace_init_complete(): dma_copy_new() failed");
+		mtrace_printf(LOG_LEVEL_ERROR,
+			      "dma_trace_init_complete(): dma_copy_new() failed: %d", ret);
 		goto out;
 	}
 
@@ -157,7 +189,8 @@ int dma_trace_init_complete(struct dma_trace_data *d)
 				&d->dma_copy_align);
 
 	if (ret < 0) {
-		tr_err(&dt_tr, "dma_trace_init_complete(): dma_get_attribute()");
+		mtrace_printf(LOG_LEVEL_ERROR,
+			      "dma_trace_init_complete(): dma_get_attribute() failed: %d", ret);
 
 		goto out;
 	}
@@ -331,8 +364,11 @@ int dma_trace_enable(struct dma_trace_data *d)
 
 	/* initialize dma trace buffer */
 	err = dma_trace_buffer_init(d);
-	if (err < 0)
+
+	if (err < 0) {
+		mtrace_printf(LOG_LEVEL_ERROR, "dma_trace_enable: buffer_init failed");
 		goto out;
+	}
 
 	/*
 	 * It should be the very first sent log for easily identification.

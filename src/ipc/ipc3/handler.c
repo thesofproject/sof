@@ -747,6 +747,12 @@ static int ipc_dma_trace_config(uint32_t header)
 	struct timer *timer = timer_get();
 	int err;
 
+	if (!dmat) {
+		mtrace_printf(LOG_LEVEL_ERROR,
+			      "ipc_dma_trace_config failed: dmat not initialized");
+		return -ENOMEM;
+	}
+
 	/* copy message with ABI safe method */
 	IPC_COPY_CMD(params, ipc->comp_data);
 
