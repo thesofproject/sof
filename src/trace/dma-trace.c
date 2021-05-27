@@ -46,6 +46,9 @@ static int dma_trace_get_avail_data(struct dma_trace_data *d,
 				    struct dma_trace_buf *buffer,
 				    int avail);
 
+static int  dma_trace_buffer_init(struct dma_trace_data *d);
+static void dma_trace_buffer_free(struct dma_trace_data *d);
+
 /** Periodically runs and starts the DMA even when the buffer is not
  * full.
  */
@@ -139,6 +142,10 @@ int dma_trace_init_early(struct sof *sof)
 
 	sof->dmat = rzalloc(SOF_MEM_ZONE_SYS_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*sof->dmat));
 
+	ret = dma_trace_buffer_init(sof->dmat);
+	if (ret)
+		goto err;
+
 	dma_sg_init(&sof->dmat->config.elem_array);
 	spinlock_init(&sof->dmat->lock);
 
@@ -150,11 +157,25 @@ int dma_trace_init_early(struct sof *sof)
 		goto err;
 	}
 
+	/* It should be the very first sent log for easily identification. */
+	mtrace_printf(LOG_LEVEL_INFO,
+		      "SHM: FW ABI 0x%x DBG ABI 0x%x tag " SOF_GIT_TAG " src hash 0x%08x (ldc hash "
+		      META_QUOTE(SOF_SRC_HASH) ")",
+		      SOF_ABI_VERSION, SOF_ABI_DBG_VERSION, SOF_SRC_HASH);
+
+	tr_info(&dt_tr,
+		"DMA: FW ABI 0x%x DBG ABI 0x%x tag " SOF_GIT_TAG " src hash 0x%08x (ldc hash "
+		META_QUOTE(SOF_SRC_HASH) ")",
+		SOF_ABI_VERSION, SOF_ABI_DBG_VERSION, SOF_SRC_HASH);
+
 	return 0;
 
 err:
 	mtrace_printf(LOG_LEVEL_ERROR,
 		      "dma_trace_init_early() failed: %d", ret);
+
+	if (sof->dmat && sof->dmat->dmatb.addr)
+		dma_trace_buffer_free(sof->dmat);
 
 	/* Cannot rfree(sof->dmat) from the system memory pool, see
 	 * comments in lib/alloc.c
@@ -171,9 +192,10 @@ int dma_trace_init_complete(struct dma_trace_data *d)
 
 	tr_info(&dt_tr, "dma_trace_init_complete()");
 
-	if (!d) {
+	if (!dma_trace_initialized(d)) {
 		mtrace_printf(LOG_LEVEL_ERROR,
-			      "dma_trace_init_complete(): failed, no dma_trace_data");
+			      "dma_trace_init_complete(): failed, dmat=%p, dmat->dmatb.addr=%p",
+			      d, d ? d->dmatb.addr : NULL);
 		return -ENOMEM;
 	}
 
@@ -360,27 +382,13 @@ static int dma_trace_get_avail_data(struct dma_trace_data *d,
  */
 int dma_trace_enable(struct dma_trace_data *d)
 {
-	int err;
+	int err = 0;
 
-	/* initialize dma trace buffer */
-	err = dma_trace_buffer_init(d);
-
-	if (err < 0) {
-		mtrace_printf(LOG_LEVEL_ERROR, "dma_trace_enable: buffer_init failed");
+	if (!dma_trace_initialized(d)) {
+		mtrace_printf(LOG_LEVEL_ERROR, "No buffer, did dma_init fail?");
+		err = -ENOMEM;
 		goto out;
 	}
-
-	/* It should be the very first sent log for easy identification. */
-	mtrace_printf(LOG_LEVEL_INFO,
-		      "SHM: FW ABI 0x%x DBG ABI 0x%x tag " SOF_GIT_TAG " src hash 0x%08x (ldc hash "
-		      META_QUOTE(SOF_SRC_HASH) ")",
-		      SOF_ABI_VERSION, SOF_ABI_DBG_VERSION, SOF_SRC_HASH);
-
-	/* Use a different, DMA: prefix to ease identification of log files */
-	tr_info(&dt_tr,
-		"DMA: FW ABI 0x%x DBG ABI 0x%x tag " SOF_GIT_TAG " src hash 0x%08x (ldc hash "
-		META_QUOTE(SOF_SRC_HASH) ")",
-		SOF_ABI_VERSION, SOF_ABI_DBG_VERSION, SOF_SRC_HASH);
 
 #if CONFIG_DMA_GW
 	/*
