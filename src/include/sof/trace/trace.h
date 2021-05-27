@@ -161,7 +161,7 @@ int trace_filter_update(const struct trace_filter *elem);
 /** The start of this linker output MUST match the 'ldc_entry_header'
  *  struct defined in the logger program running in user space.
  */
-#define _DECLARE_LOG_ENTRY(lvl, format, comp_class, params)	\
+#define _DECLARE_LOG_ENTRY(lvl, format, comp_class, n_params)	\
 	__section(".static_log." #lvl)				\
 	static const struct {					\
 		uint32_t level;					\
@@ -175,7 +175,7 @@ int trace_filter_update(const struct trace_filter *elem);
 	} log_entry = {						\
 		lvl,						\
 		comp_class,					\
-		params,						\
+		n_params,						\
 		__LINE__,					\
 		sizeof(RELATIVE_FILE),				\
 		sizeof(format),					\
@@ -306,9 +306,13 @@ static inline int trace_filter_update(const struct trace_filter *filter)
 
 #endif /* CONFIG_TRACEE, CONFIG_TRACE */
 
-
-#define _TRACE_INV_CLASS	TRACE_CLASS_DEPRECATED
+/** Default value when there is no specific pipeline, dev, dai, etc. */
 #define _TRACE_INV_ID		-1
+
+/** This has been replaced in commits 6ce635aa82 and earlier by the
+ * DECLARE_TR_CTX, tr_ctx and component UUID system below
+ */
+#define _TRACE_INV_CLASS	TRACE_CLASS_DEPRECATED
 
 /**
  * Trace context.
