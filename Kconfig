@@ -115,6 +115,7 @@ config XT_INTERRUPT_LEVEL_5
 
 rsource "src/Kconfig"
 
+# See zephyr/modules/Kconfig
 if !ZEPHYR_SOF_MODULE
 	rsource "Kconfig.xtos-build"
 endif
