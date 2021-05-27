@@ -413,4 +413,31 @@ struct tr_ctx {
 				     _TRACE_INV_ID, _TRACE_INV_ID, \
 				     fmt, ##__VA_ARGS__)
 
+/** Direct, low-level access to mbox / shared memory logging when DMA
+ * tracing is either not initialized yet or disabled or found broken for
+ * any reason.
+ * To keep it simpler than and with minimal dependencies on
+ * the huge number of lines above, this does not check arguments at compile
+ * time.
+ * There is neither log level filtering, throttling or any other
+ * advanced feature.
+ */
+#define mtrace_printf(log_level, format_str, ...)			\
+	do {								\
+		STATIC_ASSERT(META_COUNT_VARAGS_BEFORE_COMPILE(__VA_ARGS__)  \
+			      <= _TRACE_EVENT_MAX_ARGUMENT_COUNT,	\
+			      too_many_mtrace_printf_arguments);	\
+		_DECLARE_LOG_ENTRY(log_level, format_str, _TRACE_INV_CLASS, \
+				   META_COUNT_VARAGS_BEFORE_COMPILE(__VA_ARGS__)); \
+		mtrace_dict_entry((uint32_t)&log_entry,			\
+				  META_COUNT_VARAGS_BEFORE_COMPILE(__VA_ARGS__), \
+				  ##__VA_ARGS__);			\
+	} while (0)
+
+/** Adds log_header prefix and appends  arguments before sending */
+void mtrace_dict_entry(uint32_t log_entry_pointer, int n_args, ...);
+
+/** Posts a fully prepared log header + log entry */
+void mtrace_event(const char *complete_packet, uint32_t length);
+
 #endif /* __SOF_TRACE_TRACE_H__ */

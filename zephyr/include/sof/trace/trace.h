@@ -25,18 +25,26 @@ struct timer;
 uint64_t platform_timer_get(struct timer *timer);
 
 /*
- * Use SOF macros, but let Zephyr take care of the physical log IO.
+ * Override SOF dictionary macros for now and let Zephyr take care of
+ * the physical log IO.
  */
 #undef _log_message
+#undef mtrace_printf
 
 #if USE_PRINTK
+#define mtrace_printf(level, format, ...)				\
+	do {								        \
+		if ((level) <= SOF_ZEPHYR_TRACE_LEVEL)                          \
+			printk("%llu: " format "\n", platform_timer_get(NULL),	\
+				##__VA_ARGS__);					\
+	} while (0)
 #define _log_message(log_func, atomic, level, comp_class, ctx, id1, id2, format, ...)	\
 	do {								        \
 		if ((level) <= SOF_ZEPHYR_TRACE_LEVEL)                          \
 			printk("%llu: " format "\n", platform_timer_get(NULL),	\
 				##__VA_ARGS__);					\
 	} while (0)
-#else
+#else /* not tested */
 #define _log_message(log_func, atomic, level, comp_class, ctx, id1, id2, format, ...)	\
 	do {								        \
 		Z_LOG(level, "%u: " format, (uint32_t)platform_timer_get(NULL),	\

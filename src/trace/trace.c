@@ -70,7 +70,7 @@ struct trace {
 
 #define TRACE_ID_MASK ((1 << TRACE_ID_LENGTH) - 1)
 
-static void put_header(uint32_t *dst, const struct sof_uuid_entry *uid,
+static void put_header(void *dst, const struct sof_uuid_entry *uid,
 		       uint32_t id_1, uint32_t id_2,
 		       uint32_t entry, uint64_t timestamp)
 {
@@ -93,7 +93,7 @@ static void put_header(uint32_t *dst, const struct sof_uuid_entry *uid,
 }
 
 /** Ring buffer for the mailbox trace */
-static inline void mtrace_event(const char *data, uint32_t length)
+void mtrace_event(const char *data, uint32_t length)
 {
 	struct trace *trace = trace_get();
 	char *t = (char *)MAILBOX_TRACE_BASE;
@@ -524,4 +524,23 @@ void trace_init(struct sof *sof)
 					   MAILBOX_TRACE_SIZE);
 
 	dma_trace_init_early(sof);
+}
+
+void mtrace_dict_entry(uint32_t dict_entry_address, int n_args, ...)
+{
+	va_list ap;
+	int i;
+	char packet[MESSAGE_SIZE(_TRACE_EVENT_MAX_ARGUMENT_COUNT)];
+	uint32_t *args = (uint32_t *)&packet[MESSAGE_SIZE(0)];
+	const uint64_t tstamp = platform_safe_get_time(timer_get());
+
+	put_header(packet, dt_tr.uuid_p, _TRACE_INV_ID, _TRACE_INV_ID,
+		   dict_entry_address, tstamp);
+
+	va_start(ap, n_args);
+	for (i = 0; i < n_args; i++)
+		args[i] = va_arg(ap, uint32_t);
+	va_end(ap);
+
+	mtrace_event(packet, MESSAGE_SIZE(n_args));
 }
