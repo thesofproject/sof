@@ -456,7 +456,21 @@ static void free_block(void *ptr)
 	int used_blocks;
 	bool heap_is_full;
 
+	/* caller uses the direct address got from the allocator, free it directly */
 	heap = get_heap_from_ptr(ptr);
+
+	/* some caller uses uncached address while allocated from cached
+	 * address, e.g. SOF_MEM_ZONE_RUNTIME_SHARED region on cAVS platform,
+	 * one more try to free the momory from the corresponding cached
+	 * address.
+	 */
+	if (!heap && is_uncached(ptr)) {
+		tr_dbg(&mem_tr, "free_block(): uncached buffer %p, try freeing from its cached address",
+		       ptr);
+		ptr = uncache_to_cache(ptr);
+		heap = get_heap_from_ptr(ptr);
+	}
+
 	if (!heap) {
 		tr_err(&mem_tr, "free_block(): invalid heap = %p, cpu = %d",
 		       ptr, cpu_get_id());
