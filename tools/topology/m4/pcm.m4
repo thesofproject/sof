@@ -199,9 +199,24 @@ PCM_PLAYBACK_ADD_COMMON($1, $2, $3, false, 1),
 `fatal_error(`Invalid parameters ($#) to PCM_PLAYBACK_LP_ADD')')'
 )
 
-dnl PCM_DUPLEX_ADD(name, pcm_id, playback, capture)
+dnl PCM_DUPLEX_ADD(name, pcm_id, playback, capture, playback_lp, capture_lp)
 define(`PCM_DUPLEX_ADD',
-`ifelse(`$#', `4',
+`ifelse(eval(`$# > 3'), `1',
+`ifelse(`eval($# > 4)', `1',
+`SectionVendorTuples."$1_tuples_w" {'
+`       tokens "sof_stream_tokens"'
+`       tuples."bool" {'
+`ifelse($5, `1', `SOF_TKN_STREAM_PLAYBACK_COMPATIBLE_D0I3        "true"',
+		 `SOF_TKN_STREAM_PLAYBACK_COMPATIBLE_D0I3        "false"')'
+`ifelse(eval(`$# > 5'), `ifelse($6, `1', `SOF_TKN_STREAM_CAPTURE_COMPATIBLE_D0I3        "true"',
+					 `SOF_TKN_STREAM_CAPTURE_COMPATIBLE_D0I3        "false"')', `')'
+`       }'
+`}'
+`'
+`SectionData."$1_data_w" {'
+`       tuples "$1_tuples_w"'
+`}', `')'
+`'
 `SectionPCM.STR($1) {'
 `'
 `	# used for binding to the PCM'
@@ -220,7 +235,11 @@ define(`PCM_DUPLEX_ADD',
 `'
 `		capabilities STR($3)'
 `	}'
-`}', `fatal_error(`Invalid parameters ($#) to PCM_DUPLEX_ADD')')'
+`ifelse(eval(`$# > 4'), `1',
+`       data ['
+`               "$1_data_w"'
+`       ]', `')'
+`}', `fatal_error(`Too few parameters ($#) to PCM_DUPLEX_ADD')')'
 )
 
 divert(0)dnl
