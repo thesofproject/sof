@@ -46,6 +46,9 @@ static int dma_trace_get_avail_data(struct dma_trace_data *d,
 				    struct dma_trace_buf *buffer,
 				    int avail);
 
+static int  dma_trace_buffer_init(struct dma_trace_data *d);
+static void dma_trace_buffer_free(struct dma_trace_data *d);
+
 /** Periodically runs and starts the DMA even when the buffer is not
  * full.
  */
@@ -141,6 +144,10 @@ int dma_trace_init_early(struct sof *sof)
 
 	sof->dmat = rzalloc(SOF_MEM_ZONE_SYS_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*sof->dmat));
 
+	ret = dma_trace_buffer_init(sof->dmat);
+	if (ret)
+		goto err;
+
 	dma_sg_init(&sof->dmat->config.elem_array);
 	k_spinlock_init(&sof->dmat->lock);
 
@@ -152,11 +159,41 @@ int dma_trace_init_early(struct sof *sof)
 		goto err;
 	}
 
+#ifdef __ZEPHYR__
+#define ZEPHYR_VER_OPT " zephyr:" META_QUOTE(BUILD_VERSION)
+#else
+#define ZEPHYR_VER_OPT
+#endif
+
+	/* META_QUOTE(SOF_SRC_HASH) is part of the format string so it
+	 * goes to the .ldc file and does not go to the firmware
+	 * binary. It will be different from SOF_SRC_HASH in case of
+	 * mismatch.
+	 */
+#define SOF_BANNER_COMMON  \
+	"FW ABI 0x%x DBG ABI 0x%x tags SOF:" SOF_GIT_TAG  ZEPHYR_VER_OPT  \
+	" src hash 0x%08x (ldc hash " META_QUOTE(SOF_SRC_HASH) ")"  \
+		" HACK: hardcoded DMA_ATTR_BUFFER_ADDRESS_ALIGNMENT"
+
+
+	/* It should be the very first sent log for easy identification. */
+	mtrace_printf(LOG_LEVEL_INFO,
+		      "SHM: " SOF_BANNER_COMMON,
+		      SOF_ABI_VERSION, SOF_ABI_DBG_VERSION, SOF_SRC_HASH);
+
+	/* Use a different, DMA: prefix to ease identification of log files */
+	tr_info(&dt_tr,
+		"DMA: " SOF_BANNER_COMMON,
+		SOF_ABI_VERSION, SOF_ABI_DBG_VERSION, SOF_SRC_HASH);
+
 	return 0;
 
 err:
 	mtrace_printf(LOG_LEVEL_ERROR,
 		      "dma_trace_init_early() failed: %d", ret);
+
+	if (sof->dmat && sof->dmat->dmatb.addr)
+		dma_trace_buffer_free(sof->dmat);
 
 	/* Cannot rfree(sof->dmat) from the system memory pool, see
 	 * comments in lib/alloc.c
@@ -173,9 +210,10 @@ int dma_trace_init_complete(struct dma_trace_data *d)
 
 	tr_info(&dt_tr, "dma_trace_init_complete()");
 
-	if (!d) {
+	if (!dma_trace_initialized(d)) {
 		mtrace_printf(LOG_LEVEL_ERROR,
-			      "dma_trace_init_complete(): failed, no dma_trace_data");
+			      "dma_trace_init_complete(): failed, dmat=%p, dmat->dmatb.addr=%p",
+			      d, d ? d->dmatb.addr : NULL);
 		return -ENOMEM;
 	}
 
@@ -224,6 +262,8 @@ static int dma_trace_buffer_init(struct dma_trace_data *d)
 	void *buf;
 	k_spinlock_key_t key;
 	uint32_t addr_align;
+
+#if 0 // early DMA trace init HACK
 	int err;
 
 	if (!d || !d->dc.dmac) {
@@ -236,6 +276,9 @@ static int dma_trace_buffer_init(struct dma_trace_data *d)
 				&addr_align);
 	if (err < 0)
 		return err;
+#else
+	addr_align = 0x80;
+#endif
 
 	/* For DMA to work properly the buffer must be correctly aligned */
 	buf = rballoc_align(0, SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_DMA,
@@ -418,40 +461,13 @@ static int dma_trace_get_avail_data(struct dma_trace_data *d,
  */
 int dma_trace_enable(struct dma_trace_data *d)
 {
-	int err;
+	int err = 0;
 
-	/* initialize dma trace buffer */
-	err = dma_trace_buffer_init(d);
-
-	if (err < 0) {
-		mtrace_printf(LOG_LEVEL_ERROR, "dma_trace_enable: buffer_init failed");
+	if (!dma_trace_initialized(d)) {
+		mtrace_printf(LOG_LEVEL_ERROR, "No buffer, did dma_init fail?");
+		err = -ENOMEM;
 		goto out;
 	}
-
-#ifdef __ZEPHYR__
-#define ZEPHYR_VER_OPT " zephyr:" META_QUOTE(BUILD_VERSION)
-#else
-#define ZEPHYR_VER_OPT
-#endif
-
-	/* META_QUOTE(SOF_SRC_HASH) is part of the format string so it
-	 * goes to the .ldc file and does not go to the firmware
-	 * binary. It will be different from SOF_SRC_HASH in case of
-	 * mismatch.
-	 */
-#define SOF_BANNER_COMMON  \
-	"FW ABI 0x%x DBG ABI 0x%x tags SOF:" SOF_GIT_TAG  ZEPHYR_VER_OPT  \
-	" src hash 0x%08x (ldc hash " META_QUOTE(SOF_SRC_HASH) ")"
-
-	/* It should be the very first sent log for easy identification. */
-	mtrace_printf(LOG_LEVEL_INFO,
-		      "SHM: " SOF_BANNER_COMMON,
-		      SOF_ABI_VERSION, SOF_ABI_DBG_VERSION, SOF_SRC_HASH);
-
-	/* Use a different, DMA: prefix to ease identification of log files */
-	tr_info(&dt_tr,
-		"DMA: " SOF_BANNER_COMMON,
-		SOF_ABI_VERSION, SOF_ABI_DBG_VERSION, SOF_SRC_HASH);
 
 #if CONFIG_DMA_GW
 	/*
