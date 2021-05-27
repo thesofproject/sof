@@ -30,14 +30,20 @@ $6
 dnl SSP_QUIRK_LBM 64 = (1 << 6)
 define(`SSP_QUIRK_LBM', 64)
 
-dnl SSP_CONFIG_DATA(type, idx, valid bits, mclk_id, quirks)
-dnl mclk_id is optional
+dnl SSP_CC_MCLK_ES 64 = (1 << 6)
+define(`SSP_CC_MCLK_ES', 64)
+dnl SSP_CC_BCLK_ES 128 = (1 << 7)
+define(`SSP_CC_BCLK_ES', 128)
+
+dnl SSP_CONFIG_DATA(type, idx, valid bits, mclk_id, quirks, clks_control)
+dnl mclk_id and clks_control are optional
 define(`SSP_CONFIG_DATA',
 `SectionVendorTuples."'N_DAI_CONFIG($1$2)`_tuples" {'
 `	tokens "sof_ssp_tokens"'
 `	tuples."word" {'
 `		SOF_TKN_INTEL_SSP_SAMPLE_BITS'	STR($3)
 `		SOF_TKN_INTEL_SSP_QUIRKS'	ifelse($5, `', "0", STR($5))
+`		SOF_TKN_INTEL_SSP_CLKS_CONTROL'	ifelse($6, `', "0", STR($6))
 `	}'
 `	tuples."short" {'
 `		SOF_TKN_INTEL_SSP_MCLK_ID'	ifelse($4, `', "0", STR($4))
