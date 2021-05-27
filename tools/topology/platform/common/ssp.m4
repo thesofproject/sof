@@ -30,6 +30,11 @@ $6
 dnl SSP_QUIRK_LBM 64 = (1 << 6)
 define(`SSP_QUIRK_LBM', 64)
 
+dnl SSP_CC_MCLK_ES 64 = (1 << 6)
+define(`SSP_CC_MCLK_ES', 64)
+dnl SSP_CC_BCLK_ES 128 = (1 << 7)
+define(`SSP_CC_BCLK_ES', 128)
+
 dnl SSP_CONFIG_DATA(type, idx, valid bits, mclk_id, quirks, bclk_delay,
 dnl clks_control, pulse_width, padding)
 dnl mclk_id, quirks, bclk_delay clks_control, pulse_width and padding are optional
