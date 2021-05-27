@@ -120,6 +120,10 @@ out:
 	return SOF_TASK_STATE_RESCHEDULE;
 }
 
+/** Do this early so we can log at initialization time even before the
+ * DMA runs. The rest happens later in dma_trace_init_complete() and
+ * dma_trace_enable()
+ */
 int dma_trace_init_early(struct sof *sof)
 {
 	sof->dmat = rzalloc(SOF_MEM_ZONE_SYS_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*sof->dmat));
@@ -135,6 +139,7 @@ int dma_trace_init_early(struct sof *sof)
 	return 0;
 }
 
+/** Run after dma_trace_init_early() and before dma_trace_enable() */
 int dma_trace_init_complete(struct dma_trace_data *d)
 {
 	int ret = 0;
@@ -317,6 +322,9 @@ static int dma_trace_get_avail_data(struct dma_trace_data *d,
 
 #endif  /* CONFIG_DMA_GW */
 
+/** Invoked remotely by SOF_IPC_TRACE_DMA_PARAMS* Depends on
+ * dma_trace_init_complete()
+ */
 int dma_trace_enable(struct dma_trace_data *d)
 {
 	int err;
