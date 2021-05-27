@@ -192,6 +192,10 @@ static inline void *platform_shared_get(void *ptr, int bytes)
 	return ptr;
 }
 
+#define uncache_to_cache(address)	address
+#define cache_to_uncache(address)	address
+#define is_uncached(address)		0
+
 /**
  * \brief Function for keeping shared data synchronized.
  * It's used after usage of data shared by different cores.
