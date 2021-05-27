@@ -198,7 +198,7 @@ static const char *asprintf_entry_text(uint32_t entry_address)
  *  ldc_entry_header from input to output.
  *
  * @param[out] pe copy of the header + formatted output
- * @param[in] e copy of the dictionary entry with unformatted,
+ * @param[in] e copy of the dictionary entry where unformatted,
     uint32_t params have been inserted.
    @param[in] use_colors whether to use ANSI terminal codes
 */
@@ -223,9 +223,19 @@ static void process_params(struct proc_ldc_entry *pe,
 	 * For decoding log entry text from pointer %pQ is used.
 	 */
 	while ((p = strchr(p, '%'))) {
+		uint32_t raw_param;
+
+		if (i >= e->header.params_num) {
+			/* Don't read e->params[] out of bounds. */
+			log_err("Too many %% conversion specifiers in '%s'\n",
+				e->text);
+			break;
+		}
+		raw_param = e->params[i];
+
 		/* % can't be the last char */
 		if (p + 1 >= t_end) {
-			log_err("Invalid format string");
+			log_err("Invalid format string\n");
 			break;
 		}
 
@@ -237,14 +247,14 @@ static void process_params(struct proc_ldc_entry *pe,
 			/* %s format specifier */
 			/* check for string printing, because it leads to logger crash */
 			log_err("String printing is not supported\n");
-			pe->params[i] = (uintptr_t)asprintf("<String @ 0x%08x>", e->params[i]);
+			pe->params[i] = (uintptr_t)asprintf("<String @ 0x%08x>", raw_param);
 			pe->subst_mask |= 1 << i;
 			++i;
 			p += 2;
 		} else if (p + 2 < t_end && p[1] == 'p' && p[2] == 'U') {
 			/* %pUx format specifier */
 			/* substitute UUID entry address with formatted string pointer from heap */
-			pe->params[i] = (uintptr_t)asprintf_uuid(p, e->params[i], use_colors,
+			pe->params[i] = (uintptr_t)asprintf_uuid(p, raw_param, use_colors,
 								 &uuid_fmt_len);
 			pe->subst_mask |= 1 << i;
 			++i;
@@ -256,7 +266,7 @@ static void process_params(struct proc_ldc_entry *pe,
 		} else if (p + 2 < t_end && p[1] == 'p' && p[2] == 'Q') {
 			/* %pQ format specifier */
 			/* substitute log entry address with formatted entry text */
-			pe->params[i] = (uintptr_t)asprintf_entry_text(e->params[i]);
+			pe->params[i] = (uintptr_t)asprintf_entry_text(raw_param);
 			pe->subst_mask |= 1 << i;
 			++i;
 
@@ -269,11 +279,13 @@ static void process_params(struct proc_ldc_entry *pe,
 			/* arguments different from %pU and %pQ should be passed without
 			 * modification
 			 */
-			pe->params[i] = e->params[i];
+			pe->params[i] = raw_param;
 			++i;
 			p += 2;
 		}
 	}
+	if (i < e->header.params_num)
+		log_err("Too few %% conversion specifiers in '%s'\n", e->text);
 }
 
 static void free_proc_ldc_entry(struct proc_ldc_entry *pe)
