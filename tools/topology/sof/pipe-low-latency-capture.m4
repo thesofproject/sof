@@ -58,7 +58,7 @@ W_BUFFER(1, COMP_BUFFER_SIZE(2,
 #
 #  host PCM <--B1-- volume <--B0-- source DAI0
 
-P_GRAPH(pipe-ll-capture-PIPELINE_ID, PIPELINE_ID,
+P_GRAPH(pipe-low-latency-capture, PIPELINE_ID,
 	LIST(`		',
 	`dapm(N_PCMC(PCM_ID), N_BUFFER(1))',
 	`dapm(N_BUFFER(1), N_PGA(0))',

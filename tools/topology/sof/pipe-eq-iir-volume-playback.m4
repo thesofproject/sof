@@ -91,7 +91,7 @@ W_BUFFER(2, COMP_BUFFER_SIZE(DAI_PERIODS,
 #
 #  host PCM_P --> B0 --> EQ 0 --> B1 --> Volume 0 --> B2 --> sink DAI0
 
-P_GRAPH(pipe-pass-vol-playback-PIPELINE_ID, PIPELINE_ID,
+P_GRAPH(pipe-eq-iir-volume-playback, PIPELINE_ID,
 	LIST(`		',
 	`dapm(N_BUFFER(0), N_PCMP(PCM_ID))',
 	`dapm(N_EQ_IIR(0), N_BUFFER(0))',

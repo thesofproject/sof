@@ -103,7 +103,7 @@ W_BUFFER(3, COMP_BUFFER_SIZE(DAI_PERIODS,
 #                     pipeline n+3 >---+  .....etc....more pipes can be mixed here
 #
 
-P_GRAPH(pipe-ll-playback-PIPELINE_ID, PIPELINE_ID,
+P_GRAPH(pipe-low-latency-playback, PIPELINE_ID,
 	LIST(`		',
 	`dapm(N_BUFFER(0), N_PCMP(PCM_ID))',
 	`dapm(N_PGA(0), N_BUFFER(0))',

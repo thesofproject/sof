@@ -119,7 +119,7 @@ define(`N_SMART_REF_BUF',`BUF'PIPELINE_ID`.'2)
 #			 ^
 #			 |--B2--
 
-P_GRAPH(pipe-smart-amp-playback-PIPELINE_ID, PIPELINE_ID,
+P_GRAPH(pipe-smart-amplifier-playback, PIPELINE_ID,
 	LIST(`		',
 	`dapm(N_BUFFER(0), N_PCMP(PCM_ID))',
 	`dapm(N_SMART_AMP(0), N_BUFFER(0))',

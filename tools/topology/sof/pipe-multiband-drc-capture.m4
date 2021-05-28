@@ -51,7 +51,7 @@ W_BUFFER(1, COMP_BUFFER_SIZE(DAI_PERIODS,
 #
 #  host PCM_P <-- B0 <-- MULTIBAND_DRC <-- B1 <-- sink DAI
 
-P_GRAPH(pipe-pass-multiband-drc-capture-PIPELINE_ID, PIPELINE_ID,
+P_GRAPH(pipe-multiband-drc-capture, PIPELINE_ID,
 	LIST(`		',
 	`dapm(N_PCMC(PCM_ID), N_BUFFER(0))',
 	`dapm(N_BUFFER(0), N_MULTIBAND_DRC(0))',

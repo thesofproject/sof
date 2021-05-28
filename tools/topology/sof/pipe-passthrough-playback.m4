@@ -29,7 +29,7 @@ W_BUFFER(0, COMP_BUFFER_SIZE(DAI_PERIODS,
 #
 #  host PCM_P --> B0 --> sink DAI0
 
-P_GRAPH(pipe-pass-playback-PIPELINE_ID, PIPELINE_ID,
+P_GRAPH(pipe-passthrough-playback, PIPELINE_ID,
 	LIST(`		',
 	`dapm(N_BUFFER(0), N_PCMP(PCM_ID))'))
 

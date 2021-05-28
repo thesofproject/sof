@@ -124,7 +124,7 @@ W_BUFFER(4, COMP_BUFFER_SIZE(DAI_PERIODS,
 #
 #  host PCM_P --B0--> multiband_drc --B1--> eq_iir --B2--> volume --B3--> Demux(M) --B4--> sink DAI0
 
-P_GRAPH(pipe-drc-eq-playback-PIPELINE_ID, PIPELINE_ID,
+P_GRAPH(pipe-drc-eq-volume-demux-playback, PIPELINE_ID,
 	LIST(`		',
 	`dapm(N_BUFFER(0), N_PCMP(PCM_ID))',
 	`dapm(N_MULTIBAND_DRC(0), N_BUFFER(0))',
