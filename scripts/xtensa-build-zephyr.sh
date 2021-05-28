@@ -102,11 +102,15 @@ build()
 		esac
 
 		(
+			 # west can get lost in symbolic links and then
+			 # show a confusing error.
+			/bin/pwd
 			set -x
-			west build -d build-"$platform" -p -b "$PLAT_CONFIG" \
+			west build --build-dir build-"$platform" --pristine --board "$PLAT_CONFIG" \
 				zephyr/samples/subsys/audio/sof
-			west sign -d build-"$platform" -t rimage -p "$RIMAGE_DIR"/rimage \
-				-D modules/audio/sof/rimage/config -- -k "$RIMAGE_KEY"
+			west sign  --build-dir build-"$platform" \
+				--tool rimage --tool-path "$RIMAGE_DIR"/rimage \
+				--tool-data modules/audio/sof/rimage/config -- -k "$RIMAGE_KEY"
 		)
 	done
 }
