@@ -15,7 +15,7 @@ add_library(audio_for_selector STATIC
 	${PROJECT_SOURCE_DIR}/src/audio/selector/selector.c
 	${PROJECT_SOURCE_DIR}/src/audio/selector/selector_generic.c
 	${PROJECT_SOURCE_DIR}/src/audio/buffer.c
-	${PROJECT_SOURCE_DIR}/src/ipc/helper-ipc3.c
+	${PROJECT_SOURCE_DIR}/src/ipc/ipc3/helper.c
 	${PROJECT_SOURCE_DIR}/test/cmocka/src/notifier_mocks.c
 	${PROJECT_SOURCE_DIR}/src/ipc/ipc-common.c
 	${PROJECT_SOURCE_DIR}/test/cmocka/src/notifier_mocks.c

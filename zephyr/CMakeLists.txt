@@ -352,10 +352,10 @@ zephyr_include_directories(${SOF_PLATFORM_PATH}/${PLATFORM}/include)
 zephyr_library_sources(
 	${SOF_IPC_PATH}/dma-copy.c
 	${SOF_IPC_PATH}/ipc-common.c
-	${SOF_IPC_PATH}/handler-ipc3.c
-	${SOF_IPC_PATH}/helper-ipc3.c
-	${SOF_IPC_PATH}/dai-ipc3.c
-	${SOF_IPC_PATH}/ipc-host-ptable.c
+	${SOF_IPC_PATH}/ipc3/handler.c
+	${SOF_IPC_PATH}/ipc3/helper.c
+	${SOF_IPC_PATH}/ipc3/dai.c
+	${SOF_IPC_PATH}/ipc3/host-page-table.c
 	${SOF_SRC_PATH}/spinlock.c
 
 	# SOF math utilities
