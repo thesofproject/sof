@@ -628,7 +628,6 @@ static void dai_config_reset(struct comp_dev *dev)
 		notifier_unregister(dev, dd->chan,
 				    NOTIFIER_ID_DMA_COPY);
 	}
-	dai_hw_free(dd->dai);
 }
 
 static int dai_prepare(struct comp_dev *dev)

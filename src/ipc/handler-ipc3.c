@@ -560,6 +560,33 @@ static int ipc_msg_dai_config(uint32_t header)
 	return ipc_comp_dai_config(ipc, &config_dai, ipc->comp_data);
 }
 
+static int ipc_msg_dai_hw_free(uint32_t header)
+{
+	struct ipc *ipc = ipc_get();
+	struct sof_ipc_dai_hw_free hw_free;
+	struct dai *dai;
+
+	/* copy message with ABI safe method */
+	IPC_COPY_CMD(hw_free, ipc->comp_data);
+
+	tr_info(&ipc_tr, "ipc: dai %d.%d -> hw_free", hw_free.type,
+		hw_free.dai_index);
+
+	/* get DAI */
+	dai = dai_get(hw_free.type, hw_free.dai_index, 0 /* existing only */);
+	if (!dai) {
+		tr_err(&ipc_tr, "ipc: dai %d,%d not found", hw_free.type,
+		       hw_free.dai_index);
+		return -ENODEV;
+	}
+
+	/* DAI hardware free */
+	dai_hw_free(dai);
+	dai_put(dai); /* free ref immediately */
+
+	return 0;
+}
+
 static int ipc_glb_dai_message(uint32_t header)
 {
 	uint32_t cmd = iCS(header);
@@ -569,6 +596,9 @@ static int ipc_glb_dai_message(uint32_t header)
 		return ipc_msg_dai_config(header);
 	case SOF_IPC_DAI_LOOPBACK:
 		//return ipc_comp_set_value(header, COMP_CMD_LOOPBACK);
+		return -EINVAL;
+	case SOF_IPC_DAI_HW_FREE:
+		return ipc_msg_dai_hw_free(header);
 	default:
 		tr_err(&ipc_tr, "ipc: unknown DAI cmd 0x%x", cmd);
 		return -EINVAL;

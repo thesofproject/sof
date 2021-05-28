@@ -88,4 +88,11 @@ struct sof_ipc_dai_config {
 	};
 } __attribute__((packed, aligned(4)));
 
+/* DAI hardware free */
+struct sof_ipc_dai_hw_free {
+	struct sof_ipc_cmd_hdr hdr;
+	uint32_t type;		/**< DAI type - enum sof_ipc_dai_type */
+	uint32_t dai_index;	/**< index of this type dai */
+} __attribute__((packed, aligned(4)));
+
 #endif /* __IPC_DAI_H__ */
