@@ -51,7 +51,7 @@ W_BUFFER(1, COMP_BUFFER_SIZE(DAI_PERIODS,
 #
 #  host PCM_P <-- B0 <-- DRC <-- B1 <-- sink DAI
 
-P_GRAPH(pipe-pass-drc-capture-PIPELINE_ID, PIPELINE_ID,
+P_GRAPH(pipe-drc-capture, PIPELINE_ID,
 	LIST(`		',
 	`dapm(N_PCMC(PCM_ID), N_BUFFER(0))',
 	`dapm(N_BUFFER(0), N_DRC(0))',

@@ -50,7 +50,7 @@ W_BUFFER(1, COMP_BUFFER_SIZE(DAI_PERIODS,
 #
 #  host PCM_C <-- B0 <-- SRC <-- B1 <-- source DAI0
 
-P_GRAPH(pipe-pass-src-capture-PIPELINE_ID, PIPELINE_ID,
+P_GRAPH(pipe-src-capture, PIPELINE_ID,
 	LIST(`		',
 	`dapm(N_PCMC(PCM_ID), N_BUFFER(0))',
 	`dapm(N_BUFFER(0), N_SRC(0))',

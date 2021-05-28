@@ -59,7 +59,7 @@ W_BUFFER(1, COMP_BUFFER_SIZE(DAI_PERIODS,
 #
 #  host PCM_P --> B0 --> DRC --> B1 --> sink DAI0
 
-P_GRAPH(pipe-drc-playback-PIPELINE_ID, PIPELINE_ID,
+P_GRAPH(pipe-drc-playback, PIPELINE_ID,
 	LIST(`		',
 	`dapm(N_BUFFER(0), N_PCMP(PCM_ID))',
 	`dapm(N_DRC(0), N_BUFFER(0))',

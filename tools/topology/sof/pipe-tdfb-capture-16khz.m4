@@ -64,7 +64,7 @@ W_BUFFER(1, COMP_BUFFER_SIZE(DAI_PERIODS,
 #
 #  host PCM_C <-- B0 <-- TDFB 0 <-- B1 <-- sink DAI0
 
-P_GRAPH(pipe-pass-capture-PIPELINE_ID, PIPELINE_ID,
+P_GRAPH(pipe-tdfb-capture-16khz, PIPELINE_ID,
 	LIST(`		',
 	`dapm(N_PCMC(PCM_ID), N_BUFFER(0))',
 	`dapm(N_BUFFER(0), N_TDFB(0))',

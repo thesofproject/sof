@@ -80,7 +80,7 @@ W_BUFFER(2, COMP_BUFFER_SIZE(3,
 #  PCM --B0--> volume --B1--> SRC --> B2 --> Endpoint Pipeline
 #
 
-P_GRAPH(pipe-media-PIPELINE_ID, PIPELINE_ID,
+P_GRAPH(pipe-pcm-media, PIPELINE_ID,
 	LIST(`		',
 	`dapm(N_BUFFER(0), N_PCMP(PCM_ID))',
 	`dapm(N_PGA(0), N_BUFFER(0))',

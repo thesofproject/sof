@@ -112,7 +112,7 @@ W_BUFFER(2, COMP_BUFFER_SIZE(DAI_PERIODS,
 #
 #  host PCM_C <-- B0 <-- Volume 0 <-- B1 <-- TDFB 0 <-- B2 <-- sink DAI0
 
-P_GRAPH(pipe-pass-capture-PIPELINE_ID, PIPELINE_ID,
+P_GRAPH(pipe-tdfb-volume-capture, PIPELINE_ID,
 	LIST(`		',
 	`dapm(N_PCMC(PCM_ID), N_BUFFER(0))',
 	`dapm(N_BUFFER(0), PGA_NAME)',

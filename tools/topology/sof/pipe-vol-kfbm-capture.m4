@@ -99,7 +99,7 @@ W_BUFFER(2, COMP_BUFFER_SIZE(2,
 #                	|
 #            Others  <--
 
-P_GRAPH(pipe-kpbm-capture-PIPELINE_ID, PIPELINE_ID,
+P_GRAPH(pipe-vol-kfbm-capture, PIPELINE_ID,
 	LIST(`		',
 	`dapm(N_PCMC(PCM_ID), N_BUFFER(2))',
 	`dapm(N_BUFFER(2), N_KPBM(0, PIPELINE_ID))',

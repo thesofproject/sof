@@ -84,7 +84,7 @@ W_BUFFER(2, COMP_BUFFER_SIZE(DAI_PERIODS,
 #
 #  host PCM_P --B0--> Demux --B1--> volume ---B2--> sink DAI0
 
-P_GRAPH(pipe-ll-playback-PIPELINE_ID, PIPELINE_ID,
+P_GRAPH(pipe-volume-demux-playback, PIPELINE_ID,
 	LIST(`		',
 	`dapm(N_BUFFER(0), N_PCMP(PCM_ID))',
 	`dapm(N_PGA(1), N_BUFFER(0))',

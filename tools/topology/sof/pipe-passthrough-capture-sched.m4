@@ -32,7 +32,7 @@ VIRTUAL_WIDGET(ECHO REF PIPELINE_ID, out_drv, PIPELINE_ID)
 #
 #  host PCM_C <-- B0 <-- sink DAI0
 
-P_GRAPH(pipe-pass-capture-PIPELINE_ID, PIPELINE_ID,
+P_GRAPH(pipe-passthrough-capture-sched, PIPELINE_ID,
 	LIST(`		',
 	`dapm(N_PCMC(PCM_ID), N_BUFFER(0))',
 	`dapm(N_BUFFER(0), ECHO REF PIPELINE_ID)'))
