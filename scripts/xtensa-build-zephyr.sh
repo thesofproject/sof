@@ -106,7 +106,7 @@ build()
 			 # show a confusing error.
 			/bin/pwd
 			set -x
-			west build --build-dir build-"$platform" --pristine --board "$PLAT_CONFIG" \
+			west build --build-dir build-"$platform" --board "$PLAT_CONFIG" \
 				zephyr/samples/subsys/audio/sof
 			west sign  --build-dir build-"$platform" \
 				--tool rimage --tool-path "$RIMAGE_DIR"/rimage \
