@@ -262,14 +262,14 @@ int codec_process(struct comp_dev *dev)
 	comp_dbg(dev, "codec_process() start");
 
 	if (cd->codec.state != CODEC_IDLE) {
-		comp_err(dev, "codec_prepare(): wrong state of codec %x, state %d",
+		comp_err(dev, "codec_process(): wrong state of codec %x, state %d",
 			 cd->ca_config.codec_id, codec->state);
 		return -EPERM;
 	}
 
 	ret = codec->ops->process(dev);
 	if (ret) {
-		comp_err(dev, "codec_prepare() error %d: codec process failed for codec_id %x",
+		comp_err(dev, "codec_process() error %d: codec process failed for codec_id %x",
 			 ret, codec_id);
 		goto out;
 	}
