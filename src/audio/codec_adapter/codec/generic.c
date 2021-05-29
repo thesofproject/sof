@@ -339,7 +339,7 @@ int codec_reset(struct comp_dev *dev)
 	/* Codec reset itself to the initial condition after prepare()
 	 * so let's change its state to reflect that.
 	 */
-	codec->state = CODEC_INITIALIZED;
+	codec->state = CODEC_IDLE;
 
 	return 0;
 }
