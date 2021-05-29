@@ -505,14 +505,22 @@ int cadence_codec_apply_config(struct comp_dev *dev)
 int cadence_codec_reset(struct comp_dev *dev)
 {
 	int ret;
-	struct codec_data *codec = comp_get_codec(dev);
-	struct cadence_codec_data *cd = codec->private;
 
-	API_CALL(cd, XA_API_CMD_INIT, XA_CMD_TYPE_INIT_API_PRE_CONFIG_PARAMS,
-		 NULL, ret);
-	if (ret != LIB_NO_ERROR) {
-		comp_err(dev, "cadence_codec_init(): error %x: failed to reset to default values.",
-			 ret);
+	/* Current CADENCE API doesn't support reset of codec's
+	 * runtime parameters therefore we need to free all the resources
+	 * and start over.
+	 */
+	codec_free_all_memory(dev);
+	ret = cadence_codec_init(dev);
+	if (ret) {
+		comp_err(dev, "cadence_codec_reset() error %x: could not re-initialize codec after reset",
+			ret);
+	}
+
+	ret = cadence_codec_prepare(dev);
+	if (ret) {
+		comp_err(dev, "cadence_codec_reset() error %x: could not re-prepare codec after reset",
+			ret);
 	}
 
 	return ret;
