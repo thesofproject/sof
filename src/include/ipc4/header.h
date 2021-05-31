@@ -109,4 +109,38 @@ union ipc4_message_header {
 	} r;
 } __attribute__((packed, aligned(4)));
 
+struct ipc4_message_reply {
+	union {
+		uint32_t dat;
+
+		struct {
+			//! Processing status, one of IxcStatus values
+			uint32_t status :24;
+
+			//! Type, symmetric to Msg
+			uint32_t type       : 5;
+
+			//! MSG_REPLY
+			uint32_t rsp        : 1;
+
+			//! same as request, one of FW_GEN_MSG, MODULE_MSG
+			uint32_t msg_tgt    : 1;
+
+			//! Reserved field (HW ctrl bits)
+			uint32_t _reserved_0: 1;
+		} r;
+	} header;
+
+	union {
+		uint32_t dat;
+
+		struct {
+			//! Reserved field
+			uint32_t rsvd1      : 30;
+
+			//! Reserved field (HW ctrl bits)
+			uint32_t _reserved_2: 2;
+		} r;
+	} data;
+} __attribute((packed, aligned(4)));
 #endif
