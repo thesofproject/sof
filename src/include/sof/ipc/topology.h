@@ -11,7 +11,6 @@
 
 #include <sof/audio/buffer.h>
 #include <sof/audio/ipc-config.h>
-#include <sof/audio/component.h>
 #include <sof/audio/pipeline.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/memory.h>
@@ -26,8 +25,33 @@
 #include <stdint.h>
 
 /* generic IPC pipeline regardless of ABI MAJOR type that is always 4 byte aligned */
+typedef uint32_t ipc_pipe_new;
+typedef uint32_t ipc_pipe_comp_connect;
+typedef uint32_t ipc_comp;
+
+/*
+ * Topology IPC logic uses standard types for abstract IPC features. This means all ABI MAJOR
+ * abstraction is done in the IPC layer only and not in the surrounding infrastructure.
+ */
+#if CONFIG_IPC_MAJOR_3
 #include <ipc/topology.h>
+#define ipc_from_pipe_new(x) ((struct sof_ipc_pipe_new *)x)
+#define ipc_from_pipe_connect(x) ((struct sof_ipc_pipe_comp_connect *)x)
+#define ipc_from_comp_new(x) ((struct sof_ipc_comp *)x)
 #define ipc_from_dai_config(x) ((struct sof_ipc_dai_config *)x)
+#elif CONFIG_IPC_MAJOR_4
+#include <ipc4/pipeline.h>
+#include <ipc4/module.h>
+#include <ipc4/gateway.h>
+#define ipc_from_pipe_new(x) ((struct ipc4_pipeline_create *)x)
+#define ipc_from_pipe_connect(x) ((struct ipc4_module_bind_unbind *)x)
+#else
+#error "No or invalid IPC MAJOR version selected."
+#endif
+
+#define ipc_to_pipe_new(x)	((ipc_pipe_new *)x)
+#define ipc_to_pipe_connect(x)	((ipc_pipe_comp_connect *)x)
+#define ipc_to_comp_new(x)	((ipc_comp *)x)
 
 struct ipc_msg;
 
@@ -58,7 +82,7 @@ struct ipc_comp_dev {
  * @param new New IPC component descriptor.
  * @return 0 on success or negative error.
  */
-int ipc_comp_new(struct ipc *ipc, struct sof_ipc_comp *new);
+int ipc_comp_new(struct ipc *ipc, ipc_comp *new);
 
 /**
  * \brief Free an IPC component.
@@ -90,7 +114,7 @@ int ipc_buffer_free(struct ipc *ipc, uint32_t buffer_id);
  * @param pipeline New IPC pipeline descriptor.
  * @return 0 on success or negative error.
  */
-int ipc_pipeline_new(struct ipc *ipc, struct sof_ipc_pipe_new *pipeline);
+int ipc_pipeline_new(struct ipc *ipc, ipc_pipe_new *pipeline);
 
 /**
  * \brief Free an IPC pipeline.
@@ -114,8 +138,7 @@ int ipc_pipeline_complete(struct ipc *ipc, uint32_t comp_id);
  * @param connect Components to connect together..
  * @return 0 on success or negative error.
  */
-int ipc_comp_connect(struct ipc *ipc,
-		     struct sof_ipc_pipe_comp_connect *connect);
+int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *connect);
 
 /**
  * \brief Get component device from component ID.
