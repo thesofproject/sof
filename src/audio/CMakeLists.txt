@@ -70,6 +70,11 @@ if(NOT CONFIG_LIBRARY)
 		target_link_libraries(sof PRIVATE c)
 		target_link_libraries(sof PRIVATE m)
 	endif()
+	if(CONFIG_COMP_COPIER)
+		add_local_sources(sof
+			copier.c
+		)
+	endif()
 	if(CONFIG_COMP_SEL)
 		add_subdirectory(selector)
 	endif()
