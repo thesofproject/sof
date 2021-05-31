@@ -2,6 +2,13 @@
 
 menu "Audio components"
 
+config COMP_COPIER
+        bool "COPIER component"
+        default y
+        depends on IPC_MAJOR_4
+        help
+          Select for COPIER component
+
 config COMP_DAI
 	bool "DAI component"
 	default y

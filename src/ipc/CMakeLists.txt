@@ -2,6 +2,8 @@
 
 if (CONFIG_IPC_MAJOR_3)
 	add_subdirectory(ipc3)
+elseif (CONFIG_IPC_MAJOR_4)
+	add_subdirectory(ipc4)
 endif()
 
 add_local_sources(sof
