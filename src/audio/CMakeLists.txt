@@ -62,6 +62,11 @@ if(NOT CONFIG_LIBRARY)
 			kpb.c
 		)
 	endif()
+	if(CONFIG_COMP_COPIER)
+		add_local_sources(sof
+			copier.c
+		)
+	endif()
 	if(CONFIG_COMP_SEL)
 		add_subdirectory(selector)
 	endif()

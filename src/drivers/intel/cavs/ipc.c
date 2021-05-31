@@ -233,6 +233,7 @@ void ipc_platform_complete_cmd(void *data)
 int ipc_platform_send_msg(struct ipc_msg *msg)
 {
 	struct ipc *ipc = ipc_get();
+	ipc_cmd_hdr *hdr;
 	int ret = 0;
 
 	if (ipc->is_notification_pending ||
@@ -246,20 +247,20 @@ int ipc_platform_send_msg(struct ipc_msg *msg)
 		goto out;
 	}
 
-	/* now send the message */
-	mailbox_dspbox_write(0, msg->tx_data, msg->tx_size);
 	list_item_del(&msg->list);
 	tr_dbg(&ipc_tr, "ipc: msg tx -> 0x%x", msg->header);
 
 	ipc->is_notification_pending = true;
 
+	hdr = ipc_process_msg(msg);
+
 	/* now interrupt host to tell it we have message sent */
 #if CAVS_VERSION == CAVS_VERSION_1_5
-	ipc_write(IPC_DIPCIE, 0);
-	ipc_write(IPC_DIPCI, IPC_DIPCI_BUSY | msg->header);
+	ipc_write(IPC_DIPCIE, hdr[1]);
+	ipc_write(IPC_DIPCI, IPC_DIPCI_BUSY | hdr[0]);
 #else
-	ipc_write(IPC_DIPCIDD, 0);
-	ipc_write(IPC_DIPCIDR, IPC_DIPCIDR_BUSY | msg->header);
+	ipc_write(IPC_DIPCIDD, hdr[1]);
+	ipc_write(IPC_DIPCIDR, IPC_DIPCIDR_BUSY | hdr[0]);
 #endif
 
 out:

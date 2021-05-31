@@ -222,6 +222,15 @@ enum comp_copy_type {
 	COMP_COPY_ONE_SHOT,	/**< One-shot */
 };
 
+/*! \brief enumeration values of processing mode */
+enum comp_processing_mode {
+    COMP_PROCESS_NORMAL = 0, /*!< Indicates that module is expected to apply its custom processing on signal. */
+    COMP_PROCESS_BYPASS /*!< Indicates that module is expected to not apply its custom processing on signal.
+     	     	     	 * The module is expected to forward as far as possible the input signals unmodified
+     	     	     	 * with respect of the signal continuity at the mode transition.
+     	     	     	 */
+};
+
 struct comp_driver;
 struct comp_ipc_config;
 union ipc_config_specific;
