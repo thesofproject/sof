@@ -51,124 +51,100 @@ K_THREAD_STACK_DEFINE(ll_workq_stack2, ZEPHYR_LL_WORKQ_SIZE);
 K_THREAD_STACK_DEFINE(ll_workq_stack3, ZEPHYR_LL_WORKQ_SIZE);
 #endif
 
-#define LL_TIMER_PERIOD 1000 /* period in microseconds */
+#define LL_TIMER_PERIOD_US 1000 /* period in microseconds */
 
-struct zephyr_domain {
-	struct k_work_q ll_workq[CONFIG_CORE_COUNT];
-	int ll_workq_registered[CONFIG_CORE_COUNT];
-	struct timer *timer;
-};
+K_KERNEL_STACK_ARRAY_DEFINE(ll_sched_stack, CONFIG_CORE_COUNT, ZEPHYR_LL_WORKQ_SIZE);
 
-struct zephyr_domain_work {
-	struct k_work_delayable work;
+struct zephyr_domain_thread {
+	struct k_thread ll_thread;
 	void (*handler)(void *arg);
 	void *arg;
+	uint64_t period_us;
 };
 
-struct zephyr_domain_work zdata[CONFIG_CORE_COUNT];
+struct zephyr_domain {
+	struct k_timer timer;
+	struct timer *ll_timer;
+	struct zephyr_domain_thread domain_thread[CONFIG_CORE_COUNT];
+	struct ll_schedule_domain *ll_domain;
+};
 
-static void zephyr_domain_report_delay(int id, uint64_t delay)
+static void zephyr_domain_thread_fn(void *p1, void *p2, void *p3)
 {
-	uint32_t ll_delay_us = (delay * 1000) /
-				clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1);
+	struct zephyr_domain *zephyr_domain = p1;
+	int core = cpu_get_id();
+	struct zephyr_domain_thread *dt = zephyr_domain->domain_thread + core;
 
-	/* Zephyr schedules on nearest kernel tick not HW cycle */
-	if (delay <= CYC_PER_TICK)
-		return;
+	for (;;) {
+		/* immediately go to sleep, waiting to be woken up by the timer */
+		k_thread_suspend(_current);
 
-	if (delay <= UINT_MAX)
-		tr_err(&ll_tr, "zephyr_domain_report_delay(): timer %d delayed by %d uS %d ticks",
-		       id, ll_delay_us, (unsigned int)delay);
-	else
-		tr_err(&ll_tr, "zephyr_domain_report_delay(): timer %d delayed by %d uS, ticks > %u",
-		       id, ll_delay_us, UINT_MAX);
-
-	/* Fix compile error when traces are disabled */
-	(void)ll_delay_us;
+		dt->handler(dt->arg);
+	}
 }
 
-static void zephyr_domain_handler(struct k_work *work)
+static void zephyr_domain_timer_fn(struct k_timer *timer)
 {
-	struct k_work_delayable *dwork = k_work_delayable_from_work(work);
-	struct zephyr_domain_work *zd = CONTAINER_OF(dwork, struct zephyr_domain_work, work);
+	struct zephyr_domain *zephyr_domain = timer->user_data;
+	int core;
 
-	zd->handler(zd->arg);
+	if (!zephyr_domain)
+		return;
+
+	for (core = 0; core < CONFIG_CORE_COUNT; core++)
+		if (zephyr_domain->domain_thread[core].handler)
+			k_wakeup(&zephyr_domain->domain_thread[core].ll_thread);
 }
 
 static int zephyr_domain_register(struct ll_schedule_domain *domain,
-				 uint64_t period, struct task *task,
-				 void (*handler)(void *arg), void *arg)
+				  uint64_t period, struct task *task,
+				  void (*handler)(void *arg), void *arg)
 {
 	struct zephyr_domain *zephyr_domain = ll_sch_domain_get_pdata(domain);
 	int core = cpu_get_id();
-	int ret = 0;
-	void *stack;
-	char *qname;
-	struct k_thread *thread;
+	struct zephyr_domain_thread *dt = zephyr_domain->domain_thread + core;
+	char thread_name[] = "ll_thread0";
+	k_tid_t thread;
 
 	tr_dbg(&ll_tr, "zephyr_domain_register()");
 
-	/* domain work only needs registered once */
-	if (zephyr_domain->ll_workq_registered[core])
-		goto out;
+	/* domain work only needs registered once on each core */
+	if (dt->handler)
+		return 0;
 
-	switch (core) {
-	case 0:
-		stack = ll_workq_stack0;
-		qname = "ll_workq0";
-		break;
-#if CONFIG_CORE_COUNT > 1
-	case 1:
-		stack = ll_workq_stack1;
-		qname = "ll_workq1";
-		break;
-#endif
-#if CONFIG_CORE_COUNT > 2
-	case 2:
-		stack = ll_workq_stack2;
-		qname = "ll_workq2";
-		break;
-#endif
-#if CONFIG_CORE_COUNT > 3
-	case 3:
-		stack = ll_workq_stack3;
-		qname = "ll_workq3";
-		break;
-#endif
-	default:
-		tr_err(&ll_tr, "invalid timer domain core %d\n", core);
-		return -EINVAL;
+	if (!zephyr_domain->timer.user_data) {
+		k_timer_init(&zephyr_domain->timer, zephyr_domain_timer_fn, NULL);
+		zephyr_domain->timer.user_data = zephyr_domain;
 	}
 
-	zdata[core].handler = handler;
-	zdata[core].arg = arg;
-	k_work_queue_start(&zephyr_domain->ll_workq[core], stack,
-			   ZEPHYR_LL_WORKQ_SIZE, -CONFIG_NUM_COOP_PRIORITIES, NULL);
+	dt->handler = handler;
+	dt->arg = arg;
+	dt->period_us = period;
 
-	thread = &zephyr_domain->ll_workq[core].thread;
+	thread_name[sizeof(thread_name) - 2] = '0' + core;
 
-	k_thread_suspend(thread);
+	thread = k_thread_create(&dt->ll_thread,
+				 ll_sched_stack[core],
+				 ZEPHYR_LL_WORKQ_SIZE,
+				 zephyr_domain_thread_fn, zephyr_domain, NULL, NULL,
+				 -CONFIG_NUM_COOP_PRIORITIES, 0, K_FOREVER);
 
 	k_thread_cpu_mask_clear(thread);
 	k_thread_cpu_mask_enable(thread, core);
-	k_thread_name_set(thread, qname);
+	k_thread_name_set(thread, thread_name);
 
-	k_thread_resume(thread);
-
-	zephyr_domain->ll_workq_registered[core] = 1;
-
-	k_work_init_delayable(&zdata[core].work, zephyr_domain_handler);
+	k_thread_start(thread);
 
 	tr_info(&ll_tr, "zephyr_domain_register domain->type %d domain->clk %d domain->ticks_per_ms %d period %d",
 		domain->type, domain->clk, domain->ticks_per_ms, (uint32_t)period);
-out:
 
-	return ret;
+	return 0;
 }
 
 static int zephyr_domain_unregister(struct ll_schedule_domain *domain,
 				   struct task *task, uint32_t num_tasks)
 {
+	struct zephyr_domain *zephyr_domain = ll_sch_domain_get_pdata(domain);
 	int core = cpu_get_id();
 
 	tr_dbg(&ll_tr, "zephyr_domain_unregister()");
@@ -177,7 +153,10 @@ static int zephyr_domain_unregister(struct ll_schedule_domain *domain,
 	if (num_tasks)
 		return 0;
 
-	k_work_cancel_delayable(&zdata[core].work);
+	k_timer_stop(&zephyr_domain->timer);
+	zephyr_domain->domain_thread[core].handler = NULL;
+
+	k_thread_abort(&zephyr_domain->domain_thread[core].ll_thread);
 
 	tr_info(&ll_tr, "zephyr_domain_unregister domain->type %d domain->clk %d",
 		domain->type, domain->clk);
@@ -185,76 +164,58 @@ static int zephyr_domain_unregister(struct ll_schedule_domain *domain,
 	return 0;
 }
 
+/* Can be called on any core, sets timer IRQ for core 0 if CONFIG_SMP_BOOT_DELAY */
 static void zephyr_domain_set(struct ll_schedule_domain *domain, uint64_t start)
 {
 	struct zephyr_domain *zephyr_domain = ll_sch_domain_get_pdata(domain);
-	uint64_t ticks_tout = domain->ticks_per_ms * LL_TIMER_PERIOD / 1000;
-	uint64_t ticks_set;
-	uint64_t current = platform_timer_get_atomic(zephyr_domain->timer);
+	uint64_t current = platform_timer_get_atomic(zephyr_domain->ll_timer);
 	uint64_t earliest_next = current + 1 + ZEPHYR_SCHED_COST;
-	uint64_t ticks_req = domain->next_tick ? start + ticks_tout :
-		MAX(start, earliest_next);
-	int ret, core = cpu_get_id();
-	uint64_t ticks_delta;
+	uint64_t ticks_tout = domain->ticks_per_ms * LL_TIMER_PERIOD_US / 1000;
+	uint64_t ticks_req = MAX(start, earliest_next);
+	int core = cpu_get_id();
+	struct zephyr_domain_thread *dt = zephyr_domain->domain_thread + core;
+
+	if (ticks_req >= domain->next_tick - ZEPHYR_SCHED_COST)
+		return;
 
 	if (domain->next_tick <= current ||
-	    domain->next_tick > current + ticks_tout ||
-	    !domain->next_tick) {
-		if (ticks_tout < CYC_PER_TICK)
-			ticks_tout = CYC_PER_TICK;
+	    domain->next_tick > current + ticks_tout) {
+		k_ticks_t remaining = k_timer_remaining_ticks(&zephyr_domain->timer);
 
-		/* have we overshot the period length ?? */
-		if (ticks_req > current + ticks_tout)
-			ticks_req = current + ticks_tout;
+		/* ll-scheduler expects .next_tick to be updated inside .set_domain() */
+		if (remaining) {
+			domain->next_tick = current + remaining;
+		} else {
+			k_timeout_t timeout, period;
 
-		ticks_req -= ticks_req % CYC_PER_TICK;
-		if (ticks_req < earliest_next) {
-			/* The earliest schedule point has to be rounded up */
-			ticks_req = earliest_next + CYC_PER_TICK - 1;
+			/* have we overshot the period length ?? */
+			if (ticks_req > current + ticks_tout)
+				ticks_req = current + ticks_tout;
+
 			ticks_req -= ticks_req % CYC_PER_TICK;
+			if (ticks_req < earliest_next) {
+				/* The earliest schedule point has to be rounded up */
+				ticks_req = earliest_next + CYC_PER_TICK - 1;
+				ticks_req -= ticks_req % CYC_PER_TICK;
+			}
+
+			/* First call: start the timer */
+			timeout = K_TIMEOUT_ABS_CYC(ticks_req - current);
+			period = K_USEC(dt->period_us);
+
+			k_timer_start(&zephyr_domain->timer, timeout, period);
+
+			domain->next_tick = ticks_req;
 		}
-	} else {
-		/* The other core has already calculated the next timer event */
-		ticks_req = domain->next_tick;
 	}
-
-	/* work out next start time relative to start */
-	ticks_delta = ticks_req - current;
-
-	/* This actually sets the timer and the next call only reads it back */
-	/* using K_CYC(ticks_delta - 885) brings "requested - set" to about 180-700
-	 * cycles, audio sounds very slow and distorted.
-	 */
-	ret = k_work_reschedule_for_queue(&zephyr_domain->ll_workq[core],
-					  &zdata[core].work,
-					  K_CYC(ticks_delta - ZEPHYR_SCHED_COST));
-	if (ret < 0) {
-		tr_err(&ll_tr, "queue submission error %d", ret);
-		return;
-	}
-
-	ticks_set = k_work_delayable_remaining_get(&zdata[core].work) * CYC_PER_TICK +
-		current - current % CYC_PER_TICK;
-
-	tr_dbg(&ll_tr, "zephyr_domain_set(): ticks_set %u ticks_req %u current %u",
-	       (unsigned int)ticks_set, (unsigned int)ticks_req,
-	       (unsigned int)platform_timer_get_atomic(zephyr_domain->timer));
-
-	/* Was timer set to the value we requested? If no it means some
-	 * delay occurred and we should report that in error log.
-	 */
-	if (ticks_req < ticks_set)
-		zephyr_domain_report_delay(zephyr_domain->timer->id,
-					   ticks_set - ticks_req);
-
-	domain->next_tick = ticks_set;
-
 }
 
 static bool zephyr_domain_is_pending(struct ll_schedule_domain *domain,
-				    struct task *task, struct comp_dev **comp)
+				     struct task *task, struct comp_dev **comp)
 {
-	return task->start <= platform_timer_get_atomic(timer_get());
+	struct zephyr_domain *zephyr_domain = ll_sch_domain_get_pdata(domain);
+
+	return task->start <= platform_timer_get_atomic(zephyr_domain->ll_timer);
 }
 
 static const struct ll_schedule_domain_ops zephyr_domain_ops = {
@@ -274,7 +235,9 @@ struct ll_schedule_domain *timer_domain_init(struct timer *timer, int clk)
 
 	zephyr_domain = rzalloc(SOF_MEM_ZONE_SYS_SHARED, 0, SOF_MEM_CAPS_RAM,
 				sizeof(*zephyr_domain));
-	zephyr_domain->timer = timer;
+
+	zephyr_domain->ll_timer = timer;
+	zephyr_domain->ll_domain = domain;
 
 	ll_sch_domain_set_pdata(domain, zephyr_domain);
 
