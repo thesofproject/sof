@@ -26,7 +26,6 @@
 #include <stdint.h>
 
 /* generic IPC pipeline regardless of ABI MAJOR type that is always 4 byte aligned */
-typedef uint32_t ipc_config_dai_spec;
 #include <ipc/topology.h>
 #define ipc_from_dai_config(x) ((struct sof_ipc_dai_config *)x)
 
