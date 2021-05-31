@@ -141,6 +141,8 @@ int load_buffer(void *dev, int comp_id, int pipeline_id,
 	int size = widget->priv.size;
 	int ret;
 
+	memset(&buffer, 0, sizeof(buffer));
+
 	ret = tplg_load_buffer(comp_id, pipeline_id, size, &buffer, file);
 	if (ret < 0)
 		return ret;
