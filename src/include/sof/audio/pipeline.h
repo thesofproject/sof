@@ -52,6 +52,8 @@ struct pipeline {
 	uint32_t frames_per_sched;/**< output frames of pipeline, 0 is variable */
 	uint32_t xrun_limit_usecs; /**< report xruns greater than limit */
 	uint32_t time_domain;	/**< scheduling time domain */
+	uint32_t memory_size;
+	void *memory;
 
 	/* runtime status */
 	int32_t xrun_bytes;		/* last xrun length */
@@ -186,6 +188,14 @@ static inline uint32_t pipeline_id(struct pipeline *p)
 {
 	return p->pipeline_id;
 }
+
+/**
+ * Allocates memory buffers for entire pipeline.
+ * @param p pipeline.
+ * @param bytes allocation request in bytes.
+ * @return 0 on success.
+ */
+int pipeline_alloc_memory(struct pipeline *p, uint32_t bytes);
 
 /*
  * Pipeline configuration APIs
