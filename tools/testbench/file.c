@@ -459,16 +459,18 @@ static struct comp_dev *file_new(const struct comp_driver *drv,
 	case FILE_READ:
 		cd->fs.rfh = fopen(cd->fs.fn, "r");
 		if (!cd->fs.rfh) {
-			fprintf(stderr, "error: opening file %s\n", cd->fs.fn);
+			fprintf(stderr, "error: opening file %s for reading - %s\n",
+				cd->fs.fn, strerror(errno));
 			free(cd);
 			free(dev);
 			return NULL;
 		}
 		break;
 	case FILE_WRITE:
-		cd->fs.wfh = fopen(cd->fs.fn, "w");
+		cd->fs.wfh = fopen(cd->fs.fn, "w+");
 		if (!cd->fs.wfh) {
-			fprintf(stderr, "error: opening file %s\n", cd->fs.fn);
+			fprintf(stderr, "error: opening file %s for writing - %s\n",
+				cd->fs.fn, strerror(errno));
 			free(cd);
 			free(dev);
 			return NULL;
