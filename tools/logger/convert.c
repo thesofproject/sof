@@ -60,7 +60,7 @@ struct proc_ldc_entry {
 	uintptr_t params[TRACE_MAX_PARAMS_COUNT];
 };
 
-static const char *BAD_PTR_STR = "<bad uid ptr %x>";
+static const char *BAD_PTR_STR = "<bad uid ptr 0x%.8x>";
 
 #define UUID_LOWER "%s%s%s<%08x-%04x-%04x-%02x%02x-%02x%02x%02x%02x%02x%02x>%s%s%s"
 #define UUID_UPPER "%s%s%s<%08X-%04X-%04X-%02X%02X-%02X%02X%02X%02X%02X%02X>%s%s%s"
