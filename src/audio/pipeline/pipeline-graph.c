@@ -102,6 +102,12 @@ void pipeline_posn_init(struct sof *sof)
 	spinlock_init(&sof->pipeline_posn->lock);
 }
 
+int pipeline_alloc_memory(struct pipeline *p, uint32_t bytes)
+{
+	// TODO
+	return 0;
+}
+
 /* create new pipeline - returns pipeline id or negative error */
 struct pipeline *pipeline_new(uint32_t pipeline_id, uint32_t priority, uint32_t comp_id)
 {

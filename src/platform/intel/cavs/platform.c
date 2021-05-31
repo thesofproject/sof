@@ -296,6 +296,9 @@ int platform_boot_complete(uint32_t boot_message)
 
 int platform_boot_complete(uint32_t boot_message)
 {
+	ipc_cmd_hdr header;
+	uint32_t data;
+
 #if CONFIG_TIGERLAKE && !CONFIG_CAVS_LPRO_ONLY
 	/* TGL specific HW recommended flow */
 	pm_runtime_get(PM_RUNTIME_DSP, PWRD_BY_HPRO | (CONFIG_CORE_COUNT - 1));
@@ -303,13 +306,16 @@ int platform_boot_complete(uint32_t boot_message)
 
 	mailbox_dspbox_write(0, &ready, sizeof(ready));
 
+	data = SRAM_WINDOW_HOST_OFFSET(0) >> 12;
+	ipc_boot_complete_msg(&header, &data);
+
 	/* tell host we are ready */
 #if CAVS_VERSION == CAVS_VERSION_1_5
-	ipc_write(IPC_DIPCIE, SRAM_WINDOW_HOST_OFFSET(0) >> 12);
-	ipc_write(IPC_DIPCI, IPC_DIPCI_BUSY | SOF_IPC_FW_READY);
+	ipc_write(IPC_DIPCIE, data);
+	ipc_write(IPC_DIPCI, IPC_DIPCI_BUSY | header);
 #else
-	ipc_write(IPC_DIPCIDD, SRAM_WINDOW_HOST_OFFSET(0) >> 12);
-	ipc_write(IPC_DIPCIDR, IPC_DIPCIDR_BUSY | SOF_IPC_FW_READY);
+	ipc_write(IPC_DIPCIDD, data);
+	ipc_write(IPC_DIPCIDR, IPC_DIPCIDR_BUSY | header);
 #endif
 	return 0;
 }

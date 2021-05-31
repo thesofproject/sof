@@ -30,6 +30,11 @@ struct ipc_config_dai {
 	uint16_t format;	/**< SOF_DAI_FMT_ */
 	uint16_t group_id;	/**< group ID, 0 means no group (ABI 3.17) */
 	bool is_config_blob;	/**< DAI specific configuration is a blob */
+
+	/* TODO: are these really needed for IPC4 copier ??? */
+	uint32_t rate;
+	uint32_t channels;
+	uint32_t link_dma_ch;
 };
 
 /* generic volume component */
