@@ -436,9 +436,9 @@ struct comp_dev *comp_new(struct sof_ipc_comp *comp)
 	return cdev;
 }
 
-int ipc_pipeline_new(struct ipc *ipc,
-	struct sof_ipc_pipe_new *pipe_desc)
+int ipc_pipeline_new(struct ipc *ipc, ipc_pipe_new *_pipe_desc)
 {
+	struct sof_ipc_pipe_new *pipe_desc = ipc_from_pipe_new(_pipe_desc);
 	struct ipc_comp_dev *ipc_pipe;
 	struct pipeline *pipe;
 	int ret;
@@ -769,9 +769,9 @@ static int ipc_buffer_to_comp_connect(struct ipc_comp_dev *buffer,
 	return ret;
 }
 
-int ipc_comp_connect(struct ipc *ipc,
-	struct sof_ipc_pipe_comp_connect *connect)
+int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 {
+	struct sof_ipc_pipe_comp_connect *connect = ipc_from_pipe_connect(_connect);
 	struct ipc_comp_dev *icd_source;
 	struct ipc_comp_dev *icd_sink;
 
@@ -804,8 +804,9 @@ int ipc_comp_connect(struct ipc *ipc,
 	}
 }
 
-int ipc_comp_new(struct ipc *ipc, struct sof_ipc_comp *comp)
+int ipc_comp_new(struct ipc *ipc, ipc_comp *_comp)
 {
+	struct sof_ipc_comp *comp = ipc_from_comp_new(_comp);
 	struct comp_dev *cd;
 	struct ipc_comp_dev *icd;
 
