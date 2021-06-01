@@ -52,7 +52,7 @@ int dma_trace_host_buffer(struct dma_trace_data *d,
 			  struct dma_sg_elem_array *elem_array,
 			  uint32_t host_size);
 int dma_trace_enable(struct dma_trace_data *d);
-void dma_trace_flush(void *t);
+void dma_trace_flush(void *destination);
 void dma_trace_on(void);
 void dma_trace_off(void);
 

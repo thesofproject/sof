@@ -137,7 +137,7 @@ struct trace_filter {
 				     ctx, id_1, id_2,			\
 				     format, ##__VA_ARGS__)
 
-void trace_flush(void);
+void trace_flush_dma_to_mbox(void);
 void trace_on(void);
 void trace_off(void);
 void trace_init(struct sof *sof);
@@ -253,7 +253,7 @@ do {											\
 
 #define trace_point(x)  do {} while (0)
 
-static inline void trace_flush(void) { }
+static inline void trace_flush_dma_to_mbox(void) { }
 static inline void trace_on(void) { }
 static inline void trace_off(void) { }
 static inline void trace_init(struct sof *sof) { }

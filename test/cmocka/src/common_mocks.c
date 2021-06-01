@@ -111,7 +111,7 @@ void WEAK trace_log_filtered(bool send_atomic, const void *log_entry, const stru
 	(void) arg_count;
 }
 
-void WEAK trace_flush(void)
+void WEAK trace_flush_dma_to_mbox(void)
 {
 }
 

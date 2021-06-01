@@ -81,9 +81,8 @@ void panic_dump(uint32_t p, struct sof_ipc_panic_info *panic_info,
 	count = MAILBOX_EXCEPTION_SIZE -
 		(size_t)(ext_offset - (char *)mailbox_get_exception_base());
 
-	/* flush last trace messages */
 #if CONFIG_TRACE
-	trace_flush();
+	trace_flush_dma_to_mbox();
 #endif
 
 	/* dump stack frames */

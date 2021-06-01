@@ -463,7 +463,7 @@ int trace_filter_update(const struct trace_filter *filter)
 }
 
 /** Sends all pending DMA messages to mailbox (for emergencies) */
-void trace_flush(void)
+void trace_flush_dma_to_mbox(void)
 {
 	struct trace *trace = trace_get();
 	volatile uint64_t *t;
