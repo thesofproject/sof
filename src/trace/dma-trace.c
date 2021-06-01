@@ -352,9 +352,6 @@ int dma_trace_enable(struct dma_trace_data *d)
 		goto out;
 #endif
 
-	/* flush fw description message */
-	trace_flush();
-
 	/* validate DMA context */
 	if (!d->dc.dmac || !d->dc.chan) {
 		tr_err_atomic(&dt_tr, "dma_trace_enable(): not valid");
