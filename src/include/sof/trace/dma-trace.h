@@ -59,6 +59,11 @@ void dma_trace_off(void);
 void dtrace_event(const char *e, uint32_t size);
 void dtrace_event_atomic(const char *e, uint32_t length);
 
+static inline bool dma_trace_initialized(const struct dma_trace_data *d)
+{
+	return d && d->dmatb.addr;
+}
+
 static inline struct dma_trace_data *dma_trace_data_get(void)
 {
 	return sof_get()->dmat;
