@@ -814,7 +814,7 @@ static int hda_dma_probe(struct dma *dma)
 		chan->status = COMP_STATE_INIT;
 		chan->core = DMA_CORE_INVALID;
 
-		hda_chan = rzalloc(SOF_MEM_ZONE_SYS_RUNTIME, 0,
+		hda_chan = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0,
 				   SOF_MEM_CAPS_RAM,
 				   sizeof(struct hda_chan_data));
 		if (!hda_chan) {
