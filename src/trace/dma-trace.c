@@ -379,9 +379,8 @@ void dma_trace_flush(void *t)
 	int32_t wrap_count;
 	int ret;
 
-	if (!trace_data || !trace_data->dmatb.addr) {
+	if (!dma_trace_initialized(trace_data))
 		return;
-	}
 
 	buffer = &trace_data->dmatb;
 	avail = buffer->avail;
@@ -553,7 +552,7 @@ void dtrace_event(const char *e, uint32_t length)
 	struct dma_trace_buf *buffer = NULL;
 	unsigned long flags;
 
-	if (!trace_data || !trace_data->dmatb.addr ||
+	if (!dma_trace_initialized(trace_data) ||
 	    length > DMA_TRACE_LOCAL_SIZE / 8 || length == 0) {
 		return;
 	}
@@ -591,7 +590,7 @@ void dtrace_event_atomic(const char *e, uint32_t length)
 {
 	struct dma_trace_data *trace_data = dma_trace_data_get();
 
-	if (!trace_data || !trace_data->dmatb.addr ||
+	if (!dma_trace_initialized(trace_data) ||
 	    length > DMA_TRACE_LOCAL_SIZE / 8 || length == 0) {
 		return;
 	}
