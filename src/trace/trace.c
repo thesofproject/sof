@@ -508,8 +508,6 @@ void trace_off(void)
 
 void trace_init(struct sof *sof)
 {
-	dma_trace_init_early(sof);
-
 	sof->trace = rzalloc(SOF_MEM_ZONE_SYS_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*sof->trace));
 	sof->trace->enable = 1;
 	sof->trace->pos = 0;
@@ -521,4 +519,6 @@ void trace_init(struct sof *sof)
 	bzero((void *)MAILBOX_TRACE_BASE, MAILBOX_TRACE_SIZE);
 	dcache_writeback_invalidate_region((void *)MAILBOX_TRACE_BASE,
 					   MAILBOX_TRACE_SIZE);
+
+	dma_trace_init_early(sof);
 }
