@@ -9,6 +9,10 @@
  *
  * Some of the structures may contain programming implementations that makes them
  * unsuitable for generic use and general usage.
+ *
+ * This code is mostly copied "as-is" from existing C++ interface files hence the use of
+ * different style in places. The intention is to keep the interface as close as possible to
+ * original so it's easier to track changes with IPC host code.
  */
 
 /**
@@ -23,7 +27,6 @@
 #include <ipc4/header.h>
 
 /* ipc4 notification msg */
-
 enum sof_ipc4_notification_type {
 	SOF_IPC4_NOTIFY_PHRASE_DETECTED		= 4,
 	SOF_IPC4_NOTIFY_RESOURCE_EVENT		= 5,
@@ -43,7 +46,6 @@ enum sof_ipc4_notification_type {
 #define SOF_IPC4_REPLY_STATUS_MASK	0xFFFFFF
 #define SOF_IPC4_GLB_NOTIFY_TYPE_SHIFT	16
 #define SOF_IPC4_GLB_NOTIFY_MSG_TYPE_SHIFT	24
-
 
 #define SOF_IPC4_FW_READY \
 		(((SOF_IPC4_NOTIFY_FW_READY) << (SOF_IPC4_GLB_NOTIFY_TYPE_SHIFT)) |\
