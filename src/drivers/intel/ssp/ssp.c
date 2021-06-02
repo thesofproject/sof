@@ -286,8 +286,8 @@ static int ssp_set_config(struct dai *dai, struct ipc_config_dai *common_config,
 	 */
 	sscr0 = SSCR0_PSP | SSCR0_RIM | SSCR0_TIM;
 
-	/* sscr1 dynamic settings are SFRMDIR, SCLKDIR, SCFR */
-	sscr1 = SSCR1_TTE | SSCR1_TTELP | SSCR1_TRAIL | SSCR1_RSRE | SSCR1_TSRE;
+	/* sscr1 dynamic settings are SFRMDIR, SCLKDIR, SCFR, RSRE, TSRE */
+	sscr1 = SSCR1_TTE | SSCR1_TTELP | SSCR1_TRAIL;
 
 	/* sscr2 dynamic setting is LJDFD */
 	sscr2 = SSCR2_SDFD | SSCR2_TURM1;
@@ -738,6 +738,12 @@ static int ssp_set_config(struct dai *dai, struct ipc_config_dai *common_config,
 			ssp->clk_active |= SSP_CLK_BCLK_ES_REQ;
 
 			if (enable_sse) {
+
+				/* enable TRSE/RSRE before SSE */
+				ssp_update_bits(dai, SSCR1,
+						SSCR1_TSRE | SSCR1_RSRE,
+						SSCR1_TSRE | SSCR1_RSRE);
+
 				/* enable port */
 				ssp_update_bits(dai, SSCR0, SSCR0_SSE, SSCR0_SSE);
 
@@ -753,6 +759,11 @@ static int ssp_set_config(struct dai *dai, struct ipc_config_dai *common_config,
 			dai_info(dai, "ssp_set_config(): hw_free stage: releasing BCLK clocks for SSP%d...",
 				 dai->index);
 			if (ssp->clk_active & SSP_CLK_BCLK_ACTIVE) {
+				/* clear TRSE/RSRE before SSE */
+				ssp_update_bits(dai, SSCR1,
+						SSCR1_TSRE | SSCR1_RSRE,
+						0);
+
 				ssp_update_bits(dai, SSCR0, SSCR0_SSE, 0);
 				dai_info(dai, "ssp_set_config(): SSE clear for SSP%d", dai->index);
 			}
@@ -873,6 +884,11 @@ static void ssp_start(struct dai *dai, int direction)
 	ssp_pre_start(dai);
 
 	if (!(ssp->clk_active & SSP_CLK_BCLK_ES_REQ)) {
+		/* enable TRSE/RSRE before SSE */
+		ssp_update_bits(dai, SSCR1,
+				SSCR1_TSRE | SSCR1_RSRE,
+				SSCR1_TSRE | SSCR1_RSRE);
+
 		/* enable port */
 		ssp_update_bits(dai, SSCR0, SSCR0_SSE, SSCR0_SSE);
 		dai_info(dai, "ssp_start(): SSE set for SSP%d", dai->index);
@@ -890,13 +906,10 @@ static void ssp_start(struct dai *dai, int direction)
 	}
 
 	/* enable DMA */
-	if (direction == DAI_DIR_PLAYBACK) {
-		ssp_update_bits(dai, SSCR1, SSCR1_TSRE, SSCR1_TSRE);
+	if (direction == DAI_DIR_PLAYBACK)
 		ssp_update_bits(dai, SSTSA, SSTSA_TXEN, SSTSA_TXEN);
-	} else {
-		ssp_update_bits(dai, SSCR1, SSCR1_RSRE, SSCR1_RSRE);
+	else
 		ssp_update_bits(dai, SSRSA, SSRSA_RXEN, SSRSA_RXEN);
-	}
 
 	/* wait to get valid fifo status */
 	wait_delay(PLATFORM_SSP_DELAY);
@@ -917,7 +930,6 @@ static void ssp_stop(struct dai *dai, int direction)
 	/* stop Rx if neeed */
 	if (direction == DAI_DIR_CAPTURE &&
 	    ssp->state[SOF_IPC_STREAM_CAPTURE] != COMP_STATE_PREPARE) {
-		ssp_update_bits(dai, SSCR1, SSCR1_RSRE, 0);
 		ssp_update_bits(dai, SSRSA, SSRSA_RXEN, 0);
 		ssp_empty_rx_fifo(dai);
 		ssp->state[SOF_IPC_STREAM_CAPTURE] = COMP_STATE_PREPARE;
@@ -928,7 +940,6 @@ static void ssp_stop(struct dai *dai, int direction)
 	if (direction == DAI_DIR_PLAYBACK &&
 	    ssp->state[SOF_IPC_STREAM_PLAYBACK] != COMP_STATE_PREPARE) {
 		ssp_empty_tx_fifo(dai);
-		ssp_update_bits(dai, SSCR1, SSCR1_TSRE, 0);
 		ssp_update_bits(dai, SSTSA, SSTSA_TXEN, 0);
 		ssp->state[SOF_IPC_STREAM_PLAYBACK] = COMP_STATE_PREPARE;
 		dai_info(dai, "ssp_stop(), TX stop");
@@ -938,6 +949,11 @@ static void ssp_stop(struct dai *dai, int direction)
 	if (ssp->state[SOF_IPC_STREAM_CAPTURE] == COMP_STATE_PREPARE &&
 	    ssp->state[SOF_IPC_STREAM_PLAYBACK] == COMP_STATE_PREPARE) {
 		if (!(ssp->clk_active & SSP_CLK_BCLK_ES_REQ)) {
+			/* clear TRSE/RSRE before SSE */
+			ssp_update_bits(dai, SSCR1,
+					SSCR1_TSRE | SSCR1_RSRE,
+					0);
+
 			ssp_update_bits(dai, SSCR0, SSCR0_SSE, 0);
 			dai_info(dai, "ssp_stop(): SSE clear SSP%d", dai->index);
 		}
