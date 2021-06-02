@@ -109,10 +109,8 @@ static void schedule_ll_task_done(struct ll_schedule_data *sch,
 	 * If this was the last task of the core, unregister the client/core
 	 */
 	if (atomic_sub(&sch->num_tasks, 1) == 1 &&
-	    sch->domain->registered[cpu_get_id()]) {
+	    sch->domain->registered[cpu_get_id()])
 		sch->domain->registered[cpu_get_id()] = false;
-		atomic_sub(&sch->domain->registered_cores, 1);
-	}
 
 	tr_info(&ll_tr, "task complete %p %pU", task, task->uid);
 	tr_info(&ll_tr, "num_tasks %d total_num_tasks %d",
