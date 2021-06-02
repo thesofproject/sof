@@ -87,7 +87,7 @@ struct sof;
 #define SRAM_ALIAS_MASK		0xFF000000
 #define SRAM_ALIAS_OFFSET	SRAM_UNCACHED_ALIAS
 
-#if !defined UNIT_TEST && (CAVS_VERSION <= CAVS_VERSION_1_8 || !defined __ZEPHYR__)
+#if !defined UNIT_TEST
 #define uncache_to_cache(address) \
 	((__typeof__(address))((uint32_t)(address) | SRAM_ALIAS_OFFSET))
 #define cache_to_uncache(address) \
