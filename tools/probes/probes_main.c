@@ -176,6 +176,18 @@ int validate_data_packet(struct probe_data_packet *data_packet)
 	}
 }
 
+int process_sync(struct probe_data_packet *packet, uint32_t **w_ptr, uint32_t *total_data_to_copy)
+{
+	/* request to copy data_size from probe packet */
+	*total_data_to_copy = packet->data_size_bytes /
+					 sizeof(uint32_t);
+	if (packet->data_size_bytes > PACKET_MAX_SIZE)
+		packet = realloc(packet,
+				 sizeof(struct probe_data_packet) + packet->data_size_bytes);
+	*w_ptr = (uint32_t *)&packet->data;
+	return 0;
+}
+
 void parse_data(char *file_in)
 {
 	FILE *fd_in;
@@ -250,14 +262,7 @@ void parse_data(char *file_in)
 					break;
 				case SYNC:
 					/* SYNC -> CHECK */
-					/* request to copy data_size from probe packet */
-					total_data_to_copy = packet->data_size_bytes /
-							     sizeof(uint32_t);
-					if (packet->data_size_bytes > PACKET_MAX_SIZE)
-						packet = realloc(packet,
-								 sizeof(struct probe_data_packet) +
-								 packet->data_size_bytes);
-					w_ptr = (uint32_t *)&packet->data;
+					process_sync(packet, &w_ptr, &total_data_to_copy);
 					state = CHECK;
 					break;
 				case CHECK:
