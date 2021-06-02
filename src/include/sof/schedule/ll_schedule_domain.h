@@ -119,6 +119,7 @@ static inline int domain_register(struct ll_schedule_domain *domain,
 				  uint64_t period, struct task *task,
 				  void (*handler)(void *arg), void *arg)
 {
+	int core = cpu_get_id();
 	int ret;
 
 	assert(domain->ops->domain_register);
@@ -129,9 +130,9 @@ static inline int domain_register(struct ll_schedule_domain *domain,
 		/* registered one more task, increase the count */
 		atomic_add(&domain->total_num_tasks, 1);
 
-		if (!domain->registered[cpu_get_id()])
+		if (!domain->registered[core])
 			/* first task of the core, new client registered */
-			domain->registered[cpu_get_id()] = true;
+			domain->registered[core] = true;
 	}
 
 	return ret;
@@ -140,6 +141,7 @@ static inline int domain_register(struct ll_schedule_domain *domain,
 static inline void domain_unregister(struct ll_schedule_domain *domain,
 				     struct task *task, uint32_t num_tasks)
 {
+	int core = cpu_get_id();
 	int ret;
 
 	assert(domain->ops->domain_unregister);
@@ -151,8 +153,8 @@ static inline void domain_unregister(struct ll_schedule_domain *domain,
 		atomic_sub(&domain->total_num_tasks, 1);
 
 		/* the last task of the core, unregister the client/core */
-		if (!num_tasks && domain->registered[cpu_get_id()])
-			domain->registered[cpu_get_id()] = false;
+		if (!num_tasks && domain->registered[core])
+			domain->registered[core] = false;
 	}
 }
 
