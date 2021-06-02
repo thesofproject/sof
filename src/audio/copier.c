@@ -155,15 +155,15 @@ static struct comp_dev *create_dai(struct comp_ipc_config *config, struct Copier
 		dai.link_dma_ch = node_id->f.v_index;
 		dai.is_config_blob = false;
 		break;
-	case kI2sLinkOutputClass:
-	case kI2sLinkInputClass:
+	case ipc4_i2s_link_output_class:
+	case ipc4_i2s_link_input_class:
 		dai.type = SOF_DAI_INTEL_SSP;
 		break;
-	case kALHLinkOutputClass:
-	case kALHLinkInputClass:
+	case ipc4_alh_link_output_class:
+	case ipc4_alh_link_input_class:
 		dai.type = SOF_DAI_INTEL_ALH;
 		break;
-	case kDmicLinkInputClass:
+	case ipc4_dmic_link_input_class:
 		dai.type = SOF_DAI_INTEL_DMIC;
 		break;
 	default:
@@ -226,7 +226,7 @@ static struct comp_dev *copier_new(const struct comp_driver *drv,
 	list_init(&dev->bsource_list);
 	list_init(&dev->bsink_list);
 
-	if (kInvalidNodeId == copier->gtw_cfg.node_id) {
+	if (IPC4_INVALID_NODE_ID == copier->gtw_cfg.node_id) {
 		//nothing to do for converter
 	} else {
 		struct ipc_comp_dev *ipc_pipe;
@@ -260,11 +260,11 @@ static struct comp_dev *copier_new(const struct comp_driver *drv,
 			break;
 		case ipc4_hda_link_output_class:
 		case ipc4_hda_link_input_class:
-		case kDmicLinkInputClass:
-		case kI2sLinkOutputClass:
-		case kI2sLinkInputClass:
-		case kALHLinkOutputClass:
-		case kALHLinkInputClass:
+		case ipc4_dmic_link_input_class:
+		case ipc4_i2s_link_output_class:
+		case ipc4_i2s_link_input_class:
+		case ipc4_alh_link_output_class:
+		case ipc4_alh_link_input_class:
 		cd->dai = create_dai(config, &cd->config, &node_id, ipc_pipe->pipeline);
 		if (!cd->dai) {
 			comp_cl_err(&comp_copier, "unenable to create dai");

@@ -9,6 +9,10 @@
  *
  * Some of the structures may contain programming implementations that makes them
  * unsuitable for generic use and general usage.
+ *
+ * This code is mostly copied "as-is" from existing C++ interface files hence the use of
+ * different style in places. The intention is to keep the interface as close as possible to
+ * original so it's easier to track changes with IPC host code.
  */
 
 /**

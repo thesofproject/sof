@@ -9,6 +9,10 @@
  *
  * Some of the structures may contain programming implementations that makes them
  * unsuitable for generic use and general usage.
+ *
+ * This code is mostly copied "as-is" from existing C++ interface files hence the use of
+ * different style in places. The intention is to keep the interface as close as possible to
+ * original so it's easier to track changes with IPC host code.
  */
 
 /**
@@ -37,74 +41,75 @@
 //typedef intel_adsp::LegacyModuleInitialSettings BaseModuleCfg;
 
 //! Linear Link Position Reading Data
-struct LlpReading
+struct ipc4_llp_reading
 {
-    //! lower part of 64-bit LLP
-    uint32_t llp_l;
-    //! upper part of 64-bit LLP
-    uint32_t llp_u;
-    //! lower part of 64-bit Wallclock
-    uint32_t wclk_l;
-    //! upper part of 64-bit Wallclock
-    uint32_t wclk_u;
+	//! lower part of 64-bit LLP
+	uint32_t llp_l;
+	//! upper part of 64-bit LLP
+	uint32_t llp_u;
+	//! lower part of 64-bit Wallclock
+	uint32_t wclk_l;
+	//! upper part of 64-bit Wallclock
+	uint32_t wclk_u;
 } __attribute__((packed, aligned(4)));
 
-struct LlpReadingExtended
+struct ipc4_llp_reading_extended
 {
-    struct LlpReading llp_reading;
-    //! total processed data (low part)
-    uint32_t tpd_low;
-    //! total processed data (high part)
-    uint32_t tpd_high;
+	struct ipc4_llp_reading llp_reading;
+	//! total processed data (low part)
+	uint32_t tpd_low;
+	//! total processed data (high part)
+	uint32_t tpd_high;
 } __attribute__((packed, aligned(4)));
 
-struct BaseModuleCfgExt
+struct ipc4_base_module_cfg_ext
 {
-    /*!
-     * \brief Specifies number of items in input_pins array. Maximum size is 8.
-     */
-    uint16_t           nb_input_pins;
-    /*!
-     * \brief Specifies number of items in output_pins array. Maximum size is 8.
-     */
-    uint16_t           nb_output_pins;
-    /*!
-     * \brief Not used, set to 0.
-     */
-    uint8_t            reserved[8];
-    /*!
-     * \brief Length of optional module specific parameters that follow BaseModuleCfgExt.
-     */
-    uint32_t           priv_param_length;
-    /*!
-     * \brief Specifies format of input pins.
-     * \remarks Pin format arrays may be non-continuous i.e. may contain pin #0 format followed by pin #2 format
-     *          in case pin #1 will not be in use. FW assigned format of the pin based on pin_index,
-     *          not on a position of the item in the array. Applies to both input and output pins.
-     */
-    struct ipc4_input_pin_format     input_pins[1];
-    /*!
-     * \brief Specifies format of output pins.
-     */
-    struct ipc4_output_pin_format    output_pins[1];
+	/*!
+	 * \brief Specifies number of items in input_pins array. Maximum size is 8.
+	 */
+	uint16_t nb_input_pins;
+	/*!
+	 * \brief Specifies number of items in output_pins array. Maximum size is 8.
+	 */
+	uint16_t nb_output_pins;
+	/*!
+	 * \brief Not used, set to 0.
+	 */
+	uint8_t reserved[8];
+	/*!
+	 * \brief Length of optional module specific parameters that follow BaseModuleCfgExt.
+	 */
+	uint32_t  priv_param_length;
+	/*!
+	 * \brief Specifies format of input pins.
+	 * \remarks Pin format arrays may be non-continuous i.e. may contain pin #0 format followed by pin #2 format
+	 *          in case pin #1 will not be in use. FW assigned format of the pin based on pin_index,
+	 *          not on a position of the item in the array. Applies to both input and output pins.
+	 */
+	struct ipc4_input_pin_format input_pins[1];
+	/*!
+	 * \brief Specifies format of output pins.
+	 */
+	struct ipc4_output_pin_format output_pins[1];
 } __attribute__((packed, aligned(4)));
 
 /**
  * This enum defines short 16bit parameters common for all modules.
  * Value of module specific parameters have to be less than 0x3000.
  */
-enum BaseModuleParams
+enum ipc4_base_module_params
 {
-    /**
-     * Handled inside LargeConfigGet of module instance
-     */
-    MOD_INST_PROPS  = 0xFE,
-    /**
-     * Handled inside ConfigSet of module instance
-     */
-    MOD_INST_ENABLE = 0x3000
+	/**
+	* Handled inside LargeConfigGet of module instance
+	*/
+	MOD_INST_PROPS  = 0xFE,
+	/**
+	* Handled inside ConfigSet of module instance
+	*/
+	MOD_INST_ENABLE = 0x3000
 };
 
+//TODO: needs to be moved out of IPC ABI header
 static const uint32_t INVALID_QUEUE_ID = 0xFFFFFFFF;
 
 /*!
@@ -113,23 +118,23 @@ static const uint32_t INVALID_QUEUE_ID = 0xFFFFFFFF;
 */
 struct PinProps
 {
-    /*! Type of the connected stream. */
-    enum ipc4_stream_type	stream_type;
+	/*! Type of the connected stream. */
+	enum ipc4_stream_type stream_type;
 
-    /*! Audio format of the stream.
-        The content is valid in case of ePcm stream_type. */
-    struct ipc4_audio_format	format;
+	/*! Audio format of the stream.
+	  The content is valid in case of ePcm stream_type. */
+	struct ipc4_audio_format format;
 
-    /*! Unique ID of the physical queue connected to the pin.
-        If there is no queue connected, then -1 (invalid queue ID) is set. */
-	uint32_t	phys_queue_id;
+	/*! Unique ID of the physical queue connected to the pin.
+	  If there is no queue connected, then -1 (invalid queue ID) is set. */
+	uint32_t phys_queue_id;
 } __attribute__((packed, aligned(4)));
 
 
 struct PinListInfo
 {
-    uint32_t pin_count;
-    struct PinProps pin_info[1];
+	uint32_t pin_count;
+	struct PinProps pin_info[1];
 } __attribute__((packed, aligned(4)));
 
 /**
@@ -138,8 +143,8 @@ struct PinListInfo
  */
 struct InOutGateway
 {
-    uint32_t  input_gateway;
-    uint32_t  output_gateway;
+	uint32_t  input_gateway;
+	uint32_t  output_gateway;
 } __attribute__((packed, aligned(4)));
 
 /**
@@ -148,25 +153,25 @@ struct InOutGateway
  */
 struct ModuleInstanceProps
 {
-    uint32_t  id;
-    uint32_t  dp_queue_type;
-    uint32_t  queue_alignment;
-    uint32_t  cp_usage_mask;
-    uint32_t  stack_bytes;
-    uint32_t  bss_total_bytes;
-    uint32_t  bss_used_bytes;
-    uint32_t  ibs_bytes;
-    uint32_t  obs_bytes;
-    uint32_t  cpc;
-    uint32_t  cpc_peak;
-    // TODO: uncomment or remove once performance measurements collection mechanism
-    //       is agreed and aligned between debugAgent, OED and FW
-    // uint32_t  cpc_avg;
-    // uint32_t  cpc_last;
-    struct PinListInfo input_queues;
-    struct PinListInfo output_queues;
-    uint32_t  input_gateway;
-    uint32_t  output_gateway;
+	uint32_t  id;
+	uint32_t  dp_queue_type;
+	uint32_t  queue_alignment;
+	uint32_t  cp_usage_mask;
+	uint32_t  stack_bytes;
+	uint32_t  bss_total_bytes;
+	uint32_t  bss_used_bytes;
+	uint32_t  ibs_bytes;
+	uint32_t  obs_bytes;
+	uint32_t  cpc;
+	uint32_t  cpc_peak;
+	// TODO: uncomment or remove once performance measurements collection mechanism
+	//       is agreed and aligned between debugAgent, OED and FW
+	// uint32_t  cpc_avg;
+	// uint32_t  cpc_last;
+	struct PinListInfo input_queues;
+	struct PinListInfo output_queues;
+	uint32_t  input_gateway;
+	uint32_t  output_gateway;
 } __attribute__((packed, aligned(4)));
 
 /**
@@ -176,13 +181,12 @@ struct ModuleInstanceProps
  */
 union CfgParamIdData
 {
-    uint32_t dw;
-    struct
-    {
-        uint32_t data16 : 16;   ///< Input/Output small config data
-        uint32_t id     : 14;   ///< input parameter ID
-        uint32_t _rsvd  : 2;
-    } f;
+	uint32_t dw;
+	struct {
+		uint32_t data16 : 16;   ///< Input/Output small config data
+		uint32_t id     : 14;   ///< input parameter ID
+		uint32_t _rsvd  : 2;
+	} f;
 } __attribute__((packed, aligned(4)));
 
 /*!
@@ -276,55 +280,55 @@ static const size_t COPIER_MODULE_OUTPUT_PINS_COUNT = 4;
 
 enum CopierFeatures
 {
-    /*!
-      If FAST_MODE bit is set in CopierModuleCfg::copier_feature_mask then
-      copier is able to transfer more than ibs. This bit shall be set only if
-      all sinks are connected to data processing queue.
-    */
-    FAST_MODE = 0
+	/*!
+	  If FAST_MODE bit is set in CopierModuleCfg::copier_feature_mask then
+	  copier is able to transfer more than ibs. This bit shall be set only if
+	  all sinks are connected to data processing queue.
+	*/
+	FAST_MODE = 0
 };
 
 struct CopierGatewayCfg
 {
-    //! ID of Gateway Node.
-    /*!
-      If node_id is valid, i.e. != -1, copier instance is connected to the
-      specified gateway using either input pin 0 or output pin 0 depending on
-      the node's direction, otherwise the data in this structure is ignored.
-    */
-    uint32_t node_id;
-    //! Preferred Gateway DMA buffer size (in bytes).
-    /*!
-      FW attempts to allocate DMA buffer according to this value, however it may
-      fall back to IBS/OBS * 2 in case there is no memory available for deeper
-      buffering.
-    */
-    uint32_t dma_buffer_size;
-    //! Length of gateway node configuration blob specified in #config_data.
-    /*!
-      \note Length must be specified in number of dwords.
+	//! ID of Gateway Node.
+	/*!
+	  If node_id is valid, i.e. != -1, copier instance is connected to the
+	  specified gateway using either input pin 0 or output pin 0 depending on
+	  the node's direction, otherwise the data in this structure is ignored.
+	*/
+	uint32_t node_id;
+	//! Preferred Gateway DMA buffer size (in bytes).
+	/*!
+	  FW attempts to allocate DMA buffer according to this value, however it may
+	  fall back to IBS/OBS * 2 in case there is no memory available for deeper
+	  buffering.
+	*/
+	uint32_t dma_buffer_size;
+	//! Length of gateway node configuration blob specified in #config_data.
+	/*!
+	\note Length must be specified in number of dwords.
 
-      Refer to the specific gateway documentation for details on the node
-      configuration blob requirements.
-    */
-    uint32_t config_length;
-    //! Gateway node configuration blob.
-    uint32_t config_data[1];
+	  Refer to the specific gateway documentation for details on the node
+	  configuration blob requirements.
+	*/
+	uint32_t config_length;
+	//! Gateway node configuration blob.
+	uint32_t config_data[1];
 } __attribute__((packed, aligned(4)));
 
 struct CopierModuleCfg
 {
 	struct BaseModuleCfg base;
 
-    //! Audio format for output pin 0.
-    struct ipc4_audio_format out_fmt;
-    //! Mask of allowed copier features.
-    /*!
-      \see CopierFeatures
-    */
-    uint32_t copier_feature_mask;
-    //! Gateway Configuration.
-    struct CopierGatewayCfg  gtw_cfg;
+	//! Audio format for output pin 0.
+	struct ipc4_audio_format out_fmt;
+	//! Mask of allowed copier features.
+	/*!
+	\see CopierFeatures
+	*/
+	uint32_t copier_feature_mask;
+	//! Gateway Configuration.
+	struct CopierGatewayCfg  gtw_cfg;
 } __attribute__((packed, aligned(4)));
 
 struct copier_data {
@@ -339,79 +343,79 @@ struct copier_data {
 
 enum CopierModuleConfigParams
 {
-    /*!
-      Use LARGE_CONFIG_SET to initialize timestamp event. Ipc mailbox must
-      contain properly built CopierConfigTimestampInitData struct.
-    */
-    COPIER_MODULE_CFG_PARAM_TIMESTAMP_INIT = 1,
-    /*!
-      Use LARGE_CONFIG_SET to initialize copier sink. Ipc mailbox must contain
-      properly built CopierConfigSetSinkFormat struct.
-    */
-    COPIER_MODULE_CFG_PARAM_SET_SINK_FORMAT = 2,
-    /*!
-      Use LARGE_CONFIG_SET to initialize and enable on Copier data segment
-      event. Ipc mailbox must contain properly built DataSegmentEnabled struct.
-    */
-    COPIER_MODULE_CFG_PARAM_DATA_SEGMENT_ENABLED = 3,
-    /*!
-      Use LARGE_CONFIG_GET to retrieve Linear Link Position (LLP) value for non
-      HD-A gateways.
+	/*!
+	  Use LARGE_CONFIG_SET to initialize timestamp event. Ipc mailbox must
+	  contain properly built CopierConfigTimestampInitData struct.
+	*/
+	COPIER_MODULE_CFG_PARAM_TIMESTAMP_INIT = 1,
+	/*!
+	  Use LARGE_CONFIG_SET to initialize copier sink. Ipc mailbox must contain
+	  properly built CopierConfigSetSinkFormat struct.
+	*/
+	COPIER_MODULE_CFG_PARAM_SET_SINK_FORMAT = 2,
+	/*!
+	  Use LARGE_CONFIG_SET to initialize and enable on Copier data segment
+	  event. Ipc mailbox must contain properly built DataSegmentEnabled struct.
+	*/
+	COPIER_MODULE_CFG_PARAM_DATA_SEGMENT_ENABLED = 3,
+	/*!
+	  Use LARGE_CONFIG_GET to retrieve Linear Link Position (LLP) value for non
+	  HD-A gateways.
 
-      \see LlpReading
-    */
-    COPIER_MODULE_CFG_PARAM_LLP_READING = 4,
-    /*!
-      Use LARGE_CONFIG_GET to retrieve Linear Link Position (LLP) value for non
-      HD-A gateways and corresponding total processed data
+	  \see LlpReading
+	*/
+	COPIER_MODULE_CFG_PARAM_LLP_READING = 4,
+	/*!
+	  Use LARGE_CONFIG_GET to retrieve Linear Link Position (LLP) value for non
+	  HD-A gateways and corresponding total processed data
 
-      \see LlpReadingExtended
+	  \see LlpReadingExtended
 
-      Sample code to retrieve LlpReadingExtended:
-      \code
-      Message::LargeConfigOp message(true, COPIER_MODULE_ID, KPB_INSTANCE_ID);
-      message.GetBits().large_param_id = COPIER_MODULE_CFG_PARAM_LLP_READING_EXTENDED;
-      message.GetBits().init_block = true;
-      message.GetBits().final_block = true;
-      message.GetBits().data_off_size = IPC_OUTPUT_MAILBOX;
+	  Sample code to retrieve LlpReadingExtended:
+	  \code
+	  Message::LargeConfigOp message(true, COPIER_MODULE_ID, KPB_INSTANCE_ID);
+	  message.GetBits().large_param_id = COPIER_MODULE_CFG_PARAM_LLP_READING_EXTENDED;
+	  message.GetBits().init_block = true;
+	  message.GetBits().final_block = true;
+	  message.GetBits().data_off_size = IPC_OUTPUT_MAILBOX;
 
-      LlpReadingExtended* output_mailbox = NULL;
-      send_ipc(message, input_mailbox, (uint8_t**)&output_mailbox);
+	  LlpReadingExtended* output_mailbox = NULL;
+	  send_ipc(message, input_mailbox, (uint8_t**)&output_mailbox);
 
-      \endcode
-    */
-    COPIER_MODULE_CFG_PARAM_LLP_READING_EXTENDED = 5,
-    /*!
-      Use LARGE_CONFIG_SET to setup attenuation on output pins. Data is just
-      uint32_t.
+	  \endcode
+	*/
+	COPIER_MODULE_CFG_PARAM_LLP_READING_EXTENDED = 5,
+	/*!
+	  Use LARGE_CONFIG_SET to setup attenuation on output pins. Data is just
+	  uint32_t.
 
-      \note Config is only allowed when output pin is set up for 32bit and
-            source is connected to Gateway
-    */
-    COPIER_MODULE_CFG_ATTENUATION = 6
+	  \note Config is only allowed when output pin is set up for 32bit and
+	    source is connected to Gateway
+	*/
+	COPIER_MODULE_CFG_ATTENUATION = 6
 };
 
 struct CopierConfigTimestampInitData
 {
-    //! Contains low-level configuration for timestamp init.
-    /*!
-      Passed-through directly into ifc _LOCAL_TS_Control Register of
-      corresponding HW i/f from DSP Timestamping Registers.
-    */
-    uint32_t tsctrl_reg;
+	//! Contains low-level configuration for timestamp init.
+	/*!
+	  Passed-through directly into ifc _LOCAL_TS_Control Register of
+	  corresponding HW i/f from DSP Timestamping Registers.
+	*/
+	uint32_t tsctrl_reg;
 } __attribute__((packed, aligned(4)));
 
 struct CopierConfigSetSinkFormat
 {
-    //! Id of sink
-    uint32_t sink_id;
-    //! Input format used by the source
-    /*!
-      \attention Must be the same as present if already initialized.
-    */
-    struct ipc4_audio_format source_fmt;
-    //! Output format used by the sink
-    struct ipc4_audio_format sink_fmt;
+	//! Id of sink
+	uint32_t sink_id;
+	//! Input format used by the source
+	/*!
+	  \attention Must be the same as present if already initialized.
+	*/
+	struct ipc4_audio_format source_fmt;
+	//! Output format used by the sink
+	struct ipc4_audio_format sink_fmt;
 } __attribute__((packed, aligned(4)));
 
 static const uint32_t COPIER_DATA_SEGMENT_DISABLE = (0 << 0);
@@ -420,23 +424,23 @@ static const uint32_t COPIER_DATA_SEGMENT_RESTART = (1 << 1);
 
 struct DataSegmentEnabled
 {
-    //! Gateway node id
-    uint32_t node_id;
-    //! Indicates whether notification should be enabled (!=0) or disabled (=0).
-    /*!
-      Carries additional information. If bit 1 is set DS will be restarted
-      immediately.
-      Use only as logic or of COPIER_DATA_SEGMENT_*.
-      To disable:
-          COPIER_DATA_SEGMENT_DISABLE
-      To enable, but finish previous:
-          COPIER_DATA_SEGMENT_ENABLE
-      To enable, and apply right away:
-          COPIER_DATA_SEGMENT_ENABLE | COPIER_DATA_SEGMENT_RESTART
-    */
-    uint32_t enabled;
-    //! Data segment size (in bytes).
-    uint32_t data_seg_size;
+	//! Gateway node id
+	uint32_t node_id;
+	//! Indicates whether notification should be enabled (!=0) or disabled (=0).
+	/*!
+	  Carries additional information. If bit 1 is set DS will be restarted
+	  immediately.
+	  Use only as logic or of COPIER_DATA_SEGMENT_*.
+	  To disable:
+	    COPIER_DATA_SEGMENT_DISABLE
+	  To enable, but finish previous:
+	    COPIER_DATA_SEGMENT_ENABLE
+	  To enable, and apply right away:
+	    COPIER_DATA_SEGMENT_ENABLE | COPIER_DATA_SEGMENT_RESTART
+	  */
+	uint32_t enabled;
+	//! Data segment size (in bytes).
+	uint32_t data_seg_size;
 } __attribute__((packed, aligned(4)));
 
 #endif

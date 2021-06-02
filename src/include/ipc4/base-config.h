@@ -9,6 +9,10 @@
  *
  * Some of the structures may contain programming implementations that makes them
  * unsuitable for generic use and general usage.
+ *
+ * This code is mostly copied "as-is" from existing C++ interface files hence the use of
+ * different style in places. The intention is to keep the interface as close as possible to
+ * original so it's easier to track changes with IPC host code.
  */
 
 /**
@@ -116,10 +120,10 @@ struct ipc4_output_pin_format {
 };
 
 enum ipc4_stream_type {
-    ipc4_pcm = 0,                   ///< PCM stream
-    ipc4_mp3,                       ///< MP3 encoded stream
-    ipc4_aac,                       ///< AAC encoded stream
-    ipc4_max,
-    ipc4_invalid = 0xFF
+	ipc4_pcm = 0,                   ///< PCM stream
+	ipc4_mp3,                       ///< MP3 encoded stream
+	ipc4_aac,                       ///< AAC encoded stream
+	ipc4_max,
+	ipc4_invalid = 0xFF
 };
 #endif
