@@ -59,7 +59,6 @@ struct zephyr_domain_thread {
 	struct k_thread ll_thread;
 	void (*handler)(void *arg);
 	void *arg;
-	uint64_t period_us;
 };
 
 struct zephyr_domain {
@@ -83,6 +82,7 @@ static void zephyr_domain_thread_fn(void *p1, void *p2, void *p3)
 	}
 }
 
+/* Timer callback: runs in timer IRQ context */
 static void zephyr_domain_timer_fn(struct k_timer *timer)
 {
 	struct zephyr_domain *zephyr_domain = timer->user_data;
@@ -112,14 +112,8 @@ static int zephyr_domain_register(struct ll_schedule_domain *domain,
 	if (dt->handler)
 		return 0;
 
-	if (!zephyr_domain->timer.user_data) {
-		k_timer_init(&zephyr_domain->timer, zephyr_domain_timer_fn, NULL);
-		zephyr_domain->timer.user_data = zephyr_domain;
-	}
-
 	dt->handler = handler;
 	dt->arg = arg;
-	dt->period_us = period;
 
 	thread_name[sizeof(thread_name) - 2] = '0' + core;
 
@@ -135,8 +129,17 @@ static int zephyr_domain_register(struct ll_schedule_domain *domain,
 
 	k_thread_start(thread);
 
+	if (!zephyr_domain->timer.user_data) {
+		k_timeout_t start = {0};
+
+		k_timer_init(&zephyr_domain->timer, zephyr_domain_timer_fn, NULL);
+		zephyr_domain->timer.user_data = zephyr_domain;
+
+		k_timer_start(&zephyr_domain->timer, start, K_USEC(LL_TIMER_PERIOD_US));
+	}
+
 	tr_info(&ll_tr, "zephyr_domain_register domain->type %d domain->clk %d domain->ticks_per_ms %d period %d",
-		domain->type, domain->clk, domain->ticks_per_ms, (uint32_t)period);
+		domain->type, domain->clk, domain->ticks_per_ms, (uint32_t)LL_TIMER_PERIOD_US);
 
 	return 0;
 }
@@ -153,61 +156,16 @@ static int zephyr_domain_unregister(struct ll_schedule_domain *domain,
 	if (num_tasks)
 		return 0;
 
-	k_timer_stop(&zephyr_domain->timer);
-	zephyr_domain->domain_thread[core].handler = NULL;
+	if (!atomic_read(&domain->total_num_tasks))
+		k_timer_stop(&zephyr_domain->timer);
 
 	k_thread_abort(&zephyr_domain->domain_thread[core].ll_thread);
+	zephyr_domain->domain_thread[core].handler = NULL;
 
 	tr_info(&ll_tr, "zephyr_domain_unregister domain->type %d domain->clk %d",
 		domain->type, domain->clk);
 
 	return 0;
-}
-
-/* Can be called on any core, sets timer IRQ for core 0 if CONFIG_SMP_BOOT_DELAY */
-static void zephyr_domain_set(struct ll_schedule_domain *domain, uint64_t start)
-{
-	struct zephyr_domain *zephyr_domain = ll_sch_domain_get_pdata(domain);
-	uint64_t current = platform_timer_get_atomic(zephyr_domain->ll_timer);
-	uint64_t earliest_next = current + 1 + ZEPHYR_SCHED_COST;
-	uint64_t ticks_tout = domain->ticks_per_ms * LL_TIMER_PERIOD_US / 1000;
-	uint64_t ticks_req = MAX(start, earliest_next);
-	int core = cpu_get_id();
-	struct zephyr_domain_thread *dt = zephyr_domain->domain_thread + core;
-
-	if (ticks_req >= domain->next_tick - ZEPHYR_SCHED_COST)
-		return;
-
-	if (domain->next_tick <= current ||
-	    domain->next_tick > current + ticks_tout) {
-		k_ticks_t remaining = k_timer_remaining_ticks(&zephyr_domain->timer);
-
-		/* ll-scheduler expects .next_tick to be updated inside .set_domain() */
-		if (remaining) {
-			domain->next_tick = current + remaining;
-		} else {
-			k_timeout_t timeout, period;
-
-			/* have we overshot the period length ?? */
-			if (ticks_req > current + ticks_tout)
-				ticks_req = current + ticks_tout;
-
-			ticks_req -= ticks_req % CYC_PER_TICK;
-			if (ticks_req < earliest_next) {
-				/* The earliest schedule point has to be rounded up */
-				ticks_req = earliest_next + CYC_PER_TICK - 1;
-				ticks_req -= ticks_req % CYC_PER_TICK;
-			}
-
-			/* First call: start the timer */
-			timeout = K_TIMEOUT_ABS_CYC(ticks_req - current);
-			period = K_USEC(dt->period_us);
-
-			k_timer_start(&zephyr_domain->timer, timeout, period);
-
-			domain->next_tick = ticks_req;
-		}
-	}
 }
 
 static bool zephyr_domain_is_pending(struct ll_schedule_domain *domain,
@@ -221,7 +179,6 @@ static bool zephyr_domain_is_pending(struct ll_schedule_domain *domain,
 static const struct ll_schedule_domain_ops zephyr_domain_ops = {
 	.domain_register	= zephyr_domain_register,
 	.domain_unregister	= zephyr_domain_unregister,
-	.domain_set		= zephyr_domain_set,
 	.domain_is_pending	= zephyr_domain_is_pending
 };
 
