@@ -155,6 +155,6 @@ enum ipc4_status {
 	//! Reserved (IPC4_PIPELINE_ALREADY_EXISTS removed).
 	IPC4_RSVD_165 = 165,
 
-	IPC4_MAX_STATUS = ((1<<IXC_STATUS_BITS)-1)
+	IPC4_MAX_STATUS = ((1<<IPC4_IXC_STATUS_BITS)-1)
 };
 #endif
