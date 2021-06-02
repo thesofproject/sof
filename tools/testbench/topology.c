@@ -275,7 +275,7 @@ static int tplg_load_filewrite(int comp_id, int pipeline_id, int size,
 	filewrite->comp.id = comp_id;
 	filewrite->mode = FILE_WRITE;
 	filewrite->comp.hdr.size = sizeof(struct sof_ipc_comp_file);
-	filewrite->comp.type = SOF_COMP_FILEREAD;
+	filewrite->comp.type = SOF_COMP_FILEWRITE;
 	filewrite->comp.pipeline_id = pipeline_id;
 	filewrite->config.hdr.size = sizeof(struct sof_ipc_comp_config);
 	return 0;
