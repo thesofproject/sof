@@ -866,16 +866,6 @@ int ipc_comp_free(struct ipc *ipc, uint32_t comp_id)
 	if (icd->cd->state != COMP_STATE_READY)
 		return -EINVAL;
 
-	/* set pipeline sink/source/sched pointers to NULL if needed */
-	if (icd->cd->pipeline) {
-		if (icd->cd == icd->cd->pipeline->source_comp)
-			icd->cd->pipeline->source_comp = NULL;
-		if (icd->cd == icd->cd->pipeline->sink_comp)
-			icd->cd->pipeline->sink_comp = NULL;
-		if (icd->cd == icd->cd->pipeline->sched_comp)
-			icd->cd->pipeline->sched_comp = NULL;
-	}
-
 	/* free component and remove from list */
 	comp_free(icd->cd);
 
