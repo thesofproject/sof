@@ -125,20 +125,21 @@ int tb_pipeline_params(struct ipc *ipc, struct pipeline *p,
 	params.params.direction = SOF_IPC_STREAM_PLAYBACK;
 	params.params.rate = tp->fs_in;
 	params.params.channels = tp->channels;
+
 	switch (params.params.frame_fmt) {
-	case(SOF_IPC_FRAME_S16_LE):
+	case SOF_IPC_FRAME_S16_LE:
 		params.params.sample_container_bytes = 2;
 		params.params.sample_valid_bytes = 2;
 		params.params.host_period_bytes = fs_period * tp->channels *
 			params.params.sample_container_bytes;
 		break;
-	case(SOF_IPC_FRAME_S24_4LE):
+	case SOF_IPC_FRAME_S24_4LE:
 		params.params.sample_container_bytes = 4;
 		params.params.sample_valid_bytes = 3;
 		params.params.host_period_bytes = fs_period * tp->channels *
 			params.params.sample_container_bytes;
 		break;
-	case(SOF_IPC_FRAME_S32_LE):
+	case SOF_IPC_FRAME_S32_LE:
 		params.params.sample_container_bytes = 4;
 		params.params.sample_valid_bytes = 4;
 		params.params.host_period_bytes = fs_period * tp->channels *
