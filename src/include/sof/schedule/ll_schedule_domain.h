@@ -46,7 +46,6 @@ struct ll_schedule_domain {
 	uint64_t new_target_tick;	/**< for the next set, used during the reschedule stage */
 	spinlock_t lock;		/**< standard lock */
 	atomic_t total_num_tasks;	/**< total number of registered tasks */
-	atomic_t registered_cores;	/**< number of registered cores */
 	atomic_t enabled_cores;		/**< number of enabled cores */
 	uint32_t ticks_per_ms;		/**< number of clock ticks per ms */
 	int type;			/**< domain type */
@@ -92,7 +91,6 @@ static inline struct ll_schedule_domain *domain_init
 
 	spinlock_init(&domain->lock);
 	atomic_init(&domain->total_num_tasks, 0);
-	atomic_init(&domain->registered_cores, 0);
 	atomic_init(&domain->enabled_cores, 0);
 
 	return domain;
@@ -131,11 +129,9 @@ static inline int domain_register(struct ll_schedule_domain *domain,
 		/* registered one more task, increase the count */
 		atomic_add(&domain->total_num_tasks, 1);
 
-		if (!domain->registered[cpu_get_id()]) {
+		if (!domain->registered[cpu_get_id()])
 			/* first task of the core, new client registered */
 			domain->registered[cpu_get_id()] = true;
-			atomic_add(&domain->registered_cores, 1);
-		}
 	}
 
 	return ret;
@@ -155,10 +151,8 @@ static inline void domain_unregister(struct ll_schedule_domain *domain,
 		atomic_sub(&domain->total_num_tasks, 1);
 
 		/* the last task of the core, unregister the client/core */
-		if (!num_tasks && domain->registered[cpu_get_id()]) {
+		if (!num_tasks && domain->registered[cpu_get_id()])
 			domain->registered[cpu_get_id()] = false;
-			atomic_sub(&domain->registered_cores, 1);
-		}
 	}
 }
 
