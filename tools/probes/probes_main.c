@@ -178,12 +178,18 @@ int validate_data_packet(struct probe_data_packet *data_packet)
 
 int process_sync(struct probe_data_packet *packet, uint32_t **w_ptr, uint32_t *total_data_to_copy)
 {
+	struct probe_data_packet *temp_packet;
+
 	/* request to copy data_size from probe packet */
 	*total_data_to_copy = packet->data_size_bytes /
 					 sizeof(uint32_t);
-	if (packet->data_size_bytes > PACKET_MAX_SIZE)
-		packet = realloc(packet,
-				 sizeof(struct probe_data_packet) + packet->data_size_bytes);
+	if (packet->data_size_bytes > PACKET_MAX_SIZE) {
+		temp_packet = realloc(packet,
+				      sizeof(struct probe_data_packet) + packet->data_size_bytes);
+		if (!temp_packet)
+			return -ENOMEM;
+	}
+
 	*w_ptr = (uint32_t *)&packet->data;
 	return 0;
 }
@@ -262,7 +268,10 @@ void parse_data(char *file_in)
 					break;
 				case SYNC:
 					/* SYNC -> CHECK */
-					process_sync(packet, &w_ptr, &total_data_to_copy);
+					if (process_sync(packet, &w_ptr, &total_data_to_copy) < 0) {
+						fprintf(stderr, "OOM, quitting\n");
+						goto err;
+					}
 					state = CHECK;
 					break;
 				case CHECK:
@@ -292,6 +301,7 @@ void parse_data(char *file_in)
 		}
 	} while (i > 0);
 
+err:
 	/* all done, can close files */
 	finalize_wave_files(files);
 	free(packet);
