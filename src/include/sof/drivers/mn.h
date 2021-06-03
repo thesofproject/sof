@@ -32,6 +32,14 @@ void mn_init(struct sof *sof);
 int mn_set_mclk(uint16_t mclk_id, uint32_t mclk_rate);
 
 /**
+ * \brief set mclk according to blob setting
+ * \param[in] mdivc mclk control setting.
+ * \param[in] mdivr mclk divider setting.
+ * \return 0 on success otherwise a negative error code.
+ */
+int mn_set_mclk_blob(uint32_t mdivc, uint32_t mdivr);
+
+/**
  * \brief Release previously requested MCLK for given MCLK ID.
  * \param[in] mclk_id id of main clock.
  */
