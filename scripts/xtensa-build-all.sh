@@ -5,7 +5,7 @@
 # stop on most errors
 set -e
 
-SUPPORTED_PLATFORMS=(byt cht bdw hsw apl skl kbl cnl sue icl jsl \
+SUPPORTED_PLATFORMS=(byt cht bdw apl cnl icl jsl \
                     imx8 imx8x imx8m tgl tgl-h)
 BUILD_ROM=no
 BUILD_DEBUG=no
@@ -196,12 +196,6 @@ do
 			HOST="xtensa-hsw-elf"
 			XTENSA_TOOLS_VERSION="RG-2017.8-linux"
 			;;
-		hsw)
-			PLATFORM="haswell"
-			XTENSA_CORE="LX4_langwell_audio_17_8"
-			HOST="xtensa-hsw-elf"
-			XTENSA_TOOLS_VERSION="RG-2017.8-linux"
-			;;
 		apl)
 			PLATFORM="apollolake"
 			XTENSA_CORE="X4H3I16w2D48w3a_2017_8"
@@ -216,43 +210,8 @@ do
 			XTENSA_TOOLS_VERSION="RG-2017.8-linux"
 			HAVE_ROM='yes'
 			;;
-		skl)
-			PLATFORM="skylake"
-			XTENSA_CORE="X4H3I16w2D48w3a_2017_8"
-
-			# test APL compiler aliases
-			if command -v xtensa-bxt-elf-gcc; then
-				HOST="xtensa-bxt-elf"
-			else
-				HOST="xtensa-apl-elf"
-			fi
-
-			XTENSA_TOOLS_VERSION="RG-2017.8-linux"
-			HAVE_ROM='yes'
-			;;
-		kbl)
-			PLATFORM="kabylake"
-			XTENSA_CORE="X4H3I16w2D48w3a_2017_8"
-
-			# test APL compiler aliases
-			if command -v xtensa-bxt-elf-gcc; then
-				HOST="xtensa-bxt-elf"
-			else
-				HOST="xtensa-apl-elf"
-			fi
-
-			XTENSA_TOOLS_VERSION="RG-2017.8-linux"
-			HAVE_ROM='yes'
-			;;
 		cnl)
 			PLATFORM="cannonlake"
-			XTENSA_CORE="X6H3CNL_2017_8"
-			HOST="xtensa-cnl-elf"
-			XTENSA_TOOLS_VERSION="RG-2017.8-linux"
-			HAVE_ROM='yes'
-			;;
-		sue)
-			PLATFORM="suecreek"
 			XTENSA_CORE="X6H3CNL_2017_8"
 			HOST="xtensa-cnl-elf"
 			XTENSA_TOOLS_VERSION="RG-2017.8-linux"
