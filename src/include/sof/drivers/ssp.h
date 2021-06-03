@@ -51,6 +51,7 @@ extern const struct dai_driver ssp_driver;
 
 /* SSCR0 bits */
 #define SSCR0_DSIZE(x)	SET_BITS(3, 0, (x) - 1)
+#define SSCR0_DSIZE_GET(x)	(((x) & MASK(3, 0)) + 1)
 #define SSCR0_FRF	MASK(5, 4)
 #define SSCR0_MOT	SET_BITS(5, 4, 0)
 #define SSCR0_TI	SET_BITS(5, 4, 1)
@@ -65,6 +66,7 @@ extern const struct dai_driver ssp_driver;
 #define SSCR0_RIM	BIT(22)
 #define SSCR0_TIM	BIT(23)
 #define SSCR0_FRDC(x)	SET_BITS(26, 24, (x) - 1)
+#define SSCR0_FRDC_GET(x) ((((x) & MASK(26, 24)) >> 24) + 1)
 #define SSCR0_ACS	BIT(30)
 #define SSCR0_MOD	BIT(31)
 
@@ -155,10 +157,12 @@ extern const struct dai_driver ssp_driver;
 
 /* SSTSA bits */
 #define SSTSA_SSTSA(x)		SET_BITS(7, 0, x)
+#define SSTSA_GET(x)		((x) & MASK(7, 0))
 #define SSTSA_TXEN		BIT(8)
 
 /* SSRSA bits */
 #define SSRSA_SSRSA(x)		SET_BITS(7, 0, x)
+#define SSRSA_GET(x)		((x) & MASK(7, 0))
 #define SSRSA_RXEN		BIT(8)
 
 /* SSCR3 bits */
@@ -230,6 +234,8 @@ struct ssp_pdata {
 	uint32_t sscr1;
 	uint32_t psp;
 	uint32_t state[2];		/* SSP_STATE_ for each direction */
+	uint32_t mdivc;
+	uint32_t mdivr;
 	struct sof_ipc_dai_config config;
 	struct sof_ipc_dai_ssp_params params;
 };
