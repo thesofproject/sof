@@ -270,6 +270,14 @@ out:
 	return ret;
 }
 
+int mn_set_mclk_blob(uint32_t mdivc, uint32_t mdivr)
+{
+	mn_reg_write(MN_MDIVCTRL, 0, mdivc);
+	mn_reg_write(MN_MDIVR(0), 0, mdivr);
+
+	return 0;
+}
+
 void mn_release_mclk(uint32_t mclk_id)
 {
 	struct mn *mn = mn_get();
