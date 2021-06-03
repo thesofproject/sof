@@ -1303,6 +1303,15 @@ static void dmic_start(struct dai *dai)
 	/* enable port */
 	spin_lock(&dai->lock);
 	dai_dbg(dai, "dmic_start()");
+
+	/* return if not in correct state */
+	if (dmic->state != COMP_STATE_PREPARE) {
+		dai_err(dai, "dmic_start(): dai %d is not prepared, dmic->state = %u",
+			dai->index, dmic->state);
+		spin_unlock(&dai->lock);
+		return;
+	}
+
 	dmic->startcount = 0;
 
 	/* Initial gain value, convert Q12.20 to Q2.30 */
@@ -1401,8 +1410,7 @@ static void dmic_start(struct dai *dai)
 				CIC_CONTROL_SOFT_RESET_BIT, 0);
 	}
 
-	if (dmic->state == COMP_STATE_PREPARE)
-		(*uncached_dmic_active_fifos)++;
+	(*uncached_dmic_active_fifos)++;
 
 	dmic->state = COMP_STATE_ACTIVE;
 
@@ -1423,7 +1431,7 @@ static void dmic_start(struct dai *dai)
 }
 
 /* stop the DMIC for capture */
-static void dmic_stop(struct dai *dai, bool in_active)
+static void dmic_stop(struct dai *dai)
 {
 	struct dmic_pdata *dmic = dai_get_drvdata(dai);
 	int *uncached_dmic_active_fifos = cache_to_uncache(&dmic_active_fifos);
@@ -1431,6 +1439,14 @@ static void dmic_stop(struct dai *dai, bool in_active)
 
 	dai_dbg(dai, "dmic_stop()");
 	spin_lock(&dai->lock);
+
+	/* return if not in correct state */
+	if (dmic->state != COMP_STATE_ACTIVE) {
+		dai_err(dai, "dmic_stop(): dai %d is not active, dmic->state = %u",
+			dai->index, dmic->state);
+		spin_unlock(&dai->lock);
+		return;
+	}
 
 	/* Stop FIFO packers and set FIFO initialize bits */
 	switch (dai->index) {
@@ -1474,8 +1490,9 @@ static void dmic_stop(struct dai *dai, bool in_active)
 		}
 	}
 
-	if (in_active)
-		(*uncached_dmic_active_fifos)--;
+	(*uncached_dmic_active_fifos)--;
+
+	dmic->state = COMP_STATE_PREPARE;
 
 	schedule_task_cancel(&dmic->dmicwork);
 	spin_unlock(&dai->lock);
@@ -1514,22 +1531,14 @@ static int dmic_trigger(struct dai *dai, int cmd, int direction)
 
 	switch (cmd) {
 	case COMP_TRIGGER_RELEASE:
+	/* FALLTHROUGH */
 	case COMP_TRIGGER_START:
-		if (dmic->state == COMP_STATE_PREPARE ||
-		    dmic->state == COMP_STATE_PAUSED) {
-			dmic_start(dai);
-		} else {
-			dai_err(dai, "dmic_trigger(): state is not prepare or paused, dmic->state = %u",
-				dmic->state);
-		}
-		break;
-	case COMP_TRIGGER_STOP:
-		dmic->state = COMP_STATE_PREPARE;
-		dmic_stop(dai, true);
+		dmic_start(dai);
 		break;
 	case COMP_TRIGGER_PAUSE:
-		dmic->state = COMP_STATE_PAUSED;
-		dmic_stop(dai, true);
+	/* FALLTHROUGH */
+	case COMP_TRIGGER_STOP:
+		dmic_stop(dai);
 		break;
 	case COMP_TRIGGER_RESUME:
 		dmic_context_restore(dai);
@@ -1551,7 +1560,6 @@ static int dmic_trigger(struct dai *dai, int cmd, int direction)
 static void dmic_irq_handler(void *data)
 {
 	struct dai *dai = data;
-	struct dmic_pdata *dmic = dai_get_drvdata(dai);
 	uint32_t val0;
 	uint32_t val1;
 
@@ -1564,15 +1572,13 @@ static void dmic_irq_handler(void *data)
 	if (val0 & OUTSTAT0_ROR_BIT) {
 		dai_err(dai, "dmic_irq_handler(): full fifo A or PDM overrun");
 		dai_write(dai, OUTSTAT0, val0);
-		dmic_stop(dai, dmic->state == COMP_STATE_ACTIVE);
-		dmic->state = COMP_STATE_PREPARE;
+		dmic_stop(dai);
 	}
 
 	if (val1 & OUTSTAT1_ROR_BIT) {
 		dai_err(dai, "dmic_irq_handler(): full fifo B or PDM overrun");
 		dai_write(dai, OUTSTAT1, val1);
-		dmic_stop(dai, dmic->state == COMP_STATE_ACTIVE);
-		dmic->state = COMP_STATE_PREPARE;
+		dmic_stop(dai);
 	}
 }
 
