@@ -76,8 +76,6 @@ int ipc_dai_data_config(struct comp_dev *dev)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
 	struct ipc_config_dai *dai = &dd->ipc_config;
-	struct CopierGatewayCfg *gtw_cfg;
-	int ret;
 
 	if (!dai) {
 		comp_err(dev, "dai_data_config(): no config set for dai %d type %d",
@@ -85,8 +83,8 @@ int ipc_dai_data_config(struct comp_dev *dev)
 		return -EINVAL;
 	}
 
-	//comp_info(dev, "dai_data_config() dai type = %d index = %d dd %p",
-		//  dai->type, dai->dai_index, dd);
+	comp_info(dev, "dai_data_config() dai type = %d index = %d dd %p",
+		  dai->type, dai->dai_index, dd);
 
 	/* cannot configure DAI while active */
 	if (dev->state == COMP_STATE_ACTIVE) {
@@ -94,31 +92,27 @@ int ipc_dai_data_config(struct comp_dev *dev)
 		return 0;
 	}
 
-	gtw_cfg	= dd->dai_spec_config;
 	switch (dai->type) {
 	case SOF_DAI_INTEL_SSP:
 		/* set dma burst elems to slot number */
 		dd->config.burst_elems = dai->channels;
-		ret = -EINVAL;
 		break;
 	case SOF_DAI_INTEL_DMIC:
 		/* We can use always the largest burst length. */
 		dd->config.burst_elems = 8;
-		ret = dai_set_config(dd->dai, dai, gtw_cfg->config_data);
 		break;
 	case SOF_DAI_INTEL_HDA:
-		ret = 0;
 		break;
 	case SOF_DAI_INTEL_ALH:
 	default:
 		/* other types of DAIs not handled for now */
 		comp_warn(dev, "dai_data_config(): Unknown dai type %d", dai->type);
-		ret = -EINVAL;
+		return -EINVAL;
 		break;
 	}
 
 	/* some DAIs may not need extra config */
-	return ret;
+	return 0;
 }
 
 /* dai config is not sent by ipc message */
@@ -169,7 +163,7 @@ int dai_config(struct comp_dev *dev, struct ipc_config_dai *common_config,
 
 	/* allocated dai_config if not yet */
 	if (!dd->dai_spec_config) {
-		size = sizeof(*gtw_cfg) + gtw_cfg->config_length * sizeof(uint32_t);
+		size = sizeof(*gtw_cfg);
 		dd->dai_spec_config = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, size);
 		if (!dd->dai_spec_config) {
 			comp_err(dev, "dai_config(): No memory for dai_config size %d", size);
@@ -183,5 +177,5 @@ int dai_config(struct comp_dev *dev, struct ipc_config_dai *common_config,
 		}
 	}
 
-	return ret;
+	return dai_set_config(dd->dai, common_config, gtw_cfg->config_data);
 }
