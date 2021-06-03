@@ -158,13 +158,16 @@ static struct comp_dev *create_dai(struct comp_ipc_config *config, struct Copier
 	case ipc4_i2s_link_output_class:
 	case ipc4_i2s_link_input_class:
 		dai.type = SOF_DAI_INTEL_SSP;
+		dai.is_config_blob = true;
 		break;
 	case ipc4_alh_link_output_class:
 	case ipc4_alh_link_input_class:
 		dai.type = SOF_DAI_INTEL_ALH;
+		dai.is_config_blob = true;
 		break;
 	case ipc4_dmic_link_input_class:
 		dai.type = SOF_DAI_INTEL_DMIC;
+		dai.is_config_blob = true;
 		break;
 	default:
 		return NULL;
@@ -359,9 +362,6 @@ static int copier_prepare(struct comp_dev *dev)
 	if (ret == COMP_STATUS_STATE_ALREADY_SET)
 		return PPL_STATUS_PATH_STOP;
 
-	assert(cd->config.base.audio_fmt.valid_bit_depth == cd->config.base.audio_fmt.depth);
-	assert(cd->config.out_fmt.valid_bit_depth == cd->config.out_fmt.depth);
-
 	in = convert_fmt(cd->config.base.audio_fmt.valid_bit_depth);
 	out = convert_fmt(cd->config.out_fmt.valid_bit_depth);
 
@@ -447,7 +447,7 @@ static int copier_copy(struct comp_dev *dev)
 	struct comp_buffer *buffer;
 	int ret = 0, dir;
 
-	comp_err(dev, "copier_copy()");
+	comp_info(dev, "copier_copy()");
 
 	if (cd->buf) {
 		dir = PPL_CONN_DIR_COMP_TO_BUFFER;
