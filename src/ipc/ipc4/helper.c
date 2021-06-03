@@ -254,6 +254,24 @@ int ipc_pipeline_new(struct ipc *ipc, ipc_pipe_new *_pipe_desc)
 	return 0;
 }
 
+static int ipc_pipeline_module_free(uint32_t pipeline_id)
+{
+	struct ipc *ipc = ipc_get();
+	struct ipc_comp_dev *icd;
+	int ret;
+
+	icd = ipc_get_comp_by_ppl_id(ipc, COMP_TYPE_COMPONENT, pipeline_id);
+	while (icd) {
+		ret = ipc_comp_free(ipc, icd->id);
+		if (ret)
+			return ret;
+
+		icd = ipc_get_comp_by_ppl_id(ipc, COMP_TYPE_COMPONENT, pipeline_id);
+	}
+
+	return IPC4_SUCCESS;
+}
+
 int ipc_pipeline_free(struct ipc *ipc, uint32_t comp_id)
 {
 	struct ipc_comp_dev *ipc_pipe;
@@ -268,17 +286,24 @@ int ipc_pipeline_free(struct ipc *ipc, uint32_t comp_id)
 	if (!cpu_is_me(ipc_pipe->core))
 		return ipc_process_on_core(ipc_pipe->core);
 
+	ret = ipc_pipeline_module_free(ipc_pipe->pipeline->pipeline_id);
+	if (ret) {
+		tr_err(&ipc_tr, "ipc_pipeline_free(): module free () failed");
+		return ret;
+	}
+
 	/* free buffer and remove from list */
 	ret = pipeline_free(ipc_pipe->pipeline);
 	if (ret < 0) {
 		tr_err(&ipc_tr, "ipc_pipeline_free(): pipeline_free() failed");
-		return ret;
+		return IPC4_INVALID_RESOURCE_STATE;
 	}
+
 	ipc_pipe->pipeline = NULL;
 	list_item_del(&ipc_pipe->list);
 	rfree(ipc_pipe);
 
-	return 0;
+	return IPC4_SUCCESS;
 }
 
 int ipc_pipeline_complete(struct ipc *ipc, uint32_t comp_id)
@@ -380,6 +405,38 @@ int ipc_comp_new(struct ipc *ipc, ipc_comp *_comp)
 /* used with IPC4 - placeholder atm */
 int ipc_comp_free(struct ipc *ipc, uint32_t comp_id)
 {
+	struct ipc_comp_dev *icd;
+
+	icd = ipc_get_comp_by_id(ipc, comp_id);
+	if (!icd)
+		return IPC4_INVALID_RESOURCE_ID;
+
+	/* check core */
+	if (!cpu_is_me(icd->core))
+		return ipc_process_on_core(icd->core);
+
+	/* check state */
+	if (icd->cd->state != COMP_STATE_READY)
+		return IPC4_BAD_STATE;
+
+	/* set pipeline sink/source/sched pointers to NULL if needed */
+	if (icd->cd->pipeline) {
+		if (icd->cd == icd->cd->pipeline->source_comp)
+			icd->cd->pipeline->source_comp = NULL;
+		if (icd->cd == icd->cd->pipeline->sink_comp)
+			icd->cd->pipeline->sink_comp = NULL;
+		if (icd->cd == icd->cd->pipeline->sched_comp)
+			icd->cd->pipeline->sched_comp = NULL;
+	}
+
+	/* free component and remove from list */
+	comp_free(icd->cd);
+
+	icd->cd = NULL;
+
+	list_item_del(&icd->list);
+	rfree(icd);
+
 	return 0;
 }
 
