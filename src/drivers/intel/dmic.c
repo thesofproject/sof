@@ -1420,18 +1420,10 @@ static void dmic_start(struct dai *dai)
 		 *uncached_dmic_active_fifos);
 }
 
-/* stop the DMIC for capture */
-static void dmic_stop(struct dai *dai, bool in_active)
+static void dmic_stop_fifo_packers(struct dai *dai, int fifo_index)
 {
-	struct dmic_pdata *dmic = dai_get_drvdata(dai);
-	int *uncached_dmic_active_fifos = cache_to_uncache(&dmic_active_fifos);
-	int i;
-
-	dai_dbg(dai, "dmic_stop()");
-	spin_lock(&dai->lock);
-
 	/* Stop FIFO packers and set FIFO initialize bits */
-	switch (dai->index) {
+	switch (fifo_index) {
 	case 0:
 		dai_update_bits(dai, OUTCONTROL0,
 				OUTCONTROL0_SIP_BIT | OUTCONTROL0_FINIT_BIT,
@@ -1443,6 +1435,19 @@ static void dmic_stop(struct dai *dai, bool in_active)
 				OUTCONTROL1_FINIT_BIT);
 		break;
 	}
+}
+
+/* stop the DMIC for capture */
+static void dmic_stop(struct dai *dai, bool in_active)
+{
+	struct dmic_pdata *dmic = dai_get_drvdata(dai);
+	int *uncached_dmic_active_fifos = cache_to_uncache(&dmic_active_fifos);
+	int i;
+
+	dai_dbg(dai, "dmic_stop()");
+	spin_lock(&dai->lock);
+
+	dmic_stop_fifo_packers(dai, dai->index);
 
 	/* Set soft reset and mute on for all PDM controllers.
 	 */
@@ -1549,7 +1554,6 @@ static int dmic_trigger(struct dai *dai, int cmd, int direction)
 static void dmic_irq_handler(void *data)
 {
 	struct dai *dai = data;
-	struct dmic_pdata *dmic = dai_get_drvdata(dai);
 	uint32_t val0;
 	uint32_t val1;
 
@@ -1562,15 +1566,13 @@ static void dmic_irq_handler(void *data)
 	if (val0 & OUTSTAT0_ROR_BIT) {
 		dai_err(dai, "dmic_irq_handler(): full fifo A or PDM overrun");
 		dai_write(dai, OUTSTAT0, val0);
-		dmic_stop(dai, dmic->state == COMP_STATE_ACTIVE);
-		dmic->state = COMP_STATE_PREPARE;
+		dmic_stop_fifo_packers(dai, 0);
 	}
 
 	if (val1 & OUTSTAT1_ROR_BIT) {
 		dai_err(dai, "dmic_irq_handler(): full fifo B or PDM overrun");
 		dai_write(dai, OUTSTAT1, val1);
-		dmic_stop(dai, dmic->state == COMP_STATE_ACTIVE);
-		dmic->state = COMP_STATE_PREPARE;
+		dmic_stop_fifo_packers(dai, 1);
 	}
 }
 
