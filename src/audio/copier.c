@@ -108,6 +108,7 @@ static struct comp_buffer *create_buffer(struct comp_dev *dev, struct CopierModu
 {
 	struct sof_ipc_buffer ipc_buf;
 	struct comp_buffer *buf;
+	int i;
 
 	memset(&ipc_buf, 0, sizeof(ipc_buf));
 	ipc_buf.size = copier->base.obs;
@@ -121,7 +122,16 @@ static struct comp_buffer *create_buffer(struct comp_dev *dev, struct CopierModu
 	list_init(&buf->source_list);
 	list_init(&buf->sink_list);
 
+	buf->stream.channels = copier->out_fmt.channels_count;
+	buf->stream.rate = copier->out_fmt.sampling_frequency;
+	buf->stream.frame_fmt  = (copier->out_fmt.valid_bit_depth >> 3) - 2;
+	buf->buffer_fmt = copier->out_fmt.interleaving_style;
+
+	for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
+		buf->chmap[i] = (copier->out_fmt.ch_map >> i * 4) & 0xf;
+
 	connect_comp_to_buffer(dev, buf, PPL_CONN_DIR_COMP_TO_BUFFER);
+
 	return buf;
 }
 
@@ -213,7 +223,7 @@ static struct comp_dev *copier_new(const struct comp_driver *drv,
 
 	dcache_invalidate_region(spec, sizeof(*copier));
 
-	config->frame_fmt = (copier->out_fmt.depth >> 3) - 2;
+	config->frame_fmt = (copier->base.audio_fmt.valid_bit_depth >> 3) - 2;
 	dev->ipc_config = *config;
 
 	config_size = copier->gtw_cfg.config_length * sizeof(uint32_t);
@@ -491,36 +501,21 @@ static int copier_params(struct comp_dev *dev, struct sof_ipc_stream_params *par
 	union ipc4_connector_node_id node_id;
 	struct comp_buffer *buffer;
 	int ret = 0, dir;
-	int i;
 
 	memset(params, 0, sizeof(*params));
-
 	params->direction = cd->direction;
-	if (!cd->dai) {
-		params->channels = cd->config.out_fmt.channels_count;
-		params->rate = cd->config.out_fmt.sampling_frequency;
-		params->sample_container_bytes = cd->config.out_fmt.depth;
-		params->sample_valid_bytes = cd->config.out_fmt.valid_bit_depth;
-	} else {
-		params->channels = cd->config.base.audio_fmt.channels_count;
-		params->rate = cd->config.base.audio_fmt.sampling_frequency;
-		params->sample_container_bytes = cd->config.base.audio_fmt.depth;
-		params->sample_valid_bytes = cd->config.base.audio_fmt.valid_bit_depth;
-	}
+	params->channels = cd->config.base.audio_fmt.channels_count;
+	params->rate = cd->config.base.audio_fmt.sampling_frequency;
+	params->sample_container_bytes = cd->config.base.audio_fmt.depth;
+	params->sample_valid_bytes = cd->config.base.audio_fmt.valid_bit_depth;
 
 	node_id.dw = cd->config.gtw_cfg.node_id;
 	params->stream_tag = node_id.f.v_index + 1;
-
-	/* map ipc4_bit_depth to sof_ipc_frame */
-	params->frame_fmt = (params->sample_container_bytes >> 3) - 2;
-	params->buffer_fmt = params->frame_fmt;
-	params->buffer.size = cd->config.base.obs;
-
-	for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
-		params->chmap[i] = (cd->config.out_fmt.ch_map >> i * 4) & 0xf;
+	params->frame_fmt = dev->ipc_config.frame_fmt;
+	params->buffer_fmt = cd->config.base.audio_fmt.interleaving_style;
+	params->buffer.size = cd->config.base.ibs;
 
 	if (cd->buf) {
-		buffer_set_params(cd->buf, params, BUFFER_UPDATE_FORCE);
 		dir = PPL_CONN_DIR_COMP_TO_BUFFER;
 		buffer = cd->buf;
 		list_item_del(buffer->source_list.next);
