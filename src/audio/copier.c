@@ -239,9 +239,7 @@ static struct comp_dev *copier_new(const struct comp_driver *drv,
 	list_init(&dev->bsource_list);
 	list_init(&dev->bsink_list);
 
-	if (IPC4_INVALID_NODE_ID == copier->gtw_cfg.node_id) {
-		//nothing to do for converter
-	} else {
+	if (copier->gtw_cfg.node_id != IPC4_INVALID_NODE_ID) {
 		struct ipc_comp_dev *ipc_pipe;
 
 		node_id.dw = copier->gtw_cfg.node_id;
