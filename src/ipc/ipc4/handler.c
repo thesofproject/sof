@@ -221,10 +221,11 @@ static int ipc4_set_pipeline_state(union ipc4_message_header *ipc4)
 		ret = pipeline_trigger(host->cd->pipeline, host->cd, COMP_TRIGGER_STOP);
 		if (ret < 0) {
 			tr_err(&ipc_tr, "ipc: comp %d trigger 0x%x failed %d", id, cmd, ret);
-			ret = IPC4_PIPELINE_STATE_NOT_SET;
+			return IPC4_PIPELINE_STATE_NOT_SET;
 		}
 
-		cmd = COMP_TRIGGER_RESET;
+		/* resource is not released by triggering reset which is used by current FW */
+		return pipeline_reset(host->cd->pipeline, host->cd);
 		break;
 	case SOF_IPC4_PIPELINE_STATE_PAUSED:
 		if (pcm_dev->pipeline->status == COMP_STATE_INIT)
