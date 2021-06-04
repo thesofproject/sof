@@ -1437,7 +1437,7 @@ static void dmic_stop_fifo_packers(struct dai *dai, int fifo_index)
 }
 
 /* stop the DMIC for capture */
-static void dmic_stop(struct dai *dai, bool in_active)
+static void dmic_stop(struct dai *dai)
 {
 	struct dmic_pdata *dmic = dai_get_drvdata(dai);
 	int *uncached_dmic_active_fifos_mask = cache_to_uncache(&dmic_active_fifos_mask);
@@ -1527,11 +1527,11 @@ static int dmic_trigger(struct dai *dai, int cmd, int direction)
 		break;
 	case COMP_TRIGGER_STOP:
 		dmic->state = COMP_STATE_PREPARE;
-		dmic_stop(dai, true);
+		dmic_stop(dai);
 		break;
 	case COMP_TRIGGER_PAUSE:
 		dmic->state = COMP_STATE_PAUSED;
-		dmic_stop(dai, false);
+		dmic_stop(dai);
 		break;
 	case COMP_TRIGGER_RESUME:
 		dmic_context_restore(dai);
