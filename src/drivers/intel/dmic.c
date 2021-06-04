@@ -1402,8 +1402,7 @@ static void dmic_start(struct dai *dai)
 	}
 
 	/* Set bit dai->index */
-	if (dmic->state == COMP_STATE_PREPARE)
-		*uncached_dmic_active_fifos_mask |= BIT(dai->index);
+	*uncached_dmic_active_fifos_mask |= BIT(dai->index);
 
 	dmic->state = COMP_STATE_ACTIVE;
 	spin_unlock(&dai->lock);
@@ -1457,8 +1456,7 @@ static void dmic_stop(struct dai *dai, bool in_active)
 		 *uncached_dmic_active_fifos_mask);
 
 	/* Clear bit dai->index */
-	if (in_active)
-		*uncached_dmic_active_fifos_mask &= ~BIT(dai->index);
+	*uncached_dmic_active_fifos_mask &= ~BIT(dai->index);
 
 	for (i = 0; i < DMIC_HW_CONTROLLERS; i++) {
 		/* Don't stop CIC yet if one FIFO remains active */
