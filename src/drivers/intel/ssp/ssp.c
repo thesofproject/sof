@@ -621,6 +621,10 @@ static int ssp_set_config_blob(struct dai *dai, struct ipc_config_dai *common_co
 	struct ssp_pdata *ssp = dai_get_drvdata(dai);
 	uint32_t ssc0, sstsa, ssrsa;
 
+	/* set config only once for playback or capture */
+	if (dai->sref > 1)
+		return 0;
+
 	ssc0 = blob->i2s_driver_config.i2s_config.ssc0;
 	sstsa = blob->i2s_driver_config.i2s_config.sstsa;
 	ssrsa = blob->i2s_driver_config.i2s_config.ssrsa;
