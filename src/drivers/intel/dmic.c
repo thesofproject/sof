@@ -134,10 +134,8 @@ static const uint32_t coef_base_a[4] = {PDM0_COEFFICIENT_A, PDM1_COEFFICIENT_A,
 static const uint32_t coef_base_b[4] = {PDM0_COEFFICIENT_B, PDM1_COEFFICIENT_B,
 	PDM2_COEFFICIENT_B, PDM3_COEFFICIENT_B};
 
-/* Global configuration request for DMIC, need to use uncached address to access them */
-static SHARED_DATA struct sof_ipc_dai_dmic_params *dmic_prm[DMIC_HW_FIFOS];
-static SHARED_DATA uint32_t dmic_active_fifos_mask;
-static SHARED_DATA uint32_t dmic_pause_mask;
+/* Global configuration request and state for DMIC */
+static SHARED_DATA struct dmic_global_shared dmic_global;
 
 /* this ramps volume changes over time */
 static enum task_state dmic_work(void *data)
@@ -226,7 +224,7 @@ static enum task_state dmic_work(void *data)
 static void find_modes(struct dai *dai,
 		       struct decim_modes *modes, uint32_t fs, int di)
 {
-	struct sof_ipc_dai_dmic_params **uncached_dmic_prm = cache_to_uncache(&dmic_prm[0]);
+	struct dmic_pdata *dmic = dai_get_drvdata(dai);
 	int clkdiv_min;
 	int clkdiv_max;
 	int clkdiv;
@@ -258,37 +256,37 @@ static void find_modes(struct dai *dai,
 		osr_min = DMIC_HIGH_RATE_OSR_MIN;
 
 	/* Check for sane pdm clock, min 100 kHz, max ioclk/2 */
-	if (uncached_dmic_prm[di]->pdmclk_max < DMIC_HW_PDM_CLK_MIN ||
-	    uncached_dmic_prm[di]->pdmclk_max > DMIC_HW_IOCLK / 2) {
+	if (dmic->global->prm[di].pdmclk_max < DMIC_HW_PDM_CLK_MIN ||
+	    dmic->global->prm[di].pdmclk_max > DMIC_HW_IOCLK / 2) {
 		dai_err(dai, "find_modes():  pdm clock max not in range");
 		return;
 	}
-	if (uncached_dmic_prm[di]->pdmclk_min < DMIC_HW_PDM_CLK_MIN ||
-	    uncached_dmic_prm[di]->pdmclk_min > uncached_dmic_prm[di]->pdmclk_max) {
+	if (dmic->global->prm[di].pdmclk_min < DMIC_HW_PDM_CLK_MIN ||
+	    dmic->global->prm[di].pdmclk_min > dmic->global->prm[di].pdmclk_max) {
 		dai_err(dai, "find_modes():  pdm clock min not in range");
 		return;
 	}
 
 	/* Check for sane duty cycle */
-	if (uncached_dmic_prm[di]->duty_min > uncached_dmic_prm[di]->duty_max) {
+	if (dmic->global->prm[di].duty_min > dmic->global->prm[di].duty_max) {
 		dai_err(dai, "find_modes(): duty cycle min > max");
 		return;
 	}
-	if (uncached_dmic_prm[di]->duty_min < DMIC_HW_DUTY_MIN ||
-	    uncached_dmic_prm[di]->duty_min > DMIC_HW_DUTY_MAX) {
+	if (dmic->global->prm[di].duty_min < DMIC_HW_DUTY_MIN ||
+	    dmic->global->prm[di].duty_min > DMIC_HW_DUTY_MAX) {
 		dai_err(dai, "find_modes():  pdm clock min not in range");
 		return;
 	}
-	if (uncached_dmic_prm[di]->duty_max < DMIC_HW_DUTY_MIN ||
-	    uncached_dmic_prm[di]->duty_max > DMIC_HW_DUTY_MAX) {
+	if (dmic->global->prm[di].duty_max < DMIC_HW_DUTY_MIN ||
+	    dmic->global->prm[di].duty_max > DMIC_HW_DUTY_MAX) {
 		dai_err(dai, "find_modes(): pdm clock max not in range");
 		return;
 	}
 
 	/* Min and max clock dividers */
-	clkdiv_min = ceil_divide(DMIC_HW_IOCLK, uncached_dmic_prm[di]->pdmclk_max);
+	clkdiv_min = ceil_divide(DMIC_HW_IOCLK, dmic->global->prm[di].pdmclk_max);
 	clkdiv_min = MAX(clkdiv_min, DMIC_HW_CIC_DECIM_MIN);
-	clkdiv_max = DMIC_HW_IOCLK / uncached_dmic_prm[di]->pdmclk_min;
+	clkdiv_max = DMIC_HW_IOCLK / dmic->global->prm[di].pdmclk_min;
 
 	/* Loop possible clock dividers and check based on resulting
 	 * oversampling ratio that CIC and FIR decimation ratios are
@@ -311,8 +309,8 @@ static void find_modes(struct dai *dai,
 		 * not exceed microphone specification. If exceed proceed to
 		 * next clkdiv.
 		 */
-		if (osr < osr_min || du_min < uncached_dmic_prm[di]->duty_min ||
-		    du_max > uncached_dmic_prm[di]->duty_max)
+		if (osr < osr_min || du_min < dmic->global->prm[di].duty_min ||
+		    du_max > dmic->global->prm[di].duty_max)
 			continue;
 
 		/* Loop FIR decimation factors candidates. If the
@@ -673,9 +671,8 @@ static int select_mode(struct dai *dai,
  * value to use.
  */
 
-static inline void ipm_helper1(int *ipm, int di)
+static inline void ipm_helper1(struct dmic_pdata *dmic, int *ipm, int di)
 {
-	struct sof_ipc_dai_dmic_params **uncached_dmic_prm = cache_to_uncache(&dmic_prm[0]);
 	int pdm[DMIC_HW_CONTROLLERS];
 	int i;
 
@@ -684,8 +681,8 @@ static inline void ipm_helper1(int *ipm, int di)
 	 * this DAI.
 	 */
 	for (i = 0; i < DMIC_HW_CONTROLLERS; i++) {
-		if (uncached_dmic_prm[di]->pdm[i].enable_mic_a ||
-		    uncached_dmic_prm[di]->pdm[i].enable_mic_b)
+		if (dmic->global->prm[di].pdm[i].enable_mic_a ||
+		    dmic->global->prm[di].pdm[i].enable_mic_b)
 			pdm[i] = 1;
 		else
 			pdm[i] = 0;
@@ -703,9 +700,8 @@ static inline void ipm_helper1(int *ipm, int di)
 
 #if DMIC_HW_VERSION >= 2
 
-static inline void ipm_helper2(int source[], int *ipm, int di)
+static inline void ipm_helper2(struct dmic_pdata *dmic, int source[], int *ipm, int di)
 {
-	struct sof_ipc_dai_dmic_params **uncached_dmic_prm = cache_to_uncache(&dmic_prm[0]);
 	int pdm[DMIC_HW_CONTROLLERS];
 	int i;
 	int n = 0;
@@ -719,8 +715,8 @@ static inline void ipm_helper2(int source[], int *ipm, int di)
 	 * pdm controllers to be used for IPM configuration.
 	 */
 	for (i = 0; i < DMIC_HW_CONTROLLERS; i++) {
-		if (uncached_dmic_prm[di]->pdm[i].enable_mic_a ||
-		    uncached_dmic_prm[di]->pdm[i].enable_mic_b) {
+		if (dmic->global->prm[di].pdm[i].enable_mic_a ||
+		    dmic->global->prm[di].pdm[i].enable_mic_b) {
 			pdm[i] = 1;
 			source[n] = i;
 			n++;
@@ -741,9 +737,8 @@ static inline void ipm_helper2(int source[], int *ipm, int di)
  * or mono right (B) mode. Mono right mode is setup as channel
  * swapped mono left.
  */
-static int stereo_helper(int stereo[], int swap[])
+static int stereo_helper(struct dmic_pdata *dmic, int stereo[], int swap[])
 {
-	struct sof_ipc_dai_dmic_params **uncached_dmic_prm = cache_to_uncache(&dmic_prm[0]);
 	int cnt;
 	int i;
 	int swap_check;
@@ -751,12 +746,12 @@ static int stereo_helper(int stereo[], int swap[])
 
 	for (i = 0; i < DMIC_HW_CONTROLLERS; i++) {
 		cnt = 0;
-		if (uncached_dmic_prm[0]->pdm[i].enable_mic_a ||
-		    uncached_dmic_prm[1]->pdm[i].enable_mic_a)
+		if (dmic->global->prm[0].pdm[i].enable_mic_a ||
+		    dmic->global->prm[1].pdm[i].enable_mic_a)
 			cnt++;
 
-		if (uncached_dmic_prm[0]->pdm[i].enable_mic_b ||
-		    uncached_dmic_prm[1]->pdm[i].enable_mic_b)
+		if (dmic->global->prm[0].pdm[i].enable_mic_b ||
+		    dmic->global->prm[1].pdm[i].enable_mic_b)
 			cnt++;
 
 		/* Set stereo mode if both mic A anc B are enabled. */
@@ -764,12 +759,12 @@ static int stereo_helper(int stereo[], int swap[])
 		stereo[i] = cnt;
 
 		/* Swap channels if only mic B is used for mono processing. */
-		swap[i] = (uncached_dmic_prm[0]->pdm[i].enable_mic_b ||
-			uncached_dmic_prm[1]->pdm[i].enable_mic_b) && !cnt;
+		swap[i] = (dmic->global->prm[0].pdm[i].enable_mic_b ||
+			dmic->global->prm[1].pdm[i].enable_mic_b) && !cnt;
 
 		/* Check that swap does not conflict with other DAI request */
-		swap_check = uncached_dmic_prm[1]->pdm[i].enable_mic_a ||
-			uncached_dmic_prm[0]->pdm[i].enable_mic_a;
+		swap_check = dmic->global->prm[1].pdm[i].enable_mic_a ||
+			dmic->global->prm[0].pdm[i].enable_mic_a;
 
 		if (swap_check && swap[i])
 			ret = -EINVAL;
@@ -780,8 +775,7 @@ static int stereo_helper(int stereo[], int swap[])
 static int configure_registers(struct dai *dai,
 			       struct dmic_configuration *cfg)
 {
-	struct sof_ipc_dai_dmic_params **prm_t = cache_to_uncache(&dmic_prm[0]);
-	int uncached_dmic_active_fifos_mask = *cache_to_uncache(&dmic_active_fifos_mask);
+	struct dmic_pdata *dmic = dai_get_drvdata(dai);
 	int stereo[DMIC_HW_CONTROLLERS];
 	int swap[DMIC_HW_CONTROLLERS];
 	uint32_t val;
@@ -801,8 +795,9 @@ static int configure_registers(struct dai *dai,
 	int i;
 	int j;
 	int ret;
+	int pol_a;
+	int pol_b;
 	int di = dai->index;
-	struct dmic_pdata *pdata = dai_get_drvdata(dai);
 	int dccomp = 1;
 	int array_a = 0;
 	int array_b = 0;
@@ -819,7 +814,7 @@ static int configure_registers(struct dai *dai,
 #endif
 
 	/* pdata is set by dmic_probe(), error if it has not been set */
-	if (!pdata) {
+	if (!dmic) {
 		dai_err(dai, "configure_registers(): pdata not set");
 		return -EINVAL;
 	}
@@ -827,17 +822,17 @@ static int configure_registers(struct dai *dai,
 	dai_info(dai, "configuring registers");
 
 	/* OUTCONTROL0 and OUTCONTROL1 */
-	of0 = (prm_t[0]->fifo_bits == 32) ? 2 : 0;
+	of0 = (dmic->global->prm[0].fifo_bits == 32) ? 2 : 0;
 
 #if DMIC_HW_FIFOS > 1
-	of1 = (prm_t[1]->fifo_bits == 32) ? 2 : 0;
+	of1 = (dmic->global->prm[1].fifo_bits == 32) ? 2 : 0;
 #else
 	of1 = 0;
 #endif
 
 #if DMIC_HW_VERSION == 1 || (DMIC_HW_VERSION == 2 && DMIC_HW_CONTROLLERS <= 2)
 	if (di == 0) {
-		ipm_helper1(&ipm, 0);
+		ipm_helper1(dmic, &ipm, 0);
 		val = OUTCONTROL0_TIE(0) |
 			OUTCONTROL0_SIP(0) |
 			OUTCONTROL0_FINIT(1) |
@@ -849,7 +844,7 @@ static int configure_registers(struct dai *dai,
 		dai_write(dai, OUTCONTROL0, val);
 		dai_dbg(dai, "configure_registers(), OUTCONTROL0 = %08x", val);
 	} else {
-		ipm_helper1(&ipm, 1);
+		ipm_helper1(dmic, &ipm, 1);
 		val = OUTCONTROL1_TIE(0) |
 			OUTCONTROL1_SIP(0) |
 			OUTCONTROL1_FINIT(1) |
@@ -865,7 +860,7 @@ static int configure_registers(struct dai *dai,
 
 #if DMIC_HW_VERSION == 3 || (DMIC_HW_VERSION == 2 && DMIC_HW_CONTROLLERS > 2)
 	if (di == 0) {
-		ipm_helper2(source, &ipm, 0);
+		ipm_helper2(dmic, source, &ipm, 0);
 		val = OUTCONTROL0_TIE(0) |
 			OUTCONTROL0_SIP(0) |
 			OUTCONTROL0_FINIT(1) |
@@ -881,7 +876,7 @@ static int configure_registers(struct dai *dai,
 		dai_write(dai, OUTCONTROL0, val);
 		dai_dbg(dai, "configure_registers(), OUTCONTROL0 = %08x", val);
 	} else {
-		ipm_helper2(source, &ipm, 1);
+		ipm_helper2(dmic, source, &ipm, 1);
 		val = OUTCONTROL1_TIE(0) |
 			OUTCONTROL1_SIP(0) |
 			OUTCONTROL1_FINIT(1) |
@@ -903,12 +898,12 @@ static int configure_registers(struct dai *dai,
 	 * for starting correct parts of the HW.
 	 */
 	for (i = 0; i < DMIC_HW_CONTROLLERS; i++) {
-		pdata->enable[i] = (prm_t[di]->pdm[i].enable_mic_b << 1) |
-			prm_t[di]->pdm[i].enable_mic_a;
+		dmic->enable[i] = (dmic->global->prm[di].pdm[i].enable_mic_b << 1) |
+			dmic->global->prm[di].pdm[i].enable_mic_a;
 	}
 
 
-	ret = stereo_helper(stereo, swap);
+	ret = stereo_helper(dmic, stereo, swap);
 	if (ret < 0) {
 		dai_err(dai, "configure_registers(): enable conflict");
 		return ret;
@@ -918,13 +913,15 @@ static int configure_registers(struct dai *dai,
 	 * the calling function dmic_set_config().
 	 */
 	for (i = 0; i < DMIC_HW_CONTROLLERS; i++) {
-		if (uncached_dmic_active_fifos_mask == 0) {
+		if (dmic->global->active_fifos_mask == 0) {
 			/* CIC */
+			pol_a = dmic->global->prm[di].pdm[i].polarity_mic_a;
+			pol_b = dmic->global->prm[di].pdm[i].polarity_mic_b;
 			val = CIC_CONTROL_SOFT_RESET(soft_reset) |
 				CIC_CONTROL_CIC_START_B(0) |
 				CIC_CONTROL_CIC_START_A(0) |
-				CIC_CONTROL_MIC_B_POLARITY(prm_t[di]->pdm[i].polarity_mic_a) |
-				CIC_CONTROL_MIC_A_POLARITY(prm_t[di]->pdm[i].polarity_mic_b) |
+				CIC_CONTROL_MIC_B_POLARITY(pol_b) |
+				CIC_CONTROL_MIC_A_POLARITY(pol_a) |
 				CIC_CONTROL_MIC_MUTE(cic_mute) |
 				CIC_CONTROL_STEREO_MODE(stereo[i]);
 			dai_write(dai, base[i] + CIC_CONTROL, val);
@@ -939,12 +936,12 @@ static int configure_registers(struct dai *dai,
 			 * since the mono decimation is done with only left channel
 			 * processing active.
 			 */
-			edge = prm_t[di]->pdm[i].clk_edge;
+			edge = dmic->global->prm[di].pdm[i].clk_edge;
 			if (swap[i])
 				edge = !edge;
 
 			val = MIC_CONTROL_PDM_CLKDIV(cfg->clkdiv - 2) |
-				MIC_CONTROL_PDM_SKEW(prm_t[di]->pdm[i].skew) |
+				MIC_CONTROL_PDM_SKEW(dmic->global->prm[di].pdm[i].skew) |
 				MIC_CONTROL_CLK_EDGE(edge) |
 				MIC_CONTROL_PDM_EN_B(0) |
 				MIC_CONTROL_PDM_EN_A(0);
@@ -1070,18 +1067,17 @@ static int configure_registers(struct dai *dai,
 static int dmic_get_hw_params(struct dai *dai,
 			      struct sof_ipc_stream_params  *params, int dir)
 {
-	struct sof_ipc_dai_dmic_params **uncached_dmic_prm = cache_to_uncache(&dmic_prm[0]);
+	struct dmic_pdata *dmic = dai_get_drvdata(dai);
 	int di = dai->index;
 
-	if (!uncached_dmic_prm[di]) {
-		dai_err(dai, "dmic_get_hw_params(): dai %d not configured! &dmic_prm[di] 0x%p",
-			di, &uncached_dmic_prm[di]);
+	if (!dmic) {
+		dai_err(dai, "dmic_get_hw_params(): dai %d not configured!", di);
 		return -EINVAL;
 	}
-	params->rate = uncached_dmic_prm[di]->fifo_fs;
+	params->rate = dmic->global->prm[di].fifo_fs;
 	params->buffer_fmt = 0;
 
-	switch (uncached_dmic_prm[di]->num_pdm_active) {
+	switch (dmic->global->prm[di].num_pdm_active) {
 	case 1:
 		params->channels = 2;
 		break;
@@ -1089,11 +1085,12 @@ static int dmic_get_hw_params(struct dai *dai,
 		params->channels = 4;
 		break;
 	default:
-		dai_info(dai, "dmic_get_hw_params(): not supported channels amount");
+		dai_info(dai, "dmic_get_hw_params(): not supported PDM active count %d",
+			 dmic->global->prm[di].num_pdm_active);
 		return -EINVAL;
 	}
 
-	switch (uncached_dmic_prm[di]->fifo_bits) {
+	switch (dmic->global->prm[di].fifo_bits) {
 	case 16:
 		params->frame_fmt = SOF_IPC_FRAME_S16_LE;
 		break;
@@ -1111,7 +1108,6 @@ static int dmic_get_hw_params(struct dai *dai,
 static int dmic_set_config(struct dai *dai, struct ipc_config_dai *common_config,
 			   void *spec_config)
 {
-	struct sof_ipc_dai_dmic_params **uncached_dmic_prm = cache_to_uncache(&dmic_prm[0]);
 	struct dmic_pdata *dmic = dai_get_drvdata(dai);
 	struct sof_ipc_dai_config *config = spec_config;
 	struct matched_modes modes_ab;
@@ -1120,7 +1116,6 @@ static int dmic_set_config(struct dai *dai, struct ipc_config_dai *common_config
 	struct decim_modes modes_b;
 	int32_t unmute_ramp_time_ms;
 	int32_t step_db;
-	size_t size;
 	int i, j, ret = 0;
 	int di = dai->index;
 
@@ -1171,44 +1166,25 @@ static int dmic_set_config(struct dai *dai, struct ipc_config_dai *common_config
 	 * the active controllers
 	 * "prm" is initialized with default params for all HW controllers
 	 */
-	if (!uncached_dmic_prm[0]) {
-		size = sizeof(struct sof_ipc_dai_dmic_params);
-		dmic_prm[0] = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED,
-				      0, SOF_MEM_CAPS_RAM,
-				      DMIC_HW_FIFOS * size);
-		/* write it back */
-		uncached_dmic_prm[0] = dmic_prm[0];
-		if (!uncached_dmic_prm[0]) {
-			dai_err(dai, "dmic_set_config(): prm not initialized");
-			ret = -ENOMEM;
-			goto out;
-		}
-		for (i = 1; i < DMIC_HW_FIFOS; i++) {
-			dmic_prm[i] = (struct sof_ipc_dai_dmic_params *)
-				((uint8_t *)uncached_dmic_prm[i - 1] + size);
-			/* write it back */
-			uncached_dmic_prm[i] = dmic_prm[i];
-		}
-	}
+	assert(dmic);
 
 	/* Copy the new DMIC params header (all but not pdm[]) to persistent.
 	 * The last arrived request determines the parameters.
 	 */
-	ret = memcpy_s(uncached_dmic_prm[di], sizeof(*uncached_dmic_prm[di]), &config->dmic,
+	ret = memcpy_s(&dmic->global->prm[di], sizeof(dmic->global->prm[di]), &config->dmic,
 		       offsetof(struct sof_ipc_dai_dmic_params, pdm));
 	assert(!ret);
 
 	/* copy the pdm controller params from ipc */
 	for (i = 0; i < DMIC_HW_CONTROLLERS; i++) {
-		uncached_dmic_prm[di]->pdm[i].id = i;
+		dmic->global->prm[di].pdm[i].id = i;
 		for (j = 0; j < config->dmic.num_pdm_active; j++) {
 			/* copy the pdm controller params id the id's match */
-			if (uncached_dmic_prm[di]->pdm[i].id == config->dmic.pdm[j].id) {
-				ret = memcpy_s(&uncached_dmic_prm[di]->pdm[i],
-					       sizeof(uncached_dmic_prm[di]->pdm[i]),
+			if (dmic->global->prm[di].pdm[i].id == config->dmic.pdm[j].id) {
+				ret = memcpy_s(&dmic->global->prm[di].pdm[i],
+					       sizeof(dmic->global->prm[di].pdm[i]),
 					       &config->dmic.pdm[j],
-					       sizeof(
-					       struct sof_ipc_dai_dmic_pdm_ctrl));
+					       sizeof(struct sof_ipc_dai_dmic_pdm_ctrl));
 				assert(!ret);
 			}
 		}
@@ -1217,13 +1193,13 @@ static int dmic_set_config(struct dai *dai, struct ipc_config_dai *common_config
 	dai_info(dai, "dmic_set_config(), prm config->dmic.num_pdm_active = %u",
 		 config->dmic.num_pdm_active);
 	dai_info(dai, "dmic_set_config(), prm pdmclk_min = %u, pdmclk_max = %u",
-		 uncached_dmic_prm[di]->pdmclk_min, uncached_dmic_prm[di]->pdmclk_max);
+		 dmic->global->prm[di].pdmclk_min, dmic->global->prm[di].pdmclk_max);
 	dai_info(dai, "dmic_set_config(), prm duty_min = %u, duty_max = %u",
-		 uncached_dmic_prm[di]->duty_min, uncached_dmic_prm[di]->duty_max);
+		 dmic->global->prm[di].duty_min, dmic->global->prm[di].duty_max);
 	dai_info(dai, "dmic_set_config(), prm fifo_fs = %u, fifo_bits = %u",
-		 uncached_dmic_prm[di]->fifo_fs, uncached_dmic_prm[di]->fifo_bits);
+		 dmic->global->prm[di].fifo_fs, dmic->global->prm[di].fifo_bits);
 
-	switch (uncached_dmic_prm[di]->fifo_bits) {
+	switch (dmic->global->prm[di].fifo_bits) {
 	case 0:
 	case 16:
 	case 32:
@@ -1240,15 +1216,15 @@ static int dmic_set_config(struct dai *dai, struct ipc_config_dai *common_config
 	 * to use for FIR coefficient RAM write as well as the CIC and FIR
 	 * shift values.
 	 */
-	find_modes(dai, &modes_a, uncached_dmic_prm[0]->fifo_fs, di);
-	if (modes_a.num_of_modes == 0 && uncached_dmic_prm[0]->fifo_fs > 0) {
+	find_modes(dai, &modes_a, dmic->global->prm[0].fifo_fs, di);
+	if (modes_a.num_of_modes == 0 && dmic->global->prm[0].fifo_fs > 0) {
 		dai_err(dai, "dmic_set_config(): No modes found found for FIFO A");
 		ret = -EINVAL;
 		goto out;
 	}
 
-	find_modes(dai, &modes_b, uncached_dmic_prm[1]->fifo_fs, di);
-	if (modes_b.num_of_modes == 0 && uncached_dmic_prm[1]->fifo_fs > 0) {
+	find_modes(dai, &modes_b, dmic->global->prm[1].fifo_fs, di);
+	if (modes_b.num_of_modes == 0 && dmic->global->prm[1].fifo_fs > 0) {
 		dai_err(dai, "dmic_set_config(): No modes found for FIFO B");
 		ret = -EINVAL;
 		goto out;
@@ -1295,9 +1271,6 @@ out:
 /* start the DMIC for capture */
 static void dmic_start(struct dai *dai)
 {
-	struct sof_ipc_dai_dmic_params **uncached_dmic_prm = cache_to_uncache(&dmic_prm[0]);
-	uint32_t *uncached_dmic_active_fifos_mask = cache_to_uncache(&dmic_active_fifos_mask);
-	uint32_t *uncached_dmic_pause_mask = cache_to_uncache(&dmic_pause_mask);
 	struct dmic_pdata *dmic = dai_get_drvdata(dai);
 	int i;
 	int mic_a;
@@ -1336,13 +1309,13 @@ static void dmic_start(struct dai *dai)
 	for (i = 0; i < DMIC_HW_CONTROLLERS; i++) {
 		mic_a = dmic->enable[i] & 1;
 		mic_b = (dmic->enable[i] & 2) >> 1;
-		if (uncached_dmic_prm[0]->fifo_fs > 0)
+		if (dmic->global->prm[0].fifo_fs > 0)
 			fir_a = (dmic->enable[i] > 0) ? 1 : 0;
 		else
 			fir_a = 0;
 
 #if DMIC_HW_FIFOS > 1
-		if (uncached_dmic_prm[1]->fifo_fs > 0)
+		if (dmic->global->prm[1].fifo_fs > 0)
 			fir_b = (dmic->enable[i] > 0) ? 1 : 0;
 		else
 			fir_b = 0;
@@ -1406,9 +1379,9 @@ static void dmic_start(struct dai *dai)
 				CIC_CONTROL_SOFT_RESET_BIT, 0);
 	}
 
-	/* Set bit dai->index for active FIFO, and clear pause bit */
-	*uncached_dmic_active_fifos_mask |= BIT(dai->index);
-	*uncached_dmic_pause_mask &= ~BIT(dai->index);
+	/* Set bit dai->index */
+	dmic->global->active_fifos_mask |= BIT(dai->index);
+	dmic->global->pause_mask &= ~BIT(dai->index);
 
 	dmic->state = COMP_STATE_ACTIVE;
 	spin_unlock(&dai->lock);
@@ -1424,7 +1397,7 @@ static void dmic_start(struct dai *dai)
 
 
 	dai_info(dai, "dmic_start(), dmic_active_fifos_mask = 0x%x",
-		 *uncached_dmic_active_fifos_mask);
+		 dmic->global->active_fifos_mask);
 }
 
 static void dmic_stop_fifo_packers(struct dai *dai, int fifo_index)
@@ -1448,8 +1421,6 @@ static void dmic_stop_fifo_packers(struct dai *dai, int fifo_index)
 static void dmic_stop(struct dai *dai, bool stop_is_pause)
 {
 	struct dmic_pdata *dmic = dai_get_drvdata(dai);
-	uint32_t *uncached_dmic_active_fifos_mask = cache_to_uncache(&dmic_active_fifos_mask);
-	uint32_t *uncached_dmic_pause_mask = cache_to_uncache(&dmic_pause_mask);
 	int i;
 
 	dai_dbg(dai, "dmic_stop()");
@@ -1460,20 +1431,20 @@ static void dmic_stop(struct dai *dai, bool stop_is_pause)
 	/* Set soft reset and mute on for all PDM controllers.
 	 */
 	dai_info(dai, "dmic_stop(), dmic_active_fifos_mask = 0x%x",
-		 *uncached_dmic_active_fifos_mask);
+		 dmic->global->active_fifos_mask);
 
 	/* Clear bit dai->index for active FIFO. If stop for pause, set pause mask bit.
 	 * If stop is not for pausing, it is safe to clear the pause bit.
 	 */
-	*uncached_dmic_active_fifos_mask &= ~BIT(dai->index);
+	dmic->global->active_fifos_mask &= ~BIT(dai->index);
 	if (stop_is_pause)
-		*uncached_dmic_pause_mask |= BIT(dai->index);
+		dmic->global->pause_mask |= BIT(dai->index);
 	else
-		*uncached_dmic_pause_mask &= ~BIT(dai->index);
+		dmic->global->pause_mask &= ~BIT(dai->index);
 
 	for (i = 0; i < DMIC_HW_CONTROLLERS; i++) {
 		/* Don't stop CIC yet if one FIFO remains active */
-		if (*uncached_dmic_active_fifos_mask == 0) {
+		if (dmic->global->active_fifos_mask == 0) {
 			dai_update_bits(dai, base[i] + CIC_CONTROL,
 					CIC_CONTROL_SOFT_RESET_BIT |
 					CIC_CONTROL_MIC_MUTE_BIT,
@@ -1601,13 +1572,15 @@ static int dmic_probe(struct dai *dai)
 	if (dai_get_drvdata(dai))
 		return -EEXIST; /* already created */
 
-	/* allocate private data */
 	dmic = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*dmic));
 	if (!dmic) {
 		dai_err(dai, "dmic_probe(): alloc failed");
 		return -ENOMEM;
 	}
 	dai_set_drvdata(dai, dmic);
+
+	/* Common shared data for all DMIC DAI instances */
+	dmic->global = platform_shared_get(&dmic_global, sizeof(dmic_global));
 
 	/* Set state, note there is no playback direction support */
 	dmic->state = COMP_STATE_READY;
@@ -1645,11 +1618,9 @@ static int dmic_probe(struct dai *dai)
 
 static int dmic_remove(struct dai *dai)
 {
-	struct sof_ipc_dai_dmic_params **uncached_dmic_prm = cache_to_uncache(&dmic_prm[0]);
-	uint32_t uncached_dmic_active_fifos_mask = *cache_to_uncache(&dmic_active_fifos_mask);
-	uint32_t uncached_dmic_pause_mask = *cache_to_uncache(&dmic_pause_mask);
 	struct dmic_pdata *dmic = dai_get_drvdata(dai);
-	int i;
+	uint32_t active_fifos_mask = dmic->global->active_fifos_mask;
+	uint32_t pause_mask = dmic->global->pause_mask;
 
 	dai_info(dai, "dmic_remove()");
 
@@ -1662,26 +1633,20 @@ static int dmic_remove(struct dai *dai)
 	interrupt_disable(dmic->irq, dai);
 	interrupt_unregister(dmic->irq, dai);
 
+	dai_info(dai, "dmic_remove(), dmic_active_fifos_mask = 0x%x, dmic_pause_mask = 0x%x",
+		 active_fifos_mask, pause_mask);
+	rfree(dmic);
+
 	/* The next end tasks must be passed if another DAI FIFO still runs.
 	 * Note: dai_put() function that calls remove() applies the spinlock
 	 * so it is not needed here to protect access to mask bits.
 	 */
-	dai_info(dai, "dmic_remove(), dmic_active_fifos_mask = 0x%x, dmic_pause_mask = 0x%x",
-		 uncached_dmic_active_fifos_mask, uncached_dmic_pause_mask);
-	if (uncached_dmic_active_fifos_mask || uncached_dmic_pause_mask)
+	if (active_fifos_mask || pause_mask)
 		return 0;
 
+	/* Disable DMIC clock and power */
 	pm_runtime_put_sync(DMIC_CLK, dai->index);
-	/* Disable DMIC power */
 	pm_runtime_put_sync(DMIC_POW, dai->index);
-
-	rfree(uncached_dmic_prm[0]);
-	for (i = 0; i < DMIC_HW_FIFOS; i++) {
-		dmic_prm[i] = NULL;
-		/* write it back */
-		uncached_dmic_prm[i] = dmic_prm[i];
-	}
-
 	return 0;
 }
 

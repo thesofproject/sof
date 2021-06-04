@@ -50,6 +50,7 @@
 
 #if DMIC_HW_VERSION
 
+#include <ipc/dai-intel.h>
 #include <sof/audio/format.h>
 #include <sof/bit.h>
 #include <sof/lib/dai.h>
@@ -315,15 +316,23 @@
 #define dmic_irq(dmic) dmic->plat_data.irq
 #define dmic_irq_name(dmic) dmic->plat_data.irq_name
 
+struct dmic_global_shared {
+	struct sof_ipc_dai_dmic_params prm[DMIC_HW_FIFOS];  /* Configuration requests */
+	uint32_t active_fifos_mask;	/* Bits (dai->index) are set to indicate active FIFO */
+	uint32_t pause_mask;		/* Bits (dai->index) are set to indicate driver pause */
+};
+
 /* DMIC private data */
 struct dmic_pdata {
-	uint16_t enable[DMIC_HW_CONTROLLERS];
-	uint32_t state;
-	struct task dmicwork;
-	int32_t startcount;
-	int32_t gain;
-	int32_t gain_coef;
-	int irq;
+	struct dmic_global_shared *global;	/* Common data for all DMIC DAI instances */
+	struct task dmicwork;			/* HW gain ramp update task */
+	uint16_t enable[DMIC_HW_CONTROLLERS];	/* Mic 0 and 1 enable bits array for PDMx */
+	uint32_t state;				/* Driver component state */
+	int32_t startcount;			/* Counter in dmicwork that controls HW unmute */
+	int32_t gain_coef;			/* Gain update constant */
+	int32_t gain;				/* Gain value to be applied to HW */
+	int irq;				/* Interrupt number used */
+
 };
 
 extern const struct dai_driver dmic_driver;
