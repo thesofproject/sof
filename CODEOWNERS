@@ -16,7 +16,7 @@ src/include/user/**			@thesofproject/steering-committee
 src/include/sof/debug/gdb/*		@mrajwa
 src/include/sof/audio/kpb.h		@mrajwa
 src/include/sof/audio/mux.h		@akloniex
-src/include/sof/audio/codec_adapter/* @cujomalainey @mrajwa @dbaluta
+src/include/sof/audio/codec_adapter/*	@cujomalainey @mrajwa @dbaluta
 
 # audio component
 src/audio/src*				@singalsu
@@ -31,7 +31,8 @@ src/audio/crossover*			@cujomalainey @dgreid
 src/audio/tdfb*                         @singalsu
 src/audio/drc/*				@johnylin76 @cujomalainey @dgreid
 src/audio/multiband_drc/*		@johnylin76 @cujomalainey @dgreid
-src/audio/codec_adapter/*    @cujomalainey @mrajwa @dbaluta
+src/audio/codec_adapter/*		@cujomalainey @mrajwa @dbaluta
+src/audio/google_hotword_detect.c	@benzh @cujomalainey @dgreid @johnylin76
 
 # platforms
 src/platform/haswell/*			@randerwang
