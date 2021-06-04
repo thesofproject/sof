@@ -16,20 +16,23 @@ SIGNED_list  ?= apl cnl icl jsl tgl tgl-h
 # older SOF versions
 # SIGNED_list += hsw kbl skl sue
 
-# In a Linux kernel git clone, try:
+# To find aliases, try in a Linux kernel git clone:
+#
 #   git grep 'sof-.*\.ri' -- sound/soc/
-ALIAS_list ?= glk cfl cml ehl
+
+
+ALIAS_SAME_KEY_list  := glk cfl cml
+ALIAS_OTHER_KEY_list := ehl
+ALIAS_list ?= ${ALIAS_SAME_KEY_list} ${ALIAS_OTHER_KEY_list}
 
 $(info UNSIGNED_list = ${UNSIGNED_list} )
 $(info SIGNED_list   = ${SIGNED_list}   )
 $(info ALIAS_list    = ${ALIAS_list}    )
 
-# Same code, same Intel key
 target_of_glk := apl
 target_of_cfl := cnl
 target_of_cml := cnl
 
-# Same code, different Intel key
 target_of_ehl := tgl
 
 ifeq (,${TOOLCHAIN})
@@ -189,8 +192,6 @@ ${LDICTS}: ${STAGING_SOF_VERSION}/sof-%.ldc:  \
 # '%' is the platform name
 COMM_ALIASES   := ${ALIAS_list:%=${STAGING_SOF_VERSION}/community/sof-%.ri}
 DICT_ALIASES   := ${ALIAS_list:%=${STAGING_SOF_VERSION}/sof-%.ldc}
-SIGNED_ALIASES := ${ALIAS_list:%=${STAGING_SOF_VERSION}/sof-%.ri}
-aliases: ${SIGNED_ALIASES} ${COMM_ALIASES} ${DICT_ALIASES}
 
 ${COMM_ALIASES}: ${STAGING_SOF_VERSION}/community/sof-%.ri: | ${COMMUNITY}
 	ln -sfT sof-${target_of_$*}.ri $@
@@ -198,11 +199,25 @@ ${COMM_ALIASES}: ${STAGING_SOF_VERSION}/community/sof-%.ri: | ${COMMUNITY}
 ${DICT_ALIASES}: ${STAGING_SOF_VERSION}/sof-%.ldc: | ${STAGING_SOF_VERSION}
 	ln -sfT sof-${target_of_$*}.ldc $@
 
+# ->intel-signed/ symlinks for platform aliases. The other, identical
+# looking ->intel-signed/ symlinks for the other, "normal" platforms are
+# created here but by the signed: target.
+#
 # Some have the same key, others just the code. We don't make any
-# difference here and let the intel-signed/ directory handle this.
+# difference, no platform re-direction here, this is merely pointing at
+# ->intel-signed/same.ri
+SIGNED_ALIASES := ${ALIAS_list:%=${STAGING_SOF_VERSION}/sof-%.ri}
 ${SIGNED_ALIASES}: ${STAGING_SOF_VERSION}/sof-%.ri: | ${STAGING_SOF_VERSION}
 	ln -sfT intel-signed/sof-$*.ri $@
 
+# Platform indirection inside the intel-signed/ directory
+SIGNED_PLATFORM_ALIASES := ${ALIAS_SAME_KEY_list:%=${INTEL_SIGNED}/sof-%.ri}
+${SIGNED_PLATFORM_ALIASES}: ${INTEL_SIGNED}/sof-%.ri: | ${INTEL_SIGNED}
+	ln -sfT sof-${target_of_$*}.ri $@
+
+
+aliases: ${COMM_ALIASES} ${DICT_ALIASES} ${SIGNED_ALIASES} \
+         ${SIGNED_PLATFORM_ALIASES}
 
             ##################################
             ### Stage sof-tplg/ topologies ###
@@ -264,9 +279,9 @@ compare: stage
 
 # Invoke this manually to check symbolic links are correct
 SIGNED_DUMMIES := ${SIGNED_list:%=${INTEL_SIGNED}/sof-%.ri} \
-                   ${ALIAS_list:%=${INTEL_SIGNED}/sof-%.ri}
+                   ${ALIAS_OTHER_KEY_list:%=${INTEL_SIGNED}/sof-%.ri}
 signed_dummies: ${SIGNED_DUMMIES}
-	! file $$(find . -type l) | grep -i broken
+	! file $$(find staging -type l) | grep -i broken
 
 ${SIGNED_DUMMIES}: | ${INTEL_SIGNED}
 	touch $@
