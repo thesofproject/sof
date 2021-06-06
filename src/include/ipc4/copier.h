@@ -41,8 +41,7 @@
 //typedef intel_adsp::LegacyModuleInitialSettings BaseModuleCfg;
 
 //! Linear Link Position Reading Data
-struct ipc4_llp_reading
-{
+struct ipc4_llp_reading {
 	//! lower part of 64-bit LLP
 	uint32_t llp_l;
 	//! upper part of 64-bit LLP
@@ -53,8 +52,7 @@ struct ipc4_llp_reading
 	uint32_t wclk_u;
 } __attribute__((packed, aligned(4)));
 
-struct ipc4_llp_reading_extended
-{
+struct ipc4_llp_reading_extended {
 	struct ipc4_llp_reading llp_reading;
 	//! total processed data (low part)
 	uint32_t tpd_low;
@@ -62,8 +60,7 @@ struct ipc4_llp_reading_extended
 	uint32_t tpd_high;
 } __attribute__((packed, aligned(4)));
 
-struct ipc4_base_module_cfg_ext
-{
+struct ipc4_base_module_cfg_ext {
 	/*!
 	 * \brief Specifies number of items in input_pins array. Maximum size is 8.
 	 */
@@ -97,16 +94,15 @@ struct ipc4_base_module_cfg_ext
  * This enum defines short 16bit parameters common for all modules.
  * Value of module specific parameters have to be less than 0x3000.
  */
-enum ipc4_base_module_params
-{
+enum ipc4_base_module_params {
 	/**
 	* Handled inside LargeConfigGet of module instance
 	*/
-	MOD_INST_PROPS  = 0xFE,
+	IPC4_MOD_INST_PROPS  = 0xFE,
 	/**
 	* Handled inside ConfigSet of module instance
 	*/
-	MOD_INST_ENABLE = 0x3000
+	IPC4_MOD_INST_ENABLE = 0x3000
 };
 
 //TODO: needs to be moved out of IPC ABI header
@@ -116,8 +112,7 @@ static const uint32_t INVALID_QUEUE_ID = 0xFFFFFFFF;
   \struct PinProps
   Properties of a pin.
 */
-struct PinProps
-{
+struct ipc4_pin_props {
 	/*! Type of the connected stream. */
 	enum ipc4_stream_type stream_type;
 
@@ -131,18 +126,16 @@ struct PinProps
 } __attribute__((packed, aligned(4)));
 
 
-struct PinListInfo
-{
+struct ipc4_pin_list_info {
 	uint32_t pin_count;
-	struct PinProps pin_info[1];
+	struct ipc4_pin_props pin_info[1];
 } __attribute__((packed, aligned(4)));
 
 /**
  * Helper structure definition.
  * Reflects the last two entries in ModuleInstanceProps sttructure.
  */
-struct InOutGateway
-{
+struct ipc4_in_out_gateway {
 	uint32_t  input_gateway;
 	uint32_t  output_gateway;
 } __attribute__((packed, aligned(4)));
@@ -151,8 +144,7 @@ struct InOutGateway
  * Structure describing module instance properties used in response
  * to module LargeConfigGet with MOD_INST_PROPS parameter.
  */
-struct ModuleInstanceProps
-{
+struct ipc4_module_instance_props {
 	uint32_t  id;
 	uint32_t  dp_queue_type;
 	uint32_t  queue_alignment;
@@ -165,11 +157,10 @@ struct ModuleInstanceProps
 	uint32_t  cpc;
 	uint32_t  cpc_peak;
 	// TODO: uncomment or remove once performance measurements collection mechanism
-	//       is agreed and aligned between debugAgent, OED and FW
 	// uint32_t  cpc_avg;
 	// uint32_t  cpc_last;
-	struct PinListInfo input_queues;
-	struct PinListInfo output_queues;
+	struct ipc4_pin_list_info input_queues;
+	struct ipc4_pin_list_info output_queues;
 	uint32_t  input_gateway;
 	uint32_t  output_gateway;
 } __attribute__((packed, aligned(4)));
@@ -179,8 +170,7 @@ struct ModuleInstanceProps
  * short 16bit parameters as part of the IxC
  * register content.
  */
-union CfgParamIdData
-{
+union ipc4_cfg_param_id_data {
 	uint32_t dw;
 	struct {
 		uint32_t data16 : 16;   ///< Input/Output small config data
@@ -275,21 +265,19 @@ union CfgParamIdData
   ------------------------------------------------------------------------------
 */
 
-//! Total number of output pins.
+//! Total number of output pins. TODO: this should be a macro
 static const size_t COPIER_MODULE_OUTPUT_PINS_COUNT = 4;
 
-enum CopierFeatures
-{
+enum ipc4_copier_features {
 	/*!
 	  If FAST_MODE bit is set in CopierModuleCfg::copier_feature_mask then
 	  copier is able to transfer more than ibs. This bit shall be set only if
 	  all sinks are connected to data processing queue.
 	*/
-	FAST_MODE = 0
+	IPC4_COPIER_FAST_MODE = 0
 };
 
-struct CopierGatewayCfg
-{
+struct ipc4_copier_gateway_cfg {
 	//! ID of Gateway Node.
 	/*!
 	  If node_id is valid, i.e. != -1, copier instance is connected to the
@@ -316,9 +304,8 @@ struct CopierGatewayCfg
 	uint32_t config_data[1];
 } __attribute__((packed, aligned(4)));
 
-struct CopierModuleCfg
-{
-	struct BaseModuleCfg base;
+struct ipc4_copier_module_cfg {
+	struct ipc4_base_module_cfg base;
 
 	//! Audio format for output pin 0.
 	struct ipc4_audio_format out_fmt;
@@ -328,9 +315,10 @@ struct CopierModuleCfg
 	*/
 	uint32_t copier_feature_mask;
 	//! Gateway Configuration.
-	struct CopierGatewayCfg  gtw_cfg;
+	struct ipc4_copier_gateway_cfg  gtw_cfg;
 } __attribute__((packed, aligned(4)));
 
+//TODO: is this IPC or state data ???
 struct copier_data {
 	struct comp_dev *host;
 	struct comp_dev *dai;
@@ -338,11 +326,10 @@ struct copier_data {
 	int direction;
 	pcm_converter_func converter;
 
-	struct CopierModuleCfg config;
+	struct ipc4_copier_module_cfg config;
 };
 
-enum CopierModuleConfigParams
-{
+enum ipc4_copier_module_config_params {
 	/*!
 	  Use LARGE_CONFIG_SET to initialize timestamp event. Ipc mailbox must
 	  contain properly built CopierConfigTimestampInitData struct.
@@ -395,8 +382,7 @@ enum CopierModuleConfigParams
 	COPIER_MODULE_CFG_ATTENUATION = 6
 };
 
-struct CopierConfigTimestampInitData
-{
+struct ipc4_copier_config_timestamp_init_data {
 	//! Contains low-level configuration for timestamp init.
 	/*!
 	  Passed-through directly into ifc _LOCAL_TS_Control Register of
