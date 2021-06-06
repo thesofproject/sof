@@ -41,17 +41,18 @@ DECLARE_SOF_RT_UUID("copier", copier_comp_uuid, 0x9ba00c83, 0xca12, 0x4a83,
 
 DECLARE_TR_CTX(copier_comp_tr, SOF_UUID(copier_comp_uuid), LOG_LEVEL_INFO);
 
-static enum sof_ipc_frame convert_fmt(int format) {
+static enum sof_ipc_frame convert_fmt(int format)
+{
 	enum sof_ipc_frame in;
 
 	switch (format) {
-	case DEPTH_16BIT:
+	case IPC4_DEPTH_16BIT:
 		in = SOF_IPC_FRAME_S16_LE;
 		break;
-	case DEPTH_24BIT:
+	case IPC4_DEPTH_24BIT:
 		in = SOF_IPC_FRAME_S24_4LE;
 		break;
-	case DEPTH_32BIT:
+	case IPC4_DEPTH_32BIT:
 		in = SOF_IPC_FRAME_S32_LE;
 		break;
 	default:
@@ -63,7 +64,7 @@ static enum sof_ipc_frame convert_fmt(int format) {
 }
 
 static struct comp_dev *create_host(struct comp_ipc_config *config,
-				struct CopierModuleCfg *copier_cfg, int dir, struct pipeline *pipeline)
+				struct ipc4_copier_module_cfg *copier_cfg, int dir, struct pipeline *pipeline)
 {
 	struct sof_uuid host = {0x8b9d100c, 0x6d78, 0x418f, {0x90, 0xa3, 0xe0,
 			0xe8, 0x05, 0xd0, 0x85, 0x2b}};
@@ -103,7 +104,7 @@ static void connect_comp_to_buffer(struct comp_dev *dev, struct comp_buffer *buf
 	dcache_writeback_invalidate_region(buf, sizeof(*buf));
 }
 
-static struct comp_buffer *create_buffer(struct comp_dev *dev, struct CopierModuleCfg *copier,
+static struct comp_buffer *create_buffer(struct comp_dev *dev, struct ipc4_copier_module_cfg *copier,
 						int dir)
 {
 	struct sof_ipc_buffer ipc_buf;
@@ -135,7 +136,7 @@ static struct comp_buffer *create_buffer(struct comp_dev *dev, struct CopierModu
 	return buf;
 }
 
-static struct comp_dev *create_dai(struct comp_ipc_config *config, struct CopierModuleCfg *copier,
+static struct comp_dev *create_dai(struct comp_ipc_config *config, struct ipc4_copier_module_cfg *copier,
 				union ipc4_connector_node_id *node_id, struct pipeline *pipeline)
 {
 	struct sof_uuid id = {0xc2b00d27, 0xffbc, 0x4150, {0xa5, 0x1a, 0x24,
@@ -208,7 +209,7 @@ static struct comp_dev *copier_new(const struct comp_driver *drv,
 				struct comp_ipc_config *config,
 				void *spec)
 {
-	struct CopierModuleCfg *copier = spec;
+	struct ipc4_copier_module_cfg *copier = spec;
 	union ipc4_connector_node_id node_id;
 	struct ipc *ipc = ipc_get();
 	struct copier_data *cd;
