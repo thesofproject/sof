@@ -125,7 +125,7 @@ int ipc_comp_dai_config(struct ipc *ipc, struct ipc_config_dai *common_config,
 int dai_config(struct comp_dev *dev, struct ipc_config_dai *common_config,
 	       void *spec_config)
 {
-	struct CopierGatewayCfg *gtw_cfg = spec_config;
+	struct ipc4_copier_gateway_cfg *gtw_cfg = spec_config;
 	struct dai_data *dd = comp_get_drvdata(dev);
 	int size;
 	int ret = 0;
