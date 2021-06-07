@@ -72,6 +72,7 @@ MUXDEMUX_CONFIG(demux_priv_1, 2, LIST(`	', `matrix1,', `matrix2'))
 #             |
 # PCM2 <---- demux <----- SSP(SSP_INDEX)
 # PCM4 <---- volume <---- DMIC01 (dmic 48k capture)
+# PCM5 <---- volume <---- DMIC16k (dmic 16k capture)
 #
 
 # Smart amplifier related
@@ -134,7 +135,7 @@ PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
 	48000, 48000, 48000)
 
 # Low Latency capture pipeline 4 on PCM 1 using max 2 channels of s16le.
-# Schedule 48 frames per 1000us deadline on core 0 with priority 0
+# Schedule 48 frames per 1000us deadline on core 3 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-volume-capture.m4,
 	4, 1, 2, s16le,
 	1000, 0, 3,
@@ -149,11 +150,18 @@ PIPELINE_PCM_ADD(sof/pipe-passthrough-capture-sched.m4,
 	PIPELINE_PLAYBACK_SCHED_COMP_1)
 
 # Passthrough capture pipeline 8 on PCM 4 using max 2 channels.
-# 1000us deadline on core 0 with priority 0
+# 1000us deadline on core 2 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-passthrough-capture.m4,
 	8, 4, 2, s32le,
 	1000, 0, 2,
 	48000, 48000, 48000)
+
+# Passthrough capture pipeline 9 on PCM 5 using max 2 channels.
+# 1000us deadline on core 0 with priority 0
+PIPELINE_PCM_ADD(sof/pipe-passthrough-capture.m4,
+	9, 5, 2, s32le,
+	1000, 0, 0,
+	16000, 16000, 16000)
 
 #
 # DAIs configuration
@@ -199,31 +207,39 @@ SectionGraph."PIPE_CAP_VIRT" {
 }
 
 # playback DAI is SSP1 using 2 periods
-# Buffers use s16le format, with 48 frame per 1000us on core 0 with priority 0
+# Buffers use s16le format, with 48 frame per 1000us on core 3 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
 	3, SSP, 1, NoCodec-1,
 	PIPELINE_SOURCE_3, 2, s16le,
 	1000, 0, 3, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # capture DAI is SSP1 using 2 periods
-# Buffers use s16le format, with 48 frame per 1000us on core 0 with priority 0
+# Buffers use s16le format, with 48 frame per 1000us on core 3 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
 	4, SSP, 1, NoCodec-1,
 	PIPELINE_SINK_4, 2, s16le,
 	1000, 0, 3, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # capture DAI is DMIC 0 using 2 periods
-# Buffers use s32le format, 1000us deadline on core 0 with priority 0
+# Buffers use s32le format, 1000us deadline on core 2 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
 	8, DMIC, 0, NoCodec-6,
 	PIPELINE_SINK_8, 2, s32le,
 	1000, 0, 2, SCHEDULE_TIME_DOMAIN_TIMER)
+
+# capture DAI is DMIC 0 using 2 periods
+# Buffers use s32le format, 1000us deadline on core 0 with priority 0
+DAI_ADD(sof/pipe-dai-capture.m4,
+	8, DMIC, 1, NoCodec-7,
+	PIPELINE_SINK_9, 2, s32le,
+	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 dnl PCM_DUPLEX_ADD(name, pcm_id, playback, capture)
 PCM_DUPLEX_ADD(Port0, 0, PIPELINE_PCM_1, PIPELINE_PCM_2)
 PCM_DUPLEX_ADD(Port1, 1, PIPELINE_PCM_3, PIPELINE_PCM_4)
 PCM_CAPTURE_ADD(FWEchoRef, 3, PIPELINE_PCM_7)
 PCM_CAPTURE_ADD(DMIC, 4, PIPELINE_PCM_8)
+PCM_CAPTURE_ADD(DMIC, 5, PIPELINE_PCM_9)
 
 #
 # BE configurations - overrides config in ACPI if present
@@ -252,3 +268,13 @@ DAI_CONFIG(DMIC, 0, 6, NoCodec-6,
 		dnl PDM_CONFIG(type, dai_index, num pdm active, pdm tuples list)
 		dnl STEREO_PDM0 is a pre-defined pdm config for stereo capture
 		PDM_CONFIG(DMIC, 0, STEREO_PDM0)))
+
+DAI_CONFIG(DMIC, 1, 7, NoCodec-7,
+	   dnl DMIC_CONFIG(driver_version, clk_min, clk_mac, duty_min, duty_max,
+	   dnl		   sample_rate, fifo word length, unmute time, type,
+	   dnl		   dai_index, pdm controller config)
+	   DMIC_CONFIG(1, 2400000, 4800000, 40, 60, 16000,
+		DMIC_WORD_LENGTH(s32le), 400, DMIC, 1,
+		dnl PDM_CONFIG(type, dai_index, num pdm active, pdm tuples list)
+		dnl STEREO_PDM0 is a pre-defined pdm config for stereo capture
+		PDM_CONFIG(DMIC, 1, STEREO_PDM0)))
