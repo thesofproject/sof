@@ -1455,8 +1455,9 @@ static void dmic_stop(struct dai *dai)
 	dai_info(dai, "dmic_stop(), dmic_active_fifos_mask = 0x%x",
 		 *uncached_dmic_active_fifos_mask);
 
-	/* Clear bit dai->index */
-	*uncached_dmic_active_fifos_mask &= ~BIT(dai->index);
+	/* Clear bit dai->index only for STOP trigger and not the release trigger */
+	if (dmic->state == COMP_STATE_PREPARE)
+		*uncached_dmic_active_fifos_mask &= ~BIT(dai->index);
 
 	for (i = 0; i < DMIC_HW_CONTROLLERS; i++) {
 		/* Don't stop CIC yet if one FIFO remains active */
