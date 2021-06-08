@@ -137,6 +137,7 @@ static const uint32_t coef_base_b[4] = {PDM0_COEFFICIENT_B, PDM1_COEFFICIENT_B,
 /* Global configuration request for DMIC, need to use uncached address to access them */
 static SHARED_DATA struct sof_ipc_dai_dmic_params *dmic_prm[DMIC_HW_FIFOS];
 static SHARED_DATA uint32_t dmic_active_fifos_mask;
+static SHARED_DATA uint32_t dmic_pause_mask;
 
 /* this ramps volume changes over time */
 static enum task_state dmic_work(void *data)
@@ -1291,6 +1292,7 @@ static void dmic_start(struct dai *dai)
 {
 	struct sof_ipc_dai_dmic_params **uncached_dmic_prm = cache_to_uncache(&dmic_prm[0]);
 	uint32_t *uncached_dmic_active_fifos_mask = cache_to_uncache(&dmic_active_fifos_mask);
+	uint32_t *uncached_dmic_pause_mask = cache_to_uncache(&dmic_pause_mask);
 	struct dmic_pdata *dmic = dai_get_drvdata(dai);
 	int i;
 	int mic_a;
@@ -1399,8 +1401,9 @@ static void dmic_start(struct dai *dai)
 				CIC_CONTROL_SOFT_RESET_BIT, 0);
 	}
 
-	/* Set bit dai->index */
+	/* Set bit dai->index for active FIFO, and clear pause bit */
 	*uncached_dmic_active_fifos_mask |= BIT(dai->index);
+	*uncached_dmic_pause_mask &= ~BIT(dai->index);
 
 	dmic->state = COMP_STATE_ACTIVE;
 	spin_unlock(&dai->lock);
@@ -1437,10 +1440,11 @@ static void dmic_stop_fifo_packers(struct dai *dai, int fifo_index)
 }
 
 /* stop the DMIC for capture */
-static void dmic_stop(struct dai *dai)
+static void dmic_stop(struct dai *dai, bool stop_is_pause)
 {
 	struct dmic_pdata *dmic = dai_get_drvdata(dai);
 	uint32_t *uncached_dmic_active_fifos_mask = cache_to_uncache(&dmic_active_fifos_mask);
+	uint32_t *uncached_dmic_pause_mask = cache_to_uncache(&dmic_pause_mask);
 	int i;
 
 	dai_dbg(dai, "dmic_stop()");
@@ -1453,8 +1457,14 @@ static void dmic_stop(struct dai *dai)
 	dai_info(dai, "dmic_stop(), dmic_active_fifos_mask = 0x%x",
 		 *uncached_dmic_active_fifos_mask);
 
-	/* Clear bit dai->index */
+	/* Clear bit dai->index for active FIFO. If stop for pause, set pause mask bit.
+	 * If stop is not for pausing, it is safe to clear the pause bit.
+	 */
 	*uncached_dmic_active_fifos_mask &= ~BIT(dai->index);
+	if (stop_is_pause)
+		*uncached_dmic_pause_mask |= BIT(dai->index);
+	else
+		*uncached_dmic_pause_mask &= ~BIT(dai->index);
 
 	for (i = 0; i < DMIC_HW_CONTROLLERS; i++) {
 		/* Don't stop CIC yet if one FIFO remains active */
@@ -1527,11 +1537,11 @@ static int dmic_trigger(struct dai *dai, int cmd, int direction)
 		break;
 	case COMP_TRIGGER_STOP:
 		dmic->state = COMP_STATE_PREPARE;
-		dmic_stop(dai);
+		dmic_stop(dai, false);
 		break;
 	case COMP_TRIGGER_PAUSE:
 		dmic->state = COMP_STATE_PAUSED;
-		dmic_stop(dai);
+		dmic_stop(dai, true);
 		break;
 	case COMP_TRIGGER_RESUME:
 		dmic_context_restore(dai);
@@ -1632,6 +1642,7 @@ static int dmic_remove(struct dai *dai)
 {
 	struct sof_ipc_dai_dmic_params **uncached_dmic_prm = cache_to_uncache(&dmic_prm[0]);
 	uint32_t uncached_dmic_active_fifos_mask = *cache_to_uncache(&dmic_active_fifos_mask);
+	uint32_t uncached_dmic_pause_mask = *cache_to_uncache(&dmic_pause_mask);
 	struct dmic_pdata *dmic = dai_get_drvdata(dai);
 	int i;
 
@@ -1647,9 +1658,9 @@ static int dmic_remove(struct dai *dai)
 	interrupt_unregister(dmic->irq, dai);
 
 	/* The next end tasks must be passed if another DAI FIFO still runs */
-	dai_info(dai, "dmic_remove(), dmic_active_fifos_mask = 0x%x",
-		 uncached_dmic_active_fifos_mask);
-	if (uncached_dmic_active_fifos_mask)
+	dai_info(dai, "dmic_remove(), dmic_active_fifos_mask = 0x%x, dmic_pause_mask = 0x%x",
+		 uncached_dmic_active_fifos_mask, uncached_dmic_pause_mask);
+	if (uncached_dmic_active_fifos_mask || uncached_dmic_pause_mask)
 		return 0;
 
 	pm_runtime_put_sync(DMIC_CLK, dai->index);
