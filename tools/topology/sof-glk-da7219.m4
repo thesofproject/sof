@@ -182,9 +182,9 @@ DAI_CONFIG(SSP, 2, 1, SSP2-Codec,
 #SSP 2 (ID: 1) with 19.2 MHz mclk with MCLK_ID 1 (unused), 3.072 MHz bclk, no quirk, 10 ms BCLK delay
 DAI_CONFIG(SSP, 2, 1, SSP2-Codec,
 	SSP_CONFIG(I2S, SSP_CLOCK(mclk, 19200000, codec_mclk_in),
-		SSP_CLOCK(bclk, 3072000, codec_slave),
+		SSP_CLOCK(bclk, 2400000, codec_slave),
 		SSP_CLOCK(fsync, 48000, codec_slave),
-		SSP_TDM(2, 32, 3, 3),
+		SSP_TDM(2, 25, 3, 3),
 		SSP_CONFIG_DATA(SSP, 2, 16, 1, 0, 10)))
 ', )
 
