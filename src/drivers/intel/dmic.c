@@ -914,6 +914,9 @@ static int configure_registers(struct dai *dai,
 		return ret;
 	}
 
+	/* Note about accessing dmic_active_fifos_mask: the dai spinlock has been set in
+	 * the calling function dmic_set_config().
+	 */
 	for (i = 0; i < DMIC_HW_CONTROLLERS; i++) {
 		if (uncached_dmic_active_fifos_mask == 0) {
 			/* CIC */
@@ -1657,7 +1660,10 @@ static int dmic_remove(struct dai *dai)
 	interrupt_disable(dmic->irq, dai);
 	interrupt_unregister(dmic->irq, dai);
 
-	/* The next end tasks must be passed if another DAI FIFO still runs */
+	/* The next end tasks must be passed if another DAI FIFO still runs.
+	 * Note: dai_put() function that calls remove() applies the spinlock
+	 * so it is not needed here to protect access to mask bits.
+	 */
 	dai_info(dai, "dmic_remove(), dmic_active_fifos_mask = 0x%x, dmic_pause_mask = 0x%x",
 		 uncached_dmic_active_fifos_mask, uncached_dmic_pause_mask);
 	if (uncached_dmic_active_fifos_mask || uncached_dmic_pause_mask)
