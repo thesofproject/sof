@@ -136,7 +136,7 @@ static const uint32_t coef_base_b[4] = {PDM0_COEFFICIENT_B, PDM1_COEFFICIENT_B,
 
 /* Global configuration request for DMIC, need to use uncached address to access them */
 static SHARED_DATA struct sof_ipc_dai_dmic_params *dmic_prm[DMIC_HW_FIFOS];
-static SHARED_DATA int dmic_active_fifos_mask;
+static SHARED_DATA uint32_t dmic_active_fifos_mask;
 
 /* this ramps volume changes over time */
 static enum task_state dmic_work(void *data)
@@ -1290,7 +1290,7 @@ out:
 static void dmic_start(struct dai *dai)
 {
 	struct sof_ipc_dai_dmic_params **uncached_dmic_prm = cache_to_uncache(&dmic_prm[0]);
-	int *uncached_dmic_active_fifos_mask = cache_to_uncache(&dmic_active_fifos_mask);
+	uint32_t *uncached_dmic_active_fifos_mask = cache_to_uncache(&dmic_active_fifos_mask);
 	struct dmic_pdata *dmic = dai_get_drvdata(dai);
 	int i;
 	int mic_a;
@@ -1440,7 +1440,7 @@ static void dmic_stop_fifo_packers(struct dai *dai, int fifo_index)
 static void dmic_stop(struct dai *dai)
 {
 	struct dmic_pdata *dmic = dai_get_drvdata(dai);
-	int *uncached_dmic_active_fifos_mask = cache_to_uncache(&dmic_active_fifos_mask);
+	uint32_t *uncached_dmic_active_fifos_mask = cache_to_uncache(&dmic_active_fifos_mask);
 	int i;
 
 	dai_dbg(dai, "dmic_stop()");
@@ -1631,7 +1631,7 @@ static int dmic_probe(struct dai *dai)
 static int dmic_remove(struct dai *dai)
 {
 	struct sof_ipc_dai_dmic_params **uncached_dmic_prm = cache_to_uncache(&dmic_prm[0]);
-	int uncached_dmic_active_fifos_mask = *cache_to_uncache(&dmic_active_fifos_mask);
+	uint32_t uncached_dmic_active_fifos_mask = *cache_to_uncache(&dmic_active_fifos_mask);
 	struct dmic_pdata *dmic = dai_get_drvdata(dai);
 	int i;
 
