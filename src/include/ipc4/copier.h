@@ -266,7 +266,7 @@ union ipc4_cfg_param_id_data {
 */
 
 //! Total number of output pins. TODO: this should be a macro
-static const size_t COPIER_MODULE_OUTPUT_PINS_COUNT = 4;
+#define IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT		4
 
 enum ipc4_copier_features {
 	/*!
@@ -318,40 +318,29 @@ struct ipc4_copier_module_cfg {
 	struct ipc4_copier_gateway_cfg  gtw_cfg;
 } __attribute__((packed, aligned(4)));
 
-//TODO: is this IPC or state data ???
-struct copier_data {
-	struct comp_dev *host;
-	struct comp_dev *dai;
-	struct comp_buffer *buf;
-	int direction;
-	pcm_converter_func converter;
-
-	struct ipc4_copier_module_cfg config;
-};
-
 enum ipc4_copier_module_config_params {
 	/*!
 	  Use LARGE_CONFIG_SET to initialize timestamp event. Ipc mailbox must
 	  contain properly built CopierConfigTimestampInitData struct.
 	*/
-	COPIER_MODULE_CFG_PARAM_TIMESTAMP_INIT = 1,
+	IPC4_COPIER_MODULE_CFG_PARAM_TIMESTAMP_INIT = 1,
 	/*!
 	  Use LARGE_CONFIG_SET to initialize copier sink. Ipc mailbox must contain
 	  properly built CopierConfigSetSinkFormat struct.
 	*/
-	COPIER_MODULE_CFG_PARAM_SET_SINK_FORMAT = 2,
+	IPC4_COPIER_MODULE_CFG_PARAM_SET_SINK_FORMAT = 2,
 	/*!
 	  Use LARGE_CONFIG_SET to initialize and enable on Copier data segment
 	  event. Ipc mailbox must contain properly built DataSegmentEnabled struct.
 	*/
-	COPIER_MODULE_CFG_PARAM_DATA_SEGMENT_ENABLED = 3,
+	IPC4_COPIER_MODULE_CFG_PARAM_DATA_SEGMENT_ENABLED = 3,
 	/*!
 	  Use LARGE_CONFIG_GET to retrieve Linear Link Position (LLP) value for non
 	  HD-A gateways.
 
 	  \see LlpReading
 	*/
-	COPIER_MODULE_CFG_PARAM_LLP_READING = 4,
+	IPC4_COPIER_MODULE_CFG_PARAM_LLP_READING = 4,
 	/*!
 	  Use LARGE_CONFIG_GET to retrieve Linear Link Position (LLP) value for non
 	  HD-A gateways and corresponding total processed data
@@ -371,7 +360,7 @@ enum ipc4_copier_module_config_params {
 
 	  \endcode
 	*/
-	COPIER_MODULE_CFG_PARAM_LLP_READING_EXTENDED = 5,
+	IPC4_COPIER_MODULE_CFG_PARAM_LLP_READING_EXTENDED = 5,
 	/*!
 	  Use LARGE_CONFIG_SET to setup attenuation on output pins. Data is just
 	  uint32_t.
@@ -379,7 +368,7 @@ enum ipc4_copier_module_config_params {
 	  \note Config is only allowed when output pin is set up for 32bit and
 	    source is connected to Gateway
 	*/
-	COPIER_MODULE_CFG_ATTENUATION = 6
+	IPC4_COPIER_MODULE_CFG_ATTENUATION = 6
 };
 
 struct ipc4_copier_config_timestamp_init_data {
@@ -391,8 +380,7 @@ struct ipc4_copier_config_timestamp_init_data {
 	uint32_t tsctrl_reg;
 } __attribute__((packed, aligned(4)));
 
-struct CopierConfigSetSinkFormat
-{
+struct ipc4_copier_config_set_sink_format {
 	//! Id of sink
 	uint32_t sink_id;
 	//! Input format used by the source
@@ -404,12 +392,11 @@ struct CopierConfigSetSinkFormat
 	struct ipc4_audio_format sink_fmt;
 } __attribute__((packed, aligned(4)));
 
-static const uint32_t COPIER_DATA_SEGMENT_DISABLE = (0 << 0);
-static const uint32_t COPIER_DATA_SEGMENT_ENABLE  = (1 << 0);
-static const uint32_t COPIER_DATA_SEGMENT_RESTART = (1 << 1);
+#define IPC4_COPIER_DATA_SEGMENT_DISABLE	(0 << 0)
+#define IPC4_COPIER_DATA_SEGMENT_ENABLE		(1 << 0)
+#define IPC4_COPIER_DATA_SEGMENT_RESTART	(1 << 1)
 
-struct DataSegmentEnabled
-{
+struct ipc4_data_segment_enabled {
 	//! Gateway node id
 	uint32_t node_id;
 	//! Indicates whether notification should be enabled (!=0) or disabled (=0).
