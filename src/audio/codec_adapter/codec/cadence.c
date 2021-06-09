@@ -445,7 +445,26 @@ int cadence_codec_prepare(struct comp_dev *dev)
 			 ret);
 		goto free;
 	}
-
+	/* Check init done status. Note, it may happen that init_done flag will return
+	 * false value, this is normal since some codec variants needs input in order to
+	 * fully finish initialization. That's why at codec_adapter_copy() we call
+	 * codec_init_process() base on result obtained below.
+	 */
+#ifdef CONFIG_CADENCE_CODEC_WRAPPER
+	/* TODO: remove the "#ifdef CONFIG_CADENCE_CODEC_WRAPPER" once cadence fixes the bug
+	 * in the init/prepare sequence. Basically below API_CALL shall return 1 for
+	 * PCM streams and 0 for compress ones. As it turns out currently it returns 1
+	 * in both cases so in turn compress stream won't finish its prepare during first copy
+	 * in codec_adapter_copy().
+	 */
+	API_CALL(cd, XA_API_CMD_INIT, XA_CMD_TYPE_INIT_DONE_QUERY,
+		 &codec->cpd.init_done, ret);
+	if (ret != LIB_NO_ERROR) {
+		comp_err(dev, "cadence_codec_init_process() error %x: failed to get lib init status",
+			 ret);
+		return ret;
+	}
+#endif
 	comp_dbg(dev, "cadence_codec_prepare() done");
 	return 0;
 free:
