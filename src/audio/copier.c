@@ -41,6 +41,16 @@ DECLARE_SOF_RT_UUID("copier", copier_comp_uuid, 0x9ba00c83, 0xca12, 0x4a83,
 
 DECLARE_TR_CTX(copier_comp_tr, SOF_UUID(copier_comp_uuid), LOG_LEVEL_INFO);
 
+struct copier_data {
+	struct comp_dev *host;
+	struct comp_dev *dai;
+	struct comp_buffer *buf;
+	int direction;
+	pcm_converter_func converter;
+
+	struct ipc4_copier_module_cfg config;
+};
+
 static enum sof_ipc_frame convert_fmt(int format)
 {
 	enum sof_ipc_frame in;
