@@ -550,7 +550,55 @@ void platform_wait_for_interrupt(int level)
 }
 #endif
 
+/* These structs and macros are from from the ROM code header
+ * on cAVS platforms, please keep them immutable
+ */
+
+#define ADSP_IMR_MAGIC_VALUE		0x02468ACE
+#define IMR_L1_CACHE_ADDRESS		0xB0000000
+
+struct imr_header {
+	uint32_t adsp_imr_magic;
+	uint32_t structure_version;
+	uint32_t structure_size;
+	uint32_t imr_state;
+	uint32_t imr_size;
+	void *imr_restore_vector;
+};
+
+struct imr_state {
+	struct imr_header header;
+	uint8_t reserved[0x1000 - sizeof(struct imr_header)];
+};
+
+struct imr_layout {
+	uint8_t     css_reserved[0x1000];
+	struct imr_state    imr_state;
+};
+
+/* cAVS ROM structs and macros end */
+
+static void imr_layout_update(void *vector)
+{
+	struct imr_layout *imr_layout = (struct imr_layout *)(IMR_L1_CACHE_ADDRESS);
+
+	/* update the IMR layout and write it back to uncache memory
+	 * for ROM code usage. The ROM code will read this from IMR
+	 * at the subsequent run and decide (e.g. combine with checking
+	 * if FW_PURGE IPC from host got) if it can use the previous
+	 * IMR FW directly. So this here is only a host->FW->ROM one way
+	 * configuration, no symmetric task need to done in any
+	 * platform_resume() to clear the configuration.
+	 */
+	dcache_invalidate_region(imr_layout, sizeof(*imr_layout));
+	imr_layout->imr_state.header.adsp_imr_magic = ADSP_IMR_MAGIC_VALUE;
+	imr_layout->imr_state.header.imr_restore_vector = vector;
+	dcache_writeback_region(imr_layout, sizeof(*imr_layout));
+}
+
 int platform_context_save(struct sof *sof)
 {
+	imr_layout_update((void *)IMR_BOOT_LDR_TEXT_ENTRY_BASE);
+
 	return 0;
 }
