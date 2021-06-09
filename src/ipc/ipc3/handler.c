@@ -603,6 +603,9 @@ static int ipc_pm_context_save(uint32_t header)
 
 	sa_exit(sof_get());
 
+	/* do platform specific suspending */
+	platform_context_save(sof_get());
+
 	/* TODO use Zephyr calls for shutdown */
 #ifndef __ZEPHYR__
 	/* TODO: check we are inactive - all streams are suspended */
