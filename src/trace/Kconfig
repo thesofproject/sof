@@ -88,4 +88,11 @@ config TRACE_BURST_COUNT
 		Amount of messages that will pass through the filter even if sent in rapid succession.
 		Allowed message burst size before filter suppresses the message.
 
+config TRACE_DMA_DISABLE
+	bool
+	default y if KERNEL_BIN_NAME = "zephyr"
+	default n
+	help
+		Most platforms support DMA trace, to disable it select this option.
+
 endmenu

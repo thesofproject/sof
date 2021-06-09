@@ -19,7 +19,9 @@
 #include <sof/string.h>
 #include <sof/sof.h>
 #include <sof/spinlock.h>
+#if !CONFIG_TRACE_DMA_DISABLE
 #include <sof/trace/dma-trace.h>
+#endif
 #include <sof/trace/preproc.h>
 #include <sof/trace/trace.h>
 #include <ipc/topology.h>
@@ -70,6 +72,7 @@ struct trace {
 
 #define TRACE_ID_MASK ((1 << TRACE_ID_LENGTH) - 1)
 
+#if !CONFIG_TRACE_DMA_DISABLE
 static void put_header(uint32_t *dst, const struct sof_uuid_entry *uid,
 		       uint32_t id_1, uint32_t id_2,
 		       uint32_t entry, uint64_t timestamp)
@@ -314,6 +317,22 @@ void trace_log_filtered(bool send_atomic, const void *log_entry, const struct tr
 	va_end(vl);
 }
 
+#elif CONFIG_SUECREEK /* CONFIG_TRACE_DMA_DISABLE */
+
+void trace_log_filtered(bool send_atomic, const void *log_entry,
+			const struct tr_ctx *ctx, uint32_t lvl,
+			uint32_t id_1, uint32_t id_2, int arg_count, ...)
+{
+}
+
+void trace_log_unfiltered(bool send_atomic, const void *log_entry,
+			  const struct tr_ctx *ctx, uint32_t lvl,
+			  uint32_t id_1, uint32_t id_2, int arg_count, ...)
+{
+}
+
+#endif /* CONFIG_TRACE_DMA_DISABLE */
+
 struct sof_ipc_trace_filter_elem *trace_filter_fill(struct sof_ipc_trace_filter_elem *elem,
 						    struct sof_ipc_trace_filter_elem *end,
 						    struct trace_filter *filter)
@@ -467,6 +486,7 @@ int trace_filter_update(const struct trace_filter *filter)
 /** Sends all pending DMA messages to mailbox (for emergencies) */
 void trace_flush_dma_to_mbox(void)
 {
+#if !CONFIG_TRACE_DMA_DISABLE
 	struct trace *trace = trace_get();
 	volatile uint64_t *t;
 	uint32_t flags;
@@ -480,6 +500,7 @@ void trace_flush_dma_to_mbox(void)
 	dma_trace_flush((void *)t);
 
 	spin_unlock_irq(&trace->lock, flags);
+#endif
 }
 
 void trace_on(void)
@@ -490,7 +511,9 @@ void trace_on(void)
 	spin_lock_irq(&trace->lock, flags);
 
 	trace->enable = 1;
+#if !CONFIG_TRACE_DMA_DISABLE
 	dma_trace_on();
+#endif
 
 	spin_unlock_irq(&trace->lock, flags);
 }
@@ -503,7 +526,9 @@ void trace_off(void)
 	spin_lock_irq(&trace->lock, flags);
 
 	trace->enable = 0;
+#if !CONFIG_TRACE_DMA_DISABLE
 	dma_trace_off();
+#endif
 
 	spin_unlock_irq(&trace->lock, flags);
 }
@@ -522,5 +547,7 @@ void trace_init(struct sof *sof)
 	dcache_writeback_invalidate_region((void *)MAILBOX_TRACE_BASE,
 					   MAILBOX_TRACE_SIZE);
 
+#if !CONFIG_TRACE_DMA_DISABLE
 	dma_trace_init_early(sof);
+#endif
 }

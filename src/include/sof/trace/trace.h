@@ -185,7 +185,7 @@ int trace_filter_update(const struct trace_filter *elem);
 
 /* _log_message() */
 
-#ifdef CONFIG_LIBRARY
+#if CONFIG_LIBRARY
 
 extern int test_bench_trace;
 char *get_trace_class(uint32_t trace_class);

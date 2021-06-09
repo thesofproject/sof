@@ -403,9 +403,14 @@ zephyr_library_sources(
 )
 
 zephyr_library_sources_ifdef(CONFIG_TRACE
-	${SOF_SRC_PATH}/trace/dma-trace.c
 	${SOF_SRC_PATH}/trace/trace.c
 )
+
+if (NOT CONFIG_TRACE_DMA_DISABLE)
+zephyr_library_sources_ifdef(CONFIG_TRACE
+	${SOF_SRC_PATH}/trace/dma-trace.c
+)
+endif ()
 
 # Optional SOF sources - depends on Kconfig - WIP
 

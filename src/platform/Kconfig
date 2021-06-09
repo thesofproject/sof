@@ -119,6 +119,7 @@ config SUECREEK
 	select CAVS_VERSION_2_0
 	select XT_WAITI_DELAY
 	select CAVS_USE_LPRO_IN_WAITI
+	select TRACE_DMA_DISABLE
 	help
 	  Select if your target platform is Suecreek-compatible
 
