@@ -83,7 +83,7 @@ static SHARED_DATA struct mm memmap = {
 		.size = HEAP_BUFFER_SIZE,
 		.info = {.free = HEAP_BUFFER_SIZE,},
 		.caps = SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_CACHE |
-			SOF_MEM_CAPS_DMA,
+			SOF_MEM_CAPS_DMA | SOF_MEM_CAPS_HP | SOF_MEM_CAPS_LP,
 	},
 	.total = {.free = HEAP_SYSTEM_SIZE + HEAP_SYS_RUNTIME_SIZE +
 			HEAP_RUNTIME_SIZE + HEAP_BUFFER_SIZE,},
