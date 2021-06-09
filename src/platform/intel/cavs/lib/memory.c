@@ -212,22 +212,22 @@ void platform_init_memmap(struct sof *sof)
 	sof->memory_map->runtime[0].caps = SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_EXT |
 		SOF_MEM_CAPS_CACHE;
 
-	/* heap buffer init */
-	sof->memory_map->buffer[0].blocks = ARRAY_SIZE(buf_heap_map);
-	sof->memory_map->buffer[0].map = uncached_block_map(buf_heap_map);
-	sof->memory_map->buffer[0].heap = (uintptr_t)&_buffer_heap;
-	sof->memory_map->buffer[0].size = HEAP_BUFFER_SIZE;
-	sof->memory_map->buffer[0].info.free = HEAP_BUFFER_SIZE;
-	sof->memory_map->buffer[0].caps = SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_HP |
+	/* heap lp buffer init */
+	sof->memory_map->buffer[0].blocks = ARRAY_SIZE(lp_buf_heap_map);
+	sof->memory_map->buffer[0].map = uncached_block_map(lp_buf_heap_map);
+	sof->memory_map->buffer[0].heap = HEAP_LP_BUFFER_BASE;
+	sof->memory_map->buffer[0].size = HEAP_LP_BUFFER_SIZE;
+	sof->memory_map->buffer[0].info.free = HEAP_LP_BUFFER_SIZE;
+	sof->memory_map->buffer[0].caps = SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_LP |
 		SOF_MEM_CAPS_CACHE | SOF_MEM_CAPS_DMA;
 
-	/* heap lp buffer init */
-	sof->memory_map->buffer[1].blocks = ARRAY_SIZE(lp_buf_heap_map);
-	sof->memory_map->buffer[1].map = uncached_block_map(lp_buf_heap_map);
-	sof->memory_map->buffer[1].heap = HEAP_LP_BUFFER_BASE;
-	sof->memory_map->buffer[1].size = HEAP_LP_BUFFER_SIZE;
-	sof->memory_map->buffer[1].info.free = HEAP_LP_BUFFER_SIZE;
-	sof->memory_map->buffer[1].caps = SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_LP |
+	/* heap buffer init */
+	sof->memory_map->buffer[1].blocks = ARRAY_SIZE(buf_heap_map);
+	sof->memory_map->buffer[1].map = uncached_block_map(buf_heap_map);
+	sof->memory_map->buffer[1].heap = (uintptr_t)&_buffer_heap;
+	sof->memory_map->buffer[1].size = HEAP_BUFFER_SIZE;
+	sof->memory_map->buffer[1].info.free = HEAP_BUFFER_SIZE;
+	sof->memory_map->buffer[1].caps = SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_HP |
 		SOF_MEM_CAPS_CACHE | SOF_MEM_CAPS_DMA;
 
 	/* .total init */
