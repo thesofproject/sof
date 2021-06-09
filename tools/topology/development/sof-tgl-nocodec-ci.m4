@@ -227,10 +227,10 @@ DAI_ADD(sof/pipe-dai-capture.m4,
 	PIPELINE_SINK_8, 2, s32le,
 	1000, 0, 2, SCHEDULE_TIME_DOMAIN_TIMER)
 
-# capture DAI is DMIC 0 using 2 periods
+# capture DAI is DMIC 1 using 2 periods
 # Buffers use s32le format, 1000us deadline on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
-	8, DMIC, 1, NoCodec-7,
+	9, DMIC, 1, NoCodec-7,
 	PIPELINE_SINK_9, 2, s32le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
@@ -239,7 +239,7 @@ PCM_DUPLEX_ADD(Port0, 0, PIPELINE_PCM_1, PIPELINE_PCM_2)
 PCM_DUPLEX_ADD(Port1, 1, PIPELINE_PCM_3, PIPELINE_PCM_4)
 PCM_CAPTURE_ADD(FWEchoRef, 3, PIPELINE_PCM_7)
 PCM_CAPTURE_ADD(DMIC, 4, PIPELINE_PCM_8)
-PCM_CAPTURE_ADD(DMIC, 5, PIPELINE_PCM_9)
+PCM_CAPTURE_ADD(DMIC16kHz, 5, PIPELINE_PCM_9)
 
 #
 # BE configurations - overrides config in ACPI if present
