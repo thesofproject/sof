@@ -62,6 +62,11 @@ int platform_init(struct sof *sof)
 	return 0;
 }
 
+int platform_context_save(struct sof *sof)
+{
+	return 0;
+}
+
 #ifdef __ZEPHYR__
 /* Stubs for unsupported architectures */
 

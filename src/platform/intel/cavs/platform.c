@@ -549,3 +549,8 @@ void platform_wait_for_interrupt(int level)
 #endif
 }
 #endif
+
+int platform_context_save(struct sof *sof)
+{
+	return 0;
+}
