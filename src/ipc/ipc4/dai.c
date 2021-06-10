@@ -10,6 +10,7 @@
 #include <sof/audio/pipeline.h>
 #include <sof/audio/ipc-config.h>
 #include <sof/common.h>
+#include <sof/drivers/alh.h>
 #include <sof/drivers/idc.h>
 #include <sof/drivers/interrupt.h>
 #include <sof/ipc/topology.h>
@@ -76,6 +77,8 @@ int ipc_dai_data_config(struct comp_dev *dev)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
 	struct ipc_config_dai *dai = &dd->ipc_config;
+	struct dai *dai_p = dd->dai;
+	struct alh_pdata *alh;
 
 	if (!dai) {
 		comp_err(dev, "dai_data_config(): no config set for dai %d type %d",
@@ -104,6 +107,25 @@ int ipc_dai_data_config(struct comp_dev *dev)
 	case SOF_DAI_INTEL_HDA:
 		break;
 	case SOF_DAI_INTEL_ALH:
+		alh = dai_get_drvdata(dai_p);
+		/* SDW HW FIFO always requires 32bit MSB aligned sample data for
+		 * all formats, such as 8/16/24/32 bits.
+		 */
+		dev->ipc_config.frame_fmt = SOF_IPC_FRAME_S32_LE;
+		dd->dma_buffer->stream.frame_fmt = dev->ipc_config.frame_fmt;
+
+		dd->config.burst_elems =
+			dd->dai->plat_data.fifo[dai->direction].depth;
+
+		/* As with HDA, the DMA channel is assigned in runtime,
+		 * not during topology parsing.
+		 */
+		dd->stream_id = alh->params.stream_id;
+
+		//FIXME: the comp_err is for debugging only, remove it when everything is ready
+		comp_err(dev, "dai_data_config() SOF_DAI_INTEL_ALH dd->dma_buffer->stream.frame_fmt %#x stream_id %d",
+			dd->dma_buffer->stream.frame_fmt, dd->stream_id);
+		break;
 	default:
 		/* other types of DAIs not handled for now */
 		comp_warn(dev, "dai_data_config(): Unknown dai type %d", dai->type);

@@ -16,6 +16,7 @@
 #include <ipc/topology.h>
 #include <user/trace.h>
 #include <stdint.h>
+#include <ipc4/alh.h>
 
 /* a8e4218c-e863-4c93-84e7-5c27d2504501 */
 DECLARE_SOF_UUID("alh-dai", alh_uuid, 0xa8e4218c, 0xe863, 0x4c93,
@@ -30,23 +31,50 @@ static int alh_trigger(struct dai *dai, int cmd, int direction)
 	return 0;
 }
 
-static int alh_set_config(struct dai *dai, struct ipc_config_dai *common_config,
+static int alh_set_config_tplg(struct dai *dai, struct ipc_config_dai *common_config,
 			  void *spec_config)
 {
 	struct alh_pdata *alh = dai_get_drvdata(dai);
 	struct sof_ipc_dai_config *config = spec_config;
 
-	dai_info(dai, "alh_set_config() config->format = 0x%4x",
+	dai_info(dai, "alh_set_config_tplg() config->format = 0x%4x",
 		  config->format);
 
 	if (config->alh.channels || config->alh.rate) {
 		alh->params.channels = config->alh.channels;
 		alh->params.rate = config->alh.rate;
+		dai_err(dai, "alh_set_config() channels %d rate %d",
+			  config->alh.channels, config->alh.rate);
 	}
 
 	alh->params.stream_id = config->alh.stream_id;
 
 	return 0;
+}
+
+static int alh_set_config_blob(struct dai *dai, struct ipc_config_dai *common_config,
+			       void *spec_config)
+{
+	struct alh_pdata *alh = dai_get_drvdata(dai);
+	struct sof_alh_configuration_blob *blob = spec_config;
+	struct ipc4_alh_multi_gtw_cfg *alh_cfg = &blob->alh_cfg;
+
+	dai_info(dai, "alh_set_config_blob()");
+
+	alh->params.channels = 2;
+	alh->params.rate = 48000;
+	alh->params.stream_id = alh_cfg->mapping[0].alh_id & 0xf; //mask node_id
+
+	return 0;
+}
+
+static int alh_set_config(struct dai *dai, struct ipc_config_dai *common_config,
+			  void *spec_config)
+{
+	if (!common_config->is_config_blob)
+		return alh_set_config_tplg(dai, common_config, spec_config);
+	else
+		return alh_set_config_blob(dai, common_config, spec_config);
 }
 
 /* get ALH hw params */
