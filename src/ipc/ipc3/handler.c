@@ -1473,6 +1473,11 @@ ipc_cmd_hdr *ipc_prepare_to_send(struct ipc_msg *msg)
 	return ipc_to_hdr(hdr);
 }
 
+void ipc_boot_complete_msg(ipc_cmd_hdr *header, uint32_t *data)
+{
+	*header = SOF_IPC_FW_READY;
+}
+
 /*
  * Global IPC Operations.
  */
