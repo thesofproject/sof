@@ -185,6 +185,7 @@ static struct comp_dev *create_dai(struct comp_ipc_config *config, struct ipc4_c
 	case ipc4_alh_link_input_class:
 		dai.type = SOF_DAI_INTEL_ALH;
 		dai.is_config_blob = true;
+		dai.dai_index -= 7; //-base TODO: use a #define
 		break;
 	case ipc4_dmic_link_input_class:
 		dai.type = SOF_DAI_INTEL_DMIC;
