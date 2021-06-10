@@ -75,6 +75,8 @@ static void put_header(uint32_t *dst, const struct sof_uuid_entry *uid,
 		       uint32_t entry, uint64_t timestamp)
 {
 	struct timer *timer = timer_get();
+	/* Support very early tracing */
+	uint64_t delta = timer ? timer->delta : 0;
 	struct log_entry_header header;
 	int ret;
 
@@ -82,7 +84,7 @@ static void put_header(uint32_t *dst, const struct sof_uuid_entry *uid,
 	header.id_0 = id_1 & TRACE_ID_MASK;
 	header.id_1 = id_2 & TRACE_ID_MASK;
 	header.core_id = cpu_get_id();
-	header.timestamp = timestamp + timer->delta;
+	header.timestamp = timestamp + delta;
 	header.log_entry_address = entry;
 
 	ret = memcpy_s(dst, sizeof(header), &header, sizeof(header));
