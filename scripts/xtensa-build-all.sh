@@ -375,6 +375,11 @@ do
 		"$SOF_TOP"
 	)
 
+	if [ -n "$IPC4_CONFIG" ]
+	then
+		cp "$IPC4_CONFIG" override.config
+	fi
+
 	if [ -n "$OVERRIDE_CONFIG" ]
 	then
 		cp "$OVERRIDE_CONFIG" override.config
