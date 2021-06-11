@@ -374,10 +374,6 @@ static void hda_dma_host_stop(struct dma_chan_data *channel)
 	if (!hda_chan->irq_disabled)
 		return;
 
-	/* Unregister L1 entry */
-	notifier_unregister(NULL, scheduler_get_data(SOF_SCHEDULE_LL_TIMER),
-			    NOTIFIER_ID_LL_PRE_RUN);
-
 	/* Unregister L1 exit */
 	notifier_unregister(NULL, scheduler_get_data(SOF_SCHEDULE_LL_TIMER),
 			    NOTIFIER_ID_LL_POST_RUN);
