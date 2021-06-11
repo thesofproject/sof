@@ -32,28 +32,11 @@
 #error "Zephyr uses 19.2MHz clock derived from SSP which must be enabled."
 #endif
 
-#define ZEPHYR_LL_WORKQ_SIZE	8192
-
-#define CYC_PER_TICK	(CONFIG_SYS_CLOCK_HW_CYCLES_PER_SEC	\
-			/ CONFIG_SYS_CLOCK_TICKS_PER_SEC)
-
-/* zephyr alignment to nearest kernel tick */
-#define ZEPHYR_SCHED_COST	CYC_PER_TICK
-
-K_THREAD_STACK_DEFINE(ll_workq_stack0, ZEPHYR_LL_WORKQ_SIZE);
-#if CONFIG_CORE_COUNT > 1
-K_THREAD_STACK_DEFINE(ll_workq_stack1, ZEPHYR_LL_WORKQ_SIZE);
-#endif
-#if CONFIG_CORE_COUNT > 2
-K_THREAD_STACK_DEFINE(ll_workq_stack2, ZEPHYR_LL_WORKQ_SIZE);
-#endif
-#if CONFIG_CORE_COUNT > 3
-K_THREAD_STACK_DEFINE(ll_workq_stack3, ZEPHYR_LL_WORKQ_SIZE);
-#endif
+#define ZEPHYR_LL_STACK_SIZE	8192
 
 #define LL_TIMER_PERIOD_US 1000 /* period in microseconds */
 
-K_KERNEL_STACK_ARRAY_DEFINE(ll_sched_stack, CONFIG_CORE_COUNT, ZEPHYR_LL_WORKQ_SIZE);
+K_KERNEL_STACK_ARRAY_DEFINE(ll_sched_stack, CONFIG_CORE_COUNT, ZEPHYR_LL_STACK_SIZE);
 
 struct zephyr_domain_thread {
 	struct k_thread ll_thread;
@@ -119,7 +102,7 @@ static int zephyr_domain_register(struct ll_schedule_domain *domain,
 
 	thread = k_thread_create(&dt->ll_thread,
 				 ll_sched_stack[core],
-				 ZEPHYR_LL_WORKQ_SIZE,
+				 ZEPHYR_LL_STACK_SIZE,
 				 zephyr_domain_thread_fn, zephyr_domain, NULL, NULL,
 				 -CONFIG_NUM_COOP_PRIORITIES, 0, K_FOREVER);
 
