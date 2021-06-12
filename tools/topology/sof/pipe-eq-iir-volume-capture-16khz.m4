@@ -43,13 +43,14 @@ LIST(`		', `SOF_TKN_VOLUME_RAMP_STEP_TYPE	"0"'
 
 W_DATA(DEF_PGA_CONF, DEF_PGA_TOKENS)
 
-define(DEF_EQIIR_COEF, concat(`eqiir_coef_', PIPELINE_ID))
-define(DEF_EQIIR_PRIV, concat(`eqiir_priv_', PIPELINE_ID))
-
 # By default, use 40 Hz highpass response with +0 dB gain for 16khz
 # TODO: need to implement middle level macro handler per pipeline
 ifdef(`DMIC16KPROC_FILTER1', , `define(DMIC16KPROC_FILTER1, eq_iir_coef_highpass_40hz_0db_16khz.m4)')
+define(DEF_EQIIR_PRIV, DMIC16KPROC_FILTER1)
 include(DMIC16KPROC_FILTER1)
+
+define(DEF_EQIIR_COEF, concat(`eqiir_coef_', PIPELINE_ID))
+
 
 # EQ Bytes control with max value of 255
 C_CONTROLBYTES(DEF_EQIIR_COEF, PIPELINE_ID,

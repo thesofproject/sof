@@ -55,12 +55,13 @@ W_DATA(DEF_PGA_CONF, DEF_PGA_TOKENS)
 # IIR configuration
 #
 
-define(DEF_EQIIR_COEF, concat(`eqiir_coef_', PIPELINE_ID))
-define(DEF_EQIIR_PRIV, concat(`eqiir_priv_', PIPELINE_ID))
 
 # By default, use 40 Hz highpass response with 0 dB gain
 ifdef(`PIPELINE_FILTER1', , `define(PIPELINE_FILTER1, eq_iir_coef_highpass_40hz_0db_48khz.m4)')
+define(DEF_EQIIR_PRIV, PIPELINE_FILTER1)
 include(PIPELINE_FILTER1)
+
+define(DEF_EQIIR_COEF, concat(`eqiir_coef_', PIPELINE_ID))
 
 # EQ Bytes control with max value of 255
 C_CONTROLBYTES(DEF_EQIIR_COEF, PIPELINE_ID,
