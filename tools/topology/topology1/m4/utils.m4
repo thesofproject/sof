@@ -101,33 +101,21 @@ define(`W_DATA',
 `}')
 
 dnl VIRTUAL_DAPM_ROUTE_OUT(name, dai type, dai index, direction, index)
+dnl No routes needed. Macro retained for simplicity
 define(`VIRTUAL_DAPM_ROUTE_OUT',
 `SectionWidget.STR($1) {'
 `       index STR($5)'
 `       type "output"'
 `       no_pm "true"'
-`}'
-`SectionGraph.STR($2) {'
-`       index STR($5)'
-`'
-`       lines ['
-`               dapm($1,$2$3.$4)'
-`       ]'
 `}')
 
 dnl VIRTUAL_DAPM_ROUTE_IN(name, dai type, dai index, direction, index)
+dnl No routes needed. Macro retained for simplicity
 define(`VIRTUAL_DAPM_ROUTE_IN',
 `SectionWidget.STR($1) {'
 `       index STR($5)'
 `       type "input"'
 `       no_pm "true"'
-`}'
-`SectionGraph.STR($2) {'
-`       index STR($5)'
-`'
-`       lines ['
-`               dapm($2$3.$4, $1)'
-`       ]'
 `}')
 
 dnl VIRTUAL_WIDGET(name, type, index)
