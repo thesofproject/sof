@@ -56,13 +56,21 @@ static void zephyr_domain_thread_fn(void *p1, void *p2, void *p3)
 {
 	struct zephyr_domain *zephyr_domain = p1;
 	int core = cpu_get_id();
+	uint32_t tick0, tick1, timer_fired;
 	struct zephyr_domain_thread *dt = zephyr_domain->domain_thread + core;
 
 	for (;;) {
 		/* immediately go to sleep, waiting to be woken up by the timer */
 		k_sem_take(&zephyr_domain->sem, K_FOREVER);
 
+		tick0 = k_cycle_get_32();
 		dt->handler(dt->arg);
+		tick1 = k_cycle_get_32();
+
+		timer_fired = k_timer_status_get(&zephyr_domain->timer);
+		if (timer_fired > 1)
+			tr_warn(&ll_tr, "OVERRUN in scheduler, missed %u, cycles=%u",
+				timer_fired - 1, tick1 - tick0);
 	}
 }
 
