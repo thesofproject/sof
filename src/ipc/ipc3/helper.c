@@ -195,9 +195,6 @@ static const struct comp_driver *get_drv(struct sof_ipc_comp *comp)
 	const struct comp_driver *drv = NULL;
 	struct comp_driver_info *info;
 	struct sof_ipc_comp_ext *comp_ext;
-	uint32_t flags;
-
-	irq_local_disable(flags);
 
 	/* do we have extended data ? */
 	if (!comp->ext_data_length)
@@ -225,6 +222,7 @@ static const struct comp_driver *get_drv(struct sof_ipc_comp *comp)
 	}
 
 	/* search driver list with UUID */
+	spin_lock(&drivers->lock);
 	list_for_item(clist, &drivers->list) {
 		info = container_of(clist, struct comp_driver_info,
 				    list);
@@ -258,7 +256,7 @@ comp_type_match:
 	}
 
 out:
-	irq_local_enable(flags);
+	spin_unlock(&drivers->lock);
 	return drv;
 }
 
