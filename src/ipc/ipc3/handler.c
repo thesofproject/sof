@@ -19,30 +19,18 @@
 #include <sof/debug/gdb/gdb.h>
 #include <sof/debug/panic.h>
 #include <sof/drivers/idc.h>
-#include <sof/drivers/interrupt.h>
-#include <sof/ipc/topology.h>
 #include <sof/ipc/common.h>
 #include <sof/ipc/msg.h>
 #include <sof/ipc/driver.h>
 #include <sof/ipc/schedule.h>
-#include <sof/drivers/timer.h>
 #include <sof/lib/agent.h>
 #include <sof/lib/alloc.h>
-#include <sof/lib/clk.h>
 #include <sof/lib/cache.h>
-#include <sof/lib/cpu.h>
-#include <sof/lib/dai.h>
-#include <sof/lib/dma.h>
 #include <sof/lib/mailbox.h>
-#include <sof/lib/memory.h>
 #include <sof/lib/mm_heap.h>
 #include <sof/lib/pm_runtime.h>
 #include <sof/list.h>
-#include <sof/math/numbers.h>
 #include <sof/platform.h>
-#include <sof/schedule/schedule.h>
-#include <sof/schedule/task.h>
-#include <sof/spinlock.h>
 #include <sof/string.h>
 #include <sof/trace/dma-trace.h>
 #include <sof/trace/trace.h>
@@ -604,7 +592,7 @@ static int ipc_pm_context_save(uint32_t header)
 	sa_exit(sof_get());
 
 	/* TODO use Zephyr calls for shutdown */
-#ifndef __ZEPHYR__
+#if !defined(__ZEPHYR__) && !defined(CONFIG_LIBRARY)
 	/* TODO: check we are inactive - all streams are suspended */
 
 	/* TODO: mask ALL platform interrupts except DMA */
