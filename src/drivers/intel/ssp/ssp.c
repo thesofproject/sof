@@ -657,6 +657,7 @@ static int ssp_pre_start(struct dai *dai)
 	if (ssp_freq[SSP_DEFAULT_IDX].freq % config->ssp.bclk_rate != 0) {
 		dai_err(dai, "invalid bclk_rate = %d for dai_index = %d",
 			config->ssp.bclk_rate, config->dai_index);
+		ret = -EINVAL;
 		goto out;
 	}
 
