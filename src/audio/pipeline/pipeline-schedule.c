@@ -113,9 +113,6 @@ void pipeline_schedule_triggered(struct pipeline_walk_context *ctx,
 {
 	struct list_item *tlist;
 	struct pipeline *p;
-	uint32_t flags;
-
-	irq_local_disable(flags);
 
 	list_for_item(tlist, &ctx->pipelines) {
 		p = container_of(tlist, struct pipeline, list);
@@ -138,8 +135,6 @@ void pipeline_schedule_triggered(struct pipeline_walk_context *ctx,
 			break;
 		}
 	}
-
-	irq_local_enable(flags);
 }
 
 int pipeline_comp_task_init(struct pipeline *p)
