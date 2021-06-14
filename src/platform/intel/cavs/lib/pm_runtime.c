@@ -88,16 +88,8 @@ static inline void cavs_pm_runtime_enable_dsp(bool enable)
 {
 	struct pm_runtime_data *prd = pm_runtime_data_get();
 	struct cavs_pm_runtime_data *pprd = prd->platform_data;
-	uint32_t flags;
-
-	/* request is always run on dsp0 and applies to dsp0,
-	 * so no global lock is required.
-	 */
-	irq_local_disable(flags);
 
 	pprd->dsp_d0 = !enable;
-
-	irq_local_enable(flags);
 
 	tr_info(&power_tr, "pm_runtime_enable_dsp dsp_d0_sref %d",
 		pprd->dsp_d0);
