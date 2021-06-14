@@ -10,6 +10,7 @@
 
 #include <sof/bit.h>
 #include <sof/list.h>
+#include <sof/spinlock.h>
 #include <sof/sof.h>
 #include <stdint.h>
 
@@ -38,6 +39,7 @@ enum notify_id {
 
 struct notify {
 	struct list_item list[NOTIFIER_ID_COUNT]; /* list of callback handles */
+	spinlock_t lock;	/* list lock */
 };
 
 struct notify_data {
