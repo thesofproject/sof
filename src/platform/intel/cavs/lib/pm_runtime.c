@@ -46,30 +46,33 @@ DECLARE_SOF_UUID("power", power_uuid, 0x76cc9773, 0x440c, 0x4df9,
 
 DECLARE_TR_CTX(power_tr, SOF_UUID(power_uuid), LOG_LEVEL_INFO);
 
-/** \brief Registers Host DMA access by incrementing ref counter. */
+/**
+ *\brief Registers Host DMA access by incrementing ref counter.
+ * Must be called from same CPU context as
+ * cavs_pm_runtime_force_host_dma_l1_exit()
+ */
 static void cavs_pm_runtime_host_dma_l1_entry(void)
 {
 	struct pm_runtime_data *prd = pm_runtime_data_get();
 	struct cavs_pm_runtime_data *pprd = prd->platform_data;
-	uint32_t flags;
 
-	spin_lock_irq(&prd->lock, flags);
+	spin_lock(&prd->lock);
 
 	pprd->host_dma_l1_sref++;
 
-	spin_unlock_irq(&prd->lock, flags);
+	spin_unlock(&prd->lock);
 }
 
 /**
- * \brief Forces Host DMAs to exit L1.
+ * \brief Forces Host DMAs to exit L1. Must be called from same CPU context as
+ * cavs_pm_runtime_host_dma_l1_entry()
  */
 static inline void cavs_pm_runtime_force_host_dma_l1_exit(void)
 {
 	struct pm_runtime_data *prd = pm_runtime_data_get();
 	struct cavs_pm_runtime_data *pprd = prd->platform_data;
-	uint32_t flags;
 
-	spin_lock_irq(&prd->lock, flags);
+	spin_lock(&prd->lock);
 
 	if (!--pprd->host_dma_l1_sref) {
 		shim_write(SHIM_SVCFG,
@@ -81,7 +84,7 @@ static inline void cavs_pm_runtime_force_host_dma_l1_exit(void)
 			   shim_read(SHIM_SVCFG) & ~(SHIM_SVCFG_FORCE_L1_EXIT));
 	}
 
-	spin_unlock_irq(&prd->lock, flags);
+	spin_unlock(&prd->lock);
 }
 
 static inline void cavs_pm_runtime_enable_dsp(bool enable)
