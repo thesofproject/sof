@@ -52,17 +52,46 @@ struct zephyr_domain {
 	struct ll_schedule_domain *ll_domain;
 };
 
+/* perf measurement windows size 2^x */
+#define CYCLES_WINDOW_SIZE	10
+
 static void zephyr_domain_thread_fn(void *p1, void *p2, void *p3)
 {
 	struct zephyr_domain *zephyr_domain = p1;
 	int core = cpu_get_id();
 	struct zephyr_domain_thread *dt = zephyr_domain->domain_thread + core;
+	unsigned int runs = 0, overruns = 0, cycles_sum = 0, cycles_max = 0;
+	unsigned int cycles0, cycles1, diff, timer_fired;
 
 	for (;;) {
 		/* immediately go to sleep, waiting to be woken up by the timer */
 		k_sem_take(&dt->sem, K_FOREVER);
 
+		cycles0 = k_cycle_get_32();
 		dt->handler(dt->arg);
+		cycles1 = k_cycle_get_32();
+
+		if (cycles1 > cycles0)
+			diff = cycles1 - cycles0;
+		else
+			diff = UINT32_MAX - cycles0 + cycles1;
+
+		timer_fired = k_timer_status_get(&zephyr_domain->timer);
+		if (timer_fired > 1)
+			overruns++;
+
+		cycles_sum += diff;
+		cycles_max = diff > cycles_max ? diff : cycles_max;
+
+		if (++runs == 1 << CYCLES_WINDOW_SIZE) {
+			cycles_sum >>= CYCLES_WINDOW_SIZE;
+			tr_info(&ll_tr, "ll timer avg %u, max %u, overruns %u",
+				cycles_sum, cycles_max, overruns);
+			cycles_sum = 0;
+			cycles_max = 0;
+			runs = 0;
+			overruns = 0;
+		}
 	}
 }
 
