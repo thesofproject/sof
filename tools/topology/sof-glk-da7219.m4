@@ -87,6 +87,7 @@ DAI_ADD(sof/pipe-dai-playback.m4,
 	PIPELINE_SOURCE_1, 2, s16le,
 	48, 1000, 0, 0)
 
+ifelse(HEADPHONE, `da7219', `
 # playback DAI is SSP2 using 2 periods
 # Buffers use s16le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
@@ -100,6 +101,21 @@ DAI_ADD(sof/pipe-dai-capture.m4,
 	3, SSP, 2, SSP2-Codec,
 	PIPELINE_SINK_3, 2, s16le,
 	48, 1000, 0, 0)
+', HEADPHONE, `cs42l42', `
+# playback DAI is SSP2 using 2 periods
+# Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
+DAI_ADD(sof/pipe-dai-playback.m4,
+	2, SSP, 2, SSP2-Codec,
+	PIPELINE_SOURCE_2, 2, s24le,
+	48, 1000, 0, 0)
+
+# capture DAI is SSP2 using 2 periods
+# Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
+DAI_ADD(sof/pipe-dai-capture.m4,
+	3, SSP, 2, SSP2-Codec,
+	PIPELINE_SINK_3, 2, s24le,
+	48, 1000, 0, 0)
+', )
 
 # capture DAI is DMIC0 using 2 periods
 # Buffers use s32le format, with 48 frame per 1000us on core 0 with priority 0
@@ -157,13 +173,13 @@ DAI_CONFIG(SSP, 2, 1, SSP2-Codec,
 		SSP_TDM(2, 20, 3, 3),
 		SSP_CONFIG_DATA(SSP, 2, 16, 1)))
 ', HEADPHONE, `cs42l42', `
-#SSP 2 (ID: 1) with 19.2 MHz mclk with MCLK_ID 1 (unused), 3.072 MHz bclk
+#SSP 2 (ID: 1) with 19.2 MHz mclk with MCLK_ID 1 (unused), 2.4 MHz bclk
 DAI_CONFIG(SSP, 2, 1, SSP2-Codec,
 	SSP_CONFIG(I2S, SSP_CLOCK(mclk, 19200000, codec_mclk_in),
 		SSP_CLOCK(bclk, 2400000, codec_slave),
 		SSP_CLOCK(fsync, 48000, codec_slave),
 		SSP_TDM(2, 25, 3, 3),
-		SSP_CONFIG_DATA(SSP, 2, 16, 1, 0, SSP_CC_BCLK_ES)))
+		SSP_CONFIG_DATA(SSP, 2, 24, 1, 0, SSP_CC_BCLK_ES)))
 ', )
 
 # dmic01 (id: 2)
