@@ -73,8 +73,10 @@ DEBUG_START
 #
 # Define the pipelines
 #
+ifdef(`NO_JACK',`', `
 # PCM0 ---> volume ----> ALH 2 BE dailink 0
 # PCM1 <--- volume <---- ALH 3 BE dailink 1
+')
 ifdef(`EXT_AMP', `
 # PCM2 ---> volume ----> ALH 2 BE dailink 2
 ')
@@ -94,6 +96,8 @@ dnl     period, priority, core,
 dnl     pcm_min_rate, pcm_max_rate, pipeline_rate,
 dnl     time_domain, sched_comp)
 
+ifdef(`NO_JACK', `', `
+
 # Low Latency playback pipeline 1 on PCM 0 using max 2 channels of s32le.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
@@ -107,6 +111,7 @@ PIPELINE_PCM_ADD(sof/pipe-volume-capture.m4,
 	2, 1, 2, s32le,
 	1000, 0, 0,
 	48000, 48000, 48000)
+')
 
 ifdef(`EXT_AMP',
 `
@@ -154,6 +159,8 @@ dnl     pipe id, dai type, dai_index, dai_be,
 dnl     buffer, periods, format,
 dnl     deadline, priority, core, time_domain)
 
+ifdef(`NO_JACK', `', `
+
 # playback DAI is ALH(SDW0 PIN2) using 2 periods
 # Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
@@ -167,6 +174,7 @@ DAI_ADD(sof/pipe-dai-capture.m4,
 	2, ALH, 3, SDW0-Capture,
 	PIPELINE_SINK_2, 2, s24le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
+')
 
 ifdef(`EXT_AMP',
 `
@@ -208,8 +216,12 @@ DAI_ADD(sof/pipe-dai-playback.m4,
 
 # PCM Low Latency, id 0
 dnl PCM_PLAYBACK_ADD(name, pcm_id, playback)
+
+ifdef(`NO_JACK', `', `
 PCM_PLAYBACK_ADD(Jack Out, 0, PIPELINE_PCM_1)
 PCM_CAPTURE_ADD(Jack In, 1, PIPELINE_PCM_2)
+')
+
 ifdef(`EXT_AMP',
 `
 PCM_PLAYBACK_ADD(Speaker, 2, PIPELINE_PCM_3)
@@ -222,6 +234,8 @@ PCM_PLAYBACK_ADD(HDMI 4, 8, PIPELINE_PCM_9)
 # BE configurations - overrides config in ACPI if present
 #
 
+ifdef(`NO_JACK', `', `
+
 #ALH dai index = ((link_id << 8) | PDI id)
 #ALH SDW0 Pin2 (ID: 0)
 DAI_CONFIG(ALH, 2, 0, SDW0-Playback,
@@ -230,6 +244,7 @@ DAI_CONFIG(ALH, 2, 0, SDW0-Playback,
 #ALH SDW0 Pin3 (ID: 1)
 DAI_CONFIG(ALH, 3, 1, SDW0-Capture,
 	ALH_CONFIG(ALH_CONFIG_DATA(ALH, 3, 48000, 2)))
+')
 
 ifdef(`EXT_AMP',
 `
