@@ -200,20 +200,16 @@ static int ghd_setup_model(struct comp_dev *dev)
 	struct comp_data *cd = comp_get_drvdata(dev);
 	void *model;
 	size_t size = 0;
+	uint32_t crc = 0;
 	int ret;
 
-	/* Avoid the CRC calculation since it takes too long and causes XRUN.
-	 *
-	 * TODO: Add it back when there is support for running it in a low
-	 * priority background task.
-	 */
-	model = comp_get_data_blob(cd->model_handler, &size, NULL);
+	model = comp_get_data_blob(cd->model_handler, &size, &crc);
 	if (!model || !size) {
 		comp_err(dev, "Model not set");
 		return -EINVAL;
 	}
-	comp_info(dev, "Model: data=0x%08x, size=%zu",
-		  (uint32_t)model, size);
+	comp_info(dev, "Model: data=0x%08x, size=%zu, crc=%u",
+		  (uint32_t)model, size, crc);
 
 	comp_info(dev, "GoogleHotwordVersion %d",
 		  GoogleHotwordVersion());
