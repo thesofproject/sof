@@ -4,7 +4,6 @@
 [![GitHub Actions](https://github.com/thesofproject/sof/workflows/GitHub%20Actions/badge.svg)](https://github.com/thesofproject/sof/actions)
 [![Build Status](https://travis-ci.org/thesofproject/sof.svg?branch=master)](https://travis-ci.org/thesofproject/sof/branches)
 [![Gitter chat](https://badges.gitter.im/gitterHQ/gitter.png)](https://gitter.im/thesofproject/community)
-[![IRC chat](https://img.shields.io/badge/IRC-%23sof-1e72ff.svg)](https://www.irccloud.com/invite?channel=%23sof&hostname=irc.freenode.net&port=6697&ssl=1)
 
 ### Documentation
 
