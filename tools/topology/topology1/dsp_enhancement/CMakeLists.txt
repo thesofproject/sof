@@ -7,7 +7,7 @@ set(TPLGS_UP
 	"sof-hda-generic\;sof-hda-generic-eq-4ch\;-DCHANNELS=4\;-DHSPROC=eq-iir-eq-fir-volume\;-DDMICPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_48khz.m4\;-DDMIC16KPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_16khz.m4"
 )
 
-add_custom_target(dsp_topologies ALL)
+add_custom_target(dsp_topologies1 ALL)
 
 foreach(tplg ${TPLGS_UP})
 	list(GET tplg 0 input)
@@ -34,7 +34,7 @@ foreach(tplg ${TPLGS_UP})
 			${CMAKE_CURRENT_SOURCE_DIR}/../common/abi.m4
 			${CMAKE_CURRENT_SOURCE_DIR}/../${input}.m4
 			> ${output}.conf
-		DEPENDS abi
+		DEPENDS abi_v1
 		VERBATIM
 		USES_TERMINAL
 	)
@@ -62,5 +62,5 @@ foreach(tplg ${TPLGS_UP})
 	)
 
 	add_custom_target(topology_${output} DEPENDS ${output}.tplg)
-	add_dependencies(dsp_topologies topology_${output})
+	add_dependencies(dsp_topologies1 topology_${output})
 endforeach()

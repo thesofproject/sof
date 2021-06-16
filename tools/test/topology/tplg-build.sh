@@ -13,7 +13,7 @@ rm -f test-*.conf test-*.tplg
 set -e
 
 # M4 preprocessor flags
-export M4PATH="../../topology/:../../topology/m4:../../topology/common:../../topology/platform/intel:../../topology/platform/common"
+export M4PATH="../../topology/topology1:../../topology/topology1/m4:../../topology/topology1/common:../../topology/topology1/platform/intel:../../topology/topology1/platform/common"
 
 if [ -z "$SOF_TPLG_BUILD_OUTPUT" ]
 then
