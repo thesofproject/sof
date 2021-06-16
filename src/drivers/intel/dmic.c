@@ -159,8 +159,7 @@ static enum task_state dmic_work(void *data)
 	 * Gain is Q2.30 and gain modifier is Q12.20.
 	 */
 	dmic->startcount++;
-	dmic->gain = q_multsr_sat_32x32(dmic->gain, dmic->gain_coef,
-					Q_SHIFT_GAIN_X_GAIN_COEF);
+	dmic->gain = q_multsr_sat_32x32(dmic->gain, dmic->gain_coef, Q_SHIFT_GAIN_X_GAIN_COEF);
 
 	/* Gain is stored as Q2.30, while HW register is Q1.19 so shift
 	 * the value right by 11.
@@ -1607,10 +1606,7 @@ static int dmic_probe(struct dai *dai)
 	pm_runtime_get_sync(DMIC_POW, dai->index);
 	/* Disable dynamic clock gating for dmic before touching any reg */
 	pm_runtime_get_sync(DMIC_CLK, dai->index);
-
 	interrupt_enable(dmic->irq, dai);
-
-
 	return 0;
 }
 
