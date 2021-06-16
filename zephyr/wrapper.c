@@ -50,23 +50,55 @@ DECLARE_TR_CTX(zephyr_tr, SOF_UUID(zephyr_uuid), LOG_LEVEL_INFO);
 #define HEAP_SYSTEM_SIZE	0
 #endif
 
-/* The Zephyr heap - TODO: split heap */
-#define HEAP_SIZE	(HEAP_SYSTEM_SIZE + HEAP_RUNTIME_SIZE + HEAP_BUFFER_SIZE)
-static uint8_t __aligned(64) heapmem[HEAP_SIZE];
+/* The Zephyr heap */
+#define HEAPMEM_SIZE	(HEAP_SYSTEM_SIZE + HEAP_RUNTIME_SIZE + HEAP_BUFFER_SIZE)
+#define HEAPMEM_SHARED_SIZE	(HEAP_RUNTIME_SHARED_SIZE + HEAP_SYSTEM_SHARED_SIZE)
+
+static uint8_t heapmem[HEAPMEM_SIZE] __aligned(PLATFORM_DCACHE_ALIGN);
+static uint8_t heapmem_shared[HEAPMEM_SHARED_SIZE] __aligned(PLATFORM_DCACHE_ALIGN);
 
 /* Use k_heap structure */
 static struct k_heap sof_heap;
+static struct k_heap sof_heap_shared;
+
+static void *heapmem_addr(void)
+{
+	return uncache_to_cache(((void *)heapmem));
+}
 
 static int statics_init(const struct device *unused)
 {
 	ARG_UNUSED(unused);
 
-	sys_heap_init(&sof_heap.heap, heapmem, HEAP_SIZE);
+	sys_heap_init(&sof_heap.heap, heapmem_addr(), HEAPMEM_SIZE);
+	sys_heap_init(&sof_heap_shared.heap, heapmem_shared, HEAPMEM_SHARED_SIZE);
 
 	return 0;
 }
 
 SYS_INIT(statics_init, PRE_KERNEL_1, CONFIG_KERNEL_INIT_PRIORITY_OBJECTS);
+
+static bool heap_is_cached(struct k_heap *h)
+{
+	return h == &sof_heap;
+}
+
+#define HEAP_CACHE_INVALIDATE true
+
+/*
+ * Flushes and optionally invalidates the whole heap area cache. Must
+ * be called with heap spinlock held.
+ */
+static void heap_cache_flush(struct k_heap *h, bool invalidate)
+{
+#if MP_NUM_CPUS > 1
+	if (heap_is_cached(h))
+		if (invalidate)
+			z_xtensa_cache_flush_inv(heapmem_addr(), HEAPMEM_SIZE);
+		else
+			z_xtensa_cache_flush(heapmem_addr(), HEAPMEM_SIZE);
+#endif
+}
 
 static void *heap_alloc_aligned(struct k_heap *h, size_t align, size_t bytes)
 {
@@ -74,7 +106,28 @@ static void *heap_alloc_aligned(struct k_heap *h, size_t align, size_t bytes)
 
 	k_spinlock_key_t key = k_spin_lock(&h->lock);
 
+	/*
+	 * Other cores may have accessed the heap, so invalidate the
+	 * cache.
+	 */
+	heap_cache_flush(h, HEAP_CACHE_INVALIDATE);
+
+	if (heap_is_cached(h)) {
+		/*
+		 * Ensure no heap metadata is mixed with allocated buffers by
+		 * aligning both start and size to dcache line size.
+		 */
+		__ASSERT(!(align & (PLATFORM_DCACHE_ALIGN - 1)), "alignment error");
+		bytes = ALIGN_UP(bytes, PLATFORM_DCACHE_ALIGN);
+	}
+
 	ret = sys_heap_aligned_alloc(&h->heap, align, bytes);
+
+	/*
+	 * Ensure heap changes are visible to other cores before
+	 * releasing the spin lock.
+	 */
+	heap_cache_flush(h, 0);
 
 	k_spin_unlock(&h->lock, key);
 
@@ -85,14 +138,38 @@ static void heap_free(struct k_heap *h, void *mem)
 {
 	k_spinlock_key_t key = k_spin_lock(&h->lock);
 
+	heap_cache_flush(h, HEAP_CACHE_INVALIDATE);
 	sys_heap_free(&h->heap, mem);
+	heap_cache_flush(h, 0);
 
 	k_spin_unlock(&h->lock, key);
 }
 
+static bool zone_is_cached(enum mem_zone zone)
+{
+	switch (zone) {
+	case SOF_MEM_ZONE_SYS:
+	case SOF_MEM_ZONE_SYS_RUNTIME:
+	case SOF_MEM_ZONE_RUNTIME:
+	case SOF_MEM_ZONE_BUFFER:
+		return true;
+	default:
+		break;
+	}
+
+	return false;
+}
+
 void *rmalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
 {
-	return heap_alloc_aligned(&sof_heap, 8, bytes);
+	void *ptr;
+
+	if (!zone_is_cached(zone)) {
+		ptr = heap_alloc_aligned(&sof_heap_shared, 8, bytes);
+		return ptr;
+	}
+	ptr = heap_alloc_aligned(&sof_heap, PLATFORM_DCACHE_ALIGN, bytes);
+	return ptr;
 }
 
 /* Use SOF_MEM_ZONE_BUFFER at the moment */
@@ -166,7 +243,13 @@ void rfree(void *ptr)
 	if (!ptr)
 		return;
 
-	heap_free(&sof_heap, ptr);
+	/* select heap based on address range */
+	if (!is_uncached(ptr)) {
+		heap_free(&sof_heap, ptr);
+		return;
+	}
+
+	heap_free(&sof_heap_shared, ptr);
 }
 
 /* debug only - only needed for linking */
