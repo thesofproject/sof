@@ -132,6 +132,7 @@ set(TPLGS
 	"sof-imx8mp-wm8960-kwd\;sof-imx8mp-wm8960-kwd"
 	"sof-tgl-max98357a-rt5682\;sof-tgl-max98357a-rt5682\;-DCODEC=MAX98357A\;-DFMT=s16le"
 	"sof-tgl-max98357a-rt5682\;sof-tgl-max98357a-rt5682-pdm1\;-DCODEC=MAX98357A\;-DFMT=s16le\;-DDMIC_DAI_LINK_16k_PDM=STEREO_PDM1"
+	"sof-tgl-max98357a-rt5682\;sof-tgl-max98357a-rt5682-pdm1-drceq\;-DCODEC=MAX98357A\;-DFMT=s16le\;-DDMIC_DAI_LINK_16k_PDM=STEREO_PDM1\;-DDRC_EQ"
 	"sof-tgl-max98357a-rt5682\;sof-tgl-rt1011-rt5682\;-DCODEC=RT1011\;-DFMT=s24le"
 	"sof-tgl-max98373-rt5682\;sof-tgl-max98373-rt5682\;-DAMP_SSP=1"
 	"sof-tgl-max98373-rt5682\;sof-tgl-max98373-rt5682-igonr\;-DAMP_SSP=1\;-DIGO"
