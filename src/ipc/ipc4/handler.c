@@ -456,7 +456,7 @@ ipc_cmd_hdr *ipc_compact_read_msg(void)
 	return ipc_to_hdr(msg_in);
 }
 
-ipc_cmd_hdr *ipc_process_msg(struct ipc_msg *msg)
+ipc_cmd_hdr *ipc_prepare_to_send(struct ipc_msg *msg)
 {
 	msg_out[0] = msg->header;
 	msg_out[1] = *(uint32_t *)msg->tx_data;
