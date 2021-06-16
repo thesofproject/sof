@@ -34,7 +34,7 @@ set(TPLGS_UP
 	"sof-hda-generic\;sof-hda-generic-tdfb_50mm-2ch\;-DCHANNELS=2\;-DHSPROC=volume\;-DDMIC16KPROC=tdfb-eq-iir-volume\;-DDMIC16KPROC_FILTER1=tdfb/coef_line2_50mm_pm10deg_16khz.m4\;-DDMICPROC=tdfb-eq-iir-volume\;-DDMICPROC_FILTER1=tdfb/coef_line2_50mm_pm10deg_48khz.m4\;-DDMICPROC_FILTER2=eq_iir_coef_highpass_40hz_20db_48khz.m4\;-DDMIC16KPROC_FILTER2=eq_iir_coef_highpass_40hz_20db_16khz.m4"
 )
 
-add_custom_target(dev_topologies ALL)
+add_custom_target(dev_topologies1 ALL)
 
 foreach(tplg ${TPLGS})
 	list(GET tplg 0 input)
@@ -61,7 +61,7 @@ foreach(tplg ${TPLGS})
 			${CMAKE_CURRENT_SOURCE_DIR}/../common/abi.m4
 			${CMAKE_CURRENT_SOURCE_DIR}/${input}.m4
 			> ${output}.conf
-		DEPENDS abi
+		DEPENDS abi_v1
 		VERBATIM
 		USES_TERMINAL
 	)
@@ -89,7 +89,7 @@ foreach(tplg ${TPLGS})
 	)
 
 	add_custom_target(topology_${output} DEPENDS ${output}.tplg)
-	add_dependencies(dev_topologies topology_${output})
+	add_dependencies(dev_topologies1 topology_${output})
 endforeach()
 
 # Duplicate of above to handle topologies in parent directory
@@ -117,7 +117,7 @@ foreach(tplg ${TPLGS_UP})
 			${CMAKE_CURRENT_SOURCE_DIR}/../common/abi.m4
 			${CMAKE_CURRENT_SOURCE_DIR}/../${input}.m4
 			> ${output}.conf
-		DEPENDS abi
+		DEPENDS abi_v1
 		VERBATIM
 		USES_TERMINAL
 	)
@@ -129,5 +129,5 @@ foreach(tplg ${TPLGS_UP})
 	)
 
 	add_custom_target(topology_${output} DEPENDS ${output}.tplg)
-	add_dependencies(dev_topologies topology_${output})
+	add_dependencies(dev_topologies1 topology_${output})
 endforeach()
