@@ -50,18 +50,24 @@ DECLARE_TR_CTX(zephyr_tr, SOF_UUID(zephyr_uuid), LOG_LEVEL_INFO);
 #define HEAP_SYSTEM_SIZE	0
 #endif
 
-/* The Zephyr heap - TODO: split heap */
-#define HEAP_SIZE	(HEAP_SYSTEM_SIZE + HEAP_RUNTIME_SIZE + HEAP_BUFFER_SIZE)
-static uint8_t __aligned(64) heapmem[HEAP_SIZE];
+/* The Zephyr heap */
+#define HEAPMEM_SIZE		HEAP_BUFFER_SIZE
+#define HEAPMEM_SHARED_SIZE	(HEAP_SYSTEM_SIZE + HEAP_RUNTIME_SIZE + \
+				HEAP_RUNTIME_SHARED_SIZE + HEAP_SYSTEM_SHARED_SIZE)
+
+static uint8_t __aligned(PLATFORM_DCACHE_ALIGN)heapmem[HEAPMEM_SIZE];
+static uint8_t __aligned(PLATFORM_DCACHE_ALIGN)heapmem_shared[HEAPMEM_SHARED_SIZE];
 
 /* Use k_heap structure */
 static struct k_heap sof_heap;
+static struct k_heap sof_heap_shared;
 
 static int statics_init(const struct device *unused)
 {
 	ARG_UNUSED(unused);
 
-	sys_heap_init(&sof_heap.heap, heapmem, HEAP_SIZE);
+	sys_heap_init(&sof_heap.heap, heapmem, HEAPMEM_SIZE);
+	sys_heap_init(&sof_heap_shared.heap, heapmem_shared, HEAPMEM_SHARED_SIZE);
 
 	return 0;
 }
@@ -81,6 +87,34 @@ static void *heap_alloc_aligned(struct k_heap *h, size_t align, size_t bytes)
 	return ret;
 }
 
+static void *heap_alloc_aligned_cached(struct k_heap *h, size_t min_align, size_t bytes)
+{
+	unsigned int align = MAX(PLATFORM_DCACHE_ALIGN, min_align);
+	unsigned int aligned_size = ALIGN_UP(bytes, align);
+	void *ptr;
+
+	/*
+	 * Zephyr sys_heap stores metadata at start of each
+	 * heap allocation. To ensure no allocated cached buffer
+	 * overlaps the same cacheline with the metadata chunk,
+	 * align both allocation start and size of allocation
+	 * to cacheline.
+	 */
+	ptr = heap_alloc_aligned(h, align, aligned_size);
+
+	if (ptr) {
+		ptr = uncache_to_cache(ptr);
+
+		/*
+		 * Heap can be used by different cores, so cache
+		 * needs to be invalidated before next user
+		 */
+		z_xtensa_cache_inv(ptr, aligned_size);
+	}
+
+	return ptr;
+}
+
 static void heap_free(struct k_heap *h, void *mem)
 {
 	k_spinlock_key_t key = k_spin_lock(&h->lock);
@@ -90,9 +124,20 @@ static void heap_free(struct k_heap *h, void *mem)
 	k_spin_unlock(&h->lock, key);
 }
 
+static inline bool zone_is_cached(enum mem_zone zone)
+{
+	if (zone == SOF_MEM_ZONE_BUFFER)
+		return true;
+
+	return false;
+}
+
 void *rmalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
 {
-	return heap_alloc_aligned(&sof_heap, 8, bytes);
+	if (zone_is_cached(zone))
+		return heap_alloc_aligned_cached(&sof_heap, 0, bytes);
+
+	return heap_alloc_aligned(&sof_heap_shared, 8, bytes);
 }
 
 /* Use SOF_MEM_ZONE_BUFFER at the moment */
@@ -155,7 +200,7 @@ void *rzalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
 void *rballoc_align(uint32_t flags, uint32_t caps, size_t bytes,
 		    uint32_t alignment)
 {
-	return heap_alloc_aligned(&sof_heap, alignment, bytes);
+	return heap_alloc_aligned_cached(&sof_heap, alignment, bytes);
 }
 
 /*
@@ -166,6 +211,13 @@ void rfree(void *ptr)
 	if (!ptr)
 		return;
 
+	/* select heap based on address range */
+	if (is_uncached(ptr)) {
+		heap_free(&sof_heap_shared, ptr);
+		return;
+	}
+
+	ptr = cache_to_uncache(ptr);
 	heap_free(&sof_heap, ptr);
 }
 
