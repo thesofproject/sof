@@ -36,7 +36,7 @@ dnl     time_domain, sched_comp)
 # Passthrough capture pipeline 1 on PCM 0 using max 2 channels.
 # Schedule 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-kfbm-no-lp-capture.m4,
-	1, 0, 2, s16le,
+	1, 0, 2, s32le,
 	KWD_PIPE_SCH_DEADLINE_US, 0, 0,
 	16000, 16000, 16000)
 
@@ -51,10 +51,10 @@ dnl     deadline, priority, core, time_domain)
 
 # This is for iMX8QM/QXP
 # capture DAI is SAI1 using 2 periods
-# Buffers use s16le format, with 320 frame per 1000us on core 0 with priority 0
+# Buffers use s32le format, with 320 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
 	1, SAI, 1, sai1-wm8960-hifi,
-	PIPELINE_SINK_1, 2, s16le,
+	PIPELINE_SINK_1, 2, s32le,
 	KWD_PIPE_SCH_DEADLINE_US,
 	0, 0, SCHEDULE_TIME_DOMAIN_DMA)
 
@@ -65,7 +65,7 @@ dnl     period, priority, core,
 dnl     sched_comp, time_domain,
 dnl     pcm_min_rate, pcm_max_rate, pipeline_rate)
 PIPELINE_ADD(sof/pipe-detect.m4,
-	2, 2, s16le,
+	2, 2, s32le,
 	KWD_PIPE_SCH_DEADLINE_US, 1, 0,
 	PIPELINE_SCHED_COMP_1,
 	SCHEDULE_TIME_DOMAIN_TIMER,
