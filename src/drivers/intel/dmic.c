@@ -1603,7 +1603,7 @@ static int dmic_probe(struct dai *dai)
 	/* Initialize start sequence handler */
 	schedule_task_init_ll(&dmic->dmicwork, SOF_UUID(dmic_work_task_uuid),
 			      SOF_SCHEDULE_LL_TIMER,
-			      SOF_TASK_PRI_MED, dmic_work, dai, 0, 0);
+			      SOF_TASK_PRI_MED, dmic_work, dai, cpu_get_id(), 0);
 
 	/* Enable DMIC power */
 	pm_runtime_get_sync(DMIC_POW, dai->index);
