@@ -111,17 +111,17 @@ PIPELINE_PCM_ADD(sof/pipe-volume-switch-capture.m4,
 #	48000, 48000, 48000)
 
 # Low Latency playback pipeline 11 on PCM 5 using max 2 channels of s16le.
-# 1000us deadline on core 0 with priority 0
+# 1000us deadline on core 1 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
 	11, 5, 2, s32le,
-	1000, 0, 0,
+	1000, 0, 1,
 	48000, 48000, 48000)
 
 # Volume switch capture pipeline 12 on PCM 5 using max 2 channels of s16le.
-# 1000us deadline on core 0 with priority 0
+# 1000us deadline on core 1 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-volume-switch-capture.m4,
 	12, 5, 2, s32le,
-	1000, 0, 0,
+	1000, 0, 1,
 	48000, 48000, 48000)
 
 # Passthrough capture pipeline 13 on PCM 6 using max 2 channels.
@@ -230,18 +230,18 @@ DAI_ADD(sof/pipe-dai-capture.m4,
 #	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # playback DAI is SSP5 using 2 periods
-# Buffers use s16le format, 1000us deadline on core 0 with priority 0
+# Buffers use s16le format, 1000us deadline on core 1 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
 	11, SSP, 5, NoCodec-5,
 	PIPELINE_SOURCE_11, 2, s16le,
-	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
+	1000, 0, 1, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # capture DAI is SSP5 using 2 periods
-# Buffers use s16le format, 1000us deadline on core 0 with priority 0
+# Buffers use s16le format, 1000us deadline on core 1 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
 	12, SSP, 5, NoCodec-5,
 	PIPELINE_SINK_12, 2, s16le,
-	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
+	1000, 0, 1, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # capture DAI is DMIC 0 using 2 periods
 # Buffers use s32le format, 1000us deadline on core 0 with priority 0
