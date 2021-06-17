@@ -29,7 +29,7 @@ struct timer;
 
 struct ll_schedule_domain_ops {
 	int (*domain_register)(struct ll_schedule_domain *domain,
-			       uint64_t period, struct task *task,
+			       struct task *task,
 			       void (*handler)(void *arg), void *arg);
 	int (*domain_unregister)(struct ll_schedule_domain *domain,
 				 struct task *task, uint32_t num_tasks);
@@ -116,7 +116,7 @@ static inline void domain_clear(struct ll_schedule_domain *domain)
 }
 
 static inline int domain_register(struct ll_schedule_domain *domain,
-				  uint64_t period, struct task *task,
+				  struct task *task,
 				  void (*handler)(void *arg), void *arg)
 {
 	int core = cpu_get_id();
@@ -124,7 +124,7 @@ static inline int domain_register(struct ll_schedule_domain *domain,
 
 	assert(domain->ops->domain_register);
 
-	ret = domain->ops->domain_register(domain, period, task, handler, arg);
+	ret = domain->ops->domain_register(domain, task, handler, arg);
 
 	if (!ret) {
 		/* registered one more task, increase the count */

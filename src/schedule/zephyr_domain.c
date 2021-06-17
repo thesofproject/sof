@@ -81,7 +81,7 @@ static void zephyr_domain_timer_fn(struct k_timer *timer)
 }
 
 static int zephyr_domain_register(struct ll_schedule_domain *domain,
-				  uint64_t period, struct task *task,
+				  struct task *task,
 				  void (*handler)(void *arg), void *arg)
 {
 	struct zephyr_domain *zephyr_domain = ll_sch_domain_get_pdata(domain);
