@@ -47,6 +47,7 @@
 #include <sof/probe/probe.h>
 
 #include <errno.h>
+#include <math.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -648,6 +649,13 @@ static int ipc_pm_core_enable(uint32_t header)
 
 	/* copy message with ABI safe method */
 	IPC_COPY_CMD(pm_core_config, ipc_get()->comp_data);
+
+	/* check if core enable mask is valid */
+	if (pm_core_config.enable_mask > MASK(CONFIG_CORE_COUNT - 1, 0)) {
+		tr_err(&ipc_tr, "ipc: CONFIG_CORE_COUNT: %d < core enable mask: %d",
+		       CONFIG_CORE_COUNT, pm_core_config.enable_mask);
+		return -EINVAL;
+	}
 
 	tr_info(&ipc_tr, "ipc: pm core mask 0x%x -> enable",
 		pm_core_config.enable_mask);
