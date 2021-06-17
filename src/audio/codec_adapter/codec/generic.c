@@ -107,8 +107,6 @@ int codec_init(struct comp_dev *dev, struct codec_interface *interface)
 	}
 	/* Assign interface */
 	codec->ops = interface;
-	/* Init memory list */
-	list_init(&codec->memory.mem_list);
 
 	/* Now we can proceed with codec specific initialization */
 	ret = codec->ops->init(dev);
@@ -124,70 +122,7 @@ out:
 	return ret;
 }
 
-void *codec_allocate_memory(struct comp_dev *dev, uint32_t size,
-			    uint32_t alignment)
-{
-	struct codec_memory *container;
-	void *ptr;
-	struct comp_data *cd = comp_get_drvdata(dev);
 
-	if (!size) {
-		comp_err(dev, "codec_allocate_memory: requested allocation of 0 bytes.");
-		return NULL;
-	}
-
-	/* Allocate memory container */
-	container = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
-			    sizeof(struct codec_memory));
-	if (!container) {
-		comp_err(dev, "codec_allocate_memory: failed to allocate memory container.");
-		return NULL;
-	}
-
-	/* Allocate memory for codec */
-	if (alignment)
-		ptr = rballoc_align(0, SOF_MEM_CAPS_RAM, size, alignment);
-	else
-		ptr = rballoc(0, SOF_MEM_CAPS_RAM, size);
-
-	if (!ptr) {
-		comp_err(dev, "codec_allocate_memory: failed to allocate memory for codec %x.",
-			 cd->ca_config.codec_id);
-		return NULL;
-	}
-	/* Store reference to allocated memory */
-	container->ptr = ptr;
-	list_item_prepend(&container->mem_list, &cd->codec.memory.mem_list);
-
-	return ptr;
-}
-
-int codec_free_memory(struct comp_dev *dev, void *ptr)
-{
-	struct comp_data *cd = comp_get_drvdata(dev);
-	struct codec_memory *mem;
-	struct list_item *mem_list;
-	struct list_item *_mem_list;
-
-	if (!ptr)
-		return 0;
-
-	/* Find which container keeps this memory */
-	list_for_item_safe(mem_list, _mem_list, &cd->codec.memory.mem_list) {
-		mem = container_of(mem_list, struct codec_memory, mem_list);
-		if (mem->ptr == ptr) {
-			rfree(mem->ptr);
-			list_item_del(&mem->mem_list);
-			rfree(mem);
-			return 0;
-		}
-	}
-
-	comp_err(dev, "codec_free_memory: error: could not find memory pointed by %p",
-		 (uint32_t)ptr);
-
-	return -EINVAL;
-}
 
 static int validate_config(struct codec_config *cfg)
 {
@@ -344,22 +279,6 @@ int codec_reset(struct comp_dev *dev)
 	return 0;
 }
 
-void codec_free_all_memory(struct comp_dev *dev)
-{
-	struct comp_data *cd = comp_get_drvdata(dev);
-	struct codec_memory *mem;
-	struct list_item *mem_list;
-	struct list_item *_mem_list;
-
-	/* Find which container keeps this memory */
-	list_for_item_safe(mem_list, _mem_list, &cd->codec.memory.mem_list) {
-		mem = container_of(mem_list, struct codec_memory, mem_list);
-		rfree(mem->ptr);
-		list_item_del(&mem->mem_list);
-		rfree(mem);
-	}
-}
-
 int codec_free(struct comp_dev *dev)
 {
 	int ret;
@@ -371,8 +290,6 @@ int codec_free(struct comp_dev *dev)
 		comp_warn(dev, "codec_apply_config() error %d: codec specific .free() failed for codec_id %x",
 			  ret, cd->ca_config.codec_id);
 	}
-	/* Free all memory requested by codec */
-	codec_free_all_memory(dev);
 	/* Free all memory shared by codec_adapter & codec */
 	codec->s_cfg.avail = false;
 	codec->s_cfg.size = 0;

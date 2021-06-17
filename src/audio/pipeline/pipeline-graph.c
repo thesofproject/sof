@@ -95,6 +95,89 @@ static inline void pipeline_posn_offset_put(uint32_t posn_offset)
 	spin_unlock(&pipeline_posn->lock);
 }
 
+static void pipeline_devm_free_all(struct pipeline *pipe)
+{
+	struct pipe_dev_mem *mem;
+	struct list_item *mem_list;
+	struct list_item *_mem_list;
+
+	/* Free all memory in the list */
+	list_for_item_safe(mem_list, _mem_list, &pipe->mem.mem_list) {
+		mem = container_of(mem_list, struct pipe_dev_mem, mem_list);
+		rfree(mem->ptr);
+		list_item_del(&mem->mem_list);
+		rfree(mem);
+	}
+}
+
+void *pipeline_devm_alloc(struct pipeline *pipe, uint32_t size, uint32_t alignment)
+{
+	struct pipe_dev_mem *container;
+	void *ptr;
+
+	if (!size) {
+		pipe_err(pipe, "pipeline_devm_alloc: requested allocation of 0 bytes.");
+		return NULL;
+	}
+
+	if (!pipe) {
+		pipe_err(pipe, "pipeline_devm_alloc: pipeline pointer NULL.");
+		return NULL;
+	}
+
+	/* Allocate memory container */
+	container = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+			    sizeof(struct pipe_dev_mem));
+	if (!container) {
+		pipe_err(pipe, "pipeline_devm_alloc: failed to allocate memory container.");
+		return NULL;
+	}
+
+	/* Allocate memory for codec */
+	if (alignment)
+		ptr = rballoc_align(0, SOF_MEM_CAPS_RAM, size, alignment);
+	else
+		ptr = rballoc(0, SOF_MEM_CAPS_RAM, size);
+
+	if (!ptr) {
+		rfree(container);
+		pipe_err(pipe, "pipeline_devm_alloc: failed to allocate memory for comp_dev\n");
+		return NULL;
+	}
+
+	/* Store reference to allocated memory */
+	container->ptr = ptr;
+	list_item_prepend(&container->mem_list, &pipe->mem.mem_list);
+
+	return ptr;
+}
+
+int pipeline_devm_free(struct pipeline *pipe, void *ptr)
+{
+	struct pipe_dev_mem *mem;
+	struct list_item *mem_list;
+	struct list_item *_mem_list;
+
+	if (!ptr)
+		return 0;
+
+	/* Find which container keeps this memory */
+	list_for_item_safe(mem_list, _mem_list, &pipe->mem.mem_list) {
+		mem = container_of(mem_list, struct pipe_dev_mem, mem_list);
+		if (mem->ptr == ptr) {
+			rfree(mem->ptr);
+			list_item_del(&mem->mem_list);
+			rfree(mem);
+			return 0;
+		}
+	}
+
+	pipe_err(pipe, "pipeline_devm_free: error: could not find memory pointed by %p",
+		 (uint32_t)ptr);
+
+	return -EINVAL;
+}
+
 void pipeline_posn_init(struct sof *sof)
 {
 	sof->pipeline_posn = platform_shared_get(&pipeline_posn,
@@ -127,6 +210,8 @@ struct pipeline *pipeline_new(uint32_t pipeline_id, uint32_t priority, uint32_t 
 	ret = memcpy_s(&p->tctx, sizeof(struct tr_ctx), &pipe_tr,
 		       sizeof(struct tr_ctx));
 	assert(!ret);
+	/* init memory list */
+	list_init(&p->mem.mem_list);
 
 	ret = pipeline_posn_offset_get(&p->posn_offset);
 	if (ret < 0) {
@@ -248,6 +333,9 @@ int pipeline_free(struct pipeline *p)
 	ipc_msg_free(p->msg);
 
 	pipeline_posn_offset_put(p->posn_offset);
+
+	/* free all memory allocated from this pipeline's quota */
+	pipeline_devm_free_all(p);
 
 	/* now free the pipeline */
 	rfree(p);
