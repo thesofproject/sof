@@ -174,7 +174,7 @@ static void dma_single_chan_domain_irq_unregister(struct dma_domain_data *data)
  * cores need to be notified.
  */
 static int dma_single_chan_domain_register(struct ll_schedule_domain *domain,
-					   uint64_t period, struct task *task,
+					   struct task *task,
 					   void (*handler)(void *arg),
 					   void *arg)
 {

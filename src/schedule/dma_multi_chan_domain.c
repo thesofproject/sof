@@ -97,7 +97,7 @@ static int dma_multi_chan_domain_irq_register(struct dma_domain_data *data,
  * DMA interrupts (different irq number per DMA channel).
  */
 static int dma_multi_chan_domain_register(struct ll_schedule_domain *domain,
-					  uint64_t period, struct task *task,
+					  struct task *task,
 					  void (*handler)(void *arg), void *arg)
 {
 	struct dma_domain *dma_domain = ll_sch_domain_get_pdata(domain);
