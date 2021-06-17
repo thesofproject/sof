@@ -75,6 +75,11 @@ if(NOT CONFIG_LIBRARY)
 			copier.c
 		)
 	endif()
+	if(CONFIG_COMP_PEAKVOL)
+		add_local_sources(sof
+			peak_volume.c
+		)
+	endif()
 	if(CONFIG_COMP_SEL)
 		add_subdirectory(selector)
 	endif()
