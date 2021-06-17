@@ -253,8 +253,7 @@ static int schedule_ll_domain_set(struct ll_schedule_data *sch,
 
 	spin_lock(&domain->lock);
 
-	ret = domain_register(domain, period, task, &schedule_ll_tasks_run,
-			      sch);
+	ret = domain_register(domain, task, &schedule_ll_tasks_run, sch);
 	if (ret < 0) {
 		tr_err(&ll_tr, "schedule_ll_domain_set: cannot register domain %d",
 		       ret);

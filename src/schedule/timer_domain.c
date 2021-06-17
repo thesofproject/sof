@@ -44,7 +44,7 @@ static void timer_report_delay(int id, uint64_t delay)
 }
 
 static int timer_domain_register(struct ll_schedule_domain *domain,
-				 uint64_t period, struct task *task,
+				 struct task *task,
 				 void (*handler)(void *arg), void *arg)
 {
 	struct timer_domain *timer_domain = ll_sch_domain_get_pdata(domain);
@@ -60,8 +60,8 @@ static int timer_domain_register(struct ll_schedule_domain *domain,
 	timer_domain->arg[core] = arg;
 	ret = timer_register(timer_domain->timer, handler, arg);
 
-	tr_info(&ll_tr, "timer_domain_register domain->type %d domain->clk %d domain->ticks_per_ms %d period %d",
-		domain->type, domain->clk, domain->ticks_per_ms, (uint32_t)period);
+	tr_info(&ll_tr, "timer_domain_register domain->type %d domain->clk %d domain->ticks_per_ms %d",
+		domain->type, domain->clk, domain->ticks_per_ms);
 out:
 
 	return ret;
