@@ -116,7 +116,7 @@ PIPELINE_PCM_ADD(sof/pipe-eq-iir-volume-playback.m4,
 `
 # Low Latency playback pipeline 2 on PCM 1 using max 2 channels of s32le.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
+PIPELINE_PCM_ADD(sof/pipe-low-latency-playback.m4,
 	2, 1, 2, s32le,
 	1000, 0, 0,
 	48000, 48000, 48000)
@@ -158,6 +158,22 @@ PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
 	1000, 0, 0,
 	48000, 48000, 48000)
 
+# Deep-buffer playback pipeline 15 on PCM 5 using max 2 channels of s32le.
+# Schedule 960 frames per 20000us deadline on core 0 with priority 0
+ifdef(`INCLUDE_DEEP_BUFFER',
+`PIPELINE_PCM_ADD(sof/pipe-pcm-media.m4,
+	15, 15, 2, s32le,
+	20000, 0, 0,
+	48000, 48000, 48000)
+SectionGraph."media-pipeline" {
+	index "0"
+
+	lines [
+		# media 0
+		dapm(PIPELINE_MIXER_2, PIPELINE_SOURCE_15)
+	]
+}
+',`')
 #
 # DAIs configuration
 #
@@ -218,6 +234,8 @@ PCM_PLAYBACK_ADD(HDMI1, 2, PIPELINE_PCM_5)
 PCM_PLAYBACK_ADD(HDMI2, 3, PIPELINE_PCM_6)
 PCM_PLAYBACK_ADD(HDMI3, 4, PIPELINE_PCM_7)
 PCM_PLAYBACK_ADD(HDMI4, 5, PIPELINE_PCM_8)
+ifdef(`INCLUDE_DEEP_BUFFER',
+`PCM_PLAYBACK_LP_ADD(LPHeadset, 15, PIPELINE_PCM_15)', `')
 
 #
 # BE configurations - overrides config in ACPI if present
