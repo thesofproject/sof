@@ -62,6 +62,17 @@ int64_t platform_timer_set(struct timer *timer, uint64_t ticks);
 void platform_timer_clear(struct timer *timer);
 uint64_t platform_timer_get(struct timer *timer);
 uint64_t platform_timer_get_atomic(struct timer *timer);
+
+static inline uint64_t platform_safe_get_time(struct timer *timer)
+{
+	/* Default to something small but at least 1.0 microsecond so it
+	 * does not look like an uninitialized zero; not even when the
+	 * user does not request any microseconds decimals. See
+	 * DEFAULT_CLOCK constant in logger.c
+	 */
+	return timer ? platform_timer_get(timer) : 50;
+}
+
 void platform_timer_start(struct timer *timer);
 void platform_timer_stop(struct timer *timer);
 
