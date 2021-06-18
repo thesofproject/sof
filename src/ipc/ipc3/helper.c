@@ -197,8 +197,22 @@ static const struct comp_driver *get_drv(struct sof_ipc_comp *comp)
 	struct sof_ipc_comp_ext *comp_ext;
 
 	/* do we have extended data ? */
-	if (!comp->ext_data_length)
-		goto comp_type_match;
+	if (!comp->ext_data_length) {
+		/* search driver list for driver type */
+		list_for_item(clist, &drivers->list) {
+			info = container_of(clist, struct comp_driver_info, list);
+			if (info->drv->type == comp->type) {
+				drv = info->drv;
+				break;
+			}
+		}
+
+		if (!drv)
+			tr_err(&comp_tr, "get_drv(): driver not found, comp->type = %u",
+			       comp->type);
+
+		goto out;
+	}
 
 	/* Basic sanity check of the total size and extended data
 	 * length. A bit lax because in this generic code we don't know
@@ -228,35 +242,26 @@ static const struct comp_driver *get_drv(struct sof_ipc_comp *comp)
 				    list);
 		if (!memcmp(info->drv->uid, comp_ext->uuid,
 			    UUID_SIZE)) {
-			tr_dbg(&comp_tr,
-			       "get_drv_from_uuid(), found driver type %d, uuid %pU",
-			       info->drv->type,
-			       info->drv->tctx->uuid_p);
 			drv = info->drv;
-			goto out;
+			break;
 		}
 	}
 
-	tr_err(&comp_tr, "get_drv(): the provided UUID (%8x%8x%8x%8x) doesn't match to any driver!",
-	       *(uint32_t *)(&comp_ext->uuid[0]),
-	       *(uint32_t *)(&comp_ext->uuid[4]),
-	       *(uint32_t *)(&comp_ext->uuid[8]),
-	       *(uint32_t *)(&comp_ext->uuid[12]));
-
-	goto out;
-
-comp_type_match:
-	/* search driver list for driver type */
-	list_for_item(clist, &drivers->list) {
-		info = container_of(clist, struct comp_driver_info, list);
-		if (info->drv->type == comp->type) {
-			drv = info->drv;
-			goto out;
-		}
-	}
+	if (!drv)
+		tr_err(&comp_tr,
+		       "get_drv(): the provided UUID (%8x%8x%8x%8x) doesn't match to any driver!",
+		       *(uint32_t *)(&comp_ext->uuid[0]),
+		       *(uint32_t *)(&comp_ext->uuid[4]),
+		       *(uint32_t *)(&comp_ext->uuid[8]),
+		       *(uint32_t *)(&comp_ext->uuid[12]));
 
 out:
+	if (drv)
+		tr_dbg(&comp_tr, "get_drv(), found driver type %d, uuid %pU",
+		       drv->type, drv->tctx->uuid_p);
+
 	spin_unlock(&drivers->lock);
+
 	return drv;
 }
 
@@ -400,11 +405,8 @@ struct comp_dev *comp_new(struct sof_ipc_comp *comp)
 
 	/* find the driver for our new component */
 	drv = get_drv(comp);
-	if (!drv) {
-		tr_err(&comp_tr, "comp_new(): driver not found, comp->type = %u",
-		       comp->type);
+	if (!drv)
 		return NULL;
-	}
 
 	/* validate size of ipc config */
 	if (IPC_IS_SIZE_INVALID(*comp_config(comp))) {
