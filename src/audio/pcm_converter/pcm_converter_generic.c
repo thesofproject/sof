@@ -12,6 +12,7 @@
  */
 
 #include <sof/audio/pcm_converter.h>
+#include <sof/audio/audio_stream.h>
 
 #ifdef PCM_CONVERTER_GENERIC
 
@@ -431,3 +432,132 @@ const struct pcm_func_map pcm_func_map[] = {
 const size_t pcm_func_count = ARRAY_SIZE(pcm_func_map);
 
 #endif
+
+static int pcm_convert_s16_c16_to_s16_c32(const struct audio_stream *source,
+					  uint32_t ioffset, struct audio_stream *sink,
+					  uint32_t ooffset, uint32_t samples)
+{
+	uint32_t buff_frag = 0;
+	int16_t *src;
+	int32_t *dst;
+	uint32_t i;
+
+	for (i = 0; i < samples; i++) {
+		src = audio_stream_read_frag_s16(source, buff_frag + ioffset);
+		dst = audio_stream_write_frag_s32(sink, buff_frag + ooffset);
+		*dst = *src;
+		buff_frag++;
+	}
+
+	return samples;
+}
+
+static int pcm_convert_s16_c32_to_s16_c16(const struct audio_stream *source,
+					  uint32_t ioffset, struct audio_stream *sink,
+					  uint32_t ooffset, uint32_t samples)
+{
+	uint32_t buff_frag = 0;
+	int32_t *src;
+	int16_t *dst;
+	uint32_t i;
+
+	for (i = 0; i < samples; i++) {
+		src = audio_stream_read_frag_s32(source, buff_frag + ioffset);
+		dst = audio_stream_write_frag_s16(sink, buff_frag + ooffset);
+		*dst = *src & 0xff;
+		buff_frag++;
+	}
+
+	return samples;
+}
+
+static int pcm_convert_s16_c32_to_s32_c32(const struct audio_stream *source,
+					  uint32_t ioffset, struct audio_stream *sink,
+					  uint32_t ooffset, uint32_t samples)
+{
+	uint32_t buff_frag = 0;
+	int32_t *src, *dst;
+	uint32_t i;
+
+	for (i = 0; i < samples; i++) {
+		src = audio_stream_read_frag_s32(source, buff_frag + ioffset);
+		dst = audio_stream_write_frag_s32(sink, buff_frag + ooffset);
+		*dst = (*src & 0xff) << 16;
+		buff_frag++;
+	}
+
+	return samples;
+}
+
+static int pcm_convert_s32_c32_to_s16_c32(const struct audio_stream *source,
+					  uint32_t ioffset, struct audio_stream *sink,
+					  uint32_t ooffset, uint32_t samples)
+{
+	uint32_t buff_frag = 0;
+	int32_t *src, *dst;
+	uint32_t i;
+
+	for (i = 0; i < samples; i++) {
+		src = audio_stream_read_frag_s32(source, buff_frag + ioffset);
+		dst = audio_stream_write_frag_s32(sink, buff_frag + ooffset);
+		*dst = sat_int16(Q_SHIFT_RND(*src, 31, 15));
+		buff_frag++;
+	}
+
+	return samples;
+}
+
+static int pcm_convert_s16_c32_to_s24_c32(const struct audio_stream *source,
+					  uint32_t ioffset, struct audio_stream *sink,
+					  uint32_t ooffset, uint32_t samples)
+{
+	uint32_t buff_frag = 0;
+	int32_t *src, *dst;
+	uint32_t i;
+
+	for (i = 0; i < samples; i++) {
+		src = audio_stream_read_frag_s32(source, buff_frag + ioffset);
+		dst = audio_stream_write_frag_s32(sink, buff_frag + ooffset);
+		*dst = (*src & 0xff) << 8;
+		buff_frag++;
+	}
+
+	return samples;
+}
+
+static int pcm_convert_s24_c32_to_s16_c32(const struct audio_stream *source,
+					  uint32_t ioffset, struct audio_stream *sink,
+					  uint32_t ooffset, uint32_t samples)
+{
+	uint32_t buff_frag = 0;
+	int32_t *src, *dst;
+	uint32_t i;
+
+	for (i = 0; i < samples; i++) {
+		src = audio_stream_read_frag_s32(source, buff_frag + ioffset);
+		dst = audio_stream_write_frag_s32(sink, buff_frag + ooffset);
+		*dst =  sat_int16(Q_SHIFT_RND(sign_extend_s24(*src & 0xffffff), 23, 15));
+		buff_frag++;
+	}
+
+	return samples;
+}
+
+const struct pcm_func_vc_map pcm_func_vc_map[] = {
+	{ SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S16_LE,
+		pcm_convert_s16_c16_to_s16_c32 },
+	{ SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S16_LE,
+		pcm_convert_s16_c32_to_s16_c16 },
+
+	{ SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S32_LE,
+		pcm_convert_s16_c32_to_s32_c32 },
+	{ SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S16_LE,
+		pcm_convert_s32_c32_to_s16_c32 },
+
+	{ SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S24_4LE,
+		pcm_convert_s16_c32_to_s24_c32 },
+	{ SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S16_LE,
+		pcm_convert_s24_c32_to_s16_c32 },
+};
+
+const size_t pcm_func_vc_count = ARRAY_SIZE(pcm_func_vc_map);
