@@ -348,10 +348,29 @@ static void copier_free(struct comp_dev *dev)
 	rfree(dev);
 }
 
+static bool use_no_container_convert_function(enum sof_ipc_frame in,
+					      enum sof_ipc_frame valid_in_bits,
+					      enum sof_ipc_frame out,
+					      enum sof_ipc_frame valid_out_bits)
+{
+	if (in == valid_in_bits && out == valid_out_bits)
+		return true;
+
+	if (valid_in_bits == SOF_IPC_FRAME_S24_4LE && in == SOF_IPC_FRAME_S32_LE &&
+	    valid_out_bits == SOF_IPC_FRAME_S32_LE && out == SOF_IPC_FRAME_S32_LE)
+		return true;
+
+	if (valid_in_bits == SOF_IPC_FRAME_S32_LE && in == SOF_IPC_FRAME_S32_LE &&
+	    valid_out_bits == SOF_IPC_FRAME_S24_4LE && out == SOF_IPC_FRAME_S32_LE)
+		return true;
+
+	return false;
+}
+
 static int copier_prepare(struct comp_dev *dev)
 {
 	struct copier_data *cd = comp_get_drvdata(dev);
-	enum sof_ipc_frame in, out;
+	enum sof_ipc_frame in, in_valid, out, out_valid;
 	struct comp_buffer *buffer;
 	int ret = 0, dir;
 
@@ -382,19 +401,33 @@ static int copier_prepare(struct comp_dev *dev)
 	if (ret == COMP_STATUS_STATE_ALREADY_SET)
 		return PPL_STATUS_PATH_STOP;
 
-	in = convert_fmt(cd->config.base.audio_fmt.valid_bit_depth);
-	out = convert_fmt(cd->config.out_fmt.valid_bit_depth);
-
-	cd->converter = pcm_get_conversion_function(in, out);
-
 	if (cd->host) {
 		connect_comp_to_buffer(cd->host, buffer, dir);
 		ret = cd->host->drv->ops.prepare(cd->host);
 		connect_comp_to_buffer(dev, buffer, dir);
+		return ret;
 	} else if (cd->dai) {
 		connect_comp_to_buffer(cd->dai, buffer, dir);
 		ret = cd->dai->drv->ops.prepare(cd->dai);
 		connect_comp_to_buffer(dev, buffer, dir);
+		return ret;
+	}
+
+	in = convert_fmt(cd->config.base.audio_fmt.depth);
+	in_valid = convert_fmt(cd->config.base.audio_fmt.valid_bit_depth);
+	out = convert_fmt(cd->config.out_fmt.depth);
+	out_valid = convert_fmt(cd->config.out_fmt.valid_bit_depth);
+
+	if (use_no_container_convert_function(in, in_valid, out, out_valid))
+		cd->converter = pcm_get_conversion_function(in, out);
+	else
+		cd->converter = pcm_get_conversion_vc_function(in, in_valid, out, out_valid);
+
+	if (!cd->converter) {
+		comp_err(dev, "can't support for in format %d, %d, out format %d, %d",
+			 in, in_valid, out, out_valid);
+
+		return -EINVAL;
 	}
 
 	return ret;
@@ -490,8 +523,23 @@ static int copier_copy(struct comp_dev *dev)
 		ret = cd->dai->drv->ops.copy(cd->dai);
 		connect_comp_to_buffer(dev, buffer, dir);
 	} else {
-		/* todo add coverter support */
-		//cd->converter();
+		struct comp_buffer *src;
+		int in_size, out_size;
+		int  sample;
+
+		sample = cd->config.out_fmt.sampling_frequency / 1000 *
+			cd->config.out_fmt.channels_count;
+		in_size = sample * (cd->config.base.audio_fmt.depth >> 3);
+		out_size = sample * (cd->config.out_fmt.audio_fmt.depth >> 3);
+
+		src = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
+
+		buffer_invalidate(src, in_size);
+		cd->converter(src->stream, 0, cd->buf->stream, 0, sample);
+		buffer_writeback(cd->buf, out_size);
+
+		comp_update_buffer_produce(cd->buf, out_size);
+		comp_update_buffer_consume(src, in_size);
 	}
 
 	return ret;
