@@ -58,45 +58,45 @@ dnl     period, priority, core,
 dnl     pcm_min_rate, pcm_max_rate, pipeline_rate,
 dnl     time_domain, sched_comp)
 
-# Low Latency playback pipeline 1 on PCM 0 using max 2 channels of s24le.
+# Low Latency playback pipeline 1 on PCM 0 using max 2 channels of s32le.
 # Set 1000us deadline on core 2 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
-	1, 0, 2, s24le,
+	1, 0, 2, s32le,
 	1000, 0, SSP0_CORE_ID,
 	48000, 48000, 48000)
 
-# Volume switch capture pipeline 2 on PCM 0 using max 2 channels of s24le.
+# Volume switch capture pipeline 2 on PCM 0 using max 2 channels of s32le.
 # Set 1000us deadline on core 2 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-volume-switch-capture.m4,
-	2, 0, 2, s24le,
+	2, 0, 2, s32le,
 	1000, 0, SSP0_CORE_ID,
 	48000, 48000, 48000)
 
-# Low Latency playback pipeline 3 on PCM 1 using max 2 channels of s24le.
+# Low Latency playback pipeline 3 on PCM 1 using max 2 channels of s32le.
 # Set 1000us deadline on core 1 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
-	3, 1, 2, s24le,
+	3, 1, 2, s32le,
 	1000, 0, SSP1_CORE_ID,
 	48000, 48000, 48000)
 
-# Volume switch capture pipeline 4 on PCM 1 using max 2 channels of s24le.
+# Volume switch capture pipeline 4 on PCM 1 using max 2 channels of s32le.
 # Set 1000us deadline on core 1 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-volume-switch-capture.m4,
-	4, 1, 2, s24le,
+	4, 1, 2, s32le,
 	1000, 0, SSP1_CORE_ID,
 	48000, 48000, 48000)
 
-# Low Latency playback pipeline 5 on PCM 2 using max 2 channels of s24le.
+# Low Latency playback pipeline 5 on PCM 2 using max 2 channels of s32le.
 # Set 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
-	5, 2, 2, s24le,
+	5, 2, 2, s32le,
 	1000, 0, SSP2_CORE_ID,
 	48000, 48000, 48000)
 
-# Volume switch capture pipeline 6 on PCM 2 using max 2 channels of s24le.
+# Volume switch capture pipeline 6 on PCM 2 using max 2 channels of s32le.
 # Set 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-volume-switch-capture.m4,
-	6, 2, 2, s24le,
+	6, 2, 2, s32le,
 	1000, 0, SSP2_CORE_ID,
 	48000, 48000, 48000)
 
@@ -110,45 +110,45 @@ dnl     buffer, periods, format,
 dnl     deadline, priority, core, time_domain)
 
 # playback DAI is SSP0 using 2 periods
-# Buffers use s24le format, 1000us deadline on core 0 with priority 0
+# Buffers use s32le format, 1000us deadline on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
 	1, SSP, 0, NoCodec-0,
-	PIPELINE_SOURCE_1, 2, s24le,
+	PIPELINE_SOURCE_1, 2, s32le,
 	1000, 0, SSP0_CORE_ID, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # capture DAI is SSP0 using 2 periods
-# Buffers use s24le format, 1000us deadline on core 0 with priority 0
+# Buffers use s32le format, 1000us deadline on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
 	2, SSP, 0, NoCodec-0,
-	PIPELINE_SINK_2, 2, s24le,
+	PIPELINE_SINK_2, 2, s32le,
 	1000, 0, SSP0_CORE_ID, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # playback DAI is SSP1 using 2 periods
-# Buffers use s24le format, 1000us deadline on core 0 with priority 0
+# Buffers use s32le format, 1000us deadline on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
 	3, SSP, 1, NoCodec-1,
-	PIPELINE_SOURCE_3, 2, s24le,
+	PIPELINE_SOURCE_3, 2, s32le,
 	1000, 0, SSP1_CORE_ID, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # capture DAI is SSP1 using 2 periods
-# Buffers use s24le format, 1000us deadline on core 0 with priority 0
+# Buffers use s32le format, 1000us deadline on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
 	4, SSP, 1, NoCodec-1,
-	PIPELINE_SINK_4, 2, s24le,
+	PIPELINE_SINK_4, 2, s32le,
 	1000, 0, SSP1_CORE_ID, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # playback DAI is SSP2 using 2 periods
-# Buffers use s24le format, 1000us deadline on core 0 with priority 0
+# Buffers use s32le format, 1000us deadline on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
 	5, SSP, 2, NoCodec-2,
-	PIPELINE_SOURCE_5, 2, s24le,
+	PIPELINE_SOURCE_5, 2, s32le,
 	1000, 0, SSP2_CORE_ID, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # capture DAI is SSP2 using 2 periods
-# Buffers use s24le format, 1000us deadline on core 0 with priority 0
+# Buffers use s32le format, 1000us deadline on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
 	6, SSP, 2, NoCodec-2,
-	PIPELINE_SINK_6, 2, s24le,
+	PIPELINE_SINK_6, 2, s32le,
 	1000, 0, SSP2_CORE_ID, SCHEDULE_TIME_DOMAIN_TIMER)
 
 dnl PCM_DUPLEX_ADD(name, pcm_id, playback, capture)
