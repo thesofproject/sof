@@ -43,6 +43,18 @@ define(SSP0_CORE_ID, `0')
 define(SSP1_CORE_ID, `0')
 define(SSP2_CORE_ID, `0')
 
+ifelse(PLATFORM, `bxt',
+`
+define(SSP0_IDX, `0')
+define(SSP1_IDX, `1')
+define(SSP2_IDX, `5')
+',
+`
+define(SSP0_IDX, `0')
+define(SSP1_IDX, `1')
+define(SSP2_IDX, `2')
+')
+
 #
 # Define the pipelines
 #
@@ -111,49 +123,49 @@ dnl     deadline, priority, core, time_domain)
 # playback DAI is SSP0 using 2 periods
 # Buffers use s32le format, 1000us deadline on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
-	1, SSP, 0, NoCodec-0,
+	1, SSP, SSP0_IDX, NoCodec-0,
 	PIPELINE_SOURCE_1, 2, s32le,
 	1000, 0, SSP0_CORE_ID, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # capture DAI is SSP0 using 2 periods
 # Buffers use s32le format, 1000us deadline on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
-	2, SSP, 0, NoCodec-0,
+	2, SSP, SSP0_IDX, NoCodec-0,
 	PIPELINE_SINK_2, 2, s32le,
 	1000, 0, SSP0_CORE_ID, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # playback DAI is SSP1 using 2 periods
 # Buffers use s32le format, 1000us deadline on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
-	3, SSP, 1, NoCodec-1,
+	3, SSP, SSP1_IDX, NoCodec-1,
 	PIPELINE_SOURCE_3, 2, s32le,
 	1000, 0, SSP1_CORE_ID, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # capture DAI is SSP1 using 2 periods
 # Buffers use s32le format, 1000us deadline on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
-	4, SSP, 1, NoCodec-1,
+	4, SSP, SSP1_IDX, NoCodec-1,
 	PIPELINE_SINK_4, 2, s32le,
 	1000, 0, SSP1_CORE_ID, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # playback DAI is SSP2 using 2 periods
 # Buffers use s32le format, 1000us deadline on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
-	5, SSP, 2, NoCodec-2,
+	5, SSP, SSP2_IDX, NoCodec-2,
 	PIPELINE_SOURCE_5, 2, s32le,
 	1000, 0, SSP2_CORE_ID, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # capture DAI is SSP2 using 2 periods
 # Buffers use s32le format, 1000us deadline on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
-	6, SSP, 2, NoCodec-2,
+	6, SSP, SSP2_IDX, NoCodec-2,
 	PIPELINE_SINK_6, 2, s32le,
 	1000, 0, SSP2_CORE_ID, SCHEDULE_TIME_DOMAIN_TIMER)
 
 dnl PCM_DUPLEX_ADD(name, pcm_id, playback, capture)
-PCM_DUPLEX_ADD(Port0, 0, PIPELINE_PCM_1, PIPELINE_PCM_2)
-PCM_DUPLEX_ADD(Port1, 1, PIPELINE_PCM_3, PIPELINE_PCM_4)
-PCM_DUPLEX_ADD(Port2, 2, PIPELINE_PCM_5, PIPELINE_PCM_6)
+PCM_DUPLEX_ADD(`Port'SSP0_IDX, 0, PIPELINE_PCM_1, PIPELINE_PCM_2)
+PCM_DUPLEX_ADD(`Port'SSP1_IDX, 1, PIPELINE_PCM_3, PIPELINE_PCM_4)
+PCM_DUPLEX_ADD(`Port'SSP2_IDX, 2, PIPELINE_PCM_5, PIPELINE_PCM_6)
 
 #
 # BE configurations - overrides config in ACPI if present
@@ -170,75 +182,75 @@ ifelse(PLATFORM, `adl', `define(ROOT_CLK, 38_4)')
 
 ifelse(ROOT_CLK, `19_2',
 `
-DAI_CONFIG(SSP, 0, 0, NoCodec-0,
+DAI_CONFIG(SSP, SSP0_IDX, 0, NoCodec-0,
 	   SSP_CONFIG(I2S, SSP_CLOCK(mclk, 24576000, codec_mclk_in),
 		      SSP_CLOCK(bclk, 3072000, codec_slave),
 		      SSP_CLOCK(fsync, 48000, codec_slave),
 		      SSP_TDM(2, 32, 3, 3),
 		      dnl SSP_CONFIG_DATA(type, dai_index, valid bits, mclk_id, quirks)
-		      SSP_CONFIG_DATA(SSP, 0, 32, 0, SSP_QUIRK_LBM)))
+		      SSP_CONFIG_DATA(SSP, SSP0_IDX, 32, 0, SSP_QUIRK_LBM)))
 
-DAI_CONFIG(SSP, 1, 1, NoCodec-1,
+DAI_CONFIG(SSP, SSP1_IDX, 1, NoCodec-1,
 	   SSP_CONFIG(I2S, SSP_CLOCK(mclk, 24576000, codec_mclk_in),
 		      SSP_CLOCK(bclk, 3072000, codec_slave),
 		      SSP_CLOCK(fsync, 48000, codec_slave),
 		      SSP_TDM(2, 32, 3, 3),
-		      SSP_CONFIG_DATA(SSP, 1, 32, 0, SSP_QUIRK_LBM)))
+		      SSP_CONFIG_DATA(SSP, SSP1_IDX, 32, 0, SSP_QUIRK_LBM)))
 
-DAI_CONFIG(SSP, 2, 2, NoCodec-2,
+DAI_CONFIG(SSP, SSP2_IDX, 2, NoCodec-2,
 	   SSP_CONFIG(I2S, SSP_CLOCK(mclk, 24576000, codec_mclk_in),
 		      SSP_CLOCK(bclk, 3072000, codec_slave),
 		      SSP_CLOCK(fsync, 48000, codec_slave),
 		      SSP_TDM(2, 32, 3, 3),
-		      SSP_CONFIG_DATA(SSP, 2, 32, 0, SSP_QUIRK_LBM)))
+		      SSP_CONFIG_DATA(SSP, SSP2_IDX, 32, 0, SSP_QUIRK_LBM)))
 ')
 
 ifelse(ROOT_CLK, `24',
 `
-DAI_CONFIG(SSP, 0, 0, NoCodec-0,
+DAI_CONFIG(SSP, SSP0_IDX, 0, NoCodec-0,
 	   dnl SSP_CONFIG(format, mclk, bclk, fsync, tdm, ssp_config_data)
 	   SSP_CONFIG(I2S, SSP_CLOCK(mclk, 24000000, codec_mclk_in),
 		      SSP_CLOCK(bclk, 4800000, codec_slave),
 		      SSP_CLOCK(fsync, 48000, codec_slave),
 		      SSP_TDM(2, 25, 3, 3),
 		      dnl SSP_CONFIG_DATA(type, dai_index, valid bits, mclk_id, quirks)
-		      SSP_CONFIG_DATA(SSP, 0, 24, 0, SSP_QUIRK_LBM)))
+		      SSP_CONFIG_DATA(SSP, SSP0_IDX, 24, 0, SSP_QUIRK_LBM)))
 
-DAI_CONFIG(SSP, 1, 1, NoCodec-1,
+DAI_CONFIG(SSP, SSP1_IDX, 1, NoCodec-1,
 	   SSP_CONFIG(I2S, SSP_CLOCK(mclk, 24000000, codec_mclk_in),
 		      SSP_CLOCK(bclk, 4800000, codec_slave),
 		      SSP_CLOCK(fsync, 48000, codec_slave),
 		      SSP_TDM(2, 25, 3, 3),
-		      SSP_CONFIG_DATA(SSP, 1, 24, 0, SSP_QUIRK_LBM)))
+		      SSP_CONFIG_DATA(SSP, SSP1_IDX, 24, 0, SSP_QUIRK_LBM)))
 
-DAI_CONFIG(SSP, 2, 2, NoCodec-2,
+DAI_CONFIG(SSP, SSP2_IDX, 2, NoCodec-2,
 	   SSP_CONFIG(I2S, SSP_CLOCK(mclk, 24000000, codec_mclk_in),
 		      SSP_CLOCK(bclk, 4800000, codec_slave),
 		      SSP_CLOCK(fsync, 48000, codec_slave),
 		      SSP_TDM(2, 25, 3, 3),
-		      SSP_CONFIG_DATA(SSP, 2, 24, 0, SSP_QUIRK_LBM)))
+		      SSP_CONFIG_DATA(SSP, SSP2_IDX, 24, 0, SSP_QUIRK_LBM)))
 ')
 
 ifelse(ROOT_CLK, `38_4',
 `
-DAI_CONFIG(SSP, 0, 0, NoCodec-0,
+DAI_CONFIG(SSP, SSP0_IDX, 0, NoCodec-0,
 	   SSP_CONFIG(I2S, SSP_CLOCK(mclk, 38400000, codec_mclk_in),
 		      SSP_CLOCK(bclk, 2400000, codec_slave),
 		      SSP_CLOCK(fsync, 48000, codec_slave),
 		      SSP_TDM(2, 25, 3, 3),
-		      SSP_CONFIG_DATA(SSP, 0, 24, 0, SSP_QUIRK_LBM)))
+		      SSP_CONFIG_DATA(SSP, SSP0_IDX, 24, 0, SSP_QUIRK_LBM)))
 
-DAI_CONFIG(SSP, 1, 1, NoCodec-1,
+DAI_CONFIG(SSP, SSP1_IDX, 1, NoCodec-1,
 	   SSP_CONFIG(I2S, SSP_CLOCK(mclk, 38400000, codec_mclk_in),
 		      SSP_CLOCK(bclk, 2400000, codec_slave),
 		      SSP_CLOCK(fsync, 48000, codec_slave),
 		      SSP_TDM(2, 25, 3, 3),
-		      SSP_CONFIG_DATA(SSP, 1, 24, 0, SSP_QUIRK_LBM)))
+		      SSP_CONFIG_DATA(SSP, SSP1_IDX, 24, 0, SSP_QUIRK_LBM)))
 
-DAI_CONFIG(SSP, 2, 2, NoCodec-2,
+DAI_CONFIG(SSP, SSP2_IDX, 2, NoCodec-2,
 	   SSP_CONFIG(I2S, SSP_CLOCK(mclk, 38400000, codec_mclk_in),
 		      SSP_CLOCK(bclk, 2400000, codec_slave),
 		      SSP_CLOCK(fsync, 48000, codec_slave),
 		      SSP_TDM(2, 25, 3, 3),
-		      SSP_CONFIG_DATA(SSP, 2, 24, 0, SSP_QUIRK_LBM)))
+		      SSP_CONFIG_DATA(SSP, SSP2_IDX, 24, 0, SSP_QUIRK_LBM)))
 ')
