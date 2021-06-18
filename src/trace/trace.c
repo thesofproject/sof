@@ -238,7 +238,8 @@ static void vatrace_log(bool send_atomic, uint32_t log_entry, const struct tr_ct
 #endif /* CONFIG TRACEM */
 
 	/* fill log content. arg_count is in the dictionary. */
-	put_header(data, ctx->uuid_p, id_1, id_2, log_entry, platform_timer_get(timer_get()));
+	put_header(data, ctx->uuid_p, id_1, id_2, log_entry,
+		   platform_safe_get_time(timer_get()));
 
 	for (i = 0; i < arg_count; ++i)
 		data[PAYLOAD_OFFSET(i)] = va_arg(vargs, uint32_t);
@@ -300,7 +301,7 @@ void trace_log_filtered(bool send_atomic, const void *log_entry, const struct tr
 
 #if CONFIG_TRACE_FILTERING_ADAPTIVE
 	if (!trace->user_filter_override) {
-		current_ts = platform_timer_get(timer_get());
+		current_ts = platform_safe_get_time(timer_get());
 
 		emit_recent_entries(current_ts);
 
