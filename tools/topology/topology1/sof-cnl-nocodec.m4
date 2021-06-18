@@ -14,9 +14,8 @@ include(`common/tlv.m4')
 # Include Token library
 include(`sof/tokens.m4')
 
-# Include Cannonlake DSP configuration
-include(`platform/intel/cnl.m4')
-
+# Include DSP configuration
+include(`platform/intel/'PLATFORM`.m4')
 
 define(CHANNELS, `4')
 
@@ -160,7 +159,42 @@ PCM_DUPLEX_ADD(Port2, 2, PIPELINE_PCM_5, PIPELINE_PCM_6)
 # BE configurations - overrides config in ACPI if present
 #
 
-dnl DAI_CONFIG(type, dai_index, link_id, name, ssp_config/dmic_config)
+ifelse(PLATFORM, `bxt', `define(ROOT_CLK, 19_2)')
+ifelse(PLATFORM, `cnl', `define(ROOT_CLK, 24)')
+ifelse(PLATFORM, `cml', `define(ROOT_CLK, 24)')
+ifelse(PLATFORM, `icl', `define(ROOT_CLK, 38_4)')
+ifelse(PLATFORM, `jsl', `define(ROOT_CLK, 38_4)')
+ifelse(PLATFORM, `tgl', `define(ROOT_CLK, 38_4)')
+ifelse(PLATFORM, `ehl', `define(ROOT_CLK, 38_4)')
+ifelse(PLATFORM, `adl', `define(ROOT_CLK, 38_4)')
+
+ifelse(ROOT_CLK, `19_2',
+`
+DAI_CONFIG(SSP, 0, 0, NoCodec-0,
+	   SSP_CONFIG(I2S, SSP_CLOCK(mclk, 24576000, codec_mclk_in),
+		      SSP_CLOCK(bclk, 3072000, codec_slave),
+		      SSP_CLOCK(fsync, 48000, codec_slave),
+		      SSP_TDM(2, 32, 3, 3),
+		      dnl SSP_CONFIG_DATA(type, dai_index, valid bits, mclk_id, quirks)
+		      SSP_CONFIG_DATA(SSP, 0, 32, 0, SSP_QUIRK_LBM)))
+
+DAI_CONFIG(SSP, 1, 1, NoCodec-1,
+	   SSP_CONFIG(I2S, SSP_CLOCK(mclk, 24576000, codec_mclk_in),
+		      SSP_CLOCK(bclk, 3072000, codec_slave),
+		      SSP_CLOCK(fsync, 48000, codec_slave),
+		      SSP_TDM(2, 32, 3, 3),
+		      SSP_CONFIG_DATA(SSP, 1, 32, 0, SSP_QUIRK_LBM)))
+
+DAI_CONFIG(SSP, 2, 2, NoCodec-2,
+	   SSP_CONFIG(I2S, SSP_CLOCK(mclk, 24576000, codec_mclk_in),
+		      SSP_CLOCK(bclk, 3072000, codec_slave),
+		      SSP_CLOCK(fsync, 48000, codec_slave),
+		      SSP_TDM(2, 32, 3, 3),
+		      SSP_CONFIG_DATA(SSP, 2, 32, 0, SSP_QUIRK_LBM)))
+')
+
+ifelse(ROOT_CLK, `24',
+`
 DAI_CONFIG(SSP, 0, 0, NoCodec-0,
 	   dnl SSP_CONFIG(format, mclk, bclk, fsync, tdm, ssp_config_data)
 	   SSP_CONFIG(I2S, SSP_CLOCK(mclk, 24000000, codec_mclk_in),
@@ -183,3 +217,28 @@ DAI_CONFIG(SSP, 2, 2, NoCodec-2,
 		      SSP_CLOCK(fsync, 48000, codec_slave),
 		      SSP_TDM(2, 25, 3, 3),
 		      SSP_CONFIG_DATA(SSP, 2, 24, 0, SSP_QUIRK_LBM)))
+')
+
+ifelse(ROOT_CLK, `38_4',
+`
+DAI_CONFIG(SSP, 0, 0, NoCodec-0,
+	   SSP_CONFIG(I2S, SSP_CLOCK(mclk, 38400000, codec_mclk_in),
+		      SSP_CLOCK(bclk, 2400000, codec_slave),
+		      SSP_CLOCK(fsync, 48000, codec_slave),
+		      SSP_TDM(2, 25, 3, 3),
+		      SSP_CONFIG_DATA(SSP, 0, 24, 0, SSP_QUIRK_LBM)))
+
+DAI_CONFIG(SSP, 1, 1, NoCodec-1,
+	   SSP_CONFIG(I2S, SSP_CLOCK(mclk, 38400000, codec_mclk_in),
+		      SSP_CLOCK(bclk, 2400000, codec_slave),
+		      SSP_CLOCK(fsync, 48000, codec_slave),
+		      SSP_TDM(2, 25, 3, 3),
+		      SSP_CONFIG_DATA(SSP, 1, 24, 0, SSP_QUIRK_LBM)))
+
+DAI_CONFIG(SSP, 2, 2, NoCodec-2,
+	   SSP_CONFIG(I2S, SSP_CLOCK(mclk, 38400000, codec_mclk_in),
+		      SSP_CLOCK(bclk, 2400000, codec_slave),
+		      SSP_CLOCK(fsync, 48000, codec_slave),
+		      SSP_TDM(2, 25, 3, 3),
+		      SSP_CONFIG_DATA(SSP, 2, 24, 0, SSP_QUIRK_LBM)))
+')
