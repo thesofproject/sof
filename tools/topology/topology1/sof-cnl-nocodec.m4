@@ -16,7 +16,29 @@ include(`sof/tokens.m4')
 
 # Include Cannonlake DSP configuration
 include(`platform/intel/cnl.m4')
-include(`platform/intel/dmic.m4')
+
+
+define(CHANNELS, `4')
+
+define(DMIC_PCM_48k_ID, `10')
+define(DMIC_PCM_16k_ID, `11')
+
+define(DMIC_PIPELINE_48k_ID, `20')
+define(DMIC_PIPELINE_16k_ID, `21')
+
+define(DMIC_DAI_LINK_48k_NAME, `NoCodec-3')
+define(DMIC_DAI_LINK_16k_NAME, `NoCodec-4')
+
+define(DMIC_DAI_LINK_48k_ID, `3')
+define(DMIC_DAI_LINK_16k_ID, `4')
+
+define(DMICPROC, `eq-iir-volume')
+define(DMIC16KPROC, `eq-iir-volume')
+
+define(DMICPROC_FILTER1, `eq_iir_coef_highpass_40hz_20db_48khz.m4')
+define(DMIC16KPROC_FILTER1, `eq_iir_coef_highpass_40hz_20db_16khz.m4')
+
+include(`platform/intel/intel-generic-dmic.m4')
 
 #
 # Define the pipelines
@@ -24,7 +46,6 @@ include(`platform/intel/dmic.m4')
 # PCM0 <---> volume <----> SSP0
 # PCM1 <---> Volume <----> SSP1
 # PCM2 <---> volume <----> SSP2
-# PCM3 <---- volume <----- DMIC3 (DMIC01)
 #
 
 dnl PIPELINE_PCM_ADD(pipeline,
@@ -73,13 +94,6 @@ PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
 PIPELINE_PCM_ADD(sof/pipe-volume-switch-capture.m4,
 	6, 2, 2, s24le,
 	1000, 0, 0,
-	48000, 48000, 48000)
-
-# Passthrough capture pipeline 7 on PCM 3 using max 4 channels.
-# Set 1000us deadline on core 3 with priority 0
-PIPELINE_PCM_ADD(sof/pipe-passthrough-capture.m4,
-	7, 3, 4, s32le,
-	1000, 0, 3,
 	48000, 48000, 48000)
 
 #
@@ -133,19 +147,10 @@ DAI_ADD(sof/pipe-dai-capture.m4,
 	PIPELINE_SINK_6, 2, s24le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
-# capture DAI is DMIC 0 using 2 periods
-# Buffers use s32le format, 1000us deadline on core 3 with priority 0
-DAI_ADD(sof/pipe-dai-capture.m4,
-	7, DMIC, 0, NoCodec-3,
-	PIPELINE_SINK_7, 2, s32le,
-	1000, 0, 3, SCHEDULE_TIME_DOMAIN_TIMER)
-
 dnl PCM_DUPLEX_ADD(name, pcm_id, playback, capture)
 PCM_DUPLEX_ADD(Port0, 0, PIPELINE_PCM_1, PIPELINE_PCM_2)
 PCM_DUPLEX_ADD(Port1, 1, PIPELINE_PCM_3, PIPELINE_PCM_4)
 PCM_DUPLEX_ADD(Port2, 2, PIPELINE_PCM_5, PIPELINE_PCM_6)
-dnl PCM_CAPTURE_ADD(name, pipeline, capture)
-PCM_CAPTURE_ADD(DMIC, 3, PIPELINE_PCM_7)
 
 #
 # BE configurations - overrides config in ACPI if present
@@ -174,8 +179,3 @@ DAI_CONFIG(SSP, 2, 2, NoCodec-2,
 		      SSP_CLOCK(fsync, 48000, codec_slave),
 		      SSP_TDM(2, 25, 3, 3),
 		      SSP_CONFIG_DATA(SSP, 2, 24, 0, SSP_QUIRK_LBM)))
-
-DAI_CONFIG(DMIC, 0, 3, NoCodec-3,
-	   DMIC_CONFIG(1, 2400000, 4800000, 40, 60, 48000,
-		DMIC_WORD_LENGTH(s32le), 400, DMIC, 0,
-		PDM_CONFIG(DMIC, 0, FOUR_CH_PDM0_PDM1)))
