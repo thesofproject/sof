@@ -105,7 +105,7 @@ static inline void mtrace_event(const char *data, uint32_t length)
 		trace->pos = 0;
 	}
 
-	memcpy_s(t + trace->pos, MAILBOX_TRACE_SIZE,
+	memcpy_s(t + trace->pos, MAILBOX_TRACE_SIZE - trace->pos,
 		 data, length);
 	dcache_writeback_region(t + trace->pos, length);
 	trace->pos += length;
