@@ -502,6 +502,9 @@ struct comp_copy_limits {
 	int sink_bytes;
 	int source_frame_bytes;
 	int sink_frame_bytes;
+	/* DP priority scheduler options - 0 means ignore */
+	int source_req_bytes;	/** block until req bytes are avail */
+	int sink_req_bytes;	/** block until req bytes are free */
 };
 
 /**

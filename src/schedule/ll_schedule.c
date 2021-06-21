@@ -279,6 +279,7 @@ static int schedule_ll_domain_set(struct ll_schedule_data *sch,
 		if (task->start < domain->next_tick)
 			domain_set(domain, task_start);
 	} else if (task_start < domain->next_tick) {
+		// TODO: fix me - async.
 		/* earlier periodic task, try to make it cadence-aligned with the existed task */
 		offset = (domain->next_tick - task_start) %
 			 (domain->ticks_per_ms * period / 1000);
