@@ -188,7 +188,13 @@ static inline bool domain_is_pending(struct ll_schedule_domain *domain,
 	return ret;
 }
 
+
+#ifndef __ZEPHYR__
 struct ll_schedule_domain *timer_domain_init(struct timer *timer, int clk);
+#else
+struct ll_schedule_domain *zephyr_domain_init(struct timer *timer, int clk);
+#define timer_domain_init zephyr_domain_init
+#endif
 
 struct ll_schedule_domain *dma_multi_chan_domain_init(struct dma *dma_array,
 						      uint32_t num_dma, int clk,
