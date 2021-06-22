@@ -176,7 +176,7 @@ static const struct ll_schedule_domain_ops zephyr_domain_ops = {
 	.domain_is_pending	= zephyr_domain_is_pending
 };
 
-struct ll_schedule_domain *timer_domain_init(struct timer *timer, int clk)
+struct ll_schedule_domain *zephyr_domain_init(struct timer *timer, int clk)
 {
 	struct ll_schedule_domain *domain;
 	struct zephyr_domain *zephyr_domain;
