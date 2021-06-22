@@ -34,7 +34,8 @@
 
 #define ZEPHYR_LL_STACK_SIZE	8192
 
-#define LL_TIMER_PERIOD_US 1000 /* period in microseconds */
+#define LL_TIMER_PERIOD_US 1000ULL /* period in microseconds */
+#define LL_TIMER_PERIOD_TICKS (CONFIG_SYS_CLOCK_HW_CYCLES_PER_SEC * LL_TIMER_PERIOD_US / 1000000ULL)
 
 K_KERNEL_STACK_ARRAY_DEFINE(ll_sched_stack, CONFIG_CORE_COUNT, ZEPHYR_LL_STACK_SIZE);
 
@@ -70,10 +71,15 @@ static void zephyr_domain_thread_fn(void *p1, void *p2, void *p3)
 static void zephyr_domain_timer_fn(struct k_timer *timer)
 {
 	struct zephyr_domain *zephyr_domain = k_timer_user_data_get(timer);
+	uint64_t now = platform_timer_get(NULL);
 	int core;
 
 	if (!zephyr_domain)
 		return;
+
+	/* This loop should only run once */
+	while (zephyr_domain->ll_domain->next_tick < now)
+		zephyr_domain->ll_domain->next_tick += LL_TIMER_PERIOD_TICKS;
 
 	for (core = 0; core < CONFIG_CORE_COUNT; core++)
 		if (zephyr_domain->domain_thread[core].handler)
@@ -120,6 +126,8 @@ static int zephyr_domain_register(struct ll_schedule_domain *domain,
 		k_timer_user_data_set(&zephyr_domain->timer, zephyr_domain);
 
 		k_timer_start(&zephyr_domain->timer, start, K_USEC(LL_TIMER_PERIOD_US));
+		domain->next_tick = platform_timer_get_atomic(zephyr_domain->ll_timer) +
+			k_ticks_to_cyc_ceil64(k_timer_remaining_ticks(&zephyr_domain->timer));
 	}
 
 	tr_info(&ll_tr, "zephyr_domain_register domain->type %d domain->clk %d domain->ticks_per_ms %d period %d",
