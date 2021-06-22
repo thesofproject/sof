@@ -22,6 +22,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#define LL_TIMER_PERIOD_US 1000ULL /* default period in microseconds */
+
 struct dma;
 struct ll_schedule_domain;
 struct task;
