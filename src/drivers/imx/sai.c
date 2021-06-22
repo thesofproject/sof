@@ -171,6 +171,8 @@ static inline int sai_set_config(struct dai *dai, struct ipc_config_dai *common_
 	sai->config = *config;
 	sai->params = config->sai;
 
+	val_cr4 |= REG_SAI_CR4_MF;
+
 	switch (config->format & SOF_DAI_FMT_FORMAT_MASK) {
 	case SOF_DAI_FMT_I2S:
 		/*
@@ -182,7 +184,6 @@ static inline int sai_set_config(struct dai *dai, struct ipc_config_dai *common_
 		val_cr2 |= REG_SAI_CR2_BCP;
 		val_cr4 |= REG_SAI_CR4_FSE | REG_SAI_CR4_FSP;
 		val_cr4 |= REG_SAI_CR4_SYWD(sywd);
-		val_cr4 |= REG_SAI_CR4_MF;
 		break;
 	case SOF_DAI_FMT_LEFT_J:
 		/*
@@ -191,7 +192,6 @@ static inline int sai_set_config(struct dai *dai, struct ipc_config_dai *common_
 		 */
 		val_cr2 |= REG_SAI_CR2_BCP;
 		val_cr4 |= REG_SAI_CR4_SYWD(sywd);
-		val_cr4 |= REG_SAI_CR4_MF;
 		break;
 	case SOF_DAI_FMT_DSP_A:
 		/*
@@ -203,7 +203,6 @@ static inline int sai_set_config(struct dai *dai, struct ipc_config_dai *common_
 		val_cr2 |= REG_SAI_CR2_BCP;
 		val_cr4 |= REG_SAI_CR4_FSE;
 		val_cr4 |= REG_SAI_CR4_SYWD(0U);
-		val_cr4 |= REG_SAI_CR4_MF;
 		break;
 	case SOF_DAI_FMT_DSP_B:
 		/*
@@ -212,16 +211,13 @@ static inline int sai_set_config(struct dai *dai, struct ipc_config_dai *common_
 		 */
 		val_cr2 |= REG_SAI_CR2_BCP;
 		val_cr4 |= REG_SAI_CR4_SYWD(0U);
-		val_cr4 |= REG_SAI_CR4_MF;
 		break;
 	case SOF_DAI_FMT_PDM:
 		val_cr2 |= REG_SAI_CR2_BCP;
 		val_cr4 &= ~REG_SAI_CR4_MF;
-		val_cr4 |= REG_SAI_CR4_MF;
 		break;
 	case SOF_DAI_FMT_RIGHT_J:
 		val_cr4 |= REG_SAI_CR4_SYWD(sywd);
-		val_cr4 |= REG_SAI_CR4_MF;
 		break;
 	default:
 		return -EINVAL;
