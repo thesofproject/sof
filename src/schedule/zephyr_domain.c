@@ -69,7 +69,7 @@ static void zephyr_domain_thread_fn(void *p1, void *p2, void *p3)
 /* Timer callback: runs in timer IRQ context */
 static void zephyr_domain_timer_fn(struct k_timer *timer)
 {
-	struct zephyr_domain *zephyr_domain = timer->user_data;
+	struct zephyr_domain *zephyr_domain = k_timer_user_data_get(timer);
 	int core;
 
 	if (!zephyr_domain)
@@ -113,11 +113,11 @@ static int zephyr_domain_register(struct ll_schedule_domain *domain,
 
 	k_thread_start(thread);
 
-	if (!zephyr_domain->timer.user_data) {
+	if (!k_timer_user_data_get(&zephyr_domain->timer)) {
 		k_timeout_t start = {0};
 
 		k_timer_init(&zephyr_domain->timer, zephyr_domain_timer_fn, NULL);
-		zephyr_domain->timer.user_data = zephyr_domain;
+		k_timer_user_data_set(&zephyr_domain->timer, zephyr_domain);
 
 		k_timer_start(&zephyr_domain->timer, start, K_USEC(LL_TIMER_PERIOD_US));
 	}
@@ -140,8 +140,10 @@ static int zephyr_domain_unregister(struct ll_schedule_domain *domain,
 	if (num_tasks)
 		return 0;
 
-	if (!atomic_read(&domain->total_num_tasks))
+	if (atomic_read(&domain->total_num_tasks) == 1) {
 		k_timer_stop(&zephyr_domain->timer);
+		k_timer_user_data_set(&zephyr_domain->timer, NULL);
+	}
 
 	k_thread_abort(&zephyr_domain->domain_thread[core].ll_thread);
 	zephyr_domain->domain_thread[core].handler = NULL;
