@@ -34,11 +34,24 @@ struct ll_task_pdata {
 	uint16_t skip_cnt;	/**< how many times the task was skipped for execution */
 };
 
+#ifndef __ZEPHYR__
 int scheduler_init_ll(struct ll_schedule_domain *domain);
 
 int schedule_task_init_ll(struct task *task,
 			  const struct sof_uuid_entry *uid, uint16_t type,
 			  uint16_t priority, enum task_state (*run)(void *data),
 			  void *data, uint16_t core, uint32_t flags);
+#else
+int zephyr_ll_scheduler_init(struct ll_schedule_domain *domain);
+
+int zephyr_ll_task_init(struct task *task,
+			const struct sof_uuid_entry *uid, uint16_t type,
+			uint16_t priority, enum task_state (*run)(void *data),
+			void *data, uint16_t core, uint32_t flags);
+
+#define scheduler_init_ll zephyr_ll_scheduler_init
+#define schedule_task_init_ll zephyr_ll_task_init
+
+#endif
 
 #endif /* __SOF_SCHEDULE_LL_SCHEDULE_H__ */
