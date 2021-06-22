@@ -74,7 +74,11 @@ static const struct sof_ipc_fw_ready ready
 		.abi_version = SOF_ABI_VERSION,
 		.src_hash = SOF_SRC_HASH,
 	},
+#if CONFIG_CAVS_IMR_D3_PERSISTENT
+	.flags = DEBUG_SET_FW_READY_FLAGS | SOF_IPC_INFO_D3_PERSISTENT,
+#else
 	.flags = DEBUG_SET_FW_READY_FLAGS,
+#endif
 };
 
 #if CONFIG_MEM_WND
@@ -549,6 +553,7 @@ void platform_wait_for_interrupt(int level)
 }
 #endif
 
+#if CONFIG_CAVS_IMR_D3_PERSISTENT
 /* These structs and macros are from from the ROM code header
  * on cAVS platforms, please keep them immutable
  */
@@ -594,10 +599,19 @@ static void imr_layout_update(void *vector)
 	imr_layout->imr_state.header.imr_restore_vector = vector;
 	dcache_writeback_region(imr_layout, sizeof(*imr_layout));
 }
+#endif
 
 int platform_context_save(struct sof *sof)
 {
+#if CONFIG_CAVS_IMR_D3_PERSISTENT
+	/*
+	 * Both runtime PM and S2Idle suspend works on APL, while S3 ([deep])
+	 * doesn't. Only support IMR restoring on cAVS 1.8 and onward at the
+	 * moment.
+	 * TODO: Root cause of why IMR restore doesn't work on APL during S3
+	 * cycle.
+	 */
 	imr_layout_update((void *)IMR_BOOT_LDR_TEXT_ENTRY_BASE);
-
+#endif
 	return 0;
 }
