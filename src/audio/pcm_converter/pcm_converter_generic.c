@@ -464,7 +464,7 @@ static int pcm_convert_s16_c32_to_s16_c16(const struct audio_stream *source,
 	for (i = 0; i < samples; i++) {
 		src = audio_stream_read_frag_s32(source, buff_frag + ioffset);
 		dst = audio_stream_write_frag_s16(sink, buff_frag + ooffset);
-		*dst = *src & 0xff;
+		*dst = *src & 0xffff;
 		buff_frag++;
 	}
 
@@ -482,7 +482,7 @@ static int pcm_convert_s16_c32_to_s32_c32(const struct audio_stream *source,
 	for (i = 0; i < samples; i++) {
 		src = audio_stream_read_frag_s32(source, buff_frag + ioffset);
 		dst = audio_stream_write_frag_s32(sink, buff_frag + ooffset);
-		*dst = (*src & 0xff) << 16;
+		*dst = (*src & 0xffff) << 16;
 		buff_frag++;
 	}
 
@@ -518,7 +518,7 @@ static int pcm_convert_s16_c32_to_s24_c32(const struct audio_stream *source,
 	for (i = 0; i < samples; i++) {
 		src = audio_stream_read_frag_s32(source, buff_frag + ioffset);
 		dst = audio_stream_write_frag_s32(sink, buff_frag + ooffset);
-		*dst = (*src & 0xff) << 8;
+		*dst = (*src & 0xffff) << 8;
 		buff_frag++;
 	}
 
@@ -536,7 +536,7 @@ static int pcm_convert_s24_c32_to_s16_c32(const struct audio_stream *source,
 	for (i = 0; i < samples; i++) {
 		src = audio_stream_read_frag_s32(source, buff_frag + ioffset);
 		dst = audio_stream_write_frag_s32(sink, buff_frag + ooffset);
-		*dst =  sat_int16(Q_SHIFT_RND(sign_extend_s24(*src & 0xffffff), 23, 15));
+		*dst = sat_int16(Q_SHIFT_RND(sign_extend_s24(*src & 0xffffff), 23, 15));
 		buff_frag++;
 	}
 

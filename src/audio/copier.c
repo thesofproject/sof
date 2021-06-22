@@ -525,17 +525,17 @@ static int copier_copy(struct comp_dev *dev)
 	} else {
 		struct comp_buffer *src;
 		int in_size, out_size;
-		int  sample;
+		int sample;
 
 		sample = cd->config.out_fmt.sampling_frequency / 1000 *
 			cd->config.out_fmt.channels_count;
 		in_size = sample * (cd->config.base.audio_fmt.depth >> 3);
-		out_size = sample * (cd->config.out_fmt.audio_fmt.depth >> 3);
+		out_size = sample * (cd->config.out_fmt.depth >> 3);
 
 		src = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
 
 		buffer_invalidate(src, in_size);
-		cd->converter(src->stream, 0, cd->buf->stream, 0, sample);
+		cd->converter(&src->stream, 0, &cd->buf->stream, 0, sample);
 		buffer_writeback(cd->buf, out_size);
 
 		comp_update_buffer_produce(cd->buf, out_size);
