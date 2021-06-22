@@ -183,7 +183,6 @@ static inline int sai_set_config(struct dai *dai, struct ipc_config_dai *common_
 		val_cr4 |= REG_SAI_CR4_FSE | REG_SAI_CR4_FSP;
 		val_cr4 |= REG_SAI_CR4_SYWD(sywd);
 		val_cr4 |= REG_SAI_CR4_MF;
-		val_cr4 |= REG_SAI_CR4_FSE;
 		break;
 	case SOF_DAI_FMT_LEFT_J:
 		/*
@@ -205,7 +204,6 @@ static inline int sai_set_config(struct dai *dai, struct ipc_config_dai *common_
 		val_cr4 |= REG_SAI_CR4_FSE;
 		val_cr4 |= REG_SAI_CR4_SYWD(0U);
 		val_cr4 |= REG_SAI_CR4_MF;
-		val_cr4 |= REG_SAI_CR4_FSE;
 		break;
 	case SOF_DAI_FMT_DSP_B:
 		/*
