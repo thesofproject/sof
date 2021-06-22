@@ -237,12 +237,6 @@
 
 #define SAI_FLAG_PMQOS   BIT(0)
 
-#ifdef CONFIG_IMX8M
-#define SAI_FIFO_WORD_SIZE	128
-#else
-#define SAI_FIFO_WORD_SIZE	64
-#endif
-
 /* Divides down the audio main clock to generate the bit clock when
  * configured for an internal bit clock.
  * The division value is (DIV + 1) * 2.

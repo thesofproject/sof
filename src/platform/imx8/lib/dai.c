@@ -50,12 +50,14 @@ static SHARED_DATA struct dai sai[] = {
 			 * Receive Data Registers
 			 */
 			.depth		= 64,  /* in 4 bytes words */
+			.watermark	= 32, /* half the depth */
 			.handshake	= EDMA_HANDSHAKE(EDMA0_SAI_CHAN_TX_IRQ,
 							 EDMA0_SAI_CHAN_TX),
 		},
 		.fifo[SOF_IPC_STREAM_CAPTURE] = {
 			.offset		= SAI_1_BASE + REG_SAI_RDR0,
 			.depth		= 64,  /* in 4 bytes words */
+			.watermark	= 32, /* half the depth */
 			.handshake	= EDMA_HANDSHAKE(EDMA0_SAI_CHAN_RX_IRQ,
 							 EDMA0_SAI_CHAN_RX),
 		},
