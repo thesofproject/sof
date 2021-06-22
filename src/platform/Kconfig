@@ -431,6 +431,18 @@ config CAVS_USE_LPRO_IN_WAITI
 	  After waiti exit clock source will be restored.
 	  Choose n if unclear.
 
+config CAVS_IMR_D3_PERSISTENT
+	bool "Intel IMR content persistent on DSP in D3"
+	depends on CAVS
+	default n
+	help
+	  Select this if the Intel cAVS platform can keep the
+	  IMR (Isolated Memory Region) content persistent when
+	  the DSP is in power off (D3) mode, which means we
+	  don't need to re-downloading firmware binary to DSP
+	  SRAM so fast D3->D0 transition can be supported.
+	  Choose n if unclear.
+
 # TODO: it should just take manifest version and offsets
 config RIMAGE_SIGNING_SCHEMA
 	string "Rimage firmware signing schema name"
