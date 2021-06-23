@@ -125,15 +125,13 @@
 #define EXT_MANIFEST_ELF_SIZE	0x2000000
 
 /*
- * The HP SRAM Region Apollolake is organised like this :-
+ * The HP SRAM Region Apollolake is organised like this. Lower
+ * addresses are first. See also mailbox.h.
+ *
  * +--------------------------------------------------------------------------+
  * | Offset           | Region                  |  Size                       |
  * +------------------+-------------------------+-----------------------------+
- * | SRAM_SW_REG_BASE | SW Registers W0         |  SRAM_SW_REG_SIZE           |
- * +------------------+-------------------------+-----------------------------+
- * | SRAM_OUTBOX_BASE | Outbox W0               |  SRAM_MAILBOX_SIZE          |
- * +------------------+-------------------------+-----------------------------+
- * | SRAM_INBOX_BASE  | Inbox  W1               |  SRAM_INBOX_SIZE            |
+ * | SRAM_TRACE_BASE  | Trace Buffer W3         |  SRAM_TRACE_SIZE            |
  * +------------------+-------------------------+-----------------------------+
  * | SRAM_DEBUG_BASE  | Debug data  W2          |  SRAM_DEBUG_SIZE            |
  * +------------------+-------------------------+-----------------------------+
@@ -141,7 +139,13 @@
  * +------------------+-------------------------+-----------------------------+
  * | SRAM_STREAM_BASE | Stream data W2          |  SRAM_STREAM_SIZE           |
  * +------------------+-------------------------+-----------------------------+
- * | SRAM_TRACE_BASE  | Trace Buffer W3         |  SRAM_TRACE_SIZE            |
+ * | SRAM_INBOX_BASE  | Inbox  W1               |  SRAM_INBOX_SIZE            |
+ * +------------------+-------------------------+-----------------------------+
+ * | SRAM_SW_REG_BASE | SW Registers W0         |  SRAM_SW_REG_SIZE           |
+ * +------------------+-------------------------+-----------------------------+
+ * | SRAM_OUTBOX_BASE | Outbox W0               |  SRAM_OUTBOX_SIZE           |
+ * +------------------+-------------------------+-----------------------------+
+ *
  * +------------------+-------------------------+-----------------------------+
  * | SOF_FW_START     | text                    |                             |
  * |                  | data                    |                             |
