@@ -184,60 +184,15 @@ void pipeline_disconnect(struct comp_dev *comp, struct comp_buffer *buffer, int 
 	irq_local_enable(flags);
 }
 
-static int pipeline_comp_free(struct comp_dev *current,
-			      struct comp_buffer *calling_buf,
-			      struct pipeline_walk_context *ctx, int dir)
-{
-	struct pipeline_data *ppl_data = ctx->comp_data;
-	uint32_t flags;
-
-	pipe_dbg(current->pipeline, "pipeline_comp_free(), current->comp.id = %u, dir = %u",
-		 dev_comp_id(current), dir);
-
-	if (!comp_is_single_pipeline(current, ppl_data->start)) {
-		pipe_dbg(current->pipeline, "pipeline_comp_free(), current is from another pipeline");
-		return 0;
-	}
-
-	/* complete component free */
-	current->pipeline = NULL;
-
-	pipeline_for_each_comp(current, ctx, dir);
-
-	/* disconnect source from buffer */
-	irq_local_disable(flags);
-	list_item_del(comp_buffer_list(current, dir));
-	irq_local_enable(flags);
-
-	return 0;
-}
-
 /* pipelines must be inactive */
 int pipeline_free(struct pipeline *p)
 {
-	struct pipeline_data data;
-	struct pipeline_walk_context walk_ctx = {
-		.comp_func = pipeline_comp_free,
-		.comp_data = &data,
-	};
-
 	pipe_info(p, "pipeline_free()");
 
-	/* make sure we are not in use */
-	if (p->source_comp) {
-		if (p->source_comp->state > COMP_STATE_READY) {
-			pipe_err(p, "pipeline_free(): Pipeline in use, %u, %u",
-				 dev_comp_id(p->source_comp),
-				 p->source_comp->state);
-			return -EBUSY;
-		}
-
-		data.start = p->source_comp;
-
-		/* disconnect components */
-		walk_ctx.comp_func(p->source_comp, NULL, &walk_ctx,
-				   PPL_DIR_DOWNSTREAM);
-	}
+	/*
+	 * pipeline_free should always be called only after all the widgets in the pipeline have
+	 * been freed.
+	 */
 
 	/* remove from any scheduling */
 	if (p->pipe_task) {
