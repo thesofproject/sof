@@ -97,6 +97,7 @@ int cadence_codec_init(struct comp_dev *dev)
 	}
 
 	codec->private = cd;
+	codec->cpd.init_done = 0;
 	cd->self = NULL;
 	cd->mem_tabs = NULL;
 	cd->api = NULL;
