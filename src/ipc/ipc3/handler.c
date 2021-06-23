@@ -644,7 +644,7 @@ static int ipc_pm_context_restore(uint32_t header)
 static int ipc_pm_core_enable(uint32_t header)
 {
 	struct sof_ipc_pm_core_config pm_core_config;
-	int ret = 0;
+	int ret;
 	int i = 0;
 
 	/* copy message with ABI safe method */
@@ -662,14 +662,19 @@ static int ipc_pm_core_enable(uint32_t header)
 
 	for (i = 0; i < CONFIG_CORE_COUNT; i++) {
 		if (i != PLATFORM_PRIMARY_CORE_ID) {
-			if (pm_core_config.enable_mask & (1 << i))
+			if (pm_core_config.enable_mask & (1 << i)) {
 				ret = cpu_enable_core(i);
-			else
+				if (ret < 0) {
+					tr_err(&ipc_tr, "Failed to enable core %d", i);
+					return ret;
+				}
+			} else {
 				cpu_disable_core(i);
+			}
 		}
 	}
 
-	return ret;
+	return 0;
 }
 
 static int ipc_pm_gate(uint32_t header)
