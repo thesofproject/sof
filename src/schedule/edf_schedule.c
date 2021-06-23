@@ -295,8 +295,6 @@ static void scheduler_free_edf(void *data)
 	/* free main task context */
 	task_main_free();
 
-	list_item_del(&edf_sch->list);
-
 	irq_local_enable(flags);
 }
 
