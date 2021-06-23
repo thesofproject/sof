@@ -16,7 +16,10 @@
 #include <stdint.h>
 
 /*
- * The Window Region on HPSRAM for cAVS platforms is organised like this :-
+ * The Window Region on HPSRAM for cAVS platforms is organised like
+ * this. The actual region order is platform-specific, see memory.h
+ * files.
+ *
  * +--------------------------------------------------------------------------+
  * | Offset              | Region         |  Size                             |
  * +---------------------+----------------+-----------------------------------+
