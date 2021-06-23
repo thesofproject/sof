@@ -180,6 +180,8 @@ void cpu_power_down_core(void)
 
 	pm_runtime_put(PM_RUNTIME_DSP, PWRD_BY_TPLG | cpu_get_id());
 
+	trace_point(0);
+
 	/* arch_wait_for_interrupt() not used, because it will cause panic.
 	 * This code is executed on irq lvl > 0, which is expected.
 	 * Core will be put into reset by host anyway.
