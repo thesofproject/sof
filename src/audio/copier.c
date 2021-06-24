@@ -174,7 +174,7 @@ static struct comp_dev *create_dai(struct comp_ipc_config *config, struct ipc4_c
 	case ipc4_hda_link_input_class:
 		dai.type = SOF_DAI_INTEL_HDA;
 		dai.link_dma_ch = node_id->f.v_index;
-		dai.is_config_blob = false;
+		dai.is_config_blob = true;
 		break;
 	case ipc4_i2s_link_output_class:
 	case ipc4_i2s_link_input_class:
