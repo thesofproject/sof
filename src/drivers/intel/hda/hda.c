@@ -32,13 +32,24 @@ static int hda_set_config(struct dai *dai,  struct ipc_config_dai *common_config
 	struct sof_ipc_dai_config *dai_config = spec_config;
 	struct sof_ipc_dai_hda_params *params = &dai_config->hda;
 
-	dai_info(dai, "hda_set_config(): channels %u rate %u", params->channels,
-		 params->rate);
+	if (!common_config->is_config_blob) {
+		dai_info(dai, "hda_set_config(): channels %u rate %u", params->channels,
+			 params->rate);
 
-	if (params->channels)
-		hda->params.channels = params->channels;
-	if (params->rate)
-		hda->params.rate = params->rate;
+		if (params->channels)
+			hda->params.channels = params->channels;
+		if (params->rate)
+			hda->params.rate = params->rate;
+	} else {
+		union ipc4_gateway_attributes *attr;
+
+		attr = spec_config;
+		if (attr->bits.lp_buffer_alloc)
+			dai_info(dai, "create dma buffer in lp memory");
+
+		hda->params.channels = common_config->channels;
+		hda->params.rate = common_config->rate;
+	}
 
 	return 0;
 }
