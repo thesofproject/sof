@@ -518,9 +518,15 @@ void trace_init(struct sof *sof)
 #endif /* CONFIG_TRACE_FILTERING_ADAPTIVE */
 	spinlock_init(&sof->trace->lock);
 
+#ifndef __ZEPHYR__
+	/* Zephyr owns and has already initialized this buffer (and
+	 * likely has already logged to it by the time we get here).
+	 * Don't touch.
+	 */
 	bzero((void *)MAILBOX_TRACE_BASE, MAILBOX_TRACE_SIZE);
 	dcache_writeback_invalidate_region((void *)MAILBOX_TRACE_BASE,
 					   MAILBOX_TRACE_SIZE);
+#endif
 
 	dma_trace_init_early(sof);
 }
