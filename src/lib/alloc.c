@@ -1116,11 +1116,14 @@ void heap_trace(struct mm_heap *heap, int size) { }
 void init_heap(struct sof *sof)
 {
 	struct mm *memmap = sof->memory_map;
+
+#if !CONFIG_LIBRARY
 	extern uintptr_t _system_heap_start;
 
 	/* sanity check for malformed images or loader issues */
 	if (memmap->system[0].heap != (uintptr_t)&_system_heap_start)
 		panic(SOF_IPC_PANIC_MEM);
+#endif
 
 	init_heap_map(memmap->system_runtime, PLATFORM_HEAP_SYSTEM_RUNTIME);
 

@@ -5,6 +5,7 @@ add_local_sources(sof
 	clk.c
 	dai.c
 	pm_runtime.c
+	memory.c
 )
 
 if (CONFIG_TRACE)

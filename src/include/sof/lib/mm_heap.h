@@ -49,7 +49,11 @@ struct block_map {
 struct mm_heap {
 	uint32_t blocks;
 	struct block_map *map;
+#if CONFIG_LIBRARY
+	unsigned long heap;
+#else
 	uint32_t heap;
+#endif
 	uint32_t size;
 	uint32_t caps;
 	struct mm_info info;
