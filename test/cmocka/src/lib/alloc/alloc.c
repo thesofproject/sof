@@ -14,6 +14,7 @@
 #include <sof/sof.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/mm_heap.h>
+#include <sof/lib/memory.h>
 #include <ipc/header.h>
 #include <ipc/topology.h>
 

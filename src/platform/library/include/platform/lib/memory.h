@@ -25,9 +25,9 @@ uint8_t *get_library_mailbox(void);
 #define MAILBOX_BASE	get_library_mailbox()
 
 #define PLATFORM_HEAP_SYSTEM		2
-#define PLATFORM_HEAP_SYSTEM_RUNTIME	1
+#define PLATFORM_HEAP_SYSTEM_RUNTIME	CONFIG_CORE_COUNT
 #define PLATFORM_HEAP_RUNTIME		1
-#define PLATFORM_HEAP_BUFFER		3
+#define PLATFORM_HEAP_BUFFER		2
 #define PLATFORM_HEAP_SYSTEM_SHARED	1
 #define PLATFORM_HEAP_RUNTIME_SHARED	1
 
@@ -48,6 +48,7 @@ static inline void *platform_rfree_prepare(void *ptr)
 #define uncache_to_cache(address)	address
 #define cache_to_uncache(address)	address
 #define is_uncached(address)		1
+#define cache_to_uncache_init(address)	address
 
 #define ARCH_OOPS_SIZE	0
 
