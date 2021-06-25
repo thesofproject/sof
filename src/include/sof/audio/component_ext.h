@@ -291,6 +291,30 @@ static inline int comp_position(struct comp_dev *dev,
 	return ret;
 }
 
+static inline int comp_bind(struct comp_dev *dev, void *data)
+{
+	int ret = 0;
+
+	if (dev->drv->ops.bind)
+		ret = dev->drv->ops.bind(dev, data);
+
+	comp_shared_commit(dev);
+
+	return ret;
+}
+
+static inline int comp_unbind(struct comp_dev *dev, void *data)
+{
+	int ret = 0;
+
+	if (dev->drv->ops.unbind)
+		ret = dev->drv->ops.unbind(dev, data);
+
+	comp_shared_commit(dev);
+
+	return ret;
+}
+
 /**
  * Allocates and initializes audio component list.
  * To be called once at boot time.

@@ -228,4 +228,6 @@ struct ipc4_module_large_config {
 	} data;
 };
 
+#define IPC4_COMP_ID(x, y)	((x) << 16 | (y))
+#define IPC4_INST_ID(x)	((x) & 0xffff)
 #endif
