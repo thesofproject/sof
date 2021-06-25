@@ -41,13 +41,13 @@ K_KERNEL_STACK_ARRAY_DEFINE(ll_sched_stack, CONFIG_CORE_COUNT, ZEPHYR_LL_STACK_S
 
 struct zephyr_domain_thread {
 	struct k_thread ll_thread;
+	struct k_sem sem;
 	void (*handler)(void *arg);
 	void *arg;
 };
 
 struct zephyr_domain {
 	struct k_timer timer;
-	struct k_sem sem;
 	struct timer *ll_timer;
 	struct zephyr_domain_thread domain_thread[CONFIG_CORE_COUNT];
 	struct ll_schedule_domain *ll_domain;
@@ -61,7 +61,7 @@ static void zephyr_domain_thread_fn(void *p1, void *p2, void *p3)
 
 	for (;;) {
 		/* immediately go to sleep, waiting to be woken up by the timer */
-		k_sem_take(&zephyr_domain->sem, K_FOREVER);
+		k_sem_take(&dt->sem, K_FOREVER);
 
 		dt->handler(dt->arg);
 	}
@@ -87,9 +87,12 @@ static void zephyr_domain_timer_fn(struct k_timer *timer)
 	while (zephyr_domain->ll_domain->next_tick < now)
 		zephyr_domain->ll_domain->next_tick += LL_TIMER_PERIOD_TICKS;
 
-	for (core = 0; core < CONFIG_CORE_COUNT; core++)
-		if (zephyr_domain->domain_thread[core].handler)
-			k_sem_give(&zephyr_domain->sem);
+	for (core = 0; core < CONFIG_CORE_COUNT; core++) {
+		struct zephyr_domain_thread *dt = zephyr_domain->domain_thread + core;
+
+		if (dt->handler)
+			k_sem_give(&dt->sem);
+	}
 }
 
 static int zephyr_domain_register(struct ll_schedule_domain *domain,
@@ -110,6 +113,9 @@ static int zephyr_domain_register(struct ll_schedule_domain *domain,
 
 	dt->handler = handler;
 	dt->arg = arg;
+
+	/* 10 is rather random, we better not accumulate 10 missed timer interrupts */
+	k_sem_init(&dt->sem, 0, 10);
 
 	thread_name[sizeof(thread_name) - 2] = '0' + core;
 
@@ -200,8 +206,6 @@ struct ll_schedule_domain *zephyr_domain_init(struct timer *timer, int clk)
 
 	zephyr_domain->ll_timer = timer;
 	zephyr_domain->ll_domain = domain;
-	/* 10 is rather random, we better not accumulate 10 missed timer interrupts */
-	k_sem_init(&zephyr_domain->sem, 0, 10);
 
 	ll_sch_domain_set_pdata(domain, zephyr_domain);
 
