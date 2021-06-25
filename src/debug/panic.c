@@ -31,7 +31,11 @@ void dump_panicinfo(void *addr, struct sof_ipc_panic_info *panic_info)
 	dcache_writeback_region(addr, sizeof(struct sof_ipc_panic_info));
 }
 
-/* dump stack as part of panic */
+/** Dumps stack as part of panic.
+ *
+ * \return SOF_IPC_PANIC_STACK if offset is off the stack_limit,
+ * unchanged 'p' panic code input otherwise.
+ */
 static uint32_t dump_stack(uint32_t p, void *addr, size_t offset,
 			   size_t limit, uintptr_t *stack_ptr)
 {
@@ -62,34 +66,41 @@ static uint32_t dump_stack(uint32_t p, void *addr, size_t offset,
 	return p;
 }
 
+/** Copy registers, panic_info and current stack to mailbox exception
+ * window. Opaque 'data' (e.g.: optional epc1) is passed to
+ * arch_dump_regs().
+ */
 void panic_dump(uint32_t p, struct sof_ipc_panic_info *panic_info,
 		uintptr_t *data)
 {
 	char *ext_offset;
-	size_t count;
+	size_t avail;
 	uintptr_t stack_ptr;
 
 	/* disable all IRQs */
 	interrupt_global_disable();
 
+	/* ARCH_OOPS_SIZE is platform-dependent */
 	ext_offset = (char *)mailbox_get_exception_base() + ARCH_OOPS_SIZE;
 
-	/* dump panic info, filename ane linenum */
+	/* dump panic info, filename and linenum */
 	dump_panicinfo(ext_offset, panic_info);
 	ext_offset += sizeof(struct sof_ipc_panic_info);
-
-	count = MAILBOX_EXCEPTION_SIZE -
-		(size_t)(ext_offset - (char *)mailbox_get_exception_base());
 
 #if CONFIG_TRACE
 	trace_flush_dma_to_mbox();
 #endif
 
-	/* dump stack frames */
-	p = dump_stack(p, ext_offset, 0, count, &stack_ptr);
+	/* Dump stack frames and override panic code 'p' if ext_offset is
+	 * off stack_limit. Find stack_ptr.
+	 */
+	avail = MAILBOX_EXCEPTION_SIZE -
+		(size_t)(ext_offset - (char *)mailbox_get_exception_base());
+	p = dump_stack(p, ext_offset, 0, avail, &stack_ptr);
 
-	/* dump DSP core registers
-	 * after arch_dump_regs() use only inline funcs if needed
+	/* Write oops.arch_hdr and oops.plat_hdr headers and dump DSP core
+	 * registers.  After arch_dump_regs() use only inline funcs if
+	 * needed.
 	 */
 	arch_dump_regs((void *)mailbox_get_exception_base(), stack_ptr, data);
 
@@ -101,7 +112,7 @@ void panic_dump(uint32_t p, struct sof_ipc_panic_info *panic_info,
 		;
 }
 
-void __panic(uint32_t p, char *filename, uint32_t linenum)
+void __panic(uint32_t panic_code, char *filename, uint32_t linenum)
 {
 	struct sof_ipc_panic_info panicinfo = { .linenum = linenum };
 	int strlen;
@@ -139,5 +150,5 @@ void __panic(uint32_t p, char *filename, uint32_t linenum)
 			     "a3", "memory");
 #endif
 
-	panic_dump(p, &panicinfo, NULL);
+	panic_dump(panic_code, &panicinfo, NULL);
 }

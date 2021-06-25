@@ -91,6 +91,7 @@ struct sof_ipc_trace_filter {
 #define SOF_IPC_PANIC_MAGIC			0x0dead000
 #define SOF_IPC_PANIC_MAGIC_MASK		0x0ffff000
 #define SOF_IPC_PANIC_CODE_MASK			0x00000fff
+
 #define SOF_IPC_PANIC_MEM			(SOF_IPC_PANIC_MAGIC | 0x0)
 #define SOF_IPC_PANIC_WORK			(SOF_IPC_PANIC_MAGIC | 0x1)
 #define SOF_IPC_PANIC_IPC			(SOF_IPC_PANIC_MAGIC | 0x2)
