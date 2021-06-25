@@ -64,10 +64,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define IPC4_COMP_ID(x, y) ((x) << 16 | (y))
-#define IPC4_INST_ID(x) ((x) & 0xffff)
-
-
 /*
  * Global IPC Operations.
  */
@@ -322,9 +318,7 @@ static int ipc4_init_module(union ipc4_message_header *ipc4)
 	struct sof_ipc_comp comp;
 	struct comp_dev*dev;
 
-	module.header.dat = *ipc_to_hdr(ipc4);
-	module.data.dat = *(ipc_to_hdr(ipc4) + 1);
-
+	memcpy_s(&module, sizeof(module), ipc4, sizeof(module));
 	tr_err(&ipc_tr, "ipc4_init_module %x : %x", (uint32_t)module.header.r.module_id,
 					(uint32_t)module.header.r.instance_id);
 
@@ -343,24 +337,27 @@ static int ipc4_bind_module(union ipc4_message_header *ipc4)
 {
 	struct ipc4_module_bind_unbind bu;
 	struct ipc *ipc = ipc_get();
-	uint32_t comp[2];
 
-	bu.header.dat = *ipc_to_hdr(ipc4);
-	bu.data.dat = *(ipc_to_hdr(ipc4) + 1);
-
+	memcpy_s(&bu, sizeof(bu), ipc4, sizeof(bu));
 	tr_err(&ipc_tr, "ipc4_bind_module %x : %x with %x : %x", (uint32_t)bu.header.r.module_id,
 					(uint32_t)bu.header.r.instance_id, (uint32_t)bu.data.r.dst_module_id,
 					(uint32_t)bu.data.r.dst_instance_id);
 
-	comp[0] = IPC4_COMP_ID(bu.header.r.module_id, bu.header.r.instance_id);
-	comp[1] = IPC4_COMP_ID(bu.data.r.dst_module_id, bu.data.r.dst_instance_id);
 
-	return ipc_comp_connect(ipc, comp);
+	return ipc_comp_connect(ipc, (ipc_pipe_comp_connect *)&bu);
 }
 
 static int ipc4_unbind_module(union ipc4_message_header *ipc4)
 {
-	return 0;
+	struct ipc4_module_bind_unbind bu;
+	struct ipc *ipc = ipc_get();
+
+	memcpy_s(&bu, sizeof(bu), ipc4, sizeof(bu));
+	tr_err(&ipc_tr, "ipc4_unbind_module %x : %x with %x : %x", (uint32_t)bu.header.r.module_id,
+	       (uint32_t)bu.header.r.instance_id, (uint32_t)bu.data.r.dst_module_id,
+	       (uint32_t)bu.data.r.dst_instance_id);
+
+	return ipc_comp_disconnect(ipc, (ipc_pipe_comp_connect *)&bu);
 }
 
 static int ipc4_set_large_config_module(union ipc4_message_header *ipc4)
@@ -370,9 +367,7 @@ static int ipc4_set_large_config_module(union ipc4_message_header *ipc4)
 	int comp_id;
 	int ret;
 
-	config.header.dat = *ipc_to_hdr(ipc4);
-	config.data.dat = *(ipc_to_hdr(ipc4) + 1);
-
+	memcpy_s(&config, sizeof(config), ipc4, sizeof(config));
 	comp_id = IPC4_COMP_ID(config.header.r.module_id, config.header.r.instance_id);
 	dev = ipc4_get_comp_dev(comp_id);
 	if (!dev)

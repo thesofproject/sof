@@ -368,30 +368,190 @@ int ipc_buffer_free(struct ipc *ipc, uint32_t buffer_id)
 	return 0;
 }
 
-int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
+static struct comp_buffer *ipc4_create_buffer(struct comp_dev *src, struct comp_dev *sink,
+					      uint32_t src_queue, uint32_t dst_queue)
 {
-	int dir = PPL_CONN_DIR_BUFFER_TO_COMP;
-	struct comp_dev *src, *dst;
-	struct comp_buffer *buffer;
+	struct ipc4_base_module_cfg *src_cfg, *sink_cfg;
+	struct comp_buffer *buffer = NULL;
+	struct sof_ipc_buffer ipc_buf;
+	int buf_size;
+
+	src_cfg = (struct ipc4_base_module_cfg *)comp_get_drvdata(src);
+	sink_cfg = (struct ipc4_base_module_cfg *)comp_get_drvdata(sink);
+
+	buf_size = MAX(src_cfg->obs, sink_cfg->ibs);
+	memset(&ipc_buf, 0, sizeof(ipc_buf));
+	ipc_buf.size = buf_size;
+	ipc_buf.comp.id = IPC4_COMP_ID(src_queue, dst_queue);
+	ipc_buf.comp.pipeline_id = src->ipc_config.pipeline_id;
+	ipc_buf.comp.core = src->ipc_config.core;
+	buffer = buffer_new(&ipc_buf);
+
+	return buffer;
+}
+
+static int ipc4_comp_to_buffer_connect(struct comp_dev *comp,
+				       struct comp_buffer *buffer)
+{
 	uint32_t flags;
 
-	src = ipc4_get_comp_dev(_connect[0]);
-	dst = ipc4_get_comp_dev(_connect[1]);
+	if (!cpu_is_me(comp->ipc_config.core))
+		return ipc_process_on_core(comp->ipc_config.core);
 
-	if (!src || !dst) {
-		tr_err(&ipc_tr, "failed to find src %x, or dst %x", _connect[0], _connect[1]);
+	irq_local_disable(flags);
+	list_item_prepend(buffer_comp_list(buffer, PPL_CONN_DIR_COMP_TO_BUFFER),
+			  comp_buffer_list(comp, PPL_CONN_DIR_COMP_TO_BUFFER));
+	buffer_set_comp(buffer, comp, PPL_CONN_DIR_COMP_TO_BUFFER);
+	comp_writeback(comp);
+
+	dcache_writeback_invalidate_region(buffer, sizeof(*buffer));
+	irq_local_enable(flags);
+
+	return 0;
+}
+
+static int ipc4_buffer_to_comp_connect(struct comp_buffer *buffer,
+				       struct comp_dev *comp)
+{
+	uint32_t flags;
+
+	if (!cpu_is_me(comp->ipc_config.core))
+		return ipc_process_on_core(comp->ipc_config.core);
+
+	/* check if it's a connection between cores */
+	if (buffer->core != comp->ipc_config.core) {
+		dcache_invalidate_region(buffer, sizeof(*buffer));
+
+		buffer->inter_core = true;
+
+		if (!comp->is_shared) {
+			comp = comp_make_shared(comp);
+			if (!comp)
+				return -IPC4_OUT_OF_MEMORY;
+		}
+	}
+
+	irq_local_disable(flags);
+	list_item_prepend(buffer_comp_list(buffer, PPL_CONN_DIR_BUFFER_TO_COMP),
+			  comp_buffer_list(comp, PPL_CONN_DIR_BUFFER_TO_COMP));
+	buffer_set_comp(buffer, comp, PPL_CONN_DIR_BUFFER_TO_COMP);
+	comp_writeback(comp);
+
+	dcache_writeback_invalidate_region(buffer, sizeof(*buffer));
+	irq_local_enable(flags);
+
+	return 0;
+}
+
+int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
+{
+	struct ipc4_module_bind_unbind *bu;
+	struct comp_buffer *buffer = NULL;
+	struct comp_dev *src, *sink;
+	int src_id, sink_id;
+	int ret;
+
+	bu = (struct ipc4_module_bind_unbind *)_connect;
+	src_id = IPC4_COMP_ID(bu->header.r.module_id, bu->header.r.instance_id);
+	sink_id = IPC4_COMP_ID(bu->data.r.dst_module_id, bu->data.r.dst_instance_id);
+	src = ipc4_get_comp_dev(src_id);
+	sink = ipc4_get_comp_dev(sink_id);
+	if (!src || !sink) {
+		tr_err(&ipc_tr, "failed to find src %x, or dst %x", src_id, sink_id);
 		return IPC4_INVALID_RESOURCE_ID;
 	}
 
-	buffer = list_first_item(&src->bsink_list, struct comp_buffer, source_list);
+	buffer = ipc4_create_buffer(src, sink, bu->data.r.src_queue, bu->data.r.dst_queue);
+	if (!buffer) {
+		tr_err(&ipc_tr, "failed to allocate buffer to bind %d to %d", src_id, sink_id);
+		return IPC4_OUT_OF_MEMORY;
+	}
+
+	ret = ipc4_comp_to_buffer_connect(src, buffer);
+	if (ret < 0) {
+		tr_err(&ipc_tr, "failed to connect src %d to internal buffer", src_id);
+		goto err;
+	}
+
+	ret = ipc4_buffer_to_comp_connect(buffer, sink);
+	if (ret < 0) {
+		tr_err(&ipc_tr, "failed to connect internal buffer to sink %d", sink_id);
+		goto err;
+	}
+
+	ret = comp_cmd(src, IPC4_MODULE_BIND, bu, sizeof(*bu));
+	if (ret < 0)
+		return IPC4_INVALID_RESOURCE_ID;
+
+	ret = comp_cmd(sink, IPC4_MODULE_BIND, bu, sizeof(*bu));
+	if (ret < 0)
+		return IPC4_INVALID_RESOURCE_ID;
+
+	return 0;
+
+err:
+	buffer_free(buffer);
+	return IPC4_INVALID_RESOURCE_STATE;
+}
+
+/* when both module instances are parts of the same pipeline Unbind IPC would
+ * be ignored by FW since FW does not support changing internal topology of pipeline
+ * during run-time. The only way to change pipeline topology is to delete the whole
+ * pipeline and create it in modified form.
+ */
+int ipc_comp_disconnect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
+{
+	struct ipc4_module_bind_unbind *bu;
+	struct comp_buffer *buffer = NULL;
+	struct comp_dev *src, *sink;
+	struct list_item *sink_list;
+	uint32_t src_id, sink_id, buffer_id;
+	uint32_t flags;
+	int ret;
+
+	bu = (struct ipc4_module_bind_unbind *)_connect;
+	src_id = IPC4_COMP_ID(bu->header.r.module_id, bu->header.r.instance_id);
+	sink_id = IPC4_COMP_ID(bu->data.r.dst_module_id, bu->data.r.dst_instance_id);
+	src = ipc4_get_comp_dev(src_id);
+	sink = ipc4_get_comp_dev(sink_id);
+	if (!src || !sink) {
+		tr_err(&ipc_tr, "failed to find src %x, or dst %x", src_id, sink_id);
+		return IPC4_INVALID_RESOURCE_ID;
+	}
+
+	if (src->pipeline == sink->pipeline)
+		return IPC4_INVALID_REQUEST;
+
+	buffer_id = IPC4_COMP_ID(bu->data.r.src_queue, bu->data.r.dst_queue);
+	list_for_item(sink_list, &src->bsink_list) {
+		struct comp_buffer *buf;
+
+		buf = container_of(sink_list, struct comp_buffer, source_list);
+		if (buf->id == buffer_id) {
+			buffer = buf;
+			break;
+		}
+	}
+
+	if (!buffer)
+		return IPC4_INVALID_RESOURCE_ID;
 
 	irq_local_disable(flags);
-	list_item_prepend(buffer_comp_list(buffer, dir), comp_buffer_list(dst, dir));
-	buffer_set_comp(buffer, dst, dir);
-	comp_writeback(dst);
+	list_item_del(buffer_comp_list(buffer, PPL_CONN_DIR_COMP_TO_BUFFER));
+	list_item_del(buffer_comp_list(buffer, PPL_CONN_DIR_BUFFER_TO_COMP));
+	comp_writeback(src);
+	comp_writeback(sink);
 	irq_local_enable(flags);
 
-	dcache_writeback_invalidate_region(buffer, sizeof(*buffer));
+	buffer_free(buffer);
+
+	ret = comp_cmd(src, IPC4_MODULE_UNBIND, bu, sizeof(*bu));
+	if (ret < 0)
+		return IPC4_INVALID_RESOURCE_ID;
+
+	ret = comp_cmd(sink, IPC4_MODULE_UNBIND, bu, sizeof(*bu));
+	if (ret < 0)
+		return IPC4_INVALID_RESOURCE_ID;
 
 	return 0;
 }
