@@ -42,6 +42,12 @@ static inline void fill_core_dump(struct sof_ipc_dsp_oops_xtensa *oops,
 	if (epc1)
 		oops->epc1 = *epc1;
 
+	/* With crosstool-ng gcc on some platforms this corrupts most of
+	 * the other panic information, including the precious line
+	 * number. See https://github.com/thesofproject/sof/issues/1346
+	 * Commenting this out loses the registers but avoids the
+	 * corruption of the rest.
+	 */
 	arch_dump_regs_a((void *)&oops->exccause);
 }
 
