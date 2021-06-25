@@ -77,7 +77,13 @@ static void zephyr_domain_timer_fn(struct k_timer *timer)
 	if (!zephyr_domain)
 		return;
 
-	/* This loop should only run once */
+	/*
+	 * This loop should only run once, but for the (nearly) impossible
+	 * case of a missed interrupt, add as many periods as needed. In fact
+	 * we don't need struct ll_schedule_domain::next tick and
+	 * struct task::start for a strictly periodic Zephyr-based LL scheduler
+	 * implementation, they will be removed after a short grace period.
+	 */
 	while (zephyr_domain->ll_domain->next_tick < now)
 		zephyr_domain->ll_domain->next_tick += LL_TIMER_PERIOD_TICKS;
 
@@ -148,16 +154,21 @@ static int zephyr_domain_unregister(struct ll_schedule_domain *domain,
 	if (num_tasks)
 		return 0;
 
-	if (atomic_read(&domain->total_num_tasks) == 1) {
+	if (!atomic_read(&domain->total_num_tasks)) {
 		k_timer_stop(&zephyr_domain->timer);
 		k_timer_user_data_set(&zephyr_domain->timer, NULL);
 	}
 
-	k_thread_abort(&zephyr_domain->domain_thread[core].ll_thread);
 	zephyr_domain->domain_thread[core].handler = NULL;
 
 	tr_info(&ll_tr, "zephyr_domain_unregister domain->type %d domain->clk %d",
 		domain->type, domain->clk);
+
+	/*
+	 * If running in the context of the domain thread, k_thread_abort() will
+	 * not return
+	 */
+	k_thread_abort(&zephyr_domain->domain_thread[core].ll_thread);
 
 	return 0;
 }

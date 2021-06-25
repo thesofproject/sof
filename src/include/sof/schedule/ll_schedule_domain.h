@@ -142,19 +142,29 @@ static inline void domain_unregister(struct ll_schedule_domain *domain,
 				     struct task *task, uint32_t num_tasks)
 {
 	int core = cpu_get_id();
+	bool registered = domain->registered[core];
 	int ret;
 
 	assert(domain->ops->domain_unregister);
 
+	/* unregistering a task, decrement the count */
+	atomic_sub(&domain->total_num_tasks, 1);
+
+	/* the last task of the core, unregister the client/core */
+	if (!num_tasks && registered)
+		domain->registered[core] = false;
+
+	/*
+	 * In some cases .domain_unregister() might not return, terminating the
+	 * current thread, that's why we had to update state before calling it.
+	 */
 	ret = domain->ops->domain_unregister(domain, task, num_tasks);
+	if (ret < 0) {
+		/* Failed to unregister the domain, restore state */
+		atomic_add(&domain->total_num_tasks, 1);
 
-	if (!ret) {
-		/* unregistered the task, decrease the count */
-		atomic_sub(&domain->total_num_tasks, 1);
-
-		/* the last task of the core, unregister the client/core */
 		if (!num_tasks && domain->registered[core])
-			domain->registered[core] = false;
+			domain->registered[core] = registered;
 	}
 }
 
