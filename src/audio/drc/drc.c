@@ -142,8 +142,8 @@ static struct comp_dev *drc_new(const struct comp_driver *drv,
 				struct comp_ipc_config *config,
 				void *spec)
 {
-	struct comp_dev *dev;
-	struct drc_comp_data *cd;
+	struct comp_dev *dev = NULL;
+	struct drc_comp_data *cd = NULL;
 	struct ipc_config_process *ipc_drc = spec;
 	size_t bs = ipc_drc->size;
 	int ret;
@@ -165,10 +165,8 @@ static struct comp_dev *drc_new(const struct comp_driver *drv,
 	dev->ipc_config = *config;
 
 	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
-	if (!cd) {
-		rfree(dev);
-		return NULL;
-	}
+	if (!cd)
+		goto fail;
 
 	comp_set_drvdata(dev, cd);
 
@@ -178,23 +176,26 @@ static struct comp_dev *drc_new(const struct comp_driver *drv,
 	cd->model_handler = comp_data_blob_handler_new(dev);
 	if (!cd->model_handler) {
 		comp_cl_err(&comp_drc, "drc_new(): comp_data_blob_handler_new() failed.");
-		rfree(dev);
-		rfree(cd);
-		return NULL;
+		goto cd_fail;
 	}
 
 	/* Get configuration data and reset DRC state */
 	ret = comp_init_data_blob(cd->model_handler, bs, ipc_drc->data);
 	if (ret < 0) {
 		comp_cl_err(&comp_drc, "drc_new(): comp_init_data_blob() failed.");
-		rfree(dev);
-		rfree(cd);
-		return NULL;
+		goto cd_fail;
 	}
 	drc_reset_state(&cd->state);
 
 	dev->state = COMP_STATE_READY;
 	return dev;
+
+cd_fail:
+	comp_data_blob_handler_free(cd->model_handler);
+	rfree(cd);
+fail:
+	rfree(dev);
+	return NULL;
 }
 
 static void drc_free(struct comp_dev *dev)

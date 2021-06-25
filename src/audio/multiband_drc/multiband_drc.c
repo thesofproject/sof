@@ -229,8 +229,8 @@ static struct comp_dev *multiband_drc_new(const struct comp_driver *drv,
 					  struct comp_ipc_config *config,
 					  void *spec)
 {
-	struct comp_dev *dev;
-	struct multiband_drc_comp_data *cd;
+	struct comp_dev *dev = NULL;
+	struct multiband_drc_comp_data *cd = NULL;
 	struct ipc_config_process *ipc_multiband_drc = spec;
 	size_t bs = ipc_multiband_drc->size;
 	int ret;
@@ -253,10 +253,8 @@ static struct comp_dev *multiband_drc_new(const struct comp_driver *drv,
 	dev->ipc_config = *config;
 
 	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
-	if (!cd) {
-		rfree(dev);
-		return NULL;
-	}
+	if (!cd)
+		goto fail;
 
 	comp_set_drvdata(dev, cd);
 
@@ -268,9 +266,7 @@ static struct comp_dev *multiband_drc_new(const struct comp_driver *drv,
 	if (!cd->model_handler) {
 		comp_cl_err(&comp_multiband_drc,
 			    "multiband_drc_new(): comp_data_blob_handler_new() failed.");
-		rfree(dev);
-		rfree(cd);
-		return NULL;
+		goto cd_fail;
 	}
 
 	/* Get configuration data and reset DRC state */
@@ -278,14 +274,19 @@ static struct comp_dev *multiband_drc_new(const struct comp_driver *drv,
 	if (ret < 0) {
 		comp_cl_err(&comp_multiband_drc,
 			    "multiband_drc_new(): comp_init_data_blob() failed.");
-		rfree(dev);
-		rfree(cd);
-		return NULL;
+		goto cd_fail;
 	}
 	multiband_drc_reset_state(&cd->state);
 
 	dev->state = COMP_STATE_READY;
 	return dev;
+
+cd_fail:
+	comp_data_blob_handler_free(cd->model_handler);
+	rfree(cd);
+fail:
+	rfree(dev);
+	return NULL;
 }
 
 static void multiband_drc_free(struct comp_dev *dev)

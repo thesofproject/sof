@@ -39,9 +39,9 @@ static struct comp_dev *smart_amp_new(const struct comp_driver *drv,
 				      struct comp_ipc_config *config,
 				      void *spec)
 {
-	struct comp_dev *dev;
+	struct comp_dev *dev = NULL;
 	struct ipc_config_process *ipc_sa = spec;
-	struct smart_amp_data *sad;
+	struct smart_amp_data *sad = NULL;
 	struct sof_smart_amp_config *cfg;
 	size_t bs;
 
@@ -51,24 +51,22 @@ static struct comp_dev *smart_amp_new(const struct comp_driver *drv,
 	dev->ipc_config = *config;
 
 	sad = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*sad));
-	if (!sad) {
-		rfree(dev);
-		return NULL;
-	}
+	if (!sad)
+		goto fail;
 
 	comp_set_drvdata(dev, sad);
 
 	/* component model data handler */
 	sad->model_handler = comp_data_blob_handler_new(dev);
+	if (!sad->model_handler)
+		goto sad_fail;
 
 	cfg = (struct sof_smart_amp_config *)ipc_sa->data;
 	bs = ipc_sa->size;
 
 	if ((bs > 0) && (bs < sizeof(struct sof_smart_amp_config))) {
 		comp_err(dev, "smart_amp_new(): failed to apply config");
-
-		rfree(sad);
-		return NULL;
+		goto sad_fail;
 	}
 
 	memcpy_s(&sad->config, sizeof(struct sof_smart_amp_config), cfg, bs);
@@ -76,6 +74,13 @@ static struct comp_dev *smart_amp_new(const struct comp_driver *drv,
 	dev->state = COMP_STATE_READY;
 
 	return dev;
+
+sad_fail:
+	comp_data_blob_handler_free(sad->model_handler);
+	rfree(sad);
+fail:
+	rfree(dev);
+	return NULL;
 }
 
 static int smart_amp_set_config(struct comp_dev *dev,
