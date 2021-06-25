@@ -318,8 +318,8 @@ static struct comp_dev *eq_fir_new(const struct comp_driver *drv,
 				   struct comp_ipc_config *config,
 				   void *spec)
 {
-	struct comp_dev *dev;
-	struct comp_data *cd;
+	struct comp_dev *dev = NULL;
+	struct comp_data *cd = NULL;
 	struct ipc_config_process *ipc_fir = spec;
 	size_t bs = ipc_fir->size;
 	int i;
@@ -342,10 +342,8 @@ static struct comp_dev *eq_fir_new(const struct comp_driver *drv,
 	dev->ipc_config = *config;
 
 	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
-	if (!cd) {
-		rfree(dev);
-		return NULL;
-	}
+	if (!cd)
+		goto fail;
 
 	comp_set_drvdata(dev, cd);
 
@@ -357,9 +355,7 @@ static struct comp_dev *eq_fir_new(const struct comp_driver *drv,
 	cd->model_handler = comp_data_blob_handler_new(dev);
 	if (!cd->model_handler) {
 		comp_cl_err(&comp_eq_fir, "eq_fir_new(): comp_data_blob_handler_new() failed.");
-		rfree(dev);
-		rfree(cd);
-		return NULL;
+		goto cd_fail;
 	}
 
 	/* Allocate and make a copy of the coefficients blob and reset FIR. If
@@ -368,9 +364,7 @@ static struct comp_dev *eq_fir_new(const struct comp_driver *drv,
 	ret = comp_init_data_blob(cd->model_handler, bs, ipc_fir->data);
 	if (ret < 0) {
 		comp_cl_err(&comp_eq_fir, "eq_fir_new(): comp_init_data_blob() failed.");
-		rfree(dev);
-		rfree(cd);
-		return NULL;
+		goto cd_fail;
 	}
 
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
@@ -378,6 +372,13 @@ static struct comp_dev *eq_fir_new(const struct comp_driver *drv,
 
 	dev->state = COMP_STATE_READY;
 	return dev;
+
+cd_fail:
+	comp_data_blob_handler_free(cd->model_handler);
+	rfree(cd);
+fail:
+	rfree(dev);
+	return NULL;
 }
 
 static void eq_fir_free(struct comp_dev *dev)

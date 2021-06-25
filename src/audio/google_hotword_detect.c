@@ -96,7 +96,7 @@ static struct comp_dev *ghd_create(const struct comp_driver *drv,
 	/* Create component device with an effect processing component */
 	dev = comp_alloc(drv, COMP_SIZE(struct sof_ipc_comp_process));
 	if (!dev)
-		goto fail;
+		return NULL;
 
 	comp = COMP_GET_IPC(dev, sof_ipc_comp_process);
 	ret = memcpy_s(comp, sizeof(*comp), comp_template,
@@ -119,28 +119,26 @@ static struct comp_dev *ghd_create(const struct comp_driver *drv,
 	cd->msg = ipc_msg_init(cd->event.rhdr.hdr.cmd, sizeof(cd->event));
 	if (!cd->msg) {
 		comp_err(dev, "ghd_create(): ipc_msg_init failed");
-		goto fail;
+		goto cd_fail;
 	}
 
 	/* Create component model data handler */
 	cd->model_handler = comp_data_blob_handler_new(dev);
 	if (!cd->model_handler) {
 		comp_err(dev, "ghd_create(): comp_data_blob_handler_new failed");
-		goto fail;
+		goto cd_fail;
 	}
 
 	dev->state = COMP_STATE_READY;
 	comp_dbg(dev, "ghd_create(): Ready");
 	return dev;
 
+cd_fail:
+	comp_data_blob_handler_free(cd->model_handler);
+	ipc_msg_free(cd->msg);
+	rfree(cd);
 fail:
-	if (cd) {
-		comp_data_blob_handler_free(cd->model_handler);
-		ipc_msg_free(cd->msg);
-		rfree(cd);
-	}
-	if (dev)
-		rfree(dev);
+	rfree(dev);
 	return NULL;
 }
 

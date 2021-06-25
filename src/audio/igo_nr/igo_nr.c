@@ -275,8 +275,8 @@ static struct comp_dev *igo_nr_new(const struct comp_driver *drv,
 				   struct comp_ipc_config *config, void *spec)
 {
 	struct ipc_config_process *ipc_igo_nr = spec;
-	struct comp_dev *dev;
-	struct comp_data *cd;
+	struct comp_dev *dev = NULL;
+	struct comp_data *cd = NULL;
 	size_t bs = ipc_igo_nr->size;
 	int32_t ret;
 
@@ -297,18 +297,18 @@ static struct comp_dev *igo_nr_new(const struct comp_driver *drv,
 
 	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
 	if (!cd)
-		goto err;
+		goto fail;
 
 	ret = IgoLibGetInfo(&cd->igo_lib_info);
 	if (ret != IGO_RET_OK) {
 		comp_cl_err(&comp_igo_nr, "igo_nr_new(): IgoLibGetInfo() Failed.");
-		goto err;
+		goto cd_fail;
 	}
 
 	cd->p_handle = rballoc(0, SOF_MEM_CAPS_RAM, cd->igo_lib_info.handle_size);
 	if (!cd->p_handle) {
 		comp_cl_err(&comp_igo_nr, "igo_nr_new(): igo_handle memory rballoc error");
-		goto err;
+		goto cd_fail;
 	}
 
 	comp_set_drvdata(dev, cd);
@@ -317,14 +317,14 @@ static struct comp_dev *igo_nr_new(const struct comp_driver *drv,
 	cd->model_handler = comp_data_blob_handler_new(dev);
 	if (!cd->model_handler) {
 		comp_cl_err(&comp_igo_nr, "igo_nr_new(): comp_data_blob_handler_new() failed.");
-		goto err;
+		goto cd_fail;
 	}
 
 	/* Get configuration data */
 	ret = comp_init_data_blob(cd->model_handler, bs, ipc_igo_nr->data);
 	if (ret < 0) {
 		comp_cl_err(&comp_igo_nr, "igo_nr_new(): comp_init_data_blob() failed.");
-		goto err;
+		goto cd_fail;
 	}
 	dev->state = COMP_STATE_READY;
 
@@ -332,9 +332,11 @@ static struct comp_dev *igo_nr_new(const struct comp_driver *drv,
 
 	return dev;
 
-err:
-	rfree(dev);
+cd_fail:
+	comp_data_blob_handler_free(cd->model_handler);
 	rfree(cd);
+fail:
+	rfree(dev);
 	return NULL;
 }
 

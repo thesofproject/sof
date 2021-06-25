@@ -254,9 +254,9 @@ static struct comp_dev *test_keyword_new(const struct comp_driver *drv,
 					 struct comp_ipc_config *config,
 					 void *spec)
 {
-	struct comp_dev *dev;
+	struct comp_dev *dev = NULL;
 	struct ipc_config_process *ipc_keyword = spec;
-	struct comp_data *cd;
+	struct comp_data *cd = NULL;
 	struct sof_detect_test_config *cfg;
 	int ret = 0;
 	size_t bs;
@@ -291,12 +291,12 @@ static struct comp_dev *test_keyword_new(const struct comp_driver *drv,
 	if (bs > 0) {
 		if (bs < sizeof(struct sof_detect_test_config)) {
 			comp_err(dev, "test_keyword_new(): invalid data size");
-			goto fail;
+			goto cd_fail;
 		}
 
 		if (test_keyword_apply_config(dev, cfg)) {
 			comp_err(dev, "test_keyword_new(): failed to apply config");
-			goto fail;
+			goto cd_fail;
 		}
 	}
 
@@ -304,7 +304,7 @@ static struct comp_dev *test_keyword_new(const struct comp_driver *drv,
 				  NULL);
 	if (ret < 0) {
 		comp_err(dev, "test_keyword_new(): model data initial failed");
-		goto fail;
+		goto cd_fail;
 	}
 
 	/* build component event */
@@ -315,7 +315,7 @@ static struct comp_dev *test_keyword_new(const struct comp_driver *drv,
 	cd->msg = ipc_msg_init(cd->event.rhdr.hdr.cmd, sizeof(cd->event));
 	if (!cd->msg) {
 		comp_err(dev, "test_keyword_new(): ipc notification init failed");
-		goto fail;
+		goto cd_fail;
 	}
 
 #if CONFIG_KWD_NN_SAMPLE_KEYPHRASE
@@ -324,7 +324,7 @@ static struct comp_dev *test_keyword_new(const struct comp_driver *drv,
 				  sizeof(int16_t) * KWD_NN_IN_BUFF_SIZE, 64);
 	if (!cd->input) {
 		comp_err(dev, "test_keyword_new(): input alloc failed");
-		return NULL;
+		goto cd_fail;
 	}
 	bzero(cd->input, sizeof(int16_t) * KWD_NN_IN_BUFF_SIZE);
 	cd->input_size = 0;
@@ -333,9 +333,10 @@ static struct comp_dev *test_keyword_new(const struct comp_driver *drv,
 	dev->state = COMP_STATE_READY;
 	return dev;
 
+cd_fail:
+	comp_data_blob_handler_free(cd->model_handler);
+	rfree(cd);
 fail:
-	if (cd)
-		rfree(cd);
 	rfree(dev);
 	return NULL;
 }
