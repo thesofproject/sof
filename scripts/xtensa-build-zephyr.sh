@@ -94,6 +94,7 @@ build()
 				;;
 			tgl-h)
 				PLAT_CONFIG='intel_adsp_cavs25'
+				RIMAGE_KEY=modules/audio/sof/keys/otc_private_key_3k.pem
 				;;
 			*)
 				echo "Unsupported platform: $platform"
