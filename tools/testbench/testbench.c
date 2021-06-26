@@ -158,20 +158,13 @@ static void free_comps(void)
 		icd = container_of(clist, struct ipc_comp_dev, list);
 		switch (icd->type) {
 		case COMP_TYPE_COMPONENT:
-			comp_free(icd->cd);
-			list_item_del(&icd->list);
-			rfree(icd);
+			ipc_comp_free(sof_get()->ipc, icd->id);
 			break;
 		case COMP_TYPE_BUFFER:
-			rfree(icd->cb->stream.addr);
-			rfree(icd->cb);
-			list_item_del(&icd->list);
-			rfree(icd);
+			ipc_buffer_free(sof_get()->ipc, icd->id);
 			break;
 		default:
-			rfree(icd->pipeline);
-			list_item_del(&icd->list);
-			rfree(icd);
+			ipc_pipeline_free(sof_get()->ipc, icd->id);
 			break;
 		}
 	}
@@ -385,9 +378,6 @@ int main(int argc, char **argv)
 	t_exec = (double)(toc - tic) / CLOCKS_PER_SEC;
 	c_realtime = (double)n_out / tp.channels / tp.fs_out / t_exec;
 
-	/* free all components/buffers in pipeline */
-	free_comps();
-
 	/* print test summary */
 	printf("==========================================================\n");
 	printf("		           Test Summary\n");
@@ -405,6 +395,12 @@ int main(int argc, char **argv)
 	printf("Output sample count: %d\n", n_out);
 	printf("Total execution time: %.2f us, %.2f x realtime\n",
 	       1e3 * t_exec, c_realtime);
+
+	/* free all components/buffers in pipeline */
+	free_comps();
+
+	/* free other core FW services */
+	tb_pipeline_free(sof_get());
 
 	/* free all other data */
 	free(tp.bits_in);

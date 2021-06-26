@@ -67,6 +67,7 @@ void sys_comp_file_init(void);
 void sys_comp_filewrite_init(void);
 
 int tb_pipeline_setup(struct sof *sof);
+void tb_pipeline_free(struct sof *sof);
 
 int tb_pipeline_start(struct ipc *ipc, struct pipeline *p,
 		      struct testbench_prm *tp);
