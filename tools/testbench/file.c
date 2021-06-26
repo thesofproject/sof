@@ -407,6 +407,9 @@ static enum file_format get_file_format(char *filename)
 {
 	char *ext = strrchr(filename, '.');
 
+	if (!ext)
+		return FILE_RAW;
+
 	if (!strcmp(ext, ".txt"))
 		return FILE_TEXT;
 
