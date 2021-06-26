@@ -113,9 +113,8 @@ static int parse_libraries(char *libs)
 
 		/* get shared library index from library table */
 		index = get_index_by_name(token1, lib_table);
-
 		if (index < 0) {
-			fprintf(stderr, "error: unsupported comp type\n");
+			fprintf(stderr, "error: unsupported comp type %s\n", token1);
 			return -EINVAL;
 		}
 
@@ -232,8 +231,10 @@ static void parse_input_args(int argc, char **argv, struct testbench_prm *tp)
 			break;
 
 		/* print usage */
-		case 'h':
 		default:
+			fprintf(stderr, "unknown option %c\n", option);
+			__attribute__ ((fallthrough));
+		case 'h':
 			print_usage(argv[0]);
 			exit(EXIT_FAILURE);
 		}
@@ -272,9 +273,27 @@ int main(int argc, char **argv)
 	/* command line arguments*/
 	parse_input_args(argc, argv, &tp);
 
-	/* check args */
-	if (!tp.tplg_file || !tp.input_file || !tp.output_file_num ||
-	    !tp.bits_in) {
+	/* check mandatory args */
+	if (!tp.tplg_file) {
+		fprintf(stderr, "topology file not specified, use -t file.tplg\n");
+		print_usage(argv[0]);
+		exit(EXIT_FAILURE);
+	}
+
+	if (!tp.input_file) {
+		fprintf(stderr, "input audio file not specified, use -i file\n");
+		print_usage(argv[0]);
+		exit(EXIT_FAILURE);
+	}
+
+	if (!tp.output_file_num) {
+		fprintf(stderr, "output files not specified, use -o file1,file2\n");
+		print_usage(argv[0]);
+		exit(EXIT_FAILURE);
+	}
+
+	if (!tp.bits_in) {
+		fprintf(stderr, "input format not specified, use -b format\n");
 		print_usage(argv[0]);
 		exit(EXIT_FAILURE);
 	}
