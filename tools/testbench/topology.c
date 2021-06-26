@@ -137,7 +137,7 @@ int load_buffer(void *dev, int comp_id, int pipeline_id,
 		struct snd_soc_tplg_dapm_widget *widget)
 {
 	struct sof *sof = (struct sof *)dev;
-	struct sof_ipc_buffer buffer;
+	struct sof_ipc_buffer buffer = {0};
 	int size = widget->priv.size;
 	int ret;
 

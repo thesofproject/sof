@@ -100,7 +100,7 @@ int tb_pipeline_params(struct ipc *ipc, struct pipeline *p,
 {
 	struct ipc_comp_dev *pcm_dev;
 	struct comp_dev *cd;
-	struct sof_ipc_pcm_params params;
+	struct sof_ipc_pcm_params params = {0};
 	char message[DEBUG_MSG_LEN];
 	int fs_period;
 	int period;
