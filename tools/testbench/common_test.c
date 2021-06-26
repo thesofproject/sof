@@ -56,6 +56,38 @@ int tb_pipeline_setup(struct sof *sof)
 	return 0;
 }
 
+struct ipc_data {
+	struct ipc_data_host_buffer dh_buffer;
+};
+
+void tb_pipeline_free(struct sof *sof)
+{
+	struct schedule_data *sch;
+	struct schedulers **schedulers;
+	struct list_item *slist, *_slist;
+	struct notify **notify = arch_notify_get();
+	struct ipc_data *iipc;
+
+	free(sof->sa);
+	free(*notify);
+
+	/* free all scheduler data */
+	schedule_free();
+	schedulers = arch_schedulers_get();
+	list_for_item_safe(slist, _slist, &(*schedulers)->list) {
+		sch = container_of(slist, struct schedule_data, list);
+		free(sch);
+	}
+	free(*arch_schedulers_get());
+
+	/* free IPC data */
+	iipc = sof->ipc->private;
+	free(sof->ipc->comp_data);
+	free(iipc->dh_buffer.page_table);
+	free(iipc);
+	free(sof->ipc);
+}
+
 /* set up pcm params, prepare and trigger pipeline */
 int tb_pipeline_start(struct ipc *ipc, struct pipeline *p,
 		      struct testbench_prm *tp)
