@@ -8,6 +8,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <stdbool.h>
 #include <time.h>
 #include <stdio.h>
 #include <sof/sof.h>
@@ -45,6 +46,8 @@ struct testbench_prm {
 	int sched_id;
 	int max_pipeline_id;
 	enum sof_ipc_frame frame_fmt;
+	int copy_iterations;
+	bool copy_check;
 };
 
 struct shared_lib_table {

@@ -145,6 +145,7 @@ static void print_usage(char *executable)
 	printf("%s -i in.txt -o out.txt -t test.tplg ", executable);
 	printf("-r 48000 -R 96000 -c 2");
 	printf("-b S16_LE -a vol=libsof_volume.so\n");
+	printf("-C number of copy() iterations\n");
 }
 
 /* free components */
@@ -175,7 +176,7 @@ static void parse_input_args(int argc, char **argv, struct testbench_prm *tp)
 	int option = 0;
 	int ret = 0;
 
-	while ((option = getopt(argc, argv, "hdi:o:t:b:a:r:R:c:")) != -1) {
+	while ((option = getopt(argc, argv, "hdi:o:t:b:a:r:R:c:C:")) != -1) {
 		switch (option) {
 		/* input sample file */
 		case 'i':
@@ -223,6 +224,12 @@ static void parse_input_args(int argc, char **argv, struct testbench_prm *tp)
 			debug = 1;
 			break;
 
+		/* number of pipeline copy() iterations */
+		case 'C':
+			tp->copy_iterations = atoi(optarg);
+			tp->copy_check = true;
+			break;
+
 		/* print usage */
 		default:
 			fprintf(stderr, "unknown option %c\n", option);
@@ -262,6 +269,7 @@ int main(int argc, char **argv)
 	tp.output_file_num = 0;
 	tp.channels = TESTBENCH_NCH;
 	tp.max_pipeline_id = 0;
+	tp.copy_check = false;
 
 	/* command line arguments*/
 	parse_input_args(argc, argv, &tp);
@@ -358,9 +366,15 @@ int main(int argc, char **argv)
 					pipeline_schedule_copy(curr_p, 0);
 			}
 		}
+
+		/* are we bailing out after a fixed number of iterations ? */
+		if (tp.copy_check) {
+			if (--tp.copy_iterations == 0)
+				break;
+		}
 	}
 
-	if (!frcd->fs.reached_eof)
+	if (!frcd->fs.reached_eof && !tp.copy_check)
 		printf("warning: possible pipeline xrun\n");
 
 	/* reset and free pipeline */
