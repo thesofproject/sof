@@ -1620,17 +1620,15 @@ static int dmic_remove(struct dai *dai)
 
 	dai_info(dai, "dmic_remove()");
 
-	/* remove scheduling */
-	schedule_task_free(&dmic->dmicwork);
-
-	rfree(dai_get_drvdata(dai));
-	dai_set_drvdata(dai, NULL);
-
 	interrupt_disable(dmic->irq, dai);
 	interrupt_unregister(dmic->irq, dai);
 
+	/* remove scheduling */
+	schedule_task_free(&dmic->dmicwork);
+
 	dai_info(dai, "dmic_remove(), dmic_active_fifos_mask = 0x%x, dmic_pause_mask = 0x%x",
 		 active_fifos_mask, pause_mask);
+	dai_set_drvdata(dai, NULL);
 	rfree(dmic);
 
 	/* The next end tasks must be passed if another DAI FIFO still runs.
