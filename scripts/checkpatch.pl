@@ -4129,6 +4129,8 @@ sub process {
 			     "LINUX_VERSION_CODE should be avoided, code should be for the version to which it is merged\n" . $herecurr);
 		}
 
+		if(!$SOF) {
+
 # check for uses of printk_ratelimit
 		if ($line =~ /\bprintk_ratelimit\s*\(/) {
 			WARN("PRINTK_RATELIMITED",
@@ -4168,6 +4170,8 @@ sub process {
 			WARN("PREFER_DEV_LEVEL",
 			     "Prefer dev_$level(... to dev_printk(KERN_$orig, ...\n" . $herecurr);
 		}
+
+		} # !$SOF
 
 # ENOSYS means "bad syscall nr" and nothing else.  This will have a small
 # number of false positives, but assembly files are not checked, so at
