@@ -119,10 +119,26 @@
 #define PP_NARG(...) (sizeof((unsigned int[]){0, ##__VA_ARGS__}) \
 	/ sizeof(unsigned int) - 1)
 
-/* compile-time assertion */
+/* Compile-time assertion.
+ *
+ * The first, typedef-based solution silently succeeds with variables,
+ * for instance STATIC_ASSERT(n == 42, always_succeeds) when 'n' is a
+ * variable in a function. The second, array-based solution is not
+ * fooled by variables but it increases the .bss size at the -O0
+ * optimization level (no difference with any real -O).  As we're often
+ * short on space, use the typedef-based version by default.  If you're
+ * afraid that some assertions are being fooled by variables then
+ * temporarily and locally switch to the second one.
+ */
+#if 1
 #define STATIC_ASSERT(COND, MESSAGE)	\
 	__attribute__((unused))		\
 	typedef char META_CONCAT(assertion_failed_, MESSAGE)[(COND) ? 1 : -1]
+#else
+#define STATIC_ASSERT(COND, MESSAGE)	\
+	__attribute__((unused))		\
+	static char  META_CONCAT(arr_assertion_failed_, MESSAGE)[(COND) ? 1 : -1]
+#endif
 
 /* Allows checking preprocessor symbols in compile-time.
  * Returns true for config with value 1, false for undefined or any other value.
