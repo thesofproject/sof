@@ -617,7 +617,7 @@ err_type:
 	return ret;
 }
 
-int ipc_buffer_new(struct ipc *ipc, struct sof_ipc_buffer *desc)
+int ipc_buffer_new(struct ipc *ipc, const struct sof_ipc_buffer *desc)
 {
 	struct ipc_comp_dev *ibd;
 	struct comp_buffer *buffer;
@@ -932,7 +932,7 @@ int ipc_comp_free(struct ipc *ipc, uint32_t comp_id)
 }
 
 /* create a new component in the pipeline */
-struct comp_buffer *buffer_new(struct sof_ipc_buffer *desc)
+struct comp_buffer *buffer_new(const struct sof_ipc_buffer *desc)
 {
 	struct comp_buffer *buffer;
 

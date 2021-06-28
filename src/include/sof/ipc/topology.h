@@ -99,7 +99,7 @@ int ipc_comp_free(struct ipc *ipc, uint32_t comp_id);
  * @param buffer New IPC buffer descriptor.
  * @return 0 on success or negative error.
  */
-int ipc_buffer_new(struct ipc *ipc, struct sof_ipc_buffer *buffer);
+int ipc_buffer_new(struct ipc *ipc, const struct sof_ipc_buffer *buffer);
 
 /**
  * \brief Free an IPC buffer.
