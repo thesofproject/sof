@@ -16,7 +16,7 @@
 #include <stdint.h>
 
 /* pipeline tracing */
-extern struct tr_ctx pipe_tr;
+extern const struct tr_ctx pipe_tr;
 
 #define trace_pipe_get_tr_ctx(pipe_p) (&(pipe_p)->tctx)
 #define trace_pipe_get_id(pipe_p) ((pipe_p)->pipeline_id)

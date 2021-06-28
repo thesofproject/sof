@@ -37,7 +37,7 @@ struct comp_dev;
  */
 
 /* buffer tracing */
-extern struct tr_ctx buffer_tr;
+extern const struct tr_ctx buffer_tr;
 
 /** \brief Retrieves trace context from the buffer */
 #define trace_buf_get_tr_ctx(buf_ptr) (&(buf_ptr)->tctx)

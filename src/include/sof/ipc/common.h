@@ -44,7 +44,7 @@ typedef uint32_t ipc_cmd_hdr;
 	(object).hdr.size == sizeof(object) ? 0 : 1
 
 /* ipc trace context, used by multiple units */
-extern struct tr_ctx ipc_tr;
+extern const struct tr_ctx ipc_tr;
 
 /* convenience error trace for mismatched internal structures */
 #define IPC_SIZE_ERROR_TRACE(ctx, object)		\

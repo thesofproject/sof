@@ -25,7 +25,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-extern struct tr_ctx wait_tr;
+extern const struct tr_ctx wait_tr;
 
 static inline void wait_for_interrupt(int level)
 {

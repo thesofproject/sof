@@ -21,7 +21,7 @@
 struct ll_schedule_domain;
 
 /* ll tracing */
-extern struct tr_ctx ll_tr;
+extern const struct tr_ctx ll_tr;
 
 #define ll_sch_set_pdata(task, data) \
 	do { (task)->priv_data = (data); } while (0)

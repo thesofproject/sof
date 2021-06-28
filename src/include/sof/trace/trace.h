@@ -335,7 +335,7 @@ struct tr_ctx {
  * @param default_log_level Default log level.
  */
 #define DECLARE_TR_CTX(ctx_name, uuid, default_log_level)	\
-	struct tr_ctx ctx_name TRACE_CONTEXT_SECTION = {	\
+	const struct tr_ctx ctx_name TRACE_CONTEXT_SECTION = {	\
 		.uuid_p = uuid,					\
 		.level = default_log_level,			\
 	}

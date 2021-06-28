@@ -115,7 +115,7 @@ struct idc {
 };
 
 /* idc trace context, used by multiple units */
-extern struct tr_ctx idc_tr;
+extern const struct tr_ctx idc_tr;
 
 static inline struct idc_payload *idc_payload_get(struct idc *idc,
 						  uint32_t core)
