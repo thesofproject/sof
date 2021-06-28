@@ -165,7 +165,7 @@ int ipc_comp_dai_config(struct ipc *ipc, struct ipc_config_dai *common_config,
 		if (icd->type != COMP_TYPE_COMPONENT)
 			continue;
 
-		if (!cpu_is_me(icd->core) && cpu_is_core_enabled(icd->core)) {
+		if (!cpu_is_me(icd->core)) {
 			comp_on_core[icd->core] = true;
 			ret = 0;
 			continue;
