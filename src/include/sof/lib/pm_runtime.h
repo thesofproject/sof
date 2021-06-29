@@ -33,7 +33,7 @@
 
 /** \brief Runtime power management context */
 enum pm_runtime_context {
-	PM_RUNTIME_HOST_DMA_L1 = 0,	/**< Host DMA L1 Exit */
+	PM_RUNTIME_HOST_DMA_L1 = 0,	/**< Host DMA L1 */
 	SSP_CLK,			/**< SSP Clock */
 	SSP_POW,			/**< SSP Power */
 	DMIC_CLK,			/**< DMIC Clock */
