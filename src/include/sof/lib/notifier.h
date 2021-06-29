@@ -58,15 +58,43 @@ struct notify_data {
 
 struct notify **arch_notify_get(void);
 
-int notifier_register(void *receiver, void *caller, enum notify_id type,
-		      void (*cb)(void *arg, enum notify_id type, void *data),
+/** Register a callback to be run when event 'type' happens.
+ *
+ * The identifier for un-registration is the tuple (receiver_data,
+ * caller_id_filter, event_type), the callback argument is not part of
+ * it.
+ *
+ * caller_data argument from notifier_event()
+ *
+ * @param receiver_data private data passed to the callback.
+ * @param caller_id_filter optional, can be used to be notified only by
+ * some specific notifier_event() calls when not NULL.
+ * @param event_type list of callbacks to be added to
+ * @param callback callback function
+ * @param flags see NOTIFIER_FLAG_* above
+ */
+int notifier_register(void *receiver_data, void *caller_id_filter, enum notify_id event_type,
+		      void (*callback)(void *receiver_data, enum notify_id event_type,
+				       void *caller_data),
 		      uint32_t flags);
-void notifier_unregister(void *receiver, void *caller, enum notify_id type);
-void notifier_unregister_all(void *receiver, void *caller);
+
+/** Unregister all callbacks matching that arguments tuple. NULL acts
+ * as a wildcard.
+ */
+void notifier_unregister(void *receiver_data_filter, void *caller_id_filter, enum notify_id type);
+
+/** Unregister callbacks matching the arguments for every notify_id.
+ *  A NULL parameter acts as a wildcard.
+ */
+void notifier_unregister_all(void *receiver_data_filter, void *caller_id_filter);
 
 void notifier_notify_remote(void);
-void notifier_event(const void *caller, enum notify_id type, uint32_t core_mask,
-		    void *data, uint32_t data_size);
+
+/* data_size is required to manage cache coherency for notifications
+ * across cores.
+ */
+void notifier_event(const void *caller_id, enum notify_id event_type, uint32_t core_mask,
+		    void *caller_data, uint32_t data_size);
 
 void init_system_notify(struct sof *sof);
 
