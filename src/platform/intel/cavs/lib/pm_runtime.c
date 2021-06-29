@@ -46,8 +46,11 @@ DECLARE_SOF_UUID("power", power_uuid, 0x76cc9773, 0x440c, 0x4df9,
 
 DECLARE_TR_CTX(power_tr, SOF_UUID(power_uuid), LOG_LEVEL_INFO);
 
-/** \brief Registers Host DMA access by incrementing ref counter. */
-static void cavs_pm_runtime_host_dma_l1_entry(void)
+/**
+ * \brief Registers Host DMA usage that should not trigger
+ * transition to L0 via forced L1 exit.
+ */
+static void cavs_pm_runtime_host_dma_l1_get(void)
 {
 	struct pm_runtime_data *prd = pm_runtime_data_get();
 	struct cavs_pm_runtime_data *pprd = prd->platform_data;
@@ -61,9 +64,10 @@ static void cavs_pm_runtime_host_dma_l1_entry(void)
 }
 
 /**
- * \brief Forces Host DMAs to exit L1.
+ * \brief Releases Host DMA usage preventing L1 exit. If this
+ * the last user, forced L1 exit is performed.
  */
-static inline void cavs_pm_runtime_force_host_dma_l1_exit(void)
+static inline void cavs_pm_runtime_host_dma_l1_put(void)
 {
 	struct pm_runtime_data *prd = pm_runtime_data_get();
 	struct cavs_pm_runtime_data *pprd = prd->platform_data;
@@ -477,7 +481,7 @@ void platform_pm_runtime_get(enum pm_runtime_context context, uint32_t index,
 	/* Action based on context */
 	switch (context) {
 	case PM_RUNTIME_HOST_DMA_L1:
-		cavs_pm_runtime_host_dma_l1_entry();
+		cavs_pm_runtime_host_dma_l1_get();
 		break;
 #if CONFIG_INTEL_SSP
 	case SSP_CLK:
@@ -517,7 +521,7 @@ void platform_pm_runtime_put(enum pm_runtime_context context, uint32_t index,
 {
 	switch (context) {
 	case PM_RUNTIME_HOST_DMA_L1:
-		cavs_pm_runtime_force_host_dma_l1_exit();
+		cavs_pm_runtime_host_dma_l1_put();
 		break;
 #if CONFIG_INTEL_SSP
 	case SSP_CLK:
