@@ -406,6 +406,15 @@ unsigned int _xtos_ints_off(unsigned int mask)
 	return 0;
 }
 
+void ipc_send_queued_msg(void);
+
+static void ipc_send_queued_callback(void *private_data, enum notify_id event_type,
+				     void *caller_data)
+{
+	if (!ipc_get()->pm_prepare_D3)
+		ipc_send_queued_msg();
+}
+
 /*
  * Audio components.
  *
@@ -527,6 +536,10 @@ int task_main_start(struct sof *sof)
 
 	/* init pipeline position offsets */
 	pipeline_posn_init(sof);
+
+	(void)notifier_register(NULL, scheduler_get_data(SOF_SCHEDULE_LL_TIMER),
+				NOTIFIER_ID_LL_POST_RUN,
+				ipc_send_queued_callback, 0);
 
 	/* let host know DSP boot is complete */
 	ret = platform_boot_complete(0);
