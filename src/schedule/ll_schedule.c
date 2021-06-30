@@ -72,6 +72,14 @@ static bool schedule_ll_is_pending(struct ll_schedule_data *sch)
 		list_for_item(tlist, &sch->tasks) {
 			task = container_of(tlist, struct task, list);
 
+			/*
+			 * only tasks queued or waiting for reschedule are
+			 * pending for scheduling
+			 */
+			if (task->state != SOF_TASK_STATE_QUEUED &&
+			    task->state != SOF_TASK_STATE_RESCHEDULE)
+				continue;
+
 			if (domain_is_pending(domain, task, &sched_comp)) {
 				task->state = SOF_TASK_STATE_PENDING;
 				pending_count++;
@@ -125,6 +133,8 @@ static void schedule_ll_tasks_execute(struct ll_schedule_data *sch)
 			continue;
 
 		tr_dbg(&ll_tr, "task %p %pU being started...", task, task->uid);
+
+		task->state = SOF_TASK_STATE_RUNNING;
 
 		task->state = task_run(task);
 
@@ -435,6 +445,7 @@ static int schedule_ll_task(void *data, struct task *task, uint64_t start,
 
 	/* insert task into the list */
 	schedule_ll_task_insert(task, &sch->tasks);
+	task->state = SOF_TASK_STATE_QUEUED;
 
 	/* set schedule domain */
 	ret = schedule_ll_domain_set(sch, task, start, period);
