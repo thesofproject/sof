@@ -734,16 +734,13 @@ void comp_get_copy_limits_with_lock(struct comp_buffer *source,
 				    struct comp_buffer *sink,
 				    struct comp_copy_limits *cl)
 {
-	uint32_t source_flags = 0;
-	uint32_t sink_flags = 0;
-
-	buffer_lock(source, &source_flags);
-	buffer_lock(sink, &sink_flags);
+	source = buffer_acquire(source);
+	sink = buffer_acquire(sink);
 
 	comp_get_copy_limits(source, sink, cl);
 
-	buffer_unlock(sink, sink_flags);
-	buffer_unlock(source, source_flags);
+	sink = buffer_release(sink);
+	source = buffer_release(source);
 }
 
 /**
