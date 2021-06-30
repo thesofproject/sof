@@ -1,0 +1,120 @@
+#
+# Common defines used in binmaps
+#
+
+# pin <direction>
+define in  0
+define out 1
+
+
+# stream_type <type>
+define pcm 0
+define mp3 1
+define aac 2
+
+
+# type <mod_func_type>
+define BaseFwModule     0
+define MixInModule      1
+define MixOutModule     2
+define CopierModule     3
+define PeakVolModule    4
+define UpDwMixModule    5
+define MuxModule        6
+define SrcModule        7
+define WovModule        8
+define FxModule         9
+define AecModule        10
+define KpbModule        11
+define MicSelectModule  12
+define FxFModule        13
+define AudClassModule   14
+define FakeCopierModule 15
+define IoDriver         16
+define WhmModule        17
+define GdbStub          18
+define SensingModule    19
+define UlpGatewayModule 20
+define Cal              21
+define RhModule         22
+define HostMsgAsyncGtwModule 23
+define ULPBaseFwModule  24
+define ULPAudioModule   25
+define ControlApp       26
+define LPVisionModule   27
+define AnnaModule       28
+define MmTester         29
+
+# sample_rates <list_of_supported_sample_rates>
+define 8k               0x00000001
+define 11.025k          0x00000002
+define 12k              0x00000004
+define 16k              0x00000008
+define 18.9k            0x00000010
+define 22.05k           0x00000020
+define 24k              0x00000040
+define 32k              0x00000080
+define 37.8k            0x00000100
+define 44.1k            0x00000200
+define 48k              0x00000400
+define 64k              0x00000800
+define 88.2k            0x00001000
+define 96k              0x00002000
+define 176.4k           0x00004000
+define 192k             0x00008000
+define sample_rates_all 0x0000FFFF
+
+
+# sample_sizes <list_of_supported_sample_sizes>
+define sample_8b    0x00000001
+define sample_16b   0x00000002
+define sample_24b   0x00000004
+define sample_32b   0x00000008
+define sample_64b   0x00000010
+
+
+# sample_containers <list_of_supported_sample_containers>
+define container_8b    0x00000001
+define container_16b   0x00000002
+define container_24b   0x00000004
+define container_32b   0x00000008
+define container_64b   0x00000010
+
+
+# channel_cfg <list_of_supported_channel_configurations>
+define ch_mono          0x00000001
+define ch_dual_mono     0x00000002
+define ch_stereo        0x00000004
+define ch_2_1           0x00000008
+define ch_3_0           0x00000010
+define ch_quad          0x00000020
+define ch_surround      0x00000040
+define ch_3_1           0x00000080
+define ch_5_0           0x00000100
+define ch_5_0_surround  0x00000200
+define ch_5_1           0x00000400
+define ch_5_1_surround  0x00000800
+define ch_7_0           0x00001000
+define ch_7_0_surround  0x00002000
+define ch_7_1           0x00004000
+define ch_7_1_surround  0x00008000
+define ch_all           0x0000FFFF
+
+
+# multiples_supported <list_of_supported_multiples>
+define x1       0x00000001  # (base * 1)
+define x2       0x00000002  # (base * 2)
+define x3       0x00000004  # (base * 3)
+define x4       0x00000008  # (base * 4)
+define x5       0x00000010  # (base * 5)
+define x6       0x00000020  # (base * 6)
+define x7       0x00000040  # (base * 7)
+define x8       0x00000080  # (base * 8)
+define x9       0x00000100  # (base * 9)
+define x10      0x00000200  # (base * 10)
+define x11      0x00000400  # (base * 11)
+define x12      0x00000800  # (base * 12)
+define x13      0x00001000  # (base * 13)
+define x14      0x00002000  # (base * 14)
+define x15      0x00004000  # (base * 15)
+define all      0x00008000  # (base * X)
