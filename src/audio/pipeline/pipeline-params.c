@@ -25,7 +25,6 @@ static int pipeline_comp_params_neg(struct comp_dev *current,
 				    int dir)
 {
 	struct pipeline_data *ppl_data = ctx->comp_data;
-	uint32_t flags = 0;
 	int err = 0;
 
 	/* nothing to do here ? */
@@ -39,17 +38,22 @@ static int pipeline_comp_params_neg(struct comp_dev *current,
 	if (current->state != COMP_STATE_INIT &&
 	    current->state != COMP_STATE_READY) {
 		/* return 0 if params matches */
-		if (buffer_params_match(calling_buf,
-					&ppl_data->params->params,
-					BUFF_PARAMS_FRAME_FMT |
-					BUFF_PARAMS_RATE))
+		calling_buf = buffer_acquire(calling_buf);
+
+		err = buffer_params_match(calling_buf,
+					  &ppl_data->params->params,
+					  BUFF_PARAMS_FRAME_FMT |
+					  BUFF_PARAMS_RATE);
+
+		calling_buf = buffer_release(calling_buf);
+		if (!err)
 			return 0;
 		/*
 		 * the param is conflict with an active pipeline,
 		 * drop an error and reject the .params() command.
 		 */
 		pipe_err(current->pipeline, "pipeline_comp_params_neg(): params conflict with existed active pipeline!");
-		return -EINVAL;
+		return err;
 	}
 
 	/*
@@ -60,11 +64,11 @@ static int pipeline_comp_params_neg(struct comp_dev *current,
 	 * a component who has different channels input/output buffers
 	 * should explicitly configure the channels of the branched buffers.
 	 */
-	buffer_lock(calling_buf, &flags);
+	calling_buf = buffer_acquire(calling_buf);
 	err = buffer_set_params(calling_buf,
 				&ppl_data->params->params,
 				BUFFER_UPDATE_FORCE);
-	buffer_unlock(calling_buf, flags);
+	calling_buf = buffer_release(calling_buf);
 
 	return err;
 }
@@ -134,12 +138,14 @@ static void pipeline_update_buffer_pcm_params(struct comp_buffer *buffer,
 	struct sof_ipc_stream_params *params = data;
 	int i;
 
+	buffer = buffer_acquire(buffer);
 	params->buffer_fmt = buffer->buffer_fmt;
 	params->frame_fmt = buffer->stream.frame_fmt;
 	params->rate = buffer->stream.rate;
 	params->channels = buffer->stream.channels;
 	for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
 		params->chmap[i] = buffer->chmap[i];
+	buffer = buffer_release(buffer);
 }
 
 /* fetch hardware stream parameters from DAI and propagate them to the remaining
@@ -150,7 +156,6 @@ static int pipeline_comp_hw_params(struct comp_dev *current,
 				   struct pipeline_walk_context *ctx, int dir)
 {
 	struct pipeline_data *ppl_data = ctx->comp_data;
-	uint32_t flags = 0;
 	int ret;
 
 	pipe_dbg(current->pipeline, "pipeline_comp_hw_params(), current->comp.id = %u, dir = %u",
@@ -170,10 +175,10 @@ static int pipeline_comp_hw_params(struct comp_dev *current,
 
 	/* set buffer parameters */
 	if (calling_buf) {
-		buffer_lock(calling_buf, &flags);
+		calling_buf = buffer_acquire(calling_buf);
 		buffer_set_params(calling_buf, &ppl_data->params->params,
 				  BUFFER_UPDATE_IF_UNSET);
-		buffer_unlock(calling_buf, flags);
+		calling_buf = buffer_release(calling_buf);
 	}
 
 	return 0;
