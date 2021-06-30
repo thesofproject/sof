@@ -32,6 +32,18 @@
 
 struct comp_dev;
 
+/* debug helpers */
+#ifdef DEBUG_BUFFER
+/* shout if the buffer is being accessed by not the intended core */
+#define CHECK_BUFFER_CORE(b) assert((b)->core == cpu_is_me())
+#define CHECK_BUFFER_NEED_CACHE(b) assert(!is_uncached(buffer))
+#define CHECK_BUFFER_NEED_UNCACHE(b) assert(is_uncached(buffer))
+#else
+#define CHECK_BUFFER_CORE(b)
+#define CHECK_BUFFER_NEED_CACHE(b)
+#define CHECK_BUFFER_NEED_UNCACHE(b)
+#endif
+
 /** \name Trace macros
  *  @{
  */
@@ -83,9 +95,22 @@ extern struct tr_ctx buffer_tr;
 #define BUFF_PARAMS_RATE	BIT(2)
 #define BUFF_PARAMS_CHANNELS	BIT(3)
 
-/* audio component buffer - connects 2 audio components together in pipeline */
+/*
+ * audio component buffer - connects 2 audio components together in pipeline.
+ *
+ * The buffer is a hot structure that must be shared on certain cache
+ * incoherent architectures.
+ *
+ * Access flow (on cache incoherent architectures only)
+ * 1) buffer acquired by using uncache cache coherent pointer.
+ * 2) buffer is invalidated after lock acquired.
+ * 3) buffer is safe to use cached pointer for access.
+ * 4) release buffer cached pointer
+ * 5) write back cached data and release lock using uncache pointer.
+ */
 struct comp_buffer {
-	spinlock_t *lock;		/* locking mechanism */
+	spinlock_t lock;		/* locking mechanism */
+	uint32_t flags;			/* lock flags */
 
 	/* data buffer */
 	struct audio_stream stream;
@@ -196,6 +221,8 @@ static inline void buffer_writeback(struct comp_buffer *buffer, uint32_t bytes)
  */
 static inline void buffer_lock(struct comp_buffer *buffer, uint32_t *flags)
 {
+	CHECK_BUFFER_CORE(buffer);
+
 	if (!buffer->inter_core) {
 		/* Ignored by buffer_unlock() below, silences "may be
 		 * used uninitialized" warning.
@@ -205,7 +232,7 @@ static inline void buffer_lock(struct comp_buffer *buffer, uint32_t *flags)
 	}
 
 	/* Expands to: *flags = ... */
-	spin_lock_irq(buffer->lock, *flags);
+	spin_lock_irq(&buffer->lock, *flags);
 
 	/* invalidate in case something has changed during our wait */
 	dcache_invalidate_region(buffer, sizeof(*buffer));
@@ -221,17 +248,73 @@ static inline void buffer_lock(struct comp_buffer *buffer, uint32_t *flags)
  */
 static inline void buffer_unlock(struct comp_buffer *buffer, uint32_t flags)
 {
+	CHECK_BUFFER_CORE(buffer);
+
 	if (!buffer->inter_core)
 		return;
-
-	/* save lock pointer to avoid memory access after cache flushing */
-	spinlock_t *lock = buffer->lock;
 
 	/* wtb and inv to avoid buffer locking in read only situations */
 	dcache_writeback_invalidate_region(buffer, sizeof(*buffer));
 
-	spin_unlock_irq(lock, flags);
+	spin_unlock_irq(&buffer->lock, flags);
 }
+
+#if CONFIG_CAVS && CONFIG_CORE_COUNT > 1
+__must_check static inline struct comp_buffer *buffer_acquire(
+	struct comp_buffer *buffer)
+{
+	/* assert is someone passes a cached address in here. */
+	CHECK_BUFFER_NEED_UNCACHE(buffer);
+
+	CHECK_BUFFER_CORE(buffer);
+
+	if (!buffer->inter_core)
+		goto out;
+
+	/* Expands to: *flags = ... */
+	spin_lock_irq(&buffer->lock, buffer->flags);
+
+	/* invalidate in case something has changed during our wait */
+	dcache_invalidate_region(uncache_to_cache(buffer), sizeof(*buffer));
+
+out:
+	/* client can now use cached buffer */
+	return uncache_to_cache(buffer);
+}
+
+static inline struct comp_buffer *buffer_release(
+	struct comp_buffer *buffer)
+{
+	/* assert is someone passes an uncached address in here. */
+	CHECK_BUFFER_NEED_CACHE(buffer);
+
+	CHECK_BUFFER_CORE(buffer);
+
+	if (!buffer->inter_core)
+		return cache_to_uncache(buffer);
+
+	/* wtb and inv to avoid buffer locking in read only situations */
+	dcache_writeback_invalidate_region(buffer, sizeof(*buffer));
+
+	/* unlock and return uncache alias */
+	spin_unlock_irq(&(cache_to_uncache(buffer))->lock,
+			(cache_to_uncache(buffer))->flags);
+	return cache_to_uncache(buffer);
+}
+#else
+
+__must_check static inline struct comp_buffer *buffer_acquire(
+	struct comp_buffer *buffer)
+{
+	return buffer;
+}
+
+static inline struct comp_buffer *buffer_release(
+	struct comp_buffer *buffer)
+{
+	return buffer;
+}
+#endif
 
 static inline void buffer_reset_pos(struct comp_buffer *buffer, void *data)
 {

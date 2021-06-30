@@ -45,14 +45,6 @@ struct comp_buffer *buffer_alloc(uint32_t size, uint32_t caps, uint32_t align)
 		return NULL;
 	}
 
-	buffer->lock = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM,
-			       sizeof(*buffer->lock));
-	if (!buffer->lock) {
-		rfree(buffer);
-		tr_err(&buffer_tr, "buffer_alloc(): could not alloc lock");
-		return NULL;
-	}
-
 	buffer->stream.addr = rballoc_align(0, caps, size, align);
 	if (!buffer->stream.addr) {
 		rfree(buffer);
@@ -65,7 +57,7 @@ struct comp_buffer *buffer_alloc(uint32_t size, uint32_t caps, uint32_t align)
 
 	list_init(&buffer->source_list);
 	list_init(&buffer->sink_list);
-	spinlock_init(buffer->lock);
+	spinlock_init(&buffer->lock);
 
 	return buffer;
 }
@@ -177,7 +169,6 @@ void buffer_free(struct comp_buffer *buffer)
 	notifier_unregister_all(NULL, buffer);
 
 	rfree(buffer->stream.addr);
-	rfree(buffer->lock);
 	rfree(buffer);
 }
 
