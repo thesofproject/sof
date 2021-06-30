@@ -174,7 +174,6 @@ void buffer_free(struct comp_buffer *buffer)
 
 void comp_update_buffer_produce(struct comp_buffer *buffer, uint32_t bytes)
 {
-	uint32_t flags = 0;
 	struct buffer_cb_transact cb_data = {
 		.buffer = buffer,
 		.transaction_amount = bytes,
@@ -192,14 +191,12 @@ void comp_update_buffer_produce(struct comp_buffer *buffer, uint32_t bytes)
 		return;
 	}
 
-	buffer_lock(buffer, &flags);
+	buffer = buffer_acquire(buffer);
 
 	audio_stream_produce(&buffer->stream, bytes);
 
 	notifier_event(buffer, NOTIFIER_ID_BUFFER_PRODUCE,
 		       NOTIFIER_TARGET_CORE_LOCAL, &cb_data, sizeof(cb_data));
-
-	buffer_unlock(buffer, flags);
 
 	addr = buffer->stream.addr;
 
@@ -210,11 +207,12 @@ void comp_update_buffer_produce(struct comp_buffer *buffer, uint32_t bytes)
 	buf_dbg(buffer, "comp_update_buffer_produce(), ((buffer->r_ptr - buffer->addr) << 16 | (buffer->w_ptr - buffer->addr)) = %08x",
 		((char *)buffer->stream.r_ptr - addr) << 16 |
 		((char *)buffer->stream.w_ptr - addr));
+
+	buffer_release(buffer);
 }
 
 void comp_update_buffer_consume(struct comp_buffer *buffer, uint32_t bytes)
 {
-	uint32_t flags = 0;
 	struct buffer_cb_transact cb_data = {
 		.buffer = buffer,
 		.transaction_amount = bytes,
@@ -232,14 +230,12 @@ void comp_update_buffer_consume(struct comp_buffer *buffer, uint32_t bytes)
 		return;
 	}
 
-	buffer_lock(buffer, &flags);
+	buffer = buffer_acquire(buffer);
 
 	audio_stream_consume(&buffer->stream, bytes);
 
 	notifier_event(buffer, NOTIFIER_ID_BUFFER_CONSUME,
 		       NOTIFIER_TARGET_CORE_LOCAL, &cb_data, sizeof(cb_data));
-
-	buffer_unlock(buffer, flags);
 
 	addr = buffer->stream.addr;
 
@@ -249,4 +245,6 @@ void comp_update_buffer_consume(struct comp_buffer *buffer, uint32_t bytes)
 		(buffer->id << 16) | buffer->stream.size,
 		((char *)buffer->stream.r_ptr - addr) << 16 |
 		((char *)buffer->stream.w_ptr - addr));
+
+	buffer_release(buffer);
 }
