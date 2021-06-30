@@ -261,19 +261,19 @@ static uint32_t host_get_copy_bytes_one_shot(struct comp_dev *dev)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
 	struct dma_sg_elem *local_elem = hd->config.elem_array.elems;
+	struct comp_buffer *buffer = hd->local_buffer;
 	uint32_t copy_bytes = 0;
 	uint32_t split_value;
-	uint32_t flags = 0;
 
-	buffer_lock(hd->local_buffer, &flags);
+	buffer = buffer_acquire(buffer);
 
 	/* calculate minimum size to copy */
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
-		copy_bytes = audio_stream_get_free_bytes(&hd->local_buffer->stream);
+		copy_bytes = audio_stream_get_free_bytes(&buffer->stream);
 	else
-		copy_bytes = audio_stream_get_avail_bytes(&hd->local_buffer->stream);
+		copy_bytes = audio_stream_get_avail_bytes(&buffer->stream);
 
-	buffer_unlock(hd->local_buffer, flags);
+	buffer_release(buffer);
 
 	/* copy_bytes should be aligned to minimum possible chunk of
 	 * data to be copied by dma.
@@ -333,10 +333,10 @@ static int host_copy_one_shot(struct comp_dev *dev)
 static uint32_t host_get_copy_bytes_normal(struct comp_dev *dev)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
+	struct comp_buffer *buffer = hd->local_buffer;
 	uint32_t avail_bytes = 0;
 	uint32_t free_bytes = 0;
 	uint32_t copy_bytes = 0;
-	uint32_t flags = 0;
 	int ret;
 
 	/* get data sizes from DMA */
@@ -348,7 +348,7 @@ static uint32_t host_get_copy_bytes_normal(struct comp_dev *dev)
 		return 0;
 	}
 
-	buffer_lock(hd->local_buffer, &flags);
+	buffer = buffer_acquire(buffer);
 
 	/* calculate minimum size to copy */
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
@@ -356,14 +356,13 @@ static uint32_t host_get_copy_bytes_normal(struct comp_dev *dev)
 		 * in order to avoid high load spike
 		 */
 		const uint32_t free_bytes =
-			audio_stream_get_free_bytes(&hd->local_buffer->stream);
+			audio_stream_get_free_bytes(&buffer->stream);
 		copy_bytes = MIN(hd->period_bytes, MIN(avail_bytes, free_bytes));
 	} else {
 		const uint32_t avail_bytes =
-			audio_stream_get_avail_bytes(&hd->local_buffer->stream);
+			audio_stream_get_avail_bytes(&buffer->stream);
 		copy_bytes = MIN(avail_bytes, free_bytes);
 	}
-	buffer_unlock(hd->local_buffer, flags);
 
 	/* copy_bytes should be aligned to minimum possible chunk of
 	 * data to be copied by dma.
@@ -380,6 +379,8 @@ static uint32_t host_get_copy_bytes_normal(struct comp_dev *dev)
 				  audio_stream_get_avail_bytes(&hd->local_buffer->stream),
 				  free_bytes);
 	}
+
+	buffer_release(hd->local_buffer);
 
 	return copy_bytes;
 }
