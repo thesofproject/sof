@@ -537,6 +537,7 @@ int task_main_start(struct sof *sof)
 	/* init pipeline position offsets */
 	pipeline_posn_init(sof);
 
+	/* Temporary fix for issue #4356 */
 	(void)notifier_register(NULL, scheduler_get_data(SOF_SCHEDULE_LL_TIMER),
 				NOTIFIER_ID_LL_POST_RUN,
 				ipc_send_queued_callback, 0);
