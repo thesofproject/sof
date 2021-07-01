@@ -136,7 +136,7 @@ int buffer_set_params(struct comp_buffer *buffer, struct sof_ipc_stream_params *
 bool buffer_params_match(struct comp_buffer *buffer, struct sof_ipc_stream_params *params,
 			 uint32_t flag)
 {
-	assert(params && buffer);
+	assert(params);
 
 	if ((flag & BUFF_PARAMS_FRAME_FMT) &&
 	    buffer->stream.frame_fmt != params->frame_fmt)
