@@ -513,8 +513,9 @@ static int dai_params(struct comp_dev *dev,
 	}
 
 	/* calculate frame size */
-	frame_size = get_frame_bytes(dev->ipc_config.frame_fmt,
-				     dd->local_buffer->stream.channels);
+	struct comp_buffer *buffer = buffer_acquire(dd->local_buffer);
+	frame_size = get_frame_bytes(dev->ipc_config.frame_fmt, buffer->stream.channels);
+	buffer = buffer_release(buffer);
 
 	/* calculate period size */
 	period_bytes = dev->frames * frame_size;
@@ -911,7 +912,6 @@ static int dai_copy(struct comp_dev *dev)
 	uint32_t sink_samples;
 	uint32_t samples;
 	int ret = 0;
-	uint32_t flags = 0;
 
 	comp_dbg(dev, "dai_copy()");
 
@@ -922,7 +922,7 @@ static int dai_copy(struct comp_dev *dev)
 		return ret;
 	}
 
-	buffer_lock(buf, &flags);
+	buf = buffer_acquire(buf);
 
 	/* calculate minimum size to copy */
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
@@ -942,11 +942,11 @@ static int dai_copy(struct comp_dev *dev)
 
 	copy_bytes = samples * sampling;
 
-	buffer_unlock(buf, flags);
-
 	comp_dbg(dev, "dai_copy(), dir: %d copy_bytes= 0x%x, frames= %d",
 		 dev->direction, copy_bytes,
 		 samples / buf->stream.channels);
+
+	buf = buffer_release(buf);
 
 	/* Check possibility of glitch occurrence */
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK &&
