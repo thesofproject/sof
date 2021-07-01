@@ -35,6 +35,21 @@ void pm_runtime_init(struct sof *sof)
 
 }
 
+/* Warning: the terms in this API (enable, active,... ) apply sometimes
+ * to power _management_ and other times to _power_ which can be
+ * confusing. They are however consistent with
+ * https://www.kernel.org/doc/Documentation/power/runtime_pm.txt and the
+ * long tradition of double and triple negations in power management.
+ */
+
+/** Increase the usage counter of some PM context. In general this
+ * blocks low power state but there are exception(s), for instance the
+ * context for the PM_RUNTIME_HOST_DMA_L1 is reversed: usage blocks high
+ * power state.
+ *
+ * Warning: some (all?) platforms don't really implement any counter, in
+ * other words the "counter" is silently maxed at 1.
+ */
 void pm_runtime_get(enum pm_runtime_context context, uint32_t index)
 {
 	tr_dbg(&pm_tr, "pm_runtime_get() context %d index %d", context, index);
@@ -58,6 +73,8 @@ void pm_runtime_get_sync(enum pm_runtime_context context, uint32_t index)
 	}
 }
 
+/** Decreases the usage counter of some PM context, see pm_runtime_get()
+ */
 void pm_runtime_put(enum pm_runtime_context context, uint32_t index)
 {
 	tr_dbg(&pm_tr, "pm_runtime_put() context %d index %d", context, index);
@@ -81,6 +98,7 @@ void pm_runtime_put_sync(enum pm_runtime_context context, uint32_t index)
 	}
 }
 
+/** Enables power _management_. The management, not the power. */
 void pm_runtime_enable(enum pm_runtime_context context, uint32_t index)
 {
 	tr_dbg(&pm_tr, "pm_runtime_enable() context %d index %d", context,
@@ -93,6 +111,7 @@ void pm_runtime_enable(enum pm_runtime_context context, uint32_t index)
 	}
 }
 
+/** Disables power _management_. The management, not the power. */
 void pm_runtime_disable(enum pm_runtime_context context, uint32_t index)
 {
 	tr_dbg(&pm_tr, "pm_runtime_disable() context %d index %d", context,
@@ -105,6 +124,7 @@ void pm_runtime_disable(enum pm_runtime_context context, uint32_t index)
 	}
 }
 
+/** Is the _power_ active. The power, not its management. */
 bool pm_runtime_is_active(enum pm_runtime_context context, uint32_t index)
 {
 	tr_dbg(&pm_tr, "pm_runtime_is_active() context %d index %d", context,
