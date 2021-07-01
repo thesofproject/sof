@@ -28,6 +28,10 @@ static int pipeline_comp_params_neg(struct comp_dev *current,
 	uint32_t flags = 0;
 	int err = 0;
 
+	/* nothing to do here ? */
+	if (!calling_buf)
+		return 0;
+
 	pipe_dbg(current->pipeline, "pipeline_comp_params_neg(), current->comp.id = %u, dir = %u",
 		 dev_comp_id(current), dir);
 
@@ -56,13 +60,11 @@ static int pipeline_comp_params_neg(struct comp_dev *current,
 	 * a component who has different channels input/output buffers
 	 * should explicitly configure the channels of the branched buffers.
 	 */
-	if (calling_buf) {
-		buffer_lock(calling_buf, &flags);
-		err = buffer_set_params(calling_buf,
-					&ppl_data->params->params,
-					BUFFER_UPDATE_FORCE);
-		buffer_unlock(calling_buf, flags);
-	}
+	buffer_lock(calling_buf, &flags);
+	err = buffer_set_params(calling_buf,
+				&ppl_data->params->params,
+				BUFFER_UPDATE_FORCE);
+	buffer_unlock(calling_buf, flags);
 
 	return err;
 }
