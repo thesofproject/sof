@@ -318,9 +318,7 @@ static inline struct comp_buffer *buffer_release(
 
 static inline void buffer_reset_pos(struct comp_buffer *buffer, void *data)
 {
-	uint32_t flags = 0;
-
-	buffer_lock(buffer, &flags);
+	buffer = buffer_acquire(buffer);
 
 	/* reset rw pointers and avail/free bytes counters */
 	audio_stream_reset(&buffer->stream);
@@ -328,7 +326,7 @@ static inline void buffer_reset_pos(struct comp_buffer *buffer, void *data)
 	/* clear buffer contents */
 	buffer_zero(buffer);
 
-	buffer_unlock(buffer, flags);
+	buffer_release(buffer);
 }
 
 static inline void buffer_init(struct comp_buffer *buffer, uint32_t size,
@@ -342,13 +340,11 @@ static inline void buffer_init(struct comp_buffer *buffer, uint32_t size,
 
 static inline void buffer_reset_params(struct comp_buffer *buffer, void *data)
 {
-	uint32_t flags = 0;
-
-	buffer_lock(buffer, &flags);
+	buffer = buffer_acquire(buffer);
 
 	buffer->hw_params_configured = false;
 
-	buffer_unlock(buffer, flags);
+	buffer_release(buffer);
 }
 
 #endif /* __SOF_AUDIO_BUFFER_H__ */
