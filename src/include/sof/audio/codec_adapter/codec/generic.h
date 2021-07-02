@@ -184,15 +184,6 @@ struct codec_config {
 };
 
 /**
- * \struct codec_memory
- * \brief codec memory block - used for every memory allocated by codec
- */
-struct codec_memory {
-	void *ptr; /**< A pointr to particular memory block */
-	struct list_item mem_list; /**< list of memory allocated by codec */
-};
-
-/**
  * \struct codec_processing_data
  * \brief Processing data shared between particular codec & codec_adapter
  */
@@ -216,7 +207,6 @@ struct codec_data {
 	struct codec_config s_cfg; /**< setup config */
 	struct codec_config r_cfg; /**< runtime config */
 	struct codec_interface *ops; /**< codec specific operations */
-	struct codec_memory memory; /**< memory allocated by codec */
 	struct codec_processing_data cpd; /**< shared data comp <-> codec */
 };
 
@@ -238,10 +228,6 @@ struct comp_data {
 int codec_load_config(struct comp_dev *dev, void *cfg, size_t size,
 		      enum codec_cfg_type type);
 int codec_init(struct comp_dev *dev, struct codec_interface *interface);
-void *codec_allocate_memory(struct comp_dev *dev, uint32_t size,
-			    uint32_t alignment);
-int codec_free_memory(struct comp_dev *dev, void *ptr);
-void codec_free_all_memory(struct comp_dev *dev);
 int codec_prepare(struct comp_dev *dev);
 int codec_get_samples(struct comp_dev *dev);
 int codec_init_process(struct comp_dev *dev);

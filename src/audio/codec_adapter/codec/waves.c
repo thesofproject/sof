@@ -199,7 +199,7 @@ static int waves_effect_allocate(struct comp_dev *dev)
 		return -EINVAL;
 	}
 
-	waves_codec->effect = (MaxxEffect_t *)codec_allocate_memory(dev,
+	waves_codec->effect = (MaxxEffect_t *)pipeline_devm_alloc(dev->pipeline,
 		waves_codec->effect_size, 16);
 
 	if (!waves_codec->effect) {
@@ -375,7 +375,7 @@ static int waves_effect_buffers(struct comp_dev *dev)
 		goto err;
 	}
 
-	response = codec_allocate_memory(dev, waves_codec->response_max_bytes, 16);
+	response = pipeline_devm_alloc(dev->pipeline, waves_codec->response_max_bytes, 16);
 	if (!response) {
 		comp_err(dev, "waves_effect_buffers() failed to allocate %d bytes for response",
 			 waves_codec->response_max_bytes);
@@ -383,7 +383,7 @@ static int waves_effect_buffers(struct comp_dev *dev)
 		goto err;
 	}
 
-	i_buffer = codec_allocate_memory(dev, waves_codec->buffer_bytes, 16);
+	i_buffer = pipeline_devm_alloc(dev->pipeline, waves_codec->buffer_bytes, 16);
 	if (!i_buffer) {
 		comp_err(dev, "waves_effect_buffers() failed to allocate %d bytes for i_buffer",
 			 waves_codec->buffer_bytes);
@@ -391,7 +391,7 @@ static int waves_effect_buffers(struct comp_dev *dev)
 		goto err;
 	}
 
-	o_buffer = codec_allocate_memory(dev, waves_codec->buffer_bytes, 16);
+	o_buffer = pipeline_devm_alloc(dev->pipeline, waves_codec->buffer_bytes, 16);
 	if (!o_buffer) {
 		comp_err(dev, "waves_effect_buffers() failed to allocate %d bytes for o_buffer",
 			 waves_codec->buffer_bytes);
@@ -415,12 +415,6 @@ static int waves_effect_buffers(struct comp_dev *dev)
 	return 0;
 
 err:
-	if (i_buffer)
-		codec_free_memory(dev, i_buffer);
-	if (o_buffer)
-		codec_free_memory(dev, o_buffer);
-	if (response)
-		codec_free_memory(dev, response);
 	return ret;
 }
 
@@ -606,7 +600,7 @@ int waves_codec_init(struct comp_dev *dev)
 
 	comp_dbg(dev, "waves_codec_init() start");
 
-	waves_codec = codec_allocate_memory(dev, sizeof(struct waves_codec_data), 16);
+	waves_codec = pipeline_devm_alloc(dev->pipeline, sizeof(struct waves_codec_data), 16);
 	if (!waves_codec) {
 		comp_err(dev, "waves_codec_init() failed to allocate %d bytes for waves_codec_data",
 			 sizeof(struct waves_codec_data));
@@ -617,7 +611,6 @@ int waves_codec_init(struct comp_dev *dev)
 
 		ret = waves_effect_allocate(dev);
 		if (ret) {
-			codec_free_memory(dev, waves_codec);
 			codec->private = NULL;
 		}
 	}
@@ -756,7 +749,7 @@ int waves_codec_reset(struct comp_dev *dev)
 
 int waves_codec_free(struct comp_dev *dev)
 {
-	/* codec is using codec_adapter method codec_allocate_memory for all allocations
+	/* codec is using codec_adapter method pipeline_devm_alloc for all allocations
 	 * codec_adapter will free it all on component free call
 	 * nothing to do here
 	 */

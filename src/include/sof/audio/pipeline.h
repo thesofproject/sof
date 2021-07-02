@@ -38,6 +38,15 @@ struct task;
 #define PPL_DIR_DOWNSTREAM	0
 #define PPL_DIR_UPSTREAM	1
 
+/**
+ * \struct pipe_dev_mem - used in pipeline_devm_alloc
+ * \brief pipe memory block - used for memory allocated by comp
+ */
+struct pipe_dev_mem {
+	void *ptr; /**< A pointr to particular memory block */
+	struct list_item mem_list; /**< list of memory allocated by codec */
+};
+
 /*
  * Audio pipeline.
  */
@@ -73,6 +82,8 @@ struct pipeline {
 	/* position update */
 	uint32_t posn_offset;		/* position update array offset*/
 	struct ipc_msg *msg;
+
+	struct pipe_dev_mem mem;
 };
 
 struct pipeline_walk_context {
@@ -364,5 +375,9 @@ void pipeline_xrun(struct pipeline *p, struct comp_dev *dev, int32_t bytes);
  * \param[in] xrun_limit_usecs Limit in micro secs that pipeline will tolerate.
  */
 int pipeline_xrun_set_limit(struct pipeline *p, uint32_t xrun_limit_usecs);
+
+void *pipeline_devm_alloc(struct pipeline *pipe, uint32_t size, uint32_t alignment);
+
+int pipeline_devm_free(struct pipeline *pipe, void *ptr);
 
 #endif /* __SOF_AUDIO_PIPELINE_H__ */
