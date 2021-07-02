@@ -308,24 +308,10 @@ static int clock_platform_set_cpu_freq(int clock, int freq_idx)
 
 void platform_clock_init(struct sof *sof)
 {
-	uint32_t platform_lowest_clock = CPU_LOWEST_FREQ_IDX;
 	int i;
 
 	sof->clocks =
 		cache_to_uncache((struct clock_info *)platform_clocks_info);
-
-#if CAVS_VERSION == CAVS_VERSION_2_5
-	/*
-	 * Check HW version clock capabilities
-	 * Try to request WOV_CRO clock, if it fails use LPRO clock
-	 */
-
-	shim_write(SHIM_CLKCTL, shim_read(SHIM_CLKCTL) | SHIM_CLKCTL_WOV_CRO_REQUEST);
-	if (shim_read(SHIM_CLKCTL) & SHIM_CLKCTL_WOV_CRO_REQUEST)
-		shim_write(SHIM_CLKCTL, shim_read(SHIM_CLKCTL) & ~SHIM_CLKCTL_WOV_CRO_REQUEST);
-	else
-		platform_lowest_clock = CPU_LPRO_FREQ_IDX;
-#endif
 
 	for (i = 0; i < CONFIG_CORE_COUNT; i++) {
 		sof->clocks[i] = (struct clock_info) {
@@ -333,7 +319,7 @@ void platform_clock_init(struct sof *sof)
 			.freqs = cpu_freq,
 			.default_freq_idx = CPU_DEFAULT_IDX,
 			.current_freq_idx = CPU_DEFAULT_IDX,
-			.lowest_freq_idx = platform_lowest_clock,
+			.lowest_freq_idx = CPU_LPRO_FREQ_IDX,
 			.notification_id = NOTIFIER_ID_CPU_FREQ,
 			.notification_mask = NOTIFIER_TARGET_CORE_MASK(i),
 			.set_freq = clock_platform_set_cpu_freq,
