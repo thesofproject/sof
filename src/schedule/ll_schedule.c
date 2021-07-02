@@ -286,14 +286,6 @@ static int schedule_ll_domain_set(struct ll_schedule_data *sch,
 		task->start = domain->next_tick;
 	} else {
 		/* later periodic task, simplify and cover it by the coming interrupt */
-#ifdef __ZEPHYR__
-		/*
-		 * Under Zephyr domain_set() must be called for each client, if the next
-		 * tick is already set by a different client in the same domain, this
-		 * will just set the new client to the same tick time
-		 */
-		domain_set(domain, domain->next_tick);
-#endif
 		task->start = domain->next_tick;
 	}
 
