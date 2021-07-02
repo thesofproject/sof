@@ -3,7 +3,7 @@ version = [2, 5]
 [adsp]
 name = "tgl"
 machine_id = 10
-image_size = "0x100000"
+image_size = "0x2F0000" # (46 + 1) bank * 64KB
 
 [[adsp.mem_zone]]
 type = "ROM"
