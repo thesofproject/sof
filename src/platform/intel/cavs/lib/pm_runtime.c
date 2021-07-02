@@ -328,8 +328,8 @@ static inline void cavs_pm_runtime_core_dis_memory(uint32_t index)
 	/* Address is calculated for index (0 for the primary core) minus one
 	 * since _sof_core_s_start is first secondary core stack address
 	 */
-	core_memory_ptr = (char *)&_sof_core_s_start
-		+ (index - 1) * SOF_CORE_S_SIZE;
+	core_memory_ptr = cache_to_uncache((char *)&_sof_core_s_start
+		+ (index - 1) * SOF_CORE_S_SIZE);
 
 	cavs_pm_memory_hp_sram_power_gate(core_memory_ptr, SOF_CORE_S_SIZE,
 					  false);
@@ -346,8 +346,8 @@ static inline void cavs_pm_runtime_core_en_memory(uint32_t index)
 	/* Address is calculated for index (0 for the primary core) minus one
 	 * since _sof_core_s_start is first secondary core stack address
 	 */
-	core_memory_ptr = (char *)&_sof_core_s_start
-		+ (index - 1) * SOF_CORE_S_SIZE;
+	core_memory_ptr = cache_to_uncache((char *)&_sof_core_s_start
+		+ (index - 1) * SOF_CORE_S_SIZE);
 
 	cavs_pm_memory_hp_sram_power_gate(core_memory_ptr, SOF_CORE_S_SIZE,
 					  true);
