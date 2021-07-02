@@ -584,6 +584,14 @@ static void alloc_trace_heap(enum mem_zone zone, uint32_t caps, size_t bytes)
 	int count = 0;
 
 	switch (zone) {
+	case SOF_MEM_ZONE_SYS:
+		heap_base = memmap->system;
+		heap_count = PLATFORM_HEAP_SYSTEM;
+		break;
+	case SOF_MEM_ZONE_SYS_RUNTIME:
+		heap_base = memmap->system_runtime;
+		heap_count = PLATFORM_HEAP_SYSTEM_RUNTIME;
+		break;
 	case SOF_MEM_ZONE_RUNTIME:
 		heap_base = memmap->runtime;
 		heap_count = PLATFORM_HEAP_RUNTIME;
@@ -592,6 +600,25 @@ static void alloc_trace_heap(enum mem_zone zone, uint32_t caps, size_t bytes)
 		heap_base = memmap->buffer;
 		heap_count = PLATFORM_HEAP_BUFFER;
 		break;
+#if CONFIG_CORE_COUNT > 1
+	case SOF_MEM_ZONE_RUNTIME_SHARED:
+		heap_base = memmap->runtime_shared;
+		heap_count = PLATFORM_HEAP_RUNTIME_SHARED;
+		break;
+	case SOF_MEM_ZONE_SYS_SHARED:
+		heap_base = memmap->system_shared;
+		heap_count = PLATFORM_HEAP_SYSTEM_SHARED;
+		break;
+#else
+	case SOF_MEM_ZONE_RUNTIME_SHARED:
+		heap_base = memmap->runtime;
+		heap_count = PLATFORM_HEAP_RUNTIME;
+		break;
+	case SOF_MEM_ZONE_SYS_SHARED:
+		heap_base = memmap->system;
+		heap_count = PLATFORM_HEAP_SYSTEM;
+		break;
+#endif
 	default:
 		tr_err(&mem_tr, "alloc trace: unsupported mem zone");
 		goto out;
@@ -784,8 +811,6 @@ void *rzalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
 		break;
 	}
 
-out:
-	DEBUG_TRACE_PTR(ptr, bytes, zone, caps, flags);
 	return ptr;
 }
 
@@ -1114,6 +1139,10 @@ void heap_trace_all(int force)
 
 	/* has heap changed since last shown */
 	if (memmap->heap_trace_updated || force) {
+		tr_info(&mem_tr, "heap: system status");
+		heap_trace(memmap->system, PLATFORM_HEAP_SYSTEM);
+		tr_info(&mem_tr, "heap: system runtime status");
+		heap_trace(memmap->system_runtime, PLATFORM_HEAP_SYSTEM_RUNTIME);
 		tr_info(&mem_tr, "heap: buffer status");
 		heap_trace(memmap->buffer, PLATFORM_HEAP_BUFFER);
 		tr_info(&mem_tr, "heap: runtime status");
@@ -1121,6 +1150,8 @@ void heap_trace_all(int force)
 #if CONFIG_CORE_COUNT > 1
 		tr_info(&mem_tr, "heap: runtime shared status");
 		heap_trace(memmap->runtime_shared, PLATFORM_HEAP_RUNTIME_SHARED);
+		tr_info(&mem_tr, "heap: system shared status");
+		heap_trace(memmap->system_shared, PLATFORM_HEAP_SYSTEM_SHARED);
 #endif
 	}
 
