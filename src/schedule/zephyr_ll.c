@@ -30,9 +30,6 @@ struct zephyr_ll_pdata {
 	struct k_sem sem;
 };
 
-/* FIXME: would be good to use the timer, configured in the underlying domain */
-#define domain_time(sch) platform_timer_get_atomic(timer_get())
-
 /* Locking: caller should hold the domain lock */
 static void zephyr_ll_task_done(struct zephyr_ll *sch,
 				struct task *task)
@@ -292,7 +289,7 @@ static int zephyr_ll_task_schedule(void *data, struct task *task, uint64_t start
 		}
 	}
 
-	task->start = domain_time(sch) + delay;
+	task->start = k_uptime_ticks() + k_cyc_to_ticks_floor64(delay);
 	if (sch->ll_domain->next_tick != UINT64_MAX &&
 	    sch->ll_domain->next_tick > task->start)
 		task->start = sch->ll_domain->next_tick;
