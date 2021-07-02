@@ -3,7 +3,7 @@ version = [1, 8]
 [adsp]
 name = "apl"
 machine_id = 5
-image_size = "0x100000"
+image_size = "0x0A0000"        # (8 + 2) bank * 64KB
 
 [[adsp.mem_zone]]
 type = "ROM"
