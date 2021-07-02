@@ -231,22 +231,26 @@ DAI_CONFIG(SSP, SSP0_IDX, 0, NoCodec-0,
 		      SSP_CLOCK(bclk, 3072000, codec_slave),
 		      SSP_CLOCK(fsync, 48000, codec_slave),
 		      SSP_TDM(2, 32, 3, 3),
-		      dnl SSP_CONFIG_DATA(type, dai_index, valid bits, mclk_id, quirks)
-		      SSP_CONFIG_DATA(SSP, SSP0_IDX, 32, 0, SSP_QUIRK_LBM)))
+		      dnl SSP_CONFIG_DATA(type, idx, valid bits, mclk_id, quirks, bclk_delay,
+		      dnl clks_control, pulse_width, padding)
+		      SSP_CONFIG_DATA(SSP, SSP0_IDX, 32, 0, SSP_QUIRK_LBM, 0,
+				      eval(SSP_CC_MCLK_ES | SSP_CC_BCLK_ES))))
 
 DAI_CONFIG(SSP, SSP1_IDX, 1, NoCodec-1,
 	   SSP_CONFIG(I2S, SSP_CLOCK(mclk, 24576000, codec_mclk_in),
 		      SSP_CLOCK(bclk, 3072000, codec_slave),
 		      SSP_CLOCK(fsync, 48000, codec_slave),
 		      SSP_TDM(2, 32, 3, 3),
-		      SSP_CONFIG_DATA(SSP, SSP1_IDX, 32, 0, SSP_QUIRK_LBM)))
+		      SSP_CONFIG_DATA(SSP, SSP1_IDX, 32, 0, SSP_QUIRK_LBM, 0,
+				      eval(SSP_CC_MCLK_ES | SSP_CC_BCLK_ES))))
 
 DAI_CONFIG(SSP, SSP2_IDX, 2, NoCodec-2,
 	   SSP_CONFIG(I2S, SSP_CLOCK(mclk, 24576000, codec_mclk_in),
 		      SSP_CLOCK(bclk, 3072000, codec_slave),
 		      SSP_CLOCK(fsync, 48000, codec_slave),
 		      SSP_TDM(2, 32, 3, 3),
-		      SSP_CONFIG_DATA(SSP, SSP2_IDX, 32, 0, SSP_QUIRK_LBM)))
+		      SSP_CONFIG_DATA(SSP, SSP2_IDX, 32, 0, SSP_QUIRK_LBM, 0,
+				      eval(SSP_CC_MCLK_ES | SSP_CC_BCLK_ES))))
 ')
 
 ifelse(ROOT_CLK, `24',
@@ -257,22 +261,24 @@ DAI_CONFIG(SSP, SSP0_IDX, 0, NoCodec-0,
 		      SSP_CLOCK(bclk, 4800000, codec_slave),
 		      SSP_CLOCK(fsync, 48000, codec_slave),
 		      SSP_TDM(2, 25, 3, 3),
-		      dnl SSP_CONFIG_DATA(type, dai_index, valid bits, mclk_id, quirks)
-		      SSP_CONFIG_DATA(SSP, SSP0_IDX, 24, 0, SSP_QUIRK_LBM)))
+		      SSP_CONFIG_DATA(SSP, SSP0_IDX, 24, 0, SSP_QUIRK_LBM, 0,
+				      eval(SSP_CC_MCLK_ES | SSP_CC_BCLK_ES))))
 
 DAI_CONFIG(SSP, SSP1_IDX, 1, NoCodec-1,
 	   SSP_CONFIG(I2S, SSP_CLOCK(mclk, 24000000, codec_mclk_in),
 		      SSP_CLOCK(bclk, 4800000, codec_slave),
 		      SSP_CLOCK(fsync, 48000, codec_slave),
 		      SSP_TDM(2, 25, 3, 3),
-		      SSP_CONFIG_DATA(SSP, SSP1_IDX, 24, 0, SSP_QUIRK_LBM)))
+		      SSP_CONFIG_DATA(SSP, SSP1_IDX, 24, 0, SSP_QUIRK_LBM, 0,
+				      eval(SSP_CC_MCLK_ES | SSP_CC_BCLK_ES))))
 
 DAI_CONFIG(SSP, SSP2_IDX, 2, NoCodec-2,
 	   SSP_CONFIG(I2S, SSP_CLOCK(mclk, 24000000, codec_mclk_in),
 		      SSP_CLOCK(bclk, 4800000, codec_slave),
 		      SSP_CLOCK(fsync, 48000, codec_slave),
 		      SSP_TDM(2, 25, 3, 3),
-		      SSP_CONFIG_DATA(SSP, SSP2_IDX, 24, 0, SSP_QUIRK_LBM)))
+		      SSP_CONFIG_DATA(SSP, SSP2_IDX, 24, 0, SSP_QUIRK_LBM, 0,
+				      eval(SSP_CC_MCLK_ES | SSP_CC_BCLK_ES))))
 ')
 
 ifelse(ROOT_CLK, `38_4',
@@ -282,19 +288,22 @@ DAI_CONFIG(SSP, SSP0_IDX, 0, NoCodec-0,
 		      SSP_CLOCK(bclk, 2400000, codec_slave),
 		      SSP_CLOCK(fsync, 48000, codec_slave),
 		      SSP_TDM(2, 25, 3, 3),
-		      SSP_CONFIG_DATA(SSP, SSP0_IDX, 24, 0, SSP_QUIRK_LBM)))
+		      SSP_CONFIG_DATA(SSP, SSP0_IDX, 24, 0, SSP_QUIRK_LBM, 0,
+				      eval(SSP_CC_MCLK_ES | SSP_CC_BCLK_ES))))
 
 DAI_CONFIG(SSP, SSP1_IDX, 1, NoCodec-1,
 	   SSP_CONFIG(I2S, SSP_CLOCK(mclk, 38400000, codec_mclk_in),
 		      SSP_CLOCK(bclk, 2400000, codec_slave),
 		      SSP_CLOCK(fsync, 48000, codec_slave),
 		      SSP_TDM(2, 25, 3, 3),
-		      SSP_CONFIG_DATA(SSP, SSP1_IDX, 24, 0, SSP_QUIRK_LBM)))
+		      SSP_CONFIG_DATA(SSP, SSP1_IDX, 24, 0, SSP_QUIRK_LBM, 0,
+				      eval(SSP_CC_MCLK_ES | SSP_CC_BCLK_ES))))
 
 DAI_CONFIG(SSP, SSP2_IDX, 2, NoCodec-2,
 	   SSP_CONFIG(I2S, SSP_CLOCK(mclk, 38400000, codec_mclk_in),
 		      SSP_CLOCK(bclk, 2400000, codec_slave),
 		      SSP_CLOCK(fsync, 48000, codec_slave),
 		      SSP_TDM(2, 25, 3, 3),
-		      SSP_CONFIG_DATA(SSP, SSP2_IDX, 24, 0, SSP_QUIRK_LBM)))
+		      SSP_CONFIG_DATA(SSP, SSP2_IDX, 24, 0, SSP_QUIRK_LBM, 0,
+				      eval(SSP_CC_MCLK_ES | SSP_CC_BCLK_ES))))
 ')
