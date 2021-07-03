@@ -713,6 +713,13 @@ static int sdma_prep_desc(struct dma_chan_data *channel,
 
 	pdata->next_bd = 0;
 
+	/* Silence "may be used uninitialized" warnings with gcc10 -O1
+	 * and maybe other compilers/levels that don't know that
+	 * config->elem_array.count > 0
+	 */
+	bd = &pdata->desc[0];
+	width = 0;
+
 	for (i = 0; i < config->elem_array.count; i++) {
 		bd = &pdata->desc[i];
 		/* For MEM2DEV and DEV2MEM, buf_addr holds the RAM address and
