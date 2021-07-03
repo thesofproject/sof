@@ -413,6 +413,8 @@ struct tr_ctx {
 				     _TRACE_INV_ID, _TRACE_INV_ID, \
 				     fmt, ##__VA_ARGS__)
 
+#if CONFIG_TRACE
+
 /** Direct, low-level access to mbox / shared memory logging when DMA
  * tracing is either not initialized yet or disabled or found broken for
  * any reason.
@@ -439,5 +441,13 @@ void mtrace_dict_entry(uint32_t log_entry_pointer, int n_args, ...);
 
 /** Posts a fully prepared log header + log entry */
 void mtrace_event(const char *complete_packet, uint32_t length);
+
+#else
+
+static inline void mtrace_printf(int log_level, const char *format_str, ...)
+{
+};
+
+#endif /* CONFIG_TRACE */
 
 #endif /* __SOF_TRACE_TRACE_H__ */
