@@ -1,0 +1,10 @@
+<memory_footprint elf_name="dsp_fw_lx7hifi4_plat_release">
+<memory_class name="imr">
+<size>0xe65000</size>
+<offset>0x105000</offset>
+</memory_class>
+<memory_class name="hp_sram">
+<size>0x36E000</size>
+<offset>0x41E000</offset>
+</memory_class>
+</memory_footprint>
