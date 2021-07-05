@@ -155,17 +155,6 @@ static void schedule_ll_tasks_execute(struct ll_schedule_data *sch)
 	}
 }
 
-static void schedule_ll_clients_enable(struct ll_schedule_data *sch)
-{
-	struct ll_schedule_domain *domain = sch->domain;
-	int i;
-
-	for (i = 0; i < CONFIG_CORE_COUNT; i++) {
-		if (domain->registered[i] && !domain->enabled[i])
-			domain_enable(sch->domain, i);
-	}
-}
-
 static void schedule_ll_client_reschedule(struct ll_schedule_data *sch)
 {
 	struct list_item *tlist;
@@ -201,13 +190,25 @@ static void schedule_ll_tasks_run(void *data)
 	struct ll_schedule_data *sch = data;
 	struct ll_schedule_domain *domain = sch->domain;
 	uint32_t flags;
+	uint32_t core = cpu_get_id();
 
 	tr_dbg(&ll_tr, "timer interrupt on core %d, at %u, previous next_tick %u",
-	       cpu_get_id(),
+	       core,
 	       (unsigned int)platform_timer_get_atomic(timer_get()),
 	       (unsigned int)domain->next_tick);
 
 	irq_local_disable(flags);
+	spin_lock(&domain->lock);
+
+	/* disable domain on current core until tasks are finished */
+	domain_disable(domain, core);
+
+	if (!atomic_read(&domain->enabled_cores)) {
+		/* clear the domain/interrupts */
+		domain_clear(domain);
+	}
+
+	spin_unlock(&domain->lock);
 
 	perf_cnt_init(&sch->pcd);
 
@@ -222,27 +223,22 @@ static void schedule_ll_tasks_run(void *data)
 
 	spin_lock(&domain->lock);
 
-	/* tasks on current core finished, disable domain on it */
-	domain_disable(domain, cpu_get_id());
+	/* reset the new_target_tick for the first core */
+	if (domain->new_target_tick < platform_timer_get_atomic(timer_get()))
+		domain->new_target_tick = UINT64_MAX;
 
-	/* update the next_target_tick according to tasks on current core */
+	/* update the new_target_tick according to tasks on current core */
 	schedule_ll_client_reschedule(sch);
 
-	/* re-enable domain and reschedule clients only if all cores are done */
-	if (!atomic_read(&domain->enabled_cores)) {
-		/* clear the domain/interrupts */
-		domain_clear(domain);
-
-		/* set the next interrupt according to the next_target_tick */
-		domain_set(sch->domain, sch->domain->new_target_tick);
-		tr_dbg(&ll_tr, "tasks on all cores done, new_target_tick %u set",
-		       (unsigned int)sch->domain->new_target_tick);
-
-		/* reset the next_target_tick */
-		sch->domain->new_target_tick = UINT64_MAX;
-
-		schedule_ll_clients_enable(sch);
+	/* set the next interrupt according to the new_target_tick */
+	if (domain->new_target_tick < domain->next_tick) {
+		domain_set(domain, domain->new_target_tick);
+		tr_dbg(&ll_tr, "tasks on core %d done, new_target_tick %u set",
+		       core, (unsigned int)domain->new_target_tick);
 	}
+
+	/* tasks on current core finished, re-enable domain on it */
+	domain_enable(domain, core);
 
 	spin_unlock(&domain->lock);
 
