@@ -142,17 +142,13 @@ int comp_verify_params(struct comp_dev *dev, uint32_t flag,
 			buffer_set_params(buf, params, BUFFER_UPDATE_FORCE);
 			buffer_unlock(buf, flags);
 		}
-		comp_err(dev, "comp_verify_params(): !params4+-");
 
 		/* fetch sink buffer in order to calculate period frames */
 		sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
 					source_list);
 
 		buffer_lock(sinkb, &flags);
-
 		component_set_period_frames(dev, sinkb->stream.rate);
-		comp_err(dev, "comp_verify_params(): !params5");
-
 		buffer_unlock(sinkb, flags);
 	}
 
@@ -427,7 +423,7 @@ static int ipc4_buffer_to_comp_connect(struct comp_buffer *buffer,
 		if (!comp->is_shared) {
 			comp = comp_make_shared(comp);
 			if (!comp)
-				return -IPC4_OUT_OF_MEMORY;
+				return IPC4_OUT_OF_MEMORY;
 		}
 	}
 
