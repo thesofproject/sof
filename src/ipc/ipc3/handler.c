@@ -729,7 +729,7 @@ static int ipc_glb_pm_message(uint32_t header)
 /*
  * Debug IPC Operations.
  */
-#if CONFIG_SUECREEK || defined __ZEPHYR__
+#if CONFIG_SUECREEK
 static int ipc_dma_trace_config(uint32_t header)
 {
 	return 0;
@@ -799,7 +799,7 @@ static int ipc_dma_trace_config(uint32_t header)
 error:
 	return err;
 }
-#endif /* CONFIG_SUECREEK || defined __ZEPHYR__ */
+#endif /* CONFIG_SUECREEK */
 
 static int ipc_trace_filter_update(uint32_t header)
 {
