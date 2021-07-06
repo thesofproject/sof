@@ -327,8 +327,12 @@ static int ipc4_init_module(union ipc4_message_header *ipc4)
 	comp.pipeline_id = module.data.r.ppl_instance_id;
 	comp.core = module.data.r.core_id;
 	dev = comp_new(&comp);
-	if (!dev)
+	if (!dev) {
+		tr_err(&ipc_tr, "error: failed to init module %x : %x",
+		       (uint32_t)module.header.r.module_id,
+		       (uint32_t)module.header.r.instance_id);
 		return IPC4_MOD_NOT_INITIALIZED;
+	}
 
 	return 0;
 }

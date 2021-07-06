@@ -230,6 +230,8 @@ struct ipc4_module_large_config {
 
 #define IPC4_COMP_ID(x, y)	((x) << 16 | (y))
 #define IPC4_INST_ID(x)	((x) & 0xffff)
+#define IPC4_SRC_QUEUE_ID(x)	(((x) >> 16) & 0xffff)
+#define IPC4_SINK_QUEUE_ID(x)	((x) & 0xffff)
 #define IPC4_MODULE_BIND	0x100
 #define IPC4_MODULE_UNBIND	0x101
 #endif

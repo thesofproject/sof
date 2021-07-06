@@ -393,7 +393,7 @@ struct ipc4_copier_config_set_sink_format {
 } __attribute__((packed, aligned(4)));
 
 #define IPC4_COPIER_DATA_SEGMENT_DISABLE	(0 << 0)
-#define IPC4_COPIER_DATA_SEGMENT_ENABLE		(1 << 0)
+#define IPC4_COPIER_DATA_SEGMENT_ENABLE	(1 << 0)
 #define IPC4_COPIER_DATA_SEGMENT_RESTART	(1 << 1)
 
 struct ipc4_data_segment_enabled {
