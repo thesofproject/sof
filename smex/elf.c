@@ -471,8 +471,8 @@ int elf_read_module(struct elf_module *module, const char *name, bool verbose)
 	/* open the elf input file */
 	module->fd = fopen(name, "rb");
 	if (!module->fd) {
-		fprintf(stderr, "error: unable to open %s for reading %d\n",
-			name, errno);
+		fprintf(stderr, "error: unable to open %s for reading: %s\n",
+			name, strerror(errno));
 		return -EINVAL;
 	}
 	module->elf_file = name;
