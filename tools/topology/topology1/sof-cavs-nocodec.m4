@@ -88,16 +88,8 @@ define(SSP1_IDX, `1')
 define(SSP2_IDX, `2')
 ')
 
-ifelse(PLATFORM, `jsl',
-`
 define(PIPE_BITS, `s32le')
 define(DAI_BITS, `s24le')
-',
-`
-define(PIPE_BITS, `s32le')
-define(DAI_BITS, `s32le')
-'
-)
 
 #
 # Define the pipelines
