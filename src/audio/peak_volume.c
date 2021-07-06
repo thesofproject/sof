@@ -25,6 +25,7 @@
 #include <sof/trace/trace.h>
 #include <ipc4/module.h>
 #include <ipc4/peak_vol.h>
+#include <ipc4/fw_reg.h>
 #include <ipc/dai.h>
 #include <user/trace.h>
 #include <errno.h>
