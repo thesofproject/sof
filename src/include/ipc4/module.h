@@ -26,6 +26,12 @@
 
 #include <stdint.h>
 
+/* TODO: revisit it. Now it aligns with audio sdk
+ * and we will update this value and sdk when more
+ * libraries are supported
+ */
+#define IPC4_MAX_SUPPORTED_LIBRARIES 16
+
 #define SOF_IPC4_DST_QUEUE_ID_BITFIELD_SIZE	3
 #define SOF_IPC4_SRC_QUEUE_ID_BITFIELD_SIZE	3
 
