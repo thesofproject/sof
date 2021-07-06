@@ -536,5 +536,6 @@ void elf_free_module(struct elf_module *module)
 	free(module->prg);
 	free(module->section);
 	free(module->strings);
-	fclose(module->fd);
+	if (module->fd)
+		fclose(module->fd);
 }
