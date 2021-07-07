@@ -57,6 +57,18 @@ int dai_config_dma_channel(struct comp_dev *dev, void *spec_config)
 					      dd->stream_id);
 		channel = EDMA_HS_GET_CHAN(handshake);
 		break;
+	case SOF_DAI_AMD_BT:
+		channel = dai_get_handshake(dd->dai, dai->direction,
+					    dd->stream_id);
+		break;
+	case SOF_DAI_AMD_SP:
+		channel = dai_get_handshake(dd->dai, dai->direction,
+					    dd->stream_id);
+		break;
+	case SOF_DAI_AMD_DMIC:
+		channel = dai_get_handshake(dd->dai, dai->direction,
+					    dd->stream_id);
+		break;
 	default:
 		/* other types of DAIs not handled for now */
 		comp_err(dev, "dai_config_dma_channel(): Unknown dai type %d",
@@ -132,6 +144,16 @@ int ipc_dai_data_config(struct comp_dev *dev)
 	case SOF_DAI_IMX_ESAI:
 		dd->config.burst_elems =
 			dd->dai->plat_data.fifo[dai->direction].depth;
+		break;
+	case SOF_DAI_AMD_BT:
+		dev->ipc_config.frame_fmt = SOF_IPC_FRAME_S16_LE;
+		break;
+	case SOF_DAI_AMD_SP:
+		dev->ipc_config.frame_fmt = SOF_IPC_FRAME_S16_LE;
+		break;
+	case SOF_DAI_AMD_DMIC:
+		dev->ipc_config.frame_fmt = SOF_IPC_FRAME_S32_LE;
+		dd->dma_buffer->stream.frame_fmt = dev->ipc_config.frame_fmt;
 		break;
 	default:
 		/* other types of DAIs not handled for now */
