@@ -146,7 +146,7 @@ int dma_copy_new(struct dma_copy *dc)
 
 #if !CONFIG_DMA_GW
 	/* get DMA channel from DMAC0 */
-	dc->chan = dma_channel_get(dc->dmac, 0);
+	dc->chan = dma_channel_get(dc->dmac, CONFIG_TRACE_CHANNEL);
 	if (!dc->chan) {
 		tr_err(&dmacpy_tr, "dma_copy_new(): dc->chan is NULL");
 		return -ENODEV;

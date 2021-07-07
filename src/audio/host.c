@@ -170,7 +170,11 @@ static void host_update_position(struct comp_dev *dev, uint32_t bytes)
 
 	/* buffer overlap, hardcode host buffer size at the moment */
 	if (hd->local_pos >= hd->host_size)
+#if CONFIG_WRAP_ACTUAL_POSITION
+		hd->local_pos %= hd->host_size;
+#else
 		hd->local_pos = 0;
+#endif
 
 	/* Don't send stream position if no_stream_position == 1 */
 	if (!hd->no_stream_position) {

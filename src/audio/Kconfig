@@ -479,4 +479,20 @@ config PCM_CONVERTER_FORMAT_CONVERT_HIFI3
 	help
 	  Use HIFI3 extensions for optimized format conversion (experimental).
 
+config TRACE_CHANNEL
+	int "TRACE DMA Channel configuration"
+	default 0
+	help
+	  This option is used for custom configuration of trace dma channel other
+	  than zero dma channel.Define macro DMA_TRACE_CHANNEL in platform to
+	  configure the required channel number.
+
+config WRAP_ACTUAL_POSITION
+	bool "Buffer wrapping"
+	default n
+	help
+	  This option is to update the actual position information on wrap of buffer.
+	  It is not necessary that on wrap, the buffer position would be zero.At wrap,
+	  in some cases based on the period size, the frame may not exactly be at the
+	  end of the buffer and roll over for some bytes from the beginning of the buffer.
 endmenu
