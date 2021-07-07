@@ -451,8 +451,11 @@ if isempty(bf.mat_fn)
 	fprintf(1, 'No file for beam pattern simulation data specified.\n');
 else
 	fprintf(1, 'Saving design to %s\n', bf.mat_fn);
+	bf_copy = bf;
+	bf.fh = []; % Don't save the large figures, this avoids a warning print too
 	mkdir_check(bf.data_path);
 	save(bf.mat_fn, 'bf');
+	bf = bf_copy;
 end
 
 fprintf(1, 'Done.\n');
