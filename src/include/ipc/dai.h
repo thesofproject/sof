@@ -68,6 +68,9 @@ enum sof_ipc_dai_type {
 	SOF_DAI_INTEL_ALH,		/**< Intel ALH */
 	SOF_DAI_IMX_SAI,                /**< i.MX SAI */
 	SOF_DAI_IMX_ESAI,               /**< i.MX ESAI */
+	SOF_DAI_AMD_BT,			/**< Amd BT */
+	SOF_DAI_AMD_SP,			/**< Amd SP */
+	SOF_DAI_AMD_DMIC		/**< Amd DMIC */
 };
 
 /* general purpose DAI configuration */
