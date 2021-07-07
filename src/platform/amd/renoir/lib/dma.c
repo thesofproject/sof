@@ -17,6 +17,7 @@
 
 extern struct dma_ops acp_dma_ops;
 extern struct dma_ops acp_dai_bt_dma_ops;
+extern struct dma_ops acp_dai_sp_dma_ops;
 
 SHARED_DATA struct dma dma[PLATFORM_NUM_DMACS] = {
 {
@@ -30,6 +31,19 @@ SHARED_DATA struct dma dma[PLATFORM_NUM_DMACS] = {
 		.irq		= IRQ_NUM_EXT_LEVEL5,
 	},
 	.ops	= &acp_dma_ops,
+},
+{
+	.plat_data = {
+		.id		= DMA_ID_DAI_SP,
+		.dir		= DMA_DIR_DEV_TO_MEM | DMA_DIR_MEM_TO_DEV,
+		.devs		= DMA_DEV_SP,
+		.caps		= DMA_CAP_SP,
+		.base		= DMA0_BASE,
+		.chan_size	= DMA0_SIZE,
+		.channels	= 8,
+		.irq		= IRQ_NUM_EXT_LEVEL5,
+	},
+	.ops	= &acp_dai_sp_dma_ops,
 },
 {
 	.plat_data = {

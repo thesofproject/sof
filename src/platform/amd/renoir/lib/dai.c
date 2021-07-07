@@ -15,6 +15,26 @@
 #include <ipc/dai.h>
 #include <ipc/stream.h>
 
+static struct dai spdai[] = {
+	{
+		.index = 0,
+		.plat_data = {
+			.base = DAI_BASE,
+			.fifo[SOF_IPC_STREAM_PLAYBACK] = {
+				.offset         = DAI_BASE + BT_TX_FIFO_OFFST,
+				.depth          = 8,
+				.handshake      = 5,
+			},
+			.fifo[SOF_IPC_STREAM_CAPTURE] = {
+				.offset         = DAI_BASE + BT_RX_FIFO_OFFST,
+				.depth          = 8,
+				.handshake      = 4,
+			},
+		},
+		.drv = &acp_spdai_driver,
+	}
+};
+
 static struct dai btdai[] = {
 	{
 		.index = 0,
@@ -37,6 +57,11 @@ static struct dai btdai[] = {
 
 const struct dai_type_info dti[] = {
 	{
+		.type		= SOF_DAI_AMD_SP,
+		.dai_array	= spdai,
+		.num_dais	= ARRAY_SIZE(spdai)
+	},
+	{
 		.type = SOF_DAI_AMD_BT,
 		.dai_array = btdai,
 		.num_dais = ARRAY_SIZE(btdai)
@@ -51,8 +76,10 @@ const struct dai_info lib_dai = {
 int dai_init(struct sof *sof)
 {
 	int i;
-
-	 /* initialize spin locks early to enable ref counting */
+	/* initialize spin locks early to enable ref counting */
+	for (i = 0; i < ARRAY_SIZE(spdai); i++)
+		spinlock_init(&spdai[i].lock);
+	/* initialize spin locks early to enable ref counting */
 	for (i = 0; i < ARRAY_SIZE(btdai); i++)
 		spinlock_init(&btdai[i].lock);
 
