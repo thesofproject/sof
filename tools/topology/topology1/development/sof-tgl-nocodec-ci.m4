@@ -122,7 +122,7 @@ PIPELINE_PCM_ADD(sof/pipe-volume-demux-playback.m4,
 
 # Passthrough capture pipeline 2 on PCM 0 using max 2 channels of s16le.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_ADD(sof/pipe-passthrough-capture.m4,
+PIPELINE_PCM_ADD(sof/pipe-volume-capture.m4,
 	2, 0, 2, s32le,
 	1000, 0, 0,
 	48000, 48000, 48000)
