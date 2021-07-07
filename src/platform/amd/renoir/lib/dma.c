@@ -17,7 +17,9 @@
 
 extern struct dma_ops acp_dma_ops;
 extern struct dma_ops acp_dmic_dma_ops;
+#ifdef ACP_BT_ENABLE
 extern struct dma_ops acp_dai_bt_dma_ops;
+#endif
 extern struct dma_ops acp_dai_sp_dma_ops;
 
 SHARED_DATA struct dma dma[PLATFORM_NUM_DMACS] = {
@@ -59,6 +61,7 @@ SHARED_DATA struct dma dma[PLATFORM_NUM_DMACS] = {
 	},
 	.ops	= &acp_dai_sp_dma_ops,
 },
+#ifdef ACP_BT_ENABLE
 {
 	.plat_data = {
 		.id             = DMA_ID_DAI,
@@ -72,6 +75,7 @@ SHARED_DATA struct dma dma[PLATFORM_NUM_DMACS] = {
 	},
 	.ops    = &acp_dai_bt_dma_ops,
 },
+#endif
 };
 
 const struct dma_info lib_dma = {
