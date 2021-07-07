@@ -19,6 +19,7 @@
 #define DMA_ID_DMA0		0
 #define DMA_ID_HOST		1
 #define DMA_ID_DAI		2
+#define DMA_ID_DAI_SP		3
 
 #define dma_chan_irq(dma, chan) dma_irq(dma)
 
