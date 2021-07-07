@@ -267,10 +267,10 @@ static int ssp_set_config(struct dai *dai,
 
 	spin_lock(&dai->lock);
 
-	/* is playback/capture already running */
-	if (ssp->state[DAI_DIR_PLAYBACK] == COMP_STATE_ACTIVE ||
-	    ssp->state[DAI_DIR_CAPTURE] == COMP_STATE_ACTIVE) {
-		dai_info(dai, "ssp_set_config(): playback/capture active. Ignore config");
+	/* ignore config if SSP is already configured */
+	if (ssp->state[DAI_DIR_PLAYBACK] > COMP_STATE_READY ||
+	    ssp->state[DAI_DIR_CAPTURE] > COMP_STATE_READY) {
+		dai_info(dai, "ssp_set_config(): Already configured. Ignore config");
 		goto out;
 	}
 
