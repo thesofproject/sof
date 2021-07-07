@@ -439,7 +439,7 @@ int ipc_pipeline_new(struct ipc *ipc, ipc_pipe_new *_pipe_desc)
 	int ret;
 
 	/* check whether the pipeline already exists */
-	ipc_pipe = ipc_get_comp_by_id(ipc, pipe_desc->comp_id);
+	ipc_pipe = ipc_acquire_comp_by_id(ipc, pipe_desc->comp_id);
 	if (ipc_pipe != NULL) {
 		tr_err(&ipc_tr, "ipc_pipeline_new(): pipeline already exists, pipe_desc->comp_id = %u",
 		       pipe_desc->comp_id);
@@ -447,7 +447,7 @@ int ipc_pipeline_new(struct ipc *ipc, ipc_pipe_new *_pipe_desc)
 	}
 
 	/* check whether pipeline id is already taken */
-	ipc_pipe = ipc_get_comp_by_ppl_id(ipc, COMP_TYPE_PIPELINE,
+	ipc_pipe = ipc_acquire_comp_by_ppl_id(ipc, COMP_TYPE_PIPELINE,
 					  pipe_desc->pipeline_id);
 	if (ipc_pipe) {
 		tr_err(&ipc_tr, "ipc_pipeline_new(): pipeline id is already taken, pipe_desc->pipeline_id = %u",
@@ -491,11 +491,11 @@ int ipc_pipeline_new(struct ipc *ipc, ipc_pipe_new *_pipe_desc)
 
 	ipc_pipe->pipeline = pipe;
 	ipc_pipe->type = COMP_TYPE_PIPELINE;
-	ipc_pipe->core = pipe_desc->core;
+	ipc_pipe->c.core = pipe_desc->core;
 	ipc_pipe->id = pipe_desc->comp_id;
 
 	/* add new pipeline to the list */
-	list_item_append(&ipc_pipe->list, &ipc->comp_list);
+	list_item_append(&ipc_pipe->c.list, &ipc->comp_list);
 
 	return 0;
 }
@@ -504,26 +504,31 @@ int ipc_pipeline_free(struct ipc *ipc, uint32_t comp_id)
 {
 	struct ipc_comp_dev *ipc_pipe;
 	int ret;
+	int core;
 
 	/* check whether pipeline exists */
-	ipc_pipe = ipc_get_comp_by_id(ipc, comp_id);
+	ipc_pipe = ipc_acquire_comp_by_id(ipc, comp_id);
 	if (!ipc_pipe)
 		return -ENODEV;
 
 	/* check core */
-	if (!cpu_is_me(ipc_pipe->core))
-		return ipc_process_on_core(ipc_pipe->core);
+	core = ipc_pipe->c.core;
+	if (!cpu_is_me(core)) {
+		ipc_release_comp(ipc_pipe);
+		return ipc_process_on_core(core);
+	}
 
 	/* free buffer and remove from list */
 	ret = pipeline_free(ipc_pipe->pipeline);
 	if (ret < 0) {
+		ipc_release_comp(ipc_pipe);
 		tr_err(&ipc_tr, "ipc_pipeline_free(): pipeline_free() failed");
 		return ret;
 	}
 	ipc_pipe->pipeline = NULL;
-	list_item_del(&ipc_pipe->list);
+	list_item_del(&ipc_pipe->c.list);
+	ipc_release_comp(ipc_pipe);
 	rfree(ipc_pipe);
-
 	return 0;
 }
 
@@ -536,9 +541,10 @@ int ipc_pipeline_complete(struct ipc *ipc, uint32_t comp_id)
 	struct ipc_comp_dev *ipc_ppl_source;
 	struct ipc_comp_dev *ipc_ppl_sink;
 	int ret;
+	int core;
 
 	/* check whether pipeline exists */
-	ipc_pipe = ipc_get_comp_by_id(ipc, comp_id);
+	ipc_pipe = ipc_acquire_comp_by_id(ipc, comp_id);
 	if (!ipc_pipe) {
 		tr_err(&ipc_tr, "ipc: ipc_pipeline_complete looking for pipe component id %d failed",
 		       comp_id);
@@ -546,14 +552,17 @@ int ipc_pipeline_complete(struct ipc *ipc, uint32_t comp_id)
 	}
 
 	/* check core */
-	if (!cpu_is_me(ipc_pipe->core))
-		return ipc_process_on_core(ipc_pipe->core);
-
+	core = ipc_pipe->c.core;
+	if (!cpu_is_me(core)) {
+		ipc_release_comp(ipc_pipe);
+		return ipc_process_on_core(core);
+	}
 	p = ipc_pipe->pipeline;
 
 	/* find the scheduling component */
-	icd = ipc_get_comp_by_id(ipc, p->sched_id);
+	icd = ipc_acquire_comp_by_id(ipc, p->sched_id);
 	if (!icd) {
+		ipc_release_comp(ipc_pipe);
 		tr_err(&ipc_tr, "ipc_pipeline_complete(): cannot find the scheduling component, p->sched_id = %u",
 		       p->sched_id);
 		return -EINVAL;
@@ -562,13 +571,15 @@ int ipc_pipeline_complete(struct ipc *ipc, uint32_t comp_id)
 	if (icd->type != COMP_TYPE_COMPONENT) {
 		tr_err(&ipc_tr, "ipc_pipeline_complete(): icd->type (%d) != COMP_TYPE_COMPONENT for pipeline scheduling component icd->id %d",
 		       icd->type, icd->id);
-		return -EINVAL;
+		ret = -EINVAL;
+		goto err_type;
 	}
 
-	if (icd->core != ipc_pipe->core) {
+	if (icd->c.core != ipc_pipe->c.core) {
 		tr_err(&ipc_tr, "ipc_pipeline_complete(): icd->core (%d) != ipc_pipe->core (%d) for pipeline scheduling component icd->id %d",
-		       icd->core, ipc_pipe->core, icd->id);
-		return -EINVAL;
+		       icd->c.core, ipc_pipe->c.core, icd->id);
+		ret = -EINVAL;
+		goto err_type;
 	}
 
 	p->sched_comp = icd->cd;
@@ -582,19 +593,27 @@ int ipc_pipeline_complete(struct ipc *ipc, uint32_t comp_id)
 	ipc_ppl_source = ipc_get_ppl_src_comp(ipc, pipeline_id);
 	if (!ipc_ppl_source) {
 		tr_err(&ipc_tr, "ipc: ipc_pipeline_complete looking for pipeline source failed");
-		return -EINVAL;
+		ret = -EINVAL;
+		goto err_type;
 	}
 
 	/* get pipeline sink component */
 	ipc_ppl_sink = ipc_get_ppl_sink_comp(ipc, pipeline_id);
 	if (!ipc_ppl_sink) {
 		tr_err(&ipc_tr, "ipc: ipc_pipeline_complete looking for pipeline sink failed");
-		return -EINVAL;
+		ret = -EINVAL;
+		goto err_sink;
 	}
 
 	ret = pipeline_complete(ipc_pipe->pipeline, ipc_ppl_source->cd,
 				ipc_ppl_sink->cd);
 
+	ipc_release_comp(ipc_ppl_sink);
+err_sink:
+	ipc_release_comp(ipc_ppl_source);
+err_type:
+	ipc_release_comp(icd);
+	ipc_release_comp(ipc_pipe);
 	return ret;
 }
 
@@ -605,8 +624,9 @@ int ipc_buffer_new(struct ipc *ipc, struct sof_ipc_buffer *desc)
 	int ret = 0;
 
 	/* check whether buffer already exists */
-	ibd = ipc_get_comp_by_id(ipc, desc->comp.id);
+	ibd = ipc_acquire_comp_by_id(ipc, desc->comp.id);
 	if (ibd != NULL) {
+		ipc_release_comp(ibd);
 		tr_err(&ipc_tr, "ipc_buffer_new(): buffer already exists, desc->comp.id = %u",
 		       desc->comp.id);
 		return -EINVAL;
@@ -615,6 +635,7 @@ int ipc_buffer_new(struct ipc *ipc, struct sof_ipc_buffer *desc)
 	/* register buffer with pipeline */
 	buffer = buffer_new(desc);
 	if (!buffer) {
+		ipc_release_comp(ibd);
 		tr_err(&ipc_tr, "ipc_buffer_new(): buffer_new() failed");
 		return -ENOMEM;
 	}
@@ -622,16 +643,18 @@ int ipc_buffer_new(struct ipc *ipc, struct sof_ipc_buffer *desc)
 	ibd = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM,
 		      sizeof(struct ipc_comp_dev));
 	if (!ibd) {
+		ipc_release_comp(ibd);
 		buffer_free(buffer);
 		return -ENOMEM;
 	}
 	ibd->cb = buffer;
 	ibd->type = COMP_TYPE_BUFFER;
-	ibd->core = desc->comp.core;
+	ibd->c.core = desc->comp.core;
 	ibd->id = desc->comp.id;
 
 	/* add new buffer to the list */
-	list_item_append(&ibd->list, &ipc->comp_list);
+	list_item_append(&ibd->c.list, &ipc->comp_list);
+	ipc_release_comp(ibd);
 
 	return ret;
 }
@@ -644,19 +667,23 @@ int ipc_buffer_free(struct ipc *ipc, uint32_t buffer_id)
 	struct comp_dev *sink = NULL, *source = NULL;
 	bool sink_active = false;
 	bool source_active = false;
+	int core;
 
 	/* check whether buffer exists */
-	ibd = ipc_get_comp_by_id(ipc, buffer_id);
+	ibd = ipc_acquire_comp_by_id(ipc, buffer_id);
 	if (!ibd)
 		return -ENODEV;
 
 	/* check core */
-	if (!cpu_is_me(ibd->core))
-		return ipc_process_on_core(ibd->core);
+	core = ibd->c.core;
+	if (!cpu_is_me(core)) {
+		ipc_release_comp(ibd);
+		return ipc_process_on_core(core);
+	}
 
 	/* try to find sink/source components to check if they still exists */
-	list_for_item(clist, &ipc->comp_list) {
-		icd = container_of(clist, struct ipc_comp_dev, list);
+	list_for_coherent_item(clist, &ipc->comp_list, sizeof(*icd)) {
+		icd = container_of(clist, struct ipc_comp_dev, c.list);
 		if (icd->type != COMP_TYPE_COMPONENT)
 			continue;
 
@@ -680,8 +707,10 @@ int ipc_buffer_free(struct ipc *ipc, uint32_t buffer_id)
 	 * pipeline that the buffer is connected to is active. Check if both ends are active before
 	 * freeing the buffer.
 	 */
-	if (sink_active && source_active)
+	if (sink_active && source_active) {
+		ipc_release_comp(ibd);
 		return -EINVAL;
+	}
 
 	/*
 	 * Disconnect the buffer from the active component before freeing it.
@@ -694,73 +723,89 @@ int ipc_buffer_free(struct ipc *ipc, uint32_t buffer_id)
 
 	/* free buffer and remove from list */
 	buffer_free(ibd->cb);
-	list_item_del(&ibd->list);
+	list_item_del(&ibd->c.list);
+	ipc_release_comp(ibd);
 	rfree(ibd);
 
 	return 0;
 }
 
+/* caller acquires components */
 static int ipc_comp_to_buffer_connect(struct ipc_comp_dev *comp,
 				      struct ipc_comp_dev *buffer)
 {
 	int ret;
+	int comp_core;
+	int buffer_core;
 
-	if (!cpu_is_me(comp->core))
-		return ipc_process_on_core(comp->core);
+	comp_core = comp->c.core;
+	if (!cpu_is_me(comp_core)) {
+		ipc_release_comp(comp);
+		ipc_release_comp(buffer);
+		return ipc_process_on_core(comp_core);
+	}
 
 	tr_dbg(&ipc_tr, "ipc: comp sink %d, source %d  -> connect", buffer->id,
 	       comp->id);
 
 	/* check if it's a connection between cores */
-	if (buffer->core != comp->core) {
-		dcache_invalidate_region(buffer->cb, sizeof(*buffer->cb));
+	buffer_core = buffer->c.core;
+	if (buffer_core != comp_core) {
 
-		buffer->cb->inter_core = true;
+		/* set the buffer as a coherent object */
+		buffer = ipc_release_comp(buffer);
+		coherent_shared(buffer->cb, c);
+		buffer = ipc_acquire_comp(buffer);
 
-		if (!comp->cd->is_shared) {
+		if (!comp->cd->is_shared)
 			comp->cd = comp_make_shared(comp->cd);
-			if (!comp->cd)
-				return -ENOMEM;
-		}
 	}
 
 	ret = pipeline_connect(comp->cd, buffer->cb,
 			       PPL_CONN_DIR_COMP_TO_BUFFER);
 
-	dcache_writeback_invalidate_region(buffer->cb, sizeof(*buffer->cb));
-
+	ipc_release_comp(comp);
+	ipc_release_comp(buffer);
 	return ret;
 }
 
+/* caller acquires components that are released here */
 static int ipc_buffer_to_comp_connect(struct ipc_comp_dev *buffer,
 				      struct ipc_comp_dev *comp)
 {
 	int ret;
+	int comp_core;
+	int buffer_core;
 
-	if (!cpu_is_me(comp->core))
-		return ipc_process_on_core(comp->core);
+	comp_core = comp->c.core;
+	if (!cpu_is_me(comp_core)) {
+		ipc_release_comp(comp);
+		ipc_release_comp(buffer);
+		return ipc_process_on_core(comp_core);
+	}
 
 	tr_dbg(&ipc_tr, "ipc: comp sink %d, source %d  -> connect", comp->id,
 	       buffer->id);
 
 	/* check if it's a connection between cores */
-	if (buffer->core != comp->core) {
-		dcache_invalidate_region(buffer->cb, sizeof(*buffer->cb));
+	buffer_core = buffer->c.core;
+	if (buffer_core != comp_core) {
 
-		buffer->cb->inter_core = true;
+		/* set the buffer as a coherent object */
+		buffer = ipc_release_comp(buffer);
+		coherent_shared(buffer->cb, c);
+		buffer = ipc_acquire_comp(buffer);
 
-		if (!comp->cd->is_shared) {
+		if (!comp->cd->is_shared)
 			comp->cd = comp_make_shared(comp->cd);
-			if (!comp->cd)
-				return -ENOMEM;
-		}
+
 	}
 
 	ret = pipeline_connect(comp->cd, buffer->cb,
 			       PPL_CONN_DIR_BUFFER_TO_COMP);
 
-	dcache_writeback_invalidate_region(buffer->cb, sizeof(*buffer->cb));
-
+	ipc_release_comp(comp);
+	ipc_release_comp(buffer);
 	return ret;
 }
 
@@ -769,17 +814,19 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	struct sof_ipc_pipe_comp_connect *connect = ipc_from_pipe_connect(_connect);
 	struct ipc_comp_dev *icd_source;
 	struct ipc_comp_dev *icd_sink;
+	int ret = 0;
 
 	/* check whether the components already exist */
-	icd_source = ipc_get_comp_by_id(ipc, connect->source_id);
+	icd_source = ipc_acquire_comp_by_id(ipc, connect->source_id);
 	if (!icd_source) {
 		tr_err(&ipc_tr, "ipc_comp_connect(): source component does not exist, source_id = %u sink_id = %u",
 		       connect->source_id, connect->sink_id);
 		return -EINVAL;
 	}
 
-	icd_sink = ipc_get_comp_by_id(ipc, connect->sink_id);
+	icd_sink = ipc_acquire_comp_by_id(ipc, connect->sink_id);
 	if (!icd_sink) {
+		ipc_release_comp(icd_source);
 		tr_err(&ipc_tr, "ipc_comp_connect(): sink component does not exist, source_id = %d sink_id = %u",
 		       connect->sink_id, connect->source_id);
 		return -EINVAL;
@@ -793,10 +840,14 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 		 icd_sink->type == COMP_TYPE_BUFFER)
 		return ipc_comp_to_buffer_connect(icd_source, icd_sink);
 	else {
+		ipc_release_comp(icd_source);
+		ipc_release_comp(icd_sink);
 		tr_err(&ipc_tr, "ipc_comp_connect(): invalid source and sink types, connect->source_id = %u, connect->sink_id = %u",
 		       connect->source_id, connect->sink_id);
 		return -EINVAL;
 	}
+
+	return ret;
 }
 
 int ipc_comp_new(struct ipc *ipc, ipc_comp *_comp)
@@ -804,6 +855,7 @@ int ipc_comp_new(struct ipc *ipc, ipc_comp *_comp)
 	struct sof_ipc_comp *comp = ipc_from_comp_new(_comp);
 	struct comp_dev *cd;
 	struct ipc_comp_dev *icd;
+	int ret = 0;
 
 	/* check core is valid */
 	if (comp->core >= CONFIG_CORE_COUNT) {
@@ -812,7 +864,7 @@ int ipc_comp_new(struct ipc *ipc, ipc_comp *_comp)
 	}
 
 	/* check whether component already exists */
-	icd = ipc_get_comp_by_id(ipc, comp->id);
+	icd = ipc_acquire_comp_by_id(ipc, comp->id);
 	if (icd != NULL) {
 		tr_err(&ipc_tr, "ipc_comp_new(): comp->id = %u", comp->id);
 		return -EINVAL;
@@ -822,7 +874,8 @@ int ipc_comp_new(struct ipc *ipc, ipc_comp *_comp)
 	cd = comp_new(comp);
 	if (!cd) {
 		tr_err(&ipc_tr, "ipc_comp_new(): component cd = NULL");
-		return -EINVAL;
+		ret = -EINVAL;
+		goto out;
 	}
 
 	/* allocate the IPC component container */
@@ -835,27 +888,32 @@ int ipc_comp_new(struct ipc *ipc, ipc_comp *_comp)
 	}
 	icd->cd = cd;
 	icd->type = COMP_TYPE_COMPONENT;
-	icd->core = comp->core;
+	icd->c.core = comp->core;
 	icd->id = comp->id;
 
 	/* add new component to the list */
-	list_item_append(&icd->list, &ipc->comp_list);
-
-	return 0;
+	list_item_append(&icd->c.list, &ipc->comp_list);
+out:
+	ipc_release_comp(icd);
+	return ret;
 }
 
 int ipc_comp_free(struct ipc *ipc, uint32_t comp_id)
 {
 	struct ipc_comp_dev *icd;
+	int core;
 
 	/* check whether component exists */
-	icd = ipc_get_comp_by_id(ipc, comp_id);
+	icd = ipc_acquire_comp_by_id(ipc, comp_id);
 	if (!icd)
 		return -ENODEV;
 
 	/* check core */
-	if (!cpu_is_me(icd->core))
-		return ipc_process_on_core(icd->core);
+	core = icd->c.core;
+	if (!cpu_is_me(core)) {
+		ipc_release_comp(icd);
+		return ipc_process_on_core(core);
+	}
 
 	/* check state */
 	if (icd->cd->state != COMP_STATE_READY)
@@ -866,7 +924,8 @@ int ipc_comp_free(struct ipc *ipc, uint32_t comp_id)
 
 	icd->cd = NULL;
 
-	list_item_del(&icd->list);
+	list_item_del(&icd->c.list);
+	ipc_release_comp(icd);
 	rfree(icd);
 
 	return 0;

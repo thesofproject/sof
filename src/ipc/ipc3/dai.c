@@ -160,13 +160,13 @@ int ipc_comp_dai_config(struct ipc *ipc, struct ipc_config_dai *common_config,
 
 	/* for each component */
 	list_for_item(clist, &ipc->comp_list) {
-		icd = container_of(clist, struct ipc_comp_dev, list);
+		icd = container_of(clist, struct ipc_comp_dev, c.list);
 		/* make sure we only config DAI comps */
 		if (icd->type != COMP_TYPE_COMPONENT)
 			continue;
 
-		if (!cpu_is_me(icd->core)) {
-			comp_on_core[icd->core] = true;
+		if (!cpu_is_me(icd->c.core)) {
+			comp_on_core[icd->c.core] = true;
 			ret = 0;
 			continue;
 		}

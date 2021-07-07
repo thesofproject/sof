@@ -312,7 +312,7 @@ int main(int argc, char **argv)
 	}
 
 	/* Get pointer to filewrite */
-	pcm_dev = ipc_get_comp_by_id(sof_get()->ipc, tp.fw_id);
+	pcm_dev = ipc_acquire_comp_by_id(sof_get()->ipc, tp.fw_id);
 	if (!pcm_dev) {
 		fprintf(stderr, "error: failed to get pointers to filewrite\n");
 		exit(EXIT_FAILURE);
@@ -320,7 +320,7 @@ int main(int argc, char **argv)
 	fwcd = comp_get_drvdata(pcm_dev->cd);
 
 	/* Get pointer to fileread */
-	pcm_dev = ipc_get_comp_by_id(sof_get()->ipc, tp.fr_id);
+	pcm_dev = ipc_acquire_comp_by_id(sof_get()->ipc, tp.fr_id);
 	if (!pcm_dev) {
 		fprintf(stderr, "error: failed to get pointers to fileread\n");
 		exit(EXIT_FAILURE);
@@ -328,7 +328,7 @@ int main(int argc, char **argv)
 	frcd = comp_get_drvdata(pcm_dev->cd);
 
 	/* Run pipeline until EOF from fileread */
-	pcm_dev = ipc_get_comp_by_id(sof_get()->ipc, tp.sched_id);
+	pcm_dev = ipc_acquire_comp_by_id(sof_get()->ipc, tp.sched_id);
 	p = pcm_dev->cd->pipeline;
 
 	/* input and output sample rate */
@@ -358,7 +358,7 @@ int main(int argc, char **argv)
 		 * test topologies so this for-loop will walk all pipelines.
 		 */
 		for (i = 1; i <= tp.max_pipeline_id; i++) {
-			pcm_dev = ipc_get_comp_by_ppl_id(sof_get()->ipc,
+			pcm_dev = ipc_acquire_comp_by_ppl_id(sof_get()->ipc,
 							 COMP_TYPE_PIPELINE, i);
 			if (pcm_dev) {
 				curr_p = pcm_dev->pipeline;

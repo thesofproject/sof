@@ -45,6 +45,7 @@
 #include <user/trace.h>
 #include <ipc/probe.h>
 #include <sof/probe/probe.h>
+#include <sof/coherent.h>
 
 #include <errno.h>
 #include <math.h>
@@ -194,25 +195,30 @@ static int ipc_stream_pcm_params(uint32_t stream)
 	struct sof_ipc_pcm_params_reply reply;
 	struct ipc_comp_dev *pcm_dev;
 	int err, reset_err;
+	int core;
 
 	/* copy message with ABI safe method */
 	IPC_COPY_CMD(pcm_params, ipc->comp_data);
 
 	/* get the pcm_dev */
-	pcm_dev = ipc_get_comp_by_id(ipc, pcm_params.comp_id);
+	pcm_dev = ipc_acquire_comp_by_id(ipc, pcm_params.comp_id);
 	if (!pcm_dev) {
 		tr_err(&ipc_tr, "ipc: comp %d not found", pcm_params.comp_id);
 		return -ENODEV;
 	}
 
 	/* check core */
-	if (!cpu_is_me(pcm_dev->core))
-		return ipc_process_on_core(pcm_dev->core);
+	core = pcm_dev->c.core;
+	if (!cpu_is_me(core)) {
+		ipc_release_comp(pcm_dev);
+		return ipc_process_on_core(core);
+	}
 
 	tr_dbg(&ipc_tr, "ipc: comp %d -> params", pcm_params.comp_id);
 
 	/* sanity check comp */
 	if (!pcm_dev->cd->pipeline) {
+		ipc_release_comp(pcm_dev);
 		tr_err(&ipc_tr, "ipc: comp %d pipeline not found",
 		       pcm_params.comp_id);
 		return -EINVAL;
@@ -220,6 +226,7 @@ static int ipc_stream_pcm_params(uint32_t stream)
 
 	if (IPC_IS_SIZE_INVALID(pcm_params.params)) {
 		IPC_SIZE_ERROR_TRACE(&ipc_tr, pcm_params.params);
+		ipc_release_comp(pcm_dev);
 		return -EINVAL;
 	}
 
@@ -287,6 +294,7 @@ pipe_params:
 	reply.rhdr.error = 0;
 	reply.comp_id = pcm_params.comp_id;
 	reply.posn_offset = pcm_dev->cd->pipeline->posn_offset;
+	ipc_release_comp(pcm_dev);
 	mailbox_hostbox_write(0, &reply, sizeof(reply));
 	return 1;
 
@@ -296,6 +304,7 @@ error:
 		tr_err(&ipc_tr, "ipc: pipe %d comp %d reset failed %d",
 		       pcm_dev->cd->pipeline->pipeline_id,
 		       pcm_params.comp_id, reset_err);
+	ipc_release_comp(pcm_dev);
 	return err;
 }
 
@@ -306,25 +315,29 @@ static int ipc_stream_pcm_free(uint32_t header)
 	struct sof_ipc_stream free_req;
 	struct ipc_comp_dev *pcm_dev;
 	int ret;
+	int core;
 
 	/* copy message with ABI safe method */
 	IPC_COPY_CMD(free_req, ipc->comp_data);
 
 	/* get the pcm_dev */
-	pcm_dev = ipc_get_comp_by_id(ipc, free_req.comp_id);
+	pcm_dev = ipc_acquire_comp_by_id(ipc, free_req.comp_id);
 	if (!pcm_dev) {
 		tr_err(&ipc_tr, "ipc: comp %d not found", free_req.comp_id);
 		return -ENODEV;
 	}
 
 	/* check core */
-	if (!cpu_is_me(pcm_dev->core))
-		return ipc_process_on_core(pcm_dev->core);
-
+	core = pcm_dev->c.core;
+	if (!cpu_is_me(core)) {
+		ipc_release_comp(pcm_dev);
+		return ipc_process_on_core(core);
+	}
 	tr_dbg(&ipc_tr, "ipc: comp %d -> free", free_req.comp_id);
 
 	/* sanity check comp */
 	if (!pcm_dev->cd->pipeline) {
+		ipc_release_comp(pcm_dev);
 		tr_err(&ipc_tr, "ipc: comp %d pipeline not found",
 		       free_req.comp_id);
 		return -EINVAL;
@@ -332,7 +345,7 @@ static int ipc_stream_pcm_free(uint32_t header)
 
 	/* reset the pipeline */
 	ret = pipeline_reset(pcm_dev->cd->pipeline, pcm_dev->cd);
-
+	ipc_release_comp(pcm_dev);
 	return ret;
 }
 
@@ -343,20 +356,24 @@ static int ipc_stream_position(uint32_t header)
 	struct sof_ipc_stream stream;
 	struct sof_ipc_stream_posn posn;
 	struct ipc_comp_dev *pcm_dev;
+	int core;
 
 	/* copy message with ABI safe method */
 	IPC_COPY_CMD(stream, ipc->comp_data);
 
 	/* get the pcm_dev */
-	pcm_dev = ipc_get_comp_by_id(ipc, stream.comp_id);
+	pcm_dev = ipc_acquire_comp_by_id(ipc, stream.comp_id);
 	if (!pcm_dev) {
 		tr_err(&ipc_tr, "ipc: comp %d not found", stream.comp_id);
 		return -ENODEV;
 	}
 
 	/* check core */
-	if (!cpu_is_me(pcm_dev->core))
-		return ipc_process_on_core(pcm_dev->core);
+	core = pcm_dev->c.core;
+	if (!cpu_is_me(core)) {
+		ipc_release_comp(pcm_dev);
+		return ipc_process_on_core(core);
+	}
 
 	tr_info(&ipc_tr, "ipc: comp %d -> position", stream.comp_id);
 
@@ -369,6 +386,7 @@ static int ipc_stream_position(uint32_t header)
 	posn.comp_id = stream.comp_id;
 
 	if (!pcm_dev->cd->pipeline) {
+		ipc_release_comp(pcm_dev);
 		tr_err(&ipc_tr, "ipc: comp %d pipeline not found",
 		       stream.comp_id);
 		return -EINVAL;
@@ -380,7 +398,7 @@ static int ipc_stream_position(uint32_t header)
 	/* copy positions to stream region */
 	mailbox_stream_write(pcm_dev->cd->pipeline->posn_offset,
 			     &posn, sizeof(posn));
-
+	ipc_release_comp(pcm_dev);
 	return 1;
 }
 
@@ -392,20 +410,24 @@ static int ipc_stream_trigger(uint32_t header)
 	uint32_t ipc_command = iCS(header);
 	uint32_t cmd;
 	int ret;
+	int core;
 
 	/* copy message with ABI safe method */
 	IPC_COPY_CMD(stream, ipc->comp_data);
 
 	/* get the pcm_dev */
-	pcm_dev = ipc_get_comp_by_id(ipc, stream.comp_id);
+	pcm_dev = ipc_acquire_comp_by_id(ipc, stream.comp_id);
 	if (!pcm_dev) {
 		tr_err(&ipc_tr, "ipc: comp %d not found", stream.comp_id);
 		return -ENODEV;
 	}
 
 	/* check core */
-	if (!cpu_is_me(pcm_dev->core))
-		return ipc_process_on_core(pcm_dev->core);
+	core = pcm_dev->c.core;
+	if (!cpu_is_me(core)) {
+		ipc_release_comp(pcm_dev);
+		return ipc_process_on_core(core);
+	}
 
 	tr_dbg(&ipc_tr, "ipc: comp %d -> trigger cmd 0x%x",
 	       stream.comp_id, ipc_command);
@@ -425,16 +447,19 @@ static int ipc_stream_trigger(uint32_t header)
 		break;
 	/* XRUN is special case- TODO */
 	case SOF_IPC_STREAM_TRIG_XRUN:
-		return 0;
+		ret = 0;
+		goto out;
 	default:
 		tr_err(&ipc_tr, "ipc: invalid trigger cmd 0x%x", ipc_command);
-		return -ENODEV;
+		ret = -ENODEV;
+		goto out;
 	}
 
 	if (!pcm_dev->cd->pipeline) {
 		tr_err(&ipc_tr, "ipc: comp %d pipeline not found",
 		       stream.comp_id);
-		return -EINVAL;
+		ret = -EINVAL;
+		goto out;
 	}
 
 	/* trigger the component */
@@ -444,6 +469,8 @@ static int ipc_stream_trigger(uint32_t header)
 		       stream.comp_id, ipc_command, ret);
 	}
 
+out:
+	ipc_release_comp(pcm_dev);
 	return ret;
 }
 
@@ -1099,17 +1126,21 @@ static int ipc_comp_value(uint32_t header, uint32_t cmd)
 	struct ipc_comp_dev *comp_dev;
 	struct sof_ipc_ctrl_data *data = ipc->comp_data;
 	int ret;
+	int core;
 
 	/* get the component */
-	comp_dev = ipc_get_comp_by_id(ipc, data->comp_id);
+	comp_dev = ipc_acquire_comp_by_id(ipc, data->comp_id);
 	if (!comp_dev) {
 		tr_err(&ipc_tr, "ipc: comp %d not found", data->comp_id);
 		return -ENODEV;
 	}
 
 	/* check core */
-	if (!cpu_is_me(comp_dev->core))
-		return ipc_process_on_core(comp_dev->core);
+	core = comp_dev->c.core;
+	if (!cpu_is_me(core)) {
+		ipc_release_comp(comp_dev);
+		return ipc_process_on_core(core);
+	}
 
 	tr_dbg(&ipc_tr, "ipc: comp %d -> cmd %d", data->comp_id, data->cmd);
 
@@ -1118,7 +1149,7 @@ static int ipc_comp_value(uint32_t header, uint32_t cmd)
 	if (ret < 0) {
 		tr_err(&ipc_tr, "ipc: comp %d cmd %u failed %d", data->comp_id,
 		       data->cmd, ret);
-		return ret;
+		goto out;
 	}
 
 	/* write component values to the outbox */
@@ -1133,6 +1164,8 @@ static int ipc_comp_value(uint32_t header, uint32_t cmd)
 		ret = -EINVAL;
 	}
 
+out:
+	ipc_release_comp(comp_dev);
 	return ret;
 }
 

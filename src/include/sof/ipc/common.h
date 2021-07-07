@@ -53,11 +53,11 @@ extern struct tr_ctx ipc_tr;
 
 /* Returns pipeline source component */
 #define ipc_get_ppl_src_comp(ipc, ppl_id) \
-	ipc_get_ppl_comp(ipc, ppl_id, PPL_DIR_UPSTREAM)
+	ipc_acquire_ppl_comp(ipc, ppl_id, PPL_DIR_UPSTREAM)
 
 /* Returns pipeline sink component */
 #define ipc_get_ppl_sink_comp(ipc, ppl_id) \
-	ipc_get_ppl_comp(ipc, ppl_id, PPL_DIR_DOWNSTREAM)
+	ipc_acquire_ppl_comp(ipc, ppl_id, PPL_DIR_DOWNSTREAM)
 
 struct ipc {
 	spinlock_t lock;	/* locking mechanism */

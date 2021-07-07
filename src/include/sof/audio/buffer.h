@@ -17,6 +17,7 @@
 #include <sof/lib/cache.h>
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
+#include <sof/coherent.h>
 #include <sof/math/numbers.h>
 #include <sof/spinlock.h>
 #include <sof/string.h>
@@ -31,18 +32,6 @@
 #include <stdint.h>
 
 struct comp_dev;
-
-/* debug helpers */
-#ifdef DEBUG_BUFFER
-/* shout if the buffer is being accessed by not the intended core */
-#define CHECK_BUFFER_CORE(b) assert((b)->core == cpu_is_me())
-#define CHECK_BUFFER_NEED_CACHE(b) assert(!is_uncached(buffer))
-#define CHECK_BUFFER_NEED_UNCACHE(b) assert(is_uncached(buffer))
-#else
-#define CHECK_BUFFER_CORE(b)
-#define CHECK_BUFFER_NEED_CACHE(b)
-#define CHECK_BUFFER_NEED_UNCACHE(b)
-#endif
 
 /** \name Trace macros
  *  @{
@@ -109,8 +98,7 @@ extern struct tr_ctx buffer_tr;
  * 5) write back cached data and release lock using uncache pointer.
  */
 struct comp_buffer {
-	spinlock_t lock;		/* locking mechanism */
-	uint32_t flags;			/* lock flags */
+	struct coherent c;
 
 	/* data buffer */
 	struct audio_stream stream;
@@ -120,7 +108,6 @@ struct comp_buffer {
 	uint32_t pipeline_id;
 	uint32_t caps;
 	uint32_t core;
-	bool inter_core; /* true if connected to a comp from another core */
 	struct tr_ctx tctx;			/* trace settings */
 
 	/* connected components */
@@ -198,7 +185,8 @@ bool buffer_params_match(struct comp_buffer *buffer, struct sof_ipc_stream_param
 
 static inline void buffer_invalidate(struct comp_buffer *buffer, uint32_t bytes)
 {
-	if (!buffer->inter_core)
+	// TODO check ownership
+	if (!buffer->c.shared)
 		return;
 
 	audio_stream_invalidate(&buffer->stream, bytes);
@@ -206,7 +194,7 @@ static inline void buffer_invalidate(struct comp_buffer *buffer, uint32_t bytes)
 
 static inline void buffer_writeback(struct comp_buffer *buffer, uint32_t bytes)
 {
-	if (!buffer->inter_core)
+	if (!buffer->c.shared)
 		return;
 
 	audio_stream_writeback(&buffer->stream, bytes);
@@ -221,18 +209,16 @@ static inline void buffer_writeback(struct comp_buffer *buffer, uint32_t bytes)
  */
 static inline void buffer_lock(struct comp_buffer *buffer, uint32_t *flags)
 {
-	CHECK_BUFFER_CORE(buffer);
-
-	if (!buffer->inter_core) {
+	//if (!buffer->inter_core) {
 		/* Ignored by buffer_unlock() below, silences "may be
 		 * used uninitialized" warning.
 		 */
-		*flags = 0xffffffff;
-		return;
-	}
+	//	*flags = 0xffffffff;
+	//	return;
+	//}
 
 	/* Expands to: *flags = ... */
-	spin_lock_irq(&buffer->lock, *flags);
+	spin_lock_irq(&buffer->c.lock, *flags);
 
 	/* invalidate in case something has changed during our wait */
 	dcache_invalidate_region(buffer, sizeof(*buffer));
@@ -248,73 +234,43 @@ static inline void buffer_lock(struct comp_buffer *buffer, uint32_t *flags)
  */
 static inline void buffer_unlock(struct comp_buffer *buffer, uint32_t flags)
 {
-	CHECK_BUFFER_CORE(buffer);
-
-	if (!buffer->inter_core)
-		return;
+	//if (!buffer->inter_core)
+	//	return;
 
 	/* wtb and inv to avoid buffer locking in read only situations */
 	dcache_writeback_invalidate_region(buffer, sizeof(*buffer));
 
-	spin_unlock_irq(&buffer->lock, flags);
+	spin_unlock_irq(&buffer->c.lock, flags);
 }
 
-#if CONFIG_CAVS && CONFIG_CORE_COUNT > 1
+
 __must_check static inline struct comp_buffer *buffer_acquire(
 	struct comp_buffer *buffer)
 {
-	/* assert is someone passes a cached address in here. */
-	CHECK_BUFFER_NEED_UNCACHE(buffer);
-
-	CHECK_BUFFER_CORE(buffer);
-
-	if (!buffer->inter_core)
-		goto out;
-
-	/* Expands to: *flags = ... */
-	spin_lock_irq(&buffer->lock, buffer->flags);
-
-	/* invalidate in case something has changed during our wait */
-	dcache_invalidate_region(uncache_to_cache(buffer), sizeof(*buffer));
-
-out:
-	/* client can now use cached buffer */
-	return uncache_to_cache(buffer);
+	struct coherent *c = coherent_acquire(&buffer->c, sizeof(*buffer));
+	return container_of(c, struct comp_buffer, c);
 }
 
 static inline struct comp_buffer *buffer_release(
 	struct comp_buffer *buffer)
 {
-	/* assert is someone passes an uncached address in here. */
-	CHECK_BUFFER_NEED_CACHE(buffer);
-
-	CHECK_BUFFER_CORE(buffer);
-
-	if (!buffer->inter_core)
-		return cache_to_uncache(buffer);
-
-	/* wtb and inv to avoid buffer locking in read only situations */
-	dcache_writeback_invalidate_region(buffer, sizeof(*buffer));
-
-	/* unlock and return uncache alias */
-	spin_unlock_irq(&(cache_to_uncache(buffer))->lock,
-			(cache_to_uncache(buffer))->flags);
-	return cache_to_uncache(buffer);
+	struct coherent *c = coherent_release(&buffer->c, sizeof(*buffer));
+	return container_of(c, struct comp_buffer, c);
 }
-#else
 
-__must_check static inline struct comp_buffer *buffer_acquire(
+__must_check static inline struct comp_buffer *buffer_acquire_irq(
 	struct comp_buffer *buffer)
 {
-	return buffer;
+	struct coherent *c = coherent_acquire_irq(&buffer->c, sizeof(*buffer));
+	return container_of(c, struct comp_buffer, c);
 }
 
-static inline struct comp_buffer *buffer_release(
+static inline struct comp_buffer *buffer_release_irq(
 	struct comp_buffer *buffer)
 {
-	return buffer;
+	struct coherent *c = coherent_release_irq(&buffer->c, sizeof(*buffer));
+	return container_of(c, struct comp_buffer, c);
 }
-#endif
 
 static inline void buffer_reset_pos(struct comp_buffer *buffer, void *data)
 {

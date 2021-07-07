@@ -54,10 +54,9 @@ struct comp_buffer *buffer_alloc(uint32_t size, uint32_t caps, uint32_t align)
 	}
 
 	buffer_init(buffer, size, caps);
-
+	coherent_init(buffer, c);
 	list_init(&buffer->source_list);
 	list_init(&buffer->sink_list);
-	spinlock_init(&buffer->lock);
 
 	return buffer;
 }

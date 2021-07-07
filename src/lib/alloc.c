@@ -762,9 +762,29 @@ void *rzalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
 	void *ptr;
 
 	ptr = rmalloc(zone, flags, caps, bytes);
-	if (ptr)
-		bzero(ptr, bytes);
+	if (!ptr)
+		goto out;
 
+	bzero(ptr, bytes);
+
+	switch (zone) {
+	case SOF_MEM_ZONE_SYS:
+	case SOF_MEM_ZONE_SYS_RUNTIME:
+	case SOF_MEM_ZONE_RUNTIME:
+	default:
+		break;
+#if CONFIG_CORE_COUNT > 1
+	case SOF_MEM_ZONE_RUNTIME_SHARED:
+	case SOF_MEM_ZONE_SYS_SHARED:
+#else
+	case SOF_MEM_ZONE_RUNTIME_SHARED:
+	case SOF_MEM_ZONE_SYS_SHARED:
+#endif
+		dcache_writeback_invalidate_region(uncache_to_cache(ptr), bytes);
+		break;
+	}
+
+out:
 	DEBUG_TRACE_PTR(ptr, bytes, zone, caps, flags);
 	return ptr;
 }

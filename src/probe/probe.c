@@ -945,7 +945,7 @@ int probe_point_add(uint32_t count, struct probe_point *probe)
 		}
 
 		/* check if buffer exists */
-		dev = ipc_get_comp_by_id(ipc_get(), probe[i].buffer_id);
+		dev = ipc_acquire_comp_by_id(ipc_get(), probe[i].buffer_id);
 		if (!dev) {
 			tr_err(&pr_tr, "probe_point_add(): No device with ID %u found.",
 			       probe[i].buffer_id);
@@ -1103,7 +1103,7 @@ int probe_point_remove(uint32_t count, uint32_t *buffer_id)
 		for (j = 0; j < CONFIG_PROBE_POINTS_MAX; j++) {
 			if (_probe->probe_points[j].stream_tag != PROBE_POINT_INVALID &&
 			    _probe->probe_points[j].buffer_id == buffer_id[i]) {
-				dev = ipc_get_comp_by_id(ipc_get(), buffer_id[i]);
+				dev = ipc_acquire_comp_by_id(ipc_get(), buffer_id[i]);
 				if (dev) {
 					notifier_unregister(_probe, dev->cb,
 							    NOTIFIER_ID_BUFFER_PRODUCE);

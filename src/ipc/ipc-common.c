@@ -64,78 +64,80 @@ int ipc_process_on_core(uint32_t core)
  * more than 1 list may need to be searched for the corresponding component.
  */
 
-struct ipc_comp_dev *ipc_get_comp_by_id(struct ipc *ipc, uint32_t id)
+/* caller must coherent_release() comp_dev */
+struct ipc_comp_dev *ipc_acquire_comp_by_id(struct ipc *ipc, uint32_t id)
 {
 	struct ipc_comp_dev *icd;
 	struct list_item *clist;
 
-	list_for_item(clist, &ipc->comp_list) {
-		icd = container_of(clist, struct ipc_comp_dev, list);
+	list_for_coherent_item(clist, &ipc->comp_list, sizeof(*icd)) {
+		icd = container_of(clist, struct ipc_comp_dev, c.list);
 		if (icd->id == id)
-			return icd;
-
+			return icd; /* cached address, caller must release() */
 	}
 
 	return NULL;
 }
 
-struct ipc_comp_dev *ipc_get_comp_by_ppl_id(struct ipc *ipc, uint16_t type,
+/* caller must coherent_release() comp_dev */
+struct ipc_comp_dev *ipc_acquire_comp_by_ppl_id(struct ipc *ipc, uint16_t type,
 					    uint32_t ppl_id)
 {
 	struct ipc_comp_dev *icd;
 	struct list_item *clist;
 
-	list_for_item(clist, &ipc->comp_list) {
-		icd = container_of(clist, struct ipc_comp_dev, list);
+	list_for_coherent_item(clist, &ipc->comp_list, sizeof(*icd)) {
+		icd = container_of(clist, struct ipc_comp_dev, c.list);
 		if (icd->type != type) {
 			continue;
 		}
 
-		if (!cpu_is_me(icd->core)) {
+		if (!cpu_is_me(icd->c.core)) {
 			continue;
 		}
 
 		if (ipc_comp_pipe_id(icd) == ppl_id)
 			return icd;
-
 	}
 
 	return NULL;
 }
 
-struct ipc_comp_dev *ipc_get_ppl_comp(struct ipc *ipc,
-				      uint32_t pipeline_id, int dir)
+/* caller must coherent_release() comp_dev */
+struct ipc_comp_dev *ipc_acquire_ppl_comp(struct ipc *ipc,
+					  uint32_t pipeline_id, int dir)
 {
 	struct ipc_comp_dev *icd;
 	struct comp_buffer *buffer;
 	struct comp_dev *buff_comp;
 	struct list_item *clist;
+	int pipe_id;
 
 	/* first try to find the module in the pipeline */
-	list_for_item(clist, &ipc->comp_list) {
-		icd = container_of(clist, struct ipc_comp_dev, list);
+	list_for_coherent_item(clist, &ipc->comp_list, sizeof(*icd)) {
+		icd = container_of(clist, struct ipc_comp_dev, c.list);
 		if (icd->type != COMP_TYPE_COMPONENT) {
 			continue;
 		}
 
-		if (!cpu_is_me(icd->core)) {
+		if (!cpu_is_me(icd->c.core)) {
 			continue;
 		}
 
+		/* does pipeline ID match ? - do we care if list is not empty ?*/
 		if (dev_comp_pipe_id(icd->cd) == pipeline_id &&
 		    list_is_empty(comp_buffer_list(icd->cd, dir)))
 			return icd;
-
 	}
 
 	/* it's connected pipeline, so find the connected module */
-	list_for_item(clist, &ipc->comp_list) {
-		icd = container_of(clist, struct ipc_comp_dev, list);
+	list_for_coherent_item(clist, &ipc->comp_list, sizeof(*icd)) {
+		icd = container_of(clist, struct ipc_comp_dev, c.list);
 		if (icd->type != COMP_TYPE_COMPONENT) {
 			continue;
 		}
 
-		if (!cpu_is_me(icd->core)) {
+		if (!cpu_is_me(icd->c.core)) {
 			continue;
 		}
 
@@ -143,9 +145,11 @@ struct ipc_comp_dev *ipc_get_ppl_comp(struct ipc *ipc,
 			buffer = buffer_from_list
 					(comp_buffer_list(icd->cd, dir)->next,
 					 struct comp_buffer, dir);
+			buffer = buffer_acquire(buffer);
 			buff_comp = buffer_get_comp(buffer, dir);
-			if (buff_comp &&
-			    dev_comp_pipe_id(buff_comp) != pipeline_id)
+			pipe_id = dev_comp_pipe_id(buff_comp);
+			buffer_release(buffer);
+			if (buff_comp && pipe_id != pipeline_id)
 				return icd;
 		}
 

@@ -425,7 +425,7 @@ static int trace_filter_update_instances(int32_t log_level, uint32_t uuid_id,
 
 	/* compare each ipc component with filter settings and update log level after pass */
 	list_for_item(clist, &ipc->comp_list) {
-		icd = container_of(clist, struct ipc_comp_dev, list);
+		icd = container_of(clist, struct ipc_comp_dev, c.list);
 		ctx = trace_filter_ipc_comp_context(icd);
 		if (!ctx)
 			return -EINVAL;
