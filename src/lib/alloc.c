@@ -811,6 +811,8 @@ void *rzalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
 		break;
 	}
 
+out:
+	DEBUG_TRACE_PTR(ptr, bytes, zone, caps, flags);
 	return ptr;
 }
 
