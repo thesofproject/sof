@@ -25,7 +25,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#define MEMORY_POWER_DOWN_DELAY 256
+#define MEMORY_POWER_DOWN_DELAY 512
 
 #if CAVS_VERSION >= CAVS_VERSION_1_8
 
