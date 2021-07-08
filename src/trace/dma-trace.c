@@ -269,6 +269,13 @@ static int dma_trace_start(struct dma_trace_data *d)
 	uint32_t elem_size, elem_addr, elem_num;
 	int err = 0;
 
+	/* DMA Controller initialization is platform-specific */
+	if (!d || !d->dc.dmac) {
+		mtrace_printf(LOG_LEVEL_ERROR,
+			      "dma_trace_start failed: no DMAC!");
+		return -ENODEV;
+	}
+
 	err = dma_copy_set_stream_tag(&d->dc, d->stream_tag);
 	if (err < 0)
 		return err;
@@ -294,8 +301,10 @@ static int dma_trace_start(struct dma_trace_data *d)
 		return err;
 
 	err = dma_set_config(d->dc.chan, &config);
-	if (err < 0)
+	if (err < 0) {
+		mtrace_printf(LOG_LEVEL_ERROR, "dma_set_config() failed: %d", err);
 		return err;
+	}
 
 	err = dma_start(d->dc.chan);
 

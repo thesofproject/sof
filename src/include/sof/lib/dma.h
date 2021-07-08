@@ -284,6 +284,9 @@ void dma_put(struct dma *dma);
 static inline struct dma_chan_data *dma_channel_get(struct dma *dma,
 						    int req_channel)
 {
+	if (!dma || !dma->ops || !dma->ops->channel_get)
+		return NULL;
+
 	struct dma_chan_data *chan = dma->ops->channel_get(dma, req_channel);
 
 	return chan;
