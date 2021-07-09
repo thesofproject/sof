@@ -207,7 +207,7 @@ static int ipc_stream_pcm_params(uint32_t stream)
 
 	/* check core */
 	if (!cpu_is_me(pcm_dev->core))
-		return ipc_process_on_core(pcm_dev->core);
+		return ipc_process_on_core(pcm_dev->core, false);
 
 	tr_dbg(&ipc_tr, "ipc: comp %d -> params", pcm_params.comp_id);
 
@@ -319,7 +319,7 @@ static int ipc_stream_pcm_free(uint32_t header)
 
 	/* check core */
 	if (!cpu_is_me(pcm_dev->core))
-		return ipc_process_on_core(pcm_dev->core);
+		return ipc_process_on_core(pcm_dev->core, false);
 
 	tr_dbg(&ipc_tr, "ipc: comp %d -> free", free_req.comp_id);
 
@@ -356,7 +356,7 @@ static int ipc_stream_position(uint32_t header)
 
 	/* check core */
 	if (!cpu_is_me(pcm_dev->core))
-		return ipc_process_on_core(pcm_dev->core);
+		return ipc_process_on_core(pcm_dev->core, false);
 
 	tr_info(&ipc_tr, "ipc: comp %d -> position", stream.comp_id);
 
@@ -405,7 +405,7 @@ static int ipc_stream_trigger(uint32_t header)
 
 	/* check core */
 	if (!cpu_is_me(pcm_dev->core))
-		return ipc_process_on_core(pcm_dev->core);
+		return ipc_process_on_core(pcm_dev->core, false);
 
 	tr_dbg(&ipc_tr, "ipc: comp %d -> trigger cmd 0x%x",
 	       stream.comp_id, ipc_command);
@@ -1109,7 +1109,7 @@ static int ipc_comp_value(uint32_t header, uint32_t cmd)
 
 	/* check core */
 	if (!cpu_is_me(comp_dev->core))
-		return ipc_process_on_core(comp_dev->core);
+		return ipc_process_on_core(comp_dev->core, false);
 
 	tr_dbg(&ipc_tr, "ipc: comp %d -> cmd %d", data->comp_id, data->cmd);
 
@@ -1169,7 +1169,7 @@ static int ipc_glb_tplg_comp_new(uint32_t header)
 
 	/* check core */
 	if (!cpu_is_me(comp->core))
-		return ipc_process_on_core(comp->core);
+		return ipc_process_on_core(comp->core, false);
 
 	tr_dbg(&ipc_tr, "ipc: pipe %d comp %d -> new (type %d)",
 	       comp->pipeline_id, comp->id, comp->type);
@@ -1205,7 +1205,7 @@ static int ipc_glb_tplg_buffer_new(uint32_t header)
 
 	/* check core */
 	if (!cpu_is_me(ipc_buffer.comp.core))
-		return ipc_process_on_core(ipc_buffer.comp.core);
+		return ipc_process_on_core(ipc_buffer.comp.core, false);
 
 	tr_dbg(&ipc_tr, "ipc: pipe %d buffer %d -> new (0x%x bytes)",
 	       ipc_buffer.comp.pipeline_id, ipc_buffer.comp.id,
@@ -1242,7 +1242,7 @@ static int ipc_glb_tplg_pipe_new(uint32_t header)
 
 	/* check core */
 	if (!cpu_is_me(ipc_pipeline.core))
-		return ipc_process_on_core(ipc_pipeline.core);
+		return ipc_process_on_core(ipc_pipeline.core, false);
 
 	tr_dbg(&ipc_tr, "ipc: pipe %d -> new", ipc_pipeline.pipeline_id);
 
@@ -1495,6 +1495,7 @@ void ipc_boot_complete_msg(ipc_cmd_hdr *header, uint32_t *data)
 void ipc_cmd(ipc_cmd_hdr *_hdr)
 {
 	struct sof_ipc_cmd_hdr *hdr = ipc_from_hdr(_hdr);
+	struct ipc *ipc = ipc_get();
 	struct sof_ipc_reply reply;
 	uint32_t type = 0;
 	int ret;
@@ -1504,6 +1505,10 @@ void ipc_cmd(ipc_cmd_hdr *_hdr)
 		ret = -EINVAL;
 		goto out;
 	}
+
+	if (!cpu_is_secondary(cpu_get_id()))
+		/* A new IPC from the host, delivered to the primary core */
+		ipc->core = PLATFORM_PRIMARY_CORE_ID;
 
 	type = iGS(hdr->cmd);
 

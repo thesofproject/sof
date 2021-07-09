@@ -38,8 +38,9 @@ DECLARE_SOF_UUID("ipc", ipc_uuid, 0xbe60f97d, 0x78df, 0x4796,
 
 DECLARE_TR_CTX(ipc_tr, SOF_UUID(ipc_uuid), LOG_LEVEL_INFO);
 
-int ipc_process_on_core(uint32_t core)
+int ipc_process_on_core(uint32_t core, bool blocking)
 {
+	struct ipc *ipc = ipc_get();
 	struct idc_msg msg = { .header = IDC_MSG_IPC, .core = core, };
 	int ret;
 
@@ -49,8 +50,19 @@ int ipc_process_on_core(uint32_t core)
 		return -EACCES;
 	}
 
+	/* The other core will write there its response */
+	dcache_invalidate_region((void *)MAILBOX_HOSTBOX_BASE,
+				 ((struct sof_ipc_cmd_hdr *)ipc->comp_data)->size);
+
+	/*
+	 * If the primary core is waiting for secondary cores to complete, it
+	 * will also reply to the host
+	 */
+	if (!blocking)
+		ipc->core = core;
+
 	/* send IDC message */
-	ret = idc_send_msg(&msg, IDC_BLOCKING);
+	ret = idc_send_msg(&msg, blocking ? IDC_BLOCKING : IDC_NON_BLOCKING);
 	if (ret < 0)
 		return ret;
 

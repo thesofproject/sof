@@ -200,9 +200,10 @@ enum task_state ipc_platform_do_cmd(void *data)
 
 void ipc_platform_complete_cmd(void *data)
 {
-#if CONFIG_SUECREEK
 	struct ipc *ipc = data;
-#endif
+
+	if (!cpu_is_me(ipc->core))
+		return;
 
 	/* write 1 to clear busy, and trigger interrupt to host*/
 #if CAVS_VERSION == CAVS_VERSION_1_5
