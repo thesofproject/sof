@@ -64,23 +64,24 @@ static int pipeline_comp_trigger(struct comp_dev *current,
 				 struct pipeline_walk_context *ctx, int dir)
 {
 	struct pipeline_data *ppl_data = ctx->comp_data;
-	int is_single_ppl = comp_is_single_pipeline(current, ppl_data->start);
-	int is_same_sched =
+	bool is_single_ppl = comp_is_single_pipeline(current, ppl_data->start);
+	bool is_same_sched =
 		pipeline_is_same_sched_comp(current->pipeline,
 					    ppl_data->start->pipeline);
 	int err;
 
-	pipe_dbg(current->pipeline, "pipeline_comp_trigger(), current->comp.id = %u, dir = %u",
+	pipe_dbg(current->pipeline,
+		 "pipeline_comp_trigger(), current->comp.id = %u, dir = %u",
 		 dev_comp_id(current), dir);
 
 	/* trigger should propagate to the connected pipelines,
 	 * which need to be scheduled together
 	 */
 	if (!is_single_ppl && !is_same_sched) {
-		pipe_dbg(current->pipeline, "pipeline_comp_trigger(), current is from another pipeline");
+		pipe_dbg(current->pipeline,
+			 "pipeline_comp_trigger(), current is from another pipeline");
 
-		if (pipeline_should_report_enodata_on_trigger(current, ctx,
-							      dir))
+		if (pipeline_should_report_enodata_on_trigger(current, ctx, dir))
 			return -ENODATA;
 
 		return 0;
@@ -101,14 +102,15 @@ static int pipeline_comp_copy(struct comp_dev *current,
 			      struct pipeline_walk_context *ctx, int dir)
 {
 	struct pipeline_data *ppl_data = ctx->comp_data;
-	int is_single_ppl = comp_is_single_pipeline(current, ppl_data->start);
+	bool is_single_ppl = comp_is_single_pipeline(current, ppl_data->start);
 	int err;
 
 	pipe_dbg(current->pipeline, "pipeline_comp_copy(), current->comp.id = %u, dir = %u",
 		 dev_comp_id(current), dir);
 
 	if (!is_single_ppl) {
-		pipe_dbg(current->pipeline, "pipeline_comp_copy(), current is from another pipeline and can't be scheduled together");
+		pipe_dbg(current->pipeline,
+			 "pipeline_comp_copy(), current is from another pipeline and can't be scheduled together");
 		return 0;
 	}
 
