@@ -71,8 +71,7 @@ static enum task_state pipeline_task(void *arg)
 	return SOF_TASK_STATE_RESCHEDULE;
 }
 
-static struct task *pipeline_task_init(struct pipeline *p, uint32_t type,
-				       enum task_state (*func)(void *data))
+static struct task *pipeline_task_init(struct pipeline *p, uint32_t type)
 {
 	struct pipeline_task *task = NULL;
 
@@ -82,7 +81,7 @@ static struct task *pipeline_task_init(struct pipeline *p, uint32_t type,
 		return NULL;
 
 	if (schedule_task_init_ll(&task->task, SOF_UUID(pipe_task_uuid), type,
-				  p->priority, func,
+				  p->priority, pipeline_task,
 				  p, p->core, 0) < 0) {
 		rfree(task);
 		return NULL;
@@ -159,7 +158,7 @@ int pipeline_comp_task_init(struct pipeline *p)
 		type = pipeline_is_timer_driven(p) ? SOF_SCHEDULE_LL_TIMER :
 			SOF_SCHEDULE_LL_DMA;
 
-		p->pipe_task = pipeline_task_init(p, type, pipeline_task);
+		p->pipe_task = pipeline_task_init(p, type);
 		if (!p->pipe_task) {
 			pipe_err(p, "pipeline_comp_task_init(): task init failed");
 			return -ENOMEM;
