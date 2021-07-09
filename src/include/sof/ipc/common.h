@@ -68,6 +68,7 @@ struct ipc {
 
 	struct list_item msg_list;	/* queue of messages to be sent */
 	bool is_notification_pending;	/* notification is being sent to host */
+	unsigned int core;		/* core, processing the IPC */
 
 	struct list_item comp_list;	/* list of component devices */
 
