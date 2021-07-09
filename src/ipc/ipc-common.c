@@ -220,6 +220,15 @@ out:
 	spin_unlock_irq(&ipc->lock, flags);
 }
 
+void ipc_msg_reply(struct sof_ipc_reply *reply)
+{
+	struct ipc *ipc = ipc_get();
+
+	ipc->delayed_response = false;
+	mailbox_hostbox_write(0, reply, reply->hdr.size);
+	ipc_platform_complete_cmd(ipc);
+}
+
 void ipc_schedule_process(struct ipc *ipc)
 {
 	schedule_task(&ipc->ipc_task, 0, IPC_PERIOD_USEC);

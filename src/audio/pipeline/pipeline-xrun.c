@@ -153,7 +153,7 @@ void pipeline_xrun(struct pipeline *p, struct comp_dev *dev,
 		return;
 
 	/* notify all pipeline comps we are in XRUN, and stop copying */
-	ret = pipeline_trigger(p, p->source_comp, COMP_TRIGGER_XRUN);
+	ret = pipeline_trigger_run(p, p->source_comp, COMP_TRIGGER_XRUN);
 	if (ret < 0)
 		pipe_err(p, "pipeline_xrun(): Pipelines notification about XRUN failed, ret = %d",
 			 ret);
