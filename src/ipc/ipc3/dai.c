@@ -191,17 +191,27 @@ int ipc_comp_dai_config(struct ipc *ipc, struct ipc_config_dai *common_config,
 			if (!comp_on_core[i])
 				continue;
 
-			ret = ipc_process_on_core(i);
+			/*
+			 * TODO: can secondary cores execute dai_config() in
+			 * parallel? Then we could just wait for the last of
+			 * them. For now execute them sequentially.
+			 */
+			ret = ipc_process_on_core(i, true);
 			if (ret < 0)
-				return ret;
+				break;
 
 			/* check whether IPC failed on secondary core */
 			mailbox_hostbox_read(&reply, sizeof(reply), 0,
 					     sizeof(reply));
-			if (reply.error < 0)
+			if (reply.error < 0) {
 				/* error reply already written */
-				return 1;
+				ret = 1;
+				break;
+			}
 		}
+
+		/* We have waited until all secondary cores configured their DAIs */
+		ipc->core = PLATFORM_PRIMARY_CORE_ID;
 	}
 
 	return ret;

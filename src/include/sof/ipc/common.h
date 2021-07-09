@@ -68,6 +68,7 @@ struct ipc {
 
 	struct list_item msg_list;	/* queue of messages to be sent */
 	bool is_notification_pending;	/* notification is being sent to host */
+	unsigned int core;		/* core, processing the IPC */
 
 	struct list_item comp_list;	/* list of component devices */
 
@@ -190,8 +191,9 @@ void ipc_cmd(ipc_cmd_hdr *hdr);
 /**
  * \brief IPC message to be processed on other core.
  * @param[in] core Core id for IPC to be processed on.
+ * @param[in] blocking Process in blocking mode: wait for completion.
  * @return 1 if successful (reply sent by other core), error code otherwise.
  */
-int ipc_process_on_core(uint32_t core);
+int ipc_process_on_core(uint32_t core, bool blocking);
 
 #endif /* __SOF_DRIVERS_IPC_H__ */

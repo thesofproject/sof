@@ -513,7 +513,7 @@ int ipc_pipeline_free(struct ipc *ipc, uint32_t comp_id)
 
 	/* check core */
 	if (!cpu_is_me(ipc_pipe->core))
-		return ipc_process_on_core(ipc_pipe->core);
+		return ipc_process_on_core(ipc_pipe->core, false);
 
 	/* free buffer and remove from list */
 	ret = pipeline_free(ipc_pipe->pipeline);
@@ -548,7 +548,7 @@ int ipc_pipeline_complete(struct ipc *ipc, uint32_t comp_id)
 
 	/* check core */
 	if (!cpu_is_me(ipc_pipe->core))
-		return ipc_process_on_core(ipc_pipe->core);
+		return ipc_process_on_core(ipc_pipe->core, false);
 
 	p = ipc_pipe->pipeline;
 
@@ -653,7 +653,7 @@ int ipc_buffer_free(struct ipc *ipc, uint32_t buffer_id)
 
 	/* check core */
 	if (!cpu_is_me(ibd->core))
-		return ipc_process_on_core(ibd->core);
+		return ipc_process_on_core(ibd->core, false);
 
 	/* try to find sink/source components to check if they still exists */
 	list_for_item(clist, &ipc->comp_list) {
@@ -707,7 +707,7 @@ static int ipc_comp_to_buffer_connect(struct ipc_comp_dev *comp,
 	int ret;
 
 	if (!cpu_is_me(comp->core))
-		return ipc_process_on_core(comp->core);
+		return ipc_process_on_core(comp->core, false);
 
 	tr_dbg(&ipc_tr, "ipc: comp sink %d, source %d  -> connect", buffer->id,
 	       comp->id);
@@ -739,7 +739,7 @@ static int ipc_buffer_to_comp_connect(struct ipc_comp_dev *buffer,
 	int ret;
 
 	if (!cpu_is_me(comp->core))
-		return ipc_process_on_core(comp->core);
+		return ipc_process_on_core(comp->core, false);
 
 	tr_dbg(&ipc_tr, "ipc: comp sink %d, source %d  -> connect", comp->id,
 	       buffer->id);
@@ -856,7 +856,7 @@ int ipc_comp_free(struct ipc *ipc, uint32_t comp_id)
 
 	/* check core */
 	if (!cpu_is_me(icd->core))
-		return ipc_process_on_core(icd->core);
+		return ipc_process_on_core(icd->core, false);
 
 	/* check state */
 	if (icd->cd->state != COMP_STATE_READY)

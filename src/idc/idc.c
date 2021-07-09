@@ -7,6 +7,7 @@
 #include <sof/audio/component.h>
 #include <sof/audio/component_ext.h>
 #include <sof/drivers/idc.h>
+#include <sof/ipc/driver.h>
 #include <sof/ipc/msg.h>
 #include <sof/ipc/topology.h>
 #include <sof/ipc/schedule.h>
@@ -120,9 +121,11 @@ int idc_wait_in_blocking_mode(uint32_t target_core, bool (*cond)(int))
 static void idc_ipc(void)
 {
 	struct ipc *ipc = ipc_get();
-	ipc_cmd_hdr *hdr = ipc->comp_data;
 
-	ipc_cmd(hdr);
+	ipc_cmd(ipc->comp_data);
+
+	/* Signal the host */
+	ipc_platform_complete_cmd(ipc);
 }
 
 /**
