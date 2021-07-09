@@ -379,8 +379,7 @@ static void hda_dma_host_stop(struct dma_chan_data *channel)
 			    NOTIFIER_ID_LL_POST_RUN);
 }
 
-/* lock should be held by caller */
-static int hda_dma_enable_unlock(struct dma_chan_data *channel)
+static int hda_dma_enable(struct dma_chan_data *channel)
 {
 	struct hda_chan_data *hda_chan;
 	int ret;
@@ -410,8 +409,6 @@ static int hda_dma_enable_unlock(struct dma_chan_data *channel)
 	if (channel->direction == DMA_DIR_MEM_TO_DEV &&
 	    !(hda_chan->state & HDA_STATE_RELEASE))
 		hda_dma_inc_link_fp(channel, hda_chan->buffer_bytes);
-
-	hda_chan->state &= ~HDA_STATE_RELEASE;
 
 	hda_dma_get_dbg_vals(channel, HDA_DBG_POST, HDA_DBG_BOTH);
 	hda_dma_ptr_trace(channel, "enable", HDA_DBG_BOTH);
@@ -469,9 +466,9 @@ static struct dma_chan_data *hda_dma_channel_get(struct dma *dma,
 		return NULL;
 	}
 
-	spin_lock_irq(&dma->lock, flags);
-
 	tr_dbg(&hdma_tr, "hda-dmac: %d channel %d -> get", dma->plat_data.id, channel);
+
+	spin_lock_irq(&dma->lock, flags);
 
 	/* use channel if it's free */
 	if (dma->chan[channel].status == COMP_STATE_INIT) {
@@ -492,9 +489,13 @@ static struct dma_chan_data *hda_dma_channel_get(struct dma *dma,
 }
 
 /* channel must not be running when this is called */
-static void hda_dma_channel_put_unlocked(struct dma_chan_data *channel)
+static void hda_dma_channel_put(struct dma_chan_data *channel)
 {
 	struct hda_chan_data *hda_chan = dma_chan_get_data(channel);
+	struct dma *dma = channel->dma;
+	uint32_t flags;
+
+	spin_lock_irq(&dma->lock, flags);
 
 	/* set new state */
 	channel->status = COMP_STATE_INIT;
@@ -504,33 +505,24 @@ static void hda_dma_channel_put_unlocked(struct dma_chan_data *channel)
 
 	/* Make sure that all callbacks to this channel are freed */
 	notifier_unregister_all(NULL, channel);
-}
-
-/* channel must not be running when this is called */
-static void hda_dma_channel_put(struct dma_chan_data *channel)
-{
-	struct dma *dma = channel->dma;
-	uint32_t flags;
-
-	spin_lock_irq(&dma->lock, flags);
-	hda_dma_channel_put_unlocked(channel);
-	spin_unlock_irq(&dma->lock, flags);
-
 	atomic_sub(&dma->num_channels_busy, 1);
+
+	spin_unlock_irq(&dma->lock, flags);
 }
 
 static int hda_dma_start(struct dma_chan_data *channel)
 {
+	struct hda_chan_data *hda_chan;
 	uint32_t flags;
 	uint32_t dgcs;
 	int ret = 0;
-
-	irq_local_disable(flags);
 
 	tr_dbg(&hdma_tr, "hda-dmac: %d channel %d -> start",
 	       channel->dma->plat_data.id, channel->index);
 
 	hda_dma_dbg_count_reset(channel);
+
+	irq_local_disable(flags);
 
 	/* is channel idle, disabled and ready ? */
 	dgcs = dma_chan_reg_read(channel, DGCS);
@@ -542,10 +534,15 @@ static int hda_dma_start(struct dma_chan_data *channel)
 		goto out;
 	}
 
-	ret = hda_dma_enable_unlock(channel);
-	if (ret < 0)
-		goto out;
+	irq_local_enable(flags);
 
+	ret = hda_dma_enable(channel);
+	if (ret < 0)
+		return ret;
+
+	irq_local_disable(flags);
+	hda_chan = dma_chan_get_data(channel);
+	hda_chan->state &= ~HDA_STATE_RELEASE;
 	channel->status = COMP_STATE_ACTIVE;
 	channel->core = cpu_get_id();
 
@@ -560,11 +557,10 @@ static int hda_dma_release(struct dma_chan_data *channel)
 	uint32_t flags;
 	int ret = 0;
 
-	irq_local_disable(flags);
-
 	tr_dbg(&hdma_tr, "hda-dmac: %d channel %d -> release",
 	       channel->dma->plat_data.id, channel->index);
 
+	irq_local_disable(flags);
 	/*
 	 * Prepare for the handling of release condition on the first work cb.
 	 * This flag will be unset afterwards.
@@ -583,15 +579,15 @@ static int hda_dma_pause(struct dma_chan_data *channel)
 {
 	uint32_t flags;
 
-	irq_local_disable(flags);
-
 	tr_dbg(&hdma_tr, "hda-dmac: %d channel %d -> pause",
 	       channel->dma->plat_data.id, channel->index);
 
+	irq_local_disable(flags);
 	if (channel->status != COMP_STATE_ACTIVE)
 		goto out;
 
 	/* stop the channel */
+	irq_local_enable(flags);
 	hda_dma_stop(channel);
 
 out:
@@ -603,8 +599,6 @@ static int hda_dma_stop(struct dma_chan_data *channel)
 {
 	struct hda_chan_data *hda_chan;
 	uint32_t flags;
-
-	irq_local_disable(flags);
 
 	hda_dma_dbg_count_reset(channel);
 	hda_dma_ptr_trace(channel, "last-copy", HDA_DBG_BOTH);
@@ -618,15 +612,16 @@ static int hda_dma_stop(struct dma_chan_data *channel)
 		hda_dma_host_stop(channel);
 
 	/* disable the channel */
+	irq_local_disable(flags);
 	dma_chan_reg_update_bits(channel, DGCS, DGCS_GEN | DGCS_FIFORDY, 0);
 	channel->status = COMP_STATE_PREPARE;
 	hda_chan = dma_chan_get_data(channel);
 	hda_chan->state = 0;
+	irq_local_enable(flags);
 
 	hda_dma_get_dbg_vals(channel, HDA_DBG_POST, HDA_DBG_BOTH);
 	hda_dma_ptr_trace(channel, "stop", HDA_DBG_BOTH);
 
-	irq_local_enable(flags);
 	return 0;
 }
 
@@ -652,7 +647,6 @@ static int hda_dma_set_config(struct dma_chan_data *channel,
 	uint32_t buffer_addr = 0;
 	uint32_t period_bytes = 0;
 	uint32_t buffer_bytes = 0;
-	uint32_t flags;
 	uint32_t addr;
 	uint32_t dgcs;
 	int i;
@@ -660,8 +654,6 @@ static int hda_dma_set_config(struct dma_chan_data *channel,
 
 	if (channel->status == COMP_STATE_ACTIVE)
 		return 0;
-
-	irq_local_disable(flags);
 
 	tr_dbg(&hdma_tr, "hda-dmac: %d channel %d -> config", dma->plat_data.id, channel->index);
 
@@ -765,7 +757,6 @@ static int hda_dma_set_config(struct dma_chan_data *channel,
 
 	channel->status = COMP_STATE_PREPARE;
 out:
-	irq_local_enable(flags);
 	return ret;
 }
 
