@@ -73,6 +73,11 @@ struct pipeline {
 	/* position update */
 	uint32_t posn_offset;		/* position update array offset*/
 	struct ipc_msg *msg;
+	struct {
+		int cmd;
+		struct comp_dev *host;
+		unsigned int delay;	/* period count */
+	} trigger;
 };
 
 struct pipeline_walk_context {
@@ -219,14 +224,22 @@ int pipeline_prepare(struct pipeline *p, struct comp_dev *cd);
  */
 
 /**
- * \brief Trigger pipeline - atomic
+ * \brief Trigger pipeline - IPC context
  * \param[in] p pipeline.
- * \param[in] host_cd Host DMA component.
+ * \param[in] host Host DMA component.
  * \param[in] cmd Pipeline trigger command.
  * \return 0 on success.
  */
-/*  */
-int pipeline_trigger(struct pipeline *p, struct comp_dev *host_cd, int cmd);
+int pipeline_trigger(struct pipeline *p, struct comp_dev *host, int cmd);
+
+/**
+ * \brief Trigger pipeline - either IPC or pipeline task context
+ * \param[in] p pipeline.
+ * \param[in] host Host DMA component.
+ * \param[in] cmd Pipeline trigger command.
+ * \return 0 on success.
+ */
+int pipeline_trigger_run(struct pipeline *p, struct comp_dev *host, int cmd);
 
 /**
  * \brief Copy data along a pipeline.

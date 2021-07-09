@@ -702,6 +702,13 @@ static int mux_trigger(struct comp_dev *dev, int cmd)
 
 	comp_info(dev, "mux_trigger(), command = %u", cmd);
 
+	switch (cmd) {
+	case COMP_TRIGGER_PRE_START:
+		if (mux_source_status_count(dev, COMP_STATE_ACTIVE) ||
+		    mux_source_status_count(dev, COMP_STATE_PAUSED))
+			return PPL_STATUS_PATH_STOP;
+	}
+
 	ret = comp_set_state(dev, cmd);
 	if (ret < 0)
 		return ret;
