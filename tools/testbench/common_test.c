@@ -120,6 +120,8 @@ int tb_pipeline_start(struct ipc *ipc, struct pipeline *p,
 
 	/* Prepare and start the pipeline */
 	ret = pipeline_trigger(p, cd, COMP_TRIGGER_PRE_START);
+	if (ret >= 0)
+		ret = pipeline_copy(p);
 	if (ret < 0)
 		printf("Warning: Failed start pipeline command.\n");
 
