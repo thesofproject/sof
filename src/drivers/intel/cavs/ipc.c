@@ -189,7 +189,7 @@ void ipc_platform_complete_cmd(void *data)
 {
 	struct ipc *ipc = data;
 
-	if (!cpu_is_me(ipc->core))
+	if (!cpu_is_me(ipc->core) || ipc->delayed_response)
 		return;
 
 	/* write 1 to clear busy, and trigger interrupt to host*/

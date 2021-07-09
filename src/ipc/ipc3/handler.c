@@ -439,10 +439,12 @@ static int ipc_stream_trigger(uint32_t header)
 
 	/* trigger the component */
 	ret = pipeline_trigger(pcm_dev->cd->pipeline, pcm_dev->cd, cmd);
-	if (ret < 0) {
+	if (ret < 0)
 		tr_err(&ipc_tr, "ipc: comp %d trigger 0x%x failed %d",
 		       stream.comp_id, ipc_command, ret);
-	}
+
+	if (ret > 0)
+		ipc->delayed_response = true;
 
 	return ret;
 }
@@ -1507,8 +1509,17 @@ void ipc_cmd(ipc_cmd_hdr *_hdr)
 	}
 
 	ipc->core = cpu_get_id();
+	ipc->delayed_response = false;
 
 	type = iGS(hdr->cmd);
+
+	if (cpu_is_me(PLATFORM_PRIMARY_CORE_ID)) {
+		struct ipc *ipc = ipc_get();
+
+		/* A new IPC message from the host: reset after the previous one */
+		ipc->core = PLATFORM_PRIMARY_CORE_ID;
+		ipc->delayed_response = false;
+	}
 
 	switch (type) {
 	case SOF_IPC_GLB_REPLY:
