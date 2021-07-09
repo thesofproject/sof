@@ -172,7 +172,11 @@ int ipc_platform_compact_read_msg(ipc_cmd_hdr *hdr, int words)
 
 enum task_state ipc_platform_do_cmd(void *data)
 {
+	struct ipc *ipc = data;
 	ipc_cmd_hdr *hdr;
+
+	/* Reset after the previous IPC */
+	ipc->core = PLATFORM_PRIMARY_CORE_ID;
 
 #if CAVS_VERSION >= CAVS_VERSION_1_8
 	hdr = ipc_compact_read_msg();
@@ -188,6 +192,9 @@ enum task_state ipc_platform_do_cmd(void *data)
 void ipc_platform_complete_cmd(void *data)
 {
 	struct ipc *ipc = data;
+
+	if (!cpu_is_me(ipc->core))
+		return;
 
 	/* write 1 to clear busy, and trigger interrupt to host*/
 #if CAVS_VERSION == CAVS_VERSION_1_5
