@@ -56,6 +56,7 @@ struct audio_stream {
 	enum sof_ipc_frame frame_fmt;	/**< Sample data format */
 	uint32_t rate;		/**< Number of data frames per second [Hz] */
 	uint16_t channels;	/**< Number of samples in each frame */
+	uint16_t ticks_per_frame; /**< Zephyr kernel ticks per frame */
 
 	bool overrun_permitted; /**< indicates whether overrun is permitted */
 	bool underrun_permitted; /**< indicates whether underrun is permitted */

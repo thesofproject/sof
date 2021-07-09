@@ -139,9 +139,40 @@ void sys_comp_init(struct sof *sof)
 	spinlock_init(&sof->comp_drivers->lock);
 }
 
+#if __ZEPHYR__
+/*
+ * Allow DP priority pipelines to block (sleep) on source or sink IO and allow
+ * similar pipeline behaviour to userspace pipelines.
+ */
+static inline void wait_for_io(struct comp_buffer *source,
+			       struct comp_buffer *sink,
+			       struct comp_copy_limits *cl)
+{
+	int frames;
+	k_timeout_t ticks;
+
+	if (cl->sink_req_bytes) {
+		/* block on free space in sink */
+		frames = sink->stream.frame_fmt * sink->stream.channels;
+		ticks = K_TICKS(frames * sink->stream.ticks_per_frame);
+	} else {
+		/* block on avail bytes in source */
+		frames = source->stream.frame_fmt * source->stream.channels;
+		ticks = K_TICKS(frames * source->stream.ticks_per_frame);
+	}
+
+	k_sleep(ticks);
+}
+#endif
+
 void comp_get_copy_limits(struct comp_buffer *source, struct comp_buffer *sink,
 			  struct comp_copy_limits *cl)
 {
+#if __ZEPHYR__
+	/* block on data/space being available if needed */
+	if (cl->sink_req_bytes || cl->source_req_bytes)
+		wait_for_io(source, sink, cl);
+#endif
 	cl->frames = audio_stream_avail_frames(&source->stream, &sink->stream);
 	cl->source_frame_bytes = audio_stream_frame_bytes(&source->stream);
 	cl->sink_frame_bytes = audio_stream_frame_bytes(&sink->stream);

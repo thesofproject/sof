@@ -39,6 +39,139 @@ static void pipeline_schedule_cancel(struct pipeline *p)
 		sa_set_panic_on_delay(true);
 }
 
+/*
+ * TODO: pipeline tasks always assume LL scheduling. This needs to be checked.
+ * HACK: force to DP atm, to show code intent.
+ */
+
+#if __ZEPHYR__
+
+/* existing flow - TODO: can the xrun handling here be tied into the state transitions */
+static enum task_state pipeline_task_no_transition(struct pipeline *p)
+{
+	/* are we in xrun ? */
+	if (p->xrun_bytes) {
+		/* try to recover */
+		err = pipeline_xrun_recover(p);
+		if (err < 0)
+			/* skip copy if still in xrun */
+			return SOF_TASK_STATE_COMPLETED;
+	}
+
+	err = pipeline_copy(p);
+	if (err < 0) {
+		/* try to recover */
+		err = pipeline_xrun_recover(p);
+		if (err < 0) {
+			pipe_err(p, "pipeline_task(): xrun recover failed! pipeline will be stopped!");
+			/* failed - host will stop this pipeline */
+			return SOF_TASK_STATE_COMPLETED;
+		}
+	}
+
+	pipe_dbg(p, "pipeline_task() sched");
+
+	return SOF_TASK_STATE_RESCHEDULE;
+}
+
+/* DP pipeline pipeline task with Zephyr */
+static enum task_state pipeline_task_no_transition(struct pipeline *p)
+{
+	pipe_dbg(p, "pipeline_task(): no state %d", p->status);
+
+	/* work depends on the state */
+	switch (p->status) {
+	case COMP_STATE_PREPARE:
+	case COMP_STATE_SUSPEND:
+	case COMP_STATE_PAUSED:
+		/* sleep and wait for state changes */
+		k_sleep(K_MSECS(1));
+		return SOF_TASK_STATE_RESCHEDULE;
+	case COMP_STATE_ACTIVE:
+		return pipeline_active_task(p);
+	case COMP_STATE_INIT:
+	case COMP_STATE_READY:
+	default:
+		/* we should not get here with these states */
+		return SOF_TASK_STATE_COMPLETED;
+	}
+}
+
+/* current state is prepare, suspend or paused - handle change to next state */
+static enum task_state transition_from_inactive(struct pipeline *p)
+{
+	switch (p->status_next) {
+	case COMP_STATE_SUSPEND:
+	case COMP_STATE_PAUSED:
+	case COMP_STATE_PREPARE:
+		/* sleep and wait for state changes */
+		k_sleep(K_MSECS(1));
+		return SOF_TASK_STATE_RESCHEDULE;
+	case COMP_STATE_ACTIVE:
+		/* TODO: send trigger(start) */
+		p->status = p->status_next;
+		return SOF_TASK_STATE_RESCHEDULE;
+	case COMP_STATE_INIT:
+	case COMP_STATE_READY:
+	default:
+		/* we should not get here with these states */
+		return SOF_TASK_STATE_COMPLETED;
+	}
+}
+
+/* current state is active - handle change to next state */
+static enum task_state transition_from_active(struct pipeline *p)
+{
+	switch (p->status_next) {
+	case COMP_STATE_SUSPEND:
+	case COMP_STATE_PAUSED:
+	case COMP_STATE_PREPARE:
+		/* TODO: send trigger(stop) */
+		p->status = p->status_next;
+		return SOF_TASK_STATE_RESCHEDULE;
+	case COMP_STATE_ACTIVE:
+	case COMP_STATE_INIT:
+	case COMP_STATE_READY:
+	default:
+		/* we should not get here with these states */
+		return SOF_TASK_STATE_COMPLETED;
+	}
+}
+
+/* DP pipeline pipeline task with Zephyr */
+static enum task_state pipeline_task_transition(struct pipeline *p)
+{
+	pipe_dbg(p, "pipeline_task(): state %d", p->status);
+
+	/* work depends on the current state to next state */
+	switch (p->status) {
+	case COMP_STATE_PREPARE:
+	case COMP_STATE_SUSPEND:
+	case COMP_STATE_PAUSED:
+		return transition_from_inactive(p);
+	case COMP_STATE_ACTIVE:
+		return transition_from_active(p);
+	case COMP_STATE_INIT:
+	case COMP_STATE_READY:
+	default:
+		/* we should not get here with these states */
+		return SOF_TASK_STATE_COMPLETED;
+	}
+}
+/* DP pipeline pipeline task with Zephyr */
+static enum task_state pipeline_task(void *arg)
+{
+	struct pipeline *p = arg;
+
+	/* are we a state in transition */
+	if (p->status == p->status_next)
+		return pipeline_task_no_transition(p);
+	else
+		return pipeline_task_transition(p);
+}
+#else
+
+/* pipeline task with xtos */
 static enum task_state pipeline_task(void *arg)
 {
 	struct pipeline *p = arg;
@@ -70,6 +203,7 @@ static enum task_state pipeline_task(void *arg)
 
 	return SOF_TASK_STATE_RESCHEDULE;
 }
+#endif
 
 static struct task *pipeline_task_init(struct pipeline *p, uint32_t type,
 				       enum task_state (*func)(void *data))
@@ -108,6 +242,7 @@ int pipeline_schedule_config(struct pipeline *p, uint32_t sched_id,
 	return 0;
 }
 
+/* schedule start or cancel a list of pipelines */
 void pipeline_schedule_triggered(struct pipeline_walk_context *ctx,
 				 int cmd)
 {

@@ -199,12 +199,17 @@ int pipeline_trigger(struct pipeline *p, struct comp_dev *host, int cmd)
 	data.start = host;
 	data.cmd = cmd;
 
+	/* send trigger command to all components in pipeline */
 	ret = walk_ctx.comp_func(host, NULL, &walk_ctx, host->direction);
 	if (ret < 0) {
 		pipe_err(p, "pipeline_trigger(): ret = %d, host->comp.id = %u, cmd = %d",
 			 ret, dev_comp_id(host), cmd);
 	}
 
+	/* schedule the pipelines. TODO: this can leave a gap between
+	 * triggering the DMA and DAIs and scheduling the copy which may
+	 * lead to xruns. copies old data
+	 */
 	pipeline_schedule_triggered(&walk_ctx, cmd);
 
 	return ret;
