@@ -151,8 +151,6 @@ void *rmalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
 {
 	if (zone_is_cached(zone))
 		return heap_alloc_aligned_cached(&sof_heap, 0, bytes);
-	else
-		return heap_alloc_aligned(&sof_heap, 8, bytes);
 
 	return heap_alloc_aligned(&sof_heap_shared, 8, bytes);
 }
