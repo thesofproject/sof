@@ -87,6 +87,9 @@ if(NOT CONFIG_LIBRARY)
 	if(CONFIG_COMP_IGO_NR)
 		add_subdirectory(igo_nr)
 	endif()
+	if(CONFIG_COMP_RTNR)
+		add_subdirectory(rtnr)
+	endif()
 
 	subdirs(pipeline)
 
