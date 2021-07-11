@@ -1,3 +1,7 @@
-build:
-  cmake: ./zephyr
-  kconfig: ./zephyr/Kconfig
+# https://docs.zephyrproject.org/latest/guides/modules.html
+name: sof
+
+# Default values:
+# build:
+#  cmake: ./zephyr
+#  kconfig: ./zephyr/Kconfig
