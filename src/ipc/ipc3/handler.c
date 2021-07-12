@@ -1498,7 +1498,6 @@ void ipc_cmd(ipc_cmd_hdr *_hdr)
 {
 	struct sof_ipc_cmd_hdr *hdr = ipc_from_hdr(_hdr);
 	struct ipc *ipc = ipc_get();
-	struct sof_ipc_reply reply;
 	uint32_t type;
 	int ret;
 
@@ -1571,11 +1570,15 @@ void ipc_cmd(ipc_cmd_hdr *_hdr)
 out:
 	/* if ret > 0, reply created and copied by cmd() */
 	if (ret <= 0) {
-		/* send std error/ok reply */
-		reply.error = ret;
+		struct sof_ipc_reply reply = {
+			.error = ret,
+			.hdr = {
+				.cmd = SOF_IPC_GLB_REPLY,
+				.size = sizeof(reply),
+			},
+		};
 
-		reply.hdr.cmd = SOF_IPC_GLB_REPLY;
-		reply.hdr.size = sizeof(reply);
+		/* send std error/ok reply */
 		mailbox_hostbox_write(0, &reply, sizeof(reply));
 	}
 }
