@@ -4,6 +4,8 @@
 
 # "All problems can be solved by another level of indirection"
 # Ideally, this script would not be needed.
+#
+# Minor adjustments to the docker image provided by the Zephyr project.
 
 set -e
 set -x
@@ -12,6 +14,9 @@ unset ZEPHYR_BASE
 
 # Make sure we're in the right place; chgrp -R below.
 test -e ./scripts/xtensa-build-zephyr.sh
+
+sudo apt-get update
+sudo apt-get -y install tree
 
 if test -e zephyrproject; then
     ./scripts/xtensa-build-zephyr.sh -a
