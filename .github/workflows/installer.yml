@@ -26,18 +26,11 @@ jobs:
       - name: docker
         run: docker pull thesofproject/sof && docker tag thesofproject/sof sof
 
-      # FIXME: update the docker image instead
-      - name: HACK add tree to the docker PATH
-        run: |
-           cp -a /usr/bin/tree .
-           printf '%s\n' 'PATH=$PATH:$(pwd)' > stage.sh
-           printf '%s\n' 'make -j3 -C installer/ stage' >> stage.sh
-
       # -j3 tests the ability to build multiple platforms
       # concurrently. It makes the build log unreadable but that's OK
       # because we have other, slower actions with readable logs.
       - name: build all and stage
-        run: ./scripts/docker-run.sh sh -x ./stage.sh
+        run: ./scripts/docker-run.sh make -j3 -C installer/ stage
 
       - name: check staging tree
         run: make -C installer/ checktree
@@ -47,5 +40,4 @@ jobs:
            make -C installer cleanall
            # Make sure there's nothing left
            rm -rf scripts/kconfig/__pycache__/
-           rm ./tree ./stage.sh # HACK, see above
            ! git status --porcelain --ignored | grep .
