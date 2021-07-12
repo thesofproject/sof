@@ -69,6 +69,11 @@ clone()
 	)
 }
 
+install_opts()
+{
+    install -D -p "$@"
+}
+
 build()
 {
 	cd "$WEST_TOP"
@@ -80,6 +85,9 @@ build()
 	cmake ../modules/audio/sof/rimage
 	make -j"$BUILD_JOBS"
 	cd -
+
+	local STAGING=build-sof-staging
+	mkdir -p ${STAGING}/sof/ # smex does not use 'install -D'
 
 	for platform in "${PLATFORMS[@]}"; do
 		case "$platform" in
@@ -102,18 +110,38 @@ build()
 				;;
 		esac
 
+		local bdir=build-"$platform"
+
 		(
 			 # west can get lost in symbolic links and then
 			 # show a confusing error.
 			/bin/pwd
 			set -x
-			west build --build-dir build-"$platform" --board "$PLAT_CONFIG" \
+			west build --build-dir "$bdir" --board "$PLAT_CONFIG" \
 				zephyr/samples/subsys/audio/sof
-			west sign  --build-dir build-"$platform" \
+
+			# This should ideally be part of
+			# sof/zephyr/CMakeLists.txt but due to the way
+			# Zephyr works, the SOF library build there does
+			# not seem like it can go further than a
+			# "libmodules_sof.a" file that smex does not
+			# know how to use.
+			"$bdir"/zephyr/smex_ep/build/smex \
+			       -l "$STAGING"/sof/sof-"$platform".ldc \
+			       "$bdir"/zephyr/zephyr.elf
+
+			west sign  --build-dir "$bdir" \
 				--tool rimage --tool-path "$RIMAGE_DIR"/rimage \
 				--tool-data modules/audio/sof/rimage/config -- -k "$RIMAGE_KEY"
 		)
+		install_opts -m 0644 "$bdir"/zephyr/zephyr.ri \
+			     "$STAGING"/sof/community/sof-"$platform".ri
 	done
+
+	install_opts -m 0755 "$bdir"/zephyr/sof-logger_ep/build/logger/sof-logger \
+		     "$STAGING"/tools/sof-logger
+
+	tree "$STAGING"
 }
 
 main()
