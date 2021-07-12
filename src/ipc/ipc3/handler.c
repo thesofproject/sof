@@ -1499,7 +1499,7 @@ void ipc_cmd(ipc_cmd_hdr *_hdr)
 	struct sof_ipc_cmd_hdr *hdr = ipc_from_hdr(_hdr);
 	struct ipc *ipc = ipc_get();
 	struct sof_ipc_reply reply;
-	uint32_t type = 0;
+	uint32_t type;
 	int ret;
 
 	if (!hdr) {
@@ -1561,14 +1561,14 @@ void ipc_cmd(ipc_cmd_hdr *_hdr)
 		break;
 #endif
 	default:
-		tr_err(&ipc_tr, "ipc: unknown command type %u", type);
+		tr_err(&ipc_tr, "ipc: unknown command type 0x%x", type);
 		ret = -EINVAL;
 		break;
 	}
 
-out:
 	tr_dbg(&ipc_tr, "ipc: last request 0x%x returned %d", type, ret);
 
+out:
 	/* if ret > 0, reply created and copied by cmd() */
 	if (ret <= 0) {
 		/* send std error/ok reply */
