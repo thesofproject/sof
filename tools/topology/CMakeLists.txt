@@ -4,3 +4,4 @@ add_custom_target(topologies ALL)
 add_dependencies(topologies topologies1)
 
 add_subdirectory(topology1)
+add_subdirectory(topology2)
