@@ -510,8 +510,29 @@ void sys_comp_eq_iir_init(void);
 void sys_comp_kpb_init(void);
 void sys_comp_smart_amp_init(void);
 
+/* Zephyr redefines log_message() and mtrace_printf() which leaves
+ * totally empty the .static_log_entries ELF sections for the
+ * sof-logger. This makes smex fail. Define at least one such section to
+ * fix the build when sof-logger is not used.
+ */
+static inline const void *smex_placeholder_f(void)
+{
+	_DECLARE_LOG_ENTRY(LOG_LEVEL_DEBUG,
+			   "placeholder so .static_log.X are not all empty",
+			   _TRACE_INV_CLASS, 0);
+
+	return &log_entry;
+}
+
+/* Need to actually use the function and export something otherwise the
+ * compiler optimizes everything away.
+ */
+const void *_smex_placeholder;
+
 int task_main_start(struct sof *sof)
 {
+	_smex_placeholder = smex_placeholder_f();
+
 	int ret;
 
 	/* init default audio components */
