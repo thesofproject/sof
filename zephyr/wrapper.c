@@ -69,11 +69,13 @@ __section(".heap_mem") static uint8_t __aligned(64) heapmem[HEAPMEM_SIZE];
 
 static uint8_t __aligned(PLATFORM_DCACHE_ALIGN)heapmem[HEAPMEM_SIZE];
 static uint8_t __aligned(PLATFORM_DCACHE_ALIGN)heapmem_shared[HEAPMEM_SHARED_SIZE];
+
+/* Use k_heap structure */
+static struct k_heap sof_heap_shared;
 #endif
 
 /* Use k_heap structure */
 static struct k_heap sof_heap;
-static struct k_heap sof_heap_shared;
 
 static int statics_init(const struct device *unused)
 {
@@ -151,10 +153,12 @@ void *rmalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
 {
 	if (zone_is_cached(zone))
 		return heap_alloc_aligned_cached(&sof_heap, 0, bytes);
-	else
-		return heap_alloc_aligned(&sof_heap, 8, bytes);
 
+#ifdef CONFIG_IMX
+	return heap_alloc_aligned(&sof_heap, 8, bytes);
+#else
 	return heap_alloc_aligned(&sof_heap_shared, 8, bytes);
+#endif
 }
 
 /* Use SOF_MEM_ZONE_BUFFER at the moment */
@@ -230,7 +234,11 @@ void rfree(void *ptr)
 
 	/* select heap based on address range */
 	if (is_uncached(ptr)) {
+#ifdef CONFIG_IMX
+		heap_free(&sof_heap, ptr);
+#else
 		heap_free(&sof_heap_shared, ptr);
+#endif
 		return;
 	}
 
