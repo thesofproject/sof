@@ -1,5 +1,7 @@
 # This is still WIP - Not fully validated on any platform.
 
+# When west is installed, Zephyr's CMake invokes west to list and try to
+# compile every Zephyr module that can be found.
 if(CONFIG_SOF)
 
 if(CONFIG_LIBRARY)
@@ -580,5 +582,5 @@ add_definitions(-DSOF_SRC_HASH=0x${SOF_SRC_HASH} -DSOF_GIT_TAG="${SOF_GIT_TAG}")
 
 # Create Trace realtive file paths
 sof_append_relative_path_definitions(modules_sof)
-endif()
 
+endif() # CONFIG_SOF
