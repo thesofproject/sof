@@ -20,7 +20,7 @@ static void usage(char *name)
 	fprintf(stdout, "\t -l log dictionary outfile\n");
 	fprintf(stdout, "\t -v enable verbose output\n");
 	fprintf(stdout, "\t -h this help message\n");
-	exit(0);
+	exit(1);
 }
 
 int main(int argc, char *argv[])
