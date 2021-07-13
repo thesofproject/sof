@@ -22,51 +22,74 @@ include(`sof/tokens.m4')
 
 include(`platform/intel/'PLATFORM`.m4')
 
-# Define pipeline id for intel-generic-dmic.m4
-# to generate dmic setting
-
-ifelse(CHANNELS, `0', ,
+ifdef(`NO_JACK',
 `
- define(DMIC_PCM_48k_ID, `10')
- define(DMIC_PCM_16k_ID, `11')
- define(DMIC_PIPELINE_48k_ID, `4')
- define(DMIC_PIPELINE_16k_ID, `5')
+define(JACK_OFFSET, `0')
+',
+`
+define(JACK_OFFSET, `2')
 ')
+
 
 # if there is an external RT1308 amplifier connected over SoundWire,
 # enable "EXT_AMP" option in the CMakefile.
 ifdef(`EXT_AMP',
 `
- ifelse(CHANNELS,`0', `define(HDMI_BE_ID_BASE, `3')',
- `
-  define(HDMI_BE_ID_BASE, `5')
-
-  define(DMIC_DAI_LINK_48k_ID, `3')
-  define(DMIC_DAI_LINK_16k_ID, `4')
-  include(`platform/intel/intel-generic-dmic.m4')
-  ')
+define(AMP_OFFSET, `1')
 ',
 `
- ifelse(CHANNELS,`0', `define(HDMI_BE_ID_BASE, `2')',
- `
-  define(HDMI_BE_ID_BASE, `4')
-
-  define(DMIC_DAI_LINK_48k_ID, `2')
-  define(DMIC_DAI_LINK_16k_ID, `3')
-  include(`platform/intel/intel-generic-dmic.m4')
- ')
+define(AMP_OFFSET, `0')
 '
 )
 
+ifdef(`EXT_AMP_REF',
+`
+define(AMP_REF_OFFSET, `1')
+',
+`
+define(AMP_REF_OFFSET, `0')
+'
+)
+
+# Define pipeline id for intel-generic-dmic.m4
+# to generate dmic setting
+ifelse(CHANNELS, `0',
+`
+define(DMIC_OFFSET, `0')
+'
+,
+`
+define(DMIC_PCM_48k_ID, `10')
+define(DMIC_PCM_16k_ID, `11')
+define(DMIC_PIPELINE_48k_ID, `4')
+define(DMIC_PIPELINE_16k_ID, `5')
+
+define(DMIC_DAI_LINK_48k_ID, eval(JACK_OFFSET+AMP_OFFSET+AMP_REF_OFFSET))
+define(DMIC_DAI_LINK_16k_ID, eval(JACK_OFFSET+AMP_OFFSET+AMP_REF_OFFSET+1))
+include(`platform/intel/intel-generic-dmic.m4')
+
+define(DMIC_OFFSET, `2')
+'
+)
+
+define(HDMI_BE_ID_BASE, eval(JACK_OFFSET+AMP_OFFSET+AMP_REF_OFFSET+DMIC_OFFSET))
+
 # Add Bluetooth Audio Offload pass-through for ADL
 ifelse(PLATFORM, `adl',
+`
+define(BT_OFFLOAD)
+'
+)
+
+ifdef(`BT_OFFLOAD',
 `	define(`BT_PIPELINE_PB_ID', `13')
 	define(`BT_PIPELINE_CP_ID', `14')
 	define(`BT_DAI_LINK_ID', eval(HDMI_BE_ID_BASE + 4))
 	define(`BT_PCM_ID', `14') dnl use fixed PCM_ID
-	ifelse(CHANNELS,`0', `define(HW_CONFIG_ID, `6')', `define(HW_CONFIG_ID, `8')')
+	define(HW_CONFIG_ID, eval(6 + DMIC_OFFSET))
 	include(`platform/intel/intel-generic-bt.m4')
-', `')
+'
+)
 
 DEBUG_START
 
