@@ -451,6 +451,7 @@ zephyr_library_sources(
 
 	# Bridge wrapper between SOF and Zephyr APIs - Will shrink over time.
 	wrapper.c
+	alloc.c
 	edf_schedule.c
 	schedule.c
 )
