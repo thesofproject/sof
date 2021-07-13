@@ -341,10 +341,13 @@
 #define DMIC_HW_FIR_GAIN_MAX ((1 << (DMIC_HW_BITS_FIR_GAIN - 1)) - 1)
 
 /* Hardwired log ramp parameters. The first value is the initial gain in
- * decibels. The second value is the default ramp time.
+ * decibels. The default ramp time is provided by 1st order equation
+ * ramp time = coef * samplerate + offset. The default ramp is 200 ms for
+ * 48 kHz and 400 ms for 16 kHz.
  */
 #define LOGRAMP_START_DB Q_CONVERT_FLOAT(-90, DB2LIN_FIXED_INPUT_QY)
-#define LOGRAMP_TIME_MS 400 /* Default ramp time in milliseconds */
+#define LOGRAMP_TIME_COEF_Q15 -205 /* dy/dx (16000,400) (48000,200) */
+#define LOGRAMP_TIME_OFFS_Q0 500 /* Offset for line slope */
 
 /* Limits for ramp time from topology */
 #define LOGRAMP_TIME_MIN_MS 10 /* Min. 10 ms */
@@ -416,6 +419,21 @@ int dmic_set_config_computed(struct dai *dai);
 int dmic_get_hw_params_computed(struct dai *dai, struct sof_ipc_stream_params *params, int dir);
 
 extern const struct dai_driver dmic_driver;
+
+static inline int dmic_get_unmute_ramp_from_samplerate(int rate)
+{
+	int time_ms;
+
+	time_ms = Q_MULTSR_32X32((int32_t)rate, LOGRAMP_TIME_COEF_Q15, 0, 15, 0) +
+		LOGRAMP_TIME_OFFS_Q0;
+	if (time_ms > LOGRAMP_TIME_MAX_MS)
+		return LOGRAMP_TIME_MAX_MS;
+
+	if (time_ms < LOGRAMP_TIME_MIN_MS)
+		return LOGRAMP_TIME_MIN_MS;
+
+	return time_ms;
+}
 
 #endif /* DMIC_HW_VERSION  */
 #endif /* __SOF_DRIVERS_DMIC_H__ */

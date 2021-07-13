@@ -167,7 +167,7 @@ static int dmic_set_config(struct dai *dai, struct ipc_config_dai *common_config
 	if (config->dmic.unmute_ramp_time)
 		unmute_ramp_time_ms = config->dmic.unmute_ramp_time;
 	else
-		unmute_ramp_time_ms = LOGRAMP_TIME_MS;
+		unmute_ramp_time_ms = dmic_get_unmute_ramp_from_samplerate(config->dmic.fifo_fs);
 
 	if (unmute_ramp_time_ms < LOGRAMP_TIME_MIN_MS ||
 	    unmute_ramp_time_ms > LOGRAMP_TIME_MAX_MS) {
