@@ -451,10 +451,15 @@ zephyr_library_sources(
 
 	# Bridge wrapper between SOF and Zephyr APIs - Will shrink over time.
 	wrapper.c
-	alloc.c
 	edf_schedule.c
 	schedule.c
 )
+
+if(CONFIG_IMX)
+zephyr_library_sources(alloc_imx.c)
+else()
+zephyr_library_sources(alloc_cavs.c)
+endif()
 
 zephyr_library_sources_ifdef(CONFIG_TRACE
 	${SOF_SRC_PATH}/trace/dma-trace.c

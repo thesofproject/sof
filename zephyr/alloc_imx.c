@@ -31,21 +31,12 @@
 #endif
 
 /* The Zephyr heap */
-#ifdef CONFIG_IMX
 #define HEAPMEM_SIZE		(HEAP_SYSTEM_SIZE + HEAP_RUNTIME_SIZE + HEAP_BUFFER_SIZE)
 /*
  * Include heapmem variable in .heap_mem section, otherwise the HEAPMEM_SIZE is
  * duplicated in two sections and the sdram0 region overflows.
  */
-__section(".heap_mem") static uint8_t __aligned(64) heapmem[HEAPMEM_SIZE];
-#else
-#define HEAPMEM_SIZE		HEAP_BUFFER_SIZE
-#define HEAPMEM_SHARED_SIZE	(HEAP_SYSTEM_SIZE + HEAP_RUNTIME_SIZE + \
-				HEAP_RUNTIME_SHARED_SIZE + HEAP_SYSTEM_SHARED_SIZE)
-
-static uint8_t __aligned(PLATFORM_DCACHE_ALIGN)heapmem[HEAPMEM_SIZE];
-static uint8_t __aligned(PLATFORM_DCACHE_ALIGN)heapmem_shared[HEAPMEM_SHARED_SIZE];
-#endif
+static uint8_t __aligned(64) heapmem[HEAPMEM_SIZE] __section(".heap_mem");
 
 /* Use k_heap structure */
 static struct k_heap sof_heap;
@@ -56,9 +47,6 @@ static int statics_init(const struct device *unused)
 	ARG_UNUSED(unused);
 
 	sys_heap_init(&sof_heap.heap, heapmem, HEAPMEM_SIZE);
-#ifndef CONFIG_IMX
-	sys_heap_init(&sof_heap_shared.heap, heapmem_shared, HEAPMEM_SHARED_SIZE);
-#endif
 
 	return 0;
 }
@@ -128,11 +116,7 @@ void *rmalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
 	if (zone_is_cached(zone))
 		return heap_alloc_aligned_cached(&sof_heap, 0, bytes);
 
-#ifdef CONFIG_IMX
 	return heap_alloc_aligned(&sof_heap, 8, bytes);
-#else
-	return heap_alloc_aligned(&sof_heap_shared, 8, bytes);
-#endif
 }
 
 /* Use SOF_MEM_ZONE_BUFFER at the moment */
