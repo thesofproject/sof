@@ -819,10 +819,6 @@ static int host_prepare(struct comp_dev *dev)
 	if (ret == COMP_STATUS_STATE_ALREADY_SET)
 		return PPL_STATUS_PATH_STOP;
 
-	hd->local_pos = 0;
-	hd->report_pos = 0;
-	dev->position = 0;
-
 	return 0;
 }
 
