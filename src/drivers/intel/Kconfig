@@ -50,6 +50,35 @@ config INTEL_DMIC
 if INTEL_DMIC
 
 choice
+	prompt "Driver operation mode"
+	default INTEL_DMIC_TPLG_PARAMS
+        help
+          The driver can support two operation modes.
+          - A HW registers dump blob that is passed via IPC
+          - DAI tokens those describe the use case PCM format
+            and PDM bus and microphone parameters
+
+config INTEL_DMIC_NHLT
+       bool "Use NHLT DMIC blob"
+       help
+         All registers configuration is retrieved from blob. The
+	 number of channels, sample rate, and PCM format are
+	 defined in the blob and there are no runtime made
+	 configuration choices.
+
+config INTEL_DMIC_TPLG_PARAMS
+       bool "Use parameters from topology"
+       help
+         All registers confifguration is computed on the fly
+	 based on use case and microphone datasheet parameters
+	 and topology defined PCM format. The parameters are
+	 easy to to customize in the topology.
+
+endchoice
+
+if INTEL_DMIC_TPLG_PARAMS
+
+choice
 	prompt "FIR decimation coefficients set"
 	default INTEL_DMIC_FIR_FULL
 
@@ -166,5 +195,7 @@ config INTEL_DMIC_FIR_DECIMATE_BY_12
 	  FIFO is configured for 96 kHz.
 
 endmenu # "Decimation factors"
+
+endif
 
 endif # INTEL_DMIC
