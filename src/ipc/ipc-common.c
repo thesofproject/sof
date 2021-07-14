@@ -40,6 +40,7 @@ DECLARE_TR_CTX(ipc_tr, SOF_UUID(ipc_uuid), LOG_LEVEL_INFO);
 
 int ipc_process_on_core(uint32_t core)
 {
+	struct ipc *ipc = ipc_get();
 	struct idc_msg msg = { .header = IDC_MSG_IPC, .core = core, };
 	int ret;
 
@@ -49,8 +50,14 @@ int ipc_process_on_core(uint32_t core)
 		return -EACCES;
 	}
 
+	/* The other core will write there its response */
+	dcache_invalidate_region((void *)MAILBOX_HOSTBOX_BASE,
+				 ((struct sof_ipc_cmd_hdr *)ipc->comp_data)->size);
+
+	ipc->core = core;
+
 	/* send IDC message */
-	ret = idc_send_msg(&msg, IDC_BLOCKING);
+	ret = idc_send_msg(&msg, IDC_NON_BLOCKING);
 	if (ret < 0)
 		return ret;
 
@@ -206,6 +213,15 @@ void ipc_msg_send(struct ipc_msg *msg, void *data, bool high_priority)
 
 out:
 	spin_unlock_irq(&ipc->lock, flags);
+}
+
+void ipc_msg_reply(struct sof_ipc_reply *reply)
+{
+	struct ipc *ipc = ipc_get();
+
+	ipc->delayed_response = false;
+	mailbox_hostbox_write(0, reply, reply->hdr.size);
+	ipc_platform_complete_cmd(ipc);
 }
 
 void ipc_schedule_process(struct ipc *ipc)

@@ -439,10 +439,12 @@ static int ipc_stream_trigger(uint32_t header)
 
 	/* trigger the component */
 	ret = pipeline_trigger(pcm_dev->cd->pipeline, pcm_dev->cd, cmd);
-	if (ret < 0) {
+	if (ret < 0)
 		tr_err(&ipc_tr, "ipc: comp %d trigger 0x%x failed %d",
 		       stream.comp_id, ipc_command, ret);
-	}
+
+	if (ret > 0)
+		ipc->delayed_response = true;
 
 	return ret;
 }
@@ -1495,8 +1497,8 @@ void ipc_boot_complete_msg(ipc_cmd_hdr *header, uint32_t *data)
 void ipc_cmd(ipc_cmd_hdr *_hdr)
 {
 	struct sof_ipc_cmd_hdr *hdr = ipc_from_hdr(_hdr);
-	struct sof_ipc_reply reply;
-	uint32_t type = 0;
+	struct ipc *ipc = ipc_get();
+	uint32_t type;
 	int ret;
 
 	if (!hdr) {
@@ -1505,7 +1507,18 @@ void ipc_cmd(ipc_cmd_hdr *_hdr)
 		goto out;
 	}
 
+	ipc->core = cpu_get_id();
+	ipc->delayed_response = false;
+
 	type = iGS(hdr->cmd);
+
+	if (cpu_is_me(PLATFORM_PRIMARY_CORE_ID)) {
+		struct ipc *ipc = ipc_get();
+
+		/* A new IPC message from the host: reset after the previous one */
+		ipc->core = PLATFORM_PRIMARY_CORE_ID;
+		ipc->delayed_response = false;
+	}
 
 	switch (type) {
 	case SOF_IPC_GLB_REPLY:
@@ -1547,21 +1560,25 @@ void ipc_cmd(ipc_cmd_hdr *_hdr)
 		break;
 #endif
 	default:
-		tr_err(&ipc_tr, "ipc: unknown command type %u", type);
+		tr_err(&ipc_tr, "ipc: unknown command type 0x%x", type);
 		ret = -EINVAL;
 		break;
 	}
 
-out:
 	tr_dbg(&ipc_tr, "ipc: last request 0x%x returned %d", type, ret);
 
+out:
 	/* if ret > 0, reply created and copied by cmd() */
 	if (ret <= 0) {
-		/* send std error/ok reply */
-		reply.error = ret;
+		struct sof_ipc_reply reply = {
+			.error = ret,
+			.hdr = {
+				.cmd = SOF_IPC_GLB_REPLY,
+				.size = sizeof(reply),
+			},
+		};
 
-		reply.hdr.cmd = SOF_IPC_GLB_REPLY;
-		reply.hdr.size = sizeof(reply);
+		/* send std error/ok reply */
 		mailbox_hostbox_write(0, &reply, sizeof(reply));
 	}
 }
