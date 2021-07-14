@@ -798,29 +798,6 @@ static int asrc_control_loop(struct comp_dev *dev, struct comp_data *cd)
 	return 0;
 }
 
-static void asrc_process(struct comp_dev *dev, struct comp_buffer *source,
-			 struct comp_buffer *sink)
-{
-	struct comp_data *cd = comp_get_drvdata(dev);
-	int consumed = 0;
-	int produced = 0;
-
-	/* consumed bytes are not known at this point */
-	buffer_invalidate(source, source->stream.size);
-	cd->asrc_func(dev, &source->stream, &sink->stream, &consumed,
-		      &produced);
-	buffer_writeback(sink, produced *
-			 audio_stream_frame_bytes(&sink->stream));
-
-	comp_dbg(dev, "asrc_copy(), consumed = %u,  produced = %u",
-		 consumed, produced);
-
-	comp_update_buffer_consume(source, consumed *
-				   audio_stream_frame_bytes(&source->stream));
-	comp_update_buffer_produce(sink, produced *
-				   audio_stream_frame_bytes(&sink->stream));
-}
-
 /* copy and process stream data from source to sink buffers */
 static int asrc_copy(struct comp_dev *dev)
 {
@@ -829,8 +806,9 @@ static int asrc_copy(struct comp_dev *dev)
 	struct comp_buffer *sink;
 	int frames_src;
 	int frames_snk;
+	int consumed = 0;
+	int produced = 0;
 	int ret;
-	uint32_t flags = 0;
 
 	comp_dbg(dev, "asrc_copy()");
 
@@ -844,14 +822,11 @@ static int asrc_copy(struct comp_dev *dev)
 	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
 			       source_list);
 
-	buffer_lock(source, &flags);
-	buffer_lock(sink, &flags);
+	source = buffer_acquire(source);
+	sink = buffer_acquire(sink);
 
 	frames_src = audio_stream_get_avail_frames(&source->stream);
 	frames_snk = audio_stream_get_free_frames(&sink->stream);
-
-	buffer_unlock(sink, flags);
-	buffer_unlock(source, flags);
 
 	if (cd->mode == ASRC_OM_PULL) {
 		/* Let ASRC access max number of source frames in pull mode.
@@ -876,8 +851,26 @@ static int asrc_copy(struct comp_dev *dev)
 		cd->source_frames = MIN(cd->source_frames, frames_src);
 	}
 
-	if (cd->source_frames && cd->sink_frames)
-		asrc_process(dev, source, sink);
+	if (!cd->source_frames || !cd->sink_frames)
+		return 0;
+
+	/* consumed bytes are not known at this point */
+	buffer_invalidate(source, source->stream.size);
+	cd->asrc_func(dev, &source->stream, &sink->stream, &consumed,
+		      &produced);
+	buffer_writeback(sink, produced *
+			 audio_stream_frame_bytes(&sink->stream));
+
+	comp_dbg(dev, "asrc_copy(), consumed = %u,  produced = %u",
+		 consumed, produced);
+
+	buffer_release(sink);
+	buffer_release(source);
+
+	comp_update_buffer_consume(source, consumed *
+				   audio_stream_frame_bytes(&source->stream));
+	comp_update_buffer_produce(sink, produced *
+				   audio_stream_frame_bytes(&sink->stream));
 
 	return 0;
 }

@@ -545,7 +545,7 @@ static inline struct comp_dev *comp_alloc(const struct comp_driver *drv,
 {
 	struct comp_dev *dev = NULL;
 
-	dev = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, bytes);
+	dev = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM, bytes);
 	if (!dev)
 		return NULL;
 	dev->size = bytes;
@@ -708,16 +708,13 @@ void comp_get_copy_limits_with_lock(struct comp_buffer *source,
 				    struct comp_buffer *sink,
 				    struct comp_copy_limits *cl)
 {
-	uint32_t source_flags = 0;
-	uint32_t sink_flags = 0;
-
-	buffer_lock(source, &source_flags);
-	buffer_lock(sink, &sink_flags);
+	source = buffer_acquire(source);
+	sink = buffer_acquire(sink);
 
 	comp_get_copy_limits(source, sink, cl);
 
-	buffer_unlock(sink, sink_flags);
-	buffer_unlock(source, source_flags);
+	buffer_release(sink);
+	buffer_release(source);
 }
 
 /**

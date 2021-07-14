@@ -116,7 +116,7 @@ struct pipeline *pipeline_new(uint32_t pipeline_id, uint32_t priority, uint32_t 
 	heap_trace_all(0);
 
 	/* allocate new pipeline */
-	p = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*p));
+	p = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*p));
 	if (!p) {
 		pipe_cl_err("pipeline_new(): Out of Memory");
 		return NULL;
@@ -359,7 +359,6 @@ int pipeline_for_each_comp(struct comp_dev *current,
 	struct list_item *clist;
 	struct comp_buffer *buffer;
 	struct comp_dev *buffer_comp;
-	uint32_t flags;
 
 	/* run this operation further */
 	list_for_item(clist, buffer_list) {
@@ -382,15 +381,15 @@ int pipeline_for_each_comp(struct comp_dev *current,
 
 		/* continue further */
 		if (ctx->comp_func) {
-			buffer_lock(buffer, &flags);
+			buffer = buffer_acquire(buffer);
 			buffer->walking = true;
-			buffer_unlock(buffer, flags);
+			buffer = buffer_release(buffer);
 
 			int err = ctx->comp_func(buffer_comp, buffer,
 						 ctx, dir);
-			buffer_lock(buffer, &flags);
+			buffer = buffer_acquire(buffer);
 			buffer->walking = false;
-			buffer_unlock(buffer, flags);
+			buffer = buffer_release(buffer);
 			if (err < 0)
 				return err;
 		}

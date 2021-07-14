@@ -905,7 +905,6 @@ static int dai_copy(struct comp_dev *dev)
 	uint32_t sink_samples;
 	uint32_t samples;
 	int ret = 0;
-	uint32_t flags = 0;
 
 	comp_dbg(dev, "dai_copy()");
 
@@ -916,7 +915,7 @@ static int dai_copy(struct comp_dev *dev)
 		return ret;
 	}
 
-	buffer_lock(buf, &flags);
+	buf = buffer_acquire(buf);
 
 	/* calculate minimum size to copy */
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
@@ -936,11 +935,11 @@ static int dai_copy(struct comp_dev *dev)
 
 	copy_bytes = samples * sampling;
 
-	buffer_unlock(buf, flags);
-
 	comp_dbg(dev, "dai_copy(), dir: %d copy_bytes= 0x%x, frames= %d",
 		 dev->direction, copy_bytes,
 		 samples / buf->stream.channels);
+
+	buffer_release(buf);
 
 	/* Check possibility of glitch occurrence */
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK &&
