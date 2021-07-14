@@ -55,7 +55,8 @@ RUN apt-get -y update && \
 		unzip \
 		cmake \
 		python3 \
-		libglib2.0-dev
+		libglib2.0-dev \
+		valgrind
 
 ARG CLONE_DEFAULTS="--depth 5"
 
