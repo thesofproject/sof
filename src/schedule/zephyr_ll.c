@@ -15,6 +15,12 @@
 
 #include <kernel.h>
 
+/* 1547fe68-de0c-11eb-8461-3158a1294853 */
+DECLARE_SOF_UUID("zll-schedule", zll_sched_uuid, 0x1547fe68, 0xde0c, 0x11eb,
+		 0x84, 0x61, 0x31, 0x58, 0xa1, 0x29, 0x48, 0x53);
+
+DECLARE_TR_CTX(ll_tr, SOF_UUID(zll_sched_uuid), LOG_LEVEL_INFO);
+
 /* per-scheduler data */
 struct zephyr_ll {
 	struct list_item tasks;			/* list of ll tasks */

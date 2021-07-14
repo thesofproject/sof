@@ -505,7 +505,6 @@ int platform_init(struct sof *sof)
 	if (ret < 0)
 		return ret;
 
-#ifndef __ZEPHYR__
 #if CONFIG_DW_SPI
 	/* initialize the SPI slave */
 	trace_point(TRACE_BOOT_PLATFORM_SPI);
@@ -530,7 +529,7 @@ int platform_init(struct sof *sof)
 
 	/* show heap status */
 	heap_trace_all(1);
-#endif /* __ZEPHYR__ */
+
 	return 0;
 }
 
