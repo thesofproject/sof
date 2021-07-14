@@ -21,6 +21,8 @@
 /* SOF trace header */
 #include "../../../../src/include/sof/trace/trace.h"
 
+extern struct tr_ctx zephyr_tr;
+
 struct timer;
 uint64_t platform_timer_get(struct timer *timer);
 

@@ -455,6 +455,12 @@ zephyr_library_sources(
 	schedule.c
 )
 
+if(CONFIG_IMX)
+zephyr_library_sources(alloc_imx.c)
+else()
+zephyr_library_sources(alloc_cavs.c)
+endif()
+
 zephyr_library_sources_ifdef(CONFIG_TRACE
 	${SOF_SRC_PATH}/trace/dma-trace.c
 	${SOF_SRC_PATH}/trace/trace.c
