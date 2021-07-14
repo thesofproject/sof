@@ -237,19 +237,21 @@
 
 #define SAI_FLAG_PMQOS   BIT(0)
 
-/* Divides down the audio main clock to generate the bit clock when
- * configured for an internal bit clock.
- * The division value is (DIV + 1) * 2.
- */
-#define SAI_CLOCK_DIV		0x7
-#define SAI_TDM_SLOTS		2
-
 extern const struct dai_driver sai_driver;
+
+enum sai_sync_mode {
+	SAI_ASYNC = 0,		/* asynchronous RX and TX */
+	SAI_SYNC_ON_TX = 1,	/* RX synchronized on TX */
+	SAI_SYNC_ON_RX = 2,	/* TX synchronized on RX */
+};
 
 /* SAI private data */
 struct sai_pdata {
 	struct sof_ipc_dai_config config;
 	struct sof_ipc_dai_sai_params params;
+	enum sai_sync_mode sync_mode;
+	bool consumer_mode;
+	bool dsp_mode;
 };
 
 #endif /*__SOF_DRIVERS_SAI_H__ */
