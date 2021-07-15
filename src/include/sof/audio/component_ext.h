@@ -391,6 +391,30 @@ static inline struct comp_driver_list *comp_drivers_get(void)
 	return sof_get()->comp_drivers;
 }
 
+static inline int comp_bind(struct comp_dev *dev, void *data)
+{
+	int ret = 0;
+
+	if (dev->drv->ops.bind)
+		ret = dev->drv->ops.bind(dev, data);
+
+	comp_shared_commit(dev);
+
+	return ret;
+}
+
+static inline int comp_unbind(struct comp_dev *dev, void *data)
+{
+	int ret = 0;
+
+	if (dev->drv->ops.unbind)
+		ret = dev->drv->ops.unbind(dev, data);
+
+	comp_shared_commit(dev);
+
+	return ret;
+}
+
 /** @}*/
 
 #endif /* __SOF_AUDIO_COMPONENT_INT_H__ */
