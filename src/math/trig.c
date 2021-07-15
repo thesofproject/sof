@@ -43,6 +43,65 @@ const int32_t cord_arcsincos_q30fl  = Q_CONVERT_FLOAT(1.0000000000000000, 30);
 /**
  * \CORDIC-based approximation of sine, cosine and complex exponential
  */
+#ifdef CORDIC_HIFI3
+void cordic_approx(int32_t th_rad_fxp, int32_t a_idx, ae_int32 *sign, ae_int32 *b_yn,
+		   ae_int32 *xn, ae_int32 *th_cdc_fxp)
+{
+	ae_f32x2 xy_tmp;
+	ae_f32x2 yn_xn;
+	int32_t b_idx;
+	*sign = 1;
+
+	/* Addition or subtraction by a multiple of pi/2 is done in the data type
+	 * of the input. When the fraction length is 29, then the quantization error
+	 * introduced by the addition or subtraction of pi/2 is done with 29 bits of
+	 * precision.Input range of cordicsin must be in the range [-2*pi, 2*pi),
+	 * a signed type with fractionLength = wordLength-4 will fit this range
+	 * without overflow.Increase of fractionLength makes the addition or
+	 * subtraction of a multiple of pi/2 more precise
+	 */
+	if (th_rad_fxp > cord_sincos_piovertwo_q28fl) {
+		if ((th_rad_fxp - cord_sincos_piovertwo_q29fl) <= cord_sincos_piovertwo_q28fl) {
+			th_rad_fxp -= cord_sincos_piovertwo_q29fl;
+			*sign  = -1;
+		} else {
+			th_rad_fxp -= cordic_sine_cos_piovertwo_q30fl;
+		}
+	} else if (th_rad_fxp < -cord_sincos_piovertwo_q28fl) {
+		if ((th_rad_fxp + cord_sincos_piovertwo_q29fl) >= -cord_sincos_piovertwo_q28fl) {
+			th_rad_fxp += cord_sincos_piovertwo_q29fl;
+			*sign  = -1;
+		} else {
+			th_rad_fxp += cordic_sine_cos_piovertwo_q30fl;
+		}
+	}
+
+	th_rad_fxp = AE_SLAI32(th_rad_fxp, 2);
+	yn_xn = AE_SEL32_LL(0, cordic_sine_cos_lut_q29fl);
+	xy_tmp = AE_SEL32_LL(cordic_sine_cos_lut_q29fl, 0);
+
+	/* Calculate the correct coefficient values from rotation angle.
+	 * Find difference between the coefficients from the lookup table
+	 * and those from the calculation
+	 */
+	for (b_idx = 0; b_idx < a_idx; b_idx++) {
+		if (th_rad_fxp < 0) {
+			th_rad_fxp += cordic_lookup[b_idx];
+			yn_xn = AE_SUBADD32(yn_xn, xy_tmp);
+		} else {
+			th_rad_fxp -= cordic_lookup[b_idx];
+			yn_xn = AE_ADDSUB32(yn_xn, xy_tmp);
+		}
+		xy_tmp = AE_SRAI32(AE_SRAA32(AE_SEL32_LH(yn_xn, yn_xn), b_idx), 1);
+	}
+
+	AE_S32_L_I(AE_SEL32_HH(yn_xn, yn_xn), b_yn, 0);
+	AE_S32_L_I(yn_xn, xn, 0);
+
+	/* Q2.30 format */
+	*th_cdc_fxp = th_rad_fxp;
+}
+#else
 void cordic_approx(int32_t th_rad_fxp, int32_t a_idx, int32_t *sign, int32_t *b_yn, int32_t *xn,
 		   int32_t *th_cdc_fxp)
 {
@@ -100,6 +159,7 @@ void cordic_approx(int32_t th_rad_fxp, int32_t a_idx, int32_t *sign, int32_t *b_
 	/* Q2.30 format -sine, cosine*/
 	*th_cdc_fxp = th_rad_fxp;
 }
+#endif /* !CORDIC_HIFI3 */
 
 /**
  * \CORDIC-based approximation for inverse cosine
@@ -270,6 +330,22 @@ int32_t is_scalar_cordic_asin(int32_t sinvalue, int16_t numiters)
  *		  struct  cordic_cmpx
  * Return Type	: none
  */
+#ifdef CORDIC_HIFI3
+void cmpx_cexp(ae_int32 sign, ae_int32 b_yn, ae_int32 xn, cordic_cfg type, struct cordic_cmpx *cexp)
+{
+	ae_int32 s;
+
+	cexp->re = sign * xn;
+	cexp->im = sign * b_yn;
+	/*convert Q2.30 to Q1.15*/
+	if (type == EN_16B_CORDIC_CEXP) {
+		s = AE_SLAI32S(cexp->re, 1);
+		cexp->re = (int16_t)AE_ROUND16X4F32SSYM(s, s);
+		s = AE_SLAI32S(cexp->im, 1);
+		cexp->im = (int16_t)AE_ROUND16X4F32SSYM(s, s);
+	}
+}
+#else
 void cmpx_cexp(int32_t sign, int32_t b_yn, int32_t xn, cordic_cfg type, struct cordic_cmpx *cexp)
 {
 	cexp->re = sign * xn;
@@ -280,5 +356,6 @@ void cmpx_cexp(int32_t sign, int32_t b_yn, int32_t xn, cordic_cfg type, struct c
 		cexp->im = sat_int16(Q_SHIFT_RND((cexp->im), 30, 15));
 	}
 }
+#endif /* !CORDIC_HIFI3 */
 
-#endif
+#endif /* CONFIG_CORDIC_TRIGONOMETRY_FIXED */

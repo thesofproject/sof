@@ -13,6 +13,14 @@
 
 #include <stdint.h>
 
+#if defined __XCC__
+#include <xtensa/config/core-isa.h>
+#if XCHAL_HAVE_HIFI3 == 1
+#define CORDIC_HIFI3
+#include <xtensa/tie/xt_hifi3.h>
+#endif /* XCHAL_HAVE_HIFI3 == 1 */
+#endif /* __XCC__ */
+
 #ifndef UNIT_CORDIC_TEST
 #define CONFIG_CORDIC_TRIGONOMETRY_FIXED
 #endif
@@ -40,11 +48,19 @@ struct cordic_cmpx {
 	int32_t im;
 };
 
+#ifdef CORDIC_HIFI3
+void cordic_approx(int32_t th_rad_fxp, int32_t a_idx, ae_int32 *sign, ae_int32 *b_yn,
+		   ae_int32 *xn, ae_int32 *th_cdc_fxp);
+void cmpx_cexp(ae_int32 sign, ae_int32 b_yn, ae_int32 xn, cordic_cfg type,
+	       struct cordic_cmpx *cexp);
+#else
 void cordic_approx(int32_t th_rad_fxp, int32_t a_idx, int32_t *sign, int32_t *b_yn, int32_t *xn,
 		   int32_t *th_cdc_fxp);
+void cmpx_cexp(int32_t sign, int32_t b_yn, int32_t xn, cordic_cfg type, struct cordic_cmpx *cexp);
+#endif
 int32_t is_scalar_cordic_acos(int32_t realvalue, int16_t numiters);
 int32_t is_scalar_cordic_asin(int32_t realvalue, int16_t numiters);
-void cmpx_cexp(int32_t sign, int32_t b_yn, int32_t xn, cordic_cfg type, struct cordic_cmpx *cexp);
+
 /* Input is Q4.28, output is Q1.31 */
 /**
  * Compute fixed point cordicsine with table lookup and interpolation
@@ -61,18 +77,36 @@ void cmpx_cexp(int32_t sign, int32_t b_yn, int32_t xn, cordic_cfg type, struct c
  * | 32 | 28  |  1    | 32 | 31 |   1	| 4.28	  | 1.31  |
  * +------------------+-----------------+--------+--------+
  */
+
+#ifdef CORDIC_HIFI3
+static inline int32_t sin_fixed_32b(int32_t th_rad_fxp)
+{
+	ae_int32 th_cdc_fxp;
+	ae_int32 b_yn;
+	ae_int32 xn;
+	ae_int32 sign;
+
+	cordic_approx(th_rad_fxp, CORDIC_31B_TABLE_SIZE, &sign, &b_yn, &xn, &th_cdc_fxp);
+	th_cdc_fxp = (ae_int32)sign * b_yn;
+
+	/*convert Q2.30 to Q1.31 format*/
+	return (ae_int32)AE_SLAI32S(th_cdc_fxp, 1);
+}
+#else
 static inline int32_t sin_fixed_32b(int32_t th_rad_fxp)
 {
 	int32_t th_cdc_fxp;
 	int32_t sign;
 	int32_t b_yn;
 	int32_t xn;
-	cordic_approx(th_rad_fxp, CORDIC_31B_TABLE_SIZE, &sign, &b_yn, &xn, &th_cdc_fxp);
 
+	cordic_approx(th_rad_fxp, CORDIC_31B_TABLE_SIZE, &sign, &b_yn, &xn, &th_cdc_fxp);
 	th_cdc_fxp = sign * b_yn;
+
 	/*convert Q2.30 to Q1.31 format*/
 	return sat_int32(Q_SHIFT_LEFT((int64_t)th_cdc_fxp, 30, 31));
 }
+#endif
 
 /**
  * Compute fixed point cordicsine with table lookup and interpolation
@@ -89,18 +123,35 @@ static inline int32_t sin_fixed_32b(int32_t th_rad_fxp)
  * | 32 | 28  |  1    | 32 | 31 |   1	| 4.28	 | 1.31   |
  * +------------------+-----------------+--------+--------+
  */
+#ifdef CORDIC_HIFI3
+static inline int32_t cos_fixed_32b(int32_t th_rad_fxp)
+{
+	ae_int32 th_cdc_fxp;
+	ae_int32 b_yn;
+	ae_int32 xn;
+	ae_int32 sign;
+
+	cordic_approx(th_rad_fxp, CORDIC_31B_TABLE_SIZE, &sign, &b_yn, &xn, &th_cdc_fxp);
+	th_cdc_fxp = sign * xn;
+
+	/*convert Q2.30 to Q1.31 format*/
+	return (ae_int32)AE_SLAI32S(th_cdc_fxp, 1);
+}
+#else
 static inline int32_t cos_fixed_32b(int32_t th_rad_fxp)
 {
 	int32_t th_cdc_fxp;
 	int32_t sign;
 	int32_t b_yn;
 	int32_t xn;
-	cordic_approx(th_rad_fxp, CORDIC_31B_TABLE_SIZE, &sign, &b_yn, &xn, &th_cdc_fxp);
 
+	cordic_approx(th_rad_fxp, CORDIC_31B_TABLE_SIZE, &sign, &b_yn, &xn, &th_cdc_fxp);
 	th_cdc_fxp = sign * xn;
+
 	/*convert Q2.30 to Q1.31 format*/
 	return sat_int32(Q_SHIFT_LEFT((int64_t)th_cdc_fxp, 30, 31));
 }
+#endif
 
 /* Input is Q4.28, output is Q1.15 */
 /**
@@ -118,6 +169,23 @@ static inline int32_t cos_fixed_32b(int32_t th_rad_fxp)
  * | 32 | 28  |  1    | 32 | 15 |   1	| 4.28	 | 1.15       |
  * +------------------+-----------------+--------+------------+
  */
+#ifdef CORDIC_HIFI3
+static inline int16_t sin_fixed_16b(int32_t th_rad_fxp)
+{
+	ae_int32 th_cdc_fxp;
+	ae_int32 b_yn;
+	ae_int32 xn;
+	ae_int32 s;
+	ae_int32 sign;
+
+	cordic_approx(th_rad_fxp, CORDIC_15B_TABLE_SIZE, &sign, &b_yn, &xn, &th_cdc_fxp);
+	th_cdc_fxp = sign * b_yn;
+
+	/* convert Q2.30 to Q1.31 format, saturate to Q1.15*/
+	s = AE_SLAI32S(th_cdc_fxp, 1);
+	return AE_ROUND16X4F32SSYM(s, s);
+}
+#else
 static inline int16_t sin_fixed_16b(int32_t th_rad_fxp)
 {
 	int32_t th_cdc_fxp;
@@ -126,11 +194,12 @@ static inline int16_t sin_fixed_16b(int32_t th_rad_fxp)
 	int32_t xn;
 
 	cordic_approx(th_rad_fxp, CORDIC_15B_TABLE_SIZE, &sign, &b_yn, &xn, &th_cdc_fxp);
-
 	th_cdc_fxp = sign * b_yn;
+
 	/*convert Q2.30 to Q1.15 format*/
 	return sat_int16(Q_SHIFT_RND(th_cdc_fxp, 30, 15));
 }
+#endif
 
 /**
  * Compute fixed point cordic cosine with table lookup and interpolation
@@ -147,6 +216,23 @@ static inline int16_t sin_fixed_16b(int32_t th_rad_fxp)
  * | 32 | 28  |  1    | 32 | 15 |   1	| 4.28	 | 1.15       |
  * +------------------+-----------------+--------+------------+
  */
+#ifdef CORDIC_HIFI3
+static inline int16_t cos_fixed_16b(int32_t th_rad_fxp)
+{
+	ae_int32 th_cdc_fxp;
+	ae_int32 b_yn;
+	ae_int32 xn;
+	ae_int32 s;
+	ae_int32 sign;
+
+	cordic_approx(th_rad_fxp, CORDIC_15B_TABLE_SIZE, &sign, &b_yn, &xn, &th_cdc_fxp);
+	th_cdc_fxp = sign * xn;
+
+	/* convert Q2.30 to Q1.31 format, saturate to Q1.15*/
+	s = AE_SLAI32S(th_cdc_fxp, 1);
+	return AE_ROUND16X4F32SSYM(s, s);
+}
+#else
 static inline int16_t cos_fixed_16b(int32_t th_rad_fxp)
 {
 	int32_t th_cdc_fxp;
@@ -155,11 +241,12 @@ static inline int16_t cos_fixed_16b(int32_t th_rad_fxp)
 	int32_t xn;
 
 	cordic_approx(th_rad_fxp, CORDIC_15B_TABLE_SIZE, &sign, &b_yn, &xn, &th_cdc_fxp);
-
 	th_cdc_fxp = sign * xn;
+
 	/*convert Q2.30 to Q1.15 format*/
 	return sat_int16(Q_SHIFT_RND(th_cdc_fxp, 30, 15));
 }
+#endif
 
 /**
  * CORDIC-based approximation of complex exponential e^(j*THETA).
@@ -181,6 +268,20 @@ static inline int16_t cos_fixed_16b(int32_t th_rad_fxp)
  * | 32 | 28  |  1    | 32 | 15 |   1	| 4.28	 | 2.30       |
  * +------------------+-----------------+--------+------------+
  */
+
+#ifdef CORDIC_HIFI3
+static inline void cmpx_exp_32b(int32_t th_rad_fxp, struct cordic_cmpx *cexp)
+{
+	ae_int32 th_cdc_fxp;
+	ae_int32 b_yn;
+	ae_int32 xn;
+	ae_int32 sign;
+
+	cordic_approx(th_rad_fxp, CORDIC_31B_TABLE_SIZE, &sign, &b_yn, &xn, &th_cdc_fxp);
+	cmpx_cexp(sign, b_yn, xn, EN_32B_CORDIC_CEXP, cexp);
+	/* return the complex(re & im) result in Q2.30*/
+}
+#else
 static inline void cmpx_exp_32b(int32_t th_rad_fxp, struct cordic_cmpx *cexp)
 {
 	int32_t th_cdc_fxp;
@@ -192,6 +293,7 @@ static inline void cmpx_exp_32b(int32_t th_rad_fxp, struct cordic_cmpx *cexp)
 	cmpx_cexp(sign, b_yn, xn, EN_32B_CORDIC_CEXP, cexp);
 	/* return the complex(re & im) result in Q2.30*/
 }
+#endif
 
 /**
  * CORDIC-based approximation of complex exponential e^(j*THETA).
@@ -213,6 +315,20 @@ static inline void cmpx_exp_32b(int32_t th_rad_fxp, struct cordic_cmpx *cexp)
  * | 32 | 28  |  1    | 32 | 15 |   1	| 4.28	 | 1.15       |
  * +------------------+-----------------+--------+------------+
  */
+#ifdef CORDIC_HIFI3
+static inline void cmpx_exp_16b(int32_t th_rad_fxp, struct cordic_cmpx *cexp)
+{
+	ae_int32 th_cdc_fxp;
+	ae_int32 b_yn;
+	ae_int32 xn;
+	ae_int32 sign;
+
+	/* compute coeff from angles */
+	cordic_approx(th_rad_fxp, CORDIC_15B_TABLE_SIZE, &sign, &b_yn, &xn, &th_cdc_fxp);
+	cmpx_cexp(sign, b_yn, xn, EN_16B_CORDIC_CEXP, cexp);
+	/* return the complex(re & im) result in Q1.15*/
+}
+#else
 static inline void cmpx_exp_16b(int32_t th_rad_fxp, struct cordic_cmpx *cexp)
 {
 	int32_t th_cdc_fxp;
@@ -225,6 +341,7 @@ static inline void cmpx_exp_16b(int32_t th_rad_fxp, struct cordic_cmpx *cexp)
 	cmpx_cexp(sign, b_yn, xn, EN_16B_CORDIC_CEXP, cexp);
 	/* return the complex(re & im) result in Q1.15*/
 }
+#endif
 
 /**
  * CORDIC-based approximation of inverse sine
