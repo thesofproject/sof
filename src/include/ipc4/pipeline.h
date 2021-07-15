@@ -25,8 +25,7 @@
 #define __SOF_IPC4_PIPELINE_H__
 
 #include <stdint.h>
-
-#define IPC4_IXC_STATUS_BITS		24
+#include <ipc4/error_status.h>
 
 /**< Pipeline priority */
 enum ipc4_pipeline_priority {
