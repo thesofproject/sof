@@ -97,6 +97,7 @@ int WEAK rstrlen(const char *s)
 void WEAK __panic(uint32_t p, char *filename, uint32_t linenum)
 {
 	fail_msg("panic: %s:%d (code 0x%x)\n", filename, linenum, p);
+	exit(EXIT_FAILURE);
 }
 
 void WEAK trace_log_filtered(bool send_atomic, const void *log_entry, const struct tr_ctx *ctx,
