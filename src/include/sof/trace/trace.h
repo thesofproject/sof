@@ -98,6 +98,9 @@ struct trace_filter {
 
 #if CONFIG_TRACE
 
+#include <stdarg.h>
+#include <user/trace.h> /* LOG_LEVEL_... */
+
 /*
  * trace_event macro definition
  *
@@ -145,10 +148,13 @@ void trace_off(void);
 void trace_init(struct sof *sof);
 
 /* All tracing macros in this file end up calling these functions in the end. */
+typedef void (*log_func_t)(bool send_atomic, const void *log_entry, const struct tr_ctx *ctx,
+			   uint32_t lvl, uint32_t id_1, uint32_t id_2, int arg_count, va_list args);
+
 void trace_log_filtered(bool send_atomic, const void *log_entry, const struct tr_ctx *ctx,
-			uint32_t lvl, uint32_t id_1, uint32_t id_2, int arg_count, ...);
+			uint32_t lvl, uint32_t id_1, uint32_t id_2, int arg_count, va_list args);
 void trace_log_unfiltered(bool send_atomic, const void *log_entry, const struct tr_ctx *ctx,
-			  uint32_t lvl, uint32_t id_1, uint32_t id_2, int arg_count, ...);
+			  uint32_t lvl, uint32_t id_1, uint32_t id_2, int arg_count, va_list args);
 struct sof_ipc_trace_filter_elem *trace_filter_fill(struct sof_ipc_trace_filter_elem *elem,
 						    struct sof_ipc_trace_filter_elem *end,
 						    struct trace_filter *filter);
@@ -199,6 +205,17 @@ void mtrace_event(const char *complete_packet, uint32_t length);
 		format						\
 	}
 
+#ifdef CONFIG_TRACEM /* Send everything to shared memory too */
+#  define MTRACE_DUPLICATION_LEVEL LOG_LEVEL_DEBUG
+#else /* copy only ERRORS */
+#  define MTRACE_DUPLICATION_LEVEL LOG_LEVEL_ERROR
+#endif /* CONFIG_TRACEM */
+
+/* This function is _not_ passed the format string to save space */
+void _log_sofdict(log_func_t sofdict_logf, bool atomic, const void *log_entry,
+		  const struct tr_ctx *ctx, const uint32_t lvl,
+		  uint32_t id_1, uint32_t id_2, int arg_count, ...);
+
 /* _log_message() */
 
 #ifdef CONFIG_LIBRARY
@@ -238,7 +255,8 @@ _thrown_from_macro_BASE_LOG_in_trace_h
 
 /** _log_message is where the memory-saving dictionary magic described
  * above happens: the "format" string argument is moved to a special
- * linker section and replaced by a &log_entry pointer to it.
+ * linker section and replaced by a &log_entry pointer to it. This must
+ * be a macro for the source location to be meaningful.
  */
 #define _log_message(log_func, atomic, lvl, comp_class, ctx, id_1, id_2, format, ...)	\
 do {											\
@@ -249,8 +267,8 @@ do {											\
 			META_COUNT_VARAGS_BEFORE_COMPILE(__VA_ARGS__),			\
 		BASE_LOG_ASSERT_FAIL_MSG						\
 	);										\
-	log_func(atomic, &log_entry, ctx, lvl, id_1, id_2,				\
-		 META_COUNT_VARAGS_BEFORE_COMPILE(__VA_ARGS__), ##__VA_ARGS__);		\
+	_log_sofdict(log_func, atomic, &log_entry, ctx, lvl, id_1, id_2, \
+		     META_COUNT_VARAGS_BEFORE_COMPILE(__VA_ARGS__), ##__VA_ARGS__); \
 } while (0)
 
 #endif /* CONFIG_LIBRARY */
