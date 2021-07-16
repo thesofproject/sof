@@ -228,4 +228,31 @@ struct ipc4_module_large_config {
 	} data;
 };
 
+struct ipc4_module_delete_instance {
+	union {
+		uint32_t dat;
+
+		struct {
+			uint32_t module_id : 16;
+			uint32_t instance_id : 8;
+			/**< ModuleMsg::DELETE_INSTANCE */
+			uint32_t type : 5;
+			/**< Msg::MSG_REQUEST */
+			uint32_t rsp : 1;
+			/**< Msg::MODULE_MSG */
+			uint32_t msg_tgt : 1;
+			uint32_t _reserved_0 : 1;
+		} r;
+	} header;
+
+	union {
+		uint32_t dat;
+
+		struct {
+			uint32_t rsvd : 30;
+			uint32_t _reserved_1 : 2;
+		} r;
+	} data;
+} __attribute__((packed, aligned(4)));
+
 #endif
