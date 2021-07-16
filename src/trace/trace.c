@@ -532,7 +532,7 @@ void trace_init(struct sof *sof)
 	dma_trace_init_early(sof);
 }
 
-void mtrace_dict_entry(uint32_t dict_entry_address, int n_args, ...)
+void mtrace_dict_entry(bool atomic_context, uint32_t dict_entry_address, int n_args, ...)
 {
 	va_list ap;
 	int i;
@@ -544,9 +544,18 @@ void mtrace_dict_entry(uint32_t dict_entry_address, int n_args, ...)
 		   dict_entry_address, tstamp);
 
 	va_start(ap, n_args);
-	for (i = 0; i < n_args; i++)
+	for (i = 0; i < MIN(n_args, _TRACE_EVENT_MAX_ARGUMENT_COUNT); i++)
 		args[i] = va_arg(ap, uint32_t);
 	va_end(ap);
 
-	mtrace_event(packet, MESSAGE_SIZE(n_args));
+	if (atomic_context) {
+		mtrace_event(packet, MESSAGE_SIZE(n_args));
+	} else {
+		struct trace * const trace = trace_get();
+		uint32_t saved_flags;
+
+		spin_lock_irq(&trace->lock, saved_flags);
+		mtrace_event(packet, MESSAGE_SIZE(n_args));
+		spin_unlock_irq(&trace->lock, saved_flags);
+	}
 }

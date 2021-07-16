@@ -116,6 +116,7 @@ struct trace_filter {
  * image size. This way more elaborate log messages are possible and encouraged,
  * for better debugging experience, without worrying about runtime performance.
  */
+
 /* Map the different trace_xxxx_with_ids(... ) levels to the
  * _trace_event_with_ids(level_xxxx, ...) macro shared across log
  * levels.
@@ -157,6 +158,20 @@ int trace_filter_update(const struct trace_filter *elem);
 
 #define _trace_event_atomic_with_ids(lvl, class, ctx, id_1, id_2, format, ...)	\
 	_log_message(trace_log_filtered, true, lvl, class, ctx, id_1, id_2, format, ##__VA_ARGS__)
+
+/**
+ * Appends one SOF dictionary entry and log statement to the ring buffer
+ * implementing the 'etrace' in shared memory.
+ *
+ * @param atomic_context Take the trace->lock if false.
+ * @param log_entry_pointer dictionary index produced by the
+ *        _DECLARE_LOG_ENTRY macro.
+ * @param n_args number of va_args
+ */
+void mtrace_dict_entry(bool atomic_context, uint32_t log_entry_pointer, int n_args, ...);
+
+/** Posts a fully prepared log header + log entry */
+void mtrace_event(const char *complete_packet, uint32_t length);
 
 /** The start of this linker output MUST match the 'ldc_entry_header'
  *  struct defined in the logger program running in user space.
@@ -431,16 +446,11 @@ struct tr_ctx {
 			      too_many_mtrace_printf_arguments);	\
 		_DECLARE_LOG_ENTRY(log_level, format_str, _TRACE_INV_CLASS, \
 				   META_COUNT_VARAGS_BEFORE_COMPILE(__VA_ARGS__)); \
-		mtrace_dict_entry((uint32_t)&log_entry,			\
+		mtrace_dict_entry(true, (uint32_t)&log_entry,			\
 				  META_COUNT_VARAGS_BEFORE_COMPILE(__VA_ARGS__), \
 				  ##__VA_ARGS__);			\
 	} while (0)
 
-/** Adds log_header prefix and appends  arguments before sending */
-void mtrace_dict_entry(uint32_t log_entry_pointer, int n_args, ...);
-
-/** Posts a fully prepared log header + log entry */
-void mtrace_event(const char *complete_packet, uint32_t length);
 
 #else
 
