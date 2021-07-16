@@ -159,7 +159,7 @@ int ipc_comp_dai_config(struct ipc *ipc, struct ipc_config_dai *common_config,
 		config->type, config->dai_index);
 
 	/* for each component */
-	list_for_item(clist, &ipc->comp_list) {
+	list_for_coherent_item(clist, &ipc->comp_list, sizeof(*icd)) {
 		icd = container_of(clist, struct ipc_comp_dev, c.list);
 		/* make sure we only config DAI comps */
 		if (icd->type != COMP_TYPE_COMPONENT)
@@ -175,8 +175,10 @@ int ipc_comp_dai_config(struct ipc *ipc, struct ipc_config_dai *common_config,
 		    dev_comp_type(icd->cd) == SOF_COMP_SG_DAI) {
 
 			ret = comp_dai_config(icd->cd, common_config, spec_config);
-			if (ret < 0)
+			if (ret < 0) {
+				ipc_release_comp(icd);
 				break;
+			}
 		}
 	}
 
