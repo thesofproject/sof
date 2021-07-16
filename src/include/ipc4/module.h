@@ -261,4 +261,10 @@ struct ipc4_module_delete_instance {
 	} data;
 } __attribute__((packed, aligned(4)));
 
+#define IPC4_COMP_ID(x, y)	((x) << 16 | (y))
+#define IPC4_MOD_ID(x) ((x) >> 16)
+#define IPC4_INST_ID(x)	((x) & 0xffff)
+#define IPC4_SRC_QUEUE_ID(x)	(((x) >> 16) & 0xffff)
+#define IPC4_SINK_QUEUE_ID(x)	((x) & 0xffff)
+
 #endif
