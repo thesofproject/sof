@@ -25,10 +25,10 @@ struct timer;
 uint64_t platform_timer_get(struct timer *timer);
 
 /*
- * Override SOF dictionary macros for now and let Zephyr take care of
- * the physical log IO.
+ * Override SOF mtrace_printf() macro for now to support Zephyr's shared
+ * memory logger. Note the DMA trace can be copied to the shared memory
+ * too thanks to CONFIG_TRACEM.
  */
-#undef _log_message
 #undef mtrace_printf
 
 #if USE_PRINTK
@@ -38,18 +38,8 @@ uint64_t platform_timer_get(struct timer *timer);
 			printk("%llu: " format "\n", platform_timer_get(NULL),	\
 				##__VA_ARGS__);					\
 	} while (0)
-#define _log_message(log_func, atomic, level, comp_class, ctx, id1, id2, format, ...)	\
-	do {								        \
-		if ((level) <= SOF_ZEPHYR_TRACE_LEVEL)                          \
-			printk("%llu: " format "\n", platform_timer_get(NULL),	\
-				##__VA_ARGS__);					\
-	} while (0)
-#else /* not tested */
-#define _log_message(log_func, atomic, level, comp_class, ctx, id1, id2, format, ...)	\
-	do {								        \
-		Z_LOG(level, "%u: " format, (uint32_t)platform_timer_get(NULL),	\
-		      ##__VA_ARGS__);					        \
-	} while (0)
+#else
+#error "TODO: Z_LOG()"
 #endif
 
 #endif /* __INCLUDE_TRACE__ */
