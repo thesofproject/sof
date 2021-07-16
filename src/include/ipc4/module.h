@@ -226,7 +226,7 @@ struct ipc4_module_large_config {
 			uint32_t _reserved_2 : 2;
 		} r;
 	} data;
-};
+} __attribute__((packed, aligned(4)));
 
 struct ipc4_module_delete_instance {
 	union {
