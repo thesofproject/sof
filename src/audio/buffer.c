@@ -168,7 +168,6 @@ void buffer_free(struct comp_buffer *buffer)
 	notifier_unregister_all(NULL, buffer);
 
 	rfree(buffer->stream.addr);
-	rfree(buffer);
 }
 
 void comp_update_buffer_produce(struct comp_buffer *buffer, uint32_t bytes)

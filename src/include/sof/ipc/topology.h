@@ -148,6 +148,7 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *connect);
  * @return Component device or NULL.
  */
 struct ipc_comp_dev *ipc_acquire_comp_by_id(struct ipc *ipc, uint32_t id);
+struct ipc_comp_dev *ipc_acquire_comp_by_id_try(struct ipc *ipc, uint32_t id);
 
 /**
  * \brief Get component device from pipeline ID and type.
