@@ -229,7 +229,6 @@ static void dai_free(struct comp_dev *dev)
 		rfree(dd->dai_spec_config);
 
 	rfree(dd);
-	rfree(dev);
 }
 
 static int dai_comp_get_hw_params(struct comp_dev *dev,
@@ -513,8 +512,10 @@ static int dai_params(struct comp_dev *dev,
 	}
 
 	/* calculate frame size */
+	struct comp_buffer *buffer = buffer_acquire(dd->local_buffer);
 	frame_size = get_frame_bytes(dev->ipc_config.frame_fmt,
-				     dd->local_buffer->stream.channels);
+				     buffer->stream.channels);
+	buffer_release(buffer);
 
 	/* calculate period size */
 	period_bytes = dev->frames * frame_size;
