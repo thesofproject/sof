@@ -438,6 +438,7 @@ zephyr_include_directories(${SOF_PLATFORM_PATH}/${PLATFORM}/include)
 zephyr_library_sources(
 	${SOF_IPC_PATH}/dma-copy.c
 	${SOF_IPC_PATH}/ipc-common.c
+	${SOF_IPC_PATH}/ipc-helper.c
 	${SOF_IPC_PATH}/ipc3/handler.c
 	${SOF_IPC_PATH}/ipc3/helper.c
 	${SOF_IPC_PATH}/ipc3/dai.c
