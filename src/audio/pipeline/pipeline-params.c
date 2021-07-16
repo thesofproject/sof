@@ -136,12 +136,14 @@ static void pipeline_update_buffer_pcm_params(struct comp_buffer *buffer,
 	struct sof_ipc_stream_params *params = data;
 	int i;
 
+	buffer = buffer_acquire(buffer);
 	params->buffer_fmt = buffer->buffer_fmt;
 	params->frame_fmt = buffer->stream.frame_fmt;
 	params->rate = buffer->stream.rate;
 	params->channels = buffer->stream.channels;
 	for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
 		params->chmap[i] = buffer->chmap[i];
+	buffer_release(buffer);
 }
 
 /* fetch hardware stream parameters from DAI and propagate them to the remaining

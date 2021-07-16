@@ -697,8 +697,10 @@ static int host_params(struct comp_dev *dev,
 		return -EINVAL;
 	}
 
-	period_bytes = dev->frames *
-		audio_stream_frame_bytes(&hd->local_buffer->stream);
+	struct comp_buffer *buffer = buffer_acquire(hd->local_buffer);
+
+	period_bytes = dev->frames * audio_stream_frame_bytes(&buffer->stream);
+	buffer_release(buffer);
 
 	if (!period_bytes) {
 		comp_err(dev, "host_params(): invalid period_bytes");
