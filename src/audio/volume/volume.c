@@ -388,7 +388,6 @@ static void volume_free(struct comp_dev *dev)
 	comp_dbg(dev, "volume_free()");
 
 	rfree(cd);
-	rfree(dev);
 }
 
 /**

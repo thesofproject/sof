@@ -70,8 +70,32 @@ struct ipc_comp_dev *ipc_acquire_comp_by_id(struct ipc *ipc, uint32_t id)
 	struct ipc_comp_dev *icd;
 	struct list_item *clist;
 
-	list_for_coherent_item(clist, &ipc->comp_list, sizeof(*icd)) {
+	list_for_coherent_item(clist,  &ipc->comp_list, sizeof(*icd)) {
 		icd = container_of(clist, struct ipc_comp_dev, c.list);
+
+		if (icd->id == id)
+			return icd; /* cached address, caller must release() */
+	}
+
+	return NULL;
+}
+
+/*
+ * Try to acquire each item in list. Move to the next item if unsuccessful.
+ * caller must coherent_release() comp_dev
+ */
+struct ipc_comp_dev *ipc_acquire_comp_by_id_try(struct ipc *ipc, uint32_t id)
+{
+	struct ipc_comp_dev *icd;
+	struct list_item *clist;
+
+	list_for_coherent_item_try(clist,  &ipc->comp_list, sizeof(*icd)) {
+		icd = container_of(clist, struct ipc_comp_dev, c.list);
+
+		/* move to the next item if cannot acquire current item */
+		if (is_uncached(icd))
+			continue;
+
 		if (icd->id == id)
 			return icd; /* cached address, caller must release() */
 	}
@@ -114,8 +138,13 @@ struct ipc_comp_dev *ipc_acquire_ppl_comp(struct ipc *ipc,
 	int pipe_id;
 
 	/* first try to find the module in the pipeline */
-	list_for_coherent_item(clist, &ipc->comp_list, sizeof(*icd)) {
+	list_for_coherent_item_try(clist, &ipc->comp_list, sizeof(*icd)) {
 		icd = container_of(clist, struct ipc_comp_dev, c.list);
+
+		/* move to the next item if cannot acquire current item */
+		if (is_uncached(icd))
+			continue;
+
 		if (icd->type != COMP_TYPE_COMPONENT) {
 			continue;
 		}
@@ -131,8 +160,13 @@ struct ipc_comp_dev *ipc_acquire_ppl_comp(struct ipc *ipc,
 	}
 
 	/* it's connected pipeline, so find the connected module */
-	list_for_coherent_item(clist, &ipc->comp_list, sizeof(*icd)) {
+	list_for_coherent_item_try(clist, &ipc->comp_list, sizeof(*icd)) {
 		icd = container_of(clist, struct ipc_comp_dev, c.list);
+
+		/* move to the next item if cannot acquire current item */
+		if (is_uncached(icd))
+			continue;
+
 		if (icd->type != COMP_TYPE_COMPONENT) {
 			continue;
 		}

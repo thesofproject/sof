@@ -582,7 +582,6 @@ static void host_free(struct comp_dev *dev)
 	ipc_msg_free(hd->msg);
 	dma_sg_free(&hd->config.elem_array);
 	rfree(hd);
-	rfree(dev);
 }
 
 static int host_elements_reset(struct comp_dev *dev)
@@ -698,7 +697,6 @@ static int host_params(struct comp_dev *dev,
 	}
 
 	struct comp_buffer *buffer = buffer_acquire(hd->local_buffer);
-
 	period_bytes = dev->frames * audio_stream_frame_bytes(&buffer->stream);
 	buffer_release(buffer);
 
