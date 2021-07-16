@@ -126,8 +126,6 @@ int comp_set_state(struct comp_dev *dev, int cmd)
 		break;
 	}
 
-	comp_writeback(dev);
-
 	return ret;
 }
 
@@ -437,19 +435,6 @@ void comp_data_blob_handler_free(struct comp_data_blob_handler *blob_handler)
 
 struct comp_dev *comp_make_shared(struct comp_dev *dev)
 {
-	struct list_item *old_bsource_list = &dev->bsource_list;
-	struct list_item *old_bsink_list = &dev->bsink_list;
-
-	/* flush cache to share */
-	dcache_writeback_region(dev, dev->size);
-
-	dev = platform_shared_get(dev, dev->size);
-
-	/* re-link lists with the new heads addresses, init would cut
-	 * links to existing items, local already connected buffers
-	 */
-	list_relink(&dev->bsource_list, old_bsource_list);
-	list_relink(&dev->bsink_list, old_bsink_list);
 	dev->is_shared = true;
 
 	return dev;

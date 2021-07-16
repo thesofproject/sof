@@ -718,26 +718,6 @@ void comp_get_copy_limits_with_lock(struct comp_buffer *source,
 }
 
 /**
- * Invalidates component to ensure current state and params readout.
- * @param dev Component to invalidate
- */
-static inline void comp_invalidate(struct comp_dev *dev)
-{
-	if (!dev->is_shared)
-		dcache_invalidate_region(dev, sizeof(struct comp_dev));
-}
-
-/**
- * Writeback component to ensure current state and params readout.
- * @param dev Component to writeback
- */
-static inline void comp_writeback(struct comp_dev *dev)
-{
-	if (!dev->is_shared)
-		dcache_writeback_region(dev, sizeof(struct comp_dev));
-}
-
-/**
  * Get component state.
  *
  * @param req_dev Requesting component
@@ -745,12 +725,6 @@ static inline void comp_writeback(struct comp_dev *dev)
  */
 static inline int comp_get_state(struct comp_dev *req_dev, struct comp_dev *dev)
 {
-	/* we should not invalidate data when components are on the same
-	 * core, because we could invalidate data not previously writebacked
-	 */
-	if (req_dev->ipc_config.core != dev->ipc_config.core)
-		comp_invalidate(dev);
-
 	return dev->state;
 }
 
