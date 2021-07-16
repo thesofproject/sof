@@ -87,6 +87,33 @@ __must_check static inline struct coherent *coherent_acquire(
 	return uncache_to_cache(c);
 }
 
+__must_check static inline struct coherent *coherent_try_acquire(struct coherent *c,
+								 const size_t size)
+{
+	/* assert is someone passes a cache/local address in here. */
+	ADDR_IS_COHERENT(c);
+
+	/* this flavour should not be used in IRQ context */
+	CHECK_COHERENT_IRQ(c);
+
+	/* access the shared coherent object */
+	if (c->shared) {
+		CHECK_COHERENT_CORE(c);
+
+		int ret = spin_try_lock(&c->lock);
+
+		/* return uncached object if spin_try_lock() fails */
+		if (!ret)
+			return c;
+
+		/* invalidate local copy */
+		dcache_invalidate_region(uncache_to_cache(c), size);
+	}
+
+	/* client can now use cached object safely */
+	return uncache_to_cache(c);
+}
+
 static inline struct coherent *coherent_release(struct coherent *c,
 	const size_t size)
 {
@@ -192,6 +219,17 @@ __must_check static inline struct coherent *coherent_acquire(
 	return c;
 }
 
+__must_check static inline struct coherent *coherent_try_acquire(struct coherent *c,
+								 const size_t size)
+{
+	int ret = spin_try_lock(&c->lock);
+
+	if (ret)
+		return c;
+
+	return NULL;
+}
+
 static inline struct coherent *coherent_release(struct coherent *c,
 	const size_t size)
 {
@@ -238,6 +276,13 @@ static inline struct coherent *coherent_release_irq(struct coherent *c,
 #define _coherent_next_object(_item, _size)				\
 	coherent_acquire(container_of((_item)->next, struct coherent, list), _size)
 
+/*
+ * try to acquire (hold lock and invalidate) next object in list. Return cached address on success
+ * or uncached address on failure
+ */
+#define _coherent_next_object_try(_item, _size)				\
+	coherent_try_acquire(container_of((_item)->next, struct coherent, list), _size)
+
 /* release (release lock and writeback) prev object in list */
 #define _coherent_prev_object(_item, _size)				\
 	coherent_release(container_of((_item)->prev, struct coherent, list), _size)
@@ -255,8 +300,12 @@ static inline struct coherent *coherent_release_irq(struct coherent *c,
 	&(_coherent_next_object(_item, _size))->list
 
 /* get next list item (coherent) pointer */
+#define _coherent_next_list_item_try(_item, _size) \
+	(&(_coherent_next_object_try(_item, _size))->list)
+
+/* get next list item (coherent) pointer */
 #define _coherent_next_list_item_irq(_item, _size)				\
-	&(_coherent_next_object_irq(_item, _size))->list
+	(&(_coherent_next_object_irq(_item, _size))->list)
 
 /* acquire the next coherent object in list or list head if empty */
 #define _coherent_iterate_init(_head, _pos, _size)			\
@@ -272,11 +321,27 @@ static inline struct coherent *coherent_release_irq(struct coherent *c,
 #define _coherent_iterate_condition(_head, _pos)			\
 	uncache_to_cache(_head) != _pos
 
-/* acquire next coherent object, release previous object and set next position */
+/* release current object, acquire next coherent object, and set next position */
 #define _coherent_iterate_next(_head, _pos, _size)			\
+	(_pos = &(coherent_release(container_of(_pos, struct coherent, list), _size))->list), \
 	(_pos = _coherent_next_not_head(_pos, _head) ?			\
-		_coherent_next_list_item(_pos, _size) : uncache_to_cache(_head)), \
-		_coherent_prev_object(_pos, _size)
+		_coherent_next_list_item(_pos, _size) : uncache_to_cache(_head))
+
+#define _coherent_next_or_head(_head, _pos, _size) \
+	(_coherent_next_not_head(_pos, _head) ?	\
+	_coherent_next_list_item_try(_pos, _size) : uncache_to_cache(_head))
+
+/* acquire the next coherent object in list or list head if empty */
+#define _coherent_iterate_init_try(_head, _pos, _size)			\
+	(_pos = list_is_empty(_head) ?						\
+		uncache_to_cache(_head) : _coherent_next_list_item_try(_head, _size))
+
+/* release current object, acquire next available object, and set next position */
+#define _coherent_iterate_next_try(_head, _pos, _size)		\
+	(_pos = is_uncached(_pos) ? \
+	_coherent_next_or_head(_head, _pos, _size) : \
+	((_pos = &(coherent_release(container_of(_pos, struct coherent, list), _size))->list), \
+	_coherent_next_or_head(_head, _pos, _size)))
 
 /* acquire next coherent object, release previous object and set next position */
 #define _coherent_iterate_next_irq(_head, _pos, _size)			\
@@ -321,9 +386,14 @@ static inline struct coherent *coherent_release_irq(struct coherent *c,
 	     _coherent_iterate_condition(_head, _pos);			\
 		_coherent_iterate_next(_head, _pos, _size))
 
-#define list_for_coherent_item_irq(_head, _pos, _size)			\
-	for (_coherent_iterate_init(_head, _pos, _size); 		\
+#define list_for_coherent_item_try(_pos, _head, _size)			\
+	for (_coherent_iterate_init_try(_head, _pos, _size);			\
 	     _coherent_iterate_condition(_head, _pos);			\
-		_coherent_iterate_next(_head, _pos, _size))
+		_coherent_iterate_next_try(_head, _pos, _size))
+
+#define list_for_coherent_item_irq(_head, _pos, _size)			\
+	for (_coherent_iterate_init_irq(_head, _pos, _size);			\
+	     _coherent_iterate_condition(_head, _pos);			\
+		_coherent_iterate_next_irq(_head, _pos, _size))
 
 #endif
