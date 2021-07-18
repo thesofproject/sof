@@ -31,6 +31,7 @@ static void sai_start(struct dai *dai, int direction)
 {
 	dai_info(dai, "SAI: sai_start");
 
+	int chan_idx = 0;
 	uint32_t xcsr = 0U;
 
 	if (direction == DAI_DIR_CAPTURE) {
@@ -88,9 +89,18 @@ static void sai_start(struct dai *dai, int direction)
 			REG_SAI_MCTL_MCLK_EN);
 #endif
 
+#ifdef CONFIG_IMX8ULP
+	if (direction == DAI_DIR_PLAYBACK)
+		chan_idx = BIT(0);
+	else
+		chan_idx = BIT(2);
+#else
+	chan_idx = BIT(0);
+#endif
+
 	/* transmit/receive data channel enable */
 	dai_update_bits(dai, REG_SAI_XCR3(direction),
-			REG_SAI_CR3_TRCE_MASK, REG_SAI_CR3_TRCE(1));
+			REG_SAI_CR3_TRCE_MASK, REG_SAI_CR3_TRCE(chan_idx));
 
 	/* transmitter/receiver enable */
 	dai_update_bits(dai, REG_SAI_XCSR(direction),
@@ -174,7 +184,7 @@ static inline int sai_set_config(struct dai *dai,
 		val_cr4 |= REG_SAI_CR4_FSE | REG_SAI_CR4_FSP;
 		val_cr4 |= REG_SAI_CR4_SYWD(sywd);
 		val_cr4 |= REG_SAI_CR4_MF;
-		val_cr4 |= REG_SAI_CR4_FSE;
+		//val_cr4 |= REG_SAI_CR4_FSE;
 		break;
 	case SOF_DAI_FMT_LEFT_J:
 		/*
@@ -290,7 +300,7 @@ static inline int sai_set_config(struct dai *dai,
 
 	/* TODO: for the time being use half FIFO size as watermark */
 	dai_update_bits(dai, REG_SAI_XCR1(REG_TX_DIR),
-			REG_SAI_CR1_RFW_MASK, SAI_FIFO_WORD_SIZE / 2);
+			REG_SAI_CR1_RFW_MASK, dai->plat_data.fifo[REG_TX_DIR].watermark);
 	dai_update_bits(dai, REG_SAI_XCR2(REG_TX_DIR), mask_cr2, val_cr2);
 	dai_update_bits(dai, REG_SAI_XCR4(REG_TX_DIR), mask_cr4, val_cr4);
 	dai_update_bits(dai, REG_SAI_XCR5(REG_TX_DIR), mask_cr5, val_cr5);
@@ -303,7 +313,7 @@ static inline int sai_set_config(struct dai *dai,
 
 	/* TODO: for the time being use half FIFO size as watermark */
 	dai_update_bits(dai, REG_SAI_XCR1(REG_RX_DIR),
-			REG_SAI_CR1_RFW_MASK, SAI_FIFO_WORD_SIZE / 2);
+			REG_SAI_CR1_RFW_MASK, dai->plat_data.fifo[REG_RX_DIR].watermark);
 	dai_update_bits(dai, REG_SAI_XCR2(REG_RX_DIR), mask_cr2, val_cr2);
 	dai_update_bits(dai, REG_SAI_XCR4(REG_RX_DIR), mask_cr4, val_cr4);
 	dai_update_bits(dai, REG_SAI_XCR5(REG_RX_DIR), mask_cr5, val_cr5);
@@ -397,6 +407,11 @@ static int sai_get_fifo(struct dai *dai, int direction, int stream_id)
 	}
 }
 
+static int sai_get_srcid(struct dai *dai, int direction, int stream_id)
+{
+	return direction ? dai->plat_data.dmamux_rx_num : dai->plat_data.dmamux_tx_num;
+}
+
 static int sai_get_hw_params(struct dai *dai,
 			     struct sof_ipc_stream_params *params,
 			     int dir)
@@ -425,6 +440,7 @@ const struct dai_driver sai_driver = {
 		.probe			= sai_probe,
 		.get_handshake		= sai_get_handshake,
 		.get_fifo		= sai_get_fifo,
+		.get_srcid		= sai_get_srcid,
 		.get_hw_params		= sai_get_hw_params,
 	},
 };

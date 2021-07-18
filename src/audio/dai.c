@@ -393,7 +393,9 @@ static void dai_data_config(struct comp_dev *dev)
 		dd->stream_id = dd->dai_config->alh.stream_id;
 		break;
 	case SOF_DAI_IMX_SAI:
-		COMPILER_FALLTHROUGH;
+		dd->config.burst_elems =
+			dd->dai->plat_data.fifo[dai->direction].depth;
+		//COMPILER_FALLTHROUGH;
 	case SOF_DAI_IMX_ESAI:
 		dd->config.burst_elems =
 			dd->dai->plat_data.fifo[dai->direction].depth;
@@ -816,6 +818,7 @@ static void dai_config_reset(struct comp_dev *dev)
 static int dai_prepare(struct comp_dev *dev)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
+	struct sof_ipc_comp_dai *dai = COMP_GET_IPC(dev, sof_ipc_comp_dai);
 	int ret = 0;
 
 	comp_info(dev, "dai_prepare()");
@@ -838,6 +841,7 @@ static int dai_prepare(struct comp_dev *dev)
 		comp_set_state(dev, COMP_TRIGGER_RESET);
 		return -EINVAL;
 	}
+	dd->chan->srcid = dai_get_srcid(dd->dai, dai->direction, dd->stream_id);
 
 	if (!dd->config.elem_array.elems) {
 		comp_err(dev, "dai_prepare(): Missing dd->config.elem_array.elems.");
