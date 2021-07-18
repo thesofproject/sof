@@ -20,6 +20,20 @@ config DUMMY_DMA
 
 	  If unsure, select "n".
 
+config IMX_IRQ
+	bool "i.MX IRQ"
+	default n
+	depends on IMX
+	help
+	  Select this to enable support for i.MX interrupt with irq.
+
+config IMX_NOIRQ
+	bool "i.MX NO IRQ"
+	default n
+	depends on IMX
+	help
+	  Select this to enable support for i.MX interrupt without irq.
+
 config IPC_POLLING
 	bool "Enable IPC Polling support"
 	default n

@@ -15,3 +15,7 @@ endif()
 if(CONFIG_IMX_INTERRUPT_IRQSTEER)
 	add_local_sources(sof interrupt-irqsteer.c)
 endif()
+
+if(CONFIG_IMX_NOIRQ)
+	add_local_sources(sof interrupt-noirq.c)
+endif()
