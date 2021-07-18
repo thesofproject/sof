@@ -60,6 +60,7 @@ static int ipc_parse_page_descriptors(uint8_t *page_table,
 		else
 			phy_addr <<= 12;
 		phy_addr &= 0xfffff000;
+		convert_addr(HOST_TO_LOCAL, &phy_addr);
 
 		e = elem_array->elems + i;
 
@@ -105,6 +106,7 @@ static int ipc_get_page_descriptors(struct dma *dmac, uint8_t *page_table,
 	config.irq_disabled = false;
 	dma_sg_init(&config.elem_array);
 
+	convert_addr(HOST_TO_LOCAL, &ring->phy_addr);
 	/* set up DMA descriptor */
 	elem.dest = (uintptr_t)page_table;
 	elem.src = ring->phy_addr;

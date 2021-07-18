@@ -47,6 +47,28 @@ int platform_init(struct sof *sof);
 
 /** @}*/
 
+#define HOST_TO_LOCAL 0
+#define LOCAL_TO_HOST 1
+
+#ifdef CONFIG_IMX8ULP
+static inline void convert_addr(int type, uint32_t *addr)
+{
+	switch(type) {
+	case HOST_TO_LOCAL:
+		*addr = SDRAM0_BASE + (*addr - MEM_RESERVED);
+		break;
+	case LOCAL_TO_HOST:
+		*addr = MEM_RESERVED + (*addr - SDRAM0_BASE);
+		break;
+	};
+}
+#else
+static inline void convert_addr(int type, uint32_t *addr)
+{
+	return;
+}
+#endif
+
 #endif
 
 #endif /* __SOF_PLATFORM_H__ */

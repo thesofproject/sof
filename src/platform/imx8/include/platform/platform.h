@@ -72,7 +72,7 @@ static inline void platform_panic(uint32_t p)
 	mailbox_sw_reg_write(SRAM_REG_FW_STATUS, p);
 
 	/* Notify application processor */
-	imx_mu_xcr_rmw(IMX_MU_xCR_GIRn(1), 0);
+	imx_mu_xcr_rmw(IMX_MU_VERSION, IMX_MU_GCR, IMX_MU_xCR_GIRn(IMX_MU_VERSION, 1), 0);
 }
 
 /**
