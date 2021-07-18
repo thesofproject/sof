@@ -25,6 +25,21 @@ DECLARE_SOF_UUID("edma", edma_uuid, 0x3d73a110, 0x0930, 0x457f,
 
 DECLARE_TR_CTX(edma_tr, SOF_UUID(edma_uuid), LOG_LEVEL_INFO);
 
+#ifdef CONFIG_IMX8ULP
+static void chan_addr_convert(struct dma_chan_data *channel, uint32_t *sbase, uint32_t *dbase)
+{
+	if (channel->direction == DMA_DIR_MEM_TO_DEV)
+		convert_addr(LOCAL_TO_HOST, sbase);
+	else
+		convert_addr(LOCAL_TO_HOST, dbase);
+}
+#else
+static void chan_addr_convert(struct dma_chan_data *channel, uint32_t *sbase, uint32_t *dbase)
+{
+	return;
+}
+#endif
+
 static int edma_encode_tcd_attr(int src_width, int dest_width)
 {
 	int result = 0;
@@ -275,7 +290,7 @@ static int edma_validate_nonsg_config(struct dma_sg_elem_array *sgelems,
 static int edma_setup_tcd(struct dma_chan_data *channel, int16_t soff,
 			  int16_t doff, bool cyclic, bool sg, bool irqoff,
 			  struct dma_sg_elem_array *sgelems, int src_width,
-			  int dest_width, uint32_t burst_elems)
+			  int dest_width, uint32_t burst_elems, int srcid)
 {
 	int rc;
 	uint32_t sbase, dbase, total_size, elem_count, elem_size, size;
@@ -323,6 +338,14 @@ static int edma_setup_tcd(struct dma_chan_data *channel, int16_t soff,
 	rc = edma_encode_tcd_attr(src_width, dest_width);
 	if (rc < 0)
 		return rc;
+
+	/* only impact 8ulp platform */
+	if (srcid) {
+		if (!dma_chan_reg_read(channel, EDMA_CH_MUX))
+			dma_chan_reg_write(channel, EDMA_CH_MUX, srcid);
+	}
+
+	chan_addr_convert(channel, &sbase, &dbase);
 
 	/* Configure the in-hardware TCD */
 	dma_chan_reg_write(channel, EDMA_TCD_SADDR, sbase);
@@ -380,7 +403,8 @@ static int edma_set_config(struct dma_chan_data *channel,
 	return edma_setup_tcd(channel, soff, doff, config->cyclic,
 			      config->scatter, config->irq_disabled,
 			      &config->elem_array, config->src_width,
-			      config->dest_width, config->burst_elems);
+			      config->dest_width, config->burst_elems,
+			      channel->srcid);
 }
 
 /* restore DMA context after leaving D3 */

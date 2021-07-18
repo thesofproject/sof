@@ -20,6 +20,7 @@
 #define EDMA_CH_INT                     0x08
 #define EDMA_CH_SBR                     0x0C
 #define EDMA_CH_PRI                     0x10
+#define EDMA_CH_MUX                     0x14
 #define EDMA_TCD_SADDR                  0x20
 #define EDMA_TCD_SOFF                   0x24
 #define EDMA_TCD_ATTR                   0x26
@@ -94,5 +95,19 @@
 #define EDMA0_ESAI_CHAN_TX_IRQ	442
 #define EDMA0_SAI_CHAN_RX_IRQ	349
 #define EDMA0_SAI_CHAN_TX_IRQ	349
+
+/* 8ulp chans */
+#define EDMA2_CHAN0    0
+#define EDMA2_CHAN1    1
+/* 8ulp edma2 */
+#define EDMA2_CHAN0_IRQ 6
+#define EDMA2_CHAN1_IRQ 7
+#define EDMA2_CHAN2_IRQ 8
+#define EDMA2_CHAN3_IRQ 9
+#define EDMA2_CHAN4_IRQ 10
+#define EDMA2_CHAN5_IRQ 11
+#define EDMA2_CHAN6_IRQ 12
+#define EDMA2_CHAN7_IRQ 13
+#define EDMA2_CHAN_MAX 8
 
 #endif /* __SOF_DRIVERS_EDMA_H__ */
