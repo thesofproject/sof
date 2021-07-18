@@ -3,7 +3,7 @@
 # Copyright(c) 2018 Intel Corporation. All rights reserved.
 set -e
 
-SUPPORTED_PLATFORMS=(byt cht bdw hsw apl icl skl kbl cnl imx8 imx8x imx8m)
+SUPPORTED_PLATFORMS=(byt cht bdw hsw apl icl skl kbl cnl imx8 imx8x imx8m imx8ulp)
 READY_MSG="6c 00 00 00 00 00 00 70"
 
 SOF_DIR=$(cd "$(dirname "$0")" && cd .. && pwd)
@@ -139,7 +139,7 @@ do
 			SHM_MBOX=qemu-bridge-hp-sram-mem
 			has_rom=true
 			;;
-		imx8 | imx8x | imx8m)
+		imx8 | imx8x | imx8m | imx8ulp)
 			READY_IPC="00 00 00 00 00 00 04 c0"
 			SHM_IPC_REG=qemu-bridge-mu-io
 			SHM_MBOX=qemu-bridge-mbox-io
