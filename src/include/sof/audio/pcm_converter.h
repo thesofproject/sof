@@ -91,6 +91,52 @@ pcm_get_conversion_function(enum sof_ipc_frame in,
 	return NULL;
 }
 
+/** \brief PCM conversion functions mapfor different size of valid bit and container. */
+struct pcm_func_vc_map {
+	enum sof_ipc_frame source;	/**< source frame container format */
+	enum sof_ipc_frame valid_src_bits;	/**< source frame format */
+	enum sof_ipc_frame sink;	/**< sink frame container format */
+	enum sof_ipc_frame valid_sink_bits;	/**< sink frame format */
+	pcm_converter_func func; /**< PCM conversion function */
+};
+
+/** \brief Map of formats with dedicated conversion functions. */
+extern const struct pcm_func_vc_map pcm_func_vc_map[];
+
+/** \brief Number of conversion functions. */
+extern const size_t pcm_func_vc_count;
+
+/**
+ * \brief Retrieves PCM conversion function for different container size.
+ * \param in_bits is source container format.
+ * \param valid_in_bits is source valid sample format.
+ * \param out_bits is sink container format.
+ * \param valid_out_bits is sink valid sample format.
+ */
+static inline pcm_converter_func
+pcm_get_conversion_vc_function(enum sof_ipc_frame in_bits,
+			       enum sof_ipc_frame valid_in_bits,
+			       enum sof_ipc_frame out_bits,
+			       enum sof_ipc_frame valid_out_bits)
+{
+	uint32_t i;
+
+	for (i = 0; i < pcm_func_vc_count; i++) {
+		if (in_bits != pcm_func_vc_map[i].source)
+			continue;
+		if (valid_in_bits != pcm_func_vc_map[i].valid_src_bits)
+			continue;
+		if (out_bits != pcm_func_vc_map[i].sink)
+			continue;
+		if (valid_out_bits != pcm_func_vc_map[i].valid_sink_bits)
+			continue;
+
+		return pcm_func_vc_map[i].func;
+	}
+
+	return NULL;
+}
+
 /**
  * \brief Convert data from circular buffer using converter working on linear
  *	  memory space
