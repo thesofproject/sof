@@ -446,6 +446,27 @@ config PCM_CONVERTER_FORMAT_FLOAT
 	help
 	  Support floating point processing data format
 
+config PCM_CONVERTER_FORMAT_S16_C16_AND_S16_C32
+	bool "Support S16C16 <-> S16C32"
+	default n
+	help
+	  Support conversion between 16 bit valid sample size in 16 bit container
+	  and 16 bit valid sample size in 32 bit container
+
+config PCM_CONVERTER_FORMAT_S16_C32_AND_S32_C32
+	bool "Support S16C32 <-> S32C32"
+	default n
+	help
+	  Support conversion between 16 bit valid sample size in 32 bit container
+	  and 32 bit valid sample size in 32 bit container
+
+config PCM_CONVERTER_FORMAT_S16_C32_AND_S24_C32
+	bool "Support S16C32 <-> S24C32"
+	default n
+	help
+	  Support conversion between 16 bit valid sample size in 32 bit container
+	  and 24 bit valid sample size in 32 bit container
+
 config PCM_CONVERTER_FORMAT_CONVERT_HIFI3
 	bool "HIFI3 optimized conversion"
 	default y
