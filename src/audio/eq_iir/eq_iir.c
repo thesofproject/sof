@@ -47,8 +47,6 @@ struct comp_data {
 	struct iir_state_df2t iir[PLATFORM_MAX_CHANNELS]; /**< filters state */
 	struct comp_data_blob_handler *model_handler;
 	struct sof_eq_iir_config *config;
-	enum sof_ipc_frame source_format;	/**< source frame format */
-	enum sof_ipc_frame sink_format;		/**< sink frame format */
 	int64_t *iir_delay;			/**< pointer to allocated RAM */
 	size_t iir_delay_size;			/**< allocated size */
 	eq_iir_func eq_iir_func;		/**< processing function */
@@ -755,6 +753,8 @@ static int eq_iir_prepare(struct comp_dev *dev)
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *sourceb;
 	struct comp_buffer *sinkb;
+	enum sof_ipc_frame source_format;
+	enum sof_ipc_frame sink_format;
 	uint32_t sink_period_bytes;
 	int ret;
 
@@ -774,10 +774,10 @@ static int eq_iir_prepare(struct comp_dev *dev)
 				struct comp_buffer, source_list);
 
 	/* get source data format */
-	cd->source_format = sourceb->stream.frame_fmt;
+	source_format = sourceb->stream.frame_fmt;
 
 	/* get sink data format and period bytes */
-	cd->sink_format = sinkb->stream.frame_fmt;
+	sink_format = sinkb->stream.frame_fmt;
 	sink_period_bytes = audio_stream_period_bytes(&sinkb->stream,
 						      dev->frames);
 
@@ -792,16 +792,14 @@ static int eq_iir_prepare(struct comp_dev *dev)
 
 	/* Initialize EQ */
 	comp_info(dev, "eq_iir_prepare(), source_format=%d, sink_format=%d",
-		  cd->source_format, cd->sink_format);
+		  source_format, sink_format);
 	if (cd->config) {
 		ret = eq_iir_setup(cd, sourceb->stream.channels);
 		if (ret < 0) {
 			comp_err(dev, "eq_iir_prepare(), setup failed.");
 			goto err;
 		}
-		cd->eq_iir_func = eq_iir_find_func(cd->source_format,
-						   cd->sink_format,
-						   fm_configured,
+		cd->eq_iir_func = eq_iir_find_func(source_format, sink_format, fm_configured,
 						   ARRAY_SIZE(fm_configured));
 		if (!cd->eq_iir_func) {
 			comp_err(dev, "eq_iir_prepare(), No proc func");
@@ -810,9 +808,7 @@ static int eq_iir_prepare(struct comp_dev *dev)
 		}
 		comp_info(dev, "eq_iir_prepare(), IIR is configured.");
 	} else {
-		cd->eq_iir_func = eq_iir_find_func(cd->source_format,
-						   cd->sink_format,
-						   fm_passthrough,
+		cd->eq_iir_func = eq_iir_find_func(source_format, sink_format, fm_passthrough,
 						   ARRAY_SIZE(fm_passthrough));
 		if (!cd->eq_iir_func) {
 			comp_err(dev, "eq_iir_prepare(), No pass func");
