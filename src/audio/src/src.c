@@ -66,8 +66,6 @@ struct comp_data {
 	int32_t *delay_lines;
 	uint32_t sink_rate;
 	uint32_t source_rate;
-	uint32_t sink_format;
-	uint32_t source_format;
 	int32_t *sbuf_w_ptr;
 	int32_t *sbuf_r_ptr;
 	int sbuf_avail;
@@ -800,6 +798,8 @@ static int src_prepare(struct comp_dev *dev)
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *sinkb;
 	struct comp_buffer *sourceb;
+	enum sof_ipc_frame source_format;
+	enum sof_ipc_frame sink_format;
 	uint32_t source_period_bytes;
 	uint32_t sink_period_bytes;
 	int ret;
@@ -820,12 +820,12 @@ static int src_prepare(struct comp_dev *dev)
 				struct comp_buffer, source_list);
 
 	/* get source data format and period bytes */
-	cd->source_format = sourceb->stream.frame_fmt;
+	source_format = sourceb->stream.frame_fmt;
 	source_period_bytes = audio_stream_period_bytes(&sourceb->stream,
 							dev->frames);
 
 	/* get sink data format and period bytes */
-	cd->sink_format = sinkb->stream.frame_fmt;
+	sink_format = sinkb->stream.frame_fmt;
 	sink_period_bytes = audio_stream_period_bytes(&sinkb->stream,
 						      dev->frames);
 
@@ -849,14 +849,14 @@ static int src_prepare(struct comp_dev *dev)
 	}
 
 	/* SRC supports S16_LE, S24_4LE and S32_LE formats */
-	if (cd->source_format != cd->sink_format) {
+	if (source_format != sink_format) {
 		comp_err(dev, "src_prepare(): Source fmt %d and sink fmt %d are different.",
-			 cd->source_format, cd->sink_format);
+			 source_format, sink_format);
 		ret = -EINVAL;
 		goto err;
 	}
 
-	switch (cd->source_format) {
+	switch (source_format) {
 #if CONFIG_FORMAT_S16LE
 	case SOF_IPC_FRAME_S16_LE:
 		cd->data_shift = 0;
@@ -876,8 +876,7 @@ static int src_prepare(struct comp_dev *dev)
 		break;
 #endif /* CONFIG_FORMAT_S32LE */
 	default:
-		comp_err(dev, "src_prepare(): invalid format %d",
-			 cd->source_format);
+		comp_err(dev, "src_prepare(): invalid format %d", source_format);
 		ret = -EINVAL;
 		goto err;
 	}
