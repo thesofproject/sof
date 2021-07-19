@@ -26,6 +26,7 @@
 #include <ipc/dai-intel.h>
 #include <ipc/stream.h>
 #include <ipc/topology.h>
+#include <ipc4/ssp.h>
 #include <user/trace.h>
 
 #include <errno.h>
@@ -232,8 +233,8 @@ static void ssp_bclk_disable_unprepare(struct dai *dai)
 }
 
 /* Digital Audio interface formatting */
-static int ssp_set_config(struct dai *dai, struct ipc_config_dai *common_config,
-			  void *spec_config)
+static int ssp_set_config_tplg(struct dai *dai, struct ipc_config_dai *common_config,
+			       void *spec_config)
 {
 	struct ssp_pdata *ssp = dai_get_drvdata(dai);
 	struct sof_ipc_dai_config *config = spec_config;
@@ -785,6 +786,81 @@ out:
 	spin_unlock(&dai->lock);
 
 	return ret;
+}
+
+static int ssp_set_config_blob(struct dai *dai, struct ipc_config_dai *common_config,
+			       void *spec_config)
+{
+	struct ipc4_ssp_configuration_blob *blob = spec_config;
+	struct ssp_pdata *ssp = dai_get_drvdata(dai);
+	uint32_t ssc0, sstsa, ssrsa;
+
+	/* set config only once for playback or capture */
+	if (dai->sref > 1)
+		return 0;
+
+	ssc0 = blob->i2s_driver_config.i2s_config.ssc0;
+	sstsa = blob->i2s_driver_config.i2s_config.sstsa;
+	ssrsa = blob->i2s_driver_config.i2s_config.ssrsa;
+
+	ssp_write(dai, SSCR0, ssc0);
+	ssp_write(dai, SSCR1, blob->i2s_driver_config.i2s_config.ssc1);
+	ssp_write(dai, SSCR2, blob->i2s_driver_config.i2s_config.ssc2);
+	ssp_write(dai, SSCR3, blob->i2s_driver_config.i2s_config.ssc3);
+	ssp_write(dai, SSPSP, blob->i2s_driver_config.i2s_config.sspsp);
+	ssp_write(dai, SSPSP2, blob->i2s_driver_config.i2s_config.sspsp2);
+	ssp_write(dai, SSIOC, blob->i2s_driver_config.i2s_config.ssioc);
+	ssp_write(dai, SSTO, blob->i2s_driver_config.i2s_config.sscto);
+	ssp_write(dai, SSTSA, sstsa);
+	ssp_write(dai, SSRSA, ssrsa);
+
+	dai_info(dai, "ssp_set_config(), sscr0 = 0x%08x, sscr1 = 0x%08x, ssto = 0x%08x, sspsp = 0x%0x",
+		 ssc0, blob->i2s_driver_config.i2s_config.ssc1,
+		 blob->i2s_driver_config.i2s_config.sscto,
+		 blob->i2s_driver_config.i2s_config.sspsp);
+	dai_info(dai, "ssp_set_config(), sscr2 = 0x%08x, sspsp2 = 0x%08x, sscr3 = 0x%08x",
+		 blob->i2s_driver_config.i2s_config.ssc2, blob->i2s_driver_config.i2s_config.sspsp2,
+		 blob->i2s_driver_config.i2s_config.ssc3);
+	dai_err(dai, "ssp_set_config(), ssioc = 0x%08x, ssrsa = 0x%08x, sstsa = 0x%08x",
+		blob->i2s_driver_config.i2s_config.ssioc, ssrsa, sstsa);
+
+	ssp->config.ssp.sample_valid_bits = SSCR0_DSIZE_GET(ssc0);
+	if (ssc0 & SSCR0_EDSS)
+		ssp->config.ssp.sample_valid_bits += 16;
+
+	ssp->config.ssp.tdm_slots = SSCR0_FRDC_GET(ssc0);
+	ssp->config.ssp.tx_slots = SSTSA_GET(sstsa);
+	ssp->config.ssp.rx_slots = SSRSA_GET(ssrsa);
+	ssp->config.ssp.fsync_rate = 48000;
+	ssp->params = ssp->config.ssp;
+
+	ssp->state[DAI_DIR_PLAYBACK] = COMP_STATE_PREPARE;
+	ssp->state[DAI_DIR_CAPTURE] = COMP_STATE_PREPARE;
+
+	/* ssp blob is set by pcm_hw_params for ipc4 stream, so enable
+	 * mclk and bclk at this time.
+	 */
+	mn_set_mclk_blob(blob->i2s_driver_config.mclk_config.mdivc,
+			 blob->i2s_driver_config.mclk_config.mdivr);
+	ssp->clk_active |= SSP_CLK_MCLK_ES_REQ;
+
+	/* enable TRSE/RSRE before SSE */
+	ssp_update_bits(dai, SSCR1, SSCR1_TSRE | SSCR1_RSRE, SSCR1_TSRE | SSCR1_RSRE);
+
+	/* enable port */
+	ssp_update_bits(dai, SSCR0, SSCR0_SSE, SSCR0_SSE);
+	ssp->clk_active |= SSP_CLK_BCLK_ES_REQ;
+
+	return 0;
+}
+
+static int ssp_set_config(struct dai *dai, struct ipc_config_dai *common_config,
+			  void *spec_config)
+{
+	if (!common_config->is_config_blob)
+		return ssp_set_config_tplg(dai, common_config, spec_config);
+	else
+		return ssp_set_config_blob(dai, common_config, spec_config);
 }
 
 /*
