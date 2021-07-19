@@ -47,8 +47,6 @@ struct comp_data {
 	struct fir_state_32x16 fir[PLATFORM_MAX_CHANNELS]; /**< filters state */
 	struct comp_data_blob_handler *model_handler;
 	struct sof_eq_fir_config *config;
-	enum sof_ipc_frame source_format;	/**< source frame format */
-	enum sof_ipc_frame sink_format;		/**< sink frame format */
 	int32_t *fir_delay;			/**< pointer to allocated RAM */
 	size_t fir_delay_size;			/**< allocated size */
 	void (*eq_fir_func)(struct fir_state_32x16 fir[],
@@ -562,11 +560,6 @@ static int eq_fir_prepare(struct comp_dev *dev)
 	sinkb = list_first_item(&dev->bsink_list,
 				struct comp_buffer, source_list);
 
-	/* get source data format */
-	cd->source_format = sourceb->stream.frame_fmt;
-
-	/* get sink data format and period bytes */
-	cd->sink_format = sinkb->stream.frame_fmt;
 	sink_period_bytes = audio_stream_period_bytes(&sinkb->stream,
 						      dev->frames);
 
