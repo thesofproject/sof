@@ -24,7 +24,7 @@ static int passthrough_codec_prepare(struct comp_dev *dev)
 	struct codec_data *codec = comp_get_codec(dev);
 	struct comp_data *cd = comp_get_drvdata(dev);
 
-	comp_info(dev, "passthrough_codec_process()");
+	comp_info(dev, "passthrough_codec_prepare()");
 
 	codec->cpd.in_buff = rballoc(0, SOF_MEM_CAPS_RAM, cd->period_bytes);
 	if (!codec->cpd.in_buff) {
