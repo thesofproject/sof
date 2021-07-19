@@ -87,7 +87,11 @@ if(NOT CONFIG_LIBRARY)
 	if(CONFIG_COMP_IGO_NR)
 		add_subdirectory(igo_nr)
 	endif()
-
+	if(CONFIG_COMP_COPIER)
+                add_local_sources(sof
+                        copier.c
+                )
+        endif()
 	subdirs(pipeline)
 
 	return()
