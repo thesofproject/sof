@@ -611,8 +611,14 @@ int task_main_start(struct sof *sof)
 	/* init pipeline position offsets */
 	pipeline_posn_init(sof);
 
+#if defined(CONFIG_IMX)
+#define SOF_IPC_QUEUED_DOMAIN SOF_SCHEDULE_LL_DMA
+#else
+#define SOF_IPC_QUEUED_DOMAIN SOF_SCHEDULE_LL_TIMER
+#endif
+
 	/* Temporary fix for issue #4356 */
-	(void)notifier_register(NULL, scheduler_get_data(SOF_SCHEDULE_LL_TIMER),
+	(void)notifier_register(NULL, scheduler_get_data(SOF_IPC_QUEUED_DOMAIN),
 				NOTIFIER_ID_LL_POST_RUN,
 				ipc_send_queued_callback, 0);
 
