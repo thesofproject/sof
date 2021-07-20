@@ -794,6 +794,10 @@ static int tdfb_reset(struct comp_dev *dev)
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
 		fir_reset(&cd->fir[i]);
 
+	/* Clear in/out buffers */
+	memset(cd->in, 0, TDFB_IN_BUF_LENGTH * sizeof(int32_t));
+	memset(cd->out, 0, TDFB_IN_BUF_LENGTH * sizeof(int32_t));
+
 	comp_set_state(dev, COMP_TRIGGER_RESET);
 	return 0;
 }
