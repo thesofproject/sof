@@ -35,8 +35,8 @@ struct comp_driver_list {
 
 /** \brief Retrieves the component device buffer list. */
 #define comp_buffer_list(comp, dir) \
-	((dir) == PPL_DIR_DOWNSTREAM ? &comp->bsink_list : \
-	 &comp->bsource_list)
+	((dir) == PPL_DIR_DOWNSTREAM ? &(comp)->bsink_list :	\
+	 &(comp)->bsource_list)
 
 /** See comp_ops::new */
 struct comp_dev *comp_new(struct sof_ipc_comp *comp);

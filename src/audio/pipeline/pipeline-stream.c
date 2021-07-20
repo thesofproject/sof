@@ -255,6 +255,53 @@ static int pipeline_trigger_list(struct pipeline *p, struct comp_dev *host, int 
 	return ret;
 }
 
+static void pipeline_trigger_xrun(struct pipeline *p, struct comp_dev **host)
+{
+	/*
+	 * XRUN can happen on a pipeline, not directly attached to the host,
+	 * find the original one
+	 */
+	do {
+		/* Check the opposite direction */
+		int dir = (*host)->direction == PPL_DIR_DOWNSTREAM ? PPL_DIR_UPSTREAM :
+			PPL_DIR_DOWNSTREAM;
+		struct list_item *buffer_list = comp_buffer_list(*host, dir);
+		struct list_item *clist;
+		bool found = false;
+
+		if (list_is_empty(buffer_list))
+			/* Reached the original host */
+			break;
+
+		list_for_item(clist, buffer_list) {
+			struct comp_buffer *buffer = buffer_from_list(clist,
+								      struct comp_buffer, dir);
+			struct comp_dev *buffer_comp = buffer_get_comp(buffer, dir);
+
+			switch (buffer_comp->pipeline->status) {
+			case COMP_STATE_ACTIVE:
+			case COMP_STATE_PREPARE:
+				found = true;
+				break;
+			}
+
+			if (found) {
+				*host = (*host)->direction == PPL_DIR_DOWNSTREAM ?
+					buffer_comp->pipeline->source_comp :
+					buffer_comp->pipeline->sink_comp;
+				break;
+			}
+		}
+
+		if (!found) {
+			/* No active pipeline found! Should never occur. */
+			pipe_err(p, "No active pipeline found to link to pipeline %u!",
+				 (*host)->pipeline->pipeline_id);
+			break;
+		}
+	} while (true);
+}
+
 /* trigger pipeline in IPC context */
 int pipeline_trigger(struct pipeline *p, struct comp_dev *host, int cmd)
 {
@@ -268,9 +315,12 @@ int pipeline_trigger(struct pipeline *p, struct comp_dev *host, int cmd)
 		/* Execute immediately */
 		ret = pipeline_trigger_run(p, host, cmd);
 		return ret == PPL_STATUS_PATH_STOP ? 0 : ret;
+	case COMP_TRIGGER_XRUN:
+		pipeline_trigger_xrun(p, &host);
+		COMPILER_FALLTHROUGH;
 	case COMP_TRIGGER_PRE_RELEASE:
 	case COMP_TRIGGER_PRE_START:
-		/* Add all connected pipelines to the list and schedule them all */
+		/* Add all connected pipelines to the list and trigger them all */
 		ret = pipeline_trigger_list(p, host, cmd);
 		if (ret < 0)
 			return ret;
