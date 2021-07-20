@@ -7,7 +7,7 @@
 //         Tomasz Lauda <tomasz.lauda@linux.intel.com>
 
 /**
- * \file audio/volume.c
+ * \file
  * \brief Volume component implementation
  * \authors Liam Girdwood <liam.r.girdwood@linux.intel.com>\n
  *          Keyon Jie <yang.jie@linux.intel.com>\n

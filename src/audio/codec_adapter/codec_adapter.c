@@ -9,7 +9,7 @@
  */
 
 /**
- * \file audio/codec_adapter.c
+ * \file
  * \brief Processing compoent aimed to work with external codec libraries
  * \author Marcin Rajwa <marcin.rajwa@linux.intel.com>
  */

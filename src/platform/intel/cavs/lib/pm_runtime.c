@@ -6,7 +6,7 @@
 //         Janusz Jankowski <janusz.jankowski@linux.intel.com>
 
 /**
- * \file platform/intel/cavs/pm_runtime.c
+ * \file
  * \brief Runtime power management implementation for Apollolake, Cannonlake
  *        and Icelake
  * \author Tomasz Lauda <tomasz.lauda@linux.intel.com>

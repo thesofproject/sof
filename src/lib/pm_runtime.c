@@ -5,7 +5,7 @@
 // Author: Tomasz Lauda <tomasz.lauda@linux.intel.com>
 
 /**
- * \file lib/pm_runtime.c
+ * \file
  * \brief Runtime power management implementation
  * \author Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */

@@ -6,7 +6,7 @@
 //         Tomasz Lauda <tomasz.lauda@linux.intel.com>
 
 /**
- * \file arch/xtensa/task.c
+ * \file
  * \brief Arch task implementation file
  * \authors Liam Girdwood <liam.r.girdwood@linux.intel.com>
  *          Tomasz Lauda <tomasz.lauda@linux.intel.com>

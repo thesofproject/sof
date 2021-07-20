@@ -5,7 +5,7 @@
 // Author: Tomasz Lauda <tomasz.lauda@linux.intel.com>
 
 /**
- * \file arch/xtensa/cpu.c
+ * \file
  * \brief Xtensa CPU implementation file
  * \authors Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */

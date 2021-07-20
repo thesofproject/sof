@@ -6,7 +6,7 @@
  */
 
 /**
- * \file platform/cannonlake/include/platform/asm_memory_management.h
+ * \file
  * \brief Macros for power gating memory banks specific for cAVS 1.8
  * \(CannonLake) and cAVS 2.0 (IceLake)
  * \author Lech Betlej <lech.betlej@linux.intel.com>

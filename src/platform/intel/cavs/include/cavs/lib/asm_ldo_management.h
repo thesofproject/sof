@@ -6,7 +6,7 @@
  */
 
 /**
- * \file platform/apollolake/include/platform/asm_ldo_management.h
+ * \file
  * \brief Macros for controlling LDO state specific for cAVS
  * \author Lech Betlej <lech.betlej@linux.intel.com>
  */

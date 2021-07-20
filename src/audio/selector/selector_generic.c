@@ -5,7 +5,7 @@
 // Author: Lech Betlej <lech.betlej@linux.intel.com>
 
 /**
- * \file audio/selector_generic.c
+ * \file
  * \brief Audio channel selector / extractor - generic processing functions
  * \authors Lech Betlej <lech.betlej@linux.intel.com>
  */

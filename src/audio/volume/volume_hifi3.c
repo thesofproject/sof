@@ -5,7 +5,7 @@
 // Author: Tomasz Lauda <tomasz.lauda@linux.intel.com>
 
 /**
- * \file audio/volume_hifi3.c
+ * \file
  * \brief Volume HiFi3 processing implementation
  * \authors Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */

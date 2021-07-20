@@ -5,7 +5,7 @@
 // Author: Tomasz Lauda <tomasz.lauda@linux.intel.com>
 
 /**
- * \file arch/xtensa/notifier.c
+ * \file
  * \brief Xtensa notifier implementation file
  * \authors Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */
