@@ -29,7 +29,7 @@ int validate_setup_config(struct ca_config *cfg);
 /**
  * \brief Create a codec adapter component.
  * \param[in] drv - component driver pointer.
- * \param[in] comp - component ipc descriptor pointer.
+ * \param[in] config - component ipc descriptor pointer.
  *
  * \return: a pointer to newly created codec adapter component.
  */

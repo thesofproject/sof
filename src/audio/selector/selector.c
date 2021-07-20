@@ -46,7 +46,7 @@ DECLARE_TR_CTX(selector_tr, SOF_UUID(selector_uuid), LOG_LEVEL_INFO);
 
 /**
  * \brief Creates selector component.
- * \param[in,out] data Selector base component device.
+ *
  * \return Pointer to selector base component device.
  */
 static struct comp_dev *selector_new(const struct comp_driver *drv,

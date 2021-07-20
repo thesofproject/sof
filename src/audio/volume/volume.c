@@ -185,7 +185,7 @@ const struct comp_zc_func_map zc_func_map[] = {
 
 /**
  * \brief Synchronize host mmap() volume with real value.
- * \param[in,out] cd Volume component private data.
+ *
  * \param[in] num_channels Update channels 0 to num_channels -1.
  */
 static void vol_sync_host(struct comp_dev *dev, unsigned int num_channels)
@@ -294,8 +294,7 @@ static void volume_ramp(struct comp_dev *dev)
 
 /**
  * \brief Creates volume component.
- * \param[in,out] data Volume base component device.
- * \param[in] delay Update time.
+ *
  * \return Pointer to volume base component device.
  */
 static struct comp_dev *volume_new(const struct comp_driver *drv,

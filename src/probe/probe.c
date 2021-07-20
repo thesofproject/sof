@@ -73,9 +73,9 @@ struct probe_pdata {
 
 /**
  * \brief Allocate and initialize probe buffer with correct alignment.
- * \param[out] probe buffer.
- * \param[in] buffer size.
- * \param[in] buffer address alignment.
+ * \param[out] buffer return value.
+ * \param[in] size of buffer.
+ * \param[in] align the buffer.
  * \return 0 on success, error code otherwise.
  */
 static int probe_dma_buffer_init(struct probe_dma_buf *buffer, uint32_t size,
@@ -106,8 +106,9 @@ static int probe_dma_buffer_init(struct probe_dma_buf *buffer, uint32_t size,
 /**
  * \brief Request DMA and initialize DMA for probes with correct alignment,
  *	  size and specific channel.
- * \param[out] probe DMA.
- * \param[in] direction.
+ *
+ * \param[out] dma probe returned
+ * \param[in] direction of the DMA
  * \return 0 on success, error code otherwise.
  */
 static int probe_dma_init(struct probe_dma_ext *dma, uint32_t direction)
@@ -164,7 +165,7 @@ static int probe_dma_init(struct probe_dma_ext *dma, uint32_t direction)
 
 /**
  * \brief Stop, deinit and free DMA and buffer used by probes.
- * \param[out] probe DMA.
+ *
  * \return 0 on success, error code otherwise.
  */
 static int probe_dma_deinit(struct probe_dma_ext *dma)
@@ -437,7 +438,7 @@ int probe_dma_info(struct sof_ipc_probe_info_params *data, uint32_t max_size)
 
 /**
  * \brief Check if stream_tag is used by probes.
- * \param[in] DMA stream_tag.
+ * \param[in] stream_tag DMA stream tag.
  * \return 0 if not used, 1 otherwise.
  */
 static int is_probe_stream_used(uint32_t stream_tag)
@@ -489,9 +490,9 @@ int probe_dma_remove(uint32_t count, uint32_t *stream_tag)
 
 /**
  * \brief Copy data to probe buffer and update buffer pointers.
- * \param[out] probe DMA buffer.
+ * \param[out] pbuf DMA buffer.
  * \param[in] data pointer.
- * \param[in] size.
+ * \param[in] bytes size.
  * \return 0 on success, error code otherwise.
  */
 static int copy_to_pbuffer(struct probe_dma_buf *pbuf, void *data,
@@ -540,9 +541,9 @@ static int copy_to_pbuffer(struct probe_dma_buf *pbuf, void *data,
 
 /**
  * \brief Copy data from probe buffer and update buffer pointers.
- * \param[out] probe DMA buffer.
+ * \param[out] pbuf DMA buffer.
  * \param[out] data pointer.
- * \param[in] size.
+ * \param[in] bytes size.
  * \return 0 on success, error code otherwise.
  */
 static int copy_from_pbuffer(struct probe_dma_buf *pbuf, void *data,
@@ -598,9 +599,9 @@ static int copy_from_pbuffer(struct probe_dma_buf *pbuf, void *data,
 /**
  * \brief Generate probe data packet header, update timestamp, calc crc
  *	  and copy data to probe buffer.
- * \param[in] component buffer pointer.
- * \param[in] data size.
- * \param[in] audio format.
+ * \param[in] buffer component buffer pointer.
+ * \param[in] size data size.
+ * \param[in] format audio format.
  * \return 0 on success, error code otherwise.
  */
 static int probe_gen_header(struct comp_buffer *buffer, uint32_t size,
@@ -634,9 +635,9 @@ static int probe_gen_header(struct comp_buffer *buffer, uint32_t size,
 
 /**
  * \brief Generate description of audio format for extraction probes.
- * \param[in] frame_fmt.
- * \param[in] sample rate.
- * \param[in] channels num.
+ * \param[in] frame_fmt format
+ * \param[in] rate sample rate.
+ * \param[in] channels number of channels
  * \return format.
  */
 static uint32_t probe_gen_format(uint32_t frame_fmt, uint32_t rate,

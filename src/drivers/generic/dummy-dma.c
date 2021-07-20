@@ -417,7 +417,7 @@ static int dummy_dma_copy(struct dma_chan_data *channel, int bytes,
 
 /**
  * \brief Initialize the driver
- * \param[in] The preallocated DMA controller structure
+ * \param[in] dma The preallocated DMA controller structure
  * \return 0 on success, a negative value on error
  *
  * This function must be called before any other will work. Calling functions

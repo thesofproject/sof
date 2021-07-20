@@ -89,7 +89,7 @@ void mn_init(struct sof *sof)
 
 /**
  * \brief Checks if given clock is used as source for any MCLK.
- * \param[in] clk_src MCLK source.
+ *
  * \return true if any port use given clock source, false otherwise.
  */
 static inline bool is_mclk_source_in_use(void)

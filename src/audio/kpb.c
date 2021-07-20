@@ -116,7 +116,7 @@ static uint64_t kpb_task_deadline(void *data)
 
 /**
  * \brief Create a key phrase buffer component.
- * \param[in] comp - generic ipc component pointer.
+ * \param[in] config - generic ipc component pointer.
  *
  * \return: a pointer to newly created KPB component.
  */
@@ -797,8 +797,8 @@ out:
  * \brief Buffer real time data stream in
  *	the internal buffer.
  *
- * \param[in] kpb - KPB component data pointer.
- * \param[in] source pointer to the buffer source.
+ * \param[in] dev - KPB component data pointer.
+ * \param[in] source - pointer to the buffer source.
  *
  */
 static int kpb_buffer_data(struct comp_dev *dev,
@@ -959,7 +959,7 @@ static void kpb_event_handler(void *arg, enum notify_id type, void *event_data)
 /**
  * \brief Register clients in the system.
  *
- * \param[in] dev - kpb device component pointer.
+ * \param[in] kpb - kpb device component pointer.
  * \param[in] cli - pointer to KPB client's data.
  *
  * \return integer representing either:
@@ -1003,7 +1003,7 @@ static int kpb_register_client(struct comp_data *kpb, struct kpb_client *cli)
 /**
  * \brief Prepare history buffer for draining.
  *
- * \param[in] kpb - kpb component data.
+ * \param[in] dev - kpb component data.
  * \param[in] cli - client's data.
  *
  */
@@ -1319,7 +1319,6 @@ out:
 /**
  * \brief Drain data samples safe, according to configuration.
  *
- * \param[in] dev - kpb component device pointer
  * \param[in] sink - pointer to sink buffer.
  * \param[in] source - pointer to source buffer.
  * \param[in] size - requested copy size in bytes.
@@ -1468,7 +1467,6 @@ static inline bool kpb_is_sample_width_supported(uint32_t sampling_width)
 /**
  * \brief Copy data samples safe, according to configuration.
  *
- * \param[in] dev - kpb component device pointer
  * \param[in] sink - pointer to sink buffer.
  * \param[in] source - pointer to source buffer.
  * \param[in] size - requested copy size in bytes.

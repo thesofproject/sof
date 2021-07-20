@@ -123,8 +123,6 @@ void gdb_handle_exception(void)
 
 /**
  * \brief Parse incoming GDB packets.
- * \param[in] none.
- * \param[out] none.
  *
  * Every incoming packet has the format: $packet-data#check-sum
  * packet-data varies depending on command. Full description
