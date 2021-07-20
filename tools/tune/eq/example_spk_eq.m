@@ -15,7 +15,7 @@ function example_spk_eq()
 
 %% Defaults
 fs = 48e3;
-tpath =  '../../topology/m4';
+tpath =  '../../topology/topology1/m4';
 cpath = '../../ctl';
 iir_priv = 'DEF_EQIIR_PRIV';
 fir_priv = 'DEF_EQFIR_PRIV';

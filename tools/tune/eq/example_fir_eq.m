@@ -10,7 +10,7 @@ function example_fir_eq()
 
 %% Common definitions
 fs = 48e3;
-tpath =  '../../topology/m4';
+tpath =  '../../topology/topology1/m4';
 cpath = '../../ctl';
 priv = 'DEF_EQFIR_PRIV';
 

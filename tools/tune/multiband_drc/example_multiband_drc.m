@@ -1,7 +1,7 @@
 function example_multiband_drc();
 
 % Set the parameters here
-tplg_fn = "../../topology/m4/multiband_drc_coef_default.m4"; % Control Bytes File
+tplg_fn = "../../topology/topology1/m4/multiband_drc_coef_default.m4"; % Control Bytes File
 % Use those files with sof-ctl to update the component's configuration
 blob_fn = "../../ctl/multiband_drc_coef.blob"; % Blob binary file
 alsa_fn = "../../ctl/multiband_drc_coef.txt"; % ALSA CSV format file
