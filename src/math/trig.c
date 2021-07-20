@@ -15,9 +15,9 @@
 /* Use a local definition to avoid adding a dependency on <math.h> */
 #define _M_PI		3.14159265358979323846	/* pi */
 /**
- * \cordic_atan2_lookup_table = atan(2.^-(0:N-1)) N = 31/16
- * \CORDIC Gain is cordic_gain = prod(sqrt(1 + 2.^(-2*(0:31/16-1))))
- * \Inverse CORDIC Gain,inverse_cordic_gain = 1 / cordic_gain
+ * cordic_atan2_lookup_table = atan(2.^-(0:N-1)) N = 31/16
+ * CORDIC Gain is cordic_gain = prod(sqrt(1 + 2.^(-2*(0:31/16-1))))
+ * Inverse CORDIC Gain,inverse_cordic_gain = 1 / cordic_gain
  */
 static const int32_t cordic_lookup[CORDIC_31B_TABLE_SIZE] = { 843314857, 497837829,
 	263043837, 133525159, 67021687, 33543516, 16775851, 8388437, 4194283, 2097149,
@@ -34,7 +34,7 @@ const int32_t cord_sincos_piovertwo_q28fl  = Q_CONVERT_FLOAT(_M_PI / 2, 28);
 const int32_t cord_sincos_piovertwo_q29fl  = Q_CONVERT_FLOAT(_M_PI / 2, 29);
 
 /**
- * \CORDIC-based approximation of sine and cosine
+ * CORDIC-based approximation of sine and cosine
  */
 void cordic_sin_cos(int32_t th_rad_fxp, cordic_cfg type, int32_t *sign, int32_t *b_yn, int32_t *xn,
 		    int32_t *th_cdc_fxp)

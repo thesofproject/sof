@@ -160,8 +160,8 @@ static void dma_single_chan_domain_irq_unregister(struct dma_domain_data *data)
 
 /**
  * \brief Registers task to DMA domain.
+ *
  * \param[in,out] domain Pointer to schedule domain.
- * \param[in] period Period of the scheduled task.
  * \param[in,out] task Task to be registered.
  * \param[in,out] handler Pointer to DMA interrupt handler.
  * \param[in,out] arg Pointer to DMA interrupt handler's argument.

@@ -262,12 +262,12 @@ static uint64_t get_irqsteer_interrupts(uint32_t index)
 
 /**
  * get_first_irq() Get the first IRQ bit set in this group.
- * @ints The 64 input interrupts
  *
  * Get the first pending IRQ in the group. For example, get_first_irq(0x40)
  * will return 6 (as 1 << 6 is 0x40), while get_first_irq(0) will return -1.
  *
- * Return: -1 if all interrupts are clear, or a shift value if at least
+ * @param ints The 64 input interrupts
+ * @return -1 if all interrupts are clear, or a shift value if at least
  * one interrupt is set.
  */
 static int get_first_irq(uint64_t ints)

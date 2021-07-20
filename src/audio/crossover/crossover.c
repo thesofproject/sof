@@ -290,8 +290,6 @@ static int crossover_init_coef(struct comp_data *cd, int nch)
 
 /**
  * \brief Setup the state, coefficients and processing functions for crossover.
- *
- * \param dev component device
  */
 static int crossover_setup(struct comp_data *cd, int nch)
 {
