@@ -399,7 +399,7 @@ static int host_copy_normal(struct comp_dev *dev)
 	struct host_data *hd = comp_get_drvdata(dev);
 	uint32_t copy_bytes = 0;
 	uint32_t flags = 0;
-	int ret = 0;
+	int ret;
 
 	comp_dbg(dev, "host_copy_normal()");
 
@@ -408,13 +408,11 @@ static int host_copy_normal(struct comp_dev *dev)
 
 	copy_bytes = host_get_copy_bytes_normal(dev);
 	if (!copy_bytes)
-		return ret;
+		return 0;
 
 	ret = dma_copy(hd->chan, copy_bytes, flags);
-	if (ret < 0) {
+	if (ret < 0)
 		comp_err(dev, "host_copy_normal(): dma_copy() failed, ret = %u", ret);
-		return ret;
-	}
 
 	return ret;
 }
