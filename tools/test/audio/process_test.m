@@ -26,7 +26,7 @@ if nargin < 4
 end
 
 %% Paths
-t.blobpath = '../../topology/m4';
+t.blobpath = '../../topology/topology1/m4';
 plots = 'plots';
 reports = 'reports';
 
