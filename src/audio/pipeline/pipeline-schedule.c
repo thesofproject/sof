@@ -192,6 +192,17 @@ void pipeline_schedule_triggered(struct pipeline_walk_context *ctx,
 			}
 			pipeline_schedule_copy(p, 0);
 		}
+		break;
+	case COMP_TRIGGER_XRUN:
+		list_for_item(tlist, &ctx->pipelines) {
+			p = container_of(tlist, struct pipeline, list);
+			if (!p->xrun_bytes)
+				/*
+				 * the exact number of xrun bytes is unused,
+				 * just make it non-0
+				 */
+				p->xrun_bytes = 1;
+		}
 	}
 
 	irq_local_enable(flags);
