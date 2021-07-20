@@ -5,7 +5,7 @@
 // Author: Tomasz Lauda <tomasz.lauda@linux.intel.com>
 
 /**
- * \file arch/xtensa/schedule.c
+ * \file
  * \brief Xtensa schedule implementation file
  * \authors Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */

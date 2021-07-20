@@ -5,7 +5,7 @@
 // Author: Lech Betlej <lech.betlej@linux.intel.com>
 
 /**
- * \file audio/selector.c
+ * \file
  * \brief Audio channel selection component. In case 1 output channel is
  * \brief selected in topology the component provides the selected channel on
  * \brief output. In case 2 or 4 channels are selected on output the component

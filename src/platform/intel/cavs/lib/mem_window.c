@@ -5,7 +5,7 @@
 // Author: Marcin Maka <marcin.maka@linux.intel.com>
 
 /**
- * \file platform/intel/cavs/mem_window.c
+ * \file
  * \brief Memory windows programming and initialization
  * \author Marcin Maka <marcin.maka@linux.intel.com>
  */

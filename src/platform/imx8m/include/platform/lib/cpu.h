@@ -6,7 +6,7 @@
  */
 
 /**
- * \file platform/lib/cpu.h
+ * \file
  * \brief DSP core parameters.
  */
 
