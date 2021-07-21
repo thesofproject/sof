@@ -163,12 +163,8 @@
  * +------------------+-------------------------+-----------------------------+
  * | SOF_FW_START     | text                    |                             |
  * |                  | data                    |                             |
- * |                  | ----------------------- |                             |
+ * |                  |+-----------------------+|                             |
  * |                  ||BSS:                   ||                             |
- * |                  ||-----------------------++-----------------------------+
- * |                  ||Runtime Heap           ||  HEAP_RUNTIME_SIZE          |
- * |                  ||-----------------------++-----------------------------+
- * |                  ||Runtime shared Heap    ||  HEAP_RUNTIME_SHARED_SIZE   |
  * |                  ||-----------------------++-----------------------------+
  * |                  ||System shared Heap     ||  HEAP_SYSTEM_SHARED_SIZE    |
  * |                  ||-----------------------++-----------------------------+
@@ -183,7 +179,11 @@
  * |                  ||Sec. core Sys Heap     ||  SOF_CORE_S_T_SIZE          |
  * |                  ||Sec. Sys Runtime Heap  ||                             |
  * |                  ||Secondary core Stack   ||                             |
- * |                  | ----------------------- |                             |
+ * |                  ||-----------------------++-----------------------------+
+ * |                  ||Runtime Heap           ||  HEAP_RUNTIME_SIZE          |
+ * |                  ||-----------------------++-----------------------------+
+ * |                  ||Runtime shared Heap    ||  HEAP_RUNTIME_SHARED_SIZE   |
+ * |                  |+-----------------------+|                             |
  * +------------------+-------------------------+-----------------------------+
  */
 
@@ -236,6 +236,8 @@
 /* max size for all var-size sections (text/rodata/bss) */
 #define SOF_FW_MAX_SIZE		(HP_SRAM_BASE + HP_SRAM_SIZE - SOF_FW_BASE)
 
+#define SOF_FW_END		(HP_SRAM_BASE + HP_SRAM_SIZE)
+
 /* Heap section sizes for system runtime heap for  core */
 #define HEAP_SYS_RT_0_COUNT64		64
 #define HEAP_SYS_RT_0_COUNT512		16
@@ -246,33 +248,25 @@
 #define HEAP_SYS_RT_X_COUNT512		8
 #define HEAP_SYS_RT_X_COUNT1024		4
 
-/* Heap section sizes for module pool */
-#define HEAP_RT_COUNT64			192
-#define HEAP_RT_COUNT128		32
-#define HEAP_RT_COUNT256		80
-#define HEAP_RT_COUNT512		8
-#define HEAP_RT_COUNT1024		4
-#define HEAP_RT_COUNT2048		1
-#define HEAP_RT_COUNT4096		1
+/* Heap runtime block counts */
+#define HEAP_COUNT64		128
+#define HEAP_COUNT128		128
+#define HEAP_COUNT256		96
+#define HEAP_COUNT512		8
+#define HEAP_COUNT1024		4
+#define HEAP_COUNT2048		2
+#define HEAP_COUNT4096		1
 
-/* Heap configuration */
 #define HEAP_RUNTIME_SIZE \
-	(HEAP_RT_COUNT64 * 64 + HEAP_RT_COUNT128 * 128 + \
-	HEAP_RT_COUNT256 * 256 + HEAP_RT_COUNT512 * 512 + \
-	HEAP_RT_COUNT1024 * 1024 + HEAP_RT_COUNT2048 * 2048 + \
-	HEAP_RT_COUNT4096 * 4096)
+	(HEAP_COUNT64 * 64 + HEAP_COUNT128 * 128 + \
+	HEAP_COUNT256 * 256 + HEAP_COUNT512 * 512 + \
+	HEAP_COUNT1024 * 1024 + HEAP_COUNT2048 * 2048 + \
+	HEAP_COUNT4096 * 4096)
 
-/* Heap section sizes for runtime shared heap */
-#define HEAP_RUNTIME_SHARED_COUNT64	(64 + 32 * CONFIG_CORE_COUNT)
-#define HEAP_RUNTIME_SHARED_COUNT128	64
-#define HEAP_RUNTIME_SHARED_COUNT256	4
-#define HEAP_RUNTIME_SHARED_COUNT512	16
-#define HEAP_RUNTIME_SHARED_COUNT1024	4
-
-#define HEAP_RUNTIME_SHARED_SIZE \
-	(HEAP_RUNTIME_SHARED_COUNT64 * 64 + HEAP_RUNTIME_SHARED_COUNT128 * 128 + \
-	HEAP_RUNTIME_SHARED_COUNT256 * 256 + HEAP_RUNTIME_SHARED_COUNT512 * 512 + \
-	HEAP_RUNTIME_SHARED_COUNT1024 * 1024)
+#define HEAP_RUNTIME_SHARED_BLOCK_SIZE	0x100
+/* maximum all SRAM banks used as runtime shared heap */
+#define HEAP_RUNTIME_SHARED_COUNT_MAX \
+	(HP_SRAM_SIZE / HEAP_RUNTIME_SHARED_BLOCK_SIZE)
 
 /* Heap section sizes for system shared heap */
 #define HEAP_SYSTEM_SHARED_SIZE		0x1500

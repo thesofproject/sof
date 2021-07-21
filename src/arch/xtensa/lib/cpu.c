@@ -24,6 +24,7 @@
 #include <sof/schedule/schedule.h>
 #include <sof/sof.h>
 #include <sof/trace/trace.h>
+#include <ipc/topology.h>
 #include <ipc/trace.h>
 #include <user/trace.h>
 #include <xtos-structs.h>
@@ -46,7 +47,8 @@ static void alloc_shared_secondary_cores_objects(void)
 {
 	uint8_t *dynamic_vectors;
 
-	dynamic_vectors = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, 0, SOF_DYNAMIC_VECTORS_SIZE);
+	dynamic_vectors = rballoc(0, SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_DMA,
+				  SOF_DYNAMIC_VECTORS_SIZE);
 	if (dynamic_vectors == NULL)
 		panic(SOF_IPC_PANIC_MEM);
 

@@ -453,11 +453,6 @@ SECTIONS
     *(.gnu.linkonce.b.*)
     *(COMMON)
 
-	. = ALIGN (SRAM_BANK_SIZE);
-    _runtime_heap_start = ABSOLUTE(.);
-    . = . + HEAP_RUNTIME_SIZE;
-    _runtime_heap_end = ABSOLUTE(.);
-
     . = ALIGN (HEAP_BUF_ALIGNMENT);
     _buffer_heap_start = ABSOLUTE(.);
     . = . + HEAP_BUFFER_SIZE;
@@ -474,12 +469,6 @@ SECTIONS
     _system_runtime_heap_end = ABSOLUTE(.);
 
     . = ALIGN (PLATFORM_DCACHE_ALIGN);
-    _runtime_shared_heap_start = ABSOLUTE(.);
-    . = . + HEAP_RUNTIME_SHARED_SIZE;
-    . = ALIGN (PLATFORM_DCACHE_ALIGN);
-    _runtime_shared_heap_end = ABSOLUTE(.);
-
-    . = ALIGN (PLATFORM_DCACHE_ALIGN);
     _system_shared_heap_start = ABSOLUTE(.);
     . = . + HEAP_SYSTEM_SHARED_SIZE;
     . = ALIGN (PLATFORM_DCACHE_ALIGN);
@@ -490,10 +479,22 @@ SECTIONS
     . = . + SOF_STACK_SIZE;
     _sof_stack_end = ABSOLUTE(.);
 
+#if CONFIG_CORE_COUNT > 1
     . = ALIGN (SRAM_BANK_SIZE);
     _sof_core_s_start = ABSOLUTE(.);
     . = . + SOF_CORE_S_T_SIZE;
     _sof_core_s_end = ABSOLUTE(.);
+#endif
+    . = ALIGN (SRAM_BANK_SIZE);
+    _runtime_heap_start = ABSOLUTE(.);
+    . = . + HEAP_RUNTIME_SIZE;
+    _runtime_heap_end = ABSOLUTE(.);
+
+    . = ALIGN (PLATFORM_DCACHE_ALIGN);
+    _runtime_shared_heap_start = ABSOLUTE(.);
+    /* make full use of the SRAM */
+    . = . + SOF_FW_END - _runtime_shared_heap_start;
+    _runtime_shared_heap_end = ABSOLUTE(.);
 
     _bss_end = ABSOLUTE(.);
   } >sof_fw :sof_fw_phdr

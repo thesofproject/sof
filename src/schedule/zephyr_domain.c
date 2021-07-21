@@ -227,7 +227,7 @@ struct ll_schedule_domain *zephyr_domain_init(struct timer *timer, int clk)
 	domain = domain_init(SOF_SCHEDULE_LL_TIMER, clk, false,
 			     &zephyr_domain_ops);
 
-	zephyr_domain = rzalloc(SOF_MEM_ZONE_SYS_SHARED, 0, SOF_MEM_CAPS_RAM,
+	zephyr_domain = rballoc(0, SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_DMA,
 				sizeof(*zephyr_domain));
 
 	zephyr_domain->ll_timer = timer;

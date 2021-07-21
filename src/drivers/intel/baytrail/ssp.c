@@ -617,7 +617,7 @@ static int ssp_probe(struct dai *dai)
 	struct ssp_pdata *ssp;
 
 	/* allocate private data */
-	ssp = rzalloc(SOF_MEM_ZONE_SYS_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*ssp));
+	ssp = rballoc(0, SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_DMA, sizeof(*ssp));
 	dai_set_drvdata(dai, ssp);
 
 	ssp->state[DAI_DIR_PLAYBACK] = COMP_STATE_READY;

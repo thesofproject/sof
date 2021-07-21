@@ -152,6 +152,8 @@
 #define PLATFORM_HEAP_SYSTEM_RUNTIME	1 /* one per core */
 #define PLATFORM_HEAP_RUNTIME		1
 #define PLATFORM_HEAP_BUFFER		1
+#define PLATFORM_HEAP_SYSTEM_SHARED	0
+#define PLATFORM_HEAP_RUNTIME_SHARED	0
 
 /* Stack configuration */
 #define SOF_STACK_SIZE		0x1000

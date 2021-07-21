@@ -92,9 +92,10 @@ void *rmalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes);
 void *rzalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes);
 
 /**
- * Allocates memory block from SOF_MEM_ZONE_BUFFER.
+ * Allocates memory block from SOF_MEM_ZONE_BUFFER or _ZONE_RUNTIME_SHARED.
  * @param flags Flags, see SOF_MEM_FLAG_...
- * @param caps Capabilities, see SOF_MEM_CAPS_...
+ * @param caps Capabilities, e.g. if _CAPS_DMA is specified, usually allocate
+ *        buffer from _ZONE_RUNTIME_SHARED. See SOF_MEM_CAPS_...
  * @param bytes Size in bytes.
  * @param alignment Alignment in bytes.
  * @return Pointer to the allocated memory or NULL if failed.

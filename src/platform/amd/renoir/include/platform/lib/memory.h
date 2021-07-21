@@ -121,6 +121,8 @@
 #define PLATFORM_HEAP_SYSTEM_RUNTIME	1 /* one per core */
 #define PLATFORM_HEAP_RUNTIME		1
 #define PLATFORM_HEAP_BUFFER		1
+#define PLATFORM_HEAP_SYSTEM_SHARED	0
+#define PLATFORM_HEAP_RUNTIME_SHARED	0
 
 /* Vector and literal sizes - not in core-isa.h */
 #define SOF_MEM_VECT_LIT_SIZE		0x7

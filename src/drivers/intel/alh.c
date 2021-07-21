@@ -117,7 +117,7 @@ static int alh_probe(struct dai *dai)
 	if (dai_get_drvdata(dai))
 		return -EEXIST;
 
-	alh = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*alh));
+	alh = rballoc(0, SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_DMA, sizeof(*alh));
 	if (!alh) {
 		dai_err(dai, "alh_probe() error: alloc failed");
 		return -ENOMEM;

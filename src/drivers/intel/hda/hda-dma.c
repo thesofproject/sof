@@ -792,9 +792,8 @@ static int hda_dma_probe(struct dma *dma)
 	if (dma->chan)
 		return -EEXIST; /* already created */
 
-	dma->chan = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM,
+	dma->chan = rballoc(0, SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_DMA,
 			    sizeof(struct dma_chan_data) * dma->plat_data.channels);
-
 	if (!dma->chan) {
 		tr_err(&hdma_tr, "hda-dmac: %d channels alloc failed",
 		       dma->plat_data.id);
@@ -810,8 +809,7 @@ static int hda_dma_probe(struct dma *dma)
 		chan->status = COMP_STATE_INIT;
 		chan->core = DMA_CORE_INVALID;
 
-		hda_chan = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0,
-				   SOF_MEM_CAPS_RAM,
+		hda_chan = rballoc(0, SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_DMA,
 				   sizeof(struct hda_chan_data));
 		if (!hda_chan) {
 			tr_err(&hdma_tr, "hda-dma: %d channel %d private data alloc failed",

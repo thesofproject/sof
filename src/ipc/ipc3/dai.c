@@ -279,7 +279,7 @@ int dai_config(struct comp_dev *dev, struct ipc_config_dai *common_config,
 
 	/* allocated dai_config if not yet */
 	if (!dd->dai_spec_config) {
-		dd->dai_spec_config = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM,
+		dd->dai_spec_config = rballoc(0, SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_DMA,
 					      sizeof(struct sof_ipc_dai_config));
 		if (!dd->dai_spec_config) {
 			comp_err(dev, "dai_config(): No memory for dai_config.");

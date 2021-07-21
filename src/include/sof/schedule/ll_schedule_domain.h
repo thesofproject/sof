@@ -80,7 +80,7 @@ static inline struct ll_schedule_domain *domain_init
 {
 	struct ll_schedule_domain *domain;
 
-	domain = rzalloc(SOF_MEM_ZONE_SYS_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*domain));
+	domain = rballoc(0, SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_DMA, sizeof(*domain));
 	domain->type = type;
 	domain->clk = clk;
 	domain->synchronous = synchronous;

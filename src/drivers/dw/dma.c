@@ -966,9 +966,8 @@ static int dw_dma_probe(struct dma *dma)
 	pm_runtime_get_sync(DW_DMAC_CLK, dma->plat_data.id);
 
 	/* allocate dma channels */
-	dma->chan = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM,
+	dma->chan = rballoc(0, SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_DMA,
 			    sizeof(struct dma_chan_data) * dma->plat_data.channels);
-
 	if (!dma->chan) {
 		tr_err(&dwdma_tr, "dw_dma_probe(): dma %d allocaction of channels failed",
 		       dma->plat_data.id);
@@ -987,9 +986,7 @@ static int dw_dma_probe(struct dma *dma)
 		chan->index = i;
 		chan->core = DMA_CORE_INVALID;
 
-		dw_chan = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM,
-				  sizeof(*dw_chan));
-
+		dw_chan = rballoc(0, SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_DMA, sizeof(*dw_chan));
 		if (!dw_chan) {
 			tr_err(&dwdma_tr, "dw_dma_probe(): dma %d allocaction of channel %d private data failed",
 			       dma->plat_data.id, i);

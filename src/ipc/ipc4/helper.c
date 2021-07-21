@@ -117,7 +117,7 @@ int ipc_pipeline_new(struct ipc *ipc, ipc_pipe_new *_pipe_desc)
 	pipe->period = 1000;
 
 	/* allocate the IPC pipeline container */
-	ipc_pipe = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM,
+	ipc_pipe = rballoc(0, SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_DMA,
 			   sizeof(struct ipc_comp_dev));
 	if (!ipc_pipe) {
 		pipeline_free(pipe);
@@ -392,7 +392,7 @@ int ipc4_add_comp_dev(struct comp_dev *dev)
 	struct ipc_comp_dev *icd;
 
 	/* allocate the IPC component container */
-	icd = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM,
+	icd = rballoc(0, SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_DMA,
 		      sizeof(struct ipc_comp_dev));
 	if (!icd) {
 		tr_err(&ipc_tr, "ipc_comp_new(): alloc failed");

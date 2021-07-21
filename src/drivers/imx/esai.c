@@ -394,7 +394,7 @@ static int esai_probe(struct dai *dai)
 		dai_err(dai, "ESAI: Repeated probe, skipping");
 		return -EEXIST;
 	}
-	pdata = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*pdata));
+	pdata = rballoc(0, SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_DMA, sizeof(*pdata));
 	if (!pdata) {
 		dai_err(dai, "ESAI probe failure, out of memory");
 		return -ENOMEM;
