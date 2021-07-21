@@ -430,6 +430,11 @@ if (CONFIG_SOC_SERIES_NXP_IMX8)
 		${SOF_PLATFORM_PATH}/imx8/lib/memory.c
 	)
 
+	# SOF core infrastructure - runs on top of Zephyr
+	zephyr_library_sources(
+		${SOF_SRC_PATH}/schedule/ll_schedule.c
+	)
+
 	set(PLATFORM "imx8")
 endif()
 
