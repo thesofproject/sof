@@ -263,7 +263,7 @@ static int mixer_copy(struct comp_dev *dev)
 	uint32_t frames = INT32_MAX;
 	uint32_t source_bytes;
 	uint32_t sink_bytes;
-	uint32_t flags = 0;
+	uint32_t sink_flags, source_flags;
 
 	comp_dbg(dev, "mixer_copy()");
 
@@ -291,11 +291,11 @@ static int mixer_copy(struct comp_dev *dev)
 	/* write zeros if all sources are inactive */
 	if (num_mix_sources == 0) {
 		uint32_t free_frames;
-		buffer_lock(sink, &flags);
+		buffer_lock(sink, &sink_flags);
 		free_frames = audio_stream_get_free_frames(&sink->stream);
 		frames = MIN(frames, free_frames);
 		sink_bytes = frames * audio_stream_frame_bytes(&sink->stream);
-		buffer_unlock(sink, flags);
+		buffer_unlock(sink, sink_flags);
 
 		if (!audio_stream_set_zero(&sink->stream, sink_bytes)) {
 			buffer_writeback(sink, sink_bytes);
@@ -305,19 +305,19 @@ static int mixer_copy(struct comp_dev *dev)
 		return 0;
 	}
 
-	buffer_lock(sink, &flags);
+	buffer_lock(sink, &sink_flags);
 
 	/* check for underruns */
 	for (i = 0; i < num_mix_sources; i++) {
 		uint32_t avail_frames;
-		buffer_lock(sources[i], &flags);
+		buffer_lock(sources[i], &source_flags);
 		avail_frames = audio_stream_avail_frames(sources_stream[i],
 							 &sink->stream);
 		frames = MIN(frames, avail_frames);
-		buffer_unlock(sources[i], flags);
+		buffer_unlock(sources[i], source_flags);
 	}
 
-	buffer_unlock(sink, flags);
+	buffer_unlock(sink, sink_flags);
 
 	/* Every source has the same format, so calculate bytes based
 	 * on the first one.
