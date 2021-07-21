@@ -3,7 +3,7 @@ version = [1, 5]
 [adsp]
 name = "sue"
 machine_id = 11
-image_size = "0x100000"
+image_size = "0x300000"        # (47 + 1) bank * 64KB
 exec_boot_ldr = 1
 
 [[adsp.mem_zone]]
