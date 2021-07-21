@@ -84,7 +84,7 @@ set(TPLGS
 	"sof-cavs-nocodec\;sof-icl-nocodec\;-DPLATFORM=icl\;-DDYNAMIC=1"
 	"sof-cavs-nocodec\;sof-jsl-nocodec\;-DPLATFORM=jsl\;-DDYNAMIC=1"
 	"sof-cavs-nocodec\;sof-tgl-nocodec\;-DPLATFORM=tgl\;-DDYNAMIC=1"
-	"sof-cavs-nocodec\;sof-tgl-h-nocodec\;-DPLATFORM=tgl\;-DNCORES=2\;-DDYNAMIC=1"
+	"sof-cavs-nocodec\;sof-tgl-h-nocodec\;-DPLATFORM=tglh\;-DNCORES=2\;-DDYNAMIC=1"
 	"sof-cavs-nocodec\;sof-ehl-nocodec\;-DPLATFORM=ehl\;-DDYNAMIC=1"
 	"sof-cavs-nocodec\;sof-adl-nocodec\;-DPLATFORM=adl\;-DDYNAMIC=1"
 	"sof-icl-dmic-4ch\;sof-icl-dmic-4ch"

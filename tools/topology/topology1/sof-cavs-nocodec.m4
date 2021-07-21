@@ -15,7 +15,8 @@ include(`common/tlv.m4')
 include(`sof/tokens.m4')
 
 # Include DSP configuration
-include(`platform/intel/'PLATFORM`.m4')
+ifelse(PLATFORM, `tglh', `include(`platform/intel/tgl.m4')',
+       `include(`platform/intel/'PLATFORM`.m4')')
 
 # bxt has 2 cores but currently only one is enabled in the build
 ifelse(PLATFORM, `bxt', `define(NCORES, 1)')
@@ -47,12 +48,6 @@ define(DMIC16KPROC, `eq-iir-volume')
 define(DMICPROC_FILTER1, `eq_iir_coef_highpass_40hz_20db_48khz.m4')
 define(DMIC16KPROC_FILTER1, `eq_iir_coef_highpass_40hz_20db_16khz.m4')
 
-define(DMIC_48k_CORE_ID, `0')
-define(DMIC_16k_CORE_ID, `0')
-define(SSP0_CORE_ID, `0')
-define(SSP1_CORE_ID, `0')
-define(SSP2_CORE_ID, `0')
-
 ifelse(PLATFORM, `tgl',
 `
 define(DMIC_48k_CORE_ID, `3')
@@ -70,6 +65,12 @@ define(SSP0_CORE_ID, `0')
 define(SSP1_CORE_ID, `1')
 define(SSP2_CORE_ID, `2')
 ')
+
+define(DMIC_48k_CORE_ID, `0')
+define(DMIC_16k_CORE_ID, `0')
+define(SSP0_CORE_ID, `0')
+define(SSP1_CORE_ID, `0')
+define(SSP2_CORE_ID, `0')
 
 include(`platform/intel/intel-generic-dmic.m4')
 
