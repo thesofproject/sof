@@ -62,17 +62,11 @@ struct mm_heap {
 /* heap block memory map */
 struct mm {
 	/* system heap - used during init cannot be freed */
-	struct mm_heap system[PLATFORM_HEAP_SYSTEM];
+	struct mm_heap system[CONFIG_CORE_COUNT];
 	/* system runtime heap - used for runtime system components */
-	struct mm_heap system_runtime[PLATFORM_HEAP_SYSTEM_RUNTIME];
-#if CONFIG_CORE_COUNT > 1
-	/* object shared between different cores - used during init cannot be freed */
-	struct mm_heap system_shared[PLATFORM_HEAP_SYSTEM_SHARED];
-	/* object shared between different cores */
-	struct mm_heap runtime_shared[PLATFORM_HEAP_RUNTIME_SHARED];
-#endif
+	struct mm_heap system_runtime[CONFIG_CORE_COUNT];
 	/* general heap for components */
-	struct mm_heap runtime[PLATFORM_HEAP_RUNTIME];
+	struct mm_heap runtime;
 	/* general component buffer heap */
 	struct mm_heap buffer[PLATFORM_HEAP_BUFFER];
 

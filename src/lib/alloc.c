@@ -354,25 +354,36 @@ static inline struct mm_heap *find_in_heap_arr(struct mm_heap *heap_arr, int arr
 	return NULL;
 }
 
+static bool in_heap_range(void *ptr, struct mm_heap *heap)
+{
+	return (ptr >= (void *)heap->heap &&
+		(char *)ptr < (char *)heap->heap + heap->size);
+}
+
 static struct mm_heap *get_heap_from_ptr(void *ptr)
 {
 	struct mm *memmap = memmap_get();
 	struct mm_heap *heap;
+	int i;
+
+	/* check and panic if freeing system heap */
+	for (i = 0; i < CONFIG_CORE_COUNT; i++) {
+		heap = &memmap->system[i];
+		if (in_heap_range(ptr, heap)) {
+			tr_err(&mem_tr, "attempt to free system heap %d with %p",
+			       i, ptr);
+			panic(SOF_IPC_PANIC_MEM);
+		}
+	}
 
 	/* find mm_heap that ptr belongs to */
 	heap = find_in_heap_arr(memmap->system_runtime + cpu_get_id(), 1, ptr);
 	if (heap)
 		goto out;
 
-	heap = find_in_heap_arr(memmap->runtime, PLATFORM_HEAP_RUNTIME, ptr);
+	heap = find_in_heap_arr(&memmap->runtime, 1, ptr);
 	if (heap)
 		goto out;
-
-#if CONFIG_CORE_COUNT > 1
-	heap = find_in_heap_arr(memmap->runtime_shared, PLATFORM_HEAP_RUNTIME_SHARED, ptr);
-	if (heap)
-		goto out;
-#endif
 
 	heap = find_in_heap_arr(memmap->buffer, PLATFORM_HEAP_BUFFER, ptr);
 	if (heap)
@@ -451,30 +462,27 @@ static void free_block(void *ptr)
 	struct mm_heap *heap;
 	struct block_map *block_map = NULL;
 	struct block_hdr *hdr;
+	void *cached_ptr = uncache_to_cache(ptr);
+	void *uncached_ptr = cache_to_uncache(ptr);
 	int i;
 	int block;
 	int used_blocks;
 	bool heap_is_full;
 
-	/* caller uses the direct address got from the allocator, free it directly */
-	heap = get_heap_from_ptr(ptr);
+	/* try cached_ptr first */
+	heap = get_heap_from_ptr(cached_ptr);
 
-	/* some caller uses uncached address while allocated from cached
-	 * address, e.g. SOF_MEM_ZONE_RUNTIME_SHARED region on cAVS platform,
-	 * one more try to free the momory from the corresponding cached
-	 * address.
-	 */
-	if (!heap && is_uncached(ptr)) {
-		tr_dbg(&mem_tr, "free_block(): uncached buffer %p, try freeing from its cached address",
-		       ptr);
-		ptr = uncache_to_cache(ptr);
-		heap = get_heap_from_ptr(ptr);
-	}
-
+	/* try uncached_ptr if needed */
 	if (!heap) {
-		tr_err(&mem_tr, "free_block(): invalid heap = %p, cpu = %d",
-		       ptr, cpu_get_id());
-		return;
+		heap = get_heap_from_ptr(uncached_ptr);
+		if (!heap) {
+			tr_err(&mem_tr, "free_block(): invalid heap = %p, cpu = %d",
+			       ptr, cpu_get_id());
+			return;
+		}
+		ptr = uncached_ptr;
+	} else {
+		ptr = cached_ptr;
 	}
 
 	/* find block that ptr belongs to */
@@ -586,39 +594,21 @@ static void alloc_trace_heap(enum mem_zone zone, uint32_t caps, size_t bytes)
 	switch (zone) {
 	case SOF_MEM_ZONE_SYS:
 		heap_base = memmap->system;
-		heap_count = PLATFORM_HEAP_SYSTEM;
+		heap_count = CONFIG_CORE_COUNT;
 		break;
 	case SOF_MEM_ZONE_SYS_RUNTIME:
 		heap_base = memmap->system_runtime;
-		heap_count = PLATFORM_HEAP_SYSTEM_RUNTIME;
+		heap_count = CONFIG_CORE_COUNT;
 		break;
 	case SOF_MEM_ZONE_RUNTIME:
-		heap_base = memmap->runtime;
-		heap_count = PLATFORM_HEAP_RUNTIME;
+		heap_base = &memmap->runtime;
+		heap_count = 1;
 		break;
 	case SOF_MEM_ZONE_BUFFER:
 		heap_base = memmap->buffer;
 		heap_count = PLATFORM_HEAP_BUFFER;
 		break;
-#if CONFIG_CORE_COUNT > 1
-	case SOF_MEM_ZONE_RUNTIME_SHARED:
-		heap_base = memmap->runtime_shared;
-		heap_count = PLATFORM_HEAP_RUNTIME_SHARED;
 		break;
-	case SOF_MEM_ZONE_SYS_SHARED:
-		heap_base = memmap->system_shared;
-		heap_count = PLATFORM_HEAP_SYSTEM_SHARED;
-		break;
-#else
-	case SOF_MEM_ZONE_RUNTIME_SHARED:
-		heap_base = memmap->runtime;
-		heap_count = PLATFORM_HEAP_RUNTIME;
-		break;
-	case SOF_MEM_ZONE_SYS_SHARED:
-		heap_base = memmap->system;
-		heap_count = PLATFORM_HEAP_SYSTEM;
-		break;
-#endif
 	default:
 		tr_err(&mem_tr, "alloc trace: unsupported mem zone");
 		goto out;
@@ -683,41 +673,18 @@ static void *rmalloc_runtime(uint32_t flags, uint32_t caps, size_t bytes)
 	struct mm_heap *heap;
 
 	/* check runtime heap for capabilities */
-	heap = get_heap_from_caps(memmap->runtime, PLATFORM_HEAP_RUNTIME, caps);
+	heap = get_heap_from_caps(&memmap->runtime, 1, caps);
 	if (!heap) {
 		/* next check buffer heap for capabilities */
 		heap = get_heap_from_caps(memmap->buffer, PLATFORM_HEAP_BUFFER,
 					  caps);
-		if (!heap) {
-
-			tr_err(&mem_tr, "rmalloc_runtime(): caps = %x, bytes = %d",
-			       caps, bytes);
-
+		if (!heap)
 			return NULL;
-		}
 	}
 
 	return get_ptr_from_heap(heap, flags, caps, bytes,
 				 PLATFORM_DCACHE_ALIGN);
 }
-
-#if CONFIG_CORE_COUNT > 1
-/* allocate single block for shared */
-static void *rmalloc_runtime_shared(uint32_t flags, uint32_t caps, size_t bytes)
-{
-	struct mm *memmap = memmap_get();
-	struct mm_heap *heap;
-
-	/* check shared heap for capabilities */
-	heap = get_heap_from_caps(memmap->runtime_shared, PLATFORM_HEAP_RUNTIME_SHARED, caps);
-	if (!heap) {
-		tr_err(&mem_tr, "rmalloc_runtime_shared(): caps = %x, bytes = %d", caps, bytes);
-		return NULL;
-	}
-
-	return get_ptr_from_heap(heap, flags, caps, bytes, PLATFORM_DCACHE_ALIGN);
-}
-#endif
 
 static void *_malloc_unlocked(enum mem_zone zone, uint32_t flags, uint32_t caps,
 			      size_t bytes)
@@ -735,22 +702,6 @@ static void *_malloc_unlocked(enum mem_zone zone, uint32_t flags, uint32_t caps,
 	case SOF_MEM_ZONE_RUNTIME:
 		ptr = rmalloc_runtime(flags, caps, bytes);
 		break;
-#if CONFIG_CORE_COUNT > 1
-	case SOF_MEM_ZONE_RUNTIME_SHARED:
-		ptr = rmalloc_runtime_shared(flags, caps, bytes);
-		break;
-	case SOF_MEM_ZONE_SYS_SHARED:
-		ptr = rmalloc_sys(memmap->system_shared, flags, caps, bytes);
-		break;
-#else
-	case SOF_MEM_ZONE_RUNTIME_SHARED:
-		ptr = rmalloc_runtime(flags, caps, bytes);
-		break;
-	case SOF_MEM_ZONE_SYS_SHARED:
-		ptr = rmalloc_sys(memmap->system, flags, caps, bytes);
-		break;
-#endif
-
 	default:
 		tr_err(&mem_tr, "rmalloc(): invalid zone");
 		panic(SOF_IPC_PANIC_MEM); /* logic non recoverable problem */
@@ -780,7 +731,9 @@ void *rmalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
 	spin_unlock_irq(&memmap->lock, lock_flags);
 
 	DEBUG_TRACE_PTR(ptr, bytes, zone, caps, flags);
-	return ptr;
+
+	return (flags & SOF_MEM_FLAG_COHERENT) ?
+		cache_to_uncache(ptr) : uncache_to_cache(ptr);
 }
 
 /* allocates and clears memory - not for direct use, clients use rzalloc() */
@@ -946,7 +899,8 @@ static void *_balloc_unlocked(uint32_t flags, uint32_t caps, size_t bytes,
 		n = PLATFORM_HEAP_BUFFER - i;
 	}
 
-	return ptr;
+	return (flags & SOF_MEM_FLAG_COHERENT) ?
+		cache_to_uncache(ptr) : uncache_to_cache(ptr);
 }
 
 /* allocates continuous buffers - not for direct use, clients use rballoc() */
@@ -963,6 +917,9 @@ void *rballoc_align(uint32_t flags, uint32_t caps, size_t bytes,
 
 	spin_unlock_irq(&memmap->lock, lock_flags);
 
+	if (ptr)
+		bzero(ptr, bytes);
+
 	DEBUG_TRACE_PTR(ptr, bytes, SOF_MEM_ZONE_BUFFER, caps, flags);
 	return ptr;
 }
@@ -970,7 +927,6 @@ void *rballoc_align(uint32_t flags, uint32_t caps, size_t bytes,
 static void _rfree_unlocked(void *ptr)
 {
 	struct mm *memmap = memmap_get();
-	struct mm_heap *heap;
 
 	/* sanity check - NULL ptrs are fine */
 	if (!ptr)
@@ -978,24 +934,6 @@ static void _rfree_unlocked(void *ptr)
 
 	/* prepare pointer if it's platform requirement */
 	ptr = platform_rfree_prepare(ptr);
-
-	/* use the heap dedicated for the core or shared memory */
-#if CONFIG_CORE_COUNT > 1
-	if (is_uncached(ptr))
-		heap = memmap->system_shared;
-	else
-		heap = memmap->system + cpu_get_id();
-#else
-	heap = memmap->system;
-#endif
-
-	/* panic if pointer is from system heap */
-	if (ptr >= (void *)heap->heap &&
-	    (char *)ptr < (char *)heap->heap + heap->size) {
-		tr_err(&mem_tr, "rfree(): attempt to free system heap = %p, cpu = %d",
-		       ptr, cpu_get_id());
-		panic(SOF_IPC_PANIC_MEM);
-	}
 
 	/* free the block */
 	free_block(ptr);
@@ -1122,19 +1060,13 @@ void heap_trace_all(int force)
 	/* has heap changed since last shown */
 	if (memmap->heap_trace_updated || force) {
 		tr_info(&mem_tr, "heap: system status");
-		heap_trace(memmap->system, PLATFORM_HEAP_SYSTEM);
+		heap_trace(memmap->system, CONFIG_CORE_COUNT);
 		tr_info(&mem_tr, "heap: system runtime status");
-		heap_trace(memmap->system_runtime, PLATFORM_HEAP_SYSTEM_RUNTIME);
+		heap_trace(memmap->system_runtime, CONFIG_CORE_COUNT);
 		tr_info(&mem_tr, "heap: buffer status");
 		heap_trace(memmap->buffer, PLATFORM_HEAP_BUFFER);
 		tr_info(&mem_tr, "heap: runtime status");
-		heap_trace(memmap->runtime, PLATFORM_HEAP_RUNTIME);
-#if CONFIG_CORE_COUNT > 1
-		tr_info(&mem_tr, "heap: runtime shared status");
-		heap_trace(memmap->runtime_shared, PLATFORM_HEAP_RUNTIME_SHARED);
-		tr_info(&mem_tr, "heap: system shared status");
-		heap_trace(memmap->system_shared, PLATFORM_HEAP_SYSTEM_SHARED);
-#endif
+		heap_trace(&memmap->runtime, 1);
 	}
 
 	memmap->heap_trace_updated = 0;
@@ -1158,20 +1090,16 @@ void init_heap(struct sof *sof)
 		panic(SOF_IPC_PANIC_MEM);
 #endif
 
-	init_heap_map(memmap->system_runtime, PLATFORM_HEAP_SYSTEM_RUNTIME);
+	init_heap_map(memmap->system_runtime, CONFIG_CORE_COUNT);
 
-	init_heap_map(memmap->runtime, PLATFORM_HEAP_RUNTIME);
-
-#if CONFIG_CORE_COUNT > 1
-	init_heap_map(memmap->runtime_shared, PLATFORM_HEAP_RUNTIME_SHARED);
-#endif
+	init_heap_map(&memmap->runtime, 1);
 
 	init_heap_map(memmap->buffer, PLATFORM_HEAP_BUFFER);
 
 #if CONFIG_DEBUG_BLOCK_FREE
-	write_pattern((struct mm_heap *)&memmap->buffer, PLATFORM_HEAP_BUFFER,
+	write_pattern((struct mm_heap *)memmap->buffer, PLATFORM_HEAP_BUFFER,
 		      DEBUG_BLOCK_FREE_VALUE_8BIT);
-	write_pattern((struct mm_heap *)&memmap->runtime, PLATFORM_HEAP_RUNTIME,
+	write_pattern((struct mm_heap *)&memmap->runtime, 1,
 		      DEBUG_BLOCK_FREE_VALUE_8BIT);
 #endif
 
@@ -1190,37 +1118,25 @@ int heap_info(enum mem_zone zone, int index, struct mm_info *out)
 
 	switch (zone) {
 	case SOF_MEM_ZONE_SYS:
-		if (index >= PLATFORM_HEAP_SYSTEM)
+		if (index >= CONFIG_CORE_COUNT)
 			goto error;
 		heap = memmap->system + index;
 		break;
 	case SOF_MEM_ZONE_SYS_RUNTIME:
-		if (index >= PLATFORM_HEAP_SYSTEM_RUNTIME)
+		if (index >= CONFIG_CORE_COUNT)
 			goto error;
 		heap = memmap->system_runtime + index;
 		break;
 	case SOF_MEM_ZONE_RUNTIME:
-		if (index >= PLATFORM_HEAP_RUNTIME)
+		if (index >= 1)
 			goto error;
-		heap = memmap->runtime + index;
+		heap = &memmap->runtime;
 		break;
 	case SOF_MEM_ZONE_BUFFER:
 		if (index >= PLATFORM_HEAP_BUFFER)
 			goto error;
 		heap = memmap->buffer + index;
 		break;
-#if CONFIG_CORE_COUNT > 1
-	case SOF_MEM_ZONE_SYS_SHARED:
-		if (index >= PLATFORM_HEAP_SYSTEM_SHARED)
-			goto error;
-		heap = memmap->system_shared + index;
-		break;
-	case SOF_MEM_ZONE_RUNTIME_SHARED:
-		if (index >= PLATFORM_HEAP_RUNTIME_SHARED)
-			goto error;
-		heap = memmap->runtime_shared + index;
-		break;
-#endif
 	default:
 		goto error;
 	}

@@ -117,9 +117,6 @@
 #define HEAP_BUFFER_BLOCK_SIZE	0x180
 #define HEAP_BUFFER_COUNT	(HEAP_BUFFER_SIZE / HEAP_BUFFER_BLOCK_SIZE)
 
-#define PLATFORM_HEAP_SYSTEM		1 /* one per core */
-#define PLATFORM_HEAP_SYSTEM_RUNTIME	1 /* one per core */
-#define PLATFORM_HEAP_RUNTIME		1
 #define PLATFORM_HEAP_BUFFER		1
 
 /* Vector and literal sizes - not in core-isa.h */

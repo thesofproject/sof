@@ -509,7 +509,7 @@ void trace_off(void)
 
 void trace_init(struct sof *sof)
 {
-	sof->trace = rzalloc(SOF_MEM_ZONE_SYS_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*sof->trace));
+	sof->trace = rballoc(SOF_MEM_FLAG_COHERENT, SOF_MEM_CAPS_RAM, sizeof(*sof->trace));
 	sof->trace->pos = 0;
 #if CONFIG_TRACE_FILTERING_ADAPTIVE
 	sof->trace->user_filter_override = false;

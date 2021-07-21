@@ -137,7 +137,7 @@ int dma_trace_init_early(struct sof *sof)
 	 */
 	assert(!dma_trace_initialized(sof->dmat));
 
-	sof->dmat = rzalloc(SOF_MEM_ZONE_SYS_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*sof->dmat));
+	sof->dmat = rballoc(SOF_MEM_FLAG_COHERENT, SOF_MEM_CAPS_RAM, sizeof(*sof->dmat));
 
 	dma_sg_init(&sof->dmat->config.elem_array);
 	spinlock_init(&sof->dmat->lock);

@@ -126,11 +126,11 @@ static inline void *platform_rfree_prepare(void *ptr)
 
 /* Heap section sizes for module pool */
 #define HEAP_RT_COUNT8		0
-#define HEAP_RT_COUNT16		32
-#define HEAP_RT_COUNT32		32
-#define HEAP_RT_COUNT64		32
+#define HEAP_RT_COUNT16		0
+#define HEAP_RT_COUNT32		8
+#define HEAP_RT_COUNT64		4
 #define HEAP_RT_COUNT128	32
-#define HEAP_RT_COUNT256	32
+#define HEAP_RT_COUNT256	18
 #define HEAP_RT_COUNT512	2
 #define HEAP_RT_COUNT1024	1
 
@@ -143,7 +143,7 @@ static inline void *platform_rfree_prepare(void *ptr)
 #define SOF_DATA_SIZE			0x9800
 
 #define HEAP_SYSTEM_BASE		(DRAM0_BASE + SOF_DATA_SIZE)
-#define HEAP_SYSTEM_SIZE		0xA800
+#define HEAP_SYSTEM_SIZE		0x1000
 
 #define HEAP_SYSTEM_0_BASE		HEAP_SYSTEM_BASE
 
@@ -167,9 +167,6 @@ static inline void *platform_rfree_prepare(void *ptr)
 #define HEAP_BUFFER_BLOCK_SIZE		0x100
 #define HEAP_BUFFER_COUNT	(HEAP_BUFFER_SIZE / HEAP_BUFFER_BLOCK_SIZE)
 
-#define PLATFORM_HEAP_SYSTEM		1 /* one per core */
-#define PLATFORM_HEAP_SYSTEM_RUNTIME	1 /* one per core */
-#define PLATFORM_HEAP_RUNTIME		1
 #define PLATFORM_HEAP_BUFFER		1
 
 /* Stack configuration */

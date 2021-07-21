@@ -44,12 +44,6 @@
  *
  * 4) Buffer Zone. Largest heap zone intended for audio buffers.
  *
- * 5) Runtime Shared Zone. Similar to Runtime Zone, but content may be used and
- * fred from any enabled core.
- *
- * 6) System Shared Zone. Similar to System Zone, but content may be used from
- * any enabled core.
- *
  * See platform/memory.h for heap size configuration and mappings.
  */
 enum mem_zone {
@@ -57,8 +51,6 @@ enum mem_zone {
 	SOF_MEM_ZONE_SYS_RUNTIME,	/**< System-runtime zone */
 	SOF_MEM_ZONE_RUNTIME,		/**< Runtime zone */
 	SOF_MEM_ZONE_BUFFER,		/**< Buffer zone */
-	SOF_MEM_ZONE_RUNTIME_SHARED,	/**< Runtime shared zone */
-	SOF_MEM_ZONE_SYS_SHARED,	/**< System shared zone */
 };
 
 /** \name Heap zone flags
@@ -67,6 +59,8 @@ enum mem_zone {
 
 /** \brief Indicates that original content should not be copied by realloc. */
 #define SOF_MEM_FLAG_NO_COPY	BIT(1)
+/** \brief Indicates that if we should return uncached address. */
+#define SOF_MEM_FLAG_COHERENT	BIT(2)
 
 /** @} */
 
@@ -92,9 +86,12 @@ void *rmalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes);
 void *rzalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes);
 
 /**
- * Allocates memory block from SOF_MEM_ZONE_BUFFER.
+ * The recommended helper for buffer allocation.
+ * It allocates memory block in the buffer zone, and return either cached
+ * or uncached address, according the requirement from the flag
  * @param flags Flags, see SOF_MEM_FLAG_...
- * @param caps Capabilities, see SOF_MEM_CAPS_...
+ * @param caps Capabilities, e.g. if _CAPS_DMA is specified, allocate
+ *        buffer from uncacheable memory. See SOF_MEM_CAPS_...
  * @param bytes Size in bytes.
  * @param alignment Alignment in bytes.
  * @return Pointer to the allocated memory or NULL if failed.
@@ -113,7 +110,8 @@ static inline void *rballoc(uint32_t flags, uint32_t caps, size_t bytes)
 /**
  * Changes size of the memory block allocated from SOF_MEM_ZONE_BUFFER.
  * @param ptr Address of the block to resize.
- * @param flags Flags, see SOF_MEM_FLAG_...
+ * @param flags Flags, return uncached address if SOF_MEM_FLAG_COHERENT
+ *        is specified, see SOF_MEM_FLAG_...
  * @param caps Capabilities, see SOF_MEM_CAPS_...
  * @param bytes New size in bytes.
  * @param old_bytes Old size in bytes.

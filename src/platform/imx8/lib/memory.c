@@ -70,7 +70,7 @@ static SHARED_DATA struct mm memmap = {
 		.caps = SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_CACHE |
 			SOF_MEM_CAPS_DMA,
 	},
-	.runtime[0] = {
+	.runtime = {
 		.blocks = ARRAY_SIZE(rt_heap_map),
 		.map = rt_heap_map,
 		.heap = HEAP_RUNTIME_BASE,

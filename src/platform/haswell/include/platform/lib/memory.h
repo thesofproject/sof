@@ -166,9 +166,6 @@ static inline void *platform_rfree_prepare(void *ptr)
 #define HEAP_BUFFER_COUNT \
 	(HEAP_BUFFER_SIZE / HEAP_BUFFER_BLOCK_SIZE)
 
-#define PLATFORM_HEAP_SYSTEM		1 /* one per core */
-#define PLATFORM_HEAP_SYSTEM_RUNTIME	1 /* one per core */
-#define PLATFORM_HEAP_RUNTIME		1
 #define PLATFORM_HEAP_BUFFER		1
 
 /* Stack configuration */

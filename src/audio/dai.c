@@ -164,7 +164,7 @@ static struct comp_dev *dai_new(const struct comp_driver *drv,
 		return NULL;
 	dev->ipc_config = *config;
 
-	dd = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*dd));
+	dd = rballoc(SOF_MEM_FLAG_COHERENT, SOF_MEM_CAPS_RAM, sizeof(*dd));
 	if (!dd) {
 		rfree(dev);
 		return NULL;
