@@ -7,7 +7,7 @@ set -e
 
 SOF_TOP=$(cd "$(dirname "$0")" && cd .. && pwd)
 
-SUPPORTED_PLATFORMS=(apl cnl icl tgl-h)
+SUPPORTED_PLATFORMS=(apl cnl icl tgl-h imx)
 # Default value, can (and sometimes must) be overridden with -p
 WEST_TOP="${SOF_TOP}"/zephyrproject
 BUILD_JOBS=$(nproc --all)
@@ -99,10 +99,15 @@ build()
 	local STAGING=build-sof-staging
 	mkdir -p ${STAGING}/sof/ # smex does not use 'install -D'
 
+        # Default RIMAGE_KEY defined at the top of this file
 	for platform in "${PLATFORMS[@]}"; do
 		case "$platform" in
 			apl)
 				PLAT_CONFIG='intel_adsp_cavs15'
+				;;
+			imx)
+				PLAT_CONFIG='intel_adsp_cavs15'
+				RIMAGE_KEY='None'
 				;;
 			cnl)
 				PLAT_CONFIG='intel_adsp_cavs18'
@@ -140,10 +145,12 @@ build()
 			       -l "$STAGING"/sof/sof-"$platform".ldc \
 			       "$bdir"/zephyr/zephyr.elf
 
+                        test "$RIMAGE_KEY" = 'None' ||
 			west sign  --build-dir "$bdir" \
 				--tool rimage --tool-path "$RIMAGE_DIR"/rimage \
 				--tool-data modules/audio/sof/rimage/config -- -k "$RIMAGE_KEY"
 		)
+                test "$RIMAGE_KEY" = 'None' ||
 		install_opts -m 0644 "$bdir"/zephyr/zephyr.ri \
 			     "$STAGING"/sof/community/sof-"$platform".ri
 	done
