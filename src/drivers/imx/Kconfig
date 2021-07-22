@@ -13,3 +13,10 @@ config IMX_INTERRUPT_IRQSTEER
 	help
 	  This has to be selected for i.MX NXP platform that have irqsteer.
 	  It enables NXP platforms-specific features.
+
+config IMX_INTERRUPT_GENERIC
+	bool
+	default n
+	help
+	  This has to be selected for i.MX NXP platform that do not have irqsteer.
+	  It enables NXP platforms-specific features.
