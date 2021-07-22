@@ -84,6 +84,39 @@ static void zephyr_ll_task_insert_unlocked(struct zephyr_ll *sch, struct task *t
 		list_item_append(&task->list, &sch->tasks);
 }
 
+/* perf measurement windows size 2^x */
+#define CYCLES_WINDOW_SIZE	10
+
+static inline enum task_state do_task_run(struct task *task)
+{
+	uint32_t cycles0, cycles1, diff;
+	enum task_state state;
+
+	cycles0 = k_cycle_get_32();
+
+	state = task_run(task);
+
+	cycles1 = k_cycle_get_32();
+	if (cycles1 > cycles0)
+		diff = cycles1 - cycles0;
+	else
+		diff = UINT32_MAX - cycles0 + cycles1;
+
+	task->cycles_sum += diff;
+	task->cycles_max = diff > task->cycles_max ? diff : task->cycles_max;
+
+	if (++task->cycles_cnt == 1 << CYCLES_WINDOW_SIZE) {
+		task->cycles_sum >>= CYCLES_WINDOW_SIZE;
+		tr_info(&ll_tr, "ll task %p %pU avg %u, max %u",
+			task, task->uid, task->cycles_sum, task->cycles_max);
+		task->cycles_sum = 0;
+		task->cycles_cnt = 0;
+		task->cycles_max = 0;
+	}
+
+	return state;
+}
+
 /*
  * Task state machine:
  * INIT:	initialized
@@ -164,7 +197,7 @@ static void zephyr_ll_run(void *data)
 			 * task's .run() should only return either
 			 * SOF_TASK_STATE_COMPLETED or SOF_TASK_STATE_RESCHEDULE
 			 */
-			state = task_run(task);
+			state = do_task_run(task);
 			if (state != SOF_TASK_STATE_COMPLETED &&
 			    state != SOF_TASK_STATE_RESCHEDULE) {
 				tr_err(&ll_tr,
