@@ -8,7 +8,7 @@ set -e
 SOF_TOP=$(cd "$(dirname "$0")" && cd .. && pwd)
 
 SUPPORTED_PLATFORMS=(apl cnl icl tgl-h)
-# Default value, can be overridden on the command line
+# Default value, can (and sometimes must) be overridden with -p
 WEST_TOP="${SOF_TOP}"/zephyrproject
 BUILD_JOBS=$(nproc --all)
 RIMAGE_KEY=modules/audio/sof/keys/otc_private_key.pem
@@ -38,9 +38,13 @@ usage: $0 [options] platform(s)
        -k Path to a non-default rimage signing key.
        -c recursively clones Zephyr inside sof before building.
           Incompatible with -p.
-       -p Existing Zephyr project directory. Incompatible with -c.
-          If modules/audio/sof is missing there then a symbolic
-          link pointing to ${SOF_TOP} will be added.
+       -p Existing Zephyr project directory. Incompatible with -c.  If
+          zephyr-project/modules/audio/sof is missing then a
+          symbolic link pointing to ${SOF_TOP} will automatically be
+          created and west will recognize it as a new sof module.
+          This -p option is always _required_ if the real (not symbolic)
+          sof/ and zephyr-project/ directories are not nested in one
+          another.
 
 Supported platforms ${SUPPORTED_PLATFORMS[*]}
 
@@ -77,6 +81,12 @@ install_opts()
 build()
 {
 	cd "$WEST_TOP"
+	west topdir || {
+	    printf 'SOF_TOP=%s\nWEST_TOP=%s\n' "$SOF_TOP" "$WEST_TOP"
+	    die 'try the -p option?'
+	    # Also note west can get confused by symbolic links, see
+	    # https://github.com/zephyrproject-rtos/west/issues/419
+	}
 
 	# Build rimage
 	RIMAGE_DIR=build-rimage
@@ -206,7 +216,7 @@ main()
 	if [ "x$DO_CLONE" == "xyes" ]; then
 		clone
 	else
-		# Link to ourselves if no sof module yet
+		# Symlink zephyr-project to our SOF selves if no sof west module yet
 		test -e "${WEST_TOP}"/modules/audio/sof || {
 		    mkdir -p "${WEST_TOP}"/modules/audio
 		    ln -s "$SOF_TOP" "${WEST_TOP}"/modules/audio/sof
