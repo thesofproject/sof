@@ -507,7 +507,7 @@ int main(int argc, char *argv[])
 	int read;
 	int write;
 	int type;
-	char opt;
+	int opt;
 	struct sof_abi_hdr *hdr;
 
 	ctl_data = calloc(1, sizeof(struct ctl_data));
