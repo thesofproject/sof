@@ -293,6 +293,26 @@ static void volume_ramp(struct comp_dev *dev)
 }
 
 /**
+ * \brief Reset state except controls.
+ */
+static void reset_state(struct vol_data *cd)
+{
+	int i;
+
+	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++) {
+		cd->rvolume[i] = 0;
+		cd->ramp_coef[i] = 0;
+	}
+
+	cd->channels = 0;
+	cd->ramp_finished = false;
+	cd->vol_ramp_active = false;
+	cd->vol_ramp_frames = 0;
+	cd->vol_ramp_elapsed_frames = 0;
+	cd->sample_rate = 0;
+}
+
+/**
  * \brief Creates volume component.
  *
  * \return Pointer to volume base component device.
@@ -365,9 +385,7 @@ static struct comp_dev *volume_new(const struct comp_driver *drv,
 		cd->muted[i] = false;
 	}
 
-	cd->vol_ramp_active = false;
-	cd->channels = 0; /* To be set in prepare() */
-
+	reset_state(cd);
 	comp_info(dev, "vol->initial_ramp = %d, vol->ramp = %d, vol->min_value = %d, vol->max_value = %d",
 		  vol->initial_ramp, vol->ramp,
 		  vol->min_value, vol->max_value);
@@ -890,8 +908,10 @@ err:
  */
 static int volume_reset(struct comp_dev *dev)
 {
-	comp_dbg(dev, "volume_reset()");
+	struct vol_data *cd = comp_get_drvdata(dev);
 
+	comp_dbg(dev, "volume_reset()");
+	reset_state(cd);
 	comp_set_state(dev, COMP_TRIGGER_RESET);
 	return 0;
 }
