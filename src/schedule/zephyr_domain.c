@@ -112,7 +112,7 @@ static void zephyr_domain_timer_fn(struct k_timer *timer)
 	 * struct task::start for a strictly periodic Zephyr-based LL scheduler
 	 * implementation, they will be removed after a short grace period.
 	 */
-	while (zephyr_domain->ll_domain->next_tick < now)
+	while (zephyr_domain->ll_domain->next_tick <= now)
 		zephyr_domain->ll_domain->next_tick += LL_TIMER_PERIOD_TICKS;
 
 	for (core = 0; core < CONFIG_CORE_COUNT; core++) {
