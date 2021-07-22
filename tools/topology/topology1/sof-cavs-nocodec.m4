@@ -105,6 +105,13 @@ dnl     period, priority, core,
 dnl     pcm_min_rate, pcm_max_rate, pipeline_rate,
 dnl     time_domain, sched_comp)
 
+# Low Latency playback pipeline 1 on PCM 0 using max 2 channels of PIPE_BITS.
+# Set 1000us deadline on core 2 with priority 0
+PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
+	1, 0, 2, PIPE_BITS,
+	1000, 0, SSP0_CORE_ID,
+	48000, 48000, 48000)
+
 # Volume switch capture pipeline 2 on PCM 0 using max 2 channels of PIPE_BITS.
 # Set 1000us deadline on core 2 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-volume-switch-capture.m4,
@@ -126,6 +133,13 @@ PIPELINE_PCM_ADD(sof/pipe-volume-switch-capture.m4,
 	1000, 0, SSP1_CORE_ID,
 	48000, 48000, 48000)
 
+# Low Latency playback pipeline 5 on PCM 2 using max 2 channels of PIPE_BITS.
+# Set 1000us deadline on core 0 with priority 0
+PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
+	5, 2, 2, PIPE_BITS,
+	1000, 0, SSP2_CORE_ID,
+	48000, 48000, 48000)
+
 # Volume switch capture pipeline 6 on PCM 2 using max 2 channels of PIPE_BITS.
 # Set 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-volume-switch-capture.m4,
@@ -144,30 +158,10 @@ dnl     deadline, priority, core, time_domain)
 
 # playback DAI is SSP0 using 2 periods
 # Buffers use DAI_BITS format, 1000us deadline on core 0 with priority 0
-# The 'NOT_USED_IGNORED' is due to dependencies and is adjusted later with an explicit dapm line.
-DAI_ADD(sof/pipe-mixer-dai-playback.m4,
+DAI_ADD(sof/pipe-dai-playback.m4,
 	1, SSP, SSP0_IDX, NoCodec-0,
-	NOT_USED_IGNORED, 2, DAI_BITS,
-	1000, 0, SSP0_CORE_ID, SCHEDULE_TIME_DOMAIN_TIMER, 2, 48000)
-
-# Low Latency playback pipeline 1 on PCM 0 using max 2 channels of PIPE_BITS.
-# Set 1000us deadline on core 2 with priority 0
-PIPELINE_PCM_ADD(sof/pipe-host-volume-playback.m4,
-	7, 0, 2, PIPE_BITS,
-	1000, 0, SSP0_CORE_ID,
-	48000, 48000, 48000,
-	SCHEDULE_TIME_DOMAIN_TIMER,
-	PIPELINE_PLAYBACK_SCHED_COMP_1)
-
-# Deep buffer playback pipeline 11 on PCM 3 using max 2 channels of PIPE_BITS.
-# Set 1000us deadline on core 2 with priority 0.
-# TODO: Modify pipeline deadline to account for deep buffering
-PIPELINE_PCM_ADD(sof/pipe-host-volume-playback.m4,
-	11, 3, 2, PIPE_BITS,
-	1000, 0, SSP0_CORE_ID,
-	48000, 48000, 48000,
-	SCHEDULE_TIME_DOMAIN_TIMER,
-	PIPELINE_PLAYBACK_SCHED_COMP_1)
+	PIPELINE_SOURCE_1, 2, DAI_BITS,
+	1000, 0, SSP0_CORE_ID, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # capture DAI is SSP0 using 2 periods
 # Buffers use DAI_BITS format, 1000us deadline on core 0 with priority 0
@@ -192,30 +186,10 @@ DAI_ADD(sof/pipe-dai-capture.m4,
 
 # playback DAI is SSP2 using 2 periods
 # Buffers use DAI_BITS format, 1000us deadline on core 0 with priority 0
-# The 'NOT_USED_IGNORED' is due to dependencies and is adjusted later with an explicit dapm line.
-DAI_ADD(sof/pipe-mixer-dai-playback.m4,
+DAI_ADD(sof/pipe-dai-playback.m4,
 	5, SSP, SSP2_IDX, NoCodec-2,
-	NOT_USED_IGNORED, 2, DAI_BITS,
-	1000, 0, SSP2_CORE_ID, SCHEDULE_TIME_DOMAIN_TIMER, 2, 48000)
-
-# Low Latency playback pipeline 5 on PCM 2 using max 2 channels of PIPE_BITS.
-# Set 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_ADD(sof/pipe-host-volume-playback.m4,
-	8, 2, 2, PIPE_BITS,
-	1000, 0, SSP2_CORE_ID,
-	48000, 48000, 48000,
-	SCHEDULE_TIME_DOMAIN_TIMER,
-	PIPELINE_PLAYBACK_SCHED_COMP_5)
-
-# Deep buffer playback pipeline 12 on PCM 4 using max 2 channels of PIPE_BITS.
-# Set 1000us deadline on core 2 with priority 0.
-# TODO: Modify pipeline deadline to account for deep buffering
-PIPELINE_PCM_ADD(sof/pipe-host-volume-playback.m4,
-	12, 4, 2, PIPE_BITS,
-	1000, 0, SSP2_CORE_ID,
-	48000, 48000, 48000,
-	SCHEDULE_TIME_DOMAIN_TIMER,
-	PIPELINE_PLAYBACK_SCHED_COMP_5)
+	PIPELINE_SOURCE_5, 2, DAI_BITS,
+	1000, 0, SSP2_CORE_ID, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # capture DAI is SSP2 using 2 periods
 # Buffers use DAI_BITS format, 1000us deadline on core 0 with priority 0
@@ -224,36 +198,10 @@ DAI_ADD(sof/pipe-dai-capture.m4,
 	PIPELINE_SINK_6, 2, DAI_BITS,
 	1000, 0, SSP2_CORE_ID, SCHEDULE_TIME_DOMAIN_TIMER)
 
-# Connect pipelines 7 and 11 to 1
-SectionGraph."Pipeline-1-11-7" {
-	index "0"
-
-	lines [
-		# PCM pipeline 7 to DAI pipeline 1
-		dapm(PIPELINE_MIXER_1, PIPELINE_SOURCE_7)
-		# PCM pipeline 11 to DAI pipeline 1
-		dapm(PIPELINE_MIXER_1, PIPELINE_SOURCE_11)
-
-	]
-}
-
-# Connect pipelines 8 and 12 to 5
-SectionGraph."Pipeline-5-12-8" {
-	index "0"
-
-	lines [
-		# PCM pipeline 8 to DAI pipeline 5
-		dapm(PIPELINE_MIXER_5, PIPELINE_SOURCE_8)
-		# PCM pipeline 12 to DAI pipeline 5
-		dapm(PIPELINE_MIXER_5, PIPELINE_SOURCE_12)
-
-	]
-}
-
 dnl PCM_DUPLEX_ADD(name, pcm_id, playback, capture)
-PCM_DUPLEX_ADD(`Port'SSP0_IDX, 0, PIPELINE_PCM_7, PIPELINE_PCM_2)
+PCM_DUPLEX_ADD(`Port'SSP0_IDX, 0, PIPELINE_PCM_1, PIPELINE_PCM_2)
 PCM_DUPLEX_ADD(`Port'SSP1_IDX, 1, PIPELINE_PCM_3, PIPELINE_PCM_4)
-PCM_DUPLEX_ADD(`Port'SSP2_IDX, 2, PIPELINE_PCM_8, PIPELINE_PCM_6)
+PCM_DUPLEX_ADD(`Port'SSP2_IDX, 2, PIPELINE_PCM_5, PIPELINE_PCM_6)
 
 #
 # BE configurations - overrides config in ACPI if present
