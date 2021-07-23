@@ -113,6 +113,11 @@ if (CONFIG_SOC_SERIES_INTEL_ADSP_BAYTRAIL)
 		${SOF_SRC_PATH}/schedule/dma_multi_chan_domain.c
 	)
 
+	# SOF core infrastructure - runs on top of Zephyr
+	zephyr_library_sources(
+		${SOF_SRC_PATH}/schedule/ll_schedule.c
+	)
+
 	set(PLATFORM "baytrail")
 endif()
 
@@ -121,6 +126,11 @@ if (CONFIG_SOC_SERIES_INTEL_ADSP_BROADWELL)
 	zephyr_library_sources(
 		${SOF_DRIVERS_PATH}/intel/haswell/ipc.c
 		${SOF_DRIVERS_PATH}/intel/haswell/ssp.c
+	)
+
+	# SOF core infrastructure - runs on top of Zephyr
+	zephyr_library_sources(
+		${SOF_SRC_PATH}/schedule/ll_schedule.c
 	)
 
 	set(PLATFORM "haswell")
@@ -175,6 +185,11 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V15)
 		${SOF_PLATFORM_PATH}/intel/cavs/lib/dma.c
 		${SOF_PLATFORM_PATH}/apollolake/lib/power_down.S
 		${SOF_PLATFORM_PATH}/apollolake/lib/clk.c
+	)
+
+	# SOF core infrastructure - runs on top of Zephyr
+	zephyr_library_sources(
+		${SOF_SRC_PATH}/schedule/zephyr_ll.c
 	)
 
 	set_source_files_properties(${SOF_PLATFORM_PATH}/apollolake/lib/power_down.S PROPERTIES COMPILE_FLAGS -DASSEMBLY)
@@ -239,6 +254,11 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V18)
 		#${SOF_PLATFORM_PATH}/intel/cavs/lps_pic_restore_vector.S
 	)
 
+	# SOF core infrastructure - runs on top of Zephyr
+	zephyr_library_sources(
+		${SOF_SRC_PATH}/schedule/zephyr_ll.c
+	)
+
 	zephyr_library_sources_ifdef(CONFIG_CAVS_LPS
 		${SOF_PLATFORM_PATH}/intel/cavs/lps_wait.c
 	)
@@ -300,6 +320,11 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V20)
 		${SOF_PLATFORM_PATH}/intel/cavs/lib/dai.c
 		${SOF_PLATFORM_PATH}/intel/cavs/lib/dma.c
 		#${SOF_PLATFORM_PATH}/intel/cavs/lps_pic_restore_vector.S
+	)
+
+	# SOF core infrastructure - runs on top of Zephyr
+	zephyr_library_sources(
+		${SOF_SRC_PATH}/schedule/zephyr_ll.c
 	)
 
 	zephyr_library_sources_ifdef(CONFIG_CAVS_LPS
@@ -366,6 +391,11 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V25)
 		${SOF_PLATFORM_PATH}/intel/cavs/lib/dai.c
 		${SOF_PLATFORM_PATH}/intel/cavs/lib/dma.c
 		#${SOF_PLATFORM_PATH}/intel/cavs/lps_pic_restore_vector.S
+	)
+
+	# SOF core infrastructure - runs on top of Zephyr
+	zephyr_library_sources(
+		${SOF_SRC_PATH}/schedule/zephyr_ll.c
 	)
 
 	zephyr_library_sources_ifdef(CONFIG_CAVS_LPS
@@ -479,7 +509,6 @@ zephyr_library_sources(
 	${SOF_SRC_PATH}/schedule/schedule.c
 	${SOF_SRC_PATH}/schedule/dma_single_chan_domain.c
 	${SOF_SRC_PATH}/schedule/dma_multi_chan_domain.c
-	${SOF_SRC_PATH}/schedule/zephyr_ll.c
 	${SOF_SRC_PATH}/schedule/zephyr.c
 
 	# Bridge wrapper between SOF and Zephyr APIs - Will shrink over time.
