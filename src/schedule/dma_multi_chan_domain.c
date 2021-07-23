@@ -23,6 +23,21 @@
 #include <stddef.h>
 #include <stdint.h>
 
+/* For i.MX, when building SOF with Zephyr, we use wrapper.c,
+ * interrupt.c and interrupt-irqsteer.c which causes name
+ * collisions.
+ * In order to avoid this and make any second level interrupt
+ * handling go through interrupt-irqsteer.c define macros to
+ * rename the duplicated functions.
+ */
+#if defined(__ZEPHYR__) && defined(CONFIG_IMX)
+#define interrupt_get_irq mux_interrupt_get_irq
+#define interrupt_register mux_interrupt_register
+#define interrupt_unregister mux_interrupt_unregister
+#define interrupt_enable mux_interrupt_enable
+#define interrupt_disable mux_interrupt_disable
+#endif
+
 struct dma_domain_data {
 	int irq;
 	struct pipeline_task *task;

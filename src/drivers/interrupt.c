@@ -27,6 +27,21 @@ DECLARE_SOF_UUID("irq", irq_uuid, 0x1862d39a, 0x3a84, 0x4d64,
 
 DECLARE_TR_CTX(irq_tr, SOF_UUID(irq_uuid), LOG_LEVEL_INFO);
 
+/* For i.MX, when building SOF with Zephyr, we use wrapper.c,
+ * interrupt.c and interrupt-irqsteer.c which causes name
+ * collisions.
+ * In order to avoid this and make any second level interrupt
+ * handling go through interrupt-irqsteer.c define macros to
+ * rename the duplicated functions.
+ */
+#if defined(__ZEPHYR__) && defined(CONFIG_IMX)
+#define interrupt_get_irq mux_interrupt_get_irq
+#define interrupt_register mux_interrupt_register
+#define interrupt_unregister mux_interrupt_unregister
+#define interrupt_enable mux_interrupt_enable
+#define interrupt_disable mux_interrupt_disable
+#endif
+
 static SHARED_DATA struct cascade_root cascade_root;
 
 static int interrupt_register_internal(uint32_t irq, void (*handler)(void *arg),
@@ -361,8 +376,18 @@ static int interrupt_register_internal(uint32_t irq, void (*handler)(void *arg),
 
 	/* no parent means we are registering DSP internal IRQ */
 	cascade = interrupt_get_parent(irq);
-	if (!cascade)
+	if (!cascade) {
+#if defined(__ZEPHYR__) && defined(CONFIG_IMX)
+/* undefine the macro so that interrupt_register()
+ * is resolved to the one from wrapper.c
+ */
+#undef interrupt_register
+
+		return interrupt_register(irq, handler, arg);
+#else
 		return arch_interrupt_register(irq, handler, arg);
+#endif
+	}
 
 	spin_lock_irq(&cascade->lock, flags);
 	ret = irq_register_child(cascade, irq, handler, arg, desc);
@@ -386,7 +411,16 @@ static void interrupt_unregister_internal(uint32_t irq, const void *arg,
 	/* no parent means we are unregistering DSP internal IRQ */
 	cascade = interrupt_get_parent(irq);
 	if (!cascade) {
+#if defined(__ZEPHYR__) && defined(CONFIG_IMX)
+/* undefine the macro so that interrupt_unregister()
+ * is resolved to the one from wrapper.c
+ */
+#undef interrupt_unregister
+
+		interrupt_unregister(irq, arg);
+#else
 		arch_interrupt_unregister(irq);
+#endif
 		return;
 	}
 
@@ -404,7 +438,16 @@ uint32_t interrupt_enable(uint32_t irq, void *arg)
 	if (cascade)
 		return irq_enable_child(cascade, irq, arg);
 
+#if defined(__ZEPHYR__) && defined(CONFIG_IMX)
+/* undefine the macro so that interrupt_enable()
+ * is resolved to the one from wrapper.c
+ */
+#undef interrupt_enable
+
+	return interrupt_enable(irq, arg);
+#else
 	return arch_interrupt_enable_mask(1 << irq);
+#endif
 }
 
 uint32_t interrupt_disable(uint32_t irq, void *arg)
@@ -416,5 +459,14 @@ uint32_t interrupt_disable(uint32_t irq, void *arg)
 	if (cascade)
 		return irq_disable_child(cascade, irq, arg);
 
+#if defined(__ZEPHYR__) && defined(CONFIG_IMX)
+/* undefine the macro so that interrupt_disable()
+ * is resolved to the one from wrapper.c
+ */
+#undef interrupt_disable
+
+	return interrupt_disable(irq, arg);
+#else
 	return arch_interrupt_disable_mask(1 << irq);
+#endif
 }

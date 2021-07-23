@@ -95,6 +95,10 @@ DECLARE_TR_CTX(irq_i_tr, SOF_UUID(irq_imx_uuid), LOG_LEVEL_INFO);
 #define IRQSTR_INT_BIT(irq)		((irq) % 32)
 #define IRQSTR_INT_MASK(irq)		(1 << IRQSTR_INT_BIT(irq))
 
+#if defined(__ZEPHYR__)
+#define interrupt_get_irq mux_interrupt_get_irq
+#endif
+
 /* HW register access helper methods */
 
 static inline void irqstr_write(uint32_t reg, uint32_t value)

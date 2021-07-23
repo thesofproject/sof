@@ -255,28 +255,6 @@ void heap_trace_all(int force)
 const char irq_name_level2[] = "level2";
 const char irq_name_level5[] = "level5";
 
-/*
- * CAVS IRQs are multilevel whereas BYT and BDW are DSP level only.
- *
- * For i.MX we use the IRQ_STEER
- */
-int interrupt_get_irq(unsigned int irq, const char *cascade)
-{
-#if CONFIG_SOC_SERIES_INTEL_ADSP_BAYTRAIL ||\
-	CONFIG_SOC_SERIES_INTEL_ADSP_BROADWELL || \
-	CONFIG_IMX || \
-	CONFIG_LIBRARY
-	return irq;
-#else
-	if (cascade == irq_name_level2)
-		return SOC_AGGREGATE_IRQ(irq, IRQ_NUM_EXT_LEVEL2);
-	if (cascade == irq_name_level5)
-		return SOC_AGGREGATE_IRQ(irq, IRQ_NUM_EXT_LEVEL5);
-
-	return SOC_AGGREGATE_IRQ(0, irq);
-#endif
-}
-
 int interrupt_register(uint32_t irq, void(*handler)(void *arg), void *arg)
 {
 #ifdef CONFIG_DYNAMIC_INTERRUPTS
@@ -319,6 +297,29 @@ uint32_t interrupt_disable(uint32_t irq, void *arg)
 }
 #endif
 
+/*
+ * i.MX uses the IRQ_STEER
+ */
+#if !CONFIG_IMX
+/*
+ * CAVS IRQs are multilevel whereas BYT and BDW are DSP level only.
+ */
+int interrupt_get_irq(unsigned int irq, const char *cascade)
+{
+#if CONFIG_SOC_SERIES_INTEL_ADSP_BAYTRAIL ||\
+	CONFIG_SOC_SERIES_INTEL_ADSP_BROADWELL || \
+	CONFIG_LIBRARY
+	return irq;
+#else
+	if (cascade == irq_name_level2)
+		return SOC_AGGREGATE_IRQ(irq, IRQ_NUM_EXT_LEVEL2);
+	if (cascade == irq_name_level5)
+		return SOC_AGGREGATE_IRQ(irq, IRQ_NUM_EXT_LEVEL5);
+
+	return SOC_AGGREGATE_IRQ(0, irq);
+#endif
+}
+
 void interrupt_mask(uint32_t irq, unsigned int cpu)
 {
 	/* TODO: how do we mask on other cores with Zephyr APIs */
@@ -343,6 +344,7 @@ void platform_interrupt_clear(uint32_t irq, uint32_t mask)
 {
 	/* handled by zephyr - needed for linkage */
 }
+#endif
 
 /*
  * Timers.
