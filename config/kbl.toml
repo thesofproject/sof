@@ -3,7 +3,7 @@ version = [1, 5]
 [adsp]
 name = "kbl"
 machine_id = 6
-image_size = "0x100000"
+image_size = "0x200000" # (30 + 2) bank * 64KB
 
 [[adsp.mem_zone]]
 type = "ROM"
