@@ -1073,7 +1073,7 @@ void heap_trace(struct mm_heap *heap, int size)
 			heap->info.free);
 
 		/* map[j]'s base is calculated based on map[j-1] */
-		for (j = 1; j < heap->blocks; j++) {
+		for (j = 0; j < heap->blocks; j++) {
 			current_map = &heap->map[j];
 
 			tr_info(&mem_tr, "  block %d base 0x%x size %d",
