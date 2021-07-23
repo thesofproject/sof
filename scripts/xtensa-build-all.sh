@@ -43,8 +43,10 @@ die()
 print_usage()
 {
     cat <<EOF
-Re-configures and re-builds SOF using the corresponding compiler and
-the <platform>_defconfig file.
+Re-configures and re-builds SOF using the corresponding compiler and the
+<platform>_defconfig file. Implements and saves the manual configuration
+described in
+https://thesofproject.github.io/latest/developer_guides/firmware/cmake.html
 
 usage: $0 [options] platform(s)
 
