@@ -419,6 +419,7 @@ if (CONFIG_SOC_SERIES_NXP_IMX8)
 		${SOF_DRIVERS_PATH}/imx/sai.c
 		${SOF_DRIVERS_PATH}/imx/ipc.c
 		${SOF_DRIVERS_PATH}/imx/esai.c
+		${SOF_DRIVERS_PATH}/imx/interrupt-irqsteer.c
 	)
 
 	# Platform sources
@@ -433,6 +434,7 @@ if (CONFIG_SOC_SERIES_NXP_IMX8)
 	# SOF core infrastructure - runs on top of Zephyr
 	zephyr_library_sources(
 		${SOF_SRC_PATH}/schedule/ll_schedule.c
+		${SOF_SRC_PATH}/drivers/interrupt.c
 	)
 
 	set(PLATFORM "imx8")
