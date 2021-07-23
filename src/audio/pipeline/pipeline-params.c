@@ -8,6 +8,8 @@
 #include <sof/audio/buffer.h>
 #include <sof/audio/component_ext.h>
 #include <sof/audio/pipeline.h>
+#include <sof/lib/memory.h>
+#include <sof/lib/mm_heap.h>
 #include <sof/list.h>
 #include <sof/spinlock.h>
 #include <ipc/stream.h>
@@ -235,6 +237,10 @@ int pipeline_params(struct pipeline *p, struct comp_dev *host,
 			 ret, dev_comp_id(host));
 	}
 
+#if CONFIG_DEBUG_HEAP
+	/* show heap status update with this pipeline run */
+	heap_trace_all(0);
+#endif
 	return ret;
 }
 
