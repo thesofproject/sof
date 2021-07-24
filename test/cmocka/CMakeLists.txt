@@ -8,14 +8,19 @@ add_library(cmocka STATIC IMPORTED)
 if(BUILD_UNIT_TESTS_HOST)
 	set(UT_CC_CONFIG ${CMAKE_CURRENT_SOURCE_DIR}/cmocka-host-gcc-toolchain.cmake)
 	set(UT_TOOLCHAIN "")
+	# TODO: add an option to support valgrind.
+	# In the mean time use scripts/run-mocks.sh for valgrind.
+	set(SIMULATOR "")
 elseif(BUILD_UNIT_TESTS_XTENSA_GCC)
 	# GCC xtensa build for future Qemu.
 	set(UT_CC_CONFIG ${CMAKE_CURRENT_SOURCE_DIR}/cmocka-xtensa-gcc-toolchain.cmake)
 	set(UT_TOOLCHAIN "-DTOOLCHAIN=${TOOLCHAIN}")
+	set(SIMULATOR xt-run --exit_with_target_code)
 else()
 	# xtensa XCC build for xt-run.
 	set(UT_CC_CONFIG ${CMAKE_CURRENT_SOURCE_DIR}/cmocka-xtensa-xt-toolchain.cmake)
 	set(UT_TOOLCHAIN "")
+	set(SIMULATOR xt-run --exit_with_target_code)
 endif()
 
 if(DEFINED CMOCKA_DIRECTORY)
@@ -102,7 +107,7 @@ function(cmocka_test test_name)
 	# Cmocka requires this define for stdint.h that defines uintptr
 	target_compile_definitions(${test_name} PRIVATE -D_UINTPTR_T_DEFINED)
 
-	add_test(NAME ${test_name} COMMAND xt-run --exit_with_target_code ${test_name})
+	add_test(NAME ${test_name} COMMAND ${SIMULATOR} ${test_name})
 
 	sof_append_relative_path_definitions(${test_name})
 endfunction()
