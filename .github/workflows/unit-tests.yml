@@ -1,0 +1,21 @@
+---
+
+# https://thesofproject.github.io/latest/developer_guides/unit_tests.html
+
+name: Unit tests
+
+# 'workflow_dispatch' allows running this workflow manually from the
+# 'Actions' tab
+
+# yamllint disable-line rule:truthy
+on: [pull_request, workflow_dispatch]
+
+jobs:
+  cmocka_utests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with: {fetch-depth: 2}
+
+      - name: build and run all defconfigs
+        run: ./test/test-all-defconfigs.sh
