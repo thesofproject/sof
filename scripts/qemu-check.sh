@@ -4,7 +4,6 @@
 set -e
 
 SUPPORTED_PLATFORMS=(byt cht bdw hsw apl icl skl kbl cnl imx8 imx8x imx8m)
-READY_MSG="6c 00 00 00 00 00 00 70"
 
 SOF_DIR=$(cd "$(dirname "$0")" && cd .. && pwd)
 
@@ -99,12 +98,22 @@ do
 			SHM_MBOX=qemu-bridge-dram-mem
 			;;
 		hsw)
+		# This READY_IPC value comes from:
+		#   shim_write(SHIM_IPCD, outbox | SHIM_IPCD_BUSY);
+		#   outbox=MAILBOX_HOST_OFFSET >> 3;
+		#   MAILBOX_HOST_OFFSET>>3 = 0xFC00
+		#   IPC_DIPCIDR_BUSY = BIT(31)
 			READY_IPC="00 fc 00 80"
 			OUTBOX_OFFSET="7e000"
 			SHM_IPC_REG=qemu-bridge-shim-io
-			SHM_MBOX=qemu-bridge-dram-mem
+			SHM_MBOX=qemu-bridge-dram-mem # some DMA traces visible here
 			;;
 		apl)
+		# This READY_IPC value comes from:
+		#   ipc_write(IPC_DIPCIDR, IPC_DIPCIDR_BUSY | header);
+		#   header = FE_READY = 0x7
+		#   IPC_DIPCIDR_BUSY = BIT(31)
+		# So "00 00 00 f0" is just "F0000000"
 			READY_IPC="00 00 00 f0"
 			SHM_IPC_REG="qemu-bridge-ipc(|-dsp)-io"
 			OUTBOX_OFFSET="7000"
@@ -152,20 +161,37 @@ do
 
         xtensa_host_sh=$(find_qemu_xtensa)
 
+	ret=0
+	( set -x
+
 	${xtensa_host_sh} "$PLATFORM" -k \
 	   "${SOF_BUILDS}"/build_"${platform}"_gcc/src/arch/xtensa/"$FWNAME" \
                 "${ROM[@]}" \
-		-o 2.0 "${SOF_BUILDS}"/dump-"$platform".txt || true # timeout
+		-o 2.0 "${SOF_BUILDS}"/dump-"$platform".txt
 	# dump log into sof.git incase running in docker
+	) || ret=$? # this defeats set -e
+	# See 'man timeout'
+	test $ret = 124 || die 'qemu failed before we stopped it!\n'
 
-	# use regular expression to match the SHM IPC REG file name
-	SHM_IPC_REG_FILE=$(ls /dev/shm/ | grep -E $SHM_IPC_REG)
+	# use regular expression to match the SHM IPC REG file name, one of:
+	# /dev/shm/qemu-bridge-{shim,ipc,dsp}-io
+	SHM_IPC_REG_FILE=$(ls /dev/shm/ | grep -E $SHM_IPC_REG) || true
 
-	# check if ready ipc header is in the ipc regs
+	test -e /dev/shm/"${SHM_IPC_REG_FILE}" ||
+	    die '%s: %s not found in /dev/shm/\n' "$0" "$SHM_IPC_REG"
+
+	# Check if ready ipc header is in the ipc regs doorbell
+	# registers or shared memory for older platforms.
+	# See:
+	# - 'adsp_reg_space' in qemu/
+	# - shim_write() or ipc_write() in sof/
 	IPC_REG=$(hexdump -C /dev/shm/"$SHM_IPC_REG_FILE" |
 		      grep "$READY_IPC") || true
 
-	# check if ready ipc message is in the mbox
+	# Check if ready ipc message is in the mbox-io / sram-mem
+	# See "struct sof_ipc_fw_ready" and
+	# objdump -s -j .fw_ready -s build/sof
+	READY_MSG="6c 00 00 00 00 00 00 70"
 	IPC_MSG=$(hexdump -C /dev/shm/$SHM_MBOX | grep -A 4 "$READY_MSG" |
 		      grep -A 4 "$OUTBOX_OFFSET") || true
 
