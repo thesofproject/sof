@@ -109,7 +109,7 @@ function(cmocka_test test_name)
 
 	# Skip running alloc test on HOST until it's fixed (it passes and is run
 	# with xt-run)
-	if( "alloc" STREQUAL "${test_name}" AND BUILD_UNIT_TESTS_HOST)
+	if( "allocXX" STREQUAL "${test_name}" AND BUILD_UNIT_TESTS_HOST)
 		message(WARNING "SKIP alloc test on HOST, built but not run")
 	else()
 		add_test(NAME ${test_name} COMMAND ${SIMULATOR} ${test_name})
