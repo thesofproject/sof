@@ -347,7 +347,8 @@ int ri_manifest_sign_v1_5(struct image *image)
 {
 	struct fw_image_manifest_v1_5 *man = image->fw_image;
 
-	char *const data1 = (char *)man + MAN_CSS_MAN_SIZE_V1_5;
+	/* excluding the manifest header */
+	char *const data1 = (char *)man + sizeof(struct fw_image_manifest_v1_5);
 	unsigned const size1 = image->image_end - sizeof(*man);
 
 	return pkcs_v1_5_sign_man_v1_5(image, man, data1, size1);
