@@ -420,7 +420,11 @@ static int sai_get_hw_params(struct dai *dai,
 
 	/* SAI only currently supports these parameters */
 	params->rate = sai->params.fsync_rate;
+#ifdef CONFIG_IMX8ULP
+	params->channels = 1;
+#else
 	params->channels = 2;
+#endif
 	params->buffer_fmt = 0;
 	params->frame_fmt = SOF_IPC_FRAME_S32_LE;
 
