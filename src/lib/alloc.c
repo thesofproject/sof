@@ -548,113 +548,88 @@ static void free_block(void *ptr)
 #endif
 }
 
-#if CONFIG_DEBUG_HEAP
-
-static void trace_heap_blocks(struct mm_heap *heap)
+#if CONFIG_TRACE
+void heap_trace(struct mm_heap *heap, int size)
 {
-	struct block_map *block_map;
+	struct block_map *current_map;
 	int i;
+	int j;
 
-	tr_err(&mem_tr, "heap: 0x%x size %d blocks %d caps 0x%x", heap->heap,
-	       heap->size, heap->blocks, heap->caps);
-	tr_err(&mem_tr, " used %d free %d", heap->info.used,
-	       heap->info.free);
+	for (i = 0; i < size; i++) {
+		tr_info(&mem_tr, " heap: 0x%x size %d blocks %d caps 0x%x",
+			heap->heap, heap->size, heap->blocks,
+			heap->caps);
+		tr_info(&mem_tr, "  used %d free %d", heap->info.used,
+			heap->info.free);
 
-	for (i = 0; i < heap->blocks; i++) {
-		block_map = &heap->map[i];
+		/* map[j]'s base is calculated based on map[j-1] */
+		for (j = 0; j < heap->blocks; j++) {
+			current_map = &heap->map[j];
 
-		tr_err(&mem_tr, " block %d base 0x%x size %d count %d", i,
-		       block_map->base, block_map->block_size,
-		       block_map->count);
-		tr_err(&mem_tr, "  free %d first at %d",
-		       block_map->free_count, block_map->first_free);
+			tr_info(&mem_tr, "  block %d base 0x%x size %d",
+				j, current_map->base,
+				current_map->block_size);
+			tr_info(&mem_tr, "   count %d free %d",
+				current_map->count,
+				current_map->free_count);
+		}
 
-	}
-
-}
-
-static void alloc_trace_heap(enum mem_zone zone, uint32_t caps, size_t bytes)
-{
-	struct mm *memmap = memmap_get();
-	struct mm_heap *heap_base;
-	struct mm_heap *heap;
-	unsigned int heap_count;
-	unsigned int n;
-	unsigned int i = 0;
-	int count = 0;
-
-	switch (zone) {
-	case SOF_MEM_ZONE_SYS:
-		heap_base = memmap->system;
-		heap_count = PLATFORM_HEAP_SYSTEM;
-		break;
-	case SOF_MEM_ZONE_SYS_RUNTIME:
-		heap_base = memmap->system_runtime;
-		heap_count = PLATFORM_HEAP_SYSTEM_RUNTIME;
-		break;
-	case SOF_MEM_ZONE_RUNTIME:
-		heap_base = memmap->runtime;
-		heap_count = PLATFORM_HEAP_RUNTIME;
-		break;
-	case SOF_MEM_ZONE_BUFFER:
-		heap_base = memmap->buffer;
-		heap_count = PLATFORM_HEAP_BUFFER;
-		break;
-#if CONFIG_CORE_COUNT > 1
-	case SOF_MEM_ZONE_RUNTIME_SHARED:
-		heap_base = memmap->runtime_shared;
-		heap_count = PLATFORM_HEAP_RUNTIME_SHARED;
-		break;
-	case SOF_MEM_ZONE_SYS_SHARED:
-		heap_base = memmap->system_shared;
-		heap_count = PLATFORM_HEAP_SYSTEM_SHARED;
-		break;
-#else
-	case SOF_MEM_ZONE_RUNTIME_SHARED:
-		heap_base = memmap->runtime;
-		heap_count = PLATFORM_HEAP_RUNTIME;
-		break;
-	case SOF_MEM_ZONE_SYS_SHARED:
-		heap_base = memmap->system;
-		heap_count = PLATFORM_HEAP_SYSTEM;
-		break;
-#endif
-	default:
-		tr_err(&mem_tr, "alloc trace: unsupported mem zone");
-		goto out;
-	}
-	heap = heap_base;
-	n = heap_count;
-
-	while (i < heap_count) {
-		heap = get_heap_from_caps(heap, n, caps);
-		if (!heap)
-			break;
-
-		trace_heap_blocks(heap);
-		count++;
-		i = heap - heap_base + 1;
-		n = heap_count - i;
 		heap++;
 	}
-
-	if (count == 0)
-		tr_err(&mem_tr, "heap: none found for zone %d caps 0x%x, bytes 0x%x",
-		       zone, caps, bytes);
-out:
-	return;
 }
 
-#define DEBUG_TRACE_PTR(ptr, bytes, zone, caps, flags) \
-	if (trace_get()) { \
-		if (!ptr) { \
-			tr_err(&mem_tr, "failed to alloc 0x%x bytes zone 0x%x caps 0x%x flags 0x%x", \
-			       bytes, zone, caps, flags); \
-			alloc_trace_heap(zone, caps, bytes); \
+void heap_trace_all(int force)
+{
+	struct mm *memmap = memmap_get();
+
+	/* has heap changed since last shown */
+	if (memmap->heap_trace_updated || force) {
+		tr_info(&mem_tr, "heap: system status");
+		heap_trace(memmap->system, PLATFORM_HEAP_SYSTEM);
+		tr_info(&mem_tr, "heap: system runtime status");
+		heap_trace(memmap->system_runtime, PLATFORM_HEAP_SYSTEM_RUNTIME);
+		tr_info(&mem_tr, "heap: buffer status");
+		heap_trace(memmap->buffer, PLATFORM_HEAP_BUFFER);
+		tr_info(&mem_tr, "heap: runtime status");
+		heap_trace(memmap->runtime, PLATFORM_HEAP_RUNTIME);
+#if CONFIG_CORE_COUNT > 1
+		tr_info(&mem_tr, "heap: runtime shared status");
+		heap_trace(memmap->runtime_shared, PLATFORM_HEAP_RUNTIME_SHARED);
+		tr_info(&mem_tr, "heap: system shared status");
+		heap_trace(memmap->system_shared, PLATFORM_HEAP_SYSTEM_SHARED);
+#endif
 	}
 
+	memmap->heap_trace_updated = 0;
+
+}
 #else
-#define DEBUG_TRACE_PTR(ptr, bytes, zone, caps, flags)
+void heap_trace_all(int force) { }
+void heap_trace(struct mm_heap *heap, int size) { }
+#endif
+
+#define _ALLOC_FAILURE(bytes, zone, caps, flags) \
+	tr_err(&mem_tr, \
+	       "failed to alloc 0x%x bytes zone 0x%x caps 0x%x flags 0x%x", \
+	       bytes, zone, caps, flags)
+
+#if CONFIG_DEBUG_HEAP
+#define DEBUG_TRACE_PTR(ptr, bytes, zone, caps, flags) do { \
+		if (trace_get()) { \
+			if (!(ptr)) \
+				_ALLOC_FAILURE(bytes, zone, caps, flags); \
+			heap_trace_all(0); \
+		} \
+	} while (0)
+#else
+#define DEBUG_TRACE_PTR(ptr, bytes, zone, caps, flags) do { \
+		if (trace_get()) { \
+			if (!(ptr)) { \
+				_ALLOC_FAILURE(bytes, zone, caps, flags); \
+				heap_trace_all(0); \
+			} \
+		} \
+	} while (0)
 #endif
 
 /* allocate single block for system runtime */
@@ -1083,66 +1058,6 @@ void free_heap(enum mem_zone zone)
 	cpu_heap->info.free = cpu_heap->size;
 
 }
-
-#if CONFIG_TRACE
-void heap_trace(struct mm_heap *heap, int size)
-{
-	struct block_map *current_map;
-	int i;
-	int j;
-
-	for (i = 0; i < size; i++) {
-		tr_info(&mem_tr, " heap: 0x%x size %d blocks %d caps 0x%x",
-			heap->heap, heap->size, heap->blocks,
-			heap->caps);
-		tr_info(&mem_tr, "  used %d free %d", heap->info.used,
-			heap->info.free);
-
-		/* map[j]'s base is calculated based on map[j-1] */
-		for (j = 0; j < heap->blocks; j++) {
-			current_map = &heap->map[j];
-
-			tr_info(&mem_tr, "  block %d base 0x%x size %d",
-				j, current_map->base,
-				current_map->block_size);
-			tr_info(&mem_tr, "   count %d free %d",
-				current_map->count,
-				current_map->free_count);
-		}
-
-		heap++;
-	}
-}
-
-void heap_trace_all(int force)
-{
-	struct mm *memmap = memmap_get();
-
-	/* has heap changed since last shown */
-	if (memmap->heap_trace_updated || force) {
-		tr_info(&mem_tr, "heap: system status");
-		heap_trace(memmap->system, PLATFORM_HEAP_SYSTEM);
-		tr_info(&mem_tr, "heap: system runtime status");
-		heap_trace(memmap->system_runtime, PLATFORM_HEAP_SYSTEM_RUNTIME);
-		tr_info(&mem_tr, "heap: buffer status");
-		heap_trace(memmap->buffer, PLATFORM_HEAP_BUFFER);
-		tr_info(&mem_tr, "heap: runtime status");
-		heap_trace(memmap->runtime, PLATFORM_HEAP_RUNTIME);
-#if CONFIG_CORE_COUNT > 1
-		tr_info(&mem_tr, "heap: runtime shared status");
-		heap_trace(memmap->runtime_shared, PLATFORM_HEAP_RUNTIME_SHARED);
-		tr_info(&mem_tr, "heap: system shared status");
-		heap_trace(memmap->system_shared, PLATFORM_HEAP_SYSTEM_SHARED);
-#endif
-	}
-
-	memmap->heap_trace_updated = 0;
-
-}
-#else
-void heap_trace_all(int force) { }
-void heap_trace(struct mm_heap *heap, int size) { }
-#endif
 
 /* initialise map */
 void init_heap(struct sof *sof)
