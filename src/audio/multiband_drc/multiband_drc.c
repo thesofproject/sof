@@ -539,6 +539,7 @@ static int multiband_drc_reset(struct comp_dev *dev)
 
 	multiband_drc_reset_state(&cd->state);
 
+	cd->source_format = 0;
 	cd->multiband_drc_func = NULL;
 	cd->crossover_split = NULL;
 
