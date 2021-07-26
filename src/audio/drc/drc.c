@@ -442,6 +442,7 @@ static int drc_reset(struct comp_dev *dev)
 
 	drc_reset_state(&cd->state);
 
+	cd->source_format = 0;
 	cd->drc_func = NULL;
 
 	comp_set_state(dev, COMP_TRIGGER_RESET);
