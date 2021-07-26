@@ -620,14 +620,22 @@ out:
 
 #define DEBUG_TRACE_PTR(ptr, bytes, zone, caps, flags) \
 	do { \
-		if (!ptr) { \
-			tr_err(&mem_tr, "failed to alloc 0x%x bytes zone 0x%x caps 0x%x flags 0x%x", \
+		if (!(ptr)) { \
+			tr_err(&mem_tr, \
+			       "failed to alloc 0x%x bytes zone 0x%x caps 0x%x flags 0x%x", \
 			       bytes, zone, caps, flags); \
 			alloc_trace_heap(zone, caps, bytes); \
 		} \
 	} while (0)
 #else
-#define DEBUG_TRACE_PTR(ptr, bytes, zone, caps, flags)
+#define DEBUG_TRACE_PTR(ptr, bytes, zone, caps, flags) \
+	do { \
+		if (!(ptr)) { \
+			tr_err(&mem_tr, \
+			       "failed to alloc 0x%x bytes zone 0x%x caps 0x%x flags 0x%x", \
+			       bytes, zone, caps, flags); \
+		} \
+	} while (0)
 #endif
 
 /* allocate single block for system runtime */
