@@ -205,14 +205,7 @@ void mtrace_event(const char *complete_packet, uint32_t length);
 	}
 
 #ifdef CONFIG_TRACEM /* Send everything to shared memory too */
-#  ifdef __ZEPHYR__
-/* We don't use Zephyr's dictionary yet so there's not enough space for
- * DEBUG messages
- */
-#    define MTRACE_DUPLICATION_LEVEL LOG_LEVEL_INFO
-#  else
-#    define MTRACE_DUPLICATION_LEVEL LOG_LEVEL_DEBUG
-#  endif
+#  define MTRACE_DUPLICATION_LEVEL LOG_LEVEL_DEBUG
 #else /* copy only ERRORS */
 #  define MTRACE_DUPLICATION_LEVEL LOG_LEVEL_ERROR
 #endif /* CONFIG_TRACEM */
@@ -275,23 +268,7 @@ do {											\
 	);										\
 	_log_sofdict(log_func, atomic, &log_entry, ctx, lvl, id_1, id_2, \
 		     META_COUNT_VARAGS_BEFORE_COMPILE(__VA_ARGS__), ##__VA_ARGS__); \
-	_log_nodict(atomic, META_COUNT_VARAGS_BEFORE_COMPILE(__VA_ARGS__), \
-		    lvl, format, ##__VA_ARGS__);			\
 } while (0)
-
-#ifdef __ZEPHYR__
-/* Just like XTOS, only the most urgent messages go to limited
- * shared memory.
- */
-#define _log_nodict(atomic, arg_count, lvl, format, ...) \
-do {							      \
-	if ((lvl) <= MTRACE_DUPLICATION_LEVEL)			      \
-		printk("%llu " format "\n", platform_timer_get(NULL), \
-		       ##__VA_ARGS__); \
-} while (0)
-#else
-#define _log_nodict(atomic, n_args, lvl, format, ...)
-#endif
 
 #endif /* CONFIG_LIBRARY */
 

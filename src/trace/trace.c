@@ -92,7 +92,6 @@ static void put_header(void *dst, const struct sof_uuid_entry *uid,
 
 }
 
-#ifndef __ZEPHYR__
 /** Ring buffer for the mailbox trace */
 void mtrace_event(const char *data, uint32_t length)
 {
@@ -111,7 +110,6 @@ void mtrace_event(const char *data, uint32_t length)
 	dcache_writeback_region(t + trace->pos, length);
 	trace->pos += length;
 }
-#endif /* __ZEPHYR__ */
 
 #if CONFIG_TRACE_FILTERING_VERBOSITY
 /**
@@ -550,14 +548,11 @@ void _log_sofdict(log_func_t sofdict_logf, bool atomic, const void *log_entry,
 {
 	va_list ap;
 
-#ifndef __ZEPHYR__ /* for Zephyr see _log_nodict() in trace.h */
 	if (lvl <= MTRACE_DUPLICATION_LEVEL) {
 		va_start(ap, arg_count);
 		mtrace_dict_entry_vl(atomic, (uint32_t)log_entry, arg_count, ap);
 		va_end(ap);
 	}
-#endif
-
 	va_start(ap, arg_count);
 	sofdict_logf(atomic, log_entry, ctx, lvl, id_1, id_2, arg_count, ap);
 	va_end(ap);
