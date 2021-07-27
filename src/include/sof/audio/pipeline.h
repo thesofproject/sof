@@ -77,6 +77,7 @@ struct pipeline {
 		int cmd;
 		struct comp_dev *host;
 		unsigned int delay;	/* period count */
+		bool aborted;		/* STOP or PAUSE failed, stay active */
 	} trigger;
 };
 

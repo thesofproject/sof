@@ -123,21 +123,35 @@ static void schedule_ll_tasks_execute(struct ll_schedule_data *sch)
 {
 	struct ll_schedule_domain *domain = sch->domain;
 	struct list_item *wlist;
-	struct list_item *tlist;
 	struct task *task;
 
 	/* check each task in the list for pending */
-	list_for_item_safe(wlist, tlist, &sch->tasks) {
-		task = container_of(wlist, struct task, list);
+	wlist = sch->tasks.next;
 
-		if (task->state != SOF_TASK_STATE_PENDING)
+	/*
+	 * Cannot use list_for_item(_safe)() because the task can cancel some
+	 * other tasks, removing them from the list. This happens, e.g. when
+	 * a pipeline task terminates a DMIC task.
+	 */
+	while (wlist != &sch->tasks) {
+		task = list_item(wlist, struct task, list);
+
+		if (task->state != SOF_TASK_STATE_PENDING) {
+			wlist = task->list.next;
 			continue;
+		}
 
 		tr_dbg(&ll_tr, "task %p %pU being started...", task, task->uid);
 
 		task->state = SOF_TASK_STATE_RUNNING;
 
+		/*
+		 * The running task might cancel other tasks, which then get
+		 * removed from the list
+		 */
 		task->state = task_run(task);
+
+		wlist = task->list.next;
 
 		spin_lock(&domain->lock);
 
