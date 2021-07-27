@@ -154,4 +154,31 @@ void cavs_pm_memory_lp_sram_power_gate(void *ptr, uint32_t size, bool enabled);
 
 #endif /* CONFIG_LP_SRAM */
 
+#if CONFIG_L1_DRAM
+
+static inline void cavs_pm_memory_l1_dram_banks_power_gate(
+	uint32_t start_bank_id, uint32_t ending_bank_id, bool enable)
+{
+	uint32_t mask = MASK(start_bank_id, ending_bank_id);
+	uint32_t pgctl = io_reg_read(L1_MEM_DRAM_PGCTL);
+	uint32_t expected = enable ? 0 : mask;
+	uint32_t delay = 0;
+
+	if (enable)
+		pgctl &= ~mask;
+	else
+		pgctl |= mask;
+
+	io_reg_write(L1_MEM_DRAM_PGCTL, pgctl);
+
+	while ((io_reg_read(L1_MEM_DRAM_PGISTS) & mask) != expected) {
+		idelay(MEMORY_POWER_CHANGE_DELAY);
+		delay += MEMORY_POWER_CHANGE_DELAY;
+		if (delay >= MEMORY_POWER_CHANGE_TIMEOUT)
+			platform_panic(SOF_IPC_PANIC_MEM);
+	}
+}
+
+#endif /* CONFIG_L1_DRAM */
+
 #endif /* __CAVS_LIB_PM_MEMORY_H__ */
