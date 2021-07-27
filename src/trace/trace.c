@@ -222,14 +222,20 @@ static bool trace_filter_flood(uint32_t log_level, uint32_t entry, uint64_t mess
 
 /** Implementation shared and invoked by both adaptive filtering and
  * not. Serializes events into trace messages and passes them to
- * dtrace_event()
+ * dtrace_event() or to mtrace_event() or to both depending on the log
+ * lvl and the Kconfiguration.
  */
-static void dma_trace_log(bool send_atomic, uint32_t log_entry, const struct tr_ctx *ctx,
-			  uint32_t lvl, uint32_t id_1, uint32_t id_2, int arg_count, va_list vargs)
+static void vatrace_log(bool send_atomic, uint32_t log_entry, const struct tr_ctx *ctx,
+			uint32_t lvl, uint32_t id_1, uint32_t id_2, int arg_count, va_list vargs)
 {
 	uint32_t data[MESSAGE_SIZE_DWORDS(_TRACE_EVENT_MAX_ARGUMENT_COUNT)];
 	const int message_size = MESSAGE_SIZE(arg_count);
 	int i;
+
+#if CONFIG_TRACEM
+	unsigned long flags;
+	struct trace *trace = trace_get();
+#endif /* CONFIG TRACEM */
 
 	/* fill log content. arg_count is in the dictionary. */
 	put_header(data, ctx->uuid_p, id_1, id_2, log_entry,
@@ -244,25 +250,42 @@ static void dma_trace_log(bool send_atomic, uint32_t log_entry, const struct tr_
 	else
 		dtrace_event((const char *)data, message_size);
 
+#if CONFIG_TRACEM
+	/* send event by mail box too. */
+	if (send_atomic) {
+		mtrace_event((const char *)data, MESSAGE_SIZE(arg_count));
+	} else {
+		spin_lock_irq(&trace->lock, flags);
+		mtrace_event((const char *)data, MESSAGE_SIZE(arg_count));
+		spin_unlock_irq(&trace->lock, flags);
+	}
+#else
+	/* send event by mail box if level is LOG_LEVEL_CRITICAL. */
+	if (lvl == LOG_LEVEL_CRITICAL)
+		mtrace_event((const char *)data, MESSAGE_SIZE(arg_count));
+#endif /* CONFIG_TRACEM */
 }
 
 void trace_log_unfiltered(bool send_atomic, const void *log_entry, const struct tr_ctx *ctx,
-			  uint32_t lvl, uint32_t id_1, uint32_t id_2, int arg_count, va_list vl)
+			  uint32_t lvl, uint32_t id_1, uint32_t id_2, int arg_count, ...)
 {
 	struct trace *trace = trace_get();
+	va_list vl;
 
 	if (!trace->enable) {
 		return;
 	}
 
-	dma_trace_log(send_atomic, (uint32_t)log_entry, ctx, lvl, id_1, id_2, arg_count, vl);
+	va_start(vl, arg_count);
+	vatrace_log(send_atomic, (uint32_t)log_entry, ctx, lvl, id_1, id_2, arg_count, vl);
+	va_end(vl);
 }
 
 void trace_log_filtered(bool send_atomic, const void *log_entry, const struct tr_ctx *ctx,
-			uint32_t lvl, uint32_t id_1, uint32_t id_2, int arg_count, va_list vl)
+			uint32_t lvl, uint32_t id_1, uint32_t id_2, int arg_count, ...)
 {
 	struct trace *trace = trace_get();
-
+	va_list vl;
 #if CONFIG_TRACE_FILTERING_ADAPTIVE
 	uint64_t current_ts;
 #endif /* CONFIG_TRACE_FILTERING_ADAPTIVE */
@@ -287,7 +310,9 @@ void trace_log_filtered(bool send_atomic, const void *log_entry, const struct tr
 	}
 #endif /* CONFIG_TRACE_FILTERING_ADAPTIVE */
 
-	dma_trace_log(send_atomic, (uint32_t)log_entry, ctx, lvl, id_1, id_2, arg_count, vl);
+	va_start(vl, arg_count);
+	vatrace_log(send_atomic, (uint32_t)log_entry, ctx, lvl, id_1, id_2, arg_count, vl);
+	va_end(vl);
 }
 
 struct sof_ipc_trace_filter_elem *trace_filter_fill(struct sof_ipc_trace_filter_elem *elem,
@@ -507,9 +532,9 @@ void trace_init(struct sof *sof)
 	dma_trace_init_early(sof);
 }
 
-static void mtrace_dict_entry_vl(bool atomic_context, uint32_t dict_entry_address,
-				 int n_args, va_list ap)
+void mtrace_dict_entry(bool atomic_context, uint32_t dict_entry_address, int n_args, ...)
 {
+	va_list ap;
 	int i;
 	char packet[MESSAGE_SIZE(_TRACE_EVENT_MAX_ARGUMENT_COUNT)];
 	uint32_t *args = (uint32_t *)&packet[MESSAGE_SIZE(0)];
@@ -518,8 +543,10 @@ static void mtrace_dict_entry_vl(bool atomic_context, uint32_t dict_entry_addres
 	put_header(packet, dt_tr.uuid_p, _TRACE_INV_ID, _TRACE_INV_ID,
 		   dict_entry_address, tstamp);
 
+	va_start(ap, n_args);
 	for (i = 0; i < MIN(n_args, _TRACE_EVENT_MAX_ARGUMENT_COUNT); i++)
 		args[i] = va_arg(ap, uint32_t);
+	va_end(ap);
 
 	if (atomic_context) {
 		mtrace_event(packet, MESSAGE_SIZE(n_args));
@@ -531,29 +558,4 @@ static void mtrace_dict_entry_vl(bool atomic_context, uint32_t dict_entry_addres
 		mtrace_event(packet, MESSAGE_SIZE(n_args));
 		spin_unlock_irq(&trace->lock, saved_flags);
 	}
-}
-
-void mtrace_dict_entry(bool atomic_context, uint32_t dict_entry_address, int n_args, ...)
-{
-	va_list ap;
-
-	va_start(ap, n_args);
-	mtrace_dict_entry_vl(atomic_context, dict_entry_address, n_args, ap);
-	va_end(ap);
-}
-
-void _log_sofdict(log_func_t sofdict_logf, bool atomic, const void *log_entry,
-		  const struct tr_ctx *ctx, const uint32_t lvl,
-		  uint32_t id_1, uint32_t id_2, int arg_count, ...)
-{
-	va_list ap;
-
-	if (lvl <= MTRACE_DUPLICATION_LEVEL) {
-		va_start(ap, arg_count);
-		mtrace_dict_entry_vl(atomic, (uint32_t)log_entry, arg_count, ap);
-		va_end(ap);
-	}
-	va_start(ap, arg_count);
-	sofdict_logf(atomic, log_entry, ctx, lvl, id_1, id_2, arg_count, ap);
-	va_end(ap);
 }
