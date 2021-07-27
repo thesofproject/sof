@@ -16,7 +16,7 @@
 #include <sof/trace/trace.h>
 #include <user/trace.h>
 
-#ifdef CONFIG_IMX8M
+#if defined(CONFIG_IMX8M) || defined(CONFIG_IMX8ULP)
 #define SAI_OFS		8
 #else
 #define SAI_OFS		0
@@ -236,6 +236,14 @@
 #define REG_SAI_MAXBURST_RX 6
 
 #define SAI_FLAG_PMQOS   BIT(0)
+
+#ifdef CONFIG_IMX8M
+#define SAI_FIFO_WORD_SIZE	128
+#elif defined CONFIG_IMX8ULP
+#define SAI_FIFO_WORD_SIZE	16
+#else
+#define SAI_FIFO_WORD_SIZE	64
+#endif
 
 /* Divides down the audio main clock to generate the bit clock when
  * configured for an internal bit clock.
