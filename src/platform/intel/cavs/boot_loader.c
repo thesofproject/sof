@@ -229,6 +229,13 @@ void boot_primary_core(void)
 						true);
 #endif
 
+#if CONFIG_L1_DRAM
+	/* Power ON L1 DRAM memory */
+	trace_point(TRACE_BOOT_LDR_L1DRAM);
+	cavs_pm_memory_l1_dram_banks_power_gate(CONFIG_L1_DRAM_MEMORY_BANKS - 1,
+						0, true);
+#endif
+
 	/* parse manifest and copy modules */
 	trace_point(TRACE_BOOT_LDR_MANIFEST);
 	parse_manifest();
