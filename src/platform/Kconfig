@@ -346,6 +346,29 @@ config LP_SRAM
 	help
 	  Indicates that platform uses LPSRAM.
 
+config L1_DRAM
+	bool "L1 DRAM memory support"
+	default n
+	help
+	  Indicates that platform does support L1 DATA RAM.
+
+config L1_DRAM_MEMORY_BANKS
+	int "L1 DRAM memory banks count"
+	depends on L1_DRAM
+	default 0
+	help
+	  Available memory banks count for L1 DATA RAM.
+	  It can be used to turn ON/OFF L1 DRAM bank/s.
+	  Firmware will turn on only as many banks as specified.
+
+config L1_DRAM_MEMORY_BANK_SIZE
+	int "L1 DRAM memory bank size"
+	depends on L1_DRAM
+	default 0
+	help
+	  Specifies DRAM block size.
+	  It can be used to calculate DRAM size.
+
 config CAVS_LPS
 	bool "Intel cAVS Low Power Sequencer for Power Management"
 	depends on CAVS
