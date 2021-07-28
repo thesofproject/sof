@@ -102,7 +102,8 @@ void WEAK __panic(uint32_t p, char *filename, uint32_t linenum)
 
 #if CONFIG_TRACE
 void WEAK trace_log_filtered(bool send_atomic, const void *log_entry, const struct tr_ctx *ctx,
-			     uint32_t lvl, uint32_t id_1, uint32_t id_2, int arg_count, ...)
+			     uint32_t lvl, uint32_t id_1, uint32_t id_2, int arg_count,
+			     va_list args)
 {
 	(void) send_atomic;
 	(void) log_entry;
@@ -111,6 +112,13 @@ void WEAK trace_log_filtered(bool send_atomic, const void *log_entry, const stru
 	(void) id_1;
 	(void) id_2;
 	(void) arg_count;
+	(void) args;
+}
+
+void WEAK _log_sofdict(log_func_t sofdict_logf, bool atomic, const void *log_entry,
+		       const struct tr_ctx *ctx, const uint32_t lvl,
+		       uint32_t id_1, uint32_t id_2, int arg_count, ...)
+{
 }
 
 void WEAK trace_flush_dma_to_mbox(void)
