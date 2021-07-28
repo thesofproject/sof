@@ -23,6 +23,8 @@ elseif(CONFIG_IMX8 OR CONFIG_IMX8X)
 	add_subdirectory(imx8)
 elseif(CONFIG_IMX8M)
 	add_subdirectory(imx8m)
+elseif(CONFIG_IMX8ULP)
+	add_subdirectory(imx8ulp)
 endif()
 
 if(CONFIG_CAVS)
