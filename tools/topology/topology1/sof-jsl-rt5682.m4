@@ -1,5 +1,8 @@
 #
-# Topology for JasperLake with rt5682 codec + DMIC + 3 HDMI + Speaker amp
+# Topology for JasperLake with rt5682 or cs42l42 codec +
+#                              DMIC +
+#                              3 HDMI +
+#                              speaker amp
 #
 
 # Include topology builder
@@ -25,7 +28,7 @@ DEBUG_START
 #
 ifdef(`NO_AMP',`',`
 # PCM0 ----> volume -----> SSP1  (Speaker - ALC1015)')
-# PCM1 <---> volume <----> SSP0  (Headset - ALC5682)
+`# PCM1 <---> volume <----> SSP0  (Headset - 'HEADPHONE`)'
 # PCM2 ----> volume -----> iDisp1
 # PCM3 ----> volume -----> iDisp2
 # PCM4 ----> volume -----> iDisp3
@@ -176,6 +179,7 @@ dnl SSP_CONFIG(format, mclk, bclk, fsync, tdm, ssp_config_data)
 dnl SSP_CLOCK(clock, freq, codec_master, polarity)
 dnl SSP_CONFIG_DATA(type, idx, valid bits, mclk_id)
 
+ifelse(HEADPHONE, `rt5682', `
 # SSP 0 (ID: 0) ALC5682
 DAI_CONFIG(SSP, 0, 0, SSP0-Codec,
 	SSP_CONFIG(I2S, SSP_CLOCK(mclk, 24000000, codec_mclk_in),
@@ -183,6 +187,15 @@ DAI_CONFIG(SSP, 0, 0, SSP0-Codec,
 		SSP_CLOCK(fsync, 48000, codec_slave),
 		SSP_TDM(2, 25, 3, 3),
 		SSP_CONFIG_DATA(SSP, 0, 24)))
+', HEADPHONE, `cs42l42', `
+# SSP 0 (ID: 0) CS42L42
+DAI_CONFIG(SSP, 0, 0, SSP0-Codec,
+	SSP_CONFIG(I2S, SSP_CLOCK(mclk, 24000000, codec_mclk_in),
+		SSP_CLOCK(bclk, 2400000, codec_slave),
+		SSP_CLOCK(fsync, 48000, codec_slave),
+		SSP_TDM(2, 25, 3, 3),
+		SSP_CONFIG_DATA(SSP, 0, 24, 0, 0, 0, SSP_CC_BCLK_ES)))
+', )
 
 ifdef(`NO_AMP',`',`
 # SSP 1 (ID: 6)
