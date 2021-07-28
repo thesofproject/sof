@@ -20,6 +20,7 @@
 #define EDMA_CH_INT                     0x08
 #define EDMA_CH_SBR                     0x0C
 #define EDMA_CH_PRI                     0x10
+#define EDMA_CH_MUX                     0x14
 #define EDMA_TCD_SADDR                  0x20
 #define EDMA_TCD_SOFF                   0x24
 #define EDMA_TCD_ATTR                   0x26
@@ -109,5 +110,11 @@
 #define IMX8ULP_EDMA2_CHAN5_IRQ	11
 #define IMX8ULP_EDMA2_CHAN6_IRQ	12
 #define IMX8ULP_EDMA2_CHAN7_IRQ	13
+
+/* i.MXULP uses a MUX configuration to map EDMA channels to IPs.
+ * This is a list with DMAMUX configuration for IPs used by SOF
+ */
+#define IMX8ULP_DMAMUX2_SAI5_RX	69
+#define IMX8ULP_DMAMUX2_SAI5_TX	70
 
 #endif /* __SOF_DRIVERS_EDMA_H__ */
