@@ -548,17 +548,18 @@ void _log_sofdict(log_func_t sofdict_logf, bool atomic, const void *log_entry,
 		  const struct tr_ctx *ctx, const uint32_t lvl,
 		  uint32_t id_1, uint32_t id_2, int arg_count, ...)
 {
-	va_list ap;
+	va_list apm, apd;
+
+	va_start(apm, arg_count);
+	va_copy(apd, apm);
 
 #ifndef __ZEPHYR__ /* for Zephyr see _log_nodict() in trace.h */
 	if (lvl <= MTRACE_DUPLICATION_LEVEL) {
-		va_start(ap, arg_count);
-		mtrace_dict_entry_vl(atomic, (uint32_t)log_entry, arg_count, ap);
-		va_end(ap);
+		mtrace_dict_entry_vl(atomic, (uint32_t)log_entry, arg_count, apm);
 	}
 #endif
+	va_end(apd);
 
-	va_start(ap, arg_count);
-	sofdict_logf(atomic, log_entry, ctx, lvl, id_1, id_2, arg_count, ap);
-	va_end(ap);
+	sofdict_logf(atomic, log_entry, ctx, lvl, id_1, id_2, arg_count, apd);
+	va_end(apd);
 }
