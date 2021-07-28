@@ -6,7 +6,7 @@
 set -e
 
 SUPPORTED_PLATFORMS=(byt cht bdw hsw apl skl kbl cnl sue icl jsl \
-                    imx8 imx8x imx8m tgl tgl-h)
+                    imx8 imx8x imx8m imx8ulp tgl tgl-h)
 BUILD_ROM=no
 BUILD_DEBUG=no
 BUILD_FORCE_UP=no
@@ -314,6 +314,12 @@ do
 			PLATFORM="imx8m"
 			XTENSA_CORE="hifi4_mscale_v0_0_2_2017"
 			HOST="xtensa-imx8m-elf"
+			XTENSA_TOOLS_VERSION="RG-2017.8-linux"
+			;;
+		imx8ulp)
+			PLATFORM="imx8ulp"
+			XTENSA_CORE="hifi4_nxp2_ulp_prod"
+			HOST="xtensa-imx8ulp-elf"
 			XTENSA_TOOLS_VERSION="RG-2017.8-linux"
 			;;
 

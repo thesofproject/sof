@@ -214,6 +214,23 @@ config IMX8M
 	help
 	  Select if your target platform is imx8m-compatible
 
+config IMX8ULP
+	bool "Build for NXP i.MX8ULP"
+	select HAVE_RESET_VECTOR_ROM
+	select INTERRUPT_LEVEL_1
+	select INTERRUPT_LEVEL_2
+	select INTERRUPT_LEVEL_3
+	select HOST_PTABLE
+	select DUMMY_DMA
+	select WAITI_DELAY
+	select IMX
+	select IMX_EDMA
+	select IMX_INTERRUPT_GENERIC
+	select SCHEDULE_DMA_MULTI_CHANNEL
+	help
+	 Select if your target platform is imx8ulp-compatible.
+	 imx.8ulp support dsp.
+
 endchoice
 
 config MAX_CORE_COUNT
@@ -370,6 +387,7 @@ config RIMAGE_SIGNING_SCHEMA
 	default "imx8" if IMX8
 	default "imx8x" if IMX8X
 	default "imx8m" if IMX8M
+	default "imx8ulp" if IMX8ULP
 	default ""
 	help
 	  Signing schema name used by rimage to decide how to build final binary
