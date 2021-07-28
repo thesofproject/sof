@@ -224,7 +224,7 @@ static bool trace_filter_flood(uint32_t log_level, uint32_t entry, uint64_t mess
  * not. Serializes events into trace messages and passes them to
  * dtrace_event()
  */
-static void vatrace_log(bool send_atomic, uint32_t log_entry, const struct tr_ctx *ctx,
+static void dma_trace_log(bool send_atomic, uint32_t log_entry, const struct tr_ctx *ctx,
 			  uint32_t lvl, uint32_t id_1, uint32_t id_2, int arg_count, va_list vargs)
 {
 	uint32_t data[MESSAGE_SIZE_DWORDS(_TRACE_EVENT_MAX_ARGUMENT_COUNT)];
@@ -274,7 +274,7 @@ void trace_log_unfiltered(bool send_atomic, const void *log_entry, const struct 
 		return;
 	}
 
-	vatrace_log(send_atomic, (uint32_t)log_entry, ctx, lvl, id_1, id_2, arg_count, vl);
+	dma_trace_log(send_atomic, (uint32_t)log_entry, ctx, lvl, id_1, id_2, arg_count, vl);
 }
 
 void trace_log_filtered(bool send_atomic, const void *log_entry, const struct tr_ctx *ctx,
@@ -306,7 +306,7 @@ void trace_log_filtered(bool send_atomic, const void *log_entry, const struct tr
 	}
 #endif /* CONFIG_TRACE_FILTERING_ADAPTIVE */
 
-	vatrace_log(send_atomic, (uint32_t)log_entry, ctx, lvl, id_1, id_2, arg_count, vl);
+	dma_trace_log(send_atomic, (uint32_t)log_entry, ctx, lvl, id_1, id_2, arg_count, vl);
 }
 
 struct sof_ipc_trace_filter_elem *trace_filter_fill(struct sof_ipc_trace_filter_elem *elem,
