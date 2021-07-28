@@ -98,6 +98,7 @@ struct trace_filter {
 #if CONFIG_TRACE
 
 #include <stdarg.h>
+#include <user/trace.h> /* LOG_LEVEL_... */
 
 /*
  * trace_event macro definition
@@ -202,6 +203,12 @@ void mtrace_event(const char *complete_packet, uint32_t length);
 		RELATIVE_FILE,					\
 		format						\
 	}
+
+#ifdef CONFIG_TRACEM /* Send everything to shared memory too */
+#  define MTRACE_DUPLICATION_LEVEL LOG_LEVEL_DEBUG
+#else /* copy only ERRORS */
+#  define MTRACE_DUPLICATION_LEVEL LOG_LEVEL_ERROR
+#endif /* CONFIG_TRACEM */
 
 /* This function is _not_ passed the format string to save space */
 void _log_sofdict(log_func_t sofdict_logf, bool atomic, const void *log_entry,

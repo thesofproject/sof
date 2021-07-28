@@ -231,11 +231,6 @@ static void dma_trace_log(bool send_atomic, uint32_t log_entry, const struct tr_
 	const int message_size = MESSAGE_SIZE(arg_count);
 	int i;
 
-#if CONFIG_TRACEM
-	unsigned long flags;
-	struct trace *trace = trace_get();
-#endif /* CONFIG TRACEM */
-
 	/* fill log content. arg_count is in the dictionary. */
 	put_header(data, ctx->uuid_p, id_1, id_2, log_entry,
 		   platform_safe_get_time(timer_get()));
@@ -249,20 +244,6 @@ static void dma_trace_log(bool send_atomic, uint32_t log_entry, const struct tr_
 	else
 		dtrace_event((const char *)data, message_size);
 
-#if CONFIG_TRACEM
-	/* send event by mail box too. */
-	if (send_atomic) {
-		mtrace_event((const char *)data, MESSAGE_SIZE(arg_count));
-	} else {
-		spin_lock_irq(&trace->lock, flags);
-		mtrace_event((const char *)data, MESSAGE_SIZE(arg_count));
-		spin_unlock_irq(&trace->lock, flags);
-	}
-#else
-	/* send event by mail box if level is LOG_LEVEL_CRITICAL. */
-	if (lvl == LOG_LEVEL_CRITICAL)
-		mtrace_event((const char *)data, MESSAGE_SIZE(arg_count));
-#endif /* CONFIG_TRACEM */
 }
 
 void trace_log_unfiltered(bool send_atomic, const void *log_entry, const struct tr_ctx *ctx,
@@ -567,6 +548,11 @@ void _log_sofdict(log_func_t sofdict_logf, bool atomic, const void *log_entry,
 {
 	va_list ap;
 
+	if (lvl <= MTRACE_DUPLICATION_LEVEL) {
+		va_start(ap, arg_count);
+		mtrace_dict_entry_vl(atomic, (uint32_t)log_entry, arg_count, ap);
+		va_end(ap);
+	}
 	va_start(ap, arg_count);
 	sofdict_logf(atomic, log_entry, ctx, lvl, id_1, id_2, arg_count, ap);
 	va_end(ap);
