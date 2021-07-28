@@ -25,7 +25,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#define MEMORY_POWER_DOWN_DELAY 256
+#define MEMORY_POWER_CHANGE_DELAY 256
 
 #if CAVS_VERSION >= CAVS_VERSION_1_8
 
@@ -73,10 +73,10 @@ static inline void cavs_pm_memory_hp_sram_mask_set(uint32_t mask, int segment,
 	io_reg_update_bits(SHIM_HSPGCTL(segment), mask, enabled ? 0 : mask);
 	io_reg_update_bits(SHIM_HSRMCTL(segment), mask, enabled ? 0 : mask);
 
-	idelay(MEMORY_POWER_DOWN_DELAY);
+	idelay(MEMORY_POWER_CHANGE_DELAY);
 
 	while ((io_reg_read(SHIM_HSPGISTS(segment)) & mask) != expected)
-		idelay(MEMORY_POWER_DOWN_DELAY);
+		idelay(MEMORY_POWER_CHANGE_DELAY);
 }
 
 static inline void cavs_pm_memory_hp_sram_banks_power_gate(
@@ -87,7 +87,7 @@ static inline void cavs_pm_memory_hp_sram_banks_power_gate(
 
 	shim_write(SHIM_LDOCTL, SHIM_LDOCTL_HPSRAM_LDO_ON);
 
-	idelay(MEMORY_POWER_DOWN_DELAY);
+	idelay(MEMORY_POWER_CHANGE_DELAY);
 
 	for (i = 0; i < PLATFORM_HPSRAM_SEGMENTS; ++i) {
 		mask = cavs_pm_memory_hp_sram_mask_get(start_bank_id,
@@ -128,14 +128,14 @@ static inline void cavs_pm_memory_lp_sram_banks_power_gate(
 
 	shim_write(SHIM_LDOCTL, SHIM_LDOCTL_LPSRAM_LDO_ON);
 
-	idelay(MEMORY_POWER_DOWN_DELAY);
+	idelay(MEMORY_POWER_CHANGE_DELAY);
 
 	io_reg_update_bits(LSPGCTL, mask, enabled ? 0 : mask);
 
-	idelay(MEMORY_POWER_DOWN_DELAY);
+	idelay(MEMORY_POWER_CHANGE_DELAY);
 
 	while ((io_reg_read(LSPGISTS) & mask) != expected)
-		idelay(MEMORY_POWER_DOWN_DELAY);
+		idelay(MEMORY_POWER_CHANGE_DELAY);
 
 	shim_write(SHIM_LDOCTL, SHIM_LDOCTL_HPSRAM_LDO_BYPASS);
 }
