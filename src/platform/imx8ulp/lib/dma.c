@@ -15,6 +15,11 @@
 extern struct dma_ops dummy_dma_ops;
 extern struct dma_ops edma_ops;
 
+const int edma2_ints[IMX8ULP_EDMA2_CHAN_MAX] = {
+	[IMX8ULP_EDMA2_CHAN0] = IMX8ULP_EDMA2_CHAN0_IRQ,
+	[IMX8ULP_EDMA2_CHAN1] = IMX8ULP_EDMA2_CHAN1_IRQ,
+};
+
 SHARED_DATA struct dma dma[PLATFORM_NUM_DMACS] = {
 {
 	.plat_data = {
@@ -24,6 +29,7 @@ SHARED_DATA struct dma dma[PLATFORM_NUM_DMACS] = {
 		.base		= EDMA2_BASE,
 		.chan_size	= EDMA2_SIZE,
 		.channels	= 8,
+		.drv_plat_data	= edma2_ints,
 	},
 	.ops	= &edma_ops,
 },

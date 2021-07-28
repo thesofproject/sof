@@ -95,4 +95,19 @@
 #define EDMA0_SAI_CHAN_RX_IRQ	349
 #define EDMA0_SAI_CHAN_TX_IRQ	349
 
+/* EDMA doesn't bound channels to IPs, we make use of the first two channels for now */
+#define IMX8ULP_EDMA2_CHAN0	0
+#define IMX8ULP_EDMA2_CHAN1	1
+#define IMX8ULP_EDMA2_CHAN_MAX	8
+
+/* EDMA provides one interrupt per channel */
+#define IMX8ULP_EDMA2_CHAN0_IRQ	6
+#define IMX8ULP_EDMA2_CHAN1_IRQ	7
+#define IMX8ULP_EDMA2_CHAN2_IRQ	8
+#define IMX8ULP_EDMA2_CHAN3_IRQ	9
+#define IMX8ULP_EDMA2_CHAN4_IRQ	10
+#define IMX8ULP_EDMA2_CHAN5_IRQ	11
+#define IMX8ULP_EDMA2_CHAN6_IRQ	12
+#define IMX8ULP_EDMA2_CHAN7_IRQ	13
+
 #endif /* __SOF_DRIVERS_EDMA_H__ */
