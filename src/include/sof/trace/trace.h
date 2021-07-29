@@ -97,7 +97,6 @@ struct trace_filter {
 
 #if CONFIG_TRACE
 
-#include <stdarg.h>
 #include <user/trace.h> /* LOG_LEVEL_... */
 
 /*
