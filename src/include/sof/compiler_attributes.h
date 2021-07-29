@@ -17,7 +17,7 @@
 
 #define __section(x) __attribute__((section(x)))
 
-#ifdef __clang__
+#if defined(__clang__) || !defined(__XCC__)
 
 #define COMPILER_FALLTHROUGH __attribute__((fallthrough))
 
