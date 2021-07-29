@@ -21,6 +21,7 @@ DECLARE_SOF_RT_UUID("cadence_codec", cadence_uuid, 0xd8218443, 0x5ff3, 0x4a4c,
 DECLARE_TR_CTX(cadence_tr, SOF_UUID(cadence_uuid), LOG_LEVEL_INFO);
 
 enum cadence_api_id {
+	CADENCE_CODEC_UNRESOLVED	= 0x00,
 	CADENCE_CODEC_WRAPPER_ID	= 0x01,
 	CADENCE_CODEC_AAC_DEC_ID	= 0x02,
 	CADENCE_CODEC_BSAC_DEC_ID	= 0x03,
@@ -78,17 +79,92 @@ static struct cadence_api cadence_api_table[] = {
 #endif
 };
 
+static int cadence_codec_api_resolve(struct codec_data *codec, uint32_t api_id)
+{
+	struct cadence_codec_data *cd = codec->private;
+	uint32_t no_of_api = ARRAY_SIZE(cadence_api_table);
+	uint32_t i;
+
+	/* Find and assign API function */
+	for (i = 0; i < no_of_api; i++) {
+		if (cadence_api_table[i].id == api_id) {
+			cd->api = cadence_api_table[i].api;
+			codec->id = api_id;
+			break;
+		}
+	}
+
+	/* Verify API assignment */
+	if (!cd->api)
+		return -EINVAL;
+
+	return LIB_NO_ERROR;
+}
+
+static int cadence_codec_post_init(struct comp_dev *dev, uint32_t api_id)
+{
+	int ret;
+	struct codec_data *codec = comp_get_codec(dev);
+	struct cadence_codec_data *cd = codec->private;
+	uint32_t obj_size;
+
+	/* Resolve codec API for api_id */
+	ret = cadence_codec_api_resolve(codec, api_id);
+	if (ret != LIB_NO_ERROR) {
+		comp_err(dev, "cadence_codec_post_init(): failed to resolve api for api id %d",
+			 api_id);
+		goto out;
+	}
+
+	/* Obtain codec name */
+	API_CALL(cd, XA_API_CMD_GET_LIB_ID_STRINGS,
+		 XA_CMD_TYPE_LIB_NAME, cd->name, ret);
+	if (ret != LIB_NO_ERROR) {
+		comp_err(dev, "cadence_codec_post_init() error %x: failed to get lib name",
+			 ret);
+		codec_free_memory(dev, cd);
+		goto out;
+	}
+	/* Get codec object size */
+	API_CALL(cd, XA_API_CMD_GET_API_SIZE, 0, &obj_size, ret);
+	if (ret != LIB_NO_ERROR) {
+		comp_err(dev, "cadence_codec_post_init() error %x: failed to get lib object size",
+			 ret);
+		codec_free_memory(dev, cd);
+		goto out;
+	}
+	/* Allocate space for codec object */
+	cd->self = codec_allocate_memory(dev, obj_size, 0);
+	if (!cd->self) {
+		comp_err(dev, "cadence_codec_post_init(): failed to allocate space for lib object");
+		codec_free_memory(dev, cd);
+		goto out;
+	} else {
+		comp_dbg(dev, "cadence_codec_post_init(): allocated %d bytes for lib object",
+			 obj_size);
+	}
+	/* Set all params to their default values */
+	API_CALL(cd, XA_API_CMD_INIT, XA_CMD_TYPE_INIT_API_PRE_CONFIG_PARAMS,
+		 NULL, ret);
+	if (ret != LIB_NO_ERROR) {
+		comp_err(dev, "cadence_codec_post_init(): error %x: failed to set default config",
+			 ret);
+		goto out;
+	}
+
+	comp_dbg(dev, "cadence_codec_post_init() done");
+out:
+	return ret;
+}
+
 int cadence_codec_init(struct comp_dev *dev)
 {
 	int ret;
 	struct codec_data *codec = comp_get_codec(dev);
 	struct cadence_codec_data *cd = NULL;
-	uint32_t obj_size;
-	uint32_t no_of_api = ARRAY_SIZE(cadence_api_table);
 	uint32_t api_id = CODEC_GET_API_ID(codec->id);
-	uint32_t i;
 
-	comp_dbg(dev, "cadence_codec_init() start");
+	comp_dbg(dev, "cadence_codec_init(): start, api_id = %d", api_id);
 
 	cd = codec_allocate_memory(dev, sizeof(struct cadence_codec_data), 0);
 	if (!cd) {
@@ -97,63 +173,20 @@ int cadence_codec_init(struct comp_dev *dev)
 	}
 
 	codec->private = cd;
-	codec->cpd.init_done = 0;
 	cd->self = NULL;
 	cd->mem_tabs = NULL;
 	cd->api = NULL;
 
-	/* Find and assign API function */
-	for (i = 0; i < no_of_api; i++) {
-		if (cadence_api_table[i].id == api_id) {
-			cd->api = cadence_api_table[i].api;
-			break;
-		}
-	}
-	/* Verify API assignment */
-	if (!cd->api) {
-		comp_err(dev, "cadence_codec_init(): could not find API function for id %x",
-			 api_id);
-		ret = -EINVAL;
-		goto out;
+	if (api_id == CADENCE_CODEC_UNRESOLVED) {
+		comp_dbg(dev, "cadence_codec_init(): codec unresolved, delaying api assignment until cadence_codec_prepare");
+		return LIB_NO_ERROR;
 	}
 
-	/* Obtain codec name */
-	API_CALL(cd, XA_API_CMD_GET_LIB_ID_STRINGS,
-		 XA_CMD_TYPE_LIB_NAME, cd->name, ret);
-	if (ret != LIB_NO_ERROR) {
-		comp_err(dev, "cadence_codec_init() error %x: failed to get lib name",
-			 ret);
-		codec_free_memory(dev, cd);
+	ret = cadence_codec_post_init(dev, api_id);
+	if (ret != LIB_NO_ERROR)
 		goto out;
-	}
-	/* Get codec object size */
-	API_CALL(cd, XA_API_CMD_GET_API_SIZE, 0, &obj_size, ret);
-	if (ret != LIB_NO_ERROR) {
-		comp_err(dev, "cadence_codec_init() error %x: failed to get lib object size",
-			 ret);
-		codec_free_memory(dev, cd);
-		goto out;
-	}
-	/* Allocate space for codec object */
-	cd->self = codec_allocate_memory(dev, obj_size, 0);
-	if (!cd->self) {
-		comp_err(dev, "cadence_codec_init(): failed to allocate space for lib object");
-		codec_free_memory(dev, cd);
-		goto out;
-	} else {
-		comp_dbg(dev, "cadence_codec_init(): allocated %d bytes for lib object",
-			 obj_size);
-	}
-	/* Set all params to their default values */
-	API_CALL(cd, XA_API_CMD_INIT, XA_CMD_TYPE_INIT_API_PRE_CONFIG_PARAMS,
-		 NULL, ret);
-	if (ret != LIB_NO_ERROR) {
-		comp_err(dev, "cadence_codec_init(): error %x: failed to set default config",
-			 ret);
-		goto out;
-	}
 
-	comp_dbg(dev, "cadence_codec_init() done");
+	comp_dbg(dev, "cadence_codec_init(): done");
 out:
 	return ret;
 }
@@ -381,8 +414,20 @@ int cadence_codec_prepare(struct comp_dev *dev)
 	int ret = 0, mem_tabs_size;
 	struct codec_data *codec = comp_get_codec(dev);
 	struct cadence_codec_data *cd = codec->private;
+	uint32_t api_id = CODEC_GET_API_ID(codec->id);
+
+	/* req_api_id will be passed via parameters from the linux
+	 * kernel and it will contain the api_id of the file format.
+	 */
+	uint32_t req_api_id = CADENCE_CODEC_MP3_DEC_ID;
 
 	comp_dbg(dev, "cadence_codec_prepare() start");
+
+	/* If the api has not been resolved yet, we resolve it now and
+	 * finish the initialisation of the codec.
+	 */
+	if (api_id == CADENCE_CODEC_UNRESOLVED)
+		cadence_codec_post_init(dev, req_api_id);
 
 	/* Setup config */
 	if (!codec->s_cfg.avail && !codec->s_cfg.size) {
