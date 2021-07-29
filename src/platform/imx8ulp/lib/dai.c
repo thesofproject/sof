@@ -28,11 +28,15 @@ static SHARED_DATA struct dai sai[] = {
 			 */
 			.depth		= 16,  /* in 4 bytes words */
 			.watermark      = 8,
+			.handshake	= EDMA_HANDSHAKE(IMX8ULP_EDMA2_CHAN0_IRQ,
+							 IMX8ULP_EDMA2_CHAN0),
 		},
 		.fifo[SOF_IPC_STREAM_CAPTURE] = {
 			.offset		= SAI_5_BASE + REG_SAI_RDR2,
 			.depth		= 16,  /* in 4 bytes words */
 			.watermark      = 8,
+			.handshake	= EDMA_HANDSHAKE(IMX8ULP_EDMA2_CHAN1_IRQ,
+							 IMX8ULP_EDMA2_CHAN1),
 		},
 	},
 	.drv = &sai_driver,
