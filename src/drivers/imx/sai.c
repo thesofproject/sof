@@ -31,6 +31,7 @@ static void sai_start(struct dai *dai, int direction)
 {
 	dai_info(dai, "SAI: sai_start");
 
+	int chan_idx = 0;
 	uint32_t xcsr = 0U;
 
 	if (direction == DAI_DIR_CAPTURE) {
@@ -88,9 +89,16 @@ static void sai_start(struct dai *dai, int direction)
 			REG_SAI_MCTL_MCLK_EN);
 #endif
 
+	chan_idx = BIT(0);
+	/* RX3 supports capture on imx8ulp */
+#ifdef CONFIG_IMX8ULP
+	if (direction == DAI_DIR_CAPTURE)
+		chan_idx = BIT(3);
+#endif
+
 	/* transmit/receive data channel enable */
 	dai_update_bits(dai, REG_SAI_XCR3(direction),
-			REG_SAI_CR3_TRCE_MASK, REG_SAI_CR3_TRCE(1));
+			REG_SAI_CR3_TRCE_MASK, REG_SAI_CR3_TRCE(chan_idx));
 
 	/* transmitter/receiver enable */
 	dai_update_bits(dai, REG_SAI_XCSR(direction),
