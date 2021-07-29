@@ -147,13 +147,10 @@ void trace_off(void);
 void trace_init(struct sof *sof);
 
 /* All tracing macros in this file end up calling these functions in the end. */
-typedef void (*log_func_t)(bool send_atomic, const void *log_entry, const struct tr_ctx *ctx,
-			   uint32_t lvl, uint32_t id_1, uint32_t id_2, int arg_count, va_list args);
-
 void trace_log_filtered(bool send_atomic, const void *log_entry, const struct tr_ctx *ctx,
-			uint32_t lvl, uint32_t id_1, uint32_t id_2, int arg_count, va_list args);
+			uint32_t lvl, uint32_t id_1, uint32_t id_2, int arg_count, ...);
 void trace_log_unfiltered(bool send_atomic, const void *log_entry, const struct tr_ctx *ctx,
-			  uint32_t lvl, uint32_t id_1, uint32_t id_2, int arg_count, va_list args);
+			  uint32_t lvl, uint32_t id_1, uint32_t id_2, int arg_count, ...);
 struct sof_ipc_trace_filter_elem *trace_filter_fill(struct sof_ipc_trace_filter_elem *elem,
 						    struct sof_ipc_trace_filter_elem *end,
 						    struct trace_filter *filter);
@@ -217,11 +214,6 @@ void mtrace_event(const char *complete_packet, uint32_t length);
 #  define MTRACE_DUPLICATION_LEVEL LOG_LEVEL_ERROR
 #endif /* CONFIG_TRACEM */
 
-/* This function is _not_ passed the format string to save space */
-void _log_sofdict(log_func_t sofdict_logf, bool atomic, const void *log_entry,
-		  const struct tr_ctx *ctx, const uint32_t lvl,
-		  uint32_t id_1, uint32_t id_2, int arg_count, ...);
-
 /* _log_message() */
 
 #ifdef CONFIG_LIBRARY
@@ -264,6 +256,7 @@ _thrown_from_macro_BASE_LOG_in_trace_h
  * linker section and replaced by a &log_entry pointer to it. This must
  * be a macro for the source location to be meaningful.
  */
+#ifndef __ZEPHYR__
 #define _log_message(log_func, atomic, lvl, comp_class, ctx, id_1, id_2, format, ...)	\
 do {											\
 	_DECLARE_LOG_ENTRY(lvl, format, comp_class,					\
@@ -273,11 +266,31 @@ do {											\
 			META_COUNT_VARAGS_BEFORE_COMPILE(__VA_ARGS__),			\
 		BASE_LOG_ASSERT_FAIL_MSG						\
 	);										\
-	_log_sofdict(log_func, atomic, &log_entry, ctx, lvl, id_1, id_2, \
+	(lvl <= MTRACE_DUPLICATION_LEVEL ? \
+		mtrace_dict_entry(true, (uint32_t)&log_entry, \
+				  META_COUNT_VARAGS_BEFORE_COMPILE(__VA_ARGS__), \
+				  ##__VA_ARGS__) : 0); \
+	log_func(atomic, &log_entry, ctx, lvl, id_1, id_2, \
 		     META_COUNT_VARAGS_BEFORE_COMPILE(__VA_ARGS__), ##__VA_ARGS__); \
 	_log_nodict(atomic, META_COUNT_VARAGS_BEFORE_COMPILE(__VA_ARGS__), \
 		    lvl, format, ##__VA_ARGS__);			\
 } while (0)
+#else
+#define _log_message(log_func, atomic, lvl, comp_class, ctx, id_1, id_2, format, ...)	\
+do {											\
+	_DECLARE_LOG_ENTRY(lvl, format, comp_class,					\
+			   META_COUNT_VARAGS_BEFORE_COMPILE(__VA_ARGS__));		\
+	STATIC_ASSERT_ARG_SIZE(__VA_ARGS__);						\
+	STATIC_ASSERT(_TRACE_EVENT_MAX_ARGUMENT_COUNT >=				\
+			META_COUNT_VARAGS_BEFORE_COMPILE(__VA_ARGS__),			\
+		BASE_LOG_ASSERT_FAIL_MSG						\
+	);										\
+	log_func(atomic, &log_entry, ctx, lvl, id_1, id_2, \
+		     META_COUNT_VARAGS_BEFORE_COMPILE(__VA_ARGS__), ##__VA_ARGS__); \
+	_log_nodict(atomic, META_COUNT_VARAGS_BEFORE_COMPILE(__VA_ARGS__), \
+		    lvl, format, ##__VA_ARGS__);			\
+} while (0)
+#endif
 
 #ifdef __ZEPHYR__
 /* Just like XTOS, only the most urgent messages go to limited
