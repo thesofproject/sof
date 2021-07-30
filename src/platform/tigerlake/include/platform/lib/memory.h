@@ -278,7 +278,8 @@
 /* Heap section sizes for system shared heap */
 #define HEAP_SYSTEM_SHARED_SIZE		0x1500
 
-#define HEAP_BUFFER_SIZE	0x80000
+/* use more buffer zone on TGL-U/LP */
+#define HEAP_BUFFER_SIZE	(HP_SRAM_SIZE < 0x200000 ? 0x80000 : 0x100000)
 #define HEAP_BUFFER_BLOCK_SIZE		0x100
 #define HEAP_BUFFER_COUNT	(HEAP_BUFFER_SIZE / HEAP_BUFFER_BLOCK_SIZE)
 
