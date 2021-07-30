@@ -9,7 +9,7 @@
 #include <sof/drivers/ssp.h>
 #include <sof/lib/clk.h>
 
-const struct freq_table platform_cpu_freq[] = {
+static const struct freq_table platform_cpu_freq[] = {
 	{ 100000000, 100000 },
 	{ 200000000, 200000 },
 	{ CLK_MAX_CPU_HZ, 400000 },
@@ -29,13 +29,13 @@ const struct freq_table *cpu_freq = platform_cpu_freq;
 /* IMPORTANT: array should be filled in increasing order
  * (regarding to .freq field)
  */
-const struct freq_table platform_ssp_freq[] = {
+static const struct freq_table platform_ssp_freq[] = {
 	{ 19200000, 19200 },
 	{ 24576000, 24576 },
 	{ 96000000, 96000 },
 };
 
-const uint32_t platform_ssp_freq_sources[] = {
+static const uint32_t platform_ssp_freq_sources[] = {
 	SSP_CLOCK_XTAL_OSCILLATOR,
 	SSP_CLOCK_AUDIO_CARDINAL,
 	SSP_CLOCK_PLL_FIXED,

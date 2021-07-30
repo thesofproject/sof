@@ -13,7 +13,7 @@
 #include <sof/sof.h>
 #include <sof/spinlock.h>
 
-const struct freq_table platform_cpu_freq[] = {
+static const struct freq_table platform_cpu_freq[] = {
 	{ 32000000, 32000 },
 	{ 80000000, 80000 },
 	{ 160000000, 160000 },
@@ -34,11 +34,11 @@ const uint32_t cpu_freq_enc[] = {
 STATIC_ASSERT(NUM_CPU_FREQ == ARRAY_SIZE(platform_cpu_freq),
 	      invalid_number_of_cpu_frequencies);
 
-const struct freq_table platform_ssp_freq[] = {
+static const struct freq_table platform_ssp_freq[] = {
 	{ 24000000, 24000 },
 };
 
-const uint32_t platform_ssp_freq_sources[] = {
+static const uint32_t platform_ssp_freq_sources[] = {
 	0,
 };
 
