@@ -14,7 +14,7 @@
 #include <sof/spinlock.h>
 
 #if CONFIG_BAYTRAIL
-const struct freq_table platform_cpu_freq[] = {
+static const struct freq_table platform_cpu_freq[] = {
 	{ 25000000, 25000 },
 	{ 25000000, 25000 },
 	{ 50000000, 50000 },
@@ -25,7 +25,7 @@ const struct freq_table platform_cpu_freq[] = {
 	{ 343000000, 343000 },
 };
 #elif CONFIG_CHERRYTRAIL
-const struct freq_table platform_cpu_freq[] = {
+static const struct freq_table platform_cpu_freq[] = {
 	{ 19200000, 19200 },
 	{ 19200000, 19200 },
 	{ 38400000, 38400 },
@@ -53,12 +53,12 @@ STATIC_ASSERT(NUM_CPU_FREQ == ARRAY_SIZE(platform_cpu_freq),
 
 const struct freq_table *cpu_freq = platform_cpu_freq;
 
-const struct freq_table platform_ssp_freq[] = {
+static const struct freq_table platform_ssp_freq[] = {
 	{ 19200000, 19200 }, /* default */
 	{ 25000000, 25000 },
 };
 
-const uint32_t platform_ssp_freq_sources[] = {
+static const uint32_t platform_ssp_freq_sources[] = {
 	PMC_SET_SSP_19M2,
 	PMC_SET_SSP_25M,
 };
