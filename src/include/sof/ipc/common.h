@@ -68,7 +68,6 @@ struct ipc {
 
 	struct list_item msg_list;	/* queue of messages to be sent */
 	bool is_notification_pending;	/* notification is being sent to host */
-	bool delayed_response;		/* response will be sent from a different context */
 	unsigned int core;		/* core, processing the IPC */
 
 	struct list_item comp_list;	/* list of component devices */
@@ -196,11 +195,5 @@ void ipc_cmd(ipc_cmd_hdr *hdr);
  * @return 1 if successful (reply sent by other core), error code otherwise.
  */
 int ipc_process_on_core(uint32_t core, bool blocking);
-
-/**
- * \brief reply to an IPC message.
- * @param[in] reply pointer to the reply structure.
- */
-void ipc_msg_reply(struct sof_ipc_reply *reply);
 
 #endif /* __SOF_DRIVERS_IPC_H__ */

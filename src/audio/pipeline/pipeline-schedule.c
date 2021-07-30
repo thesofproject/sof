@@ -55,44 +55,12 @@ static enum task_state pipeline_task(void *arg)
 			return SOF_TASK_STATE_COMPLETED;
 	}
 
-	if (p->trigger.cmd >= 0) {
-		/* First pipeline task run for either START or RELEASE */
-		struct sof_ipc_reply reply = {
-			.hdr.cmd = SOF_IPC_GLB_REPLY,
-			.hdr.size = sizeof(reply),
-		};
-
-		err = pipeline_trigger_run(p, p->trigger.host, p->trigger.cmd);
-		p->trigger.cmd = -EINVAL;
-
-		if (err < 0) {
-			pipe_err(p, "pipeline_task(): failed to trigger components: %d", err);
-			reply.error = err;
-			err = SOF_TASK_STATE_COMPLETED;
-		} else if (err == PPL_STATUS_PATH_STOP) {
-			pipe_warn(p, "pipeline_task(): stopping for xrun");
-			err = SOF_TASK_STATE_COMPLETED;
-		} else {
-			p->status = COMP_STATE_ACTIVE;
-			err = SOF_TASK_STATE_RESCHEDULE;
-		}
-
-		ipc_msg_reply(&reply);
-
-		return err;
-	}
-
-	/*
-	 * The first execution of the pipeline task above has triggered all
-	 * pipeline components. Subsequent iterations actually perform data
-	 * copying below.
-	 */
 	err = pipeline_copy(p);
 	if (err < 0) {
 		/* try to recover */
 		err = pipeline_xrun_recover(p);
 		if (err < 0) {
-			pipe_err(p, "pipeline_task(): xrun recovery failed! pipeline is stopped.");
+			pipe_err(p, "pipeline_task(): xrun recover failed! pipeline will be stopped!");
 			/* failed - host will stop this pipeline */
 			return SOF_TASK_STATE_COMPLETED;
 		}
@@ -139,11 +107,9 @@ int pipeline_schedule_config(struct pipeline *p, uint32_t sched_id,
 	return 0;
 }
 
-/* trigger connected pipelines: either immediately or schedule them */
 void pipeline_schedule_triggered(struct pipeline_walk_context *ctx,
 				 int cmd)
 {
-	struct pipeline_data *ppl_data = ctx->comp_data;
 	struct list_item *tlist;
 	struct pipeline *p;
 	uint32_t flags;
@@ -155,31 +121,25 @@ void pipeline_schedule_triggered(struct pipeline_walk_context *ctx,
 	 */
 	irq_local_disable(flags);
 
-	switch (cmd) {
-	case COMP_TRIGGER_PAUSE:
-	case COMP_TRIGGER_STOP:
-		list_for_item(tlist, &ctx->pipelines) {
-			p = container_of(tlist, struct pipeline, list);
+	list_for_item(tlist, &ctx->pipelines) {
+		p = container_of(tlist, struct pipeline, list);
+
+		switch (cmd) {
+		case COMP_TRIGGER_PAUSE:
+		case COMP_TRIGGER_STOP:
 			pipeline_schedule_cancel(p);
 			p->status = COMP_STATE_PAUSED;
-		}
-		break;
-	case COMP_TRIGGER_RELEASE:
-	case COMP_TRIGGER_START:
-		list_for_item(tlist, &ctx->pipelines) {
-			p = container_of(tlist, struct pipeline, list);
-			if (pipeline_is_timer_driven(p)) {
-				/* Use the first of connected pipelines to trigger */
-				if (cmd >= 0) {
-					p->trigger.cmd = cmd;
-					p->trigger.host = ppl_data->start;
-					cmd = -EINVAL;
-				}
-			} else {
-				p->xrun_bytes = 0;
-				p->status = COMP_STATE_ACTIVE;
-			}
+			break;
+		case COMP_TRIGGER_RELEASE:
+		case COMP_TRIGGER_START:
 			pipeline_schedule_copy(p, 0);
+			p->xrun_bytes = 0;
+			p->status = COMP_STATE_ACTIVE;
+			break;
+		case COMP_TRIGGER_SUSPEND:
+		case COMP_TRIGGER_RESUME:
+		default:
+			break;
 		}
 	}
 

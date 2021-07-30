@@ -59,39 +59,20 @@ pipeline_should_report_enodata_on_trigger(struct comp_dev *rsrc,
 	return false;
 }
 
-/* Runs in IPC or in pipeline task context */
 static int pipeline_comp_trigger(struct comp_dev *current,
 				 struct comp_buffer *calling_buf,
 				 struct pipeline_walk_context *ctx, int dir)
 {
 	struct pipeline_data *ppl_data = ctx->comp_data;
 	bool is_single_ppl = comp_is_single_pipeline(current, ppl_data->start);
-	bool is_same_sched, async;
+	bool is_same_sched =
+		pipeline_is_same_sched_comp(current->pipeline,
+					    ppl_data->start->pipeline);
 	int err;
 
 	pipe_dbg(current->pipeline,
 		 "pipeline_comp_trigger(), current->comp.id = %u, dir = %u",
 		 dev_comp_id(current), dir);
-
-	switch (ppl_data->cmd) {
-	case COMP_TRIGGER_PAUSE:
-	case COMP_TRIGGER_STOP:
-		/*
-		 * PAUSE and STOP are triggered in IPC context, not from the
-		 * pipeline task
-		 */
-		async = true;
-		break;
-	case COMP_TRIGGER_RELEASE:
-	case COMP_TRIGGER_START:
-		async = !pipeline_is_timer_driven(current->pipeline);
-		break;
-	default:
-		return -EINVAL;
-	}
-
-	is_same_sched = pipeline_is_same_sched_comp(current->pipeline,
-						    ppl_data->start->pipeline);
 
 	/* trigger should propagate to the connected pipelines,
 	 * which need to be scheduled together
@@ -111,12 +92,7 @@ static int pipeline_comp_trigger(struct comp_dev *current,
 	if (err < 0 || err == PPL_STATUS_PATH_STOP)
 		return err;
 
-	/*
-	 * Add scheduling components to the list. This is only needed for the
-	 * stopping flow.
-	 */
-	if (async)
-		pipeline_comp_trigger_sched_comp(current->pipeline, current, ctx);
+	pipeline_comp_trigger_sched_comp(current->pipeline, current, ctx);
 
 	return pipeline_for_each_comp(current, ctx, dir);
 }
@@ -196,87 +172,10 @@ int pipeline_copy(struct pipeline *p)
 	return ret;
 }
 
-/* only collect scheduling components */
-static int pipeline_comp_list(struct comp_dev *current,
-			      struct comp_buffer *calling_buf,
-			      struct pipeline_walk_context *ctx, int dir)
-{
-	struct pipeline_data *ppl_data = ctx->comp_data;
-	bool is_single_ppl = comp_is_single_pipeline(current, ppl_data->start);
-	bool is_same_sched = pipeline_is_same_sched_comp(current->pipeline,
-							 ppl_data->start->pipeline);
-
-	if (!is_single_ppl && !is_same_sched) {
-		pipe_dbg(current->pipeline,
-			 "pipeline_comp_list(), current is from another pipeline");
-		return 0;
-	}
-
-	/* Add scheduling components to the list */
-	pipeline_comp_trigger_sched_comp(current->pipeline, current, ctx);
-
-	return pipeline_for_each_comp(current, ctx, dir);
-}
-
-/* build a list of connected pipelines' scheduling components and trigger them */
-static int pipeline_trigger_list(struct pipeline *p, struct comp_dev *host, int cmd)
-{
-	struct pipeline_data data = {
-		.start = host,
-		.cmd = cmd,
-	};
-	struct pipeline_walk_context walk_ctx = {
-		.comp_func = pipeline_comp_list,
-		.comp_data = &data,
-		.skip_incomplete = true,
-	};
-	int ret;
-
-	list_init(&walk_ctx.pipelines);
-
-	ret = walk_ctx.comp_func(host, NULL, &walk_ctx, host->direction);
-	if (ret < 0)
-		pipe_err(p, "pipeline_trigger_list(): ret = %d, host->comp.id = %u, cmd = %d",
-			 ret, dev_comp_id(host), cmd);
-	else
-		pipeline_schedule_triggered(&walk_ctx, cmd);
-
-	return ret;
-}
-
-/* trigger pipeline in IPC context */
+/* trigger pipeline */
 int pipeline_trigger(struct pipeline *p, struct comp_dev *host, int cmd)
 {
-	int ret;
-
-	pipe_info(p, "pipe trigger cmd %d", cmd);
-
-	switch (cmd) {
-	case COMP_TRIGGER_PAUSE:
-	case COMP_TRIGGER_STOP:
-		/* Execute immediately */
-		ret = pipeline_trigger_run(p, host, cmd);
-		return ret == PPL_STATUS_PATH_STOP ? 0 : ret;
-	case COMP_TRIGGER_RELEASE:
-	case COMP_TRIGGER_START:
-		/* Add all connected pipelines to the list and schedule them all */
-		ret = pipeline_trigger_list(p, host, cmd);
-		if (ret < 0)
-			return ret;
-		/* IPC response will be sent from the task */
-		return 1;
-	}
-
-	return 0;
-}
-
-/* actually execute pipeline trigger, including components: either in IPC or in task context */
-int pipeline_trigger_run(struct pipeline *p, struct comp_dev *host, int cmd)
-{
-	struct pipeline_data data = {
-		.start = host,
-		.cmd = cmd,
-	};
+	struct pipeline_data data;
 	struct pipeline_walk_context walk_ctx = {
 		.comp_func = pipeline_comp_trigger,
 		.comp_data = &data,
@@ -284,7 +183,7 @@ int pipeline_trigger_run(struct pipeline *p, struct comp_dev *host, int cmd)
 	};
 	int ret;
 
-	pipe_dbg(p, "execute trigger cmd %d on pipe %u", cmd, p->pipeline_id);
+	pipe_info(p, "pipe trigger cmd %d", cmd);
 
 	list_init(&walk_ctx.pipelines);
 
@@ -294,23 +193,20 @@ int pipeline_trigger_run(struct pipeline *p, struct comp_dev *host, int cmd)
 		if (ret < 0) {
 			pipe_err(p, "xrun handle: ret = %d", ret);
 			return ret;
-		}
-
-		if (ret == PPL_STATUS_PATH_STOP)
+		} else if (ret == PPL_STATUS_PATH_STOP)
 			/* no further action needed*/
-			return pipeline_is_timer_driven(p);
+			return 0;
 	}
 
-	ret = walk_ctx.comp_func(host, NULL, &walk_ctx, host->direction);
-	if (ret < 0)
-		pipe_err(p, "pipeline_trigger_run(): ret = %d, host->comp.id = %u, cmd = %d",
-			 ret, dev_comp_id(host), cmd);
+	data.start = host;
+	data.cmd = cmd;
 
-	/*
-	 * When called from the pipeline task, pipeline_comp_trigger() will not
-	 * add pipelines to the list, so pipeline_schedule_triggered() will have
-	 * no effect.
-	 */
+	ret = walk_ctx.comp_func(host, NULL, &walk_ctx, host->direction);
+	if (ret < 0) {
+		pipe_err(p, "pipeline_trigger(): ret = %d, host->comp.id = %u, cmd = %d",
+			 ret, dev_comp_id(host), cmd);
+	}
+
 	pipeline_schedule_triggered(&walk_ctx, cmd);
 
 	return ret;
