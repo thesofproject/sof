@@ -166,6 +166,9 @@ set(TPLGS
 	"sof-jsl-rt5682\;sof-jsl-rt5682-rt1015-xperi\;-DPLATFORM=jsl-rt1015\;-DINCLUDE_IIR_EQ=1"
 	"sof-jsl-rt5682\;sof-jsl-rt5682-mx98360a\;-DPLATFORM=jsl-dedede"
 	"sof-mt8195-mt6359-rt1019-rt5682\;sof-mt8195-mt6359-rt1019-rt5682"
+	"sof-glk-es8336\;sof-apl-es8336\;-DPLATFORM=bxt\;-DSSP_NUM=2\;-DCHANNELS=0"
+	"sof-glk-es8336\;sof-glk-es8336\;-DPLATFORM=bxt\;-DSSP_NUM=2\;-DCHANNELS=0"
+	"sof-glk-es8336\;sof-tgl-es8336\;-DPLATFORM=tgl\;-DSSP_NUM=0\;-DCHANNELS=2"
 )
 
 add_custom_target(topologies1 ALL
