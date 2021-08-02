@@ -1,6 +1,10 @@
 function bf = bf_defaults()
 
 % Recording array general setup
+bf.taylorwin_sidelobe = -30;
+bf.chebwin_sidelobe = 30;
+bf.taylorwin_nbar = 4;
+bf.type_filt = 'hann'; % filter
 bf.type = 'SDB';     % SDB for superdirectivem, DSB for delay and sum
 bf.fs = 16e3;        % Design for 16 kHz sample rate
 bf.c = 343;          % Speed of sound in 20C
@@ -8,7 +12,7 @@ bf.steer_az = 0;     % Azimuth 0 deg
 bf.steer_el = 0;     % Elevation 0 deg
 bf.steer_r = 5.0;    % Distance 5.0m
 bf.fir_length = 64;  % 64 tap FIR filters
-bf.fir_beta = 10;    % Beta for kaiser window method FIR design
+bf.kaiser_beta = 10;    % Beta for kaiser window method FIR design
 bf.mu_db = -50;      % dB of diagonal loading to noise covariance matrix
 bf.do_plots = 1;
 bf.plot_box = 0.20;  % Show 20cm wide plot cube for array geometry
