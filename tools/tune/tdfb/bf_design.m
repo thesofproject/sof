@@ -20,11 +20,11 @@ if length(bf.steer_az) ~= length(bf.steer_el)
 	error('The steer_az and steer_el lengths need to be equal.');
 end
 
-if length(find(bf.steer_az > 180)) || length(find(bf.steer_az < -180))
+if max(bf.steer_az) > 180 || min(bf.steer_az) < -180
 	error('The steer_az angles need to be -180 to +180 degrees');
 end
 
-if length(find(bf.steer_el > 90)) || length(find(bf.steer_el < -90))
+if max(bf.steer_el) > 90 || min(bf.steer_el) < -90
 	error('The steer_el angles need to be -90 to +90 degrees');
 end
 
@@ -102,7 +102,6 @@ n_phi = length(phi_rad);
 steer_az = bf.steer_az*pi/180;
 steer_el = bf.steer_el*pi/180;
 mu = ones(1,N_half) * 10^(bf.mu_db/20);
-
 %% Source at distance r
 [src_x, src_y, src_z] = source_xyz(bf.steer_r, steer_az, steer_el);
 
@@ -115,10 +114,12 @@ Gamma_vv = zeros(N_half, bf.num_filters, bf.num_filters);
 for n=1:bf.num_filters
     for m=1:bf.num_filters
         % Equation 2.17
-            lnm = sqrt( (bf.mic_x(n) - bf.mic_x(m))^2 ...
-			+(bf.mic_y(n) - bf.mic_y(m))^2 ...
-			+(bf.mic_z(n) - bf.mic_z(m))^2);
-            Gamma_vv(:,n,m) = sinc(2*pi*f*lnm/bf.c);
+        lnm = sqrt( (bf.mic_x(n) - bf.mic_x(m))^2 ...
+            +(bf.mic_y(n) - bf.mic_y(m))^2 ...
+            +(bf.mic_z(n) - bf.mic_z(m))^2);
+            % singular value decomposition
+            [U,S,V] = svd(sinc(2*pi*f*lnm/bf.c), 'econ');
+            Gamma_vv(:,n,m) = U*S*V';
     end
 end
 
@@ -187,8 +188,6 @@ W_full = W(1:N_half, :);
 for i=N_half+1:N
 	W_full(i,:) = conj(W(N_half-(i-N_half),:));
 end
-
-win = kaiser(bf.fir_length,bf.fir_beta);
 bf.w = zeros(bf.fir_length, bf.num_filters);
 w_tmp = zeros(N, bf.num_filters);
 idx_max = zeros(bf.num_filters, 1);
@@ -200,7 +199,18 @@ end
 
 center_idx = round(mean(idx_max));
 start = center_idx - floor(bf.fir_length/2);
-win0 = kaiser(bf.fir_length,bf.fir_beta);
+switch lower(bf.type_filt)
+    case 'hann'
+        win0 = hann (bf.fir_length);
+    case 'hamming'
+        win0 = hamming(bf.fir_length);
+    case 'taylorwin'
+        win0 = taylorwin(bf.fir_length, bf.taylorwin_nbar, bf.taylorwin_sidelobe);
+    case 'chebwin'
+        win0 = chebwin(bf.fir_length, bf.chebwin_sidelobe);
+    case 'kaiser'
+        win0 = kaiser(bf.fir_length,bf.kaiser_beta);
+end
 for i=1:bf.num_filters
 	win = zeros(bf.fir_length, 1);
 	win_shift = center_idx - idx_max(i) - 1;
@@ -505,7 +515,7 @@ end
 
 function myaudiowrite(fn, x, fs)
 [~, ~, ext] = fileparts(fn);
-if strcmp(lower(ext), '.raw')
+if strcmpi(ext, '.raw')
 	s = size(x);
 	xq = zeros(s(1) * s(2), 1, 'int16');
 	scale = 2^15;
