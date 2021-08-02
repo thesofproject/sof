@@ -325,10 +325,13 @@ static int edma_setup_tcd(struct dma_chan_data *channel, int16_t soff,
 		return rc;
 
 #ifdef CONFIG_IMX8ULP
-	if (channel->direction == DMA_DIR_MEM_TO_DEV)
-		dma_chan_reg_write(channel, EDMA_CH_MUX, IMX8ULP_DMAMUX2_SAI5_TX);
-	else
-		dma_chan_reg_write(channel, EDMA_CH_MUX, IMX8ULP_DMAMUX2_SAI5_RX);
+	/* Do not write EDMA_CH_MUX register when it has value,
+	 * otherwise the register will be cleared.
+	 */
+	if (!dma_chan_reg_read(channel, EDMA_CH_MUX))
+		(channel->direction == DMA_DIR_MEM_TO_DEV) ?
+			dma_chan_reg_write(channel, EDMA_CH_MUX, IMX8ULP_DMAMUX2_SAI5_TX) :
+			dma_chan_reg_write(channel, EDMA_CH_MUX, IMX8ULP_DMAMUX2_SAI5_RX);
 #endif
 
 	/* Configure the in-hardware TCD */
