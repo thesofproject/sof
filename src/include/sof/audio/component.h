@@ -64,21 +64,24 @@ struct timestamp_data;
 #define COMP_STATE_PREPARE	3	/**< Component prepared */
 #define COMP_STATE_PAUSED	4	/**< Component paused */
 #define COMP_STATE_ACTIVE	5	/**< Component active */
+#define COMP_STATE_PRE_ACTIVE	6	/**< Component after early initialisation */
 /** @}*/
 
 /** \name Standard Component Stream Commands
  *  TODO: use IPC versions after 1.1
  *  @{
  */
-#define COMP_TRIGGER_STOP	0	/**< Stop component stream */
-#define COMP_TRIGGER_START	1	/**< Start component stream */
-#define COMP_TRIGGER_PAUSE	2	/**< Pause the component stream */
-#define COMP_TRIGGER_RELEASE	3	/**< Release paused component stream */
-#define COMP_TRIGGER_SUSPEND	4	/**< Suspend component */
-#define COMP_TRIGGER_RESUME	5	/**< Resume component */
-#define COMP_TRIGGER_RESET	6	/**< Reset component */
-#define COMP_TRIGGER_PREPARE	7	/**< Prepare component */
-#define COMP_TRIGGER_XRUN	8	/**< XRUN component */
+#define COMP_TRIGGER_STOP		0	/**< Stop component stream */
+#define COMP_TRIGGER_START		1	/**< Start component stream */
+#define COMP_TRIGGER_PAUSE		2	/**< Pause the component stream */
+#define COMP_TRIGGER_RELEASE		3	/**< Release paused component stream */
+#define COMP_TRIGGER_SUSPEND		4	/**< Suspend component */
+#define COMP_TRIGGER_RESUME		5	/**< Resume component */
+#define COMP_TRIGGER_RESET		6	/**< Reset component */
+#define COMP_TRIGGER_PREPARE		7	/**< Prepare component */
+#define COMP_TRIGGER_XRUN		8	/**< XRUN component */
+#define COMP_TRIGGER_PRE_START		9	/**< Start component stream */
+#define COMP_TRIGGER_PRE_RELEASE	10	/**< Release paused component stream */
 /** @}*/
 
 /** \name Standard Component Control Commands
