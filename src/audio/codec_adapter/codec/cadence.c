@@ -28,6 +28,7 @@ enum cadence_api_id {
 	CADENCE_CODEC_DRM_DEC_ID	= 0x05,
 	CADENCE_CODEC_MP3_DEC_ID	= 0x06,
 	CADENCE_CODEC_SBC_DEC_ID	= 0x07,
+	CADENCE_CODEC_VORBIS_DEC_ID	= 0x08,
 };
 
 /*****************************************************************************/
@@ -74,6 +75,12 @@ static struct cadence_api cadence_api_table[] = {
 	{
 		.id = CADENCE_CODEC_SBC_DEC_ID,
 		.api = xa_sbc_dec,
+	},
+#endif
+#ifdef CONFIG_CADENCE_CODEC_VORBIS_DEC
+	{
+		.id = CADENCE_CODEC_VORBIS_DEC_ID,
+		.api = xa_vorbis_dec,
 	},
 #endif
 };
