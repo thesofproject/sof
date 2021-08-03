@@ -37,6 +37,10 @@ if(CONFIG_CADENCE_CODEC_SBC_DEC)
 sof_add_static_library(xa_sbc_dec ${CONFIG_CADENCE_CODEC_SBC_DEC_LIB})
 endif()
 
+if(CONFIG_CADENCE_CODEC_VORBIS_DEC)
+	sof_add_static_library(xa_vorbis_dec ${CONFIG_CADENCE_CODEC_VORBIS_DEC_LIB})
+endif()
+
 endif()
 
 if(CONFIG_PASSTHROUGH_CODEC)
