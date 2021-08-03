@@ -412,7 +412,7 @@ static int ipc_stream_trigger(uint32_t header)
 
 	switch (ipc_command) {
 	case SOF_IPC_STREAM_TRIG_START:
-		cmd = COMP_TRIGGER_START;
+		cmd = COMP_TRIGGER_PRE_START;
 		break;
 	case SOF_IPC_STREAM_TRIG_STOP:
 		cmd = COMP_TRIGGER_STOP;
@@ -421,7 +421,7 @@ static int ipc_stream_trigger(uint32_t header)
 		cmd = COMP_TRIGGER_PAUSE;
 		break;
 	case SOF_IPC_STREAM_TRIG_RELEASE:
-		cmd = COMP_TRIGGER_RELEASE;
+		cmd = COMP_TRIGGER_PRE_RELEASE;
 		break;
 	/* XRUN is special case- TODO */
 	case SOF_IPC_STREAM_TRIG_XRUN:

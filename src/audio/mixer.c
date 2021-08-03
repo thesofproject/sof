@@ -241,6 +241,30 @@ static int mixer_trigger(struct comp_dev *dev, int cmd)
 
 	comp_dbg(dev, "mixer_trigger()");
 
+	/*
+	 * This works around an unclear and apparently needlessly complicated
+	 * mixer state machine.
+	 */
+	if (dir == SOF_IPC_STREAM_PLAYBACK) {
+		switch (cmd) {
+		case COMP_TRIGGER_PRE_RELEASE:
+			/* Mixer and everything downstream is active */
+			dev->state = COMP_STATE_PRE_ACTIVE;
+			break;
+		case COMP_TRIGGER_RELEASE:
+			/* Mixer and everything downstream is active */
+			dev->state = COMP_STATE_ACTIVE;
+			break;
+		case COMP_TRIGGER_PRE_START:
+			/* Mixer and downstream components might or might not be active */
+			if (mixer_source_status_count(dev, COMP_STATE_ACTIVE) ||
+			    mixer_source_status_count(dev, COMP_STATE_PAUSED))
+				return PPL_STATUS_PATH_STOP;
+		}
+
+		comp_writeback(dev);
+	}
+
 	ret = comp_set_state(dev, cmd);
 	if (ret < 0)
 		return ret;
@@ -258,6 +282,7 @@ static int mixer_trigger(struct comp_dev *dev, int cmd)
 	     (mixer_source_status_count(dev, COMP_STATE_ACTIVE) ||
 	     mixer_source_status_count(dev, COMP_STATE_PAUSED)))) {
 		dev->state = COMP_STATE_ACTIVE;
+		comp_writeback(dev);
 		ret = PPL_STATUS_PATH_STOP;
 	}
 

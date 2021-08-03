@@ -804,6 +804,8 @@ static int dai_comp_trigger_internal(struct comp_dev *dev, int cmd)
 		ret = dma_pause(dd->chan);
 		dai_trigger(dd->dai, cmd, dev->direction);
 		break;
+	case COMP_TRIGGER_PRE_START:
+	case COMP_TRIGGER_PRE_RELEASE:
 	default:
 		break;
 	}
