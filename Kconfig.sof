@@ -1,0 +1,189 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
+config XT_WAITI_DELAY
+	bool
+	default n
+	help
+	  LX6 Xtensa platforms may require additional delay to flush loads
+	  and stores before entering WAITI.
+
+config HOST_PTABLE
+	bool
+	default n
+
+config XT_BOOT_LOADER
+	bool
+	default n
+
+config XT_HAVE_RESET_VECTOR_ROM
+	bool
+	default n
+	help
+	  Select if your platform has the reset vector
+	  in ROM.
+
+config XT_IRQ_MAP
+	bool
+	default n
+
+config DMA_GW
+	bool
+	default n
+
+config MEM_WND
+	bool
+	default n
+
+config INTEL_IOMUX
+	bool
+	default n
+
+config DMA_HW_LLI
+	bool
+	default n
+	help
+	  Hardware linked list is DMA feature, which allows
+	  to automatically reload the next programmed linked list
+	  item from memory without stopping the transfer. Without
+	  it the transfer stops after every lli read and FW needs
+	  to manually setup the next transfer.
+
+	  Any platforms with hardware linked list support
+	  should set this.
+
+config DMA_SUSPEND_DRAIN
+	bool
+	default n
+	help
+	  Some platforms cannot just simple disable DMA
+	  channel during the transfer, because it will
+	  hang the whole DMA controller. Instead we can
+	  suspend the channel and drain the FIFO in order
+	  to stop the channel as soon as possible.
+
+	  Any platforms without the ability to disable
+	  the DMA channel right away should set this.
+
+config DMA_FIFO_PARTITION
+	bool
+	default n
+	help
+	  Some platforms require to manually set DMA
+	  FIFO partitions before starting any transfer.
+
+	  Any platforms without automatic FIFO partitions
+	  should set this.
+
+config XT_INTERRUPT_LEVEL_1
+	bool
+	default n
+	help
+	  Select if the platform supports any interrupts of level 1.
+	  Disabling this option allows for less memory consumption.
+
+config XT_INTERRUPT_LEVEL_2
+	bool
+	default n
+	help
+	  Select if the platform supports any interrupts of level 2.
+	  Disabling this option allows for less memory consumption.
+
+config XT_INTERRUPT_LEVEL_3
+	bool
+	default n
+	help
+	  Select if the platform supports any interrupts of level 3.
+	  Disabling this option allows for less memory consumption.
+
+config XT_INTERRUPT_LEVEL_4
+	bool
+	default n
+	help
+	  Select if the platform supports any interrupts of level 4.
+	  Disabling this option allows for less memory consumption.
+
+config XT_INTERRUPT_LEVEL_5
+	bool
+	default n
+	help
+	  Select if the platform supports any interrupts of level 5.
+	  Disabling this option allows for less memory consumption.
+
+rsource "src/Kconfig"
+
+# See zephyr/modules/Kconfig
+if !ZEPHYR_SOF_MODULE
+	rsource "Kconfig.xtos-build"
+endif
+
+menu "Debug"
+
+config DEBUG
+	bool "Enable debug build"
+	default n
+	help
+	  Select for debug build
+
+config GDB_DEBUG
+	bool "GDB Stub"
+	default n
+	help
+	  Select for GDB debugging
+
+config DEBUG_MEMORY_USAGE_SCAN
+	bool "Memory usage scan"
+	default y
+	help
+	  It enables memory usage scan at demand in runtime.
+	  This feature does not affect standard memory operations,
+	  especially allocation and deallocation.
+
+config DEBUG_LOCKS
+	bool "Spinlock debug"
+	default n
+	help
+	  It adds additional information to the spinlocks about
+	  the current user of the lock. Also executes panic
+	  on deadlock.
+
+config DEBUG_LOCKS_VERBOSE
+	bool "Spinlock verbose debug"
+	depends on DEBUG_LOCKS
+	default n
+	help
+	  In addition to DEBUG_LOCKS it also adds spinlock traces
+	  every time the lock is acquired.
+
+config DEBUG_IPC_COUNTERS
+	bool "IPC counters"
+	depends on CAVS
+	depends on DEBUG
+	default n
+	help
+	  Select for enabling tracing IPC counter in SRAM_REG mailbox
+
+config PERFORMANCE_COUNTERS
+	bool "Performance counters"
+	default n
+	help
+	  Enables tracing of simple performance measurements.
+	  A basic use case is to measure number of platform & cpu clock ticks
+	  passed between two checkpoints (init() and stamp()), for example
+	  total time spent on running low latency scheduler tasks.
+	  Platforms that gate cpu clock in wait-for-interrupt calls may also
+	  use the stamp() macro periodically to find out how long the cpu
+	  was in active/sleep state between the calls and estimate the cpu load.
+
+config DSP_RESIDENCY_COUNTERS
+	bool "DSP residency counters"
+	default n
+	help
+	  Enables simple DSP residency counters in SRAM_REG mailbox.
+	  R0, R1, R2 are abstract states which can be used differently
+	  based on platform implementation.
+
+if !ZEPHYR_SOF_MODULE
+	rsource "Kconfig.xtos-dbg"
+endif
+
+endmenu
