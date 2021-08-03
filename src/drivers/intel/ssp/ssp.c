@@ -271,7 +271,7 @@ static int ssp_set_config(struct dai *dai,
 	if (ssp->state[DAI_DIR_PLAYBACK] > COMP_STATE_READY ||
 	    ssp->state[DAI_DIR_CAPTURE] > COMP_STATE_READY) {
 		dai_info(dai, "ssp_set_config(): Already configured. Ignore config");
-		goto out;
+		goto clk;
 	}
 
 	dai_info(dai, "ssp_set_config(), config->format = 0x%4x",
@@ -711,6 +711,7 @@ static int ssp_set_config(struct dai *dai,
 	ssp->state[DAI_DIR_PLAYBACK] = COMP_STATE_PREPARE;
 	ssp->state[DAI_DIR_CAPTURE] = COMP_STATE_PREPARE;
 
+clk:
 	switch (config->flags & SOF_DAI_CONFIG_FLAGS_MASK) {
 	case SOF_DAI_CONFIG_FLAGS_HW_PARAMS:
 		if (ssp->params.clks_control & SOF_DAI_INTEL_SSP_CLKCTRL_MCLK_ES) {
