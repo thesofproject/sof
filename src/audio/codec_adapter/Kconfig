@@ -117,6 +117,22 @@ if CADENCE_CODEC
 		  This option is a string and takes the full name of the SBC library binary.
 	endif
 
+
+	config CADENCE_CODEC_VORBIS_DEC
+		bool "Cadence VORBIS decoder"
+		default n
+		help
+		  Select for Cadence VORBIS decoder support.
+		  This will cause Cadence codec to include Cadence VORBIS library
+		  api symbol.
+
+	if CADENCE_CODEC_VORBIS_DEC
+		config CADENCE_CODEC_VORBIS_DEC_LIB
+		string "Cadence VORBIS decoder library name"
+		help
+		  This option is a string and takes the full name of the VORBIS library binary.
+	endif
+
 endif
 
 	config PASSTHROUGH_CODEC
