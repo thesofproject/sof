@@ -7,6 +7,13 @@ config IMX_EDMA
 	help
 	  Select this to enable support for i.MX EDMA DMA controller.
 
+config IMX_ESAI
+	bool "i.MX ESAI driver"
+	default n
+	depends on IMX
+	help
+	  Select this to enable support for i.MX ESAI IP.
+
 config IMX_INTERRUPT_IRQSTEER
 	bool
 	default n
