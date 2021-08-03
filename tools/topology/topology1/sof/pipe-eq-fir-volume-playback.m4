@@ -48,7 +48,7 @@ ifdef(`PIPELINE_FILTER2', , `define(PIPELINE_FILTER2, eq_fir_coef_pass.m4)')
 include(PIPELINE_FILTER2)
 
 # EQ Bytes control with max value of 255
-C_CONTROLBYTES(EQFIR, PIPELINE_ID,
+C_CONTROLBYTES(DEF_EQFIR_COEF, PIPELINE_ID,
 	CONTROLBYTES_OPS(bytes, 258 binds the mixer control to bytes get/put handlers, 258, 258),
 	CONTROLBYTES_EXTOPS(258 binds the mixer control to bytes get/put handlers, 258, 258),
 	, , ,
