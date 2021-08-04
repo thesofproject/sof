@@ -86,6 +86,7 @@ struct dai_ops {
 	int (*get_fifo)(struct dai *dai, int direction, int stream_id);
 	int (*probe)(struct dai *dai);
 	int (*remove)(struct dai *dai);
+	uint32_t (*get_init_delay_ms)(struct dai *dai);
 };
 
 struct timestamp_cfg {
@@ -463,6 +464,17 @@ static inline int dai_remove(struct dai *dai)
 	int ret = dai->drv->ops.remove(dai);
 
 	return ret;
+}
+
+/**
+ * \brief Get DAI initial delay in milliseconds
+ */
+static inline uint32_t dai_get_init_delay_ms(struct dai *dai)
+{
+	if (dai && dai->drv->ops.get_init_delay_ms)
+		return dai->drv->ops.get_init_delay_ms(dai);
+
+	return 0;
 }
 
 /**
