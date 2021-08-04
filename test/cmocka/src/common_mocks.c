@@ -18,6 +18,7 @@
 #include <sof/audio/component_ext.h>
 #include <sof/lib/clk.h>
 #include <sof/lib/notifier.h>
+#include <sof/lib/wait.h>
 #include <arch/lib/cpu.h>
 #include <stdlib.h>
 #include <stdarg.h>
@@ -200,6 +201,11 @@ int WEAK ipc_platform_send_msg(struct ipc_msg *msg)
 {
 	return 0;
 }
+
+void WEAK wait_delay(uint64_t number_of_clks)
+{
+}
+
 void WEAK xthal_icache_region_invalidate(void *addr, unsigned size)
 {
 }
