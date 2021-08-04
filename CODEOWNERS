@@ -17,6 +17,7 @@ src/include/sof/debug/gdb/*		@mrajwa
 src/include/sof/audio/kpb.h		@mrajwa
 src/include/sof/audio/mux.h		@akloniex
 src/include/sof/audio/codec_adapter/*	@cujomalainey @mrajwa @dbaluta
+src/include/sof/drivers/acp_dai_dma.h	@bhiregoudar @sunilkumardommati
 
 # audio component
 src/audio/src*				@singalsu
@@ -39,6 +40,7 @@ src/platform/haswell/*			@randerwang
 src/platform/suecreek/*			@lyakh
 src/arch/xtensa/debug/gdb/*		@mrajwa
 src/platform/imx8/**			@dbaluta
+src/platform/amd/**			@bhiregoudar @sunilkumardommati
 
 # drivers
 src/drivers/intel/dmic.c		@singalsu
@@ -46,6 +48,7 @@ src/drivers/intel/cavs/sue-iomux.c	@lyakh
 src/drivers/intel/haswell/*		@randerwang
 src/drivers/imx/**			@dbaluta
 src/drivers/dw/*			@lyakh
+src/drivers/amd/*			@bhiregoudar @sunilkumardommati
 
 # other libs
 src/math/*				@singalsu
