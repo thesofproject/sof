@@ -266,6 +266,8 @@ int dai_config(struct comp_dev *dev, struct ipc_config_dai *common_config,
 		return 0;
 	}
 
+	dd->init_delay = dai_get_init_delay(dd->dai);
+
 	if (config->group_id) {
 		ret = dai_assign_group(dev, config->group_id);
 

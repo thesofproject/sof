@@ -8,6 +8,8 @@
 #include <sof/audio/buffer.h>
 #include <sof/audio/component_ext.h>
 #include <sof/audio/pipeline.h>
+#include <sof/lib/dai.h>
+#include <sof/lib/wait.h>
 #include <sof/list.h>
 #include <sof/spinlock.h>
 #include <sof/string.h>
@@ -93,6 +95,12 @@ static int pipeline_comp_trigger(struct comp_dev *current,
 		return err;
 
 	pipeline_comp_trigger_sched_comp(current->pipeline, current, ctx);
+
+	if (comp_get_endpoint_type(current) == COMP_ENDPOINT_DAI) {
+		struct dai_data *dd = comp_get_drvdata(current);
+
+		ppl_data->delay = dd->init_delay;
+	}
 
 	return pipeline_for_each_comp(current, ctx, dir);
 }
@@ -218,6 +226,10 @@ int pipeline_trigger(struct pipeline *p, struct comp_dev *host, int cmd)
 
 	if (data.cmd != cmd) {
 		list_init(&walk_ctx.pipelines);
+
+		if (data.delay)
+			wait_delay(clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK,
+						     data.delay));
 
 		ret = walk_ctx.comp_func(host, NULL, &walk_ctx, host->direction);
 		if (ret < 0)

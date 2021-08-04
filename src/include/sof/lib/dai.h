@@ -86,6 +86,7 @@ struct dai_ops {
 	int (*get_fifo)(struct dai *dai, int direction, int stream_id);
 	int (*probe)(struct dai *dai);
 	int (*remove)(struct dai *dai);
+	uint64_t (*get_init_delay)(struct dai *dai);
 };
 
 struct timestamp_cfg {
@@ -178,6 +179,7 @@ struct dai_data {
 	void *dai_spec_config;	/* dai specific config from the host */
 
 	uint64_t wallclock;	/* wall clock at stream start */
+	uint64_t init_delay;	/* delay in ms after early start */
 };
 
 struct dai {
@@ -463,6 +465,17 @@ static inline int dai_remove(struct dai *dai)
 	int ret = dai->drv->ops.remove(dai);
 
 	return ret;
+}
+
+/**
+ * \brief Get DAI initial delay in milliseconds
+ */
+static inline uint64_t dai_get_init_delay(struct dai *dai)
+{
+	if (dai->drv->ops.get_init_delay)
+		return dai->drv->ops.get_init_delay(dai);
+
+	return 0ULL;
 }
 
 /**

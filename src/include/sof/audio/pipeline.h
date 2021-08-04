@@ -99,6 +99,7 @@ struct pipeline_data {
 	struct sof_ipc_stream_posn *posn;
 	struct pipeline *p;
 	int cmd;
+	uint64_t delay;
 };
 
 /*
