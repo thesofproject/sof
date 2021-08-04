@@ -806,7 +806,11 @@ static int dai_comp_trigger_internal(struct comp_dev *dev, int cmd)
 		break;
 	case COMP_TRIGGER_PRE_START:
 	case COMP_TRIGGER_PRE_RELEASE:
-	default:
+		/* only start the DAI if we are not XRUN handling */
+		if (dd->xrun)
+			dd->xrun = 0;
+		else
+			dai_trigger(dd->dai, cmd, dev->direction);
 		break;
 	}
 
