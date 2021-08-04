@@ -949,8 +949,7 @@ static int ssp_get_hw_params(struct dai *dai,
 	return 0;
 }
 
-/* start the SSP for either playback or capture */
-static void ssp_start(struct dai *dai, int direction)
+static void ssp_early_start(struct dai *dai, int direction)
 {
 	struct ssp_pdata *ssp = dai_get_drvdata(dai);
 
@@ -967,11 +966,8 @@ static void ssp_start(struct dai *dai, int direction)
 
 		/* enable port */
 		ssp_update_bits(dai, SSCR0, SSCR0_SSE, SSCR0_SSE);
-		dai_info(dai, "ssp_start(): SSE set for SSP%d", dai->index);
+		dai_info(dai, "ssp_early_start(): SSE set for SSP%d", dai->index);
 	}
-	ssp->state[direction] = COMP_STATE_ACTIVE;
-
-	dai_info(dai, "ssp_start()");
 
 	if (ssp->params.bclk_delay) {
 		/* drive BCLK early for guaranteed time,
@@ -981,11 +977,25 @@ static void ssp_start(struct dai *dai, int direction)
 					     ssp->params.bclk_delay));
 	}
 
+	spin_unlock(&dai->lock);
+}
+
+/* start the SSP for either playback or capture */
+static void ssp_start(struct dai *dai, int direction)
+{
+	struct ssp_pdata *ssp = dai_get_drvdata(dai);
+
+	spin_lock(&dai->lock);
+
+	dai_info(dai, "ssp_start()");
+
 	/* enable DMA */
 	if (direction == DAI_DIR_PLAYBACK)
 		ssp_update_bits(dai, SSTSA, SSTSA_TXEN, SSTSA_TXEN);
 	else
 		ssp_update_bits(dai, SSRSA, SSRSA_RXEN, SSRSA_RXEN);
+
+	ssp->state[direction] = COMP_STATE_ACTIVE;
 
 	/*
 	 * Wait to get valid fifo status in clock consumer mode. TODO it's
@@ -1105,6 +1115,7 @@ static int ssp_trigger(struct dai *dai, int cmd, int direction)
 		break;
 	case COMP_TRIGGER_PRE_START:
 	case COMP_TRIGGER_PRE_RELEASE:
+		ssp_early_start(dai, direction);
 		break;
 	}
 
