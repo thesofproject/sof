@@ -969,13 +969,6 @@ static void ssp_early_start(struct dai *dai, int direction)
 		dai_info(dai, "ssp_early_start(): SSE set for SSP%d", dai->index);
 	}
 
-	if (ssp->params.bclk_delay) {
-		/* drive BCLK early for guaranteed time,
-		 * before first FSYNC, it is required by some codecs
-		 */
-		wait_delay(clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK,
-					     ssp->params.bclk_delay));
-	}
 
 	spin_unlock(&dai->lock);
 }
@@ -1182,6 +1175,16 @@ static int ssp_get_fifo(struct dai *dai, int direction, int stream_id)
 	return dai->plat_data.fifo[direction].offset;
 }
 
+static uint64_t ssp_get_init_delay(struct dai *dai)
+{
+	struct ssp_pdata *ssp = dai_get_drvdata(dai);
+
+	/* drive BCLK early for guaranteed time,
+	 * before first FSYNC, it is required by some codecs
+	 */
+	return ssp->params.bclk_delay;
+}
+
 const struct dai_driver ssp_driver = {
 	.type = SOF_DAI_INTEL_SSP,
 	.uid = SOF_UUID(ssp_uuid),
@@ -1196,6 +1199,7 @@ const struct dai_driver ssp_driver = {
 		.get_hw_params		= ssp_get_hw_params,
 		.get_handshake		= ssp_get_handshake,
 		.get_fifo		= ssp_get_fifo,
+		.get_init_delay		= ssp_get_init_delay,
 		.probe			= ssp_probe,
 		.remove			= ssp_remove,
 	},
