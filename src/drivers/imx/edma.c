@@ -25,6 +25,14 @@ DECLARE_SOF_UUID("edma", edma_uuid, 0x3d73a110, 0x0930, 0x457f,
 
 DECLARE_TR_CTX(edma_tr, SOF_UUID(edma_uuid), LOG_LEVEL_INFO);
 
+static void chan_addr_convert(struct dma_chan_data *channel, uint32_t *sbase, uint32_t *dbase)
+{
+	if (channel->direction == DMA_DIR_MEM_TO_DEV)
+		*sbase = local_to_host(*sbase);
+	else
+		*dbase = local_to_host(*dbase);
+}
+
 static int edma_encode_tcd_attr(int src_width, int dest_width)
 {
 	int result = 0;
@@ -333,6 +341,8 @@ static int edma_setup_tcd(struct dma_chan_data *channel, int16_t soff,
 			dma_chan_reg_write(channel, EDMA_CH_MUX, IMX8ULP_DMAMUX2_SAI5_TX) :
 			dma_chan_reg_write(channel, EDMA_CH_MUX, IMX8ULP_DMAMUX2_SAI5_RX);
 #endif
+
+	chan_addr_convert(channel, &sbase, &dbase);
 
 	/* Configure the in-hardware TCD */
 	dma_chan_reg_write(channel, EDMA_TCD_SADDR, sbase);
