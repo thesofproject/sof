@@ -464,6 +464,9 @@
 /** \brief Manifest size (seems unused). */
 #define IMR_BOOT_LDR_MANIFEST_SIZE	0x6000
 
+#define host_to_local(addr) (addr)
+#define local_to_host(addr) (addr)
+
 #endif /* __PLATFORM_LIB_MEMORY_H__ */
 
 #else

@@ -141,6 +141,9 @@ void platform_init_memmap(struct sof *sof);
 
 #endif
 
+#define host_to_local(addr) (addr)
+#define local_to_host(addr) (addr)
+
 #endif /* __CAVS_LIB_MEMORY_H__ */
 
 #else

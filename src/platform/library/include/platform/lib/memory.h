@@ -170,6 +170,9 @@ static inline uint32_t arch_get_stack_size(void)
 	SRAM_BANK_SIZE)
 #define SOF_CORE_S_T_SIZE ((CONFIG_CORE_COUNT - 1) * SOF_CORE_S_SIZE)
 
+#define host_to_local(addr) (addr)
+#define local_to_host(addr) (addr)
+
 #endif /* __PLATFORM_LIB_MEMORY_H__ */
 
 #else

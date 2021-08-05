@@ -419,6 +419,9 @@
 					SOF_STACK_TOTAL_SIZE)
 #define BOOT_LDR_STACK_SIZE		SOF_STACK_TOTAL_SIZE
 
+#define host_to_local(addr) (addr)
+#define local_to_host(addr) (addr)
+
 #endif /* __PLATFORM_LIB_MEMORY_H__ */
 
 /* L1 init */

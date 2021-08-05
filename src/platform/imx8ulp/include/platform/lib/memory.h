@@ -215,6 +215,9 @@ static inline void *platform_rfree_prepare(void *ptr)
 
 #endif
 
+#define host_to_local(addr) (SDRAM0_BASE + ((addr) - MEM_RESERVED))
+#define local_to_host(addr) (MEM_RESERVED + ((addr) - SDRAM0_BASE))
+
 #endif /* __PLATFORM_LIB_MEMORY_H__ */
 
 #else
