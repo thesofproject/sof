@@ -20,9 +20,24 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#ifdef CONFIG_COMPILER_WORKAROUND_CACHE_ATTR
+#include <sof/drivers/cache_attr.h>
+#endif
+
 #define SRAM_UNCACHED_ALIAS	0x20000000
 
 #ifdef CONFIG_IMX
+
+#ifdef CONFIG_COMPILER_WORKAROUND_CACHE_ATTR
+/*
+ * We want to avoid buggy compiler optimization (function inlining).
+ * So we replace the call to glb_addr_attr() from glb_is_cached()
+ * with a function pointer that is initialized in
+ * src/arch/xtensa/driver/cache_attr.c
+ */
+#define is_cached(address) glb_is_cached(address)
+
+#else /* CONFIG_COMPILER_WORKAROUND_CACHE_ATTR */
 /*
  * The _memmap_cacheattr_reset linker script variable has
  * dedicate cache attribute for every 512M in 4GB space
@@ -68,7 +83,9 @@ extern uint32_t _memmap_cacheattr_reset;
  */
 #define is_cached(address) ((_addr_attr(address) == 1) || \
 			    (_addr_attr(address) == 4))
-#else
+#endif /* CONFIG_COMPILER_WORKAROUND_CACHE_ATTR */
+
+#else /* CONFIG_IMX */
 #define is_cached(address) (!!((uintptr_t)(address) & SRAM_UNCACHED_ALIAS))
 #endif
 
