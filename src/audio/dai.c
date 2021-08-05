@@ -594,12 +594,12 @@ static int dai_config_prepare(struct comp_dev *dev)
 	/* allocate DMA channel */
 	dd->chan = dma_channel_get(dd->dma, channel);
 	if (!dd->chan) {
-		comp_err(dev, "dai_config(): dma_channel_get() failed");
+		comp_err(dev, "dai_config_prepare(): dma_channel_get() failed");
 		dd->chan = NULL;
 		return -EIO;
 	}
 
-	comp_info(dev, "dai_config(): new configured dma channel index %d",
+	comp_info(dev, "dai_config_prepare(): new configured dma channel index %d",
 		  dd->chan->index);
 
 	/* setup callback */
