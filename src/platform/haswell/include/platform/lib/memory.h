@@ -196,6 +196,9 @@ static inline void *platform_rfree_prepare(void *ptr)
 
 #define SOF_MEM_RO_SIZE		0x8
 
+#define host_to_local(addr) (addr)
+#define local_to_host(addr) (addr)
+
 #endif /* __PLATFORM_LIB_MEMORY_H__ */
 
 #else

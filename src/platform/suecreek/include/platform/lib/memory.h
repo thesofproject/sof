@@ -434,6 +434,9 @@
 #define _SRAM_VECBASE_RESET (BOOT_LDR_BSS_BASE + BOOT_LDR_BSS_SIZE)
 #define SRAM_VECBASE_RESET ALIGN_UP_INTERNAL(_SRAM_VECBASE_RESET, 4096)
 
+#define host_to_local(addr) (addr)
+#define local_to_host(addr) (addr)
+
 #endif /* __PLATFORM_LIB_MEMORY_H__ */
 
 #else
