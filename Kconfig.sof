@@ -109,6 +109,15 @@ config XT_INTERRUPT_LEVEL_5
 	  Select if the platform supports any interrupts of level 5.
 	  Disabling this option allows for less memory consumption.
 
+config COMPILER_WORKAROUND_CACHE_ATTR
+	bool
+	default n
+	help
+	  Select this to activate use of functions instead of macros
+	  to decide whether an address is cacheable or not.
+	  There is a weird optimization bug with gcc10x and gcc8.1
+	  (with -O2 flags) on IMX platforms. See PR #4605.
+
 rsource "src/Kconfig"
 
 # See zephyr/modules/Kconfig
