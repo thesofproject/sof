@@ -45,7 +45,7 @@ DEBUG_START
 #
 # Define the pipelines
 #
-# PCM0 ---> volume ----> ALH 2 BE dailink 0
+# PCM0 ---> volume ----> mixer --->ALH 2 BE dailink 0
 # PCM1 <--- volume <---- ALH 3 BE dailink 1
 # PCM10 <---------------- DMIC01 (dmic0 capture, BE dailink 2)
 # PCM11 <---------------- DMIC16k (dmic16k, BE dailink 3)
@@ -59,13 +59,6 @@ dnl     pipe id, pcm, max channels, format,
 dnl     period, priority, core,
 dnl     pcm_min_rate, pcm_max_rate, pipeline_rate,
 dnl     time_domain, sched_comp)
-
-# Low Latency playback pipeline 1 on PCM 0 using max 2 channels of s32le.
-# Schedule 48 frames per 1000us deadline with priority 0 on core 0
-PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
-	1, 0, 2, s24le,
-	1000, 0, 0,
-	48000, 48000, 48000)
 
 # Low Latency capture pipeline 2 on PCM 1 using max 2 channels of s32le.
 # Schedule 48 frames per 1000us deadline with priority 0 on core 0
@@ -106,10 +99,10 @@ dnl     deadline, priority, core, time_domain)
 
 # playback DAI is ALH(SDW1 PIN2) using 2 periods
 # Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
-DAI_ADD(sof/pipe-dai-playback.m4,
+DAI_ADD(sof/pipe-mixer-volume-dai-playback.m4,
 	1, ALH, 0x102, SDW1-Playback,
-	PIPELINE_SOURCE_1, 2, s24le,
-	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
+	NOT_USED_IGNORED, 2, s24le,
+	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER, 2, 48000)
 
 # capture DAI is ALH(SDW1 PIN3) using 2 periods
 # Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
@@ -117,6 +110,24 @@ DAI_ADD(sof/pipe-dai-capture.m4,
 	2, ALH, 0x103, SDW1-Capture,
 	PIPELINE_SINK_2, 2, s24le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
+
+# Low Latency playback pipeline 30 on PCM 0 using max 2 channels of s32le.
+# Schedule 48 frames per 1000us deadline on core 0 with priority 0
+PIPELINE_PCM_ADD(sof/pipe-host-volume-playback.m4,
+	30, 0, 2, s32le,
+	1000, 0, 0,
+	48000, 48000, 48000,
+	SCHEDULE_TIME_DOMAIN_TIMER,
+	PIPELINE_PLAYBACK_SCHED_COMP_1)
+
+SectionGraph."mixer-host" {
+	index "0"
+
+	lines [
+		# connect mixer dai pipelines to PCM pipelines
+		dapm(PIPELINE_MIXER_1, PIPELINE_SOURCE_30)
+	]
+}
 
 # playback DAI is iDisp1 using 2 periods
 # Buffers use s32le format, with 48 frame per 1000us on core 0 with priority 0
@@ -141,7 +152,7 @@ DAI_ADD(sof/pipe-dai-playback.m4,
 
 # PCM Low Latency, id 0
 dnl PCM_PLAYBACK_ADD(name, pcm_id, playback)
-PCM_PLAYBACK_ADD(Jack Out, 0, PIPELINE_PCM_1)
+PCM_PLAYBACK_ADD(Jack Out, 0, PIPELINE_PCM_30)
 PCM_CAPTURE_ADD(Jack In, 1, PIPELINE_PCM_2)
 PCM_PLAYBACK_ADD(HDMI 1, 5, PIPELINE_PCM_6)
 PCM_PLAYBACK_ADD(HDMI 2, 6, PIPELINE_PCM_7)
