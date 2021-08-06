@@ -129,8 +129,11 @@ int idc_send_msg(struct idc_msg *msg, uint32_t mode)
 	switch (mode) {
 	case IDC_BLOCKING:
 		ret = idc_wait_in_blocking_mode(msg->core, idc_is_received);
-		if (ret < 0)
+		if (ret < 0) {
+			tr_err(&idc_tr, "idc_send_msg(), blocking msg 0x%x failed for core %d",
+			       msg->header, msg->core);
 			return ret;
+		}
 
 		idc_write(IPC_IDCIETC(msg->core), core,
 			  idc_read(IPC_IDCIETC(msg->core), core) |
