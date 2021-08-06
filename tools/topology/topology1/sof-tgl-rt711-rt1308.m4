@@ -97,6 +97,7 @@ DEBUG_START
 # Define the pipelines
 #
 # PCM0 ---> volume ----> mixer --->ALH 2 BE dailink 0
+# PCM31 ---> volume ------^
 # PCM1 <--- volume <---- ALH 3 BE dailink 1
 ifdef(`EXT_AMP', `
 # PCM2 ---> volume ----> ALH 2 BE dailink 2
@@ -187,12 +188,23 @@ PIPELINE_PCM_ADD(sof/pipe-host-volume-playback.m4,
 	SCHEDULE_TIME_DOMAIN_TIMER,
 	PIPELINE_PLAYBACK_SCHED_COMP_1)
 
+# Deep buffer playback pipeline 31 on PCM 31 using max 2 channels of s32le
+# Set 1000us deadline on core 0 with priority 0.
+# TODO: Modify pipeline deadline to account for deep buffering
+PIPELINE_PCM_ADD(sof/pipe-host-volume-playback.m4,
+	31, 31, 2, s32le,
+	1000, 0, 0,
+	48000, 48000, 48000,
+	SCHEDULE_TIME_DOMAIN_TIMER,
+	PIPELINE_PLAYBACK_SCHED_COMP_1)
+
 SectionGraph."mixer-host" {
 	index "0"
 
 	lines [
 		# connect mixer dai pipelines to PCM pipelines
 		dapm(PIPELINE_MIXER_1, PIPELINE_SOURCE_30)
+		dapm(PIPELINE_MIXER_1, PIPELINE_SOURCE_31)
 	]
 }
 
@@ -237,6 +249,7 @@ DAI_ADD(sof/pipe-dai-playback.m4,
 # PCM Low Latency, id 0
 dnl PCM_PLAYBACK_ADD(name, pcm_id, playback)
 PCM_PLAYBACK_ADD(Jack Out, 0, PIPELINE_PCM_30)
+PCM_PLAYBACK_ADD(Jack Out DeepBuffer, 31, PIPELINE_PCM_31)
 PCM_CAPTURE_ADD(Jack In, 1, PIPELINE_PCM_2)
 ifdef(`EXT_AMP',
 `
