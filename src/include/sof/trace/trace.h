@@ -25,6 +25,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <string.h>
 #if CONFIG_LIBRARY
 #include <stdio.h>
 #endif
@@ -235,8 +236,9 @@ do {											\
 	(void)id_1;									\
 	(void)id_2;									\
 	if (test_bench_trace) {								\
-		char *msg = "%s " format;						\
-		fprintf(stderr, msg, get_trace_class(comp_class), ##__VA_ARGS__);	\
+		char *msg = "(%s:%d) " format;						\
+		fprintf(stderr, msg, strrchr(__FILE__, '/') + 1,\
+			__LINE__, ##__VA_ARGS__);	\
 		fprintf(stderr, "\n");							\
 	}										\
 } while (0)
