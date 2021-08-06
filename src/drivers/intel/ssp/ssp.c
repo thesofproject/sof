@@ -987,8 +987,19 @@ static void ssp_start(struct dai *dai, int direction)
 	else
 		ssp_update_bits(dai, SSRSA, SSRSA_RXEN, SSRSA_RXEN);
 
-	/* wait to get valid fifo status */
-	wait_delay(PLATFORM_SSP_DELAY);
+	/*
+	 * Wait to get valid fifo status in clock consumer mode. TODO it's
+	 * uncertain which SSP clock consumer modes need the delay atm, but
+	 * these can be added here when confirmed.
+	 */
+	switch (ssp->config.format & SOF_DAI_FMT_CLOCK_PROVIDER_MASK) {
+	case SOF_DAI_FMT_CBC_CFC:
+		break;
+	default:
+		/* delay for all SSP consumed clocks atm - see above */
+		wait_delay(PLATFORM_SSP_DELAY);
+		break;
+	}
 
 	spin_unlock(&dai->lock);
 }
@@ -1000,8 +1011,19 @@ static void ssp_stop(struct dai *dai, int direction)
 
 	spin_lock(&dai->lock);
 
-	/* wait to get valid fifo status */
-	wait_delay(PLATFORM_SSP_DELAY);
+	/*
+	 * Wait to get valid fifo status in clock consumer mode. TODO it's
+	 * uncertain which SSP clock consumer modes need the delay atm, but
+	 * these can be added here when confirmed.
+	 */
+	switch (ssp->config.format & SOF_DAI_FMT_CLOCK_PROVIDER_MASK) {
+	case SOF_DAI_FMT_CBC_CFC:
+		break;
+	default:
+		/* delay for all SSP consumed clocks atm - see above */
+		wait_delay(PLATFORM_SSP_DELAY);
+		break;
+	}
 
 	/* stop Rx if neeed */
 	if (direction == DAI_DIR_CAPTURE &&
