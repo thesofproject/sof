@@ -39,7 +39,8 @@
 
 #define MAILBOX_STREAM_OFFSET \
 	(MAILBOX_DEBUG_SIZE + MAILBOX_DEBUG_OFFSET)
-#define MAILBOX_STREAM_SIZE	0x200
+/* host mailbox can be bigger to support larger and more complex use cases */
+#define MAILBOX_STREAM_SIZE	0x2000
 #define MAILBOX_STREAM_BASE \
 	(MAILBOX_BASE + MAILBOX_STREAM_OFFSET)
 
