@@ -32,7 +32,7 @@ static SHARED_DATA struct dai sai[] = {
 							 IMX8ULP_EDMA2_CHAN0),
 		},
 		.fifo[SOF_IPC_STREAM_CAPTURE] = {
-			.offset		= SAI_5_BASE + REG_SAI_RDR2,
+			.offset		= SAI_5_BASE + REG_SAI_RDR3,
 			.depth		= 16,  /* in 4 bytes words */
 			.watermark      = 8,
 			.handshake	= EDMA_HANDSHAKE(IMX8ULP_EDMA2_CHAN1_IRQ,
