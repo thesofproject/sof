@@ -17,6 +17,7 @@ static const uint32_t coef_base_a[4] = {PDM0_COEFFICIENT_A, PDM1_COEFFICIENT_A,
 static const uint32_t coef_base_b[4] = {PDM0_COEFFICIENT_B, PDM1_COEFFICIENT_B,
 					PDM2_COEFFICIENT_B, PDM3_COEFFICIENT_B};
 
+#if defined DMIC_IPM_VER1
 static int nhlt_dmic_dai_params_get(struct dai *dai, uint32_t *outcontrol,
 				    struct nhlt_pdm_ctrl_cfg **pdm_cfg,
 				    struct nhlt_pdm_ctrl_fir_cfg **fir_cfg)
@@ -82,6 +83,99 @@ static int nhlt_dmic_dai_params_get(struct dai *dai, uint32_t *outcontrol,
 
 	return 0;
 }
+#endif
+
+#if defined DMIC_IPM_VER2
+
+static int ipm_source_to_enable(struct dmic_pdata *dmic, struct nhlt_pdm_ctrl_cfg **pdm_cfg,
+				int *count, int pdm_count, int stereo, int source_pdm)
+{
+	int mic_swap;
+
+	if (source_pdm >= DMIC_HW_CONTROLLERS)
+		return -EINVAL;
+
+	if (*count < pdm_count) {
+		(*count)++;
+		mic_swap = MIC_CONTROL_PDM_CLK_EDGE_GET(pdm_cfg[source_pdm]->mic_control);
+		if (stereo)
+			dmic->enable[source_pdm] = 0x3; /* PDMi MIC A and B */
+		else
+			dmic->enable[source_pdm] = mic_swap ? 0x2 : 0x1; /* PDMi MIC B or MIC A */
+	}
+
+	return 0;
+}
+
+static int nhlt_dmic_dai_params_get(struct dai *dai, uint32_t *outcontrol,
+				    struct nhlt_pdm_ctrl_cfg **pdm_cfg,
+				    struct nhlt_pdm_ctrl_fir_cfg **fir_cfg)
+{
+	struct dmic_pdata *dmic = dai_get_drvdata(dai);
+	uint32_t outcontrol_val = outcontrol[dai->index];
+	int num_pdm;
+	int source_pdm;
+	int ret;
+	int n;
+	bool stereo_pdm;
+
+	switch (OUTCONTROL0_OF_GET(outcontrol_val)) {
+	case 0:
+	case 1:
+		dmic->dai_format = SOF_IPC_FRAME_S16_LE;
+		break;
+	case 2:
+		dmic->dai_format = SOF_IPC_FRAME_S32_LE;
+		break;
+	default:
+		dai_err(dai, "nhlt_dmic_dai_params_get(): Illegal OF bit field");
+		return -EINVAL;
+	}
+
+	num_pdm = OUTCONTROL0_IPM_GET(outcontrol_val);
+	if (num_pdm > DMIC_HW_CONTROLLERS) {
+		dai_err(dai, "nhlt_dmic_dai_params_get(): Illegal IPM PDM controllers count");
+		return -EINVAL;
+	}
+
+	stereo_pdm = 1;
+
+	dmic->dai_channels = (stereo_pdm + 1) * num_pdm;
+	for (n = 0; n < DMIC_HW_CONTROLLERS; n++)
+		dmic->enable[n] = 0;
+
+	n = 0;
+	source_pdm = OUTCONTROL0_IPM_SOURCE_1_GET(outcontrol_val);
+	ret = ipm_source_to_enable(dmic, pdm_cfg, &n, num_pdm, stereo_pdm, source_pdm);
+	if (ret) {
+		dai_err(dai, "nhlt_dmic_dai_params_get(): Illegal IPM_SOURCE_1");
+		return -EINVAL;
+	}
+
+	source_pdm = OUTCONTROL0_IPM_SOURCE_2_GET(outcontrol_val);
+	ret = ipm_source_to_enable(dmic, pdm_cfg, &n, num_pdm, stereo_pdm, source_pdm);
+	if (ret) {
+		dai_err(dai, "nhlt_dmic_dai_params_get(): Illegal IPM_SOURCE_2");
+		return -EINVAL;
+	}
+
+	source_pdm = OUTCONTROL0_IPM_SOURCE_3_GET(outcontrol_val);
+	ret = ipm_source_to_enable(dmic, pdm_cfg, &n, num_pdm, stereo_pdm, source_pdm);
+	if (ret) {
+		dai_err(dai, "nhlt_dmic_dai_params_get(): Illegal IPM_SOURCE_3");
+		return -EINVAL;
+	}
+
+	source_pdm = OUTCONTROL0_IPM_SOURCE_4_GET(outcontrol_val);
+	ret = ipm_source_to_enable(dmic, pdm_cfg, &n, num_pdm, stereo_pdm, source_pdm);
+	if (ret) {
+		dai_err(dai, "nhlt_dmic_dai_params_get(): Illegal IPM_SOURCE_4");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+#endif
 
 int dmic_set_config_nhlt(struct dai *dai, void *spec_config)
 {
@@ -93,9 +187,10 @@ int dmic_set_config_nhlt(struct dai *dai, void *spec_config)
 	struct nhlt_pdm_fir_coeffs *fir_b[DMIC_HW_CONTROLLERS_MAX];
 	uint32_t out_control[DMIC_HW_FIFOS_MAX];
 	uint32_t channel_ctrl_mask;
-	uint32_t pdm_ctrl_mask;
-	uint32_t val;
 	uint32_t fir_control;
+	uint32_t pdm_ctrl_mask;
+	uint32_t ref;
+	uint32_t val;
 	const uint8_t *p = spec_config;
 	int num_fifos;
 	int num_pdm;
@@ -108,6 +203,9 @@ int dmic_set_config_nhlt(struct dai *dai, void *spec_config)
 	int comb_count;
 	int fir_decimation, fir_shift, fir_length;
 	int bf1, bf2, bf3, bf4, bf5, bf6, bf7, bf8;
+#if defined DMIC_IPM_VER2
+	int bf9, bf10, bf11, bf12;
+#endif
 	int ret;
 	int p_mcic = 0;
 	int p_mfira = 0;
@@ -145,6 +243,29 @@ int dmic_set_config_nhlt(struct dai *dai, void *spec_config)
 		dai_dbg(dai, "dmic_set_config_nhlt(): OUTCONTROL%d = %08x", n, out_control[n]);
 		dai_dbg(dai, "  tie=%d, sip=%d, finit=%d, fci=%d", bf1, bf2, bf3, bf4);
 		dai_dbg(dai, "  bfth=%d, of=%d, ipm=%d, th=%d", bf5, bf6, bf7, bf8);
+#if defined DMIC_IPM_VER1
+		ref = OUTCONTROL0_TIE(bf1) | OUTCONTROL0_SIP(bf2) | OUTCONTROL0_FINIT(bf3) |
+			OUTCONTROL0_FCI(bf4) | OUTCONTROL0_BFTH(bf5) | OUTCONTROL0_OF(bf6) |
+			OUTCONTROL0_IPM(bf7) | OUTCONTROL0_TH(bf8);
+#elif defined DMIC_IPM_VER2
+		bf9 = OUTCONTROL0_IPM_SOURCE_1_GET(val);
+		bf10 = OUTCONTROL0_IPM_SOURCE_2_GET(val);
+		bf11 = OUTCONTROL0_IPM_SOURCE_3_GET(val);
+		bf12 = OUTCONTROL0_IPM_SOURCE_4_GET(val);
+		dai_dbg(dai, "  ipms1=%d, ipms2=%d, ipms3=%d, ipms4=%d",
+			bf9, bf10, bf11, bf12);
+		ref = OUTCONTROL0_TIE(bf1) | OUTCONTROL0_SIP(bf2) | OUTCONTROL0_FINIT(bf3) |
+			OUTCONTROL0_FCI(bf4) | OUTCONTROL0_BFTH(bf5) | OUTCONTROL0_OF(bf6) |
+			OUTCONTROL0_IPM(bf7) | OUTCONTROL0_IPM_SOURCE_1(bf9) |
+			OUTCONTROL0_IPM_SOURCE_2(bf10) | OUTCONTROL0_IPM_SOURCE_3(bf11) |
+			OUTCONTROL0_IPM_SOURCE_4(bf12) | OUTCONTROL0_TH(bf8);
+#endif
+		if (ref != val) {
+			dai_err(dai, "dmic_set_config_nhlt(): illegal OUTCONTROL%d = 0x%08x",
+				n, val);
+			return -EINVAL;
+		}
+
 		p += sizeof(uint32_t);
 	}
 
@@ -200,8 +321,18 @@ int dmic_set_config_nhlt(struct dai *dai, void *spec_config)
 			dai_dbg(dai, "dmic_set_config_nhlt(): CIC_CONTROL = %08x", val);
 			dai_dbg(dai, "  soft_reset=%d, cic_start_b=%d, cic_start_a=%d",
 				bf1, bf2, bf3);
-			dai_dbg(dai, "  mic_b_polarity=%d, mic_a_polarity=%d, mic_mute=%d, stereo_mode=%d",
-				bf4, bf5, bf6, bf7);
+			dai_dbg(dai, "  mic_b_polarity=%d, mic_a_polarity=%d, mic_mute=%d",
+				bf4, bf5, bf6);
+			ref = CIC_CONTROL_SOFT_RESET(bf1) | CIC_CONTROL_CIC_START_B(bf2) |
+				CIC_CONTROL_CIC_START_A(bf3) | CIC_CONTROL_MIC_B_POLARITY(bf4) |
+				CIC_CONTROL_MIC_A_POLARITY(bf5) | CIC_CONTROL_MIC_MUTE(bf6) |
+				CIC_CONTROL_STEREO_MODE(bf7);
+			dai_dbg(dai, "  stereo_mode=%d", bf7);
+			if (ref != val) {
+				dai_err(dai, "dmic_set_config_nhlt(): illegal CIC_CONTROL = 0x%08x",
+					val);
+				return -EINVAL;
+			}
 
 			/* Clear CIC_START_A and CIC_START_B, set SOF_RESET and MIC_MUTE*/
 			val = (val & ~(CIC_CONTROL_CIC_START_A_BIT | CIC_CONTROL_CIC_START_A_BIT)) |
@@ -260,6 +391,15 @@ int dmic_set_config_nhlt(struct dai *dai, void *spec_config)
 			dai_dbg(dai, "dmic_set_config_nhlt(): FIR_CONTROL_A = %08x", val);
 			dai_dbg(dai, "  start=%d, array_start_en=%d, dccomp=%d", bf1, bf2, bf3);
 			dai_dbg(dai, "  mute=%d, stereo=%d", bf4, bf5);
+			ref = FIR_CONTROL_A_START(bf1) | FIR_CONTROL_A_ARRAY_START_EN(bf2) |
+				FIR_CONTROL_A_DCCOMP(bf3) | FIR_CONTROL_A_MUTE(bf4) |
+				FIR_CONTROL_A_STEREO(bf5);
+
+			if (ref != val) {
+				dai_err(dai, "dmic_set_config_nhlt(): illegal FIR_CONTROL = 0x%08x",
+					val);
+				return -EINVAL;
+			}
 
 			/* Clear START, set MUTE */
 			fir_control = (val & ~FIR_CONTROL_A_START_BIT) | FIR_CONTROL_A_MUTE_BIT;

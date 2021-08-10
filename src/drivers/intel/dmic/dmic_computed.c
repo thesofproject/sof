@@ -16,15 +16,6 @@
 /* Decimation filters */
 #include <sof/audio/coefficients/pdm_decim/pdm_decim_table.h>
 
-/* OUTCONTROLx IPM bit fields style */
-#if DMIC_HW_VERSION == 1 || (DMIC_HW_VERSION == 2 && DMIC_HW_CONTROLLERS <= 2)
-#define DMIC_IPM_VER1
-#elif DMIC_HW_VERSION == 3 || (DMIC_HW_VERSION == 2 && DMIC_HW_CONTROLLERS > 2)
-#define DMIC_IPM_VER2
-#else
-#error Not supported HW version
-#endif
-
 /* Base addresses (in PDM scope) of 2ch PDM controllers and coefficient RAM. */
 static const uint32_t base[4] = {PDM0, PDM1, PDM2, PDM3};
 static const uint32_t coef_base_a[4] = {PDM0_COEFFICIENT_A, PDM1_COEFFICIENT_A,
