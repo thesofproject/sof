@@ -200,21 +200,27 @@ static int mixer_params(struct comp_dev *dev,
 	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
 				source_list);
 
+	sinkb = buffer_acquire(sinkb);
+
 	/* calculate period size based on config */
 	sink_period_bytes = audio_stream_period_bytes(&sinkb->stream,
 						      dev->frames);
 	if (sink_period_bytes == 0) {
 		comp_err(dev, "mixer_params(): period_bytes = 0");
-		return -EINVAL;
+		err = -EINVAL;
+		goto err;
 	}
 
 	if (sinkb->stream.size < sink_period_bytes) {
 		comp_err(dev, "mixer_params(): sink buffer size %d is insufficient < %d",
 			 sinkb->stream.size, sink_period_bytes);
-		return -ENOMEM;
+		err = -ENOMEM;
 	}
 
-	return 0;
+err:
+	sinkb = buffer_release(sinkb);
+
+	return err;
 }
 
 static int mixer_source_status_count(struct comp_dev *mixer, uint32_t status)
@@ -305,7 +311,6 @@ static int mixer_copy(struct comp_dev *dev)
 	uint32_t frames = INT32_MAX;
 	uint32_t source_bytes;
 	uint32_t sink_bytes;
-	uint32_t sink_flags, source_flags;
 
 	comp_dbg(dev, "mixer_copy()");
 
@@ -333,11 +338,11 @@ static int mixer_copy(struct comp_dev *dev)
 	/* write zeros if all sources are inactive */
 	if (num_mix_sources == 0) {
 		uint32_t free_frames;
-		buffer_lock(sink, &sink_flags);
+		sink = buffer_acquire(sink);
 		free_frames = audio_stream_get_free_frames(&sink->stream);
 		frames = MIN(frames, free_frames);
 		sink_bytes = frames * audio_stream_frame_bytes(&sink->stream);
-		buffer_unlock(sink, sink_flags);
+		sink = buffer_release(sink);
 
 		if (!audio_stream_set_zero(&sink->stream, sink_bytes)) {
 			buffer_writeback(sink, sink_bytes);
@@ -347,25 +352,25 @@ static int mixer_copy(struct comp_dev *dev)
 		return 0;
 	}
 
-	buffer_lock(sink, &sink_flags);
+	sink = buffer_acquire(sink);
 
 	/* check for underruns */
 	for (i = 0; i < num_mix_sources; i++) {
 		uint32_t avail_frames;
-		buffer_lock(sources[i], &source_flags);
+		sources[i] = buffer_acquire(sources[i]);
 		avail_frames = audio_stream_avail_frames(sources_stream[i],
 							 &sink->stream);
 		frames = MIN(frames, avail_frames);
-		buffer_unlock(sources[i], source_flags);
+		sources[i] = buffer_release(sources[i]);
 	}
-
-	buffer_unlock(sink, sink_flags);
 
 	/* Every source has the same format, so calculate bytes based
 	 * on the first one.
 	 */
 	source_bytes = frames * audio_stream_frame_bytes(sources_stream[0]);
 	sink_bytes = frames * audio_stream_frame_bytes(&sink->stream);
+
+	sink = buffer_release(sink);
 
 	comp_dbg(dev, "mixer_copy(), source_bytes = 0x%x, sink_bytes = 0x%x",
 		 source_bytes, sink_bytes);
