@@ -550,7 +550,7 @@ static int volume_ctrl_set_cmd(struct comp_dev *dev,
 {
 	struct vol_data *cd = comp_get_drvdata(dev);
 	uint32_t val;
-	int ch;
+	uint32_t ch;
 	int j;
 	int ret = 0;
 
@@ -569,7 +569,8 @@ static int volume_ctrl_set_cmd(struct comp_dev *dev,
 			val = cdata->chanv[j].value;
 			comp_info(dev, "volume_ctrl_set_cmd(), channel = %d, value = %u",
 				  ch, val);
-			if (ch < 0 || ch >= SOF_IPC_MAX_CHANNELS) {
+
+			if (ch >= SOF_IPC_MAX_CHANNELS) {
 				comp_err(dev, "volume_ctrl_set_cmd(), illegal channel = %d",
 					 ch);
 				return -EINVAL;
@@ -598,7 +599,7 @@ static int volume_ctrl_set_cmd(struct comp_dev *dev,
 			val = cdata->chanv[j].value;
 			comp_info(dev, "volume_ctrl_set_cmd(), channel = %d, value = %u",
 				  ch, val);
-			if (ch < 0 || ch >= SOF_IPC_MAX_CHANNELS) {
+			if (ch >= SOF_IPC_MAX_CHANNELS) {
 				comp_err(dev, "volume_ctrl_set_cmd(), illegal channel = %d",
 					 ch);
 				return -EINVAL;
