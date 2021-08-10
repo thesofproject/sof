@@ -414,6 +414,10 @@ out:
 #endif
 }
 
+void platform_timer_stop(struct timer *timer)
+{
+}
+
 uint64_t platform_timer_get_atomic(struct timer *timer)
 {
 	uint32_t flags;
