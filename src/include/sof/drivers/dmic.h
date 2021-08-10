@@ -144,7 +144,16 @@
 
 /* Register bits */
 
-#if DMIC_HW_VERSION == 1
+/* OUTCONTROLx IPM bit fields style */
+#if DMIC_HW_VERSION == 1 || (DMIC_HW_VERSION == 2 && DMIC_HW_CONTROLLERS <= 2)
+#define DMIC_IPM_VER1
+#elif DMIC_HW_VERSION == 2 && DMIC_HW_CONTROLLERS > 2
+#define DMIC_IPM_VER2
+#else
+#error Not supported HW version
+#endif
+
+#if defined DMIC_IPM_VER1
 /* OUTCONTROL0 bits */
 #define OUTCONTROL0_TIE_BIT	BIT(27)
 #define OUTCONTROL0_SIP_BIT	BIT(26)
@@ -192,7 +201,7 @@
 #define OUTCONTROL1_TH_GET(x)		GET_BITS(5, 0, x)
 #endif
 
-#if DMIC_HW_VERSION >= 2
+#if defined DMIC_IPM_VER2
 /* OUTCONTROL0 bits */
 #define OUTCONTROL0_TIE_BIT			BIT(27)
 #define OUTCONTROL0_SIP_BIT			BIT(26)
