@@ -10,6 +10,8 @@ on: [push, pull_request, workflow_dispatch]
 jobs:
   zephyr-build:
     runs-on: ubuntu-20.04
+    env:
+        ZEPHYR_SDK_INSTALL_DIR: /opt/toolchains/zephyr-sdk-0.13.0
     steps:
       - uses: actions/checkout@v2
         # From time to time this will catch a git tag and change SOF_VERSION
@@ -17,5 +19,5 @@ jobs:
 
       - name: build
         run: docker run -v "$(pwd)":/workdir
-             docker.io/zephyrprojectrtos/zephyr-build:v0.17.3
+             docker.io/zephyrprojectrtos/zephyr-build:v0.18.0
              ./zephyr/docker-build.sh
