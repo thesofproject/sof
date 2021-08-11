@@ -252,7 +252,7 @@
 #ifdef CONFIG_IMX8ULP
 /* frame clk is 16kHz on 8ulp */
 #define SAI_CLOCK_DIV		0xB
-#define SAI_TDM_SLOTS		1
+#define SAI_TDM_SLOTS		2
 #else
 #define SAI_CLOCK_DIV		0x7
 #define SAI_TDM_SLOTS		2
