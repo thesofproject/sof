@@ -17,5 +17,6 @@ jobs:
 
       - name: build
         run: docker run -v "$(pwd)":/workdir
-             docker.io/zephyrprojectrtos/zephyr-build:v0.17.3
+             -e ZEPHYR_SDK_INSTALL_DIR='/opt/toolchains/zephyr-sdk-0.13.0'
+             docker.io/zephyrprojectrtos/zephyr-build:v0.18.1
              ./zephyr/docker-build.sh
