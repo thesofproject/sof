@@ -195,9 +195,13 @@ static inline int sai_set_config(struct dai *dai, struct ipc_config_dai *common_
 		 * that is, together with the last bit of the previous
 		 * data word.
 		 */
+#ifdef CONFIG_IMX8ULP
+		val_cr4 |= REG_SAI_CR4_FSE;
+#else
 		val_cr2 |= REG_SAI_CR2_BCP;
 		val_cr4 |= REG_SAI_CR4_FSE | REG_SAI_CR4_FSP;
 		val_cr4 |= REG_SAI_CR4_SYWD(sywd);
+#endif
 		break;
 	case SOF_DAI_FMT_LEFT_J:
 		/*
