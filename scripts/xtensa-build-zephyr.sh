@@ -46,6 +46,25 @@ usage: $0 [options] platform(s)
           sof/ and zephyr-project/ directories are not nested in one
           another.
 
+This script supports XtensaTools but only when installed in a specific
+directory structure, example:
+
+myXtensa/
+└── install/
+    ├── builds/
+    │   ├── RD-2012.5-linux/
+    │   │   └── Intel_HiFiEP/
+    │   └── RG-2017.8-linux/
+    │       ├── LX4_langwell_audio_17_8/
+    │       └── X4H3I16w2D48w3a_2017_8/
+    └── tools/
+        ├── RD-2012.5-linux/
+        │   └── XtensaTools/
+        └── RG-2017.8-linux/
+            └── XtensaTools/
+
+$ XTENSA_TOOLS_ROOT=/path/to/myXtensa $0 ...
+
 Supported platforms ${SUPPORTED_PLATFORMS[*]}
 
 EOF
@@ -103,15 +122,23 @@ build()
 		case "$platform" in
 			apl)
 				PLAT_CONFIG='intel_adsp_cavs15'
+				XTENSA_CORE="X4H3I16w2D48w3a_2017_8"
+				XTENSA_TOOLS_VERSION="RG-2017.8-linux"
 				;;
 			cnl)
 				PLAT_CONFIG='intel_adsp_cavs18'
+				XTENSA_CORE="X6H3CNL_2017_8"
+				XTENSA_TOOLS_VERSION="RG-2017.8-linux"
 				;;
 			icl)
 				PLAT_CONFIG='intel_adsp_cavs20'
+				XTENSA_CORE="X6H3CNL_2017_8"
+				XTENSA_TOOLS_VERSION="RG-2017.8-linux"
 				;;
 			tgl-h)
 				PLAT_CONFIG='intel_adsp_cavs25'
+				XTENSA_CORE="cavs2x_LX6HiFi3_2017_8"
+				XTENSA_TOOLS_VERSION="RG-2017.8-linux"
 				RIMAGE_KEY=modules/audio/sof/keys/otc_private_key_3k.pem
 				;;
 			imx8)
@@ -123,6 +150,22 @@ build()
 				exit 1
 				;;
 		esac
+
+		if [ -n "$XTENSA_TOOLS_ROOT" ]
+		then
+		    export ZEPHYR_TOOLCHAIN_VARIANT=xcc
+
+		    # this is for compatibility with xtensa-build-all.sh, which
+		    # takes XTENSA_TOOLS_ROOT as input
+		    export XTENSA_TOOLCHAIN_PATH=$(echo $XTENSA_TOOLS_ROOT |sed -e 's/XtDevTools//')
+		    echo "XTENSA_TOOLCHAIN_PATH: $XTENSA_TOOLCHAIN_PATH"
+
+		    XTENSA_TOOLS_DIR="$XTENSA_TOOLS_ROOT/install/tools/$XTENSA_TOOLS_VERSION"
+		    XTENSA_BUILDS_DIR="$XTENSA_TOOLS_ROOT/install/builds/$XTENSA_TOOLS_VERSION"
+		    export TOOLCHAIN_VER=XtDevTools/install/tools/$XTENSA_TOOLS_VERSION
+		    export XTENSA_SYSTEM=$XTENSA_BUILDS_DIR/$XTENSA_CORE/config
+		    printf 'XTENSA_SYSTEM=%s\n' "${XTENSA_SYSTEM}"
+                fi
 
 		local bdir=build-"$platform"
 
