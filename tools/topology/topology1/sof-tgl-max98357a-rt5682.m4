@@ -106,7 +106,7 @@ dnl     frames, deadline, priority, core)
 
 # Low Latency playback pipeline 1 on PCM 0 using max 2 channels of s24le.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
-define(ENDPOINT_NAME, `Speakers')
+define(`ENDPOINT_NAME', `Speakers')
 PIPELINE_PCM_ADD(
 	ifdef(`WAVES', sof/pipe-waves-codec-demux-playback.m4,
 	      ifdef(`DRC_EQ', sof/pipe-drc-eq-volume-demux-playback.m4,
@@ -114,17 +114,17 @@ PIPELINE_PCM_ADD(
 	1, 0, 2, s32le,
 	1000, 0, 0,
 	48000, 48000, 48000)
-undefine(ENDPOINT_NAME)
+undefine(`ENDPOINT_NAME')
 
 # Low Latency playback pipeline 2 on PCM 1 using max 2 channels of s24le.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
-define(ENDPOINT_NAME, `Headphones')
+define(`ENDPOINT_NAME', `Headphones')
 PIPELINE_PCM_ADD(
 	ifdef(`WAVES', sof/pipe-waves-codec-playback.m4, sof/pipe-volume-playback.m4),
 	2, 1, 2, s32le,
 	1000, 0, 0,
 	48000, 48000, 48000)
-undefine(ENDPOINT_NAME)
+undefine(`ENDPOINT_NAME')
 
 # Low Latency capture pipeline 3 on PCM 1 using max 2 channels of s24le.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
