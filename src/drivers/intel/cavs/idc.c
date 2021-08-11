@@ -34,6 +34,19 @@ void idc_enable_interrupts(int target_core, int source_core)
 }
 
 /**
+ * \brief Disable IDC interrupts.
+ * \param[in] target_core Target core id.
+ * \param[in] source_core Source core id.
+ */
+void idc_disable_interrupts(int target_core, int source_core)
+{
+	struct idc *idc = *idc_get();
+
+	idc_write(IPC_IDCCTL, target_core, 0);
+	interrupt_mask(idc->irq, target_core);
+}
+
+/**
  * \brief IDC interrupt handler.
  * \param[in,out] arg Pointer to IDC data.
  */

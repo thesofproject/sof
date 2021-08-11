@@ -127,6 +127,7 @@ static inline struct idc_payload *idc_payload_get(struct idc *idc,
 }
 
 void idc_enable_interrupts(int target_core, int source_core);
+void idc_disable_interrupts(int target_core, int source_core);
 
 void idc_free(void);
 

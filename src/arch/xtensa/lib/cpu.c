@@ -115,6 +115,8 @@ void arch_cpu_disable_core(int id)
 	if (arch_cpu_is_core_enabled(id)) {
 		idc_send_msg(&power_down, IDC_POWER_DOWN);
 
+		idc_disable_interrupts(id, cpu_get_id());
+
 		active_cores_mask ^= (1 << id);
 #if CONFIG_NO_SECONDARY_CORE_ROM
 		/* free shared dynamic vectors it was the last secondary core */
