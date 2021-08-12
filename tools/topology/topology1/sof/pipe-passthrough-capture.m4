@@ -40,7 +40,7 @@ indir(`define', concat(`PIPELINE_SINK_', PIPELINE_ID), N_BUFFER(0))
 indir(`define', concat(`PIPELINE_PCM_', PIPELINE_ID), Passthrough Capture PCM_ID)
 
 ifdef(`CHANNELS_MIN',`define(`LOCAL_CHANNELS_MIN', `CHANNELS_MIN')',
-`define(`LOCAL_CHANNELS_MIN' `PIPELINE_CHANNELS')')
+`define(`LOCAL_CHANNELS_MIN', `PIPELINE_CHANNELS')')
 
 #
 # PCM Configuration
