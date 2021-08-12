@@ -44,17 +44,30 @@ C_CONTROLBYTES(MY_MULTIBAND_DRC_CTRL, PIPELINE_ID,
 	,
 	MULTIBAND_DRC_priv)
 
+# DRC Enable switch
+define(MY_MULTIBAND_DRC_ENABLE, concat(`multiband_drc_enable_', PIPELINE_ID))
+define(`CONTROL_NAME', `MY_MULTIBAND_DRC_ENABLE')
+C_CONTROLMIXER(MY_MULTIBAND_DRC_ENABLE, PIPELINE_ID,
+	CONTROLMIXER_OPS(volsw, 259 binds the mixer control to switch get/put handlers, 259, 259),
+	CONTROLMIXER_MAX(max 1 indicates switch type control, 1),
+	false,
+	,
+	Channel register and shift for Front Center,
+	LIST(`	', KCONTROL_CHANNEL(FC, 3, 0)),
+	"1")
+undefine(`CONTROL_NAME')
+
 # EQ IIR Bytes control
-define(EQIIR_priv, concat(`eq_iir_bytes_', PIPELINE_ID))
+define(DEF_EQIIR_PRIV, concat(`eq_iir_bytes_', PIPELINE_ID))
 define(MY_EQIIR_CTRL, concat(`eq_iir_control_', PIPELINE_ID))
-include(`eq_iir_coef_drceq.m4')
+include(`eq_iir_coef_pass.m4')
 C_CONTROLBYTES(MY_EQIIR_CTRL, PIPELINE_ID,
 	CONTROLBYTES_OPS(bytes, 258 binds the control to bytes get/put handlers, 258, 258),
 	CONTROLBYTES_EXTOPS(258 binds the control to bytes get/put handlers, 258, 258),
 	, , ,
 	CONTROLBYTES_MAX(, 1024),
 	,
-	EQIIR_priv)
+	DEF_EQIIR_PRIV)
 
 # Volume Mixer control with max value of 32
 C_CONTROLMIXER(Master Playback Volume, PIPELINE_ID,
@@ -88,7 +101,8 @@ W_PCM_PLAYBACK(PCM_ID, DRC EQ Playback, 2, 0, SCHEDULE_CORE)
 
 # "MULTIBAND_DRC" has 2 sink periods and 2 source periods
 W_MULTIBAND_DRC(0, PIPELINE_FORMAT, 2, 2, SCHEDULE_CORE,
-	LIST(`   ', "MY_MULTIBAND_DRC_CTRL"))
+	LIST(`   ', "MY_MULTIBAND_DRC_CTRL"),
+	LIST(`   ', "MY_MULTIBAND_DRC_ENABLE"))
 
 # "EQ IIR" has x sink period and 2 source periods
 W_EQ_IIR(0, PIPELINE_FORMAT, 2, 2, SCHEDULE_CORE,
@@ -153,6 +167,7 @@ PCM_CAPABILITIES(DRC EQ Playback PCM_ID, CAPABILITY_FORMAT_NAME(PIPELINE_FORMAT)
 undefine(`DEF_PGA_TOKENS')
 undefine(`DEF_PGA_CONF')
 undefine(`MY_EQIIR_CTRL')
-undefine(`EQIIR_priv')
+undefine(`DEF_EQIIR_PRIV')
+undefine(`MY_MULTIBAND_DRC_ENABLE')
 undefine(`MY_MULTIBAND_DRC_CTRL')
 undefine(`MULTIBAND_DRC_priv')
