@@ -19,6 +19,7 @@ set(TPLGS
 	"sof-cml-rt1011-rt5682-nokwd\;sof-cml-rt1011-rt5682-eq\;-DCHANNELS=2\;-DDMICPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_48khz.m4\;-DDMIC16KPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_16khz.m4\;-DHSEARPROC=eq-iir-eq-fir-volume\;-DHSMICPROC=eq-fir-volume\;-DSPKPROC=eq-iir-eq-fir-volume"
 	"sof-cml-rt1011-rt5682-nokwd\;sof-cml-rt1011-rt5682-asrc\;-DCHANNELS=2\;-DDMICPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_48khz.m4\;-DDMIC16KPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_16khz.m4\;-DHSEARPROC=asrc-volume\;-DHSMICPROC=asrc-volume\;-DSPKPROC=eq-iir-eq-fir-volume"
 	"sof-cml-rt1011-rt5682-nokwd\;sof-cml-rt1011-rt5682-tdfb_68mm_2ch\;-DCHANNELS=2\;-DDMIC16KPROC=tdfb-eq-iir-volume\;-DDMIC16KPROC_FILTER1=tdfb/coef_line2_68mm_pm0_30_90deg_16khz.m4\;-DDMICPROC=tdfb-eq-iir-volume\;-DDMICPROC_FILTER1=tdfb/coef_line2_68mm_pm0_30_90deg_48khz.m4"
+	"sof-tgl-max98373-rt5682-ci\;sof-tgl-max98373-rt5682-ci\;-DAMP_SSP=1"
 	"sof-imx8mp-src-wm8960\;sof-imx8mp-src-wm8960"
 	"sof-imx8-src-wm8960\;sof-imx8-src-wm8960"
 	"sof-imx8-src-cs42888\;sof-imx8-src-cs42888"
