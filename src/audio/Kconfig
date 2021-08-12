@@ -8,6 +8,13 @@ config COMP_DAI
 	help
 	  Select for DAI component
 
+config COMP_PEAKVOL
+        bool "PEAKVOL component"
+        default y
+        depends on IPC_MAJOR_4
+        help
+          Select for PEAKVOL component
+
 config COMP_VOLUME
 	bool "Volume component"
 	default y

@@ -6,6 +6,7 @@ if(NOT CONFIG_LIBRARY)
 		component.c
 		buffer.c
 		channel_map.c
+		peak_volume.c
 	)
 	if(CONFIG_COMP_VOLUME)
 		add_subdirectory(volume)
@@ -87,7 +88,11 @@ if(NOT CONFIG_LIBRARY)
 	if(CONFIG_COMP_IGO_NR)
 		add_subdirectory(igo_nr)
 	endif()
-
+	if(CONFIG_COMP_PEAKVOL)
+                add_local_sources(sof
+                        peak_volume.c
+                )
+        endif()
 	subdirs(pipeline)
 
 	return()
