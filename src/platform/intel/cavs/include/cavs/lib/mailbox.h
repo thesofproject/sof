@@ -11,7 +11,9 @@
 #ifndef __CAVS_LIB_MAILBOX_H__
 #define __CAVS_LIB_MAILBOX_H__
 
+#include <sof/debug/panic.h>
 #include <sof/lib/memory.h>
+#include <sof/string.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -101,6 +103,15 @@ static inline uint64_t mailbox_sw_reg_read64(size_t offset)
 	ptr = cache_to_uncache(ptr);
 
 	return *ptr;
+}
+
+static inline void mailbox_sw_regs_write(size_t offset, const void *src, size_t bytes)
+{
+	int ret = memcpy_s((void *)(MAILBOX_SW_REG_BASE + offset),
+			   MAILBOX_SW_REG_SIZE - offset, src, bytes);
+
+	assert(!ret);
+	dcache_writeback_region((void *)(MAILBOX_SW_REG_BASE + offset), bytes);
 }
 
 #endif /* __CAVS_LIB_MAILBOX_H__ */
