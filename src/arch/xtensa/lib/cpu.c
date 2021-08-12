@@ -113,7 +113,7 @@ void arch_cpu_disable_core(int id)
 		IDC_MSG_POWER_DOWN, IDC_MSG_POWER_DOWN_EXT, id };
 
 	if (arch_cpu_is_core_enabled(id)) {
-		idc_send_msg(&power_down, IDC_NON_BLOCKING);
+		idc_send_msg(&power_down, IDC_POWER_DOWN);
 
 		active_cores_mask ^= (1 << id);
 #if CONFIG_NO_SECONDARY_CORE_ROM

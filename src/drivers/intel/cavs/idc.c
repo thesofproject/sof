@@ -96,6 +96,16 @@ static bool idc_is_powered_up(int target_core)
 }
 
 /**
+ * \brief Checks core status register.
+ * \param[in] target_core Id of the core powering up.
+ * \return True if core powered up, false otherwise.
+ */
+static bool idc_is_powered_down(int target_core)
+{
+	return mailbox_sw_reg_read(PLATFORM_TRACEP_SECONDARY_CORE(target_core)) == 0;
+}
+
+/**
  * \brief Sends IDC message.
  * \param[in,out] msg Pointer to IDC message.
  * \param[in] mode Is message blocking or not.
@@ -146,6 +156,14 @@ int idc_send_msg(struct idc_msg *msg, uint32_t mode)
 		ret = idc_wait_in_blocking_mode(msg->core, idc_is_powered_up);
 		if (ret < 0) {
 			tr_err(&idc_tr, "idc_send_msg(), power up core %d failed, reason 0x%x",
+			       msg->core,
+			       mailbox_sw_reg_read(PLATFORM_TRACEP_SECONDARY_CORE(msg->core)));
+		}
+		break;
+	case IDC_POWER_DOWN:
+		ret = idc_wait_in_blocking_mode(msg->core, idc_is_powered_down);
+		if (ret < 0) {
+			tr_err(&idc_tr, "idc_send_msg(), power down core %d failed, reason 0x%x",
 			       msg->core,
 			       mailbox_sw_reg_read(PLATFORM_TRACEP_SECONDARY_CORE(msg->core)));
 		}
