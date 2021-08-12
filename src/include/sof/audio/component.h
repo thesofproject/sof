@@ -598,7 +598,7 @@ static inline struct comp_dev *comp_alloc(const struct comp_driver *drv,
  *	DECLARE_MODULE(sys_*_init);
  */
 #define DECLARE_MODULE(init) __attribute__((__used__)) \
-	__section(".module_init") static void(*f)(void) = init
+	__section(".module_init") static void(*f##init)(void) = init
 #endif
 
 /** \name Component registration
