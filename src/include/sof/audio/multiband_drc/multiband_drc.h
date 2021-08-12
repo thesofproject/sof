@@ -37,6 +37,7 @@ struct multiband_drc_comp_data {
 	struct sof_multiband_drc_config *config; /**< pointer to setup blob */
 	bool config_ready;                       /**< set when fully received */
 	enum sof_ipc_frame source_format;        /**< source frame format */
+	bool process_enabled;                    /**< true if component is enabled */
 	multiband_drc_func multiband_drc_func;   /**< processing function */
 	crossover_split crossover_split;         /**< crossover n-way split func */
 };
