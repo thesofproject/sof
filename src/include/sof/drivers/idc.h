@@ -30,6 +30,9 @@
 /** \brief IDC send core power up flag. */
 #define IDC_POWER_UP		2
 
+/** \brief IDC send core power down flag. */
+#define IDC_POWER_DOWN		3
+
 /** \brief IDC send timeout in microseconds. */
 #define IDC_TIMEOUT	10000
 
