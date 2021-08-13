@@ -134,10 +134,8 @@ static int primary_core_init(int argc, char *argv[], struct sof *sof)
 	interrupt_init(sof);
 #endif /* __ZEPHYR__ */
 
-#if CONFIG_TRACE
 	trace_point(TRACE_BOOT_SYS_TRACES);
 	trace_init(sof);
-#endif
 
 	trace_point(TRACE_BOOT_SYS_NOTIFIER);
 	init_system_notify(sof);
@@ -150,6 +148,9 @@ static int primary_core_init(int argc, char *argv[], struct sof *sof)
 		panic(SOF_IPC_PANIC_PLATFORM);
 
 	trace_point(TRACE_BOOT_PLATFORM);
+
+	/* now start the trace */
+	trace_on();
 
 #if CONFIG_NO_SECONDARY_CORE_ROM
 	lp_sram_unpack();
