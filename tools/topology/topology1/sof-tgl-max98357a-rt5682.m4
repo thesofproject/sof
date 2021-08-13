@@ -17,7 +17,7 @@ include(`common/tlv.m4')
 include(`sof/tokens.m4')
 
 # Include Tigerlake DSP configuration
-include(`platform/intel/tgl.m4')
+include(`platform/intel/'PLATFORM`.m4')
 include(`platform/intel/dmic.m4')
 DEBUG_START
 
@@ -57,7 +57,7 @@ MUXDEMUX_CONFIG(demux_priv_1, 2, LIST(`	', `matrix1,', `matrix2'))
 #
 # Define the pipelines
 #
-# PCM0 --> volume --> demux --> SSP1  (Speaker - CODEC)
+# PCM0 --> volume --> demux --> SSP$AMP_SSP (Speaker - CODEC)
 #                       |
 # PCM6 <----------------+
 # PCM1 <---> volume <----> SSP0  (Headset - ALC5682)
@@ -70,6 +70,18 @@ MUXDEMUX_CONFIG(demux_priv_1, 2, LIST(`	', `matrix1,', `matrix2'))
 # PCM100 <---- kpb <---- DMIC16K (dmic 16k capture)
 
 # Define pipeline id for sof-tgl-CODEC-rt5682.m4
+ifdef(`AMP_SSP',`',`fatal_error(note: Define AMP_SSP for speaker amp SSP Index)')
+# Speaker related
+# SSP related
+# define speaker SSP index
+define(`SPK_SSP_INDEX', AMP_SSP)
+# define SSP BE dai_link name
+define(`SPK_SSP_NAME', concat(concat(`SSP', SPK_SSP_INDEX),`-Codec'))
+# define BE dai_link ID
+define(`SPK_BE_ID', 7)
+# Ref capture related
+# Ref capture BE dai_name
+define(`SPK_REF_DAI_NAME', concat(concat(`SSP', SPK_SSP_INDEX),`.IN'))
 # to generate dmic setting with kwd when we have dmic
 # define channel
 define(CHANNELS, `4')
@@ -160,12 +172,12 @@ dnl     frames, deadline, priority, core)
 # playback DAI is SSP1 using 2 periods
 # Buffers use s16le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
-	1, SSP, 1, SSP1-Codec,
+	1, SSP, SPK_SSP_INDEX, SPK_SSP_NAME,
 	PIPELINE_SOURCE_1, 2, FMT,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # currently this dai is here as "virtual" capture backend
-W_DAI_IN(SSP, 1, SSP1-Codec, FMT, 3, 0)
+W_DAI_IN(SSP, SPK_SSP_INDEX, SPK_SSP_NAME, FMT, 3, 0)
 
 # Capture pipeline 9 from demux on PCM 6 using max 2 channels of s32le.
 PIPELINE_PCM_ADD(sof/pipe-passthrough-capture-sched.m4,
@@ -191,7 +203,7 @@ SectionGraph."PIPE_CAP_VIRT" {
 
 	lines [
 		# mux to capture
-		dapm(ECHO REF 9, SSP1.IN)
+		dapm(ECHO REF 9, SPK_REF_DAI_NAME)
 	]
 }
 
@@ -257,21 +269,21 @@ dnl SSP_CONFIG_DATA(type, idx, valid bits, mclk_id)
 dnl mclk_id is optional
 dnl ssp1-maxmspk
 
-# SSP 1 (ID: 7)
-DAI_CONFIG(SSP, 1, 7, SSP1-Codec,
+# SSP SPK_SSP_INDEX (ID: SPK_BE_ID)
+DAI_CONFIG(SSP, SPK_SSP_INDEX, SPK_BE_ID, SPK_SSP_NAME,
 ifelse(
 	CODEC, `MAX98357A', `
 	SSP_CONFIG(I2S, SSP_CLOCK(mclk, 19200000, codec_mclk_in),
 		SSP_CLOCK(bclk, 1536000, codec_slave),
 		SSP_CLOCK(fsync, 48000, codec_slave),
 		SSP_TDM(2, 16, 3, 3),
-		SSP_CONFIG_DATA(SSP, 1, 16)))',
+		SSP_CONFIG_DATA(SSP, SPK_SSP_INDEX, 16)))',
 	CODEC, `RT1011', `
 	SSP_CONFIG(DSP_A, SSP_CLOCK(mclk, 19200000, codec_mclk_in),
 		SSP_CLOCK(bclk, 4800000, codec_slave),
 		SSP_CLOCK(fsync, 48000, codec_slave),
 		SSP_TDM(4, 25, 3, 15),
-		SSP_CONFIG_DATA(SSP, 1, 24)))',
+		SSP_CONFIG_DATA(SSP, SPK_SSP_INDEX, 24)))',
 	)
 
 # SSP 0 (ID: 0)
