@@ -200,7 +200,6 @@ int dma_trace_init_complete(struct dma_trace_data *d)
 			      SOF_TASK_PRI_MED, trace_work, d, 0, 0);
 
 out:
-
 	return ret;
 }
 
