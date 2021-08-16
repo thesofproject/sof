@@ -29,7 +29,7 @@ int schedule_task_init(struct task *task,
 		return -EINVAL;
 
 	task->uid = uid;
-	task->type = SOF_SCHEDULE_EDF; /* Note: Force EDF scheduler */
+	task->type = type;
 	task->priority = priority;
 	task->core = core;
 	task->flags = flags;
@@ -59,7 +59,7 @@ void scheduler_init(int type, const struct scheduler_ops *ops, void *data)
 
 	sch = calloc(1, sizeof(*sch));
 	list_init(&sch->list);
-	sch->type = SOF_SCHEDULE_EDF; /* Note: Force EDF scheduler */
+	sch->type = type;
 	sch->ops = ops;
 	sch->data = data;
 
