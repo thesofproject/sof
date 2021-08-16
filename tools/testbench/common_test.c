@@ -36,7 +36,6 @@ int tb_pipeline_setup(struct sof *sof)
 	/* other necessary initializations, todo: follow better SOF init */
 	pipeline_posn_init(sof);
 	init_system_notify(sof);
-	scheduler_init_edf();
 
 	/* init IPC */
 	if (ipc_init(sof) < 0) {
