@@ -135,7 +135,7 @@ int dmic_set_config_nhlt(struct dai *dai, void *spec_config)
 		val = *(uint32_t *)p;
 		out_control[n] = val;
 		bf1 = OUTCONTROL0_TIE_GET(val);
-		bf2 = OUTCONTROL0_TIE_GET(val);
+		bf2 = OUTCONTROL0_SIP_GET(val);
 		bf3 = OUTCONTROL0_FINIT_GET(val);
 		bf4 = OUTCONTROL0_FCI_GET(val);
 		bf5 = OUTCONTROL0_BFTH_GET(val);
