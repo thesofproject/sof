@@ -153,19 +153,18 @@ build()
 
 		if [ -n "$XTENSA_TOOLS_ROOT" ]
 		then
-		    export ZEPHYR_TOOLCHAIN_VARIANT=xcc
+			# set variables expected by zephyr/cmake/toolchain/xcc/generic.cmake
+			export ZEPHYR_TOOLCHAIN_VARIANT=xcc
+			export XTENSA_TOOLCHAIN_PATH="$XTENSA_TOOLS_ROOT/install/tools"
+			export TOOLCHAIN_VER="$XTENSA_TOOLS_VERSION"
+			printf 'XTENSA_TOOLCHAIN_PATH=%s\n' "${XTENSA_TOOLCHAIN_PATH}"
+			printf 'TOOLCHAIN_VER=%s\n' "${TOOLCHAIN_VER}"
 
-		    # this is for compatibility with xtensa-build-all.sh, which
-		    # takes XTENSA_TOOLS_ROOT as input
-		    export XTENSA_TOOLCHAIN_PATH=$(echo $XTENSA_TOOLS_ROOT |sed -e 's/XtDevTools//')
-		    echo "XTENSA_TOOLCHAIN_PATH: $XTENSA_TOOLCHAIN_PATH"
-
-		    XTENSA_TOOLS_DIR="$XTENSA_TOOLS_ROOT/install/tools/$XTENSA_TOOLS_VERSION"
-		    XTENSA_BUILDS_DIR="$XTENSA_TOOLS_ROOT/install/builds/$XTENSA_TOOLS_VERSION"
-		    export TOOLCHAIN_VER=XtDevTools/install/tools/$XTENSA_TOOLS_VERSION
-		    export XTENSA_SYSTEM=$XTENSA_BUILDS_DIR/$XTENSA_CORE/config
-		    printf 'XTENSA_SYSTEM=%s\n' "${XTENSA_SYSTEM}"
-                fi
+			# set variables expected by xcc toolchain
+			XTENSA_BUILDS_DIR="$XTENSA_TOOLS_ROOT/install/builds/$XTENSA_TOOLS_VERSION"
+			export XTENSA_SYSTEM=$XTENSA_BUILDS_DIR/$XTENSA_CORE/config
+			printf 'XTENSA_SYSTEM=%s\n' "${XTENSA_SYSTEM}"
+		fi
 
 		local bdir=build-"$platform"
 
