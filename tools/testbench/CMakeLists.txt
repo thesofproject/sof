@@ -73,6 +73,7 @@ add_dependencies(sof_parser_lib parser_ep)
 add_dependencies(testbench sof_parser_lib)
 target_link_libraries(testbench PRIVATE sof_library)
 target_link_libraries(testbench PRIVATE sof_parser_lib)
+target_link_libraries(testbench PRIVATE pthread)
 target_include_directories(testbench PRIVATE ${sof_install_directory}/include)
 target_include_directories(testbench PRIVATE ${parser_install_dir}/include)
 
