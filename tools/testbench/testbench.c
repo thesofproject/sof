@@ -140,11 +140,11 @@ static void print_usage(char *executable)
 	printf("-o <output_file1,output_file2,...> ");
 	printf("-t <tplg_file> -b <input_format> -c <channels>");
 	printf("-a <comp1=comp1_library,comp2=comp2_library>\n");
-	printf("input_format should be S16_LE, S32_LE, S24_LE or FLOAT_LE\n");
+	printf("   input_format should be S16_LE, S32_LE, S24_LE or FLOAT_LE\n\n");
 	printf("Example Usage:\n");
 	printf("%s -i in.txt -o out.txt -t test.tplg ", executable);
-	printf("-r 48000 -R 96000 -c 2");
-	printf("-b S16_LE -a vol=libsof_volume.so\n");
+	printf("-r 48000 -R 96000 -c 2 ");
+	printf("-b S16_LE -a volume=libsof_volume.so\n");
 	printf("-C number of copy() iterations\n");
 }
 
