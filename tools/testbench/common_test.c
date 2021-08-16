@@ -37,7 +37,6 @@ int tb_pipeline_setup(struct sof *sof)
 	pipeline_posn_init(sof);
 	init_system_notify(sof);
 	scheduler_init_edf();
-	sa_init(sof, CONFIG_SYSTICK_PERIOD);
 
 	/* init IPC */
 	if (ipc_init(sof) < 0) {
@@ -68,7 +67,6 @@ void tb_pipeline_free(struct sof *sof)
 	struct notify **notify = arch_notify_get();
 	struct ipc_data *iipc;
 
-	free(sof->sa);
 	free(*notify);
 
 	/* free all scheduler data */
