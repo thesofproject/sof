@@ -132,9 +132,6 @@ void fuzzer_free_regions(struct fuzz *fuzzer);
 /* ipc */
 int fuzzer_send_msg(struct fuzz *fuzzer);
 
-/* topology */
-int parse_tplg(struct fuzz *fuzzer, char *tplg_filename);
-
 /* Convenience platform ops */
 static inline void fuzzer_mailbox_read(struct fuzz *fuzzer,
 				       struct mailbox *mailbox, int offset,
