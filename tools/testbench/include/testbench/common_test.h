@@ -18,13 +18,15 @@
 
 #include <sof/lib/uuid.h>
 
-#define DEBUG_MSG_LEN		256
-#define MAX_LIB_NAME_LEN	256
+#define DEBUG_MSG_LEN		1024
+#define MAX_LIB_NAME_LEN	1024
 
-#define MAX_OUTPUT_FILE_NUM	4
+#define MAX_OUTPUT_FILE_NUM	16
 
 /* number of widgets types supported in testbench */
 #define NUM_WIDGETS_SUPPORTED	11
+
+struct tplg_context;
 
 struct testbench_prm {
 	char *tplg_file; /* topology file to use */
@@ -32,6 +34,8 @@ struct testbench_prm {
 	char *output_file[MAX_OUTPUT_FILE_NUM]; /* output file names */
 	int output_file_num; /* number of output files */
 	char *bits_in; /* input bit format */
+	int pipelines[MAX_OUTPUT_FILE_NUM]; /* output file names */
+	int pipeline_num;
 	/*
 	 * input and output sample rate parameters
 	 * By default, these are calculated from pipeline frames_per_sched
@@ -48,6 +52,15 @@ struct testbench_prm {
 	enum sof_ipc_frame frame_fmt;
 	int copy_iterations;
 	bool copy_check;
+	int dynamic_pipeline_iterations;
+	int num_vcores;
+	int tick_period_us;
+	int pipeline_duration_ms;
+	int real_time;
+
+	FILE *file;
+	char *pipeline_string;
+	int output_file_index;
 };
 
 struct shared_lib_table {
@@ -94,7 +107,4 @@ int get_index_by_type(uint32_t comp_type,
 
 int get_index_by_uuid(struct sof_ipc_comp_ext *comp_ext,
 		      struct shared_lib_table *lib_table);
-
-int parse_topology(struct sof *sof,
-		   struct testbench_prm *tp, char *pipeline_msg);
 #endif

@@ -19,6 +19,7 @@
 #include <ipc/control.h>
 #include "qemu-bridge.h"
 #include <ipc/trace.h>
+#include <tplg_parser/topology.h>
 
 int enable_fuzzer;
 
@@ -288,6 +289,7 @@ int main(int argc, char *argv[])
 	char *platform_name = NULL;
 	int i, j;
 	int regions = 0;
+	struct tplg_context ctx;
 
 	/* parse arguments */
 	while ((opt = getopt(argc, argv, "ht:p:")) != -1) {
@@ -343,9 +345,11 @@ int main(int argc, char *argv[])
 	/* allocate max ipc size bytes for the msg and reply */
 	fuzzer.msg.msg_data = malloc(SOF_IPC_MSG_MAX_SIZE);
 	fuzzer.msg.reply_data = malloc(SOF_IPC_MSG_MAX_SIZE);
+	ctx.fuzzer = &fuzzer;
+	ctx.tplg_file = topology_file;
 
 	/* load topology */
-	ret = parse_tplg(&fuzzer, topology_file);
+	ret = parse_topology(&ctx);
 	if (ret < 0)
 		exit(EXIT_FAILURE);
 
