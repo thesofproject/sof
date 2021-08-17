@@ -92,6 +92,10 @@ if(NOT CONFIG_LIBRARY)
                         copier.c
                 )
         endif()
+	if(CONFIG_COMP_RTNR)
+		add_subdirectory(rtnr)
+	endif()
+
 	subdirs(pipeline)
 
 	return()

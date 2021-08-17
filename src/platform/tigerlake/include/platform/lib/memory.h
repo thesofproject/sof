@@ -262,8 +262,13 @@
 #define RT_TIMES	3
 #define RT_SHARED_TIMES	6
 #else
+#ifdef CONFIG_COMP_RTNR
+#define RT_TIMES	6
+#define RT_SHARED_TIMES	11
+#else
 #define RT_TIMES	8
 #define RT_SHARED_TIMES	16
+#endif /* CONFIG_COMP_RTNR */
 #endif
 
 /* Heap section sizes for module pool */
