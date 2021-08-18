@@ -13,6 +13,14 @@
 #include <inttypes.h>
 #include <stddef.h>
 
+#include <stdlib.h>
+#include <string.h>
+#include <malloc.h>
+#include <stdio.h>
+#include <execinfo.h>
+#include <sof/debug/panic.h>
+#include <sof/lib/cache.h>
+
 struct sof;
 
 #define PLATFORM_DCACHE_ALIGN	sizeof(void *)
@@ -30,24 +38,137 @@ uint8_t *get_library_mailbox(void);
 #define PLATFORM_HEAP_SYSTEM_SHARED	1
 #define PLATFORM_HEAP_RUNTIME_SHARED	1
 
-#define SHARED_DATA
+#define SHARED_DATA __attribute__((aligned(64)))
 
-static inline void *platform_shared_get(void *ptr, int bytes)
+#ifdef TESTBENCH_CACHE_CHECK
+/*
+ * Use uncache address from caller and return cache[core] address. This can
+ * result in.
+ *
+ * 1) Creating a new cache mapping for a heap object.
+ * 2) Creating a new cache and unache mapping for a DATA section object.
+ */
+static inline void *_uncache_to_cache(void *address, const char *file,
+				      const char *func, int line, size_t size)
 {
-	return ptr;
+	struct tb_cache_elem *elem;
+	int core = _cache_find_core(func, line);
+
+	fprintf(stdout, "\n\n");
+
+	/* uncache area not found so this must be DATA section*/
+	fprintf(stdout, "uncache -> cache: %s() line %d size %zu - %s\n", func,
+		line, size, file);
+
+	_cache_dump_address_type(address, size);
+	_cache_dump_backtrace();
+	_cache_dump_cacheline("uncache -> cache", address, 0, size, size, NULL);
+
+	/* find elem with uncache address */
+	elem = _cache_get_elem_from_uncache(address);
+	if (!elem) {
+		/* no elem found so create one */
+		elem = _cache_new_uelem(address, core, func, line,
+				CACHE_DATA_TYPE_DATA_UNCACHE, size,
+				CACHE_ACTION_NONE);
+		if (!elem)
+			return NULL;
+
+	}
+
+	return elem->cache[core].data;
 }
+
+#define uncache_to_cache(address)	\
+	_uncache_to_cache(address, __FILE__, __func__, __LINE__, sizeof(*address))
+
+/*
+ * Use uncache address from caller and return cache[core] address. This can
+ * result in.
+ *
+ * 1) Creating a new cache mapping for a heap object.
+ * 2) Creating a new cache and unache mapping for a DATA section object.
+ */
+static inline void *_cache_to_uncache(void *address, const char *file,
+				      const char *func, int line, size_t size)
+{
+	struct tb_cache_elem *elem;
+	int core = _cache_find_core(func, line);
+
+	fprintf(stdout, "\n\n");
+
+	/* uncache area not found so this must be DATA section*/
+	fprintf(stdout, "cache -> uncache: %s() line %d\n new object size %zu - %s\n",
+		func, line, size, file);
+
+	_cache_dump_address_type(address, size);
+	_cache_dump_backtrace();
+	_cache_dump_cacheline("cache -> uncache", address, 0, size, size, NULL);
+
+	elem = _cache_get_elem_from_cache(address, core);
+	if (!elem) {
+		/* no elem found so create one */
+		elem = _cache_new_celem(address, core, func, line,
+				CACHE_DATA_TYPE_DATA_CACHE, size,
+				CACHE_ACTION_NONE);
+		if (!elem)
+			return NULL;
+	}
+
+	return elem->uncache.data;
+}
+
+#define cache_to_uncache(address) \
+	_cache_to_uncache(address, __FILE__, __func__, __LINE__, sizeof(*address))
+
+static inline int _is_uncache(void *address, const char *file,
+			      const char *func, int line, size_t size)
+{
+	struct tb_cache_elem *elem;
+
+	fprintf(stdout, "\n\n");
+
+	/* find elem with uncache address - NOT FOOLPROOF on host */
+	elem = _cache_get_elem_from_uncache(address);
+	if (elem) {
+		fprintf(stdout, "is uncache found: %s() line %d - %s\n",
+			func, line, file);
+		return 1;
+	}
+
+	fprintf(stdout, "is uncache not found: %s() line %d - %s\n",
+		func, line, file);
+	return 0;
+}
+
+#define cache_to_uncache_init(address)	address
+
+/* check for memory type - not foolproof but enough to help developers */
+#define is_uncached(address)						\
+	_is_uncache(address, __FILE__, __func__, __LINE__, sizeof(*address))
+
+#define platform_shared_get(ptr, bytes)					\
+	({fprintf(stdout, "platform_get_shared\n");			\
+	dcache_invalidate_region(ptr, bytes);				\
+	_cache_to_uncache(ptr, __FILE__, __func__, __LINE__,		\
+			  sizeof(*ptr)); })
+
+#define platform_rfree_prepare(ptr) \
+	({fprintf(stdout, "prepare free %s() line %d size - %s\n",	\
+		__func__, __LINE__, sizeof(*ptr), __FILE__); ptr; })
+
+#else
+
+#define cache_to_uncache_init(address)	address
+#define cache_to_uncache(address)	address
+#define uncache_to_cache(address)	address
+#define is_uncached(address)		0
+#define platform_shared_get(ptr, bytes)	ptr
+#define platform_rfree_prepare(ptr)	ptr
+
+#endif /* CONFIG_TESTBENCH_CACHE_CHECK */
 
 void platform_init_memmap(struct sof *sof);
-
-static inline void *platform_rfree_prepare(void *ptr)
-{
-	return ptr;
-}
-
-#define uncache_to_cache(address)	address
-#define cache_to_uncache(address)	address
-#define is_uncached(address)		1
-#define cache_to_uncache_init(address)	address
 
 #define ARCH_OOPS_SIZE	0
 
