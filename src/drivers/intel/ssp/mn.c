@@ -291,7 +291,7 @@ void mn_release_mclk(uint32_t mclk_id)
 	if (!mn->mclk_sources_ref[mclk_id]) {
 		mdivc = mn_reg_read(MN_MDIVCTRL, mclk_id);
 
-		mdivc |= ~MN_MDIVCTRL_M_DIV_ENABLE(mclk_id);
+		mdivc &= ~MN_MDIVCTRL_M_DIV_ENABLE(mclk_id);
 		mn_reg_write(MN_MDIVCTRL, mclk_id, mdivc);
 	}
 
