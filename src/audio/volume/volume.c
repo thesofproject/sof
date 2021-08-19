@@ -831,9 +831,9 @@ static int volume_prepare(struct comp_dev *dev)
 	sink_period_bytes = audio_stream_period_bytes(&sinkb->stream,
 						      dev->frames);
 
-	if (sinkb->stream.size < dev->ipc_config.periods_sink * sink_period_bytes) {
-		comp_err(dev, "volume_prepare(): sink buffer size %d is insufficient < %d * %d",
-			 sinkb->stream.size, dev->ipc_config.periods_sink, sink_period_bytes);
+	if (sinkb->stream.size < sink_period_bytes) {
+		comp_err(dev, "volume_prepare(): sink buffer size %d is insufficient < %d",
+			 sinkb->stream.size, sink_period_bytes);
 		ret = -ENOMEM;
 		goto err;
 	}

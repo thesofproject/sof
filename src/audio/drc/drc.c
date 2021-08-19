@@ -420,7 +420,7 @@ static int drc_prepare(struct comp_dev *dev)
 	sink_period_bytes = audio_stream_period_bytes(&sinkb->stream,
 						      dev->frames);
 
-	if (sinkb->stream.size < dev->ipc_config.periods_sink * sink_period_bytes) {
+	if (sinkb->stream.size < sink_period_bytes) {
 		comp_err(dev, "drc_prepare(), sink buffer size %d is insufficient",
 			 sinkb->stream.size);
 		ret = -ENOMEM;
