@@ -320,7 +320,6 @@ static int dcblock_copy(struct comp_dev *dev)
 static int dcblock_prepare(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	struct sof_ipc_comp_config *config = dev_comp_config(dev);
 	struct comp_buffer *sourceb;
 	struct comp_buffer *sinkb;
 	uint32_t sink_period_bytes;
@@ -349,9 +348,9 @@ static int dcblock_prepare(struct comp_dev *dev)
 	sink_period_bytes =
 			audio_stream_period_bytes(&sinkb->stream, dev->frames);
 
-	if (sinkb->stream.size < config->periods_sink * sink_period_bytes) {
-		comp_err(dev, "dcblock_prepare(): sink buffer size %d is insufficient < %d * %d",
-			 sinkb->stream.size, config->periods_sink, sink_period_bytes);
+	if (sinkb->stream.size < sink_period_bytes) {
+		comp_err(dev, "dcblock_prepare(): sink buffer size %d is insufficient < %d",
+			 sinkb->stream.size, sink_period_bytes);
 		ret = -ENOMEM;
 		goto err;
 	}

@@ -175,7 +175,6 @@ static int mixer_verify_params(struct comp_dev *dev,
 static int mixer_params(struct comp_dev *dev,
 			struct sof_ipc_stream_params *params)
 {
-	struct sof_ipc_comp_config *config = dev_comp_config(dev);
 	struct comp_buffer *sinkb;
 	uint32_t sink_period_bytes;
 	int err;
@@ -199,9 +198,9 @@ static int mixer_params(struct comp_dev *dev,
 		return -EINVAL;
 	}
 
-	if (sinkb->stream.size < config->periods_sink * sink_period_bytes) {
-		comp_err(dev, "mixer_params(): sink buffer size %d is insufficient < %d * %d",
-			 sinkb->stream.size, config->periods_sink, sink_period_bytes);
+	if (sinkb->stream.size < sink_period_bytes) {
+		comp_err(dev, "mixer_params(): sink buffer size %d is insufficient < %d",
+			 sinkb->stream.size, sink_period_bytes);
 		return -ENOMEM;
 	}
 

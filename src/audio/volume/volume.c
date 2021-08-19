@@ -799,7 +799,6 @@ static int volume_prepare(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *sinkb;
-	struct sof_ipc_comp_config *config = dev_comp_config(dev);
 	struct sof_ipc_comp_volume *pga;
 	uint32_t sink_period_bytes;
 	int ramp_update_us;
@@ -823,9 +822,9 @@ static int volume_prepare(struct comp_dev *dev)
 	sink_period_bytes = audio_stream_period_bytes(&sinkb->stream,
 						      dev->frames);
 
-	if (sinkb->stream.size < config->periods_sink * sink_period_bytes) {
-		comp_err(dev, "volume_prepare(): sink buffer size %d is insufficient < %d * %d",
-			 sinkb->stream.size, config->periods_sink, sink_period_bytes);
+	if (sinkb->stream.size < sink_period_bytes) {
+		comp_err(dev, "volume_prepare(): sink buffer size %d is insufficient < %d",
+			 sinkb->stream.size, sink_period_bytes);
 		ret = -ENOMEM;
 		goto err;
 	}

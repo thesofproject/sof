@@ -429,7 +429,6 @@ static int selector_prepare(struct comp_dev *dev)
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *sinkb;
 	struct comp_buffer *sourceb;
-	struct sof_ipc_comp_config *config = dev_comp_config(dev);
 	int ret;
 
 	comp_info(dev, "selector_prepare()");
@@ -466,9 +465,9 @@ static int selector_prepare(struct comp_dev *dev)
 	comp_info(dev, "selector_prepare(): sinkb->channels = %u",
 		  sinkb->stream.channels);
 
-	if (sinkb->stream.size < config->periods_sink * cd->sink_period_bytes) {
-		comp_err(dev, "selector_prepare(): sink buffer size %d is insufficient < %d * %d",
-			 sinkb->stream.size, config->periods_sink, cd->sink_period_bytes);
+	if (sinkb->stream.size < cd->sink_period_bytes) {
+		comp_err(dev, "selector_prepare(): sink buffer size %d is insufficient < %d",
+			 sinkb->stream.size, cd->sink_period_bytes);
 		ret = -ENOMEM;
 		goto err;
 	}
