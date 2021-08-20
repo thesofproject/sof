@@ -557,9 +557,8 @@ static int dw_dma_set_config(struct dma_chan_data *channel,
 		if (dw_chan->lli)
 			rfree(dw_chan->lli);
 
-		dw_chan->lli = rballoc_align(0, SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_DMA,
-					sizeof(struct dw_lli) * channel->desc_count,
-					PLATFORM_DCACHE_ALIGN);
+		dw_chan->lli = rmalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM,
+				       sizeof(struct dw_lli) * channel->desc_count);
 		if (!dw_chan->lli) {
 			tr_err(&dwdma_tr, "dw_dma_set_config(): dma %d channel %d lli alloc failed",
 			       channel->dma->plat_data.id,
