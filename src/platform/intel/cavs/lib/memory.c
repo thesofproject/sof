@@ -205,7 +205,7 @@ void platform_init_memmap(struct sof *sof)
 	sof->memory_map->runtime_shared[0].size = HEAP_RUNTIME_SHARED_SIZE;
 	sof->memory_map->runtime_shared[0].info.free = HEAP_RUNTIME_SHARED_SIZE;
 	sof->memory_map->runtime_shared[0].caps = SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_EXT |
-		SOF_MEM_CAPS_CACHE;
+		SOF_MEM_CAPS_CACHE | SOF_MEM_CAPS_DMA;
 
 	/* .system_shared init */
 	sof->memory_map->system_shared[0].heap = cache_to_uncache((uintptr_t)&_system_shared_heap);
