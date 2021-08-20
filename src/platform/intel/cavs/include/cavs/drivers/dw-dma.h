@@ -85,11 +85,6 @@ static inline void platform_dw_dma_llp_disable(struct dma *dma,
 		   shim_read(DW_CHLLPC(dma, chan)) & ~SHIM_GPDMA_CHLLPC_EN);
 }
 
-static inline struct dw_lli *platform_dw_dma_lli_get(struct dw_lli *lli)
-{
-	return cache_to_uncache(lli);
-}
-
 #endif /* __CAVS_LIB_DW_DMA_H__ */
 
 #else
