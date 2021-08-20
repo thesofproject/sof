@@ -130,11 +130,6 @@
 #define DW_DMA_BUFFER_ALIGNMENT 0x4
 #define DW_DMA_COPY_ALIGNMENT	0x4
 
-/* LLI address alignment, in Bytes */
-#ifndef DW_DMA_LLI_ALIGN
-#define DW_DMA_LLI_ALIGN	32
-#endif
-
 /* TODO: add FIFO sizes */
 struct dw_chan_data {
 	uint16_t class;
@@ -155,10 +150,10 @@ struct dw_lli {
 	uint32_t sstat;
 	uint32_t dstat;
 
-	/* align to required bytes to make sure every item
-	 * is aligned in case of more than two items
+	/* align to 32 bytes to not cross cache line
+	 * in case of more than two items
 	 */
-	uint8_t reserved[DW_DMA_LLI_ALIGN - sizeof(uint32_t) * 7];
+	uint32_t reserved;
 } __packed;
 
 extern const struct dma_ops dw_dma_ops;
