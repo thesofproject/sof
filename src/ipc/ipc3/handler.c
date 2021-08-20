@@ -1106,6 +1106,12 @@ static int ipc_comp_value(uint32_t header, uint32_t cmd)
 		return -ENODEV;
 	}
 
+	if (comp_dev->type != COMP_TYPE_COMPONENT) {
+		tr_err(&ipc_tr, "ipc: comp %d is not of type component",
+		       data->comp_id);
+		return -EINVAL;
+	}
+
 	/* check core */
 	if (!cpu_is_me(comp_dev->core))
 		return ipc_process_on_core(comp_dev->core, false);
