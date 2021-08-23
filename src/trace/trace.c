@@ -31,11 +31,16 @@ extern struct tr_ctx dt_tr;
 
 #if CONFIG_TRACE_FILTERING_ADAPTIVE
 struct recent_log_entry {
-	uint32_t entry_id;
-	uint64_t message_ts;
-	uint64_t first_suppression_ts;
-	uint32_t trigger_count;
-};
+	union {
+		struct {
+			uint32_t entry_id;
+			uint64_t message_ts;
+			uint64_t first_suppression_ts;
+			uint32_t trigger_count;
+		};
+		uint8_t __cache_alignment[PLATFORM_DCACHE_ALIGN];
+	};
+} __attribute__((aligned(PLATFORM_DCACHE_ALIGN)));
 
 struct recent_trace_context {
 	struct recent_log_entry recent_entries[CONFIG_TRACE_RECENT_ENTRIES_COUNT];
@@ -44,17 +49,16 @@ struct recent_trace_context {
 
 /** MAILBOX_TRACE_BASE ring buffer */
 struct trace {
+#if CONFIG_TRACE_FILTERING_ADAPTIVE
+	struct recent_trace_context trace_core_context[CONFIG_CORE_COUNT];
+#endif
 	uintptr_t pos ; /**< offset of the next byte to write */
 	uint32_t enable;
 #if CONFIG_TRACE_FILTERING_ADAPTIVE
 	bool user_filter_override;	/* whether filtering was overridden by user or not */
 #endif /* CONFIG_TRACE_FILTERING_ADAPTIVE */
 	spinlock_t lock; /* locking mechanism */
-
-#if CONFIG_TRACE_FILTERING_ADAPTIVE
-	struct recent_trace_context trace_core_context[CONFIG_CORE_COUNT];
-#endif
-};
+} __attribute__((aligned(PLATFORM_DCACHE_ALIGN)));
 
 /* calculates total message size, both header and payload in bytes */
 #define MESSAGE_SIZE(args_num)	\
