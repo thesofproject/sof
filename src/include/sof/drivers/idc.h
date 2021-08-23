@@ -92,12 +92,15 @@
 #define iTS(x)	(((x) >> IDC_TYPE_SHIFT) & IDC_TYPE_MASK)
 
 /** \brief Max IDC message payload size in bytes. */
-#define IDC_MAX_PAYLOAD_SIZE	96
+#define IDC_MAX_PAYLOAD_SIZE	128
 
 /** \brief IDC message payload. */
 struct idc_payload {
 	uint8_t data[IDC_MAX_PAYLOAD_SIZE];
 };
+
+STATIC_ASSERT((IDC_MAX_PAYLOAD_SIZE % (PLATFORM_DCACHE_ALIGN)) == 0,
+		IDC_payload_must_be_aligned_to_cache_line_size);
 
 /** \brief IDC message. */
 struct idc_msg {
