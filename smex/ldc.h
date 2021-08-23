@@ -12,7 +12,6 @@
 #define __INCLUDE_LDC_H__
 
 #include <ipc/info.h>
-#include <rimage/sof/kernel/fw.h>
 
 #define SND_SOF_LOGS_SIG_SIZE	4
 #define SND_SOF_LOGS_SIG	"Logs"
