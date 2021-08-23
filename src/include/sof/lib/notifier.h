@@ -43,11 +43,16 @@ struct notify {
 };
 
 struct notify_data {
-	const void *caller;
-	enum notify_id type;
-	uint32_t data_size;
-	void *data;
-};
+	union {
+		struct {
+			const void *caller;
+			enum notify_id type;
+			uint32_t data_size;
+			void *data;
+		};
+		uint8_t __cache_alignment[PLATFORM_DCACHE_ALIGN];
+	};
+} __attribute__((aligned(PLATFORM_DCACHE_ALIGN)));
 
 #ifdef CLK_SSP
 #define NOTIFIER_CLK_CHANGE_ID(clk) \
