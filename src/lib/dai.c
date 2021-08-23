@@ -16,6 +16,7 @@
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <stdbool.h>
 
 /* 06711c94-d37d-4a76-b302-bbf6944fdd2b */
 DECLARE_SOF_UUID("dai", dai_uuid, 0x06711c94, 0xd37d, 0x4a76,
@@ -24,20 +25,24 @@ DECLARE_SOF_UUID("dai", dai_uuid, 0x06711c94, 0xd37d, 0x4a76,
 DECLARE_TR_CTX(dai_tr, SOF_UUID(dai_uuid), LOG_LEVEL_INFO);
 
 struct dai_group_list {
-	struct list_item list;
+	union {
+		struct {
+			struct list_item list;
+			bool init_done;
+		};
+		uint8_t __cache_alignment[PLATFORM_DCACHE_ALIGN];
+	};
 } __aligned(PLATFORM_DCACHE_ALIGN);
 
-static struct dai_group_list *groups[CONFIG_CORE_COUNT];
+/* group is shared resource amongst cores, but the group data is not shared */
+static SHARED_DATA struct dai_group_list groups[CONFIG_CORE_COUNT];
 
 static struct dai_group_list *dai_group_list_get(int core_id)
 {
-	struct dai_group_list *group_list = groups[core_id];
+	struct dai_group_list *group_list = &groups[core_id];
 
-	if (!group_list) {
-		group_list = rzalloc(SOF_MEM_ZONE_SYS, 0, SOF_MEM_CAPS_RAM,
-				     sizeof(*group_list));
-
-		groups[core_id] = group_list;
+	if (!group_list->init_done) {
+		group_list->init_done = true;
 		list_init(&group_list->list);
 	}
 
@@ -160,13 +165,14 @@ struct dai *dai_get(uint32_t type, uint32_t index, uint32_t flags)
 		if (!ret)
 			d->sref++;
 
+		spin_unlock_irq(&d->lock, flags_irq);
+
 		tr_info(&dai_tr, "dai_get type %d index %d new sref %d",
 			type, index, d->sref);
 
-		spin_unlock_irq(&d->lock, flags_irq);
-
 		return !ret ? d : NULL;
 	}
+
 	tr_err(&dai_tr, "dai_get: type %d index %d not found", type, index);
 	return NULL;
 }
@@ -177,14 +183,19 @@ void dai_put(struct dai *dai)
 	uint32_t flags;
 
 	spin_lock_irq(&dai->lock, flags);
+
 	if (--dai->sref == 0) {
 		ret = dai_remove(dai);
 		if (ret < 0) {
+			spin_unlock_irq(&dai->lock, flags);
 			tr_err(&dai_tr, "dai_put: type %d index %d dai_remove() failed ret = %d",
 			       dai->drv->type, dai->index, ret);
+			return;
 		}
 	}
+
 	tr_info(&dai_tr, "dai_put type %d index %d new sref %d",
 		dai->drv->type, dai->index, dai->sref);
+
 	spin_unlock_irq(&dai->lock, flags);
 }
