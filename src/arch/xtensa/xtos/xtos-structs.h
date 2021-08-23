@@ -11,6 +11,7 @@
 #include "xtos-internal.h"
 #include <sof/common.h>
 #include <sof/lib/memory.h>
+#include <sof/common.h>
 
 #include <xtensa/xtruntime-frames.h>
 #include <stdint.h>
@@ -49,12 +50,20 @@ struct xtos_core_data {
 	struct thread_data *thread_data_ptr;
 };
 
+STATIC_ASSERT((sizeof(struct xtos_core_data) % (PLATFORM_DCACHE_ALIGN)) == 0,
+		xtos_core_data_payload_must_be_aligned_to_cache_line_size);
+
 struct core_context {
-	struct thread_data td;
-	struct task *main_task;
-	struct schedulers *schedulers;
-	struct notify *notify;
-	struct idc *idc;
-};
+	union {
+		struct {
+			struct thread_data td;
+			struct task *main_task;
+			struct schedulers *schedulers;
+			struct notify *notify;
+			struct idc *idc;
+		};
+		uint8_t __cache_alignment[PLATFORM_DCACHE_ALIGN];
+	};
+} __attribute__((aligned(PLATFORM_DCACHE_ALIGN)));
 
 #endif /* __XTOS_XTOS_STRUCTS_H__ */
