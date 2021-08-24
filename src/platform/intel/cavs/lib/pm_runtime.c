@@ -402,6 +402,9 @@ static inline void cavs_pm_runtime_dis_dsp_pg(uint32_t index)
 	struct cavs_pm_runtime_data *pprd = prd->platform_data;
 	uint32_t lps_ctl, tries = PLATFORM_PM_RUNTIME_DSP_TRIES;
 	uint32_t flag = PWRD_MASK & index;
+	uint32_t flags;
+
+	spin_lock_irq(&prd->lock, flags);
 
 	index &= ~PWRD_MASK;
 
@@ -433,6 +436,8 @@ static inline void cavs_pm_runtime_dis_dsp_pg(uint32_t index)
 			       index);
 		pprd->dsp_client_bitmap[index] |= flag;
 	}
+
+	spin_unlock_irq(&prd->lock, flags);
 #endif
 }
 
@@ -443,6 +448,9 @@ static inline void cavs_pm_runtime_en_dsp_pg(uint32_t index)
 	struct cavs_pm_runtime_data *pprd = prd->platform_data;
 	uint32_t lps_ctl;
 	uint32_t flag = PWRD_MASK & index;
+	uint32_t flags;
+
+	spin_lock_irq(&prd->lock, flags);
 
 	index &= ~(PWRD_MASK);
 
@@ -464,6 +472,8 @@ static inline void cavs_pm_runtime_en_dsp_pg(uint32_t index)
 			shim_write16(SHIM_PWRCTL, shim_read16(SHIM_PWRCTL) &
 				     ~SHIM_PWRCTL_TCPDSPPG(index));
 	}
+
+	spin_unlock_irq(&prd->lock, flags);
 #endif
 }
 
