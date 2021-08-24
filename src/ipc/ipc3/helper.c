@@ -281,16 +281,16 @@ struct comp_dev *comp_new(struct sof_ipc_comp *comp)
 	struct comp_dev *cdev;
 	const struct comp_driver *drv;
 
-	/* find the driver for our new component */
-	drv = get_drv(comp);
-	if (!drv)
-		return NULL;
-
 	/* validate size of ipc config */
 	if (IPC_IS_SIZE_INVALID(*comp_config(comp))) {
 		IPC_SIZE_ERROR_TRACE(&comp_tr, *comp_config(comp));
 		return NULL;
 	}
+
+	/* find the driver for our new component */
+	drv = get_drv(comp);
+	if (!drv)
+		return NULL;
 
 	tr_info(&comp_tr, "comp new %pU type %d id %d.%d",
 		drv->tctx->uuid_p, comp->type, comp->pipeline_id, comp->id);
