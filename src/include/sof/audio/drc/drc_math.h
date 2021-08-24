@@ -10,10 +10,19 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <sof/audio/drc/drc_plat_conf.h>
+#include <sof/audio/format.h>
+#include <sof/math/numbers.h>
+#include <sof/math/trig.h>
+
+/* Unmark this define to use cordic arc sine implementation. */
+/* #define DRC_USE_CORDIC_ASIN */
 
 #if DRC_HIFI3
 
 #include <xtensa/tie/xt_hifi3.h>
+
+#define PI_OVER_TWO_Q30 1686629713 /* Q_CONVERT_FLOAT(1.57079632679489661923, 30); pi/2 */
+#define TWO_OVER_PI_Q30 683565248 /* Q_CONVERT_FLOAT(0.63661977236758134, 30); 2/pi */
 
 /*
  * A substitutive function of Q_MULTSR_32X32(a, b, qa, qb, qy) in HIFI manners.
@@ -42,13 +51,70 @@ static inline int32_t drc_get_lshift(int32_t qa, int32_t qb, int32_t qy)
 	return qy - qa - qb + 31;
 }
 
+/*
+ * Input is Q2.30: (-2.0, 2.0)
+ * Output range: (-1.0, 1.0); regulated to Q1.31: (-1.0, 1.0)
+ */
+static inline int32_t drc_sin_fixed(int32_t x)
+{
+	const int32_t lshift = drc_get_lshift(30, 30, 28);
+	int32_t denorm_x = drc_mult_lshift(x, PI_OVER_TWO_Q30, lshift);
+	int32_t sin_val = sin_fixed_16b(denorm_x);
+
+	return sin_val << 16;
+}
+
+#ifdef DRC_USE_CORDIC_ASIN
+/*
+ * Input is Q2.30; valid range: [-1.0, 1.0]
+ * Output range: [-1.0, 1.0]; regulated to Q2.30: (-2.0, 2.0)
+ */
+static inline int32_t drc_asin_fixed(int32_t x)
+{
+	const int32_t lshift = drc_get_lshift(30, 30, 30);
+	int32_t asin_val = asin_fixed_16b(x); /* Q2.14, [-pi/2, pi/2] */
+
+	return drc_mult_lshift(asin_val << 16, TWO_OVER_PI_Q30, lshift);
+}
+#endif /* DRC_USE_CORDIC_ASIN */
+
+#else
+
+/*
+ * Input is Q2.30: (-2.0, 2.0)
+ * Output range: (-1.0, 1.0); regulated to Q1.31: (-1.0, 1.0)
+ */
+static inline int32_t drc_sin_fixed(int32_t x)
+{
+	const int32_t PI_OVER_TWO = Q_CONVERT_FLOAT(1.57079632679489661923, 30);
+	int32_t sin_val = sin_fixed_16b(Q_MULTSR_32X32((int64_t)x, PI_OVER_TWO, 30, 30, 28));
+
+	return sin_val << 16;
+}
+
+#ifdef DRC_USE_CORDIC_ASIN
+/*
+ * Input is Q2.30; valid range: [-1.0, 1.0]
+ * Output range: [-1.0, 1.0]; regulated to Q2.30: (-2.0, 2.0)
+ */
+static inline int32_t drc_asin_fixed(int32_t x)
+{
+	const int32_t TWO_OVER_PI = Q_CONVERT_FLOAT(0.63661977236758134, 30); /* 2/pi */
+	int32_t asin_val = asin_fixed_16b(x); /* Q2.14, [-pi/2, pi/2] */
+
+	return Q_MULTSR_32X32((int64_t)asin_val, TWO_OVER_PI, 14, 30, 30);
+}
+#endif /* DRC_USE_CORDIC_ASIN */
+
 #endif /* DRC_HIFI3 */
 
 int32_t drc_lin2db_fixed(int32_t linear); /* Input:Q6.26 Output:Q11.21 */
 int32_t drc_log_fixed(int32_t x); /* Input:Q6.26 Output:Q6.26 */
-int32_t drc_sin_fixed(int32_t x); /* Input:Q2.30 Output:Q1.31 */
-int32_t drc_asin_fixed(int32_t x); /* Input:Q2.30 Output:Q2.30 */
 int32_t drc_pow_fixed(int32_t x, int32_t y); /* Input:Q6.26, Q2.30 Output:Q12.20 */
 int32_t drc_inv_fixed(int32_t x, int32_t precision_x, int32_t precision_y);
+
+#ifndef DRC_USE_CORDIC_ASIN
+int32_t drc_asin_fixed(int32_t x); /* Input:Q2.30 Output:Q2.30 */
+#endif /* !DRC_USE_CORDIC_ASIN */
 
 #endif //  __SOF_AUDIO_DRC_DRC_MATH_H__
