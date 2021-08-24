@@ -23,7 +23,6 @@
 #define NEG_1K_Q21 -2097151999 /* Q_CONVERT_FLOAT(-1000.0f, 21) */
 #define LOG_10_Q29 1236190976 /* Q_CONVERT_FLOAT(2.3025850929940457f, 29) */
 #define NEG_30_Q26 -2013265919 /* Q_CONVERT_FLOAT(-30.0f, 26) */
-#define TWO_OVER_PI_Q30 683565248 /* Q_CONVERT_FLOAT(0.63661977236758134f, 30); 2/pi */
 #define ASIN_FUNC_A7L_Q30 126897672 /* Q_CONVERT_FLOAT(0.1181826665997505187988281f, 30) */
 #define ASIN_FUNC_A5L_Q30 43190596 /* Q_CONVERT_FLOAT(4.0224377065896987915039062e-2f, 30) */
 #define ASIN_FUNC_A3L_Q30 184887136 /* Q_CONVERT_FLOAT(0.1721895635128021240234375f, 30) */
@@ -129,6 +128,7 @@ inline int32_t drc_log_fixed(int32_t x)
 	return drc_mult_lshift(LOG_10_Q29, log10_x, drc_get_lshift(29, 26, 26));
 }
 
+#ifndef DRC_USE_CORDIC_ASIN
 /*
  * Input is Q2.30; valid range: [-1.0, 1.0]
  * Output range: [-1.0, 1.0]; regulated to Q2.30: (-2.0, 2.0)
@@ -178,6 +178,7 @@ inline int32_t drc_asin_fixed(int32_t x)
 	lshift = drc_get_lshift(qc, 30, 30);
 	return drc_mult_lshift(acc, TWO_OVER_PI_Q30, lshift);
 }
+#endif /* !DRC_USE_CORDIC_ASIN */
 
 /*
  * Input depends on precision_x

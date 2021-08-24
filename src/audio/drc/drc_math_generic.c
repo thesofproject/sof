@@ -106,6 +106,7 @@ inline int32_t drc_log_fixed(int32_t x)
 	return q_mult(LOG10, log10_x, 29, 26, 26);
 }
 
+#ifndef DRC_USE_CORDIC_ASIN
 /*
  * Input is Q2.30; valid range: [-1.0, 1.0]
  * Output range: [-1.0, 1.0]; regulated to Q2.30: (-2.0, 2.0)
@@ -164,6 +165,7 @@ inline int32_t drc_asin_fixed(int32_t x)
 #undef qch
 #undef qcl
 }
+#endif /* !DRC_USE_CORDIC_ASIN */
 
 /*
  * Input depends on precision_x
@@ -218,19 +220,6 @@ inline int32_t drc_inv_fixed(int32_t x, int32_t precision_x, int32_t precision_y
 }
 
 #endif /* DRC_GENERIC */
-
-/*
- * Input is Q2.30: (-2.0, 2.0)
- * Output range: (-1.0, 1.0); regulated to Q1.31: (-1.0, 1.0)
- */
-inline int32_t drc_sin_fixed(int32_t x)
-{
-	const int32_t PI_OVER_TWO = Q_CONVERT_FLOAT(1.57079632679489661923, 30);
-	/* input range of sin_fixed_16b() is non-negative */
-	int32_t abs_sin_val = sin_fixed_16b(q_mult(ABS(x), PI_OVER_TWO, 30, 30, 28));
-
-	return x < 0 ? -abs_sin_val << 16 : abs_sin_val << 16;
-}
 
 /*
  * Input x is Q6.26; valid range: (0.0, 32.0); x <= 0 is not supported
