@@ -107,14 +107,6 @@ build()
 	    # https://github.com/zephyrproject-rtos/west/issues/419
 	}
 
-	# Build rimage
-	RIMAGE_DIR=build-rimage
-	mkdir -p "$RIMAGE_DIR"
-	cd "$RIMAGE_DIR"
-	cmake ../modules/audio/sof/rimage
-	make -j"$BUILD_JOBS"
-	cd -
-
 	local STAGING=build-sof-staging
 	mkdir -p ${STAGING}/sof/ # smex does not use 'install -D'
 
@@ -188,6 +180,11 @@ build()
 			"$bdir"/zephyr/smex_ep/build/smex \
 			       -l "$STAGING"/sof/sof-"$platform".ldc \
 			       "$bdir"/zephyr/zephyr.elf
+
+			# Build rimage
+			RIMAGE_DIR=build-rimage
+			cmake -B "$RIMAGE_DIR" -S modules/audio/sof/rimage
+			make -C "$RIMAGE_DIR" -j"$BUILD_JOBS"
 
 			west sign  --build-dir "$bdir" \
 				--tool rimage --tool-path "$RIMAGE_DIR"/rimage \
@@ -271,8 +268,9 @@ main()
 		    ln -s "$SOF_TOP" "${WEST_TOP}"/modules/audio/sof
 		}
 
-		# Support for submodules in west is too recent, cannot
-		# rely on it
+		# FIXME: remove this hack. Downloading and building
+		# should be kept separate but support for submodules in
+		# west is too recent, cannot rely on it yet.
 		test -e "${WEST_TOP}"/modules/audio/sof/rimage/CMakeLists.txt || (
 		    cd "${WEST_TOP}"/modules/audio/sof
 		    git submodule update --init --recursive
