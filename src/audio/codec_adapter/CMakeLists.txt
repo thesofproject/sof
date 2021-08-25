@@ -41,6 +41,10 @@ if(CONFIG_CADENCE_CODEC_VORBIS_DEC)
 	sof_add_static_library(xa_vorbis_dec ${CONFIG_CADENCE_CODEC_VORBIS_DEC_LIB})
 endif()
 
+if(CONFIG_CADENCE_CODEC_SRC_PP)
+	sof_add_static_library(xa_src_pp ${CONFIG_CADENCE_CODEC_SRC_PP_LIB})
+endif()
+
 endif()
 
 if(CONFIG_PASSTHROUGH_CODEC)

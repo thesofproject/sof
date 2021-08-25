@@ -133,6 +133,21 @@ if CADENCE_CODEC
 		  This option is a string and takes the full name of the VORBIS library binary.
 	endif
 
+	config CADENCE_CODEC_SRC_PP
+		bool "Cadence SRC polyphase"
+		default n
+		help
+		  Select for Cadence SRC polyphase support.
+		  This will cause Cadence codec to include Cadence SRC library
+		  api symbol.
+
+	if CADENCE_CODEC_SRC_PP
+		config CADENCE_CODEC_SRC_PP_LIB
+		string "Cadence SRC polyphase library name"
+		help
+		  This option is a string and takes the full name of the SRC library binary.
+	endif
+
 endif
 
 	config PASSTHROUGH_CODEC
