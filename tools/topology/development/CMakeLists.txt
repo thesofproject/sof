@@ -20,6 +20,8 @@ set(TPLGS
 	"sof-imx8mp-src-wm8960\;sof-imx8mp-src-wm8960"
 	"sof-imx8-src-wm8960\;sof-imx8-src-wm8960"
 	"sof-imx8-src-cs42888\;sof-imx8-src-cs42888"
+	"sof-apl-nocodec-demux-eq-4ch4ch\;sof-apl-nocodec-demux-eq-4ch4ch"
+	"sof-apl-nocodec-demux-eq-2ch4ch\;sof-apl-nocodec-demux-eq-2ch4ch"
 )
 
 
