@@ -126,7 +126,7 @@ static uint32_t parse_uint32_hex_key(const toml_table_t *table, struct parse_ctx
 {
 	toml_raw_t raw;
 	char *temp_s;
-	int64_t val;
+	uint32_t val;
 	int ret;
 
 	/* look for key in given table, assign def value when key not found */
@@ -145,17 +145,15 @@ static uint32_t parse_uint32_hex_key(const toml_table_t *table, struct parse_ctx
 		*error = err_key_parse(key, NULL);
 		return UINT32_MAX;
 	}
-	val = strtol(temp_s, 0, 16);
+	val = strtoul(temp_s, 0, 16);
+
 	free(temp_s);
 	/* assert parsing success and value is within uint32_t range */
 	if (errno < 0) {
 		*error = err_key_parse(key, "can't convert hex value");
 		return UINT32_MAX;
 	}
-	if (val < 0 || val > UINT32_MAX) {
-		*error = log_err(-ERANGE, "key %s out of uint32_t range", key);
-		return UINT32_MAX;
-	}
+
 	/* set success error code and increment parsed key counter */
 	*error = 0;
 	++ctx->key_cnt;
