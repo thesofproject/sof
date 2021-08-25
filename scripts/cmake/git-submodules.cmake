@@ -37,8 +37,11 @@ if(GIT_FOUND AND EXISTS "${SOF_ROOT_SOURCE_DIRECTORY}/.git")
 	# manually initializing rimage and _not_ some other
 	# submodule. In that case you get the warning above.
 
-		message(STATUS "Git submodules update")
+	# TODO: get rid of this CMake configuration time
+	# hack. Downloading, configuring and building should always be
+	# kept separate; that's CI 101.
 
+		message(STATUS "Git submodules update HACK")
 		execute_process(COMMAND ${GIT_EXECUTABLE} submodule update --init --merge --recursive
 				WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 				RESULT_VARIABLE GIT_SUBMOD_RESULT)
@@ -50,8 +53,3 @@ if(GIT_FOUND AND EXISTS "${SOF_ROOT_SOURCE_DIRECTORY}/.git")
 	endif() # rimage/CMakeLists.txt
 
 endif() # .git/
-
-# rimage is not optional, see "git grep include.*rimage"
-if(NOT EXISTS "${RIMAGE_CMAKE}")
-	message(FATAL_ERROR "rimage not found! Please update git submodules and try again.")
-endif()

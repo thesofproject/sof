@@ -256,6 +256,14 @@ add_custom_target(bin_extras)
 
 if(build_bootloader)
 	add_executable(bootloader "")
+
+	add_dependencies(bootloader rimage_ep)
+	# This line should be next to the boot_module
+	# (resp. base_module) definitions but there are too many of
+	# them; one per platform. So do it only once here instead.
+	add_dependencies(boot_module rimage_ep)
+	add_dependencies(base_module rimage_ep)
+
 	target_link_libraries(bootloader PRIVATE sof_options)
 	add_local_sources(bootloader xtos/_vectors.S ${PROJECT_SOURCE_DIR}/src/platform/${family_path}/boot_entry.S ${PROJECT_SOURCE_DIR}/src/platform/${family_path}/boot_loader.c)
 	target_link_libraries(bootloader PRIVATE reset)
@@ -351,6 +359,7 @@ ExternalProject_Add(smex_ep
 	SOURCE_DIR "${PROJECT_SOURCE_DIR}/smex"
 	PREFIX "${PROJECT_BINARY_DIR}/smex_ep"
 	BINARY_DIR "${PROJECT_BINARY_DIR}/smex_ep/build"
+	EXCLUDE_FROM_ALL TRUE
 	BUILD_ALWAYS 1
 	INSTALL_COMMAND ""
 )
@@ -372,6 +381,7 @@ ExternalProject_Add(rimage_ep
 	SOURCE_DIR "${PROJECT_SOURCE_DIR}/rimage"
 	PREFIX "${PROJECT_BINARY_DIR}/rimage_ep"
 	BINARY_DIR "${PROJECT_BINARY_DIR}/rimage_ep/build"
+	EXCLUDE_FROM_ALL TRUE
 	BUILD_ALWAYS 1
 	INSTALL_COMMAND ""
 )
