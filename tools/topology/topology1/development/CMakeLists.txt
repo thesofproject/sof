@@ -29,6 +29,7 @@ set(TPLGS
 	"sof-imx8mp-compr-mp3-wm8960\;sof-imx8mp-compr-mp3-wm8960"
 	"sof-apl-nocodec-demux-eq-4ch4ch\;sof-apl-nocodec-demux-eq-4ch4ch"
 	"sof-apl-nocodec-demux-eq-2ch4ch\;sof-apl-nocodec-demux-eq-2ch4ch"
+	"sof-imx8-xtensa-src-wm8960\;sof-imx8-xtensa-src-wm8960"
 )
 
 
