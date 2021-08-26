@@ -162,7 +162,7 @@ static int primary_core_init(int argc, char *argv[], struct sof *sof)
 #ifndef __ZEPHYR__
 int main(int argc, char *argv[])
 {
-	int err;
+	int err = 0;
 
 	trace_point(TRACE_BOOT_START);
 
