@@ -72,18 +72,38 @@ __section(".heap_mem") static uint8_t __aligned(64) heapmem[HEAPMEM_SIZE];
 
 #else
 
-#define HEAPMEM_SHARED_SIZE	(HEAP_SYSTEM_SIZE + HEAP_RUNTIME_SIZE + \
-				HEAP_RUNTIME_SHARED_SIZE + HEAP_SYSTEM_SHARED_SIZE)
-#ifdef ENABLE_CACHED_HEAP
-#define HEAPMEM_SIZE		HEAP_BUFFER_SIZE
+/*
+ * TODO: heap size should be set based on Zephyr linker output.
+ * At the moment, the HEAP_SIZEs are approximations from the XTOS linker scripts
+ * (e.g. src/platform/apollolake/apollolake.x.in for APL):
+ * (_bss_end - _runtime_heap_start)
+ */
+#if (CONFIG_HP_MEMORY_BANKS < 16)
+/* e.g. APL */
+#define	HEAP_SIZE	0x30000
+#elif (CONFIG_HP_MEMORY_BANKS < 30)
+/* e.g. JSL */
+#define	HEAP_SIZE	0x80000
+#elif (CONFIG_HP_MEMORY_BANKS < 45)
+/* e.g. TGL-H */
+#define	HEAP_SIZE	0x100000
 #else
-#define HEAPMEM_SIZE		(HEAP_BUFFER_SIZE + HEAPMEM_SHARED_SIZE)
+/* e.g. CNL/ICL/TGL */
+#define	HEAP_SIZE	0x200000
 #endif
+
+#ifdef ENABLE_CACHED_HEAP
+/* hard code the cached portion at the moment */
+#define	HEAP_SYSTEM_CACHED_SIZE	(HEAP_SIZE / 2)
+#else
+#define	HEAP_SYSTEM_CACHED_SIZE	0
+#endif
+#define	HEAPMEM_SIZE	(HEAP_SIZE - HEAP_SYSTEM_CACHED_SIZE)
 
 static uint8_t __aligned(PLATFORM_DCACHE_ALIGN)heapmem[HEAPMEM_SIZE];
 #ifdef ENABLE_CACHED_HEAP
-static uint8_t __aligned(PLATFORM_DCACHE_ALIGN)heapmem_shared[HEAPMEM_SHARED_SIZE];
-static struct k_heap sof_heap_shared;
+static uint8_t __aligned(PLATFORM_DCACHE_ALIGN)heapmem_cached[HEAP_SYSTEM_CACHED_SIZE];
+static struct k_heap sof_heap_cached;
 #endif
 
 #endif
@@ -96,7 +116,7 @@ static int statics_init(const struct device *unused)
 
 	sys_heap_init(&sof_heap.heap, heapmem, HEAPMEM_SIZE);
 #ifdef ENABLE_CACHED_HEAP
-	sys_heap_init(&sof_heap_shared.heap, heapmem_shared, HEAPMEM_SHARED_SIZE);
+	sys_heap_init(&sof_heap_cached.heap, heapmem_cached, HEAP_SYSTEM_CACHED_SIZE);
 #endif
 	return 0;
 }
