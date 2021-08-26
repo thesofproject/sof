@@ -108,13 +108,14 @@ static int multiband_drc_init_coef(struct multiband_drc_comp_data *cd, int16_t n
 	struct sof_multiband_drc_config *config = cd->config;
 	struct multiband_drc_state *state = &cd->state;
 	uint32_t sample_bytes = get_sample_bytes(cd->source_format);
-	int num_bands = cd->config->num_bands;
-	int i, ch, ret;
+	int i, ch, ret, num_bands;
 
 	if (!config) {
 		comp_cl_err(&comp_multiband_drc, "multiband_drc_init_coef(), no config is set");
 		return -EINVAL;
 	}
+
+	num_bands = config->num_bands;
 
 	/* Sanity checks */
 	if (nch > PLATFORM_MAX_CHANNELS) {
