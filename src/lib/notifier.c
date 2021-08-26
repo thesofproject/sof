@@ -57,7 +57,7 @@ int notifier_register(void *receiver, void *caller, enum notify_id type,
 		goto out;
 	}
 
-	handle = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM,
+	handle = rballoc(0, SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_DMA,
 			 sizeof(*handle));
 
 	if (!handle) {

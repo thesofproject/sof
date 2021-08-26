@@ -530,7 +530,7 @@ static struct comp_dev *host_new(const struct comp_driver *drv,
 		return NULL;
 	dev->ipc_config = *config;
 
-	hd = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*hd));
+	hd = rballoc(0, SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_DMA, sizeof(*hd));
 	if (!hd) {
 		rfree(dev);
 		return NULL;

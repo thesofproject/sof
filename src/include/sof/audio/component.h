@@ -571,7 +571,7 @@ static inline struct comp_dev *comp_alloc(const struct comp_driver *drv,
 {
 	struct comp_dev *dev = NULL;
 
-	dev = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM, bytes);
+	dev = rballoc(0, SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_DMA, bytes);
 	if (!dev)
 		return NULL;
 	dev->size = bytes;
