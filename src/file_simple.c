@@ -48,6 +48,13 @@
 #define IMX8M_SRAM_BASE		0x92400000
 #define IMX8M_SRAM_SIZE		0x800000
 
+#define MT8195_IRAM_BASE		0x40000000
+#define MT8195_IRAM_HOST_OFFSET	0x00000
+#define MT8195_IRAM_SIZE		0x4000
+#define MT8195_SRAM_BASE		0x60000000
+#define MT8195_SRAM_SIZE		0x600000
+#define MT8195_SRAM_HOST_OFFSET	0x00000
+
 static int get_mem_zone_type(struct image *image, Elf32_Shdr *section)
 {
 	const struct adsp *adsp = image->adsp;
@@ -532,3 +539,22 @@ const struct adsp machine_imx8m = {
 	.machine_id = MACHINE_IMX8M,
 	.write_firmware = simple_write_firmware,
 };
+
+const struct adsp machine_mt8195= {
+	.name = "mt8195",
+	.mem_zones = {
+		[SOF_FW_BLK_TYPE_IRAM] = {
+			.base = MT8195_IRAM_BASE,
+			.size = MT8195_IRAM_SIZE,
+			.host_offset = MT8195_IRAM_HOST_OFFSET,
+		},
+		[SOF_FW_BLK_TYPE_SRAM] = {
+			.base = MT8195_SRAM_BASE,
+			.size = MT8195_SRAM_SIZE,
+			.host_offset = MT8195_SRAM_HOST_OFFSET,
+		},
+	},
+	.machine_id = MACHINE_MT8195,
+	.write_firmware = simple_write_firmware,
+};
+
