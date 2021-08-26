@@ -189,7 +189,7 @@ int dmic_set_config_nhlt(struct dai *dai, void *spec_config)
 	uint32_t channel_ctrl_mask;
 	uint32_t fir_control;
 	uint32_t pdm_ctrl_mask;
-	uint32_t ref;
+	uint32_t ref = 0;
 	uint32_t val;
 	const uint8_t *p = spec_config;
 	int num_fifos;
