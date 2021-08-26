@@ -71,6 +71,9 @@ DECLARE_TR_CTX(zephyr_tr, SOF_UUID(zephyr_uuid), LOG_LEVEL_INFO);
 __section(".heap_mem") static uint8_t __aligned(64) heapmem[HEAPMEM_SIZE];
 
 #else
+#define HEAPMEM_SIZE		HEAP_BUFFER_SIZE
+
+#define HEAP_RUNTIME_SHARED_SIZE	0x10000
 
 #define HEAPMEM_SHARED_SIZE	(HEAP_SYSTEM_SIZE + HEAP_RUNTIME_SIZE + \
 				HEAP_RUNTIME_SHARED_SIZE + HEAP_SYSTEM_SHARED_SIZE)
