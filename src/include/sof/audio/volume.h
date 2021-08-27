@@ -89,6 +89,12 @@ typedef uint32_t (*vol_zc_func)(const struct audio_stream *source,
 				uint32_t frames, int64_t *prev_sum);
 
 /**
+ * \brief Function for volume ramp shape function
+ */
+
+typedef int32_t (*vol_ramp_func)(struct comp_dev *dev, int32_t ramp_time, int channel);
+
+/**
  * \brief Volume component private data.
  *
  * Gain amplitude value is between 0 (mute) ... 2^16 (0dB) ... 2^24 (~+48dB).
@@ -112,8 +118,9 @@ struct vol_data {
 	bool muted[SOF_IPC_MAX_CHANNELS];	/**< set if channel is muted */
 	bool vol_ramp_active;			/**< set if volume is ramped */
 	bool ramp_finished;			/**< control ramp launch */
-	vol_scale_func scale_vol;	/**< volume processing function */
-	vol_zc_func zc_get; /**< function getting nearest zero crossing frame */
+	vol_scale_func scale_vol;		/**< volume processing function */
+	vol_zc_func zc_get;			/**< function getting nearest zero crossing frame */
+	vol_ramp_func ramp_func;		/**< function for ramp shape */
 };
 
 /** \brief Volume processing functions map. */
