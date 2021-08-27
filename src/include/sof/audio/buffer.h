@@ -17,6 +17,7 @@
 #include <sof/lib/cache.h>
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
+#include <sof/coherent.h>
 #include <sof/math/numbers.h>
 #include <sof/spinlock.h>
 #include <sof/string.h>
@@ -83,9 +84,21 @@ extern struct tr_ctx buffer_tr;
 #define BUFF_PARAMS_RATE	BIT(2)
 #define BUFF_PARAMS_CHANNELS	BIT(3)
 
-/* audio component buffer - connects 2 audio components together in pipeline */
+/*
+ * audio component buffer - connects 2 audio components together in pipeline.
+ *
+ * The buffer is a hot structure that must be shared on certain cache
+ * incoherent architectures.
+ *
+ * Access flow (on cache incoherent architectures only)
+ * 1) buffer acquired by using uncache cache coherent pointer.
+ * 2) buffer is invalidated after lock acquired.
+ * 3) buffer is safe to use cached pointer for access.
+ * 4) release buffer cached pointer
+ * 5) write back cached data and release lock using uncache pointer.
+ */
 struct comp_buffer {
-	spinlock_t *lock;		/* locking mechanism */
+	struct coherent c;
 
 	/* data buffer */
 	struct audio_stream stream;
@@ -95,7 +108,6 @@ struct comp_buffer {
 	uint32_t pipeline_id;
 	uint32_t caps;
 	uint32_t core;
-	bool inter_core; /* true if connected to a comp from another core */
 	struct tr_ctx tctx;			/* trace settings */
 
 	/* connected components */
@@ -173,7 +185,7 @@ bool buffer_params_match(struct comp_buffer *buffer, struct sof_ipc_stream_param
 
 static inline void buffer_stream_invalidate(struct comp_buffer *buffer, uint32_t bytes)
 {
-	if (!buffer->inter_core)
+	if (!is_coherent_shared(buffer, c))
 		return;
 
 	audio_stream_invalidate(&buffer->stream, bytes);
@@ -181,7 +193,7 @@ static inline void buffer_stream_invalidate(struct comp_buffer *buffer, uint32_t
 
 static inline void buffer_stream_writeback(struct comp_buffer *buffer, uint32_t bytes)
 {
-	if (!buffer->inter_core)
+	if (!is_coherent_shared(buffer, c))
 		return;
 
 	audio_stream_writeback(&buffer->stream, bytes);
@@ -196,7 +208,7 @@ static inline void buffer_stream_writeback(struct comp_buffer *buffer, uint32_t 
  */
 static inline void buffer_lock(struct comp_buffer *buffer, uint32_t *flags)
 {
-	if (!buffer->inter_core) {
+	if (!is_coherent_shared(buffer, c)) {
 		/* Ignored by buffer_unlock() below, silences "may be
 		 * used uninitialized" warning.
 		 */
@@ -205,7 +217,7 @@ static inline void buffer_lock(struct comp_buffer *buffer, uint32_t *flags)
 	}
 
 	/* Expands to: *flags = ... */
-	spin_lock_irq(buffer->lock, *flags);
+	spin_lock_irq(&buffer->c.lock, *flags);
 
 	/* invalidate in case something has changed during our wait */
 	dcache_invalidate_region(uncache_to_cache(buffer), sizeof(*buffer));
@@ -221,23 +233,46 @@ static inline void buffer_lock(struct comp_buffer *buffer, uint32_t *flags)
  */
 static inline void buffer_unlock(struct comp_buffer *buffer, uint32_t flags)
 {
-	if (!buffer->inter_core)
+	if (!is_coherent_shared(buffer, c))
 		return;
-
-	/* save lock pointer to avoid memory access after cache flushing */
-	spinlock_t *lock = buffer->lock;
 
 	/* wtb and inv to avoid buffer locking in read only situations */
 	dcache_writeback_invalidate_region(uncache_to_cache(buffer), sizeof(*buffer));
 
-	spin_unlock_irq(lock, flags);
+	spin_unlock_irq(&buffer->c.lock, flags);
+}
+
+__must_check static inline struct comp_buffer *buffer_acquire(struct comp_buffer *buffer)
+{
+	struct coherent *c = coherent_acquire(&buffer->c, sizeof(*buffer));
+
+	return container_of(c, struct comp_buffer, c);
+}
+
+static inline struct comp_buffer *buffer_release(struct comp_buffer *buffer)
+{
+	struct coherent *c = coherent_release(&buffer->c, sizeof(*buffer));
+
+	return container_of(c, struct comp_buffer, c);
+}
+
+__must_check static inline struct comp_buffer *buffer_acquire_irq(struct comp_buffer *buffer)
+{
+	struct coherent *c = coherent_acquire_irq(&buffer->c, sizeof(*buffer));
+
+	return container_of(c, struct comp_buffer, c);
+}
+
+static inline struct comp_buffer *buffer_release_irq(struct comp_buffer *buffer)
+{
+	struct coherent *c = coherent_release_irq(&buffer->c, sizeof(*buffer));
+
+	return container_of(c, struct comp_buffer, c);
 }
 
 static inline void buffer_reset_pos(struct comp_buffer *buffer, void *data)
 {
-	uint32_t flags = 0;
-
-	buffer_lock(buffer, &flags);
+	buffer = buffer_acquire_irq(buffer);
 
 	/* reset rw pointers and avail/free bytes counters */
 	audio_stream_reset(&buffer->stream);
@@ -245,11 +280,10 @@ static inline void buffer_reset_pos(struct comp_buffer *buffer, void *data)
 	/* clear buffer contents */
 	buffer_zero(buffer);
 
-	buffer_unlock(buffer, flags);
+	buffer = buffer_release_irq(buffer);
 }
 
-static inline void buffer_init(struct comp_buffer *buffer, uint32_t size,
-			       uint32_t caps)
+static inline void buffer_init(struct comp_buffer *buffer, uint32_t size, uint32_t caps)
 {
 	buffer->caps = caps;
 
@@ -259,13 +293,11 @@ static inline void buffer_init(struct comp_buffer *buffer, uint32_t size,
 
 static inline void buffer_reset_params(struct comp_buffer *buffer, void *data)
 {
-	uint32_t flags = 0;
-
-	buffer_lock(buffer, &flags);
+	buffer = buffer_acquire_irq(buffer);
 
 	buffer->hw_params_configured = false;
 
-	buffer_unlock(buffer, flags);
+	buffer = buffer_release_irq(buffer);
 }
 
 #endif /* __SOF_AUDIO_BUFFER_H__ */

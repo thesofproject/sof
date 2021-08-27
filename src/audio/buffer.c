@@ -45,17 +45,8 @@ struct comp_buffer *buffer_alloc(uint32_t size, uint32_t caps, uint32_t align)
 		return NULL;
 	}
 
-	buffer->lock = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM,
-			       sizeof(*buffer->lock));
-	if (!buffer->lock) {
-		rfree(buffer);
-		tr_err(&buffer_tr, "buffer_alloc(): could not alloc lock");
-		return NULL;
-	}
-
 	buffer->stream.addr = rballoc_align(0, caps, size, align);
 	if (!buffer->stream.addr) {
-		rfree(buffer->lock);
 		rfree(buffer);
 		tr_err(&buffer_tr, "buffer_alloc(): could not alloc size = %u bytes of type = %u",
 		       size, caps);
@@ -63,10 +54,9 @@ struct comp_buffer *buffer_alloc(uint32_t size, uint32_t caps, uint32_t align)
 	}
 
 	buffer_init(buffer, size, caps);
-
+	coherent_init(buffer, c);
 	list_init(&buffer->source_list);
 	list_init(&buffer->sink_list);
-	spinlock_init(buffer->lock);
 
 	return buffer;
 }
@@ -145,7 +135,7 @@ int buffer_set_params(struct comp_buffer *buffer, struct sof_ipc_stream_params *
 bool buffer_params_match(struct comp_buffer *buffer, struct sof_ipc_stream_params *params,
 			 uint32_t flag)
 {
-	assert(params && buffer);
+	assert(params);
 
 	if ((flag & BUFF_PARAMS_FRAME_FMT) &&
 	    buffer->stream.frame_fmt != params->frame_fmt)
@@ -177,14 +167,13 @@ void buffer_free(struct comp_buffer *buffer)
 	/* In case some listeners didn't unregister from buffer's callbacks */
 	notifier_unregister_all(NULL, buffer);
 
+	coherent_free(buffer, c);
 	rfree(buffer->stream.addr);
-	rfree(buffer->lock);
 	rfree(buffer);
 }
 
 void comp_update_buffer_produce(struct comp_buffer *buffer, uint32_t bytes)
 {
-	uint32_t flags = 0;
 	struct buffer_cb_transact cb_data = {
 		.buffer = buffer,
 		.transaction_amount = bytes,
@@ -202,14 +191,12 @@ void comp_update_buffer_produce(struct comp_buffer *buffer, uint32_t bytes)
 		return;
 	}
 
-	buffer_lock(buffer, &flags);
+	buffer = buffer_acquire_irq(buffer);
 
 	audio_stream_produce(&buffer->stream, bytes);
 
 	notifier_event(buffer, NOTIFIER_ID_BUFFER_PRODUCE,
 		       NOTIFIER_TARGET_CORE_LOCAL, &cb_data, sizeof(cb_data));
-
-	buffer_unlock(buffer, flags);
 
 	addr = buffer->stream.addr;
 
@@ -220,11 +207,12 @@ void comp_update_buffer_produce(struct comp_buffer *buffer, uint32_t bytes)
 	buf_dbg(buffer, "comp_update_buffer_produce(), ((buffer->r_ptr - buffer->addr) << 16 | (buffer->w_ptr - buffer->addr)) = %08x",
 		((char *)buffer->stream.r_ptr - addr) << 16 |
 		((char *)buffer->stream.w_ptr - addr));
+
+	buffer = buffer_release_irq(buffer);
 }
 
 void comp_update_buffer_consume(struct comp_buffer *buffer, uint32_t bytes)
 {
-	uint32_t flags = 0;
 	struct buffer_cb_transact cb_data = {
 		.buffer = buffer,
 		.transaction_amount = bytes,
@@ -242,14 +230,12 @@ void comp_update_buffer_consume(struct comp_buffer *buffer, uint32_t bytes)
 		return;
 	}
 
-	buffer_lock(buffer, &flags);
+	buffer = buffer_acquire_irq(buffer);
 
 	audio_stream_consume(&buffer->stream, bytes);
 
 	notifier_event(buffer, NOTIFIER_ID_BUFFER_CONSUME,
 		       NOTIFIER_TARGET_CORE_LOCAL, &cb_data, sizeof(cb_data));
-
-	buffer_unlock(buffer, flags);
 
 	addr = buffer->stream.addr;
 
@@ -259,4 +245,6 @@ void comp_update_buffer_consume(struct comp_buffer *buffer, uint32_t bytes)
 		(buffer->id << 16) | buffer->stream.size,
 		((char *)buffer->stream.r_ptr - addr) << 16 |
 		((char *)buffer->stream.w_ptr - addr));
+
+	buffer = buffer_release_irq(buffer);
 }
