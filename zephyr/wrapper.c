@@ -81,13 +81,14 @@ __section(".heap_mem") static uint8_t __aligned(64) heapmem[HEAPMEM_SIZE];
 #endif
 
 static uint8_t __aligned(PLATFORM_DCACHE_ALIGN)heapmem[HEAPMEM_SIZE];
-static struct k_heap sof_heap;
 #ifdef ENABLE_CACHED_HEAP
 static uint8_t __aligned(PLATFORM_DCACHE_ALIGN)heapmem_shared[HEAPMEM_SHARED_SIZE];
 static struct k_heap sof_heap_shared;
 #endif
 
 #endif
+
+static struct k_heap sof_heap;
 
 static int statics_init(const struct device *unused)
 {
