@@ -130,3 +130,9 @@ SectionVendorTokens."sof_hda_tokens" {
 	SOF_TKN_INTEL_HDA_RATE			"1500"
 	SOF_TKN_INTEL_HDA_CH			"1501"
 }
+
+SectionVendorTokens."sof_afe_tokens" {
+	SOF_TKN_MEDIATEK_AFE_RATE			"1600"
+	SOF_TKN_MEDIATEK_AFE_CH				"1601"
+	SOF_TKN_MEDIATEK_AFE_FORMAT			"1602"
+}
