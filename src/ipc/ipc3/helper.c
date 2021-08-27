@@ -522,7 +522,6 @@ int ipc_buffer_free(struct ipc *ipc, uint32_t buffer_id)
 static int ipc_comp_to_buffer_connect(struct ipc_comp_dev *comp,
 				      struct ipc_comp_dev *buffer)
 {
-	int ret;
 
 	if (!cpu_is_me(comp->core))
 		return ipc_process_on_core(comp->core, false);
@@ -532,27 +531,20 @@ static int ipc_comp_to_buffer_connect(struct ipc_comp_dev *comp,
 
 	/* check if it's a connection between cores */
 	if (buffer->core != comp->core) {
-		dcache_invalidate_region(uncache_to_cache(buffer->cb), sizeof(*buffer->cb));
 
-		buffer->cb->inter_core = true;
+		/* set the buffer as a coherent object */
+		coherent_shared(buffer->cb, c);
 
 		if (!comp->cd->is_shared)
 			comp->cd = comp_make_shared(comp->cd);
 	}
 
-	ret = pipeline_connect(comp->cd, buffer->cb,
-			       PPL_CONN_DIR_COMP_TO_BUFFER);
-
-	dcache_writeback_invalidate_region(uncache_to_cache(buffer->cb), sizeof(*buffer->cb));
-
-	return ret;
+	return pipeline_connect(comp->cd, buffer->cb, PPL_CONN_DIR_COMP_TO_BUFFER);
 }
 
 static int ipc_buffer_to_comp_connect(struct ipc_comp_dev *buffer,
 				      struct ipc_comp_dev *comp)
 {
-	int ret;
-
 	if (!cpu_is_me(comp->core))
 		return ipc_process_on_core(comp->core, false);
 
@@ -561,20 +553,15 @@ static int ipc_buffer_to_comp_connect(struct ipc_comp_dev *buffer,
 
 	/* check if it's a connection between cores */
 	if (buffer->core != comp->core) {
-		dcache_invalidate_region(uncache_to_cache(buffer->cb), sizeof(*buffer->cb));
 
-		buffer->cb->inter_core = true;
+		/* set the buffer as a coherent object */
+		coherent_shared(buffer->cb, c);
 
 		if (!comp->cd->is_shared)
 			comp->cd = comp_make_shared(comp->cd);
 	}
 
-	ret = pipeline_connect(comp->cd, buffer->cb,
-			       PPL_CONN_DIR_BUFFER_TO_COMP);
-
-	dcache_writeback_invalidate_region(uncache_to_cache(buffer->cb), sizeof(*buffer->cb));
-
-	return ret;
+	return pipeline_connect(comp->cd, buffer->cb, PPL_CONN_DIR_BUFFER_TO_COMP);
 }
 
 int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
