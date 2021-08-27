@@ -13,6 +13,7 @@
 #include <sof/ipc/msg.h>
 #include <sof/ipc/driver.h>
 #include <sof/lib/dai.h>
+#include <sof/drivers/afe-dai.h>
 #include <sof/drivers/edma.h>
 #include <errno.h>
 #include <stdbool.h>
@@ -68,6 +69,11 @@ int dai_config_dma_channel(struct comp_dev *dev, void *spec_config)
 	case SOF_DAI_AMD_DMIC:
 		channel = dai_get_handshake(dd->dai, dai->direction,
 					    dd->stream_id);
+		break;
+	case SOF_DAI_MEDIATEK_AFE:
+		handshake = dai_get_handshake(dd->dai, dai->direction,
+					      dd->stream_id);
+		channel = AFE_HS_GET_CHAN(handshake);
 		break;
 	default:
 		/* other types of DAIs not handled for now */
@@ -154,6 +160,8 @@ int ipc_dai_data_config(struct comp_dev *dev)
 	case SOF_DAI_AMD_DMIC:
 		dev->ipc_config.frame_fmt = SOF_IPC_FRAME_S32_LE;
 		dd->dma_buffer->stream.frame_fmt = dev->ipc_config.frame_fmt;
+		break;
+	case SOF_DAI_MEDIATEK_AFE:
 		break;
 	default:
 		/* other types of DAIs not handled for now */

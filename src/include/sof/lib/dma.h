@@ -63,6 +63,7 @@ struct comp_buffer;
 #define DMA_DEV_ESAI		BIT(7) /**< connectable to ESAI fifo */
 #define DMA_DEV_BT		BIT(8) /**< connectable to ACP BT I2S */
 #define DMA_DEV_SP		BIT(9) /**< connectable to ACP SP I2S */
+#define DMA_DEV_AFE_MEMIF	BIT(10) /**< connectable to AFE fifo */
 
 /* DMA access privilege flag */
 #define DMA_ACCESS_EXCLUSIVE	1
