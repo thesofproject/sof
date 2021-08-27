@@ -25,20 +25,35 @@
 #include <sof/ut.h>
 #include <ipc/stream.h>
 #include <ipc/topology.h>
+#include <ipc4/base-config.h>
 #include <user/trace.h>
 #include <stddef.h>
 #include <stdint.h>
 
 static const struct comp_driver comp_mixer;
 
+#if CONFIG_IPC_MAJOR_3
 /* bc06c037-12aa-417c-9a97-89282e321a76 */
 DECLARE_SOF_RT_UUID("mixer", mixer_uuid, 0xbc06c037, 0x12aa, 0x417c,
 		 0x9a, 0x97, 0x89, 0x28, 0x2e, 0x32, 0x1a, 0x76);
+#else
+/* mixout 3c56505a-24d7-418f-bddc-c1f5a3ac2ae0 */
+DECLARE_SOF_RT_UUID("mixer", mixer_uuid, 0x3c56505a, 0x24d7, 0x418f,
+		    0xbd, 0xdc, 0xc1, 0xf5, 0xa3, 0xac, 0x2a, 0xe0);
+
+/* mixin 39656eb2-3b71-4049-8d3f-f92cd5c43c09 */
+DECLARE_SOF_RT_UUID("mix_in", mixin_uuid, 0x39656eb2, 0x3b71, 0x4049,
+		    0x8d, 0x3f, 0xf9, 0x2c, 0xd5, 0xc4, 0x3c, 0x09);
+#endif
 
 DECLARE_TR_CTX(mixer_tr, SOF_UUID(mixer_uuid), LOG_LEVEL_INFO);
 
 /* mixer component private data */
 struct mixer_data {
+#if CONFIG_IPC_MAJOR_4
+	struct ipc4_base_module_cfg base_cfg;
+#endif
+
 	void (*mix_func)(struct comp_dev *dev, struct audio_stream *sink,
 			 const struct audio_stream **sources, uint32_t count,
 			 uint32_t frames);
@@ -114,6 +129,7 @@ static void mix_n_s32(struct comp_dev *dev, struct audio_stream *sink,
 }
 #endif /* CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE */
 
+#if CONFIG_IPC_MAJOR_3
 static struct comp_dev *mixer_new(const struct comp_driver *drv,
 				  struct comp_ipc_config *config,
 				  void *spec)
@@ -138,6 +154,7 @@ static struct comp_dev *mixer_new(const struct comp_driver *drv,
 	dev->state = COMP_STATE_READY;
 	return dev;
 }
+#endif
 
 static void mixer_free(struct comp_dev *dev)
 {
@@ -437,6 +454,7 @@ static int mixer_prepare(struct comp_dev *dev)
 	return downstream;
 }
 
+#if CONFIG_IPC_MAJOR_3
 static const struct comp_driver comp_mixer = {
 	.type	= SOF_COMP_MIXER,
 	.uid	= SOF_RT_UUID(mixer_uuid),
@@ -451,6 +469,151 @@ static const struct comp_driver comp_mixer = {
 		.reset		= mixer_reset,
 	},
 };
+#else
+static struct comp_dev *mixinout_new(const struct comp_driver *drv,
+				     struct comp_ipc_config *config,
+				     void *spec)
+{
+	struct comp_dev *dev;
+	struct mixer_data *md;
+
+	comp_cl_dbg(&comp_mixer, "mixinout_new()");
+
+	dev = comp_alloc(drv, sizeof(*dev));
+	if (!dev)
+		return NULL;
+	dev->ipc_config = *config;
+
+	md = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*md));
+	if (!md) {
+		rfree(dev);
+		return NULL;
+	}
+
+	dcache_invalidate_region(spec, sizeof(md->base_cfg));
+	memcpy_s(&md->base_cfg, sizeof(md->base_cfg), spec, sizeof(md->base_cfg));
+	comp_set_drvdata(dev, md);
+
+	dev->state = COMP_STATE_READY;
+	return dev;
+}
+
+static int mixin_trigger(struct comp_dev *dev, int cmd)
+{
+	int ret;
+
+	comp_dbg(dev, "mixin_trigger()");
+
+	ret = comp_set_state(dev, cmd);
+	if (ret < 0)
+		return ret;
+
+	if (ret == COMP_STATUS_STATE_ALREADY_SET)
+		return PPL_STATUS_PATH_STOP;
+
+	return ret;
+}
+
+/* do copy in mixer component */
+static int mixin_copy(struct comp_dev *dev)
+{
+	return 0;
+}
+
+/* params are derived from base config for ipc4 path */
+static int mixout_params(struct comp_dev *dev,
+			 struct sof_ipc_stream_params *params)
+{
+	struct mixer_data *md = comp_get_drvdata(dev);
+
+	memset(params, 0, sizeof(*params));
+	params->channels = md->base_cfg.audio_fmt.channels_count;
+	params->rate = md->base_cfg.audio_fmt.sampling_frequency;
+	params->sample_container_bytes = md->base_cfg.audio_fmt.depth;
+	params->sample_valid_bytes = md->base_cfg.audio_fmt.valid_bit_depth;
+	params->frame_fmt = dev->ipc_config.frame_fmt;
+	params->buffer_fmt = md->base_cfg.audio_fmt.interleaving_style;
+	params->buffer.size = md->base_cfg.ibs;
+
+	return mixer_params(dev, params);
+}
+
+/* the original pipeline is : buffer  -> mixin -> buffer -> mixout
+ * now convert it to : buffer -> mixer
+ */
+static int mixin_bind(struct comp_dev *dev, void *data)
+{
+	struct ipc4_module_bind_unbind *bu;
+	struct comp_buffer *source_buf;
+	struct comp_dev *sink;
+	int src_id, sink_id;
+
+	bu = (struct ipc4_module_bind_unbind *)data;
+	src_id = IPC4_COMP_ID(bu->header.r.module_id, bu->header.r.instance_id);
+	sink_id = IPC4_COMP_ID(bu->data.r.dst_module_id, bu->data.r.dst_instance_id);
+
+	/* mixin -> mixout */
+	if (dev->ipc_config.id == src_id) {
+		struct list_item *blist;
+
+		sink = ipc4_get_comp_dev(sink_id);
+		list_for_item(blist, &sink->bsource_list) {
+			source_buf = container_of(blist, struct comp_buffer, sink_list);
+			if (source_buf->source == dev) {
+				pipeline_disconnect(sink, source_buf, PPL_CONN_DIR_BUFFER_TO_COMP);
+				pipeline_disconnect(dev, source_buf, PPL_CONN_DIR_COMP_TO_BUFFER);
+				buffer_free(source_buf);
+				break;
+			}
+		}
+
+		source_buf = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
+		pipeline_disconnect(dev, source_buf, PPL_CONN_DIR_BUFFER_TO_COMP);
+		pipeline_connect(sink, source_buf, PPL_CONN_DIR_BUFFER_TO_COMP);
+	}
+
+	return 0;
+}
+
+static const struct comp_driver comp_mixin = {
+	.uid	= SOF_RT_UUID(mixin_uuid),
+	.tctx	= &mixer_tr,
+	.ops	= {
+		.create		= mixinout_new,
+		.free		= mixer_free,
+		.trigger	= mixin_trigger,
+		.copy		= mixin_copy,
+		.bind		= mixin_bind,
+	},
+};
+
+static SHARED_DATA struct comp_driver_info comp_mixin_info = {
+	.drv = &comp_mixin,
+};
+
+UT_STATIC void sys_comp_mixin_init(void)
+{
+	comp_register(platform_shared_get(&comp_mixin_info,
+					  sizeof(comp_mixin_info)));
+}
+
+DECLARE_MODULE(sys_comp_mixin_init);
+
+static const struct comp_driver comp_mixer = {
+	.type	= SOF_COMP_MIXER,
+	.uid	= SOF_RT_UUID(mixer_uuid),
+	.tctx	= &mixer_tr,
+	.ops	= {
+		.create		= mixinout_new,
+		.free		= mixer_free,
+		.params		= mixout_params,
+		.prepare	= mixer_prepare,
+		.trigger	= mixer_trigger,
+		.copy		= mixer_copy,
+		.reset		= mixer_reset,
+	},
+};
+#endif
 
 static SHARED_DATA struct comp_driver_info comp_mixer_info = {
 	.drv = &comp_mixer,
