@@ -18,6 +18,8 @@ static inline void icache_invalidate_region(void *addr, size_t size) {}
 static inline void dcache_writeback_invalidate_region(void *addr,
 	size_t size) {}
 
+#define DCACHE_LINE_SIZE 64
+
 #endif /* __ARCH_LIB_CACHE_H__ */
 
 #else
