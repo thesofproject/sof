@@ -600,10 +600,6 @@ static inline int audio_stream_set_zero(struct audio_stream *buffer,
 	uint32_t head_size = bytes;
 	uint32_t tail_size = 0;
 
-	/* check for overrun */
-	if (audio_stream_get_free_bytes(buffer) < bytes)
-		return 1;
-
 	/* check for potential wrap */
 	if ((char *)buffer->w_ptr + bytes > (char *)buffer->end_addr) {
 		head_size = (char *)buffer->end_addr - (char *)buffer->w_ptr;

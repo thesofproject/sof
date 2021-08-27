@@ -337,17 +337,24 @@ static int mixer_copy(struct comp_dev *dev)
 
 	/* write zeros if all sources are inactive */
 	if (num_mix_sources == 0) {
-		uint32_t free_frames;
+		uint32_t free_frames, free_bytes;
+
 		sink = buffer_acquire(sink);
 		free_frames = audio_stream_get_free_frames(&sink->stream);
 		frames = MIN(frames, free_frames);
 		sink_bytes = frames * audio_stream_frame_bytes(&sink->stream);
+		free_bytes = audio_stream_get_free_bytes(&sink->stream);
+
+		/* check for overrun */
+		if (free_bytes < sink_bytes) {
+			sink = buffer_release(sink);
+			return 0;
+		}
 		sink = buffer_release(sink);
 
-		if (!audio_stream_set_zero(&sink->stream, sink_bytes)) {
-			buffer_writeback(sink, sink_bytes);
-			comp_update_buffer_produce(sink, sink_bytes);
-		}
+		audio_stream_set_zero(&sink->stream, sink_bytes);
+		buffer_writeback(sink, sink_bytes);
+		comp_update_buffer_produce(sink, sink_bytes);
 
 		return 0;
 	}
@@ -358,16 +365,18 @@ static int mixer_copy(struct comp_dev *dev)
 	for (i = 0; i < num_mix_sources; i++) {
 		uint32_t avail_frames;
 		sources[i] = buffer_acquire(sources[i]);
-		avail_frames = audio_stream_avail_frames(sources_stream[i],
+		avail_frames = audio_stream_avail_frames(&sources[i]->stream,
 							 &sink->stream);
-		frames = MIN(frames, avail_frames);
 		sources[i] = buffer_release(sources[i]);
+		frames = MIN(frames, avail_frames);
 	}
 
 	/* Every source has the same format, so calculate bytes based
 	 * on the first one.
 	 */
-	source_bytes = frames * audio_stream_frame_bytes(sources_stream[0]);
+	sources[0] = buffer_acquire(sources[0]);
+	source_bytes = frames * audio_stream_frame_bytes(&sources[0]->stream);
+	sources[0] = buffer_release(sources[0]);
 	sink_bytes = frames * audio_stream_frame_bytes(&sink->stream);
 
 	sink = buffer_release(sink);
