@@ -14,6 +14,7 @@
  *          Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */
 
+#include <sof/audio/coefficients/volume/windows_fade.h>
 #include <sof/audio/component.h>
 #include <sof/audio/format.h>
 #include <sof/audio/pipeline.h>
@@ -208,6 +209,40 @@ static void vol_sync_host(struct comp_dev *dev, unsigned int num_channels)
 }
 
 /**
+ * \brief Calculate linear ramp function
+ * \param[in,out] dev Component data: ramp start gain, actual gain
+ * \param[in] ramp_time Time spent since ramp start as milliseconds Q29.3
+ * \param[in] channel Current channel to update
+ */
+static int32_t volume_linear_ramp(struct comp_dev *dev, int32_t ramp_time, int channel)
+{
+	struct vol_data *cd = comp_get_drvdata(dev);
+
+	return cd->rvolume[channel] + ramp_time * cd->ramp_coef[channel];
+}
+
+#if CONFIG_COMP_VOLUME_WINDOWS_FADE
+/**
+ * \brief Calculate windows fade ramp function
+ * \param[in,out] dev Component data: target gain, ramp start gain, ramp duration
+ * \param[in] ramp_time Time spent since ramp start as milliseconds Q29.3
+ * \param[in] channel Current channel to update
+ */
+
+static int32_t volume_windows_fade_ramp(struct comp_dev *dev, int32_t ramp_time, int channel)
+{
+	struct vol_data *cd = comp_get_drvdata(dev);
+	int32_t time_ratio; /* Q2.30 */
+	int32_t pow_value; /* Q2.30 */
+	int32_t volume_delta = cd->tvolume[channel] - cd->rvolume[channel]; /* Q16.16 */
+
+	time_ratio = (((int64_t)ramp_time) << 30) / (cd->ipc_config.initial_ramp << 3);
+	pow_value = volume_pow_175(time_ratio);
+	return cd->rvolume[channel] + Q_MULTSR_32X32((int64_t)volume_delta, pow_value, 16, 30, 16);
+}
+#endif
+
+/**
  * \brief Ramps volume changes over time.
  * \param[in,out] dev Volume base component device.
  */
@@ -252,7 +287,7 @@ static void volume_ramp(struct comp_dev *dev)
 		 * calculated from previous gain and ramp time. The slope
 		 * coefficient is calculated in volume_set_chan().
 		 */
-		vol = cd->rvolume[i] + ramp_time * cd->ramp_coef[i];
+		vol = cd->ramp_func(dev, ramp_time, i);
 		if (cd->volume[i] < cd->tvolume[i]) {
 			/* ramp up, check if ramp completed */
 			if (vol >= cd->tvolume[i] || vol >= cd->vol_max) {
@@ -331,13 +366,11 @@ static struct comp_dev *volume_new(const struct comp_driver *drv,
 	dev = comp_alloc(drv, sizeof(*dev));
 	if (!dev)
 		return NULL;
-	dev->ipc_config = *config;
 
+	dev->ipc_config = *config;
 	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
-	if (!cd) {
-		rfree(dev);
-		return NULL;
-	}
+	if (!cd)
+		goto fail;
 
 	comp_set_drvdata(dev, cd);
 	cd->ipc_config = *vol;
@@ -385,6 +418,21 @@ static struct comp_dev *volume_new(const struct comp_driver *drv,
 		cd->muted[i] = false;
 	}
 
+	switch (vol->ramp) {
+	case SOF_VOLUME_LINEAR:
+	case SOF_VOLUME_LINEAR_ZC:
+		cd->ramp_func = &volume_linear_ramp;
+		break;
+#if CONFIG_COMP_VOLUME_WINDOWS_FADE
+	case SOF_VOLUME_WINDOWS_FADE:
+		cd->ramp_func = &volume_windows_fade_ramp;
+		break;
+#endif
+	default:
+		comp_err(dev, "volume_new(): invalid ramp type %d", vol->ramp);
+		goto cd_fail;
+	}
+
 	reset_state(cd);
 	comp_info(dev, "vol->initial_ramp = %d, vol->ramp = %d, vol->min_value = %d, vol->max_value = %d",
 		  vol->initial_ramp, vol->ramp,
@@ -392,6 +440,12 @@ static struct comp_dev *volume_new(const struct comp_driver *drv,
 
 	dev->state = COMP_STATE_READY;
 	return dev;
+
+cd_fail:
+	rfree(cd);
+fail:
+	rfree(dev);
+	return NULL;
 }
 
 /**
@@ -450,9 +504,8 @@ static inline int volume_set_chan(struct comp_dev *dev, int chan,
 	cd->vol_ramp_elapsed_frames = 0;
 
 	/* Check ramp type */
-	switch (cd->ipc_config.ramp) {
-	case SOF_VOLUME_LINEAR:
-	case SOF_VOLUME_LINEAR_ZC:
+	if (cd->ipc_config.ramp == SOF_VOLUME_LINEAR ||
+	    cd->ipc_config.ramp == SOF_VOLUME_LINEAR_ZC) {
 		/* Get volume transition delta and absolute value */
 		delta = cd->tvolume[chan] - cd->volume[chan];
 		delta_abs = ABS(delta);
@@ -494,15 +547,7 @@ static inline int volume_set_chan(struct comp_dev *dev, int chan,
 			coef = -coef;
 
 		cd->ramp_coef[chan] = coef;
-		comp_dbg(dev, "cd->ramp_coef[%d] = %d", chan,
-			 cd->ramp_coef[chan]);
-		break;
-	case SOF_VOLUME_LOG:
-	case SOF_VOLUME_LOG_ZC:
-	default:
-		comp_err(dev, "volume_set_chan(): invalid ramp type %d",
-			 cd->ipc_config.ramp);
-		return -EINVAL;
+		comp_dbg(dev, "cd->ramp_coef[%d] = %d", chan, cd->ramp_coef[chan]);
 	}
 
 	return 0;
@@ -849,6 +894,12 @@ static int volume_prepare(struct comp_dev *dev)
 	cd->zc_get = vol_get_zc_function(dev);
 	if (!cd->zc_get) {
 		comp_err(dev, "volume_prepare(): invalid cd->zc_get");
+		ret = -EINVAL;
+		goto err;
+	}
+
+	if (!cd->ramp_func) {
+		comp_err(dev, "volume_prepare(): invalid cd->ramp_func");
 		ret = -EINVAL;
 		goto err;
 	}

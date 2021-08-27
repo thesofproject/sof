@@ -20,6 +20,20 @@ config COMP_VOLUME
 	help
 	  Select for Volume component
 
+if COMP_VOLUME
+
+config COMP_VOLUME_WINDOWS_FADE
+       bool "Windows Fade shape volume transitions support"
+       help
+         This option enables volume ramp shape that follows
+	 power of 1.75. The shape is not linear, not logarithmic.
+	 The power function uses a lookup table that consumes
+	 256 bytes. The topology must set volume ramp token to
+	 SOF_VOLUME_WINDOWS_FADE for the volume instance to use
+	 this ramp shape.
+
+endif # volume
+
 config COMP_SRC
 	bool "SRC component"
 	default y
