@@ -18,6 +18,7 @@
 
 #include <ipc/dai-intel.h>
 #include <ipc/dai-imx.h>
+#include <ipc/dai-mediatek.h>
 #include <ipc/header.h>
 #include <stdint.h>
 
@@ -70,7 +71,8 @@ enum sof_ipc_dai_type {
 	SOF_DAI_IMX_ESAI,               /**< i.MX ESAI */
 	SOF_DAI_AMD_BT,			/**< Amd BT */
 	SOF_DAI_AMD_SP,			/**< Amd SP */
-	SOF_DAI_AMD_DMIC		/**< Amd DMIC */
+	SOF_DAI_AMD_DMIC,		/**< Amd DMIC */
+	SOF_DAI_MEDIATEK_AFE            /**< Mtk AFE */
 };
 
 /* general purpose DAI configuration */
@@ -95,6 +97,7 @@ struct sof_ipc_dai_config {
 		struct sof_ipc_dai_alh_params alh;
 		struct sof_ipc_dai_esai_params esai;
 		struct sof_ipc_dai_sai_params sai;
+		struct sof_ipc_dai_afe_params afe;
 	};
 } __attribute__((packed, aligned(4)));
 
