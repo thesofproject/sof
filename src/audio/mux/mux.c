@@ -173,7 +173,8 @@ static struct comp_dev *mux_new(const struct comp_driver *drv,
 		return NULL;
 	dev->ipc_config = *config;
 
-	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+	/* allocate quite a big buffer, use rballoc to make sure it will succeed */
+	cd = rballoc(0, SOF_MEM_CAPS_RAM,
 		     sizeof(*cd) + MUX_MAX_STREAMS * sizeof(struct mux_stream_data));
 	if (!cd) {
 		rfree(dev);
