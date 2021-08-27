@@ -11,6 +11,9 @@
 
 #if !defined(LINKER)
 
+/* callers must check/use the return value */
+#define __must_check __attribute__((warn_unused_result))
+
 /* Align the number to the nearest alignment value */
 #define IS_ALIGNED(size, alignment) ((size) % (alignment) == 0)
 
