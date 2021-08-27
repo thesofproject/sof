@@ -155,7 +155,9 @@ struct ipc_comp_dev *ipc_get_ppl_comp(struct ipc *ipc,
 			buffer = buffer_from_list
 					(comp_buffer_list(icd->cd, dir)->next,
 					 struct comp_buffer, dir);
+			buffer = buffer_acquire(buffer);
 			buff_comp = buffer_get_comp(buffer, dir);
+			buffer = buffer_release(buffer);
 			if (buff_comp &&
 			    dev_comp_pipe_id(buff_comp) != pipeline_id)
 				return icd;
