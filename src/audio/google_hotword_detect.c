@@ -86,8 +86,8 @@ static void notify_kpb(const struct comp_dev *dev)
 static struct comp_dev *ghd_create(const struct comp_driver *drv,
 				   struct sof_ipc_comp *comp_template)
 {
-	struct comp_dev *dev = NULL;
-	struct comp_data *cd = NULL;
+	struct comp_dev *dev;
+	struct comp_data *cd;
 	struct sof_ipc_comp_process *comp;
 	int ret;
 
@@ -197,7 +197,7 @@ static int ghd_setup_model(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	void *model;
-	size_t size = 0;
+	size_t size;
 	int ret;
 
 	/* Avoid the CRC calculation since it takes too long and causes XRUN.
@@ -383,8 +383,7 @@ static int ghd_copy(struct comp_dev *dev)
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *source;
 	struct audio_stream *stream;
-	uint32_t flags = 0;
-	uint32_t bytes, tail_bytes, head_bytes = 0;
+	uint32_t bytes, flags, tail_bytes, head_bytes = 0;
 	int ret;
 
 	/* Check for new model */
