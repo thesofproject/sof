@@ -149,13 +149,13 @@ define(`D_DAI', `SectionDAI."'N_DAI`" {'
 
 dnl DAI Config)
 define(`N_DAI_CONFIG', `DAICONFIG.'$1)
-dnl DAI_CONFIG(type, idx, link_id, name, sai_config/esai_config/ssp_config/dmic_config)
+dnl DAI_CONFIG(type, idx, link_id, name, sai_config/esai_config/ssp_config/dmic_config/afe_config)
 define(`DO_DAI_CONFIG',
 `SectionHWConfig."'$1$2`" {'
 `'
 `	id		"'$3`"'
 `'
-`	ifelse($1, `SSP', $5, $1, `HDA', $5, $1, `ALH', $5, $1, `ESAI', $5, $1, `SAI', $5, `}')'
+`	ifelse($1, `SSP', $5, $1, `HDA', $5, $1, `ALH', $5, $1, `ESAI', $5, $1, `SAI', $5, $1, `AFE', $5, `}')'
 `ifelse($1, `DMIC', $5, `')'
 `SectionVendorTuples."'N_DAI_CONFIG($1$2)`_tuples_common" {'
 `	tokens "sof_dai_tokens"'
