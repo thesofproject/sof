@@ -513,6 +513,7 @@ zephyr_library_sources(
 	# SOF core infrastructure - runs on top of Zephyr
 	${SOF_SRC_PATH}/init/init.c
 	${SOF_SRC_PATH}/init/ext_manifest.c
+	${SOF_SRC_PATH}/arch/xtensa/drivers/cache_attr.c
 	${SOF_SRC_PATH}/schedule/zephyr_domain.c
 	${SOF_SRC_PATH}/schedule/schedule.c
 	${SOF_SRC_PATH}/schedule/dma_single_chan_domain.c
