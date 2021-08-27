@@ -180,25 +180,7 @@ int comp_verify_params(struct comp_dev *dev, uint32_t flag,
 int comp_buffer_connect(struct comp_dev *comp, uint32_t comp_core,
 			struct comp_buffer *buffer, uint32_t buffer_core, uint32_t dir)
 {
-	int ret;
-
-	/* check if it's a connection between cores */
-	if (buffer_core != comp_core) {
-		dcache_invalidate_region(buffer, sizeof(*buffer));
-
-		buffer->inter_core = true;
-
-		if (!comp->is_shared) {
-			comp = comp_make_shared(comp);
-			if (!comp)
-				return -ENOMEM;
-		}
-	}
-
-	ret = pipeline_connect(comp, buffer, dir);
-	dcache_writeback_invalidate_region(buffer, sizeof(*buffer));
-
-	return ret;
+	return pipeline_connect(comp, buffer, dir);
 }
 
 int ipc_pipeline_complete(struct ipc *ipc, uint32_t comp_id)
