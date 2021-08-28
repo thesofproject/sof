@@ -580,6 +580,9 @@ static int eq_iir_verify_params(struct comp_dev *dev,
 	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
 				source_list);
 
+	sourceb = buffer_acquire(sourceb);
+	sinkb = buffer_acquire(sinkb);
+
 	/* we check whether we can support frame_fmt conversion (whether we have
 	 * such conversion function) due to source and sink buffer frame_fmt's.
 	 * If not, we will overwrite sink (playback) and source (capture) with
@@ -590,6 +593,9 @@ static int eq_iir_verify_params(struct comp_dev *dev,
 				       sinkb->stream.frame_fmt, fm_configured,
 				       ARRAY_SIZE(fm_configured)) ?
 				       BUFF_PARAMS_FRAME_FMT : 0;
+
+	sourceb = buffer_release(sourceb);
+	sinkb = buffer_release(sinkb);
 
 	ret = comp_verify_params(dev, buffer_flag, params);
 	if (ret < 0) {
@@ -725,6 +731,8 @@ static int eq_iir_copy(struct comp_dev *dev)
 	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer,
 				  sink_list);
 
+	sourceb = buffer_acquire(sourceb);
+
 	/* Check for changed configuration */
 	if (comp_is_new_data_blob_available(cd->model_handler)) {
 		cd->config = comp_get_data_blob(cd->model_handler, NULL, NULL);
@@ -734,6 +742,8 @@ static int eq_iir_copy(struct comp_dev *dev)
 			return ret;
 		}
 	}
+
+	sourceb = buffer_release(sourceb);
 
 	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
 				source_list);
@@ -772,6 +782,9 @@ static int eq_iir_prepare(struct comp_dev *dev)
 				  struct comp_buffer, sink_list);
 	sinkb = list_first_item(&dev->bsink_list,
 				struct comp_buffer, source_list);
+
+	sourceb = buffer_acquire(sourceb);
+	sinkb = buffer_acquire(sinkb);
 
 	/* get source data format */
 	source_format = sourceb->stream.frame_fmt;
@@ -817,9 +830,15 @@ static int eq_iir_prepare(struct comp_dev *dev)
 		}
 		comp_info(dev, "eq_iir_prepare(), pass-through mode.");
 	}
+
+	sourceb = buffer_release(sourceb);
+	sinkb = buffer_release(sinkb);
+
 	return 0;
 
 err:
+	sourceb = buffer_release(sourceb);
+	sinkb = buffer_release(sinkb);
 	comp_set_state(dev, COMP_TRIGGER_RESET);
 	return ret;
 }
