@@ -50,18 +50,18 @@ define(DMIC16KPROC_FILTER1, `eq_iir_coef_highpass_40hz_20db_16khz.m4')
 
 ifelse(PLATFORM, `tgl',
 `
-define(DMIC_48k_CORE_ID, `3')
-define(DMIC_16k_CORE_ID, `3')
-define(SSP0_CORE_ID, `0')
+define(DMIC_48k_CORE_ID, `0')
+define(DMIC_16k_CORE_ID, `0')
+define(SSP0_CORE_ID, `3')
 define(SSP1_CORE_ID, `1')
 define(SSP2_CORE_ID, `2')
 ')
 
 ifelse(PLATFORM, `adl',
 `
-define(DMIC_48k_CORE_ID, `3')
-define(DMIC_16k_CORE_ID, `3')
-define(SSP0_CORE_ID, `0')
+define(DMIC_48k_CORE_ID, `0')
+define(DMIC_16k_CORE_ID, `0')
+define(SSP0_CORE_ID, `3')
 define(SSP1_CORE_ID, `1')
 define(SSP2_CORE_ID, `2')
 ')
