@@ -50,7 +50,7 @@ static void scheduler_register(struct schedule_data *scheduler)
 
 	if (!*sch) {
 		/* init schedulers list */
-		*sch = rzalloc(SOF_MEM_ZONE_SYS_SHARED, 0, SOF_MEM_CAPS_RAM,
+		*sch = rzalloc(SOF_MEM_ZONE_SYS, 0, SOF_MEM_CAPS_RAM,
 			       sizeof(**sch));
 		list_init(&(*sch)->list);
 	}
