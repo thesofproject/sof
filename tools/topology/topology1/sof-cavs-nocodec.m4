@@ -49,14 +49,38 @@ define(DMIC16KPROC, `eq-iir-volume')
 define(DMICPROC_FILTER1, `eq_iir_coef_highpass_40hz_20db_48khz.m4')
 define(DMIC16KPROC_FILTER1, `eq_iir_coef_highpass_40hz_20db_16khz.m4')
 
-ifelse(NCORES, `4',
+ifelse(PLATFORM, `tgl',
 `
+define(DMIC_48k_CORE_ID, `0')
+define(DMIC_16k_CORE_ID, `0')
+define(SSP0_CORE_ID, `3')
+define(SSP1_CORE_ID, `2')
+define(SSP2_CORE_ID, `1')
+')
+
+ifelse(PLATFORM, `tgl-h',
+`
+define(DMIC_48k_CORE_ID, `0')
+define(DMIC_16k_CORE_ID, `0')
+define(SSP0_CORE_ID, `0')
+define(SSP1_CORE_ID, `1')
+define(SSP2_CORE_ID, `1')
+')
+
+ifelse(PLATFORM, `adl',
+`
+define(DMIC_48k_CORE_ID, `0')
+define(DMIC_16k_CORE_ID, `0')
+define(SSP0_CORE_ID, `3')
+define(SSP1_CORE_ID, `2')
+define(SSP2_CORE_ID, `1')
+')
+
 define(DMIC_48k_CORE_ID, `0')
 define(DMIC_16k_CORE_ID, `0')
 define(SSP0_CORE_ID, `0')
 define(SSP1_CORE_ID, `0')
 define(SSP2_CORE_ID, `0')
-')
 
 ifelse(NCORES, `2',
 `
