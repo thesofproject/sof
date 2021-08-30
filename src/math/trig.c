@@ -20,11 +20,9 @@
 const int32_t cordic_sine_cos_lut_q29fl	 =  Q_CONVERT_FLOAT(1.214505869895220, 29);
 /* 1686629713, deg = 90.000000	*/
 const int32_t cordic_sine_cos_piovertwo_q30fl  = Q_CONVERT_FLOAT(_M_PI / 2, 30);
-/* 421657428 , deg = 90.000000 */
-const int32_t cord_sincos_piovertwo_q28fl  = Q_CONVERT_FLOAT(_M_PI / 2, 28);
-/* 843314857,  deg = 90.000000	*/
-const int32_t cord_sincos_piovertwo_q29fl  = Q_CONVERT_FLOAT(_M_PI / 2, 29);
 /* arc trignometry constant*/
+/* 379625062,  deg = 81.0284683480568475 or round(1.4142135605216026*2^28) */
+const int32_t cord_arcsincos_q28fl  = Q_CONVERT_FLOAT(1.4142135605216026 / 2, 28);
 /**
  * CORDIC-based approximation of sine and cosine
  * \+----------+----------------------------------------+--------------------+-------------------+
@@ -36,10 +34,6 @@ const int32_t cord_sincos_piovertwo_q29fl  = Q_CONVERT_FLOAT(_M_PI / 2, 29);
  * \|1686629713| Q_CONVERT_FLOAT(1.5707963267341256, 30)|    89.9999999965181| 1.57079632673413  |
  * \+----------+----------------------------------------+--------------------+-------------------+
  */
-/* 379625062,  deg = 81.0284683480568475 or round(1.4142135605216026*2^28) */
-const int32_t cord_arcsincos_q28fl  = Q_CONVERT_FLOAT(1.4142135605216026 / 2, 28);
-/* 1073741824, deg = 57.2957795130823229 or round(1*2^30)*/
-const int32_t cord_arcsincos_q30fl  = Q_CONVERT_FLOAT(1.0000000000000000, 30);
 /**
  * \CORDIC-based approximation of sine, cosine and complex exponential
  */
@@ -49,6 +43,7 @@ void cordic_approx(int32_t th_rad_fxp, int32_t a_idx, int32_t *sign, int32_t *b_
 	int32_t b_idx;
 	int32_t xtmp;
 	int32_t ytmp;
+	int32_t negate;
 	*sign = 1;
 	/* Addition or subtraction by a multiple of pi/2 is done in the data type
 	 * of the input. When the fraction length is 29, then the quantization error
@@ -58,16 +53,16 @@ void cordic_approx(int32_t th_rad_fxp, int32_t a_idx, int32_t *sign, int32_t *b_
 	 * without overflow.Increase of fractionLength makes the addition or
 	 * subtraction of a multiple of pi/2 more precise
 	 */
-	if (th_rad_fxp > cord_sincos_piovertwo_q28fl) {
-		if ((th_rad_fxp - cord_sincos_piovertwo_q29fl) <= cord_sincos_piovertwo_q28fl) {
-			th_rad_fxp -= cord_sincos_piovertwo_q29fl;
+	if (th_rad_fxp > PIOVERTWO_Q4_28) {
+		if (th_rad_fxp <= THREEQUARTERSOFPI_Q3_29) {
+			th_rad_fxp -= PIOVERTWO_Q3_29;
 			*sign  = -1;
 		} else {
 			th_rad_fxp -= cordic_sine_cos_piovertwo_q30fl;
 		}
-	} else if (th_rad_fxp < -cord_sincos_piovertwo_q28fl) {
-		if ((th_rad_fxp + cord_sincos_piovertwo_q29fl) >= -cord_sincos_piovertwo_q28fl) {
-			th_rad_fxp += cord_sincos_piovertwo_q29fl;
+	} else if (th_rad_fxp < -PIOVERTWO_Q4_28) {
+		if (th_rad_fxp >= -THREEQUARTERSOFPI_Q3_29) {
+			th_rad_fxp += PIOVERTWO_Q3_29;
 			*sign  = -1;
 		} else {
 			th_rad_fxp += cordic_sine_cos_piovertwo_q30fl;
@@ -85,15 +80,10 @@ void cordic_approx(int32_t th_rad_fxp, int32_t a_idx, int32_t *sign, int32_t *b_
 	 * and those from the calculation
 	 */
 	for (b_idx = 0; b_idx < a_idx; b_idx++) {
-		if (th_rad_fxp < 0) {
-			th_rad_fxp += cordic_lookup[b_idx];
-			*xn += ytmp;
-			*b_yn -= xtmp;
-		} else {
-			th_rad_fxp -= cordic_lookup[b_idx];
-			*xn -= ytmp;
-			*b_yn += xtmp;
-		}
+		negate = (th_rad_fxp < 0) * 2 - 1;
+		th_rad_fxp += negate * cordic_lookup[b_idx];
+		*xn += negate * ytmp;
+		*b_yn -= negate * xtmp;
 		xtmp = *xn >> (b_idx + 1);
 		ytmp = *b_yn >> (b_idx + 1);
 	}
@@ -130,10 +120,10 @@ int32_t is_scalar_cordic_acos(int32_t cosvalue, int16_t numiters)
 	 */
 	if ((cosvalue >> 1) < cord_arcsincos_q28fl) {
 		x = 0;
-		y = cord_arcsincos_q30fl;
+		y = CORD_ARCSINCOS_Q2_30;
 		z = PI_DIV2_Q3_29;
 	} else {
-		x = cord_arcsincos_q30fl;
+		x = CORD_ARCSINCOS_Q2_30;
 		y = 0;
 		z = 0;
 	}
@@ -168,7 +158,7 @@ int32_t is_scalar_cordic_acos(int32_t cosvalue, int16_t numiters)
 			y += ydshift;
 		} else {
 			sign = (((x > cosvalue) && (y >= 0)) ||
-				((x < cosvalue) && (y < 0))) ? 1 : -1;
+				((x < cosvalue) && (y < 0))) * 2 - 1;
 			x = x - xdshift - sign * yshift;
 			y = y - ydshift + sign * xshift;
 			z += sign * cordic_ilookup[b_i];
@@ -210,10 +200,10 @@ int32_t is_scalar_cordic_asin(int32_t sinvalue, int16_t numiters)
 	 */
 	if ((sinvalue >> 1) > cord_arcsincos_q28fl) {
 		x = 0;
-		y = cord_arcsincos_q30fl;
+		y = CORD_ARCSINCOS_Q2_30;
 		z = PI_DIV2_Q3_29;
 	} else {
-		x = cord_arcsincos_q30fl;
+		x = CORD_ARCSINCOS_Q2_30;
 		y = 0;
 		z = 0;
 	}
@@ -248,7 +238,7 @@ int32_t is_scalar_cordic_asin(int32_t sinvalue, int16_t numiters)
 			y += ydshift;
 		} else {
 			sign = (((y >= sinvalue) && (x >= 0)) ||
-				((y < sinvalue) && (x < 0))) ? 1 : -1;
+				((y < sinvalue) && (x < 0))) * 2 - 1;
 			x = x - xdshift + sign * yshift;
 			y = y - ydshift - sign * xshift;
 			z -= sign * cordic_ilookup[b_i];
