@@ -15,7 +15,8 @@ include(`common/tlv.m4')
 include(`sof/tokens.m4')
 
 # Include DSP configuration
-include(`platform/intel/'PLATFORM`.m4')
+ifelse(PLATFORM, `tgl-h', `include(`platform/intel/tgl.m4')',
+       `include(`platform/intel/'PLATFORM`.m4')')
 
 # bxt has 2 cores but currently only one is enabled in the build
 ifelse(PLATFORM, `bxt', `define(NCORES, 1)')
@@ -24,6 +25,7 @@ ifelse(PLATFORM, `cml', `define(NCORES, 4)')
 ifelse(PLATFORM, `icl', `define(NCORES, 4)')
 ifelse(PLATFORM, `jsl', `define(NCORES, 2)')
 ifelse(PLATFORM, `tgl', `define(NCORES, 4)')
+ifelse(PLATFORM, `tgl-h', `define(NCORES, 2)')
 ifelse(PLATFORM, `ehl', `define(NCORES, 4)')
 ifelse(PLATFORM, `adl', `define(NCORES, 4)')
 
