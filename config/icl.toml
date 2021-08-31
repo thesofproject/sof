@@ -2,7 +2,6 @@ version = [1, 8]
 
 [adsp]
 name = "icl"
-machine_id = 9
 image_size = "0x300000"	# (47 + 1) bank * 64KB
 
 [[adsp.mem_zone]]

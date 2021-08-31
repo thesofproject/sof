@@ -2,7 +2,6 @@ version = [1, 0]  # use simple file write
 
 [adsp]
 name = "hsw"
-machine_id = 3
 
 [[adsp.mem_zone]]
 type = "IRAM"

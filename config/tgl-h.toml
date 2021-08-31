@@ -2,7 +2,6 @@ version = [2, 5]
 
 [adsp]
 name = "tgl"
-machine_id = 10
 image_size = "0x1F0000" # (30 + 1) bank * 64KB
 
 [[adsp.mem_zone]]

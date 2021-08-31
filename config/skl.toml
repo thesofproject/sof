@@ -2,7 +2,6 @@ version = [1, 5]
 
 [adsp]
 name = "skl"
-machine_id = 7
 image_size = "0x200000" # (30 + 2) bank * 64KB
 
 [[adsp.mem_zone]]

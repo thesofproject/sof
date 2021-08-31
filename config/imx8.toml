@@ -2,7 +2,6 @@ version = [1, 0]  # use simple file write
 
 [adsp]
 name = "imx8"
-machine_id = 12
 
 [[adsp.mem_zone]]
 type = "IRAM"

@@ -24,27 +24,6 @@ struct adsp;
 struct manifest;
 struct man_module;
 
-/* list of supported targets */
-enum machine_id {
-	MACHINE_BAYTRAIL	= 0,
-	MACHINE_CHERRYTRAIL,
-	MACHINE_BRASWELL,
-	MACHINE_HASWELL,
-	MACHINE_BROADWELL,
-	MACHINE_APOLLOLAKE,
-	MACHINE_KABYLAKE,
-	MACHINE_SKYLAKE,
-	MACHINE_CANNONLAKE,
-	MACHINE_ICELAKE,
-	MACHINE_TIGERLAKE,
-	MACHINE_SUECREEK,
-	MACHINE_IMX8,
-	MACHINE_IMX8X,
-	MACHINE_IMX8M,
-	MACHINE_MT8195,
-	MACHINE_MAX
-};
-
 /*
  * ELF module data
  */
@@ -171,7 +150,6 @@ struct adsp {
 	uint32_t image_size;
 	uint32_t dram_offset;
 
-	enum machine_id machine_id;
 	int (*write_firmware_ext_man)(struct image *image);
 	int (*write_firmware)(struct image *image);
 	int (*write_firmware_meu)(struct image *image);

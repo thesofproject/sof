@@ -287,7 +287,6 @@ static void dump_adsp(const struct adsp *adsp)
 
 	DUMP("\nadsp");
 	DUMP_KEY("name", "'%s'", adsp->name);
-	DUMP_KEY("machine_id", "%d", adsp->machine_id);
 	DUMP_KEY("image_size", "0x%x", adsp->image_size);
 	DUMP_KEY("dram_offset", "0x%x", adsp->dram_offset);
 	DUMP_KEY("exec_boot_ldr", "%d", adsp->exec_boot_ldr);
@@ -332,10 +331,6 @@ static int parse_adsp(const toml_table_t *toml, struct parse_ctx *pctx, struct a
 	ret = toml_rtos(raw, (char **)&out->name);
 	if (ret < 0)
 		return err_key_parse("name", NULL);
-
-	out->machine_id = parse_uint32_key(adsp, &ctx, "machine_id", -1, &ret);
-	if (ret < 0)
-		return ret;
 
 	out->image_size = parse_uint32_hex_key(adsp, &ctx, "image_size", 0, &ret);
 	if (ret < 0)
@@ -2110,7 +2105,8 @@ static int parse_adsp_config_v1_5(const toml_table_t *toml, struct adsp *out,
 	if (ret < 0)
 		return err_key_parse("adsp", NULL);
 
-	if (out->machine_id == MACHINE_SUECREEK) {
+	/* suecreek has dedicated manifest file */
+	if (!strcmp(out->name, "sue")) {
 		/* out free is done in client code */
 		out->man_v1_5_sue = malloc(sizeof(struct fw_image_manifest_v1_5_sue));
 		if (!out->man_v1_5_sue)
