@@ -486,11 +486,15 @@ void trace_on(void)
 	struct trace *trace = trace_get();
 	uint32_t flags;
 
-	spin_lock_irq(&trace->lock, flags);
-
-	trace->enable = 1;
+	/*
+	 * To avoid dead lock, we should not do this with trace->lock held,
+	 * as there is log tracing inside the dma_trace_on(), which will ask
+	 * for holding trace->lock also.
+	 */
 	dma_trace_on();
 
+	spin_lock_irq(&trace->lock, flags);
+	trace->enable = 1;
 	spin_unlock_irq(&trace->lock, flags);
 }
 
@@ -499,11 +503,15 @@ void trace_off(void)
 	struct trace *trace = trace_get();
 	uint32_t flags;
 
-	spin_lock_irq(&trace->lock, flags);
-
-	trace->enable = 0;
+	/*
+	 * To avoid dead lock, we should not do this with trace->lock held,
+	 * as there is log tracing inside the dma_trace_off(), which will ask
+	 * for holding trace->lock also.
+	 */
 	dma_trace_off();
 
+	spin_lock_irq(&trace->lock, flags);
+	trace->enable = 0;
 	spin_unlock_irq(&trace->lock, flags);
 }
 
