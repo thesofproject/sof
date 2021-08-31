@@ -134,6 +134,7 @@ static uint32_t parse_uint32_hex_key(const toml_table_t *table, struct parse_ctx
 	if (!raw) {
 		if (def < 0 || def > UINT32_MAX) {
 			*error = err_key_not_found(key);
+			return UINT32_MAX;
 		} else {
 			*error = 0;
 			return (uint32_t)def;
@@ -181,6 +182,7 @@ static uint32_t parse_uint32_key(const toml_table_t *table, struct parse_ctx *ct
 	if (!raw) {
 		if (def < 0 || def > UINT32_MAX) {
 			*error = err_key_not_found(key);
+			return UINT32_MAX;
 		} else {
 			*error = 0;
 			return (uint32_t)def;
