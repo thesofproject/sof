@@ -475,26 +475,42 @@ void dma_trace_flush(void *t)
 void dma_trace_on(void)
 {
 	struct dma_trace_data *trace_data = dma_trace_data_get();
+	uint32_t flags;
 
-	if (!trace_data || trace_data->enabled)
+	if (!trace_data)
 		return;
 
-	trace_data->enabled = 1;
+	spin_lock_irq(&trace_data->lock, flags);
+
+	if (trace_data->enabled)
+		goto finish;
+
 	schedule_task(&trace_data->dmat_work, DMA_TRACE_PERIOD,
 		      DMA_TRACE_PERIOD);
+	trace_data->enabled = 1;
 
+finish:
+	spin_unlock_irq(&trace_data->lock, flags);
 }
 
 void dma_trace_off(void)
 {
 	struct dma_trace_data *trace_data = dma_trace_data_get();
+	uint32_t flags;
 
-	if (!trace_data || !trace_data->enabled)
+	if (!trace_data)
 		return;
+
+	spin_lock_irq(&trace_data->lock, flags);
+
+	if (!trace_data->enabled)
+		goto finish;
 
 	schedule_task_cancel(&trace_data->dmat_work);
 	trace_data->enabled = 0;
 
+finish:
+	spin_unlock_irq(&trace_data->lock, flags);
 }
 
 static int dtrace_calc_buf_overflow(struct dma_trace_buf *buffer,
