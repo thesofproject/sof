@@ -293,8 +293,9 @@ void trace_log_filtered(bool send_atomic, const void *log_entry, const struct tr
 	uint64_t current_ts;
 #endif /* CONFIG_TRACE_FILTERING_ADAPTIVE */
 
-	if (!trace || !trace->enable)
+	if (!trace->enable) {
 		return;
+	}
 
 #if CONFIG_TRACE_FILTERING_VERBOSITY
 	if (!trace_filter_verbosity(lvl, ctx))
@@ -514,6 +515,7 @@ void trace_off(void)
 void trace_init(struct sof *sof)
 {
 	sof->trace = rzalloc(SOF_MEM_ZONE_SYS_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*sof->trace));
+	sof->trace->enable = 1;
 	sof->trace->pos = 0;
 #if CONFIG_TRACE_FILTERING_ADAPTIVE
 	sof->trace->user_filter_override = false;
