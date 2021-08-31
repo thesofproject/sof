@@ -486,11 +486,11 @@ void trace_on(void)
 	struct trace *trace = trace_get();
 	uint32_t flags;
 
-	spin_lock_irq(&trace->lock, flags);
-
-	trace->enable = 1;
+	/* should not do this with trace->lock held as there is trace calling internal */
 	dma_trace_on();
 
+	spin_lock_irq(&trace->lock, flags);
+	trace->enable = 1;
 	spin_unlock_irq(&trace->lock, flags);
 }
 
@@ -499,11 +499,11 @@ void trace_off(void)
 	struct trace *trace = trace_get();
 	uint32_t flags;
 
-	spin_lock_irq(&trace->lock, flags);
-
-	trace->enable = 0;
+	/* should not do this with trace->lock held as there is trace calling internal */
 	dma_trace_off();
 
+	spin_lock_irq(&trace->lock, flags);
+	trace->enable = 0;
 	spin_unlock_irq(&trace->lock, flags);
 }
 
