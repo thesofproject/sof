@@ -264,13 +264,13 @@ const int n_iomux = ARRAY_SIZE(iomux_data);
 
 #endif
 
-SHARED_DATA struct timer timer = {
+static SHARED_DATA struct timer timer = {
 	.id = TIMER3, /* external timer */
 	.irq = IRQ_EXT_TSTAMP0_LVL2,
 	.irq_name = irq_name_level2,
 };
 
-SHARED_DATA struct timer arch_timers[CONFIG_CORE_COUNT];
+static SHARED_DATA struct timer arch_timers[CONFIG_CORE_COUNT];
 
 #if CONFIG_DW_SPI
 

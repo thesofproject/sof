@@ -61,7 +61,7 @@ static const struct sof_ipc_fw_ready ready
 	.flags = DEBUG_SET_FW_READY_FLAGS,
 };
 
-SHARED_DATA struct timer timer = {
+static SHARED_DATA struct timer timer = {
 	.id = TIMER0,
 	.irq = IRQ_NUM_TIMER0,
 };
