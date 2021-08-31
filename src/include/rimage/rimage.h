@@ -234,22 +234,4 @@ int elf_read_section(const struct module *module, const char *name,
 int elf_validate_section(struct image *image, struct module *module,
 			 Elf32_Shdr *section, int index);
 
-/* supported machines */
-extern const struct adsp machine_byt;
-extern const struct adsp machine_cht;
-extern const struct adsp machine_bsw;
-extern const struct adsp machine_hsw;
-extern const struct adsp machine_bdw;
-extern const struct adsp machine_apl;
-extern const struct adsp machine_cnl;
-extern const struct adsp machine_icl;
-extern const struct adsp machine_jsl;
-extern const struct adsp machine_tgl;
-extern const struct adsp machine_sue;
-extern const struct adsp machine_skl;
-extern const struct adsp machine_kbl;
-extern const struct adsp machine_imx8;
-extern const struct adsp machine_imx8x;
-extern const struct adsp machine_imx8m;
-
 #endif
