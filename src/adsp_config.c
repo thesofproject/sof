@@ -169,8 +169,8 @@ static uint32_t parse_uint32_hex_key(const toml_table_t *table, struct parse_ctx
  * @param error code, 0 when success
  * @return default, parsed, or UINT32_MAX value
  */
-static int parse_uint32_key(const toml_table_t *table, struct parse_ctx *ctx, const char *key,
-			    int64_t def, int *error)
+static uint32_t parse_uint32_key(const toml_table_t *table, struct parse_ctx *ctx, const char *key,
+				 int64_t def, int *error)
 {
 	toml_raw_t raw;
 	int64_t val;
