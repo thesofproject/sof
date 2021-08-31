@@ -119,7 +119,7 @@ static int assert_everything_parsed(const toml_table_t *table, struct parse_ctx 
  * @param key field name
  * @param def is default value or -1 when value don't have default value
  * @param error code, 0 when success
- * @return default, parsed, or UINT32_MAX value
+ * @return default, parsed, or UINT32_MAX value for error cases
  */
 static uint32_t parse_uint32_hex_key(const toml_table_t *table, struct parse_ctx *ctx,
 				     const char *key, int64_t def, int *error)
@@ -167,7 +167,7 @@ static uint32_t parse_uint32_hex_key(const toml_table_t *table, struct parse_ctx
  * @param key field name
  * @param def is default value or -1 when value don't have default value
  * @param error code, 0 when success
- * @return default, parsed, or UINT32_MAX value
+ * @return default, parsed, or UINT32_MAX value for error cases
  */
 static uint32_t parse_uint32_key(const toml_table_t *table, struct parse_ctx *ctx, const char *key,
 				 int64_t def, int *error)
