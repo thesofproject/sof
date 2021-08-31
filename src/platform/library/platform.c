@@ -13,7 +13,7 @@
 #include <sof/lib/mailbox.h>
 #include <sof/lib/dai.h>
 
-SHARED_DATA struct timer timer = {};
+static SHARED_DATA struct timer timer = {};
 
 static uint8_t mailbox[MAILBOX_DSPBOX_SIZE +
 		       MAILBOX_HOSTBOX_SIZE +
