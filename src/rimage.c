@@ -142,7 +142,7 @@ int main(int argc, char *argv[])
 	/* find machine */
 	heap_adsp = malloc(sizeof(struct adsp));
 	if (!heap_adsp) {
-		fprintf(stderr, "error: cannot parse build version\n");
+		fprintf(stderr, "error: memory allocation for adsp struct failed\n");
 		return -ENOMEM;
 	}
 	image.adsp = heap_adsp;
