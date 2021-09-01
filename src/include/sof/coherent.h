@@ -63,13 +63,13 @@ struct coherent {
  * well as locking to manage shared access.
  */
 
-#if CONFIG_CAVS && CONFIG_CORE_COUNT > 1
+#if CONFIG_INCOHERENT
 __must_check static inline struct coherent *coherent_acquire(struct coherent *c,
 							     const size_t size)
 {
 	/* assert if someone passes a cache/local address in here. */
 	ADDR_IS_COHERENT(c);
-
+#error
 	/* this flavour should not be used in IRQ context */
 	CHECK_COHERENT_IRQ(c);
 
@@ -182,7 +182,7 @@ static inline struct coherent *coherent_release_irq(struct coherent *c, const si
 		ADDR_IS_COHERENT(object);					\
 		/* TODO static assert if we are not cache aligned */		\
 		spinlock_init(&object->member.lock);				\
-		object->member.shared = false	;				\
+		object->member.shared = false;				\
 		object->member.core = cpu_get_id();				\
 		list_init(&object->member.list);				\
 		/* wtb and inv local data to coherent object */			\
@@ -225,15 +225,20 @@ static inline struct coherent *coherent_release_irq(struct coherent *c, const si
  */
 __must_check static inline struct coherent *coherent_acquire(struct coherent *c, const size_t size)
 {
-	spin_lock(&c->lock);
+	if (c->shared)
+		spin_lock(&c->lock);
 	return c;
 }
 
 __must_check static inline struct coherent *coherent_try_acquire(struct coherent *c,
 								 const size_t size)
 {
-	int ret = spin_try_lock(&c->lock);
+	int ret;
 
+	if (!c->shared)
+		return c;
+
+	ret = spin_try_lock(&c->lock);
 	if (ret)
 		return c;
 
@@ -242,31 +247,36 @@ __must_check static inline struct coherent *coherent_try_acquire(struct coherent
 
 static inline struct coherent *coherent_release(struct coherent *c, const size_t size)
 {
-	spin_unlock(&c->lock);
+	if (c->shared)
+		spin_unlock(&c->lock);
 	return c;
 }
 
 __must_check static inline struct coherent *coherent_acquire_irq(struct coherent *c,
 								 const size_t size)
 {
-	spin_lock_irq(&c->lock, &c->flags);
+	if (c->shared)
+		spin_lock_irq(&c->lock, c->flags);
 	return c;
 }
 
 static inline struct coherent *coherent_release_irq(struct coherent *c, const size_t size)
 {
-	spin_unlock_irq(&c->lock, c->flags);
+	if (c->shared)
+		spin_unlock_irq(&c->lock, c->flags);
 	return c;
 }
 
-#define coherent_init(object, member)					\
-	do { \
+#define coherent_init(object, member)						\
+	do {									\
 		/* TODO static assert if we are not cache aligned */		\
 		spinlock_init(&object->member.lock);				\
 		object->member.shared = 0;					\
 		object->member.core = cpu_get_id();				\
-		list_init(&object->member.list)				\
+		list_init(&object->member.list);				\
 	} while (0)
+
+#define coherent_free(object, member)
 
 /* no function on cache coherent architectures */
 #define coherent_shared(object, member)
