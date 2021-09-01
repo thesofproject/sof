@@ -1,5 +1,6 @@
 /*
- * xtensa/coreasm.h -- assembler-specific definitions that depend on CORE configuration
+ * xtensa/coreasm.h -- assembler-specific definitions that depend on
+ * CORE configuration.
  *
  *  Source for configuration-independent binaries (which link in a
  *  configuration-specific HAL library) must NEVER include this file.
@@ -13,10 +14,8 @@
  *        here until we have a proper configuration-independent header file.
  */
 
-/* $Id: //depot/rel/Foxhill/dot.8/Xtensa/OS/include/xtensa/coreasm.h#1 $ */
-
 /*
- * Copyright (c) 2000-2014 Tensilica Inc.
+ * Copyright (c) 2000-2018 Cadence Design Systems, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -52,6 +51,7 @@
 #include <xtensa/config/core.h>
 #include <xtensa/config/specreg.h>
 #include <xtensa/config/system.h>
+#include <xtensa/xtensa-versions.h>
 
 /*
  *  Assembly-language specific definitions (assembly macros, etc.).
@@ -97,18 +97,23 @@
 	addi	\at, \at, 16	// no, increment result to upper 16 bits (of 32)
 	//srli	\as, \as, 16	// check upper half (shift right 16 bits)
 	extui	\as, \as, 16, 16	// check upper half (shift right 16 bits)
-1:	bltui	\as, 0x100, 1f	// is it one of the 8 lsbits? (if so, check lower 8 bits)
+1:
+	bltui	\as, 0x100, 1f	// is it one of the 8 lsbits? (if so, check lower 8 bits)
 	addi	\at, \at, 8	// no, increment result to upper 8 bits (of 16)
 	srli	\as, \as, 8	// shift right to check upper 8 bits
-1:	bltui	\as, 0x10, 1f	// is it one of the 4 lsbits? (if so, check lower 4 bits)
+1:
+	bltui	\as, 0x10, 1f	// is it one of the 4 lsbits? (if so, check lower 4 bits)
 	addi	\at, \at, 4	// no, increment result to upper 4 bits (of 8)
 	srli	\as, \as, 4	// shift right 4 bits to check upper half
-1:	bltui	\as, 0x4, 1f	// is it one of the 2 lsbits? (if so, check lower 2 bits)
+1:
+	bltui	\as, 0x4, 1f	// is it one of the 2 lsbits? (if so, check lower 2 bits)
 	addi	\at, \at, 2	// no, increment result to upper 2 bits (of 4)
 	srli	\as, \as, 2	// shift right 2 bits to check upper half
-1:	bltui	\as, 0x2, 1f	// is it the lsbit?
+1:
+	bltui	\as, 0x2, 1f	// is it the lsbit?
 	addi	\at, \at, 2	// no, increment result to upper bit (of 2)
-2:	addi	\at, \at, -1	// (from just above: add 1;  from beqz: return -1)
+2:
+	addi	\at, \at, -1	// (from just above: add 1;  from beqz: return -1)
 	//srli	\as, \as, 1
 1:				// done! \at contains index of msbit set (or -1 if none set)
 	.if	0x\ad - 0x\at	// destination different than \at ? (works because regs are a0-a15)
@@ -294,12 +299,12 @@
  *  crsil  --  conditional RSIL (read/set interrupt level)
  *
  *  Executes the RSIL instruction if it exists, else just reads PS.
- *  The RSIL instruction does not exist in the new exception architecture
- *  if the interrupt option is not selected.
+ *  The RSIL instruction does not exist in XEA2 if the interrupt
+ *  option is not selected.
  */
 
 	.macro	crsil	ar, newlevel
-#if XCHAL_HAVE_OLD_EXC_ARCH || XCHAL_HAVE_INTERRUPTS
+#if XCHAL_HAVE_INTERRUPTS
 	rsil	\ar, \newlevel
 #else
 	rsr.ps	\ar
@@ -460,9 +465,11 @@
 	bbsi.l	a0, 30, 2f		// branch if called with call12
 	call8	.L__wdwspill_assist16	// called with call8, only need another 8
 	retw
-1:	call12	.L__wdwspill_assist16	// called with call4, only need another 12
+1:
+	call12	.L__wdwspill_assist16	// called with call4, only need another 12
 	retw
-2:	call4	.L__wdwspill_assist16	// called with call12, only need another 4
+2:
+	call4	.L__wdwspill_assist16	// called with call12, only need another 4
 	retw
 #  elif XCHAL_NUM_AREGS == 64
 	entry	sp, 48
@@ -470,9 +477,11 @@
 	bbsi.l	a0, 30, 2f		// branch if called with call12
 	call4	.L__wdwspill_assist52	// called with call8, only need a call4
 	retw
-1:	call8	.L__wdwspill_assist52	// called with call4, only need a call8
+1:
+	call8	.L__wdwspill_assist52	// called with call4, only need a call8
 	retw
-2:	call12	.L__wdwspill_assist40	// called with call12, can skip a call12
+2:
+	call12	.L__wdwspill_assist40	// called with call12, can skip a call12
 	retw
 #  elif XCHAL_NUM_AREGS == 16
 	entry	sp, 16
@@ -480,8 +489,10 @@
 	bbsi.l	a0, 30, 2f	// branch if called with call12
 	movi	a7, 0		// called with call8
 	retw
-1:	movi	a11, 0		// called with call4
-2:	retw			// if called with call12, everything already spilled
+1:
+	movi	a11, 0		// called with call4
+2:
+	retw			// if called with call12, everything already spilled
 
 //	movi	a15, 0		// trick to spill all but the direct caller
 //	j	1f
@@ -898,6 +909,9 @@
 	 */
 	.macro	abi_entry_size locsize=0, callsize=0
 #if XCHAL_HAVE_WINDOWED && !__XTENSA_CALL0_ABI__
+# if XCHAL_HAVE_XEA3
+	.set	.callsz, 32	/* call8 only */
+# else
 	.ifeq	\callsize
 	 .set	.callsz, 16
 	.else
@@ -915,6 +929,7 @@
 	  .endif
 	 .endif
 	.endif
+# endif
 	.set	.locsz, .callsz + ((\locsize + 15) & -16)
 #else
 	.set	.callsz, \callsize
@@ -1018,6 +1033,16 @@
 #endif
 	.endm
 
+#if XCHAL_HAVE_XEA3 && XCHAL_HW_MIN_VERSION == XTENSA_HWVERSION_RH_2016_0
+	.macro halt	imm=0
+.Lhalt\@:	j	.Lhalt\@
+	.endm
+	.macro halt.n
+	halt 0
+	.endm
+#endif
+
+
 /*
  * These macros are internal, subject to change, and should not be used in
  * any new code.
@@ -1054,6 +1079,123 @@
 #  define DECLFUNC(x)  _SYMT(x)
 # endif
 #endif
+
+
+/*
+ * Macros to support virtual ops.
+ */
+#include <xtensa/tie/xt_virtualops.h>
+
+#ifndef XT_ADD_A
+	.macro add.a a,b,c ; add \a, \b, \c ; .endm
+#endif
+
+#ifndef XT_ADDI_A
+	.macro addi.a a,b,c ; addi \a, \b, \c ; .endm
+#endif
+
+#ifndef XT_ADDMI_A
+	.macro addmi.a a,b,c ; addmi \a, \b, \c ; .endm
+#endif
+
+#ifndef XT_ADDX2_A
+	.macro addx2.a a,b,c ; addx2 \a, \b, \c ; .endm
+#endif
+
+#ifndef XT_ADDX4_A
+	.macro addx4.a a,b,c ; addx4 \a, \b, \c ; .endm
+#endif
+
+#ifndef XT_ADDX8_A
+	.macro addx8.a a,b,c ; addx8 \a, \b, \c ; .endm
+#endif
+
+#ifndef XT_MOV_A
+	.macro mov.a a,b ; mov \a, \b ; .endm
+#endif
+
+#ifndef XT_SUB_A
+	.macro sub.a a,b,c ; sub \a, \b, \c ; .endm
+#endif
+
+/* Places the core-id in the requested AR register.*/
+	.macro xt_core_id ar
+#if XCHAL_HAVE_PRID
+#if PRID_ID_BITS
+	rsr.prid \ar
+	extui \ar, \ar, PRID_ID_SHIFT, PRID_ID_BITS
+#else
+	movi \ar, 0
+#endif
+#else
+	movi \ar, 0
+#endif
+	.endm
+
+.macro clr_dcache scratch1, scratch2, scratch3
+#if defined(XCHAL_DCACHE_SIZE) && (XCHAL_DCACHE_SIZE > 0)
+        movi \scratch3, 0
+        movi \scratch1, 0
+        movi \scratch2, XCHAL_DCACHE_SIZE
+1:
+        sdct \scratch3, \scratch1
+        addi \scratch1, \scratch1, XCHAL_DCACHE_LINESIZE * (1 << XCHAL_DCACHE_LINES_PER_TAG_LOG2)
+        bne  \scratch1, \scratch2, 1b
+        movi \scratch1, 0
+2:
+        sdcw \scratch3, \scratch1
+        addi \scratch1, \scratch1, 4
+        bne  \scratch1, \scratch2, 2b
+#endif
+.endm
+
+.macro clr_icache scratch1, scratch2, scratch3
+#if defined(XCHAL_ICACHE_SIZE) && (XCHAL_ICACHE_SIZE > 0)
+        movi \scratch3, 0
+        movi \scratch1, 0
+        movi \scratch2, XCHAL_ICACHE_SIZE
+1:
+        sict \scratch3, \scratch1
+        addi \scratch1, \scratch1, XCHAL_ICACHE_LINESIZE
+        bne  \scratch1, \scratch2, 1b
+        movi \scratch1, 0
+2:
+        sicw \scratch3, \scratch1
+        addi \scratch1, \scratch1, 4
+        bne  \scratch1, \scratch2, 2b
+#endif
+.endm
+
+.macro clr_localmem base_addr, bytes, scratch1, scratch2, scratch3
+        movi \scratch1, \base_addr
+        movi \scratch2, \base_addr + \bytes
+        movi \scratch3, 0
+1:
+        s32i \scratch3, \scratch1, 0
+        addi \scratch1, \scratch1, 4
+        bne  \scratch1, \scratch2, 1b
+.endm
+
+.macro clr_all_localmems scratch1, scratch2, scratch3
+#if defined(XCHAL_INSTRAM0_SIZE) && (XCHAL_INSTRAM0_SIZE > 0)
+        clr_localmem XCHAL_INSTRAM0_VADDR, XCHAL_INSTRAM0_SIZE, \scratch1, \scratch2, \scratch3
+#endif
+#if defined(XCHAL_INSTRAM1_SIZE) && (XCHAL_INSTRAM1_SIZE > 0)
+	clr_localmem XCHAL_INSTRAM1_VADDR, XCHAL_INSTRAM1_SIZE, \scratch1, \scratch2, \scratch3
+#endif
+#if defined(XCHAL_DATARAM0_SIZE) && (XCHAL_DATARAM0_SIZE > 0)
+	clr_localmem XCHAL_DATARAM0_VADDR, XCHAL_DATARAM0_SIZE, \scratch1, \scratch2, \scratch3
+#endif
+#if defined(XCHAL_DATARAM1_SIZE) && (XCHAL_DATARAM1_SIZE > 0)
+	clr_localmem XCHAL_DATARAM1_VADDR, XCHAL_DATARAM1_SIZE, \scratch1, \scratch2, \scratch3
+#endif
+#if defined(XCHAL_URAM0_SIZE) && (XCHAL_URAM0_SIZE > 0)
+	clr_localmem XCHAL_URAM0_VADDR, XCHAL_URAM0_SIZE, \scratch1, \scratch2, \scratch3
+#endif
+#if defined(XCHAL_URAM1_SIZE) && (XCHAL_URAM1_SIZE > 0)
+	clr_localmem XCHAL_URAM1_VADDR, XCHAL_URAM1_SIZE, \scratch1, \scratch2, \scratch3
+#endif
+.endm
 
 #endif /*XTENSA_COREASM_H*/
 
