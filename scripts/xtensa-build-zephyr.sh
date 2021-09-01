@@ -127,8 +127,11 @@ build()
 				;;
 			icl)
 				PLAT_CONFIG='intel_adsp_cavs20'
-				XTENSA_CORE="X6H3CNL_2017_8"
-				XTENSA_TOOLS_VERSION="RG-2017.8-linux"
+				# XCC build fails to linker script error, tracked as
+				# https://github.com/thesofproject/sof/issues/4703
+				unset XTENSA_TOOLS_ROOT
+				#XTENSA_CORE="X6H3CNL_2017_8"
+				#XTENSA_TOOLS_VERSION="RG-2017.8-linux"
 				;;
 			tgl-h)
 				PLAT_CONFIG='intel_adsp_cavs25'
