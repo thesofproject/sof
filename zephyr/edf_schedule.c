@@ -41,8 +41,8 @@ static int schedule_edf_task(void *data, struct task *task, uint64_t start,
 	k_timeout_t start_time = K_USEC(start + EDF_SCHEDULE_DELAY);
 
 	k_work_reschedule_for_queue(&edf_workq,
-				       &task->z_delayed_work,
-					   start_time);
+				    &task->z_delayed_work,
+				    start_time);
 
 	task->state = SOF_TASK_STATE_QUEUED;
 	return 0;
