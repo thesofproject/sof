@@ -18,7 +18,6 @@ SUPPORTED_PLATFORMS+=(imx8)
 # Default value, can (and sometimes must) be overridden with -p
 WEST_TOP="${SOF_TOP}"/zephyrproject
 BUILD_JOBS=$(nproc --all)
-RIMAGE_KEY=modules/audio/sof/keys/otc_private_key.pem
 PLATFORMS=()
 
 die()
@@ -118,6 +117,10 @@ build()
 	mkdir -p ${STAGING}/sof/ # smex does not use 'install -D'
 
 	for platform in "${PLATFORMS[@]}"; do
+
+		# default value
+		local RIMAGE_KEY=modules/audio/sof/keys/otc_private_key.pem
+
 		case "$platform" in
 			apl)
 				PLAT_CONFIG='intel_adsp_cavs15'
@@ -203,6 +206,8 @@ build()
 			cmake -B "$RIMAGE_DIR" -S modules/audio/sof/rimage
 			make -C "$RIMAGE_DIR" -j"$BUILD_JOBS"
 
+			test -z "${RIMAGE_KEY_OPT}" || RIMAGE_KEY="${RIMAGE_KEY_OPT}"
+
 			west sign  --build-dir "$bdir" \
 				--tool rimage --tool-path "$RIMAGE_DIR"/rimage \
 				--tool-data modules/audio/sof/rimage/config -- -k "$RIMAGE_KEY"
@@ -227,7 +232,7 @@ main()
 			a) PLATFORMS=("${SUPPORTED_PLATFORMS[@]}") ;;
 			c) DO_CLONE=yes ;;
 			j) BUILD_JOBS="$OPTARG" ;;
-			k) RIMAGE_KEY="$OPTARG" ;;
+			k) RIMAGE_KEY_OPT="$OPTARG" ;;
 			p) zeproj="$OPTARG" ;;
 			*) print_usage; exit 1 ;;
 		esac
