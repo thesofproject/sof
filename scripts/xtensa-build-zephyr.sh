@@ -10,7 +10,7 @@ SOF_TOP=$(cd "$(dirname "$0")" && cd .. && pwd)
 SUPPORTED_PLATFORMS=()
 
 # Intel
-SUPPORTED_PLATFORMS+=(apl cnl icl tgl-h)
+SUPPORTED_PLATFORMS+=(apl cnl icl tgl-h tgl)
 
 # NXP
 SUPPORTED_PLATFORMS+=(imx8)
@@ -137,7 +137,7 @@ build()
 				XTENSA_CORE="X6H3CNL_2017_8"
 				XTENSA_TOOLS_VERSION="RG-2017.8-linux"
 				;;
-			tgl-h)
+			tgl-h|tgl)
 				PLAT_CONFIG='intel_adsp_cavs25'
 				XTENSA_CORE="cavs2x_LX6HiFi3_2017_8"
 				XTENSA_TOOLS_VERSION="RG-2017.8-linux"
