@@ -56,6 +56,7 @@ void comp_unregister(struct comp_driver_info *drv)
 int comp_set_state(struct comp_dev *dev, int cmd)
 {
 	int requested_state = comp_get_requested_state(cmd);
+	int ret = 0;
 
 	if (dev->state == requested_state) {
 		comp_info(dev, "comp_set_state(), state already set to %u",
@@ -65,33 +66,41 @@ int comp_set_state(struct comp_dev *dev, int cmd)
 
 	switch (cmd) {
 	case COMP_TRIGGER_START:
-		if (dev->state != COMP_STATE_PRE_ACTIVE) {
+		if (dev->state == COMP_STATE_PRE_ACTIVE) {
+			dev->state = COMP_STATE_ACTIVE;
+		} else {
 			comp_err(dev, "comp_set_state(): wrong state = %u, COMP_TRIGGER_START",
 				 dev->state);
-			return -EINVAL;
+			ret = -EINVAL;
 		}
 		break;
 	case COMP_TRIGGER_RELEASE:
-		if (dev->state != COMP_STATE_PRE_ACTIVE) {
+		if (dev->state == COMP_STATE_PRE_ACTIVE) {
+			dev->state = COMP_STATE_ACTIVE;
+		} else {
 			comp_err(dev, "comp_set_state(): wrong state = %u, COMP_TRIGGER_RELEASE",
 				 dev->state);
-			return -EINVAL;
+			ret = -EINVAL;
 		}
 		break;
 	case COMP_TRIGGER_STOP:
-		if (dev->state != COMP_STATE_ACTIVE &&
-		    dev->state != COMP_STATE_PAUSED) {
+		if (dev->state == COMP_STATE_ACTIVE ||
+		    dev->state == COMP_STATE_PAUSED) {
+			dev->state = COMP_STATE_PREPARE;
+		} else {
 			comp_err(dev, "comp_set_state(): wrong state = %u, COMP_TRIGGER_STOP",
 				 dev->state);
-			return -EINVAL;
+			ret = -EINVAL;
 		}
 		break;
 	case COMP_TRIGGER_PAUSE:
 		/* only support pausing for running */
-		if (dev->state != COMP_STATE_ACTIVE) {
+		if (dev->state == COMP_STATE_ACTIVE) {
+			dev->state = COMP_STATE_PAUSED;
+		} else {
 			comp_err(dev, "comp_set_state(): wrong state = %u, COMP_TRIGGER_PAUSE",
 				 dev->state);
-			return -EINVAL;
+			ret = -EINVAL;
 		}
 		break;
 	case COMP_TRIGGER_RESET:
@@ -100,40 +109,44 @@ int comp_set_state(struct comp_dev *dev, int cmd)
 		    dev->state == COMP_STATE_PAUSED) {
 			comp_err(dev, "comp_set_state(): wrong state = %u, COMP_TRIGGER_RESET",
 				 dev->state);
+			ret = 0;
 		}
+		dev->state = COMP_STATE_READY;
 		break;
 	case COMP_TRIGGER_PREPARE:
-		if (dev->state != COMP_STATE_READY) {
+		if (dev->state == COMP_STATE_READY) {
+			dev->state = COMP_STATE_PREPARE;
+		} else {
 			comp_err(dev, "comp_set_state(): wrong state = %u, COMP_TRIGGER_PREPARE",
 				 dev->state);
-			return -EINVAL;
+			ret = -EINVAL;
 		}
 		break;
 	case COMP_TRIGGER_PRE_START:
-		if (dev->state != COMP_STATE_PREPARE) {
+		if (dev->state == COMP_STATE_PREPARE) {
+			dev->state = COMP_STATE_PRE_ACTIVE;
+		} else {
 			comp_err(dev,
 				 "comp_set_state(): wrong state = %u, COMP_TRIGGER_PRE_START",
 				 dev->state);
-			return -EINVAL;
+			ret = -EINVAL;
 		}
 		break;
 	case COMP_TRIGGER_PRE_RELEASE:
-		if (dev->state != COMP_STATE_PAUSED) {
+		if (dev->state == COMP_STATE_PAUSED) {
+			dev->state = COMP_STATE_PRE_ACTIVE;
+		} else {
 			comp_err(dev,
 				 "comp_set_state(): wrong state = %u, COMP_TRIGGER_PRE_RELEASE",
 				 dev->state);
-			return -EINVAL;
+			ret = -EINVAL;
 		}
 		break;
-	default:
-		return 0;
 	}
-
-	dev->state = requested_state;
 
 	comp_writeback(dev);
 
-	return 0;
+	return ret;
 }
 
 void sys_comp_init(struct sof *sof)
