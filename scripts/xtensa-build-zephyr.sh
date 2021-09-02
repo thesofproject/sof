@@ -7,7 +7,14 @@ set -e
 
 SOF_TOP=$(cd "$(dirname "$0")" && cd .. && pwd)
 
-SUPPORTED_PLATFORMS=(apl cnl icl tgl-h imx8)
+SUPPORTED_PLATFORMS=()
+
+# Intel
+SUPPORTED_PLATFORMS+=(apl cnl icl tgl-h)
+
+# NXP
+SUPPORTED_PLATFORMS+=(imx8)
+
 # Default value, can (and sometimes must) be overridden with -p
 WEST_TOP="${SOF_TOP}"/zephyrproject
 BUILD_JOBS=$(nproc --all)
