@@ -92,7 +92,7 @@ int pkcs_v1_5_sign_man_v1_5(struct image *image,
 	memset(path, 0, sizeof(path));
 	strncpy(path, image->key_name, sizeof(path) - 1);
 
-	fprintf(stdout, " pkcs: signing with key %s\n", path);
+	fprintf(stdout, " %s: signing with key '%s'\n", __func__, path);
 	fp = fopen(path, "rb");
 	if (!fp) {
 		fprintf(stderr, "error: can't open file %s %d\n",
@@ -187,7 +187,7 @@ int pkcs_v1_5_sign_man_v1_8(struct image *image,
 	memset(path, 0, sizeof(path));
 	strncpy(path, image->key_name, sizeof(path) - 1);
 
-	fprintf(stdout, " pkcs: signing with key %s\n", path);
+	fprintf(stdout, " %s: signing with key '%s'\n", __func__, path);
 	fp = fopen(path, "rb");
 	if (!fp) {
 		fprintf(stderr, "error: can't open file %s %d\n",
@@ -281,7 +281,7 @@ int pkcs_v1_5_sign_man_v2_5(struct image *image,
 	memset(path, 0, sizeof(path));
 	strncpy(path, image->key_name, sizeof(path) - 1);
 
-	fprintf(stdout, " pkcs: PSS signing with key %s\n", path);
+	fprintf(stdout, " %s: signing with key '%s'\n", __func__, path);
 	fp = fopen(path, "rb");
 	if (!fp) {
 		fprintf(stderr, "error: can't open file %s %d\n",
