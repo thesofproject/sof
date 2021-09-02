@@ -348,10 +348,10 @@ static int sai_trigger(struct dai *dai, int cmd, int direction)
 		sai_stop(dai, direction);
 		break;
 	case COMP_TRIGGER_RELEASE:
+		break;
 	case COMP_TRIGGER_SUSPEND:
+		break;
 	case COMP_TRIGGER_RESUME:
-	case COMP_TRIGGER_PRE_START:
-	case COMP_TRIGGER_PRE_RELEASE:
 		break;
 	default:
 		dai_err(dai, "SAI: invalid trigger cmd %d", cmd);
