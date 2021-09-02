@@ -1179,9 +1179,6 @@ static uint32_t ssp_get_init_delay_ms(struct dai *dai)
 {
 	struct ssp_pdata *ssp = dai_get_drvdata(dai);
 
-	if (ssp->clk_active & SSP_CLK_BCLK_ACTIVE)
-		return 0;
-
 	/* drive BCLK early for guaranteed time,
 	 * before first FSYNC, it is required by some codecs
 	 */
