@@ -175,10 +175,7 @@ int pipeline_copy(struct pipeline *p)
 /* trigger pipeline */
 int pipeline_trigger(struct pipeline *p, struct comp_dev *host, int cmd)
 {
-	struct pipeline_data data = {
-		.start = host,
-		.cmd = cmd,
-	};
+	struct pipeline_data data;
 	struct pipeline_walk_context walk_ctx = {
 		.comp_func = pipeline_comp_trigger,
 		.comp_data = &data,
@@ -201,32 +198,16 @@ int pipeline_trigger(struct pipeline *p, struct comp_dev *host, int cmd)
 			return 0;
 	}
 
+	data.start = host;
+	data.cmd = cmd;
+
 	ret = walk_ctx.comp_func(host, NULL, &walk_ctx, host->direction);
 	if (ret < 0) {
 		pipe_err(p, "pipeline_trigger(): ret = %d, host->comp.id = %u, cmd = %d",
 			 ret, dev_comp_id(host), cmd);
-		goto out;
 	}
 
-	switch (cmd) {
-	case COMP_TRIGGER_PRE_START:
-		data.cmd = COMP_TRIGGER_START;
-		break;
-	case COMP_TRIGGER_PRE_RELEASE:
-		data.cmd = COMP_TRIGGER_RELEASE;
-	}
-
-	if (data.cmd != cmd) {
-		list_init(&walk_ctx.pipelines);
-
-		ret = walk_ctx.comp_func(host, NULL, &walk_ctx, host->direction);
-		if (ret < 0)
-			pipe_err(p, "pipeline_trigger(): ret = %d, host->comp.id = %u, cmd = %d",
-				 ret, dev_comp_id(host), cmd);
-	}
-
-out:
-	pipeline_schedule_triggered(&walk_ctx, data.cmd);
+	pipeline_schedule_triggered(&walk_ctx, cmd);
 
 	return ret;
 }

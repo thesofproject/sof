@@ -345,9 +345,7 @@ static inline int comp_get_requested_state(int cmd)
 	case COMP_TRIGGER_RESET:
 		state = COMP_STATE_READY;
 		break;
-	case COMP_TRIGGER_PRE_START:
-	case COMP_TRIGGER_PRE_RELEASE:
-		state = COMP_STATE_PRE_ACTIVE;
+	default:
 		break;
 	}
 

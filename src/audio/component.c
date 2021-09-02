@@ -66,7 +66,7 @@ int comp_set_state(struct comp_dev *dev, int cmd)
 
 	switch (cmd) {
 	case COMP_TRIGGER_START:
-		if (dev->state == COMP_STATE_PRE_ACTIVE) {
+		if (dev->state == COMP_STATE_PREPARE) {
 			dev->state = COMP_STATE_ACTIVE;
 		} else {
 			comp_err(dev, "comp_set_state(): wrong state = %u, COMP_TRIGGER_START",
@@ -75,7 +75,7 @@ int comp_set_state(struct comp_dev *dev, int cmd)
 		}
 		break;
 	case COMP_TRIGGER_RELEASE:
-		if (dev->state == COMP_STATE_PRE_ACTIVE) {
+		if (dev->state == COMP_STATE_PAUSED) {
 			dev->state = COMP_STATE_ACTIVE;
 		} else {
 			comp_err(dev, "comp_set_state(): wrong state = %u, COMP_TRIGGER_RELEASE",
@@ -122,25 +122,7 @@ int comp_set_state(struct comp_dev *dev, int cmd)
 			ret = -EINVAL;
 		}
 		break;
-	case COMP_TRIGGER_PRE_START:
-		if (dev->state == COMP_STATE_PREPARE) {
-			dev->state = COMP_STATE_PRE_ACTIVE;
-		} else {
-			comp_err(dev,
-				 "comp_set_state(): wrong state = %u, COMP_TRIGGER_PRE_START",
-				 dev->state);
-			ret = -EINVAL;
-		}
-		break;
-	case COMP_TRIGGER_PRE_RELEASE:
-		if (dev->state == COMP_STATE_PAUSED) {
-			dev->state = COMP_STATE_PRE_ACTIVE;
-		} else {
-			comp_err(dev,
-				 "comp_set_state(): wrong state = %u, COMP_TRIGGER_PRE_RELEASE",
-				 dev->state);
-			ret = -EINVAL;
-		}
+	default:
 		break;
 	}
 
