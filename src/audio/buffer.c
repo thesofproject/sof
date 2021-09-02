@@ -31,7 +31,7 @@ struct comp_buffer *buffer_alloc(uint32_t size, uint32_t caps, uint32_t align)
 	tr_dbg(&buffer_tr, "buffer_alloc()");
 
 	/* validate request */
-	if (size == 0 || size > HEAP_BUFFER_SIZE) {
+	if (size == 0) {
 		tr_err(&buffer_tr, "buffer_alloc(): new size = %u is invalid",
 		       size);
 		return NULL;
@@ -85,7 +85,7 @@ int buffer_set_size(struct comp_buffer *buffer, uint32_t size)
 	void *new_ptr = NULL;
 
 	/* validate request */
-	if (size == 0 || size > HEAP_BUFFER_SIZE) {
+	if (size == 0) {
 		buf_err(buffer, "resize size = %u is invalid", size);
 		return -EINVAL;
 	}
