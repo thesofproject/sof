@@ -42,11 +42,7 @@ static inline void wait_for_interrupt(int level)
  * \brief Waits at least passed number of clocks.
  * \param[in] number_of_clks Minimum number of clocks to wait.
  */
-#if !CONFIG_LIBRARY
 void wait_delay(uint64_t number_of_clks);
-#else
-static inline void wait_delay(uint64_t number_of_clks) {}
-#endif
 
 int poll_for_register_delay(uint32_t reg, uint32_t mask,
 			    uint32_t val, uint64_t us);
