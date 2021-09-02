@@ -272,8 +272,9 @@ void trace_log_unfiltered(bool send_atomic, const void *log_entry, const struct 
 	struct trace *trace = trace_get();
 	va_list vl;
 
-	if (!trace || !trace->enable)
+	if (!trace->enable) {
 		return;
+	}
 
 	va_start(vl, arg_count);
 	vatrace_log(send_atomic, (uint32_t)log_entry, ctx, lvl, id_1, id_2, arg_count, vl);

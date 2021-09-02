@@ -64,10 +64,6 @@ int dma_copy_to_host_nowait(struct dma_copy *dc, struct dma_sg_config *host_sg,
 {
 	int ret;
 
-	/* return if DMA channel is not get yet */
-	if (!dc->chan)
-		return -EINVAL;
-
 	/* tell gateway to copy */
 	ret = dma_copy(dc->chan, size, 0);
 	if (ret < 0)
@@ -88,10 +84,6 @@ int dma_copy_to_host_nowait(struct dma_copy *dc, struct dma_sg_config *host_sg,
 	struct dma_sg_elem local_sg_elem;
 	int32_t err;
 	int32_t offset = host_offset;
-
-	/* return if DMA channel is not get yet */
-	if (!dc->chan)
-		return -EINVAL;
 
 	if (size <= 0)
 		return 0;
