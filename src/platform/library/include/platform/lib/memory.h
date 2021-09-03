@@ -17,7 +17,6 @@ struct sof;
 
 #define PLATFORM_DCACHE_ALIGN	sizeof(void *)
 
-#define HEAP_BUFFER_SIZE	(1024 * 128)
 #define SOF_STACK_SIZE		0x1000
 
 uint8_t *get_library_mailbox(void);
@@ -61,10 +60,12 @@ static inline uint32_t arch_get_stack_size(void)
 
 #define SRAM_BANK_SIZE	0x10000
 #define LP_SRAM_SIZE SRAM_BANK_SIZE
-#define HP_SRAM_SIZE SRAM_BANK_SIZE
+#define HP_SRAM_SIZE (SRAM_BANK_SIZE * 47)
 
-#define HP_SRAM_BASE	0
-#define LP_SRAM_BASE	0
+#define HP_SRAM_BASE	0xBE000000
+#define LP_SRAM_BASE	0xBE800000
+
+#define SOF_FW_END		(HP_SRAM_BASE + HP_SRAM_SIZE)
 
 /* Heap section sizes for system runtime heap for primary core */
 #define HEAP_SYS_RT_0_COUNT64		128
@@ -77,26 +78,26 @@ static inline uint32_t arch_get_stack_size(void)
 #define HEAP_SYS_RT_X_COUNT1024		4
 
 /* Heap section sizes for module pool */
-#define HEAP_RT_COUNT64		128
-#define HEAP_RT_COUNT128	64
-#define HEAP_RT_COUNT256	128
-#define HEAP_RT_COUNT512	8
-#define HEAP_RT_COUNT1024	4
-#define HEAP_RT_COUNT2048	1
-#define HEAP_RT_COUNT4096	1
+#define HEAP_COUNT64		128
+#define HEAP_COUNT128	64
+#define HEAP_COUNT256	128
+#define HEAP_COUNT512	8
+#define HEAP_COUNT1024	4
+#define HEAP_COUNT2048	1
+#define HEAP_COUNT4096	1
 
 /* Heap configuration */
 #define HEAP_RUNTIME_SIZE \
-	(HEAP_RT_COUNT64 * 64 + HEAP_RT_COUNT128 * 128 + \
-	HEAP_RT_COUNT256 * 256 + HEAP_RT_COUNT512 * 512 + \
-	HEAP_RT_COUNT1024 * 1024 + HEAP_RT_COUNT2048 * 2048 + \
-	HEAP_RT_COUNT4096 * 4096)
+	(HEAP_COUNT64 * 64 + HEAP_COUNT128 * 128 + \
+	HEAP_COUNT256 * 256 + HEAP_COUNT512 * 512 + \
+	HEAP_COUNT1024 * 1024 + HEAP_COUNT2048 * 2048 + \
+	HEAP_COUNT4096 * 4096)
 
 #define HEAP_BUFFER_BLOCK_SIZE		0x100
-#define HEAP_BUFFER_COUNT	(HEAP_BUFFER_SIZE / HEAP_BUFFER_BLOCK_SIZE)
+#define HEAP_BUFFER_COUNT_MAX	(HP_SRAM_SIZE / HEAP_BUFFER_BLOCK_SIZE)
 
-#define HEAP_SYSTEM_M_SIZE		0x8000 /* heap primary core size */
-#define HEAP_SYSTEM_S_SIZE		0x6000 /* heap secondary core size */
+#define HEAP_SYSTEM_M_SIZE		0x4000 /* heap primary core size */
+#define HEAP_SYSTEM_S_SIZE		0x3000 /* heap secondary core size */
 
 #define HEAP_SYSTEM_T_SIZE \
 	(HEAP_SYSTEM_M_SIZE + ((CONFIG_CORE_COUNT - 1) * HEAP_SYSTEM_S_SIZE))
