@@ -224,9 +224,8 @@ void ipc_msg_reply(struct sof_ipc_reply *reply)
 {
 	struct ipc *ipc = ipc_get();
 
-	ipc->delayed_response = false;
 	mailbox_hostbox_write(0, reply, reply->hdr.size);
-	ipc_platform_complete_cmd(ipc);
+	ipc_complete_cmd(ipc);
 }
 
 void ipc_schedule_process(struct ipc *ipc)
@@ -250,8 +249,32 @@ int ipc_init(struct sof *sof)
 	return platform_ipc_init(sof->ipc);
 }
 
+void ipc_complete_cmd(void *data)
+{
+	struct ipc *ipc = data;
+	uint32_t flags;
+	bool skip_first_entry;
+
+	spin_lock_irq(&ipc->lock, flags);
+
+	/*
+	 * IPC commands can be completed synchronously from the IPC task
+	 * completion method, or asynchronously: either from the pipeline task
+	 * thread or from another core. In the asynchronous case the order of
+	 * the two events is unknown. It is important that the latter of them
+	 * completes the IPC to avoid the host sending the next IPC too early.
+	 * .delayed_response is used for this in such asynchronous cases.
+	 */
+	skip_first_entry = ipc->delayed_response;
+	ipc->delayed_response = false;
+	if (!skip_first_entry)
+		ipc_platform_complete_cmd(data);
+
+	spin_unlock_irq(&ipc->lock, flags);
+}
+
 struct task_ops ipc_task_ops = {
 	.run		= ipc_platform_do_cmd,
-	.complete	= ipc_platform_complete_cmd,
+	.complete	= ipc_complete_cmd,
 	.get_deadline	= ipc_task_deadline,
 };

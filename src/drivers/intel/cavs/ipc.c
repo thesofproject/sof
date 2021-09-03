@@ -201,12 +201,10 @@ enum task_state ipc_platform_do_cmd(void *data)
 void ipc_platform_complete_cmd(void *data)
 {
 	struct ipc *ipc = data;
-	uint32_t flags;
 
-	if (!cpu_is_me(ipc->core) || ipc->delayed_response)
+	if (!cpu_is_me(ipc->core))
 		return;
 
-	spin_lock_irq(&ipc->lock, flags);
 
 	/* write 1 to clear busy, and trigger interrupt to host*/
 #if CAVS_VERSION == CAVS_VERSION_1_5
@@ -225,15 +223,11 @@ void ipc_platform_complete_cmd(void *data)
 
 #if CONFIG_SUECREEK
 	if (ipc->pm_prepare_D3) {
-
 		//TODO: add support for Icelake
 		while (1)
 			wait_for_interrupt(0);
 	}
-
 #endif
-
-	spin_unlock_irq(&ipc->lock, flags);
 }
 
 int ipc_platform_send_msg(struct ipc_msg *msg)

@@ -115,11 +115,14 @@ void ipc_platform_complete_cmd(void *data)
 	// TODO: signal audio work to enter D3 in normal context
 	/* are we about to enter D3 ? */
 	if (ipc->pm_prepare_D3) {
-
 		while (1)
+			/*
+			 * Note, that this function is now called with
+			 * interrupts disabled, so this wait will never even
+			 * return anyway
+			 */
 			wait_for_interrupt(0);
 	}
-
 }
 
 int ipc_platform_send_msg(struct ipc_msg *msg)
