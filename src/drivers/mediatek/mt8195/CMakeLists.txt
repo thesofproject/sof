@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 add_local_sources(sof ipc.c timer.c
-	interrupt.c
+	interrupt.c uart.c afe-memif.c afe-dai.c afe-drv.c
 )
 
