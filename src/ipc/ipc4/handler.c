@@ -176,20 +176,26 @@ static int ipc4_set_pipeline_state(union ipc4_message_header *ipc4)
 		return IPC4_INVALID_RESOURCE_ID;
 	}
 
-	if (pcm_dev->pipeline->source_comp->direction == SOF_IPC_STREAM_PLAYBACK)
-		host = ipc_get_comp_by_id(ipc, pcm_dev->pipeline->source_comp->ipc_config.id);
-	else
-		host = ipc_get_comp_by_id(ipc, pcm_dev->pipeline->sink_comp->ipc_config.id);
+	/* source & sink components are set when pipeline is set to COMP_STATE_INIT */
+	if (pcm_dev->pipeline->status != COMP_STATE_INIT) {
+		int host_id;
 
-	if (!host) {
-		tr_err(&ipc_tr, "ipc: comp host not found",
-		       pcm_dev->pipeline->source_comp->ipc_config.id);
-		return IPC4_INVALID_RESOURCE_ID;
+		if (pcm_dev->pipeline->source_comp->direction == SOF_IPC_STREAM_PLAYBACK)
+			host_id = pcm_dev->pipeline->source_comp->ipc_config.id;
+		else
+			host_id = pcm_dev->pipeline->sink_comp->ipc_config.id;
+
+		host = ipc_get_comp_by_id(ipc, host_id);
+		if (!host) {
+			tr_err(&ipc_tr, "ipc: comp host not found",
+			       pcm_dev->pipeline->source_comp->ipc_config.id);
+			return IPC4_INVALID_RESOURCE_ID;
+		}
+
+		/* check core */
+		if (!cpu_is_me(host->core))
+			return ipc_process_on_core(host->core, false);
 	}
-
-	/* check core */
-	if (!cpu_is_me(host->core))
-		return ipc_process_on_core(host->core, false);
 
 	switch (cmd) {
 	case SOF_IPC4_PIPELINE_STATE_RUNNING:
