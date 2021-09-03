@@ -234,12 +234,10 @@ static int mixer_source_status_count(struct comp_dev *mixer, uint32_t status)
 }
 
 /* used to pass standard and bespoke commands (with data) to component */
-static int mixer_trigger(struct comp_dev *dev, int cmd)
+static int mixer_trigger_common(struct comp_dev *dev, int cmd)
 {
 	int dir = dev->pipeline->source_comp->direction;
 	int ret;
-
-	comp_dbg(dev, "mixer_trigger()");
 
 	/*
 	 * This works around an unclear and apparently needlessly complicated
@@ -255,11 +253,8 @@ static int mixer_trigger(struct comp_dev *dev, int cmd)
 			/* Mixer and everything downstream is active */
 			dev->state = COMP_STATE_ACTIVE;
 			break;
-		case COMP_TRIGGER_PRE_START:
-			/* Mixer and downstream components might or might not be active */
-			if (mixer_source_status_count(dev, COMP_STATE_ACTIVE) ||
-			    mixer_source_status_count(dev, COMP_STATE_PAUSED))
-				return PPL_STATUS_PATH_STOP;
+		default:
+			break;
 		}
 
 		comp_writeback(dev);
@@ -418,13 +413,10 @@ static int mixer_reset(struct comp_dev *dev)
  * We should also make sure that we propagate the prepare call to downstream
  * if downstream is not currently active.
  */
-static int mixer_prepare(struct comp_dev *dev)
+static int mixer_prepare_common(struct comp_dev *dev)
 {
 	struct mixer_data *md = comp_get_drvdata(dev);
-	struct list_item *blist;
-	struct comp_buffer *source;
 	struct comp_buffer *sink;
-	int downstream = 0;
 	int ret;
 
 	comp_dbg(dev, "mixer_prepare()");
@@ -464,6 +456,54 @@ static int mixer_prepare(struct comp_dev *dev)
 			return PPL_STATUS_PATH_STOP;
 	}
 
+	return 0;
+}
+
+/* In IPC3 the simplest pipeline with mixer will like
+ * host1 -> mixer -> volume -> dai, pipeline 1.
+ *           |
+ * host2 ---- pipeline 2
+ *
+ * For IPC4, it will be like
+ * copier1(host) -> mixin1 ----> mixout(mixer) -> gain(volume) -> copier2(dai)
+ *    pipeline 1                   |       pipline 2
+ * copier3(host) -> mixin2 -------  pipeline 3
+ *
+ * mixin and mixout will be in different pipelines.
+ * Now we combine mixin and mixout into mixer, but
+ * the pipelines count is unchange. Ipc4 pipeline
+ * can't be stopped at mixer component since pipeline
+ * design is different, or gain and copier2 will not
+ * be triggered. Since mixer will be in a different
+ * pipeline other than host pipeline, it will not be
+ * triggered second time.
+ */
+#if CONFIG_IPC_MAJOR_3
+static int mixer_trigger(struct comp_dev *dev, int cmd)
+{
+	int dir = dev->pipeline->source_comp->direction;
+
+	comp_dbg(dev, "mixer_trigger()");
+
+	if (dir == SOF_IPC_STREAM_PLAYBACK && cmd == COMP_TRIGGER_PRE_START)
+		/* Mixer and downstream components might or might not be active */
+		if (mixer_source_status_count(dev, COMP_STATE_ACTIVE) ||
+		    mixer_source_status_count(dev, COMP_STATE_PAUSED))
+			return PPL_STATUS_PATH_STOP;
+
+	return mixer_trigger_common(dev, cmd);
+}
+
+static int mixer_prepare(struct comp_dev *dev)
+{
+	struct comp_buffer *source;
+	struct list_item *blist;
+	int ret;
+
+	ret = mixer_prepare_common(dev);
+	if (ret)
+		return ret;
+
 	/* check each mixer source state */
 	list_for_item(blist, &dev->bsource_list) {
 		source = container_of(blist, struct comp_buffer, sink_list);
@@ -471,15 +511,14 @@ static int mixer_prepare(struct comp_dev *dev)
 		/* only prepare downstream if we have no active sources */
 		if (source->source->state == COMP_STATE_PAUSED ||
 		    source->source->state == COMP_STATE_ACTIVE) {
-			downstream = 1;
+			return PPL_STATUS_PATH_STOP;
 		}
 	}
 
 	/* prepare downstream */
-	return downstream;
+	return 0;
 }
 
-#if CONFIG_IPC_MAJOR_3
 static const struct comp_driver comp_mixer = {
 	.type	= SOF_COMP_MIXER,
 	.uid	= SOF_RT_UUID(mixer_uuid),
@@ -652,8 +691,8 @@ static const struct comp_driver comp_mixer = {
 		.create		= mixinout_new,
 		.free		= mixer_free,
 		.params		= mixout_params,
-		.prepare	= mixer_prepare,
-		.trigger	= mixer_trigger,
+		.prepare	= mixer_prepare_common,
+		.trigger	= mixer_trigger_common,
 		.copy		= mixer_copy,
 		.reset		= mixer_reset,
 	},
