@@ -44,7 +44,7 @@ void WEAK *rballoc_align(uint32_t flags, uint32_t caps, size_t bytes,
 	(void)flags;
 	(void)caps;
 
-	return malloc(bytes);
+	return calloc(bytes, 1);
 }
 
 void WEAK *rzalloc(enum mem_zone zone, uint32_t flags, uint32_t caps,
