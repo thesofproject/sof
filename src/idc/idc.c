@@ -125,7 +125,7 @@ static void idc_ipc(void)
 	ipc_cmd(ipc->comp_data);
 
 	/* Signal the host */
-	ipc_platform_complete_cmd(ipc);
+	ipc_complete_cmd(ipc);
 }
 
 /**

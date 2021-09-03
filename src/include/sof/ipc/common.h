@@ -203,4 +203,9 @@ int ipc_process_on_core(uint32_t core, bool blocking);
  */
 void ipc_msg_reply(struct sof_ipc_reply *reply);
 
+/**
+ * \brief Call platform-specific IPC completion function.
+ */
+void ipc_complete_cmd(void *data);
+
 #endif /* __SOF_DRIVERS_IPC_H__ */

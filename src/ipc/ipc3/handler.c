@@ -444,9 +444,10 @@ static int ipc_stream_trigger(uint32_t header)
 	 * synchronously.
 	 */
 	if (pipeline_is_timer_driven(pcm_dev->cd->pipeline)) {
+		ipc->delayed_response = true;
 		ret = pipeline_trigger(pcm_dev->cd->pipeline, pcm_dev->cd, cmd);
-		if (ret > 0)
-			ipc->delayed_response = true;
+		if (ret <= 0)
+			ipc->delayed_response = false;
 	} else {
 		ret = pipeline_trigger_run(pcm_dev->cd->pipeline, pcm_dev->cd, cmd);
 	}
