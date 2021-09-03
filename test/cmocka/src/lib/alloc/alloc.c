@@ -65,8 +65,6 @@ static struct test_case test_cases[] = {
 
 	TEST_CASE(16,  SOF_MEM_ZONE_SYS, SOF_MEM_CAPS_RAM, 128, TEST_BULK,
 		  "rmalloc"),
-	TEST_CASE(4,   SOF_MEM_ZONE_SYS, SOF_MEM_CAPS_RAM, 256, TEST_BULK,
-		  "rmalloc"),
 
 	/*
 	 * TODO: Due to recent changes in relation to multicore support
@@ -95,8 +93,6 @@ static struct test_case test_cases[] = {
 		  "rmalloc"),
 
 	TEST_CASE(16,  SOF_MEM_ZONE_RUNTIME, SOF_MEM_CAPS_RAM, 128, TEST_BULK,
-		  "rmalloc"),
-	TEST_CASE(4,   SOF_MEM_ZONE_RUNTIME, SOF_MEM_CAPS_RAM, 256, TEST_BULK,
 		  "rmalloc"),
 
 	TEST_CASE(1,   SOF_MEM_ZONE_RUNTIME, SOF_MEM_CAPS_RAM |
@@ -133,8 +129,6 @@ static struct test_case test_cases[] = {
 
 	TEST_CASE(16,  SOF_MEM_ZONE_SYS, SOF_MEM_CAPS_RAM, 128, TEST_ZERO,
 		  "rzalloc"),
-	TEST_CASE(4,   SOF_MEM_ZONE_SYS, SOF_MEM_CAPS_RAM, 256, TEST_ZERO,
-		  "rzalloc"),
 
 	TEST_CASE(1,   SOF_MEM_ZONE_RUNTIME, SOF_MEM_CAPS_RAM, 2, TEST_ZERO,
 		  "rzalloc"),
@@ -158,8 +152,6 @@ static struct test_case test_cases[] = {
 		  "rzalloc"),
 
 	TEST_CASE(16,  SOF_MEM_ZONE_RUNTIME, SOF_MEM_CAPS_RAM, 128, TEST_ZERO,
-		  "rzalloc"),
-	TEST_CASE(4,   SOF_MEM_ZONE_RUNTIME, SOF_MEM_CAPS_RAM, 256, TEST_ZERO,
 		  "rzalloc"),
 
 	TEST_CASE(1,   SOF_MEM_ZONE_RUNTIME, SOF_MEM_CAPS_RAM |
