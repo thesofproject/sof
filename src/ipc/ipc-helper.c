@@ -225,12 +225,27 @@ int ipc_pipeline_complete(struct ipc *ipc, uint32_t comp_id)
 
 	p = ipc_pipe->pipeline;
 
+	/* get pipeline source component */
+	ipc_ppl_source = ipc_get_ppl_src_comp(ipc, p->pipeline_id);
+	if (!ipc_ppl_source) {
+		tr_err(&ipc_tr, "ipc: ipc_pipeline_complete looking for pipeline source failed");
+		return -EINVAL;
+	}
+
+	/* get pipeline sink component */
+	ipc_ppl_sink = ipc_get_ppl_sink_comp(ipc, p->pipeline_id);
+	if (!ipc_ppl_sink) {
+		tr_err(&ipc_tr, "ipc: ipc_pipeline_complete looking for pipeline sink failed");
+		return -EINVAL;
+	}
+
 	/* find the scheduling component */
 	icd = ipc_get_comp_by_id(ipc, p->sched_id);
 	if (!icd) {
-		tr_err(&ipc_tr, "ipc_pipeline_complete(): cannot find the scheduling component, p->sched_id = %u",
-		       p->sched_id);
-		return -EINVAL;
+		tr_warn(&ipc_tr, "ipc_pipeline_complete(): no scheduling component specified, use comp %d",
+			ipc_ppl_sink->id);
+
+		icd = ipc_ppl_sink;
 	}
 
 	if (icd->type != COMP_TYPE_COMPONENT) {
@@ -251,20 +266,6 @@ int ipc_pipeline_complete(struct ipc *ipc, uint32_t comp_id)
 
 	tr_dbg(&ipc_tr, "ipc: pipe %d -> complete on comp %d", pipeline_id,
 	       comp_id);
-
-	/* get pipeline source component */
-	ipc_ppl_source = ipc_get_ppl_src_comp(ipc, pipeline_id);
-	if (!ipc_ppl_source) {
-		tr_err(&ipc_tr, "ipc: ipc_pipeline_complete looking for pipeline source failed");
-		return -EINVAL;
-	}
-
-	/* get pipeline sink component */
-	ipc_ppl_sink = ipc_get_ppl_sink_comp(ipc, pipeline_id);
-	if (!ipc_ppl_sink) {
-		tr_err(&ipc_tr, "ipc: ipc_pipeline_complete looking for pipeline sink failed");
-		return -EINVAL;
-	}
 
 	ret = pipeline_complete(ipc_pipe->pipeline, ipc_ppl_source->cd,
 				ipc_ppl_sink->cd);
