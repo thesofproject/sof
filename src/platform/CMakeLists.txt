@@ -27,6 +27,8 @@ elseif(CONFIG_IMX8ULP)
 	add_subdirectory(imx8ulp)
 elseif(CONFIG_RENOIR)
 	add_subdirectory(amd)
+elseif(CONFIG_MT8195)
+        add_subdirectory(mt8195)
 endif()
 
 if(CONFIG_CAVS)

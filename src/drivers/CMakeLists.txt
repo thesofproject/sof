@@ -12,6 +12,10 @@ if(CONFIG_RENOIR)
 	add_subdirectory(amd)
 endif()
 
+if(CONFIG_MEDIATEK)
+	add_subdirectory(mediatek)
+endif()
+
 if(CONFIG_LIBRARY)
 	add_subdirectory(host)
 	return()
