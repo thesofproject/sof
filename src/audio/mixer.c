@@ -550,6 +550,8 @@ static int mixout_params(struct comp_dev *dev,
 			 struct sof_ipc_stream_params *params)
 {
 	struct mixer_data *md = comp_get_drvdata(dev);
+	struct comp_buffer *sink;
+	int i;
 
 	memset(params, 0, sizeof(*params));
 	params->channels = md->base_cfg.audio_fmt.channels_count;
@@ -559,6 +561,26 @@ static int mixout_params(struct comp_dev *dev,
 	params->frame_fmt = dev->ipc_config.frame_fmt;
 	params->buffer_fmt = md->base_cfg.audio_fmt.interleaving_style;
 	params->buffer.size = md->base_cfg.ibs;
+
+	/* update each sink format based on base_cfg initialized by
+	 * host driver. There is no hw_param ipc message for ipc4, instead
+	 * all module params are built into module initialization data by
+	 * host driver based on runtime hw_params and topology setting.
+	 */
+	sink = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
+	sink->stream.channels = md->base_cfg.audio_fmt.channels_count;
+	sink->stream.rate = md->base_cfg.audio_fmt.sampling_frequency;
+	sink->stream.frame_fmt	= (md->base_cfg.audio_fmt.valid_bit_depth >> 3) - 2;
+	sink->buffer_fmt = md->base_cfg.audio_fmt.interleaving_style;
+
+	/* 8 ch stream is supported by ch_map and each channel
+	 * is mapped by 4 bits. The first channel will be mapped
+	 * by the bits of 0 ~ 3 and the 2th channel will be mapped
+	 * by bits 4 ~ 7. The N channel will be mapped by bits
+	 * N*4 ~ N*4 + 3
+	 */
+	for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
+		sink->chmap[i] = (md->base_cfg.audio_fmt.ch_map >> i * 4) & 0xf;
 
 	return mixer_params(dev, params);
 }
@@ -586,8 +608,6 @@ static int mixin_bind(struct comp_dev *dev, void *data)
 			source_buf = container_of(blist, struct comp_buffer, sink_list);
 			if (source_buf->source == dev) {
 				pipeline_disconnect(sink, source_buf, PPL_CONN_DIR_BUFFER_TO_COMP);
-				pipeline_disconnect(dev, source_buf, PPL_CONN_DIR_COMP_TO_BUFFER);
-				buffer_free(source_buf);
 				break;
 			}
 		}
