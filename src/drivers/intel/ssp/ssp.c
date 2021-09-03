@@ -757,6 +757,14 @@ clk:
 		}
 		break;
 	case SOF_DAI_CONFIG_FLAGS_HW_FREE:
+		/* disable SSP port if no users */
+		if (ssp->state[SOF_IPC_STREAM_CAPTURE] != COMP_STATE_PREPARE ||
+		    ssp->state[SOF_IPC_STREAM_PLAYBACK] != COMP_STATE_PREPARE) {
+			dai_info(dai, "ssp_set_config(): hw_free stage: ignore since there is still user",
+				 dai->index);
+			break;
+		}
+
 		if (ssp->params.clks_control & SOF_DAI_INTEL_SSP_CLKCTRL_BCLK_ES) {
 			dai_info(dai, "ssp_set_config(): hw_free stage: releasing BCLK clocks for SSP%d...",
 				 dai->index);
