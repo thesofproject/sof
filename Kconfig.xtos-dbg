@@ -12,3 +12,12 @@ config DEBUG_BLOCK_FREE
 	  already freed block of memory. Enabling this feature increases
 	  number of memory writes and reads, due to checks for memory patterns
 	  that may be performed on allocation and deallocation.
+
+config DEBUG_FORCE_COHERENT_BUFFER
+	bool "Force the allocator to allocate coherent buffer only"
+	default n
+	help
+	  Select if we want to force the allocator to return coherent/uncached
+	  buffer only.
+	  This should be selected for debug purpose only, as accessing buffer
+	  without caching it will reduce the read/write performance.
