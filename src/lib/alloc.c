@@ -899,8 +899,12 @@ static void *_balloc_unlocked(uint32_t flags, uint32_t caps, size_t bytes,
 		n = PLATFORM_HEAP_BUFFER - i;
 	}
 
+#ifdef	CONFIG_DEBUG_FORCE_COHERENT_BUFFER
+	return cache_to_uncache(ptr);
+#else
 	return (flags & SOF_MEM_FLAG_COHERENT) ?
 		cache_to_uncache(ptr) : uncache_to_cache(ptr);
+#endif
 }
 
 /* allocates continuous buffers - not for direct use, clients use rballoc() */
