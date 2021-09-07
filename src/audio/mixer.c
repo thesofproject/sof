@@ -309,7 +309,7 @@ static int mixer_copy(struct comp_dev *dev)
 		buffer_unlock(sink, sink_flags);
 
 		if (!audio_stream_set_zero(&sink->stream, sink_bytes)) {
-			buffer_writeback(sink, sink_bytes);
+			buffer_stream_writeback(sink, sink_bytes);
 			comp_update_buffer_produce(sink, sink_bytes);
 		}
 
@@ -341,10 +341,10 @@ static int mixer_copy(struct comp_dev *dev)
 
 	/* mix streams */
 	for (i = num_mix_sources - 1; i >= 0; i--)
-		buffer_invalidate(sources[i], source_bytes);
+		buffer_stream_invalidate(sources[i], source_bytes);
 	md->mix_func(dev, &sink->stream, sources_stream, num_mix_sources,
 		     frames);
-	buffer_writeback(sink, sink_bytes);
+	buffer_stream_writeback(sink, sink_bytes);
 
 	/* update source buffer pointers */
 	for (i = num_mix_sources - 1; i >= 0; i--)

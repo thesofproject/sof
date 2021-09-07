@@ -641,7 +641,7 @@ static int test_keyword_copy(struct comp_dev *dev)
 	buffer_unlock(source, flags);
 
 	/* copy and perform detection */
-	buffer_invalidate(source, audio_stream_get_avail_bytes(&source->stream));
+	buffer_stream_invalidate(source, audio_stream_get_avail_bytes(&source->stream));
 	cd->detect_func(dev, &source->stream, frames);
 
 	/* calc new available */

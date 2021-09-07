@@ -471,7 +471,7 @@ static int copier_copy(struct comp_dev *dev)
 			sink_bytes = c.frames * c.sink_frame_bytes;
 
 			i = IPC4_SINK_QUEUE_ID(sink->id);
-			buffer_invalidate(src, src_bytes);
+			buffer_stream_invalidate(src, src_bytes);
 			cd->converter[i](&src->stream, 0, &sink->stream, 0,
 					 c.frames * sink->stream.channels);
 			if (cd->attenuation > 0) {
@@ -480,7 +480,7 @@ static int copier_copy(struct comp_dev *dev)
 					return ret;
 			}
 
-			buffer_writeback(sink, sink_bytes);
+			buffer_stream_writeback(sink, sink_bytes);
 
 			comp_update_buffer_produce(sink, sink_bytes);
 		}

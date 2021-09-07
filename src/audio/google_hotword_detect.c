@@ -410,7 +410,7 @@ static int ghd_copy(struct comp_dev *dev)
 		 (uint32_t)stream->end_addr);
 
 	/* copy and perform detection */
-	buffer_invalidate(source, bytes);
+	buffer_stream_invalidate(source, bytes);
 
 	tail_bytes = (char *)stream->end_addr - (char *)stream->r_ptr;
 	if (bytes <= tail_bytes)

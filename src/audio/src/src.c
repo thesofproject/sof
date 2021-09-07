@@ -739,10 +739,9 @@ static void src_process(struct comp_dev *dev, struct comp_buffer *source,
 	int produced = 0;
 
 	/* consumed bytes are not known at this point */
-	buffer_invalidate(source, source->stream.size);
+	buffer_stream_invalidate(source, source->stream.size);
 	cd->src_func(dev, &source->stream, &sink->stream, &consumed, &produced);
-	buffer_writeback(sink, produced *
-			 audio_stream_frame_bytes(&sink->stream));
+	buffer_stream_writeback(sink, produced * audio_stream_frame_bytes(&sink->stream));
 
 	comp_dbg(dev, "src_copy(), consumed = %u,  produced = %u",
 		 consumed, produced);

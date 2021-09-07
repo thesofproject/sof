@@ -495,10 +495,10 @@ static int demux_copy(struct comp_dev *dev)
 
 		demux_prepare_active_look_up(dev, &sinks[i]->stream,
 					     &source->stream, look_ups[i]);
-		buffer_invalidate(source, source_bytes);
+		buffer_stream_invalidate(source, source_bytes);
 		cd->demux(dev, &sinks[i]->stream, &source->stream, frames,
 			  &cd->active_lookup);
-		buffer_writeback(sinks[i], sinks_bytes[i]);
+		buffer_stream_writeback(sinks[i], sinks_bytes[i]);
 	}
 
 	/* update components */
@@ -591,7 +591,7 @@ static int mux_copy(struct comp_dev *dev)
 			continue;
 		sources_bytes[i] = frames *
 				   audio_stream_frame_bytes(sources_stream[i]);
-		buffer_invalidate(sources[i], sources_bytes[i]);
+		buffer_stream_invalidate(sources[i], sources_bytes[i]);
 	}
 	sink_bytes = frames * audio_stream_frame_bytes(&sink->stream);
 
@@ -600,7 +600,7 @@ static int mux_copy(struct comp_dev *dev)
 	/* produce output */
 	cd->mux(dev, &sink->stream, &sources_stream[0], frames,
 		&cd->active_lookup);
-	buffer_writeback(sink, sink_bytes);
+	buffer_stream_writeback(sink, sink_bytes);
 
 	/* update components */
 	comp_update_buffer_produce(sink, sink_bytes);
