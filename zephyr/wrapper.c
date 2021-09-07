@@ -703,37 +703,12 @@ void platform_dai_wallclock(struct comp_dev *dai, uint64_t *wallclock)
  * Mostly empty today waiting pending Zephyr CAVS SMP integration.
  */
 #if CONFIG_MULTICORE && CONFIG_SMP
-static atomic_t start_flag;
-
-static FUNC_NORETURN void secondary_init(void *arg)
-{
-	struct k_thread dummy_thread;
-
-	z_smp_thread_init(arg, &dummy_thread);
-	secondary_core_init(sof_get());
-
-#ifdef CONFIG_THREAD_STACK_INFO
-	dummy_thread.stack_info.start = (uintptr_t)z_interrupt_stacks +
-		arch_curr_cpu()->id * Z_KERNEL_STACK_LEN(CONFIG_ISR_STACK_SIZE);
-	dummy_thread.stack_info.size = Z_KERNEL_STACK_LEN(CONFIG_ISR_STACK_SIZE);
-#endif
-
-	z_smp_thread_swap();
-
-	CODE_UNREACHABLE; /* LCOV_EXCL_LINE */
-}
 
 int arch_cpu_enable_core(int id)
 {
-	atomic_clear(&start_flag);
+	extern void z_smp_start_cpu(int id);
 
-	/* Power up secondary core */
-	pm_runtime_get(PM_RUNTIME_DSP, PWRD_BY_TPLG | id);
-
-	arch_start_cpu(id, z_interrupt_stacks[id], CONFIG_ISR_STACK_SIZE,
-		       secondary_init, &start_flag);
-
-	atomic_set(&start_flag, 1);
+	z_smp_start_cpu(id);
 
 	return 0;
 }
