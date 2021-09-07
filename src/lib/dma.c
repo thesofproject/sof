@@ -198,7 +198,7 @@ int dma_buffer_copy_from(struct comp_buffer *source, struct comp_buffer *sink,
 	/* process data */
 	ret = process(istream, 0, &sink->stream, 0, samples);
 
-	buffer_writeback(sink, sink_bytes);
+	buffer_stream_writeback(sink, sink_bytes);
 
 	/*
 	 * consume istream using audio_stream API because this buffer doesn't
@@ -220,7 +220,7 @@ int dma_buffer_copy_to(struct comp_buffer *source, struct comp_buffer *sink,
 			      samples;
 	int ret;
 
-	buffer_invalidate(source, source_bytes);
+	buffer_stream_invalidate(source, source_bytes);
 
 	/* process data */
 	ret = process(&source->stream, 0, ostream, 0, samples);

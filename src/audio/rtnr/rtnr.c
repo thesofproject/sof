@@ -551,7 +551,7 @@ static int rtnr_copy(struct comp_dev *dev)
 		source_bytes = frames * audio_stream_frame_bytes(&source->stream);
 		sink_bytes = frames * audio_stream_frame_bytes(&sink->stream);
 
-		buffer_invalidate(source, source_bytes);
+		buffer_stream_invalidate(source, source_bytes);
 
 		/* Run processing function */
 
@@ -568,7 +568,7 @@ static int rtnr_copy(struct comp_dev *dev)
 		 */
 		RTKMA_API_Process(cd->rtk_agl, 0, cd->source_rate, MicNum);
 
-		buffer_writeback(sink, sink_bytes);
+		buffer_stream_writeback(sink, sink_bytes);
 
 		/* Track consume and produce */
 		comp_update_buffer_consume(source, source_bytes);

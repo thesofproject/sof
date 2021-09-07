@@ -619,11 +619,11 @@ static void igo_nr_process(struct comp_dev *dev,
 	uint32_t source_bytes = frames * cl->source_frame_bytes;
 	uint32_t sink_bytes = frames * cl->sink_frame_bytes;
 
-	buffer_invalidate(source, source_bytes);
+	buffer_stream_invalidate(source, source_bytes);
 
 	cd->igo_nr_func(cd, &source->stream, &sink->stream, frames);
 
-	buffer_writeback(sink, sink_bytes);
+	buffer_stream_writeback(sink, sink_bytes);
 
 	/* calc new free and available */
 	comp_update_buffer_consume(source, source_bytes);

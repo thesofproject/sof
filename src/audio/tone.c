@@ -633,7 +633,7 @@ static int tone_copy(struct comp_dev *dev)
 	if (free >= cd->period_bytes) {
 		/* create tone */
 		cd->tone_func(dev, &sink->stream, dev->frames);
-		buffer_writeback(sink, cd->period_bytes);
+		buffer_stream_writeback(sink, cd->period_bytes);
 
 		/* calc new free and available */
 		comp_update_buffer_produce(sink, cd->period_bytes);
