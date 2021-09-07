@@ -704,6 +704,7 @@ static int mux_trigger(struct comp_dev *dev, int cmd)
 
 	switch (cmd) {
 	case COMP_TRIGGER_PRE_START:
+	case COMP_TRIGGER_PRE_RELEASE:
 		if (mux_source_status_count(dev, COMP_STATE_ACTIVE) ||
 		    mux_source_status_count(dev, COMP_STATE_PAUSED))
 			return PPL_STATUS_PATH_STOP;
