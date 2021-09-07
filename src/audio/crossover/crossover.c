@@ -703,13 +703,13 @@ static int crossover_copy(struct comp_dev *dev)
 	}
 
 	/* Process crossover */
-	buffer_invalidate(source, source_bytes);
+	buffer_stream_invalidate(source, source_bytes);
 	cd->crossover_process(dev, source, sinks, num_sinks, frames);
 
 	for (i = 0; i < num_sinks; i++) {
 		if (!sinks[i])
 			continue;
-		buffer_writeback(sinks[i], sinks_bytes[i]);
+		buffer_stream_writeback(sinks[i], sinks_bytes[i]);
 		comp_update_buffer_produce(sinks[i], sinks_bytes[i]);
 	}
 	comp_update_buffer_consume(source, source_bytes);

@@ -474,12 +474,12 @@ static void eq_fir_process(struct comp_dev *dev, struct comp_buffer *source,
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 
-	buffer_invalidate(source, source_bytes);
+	buffer_stream_invalidate(source, source_bytes);
 
 	cd->eq_fir_func(cd->fir, &source->stream, &sink->stream, frames,
 			source->stream.channels);
 
-	buffer_writeback(sink, sink_bytes);
+	buffer_stream_writeback(sink, sink_bytes);
 
 	/* calc new free and available */
 	comp_update_buffer_consume(source, source_bytes);

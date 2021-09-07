@@ -764,7 +764,7 @@ static int kpb_copy(struct comp_dev *dev)
 		copy_bytes = MIN(avail_bytes, kpb->hd.free);
 		ret = PPL_STATUS_PATH_STOP;
 		if (copy_bytes) {
-			buffer_invalidate(source, copy_bytes);
+			buffer_stream_invalidate(source, copy_bytes);
 			ret = kpb_buffer_data(dev, source, copy_bytes);
 			dd->buffered_while_draining += copy_bytes;
 			kpb->hd.free -= copy_bytes;
@@ -1488,7 +1488,7 @@ static void kpb_copy_samples(struct comp_buffer *sink,
 	struct audio_stream *istream = &source->stream;
 	struct audio_stream *ostream = &sink->stream;
 
-	buffer_invalidate(source, size);
+	buffer_stream_invalidate(source, size);
 
 	for (i = 0; i < frames; i++) {
 		for (channel = 0; channel < KPB_NUM_OF_CHANNELS; channel++) {
@@ -1517,7 +1517,7 @@ static void kpb_copy_samples(struct comp_buffer *sink,
 		}
 	}
 
-	buffer_writeback(sink, size);
+	buffer_stream_writeback(sink, size);
 }
 
 /**

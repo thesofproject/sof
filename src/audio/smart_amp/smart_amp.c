@@ -612,7 +612,7 @@ static int smart_amp_copy(struct comp_dev *dev)
 				 avail_frames, avail_passthrough_frames);
 
 			/* perform buffer writeback after source_buf process */
-			buffer_invalidate(sad->feedback_buf, feedback_bytes);
+			buffer_stream_invalidate(sad->feedback_buf, feedback_bytes);
 			sad->process(dev, &sad->feedback_buf->stream,
 				     &sad->sink_buf->stream, avail_frames,
 				     sad->config.feedback_ch_map, true);
@@ -635,10 +635,10 @@ static int smart_amp_copy(struct comp_dev *dev)
 	buffer_unlock(sad->sink_buf, sink_flags);
 
 	/* process data */
-	buffer_invalidate(sad->source_buf, source_bytes);
+	buffer_stream_invalidate(sad->source_buf, source_bytes);
 	sad->process(dev, &sad->source_buf->stream, &sad->sink_buf->stream,
 		     avail_frames, sad->config.source_ch_map, false);
-	buffer_writeback(sad->sink_buf, sink_bytes);
+	buffer_stream_writeback(sad->sink_buf, sink_bytes);
 
 	/* source/sink buffer pointers update */
 	comp_update_buffer_consume(sad->source_buf, source_bytes);

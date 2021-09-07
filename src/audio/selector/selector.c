@@ -405,9 +405,9 @@ static int selector_copy(struct comp_dev *dev)
 		 source_bytes, sink_bytes);
 
 	/* copy selected channels from in to out */
-	buffer_invalidate(source, source_bytes);
+	buffer_stream_invalidate(source, source_bytes);
 	cd->sel_func(dev, &sink->stream, &source->stream, frames);
-	buffer_writeback(sink, sink_bytes);
+	buffer_stream_writeback(sink, sink_bytes);
 
 	/* calculate new free and available */
 	comp_update_buffer_produce(sink, sink_bytes);

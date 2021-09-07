@@ -382,7 +382,7 @@ int codec_adapter_copy(struct comp_dev *dev)
 		if (bytes_to_process < codec_buff_size)
 			goto db_verify;
 
-		buffer_invalidate(source, codec_buff_size);
+		buffer_stream_invalidate(source, codec_buff_size);
 		codec_adapter_copy_from_source_to_lib(&source->stream, &codec->cpd,
 						      codec_buff_size);
 		codec->cpd.avail = codec_buff_size;
@@ -411,7 +411,7 @@ int codec_adapter_copy(struct comp_dev *dev)
 	if (local_buff->stream.free < get_output_bytes(dev))
 		goto db_verify;
 
-	buffer_invalidate(source, codec_buff_size);
+	buffer_stream_invalidate(source, codec_buff_size);
 	codec_adapter_copy_from_source_to_lib(&source->stream, &codec->cpd,
 					      codec_buff_size);
 	codec->cpd.avail = codec_buff_size;
@@ -465,7 +465,7 @@ copy_period:
 	audio_stream_copy(&local_buff->stream, 0,
 			  &sink->stream, 0,
 			  copy_bytes / cd->stream_params.sample_container_bytes);
-	buffer_writeback(sink, copy_bytes);
+	buffer_stream_writeback(sink, copy_bytes);
 
 	comp_update_buffer_produce(sink, copy_bytes);
 	comp_update_buffer_consume(local_buff, copy_bytes);
