@@ -403,7 +403,7 @@ int pipeline_trigger_run(struct pipeline *p, struct comp_dev *host, int cmd)
 
 		ret = walk_ctx.comp_func(host, NULL, &walk_ctx, host->direction);
 		if (ret < 0)
-			pipe_err(p, "pipeline_trigger(): ret = %d, host->comp.id = %u, cmd = %d",
+			pipe_err(p, "pipeline_trigger_run(): ret = %d, host->comp.id = %u, cmd = %d",
 				 ret, dev_comp_id(host), cmd);
 		else if (ret == PPL_STATUS_PATH_STOP)
 			ret = 0;

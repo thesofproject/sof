@@ -51,7 +51,7 @@ static enum task_state pipeline_task_cmd(struct pipeline *p,
 
 	err = pipeline_trigger_run(p, p->trigger.host, cmd);
 	if (err < 0) {
-		pipe_err(p, "pipeline_task(): failed to trigger components: %d", err);
+		pipe_err(p, "pipeline_task_cmd(): failed to trigger components: %d", err);
 		reply->error = err;
 		err = SOF_TASK_STATE_COMPLETED;
 	} else {
@@ -70,7 +70,7 @@ static enum task_state pipeline_task_cmd(struct pipeline *p,
 		}
 
 		if (err == PPL_STATUS_PATH_STOP) {
-			pipe_warn(p, "pipeline_task(): stopping for xrun");
+			pipe_warn(p, "pipeline_task_cmd(): stopping for xrun");
 			err = SOF_TASK_STATE_COMPLETED;
 		} else if (p->trigger.cmd != cmd) {
 			/* PRE stage completed */
