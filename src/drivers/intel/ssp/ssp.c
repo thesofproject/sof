@@ -758,7 +758,7 @@ clk:
 		/* disable SSP port if no users */
 		if (ssp->state[SOF_IPC_STREAM_CAPTURE] != COMP_STATE_PREPARE ||
 		    ssp->state[SOF_IPC_STREAM_PLAYBACK] != COMP_STATE_PREPARE) {
-			dai_info(dai, "ssp_set_config(): hw_free stage: ignore since there is still user",
+			dai_info(dai, "ssp_set_config(): hw_free stage: ignore since SSP%d still in use",
 				 dai->index);
 			break;
 		}
