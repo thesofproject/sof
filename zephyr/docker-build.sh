@@ -19,12 +19,12 @@ sudo apt-get update
 sudo apt-get -y install tree
 
 if test -e zephyrproject; then
-    ./scripts/xtensa-build-zephyr.sh -a
+    ./scripts/xtensa-build-zephyr.sh -a "$@"
 else
     # Matches docker.io/zephyrprojectrtos/zephyr-build:latest gid
     ls -ln | head
     stat .
     sudo chgrp -R 1000 .
     sudo chmod -R g+rwX .
-    ./scripts/xtensa-build-zephyr.sh -a -c
+    ./scripts/xtensa-build-zephyr.sh -a -c "$@"
 fi
