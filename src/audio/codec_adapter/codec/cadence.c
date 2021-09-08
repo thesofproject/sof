@@ -346,11 +346,123 @@ int cadence_codec_get_samples(struct comp_dev *dev)
 	return 0;
 }
 
+static int cadence_src_codec_init_process(struct comp_dev *dev)
+{
+	int ret;
+	struct codec_data *codec = comp_get_codec(dev);
+	struct cadence_codec_data *cd = codec->private;
+
+	comp_dbg(dev, "cadence_src_codec_init_process() start");
+
+	API_CALL(cd, XA_API_CMD_INIT, XA_CMD_TYPE_INIT_PROCESS, NULL, ret);
+	if (ret != LIB_NO_ERROR) {
+		comp_err(dev, "cadence_src_codec_init_process() error %x: failed to initialize codec",
+			 ret);
+		return ret;
+	}
+
+	API_CALL(cd, XA_API_CMD_INIT, XA_CMD_TYPE_INIT_DONE_QUERY,
+		 &codec->cpd.init_done, ret);
+	if (ret != LIB_NO_ERROR) {
+		comp_err(dev, "cadence_src_codec_init_process() error %x: failed to get lib init status",
+			 ret);
+		return ret;
+	}
+
+	comp_dbg(dev, "cadence_src_codec_init_process() done");
+
+	return 0;
+}
+
+static int cadence_src_codec_process(struct comp_dev *dev)
+{
+	int ret;
+	struct codec_data *codec = comp_get_codec(dev);
+	struct cadence_codec_data *cd = codec->private;
+	/* Compute the number of samples in the input buffer
+	 * based on the number of bytes available in source buffer.
+	 * 4 = 2 bytes per sample for S16 and 2 channels
+	 *
+	 * TODO: Take this data from stream
+	 */
+	int in_chunk_size = codec->cpd.avail / 4;
+	int out_chunk_size;
+
+	comp_dbg(dev, "cadence_src_codec_process() start");
+
+	/* Set input chuck size (number of samples per channel).
+	 * Param id is XA_SRC_PP_CONFIG_PARAM_INPUT_CHUNK_SIZE = 2
+	 */
+	API_CALL(cd, XA_API_CMD_SET_CONFIG_PARAM, 2, &in_chunk_size, ret);
+	if (ret != LIB_NO_ERROR) {
+		comp_err(dev, "cadence_src_codec_process() error %x: failed to set chunk size of input data",
+			 ret);
+		goto err;
+	}
+
+	/* Set input buffer pointer.
+	 * Param id is XA_SRC_PP_CONFIG_PARAM_SET_INPUT_BUF_PTR = 5
+	 */
+	API_CALL(cd, XA_API_CMD_SET_CONFIG_PARAM, 5, codec->cpd.in_buff, ret);
+	if (ret != LIB_NO_ERROR) {
+		comp_err(dev, "cadence_src_codec_process() error %x: failed to set input buffer pointer",
+			 ret);
+		goto err;
+	}
+
+	/* Set output buffer pointer.
+	 * Param id is XA_SRC_PP_CONFIG_PARAM_SET_OUTPUT_BUF_PTR = 6
+	 */
+	API_CALL(cd, XA_API_CMD_SET_CONFIG_PARAM, 6, codec->cpd.out_buff, ret);
+	if (ret != LIB_NO_ERROR) {
+		comp_err(dev, "cadence_src_codec_process() error %x: failed to set output buffer pointer",
+			 ret);
+		goto err;
+	}
+
+	/* Execute the Sample Rate Converter */
+	API_CALL(cd, XA_API_CMD_EXECUTE, XA_CMD_TYPE_DO_EXECUTE, NULL, ret);
+	if (ret != LIB_NO_ERROR) {
+		comp_err(dev, "cadence_src_codec_process() error %x: processing failed",
+			 ret);
+		goto err;
+	}
+
+	/* Get the number of samples in the output buffer.
+	 * Param id is XA_SRC_PP_CONFIG_PARAM_OUTPUT_CHUNK_SIZE = 3
+	 */
+	API_CALL(cd, XA_API_CMD_GET_CONFIG_PARAM, 3, &out_chunk_size, ret);
+	if (ret != LIB_NO_ERROR) {
+		comp_err(dev, "cadence_src_codec_process() error %x: could not get produced chunk size",
+			 ret);
+		goto err;
+	}
+
+	codec->cpd.consumed = codec->cpd.avail;
+	/* Compute the number of bytes produced based
+	 * on the number of samples from the output buffer.
+	 * 4 = 2 bytes per sample for S16 and 2 channels
+	 *
+	 * TODO: Take this data from stream
+	 */
+	codec->cpd.produced = out_chunk_size * 4;
+
+	comp_dbg(dev, "cadence_src_codec_process() done");
+
+	return 0;
+err:
+	return ret;
+}
+
 int cadence_codec_init_process(struct comp_dev *dev)
 {
 	int ret;
 	struct codec_data *codec = comp_get_codec(dev);
 	struct cadence_codec_data *cd = codec->private;
+	uint32_t api_id = CODEC_GET_API_ID(codec->id);
+
+	if (api_id == CADENCE_CODEC_SRC_PP_ID)
+		return cadence_src_codec_init_process(dev);
 
 	API_CALL(cd, XA_API_CMD_SET_INPUT_BYTES, 0, &codec->cpd.avail, ret);
 	if (ret != LIB_NO_ERROR) {
@@ -383,6 +495,7 @@ int cadence_codec_init_process(struct comp_dev *dev)
 
 	return 0;
 }
+
 int cadence_codec_prepare(struct comp_dev *dev)
 {
 	int ret = 0, mem_tabs_size;
@@ -485,6 +598,10 @@ int cadence_codec_process(struct comp_dev *dev)
 	int ret;
 	struct codec_data *codec = comp_get_codec(dev);
 	struct cadence_codec_data *cd = codec->private;
+	uint32_t api_id = CODEC_GET_API_ID(codec->id);
+
+	if (api_id == CADENCE_CODEC_SRC_PP_ID)
+		return cadence_src_codec_process(dev);
 
 	comp_dbg(dev, "cadence_codec_process() start");
 
