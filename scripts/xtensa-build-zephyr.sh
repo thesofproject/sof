@@ -36,7 +36,7 @@ print_usage()
 Re-configures and re-builds SOF with Zephyr using a pre-installed Zephyr toolchain and
 the _defconfig file for that platform.
 
-usage: $0 [options] platform(s)
+usage: $0 [options] platform(s) [ -- cmake arguments ]
 
        -a Build all platforms.
        -j n Set number of make build jobs for rimage. Jobs=#cores by default.
@@ -181,7 +181,8 @@ build_all()
 			/bin/pwd
 			set -x
 			west build --build-dir "$bdir" --board "$PLAT_CONFIG" \
-				zephyr/samples/subsys/audio/sof
+				zephyr/samples/subsys/audio/sof \
+				-- "${CMAKE_ARGS[@]}"
 
 			# This should ideally be part of
 			# sof/zephyr/CMakeLists.txt but due to the way
@@ -218,7 +219,9 @@ parse_args()
 {
 	local zeproj
 
-	# parse the args
+	local OPTIND=1
+
+	# Parse -options
 	while getopts "acj:k:p:" OPTION; do
 		case "$OPTION" in
 			a) PLATFORMS=("${SUPPORTED_PLATFORMS[@]}") ;;
@@ -229,6 +232,10 @@ parse_args()
 			*) print_usage; exit 1 ;;
 		esac
 	done
+	# This also drops any _leading_ '--'. Note this parser is
+	# compatible with using '--' twice (undocumented feature), as
+	# in:
+	#   build-zephyr.sh -c -k somekey -- apl imx -- -DEXTRA_CFLAGS='-Werror'
 	shift $((OPTIND-1))
 
 	if [ -n "$zeproj" ] && [ x"$DO_CLONE" = xyes ]; then
@@ -247,8 +254,15 @@ parse_args()
 	    WEST_TOP="$zeproj"
 	fi
 
-	# parse platform args
-	for arg in "$@"; do
+	# Find platform arguments if '-a' was not used
+	test "${#PLATFORMS[@]}" -ne 0 || while test -n "$1"; do
+		local arg="$1"
+
+		# '--' ends platforms
+		if [ x"$arg" = x-- ]; then
+		    shift || true; break
+		fi
+
 		platform=none
 		for i in "${SUPPORTED_PLATFORMS[@]}"; do
 			if [ x"$i" = x"$arg" ]; then
@@ -265,13 +279,21 @@ parse_args()
 		fi
 	done
 
-	# check target platform(s) have been passed in
+	# Check some target platform(s) have been passed in one way or
+	# the other
 	if [ "${#PLATFORMS[@]}" -eq 0 ]; then
 		echo "Error: No platforms specified. Supported are: " \
 		     "${SUPPORTED_PLATFORMS[*]}"
 		print_usage
 		exit 1
 	fi
+
+	printf 'Building platforms:'
+	printf ' %s' "${PLATFORMS[@]}"; printf '\n'
+
+	CMAKE_ARGS=("$@")
+	# For debugging quoting and whitespace
+	#declare -p CMAKE_ARGS
 }
 
 main()
