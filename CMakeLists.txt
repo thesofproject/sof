@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.13)
 
 if("${CMAKE_CURRENT_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_BINARY_DIR}")
 	message(FATAL_ERROR
@@ -10,23 +10,8 @@ if("${CMAKE_CURRENT_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_BINARY_DIR}")
 	)
 endif()
 
-if(NOT (${CMAKE_VERSION} VERSION_LESS "3.13.0"))
-	# CMake 3.13+ has less restrictive rules for target_link_libraries()
-	# Until we make 3.13 as required minimum version we want to
-	# use old behaviour for compatibility
-	cmake_policy(SET CMP0079 OLD)
-endif()
-
-if(${CMAKE_VERSION} VERSION_LESS "3.12.0")
-	# FindPythonInterp is bugged and may sometimes be unable to find
-	# Python 3 when both Python 2 & 3 are in PATH,
-	# so it's always better to use CMake 3.12+
-	find_package(PythonInterp 3.0)
-	set(PYTHON3 "${PYTHON_EXECUTABLE}")
-else()
-	find_package(Python3 COMPONENTS Interpreter)
-	set(PYTHON3 "${Python3_EXECUTABLE}")
-endif()
+find_package(Python3 COMPONENTS Interpreter)
+set(PYTHON3 "${Python3_EXECUTABLE}")
 
 option(BUILD_UNIT_TESTS "Build unit tests" OFF)
 option(BUILD_UNIT_TESTS_HOST "Build unit tests for host" OFF)

@@ -7,7 +7,7 @@
 # Version is checked during configuration step and for every target
 # that has check_version_h target as dependency
 
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.13)
 
 set(VERSION_CMAKE_PATH ${CMAKE_CURRENT_LIST_DIR}/version.cmake)
 
