@@ -2,7 +2,7 @@
 
 # Implements build counter and adds it as post-build action for sof
 
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.13)
 
 set(VERSION_BUILD_COUNTER_CMAKE_PATH ${CMAKE_CURRENT_LIST_DIR}/version-build-counter.cmake)
 
