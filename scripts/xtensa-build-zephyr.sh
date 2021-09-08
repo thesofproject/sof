@@ -39,8 +39,8 @@ the _defconfig file for that platform.
 usage: $0 [options] platform(s)
 
        -a Build all platforms.
-       -j n Set number of make build jobs. Jobs=#cores by default.
-           Infinite when not specified.
+       -j n Set number of make build jobs for rimage. Jobs=#cores by default.
+           Ignored by "west build".
        -k Path to a non-default rimage signing key.
        -c recursively clones Zephyr inside sof before building.
           Incompatible with -p.
@@ -103,7 +103,7 @@ install_opts()
     install -D -p "$@"
 }
 
-build()
+build_all()
 {
 	cd "$WEST_TOP"
 	west topdir || {
@@ -117,6 +117,8 @@ build()
 	mkdir -p ${STAGING}/sof/ # smex does not use 'install -D'
 
 	for platform in "${PLATFORMS[@]}"; do
+		# TODO: extract a new build_platform() function for
+		# cleaner error handling and saving a lot of tabs.
 
 		# default value
 		local RIMAGE_KEY=modules/audio/sof/keys/otc_private_key.pem
@@ -212,7 +214,7 @@ build()
 	tree "$STAGING"
 }
 
-main()
+parse_args()
 {
 	local zeproj
 
@@ -270,6 +272,11 @@ main()
 		print_usage
 		exit 1
 	fi
+}
+
+main()
+{
+	parse_args "$@"
 
 	if [ "x$DO_CLONE" == "xyes" ]; then
 		clone
@@ -289,7 +296,7 @@ main()
 		)
 	fi
 
-	build
+	build_all
 }
 
 main "$@"
