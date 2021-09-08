@@ -36,14 +36,15 @@ print_usage()
 Re-configures and re-builds SOF with Zephyr using a pre-installed Zephyr toolchain and
 the _defconfig file for that platform.
 
-usage: $0 [options] platform(s) [ -- cmake arguments ]
+usage: $0 [options] [ platform(s) ] [ -- cmake arguments ]
 
        -a Build all platforms.
        -j n Set number of make build jobs for rimage. Jobs=#cores by default.
            Ignored by "west build".
        -k Path to a non-default rimage signing key.
        -c recursively clones Zephyr inside sof before building.
-          Incompatible with -p.
+          Incompatible with -p. To stop after cloning Zephyr, don't
+          pass any platform or cmake argument.
        -p Existing Zephyr project directory. Incompatible with -c.  If
           zephyr-project/modules/audio/sof is missing then a
           symbolic link pointing to ${SOF_TOP} will automatically be
@@ -282,14 +283,11 @@ parse_args()
 	# Check some target platform(s) have been passed in one way or
 	# the other
 	if [ "${#PLATFORMS[@]}" -eq 0 ]; then
-		echo "Error: No platforms specified. Supported are: " \
-		     "${SUPPORTED_PLATFORMS[*]}"
-		print_usage
-		exit 1
+		printf 'No platform build requested\n'
+	else
+		printf 'Building platforms:'
+		printf ' %s' "${PLATFORMS[@]}"; printf '\n'
 	fi
-
-	printf 'Building platforms:'
-	printf ' %s' "${PLATFORMS[@]}"; printf '\n'
 
 	CMAKE_ARGS=("$@")
 	# For debugging quoting and whitespace
@@ -318,7 +316,7 @@ main()
 		)
 	fi
 
-	build_all
+	test "${#PLATFORMS[@]}" -eq 0 || build_all
 }
 
 main "$@"
