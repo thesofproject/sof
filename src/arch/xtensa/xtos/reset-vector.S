@@ -37,6 +37,11 @@
 #include <xtensa/xtruntime-core-state.h>
 #include "xtos-internal.h"
 
+#if XCHAL_HAVE_MPU
+/* for mpu_write_map opcode */
+#include <xtensa/mpuasm.h>
+#endif
+
 // The following reset vector avoids initializing certain registers already
 // initialized by processor reset.  But it does initialize some of them
 // anyway, for minimal support of warm restart (restarting in software by
@@ -360,6 +365,31 @@ _ResetHandler:
 	 *   protection mechanism, the following code has no effect.)
 	 */
 #if XCHAL_HAVE_MPU
+	// If there is a user-provided MPU table, then we will program the MPU
+	// with it now. Can't call xthal_write_map_raw() because code sections
+	// haven't been unpacked yet. For romable images, the MPU table values
+	// and the table size must reside in a section that does not need to be
+	// unpacked (.ResetHandler.text or .srom.text).
+	// NOTE: This will set CACHEADRDIS to all zeros, because computing a
+	// useful nonzero value from the user settings is too complex and slow
+	// to implement here.
+
+	.weak	__xt_mpu_init_table		// Table of MPU entries
+	.weak	__xt_mpu_init_table_size	// Number of entries in table
+
+	movi	a2, __xt_mpu_init_table		// non-zero if user defined
+	movi	a3, __xt_mpu_init_table_size	// non-zero if user defined
+	beqz	a2, .Lno_user_mpu
+	beqz	a3, .Lno_user_mpu
+	l32i	a3, a3, 0
+	beqz	a3, .Lno_user_mpu		// skip if size = 0
+	mpu_write_map	a2, a3, a12, a13, a14, a15
+	j	.Lno_default_mpu
+
+.Lno_user_mpu:
+	// If there's an empty background map, setup foreground maps to mimic
+	// region protection.
+
 	/*  If there's an empty background map, setup foreground maps to mimic region protection:  */
 # if XCHAL_MPU_ENTRIES >= 8 && XCHAL_MPU_BACKGROUND_ENTRIES <= 2
 	// We assume reset state:  all MPU entries zeroed and disabled.
@@ -394,6 +424,7 @@ _ResetHandler:
 	movi	a9, XCHAL_MPU_BG_CACHEADRDIS	// default value of CACHEADRDIS for bgnd map
 # endif
 	wsr.cacheadrdis a9			// update cacheadrdis
+.Lno_default_mpu:
 #elif XCHAL_HAVE_CACHEATTR || XCHAL_HAVE_MIMIC_CACHEATTR || XCHAL_HAVE_XLT_CACHEATTR \
 		|| (XCHAL_HAVE_PTP_MMU && XCHAL_HAVE_SPANNING_WAY)
 	movi	a2, _memmap_cacheattr_reset	/* note: absolute symbol, not a ptr */
