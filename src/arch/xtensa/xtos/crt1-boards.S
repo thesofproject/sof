@@ -159,8 +159,10 @@ xtos_per_core:
 	writesr	excsave 3 a4
 	movi	a4, _Level4FromVector
 	writesr	excsave 4 a4
+#if XCHAL_INTLEVEL5_MASK
 	movi	a4, _Level5FromVector
 	writesr	excsave 5 a4
+#endif
 #endif
 
 #if CONFIG_MULTICORE
