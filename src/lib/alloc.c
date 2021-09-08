@@ -931,9 +931,7 @@ static void *_balloc_unlocked(uint32_t flags, uint32_t caps, size_t bytes,
 	void *ptr = NULL;
 
 	for (i = 0, n = PLATFORM_HEAP_BUFFER, heap = memmap->buffer;
-	     i < PLATFORM_HEAP_BUFFER;
-	     i = heap - memmap->buffer + 1, n = PLATFORM_HEAP_BUFFER - i,
-	     heap++) {
+	     i < PLATFORM_HEAP_BUFFER;) {
 		heap = get_heap_from_caps(heap, n, caps);
 		if (!heap)
 			break;
@@ -943,6 +941,9 @@ static void *_balloc_unlocked(uint32_t flags, uint32_t caps, size_t bytes,
 			break;
 
 		/* Continue from the next heap */
+		heap++;
+		i = (heap - memmap->buffer) / sizeof(struct mm_heap);
+		n = PLATFORM_HEAP_BUFFER - i;
 	}
 
 	return ptr;
