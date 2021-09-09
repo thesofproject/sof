@@ -77,6 +77,15 @@ Supported platforms ${SUPPORTED_PLATFORMS[*]}
 EOF
 }
 
+zephyr_fetch_and_switch()
+{
+	( cd "$WEST_TOP"/zephyr
+	  set -x
+	  git fetch --depth=5 "$1" "$2"
+	  git checkout FETCH_HEAD
+	)
+}
+
 # Downloads zephyrproject inside sof/ and create a ../../.. symbolic
 # link back to sof/
 clone()
@@ -88,6 +97,17 @@ clone()
 	mkdir -p "$WEST_TOP"
 	git clone --depth=5 https://github.com/zephyrproject-rtos/zephyr \
 	    "$WEST_TOP"/zephyr
+
+	# This shows how to point SOF CI to and run all SOF tests on any
+	# Zephyr work in progress or any other Zephyr commit from
+	# anywhere. Simply edit remote and reference, uncomment this
+	# line and submit as an SOF Pull Request.
+
+	# zephyr_fetch_and_switch    origin   pull/38374/head
+
+	# SECURITY WARNING for reviewers: never allow unknown code from
+	# unknown submitters on any CI system.
+
 	git -C "$WEST_TOP"/zephyr --no-pager log --oneline --graph \
 	    --decorate --max-count=20
 	west init -l "${WEST_TOP}"/zephyr
