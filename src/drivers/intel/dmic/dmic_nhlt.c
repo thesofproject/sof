@@ -310,7 +310,7 @@ int dmic_set_config_nhlt(struct dai *dai, void *spec_config)
 		clk_div = MIC_CONTROL_PDM_CLKDIV_GET(pdm_cfg[n]->mic_control);
 		p_clkdiv = clk_div + 2;
 		if (dmic->global->active_fifos_mask == 0) {
-			val = pdm_cfg[0]->cic_control;
+			val = pdm_cfg[n]->cic_control;
 			bf1 = CIC_CONTROL_SOFT_RESET_GET(val);
 			bf2 = CIC_CONTROL_CIC_START_B_GET(val);
 			bf3 = CIC_CONTROL_CIC_START_A_GET(val);
