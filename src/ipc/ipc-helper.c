@@ -184,7 +184,7 @@ int comp_buffer_connect(struct comp_dev *comp, uint32_t comp_core,
 
 	/* check if it's a connection between cores */
 	if (buffer->core != comp_core) {
-		dcache_invalidate_region(buffer, sizeof(*buffer));
+		dcache_invalidate_region(uncache_to_cache(buffer), sizeof(*buffer));
 
 		buffer->inter_core = true;
 
@@ -193,7 +193,7 @@ int comp_buffer_connect(struct comp_dev *comp, uint32_t comp_core,
 	}
 
 	ret = pipeline_connect(comp, buffer, dir);
-	dcache_writeback_invalidate_region(buffer, sizeof(*buffer));
+	dcache_writeback_invalidate_region(uncache_to_cache(buffer), sizeof(*buffer));
 
 	return ret;
 }

@@ -532,7 +532,7 @@ static int ipc_comp_to_buffer_connect(struct ipc_comp_dev *comp,
 
 	/* check if it's a connection between cores */
 	if (buffer->core != comp->core) {
-		dcache_invalidate_region(buffer->cb, sizeof(*buffer->cb));
+		dcache_invalidate_region(uncache_to_cache(buffer->cb), sizeof(*buffer->cb));
 
 		buffer->cb->inter_core = true;
 
@@ -543,7 +543,7 @@ static int ipc_comp_to_buffer_connect(struct ipc_comp_dev *comp,
 	ret = pipeline_connect(comp->cd, buffer->cb,
 			       PPL_CONN_DIR_COMP_TO_BUFFER);
 
-	dcache_writeback_invalidate_region(buffer->cb, sizeof(*buffer->cb));
+	dcache_writeback_invalidate_region(uncache_to_cache(buffer->cb), sizeof(*buffer->cb));
 
 	return ret;
 }
@@ -561,7 +561,7 @@ static int ipc_buffer_to_comp_connect(struct ipc_comp_dev *buffer,
 
 	/* check if it's a connection between cores */
 	if (buffer->core != comp->core) {
-		dcache_invalidate_region(buffer->cb, sizeof(*buffer->cb));
+		dcache_invalidate_region(uncache_to_cache(buffer->cb), sizeof(*buffer->cb));
 
 		buffer->cb->inter_core = true;
 
@@ -572,7 +572,7 @@ static int ipc_buffer_to_comp_connect(struct ipc_comp_dev *buffer,
 	ret = pipeline_connect(comp->cd, buffer->cb,
 			       PPL_CONN_DIR_BUFFER_TO_COMP);
 
-	dcache_writeback_invalidate_region(buffer->cb, sizeof(*buffer->cb));
+	dcache_writeback_invalidate_region(uncache_to_cache(buffer->cb), sizeof(*buffer->cb));
 
 	return ret;
 }
