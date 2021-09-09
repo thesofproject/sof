@@ -6,7 +6,7 @@
 set -e
 
 SUPPORTED_PLATFORMS=(byt cht bdw hsw apl skl kbl cnl sue icl jsl \
-                    imx8 imx8x imx8m imx8ulp tgl tgl-h rn)
+                    imx8 imx8x imx8m imx8ulp tgl tgl-h rn mt8195)
 BUILD_ROM=no
 BUILD_DEBUG=no
 BUILD_FORCE_UP=no
@@ -328,6 +328,12 @@ do
 			XTENSA_CORE="ACP_3_1_001_PROD"
 			HOST="xtensa-rn-elf"
 			XTENSA_TOOLS_VERSION="RF-2016.4-linux"
+			;;
+		mt8195)
+			PLATFORM="mt8195"
+			XTENSA_CORE="hifi4_8195_PROD"
+			HOST="xtensa-mt8195-elf"
+			XTENSA_TOOLS_VERSION="RI-2019.1-linux"
 			;;
 
 	esac
