@@ -208,7 +208,7 @@ static inline void buffer_lock(struct comp_buffer *buffer, uint32_t *flags)
 	spin_lock_irq(buffer->lock, *flags);
 
 	/* invalidate in case something has changed during our wait */
-	dcache_invalidate_region(buffer, sizeof(*buffer));
+	dcache_invalidate_region(uncache_to_cache(buffer), sizeof(*buffer));
 }
 
 /**
@@ -228,7 +228,7 @@ static inline void buffer_unlock(struct comp_buffer *buffer, uint32_t flags)
 	spinlock_t *lock = buffer->lock;
 
 	/* wtb and inv to avoid buffer locking in read only situations */
-	dcache_writeback_invalidate_region(buffer, sizeof(*buffer));
+	dcache_writeback_invalidate_region(uncache_to_cache(buffer), sizeof(*buffer));
 
 	spin_unlock_irq(lock, flags);
 }
