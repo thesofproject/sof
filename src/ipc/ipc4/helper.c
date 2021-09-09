@@ -235,14 +235,14 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 		return IPC4_OUT_OF_MEMORY;
 	}
 
-	ret = comp_buffer_connect(source, source->ipc_config.core, buffer, buffer->core,
+	ret = comp_buffer_connect(source, source->ipc_config.core, buffer,
 				  PPL_CONN_DIR_COMP_TO_BUFFER);
 	if (ret < 0) {
 		tr_err(&ipc_tr, "failed to connect src %d to internal buffer", src_id);
 		goto err;
 	}
 
-	ret = comp_buffer_connect(sink, sink->ipc_config.core, buffer, buffer->core,
+	ret = comp_buffer_connect(sink, sink->ipc_config.core, buffer,
 				  PPL_CONN_DIR_BUFFER_TO_COMP);
 	if (ret < 0) {
 		tr_err(&ipc_tr, "failed to connect internal buffer to sink %d", sink_id);
