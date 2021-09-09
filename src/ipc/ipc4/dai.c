@@ -92,8 +92,9 @@ int ipc_dai_data_config(struct comp_dev *dev)
 		dev->ipc_config.frame_fmt = SOF_IPC_FRAME_S32_LE;
 		break;
 	case SOF_DAI_INTEL_DMIC:
-		/* We can use always the largest burst length. */
-		dd->config.burst_elems = 8;
+		/* Depth is passed by DMIC driver that retrieves it from blob */
+		dd->config.burst_elems = dd->dai->plat_data.fifo->depth;
+		comp_info(dev, "dai_data_config() burst_elems = %d", dd->config.burst_elems);
 		break;
 	case SOF_DAI_INTEL_HDA:
 		break;
