@@ -67,6 +67,8 @@ enum mem_zone {
 
 /** \brief Indicates that original content should not be copied by realloc. */
 #define SOF_MEM_FLAG_NO_COPY	BIT(1)
+/** \brief Indicates that if we should return uncached address. */
+#define SOF_MEM_FLAG_COHERENT  BIT(2)
 
 /** @} */
 
