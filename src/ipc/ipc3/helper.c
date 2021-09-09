@@ -651,3 +651,11 @@ int ipc_comp_new(struct ipc *ipc, ipc_comp *_comp)
 
 	return 0;
 }
+
+void ipc_msg_reply(struct sof_ipc_reply *reply)
+{
+	struct ipc *ipc = ipc_get();
+
+	mailbox_hostbox_write(0, reply, reply->hdr.size);
+	ipc_complete_cmd(ipc);
+}

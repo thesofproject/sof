@@ -38,7 +38,14 @@
 struct ipc4_msg_data {
 	uint32_t msg_in[2]; /* local copy of current message from host header */
 	uint32_t msg_out[2]; /* local copy of current message to host header */
+	bool delayed_reply;
+	uint32_t delayed_error;
 };
+
+struct ipc4_msg_data msg_data;
+
+/* fw sends a fw ipc message to send the status of the last host ipc message */
+struct ipc_msg msg_reply;
 
 /*
  * Global IPC Operations.
@@ -186,7 +193,7 @@ static int ipc4_set_pipeline_state(union ipc4_message_header *ipc4)
 
 	switch (cmd) {
 	case SOF_IPC4_PIPELINE_STATE_RUNNING:
-		cmd = COMP_TRIGGER_START;
+		cmd = COMP_TRIGGER_PRE_START;
 
 		ret = ipc4_pcm_params(host);
 		if (ret < 0)
@@ -208,7 +215,7 @@ static int ipc4_set_pipeline_state(union ipc4_message_header *ipc4)
 		cmd = COMP_TRIGGER_PAUSE;
 		break;
 	case SOF_IPC4_PIPELINE_STATE_EOS:
-		cmd = COMP_TRIGGER_RELEASE;
+		cmd = COMP_TRIGGER_PRE_RELEASE;
 		break;
 	/* special case- TODO */
 	case SOF_IPC4_PIPELINE_STATE_SAVED:
@@ -224,6 +231,9 @@ static int ipc4_set_pipeline_state(union ipc4_message_header *ipc4)
 	if (ret < 0) {
 		tr_err(&ipc_tr, "ipc: comp %d trigger 0x%x failed %d", id, cmd, ret);
 		ret = IPC4_PIPELINE_STATE_NOT_SET;
+	} else if (ret > 0) {
+		msg_data.delayed_reply = true;
+		msg_data.delayed_error = IPC4_PIPELINE_STATE_NOT_SET;
 	}
 
 	return ret;
@@ -445,11 +455,6 @@ ipc_cmd_hdr *mailbox_validate(void)
 	return hdr;
 }
 
-static struct ipc4_msg_data msg_data;
-
-/* fw sends a fw ipc message to send the status of the last host ipc message */
-static struct ipc_msg msg_reply;
-
 ipc_cmd_hdr *ipc_compact_read_msg(void)
 {
 	ipc_cmd_hdr *hdr = (ipc_cmd_hdr *)msg_data.msg_in;
@@ -481,6 +486,49 @@ void ipc_boot_complete_msg(ipc_cmd_hdr *header, uint32_t *data)
 	*data = 0;
 }
 
+void ipc_msg_reply(struct sof_ipc_reply *reply)
+{
+	struct ipc4_message_reply reply_msg;
+	struct ipc *ipc = ipc_get();
+	uint32_t msg_reply_data;
+	bool skip_first_entry;
+	uint32_t flags;
+	int error = 0;
+
+	/* error reported in delayed pipeline task */
+	if (reply->error < 0)
+		error = msg_data.delayed_error;
+	else
+		error = reply->error;
+
+	/*
+	 * IPC commands can be completed synchronously from the IPC task
+	 * completion method, or asynchronously: either from the pipeline task
+	 * thread or from another core. In the asynchronous case the order of
+	 * the two events is unknown. It is important that the latter of them
+	 * completes the IPC to avoid the host sending the next IPC too early.
+	 * .delayed_response is used for this in such asynchronous cases.
+	 */
+	spin_lock_irq(&ipc->lock, flags);
+	skip_first_entry = msg_data.delayed_reply;
+	msg_data.delayed_reply = false;
+	spin_unlock_irq(&ipc->lock, flags);
+
+	if (!skip_first_entry) {
+		/* copy contents of message received */
+		reply_msg.header.dat = msg_reply.header;
+		reply_msg.header.r.status = error;
+		reply_msg.data.dat = 0;
+		msg_reply_data = 0;
+
+		msg_reply.header = reply_msg.header.dat;
+		msg_reply.tx_data = &msg_reply_data;
+		msg_reply.tx_size = sizeof(msg_reply_data);
+
+		ipc_msg_send(&msg_reply, &reply_msg.data.dat, true);
+	}
+}
+
 void ipc_cmd(ipc_cmd_hdr *_hdr)
 {
 	union ipc4_message_header *in = ipc_from_hdr(_hdr);
@@ -489,6 +537,8 @@ void ipc_cmd(ipc_cmd_hdr *_hdr)
 
 	if (!in)
 		return;
+
+	msg_data.delayed_reply = false;
 
 	target = in->r.msg_tgt;
 
@@ -505,12 +555,13 @@ void ipc_cmd(ipc_cmd_hdr *_hdr)
 		err = IPC4_UNKNOWN_MESSAGE_TYPE;
 	}
 
-	if (err)
-		tr_err(&ipc_tr, "ipc4: %d failed ....", target);
+	if (err && !msg_data.delayed_reply)
+		tr_err(&ipc_tr, "ipc4: %d failed err %d", target, err);
 
 	/* FW sends a ipc message to host if request bit is set*/
 	if (in->r.rsp == SOF_IPC4_MESSAGE_DIR_MSG_REQUEST) {
 		struct ipc4_message_reply reply;
+		struct sof_ipc_reply rep;
 		uint32_t msg_reply_data;
 
 		/* copy contents of message received */
@@ -525,6 +576,8 @@ void ipc_cmd(ipc_cmd_hdr *_hdr)
 		msg_reply.header = reply.header.dat;
 		msg_reply.tx_data = &msg_reply_data;
 		msg_reply.tx_size = sizeof(msg_reply_data);
-		ipc_msg_send(&msg_reply, &reply.data.dat, true);
+
+		rep.error = err;
+		ipc_msg_reply(&rep);
 	}
 }
