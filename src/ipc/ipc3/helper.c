@@ -511,6 +511,8 @@ int ipc_buffer_free(struct ipc *ipc, uint32_t buffer_id)
 static int ipc_comp_to_buffer_connect(struct ipc_comp_dev *comp,
 				      struct ipc_comp_dev *buffer)
 {
+	struct comp_buffer *buf = buffer->cb;
+	struct comp_dev *sink = buffer_get_comp(buf, PPL_DIR_DOWNSTREAM);
 	int ret;
 
 	if (!cpu_is_me(comp->core))
@@ -520,10 +522,9 @@ static int ipc_comp_to_buffer_connect(struct ipc_comp_dev *comp,
 	       comp->id);
 
 	/* check if it's a connection between cores */
-	if (buffer->core != comp->core) {
-		dcache_invalidate_region(buffer->cb, sizeof(*buffer->cb));
-
-		buffer->cb->inter_core = true;
+	if (sink && sink->ipc_config.core != comp->core) {
+		dcache_invalidate_region(buf, sizeof(*buf));
+		buf->inter_core = true;
 
 		if (!comp->cd->is_shared) {
 			comp->cd = comp_make_shared(comp->cd);
@@ -532,10 +533,9 @@ static int ipc_comp_to_buffer_connect(struct ipc_comp_dev *comp,
 		}
 	}
 
-	ret = pipeline_connect(comp->cd, buffer->cb,
-			       PPL_CONN_DIR_COMP_TO_BUFFER);
+	ret = pipeline_connect(comp->cd, buf, PPL_CONN_DIR_COMP_TO_BUFFER);
 
-	dcache_writeback_invalidate_region(buffer->cb, sizeof(*buffer->cb));
+	dcache_writeback_invalidate_region(buf, sizeof(*buf));
 
 	return ret;
 }
@@ -543,6 +543,8 @@ static int ipc_comp_to_buffer_connect(struct ipc_comp_dev *comp,
 static int ipc_buffer_to_comp_connect(struct ipc_comp_dev *buffer,
 				      struct ipc_comp_dev *comp)
 {
+	struct comp_buffer *buf = buffer->cb;
+	struct comp_dev *source = buffer_get_comp(buf, PPL_DIR_UPSTREAM);
 	int ret;
 
 	if (!cpu_is_me(comp->core))
@@ -552,10 +554,9 @@ static int ipc_buffer_to_comp_connect(struct ipc_comp_dev *buffer,
 	       buffer->id);
 
 	/* check if it's a connection between cores */
-	if (buffer->core != comp->core) {
-		dcache_invalidate_region(buffer->cb, sizeof(*buffer->cb));
-
-		buffer->cb->inter_core = true;
+	if (source && source->ipc_config.core != comp->core) {
+		dcache_invalidate_region(buf, sizeof(*buf));
+		buf->inter_core = true;
 
 		if (!comp->cd->is_shared) {
 			comp->cd = comp_make_shared(comp->cd);
@@ -564,10 +565,9 @@ static int ipc_buffer_to_comp_connect(struct ipc_comp_dev *buffer,
 		}
 	}
 
-	ret = pipeline_connect(comp->cd, buffer->cb,
-			       PPL_CONN_DIR_BUFFER_TO_COMP);
+	ret = pipeline_connect(comp->cd, buf, PPL_CONN_DIR_BUFFER_TO_COMP);
 
-	dcache_writeback_invalidate_region(buffer->cb, sizeof(*buffer->cb));
+	dcache_writeback_invalidate_region(buf, sizeof(*buf));
 
 	return ret;
 }
