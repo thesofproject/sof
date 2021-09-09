@@ -31,6 +31,8 @@ elseif(CONFIG_IMX8M)
 	set(platform_folder imx8m)
 elseif(CONFIG_IMX8ULP)
 	set(platform_folder imx8ulp)
+elseif(CONFIG_MT8195)
+	set(platform_folder mt8195)
 endif()
 
 if(CONFIG_CAVS)
