@@ -465,7 +465,6 @@ static int memif_status(struct dma_chan_data *channel, struct dma_chan_status *s
 static int memif_set_config(struct dma_chan_data *channel, struct dma_sg_config *config)
 {
 	struct afe_memif_dma *memif = dma_chan_get_data(channel);
-	int ret;
 	int dai_id;
 	int irq_id;
 	unsigned int dma_addr;
@@ -482,19 +481,17 @@ static int memif_set_config(struct dma_chan_data *channel, struct dma_sg_config 
 
 	switch (config->direction) {
 	case DMA_DIR_MEM_TO_DEV:
-		if (direction != MEM_DIR_PLAYBACK) {
-			ret = -EINVAL;
-			break;
-		}
+		if (direction != MEM_DIR_PLAYBACK)
+			return -EINVAL;
+
 		dai_id = (int)AFE_HS_GET_DAI(config->dest_dev);
 		irq_id = (int)AFE_HS_GET_IRQ(config->dest_dev);
 		dma_addr = (int)config->elem_array.elems[0].src;
 		break;
 	case DMA_DIR_DEV_TO_MEM:
-		if (direction != MEM_DIR_CAPTURE) {
-			ret = -EINVAL;
-			break;
-		}
+		if (direction != MEM_DIR_CAPTURE)
+			return -EINVAL;
+
 		dai_id = (int)AFE_HS_GET_DAI(config->src_dev);
 		irq_id = (int)AFE_HS_GET_IRQ(config->src_dev);
 		dma_addr = (int)config->elem_array.elems[0].dest;
