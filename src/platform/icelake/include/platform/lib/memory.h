@@ -227,6 +227,8 @@
 /* max size for all var-size sections (text/rodata/bss) */
 #define SOF_FW_MAX_SIZE		(HP_SRAM_BASE + HP_SRAM_SIZE - SOF_FW_BASE)
 
+#define SOF_FW_END             (HP_SRAM_BASE + HP_SRAM_SIZE)
+
 #define SOF_TEXT_START		(SOF_FW_START)
 #define SOF_TEXT_BASE		(SOF_FW_START)
 
@@ -288,9 +290,8 @@
 /* Heap section sizes for system shared heap */
 #define HEAP_SYSTEM_SHARED_SIZE		0x1500
 
-#define HEAP_BUFFER_SIZE	0x50000
 #define HEAP_BUFFER_BLOCK_SIZE		0x100
-#define HEAP_BUFFER_COUNT	(HEAP_BUFFER_SIZE / HEAP_BUFFER_BLOCK_SIZE)
+#define HEAP_BUFFER_COUNT_MAX  (HP_SRAM_SIZE / HEAP_BUFFER_BLOCK_SIZE)
 
 #define HEAP_SYSTEM_M_SIZE		0x8000	/* heap primary core size */
 #define HEAP_SYSTEM_S_SIZE		0x6000	/* heap secondary core size */

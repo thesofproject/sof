@@ -112,12 +112,12 @@ static SHARED_DATA struct block_map rt_shared_heap_map[] = {
 #endif
 
 /* Heap blocks for buffers */
-static SHARED_DATA struct block_hdr buf_block[HEAP_BUFFER_COUNT];
+static SHARED_DATA struct block_hdr buf_block[HEAP_BUFFER_COUNT_MAX];
 static SHARED_DATA struct block_hdr lp_buf_block[HEAP_LP_BUFFER_COUNT];
 
 /* Heap memory map for buffers */
 static SHARED_DATA struct block_map buf_heap_map[] = {
-	BLOCK_DEF(HEAP_BUFFER_BLOCK_SIZE, HEAP_BUFFER_COUNT,
+	BLOCK_DEF(HEAP_BUFFER_BLOCK_SIZE, HEAP_BUFFER_COUNT_MAX,
 		  uncached_block_hdr(buf_block)),
 };
 
@@ -130,7 +130,20 @@ static SHARED_DATA struct mm memmap;
 
 void platform_init_memmap(struct sof *sof)
 {
+	uint32_t heap_buffer_size = SOF_FW_END - (uint32_t)&_buffer_heap;
+	uint32_t buffer_count;
 	int i;
+
+	/* calculate the buffer heap size */
+	buffer_count = heap_buffer_size / HEAP_BUFFER_BLOCK_SIZE;
+	heap_buffer_size = buffer_count * HEAP_BUFFER_BLOCK_SIZE;
+
+	for (i = 0; i < ARRAY_SIZE(buf_heap_map); i++) {
+		buf_heap_map[i].count = buffer_count;
+		buf_heap_map[i].free_count = buffer_count;
+	}
+	dcache_writeback_region(buf_heap_map,
+				sizeof(struct block_map) * ARRAY_SIZE(buf_heap_map));
 
 	/* access memory map through uncached region */
 	sof->memory_map = cache_to_uncache(&memmap);
@@ -216,11 +229,12 @@ void platform_init_memmap(struct sof *sof)
 	sof->memory_map->buffer[0].blocks = ARRAY_SIZE(buf_heap_map);
 	sof->memory_map->buffer[0].map = uncached_block_map(buf_heap_map);
 	sof->memory_map->buffer[0].heap = (uintptr_t)&_buffer_heap;
-	sof->memory_map->buffer[0].size = HEAP_BUFFER_SIZE;
-	sof->memory_map->buffer[0].info.free = HEAP_BUFFER_SIZE;
+	sof->memory_map->buffer[0].size = heap_buffer_size;
+	sof->memory_map->buffer[0].info.free = heap_buffer_size;
 	sof->memory_map->buffer[0].caps = SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_HP |
 		SOF_MEM_CAPS_CACHE | SOF_MEM_CAPS_DMA;
 
+#if PLATFORM_HEAP_BUFFER >= 2
 	/* heap lp buffer init */
 	sof->memory_map->buffer[1].blocks = ARRAY_SIZE(lp_buf_heap_map);
 	sof->memory_map->buffer[1].map = uncached_block_map(lp_buf_heap_map);
@@ -229,10 +243,11 @@ void platform_init_memmap(struct sof *sof)
 	sof->memory_map->buffer[1].info.free = HEAP_LP_BUFFER_SIZE;
 	sof->memory_map->buffer[1].caps = SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_LP |
 		SOF_MEM_CAPS_CACHE | SOF_MEM_CAPS_DMA;
+#endif
 
 	/* .total init */
 	sof->memory_map->total.free = HEAP_SYSTEM_T_SIZE +
-		HEAP_SYS_RUNTIME_T_SIZE + HEAP_RUNTIME_SIZE + HEAP_BUFFER_SIZE +
+		HEAP_SYS_RUNTIME_T_SIZE + HEAP_RUNTIME_SIZE + heap_buffer_size +
 		HEAP_LP_BUFFER_SIZE;
 
 }
