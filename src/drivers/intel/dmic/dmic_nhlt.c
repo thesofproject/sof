@@ -206,11 +206,17 @@ int dmic_set_config_nhlt(struct dai *dai, void *spec_config)
 #if defined DMIC_IPM_VER2
 	int bf9, bf10, bf11, bf12;
 #endif
+	int bfth;
 	int ret;
 	int p_mcic = 0;
 	int p_mfira = 0;
 	int p_mfirb = 0;
 	int p_clkdiv = 0;
+
+	if (dai->index >= DMIC_HW_FIFOS_MAX) {
+		dai_err(dai, "dmic_set_config_nhlt(): illegal DAI index %d", dai->index);
+		return -EINVAL;
+	}
 
 	/* Skip not used headers */
 	p += sizeof(struct nhlt_dmic_gateway_attributes);
@@ -272,21 +278,22 @@ int dmic_set_config_nhlt(struct dai *dai, void *spec_config)
 	/* Write the FIFO control registers. The clear/set of bits is the same for
 	 * all DMIC_HW_VERSION
 	 */
-	if (dai->index == 0) {
-		/* Clear TIE, SIP, FCI, set FINIT, the rest of bits as such */
-		val = (out_control[0] &
-			~(OUTCONTROL0_TIE_BIT | OUTCONTROL0_SIP_BIT | OUTCONTROL0_FCI_BIT)) |
-			OUTCONTROL0_FINIT_BIT;
+	/* Clear TIE, SIP, FCI, set FINIT, the rest of bits as such */
+	val = (out_control[dai->index] &
+		~(OUTCONTROL0_TIE_BIT | OUTCONTROL0_SIP_BIT | OUTCONTROL0_FCI_BIT)) |
+		OUTCONTROL0_FINIT_BIT;
+	if (dai->index == 0)
 		dai_write(dai, OUTCONTROL0, val);
-		dai_dbg(dai, "dmic_set_config_nhlt(): OUTCONTROL0 = %08x", val);
-	} else {
-		/* Clear TIE, SIP, FCI, set FINIT, the rest of bits as such */
-		val = (out_control[1] &
-			~(OUTCONTROL1_TIE_BIT | OUTCONTROL1_SIP_BIT | OUTCONTROL1_FCI_BIT)) |
-			OUTCONTROL1_FINIT_BIT;
+	else
 		dai_write(dai, OUTCONTROL1, val);
-		dai_dbg(dai, "dmic_set_config_nhlt(): OUTCONTROL1 = %08x", val);
-	}
+
+	dai_info(dai, "dmic_set_config_nhlt(): OUTCONTROL%d = %08x", dai->index, val);
+
+	/* Pass 2^BFTH to plat_data fifo depth. It will be used later in DMA
+	 * configuration
+	 */
+	bfth = OUTCONTROL0_BFTH_GET(val);
+	dai->plat_data.fifo->depth = 1 << bfth;
 
 	/* Get PDMx registers */
 	pdm_ctrl_mask = ((struct nhlt_pdm_ctrl_mask *)p)->pdm_ctrl_mask;

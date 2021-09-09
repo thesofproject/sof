@@ -632,6 +632,11 @@ static int configure_registers(struct dai *dai,
 		return -EINVAL;
 	}
 
+	/* Pass 2^BFTH to plat_data fifo depth. It will be used later in DMA
+	 * configuration
+	 */
+	dai->plat_data.fifo->depth = 1 << bfth;
+
 	dai_info(dai, "configuring registers");
 
 	/* OUTCONTROL0 and OUTCONTROL1 */
