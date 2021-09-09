@@ -531,11 +531,10 @@ static int copier_params(struct comp_dev *dev, struct sof_ipc_stream_params *par
 		update_internal_comp(dev, cd->endpoint);
 
 		/* attach buffer to endpoint */
-		comp_buffer_connect(cd->endpoint, cd->endpoint->ipc_config.core, buffer,
-				    buffer->core, dir);
+		comp_buffer_connect(cd->endpoint, cd->endpoint->ipc_config.core, buffer, dir);
 		ret = cd->endpoint->drv->ops.params(cd->endpoint, params);
 		/* restore buffer to copier */
-		comp_buffer_connect(dev, dev->ipc_config.core, buffer, buffer->core, dir);
+		comp_buffer_connect(dev, dev->ipc_config.core, buffer, dir);
 	}
 
 	return ret;

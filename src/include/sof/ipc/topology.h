@@ -212,10 +212,9 @@ int comp_verify_params(struct comp_dev *dev, uint32_t flag,
  * @param comp Component dev
  * @param comp_core comp core id
  * @param buffer Component buffer
- * @param buffer_core buffer core id
  * @param dir connection direction
  * @return connection status
  */
 int comp_buffer_connect(struct comp_dev *comp, uint32_t comp_core,
-			struct comp_buffer *buffer, uint32_t buffer_core, uint32_t dir);
+			struct comp_buffer *buffer, uint32_t dir);
 #endif
