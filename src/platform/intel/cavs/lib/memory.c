@@ -228,7 +228,7 @@ void platform_init_memmap(struct sof *sof)
 	/* heap buffer init */
 	sof->memory_map->buffer[0].blocks = ARRAY_SIZE(buf_heap_map);
 	sof->memory_map->buffer[0].map = uncached_block_map(buf_heap_map);
-	sof->memory_map->buffer[0].heap = (uintptr_t)&_buffer_heap;
+	sof->memory_map->buffer[0].heap = cache_to_uncache((uintptr_t)&_buffer_heap);
 	sof->memory_map->buffer[0].size = heap_buffer_size;
 	sof->memory_map->buffer[0].info.free = heap_buffer_size;
 	sof->memory_map->buffer[0].caps = SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_HP |
