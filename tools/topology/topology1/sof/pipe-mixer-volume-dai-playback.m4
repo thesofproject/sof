@@ -5,9 +5,9 @@
 # Pipeline Endpoints for connection are :-
 #
 #	LL Playback Mixer (Mixer)
-#	LL Playback Volume B3 (DAI buffer)
+#	LL Playback Volume B1 (DAI buffer)
 #
-# DAI_BUF -> ll mixer(M) --B0--> volume(LL) ---B1-->  sink DAI
+# DAI_BUF --> ll mixer(M) --> B0 --> volume(LL) --> B1 -->  sink DAI
 #
 # the ll mixer is connected to one DAI_BUF by default. Additional ones can be added later
 
