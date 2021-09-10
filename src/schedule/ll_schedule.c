@@ -630,6 +630,20 @@ static int schedule_ll_task_free(void *data, struct task *task)
 	struct ll_task_pdata *ll_pdata;
 	uint32_t flags;
 
+	switch (task->state) {
+	default:
+		break;
+	case SOF_TASK_STATE_QUEUED:
+	case SOF_TASK_STATE_PENDING:
+	case SOF_TASK_STATE_RUNNING:
+	case SOF_TASK_STATE_PREEMPTED:
+	case SOF_TASK_STATE_RESCHEDULE:
+		tr_err(&ll_tr,
+		       "schedule_ll_task_free() task %p %pU in wrong state %u!",
+		       task, task->uid, task->state);
+		return -EAGAIN;
+	}
+
 	irq_local_disable(flags);
 
 	/* release the resources */
