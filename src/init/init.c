@@ -28,6 +28,8 @@
 #include <sof/schedule/ll_schedule_domain.h>
 #include <ipc/trace.h>
 
+extern struct tr_ctx buffer_tr;
+
 /* main firmware context */
 static struct sof sof;
 
@@ -134,10 +136,14 @@ static int primary_core_init(int argc, char *argv[], struct sof *sof)
 	interrupt_init(sof);
 #endif /* __ZEPHYR__ */
 
+/* tr_err(&buffer_tr, "CRASHES (and requires a Linux reboot!)"); */
+
 #if CONFIG_TRACE
 	trace_point(TRACE_BOOT_SYS_TRACES);
 	trace_init(sof);
 #endif
+
+	tr_err(&buffer_tr, "SUPER EARLY trace does not crash");
 
 	trace_point(TRACE_BOOT_SYS_NOTIFIER);
 	init_system_notify(sof);
