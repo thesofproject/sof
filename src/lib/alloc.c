@@ -451,30 +451,27 @@ static void free_block(void *ptr)
 	struct mm_heap *heap;
 	struct block_map *block_map = NULL;
 	struct block_hdr *hdr;
+	void *cached_ptr = uncache_to_cache(ptr);
+	void *uncached_ptr = cache_to_uncache(ptr);
 	int i;
 	int block;
 	int used_blocks;
 	bool heap_is_full;
 
-	/* caller uses the direct address got from the allocator, free it directly */
-	heap = get_heap_from_ptr(ptr);
+	/* try cached_ptr first */
+	heap = get_heap_from_ptr(cached_ptr);
 
-	/* some caller uses uncached address while allocated from cached
-	 * address, e.g. SOF_MEM_ZONE_RUNTIME_SHARED region on cAVS platform,
-	 * one more try to free the momory from the corresponding cached
-	 * address.
-	 */
-	if (!heap && is_uncached(ptr)) {
-		tr_dbg(&mem_tr, "free_block(): uncached buffer %p, try freeing from its cached address",
-		       ptr);
-		ptr = uncache_to_cache(ptr);
-		heap = get_heap_from_ptr(ptr);
-	}
-
+	/* try uncached_ptr if needed */
 	if (!heap) {
-		tr_err(&mem_tr, "free_block(): invalid heap = %p, cpu = %d",
-		       ptr, cpu_get_id());
-		return;
+		heap = get_heap_from_ptr(uncached_ptr);
+		if (!heap) {
+			tr_err(&mem_tr, "free_block(): invalid heap = %p, cpu = %d",
+			       ptr, cpu_get_id());
+			return;
+		}
+		ptr = uncached_ptr;
+	} else {
+		ptr = cached_ptr;
 	}
 
 	/* find block that ptr belongs to */
@@ -920,7 +917,12 @@ static void *_balloc_unlocked(uint32_t flags, uint32_t caps, size_t bytes,
 		/* Continue from the next heap */
 	}
 
-	return ptr;
+	/* return directly if allocation failed */
+	if (!ptr)
+		return ptr;
+
+	return (flags & SOF_MEM_FLAG_COHERENT) && (CONFIG_CORE_COUNT > 1) ?
+		cache_to_uncache(ptr) : uncache_to_cache(ptr);
 }
 
 /* allocates continuous buffers - not for direct use, clients use rballoc() */
@@ -934,6 +936,9 @@ void *rballoc_align(uint32_t flags, uint32_t caps, size_t bytes,
 	spin_lock_irq(&memmap->lock, lock_flags);
 
 	ptr = _balloc_unlocked(flags, caps, bytes, alignment);
+
+	if (ptr)
+		bzero(ptr, bytes);
 
 	spin_unlock_irq(&memmap->lock, lock_flags);
 
