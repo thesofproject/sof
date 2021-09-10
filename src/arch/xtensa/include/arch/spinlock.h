@@ -11,6 +11,7 @@
 #define __ARCH_SPINLOCK_H__
 
 #include <stdint.h>
+#include <xtensa/config/core-isa.h>
 
 typedef struct {
 	volatile uint32_t lock;
@@ -23,6 +24,44 @@ static inline void arch_spinlock_init(spinlock_t *lock)
 {
 	lock->lock = 0;
 }
+
+#if XCHAL_HAVE_EXCLUSIVE && CONFIG_XTENSA_EXCLUSIVE && __XCC__
+
+static inline void arch_spin_lock(spinlock_t *lock)
+{
+	uint32_t result;
+
+	__asm__ __volatile__(
+		"       movi %0, 0\n"
+		"       l32ex %0, %1\n"
+		"1:     movi %0, 1\n"
+		"       s32ex %0, %1\n"
+		"       getex %0\n"
+		"       bnez %0, 1b\n"
+		: "=&a" (result)
+		: "a" (&lock->lock)
+		: "memory");
+}
+
+static inline int arch_try_lock(spinlock_t *lock)
+{
+	uint32_t result;
+
+	__asm__ __volatile__(
+		"       movi %0, 0\n"
+		"       l32ex %0, %1\n"
+		"       movi %0, 1\n"
+		"       s32ex %0, %1\n"
+		"       getex %0\n"
+		: "=&a" (result)
+		: "a" (&lock->lock)
+		: "memory");
+
+	/* return 0 for failed lock, 1 otherwise */
+	return result ? 0 : 1;
+}
+
+#elif XCHAL_HAVE_S32C1I
 
 static inline void arch_spin_lock(spinlock_t *lock)
 {
@@ -60,6 +99,47 @@ static inline int arch_try_lock(spinlock_t *lock)
 	return result ? 0 : 1;
 }
 
+#else
+
+#if CONFIG_CORE_COUNT > 1
+
+#error No atomic ISA for SMP configuration
+
+#endif /* CONFIG_CORE_COUNT > 1 */
+
+/*
+ * The ISA has no atomic operations so use integer arithmetic on uniprocessor systems.
+ * This helps support GCC and qemu emulation of certain targets.
+ */
+static inline void arch_spin_lock(spinlock_t *lock)
+{
+	uint32_t result;
+
+	do {
+		if (lock->lock == 0) {
+			lock->lock = 1;
+			result = 1;
+		}
+	} while (!result);
+}
+
+static inline int arch_try_lock(spinlock_t *lock)
+{
+	uint32_t result;
+
+	if (lock->lock == 0) {
+		lock->lock = 1;
+		result = 1;
+	}
+
+	/* return 0 for failed lock, 1 otherwise */
+	return result ? 0 : 1;
+}
+
+#endif /* XCHAL_HAVE_EXCLUSIVE && CONFIG_XTENSA_EXCLUSIVE && __XCC__ */
+
+#if XCHAL_HAVE_EXCLUSIVE || XCHAL_HAVE_S32C1I
+
 static inline void arch_spin_unlock(spinlock_t *lock)
 {
 	uint32_t result;
@@ -71,6 +151,28 @@ static inline void arch_spin_unlock(spinlock_t *lock)
 		: "a" (&lock->lock)
 		: "memory");
 }
+
+#else
+
+#if CONFIG_CORE_COUNT > 1
+
+#error No atomic ISA for SMP configuration
+
+#endif /* CONFIG_CORE_COUNT > 1 */
+
+/*
+ * The ISA has no atomic operations so use integer arithmetic on uniprocessor systems.
+ * This helps support GCC and qemu emulation of certain targets.
+ */
+static inline void arch_spin_unlock(spinlock_t *lock)
+{
+	uint32_t result;
+
+	lock->lock = 0;
+	result = 1;
+}
+
+#endif /* XCHAL_HAVE_EXCLUSIVE || XCHAL_HAVE_S32C1I  */
 
 #endif /* __ARCH_SPINLOCK_H__ */
 

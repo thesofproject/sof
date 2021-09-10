@@ -458,4 +458,11 @@ config AGENT_PANIC_ON_DELAY
 	  If scheduler timing verification fails, SA will
 	  call a DSP panic.
 
+config XTENSA_EXCLUSIVE
+	bool
+	default n
+	help
+	  This has to be selected for xtensa exclusive instructions.
+	  There is a definition for EXCLUSIVE option in xtensa-config.h
+
 endmenu

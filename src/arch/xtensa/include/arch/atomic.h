@@ -11,6 +11,10 @@
 #define __ARCH_ATOMIC_H__
 
 #include <stdint.h>
+#if XCHAL_HAVE_EXCLUSIVE && CONFIG_XTENSA_EXCLUSIVE && __XCC__
+#include <xtensa/tie/xt_core.h>
+#endif
+#include <xtensa/config/core-isa.h>
 
 typedef struct {
 	volatile int32_t value;
@@ -31,6 +35,42 @@ static inline void arch_atomic_init(atomic_t *a, int32_t value)
 	arch_atomic_set(a, value);
 }
 
+#if XCHAL_HAVE_EXCLUSIVE && CONFIG_XTENSA_EXCLUSIVE && __XCC__
+
+/* Use exclusive instructions */
+static inline int32_t arch_atomic_add(atomic_t *a, int32_t value)
+{
+	/*reference xtos : xipc_misc.h*/
+	int32_t result = 0;
+	int32_t current;
+
+	while (!result) {
+		current = XT_L32EX((int32_t *)a);
+		result = current + value;
+		XT_S32EX(result, (int32_t *)a);
+		XT_GETEX(result);
+	}
+	return current;
+}
+
+static inline int32_t arch_atomic_sub(atomic_t *a, int32_t value)
+{
+	/*reference xtos : xipc_misc.h*/
+	int32_t current;
+	int32_t result = 0;
+
+	while (!result) {
+		current = XT_L32EX((int *)a);
+		result = current - value;
+		XT_S32EX(result, (int *)a);
+		XT_GETEX(result);
+	}
+	return current;
+}
+
+#elif XCHAL_HAVE_S32C1I
+
+/* Use S32C1I instructions */
 static inline int32_t arch_atomic_add(atomic_t *a, int32_t value)
 {
 	int32_t result, current;
@@ -64,6 +104,42 @@ static inline int32_t arch_atomic_sub(atomic_t *a, int32_t value)
 
 	return current;
 }
+
+#else
+
+#if CONFIG_CORE_COUNT > 1
+
+#error No atomic ISA for SMP configuration
+
+#endif
+
+/*
+ * The ISA has no atomic operations so use integer arithmetic on uniprocessor systems.
+ * This helps support GCC and qemu emulation of certain targets.
+ */
+
+/* integer arithmetic methods */
+static inline int32_t arch_atomic_add(atomic_t *a, int32_t value)
+{
+	int32_t result, current;
+
+	current = arch_atomic_read(a);
+	result = current + value;
+	arch_atomic_set(a, result);
+	return current;
+}
+
+static inline int32_t arch_atomic_sub(atomic_t *a, int32_t value)
+{
+	int32_t result, current;
+
+	current = arch_atomic_read(a);
+	result = current - value;
+	arch_atomic_set(a, result);
+	return current;
+}
+
+#endif /* XCHAL_HAVE_EXCLUSIVE && CONFIG_XTENSA_EXCLUSIVE && __XCC__ */
 
 #endif /* __ARCH_ATOMIC_H__ */
 
