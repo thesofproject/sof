@@ -27,7 +27,6 @@ uint8_t *get_library_mailbox(void);
 #define PLATFORM_HEAP_SYSTEM_RUNTIME	CONFIG_CORE_COUNT
 #define PLATFORM_HEAP_RUNTIME		1
 #define PLATFORM_HEAP_BUFFER		2
-#define PLATFORM_HEAP_RUNTIME_SHARED	1
 
 #define SHARED_DATA
 
@@ -97,9 +96,6 @@ static inline uint32_t arch_get_stack_size(void)
 	HEAP_COUNT256 * 256 + HEAP_COUNT512 * 512 + \
 	HEAP_COUNT1024 * 1024 + HEAP_COUNT2048 * 2048 + \
 	HEAP_COUNT4096 * 4096)
-
-/* Heap section sizes for system shared heap */
-#define HEAP_SYSTEM_SHARED_SIZE		0x1500
 
 #define HEAP_BUFFER_BLOCK_SIZE		0x100
 #define HEAP_BUFFER_COUNT_MAX	(HP_SRAM_SIZE / HEAP_BUFFER_BLOCK_SIZE)
