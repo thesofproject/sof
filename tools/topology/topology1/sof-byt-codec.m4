@@ -41,7 +41,7 @@ PIPELINE_PCM_ADD(sof/pipe-low-latency-capture.m4,
 # Buffers use s24le format, 1000us deadline on core 0 with priority 1
 # this defines pipeline 1. The 'NOT_USED_IGNORED' is due to dependencies
 # and is adjusted later with an explicit dapm line.
-DAI_ADD(sof/pipe-mixer-dai-playback.m4,
+DAI_ADD(sof/pipe-mixer-volume-dai-playback.m4,
 	1, SSP, SSP_NUM, SSP2-Codec,
 	NOT_USED_IGNORED, 2, s24le,
 	1000, 1, 0, SCHEDULE_TIME_DOMAIN_DMA,

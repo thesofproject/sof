@@ -146,7 +146,7 @@ dnl     deadline, priority, core, time_domain)
 # playback DAI is SSP0 using 2 periods
 # Buffers use DAI_BITS format, 1000us deadline with priority 0 on core SSP0_CORE_ID
 # The 'NOT_USED_IGNORED' is due to dependencies and is adjusted later with an explicit dapm line.
-DAI_ADD(sof/pipe-mixer-dai-playback.m4,
+DAI_ADD(sof/pipe-mixer-volume-dai-playback.m4,
 	1, SSP, SSP0_IDX, NoCodec-0,
 	NOT_USED_IGNORED, 2, DAI_BITS,
 	1000, 0, SSP0_CORE_ID, SCHEDULE_TIME_DOMAIN_TIMER, 2, 48000)
@@ -180,7 +180,7 @@ DAI_ADD(sof/pipe-dai-capture.m4,
 
 # playback DAI is SSP1 using 2 periods
 # Buffers use DAI_BITS format, 1000us deadline with priority 0 on core SSP1_CORE_ID
-DAI_ADD(sof/pipe-mixer-dai-playback.m4,
+DAI_ADD(sof/pipe-mixer-volume-dai-playback.m4,
 	3, SSP, SSP1_IDX, NoCodec-1,
 	NOT_USED_IGNORED, 2, DAI_BITS,
 	1000, 0, SSP1_CORE_ID, SCHEDULE_TIME_DOMAIN_TIMER, 2, 48000)
@@ -203,7 +203,7 @@ DAI_ADD(sof/pipe-dai-capture.m4,
 
 # playback DAI is SSP2 using 2 periods
 # Buffers use DAI_BITS format, 1000us deadline with priority 0 on core SSP2_CORE_ID
-DAI_ADD(sof/pipe-mixer-dai-playback.m4,
+DAI_ADD(sof/pipe-mixer-volume-dai-playback.m4,
 	5, SSP, SSP2_IDX, NoCodec-2,
 	NOT_USED_IGNORED, 2, DAI_BITS,
 	1000, 0, SSP2_CORE_ID, SCHEDULE_TIME_DOMAIN_TIMER, 2, 48000)
