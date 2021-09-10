@@ -57,18 +57,6 @@ define(PIPE_HEADSET_PLAYBACK, `sof/pipe-`HSPROC'-playback.m4')
 ifdef(`HSPROC_FILTER1', `define(PIPELINE_FILTER1, HSPROC_FILTER1)', `undefine(`PIPELINE_FILTER1')')
 ifdef(`HSPROC_FILTER2', `define(PIPELINE_FILTER2, HSPROC_FILTER2)', `undefine(`PIPELINE_FILTER2')')
 
-# Low Latency playback pipeline 1 on PCM 0 using max 2 channels of s24le.
-# 1000us deadline with priority 0 on core 0
-PIPELINE_PCM_ADD(PIPE_HEADSET_PLAYBACK,
-	1, 0, 2, s24le,
-	1000, 0, 0,
-	48000, 48000, 48000)
-
-# Undefine PIPELINE_FILTERx to avoid to propagate elsewhere, other endpoints
-# with filters blobs will need similar handling as HSPROC_FILTERx.
-undefine(`PIPELINE_FILTER1')
-undefine(`PIPELINE_FILTER2')
-
 # Low Latency capture pipeline 2 on PCM 0 using max 2 channels of s24le.
 # 1000us deadline with priority 0 on core 0
 PIPELINE_PCM_ADD(sof/pipe-highpass-capture.m4,
@@ -121,6 +109,18 @@ DAI_ADD(sof/pipe-dai-playback.m4,
         1, HDA, 0, Analog Playback and Capture,
         PIPELINE_SOURCE_1, 2, s32le,
         1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
+
+# Low Latency playback pipeline 1 on PCM 0 using max 2 channels of s24le.
+# 1000us deadline on core 0 with priority 0
+PIPELINE_PCM_ADD(PIPE_HEADSET_PLAYBACK,
+	1, 0, 2, s24le,
+	1000, 0, 0,
+	48000, 48000, 48000)
+
+# Undefine PIPELINE_FILTERx to avoid to propagate elsewhere, other endpoints
+# with filters blobs will need similar handling as HSPROC_FILTERx.
+undefine(`PIPELINE_FILTER1')
+undefine(`PIPELINE_FILTER2')
 
 # capture DAI is HDA Analog using 2 periods
 # Dai buffers use s32le format, 1000us deadline with priority 0 on core 0
