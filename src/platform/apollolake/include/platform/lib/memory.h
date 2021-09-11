@@ -267,8 +267,8 @@
 
 /* Heap section counts base */
 #define HEAP_COUNT64		128
-#define HEAP_COUNT128		128
-#define HEAP_COUNT256		96
+#define HEAP_COUNT128		96
+#define HEAP_COUNT256		112
 #define HEAP_COUNT512		12
 #define HEAP_COUNT1024		3
 #define HEAP_COUNT2048		1
