@@ -104,6 +104,16 @@ PIPELINE_PCM_ADD(sof/pipe-host-volume-playback.m4,
 	SCHEDULE_TIME_DOMAIN_TIMER,
 	PIPELINE_PLAYBACK_SCHED_COMP_1)
 
+# Deep buffer playback pipeline 31 on PCM 31 using max 2 channels of s32le
+# Set 1000us deadline on core 0 with priority 0.
+# TODO: Modify pipeline deadline to account for deep buffering
+PIPELINE_PCM_ADD(sof/pipe-host-volume-playback.m4,
+	31, 31, 2, s32le,
+	1000, 0, 0,
+	48000, 48000, 48000,
+	SCHEDULE_TIME_DOMAIN_TIMER,
+	PIPELINE_PLAYBACK_SCHED_COMP_1)
+
 # Undefine PIPELINE_FILTERx to avoid to propagate elsewhere, other endpoints
 # with filters blobs will need similar handling as HSPROC_FILTERx.
 undefine(`PIPELINE_FILTER1')
@@ -143,10 +153,12 @@ SectionGraph."mixer-host" {
 	lines [
 		# connect mixer dai pipelines to PCM pipelines
 		dapm(PIPELINE_MIXER_1, PIPELINE_SOURCE_30)
+		dapm(PIPELINE_MIXER_1, PIPELINE_SOURCE_31)
 	]
 }
 
 PCM_DUPLEX_ADD(HDA Analog, 0, PIPELINE_PCM_30, PIPELINE_PCM_2)
+PCM_PLAYBACK_ADD(HDA Analog Deep Buffer, 31, PIPELINE_PCM_31)
 PCM_PLAYBACK_ADD(HDMI1, 3, PIPELINE_PCM_7)
 PCM_PLAYBACK_ADD(HDMI2, 4, PIPELINE_PCM_8)
 PCM_PLAYBACK_ADD(HDMI3, 5, PIPELINE_PCM_9)
