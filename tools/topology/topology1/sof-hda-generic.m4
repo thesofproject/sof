@@ -37,9 +37,9 @@ include(`platform/intel/intel-generic-dmic.m4')
 '
 )
 
-# The pipeline naming notation is pipe-PROCESSING-DIRECTION.m4
+# The pipeline naming notation is pipe-mixer-PROCESSING-dai-DIRECTION.m4
 # HSPROC is set by makefile, if not the default above is applied
-define(PIPE_HEADSET_PLAYBACK, `sof/pipe-`HSPROC'-playback.m4')
+define(PIPE_HEADSET_PLAYBACK, `sof/pipe-mixer-`HSPROC'-dai-playback.m4')
 
 #
 # Define the pipelines
@@ -105,17 +105,20 @@ PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
 
 # playback DAI is HDA Analog using 2 periods
 # Dai buffers use s32le format, 1000us deadline with priority 0 on core 0
-DAI_ADD(sof/pipe-dai-playback.m4,
+# The 'NOT_USED_IGNORED' is due to dependencies and is adjusted later with an explicit dapm line.
+DAI_ADD(PIPE_HEADSET_PLAYBACK,
         1, HDA, 0, Analog Playback and Capture,
-        PIPELINE_SOURCE_1, 2, s32le,
-        1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
+        NOT_USED_IGNORED, 2, s32le,
+        1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER, 2, 48000)
 
-# Low Latency playback pipeline 1 on PCM 0 using max 2 channels of s24le.
+# Low Latency playback pipeline 1 on PCM 30 using max 2 channels of s32le.
 # 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_ADD(PIPE_HEADSET_PLAYBACK,
-	1, 0, 2, s24le,
+PIPELINE_PCM_ADD(sof/pipe-host-volume-playback.m4,
+	30, 0, 2, s32le,
 	1000, 0, 0,
-	48000, 48000, 48000)
+	48000, 48000, 48000,
+	SCHEDULE_TIME_DOMAIN_TIMER,
+	PIPELINE_PLAYBACK_SCHED_COMP_1)
 
 # Undefine PIPELINE_FILTERx to avoid to propagate elsewhere, other endpoints
 # with filters blobs will need similar handling as HSPROC_FILTERx.
@@ -164,7 +167,16 @@ DAI_ADD(sof/pipe-dai-playback.m4,
         PIPELINE_SOURCE_9, 2, s32le,
         1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
-PCM_DUPLEX_ADD(HDA Analog, 0, PIPELINE_PCM_1, PIPELINE_PCM_2)
+SectionGraph."mixer-host" {
+	index "0"
+
+	lines [
+		# connect mixer dai pipelines to PCM pipelines
+		dapm(PIPELINE_MIXER_1, PIPELINE_SOURCE_30)
+	]
+}
+
+PCM_DUPLEX_ADD(HDA Analog, 0, PIPELINE_PCM_30, PIPELINE_PCM_2)
 PCM_DUPLEX_ADD(HDA Digital, 1, PIPELINE_PCM_3, PIPELINE_PCM_4)
 PCM_PLAYBACK_ADD(HDMI1, 3, PIPELINE_PCM_7)
 PCM_PLAYBACK_ADD(HDMI2, 4, PIPELINE_PCM_8)
