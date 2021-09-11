@@ -33,8 +33,8 @@
 #define __packed __attribute__((packed))
 #endif
 
-/* In ASCII `XMan` */
-#define EXT_MAN_MAGIC_NUMBER	0x6e614d58
+/* In ASCII `$AE1` */
+#define EXT_MAN_MAGIC_NUMBER	0x31454124
 
 /* Build u32 number in format MMmmmppp */
 #define EXT_MAN_BUILD_VERSION(MAJOR, MINOR, PATH) ( \
