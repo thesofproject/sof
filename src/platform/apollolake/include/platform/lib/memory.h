@@ -309,7 +309,11 @@
 #define HEAP_SYSTEM_SHARED_SIZE		0x1500
 
 #define HEAP_BUFFER_BLOCK_SIZE	0x100
-#define HEAP_BUFFER_COUNT_MAX  (HP_SRAM_SIZE / HEAP_BUFFER_BLOCK_SIZE)
+/*
+ * The buffer zone will not occupy more than half of the HP SRAM on APL,
+ * enforcing this limit due to the the SRAM size limitations on APL.
+ */
+#define HEAP_BUFFER_COUNT_MAX  (HP_SRAM_SIZE / (HEAP_BUFFER_BLOCK_SIZE * 2))
 
 #define HEAP_SYSTEM_M_SIZE		0x4000	/* heap primary core size */
 #define HEAP_SYSTEM_S_SIZE		0x3000	/* heap secondary core size */
