@@ -15,6 +15,7 @@ set(TPLGS
 	"sof-hda-asrc\;sof-hda-asrc-2ch\;-DCHANNELS=2"
 	"sof-apl-nocodec-ci\;sof-apl-nocodec-ci"
 	"sof-tgl-nocodec-ci\;sof-tgl-nocodec-ci"
+	"sof-tgl-nocodec-ci\;sof-adl-nocodec-ci"
 	"sof-cml-rt1011-rt5682-nokwd\;sof-cml-rt1011-rt5682-nokwd\;-DCHANNELS=2\;-DDMICPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_48khz.m4\;-DDMIC16KPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_16khz.m4"
 	"sof-cml-rt1011-rt5682-nokwd\;sof-cml-rt1011-rt5682-eq\;-DCHANNELS=2\;-DDMICPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_48khz.m4\;-DDMIC16KPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_16khz.m4\;-DHSEARPROC=eq-iir-eq-fir-volume\;-DHSMICPROC=eq-fir-volume\;-DSPKPROC=eq-iir-eq-fir-volume"
 	"sof-cml-rt1011-rt5682-nokwd\;sof-cml-rt1011-rt5682-asrc\;-DCHANNELS=2\;-DDMICPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_48khz.m4\;-DDMIC16KPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_16khz.m4\;-DHSEARPROC=asrc-volume\;-DHSMICPROC=asrc-volume\;-DSPKPROC=eq-iir-eq-fir-volume"
