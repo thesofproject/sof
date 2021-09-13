@@ -809,6 +809,7 @@ static int host_params(struct comp_dev *dev,
 
 static int host_prepare(struct comp_dev *dev)
 {
+	struct host_data *hd = comp_get_drvdata(dev);
 	int ret;
 
 	comp_dbg(dev, "host_prepare()");
@@ -820,6 +821,7 @@ static int host_prepare(struct comp_dev *dev)
 	if (ret == COMP_STATUS_STATE_ALREADY_SET)
 		return PPL_STATUS_PATH_STOP;
 
+	buffer_zero(hd->dma_buffer);
 	return 0;
 }
 
