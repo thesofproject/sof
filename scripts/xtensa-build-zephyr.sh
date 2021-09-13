@@ -43,7 +43,7 @@ usage: $0 [options] [ platform(s) ] [ -- cmake arguments ]
            Ignored by "west build".
        -k Path to a non-default rimage signing key.
        -c recursively clones Zephyr inside sof before building.
-          Incompatible with -p. To stop after cloning Zephyr, don't
+          Incompatible with -p. To stop after cloning Zephyr, do not
           pass any platform or cmake argument.
        -p Existing Zephyr project directory. Incompatible with -c.  If
           zephyr-project/modules/audio/sof is missing then a
@@ -233,7 +233,7 @@ build_all()
 	install_opts -m 0755 "$bdir"/zephyr/sof-logger_ep/build/logger/sof-logger \
 		     "$STAGING"/tools/sof-logger
 
-	tree "$STAGING"
+	tree "$STAGING" || ( cd "$STAGING" && ls -R1 )
 }
 
 parse_args()
