@@ -153,6 +153,8 @@
 #error Not supported HW version
 #endif
 
+#define OUTCONTROL0_BFTH_MAX	4 /* Max depth 16 */
+
 #if defined DMIC_IPM_VER1
 /* OUTCONTROL0 bits */
 #define OUTCONTROL0_TIE_BIT	BIT(27)
