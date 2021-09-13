@@ -492,8 +492,9 @@ void dma_trace_on(void)
 {
 	struct dma_trace_data *trace_data = dma_trace_data_get();
 
-	if (!trace_data || trace_data->enabled)
+	if (trace_data->enabled) {
 		return;
+	}
 
 	trace_data->enabled = 1;
 	schedule_task(&trace_data->dmat_work, DMA_TRACE_PERIOD,
@@ -505,8 +506,9 @@ void dma_trace_off(void)
 {
 	struct dma_trace_data *trace_data = dma_trace_data_get();
 
-	if (!trace_data || !trace_data->enabled)
+	if (!trace_data->enabled) {
 		return;
+	}
 
 	schedule_task_cancel(&trace_data->dmat_work);
 	trace_data->enabled = 0;
