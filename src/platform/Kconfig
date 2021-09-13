@@ -254,7 +254,8 @@ config MT8195
 	select HOST_PTABLE
 	select XT_WAITI_DELAY
 	select MEDIATEK
-        select SCHEDULE_DMA_MULTI_CHANNEL
+	select XTENSA_EXCLUSIVE
+	select SCHEDULE_DMA_MULTI_CHANNEL
 	help
 	  Select if your target platform is mt8195-compatible
 
