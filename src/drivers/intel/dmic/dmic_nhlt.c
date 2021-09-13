@@ -246,9 +246,14 @@ int dmic_set_config_nhlt(struct dai *dai, void *spec_config)
 		bf6 = OUTCONTROL0_OF_GET(val);
 		bf7 = OUTCONTROL0_IPM_GET(val);
 		bf8 = OUTCONTROL0_TH_GET(val);
-		dai_dbg(dai, "dmic_set_config_nhlt(): OUTCONTROL%d = %08x", n, out_control[n]);
-		dai_dbg(dai, "  tie=%d, sip=%d, finit=%d, fci=%d", bf1, bf2, bf3, bf4);
-		dai_dbg(dai, "  bfth=%d, of=%d, ipm=%d, th=%d", bf5, bf6, bf7, bf8);
+		dai_info(dai, "dmic_set_config_nhlt(): OUTCONTROL%d = %08x", n, out_control[n]);
+		dai_info(dai, "  tie=%d, sip=%d, finit=%d, fci=%d", bf1, bf2, bf3, bf4);
+		dai_info(dai, "  bfth=%d, of=%d, ipm=%d, th=%d", bf5, bf6, bf7, bf8);
+		if (bf5 > OUTCONTROL0_BFTH_MAX) {
+			dai_err(dai, "dmic_set_config_nhlt(): illegal BFTH value");
+			return -EINVAL;
+		}
+
 #if defined DMIC_IPM_VER1
 		ref = OUTCONTROL0_TIE(bf1) | OUTCONTROL0_SIP(bf2) | OUTCONTROL0_FINIT(bf3) |
 			OUTCONTROL0_FCI(bf4) | OUTCONTROL0_BFTH(bf5) | OUTCONTROL0_OF(bf6) |
@@ -258,8 +263,7 @@ int dmic_set_config_nhlt(struct dai *dai, void *spec_config)
 		bf10 = OUTCONTROL0_IPM_SOURCE_2_GET(val);
 		bf11 = OUTCONTROL0_IPM_SOURCE_3_GET(val);
 		bf12 = OUTCONTROL0_IPM_SOURCE_4_GET(val);
-		dai_dbg(dai, "  ipms1=%d, ipms2=%d, ipms3=%d, ipms4=%d",
-			bf9, bf10, bf11, bf12);
+		dai_info(dai, "  ipms1=%d, ipms2=%d, ipms3=%d, ipms4=%d", bf9, bf10, bf11, bf12);
 		ref = OUTCONTROL0_TIE(bf1) | OUTCONTROL0_SIP(bf2) | OUTCONTROL0_FINIT(bf3) |
 			OUTCONTROL0_FCI(bf4) | OUTCONTROL0_BFTH(bf5) | OUTCONTROL0_OF(bf6) |
 			OUTCONTROL0_IPM(bf7) | OUTCONTROL0_IPM_SOURCE_1(bf9) |
