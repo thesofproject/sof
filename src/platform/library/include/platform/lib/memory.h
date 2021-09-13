@@ -65,6 +65,7 @@ static inline uint32_t arch_get_stack_size(void)
 
 #define SRAM_BANK_SIZE	0x10000
 #define LP_SRAM_SIZE SRAM_BANK_SIZE
+/* use big enough HP_SRAM_SIZE to build all components for the test bench at once */
 #define HP_SRAM_SIZE (SRAM_BANK_SIZE * 47)
 
 #define HP_SRAM_BASE	0xBE000000
