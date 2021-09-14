@@ -26,7 +26,6 @@ static void usage(char *name)
 	fprintf(stdout, "\t -r enable relocatable ELF files\n");
 	fprintf(stdout, "\t -s MEU signing offset, disables rimage signing\n");
 	fprintf(stdout, "\t -i set IMR type\n");
-	fprintf(stdout, "\t -x set xcc module offset\n");
 	fprintf(stdout, "\t -f firmware version = x.y\n");
 	fprintf(stdout, "\t -b build version\n");
 	fprintf(stdout, "\t -e build extended manifest\n");
@@ -44,8 +43,6 @@ int main(int argc, char *argv[])
 	int use_ext_man = 0;
 
 	memset(&image, 0, sizeof(image));
-
-	image.xcc_mod_offset = DEFAULT_XCC_MOD_OFFSET;
 
 	while ((opt = getopt(argc, argv, "ho:va:s:k:ri:x:f:b:ec:y:")) != -1) {
 		switch (opt) {
@@ -69,9 +66,6 @@ int main(int argc, char *argv[])
 			break;
 		case 'i':
 			imr_type = atoi(optarg);
-			break;
-		case 'x':
-			image.xcc_mod_offset = atoi(optarg);
 			break;
 		case 'f':
 			image.fw_ver_string = optarg;

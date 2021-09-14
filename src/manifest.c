@@ -264,12 +264,7 @@ static int man_get_module_manifest(struct image *image, struct module *module,
 	section = &module->section[man_section_idx];
 
 	/* load in manifest data */
-	/* module built using xcc has preceding bytes */
-	if (section->size > sizeof(sof_mod))
-		ret = fseek(module->fd,
-			    section->off + image->xcc_mod_offset, SEEK_SET);
-	else
-		ret = fseek(module->fd, section->off, SEEK_SET);
+	ret = fseek(module->fd, section->off, SEEK_SET);
 
 	if (ret < 0) {
 		fprintf(stderr, "error: can't seek to section %d\n", ret);
