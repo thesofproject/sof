@@ -548,7 +548,7 @@ static void free_block(void *ptr)
 #endif
 }
 
-#if CONFIG_DEBUG_HEAP
+#if CONFIG_DEBUG_HEAP || 1
 
 static void trace_heap_blocks(struct mm_heap *heap)
 {
@@ -651,6 +651,11 @@ out:
 			tr_err(&mem_tr, "failed to alloc 0x%x bytes zone 0x%x caps 0x%x flags 0x%x", \
 			       bytes, zone, caps, flags); \
 			alloc_trace_heap(zone, caps, bytes); \
+		}							\
+			else {						\
+				tr_info(&mem_tr, "MARC: allocated ptr %p 0x%x bytes at zone 0x%x", \
+					ptr, bytes, zone);		\
+		} \
 	}
 
 #else
