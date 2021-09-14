@@ -282,6 +282,13 @@ int ipc_comp_free(struct ipc *ipc, uint32_t comp_id)
 	if (!icd)
 		return -ENODEV;
 
+	/* check type */
+	if (icd->type != COMP_TYPE_COMPONENT) {
+		tr_err(&ipc_tr, "ipc_comp_free(): comp id: %d is not a COMPONENT",
+		       comp_id);
+		return -EINVAL;
+	}
+
 	/* check core */
 	if (!cpu_is_me(icd->core))
 		return ipc_process_on_core(icd->core, false);
