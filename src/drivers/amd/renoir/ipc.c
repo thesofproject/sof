@@ -132,10 +132,8 @@ enum task_state ipc_platform_do_cmd(void *data)
 void ipc_platform_complete_cmd(void *data)
 {
 	struct ipc *ipc = data;
-	uint32_t flags;
 	acp_sw_intr_trig_t  sw_intr_trig;
 
-	spin_lock_irq(&ipc->lock, flags);
 	/* Set Dsp Ack for msg from host */
 	sof_ipc_dsp_ack_set();
 	/* Configures the trigger bit in ACP_DSP_SW_INTR_TRIG register */
@@ -146,7 +144,6 @@ void ipc_platform_complete_cmd(void *data)
 	io_reg_write((PU_REGISTER_BASE + ACP_SW_INTR_TRIG), sw_intr_trig.u32all);
 	/* now interrupt host to tell it we have sent a message */
 	acp_dsp_to_host_Intr_trig();
-	spin_unlock_irq(&ipc->lock, flags);
 	if (ipc->pm_prepare_D3) {
 		while (1)
 			wait_for_interrupt(0);
