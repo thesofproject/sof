@@ -652,6 +652,10 @@ out:
 			       bytes, zone, caps, flags); \
 			alloc_trace_heap(zone, caps, bytes); \
 		} \
+		else { \
+			tr_info(&mem_tr, "allocated ptr %p 0x%x bytes at zone 0x%x", \
+				ptr, bytes, zone); \
+		} \
 	} while (0)
 #else
 #define DEBUG_TRACE_PTR(ptr, bytes, zone, caps, flags)
