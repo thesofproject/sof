@@ -20,9 +20,6 @@ elseif(CONFIG_ICELAKE)
 	set(platform_folder icelake)
 elseif(CONFIG_TIGERLAKE)
 	set(platform_folder tigerlake)
-	if(XCC)
-		set(RIMAGE_MOD_OFFSET_FLAG -x 24)
-	endif()
 elseif(CONFIG_IMX8)
 	set(platform_folder imx8)
 elseif(CONFIG_IMX8X)
@@ -261,7 +258,7 @@ if(build_bootloader)
 	add_custom_target(
 		bootloader_dump
 		COMMAND ${CMAKE_COMMAND} -E copy bootloader bootloader-${fw_name}
-		COMMAND ${CMAKE_OBJCOPY} -O binary ${PROJECT_BINARY_DIR}/src/platform/${platform_folder}/boot_module mod-boot-${fw_name}.bin
+		COMMAND ${CMAKE_OBJCOPY} -O binary -j .data ${PROJECT_BINARY_DIR}/src/platform/${platform_folder}/boot_module mod-boot-${fw_name}.bin
 		COMMAND ${CMAKE_OBJCOPY} --add-section .module=mod-boot-${fw_name}.bin --set-section-flags .module=load,readonly bootloader-${fw_name}
 		COMMAND ${CMAKE_OBJCOPY} -O binary bootloader bootloader-${fw_name}.bin
 		COMMAND ${CMAKE_OBJDUMP} -h -D bootloader > bootloader-${fw_name}.lmap
@@ -276,7 +273,7 @@ if(build_bootloader)
 
 	add_custom_target(
 		process_base_module
-		COMMAND ${CMAKE_OBJCOPY} -O binary ${PROJECT_BINARY_DIR}/src/platform/${platform_folder}/base_module mod-${fw_name}.bin
+		COMMAND ${CMAKE_OBJCOPY} -O binary -j .data ${PROJECT_BINARY_DIR}/src/platform/${platform_folder}/base_module mod-${fw_name}.bin
 		COMMAND ${CMAKE_OBJCOPY} --add-section .module=mod-${fw_name}.bin --set-section-flags .module=load,readonly sof-${fw_name}
 		DEPENDS prepare_sof_post_process base_module bootloader_dump
 		VERBATIM
@@ -425,7 +422,6 @@ if(MEU_PATH OR DEFINED MEU_NO_SIGN) # Don't sign with rimage
 			-f ${SOF_MAJOR}.${SOF_MINOR}
 			-b ${SOF_BUILD}
 			-e
-			${RIMAGE_MOD_OFFSET_FLAG}
 			${bootloader_binary_path}
 			sof-${fw_name}
 		DEPENDS sof_dump rimage_ep
@@ -471,7 +467,6 @@ else() # sign with rimage
 			-f ${SOF_MAJOR}.${SOF_MINOR}
 			-b ${SOF_BUILD}
 			-e
-			${RIMAGE_MOD_OFFSET_FLAG}
 			${bootloader_binary_path}
 			sof-${fw_name}
 		DEPENDS sof_dump rimage_ep
