@@ -389,6 +389,13 @@ int ipc_pipeline_free(struct ipc *ipc, uint32_t comp_id)
 	if (!ipc_pipe)
 		return -ENODEV;
 
+	/* check type */
+	if (ipc_pipe->type != COMP_TYPE_PIPELINE) {
+		tr_err(&ipc_tr, "ipc_pipeline_free(): comp id: %d is not a PIPELINE",
+		       comp_id);
+		return -EINVAL;
+	}
+
 	/* check core */
 	if (!cpu_is_me(ipc_pipe->core))
 		return ipc_process_on_core(ipc_pipe->core, false);
@@ -457,6 +464,13 @@ int ipc_buffer_free(struct ipc *ipc, uint32_t buffer_id)
 	ibd = ipc_get_comp_by_id(ipc, buffer_id);
 	if (!ibd)
 		return -ENODEV;
+
+	/* check type */
+	if (ibd->type != COMP_TYPE_BUFFER) {
+		tr_err(&ipc_tr, "ipc_buffer_free(): comp id: %d is not a BUFFER",
+		       buffer_id);
+		return -EINVAL;
+	}
 
 	/* check core */
 	if (!cpu_is_me(ibd->core))
