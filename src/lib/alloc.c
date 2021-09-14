@@ -646,13 +646,13 @@ out:
 }
 
 #define DEBUG_TRACE_PTR(ptr, bytes, zone, caps, flags) \
-	do { \
+	if (trace_get()) { \
 		if (!ptr) { \
 			tr_err(&mem_tr, "failed to alloc 0x%x bytes zone 0x%x caps 0x%x flags 0x%x", \
 			       bytes, zone, caps, flags); \
 			alloc_trace_heap(zone, caps, bytes); \
-		} \
-	} while (0)
+	}
+
 #else
 #define DEBUG_TRACE_PTR(ptr, bytes, zone, caps, flags)
 #endif
