@@ -100,6 +100,8 @@ static enum task_state trace_work(void *data)
 	if (buffer->r_ptr >= buffer->end_addr)
 		buffer->r_ptr = (char *)buffer->r_ptr - DMA_TRACE_LOCAL_SIZE;
 
+	ipc_msg_send(d->msg, &d->posn, false);
+
 out:
 	spin_lock_irq(&d->lock, flags);
 

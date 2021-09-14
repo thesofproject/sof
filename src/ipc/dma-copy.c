@@ -78,7 +78,6 @@ int dma_copy_to_host_nowait(struct dma_copy *dc, struct dma_sg_config *host_sg,
 int dma_copy_to_host_nowait(struct dma_copy *dc, struct dma_sg_config *host_sg,
 			    int32_t host_offset, void *local_ptr, int32_t size)
 {
-	struct dma_trace_data *dmat = dma_trace_data_get();
 	struct dma_sg_config config;
 	struct dma_sg_elem *host_sg_elem;
 	struct dma_sg_elem local_sg_elem;
@@ -121,8 +120,6 @@ int dma_copy_to_host_nowait(struct dma_copy *dc, struct dma_sg_config *host_sg,
 		       DMA_COPY_ONE_SHOT | DMA_COPY_BLOCKING);
 	if (err < 0)
 		return err;
-
-	ipc_msg_send(dmat->msg, &dmat->posn, false);
 
 	/* bytes copied */
 	return local_sg_elem.size;
