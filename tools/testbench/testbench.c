@@ -251,6 +251,7 @@ int main(int argc, char **argv)
 	struct pipeline *p;
 	struct pipeline *curr_p;
 	struct comp_dev *cd;
+	struct dai_data *dd;
 	struct file_comp_data *frcd, *fwcd;
 	char pipeline[DEBUG_MSG_LEN];
 	clock_t tic, toc;
@@ -317,7 +318,8 @@ int main(int argc, char **argv)
 		fprintf(stderr, "error: failed to get pointers to filewrite\n");
 		exit(EXIT_FAILURE);
 	}
-	fwcd = comp_get_drvdata(pcm_dev->cd);
+	dd = comp_get_drvdata(pcm_dev->cd);
+	fwcd = comp_get_drvdata(dd->dai);
 
 	/* Get pointer to fileread */
 	pcm_dev = ipc_get_comp_by_id(sof_get()->ipc, tp.fr_id);
@@ -325,7 +327,8 @@ int main(int argc, char **argv)
 		fprintf(stderr, "error: failed to get pointers to fileread\n");
 		exit(EXIT_FAILURE);
 	}
-	frcd = comp_get_drvdata(pcm_dev->cd);
+	dd = comp_get_drvdata(pcm_dev->cd);
+	frcd = comp_get_drvdata(dd->dai);
 
 	/* Run pipeline until EOF from fileread */
 	pcm_dev = ipc_get_comp_by_id(sof_get()->ipc, tp.sched_id);
