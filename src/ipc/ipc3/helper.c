@@ -343,15 +343,11 @@ int ipc_pipeline_new(struct ipc *ipc, ipc_pipe_new *_pipe_desc)
 	}
 
 	/* configure pipeline */
-	ret = pipeline_schedule_config(pipe, pipe_desc->sched_id,
-				       pipe_desc->core, pipe_desc->period,
-				       pipe_desc->period_mips,
-				       pipe_desc->frames_per_sched,
-				       pipe_desc->time_domain);
-	if (ret) {
-		tr_err(&ipc_tr, "ipc_pipeline_new(): pipeline_schedule_config() failed");
-		return ret;
-	}
+	pipeline_schedule_config(pipe, pipe_desc->sched_id,
+				 pipe_desc->core, pipe_desc->period,
+				 pipe_desc->period_mips,
+				 pipe_desc->frames_per_sched,
+				 pipe_desc->time_domain);
 
 	/* set xrun time limit */
 	ret = pipeline_xrun_set_limit(pipe, pipe_desc->xrun_limit_usecs);

@@ -136,10 +136,10 @@ static struct task *pipeline_task_init(struct pipeline *p, uint32_t type)
 	return &task->task;
 }
 
-int pipeline_schedule_config(struct pipeline *p, uint32_t sched_id,
-			     uint32_t core, uint32_t period,
-			     uint32_t period_mips, uint32_t frames_per_sched,
-			     uint32_t time_domain)
+void pipeline_schedule_config(struct pipeline *p, uint32_t sched_id,
+			      uint32_t core, uint32_t period,
+			      uint32_t period_mips, uint32_t frames_per_sched,
+			      uint32_t time_domain)
 {
 	p->sched_id = sched_id;
 	p->core = core;
@@ -147,7 +147,6 @@ int pipeline_schedule_config(struct pipeline *p, uint32_t sched_id,
 	p->period_mips = period_mips;
 	p->frames_per_sched = frames_per_sched;
 	p->time_domain = time_domain;
-	return 0;
 }
 
 /* trigger connected pipelines: either immediately or schedule them */

@@ -336,12 +336,11 @@ void pipeline_schedule_triggered(struct pipeline_walk_context *ctx,
  * \param[in] period_mips Pipeline worst case MCPS per period.
  * \param[in] frames_per_sched Pipeline frames processed per schedule.
  * \param[in] time_domain Pipeline scheduling time domain.
- * \return 0 on success.
  */
-int pipeline_schedule_config(struct pipeline *p, uint32_t sched_id,
-			     uint32_t core, uint32_t period,
-			     uint32_t period_mips, uint32_t frames_per_sched,
-			     uint32_t time_domain);
+void pipeline_schedule_config(struct pipeline *p, uint32_t sched_id,
+			      uint32_t core, uint32_t period,
+			      uint32_t period_mips, uint32_t frames_per_sched,
+			      uint32_t time_domain);
 
 /*
  * Pipeline error handling APIs
