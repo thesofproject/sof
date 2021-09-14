@@ -353,6 +353,7 @@ int ipc_pipeline_new(struct ipc *ipc, ipc_pipe_new *_pipe_desc)
 	ret = pipeline_xrun_set_limit(pipe, pipe_desc->xrun_limit_usecs);
 	if (ret) {
 		tr_err(&ipc_tr, "ipc_pipeline_new(): pipeline_xrun_set_limit() failed");
+		pipeline_free(pipe);
 		return ret;
 	}
 
