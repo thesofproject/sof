@@ -200,8 +200,6 @@ static struct test_case test_cases[] = {
 		  2, TEST_BULK, "rballoc_dma"),
 	TEST_CASE(256, SOF_MEM_ZONE_BUFFER, SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_DMA,
 		  2, TEST_BULK, "rballoc_dma"),
-	TEST_CASE(2048, SOF_MEM_ZONE_BUFFER, SOF_MEM_CAPS_RAM |
-		  SOF_MEM_CAPS_DMA, 100, TEST_IMMEDIATE_FREE, "rballoc_dma"),
 };
 
 static int setup(void **state)
