@@ -79,7 +79,7 @@ dnl     time_domain, sched_comp)
 
 # Passthrough capture pipeline using max channels defined by DMIC_PCM_CHANNELS.
 
-# Set 1000us deadline on core 0 with priority 0
+# Set 1000us deadline with priority 0 on core 0
 ifdef(`DMICPROC_FILTER1', `define(PIPELINE_FILTER1, DMICPROC_FILTER1)', `undefine(`PIPELINE_FILTER1')')
 ifdef(`DMICPROC_FILTER2', `define(PIPELINE_FILTER2, DMICPROC_FILTER2)', `undefine(`PIPELINE_FILTER2')')
 define(`PGA_NAME', Dmic0)
@@ -94,7 +94,7 @@ undefine(`PIPELINE_FILTER2')
 
 # Passthrough capture pipeline using max channels defined by CHANNELS.
 
-# Schedule with 1000us deadline on core 0 with priority 0
+# Schedule with 1000us deadline with priority 0 on core 0
 ifdef(`DMIC16KPROC_FILTER1', `define(PIPELINE_FILTER1, DMIC16KPROC_FILTER1)', `undefine(`PIPELINE_FILTER1')')
 ifdef(`DMIC16KPROC_FILTER2', `define(PIPELINE_FILTER2, DMIC16KPROC_FILTER2)', `undefine(`PIPELINE_FILTER2')')
 define(`PGA_NAME', Dmic1)
@@ -119,7 +119,7 @@ dnl     buffer, periods, format,
 dnl     deadline, priority, core, time_domain)
 
 # capture DAI is DMIC 0 using 2 periods
-# Buffers use s32le format, 1000us deadline on core 0 with priority 0
+# Buffers use s32le format, 1000us deadline with priority 0 on core 0
 DAI_ADD(sof/pipe-dai-capture.m4,
 	DMIC_PIPELINE_48k_ID, DMIC, 0, DMIC_DAI_LINK_48k_NAME,
 	concat(`PIPELINE_SINK_', DMIC_PIPELINE_48k_ID), 2, s32le,
