@@ -34,7 +34,7 @@ dnl     pcm_min_rate, pcm_max_rate, pipeline_rate,
 dnl     time_domain, sched_comp)
 
 # Low Latency playback pipeline 1 on PCM 0 using max 1 channels of s16le.
-# Set 1000us deadline on core 0 with priority 0
+# Set 1000us deadline with priority 0 on core 0
 PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
 	1, 0, 1, s16le,
 	1000, 0, 0,
@@ -43,7 +43,7 @@ PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
 undefine(`CHANNELS_MIN')
 
 # Low Latency capture pipeline 2 on PCM 0 using max 1 channels of s16le.
-# Set 1000us deadline on core 0 with priority 0
+# Set 1000us deadline with priority 0 on core 0
 PIPELINE_PCM_ADD(sof/pipe-volume-capture.m4,
 	2, 0, 1, s16le,
 	1000, 0, 0,
