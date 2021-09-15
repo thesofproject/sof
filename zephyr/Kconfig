@@ -1,3 +1,11 @@
 if SOF
 rsource "../Kconfig.sof"
+
+config SOF_ZEPHYR_HEAP_CACHED
+	bool "Cached Zephyr heap for SOF memory non-shared zones"
+	default n
+	help
+	  Enable cached heap by mapping cached SOF memory zones to different
+	  Zephyr sys_heap objects and enable caching for non-shared zones.
+
 endif
