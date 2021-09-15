@@ -188,11 +188,8 @@ int comp_buffer_connect(struct comp_dev *comp, uint32_t comp_core,
 
 		buffer->inter_core = true;
 
-		if (!comp->is_shared) {
+		if (!comp->is_shared)
 			comp = comp_make_shared(comp);
-			if (!comp)
-				return -ENOMEM;
-		}
 	}
 
 	ret = pipeline_connect(comp, buffer, dir);
