@@ -536,11 +536,8 @@ static int ipc_comp_to_buffer_connect(struct ipc_comp_dev *comp,
 
 		buffer->cb->inter_core = true;
 
-		if (!comp->cd->is_shared) {
+		if (!comp->cd->is_shared)
 			comp->cd = comp_make_shared(comp->cd);
-			if (!comp->cd)
-				return -ENOMEM;
-		}
 	}
 
 	ret = pipeline_connect(comp->cd, buffer->cb,
@@ -568,11 +565,8 @@ static int ipc_buffer_to_comp_connect(struct ipc_comp_dev *buffer,
 
 		buffer->cb->inter_core = true;
 
-		if (!comp->cd->is_shared) {
+		if (!comp->cd->is_shared)
 			comp->cd = comp_make_shared(comp->cd);
-			if (!comp->cd)
-				return -ENOMEM;
-		}
 	}
 
 	ret = pipeline_connect(comp->cd, buffer->cb,
