@@ -72,7 +72,7 @@ int interrupt_cascade_register(const struct irq_cascade_tmpl *tmpl)
 
 	}
 
-	*cascade = rzalloc(SOF_MEM_ZONE_SYS_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(**cascade));
+	*cascade = rballoc(SOF_MEM_FLAG_COHERENT, SOF_MEM_CAPS_RAM, sizeof(**cascade));
 
 	spinlock_init(&(*cascade)->lock);
 

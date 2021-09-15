@@ -471,7 +471,7 @@ void platform_pm_runtime_init(struct pm_runtime_data *prd)
 {
 	struct cavs_pm_runtime_data *pprd;
 
-	pprd = rzalloc(SOF_MEM_ZONE_SYS_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*pprd));
+	pprd = rballoc(SOF_MEM_FLAG_COHERENT, SOF_MEM_CAPS_RAM, sizeof(*pprd));
 	prd->platform_data = pprd;
 }
 

@@ -230,8 +230,8 @@ int ipc_init(struct sof *sof)
 	tr_info(&ipc_tr, "ipc_init()");
 
 	/* init ipc data */
-	sof->ipc = rzalloc(SOF_MEM_ZONE_SYS_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*sof->ipc));
-	sof->ipc->comp_data = rzalloc(SOF_MEM_ZONE_SYS_SHARED, 0,
+	sof->ipc = rballoc(SOF_MEM_FLAG_COHERENT, SOF_MEM_CAPS_RAM, sizeof(*sof->ipc));
+	sof->ipc->comp_data = rballoc(SOF_MEM_FLAG_COHERENT,
 				      SOF_MEM_CAPS_RAM, SOF_IPC_MSG_MAX_SIZE);
 
 	spinlock_init(&sof->ipc->lock);
