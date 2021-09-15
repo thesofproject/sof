@@ -36,7 +36,7 @@ dnl     pcm_min_rate, pcm_max_rate, pipeline_rate,
 dnl     time_domain, sched_comp)
 
 # Passthrough capture pipeline 1 on PCM 0 using max 2 channels.
-# Schedule 1000us deadline on core 0 with priority 0
+# Schedule 1000us deadline with priority 0 on core 0
 PIPELINE_PCM_ADD(sof/pipe-kfbm-capture.m4,
 	1, 0, 2, s16le,
 	KWD_PIPE_SCH_DEADLINE_US, 0, 0,

@@ -21,7 +21,7 @@ ifelse(SOF_ABI_VERSION_3_9_OR_GRT, `1',
 `
 # --- ABI VERSION is 3.9 or higher case ----
 # Low Latency playback pipeline 8 on PCM 6 using max 2 channels of s32le.
-# Schedule 1000us deadline on core 0 with priority 0
+# Schedule 1000us deadline with priority 0 on core 0
 # pipe-src pipeline is needed for older SSP config
 define(`PIPE_VOLUME_PLAYBACK', `sof/pipe-volume-playback.m4')
 define(`SSP1_VALID_BITS', `24')
@@ -44,7 +44,7 @@ define(`SET_SSP1_CONFIG_DATA', `SSP, 1, 24, 0, 0, 10')',
 `
 # --- ABI VERSION is below 3.9 case ----
 # Low Latency playback pipeline 8 on PCM 6 using max 2 channels of s32le.
-# Schedule 1000us deadline on core 0 with priority 0
+# Schedule 1000us deadline with priority 0 on core 0
 # pipe-src pipeline is needed for older SSP config
 define(`PIPE_VOLUME_PLAYBACK', `sof/pipe-src-volume-playback.m4')
 define(`SSP1_VALID_BITS', `16')

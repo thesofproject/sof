@@ -61,7 +61,7 @@ dnl     pcm_min_rate, pcm_max_rate, pipeline_rate,
 dnl     time_domain, sched_comp)
 
 # Low Latency playback pipeline 1 on PCM 0 using max 2 channels of s24le.
-# Schedule 1000us deadline on core 0 with priority 0
+# Schedule 1000us deadline with priority 0 on core 0
 ifdef(`HSEARPROC_FILTER1', `define(PIPELINE_FILTER1, HSEARPROC_FILTER1)', `undefine(`PIPELINE_FILTER1')')
 ifdef(`HSEARPROC_FILTER2', `define(PIPELINE_FILTER2, HSEARPROC_FILTER2)', `undefine(`PIPELINE_FILTER2')')
 PIPELINE_PCM_ADD(sof/pipe-HSEARPROC-playback.m4,
@@ -72,7 +72,7 @@ undefine(`PIPELINE_FILTER1')
 undefine(`PIPELINE_FILTER2')
 
 # Low Latency capture pipeline 2 on PCM 0 using max 2 channels of s24le.
-# Schedule 1000us deadline on core 0 with priority 0
+# Schedule 1000us deadline with priority 0 on core 0
 ifdef(`HSMICPROC_FILTER1', `define(PIPELINE_FILTER1, HSMICPROC_FILTER1)', `undefine(`PIPELINE_FILTER1')')
 ifdef(`HSMICPROC_FILTER2', `define(PIPELINE_FILTER2, HSMICPROC_FILTER2)', `undefine(`PIPELINE_FILTER2')')
 PIPELINE_PCM_ADD(sof/pipe-HSMICPROC-capture.m4,
@@ -83,28 +83,28 @@ undefine(`PIPELINE_FILTER1')
 undefine(`PIPELINE_FILTER2')
 
 # Low Latency playback pipeline 4 on PCM 2 using max 2 channels of s32le.
-# Schedule 1000us deadline on core 0 with priority 0
+# Schedule 1000us deadline with priority 0 on core 0
 PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
 	4, 2, 2, s32le,
 	1000, 0, 0,
 	48000, 48000, 48000)
 
 # Low Latency playback pipeline 5 on PCM 3 using max 2 channels of s32le.
-# Schedule 1000us deadline on core 0 with priority 0
+# Schedule 1000us deadline with priority 0 on core 0
 PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
 	5, 3, 2, s32le,
 	1000, 0, 0,
 	48000, 48000, 48000)
 
 # Low Latency playback pipeline 6 on PCM 4 using max 2 channels of s32le.
-# Schedule 1000us deadline on core 0 with priority 0
+# Schedule 1000us deadline with priority 0 on core 0
 PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
 	6, 4, 2, s32le,
 	1000, 0, 0,
 	48000, 48000, 48000)
 
 # Low Latency playback pipeline 7 on PCM 5 using max 2 channels of s32le.
-# Schedule 48 frames per 1000us deadline on core 0 with priority 0
+# Schedule 48 frames per 1000us deadline with priority 0 on core 0
 ifdef(`SPKPROC_FILTER1', `define(PIPELINE_FILTER1, SPKPROC_FILTER1)', `undefine(`PIPELINE_FILTER1')')
 ifdef(`SPKPROC_FILTER2', `define(PIPELINE_FILTER2, SPKPROC_FILTER2)', `undefine(`PIPELINE_FILTER2')')
 PIPELINE_PCM_ADD(sof/pipe-SPKPROC-playback.m4,
