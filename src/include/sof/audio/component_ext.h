@@ -56,14 +56,6 @@ static inline void comp_free(struct comp_dev *dev)
 }
 
 /**
- * Commits component's memory if it's shared.
- * @param dev Component device.
- */
-static inline void comp_shared_commit(struct comp_dev *dev)
-{
-}
-
-/**
  * Parameter init for component on other core.
  * @param dev Component device.
  * @param params Parameters to be set.
@@ -97,8 +89,6 @@ static inline int comp_params(struct comp_dev *dev,
 		}
 	}
 
-	comp_shared_commit(dev);
-
 	return ret;
 }
 
@@ -107,14 +97,10 @@ static inline int comp_dai_get_hw_params(struct comp_dev *dev,
 					 struct sof_ipc_stream_params *params,
 					 int dir)
 {
-	int ret = -EINVAL;
-
 	if (dev->drv->ops.dai_get_hw_params)
-		ret = dev->drv->ops.dai_get_hw_params(dev, params, dir);
+		return dev->drv->ops.dai_get_hw_params(dev, params, dir);
 
-	comp_shared_commit(dev);
-
-	return ret;
+	return -EINVAL;
 }
 
 /** See comp_ops::cmd */
@@ -122,23 +108,19 @@ static inline int comp_cmd(struct comp_dev *dev, int cmd, void *data,
 			   int max_data_size)
 {
 	struct sof_ipc_ctrl_data *cdata = ASSUME_ALIGNED(data, 4);
-	int ret = -EINVAL;
 
 	if (cmd == COMP_CMD_SET_DATA &&
 	    (cdata->data->magic != SOF_ABI_MAGIC ||
 	     SOF_ABI_VERSION_INCOMPATIBLE(SOF_ABI_VERSION, cdata->data->abi))) {
 		comp_err(dev, "comp_cmd(): invalid version, data->magic = %u, data->abi = %u",
 			 cdata->data->magic, cdata->data->abi);
-		goto out;
+		return -EINVAL;
 	}
 
 	if (dev->drv->ops.cmd)
-		ret = dev->drv->ops.cmd(dev, cmd, data, max_data_size);
+		return dev->drv->ops.cmd(dev, cmd, data, max_data_size);
 
-out:
-	comp_shared_commit(dev);
-
-	return ret;
+	return -EINVAL;
 }
 
 /**
@@ -156,16 +138,10 @@ static inline int comp_trigger_remote(struct comp_dev *dev, int cmd)
 /** See comp_ops::trigger */
 static inline int comp_trigger(struct comp_dev *dev, int cmd)
 {
-	int ret = 0;
-
 	assert(dev->drv->ops.trigger);
 
-	ret = (dev->is_shared && !cpu_is_me(dev->ipc_config.core)) ?
+	return (dev->is_shared && !cpu_is_me(dev->ipc_config.core)) ?
 		comp_trigger_remote(dev, cmd) : dev->drv->ops.trigger(dev, cmd);
-
-	comp_shared_commit(dev);
-
-	return ret;
 }
 
 /** Runs comp_ops::prepare on the target component's core */
@@ -180,15 +156,11 @@ static inline int comp_prepare_remote(struct comp_dev *dev)
 /** See comp_ops::prepare */
 static inline int comp_prepare(struct comp_dev *dev)
 {
-	int ret = 0;
-
 	if (dev->drv->ops.prepare)
-		ret = (dev->is_shared && !cpu_is_me(dev->ipc_config.core)) ?
+		return (dev->is_shared && !cpu_is_me(dev->ipc_config.core)) ?
 			comp_prepare_remote(dev) : dev->drv->ops.prepare(dev);
 
-	comp_shared_commit(dev);
-
-	return ret;
+	return 0;
 }
 
 /** See comp_ops::copy */
@@ -204,7 +176,6 @@ static inline int comp_copy(struct comp_dev *dev)
 		ret = dev->drv->ops.copy(dev);
 		perf_cnt_stamp(&dev->pcd, comp_perf_info, dev);
 	}
-	comp_shared_commit(dev);
 
 	return ret;
 }
@@ -213,28 +184,20 @@ static inline int comp_copy(struct comp_dev *dev)
 static inline int comp_get_attribute(struct comp_dev *dev, uint32_t type,
 				     void *value)
 {
-	int ret = 0;
-
 	if (dev->drv->ops.get_attribute)
-		ret = dev->drv->ops.get_attribute(dev, type, value);
+		return dev->drv->ops.get_attribute(dev, type, value);
 
-	comp_shared_commit(dev);
-
-	return ret;
+	return 0;
 }
 
 /** See comp_ops::set_attribute */
 static inline int comp_set_attribute(struct comp_dev *dev, uint32_t type,
 				     void *value)
 {
-	int ret = 0;
-
 	if (dev->drv->ops.set_attribute)
-		ret = dev->drv->ops.set_attribute(dev, type, value);
+		return dev->drv->ops.set_attribute(dev, type, value);
 
-	comp_shared_commit(dev);
-
-	return ret;
+	return 0;
 }
 
 /** Runs comp_ops::reset on the target component's core */
@@ -253,43 +216,31 @@ static inline int comp_reset_remote(struct comp_dev *dev)
  */
 static inline int comp_reset(struct comp_dev *dev)
 {
-	int ret = 0;
-
 	if (dev->drv->ops.reset)
-		ret = (dev->is_shared && !cpu_is_me(dev->ipc_config.core)) ?
+		return (dev->is_shared && !cpu_is_me(dev->ipc_config.core)) ?
 			comp_reset_remote(dev) : dev->drv->ops.reset(dev);
 
-	comp_shared_commit(dev);
-
-	return ret;
+	return 0;
 }
 
 /** See comp_ops::dai_config */
 static inline int comp_dai_config(struct comp_dev *dev, struct ipc_config_dai *config,
 				  void *spec_config)
 {
-	int ret = 0;
-
 	if (dev->drv->ops.dai_config)
-		ret = dev->drv->ops.dai_config(dev, config, spec_config);
+		return dev->drv->ops.dai_config(dev, config, spec_config);
 
-	comp_shared_commit(dev);
-
-	return ret;
+	return 0;
 }
 
 /** See comp_ops::position */
 static inline int comp_position(struct comp_dev *dev,
 				struct sof_ipc_stream_posn *posn)
 {
-	int ret = 0;
-
 	if (dev->drv->ops.position)
-		ret = dev->drv->ops.position(dev, posn);
+		return dev->drv->ops.position(dev, posn);
 
-	comp_shared_commit(dev);
-
-	return ret;
+	return 0;
 }
 
 /**
@@ -400,8 +351,6 @@ static inline int comp_bind(struct comp_dev *dev, void *data)
 	if (dev->drv->ops.bind)
 		ret = dev->drv->ops.bind(dev, data);
 
-	comp_shared_commit(dev);
-
 	return ret;
 }
 
@@ -411,8 +360,6 @@ static inline int comp_unbind(struct comp_dev *dev, void *data)
 
 	if (dev->drv->ops.unbind)
 		ret = dev->drv->ops.unbind(dev, data);
-
-	comp_shared_commit(dev);
 
 	return ret;
 }
