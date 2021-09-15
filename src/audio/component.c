@@ -131,8 +131,6 @@ int comp_set_state(struct comp_dev *dev, int cmd)
 
 	dev->state = requested_state;
 
-	comp_writeback(dev);
-
 	return 0;
 }
 

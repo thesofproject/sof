@@ -256,8 +256,6 @@ static int mixer_trigger_common(struct comp_dev *dev, int cmd)
 		default:
 			break;
 		}
-
-		comp_writeback(dev);
 	}
 
 	ret = comp_set_state(dev, cmd);
@@ -277,7 +275,6 @@ static int mixer_trigger_common(struct comp_dev *dev, int cmd)
 	     (mixer_source_status_count(dev, COMP_STATE_ACTIVE) ||
 	     mixer_source_status_count(dev, COMP_STATE_PAUSED)))) {
 		dev->state = COMP_STATE_ACTIVE;
-		comp_writeback(dev);
 		ret = PPL_STATUS_PATH_STOP;
 	}
 

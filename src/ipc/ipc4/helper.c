@@ -309,8 +309,6 @@ int ipc_comp_disconnect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	irq_local_disable(flags);
 	list_item_del(buffer_comp_list(buffer, PPL_CONN_DIR_COMP_TO_BUFFER));
 	list_item_del(buffer_comp_list(buffer, PPL_CONN_DIR_BUFFER_TO_COMP));
-	comp_writeback(src);
-	comp_writeback(sink);
 	irq_local_enable(flags);
 
 	buffer_free(buffer);
