@@ -124,14 +124,14 @@ dnl     pcm_min_rate, pcm_max_rate, pipeline_rate,
 dnl     time_domain, sched_comp)
 
 # Demux pipeline 1 on PCM 0 using max 2 channels of s32le.
-# Set 1000us deadline on core 0 with priority 0
+# Set 1000us deadline with priority 0 on core 0
 PIPELINE_PCM_ADD(sof/pipe-smart-amplifier-playback.m4,
 	SMART_PB_PPL_ID, SMART_PCM_ID, SMART_PB_CH_NUM, s32le,
 	SMART_AMP_PERIOD, 0, SMART_AMP_CORE,
 	48000, 48000, 48000)
 
 # Low Latency capture pipeline 2 on PCM 0 using max 2 channels of s32le.
-# Set 1000us deadline on core 0 with priority 0
+# Set 1000us deadline with priority 0 on core 0
 ifelse(SDW, `1',
 `
 PIPELINE_PCM_ADD(sof/pipe-amp-ref-capture.m4,
@@ -158,14 +158,14 @@ dnl     deadline, priority, core, time_domain)
 ifelse(SDW, `1',
 `
 # playback DAI is ALH(ALH_INDEX) using 2 periods
-# Buffers use s32le format, 1000us deadline on core 0 with priority 0
+# Buffers use s32le format, 1000us deadline with priority 0 on core 0
 DAI_ADD(sof/pipe-dai-playback.m4,
         SMART_PB_PPL_ID, ALH, SMART_ALH_INDEX, SMART_ALH_PLAYBACK_NAME,
         SMART_PIPE_SOURCE, 2, s24le,
         SMART_AMP_PERIOD, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # capture DAI is ALH(ALH_INDEX) using 2 periods
-# Buffers use s32le format, 1000us deadline on core 0 with priority 0
+# Buffers use s32le format, 1000us deadline with priority 0 on core 0
 DAI_ADD(sof/pipe-dai-capture.m4,
         SMART_REF_PPL_ID, ALH, eval(SMART_ALH_INDEX + 1), SMART_ALH_CAPTURE_NAME,
         SMART_PIPE_SINK, 2, s24le,
@@ -173,14 +173,14 @@ DAI_ADD(sof/pipe-dai-capture.m4,
 ',
 `
 # playback DAI is SSP(SPP_INDEX) using 2 periods
-# Buffers use s32le format, 1000us deadline on core 0 with priority 0
+# Buffers use s32le format, 1000us deadline with priority 0 on core 0
 DAI_ADD(sof/pipe-dai-playback.m4,
 	SMART_PB_PPL_ID, SSP, SMART_SSP_INDEX, SMART_SSP_NAME,
 	SMART_PIPE_SOURCE, 2, s32le,
 	SMART_AMP_PERIOD, 0, SMART_AMP_CORE, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # capture DAI is SSP(SSP_INDEX) using 2 periods
-# Buffers use s32le format, 1000us deadline on core 0 with priority 0
+# Buffers use s32le format, 1000us deadline with priority 0 on core 0
 DAI_ADD(sof/pipe-dai-capture.m4,
 	SMART_REF_PPL_ID, SSP, SMART_SSP_INDEX, SMART_SSP_NAME,
 	SMART_PIPE_SINK, 2, s32le,
