@@ -1132,7 +1132,7 @@ static int ssp_probe(struct dai *dai)
 		return -EEXIST; /* already created */
 
 	/* allocate private data */
-	ssp = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*ssp));
+	ssp = rballoc(SOF_MEM_FLAG_COHERENT, SOF_MEM_CAPS_RAM, sizeof(*ssp));
 	if (!ssp) {
 		dai_err(dai, "ssp_probe(): alloc failed");
 		return -ENOMEM;

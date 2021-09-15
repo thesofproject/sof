@@ -38,14 +38,14 @@ struct comp_buffer *buffer_alloc(uint32_t size, uint32_t caps, uint32_t align)
 	}
 
 	/* allocate new buffer */
-	buffer = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM,
+	buffer = rballoc(SOF_MEM_FLAG_COHERENT, SOF_MEM_CAPS_RAM,
 			 sizeof(*buffer));
 	if (!buffer) {
 		tr_err(&buffer_tr, "buffer_alloc(): could not alloc structure");
 		return NULL;
 	}
 
-	buffer->lock = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM,
+	buffer->lock = rballoc(SOF_MEM_FLAG_COHERENT, SOF_MEM_CAPS_RAM,
 			       sizeof(*buffer->lock));
 	if (!buffer->lock) {
 		rfree(buffer);
