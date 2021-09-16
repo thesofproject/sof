@@ -45,7 +45,6 @@ struct comp_buffer *buffer_new(const struct sof_ipc_buffer *desc)
 	if (buffer) {
 		buffer->id = desc->comp.id;
 		buffer->pipeline_id = desc->comp.pipeline_id;
-		buffer->core = desc->comp.core;
 
 		buffer->stream.underrun_permitted = desc->flags &
 						    SOF_BUF_UNDERRUN_PERMITTED;
@@ -180,12 +179,12 @@ int comp_verify_params(struct comp_dev *dev, uint32_t flag,
 int comp_buffer_connect(struct comp_dev *comp, uint32_t comp_core,
 			struct comp_buffer *buffer, uint32_t dir)
 {
+	struct comp_dev *cd = buffer_get_comp(buffer, dir);
 	int ret;
 
 	/* check if it's a connection between cores */
-	if (buffer->core != comp_core) {
+	if (cd && cd->ipc_config.core != comp_core) {
 		dcache_invalidate_region(buffer, sizeof(*buffer));
-
 		buffer->inter_core = true;
 
 		if (!comp->is_shared) {
