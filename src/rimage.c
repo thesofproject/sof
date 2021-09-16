@@ -30,7 +30,6 @@ static void usage(char *name)
 	fprintf(stdout, "\t -b build version\n");
 	fprintf(stdout, "\t -e build extended manifest\n");
 	fprintf(stdout, "\t -y verify signed file\n");
-	exit(0);
 }
 
 int main(int argc, char *argv[])
@@ -84,10 +83,10 @@ int main(int argc, char *argv[])
 			break;
 		case 'h':
 			usage(argv[0]);
-			break;
+			return 0;
 		default:
 		 /* getopt's default error message is good enough */
-			break;
+			return 1;
 		}
 	}
 
@@ -95,8 +94,9 @@ int main(int argc, char *argv[])
 
 	/* we must have config */
 	if (!adsp_config) {
-		fprintf(stderr, "error: must have adsp desc");
 		usage(argv[0]);
+		fprintf(stderr, "error: must have adsp desc\n");
+		return -EINVAL;
 	}
 
 	/* requires private key */
@@ -105,10 +105,11 @@ int main(int argc, char *argv[])
 		return -EINVAL;
 	}
 
-	/* make sure we have an outfile if nt verifying */
-	if ((!image.out_file && !image.verify_file))
+	/* make sure we have an outfile if not verifying */
+	if ((!image.out_file && !image.verify_file)) {
 		usage(argv[0]);
-
+		return -EINVAL;
+	}
 
 	/* firmware version and build id */
 	if (image.fw_ver_string) {
