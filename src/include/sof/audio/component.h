@@ -427,6 +427,45 @@ struct comp_ops {
 	 * @param data unBind info
 	 */
 	int (*unbind)(struct comp_dev *dev, void *data);
+
+	/**
+	 * Gets config in component.
+	 * @param dev Component device
+	 * @param param_id param id for each component
+	 * @param first_block first block of large block.
+	 * @param last_block last block of large block.
+	 * @param data_offset block offset filled by callee.
+	 * @param data block data.
+	 * @return 0 if succeeded, error code otherwise.
+	 *
+	 * Callee fills up *data with config data and save the config
+	 * size in *data_offset for host to reconstruct the config
+	 */
+	int (*get_large_config)(struct comp_dev *dev, uint32_t param_id,
+				bool first_block,
+				bool last_block,
+				uint32_t *data_offset,
+				char *data);
+
+	/**
+	 * Set config in component.
+	 * @param dev Component device
+	 * @param param_id param id for each component
+	 * @param first_block first block of large block.
+	 * @param last_block last block of large block.
+	 * @param data_offset block offset in large block.
+	 * @param data block data.
+	 * @return 0 if succeeded, error code otherwise.
+	 *
+	 * Host divides large block into small blocks and sends them
+	 * to fw. The data_offset indicates the offset in the large
+	 * block data.
+	 */
+	int (*set_large_config)(struct comp_dev *dev, uint32_t param_id,
+				bool first_block,
+				bool last_block,
+				uint32_t data_offset,
+				char *data);
 };
 
 /**
