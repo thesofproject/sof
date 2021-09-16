@@ -187,11 +187,25 @@ int comp_buffer_connect(struct comp_dev *comp, uint32_t comp_core,
 		dcache_invalidate_region(buffer, sizeof(*buffer));
 		buffer->inter_core = true;
 
+		/*
+		 * if any component in a pipeline is on a different core than the others, then
+		 * all the components in the pipelines should be made shared.
+		 */
 		if (!comp->is_shared) {
 			comp = comp_make_shared(comp);
 			if (!comp)
 				return -ENOMEM;
 		}
+
+		if (!cd->is_shared)
+			cd = comp_make_shared(cd);
+	} else {
+		/*
+		 * even if the the current 2 components are on the same core, "comp" should be made
+		 * shared if the component it is connected to is shared.
+		 */
+		if (cd && cd->is_shared && !comp->is_shared)
+			comp = comp_make_shared(comp);
 	}
 
 	ret = pipeline_connect(comp, buffer, dir);

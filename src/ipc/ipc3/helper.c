@@ -528,6 +528,18 @@ static int ipc_comp_to_buffer_connect(struct ipc_comp_dev *comp,
 			if (!comp->cd)
 				return -ENOMEM;
 		}
+
+		if (!sink->is_shared) {
+			sink = comp_make_shared(sink);
+			buffer_set_comp(buf, sink, PPL_CONN_DIR_BUFFER_TO_COMP);
+		}
+	} else {
+		/*
+		 * even if the the current 2 components are on the same core, comp->cd should be
+		 * made shared if the component it is connected to is shared.
+		 */
+		if (sink && sink->is_shared && !comp->cd->is_shared)
+			comp->cd = comp_make_shared(comp->cd);
 	}
 
 	ret = pipeline_connect(comp->cd, buf, PPL_CONN_DIR_COMP_TO_BUFFER);
@@ -560,6 +572,18 @@ static int ipc_buffer_to_comp_connect(struct ipc_comp_dev *buffer,
 			if (!comp->cd)
 				return -ENOMEM;
 		}
+
+		if (!source->is_shared) {
+			source = comp_make_shared(source);
+			buffer_set_comp(buf, source, PPL_CONN_DIR_COMP_TO_BUFFER);
+		}
+	} else {
+		/*
+		 * even if the the current 2 components are on the same core, comp->cd should be
+		 * made shared if the component it is connected to is shared.
+		 */
+		if (source && source->is_shared && !comp->cd->is_shared)
+			comp->cd = comp_make_shared(comp->cd);
 	}
 
 	ret = pipeline_connect(comp->cd, buf, PPL_CONN_DIR_BUFFER_TO_COMP);
