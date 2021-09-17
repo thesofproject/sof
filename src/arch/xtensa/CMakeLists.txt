@@ -266,6 +266,11 @@ if(build_bootloader)
 	add_dependencies(boot_module rimage_ep)
 	add_dependencies(base_module rimage_ep)
 
+	target_include_directories(bootloader   PRIVATE ${PROJECT_SOURCE_DIR}/rimage/src/include)
+	target_include_directories(boot_module  PRIVATE ${PROJECT_SOURCE_DIR}/rimage/src/include)
+	target_include_directories(base_module  PRIVATE ${PROJECT_SOURCE_DIR}/rimage/src/include)
+
+
 	target_link_libraries(bootloader PRIVATE sof_options)
 	add_local_sources(bootloader xtos/_vectors.S ${PROJECT_SOURCE_DIR}/src/platform/${family_path}/boot_entry.S ${PROJECT_SOURCE_DIR}/src/platform/${family_path}/boot_loader.c)
 	target_link_libraries(bootloader PRIVATE reset)
