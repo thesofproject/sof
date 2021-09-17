@@ -32,7 +32,8 @@ if(GIT_FOUND AND EXISTS "${SOF_ROOT_SOURCE_DIRECTORY}/.git")
 "There are submodule changes, check git status and git diff\n${stdout}")
 		endif()
 
-	elseif(NOT BUILD_UNIT_TESTS)
+	elseif(NOT BUILD_UNIT_TESTS AND
+	    NOT CONFIG_LIBRARY)
 	# Automated initialization for convenience. You can defeat it by
 	# manually initializing rimage and _not_ some other
 	# submodule. In that case you get the warning above.
