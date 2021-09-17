@@ -57,7 +57,6 @@ set(CMAKE_ASM_FLAGS -DASSEMBLY)
 add_library(sof_public_headers INTERFACE)
 
 target_include_directories(sof_public_headers INTERFACE ${PROJECT_SOURCE_DIR}/src/include)
-target_include_directories(sof_public_headers INTERFACE ${PROJECT_SOURCE_DIR}/rimage/src/include)
 
 # interface library that is used only as container for sof binary options
 # other targets can use it to build with the same options
