@@ -127,7 +127,7 @@ SHARED_DATA struct dma dma[PLATFORM_NUM_DMACS] = {
 				  DMA_DIR_DEV_TO_MEM | DMA_DIR_DEV_TO_DEV |
 				  DMA_DIR_HMEM_TO_LMEM | DMA_DIR_LMEM_TO_HMEM,
 		.caps		= DMA_CAP_GP_HP,
-		.devs		= DMA_DEV_SSP | DMA_DEV_DMIC | DMA_DEV_HOST,
+		.devs		= DMA_DEV_SSP | DMA_DEV_HOST,
 		.base		= DMA0_BASE,
 		.channels	= 8,
 		.irq		= IRQ_NUM_EXT_DMAC0,
@@ -142,7 +142,7 @@ SHARED_DATA struct dma dma[PLATFORM_NUM_DMACS] = {
 				  DMA_DIR_DEV_TO_MEM | DMA_DIR_DEV_TO_DEV |
 				  DMA_DIR_HMEM_TO_LMEM | DMA_DIR_LMEM_TO_HMEM,
 		.caps		= DMA_CAP_GP_HP,
-		.devs		= DMA_DEV_SSP | DMA_DEV_DMIC | DMA_DEV_HOST,
+		.devs		= DMA_DEV_SSP | DMA_DEV_HOST,
 		.base		= DMA1_BASE,
 		.channels	= 8,
 		.irq		= IRQ_NUM_EXT_DMAC1,
