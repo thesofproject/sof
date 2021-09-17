@@ -997,6 +997,18 @@ static int dw_dma_probe(struct dma *dma)
 		}
 
 		dma_chan_set_data(chan, dw_chan);
+
+#if CONFIG_BAYTRAIL || CONFIG_CHERRYTRAIL
+		/*
+		 * Disable DMAC1 channels 1 & 2 by hard coding them as active.
+		 * This is to align with mapping used by legacy closed source
+		 * BYT FW and may be required for stable audio without trace.
+		 */
+		if (dma->plat_data.id == DMA_ID_DMAC1) {
+			dma->chan[0].status = COMP_STATE_ACTIVE;
+			dma->chan[1].status = COMP_STATE_ACTIVE;
+		}
+#endif
 	}
 
 	/* init number of channels draining */
