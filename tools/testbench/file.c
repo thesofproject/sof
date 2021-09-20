@@ -443,7 +443,11 @@ static int file_s32(struct comp_dev *dev, struct audio_stream *sink,
 		return -EINVAL;
 	}
 
+	/* update sample counter and check if we have a sample limit */
 	cd->fs.n += n_samples;
+	if (cd->max_samples && cd->fs.n >= cd->max_samples)
+		cd->fs.reached_eof = 1;
+
 	return n_samples;
 }
 
@@ -473,7 +477,11 @@ static int file_s16(struct comp_dev *dev, struct audio_stream *sink,
 		return -EINVAL;
 	}
 
+	/* update sample counter and check if we have a sample limit */
 	cd->fs.n += n_samples;
+	if (cd->max_samples && cd->fs.n >= cd->max_samples)
+		cd->fs.reached_eof = 1;
+
 	return n_samples;
 }
 
@@ -503,7 +511,11 @@ static int file_s24(struct comp_dev *dev, struct audio_stream *sink,
 		return -EINVAL;
 	}
 
+	/* update sample counter and check if we have a sample limit */
 	cd->fs.n += n_samples;
+	if (cd->max_samples && cd->fs.n >= cd->max_samples)
+		cd->fs.reached_eof = 1;
+
 	return n_samples;
 }
 
@@ -603,6 +615,7 @@ static struct comp_dev *file_new(const struct comp_driver *drv,
 	cd->fs.reached_eof = false;
 	cd->fs.write_failed = false;
 	cd->fs.n = 0;
+	cd->fs.copy_count = 0;
 	dev->state = COMP_STATE_READY;
 	return dev;
 
@@ -772,6 +785,14 @@ static int file_copy(struct comp_dev *dev)
 		break;
 	}
 
+	cd->fs.copy_count++;
+	if (cd->fs.reached_eof || (cd->max_copies && cd->fs.copy_count >= cd->max_copies)) {
+		cd->fs.reached_eof = 1;
+		comp_info(dev, "file_copy(): copies %d max %d eof %d",
+			  cd->fs.copy_count, cd->max_copies,
+			  cd->fs.reached_eof);
+		schedule_task_cancel(dev->pipeline->pipe_task);
+	}
 	return ret;
 }
 
