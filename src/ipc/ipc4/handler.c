@@ -280,6 +280,7 @@ static int ipc4_process_glb_message(union ipc4_message_header *ipc4)
 	case SOF_IPC4_GLB_SAVE_PIPELINE:
 	case SOF_IPC4_GLB_RESTORE_PIPELINE:
 		tr_err(&ipc_tr, "not implemented ipc message type %d", type);
+		ret = IPC4_UNAVAILABLE;
 		break;
 
 	/* Loads library (using Code Load or HD/A Host Output DMA) */
