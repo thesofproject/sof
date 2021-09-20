@@ -31,6 +31,7 @@ struct file_state {
 	int n;
 	enum file_mode mode;
 	enum file_format f_format;
+	int copy_count;
 };
 
 /* file comp data */
@@ -45,6 +46,9 @@ struct file_comp_data {
 	int (*file_func)(struct comp_dev *dev, struct audio_stream *sink,
 			 struct audio_stream *source, uint32_t frames);
 
+	/* maximum limits */
+	int max_samples;
+	int max_copies;
 };
 
 #endif
