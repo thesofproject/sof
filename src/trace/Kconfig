@@ -35,14 +35,14 @@ config TRACEM
 config TRACE_FILTERING
 	bool "Trace filtering"
 	depends on TRACE
-	default n
+	default y
 	help
 		Filtering of trace messages based on their verbosity level and frequency.
 
 config TRACE_FILTERING_VERBOSITY
 	bool "Filter by verbosity"
 	depends on TRACE_FILTERING
-	default n
+	default y
 	help
 		Filtering by log verbosity level, where maximum verbosity allowed is specified for each
 		context and may be adjusted in runtime.
@@ -50,7 +50,7 @@ config TRACE_FILTERING_VERBOSITY
 config TRACE_FILTERING_ADAPTIVE
 	bool "Adaptive rate limiting"
 	depends on TRACE_FILTERING
-	default n
+	default y
 	help
 		Adaptive filtering of trace messages, tracking up to CONFIG_TRACE_RECENT_ENTRIES_COUNT,
 		suppressing all repeated messages for up to CONFIG_TRACE_RECENT_TIME_THRESHOLD cycles.
