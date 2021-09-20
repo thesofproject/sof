@@ -58,7 +58,7 @@ struct ipc_data {
 	struct ipc_data_host_buffer dh_buffer;
 };
 
-void tb_pipeline_free(struct sof *sof)
+void tb_free(struct sof *sof)
 {
 	struct schedule_data *sch;
 	struct schedulers **schedulers;
@@ -96,15 +96,17 @@ int tb_pipeline_start(struct ipc *ipc, struct pipeline *p,
 	/* set up pipeline params */
 	ret = tb_pipeline_params(ipc, p, tp);
 	if (ret < 0) {
-		fprintf(stderr, "error: pipeline params\n");
-		return -EINVAL;
+		fprintf(stderr, "error: pipeline params failed: %s\n",
+			strerror(ret));
+		return ret;
 	}
 
 	/* Get IPC component device for pipeline */
 	pcm_dev = ipc_get_comp_by_id(ipc, p->sched_id);
 	if (!pcm_dev) {
-		fprintf(stderr, "error: ipc get comp\n");
-		return -EINVAL;
+		fprintf(stderr, "error: ipc get comp failed: %s\n",
+			strerror(ret));
+		return ret;
 	}
 
 	/* Point to pipeline component device */
@@ -112,15 +114,71 @@ int tb_pipeline_start(struct ipc *ipc, struct pipeline *p,
 
 	/* Component prepare */
 	ret = pipeline_prepare(p, cd);
-	if (ret < 0)
-		printf("Warning: Failed prepare pipeline command.\n");
+	if (ret < 0) {
+		fprintf(stderr, "error: Failed prepare pipeline command: %s\n",
+			strerror(ret));
+		return ret;
+	}
 
-	/* Prepare and start the pipeline */
+	/* Start the pipeline */
 	ret = pipeline_trigger(p, cd, COMP_TRIGGER_PRE_START);
-	if (ret >= 0)
-		ret = pipeline_copy(p);
+	if (ret < 0) {
+		fprintf(stderr, "error: Failed to start pipeline command: %s\n",
+			strerror(ret));
+		return ret;
+	}
+
+	return ret;
+}
+
+/* set up pcm params, prepare and trigger pipeline */
+int tb_pipeline_stop(struct ipc *ipc, struct pipeline *p,
+		     struct testbench_prm *tp)
+{
+	struct ipc_comp_dev *pcm_dev;
+	struct comp_dev *cd;
+	int ret;
+
+	/* Get IPC component device for pipeline */
+	pcm_dev = ipc_get_comp_by_id(ipc, p->sched_id);
+	if (!pcm_dev) {
+		fprintf(stderr, "error: ipc get comp failed\n");
+		return -EINVAL;
+	}
+
+	/* Point to pipeline component device */
+	cd = pcm_dev->cd;
+
+	ret = pipeline_trigger(p, cd, COMP_TRIGGER_STOP);
+	if (ret < 0) {
+		fprintf(stderr, "error: Failed to stop pipeline command: %s\n",
+			strerror(ret));
+	}
+
+	return ret;
+}
+
+/* set up pcm params, prepare and trigger pipeline */
+int tb_pipeline_reset(struct ipc *ipc, struct pipeline *p,
+		      struct testbench_prm *tp)
+{
+	struct ipc_comp_dev *pcm_dev;
+	struct comp_dev *cd;
+	int ret;
+
+	/* Get IPC component device for pipeline */
+	pcm_dev = ipc_get_comp_by_id(ipc, p->sched_id);
+	if (!pcm_dev) {
+		fprintf(stderr, "error: ipc get comp failed\n");
+		return -EINVAL;
+	}
+
+	/* Point to pipeline component device */
+	cd = pcm_dev->cd;
+
+	ret = pipeline_reset(p, cd);
 	if (ret < 0)
-		printf("Warning: Failed start pipeline command.\n");
+		fprintf(stderr, "error: pipeline reset\n");
 
 	return ret;
 }
