@@ -64,12 +64,17 @@ jobs:
       - name: docker
         run: docker pull thesofproject/sof && docker tag thesofproject/sof sof
 
-      # testbench needs some topologies
+      # testbench needs some topologies.
+      # Use our docker container to avoid the "unsupported widget type asrc"
+      # bug in ALSA 1.2.2
+      # https://github.com/thesofproject/sof/issues/2543
       - name: build topologies
         run: ./scripts/docker-run.sh ./scripts/build-tools.sh -t
+
       - name: build testbench
-        run: ./scripts/docker-run.sh ./scripts/rebuild-testbench.sh
-      - name: test
+        run: ./scripts/rebuild-testbench.sh
+
+      - name: run testbench
         run: ./scripts/host-testbench.sh
 
 
