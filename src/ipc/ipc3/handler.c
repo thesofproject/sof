@@ -721,10 +721,14 @@ static int ipc_pm_gate(uint32_t header)
 	if (pm_gate.flags & SOF_PM_NO_TRACE)
 		trace_off();
 
-	if (pm_gate.flags & SOF_PM_PPG)
+	if (pm_gate.flags & SOF_PM_PPG) {
 		pm_runtime_disable(PM_RUNTIME_DSP, PLATFORM_PRIMARY_CORE_ID);
-	else
+#if (CONFIG_CAVS_LPS)
+		cpu_restore_secondary_cores();
+#endif
+	} else {
 		pm_runtime_enable(PM_RUNTIME_DSP, PLATFORM_PRIMARY_CORE_ID);
+	}
 
 	/* resume dma trace if needed */
 	if (!(pm_gate.flags & SOF_PM_NO_TRACE))
