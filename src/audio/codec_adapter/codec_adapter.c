@@ -45,7 +45,7 @@ struct comp_dev *codec_adapter_new(const struct comp_driver *drv,
 
 	comp_cl_dbg(drv, "codec_adapter_new() start");
 
-	if (!drv || !config) {
+	if (!config) {
 		comp_cl_err(drv, "codec_adapter_new(), wrong input params! drv = %x config = %x",
 			    (uint32_t)drv, (uint32_t)config);
 		return NULL;
@@ -123,11 +123,7 @@ int load_setup_config(struct comp_dev *dev, void *cfg, uint32_t size)
 
 	comp_dbg(dev, "load_setup_config() start.");
 
-	if (!dev) {
-		comp_err(dev, "load_setup_config(): no component device.");
-		ret = -EINVAL;
-		goto end;
-	} else if (!cfg || !size) {
+	if (!cfg || !size) {
 		comp_err(dev, "load_setup_config(): no config available cfg: %x, size: %d",
 			 (uintptr_t)cfg, size);
 		ret = -EINVAL;
