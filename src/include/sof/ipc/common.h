@@ -187,7 +187,7 @@ ipc_cmd_hdr *mailbox_validate(void);
  *
  * @param hdr Points to the IPC command header.
  */
-void ipc_cmd(ipc_cmd_hdr *hdr);
+void ipc_cmd(ipc_cmd_hdr *_hdr);
 
 /**
  * \brief IPC message to be processed on other core.
