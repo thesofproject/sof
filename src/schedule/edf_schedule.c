@@ -298,6 +298,29 @@ static void scheduler_free_edf(void *data)
 	irq_local_enable(flags);
 }
 
+static int scheduler_restore_edf(void *data)
+{
+	struct edf_schedule_data *edf_sch = data;
+	uint32_t flags;
+
+	irq_local_disable(flags);
+
+	edf_sch->irq = interrupt_get_irq(PLATFORM_SCHEDULE_IRQ,
+					 PLATFORM_SCHEDULE_IRQ_NAME);
+
+	if (edf_sch->irq < 0) {
+		tr_err(&edf_tr, "scheduler_restore_edf(): getting irq failed.");
+		return edf_sch->irq;
+	}
+
+	interrupt_register(edf_sch->irq, edf_scheduler_run, edf_sch);
+	interrupt_enable(edf_sch->irq, edf_sch);
+
+	irq_local_enable(flags);
+
+	return 0;
+}
+
 static void schedule_edf(struct edf_schedule_data *edf_sch)
 {
 	interrupt_set(edf_sch->irq);
@@ -311,4 +334,5 @@ static const struct scheduler_ops schedule_edf_ops = {
 	.schedule_task_cancel	= schedule_edf_task_cancel,
 	.schedule_task_free	= schedule_edf_task_free,
 	.scheduler_free		= scheduler_free_edf,
+	.scheduler_restore	= scheduler_restore_edf,
 };

@@ -646,6 +646,7 @@ static const struct scheduler_ops schedule_ll_ops = {
 	.schedule_task_cancel	= schedule_ll_task_cancel,
 	.reschedule_task	= reschedule_ll_task,
 	.scheduler_free		= scheduler_free_ll,
+	.scheduler_restore	= NULL,
 	.schedule_task_running	= NULL,
 	.schedule_task_complete	= NULL,
 };
