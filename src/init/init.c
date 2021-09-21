@@ -17,6 +17,7 @@
 #include <sof/lib/mm_heap.h>
 #include <sof/lib/notifier.h>
 #include <sof/lib/pm_runtime.h>
+#include <sof/lib/wait.h>
 #include <sof/platform.h>
 #include <sof/schedule/task.h>
 #include <sof/sof.h>
@@ -70,6 +71,49 @@ static inline void lp_sram_unpack(void)
 
 #if CONFIG_MULTICORE
 
+static int check_restore(void)
+{
+	struct idc *idc = *idc_get();
+	struct task *task = *task_main_get();
+	struct notify *notifier = *arch_notify_get();
+	struct schedulers *schedulers = *arch_schedulers_get();
+
+	/* check whether basic core structures has been already allocated. If they
+	   are available in memory, it means that this is not cold boot and memory
+	   has not been powered off. */
+	if (!idc || !task || !notifier || !schedulers)
+		return 0;
+
+	return 1;
+}
+
+static int secondary_core_restore(void)
+{
+	int err = 0;
+
+	trace_point(TRACE_BOOT_PLATFORM_IRQ);
+
+	/* initialize interrupts */
+	platform_interrupt_init();
+
+	/* restore schedulers i.e. regist and enable scheduler interrupts */
+	trace_point(TRACE_BOOT_PLATFORM_SCHED);
+	err = schedulers_restore();
+	if (err < 0)
+		return err;
+
+	/* restore idc i.e. register and enable idc interrupts */
+	trace_point(TRACE_BOOT_PLATFORM_IDC);
+	err = idc_restore();
+	if (err < 0)
+		return err;
+
+	trace_point(TRACE_BOOT_PLATFORM);
+
+	while (1)
+		wait_for_interrupt(0);
+}
+
 int secondary_core_init(struct sof *sof)
 {
 	int err;
@@ -80,6 +124,14 @@ int secondary_core_init(struct sof *sof)
 	err = arch_init();
 	if (err < 0)
 		panic(SOF_IPC_PANIC_ARCH);
+
+	/* check whether we are in a cold boot process or not (e.g. D0->D0ix
+	   flow when primary core disables all secondary cores). If not, we do
+	   not have allocate basic structures like e.g. schedulers, notifier,
+	   because they have been already allocated. In that case we have to
+	   register and enable required interrupts. */
+	if (check_restore())
+		return secondary_core_restore();
 #endif
 
 	trace_point(TRACE_BOOT_SYS_NOTIFIER);
