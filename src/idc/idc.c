@@ -352,3 +352,23 @@ int idc_init(void)
 	return 0;
 #endif
 }
+
+int idc_restore(void)
+{
+	struct idc **idc = idc_get();
+
+	tr_info(&idc_tr, "idc_restore()");
+
+	/* idc_restore() is invoked during D0->D0ix/D0ix->D0 flow. In that
+	 * case basic core structures e.g. idc struct should be already
+	 * allocated (in D0->D0ix primary core disables all secondary cores, but
+	 * memory has not been powered off).
+	 */
+	assert(*idc);
+
+#ifndef __ZEPHYR__
+	return platform_idc_restore();
+#endif
+
+	return 0;
+}
