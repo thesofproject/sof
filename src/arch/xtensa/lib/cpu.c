@@ -189,3 +189,28 @@ void cpu_power_down_core(void)
 	while (1)
 		arch_wait_for_interrupt(0);
 }
+
+int arch_cpu_restore_secondary_cores(void)
+{
+	struct idc_msg power_up = { IDC_MSG_POWER_UP, IDC_MSG_POWER_UP_EXT };
+	int ret, id;
+
+	for (id = 0; id < CONFIG_CORE_COUNT; id++) {
+		if (arch_cpu_is_core_enabled(id) && id != PLATFORM_PRIMARY_CORE_ID) {
+			power_up.core = id;
+
+			/* Power up secondary core */
+			pm_runtime_get(PM_RUNTIME_DSP, id);
+
+			/* enable IDC interrupt for the secondary core */
+			idc_enable_interrupts(id, cpu_get_id());
+
+			/* send IDC power up message */
+			ret = idc_send_msg(&power_up, IDC_POWER_UP);
+			if (ret < 0)
+				return ret;
+		}
+	}
+
+	return 0;
+}
