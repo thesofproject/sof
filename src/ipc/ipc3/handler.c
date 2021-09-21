@@ -1316,20 +1316,20 @@ static int ipc_glb_tplg_free(uint32_t header,
 		int (*free_func)(struct ipc *ipc, uint32_t id))
 {
 	struct ipc *ipc = ipc_get();
-	struct sof_ipc_free ipc_free;
+	struct sof_ipc_free ipc_free_msg;
 	int ret;
 
 	/* copy message with ABI safe method */
-	IPC_COPY_CMD(ipc_free, ipc->comp_data);
+	IPC_COPY_CMD(ipc_free_msg, ipc->comp_data);
 
-	tr_info(&ipc_tr, "ipc: comp %d -> free", ipc_free.id);
+	tr_info(&ipc_tr, "ipc: comp %d -> free", ipc_free_msg.id);
 
 	/* free the object */
-	ret = free_func(ipc, ipc_free.id);
+	ret = free_func(ipc, ipc_free_msg.id);
 
 	if (ret < 0) {
 		tr_err(&ipc_tr, "ipc: comp %d free failed %d",
-		       ipc_free.id, ret);
+		       ipc_free_msg.id, ret);
 	}
 
 	return ret;
