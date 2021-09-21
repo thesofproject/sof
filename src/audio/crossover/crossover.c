@@ -94,7 +94,7 @@ static inline void crossover_reset_state(struct comp_data *cd)
  * \return the position at which pipe_id is found in config->assign_sink.
  *	   -EINVAL if not found.
  */
-static uint8_t crossover_get_stream_index(struct sof_crossover_config *config,
+static int crossover_get_stream_index(struct sof_crossover_config *config,
 					  uint32_t pipe_id)
 {
 	int i;
