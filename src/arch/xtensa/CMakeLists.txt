@@ -36,7 +36,8 @@ if(CONFIG_CAVS)
 	set(family_path intel/cavs)
 endif()
 
-set(fw_name ${CONFIG_RIMAGE_SIGNING_SCHEMA})
+set(fw_name ${CONFIG_FW_NAME})
+set(signing_schema ${CONFIG_RIMAGE_SIGNING_SCHEMA})
 
 if(CONFIG_XT_BOOT_LOADER)
 	set(build_bootloader y)
@@ -438,7 +439,7 @@ if(MEU_PATH OR DEFINED MEU_NO_SIGN) # Don't sign with rimage
 		run_rimage
 		COMMAND ${PROJECT_BINARY_DIR}/rimage_ep/build/rimage
 			-o sof-${fw_name}.ri
-			-c "${PROJECT_SOURCE_DIR}/rimage/config/${fw_name}.toml"
+			-c "${PROJECT_SOURCE_DIR}/rimage/config/${signing_schema}.toml"
 			-s ${MEU_OFFSET}
 			-k ${RIMAGE_PRIVATE_KEY}
 			-i ${RIMAGE_IMR_TYPE}
