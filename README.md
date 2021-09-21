@@ -7,7 +7,9 @@ to generate binary image files.
 
 ## Building
 
-The `rimage` tool can be built with the usual CMake commands:
+Most users don't build `rimage` directly but as an ExternalProject
+defined by CMake in SOF. This being said, `rimage` can be built with the
+usual CMake commands:
 
 ```shell
 $ cmake -B build/
@@ -47,6 +49,12 @@ requests.
 
 First, push the rimage commits you want to be tested to any branch of
 your rimage fork on Github.  Do _not_ submit an rimage pull request yet.
+
+Note your rimage fork must have been created using the actual "fork"
+button on Github so Github is aware of the connection with the upstream
+rimage repo. In the top-left corner you should see `forked from
+thesofproject/rimage` under the name of your fork. If not then search
+the Internet for "re-attach detached github fork".
 
 Then, **pretend** these rimage commits have already been accepted and
 merged (they have been neither) and submit to SOF a draft pull request
