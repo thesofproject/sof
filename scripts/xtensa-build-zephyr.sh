@@ -13,7 +13,7 @@ SUPPORTED_PLATFORMS=()
 SUPPORTED_PLATFORMS+=(apl cnl icl tgl-h tgl)
 
 # NXP
-SUPPORTED_PLATFORMS+=(imx8)
+SUPPORTED_PLATFORMS+=(imx8 imx8x)
 
 # Default value, can (and sometimes must) be overridden with -p
 WEST_TOP="${SOF_TOP}"/zephyrproject
@@ -172,6 +172,10 @@ build_all()
 			imx8)
 				PLAT_CONFIG='nxp_adsp_imx8'
 				RIMAGE_KEY='' # no key needed for imx8
+				;;
+			imx8x)
+				PLAT_CONFIG='nxp_adsp_imx8x'
+				RIMAGE_KEY='ignored for imx8x'
 				;;
 			*)
 				echo "Unsupported platform: $platform"
