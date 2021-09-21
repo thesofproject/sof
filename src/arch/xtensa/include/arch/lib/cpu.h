@@ -26,6 +26,8 @@ int arch_cpu_is_core_enabled(int id);
 
 int arch_cpu_enabled_cores(void);
 
+int arch_cpu_restore_secondary_cores(void);
+
 #else
 
 static inline int arch_cpu_enable_core(int id) { return 0; }
