@@ -185,9 +185,9 @@ ipc_cmd_hdr *mailbox_validate(void);
  * any optional payload) is deserialized from the IPC HW by the platform
  * specific method.
  *
- * @param hdr Points to the IPC command header.
+ * @param _hdr Points to the IPC command header.
  */
-void ipc_cmd(ipc_cmd_hdr *hdr);
+void ipc_cmd(ipc_cmd_hdr *_hdr);
 
 /**
  * \brief IPC message to be processed on other core.
