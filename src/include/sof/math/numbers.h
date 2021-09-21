@@ -48,7 +48,7 @@ static inline int ceil_divide(int a, int b)
 	 * If the signs are the same, we check if there was any remainder in
 	 * the division by multiplying the number back.
 	 */
-	if (!((a ^ b) & (1 << ((sizeof(int) * 8) - 1))) && c * b != a)
+	if (!((a ^ b) & (1U << ((sizeof(int) * 8) - 1))) && c * b != a)
 		c++;
 
 	return c;
