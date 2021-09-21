@@ -1,3 +1,3 @@
 [submodule "rimage"]
 	path = rimage
-	url = ../rimage.git
+	url = ../rimage
