@@ -132,7 +132,7 @@ static void find_modes(struct dai *dai,
 			mfir = fir_list[j]->decim_factor;
 
 			/* Skip if previous decimation factor was the same */
-			if (j > 1 && fir_list[j - 1]->decim_factor == mfir)
+			if (j != 0 && fir_list[j - 1]->decim_factor == mfir)
 				continue;
 
 			mcic = osr / mfir;
