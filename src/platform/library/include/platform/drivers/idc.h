@@ -28,6 +28,11 @@ static inline int idc_init(void)
 	return 0;
 }
 
+static inline int idc_restore(void)
+{
+	return 0;
+}
+
 #endif /* __PLATFORM_DRIVERS_IDC_H__ */
 
 #else

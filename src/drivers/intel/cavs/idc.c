@@ -244,6 +244,39 @@ int platform_idc_init(void)
 }
 
 /**
+ * \brief Restores IDC interrupt. During D0->D0ix/D0ix->D0 flow primary core
+ *	   disables all secondary cores - this is not cold boot process, because
+ *	   memory has not been powered off. In that case, we should only enable
+ *	   idc interrupts, because all required structures alreade exist.
+ */
+int platform_idc_restore(void)
+{
+	struct idc *idc = *idc_get();
+	int core = cpu_get_id();
+	int ret;
+
+	idc->irq = interrupt_get_irq(PLATFORM_IDC_INTERRUPT,
+				     PLATFORM_IDC_INTERRUPT_NAME);
+	if (idc->irq < 0) {
+		tr_err(&idc_tr, "platform_idc_restore(): getting irq failed.");
+		return idc->irq;
+	}
+
+	ret = interrupt_register(idc->irq, idc_irq_handler, idc);
+	if (ret < 0) {
+		tr_err(&idc_tr, "platform_idc_restore(): registering irq failed.");
+		return ret;
+	}
+
+	interrupt_enable(idc->irq, idc);
+
+	/* enable BUSY interrupt */
+	idc_write(IPC_IDCCTL, core, idc->busy_bit_mask);
+
+	return 0;
+}
+
+/**
  * \brief Frees IDC data and unregisters interrupt.
  */
 void idc_free(void)
