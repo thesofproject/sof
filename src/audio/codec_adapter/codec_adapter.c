@@ -272,6 +272,17 @@ int codec_adapter_params(struct comp_dev *dev,
 	int ret;
 	struct comp_data *cd = comp_get_drvdata(dev);
 
+	/* for SRC update downstream (playback) or upstream (capture)
+	 * buffer parameters for rate
+	 */
+#if defined(CONFIG_CADENCE_CODEC_SRC_PP_LIB)
+	ret = comp_verify_params(dev, BUFF_PARAMS_RATE, params);
+	if (ret < 0) {
+		comp_err(dev, "codec_adapter_params(): comp_verify_params() failed.");
+		return ret;
+	}
+#endif
+
 	ret = comp_verify_params(dev, 0, params);
 	if (ret < 0) {
 		comp_err(dev, "codec_adapter_params(): comp_verify_params() failed.");
