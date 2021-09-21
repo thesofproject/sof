@@ -20,6 +20,8 @@ int idc_send_msg(struct idc_msg *msg, uint32_t mode);
 
 int idc_init(void);
 
+int idc_restore(void);
+
 #else
 
 static inline int idc_send_msg(struct idc_msg *msg, uint32_t mode) { return 0; }

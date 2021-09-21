@@ -132,6 +132,8 @@ void idc_free(void);
 
 int platform_idc_init(void);
 
+int platform_idc_restore(void);
+
 enum task_state idc_do_cmd(void *data);
 
 void idc_cmd(struct idc_msg *msg);
