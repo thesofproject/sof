@@ -223,6 +223,35 @@ int platform_idc_init(void)
 }
 
 /**
+ * \brief Restores IDC interrupt.
+ */
+int platform_idc_restore(void)
+{
+	struct idc *idc = *idc_get();
+	int core = cpu_get_id();
+	int ret;
+
+	interrupt_disable(idc->irq, idc);
+	interrupt_unregister(idc->irq, idc);
+
+	idc->irq = interrupt_get_irq(PLATFORM_IDC_INTERRUPT,
+				     PLATFORM_IDC_INTERRUPT_NAME);
+	if (idc->irq < 0)
+		return idc->irq;
+
+	ret = interrupt_register(idc->irq, idc_irq_handler, idc);
+	if (ret < 0)
+		return ret;
+
+	interrupt_enable(idc->irq, idc);
+
+	/* enable BUSY interrupt */
+	idc_write(IPC_IDCCTL, core, idc->busy_bit_mask);
+
+	return 0;
+}
+
+/**
  * \brief Frees IDC data and unregisters interrupt.
  */
 void idc_free(void)

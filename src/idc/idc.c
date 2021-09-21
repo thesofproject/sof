@@ -333,3 +333,19 @@ int idc_init(void)
 	return 0;
 #endif
 }
+
+int idc_restore(void)
+{
+	struct idc **idc = idc_get();
+
+	tr_info(&idc_tr, "idc_restore()");
+
+	if (!*idc)
+		return -ENODEV;
+
+#ifndef __ZEPHYR__
+	return platform_idc_restore();
+#endif
+
+	return 0;
+}
