@@ -44,7 +44,9 @@
 #endif
 
 /* In ASCII `XMan` */
-#define EXT_MAN_MAGIC_NUMBER	0x6e614d58
+#define EXT_MAN_MAGIC_NUMBER_SOF	0x6e614d58
+/* In ASCII `$AE1` */
+#define EXT_MAN_MAGIC_NUMBER_CAVS	0x31454124
 
 /* Build u32 number in format MMmmmppp */
 #define EXT_MAN_BUILD_VERSION(MAJOR, MINOR, PATH) ( \
@@ -66,7 +68,7 @@
 /* extended manifest header, deleting any field breaks backward compatibility */
 struct ext_man_header {
 	uint32_t magic;		/**< identification number, */
-				/**< EXT_MAN_MAGIC_NUMBER */
+				/**< EXT_MAN_MAGIC_NUMBER_<type> */
 	uint32_t full_size;	/**< [bytes] full size of ext_man, */
 				/**< (header + content + padding) */
 	uint32_t header_size;	/**< [bytes] makes header extensionable, */
