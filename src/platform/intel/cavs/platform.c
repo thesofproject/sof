@@ -543,7 +543,8 @@ void platform_wait_for_interrupt(int level)
 	platform_clock_on_waiti();
 
 #if (CONFIG_CAVS_LPS)
-	if (pm_runtime_is_active(PM_RUNTIME_DSP, PLATFORM_PRIMARY_CORE_ID))
+	if (pm_runtime_is_active(PM_RUNTIME_DSP, PLATFORM_PRIMARY_CORE_ID) ||
+	    cpu_get_id() != PLATFORM_PRIMARY_CORE_ID)
 		arch_wait_for_interrupt(level);
 	else
 		lps_wait_for_interrupt(level);
