@@ -593,7 +593,9 @@ static int configure_registers(struct dai *dai,
 	uint32_t ref;
 	int32_t ci;
 	uint32_t cu;
+#if defined(DMIC_IPM_VER1) || defined(DMIC_IPM_VER2)
 	int ipm;
+#endif
 	int of0;
 	int of1;
 	int fir_decim;
