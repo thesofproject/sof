@@ -29,7 +29,7 @@ codec_load_config(struct comp_dev *dev, void *cfg, size_t size,
 
 	comp_dbg(dev, "codec_load_config() start");
 
-	if (!dev || !cfg || !size) {
+	if (!cfg || !size) {
 		comp_err(dev, "codec_load_config(): wrong input params! dev %x, cfg %x size %d",
 			 (uint32_t)dev, (uint32_t)cfg, size);
 		return -EINVAL;
