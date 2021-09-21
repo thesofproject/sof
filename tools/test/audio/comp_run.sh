@@ -47,4 +47,4 @@ echo "Command:         $HOST_EXE"
 echo "Argument:        $ARG"
 echo "LD_LIBRARY_PATH: ${LD_LIBRARY_PATH}"
 
-$CMD
+valgrind --leak-check=yes --error-exitcode=1 $CMD
