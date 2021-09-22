@@ -472,12 +472,6 @@ SECTIONS
 
 #if CONFIG_CORE_COUNT > 1
     . = ALIGN (PLATFORM_DCACHE_ALIGN);
-    _runtime_shared_heap_start = ABSOLUTE(.);
-    . = . + HEAP_RUNTIME_SHARED_SIZE;
-    . = ALIGN (PLATFORM_DCACHE_ALIGN);
-    _runtime_shared_heap_end = ABSOLUTE(.);
-
-    . = ALIGN (PLATFORM_DCACHE_ALIGN);
     _system_shared_heap_start = ABSOLUTE(.);
     . = . + HEAP_SYSTEM_SHARED_SIZE;
     . = ALIGN (PLATFORM_DCACHE_ALIGN);
@@ -519,7 +513,6 @@ SECTIONS
 
 #if CONFIG_CORE_COUNT > 1
   /* Shared Heap */
-  _runtime_shared_heap = _runtime_shared_heap_start;
   _system_shared_heap = _system_shared_heap_start;
 #endif
 

@@ -57,7 +57,6 @@ enum mem_zone {
 	SOF_MEM_ZONE_SYS_RUNTIME,	/**< System-runtime zone */
 	SOF_MEM_ZONE_RUNTIME,		/**< Runtime zone */
 	SOF_MEM_ZONE_BUFFER,		/**< Buffer zone */
-	SOF_MEM_ZONE_RUNTIME_SHARED,	/**< Runtime shared zone */
 	SOF_MEM_ZONE_SYS_SHARED,	/**< System shared zone */
 };
 

@@ -1369,7 +1369,7 @@ static int fill_mem_usage_elems(enum mem_zone zone, enum sof_ipc_dbg_mem_zone ip
 }
 
 #if CONFIG_CORE_COUNT > 1
-#define PLATFORM_HEAP_SYSTEM_SHARED_CNT (PLATFORM_HEAP_SYSTEM_SHARED + PLATFORM_HEAP_RUNTIME_SHARED)
+#define PLATFORM_HEAP_SYSTEM_SHARED_CNT PLATFORM_HEAP_SYSTEM_SHARED
 #else
 #define PLATFORM_HEAP_SYSTEM_SHARED_CNT 0
 #endif
@@ -1407,8 +1407,6 @@ static int ipc_glb_test_mem_usage(uint32_t header)
 #if CONFIG_CORE_COUNT > 1
 	elems += fill_mem_usage_elems(SOF_MEM_ZONE_SYS_SHARED, SOF_IPC_MEM_ZONE_SYS_SHARED,
 				      PLATFORM_HEAP_SYSTEM_SHARED, elems);
-	elems += fill_mem_usage_elems(SOF_MEM_ZONE_RUNTIME_SHARED, SOF_IPC_MEM_ZONE_RUNTIME_SHARED,
-				      PLATFORM_HEAP_RUNTIME_SHARED, elems);
 #endif
 
 	/* write component values to the outbox */

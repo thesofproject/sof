@@ -95,24 +95,6 @@ static SHARED_DATA struct block_map rt_heap_map[] = {
 	BLOCK_DEF(4096, HEAP_COUNT4096, uncached_block_hdr(mod_block4096)),
 };
 
-#if CONFIG_CORE_COUNT > 1
-/* Heap blocks for runtime shared */
-static SHARED_DATA struct block_hdr rt_shared_block64[HEAP_RUNTIME_SHARED_COUNT64];
-static SHARED_DATA struct block_hdr rt_shared_block128[HEAP_RUNTIME_SHARED_COUNT128];
-static SHARED_DATA struct block_hdr rt_shared_block256[HEAP_RUNTIME_SHARED_COUNT256];
-static SHARED_DATA struct block_hdr rt_shared_block512[HEAP_RUNTIME_SHARED_COUNT512];
-static SHARED_DATA struct block_hdr rt_shared_block1024[HEAP_RUNTIME_SHARED_COUNT1024];
-
-/* Heap memory map for runtime shared */
-static SHARED_DATA struct block_map rt_shared_heap_map[] = {
-	BLOCK_DEF(64, HEAP_RUNTIME_SHARED_COUNT64, uncached_block_hdr(rt_shared_block64)),
-	BLOCK_DEF(128, HEAP_RUNTIME_SHARED_COUNT128, uncached_block_hdr(rt_shared_block128)),
-	BLOCK_DEF(256, HEAP_RUNTIME_SHARED_COUNT256, uncached_block_hdr(rt_shared_block256)),
-	BLOCK_DEF(512, HEAP_RUNTIME_SHARED_COUNT512, uncached_block_hdr(rt_shared_block512)),
-	BLOCK_DEF(1024, HEAP_RUNTIME_SHARED_COUNT1024, uncached_block_hdr(rt_shared_block1024)),
-};
-#endif
-
 /* Heap blocks for buffers */
 static SHARED_DATA struct block_hdr buf_block[HEAP_BUFFER_COUNT_MAX];
 static SHARED_DATA struct block_hdr lp_buf_block[HEAP_LP_BUFFER_COUNT];
@@ -199,16 +181,6 @@ void platform_init_memmap(struct sof *sof)
 	}
 
 #if CONFIG_CORE_COUNT > 1
-	/* .runtime_shared init */
-	sof->memory_map->runtime_shared[0].blocks = ARRAY_SIZE(rt_shared_heap_map);
-	sof->memory_map->runtime_shared[0].map = uncached_block_map(rt_shared_heap_map);
-	sof->memory_map->runtime_shared[0].heap =
-			(unsigned long)cache_to_uncache(malloc(HEAP_RUNTIME_SHARED_SIZE));
-	sof->memory_map->runtime_shared[0].size = HEAP_RUNTIME_SHARED_SIZE;
-	sof->memory_map->runtime_shared[0].info.free = HEAP_RUNTIME_SHARED_SIZE;
-	sof->memory_map->runtime_shared[0].caps = SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_EXT |
-		SOF_MEM_CAPS_CACHE;
-
 	/* .system_shared init */
 	sof->memory_map->system_shared[0].heap =
 		(unsigned long)cache_to_uncache(malloc(HEAP_SYSTEM_SHARED_SIZE));
