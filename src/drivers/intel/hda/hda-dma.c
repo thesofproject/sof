@@ -50,6 +50,7 @@ DECLARE_TR_CTX(hdma_tr, SOF_UUID(hda_dma_uuid), LOG_LEVEL_INFO);
 #define DGCS_SCS	BIT(31)
 #define DGCS_GEN	BIT(26)
 #define DGCS_FWCB	BIT(23)
+#define DGCS_GBUSY	BIT(15)
 #define DGCS_BSC	BIT(11)
 /* NOTE: both XRUN bits are the same, just direction is different */
 #define DGCS_BOR	BIT(10) /* buffer overrun (input streams) */
@@ -522,7 +523,6 @@ static void hda_dma_channel_put(struct dma_chan_data *channel)
 static int hda_dma_start(struct dma_chan_data *channel)
 {
 	uint32_t flags;
-	uint32_t dgcs;
 	int ret = 0;
 
 	irq_local_disable(flags);
@@ -532,13 +532,12 @@ static int hda_dma_start(struct dma_chan_data *channel)
 
 	hda_dma_dbg_count_reset(channel);
 
-	/* is channel idle, disabled and ready ? */
-	dgcs = dma_chan_reg_read(channel, DGCS);
-	if (channel->status != COMP_STATE_PREPARE || (dgcs & DGCS_GEN)) {
+	/* is channel active? */
+	if (channel->status != COMP_STATE_PREPARE) {
 		ret = -EBUSY;
-		tr_err(&hdma_tr, "hda-dmac: %d channel %d busy. dgcs 0x%x status %d",
+		tr_err(&hdma_tr, "hda-dmac: %d channel %d status %d",
 		       channel->dma->plat_data.id,
-		       channel->index, dgcs, channel->status);
+		       channel->index, channel->status);
 		goto out;
 	}
 
@@ -618,7 +617,7 @@ static int hda_dma_stop(struct dma_chan_data *channel)
 		hda_dma_host_stop(channel);
 
 	/* disable the channel */
-	dma_chan_reg_update_bits(channel, DGCS, DGCS_GEN | DGCS_FIFORDY, 0);
+	dma_chan_reg_update_bits(channel, DGCS, DGCS_FIFORDY, 0);
 	channel->status = COMP_STATE_PREPARE;
 	hda_chan = dma_chan_get_data(channel);
 	hda_chan->state = 0;
@@ -628,6 +627,28 @@ static int hda_dma_stop(struct dma_chan_data *channel)
 
 	irq_local_enable(flags);
 	return 0;
+}
+
+static int hda_dma_reset(struct dma_chan_data *channel)
+{
+	uint32_t val, flags;
+
+	irq_local_disable(flags);
+
+	/* reset GEN bit */
+	dma_chan_reg_update_bits(channel, DGCS, DGCS_GEN, 0);
+
+	val = dma_chan_reg_read(channel, DGCS);
+
+	irq_local_enable(flags);
+
+	/* and verify if channel is idle */
+	if (!(val & DGCS_GBUSY))
+		return 0;
+
+	tr_err(&hdma_tr, "hda-dmac: %d channel %d busy", channel->dma->plat_data.id,
+	       channel->index);
+	return -EBUSY;
 }
 
 /* fill in "status" with current DMA channel state and position */
@@ -1004,6 +1025,7 @@ const struct dma_ops hda_link_dma_ops = {
 	.channel_put		= hda_dma_channel_put,
 	.start			= hda_dma_start,
 	.stop			= hda_dma_stop,
+	.reset			= hda_dma_reset,
 	.copy			= hda_dma_link_copy,
 	.pause			= hda_dma_pause,
 	.release		= hda_dma_release,
