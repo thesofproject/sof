@@ -434,19 +434,19 @@ static struct comp_dev *file_new(const struct comp_driver *drv,
 	dev->ipc_config = *config;
 
 	/* allocate  memory for file comp data */
-	dd = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*dd));
+	dd = rballoc(SOF_MEM_FLAG_COHERENT, SOF_MEM_CAPS_RAM, sizeof(*dd));
 	if (!dd)
 		goto error_skip_dd;
 
-	fdai = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*fdai));
+	fdai = rballoc(SOF_MEM_FLAG_COHERENT, SOF_MEM_CAPS_RAM, sizeof(*fdai));
 	if (!fdai)
 		goto error_skip_dai;
 
-	fdrv = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*fdrv));
+	fdrv = rballoc(SOF_MEM_FLAG_COHERENT, SOF_MEM_CAPS_RAM, sizeof(*fdrv));
 	if (!fdrv)
 		goto error_skip_drv;
 
-	cd = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
+	cd = rballoc(SOF_MEM_FLAG_COHERENT, SOF_MEM_CAPS_RAM, sizeof(*cd));
 	if (!cd)
 		goto error_skip_cd;
 
