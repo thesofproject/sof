@@ -143,7 +143,7 @@ static inline void *platform_rfree_prepare(void *ptr)
 #define SOF_DATA_SIZE			0x9800
 
 #define HEAP_SYSTEM_BASE		(DRAM0_BASE + SOF_DATA_SIZE)
-#define HEAP_SYSTEM_SIZE		0xA800
+#define HEAP_SYSTEM_SIZE		0x1000
 
 #define HEAP_SYSTEM_0_BASE		HEAP_SYSTEM_BASE
 

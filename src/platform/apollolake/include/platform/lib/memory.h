@@ -315,8 +315,8 @@
  */
 #define HEAP_BUFFER_COUNT_MAX  (HP_SRAM_SIZE / (HEAP_BUFFER_BLOCK_SIZE * 2))
 
-#define HEAP_SYSTEM_M_SIZE		0x4000	/* heap primary core size */
-#define HEAP_SYSTEM_S_SIZE		0x3000	/* heap secondary core size */
+#define HEAP_SYSTEM_M_SIZE		0x3000	/* heap primary core size */
+#define HEAP_SYSTEM_S_SIZE		0x2000	/* heap secondary core size */
 #define HEAP_SYSTEM_T_SIZE \
 	(HEAP_SYSTEM_M_SIZE + ((CONFIG_CORE_COUNT - 1) * HEAP_SYSTEM_S_SIZE))
 
