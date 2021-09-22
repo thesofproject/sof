@@ -20,9 +20,6 @@
 
 extern uintptr_t _system_heap, _system_runtime_heap, _module_heap;
 extern uintptr_t _buffer_heap, _sof_core_s_start;
-#if CONFIG_CORE_COUNT > 1
-extern uintptr_t _system_shared_heap;
-#endif
 
 /* Heap blocks for system runtime for primary core */
 static SHARED_DATA struct block_hdr sys_rt_0_block64[HEAP_SYS_RT_0_COUNT64];
@@ -177,16 +174,6 @@ void platform_init_memmap(struct sof *sof)
 			SOF_MEM_CAPS_EXT | SOF_MEM_CAPS_CACHE |
 			SOF_MEM_CAPS_DMA;
 	}
-
-#if CONFIG_CORE_COUNT > 1
-	/* .system_shared init */
-	sof->memory_map->system_shared[0].heap = cache_to_uncache((uintptr_t)&_system_shared_heap);
-	sof->memory_map->system_shared[0].size = HEAP_SYSTEM_SHARED_SIZE;
-	sof->memory_map->system_shared[0].info.free = HEAP_SYSTEM_SHARED_SIZE;
-	sof->memory_map->system_shared[0].caps = SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_EXT |
-		SOF_MEM_CAPS_CACHE;
-
-#endif
 
 	/* .runtime init*/
 	sof->memory_map->runtime[0].blocks = ARRAY_SIZE(rt_heap_map);

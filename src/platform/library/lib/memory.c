@@ -26,6 +26,13 @@
 #define HEAP_RUNTIME_BASE      0xBE180000
 #define HEAP_BUFFER_BASE       0xBE1C0000
 
+/* Memory mock for memmap */
+#define HEAP_SYSTEM_0_BASE	0xBE100000
+#define HEAP_SYS_RUNTIME_0_BASE 0xBE120000
+#define SOF_CORE_S_START	0xBE140000
+#define HEAP_RUNTIME_BASE	0xBE180000
+#define HEAP_BUFFER_BASE	0xBE1C0000
+
 /* Heap blocks for system runtime for primary core */
 static SHARED_DATA struct block_hdr sys_rt_0_block64[HEAP_SYS_RT_0_COUNT64];
 static SHARED_DATA struct block_hdr sys_rt_0_block512[HEAP_SYS_RT_0_COUNT512];
@@ -179,17 +186,6 @@ void platform_init_memmap(struct sof *sof)
 			SOF_MEM_CAPS_EXT | SOF_MEM_CAPS_CACHE |
 			SOF_MEM_CAPS_DMA;
 	}
-
-#if CONFIG_CORE_COUNT > 1
-	/* .system_shared init */
-	sof->memory_map->system_shared[0].heap =
-		(unsigned long)cache_to_uncache(malloc(HEAP_SYSTEM_SHARED_SIZE));
-	sof->memory_map->system_shared[0].size = HEAP_SYSTEM_SHARED_SIZE;
-	sof->memory_map->system_shared[0].info.free = HEAP_SYSTEM_SHARED_SIZE;
-	sof->memory_map->system_shared[0].caps = SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_EXT |
-		SOF_MEM_CAPS_CACHE;
-
-#endif
 
 	/* .runtime init*/
 	sof->memory_map->runtime[0].blocks = ARRAY_SIZE(rt_heap_map);

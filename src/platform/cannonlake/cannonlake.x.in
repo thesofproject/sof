@@ -467,12 +467,6 @@ SECTIONS
     _sof_stack_end = ABSOLUTE(.);
 
 #if CONFIG_CORE_COUNT > 1
-    . = ALIGN (PLATFORM_DCACHE_ALIGN);
-    _system_shared_heap_start = ABSOLUTE(.);
-    . = . + HEAP_SYSTEM_SHARED_SIZE;
-    . = ALIGN (PLATFORM_DCACHE_ALIGN);
-    _system_shared_heap_end = ABSOLUTE(.);
-
     . = ALIGN (SRAM_BANK_SIZE);
     _sof_core_s_start = ABSOLUTE(.);
     . = . + SOF_CORE_S_T_SIZE;
@@ -506,11 +500,6 @@ SECTIONS
 
   /* system runtime heap */
   _system_runtime_heap = _system_runtime_heap_start;
-
-#if CONFIG_CORE_COUNT > 1
-  /* Shared Heap */
-  _system_shared_heap = _system_shared_heap_start;
-#endif
 
   /* module heap */
   _module_heap = _runtime_heap_start;

@@ -1368,18 +1368,11 @@ static int fill_mem_usage_elems(enum mem_zone zone, enum sof_ipc_dbg_mem_zone ip
 	return elem_number;
 }
 
-#if CONFIG_CORE_COUNT > 1
-#define PLATFORM_HEAP_SYSTEM_SHARED_CNT PLATFORM_HEAP_SYSTEM_SHARED
-#else
-#define PLATFORM_HEAP_SYSTEM_SHARED_CNT 0
-#endif
-
 static int ipc_glb_test_mem_usage(uint32_t header)
 {
 	/* count number heaps */
 	int elem_cnt = PLATFORM_HEAP_SYSTEM + PLATFORM_HEAP_SYSTEM_RUNTIME +
-		       PLATFORM_HEAP_RUNTIME + PLATFORM_HEAP_BUFFER +
-		       PLATFORM_HEAP_SYSTEM_SHARED_CNT;
+		       PLATFORM_HEAP_RUNTIME + PLATFORM_HEAP_BUFFER;
 	size_t size = sizeof(struct sof_ipc_dbg_mem_usage) +
 		      elem_cnt * sizeof(struct sof_ipc_dbg_mem_usage_elem);
 	struct sof_ipc_dbg_mem_usage_elem *elems;
@@ -1404,10 +1397,6 @@ static int ipc_glb_test_mem_usage(uint32_t header)
 	/* cppcheck-suppress unreadVariable */
 	elems += fill_mem_usage_elems(SOF_MEM_ZONE_BUFFER, SOF_IPC_MEM_ZONE_BUFFER,
 				      PLATFORM_HEAP_BUFFER, elems);
-#if CONFIG_CORE_COUNT > 1
-	elems += fill_mem_usage_elems(SOF_MEM_ZONE_SYS_SHARED, SOF_IPC_MEM_ZONE_SYS_SHARED,
-				      PLATFORM_HEAP_SYSTEM_SHARED, elems);
-#endif
 
 	/* write component values to the outbox */
 	mailbox_hostbox_write(0, mem_usage, mem_usage->rhdr.hdr.size);

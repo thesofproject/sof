@@ -592,14 +592,9 @@ void heap_trace_all(int force)
 		heap_trace(memmap->buffer, PLATFORM_HEAP_BUFFER);
 		tr_info(&mem_tr, "heap: runtime status");
 		heap_trace(memmap->runtime, PLATFORM_HEAP_RUNTIME);
-#if CONFIG_CORE_COUNT > 1
-		tr_info(&mem_tr, "heap: system shared status");
-		heap_trace(memmap->system_shared, PLATFORM_HEAP_SYSTEM_SHARED);
-#endif
 	}
 
 	memmap->heap_trace_updated = 0;
-
 }
 #else
 void heap_trace_all(int force) { }
@@ -690,15 +685,6 @@ static void *_malloc_unlocked(enum mem_zone zone, uint32_t flags, uint32_t caps,
 	case SOF_MEM_ZONE_RUNTIME:
 		ptr = rmalloc_runtime(flags, caps, bytes);
 		break;
-#if CONFIG_CORE_COUNT > 1
-	case SOF_MEM_ZONE_SYS_SHARED:
-		ptr = rmalloc_sys(memmap->system_shared, flags, caps, bytes);
-		break;
-#else
-	case SOF_MEM_ZONE_SYS_SHARED:
-		ptr = rmalloc_sys(memmap->system, flags, caps, bytes);
-		break;
-#endif
 
 	default:
 		tr_err(&mem_tr, "rmalloc(): invalid zone");
@@ -930,7 +916,6 @@ void *rballoc_align(uint32_t flags, uint32_t caps, size_t bytes,
 static void _rfree_unlocked(void *ptr)
 {
 	struct mm *memmap = memmap_get();
-	struct mm_heap *heap;
 
 	/* sanity check - NULL ptrs are fine */
 	if (!ptr)
@@ -938,24 +923,6 @@ static void _rfree_unlocked(void *ptr)
 
 	/* prepare pointer if it's platform requirement */
 	ptr = platform_rfree_prepare(ptr);
-
-	/* use the heap dedicated for the core or shared memory */
-#if CONFIG_CORE_COUNT > 1
-	if (is_uncached(ptr))
-		heap = memmap->system_shared;
-	else
-		heap = memmap->system + cpu_get_id();
-#else
-	heap = memmap->system;
-#endif
-
-	/* panic if pointer is from system heap */
-	if (ptr >= (void *)heap->heap &&
-	    (char *)ptr < (char *)heap->heap + heap->size) {
-		tr_err(&mem_tr, "rfree(): attempt to free system heap = %p, cpu = %d",
-		       ptr, cpu_get_id());
-		panic(SOF_IPC_PANIC_MEM);
-	}
 
 	/* free the block */
 	free_block(ptr);
@@ -1105,13 +1072,6 @@ int heap_info(enum mem_zone zone, int index, struct mm_info *out)
 			goto error;
 		heap = memmap->buffer + index;
 		break;
-#if CONFIG_CORE_COUNT > 1
-	case SOF_MEM_ZONE_SYS_SHARED:
-		if (index >= PLATFORM_HEAP_SYSTEM_SHARED)
-			goto error;
-		heap = memmap->system_shared + index;
-		break;
-#endif
 	default:
 		goto error;
 	}
