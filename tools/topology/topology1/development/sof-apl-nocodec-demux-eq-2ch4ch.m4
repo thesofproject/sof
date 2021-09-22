@@ -11,6 +11,7 @@ include(`utils.m4')
 include(`dai.m4')
 include(`ssp.m4')
 include(`pipeline.m4')
+include(`muxdemux.m4')
 
 # Include TLV library
 include(`common/tlv.m4')
@@ -21,6 +22,26 @@ include(`sof/tokens.m4')
 # Include Apollolake DSP configuration
 include(`platform/intel/bxt.m4')
 include(`platform/intel/dmic.m4')
+
+dnl Configure demux
+dnl name, pipeline_id, routing_matrix_rows
+dnl Diagonal 1's in routing matrix mean that every input channel is
+dnl copied to corresponding output channels in all output streams.
+dnl I.e. row index is the input channel, 1 means it is copied to
+dnl corresponding output channel (column index), 0 means it is discarded.
+dnl There's a separate matrix for all outputs.
+define(matrix1, `ROUTE_MATRIX(1,
+			     `BITS_TO_BYTE(1, 0, 0 ,0 ,0 ,0 ,0 ,0)',
+			     `BITS_TO_BYTE(1, 0, 0 ,0 ,0 ,0 ,0 ,0)',
+			     `BITS_TO_BYTE(0, 1, 0 ,0 ,0 ,0 ,0 ,0)',
+			     `BITS_TO_BYTE(0, 1, 0 ,0 ,0 ,0 ,0 ,0)',
+			     `BITS_TO_BYTE(0, 0, 0 ,0 ,0 ,0 ,0 ,0)',
+			     `BITS_TO_BYTE(0, 0, 0 ,0 ,0 ,0 ,0 ,0)',
+			     `BITS_TO_BYTE(0, 0, 0 ,0 ,0 ,0 ,0 ,0)',
+			     `BITS_TO_BYTE(0, 0, 0 ,0 ,0 ,0 ,0 ,0)')')
+
+dnl name, num_streams, route_matrix list
+MUXDEMUX_CONFIG(demux_priv_1, 1, LIST(`	', `matrix1'))
 
 #
 # Define the pipelines
