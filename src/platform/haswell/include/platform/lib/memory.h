@@ -123,13 +123,13 @@ static inline void *platform_rfree_prepare(void *ptr)
 
 /* Heap section sizes for module pool */
 #define HEAP_RT_COUNT8		0
-#define HEAP_RT_COUNT16		64
-#define HEAP_RT_COUNT32		48
-#define HEAP_RT_COUNT64		24
-#define HEAP_RT_COUNT128	24
-#define HEAP_RT_COUNT256	24
-#define HEAP_RT_COUNT512	2
-#define HEAP_RT_COUNT1024	1
+#define HEAP_RT_COUNT16		192
+#define HEAP_RT_COUNT32		128
+#define HEAP_RT_COUNT64		64
+#define HEAP_RT_COUNT128	64
+#define HEAP_RT_COUNT256	64
+#define HEAP_RT_COUNT512	8
+#define HEAP_RT_COUNT1024	4
 
 /* Heap section sizes for system runtime heap */
 #define HEAP_SYS_RT_COUNT64	64

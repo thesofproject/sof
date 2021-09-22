@@ -71,23 +71,23 @@ static SHARED_DATA struct block_map sys_rt_heap_map[CONFIG_CORE_COUNT][3] = {
 };
 
 /* Heap blocks for modules */
-static SHARED_DATA struct block_hdr mod_block64[HEAP_RT_COUNT64];
-static SHARED_DATA struct block_hdr mod_block128[HEAP_RT_COUNT128];
-static SHARED_DATA struct block_hdr mod_block256[HEAP_RT_COUNT256];
-static SHARED_DATA struct block_hdr mod_block512[HEAP_RT_COUNT512];
-static SHARED_DATA struct block_hdr mod_block1024[HEAP_RT_COUNT1024];
-static SHARED_DATA struct block_hdr mod_block2048[HEAP_RT_COUNT2048];
-static SHARED_DATA struct block_hdr mod_block4096[HEAP_RT_COUNT4096];
+static SHARED_DATA struct block_hdr mod_block64[HEAP_COUNT64];
+static SHARED_DATA struct block_hdr mod_block128[HEAP_COUNT128];
+static SHARED_DATA struct block_hdr mod_block256[HEAP_COUNT256];
+static SHARED_DATA struct block_hdr mod_block512[HEAP_COUNT512];
+static SHARED_DATA struct block_hdr mod_block1024[HEAP_COUNT1024];
+static SHARED_DATA struct block_hdr mod_block2048[HEAP_COUNT2048];
+static SHARED_DATA struct block_hdr mod_block4096[HEAP_COUNT4096];
 
 /* Heap memory map for modules */
 static SHARED_DATA struct block_map rt_heap_map[] = {
-	BLOCK_DEF(64, HEAP_RT_COUNT64, uncached_block_hdr(mod_block64)),
-	BLOCK_DEF(128, HEAP_RT_COUNT128, uncached_block_hdr(mod_block128)),
-	BLOCK_DEF(256, HEAP_RT_COUNT256, uncached_block_hdr(mod_block256)),
-	BLOCK_DEF(512, HEAP_RT_COUNT512, uncached_block_hdr(mod_block512)),
-	BLOCK_DEF(1024, HEAP_RT_COUNT1024, uncached_block_hdr(mod_block1024)),
-	BLOCK_DEF(2048, HEAP_RT_COUNT2048, uncached_block_hdr(mod_block2048)),
-	BLOCK_DEF(4096, HEAP_RT_COUNT4096, uncached_block_hdr(mod_block4096)),
+	BLOCK_DEF(64, HEAP_COUNT64, uncached_block_hdr(mod_block64)),
+	BLOCK_DEF(128, HEAP_COUNT128, uncached_block_hdr(mod_block128)),
+	BLOCK_DEF(256, HEAP_COUNT256, uncached_block_hdr(mod_block256)),
+	BLOCK_DEF(512, HEAP_COUNT512, uncached_block_hdr(mod_block512)),
+	BLOCK_DEF(1024, HEAP_COUNT1024, uncached_block_hdr(mod_block1024)),
+	BLOCK_DEF(2048, HEAP_COUNT2048, uncached_block_hdr(mod_block2048)),
+	BLOCK_DEF(4096, HEAP_COUNT4096, uncached_block_hdr(mod_block4096)),
 };
 
 /* Heap blocks for buffers */
