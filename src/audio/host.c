@@ -855,6 +855,13 @@ static int host_reset(struct comp_dev *dev)
 	comp_dbg(dev, "host_reset()");
 
 	if (hd->chan) {
+		int ret = dma_reset(hd->chan);
+
+		if (ret < 0) {
+			comp_err(dev, "host_reset(): failed to reset DMA chan");
+			return ret;
+		}
+
 		/* remove callback */
 		notifier_unregister(dev, hd->chan, NOTIFIER_ID_DMA_COPY);
 		dma_channel_put(hd->chan);

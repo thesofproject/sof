@@ -160,6 +160,7 @@ struct dma_ops {
 
 	int (*start)(struct dma_chan_data *channel);
 	int (*stop)(struct dma_chan_data *channel);
+	int (*reset)(struct dma_chan_data *channel);
 	int (*copy)(struct dma_chan_data *channel, int bytes, uint32_t flags);
 	int (*pause)(struct dma_chan_data *channel);
 	int (*release)(struct dma_chan_data *channel);
@@ -316,6 +317,14 @@ static inline int dma_stop(struct dma_chan_data *channel)
 	int ret = channel->dma->ops->stop(channel);
 
 	return ret;
+}
+
+static inline int dma_reset(struct dma_chan_data *channel)
+{
+	if (channel->dma->ops->reset)
+		return channel->dma->ops->reset(channel);
+
+	return 0;
 }
 
 /** \defgroup sof_dma_copy_func static int dma_copy (struct dma_chan_data * channel, int bytes, uint32_t flags)

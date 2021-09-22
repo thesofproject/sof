@@ -683,8 +683,17 @@ static int dai_reset(struct comp_dev *dev)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
 	struct dma_sg_config *config = &dd->config;
+	int ret;
 
 	comp_info(dev, "dai_reset()");
+
+	if (dd->chan) {
+		ret = dma_reset(dd->chan);
+		if (ret < 0) {
+			comp_err(dev, "dai_reset(): failed to reset DMA chan");
+			return ret;
+		}
+	}
 
 	dai_config_reset(dev);
 
