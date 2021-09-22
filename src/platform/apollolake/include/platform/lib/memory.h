@@ -266,16 +266,16 @@
 #define HEAP_SYS_RT_X_COUNT1024		2
 
 /* Heap section counts base */
-#define HEAP_COUNT64		128
-#define HEAP_COUNT128		128
-#define HEAP_COUNT256		96
-#define HEAP_COUNT512		12
-#define HEAP_COUNT1024		3
-#define HEAP_COUNT2048		1
+#define HEAP_COUNT64		48
+#define HEAP_COUNT128		64
+#define HEAP_COUNT256		64
+#define HEAP_COUNT512		6
+#define HEAP_COUNT1024		0
+#define HEAP_COUNT2048		0
 #define HEAP_COUNT4096		0
 
 #define RT_TIMES	1
-#define RT_SHARED_TIMES	1
+#define RT_SHARED_TIMES	0
 
 /* Heap section sizes for module pool */
 #define HEAP_RT_COUNT64			(HEAP_COUNT64 * RT_TIMES)
