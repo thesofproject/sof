@@ -32,7 +32,7 @@ bq_hi = eq_iir_blob_quant(eq_hi.p_z, eq_hi.p_p, eq_hi.p_k);
 
 %% Build blob
 channels_in_config = 4;      % Setup max 4 channels EQ
-assign_response = [0 1 0 1]; % Order: lo, hi, lo, hi
+assign_response = [0 0 1 1]; % Order: lo, lo, hi, hi
 num_responses = 2;           % Two responses: lo, hi
 bm = eq_iir_blob_merge(channels_in_config, ...
 		       num_responses, ...
