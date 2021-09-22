@@ -602,6 +602,11 @@ static int ipc_pm_context_save(uint32_t header)
 	//struct sof_ipc_pm_ctx *pm_ctx = _ipc->comp_data;
 
 	tr_info(&ipc_tr, "ipc: pm -> save");
+#if CONFIG_TRACE
+	struct dma_trace_data *dmat = dma_trace_data_get();
+
+	dma_trace_disable(dmat);
+#endif
 
 	sa_exit(sof_get());
 
