@@ -375,6 +375,78 @@ static int get_output_bytes(struct comp_dev *dev)
 		cd->stream_params.channels;
 }
 
+static int codec_adapter_src_copy(struct comp_dev *dev)
+{
+	int ret = 0;
+	uint32_t bytes_to_process, processed = 0, produced = 0;
+	uint32_t source_bytes, sink_bytes, input_bytes, output_bytes;
+	struct comp_data *cd = comp_get_drvdata(dev);
+	struct codec_data *codec = &cd->codec;
+	struct comp_buffer *source = cd->ca_source;
+	struct comp_buffer *sink = cd->ca_sink;
+
+	source_bytes = audio_stream_get_avail_frames(&source->stream) *
+		       audio_stream_frame_bytes(&source->stream);
+	source_bytes = MIN(source_bytes, codec->cpd.in_buff_size);
+
+	output_bytes = (source_bytes * codec->cpd.out_buff_size) /
+			codec->cpd.in_buff_size;
+	/* Since SRC operates on frames,
+	 * make number of bytes multiple of frame size
+	 */
+	output_bytes = (output_bytes / audio_stream_frame_bytes(&sink->stream)) *
+			audio_stream_frame_bytes(&sink->stream);
+	sink_bytes = audio_stream_get_free_frames(&sink->stream) *
+		     audio_stream_frame_bytes(&sink->stream);
+	input_bytes = (sink_bytes * codec->cpd.in_buff_size) /
+		       codec->cpd.out_buff_size;
+	/* Since SRC operates on frames,
+	 * make number of bytes multiple of frame size
+	 */
+	input_bytes = (input_bytes / audio_stream_frame_bytes(&source->stream)) *
+		       audio_stream_frame_bytes(&source->stream);
+
+	if (sink_bytes >= output_bytes)
+		bytes_to_process = source_bytes;
+	else
+		bytes_to_process = input_bytes;
+
+	if (!codec->cpd.init_done) {
+		ret = codec_init_process(dev);
+		if (ret)
+			return ret;
+	}
+
+	buffer_invalidate(source, bytes_to_process);
+	codec_adapter_copy_from_source_to_lib(&source->stream, &codec->cpd,
+					      bytes_to_process);
+	codec->cpd.avail = bytes_to_process;
+
+	ret = codec_process(dev);
+	if (ret) {
+		comp_err(dev, "codec_adapter_src_copy() error %x: lib processing failed",
+			 ret);
+		return ret;
+	} else if (codec->cpd.produced == 0) {
+		/* skipping as lib has not produced anything */
+		comp_err(dev, "codec_adapter_src_copy() error %x: lib hasn't processed anything",
+			 ret);
+		return ret;
+	}
+	codec_adapter_copy_from_lib_to_sink(&codec->cpd, &sink->stream,
+					    codec->cpd.produced);
+
+	bytes_to_process -= codec->cpd.consumed;
+	processed += codec->cpd.consumed;
+	produced += codec->cpd.produced;
+	audio_stream_produce(&sink->stream, codec->cpd.produced);
+	comp_update_buffer_consume(source, codec->cpd.consumed);
+
+	comp_dbg(dev, "codec_adapter_src_copy(): processed %d in this call %d bytes left for next period",
+		 processed, bytes_to_process);
+	return ret;
+}
+
 int codec_adapter_copy(struct comp_dev *dev)
 {
 	int ret = 0;
@@ -386,6 +458,10 @@ int codec_adapter_copy(struct comp_dev *dev)
 	uint32_t codec_buff_size = codec->cpd.in_buff_size;
 	struct comp_buffer *local_buff = cd->local_buff;
 	struct comp_copy_limits cl;
+
+#if defined(CONFIG_CADENCE_CODEC_SRC_PP_LIB)
+	return codec_adapter_src_copy(dev);
+#endif
 
 	comp_get_copy_limits_with_lock(source, local_buff, &cl);
 	bytes_to_process = cl.frames * cl.source_frame_bytes;
