@@ -247,6 +247,9 @@ void ipc_complete_cmd(void *data)
 	uint32_t flags;
 	bool skip_first_entry;
 
+	if (!cpu_is_me(ipc->core))
+		return;
+
 	spin_lock_irq(&ipc->lock, flags);
 
 	/*
