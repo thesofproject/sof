@@ -238,7 +238,8 @@ static void schedule_ll_tasks_run(void *data)
 	}
 
 	/* tasks on current core finished, re-enable domain on it */
-	domain_enable(domain, core);
+	if (atomic_read(&sch->num_tasks))
+		domain_enable(domain, core);
 
 	spin_unlock(&domain->lock);
 
