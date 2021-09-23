@@ -19,7 +19,7 @@
 
 /* IRQ numbers - wrt Tensilica DSP */
 #if CONFIG_XT_INTERRUPT_LEVEL_1
-#define IRQ_NUM_TIMER0 16
+#define IRQ_NUM_TIMER0 0
 #define IRQ_NUM_SOFTWARE0 21
 #define IRQ_NUM_EXT_LEVEL01 1
 #define IRQ_NUM_EXT_LEVEL23 23
