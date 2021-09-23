@@ -349,7 +349,7 @@ static uint32_t host_get_copy_bytes_normal(struct comp_dev *dev)
 	if (ret < 0) {
 		comp_err(dev, "host_get_copy_bytes_normal(): dma_get_data_size() failed, ret = %u",
 			 ret);
-		return 0;
+		return ret;
 	}
 
 	buffer_lock(hd->local_buffer, &flags);
