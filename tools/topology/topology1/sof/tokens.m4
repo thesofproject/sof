@@ -136,3 +136,13 @@ SectionVendorTokens."sof_afe_tokens" {
 	SOF_TKN_MEDIATEK_AFE_CH				"1601"
 	SOF_TKN_MEDIATEK_AFE_FORMAT			"1602"
 }
+
+SectionVendorTokens."sof_acpsp_tokens" {
+	SOF_TKN_AMD_ACPSP_RATE			"1700"
+	SOF_TKN_AMD_ACPSP_CH			"1701"
+}
+
+SectionVendorTokens."sof_acpdmic_tokens" {
+        SOF_TKN_AMD_ACPDMIC_RATE                  "1800"
+        SOF_TKN_AMD_ACPDMIC_CH                    "1801"
+}
