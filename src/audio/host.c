@@ -359,33 +359,24 @@ static uint32_t host_get_copy_bytes_normal(struct comp_dev *dev)
 		/* limit bytes per copy to one period for the whole pipeline
 		 * in order to avoid high load spike
 		 */
-		const uint32_t free_bytes =
-			audio_stream_get_free_bytes(&hd->local_buffer->stream);
+		free_bytes = audio_stream_get_free_bytes(&hd->local_buffer->stream);
 		copy_bytes = MIN(hd->period_bytes, MIN(avail_bytes, free_bytes));
+		if (!copy_bytes)
+			comp_info(dev, "no bytes to copy, %d free in buffer, %d available in DMA",
+				  free_bytes, avail_bytes);
 	} else {
-		const uint32_t avail_bytes =
-			audio_stream_get_avail_bytes(&hd->local_buffer->stream);
+		avail_bytes = audio_stream_get_avail_bytes(&hd->local_buffer->stream);
 		copy_bytes = MIN(avail_bytes, free_bytes);
+		if (!copy_bytes)
+			comp_info(dev, "no bytes to copy, %d avail in buffer, %d free in DMA",
+				  avail_bytes, free_bytes);
 	}
 	buffer_unlock(hd->local_buffer, flags);
 
 	/* copy_bytes should be aligned to minimum possible chunk of
 	 * data to be copied by dma.
 	 */
-	copy_bytes = ALIGN_DOWN(copy_bytes, hd->dma_copy_align);
-
-	if (!copy_bytes) {
-		if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
-			comp_info(dev, "no bytes to copy, %d free in buffer, %d available in DMA",
-				  audio_stream_get_free_bytes(&hd->local_buffer->stream),
-				  avail_bytes);
-		else
-			comp_info(dev, "no bytes to copy, %d avail in buffer, %d free in DMA",
-				  audio_stream_get_avail_bytes(&hd->local_buffer->stream),
-				  free_bytes);
-	}
-
-	return copy_bytes;
+	return ALIGN_DOWN(copy_bytes, hd->dma_copy_align);
 }
 
 /**
