@@ -12,13 +12,13 @@
 #include <sof/sof.h>
 #include <sof/spinlock.h>
 
-/*Use  DSP Internal timer*/
+/*Use external Ostimer*/
 const struct freq_table platform_cpu_freq[] = {
-	{ 13000000, 13000},
+	{ 13000000, 26000},
 	{ 26000000, 26000},
-	{ 370000000, 370000},
-	{ 540000000, 540000},
-	{ 720000000, 720000}, //default : CPU_DEFAULT_IDX
+	{ 370000000, 26000},
+	{ 540000000, 26000},
+	{ 720000000, 26000},
 };
 
 STATIC_ASSERT(ARRAY_SIZE(platform_cpu_freq) == NUM_CPU_FREQ,

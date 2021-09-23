@@ -26,6 +26,7 @@
 #include <sof/schedule/ll_schedule_domain.h>
 #include <sof/sof.h>
 #include <sof/trace/dma-trace.h>
+#include <platform/drivers/timer.h>
 #include <ipc/dai.h>
 #include <ipc/header.h>
 #include <ipc/info.h>
@@ -120,8 +121,8 @@ const struct ext_man_windows xsram_window
 };
 
 static SHARED_DATA struct timer timer = {
-	.id = TIMER0,
-	.irq = IRQ_NUM_TIMER0,
+	.id = OSTIMER0,
+	.irq = LX_ADSP_TIMTER_IRQ0_B,
 };
 
 /* Override the default MPU setup. This table matches the memory map
