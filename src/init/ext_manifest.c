@@ -9,6 +9,7 @@
 #include <sof/common.h>
 #include <sof/compiler_info.h>
 #include <sof/debug/debug.h>
+#include <sof/ipc/topology.h>
 #include <kernel/abi.h>
 #include <kernel/ext_manifest.h>
 #include <user/abi_dbg.h>

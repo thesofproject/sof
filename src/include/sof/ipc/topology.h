@@ -39,12 +39,19 @@ typedef uint32_t ipc_comp;
 #define ipc_from_pipe_connect(x) ((struct sof_ipc_pipe_comp_connect *)x)
 #define ipc_from_comp_new(x) ((struct sof_ipc_comp *)x)
 #define ipc_from_dai_config(x) ((struct sof_ipc_dai_config *)x)
+
+/* Maximum message size for mailbox Tx/Rx */
+#define SOF_IPC_MSG_MAX_SIZE                    384
+
 #elif CONFIG_IPC_MAJOR_4
 #include <ipc4/pipeline.h>
 #include <ipc4/module.h>
 #include <ipc4/gateway.h>
 #define ipc_from_pipe_new(x) ((struct ipc4_pipeline_create *)x)
 #define ipc_from_pipe_connect(x) ((struct ipc4_module_bind_unbind *)x)
+
+/* Maximum message size for mailbox Tx/Rx based on mailbox size */
+#define SOF_IPC_MSG_MAX_SIZE                  0x1000
 
 const struct comp_driver *ipc4_get_comp_drv(int module_id);
 struct comp_dev *ipc4_get_comp_dev(uint32_t comp_id);

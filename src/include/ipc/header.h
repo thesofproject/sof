@@ -309,9 +309,6 @@
 /** Get message component id */
 #define SOF_IPC_MESSAGE_ID(x)			((x) & 0xffff)
 
-/** Maximum message size for mailbox Tx/Rx */
-#define SOF_IPC_MSG_MAX_SIZE			384
-
 /** @} */
 
 /**
