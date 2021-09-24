@@ -330,7 +330,7 @@ static void schedule_ll_domain_clear(struct ll_schedule_data *sch,
 		domain_disable(domain, cpu_get_id());
 
 	/* unregister the task */
-	domain_unregister(domain, task, (uint32_t)atomic_read(&sch->num_tasks));
+	domain_unregister(domain, task, atomic_read(&sch->num_tasks));
 
 	tr_info(&ll_tr, "num_tasks %d total_num_tasks %d",
 		atomic_read(&sch->num_tasks),
