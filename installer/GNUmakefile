@@ -5,7 +5,7 @@
 
 .DEFAULT_GOAL := stage
 .PHONY: clean stage rsync
-.PHONY: signed unsigned ldicts topologies
+.PHONY: signed unsigned ldicts topologies build_tools
 .PHONY: compare signed_dummies
 
 # Override ?= variables in config.mk
@@ -105,7 +105,7 @@ rsync:
 ifneq (${USER_DESTDIR},)
 	# TODO: add more user space binaries: sof-ctl, probes,...
 	# absorbe scripts/sof-target-install.sh
-	rsync -a ${BUILD_TOOLS}/logger/sof-logger ${USER_DESTDIR}
+	cd ${BUILD_TOOLS} && rsync -a ${TOOLS_RELPATHS} ${USER_DESTDIR}
 endif
 
 clean:
@@ -240,13 +240,25 @@ endif
 	@tree ${TREE_OPTS} ${STAGING_SOF_TPLG}${VERSION_SUFFIX} | \
             head -n 10; printf '├── ...\n..\n'
 
-# We should use more targets rather than set -e and a multi-lines script
-# but that would be verbose.
+
+             ######################
+             ### build-tools.sh ###
+             ######################
+
+TOOLS_RELPATHS  := ctl/sof-ctl  logger/sof-logger  probes/sof-probes
+TOOLS_TARGETS   := sof-ctl      sof-logger         sof-probes
+TOOLS_FLAGS     := -c           -l                 -p
+
+.PHONY: build_tools
+build_tools: ${BUILD_TOOLS}
+
+# We could use more targets rather than "set -e" with a multi-lines "for" loop.
+# That would be more flexible but also quite verbose.
 ${BUILD_TOOLS}:
 	set -e; if test -d ${BUILD_TOOLS}; then \
-        for i in topologies sof-logger; do \
+        for i in topologies ${TOOLS_TARGETS}; do \
           cmake --build ${BUILD_TOOLS} -- $$i; done; else         \
-          BUILD_TOOLS_DIR=${BUILD_TOOLS} ../scripts/build-tools.sh -T -l ; \
+          BUILD_TOOLS_DIR=${BUILD_TOOLS} ../scripts/build-tools.sh -T ${TOOLS_FLAGS} ; \
         fi
 
 
