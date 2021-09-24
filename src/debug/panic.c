@@ -115,27 +115,27 @@ void panic_dump(uint32_t p, struct sof_ipc_panic_info *panic_info,
 void __panic(uint32_t panic_code, char *filename, uint32_t linenum)
 {
 	struct sof_ipc_panic_info panicinfo = { .linenum = linenum };
-	int strlen;
+	const unsigned int length_max = sizeof(panicinfo.filename);
+	int mem_len;
 	int ret;
 
-	strlen = rstrlen(filename);
+	/* including the ending '\0' */
+	mem_len = rstrlen(filename) + 1;
 
-	if (strlen >= SOF_TRACE_FILENAME_SIZE) {
+	if (mem_len > length_max) {
+		/* copy those last bytes only */
 		ret = memcpy_s(panicinfo.filename,
-			       sizeof(panicinfo.filename),
-			       filename + strlen - SOF_TRACE_FILENAME_SIZE,
-			       SOF_TRACE_FILENAME_SIZE);
+			       length_max,
+			       filename + mem_len - length_max,
+			       length_max);
 		/* TODO are asserts safe in this context? */
 		assert(!ret);
 
-		ret = memcpy_s(panicinfo.filename,
-			       sizeof(panicinfo.filename),
-			       "...", 3);
+		/* prefixing with "..." */
+		ret = memcpy_s(panicinfo.filename, length_max, "...", 3);
 		assert(!ret);
 	} else {
-		ret = memcpy_s(panicinfo.filename,
-			       sizeof(panicinfo.filename),
-			       filename, strlen + 1);
+		ret = memcpy_s(panicinfo.filename, length_max, filename, mem_len);
 		assert(!ret);
 	}
 
