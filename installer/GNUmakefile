@@ -4,8 +4,8 @@
 
 
 .DEFAULT_GOAL := stage
-.PHONY: clean stage rsync
-.PHONY: signed unsigned ldicts topologies build_tools
+.PHONY: clean stage rsync tarball
+.PHONY: signed unsigned ldicts topologies tools build_tools
 .PHONY: compare signed_dummies
 
 # Override ?= variables in config.mk
@@ -69,7 +69,9 @@ STAGING_SOF_VERSION := ${STAGING_SOF}${VERSION_SUFFIX}
 
 STAGING_SOF_TPLG ?= staging/sof-tplg
 
-stage: signed unsigned ldicts aliases topologies
+STAGING_TOOLS ?= staging/tools
+
+stage: signed unsigned ldicts aliases topologies tools
 ifneq (${STAGING_SOF_VERSION},${STAGING_SOF})
 	ln -sfT sof${VERSION_SUFFIX} ${STAGING_SOF}
 	test -e ${STAGING_SOF}
@@ -96,7 +98,7 @@ FW_DESTDIR ?= /lib/firmware/intel/
 # The rsync target does not depend on any other target so:
 # - it's possible to deploy a staging _subset_, e.g.: only topologies
 #   only,...
-# - sudo never builds by accident
+# - "sudo make rsync" never builds as root by accident
 rsync:
 # The --mkpath option is too recent, dealing with both remote and local
 # would be complicated and this is also a safety against typos.
@@ -109,11 +111,32 @@ ifneq (${USER_DESTDIR},)
 endif
 
 clean:
-	${RM} -r staging/sof*
+	${RM} -r ${STAGING_SOF}* ${STAGING_SOF_TPLG}* ${STAGING_TOOLS}*
 	${RM} ${BUILDS_ROOT}/staging_sof_tree.txt
 
 cleanall: clean
 	${RM} -r "${BUILD_TOOLS}/" "${BUILDS_ROOT}"/build_*_?cc/
+
+
+      #####################################
+      ###           tarball            ####
+      #####################################
+
+tarball: stage
+	cd staging && tar cfz sof-build${VERSION_SUFFIX}.tgz \
+	  sof${VERSION_SUFFIX} sof-tplg${VERSION_SUFFIX} \
+	  tools${VERSION_SUFFIX}
+
+
+      #####################################
+      ###           Stage tools        ####
+      #####################################
+
+# This is only for the tarball, rsync takes the RELPATHS shortcut
+tools: build_tools
+	mkdir -p ${STAGING_TOOLS}${VERSION_SUFFIX}
+	cd ${BUILD_TOOLS} && \
+	  cp -p ${TOOLS_RELPATHS} ${CURDIR}/${STAGING_TOOLS}${VERSION_SUFFIX}
 
    ##########################################################
    ###  Stage sof-*.ri firmware files and symbolic links ####
@@ -276,6 +299,8 @@ checktree:
 	# Check two random topologies are there
 	test -f ${STAGING_SOF_TPLG}/sof-apl-nocodec.tplg
 	test -f ${STAGING_SOF_TPLG}/sof-imx8-wm8960.tplg
+	for t in sof-ctl sof-logger sof-probes; do \
+	   test -f ${STAGING_TOOLS}${VERSION_SUFFIX}/$${t}; done
 
 # Useful for testing this Makefile. COMPARE_REFS can be /lib/firmware,
 # sof-bin, a previous version of this Makefile,...

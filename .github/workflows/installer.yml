@@ -30,7 +30,7 @@ jobs:
       # concurrently. It makes the build log unreadable but that's OK
       # because we have other, slower actions with readable logs.
       - name: build all and stage
-        run: ./scripts/docker-run.sh make -j3 -C installer/ stage
+        run: ./scripts/docker-run.sh make -j3 -C installer/ tarball
 
       - name: check staging tree
         run: make -C installer/ checktree
