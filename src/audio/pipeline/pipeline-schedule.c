@@ -48,6 +48,25 @@ static enum task_state pipeline_task(void *arg)
 
 	/* are we in xrun ? */
 	if (p->xrun_bytes) {
+		/*
+		 * This happens when one of the connected pipelines runs into an xrun even before
+		 * this pipeline task gets a chance to run. But the host is still waiting for a
+		 * trigger IPC response. So, send an error response to prevent it from getting
+		 * timed out. No point triggering the pipeline in this case. It will be stopped
+		 * anyway by the host.
+		 */
+		if (p->trigger.cmd >= 0) {
+			struct sof_ipc_reply reply = {
+				.hdr.cmd = SOF_IPC_GLB_REPLY,
+				.hdr.size = sizeof(reply),
+				.error = -EPIPE,
+			};
+
+			p->trigger.cmd = -EINVAL;
+
+			ipc_msg_reply(&reply);
+		}
+
 		/* try to recover */
 		err = pipeline_xrun_recover(p);
 		if (err < 0)
