@@ -209,9 +209,9 @@ struct ipc4_module_large_config {
 			uint32_t instance_id : 8;
 			/**< ModuleMsg::LARGE_CONFIG_GET / LARGE_CONFIG_SET */
 			uint32_t type : 5;
-			/**< Msg::MSG_REQUEST */
+			/**< Msg::MSG_REQUEST or Msg::MSG_REPLY */
 			uint32_t rsp : 1;
-			/**< Msg::MODULE_MSG */
+			/**< Msg::MODULE_MSG or Msg::FW_GEN_MSG */
 			uint32_t msg_tgt : 1;
 			uint32_t _reserved_0 : 1;
 			} r;
@@ -221,13 +221,13 @@ struct ipc4_module_large_config {
 		uint32_t dat;
 
 		struct {
-			/**< data size/offset */
+			/**< data size for single block, offset for multiple block case */
 			uint32_t data_off_size : 20;
 			/**< param type : VENDOR_CONFIG_PARAM / GENERIC_CONFIG_PARAM */
 			uint32_t large_param_id : 8;
 			/**< 1 if final block */
 			uint32_t final_block : 1;
-			/**< 1 if first block */
+			/**< 1 if init block */
 			uint32_t init_block : 1;
 			uint32_t _reserved_2 : 2;
 		} r;

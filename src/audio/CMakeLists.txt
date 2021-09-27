@@ -95,6 +95,11 @@ if(NOT CONFIG_LIBRARY)
 	if(CONFIG_COMP_RTNR)
 		add_subdirectory(rtnr)
 	endif()
+	if(CONFIG_COMP_BASEFW_IPC4)
+                add_local_sources(sof
+                        base_fw.c
+                )
+        endif()
 
 	subdirs(pipeline)
 
