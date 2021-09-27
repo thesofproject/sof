@@ -22,7 +22,7 @@ SIGNED_list  ?= apl cnl icl jsl tgl tgl-h
 
 
 ALIAS_SAME_KEY_list  := glk cfl cml
-ALIAS_OTHER_KEY_list := ehl
+ALIAS_OTHER_KEY_list := ehl adl adl-s
 ALIAS_list ?= ${ALIAS_SAME_KEY_list} ${ALIAS_OTHER_KEY_list}
 
 $(info UNSIGNED_list = ${UNSIGNED_list} )
@@ -34,6 +34,8 @@ target_of_cfl := cnl
 target_of_cml := cnl
 
 target_of_ehl := tgl
+target_of_adl   := tgl
+target_of_adl-s := tgl-h
 
 ifeq (,${TOOLCHAIN})
   ifeq (,${XTENSA_TOOLS_ROOT})
