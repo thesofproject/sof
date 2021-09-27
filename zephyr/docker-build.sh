@@ -18,6 +18,10 @@ test -e ./scripts/xtensa-build-zephyr.sh
 sudo apt-get update
 sudo apt-get -y install tree
 
+ls -ld /opt/toolchains/zephyr-sdk-*
+# Zephyr's CMake does not look in /opt
+ln -s  /opt/toolchains/zephyr-sdk-0.13.*  ~/
+
 if test -e zephyrproject; then
     ./scripts/xtensa-build-zephyr.sh -a "$@"
 else
