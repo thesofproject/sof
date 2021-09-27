@@ -652,6 +652,10 @@ static int ipc_pm_gate(uint32_t header)
 		pm_runtime_disable(PM_RUNTIME_DSP, PLATFORM_PRIMARY_CORE_ID);
 		cpu_restore_secondary_cores();
 	} else {
+		/* before we enable pm runtime and perform D0->D0ix flow
+		   (primary core powers off secondary cores in ) we have to
+		   writeback all secondary core data */
+		cpu_writeback_secondary_cores();
 		pm_runtime_enable(PM_RUNTIME_DSP, PLATFORM_PRIMARY_CORE_ID);
 	}
 

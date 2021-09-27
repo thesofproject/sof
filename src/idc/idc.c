@@ -16,6 +16,7 @@
 #include <sof/lib/cpu.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/notifier.h>
+#include <sof/lib/pm_runtime.h>
 #include <sof/lib/uuid.h>
 #include <sof/platform.h>
 #include <arch/lib/wait.h>
@@ -265,6 +266,15 @@ static int idc_reset(uint32_t comp_id)
 	return ret;
 }
 
+static void idc_writeback(void)
+{
+	/* set writeback waiti flag, which indicates that in the next
+	   platform_wait_for_interrupt invocation(), core should writeback
+	   all of data - it is required by D0->D0ix flow, when primary
+	   core disables all secondary cores. */
+	platform_pm_runtime_waiti_writeback_en(cpu_get_id());
+}
+
 /**
  * \brief Executes IDC message based on type.
  * \param[in,out] msg Pointer to IDC message.
@@ -295,6 +305,9 @@ void idc_cmd(struct idc_msg *msg)
 		break;
 	case iTS(IDC_MSG_RESET):
 		ret = idc_reset(msg->extension);
+		break;
+	case iTS(IDC_MSG_WAITI_WRITEBACK):
+		idc_writeback();
 		break;
 	default:
 		tr_err(&idc_tr, "idc_cmd(): invalid msg->header = %u",

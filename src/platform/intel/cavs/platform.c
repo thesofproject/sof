@@ -526,14 +526,28 @@ int platform_init(struct sof *sof)
 #ifndef __ZEPHYR__
 void platform_wait_for_interrupt(int level)
 {
+	int cpu_id = cpu_get_id();
+
 	platform_clock_on_waiti();
+
+	/* for secondary cores, if waiti_writeback flag is set, we should
+	   perform data writeback before going to wait - it is required by
+	   D0->D0ix flow */
+	if (cpu_id != PLATFORM_PRIMARY_CORE_ID &&
+		platform_pm_runtime_waiti_writeback_is_req(cpu_id)) {
+
+		dcache_writeback_all();
+		/* after writeback we can disable waiti_writeback flag */
+		platform_pm_runtime_waiti_writeback_dis(cpu_id);
+	}
 
 #if (CONFIG_CAVS_LPS)
 	if (pm_runtime_is_active(PM_RUNTIME_DSP, PLATFORM_PRIMARY_CORE_ID) ||
 	    cpu_get_id() != PLATFORM_PRIMARY_CORE_ID)
 		arch_wait_for_interrupt(level);
-	else
+	else {
 		lps_wait_for_interrupt(level);
+	}
 #else
 	arch_wait_for_interrupt(level);
 #endif
