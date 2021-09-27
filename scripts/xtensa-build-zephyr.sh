@@ -34,6 +34,8 @@ print_usage()
 Re-configures and re-builds SOF with Zephyr using a pre-installed Zephyr toolchain and
 the _defconfig file for that platform.
 
+Outputs in \$(west topdir)/build-*/ directories
+
 usage: $0 [options] [ platform(s) ] [ -- cmake arguments ]
 
        -a Build all platforms.
@@ -234,6 +236,7 @@ build_all()
 	install_opts -m 0755 "$bdir"/zephyr/sof-logger_ep/build/logger/sof-logger \
 		     "$STAGING"/tools/sof-logger
 
+	(cd "$STAGING"; pwd)
 	tree "$STAGING" || ( cd "$STAGING" && ls -R1 )
 }
 
@@ -368,8 +371,19 @@ see https://docs.zephyrproject.org/latest/getting_started/index.html"
 		# FIXME: remove this hack. Downloading and building
 		# should be kept separate but support for submodules in
 		# west is too recent, cannot rely on it yet.
+		# https://docs.zephyrproject.org/latest/guides/west/release-notes.html#v0-9-0
 		test -e "${WEST_TOP}"/modules/audio/sof/rimage/CMakeLists.txt || (
+
 		    cd "${WEST_TOP}"/modules/audio/sof
+
+		    # Support starting with sof/ coming from "west
+		    # update sof".
+		    # "origin" is the default value expected by git
+		    # submodule.  Don't overwrite any existing "origin";
+		    # it could be some user-defined mirror.
+		    git remote | grep -q '^origin$' ||
+			git remote add origin https://github.com/thesofproject/sof
+
 		    git submodule update --init --recursive
 		)
 	fi
