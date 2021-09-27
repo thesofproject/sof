@@ -15,8 +15,6 @@ SUPPORTED_PLATFORMS+=(apl cnl icl tgl-h tgl)
 # NXP
 SUPPORTED_PLATFORMS+=(imx8 imx8x)
 
-# Default value, can (and sometimes must) be overridden with -p
-WEST_TOP="${SOF_TOP}"/zephyrproject
 BUILD_JOBS=$(nproc --all)
 PLATFORMS=()
 
@@ -48,7 +46,10 @@ usage: $0 [options] [ platform(s) ] [ -- cmake arguments ]
        -p Existing Zephyr project directory. Incompatible with -c.  If
           zephyr-project/modules/audio/sof is missing then a
           symbolic link pointing to ${SOF_TOP} will automatically be
-          created and west will recognize it as a new sof module.
+          created and west will recognize it as its new sof module.
+          If zephyr-project/modules/audio/sof already exists and is a
+          different copy than where this script is run from, then the
+          behavior is undefined.
           This -p option is always _required_ if the real (not symbolic)
           sof/ and zephyr-project/ directories are not nested in one
           another.
@@ -90,11 +91,6 @@ zephyr_fetch_and_switch()
 # link back to sof/
 clone()
 {
-	type -p west || die "Install west and a west toolchain following https://docs.zephyrproject.org/latest/getting_started/index.html"
-	type -p git || die "Install git"
-
-	[ -e "$WEST_TOP" ] && die "$WEST_TOP already exists"
-	mkdir -p "$WEST_TOP"
 	git clone --depth=5 https://github.com/zephyrproject-rtos/zephyr \
 	    "$WEST_TOP"/zephyr
 
@@ -124,15 +120,20 @@ install_opts()
     install -D -p "$@"
 }
 
+assert_west_topdir()
+{
+	if west topdir >/dev/null; then return 0; fi
+
+	printf 'SOF_TOP=%s\nWEST_TOP=%s\n' "$SOF_TOP" "$WEST_TOP"
+	die 'try the -p or -c option?'
+	# Also note west can get confused by symbolic links, see
+	# https://github.com/zephyrproject-rtos/west/issues/419
+}
+
 build_all()
 {
 	cd "$WEST_TOP"
-	west topdir || {
-	    printf 'SOF_TOP=%s\nWEST_TOP=%s\n' "$SOF_TOP" "$WEST_TOP"
-	    die 'try the -p option?'
-	    # Also note west can get confused by symbolic links, see
-	    # https://github.com/zephyrproject-rtos/west/issues/419
-	}
+	assert_west_topdir
 
 	local STAGING=build-sof-staging
 	mkdir -p ${STAGING}/sof/ # smex does not use 'install -D'
@@ -264,7 +265,7 @@ parse_args()
 	shift $((OPTIND-1))
 
 	if [ -n "$zeproj" ] && [ x"$DO_CLONE" = xyes ]; then
-	    die 'Cannot use -p with -c, -c supports %s only' "${WEST_TOP}"
+	    die 'Cannot use -p with -c, -c supports %s only' "${SOF_TOP}/zephyrproject"
 	fi
 
 	if [ -n "$zeproj" ]; then
@@ -322,9 +323,46 @@ main()
 {
 	parse_args "$@"
 
+	type -p west ||
+	    die "Install west and a west toolchain, \
+see https://docs.zephyrproject.org/latest/getting_started/index.html"
+
 	if [ "x$DO_CLONE" == "xyes" ]; then
+		 # Supposedly no Zephyr yet
+		test -z "$WEST_TOP" ||
+		    die 'Cannot use -p with -c, -c supports %s only' "${SOF_TOP}/zephyrproject"
+
+		if west topdir 2>/dev/null ||
+			( cd "$SOF_TOP" && west topdir 2>/dev/null ); then
+		    die 'Zephyr found already! Not downloading it again\n'
+		fi
+
+		local zep="${SOF_TOP}"/zephyrproject
+		test -e "$zep" && die "failed -c: $zep already exists"
+
+		# Resolve symlinks
+		mkdir "$zep"; WEST_TOP=$( cd "$zep" && /bin/pwd )
+
 		clone
+
 	else
+		 # Look for Zephyr and define WEST_TOP
+
+		if test -z "${WEST_TOP}"; then
+		    # no '-p' user input, so try a couple other things
+		    if test -e "${SOF_TOP}"/zephyrproject; then
+			WEST_TOP=$( cd "${SOF_TOP}"/zephyrproject/ && /bin/pwd )
+		    else # most simple: nesting
+			WEST_TOP=$(cd "${SOF_TOP}" && west topdir) || {
+			    # This was the last chance, abort:
+			    cd "${SOF_TOP}"; assert_west_topdir
+			}
+		    fi
+		fi
+
+		( cd "${WEST_TOP}" && assert_west_topdir )
+
+
 		# Symlink zephyr-project to our SOF selves if no sof west module yet
 		test -e "${WEST_TOP}"/modules/audio/sof || {
 		    mkdir -p "${WEST_TOP}"/modules/audio
