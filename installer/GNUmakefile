@@ -293,7 +293,7 @@ COMPARE_REFS ?= /lib/firmware/intel
 
 checktree:
 	cd ${STAGING_SOF_VERSION} && \
-             tree -a --dirsfirst . >  ${BUILDS_ROOT}/staging_sof_tree.txt
+             tree -a -v --dirsfirst . >  ${BUILDS_ROOT}/staging_sof_tree.txt
 	# Update sof-apl-nocodec.tplg when adding or removing a default platform
 	diff -u tests/staging_sof_ref.txt ${BUILDS_ROOT}/staging_sof_tree.txt
 	# Check two random topologies are there
