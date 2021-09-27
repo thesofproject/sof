@@ -11,10 +11,17 @@
 #define __ARCH_LIB_CPU_H__
 
 #include <xtensa/config/core-isa.h>
+#include <stdint.h>
 
 #if CONFIG_MULTICORE
 
-void cpu_power_down_core(void);
+/** \brief CPU power down available flags */
+#define CPU_POWER_DOWN_MEMORY_ON	BIT(0) /**< Power down core with memory
+						 *  enabled (required in d0ix
+						 *  flow)
+						 */
+
+void cpu_power_down_core(uint32_t flags);
 
 void cpu_alloc_core_context(int id);
 
@@ -28,6 +35,8 @@ int arch_cpu_enabled_cores(void);
 
 int arch_cpu_restore_secondary_cores(void);
 
+int arch_cpu_secondary_cores_prepare_d0ix(void);
+
 #else
 
 static inline int arch_cpu_enable_core(int id) { return 0; }
@@ -39,6 +48,8 @@ static inline int arch_cpu_is_core_enabled(int id) { return 1; }
 static inline int arch_cpu_enabled_cores(void) { return 1; }
 
 static inline int arch_cpu_restore_secondary_cores(void) {return 0; }
+
+static inline int arch_cpu_secondary_cores_prepare_d0ix(void) {return 0; }
 
 #endif
 

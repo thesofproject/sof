@@ -49,6 +49,12 @@ void platform_pm_runtime_disable(uint32_t context, uint32_t index);
 
 bool platform_pm_runtime_is_active(uint32_t context, uint32_t index);
 
+void platform_pm_runtime_prepare_d0ix_en(uint32_t index);
+
+void platform_pm_runtime_prepare_d0ix_dis(uint32_t index);
+
+int platform_pm_runtime_prepare_d0ix_is_req(uint32_t index);
+
 #endif /* __PLATFORM_LIB_PM_RUNTIME_H__ */
 
 #else

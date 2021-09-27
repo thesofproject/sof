@@ -736,6 +736,12 @@ int arch_cpu_restore_secondary_cores(void)
 	return 0;
 }
 
+int arch_cpu_secondary_cores_prepare_d0ix(void)
+{
+	/* TODO: use Zephyr version */
+	return 0;
+}
+
 void arch_cpu_disable_core(int id)
 {
 	/* TODO: call Zephyr API */
@@ -746,7 +752,7 @@ int arch_cpu_is_core_enabled(int id)
 	return arch_cpu_active(id);
 }
 
-void cpu_power_down_core(void)
+void cpu_power_down_core(uint32_t flags)
 {
 	/* TODO: use Zephyr version */
 }

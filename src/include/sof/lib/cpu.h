@@ -61,6 +61,11 @@ static inline int cpu_restore_secondary_cores(void)
 	return arch_cpu_restore_secondary_cores();
 }
 
+static inline int cpu_secondary_cores_prepare_d0ix(void)
+{
+	return arch_cpu_secondary_cores_prepare_d0ix();
+}
+
 #endif
 
 #endif /* __SOF_LIB_CPU_H__ */

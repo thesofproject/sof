@@ -160,25 +160,44 @@ void cpu_alloc_core_context(int core)
 	dcache_writeback_region(sof_get(), sizeof(*sof_get()));
 }
 
-void cpu_power_down_core(void)
+void cpu_power_down_core(uint32_t flags)
 {
 	arch_interrupt_global_disable();
 
-	idc_free(0);
+	/* Power down with memory on is performed by secondary cores during
+	 * d0 -> d0ix before they are disabled by primary core.
+	 */
+	if (flags & CPU_POWER_DOWN_MEMORY_ON) {
+		/* disable idc interrupts */
+		idc_free(IDC_FREE_IRQ_ONLY);
 
-	schedule_free(0);
+		/* disable scheduler interrupts */
+		schedule_free(SOF_SCHEDULER_FREE_IRQ_ONLY);
 
-	free_system_notify();
+		/* data writeback/invalidate */
+		dcache_writeback_invalidate_all();
 
-	/* free entire sys heap, an instance dedicated for this core */
-	free_heap(SOF_MEM_ZONE_SYS);
+		/* after writeback/invalidate secondary core is prepared for
+		 * powered off - prepare_d0ix_core_mask flag can be disabled
+		 */
+		platform_pm_runtime_prepare_d0ix_dis(cpu_get_id());
+	} else {
+		idc_free(0);
 
-	dcache_writeback_invalidate_all();
+		schedule_free(0);
 
-	/* Turn off stack memory for core */
-	pm_runtime_put(CORE_MEMORY_POW, cpu_get_id());
+		free_system_notify();
 
-	pm_runtime_put(PM_RUNTIME_DSP, PWRD_BY_TPLG | cpu_get_id());
+		/* free entire sys heap, an instance dedicated for this core */
+		free_heap(SOF_MEM_ZONE_SYS);
+
+		dcache_writeback_invalidate_all();
+
+		/* Turn off stack memory for core */
+		pm_runtime_put(CORE_MEMORY_POW, cpu_get_id());
+
+		pm_runtime_put(PM_RUNTIME_DSP, PWRD_BY_TPLG | cpu_get_id());
+	}
 
 	trace_point(0);
 
@@ -207,6 +226,28 @@ int arch_cpu_restore_secondary_cores(void)
 
 			/* send IDC power up message */
 			ret = idc_send_msg(&power_up, IDC_POWER_UP);
+			if (ret < 0)
+				return ret;
+		}
+	}
+
+	return 0;
+}
+
+int arch_cpu_secondary_cores_prepare_d0ix(void)
+{
+	struct idc_msg prepare_msg = { IDC_MSG_PREPARE_D0ix,
+				       IDC_MSG_PREPARE_D0ix_EXT };
+	int ret, id;
+
+	for (id = 0; id < CONFIG_CORE_COUNT; id++) {
+		if (arch_cpu_is_core_enabled(id) && id != PLATFORM_PRIMARY_CORE_ID) {
+			prepare_msg.core = id;
+
+			/* send IDC prepare message to all enabled secondary
+			 * cores.
+			 */
+			ret = idc_send_msg(&prepare_msg, IDC_BLOCKING);
 			if (ret < 0)
 				return ret;
 		}
