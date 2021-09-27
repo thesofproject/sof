@@ -538,6 +538,18 @@ void platform_wait_for_interrupt(int level)
 {
 	platform_clock_on_waiti();
 
+#ifdef CONFIG_MULTICORE
+	int cpu_id = cpu_get_id();
+
+	/* for secondary cores, if prepare_d0ix_core_mask flag is set for
+	 * specific core, we should prepare for power down before going to wait
+	 * - it is required by D0->D0ix flow.
+	 */
+	if (cpu_id != PLATFORM_PRIMARY_CORE_ID &&
+	    platform_pm_runtime_prepare_d0ix_is_req(cpu_id))
+		cpu_power_down_core(CPU_POWER_DOWN_MEMORY_ON);
+#endif
+
 #if (CONFIG_CAVS_LPS)
 	if (pm_runtime_is_active(PM_RUNTIME_DSP, PLATFORM_PRIMARY_CORE_ID) ||
 	    cpu_get_id() != PLATFORM_PRIMARY_CORE_ID)

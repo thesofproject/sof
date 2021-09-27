@@ -88,6 +88,10 @@
 #define IDC_MSG_RESET		IDC_TYPE(0x8)
 #define IDC_MSG_RESET_EXT(x)	IDC_EXTENSION(x)
 
+/** \brief IDC prepare D0ix message. */
+#define IDC_MSG_PREPARE_D0ix		IDC_TYPE(0x9)
+#define IDC_MSG_PREPARE_D0ix_EXT	IDC_EXTENSION(0x0)
+
 /** \brief Decodes IDC message type. */
 #define iTS(x)	(((x) >> IDC_TYPE_SHIFT) & IDC_TYPE_MASK)
 

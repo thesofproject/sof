@@ -17,6 +17,7 @@
 #include <sof/lib/cpu.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/notifier.h>
+#include <sof/lib/pm_runtime.h>
 #include <sof/lib/uuid.h>
 #include <sof/platform.h>
 #include <arch/lib/wait.h>
@@ -268,6 +269,16 @@ static int idc_reset(uint32_t comp_id)
 	return ret;
 }
 
+static void idc_prepare_d0ix(void)
+{
+	/* set prepare_d0ix flag, which indicates that in the next
+	 * platform_wait_for_interrupt invocation(), core should get ready for
+	 * d0ix power down - it is required by D0->D0ix flow, when primary
+	 * core disables all secondary cores.
+	 */
+	platform_pm_runtime_prepare_d0ix_en(cpu_get_id());
+}
+
 /**
  * \brief Executes IDC message based on type.
  * \param[in,out] msg Pointer to IDC message.
@@ -279,7 +290,7 @@ void idc_cmd(struct idc_msg *msg)
 
 	switch (type) {
 	case iTS(IDC_MSG_POWER_DOWN):
-		cpu_power_down_core();
+		cpu_power_down_core(0);
 		break;
 	case iTS(IDC_MSG_NOTIFY):
 		notifier_notify_remote();
@@ -298,6 +309,9 @@ void idc_cmd(struct idc_msg *msg)
 		break;
 	case iTS(IDC_MSG_RESET):
 		ret = idc_reset(msg->extension);
+		break;
+	case iTS(IDC_MSG_PREPARE_D0ix):
+		idc_prepare_d0ix();
 		break;
 	default:
 		tr_err(&idc_tr, "idc_cmd(): invalid msg->header = %u",

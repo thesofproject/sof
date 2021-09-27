@@ -128,7 +128,10 @@ static inline bool cavs_pm_runtime_is_active_dsp(void)
 	struct pm_runtime_data *prd = pm_runtime_data_get();
 	struct cavs_pm_runtime_data *pprd = prd->platform_data;
 
-	return pprd->dsp_d0;
+	/* even if dsp_d0 is false (dsp in D0ix state) function will return true
+	 * until secondary cores be prepared of d0ix power down.
+	 */
+	return pprd->dsp_d0 || pprd->prepare_d0ix_core_mask;
 }
 
 #if CONFIG_INTEL_SSP
@@ -565,6 +568,40 @@ void platform_pm_runtime_enable(uint32_t context, uint32_t index)
 	default:
 		break;
 	}
+}
+
+void platform_pm_runtime_prepare_d0ix_en(uint32_t index)
+{
+	struct pm_runtime_data *prd = pm_runtime_data_get();
+	struct cavs_pm_runtime_data *pprd = prd->platform_data;
+	uint32_t flags;
+
+	spin_lock_irq(&prd->lock, flags);
+
+	pprd->prepare_d0ix_core_mask |= BIT(index);
+
+	spin_unlock_irq(&prd->lock, flags);
+}
+
+void platform_pm_runtime_prepare_d0ix_dis(uint32_t index)
+{
+	struct pm_runtime_data *prd = pm_runtime_data_get();
+	struct cavs_pm_runtime_data *pprd = prd->platform_data;
+	uint32_t flags;
+
+	spin_lock_irq(&prd->lock, flags);
+
+	pprd->prepare_d0ix_core_mask &= ~BIT(index);
+
+	spin_unlock_irq(&prd->lock, flags);
+}
+
+int platform_pm_runtime_prepare_d0ix_is_req(uint32_t index)
+{
+	struct pm_runtime_data *prd = pm_runtime_data_get();
+	struct cavs_pm_runtime_data *pprd = prd->platform_data;
+
+	return pprd->prepare_d0ix_core_mask & BIT(index);
 }
 
 void platform_pm_runtime_disable(uint32_t context, uint32_t index)
