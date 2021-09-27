@@ -214,3 +214,24 @@ int arch_cpu_restore_secondary_cores(void)
 
 	return 0;
 }
+
+int arch_cpu_writeback_secondary_cores(void)
+{
+	struct idc_msg writeback_msg = { IDC_MSG_WAITI_WRITEBACK,
+									 IDC_MSG_WAITI_WRITEBACK_EXT };
+	int ret, id;
+
+	for (id = 0; id < CONFIG_CORE_COUNT; id++) {
+		if (arch_cpu_is_core_enabled(id) && id != PLATFORM_PRIMARY_CORE_ID) {
+			writeback_msg.core = id;
+
+			/* send IDC writeback message to all enabled secondary
+			   cores. */
+			ret = idc_send_msg(&writeback_msg, IDC_BLOCKING);
+			if (ret < 0)
+				return ret;
+		}
+	}
+
+	return 0;
+}

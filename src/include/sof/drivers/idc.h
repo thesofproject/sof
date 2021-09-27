@@ -88,6 +88,10 @@
 #define IDC_MSG_RESET		IDC_TYPE(0x8)
 #define IDC_MSG_RESET_EXT(x)	IDC_EXTENSION(x)
 
+/** \brief IDC waiti writeback message. */
+#define IDC_MSG_WAITI_WRITEBACK		IDC_TYPE(0x9)
+#define IDC_MSG_WAITI_WRITEBACK_EXT	IDC_EXTENSION(0x0)
+
 /** \brief Decodes IDC message type. */
 #define iTS(x)	(((x) >> IDC_TYPE_SHIFT) & IDC_TYPE_MASK)
 

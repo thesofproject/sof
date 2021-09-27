@@ -128,7 +128,9 @@ static inline bool cavs_pm_runtime_is_active_dsp(void)
 	struct pm_runtime_data *prd = pm_runtime_data_get();
 	struct cavs_pm_runtime_data *pprd = prd->platform_data;
 
-	return pprd->dsp_d0;
+	/* even if dsp_d0 is false (dsp in D0ix state) function will return true
+	   until secondary cores perform data writeback. */
+	return pprd->dsp_d0 || pprd->wait_writeback_core_mask;
 }
 
 #if CONFIG_INTEL_SSP
@@ -565,6 +567,30 @@ void platform_pm_runtime_enable(uint32_t context, uint32_t index)
 	default:
 		break;
 	}
+}
+
+void platform_pm_runtime_waiti_writeback_en(uint32_t index)
+{
+	struct pm_runtime_data *prd = pm_runtime_data_get();
+	struct cavs_pm_runtime_data *pprd = prd->platform_data;
+
+	pprd->wait_writeback_core_mask |= BIT(index);
+}
+
+void platform_pm_runtime_waiti_writeback_dis(uint32_t index)
+{
+	struct pm_runtime_data *prd = pm_runtime_data_get();
+	struct cavs_pm_runtime_data *pprd = prd->platform_data;
+
+	pprd->wait_writeback_core_mask &= ~BIT(index);
+}
+
+int platform_pm_runtime_waiti_writeback_is_req(uint32_t index)
+{
+	struct pm_runtime_data *prd = pm_runtime_data_get();
+	struct cavs_pm_runtime_data *pprd = prd->platform_data;
+
+	return pprd->wait_writeback_core_mask & BIT(index);
 }
 
 void platform_pm_runtime_disable(uint32_t context, uint32_t index)

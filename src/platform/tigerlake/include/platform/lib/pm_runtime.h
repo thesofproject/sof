@@ -47,6 +47,12 @@ void platform_pm_runtime_enable(uint32_t context, uint32_t index);
 
 void platform_pm_runtime_disable(uint32_t context, uint32_t index);
 
+void platform_pm_runtime_waiti_writeback_en(uint32_t index);
+
+void platform_pm_runtime_waiti_writeback_dis(uint32_t index);
+
+int platform_pm_runtime_waiti_writeback_is_req(uint32_t index);
+
 bool platform_pm_runtime_is_active(uint32_t context, uint32_t index);
 
 /**
