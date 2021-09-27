@@ -17,6 +17,6 @@ jobs:
 
       - name: build
         run: docker run -v "$(pwd)":/workdir
-             -e ZEPHYR_SDK_INSTALL_DIR='/opt/toolchains/zephyr-sdk-0.13.0'
-             docker.io/zephyrprojectrtos/zephyr-build:v0.18.3
+             -e ZEPHYR_SDK_INSTALL_DIR='/opt/toolchains/zephyr-sdk-0.13.1'
+             docker.io/zephyrprojectrtos/zephyr-build:v0.18.4
              ./zephyr/docker-build.sh -- -DEXTRA_CFLAGS='-Werror'
