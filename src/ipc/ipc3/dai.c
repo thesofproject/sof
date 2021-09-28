@@ -90,9 +90,9 @@ int ipc_dai_data_config(struct comp_dev *dev)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
 	struct ipc_config_dai *dai = &dd->ipc_config;
-	struct sof_ipc_dai_config *dai_config = ipc_from_dai_config(dd->dai_spec_config);
+	struct sof_ipc_dai_config *config = ipc_from_dai_config(dd->dai_spec_config);
 
-	if (!dai_config) {
+	if (!config) {
 		comp_err(dev, "dai_data_config(): no config set for dai %d type %d",
 			 dai->dai_index, dai->type);
 		return -EINVAL;
@@ -115,18 +115,18 @@ int ipc_dai_data_config(struct comp_dev *dev)
 		return -EINVAL;
 	}
 
-	switch (dai_config->type) {
+	switch (config->type) {
 	case SOF_DAI_INTEL_SSP:
 		/* set dma burst elems to slot number */
-		dd->config.burst_elems = dai_config->ssp.tdm_slots;
+		dd->config.burst_elems = config->ssp.tdm_slots;
 		break;
 	case SOF_DAI_INTEL_DMIC:
 		/* We can use always the largest burst length. */
 		dd->config.burst_elems = 8;
 
 		comp_info(dev, "config->dmic.fifo_bits = %u config->dmic.num_pdm_active = %u",
-			  dai_config->dmic.fifo_bits,
-			  dai_config->dmic.num_pdm_active);
+			  config->dmic.fifo_bits,
+			  config->dmic.num_pdm_active);
 		break;
 	case SOF_DAI_INTEL_HDA:
 		break;
@@ -143,7 +143,7 @@ int ipc_dai_data_config(struct comp_dev *dev)
 		/* As with HDA, the DMA channel is assigned in runtime,
 		 * not during topology parsing.
 		 */
-		dd->stream_id = dai_config->alh.stream_id;
+		dd->stream_id = config->alh.stream_id;
 		break;
 	case SOF_DAI_IMX_SAI:
 		COMPILER_FALLTHROUGH;
@@ -166,7 +166,7 @@ int ipc_dai_data_config(struct comp_dev *dev)
 	default:
 		/* other types of DAIs not handled for now */
 		comp_warn(dev, "dai_data_config(): Unknown dai type %d",
-			  dai_config->type);
+			  config->type);
 		break;
 	}
 
