@@ -5,3 +5,5 @@ add_local_sources(sof
 	handler.c
 	helper.c
 )
+
+target_include_directories(sof_options INTERFACE ${PROJECT_SOURCE_DIR}/rimage/src/include)
