@@ -364,21 +364,22 @@ see https://docs.zephyrproject.org/latest/getting_started/index.html"
 		fi
 
 		( cd "${WEST_TOP}" && assert_west_topdir )
+	fi
 
 
-		# Symlink zephyr-project to our SOF selves if no sof west module yet
-		test -e "${WEST_TOP}"/modules/audio/sof || {
-		    mkdir -p "${WEST_TOP}"/modules/audio
-		    ln -s "$SOF_TOP" "${WEST_TOP}"/modules/audio/sof
-		}
+	# Symlink zephyr-project to our SOF selves if no sof west module yet
+	test -e "${WEST_TOP}"/modules/audio/sof || {
+		mkdir -p "${WEST_TOP}"/modules/audio
+		ln -s "$SOF_TOP" "${WEST_TOP}"/modules/audio/sof
+	}
 
-		# FIXME: remove this hack. Downloading and building
-		# should be kept separate but support for submodules in
-		# west is too recent, cannot rely on it yet.
-		# https://docs.zephyrproject.org/latest/guides/west/release-notes.html#v0-9-0
-		test -e "${WEST_TOP}"/modules/audio/sof/rimage/CMakeLists.txt || (
+	# FIXME: remove this hack. Downloading and building should be
+	# kept separate but support for submodules in west is too
+	# recent, cannot rely on it yet.
+	# https://docs.zephyrproject.org/latest/guides/west/release-notes.html#v0-9-0
+	test -e "${WEST_TOP}"/modules/audio/sof/rimage/CMakeLists.txt || (
 
-		    cd "${WEST_TOP}"/modules/audio/sof
+		cd "${WEST_TOP}"/modules/audio/sof
 
 		    # Support starting with sof/ coming from "west
 		    # update sof".
@@ -388,9 +389,8 @@ see https://docs.zephyrproject.org/latest/getting_started/index.html"
 		    git remote | grep -q '^origin$' ||
 			git remote add origin https://github.com/thesofproject/sof
 
-		    git submodule update --init --recursive
-		)
-	fi
+		git submodule update --init --recursive
+	)
 
 	test "${#PLATFORMS[@]}" -eq 0 || build_all
 }
