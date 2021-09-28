@@ -81,7 +81,8 @@ static void acp_reg_write_via_smn(uint32_t reg_offset,
 								ACP_SRBM_CYCLE_STS);
 		if (!acp_srbm_cycle_sts.bits.srbm_clients_sts)
 			return;
-	} delay_cnt--;
+		delay_cnt--;
+	}
 }
 
 static void  get_response_from_smu(void)
