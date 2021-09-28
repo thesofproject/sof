@@ -409,7 +409,7 @@ static int copier_comp_trigger(struct comp_dev *dev, int cmd)
 	if (cd->endpoint)
 		ret = cd->endpoint->drv->ops.trigger(cd->endpoint, cmd);
 
-	return 0;
+	return ret;
 }
 
 /* copy and process stream data from source to sink buffers */
