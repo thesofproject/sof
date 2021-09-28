@@ -87,13 +87,15 @@ int platform_init(struct sof *sof)
 	clock_set_freq(CLK_CPU(cpu_get_id()), CLK_MAX_CPU_HZ);
 	/* init DMA */
 	ret = acp_dma_init(sof);
+	if (ret < 0)
+		return -ENODEV;
 	/* Init DMA platform domain */
 	sof->platform_dma_domain = dma_multi_chan_domain_init(&sof->dma_info->dma_array[0],
 			sizeof(sof->dma_info->dma_array), PLATFORM_DEFAULT_CLOCK, true);
 	scheduler_init_ll(sof->platform_dma_domain);
-	/* initialize the host IPC mechanims */
+	/* initialize the host IPC mechanisms */
 	ipc_init(sof);
-	/* initialize the DAI mechanims */
+	/* initialize the DAI mechanisms */
 	ret = dai_init(sof);
 	if (ret < 0)
 		return -ENODEV;
