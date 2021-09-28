@@ -223,6 +223,18 @@ static int ipc_stream_pcm_params(uint32_t stream)
 		return -EINVAL;
 	}
 
+	switch (pcm_dev->cd->pipeline->status) {
+	case COMP_STATE_ACTIVE:
+	case COMP_STATE_PRE_ACTIVE:
+		/*
+		 * IPC4 has a use-case when a PCM parameter change request can
+		 * be sent on an active pipeline, ignore it
+		 */
+		pipe_dbg(pcm_dev->cd->pipeline,
+			 "ipc: ignore PCM param change request on an active pipeline");
+		return 0;
+	}
+
 #if CONFIG_HOST_PTABLE
 	cd = pcm_dev->cd;
 
