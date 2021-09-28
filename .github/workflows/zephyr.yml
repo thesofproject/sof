@@ -15,8 +15,9 @@ jobs:
         # From time to time this will catch a git tag and change SOF_VERSION
         with: {fetch-depth: 10, submodules: recursive}
 
+      # Note: env variables can be passed to the container with
+      # -e https_proxy=...
       - name: build
         run: docker run -v "$(pwd)":/workdir
-             -e ZEPHYR_SDK_INSTALL_DIR='/opt/toolchains/zephyr-sdk-0.13.1'
-             docker.io/zephyrprojectrtos/zephyr-build:v0.18.4
+             docker.io/zephyrprojectrtos/zephyr-build:latest
              ./zephyr/docker-build.sh -- -DEXTRA_CFLAGS='-Werror'
