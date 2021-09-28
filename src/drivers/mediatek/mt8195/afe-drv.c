@@ -232,7 +232,7 @@ unsigned int afe_memif_get_cur_position(struct mtk_base_afe *afe, int id)
 int afe_dai_set_config(struct mtk_base_afe *afe, int id, unsigned int channel, unsigned int rate,
 		       unsigned int format)
 {
-	struct mtk_base_afe_dai *dai = &afe->dais[id];
+	struct mtk_base_afe_dai *dai;
 
 	/* TODO 1. if need use dai->id to search target dai */
 	/* TODO 1. if need a status to control the dai status */
@@ -256,7 +256,7 @@ int afe_dai_set_config(struct mtk_base_afe *afe, int id, unsigned int channel, u
 int afe_dai_get_config(struct mtk_base_afe *afe, int id, unsigned int *channel, unsigned int *rate,
 		       unsigned int *format)
 {
-	struct mtk_base_afe_dai *dai = &afe->dais[id];
+	struct mtk_base_afe_dai *dai;
 
 	/* TODO 1. if need use dai->id to search target dai */
 	/* TODO 1. if need a status to control the dai status */
