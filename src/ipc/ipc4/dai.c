@@ -138,7 +138,7 @@ int dai_config(struct comp_dev *dev, struct ipc_config_dai *common_config,
 	struct ipc4_copier_module_cfg *copier_cfg = spec_config;
 	struct dai_data *dd = comp_get_drvdata(dev);
 	int size;
-	int ret = 0;
+	int ret;
 
 	/* ignore if message not for this DAI id/type */
 	if (dd->ipc_config.dai_index != common_config->dai_index ||
@@ -184,6 +184,7 @@ int dai_config(struct comp_dev *dev, struct ipc_config_dai *common_config,
 		if (ret < 0) {
 			rfree(dd->dai_spec_config);
 			dd->dai_spec_config = NULL;
+			return -EINVAL;
 		}
 	}
 
