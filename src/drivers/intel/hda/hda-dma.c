@@ -348,9 +348,8 @@ static int hda_dma_host_start(struct dma_chan_data *channel)
 	struct hda_chan_data *hda_chan = dma_chan_get_data(channel);
 	int ret = 0;
 
-	/* Force Host DMA to exit L1 only on start*/
-	if (!(hda_chan->state & HDA_STATE_RELEASE))
-		pm_runtime_put(PM_RUNTIME_HOST_DMA_L1, 0);
+	/* Force Host DMA to exit L1 on start */
+	pm_runtime_put(PM_RUNTIME_HOST_DMA_L1, 0);
 
 	if (!hda_chan->irq_disabled)
 		return ret;
@@ -566,15 +565,7 @@ static int hda_dma_release(struct dma_chan_data *channel)
 	tr_dbg(&hdma_tr, "hda-dmac: %d channel %d -> release",
 	       channel->dma->plat_data.id, channel->index);
 
-	/*
-	 * Prepare for the handling of release condition on the first work cb.
-	 * This flag will be unset afterwards.
-	 */
 	hda_chan->state |= HDA_STATE_RELEASE;
-
-	if (channel->direction == DMA_DIR_HMEM_TO_LMEM ||
-	    channel->direction == DMA_DIR_LMEM_TO_HMEM)
-		ret = hda_dma_host_start(channel);
 
 	irq_local_enable(flags);
 	return ret;
