@@ -757,8 +757,7 @@ static int hda_dma_set_config(struct dma_chan_data *channel,
 		dgcs |= DGCS_SCS;
 
 	/* set DGCS.FIFORDY for output dma */
-	if ((config->cyclic && config->direction == DMA_DIR_MEM_TO_DEV) ||
-	    (!config->cyclic && config->direction == DMA_DIR_LMEM_TO_HMEM))
+	if (config->direction == DMA_DIR_MEM_TO_DEV || config->direction == DMA_DIR_LMEM_TO_HMEM)
 		dgcs |= DGCS_FIFORDY;
 
 	dma_chan_reg_write(channel, DGCS, dgcs);
