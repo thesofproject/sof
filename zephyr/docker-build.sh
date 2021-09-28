@@ -18,8 +18,10 @@ test -e ./scripts/xtensa-build-zephyr.sh
 sudo apt-get update
 sudo apt-get -y install tree
 
-# Unset stale ZEPHYR_SDK_INSTALL_DIR variable pointing to obsolete
-# 0.12.4 as of container 0.18.x
+# As of container version 0.18.4,
+# https://github.com/zephyrproject-rtos/docker-image/blob/master/Dockerfile
+# installs two SDKs: ZSDK_VERSION=0.12.4 and ZSDK_ALT_VERSION=0.13.1
+# ZEPHYR_SDK_INSTALL_DIR points at ZSDK_VERSION but we want the latest.
 unset ZEPHYR_SDK_INSTALL_DIR
 
 # Zephyr's CMake does not look in /opt but it searches $HOME
