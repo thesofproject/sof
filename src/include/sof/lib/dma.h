@@ -335,16 +335,18 @@ static inline int dma_copy(struct dma_chan_data *channel, int bytes,
 
 static inline int dma_pause(struct dma_chan_data *channel)
 {
-	int ret = channel->dma->ops->pause(channel);
+	if (channel->dma->ops->pause)
+		return channel->dma->ops->pause(channel);
 
-	return ret;
+	return 0;
 }
 
 static inline int dma_release(struct dma_chan_data *channel)
 {
-	int ret = channel->dma->ops->release(channel);
+	if (channel->dma->ops->release)
+		return channel->dma->ops->release(channel);
 
-	return ret;
+	return 0;
 }
 
 static inline int dma_status(struct dma_chan_data *channel,
