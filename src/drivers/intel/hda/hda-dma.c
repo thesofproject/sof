@@ -390,20 +390,21 @@ static int hda_dma_enable_unlock(struct dma_chan_data *channel)
 
 	hda_dma_get_dbg_vals(channel, HDA_DBG_PRE, HDA_DBG_BOTH);
 
-	/* enable the channel */
-	dma_chan_reg_update_bits(channel, DGCS, DGCS_GEN | DGCS_FIFORDY,
-				 DGCS_GEN | DGCS_FIFORDY);
-
 	/* full buffer is copied at startup */
 	hda_chan = dma_chan_get_data(channel);
 	hda_chan->desc_avail = channel->desc_count;
 
+	/* enable the channel */
 	if (channel->direction == DMA_DIR_HMEM_TO_LMEM ||
 	    channel->direction == DMA_DIR_LMEM_TO_HMEM) {
+		dma_chan_reg_update_bits(channel, DGCS, DGCS_GEN | DGCS_FIFORDY,
+					 DGCS_FIFORDY | DGCS_GEN);
 		pm_runtime_get(PM_RUNTIME_HOST_DMA_L1, 0);
 		ret = hda_dma_host_start(channel);
 		if (ret < 0)
 			return ret;
+	} else {
+		dma_chan_reg_update_bits(channel, DGCS, DGCS_GEN, DGCS_GEN);
 	}
 
 	/* start link output transfer now */
@@ -613,12 +614,15 @@ static int hda_dma_stop(struct dma_chan_data *channel)
 	tr_dbg(&hdma_tr, "hda-dmac: %d channel %d -> stop",
 	       channel->dma->plat_data.id, channel->index);
 
+	/* disable the channel */
 	if (channel->direction == DMA_DIR_HMEM_TO_LMEM ||
-	    channel->direction == DMA_DIR_LMEM_TO_HMEM)
+	    channel->direction == DMA_DIR_LMEM_TO_HMEM) {
 		hda_dma_host_stop(channel);
 
-	/* disable the channel */
-	dma_chan_reg_update_bits(channel, DGCS, DGCS_GEN | DGCS_FIFORDY, 0);
+		dma_chan_reg_update_bits(channel, DGCS, DGCS_FIFORDY | DGCS_GEN, 0);
+	} else {
+		dma_chan_reg_update_bits(channel, DGCS, DGCS_GEN, 0);
+	}
 	channel->status = COMP_STATE_PREPARE;
 	hda_chan = dma_chan_get_data(channel);
 	hda_chan->state = 0;
@@ -756,8 +760,8 @@ static int hda_dma_set_config(struct dma_chan_data *channel,
 	     config->src_width <= 2))
 		dgcs |= DGCS_SCS;
 
-	/* set DGCS.FIFORDY for output dma */
-	if (config->direction == DMA_DIR_MEM_TO_DEV || config->direction == DMA_DIR_LMEM_TO_HMEM)
+	/* set DGCS.FIFORDY for input/output host DMA only. It is not relevant for link DMA's */
+	if (config->direction == DMA_DIR_HMEM_TO_LMEM || config->direction == DMA_DIR_LMEM_TO_HMEM)
 		dgcs |= DGCS_FIFORDY;
 
 	dma_chan_reg_write(channel, DGCS, dgcs);
