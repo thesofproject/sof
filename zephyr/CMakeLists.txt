@@ -444,10 +444,9 @@ if (CONFIG_SOC_SERIES_NXP_IMX8M)
 	zephyr_library_sources(
 		${SOF_DRIVERS_PATH}/generic/dummy-dma.c
 		${SOF_DRIVERS_PATH}/imx/sdma.c
-		${SOF_DRIVERS_PATH}/imx/edma.c
 		${SOF_DRIVERS_PATH}/imx/sai.c
 		${SOF_DRIVERS_PATH}/imx/ipc.c
-		${SOF_DRIVERS_PATH}/imx/esai.c
+		${SOF_DRIVERS_PATH}/imx/interrupt-irqsteer.c
 	)
 
 	# Platform sources
@@ -457,6 +456,12 @@ if (CONFIG_SOC_SERIES_NXP_IMX8M)
 		${SOF_PLATFORM_PATH}/imx8m/lib/memory.c
 		${SOF_PLATFORM_PATH}/imx8m/lib/dai.c
 		${SOF_PLATFORM_PATH}/imx8m/lib/dma.c
+	)
+
+	# SOF core infrastructure - runs on top of Zephyr
+	zephyr_library_sources(
+		${SOF_SRC_PATH}/schedule/ll_schedule.c
+		${SOF_SRC_PATH}/drivers/interrupt.c
 	)
 
 	set(PLATFORM "imx8m")
