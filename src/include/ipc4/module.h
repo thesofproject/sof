@@ -234,6 +234,39 @@ struct ipc4_module_large_config {
 	} data;
 } __attribute__((packed, aligned(4)));
 
+struct ipc4_module_large_config_reply {
+	union {
+		uint32_t dat;
+
+		struct {
+			uint32_t status :IPC4_IXC_STATUS_BITS;
+			/**< ModuleMsg::LARGE_CONFIG_GET / LARGE_CONFIG_SET */
+			uint32_t type : 5;
+			/**< Msg::MSG_REQUEST */
+			uint32_t rsp : 1;
+			/**< Msg::MODULE_MSG */
+			uint32_t msg_tgt : 1;
+			uint32_t _reserved_0 : 1;
+			} r;
+		} header;
+
+	union {
+		uint32_t dat;
+
+		struct {
+			/**< data size/offset */
+			uint32_t data_off_size : 20;
+			/**< param type : VENDOR_CONFIG_PARAM / GENERIC_CONFIG_PARAM */
+			uint32_t large_param_id : 8;
+			/**< 1 if final block */
+			uint32_t final_block : 1;
+			/**< 1 if first block */
+			uint32_t init_block : 1;
+			uint32_t _reserved_2 : 2;
+		} r;
+	} data;
+} __attribute__((packed, aligned(4)));
+
 struct ipc4_module_delete_instance {
 	union {
 		uint32_t dat;

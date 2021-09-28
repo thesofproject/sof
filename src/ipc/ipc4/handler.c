@@ -364,26 +364,108 @@ static int ipc4_unbind_module_instance(union ipc4_message_header *ipc4)
 	return ipc_comp_disconnect(ipc, (ipc_pipe_comp_connect *)&bu);
 }
 
+static int ipc4_get_large_config_module_instance(union ipc4_message_header *ipc4)
+{
+	struct ipc4_module_large_config_reply reply;
+	struct ipc4_module_large_config config;
+	char *data = ipc_get()->comp_data;
+	const struct comp_driver *drv;
+	struct comp_dev *dev = NULL;
+	uint32_t data_offset;
+	int ret;
+
+	memcpy_s(&config, sizeof(config), ipc4, sizeof(config));
+	tr_dbg(&ipc_tr, "ipc4_get_large_config_module_instance %x : %x with %x : %x",
+	       (uint32_t)config.header.r.module_id, (uint32_t)config.header.r.instance_id);
+
+	drv = ipc4_get_comp_drv(config.header.r.module_id);
+	if (!drv)
+		return IPC4_MOD_INVALID_ID;
+
+	if (!drv->ops.get_large_config)
+		return IPC4_INVALID_REQUEST;
+
+	/* get component dev for non-basefw since there is no
+	 * component dev for basefw
+	 */
+	if (config.header.r.module_id) {
+		uint32_t comp_id;
+
+		comp_id = IPC4_COMP_ID(config.header.r.module_id, config.header.r.instance_id);
+		dev = ipc4_get_comp_dev(comp_id);
+		if (!dev)
+			return IPC4_MOD_INVALID_ID;
+	}
+
+	data_offset =  config.data.r.data_off_size;
+	ret = drv->ops.get_large_config(dev, config.data.r.large_param_id, config.data.r.init_block,
+				config.data.r.final_block, &data_offset,
+				data + sizeof(reply.data.dat));
+
+	/* set up ipc4 error code for reply data */
+	if (ret < 0)
+		ret = IPC4_MOD_INVALID_ID;
+
+	/* Copy host config and overwrite */
+	reply.data.dat = config.data.dat;
+	reply.data.r.data_off_size = data_offset;
+
+	/* The last block, no more data */
+	if (!config.data.r.final_block && data_offset < SOF_IPC_MSG_MAX_SIZE)
+		reply.data.r.final_block = 1;
+
+	/* Indicate last block if error occurs */
+	if (ret)
+		reply.data.r.final_block = 1;
+
+	*(uint32_t *)data = reply.data.dat;
+
+	/* no need to allocate memory for reply msg */
+	if (ret)
+		return ret;
+
+	msg_reply.tx_size = data_offset + sizeof(reply.data.dat);
+	msg_reply.tx_data = rballoc(0, SOF_MEM_CAPS_RAM, msg_reply.tx_size);
+	if (!msg_reply.tx_data) {
+		tr_err(&ipc_tr, "error: failed to allocate tx_data");
+		ret = IPC4_OUT_OF_MEMORY;
+	}
+
+	return ret;
+}
+
 static int ipc4_set_large_config_module_instance(union ipc4_message_header *ipc4)
 {
 	struct ipc4_module_large_config config;
-	struct comp_dev *dev;
-	int comp_id;
+	struct comp_dev *dev = NULL;
+	const struct comp_driver *drv;
 	int ret;
 
 	memcpy_s(&config, sizeof(config), ipc4, sizeof(config));
 	tr_dbg(&ipc_tr, "ipc4_set_large_config_module_instance %x : %x with %x : %x",
 	       (uint32_t)config.header.r.module_id, (uint32_t)config.header.r.instance_id);
 
-	comp_id = IPC4_COMP_ID(config.header.r.module_id, config.header.r.instance_id);
-	dev = ipc4_get_comp_dev(comp_id);
-	if (!dev)
+	drv = ipc4_get_comp_drv(config.header.r.module_id);
+	if (!drv)
 		return IPC4_MOD_INVALID_ID;
 
-	ret = comp_cmd(dev, config.data.r.large_param_id, (void *)MAILBOX_HOSTBOX_BASE,
-		       config.data.dat);
+	if (!drv->ops.set_large_config)
+		return IPC4_INVALID_REQUEST;
+
+	if (config.header.r.module_id) {
+		uint32_t comp_id;
+
+		comp_id = IPC4_COMP_ID(config.header.r.module_id, config.header.r.instance_id);
+		dev = ipc4_get_comp_dev(comp_id);
+		if (!dev)
+			return IPC4_MOD_INVALID_ID;
+	}
+
+	ret = drv->ops.set_large_config(dev, config.data.r.large_param_id, config.data.r.init_block,
+					config.data.r.final_block, config.data.r.data_off_size,
+					(char *)MAILBOX_HOSTBOX_BASE);
 	if (ret < 0) {
-		tr_dbg(&ipc_tr, "failed to set large_config_module_instance %x : %x with %x : %x",
+		tr_err(&ipc_tr, "failed to set large_config_module_instance %x : %x with %x : %x",
 		       (uint32_t)config.header.r.module_id, (uint32_t)config.header.r.instance_id);
 		ret = IPC4_INVALID_RESOURCE_ID;
 	}
@@ -428,7 +510,7 @@ static int ipc4_process_module_message(union ipc4_message_header *ipc4)
 	case SOF_IPC4_MOD_CONFIG_GET:
 	case SOF_IPC4_MOD_CONFIG_SET:
 	case SOF_IPC4_MOD_LARGE_CONFIG_GET:
-		ret = IPC4_UNAVAILABLE;
+		ret = ipc4_get_large_config_module_instance(ipc4);
 		break;
 	case SOF_IPC4_MOD_LARGE_CONFIG_SET:
 		ret = ipc4_set_large_config_module_instance(ipc4);
@@ -484,6 +566,10 @@ ipc_cmd_hdr *ipc_prepare_to_send(struct ipc_msg *msg)
 	if (msg->tx_size)
 		mailbox_dspbox_write(0, (uint32_t *)msg->tx_data + 1, msg->tx_size);
 
+	/* free memory for get config function */
+	if (msg_reply.tx_size)
+		rfree(msg_reply.tx_data);
+
 	return ipc_to_hdr(msg_data.msg_out);
 }
 
@@ -497,7 +583,6 @@ void ipc_msg_reply(struct sof_ipc_reply *reply)
 {
 	struct ipc4_message_reply reply_msg;
 	struct ipc *ipc = ipc_get();
-	uint32_t msg_reply_data;
 	bool skip_first_entry;
 	uint32_t flags;
 	int error = 0;
@@ -522,23 +607,21 @@ void ipc_msg_reply(struct sof_ipc_reply *reply)
 	spin_unlock_irq(&ipc->lock, flags);
 
 	if (!skip_first_entry) {
-		/* copy contents of message received */
+		char *data = ipc_get()->comp_data;
+
+		/* set error status */
 		reply_msg.header.dat = msg_reply.header;
 		reply_msg.header.r.status = error;
-		reply_msg.data.dat = 0;
-		msg_reply_data = 0;
-
 		msg_reply.header = reply_msg.header.dat;
-		msg_reply.tx_data = &msg_reply_data;
-		msg_reply.tx_size = sizeof(msg_reply_data);
 
-		ipc_msg_send(&msg_reply, &reply_msg.data.dat, true);
+		ipc_msg_send(&msg_reply, data, true);
 	}
 }
 
 void ipc_cmd(ipc_cmd_hdr *_hdr)
 {
 	union ipc4_message_header *in = ipc_from_hdr(_hdr);
+	uint32_t *data = ipc_get()->comp_data;
 	enum ipc4_message_target target;
 	int err = -EINVAL;
 
@@ -546,6 +629,15 @@ void ipc_cmd(ipc_cmd_hdr *_hdr)
 		return;
 
 	msg_data.delayed_reply = false;
+
+	/* Common reply msg only sends back ipc extension register */
+	msg_reply.tx_size = sizeof(uint32_t);
+	/* msg_reply data is stored in msg_out[1] */
+	msg_reply.tx_data = msg_data.msg_out + 1;
+	/* Ipc extension register is stored in in[1].
+	 * Save it for reply msg
+	 */
+	data[0] = in[1].dat;
 
 	target = in->r.msg_tgt;
 
@@ -569,22 +661,14 @@ void ipc_cmd(ipc_cmd_hdr *_hdr)
 	if (in->r.rsp == SOF_IPC4_MESSAGE_DIR_MSG_REQUEST) {
 		struct ipc4_message_reply reply;
 		struct sof_ipc_reply rep;
-		uint32_t msg_reply_data;
 
 		/* copy contents of message received */
 		reply.header.r.rsp = SOF_IPC4_MESSAGE_DIR_MSG_REPLY;
-		reply.header.r.status = err;
 		reply.header.r.msg_tgt = in->r.msg_tgt;
 		reply.header.r.type = in->r.type;
-		reply.data.dat = 0;
-
-		msg_reply_data = 0;
-
 		msg_reply.header = reply.header.dat;
-		msg_reply.tx_data = &msg_reply_data;
-		msg_reply.tx_size = sizeof(msg_reply_data);
-
 		rep.error = err;
+
 		ipc_msg_reply(&rep);
 	}
 }

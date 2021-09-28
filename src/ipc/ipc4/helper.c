@@ -365,11 +365,17 @@ out:
 const struct comp_driver *ipc4_get_comp_drv(int module_id)
 {
 	struct sof_man_fw_desc *desc = (struct sof_man_fw_desc *)IMR_BOOT_LDR_MANIFEST_BASE;
-	struct sof_man_module *mod;
 	const struct comp_driver *drv;
+	struct sof_man_module *mod;
+	int entry_index;
 
-	/* skip basefw of module 0 in manifest */
-	mod = (struct sof_man_module *)((char *)desc + SOF_MAN_MODULE_OFFSET(module_id));
+	/* module_id 0 is used for base fw which is in entry 1 */
+	if (!module_id)
+		entry_index = 1;
+	else
+		entry_index = module_id;
+
+	mod = (struct sof_man_module *)((char *)desc + SOF_MAN_MODULE_OFFSET(entry_index));
 	drv = ipc4_get_drv(mod->uuid);
 
 	return drv;
