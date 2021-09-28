@@ -69,8 +69,7 @@ int ipc_dai_data_config(struct comp_dev *dev)
 	struct alh_pdata *alh;
 
 	if (!dai) {
-		comp_err(dev, "dai_data_config(): no config set for dai %d type %d",
-			 dai->dai_index, dai->type);
+		comp_err(dev, "dai_data_config(): no dai!\n");
 		return -EINVAL;
 	}
 
