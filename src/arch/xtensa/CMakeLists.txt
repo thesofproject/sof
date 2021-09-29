@@ -119,6 +119,8 @@ target_compile_options(sof_options INTERFACE ${stdlib_flag} -fno-inline-function
 #   3) custom function that is used instead of target_sources and sets flags
 #      for each added source based on file extension
 
+separate_arguments(EXTRA_CFLAGS_AS_LIST  NATIVE_COMMAND  ${EXTRA_CFLAGS})
+
 # No space between -imacros and its argument to avoid CMake
 # de-duplication "feature"
 target_compile_options(sof_options INTERFACE
@@ -129,6 +131,7 @@ target_compile_options(sof_options INTERFACE
 		-Wmissing-prototypes
 		-Wpointer-arith
 		${XTENSA_C_FLAGS}
+		${EXTRA_CFLAGS_AS_LIST}
 	>
 	-imacros${CONFIG_H_PATH}
 	)
