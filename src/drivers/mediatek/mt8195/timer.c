@@ -43,8 +43,6 @@ uint64_t platform_timer_get_atomic(struct timer *timer)
 int64_t platform_timer_set(struct timer *timer, uint64_t ticks)
 {
 	uint64_t time;
-	uint32_t hitimeout = ticks >> 32;
-	uint32_t lowtimeout = ticks & 0xFFFFFFFF;
 	uint32_t flags;
 	uint32_t low, high;
 	uint32_t ticks_set;
@@ -59,14 +57,8 @@ int64_t platform_timer_set(struct timer *timer, uint64_t ticks)
 
 	/*ostimer 13M counter to 26M interrupt */
 	time = (((uint64_t)high << 32) | low) << 1;
-
-	if (ticks > time)
-		ticks_set = (uint32_t)(ticks - time);
-	else
-		ticks_set = 1; /*set 1 to trigger interrupt*/
-
-	lowtimeout = ticks_set;
-	timer->hitimeout = hitimeout;
+	ticks_set = (ticks > time) ? ticks - time : UINT64_MAX - time +  ticks;
+	timer->hitimeout = ticks >> 32;
 	timer->lowtimeout = ticks_set;
 
 	/*selsect 26M clksrc*/
@@ -75,7 +67,7 @@ int64_t platform_timer_set(struct timer *timer, uint64_t ticks)
 			   TIMER_CLK_SRC_CLK_26M << TIMER_CLK_SRC_SHIFT,
 			   TIMER_CLK_SRC_CLK_26M << TIMER_CLK_SRC_SHIFT);
 
-	io_reg_write(TIMER_RST_VAL(timer->id), lowtimeout);
+	io_reg_write(TIMER_RST_VAL(timer->id), ticks_set);
 	io_reg_update_bits(TIMER_IRQ_ACK(timer->id), TIMER_IRQ_CLEAR, TIMER_IRQ_CLEAR);
 	io_reg_update_bits(TIMER_IRQ_ACK(timer->id), TIMER_IRQ_ENABLE, TIMER_IRQ_ENABLE);
 	io_reg_update_bits(TIMER_CON(timer->id), TIMER_ENABLE_BIT, TIMER_ENABLE_BIT);
