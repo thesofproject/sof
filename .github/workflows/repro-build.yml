@@ -1,0 +1,29 @@
+---
+# SPDX-License-Identifier: BSD-3-Clause
+# Tools that can save round-trips to github and a lot of time:
+#
+# yamllint -f parsable this.yml
+# pip3 install ruamel.yaml.cmd
+# yaml merge-expand this.yml exp.yml && diff -w -u this.yml exp.yml
+#
+# github.com also has a powerful web editor that can be used without
+# committing.
+
+name: Reproducible builds
+
+# yamllint disable-line rule:truthy
+on: [pull_request]
+
+jobs:
+  main:
+    runs-on: ubuntu-20.04
+
+    steps:
+      - uses: actions/checkout@v2
+        with: {fetch-depth: 5, submodules: recursive}
+
+      - name: docker pull
+        run: docker pull thesofproject/sof &&  docker tag thesofproject/sof sof
+
+      - name: repro test
+        run: ./scripts/docker-run.sh ./scripts/test-repro-build.sh

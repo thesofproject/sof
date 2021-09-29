@@ -25,6 +25,7 @@ if tty --quiet; then
 fi
 
 docker run -i -v "${SOF_TOP}":/home/sof/work/sof.git \
+	-v "${SOF_TOP}":/home/sof/work/sof-bind-mount-DO-NOT-DELETE \
 	--env CMAKE_BUILD_TYPE \
 	--env PRIVATE_KEY_OPTION \
 	--env http_proxy="$http_proxy" \
