@@ -158,6 +158,7 @@ void comp_get_copy_limits(struct comp_buffer *source, struct comp_buffer *sink,
 struct comp_data_blob_handler {
 	struct comp_dev *dev;	/**< audio component device */
 	uint32_t data_size;	/**< size of component's data blob */
+	uint32_t new_data_size;	/**< size of component's new data blob */
 	void *data;		/**< pointer to data blob */
 	void *data_new;		/**< pointer to new data blob */
 	bool data_ready;	/**< set when data blob is fully received */
@@ -197,8 +198,12 @@ void *comp_get_data_blob(struct comp_data_blob_handler *blob_handler,
 		/* Free "old" data blob and set data to data_new pointer */
 		rfree(blob_handler->data);
 		blob_handler->data = blob_handler->data_new;
+		blob_handler->data_size = blob_handler->new_data_size;
+
 		blob_handler->data_new = NULL;
 		blob_handler->data_ready = false;
+		blob_handler->new_data_size = 0;
+		blob_handler->data_pos = 0;
 	}
 
 	/* If data is available we calculate crc32 when crc pointer is given */
@@ -268,7 +273,7 @@ int comp_init_data_blob(struct comp_data_blob_handler *blob_handler,
 
 	blob_handler->data_new = NULL;
 	blob_handler->data_size = size;
-	blob_handler->data_ready = true;
+	blob_handler->new_data_size = 0;
 
 	return 0;
 }
@@ -320,7 +325,7 @@ int comp_data_blob_set_cmd(struct comp_data_blob_handler *blob_handler,
 			return -ENOMEM;
 		}
 
-		blob_handler->data_size = cdata->data->size;
+		blob_handler->new_data_size = cdata->data->size;
 		blob_handler->data_ready = false;
 		blob_handler->data_pos = 0;
 	}
@@ -334,7 +339,7 @@ int comp_data_blob_set_cmd(struct comp_data_blob_handler *blob_handler,
 	}
 
 	ret = memcpy_s((char *)blob_handler->data_new + blob_handler->data_pos,
-		       blob_handler->data_size - blob_handler->data_pos,
+		       blob_handler->new_data_size - blob_handler->data_pos,
 		       cdata->data->data, cdata->num_elems);
 	assert(!ret);
 
@@ -342,9 +347,6 @@ int comp_data_blob_set_cmd(struct comp_data_blob_handler *blob_handler,
 
 	if (!cdata->elems_remaining) {
 		comp_dbg(blob_handler->dev, "comp_data_blob_set_cmd(): final package received");
-
-		/* The new configuration is OK to be applied */
-		blob_handler->data_ready = true;
 
 		/* If component state is READY we can omit old
 		 * configuration immediately. When in playback/capture
@@ -361,7 +363,17 @@ int comp_data_blob_set_cmd(struct comp_data_blob_handler *blob_handler,
 		 */
 		if (!blob_handler->data) {
 			blob_handler->data = blob_handler->data_new;
+			blob_handler->data_size = blob_handler->new_data_size;
+
 			blob_handler->data_new = NULL;
+
+			/* The new configuration has been applied */
+			blob_handler->data_ready = false;
+			blob_handler->new_data_size = 0;
+			blob_handler->data_pos = 0;
+		} else {
+			/* The new configuration is ready to be applied */
+			blob_handler->data_ready = true;
 		}
 	}
 
