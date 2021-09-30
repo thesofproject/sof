@@ -176,7 +176,7 @@ void pipeline_schedule_triggered(struct pipeline_walk_context *ctx,
 	struct list_item *tlist;
 	struct pipeline *p;
 	uint32_t flags;
-	bool first_pipe = false;
+	bool first_pipe = true;
 
 	/*
 	 * Interrupts have to be disabled while adding tasks to or removing them
@@ -200,10 +200,10 @@ void pipeline_schedule_triggered(struct pipeline_walk_context *ctx,
 			p = container_of(tlist, struct pipeline, list);
 			if (pipeline_is_timer_driven(p)) {
 				/* Use the first of connected pipelines to trigger */
-				if (cmd >= 0 && !first_pipe) {
+				if (first_pipe) {
 					p->trigger.cmd = cmd;
 					p->trigger.host = ppl_data->start;
-					first_pipe = true;
+					first_pipe = false;
 				}
 			} else {
 				p->xrun_bytes = 0;
