@@ -55,6 +55,7 @@ struct comp_buffer *buffer_alloc(uint32_t size, uint32_t caps, uint32_t align)
 
 	buffer->stream.addr = rballoc_align(0, caps, size, align);
 	if (!buffer->stream.addr) {
+		rfree(buffer->lock);
 		rfree(buffer);
 		tr_err(&buffer_tr, "buffer_alloc(): could not alloc size = %u bytes of type = %u",
 		       size, caps);
