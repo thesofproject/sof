@@ -12,6 +12,10 @@
 
 # set -x
 
+# Log the container version. Especially useful when forgetting to update
+# the 'sof' shortcut.
+docker images sof
+
 if tty --quiet; then
     SOF_DOCKER_RUN="$SOF_DOCKER_RUN --tty"
 fi
