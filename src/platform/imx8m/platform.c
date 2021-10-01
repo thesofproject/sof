@@ -155,6 +155,11 @@ int platform_init(struct sof *sof)
 	sof->platform_timer = &timer;
 	sof->cpu_timers = &timer;
 
+#ifdef __ZEPHYR__
+	/* initialize cascade interrupts before any usage */
+	interrupt_init(sof);
+#endif
+
 	platform_interrupt_init();
 	platform_clock_init(sof);
 	scheduler_init_edf();
