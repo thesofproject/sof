@@ -58,7 +58,7 @@ static const struct sof_ipc_fw_ready ready
 	.flags = DEBUG_SET_FW_READY_FLAGS,
 };
 
-#define NUM_IMX_WINDOWS 6
+#define NUM_MTK_WINDOWS 6
 
 const struct ext_man_windows xsram_window
 		__aligned(EXT_MAN_ALIGN) __section(".fw_metadata") __unused = {
@@ -72,7 +72,7 @@ const struct ext_man_windows xsram_window
 			.hdr.size = sizeof(struct sof_ipc_window),
 			.type	= SOF_IPC_EXT_WINDOW,
 		},
-		.num_windows	= NUM_IMX_WINDOWS,
+		.num_windows	= NUM_MTK_WINDOWS,
 		.window	= {
 			{
 				.type	= SOF_IPC_REGION_UPBOX,
