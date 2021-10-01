@@ -13,7 +13,7 @@ SUPPORTED_PLATFORMS=()
 SUPPORTED_PLATFORMS+=(apl cnl icl tgl-h tgl)
 
 # NXP
-SUPPORTED_PLATFORMS+=(imx8 imx8x)
+SUPPORTED_PLATFORMS+=(imx8 imx8x imx8m)
 
 BUILD_JOBS=$(nproc --all)
 PLATFORMS=()
@@ -177,6 +177,11 @@ build_all()
 				PLAT_CONFIG='nxp_adsp_imx8x'
 				RIMAGE_KEY='ignored for imx8x'
 				;;
+			imx8m)
+				PLAT_CONFIG='nxp_adsp_imx8m'
+				RIMAGE_KEY='ignored for imx8m'
+				;;
+
 			*)
 				echo "Unsupported platform: $platform"
 				exit 1
