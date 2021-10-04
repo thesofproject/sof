@@ -531,6 +531,11 @@ static inline const struct dai_info *dai_info_get(void)
 int dai_config_dma_channel(struct comp_dev *dev, void *config);
 
 /**
+ * \brief Reset DAI DMA config
+ */
+void dai_dma_release(struct comp_dev *dev);
+
+/**
  * \brief Configure DAI physical interface.
  */
 int dai_config(struct comp_dev *dev,  struct ipc_config_dai *common_config,

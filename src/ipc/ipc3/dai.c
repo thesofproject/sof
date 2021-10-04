@@ -13,6 +13,7 @@
 #include <sof/ipc/msg.h>
 #include <sof/ipc/driver.h>
 #include <sof/lib/dai.h>
+#include <sof/lib/notifier.h>
 #include <sof/drivers/afe-dai.h>
 #include <sof/drivers/edma.h>
 #include <errno.h>
@@ -245,6 +246,25 @@ int ipc_comp_dai_config(struct ipc *ipc, struct ipc_config_dai *common_config,
 	}
 
 	return ret;
+}
+
+void dai_dma_release(struct comp_dev *dev)
+{
+	struct dai_data *dd = comp_get_drvdata(dev);
+
+	/* cannot configure DAI while active */
+	if (dev->state == COMP_STATE_ACTIVE) {
+		comp_info(dev, "dai_config(): Component is in active state. Ignore resetting");
+		return;
+	}
+
+	/* put the allocated DMA channel first */
+	if (dd->chan) {
+		/* remove callback */
+		notifier_unregister(dev, dd->chan, NOTIFIER_ID_DMA_COPY);
+		dma_channel_put(dd->chan);
+		dd->chan = NULL;
+	}
 }
 
 int dai_config(struct comp_dev *dev, struct ipc_config_dai *common_config,
