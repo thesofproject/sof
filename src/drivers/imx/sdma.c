@@ -164,7 +164,7 @@ static int sdma_register_init(struct dma *dma)
 	ret = poll_for_register_delay(dma_base(dma) + SDMA_RESET, 1, 0, 1000);
 	if (ret < 0) {
 		tr_err(&sdma_tr, "SDMA reset error, base address 0x%08x",
-		       (uintptr_t)dma_base(dma));
+		       (uint32_t)dma_base(dma));
 		return ret;
 	}
 
