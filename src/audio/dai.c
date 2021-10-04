@@ -609,27 +609,6 @@ static int dai_config_prepare(struct comp_dev *dev)
 	return 0;
 }
 
-static void dai_config_reset(struct comp_dev *dev)
-{
-	struct dai_data *dd = comp_get_drvdata(dev);
-
-	/* cannot configure DAI while active */
-	if (dev->state == COMP_STATE_ACTIVE) {
-		comp_info(dev, "dai_config(): Component is in active state. Ignore resetting");
-		return;
-	}
-
-	/* put the allocated DMA channel first */
-	if (dd->chan) {
-		dma_channel_put(dd->chan);
-		dd->chan = NULL;
-
-		/* remove callback */
-		notifier_unregister(dev, dd->chan,
-				    NOTIFIER_ID_DMA_COPY);
-	}
-}
-
 static int dai_prepare(struct comp_dev *dev)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
@@ -686,7 +665,7 @@ static int dai_reset(struct comp_dev *dev)
 
 	comp_info(dev, "dai_reset()");
 
-	dai_config_reset(dev);
+	dai_dma_release(dev);
 
 	dma_sg_free(&config->elem_array);
 
