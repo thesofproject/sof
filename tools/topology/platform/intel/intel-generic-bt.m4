@@ -8,7 +8,7 @@ include(`ssp.m4')
 ifdef(`SSP_INDEX',`',
 `define(SSP_INDEX, `2')')
 
-define(`SCO_MCLK', 19200000)
+define(`BT_MCLK', 38400000)
 define(`SSP_NAME', concat(concat(`SSP', SSP_INDEX),`-BT'))
 
 # variable that need to be defined in upper m4
@@ -61,17 +61,17 @@ define(`data_names', DAI_DATA_NAMES(LIST(`     ', "ssp_data1", "ssp_data2", "ssp
 
 # Note WB is put as default in the list
 define(`ssp_config_list_1', LIST(`',
-	`MULTI_SSP_CONFIG(hw_config1, HW_CONFIG_ID, DSP_A, SSP_CLOCK(mclk, SCO_MCLK, codec_mclk_in),'
+	`MULTI_SSP_CONFIG(hw_config1, HW_CONFIG_ID, DSP_A, SSP_CLOCK(mclk, BT_MCLK, codec_mclk_in),'
 		`SSP_CLOCK(bclk, 256000, codec_master, inverted),'
 		`SSP_CLOCK(fsync, 16000, codec_master),'
 		`SSP_TDM(1, 16, 1, 1),'
 		`SSP_MULTI_CONFIG_DATA(ssp_data1, 16))',
-	`MULTI_SSP_CONFIG(hw_config2, eval(HW_CONFIG_ID + 1), DSP_A, SSP_CLOCK(mclk, SCO_MCLK, codec_mclk_in),'
+	`MULTI_SSP_CONFIG(hw_config2, eval(HW_CONFIG_ID + 1), DSP_A, SSP_CLOCK(mclk, BT_MCLK, codec_mclk_in),'
 		`SSP_CLOCK(bclk, 128000, codec_master, inverted),'
 		`SSP_CLOCK(fsync, 8000, codec_master),'
 		`SSP_TDM(1, 16, 1, 1),'
 		`SSP_MULTI_CONFIG_DATA(ssp_data2, 16))',
-	`MULTI_SSP_CONFIG(hw_config3, eval(HW_CONFIG_ID + 2), DSP_A, SSP_CLOCK(mclk, eval(SCO_MCLK * 2), codec_mclk_in),'
+	`MULTI_SSP_CONFIG(hw_config3, eval(HW_CONFIG_ID + 2), DSP_A, SSP_CLOCK(mclk, BT_MCLK, codec_mclk_in),'
 		`SSP_CLOCK(bclk, 1536000, codec_slave),'
 		`SSP_CLOCK(fsync, 48000, codec_slave),'
 		`SSP_TDM(2, 16, 3, 0),'
