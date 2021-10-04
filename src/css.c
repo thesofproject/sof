@@ -19,7 +19,7 @@ void ri_css_v2_5_hdr_create(struct image *image)
 	time_t seconds;
 	int val;
 
-	fprintf(stdout, " cse: completing CSS manifest\n");
+	fprintf(stdout, " cse: %s completing CSS manifest\n", __func__);
 
 	/* get local time and date */
 	gettimeofday(&tv, NULL);
@@ -76,7 +76,7 @@ void ri_css_v1_8_hdr_create(struct image *image)
 	time_t seconds;
 	int val;
 
-	fprintf(stdout, " cse: completing CSS manifest\n");
+	fprintf(stdout, " cse: %s completing CSS manifest\n", __func__);
 
 	/* get local time and date */
 	gettimeofday(&tv, NULL);
@@ -133,7 +133,7 @@ void ri_css_v1_5_hdr_create(struct image *image)
 	time_t seconds;
 	int val;
 
-	fprintf(stdout, " cse: completing CSS manifest\n");
+	fprintf(stdout, " cse: %s completing CSS manifest\n", __func__);
 
 	/* get local time and date */
 	gettimeofday(&tv, NULL);
