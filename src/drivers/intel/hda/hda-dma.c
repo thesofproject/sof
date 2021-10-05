@@ -58,6 +58,7 @@ DECLARE_TR_CTX(hdma_tr, SOF_UUID(hda_dma_uuid), LOG_LEVEL_INFO);
 #define DGCS_BF		BIT(9)  /* buffer full */
 #define DGCS_BNE	BIT(8)  /* buffer not empty */
 #define DGCS_FIFORDY	BIT(5)  /* enable FIFO */
+#define DGCS_GBUSY	BIT(15)  /* indicates if the DMA channel is idle or not */
 
 /* DGBBA */
 #define DGBBA_MASK	0xffff80
@@ -575,7 +576,7 @@ static int hda_dma_release(struct dma_chan_data *channel)
 static int hda_dma_stop_common(struct dma_chan_data *channel)
 {
 	struct hda_chan_data *hda_chan;
-	uint32_t flags;
+	uint32_t flags, dgcs;
 
 	irq_local_disable(flags);
 
@@ -594,6 +595,15 @@ static int hda_dma_stop_common(struct dma_chan_data *channel)
 		dma_chan_reg_update_bits(channel, DGCS, DGCS_FIFORDY | DGCS_GEN, 0);
 	} else {
 		dma_chan_reg_update_bits(channel, DGCS, DGCS_GEN, 0);
+	}
+
+	/* check if channel is idle. No need to wait after clearing the GEN bit */
+	dgcs = dma_chan_reg_read(channel, DGCS);
+	if (dgcs & DGCS_GBUSY) {
+		tr_err(&hdma_tr, "hda-dmac: %d channel %d not idle after stop",
+		       channel->dma->plat_data.id, channel->index);
+		irq_local_enable(flags);
+		return -EBUSY;
 	}
 	channel->status = COMP_STATE_PREPARE;
 	hda_chan = dma_chan_get_data(channel);
