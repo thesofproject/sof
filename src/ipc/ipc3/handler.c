@@ -746,7 +746,17 @@ static int ipc_dma_trace_config(uint32_t header)
 {
 	return 0;
 }
+
+static void ipc_dma_trace_free(uint32_t header) {}
+
 #else
+static void ipc_dma_trace_free(uint32_t header)
+{
+	struct dma_trace_data *dmat = dma_trace_data_get();
+
+	dma_trace_disable(dmat);
+}
+
 static int ipc_dma_trace_config(uint32_t header)
 {
 #if CONFIG_HOST_PTABLE
@@ -872,6 +882,9 @@ static int ipc_glb_trace_message(uint32_t header)
 	case SOF_IPC_TRACE_DMA_PARAMS:
 	case SOF_IPC_TRACE_DMA_PARAMS_EXT:
 		return ipc_dma_trace_config(header);
+	case SOF_IPC_TRACE_DMA_FREE:
+		ipc_dma_trace_free(header);
+		return 0;
 	case SOF_IPC_TRACE_FILTER_UPDATE:
 		return ipc_trace_filter_update(header);
 	default:

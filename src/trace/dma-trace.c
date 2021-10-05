@@ -454,6 +454,21 @@ out:
 	return err;
 }
 
+void dma_trace_disable(struct dma_trace_data *d)
+{
+	/* cancel trace work */
+	schedule_task_cancel(&d->dmat_work);
+
+	if (d->dc.chan) {
+		dma_stop(d->dc.chan);
+		dma_channel_put(d->dc.chan);
+		d->dc.chan = NULL;
+	}
+
+	/* free trace buffer */
+	dma_trace_buffer_free(d);
+}
+
 /** Sends all pending DMA messages to mailbox (for emergencies) */
 void dma_trace_flush(void *t)
 {
