@@ -29,6 +29,77 @@
 #include <stddef.h>
 #include <stdint.h>
 
+/*
+ * HD-Audio DMA programming sequence
+ *
+ * START stream (Playback):
+ * 1. Host sends the DAI_CONFIG IPC with SOF_DAI_CONFIG_FLAGS_2_STEP_STOP_PAUSE flag along with
+ *    SOF_DAI_CONFIG_FLAGS_HW_PARAMS
+ * 2. Host sets DGCS.RUN bit for link DMA. This step would be skipped if link DMA is already
+ *    running with mixer-based pipelines
+ * 3. Host sets DGCS.RUN bit for host DMA
+ * 4. Host sends the STREAM_TRIG_START IPC to the DSP
+ * 5. FW starts the pipeline and sets DGCS.GEN bit to 1
+ *
+ * START stream (Capture):
+ * 1. Host sends the DAI_CONFIG IPC with SOF_DAI_CONFIG_FLAGS_2_STEP_STOP_PAUSE flag along with
+ *    SOF_DAI_CONFIG_FLAGS_HW_PARAMS
+ * 2. Host sets DGCS.RUN bit for host DMA
+ * 3. Host sends the STREAM_TRIG_START IPC to the DSP
+ * 4. FW starts the pipeline and sets DGCS.GEN bit to 1
+ * 5. Host sets DGCS.RUN bit for link DMA
+ *
+ * PAUSE_PUSH an active stream (Playback):
+ * 1. Host sends the STREAM_TRIG_PAUSE IPC to the DSP
+ * 2. FW pauses the pipeline but keeps the DGCS.GEN bit set to 1 for host DMA
+ * 3. Host clears DGCS.RUN bit for host DMA
+ * 4. Host clears DGCS.RUN bit for link DMA
+ * 5. Host sends the DAI_CONFIG IPC with only the SOF_DAI_CONFIG_FLAGS_PAUSE command flag
+ * 6. FW clears the DGCS.GEN bit for link DMA
+ *
+ * PAUSE_PUSH an active stream (Capture):
+ * 1. Host clears DGCS.RUN bit for link DMA
+ * 2. Host sends the DAI_CONFIG IPC with only the SOF_DAI_CONFIG_FLAGS_PAUSE command flag
+ * 3. FW clears the DGCS.GEN bit for link DMA
+ * 4. Host sends the STREAM_TRIG_PAUSE IPC to the DSP
+ * 5. FW pauses the pipeline but keeps DGCS.GEN bit set to 1 for host DMA
+ * 6. Host clears DGCS.RUN bit for host DMA
+ *
+ * PAUSE_RELEASE a paused stream (Playback):
+ * 1. Host sets DGCS.RUN bit for link DMA
+ * 2. Host sets DGCS.RUN bit for host DMA
+ * 3. Host sends the STREAM_TRIG_PAUSE_RELEASE IPC to the DSP
+ * 4. FW releases the pipeline and sets the DGCS.GEN bit to 1
+ *
+ * PAUSE_RELEASE a paused stream (Capture):
+ * 1. Host sets DGCS.RUN bit for host DMA
+ * 2. Host sends the STREAM_TRIG_PAUSE_RELEASE IPC to the DSP
+ * 3. FW releases the pipeline and sets the DGCS.GEN bit to 1
+ * 4. Host sets DGCS.RUN bit for link DMA
+ *
+ * STOP an active/paused stream (Playback):
+ * 1. Host sends the STREAM_TRIG_STOP IPC to the DSP
+ * 2. FW stops the pipeline
+ * 3. Host clears the DGCS.RUN bit for host DMA
+ * 4. Host sends the PCM_FREE IPC
+ * 5. FW clears DGCS.GEN bit for host DMA during host component reset and checks DGCS.GBUSY bit
+ *    to ensure DMA is idle
+ * 6. Host clears DGCS.RUN bit for link DMA
+ * 7. Host sends the DAI_CONFIG IPC with the SOF_DAI_CONFIG_FLAGS_HW_FREE flag
+ * 8. FW clears the DGCS.GEN bit for link DMA and checks DGCS.GBUSY bit to ensure DMA is idle
+ *
+ * STOP an active/paused stream (Capture):
+ * 1. Host clears DGCS.RUN bit for link DMA
+ * 2. Host sends the DAI_CONFIG IPC with the SOF_DAI_CONFIG_FLAGS_HW_FREE flag
+ * 3. FW clears the DGCS.GEN bit for link DMA and checks GBUSY bit to ensure DMA is idle
+ * 4. Host sends the STREAM_TRIG_STOP IPC to the DSP
+ * 5. FW stops the pipeline
+ * 6. Host clears the DGCS.RUN bit for host DMA
+ * 7. Host sends the PCM_FREE IPC
+ * 8. FW clears DGCS.GEN bit for host DMA during host component reset and checks DGCS.GBUSY bit
+ *    to ensure DMA is idle
+ */
+
 /* ee12fa71-4579-45d7-bde2-b32c6893a122 */
 DECLARE_SOF_UUID("hda-dma", hda_dma_uuid, 0xee12fa71, 0x4579, 0x45d7,
 		 0xbd, 0xe2, 0xb3, 0x2c, 0x68, 0x93, 0xa1, 0x22);
