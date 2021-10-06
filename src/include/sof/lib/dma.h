@@ -220,6 +220,9 @@ struct dma_chan_data {
 	/* true if this DMA channel is the scheduling source */
 	bool is_scheduling_source;
 
+	/* device specific data set by the device that requests the DMA channel */
+	void *dev_data;
+
 	void *priv_data;
 };
 
