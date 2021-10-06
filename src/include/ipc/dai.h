@@ -73,6 +73,9 @@
  */
 #define SOF_DAI_CONFIG_FLAGS_2_STEP_STOP BIT(0)
 
+#define SOF_DAI_QUIRK_IS_SET(flags, quirk) \
+	(((flags & SOF_DAI_CONFIG_FLAGS_QUIRK_MASK) >> SOF_DAI_CONFIG_FLAGS_QUIRK_SHIFT) & quirk)
+
 /** \brief Types of DAI */
 enum sof_ipc_dai_type {
 	SOF_DAI_INTEL_NONE = 0,		/**< None */
