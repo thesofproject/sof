@@ -263,6 +263,7 @@ void dai_dma_release(struct comp_dev *dev)
 		/* remove callback */
 		notifier_unregister(dev, dd->chan, NOTIFIER_ID_DMA_COPY);
 		dma_channel_put(dd->chan);
+		dd->chan->dev_data = NULL;
 		dd->chan = NULL;
 	}
 }
