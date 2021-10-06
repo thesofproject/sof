@@ -665,7 +665,12 @@ static int dai_reset(struct comp_dev *dev)
 
 	comp_info(dev, "dai_reset()");
 
-	dai_dma_release(dev);
+	/*
+	 * DMA channel release should be skipped now for DAI's that support the two-step stop option.
+	 * It will be done when the host sends the DAI_CONFIG IPC during hw_free.
+	 */
+	if (!dd->delayed_dma_stop)
+		dai_dma_release(dev);
 
 	dma_sg_free(&config->elem_array);
 
