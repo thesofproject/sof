@@ -179,6 +179,15 @@ struct dai_data {
 	void *dai_spec_config;	/* dai specific config from the host */
 
 	uint64_t wallclock;	/* wall clock at stream start */
+
+	/*
+	 * flag indicating two-step stop/pause for DAI comp and DAI DMA.
+	 * DAI stop occurs during STREAM_TRIG_STOP IPC and DMA stop during DAI_CONFIG IPC with
+	 * the SOF_DAI_CONFIG_FLAGS_HW_FREE flag.
+	 * DAI pause occurs during STREAM_TRIG_PAUSE IPC and DMA pause during DAI_CONFIG IPC with
+	 * the SOF_DAI_CONFIG_FLAGS_PAUSE flag.
+	 */
+	bool delayed_dma_stop;
 };
 
 struct dai {
