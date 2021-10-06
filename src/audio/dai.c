@@ -219,6 +219,7 @@ static void dai_free(struct comp_dev *dev)
 	if (dd->chan) {
 		notifier_unregister(dev, dd->chan, NOTIFIER_ID_DMA_COPY);
 		dma_channel_put(dd->chan);
+		dd->chan->dev_data = NULL;
 	}
 
 	dma_put(dd->dma);
@@ -598,6 +599,8 @@ static int dai_config_prepare(struct comp_dev *dev)
 		dd->chan = NULL;
 		return -EIO;
 	}
+
+	dd->chan->dev_data = dd;
 
 	comp_info(dev, "dai_config_prepare(): new configured dma channel index %d",
 		  dd->chan->index);
