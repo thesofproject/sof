@@ -714,7 +714,7 @@ static int ssp_set_config_tplg(struct dai *dai, struct ipc_config_dai *common_co
 	ssp->state[DAI_DIR_CAPTURE] = COMP_STATE_PREPARE;
 
 clk:
-	switch (config->flags & SOF_DAI_CONFIG_FLAGS_MASK) {
+	switch (config->flags & SOF_DAI_CONFIG_FLAGS_CMD_MASK) {
 	case SOF_DAI_CONFIG_FLAGS_HW_PARAMS:
 		if (ssp->params.clks_control & SOF_DAI_INTEL_SSP_CLKCTRL_MCLK_ES) {
 			ret = ssp_mclk_prepare_enable(dai);
