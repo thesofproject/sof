@@ -847,9 +847,12 @@ static int host_reset(struct comp_dev *dev)
 	comp_dbg(dev, "host_reset()");
 
 	if (hd->chan) {
+		dma_stop_delayed(hd->chan);
+
 		/* remove callback */
 		notifier_unregister(dev, hd->chan, NOTIFIER_ID_DMA_COPY);
 		dma_channel_put(hd->chan);
+		hd->chan = NULL;
 	}
 
 	/* free all DMA elements */
@@ -862,9 +865,6 @@ static int host_reset(struct comp_dev *dev)
 		buffer_free(hd->dma_buffer);
 		hd->dma_buffer = NULL;
 	}
-
-	/* reset dma channel as we have put it */
-	hd->chan = NULL;
 
 	host_pointer_reset(dev);
 	hd->copy_type = COMP_COPY_NORMAL;
