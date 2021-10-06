@@ -293,15 +293,34 @@ int dai_config(struct comp_dev *dev, struct ipc_config_dai *common_config,
 		/* set the delayed_dma_stop flag */
 		if (SOF_DAI_QUIRK_IS_SET(config->flags, SOF_DAI_CONFIG_FLAGS_2_STEP_STOP))
 			dd->delayed_dma_stop = true;
+
+		if (dd->chan) {
+			comp_info(dev, "dai_config(): Configured. dma channel index %d, ignore...",
+				  dd->chan->index);
+			return 0;
+		}
 		break;
+	case SOF_DAI_CONFIG_FLAGS_HW_FREE:
+		if (!dd->chan)
+			return 0;
+
+		/* stop DMA and reset config for two-step stop DMA */
+		if (dd->delayed_dma_stop) {
+			ret = dma_stop_delayed(dd->chan);
+			if (ret < 0)
+				return ret;
+
+			dai_dma_release(dev);
+		}
+
+		return 0;
+	case SOF_DAI_CONFIG_FLAGS_PAUSE:
+		if (!dd->chan)
+			return 0;
+
+		return dma_stop_delayed(dd->chan);
 	default:
 		break;
-	}
-
-	if (dd->chan) {
-		comp_info(dev, "dai_config(): Configured. dma channel index %d, ignore...",
-			  dd->chan->index);
-		return 0;
 	}
 
 	if (config->group_id) {
