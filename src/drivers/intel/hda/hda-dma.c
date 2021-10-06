@@ -14,6 +14,7 @@
 #include <sof/lib/alloc.h>
 #include <sof/lib/clk.h>
 #include <sof/lib/cpu.h>
+#include <sof/lib/dai.h>
 #include <sof/lib/dma.h>
 #include <sof/lib/pm_runtime.h>
 #include <sof/lib/notifier.h>
@@ -148,7 +149,7 @@ struct hda_chan_data {
 #endif
 };
 
-static int hda_dma_stop(struct dma_chan_data *channel);
+static int hda_dma_stop_common(struct dma_chan_data *channel);
 
 static inline void hda_dma_inc_fp(struct dma_chan_data *chan,
 				  uint32_t value)
@@ -570,27 +571,7 @@ static int hda_dma_release(struct dma_chan_data *channel)
 	return 0;
 }
 
-static int hda_dma_pause(struct dma_chan_data *channel)
-{
-	uint32_t flags;
-
-	irq_local_disable(flags);
-
-	tr_dbg(&hdma_tr, "hda-dmac: %d channel %d -> pause",
-	       channel->dma->plat_data.id, channel->index);
-
-	if (channel->status != COMP_STATE_ACTIVE)
-		goto out;
-
-	/* stop the channel */
-	hda_dma_stop(channel);
-
-out:
-	irq_local_enable(flags);
-	return 0;
-}
-
-static int hda_dma_stop(struct dma_chan_data *channel)
+static int hda_dma_stop_common(struct dma_chan_data *channel)
 {
 	struct hda_chan_data *hda_chan;
 	uint32_t flags;
@@ -622,6 +603,40 @@ static int hda_dma_stop(struct dma_chan_data *channel)
 
 	irq_local_enable(flags);
 	return 0;
+}
+
+static int hda_dma_link_stop(struct dma_chan_data *channel)
+{
+	struct dai_data *dd = channel->dev_data;
+
+	if (!dd) {
+		tr_err(&hdma_tr, "hda-dmac: %d channel %d no device data",
+		       channel->dma->plat_data.id, channel->index);
+		return -EINVAL;
+	}
+
+	/*
+	 * The delayed_dma_stop flag will be set with the newer kernel and DMA will be stopped during
+	 * reset. With older kernel, the DMA will be stopped during the stop/pause trigger.
+	 */
+	if (!dd->delayed_dma_stop)
+		return hda_dma_stop_common(channel);
+
+	return 0;
+}
+
+static int hda_dma_link_pause(struct dma_chan_data *channel)
+{
+	/*
+	 * with two-step pause, DMA will be stopped when the DAI_CONFIG IPC is sent with the
+	 * SOF_DAI_CONFIG_FLAGS_TWO_STEP_STOP flag
+	 */
+	return hda_dma_link_stop(channel);
+}
+
+static int hda_dma_stop_delayed(struct dma_chan_data *channel)
+{
+	return hda_dma_stop_common(channel);
 }
 
 /* fill in "status" with current DMA channel state and position */
@@ -974,7 +989,7 @@ const struct dma_ops hda_host_dma_ops = {
 	.channel_get		= hda_dma_channel_get,
 	.channel_put		= hda_dma_channel_put,
 	.start			= hda_dma_start,
-	.stop			= hda_dma_stop,
+	.stop_delayed		= hda_dma_stop_delayed,
 	.copy			= hda_dma_host_copy,
 	.status			= hda_dma_status,
 	.set_config		= hda_dma_set_config,
@@ -991,9 +1006,10 @@ const struct dma_ops hda_link_dma_ops = {
 	.channel_get		= hda_dma_channel_get,
 	.channel_put		= hda_dma_channel_put,
 	.start			= hda_dma_start,
-	.stop			= hda_dma_stop,
+	.stop			= hda_dma_link_stop,
+	.stop_delayed		= hda_dma_stop_delayed,
 	.copy			= hda_dma_link_copy,
-	.pause			= hda_dma_pause,
+	.pause			= hda_dma_link_pause,
 	.release		= hda_dma_release,
 	.status			= hda_dma_status,
 	.set_config		= hda_dma_set_config,
