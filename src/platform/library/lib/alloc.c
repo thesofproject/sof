@@ -45,7 +45,9 @@ void *rbrealloc_align(void *ptr, uint32_t flags, uint32_t caps, size_t bytes,
 
 void heap_trace(struct mm_heap *heap, int size)
 {
+#if MALLOC_DEBUG
 	malloc_info(0, stdout);
+#endif
 }
 
 void heap_trace_all(int force)
