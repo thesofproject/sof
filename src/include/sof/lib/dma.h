@@ -311,7 +311,10 @@ static inline int dma_start(struct dma_chan_data *channel)
 
 static inline int dma_stop(struct dma_chan_data *channel)
 {
-	return channel->dma->ops->stop(channel);
+	if (channel->dma->ops->stop)
+		return channel->dma->ops->stop(channel);
+
+	return 0;
 }
 
 /** \defgroup sof_dma_copy_func static int dma_copy (struct dma_chan_data * channel, int bytes, uint32_t flags)
