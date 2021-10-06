@@ -278,9 +278,34 @@ static int dma_trace_start(struct dma_trace_data *d)
 		return -ENODEV;
 	}
 
-	err = dma_copy_set_stream_tag(&d->dc, d->stream_tag);
+	if (d->dc.chan) {
+		/* We already have DMA channel for dtrace, stop it */
+		mtrace_printf(LOG_LEVEL_WARNING,
+			      "dma_trace_start(): DMA reconfiguration (active stream_tag: %u)",
+			      d->active_stream_tag);
+
+		err = dma_stop(d->dc.chan);
+		if (err < 0) {
+			mtrace_printf(LOG_LEVEL_ERROR,
+				      "dma_trace_start(): DMA channel failed to stop");
+		} else if (d->active_stream_tag != d->stream_tag) {
+			/* Re-request a channel if different tag is provided */
+			mtrace_printf(LOG_LEVEL_WARNING,
+				      "dma_trace_start(): stream_tag change from %u to %u",
+				      d->active_stream_tag, d->stream_tag);
+
+			dma_channel_put(d->dc.chan);
+			d->dc.chan = NULL;
+			err = dma_copy_set_stream_tag(&d->dc, d->stream_tag);
+		}
+	} else {
+		err = dma_copy_set_stream_tag(&d->dc, d->stream_tag);
+	}
+
 	if (err < 0)
 		return err;
+
+	d->active_stream_tag = d->stream_tag;
 
 	/* size of every trace record */
 	elem_size = sizeof(uint64_t) * 2;
