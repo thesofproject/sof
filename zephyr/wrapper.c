@@ -153,12 +153,6 @@ static void *heap_alloc_aligned_cached(struct k_heap *h, size_t min_align, size_
 	ptr = heap_alloc_aligned(h, align, aligned_size);
 	if (ptr) {
 		ptr = uncache_to_cache(ptr);
-
-		/*
-		 * Heap can be used by different cores, so cache
-		 * needs to be invalidated before next user
-		 */
-		z_xtensa_cache_inv(ptr, aligned_size);
 	}
 
 	return ptr;
@@ -170,6 +164,11 @@ static void *heap_alloc_aligned_cached(struct k_heap *h, size_t min_align, size_
 static void heap_free(struct k_heap *h, void *mem)
 {
 	k_spinlock_key_t key = k_spin_lock(&h->lock);
+
+#ifdef ENABLE_CACHED_HEAP
+	z_xtensa_cache_flush_inv(z_soc_cached_ptr(mem),
+				 sys_heap_usable_size(h, mem));
+#endif
 
 	sys_heap_free(&h->heap, mem);
 
