@@ -160,6 +160,7 @@ struct dma_ops {
 
 	int (*start)(struct dma_chan_data *channel);
 	int (*stop)(struct dma_chan_data *channel);
+	int (*stop_delayed)(struct dma_chan_data *channel);
 	int (*copy)(struct dma_chan_data *channel, int bytes, uint32_t flags);
 	int (*pause)(struct dma_chan_data *channel);
 	int (*release)(struct dma_chan_data *channel);
@@ -284,7 +285,8 @@ void dma_put(struct dma *dma);
  * 4) dma_start()
  *   ... DMA now running ...
  * 5) dma_stop()
- * 6) dma_channel_put()
+ * 6) dma_stop_delayed()
+ * 7) dma_channel_put()
  */
 
 static inline struct dma_chan_data *dma_channel_get(struct dma *dma,
@@ -313,6 +315,14 @@ static inline int dma_stop(struct dma_chan_data *channel)
 {
 	if (channel->dma->ops->stop)
 		return channel->dma->ops->stop(channel);
+
+	return 0;
+}
+
+static inline int dma_stop_delayed(struct dma_chan_data *channel)
+{
+	if (channel->dma->ops->stop_delayed)
+		return channel->dma->ops->stop_delayed(channel);
 
 	return 0;
 }
