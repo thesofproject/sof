@@ -150,11 +150,8 @@ build_all()
 		case "$platform" in
 			apl)
 				PLAT_CONFIG='intel_adsp_cavs15'
-				# XCC build runs out of memory, tracked as
-				# https://github.com/thesofproject/sof/issues/4645
-				unset XTENSA_TOOLS_ROOT
-				#XTENSA_CORE="X4H3I16w2D48w3a_2017_8"
-				#XTENSA_TOOLS_VERSION="RG-2017.8-linux"
+				XTENSA_CORE="X4H3I16w2D48w3a_2017_8"
+				XTENSA_TOOLS_VERSION="RG-2017.8-linux"
 				;;
 			cnl)
 				PLAT_CONFIG='intel_adsp_cavs18'
