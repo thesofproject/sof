@@ -80,7 +80,11 @@ __section(".heap_mem") static uint8_t __aligned(64) heapmem[HEAPMEM_SIZE];
  */
 #if (CONFIG_HP_MEMORY_BANKS < 16)
 /* e.g. APL */
+#if defined __XCC__
+#define	HEAP_SIZE	0x28000
+#else
 #define	HEAP_SIZE	0x30000
+#endif
 #elif (CONFIG_HP_MEMORY_BANKS < 30)
 /* e.g. JSL */
 #define	HEAP_SIZE	0x80000
