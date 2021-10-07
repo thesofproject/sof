@@ -306,16 +306,12 @@ static inline void dma_channel_put(struct dma_chan_data *channel)
 
 static inline int dma_start(struct dma_chan_data *channel)
 {
-	int ret = channel->dma->ops->start(channel);
-
-	return ret;
+	return channel->dma->ops->start(channel);
 }
 
 static inline int dma_stop(struct dma_chan_data *channel)
 {
-	int ret = channel->dma->ops->stop(channel);
-
-	return ret;
+	return channel->dma->ops->stop(channel);
 }
 
 /** \defgroup sof_dma_copy_func static int dma_copy (struct dma_chan_data * channel, int bytes, uint32_t flags)
@@ -327,9 +323,7 @@ static inline int dma_stop(struct dma_chan_data *channel)
 static inline int dma_copy(struct dma_chan_data *channel, int bytes,
 			   uint32_t flags)
 {
-	int ret = channel->dma->ops->copy(channel, bytes, flags);
-
-	return ret;
+	return channel->dma->ops->copy(channel, bytes, flags);
 }
 /** @} */
 
@@ -352,135 +346,97 @@ static inline int dma_release(struct dma_chan_data *channel)
 static inline int dma_status(struct dma_chan_data *channel,
 			     struct dma_chan_status *status, uint8_t direction)
 {
-	int ret = channel->dma->ops->status(channel, status, direction);
-
-	return ret;
+	return channel->dma->ops->status(channel, status, direction);
 }
 
 static inline int dma_set_config(struct dma_chan_data *channel,
 				 struct dma_sg_config *config)
 {
-	int ret = channel->dma->ops->set_config(channel, config);
-
-	return ret;
+	return channel->dma->ops->set_config(channel, config);
 }
 
 static inline int dma_pm_context_restore(struct dma *dma)
 {
-	int ret = dma->ops->pm_context_restore(dma);
-
-	return ret;
+	return dma->ops->pm_context_restore(dma);
 }
 
 static inline int dma_pm_context_store(struct dma *dma)
 {
-	int ret = dma->ops->pm_context_store(dma);
-
-	return ret;
+	return dma->ops->pm_context_store(dma);
 }
 
 static inline int dma_probe(struct dma *dma)
 {
-	int ret = dma->ops->probe(dma);
-
-	return ret;
+	return dma->ops->probe(dma);
 }
 
 static inline int dma_remove(struct dma *dma)
 {
-	int ret = dma->ops->remove(dma);
-
-	return ret;
+	return dma->ops->remove(dma);
 }
 
 static inline int dma_get_data_size(struct dma_chan_data *channel,
 				    uint32_t *avail, uint32_t *free)
 {
-	int ret = channel->dma->ops->get_data_size(channel, avail, free);
-
-	return ret;
+	return channel->dma->ops->get_data_size(channel, avail, free);
 }
 
 static inline int dma_get_attribute(struct dma *dma, uint32_t type,
 				    uint32_t *value)
 {
-	int ret = dma->ops->get_attribute(dma, type, value);
-
-	return ret;
+	return dma->ops->get_attribute(dma, type, value);
 }
 
 static inline int dma_interrupt(struct dma_chan_data *channel,
 				enum dma_irq_cmd cmd)
 {
-	int ret = channel->dma->ops->interrupt(channel, cmd);
-
-	return ret;
+	return channel->dma->ops->interrupt(channel, cmd);
 }
 
 /* DMA hardware register operations */
 static inline uint32_t dma_reg_read(struct dma *dma, uint32_t reg)
 {
-	uint32_t val;
-
-	val = io_reg_read(dma_base(dma) + reg);
-
-	return val;
+	return io_reg_read(dma_base(dma) + reg);
 }
 
 static inline uint16_t dma_reg_read16(struct dma *dma, uint32_t reg)
 {
-	uint16_t val;
-
-	val = io_reg_read16(dma_base(dma) + reg);
-
-	return val;
+	return io_reg_read16(dma_base(dma) + reg);
 }
 
 static inline void dma_reg_write(struct dma *dma, uint32_t reg, uint32_t value)
 {
 	io_reg_write(dma_base(dma) + reg, value);
-
 }
 
 static inline void dma_reg_write16(struct dma *dma, uint32_t reg,
 				   uint16_t value)
 {
 	io_reg_write16(dma_base(dma) + reg, value);
-
 }
 
 static inline void dma_reg_update_bits(struct dma *dma, uint32_t reg,
 				       uint32_t mask, uint32_t value)
 {
 	io_reg_update_bits(dma_base(dma) + reg, mask, value);
-
 }
 
 static inline uint32_t dma_chan_reg_read(struct dma_chan_data *channel,
 					 uint32_t reg)
 {
-	uint32_t val;
-
-	val = io_reg_read(dma_chan_base(channel->dma, channel->index) + reg);
-
-	return val;
+	return io_reg_read(dma_chan_base(channel->dma, channel->index) + reg);
 }
 
 static inline uint16_t dma_chan_reg_read16(struct dma_chan_data *channel,
 					   uint32_t reg)
 {
-	uint16_t val;
-
-	val = io_reg_read16(dma_chan_base(channel->dma, channel->index) + reg);
-
-	return val;
+	return io_reg_read16(dma_chan_base(channel->dma, channel->index) + reg);
 }
 
 static inline void dma_chan_reg_write(struct dma_chan_data *channel,
 				      uint32_t reg, uint32_t value)
 {
 	io_reg_write(dma_chan_base(channel->dma, channel->index) + reg, value);
-
 }
 
 static inline void dma_chan_reg_write16(struct dma_chan_data *channel,
@@ -488,7 +444,6 @@ static inline void dma_chan_reg_write16(struct dma_chan_data *channel,
 {
 	io_reg_write16(dma_chan_base(channel->dma, channel->index) + reg,
 		       value);
-
 }
 
 static inline void dma_chan_reg_update_bits(struct dma_chan_data *channel,
@@ -497,7 +452,6 @@ static inline void dma_chan_reg_update_bits(struct dma_chan_data *channel,
 {
 	io_reg_update_bits(dma_chan_base(channel->dma, channel->index) + reg,
 			   mask, value);
-
 }
 
 static inline void dma_chan_reg_update_bits16(struct dma_chan_data *channel,
@@ -506,14 +460,11 @@ static inline void dma_chan_reg_update_bits16(struct dma_chan_data *channel,
 {
 	io_reg_update_bits16(dma_chan_base(channel->dma, channel->index) + reg,
 			     mask, value);
-
 }
 
 static inline bool dma_is_scheduling_source(struct dma_chan_data *channel)
 {
-	bool ret = channel->is_scheduling_source;
-
-	return ret;
+	return channel->is_scheduling_source;
 }
 
 static inline void dma_sg_init(struct dma_sg_elem_array *ea)
