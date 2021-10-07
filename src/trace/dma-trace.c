@@ -300,15 +300,24 @@ static int dma_trace_start(struct dma_trace_data *d)
 			   config.direction,
 			   elem_num, elem_size, elem_addr, 0);
 	if (err < 0)
-		return err;
+		goto err_alloc;
 
 	err = dma_set_config(d->dc.chan, &config);
 	if (err < 0) {
 		mtrace_printf(LOG_LEVEL_ERROR, "dma_set_config() failed: %d", err);
-		return err;
+		goto err_config;
 	}
 
 	err = dma_start(d->dc.chan);
+	if (err == 0)
+		return 0;
+
+err_config:
+	dma_sg_free(&config.elem_array);
+
+err_alloc:
+	dma_channel_put(d->dc.chan);
+	d->dc.chan = NULL;
 
 	return err;
 }
