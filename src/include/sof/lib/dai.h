@@ -363,9 +363,7 @@ void dai_put(struct dai *dai);
 static inline int dai_set_config(struct dai *dai, struct ipc_config_dai *config,
 				 void *spec_config)
 {
-	int ret = dai->drv->ops.set_config(dai, config, spec_config);
-
-	return ret;
+	return dai->drv->ops.set_config(dai, config, spec_config);
 }
 
 /**
@@ -373,9 +371,7 @@ static inline int dai_set_config(struct dai *dai, struct ipc_config_dai *config,
  */
 static inline int dai_trigger(struct dai *dai, int cmd, int direction)
 {
-	int ret = dai->drv->ops.trigger(dai, cmd, direction);
-
-	return ret;
+	return dai->drv->ops.trigger(dai, cmd, direction);
 }
 
 /**
@@ -383,9 +379,7 @@ static inline int dai_trigger(struct dai *dai, int cmd, int direction)
  */
 static inline int dai_pm_context_store(struct dai *dai)
 {
-	int ret = dai->drv->ops.pm_context_store(dai);
-
-	return ret;
+	return dai->drv->ops.pm_context_store(dai);
 }
 
 /**
@@ -393,9 +387,7 @@ static inline int dai_pm_context_store(struct dai *dai)
  */
 static inline int dai_pm_context_restore(struct dai *dai)
 {
-	int ret = dai->drv->ops.pm_context_restore(dai);
-
-	return ret;
+	return dai->drv->ops.pm_context_restore(dai);
 }
 
 /**
@@ -405,9 +397,7 @@ static inline int dai_get_hw_params(struct dai *dai,
 				    struct sof_ipc_stream_params *params,
 				    int dir)
 {
-	int ret = dai->drv->ops.get_hw_params(dai, params, dir);
-
-	return ret;
+	return dai->drv->ops.get_hw_params(dai, params, dir);
 }
 
 /**
@@ -416,12 +406,10 @@ static inline int dai_get_hw_params(struct dai *dai,
 static inline int dai_hw_params(struct dai *dai,
 				struct sof_ipc_stream_params *params)
 {
-	int ret = 0;
-
 	if (dai->drv->ops.hw_params)
-		ret = dai->drv->ops.hw_params(dai, params);
+		return dai->drv->ops.hw_params(dai, params);
 
-	return ret;
+	return 0;
 }
 
 /**
@@ -430,9 +418,7 @@ static inline int dai_hw_params(struct dai *dai,
 static inline int dai_get_handshake(struct dai *dai, int direction,
 				    int stream_id)
 {
-	int ret = dai->drv->ops.get_handshake(dai, direction, stream_id);
-
-	return ret;
+	return dai->drv->ops.get_handshake(dai, direction, stream_id);
 }
 
 /**
@@ -441,9 +427,7 @@ static inline int dai_get_handshake(struct dai *dai, int direction,
 static inline int dai_get_fifo(struct dai *dai, int direction,
 			       int stream_id)
 {
-	int ret = dai->drv->ops.get_fifo(dai, direction, stream_id);
-
-	return ret;
+	return dai->drv->ops.get_fifo(dai, direction, stream_id);
 }
 
 /**
@@ -451,9 +435,7 @@ static inline int dai_get_fifo(struct dai *dai, int direction,
  */
 static inline int dai_probe(struct dai *dai)
 {
-	int ret = dai->drv->ops.probe(dai);
-
-	return ret;
+	return dai->drv->ops.probe(dai);
 }
 
 /**
@@ -461,9 +443,7 @@ static inline int dai_probe(struct dai *dai)
  */
 static inline int dai_remove(struct dai *dai)
 {
-	int ret = dai->drv->ops.remove(dai);
-
-	return ret;
+	return dai->drv->ops.remove(dai);
 }
 
 /**
@@ -509,9 +489,7 @@ static inline void dai_write(struct dai *dai, uint32_t reg, uint32_t value)
 
 static inline uint32_t dai_read(struct dai *dai, uint32_t reg)
 {
-	uint32_t val = io_reg_read(dai_base(dai) + reg);
-
-	return val;
+	return io_reg_read(dai_base(dai) + reg);
 }
 
 static inline void dai_update_bits(struct dai *dai, uint32_t reg,
