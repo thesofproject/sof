@@ -558,7 +558,6 @@ static int hda_dma_release(struct dma_chan_data *channel)
 {
 	struct hda_chan_data *hda_chan = dma_chan_get_data(channel);
 	uint32_t flags;
-	int ret = 0;
 
 	irq_local_disable(flags);
 
@@ -568,7 +567,7 @@ static int hda_dma_release(struct dma_chan_data *channel)
 	hda_chan->state |= HDA_STATE_RELEASE;
 
 	irq_local_enable(flags);
-	return ret;
+	return 0;
 }
 
 static int hda_dma_pause(struct dma_chan_data *channel)
@@ -944,8 +943,6 @@ unlock:
 static int hda_dma_get_attribute(struct dma *dma, uint32_t type,
 				 uint32_t *value)
 {
-	int ret = 0;
-
 	switch (type) {
 	case DMA_ATTR_BUFFER_ALIGNMENT:
 		*value = HDA_DMA_BUFFER_ALIGNMENT;
@@ -960,11 +957,10 @@ static int hda_dma_get_attribute(struct dma *dma, uint32_t type,
 		*value = HDA_DMA_BUFFER_PERIOD_COUNT;
 		break;
 	default:
-		ret = -EINVAL;
-		break;
+		return -EINVAL;
 	}
 
-	return ret;
+	return 0;
 }
 
 static int hda_dma_interrupt(struct dma_chan_data *channel,
