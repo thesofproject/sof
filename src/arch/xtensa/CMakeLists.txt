@@ -386,7 +386,7 @@ add_custom_target(
 	COMMAND ${PROJECT_BINARY_DIR}/smex_ep/build/smex
 		-l sof-${fw_name}.ldc
 		sof-${fw_name}
-	DEPENDS sof_dump smex_ep
+	DEPENDS sof_post_process smex_ep
 	VERBATIM
 	USES_TERMINAL
 )
@@ -460,7 +460,7 @@ if(MEU_PATH OR DEFINED MEU_NO_SIGN) # Don't sign with rimage
 			-e
 			${bootloader_binary_path}
 			sof-${fw_name}
-		DEPENDS sof_dump rimage_ep
+		DEPENDS sof_post_process rimage_ep
 		VERBATIM
 		USES_TERMINAL
 	)
@@ -505,7 +505,7 @@ else() # sign with rimage
 			-e
 			${bootloader_binary_path}
 			sof-${fw_name}
-		DEPENDS sof_dump rimage_ep
+		DEPENDS sof_post_process rimage_ep
 		VERBATIM
 		USES_TERMINAL
 	)
@@ -550,7 +550,7 @@ if(MEU_NO_SIGN)
 		COMMAND ${CMAKE_COMMAND} -E copy sof-${fw_name}.ri.met ${PROJECT_BINARY_DIR}/sof-${fw_output_name}.ri.met
 		COMMAND ${CMAKE_COMMAND} -E copy sof-${fw_name}.ri.uns ${PROJECT_BINARY_DIR}/sof.ri.uns
 		COMMAND ${CMAKE_COMMAND} -E copy sof-${fw_name}.ri.met ${PROJECT_BINARY_DIR}/sof.ri.met
-		DEPENDS run_meu bin_extras glue_binary_files
+		DEPENDS run_meu bin_extras glue_binary_files sof_dump
 		VERBATIM
 		USES_TERMINAL
 	)
@@ -559,7 +559,7 @@ else()
 		bin ALL
 		COMMAND ${CMAKE_COMMAND} -E copy sof-${fw_name}.ri ${PROJECT_BINARY_DIR}/sof-${fw_output_name}.ri
 		COMMAND ${CMAKE_COMMAND} -E copy sof-${fw_name}.ri ${PROJECT_BINARY_DIR}/sof.ri
-		DEPENDS run_meu bin_extras glue_binary_files
+		DEPENDS run_meu bin_extras glue_binary_files sof_dump
 		VERBATIM
 		USES_TERMINAL
 	)
