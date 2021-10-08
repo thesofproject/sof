@@ -154,14 +154,18 @@ static int pipeline_comp_hw_params(struct comp_dev *current,
 	pipe_dbg(current->pipeline, "pipeline_comp_hw_params(), current->comp.id = %u, dir = %u",
 		 dev_comp_id(current), dir);
 
-	pipeline_for_each_comp(current, ctx, dir);
+	ret = pipeline_for_each_comp(current, ctx, dir);
+	if (ret < 0)
+		return ret;
 
 	/* Fetch hardware stream parameters from DAI component */
 	if (dev_comp_type(current) == SOF_COMP_DAI) {
 		ret = comp_dai_get_hw_params(current,
 					     &ppl_data->params->params, dir);
 		if (ret < 0) {
-			pipe_err(current->pipeline, "pipeline_find_dai_comp(): comp_dai_get_hw_params() error.");
+			pipe_err(current->pipeline,
+				 "pipeline_comp_hw_params(): failed getting DAI parameters: %d",
+				 ret);
 			return ret;
 		}
 	}
@@ -169,12 +173,15 @@ static int pipeline_comp_hw_params(struct comp_dev *current,
 	/* set buffer parameters */
 	if (calling_buf) {
 		buffer_lock(calling_buf, &flags);
-		buffer_set_params(calling_buf, &ppl_data->params->params,
-				  BUFFER_UPDATE_IF_UNSET);
+		ret = buffer_set_params(calling_buf, &ppl_data->params->params,
+					BUFFER_UPDATE_IF_UNSET);
 		buffer_unlock(calling_buf, flags);
+		if (ret < 0)
+			pipe_err(current->pipeline,
+				 "pipeline_comp_hw_params(): buffer_set_params(): %d", ret);
 	}
 
-	return 0;
+	return ret;
 }
 
 /* Send pipeline component params from host to endpoints.
