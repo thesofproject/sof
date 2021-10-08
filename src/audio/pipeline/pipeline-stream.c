@@ -383,7 +383,7 @@ int pipeline_trigger_run(struct pipeline *p, struct comp_dev *host, int cmd)
 			p->trigger.delay = (data.delay_ms * 1000 + p->period - 1) / p->period;
 			p->trigger.cmd = data.cmd;
 
-			return ret;
+			return 0;
 		}
 
 		list_init(&walk_ctx.pipelines);
@@ -396,6 +396,8 @@ int pipeline_trigger_run(struct pipeline *p, struct comp_dev *host, int cmd)
 		if (ret < 0)
 			pipe_err(p, "pipeline_trigger(): ret = %d, host->comp.id = %u, cmd = %d",
 				 ret, dev_comp_id(host), cmd);
+		else if (ret == PPL_STATUS_PATH_STOP)
+			ret = 0;
 
 		if (pipeline_is_timer_driven(p))
 			return ret;
