@@ -241,15 +241,19 @@ endif()
 target_link_libraries(sof_ld_flags INTERFACE "-Wl,-Map=sof.map")
 target_link_libraries(sof_ld_flags INTERFACE "-T${PROJECT_BINARY_DIR}/${platform_ld_script}")
 
+# Copy the linker output from the top-level to this subdirectory
 add_custom_target(
 	prepare_sof_post_process
+	# "global" .ELF target used everywhere and declared and produced at the top
 	DEPENDS sof
-	COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_BINARY_DIR}/sof sof-${fw_name}
+	COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_BINARY_DIR}/sof sof-pre
 )
 
 # contains steps that should be performed before fw image is ready for being
 # processed by tools like rimage and MEU
-add_custom_target(sof_post_process DEPENDS prepare_sof_post_process)
+add_custom_target(sof_post_process
+	DEPENDS process_base_module
+)
 
 # contains extra output that should be generated for bin target
 add_custom_target(bin_extras)
@@ -295,18 +299,24 @@ if(build_bootloader)
 
 	set(bootloader_binary_path bootloader-${fw_name})
 
+	# Add 'base_module' section to sof ELF
 	add_custom_target(
 		process_base_module
 		COMMAND ${CMAKE_OBJCOPY} -O binary -j .data ${PROJECT_BINARY_DIR}/src/platform/${platform_folder}/base_module mod-${fw_name}.bin
-		COMMAND ${CMAKE_OBJCOPY} --add-section .module=mod-${fw_name}.bin --set-section-flags .module=load,readonly sof-${fw_name}
+		COMMAND ${CMAKE_OBJCOPY} --add-section .module=mod-${fw_name}.bin --set-section-flags .module=load,readonly sof-pre sof-${fw_name}
 		DEPENDS prepare_sof_post_process base_module bootloader_dump
 		VERBATIM
 		USES_TERMINAL
 	)
 
-	add_dependencies(sof_post_process process_base_module)
 else()
 	set(bootloader_binary_path)
+
+	# Do nothing / pass-through
+	add_custom_target(process_base_module
+		COMMAND ${CMAKE_COMMAND} -E copy sof-pre sof-${fw_name}
+		DEPENDS prepare_sof_post_process
+	)
 endif()
 
 if(CONFIG_BUILD_VM_ROM)
