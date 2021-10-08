@@ -392,7 +392,7 @@ int pipeline_for_each_comp(struct comp_dev *current,
 			buffer_lock(buffer, &flags);
 			buffer->walking = false;
 			buffer_unlock(buffer, flags);
-			if (err < 0)
+			if (err < 0 || err == PPL_STATUS_PATH_STOP)
 				return err;
 		}
 	}
