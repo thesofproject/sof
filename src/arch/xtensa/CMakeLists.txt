@@ -465,10 +465,6 @@ if(MEU_PATH OR DEFINED MEU_NO_SIGN) # Don't sign with rimage
 		USES_TERMINAL
 	)
 
-	if(CONFIG_TRACE)
-		add_dependencies(run_rimage run_smex)
-	endif()
-
 	if(NOT DEFINED MEU_FLAGS)
 		set(MEU_FLAGS
 			-f ${MEU_PATH}/generic_meu_conf.xml
@@ -509,10 +505,6 @@ else() # sign with rimage
 		VERBATIM
 		USES_TERMINAL
 	)
-
-	if (CONFIG_TRACE)
-		add_dependencies(run_rimage run_smex)
-	endif()
 
 	add_custom_target(run_meu DEPENDS run_rimage)
 endif() # sign with MEU / nothing / rimage
