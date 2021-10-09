@@ -453,6 +453,7 @@ static void free_block(void *ptr)
 	struct block_hdr *hdr;
 	void *cached_ptr = uncache_to_cache(ptr);
 	void *uncached_ptr = cache_to_uncache(ptr);
+	void *free_ptr;
 	int i;
 	int block;
 	int used_blocks;
@@ -465,13 +466,13 @@ static void free_block(void *ptr)
 	if (!heap) {
 		heap = get_heap_from_ptr(uncached_ptr);
 		if (!heap) {
-			tr_err(&mem_tr, "free_block(): invalid heap = %p, cpu = %d",
+			tr_err(&mem_tr, "free_block(): invalid heap, ptr = %p, cpu = %d",
 			       ptr, cpu_get_id());
 			return;
 		}
-		ptr = uncached_ptr;
+		free_ptr = uncached_ptr;
 	} else {
-		ptr = cached_ptr;
+		free_ptr = cached_ptr;
 	}
 
 	/* find block that ptr belongs to */
@@ -479,7 +480,7 @@ static void free_block(void *ptr)
 		block_map = &heap->map[i];
 
 		/* is ptr in this block */
-		if ((uint32_t)ptr < (block_map->base +
+		if ((uint32_t)free_ptr < (block_map->base +
 		    (block_map->block_size * block_map->count)))
 			break;
 
@@ -488,13 +489,13 @@ static void free_block(void *ptr)
 	if (i == heap->blocks) {
 
 		/* not found */
-		tr_err(&mem_tr, "free_block(): invalid ptr = %p cpu = %d",
-		       ptr, cpu_get_id());
+		tr_err(&mem_tr, "free_block(): invalid free_ptr = %p cpu = %d",
+		       free_ptr, cpu_get_id());
 		return;
 	}
 
 	/* calculate block header */
-	block = ((uint32_t)ptr - block_map->base) / block_map->block_size;
+	block = ((uint32_t)free_ptr - block_map->base) / block_map->block_size;
 
 	hdr = &block_map->block[block];
 
@@ -503,16 +504,24 @@ static void free_block(void *ptr)
 	 * be from different block since we got user pointer here
 	 * or null if header was not set)
 	 */
-	if (hdr->unaligned_ptr != ptr && hdr->unaligned_ptr) {
-		ptr = hdr->unaligned_ptr;
-		block = ((uint32_t)ptr - block_map->base)
+	if (hdr->unaligned_ptr != free_ptr && hdr->unaligned_ptr) {
+		free_ptr = hdr->unaligned_ptr;
+		block = ((uint32_t)free_ptr - block_map->base)
 			 / block_map->block_size;
 		hdr = &block_map->block[block];
 	}
 
 	/* report an error if ptr is not aligned to block */
-	if (block_map->base + block_map->block_size * block != (uint32_t)ptr)
+	if (block_map->base + block_map->block_size * block != (uint32_t)free_ptr)
 		panic(SOF_IPC_PANIC_MEM);
+
+	/* There may still be live dirty cache lines in the region
+	 * on the current core. Those must be invalidated, otherwise
+	 * they will be evicted from the cache at some point in the
+	 * future, on top of the memory region now being used for
+	 * different purposes on another core.
+	 */
+	dcache_writeback_invalidate_region(ptr, block_map->block_size * hdr->size);
 
 	heap_is_full = !block_map->free_count;
 
