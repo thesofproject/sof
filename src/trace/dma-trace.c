@@ -407,6 +407,10 @@ int dma_trace_enable(struct dma_trace_data *d)
 {
 	int err;
 
+	/* the existence of the trace buffer means the dma trace already initialized */
+	if (d->dmatb.addr)
+		return 0;
+
 	/* initialize dma trace buffer */
 	err = dma_trace_buffer_init(d);
 
