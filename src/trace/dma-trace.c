@@ -224,6 +224,10 @@ static int dma_trace_buffer_init(struct dma_trace_data *d)
 	void *buf;
 	unsigned int flags;
 
+	/* return if already initialized */
+	if (buffer->addr)
+		return 0;
+
 	/* allocate new buffer */
 	buf = rballoc(0, SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_DMA,
 		      DMA_TRACE_LOCAL_SIZE);
