@@ -94,7 +94,8 @@ void *rmalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes);
 void *rzalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes);
 
 /**
- * Allocates memory block from SOF_MEM_ZONE_BUFFER.
+ * Allocates memory block from SOF_MEM_ZONE_BUFFER,
+ * the allocated buffer will be initialized to 0s.
  * @param flags Flags, see SOF_MEM_FLAG_...
  * @param caps Capabilities, see SOF_MEM_CAPS_...
  * @param bytes Size in bytes.
