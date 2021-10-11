@@ -184,7 +184,11 @@ void *rmalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
 	if (zone_is_cached(zone))
 		return heap_alloc_aligned_cached(&sof_heap, 0, bytes);
 
-	return heap_alloc_aligned(&sof_heap, 8, bytes);
+	/*
+	 * XTOS alloc implementation has used dcache alignment,
+	 * so SOF application code is expecting this behaviour.
+	 */
+	return heap_alloc_aligned(&sof_heap, PLATFORM_DCACHE_ALIGN, bytes);
 }
 
 /* Use SOF_MEM_ZONE_BUFFER at the moment */
