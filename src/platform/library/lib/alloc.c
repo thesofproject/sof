@@ -34,7 +34,7 @@ void rfree(void *ptr)
 void *rballoc_align(uint32_t flags, uint32_t caps, size_t bytes,
 		    uint32_t alignment)
 {
-	return malloc(bytes);
+	return calloc(bytes, 1);
 }
 
 void *rbrealloc_align(void *ptr, uint32_t flags, uint32_t caps, size_t bytes,
