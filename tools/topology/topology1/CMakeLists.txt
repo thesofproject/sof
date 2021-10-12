@@ -86,7 +86,7 @@ set(TPLGS
 	"sof-cavs-nocodec\;sof-tgl-nocodec\;-DPLATFORM=tgl\;-DDYNAMIC=1"
 	"sof-cavs-nocodec\;sof-tgl-h-nocodec\;-DPLATFORM=tgl\;-DNCORES=2\;-DDYNAMIC=1"
 	"sof-cavs-nocodec\;sof-ehl-nocodec\;-DPLATFORM=ehl\;-DDYNAMIC=1"
-	"sof-cavs-nocodec\;sof-adl-nocodec\;-DPLATFORM=adl\;-DDYNAMIC=1"
+	"sof-cavs-nocodec\;sof-adl-nocodec\;-DPLATFORM=adl\;-DDMIC_48k_CORE_ID=1\;-DSSP0_CORE_ID=2\;-DSSP1_CORE_ID=3\;-DDYNAMIC=1"
 	"sof-icl-dmic-4ch\;sof-icl-dmic-4ch"
 	# sof-icl-r700 is kept for compatibility with CI and previous versions of the kernel.
 	"sof-icl-rt700\;sof-icl-rt700\;-DCHANNELS=4\;-DPLATFORM=icl\;-DDMICPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_48khz.m4\;-DDMIC16KPROC_FILTER1=eq_iir_coef_highpass_40hz_20db_16khz.m4"
