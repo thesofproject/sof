@@ -231,8 +231,13 @@ int ipc_init(struct sof *sof)
 
 	/* init ipc data */
 	sof->ipc = rzalloc(SOF_MEM_ZONE_SYS_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*sof->ipc));
+	if (!sof->ipc)
+		return -ENOMEM;
+
 	sof->ipc->comp_data = rzalloc(SOF_MEM_ZONE_SYS_SHARED, 0,
 				      SOF_MEM_CAPS_RAM, SOF_IPC_MSG_MAX_SIZE);
+	if (!sof->ipc->comp_data)
+		return -ENOMEM;
 
 	spinlock_init(&sof->ipc->lock);
 	list_init(&sof->ipc->msg_list);
