@@ -193,7 +193,9 @@ int platform_init(struct sof *sof)
 	scheduler_init_ll(sof->platform_dma_domain);
 
 	/* initialize the host IPC mechanims */
-	ipc_init(sof);
+	ret = ipc_init(sof);
+	if (ret < 0)
+		return ret;
 
 	ret = dai_init(sof);
 	if (ret < 0)

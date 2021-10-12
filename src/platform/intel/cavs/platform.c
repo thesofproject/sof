@@ -491,7 +491,9 @@ int platform_init(struct sof *sof)
 
 	/* initialize the host IPC mechanisms */
 	trace_point(TRACE_BOOT_PLATFORM_IPC);
-	ipc_init(sof);
+	ret = ipc_init(sof);
+	if (ret < 0)
+		return ret;
 
 	/* initialize IDC mechanism */
 	trace_point(TRACE_BOOT_PLATFORM_IDC);
