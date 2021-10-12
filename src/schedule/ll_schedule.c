@@ -573,13 +573,19 @@ out:
 
 static void scheduler_free_ll(void *data)
 {
-	struct ll_schedule_data *sch = data;
+	struct ll_schedule_data *ll_sch = data;
 	uint32_t flags;
 
 	irq_local_disable(flags);
 
-	notifier_unregister(sch, NULL,
-			    NOTIFIER_CLK_CHANGE_ID(sch->domain->clk));
+	notifier_unregister(ll_sch, NULL,
+			    NOTIFIER_CLK_CHANGE_ID(ll_sch->domain->clk));
+
+	/* free the generic scheduler resource */
+	scheduler_free(ll_sch);
+
+	/* free ll_schedule_data */
+	rfree(ll_sch);
 
 	irq_local_enable(flags);
 }
@@ -626,7 +632,7 @@ int scheduler_init_ll(struct ll_schedule_domain *domain)
 	struct ll_schedule_data *sch;
 
 	/* initialize scheduler private data */
-	sch = rzalloc(SOF_MEM_ZONE_SYS, 0, SOF_MEM_CAPS_RAM, sizeof(*sch));
+	sch = rzalloc(SOF_MEM_ZONE_SYS_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*sch));
 	list_init(&sch->tasks);
 	atomic_init(&sch->num_tasks, 0);
 	sch->domain = domain;

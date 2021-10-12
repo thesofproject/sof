@@ -49,7 +49,7 @@ static void scheduler_register(struct schedule_data *scheduler)
 
 	if (!*sch) {
 		/* init schedulers list */
-		*sch = rzalloc(SOF_MEM_ZONE_SYS, 0, SOF_MEM_CAPS_RAM,
+		*sch = rzalloc(SOF_MEM_ZONE_SYS_RUNTIME, 0, SOF_MEM_CAPS_RAM,
 			       sizeof(**sch));
 		list_init(&(*sch)->list);
 	}
@@ -57,15 +57,41 @@ static void scheduler_register(struct schedule_data *scheduler)
 	list_item_append(&scheduler->list, &(*sch)->list);
 }
 
+static void scheduler_unregister(struct schedule_data *scheduler)
+{
+	struct schedulers **sch = arch_schedulers_get();
+
+	list_item_del(&scheduler->list);
+	if (list_is_empty(&(*sch)->list))
+		rfree(*sch);
+}
+
 void scheduler_init(int type, const struct scheduler_ops *ops, void *data)
 {
 	struct schedule_data *sch;
 
-	sch = rzalloc(SOF_MEM_ZONE_SYS, 0, SOF_MEM_CAPS_RAM, sizeof(*sch));
+	sch = rzalloc(SOF_MEM_ZONE_SYS_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*sch));
 	list_init(&sch->list);
 	sch->type = type;
 	sch->ops = ops;
 	sch->data = data;
 
 	scheduler_register(sch);
+}
+
+void scheduler_free(void *data)
+{
+	struct schedulers **schedulers = arch_schedulers_get();
+	struct list_item *slist;
+	struct schedule_data *sch;
+
+	list_for_item(slist, &(*schedulers)->list) {
+		sch = container_of(slist, struct schedule_data, list);
+		if (sch->data == data) {
+			/* found the scheduler, free it */
+			scheduler_unregister(sch);
+			rfree(sch);
+			break;
+		}
+	}
 }

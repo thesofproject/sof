@@ -272,7 +272,7 @@ static inline int schedule_task_free(struct task *task)
 	return -ENODEV;
 }
 
-/** See scheduler_ops::scheduler_free */
+/** See scheduler_ops::scheduler_free, free all schedulers belong to the core */
 static inline void schedule_free(void)
 {
 	struct schedulers *schedulers = *arch_schedulers_get();
@@ -310,6 +310,12 @@ int schedule_task_init(struct task *task,
  * @param data Scheduler's private data.
  */
 void scheduler_init(int type, const struct scheduler_ops *ops, void *data);
+
+/**
+ * freeing generic resource of a scheduler
+ * @param data Scheduler's private data.
+ */
+void scheduler_free(void *data);
 
 /** @}*/
 

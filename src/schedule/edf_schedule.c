@@ -259,7 +259,7 @@ int scheduler_init_edf(void)
 
 	tr_info(&edf_tr, "edf_scheduler_init()");
 
-	edf_sch = rzalloc(SOF_MEM_ZONE_SYS, 0, SOF_MEM_CAPS_RAM,
+	edf_sch = rzalloc(SOF_MEM_ZONE_SYS_RUNTIME, 0, SOF_MEM_CAPS_RAM,
 			  sizeof(*edf_sch));
 	list_init(&edf_sch->list);
 	edf_sch->clock = PLATFORM_DEFAULT_CLOCK;
@@ -294,6 +294,12 @@ static void scheduler_free_edf(void *data)
 
 	/* free main task context */
 	task_main_free();
+
+	/* free the generic scheduler resource */
+	scheduler_free(edf_sch);
+
+	/* free edf_schedule_data */
+	rfree(edf_sch);
 
 	irq_local_enable(flags);
 }
