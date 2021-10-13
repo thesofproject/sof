@@ -813,12 +813,6 @@ static inline void comp_writeback(struct comp_dev *dev)
  */
 static inline int comp_get_state(struct comp_dev *req_dev, struct comp_dev *dev)
 {
-	/* we should not invalidate data when components are on the same
-	 * core, because we could invalidate data not previously writebacked
-	 */
-	if (req_dev->ipc_config.core != dev->ipc_config.core)
-		comp_invalidate(dev);
-
 	return dev->state;
 }
 

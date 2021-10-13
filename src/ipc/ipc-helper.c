@@ -187,9 +187,6 @@ int comp_buffer_connect(struct comp_dev *comp, uint32_t comp_core,
 		dcache_invalidate_region(buffer, sizeof(*buffer));
 
 		buffer->inter_core = true;
-
-		if (!comp->is_shared)
-			comp = comp_make_shared(comp);
 	}
 
 	ret = pipeline_connect(comp, buffer, dir);
