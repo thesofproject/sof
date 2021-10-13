@@ -40,9 +40,9 @@ SOF2="$SOF_PARENT"/sof-bind-mount-DO-NOT-DELETE
 # SOF2="$SOF_PARENT"/sog
 
 
-# Test with one of each: CSS signature v1.5, v1.8 and v2.5
+# Test with one of each: unsigned, CSS signature v1.5, v1.8 and v2.5
 # This also provides some C code coverage diversity.
-PLATFS=(skl apl tgl)
+PLATFS=(byt skl apl tgl)
 
 # diffoscope is great but it has hundreds of dependencies, too long to
 # install for CI so we don't use it here. This is just an alias
@@ -77,9 +77,10 @@ init()
         '/smex_ep.*'
     )
 
-    # Hack to avoid CSS 2.5 salt. See caveats above.
-    excluded_endings+=('/sof-tgl.ri')
-    excluded_endings+=('tgl_.cc/sof.ri')
+    # The signing process is not deterministic.
+    # Keep 'reproducible.ri' INCLUDED!
+    excluded_endings+=('/sof-[a-z-]{,6}\.rix?')
+    excluded_endings+=('/sof\.ri' '/sof-no-xman\.ri' )
 
     GREP_EXCLUDE_ARGS=()
     for fpath in "${excluded_endings[@]}"; do
@@ -123,9 +124,13 @@ diff_some_files()
 
           done
 
-          for f in generated/include/version.h sof.ri; do
+          for f in generated/include/version.h sof.ri \
+                  src/arch/xtensa/reproducible.ri; do
               diff -u --report-identical-files  \
                    {b0,b1}/build_"$p"_?cc/"$f"
+              # report unsupported reproducible.ri
+              test -s b0/build_"$p"_?cc/"$f" ||
+                  printf '\t%s is EMPTY\n' b0/build_"$p"_?cc/"$f"
           done
 
       done
@@ -165,7 +170,7 @@ main()
     # Use this to "break" rimage that makes the date (in local time!
     # BIOS fans?) part of the CSS signature. See caveats above.
     # +14:00 - -11:00 = +25:00 = always on a different date
-    # export TZ='Pacific/Kiritimati' # +14:00
+    export TZ='Pacific/Kiritimati' # +14:00
 
     "$SOF2"/scripts/xtensa-build-all.sh "${PLATFS[@]}"
     mv build_*_?cc reprobld/b1/
@@ -179,7 +184,7 @@ main()
     diff -qr b0 b1/ |
         grep -E -v "${GREP_EXCLUDE_ARGS[@]}" || {
         printf \
-          "\n\n ---- PASS: no difference found between %s/b0/ and b1/ --- \n\n" "$(pwd)"
+          "\n\n ---- PASS: no unexpected difference found between %s/b0/ and b1/ --- \n\n" "$(pwd)"
         exit 0
     }
 
