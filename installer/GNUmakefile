@@ -11,19 +11,25 @@
 # Override ?= variables in config.mk
 -include config.mk
 
+# List of /lib/firmware/sof/ images and symbolic links currently
+# released by Intel.
+
+# See rimage/config/*.toml
 UNSIGNED_list ?= bdw byt cht
 SIGNED_list  ?= apl cnl icl jsl tgl tgl-h
-# older SOF versions
-# SIGNED_list += hsw kbl skl sue
 
 # To find aliases, try in a Linux kernel git clone:
 #
 #   git grep 'sof-.*\.ri' -- sound/soc/
 
-
 ALIAS_SAME_KEY_list  := glk cfl cml
 ALIAS_OTHER_KEY_list := ehl adl adl-s
 ALIAS_list ?= ${ALIAS_SAME_KEY_list} ${ALIAS_OTHER_KEY_list}
+
+
+# Older platforms not released anymore
+# UNSIGNED_list += hsw sue
+# SIGNED_list += kbl skl
 
 $(info UNSIGNED_list = ${UNSIGNED_list} )
 $(info SIGNED_list   = ${SIGNED_list}   )
