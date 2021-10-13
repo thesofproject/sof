@@ -18,6 +18,10 @@
 import sys
 import argparse
 import struct
+import io
+import pathlib
+import hashlib
+
 
 # To extend the DSP memory layout list scroll down to DSP_MEM_SPACE_EXT
 
@@ -332,6 +336,9 @@ def parse_params():
                         action='store_true')
     parser.add_argument('--no_memory', help='skip information about memory',
                         action='store_true')
+    parser.add_argument('--erase_vars', help='''
+    Replace the variable signature and any other variable element with constants
+    ''', type=pathlib.Path, dest='erased_vars_image')
     parser.add_argument('sof_ri_path', help='path to fw binary file to parse')
     parsed_args = parser.parse_args()
 
@@ -627,6 +634,7 @@ def parse_css_manifest_4(css_mft, reader, size_limit):
 
     assert reader.get_offset() == size_limit # wrong extension length
 
+    css_mft.length = reader.get_offset() - css_mft.file_offset
     return css_mft
 
 def parse_mft_extension(reader, ext_id):
@@ -1410,6 +1418,112 @@ DSP_MEM_SPACE_EXT = {
     'ehl' : TGL_LP_MEMORY_SPACE,
 }
 
+
+def getCssManifest(parsed_fw):
+    "Also known as 'ADSP.man'"
+    cse_mft = parsed_fw.cdir['cse_mft']
+    return cse_mft.cdir['css_mft']
+
+
+def Erase(input_reader, start, length, padding):
+
+    padding = padding * (length // len(padding) + 1)
+    output_bytes = input_reader.read(start)
+
+    # Skip and replace with padding
+    input_reader.seek(length, 1)
+    output_bytes += padding[:length]
+
+    output_bytes += input_reader.read()
+
+    input_reader.seek(0)
+    return io.BytesIO(output_bytes)
+
+
+def EraseSignature(signed_input, parsed_fw):
+
+    hdr = getCssManifest(parsed_fw).cdir['css_mft_hdr']
+
+    return Erase(signed_input,
+                 hdr.adir['signature_start'].val,
+                 hdr.adir['signature_length'].val,
+                 b'Erased signature. ')
+
+
+def EraseCssManifestDate(dated_input, parsed_fw):
+
+    hdr = getCssManifest(parsed_fw).cdir['css_mft_hdr']
+
+    return Erase(dated_input,
+                 hdr.adir['date_start'].val,
+                 hdr.adir['date_length'].val,
+                 b'\x11' * 6) # = 1111/11/11
+
+
+def EraseCssManifest(image_input, parsed_fw):
+
+    css_man = getCssManifest(parsed_fw)
+
+    return Erase(image_input, css_man.file_offset,
+                 css_man.length, b"Erased CSS manifest. ")
+
+
+def EraseImrType(image_input, parsed_fw):
+
+    cse_mft = parsed_fw.cdir['cse_mft']
+    adsp_meta_ext = cse_mft.cdir['mft_ext0']
+
+    # IMR type is the very first field after extension type and length
+    imr_start = adsp_meta_ext.file_offset + 4 + 4
+
+    # Health check: re-read the imr_type to make sure the offset is
+    # still correct, no copy/paste/diverge.
+    true_imr_type = adsp_meta_ext.adir['adsp_imr_type'].val
+    image_input.seek(imr_start)
+    imr_type, = struct.unpack("<I", image_input.read(4))
+    assert imr_type == true_imr_type
+    image_input.seek(0)
+
+    return Erase(image_input, imr_start, 4, b'IMRt')
+
+
+def EraseVariables(input_path, parsed_fw, output_path):
+    """This is not smart but it gets the current job done. This entire
+    script should be re-written and based on a more advanced framework
+    like Construct, then a hierarchical, diffoscope-like diff should be
+    easy to implement on top.
+    """
+    with open(input_path, 'rb') as reader:
+
+        if True:
+            # Massive erasure required to compare .ri files produced by
+            # different tools (e.g. rimage vs MEU)
+            cse_mft = parsed_fw.cdir['cse_mft']
+            adsp_mft = parsed_fw.cdir['adsp_mft']
+
+            cse_plus_padding_len = adsp_mft.file_offset - cse_mft.file_offset
+
+            reader = Erase(reader, cse_mft.file_offset,
+                           cse_plus_padding_len,
+                           b'Erased CSE manifest + padding. ')
+
+        else:
+            # This is much smaller and enough to deal with date and
+            # random salt when signing with the same tool
+            reader = EraseCssManifestDate(reader, parsed_fw)
+            reader = EraseSignature(reader, parsed_fw)
+
+        with open(output_path, 'wb') as output:
+            for chunk in reader:
+                output.write(chunk)
+
+    assert input_path.stat().st_size == output_path.stat().st_size
+
+    with open(output_path, 'rb') as output:
+        chk256 = hashlib.sha256(output.read()).hexdigest()
+        print('sha256sum {0}\n{1} {0}'.format(output_path, chk256))
+
+
 def main(args):
     """ main function
     """
@@ -1434,6 +1548,10 @@ def main(args):
         add_lmap_mem_info(args.sof_ri_path, mem)
         print()
         mem.dump_info()
+
+    if args.erased_vars_image:
+        EraseVariables(pathlib.Path(args.sof_ri_path), fw_bin,
+                       args.erased_vars_image)
 
 if __name__ == "__main__":
     ARGS = parse_params()
