@@ -64,12 +64,14 @@ hexdiff ()
 
 init()
 {
+    # -E(xtended) regex
     local excluded_endings=(
         '\.log' /deps
         '\.c?make' '\.ninja' /TargetDirectories.txt
         /CMakeCache.txt /progress.marks /CMakeRulesHashes.txt /Makefile
         /CMakeRuleHashes.txt /Makefile2
         '/depend\.internal' /link.txt '\.includecache'
+        '/.ninja_deps' '/.ninja_log'
         '.*\.c\.o\.d'
         '/rimage_ep.*'
         '/smex_ep.*'
@@ -109,7 +111,8 @@ diff_some_files()
 
       for p in "${PLATFS[@]}"; do
 
-          # look at the smallest .c.o first
+          # Compare some ELF section headers. Look at the smallest .c.o
+          # first
           for f in CMakeFiles/sof.dir/src/arch/xtensa/init.c.o  sof; do
 
               diff --report-identical-files  \
@@ -127,7 +130,7 @@ diff_some_files()
 
       done
       true
-    )
+    ) | sed -e 's/differ/DIFFER/g'
 }
 
 main()
