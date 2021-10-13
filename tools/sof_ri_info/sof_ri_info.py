@@ -579,7 +579,10 @@ def parse_css_manifest_4(css_mft, reader, size_limit):
     hdr.add_a(Auint('header_version', reader.read_dw()))
     hdr.add_a(Auint('reserved0', reader.read_dw(), 'red'))
     hdr.add_a(Ahex('mod_vendor', reader.read_dw()))
+    date_start = reader.get_offset()
+    hdr.add_a(Auint('date_start', date_start))
     hdr.add_a(Adate('date', hex(reader.read_dw())))
+    hdr.add_a(Auint('date_length', reader.get_offset() - date_start))
     size = reader.read_dw()
     hdr.add_a(Auint('size', size))
     hdr.add_a(Astring('header_id', reader.read_string(4)))
@@ -595,7 +598,11 @@ def parse_css_manifest_4(css_mft, reader, size_limit):
     modulus = reader.read_bytes(modulus_size * 4)
     hdr.add_a(Amodulus('modulus', modulus, KNOWN_KEYS.get(modulus, 'Other')))
     hdr.add_a(Abytes('exponent', reader.read_bytes(exponent_size * 4)))
+
+    sig_start = reader.get_offset()
+    hdr.add_a(Auint('signature_start', sig_start))
     hdr.add_a(Abytes('signature', reader.read_bytes(modulus_size * 4)))
+    hdr.add_a(Auint('signature_length', reader.get_offset() - sig_start))
 
     # Move right after the header
     reader.set_offset(css_mft.file_offset + header_len_dw*4)
@@ -1131,7 +1138,8 @@ class CssManifest(Component):
               format(pref,
                      hdr.adir['exponent_size']))
         print('{}    {}'.format(pref, hdr.adir['exponent']))
-        print('{}  Signature'.format(pref))
+        print('{}  Signature (file offset {}, length {})'.format(
+            pref, hdr.adir['signature_start'], hdr.adir['signature_length']))
         print('{}    {}'.format(pref, hdr.adir['signature']))
         # super().dump_info(pref)
         self.dump_comp_info(pref, comp_filter + ['Header'])
