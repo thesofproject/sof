@@ -859,7 +859,8 @@ class BinReader():
     def error(self, logerror, off_delta=0):
         """ Prints 'error' log to the output
         """
-        print(self.offset_to_string(off_delta) + '\terror: ' + logerror)
+        print(self.offset_to_string(off_delta) + '\terror: ' + logerror,
+              file=sys.stderr)
 
 # Data Model
 
