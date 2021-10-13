@@ -140,7 +140,7 @@ struct schedulers {
 struct schedulers **arch_schedulers_get(void);
 
 /**
- * Retrieves scheduler's data.
+ * Retrieves scheduler's data of the specified type run on the same core.
  * @param type SOF_SCHEDULE_ type.
  * @return Pointer to scheduler's data.
  */
@@ -152,7 +152,7 @@ static inline void *scheduler_get_data(uint16_t type)
 
 	list_for_item(slist, &schedulers->list) {
 		sch = container_of(slist, struct schedule_data, list);
-		if (type == sch->type)
+		if (type == sch->type && cpu_get_id() == sch->core)
 			return sch->data;
 	}
 
