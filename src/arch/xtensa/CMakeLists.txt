@@ -529,7 +529,56 @@ add_custom_target(
 	DEPENDS run_meu
 	VERBATIM
 	USES_TERMINAL
+	BYPRODUCTS sof-${fw_name}.ri # almost like a proper add_custom_command()
 )
+
+
+# Keep lists below in sync with rimage/config/*.toml
+
+# .ri not signed: nothing variable in it to erase.
+set(UNSIGNED_RI         byt cht hsw bdw sue)
+# NXP
+list(APPEND UNSIGNED_RI imx8 imx8x imx8m)
+# AMD
+list(APPEND UNSIGNED_RI rn)
+# Mediatek
+list(APPEND UNSIGNED_RI mt8195)
+
+# Signed and non-deterministic but sof_ri_info.py is not compatible with
+# manifest v1.5?  "CSE manifest magic number not found"
+set(UNSUPPORTED_RI skl kbl)
+
+if(${fw_name} IN_LIST UNSIGNED_RI) # mere copy
+	add_custom_command(OUTPUT reproducible.ri
+		COMMENT "Copying sof.ri to reproducible.ri as is"
+		# TODO: drop the glue_binary_files dependency once the
+		# edit-in-place and add_custom_target() messes are all fixed
+		DEPENDS glue_binary_files sof-${fw_name}.ri
+		COMMAND cmake -E copy sof-${fw_name}.ri reproducible.ri
+		VERBATIM
+		)
+elseif(${fw_name} IN_LIST UNSUPPORTED_RI)
+	add_custom_command(OUTPUT reproducible.ri
+		COMMENT "WARNING: sof-${fw_name}.ri is NOT reproducible, reproducible.ri is fake"
+		DEPENDS glue_binary_files sof-${fw_name}.ri
+		COMMAND cmake -E touch reproducible.ri
+		VERBATIM
+		)
+else() # strip variables
+	add_custom_command(OUTPUT reproducible.ri
+		COMMENT "Creating reproducible.ri"
+		DEPENDS glue_binary_files  sof-${fw_name}.ri
+		COMMAND ${PROJECT_SOURCE_DIR}/tools/sof_ri_info/sof_ri_info.py
+			--no_headers --no_modules --no_memory # could use a -q option...
+			--erase_vars reproducible.ri sof-${fw_name}.ri
+		VERBATIM
+		)
+endif()
+
+
+# Top-level 'bin' target collecting all dependencies.  Copies final .ri
+# file from current subdirectory to top level build directory
+# ${PROJECT_BINARY_DIR}.
 
 # TODO: get rid of ${fw_output_name} and ${fw_name} below. Different
 # platforms are already built in different build directories, we will
@@ -551,7 +600,7 @@ else()
 		bin ALL
 		COMMAND ${CMAKE_COMMAND} -E copy sof-${fw_name}.ri ${PROJECT_BINARY_DIR}/sof-${fw_output_name}.ri
 		COMMAND ${CMAKE_COMMAND} -E copy sof-${fw_name}.ri ${PROJECT_BINARY_DIR}/sof.ri
-		DEPENDS run_meu bin_extras glue_binary_files sof_dump
+		DEPENDS run_meu bin_extras glue_binary_files sof_dump reproducible.ri
 		VERBATIM
 		USES_TERMINAL
 	)
