@@ -51,8 +51,20 @@ define(matrix2, `ROUTE_MATRIX(9,
 			     `BITS_TO_BYTE(0, 0, 0 ,0 ,0 ,0 ,1 ,0)',
 			     `BITS_TO_BYTE(0, 0, 0 ,0 ,0 ,0 ,0 ,1)')')
 
+define(matrix3, `ROUTE_MATRIX(1,
+			     `BITS_TO_BYTE(1, 0, 0 ,0 ,0 ,0 ,0 ,0)',
+			     `BITS_TO_BYTE(0, 1, 0 ,0 ,0 ,0 ,0 ,0)',
+			     `BITS_TO_BYTE(1, 0, 0 ,0 ,0 ,0 ,0 ,0)',
+			     `BITS_TO_BYTE(0, 1, 0 ,0 ,0 ,0 ,0 ,0)',
+			     `BITS_TO_BYTE(0, 0, 0 ,0 ,0 ,0 ,0 ,0)',
+			     `BITS_TO_BYTE(0, 0, 0 ,0 ,0 ,0 ,0 ,0)',
+			     `BITS_TO_BYTE(0, 0, 0 ,0 ,0 ,0 ,0 ,0)',
+			     `BITS_TO_BYTE(0, 0, 0 ,0 ,0 ,0 ,0 ,0)')')
+
 dnl name, num_streams, route_matrix list
-MUXDEMUX_CONFIG(demux_priv_1, 2, LIST(`	', `matrix1,', `matrix2'))
+ifdef(`2_WAY_SPK',
+`MUXDEMUX_CONFIG(demux_priv_1, 1, LIST(``	'', `matrix3'))',
+`MUXDEMUX_CONFIG(demux_priv_1, 2, LIST(``	'', `matrix1,', `matrix2'))')
 
 #
 # Define the pipelines
@@ -129,7 +141,8 @@ define(`ENDPOINT_NAME', `Speakers')
 PIPELINE_PCM_ADD(
 	ifdef(`WAVES', sof/pipe-waves-codec-demux-playback.m4,
 	      ifdef(`DRC_EQ', sof/pipe-drc-eq-volume-demux-playback.m4,
-		    sof/pipe-volume-demux-playback.m4)),
+		    ifdef(`2_WAY_SPK', sof/pipe-demux-eq-iir-playback.m4,
+			  sof/pipe-volume-demux-playback.m4))),
 	1, 0, 2, s32le,
 	1000, 0, 0,
 	48000, 48000, 48000)
@@ -211,7 +224,8 @@ DAI_ADD(sof/pipe-dai-capture.m4,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 ',
 `
-# currently this dai is here as "virtual" capture backend
+ifdef(`2_WAY_SPK',`# No echo reference for 2-way speakers',
+`# currently this dai is here as "virtual" capture backend
 W_DAI_IN(SSP, SPK_SSP_INDEX, SPK_SSP_NAME, FMT, 3, 0)
 
 # Capture pipeline 9 from demux on PCM 6 using max 2 channels of s32le.
@@ -241,7 +255,7 @@ SectionGraph."PIPE_CAP_VIRT" {
 		dapm(ECHO REF 9, SPK_REF_DAI_NAME)
 	]
 }
-')
+')')
 
 # playback DAI is SSP0 using 2 periods
 # Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
@@ -293,7 +307,8 @@ PCM_PLAYBACK_ADD(HDMI1, 2, PIPELINE_PCM_5)
 PCM_PLAYBACK_ADD(HDMI2, 3, PIPELINE_PCM_6)
 PCM_PLAYBACK_ADD(HDMI3, 4, PIPELINE_PCM_7)
 PCM_PLAYBACK_ADD(HDMI4, 5, PIPELINE_PCM_8)
-PCM_CAPTURE_ADD(EchoRef, 6, PIPELINE_PCM_9)
+ifdef(`2_WAY_SPK',`# No echo reference for 2-way speakers',
+`PCM_CAPTURE_ADD(EchoRef, 6, PIPELINE_PCM_9)')
 
 #
 # BE conf2igurations - overrides config in ACPI if present
@@ -319,6 +334,12 @@ ifelse(
 		SSP_CLOCK(bclk, 3072000, codec_slave),
 		SSP_CLOCK(fsync, 48000, codec_slave),
 		SSP_TDM(2, 32, 3, 3),
+		SSP_CONFIG_DATA(SSP, SPK_SSP_INDEX, 32)))',
+	CODEC, `MAX98360A_TDM', `
+	SSP_CONFIG(DSP_A, SSP_CLOCK(mclk, 19200000, codec_mclk_in),
+		SSP_CLOCK(bclk, 12288000, codec_slave),
+		SSP_CLOCK(fsync, 48000, codec_slave),
+		SSP_TDM(8, 32, 15, 15),
 		SSP_CONFIG_DATA(SSP, SPK_SSP_INDEX, 32)))',
 	CODEC, `RT1011', `
 	SSP_CONFIG(DSP_A, SSP_CLOCK(mclk, 19200000, codec_mclk_in),
