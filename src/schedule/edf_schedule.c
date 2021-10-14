@@ -94,10 +94,9 @@ static void edf_scheduler_run(void *data)
 
 	irq_local_enable(flags);
 
-	/* having next task is mandatory */
-	assert(task_next);
-
-	schedule_edf_task_running(data, task_next);
+	/* schedule next pending task */
+	if (task_next)
+		schedule_edf_task_running(data, task_next);
 }
 
 static int schedule_edf_task(void *data, struct task *task, uint64_t start,
