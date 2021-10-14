@@ -10,7 +10,6 @@
 #define __SOF_SCHEDULE_SCHEDULE_H__
 
 #include <sof/common.h>
-#include <sof/lib/cpu.h>
 #include <sof/list.h>
 #include <sof/schedule/task.h>
 #include <sof/trace/trace.h>
@@ -123,7 +122,6 @@ struct scheduler_ops {
 struct schedule_data {
 	struct list_item list;			/**< list of schedulers */
 	int type;				/**< SOF_SCHEDULE_ type */
-	uint32_t core;				/**< the index of the core the scheduler run on */
 	const struct scheduler_ops *ops;	/**< scheduler operations */
 	void *data;				/**< pointer to private data */
 };
@@ -212,8 +210,7 @@ static inline int schedule_task(struct task *task, uint64_t start,
 
 	list_for_item(slist, &schedulers->list) {
 		sch = container_of(slist, struct schedule_data, list);
-		if (task->type == sch->type && sch->core == cpu_get_id() &&
-		    sch->ops->schedule_task)
+		if (task->type == sch->type && sch->ops->schedule_task)
 			return sch->ops->schedule_task(sch->data, task, start,
 						       period);
 	}
@@ -252,8 +249,7 @@ static inline int schedule_task_cancel(struct task *task)
 
 	list_for_item(slist, &schedulers->list) {
 		sch = container_of(slist, struct schedule_data, list);
-		if (task->type == sch->type && sch->core == cpu_get_id() &&
-		    sch->ops->schedule_task_cancel)
+		if (task->type == sch->type && sch->ops->schedule_task_cancel)
 			return sch->ops->schedule_task_cancel(sch->data, task);
 	}
 

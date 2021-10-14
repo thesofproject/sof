@@ -7,7 +7,6 @@
 /* Generic scheduler */
 
 #include <sof/lib/alloc.h>
-#include <sof/lib/cpu.h>
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
 #include <sof/schedule/schedule.h>
@@ -67,7 +66,6 @@ void scheduler_init(int type, const struct scheduler_ops *ops, void *data)
 	sch->type = type;
 	sch->ops = ops;
 	sch->data = data;
-	sch->core = cpu_get_id();
 
 	scheduler_register(sch);
 }
