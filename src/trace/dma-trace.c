@@ -226,6 +226,17 @@ static int dma_trace_buffer_init(struct dma_trace_data *d)
 	uint32_t addr_align;
 	int err;
 
+	/*
+	 * Keep the existing dtrace buffer to avoid memory leak, unlikely to
+	 * happen if host correctly using the dma_trace_disable().
+	 *
+	 * The buffer can not be freed up here as it is likely in use.
+	 * The (re-)initialization will happen in dma_trace_start() when it is
+	 * safe to do (the DMA is stopped)
+	 */
+	if (dma_trace_initialized(d))
+		return 0;
+
 	if (!d || !d->dc.dmac) {
 		mtrace_printf(LOG_LEVEL_ERROR,
 			      "%s failed: no DMAC!", __func__);
@@ -344,6 +355,10 @@ static int dma_trace_start(struct dma_trace_data *d)
 	if (err < 0)
 		return err;
 
+	/* Reset host buffer information as host is re-configuring dtrace */
+	d->old_host_offset = 0;
+	d->posn.host_offset = 0;
+
 	d->active_stream_tag = d->stream_tag;
 
 	/* size of every trace record */
@@ -446,7 +461,7 @@ int dma_trace_enable(struct dma_trace_data *d)
 {
 	int err;
 
-	/* Allocate and initialize the dma trace buffer */
+	/* Allocate and initialize the dma trace buffer if needed */
 	err = dma_trace_buffer_init(d);
 	if (err < 0)
 		return err;
