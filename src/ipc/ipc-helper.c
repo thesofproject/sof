@@ -206,7 +206,6 @@ int ipc_pipeline_complete(struct ipc *ipc, uint32_t comp_id)
 	uint32_t pipeline_id;
 	struct ipc_comp_dev *ipc_ppl_source;
 	struct ipc_comp_dev *ipc_ppl_sink;
-	int ret;
 
 	/* check whether pipeline exists */
 	ipc_pipe = ipc_get_comp_by_id(ipc, comp_id);
@@ -264,10 +263,8 @@ int ipc_pipeline_complete(struct ipc *ipc, uint32_t comp_id)
 	tr_dbg(&ipc_tr, "ipc: pipe %d -> complete on comp %d", pipeline_id,
 	       comp_id);
 
-	ret = pipeline_complete(ipc_pipe->pipeline, ipc_ppl_source->cd,
-				ipc_ppl_sink->cd);
-
-	return ret;
+	return pipeline_complete(ipc_pipe->pipeline, ipc_ppl_source->cd,
+				 ipc_ppl_sink->cd);
 }
 
 int ipc_comp_free(struct ipc *ipc, uint32_t comp_id)

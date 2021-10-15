@@ -431,7 +431,7 @@ static int pipeline_comp_timestamp(struct comp_dev *current,
 	    (dev_comp_type(current) == SOF_COMP_DAI ||
 	    dev_comp_type(current) == SOF_COMP_SG_DAI)) {
 		platform_dai_timestamp(current, ppl_data->posn);
-		return -1;
+		return PPL_STATUS_PATH_STOP;
 	}
 
 	return pipeline_for_each_comp(current, ctx, dir);
@@ -453,7 +453,9 @@ void pipeline_get_timestamp(struct pipeline *p, struct comp_dev *host,
 	data.start = host;
 	data.posn = posn;
 
-	walk_ctx.comp_func(host, NULL, &walk_ctx, host->direction);
+	if (walk_ctx.comp_func(host, NULL, &walk_ctx, host->direction) !=
+	    PPL_STATUS_PATH_STOP)
+		pipe_warn(p, "pipeline_get_timestamp(): DAI position update failed");
 
 	/* set timestamp resolution */
 	posn->timestamp_ns = p->period * 1000;

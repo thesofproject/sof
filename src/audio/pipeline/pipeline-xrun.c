@@ -27,6 +27,7 @@
  */
 #define NO_XRUN_RECOVERY 1
 
+/* This function always returns success */
 static int pipeline_comp_xrun(struct comp_dev *current,
 			      struct comp_buffer *calling_buf,
 			      struct pipeline_walk_context *ctx, int dir)
