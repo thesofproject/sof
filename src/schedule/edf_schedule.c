@@ -166,7 +166,7 @@ int schedule_task_init_edf(struct task *task, const struct sof_uuid_entry *uid,
 		goto error;
 
 	/* flush for secondary core */
-	if (cpu_is_secondary(task->core))
+	if (!cpu_is_primary(task->core))
 		dcache_writeback_invalidate_region(edf_pdata,
 						   sizeof(*edf_pdata));
 	return 0;

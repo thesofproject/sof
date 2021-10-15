@@ -1536,7 +1536,7 @@ void ipc_cmd(ipc_cmd_hdr *_hdr)
 		goto out;
 	}
 
-	if (!cpu_is_secondary(cpu_get_id())) {
+	if (cpu_is_primary(cpu_get_id())) {
 		/* A new IPC from the host, delivered to the primary core */
 		ipc->core = PLATFORM_PRIMARY_CORE_ID;
 		tr_info(&ipc_tr, "ipc: new cmd 0x%x", hdr->cmd);
