@@ -307,6 +307,7 @@ static int dma_trace_start(struct dma_trace_data *d)
 			      "dma_trace_start(): DMA reconfiguration (active stream_tag: %u)",
 			      d->active_stream_tag);
 
+		schedule_task_cancel(&d->dmat_work);
 		err = dma_stop(d->dc.chan);
 		if (err < 0) {
 			mtrace_printf(LOG_LEVEL_ERROR,
