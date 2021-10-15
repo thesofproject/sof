@@ -781,6 +781,22 @@ err:
 	return ret;
 }
 
+/* set component audio stream parameters */
+static int tdfb_params(struct comp_dev *dev, struct sof_ipc_stream_params *params)
+{
+	int err;
+
+	comp_info(dev, "tdfb_params()");
+
+	err = comp_verify_params(dev, BUFF_PARAMS_CHANNELS, params);
+	if (err < 0) {
+		comp_err(dev, "tdfb_params(): pcm params verification failed.");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 static int tdfb_reset(struct comp_dev *dev)
 {
 	int i;
@@ -821,6 +837,7 @@ static const struct comp_driver comp_tdfb = {
 	.ops = {
 		.create = tdfb_new,
 		.free = tdfb_free,
+		.params = tdfb_params,
 		.cmd = tdfb_cmd,
 		.copy = tdfb_copy,
 		.prepare = tdfb_prepare,
