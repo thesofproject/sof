@@ -425,7 +425,7 @@ int dma_trace_enable(struct dma_trace_data *d)
 
 	if (err < 0) {
 		mtrace_printf(LOG_LEVEL_ERROR, "dma_trace_enable: buffer_init failed");
-		goto out;
+		return err;
 	}
 
 #ifdef __ZEPHYR__
