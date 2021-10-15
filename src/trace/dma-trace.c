@@ -412,7 +412,7 @@ int dma_trace_enable(struct dma_trace_data *d)
 
 	if (err < 0) {
 		mtrace_printf(LOG_LEVEL_ERROR, "dma_trace_enable: buffer_init failed");
-		goto out;
+		return err;
 	}
 
 	/* It should be the very first sent log for easy identification. */
