@@ -236,9 +236,7 @@ static int pipeline_comp_complete(struct comp_dev *current,
 	current->period = ppl_data->p->period;
 	current->priority = ppl_data->p->priority;
 
-	pipeline_for_each_comp(current, ctx, dir);
-
-	return 0;
+	return pipeline_for_each_comp(current, ctx, dir);
 }
 
 int pipeline_complete(struct pipeline *p, struct comp_dev *source,
@@ -255,6 +253,7 @@ int pipeline_complete(struct pipeline *p, struct comp_dev *source,
 #else
 	int freq = 0;
 #endif
+	int ret;
 
 	pipe_info(p, "pipeline complete, clock freq %dHz", freq);
 
@@ -270,7 +269,7 @@ int pipeline_complete(struct pipeline *p, struct comp_dev *source,
 	/* now walk downstream from source component and
 	 * complete component task and pipeline initialization
 	 */
-	walk_ctx.comp_func(source, NULL, &walk_ctx, PPL_DIR_DOWNSTREAM);
+	ret = walk_ctx.comp_func(source, NULL, &walk_ctx, PPL_DIR_DOWNSTREAM);
 
 	p->source_comp = source;
 	p->sink_comp = sink;
@@ -279,7 +278,7 @@ int pipeline_complete(struct pipeline *p, struct comp_dev *source,
 	/* show heap status */
 	heap_trace_all(0);
 
-	return 0;
+	return ret;
 }
 
 static int pipeline_comp_reset(struct comp_dev *current,
