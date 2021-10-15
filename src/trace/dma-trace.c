@@ -259,6 +259,17 @@ static int dma_trace_buffer_alloc(struct dma_trace_data *d)
 {
 	void *buf;
 
+	/*
+	 * Keep the existing dtrace buffer to avoid memory leak, unlikely to
+	 * happen if host correctly using the dma_trace_disable().
+	 *
+	 * The buffer can not be freed up here as it is likely in use.
+	 * The (re-)initialization will happen in dma_trace_start() when it is
+	 * safe to do (the DMA is stopped)
+	 */
+	if (dma_trace_initialized(d))
+		return 0;
+
 	/* allocate new buffer */
 	buf = rballoc(0, SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_DMA,
 		      DMA_TRACE_LOCAL_SIZE);
@@ -322,6 +333,9 @@ static int dma_trace_start(struct dma_trace_data *d)
 			d->dc.chan = NULL;
 			err = dma_copy_set_stream_tag(&d->dc, d->stream_tag);
 		}
+
+		/* Re-initialize the dtrace buffer */
+		dma_trace_buffer_init(d, NULL);
 	} else {
 		err = dma_copy_set_stream_tag(&d->dc, d->stream_tag);
 	}
@@ -431,7 +445,7 @@ int dma_trace_enable(struct dma_trace_data *d)
 {
 	int err;
 
-	/* Allocate and initialize the dma trace buffer */
+	/* Allocate and initialize the dma trace buffer if needed */
 	err = dma_trace_buffer_alloc(d);
 	if (err < 0)
 		return err;
