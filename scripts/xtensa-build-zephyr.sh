@@ -370,6 +370,14 @@ see https://docs.zephyrproject.org/latest/getting_started/index.html"
 		ln -s "$SOF_TOP" "${WEST_TOP}"/modules/audio/sof
 	}
 
+	download_missing_submodules
+
+	test "${#PLATFORMS[@]}" -eq 0 || build_all
+}
+
+
+download_missing_submodules()
+{
 	# FIXME: remove this hack. Downloading and building should be
 	# kept separate but support for submodules in west is too
 	# recent, cannot rely on it yet.
@@ -388,8 +396,7 @@ see https://docs.zephyrproject.org/latest/getting_started/index.html"
 
 		git submodule update --init --recursive
 	)
-
-	test "${#PLATFORMS[@]}" -eq 0 || build_all
 }
+
 
 main "$@"
