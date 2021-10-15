@@ -216,7 +216,7 @@ int ipc_comp_dai_config(struct ipc *ipc, struct ipc_config_dai *common_config,
 	}
 
 	/* message forwarded only by primary core */
-	if (!cpu_is_secondary(cpu_get_id())) {
+	if (cpu_is_primary(cpu_get_id())) {
 		for (i = 0; i < CONFIG_CORE_COUNT; ++i) {
 			if (!comp_on_core[i])
 				continue;

@@ -26,9 +26,9 @@ static inline int cpu_get_id(void)
 	return arch_cpu_get_id();
 }
 
-static inline bool cpu_is_secondary(int id)
+static inline bool cpu_is_primary(int id)
 {
-	return id != PLATFORM_PRIMARY_CORE_ID;
+	return id == PLATFORM_PRIMARY_CORE_ID;
 }
 
 static inline bool cpu_is_me(int id)
