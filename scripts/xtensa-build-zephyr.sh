@@ -219,6 +219,8 @@ build_all()
 			       -l "$STAGING"/sof/sof-"$platform".ldc \
 			       "$bdir"/zephyr/zephyr.elf
 
+			download_missing_submodules
+
 			# Build rimage
 			RIMAGE_DIR=build-rimage
 			cmake -B "$RIMAGE_DIR" -S modules/audio/sof/rimage
@@ -369,8 +371,6 @@ see https://docs.zephyrproject.org/latest/getting_started/index.html"
 		mkdir -p "${WEST_TOP}"/modules/audio
 		ln -s "$SOF_TOP" "${WEST_TOP}"/modules/audio/sof
 	}
-
-	download_missing_submodules
 
 	test "${#PLATFORMS[@]}" -eq 0 || build_all
 }
