@@ -614,15 +614,17 @@ def parse_css_manifest_4(css_mft, reader, size_limit):
         css_mft.add_comp(parse_mft_extension(reader, ext_idx))
         ext_idx += 1
 
+    assert reader.get_offset() == size_limit # wrong extension length
+
     return css_mft
 
 def parse_mft_extension(reader, ext_id):
     """ Parses mft extension from sof binary
     """
+    begin_off = reader.get_offset()
     ext_type = reader.read_dw()
     ext_len = reader.read_dw()
     if ext_type == 15:
-        begin_off = reader.get_offset()
         ext = PlatFwAuthExtension(ext_id, reader.get_offset()-8)
         ext.add_a(Astring('name', reader.read_string(4)))
         ext.add_a(Auint('vcn', reader.read_dw()))
