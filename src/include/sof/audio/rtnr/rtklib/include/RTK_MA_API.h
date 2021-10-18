@@ -32,7 +32,7 @@ void RTKMA_API_Process(void *Context, _Bool has_ref, int SampleRate, int MicCh);
 
 void RTKMA_API_Prepare(void *Context);
 
-void *RTKMA_API_Context_Create(void);
+void *RTKMA_API_Context_Create(int sample_rate);
 
 void RTKMA_API_Context_Free(void *Context);
 

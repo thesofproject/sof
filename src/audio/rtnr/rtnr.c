@@ -181,6 +181,58 @@ static rtnr_func rtnr_find_func(enum sof_ipc_frame fmt)
 	return NULL;
 }
 
+static inline void rtnr_set_process(struct comp_dev *dev)
+{
+	comp_info(dev, "rtnr_set_process()");
+	struct comp_data *cd = comp_get_drvdata(dev);
+
+	cd->process_enable = true;
+	RTKMA_API_Bypass(cd->rtk_agl, 0);
+}
+
+static inline void rtnr_set_bypass(struct comp_dev *dev)
+{
+	comp_info(dev, "rtnr_set_bypass()");
+	struct comp_data *cd = comp_get_drvdata(dev);
+
+	cd->process_enable = false;
+	RTKMA_API_Bypass(cd->rtk_agl, 1);
+}
+
+static inline void rtnr_set_process_sample_rate(struct comp_dev *dev, uint32_t sample_rate)
+{
+	comp_dbg(dev, "rtnr_set_process_sample_rate()");
+	struct comp_data *cd = comp_get_drvdata(dev);
+
+	cd->process_sample_rate = sample_rate;
+}
+
+static int32_t rtnr_check_config_validity(struct comp_dev *dev,
+									    struct comp_data *cd)
+{
+	struct sof_rtnr_config *p_config = comp_get_data_blob(cd->model_handler, NULL, NULL);
+	int ret = 0;
+
+	if (!p_config) {
+		comp_err(dev, "rtnr_check_config_validity() error: invalid cd->model_handler");
+		ret = -EINVAL;
+	} else {
+		comp_info(dev, "rtnr_check_config_validity() enabled: %d sample_rate:%d",
+				p_config->params.enabled,
+				p_config->params.sample_rate);
+
+		if (p_config->params.enabled)
+			rtnr_set_process(dev);
+		else
+			rtnr_set_bypass(dev);
+
+		rtnr_set_process_sample_rate(dev, p_config->params.sample_rate);
+	}
+
+	return ret;
+}
+
+
 /*
  * End of RTNR setup code. Next the standard component methods.
  */
@@ -235,7 +287,14 @@ static struct comp_dev *rtnr_new(const struct comp_driver *drv,
 	/* Component defaults */
 	cd->source_channel = 0;
 
-	cd->rtk_agl = RTKMA_API_Context_Create();
+    /* Check config */
+	ret = rtnr_check_config_validity(dev, cd);
+	if (ret < 0) {
+		comp_cl_err(&comp_rtnr, "rtnr_new(): rtnr_check_config_validity() failed.");
+		goto cd_fail;
+	}
+
+	cd->rtk_agl = RTKMA_API_Context_Create(cd->process_sample_rate);
 	if (cd->rtk_agl == 0) {
 		comp_cl_err(&comp_rtnr, "rtnr_new(): RTKMA_API_Context_Create failed.");
 		goto cd_fail;
@@ -303,6 +362,9 @@ static int rtnr_params(struct comp_dev *dev, struct sof_ipc_stream_params *param
 	case 16000:
 		comp_info(dev, "rtnr_params(), sample rate = 16000 kHz");
 		break;
+	case 48000:
+		comp_info(dev, "rtnr_params(), sample rate = 48000 kHz");
+		break;
 	default:
 		comp_err(dev, "rtnr_nr_params(), invalid sample rate(%d kHz)",
 				 sourceb->stream.rate);
@@ -315,24 +377,6 @@ static int rtnr_params(struct comp_dev *dev, struct sof_ipc_stream_params *param
 	}
 
 	return 0;
-}
-
-static inline void rtnr_set_process(struct comp_dev *dev)
-{
-	comp_info(dev, "rtnr_set_process()");
-	struct comp_data *cd = comp_get_drvdata(dev);
-
-	cd->process_enable = true;
-	RTKMA_API_Bypass(cd->rtk_agl, 0);
-}
-
-static inline void rtnr_set_bypass(struct comp_dev *dev)
-{
-	comp_info(dev, "rtnr_set_bypass()");
-	struct comp_data *cd = comp_get_drvdata(dev);
-
-	cd->process_enable = false;
-	RTKMA_API_Bypass(cd->rtk_agl, 1);
 }
 
 static int rtnr_cmd_get_data(struct comp_dev *dev,
@@ -350,28 +394,6 @@ static int rtnr_cmd_get_data(struct comp_dev *dev,
 		comp_err(dev, "rtnr_cmd_get_data() error: invalid command %d", cdata->cmd);
 		ret = -EINVAL;
 		break;
-	}
-
-	return ret;
-}
-
-static int32_t rtnr_check_config_validity(struct comp_dev *dev,
-									    struct comp_data *cd)
-{
-	struct sof_rtnr_config *p_config = comp_get_data_blob(cd->model_handler, NULL, NULL);
-	int ret = 0;
-
-	if (!p_config) {
-		comp_err(dev, "rtnr_check_config_validity() error: invalid cd->model_handler");
-		ret = -EINVAL;
-	} else {
-		comp_info(dev, "rtnr_check_config_validity() params.enabled: %d",
-				p_config->params.enabled);
-
-		if (p_config->params.enabled)
-			rtnr_set_process(dev);
-		else
-			rtnr_set_bypass(dev);
 	}
 
 	return ret;

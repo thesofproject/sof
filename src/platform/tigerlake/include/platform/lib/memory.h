@@ -264,8 +264,9 @@
 #define RT_TIMES	3
 #define RT_SHARED_TIMES	6
 #else
+/* Reserve more memory for RTNR */
 #ifdef CONFIG_COMP_RTNR
-#define RT_TIMES	6
+#define RT_TIMES	5
 #define RT_SHARED_TIMES	11
 #else
 #define RT_TIMES	8
