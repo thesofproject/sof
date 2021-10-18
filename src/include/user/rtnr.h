@@ -15,6 +15,8 @@
 struct sof_rtnr_params {
 	/* 1 to enable RTNR, 0 to disable it */
 	int32_t enabled;
+	uint32_t sample_rate;
+	int32_t reserved;
 } __attribute__((packed, aligned(4)));
 
 struct sof_rtnr_config {
