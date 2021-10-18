@@ -173,8 +173,15 @@ static inline bool zone_is_cached(enum mem_zone zone)
 	return false;
 #endif
 
-	if (zone == SOF_MEM_ZONE_BUFFER)
+	switch (zone) {
+	case SOF_MEM_ZONE_SYS:
+	case SOF_MEM_ZONE_SYS_RUNTIME:
+	case SOF_MEM_ZONE_RUNTIME:
+	case SOF_MEM_ZONE_BUFFER:
 		return true;
+	default:
+		break;
+	}
 
 	return false;
 }
