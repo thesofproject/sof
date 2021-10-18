@@ -33,7 +33,7 @@ CONTROLBYTES_PRIV(DEF_RTNR_PRIV,
 `       0x20,0x00,0x00,0x00,0x00,0x00,0x00,0x00,'
 `       0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,'
 `       0x00,0x00,0x00,0x00,0x01,0x00,0x00,0x00,'
-`       0x80,0x3e,0x00,0x00,0x00,0x00,0x00,0x00"'
+`       0x80,0xbb,0x00,0x00,0x00,0x00,0x00,0x00"'
 )
 
 # RTNR Bytes control with max value of 255
@@ -52,10 +52,10 @@ C_CONTROLBYTES(DEF_RTNR_BYTES, PIPELINE_ID,
 
 # Host "Capture" PCM
 # with 0 sink and 2 source periods
-W_PCM_CAPTURE(PCM_ID, Capture, 0, 2, DMIC_PIPELINE_16k_CORE_ID)
+W_PCM_CAPTURE(PCM_ID, Capture, 0, 2, SCHEDULE_CORE)
 
 # "RTNR 0" has 2 sink period and 2 source periods
-W_RTNR(0, PIPELINE_FORMAT, 2, DAI_PERIODS, DMIC_PIPELINE_16k_CORE_ID, LIST(`		', "DEF_RTNR_BYTES"))
+W_RTNR(0, PIPELINE_FORMAT, 2, DAI_PERIODS, SCHEDULE_CORE, LIST(`		', "DEF_RTNR_BYTES"))
 
 # Capture Buffers
 W_BUFFER(0, COMP_BUFFER_SIZE(4,

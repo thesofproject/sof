@@ -34,6 +34,7 @@ struct comp_data {
 	uint32_t sink_rate;
 	uint32_t source_rate;
 	bool process_enable;
+	uint32_t process_sample_rate;
 	int ref_shift;
 	bool ref_32bits;
 	bool ref_active;
