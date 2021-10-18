@@ -107,11 +107,6 @@ static void schedule_ll_task_update_start(struct ll_schedule_data *sch,
 static void schedule_ll_task_done(struct ll_schedule_data *sch,
 				  struct task *task)
 {
-	/* Remove from the task list, schedule_task_cancel() won't handle it again */
-	list_item_del(&task->list);
-
-	domain_unregister(sch->domain, task, atomic_sub(&sch->num_tasks, 1) - 1);
-
 	tr_info(&ll_tr, "task complete %p %pU", task, task->uid);
 	tr_info(&ll_tr, "num_tasks %d total_num_tasks %d",
 		atomic_read(&sch->num_tasks),
@@ -142,6 +137,10 @@ static void schedule_ll_tasks_execute(struct ll_schedule_data *sch)
 
 		/* do we need to reschedule this task */
 		if (task->state == SOF_TASK_STATE_COMPLETED) {
+			/*
+			 * keep the task in the list and the subsequent call to
+			 * schedule_ll_task_cancel() will clean it up.
+			 */
 			schedule_ll_task_done(sch, task);
 		} else {
 			/* update task's start time */
