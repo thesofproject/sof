@@ -521,11 +521,19 @@ else()
 	set(GLUE_CMD cat sof-${fw_name}.ri.xman sof-${fw_name}.ri > sof-${fw_name}.rix)
 endif()
 
+# FIXME:
+#
+# - Never change files in place, impossible to implement correct
+#   dependencies, impossible to debug the build
+# - Replace most of the add_custom_target() abuse everywhere in this
+#   file with proper add_custom_command()
+# - Use the opportunity to drop the ${fw_name} suffixes, they are
+#   pointless in a dedicated build directory.
 add_custom_target(
 	glue_binary_files
 	COMMAND ${GLUE_CMD}
-	COMMAND ${CMAKE_COMMAND} -E remove sof-${fw_name}.ri
-	COMMAND ${CMAKE_COMMAND} -E rename sof-${fw_name}.rix sof-${fw_name}.ri
+	COMMAND ${CMAKE_COMMAND} -E rename sof-${fw_name}.ri sof-no-xman.ri
+	COMMAND ${CMAKE_COMMAND} -E copy sof-${fw_name}.rix sof-${fw_name}.ri
 	DEPENDS run_meu
 	VERBATIM
 	USES_TERMINAL
