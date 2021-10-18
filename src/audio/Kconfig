@@ -363,6 +363,19 @@ config COMP_IGO_NR
 	  binary libigonr.a that currently is supported on different Xtensa DSP platforms. Please email
 	  info@intelli-go.com for any questions about the binary.
 
+config COMP_RTNR
+	bool "RTNR component"
+	default n
+	help
+	  Select for Realtek noise reduction/suppression(NR/NS) component.
+	  Noise Suppression technology reduces stationary and transient noises in
+	  single-channel speech signals, which increases the signal-to-noise ratio,
+	  improves speech intelligibility and reduces listening fatigue. It estimates
+	  ambient noise and signal levels and then passes or attenuates the signals
+	  according to improve signal-to-noise ratios. The feature links to a
+	  proprietary binary libSOF_RTK_MA_API.a, libSuite_rename.a, libNet.a and libPreset.a.
+	  Please contact antz0525@realtek.com for any question about the binary.
+
 endmenu # "Audio components"
 
 menu "Data formats"
