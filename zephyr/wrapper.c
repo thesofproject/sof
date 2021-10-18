@@ -181,14 +181,22 @@ static inline bool zone_is_cached(enum mem_zone zone)
 
 void *rmalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
 {
-	if (zone_is_cached(zone))
-		return heap_alloc_aligned_cached(&sof_heap, 0, bytes);
+	void *ptr;
 
-	/*
-	 * XTOS alloc implementation has used dcache alignment,
-	 * so SOF application code is expecting this behaviour.
-	 */
-	return heap_alloc_aligned(&sof_heap, PLATFORM_DCACHE_ALIGN, bytes);
+	if (zone_is_cached(zone)) {
+		ptr = heap_alloc_aligned_cached(&sof_heap, 0, bytes);
+	} else {
+		/*
+		 * XTOS alloc implementation has used dcache alignment,
+		 * so SOF application code is expecting this behaviour.
+		 */
+		ptr = heap_alloc_aligned(&sof_heap, PLATFORM_DCACHE_ALIGN, bytes);
+	}
+
+	if (!ptr && zone == SOF_MEM_ZONE_SYS)
+		k_panic();
+
+	return ptr;
 }
 
 /* Use SOF_MEM_ZONE_BUFFER at the moment */
