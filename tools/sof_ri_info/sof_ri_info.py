@@ -12,6 +12,8 @@
 # pylint: disable=too-few-public-methods
 # pylint: disable=too-many-arguments
 # pylint: disable=too-many-instance-attributes
+# pylint: disable=invalid-name
+# pylint: disable=missing-function-docstring
 
 import sys
 import argparse
