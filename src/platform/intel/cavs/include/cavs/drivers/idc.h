@@ -20,11 +20,15 @@ int idc_send_msg(struct idc_msg *msg, uint32_t mode);
 
 int idc_init(void);
 
+void idc_free(void);
+
 #else
 
 static inline int idc_send_msg(struct idc_msg *msg, uint32_t mode) { return 0; }
 
 static inline int idc_init(void) { return 0; }
+
+static inline int idc_free(void) { return 0; }
 
 #endif
 

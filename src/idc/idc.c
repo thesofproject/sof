@@ -321,7 +321,7 @@ int idc_init(void)
 	tr_info(&idc_tr, "idc_init()");
 
 	/* initialize idc data */
-	*idc = rzalloc(SOF_MEM_ZONE_SYS, 0, SOF_MEM_CAPS_RAM, sizeof(**idc));
+	*idc = rzalloc(SOF_MEM_ZONE_SYS_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(**idc));
 	(*idc)->payload = cache_to_uncache((struct idc_payload *)static_payload);
 
 	/* process task */
@@ -335,4 +335,21 @@ int idc_init(void)
 
 	return 0;
 #endif
+}
+
+/**
+ * \brief Frees IDC data for current core.
+ */
+void idc_free(void)
+{
+	struct idc **idc = idc_get();
+
+	tr_info(&idc_tr, "idc_free()");
+
+#ifndef __ZEPHYR__
+	platform_idc_free();
+	schedule_task_free(&(*idc)->idc_task);
+#endif
+
+	rfree(*idc);
 }
