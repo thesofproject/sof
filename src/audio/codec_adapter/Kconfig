@@ -166,4 +166,14 @@ endif
 		API definition together with pre-compiled library is shared by Waves Audio Ltd.
 		If library is not provided will result in compilation error.
 		For more information, contact consumer@waves.com.
+
+	config DTS_CODEC
+	bool "DTS codec"
+	default n
+	help
+		Select to include DTS codec.
+		In order to compile with this option enabled, a pre-compiled static library
+		must be provided by DTS for your target platform. If this library is not present
+		then compilation errors will occur.
+		For more information, please contact sales@xperi.com
 endmenu
