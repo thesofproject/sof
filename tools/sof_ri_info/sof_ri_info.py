@@ -487,7 +487,8 @@ def parse_cse_manifest(reader):
     # Try to detect signature first
     sig = reader.read_string(4)
     if sig != '$CPD':
-        reader.error('CSE Manifest NOT found ' + sig + ')', -4)
+        reader.error('CSE Manifest magic number NOT found, instead: ('
+                     + sig + ')', -4)
         sys.exit(1)
     reader.info('CSE Manifest (' + sig + ')', -4)
 
@@ -511,7 +512,7 @@ def parse_cse_manifest(reader):
     # Read entries
     nb_index = 0
     while nb_index < nb_entries:
-        reader.info('Looking for CSE Manifest entry')
+        reader.info('Reading CSE Manifest entry %d...' % nb_index)
         entry_name = reader.read_string(12)
         entry_offset = reader.read_dw()
         entry_length = reader.read_dw()
@@ -604,11 +605,11 @@ def parse_css_manifest_4(css_mft, reader, size_limit):
     #   that could be parsed if extension type is recognized
     #
     #   or series of 0xffffffff that should be skipped
-    reader.info('Parsing CSS Manifest extensions end 0x{:x}'.format(size_limit))
+    reader.info('Parsing CSS Manifest extensions, end at 0x{:x}'.format(size_limit))
     ext_idx = 0
     while reader.get_offset() < size_limit:
         ext_type = reader.read_dw()
-        reader.info('Reading extension type 0x{:x}'.format(ext_type))
+        reader.info('Reading CSS extension type 0x{:x}:'.format(ext_type))
         if ext_type == 0xffffffff:
             continue
         reader.set_offset(reader.get_offset() - 4)
@@ -626,6 +627,7 @@ def parse_mft_extension(reader, ext_id):
     ext_type = reader.read_dw()
     ext_len = reader.read_dw()
     if ext_type == 15:
+        reader.info("Plat Fw Auth extension")
         ext = PlatFwAuthExtension(ext_id, reader.get_offset()-8)
         ext.add_a(Astring('name', reader.read_string(4)))
         ext.add_a(Auint('vcn', reader.read_dw()))
@@ -634,6 +636,7 @@ def parse_mft_extension(reader, ext_id):
         read_len = reader.get_offset() - begin_off
         reader.ff_data(ext_len - read_len)
     elif ext_type == 17:
+        reader.info("ADSP metadata file extension")
         ext = AdspMetadataFileExt(ext_id, reader.get_offset()-8)
         ext.add_a(Auint('adsp_imr_type', reader.read_dw(), 'red'))
         # skip reserved part
@@ -647,10 +650,12 @@ def parse_mft_extension(reader, ext_id):
         ext.add_a(Auint('limit_offset', reader.read_dw()))
         ext.add_a(Abytes('attributes', reader.read_bytes(16)))
     else:
+        reader.info("Other extension")
         ext = MftExtension(ext_id, 'Other Extension', reader.get_offset()-8)
         reader.ff_data(ext_len-8)
     ext.add_a(Auint('type', ext_type))
     ext.add_a(Auint('length', ext_len))
+    reader.info("... end of extension")
     return ext
 
 def parse_adsp_manifest_hdr(reader):
