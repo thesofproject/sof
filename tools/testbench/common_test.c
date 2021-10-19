@@ -62,9 +62,6 @@ struct ipc_data {
 
 void tb_pipeline_free(struct sof *sof)
 {
-	struct schedule_data *sch;
-	struct schedulers **schedulers;
-	struct list_item *slist, *_slist;
 	struct notify **notify = arch_notify_get();
 	struct ipc_data *iipc;
 
@@ -73,12 +70,6 @@ void tb_pipeline_free(struct sof *sof)
 
 	/* free all scheduler data */
 	schedule_free();
-	schedulers = arch_schedulers_get();
-	list_for_item_safe(slist, _slist, &(*schedulers)->list) {
-		sch = container_of(slist, struct schedule_data, list);
-		free(sch);
-	}
-	free(*arch_schedulers_get());
 
 	/* free IPC data */
 	iipc = sof->ipc->private;
