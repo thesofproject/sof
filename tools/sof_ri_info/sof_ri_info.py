@@ -524,24 +524,25 @@ def parse_cse_manifest(reader):
         hdr_entry.add_a(Ahex('entry_length', entry_length))
         hdr.add_comp(hdr_entry)
 
-        reader.info('CSE Entry name {} length {}'.format(entry_name,
-                    entry_length))
+        assert cse_mft.file_offset == reader.ext_mft_length
+        entry_file_offset = reader.ext_mft_length + entry_offset
+        reader.info('... CSE Entry name {} file offset 0x{:x} length {}'.format(entry_name,
+                    entry_file_offset, entry_length))
 
         if '.man' in entry_name:
-            entry = CssManifest(entry_name,
-                                reader.ext_mft_length + entry_offset)
-            cur_off = reader.set_offset(reader.ext_mft_length + entry_offset)
+            entry = CssManifest(entry_name, entry_file_offset)
+            cur_off = reader.set_offset(entry_file_offset)
             parse_css_manifest(entry, reader,
-                               reader.ext_mft_length + entry_offset + entry_length)
+                               entry_file_offset + entry_length)
             reader.set_offset(cur_off)
         elif '.met' in entry_name:
-            cur_off = reader.set_offset(reader.ext_mft_length + entry_offset)
+            cur_off = reader.set_offset(entry_file_offset)
             entry = parse_mft_extension(reader, 0)
             entry.name = '{} ({})'.format(entry_name, entry.name)
             reader.set_offset(cur_off)
         else:
             # indicate the place, the entry is enumerated. mft parsed later
-            entry = Component('adsp_mft_cse_entry', entry_name, entry_offset)
+            entry = Component('adsp_mft_cse_entry', entry_name, entry_file_offset)
         cse_mft.add_comp(entry)
 
         nb_index += 1
