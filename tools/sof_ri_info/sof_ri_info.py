@@ -1108,6 +1108,9 @@ class CssManifest(Component):
         hdr = self.cdir['css_mft_hdr']
         out = '{}{} (CSS Manifest)'.format(pref, self.name)
         out += ' type {}'.format(hdr.adir['type'])
+        out += ' file offset {:#x} hdr_len {}'.format(
+            self.file_offset, hdr.adir['header_len_dw'].val * 4
+        )
         out += ' ver {}'.format(hdr.adir['header_version'])
         out += ' date {}'.format(hdr.adir['date'])
         print(out)
@@ -1133,9 +1136,9 @@ class MftExtension(Component):
                                            offset)
 
     def dump_info(self, pref, comp_filter):
-        print('{}{} type {} length {}'.
+        print('{}{} type {} file offset 0x{:x} length {}'.
               format(pref, self.name,
-                     self.adir['type'], self.adir['length']))
+                     self.adir['type'], self.file_offset, self.adir['length']))
 
 class PlatFwAuthExtension(MftExtension):
     """ Platform FW Auth Extension
@@ -1145,7 +1148,8 @@ class PlatFwAuthExtension(MftExtension):
               self).__init__(ext_id, 'Plat Fw Auth Extension', offset)
 
     def dump_info(self, pref, comp_filter):
-        out = '{}{}'.format(pref, self.name)
+        super().dump_info(pref, comp_filter)
+        out = '{}'.format(pref)
         out += ' name {}'.format(self.adir['name'])
         out += ' vcn {}'.format(self.adir['vcn'])
         out += ' bitmap {}'.format(self.adir['bitmap'])
@@ -1161,7 +1165,8 @@ class AdspMetadataFileExt(MftExtension):
                              offset)
 
     def dump_info(self, pref, comp_filter):
-        out = '{}{}'.format(pref, self.name)
+        super().dump_info(pref, comp_filter)
+        out = '{}'.format(pref)
         out += ' ver {}'.format(self.adir['version'])
         out += ' base offset {}'.format(self.adir['base_offset'])
         out += ' limit offset {}'.format(self.adir['limit_offset'])
@@ -1178,7 +1183,7 @@ class AdspManifest(Component):
 
     def dump_info(self, pref, comp_filter):
         hdr = self.cdir['adsp_mft_hdr']
-        out = '{}{} (ADSP Manifest)'.format(pref, self.name)
+        out = '{}{} (ADSP Manifest) file offset 0x{:x}'.format(pref, self.name, self.file_offset)
         out += ' name {}'.format(hdr.adir['name'])
         out += ' build ver {}'.format(hdr.adir['build_version'])
         out += ' feature mask {}'.format(hdr.adir['feature_mask'])
