@@ -101,7 +101,7 @@ clone()
 	# anywhere. Simply edit remote and reference, uncomment this
 	# line and submit as an SOF Pull Request.
 
-	# zephyr_fetch_and_switch    origin   pull/38374/head
+	zephyr_fetch_and_switch    origin   pull/39231/head
 
 	# SECURITY WARNING for reviewers: never allow unknown code from
 	# unknown submitters on any CI system.
