@@ -133,6 +133,7 @@ west_init_update()
 
 	# zephyr_fetch_and_switch    origin   pull/38374/head
 	# zephyr_fetch_and_switch    origin   19d5448ec117fde8076bec4d0e61da53147f3315
+	zephyr_fetch_and_switch    origin   pull/41098/head
 
 	# SECURITY WARNING for reviewers: never allow unknown code from
 	# unknown submitters on any CI system.
