@@ -281,21 +281,22 @@ int scheduler_init_edf(void)
 	return 0;
 }
 
-static void scheduler_free_edf(void *data)
+static void scheduler_free_edf(void *data, uint32_t flags)
 {
 	struct edf_schedule_data *edf_sch = data;
-	uint32_t flags;
+	uint32_t irq_flags;
 
-	irq_local_disable(flags);
+	irq_local_disable(irq_flags);
 
 	/* disable and unregister EDF scheduler interrupt */
 	interrupt_disable(edf_sch->irq, edf_sch);
 	interrupt_unregister(edf_sch->irq, edf_sch);
 
-	/* free main task context */
-	task_main_free();
+	if (!(flags & SOF_SCHEDULER_FREE_IRQ_ONLY))
+		/* free main task context */
+		task_main_free();
 
-	irq_local_enable(flags);
+	irq_local_enable(irq_flags);
 }
 
 static int scheduler_restore_edf(void *data)

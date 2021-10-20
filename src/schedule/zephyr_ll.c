@@ -434,7 +434,7 @@ static int zephyr_ll_task_cancel(void *data, struct task *task)
  * be active, but other schedulers ignore them too... And we don't need to free
  * the scheduler data - it's allocated in the SYS zone.
  */
-static void zephyr_ll_scheduler_free(void *data)
+static void zephyr_ll_scheduler_free(void *data, uint32_t flags)
 {
 	struct zephyr_ll *sch = data;
 

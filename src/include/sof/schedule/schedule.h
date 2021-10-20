@@ -35,6 +35,11 @@ enum {
 	SOF_SCHEDULE_COUNT	/**< indicates number of scheduler types */
 };
 
+/** \brief Scheduler free available flags */
+#define SOF_SCHEDULER_FREE_IRQ_ONLY	BIT(0) /**< Free function disables only
+						 *  interrupts
+						 */
+
 /**
  * Scheduler operations.
  *
@@ -112,11 +117,12 @@ struct scheduler_ops {
 	/**
 	 * Frees scheduler's resources.
 	 * @param data Private data of selected scheduler.
+	 * @param flags Function specific flags.
 	 * @return 0 if succeeded, error code otherwise.
 	 *
 	 * This operation is optional.
 	 */
-	void (*scheduler_free)(void *data);
+	void (*scheduler_free)(void *data, uint32_t flags);
 
 	/**
 	 * Restores scheduler's resources.
@@ -286,7 +292,7 @@ static inline int schedule_task_free(struct task *task)
 }
 
 /** See scheduler_ops::scheduler_free */
-static inline void schedule_free(void)
+static inline void schedule_free(uint32_t flags)
 {
 	struct schedulers *schedulers = *arch_schedulers_get();
 	struct schedule_data *sch;
@@ -295,7 +301,7 @@ static inline void schedule_free(void)
 	list_for_item(slist, &schedulers->list) {
 		sch = container_of(slist, struct schedule_data, list);
 		if (sch->ops->scheduler_free)
-			sch->ops->scheduler_free(sch->data);
+			sch->ops->scheduler_free(sch->data, flags);
 	}
 }
 

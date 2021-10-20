@@ -72,7 +72,7 @@ void tb_pipeline_free(struct sof *sof)
 	free(*notify);
 
 	/* free all scheduler data */
-	schedule_free();
+	schedule_free(0);
 	schedulers = arch_schedulers_get();
 	list_for_item_safe(slist, _slist, &(*schedulers)->list) {
 		sch = container_of(slist, struct schedule_data, list);
