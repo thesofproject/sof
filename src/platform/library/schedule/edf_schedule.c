@@ -85,7 +85,7 @@ int scheduler_init_edf(void)
 	return 0;
 }
 
-static void edf_scheduler_free(void *data)
+static void edf_scheduler_free(void *data, uint32_t flags)
 {
 	free(data);
 }
