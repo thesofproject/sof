@@ -126,6 +126,8 @@ define(DMIC_DAI_LINK_16k_ID, `5')
 define(DMIC_16k_PCM_NAME, `BufferedMic')
 # define pcm, pipeline and dai id
 define(KWD_PIPE_SCH_DEADLINE_US, 5000)
+# Use the google hotword detector
+define(DETECTOR_TYPE, `google-hotword-detect')
 # include the generic dmic with kwd
 include(`platform/intel/intel-generic-dmic-kwd.m4')
 

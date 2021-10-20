@@ -166,6 +166,8 @@ ifdef(`GOOGLE_RTC_AUDIO_PROCESSING', `define(`DMIC_48k_PERIOD', 10000)', `')
 
 # define pcm, pipeline and dai id
 define(KWD_PIPE_SCH_DEADLINE_US, 5000)
+# Use the google hotword detector
+define(DETECTOR_TYPE, `google-hotword-detect')
 
 # include the generic dmic with kwd
 ifdef(`NOHOTWORD',
