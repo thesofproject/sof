@@ -76,7 +76,7 @@ __section(".heap_mem") static uint8_t __aligned(64) heapmem[HEAPMEM_SIZE];
 #if (CONFIG_HP_MEMORY_BANKS < 16)
 /* e.g. APL */
 #if defined __XCC__
-#define	HEAPMEM_SIZE	0x28000
+#define	HEAPMEM_SIZE	0x20000
 #else
 #define	HEAPMEM_SIZE	0x30000
 #endif
