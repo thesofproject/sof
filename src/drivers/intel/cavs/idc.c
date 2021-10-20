@@ -279,7 +279,7 @@ int platform_idc_restore(void)
 /**
  * \brief Frees IDC data and unregisters interrupt.
  */
-void idc_free(void)
+void idc_free(uint32_t flags)
 {
 	struct idc *idc = *idc_get();
 	int core = cpu_get_id();
@@ -298,6 +298,9 @@ void idc_free(void)
 		if (idctfc & IPC_IDCTFC_BUSY)
 			idc_write(IPC_IDCTFC(i), core, idctfc);
 	}
+
+	if (flags & IDC_FREE_IRQ_ONLY)
+		return;
 
 	schedule_task_free(&idc->idc_task);
 }

@@ -94,6 +94,9 @@
 /** \brief Max IDC message payload size in bytes. */
 #define IDC_MAX_PAYLOAD_SIZE	96
 
+/** \brief IDC free function flags */
+#define IDC_FREE_IRQ_ONLY	BIT(0)	/**< disable only irqs */
+
 /** \brief IDC message payload. */
 struct idc_payload {
 	uint8_t data[IDC_MAX_PAYLOAD_SIZE];
@@ -128,7 +131,7 @@ static inline struct idc_payload *idc_payload_get(struct idc *idc,
 
 void idc_enable_interrupts(int target_core, int source_core);
 
-void idc_free(void);
+void idc_free(uint32_t flags);
 
 int platform_idc_init(void);
 
