@@ -164,7 +164,7 @@ void cpu_power_down_core(void)
 {
 	arch_interrupt_global_disable();
 
-	idc_free();
+	idc_free(0);
 
 	schedule_free();
 
