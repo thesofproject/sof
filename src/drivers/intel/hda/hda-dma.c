@@ -437,8 +437,7 @@ static int hda_dma_host_start(struct dma_chan_data *channel)
 
 	/* Register common L1 exit for all channels */
 	ret = notifier_register(hda_chan, scheduler_get_data(SOF_SCHEDULE_LL_TIMER),
-				NOTIFIER_ID_LL_POST_RUN, hda_dma_l1_exit_notify,
-				NOTIFIER_FLAG_AGGREGATE);
+				NOTIFIER_ID_LL_POST_RUN, hda_dma_l1_exit_notify, 0);
 	if (ret < 0)
 		tr_err(&hdma_tr, "hda-dmac: %d channel %d, cannot register notification %d",
 		       channel->dma->plat_data.id, channel->index,
@@ -455,7 +454,7 @@ static void hda_dma_host_stop(struct dma_chan_data *channel)
 		return;
 
 	/* Unregister L1 exit */
-	notifier_unregister(NULL, scheduler_get_data(SOF_SCHEDULE_LL_TIMER),
+	notifier_unregister(hda_chan, scheduler_get_data(SOF_SCHEDULE_LL_TIMER),
 			    NOTIFIER_ID_LL_POST_RUN);
 }
 
