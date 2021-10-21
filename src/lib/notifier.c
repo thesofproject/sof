@@ -189,7 +189,7 @@ void init_system_notify(struct sof *sof)
 {
 	struct notify **notify = arch_notify_get();
 	int i;
-	*notify = rzalloc(SOF_MEM_ZONE_SYS, 0, SOF_MEM_CAPS_RAM,
+	*notify = rzalloc(SOF_MEM_ZONE_SYS_RUNTIME, 0, SOF_MEM_CAPS_RAM,
 			  sizeof(**notify));
 
 	spinlock_init(&(*notify)->lock);
@@ -203,4 +203,7 @@ void init_system_notify(struct sof *sof)
 
 void free_system_notify(void)
 {
+	struct notify **notify = arch_notify_get();
+
+	rfree(*notify);
 }
