@@ -67,31 +67,9 @@ __section(".heap_mem") static uint8_t __aligned(64) heapmem[HEAPMEM_SIZE];
 
 #else
 
-/*
- * TODO: heap size should be set based on Zephyr linker output.
- * At the moment, the HEAP_SIZEs are approximations from the XTOS linker scripts
- * (e.g. src/platform/apollolake/apollolake.x.in for APL):
- * (_bss_end - _runtime_heap_start)
- */
-#if (CONFIG_HP_MEMORY_BANKS < 16)
-/* e.g. APL */
-#if defined __XCC__
-#define	HEAPMEM_SIZE	0x20000
-#else
-#define	HEAPMEM_SIZE	0x30000
-#endif
-#elif (CONFIG_HP_MEMORY_BANKS < 30)
-/* e.g. JSL */
-#define	HEAPMEM_SIZE	0x80000
-#elif (CONFIG_HP_MEMORY_BANKS < 45)
-/* e.g. TGL-H */
-#define	HEAPMEM_SIZE	0x100000
-#else
-/* e.g. CNL/ICL/TGL */
-#define	HEAPMEM_SIZE	0x200000
-#endif
-
-static uint8_t __aligned(PLATFORM_DCACHE_ALIGN)heapmem[HEAPMEM_SIZE];
+extern uint8_t _end, _heap_sentry;
+#define heapmem ((uint8_t *)ALIGN_UP((uintptr_t)&_end, PLATFORM_DCACHE_ALIGN))
+#define HEAPMEM_SIZE (&_heap_sentry - heapmem)
 
 #endif
 
