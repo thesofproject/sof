@@ -21,8 +21,7 @@ jobs:
       PR_NUM: ${{github.event.number}}
       # TODO: reduce duplication with scripts/sof-*-commit-hook.sh
       # thanks to either some .conf file or some wrapper script
-      CHK_CMD_OPTS: --ignore UNKNOWN_COMMIT_ID --codespell --codespellfile
-          /usr/lib/python3/dist-packages/codespell_lib/data/dictionary.txt
+      CHK_CMD_OPTS: --ignore UNKNOWN_COMMIT_ID --codespell
          --ignore C99_COMMENT_TOLERANCE
     steps:
       # depth 2 so:
