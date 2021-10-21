@@ -147,10 +147,7 @@ static void heap_free(struct k_heap *h, void *mem)
 
 static inline bool zone_is_cached(enum mem_zone zone)
 {
-#ifndef CONFIG_SOF_ZEPHYR_HEAP_CACHED
-	return false;
-#endif
-
+#ifdef CONFIG_SOF_ZEPHYR_HEAP_CACHED
 	switch (zone) {
 	case SOF_MEM_ZONE_SYS:
 	case SOF_MEM_ZONE_SYS_RUNTIME:
@@ -160,6 +157,7 @@ static inline bool zone_is_cached(enum mem_zone zone)
 	default:
 		break;
 	}
+#endif
 
 	return false;
 }
