@@ -1,0 +1,450 @@
+// SPDX-License-Identifier: BSD-3-Clause
+//
+// Copyright(c) 2021 Intel Corporation. All rights reserved.
+//
+// Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
+
+#include <stdarg.h>
+#include <stddef.h>
+#include <setjmp.h>
+#include <stdint.h>
+#include <cmocka.h>
+#include <kernel/header.h>
+#include <sof/audio/component_ext.h>
+#include <sof/audio/eq_iir/eq_iir.h>
+
+#include "../../util.h"
+#include "../../../include/cmocka_chirp_2ch.h"
+#include "cmocka_chirp_iir_ref_2ch.h"
+#include "cmocka_iir_coef_2ch.h"
+
+/* Allow some small error for fixed point. In IIR case due to float
+ * reference with float coefficients the difference can be quite
+ * large to scaled integer bi-quads. This could be re-visited with
+ * a more implementation like reference in Octave test vector
+ * generate script.
+ */
+#define ERROR_TOLERANCE_S16 2
+#define ERROR_TOLERANCE_S24 128
+#define ERROR_TOLERANCE_S32 32768
+
+/* Thresholds for frames count jitter for rand() function */
+#define THR_RAND_PLUS_ONE ((RAND_MAX >> 1) + (RAND_MAX >> 2))
+#define THR_RAND_MINUS_ONE ((RAND_MAX >> 1) - (RAND_MAX >> 2))
+
+struct buffer_fill {
+	int idx;
+} buffer_fill_data;
+
+struct buffer_verify {
+	int idx;
+} buffer_verify_data;
+
+struct test_parameters {
+	uint32_t channels;
+	uint32_t frames;
+	uint32_t buffer_size_mult;
+	uint32_t source_format;
+	uint32_t sink_format;
+};
+
+struct test_data {
+	struct comp_dev *dev;
+	struct comp_buffer *sink;
+	struct comp_buffer *source;
+	struct test_parameters *params;
+	bool continue_loop;
+};
+
+static int setup_group(void **state)
+{
+	sys_comp_init(sof_get());
+	sys_comp_eq_iir_init();
+	return 0;
+}
+
+static struct sof_ipc_comp_process *create_eq_iir_comp_ipc(struct test_data *td)
+{
+	struct sof_ipc_comp_process *ipc;
+	struct sof_eq_iir_config *eq;
+	size_t ipc_size = sizeof(struct sof_ipc_comp_process);
+	struct sof_abi_hdr *blob = (struct sof_abi_hdr *)iir_coef_2ch;
+
+	ipc = calloc(1, ipc_size + blob->size);
+	eq = (struct sof_eq_iir_config *)&ipc->data;
+	ipc->comp.hdr.size = sizeof(struct sof_ipc_comp_process);
+	ipc->comp.type = SOF_COMP_EQ_IIR;
+	ipc->config.hdr.size = sizeof(struct sof_ipc_comp_config);
+	ipc->size = blob->size;
+	memcpy_s(eq, blob->size, blob->data, blob->size);
+	return ipc;
+}
+
+static void prepare_sink(struct test_data *td)
+{
+	struct test_parameters *parameters = td->params;
+	size_t size;
+	size_t free;
+
+	/* allocate new sink buffer */
+	size = parameters->frames * get_frame_bytes(parameters->sink_format, parameters->channels) *
+	       parameters->buffer_size_mult;
+
+	td->sink = create_test_sink(td->dev, 0, parameters->sink_format,
+				    parameters->channels, size);
+	free = audio_stream_get_free_bytes(&td->sink->stream);
+	assert_int_equal(free, size);
+}
+
+static void prepare_source(struct test_data *td)
+{
+	struct test_parameters *parameters = td->params;
+	size_t size;
+	size_t free;
+
+	size = parameters->frames * get_frame_bytes(parameters->source_format,
+	       parameters->channels) * parameters->buffer_size_mult;
+
+	td->source = create_test_source(td->dev, 0, parameters->source_format,
+					parameters->channels, size);
+	free = audio_stream_get_free_bytes(&td->source->stream);
+	assert_int_equal(free, size);
+}
+
+static int setup(void **state)
+{
+	struct test_parameters *params = *state;
+	struct test_data *td;
+	struct sof_ipc_comp_process *ipc;
+	int ret;
+
+	td = test_malloc(sizeof(*td));
+	if (!td)
+		return -EINVAL;
+
+	td->params = test_malloc(sizeof(*params));
+	if (!td->params)
+		return -EINVAL;
+
+	memcpy_s(td->params, sizeof(*td->params), params, sizeof(*params));
+	ipc = create_eq_iir_comp_ipc(td);
+	buffer_fill_data.idx = 0;
+	buffer_verify_data.idx = 0;
+
+	td->dev = comp_new((struct sof_ipc_comp *)ipc);
+	free(ipc);
+	if (!td->dev)
+		return -EINVAL;
+
+	prepare_sink(td);
+	prepare_source(td);
+	ret = comp_prepare(td->dev);
+	if (ret)
+		return ret;
+
+	td->continue_loop = true;
+	*state = td;
+	return 0;
+}
+
+static int teardown(void **state)
+{
+	struct test_data *td = *state;
+
+	test_free(td->params);
+	free_test_source(td->source);
+	free_test_sink(td->sink);
+	comp_free(td->dev);
+	test_free(td);
+	return 0;
+}
+
+#if CONFIG_FORMAT_S16LE
+static void fill_source_s16(struct test_data *td, int frames_max)
+{
+	struct comp_dev *dev = td->dev;
+	struct comp_buffer *sb;
+	struct audio_stream *ss;
+	int16_t *x;
+	int bytes_total;
+	int samples;
+	int frames;
+	int i;
+	int samples_processed = 0;
+
+	sb = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
+	ss = &sb->stream;
+	frames = MIN(audio_stream_get_free_frames(ss), frames_max);
+	samples = frames * ss->channels;
+	for (i = 0; i < samples; i++) {
+		x = audio_stream_write_frag_s16(ss, i);
+		*x = sat_int16(Q_SHIFT_RND(chirp_2ch[buffer_fill_data.idx++], 31, 15));
+		samples_processed++;
+		if (buffer_fill_data.idx == CHIRP_2CH_LENGTH) {
+			td->continue_loop = false;
+			break;
+		}
+	}
+
+	if (samples_processed > 0) {
+		bytes_total = samples_processed * audio_stream_sample_bytes(ss);
+		comp_update_buffer_produce(sb, bytes_total);
+	}
+}
+
+static void verify_sink_s16(struct test_data *td)
+{
+	struct comp_dev *dev = td->dev;
+	struct comp_buffer *sb;
+	struct audio_stream *ss;
+	int32_t delta;
+	int32_t ref;
+	int32_t out;
+	int16_t *x;
+	int samples;
+	int frames;
+	int i;
+
+	sb = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
+	ss = &sb->stream;
+	frames = audio_stream_get_avail_frames(ss);
+	samples = frames * ss->channels;
+	for (i = 0; i < samples; i++) {
+		x = audio_stream_read_frag_s16(ss, i);
+		out = *x;
+		ref = sat_int16(Q_SHIFT_RND(chirp_iir_ref_2ch[buffer_verify_data.idx++], 31, 15));
+		delta = ref - out;
+		if (delta > ERROR_TOLERANCE_S16 || delta < -ERROR_TOLERANCE_S16)
+			assert_int_equal(out, ref);
+	}
+
+	if (frames > 0)
+		comp_update_buffer_consume(sb, frames * audio_stream_frame_bytes(ss));
+}
+#endif /* CONFIG_FORMAT_S16LE */
+
+#if CONFIG_FORMAT_S24LE
+static void fill_source_s24(struct test_data *td, int frames_max)
+{
+	struct comp_dev *dev = td->dev;
+	struct comp_buffer *sb;
+	struct audio_stream *ss;
+	int32_t *x;
+	int bytes_total;
+	int samples;
+	int frames;
+	int i;
+	int samples_processed = 0;
+
+	sb = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
+	ss = &sb->stream;
+	frames = MIN(audio_stream_get_free_frames(ss), frames_max);
+	samples = frames * ss->channels;
+	for (i = 0; i < samples; i++) {
+		x = audio_stream_write_frag_s32(ss, i);
+		*x = sat_int24(Q_SHIFT_RND(chirp_2ch[buffer_fill_data.idx++], 31, 23));
+		samples_processed++;
+		if (buffer_fill_data.idx == CHIRP_2CH_LENGTH) {
+			td->continue_loop = false;
+			break;
+		}
+	}
+
+	if (samples_processed > 0) {
+		bytes_total = samples_processed * audio_stream_sample_bytes(ss);
+		comp_update_buffer_produce(sb, bytes_total);
+	}
+}
+
+static void verify_sink_s24(struct test_data *td)
+{
+	struct comp_dev *dev = td->dev;
+	struct comp_buffer *sb;
+	struct audio_stream *ss;
+	int32_t delta;
+	int32_t ref;
+	int32_t out;
+	int32_t *x;
+	int samples;
+	int frames;
+	int i;
+
+	sb = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
+	ss = &sb->stream;
+	frames = audio_stream_get_avail_frames(ss);
+	samples = frames * ss->channels;
+	for (i = 0; i < samples; i++) {
+		x = audio_stream_read_frag_s32(ss, i);
+		out = (*x << 8) >> 8; /* Make sure there's no 24 bit overflow */
+		ref = sat_int24(Q_SHIFT_RND(chirp_iir_ref_2ch[buffer_verify_data.idx++], 31, 23));
+		delta = ref - out;
+		if (delta > ERROR_TOLERANCE_S24 || delta < -ERROR_TOLERANCE_S24)
+			assert_int_equal(out, ref);
+	}
+
+	if (frames > 0)
+		comp_update_buffer_consume(sb, frames * audio_stream_frame_bytes(ss));
+}
+#endif /* CONFIG_FORMAT_S24LE */
+
+#if CONFIG_FORMAT_S32LE
+static void fill_source_s32(struct test_data *td, int frames_max)
+{
+	struct comp_dev *dev = td->dev;
+	struct comp_buffer *sb;
+	struct audio_stream *ss;
+	int32_t *x;
+	int bytes_total;
+	int samples;
+	int frames;
+	int i;
+	int samples_processed = 0;
+
+	sb = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
+	ss = &sb->stream;
+	frames = MIN(audio_stream_get_free_frames(ss), frames_max);
+	samples = frames * ss->channels;
+	for (i = 0; i < samples; i++) {
+		x = audio_stream_write_frag_s32(ss, i);
+		*x = chirp_2ch[buffer_fill_data.idx++];
+		samples_processed++;
+		if (buffer_fill_data.idx == CHIRP_2CH_LENGTH) {
+			td->continue_loop = false;
+			break;
+		}
+	}
+
+	if (samples_processed > 0) {
+		bytes_total = samples_processed * audio_stream_sample_bytes(ss);
+		comp_update_buffer_produce(sb, bytes_total);
+	}
+}
+
+static void verify_sink_s32(struct test_data *td)
+{
+	struct comp_dev *dev = td->dev;
+	struct comp_buffer *sb;
+	struct audio_stream *ss;
+	int64_t delta;
+	int32_t ref;
+	int32_t out;
+	int32_t *x;
+	int samples;
+	int frames;
+	int i;
+
+	sb = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
+	ss = &sb->stream;
+	frames = audio_stream_get_avail_frames(ss);
+	samples = frames * ss->channels;
+	for (i = 0; i < samples; i++) {
+		x = audio_stream_read_frag_s32(ss, i);
+		out = *x;
+		ref = chirp_iir_ref_2ch[buffer_verify_data.idx++];
+		delta = (int64_t)ref - (int64_t)out;
+		if (delta > ERROR_TOLERANCE_S32 || delta < -ERROR_TOLERANCE_S32)
+			assert_int_equal(out, ref);
+	}
+
+	if (frames > 0)
+		comp_update_buffer_consume(sb, frames * audio_stream_frame_bytes(ss));
+}
+#endif /* CONFIG_FORMAT_S32LE */
+
+static int frames_jitter(int frames)
+{
+	int r = rand();
+
+	if (r > THR_RAND_PLUS_ONE)
+		return frames + 1;
+	else if (r < THR_RAND_MINUS_ONE)
+		return frames - 1;
+	else
+		return frames;
+}
+
+static void test_audio_eq_iir(void **state)
+{
+	struct test_data *td = *state;
+	struct comp_buffer *source = td->source;
+	struct comp_buffer *sink = td->sink;
+	int ret;
+	int frames;
+
+	while (td->continue_loop) {
+		frames = frames_jitter(td->params->frames);
+		switch (source->stream.frame_fmt) {
+		case SOF_IPC_FRAME_S16_LE:
+			fill_source_s16(td, frames);
+			break;
+		case SOF_IPC_FRAME_S24_4LE:
+			fill_source_s24(td, frames);
+			break;
+		case SOF_IPC_FRAME_S32_LE:
+			fill_source_s32(td, frames);
+			break;
+		default:
+			assert(0);
+			break;
+		}
+
+		ret = comp_copy(td->dev);
+		assert_int_equal(ret, 0);
+
+		switch (sink->stream.frame_fmt) {
+		case SOF_IPC_FRAME_S16_LE:
+			verify_sink_s16(td);
+			break;
+		case SOF_IPC_FRAME_S24_4LE:
+			verify_sink_s24(td);
+			break;
+		case SOF_IPC_FRAME_S32_LE:
+			verify_sink_s32(td);
+			break;
+		default:
+			assert(0);
+			break;
+		}
+	}
+}
+
+static struct test_parameters parameters[] = {
+#if CONFIG_FORMAT_S16LE
+	{ 2, 48, 2, SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S16_LE },
+#endif /* CONFIG_FORMAT_S16LE */
+#if CONFIG_FORMAT_S24LE
+	{ 2, 48, 2, SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S24_4LE },
+#endif /* CONFIG_FORMAT_S24LE */
+
+#if CONFIG_FORMAT_S32LE
+	{ 2, 48, 2, SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S32_LE },
+#endif /* CONFIG_FORMAT_S32LE */
+
+#if CONFIG_FORMAT_S32LE && CONFIG_FORMAT_S16LE
+	{ 2, 48, 2, SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S16_LE },
+#endif /* CONFIG_FORMAT_S32LE && CONFIG_FORMAT_S16LE */
+
+#if CONFIG_FORMAT_S32LE && CONFIG_FORMAT_S24LE
+	{ 2, 48, 2, SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S24_4LE },
+#endif /* CONFIG_FORMAT_S32LE && CONFIG_FORMAT_S24LE */
+
+};
+
+int main(void)
+{
+	int i;
+
+	struct CMUnitTest tests[ARRAY_SIZE(parameters)];
+
+	for (i = 0; i < ARRAY_SIZE(parameters); i++) {
+		tests[i].name = "test_audio_eq_iir";
+		tests[i].test_func = test_audio_eq_iir;
+		tests[i].setup_func = setup;
+		tests[i].teardown_func = teardown;
+		tests[i].initial_state = &parameters[i];
+	}
+
+	cmocka_set_message_output(CM_OUTPUT_TAP);
+
+	return cmocka_run_group_tests(tests, setup_group, NULL);
+}
