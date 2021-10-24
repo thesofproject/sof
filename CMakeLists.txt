@@ -25,7 +25,7 @@ add_executable(rimage
 )
 
 target_compile_options(rimage PRIVATE
-	-Wall -Werror -Wl,-EL -Wmissing-prototypes -Wimplicit-fallthrough
+	-Wall -Werror -Wmissing-prototypes -Wimplicit-fallthrough
 )
 
 target_link_libraries(rimage PRIVATE "-lcrypto")
