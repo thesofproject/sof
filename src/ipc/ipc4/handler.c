@@ -20,6 +20,7 @@
 #include <sof/ipc/msg.h>
 #include <sof/ipc/driver.h>
 #include <sof/lib/mailbox.h>
+#include <sof/lib/wait.h>
 #include <sof/math/numbers.h>
 #include <sof/trace/trace.h>
 #include <ipc4/error_status.h>
@@ -175,19 +176,13 @@ error:
  *     ERROR Stop       EOS       |______\ SAVE
  *                                      /
  */
-static int ipc4_set_pipeline_state(union ipc4_message_header *ipc4)
+static int set_pipeline_state(uint32_t id, uint32_t cmd)
 {
-	struct ipc4_pipeline_set_state state;
 	struct ipc_comp_dev *pcm_dev;
 	struct ipc_comp_dev *host;
 	struct ipc *ipc = ipc_get();
-	uint32_t cmd, id;
 	int status;
 	int ret;
-
-	state.header.dat = ipc4->dat;
-	id = state.header.r.ppl_id;
-	cmd = state.header.r.ppl_state;
 
 	tr_dbg(&ipc_tr, "ipc4 set pipeline %d state %x:", id, cmd);
 
@@ -273,6 +268,45 @@ static int ipc4_set_pipeline_state(union ipc4_message_header *ipc4)
 	} else if (ret > 0) {
 		msg_data.delayed_reply = true;
 		msg_data.delayed_error = IPC4_PIPELINE_STATE_NOT_SET;
+		ret = 0;
+	}
+
+	return ret;
+}
+
+static int ipc4_set_pipeline_state(union ipc4_message_header *ipc4)
+{
+	struct ipc4_pipeline_set_state_data *ppl_data;
+	struct ipc4_pipeline_set_state state;
+	uint32_t cmd, ppl_count;
+	uint32_t *ppl_id, id;
+	int ret;
+	int i;
+
+	state.header.dat = ipc4[0].dat;
+	state.data.dat = ipc4[1].dat;
+	cmd = state.header.r.ppl_state;
+
+	ppl_data = (struct ipc4_pipeline_set_state_data *)MAILBOX_HOSTBOX_BASE;
+	dcache_invalidate_region(ppl_data, sizeof(*ppl_data));
+	if (state.data.r.multi_ppl) {
+		ppl_count = ppl_data->pipelines_count;
+		ppl_id = ppl_data->ppl_id;
+		dcache_invalidate_region(ppl_id, sizeof(int) * ppl_count);
+	} else {
+		ppl_count = 1;
+		id = state.header.r.ppl_id;
+		ppl_id = &id;
+	}
+
+	for (i = 0; i < ppl_count; i++) {
+		ret = set_pipeline_state(ppl_id[i], cmd);
+		if (ret < 0)
+			break;
+
+		/* wait for pre-scheduled pipeline set complete */
+		while (msg_data.delayed_reply)
+			wait_delay(10000);
 	}
 
 	return ret;
@@ -687,7 +721,7 @@ void ipc_cmd(ipc_cmd_hdr *_hdr)
 		err = IPC4_UNKNOWN_MESSAGE_TYPE;
 	}
 
-	if (err && !msg_data.delayed_reply)
+	if (err)
 		tr_err(&ipc_tr, "ipc4: %d failed err %d", target, err);
 
 	/* FW sends a ipc message to host if request bit is set*/
