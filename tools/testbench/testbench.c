@@ -206,6 +206,7 @@ static void test_pipeline_free_comps(int pipeline_id)
 	struct list_item *clist;
 	struct list_item *temp;
 	struct ipc_comp_dev *icd = NULL;
+	int err;
 
 	/* remove the components for this pipeline */
 	list_for_item_safe(clist, temp, &sof_get()->ipc->comp_list) {
@@ -215,17 +216,26 @@ static void test_pipeline_free_comps(int pipeline_id)
 		case COMP_TYPE_COMPONENT:
 			if (icd->cd->pipeline->pipeline_id != pipeline_id)
 				break;
-			ipc_comp_free(sof_get()->ipc, icd->id);
+			err = ipc_comp_free(sof_get()->ipc, icd->id);
+			if (err)
+				fprintf(stderr, "failed to free comp %d\n",
+					icd->id);
 			break;
 		case COMP_TYPE_BUFFER:
 			if (icd->cb->pipeline_id != pipeline_id)
 				break;
-			ipc_buffer_free(sof_get()->ipc, icd->id);
+			err = ipc_buffer_free(sof_get()->ipc, icd->id);
+			if (err)
+				fprintf(stderr, "failed to free buffer %d\n",
+					icd->id);
 			break;
 		default:
 			if (icd->pipeline->pipeline_id != pipeline_id)
 				break;
-			ipc_pipeline_free(sof_get()->ipc, icd->id);
+			err = ipc_pipeline_free(sof_get()->ipc, icd->id);
+			if (err)
+				fprintf(stderr, "failed to free pipeline %d\n",
+					icd->id);
 			break;
 		}
 	}
