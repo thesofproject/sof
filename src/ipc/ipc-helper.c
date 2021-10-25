@@ -267,8 +267,11 @@ int ipc_comp_free(struct ipc *ipc, uint32_t comp_id)
 
 	/* check whether component exists */
 	icd = ipc_get_comp_by_id(ipc, comp_id);
-	if (!icd)
+	if (!icd) {
+		tr_err(&ipc_tr, "ipc_comp_free(): comp id: %d is not found",
+		       comp_id);
 		return -ENODEV;
+	}
 
 	/* check type */
 	if (icd->type != COMP_TYPE_COMPONENT) {
@@ -282,8 +285,11 @@ int ipc_comp_free(struct ipc *ipc, uint32_t comp_id)
 		return ipc_process_on_core(icd->core, false);
 
 	/* check state */
-	if (icd->cd->state != COMP_STATE_READY)
+	if (icd->cd->state != COMP_STATE_READY) {
+		tr_err(&ipc_tr, "ipc_comp_free(): comp id: %d state is %d cannot be freed",
+		       comp_id, icd->cd->state);
 		return -EINVAL;
+	}
 
 	/* free component and remove from list */
 	comp_free(icd->cd);
