@@ -217,22 +217,6 @@ static int mixer_params(struct comp_dev *dev,
 	return 0;
 }
 
-static int mixer_source_status_count(struct comp_dev *mixer, uint32_t status)
-{
-	struct comp_buffer *source;
-	struct list_item *blist;
-	int count = 0;
-
-	/* count source with state == status */
-	list_for_item(blist, &mixer->bsource_list) {
-		source = container_of(blist, struct comp_buffer, sink_list);
-		if (source->source->state == status)
-			count++;
-	}
-
-	return count;
-}
-
 /* used to pass standard and bespoke commands (with data) to component */
 static int mixer_trigger_common(struct comp_dev *dev, int cmd)
 {
@@ -270,16 +254,6 @@ static int mixer_trigger_common(struct comp_dev *dev, int cmd)
 	/* nothing else to check for capture streams */
 	if (dir == SOF_IPC_STREAM_CAPTURE)
 		return ret;
-
-	/* don't stop mixer on pause or if at least one source is active/paused */
-	if (cmd == COMP_TRIGGER_PAUSE ||
-	    (cmd == COMP_TRIGGER_STOP &&
-	     (mixer_source_status_count(dev, COMP_STATE_ACTIVE) ||
-	     mixer_source_status_count(dev, COMP_STATE_PAUSED)))) {
-		dev->state = COMP_STATE_ACTIVE;
-		comp_writeback(dev);
-		ret = PPL_STATUS_PATH_STOP;
-	}
 
 	return ret;
 }
@@ -479,9 +453,26 @@ static int mixer_prepare_common(struct comp_dev *dev)
  * triggered second time.
  */
 #if CONFIG_IPC_MAJOR_3
+static int mixer_source_status_count(struct comp_dev *mixer, uint32_t status)
+{
+	struct comp_buffer *source;
+	struct list_item *blist;
+	int count = 0;
+
+	/* count source with state == status */
+	list_for_item(blist, &mixer->bsource_list) {
+		source = container_of(blist, struct comp_buffer, sink_list);
+		if (source->source->state == status)
+			count++;
+	}
+
+	return count;
+}
+
 static int mixer_trigger(struct comp_dev *dev, int cmd)
 {
 	int dir = dev->pipeline->source_comp->direction;
+	int ret;
 
 	comp_dbg(dev, "mixer_trigger()");
 
@@ -491,7 +482,21 @@ static int mixer_trigger(struct comp_dev *dev, int cmd)
 		    mixer_source_status_count(dev, COMP_STATE_PAUSED))
 			return PPL_STATUS_PATH_STOP;
 
-	return mixer_trigger_common(dev, cmd);
+	ret = mixer_trigger_common(dev, cmd);
+	if (ret < 0)
+		return ret;
+
+	/* don't stop mixer on pause or if at least one source is active/paused */
+	if (cmd == COMP_TRIGGER_PAUSE ||
+	    (cmd == COMP_TRIGGER_STOP &&
+	     (mixer_source_status_count(dev, COMP_STATE_ACTIVE) ||
+	     mixer_source_status_count(dev, COMP_STATE_PAUSED)))) {
+		dev->state = COMP_STATE_ACTIVE;
+		comp_writeback(dev);
+		ret = PPL_STATUS_PATH_STOP;
+	}
+
+	return ret;
 }
 
 static int mixer_prepare(struct comp_dev *dev)
