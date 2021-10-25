@@ -150,9 +150,30 @@ error:
 /* Ipc4 pipeline message <------> ipc3 pipeline message
  * RUNNING     <-------> TRIGGER START
  * INIT + PAUSED  <-------> PIPELINE COMPLETE
+ * INIT + RESET <-------> PIPELINE COMPLETE
  * PAUSED      <-------> TRIGER_PAUSE
  * RESET       <-------> TRIGER_STOP + RESET
- * EOS         <-------> TRIGER_RELEASE
+ * EOS(end of stream) <-------> NOT SUPPORT NOW
+ *
+ *   IPC4 pipeline state machine
+ *
+ *                      INIT
+ *                       |    \
+ *                       |   __\|
+ *                       |
+ *                       |     RESET
+ *                       |     _   _
+ *                       |     /| |\
+ *                       |    /    /\
+ *                      \|/ |/_   /  \
+ *        RUNNING <--> PAUSE _   /    \
+ *            /  \      /|\ |\  /      \
+ *           /    \      |    \/        \
+ *          /      \     |    /\         \
+ *         /        \    |   /  \         \
+ *       |/_        _\|  |  /    \        _\|
+ *     ERROR Stop       EOS       |______\ SAVE
+ *                                      /
  */
 static int ipc4_set_pipeline_state(union ipc4_message_header *ipc4)
 {
@@ -161,13 +182,14 @@ static int ipc4_set_pipeline_state(union ipc4_message_header *ipc4)
 	struct ipc_comp_dev *host;
 	struct ipc *ipc = ipc_get();
 	uint32_t cmd, id;
+	int status;
 	int ret;
 
 	state.header.dat = ipc4->dat;
 	id = state.header.r.ppl_id;
 	cmd = state.header.r.ppl_state;
 
-	tr_dbg(&ipc_tr, "ipc4 set pipeline state %x:", cmd);
+	tr_dbg(&ipc_tr, "ipc4 set pipeline %d state %x:", id, cmd);
 
 	/* get the pcm_dev */
 	pcm_dev = ipc_get_comp_by_ppl_id(ipc, COMP_TYPE_PIPELINE, id);
@@ -176,8 +198,9 @@ static int ipc4_set_pipeline_state(union ipc4_message_header *ipc4)
 		return IPC4_INVALID_RESOURCE_ID;
 	}
 
+	status = pcm_dev->pipeline->status;
 	/* source & sink components are set when pipeline is set to COMP_STATE_INIT */
-	if (pcm_dev->pipeline->status != COMP_STATE_INIT) {
+	if (status != COMP_STATE_INIT) {
 		int host_id;
 
 		if (pcm_dev->pipeline->source_comp->direction == SOF_IPC_STREAM_PLAYBACK)
@@ -199,6 +222,11 @@ static int ipc4_set_pipeline_state(union ipc4_message_header *ipc4)
 
 	switch (cmd) {
 	case SOF_IPC4_PIPELINE_STATE_RUNNING:
+		if (status != COMP_STATE_PAUSED && status != COMP_STATE_READY) {
+			tr_err(&ipc_tr, "ipc: current status %d", status);
+			return IPC4_INVALID_REQUEST;
+		}
+
 		cmd = COMP_TRIGGER_PRE_START;
 
 		ret = ipc4_pcm_params(host);
@@ -206,6 +234,9 @@ static int ipc4_set_pipeline_state(union ipc4_message_header *ipc4)
 			return IPC4_INVALID_REQUEST;
 		break;
 	case SOF_IPC4_PIPELINE_STATE_RESET:
+		if (status == COMP_STATE_INIT)
+			return ipc_pipeline_complete(ipc, id);
+
 		ret = pipeline_trigger(host->cd->pipeline, host->cd, COMP_TRIGGER_STOP);
 		if (ret < 0) {
 			tr_err(&ipc_tr, "ipc: comp %d trigger 0x%x failed %d", id, cmd, ret);
@@ -215,20 +246,22 @@ static int ipc4_set_pipeline_state(union ipc4_message_header *ipc4)
 		/* resource is not released by triggering reset which is used by current FW */
 		return pipeline_reset(host->cd->pipeline, host->cd);
 	case SOF_IPC4_PIPELINE_STATE_PAUSED:
-		if (pcm_dev->pipeline->status == COMP_STATE_INIT)
+		if (status == COMP_STATE_INIT)
 			return ipc_pipeline_complete(ipc, id);
+
+		if (status == COMP_STATE_READY)
+			return 0;
 
 		cmd = COMP_TRIGGER_PAUSE;
 		break;
-	case SOF_IPC4_PIPELINE_STATE_EOS:
-		cmd = COMP_TRIGGER_PRE_RELEASE;
-		break;
 	/* special case- TODO */
+	case SOF_IPC4_PIPELINE_STATE_EOS:
+		if (status != COMP_STATE_ACTIVE)
+			return IPC4_INVALID_REQUEST;
 	case SOF_IPC4_PIPELINE_STATE_SAVED:
 	case SOF_IPC4_PIPELINE_STATE_ERROR_STOP:
-		return 0;
 	default:
-		tr_err(&ipc_tr, "ipc: invalid trigger cmd 0x%x", cmd);
+		tr_err(&ipc_tr, "ipc: unsupported trigger cmd 0x%x", cmd);
 		return IPC4_INVALID_REQUEST;
 	}
 
