@@ -134,17 +134,17 @@ static SHARED_DATA struct timer timer = {
  * into that section, and only map that section uncached. See README
  * for more details.
  */
-const unsigned int __xt_mpu_init_table_size __attribute__((section(".ResetVector.text"))) = 10;
+const unsigned int __xt_mpu_init_table_size __attribute__((section(".ResetVector.text"))) = 11;
 
 const struct xthal_MPU_entry __xt_mpu_init_table[] __attribute__((section(".ResetVector.text"))) = {
 	XTHAL_MPU_ENTRY(0x00000000, 1, XTHAL_AR_NONE,
 			XTHAL_MEM_DEVICE), /* illegal: no access */
-	XTHAL_MPU_ENTRY(0x0C000000, 1, XTHAL_AR_RWXrwx,
-			XTHAL_MEM_DEVICE), /* MCU & DBG Registers read/write/execute */
+	XTHAL_MPU_ENTRY(0x0C000000, 1, XTHAL_AR_RWrw,
+			XTHAL_MEM_DEVICE), /* MCU & DBG Registers read/write */
 	XTHAL_MPU_ENTRY(0x0F000000, 1, XTHAL_AR_NONE,
 			XTHAL_MEM_DEVICE), /* illegal: no access */
-	XTHAL_MPU_ENTRY(0x10000000, 1, XTHAL_AR_RWXrwx,
-			XTHAL_MEM_DEVICE), /* DSP register: read/write/execute */
+	XTHAL_MPU_ENTRY(0x10000000, 1, XTHAL_AR_RWrw,
+			XTHAL_MEM_DEVICE), /* DSP register: read/write */
 	XTHAL_MPU_ENTRY(0x12000000, 1, XTHAL_AR_NONE,
 			XTHAL_MEM_DEVICE), /* illegal: no access */
 	XTHAL_MPU_ENTRY(0x40000000, 1, XTHAL_AR_RWXrwx,
@@ -153,8 +153,10 @@ const struct xthal_MPU_entry __xt_mpu_init_table[] __attribute__((section(".Rese
 			XTHAL_MEM_DEVICE), /* illegal: no access */
 	XTHAL_MPU_ENTRY(0x60000000, 1, XTHAL_AR_RWXrwx,
 			XTHAL_MEM_WRITEBACK), /* DRAM: read/write/execute writeback */
-	XTHAL_MPU_ENTRY(0x61000000, 1, XTHAL_AR_RWXrwx,
-			XTHAL_MEM_DEVICE), /* DMA: read/write/execute writeback */
+	XTHAL_MPU_ENTRY(0x60800000, 1, XTHAL_AR_RWrw,
+			XTHAL_MEM_WRITEBACK), /* DRAM: read/write writeback */
+	XTHAL_MPU_ENTRY(0x61000000, 1, XTHAL_AR_RWrw,
+			XTHAL_MEM_DEVICE), /* DMA: read/write writeback */
 	XTHAL_MPU_ENTRY(0x61100000, 1, XTHAL_AR_NONE,
 			XTHAL_MEM_DEVICE), /* illegal: no access */
 };
