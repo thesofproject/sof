@@ -109,7 +109,6 @@ int comp_verify_params(struct comp_dev *dev, uint32_t flag,
 	struct comp_buffer *sinkb;
 	struct comp_buffer *buf;
 	int dir = dev->direction;
-	uint32_t flags = 0;
 
 	if (!params) {
 		comp_err(dev, "comp_verify_params(): !params");
@@ -132,7 +131,7 @@ int comp_verify_params(struct comp_dev *dev, uint32_t flag,
 					      struct comp_buffer,
 					      source_list);
 
-		buffer_lock(buf, &flags);
+		buf = buffer_acquire_irq(buf);
 
 		/* update specific pcm parameter with buffer parameter if
 		 * specific flag is set.
@@ -147,7 +146,7 @@ int comp_verify_params(struct comp_dev *dev, uint32_t flag,
 		/* set component period frames */
 		component_set_period_frames(dev, buf->stream.rate);
 
-		buffer_unlock(buf, flags);
+		buf = buffer_release_irq(buf);
 	} else {
 		/* for other components we iterate over all downstream buffers
 		 * (for playback) or upstream buffers (for capture).
@@ -158,20 +157,20 @@ int comp_verify_params(struct comp_dev *dev, uint32_t flag,
 		while (clist != buffer_list) {
 			curr = clist;
 			buf = buffer_from_list(curr, struct comp_buffer, dir);
-			buffer_lock(buf, &flags);
+			buf = buffer_acquire_irq(buf);
 			clist = clist->next;
 			comp_update_params(flag, params, buf);
 			buffer_set_params(buf, params, BUFFER_UPDATE_FORCE);
-			buffer_unlock(buf, flags);
+			buf = buffer_release_irq(buf);
 		}
 
 		/* fetch sink buffer in order to calculate period frames */
 		sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
 					source_list);
 
-		buffer_lock(sinkb, &flags);
+		sinkb = buffer_acquire_irq(sinkb);
 		component_set_period_frames(dev, sinkb->stream.rate);
-		buffer_unlock(sinkb, flags);
+		sinkb = buffer_release_irq(sinkb);
 	}
 
 	return 0;
