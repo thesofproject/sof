@@ -199,49 +199,6 @@ static inline void buffer_stream_writeback(struct comp_buffer *buffer, uint32_t 
 	audio_stream_writeback(&buffer->stream, bytes);
 }
 
-/**
- * Locks buffer instance for buffers connecting components
- * running on different cores. Buffer parameters will be invalidated
- * to make sure the latest data can be retrieved.
- * @param buffer Buffer instance.
- * @param flags IRQ flags.
- */
-static inline void buffer_lock(struct comp_buffer *buffer, uint32_t *flags)
-{
-	if (!is_coherent_shared(buffer, c)) {
-		/* Ignored by buffer_unlock() below, silences "may be
-		 * used uninitialized" warning.
-		 */
-		*flags = 0xffffffff;
-		return;
-	}
-
-	/* Expands to: *flags = ... */
-	spin_lock_irq(&buffer->c.lock, *flags);
-
-	/* invalidate in case something has changed during our wait */
-	dcache_invalidate_region(uncache_to_cache(buffer), sizeof(*buffer));
-}
-
-/**
- * Unlocks buffer instance for buffers connecting components
- * running on different cores. Buffer parameters will be flushed
- * to make sure all the changes are saved. Also they will be invalidated
- * to spare the need of locking/unlocking buffer, when only reading parameters.
- * @param buffer Buffer instance.
- * @param flags IRQ flags.
- */
-static inline void buffer_unlock(struct comp_buffer *buffer, uint32_t flags)
-{
-	if (!is_coherent_shared(buffer, c))
-		return;
-
-	/* wtb and inv to avoid buffer locking in read only situations */
-	dcache_writeback_invalidate_region(uncache_to_cache(buffer), sizeof(*buffer));
-
-	spin_unlock_irq(&buffer->c.lock, flags);
-}
-
 __must_check static inline struct comp_buffer *buffer_acquire(struct comp_buffer *buffer)
 {
 	struct coherent *c = coherent_acquire(&buffer->c, sizeof(*buffer));
