@@ -408,34 +408,35 @@ static smart_amp_proc get_smart_amp_process(struct comp_dev *dev)
 static int smart_amp_copy(struct comp_dev *dev)
 {
 	struct smart_amp_data *sad = comp_get_drvdata(dev);
+	struct comp_buffer *source_buf = sad->source_buf;
+	struct comp_buffer *sink_buf = sad->sink_buf;
 	uint32_t avail_passthrough_frames;
 	uint32_t avail_feedback_frames;
 	uint32_t avail_frames;
 	uint32_t source_bytes;
 	uint32_t sink_bytes;
 	uint32_t feedback_bytes;
-	uint32_t source_flags = 0;
-	uint32_t sink_flags = 0;
-	uint32_t feedback_flags = 0;
 	int ret = 0;
 
 	comp_dbg(dev, "smart_amp_copy()");
 
-	buffer_lock(sad->source_buf, &source_flags);
-	buffer_lock(sad->sink_buf, &sink_flags);
+	source_buf = buffer_release_irq(source_buf);
+	sink_buf = buffer_release_irq(sink_buf);
 
 	/* available bytes and samples calculation */
 	avail_passthrough_frames =
 		audio_stream_avail_frames(&sad->source_buf->stream,
 					  &sad->sink_buf->stream);
 
-	buffer_unlock(sad->source_buf, source_flags);
-	buffer_unlock(sad->sink_buf, sink_flags);
+	source_buf = buffer_release_irq(source_buf);
+	sink_buf = buffer_release_irq(sink_buf);
 
 	avail_frames = avail_passthrough_frames;
 
 	if (sad->feedback_buf) {
-		buffer_lock(sad->feedback_buf, &feedback_flags);
+		struct comp_buffer *buf = sad->feedback_buf;
+
+		buf = buffer_acquire_irq(buf);
 		if (comp_get_state(dev, sad->feedback_buf->source) == dev->state) {
 			/* feedback */
 			avail_feedback_frames =
@@ -447,7 +448,7 @@ static int smart_amp_copy(struct comp_dev *dev)
 			feedback_bytes = avail_frames *
 				audio_stream_frame_bytes(&sad->feedback_buf->stream);
 
-			buffer_unlock(sad->feedback_buf, feedback_flags);
+			buffer_release_irq(buf);
 
 			comp_dbg(dev, "smart_amp_copy(): processing %d feedback frames (avail_passthrough_frames: %d)",
 				 avail_frames, avail_passthrough_frames);
@@ -460,20 +461,20 @@ static int smart_amp_copy(struct comp_dev *dev)
 
 			comp_update_buffer_consume(sad->feedback_buf, feedback_bytes);
 		} else {
-			buffer_unlock(sad->feedback_buf, feedback_flags);
+			buffer_release_irq(buf);
 		}
 	}
 
 	/* bytes calculation */
-	buffer_lock(sad->source_buf, &source_flags);
+	source_buf = buffer_acquire_irq(source_buf);
 	source_bytes = avail_frames *
 		audio_stream_frame_bytes(&sad->source_buf->stream);
-	buffer_unlock(sad->source_buf, source_flags);
+	source_buf = buffer_release_irq(source_buf);
 
-	buffer_lock(sad->sink_buf, &sink_flags);
+	sink_buf = buffer_acquire_irq(sink_buf);
 	sink_bytes = avail_frames *
 		audio_stream_frame_bytes(&sad->sink_buf->stream);
-	buffer_unlock(sad->sink_buf, sink_flags);
+	sink_buf = buffer_release_irq(sink_buf);
 
 	/* process data */
 	buffer_stream_invalidate(sad->source_buf, source_bytes);
@@ -502,7 +503,6 @@ static int smart_amp_prepare(struct comp_dev *dev)
 	struct smart_amp_data *sad = comp_get_drvdata(dev);
 	struct comp_buffer *source_buffer;
 	struct list_item *blist;
-	uint32_t flags = 0;
 	int ret;
 
 	comp_info(dev, "smart_amp_prepare()");
@@ -518,12 +518,12 @@ static int smart_amp_prepare(struct comp_dev *dev)
 	list_for_item(blist, &dev->bsource_list) {
 		source_buffer = container_of(blist, struct comp_buffer,
 					     sink_list);
-		buffer_lock(source_buffer, &flags);
+		source_buffer = buffer_acquire_irq(source_buffer);
 		if (source_buffer->source->ipc_config.type == SOF_COMP_DEMUX)
 			sad->feedback_buf = source_buffer;
 		else
 			sad->source_buf = source_buffer;
-		buffer_unlock(source_buffer, flags);
+		source_buffer = buffer_release_irq(source_buffer);
 	}
 
 	sad->sink_buf = list_first_item(&dev->bsink_list, struct comp_buffer,
@@ -533,10 +533,12 @@ static int smart_amp_prepare(struct comp_dev *dev)
 	sad->out_channels = sad->sink_buf->stream.channels;
 
 	if (sad->feedback_buf) {
-		buffer_lock(sad->feedback_buf, &flags);
+		struct comp_buffer *buf = sad->feedback_buf;
+
+		buf = buffer_acquire_irq(buf);
 		sad->feedback_buf->stream.channels = sad->config.feedback_channels;
 		sad->feedback_buf->stream.rate = sad->source_buf->stream.rate;
-		buffer_unlock(sad->feedback_buf, flags);
+		buf = buffer_release_irq(buf);
 	}
 
 	sad->process = get_smart_amp_process(dev);
