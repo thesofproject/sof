@@ -383,7 +383,7 @@ static int ghd_copy(struct comp_dev *dev)
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *source;
 	struct audio_stream *stream;
-	uint32_t bytes, flags, tail_bytes, head_bytes = 0;
+	uint32_t bytes, tail_bytes, head_bytes = 0;
 	int ret;
 
 	/* Check for new model */
@@ -399,9 +399,9 @@ static int ghd_copy(struct comp_dev *dev)
 				 struct comp_buffer, sink_list);
 	stream = &source->stream;
 
-	buffer_lock(source, &flags);
+	source = buffer_acquire_irq(source);
 	bytes = audio_stream_get_avail_bytes(&source->stream);
-	buffer_unlock(source, flags);
+	source = buffer_release_irq(source);
 
 	comp_dbg(dev, "ghd_copy() avail_bytes %u", bytes);
 	comp_dbg(dev, "buffer begin/r_ptr/end [0x%x 0x%x 0x%x]",
