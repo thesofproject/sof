@@ -53,158 +53,233 @@ struct comp_data {
 };
 
 #if CONFIG_FORMAT_S16LE
+
 /*
  * EQ IIR algorithm code
  */
 
-static void eq_iir_s16_default(const struct comp_dev *dev,
-			       const struct audio_stream *source,
-			       struct audio_stream *sink,
-			       uint32_t frames)
-
+static void eq_iir_s16_default(const struct comp_dev *dev, const struct audio_stream *source,
+			       struct audio_stream *sink, uint32_t frames)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct iir_state_df2t *filter;
+	int16_t *x0;
+	int16_t *y0;
 	int16_t *x;
 	int16_t *y;
-	int32_t z;
-	int ch;
+	int nmax;
+	int n1;
+	int n2;
 	int i;
-	int idx;
-	int nch = source->channels;
+	int j;
+	int n;
+	const int nch = source->channels;
+	const int samples = frames * nch;
+	int processed = 0;
 
-	for (ch = 0; ch < nch; ch++) {
-		filter = &cd->iir[ch];
-		idx = ch;
-		for (i = 0; i < frames; i++) {
-			x = audio_stream_read_frag_s16(source, idx);
-			y = audio_stream_write_frag_s16(sink, idx);
-			z = iir_df2t(filter, *x << 16);
-			*y = sat_int16(Q_SHIFT_RND(z, 31, 15));
-			idx += nch;
+	x = source->r_ptr;
+	y = sink->w_ptr;
+	while (processed < samples) {
+		nmax = samples - processed;
+		n1 = audio_stream_bytes_without_wrap(source, x) >> 1;
+		n2 = audio_stream_bytes_without_wrap(sink, y) >> 1;
+		n = MIN(n1, n2);
+		n = MIN(n, nmax);
+		for (i = 0; i < nch; i++) {
+			x0 = x + i;
+			y0 = y + i;
+			filter = &cd->iir[i];
+			for (j = 0; j < n; j += nch) {
+				*y0 = iir_df2t_s16(filter, *x0);
+				x0 += nch;
+				y0 += nch;
+			}
 		}
+		processed += n;
+		x = audio_stream_wrap(source, x + n);
+		y = audio_stream_wrap(sink, y + n);
 	}
 }
 #endif /* CONFIG_FORMAT_S16LE */
 
 #if CONFIG_FORMAT_S24LE
-static void eq_iir_s24_default(const struct comp_dev *dev,
-			       const struct audio_stream *source,
-			       struct audio_stream *sink,
-			       uint32_t frames)
 
+static void eq_iir_s24_default(const struct comp_dev *dev, const struct audio_stream *source,
+			       struct audio_stream *sink, uint32_t frames)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct iir_state_df2t *filter;
+	int32_t *x0;
+	int32_t *y0;
 	int32_t *x;
 	int32_t *y;
-	int32_t z;
-	int idx;
-	int ch;
+	int nmax;
+	int n1;
+	int n2;
 	int i;
-	int nch = source->channels;
+	int j;
+	int n;
+	const int nch = source->channels;
+	const int samples = frames * nch;
+	int processed = 0;
 
-	for (ch = 0; ch < nch; ch++) {
-		filter = &cd->iir[ch];
-		idx = ch;
-		for (i = 0; i < frames; i++) {
-			x = audio_stream_read_frag_s32(source, idx);
-			y = audio_stream_write_frag_s32(sink, idx);
-			z = iir_df2t(filter, *x << 8);
-			*y = sat_int24(Q_SHIFT_RND(z, 31, 23));
-			idx += nch;
+	x = source->r_ptr;
+	y = sink->w_ptr;
+	while (processed < samples) {
+		nmax = samples - processed;
+		n1 = audio_stream_bytes_without_wrap(source, x) >> 2;
+		n2 = audio_stream_bytes_without_wrap(sink, y) >> 2;
+		n = MIN(n1, n2);
+		n = MIN(n, nmax);
+		for (i = 0; i < nch; i++) {
+			x0 = x + i;
+			y0 = y + i;
+			filter = &cd->iir[i];
+			for (j = 0; j < n; j += nch) {
+				*y0 = iir_df2t_s24(filter, *x0);
+				x0 += nch;
+				y0 += nch;
+			}
 		}
+		processed += n;
+		x = audio_stream_wrap(source, x + n);
+		y = audio_stream_wrap(sink, y + n);
 	}
 }
 #endif /* CONFIG_FORMAT_S24LE */
 
 #if CONFIG_FORMAT_S32LE
-static void eq_iir_s32_default(const struct comp_dev *dev,
-			       const struct audio_stream *source,
-			       struct audio_stream *sink,
-			       uint32_t frames)
 
+static void eq_iir_s32_default(const struct comp_dev *dev, const struct audio_stream *source,
+			       struct audio_stream *sink, uint32_t frames)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct iir_state_df2t *filter;
+	int32_t *x0;
+	int32_t *y0;
 	int32_t *x;
 	int32_t *y;
-	int idx;
-	int ch;
+	int nmax;
+	int n1;
+	int n2;
 	int i;
-	int nch = source->channels;
+	int j;
+	int n;
+	const int nch = source->channels;
+	const int samples = frames * nch;
+	int processed = 0;
 
-	for (ch = 0; ch < nch; ch++) {
-		filter = &cd->iir[ch];
-		idx = ch;
-		for (i = 0; i < frames; i++) {
-			x = audio_stream_read_frag_s32(source, idx);
-			y = audio_stream_write_frag_s32(sink, idx);
-			*y = iir_df2t(filter, *x);
-			idx += nch;
+	x = source->r_ptr;
+	y = sink->w_ptr;
+	while (processed < samples) {
+		nmax = samples - processed;
+		n1 = audio_stream_bytes_without_wrap(source, x) >> 2;
+		n2 = audio_stream_bytes_without_wrap(sink, y) >> 2;
+		n = MIN(n1, n2);
+		n = MIN(n, nmax);
+		for (i = 0; i < nch; i++) {
+			x0 = x + i;
+			y0 = y + i;
+			filter = &cd->iir[i];
+			for (j = 0; j < n; j += nch) {
+				*y0 = iir_df2t(filter, *x0);
+				x0 += nch;
+				y0 += nch;
+			}
 		}
+		processed += n;
+		x = audio_stream_wrap(source, x + n);
+		y = audio_stream_wrap(sink, y + n);
 	}
 }
 #endif /* CONFIG_FORMAT_S32LE */
 
 #if CONFIG_FORMAT_S32LE && CONFIG_FORMAT_S16LE
-static void eq_iir_s32_16_default(const struct comp_dev *dev,
-				  const struct audio_stream *source,
-				  struct audio_stream *sink,
-				  uint32_t frames)
-
+static void eq_iir_s32_16_default(const struct comp_dev *dev, const struct audio_stream *source,
+				  struct audio_stream *sink, uint32_t frames)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct iir_state_df2t *filter;
+	int32_t *x0;
+	int16_t *y0;
 	int32_t *x;
 	int16_t *y;
-	int32_t z;
-	int idx;
-	int ch;
+	int nmax;
+	int n1;
+	int n2;
 	int i;
-	int nch = source->channels;
+	int j;
+	int n;
+	const int nch = source->channels;
+	const int samples = frames * nch;
+	int processed = 0;
 
-	for (ch = 0; ch < nch; ch++) {
-		filter = &cd->iir[ch];
-		idx = ch;
-		for (i = 0; i < frames; i++) {
-			x = audio_stream_read_frag_s32(source, idx);
-			y = audio_stream_write_frag_s16(sink, idx);
-			z = iir_df2t(filter, *x);
-			*y = sat_int16(Q_SHIFT_RND(z, 31, 15));
-			idx += nch;
+	x = source->r_ptr;
+	y = sink->w_ptr;
+	while (processed < samples) {
+		nmax = samples - processed;
+		n1 = audio_stream_bytes_without_wrap(source, x) >> 2; /* divide 4 */
+		n2 = audio_stream_bytes_without_wrap(sink, y) >> 1; /* divide 2 */
+		n = MIN(n1, n2);
+		n = MIN(n, nmax);
+		for (i = 0; i < nch; i++) {
+			x0 = x + i;
+			y0 = y + i;
+			filter = &cd->iir[i];
+			for (j = 0; j < n; j += nch) {
+				*y0 = iir_df2t_s32_s16(filter, *x0);
+				x0 += nch;
+				y0 += nch;
+			}
 		}
+		processed += n;
+		x = audio_stream_wrap(source, x + n);
+		y = audio_stream_wrap(sink, y + n);
 	}
 }
 #endif /* CONFIG_FORMAT_S32LE && CONFIG_FORMAT_S16LE */
 
 #if CONFIG_FORMAT_S32LE && CONFIG_FORMAT_S24LE
-static void eq_iir_s32_24_default(const struct comp_dev *dev,
-				  const struct audio_stream *source,
-				  struct audio_stream *sink,
-				  uint32_t frames)
-
+static void eq_iir_s32_24_default(const struct comp_dev *dev, const struct audio_stream *source,
+				  struct audio_stream *sink, uint32_t frames)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct iir_state_df2t *filter;
+	int32_t *x0;
+	int32_t *y0;
 	int32_t *x;
 	int32_t *y;
-	int32_t z;
-	int idx;
-	int ch;
+	int nmax;
+	int n1;
+	int n2;
 	int i;
-	int nch = source->channels;
+	int j;
+	int n;
+	const int nch = source->channels;
+	const int samples = frames * nch;
+	int processed = 0;
 
-	for (ch = 0; ch < nch; ch++) {
-		filter = &cd->iir[ch];
-		idx = ch;
-		for (i = 0; i < frames; i++) {
-			x = audio_stream_read_frag_s32(source, idx);
-			y = audio_stream_write_frag_s32(sink, idx);
-			z = iir_df2t(filter, *x);
-			*y = sat_int24(Q_SHIFT_RND(z, 31, 23));
-			idx += nch;
+	x = source->r_ptr;
+	y = sink->w_ptr;
+	while (processed < samples) {
+		nmax = samples - processed;
+		n1 = audio_stream_bytes_without_wrap(source, x) >> 2;
+		n2 = audio_stream_bytes_without_wrap(sink, y) >> 2;
+		n = MIN(n1, n2);
+		n = MIN(n, nmax);
+		for (i = 0; i < nch; i++) {
+			x0 = x + i;
+			y0 = y + i;
+			filter = &cd->iir[i];
+			for (j = 0; j < n; j += nch) {
+				*y0 = iir_df2t_s32_s24(filter, *x0);
+				x0 += nch;
+				y0 += nch;
+			}
 		}
+		processed += n;
+		x = audio_stream_wrap(source, x + n);
+		y = audio_stream_wrap(sink, y + n);
 	}
 }
 #endif /* CONFIG_FORMAT_S32LE && CONFIG_FORMAT_S24LE */
