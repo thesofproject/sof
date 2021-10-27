@@ -9,6 +9,7 @@
 #ifndef __SOF_IPC_COMMON_H__
 #define __SOF_IPC_COMMON_H__
 
+#include <sof/bit.h>
 #include <sof/lib/alloc.h>
 #include <sof/list.h>
 #include <sof/schedule/task.h>
@@ -59,6 +60,10 @@ extern struct tr_ctx ipc_tr;
 #define ipc_get_ppl_sink_comp(ipc, ppl_id) \
 	ipc_get_ppl_comp(ipc, ppl_id, PPL_DIR_DOWNSTREAM)
 
+#define IPC_TASK_INLINE		BIT(0)
+#define IPC_TASK_IN_THREAD	BIT(1)
+#define IPC_TASK_SECONDARY_CORE	BIT(2)
+
 struct ipc {
 	spinlock_t lock;	/* locking mechanism */
 	void *comp_data;
@@ -68,7 +73,7 @@ struct ipc {
 
 	struct list_item msg_list;	/* queue of messages to be sent */
 	bool is_notification_pending;	/* notification is being sent to host */
-	bool delayed_response;		/* response will be sent from a different context */
+	uint32_t task_mask;		/* tasks to be completed by this IPC */
 	unsigned int core;		/* core, processing the IPC */
 
 	struct list_item comp_list;	/* list of component devices */
@@ -206,6 +211,6 @@ void ipc_msg_reply(struct sof_ipc_reply *reply);
 /**
  * \brief Call platform-specific IPC completion function.
  */
-void ipc_complete_cmd(void *data);
+void ipc_complete_cmd(struct ipc *ipc);
 
 #endif /* __SOF_DRIVERS_IPC_H__ */

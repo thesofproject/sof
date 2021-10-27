@@ -182,6 +182,13 @@ enum task_state ipc_platform_do_cmd(void *data)
 #else
 	hdr = mailbox_validate();
 #endif
+
+	/*
+	 * 32-bit writes are atomic and at the moment no IPC processing is
+	 * taking place, so, no need for a lock.
+	 */
+	ipc->task_mask = IPC_TASK_INLINE;
+
 	/* perform command */
 	ipc_cmd(hdr);
 
