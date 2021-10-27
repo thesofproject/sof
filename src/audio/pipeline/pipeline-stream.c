@@ -68,7 +68,7 @@ static int pipeline_comp_trigger(struct comp_dev *current,
 {
 	struct pipeline_data *ppl_data = ctx->comp_data;
 	bool is_single_ppl = comp_is_single_pipeline(current, ppl_data->start);
-	bool is_same_sched;
+	bool is_same_sched, async;
 	int err;
 
 	pipe_dbg(current->pipeline,
@@ -76,6 +76,14 @@ static int pipeline_comp_trigger(struct comp_dev *current,
 		 dev_comp_id(current), dir);
 
 	switch (ppl_data->cmd) {
+	case COMP_TRIGGER_PAUSE:
+	case COMP_TRIGGER_STOP:
+		/*
+		 * PAUSE and STOP are triggered in IPC context, not from the
+		 * pipeline task
+		 */
+		async = true;
+		break;
 	case COMP_TRIGGER_PRE_RELEASE:
 	case COMP_TRIGGER_PRE_START:
 		if (comp_get_endpoint_type(current) == COMP_ENDPOINT_DAI) {
@@ -83,14 +91,14 @@ static int pipeline_comp_trigger(struct comp_dev *current,
 
 			ppl_data->delay_ms = dai_get_init_delay_ms(dd->dai);
 		}
+
+		COMPILER_FALLTHROUGH;
+	case COMP_TRIGGER_RELEASE:
+	case COMP_TRIGGER_START:
+		async = !pipeline_is_timer_driven(current->pipeline);
 		break;
 	default:
 		return -EINVAL;
-	case COMP_TRIGGER_PAUSE:
-	case COMP_TRIGGER_STOP:
-	case COMP_TRIGGER_RELEASE:
-	case COMP_TRIGGER_START:
-		break;
 	}
 
 	is_same_sched = pipeline_is_same_sched_comp(current->pipeline,
@@ -111,22 +119,14 @@ static int pipeline_comp_trigger(struct comp_dev *current,
 
 	/* send command to the component and update pipeline state */
 	err = comp_trigger(current, ppl_data->cmd);
-	current->pipeline->trigger.aborted = err == PPL_STATUS_PATH_STOP;
 	if (err < 0 || err == PPL_STATUS_PATH_STOP)
 		return err;
 
-	switch (ppl_data->cmd) {
-	case COMP_TRIGGER_PAUSE:
-	case COMP_TRIGGER_STOP:
-		if (pipeline_is_timer_driven(current->pipeline))
-			current->pipeline->status = COMP_STATE_PAUSED;
-	}
-
 	/*
-	 * Add scheduling components to the list. This is only needed for
-	 * asynchronous flows.
+	 * Add scheduling components to the list. This is only needed for the
+	 * stopping flow.
 	 */
-	if (!pipeline_is_timer_driven(current->pipeline))
+	if (async)
 		pipeline_comp_trigger_sched_comp(current->pipeline, current, ctx);
 
 	return pipeline_for_each_comp(current, ctx, dir);
@@ -309,22 +309,14 @@ int pipeline_trigger(struct pipeline *p, struct comp_dev *host, int cmd)
 
 	pipe_info(p, "pipe trigger cmd %d", cmd);
 
-	p->trigger.aborted = false;
-
 	switch (cmd) {
 	case COMP_TRIGGER_PAUSE:
 	case COMP_TRIGGER_STOP:
-		if (p->status == COMP_STATE_PAUSED || p->xrun_bytes) {
-			/* The task isn't running, trigger inline */
-			ret = pipeline_trigger_run(p, host, cmd);
-			return ret < 0 ? ret : 0;
-		}
-
-		COMPILER_FALLTHROUGH;
+		/* Execute immediately */
+		ret = pipeline_trigger_run(p, host, cmd);
+		return ret == PPL_STATUS_PATH_STOP ? 0 : ret;
 	case COMP_TRIGGER_XRUN:
-		if (cmd == COMP_TRIGGER_XRUN)
-			pipeline_trigger_xrun(p, &host);
-
+		pipeline_trigger_xrun(p, &host);
 		COMPILER_FALLTHROUGH;
 	case COMP_TRIGGER_PRE_RELEASE:
 	case COMP_TRIGGER_PRE_START:
@@ -332,7 +324,7 @@ int pipeline_trigger(struct pipeline *p, struct comp_dev *host, int cmd)
 		ret = pipeline_trigger_list(p, host, cmd);
 		if (ret < 0)
 			return ret;
-		/* IPC response will be sent from the task, unless it was paused */
+		/* IPC response will be sent from the task */
 		return 1;
 	}
 
@@ -356,7 +348,6 @@ int pipeline_trigger_run(struct pipeline *p, struct comp_dev *host, int cmd)
 	pipe_dbg(p, "execute trigger cmd %d on pipe %u", cmd, p->pipeline_id);
 
 	list_init(&walk_ctx.pipelines);
-	p->trigger.aborted = false;
 
 	/* handle pipeline global checks before going into each components */
 	if (p->xrun_bytes) {
