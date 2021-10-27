@@ -38,60 +38,6 @@ static void pipeline_schedule_cancel(struct pipeline *p)
 	sa_set_panic_on_delay(true);
 }
 
-static enum task_state pipeline_task_cmd(struct pipeline *p,
-					 struct sof_ipc_reply *reply)
-{
-	int err, cmd = p->trigger.cmd;
-
-	if (!p->trigger.host) {
-		p->trigger.cmd = -EINVAL;
-		return p->status == COMP_STATE_PAUSED ? SOF_TASK_STATE_COMPLETED :
-			SOF_TASK_STATE_RESCHEDULE;
-	}
-
-	err = pipeline_trigger_run(p, p->trigger.host, cmd);
-	if (err < 0) {
-		pipe_err(p, "pipeline_task(): failed to trigger components: %d", err);
-		reply->error = err;
-		err = SOF_TASK_STATE_COMPLETED;
-	} else {
-		switch (cmd) {
-		case COMP_TRIGGER_START:
-		case COMP_TRIGGER_RELEASE:
-			p->status = COMP_STATE_ACTIVE;
-			break;
-		case COMP_TRIGGER_PRE_START:
-		case COMP_TRIGGER_PRE_RELEASE:
-			p->status = COMP_STATE_PRE_ACTIVE;
-			break;
-		case COMP_TRIGGER_STOP:
-		case COMP_TRIGGER_PAUSE:
-			p->status = COMP_STATE_PAUSED;
-		}
-
-		if (err == PPL_STATUS_PATH_STOP) {
-			pipe_warn(p, "pipeline_task(): stopping for xrun");
-			err = SOF_TASK_STATE_COMPLETED;
-		} else if (p->trigger.cmd != cmd) {
-			/* PRE stage completed */
-			if (p->trigger.delay)
-				return SOF_TASK_STATE_RESCHEDULE;
-			/* No delay: the final stage has already run too */
-		} else if (p->status == COMP_STATE_PAUSED && !p->trigger.aborted) {
-			err = SOF_TASK_STATE_COMPLETED;
-		} else {
-			p->status = COMP_STATE_ACTIVE;
-			err = SOF_TASK_STATE_RESCHEDULE;
-		}
-	}
-
-	p->trigger.cmd = -EINVAL;
-
-	ipc_msg_reply(reply);
-
-	return err;
-}
-
 static enum task_state pipeline_task(void *arg)
 {
 	struct sof_ipc_reply reply = {
@@ -99,7 +45,7 @@ static enum task_state pipeline_task(void *arg)
 		.hdr.size = sizeof(reply),
 	};
 	struct pipeline *p = arg;
-	int err;
+	int err, cmd = p->trigger.cmd;
 
 	pipe_dbg(p, "pipeline_task()");
 
@@ -136,9 +82,56 @@ static enum task_state pipeline_task(void *arg)
 		return SOF_TASK_STATE_RESCHEDULE;
 	}
 
-	if (p->trigger.cmd >= 0)
-		/* Process an offloaded command */
-		return pipeline_task_cmd(p, &reply);
+	if (cmd >= 0) {
+		if (!p->trigger.host) {
+			p->trigger.cmd = -EINVAL;
+			return p->status == COMP_STATE_PAUSED ? SOF_TASK_STATE_COMPLETED :
+				SOF_TASK_STATE_RESCHEDULE;
+		}
+
+		/* First pipeline task run for either START or RELEASE: PRE stage */
+		err = pipeline_trigger_run(p, p->trigger.host, cmd);
+		if (err < 0) {
+			pipe_err(p, "pipeline_task(): failed to trigger components: %d", err);
+			reply.error = err;
+			err = SOF_TASK_STATE_COMPLETED;
+		} else {
+			switch (cmd) {
+			case COMP_TRIGGER_START:
+			case COMP_TRIGGER_RELEASE:
+				p->status = COMP_STATE_ACTIVE;
+				break;
+			case COMP_TRIGGER_PRE_START:
+			case COMP_TRIGGER_PRE_RELEASE:
+				p->status = COMP_STATE_PRE_ACTIVE;
+				break;
+			case COMP_TRIGGER_STOP:
+			case COMP_TRIGGER_PAUSE:
+				p->status = COMP_STATE_PAUSED;
+			}
+
+			if (err == PPL_STATUS_PATH_STOP) {
+				pipe_warn(p, "pipeline_task(): stopping for xrun");
+				err = SOF_TASK_STATE_COMPLETED;
+			} else if (p->trigger.cmd != cmd) {
+				/* PRE stage completed */
+				if (p->trigger.delay)
+					return SOF_TASK_STATE_RESCHEDULE;
+				/* No delay: the final stage has already run too */
+			} else if (p->status == COMP_STATE_PAUSED && !p->trigger.aborted) {
+				err = SOF_TASK_STATE_COMPLETED;
+			} else {
+				p->status = COMP_STATE_ACTIVE;
+				err = SOF_TASK_STATE_RESCHEDULE;
+			}
+		}
+
+		p->trigger.cmd = -EINVAL;
+
+		ipc_msg_reply(&reply);
+
+		return err;
+	}
 
 	if (p->status == COMP_STATE_PAUSED)
 		/*
