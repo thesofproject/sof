@@ -60,4 +60,11 @@ struct iir_state_df2t {
 
 int32_t iir_df2t(struct iir_state_df2t *iir, int32_t x);
 
+/* Inline functions with or without HiFi3 intrinsics */
+#if IIR_HIFI3
+#include "iir_df2t_hifi3.h"
+#else
+#include "iir_df2t_generic.h"
+#endif
+
 #endif /* __SOF_MATH_IIR_DF2T_H__ */
