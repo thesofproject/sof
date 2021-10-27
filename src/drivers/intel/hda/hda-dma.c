@@ -18,6 +18,7 @@
 #include <sof/lib/dma.h>
 #include <sof/lib/pm_runtime.h>
 #include <sof/lib/notifier.h>
+#include <sof/lib/wait.h>
 #include <sof/platform.h>
 #include <sof/schedule/schedule.h>
 #include <sof/spinlock.h>
@@ -146,6 +147,9 @@ DECLARE_TR_CTX(hdma_tr, SOF_UUID(hda_dma_uuid), LOG_LEVEL_INFO);
 
 /* DMA host transfer timeout in microseconds */
 #define HDA_DMA_TIMEOUT	200
+
+/* DMA idle timeout in microseconds */
+#define HDA_DMA_IDLE_TIMEOUT_US	50
 
 /* DMA number of buffer periods */
 #define HDA_DMA_BUFFER_PERIOD_COUNT	2
@@ -646,7 +650,8 @@ static int hda_dma_release(struct dma_chan_data *channel)
 static int hda_dma_stop_common(struct dma_chan_data *channel)
 {
 	struct hda_chan_data *hda_chan;
-	uint32_t flags, dgcs;
+	uint32_t flags;
+	int ret;
 
 	irq_local_disable(flags);
 
@@ -667,14 +672,16 @@ static int hda_dma_stop_common(struct dma_chan_data *channel)
 		dma_chan_reg_update_bits(channel, DGCS, DGCS_GEN, 0);
 	}
 
-	/* check if channel is idle. No need to wait after clearing the GEN bit */
-	dgcs = dma_chan_reg_read(channel, DGCS);
-	if (dgcs & DGCS_GBUSY) {
+	/* check with timeout if channel is idle */
+	ret = poll_for_register_delay(dma_chan_base(channel->dma, channel->index) + DGCS,
+				      DGCS_GBUSY, 0, HDA_DMA_IDLE_TIMEOUT_US);
+	if (ret < 0) {
 		tr_err(&hdma_tr, "hda-dmac: %d channel %d not idle after stop",
 		       channel->dma->plat_data.id, channel->index);
 		irq_local_enable(flags);
-		return -EBUSY;
+		return ret;
 	}
+
 	channel->status = COMP_STATE_PREPARE;
 	hda_chan = dma_chan_get_data(channel);
 	hda_chan->state = 0;
