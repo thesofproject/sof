@@ -625,7 +625,6 @@ static int test_keyword_copy(struct comp_dev *dev)
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *source;
 	uint32_t frames;
-	uint32_t flags = 0;
 
 	comp_dbg(dev, "test_keyword_copy()");
 
@@ -636,9 +635,9 @@ static int test_keyword_copy(struct comp_dev *dev)
 	if (!source->stream.avail)
 		return PPL_STATUS_PATH_STOP;
 
-	buffer_lock(source, &flags);
+	source = buffer_acquire_irq(source);
 	frames = audio_stream_get_avail_frames(&source->stream);
-	buffer_unlock(source, flags);
+	source = buffer_release_irq(source);
 
 	/* copy and perform detection */
 	buffer_stream_invalidate(source, audio_stream_get_avail_bytes(&source->stream));
