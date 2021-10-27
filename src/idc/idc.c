@@ -123,9 +123,6 @@ static void idc_ipc(void)
 	struct ipc *ipc = ipc_get();
 
 	ipc_cmd(ipc->comp_data);
-
-	/* Signal the host */
-	ipc_complete_cmd(ipc);
 }
 
 /**
@@ -264,7 +261,6 @@ static int idc_reset(uint32_t comp_id)
 
 	ret = comp_reset(ipc_dev->cd);
 
-
 	return ret;
 }
 
@@ -307,6 +303,20 @@ void idc_cmd(struct idc_msg *msg)
 	idc_msg_status_set(ret, cpu_get_id());
 }
 
+#ifndef __ZEPHYR__
+static void idc_complete(void *data)
+{
+	struct idc *idc = data;
+	uint32_t type = iTS(idc->received_msg.header);
+
+	switch (type) {
+	case iTS(IDC_MSG_IPC):
+		/* Signal the host */
+		ipc_complete_cmd(ipc_get());
+	}
+}
+#endif
+
 /* Runs on each CPU */
 int idc_init(void)
 {
@@ -315,6 +325,7 @@ int idc_init(void)
 	struct task_ops ops = {
 		.run = idc_do_cmd,
 		.get_deadline = ipc_task_deadline,
+		.complete = idc_complete,
 	};
 #endif
 
