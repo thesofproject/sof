@@ -633,7 +633,6 @@ static int crossover_copy(struct comp_dev *dev)
 	uint32_t num_assigned_sinks = 0;
 	uint32_t frames = UINT_MAX;
 	uint32_t source_bytes, avail;
-	uint32_t flags = 0;
 	uint32_t sinks_bytes[SOF_CROSSOVER_MAX_STREAMS] = { 0 };
 
 	comp_dbg(dev, "crossover_copy()");
@@ -672,11 +671,11 @@ static int crossover_copy(struct comp_dev *dev)
 	else
 		num_sinks = num_assigned_sinks;
 
-	buffer_lock(source, &flags);
+	source = buffer_acquire_irq(source);
 
 	/* Check if source is active */
 	if (source->source->state != dev->state) {
-		buffer_unlock(source, flags);
+		source = buffer_release_irq(source);
 		return -EINVAL;
 	}
 
@@ -684,14 +683,14 @@ static int crossover_copy(struct comp_dev *dev)
 	for (i = 0; i < num_sinks; i++) {
 		if (!sinks[i])
 			continue;
-		buffer_lock(sinks[i], &flags);
+		sinks[i] = buffer_acquire_irq(sinks[i]);
 		avail = audio_stream_avail_frames(&source->stream,
 						  &sinks[i]->stream);
 		frames = MIN(frames, avail);
-		buffer_unlock(sinks[i], flags);
+		buffer_release_irq(sinks[i]);
 	}
 
-	buffer_unlock(source, flags);
+	source = buffer_release_irq(source);
 
 	source_bytes = frames * audio_stream_frame_bytes(&source->stream);
 
