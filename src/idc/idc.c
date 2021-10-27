@@ -306,13 +306,18 @@ void idc_cmd(struct idc_msg *msg)
 #ifndef __ZEPHYR__
 static void idc_complete(void *data)
 {
+	struct ipc *ipc = ipc_get();
 	struct idc *idc = data;
 	uint32_t type = iTS(idc->received_msg.header);
+	uint32_t flags;
 
 	switch (type) {
 	case iTS(IDC_MSG_IPC):
 		/* Signal the host */
-		ipc_complete_cmd(ipc_get());
+		spin_lock_irq(&ipc->lock, flags);
+		ipc->task_mask &= ~IPC_TASK_SECONDARY_CORE;
+		ipc_complete_cmd(ipc);
+		spin_unlock_irq(&ipc->lock, flags);
 	}
 }
 #endif
