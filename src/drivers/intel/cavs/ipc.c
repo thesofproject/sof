@@ -182,6 +182,7 @@ enum task_state ipc_platform_do_cmd(void *data)
 #else
 	hdr = mailbox_validate();
 #endif
+
 	/* perform command */
 	ipc_cmd(hdr);
 
