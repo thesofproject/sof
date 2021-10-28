@@ -39,3 +39,4 @@ cmocka_test(acos_16b_fixed
 	acos_16b_fixed.c
 	${PROJECT_SOURCE_DIR}/src/math/trig.c
 )
+
