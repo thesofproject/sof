@@ -84,7 +84,7 @@ PIPELINE_PCM_ADD(sof/pipe-host-volume-playback.m4,
 # Compr Playback pipeline 4 on Compr 1 using max 2 channels of s32le.
 # 5ms deadline on core 0 with priority 0
 # this is connected to pipeline DAI 1
-PIPELINE_PCM_ADD(sof/pipe-codec-adapter-playback.m4,
+PIPELINE_PCM_ADD(sof/pipe-host-codec-adapter-playback.m4,
 	4, 1, 2, s32le,
 	5000, 0, 0,
 	48000, 48000, 48000,
