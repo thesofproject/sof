@@ -646,6 +646,7 @@ static int hda_dma_release(struct dma_chan_data *channel)
 
 static int hda_dma_stop_common(struct dma_chan_data *channel)
 {
+	struct dai_data *dd = channel->dev_data;
 	struct hda_chan_data *hda_chan;
 	uint32_t flags, dgcs;
 
@@ -669,12 +670,14 @@ static int hda_dma_stop_common(struct dma_chan_data *channel)
 	}
 
 	/* check if channel is idle. No need to wait after clearing the GEN bit */
-	dgcs = dma_chan_reg_read(channel, DGCS);
-	if (dgcs & DGCS_GBUSY) {
-		tr_err(&hdma_tr, "hda-dmac: %d channel %d not idle after stop",
-		       channel->dma->plat_data.id, channel->index);
-		irq_local_enable(flags);
-		return -EBUSY;
+	if (dd && dd->delayed_dma_stop) {
+		dgcs = dma_chan_reg_read(channel, DGCS);
+		if (dgcs & DGCS_GBUSY) {
+			tr_err(&hdma_tr, "hda-dmac: %d channel %d not idle after stop",
+			       channel->dma->plat_data.id, channel->index);
+			irq_local_enable(flags);
+			return -EBUSY;
+		}
 	}
 	channel->status = COMP_STATE_PREPARE;
 	hda_chan = dma_chan_get_data(channel);
