@@ -36,8 +36,13 @@ int poll_for_register_delay(uint32_t reg, uint32_t mask,
 	uint64_t delta = tick / tries;
 
 	if (!delta) {
-		delta = us;
-		tries = 1;
+		/*
+		 * If we want to wait for less than DEFAULT_TRY_TIMES ticks then
+		 * delta has to be set to 1 and number of tries to that of number
+		 * of ticks.
+		 */
+		delta = 1;
+		tries = tick;
 	}
 
 	while ((io_reg_read(reg) & mask) != val) {
