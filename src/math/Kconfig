@@ -9,6 +9,28 @@ config CORDIC_FIXED
 	  Select this to enable sin(), cos(), asin(), acos(),
 	  and cexp() functions as 16 bit and 32 bit versions.
 
+config POWER_FIXED
+       bool "Power function"
+       default n
+       help
+	  This option builds the 32 bit power_int32(). A power represents repeated
+	  multiplication of the same number. power_int32() calculates the power
+	  raised to the base value. The power function works for even, odd and
+	  fractional base and exponent argument.Operating range of power_int32()
+	  with base having values from -32 to + 32 . Exponent values range from
+	  -3 to +3. Power out MIN/MAX range is -/+32768.
+
+
+config BINARY_LOGARITHM_FIXED
+       bool "Binary Logarithm function"
+       default n
+       help
+	  This option builds Binary Logarithm function (log2n) is the logarithm to
+	  the base 2. The binary logarithm of x is the power to which the number 2
+	  must be raised to obtain the value x. Base 2 logarithm function is implemented
+	  with a short lookup table. (log2n) operates for a range of 32 bit width size
+	  i.e. 1 to 4294967295.
+
 config NUMBERS_GCD
 	bool "Greatest common divisor"
 	default n
