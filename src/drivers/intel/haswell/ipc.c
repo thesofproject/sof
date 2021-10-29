@@ -79,7 +79,7 @@ int ipc_platform_compact_read_msg(ipc_cmd_hdr *hdr, int words)
 	return 0; /* number of words read - not currently used on this platform */
 }
 
-enum task_state ipc_platform_do_cmd(void *data)
+enum task_state ipc_platform_do_cmd(struct ipc *ipc)
 {
 	ipc_cmd_hdr *hdr;
 	/* Use struct ipc_data *iipc = ipc_get_drvdata(ipc); if needed */
@@ -91,10 +91,8 @@ enum task_state ipc_platform_do_cmd(void *data)
 	return SOF_TASK_STATE_COMPLETED;
 }
 
-void ipc_platform_complete_cmd(void *data)
+void ipc_platform_complete_cmd(struct ipc *ipc)
 {
-	struct ipc *ipc = data;
-
 	/* clear BUSY bit and set DONE bit - accept new messages */
 	shim_write(SHIM_IPCX, SHIM_IPCX_DONE);
 

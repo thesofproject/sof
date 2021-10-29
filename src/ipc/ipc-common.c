@@ -289,7 +289,7 @@ static enum task_state ipc_do_cmd(void *data)
 	 */
 	ipc->task_mask = IPC_TASK_INLINE;
 
-	return ipc_platform_do_cmd(data);
+	return ipc_platform_do_cmd(ipc);
 }
 
 struct task_ops ipc_task_ops = {
