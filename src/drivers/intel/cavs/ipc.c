@@ -184,14 +184,11 @@ enum task_state ipc_platform_do_cmd(struct ipc *ipc)
 	ipc_cmd(hdr);
 
 	/* are we about to enter D3 ? */
-#if !CONFIG_SUECREEK
 	if (ipc->pm_prepare_D3) {
 
 		/* no return - memory will be powered off and IPC sent */
 		platform_pm_runtime_power_off();
 	}
-
-#endif
 
 	return SOF_TASK_STATE_COMPLETED;
 }
@@ -212,14 +209,6 @@ void ipc_platform_complete_cmd(struct ipc *ipc)
 
 	/* unmask Busy interrupt */
 	ipc_write(IPC_DIPCCTL, ipc_read(IPC_DIPCCTL) | IPC_DIPCCTL_IPCTBIE);
-
-#if CONFIG_SUECREEK
-	if (ipc->pm_prepare_D3) {
-		//TODO: add support for Icelake
-		while (1)
-			wait_for_interrupt(0);
-	}
-#endif
 }
 
 int ipc_platform_send_msg(struct ipc_msg *msg)
