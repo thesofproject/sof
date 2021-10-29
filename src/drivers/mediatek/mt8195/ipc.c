@@ -71,7 +71,7 @@ void trigger_irq_to_host_req(void)
 	io_reg_write(MTK_DSP_MBOX_OUT_CMD(1), ADSP_IPI_OP_REQ);
 }
 
-enum task_state ipc_platform_do_cmd(void *data)
+enum task_state ipc_platform_do_cmd(struct ipc *ipc)
 {
 	ipc_cmd_hdr *hdr;
 
@@ -81,10 +81,8 @@ enum task_state ipc_platform_do_cmd(void *data)
 	return SOF_TASK_STATE_COMPLETED;
 }
 
-void ipc_platform_complete_cmd(void *data)
+void ipc_platform_complete_cmd(struct ipc *ipc)
 {
-	struct ipc *ipc = data;
-
 	trigger_irq_to_host_rsp();
 	while (ipc->pm_prepare_D3)
 		wait_for_interrupt(0);
