@@ -37,9 +37,8 @@ int ipc_platform_compact_read_msg(ipc_cmd_hdr *hdr, int words)
 }
 
 /* No private data for IPC */
-enum task_state ipc_platform_do_cmd(void *data)
+enum task_state ipc_platform_do_cmd(struct ipc *ipc)
 {
-	struct ipc *ipc = data;
 	ipc_cmd_hdr *hdr;
 	struct sof_ipc_reply reply;
 
@@ -62,7 +61,7 @@ enum task_state ipc_platform_do_cmd(void *data)
 	return SOF_TASK_STATE_COMPLETED;
 }
 
-void ipc_platform_complete_cmd(void *data)
+void ipc_platform_complete_cmd(struct ipc *ipc)
 {
 }
 

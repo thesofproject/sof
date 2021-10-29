@@ -29,12 +29,12 @@ int ipc_platform_compact_read_msg(ipc_cmd_hdr *hdr, int words)
 	return 0; /* number of words read - not currently used on this platform */
 }
 
-enum task_state ipc_platform_do_cmd(void *data)
+enum task_state ipc_platform_do_cmd(struct ipc *ipc)
 {
 	return SOF_TASK_STATE_COMPLETED;
 }
 
-void ipc_platform_complete_cmd(void *data)
+void ipc_platform_complete_cmd(struct ipc *ipc)
 {
 }
 

@@ -38,12 +38,12 @@ int platform_ipc_init(struct ipc *ipc);
  * \brief Perform IPC command from host.
  * @return The task state of the IPC command work.
  */
-enum task_state ipc_platform_do_cmd(void *data);
+enum task_state ipc_platform_do_cmd(struct ipc *ipc);
 
 /**
  * \brief Tell host we have completed the last IPC command.
  */
-void ipc_platform_complete_cmd(void *data);
+void ipc_platform_complete_cmd(struct ipc *ipc);
 
 /**
  * \brief Send IPC message to host.

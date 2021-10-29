@@ -187,12 +187,12 @@ int WEAK platform_ipc_init(struct ipc *ipc)
 	return 0;
 }
 
-enum task_state WEAK ipc_platform_do_cmd(void *data)
+enum task_state WEAK ipc_platform_do_cmd(struct ipc *ipc)
 {
 	return 0;
 }
 
-void WEAK ipc_platform_complete_cmd(void *data)
+void WEAK ipc_platform_complete_cmd(struct ipc *ipc)
 {
 }
 

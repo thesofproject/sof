@@ -120,7 +120,7 @@ static void irq_handler(void *arg)
 	}
 }
 
-enum task_state ipc_platform_do_cmd(void *data)
+enum task_state ipc_platform_do_cmd(struct ipc *ipc)
 {
 	ipc_cmd_hdr *hdr;
 
@@ -129,9 +129,8 @@ enum task_state ipc_platform_do_cmd(void *data)
 	return SOF_TASK_STATE_COMPLETED;
 }
 
-void ipc_platform_complete_cmd(void *data)
+void ipc_platform_complete_cmd(struct ipc *ipc)
 {
-	struct ipc *ipc = data;
 	acp_sw_intr_trig_t  sw_intr_trig;
 
 	/* Set Dsp Ack for msg from host */
