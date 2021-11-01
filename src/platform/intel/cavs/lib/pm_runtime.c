@@ -54,11 +54,12 @@ static void cavs_pm_runtime_host_dma_l1_get(void)
 {
 	struct pm_runtime_data *prd = pm_runtime_data_get();
 	struct cavs_pm_runtime_data *pprd = prd->platform_data;
+	int core = cpu_get_id();
 	uint32_t flags;
 
 	spin_lock_irq(&prd->lock, flags);
 
-	pprd->host_dma_l1_sref++;
+	pprd->host_dma_l1_sref[core]++;
 
 	spin_unlock_irq(&prd->lock, flags);
 }
@@ -71,11 +72,12 @@ static inline void cavs_pm_runtime_host_dma_l1_put(void)
 {
 	struct pm_runtime_data *prd = pm_runtime_data_get();
 	struct cavs_pm_runtime_data *pprd = prd->platform_data;
+	int core = cpu_get_id();
 	uint32_t flags;
 
 	spin_lock_irq(&prd->lock, flags);
 
-	if (!--pprd->host_dma_l1_sref) {
+	if (!--pprd->host_dma_l1_sref[core]) {
 		shim_write(SHIM_SVCFG,
 			   shim_read(SHIM_SVCFG) | SHIM_SVCFG_FORCE_L1_EXIT);
 
