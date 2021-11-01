@@ -743,7 +743,7 @@ static int fetch_entry(const struct log_entry_header *dma_log, uint64_t *last_ti
 				goto out;
 			}
 			if (ret != size)
-				log_err("Partial read of %u bytes of %lu, reading more\n",
+				log_err("Partial read of %u bytes of %zu, reading more\n",
 					ret, size);
 		}
 	} /* serial */
@@ -874,7 +874,7 @@ static int logger_read(void)
 			} else {
 				/* EOF */
 				if (!feof(global_config->in_fd))
-					log_err("file '%s' is unaligned with trace entry size (%ld)\n",
+					log_err("file '%s' is unaligned with trace entry size (%zu)\n",
 						global_config->in_file, sizeof(dma_log));
 				break;
 			}
@@ -994,7 +994,7 @@ static int dump_ldc_info(void)
 		SOF_ABI_VERSION_MINOR(global_config->logs_header->version.abi_version),
 		SOF_ABI_VERSION_PATCH(global_config->logs_header->version.abi_version));
 	fprintf(out_fd, "\n");
-	fprintf(out_fd, "Components uuid dictionary size:\t%ld bytes\n",
+	fprintf(out_fd, "Components uuid dictionary size:\t%zd bytes\n",
 		remaining);
 	fprintf(out_fd, "Components uuid base address:   \t0x%x\n",
 		uids_dict->base_address);
@@ -1007,7 +1007,7 @@ static int dump_ldc_info(void)
 	while (remaining > 0) {
 		name = format_uid_raw(&uid_ptr[cnt], 0, 0, false, false);
 		uid_addr = get_uuid_key(&uid_ptr[cnt]);
-		fprintf(out_fd, "\t0x%lX  %s\n", uid_addr, name);
+		fprintf(out_fd, "\t%p  %s\n", (void *)uid_addr, name);
 
 		if (name) {
 			free(name);
