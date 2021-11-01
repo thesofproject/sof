@@ -366,7 +366,7 @@ static int hda_dma_wait_for_buffer_empty(struct dma_chan_data *chan)
 	return 0;
 }
 
-static void hda_dma_post_copy(struct dma_chan_data *chan, int bytes)
+static void host_dma_post_copy(struct dma_chan_data *chan, int bytes)
 {
 	struct hda_chan_data *hda_chan = dma_chan_get_data(chan);
 	struct dma_cb_data next = {
@@ -377,28 +377,36 @@ static void hda_dma_post_copy(struct dma_chan_data *chan, int bytes)
 	notifier_event(chan, NOTIFIER_ID_DMA_COPY,
 		       NOTIFIER_TARGET_CORE_LOCAL, &next, sizeof(next));
 
-	if (chan->direction == DMA_DIR_HMEM_TO_LMEM ||
-	    chan->direction == DMA_DIR_LMEM_TO_HMEM) {
-		/* set BFPI to let host gateway know we have read size,
-		 * which will trigger next copy start.
-		 */
-		hda_dma_inc_fp(chan, bytes);
+	/* set BFPI to let host gateway know we have read size,
+	 * which will trigger next copy start.
+	 */
+	hda_dma_inc_fp(chan, bytes);
 
-		/*
-		 * Force Host DMA to exit L1 if scheduled on DMA,
-		 * otherwise, perform L1 exit at LL scheduler powt run.
-		 */
-		if (!hda_chan->irq_disabled)
-			pm_runtime_put(PM_RUNTIME_HOST_DMA_L1, 0);
-		else if (bytes)
-			hda_chan->l1_exit_needed = true;
-	} else {
-		/*
-		 * set BFPI to let link gateway know we have read size,
-		 * which will trigger next copy start.
-		 */
-		hda_dma_inc_link_fp(chan, bytes);
-	}
+	/*
+	 * Force Host DMA to exit L1 if scheduled on DMA,
+	 * otherwise, perform L1 exit at LL scheduler powt run.
+	 */
+	if (!hda_chan->irq_disabled)
+		pm_runtime_put(PM_RUNTIME_HOST_DMA_L1, 0);
+	else
+		hda_chan->l1_exit_needed = true;
+}
+
+static void link_dma_post_copy(struct dma_chan_data *chan, int bytes)
+{
+	struct dma_cb_data next = {
+		.channel = chan,
+		.elem = { .size = bytes },
+	};
+
+	notifier_event(chan, NOTIFIER_ID_DMA_COPY,
+		       NOTIFIER_TARGET_CORE_LOCAL, &next, sizeof(next));
+
+	/*
+	 * set BFPI to let link gateway know we have read size,
+	 * which will trigger next copy start.
+	 */
+	hda_dma_inc_link_fp(chan, bytes);
 }
 
 static int hda_dma_link_copy_ch(struct dma_chan_data *chan, int bytes)
@@ -408,7 +416,7 @@ static int hda_dma_link_copy_ch(struct dma_chan_data *chan, int bytes)
 
 	hda_dma_get_dbg_vals(chan, HDA_DBG_PRE, HDA_DBG_LINK);
 
-	hda_dma_post_copy(chan, bytes);
+	link_dma_post_copy(chan, bytes);
 
 	hda_dma_get_dbg_vals(chan, HDA_DBG_POST, HDA_DBG_LINK);
 	hda_dma_ptr_trace(chan, "link copy", HDA_DBG_LINK);
@@ -508,6 +516,10 @@ static int hda_dma_host_copy(struct dma_chan_data *channel, int bytes,
 	tr_dbg(&hdma_tr, "hda-dmac: %d channel %d -> copy 0x%x bytes",
 	       channel->dma->plat_data.id, channel->index, bytes);
 
+	/* do nothing if no bytes to copy */
+	if (bytes <= 0)
+		return 0;
+
 	hda_dma_get_dbg_vals(channel, HDA_DBG_PRE, HDA_DBG_HOST);
 
 	/* Register Host DMA usage */
@@ -518,11 +530,13 @@ static int hda_dma_host_copy(struct dma_chan_data *channel, int bytes,
 		ret = channel->direction == DMA_DIR_HMEM_TO_LMEM ?
 			hda_dma_wait_for_buffer_full(channel) :
 			hda_dma_wait_for_buffer_empty(channel);
-		if (ret < 0)
+		if (ret < 0) {
+			pm_runtime_put(PM_RUNTIME_HOST_DMA_L1, 0);
 			return ret;
+		}
 	}
 
-	hda_dma_post_copy(channel, bytes);
+	host_dma_post_copy(channel, bytes);
 
 	hda_dma_get_dbg_vals(channel, HDA_DBG_POST, HDA_DBG_HOST);
 	hda_dma_ptr_trace(channel, "host copy", HDA_DBG_HOST);
