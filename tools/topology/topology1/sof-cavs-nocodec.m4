@@ -97,8 +97,8 @@ define(DAI_BITS, `s24le')
 # PCM0 <---> Volume <---\
 #                       +- Mixer <----> SSP0
 # PCM3 <---> Volume <---/
-# PCM1 <---> Volume <----> Mixer <----> SSP1
-# PCM2 <---> volume <----> Mixer <----> SSP2
+# PCM1 <---> Volume <----> SSP1
+# PCM2 <---> volume <----> SSP2
 #
 # SSP0 <---> Volume <----> PCM0
 # SSP1 <---> Volume <----> PCM1
@@ -178,21 +178,18 @@ DAI_ADD(sof/pipe-dai-capture.m4,
 	PIPELINE_SINK_2, 2, DAI_BITS,
 	1000, 0, SSP0_CORE_ID, SCHEDULE_TIME_DOMAIN_TIMER)
 
-# playback DAI is SSP1 using 2 periods
-# Buffers use DAI_BITS format, 1000us deadline with priority 0 on core SSP1_CORE_ID
-DAI_ADD(sof/pipe-mixer-dai-playback.m4,
-	3, SSP, SSP1_IDX, NoCodec-1,
-	NOT_USED_IGNORED, 2, DAI_BITS,
-	1000, 0, SSP1_CORE_ID, SCHEDULE_TIME_DOMAIN_TIMER, 2, 48000)
-
-# Low Latency playback pipeline 8 on PCM 1 using max 2 channels of PIPE_BITS.
+# Low Latency playback pipeline 3 on PCM 1 using max 2 channels of PIPE_BITS.
 # Set 1000us deadline on core SSP1_CORE_ID with priority 0
-PIPELINE_PCM_ADD(sof/pipe-host-volume-playback.m4,
-	8, 1, 2, PIPE_BITS,
-	1000, 0, SSP1_CORE_ID,
-	48000, 48000, 48000,
-	SCHEDULE_TIME_DOMAIN_TIMER,
-	PIPELINE_PLAYBACK_SCHED_COMP_3)
+PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
+       3, 1, 2, PIPE_BITS,
+       1000, 0, SSP1_CORE_ID,
+       48000, 48000, 48000)
+
+# Buffers use DAI_BITS format, 1000us deadline on core SSP1_CORE_ID with priority 0
+DAI_ADD(sof/pipe-dai-playback.m4,
+	3, SSP, SSP1_IDX, NoCodec-1,
+	PIPELINE_SOURCE_3, 2, DAI_BITS,
+	1000, 0, SSP1_CORE_ID, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # capture DAI is SSP1 using 2 periods
 # Buffers use DAI_BITS format, 1000us deadline with priority 0 on core SSP1_CORE_ID
@@ -201,21 +198,18 @@ DAI_ADD(sof/pipe-dai-capture.m4,
 	PIPELINE_SINK_4, 2, DAI_BITS,
 	1000, 0, SSP1_CORE_ID, SCHEDULE_TIME_DOMAIN_TIMER)
 
-# playback DAI is SSP2 using 2 periods
-# Buffers use DAI_BITS format, 1000us deadline with priority 0 on core SSP2_CORE_ID
-DAI_ADD(sof/pipe-mixer-dai-playback.m4,
-	5, SSP, SSP2_IDX, NoCodec-2,
-	NOT_USED_IGNORED, 2, DAI_BITS,
-	1000, 0, SSP2_CORE_ID, SCHEDULE_TIME_DOMAIN_TIMER, 2, 48000)
+# Low Latency playback pipeline 5 on PCM 2 using max 2 channels of PIPE_BITS.
+# Set 1000us deadline on core SSP1_CORE_ID with priority 0
+PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
+       5, 2, 2, PIPE_BITS,
+       1000, 0, SSP1_CORE_ID,
+       48000, 48000, 48000)
 
-# Low Latency playback pipeline 9 on PCM 2 using max 2 channels of PIPE_BITS.
-# Set 1000us deadline on core SSP2_CORE_ID with priority 0
-PIPELINE_PCM_ADD(sof/pipe-host-volume-playback.m4,
-	9, 2, 2, PIPE_BITS,
-	1000, 0, SSP2_CORE_ID,
-	48000, 48000, 48000,
-	SCHEDULE_TIME_DOMAIN_TIMER,
-	PIPELINE_PLAYBACK_SCHED_COMP_5)
+# Buffers use DAI_BITS format, 1000us deadline on core SSP2_CORE_ID with priority 0
+DAI_ADD(sof/pipe-dai-playback.m4,
+	5, SSP, SSP2_IDX, NoCodec-2,
+	PIPELINE_SOURCE_5, 2, DAI_BITS,
+	1000, 0, SSP2_CORE_ID, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # Deep buffer playback pipeline 11 on PCM 3 using max 2 channels of PIPE_BITS.
 # Set 1000us deadline on core SSP2_CORE_ID with priority 0.
@@ -241,8 +235,6 @@ SectionGraph."mixer-host" {
 	lines [
 		# connect mixer dai pipelines to PCM pipelines
 		dapm(PIPELINE_MIXER_1, PIPELINE_SOURCE_7)
-		dapm(PIPELINE_MIXER_3, PIPELINE_SOURCE_8)
-		dapm(PIPELINE_MIXER_5, PIPELINE_SOURCE_9)
 		ifelse(PLATFORM, `bxt',
 			`dapm(PIPELINE_MIXER_5, PIPELINE_SOURCE_11)',
 			`dapm(PIPELINE_MIXER_1, PIPELINE_SOURCE_11)')
@@ -252,8 +244,8 @@ SectionGraph."mixer-host" {
 
 dnl PCM_DUPLEX_ADD(name, pcm_id, playback, capture)
 PCM_DUPLEX_ADD(`Port'SSP0_IDX, 0, PIPELINE_PCM_7, PIPELINE_PCM_2)
-PCM_DUPLEX_ADD(`Port'SSP1_IDX, 1, PIPELINE_PCM_8, PIPELINE_PCM_4)
-PCM_DUPLEX_ADD(`Port'SSP2_IDX, 2, PIPELINE_PCM_9, PIPELINE_PCM_6)
+PCM_DUPLEX_ADD(`Port'SSP1_IDX, 1, PIPELINE_PCM_3, PIPELINE_PCM_4)
+PCM_DUPLEX_ADD(`Port'SSP2_IDX, 2, PIPELINE_PCM_5, PIPELINE_PCM_6)
 ifelse(PLATFORM,`bxt',
 `PCM_PLAYBACK_ADD(`Port'SSP2_IDX` Deep Buffer', 3, PIPELINE_PCM_11)',
 `PCM_PLAYBACK_ADD(`Port'SSP0_IDX` Deep Buffer', 3, PIPELINE_PCM_11)')
