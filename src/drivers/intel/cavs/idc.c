@@ -7,7 +7,6 @@
 #include <sof/debug/panic.h>
 #include <sof/drivers/idc.h>
 #include <sof/drivers/interrupt.h>
-#include <sof/ipc/common.h>
 #include <sof/lib/cpu.h>
 #include <sof/lib/mailbox.h>
 #include <sof/lib/shim.h>
@@ -114,12 +113,10 @@ static bool idc_is_powered_down(int target_core)
  */
 int idc_send_msg(struct idc_msg *msg, uint32_t mode)
 {
-	struct ipc *ipc = ipc_get();
 	struct idc *idc = *idc_get();
 	struct idc_payload *payload = idc_payload_get(idc, msg->core);
 	int core = cpu_get_id();
 	uint32_t idcietc;
-	uint32_t flags;
 	int ret = 0;
 
 	tr_dbg(&idc_tr, "arch_idc_send_msg()");
@@ -170,11 +167,6 @@ int idc_send_msg(struct idc_msg *msg, uint32_t mode)
 			       msg->core,
 			       mailbox_sw_reg_read(PLATFORM_TRACEP_SECONDARY_CORE(msg->core)));
 		}
-		break;
-	case IDC_NON_BLOCKING:
-		spin_lock_irq(&ipc->lock, flags);
-		ipc->task_mask |= IPC_TASK_SECONDARY_CORE;
-		spin_unlock_irq(&ipc->lock, flags);
 		break;
 	}
 

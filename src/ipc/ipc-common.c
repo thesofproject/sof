@@ -66,7 +66,7 @@ int ipc_process_on_core(uint32_t core, bool blocking)
 	if (ret < 0)
 		return ret;
 
-	/* reply written by other core */
+	/* reply sent by other core */
 	return 1;
 }
 
@@ -241,58 +241,35 @@ int ipc_init(struct sof *sof)
 	return platform_ipc_init(sof->ipc);
 }
 
-/* Locking: call with ipc->lock held and interrupts disabled */
-void ipc_complete_cmd(struct ipc *ipc, uint32_t task_type)
+void ipc_complete_cmd(void *data)
 {
-	/* return if there is no expected pending task */
-	if (!ipc->task_mask)
+	struct ipc *ipc = data;
+	uint32_t flags;
+	bool skip_first_entry;
+
+	if (!cpu_is_me(ipc->core))
 		return;
 
-	/* update the mask of the pending tasks */
-	ipc->task_mask &= ~task_type;
+	spin_lock_irq(&ipc->lock, flags);
 
 	/*
-	 * We have up to three contexts, attempting to complete IPC processing:
-	 * the original IPC EDF task, the IDC EDF task on a secondary core, or
-	 * an LL pipeline thread, running either on the primary or one of
-	 * secondary cores. All these three contexts execute asynchronously. It
-	 * is important to only signal the host that the IPC processing has
-	 * completed after *all* tasks have completed. Therefore only the last
-	 * context should do that. We accomplish this by setting IPC_TASK_* bits
-	 * in ipc->task_mask for each used IPC context and by clearing them when
-	 * each of those contexts completes. Only when the mask is 0 we can
-	 * signal the host.
+	 * IPC commands can be completed synchronously from the IPC task
+	 * completion method, or asynchronously: either from the pipeline task
+	 * thread or from another core. In the asynchronous case the order of
+	 * the two events is unknown. It is important that the latter of them
+	 * completes the IPC to avoid the host sending the next IPC too early.
+	 * .delayed_response is used for this in such asynchronous cases.
 	 */
-	if (ipc->task_mask)
-		return;
+	skip_first_entry = ipc->delayed_response;
+	ipc->delayed_response = false;
+	if (!skip_first_entry)
+		ipc_platform_complete_cmd(data);
 
-	ipc_platform_complete_cmd(ipc);
-}
-
-static void ipc_complete_task(void *data)
-{
-	struct ipc *ipc = data;
-	uint32_t flags;
-
-	spin_lock_irq(&ipc->lock, flags);
-	ipc_complete_cmd(ipc, IPC_TASK_INLINE);
 	spin_unlock_irq(&ipc->lock, flags);
-}
-
-static enum task_state ipc_do_cmd(void *data)
-{
-	struct ipc *ipc = data;
-	uint32_t flags;
-
-	spin_lock_irq(&ipc->lock, flags);
-	ipc->task_mask = IPC_TASK_INLINE;
-	spin_unlock_irq(&ipc->lock, flags);
-
-	return ipc_platform_do_cmd(data);
 }
 
 struct task_ops ipc_task_ops = {
-	.run		= ipc_do_cmd,
-	.complete	= ipc_complete_task,
+	.run		= ipc_platform_do_cmd,
+	.complete	= ipc_complete_cmd,
 	.get_deadline	= ipc_task_deadline,
 };

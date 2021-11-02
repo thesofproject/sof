@@ -456,18 +456,10 @@ static int ipc_stream_trigger(uint32_t header)
 	 * synchronously.
 	 */
 	if (pipeline_is_timer_driven(pcm_dev->cd->pipeline)) {
-		uint32_t flags;
-
-		spin_lock_irq(&ipc->lock, flags);
-		ipc->task_mask |= IPC_TASK_IN_THREAD;
-		spin_unlock_irq(&ipc->lock, flags);
-
+		ipc->delayed_response = true;
 		ret = pipeline_trigger(pcm_dev->cd->pipeline, pcm_dev->cd, cmd);
-		if (ret <= 0) {
-			spin_lock_irq(&ipc->lock, flags);
-			ipc->task_mask &= ~IPC_TASK_IN_THREAD;
-			spin_unlock_irq(&ipc->lock, flags);
-		}
+		if (ret <= 0)
+			ipc->delayed_response = false;
 	} else {
 		ret = pipeline_trigger_run(pcm_dev->cd->pipeline, pcm_dev->cd, cmd);
 	}
@@ -1562,6 +1554,8 @@ void ipc_cmd(ipc_cmd_hdr *_hdr)
 		ipc->core = PLATFORM_PRIMARY_CORE_ID;
 		tr_info(&ipc_tr, "ipc: new cmd 0x%x", hdr->cmd);
 	}
+
+	ipc->delayed_response = false;
 
 	type = iGS(hdr->cmd);
 

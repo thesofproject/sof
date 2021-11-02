@@ -660,11 +660,7 @@ int ipc_comp_new(struct ipc *ipc, ipc_comp *_comp)
 void ipc_msg_reply(struct sof_ipc_reply *reply)
 {
 	struct ipc *ipc = ipc_get();
-	uint32_t flags;
 
 	mailbox_hostbox_write(0, reply, reply->hdr.size);
-
-	spin_lock_irq(&ipc->lock, flags);
-	ipc_complete_cmd(ipc, IPC_TASK_IN_THREAD);
-	spin_unlock_irq(&ipc->lock, flags);
+	ipc_complete_cmd(ipc);
 }
