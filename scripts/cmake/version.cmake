@@ -38,6 +38,7 @@ execute_process(
 # the same name auto-generated in the top _build_ directory by "make
 # dist", see dist.cmake
 set(TARBALL_VERSION_FILE_NAME ".tarball-version")
+# in Zephyr this is sof/zephyr/.tarball-version
 set(TARBALL_VERSION_SOURCE_PATH "${SOF_ROOT_SOURCE_DIRECTORY}/${TARBALL_VERSION_FILE_NAME}")
 
 if(EXISTS ${TARBALL_VERSION_SOURCE_PATH})
@@ -106,14 +107,16 @@ if(EXISTS ${SOF_ROOT_SOURCE_DIRECTORY}/.git/)
 			OUTPUT_VARIABLE SOF_SRC_HASH_LONG
 		)
 	string(SUBSTRING ${SOF_SRC_HASH_LONG} 0 8 SOF_SRC_HASH)
-	message(STATUS "Source content hash: ${SOF_SRC_HASH}")
-else()
+	message(STATUS "Source content hash: ${SOF_SRC_HASH}. \
+Note: by design, source hash is broken by config changes. See #3890.")
+else() # Zephyr, tarball,...
 	if("${GIT_LOG_HASH}")
 		string(SUBSTRING "${GIT_LOG_HASH}" 0 8 SOF_SRC_HASH)
 	else()
 		set(SOF_SRC_HASH "0")
 	endif()
-	message(WARNING "Source content hash not computed without git, using GIT_LOG_HASH instead")
+	message(WARNING "${SOF_ROOT_SOURCE_DIRECTORY}/.git not found, \
+source content hash cannot computed. Using GIT_LOG_HASH for .ldc instead.")
 endif()
 
 # for SOF_BUILD
