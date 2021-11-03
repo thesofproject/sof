@@ -233,8 +233,13 @@ static int set_pipeline_state(uint32_t id, uint32_t cmd)
 			return IPC4_INVALID_REQUEST;
 		break;
 	case SOF_IPC4_PIPELINE_STATE_RESET:
-		if (status == COMP_STATE_INIT)
-			return ipc_pipeline_complete(ipc, id);
+		if (status == COMP_STATE_INIT) {
+			ret = ipc_pipeline_complete(ipc, id);
+			if (ret < 0)
+				ret = IPC4_INVALID_REQUEST;
+
+			return ret;
+		}
 
 		ret = pipeline_trigger(host->cd->pipeline, host->cd, COMP_TRIGGER_STOP);
 		if (ret < 0) {
@@ -243,10 +248,19 @@ static int set_pipeline_state(uint32_t id, uint32_t cmd)
 		}
 
 		/* resource is not released by triggering reset which is used by current FW */
-		return pipeline_reset(host->cd->pipeline, host->cd);
+		ret = pipeline_reset(host->cd->pipeline, host->cd);
+		if (ret < 0)
+			ret = IPC4_INVALID_REQUEST;
+
+		return ret;
 	case SOF_IPC4_PIPELINE_STATE_PAUSED:
-		if (status == COMP_STATE_INIT)
-			return ipc_pipeline_complete(ipc, id);
+		if (status == COMP_STATE_INIT) {
+			ret = ipc_pipeline_complete(ipc, id);
+			if (ret < 0)
+				ret = IPC4_INVALID_REQUEST;
+
+			return ret;
+		}
 
 		if (status == COMP_STATE_READY)
 			return 0;
