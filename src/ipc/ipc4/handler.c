@@ -241,10 +241,17 @@ static int set_pipeline_state(uint32_t id, uint32_t cmd)
 			return ret;
 		}
 
-		ret = pipeline_trigger(host->cd->pipeline, host->cd, COMP_TRIGGER_STOP);
-		if (ret < 0) {
-			tr_err(&ipc_tr, "ipc: comp %d trigger 0x%x failed %d", id, cmd, ret);
-			return IPC4_PIPELINE_STATE_NOT_SET;
+		/* initialized -> pause -> reset */
+		if (status == COMP_STATE_READY)
+			return 0;
+
+		if (status == COMP_STATE_ACTIVE) {
+			ret = pipeline_trigger(host->cd->pipeline, host->cd, COMP_TRIGGER_STOP);
+			if (ret < 0) {
+				tr_err(&ipc_tr, "ipc: comp %d trigger 0x%x failed %d",
+				       id, cmd, ret);
+				return IPC4_PIPELINE_STATE_NOT_SET;
+			}
 		}
 
 		/* resource is not released by triggering reset which is used by current FW */
