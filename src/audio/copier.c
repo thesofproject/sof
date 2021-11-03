@@ -308,7 +308,7 @@ static bool use_no_container_convert_function(enum sof_ipc_frame in,
 					      enum sof_ipc_frame valid_out_bits)
 {
 	/* valid sample size is equal to container size, go normal path */
-	if (in == valid_in_bits && out == valid_out_bits)
+	if (in == out && valid_in_bits == valid_out_bits)
 		return true;
 
 	/* go normal path for S24_4LE case since container is always 32 bits */
