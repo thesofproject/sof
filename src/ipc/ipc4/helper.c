@@ -117,6 +117,9 @@ int ipc_pipeline_new(struct ipc *ipc, ipc_pipe_new *_pipe_desc)
 	 */
 	pipe->period = 1000;
 
+	/* sched_id is set in FW so initialize it to a invalid value */
+	pipe->sched_id = 0xFFFFFFFF;
+
 	/* allocate the IPC pipeline container */
 	ipc_pipe = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM,
 			   sizeof(struct ipc_comp_dev));
