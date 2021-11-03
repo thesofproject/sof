@@ -59,6 +59,9 @@ static int basefw_config(uint32_t *data_offset, char *data)
 	set_tuple_uint32(tuple, IPC4_UAOL_SUPPORT, 0);
 
 	tuple = next_tuple(tuple);
+	set_tuple_uint32(tuple, IPC4_ALH_SUPPORT_LEVEL_FW_CFG, IPC4_ALH_CAVS_1_8);
+
+	tuple = next_tuple(tuple);
 	set_tuple_uint32(tuple, IPC4_DL_MAILBOX_BYTES_FW_CFG, MAILBOX_HOSTBOX_SIZE);
 
 	tuple = next_tuple(tuple);
