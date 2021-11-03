@@ -635,6 +635,7 @@ static int mixin_bind(struct comp_dev *dev, void *data)
 {
 	struct ipc4_module_bind_unbind *bu;
 	struct comp_buffer *source_buf;
+	struct comp_buffer *sink_buf;
 	struct comp_dev *sink;
 	int src_id, sink_id;
 
@@ -648,9 +649,9 @@ static int mixin_bind(struct comp_dev *dev, void *data)
 
 		sink = ipc4_get_comp_dev(sink_id);
 		list_for_item(blist, &sink->bsource_list) {
-			source_buf = container_of(blist, struct comp_buffer, sink_list);
-			if (source_buf->source == dev) {
-				pipeline_disconnect(sink, source_buf, PPL_CONN_DIR_BUFFER_TO_COMP);
+			sink_buf = container_of(blist, struct comp_buffer, sink_list);
+			if (sink_buf->source == dev) {
+				pipeline_disconnect(sink, sink_buf, PPL_CONN_DIR_BUFFER_TO_COMP);
 				break;
 			}
 		}
@@ -658,6 +659,7 @@ static int mixin_bind(struct comp_dev *dev, void *data)
 		source_buf = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
 		pipeline_disconnect(dev, source_buf, PPL_CONN_DIR_BUFFER_TO_COMP);
 		pipeline_connect(sink, source_buf, PPL_CONN_DIR_BUFFER_TO_COMP);
+		pipeline_connect(dev, sink_buf, PPL_CONN_DIR_BUFFER_TO_COMP);
 	}
 
 	return 0;
