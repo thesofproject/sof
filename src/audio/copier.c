@@ -621,6 +621,7 @@ static int set_attenuation(struct comp_dev *dev, uint32_t data_offset, char *dat
 		return -EINVAL;
 	}
 
+	dcache_invalidate_region(data, sizeof(uint32_t));
 	attenuation = *(uint32_t *)data;
 	if (attenuation > 31) {
 		comp_err(dev, "attenuation %d is out of range", attenuation);
