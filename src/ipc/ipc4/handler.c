@@ -80,6 +80,9 @@ static int ipc4_comp_params(struct comp_dev *current,
 	if (current->state == COMP_STATE_ACTIVE)
 		return 0;
 
+	if (current->pipeline != ((struct pipeline_data *)ctx->comp_data)->p)
+		return 0;
+
 	err = comp_params(current, &ppl_data->params->params);
 	if (err < 0 || err == PPL_STATUS_PATH_STOP)
 		return err;
@@ -94,6 +97,7 @@ static int ipc4_pipeline_params(struct pipeline *p, struct comp_dev *host,
 	struct pipeline_data data = {
 		.start = host,
 		.params = &hw_params,
+		.p = p,
 	};
 
 	struct pipeline_walk_context param_ctx = {
