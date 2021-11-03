@@ -55,7 +55,6 @@ struct ll_schedule_domain {
 	bool synchronous;		/**< are tasks should be synchronous */
 	bool full_sync;			/**< tasks should be full synchronous, no time dependent */
 	void *priv_data;		/**< pointer to private data */
-	bool registered[CONFIG_CORE_COUNT];		/**< registered cores */
 	bool enabled[CONFIG_CORE_COUNT];		/**< enabled cores */
 	const struct ll_schedule_domain_ops *ops;	/**< domain ops */
 };
@@ -121,21 +120,15 @@ static inline int domain_register(struct ll_schedule_domain *domain,
 				  struct task *task,
 				  void (*handler)(void *arg), void *arg)
 {
-	int core = cpu_get_id();
 	int ret;
 
 	assert(domain->ops->domain_register);
 
 	ret = domain->ops->domain_register(domain, task, handler, arg);
 
-	if (!ret) {
+	if (!ret)
 		/* registered one more task, increase the count */
 		atomic_add(&domain->total_num_tasks, 1);
-
-		if (!domain->registered[core])
-			/* first task of the core, new client registered */
-			domain->registered[core] = true;
-	}
 
 	return ret;
 }
@@ -143,8 +136,6 @@ static inline int domain_register(struct ll_schedule_domain *domain,
 static inline void domain_unregister(struct ll_schedule_domain *domain,
 				     struct task *task, uint32_t num_tasks)
 {
-	int core = cpu_get_id();
-	bool registered = domain->registered[core];
 	int ret;
 
 	assert(domain->ops->domain_unregister);
@@ -152,22 +143,14 @@ static inline void domain_unregister(struct ll_schedule_domain *domain,
 	/* unregistering a task, decrement the count */
 	atomic_sub(&domain->total_num_tasks, 1);
 
-	/* the last task of the core, unregister the client/core */
-	if (!num_tasks && registered)
-		domain->registered[core] = false;
-
 	/*
 	 * In some cases .domain_unregister() might not return, terminating the
 	 * current thread, that's why we had to update state before calling it.
 	 */
 	ret = domain->ops->domain_unregister(domain, task, num_tasks);
-	if (ret < 0) {
+	if (ret < 0)
 		/* Failed to unregister the domain, restore state */
 		atomic_add(&domain->total_num_tasks, 1);
-
-		if (!num_tasks && domain->registered[core])
-			domain->registered[core] = registered;
-	}
 }
 
 static inline void domain_enable(struct ll_schedule_domain *domain, int core)
