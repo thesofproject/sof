@@ -216,7 +216,7 @@ static int dma_multi_chan_domain_unregister(struct ll_schedule_domain *domain,
 	tr_info(&ll_tr, "dma_multi_chan_domain_unregister()");
 
 	/* check if task should be unregistered */
-	if (!pipe_task->registrable)
+	if (!task || !pipe_task->registrable)
 		return 0;
 
 	for (i = 0; i < dma_domain->num_dma; ++i) {

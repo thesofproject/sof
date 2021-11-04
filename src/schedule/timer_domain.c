@@ -70,6 +70,9 @@ static int timer_domain_unregister(struct ll_schedule_domain *domain,
 	struct timer_domain *timer_domain = ll_sch_domain_get_pdata(domain);
 	int core = cpu_get_id();
 
+	if (task)
+		return 0;
+
 	tr_dbg(&ll_tr, "timer_domain_unregister()");
 
 	/* tasks still registered on this core */
