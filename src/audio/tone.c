@@ -464,6 +464,12 @@ static int tone_cmd_get_value(struct comp_dev *dev,
 
 	comp_info(dev, "tone_cmd_get_value()");
 
+	if (cdata->type != SOF_CTRL_TYPE_VALUE_CHAN_GET) {
+		comp_err(dev, "tone_cmd_get_value(): wrong cdata->type: %u",
+			 cdata->type);
+		return -EINVAL;
+	}
+
 	if (cdata->cmd == SOF_CTRL_CMD_SWITCH) {
 		for (j = 0; j < cdata->num_elems; j++) {
 			cdata->chanv[j].channel = j;
@@ -482,6 +488,12 @@ static int tone_cmd_set_value(struct comp_dev *dev,
 	int j;
 	uint32_t ch;
 	bool val;
+
+	if (cdata->type != SOF_CTRL_TYPE_VALUE_CHAN_SET) {
+		comp_err(dev, "tone_cmd_set_value(): wrong cdata->type: %u",
+			 cdata->type);
+		return -EINVAL;
+	}
 
 	if (cdata->cmd == SOF_CTRL_CMD_SWITCH) {
 		comp_info(dev, "tone_cmd_set_value(), SOF_CTRL_CMD_SWITCH");
@@ -518,6 +530,12 @@ static int tone_cmd_set_data(struct comp_dev *dev,
 	uint32_t val;
 
 	comp_info(dev, "tone_cmd_set_data()");
+
+	if (cdata->type != SOF_CTRL_TYPE_VALUE_COMP_SET) {
+		comp_err(dev, "tone_cmd_set_data(): wrong cdata->type: %u",
+			 cdata->type);
+		return -EINVAL;
+	}
 
 	switch (cdata->cmd) {
 	case SOF_CTRL_CMD_ENUM:
