@@ -65,7 +65,7 @@ static int init_get_ctl_ipc(struct comp_dev *dev)
 	cd->msg = ipc_msg_init(cd->ctrl_data->rhdr.hdr.cmd, cd->ctrl_data->rhdr.hdr.size);
 
 	cd->ctrl_data->comp_id = comp_id;
-	cd->ctrl_data->type = SOF_CTRL_TYPE_VALUE_COMP_GET;
+	cd->ctrl_data->type = SOF_CTRL_TYPE_VALUE_CHAN_GET;
 	cd->ctrl_data->cmd = SOF_CTRL_CMD_ENUM;
 	cd->ctrl_data->index = CTRL_INDEX_AZIMUTH_ESTIMATE;
 	cd->ctrl_data->num_elems = 0;
