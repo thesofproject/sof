@@ -370,7 +370,7 @@ static int dma_single_chan_domain_unregister(struct ll_schedule_domain *domain,
 	tr_info(&ll_tr, "dma_single_chan_domain_unregister()");
 
 	/* check if task should be unregistered */
-	if (!pipe_task->registrable)
+	if (!task || !pipe_task->registrable)
 		return 0;
 
 	/* channel not registered */
