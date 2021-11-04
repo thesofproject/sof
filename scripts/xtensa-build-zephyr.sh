@@ -51,6 +51,11 @@ usage: $0 [options] [ platform(s) ] [ -- cmake arguments ]
           back at this sof clone.
           Incompatible with -p. To stop after downloading Zephyr, do not
           pass any platform or cmake argument.
+
+       -z Initial Zephyr git ref for the -c option. Can be a branch, tag,
+          full SHA1 in a fork, magic pull/12345/merge,... anything as long as
+          it is fetchable from https://github.com/zephyrproject-rtos/zephyr/
+
        -p Existing Zephyr project directory. Incompatible with -c.  If
           zephyr-project/modules/audio/sof is missing then a
           symbolic link pointing to ${SOF_TOP} will automatically be
@@ -99,8 +104,18 @@ zephyr_fetch_and_switch()
 # link back to sof/
 west_init_update()
 {
+	local init_ref="$1"
+
+	# Or, we could have a default value:
+	# init_ref=${1:-811a09bd8305}
+
 	git clone --depth=5 https://github.com/zephyrproject-rtos/zephyr \
 	    "$WEST_TOP"/zephyr
+
+	# To keep things simple, this moves to a detached HEAD even when
+	# init_ref is a (remote) branch.
+	test -z "$init_ref" ||
+	    zephyr_fetch_and_switch     origin   "${init_ref}"
 
 	# This shows how to point CI at any Zephyr commit from anywhere
 	# and to run all tests on it. Simply edit remote and reference,
@@ -260,14 +275,15 @@ build_platforms()
 parse_args()
 {
 	local zeproj
-
+	unset zephyr_ref
 	local OPTIND=1
 
 	# Parse -options
-	while getopts "acj:k:p:" OPTION; do
+	while getopts "acz:j:k:p:" OPTION; do
 		case "$OPTION" in
 			a) PLATFORMS=("${SUPPORTED_PLATFORMS[@]}") ;;
 			c) DO_CLONE=yes ;;
+			z) zephyr_ref="$OPTARG" ;;
 			j) BUILD_JOBS="$OPTARG" ;;
 			k) RIMAGE_KEY_OPT="$OPTARG" ;;
 			p) zeproj="$OPTARG" ;;
@@ -282,6 +298,10 @@ parse_args()
 
 	if [ -n "$zeproj" ] && [ x"$DO_CLONE" = xyes ]; then
 	    die 'Cannot use -p with -c, -c supports %s only' "${SOF_TOP}/zephyrproject"
+	fi
+
+	if [ -n "$zephyr_ref" ] && [ -z "$DO_CLONE" ]; then
+	   die '%s' '-z without -c makes no sense'
 	fi
 
 	if [ -n "$zeproj" ]; then
@@ -359,7 +379,7 @@ see https://docs.zephyrproject.org/latest/getting_started/index.html"
 		# Resolve symlinks
 		mkdir "$zep"; WEST_TOP=$( cd "$zep" && /bin/pwd )
 
-		west_init_update
+		west_init_update "${zephyr_ref}"
 
 	else
 		 # Look for Zephyr and define WEST_TOP
