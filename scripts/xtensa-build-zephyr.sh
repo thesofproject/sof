@@ -39,11 +39,17 @@ Outputs in \$(west topdir)/build-*/ directories
 usage: $0 [options] [ platform(s) ] [ -- cmake arguments ]
 
        -a Build all platforms.
+
        -j n Set number of make build jobs for rimage. Jobs=#cores by default.
            Ignored by "west build".
+
        -k Path to a non-default rimage signing key.
-       -c recursively clones Zephyr inside sof before building.
-          Incompatible with -p. To stop after cloning Zephyr, do not
+
+       -c Using west, downloads inside this sof clone a new Zephyr
+          project with the required git repos. Creates a
+          sof/zephyrproject/modules/audio/sof symbolic link pointing
+          back at this sof clone.
+          Incompatible with -p. To stop after downloading Zephyr, do not
           pass any platform or cmake argument.
        -p Existing Zephyr project directory. Incompatible with -c.  If
           zephyr-project/modules/audio/sof is missing then a
@@ -91,17 +97,20 @@ zephyr_fetch_and_switch()
 
 # Downloads zephyrproject inside sof/ and create a ../../.. symbolic
 # link back to sof/
-clone()
+west_init_update()
 {
 	git clone --depth=5 https://github.com/zephyrproject-rtos/zephyr \
 	    "$WEST_TOP"/zephyr
 
-	# This shows how to point SOF CI to and run all SOF tests on any
-	# Zephyr work in progress or any other Zephyr commit from
-	# anywhere. Simply edit remote and reference, uncomment this
-	# line and submit as an SOF Pull Request.
+	# This shows how to point CI at any Zephyr commit from anywhere
+	# and to run all tests on it. Simply edit remote and reference,
+	# uncomment one of these lines and submit as an SOF Pull
+	# Request.  Unlike many git servers, github allows direct
+	# fetching of (full 40-digits) SHAs; even SHAs not in origin but
+	# in forks!
 
 	# zephyr_fetch_and_switch    origin   pull/38374/head
+	# zephyr_fetch_and_switch    origin   19d5448ec117fde8076bec4d0e61da53147f3315
 
 	# SECURITY WARNING for reviewers: never allow unknown code from
 	# unknown submitters on any CI system.
@@ -132,7 +141,7 @@ assert_west_topdir()
 	# https://github.com/zephyrproject-rtos/west/issues/419
 }
 
-build_all()
+build_platforms()
 {
 	cd "$WEST_TOP"
 	assert_west_topdir
@@ -350,7 +359,7 @@ see https://docs.zephyrproject.org/latest/getting_started/index.html"
 		# Resolve symlinks
 		mkdir "$zep"; WEST_TOP=$( cd "$zep" && /bin/pwd )
 
-		clone
+		west_init_update
 
 	else
 		 # Look for Zephyr and define WEST_TOP
@@ -377,7 +386,7 @@ see https://docs.zephyrproject.org/latest/getting_started/index.html"
 		ln -s "$SOF_TOP" "${WEST_TOP}"/modules/audio/sof
 	}
 
-	test "${#PLATFORMS[@]}" -eq 0 || build_all
+	test "${#PLATFORMS[@]}" -eq 0 || build_platforms
 }
 
 
