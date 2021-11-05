@@ -149,7 +149,7 @@ static struct comp_dev *create_dai(struct comp_ipc_config *config,
 	case ipc4_alh_link_input_class:
 		dai.type = SOF_DAI_INTEL_ALH;
 		dai.is_config_blob = true;
-		dai.dai_index -= IPC4_ALH_MAX_NUMBER_OF_GTW;
+		dai.dai_index -= IPC4_ALH_DAI_INDEX_OFFSET;
 		break;
 	case ipc4_dmic_link_input_class:
 		dai.type = SOF_DAI_INTEL_DMIC;
