@@ -538,7 +538,7 @@ add_custom_target(
 # .ri not signed: nothing variable in it to erase.
 set(UNSIGNED_RI         byt cht hsw bdw sue)
 # NXP
-list(APPEND UNSIGNED_RI imx8 imx8x imx8m)
+list(APPEND UNSIGNED_RI imx8 imx8x imx8m imx8ulp)
 # AMD
 list(APPEND UNSIGNED_RI rn)
 # Mediatek
