@@ -174,7 +174,7 @@ static void schedule_ll_client_reschedule(struct ll_schedule_data *sch)
 {
 	struct list_item *tlist;
 	struct task *task;
-	struct task *task_take_dbg = NULL;
+	struct task *task_take = NULL;
 	uint64_t next_tick = sch->domain->new_target_tick;
 
 	/* rearm only if there is work to do */
@@ -183,19 +183,24 @@ static void schedule_ll_client_reschedule(struct ll_schedule_data *sch)
 		list_for_item(tlist, &sch->tasks) {
 			task = container_of(tlist, struct task, list);
 
+			/* only check tasks asked for rescheduling */
+			if (task->state != SOF_TASK_STATE_RESCHEDULE)
+				continue;
+
 			/* update to use the earlier tick */
 			if (task->start < next_tick) {
 				next_tick = task->start;
-				task_take_dbg = task;
+				task_take = task;
 			}
 		}
 
 		tr_dbg(&ll_tr,
 		       "schedule_ll_clients_reschedule next_tick %u task_take %p",
-		       (unsigned int)next_tick, task_take_dbg);
+		       (unsigned int)next_tick, task_take);
 
 		/* update the target_tick */
-		sch->domain->new_target_tick = next_tick;
+		if (task_take)
+			sch->domain->new_target_tick = next_tick;
 	}
 
 }
