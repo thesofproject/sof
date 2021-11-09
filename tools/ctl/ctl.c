@@ -287,11 +287,9 @@ static int ctl_setup(struct ctl_data *ctl_data)
 {
 	int mode = SND_CTL_NONBLOCK;
 	int ctrl_size;
-	int buffer_size;
 	int read;
 	int write;
 	int type;
-	char opt;
 	int ret;
 
 	/* Open the device, mixer control and get read/write/type properties.
@@ -376,8 +374,6 @@ static int ctl_setup(struct ctl_data *ctl_data)
 	}
 
 	return ret;
-buff_free:
-	buffer_free(ctl_data);
 
 value_free:
 	snd_ctl_elem_value_free(ctl_data->value);
@@ -494,6 +490,8 @@ static int ctl_set_get(struct ctl_data *ctl_data)
 		}
 		fprintf(stdout, "Success.\n");
 	}
+
+	return 0;
 }
 
 int main(int argc, char *argv[])
@@ -503,10 +501,6 @@ int main(int argc, char *argv[])
 	struct ctl_data *ctl_data;
 	char nname[256];
 	int ret = 0;
-	int n = 0;
-	int read;
-	int write;
-	int type;
 	int opt;
 	struct sof_abi_hdr *hdr;
 
