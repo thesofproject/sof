@@ -65,31 +65,42 @@ static void mix_n_s16(struct comp_dev *dev, struct audio_stream *sink,
 		      const struct audio_stream **sources, uint32_t num_sources,
 		      uint32_t frames)
 {
-	int16_t *src;
+	int16_t *src[PLATFORM_MAX_CHANNELS];
 	int16_t *dest;
 	int32_t val;
-	int i;
-	int j;
-	int channel;
-	uint32_t frag = 0;
+	int nmax;
+	int i, j, n, ns;
+	int processed = 0;
+	int nch = sink->channels;
+	int samples = frames * nch;
 
-	for (i = 0; i < frames; i++) {
-		for (channel = 0; channel < sink->channels; channel++) {
+	dest = sink->w_ptr;
+	for (j = 0; j < num_sources; j++)
+		src[j] = sources[j]->r_ptr;
+
+	while (processed < samples) {
+		nmax = samples - processed;
+		n = audio_stream_bytes_without_wrap(sink, dest) >> 1; /* divide 2 */
+		n = MIN(n, nmax);
+		for (i = 0; i < num_sources; i++) {
+			ns = audio_stream_bytes_without_wrap(sources[i], src[i]) >> 1;
+			n = MIN(n, ns);
+		}
+		for (i = 0; i < n; i++) {
 			val = 0;
-
 			for (j = 0; j < num_sources; j++) {
-				src = audio_stream_read_frag_s16(sources[j],
-								 frag);
-				val += *src;
+				val += *src[j];
+				src[j]++;
 			}
-
-			dest = audio_stream_write_frag_s16(sink, frag);
 
 			/* Saturate to 16 bits */
 			*dest = sat_int16(val);
-
-			frag++;
+			dest++;
 		}
+		processed += n;
+		dest = audio_stream_wrap(sink, dest);
+		for (i = 0; i < num_sources; i++)
+			src[i] = audio_stream_wrap(sources[i], src[i]);
 	}
 }
 #endif /* CONFIG_FORMAT_S16LE */
@@ -100,31 +111,44 @@ static void mix_n_s24(struct comp_dev *dev, struct audio_stream *sink,
 		      const struct audio_stream **sources, uint32_t num_sources,
 		      uint32_t frames)
 {
-	int32_t *src;
+	int32_t *src[PLATFORM_MAX_CHANNELS];
 	int32_t *dest;
 	int32_t val;
 	int32_t x;
-	int i;
-	int j;
-	int channel;
-	uint32_t frag = 0;
+	int nmax;
+	int i, j, n, ns;
+	int processed = 0;
+	int nch = sink->channels;
+	int samples = frames * nch;
 
-	for (i = 0; i < frames; i++) {
-		for (channel = 0; channel < sink->channels; channel++) {
+	dest = sink->w_ptr;
+	for (j = 0; j < num_sources; j++)
+		src[j] = sources[j]->r_ptr;
+
+	while (processed < samples) {
+		nmax = samples - processed;
+		n = audio_stream_bytes_without_wrap(sink, dest) >> 2; /* divide 4 */
+		n = MIN(n, nmax);
+		for (i = 0; i < num_sources; i++) {
+			ns = audio_stream_bytes_without_wrap(sources[i], src[i]) >> 2;
+			n = MIN(n, ns);
+		}
+		for (i = 0; i < n; i++) {
 			val = 0;
-
 			for (j = 0; j < num_sources; j++) {
-				src = audio_stream_read_frag_s32(sources[j], frag);
-				x = *src << 8;
+				x = *src[j] << 8;
 				val += x >> 8; /* Sign extend */
+				src[j]++;
 			}
-
-			dest = audio_stream_write_frag_s32(sink, frag);
 
 			/* Saturate to 24 bits */
 			*dest = sat_int24(val);
-			frag++;
+			dest++;
 		}
+		processed += n;
+		dest = audio_stream_wrap(sink, dest);
+		for (i = 0; i < num_sources; i++)
+			src[i] = audio_stream_wrap(sources[i], src[i]);
 	}
 }
 #endif /* CONFIG_FORMAT_S24LE */
@@ -135,31 +159,42 @@ static void mix_n_s32(struct comp_dev *dev, struct audio_stream *sink,
 		      const struct audio_stream **sources, uint32_t num_sources,
 		      uint32_t frames)
 {
-	int32_t *src;
+	int32_t *src[PLATFORM_MAX_CHANNELS];
 	int32_t *dest;
 	int64_t val;
-	int i;
-	int j;
-	int channel;
-	uint32_t frag = 0;
+	int nmax;
+	int i, j, n, ns;
+	int processed = 0;
+	int nch = sink->channels;
+	int samples = frames * nch;
 
-	for (i = 0; i < frames; i++) {
-		for (channel = 0; channel < sink->channels; channel++) {
+	dest = sink->w_ptr;
+	for (j = 0; j < num_sources; j++)
+		src[j] = sources[j]->r_ptr;
+
+	while (processed < samples) {
+		nmax = samples - processed;
+		n = audio_stream_bytes_without_wrap(sink, dest) >> 2; /* divide 4 */
+		n = MIN(n, nmax);
+		for (i = 0; i < num_sources; i++) {
+			ns = audio_stream_bytes_without_wrap(sources[i], src[i]) >> 2;
+			n = MIN(n, ns);
+		}
+		for (i = 0; i < n; i++) {
 			val = 0;
-
 			for (j = 0; j < num_sources; j++) {
-				src = audio_stream_read_frag_s32(sources[j],
-								 frag);
-				val += *src;
+				val += *src[j];
+				src[j]++;
 			}
-
-			dest = audio_stream_write_frag_s32(sink, frag);
 
 			/* Saturate to 32 bits */
 			*dest = sat_int32(val);
-
-			frag++;
+			dest++;
 		}
+		processed += n;
+		dest = audio_stream_wrap(sink, dest);
+		for (i = 0; i < num_sources; i++)
+			src[i] = audio_stream_wrap(sources[i], src[i]);
 	}
 }
 #endif /* CONFIG_FORMAT_S32LE */
