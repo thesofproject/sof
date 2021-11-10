@@ -85,7 +85,7 @@ struct dma *dma_get(uint32_t dir, uint32_t cap, uint32_t dev, uint32_t flags)
 		for (d = info->dma_array;
 		     d < info->dma_array + info->num_dmas;
 		     d++) {
-			tr_err(&dma_tr, " DMAC ID %d users %d busy channels %d",
+			tr_err(&dma_tr, " DMAC ID %d users %d busy channels %ld",
 			       d->plat_data.id, d->sref,
 			       atomic_read(&d->num_channels_busy));
 			tr_err(&dma_tr, "  caps 0x%x dev 0x%x",
@@ -116,7 +116,7 @@ struct dma *dma_get(uint32_t dir, uint32_t cap, uint32_t dev, uint32_t flags)
 	if (!ret)
 		dmin->sref++;
 
-	tr_info(&dma_tr, "dma_get() ID %d sref = %d busy channels %d",
+	tr_info(&dma_tr, "dma_get() ID %d sref = %d busy channels %ld",
 		dmin->plat_data.id, dmin->sref,
 		atomic_read(&dmin->num_channels_busy));
 

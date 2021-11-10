@@ -114,7 +114,7 @@ static void schedule_ll_task_done(struct ll_schedule_data *sch,
 	domain_unregister(sch->domain, task, atomic_sub(&sch->num_tasks, 1) - 1);
 
 	tr_info(&ll_tr, "task complete %p %pU", task, task->uid);
-	tr_info(&ll_tr, "num_tasks %d total_num_tasks %d",
+	tr_info(&ll_tr, "num_tasks %ld total_num_tasks %ld",
 		atomic_read(&sch->num_tasks),
 		atomic_read(&sch->domain->total_num_tasks));
 }
@@ -320,7 +320,7 @@ static int schedule_ll_domain_set(struct ll_schedule_data *sch,
 	tr_info(&ll_tr, "new added task->start %u at %u",
 		(unsigned int)task->start,
 		(unsigned int)platform_timer_get_atomic(timer_get()));
-	tr_info(&ll_tr, "num_tasks %d total_num_tasks %d",
+	tr_info(&ll_tr, "num_tasks %ld total_num_tasks %ld",
 		atomic_read(&sch->num_tasks),
 		atomic_read(&domain->total_num_tasks));
 
@@ -347,7 +347,7 @@ static void schedule_ll_domain_clear(struct ll_schedule_data *sch,
 	/* unregister the task */
 	domain_unregister(domain, task, atomic_read(&sch->num_tasks));
 
-	tr_info(&ll_tr, "num_tasks %d total_num_tasks %d",
+	tr_info(&ll_tr, "num_tasks %ld total_num_tasks %ld",
 		atomic_read(&sch->num_tasks),
 		atomic_read(&domain->total_num_tasks));
 
