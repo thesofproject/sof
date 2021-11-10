@@ -29,6 +29,7 @@
 #include <ipc4/module.h>
 #include <ipc4/error_status.h>
 #include <ipc4/gateway.h>
+#include <ipc4/fw_reg.h>
 #include <ipc/dai.h>
 #include <user/trace.h>
 #include <errno.h>
@@ -50,6 +51,10 @@ struct copier_data {
 	int direction;
 	/* sample data >> attenuation in range of [1 - 31] */
 	uint32_t attenuation;
+
+	/* pipeline register offset in memory windows 0 */
+	uint32_t pipeline_reg_offset;
+	uint64_t host_position;
 
 	struct ipc4_audio_format out_fmt[IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT];
 	pcm_converter_func converter[IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT];
@@ -180,6 +185,27 @@ static struct comp_dev *create_dai(struct comp_ipc_config *config,
 	return dev;
 }
 
+static void init_pipeline_reg(struct copier_data *cd)
+{
+	union ipc4_connector_node_id node_id;
+	struct ipc4_pipeline_registers pipe_reg;
+	int gateway_id;
+
+	node_id.dw = cd->config.gtw_cfg.node_id;
+	gateway_id = node_id.f.v_index;
+
+	/* pipeline position is stored in memory windows 0 at the following offset
+	 * please check struct ipc4_fw_registers definition. The number of
+	 * pipeline reg depends on the host dma count for playback
+	 */
+	cd->pipeline_reg_offset = offsetof(struct ipc4_fw_registers, pipeline_regs);
+	cd->pipeline_reg_offset += gateway_id * sizeof(struct ipc4_pipeline_registers);
+
+	pipe_reg.stream_start_offset = (uint64_t)-1;
+	pipe_reg.stream_end_offset = (uint64_t)-1;
+	mailbox_sw_regs_write(cd->pipeline_reg_offset, &pipe_reg, sizeof(pipe_reg));
+}
+
 static struct comp_dev *copier_new(const struct comp_driver *drv,
 				   struct comp_ipc_config *config,
 				   void *spec)
@@ -247,6 +273,8 @@ static struct comp_dev *copier_new(const struct comp_driver *drv,
 				ipc_pipe->pipeline->source_comp = dev;
 			else
 				ipc_pipe->pipeline->sink_comp = dev;
+
+			init_pipeline_reg(cd);
 
 			break;
 		case ipc4_hda_link_output_class:
@@ -380,6 +408,7 @@ static int copier_prepare(struct comp_dev *dev)
 static int copier_reset(struct comp_dev *dev)
 {
 	struct copier_data *cd = comp_get_drvdata(dev);
+	struct ipc4_pipeline_registers pipe_reg;
 	int ret = 0;
 
 	comp_dbg(dev, "copier_reset()");
@@ -392,6 +421,13 @@ static int copier_reset(struct comp_dev *dev)
 	if (cd->endpoint)
 		ret = cd->endpoint->drv->ops.reset(cd->endpoint);
 
+	if (cd->pipeline_reg_offset) {
+		pipe_reg.stream_start_offset = (uint64_t)-1;
+		pipe_reg.stream_end_offset = (uint64_t)-1;
+		mailbox_sw_regs_write(cd->pipeline_reg_offset, &pipe_reg, sizeof(pipe_reg));
+	}
+
+	memset(cd, 0, sizeof(cd));
 	comp_set_state(dev, COMP_TRIGGER_RESET);
 
 	return ret;
@@ -410,6 +446,18 @@ static int copier_comp_trigger(struct comp_dev *dev, int cmd)
 
 	if (cd->endpoint)
 		ret = cd->endpoint->drv->ops.trigger(cd->endpoint, cmd);
+
+	if (ret < 0 || !cd->endpoint || !cd->pipeline_reg_offset)
+		return ret;
+
+	/* update stream start addr for running message in host copier*/
+	if (dev->state != COMP_STATE_ACTIVE && cmd == COMP_TRIGGER_START) {
+		struct ipc4_pipeline_registers pipe_reg;
+
+		pipe_reg.stream_start_offset = 0;
+		pipe_reg.stream_end_offset = 0;
+		mailbox_sw_regs_write(cd->pipeline_reg_offset, &pipe_reg, sizeof(pipe_reg));
+	}
 
 	return ret;
 }
@@ -444,6 +492,8 @@ static inline int apply_attenuation(struct comp_dev *dev, struct copier_data *cd
 static int copier_copy(struct comp_dev *dev)
 {
 	struct copier_data *cd = comp_get_drvdata(dev);
+	struct ipc4_pipeline_registers pipe_reg;
+	struct sof_ipc_stream_posn posn;
 	int ret;
 
 	comp_dbg(dev, "copier_copy()");
@@ -488,6 +538,15 @@ static int copier_copy(struct comp_dev *dev)
 		comp_update_buffer_consume(src, src_bytes);
 		ret = 0;
 	}
+
+	if (ret < 0 || !cd->endpoint || !cd->pipeline_reg_offset)
+		return ret;
+
+	comp_position(cd->endpoint, &posn);
+	cd->host_position += posn.host_posn;
+	pipe_reg.stream_start_offset = cd->host_position;
+	pipe_reg.stream_end_offset = 0;
+	mailbox_sw_regs_write(cd->pipeline_reg_offset, &pipe_reg, sizeof(pipe_reg));
 
 	return ret;
 }
