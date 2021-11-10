@@ -94,7 +94,42 @@ static void mix_n_s16(struct comp_dev *dev, struct audio_stream *sink,
 }
 #endif /* CONFIG_FORMAT_S16LE */
 
-#if CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE
+#if CONFIG_FORMAT_S24LE
+/* Mix n 24 bit PCM source streams to one sink stream */
+static void mix_n_s24(struct comp_dev *dev, struct audio_stream *sink,
+		      const struct audio_stream **sources, uint32_t num_sources,
+		      uint32_t frames)
+{
+	int32_t *src;
+	int32_t *dest;
+	int32_t val;
+	int32_t x;
+	int i;
+	int j;
+	int channel;
+	uint32_t frag = 0;
+
+	for (i = 0; i < frames; i++) {
+		for (channel = 0; channel < sink->channels; channel++) {
+			val = 0;
+
+			for (j = 0; j < num_sources; j++) {
+				src = audio_stream_read_frag_s32(sources[j], frag);
+				x = *src << 8;
+				val += x >> 8; /* Sign extend */
+			}
+
+			dest = audio_stream_write_frag_s32(sink, frag);
+
+			/* Saturate to 24 bits */
+			*dest = sat_int24(val);
+			frag++;
+		}
+	}
+}
+#endif /* CONFIG_FORMAT_S24LE */
+
+#if CONFIG_FORMAT_S32LE
 /* Mix n 32 bit PCM source streams to one sink stream */
 static void mix_n_s32(struct comp_dev *dev, struct audio_stream *sink,
 		      const struct audio_stream **sources, uint32_t num_sources,
@@ -127,7 +162,7 @@ static void mix_n_s32(struct comp_dev *dev, struct audio_stream *sink,
 		}
 	}
 }
-#endif /* CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE */
+#endif /* CONFIG_FORMAT_S32LE */
 
 #if CONFIG_IPC_MAJOR_3
 static struct comp_dev *mixer_new(const struct comp_driver *drv,
@@ -408,7 +443,7 @@ static int mixer_prepare_common(struct comp_dev *dev)
 #endif /* CONFIG_FORMAT_S16LE */
 #if CONFIG_FORMAT_S24LE
 		case SOF_IPC_FRAME_S24_4LE:
-			md->mix_func = mix_n_s32;
+			md->mix_func = mix_n_s24;
 			break;
 #endif /* CONFIG_FORMAT_S24LE */
 #if CONFIG_FORMAT_S32LE
