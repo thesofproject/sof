@@ -50,7 +50,7 @@ static void zephyr_ll_task_done(struct zephyr_ll *sch,
 	task->state = SOF_TASK_STATE_FREE;
 
 	tr_info(&ll_tr, "task complete %p %pU", task, task->uid);
-	tr_info(&ll_tr, "num_tasks %d total_num_tasks %d",
+	tr_info(&ll_tr, "num_tasks %d total_num_tasks %ld",
 		sch->n_tasks, atomic_read(&sch->ll_domain->total_num_tasks));
 
 	/*
