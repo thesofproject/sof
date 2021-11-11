@@ -88,12 +88,13 @@ define(KWD_PIPE_SCH_DEADLINE_US, 20000)
 include(`platform/intel/intel-generic-dmic-kwd.m4')
 
 # BT offload support
+ifdef(`BT_OFFLOAD', `
 define(`BT_PIPELINE_PB_ID', eval(SMART_REF_PPL_ID + 1))
 define(`BT_PIPELINE_CP_ID', eval(SMART_REF_PPL_ID + 2))
 define(`BT_DAI_LINK_ID', eval(SMART_BE_ID + 1))
 define(`BT_PCM_ID', `6')
 define(`HW_CONFIG_ID', `8')
-include(`platform/intel/intel-generic-bt.m4')
+include(`platform/intel/intel-generic-bt.m4')')
 
 dnl PIPELINE_PCM_ADD(pipeline,
 dnl     pipe id, pcm, max channels, format,
