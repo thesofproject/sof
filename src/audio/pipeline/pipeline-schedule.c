@@ -55,14 +55,14 @@ static enum task_state pipeline_task(void *arg)
 		 * timed out. No point triggering the pipeline in this case. It will be stopped
 		 * anyway by the host.
 		 */
-		if (p->trigger.cmd >= 0) {
+		if (p->trigger.cmd != COMP_TRIGGER_NO_ACTION) {
 			struct sof_ipc_reply reply = {
 				.hdr.cmd = SOF_IPC_GLB_REPLY,
 				.hdr.size = sizeof(reply),
 				.error = -EPIPE,
 			};
 
-			p->trigger.cmd = -EINVAL;
+			p->trigger.cmd = COMP_TRIGGER_NO_ACTION;
 
 			ipc_msg_reply(&reply);
 		}
@@ -79,7 +79,7 @@ static enum task_state pipeline_task(void *arg)
 		return SOF_TASK_STATE_RESCHEDULE;
 	}
 
-	if (p->trigger.cmd >= 0) {
+	if (p->trigger.cmd != COMP_TRIGGER_NO_ACTION) {
 		/* First pipeline task run for either START or RELEASE: PRE stage */
 		struct sof_ipc_reply reply = {
 			.hdr.cmd = SOF_IPC_GLB_REPLY,
@@ -105,7 +105,7 @@ static enum task_state pipeline_task(void *arg)
 			err = SOF_TASK_STATE_RESCHEDULE;
 		}
 
-		p->trigger.cmd = -EINVAL;
+		p->trigger.cmd = COMP_TRIGGER_NO_ACTION;
 
 		ipc_msg_reply(&reply);
 
