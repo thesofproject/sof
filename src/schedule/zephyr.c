@@ -24,7 +24,9 @@
 #include <sys/p4wq.h>
 #include <sof/drivers/idc.h>
 #include <sof/init.h>
+#include <sof/ipc/common.h>
 #include <sof/lib/alloc.h>
+#include <sof/spinlock.h>
 #include <ipc/topology.h>
 
 /*
@@ -54,8 +56,10 @@ static void idc_handler(struct k_p4wq_work *work)
 {
 	struct zephyr_idc_msg *zmsg = container_of(work, struct zephyr_idc_msg, work);
 	struct idc *idc = *idc_get();
+	struct ipc *ipc = ipc_get();
 	struct idc_msg *msg = &zmsg->msg;
 	int payload = -1;
+	uint32_t flags;
 
 	SOC_DCACHE_INVALIDATE(msg, sizeof(*msg));
 
@@ -73,6 +77,14 @@ static void idc_handler(struct k_p4wq_work *work)
 		break;
 	default:
 		idc_cmd(&idc->received_msg);
+		break;
+	case IDC_MSG_IPC:
+		idc_cmd(&idc->received_msg);
+		/* Signal the host */
+		spin_lock_irq(&ipc->lock, flags);
+		ipc->task_mask &= ~IPC_TASK_SECONDARY_CORE;
+		ipc_complete_cmd(ipc);
+		spin_unlock_irq(&ipc->lock, flags);
 	}
 }
 
