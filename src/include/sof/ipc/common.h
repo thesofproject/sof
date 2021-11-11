@@ -13,6 +13,7 @@
 #include <sof/lib/alloc.h>
 #include <sof/list.h>
 #include <sof/schedule/task.h>
+#include <sof/spinlock.h>
 #include <sof/sof.h>
 #include <user/trace.h>
 #include <stdbool.h>
