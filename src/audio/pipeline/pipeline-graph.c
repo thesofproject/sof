@@ -127,7 +127,7 @@ struct pipeline *pipeline_new(uint32_t pipeline_id, uint32_t priority, uint32_t 
 	p->priority = priority;
 	p->pipeline_id = pipeline_id;
 	p->status = COMP_STATE_INIT;
-	p->trigger.cmd = -EINVAL;
+	p->trigger.cmd = COMP_TRIGGER_NO_ACTION;
 	ret = memcpy_s(&p->tctx, sizeof(struct tr_ctx), &pipe_tr,
 		       sizeof(struct tr_ctx));
 	assert(!ret);

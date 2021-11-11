@@ -91,6 +91,7 @@ struct timestamp_data;
 #define COMP_TRIGGER_PRE_RELEASE	10	/**< Prepare to release paused component stream */
 #define COMP_TRIGGER_POST_STOP		11	/**< Finalize stop component stream */
 #define COMP_TRIGGER_POST_PAUSE		12	/**< Finalize pause component stream */
+#define COMP_TRIGGER_NO_ACTION		13	/**< No action required */
 /** @}*/
 
 /** \name Standard Component Control Commands
