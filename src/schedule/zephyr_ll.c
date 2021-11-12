@@ -25,7 +25,6 @@ DECLARE_TR_CTX(ll_tr, SOF_UUID(zll_sched_uuid), LOG_LEVEL_INFO);
 struct zephyr_ll {
 	struct list_item tasks;			/* list of ll tasks */
 	unsigned int n_tasks;			/* task counter */
-	spinlock_t lock;			/* protects the list of tasks and the counter */
 	struct ll_schedule_domain *ll_domain;	/* scheduling domain */
 	unsigned int core;			/* core ID of this instance */
 };
@@ -39,12 +38,12 @@ struct zephyr_ll_pdata {
 
 static void zephyr_ll_lock(struct zephyr_ll *sch, uint32_t *flags)
 {
-	spin_lock_irq(&sch->lock, *flags);
+	irq_local_disable(*flags);
 }
 
 static void zephyr_ll_unlock(struct zephyr_ll *sch, uint32_t *flags)
 {
-	spin_unlock_irq(&sch->lock, *flags);
+	irq_local_enable(*flags);
 }
 
 static void zephyr_ll_assert_core(const struct zephyr_ll *sch)
@@ -271,17 +270,6 @@ static void zephyr_ll_run(void *data)
 		       NOTIFIER_TARGET_CORE_LOCAL, NULL, 0);
 }
 
-static void zephyr_ll_init_scheduler_for_first_task(struct zephyr_ll *sch)
-{
-	/*
-	 * If we're adding the first task to the scheduler, it is possible that
-	 * the scheduler has already run before on this core and its thread has
-	 * been aborted while holding the spinlock, so we have to re-initialize
-	 * it.
-	 */
-	spinlock_init(&sch->lock);
-}
-
 /*
  * Called once for periodic tasks or multiple times for one-shot tasks
  * TODO: start should be ignored in Zephyr LL scheduler implementation. Tasks
@@ -305,16 +293,6 @@ static int zephyr_ll_task_schedule(void *data, struct task *task, uint64_t start
 
 	tr_info(&ll_tr, "task add %p %pU priority %d flags 0x%x", task, task->uid,
 		task->priority, task->flags);
-
-	irq_local_disable(flags);
-	/*
-	 * The task counter is decremented as the last operation in
-	 * zephyr_ll_task_done() before aborting the thread, so just disabling
-	 * local IRQs provides sufficient protection here.
-	 */
-	if (!sch->n_tasks)
-		zephyr_ll_init_scheduler_for_first_task(sch);
-	irq_local_enable(flags);
 
 	zephyr_ll_lock(sch, &flags);
 
