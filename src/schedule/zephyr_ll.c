@@ -27,6 +27,7 @@ struct zephyr_ll {
 	unsigned int n_tasks;			/* task counter */
 	spinlock_t lock;			/* protects the list of tasks and the counter */
 	struct ll_schedule_domain *ll_domain;	/* scheduling domain */
+	unsigned int core;			/* core ID of this instance */
 };
 
 /* per-task scheduler data */
@@ -44,6 +45,11 @@ static void zephyr_ll_lock(struct zephyr_ll *sch, uint32_t *flags)
 static void zephyr_ll_unlock(struct zephyr_ll *sch, uint32_t *flags)
 {
 	spin_unlock_irq(&sch->lock, *flags);
+}
+
+static void zephyr_ll_assert_core(const struct zephyr_ll *sch)
+{
+	assert(CONFIG_CORE_COUNT == 1 || sch->core == cpu_get_id());
 }
 
 /* Locking: caller should hold the domain lock */
@@ -295,6 +301,8 @@ static int zephyr_ll_task_schedule(void *data, struct task *task, uint64_t start
 	uint32_t flags;
 	int ret;
 
+	zephyr_ll_assert_core(sch);
+
 	tr_info(&ll_tr, "task add %p %pU priority %d flags 0x%x", task, task->uid,
 		task->priority, task->flags);
 
@@ -379,6 +387,8 @@ static int zephyr_ll_task_free(void *data, struct task *task)
 	struct zephyr_ll_pdata *pdata = task->priv_data;
 	bool must_wait, on_list = true;
 
+	zephyr_ll_assert_core(sch);
+
 	if (k_is_in_isr()) {
 		tr_err(&ll_tr,
 		       "zephyr_ll_task_free: cannot free tasks from interrupt context!");
@@ -439,6 +449,8 @@ static int zephyr_ll_task_cancel(void *data, struct task *task)
 	struct zephyr_ll *sch = data;
 	uint32_t flags;
 
+	zephyr_ll_assert_core(sch);
+
 	/*
 	 * Read-modify-write of task state in zephyr_ll_task_schedule() must be
 	 * kept atomic, so we have to lock here too.
@@ -458,6 +470,8 @@ static int zephyr_ll_task_cancel(void *data, struct task *task)
 static void zephyr_ll_scheduler_free(void *data, uint32_t flags)
 {
 	struct zephyr_ll *sch = data;
+
+	zephyr_ll_assert_core(sch);
 
 	if (sch->n_tasks)
 		tr_err(&ll_tr, "zephyr_ll_scheduler_free: %u tasks are still active!",
@@ -517,6 +531,7 @@ int zephyr_ll_scheduler_init(struct ll_schedule_domain *domain)
 	sch = rmalloc(SOF_MEM_ZONE_SYS, 0, SOF_MEM_CAPS_RAM, sizeof(*sch));
 	list_init(&sch->tasks);
 	sch->ll_domain = domain;
+	sch->core = cpu_get_id();
 
 	scheduler_init(domain->type, &zephyr_ll_ops, sch);
 
