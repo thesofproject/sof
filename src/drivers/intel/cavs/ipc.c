@@ -46,9 +46,10 @@ static inline void increment_ipc_received_counter(void)
 static inline void increment_ipc_processed_counter(void)
 {
 	static uint32_t ipc_processed_counter;
+	uint32_t *uncache_counter = cache_to_uncache(&ipc_processed_counter);
 
 	mailbox_sw_reg_write(SRAM_REG_FW_IPC_PROCESSED_COUNT,
-			     ipc_processed_counter++);
+			     (*uncache_counter)++);
 }
 #endif
 
