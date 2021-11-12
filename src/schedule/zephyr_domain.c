@@ -132,6 +132,7 @@ static int zephyr_domain_register(struct ll_schedule_domain *domain,
 	struct zephyr_domain_thread *dt = zephyr_domain->domain_thread + core;
 	char thread_name[] = "ll_thread0";
 	k_tid_t thread;
+	uint32_t flags;
 
 	tr_dbg(&ll_tr, "zephyr_domain_register()");
 
@@ -159,6 +160,8 @@ static int zephyr_domain_register(struct ll_schedule_domain *domain,
 
 	k_thread_start(thread);
 
+	spin_lock_irq(&domain->lock, flags);
+
 	if (!k_timer_user_data_get(&zephyr_domain->timer)) {
 		k_timeout_t start = {0};
 
@@ -169,6 +172,8 @@ static int zephyr_domain_register(struct ll_schedule_domain *domain,
 		domain->next_tick = k_uptime_ticks() +
 			k_timer_remaining_ticks(&zephyr_domain->timer);
 	}
+
+	spin_unlock_irq(&domain->lock, flags);
 
 	tr_info(&ll_tr, "zephyr_domain_register domain->type %d domain->clk %d domain->ticks_per_ms %d period %d",
 		domain->type, domain->clk, domain->ticks_per_ms, (uint32_t)LL_TIMER_PERIOD_US);
@@ -181,6 +186,7 @@ static int zephyr_domain_unregister(struct ll_schedule_domain *domain,
 {
 	struct zephyr_domain *zephyr_domain = ll_sch_domain_get_pdata(domain);
 	int core = cpu_get_id();
+	uint32_t flags;
 
 	tr_dbg(&ll_tr, "zephyr_domain_unregister()");
 
@@ -188,12 +194,16 @@ static int zephyr_domain_unregister(struct ll_schedule_domain *domain,
 	if (num_tasks)
 		return 0;
 
+	spin_lock_irq(&domain->lock, flags);
+
 	if (!atomic_read(&domain->total_num_tasks)) {
 		k_timer_stop(&zephyr_domain->timer);
 		k_timer_user_data_set(&zephyr_domain->timer, NULL);
 	}
 
 	zephyr_domain->domain_thread[core].handler = NULL;
+
+	spin_unlock_irq(&domain->lock, flags);
 
 	tr_info(&ll_tr, "zephyr_domain_unregister domain->type %d domain->clk %d",
 		domain->type, domain->clk);
