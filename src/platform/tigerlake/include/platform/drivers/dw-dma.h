@@ -12,9 +12,6 @@
 
 #include <cavs/drivers/dw-dma.h>
 
-/* LLI address alignment, in Bytes */
-#define DW_DMA_LLI_ALIGN	128
-
 #endif /* __PLATFORM_DRIVERS_DW_DMA_H__ */
 
 #else
