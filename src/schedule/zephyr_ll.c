@@ -36,6 +36,16 @@ struct zephyr_ll_pdata {
 	struct k_sem sem;
 };
 
+static void zephyr_ll_lock(struct zephyr_ll *sch, uint32_t *flags)
+{
+	spin_lock_irq(&sch->lock, *flags);
+}
+
+static void zephyr_ll_unlock(struct zephyr_ll *sch, uint32_t *flags)
+{
+	spin_unlock_irq(&sch->lock, *flags);
+}
+
 /* Locking: caller should hold the domain lock */
 static void zephyr_ll_task_done(struct zephyr_ll *sch,
 				struct task *task)
@@ -152,7 +162,7 @@ static void zephyr_ll_run(void *data)
 
 	list_init(&head);
 
-	spin_lock_irq(&sch->lock, flags);
+	zephyr_ll_lock(sch, &flags);
 
 	/* Move all pending tasks to a temporary local list */
 	list_for_item_safe(list, tmp, &sch->tasks) {
@@ -182,7 +192,7 @@ static void zephyr_ll_run(void *data)
 		task->state = SOF_TASK_STATE_RUNNING;
 	}
 
-	spin_unlock_irq(&sch->lock, flags);
+	zephyr_ll_unlock(sch, &flags);
 
 	/*
 	 * Execute tasks on the temporary list. We are racing against
@@ -215,7 +225,7 @@ static void zephyr_ll_run(void *data)
 			state = SOF_TASK_STATE_COMPLETED;
 		}
 
-		spin_lock_irq(&sch->lock, flags);
+		zephyr_ll_lock(sch, &flags);
 
 		pdata = task->priv_data;
 
@@ -248,7 +258,7 @@ static void zephyr_ll_run(void *data)
 			}
 		}
 
-		spin_unlock_irq(&sch->lock, flags);
+		zephyr_ll_unlock(sch, &flags);
 	}
 
 	notifier_event(sch, NOTIFIER_ID_LL_POST_RUN,
@@ -298,7 +308,7 @@ static int zephyr_ll_task_schedule(void *data, struct task *task, uint64_t start
 		zephyr_ll_init_scheduler_for_first_task(sch);
 	irq_local_enable(flags);
 
-	spin_lock_irq(&sch->lock, flags);
+	zephyr_ll_lock(sch, &flags);
 
 	pdata = task->priv_data;
 
@@ -308,7 +318,7 @@ static int zephyr_ll_task_schedule(void *data, struct task *task, uint64_t start
 		 * schedule_task(). This is clearly a bug in the application
 		 * code, but we have to protect against it
 		 */
-		spin_unlock_irq(&sch->lock, flags);
+		zephyr_ll_unlock(sch, &flags);
 		return -EDEADLK;
 	}
 
@@ -325,7 +335,7 @@ static int zephyr_ll_task_schedule(void *data, struct task *task, uint64_t start
 			 * keep original start. TODO: this shouldn't be happening.
 			 * Remove after verification
 			 */
-			spin_unlock_irq(&sch->lock, flags);
+			zephyr_ll_unlock(sch, &flags);
 			tr_warn(&ll_tr, "task %p (%pU) already scheduled",
 				task, task->uid);
 			return 0;
@@ -340,7 +350,7 @@ static int zephyr_ll_task_schedule(void *data, struct task *task, uint64_t start
 	if (task->state == SOF_TASK_STATE_CANCEL) {
 		/* do not queue the same task again */
 		task->state = SOF_TASK_STATE_QUEUED;
-		spin_unlock_irq(&sch->lock, flags);
+		zephyr_ll_unlock(sch, &flags);
 		return 0;
 	}
 
@@ -348,7 +358,7 @@ static int zephyr_ll_task_schedule(void *data, struct task *task, uint64_t start
 
 	sch->n_tasks++;
 
-	spin_unlock_irq(&sch->lock, flags);
+	zephyr_ll_unlock(sch, &flags);
 
 	ret = domain_register(sch->ll_domain, task, &zephyr_ll_run, sch);
 	if (ret < 0)
@@ -375,7 +385,7 @@ static int zephyr_ll_task_free(void *data, struct task *task)
 		return -EDEADLK;
 	}
 
-	spin_lock_irq(&sch->lock, flags);
+	zephyr_ll_lock(sch, &flags);
 
 	/*
 	 * It is safe to free the task in state INIT or QUEUED. CANCEL is
@@ -408,17 +418,17 @@ static int zephyr_ll_task_free(void *data, struct task *task)
 
 	pdata->freeing = true;
 
-	spin_unlock_irq(&sch->lock, flags);
+	zephyr_ll_unlock(sch, &flags);
 
 	if (must_wait)
 		/* Wait for up to 100 periods */
 		k_sem_take(&pdata->sem, K_USEC(LL_TIMER_PERIOD_US * 100));
 
 	/* Protect against racing with schedule_task() */
-	spin_lock_irq(&sch->lock, flags);
+	zephyr_ll_lock(sch, &flags);
 	task->priv_data = NULL;
 	rfree(pdata);
-	spin_unlock_irq(&sch->lock, flags);
+	zephyr_ll_unlock(sch, &flags);
 
 	return 0;
 }
@@ -433,9 +443,9 @@ static int zephyr_ll_task_cancel(void *data, struct task *task)
 	 * Read-modify-write of task state in zephyr_ll_task_schedule() must be
 	 * kept atomic, so we have to lock here too.
 	 */
-	spin_lock_irq(&sch->lock, flags);
+	zephyr_ll_lock(sch, &flags);
 	task->state = SOF_TASK_STATE_CANCEL;
-	spin_unlock_irq(&sch->lock, flags);
+	zephyr_ll_unlock(sch, &flags);
 
 	return 0;
 }
