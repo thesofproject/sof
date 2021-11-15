@@ -58,6 +58,9 @@ static void ipc_irq_handler(void *arg)
 {
 	struct ipc *ipc = arg;
 	uint32_t dipcctl;
+	uint32_t flags;
+
+	spin_lock_irq(&ipc->lock, flags);
 
 #if CAVS_VERSION == CAVS_VERSION_1_5
 	uint32_t dipct;
@@ -124,6 +127,8 @@ static void ipc_irq_handler(void *arg)
 		ipc_write(IPC_DIPCCTL,
 			  ipc_read(IPC_DIPCCTL) | IPC_DIPCCTL_IPCIDIE);
 	}
+
+	spin_unlock_irq(&ipc->lock, flags);
 }
 
 #if CAVS_VERSION >= CAVS_VERSION_1_8
