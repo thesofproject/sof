@@ -212,3 +212,29 @@ int dai_config(struct comp_dev *dev, struct ipc_config_dai *common_config,
 
 	return dai_set_config(dd->dai, common_config, copier_cfg->gtw_cfg.config_data);
 }
+
+int dai_position(struct comp_dev *dev, struct sof_ipc_stream_posn *posn)
+{
+	struct dai_data *dd = comp_get_drvdata(dev);
+	struct dma_chan_status status;
+	uint32_t frame_size;
+
+	/* calculate frame size */
+	frame_size = get_frame_bytes(dev->ipc_config.frame_fmt,
+				     dd->local_buffer->stream.channels);
+	if (!frame_size) {
+		comp_err(dev, "invalid frame size 0");
+		return -EINVAL;
+	}
+
+	/* sample count */
+	posn->dai_posn = dev->position / frame_size;
+
+	/* set stream start wallclock */
+	posn->wallclock = dd->wallclock;
+
+	status.ipc_posn_data = &posn->comp_posn;
+	dma_status(dd->chan, &status, dev->direction);
+
+	return 0;
+}

@@ -533,6 +533,11 @@ int dai_config(struct comp_dev *dev,  struct ipc_config_dai *common_config,
  */
 int dai_assign_group(struct comp_dev *dev, uint32_t group_id);
 
+/**
+ * \brief dai position for host driver.
+ */
+int dai_position(struct comp_dev *dev, struct sof_ipc_stream_posn *posn);
+
 /** @}*/
 
 #endif /* __SOF_LIB_DAI_H__ */
