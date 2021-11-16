@@ -37,25 +37,6 @@
  * be provided as an input to the FW Image Builder).
  */
 
-struct ipc4_llp_reading {
-	/* lower part of 64-bit LLP */
-	uint32_t llp_l;
-	/* upper part of 64-bit LLP */
-	uint32_t llp_u;
-	/* lower part of 64-bit Wallclock */
-	uint32_t wclk_l;
-	/* upper part of 64-bit Wallclock */
-	uint32_t wclk_u;
-} __attribute__((packed, aligned(4)));
-
-struct ipc4_llp_reading_extended {
-	struct ipc4_llp_reading llp_reading;
-	/* total processed data (low part) */
-	uint32_t tpd_low;
-	/* total processed data (high part) */
-	uint32_t tpd_high;
-} __attribute__((packed, aligned(4)));
-
 struct ipc4_base_module_cfg_ext {
 	/* specifies number of items in input_pins array. Maximum size is 8 */
 	uint16_t nb_input_pins;

@@ -86,6 +86,14 @@ struct ipc4_llp_reading {
 	uint32_t wclk_u;
 } __attribute__((packed, aligned(4)));
 
+struct ipc4_llp_reading_extended {
+	struct ipc4_llp_reading llp_reading;
+	/* total processed data (low part) */
+	uint32_t tpd_low;
+	/* total processed data (high part) */
+	uint32_t tpd_high;
+} __attribute__((packed, aligned(4)));
+
 struct ipc4_llp_reading_slot {
 	uint32_t node_id;
 	struct ipc4_llp_reading reading;

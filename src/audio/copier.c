@@ -719,6 +719,92 @@ static int copier_set_large_config(struct comp_dev *dev, uint32_t param_id,
 	}
 }
 
+static inline void convert_u64_to_u32s(uint64_t val, uint32_t *val_l, uint32_t *val_h)
+{
+	*val_l = (uint32_t)(val & 0xffffffff);
+	*val_h = (uint32_t)((val >> 32) & 0xffffffff);
+}
+
+static int copier_get_large_config(struct comp_dev *dev, uint32_t param_id,
+				   bool first_block,
+				   bool last_block,
+				   uint32_t *data_offset,
+				   char *data)
+{
+	struct copier_data *cd = comp_get_drvdata(dev);
+	struct sof_ipc_stream_posn posn;
+	struct ipc4_llp_reading_extended llp_ext;
+	struct ipc4_llp_reading llp;
+
+	switch (param_id) {
+	case IPC4_COPIER_MODULE_CFG_PARAM_LLP_READING:
+		if (!cd->endpoint || comp_get_endpoint_type(cd->endpoint) != COMP_ENDPOINT_DAI) {
+			comp_err(dev, "Invalid component type");
+			return -EINVAL;
+		}
+
+		if (*data_offset < sizeof(struct ipc4_llp_reading)) {
+			comp_err(dev, "Config size %d is inadequate", *data_offset);
+			return -EINVAL;
+		}
+
+		*data_offset = sizeof(struct ipc4_llp_reading);
+		memset(&llp, 0, sizeof(llp));
+
+		if (cd->endpoint->state != COMP_STATE_ACTIVE) {
+			memcpy_s(data, sizeof(llp), &llp, sizeof(llp));
+			return 0;
+		}
+
+		/* get llp from dai */
+		comp_position(cd->endpoint, &posn);
+
+		convert_u64_to_u32s(posn.comp_posn, &llp.llp_l, &llp.llp_u);
+		convert_u64_to_u32s(posn.wallclock, &llp.wclk_l, &llp.wclk_u);
+		memcpy_s(data, sizeof(llp), &llp, sizeof(llp));
+
+		return 0;
+
+	case IPC4_COPIER_MODULE_CFG_PARAM_LLP_READING_EXTENDED:
+		if (!cd->endpoint || comp_get_endpoint_type(cd->endpoint) != COMP_ENDPOINT_DAI) {
+			comp_err(dev, "Invalid component type");
+			return -EINVAL;
+		}
+
+		if (*data_offset < sizeof(struct ipc4_llp_reading_extended)) {
+			comp_err(dev, "Config size %d is inadequate", *data_offset);
+			return -EINVAL;
+		}
+
+		*data_offset = sizeof(struct ipc4_llp_reading_extended);
+		memset(&llp_ext, 0, sizeof(llp_ext));
+
+		if (cd->endpoint->state != COMP_STATE_ACTIVE) {
+			memcpy_s(data, sizeof(llp_ext), &llp_ext, sizeof(llp_ext));
+			return 0;
+		}
+
+		/* get llp from dai */
+		comp_position(cd->endpoint, &posn);
+
+		convert_u64_to_u32s(posn.comp_posn, &llp_ext.llp_reading.llp_l,
+				    &llp_ext.llp_reading.llp_u);
+		convert_u64_to_u32s(posn.wallclock, &llp_ext.llp_reading.wclk_l,
+				    &llp_ext.llp_reading.wclk_u);
+
+		convert_u64_to_u32s(posn.dai_posn, &llp_ext.tpd_low, &llp_ext.tpd_high);
+		memcpy_s(data, sizeof(llp_ext), &llp_ext, sizeof(llp_ext));
+
+		return 0;
+
+	default:
+		comp_err(dev, "unsupported param %d", param_id);
+		break;
+	}
+
+	return -EINVAL;
+}
+
 static const struct comp_driver comp_copier = {
 	.uid	= SOF_RT_UUID(copier_comp_uuid),
 	.tctx	= &copier_comp_tr,
@@ -728,6 +814,7 @@ static const struct comp_driver comp_copier = {
 		.trigger		= copier_comp_trigger,
 		.copy			= copier_copy,
 		.set_large_config	= copier_set_large_config,
+		.get_large_config	= copier_get_large_config,
 		.params			= copier_params,
 		.prepare		= copier_prepare,
 		.reset			= copier_reset,
