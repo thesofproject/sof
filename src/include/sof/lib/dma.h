@@ -149,6 +149,9 @@ struct dma_chan_status {
 	uint32_t w_pos;
 	uint32_t r_pos;
 	uint32_t timestamp;
+
+	/* dma position info for ipc4 */
+	void *ipc_posn_data;
 };
 
 /* DMA operations */
