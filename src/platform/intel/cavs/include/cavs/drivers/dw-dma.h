@@ -58,6 +58,12 @@
 #define DW_CHLLPC(dma, chan) \
 	SHIM_GPDMA_CHLLPC((dma)->plat_data.id, (chan)->index)
 
+#define DW_CHLLPL(dma, chan) \
+	SHIM_GPDMA_CHLLPL((dma)->plat_data.id, (chan)->index)
+
+#define DW_CHLLPU(dma, chan) \
+	SHIM_GPDMA_CHLLPU((dma)->plat_data.id, (chan)->index)
+
 #define platform_dw_dma_set_class(chan, lli, class) \
 	(lli->ctrl_hi |= DW_CTLH_CLASS(class))
 
@@ -83,6 +89,15 @@ static inline void platform_dw_dma_llp_disable(struct dma *dma,
 {
 	shim_write(DW_CHLLPC(dma, chan),
 		   shim_read(DW_CHLLPC(dma, chan)) & ~SHIM_GPDMA_CHLLPC_EN);
+}
+
+static inline void platform_dw_dma_llp_read(struct dma *dma,
+					    struct dma_chan_data *chan,
+					    uint32_t *llp_l,
+					    uint32_t *llp_u)
+{
+	*llp_l = shim_read(DW_CHLLPL(dma, chan));
+	*llp_u = shim_read(DW_CHLLPU(dma, chan));
 }
 
 static inline struct dw_lli *platform_dw_dma_lli_get(struct dw_lli *lli)
