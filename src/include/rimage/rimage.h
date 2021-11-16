@@ -73,6 +73,7 @@ struct module {
 struct image {
 
 	const char *out_file;
+	const char *in_file;
 	FILE *out_fd;
 	void *pos;
 
@@ -200,6 +201,9 @@ int pkcs_v1_5_verify_man_v2_5(struct image *image,
 			    struct fw_image_manifest_v2_5 *man,
 			    void *ptr1, unsigned int size1, void *ptr2,
 			    unsigned int size2);
+
+int resign_image(struct image *image);
+int get_key_size(struct image *image);
 
 int elf_parse_module(struct image *image, int module_index, const char *name);
 void elf_free_module(struct image *image, int module_index);

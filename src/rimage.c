@@ -30,6 +30,7 @@ static void usage(char *name)
 	fprintf(stdout, "\t -b build version\n");
 	fprintf(stdout, "\t -e build extended manifest\n");
 	fprintf(stdout, "\t -y verify signed file\n");
+	fprintf(stdout, "\t -q resign binary\n");
 }
 
 int main(int argc, char *argv[])
@@ -43,7 +44,7 @@ int main(int argc, char *argv[])
 
 	memset(&image, 0, sizeof(image));
 
-	while ((opt = getopt(argc, argv, "ho:va:s:k:ri:x:f:b:ec:y:")) != -1) {
+	while ((opt = getopt(argc, argv, "ho:va:s:k:ri:x:f:b:ec:y:q:")) != -1) {
 		switch (opt) {
 		case 'o':
 			image.out_file = optarg;
@@ -84,6 +85,9 @@ int main(int argc, char *argv[])
 		case 'h':
 			usage(argv[0]);
 			return 0;
+		case 'q':
+			image.in_file = optarg;
+			break;
 		default:
 		 /* getopt's default error message is good enough */
 			return 1;
@@ -150,6 +154,11 @@ int main(int argc, char *argv[])
 	if (image.verify_file) {
 		ret = verify_image(&image);
 		goto out;
+	}
+
+	if (image.in_file) {
+		fprintf(stdout, "going to re-sign\n");
+		return resign_image(&image);
 	}
 
 	/* set IMR Type in found machine definition */

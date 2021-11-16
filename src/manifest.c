@@ -1427,3 +1427,127 @@ out:
 	fclose(in_file);
 	return 0;
 }
+
+
+int resign_image(struct image *image)
+{
+	int key_size, key_file_size;
+	size_t size, read;
+	FILE *in_file;
+	void *buffer;
+	int ret, i;
+
+	/* open image for reading */
+	in_file = fopen(image->in_file, "rb");
+	if (!in_file) {
+		fprintf(stderr, "error: unable to open %s for reading %d\n",
+			image->in_file, errno);
+		return -errno;
+	}
+
+	/* get file size */
+	ret = fseek(in_file, 0, SEEK_END);
+	if (ret < 0) {
+		fprintf(stderr, "error: unable to seek eof %s for reading %d\n",
+			image->verify_file, errno);
+		ret = -errno;
+		goto out;
+	}
+
+	size = ftell(in_file);
+	if (size < 0) {
+		fprintf(stderr, "error: unable to get file size for %s %d\n",
+			image->verify_file, errno);
+		ret = -errno;
+		goto out;
+	}
+
+	ret = fseek(in_file, 0, SEEK_SET);
+	if (ret < 0) {
+		fprintf(stderr, "error: unable to seek %s for reading %d\n",
+			image->verify_file, errno);
+		ret = -errno;
+		goto out;
+	}
+
+	/* allocate buffer for parsing */
+	buffer = malloc(size);
+	if (!buffer) {
+		ret = -ENOMEM;
+		goto out;
+	}
+
+	/* read file into buffer */
+	read = fread(buffer, 1, size, in_file);
+	if (read != size) {
+		fprintf(stderr, "error: unable to read %ld bytes from %s err %d\n",
+					size, image->in_file, errno);
+		ret = errno;
+		goto out;
+	}
+
+	fclose(in_file);
+
+	for (i = 0; i < size; i += sizeof(uint32_t)) {
+		/* find CSE header marker "$CPD" */
+		if (*(uint32_t *)(buffer + i) == CSE_HEADER_MAKER) {
+			image->fw_image = buffer + i;
+			break;
+		}
+	}
+
+	if (i >= size) {
+		fprintf(stderr, "error: didn't found header marker %d\n", i);
+		ret = -EINVAL;
+		goto out;
+	}
+
+	image->image_end = size;
+
+	/* check that key size matches */
+	if (image->adsp->man_v2_5) {
+		key_size = 384;
+	} else {
+		key_size = 256;
+	}
+
+	key_file_size = get_key_size(image);
+
+	if (key_file_size > key_size) {
+		fprintf(stderr, "error: key size %d is longer than original key %d\n",
+			key_file_size, key_size);
+		ret = -EINVAL;
+		goto out;
+	}
+
+	/* resign */
+	if (image->adsp->man_v1_5)
+		ret = ri_manifest_sign_v1_5(image);
+	else if (image->adsp->man_v1_8)
+		ret = ri_manifest_sign_v1_8(image);
+	else if (image->adsp->man_v2_5)
+		ret = ri_manifest_sign_v2_5(image);
+	else
+		ret = -EINVAL;
+
+	if (ret < 0) {
+		fprintf(stderr, "error: unable to sign image\n");
+		goto out;
+	}
+
+	/* open outfile for writing */
+	unlink(image->out_file);
+	image->out_fd = fopen(image->out_file, "wb");
+	if (!image->out_fd) {
+		fprintf(stderr, "error: unable to open %s for writing %d\n",
+			image->out_file, errno);
+		ret = -EINVAL;
+		goto out;
+	}
+
+	man_write_fw_mod(image);
+
+out:
+	free(buffer);
+	return ret;
+}

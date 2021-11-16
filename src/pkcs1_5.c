@@ -694,3 +694,38 @@ int ri_manifest_verify_v2_5(struct image *image)
 
 	return pkcs_v1_5_verify_man_v2_5(image, man, data1, size1, data2, size2);
 }
+
+int get_key_size(struct image *image)
+{
+	RSA *priv_rsa = NULL;
+	EVP_PKEY *privkey;
+	FILE *fp;
+	int key_length;
+	char path[256];
+
+	/* require private key */
+	if (!image->key_name) {
+		return -EINVAL;
+	}
+
+	/* load in RSA private key from PEM file */
+	memset(path, 0, sizeof(path));
+	strncpy(path, image->key_name, sizeof(path) - 1);
+
+	fp = fopen(path, "rb");
+	if (!fp) {
+		fprintf(stderr, "error: can't open file %s %d\n",
+			path, -errno);
+		return -errno;
+	}
+	PEM_read_PrivateKey(fp, &privkey, NULL, NULL);
+	fclose(fp);
+
+	priv_rsa = EVP_PKEY_get1_RSA(privkey);
+	key_length = RSA_size(priv_rsa);
+
+	RSA_free(priv_rsa);
+	EVP_PKEY_free(privkey);
+
+	return key_length;
+}
