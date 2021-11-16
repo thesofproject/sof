@@ -601,6 +601,9 @@ static int ipc4_process_module_message(union ipc4_message_header *ipc4)
 		break;
 	case SOF_IPC4_MOD_CONFIG_GET:
 	case SOF_IPC4_MOD_CONFIG_SET:
+		ret = IPC4_UNAVAILABLE;
+		tr_info(&ipc_tr, "unsupported module CONFIG_GET");
+		break;
 	case SOF_IPC4_MOD_LARGE_CONFIG_GET:
 		ret = ipc4_get_large_config_module_instance(ipc4);
 		break;
