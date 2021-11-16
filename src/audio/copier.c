@@ -269,12 +269,12 @@ static struct comp_dev *copier_new(const struct comp_driver *drv,
 				goto error_cd;
 			}
 
-			if (cd->direction == SOF_IPC_STREAM_PLAYBACK)
+			if (cd->direction == SOF_IPC_STREAM_PLAYBACK) {
 				ipc_pipe->pipeline->source_comp = dev;
-			else
+				init_pipeline_reg(cd);
+			} else {
 				ipc_pipe->pipeline->sink_comp = dev;
-
-			init_pipeline_reg(cd);
+			}
 
 			break;
 		case ipc4_hda_link_output_class:
