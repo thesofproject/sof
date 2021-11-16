@@ -60,6 +60,11 @@ static inline void platform_dw_dma_llp_enable(struct dma *dma,
 static inline void platform_dw_dma_llp_disable(struct dma *dma,
 					       struct dma_chan_data *chan) { }
 
+static inline void platform_dw_dma_llp_read(struct dma *dma,
+					    struct dma_chan_data *chan,
+					    uint32_t *llp_l,
+					    uint32_t *llp_u) { }
+
 #endif /* __PLATFORM_DRIVERS_DW_DMA_H__ */
 
 #else

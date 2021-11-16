@@ -209,6 +209,9 @@
 #define SHIM_GPDMA_CHLLPC_EN		BIT(5)
 #define SHIM_GPDMA_CHLLPC_DHRS(x)	SET_BITS(4, 0, x)
 
+#define SHIM_GPDMA_CHLLPL(x, y)                (SHIM_GPDMA_BASE(x) + 0x18 + (y) * 0x10)
+#define SHIM_GPDMA_CHLLPU(x, y)                (SHIM_GPDMA_BASE(x) + 0x1c + (y) * 0x10)
+
 /** \brief LDO Control */
 #define SHIM_LDOCTL		0xA4
 #define SHIM_LDOCTL_HPSRAM_MASK	(3 << 0)

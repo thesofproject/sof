@@ -211,6 +211,9 @@
 #define SHIM_GPDMA_CHLLPC_EN		BIT(7)
 #define SHIM_GPDMA_CHLLPC_DHRS(x)	SET_BITS(6, 0, x)
 
+#define SHIM_GPDMA_CHLLPL(x, y)                (SHIM_GPDMA_BASE(x) + 0x18 + (y) * 0x10)
+#define SHIM_GPDMA_CHLLPU(x, y)                (SHIM_GPDMA_BASE(x) + 0x1c + (y) * 0x10)
+
 #define L2LMCAP			0x71D00
 #define L2MPAT			0x71D04
 
