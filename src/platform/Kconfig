@@ -499,4 +499,13 @@ config XTENSA_EXCLUSIVE
 	  This has to be selected for xtensa exclusive instructions.
 	  There is a definition for EXCLUSIVE option in xtensa-config.h
 
+config FORCE_DMA_COPY_WHOLE_BLOCK
+	bool
+	default y if MT8195
+	default n
+	depends on HOST_PTABLE
+	help
+	  The host component forces DMA to copy the block size to avoid
+	  copying byte jitter between the components of the same pipeline.
+
 endmenu
