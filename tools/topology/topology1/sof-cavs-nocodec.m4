@@ -94,17 +94,17 @@ define(DAI_BITS, `s24le')
 #
 # Define the pipelines
 #
-# PCM0 <---> Volume <---\
-#                       +- Mixer <----> SSP0
-# PCM3 <---> Volume <---/
-# PCM1 <---> Volume <----> Mixer <----> SSP1
-# PCM2 <---> volume <----> Mixer <----> SSP2
+# PCM0 ---> Volume -----\
+#                        Mixer ----> SSP0
+# PCM3 ---> Volume -----/
+# PCM1 ---> Volume ----> Mixer ----> SSP1
+# PCM2 ---> volume ----> Mixer ----> SSP2
 #
-# SSP0 <---> Volume <----> PCM0
-# SSP1 <---> Volume <----> PCM1
-# SSP2 <---> Volume <----> PCM2
-# DMIC0 <--> IIR    <----> PCM10
-# DMIC1 <--> IIR    <----> PCM11
+# SSP0 ---> Volume ----> PCM0
+# SSP1 ---> Volume ----> PCM1
+# SSP2 ---> Volume ----> PCM2
+# DMIC0 --> IIR -------> PCM10
+# DMIC1 --> IIR -------> PCM11
 #
 
 dnl PIPELINE_PCM_ADD(pipeline,
