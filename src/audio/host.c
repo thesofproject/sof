@@ -131,6 +131,176 @@ static uint32_t host_dma_get_split(struct host_data *hd, uint32_t bytes)
 	return MAX(split_src, split_dst);
 }
 
+#if CONFIG_FORCE_DMA_COPY_WHOLE_BLOCK
+
+static int host_dma_set_config_and_copy(struct comp_dev *dev, uint32_t bytes)
+{
+	struct host_data *hd = comp_get_drvdata(dev);
+	struct dma_sg_elem *local_elem = hd->config.elem_array.elems;
+	int ret = 0;
+
+	local_elem->size = bytes;
+
+	/* reconfigure transfer */
+	ret = dma_set_config(hd->chan, &hd->config);
+	if (ret < 0) {
+		comp_err(dev, "host_dma_set_config_and_copy(): dma_set_config() failed, ret = %d",
+			 ret);
+		return ret;
+	}
+
+	ret = dma_copy(hd->chan, bytes, DMA_COPY_ONE_SHOT | DMA_COPY_BLOCKING);
+	if (ret < 0) {
+		comp_err(dev, "host_dma_set_config_and_copy(): dma_copy() failed, ret = %d",
+			 ret);
+		return ret;
+	}
+
+	return ret;
+}
+
+/**
+ * Calculates bytes to be copied in one shot mode.
+ * @param dev Host component device.
+ * @return Bytes to be copied.
+ */
+static uint32_t host_get_copy_bytes_one_shot(struct comp_dev *dev)
+{
+	struct host_data *hd = comp_get_drvdata(dev);
+	struct comp_buffer *buffer = hd->local_buffer;
+	uint32_t copy_bytes = 0;
+
+	buffer = buffer_acquire_irq(buffer);
+
+	/* calculate minimum size to copy */
+	if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
+		copy_bytes = audio_stream_get_free_bytes(&buffer->stream);
+	else
+		copy_bytes = audio_stream_get_avail_bytes(&buffer->stream);
+
+	buffer_release_irq(buffer);
+
+	/* copy_bytes should be aligned to minimum possible chunk of
+	 * data to be copied by dma.
+	 */
+	copy_bytes = ALIGN_DOWN(copy_bytes, hd->dma_copy_align);
+
+	return copy_bytes;
+}
+
+/**
+ * Performs copy operation for host component working in one shot mode.
+ * It means DMA needs to be reconfigured after every transfer.
+ * @param dev Host component device.
+ * @return 0 if succeeded, error code otherwise.
+ */
+static int host_copy_one_shot(struct comp_dev *dev)
+{
+	struct host_data *hd = comp_get_drvdata(dev);
+	uint32_t copy_bytes = 0;
+	uint32_t split_value = 0;
+	int ret = 0;
+
+	comp_dbg(dev, "host_copy_one_shot()");
+
+	copy_bytes = host_get_copy_bytes_one_shot(dev);
+	if (!copy_bytes) {
+		comp_info(dev, "host_copy_one_shot(): no bytes to copy");
+		return ret;
+	}
+
+	while (copy_bytes) {
+		/* get split value */
+		split_value = host_dma_get_split(hd, copy_bytes);
+		copy_bytes -= split_value;
+
+		ret = host_dma_set_config_and_copy(dev, copy_bytes);
+		if (ret < 0)
+			return ret;
+
+		/* update copy bytes */
+		copy_bytes = split_value;
+	}
+
+	return ret;
+}
+
+#else /* CONFIG_FORCE_DMA_COPY_WHOLE_BLOCK */
+
+/**
+ * Calculates bytes to be copied in one shot mode.
+ * @param dev Host component device.
+ * @return Bytes to be copied.
+ */
+static uint32_t host_get_copy_bytes_one_shot(struct comp_dev *dev)
+{
+	struct host_data *hd = comp_get_drvdata(dev);
+	struct dma_sg_elem *local_elem = hd->config.elem_array.elems;
+	struct comp_buffer *buffer = hd->local_buffer;
+	uint32_t copy_bytes = 0;
+	uint32_t split_value;
+
+	buffer = buffer_acquire_irq(buffer);
+
+	/* calculate minimum size to copy */
+	if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
+		copy_bytes = audio_stream_get_free_bytes(&buffer->stream);
+	else
+		copy_bytes = audio_stream_get_avail_bytes(&buffer->stream);
+
+	buffer_release_irq(buffer);
+
+	/* copy_bytes should be aligned to minimum possible chunk of
+	 * data to be copied by dma.
+	 */
+	copy_bytes = ALIGN_DOWN(copy_bytes, hd->dma_copy_align);
+
+	split_value = host_dma_get_split(hd, copy_bytes);
+	if (split_value)
+		copy_bytes -= split_value;
+
+	local_elem->size = copy_bytes;
+
+	return copy_bytes;
+}
+
+/**
+ * Performs copy operation for host component working in one shot mode.
+ * It means DMA needs to be reconfigured after every transfer.
+ * @param dev Host component device.
+ * @return 0 if succeeded, error code otherwise.
+ */
+static int host_copy_one_shot(struct comp_dev *dev)
+{
+	struct host_data *hd = comp_get_drvdata(dev);
+	uint32_t copy_bytes = 0;
+	int ret = 0;
+
+	comp_dbg(dev, "host_copy_one_shot()");
+
+	copy_bytes = host_get_copy_bytes_one_shot(dev);
+	if (!copy_bytes) {
+		comp_info(dev, "host_copy_one_shot(): no bytes to copy");
+		return ret;
+	}
+
+	/* reconfigure transfer */
+	ret = dma_set_config(hd->chan, &hd->config);
+	if (ret < 0) {
+		comp_err(dev, "host_copy_one_shot(): dma_set_config() failed, ret = %u", ret);
+		return ret;
+	}
+
+	ret = dma_copy(hd->chan, copy_bytes, DMA_COPY_ONE_SHOT);
+	if (ret < 0) {
+		comp_err(dev, "host_copy_one_shot(): dma_copy() failed, ret = %u", ret);
+		return ret;
+	}
+
+	return ret;
+}
+#endif
+
 static void host_update_position(struct comp_dev *dev, uint32_t bytes)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
@@ -254,79 +424,6 @@ static void host_dma_cb(void *arg, enum notify_id type, void *data)
 	/* callback for one shot copy */
 	if (hd->copy_type == COMP_COPY_ONE_SHOT)
 		host_one_shot_cb(dev, bytes);
-}
-
-/**
- * Calculates bytes to be copied in one shot mode.
- * @param dev Host component device.
- * @return Bytes to be copied.
- */
-static uint32_t host_get_copy_bytes_one_shot(struct comp_dev *dev)
-{
-	struct host_data *hd = comp_get_drvdata(dev);
-	struct dma_sg_elem *local_elem = hd->config.elem_array.elems;
-	struct comp_buffer *buffer = hd->local_buffer;
-	uint32_t copy_bytes = 0;
-	uint32_t split_value;
-
-	buffer = buffer_acquire_irq(buffer);
-
-	/* calculate minimum size to copy */
-	if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
-		copy_bytes = audio_stream_get_free_bytes(&buffer->stream);
-	else
-		copy_bytes = audio_stream_get_avail_bytes(&buffer->stream);
-
-	buffer_release_irq(buffer);
-
-	/* copy_bytes should be aligned to minimum possible chunk of
-	 * data to be copied by dma.
-	 */
-	copy_bytes = ALIGN_DOWN(copy_bytes, hd->dma_copy_align);
-
-	split_value = host_dma_get_split(hd, copy_bytes);
-	if (split_value)
-		copy_bytes -= split_value;
-
-	local_elem->size = copy_bytes;
-
-	return copy_bytes;
-}
-
-/**
- * Performs copy operation for host component working in one shot mode.
- * It means DMA needs to be reconfigured after every transfer.
- * @param dev Host component device.
- * @return 0 if succeeded, error code otherwise.
- */
-static int host_copy_one_shot(struct comp_dev *dev)
-{
-	struct host_data *hd = comp_get_drvdata(dev);
-	uint32_t copy_bytes = 0;
-	int ret = 0;
-
-	comp_dbg(dev, "host_copy_one_shot()");
-
-	copy_bytes = host_get_copy_bytes_one_shot(dev);
-	if (!copy_bytes) {
-		comp_info(dev, "host_copy_one_shot(): no bytes to copy");
-		return ret;
-	}
-
-	/* reconfigure transfer */
-	ret = dma_set_config(hd->chan, &hd->config);
-	if (ret < 0) {
-		comp_err(dev, "host_copy_one_shot(): dma_set_config() failed, ret = %u", ret);
-		return ret;
-	}
-
-	ret = dma_copy(hd->chan, copy_bytes, DMA_COPY_ONE_SHOT);
-	if (ret < 0) {
-		comp_err(dev, "host_copy_one_shot(): dma_copy() failed, ret = %u", ret);
-		return ret;
-	}
-
-	return ret;
 }
 
 /**
