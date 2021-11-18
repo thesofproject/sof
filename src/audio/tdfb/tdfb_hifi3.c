@@ -36,6 +36,7 @@ void tdfb_fir_s16(struct tdfb_comp_data *cd,
 	int k;
 	int in_nch = source->channels;
 	int out_nch = sink->channels;
+	int emp_ch = 0;
 
 	for (j = 0; j < (frames >> 1); j++) {
 		/* Clear output mix*/
@@ -46,6 +47,7 @@ void tdfb_fir_s16(struct tdfb_comp_data *cd,
 		for (i = 0; i < 2 * in_nch; i++) {
 			AE_L16_XC(d, x, sizeof(int16_t));
 			cd->in[i] = (ae_int32)AE_CVT32X2F16_32(d);
+			tdfb_direction_copy_emphasis(cd, in_nch, &emp_ch, cd->in[i]);
 		}
 
 		/* Run and mix all filters to their output channel */
@@ -108,6 +110,7 @@ void tdfb_fir_s24(struct tdfb_comp_data *cd,
 	int k;
 	int in_nch = source->channels;
 	int out_nch = sink->channels;
+	int emp_ch = 0;
 
 	for (j = 0; j < (frames >> 1); j++) {
 		/* Clear output mix*/
@@ -118,6 +121,7 @@ void tdfb_fir_s24(struct tdfb_comp_data *cd,
 		for (i = 0; i < 2 * in_nch; i++) {
 			AE_L32_XC(d, x, sizeof(int32_t));
 			cd->in[i] = AE_SLAI32(d, 8);
+			tdfb_direction_copy_emphasis(cd, in_nch, &emp_ch, cd->in[i]);
 		}
 
 		for (i = 0; i < cfg->num_filters; i++) {
@@ -179,6 +183,7 @@ void tdfb_fir_s32(struct tdfb_comp_data *cd,
 	int k;
 	int in_nch = source->channels;
 	int out_nch = sink->channels;
+	int emp_ch = 0;
 
 	for (j = 0; j < (frames >> 1); j++) {
 		/* Clear output mix*/
@@ -189,6 +194,7 @@ void tdfb_fir_s32(struct tdfb_comp_data *cd,
 		for (i = 0; i < 2 * in_nch; i++) {
 			AE_L32_XC(d, x, sizeof(int32_t));
 			cd->in[i] = d;
+			tdfb_direction_copy_emphasis(cd, in_nch, &emp_ch, cd->in[i]);
 		}
 
 		for (i = 0; i < cfg->num_filters; i++) {

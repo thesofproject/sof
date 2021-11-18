@@ -119,4 +119,7 @@ uint32_t crc32(uint32_t base, const void *data, uint32_t bytes);
 #define INT_MAX(N)	((int64_t)((1ULL << ((N) - 1)) - 1))
 #define INT_MIN(N)	((int64_t)(-((1ULL << ((N) - 1)) - 1) - 1))
 
+/* Speed of sound (m/s) in 20 C temperature at standard atmospheric pressure */
+#define SPEED_OF_SOUND		343
+
 #endif /* __SOF_MATH_NUMBERS_H__ */
