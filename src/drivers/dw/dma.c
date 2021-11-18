@@ -55,6 +55,7 @@ struct dw_dma_ptr_data {
 	uint32_t current_ptr;
 	uint32_t start_ptr;
 	uint32_t end_ptr;
+	uint32_t hw_ptr;
 	uint32_t buffer_bytes;
 };
 
@@ -786,6 +787,7 @@ static int dw_dma_set_config(struct dma_chan_data *channel,
 	dw_chan->ptr_data.end_ptr = dw_chan->ptr_data.start_ptr +
 				    dw_chan->ptr_data.buffer_bytes;
 	dw_chan->ptr_data.current_ptr = dw_chan->ptr_data.start_ptr;
+	dw_chan->ptr_data.hw_ptr = dw_chan->ptr_data.start_ptr;
 
 out:
 	irq_local_enable(flags);
@@ -1056,14 +1058,24 @@ static int dw_dma_avail_data_size(struct dma_chan_data *channel)
 	struct dw_dma_chan_data *dw_chan = dma_chan_get_data(channel);
 	int32_t read_ptr = dw_chan->ptr_data.current_ptr;
 	int32_t write_ptr = dma_reg_read(channel->dma, DW_DAR(channel->index));
+	int32_t delta = write_ptr - dw_chan->ptr_data.hw_ptr;
 	int size;
 
-	size = write_ptr - read_ptr;
-	if (size < 0)
-		size += dw_chan->ptr_data.buffer_bytes;
+	dw_chan->ptr_data.hw_ptr = write_ptr;
 
-	if (!size)
-		tr_info(&dwdma_tr, "dw_dma_avail_data_size() size is 0!");
+	size = write_ptr - read_ptr;
+	if (size < 0) {
+		size += dw_chan->ptr_data.buffer_bytes;
+	} else if (!size) {
+		/*
+		 * Buffer is either full or empty. If the DMA pointer has
+		 * changed, then the DMA has filled the buffer.
+		 */
+		if (delta)
+			size = dw_chan->ptr_data.buffer_bytes;
+		else
+			tr_info(&dwdma_tr, "dw_dma_avail_data_size() size is 0!");
+	}
 
 	tr_dbg(&dwdma_tr, "DAR %x reader 0x%x free 0x%x avail 0x%x", write_ptr,
 	       read_ptr, dw_chan->ptr_data.buffer_bytes - size, size);
@@ -1077,14 +1089,24 @@ static int dw_dma_free_data_size(struct dma_chan_data *channel)
 	struct dw_dma_chan_data *dw_chan = dma_chan_get_data(channel);
 	int32_t read_ptr = dma_reg_read(channel->dma, DW_SAR(channel->index));
 	int32_t write_ptr = dw_chan->ptr_data.current_ptr;
+	int32_t delta = read_ptr - dw_chan->ptr_data.hw_ptr;
 	int size;
 
-	size = read_ptr - write_ptr;
-	if (size < 0)
-		size += dw_chan->ptr_data.buffer_bytes;
+	dw_chan->ptr_data.hw_ptr = read_ptr;
 
-	if (!size)
-		tr_info(&dwdma_tr, "dw_dma_free_data_size() size is 0!");
+	size = read_ptr - write_ptr;
+	if (size < 0) {
+		size += dw_chan->ptr_data.buffer_bytes;
+	} else if (!size) {
+		/*
+		 * Buffer is either full or empty. If the DMA pointer has
+		 * changed, then the DMA has emptied the buffer.
+		 */
+		if (delta)
+			size = dw_chan->ptr_data.buffer_bytes;
+		else
+			tr_info(&dwdma_tr, "dw_dma_free_data_size() size is 0!");
+	}
 
 	tr_dbg(&dwdma_tr, "SAR %x writer 0x%x free 0x%x avail 0x%x", read_ptr,
 	       write_ptr, size, dw_chan->ptr_data.buffer_bytes - size);
@@ -1112,6 +1134,7 @@ static int dw_dma_get_data_size(struct dma_chan_data *channel,
 		*free = dw_dma_free_data_size(channel);
 		*avail = dw_chan->ptr_data.buffer_bytes - *free;
 	}
+
 	spin_unlock_irq(&channel->dma->lock, flags);
 
 #if CONFIG_DMA_HW_LLI
