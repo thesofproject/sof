@@ -18,6 +18,11 @@ SUPPORTED_PLATFORMS+=(imx8 imx8x imx8m)
 # -a
 DEFAULT_PLATFORMS=("${SUPPORTED_PLATFORMS[@]}")
 
+# REVERTME: temporarily exclude ICL because of .noinit/.cached section
+# overlap and build failure
+# https://github.com/zephyrproject-rtos/zephyr/pull/40319
+unset DEFAULT_PLATFORMS[2]
+
 BUILD_JOBS=$(nproc --all)
 PLATFORMS=()
 
