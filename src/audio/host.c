@@ -494,10 +494,6 @@ static int host_trigger(struct comp_dev *dev, int cmd)
 		break;
 	case COMP_TRIGGER_STOP:
 	case COMP_TRIGGER_XRUN:
-		ret = dma_stop(hd->chan);
-		if (ret < 0)
-			comp_err(dev, "host_trigger(): dma stop failed: %d",
-				 ret);
 		break;
 	default:
 		break;
@@ -852,10 +848,17 @@ static int host_position(struct comp_dev *dev,
 static int host_reset(struct comp_dev *dev)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
+	int ret;
 
 	comp_dbg(dev, "host_reset()");
 
 	if (hd->chan) {
+		ret = dma_stop(hd->chan);
+		if (ret < 0) {
+			comp_err(dev, "host_reset(): dma stop failed: %d",
+				 ret);
+			return ret;
+		}
 		/* remove callback */
 		notifier_unregister(dev, hd->chan, NOTIFIER_ID_DMA_COPY);
 		dma_channel_put(hd->chan);
