@@ -30,24 +30,68 @@
 
 function test = test_run(test)
 
+if isfield(test, 'ex') == 0
+	test.ex = './comp_run.sh';
+end
+
 if exist(fullfile('./', test.ex),'file') == 2
-	%fcmd = sprintf('file %s', test.ex);
-	%[status, output]=system(fcmd);
-	%if findstr(output, "Tensilica Xtensa")
-	%	ex = sprintf('xt-run --turbo --summary %s', test.ex);
-	%else
-		ex = test.ex;
-	%end
+	ex = test.ex;
 else
         error('Can''t find executable %s', test.ex);
 end
-test.narg = length(test.arg);
-arg = '';
-for n=1:test.narg
-        arg = sprintf('%s %s', arg, char(test.arg(n)));
+
+fn_config = sprintf("%s_config.sh", tempname);
+fh = fopen(fn_config, 'w');
+
+if isfield(test, 'fs_in') == 0
+	test.fs_in = test.fs;
 end
+
+if isfield(test, 'bits_in') == 0
+	test.bits_in = test.bits;
+end
+
+if isfield(test, 'nch_in') == 0
+	test.nch_in = test.nch;
+end
+
+fprintf(fh, '#!/bin/sh\n', test.comp);
+fprintf(fh, 'COMP=\"%s\"\n', test.comp);
+fprintf(fh, 'DIRECTION=playback\n');
+fprintf(fh, 'BITS_IN=%d\n', test.bits_in);
+if isfield(test, 'bits_out') && (test.bits_in ~= test.bits_out)
+	fprintf(fh, 'BITS_IN=%d\n', test.bits_out);
+end
+
+fprintf(fh, 'CHANNELS_IN=%d\n', test.nch_in);
+if isfield(test, 'nch_out') && (test.nch_in ~= test.nch_out)
+	fprintf(fh, 'CHANNELS_OUT=%d\n', test.nch_out);
+end
+
+fprintf(fh, 'FS_IN=%d\n', test.fs_in);
+if isfield(test, 'fs_out') && (test.fs_in ~= test.fs_out)
+	fprintf(fh, 'FS_OUT=%d\n', test.fs_out);
+end
+
+fprintf(fh, 'FN_IN=\"%s\"\n', test.fn_in);
+fprintf(fh, 'FN_OUT=\"%s\"\n', test.fn_out);
+
+if isfield(test, 'extra_opts')
+	fprintf(fh, 'EXTRA_OPTS=\"%s\"\n', test.extra_opts);
+end
+
+if isfield(test, 'trace')
+	fprintf(fh, 'FN_TRACE=\"%s\"\n', test.trace);
+end
+
+% Override defaults in comp_run.sh
+fprintf(fh, 'VALGRIND=no\n', test.fs_in);
+fclose(fh);
+
+arg = sprintf('-t %s', fn_config);
 rcmd = sprintf('%s %s', ex, arg);
 fprintf('Running ''%s''...\n', rcmd);
 system(rcmd);
+delete(fn_config);
 
 end

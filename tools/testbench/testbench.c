@@ -176,7 +176,7 @@ static void parse_input_args(int argc, char **argv, struct testbench_prm *tp)
 	int option = 0;
 	int ret = 0;
 
-	while ((option = getopt(argc, argv, "hdi:o:t:b:a:r:R:c:C:")) != -1) {
+	while ((option = getopt(argc, argv, "hdqi:o:t:b:a:r:R:c:n:C:")) != -1) {
 		switch (option) {
 		/* input sample file */
 		case 'i':
@@ -216,10 +216,15 @@ static void parse_input_args(int argc, char **argv, struct testbench_prm *tp)
 
 		/* input/output channels */
 		case 'c':
-			tp->channels = atoi(optarg);
+			tp->channels_in = atoi(optarg);
 			break;
 
-		/* enable debug prints */
+		/* output channels */
+		case 'n':
+			tp->channels_out = atoi(optarg);
+			break;
+
+			/* enable debug prints */
 		case 'd':
 			debug = 1;
 			break;
@@ -228,6 +233,10 @@ static void parse_input_args(int argc, char **argv, struct testbench_prm *tp)
 		case 'C':
 			tp->copy_iterations = atoi(optarg);
 			tp->copy_check = true;
+			break;
+
+		case 'q':
+			tp->quiet = true;
 			break;
 
 		/* print usage */
@@ -260,20 +269,26 @@ int main(int argc, char **argv)
 	int i;
 
 	/* initialize input and output sample rates, files, etc. */
+	debug = 0;
 	tp.fs_in = 0;
 	tp.fs_out = 0;
 	tp.bits_in = 0;
 	tp.input_file = NULL;
 	tp.tplg_file = NULL;
-	for (i = 0; i < MAX_OUTPUT_FILE_NUM; i++)
-		tp.output_file[i] = NULL;
 	tp.output_file_num = 0;
-	tp.channels = TESTBENCH_NCH;
+	tp.channels_in = TESTBENCH_NCH;
+	tp.channels_out = 0;
 	tp.max_pipeline_id = 0;
 	tp.copy_check = false;
+	tp.quiet = 0;
+	for (i = 0; i < MAX_OUTPUT_FILE_NUM; i++)
+		tp.output_file[i] = NULL;
 
 	/* command line arguments*/
 	parse_input_args(argc, argv, &tp);
+
+	if (!tp.channels_out)
+		tp.channels_out = tp.channels_in;
 
 	/* check mandatory args */
 	if (!tp.tplg_file) {
@@ -300,6 +315,11 @@ int main(int argc, char **argv)
 		exit(EXIT_FAILURE);
 	}
 
+	if (tp.quiet)
+		tb_enable_trace(false); /* reduce trace output */
+	else
+		tb_enable_trace(true);
+
 	/* initialize ipc and scheduler */
 	if (tb_pipeline_setup(sof_get()) < 0) {
 		fprintf(stderr, "error: pipeline init\n");
@@ -312,7 +332,12 @@ int main(int argc, char **argv)
 		exit(EXIT_FAILURE);
 	}
 
-	/* Get pointer to filewrite */
+	/*
+	 * Note: This is a good place to place breakpoints when debugging. The component
+	 * has been loaded after topology parse so all the symbols exist at this point.
+	 *
+	 * Next, get pointer to filewrite.
+	 */
 	pcm_dev = ipc_get_comp_by_id(sof_get()->ipc, tp.fw_id);
 	if (!pcm_dev) {
 		fprintf(stderr, "error: failed to get pointers to filewrite\n");
@@ -348,7 +373,7 @@ int main(int argc, char **argv)
 	}
 
 	cd = pcm_dev->cd;
-	tb_enable_trace(false); /* reduce trace output */
+
 	tic = clock();
 
 	while (frcd->fs.reached_eof == 0) {
@@ -382,7 +407,7 @@ int main(int argc, char **argv)
 
 	/* reset and free pipeline */
 	toc = clock();
-	tb_enable_trace(true);
+
 	pipeline_trigger(p, cd, COMP_TRIGGER_STOP);
 	ret = pipeline_reset(p, cd);
 	if (ret < 0) {
@@ -393,7 +418,7 @@ int main(int argc, char **argv)
 	n_in = frcd->fs.n;
 	n_out = fwcd->fs.n;
 	t_exec = (double)(toc - tic) / CLOCKS_PER_SEC;
-	c_realtime = (double)n_out / tp.channels / tp.fs_out / t_exec;
+	c_realtime = (double)n_out / tp.channels_out / tp.fs_out / t_exec;
 
 	/* print test summary */
 	printf("==========================================================\n");
