@@ -3,8 +3,8 @@ function example_line_array()
 % example_line_array()
 %
 % Creates a number of line array configuration blobs for devices
-% with 2 microphones with spacing of 50 mm and 67 mm
-% with 4 microphones with spacing of 28 mm and 78 mm
+% with 2 microphones with spacing of 50 mm and 68 mm
+% with 4 microphones with spacing of 28 mm, 68 mm, and 78 mm
 
 % SPDX-License-Identifier: BSD-3-Clause
 %
@@ -13,71 +13,50 @@ function example_line_array()
 % Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 
 %% 2 mic arrays
-for fs = [16e3 48e3]
-	for az = [0 30 60 90 -30 -60 -90]
-		for d = [50e-3 68e-3];
-			close all;
-			line2_one_beam(fs, d, az);
-		end
-	end
-end
+az = -90:15:90;
+close all; line_one_beam(48e3, 50e-3, az, 2, 64);
+close all; line_one_beam(48e3, 68e-3, az, 2, 64);
+close all; line_one_beam(16e3, 50e-3, az, 2, 40);
+close all; line_one_beam(16e3, 68e-3, az, 2, 40);
 
 %% 4 mic arrays
-for fs = [16e3 48e3]
-	for az = [0 30 60 90 -30 -60 -90]
-		close all;
-		line4_one_beam(fs, 28e-3, az, 64);
-		close all;
-		line4_one_beam(fs, 78e-3, az, 100);
+close all; line_one_beam(48e3, 28e-3, az, 4, 80);
+close all; line_one_beam(48e3, 68e-3, az, 4, 112);
+close all; line_one_beam(48e3, 78e-3, az, 4, 120);
+
+close all; line_one_beam(16e3, 28e-3, az, 4, 40);
+close all; line_one_beam(16e3, 68e-3, az, 4, 52);
+close all; line_one_beam(16e3, 78e-3, az, 4, 60);
+
+end
+
+function line_one_beam(fs, d, az, n_mic, n_fir)
+	% Get defaults
+	bf = bf_defaults();
+	bf.input_channel_select = 0:(n_mic-1);      % Input all n channels to filters
+	bf.output_channel_mix = 3 * ones(1, n_mic); % Mix all filters to channel 1 and 2
+	bf.output_stream_mix = zeros(1, n_mic);     % Mix filters to stream 0
+	bf.num_output_channels = 2;                 % Stereo
+	bf.num_output_streams = 1;                  % One sink stream
+	bf.array = 'line';                          % Calculate xyz coordinates for line
+	bf.mic_n = n_mic;
+
+	% Mix only filters 1 and N to left and right stereo, it  gives best
+	% passive stereo effect for beam off mode
+	bf.output_channel_mix_beam_off = [1 zeros(1, n_mic-2) 2];
+
+	% From parameters
+	bf.fs = fs;
+	bf.mic_d = d;
+	bf.steer_az = az;
+	bf.steer_el = 0 * az; % all 0 deg
+
+	if nargin > 4
+		bf.fir_length = n_fir;
 	end
-end
 
-end
-
-function line2_one_beam(fs, d, az);
-
-% Get defaults
-bf = bf_defaults();
-bf.input_channel_select = [0 1]; % Input two channels
-bf.output_channel_mix   = [3 3]; % Mix both filters to channels 0 and 1 (2^ch)
-bf.output_stream_mix    = [0 0]; % Mix both filters to stream 0
-bf.num_output_channels = 2;      % Two channels
-bf.num_output_streams = 1;       % One sink stream
-bf.array = 'line';               % Calculate xyz coordinates for line
-bf.mic_n = 2;                    % with two microphones
-
-% From parameters
-bf.fs = fs;
-bf.mic_d = d;
-bf.steer_az = az;
-
-% Design
-bf = bf_filenames_helper(bf);
-bf = bf_design(bf);
-bf_export(bf);
-end
-
-function line4_one_beam(fs, d, az, n);
-
-% Get defaults
-bf = bf_defaults();
-bf.input_channel_select = [ 0  1  2  3]; % Input four channels
-bf.output_channel_mix   = [15 15 15 15]; % Mix filters to channel 2^0, 2^1, 2^2, 2^3
-bf.output_stream_mix    = [ 0  0  0  0]; % Mix filters to stream 0
-bf.num_output_channels = 4;              % Four channels
-bf.num_output_streams = 1;               % One sink stream
-bf.array = 'line';                       % Calculate xyz coordinates for line
-bf.mic_n = 4;                            % with two microphones
-bf.fir_length = n;                       % Get from paraneters
-
-% From parameters
-bf.fs = fs;
-bf.mic_d = d;
-bf.steer_az = az;
-
-% Design
-bf = bf_filenames_helper(bf);
-bf = bf_design(bf);
-bf_export(bf);
-
+	% Design
+	bf = bf_filenames_helper(bf);
+	bf = bf_design(bf);
+	bf_export(bf);
 end

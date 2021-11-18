@@ -39,6 +39,13 @@ if length(bf.output_stream_mix) ~= bf.num_filters
 	error('output_stream_mix length does not match');
 end
 
+% Use finer angle enum scale for line array that is limited to -90..+90 deg
+% TODO: This should be done somewhere else
+if strcmp(bf.array, 'line')
+	bf.angle_enum_mult = 15;
+	bf.angle_enum_offs = -90;
+end
+
 %% Endianness of blob
 switch lower(bf.endian)
         case 'little'
