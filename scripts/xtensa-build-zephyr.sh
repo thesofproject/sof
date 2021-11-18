@@ -15,6 +15,9 @@ SUPPORTED_PLATFORMS+=(apl cnl icl tgl-h tgl)
 # NXP
 SUPPORTED_PLATFORMS+=(imx8 imx8x imx8m)
 
+# -a
+DEFAULT_PLATFORMS=("${SUPPORTED_PLATFORMS[@]}")
+
 BUILD_JOBS=$(nproc --all)
 PLATFORMS=()
 
@@ -281,7 +284,7 @@ parse_args()
 	# Parse -options
 	while getopts "acz:j:k:p:" OPTION; do
 		case "$OPTION" in
-			a) PLATFORMS=("${SUPPORTED_PLATFORMS[@]}") ;;
+			a) PLATFORMS=("${DEFAULT_PLATFORMS[@]}") ;;
 			c) DO_CLONE=yes ;;
 			z) zephyr_ref="$OPTARG" ;;
 			j) BUILD_JOBS="$OPTARG" ;;
