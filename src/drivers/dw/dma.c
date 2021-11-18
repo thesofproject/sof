@@ -55,7 +55,9 @@ struct dw_dma_ptr_data {
 	uint32_t current_ptr;
 	uint32_t start_ptr;
 	uint32_t end_ptr;
+	uint32_t hw_ptr;
 	uint32_t buffer_bytes;
+	bool limit;	/* playback full or capture empty */
 };
 
 /* data for each DW DMA channel */
@@ -133,6 +135,12 @@ static void dw_dma_increment_pointer(struct dw_dma_chan_data *chan, int bytes)
 	if (chan->ptr_data.current_ptr >= chan->ptr_data.end_ptr)
 		chan->ptr_data.current_ptr = chan->ptr_data.start_ptr +
 			(chan->ptr_data.current_ptr - chan->ptr_data.end_ptr);
+	if (chan->ptr_data.current_ptr == chan->ptr_data.hw_ptr)
+		/*
+		 * Software caught up with the DMA, we're once again out of the
+		 * xrun-danger zone
+		 */
+		chan->ptr_data.limit = false;
 }
 
 #if !CONFIG_DMA_HW_LLI
@@ -1058,12 +1066,18 @@ static int dw_dma_avail_data_size(struct dma_chan_data *channel)
 	int32_t write_ptr = dma_reg_read(channel->dma, DW_DAR(channel->index));
 	int size;
 
-	size = write_ptr - read_ptr;
-	if (size < 0)
-		size += dw_chan->ptr_data.buffer_bytes;
+	dw_chan->ptr_data.hw_ptr = write_ptr;
 
-	if (!size)
-		tr_info(&dwdma_tr, "dw_dma_avail_data_size() size is 0!");
+	size = write_ptr - read_ptr;
+	if (size < 0) {
+		size += dw_chan->ptr_data.buffer_bytes;
+	} else if (!size) {
+		/* Buffer is either full or empty, check ptr_data.limit */
+		if (dw_chan->ptr_data.limit)
+			tr_info(&dwdma_tr, "dw_dma_avail_data_size() size is 0!");
+		else
+			size = dw_chan->ptr_data.buffer_bytes;
+	}
 
 	tr_dbg(&dwdma_tr, "DAR %x reader 0x%x free 0x%x avail 0x%x", write_ptr,
 	       read_ptr, dw_chan->ptr_data.buffer_bytes - size, size);
@@ -1079,12 +1093,18 @@ static int dw_dma_free_data_size(struct dma_chan_data *channel)
 	int32_t write_ptr = dw_chan->ptr_data.current_ptr;
 	int size;
 
-	size = read_ptr - write_ptr;
-	if (size < 0)
-		size += dw_chan->ptr_data.buffer_bytes;
+	dw_chan->ptr_data.hw_ptr = read_ptr;
 
-	if (!size)
-		tr_info(&dwdma_tr, "dw_dma_free_data_size() size is 0!");
+	size = read_ptr - write_ptr;
+	if (size < 0) {
+		size += dw_chan->ptr_data.buffer_bytes;
+	} else if (!size) {
+		/* Buffer is either full or empty, check ptr_data.limit */
+		if (dw_chan->ptr_data.limit)
+			tr_info(&dwdma_tr, "dw_dma_free_data_size() size is 0!");
+		else
+			size = dw_chan->ptr_data.buffer_bytes;
+	}
 
 	tr_dbg(&dwdma_tr, "SAR %x writer 0x%x free 0x%x avail 0x%x", read_ptr,
 	       write_ptr, size, dw_chan->ptr_data.buffer_bytes - size);
@@ -1112,6 +1132,15 @@ static int dw_dma_get_data_size(struct dma_chan_data *channel,
 		*free = dw_dma_free_data_size(channel);
 		*avail = dw_chan->ptr_data.buffer_bytes - *free;
 	}
+
+	if (dw_chan->ptr_data.current_ptr != dw_chan->ptr_data.hw_ptr)
+		/*
+		 * DMA position progressed, this means there's either no more
+		 * room for DMA in case of capture, or no more data for DMA in
+		 * case of playback. This is a pre-xrun situation.
+		 */
+		dw_chan->ptr_data.limit = true;
+
 	spin_unlock_irq(&channel->dma->lock, flags);
 
 #if CONFIG_DMA_HW_LLI
