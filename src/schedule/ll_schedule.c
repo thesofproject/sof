@@ -38,6 +38,31 @@ DECLARE_SOF_UUID("ll-schedule", ll_sched_uuid, 0x4f9c3ec7, 0x7b55, 0x400c,
 
 DECLARE_TR_CTX(ll_tr, SOF_UUID(ll_sched_uuid), LOG_LEVEL_INFO);
 
+/*
+ *        LL Scheduler Task State Transition Diagram
+ *
+ *         schedule_task() +---------+
+ *      +------------------|  INIT   |
+ *      |                  +---------+
+ *      |
+ *      v
+ * +--------+ is_pending() +---------+ is_pending() +----------+
+ * | QUEUED |------------->| PENDING |<-------------|RESCHEDULE|
+ * +--------+              +---------+              +----------+
+ *                              |                         ^
+ *                     execute()|                         |
+ *                              v                         |
+ *                         +---------+     task_run()     |
+ *                         | RUNNING |--------------------+
+ *                         +---------+     reschedule
+ *                              |
+ *                    task_run()|
+ *                    completed v
+ *                         +---------+
+ *                         |COMPLETED|
+ *                         +---------+
+ */
+
 /* one instance of data allocated per core */
 struct ll_schedule_data {
 	struct list_item tasks;			/* list of ll tasks */
