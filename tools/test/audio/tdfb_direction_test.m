@@ -1,4 +1,4 @@
-function tdfb_test()
+function tdfb_direction_test()
 
 % tdfb_test()
 % Inputs
@@ -29,34 +29,42 @@ addpath('../../tune/tdfb');
 
 for i = 1:length(array_data_list)
 
-	%% Beam pattern test
         % Get configuration, this needs to match array geometry and rate
         % beam direction can be any, use (0, 0) deg.
 	array = array_data_list{i};
 	tdfb = tdfb_name_list{i};
+
+	% Rub beapattern test with rotated noise
 	config_fn = sprintf('tdfb_coef_%s.mat', array);
-	simcap_fn = sprintf('simcap_sinerot_%s.raw', array);
+	simcap_fn = sprintf('simcap_noiserot_%s.raw', array);
 	test_beampattern(cfg, config_fn, simcap_fn, tdfb);
 
-	%% Diffuse noise test
-	simcap_fn = sprintf('simcap_diffuse_%s.raw', array);
-	desc = 'Diffuse field noise';
-	[dfin_dbfs, dfout_dbfs, dfd_db] = test_noise_suppression(cfg, config_fn, simcap_fn, desc, tdfb);
+	% Plot estimated direction
+	trace_fn = 'tdfb_direction.txt';
+	label = 'tdfb_dint';
+	comp = 'tdfb';
+	inst = '';
+	dataidx = [1 2 3 4];
+	[data, ts, dt] = trace_parse_tb(trace_fn, comp, inst, label, dataidx);
+	ref = 32768^2;
+	offs = 20*log10(sqrt(2));
+	trig = 10 * bitand(data(:,1), 1);
+	flev = 10*log10(data(:,2)/ref) + offs;
+	slev = 10*log10(data(:,3)/ref) + offs;
+	az_slow = data(:,4) / 2^12 * 180/pi;
 
-	%% Random noise
-	simcap_fn = sprintf('simcap_random_%s.raw', array);
-	desc = 'Random noise';
-	[rnin_dbfs, rnout_dbfs, drn_db] = test_noise_suppression(cfg, config_fn, simcap_fn, desc, tdfb);
-
-	%% Results
-	fprintf(1, '\n');
-	print_result('Diffuse field input level ', 'dBFS', dfin_dbfs);
-	print_result('Diffuse field output level', 'dBFS', dfout_dbfs);
-	print_result('Diffuse field level delta ', 'dB', dfd_db);
-	print_result('Random noise input level  ', 'dBFS', rnin_dbfs);
-	print_result('Random noise output level ', 'dBFS', rnout_dbfs);
-	print_result('Random noise level delta  ', 'dB', drn_db);
-
+	figure
+	plot(flev)
+	hold on
+	plot(slev)
+	plot(trig)
+	plot(az_slow)
+	hold off
+	grid on
+	xlabel('Time (ms)');
+	ylabel('Levels, trigger, angle');
+	legend('fast level', 'slow level', 'trigger', 'slow az' );
+	title(sprintf('Direction angle %s', array));
 end
 
 end
@@ -72,7 +80,7 @@ test.nch_in = max(bf.input_channel_select) + 1;
 test.nch_out = bf.num_output_channels;
 test.ch_in = 1:test.nch_in;
 test.ch_out = 1:test.nch_out;
-test.extra_opts='-q'; % Quiet mode, comment out to debug with testbench traces
+test.trace = 'tdfb_direction.txt';
 if length(arrayid)
 	test.comp = sprintf('tdfb_%s', arrayid);
 end
@@ -118,7 +126,7 @@ end
 % Create input file
 test = test_defaults(bf, tdfb);
 test.fn_in = fullfile(cfg.tunepath, simcap_fn);
-test.fn_out = 'sinerot.raw';
+test.fn_out = 'noiserot.raw';
 
 % Run test
 test = test_run_comp(test);
@@ -163,61 +171,6 @@ end
 
 end
 
-%% Noise suppression test
-
-function [x_dbfs, y_dbfs, delta_db] = test_noise_suppression(cfg, config_fn, simcap_fn, desc, arrayid)
-
-load(fullfile(cfg.tunepath, config_fn));
-
-% Create input file
-test = test_defaults(bf, arrayid);
-fn_in = fullfile(cfg.tunepath, simcap_fn);
-fn_out = 'noise_out.raw';
-
-% Run test
-test.fn_in = fn_in;
-test.fn_out = fn_out;
-test = test_run_comp(test);
-
-% Load simulation input data
-test.nch = test.nch_in;
-test.ch = test.ch_in;
-x = load_test_input(test);
-sx = size(x);
-test.nch = test.nch_out;
-test.ch = test.ch_out;
-y = load_test_output(test);
-sy = size(y);
-delete_check(cfg.delete_files, test.fn_out);
-x_dbfs = level_dbfs(x);
-y_dbfs = level_dbfs(y);
-delta_db = mean(x_dbfs) - y_dbfs;
-
-if cfg.do_plots
-	tstr = sprintf('%s %s', desc, bf.array_id);
-	figure;
-	plot(x(:,1));
-	hold on
-	plot(y(:,1));
-	hold off
-	grid on;
-	legend('ch1 in','ch1 out');
-	title(tstr);
-end
-
-end
-
-%% Print results table line
-
-function print_result(desc, unit, values)
-
-fprintf(1, "%s,", desc);
-for v = values
-	fprintf(1, '%6.1f, ', v);
-end
-fprintf(1, "%s\n", unit);
-
-end
 
 function ch_legend_help(nch)
 
@@ -231,5 +184,51 @@ switch nch
 	case 4
 		legend('ch1 out', 'ch2 out', 'ch3 out', 'ch4 out');
 end
+
+end
+
+function [data, ts, dt] = trace_parse_tb(trace_fn, comp, inst, label, dataidx)
+	nmax = 1000000; % Max. more than 15 min every 1 ms
+	fh = fopen(trace_fn, 'r');
+	dlines = 0;
+	nlines = 0;
+	ndata = length(dataidx);
+	ncols = ndata;
+	dtmp = zeros(nmax, ncols);
+	ltmp = zeros(1, ncols);
+	str = fgets(fh);
+	while (str ~= -1)
+		nlines = nlines + 1;
+		idx = strfind(str, label);
+		if isempty(idx)
+			str = fgets(fh);
+			continue;
+		end
+
+		dstr = [ ' ' str(idx + length(label) + 1:end) ' ' ];
+		idx = strfind(dstr, ' ');
+		for i = 1:ndata
+			j = dataidx(i);
+			i1 = idx(j) + 1;
+			i2 = idx(j+1) - 1;
+			nstr = dstr(i1:i2);
+			ltmp(i) = str2num(nstr);
+		end
+		dlines = dlines + 1;
+		dtmp(dlines,:) = ltmp;
+		str = fgets(fh);
+	end
+
+	if dlines == 0
+		fprintf(1, 'Read %d lines, no label "%s" found\n', nlines, label);
+		error('Failed.');
+	end
+
+	dtmp = dtmp(1:dlines,:);
+	fprintf(1, 'Found %d lines with label "%s"\n', dlines, label);
+	data = dtmp(1:dlines, 1:ncols);
+
+	ts = [];
+	dt = [];
 
 end
