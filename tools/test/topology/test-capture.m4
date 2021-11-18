@@ -20,11 +20,8 @@ include(`platform/intel/bxt.m4')
 
 DEBUG_START
 
-# Apply a non-trivial filter blob IIR and FIR tests. TODO: Note that the
-# PIPELINE_FILTERx notation will be updated in future for better flexibility.
-ifelse(TEST_PIPE_NAME, `eq-iir', `define(PIPELINE_FILTER1, `eq_iir_coef_loudness.m4')')
-ifelse(TEST_PIPE_NAME, `eq-fir', `define(PIPELINE_FILTER2, `eq_fir_coef_loudness.m4')')
-ifelse(TEST_PIPE_NAME, `tdfb',  `define(PIPELINE_FILTER1, `tdfb/coef_line2_50mm_pm90deg_48khz.m4')')
+# Define the algorithm configurations blobs to apply such as filter coefficients
+include(`test_pipeline_filters.m4')
 
 #
 # Machine Specific Config - !! MUST BE SET TO MATCH TEST MACHINE DRIVER !!
