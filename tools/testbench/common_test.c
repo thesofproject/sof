@@ -158,31 +158,28 @@ int tb_pipeline_params(struct ipc *ipc, struct pipeline *p,
 	params.params.frame_fmt = tp->frame_fmt;
 	params.params.direction = SOF_IPC_STREAM_PLAYBACK;
 	params.params.rate = tp->fs_in;
-	params.params.channels = tp->channels;
+	params.params.channels = tp->channels_in;
 
 	switch (params.params.frame_fmt) {
 	case SOF_IPC_FRAME_S16_LE:
 		params.params.sample_container_bytes = 2;
 		params.params.sample_valid_bytes = 2;
-		params.params.host_period_bytes = fs_period * tp->channels *
-			params.params.sample_container_bytes;
 		break;
 	case SOF_IPC_FRAME_S24_4LE:
 		params.params.sample_container_bytes = 4;
 		params.params.sample_valid_bytes = 3;
-		params.params.host_period_bytes = fs_period * tp->channels *
-			params.params.sample_container_bytes;
 		break;
 	case SOF_IPC_FRAME_S32_LE:
 		params.params.sample_container_bytes = 4;
 		params.params.sample_valid_bytes = 4;
-		params.params.host_period_bytes = fs_period * tp->channels *
-			params.params.sample_container_bytes;
 		break;
 	default:
 		fprintf(stderr, "error: invalid frame format\n");
 		return -EINVAL;
 	}
+
+	params.params.host_period_bytes = fs_period * params.params.channels *
+		params.params.sample_container_bytes;
 
 	/* get scheduling component device for pipeline*/
 	pcm_dev = ipc_get_comp_by_id(ipc, p->sched_id);
