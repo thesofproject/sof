@@ -1,4 +1,4 @@
-% bf = bf_filenames_helper(bf)
+% bf = bf_filenames_helper(bf, id)
 %
 % Automatically defines output files names based on array geometry
 % and steer angle.
@@ -9,7 +9,7 @@
 %
 % Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 
-function bf = bf_filenames_helper(bf)
+function bf = bf_filenames_helper(bf, id)
 
 switch lower(bf.array)
 	case {'rectangle' 'lshape'}
@@ -33,9 +33,15 @@ end
 
 [az_str_pm] = angles_to_str(bf.steer_az);
 [el_str_pm] = angles_to_str(bf.steer_el);
-idstr = sprintf('%s%s_%smm_az%sel%sdeg_%dkhz', ...
-		bf.array, mic_n_str, mic_d_str, ...
-		az_str_pm, el_str_pm, round(bf.fs/1e3));
+
+if nargin > 1
+    idstr = sprintf('%s_az%sel%sdeg_%dkhz', ...
+                id, az_str_pm, el_str_pm, round(bf.fs/1e3));
+else
+    idstr = sprintf('%s%s_%smm_az%sel%sdeg_%dkhz', ...
+                bf.array, mic_n_str, mic_d_str, ...
+                az_str_pm, el_str_pm, round(bf.fs/1e3));
+end
 
 % Contain multiple (az, el) angles
 bf.sofctl_fn = fullfile(bf.sofctl_path, sprintf('coef_%s.txt', idstr));
@@ -47,16 +53,23 @@ for n = 1:length(bf.steer_az)
 	az = bf.steer_az(n);
 	el = bf.steer_el(n);
 
-	bf.array_id{n} = sprintf('%s %s mic %s mm (%d, %d) deg', ...
-			      bf.array, mic_n_str, mic_d_str, ...
-			      az, el);
-
-	idstr = sprintf('%s%s_%smm_az%sel%sdeg_%dkhz', ...
-			bf.array, mic_n_str, mic_d_str, ...
-			numpm(az), numpm(el), round(bf.fs/1e3));
+    if nargin > 1
+        bf.array_id{n} = sprintf('%s (%d, %d) deg', ...
+                      id, az, el);
+        idstr = sprintf('%s_az%sel%sdeg_%dkhz', ...
+                id, numpm(az), numpm(el), round(bf.fs/1e3));
+    else
+        bf.array_id{n} = sprintf('%s %s mic %s mm (%d, %d) deg', ...
+                      bf.array, mic_n_str, mic_d_str, ...
+                      az, el);
+        idstr = sprintf('%s%s_%smm_az%sel%sdeg_%dkhz', ...
+                bf.array, mic_n_str, mic_d_str, ...
+                numpm(az), numpm(el), round(bf.fs/1e3));
+    end
 
 	% Single (az, el) value per file
 	bf.mat_fn{n} = fullfile(bf.data_path, sprintf('tdfb_coef_%s.mat', idstr));
+	bf.noiserot_fn{n} = fullfile(bf.data_path, sprintf('simcap_noiserot_%s.raw', idstr));
 	bf.sinerot_fn{n} = fullfile(bf.data_path, sprintf('simcap_sinerot_%s.raw', idstr));
 	bf.diffuse_fn{n} = fullfile(bf.data_path, sprintf('simcap_diffuse_%s.raw', idstr));
 	bf.random_fn{n} = fullfile(bf.data_path, sprintf('simcap_random_%s.raw', idstr));

@@ -59,6 +59,7 @@ bf.num_angles = length(bf.steer_az);
 all_az = bf.steer_az;
 all_el = bf.steer_el;
 all_array_id = bf.array_id;
+all_noiserot_fn = bf.noiserot_fn;
 all_sinerot_fn = bf.sinerot_fn;
 all_diffuse_fn = bf.diffuse_fn;
 all_random_fn = bf.random_fn;
@@ -68,6 +69,7 @@ for n = 1:bf.num_angles
 	bf.steer_az = all_az(n);
 	bf.steer_el = all_el(n);
 	bf.array_id = all_array_id{n};
+	bf.noiserot_fn = all_noiserot_fn{n};
 	bf.sinerot_fn = all_sinerot_fn{n};
 	bf.diffuse_fn = all_diffuse_fn{n};
 	bf.random_fn = all_random_fn{n};
@@ -79,6 +81,7 @@ end
 bf.steer_az = all_az;
 bf.steer_el = all_el;
 bf.array_id = all_array_id;
+bf.noiserot_fn = all_noiserot_fn;
 bf.sinerot_fn = all_sinerot_fn;
 bf.diffuse_fn = all_diffuse_fn;
 bf.random_fn = all_random_fn;
@@ -376,42 +379,15 @@ end
 if isempty(bf.sinerot_fn)
 	fprintf(1, 'No file for 360 degree sine source rotate specified\n');
 else
-	fprintf(1, 'Creating 360 degree sine source rotate...\n');
-	fsi = 384e3; % Target interpolated rate
-	p = round(fsi / bf.fs); % Interpolation factor
-	fsi = p * bf.fs; % Recalculate high rate
-	ti = 1/fsi;  % perid at higher rate
-	t_add = 10.0/bf.c; % Additional signal time for max 10m propagation
-	tt0 = bf.sinerot_t + t_add; % Total sine length per angle
-	nt = bf.fs * bf.sinerot_t; % Number samples output per angle
-	nti = p * nt; % Number samples output per angle at high rate
-	t_ramp = 20e-3; % 20 ms ramps to start and end of each angle tone
-	n_ramp = t_ramp * bf.fs;
-	win = ones(nt, 1);
-	win(1:n_ramp) = linspace(0, 1, n_ramp);
-	win(end-n_ramp+1:end) = linspace(1, 0, n_ramp);
-	si = multitone(fsi, bf.sinerot_f, bf.sinerot_a, tt0);
-	test_az = (bf.sinerot_az_start:bf.sinerot_az_step:bf.sinerot_az_stop) * pi/180;
-	test_n = length(test_az);
-	test_el = zeros(1, test_n);
-	[test_x, test_y, test_z] = source_xyz(bf.steer_r, test_az, test_el);
-	td = zeros(test_n * nt, bf.mic_n);
-	for i = 1:length(test_az)
-		dt = delay_from_source(bf, test_x(i), test_y(i), test_z(i));
-		dn = round(dt / ti);
-		mi = zeros(nti, bf.num_filters);
-		for j = 1:bf.mic_n
-			mi(:,j) = mi(:,j) + si(end-dn(j)-nti+1:end-dn(j));
-		end
-		i1 = (i - 1) * nt + 1;
-		i2 = i1 + nt -1;
-		for j = 1:bf.mic_n
-			m = mi(1:p:end, j) .* win;
-			td(i1:i2, j) = m;
-		end
-	end
-	myaudiowrite(bf.sinerot_fn, td, bf.fs);
+	rotate_sound_source(bf, bf.sinerot_fn, 'sine');
 end
+
+if isempty(bf.noiserot_fn)
+	fprintf(1, 'No file for 360 degree random noise source rotate specified\n');
+else
+	rotate_sound_source(bf, bf.noiserot_fn, 'noise');
+end
+
 
 if isempty(bf.diffuse_fn)
 	fprintf(1, 'No file for diffuse noise field specified\n');
@@ -473,6 +449,62 @@ fprintf(1, 'Done.\n');
 end
 
 %% Helper functions
+
+function rotate_sound_source(bf, fn, type);
+	fprintf(1, 'Creating 360 degree %s source rotate...\n', type);
+	fsi = 384e3; % Target interpolated rate
+	t_add = 10.0/bf.c; % Additional signal time for max 10m propagation
+	t_ramp = 5e-3; % 5 ms ramp to start and end of each angle tone
+	t_idle = 25e-3; % 25 ms idle to start and end of each angle tone
+	p = round(fsi / bf.fs); % Interpolation factor
+	fsi = p * bf.fs; % Recalculate high rate
+	ti = 1/fsi;  % perid at higher rate
+	tt0 = bf.sinerot_t + t_add; % Total sine length per angle
+	nt = bf.fs * bf.sinerot_t; % Number samples output per angle
+	nt0 = floor(bf.fs * tt0); % Number samples output per angle
+	nti = p * nt; % Number samples output per angle at high rate
+	n_ramp = round(t_ramp * fsi);
+	n_idle = round(t_idle * fsi);
+	n_win = round(tt0 * fsi);
+	win = ones(n_win, 1); % Make a kind of hat shape window
+	win(n_idle:(n_idle + n_ramp - 1)) = linspace(0, 1, n_ramp);
+	win((end - n_idle - n_ramp + 1):(end - n_idle)) = linspace(1, 0, n_ramp);
+	win(1:n_idle) = zeros(1, n_idle);
+	win(end - n_idle + 1: end) = zeros(1, n_idle);
+	switch lower(type)
+		case 'sine'
+			si = multitone(fsi, bf.sinerot_f, bf.sinerot_a, tt0);
+			si = si .* win;
+		case 'noise'
+			[b, a] = butter(4, 2*[100 7000]/bf.fs);
+			ns0 = bf.sinerot_a * (2 * rand(round(tt0*bf.fs) + 1, 1) - 1);
+			nsf = filter(b, a, ns0);
+			si = interp(nsf, p);
+			si = si(1:n_win) .* win;
+		otherwise
+			error('no test signal type defined');
+	end
+	test_az = (bf.sinerot_az_start:bf.sinerot_az_step:bf.sinerot_az_stop) * pi/180;
+	test_n = length(test_az);
+	test_el = zeros(1, test_n);
+	[test_x, test_y, test_z] = source_xyz(bf.steer_r, test_az, test_el);
+	td = zeros(test_n * nt, bf.mic_n);
+	for i = 1:length(test_az)
+		dt = delay_from_source(bf, test_x(i), test_y(i), test_z(i));
+		dn = round(dt / ti);
+		mi = zeros(nti, bf.num_filters);
+		for j = 1:bf.mic_n
+			mi(:,j) = mi(:,j) + si(end-dn(j)-nti+1:end-dn(j));
+		end
+		i1 = (i - 1) * nt + 1;
+		i2 = i1 + nt -1;
+		for j = 1:bf.mic_n
+			m = mi(1:p:end, j);
+			td(i1:i2, j) = m;
+		end
+	end
+	myaudiowrite(fn, td, bf.fs);
+end
 
 function [x, y, z] = source_xyz(r, az, el)
 
