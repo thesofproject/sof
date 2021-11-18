@@ -35,7 +35,7 @@ undefine(`CONTROL_NAME')
 
 # TDFB enum list
 CONTROLENUM_LIST(DEF_TDFB_AZIMUTH_VALUES,
-	LIST(`	', `"-90"', `"-75"', `"-60"', `"-45"', `"-30"', `"-15"', `"0"', `"15"', `"30"', `"45"', `"60"', `"75"', `"90"'))
+	LIST(`	', `"0"', `"30"', `"60"', `"90"', `"120"', `"150"', `"180"', `"210"', `"240"', `"270"', `"300"', `"330"'))
 
 # TDFB enum control
 C_CONTROLENUM(DEF_TDFB_AZIMUTH, PIPELINE_ID,
