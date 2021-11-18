@@ -45,8 +45,15 @@ static enum task_state pipeline_task_cmd(struct pipeline *p,
 
 	if (!p->trigger.host) {
 		p->trigger.cmd = COMP_TRIGGER_NO_ACTION;
-		return p->status == COMP_STATE_PAUSED ? SOF_TASK_STATE_COMPLETED :
-			SOF_TASK_STATE_RESCHEDULE;
+
+		switch (cmd) {
+		case COMP_TRIGGER_STOP:
+		case COMP_TRIGGER_PAUSE:
+			return p->trigger.aborted ? SOF_TASK_STATE_RUNNING :
+				SOF_TASK_STATE_COMPLETED;
+		}
+
+		return SOF_TASK_STATE_RESCHEDULE;
 	}
 
 	err = pipeline_trigger_run(p, p->trigger.host, cmd);
@@ -77,8 +84,18 @@ static enum task_state pipeline_task_cmd(struct pipeline *p,
 			if (p->trigger.delay)
 				return SOF_TASK_STATE_RESCHEDULE;
 			/* No delay: the final stage has already run too */
-		} else if (p->status == COMP_STATE_PAUSED && !p->trigger.aborted) {
-			err = SOF_TASK_STATE_COMPLETED;
+			err = SOF_TASK_STATE_RESCHEDULE;
+		} else if (p->status == COMP_STATE_PAUSED) {
+			if (p->trigger.aborted) {
+				p->status = COMP_STATE_ACTIVE;
+				/*
+				 * the pipeline aborted a STOP or a PAUSE
+				 * command, proceed with copying
+				 */
+				err = SOF_TASK_STATE_RUNNING;
+			} else {
+				err = SOF_TASK_STATE_COMPLETED;
+			}
 		} else {
 			p->status = COMP_STATE_ACTIVE;
 			err = SOF_TASK_STATE_RESCHEDULE;
@@ -136,9 +153,12 @@ static enum task_state pipeline_task(void *arg)
 		return SOF_TASK_STATE_RESCHEDULE;
 	}
 
-	if (p->trigger.cmd != COMP_TRIGGER_NO_ACTION)
+	if (p->trigger.cmd != COMP_TRIGGER_NO_ACTION) {
 		/* Process an offloaded command */
-		return pipeline_task_cmd(p, &reply);
+		err = pipeline_task_cmd(p, &reply);
+		if (err != SOF_TASK_STATE_RUNNING)
+			return err;
+	}
 
 	if (p->status == COMP_STATE_PAUSED)
 		/*
