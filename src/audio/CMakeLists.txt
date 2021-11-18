@@ -183,7 +183,7 @@ set(eq-fir_sources eq_fir/eq_fir.c eq_fir/eq_fir_generic.c)
 set(eq-iir_sources eq_iir/eq_iir.c)
 set(dcblock_sources dcblock/dcblock.c dcblock/dcblock_generic.c)
 set(crossover_sources crossover/crossover.c crossover/crossover_generic.c)
-set(tdfb_sources tdfb/tdfb.c tdfb/tdfb_generic.c)
+set(tdfb_sources tdfb/tdfb.c tdfb/tdfb_generic.c tdfb/tdfb_direction.c)
 set(drc_sources drc/drc.c drc/drc_generic.c drc/drc_math_generic.c)
 set(multiband_drc_sources multiband_drc/multiband_drc.c multiband_drc/multiband_drc_generic.c crossover/crossover.c crossover/crossover_generic.c drc/drc.c drc/drc_generic.c drc/drc_math_generic.c)
 

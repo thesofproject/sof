@@ -35,6 +35,7 @@ void tdfb_fir_s16(struct tdfb_comp_data *cd,
 	int out_nch = sink->channels;
 	int idx_in = 0;
 	int idx_out = 0;
+	int emp_ch = 0;
 
 	for (j = 0; j < (frames >> 1); j++) {
 		/* Clear output mix*/
@@ -44,6 +45,7 @@ void tdfb_fir_s16(struct tdfb_comp_data *cd,
 		for (i = 0; i < 2 * in_nch; i++) {
 			x = audio_stream_read_frag_s16(source, idx_in++);
 			cd->in[i] = *x << 16;
+			tdfb_direction_copy_emphasis(cd, in_nch, &emp_ch, *x << 16);
 		}
 
 		/* Run and mix all filters to their output channel */
@@ -98,6 +100,7 @@ void tdfb_fir_s24(struct tdfb_comp_data *cd,
 	int out_nch = sink->channels;
 	int idx_in = 0;
 	int idx_out = 0;
+	int emp_ch = 0;
 
 	for (j = 0; j < (frames >> 1); j++) {
 		/* Clear output mix*/
@@ -107,6 +110,7 @@ void tdfb_fir_s24(struct tdfb_comp_data *cd,
 		for (i = 0; i < 2 * in_nch; i++) {
 			x = audio_stream_read_frag_s32(source, idx_in++);
 			cd->in[i] = *x << 8;
+			tdfb_direction_copy_emphasis(cd, in_nch, &emp_ch, *x << 8);
 		}
 
 		/* Run and mix all filters to their output channel */
@@ -161,6 +165,7 @@ void tdfb_fir_s32(struct tdfb_comp_data *cd,
 	int out_nch = sink->channels;
 	int idx_in = 0;
 	int idx_out = 0;
+	int emp_ch = 0;
 
 	for (j = 0; j < (frames >> 1); j++) {
 		/* Clear output mix*/
@@ -170,6 +175,7 @@ void tdfb_fir_s32(struct tdfb_comp_data *cd,
 		for (i = 0; i < 2 * in_nch; i++) {
 			x = audio_stream_read_frag_s32(source, idx_in++);
 			cd->in[i] = *x;
+			tdfb_direction_copy_emphasis(cd, in_nch, &emp_ch, *x);
 		}
 
 		/* Run and mix all filters to their output channel */

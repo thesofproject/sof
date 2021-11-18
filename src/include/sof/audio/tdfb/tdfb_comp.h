@@ -13,6 +13,7 @@
 #include <sof/math/fir_generic.h>
 #include <sof/math/fir_hifi2ep.h>
 #include <sof/math/fir_hifi3.h>
+#include <sof/math/iir_df2t.h>
 #include <user/tdfb.h>
 
 /* Select optimized code variant when xt-xcc compiler is used */
@@ -50,7 +51,34 @@
 #define TDFB_GET_CTRL_DATA_SIZE (sizeof(struct sof_ipc_ctrl_data) + \
 	sizeof(struct sof_ipc_ctrl_value_chan))
 
+/* Process max 10% more frames than one period */
+#define TDFB_MAX_FRAMES_MULT_Q14 Q_CONVERT_FLOAT(1.10, 14)
+
 /* TDFB component private data */
+
+struct tdfb_direction_data {
+	struct iir_state_df2t emphasis[PLATFORM_MAX_CHANNELS];
+	int32_t timediff[PLATFORM_MAX_CHANNELS];
+	int32_t timediff_iter[PLATFORM_MAX_CHANNELS];
+	int64_t level_ambient;
+	uint32_t trigger;
+	int32_t level;
+	int32_t unit_delay; /* Q1.31 seconds */
+	int32_t frame_count_since_control;
+	int64_t *df2t_delay;
+	int32_t *r;
+	int16_t *d;
+	int16_t *d_end;
+	int16_t *wp;
+	int16_t *rp;
+	int16_t step_sign;
+	int16_t az_slow;
+	int16_t az;
+	int16_t max_lag;
+	size_t d_size;
+	size_t r_size;
+	int line_array:1; /* Limit scan to -90 to 90 degrees */
+};
 
 struct tdfb_comp_data {
 	struct fir_state_32x16 fir[SOF_TDFB_FIR_MAX_COUNT]; /**< FIR state */
@@ -60,6 +88,7 @@ struct tdfb_comp_data {
 	struct sof_tdfb_mic_location *mic_locations;
 	struct sof_ipc_ctrl_data *ctrl_data;
 	struct ipc_msg *msg;
+	struct tdfb_direction_data direction;
 	int32_t in[TDFB_IN_BUF_LENGTH];	    /**< input samples buffer */
 	int32_t out[TDFB_IN_BUF_LENGTH];    /**< output samples mix buffer */
 	int32_t *fir_delay;		    /**< pointer to allocated RAM */
@@ -69,10 +98,11 @@ struct tdfb_comp_data {
 	int16_t az_value;		    /**< beam steer azimuth as in control enum */
 	int16_t az_value_estimate;	    /**< beam steer azimuth as in control enum */
 	size_t fir_delay_size;              /**< allocated size */
-	int direction_updates:1;	    /**< set true if direction angle control is updated */
-	int direction_change:1;		    /**< set if direction value has significant change */
-	int beam_on:1;			    /**< set true if beam is off */
-	int update:1;			    /**< set true if control enum has been received */
+	unsigned int max_frames;	    /**< max frames to process */
+	bool direction_updates:1;	    /**< set true if direction angle control is updated */
+	bool direction_change:1;	    /**< set if direction value has significant change */
+	bool beam_on:1;			    /**< set true if beam is off */
+	bool update:1;			    /**< set true if control enum has been received */
 	void (*tdfb_func)(struct tdfb_comp_data *cd,
 			  const struct audio_stream *source,
 			  struct audio_stream *sink,
@@ -97,4 +127,21 @@ void tdfb_fir_s32(struct tdfb_comp_data *cd,
 		  struct audio_stream *sink, int frames);
 #endif
 
-#endif /* __SOF_AUDIO_EQ_FIR_FIR_CONFIG_H__ */
+int tdfb_direction_init(struct tdfb_comp_data *cd, int32_t fs, int channels);
+void tdfb_direction_copy_emphasis(struct tdfb_comp_data *cd, int channels, int *channel, int32_t x);
+void tdfb_direction_estimate(struct tdfb_comp_data *cd, int frames, int channels);
+void tdfb_direction_free(struct tdfb_comp_data *cd);
+
+static inline void tdfb_cinc_s16(int16_t **ptr, int16_t *end, size_t size)
+{
+	if (*ptr >= end)
+		*ptr = (int16_t *)((uint8_t *)*ptr - size);
+}
+
+static inline void tdfb_cdec_s16(int16_t **ptr, int16_t *start, size_t size)
+{
+	if (*ptr < start)
+		*ptr = (int16_t *)((uint8_t *)*ptr + size);
+}
+
+#endif /* __SOF_AUDIO_TDFB_CONFIG_H__ */

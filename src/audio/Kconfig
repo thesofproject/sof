@@ -387,6 +387,9 @@ endif # COMP_ASRC
 config COMP_TDFB
 	bool "TDFB component"
 	select MATH_FIR
+	select MATH_IIR_DF2T
+	select SQRT_FIXED
+	select CORDIC_FIXED
 	default y
 	help
 	  Select for time domain fixed beamformer (TDFB) component. The
