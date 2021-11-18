@@ -209,10 +209,21 @@ build_all()
 			 # west can get lost in symbolic links and then
 			 # show a confusing error.
 			/bin/pwd
-			set -x
-			west build --build-dir "$bdir" --board "$PLAT_CONFIG" \
+			if test -d "$bdir"; then
+			    test -z "${CMAKE_ARGS+defined}" ||
+				die 'Cannot re-define CMAKE_ARGS, you must delete %s first\n' \
+				    "$(pwd)/$bdir"
+			    # --board is cached and not required again either but unlike
+			    # CMAKE_ARGS this _not_ does force CMake to re-run and passing
+			    # a different board by mistake is very nicely caught by west.
+			    set -x
+			    west build --build-dir "$bdir" --board "$PLAT_CONFIG"
+			else
+			    set -x
+			    west build --build-dir "$bdir" --board "$PLAT_CONFIG" \
 				zephyr/samples/subsys/audio/sof \
 				-- "${CMAKE_ARGS[@]}"
+			fi
 
 			# This should ideally be part of
 			# sof/zephyr/CMakeLists.txt but due to the way
