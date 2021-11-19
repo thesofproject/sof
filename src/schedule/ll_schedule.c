@@ -294,7 +294,7 @@ static void schedule_ll_tasks_run(void *data)
 
 static int schedule_ll_domain_set(struct ll_schedule_data *sch,
 				  struct task *task, uint64_t start,
-				  uint64_t period)
+				  uint64_t period, struct task *reference)
 {
 	struct ll_schedule_domain *domain = sch->domain;
 	int core = cpu_get_id();
@@ -321,7 +321,9 @@ static int schedule_ll_domain_set(struct ll_schedule_data *sch,
 	task_start_ticks = domain->ticks_per_ms * task_start_us / 1000;
 	task_start = task_start_ticks + platform_timer_get_atomic(timer_get());
 
-	if (domain->next_tick == UINT64_MAX) {
+	if (reference) {
+		task->start = reference->start;
+	} else if (domain->next_tick == UINT64_MAX) {
 		/* first task, set domain */
 		domain_set(domain, task_start);
 		task->start = domain->next_tick;
@@ -508,7 +510,7 @@ static int schedule_ll_task_common(struct ll_schedule_data *sch, struct task *ta
 	task->state = SOF_TASK_STATE_QUEUED;
 
 	/* set schedule domain */
-	ret = schedule_ll_domain_set(sch, task, start, period);
+	ret = schedule_ll_domain_set(sch, task, start, period, reference);
 	if (ret < 0) {
 		list_item_del(&task->list);
 		goto out;
