@@ -140,7 +140,6 @@ set(TPLGS
 	"sof-tgl-max98357a-rt5682\;sof-tgl-max98357a-rt5682-pdm1-drceq\;-DCODEC=MAX98357A\;-DFMT=s16le\;-DDMIC_DAI_LINK_16k_PDM=STEREO_PDM1\;-DPLATFORM=tgl\;-DAMP_SSP=1\;-DDRC_EQ"
 	"sof-tgl-max98357a-rt5682\;sof-tgl-rt1011-rt5682\;-DCODEC=RT1011\;-DFMT=s24le\;-DPLATFORM=tgl\;-DAMP_SSP=1"
 	"sof-tgl-max98357a-rt5682\;sof-tgl-max98357a-rt5682-rtnr\;-DCODEC=MAX98357A\;-DFMT=s16le\;-DPLATFORM=tgl\;-DAMP_SSP=1\;-DCHANNELS=2\;-DRTNR"
-	"sof-tgl-max98357a-rt5682-rtnr-16kHz\;sof-tgl-max98357a-rt5682-rtnr-16kHz\;-DCODEC=MAX98357A\;-DFMT=s16le\;-DCHANNELS=2\;-DDMICPROC=eq-iir-volume\;-DRTNR"
 	"sof-tgl-max98357a-rt5682\;sof-adl-max98390-rt5682\;-DCODEC=MAX98390\;-DFMT=s32le\;-DPLATFORM=adl\;-DAMP_SSP=1\;-DBT_OFFLOAD"
 	"sof-tgl-max98357a-rt5682\;sof-adl-max98390-rt5682-rtnr\;-DCODEC=MAX98390\;-DFMT=s32le\;-DPLATFORM=adl\;-DAMP_SSP=1\;-DBT_OFFLOAD\;-DCHANNELS=2\;-DRTNR"
 	"sof-tgl-max98357a-rt5682\;sof-adl-max98390-ssp2-rt5682-ssp0\;-DCODEC=MAX98390\;-DFMT=s32le\;-DPLATFORM=adl\;-DAMP_SSP=2"
