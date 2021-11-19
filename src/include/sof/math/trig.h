@@ -13,10 +13,6 @@
 
 #include <stdint.h>
 
-#ifndef UNIT_CORDIC_TEST
-#define CONFIG_CORDIC_TRIGONOMETRY_FIXED
-#endif
-
 #define PI_DIV2_Q4_28 421657428
 #define PI_DIV2_Q3_29 843314856
 #define PI_Q4_28      843314857

@@ -1,0 +1,62 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
+menu "Math functions"
+
+config CORDIC_FIXED
+	bool "Trigonometric functions"
+	default n
+	help
+	  Select this to enable sin(), cos(), asin(), acos(),
+	  and cexp() functions as 16 bit and 32 bit versions.
+
+config NUMBERS_GCD
+	bool "Greatest common divisor"
+	default n
+	help
+	  Returns greatest common divisor for two parameters.
+
+config NUMBERS_NORM
+	bool "Norm function"
+	default n
+	help
+	  Norm function counts the left shifts needed to
+	  normalize integer value.
+
+config NUMBERS_VECTOR_FIND
+	bool "Find operations for numbers vecter"
+	default n
+	help
+	  This option provides functions func_equal_int16(),
+	  find_min_int16(), and find_max_abs32().
+
+config MATH_DECIBELS
+	bool "Convert decibels to linear"
+	default n
+	help
+	  Select this to enable db2lin_fixed() and exp_fixed()
+	  functions.
+
+config MATH_FFT
+	bool "FFT library"
+	default n
+	help
+	  Enable Fast Fourier Transform library, this should not be selected
+	  directly, please select it from other audio components where need it.
+
+config MATH_FIR
+	bool "FIR filter library"
+	default n
+	help
+	  This option builds FIR (Finite Impulse Response) filter library. It
+	  is selected by components for their digital signal processing. A FIR
+	  filter calculates a convolution of input PCM sample and a configurable
+	  impulse response.
+
+config MATH_IIR_DF2T
+	bool "IIR filter library"
+	default n
+	help
+	  Select this to build IIR (Infinite Impulse Response) filter
+	  or type 2-transposed library.
+
+endmenu

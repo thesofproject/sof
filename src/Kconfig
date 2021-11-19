@@ -17,3 +17,5 @@ rsource "samples/Kconfig"
 rsource "schedule/Kconfig"
 
 rsource "ipc/Kconfig"
+
+rsource "math/Kconfig"

@@ -12,7 +12,6 @@
 #include <sof/math/cordic.h>
 #include <stdint.h>
 
-#ifdef CONFIG_CORDIC_TRIGONOMETRY_FIXED
 /* Use a local definition to avoid adding a dependency on <math.h> */
 #define _M_PI		3.14159265358979323846	/* pi */
 
@@ -280,5 +279,3 @@ void cmpx_cexp(int32_t sign, int32_t b_yn, int32_t xn, cordic_cfg type, struct c
 		cexp->im = sat_int16(Q_SHIFT_RND((cexp->im), 30, 15));
 	}
 }
-
-#endif

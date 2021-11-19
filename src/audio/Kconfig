@@ -88,22 +88,6 @@ endchoice
 
 endif # SRC
 
-config MATH_FIR
-	bool "FIR filter library"
-	default n
-	help
-	  This option builds FIR (Finite Impulse Response) filter library. It
-	  is selected by components for their digital signal processing. A FIR
-	  filter calculates a convolution of input PCM sample and a configurable
-	  impulse response.
-
-config MATH_FFT
-	bool "FFT library"
-	default n
-	help
-	  Enable Fast Fourier Transform library, this should not be selected
-	  directly, please select it from other audio components where need it.
-
 config COMP_FIR
 	bool "FIR component"
 	select MATH_FIR
@@ -119,24 +103,13 @@ config COMP_FIR
 config COMP_IIR
 	bool "IIR component"
 	default y
+	select MATH_IIR_DF2T
 	help
 	  Select for IIR component
 
-config CORDIC_FIXED
-       bool "Sine Cosine library function"
-       default n
-       help
-          This option builds the 32 and 16 bit sin_fixed() library function.
-	  The input is Q4.28 format and the output is Q1.31. The cordic sine
-	  cos algorithm converges, when the angle is in the range [-pi/2, pi/2).
-	  If an angle is outside of this range, then a multiple of pi/2 is added
-	  or subtracted from the angle until it is within the range [-pi/2,pi/2).
-	  Start with the angle in the range [-2*pi, 2*pi) and output has range in
-	  [-1.0 to 1.0]
-
 config COMP_TONE
 	bool "Tone component"
-	default y
+	default n
 	select CORDIC_FIXED
 	help
 	  Select for Tone component
