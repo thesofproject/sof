@@ -603,7 +603,7 @@ def parse_css_manifest_4(css_mft, reader, size_limit):
     exponent_size = reader.read_dw()
     hdr.add_a(Adec('exponent_size', exponent_size))
     modulus = reader.read_bytes(modulus_size * 4)
-    hdr.add_a(Amodulus('modulus', modulus, KNOWN_KEYS.get(modulus, 'Other')))
+    hdr.add_a(Amodulus('modulus', modulus, KNOWN_KEYS.get(modulus, 'Unknown key')))
     hdr.add_a(Abytes('exponent', reader.read_bytes(exponent_size * 4)))
 
     sig_start = reader.get_offset()
