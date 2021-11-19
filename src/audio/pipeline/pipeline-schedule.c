@@ -70,7 +70,7 @@ static enum task_state pipeline_task_cmd(struct pipeline *p,
 		}
 
 		if (err == PPL_STATUS_PATH_STOP) {
-			pipe_warn(p, "pipeline_task_cmd(): stopping for xrun");
+			/* comp_trigger() interrupted trigger propagation or an xrun occurred */
 			err = SOF_TASK_STATE_COMPLETED;
 		} else if (p->trigger.cmd != cmd) {
 			/* PRE stage completed */
