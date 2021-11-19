@@ -107,6 +107,9 @@ function(cmocka_test test_name)
 	# Cmocka requires this define for stdint.h that defines uintptr
 	target_compile_definitions(${test_name} PRIVATE -D_UINTPTR_T_DEFINED)
 
+        # Enable features those would be disabled in some platforms
+	target_compile_definitions(${test_name} PRIVATE -DCONFIG_NUMBERS_GCD -DCONFIG_NUMBERS_NORM -DCONFIG_NUMBERS_VECTOR_FIND)
+
 	# Skip running alloc test on HOST until it's fixed (it passes and is run
 	# with xt-run)
 	if( "alloc" STREQUAL "${test_name}" AND BUILD_UNIT_TESTS_HOST)

@@ -11,6 +11,7 @@ config INTEL_HDA
 config INTEL_MN
 	bool
 	depends on CAVS
+	select NUMBERS_GCD
 	default n
 	help
 	  Select this if the platform supports M/N dividers.
@@ -42,6 +43,10 @@ config INTEL_ALH
 config INTEL_DMIC
 	bool "Intel DMIC driver"
 	depends on CAVS
+	select NUMBERS_GCD
+	select NUMBERS_NORM
+	select NUMBERS_VECTOR_FIND
+	select MATH_DECIBELS
 	default n
 	help
 	  Select this to enable Intel DMIC driver. The DMIC driver provides

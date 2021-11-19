@@ -14,6 +14,8 @@
 #include <sof/math/numbers.h>
 #include <stdint.h>
 
+#if CONFIG_NUMBERS_GCD
+
 /* This function returns the greatest common divisor of two numbers
  * If both parameters are 0, gcd(0, 0) returns 0
  * If first parameters is 0 or second parameter is 0, gcd(0, b) returns b
@@ -73,6 +75,10 @@ int gcd(int a, int b)
 	return a << k;
 }
 
+#endif /* CONFIG_NUMBERS_GCD */
+
+#if CONFIG_NUMBERS_VECTOR_FIND
+
 /* This function searches from vec[] (of length vec_length) integer values
  * of n. The indexes to equal values is returned in idx[]. The function
  * returns the number of found matches. The max_results should be set to
@@ -125,6 +131,10 @@ int32_t find_max_abs_int32(int32_t vec[], int vec_length)
 	return SATP_INT32(amax); /* Amax is always a positive value */
 }
 
+#endif /* CONFIG_VECTOR_FIND */
+
+#if CONFIG_NUMBERS_NORM
+
 /* Count the left shift amount to normalize a 32 bit signed integer value
  * without causing overflow. Input value 0 will result to 31.
  */
@@ -141,6 +151,8 @@ int norm_int32(int32_t val)
 
 	return 31 - c;
 }
+
+#endif /* CONFIG_NORM */
 
 /**
  * Basic CRC-32 implementation, based on pseudo-code from
