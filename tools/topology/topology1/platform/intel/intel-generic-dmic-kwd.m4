@@ -47,7 +47,9 @@ ifdef(`DMIC_DAI_LINK_16k_NAME',`',define(DMIC_DAI_LINK_16k_NAME, `dmic16k'))
 # DMICPROC is set by makefile, available type: passthrough/eq-iir-volume
 ifdef(`IGO',
 `define(DMICPROC, igonr)',
-`ifdef(`DMICPROC', , `define(DMICPROC, passthrough)')')
+`ifdef(`RTNR',
+`define(DMICPROC, rtnr)',
+`define(DMICPROC, passthrough)')')
 
 # Prolong period to 16ms for igo_nr process
 ifdef(`IGO', `define(`INTEL_GENERIC_DMIC_KWD_PERIOD', 16000)', `define(`INTEL_GENERIC_DMIC_KWD_PERIOD', 1000)')
