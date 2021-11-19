@@ -330,11 +330,13 @@ static int schedule_ll_domain_set(struct ll_schedule_data *sch,
 		task->start = task_start;
 		if (task->start < domain->next_tick)
 			domain_set(domain, task_start);
-	} else if (task_start < domain->next_tick) {
-		/* earlier periodic task, try to make it cadence-aligned with the existed task */
-		offset = (domain->next_tick - task_start) %
-			 (domain->ticks_per_ms * period / 1000);
-		task_start = task_start - task_start_ticks + offset;
+	} else if (task_start + task_start_ticks < domain->next_tick) {
+		/*
+		 * Earlier periodic task, try to make it cadence-aligned with the existed task.
+		 * In this case task_start_ticks is the number of ticks per period.
+		 */
+		offset = (domain->next_tick - task_start) % task_start_ticks;
+		task_start += offset;
 		domain_set(domain, task_start);
 		task->start = domain->next_tick;
 	} else {
