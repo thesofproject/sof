@@ -21,6 +21,7 @@
 #include <ipc4/alh.h>
 #include <ipc4/ssp.h>
 #include <ipc4/copier.h>
+#include <ipc4/fw_reg.h>
 #include <ipc/dai.h>
 #include <errno.h>
 #include <stdbool.h>
@@ -134,6 +135,35 @@ int ipc_comp_dai_config(struct ipc *ipc, struct ipc_config_dai *common_config,
 	return 0;
 }
 
+static void get_llp_reg_info(struct dai_data *dd, uint32_t *node_id, uint32_t *offset)
+{
+	struct ipc4_copier_module_cfg *copier_cfg;
+	union ipc4_connector_node_id node;
+	uint32_t id;
+
+	copier_cfg = dd->dai_spec_config;
+	node.dw = copier_cfg->gtw_cfg.node_id;
+	/* 13 bits of type + index */
+	*node_id = node.dw & 0x1FFF;
+	id = node.f.v_index;
+
+	switch (dd->ipc_config.type) {
+	case SOF_DAI_INTEL_HDA:
+		/* nothing to do since GP-DMA is not used by HDA */
+		*offset = 0;
+		*node_id = 0;
+	case SOF_DAI_INTEL_ALH:
+		id -= IPC4_ALH_DAI_INDEX_OFFSET;
+		*offset = offsetof(struct ipc4_fw_registers, llp_sndw_reading_slots);
+		*offset += id * sizeof(struct ipc4_llp_reading_slot);
+		break;
+	default:
+		*offset = offsetof(struct ipc4_fw_registers, llp_gpdma_reading_slots);
+		*offset += id * sizeof(struct ipc4_llp_reading_slot);
+		break;
+	}
+}
+
 void dai_dma_release(struct comp_dev *dev)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
@@ -146,6 +176,17 @@ void dai_dma_release(struct comp_dev *dev)
 
 	/* put the allocated DMA channel first */
 	if (dd->chan) {
+		struct ipc4_llp_reading_slot slot;
+		uint32_t llp_reg_offset;
+		uint32_t node_id;
+
+		get_llp_reg_info(dd, &node_id, &llp_reg_offset);
+		if (node_id) {
+			/* clear memory window */
+			memset_s(&slot, sizeof(slot), 0, sizeof(slot));
+			mailbox_sw_regs_write(llp_reg_offset, &slot, sizeof(slot));
+		}
+
 		/* remove callback */
 		notifier_unregister(dev, dd->chan, NOTIFIER_ID_DMA_COPY);
 		dma_channel_put(dd->chan);
@@ -237,4 +278,44 @@ int dai_position(struct comp_dev *dev, struct sof_ipc_stream_posn *posn)
 	dma_status(dd->chan, &status, dev->direction);
 
 	return 0;
+}
+
+void dai_dma_position_init(struct dai_data *dd)
+{
+	struct ipc4_llp_reading_slot slot;
+	uint32_t llp_reg_offset;
+	uint32_t node_id;
+
+	get_llp_reg_info(dd, &node_id, &llp_reg_offset);
+	if (!node_id)
+		return;
+
+	memset_s(&slot, sizeof(slot), 0, sizeof(slot));
+	slot.node_id = node_id;
+	mailbox_sw_regs_write(llp_reg_offset, &slot, sizeof(slot));
+}
+
+void dai_dma_position_update(struct comp_dev *dev)
+{
+	struct dai_data *dd = comp_get_drvdata(dev);
+	struct ipc4_llp_reading_slot slot;
+	struct dma_chan_status status;
+	uint32_t llp_reg_offset;
+	uint32_t node_id;
+	uint32_t llp_data[2];
+
+	get_llp_reg_info(dd, &node_id, &llp_reg_offset);
+	if (!node_id)
+		return;
+
+	status.ipc_posn_data = llp_data;
+	dma_status(dd->chan, &status, dev->direction);
+
+	slot.node_id = node_id;
+	slot.reading.llp_l = llp_data[0];
+	slot.reading.llp_u = llp_data[1];
+	slot.reading.wclk_l = (uint32_t)dd->wallclock;
+	slot.reading.wclk_u = (uint32_t)(dd->wallclock >> 32);
+
+	mailbox_sw_regs_write(llp_reg_offset, &slot, sizeof(slot));
 }
