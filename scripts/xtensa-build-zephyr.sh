@@ -241,7 +241,8 @@ build_platforms()
 			 # west can get lost in symbolic links and then
 			 # show a confusing error.
 			/bin/pwd
-			if test -d "$bdir"; then
+
+			if test -e  "$bdir/build.ninja" || test -e  "$bdir/Makefile"; then
 			    test -z "${CMAKE_ARGS+defined}" ||
 				die 'Cannot re-define CMAKE_ARGS, you must delete %s first\n' \
 				    "$(pwd)/$bdir"
