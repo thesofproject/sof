@@ -25,22 +25,35 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#define BYTES_TO_S16_SAMPLES	1
+#define BYTES_TO_S32_SAMPLES	2
+
 #if CONFIG_PCM_CONVERTER_FORMAT_S16LE && CONFIG_PCM_CONVERTER_FORMAT_S24LE
 
 static int pcm_convert_s16_to_s24(const struct audio_stream *source,
 				  uint32_t ioffset, struct audio_stream *sink,
 				  uint32_t ooffset, uint32_t samples)
 {
-	uint32_t buff_frag = 0;
-	int16_t *src;
-	int32_t *dst;
-	uint32_t i;
+	int16_t *src = source->r_ptr;
+	int32_t *dst = sink->w_ptr;
+	int processed;
+	int nmax, i, n;
 
-	for (i = 0; i < samples; i++) {
-		src = audio_stream_read_frag_s16(source, buff_frag + ioffset);
-		dst = audio_stream_write_frag_s32(sink, buff_frag + ooffset);
-		*dst = *src << 8;
-		buff_frag++;
+	src += ioffset;
+	dst += ooffset;
+	for (processed = 0; processed < samples; processed += n) {
+		src = audio_stream_wrap(source, src);
+		dst = audio_stream_wrap(sink, dst);
+		n = samples - processed;
+		nmax = audio_stream_bytes_without_wrap(source, src) >> BYTES_TO_S16_SAMPLES;
+		n = MIN(n, nmax);
+		nmax = audio_stream_bytes_without_wrap(sink, dst) >> BYTES_TO_S32_SAMPLES;
+		n = MIN(n, nmax);
+		for (i = 0; i < n; i++) {
+			*dst = *src << 8;
+			src++;
+			dst++;
+		}
 	}
 
 	return samples;
@@ -50,16 +63,26 @@ static int pcm_convert_s24_to_s16(const struct audio_stream *source,
 				  uint32_t ioffset, struct audio_stream *sink,
 				  uint32_t ooffset, uint32_t samples)
 {
-	uint32_t buff_frag = 0;
-	int32_t *src;
-	int16_t *dst;
-	uint32_t i;
+	int32_t *src = source->r_ptr;
+	int16_t *dst = sink->w_ptr;
+	int processed;
+	int nmax, i, n;
 
-	for (i = 0; i < samples; i++) {
-		src = audio_stream_read_frag_s32(source, buff_frag + ioffset);
-		dst = audio_stream_write_frag_s16(sink, buff_frag + ooffset);
-		*dst = sat_int16(Q_SHIFT_RND(sign_extend_s24(*src), 23, 15));
-		buff_frag++;
+	src += ioffset;
+	dst += ooffset;
+	for (processed = 0; processed < samples; processed += n) {
+		src = audio_stream_wrap(source, src);
+		dst = audio_stream_wrap(sink, dst);
+		n = samples - processed;
+		nmax = audio_stream_bytes_without_wrap(source, src) >> BYTES_TO_S32_SAMPLES;
+		n = MIN(n, nmax);
+		nmax = audio_stream_bytes_without_wrap(sink, dst) >> BYTES_TO_S16_SAMPLES;
+		n = MIN(n, nmax);
+		for (i = 0; i < n; i++) {
+			*dst = sat_int16(Q_SHIFT_RND(sign_extend_s24(*src), 23, 15));
+			src++;
+			dst++;
+		}
 	}
 
 	return samples;
@@ -73,16 +96,26 @@ static int pcm_convert_s16_to_s32(const struct audio_stream *source,
 				  uint32_t ioffset, struct audio_stream *sink,
 				  uint32_t ooffset, uint32_t samples)
 {
-	uint32_t buff_frag = 0;
-	int16_t *src;
-	int32_t *dst;
-	uint32_t i;
+	int16_t *src = source->r_ptr;
+	int32_t *dst = sink->w_ptr;
+	int processed;
+	int nmax, i, n;
 
-	for (i = 0; i < samples; i++) {
-		src = audio_stream_read_frag_s16(source, buff_frag + ioffset);
-		dst = audio_stream_write_frag_s32(sink, buff_frag + ooffset);
-		*dst = *src << 16;
-		buff_frag++;
+	src += ioffset;
+	dst += ooffset;
+	for (processed = 0; processed < samples; processed += n) {
+		src = audio_stream_wrap(source, src);
+		dst = audio_stream_wrap(sink, dst);
+		n = samples - processed;
+		nmax = audio_stream_bytes_without_wrap(source, src) >> BYTES_TO_S16_SAMPLES;
+		n = MIN(n, nmax);
+		nmax = audio_stream_bytes_without_wrap(sink, dst) >> BYTES_TO_S32_SAMPLES;
+		n = MIN(n, nmax);
+		for (i = 0; i < n; i++) {
+			*dst = *src << 16;
+			src++;
+			dst++;
+		}
 	}
 
 	return samples;
@@ -92,16 +125,26 @@ static int pcm_convert_s32_to_s16(const struct audio_stream *source,
 				  uint32_t ioffset, struct audio_stream *sink,
 				  uint32_t ooffset, uint32_t samples)
 {
-	uint32_t buff_frag = 0;
-	int32_t *src;
-	int16_t *dst;
-	uint32_t i;
+	int32_t *src = source->r_ptr;
+	int16_t *dst = sink->w_ptr;
+	int processed;
+	int nmax, i, n;
 
-	for (i = 0; i < samples; i++) {
-		src = audio_stream_read_frag_s32(source, buff_frag + ioffset);
-		dst = audio_stream_write_frag_s16(sink, buff_frag + ooffset);
-		*dst = sat_int16(Q_SHIFT_RND(*src, 31, 15));
-		buff_frag++;
+	src += ioffset;
+	dst += ooffset;
+	for (processed = 0; processed < samples; processed += n) {
+		src = audio_stream_wrap(source, src);
+		dst = audio_stream_wrap(sink, dst);
+		n = samples - processed;
+		nmax = audio_stream_bytes_without_wrap(source, src) >> BYTES_TO_S32_SAMPLES;
+		n = MIN(n, nmax);
+		nmax = audio_stream_bytes_without_wrap(sink, dst) >> BYTES_TO_S16_SAMPLES;
+		n = MIN(n, nmax);
+		for (i = 0; i < n; i++) {
+			*dst = sat_int16(Q_SHIFT_RND(*src, 31, 15));
+			src++;
+			dst++;
+		}
 	}
 
 	return samples;
@@ -115,16 +158,26 @@ static int pcm_convert_s24_to_s32(const struct audio_stream *source,
 				  uint32_t ioffset, struct audio_stream *sink,
 				  uint32_t ooffset, uint32_t samples)
 {
-	uint32_t buff_frag = 0;
-	int32_t *src;
-	int32_t *dst;
-	uint32_t i;
+	int32_t *src = source->r_ptr;
+	int32_t *dst = sink->w_ptr;
+	int processed;
+	int nmax, i, n;
 
-	for (i = 0; i < samples; i++) {
-		src = audio_stream_read_frag_s32(source, buff_frag + ioffset);
-		dst = audio_stream_write_frag_s32(sink, buff_frag + ooffset);
-		*dst = *src << 8;
-		buff_frag++;
+	src += ioffset;
+	dst += ooffset;
+	for (processed = 0; processed < samples; processed += n) {
+		src = audio_stream_wrap(source, src);
+		dst = audio_stream_wrap(sink, dst);
+		n = samples - processed;
+		nmax = audio_stream_bytes_without_wrap(source, src) >> BYTES_TO_S32_SAMPLES;
+		n = MIN(n, nmax);
+		nmax = audio_stream_bytes_without_wrap(sink, dst) >> BYTES_TO_S32_SAMPLES;
+		n = MIN(n, nmax);
+		for (i = 0; i < n; i++) {
+			*dst = *src << 8;
+			src++;
+			dst++;
+		}
 	}
 
 	return samples;
@@ -134,16 +187,26 @@ static int pcm_convert_s32_to_s24(const struct audio_stream *source,
 				  uint32_t ioffset, struct audio_stream *sink,
 				  uint32_t ooffset, uint32_t samples)
 {
-	uint32_t buff_frag = 0;
-	int32_t *src;
-	int32_t *dst;
-	uint32_t i;
+	int32_t *src = source->r_ptr;
+	int32_t *dst = sink->w_ptr;
+	int processed;
+	int nmax, i, n;
 
-	for (i = 0; i < samples; i++) {
-		src = audio_stream_read_frag_s32(source, buff_frag + ioffset);
-		dst = audio_stream_write_frag_s32(sink, buff_frag + ooffset);
-		*dst = sat_int24(Q_SHIFT_RND(*src, 31, 23));
-		buff_frag++;
+	src += ioffset;
+	dst += ooffset;
+	for (processed = 0; processed < samples; processed += n) {
+		src = audio_stream_wrap(source, src);
+		dst = audio_stream_wrap(sink, dst);
+		n = samples - processed;
+		nmax = audio_stream_bytes_without_wrap(source, src) >> BYTES_TO_S32_SAMPLES;
+		n = MIN(n, nmax);
+		nmax = audio_stream_bytes_without_wrap(sink, dst) >> BYTES_TO_S32_SAMPLES;
+		n = MIN(n, nmax);
+		for (i = 0; i < n; i++) {
+			*dst = sat_int24(Q_SHIFT_RND(*src, 31, 23));
+			src++;
+			dst++;
+		}
 	}
 
 	return samples;
@@ -438,16 +501,26 @@ static int pcm_convert_s16_c16_to_s16_c32(const struct audio_stream *source,
 					  uint32_t ioffset, struct audio_stream *sink,
 					  uint32_t ooffset, uint32_t samples)
 {
-	uint32_t buff_frag = 0;
-	int16_t *src;
-	int32_t *dst;
-	uint32_t i;
+	int16_t *src = source->r_ptr;
+	int32_t *dst = sink->w_ptr;
+	int processed;
+	int nmax, i, n;
 
-	for (i = 0; i < samples; i++) {
-		src = audio_stream_read_frag_s16(source, buff_frag + ioffset);
-		dst = audio_stream_write_frag_s32(sink, buff_frag + ooffset);
-		*dst = *src;
-		buff_frag++;
+	src += ioffset;
+	dst += ooffset;
+	for (processed = 0; processed < samples; processed += n) {
+		src = audio_stream_wrap(source, src);
+		dst = audio_stream_wrap(sink, dst);
+		n = samples - processed;
+		nmax = audio_stream_bytes_without_wrap(source, src) >> BYTES_TO_S16_SAMPLES;
+		n = MIN(n, nmax);
+		nmax = audio_stream_bytes_without_wrap(sink, dst) >> BYTES_TO_S32_SAMPLES;
+		n = MIN(n, nmax);
+		for (i = 0; i < n; i++) {
+			*dst = *src;
+			src++;
+			dst++;
+		}
 	}
 
 	return samples;
@@ -457,16 +530,26 @@ static int pcm_convert_s16_c32_to_s16_c16(const struct audio_stream *source,
 					  uint32_t ioffset, struct audio_stream *sink,
 					  uint32_t ooffset, uint32_t samples)
 {
-	uint32_t buff_frag = 0;
-	int32_t *src;
-	int16_t *dst;
-	uint32_t i;
+	int32_t *src = source->r_ptr;
+	int16_t *dst = sink->w_ptr;
+	int processed;
+	int nmax, i, n;
 
-	for (i = 0; i < samples; i++) {
-		src = audio_stream_read_frag_s32(source, buff_frag + ioffset);
-		dst = audio_stream_write_frag_s16(sink, buff_frag + ooffset);
-		*dst = *src & 0xffff;
-		buff_frag++;
+	src += ioffset;
+	dst += ooffset;
+	for (processed = 0; processed < samples; processed += n) {
+		src = audio_stream_wrap(source, src);
+		dst = audio_stream_wrap(sink, dst);
+		n = samples - processed;
+		nmax = audio_stream_bytes_without_wrap(source, src) >> BYTES_TO_S32_SAMPLES;
+		n = MIN(n, nmax);
+		nmax = audio_stream_bytes_without_wrap(sink, dst) >> BYTES_TO_S16_SAMPLES;
+		n = MIN(n, nmax);
+		for (i = 0; i < n; i++) {
+			*dst = *src & 0xffff;
+			src++;
+			dst++;
+		}
 	}
 
 	return samples;
@@ -477,15 +560,26 @@ static int pcm_convert_s16_c32_to_s32_c32(const struct audio_stream *source,
 					  uint32_t ioffset, struct audio_stream *sink,
 					  uint32_t ooffset, uint32_t samples)
 {
-	uint32_t buff_frag = 0;
-	int32_t *src, *dst;
-	uint32_t i;
+	int32_t *src = source->r_ptr;
+	int32_t *dst = sink->w_ptr;
+	int processed;
+	int nmax, i, n;
 
-	for (i = 0; i < samples; i++) {
-		src = audio_stream_read_frag_s32(source, buff_frag + ioffset);
-		dst = audio_stream_write_frag_s32(sink, buff_frag + ooffset);
-		*dst = *src << 16;
-		buff_frag++;
+	src += ioffset;
+	dst += ooffset;
+	for (processed = 0; processed < samples; processed += n) {
+		src = audio_stream_wrap(source, src);
+		dst = audio_stream_wrap(sink, dst);
+		n = samples - processed;
+		nmax = audio_stream_bytes_without_wrap(source, src) >> BYTES_TO_S32_SAMPLES;
+		n = MIN(n, nmax);
+		nmax = audio_stream_bytes_without_wrap(sink, dst) >> BYTES_TO_S32_SAMPLES;
+		n = MIN(n, nmax);
+		for (i = 0; i < n; i++) {
+			*dst = *src << 16;
+			src++;
+			dst++;
+		}
 	}
 
 	return samples;
@@ -495,15 +589,26 @@ static int pcm_convert_s32_c32_to_s16_c32(const struct audio_stream *source,
 					  uint32_t ioffset, struct audio_stream *sink,
 					  uint32_t ooffset, uint32_t samples)
 {
-	uint32_t buff_frag = 0;
-	int32_t *src, *dst;
-	uint32_t i;
+	int32_t *src = source->r_ptr;
+	int32_t *dst = sink->w_ptr;
+	int processed;
+	int nmax, i, n;
 
-	for (i = 0; i < samples; i++) {
-		src = audio_stream_read_frag_s32(source, buff_frag + ioffset);
-		dst = audio_stream_write_frag_s32(sink, buff_frag + ooffset);
-		*dst = sat_int16(Q_SHIFT_RND(*src, 31, 15));
-		buff_frag++;
+	src += ioffset;
+	dst += ooffset;
+	for (processed = 0; processed < samples; processed += n) {
+		src = audio_stream_wrap(source, src);
+		dst = audio_stream_wrap(sink, dst);
+		n = samples - processed;
+		nmax = audio_stream_bytes_without_wrap(source, src) >> BYTES_TO_S32_SAMPLES;
+		n = MIN(n, nmax);
+		nmax = audio_stream_bytes_without_wrap(sink, dst) >> BYTES_TO_S32_SAMPLES;
+		n = MIN(n, nmax);
+		for (i = 0; i < n; i++) {
+			*dst = sat_int16(Q_SHIFT_RND(*src, 31, 15));
+			src++;
+			dst++;
+		}
 	}
 
 	return samples;
@@ -514,15 +619,26 @@ static int pcm_convert_s16_c32_to_s24_c32(const struct audio_stream *source,
 					  uint32_t ioffset, struct audio_stream *sink,
 					  uint32_t ooffset, uint32_t samples)
 {
-	uint32_t buff_frag = 0;
-	int32_t *src, *dst;
-	uint32_t i;
+	int32_t *src = source->r_ptr;
+	int32_t *dst = sink->w_ptr;
+	int processed;
+	int nmax, i, n;
 
-	for (i = 0; i < samples; i++) {
-		src = audio_stream_read_frag_s32(source, buff_frag + ioffset);
-		dst = audio_stream_write_frag_s32(sink, buff_frag + ooffset);
-		*dst = *src << 8;
-		buff_frag++;
+	src += ioffset;
+	dst += ooffset;
+	for (processed = 0; processed < samples; processed += n) {
+		src = audio_stream_wrap(source, src);
+		dst = audio_stream_wrap(sink, dst);
+		n = samples - processed;
+		nmax = audio_stream_bytes_without_wrap(source, src) >> BYTES_TO_S32_SAMPLES;
+		n = MIN(n, nmax);
+		nmax = audio_stream_bytes_without_wrap(sink, dst) >> BYTES_TO_S32_SAMPLES;
+		n = MIN(n, nmax);
+		for (i = 0; i < n; i++) {
+			*dst = *src << 8;
+			src++;
+			dst++;
+		}
 	}
 
 	return samples;
@@ -532,15 +648,26 @@ static int pcm_convert_s24_c32_to_s16_c32(const struct audio_stream *source,
 					  uint32_t ioffset, struct audio_stream *sink,
 					  uint32_t ooffset, uint32_t samples)
 {
-	uint32_t buff_frag = 0;
-	int32_t *src, *dst;
-	uint32_t i;
+	int32_t *src = source->r_ptr;
+	int32_t *dst = sink->w_ptr;
+	int processed;
+	int nmax, i, n;
 
-	for (i = 0; i < samples; i++) {
-		src = audio_stream_read_frag_s32(source, buff_frag + ioffset);
-		dst = audio_stream_write_frag_s32(sink, buff_frag + ooffset);
-		*dst = sat_int16(Q_SHIFT_RND(sign_extend_s24(*src & 0xffffff), 23, 15));
-		buff_frag++;
+	src += ioffset;
+	dst += ooffset;
+	for (processed = 0; processed < samples; processed += n) {
+		src = audio_stream_wrap(source, src);
+		dst = audio_stream_wrap(sink, dst);
+		n = samples - processed;
+		nmax = audio_stream_bytes_without_wrap(source, src) >> BYTES_TO_S32_SAMPLES;
+		n = MIN(n, nmax);
+		nmax = audio_stream_bytes_without_wrap(sink, dst) >> BYTES_TO_S32_SAMPLES;
+		n = MIN(n, nmax);
+		for (i = 0; i < n; i++) {
+			*dst = sat_int16(Q_SHIFT_RND(sign_extend_s24(*src & 0xffffff), 23, 15));
+			src++;
+			dst++;
+		}
 	}
 
 	return samples;
