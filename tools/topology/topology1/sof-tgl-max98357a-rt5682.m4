@@ -98,8 +98,17 @@ define(DMIC_DAI_LINK_16k_ID, `2')
 # define pcm, pipeline and dai id
 define(KWD_PIPE_SCH_DEADLINE_US, 5000)
 
-# include the generic dmic with kwd
-include(`platform/intel/intel-generic-dmic-kwd.m4')
+# if RTNR is defined, define DMIC16KPROC as rtnr
+ifdef(`RTNR',
+`define(DMICPROC, rtnr)',
+`ifdef(`DMICPROC', , `define(DMICPROC, eq-iir-volume)')')
+
+ifdef(`RTNR',
+`define(DMIC16KPROC, rtnr)',
+`ifdef(`DMIC16KPROC', , `define(DMIC16KPROC, eq-iir-volume)')')
+
+# include the generic dmic if RTNR is defined, else include generic dmic with kwd
+include(ifdef(`RTNR', platform/intel/intel-generic-dmic.m4, platform/intel/intel-generic-dmic-kwd.m4))
 
 ifdef(`BT_OFFLOAD', `
 # BT offload support
