@@ -90,6 +90,17 @@ int WEAK memcpy_s(void *dest, size_t dest_size,
 	return 0;
 }
 
+int WEAK memset_s(void *dest, size_t size1,
+		  int c, size_t size2)
+{
+	if (!dest)
+		return -EINVAL;
+
+	memset(dest, c, size1);
+
+	return 0;
+}
+
 int WEAK rstrlen(const char *s)
 {
 	return strlen(s);
