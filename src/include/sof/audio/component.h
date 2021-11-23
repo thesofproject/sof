@@ -265,6 +265,8 @@ struct comp_ops {
 				   struct comp_ipc_config *ipc_config,
 				   void *ipc_specific_config);
 
+
+
 	/**
 	 * Called to delete the specified component device.
 	 * @param dev Component device to be deleted.
@@ -273,6 +275,8 @@ struct comp_ops {
 	 * must be freed by the implementation of <code>free()</code>.
 	 */
 	void (*free)(struct comp_dev *dev);
+
+
 
 	/**
 	 * Sets component audio stream parameters.
@@ -447,6 +451,8 @@ struct comp_ops {
 				bool last_block,
 				uint32_t *data_offset,
 				char *data);
+
+
 
 	/**
 	 * Set config in component.
