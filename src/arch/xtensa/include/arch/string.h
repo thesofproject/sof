@@ -18,13 +18,8 @@
 #define arch_memcpy(dest, src, size) \
 	xthal_memcpy(dest, src, size)
 
-#if __XCC__ && !defined(UNIT_TEST)
 #define arch_bzero(ptr, size)	\
 	memset_s(ptr, size, 0, size)
-#else
-#define arch_bzero(ptr, size)	\
-	memset(ptr, 0, size)
-#endif
 
 void *xthal_memcpy(void *dst, const void *src, size_t len);
 
