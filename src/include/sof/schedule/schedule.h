@@ -61,6 +61,34 @@ struct scheduler_ops {
 			     uint64_t period);
 
 	/**
+	 * Schedules task with given scheduling parameters.
+	 * @param data Private data of selected scheduler.
+	 * @param task Task to be scheduled.
+	 * @param start Start time of given task (in microseconds).
+	 * @param period Scheduling period of given task (in microseconds).
+	 * @param before Task to be scheduled before
+	 * @return 0 if succeeded, error code otherwise.
+	 *
+	 * This operation is optional.
+	 */
+	int (*schedule_task_before)(void *data, struct task *task, uint64_t start,
+				    uint64_t period, struct task *before);
+
+	/**
+	 * Schedules task with given scheduling parameters.
+	 * @param data Private data of selected scheduler.
+	 * @param task Task to be scheduled.
+	 * @param start Start time of given task (in microseconds).
+	 * @param period Scheduling period of given task (in microseconds).
+	 * @param after Task to be scheduled after
+	 * @return 0 if succeeded, error code otherwise.
+	 *
+	 * This operation is optional.
+	 */
+	int (*schedule_task_after)(void *data, struct task *task, uint64_t start,
+				   uint64_t period, struct task *after);
+
+	/**
 	 * Sets task into running state along with executing additional
 	 * scheduler specific operations.
 	 * @param data Private data of selected scheduler.
@@ -231,6 +259,58 @@ static inline int schedule_task(struct task *task, uint64_t start,
 		if (task->type == sch->type)
 			return sch->ops->schedule_task(sch->data, task, start,
 						       period);
+	}
+
+	return -ENODEV;
+}
+
+/** See scheduler_ops::schedule_task_before */
+static inline int schedule_task_before(struct task *task, uint64_t start,
+				       uint64_t period, struct task *before)
+{
+	struct schedulers *schedulers = *arch_schedulers_get();
+	struct schedule_data *sch;
+	struct list_item *slist;
+
+	if (!task || !before)
+		return -EINVAL;
+
+	list_for_item(slist, &schedulers->list) {
+		sch = container_of(slist, struct schedule_data, list);
+		if (task->type == sch->type) {
+			if (sch->ops->schedule_task_before)
+				return sch->ops->schedule_task_before(sch->data, task, start,
+								      period, before);
+
+			return sch->ops->schedule_task(sch->data, task, start,
+						       period);
+		}
+	}
+
+	return -ENODEV;
+}
+
+/** See scheduler_ops::schedule_task_after */
+static inline int schedule_task_after(struct task *task, uint64_t start,
+				      uint64_t period, struct task *after)
+{
+	struct schedulers *schedulers = *arch_schedulers_get();
+	struct schedule_data *sch;
+	struct list_item *slist;
+
+	if (!task || !after)
+		return -EINVAL;
+
+	list_for_item(slist, &schedulers->list) {
+		sch = container_of(slist, struct schedule_data, list);
+		if (task->type == sch->type) {
+			if (sch->ops->schedule_task_after)
+				return sch->ops->schedule_task_after(sch->data, task, start,
+								     period, after);
+
+			return sch->ops->schedule_task(sch->data, task, start,
+						       period);
+		}
 	}
 
 	return -ENODEV;
