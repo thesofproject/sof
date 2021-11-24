@@ -7,6 +7,7 @@
 //         Tomasz Lauda <tomasz.lauda@linux.intel.com>
 
 #include <sof/atomic.h>
+#include <sof/audio/pipeline.h>
 #include <sof/common.h>
 #include <sof/drivers/interrupt.h>
 #include <sof/drivers/timer.h>
