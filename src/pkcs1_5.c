@@ -13,6 +13,9 @@
 #include <openssl/sha.h>
 #include <openssl/objects.h>
 #include <openssl/bn.h>
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+#include <openssl/core_names.h>
+#endif
 #include <stdio.h>
 #include <errno.h>
 #include <string.h>
@@ -21,23 +24,13 @@
 #include <rimage/css.h>
 #include <rimage/manifest.h>
 
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
-void RSA_get0_key(const RSA *r,
-		  const BIGNUM **n, const BIGNUM **e, const BIGNUM **d);
-
-void RSA_get0_key(const RSA *r,
-		  const BIGNUM **n, const BIGNUM **e, const BIGNUM **d)
-{
-	if (n)
-		*n = r->n;
-	if (e)
-		*e = r->e;
-	if (d)
-		*d = r->d;
-}
-#endif
-
 #define DEBUG_PKCS	0
+
+enum manver {
+	V15 = 0,
+	V18 = 1,
+	V25 = 2
+};
 
 static void bytes_swap(uint8_t *ptr, uint32_t size)
 {
@@ -51,6 +44,397 @@ static void bytes_swap(uint8_t *ptr, uint32_t size)
 	}
 }
 
+static int rimage_read_key(EVP_PKEY **privkey, struct image *image)
+{
+	char path[256];
+	FILE *fp;
+
+	/* requires private key */
+	if (!image->key_name) {
+		fprintf(stderr, "error: no private key set \n");
+		return -EINVAL;
+	}
+
+	/* create new key */
+	*privkey = EVP_PKEY_new();
+	if (!(*privkey))
+		return -ENOMEM;
+
+	/* load in RSA private key from PEM file */
+	memset(path, 0, sizeof(path));
+	strncpy(path, image->key_name, sizeof(path) - 1);
+
+	fprintf(stdout, " %s: read key '%s'\n", __func__, path);
+	fp = fopen(path, "rb");
+	if (!fp) {
+		fprintf(stderr, "error: can't open file %s %d\n",
+			path, -errno);
+		return -errno;
+	}
+	PEM_read_PrivateKey(fp, privkey, NULL, NULL);
+	fclose(fp);
+
+	return 0;
+}
+
+/*
+ * Here we have different implementations of following functionality
+ * (based on different openssl versions):
+ *
+ * rimage_check_key
+ *
+ * rimage_set_modexp
+ *
+ * rimage_sign
+ *
+ * rimage_verify
+ *
+ * rimage_get_key_size
+ *
+*/
+
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
+static int rimage_check_key(EVP_PKEY *privkey)
+{
+	RSA *priv_rsa = NULL;
+
+	priv_rsa = EVP_PKEY_get1_RSA(privkey);
+
+	return RSA_check_key(priv_rsa);
+}
+#else
+static int rimage_check_key(EVP_PKEY *privkey)
+{
+	EVP_PKEY_CTX *ctx;
+	int ret = 0;
+
+	ctx = EVP_PKEY_CTX_new(privkey, NULL /* no engine */);
+	if (!ctx)
+		return -EINVAL;
+
+	ret = EVP_PKEY_private_check(ctx);
+
+	EVP_PKEY_CTX_free(ctx);
+
+	return ret;
+}
+#endif
+
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+static void rimage_set_modexp(EVP_PKEY *privkey, unsigned char *mod, unsigned char *exp)
+{
+	const BIGNUM *n;
+	const BIGNUM *e;
+	const BIGNUM *d;
+
+	*n = r->n;
+	*e = r->e;
+	*d = r->d;
+
+	BN_bn2bin(n, mod);
+	BN_bn2bin(e, exp);
+}
+#elif OPENSSL_VERSION_NUMBER < 0x30000000L
+static void rimage_set_modexp(EVP_PKEY *privkey, unsigned char *mod, unsigned char *exp)
+{
+	const BIGNUM *n;
+	const BIGNUM *e;
+	const BIGNUM *d;
+	RSA *priv_rsa = NULL;
+
+	priv_rsa = EVP_PKEY_get1_RSA(privkey);
+
+	RSA_get0_key(priv_rsa, &n, &e, &d);
+
+	BN_bn2bin(n, mod);
+	BN_bn2bin(e, exp);
+}
+#else
+static void rimage_set_modexp(EVP_PKEY *privkey, unsigned char *mod, unsigned char *exp)
+{
+	BIGNUM *n = NULL;
+	BIGNUM *e = NULL;
+
+	EVP_PKEY_get_bn_param(privkey, OSSL_PKEY_PARAM_RSA_N, &n);
+	EVP_PKEY_get_bn_param(privkey, OSSL_PKEY_PARAM_RSA_E, &e);
+
+	BN_bn2bin(n, mod);
+	BN_bn2bin(e, exp);
+}
+#endif
+
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
+static int rimage_sign(EVP_PKEY *privkey, struct image *image, enum manver ver,
+		       unsigned char *digest, unsigned char *signature)
+{
+	unsigned char sig[MAN_RSA_SIGNATURE_LEN_2_5];
+	unsigned int siglen = MAN_RSA_SIGNATURE_LEN;
+	RSA *priv_rsa = NULL;
+	int ret;
+
+	priv_rsa = EVP_PKEY_get1_RSA(privkey);
+
+	switch (ver) {
+	case V15:
+		/* fallthrough */
+	case V18:
+		ret = RSA_sign(NID_sha256, digest, SHA256_DIGEST_LENGTH,
+			       signature, &siglen, priv_rsa);
+		break;
+	case V25:
+		ret = RSA_padding_add_PKCS1_PSS(priv_rsa, sig, digest, image->md,
+						/* salt length */ 32);
+		if (ret > 0)
+			ret = RSA_private_encrypt(RSA_size(priv_rsa), sig, signature, priv_rsa,
+						  RSA_NO_PADDING);
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	return ret;
+}
+#else
+static int rimage_sign(EVP_PKEY *privkey, struct image *image, enum manver ver,
+		       unsigned char *digest, unsigned char *signature)
+{
+	EVP_PKEY_CTX *ctx = NULL;
+	EVP_PKEY_CTX *ctx2 = NULL;
+	unsigned char sig[MAN_RSA_SIGNATURE_LEN_2_5];
+	size_t siglen = MAN_RSA_SIGNATURE_LEN;
+	size_t sig_in = MAN_RSA_SIGNATURE_LEN_2_5;
+	size_t sig_out = MAN_RSA_SIGNATURE_LEN_2_5;
+	int ret;
+
+	ctx = EVP_PKEY_CTX_new(privkey, NULL /* no engine */);
+	if (!ctx)
+		return -ENOMEM;
+
+	ret = EVP_PKEY_sign_init(ctx);
+	if (ret <= 0)
+		goto out;
+
+	if (ver == V25) {
+		ret = EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_PSS_PADDING);
+		if (ret <= 0) {
+			fprintf(stderr, "error: failed to set rsa padding\n");
+			goto out;
+		}
+
+		ret = EVP_PKEY_CTX_set_rsa_pss_saltlen(ctx, 32);
+		if (ret <= 0) {
+			fprintf(stderr, "error: failed to set saltlen\n");
+			goto out;
+		}
+
+		ret = EVP_PKEY_CTX_set_signature_md(ctx, EVP_sha384());
+		if (ret <= 0) {
+			fprintf(stderr, "error: failed to set signature\n");
+			goto out;
+		}
+
+		ret = EVP_PKEY_sign(ctx, sig, &sig_in, digest, SHA384_DIGEST_LENGTH);
+		if (ret <= 0) {
+			fprintf(stderr, "error: failed to sign manifest\n");
+			goto out;
+		}
+
+		/* encryption done with different context */
+		ctx2 = EVP_PKEY_CTX_new(privkey, NULL /* no engine */);
+		if (!ctx)
+			return -ENOMEM;
+
+		ret = EVP_PKEY_encrypt_init(ctx2);
+		if (ret <= 0)
+			goto out;
+
+		ret = EVP_PKEY_CTX_set_rsa_padding(ctx2, RSA_NO_PADDING);
+		if (ret <= 0) {
+			fprintf(stderr, "error: failed to set 0 padding \n");
+			goto out;
+		}
+
+		ret = EVP_PKEY_encrypt(ctx2, signature, &sig_out, sig, sig_in);
+		if (ret <= 0)
+			fprintf(stderr, "error: failed to encrypt signature\n");
+	}
+	else {
+		ret = EVP_PKEY_CTX_set_signature_md(ctx, EVP_sha256());
+		if (ret <= 0) {
+			fprintf(stderr, "error: failed to set signature\n");
+			goto out;
+		}
+
+		ret = EVP_PKEY_sign(ctx, signature, &siglen, digest, SHA256_DIGEST_LENGTH);
+		if (ret <= 0)
+			fprintf(stderr, "error: failed to sign manifest\n");
+	}
+
+out:
+	EVP_PKEY_CTX_free(ctx);
+	if (ctx2)
+		EVP_PKEY_CTX_free(ctx2);
+
+	return ret;
+}
+#endif
+
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
+static int rimage_verify(EVP_PKEY *privkey, struct image *image, enum manver ver,
+			 unsigned char *digest, unsigned char *signature)
+{
+	unsigned char sig[MAN_RSA_SIGNATURE_LEN_2_5];
+	unsigned int siglen = MAN_RSA_SIGNATURE_LEN;
+	RSA *priv_rsa = NULL;
+	char err_buf[256];
+	int ret;
+
+	priv_rsa = EVP_PKEY_get1_RSA(privkey);
+
+	switch (ver) {
+	case V15:
+		/* fallthrough */
+	case V18:
+		ret = RSA_verify(NID_sha256, digest, SHA256_DIGEST_LENGTH, signature, siglen,
+				 priv_rsa);
+
+		if (ret <= 0) {
+			ERR_error_string(ERR_get_error(), err_buf);
+			fprintf(stderr, "error: verify %s\n", err_buf);
+		}
+		break;
+	case V25:
+		/* decrypt signature */
+		ret = RSA_public_decrypt(RSA_size(priv_rsa), signature, sig, priv_rsa,
+					 RSA_NO_PADDING);
+		if (ret <= 0) {
+			ERR_error_string(ERR_get_error(), err_buf);
+			fprintf(stderr, "error: verify decrypt %s\n", err_buf);
+			return ret;
+		}
+
+		ret = RSA_verify_PKCS1_PSS(priv_rsa, digest, image->md, sig, 32);
+		if (ret <= 0) {
+			ERR_error_string(ERR_get_error(), err_buf);
+			fprintf(stderr, "error: verify %s\n", err_buf);
+		}
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	return ret;
+}
+#else
+static int rimage_verify(EVP_PKEY *privkey, struct image *image, enum manver ver,
+			 unsigned char *digest, unsigned char *signature)
+{
+	EVP_PKEY_CTX *ctx = NULL;
+	EVP_PKEY_CTX *ctx2 = NULL;
+	size_t siglen = MAN_RSA_SIGNATURE_LEN;
+	unsigned char sig[MAN_RSA_SIGNATURE_LEN_2_5];
+	size_t siglen25 = MAN_RSA_SIGNATURE_LEN_2_5;
+	char err_buf[256];
+	int ret;
+
+	ctx = EVP_PKEY_CTX_new(privkey, NULL /* no engine */);
+	if (!ctx)
+		return -ENOMEM;
+
+	ret = EVP_PKEY_verify_init(ctx);
+	if (ret <= 0)
+		goto out;
+
+	switch (ver) {
+	case V15:
+		/* fallthrough */
+	case V18:
+		ret = EVP_PKEY_CTX_set_signature_md(ctx, EVP_sha256());
+		if (ret <= 0) {
+			ERR_error_string(ERR_get_error(), err_buf);
+			fprintf(stderr, "error: set signature %s\n", err_buf);
+			goto out;
+		}
+
+		ret = EVP_PKEY_verify(ctx, signature, siglen, digest, SHA256_DIGEST_LENGTH);
+		if (ret <= 0) {
+			ERR_error_string(ERR_get_error(), err_buf);
+			fprintf(stderr, "error: verify %s\n", err_buf);
+		}
+
+		break;
+	case V25:
+		ret = EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_PSS_PADDING);
+		if (ret <= 0)
+			goto out;
+
+		ret = EVP_PKEY_CTX_set_signature_md(ctx, EVP_sha384());
+		if (ret <= 0)
+			goto out;
+
+		/* decrypt signature */
+		ctx2 = EVP_PKEY_CTX_new(privkey, NULL /* no engine */);
+		if (!ctx)
+			return -ENOMEM;
+
+		ret = EVP_PKEY_decrypt_init(ctx2);
+		if (ret <= 0)
+			goto out;
+
+		ret = EVP_PKEY_CTX_set_rsa_padding(ctx2, RSA_NO_PADDING);
+		if (ret <= 0) {
+			ERR_error_string(ERR_get_error(), err_buf);
+			fprintf(stderr, "error: set padding %s\n", err_buf);
+			goto out;
+		}
+
+		ret = EVP_PKEY_decrypt(ctx2, sig, &siglen25, signature, siglen25);
+		if (ret <= 0) {
+			ERR_error_string(ERR_get_error(), err_buf);
+			fprintf(stderr, "error: decrypt %s\n", err_buf);
+			goto out;
+		}
+
+		ret = EVP_PKEY_verify(ctx, sig, siglen25, digest, SHA384_DIGEST_LENGTH);
+		if (ret <= 0) {
+			ERR_error_string(ERR_get_error(), err_buf);
+			fprintf(stderr, "error: verify %s\n", err_buf);
+		}
+
+		break;
+	default:
+		return -EINVAL;
+	}
+
+out:
+	EVP_PKEY_CTX_free(ctx);
+	if (ctx2)
+		EVP_PKEY_CTX_free(ctx2);
+
+	return ret;
+}
+#endif
+
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
+static int rimage_get_key_size(EVP_PKEY *privkey)
+{
+	RSA *priv_rsa = NULL;
+	int key_length;
+
+	priv_rsa = EVP_PKEY_get1_RSA(privkey);
+	key_length = RSA_size(priv_rsa);
+
+	RSA_free(priv_rsa);
+
+	return key_length;
+}
+#else
+static int rimage_get_key_size(EVP_PKEY *privkey)
+{
+	return EVP_PKEY_get_size(privkey);
+}
+#endif
+
 /*
  * RSA signature of manifest. The signature is an PKCS
  * #1-v1_5 of the entire manifest structure, including all
@@ -62,15 +446,9 @@ int pkcs_v1_5_sign_man_v1_5(struct image *image,
 			    struct fw_image_manifest_v1_5 *man,
 			    void *ptr1, unsigned int size1)
 {
-	RSA *priv_rsa = NULL;
 	EVP_PKEY *privkey;
-	FILE *fp;
-
-	const BIGNUM *n, *e, *d;
 	unsigned char digest[SHA256_DIGEST_LENGTH];
 	unsigned char mod[MAN_RSA_KEY_MODULUS_LEN];
-	unsigned int siglen = MAN_RSA_SIGNATURE_LEN;
-	char path[256];
 	int ret = -EINVAL, i;
 
 #if DEBUG_PKCS
@@ -78,33 +456,11 @@ int pkcs_v1_5_sign_man_v1_5(struct image *image,
 		ptr1 - (void *)man, size1);
 #endif
 
-	/* requires private key */
-	if (!image->key_name) {
-		return -EINVAL;
-	}
+	ret = rimage_read_key(&privkey, image);
+	if (ret < 0)
+		return ret;
 
-	/* create new key */
-	privkey = EVP_PKEY_new();
-	if (!privkey)
-		return -ENOMEM;
-
-	/* load in RSA private key from PEM file */
-	memset(path, 0, sizeof(path));
-	strncpy(path, image->key_name, sizeof(path) - 1);
-
-	fprintf(stdout, " %s: signing with key '%s'\n", __func__, path);
-	fp = fopen(path, "rb");
-	if (!fp) {
-		fprintf(stderr, "error: can't open file %s %d\n",
-			path, -errno);
-		return -errno;
-	}
-	PEM_read_PrivateKey(fp, &privkey, NULL, NULL);
-	fclose(fp);
-
-	/* validate RSA private key */
-	priv_rsa = EVP_PKEY_get1_RSA(privkey);
-	if (RSA_check_key(priv_rsa)) {
+	if (rimage_check_key(privkey) > 0) {
 		fprintf(stdout, " pkcs: RSA private key is valid.\n");
 	} else {
 		fprintf(stderr, "error: validating RSA private key.\n");
@@ -122,16 +478,16 @@ int pkcs_v1_5_sign_man_v1_5(struct image *image,
 	fprintf(stdout, "\n");
 
 	/* sign the manifest */
-	ret = RSA_sign(NID_sha256, digest, SHA256_DIGEST_LENGTH,
-		       (unsigned char *)man->css_header.signature,
-		       &siglen, priv_rsa);
-	if (ret < 0)
+	ret = rimage_sign(privkey, image, V15, digest,
+			  (unsigned char *)man->css_header.signature);
+
+	if (ret <= 0) {
 		fprintf(stderr, "error: failed to sign manifest\n");
+		return ret;
+	}
 
 	/* copy public key modulus and exponent to manifest */
-	RSA_get0_key(priv_rsa, &n, &e, &d);
-	BN_bn2bin(n, mod);
-	BN_bn2bin(e, (unsigned char *)man->css_header.exponent);
+	rimage_set_modexp(privkey, mod, (unsigned char *)man->css_header.exponent);
 
 	/* modulus is reveresd  */
 	for (i = 0; i < MAN_RSA_KEY_MODULUS_LEN; i++)
@@ -158,14 +514,9 @@ int pkcs_v1_5_sign_man_v1_8(struct image *image,
 			    void *ptr1, unsigned int size1, void *ptr2,
 			    unsigned int size2)
 {
-	RSA *priv_rsa = NULL;
 	EVP_PKEY *privkey;
-	FILE *fp;
-	const BIGNUM *n, *e, *d;
 	unsigned char digest[SHA256_DIGEST_LENGTH];
 	unsigned char mod[MAN_RSA_KEY_MODULUS_LEN];
-	unsigned int siglen = MAN_RSA_SIGNATURE_LEN;
-	char path[256];
 	int ret = -EINVAL, i;
 
 #if DEBUG_PKCS
@@ -173,33 +524,12 @@ int pkcs_v1_5_sign_man_v1_8(struct image *image,
 		ptr1 - (void *)man, size1, ptr2 - (void *)man, size2);
 #endif
 
-	/* require private key */
-	if (!image->key_name) {
-		return -EINVAL;
-	}
-
-	/* create new key */
-	privkey = EVP_PKEY_new();
-	if (!privkey)
-		return -ENOMEM;
-
-	/* load in RSA private key from PEM file */
-	memset(path, 0, sizeof(path));
-	strncpy(path, image->key_name, sizeof(path) - 1);
-
-	fprintf(stdout, " %s: signing with key '%s'\n", __func__, path);
-	fp = fopen(path, "rb");
-	if (!fp) {
-		fprintf(stderr, "error: can't open file %s %d\n",
-			path, -errno);
-		return -errno;
-	}
-	PEM_read_PrivateKey(fp, &privkey, NULL, NULL);
-	fclose(fp);
+	ret = rimage_read_key(&privkey, image);
+	if (ret < 0)
+		return ret;
 
 	/* validate RSA private key */
-	priv_rsa = EVP_PKEY_get1_RSA(privkey);
-	if (RSA_check_key(priv_rsa)) {
+	if (rimage_check_key(privkey) > 0) {
 		fprintf(stdout, " pkcs: RSA private key is valid.\n");
 	} else {
 		fprintf(stderr, "error: validating RSA private key.\n");
@@ -218,16 +548,15 @@ int pkcs_v1_5_sign_man_v1_8(struct image *image,
 	fprintf(stdout, "\n");
 
 	/* sign the manifest */
-	ret = RSA_sign(NID_sha256, digest, SHA256_DIGEST_LENGTH,
-		       (unsigned char *)man->css.signature,
-		       &siglen, priv_rsa);
-	if (ret < 0)
+	ret = rimage_sign(privkey, image, V18, digest,
+			  (unsigned char *)man->css.signature);
+	if (ret <= 0) {
 		fprintf(stderr, "error: failed to sign manifest\n");
+		return ret;
+	}
 
 	/* copy public key modulus and exponent to manifest */
-	RSA_get0_key(priv_rsa, &n, &e, &d);
-	BN_bn2bin(n, mod);
-	BN_bn2bin(e, (unsigned char *)man->css.exponent);
+	rimage_set_modexp(privkey, mod, (unsigned char *)man->css.exponent);
 
 	/* modulus is reveresd  */
 	for (i = 0; i < MAN_RSA_KEY_MODULUS_LEN; i++)
@@ -252,14 +581,9 @@ int pkcs_v1_5_sign_man_v2_5(struct image *image,
 			    void *ptr1, unsigned int size1, void *ptr2,
 			    unsigned int size2)
 {
-	RSA *priv_rsa = NULL;
 	EVP_PKEY *privkey;
-	FILE *fp;
-	const BIGNUM *n, *e, *d;
 	unsigned char digest[SHA384_DIGEST_LENGTH];
 	unsigned char mod[MAN_RSA_KEY_MODULUS_LEN_2_5];
-	unsigned char sig[MAN_RSA_SIGNATURE_LEN_2_5];
-	char path[256];
 	int ret = -EINVAL, i;
 
 #if DEBUG_PKCS
@@ -267,33 +591,12 @@ int pkcs_v1_5_sign_man_v2_5(struct image *image,
 		ptr1 - (void *)man, size1, ptr2 - (void *)man, size2);
 #endif
 
-	/* require private key */
-	if (!image->key_name) {
-		return -EINVAL;
-	}
-
-	/* create new PSS key */
-	privkey = EVP_PKEY_new();
-	if (!privkey)
-		return -ENOMEM;
-
-	/* load in RSA private key from PEM file */
-	memset(path, 0, sizeof(path));
-	strncpy(path, image->key_name, sizeof(path) - 1);
-
-	fprintf(stdout, " %s: signing with key '%s'\n", __func__, path);
-	fp = fopen(path, "rb");
-	if (!fp) {
-		fprintf(stderr, "error: can't open file %s %d\n",
-			path, -errno);
-		return -errno;
-	}
-	PEM_read_PrivateKey(fp, &privkey, NULL, NULL);
-	fclose(fp);
+	ret = rimage_read_key(&privkey, image);
+	if (ret < 0)
+		return ret;
 
 	/* validate RSA private key */
-	priv_rsa = EVP_PKEY_get1_RSA(privkey);
-	if (RSA_check_key(priv_rsa)) {
+	if (rimage_check_key(privkey) > 0) {
 		fprintf(stdout, " pkcs: RSA private key is valid.\n");
 	} else {
 		fprintf(stderr, "error: validating RSA private key.\n");
@@ -312,25 +615,15 @@ int pkcs_v1_5_sign_man_v2_5(struct image *image,
 	fprintf(stdout, "\n");
 
 	/* sign the manifest */
-	ret = RSA_padding_add_PKCS1_PSS(priv_rsa, sig,
-			digest, image->md, /* salt length */ 32);
+	ret = rimage_sign(privkey, image, V25, digest,
+			  (unsigned char *)man->css.signature);
 	if (ret <= 0) {
-		ERR_error_string(ERR_get_error(), path);
-		fprintf(stderr, "error: failed to sign manifest %s\n", path);
-	}
-
-	/* encrypt the signature using the private key */
-	ret = RSA_private_encrypt(RSA_size(priv_rsa), sig,
-		     (unsigned char *)man->css.signature, priv_rsa, RSA_NO_PADDING);
-	if (ret <= 0) {
-		ERR_error_string(ERR_get_error(), path);
-		fprintf(stderr, "error: failed to encrypt signature %s\n", path);
+		fprintf(stderr, "error: failed to sign manifest\n");
+		return ret;
 	}
 
 	/* copy public key modulus and exponent to manifest */
-	RSA_get0_key(priv_rsa, &n, &e, &d);
-	BN_bn2bin(n, mod);
-	BN_bn2bin(e, (unsigned char *)man->css.exponent);
+	rimage_set_modexp(privkey, mod, (unsigned char *)man->css.exponent);
 
 	/* modulus is reversed  */
 	for (i = 0; i < MAN_RSA_KEY_MODULUS_LEN_2_5; i++)
@@ -399,12 +692,8 @@ int pkcs_v1_5_verify_man_v1_5(struct image *image,
 			    struct fw_image_manifest_v1_5 *man,
 			    void *ptr1, unsigned int size1)
 {
-	RSA *priv_rsa = NULL;
 	EVP_PKEY *privkey;
-	FILE *fp;
 	unsigned char digest[SHA256_DIGEST_LENGTH];
-	unsigned int siglen = MAN_RSA_SIGNATURE_LEN;
-	char path[256];
 	int ret = -EINVAL, i;
 
 #if DEBUG_PKCS
@@ -412,33 +701,12 @@ int pkcs_v1_5_verify_man_v1_5(struct image *image,
 		ptr1 - (void *)man, size1);
 #endif
 
-	/* requires private key */
-	if (!image->key_name) {
-		return -EINVAL;
-	}
-
-	/* create new key */
-	privkey = EVP_PKEY_new();
-	if (!privkey)
-		return -ENOMEM;
-
-	/* load in RSA private key from PEM file */
-	memset(path, 0, sizeof(path));
-	strncpy(path, image->key_name, sizeof(path) - 1);
-
-	fprintf(stdout, " pkcs: verify with key %s\n", path);
-	fp = fopen(path, "rb");
-	if (!fp) {
-		fprintf(stderr, "error: can't open file %s %d\n",
-			path, -errno);
-		return -errno;
-	}
-	PEM_read_PrivateKey(fp, &privkey, NULL, NULL);
-	fclose(fp);
+	ret = rimage_read_key(&privkey, image);
+	if (ret < 0)
+		return ret;
 
 	/* validate RSA private key */
-	priv_rsa = EVP_PKEY_get1_RSA(privkey);
-	if (RSA_check_key(priv_rsa)) {
+	if (rimage_check_key(privkey) > 0) {
 		fprintf(stdout, " pkcs: RSA private key is valid.\n");
 	} else {
 		fprintf(stderr, "error: validating RSA private key.\n");
@@ -459,14 +727,12 @@ int pkcs_v1_5_verify_man_v1_5(struct image *image,
 	bytes_swap(man->css_header.signature,
 		   sizeof(man->css_header.signature));
 
-	/* sign the manifest */
-	ret = RSA_verify(NID_sha256, digest, SHA256_DIGEST_LENGTH,
-		       (unsigned char *)man->css_header.signature,
-		       siglen, priv_rsa);
-	if (ret <= 0) {
-		ERR_error_string(ERR_get_error(), path);
-		fprintf(stderr, "error: failed to verify manifest %s\n", path);
-	} else
+	/* verify */
+	ret = rimage_verify(privkey, image, V15, digest,
+			    (unsigned char *)man->css_header.signature);
+	if (ret <= 0)
+		fprintf(stderr, "error: failed to verify manifest\n");
+	else
 		fprintf(stdout, "pkcs: signature is valid !\n");
 
 
@@ -486,12 +752,8 @@ int pkcs_v1_5_verify_man_v1_8(struct image *image,
 			    void *ptr1, unsigned int size1, void *ptr2,
 			    unsigned int size2)
 {
-	RSA *priv_rsa = NULL;
 	EVP_PKEY *privkey;
-	FILE *fp;
 	unsigned char digest[SHA256_DIGEST_LENGTH];
-	unsigned int siglen = MAN_RSA_SIGNATURE_LEN;
-	char path[256];
 	int ret = -EINVAL, i;
 
 #if DEBUG_PKCS
@@ -499,33 +761,12 @@ int pkcs_v1_5_verify_man_v1_8(struct image *image,
 		ptr1 - (void *)man, size1, ptr2 - (void *)man, size2);
 #endif
 
-	/* require private key */
-	if (!image->key_name) {
-		return -EINVAL;
-	}
-
-	/* create new key */
-	privkey = EVP_PKEY_new();
-	if (!privkey)
-		return -ENOMEM;
-
-	/* load in RSA private key from PEM file */
-	memset(path, 0, sizeof(path));
-	strncpy(path, image->key_name, sizeof(path) - 1);
-
-	fprintf(stdout, " pkcs: verifying with key %s\n", path);
-	fp = fopen(path, "rb");
-	if (!fp) {
-		fprintf(stderr, "error: can't open file %s %d\n",
-			path, -errno);
-		return -errno;
-	}
-	PEM_read_PrivateKey(fp, &privkey, NULL, NULL);
-	fclose(fp);
+	ret = rimage_read_key(&privkey, image);
+	if (ret < 0)
+		return ret;
 
 	/* validate RSA private key */
-	priv_rsa = EVP_PKEY_get1_RSA(privkey);
-	if (RSA_check_key(priv_rsa)) {
+	if (rimage_check_key(privkey) > 0) {
 		fprintf(stdout, " pkcs: RSA private key is valid.\n");
 	} else {
 		fprintf(stderr, "error: validating RSA private key.\n");
@@ -546,14 +787,12 @@ int pkcs_v1_5_verify_man_v1_8(struct image *image,
 	/* signature is reveresd, swap it */
 	bytes_swap(man->css.signature, sizeof(man->css.signature));
 
-	/* sign the manifest */
-	ret = RSA_verify(NID_sha256, digest, SHA256_DIGEST_LENGTH,
-		       (unsigned char *)man->css.signature,
-		       siglen, priv_rsa);
-	if (ret <= 0) {
-		ERR_error_string(ERR_get_error(), path);
-		fprintf(stderr, "error: failed to verify manifest %s\n", path);
-	} else
+	/* verify */
+	ret = rimage_verify(privkey, image, V18, digest,
+			    (unsigned char *)man->css.signature);
+	if (ret <= 0)
+		fprintf(stderr, "error: failed to verify manifest\n");
+	else
 		fprintf(stdout, "pkcs: signature is valid !\n");
 
 	EVP_PKEY_free(privkey);
@@ -572,12 +811,8 @@ int pkcs_v1_5_verify_man_v2_5(struct image *image,
 			    void *ptr1, unsigned int size1, void *ptr2,
 			    unsigned int size2)
 {
-	RSA *priv_rsa = NULL;
 	EVP_PKEY *privkey;
-	FILE *fp;
 	unsigned char digest[SHA384_DIGEST_LENGTH];
-	unsigned char sig[MAN_RSA_SIGNATURE_LEN_2_5];
-	char path[256];
 	int ret = -EINVAL, i;
 
 #if DEBUG_PKCS
@@ -585,33 +820,12 @@ int pkcs_v1_5_verify_man_v2_5(struct image *image,
 		ptr1 - (void *)man, size1, ptr2 - (void *)man, size2);
 #endif
 
-	/* require private key */
-	if (!image->key_name) {
-		return -EINVAL;
-	}
-
-	/* create new PSS key */
-	privkey = EVP_PKEY_new();
-	if (!privkey)
-		return -ENOMEM;
-
-	/* load in RSA private key from PEM file */
-	memset(path, 0, sizeof(path));
-	strncpy(path, image->key_name, sizeof(path) - 1);
-
-	fprintf(stdout, " pkcs: PSS verify with key %s\n", path);
-	fp = fopen(path, "rb");
-	if (!fp) {
-		fprintf(stderr, "error: can't open file %s %d\n",
-			path, -errno);
-		return -errno;
-	}
-	PEM_read_PrivateKey(fp, &privkey, NULL, NULL);
-	fclose(fp);
+	ret = rimage_read_key(&privkey, image);
+	if (ret < 0)
+		return ret;
 
 	/* validate RSA private key */
-	priv_rsa = EVP_PKEY_get1_RSA(privkey);
-	if (RSA_check_key(priv_rsa)) {
+	if (rimage_check_key(privkey) > 0) {
 		fprintf(stdout, " pkcs: RSA private key is valid.\n");
 	} else {
 		fprintf(stderr, "error: validating RSA private key.\n");
@@ -632,19 +846,13 @@ int pkcs_v1_5_verify_man_v2_5(struct image *image,
 	/* signature is reversed, swap it */
 	bytes_swap(man->css.signature, sizeof(man->css.signature));
 
-	/* decrypt signature */
-	ret = RSA_public_decrypt(RSA_size(priv_rsa), (unsigned char *)man->css.signature,
-			     sig, priv_rsa, RSA_NO_PADDING);
-	if (ret <= 0) {
-		ERR_error_string(ERR_get_error(), path);
-		fprintf(stderr, "error: failed to decrypt signature %s\n", path);
-	}
+	/* verify */
+	ret = rimage_verify(privkey, image, V25, digest,
+			    (unsigned char *)man->css.signature);
 
-	ret = RSA_verify_PKCS1_PSS(priv_rsa, digest, image->md, sig, 32);
-	if (ret <= 0) {
-		ERR_error_string(ERR_get_error(), path);
-		fprintf(stderr, "error: failed to verify manifest %s\n", path);
-	} else
+	if (ret <= 0)
+		fprintf(stderr, "error: failed to verify manifest\n");
+	else
 		fprintf(stdout, "pkcs: signature is valid !\n");
 
 	EVP_PKEY_free(privkey);
@@ -697,35 +905,17 @@ int ri_manifest_verify_v2_5(struct image *image)
 
 int get_key_size(struct image *image)
 {
-	RSA *priv_rsa = NULL;
 	EVP_PKEY *privkey;
-	FILE *fp;
-	int key_length;
-	char path[256];
+	int key_len;
+	int ret;
 
-	/* require private key */
-	if (!image->key_name) {
-		return -EINVAL;
-	}
+	ret = rimage_read_key(&privkey, image);
+	if (ret < 0)
+		return ret;
 
-	/* load in RSA private key from PEM file */
-	memset(path, 0, sizeof(path));
-	strncpy(path, image->key_name, sizeof(path) - 1);
+	key_len = rimage_get_key_size(privkey);
 
-	fp = fopen(path, "rb");
-	if (!fp) {
-		fprintf(stderr, "error: can't open file %s %d\n",
-			path, -errno);
-		return -errno;
-	}
-	PEM_read_PrivateKey(fp, &privkey, NULL, NULL);
-	fclose(fp);
-
-	priv_rsa = EVP_PKEY_get1_RSA(privkey);
-	key_length = RSA_size(priv_rsa);
-
-	RSA_free(priv_rsa);
 	EVP_PKEY_free(privkey);
 
-	return key_length;
+	return key_len;
 }
