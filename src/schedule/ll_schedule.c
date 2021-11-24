@@ -407,10 +407,20 @@ static void schedule_ll_task_insert(struct task *task, struct list_item *tasks)
 	list_item_append(&task->list, tasks);
 }
 
-static int schedule_ll_task(void *data, struct task *task, uint64_t start,
-			    uint64_t period)
+static void schedule_ll_task_insert_before(struct task *task, struct task *before)
 {
-	struct ll_schedule_data *sch = data;
+	list_item_append(&task->list, &before->list);
+}
+
+static void schedule_ll_task_insert_after(struct task *task, struct task *after)
+{
+	list_item_prepend(&task->list, &after->list);
+}
+
+static int schedule_ll_task_common(struct ll_schedule_data *sch, struct task *task,
+				   uint64_t start, uint64_t period,
+				   struct task *reference, bool before)
+{
 	struct ll_task_pdata *pdata;
 	struct ll_task_pdata *reg_pdata;
 	struct list_item *tlist;
@@ -486,7 +496,12 @@ static int schedule_ll_task(void *data, struct task *task, uint64_t start,
 	}
 
 	/* insert task into the list */
-	schedule_ll_task_insert(task, &sch->tasks);
+	if (!reference)
+		schedule_ll_task_insert(task, &sch->tasks);
+	else if (before)
+		schedule_ll_task_insert_before(task, reference);
+	else
+		schedule_ll_task_insert_after(task, reference);
 	task->state = SOF_TASK_STATE_QUEUED;
 
 	/* set schedule domain */
@@ -501,6 +516,30 @@ out:
 	irq_local_enable(flags);
 
 	return ret;
+}
+
+static int schedule_ll_task(void *data, struct task *task, uint64_t start,
+			    uint64_t period)
+{
+	struct ll_schedule_data *sch = data;
+
+	return schedule_ll_task_common(sch, task, start, period, NULL, false);
+}
+
+static int schedule_ll_task_before(void *data, struct task *task, uint64_t start,
+				   uint64_t period, struct task *before)
+{
+	struct ll_schedule_data *sch = data;
+
+	return schedule_ll_task_common(sch, task, start, period, before, true);
+}
+
+static int schedule_ll_task_after(void *data, struct task *task, uint64_t start,
+				  uint64_t period, struct task *after)
+{
+	struct ll_schedule_data *sch = data;
+
+	return schedule_ll_task_common(sch, task, start, period, after, false);
 }
 
 int schedule_task_init_ll(struct task *task,
@@ -693,6 +732,8 @@ int scheduler_init_ll(struct ll_schedule_domain *domain)
 
 static const struct scheduler_ops schedule_ll_ops = {
 	.schedule_task		= schedule_ll_task,
+	.schedule_task_before	= schedule_ll_task_before,
+	.schedule_task_after	= schedule_ll_task_after,
 	.schedule_task_free	= schedule_ll_task_free,
 	.schedule_task_cancel	= schedule_ll_task_cancel,
 	.reschedule_task	= reschedule_ll_task,
