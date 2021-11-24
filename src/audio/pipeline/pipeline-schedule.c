@@ -340,5 +340,12 @@ void pipeline_schedule_copy(struct pipeline *p, uint64_t start)
 	if (!pipeline_is_timer_driven(p))
 		sa_set_panic_on_delay(false);
 
-	schedule_task(p->pipe_task, start, p->period);
+	if (p->sched_next && task_is_active(p->sched_next->pipe_task))
+		schedule_task_before(p->pipe_task, start, p->period,
+				     p->sched_next->pipe_task);
+	else if (p->sched_prev && task_is_active(p->sched_prev->pipe_task))
+		schedule_task_after(p->pipe_task, start, p->period,
+				    p->sched_prev->pipe_task);
+	else
+		schedule_task(p->pipe_task, start, p->period);
 }
