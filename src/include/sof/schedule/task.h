@@ -75,6 +75,19 @@ struct task {
 #endif
 };
 
+static inline bool task_is_active(struct task *task)
+{
+	switch (task->state) {
+	case SOF_TASK_STATE_QUEUED:
+	case SOF_TASK_STATE_PENDING:
+	case SOF_TASK_STATE_RUNNING:
+	case SOF_TASK_STATE_PREEMPTED:
+	case SOF_TASK_STATE_RESCHEDULE:
+		return true;
+	default:
+		return false;
+	}
+}
 
 static inline enum task_state task_run(struct task *task)
 {
