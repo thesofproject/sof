@@ -275,6 +275,9 @@ int scheduler_init_edf(void)
 	if (edf_sch->irq < 0)
 		return edf_sch->irq;
 
+	interrupt_mask(edf_sch->irq, cpu_get_id());
+	interrupt_unmask(edf_sch->irq, cpu_get_id());
+
 	interrupt_register(edf_sch->irq, edf_scheduler_run, edf_sch);
 	interrupt_enable(edf_sch->irq, edf_sch);
 
