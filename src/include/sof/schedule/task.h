@@ -75,14 +75,6 @@ struct task {
 #endif
 };
 
-/** \brief Task type registered by pipelines. */
-struct pipeline_task {
-	struct task task;		/**< parent structure */
-	bool registrable;		/**< should task be registered on irq */
-	struct comp_dev *sched_comp;	/**< pipeline scheduling component */
-};
-
-#define pipeline_task_get(t) container_of(t, struct pipeline_task, task)
 
 static inline enum task_state task_run(struct task *task)
 {
