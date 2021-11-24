@@ -175,11 +175,33 @@ static int pipeline_trigger_list(struct pipeline *p, struct comp_dev *host, int 
 	list_init(&walk_ctx.pipelines);
 
 	ret = walk_ctx.comp_func(host, NULL, &walk_ctx, host->direction);
-	if (ret < 0)
+	if (ret < 0) {
 		pipe_err(p, "pipeline_trigger_list(): ret = %d, host->comp.id = %u, cmd = %d",
 			 ret, dev_comp_id(host), cmd);
-	else
+	} else {
+		if (cmd == COMP_TRIGGER_PRE_START) {
+			struct list_item *list;
+			struct pipeline *current, *upstream = NULL;
+
+			/* Make sure the first pipeline has the highest priority */
+			list_for_item(list, &walk_ctx.pipelines) {
+				current = list_item(list, struct pipeline, list);
+
+				if (current->sched_comp->direction == SOF_IPC_STREAM_PLAYBACK) {
+					current->sched_prev = upstream;
+					if (upstream)
+						upstream->sched_next = current;
+				} else {
+					current->sched_next = upstream;
+					if (upstream)
+						upstream->sched_prev = current;
+				}
+
+				upstream = current;
+			}
+		}
 		pipeline_schedule_triggered(&walk_ctx, cmd);
+	}
 
 	return ret;
 }
