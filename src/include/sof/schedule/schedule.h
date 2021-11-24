@@ -223,9 +223,12 @@ static inline int schedule_task(struct task *task, uint64_t start,
 	struct schedule_data *sch;
 	struct list_item *slist;
 
+	if (!task)
+		return -EINVAL;
+
 	list_for_item(slist, &schedulers->list) {
 		sch = container_of(slist, struct schedule_data, list);
-		if (task->type == sch->type && sch->ops->schedule_task)
+		if (task->type == sch->type)
 			return sch->ops->schedule_task(sch->data, task, start,
 						       period);
 	}
@@ -264,7 +267,7 @@ static inline int schedule_task_cancel(struct task *task)
 
 	list_for_item(slist, &schedulers->list) {
 		sch = container_of(slist, struct schedule_data, list);
-		if (task->type == sch->type && sch->ops->schedule_task_cancel)
+		if (task->type == sch->type)
 			return sch->ops->schedule_task_cancel(sch->data, task);
 	}
 
@@ -280,7 +283,7 @@ static inline int schedule_task_free(struct task *task)
 
 	list_for_item(slist, &schedulers->list) {
 		sch = container_of(slist, struct schedule_data, list);
-		if (task->type == sch->type && sch->ops->schedule_task_free)
+		if (task->type == sch->type)
 			return sch->ops->schedule_task_free(sch->data, task);
 	}
 
