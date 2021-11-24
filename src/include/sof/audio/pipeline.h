@@ -12,6 +12,7 @@
 #include <sof/lib/mailbox.h>
 #include <sof/lib/memory.h>
 #include <sof/list.h>
+#include <sof/schedule/task.h>
 #include <sof/sof.h>
 #include <sof/spinlock.h>
 #include <sof/audio/pipeline-trace.h>
@@ -25,7 +26,6 @@ struct comp_buffer;
 struct comp_dev;
 struct ipc;
 struct ipc_msg;
-struct task;
 
 /* Pipeline status to stop execution of current path */
 #define PPL_STATUS_PATH_STOP	1
@@ -107,6 +107,15 @@ struct pipeline_data {
 	int cmd;
 	uint32_t delay_ms;		/* between PRE_{START,RELEASE} and {START,RELEASE} */
 };
+
+/** \brief Task type registered by pipelines. */
+struct pipeline_task {
+	struct task task;		/**< parent structure */
+	bool registrable;		/**< should task be registered on irq */
+	struct comp_dev *sched_comp;	/**< pipeline scheduling component */
+};
+
+#define pipeline_task_get(t) container_of(t, struct pipeline_task, task)
 
 /*
  * Pipeline Graph APIs
