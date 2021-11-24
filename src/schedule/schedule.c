@@ -61,6 +61,10 @@ void scheduler_init(int type, const struct scheduler_ops *ops, void *data)
 {
 	struct schedule_data *sch;
 
+	if (!ops || !ops->schedule_task || !ops->schedule_task_cancel ||
+	    !ops->schedule_task_free)
+		return;
+
 	sch = rzalloc(SOF_MEM_ZONE_SYS, 0, SOF_MEM_CAPS_RAM, sizeof(*sch));
 	list_init(&sch->list);
 	sch->type = type;
