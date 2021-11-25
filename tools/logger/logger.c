@@ -304,17 +304,6 @@ int main(int argc, char *argv[])
 		goto out;
 	}
 
-	if (config.version_fw) {
-		config.version_fd = fopen(config.version_file, "rb");
-		if (!config.version_fd && !config.dump_ldc) {
-			ret = errno;
-			fprintf(stderr,
-				"error: Unable to open version file %s: %s\n",
-				config.version_file, strerror(ret));
-			goto out;
-		}
-	}
-
 	if (config.out_file) {
 		config.out_fd = fopen(config.out_file, "w");
 		if (!config.out_fd) {
@@ -359,6 +348,17 @@ int main(int argc, char *argv[])
 	}
 	if (isatty(fileno(config.out_fd)) != 1)
 		config.use_colors = 0;
+
+	if (config.version_fw) {
+		config.version_fd = fopen(config.version_file, "rb");
+		if (!config.version_fd && !config.dump_ldc) {
+			ret = errno;
+			fprintf(stderr,
+				"error: Unable to open version file %s: %s\n",
+				config.version_file, strerror(ret));
+			goto out;
+		}
+	}
 
 	ret = -convert(&config);
 
