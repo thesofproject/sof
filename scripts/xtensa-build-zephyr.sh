@@ -331,7 +331,7 @@ parse_args()
 
 	    ( cd "$zeproj"
 	      test "$(realpath "$(west topdir)")" = "$(/bin/pwd)"
-	    ) || die '%s is not a zephyrproject' "$WEST_TOP"
+	    ) || die '%s is not the top of a zephyr project' "$zeproj"
 
 	    WEST_TOP="$zeproj"
 	fi
