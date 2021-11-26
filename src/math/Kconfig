@@ -20,7 +20,6 @@ config POWER_FIXED
 	  with base having values from -32 to + 32 . Exponent values range from
 	  -3 to +3. Power out MIN/MAX range is -/+32768.
 
-
 config BINARY_LOGARITHM_FIXED
        bool "Binary Logarithm function"
        default n
@@ -30,6 +29,14 @@ config BINARY_LOGARITHM_FIXED
 	  must be raised to obtain the value x. Base 2 logarithm function is implemented
 	  with a short lookup table. (log2n) operates for a range of 32 bit width size
 	  i.e. 1 to 4294967295.
+
+config SQRT_FIXED
+	bool "Square Root functions"
+	default n
+	help
+	  Select this to enable sqrt_int() functions as 16 bit version
+	  to  calculate square root.square function having positive number
+	  y as input and return the positive number x multiplied by itself (squared)
 
 config NUMBERS_GCD
 	bool "Greatest common divisor"

@@ -10,6 +10,10 @@ if(CONFIG_CORDIC_FIXED)
         add_local_sources(sof trig.c)
 endif()
 
+if(CONFIG_SQRT_FIXED)
+        add_local_sources(sof sqrt_int16.c)
+endif()
+
 if(CONFIG_MATH_DECIBELS)
         add_local_sources(sof decibels.c)
 endif()
