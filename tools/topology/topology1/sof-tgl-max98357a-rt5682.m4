@@ -22,6 +22,11 @@ include(`platform/intel/dmic.m4')
 DEBUG_START
 
 #
+# Check option conflicts
+#
+ifdef(`2_WAY_SPK', `ifdef(`4CH_PASSTHROUGH', `fatal_error(note: 2_WAY_SPK and 4CH_PASSTHROUGH are mutually exclusive)')')
+
+#
 # Define the demux configure
 #
 dnl Configure demux
@@ -126,7 +131,7 @@ dnl PIPELINE_PCM_ADD(pipeline,
 dnl     pipe id, pcm, max channels, format,
 dnl     frames, deadline, priority, core)
 
-# Low Latency playback pipeline 1 on PCM 0 using max 2 channels of s24le.
+`# Low Latency playback pipeline 1 on PCM 0 using max 'ifdef(`4CH_PASSTHROUGH', `4', `2')` channels of s24le.'
 # Schedule 48 frames per 1000us deadline with priority 0 on core 0
 define(`ENDPOINT_NAME', `Speakers')
 PIPELINE_PCM_ADD(
@@ -134,7 +139,7 @@ PIPELINE_PCM_ADD(
 	      ifdef(`DRC_EQ', sof/pipe-drc-eq-volume-demux-playback.m4,
 		    ifdef(`2_WAY_SPK', sof/pipe-demux-eq-iir-playback.m4,
 			  sof/pipe-volume-demux-playback.m4))),
-	1, 0, 2, s32le,
+	1, 0, ifdef(`4CH_PASSTHROUGH', `4', `2'), s32le,
 	1000, 0, 0,
 	48000, 48000, 48000)
 undefine(`ENDPOINT_NAME')
@@ -219,9 +224,9 @@ ifdef(`2_WAY_SPK',`# No echo reference for 2-way speakers',
 `# currently this dai is here as "virtual" capture backend
 W_DAI_IN(SSP, SPK_SSP_INDEX, SPK_SSP_NAME, FMT, 3, 0)
 
-# Capture pipeline 9 from demux on PCM 6 using max 2 channels of s32le.
+`# Capture pipeline 9 from demux on PCM 6 using max 'ifdef(`4CH_PASSTHROUGH', `4', `2')` channels of s32le.'
 PIPELINE_PCM_ADD(sof/pipe-passthrough-capture-sched.m4,
-	9, 6, 2, s32le,
+	9, 6, ifdef(`4CH_PASSTHROUGH', `4', `2'), s32le,
 	1000, 1, 0,
 	48000, 48000, 48000,
 	SCHEDULE_TIME_DOMAIN_TIMER,
