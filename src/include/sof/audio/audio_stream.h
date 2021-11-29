@@ -20,6 +20,7 @@
 #include <sof/lib/alloc.h>
 #include <sof/lib/cache.h>
 #include <ipc/stream.h>
+#include <ipc4/base-config.h>
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -619,6 +620,34 @@ static inline int audio_stream_set_zero(struct audio_stream *buffer,
 	return 0;
 }
 
+static inline void audio_stream_fmt_conversion(enum ipc4_bit_depth depth,
+					       enum ipc4_bit_depth valid,
+					       enum sof_ipc_frame *frame_fmt,
+					       enum sof_ipc_frame *valid_fmt,
+					       enum ipc4_sample_type type)
+{
+	/* IPC4_DEPTH_16BIT (16) <---> SOF_IPC_FRAME_S16_LE (0)
+	 * IPC4_DEPTH_24BIT (24) <---> SOF_IPC_FRAME_S24_4LE (1)
+	 * IPC4_DEPTH_32BIT (32) <---> SOF_IPC_FRAME_S32_LE (2)
+	 */
+	*frame_fmt = (depth >> 3) - 2;
+	*valid_fmt = (valid >> 3) - 2;
+
+	/* really 24_3LE */
+	if (valid == 24) {
+		if (depth == 24) {
+			*frame_fmt = SOF_IPC_FRAME_S24_3LE;
+			*valid_fmt = SOF_IPC_FRAME_S24_3LE;
+		} else {
+			*frame_fmt = SOF_IPC_FRAME_S24_4LE;
+		}
+	}
+
+	if (type == IPC4_TYPE_FLOAT && depth == 32) {
+		*frame_fmt = SOF_IPC_FRAME_FLOAT;
+		*valid_fmt = SOF_IPC_FRAME_FLOAT;
+	}
+}
 /** @}*/
 
 #endif /* __SOF_AUDIO_AUDIO_STREAM_H__ */
