@@ -54,6 +54,8 @@ struct audio_stream {
 
 	/* runtime stream params */
 	enum sof_ipc_frame frame_fmt;	/**< Sample data format */
+	enum sof_ipc_frame valid_sample_fmt;
+
 	uint32_t rate;		/**< Number of data frames per second [Hz] */
 	uint16_t channels;	/**< Number of samples in each frame */
 
