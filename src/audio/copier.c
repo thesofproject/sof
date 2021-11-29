@@ -60,25 +60,6 @@ struct copier_data {
 	pcm_converter_func converter[IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT];
 };
 
-static enum sof_ipc_frame convert_fmt(uint32_t depth, uint32_t type)
-{
-	switch (depth) {
-	case IPC4_DEPTH_16BIT:
-		return SOF_IPC_FRAME_S16_LE;
-	case IPC4_DEPTH_24BIT:
-		return SOF_IPC_FRAME_S24_4LE;
-	case IPC4_DEPTH_32BIT:
-		if (type == IPC4_TYPE_FLOAT)
-			return SOF_IPC_FRAME_FLOAT;
-		else
-			return SOF_IPC_FRAME_S32_LE;
-	default:
-		comp_cl_err(&comp_copier, "unsupported depth %d", depth);
-	};
-
-	return SOF_IPC_FRAME_S16_LE;
-}
-
 /* if copier is linked to host gateway, it will manage host dma.
  * Sof host component can support this case so copier reuses host
  * component to support host gateway.
@@ -356,10 +337,10 @@ static pcm_converter_func get_converter_func(struct ipc4_audio_format *in_fmt,
 {
 	enum sof_ipc_frame in, in_valid, out, out_valid;
 
-	in = convert_fmt(in_fmt->depth, in_fmt->s_type);
-	in_valid = convert_fmt(in_fmt->valid_bit_depth, in_fmt->s_type);
-	out = convert_fmt(out_fmt->depth, out_fmt->s_type);
-	out_valid = convert_fmt(out_fmt->valid_bit_depth, out_fmt->s_type);
+	audio_stream_fmt_conversion(in_fmt->depth, in_fmt->valid_bit_depth, &in, &in_valid,
+				    in_fmt->s_type);
+	audio_stream_fmt_conversion(out_fmt->depth, out_fmt->valid_bit_depth, &out, &out_valid,
+				    out_fmt->s_type);
 
 	/* check container & sample size */
 	if (use_no_container_convert_function(in, in_valid, out, out_valid))
@@ -593,7 +574,12 @@ static int copier_params(struct comp_dev *dev, struct sof_ipc_stream_params *par
 		j = IPC4_SINK_QUEUE_ID(sink->id);
 		sink->stream.channels = cd->out_fmt[j].channels_count;
 		sink->stream.rate = cd->out_fmt[j].sampling_frequency;
-		sink->stream.frame_fmt  = (cd->out_fmt[j].valid_bit_depth >> 3) - 2;
+		audio_stream_fmt_conversion(cd->out_fmt[j].depth,
+					    cd->out_fmt[j].valid_bit_depth,
+					    &sink->stream.frame_fmt,
+					    &sink->stream.valid_sample_fmt,
+					    cd->out_fmt[j].s_type);
+
 		sink->buffer_fmt = cd->out_fmt[j].interleaving_style;
 
 		for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)

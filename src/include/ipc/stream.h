@@ -55,6 +55,7 @@ enum sof_ipc_frame {
 	SOF_IPC_FRAME_S32_LE,
 	SOF_IPC_FRAME_FLOAT,
 	/* other formats here */
+	SOF_IPC_FRAME_S24_3LE,
 };
 
 /* stream buffer format */

@@ -614,12 +614,14 @@ static struct comp_dev *mixinout_new(const struct comp_driver *drv,
 {
 	struct comp_dev *dev;
 	struct mixer_data *md;
+	enum sof_ipc_frame valid_fmt;
 
 	comp_cl_dbg(&comp_mixer, "mixinout_new()");
 
 	dev = comp_alloc(drv, sizeof(*dev));
 	if (!dev)
 		return NULL;
+
 	dev->ipc_config = *config;
 
 	md = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*md));
@@ -631,6 +633,11 @@ static struct comp_dev *mixinout_new(const struct comp_driver *drv,
 	dcache_invalidate_region(spec, sizeof(md->base_cfg));
 	memcpy_s(&md->base_cfg, sizeof(md->base_cfg), spec, sizeof(md->base_cfg));
 	comp_set_drvdata(dev, md);
+
+	audio_stream_fmt_conversion(md->base_cfg.audio_fmt.depth,
+				    md->base_cfg.audio_fmt.valid_bit_depth,
+				    &dev->ipc_config.frame_fmt, &valid_fmt,
+				    md->base_cfg.audio_fmt.s_type);
 
 	dev->state = COMP_STATE_READY;
 	return dev;
@@ -683,7 +690,12 @@ static int mixout_params(struct comp_dev *dev,
 	sink = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
 	sink->stream.channels = md->base_cfg.audio_fmt.channels_count;
 	sink->stream.rate = md->base_cfg.audio_fmt.sampling_frequency;
-	sink->stream.frame_fmt	= (md->base_cfg.audio_fmt.valid_bit_depth >> 3) - 2;
+	audio_stream_fmt_conversion(md->base_cfg.audio_fmt.depth,
+				    md->base_cfg.audio_fmt.valid_bit_depth,
+				    &sink->stream.frame_fmt,
+				    &sink->stream.valid_sample_fmt,
+				    md->base_cfg.audio_fmt.s_type);
+
 	sink->buffer_fmt = md->base_cfg.audio_fmt.interleaving_style;
 
 	/* 8 ch stream is supported by ch_map and each channel
