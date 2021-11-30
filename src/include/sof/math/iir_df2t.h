@@ -58,6 +58,21 @@ struct iir_state_df2t {
 	int64_t *delay; /* Pointer to IIR delay line */
 };
 
+struct sof_eq_iir_header_df2t;
+
+int iir_init_coef_df2t(struct iir_state_df2t *iir,
+		       struct sof_eq_iir_header_df2t *config);
+
+int iir_delay_size_df2t(struct sof_eq_iir_header_df2t *config);
+
+void iir_init_delay_df2t(struct iir_state_df2t *iir, int64_t **delay);
+
+void iir_mute_df2t(struct iir_state_df2t *iir);
+
+void iir_unmute_df2t(struct iir_state_df2t *iir);
+
+void iir_reset_df2t(struct iir_state_df2t *iir);
+
 int32_t iir_df2t(struct iir_state_df2t *iir, int32_t x);
 
 /* Inline functions with or without HiFi3 intrinsics */

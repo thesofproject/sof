@@ -11,13 +11,13 @@
 #include <sof/audio/ipc-config.h>
 #include <sof/audio/crossover/crossover.h>
 #include <sof/audio/crossover/crossover_algorithm.h>
-#include <sof/audio/eq_iir/iir.h>
 #include <sof/common.h>
 #include <sof/debug/panic.h>
 #include <sof/ipc/msg.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/uuid.h>
+#include <sof/math/iir_df2t.h>
 #include <sof/list.h>
 #include <sof/platform.h>
 #include <sof/string.h>

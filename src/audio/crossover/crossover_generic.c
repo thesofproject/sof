@@ -6,10 +6,10 @@
 
 #include <stdint.h>
 #include <sof/audio/format.h>
-#include <sof/audio/eq_iir/iir.h>
 #include <sof/audio/component.h>
 #include <sof/audio/format.h>
 #include <sof/audio/crossover/crossover.h>
+#include <sof/math/iir_df2t.h>
 
 /*
  * \brief Splits x into two based on the coefficients set in the lp

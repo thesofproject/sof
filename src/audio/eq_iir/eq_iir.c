@@ -9,7 +9,6 @@
 #include <sof/audio/component.h>
 #include <sof/audio/buffer.h>
 #include <sof/audio/eq_iir/eq_iir.h>
-#include <sof/audio/eq_iir/iir.h>
 #include <sof/audio/format.h>
 #include <sof/audio/pipeline.h>
 #include <sof/audio/ipc-config.h>

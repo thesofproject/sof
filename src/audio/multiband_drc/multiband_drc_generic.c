@@ -7,7 +7,6 @@
 #include <stdint.h>
 #include <sof/audio/drc/drc_algorithm.h>
 #include <sof/audio/format.h>
-#include <sof/audio/eq_iir/iir.h>
 #include <sof/audio/multiband_drc/multiband_drc.h>
 #include <sof/math/iir_df2t.h>
 
