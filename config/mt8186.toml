@@ -1,0 +1,15 @@
+version = [1, 0]  # use simple file write
+
+[adsp]
+name = "mt8186"
+
+[[adsp.mem_zone]]
+type = "IRAM"
+base = "0x4e100000"
+size = "0x00100000"
+host_offset = "0x0"
+[[adsp.mem_zone]]
+type = "SRAM"
+base = "0x60000000"
+size = "0x00600000"
+host_offset = "0x0"
