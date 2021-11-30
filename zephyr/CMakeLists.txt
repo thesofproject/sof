@@ -627,7 +627,7 @@ zephyr_library_sources_ifdef(CONFIG_COMP_FIR
 zephyr_library_sources_ifdef(CONFIG_COMP_IIR
 	${SOF_MATH_PATH}/iir_df2t_generic.c
 	${SOF_MATH_PATH}/iir_df2t_hifi3.c
-	${SOF_AUDIO_PATH}/eq_iir/iir.c
+	${SOF_MATH_PATH}/iir.c
 	${SOF_AUDIO_PATH}/eq_iir/eq_iir.c
 )
 

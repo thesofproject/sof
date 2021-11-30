@@ -35,5 +35,5 @@ if(CONFIG_MATH_FFT)
 endif()
 
 if(CONFIG_MATH_IIR_DF2T)
-        add_local_sources(sof iir_df2t_generic.c iir_df2t_hifi3.c)
+        add_local_sources(sof iir_df2t_generic.c iir_df2t_hifi3.c iir.c)
 endif()
