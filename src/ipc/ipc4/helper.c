@@ -201,7 +201,8 @@ static struct comp_buffer *ipc4_create_buffer(struct comp_dev *src, struct comp_
 	src_cfg = (struct ipc4_base_module_cfg *)comp_get_drvdata(src);
 	sink_cfg = (struct ipc4_base_module_cfg *)comp_get_drvdata(sink);
 
-	buf_size = MAX(src_cfg->obs, sink_cfg->ibs);
+	/* double it since obs is single buffer size */
+	buf_size = src_cfg->obs * 2;
 	memset(&ipc_buf, 0, sizeof(ipc_buf));
 	ipc_buf.size = buf_size;
 	ipc_buf.comp.id = IPC4_COMP_ID(src_queue, dst_queue);
