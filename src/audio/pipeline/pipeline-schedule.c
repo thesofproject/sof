@@ -51,6 +51,9 @@ static enum task_state pipeline_task_cmd(struct pipeline *p,
 		case COMP_TRIGGER_PAUSE:
 			return p->trigger.aborted ? SOF_TASK_STATE_RUNNING :
 				SOF_TASK_STATE_COMPLETED;
+		case COMP_TRIGGER_PRE_START:
+		case COMP_TRIGGER_PRE_RELEASE:
+			p->status = COMP_STATE_ACTIVE;
 		}
 
 		return SOF_TASK_STATE_RESCHEDULE;
