@@ -1,5 +1,8 @@
 divert(-1)
 
+# don't care value
+define(`XX', 0x00)
+
 dnl Define macro for byte control
 
 dnl CONTROLBYTES_MAX(comment, value)
@@ -60,9 +63,10 @@ define(`C_CONTROLBYTES',
 `	# control uses bespoke driver get/put/info ID for ext ops'
 `	$4'
 `'
-`	base STR($5)'
-`	num_regs STR($6)'
-`	mask STR($7)'
+`	# default base/num_regs/mask to avoid NULL STR'
+`	ifelse($5, `', base STR(XX), base STR($5))'
+`	ifelse($6, `', num_regs STR(XX), num_regs STR($6)`')'
+`	ifelse($7, `', mask STR(XX), mask STR($7)`')'
 `	$8'
 `	$9'
 `	access ['
@@ -88,9 +92,9 @@ define(`C_CONTROLBYTES_VOLATILE_READONLY',
 `	# control uses bespoke driver get/put/info ID for ext ops'
 `	$4'
 `'
-`	base STR($5)'
-`	num_regs STR($6)'
-`	mask STR($7)'
+`	ifelse($5, `', base STR(XX), base STR($5))'
+`	ifelse($6, `', num_regs STR(XX), num_regs STR($6)`')'
+`	ifelse($7, `', mask STR(XX), mask STR($7)`')'
 `	$8'
 `	$9'
 `	access ['
@@ -116,9 +120,9 @@ define(`C_CONTROLBYTES_WRITEONLY',
 `	# control uses bespoke driver get/put/info ID for ext ops'
 `	$4'
 `'
-`	base STR($5)'
-`	num_regs STR($6)'
-`	mask STR($7)'
+`	ifelse($5, `', base STR(XX), base STR($5))'
+`	ifelse($6, `', num_regs STR(XX), num_regs STR($6)`')'
+`	ifelse($7, `', mask STR(XX), mask STR($7)`')'
 `	$8'
 `	$9'
 `	access ['
@@ -143,9 +147,9 @@ define(`C_CONTROLBYTES_VOLATILE_RW',
 `	# control uses bespoke driver get/put/info ID for ext ops'
 `	$4'
 `'
-`	base STR($5)'
-`	num_regs STR($6)'
-`	mask STR($7)'
+`	ifelse($5, `', base STR(XX), base STR($5))'
+`	ifelse($6, `', num_regs STR(XX), num_regs STR($6)`')'
+`	ifelse($7, `', mask STR(XX), mask STR($7)`')'
 `	$8'
 `	$9'
 `	access ['
