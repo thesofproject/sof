@@ -48,6 +48,9 @@ DECLARE_TR_CTX(copier_comp_tr, SOF_UUID(copier_comp_uuid), LOG_LEVEL_INFO);
 struct copier_data {
 	struct ipc4_copier_module_cfg config;
 	struct comp_dev *endpoint;
+	struct comp_buffer *endpoint_buffer;
+	bool bsource_buffer;
+
 	int direction;
 	/* sample data >> attenuation in range of [1 - 31] */
 	uint32_t attenuation;
@@ -60,13 +63,100 @@ struct copier_data {
 	pcm_converter_func converter[IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT];
 };
 
+static pcm_converter_func get_converter_func(struct ipc4_audio_format *in_fmt,
+					     struct ipc4_audio_format *out_fmt);
+
+static void create_endpoint_buffer(struct comp_dev *parent_dev,
+				   struct copier_data *cd,
+				   struct comp_ipc_config *config,
+				   struct ipc4_copier_module_cfg *copier_cfg)
+{
+	enum sof_ipc_frame in_frame_fmt, out_frame_fmt;
+	enum sof_ipc_frame in_valid_fmt, out_valid_fmt;
+	enum sof_ipc_frame valid_fmt;
+	struct sof_ipc_buffer ipc_buf;
+	uint32_t buf_size;
+	int i;
+
+	audio_stream_fmt_conversion(copier_cfg->base.audio_fmt.depth,
+				    copier_cfg->base.audio_fmt.valid_bit_depth,
+				    &in_frame_fmt,
+				    &in_valid_fmt,
+				    copier_cfg->base.audio_fmt.s_type);
+
+	audio_stream_fmt_conversion(copier_cfg->out_fmt.depth,
+				    copier_cfg->out_fmt.valid_bit_depth,
+				    &out_frame_fmt,
+				    &out_valid_fmt,
+				    copier_cfg->out_fmt.s_type);
+
+	/* playback case:
+	 *
+	 * --> copier0 -----> buf1 ----> ....  bufn --------> copier1
+	 *        |             /|\               |conversion    |
+	 *       \|/             |conversion     \|/            \|/
+	 *       host-> endpoint buffer0   endpoint buffer1 ->  dai -->
+	 *
+	 *  capture case:
+	 *
+	 *     copier1 <------ bufn <---- ....  buf1 <------- copier0 <--
+	 *      |               |conversion     /|\            |
+	 *     \|/             \|/               |conversion  \|/
+	 * <-- host <- endpoint buffer1   endpoint buffer0 <- dai
+	 *
+	 * According to above graph, the format of endpoint buffer
+	 * depends on stream direction and component type.
+	 */
+	if (cd->direction == SOF_IPC_STREAM_PLAYBACK) {
+		if (config->type == SOF_COMP_HOST) {
+			config->frame_fmt = in_frame_fmt;
+			valid_fmt = in_valid_fmt;
+			buf_size = copier_cfg->base.ibs * 2;
+		} else {
+			config->frame_fmt = out_frame_fmt;
+			valid_fmt = out_valid_fmt;
+			buf_size = copier_cfg->base.obs * 2;
+		}
+	} else {
+		if (config->type == SOF_COMP_HOST) {
+			config->frame_fmt = out_frame_fmt;
+			valid_fmt = out_valid_fmt;
+			buf_size = copier_cfg->base.obs * 2;
+		} else {
+			config->frame_fmt = in_frame_fmt;
+			valid_fmt = in_valid_fmt;
+			buf_size = copier_cfg->base.ibs * 2;
+		}
+	}
+
+	parent_dev->ipc_config.frame_fmt = config->frame_fmt;
+
+	memset(&ipc_buf, 0, sizeof(ipc_buf));
+	ipc_buf.size = buf_size;
+	ipc_buf.comp.pipeline_id = config->pipeline_id;
+	ipc_buf.comp.core = config->core;
+	cd->endpoint_buffer = buffer_new(&ipc_buf);
+
+	cd->endpoint_buffer->stream.channels = copier_cfg->base.audio_fmt.channels_count;
+	cd->endpoint_buffer->stream.rate = copier_cfg->base.audio_fmt.sampling_frequency;
+	cd->endpoint_buffer->stream.frame_fmt = config->frame_fmt;
+	cd->endpoint_buffer->stream.valid_sample_fmt = valid_fmt;
+	cd->endpoint_buffer->buffer_fmt = copier_cfg->base.audio_fmt.interleaving_style;
+
+	for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
+		cd->endpoint_buffer->chmap[i] = (copier_cfg->base.audio_fmt.ch_map >> i * 4) & 0xf;
+
+	cd->converter[0] = get_converter_func(&copier_cfg->base.audio_fmt, &copier_cfg->out_fmt);
+}
+
 /* if copier is linked to host gateway, it will manage host dma.
  * Sof host component can support this case so copier reuses host
  * component to support host gateway.
  */
-static struct comp_dev *create_host(struct comp_ipc_config *config,
+static struct comp_dev *create_host(struct comp_dev *parent_dev, struct copier_data *cd,
+				    struct comp_ipc_config *config,
 				    struct ipc4_copier_module_cfg *copier_cfg,
-				    int dir, struct pipeline *pipeline)
+				    int dir)
 {
 	struct sof_uuid host = {0x8b9d100c, 0x6d78, 0x418f, {0x90, 0xa3, 0xe0,
 			0xe8, 0x05, 0xd0, 0x85, 0x2b}};
@@ -80,6 +170,8 @@ static struct comp_dev *create_host(struct comp_ipc_config *config,
 
 	config->type = SOF_COMP_HOST;
 
+	create_endpoint_buffer(parent_dev, cd, config, copier_cfg);
+
 	memset(&ipc_host, 0, sizeof(ipc_host));
 	ipc_host.direction = dir;
 
@@ -90,6 +182,16 @@ static struct comp_dev *create_host(struct comp_ipc_config *config,
 	list_init(&dev->bsource_list);
 	list_init(&dev->bsink_list);
 
+	if (cd->direction == SOF_IPC_STREAM_PLAYBACK) {
+		comp_buffer_connect(dev, config->core, cd->endpoint_buffer,
+				    PPL_CONN_DIR_COMP_TO_BUFFER);
+		cd->bsource_buffer = false;
+	} else {
+		comp_buffer_connect(dev, config->core, cd->endpoint_buffer,
+				    PPL_CONN_DIR_BUFFER_TO_COMP);
+		cd->bsource_buffer = true;
+	}
+
 	return dev;
 }
 
@@ -97,7 +199,8 @@ static struct comp_dev *create_host(struct comp_ipc_config *config,
  * ssp, dmic or alh. Sof dai component can support this case so copier
  * reuses dai component to support non-host gateway.
  */
-static struct comp_dev *create_dai(struct comp_ipc_config *config,
+static struct comp_dev *create_dai(struct comp_dev *parent_dev, struct copier_data *cd,
+				   struct comp_ipc_config *config,
 				   struct ipc4_copier_module_cfg *copier,
 				   union ipc4_connector_node_id *node_id,
 				   struct pipeline *pipeline)
@@ -114,6 +217,7 @@ static struct comp_dev *create_dai(struct comp_ipc_config *config,
 		return NULL;
 
 	config->type = SOF_COMP_DAI;
+	create_endpoint_buffer(parent_dev, cd, config, copier);
 
 	memset(&dai, 0, sizeof(dai));
 	dai.dai_index = node_id->f.v_index;
@@ -163,6 +267,16 @@ static struct comp_dev *create_dai(struct comp_ipc_config *config,
 	if (ret < 0)
 		return NULL;
 
+	if (dai.direction == SOF_IPC_STREAM_PLAYBACK) {
+		comp_buffer_connect(dev, config->core, cd->endpoint_buffer,
+				    PPL_CONN_DIR_BUFFER_TO_COMP);
+		cd->bsource_buffer = true;
+	} else {
+		comp_buffer_connect(dev, config->core, cd->endpoint_buffer,
+				    PPL_CONN_DIR_COMP_TO_BUFFER);
+		cd->bsource_buffer = false;
+	}
+
 	return dev;
 }
 
@@ -206,7 +320,6 @@ static struct comp_dev *copier_new(const struct comp_driver *drv,
 
 	dcache_invalidate_region(spec, sizeof(*copier));
 
-	config->frame_fmt = (copier->base.audio_fmt.valid_bit_depth >> 3) - 2;
 	dev->ipc_config = *config;
 
 	config_size = copier->gtw_cfg.config_length * sizeof(uint32_t);
@@ -219,8 +332,7 @@ static struct comp_dev *copier_new(const struct comp_driver *drv,
 
 	size = sizeof(*copier);
 	mailbox_hostbox_read(&cd->config, size, 0, size);
-	cd->out_fmt[0] = cd->config.base.audio_fmt;
-
+	cd->out_fmt[0] = cd->config.out_fmt;
 	comp_set_drvdata(dev, cd);
 
 	list_init(&dev->bsource_list);
@@ -243,8 +355,7 @@ static struct comp_dev *copier_new(const struct comp_driver *drv,
 		switch (node_id.f.dma_type) {
 		case ipc4_hda_host_output_class:
 		case ipc4_hda_host_input_class:
-			cd->endpoint = create_host(config, copier, cd->direction,
-						   ipc_pipe->pipeline);
+			cd->endpoint = create_host(dev, cd, config, copier, cd->direction);
 			if (!cd->endpoint) {
 				comp_cl_err(&comp_copier, "unenable to create host");
 				goto error_cd;
@@ -265,7 +376,7 @@ static struct comp_dev *copier_new(const struct comp_driver *drv,
 		case ipc4_i2s_link_input_class:
 		case ipc4_alh_link_output_class:
 		case ipc4_alh_link_input_class:
-		cd->endpoint = create_dai(config, copier, &node_id, ipc_pipe->pipeline);
+		cd->endpoint = create_dai(dev, cd, config, copier, &node_id, ipc_pipe->pipeline);
 		if (!cd->endpoint) {
 			comp_cl_err(&comp_copier, "unenable to create dai");
 			goto error_cd;
@@ -301,6 +412,9 @@ static void copier_free(struct comp_dev *dev)
 
 	if (cd->endpoint)
 		cd->endpoint->drv->ops.free(cd->endpoint);
+
+	if (cd->endpoint_buffer)
+		buffer_release(cd->endpoint_buffer);
 
 	rfree(cd);
 	rfree(dev);
@@ -469,6 +583,38 @@ static inline int apply_attenuation(struct comp_dev *dev, struct copier_data *cd
 	}
 }
 
+static int do_conversion_copy(struct comp_dev *dev,
+			      struct copier_data *cd,
+			      struct comp_buffer *src,
+			      struct comp_buffer *sink,
+			      uint32_t *src_copy_bytes)
+{
+	struct comp_copy_limits c;
+	uint32_t sink_bytes;
+	uint32_t src_bytes;
+	int i;
+	int ret;
+
+	comp_get_copy_limits_with_lock(src, sink, &c);
+	src_bytes = c.frames * c.source_frame_bytes;
+	*src_copy_bytes = src_bytes;
+	sink_bytes = c.frames * c.sink_frame_bytes;
+
+	i = IPC4_SINK_QUEUE_ID(sink->id);
+	buffer_stream_invalidate(src, src_bytes);
+	cd->converter[i](&src->stream, 0, &sink->stream, 0, c.frames * sink->stream.channels);
+	if (cd->attenuation) {
+		ret = apply_attenuation(dev, cd, sink, c.frames);
+		if (ret < 0)
+			return ret;
+	}
+
+	buffer_stream_writeback(sink, sink_bytes);
+	comp_update_buffer_produce(sink, sink_bytes);
+
+	return 0;
+}
+
 /* copy and process stream data from source to sink buffers */
 static int copier_copy(struct comp_dev *dev)
 {
@@ -481,39 +627,50 @@ static int copier_copy(struct comp_dev *dev)
 
 	/* process gateway case */
 	if (cd->endpoint) {
-		ret = cd->endpoint->drv->ops.copy(cd->endpoint);
+		struct comp_buffer *src;
+		struct comp_buffer *sink;
+		uint32_t src_copy_bytes;
+
+		if (!cd->bsource_buffer) {
+			ret = cd->endpoint->drv->ops.copy(cd->endpoint);
+
+			sink = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
+			ret = do_conversion_copy(dev, cd, cd->endpoint_buffer, sink,
+						 &src_copy_bytes);
+			if (ret < 0)
+				return ret;
+
+			comp_update_buffer_consume(cd->endpoint_buffer, src_copy_bytes);
+		} else {
+			src = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
+			ret = do_conversion_copy(dev, cd, src, cd->endpoint_buffer,
+						 &src_copy_bytes);
+			if (ret < 0)
+				return ret;
+
+			comp_update_buffer_consume(src, src_copy_bytes);
+
+			ret = cd->endpoint->drv->ops.copy(cd->endpoint);
+			if (ret < 0)
+				return ret;
+		}
 	} else {
 		/* do format conversion */
-		struct comp_copy_limits c;
 		struct comp_buffer *src;
 		struct comp_buffer *sink;
 		struct list_item *sink_list;
 		uint32_t src_bytes;
-		uint32_t sink_bytes;
 
 		src = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
 		/* do format conversion for each sink buffer */
 		list_for_item(sink_list, &dev->bsink_list) {
-			int i;
-
 			sink = container_of(sink_list, struct comp_buffer, source_list);
-			comp_get_copy_limits_with_lock(src, sink, &c);
-			src_bytes = c.frames * c.source_frame_bytes;
-			sink_bytes = c.frames * c.sink_frame_bytes;
-
-			i = IPC4_SINK_QUEUE_ID(sink->id);
-			buffer_stream_invalidate(src, src_bytes);
-			cd->converter[i](&src->stream, 0, &sink->stream, 0,
-					 c.frames * sink->stream.channels);
-			if (cd->attenuation > 0) {
-				ret = apply_attenuation(dev, cd, sink, c.frames);
-				if (ret < 0)
-					return ret;
+			ret = do_conversion_copy(dev, cd, src, sink, &src_bytes);
+			if (ret < 0) {
+				comp_err(dev, "failed to copy buffer for comp %x",
+					 dev->ipc_config.id);
+				return ret;
 			}
-
-			buffer_stream_writeback(sink, sink_bytes);
-
-			comp_update_buffer_produce(sink, sink_bytes);
 		}
 
 		comp_update_buffer_consume(src, src_bytes);
@@ -545,11 +702,9 @@ static int copier_params(struct comp_dev *dev, struct sof_ipc_stream_params *par
 {
 	struct copier_data *cd = comp_get_drvdata(dev);
 	union ipc4_connector_node_id node_id;
-	struct comp_buffer *buffer;
 	struct comp_buffer *sink;
 	struct list_item *sink_list;
 	int ret = 0;
-	int dir;
 
 	comp_dbg(dev, "copier_params()");
 
@@ -586,35 +741,9 @@ static int copier_params(struct comp_dev *dev, struct sof_ipc_stream_params *par
 			sink->chmap[i] = (cd->out_fmt[j].ch_map >> i * 4) & 0xf;
 	}
 
-	/* for gateway linked cases, copier will dispatch params event to host or
-	 * dai component, so buffer linked to copier needs to link to these
-	 * components to support consumer & producter mode. Host and dai
-	 * will remember the sink or source buffer so we only need to set buffer
-	 * information once.
-	 */
 	if (cd->endpoint) {
-		/* host gateway linked */
-		if (!list_is_empty(&dev->bsink_list)) {
-			dir = PPL_CONN_DIR_COMP_TO_BUFFER;
-			buffer = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
-			/* detach it from copier */
-			list_item_del(buffer->source_list.next);
-			list_item_del(dev->bsink_list.next);
-		} else {
-			/* dai linked */
-			dir = PPL_CONN_DIR_BUFFER_TO_COMP;
-			buffer = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
-			list_item_del(buffer->sink_list.next);
-			list_item_del(dev->bsource_list.next);
-		}
-
 		update_internal_comp(dev, cd->endpoint);
-
-		/* attach buffer to endpoint */
-		comp_buffer_connect(cd->endpoint, cd->endpoint->ipc_config.core, buffer, dir);
 		ret = cd->endpoint->drv->ops.params(cd->endpoint, params);
-		/* restore buffer to copier */
-		comp_buffer_connect(dev, dev->ipc_config.core, buffer, dir);
 	}
 
 	return ret;
