@@ -8,12 +8,12 @@
 #include <stdarg.h>
 #include <stdlib.h>
 
-char *vasprintf(const char *format, va_list args);
+char *log_vasprintf(const char *format, va_list args);
 
 #ifdef __GNUC__
 __attribute__((format(printf, 1, 2)))
 #endif
-char *asprintf(const char *format, ...);
+char *log_asprintf(const char *format, ...);
 
 #ifdef __GNUC__
 __attribute__((format(printf, 1, 2)))
