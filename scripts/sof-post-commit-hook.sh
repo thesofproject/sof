@@ -7,4 +7,4 @@ set -e
 # and with .github/workflows/ with either some .conf file
 # or some wrapper script
 exec git show --format=email HEAD |
-  ./scripts/checkpatch.pl --no-tree --strict --codespell --ignore C99_COMMENT_TOLERANCE
+  ./scripts/checkpatch.pl --no-tree --strict --codespell
