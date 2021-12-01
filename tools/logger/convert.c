@@ -79,17 +79,17 @@ char *format_uid_raw(const struct sof_uuid_entry *uid_entry, int use_colors, int
 	uint16_t c = be ? htobe16(uid_val->c) : uid_val->c;
 	char *str;
 
-	str = asprintf(upper ? UUID_UPPER : UUID_LOWER,
-		use_colors ? KBLU : "",
-		name_first ? uid_entry->name : "",
-		name_first ? " " : "",
-		a, b, c,
-		uid_val->d[0], uid_val->d[1], uid_val->d[2],
-		uid_val->d[3], uid_val->d[4], uid_val->d[5],
-		uid_val->d[6], uid_val->d[7],
-		name_first ? "" : " ",
-		name_first ? "" : uid_entry->name,
-		use_colors ? KNRM : "");
+	str = log_asprintf(upper ? UUID_UPPER : UUID_LOWER,
+			   use_colors ? KBLU : "",
+			   name_first ? uid_entry->name : "",
+			   name_first ? " " : "",
+			   a, b, c,
+			   uid_val->d[0], uid_val->d[1], uid_val->d[2],
+			   uid_val->d[3], uid_val->d[4], uid_val->d[5],
+			   uid_val->d[6], uid_val->d[7],
+			   name_first ? "" : " ",
+			   name_first ? "" : uid_entry->name,
+			   use_colors ? KNRM : "");
 	return str;
 }
 
@@ -247,7 +247,7 @@ static void process_params(struct proc_ldc_entry *pe,
 			/* %s format specifier */
 			/* check for string printing, because it leads to logger crash */
 			log_err("String printing is not supported\n");
-			pe->params[i] = (uintptr_t)asprintf("<String @ 0x%08x>", raw_param);
+			pe->params[i] = (uintptr_t)log_asprintf("<String @ 0x%08x>", raw_param);
 			pe->subst_mask |= 1 << i;
 			++i;
 			p += 2;

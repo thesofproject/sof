@@ -12,7 +12,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-char *vasprintf(const char *format, va_list args)
+char *log_vasprintf(const char *format, va_list args)
 {
 	va_list args_copy;
 	int size;
@@ -29,13 +29,13 @@ char *vasprintf(const char *format, va_list args)
 	return result;
 }
 
-char *asprintf(const char *format, ...)
+char *log_asprintf(const char *format, ...)
 {
 	va_list args;
 	char *result;
 
 	va_start(args, format);
-	result = vasprintf(format, args);
+	result = log_vasprintf(format, args);
 	va_end(args);
 
 	return result;
