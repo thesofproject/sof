@@ -1432,9 +1432,9 @@ out:
 int resign_image(struct image *image)
 {
 	int key_size, key_file_size;
+	void *buffer = NULL;
 	size_t size, read;
 	FILE *in_file;
-	void *buffer;
 	int ret, i;
 
 	/* open image for reading */
