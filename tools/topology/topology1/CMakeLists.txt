@@ -190,6 +190,8 @@ set(TPLGS
 	"sof-mt8195-mt6359-rt1019-rt5682\;sof-mt8195-mt6359-rt1019-rt5682"
 
 	"sof-acp-renoir\;sof-acp"
+	"sof-rn-rt5682-rt1019\;sof-rn-rt5682-rt1019"
+	"sof-rn-rt5682-max98360\;sof-rn-rt5682-max98360"
 )
 
 # This empty 'production/' source subdirectory exists only to create the
