@@ -20,6 +20,17 @@ config COMP_DAI
 	help
 	  Select for DAI component
 
+config COMP_ARIA
+        bool "ARIA component"
+        default n
+        depends on IPC_MAJOR_4
+        help
+          Select for Automatic Regressive Input Amplifier Module component
+	  ARIA applies variable gain into incoming signal.
+	  Applied gain is in range <1, 2 power attenuation>
+	  Currently ARIA introduces gain transition and algorithmic
+	  latency equal to 1 ms.
+
 config COMP_VOLUME
 	bool "Volume component"
 	default y
