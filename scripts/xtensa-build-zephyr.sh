@@ -134,6 +134,9 @@ west_init_update()
 	# zephyr_fetch_and_switch    origin   pull/38374/head
 	# zephyr_fetch_and_switch    origin   19d5448ec117fde8076bec4d0e61da53147f3315
 
+	# SOF2.0 release uses this commit, verified in  2021-12-03 daily test
+	zephyr_fetch_and_switch    origin   fd089b361d8aebbcb49cca989444aaeb0b6fbb4d
+
 	# SECURITY WARNING for reviewers: never allow unknown code from
 	# unknown submitters on any CI system.
 
