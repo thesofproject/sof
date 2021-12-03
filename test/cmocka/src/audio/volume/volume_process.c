@@ -385,6 +385,9 @@ static void test_audio_vol(void **state)
 	case SOF_IPC_FRAME_FLOAT:
 		fill_source_s32(vol_state);
 		break;
+	case SOF_IPC_FRAME_S24_3LE:
+		/* TODO: add 3LE support */
+		break;
 	}
 
 	cd->scale_vol(vol_state->dev, &vol_state->sink->stream,
