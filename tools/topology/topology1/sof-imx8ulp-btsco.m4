@@ -38,7 +38,7 @@ dnl     time_domain, sched_comp)
 PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
 	1, 0, 1, s16le,
 	1000, 0, 0,
-	16000, 16000, 16000)
+	8000, 8000, 8000)
 
 undefine(`CHANNELS_MIN')
 
@@ -47,7 +47,7 @@ undefine(`CHANNELS_MIN')
 PIPELINE_PCM_ADD(sof/pipe-volume-capture.m4,
 	2, 0, 1, s16le,
 	1000, 0, 0,
-	16000, 16000, 16000)
+	8000, 8000, 8000)
 #
 # DAIs configuration
 #
@@ -80,6 +80,6 @@ dnl DAI_CONFIG(type, idx, link_id, name, sai_config)
 DAI_CONFIG(SAI, 5, 0, sai5-bt-sco-pcm-wb,
 	SAI_CONFIG(I2S, SAI_CLOCK(mclk, 12288000, codec_mclk_out),
 		SAI_CLOCK(bclk, 256000, codec_slave),
-		SAI_CLOCK(fsync, 16000, codec_slave),
+		SAI_CLOCK(fsync, 8000, codec_slave),
 		SAI_TDM(1, 16, 1, 1),
 		SAI_CONFIG_DATA(SAI, 5, 0)))
