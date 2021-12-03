@@ -324,6 +324,10 @@ int main(void)
 				tests[ti].test_func = test_mux_copy_proc_32;
 				break;
 #endif /* CONFIG_FORMAT_S32LE */
+#if CONFIG_FORMAT_S24_3LE
+			case SOF_IPC_FRAME_S24_3LE:
+				break;
+#endif /* CONFIG_FORMAT_S24_3LE */
 			default:
 				return -EINVAL;
 			}

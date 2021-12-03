@@ -383,6 +383,8 @@ static void test_audio_eq_iir(void **state)
 		case SOF_IPC_FRAME_S32_LE:
 			fill_source_s32(td, frames);
 			break;
+		case SOF_IPC_FRAME_S24_3LE:
+			break;
 		default:
 			assert(0);
 			break;
