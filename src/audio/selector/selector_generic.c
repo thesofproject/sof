@@ -18,6 +18,9 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#define BYTES_TO_S16_SAMPLES	1
+#define BYTES_TO_S32_SAMPLES	2
+
 #if CONFIG_FORMAT_S16LE
 /**
  * \brief Channel selection for 16 bit, 1 channel data format.
@@ -30,16 +33,32 @@ static void sel_s16le_1ch(struct comp_dev *dev, struct audio_stream *sink,
 			  const struct audio_stream *source, uint32_t frames)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	int16_t *src;
-	int16_t *dest;
-	uint32_t i;
-	uint32_t j = 0;
-	uint32_t nch = cd->config.in_channels_count;
+	int16_t *src = source->r_ptr;
+	int16_t *dest = sink->w_ptr;
+	int16_t *src_ch;
+	int nmax;
+	int i;
+	int n;
+	int processed = 0;
+	const int source_frame_bytes = audio_stream_frame_bytes(source);
+	const unsigned int nch = source->channels;
+	const unsigned int sel_channel = cd->config.sel_channel; /* 0 to nch - 1 */
 
-	for (i = cd->config.sel_channel; i < frames * nch; i += nch) {
-		src = audio_stream_read_frag_s16(source, i);
-		dest = audio_stream_write_frag_s16(sink, j++);
-		*dest = *src;
+	while (processed < frames) {
+		n = frames - processed;
+		nmax = audio_stream_bytes_without_wrap(source, src) / source_frame_bytes;
+		n = MIN(n, nmax);
+		nmax = audio_stream_bytes_without_wrap(sink, dest) >> BYTES_TO_S16_SAMPLES;
+		n = MIN(n, nmax);
+		src_ch = src + sel_channel;
+		for (i = 0; i < n; i++) {
+			*dest = *src_ch;
+			src_ch += nch;
+			dest++;
+		}
+		src = audio_stream_wrap(source, src + nch * n);
+		dest = audio_stream_wrap(sink, dest);
+		processed += n;
 	}
 }
 
@@ -53,21 +72,23 @@ static void sel_s16le_1ch(struct comp_dev *dev, struct audio_stream *sink,
 static void sel_s16le_nch(struct comp_dev *dev, struct audio_stream *sink,
 			  const struct audio_stream *source, uint32_t frames)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
-	int16_t *src;
-	int16_t *dest;
-	uint32_t i;
-	uint32_t j = 0;
-	uint32_t channel;
+	int8_t *src = (int8_t *)source->r_ptr;
+	int8_t *dst = (int8_t *)sink->w_ptr;
+	int bmax;
+	int b;
+	int bytes_copied = 0;
+	const int bytes_total = frames * audio_stream_frame_bytes(source);
 
-	for (i = 0; i < frames; i++) {
-		for (channel = 0; channel < cd->config.in_channels_count;
-		     channel++) {
-			src = audio_stream_read_frag_s16(source, j);
-			dest = audio_stream_write_frag_s16(sink, j);
-			*dest = *src;
-			j++;
-		}
+	while (bytes_copied < bytes_total) {
+		b = bytes_total - bytes_copied;
+		bmax = audio_stream_bytes_without_wrap(source, src);
+		b = MIN(b, bmax);
+		bmax = audio_stream_bytes_without_wrap(sink, dst);
+		b = MIN(b, bmax);
+		memcpy(dst, src, b);
+		src = audio_stream_wrap(source, src + b);
+		dst = audio_stream_wrap(sink, dst + b);
+		bytes_copied += b;
 	}
 }
 #endif /* CONFIG_FORMAT_S16LE */
@@ -84,16 +105,32 @@ static void sel_s32le_1ch(struct comp_dev *dev, struct audio_stream *sink,
 			  const struct audio_stream *source, uint32_t frames)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	int32_t *src;
-	int32_t *dest;
-	uint32_t i;
-	uint32_t j = 0;
-	uint32_t nch = cd->config.in_channels_count;
+	int32_t *src = source->r_ptr;
+	int32_t *dest = sink->w_ptr;
+	int32_t *src_ch;
+	int nmax;
+	int i;
+	int n;
+	int processed = 0;
+	const int source_frame_bytes = audio_stream_frame_bytes(source);
+	const unsigned int nch = source->channels;
+	const unsigned int sel_channel = cd->config.sel_channel; /* 0 to nch - 1 */
 
-	for (i = cd->config.sel_channel; i < frames * nch; i += nch) {
-		src = audio_stream_read_frag_s32(source, i);
-		dest = audio_stream_write_frag_s32(sink, j++);
-		*dest = *src;
+	while (processed < frames) {
+		n = frames - processed;
+		nmax = audio_stream_bytes_without_wrap(source, src) / source_frame_bytes;
+		n = MIN(n, nmax);
+		nmax = audio_stream_bytes_without_wrap(sink, dest) >> BYTES_TO_S32_SAMPLES;
+		n = MIN(n, nmax);
+		src_ch = src + sel_channel;
+		for (i = 0; i < n; i++) {
+			*dest = *src_ch;
+			src_ch += nch;
+			dest++;
+		}
+		src = audio_stream_wrap(source, src + nch * n);
+		dest = audio_stream_wrap(sink, dest);
+		processed += n;
 	}
 }
 
@@ -107,21 +144,23 @@ static void sel_s32le_1ch(struct comp_dev *dev, struct audio_stream *sink,
 static void sel_s32le_nch(struct comp_dev *dev, struct audio_stream *sink,
 			  const struct audio_stream *source, uint32_t frames)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
-	int32_t *src;
-	int32_t *dest;
-	uint32_t i;
-	uint32_t j = 0;
-	uint32_t channel;
+	int8_t *src = (int8_t *)source->r_ptr;
+	int8_t *dst = (int8_t *)sink->w_ptr;
+	int bmax;
+	int b;
+	int bytes_copied = 0;
+	const int bytes_total = frames * audio_stream_frame_bytes(source);
 
-	for (i = 0; i < frames; i++) {
-		for (channel = 0; channel < cd->config.in_channels_count;
-		     channel++) {
-			src = audio_stream_read_frag_s32(source, j);
-			dest = audio_stream_write_frag_s32(sink, j);
-			*dest = *src;
-			j++;
-		}
+	while (bytes_copied < bytes_total) {
+		b = bytes_total - bytes_copied;
+		bmax = audio_stream_bytes_without_wrap(source, src);
+		b = MIN(b, bmax);
+		bmax = audio_stream_bytes_without_wrap(sink, dst);
+		b = MIN(b, bmax);
+		memcpy(dst, src, b);
+		src = audio_stream_wrap(source, src + b);
+		dst = audio_stream_wrap(sink, dst + b);
+		bytes_copied += b;
 	}
 }
 #endif /* CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE */
