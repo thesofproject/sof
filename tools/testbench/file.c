@@ -315,8 +315,7 @@ quit:
 static int file_s32_default(struct comp_dev *dev, struct audio_stream *sink,
 			    struct audio_stream *source, uint32_t frames)
 {
-	struct dai_data *dd = comp_get_drvdata(dev);
-	struct file_comp_data *cd = comp_get_drvdata(dd->dai);
+	struct file_comp_data *cd = comp_get_drvdata(dev);
 	int nch;
 	int n_samples = 0;
 
@@ -350,8 +349,7 @@ static int file_s32_default(struct comp_dev *dev, struct audio_stream *sink,
 static int file_s16(struct comp_dev *dev, struct audio_stream *sink,
 		    struct audio_stream *source, uint32_t frames)
 {
-	struct dai_data *dd = comp_get_drvdata(dev);
-	struct file_comp_data *cd = comp_get_drvdata(dd->dai);
+	struct file_comp_data *cd = comp_get_drvdata(dev);
 	int nch;
 	int n_samples = 0;
 
@@ -383,8 +381,7 @@ static int file_s16(struct comp_dev *dev, struct audio_stream *sink,
 static int file_s24(struct comp_dev *dev, struct audio_stream *sink,
 		    struct audio_stream *source, uint32_t frames)
 {
-	struct dai_data *dd = comp_get_drvdata(dev);
-	struct file_comp_data *cd = comp_get_drvdata(dd->dai);
+	struct file_comp_data *cd = comp_get_drvdata(dev);
 	int nch;
 	int n_samples = 0;
 
@@ -431,11 +428,8 @@ static struct comp_dev *file_new(const struct comp_driver *drv,
 				 struct comp_ipc_config *config,
 				 void *spec)
 {
-	const struct dai_driver *fdrv;
 	struct comp_dev *dev;
 	struct ipc_comp_file *ipc_file = spec;
-	struct dai_data *dd;
-	struct dai *fdai;
 	struct file_comp_data *cd;
 
 	debug_print("file_new()\n");
@@ -446,26 +440,12 @@ static struct comp_dev *file_new(const struct comp_driver *drv,
 	dev->ipc_config = *config;
 
 	/* allocate  memory for file comp data */
-	dd = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*dd));
-	if (!dd)
-		goto error_skip_dd;
-
-	fdai = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*fdai));
-	if (!fdai)
-		goto error_skip_dai;
-
-	fdrv = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*fdrv));
-	if (!fdrv)
-		goto error_skip_drv;
-
 	cd = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
 	if (!cd)
 		goto error_skip_cd;
 
-	fdai->drv = fdrv;
-	dd->dai = fdai;
-	comp_set_drvdata(dev, dd);
-	comp_set_drvdata(dd->dai, cd);
+
+	comp_set_drvdata(dev, cd);
 
 	/* default function for processing samples */
 	cd->file_func = file_s32_default;
@@ -486,6 +466,7 @@ static struct comp_dev *file_new(const struct comp_driver *drv,
 	/* open file handle(s) depending on mode */
 	switch (cd->fs.mode) {
 	case FILE_READ:
+		dev->ipc_config.type = SOF_COMP_FILEREAD;
 		cd->fs.rfh = fopen(cd->fs.fn, "r");
 		if (!cd->fs.rfh) {
 			fprintf(stderr, "error: opening file %s for reading - %s\n",
@@ -494,6 +475,7 @@ static struct comp_dev *file_new(const struct comp_driver *drv,
 		}
 		break;
 	case FILE_WRITE:
+		dev->ipc_config.type = SOF_COMP_FILEWRITE;
 		cd->fs.wfh = fopen(cd->fs.fn, "w+");
 		if (!cd->fs.wfh) {
 			fprintf(stderr, "error: opening file %s for writing - %s\n",
@@ -516,23 +498,13 @@ error:
 	free(cd);
 
 error_skip_cd:
-	free((void *)fdrv);
-
-error_skip_drv:
-	free(fdai);
-
-error_skip_dai:
-	free(dd);
-
-error_skip_dd:
 	free(dev);
 	return NULL;
 }
 
 static void file_free(struct comp_dev *dev)
 {
-	struct dai_data *dd = comp_get_drvdata(dev);
-	struct file_comp_data *cd = comp_get_drvdata(dd->dai);
+	struct file_comp_data *cd = comp_get_drvdata(dev);
 
 	comp_dbg(dev, "file_free()");
 
@@ -543,9 +515,6 @@ static void file_free(struct comp_dev *dev)
 
 	free(cd->fs.fn);
 	free(cd);
-	free((void *)dd->dai->drv);
-	free(dd->dai);
-	free(dd);
 	free(dev);
 }
 
@@ -626,8 +595,7 @@ static int file_cmd(struct comp_dev *dev, int cmd, void *data,
 static int file_copy(struct comp_dev *dev)
 {
 	struct comp_buffer *buffer;
-	struct dai_data *dd = comp_get_drvdata(dev);
-	struct file_comp_data *cd = comp_get_drvdata(dd->dai);
+	struct file_comp_data *cd = comp_get_drvdata(dev);
 	int snk_frames;
 	int src_frames;
 	int bytes = cd->sample_container_bytes;
@@ -690,8 +658,7 @@ static int file_copy(struct comp_dev *dev)
 static int file_prepare(struct comp_dev *dev)
 {
 	struct comp_buffer *buffer = NULL;
-	struct dai_data *dd = comp_get_drvdata(dev);
-	struct file_comp_data *cd = comp_get_drvdata(dd->dai);
+	struct file_comp_data *cd = comp_get_drvdata(dev);
 	struct audio_stream *stream;
 	int periods;
 	int ret = 0;
@@ -799,8 +766,7 @@ static int file_reset(struct comp_dev *dev)
 static int file_get_hw_params(struct comp_dev *dev,
 			      struct sof_ipc_stream_params *params, int dir)
 {
-	struct dai_data *dd = comp_get_drvdata(dev);
-	struct file_comp_data *cd = comp_get_drvdata(dd->dai);
+	struct file_comp_data *cd = comp_get_drvdata(dev);
 
 	comp_info(dev, "file_hw_params()");
 	params->direction = dir;
