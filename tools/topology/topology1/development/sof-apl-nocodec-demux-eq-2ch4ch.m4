@@ -41,7 +41,7 @@ define(matrix1, `ROUTE_MATRIX(1,
 			     `BITS_TO_BYTE(0, 0, 0 ,0 ,0 ,0 ,0 ,0)')')
 
 dnl name, num_streams, route_matrix list
-MUXDEMUX_CONFIG(demux_priv_1, 1, LIST(`	', `matrix1'))
+MUXDEMUX_CONFIG(demux_priv_1, 1, LIST_NONEWLINE(`', `matrix1'))
 
 #
 # Define the pipelines
