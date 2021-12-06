@@ -19,7 +19,11 @@ dnl The first argument specifies the number of tabs to be added for formatting
 define(`LIST_LOOP', `argn(j,$@)
 $1ifelse(i,`2', `', `define(`i', decr(i))define(`j', incr(j))$0($@)')')
 
+define(`LIST_LOOP_NONEWLINE', `argn(j,$@)$1ifelse(i,`2', `', `define(`i', decr(i))define(`j', incr(j))$0($@)')')
+
 define(`LIST', `pushdef(`i', $#)pushdef(`j', `2')LIST_LOOP($@)popdef(i)popdef(j)')
+
+define(`LIST_NONEWLINE', `pushdef(`i', $#)pushdef(`j', `2')LIST_LOOP_NONEWLINE($@)popdef(i)popdef(j)')
 
 dnl Sums a list of variable arguments. Use as last argument in macro.
 define(`SUM_LOOP', `eval(argn(j,$@)
