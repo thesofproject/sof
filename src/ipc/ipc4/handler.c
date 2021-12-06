@@ -20,6 +20,7 @@
 #include <sof/ipc/msg.h>
 #include <sof/ipc/driver.h>
 #include <sof/lib/mailbox.h>
+#include <sof/lib/pm_runtime.h>
 #include <sof/lib/wait.h>
 #include <sof/math/numbers.h>
 #include <sof/trace/trace.h>
@@ -588,6 +589,55 @@ static int ipc4_delete_module_instance(union ipc4_message_header *ipc4)
 	return ret;
 }
 
+/* disable power gating on core 0 */
+static int ipc4_module_process_d0ix(union ipc4_message_header *ipc4)
+{
+	struct ipc4_module_set_d0ix d0ix;
+	uint32_t module_id, instance_id;
+
+	memcpy_s(&d0ix, sizeof(d0ix), ipc4, sizeof(d0ix));
+	module_id = d0ix.header.r.module_id;
+	instance_id = d0ix.header.r.instance_id;
+
+	tr_dbg(&ipc_tr, "ipc4_module_process_d0ix %x : %x", module_id, instance_id);
+
+	if (d0ix.header.r.module_id || d0ix.header.r.instance_id) {
+		tr_err(&ipc_tr, "invalid resource id %x : %x", module_id, instance_id);
+		return IPC4_INVALID_RESOURCE_ID;
+	}
+
+	/* only module 0 can be used to set d0ix state */
+	if (d0ix.data.r.prevent_power_gating)
+		pm_runtime_get(PM_RUNTIME_DSP, PLATFORM_PRIMARY_CORE_ID);
+	else
+		pm_runtime_put(PM_RUNTIME_DSP, PLATFORM_PRIMARY_CORE_ID);
+
+	return 0;
+}
+
+/* power up core 0 */
+static int ipc4_module_process_dx(union ipc4_message_header *ipc4)
+{
+	struct ipc4_module_set_dx dx;
+	uint32_t module_id, instance_id;
+
+	memcpy_s(&dx, sizeof(dx), ipc4, sizeof(dx));
+	module_id = dx.header.r.module_id;
+	instance_id = dx.header.r.instance_id;
+
+	tr_dbg(&ipc_tr, "ipc4_module_process_d0ix %x : %x", module_id, instance_id);
+
+	/* only module 0 can be used to set dx state */
+	if (dx.header.r.module_id || dx.header.r.instance_id) {
+		tr_err(&ipc_tr, "invalid resource id %x : %x", module_id, instance_id);
+		return IPC4_INVALID_RESOURCE_ID;
+	}
+
+	/* nothing to do since core 0 is active now */
+
+	return 0;
+}
+
 static int ipc4_process_module_message(union ipc4_message_header *ipc4)
 {
 	uint32_t type;
@@ -619,8 +669,12 @@ static int ipc4_process_module_message(union ipc4_message_header *ipc4)
 	case SOF_IPC4_MOD_DELETE_INSTANCE:
 		ret = ipc4_delete_module_instance(ipc4);
 		break;
-	case SOF_IPC4_MOD_SET_DX:
 	case SOF_IPC4_MOD_SET_D0IX:
+		ret = ipc4_module_process_d0ix(ipc4);
+		break;
+	case SOF_IPC4_MOD_SET_DX:
+		ret = ipc4_module_process_dx(ipc4);
+		break;
 	case SOF_IPC4_MOD_ENTER_MODULE_RESTORE:
 	case SOF_IPC4_MOD_EXIT_MODULE_RESTORE:
 		ret = IPC4_UNAVAILABLE;
