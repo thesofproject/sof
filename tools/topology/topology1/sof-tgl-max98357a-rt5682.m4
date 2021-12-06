@@ -63,8 +63,8 @@ define(matrix3, `ROUTE_MATRIX(1,
 
 dnl name, num_streams, route_matrix list
 ifdef(`2_WAY_SPK',
-`MUXDEMUX_CONFIG(demux_priv_1, 1, LIST(``	'', `matrix3'))',
-`MUXDEMUX_CONFIG(demux_priv_1, 2, LIST(``	'', `matrix1,', `matrix2'))')
+`MUXDEMUX_CONFIG(demux_priv_1, 1, LIST_NONEWLINE(`', `matrix3'))',
+`MUXDEMUX_CONFIG(demux_priv_1, 2, LIST_NONEWLINE(`', `matrix1,', `matrix2'))')
 
 #
 # Define the pipelines
