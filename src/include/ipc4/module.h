@@ -294,6 +294,73 @@ struct ipc4_module_delete_instance {
 	} data;
 } __attribute__((packed, aligned(4)));
 
+struct ipc4_module_set_d0ix {
+	union {
+		uint32_t dat;
+
+		struct {
+			/* module id (must be 0 - Base FW) */
+			uint32_t module_id		: 16;
+			/* instance id (must be 0 - core 0) */
+			uint32_t instance_id	: 8;
+			/* ModuleMsg::SET_D0IX */
+			uint32_t type			: 5;
+			/* Msg::MSG_REQUEST */
+			uint32_t rsp			: 1;
+			/* Msg::MODULE_MSG */
+			uint32_t msg_tgt		: 1;
+			uint32_t _reserved_0	: 1;
+		} r;
+	} header;
+
+	union {
+		uint32_t dat;
+
+		struct {
+			/* legacy wake type (see WakeType) */
+			uint32_t wake			: 1;
+			/* streaming active now */
+			uint32_t streaming		: 1;
+			/* D0/D0ix transitions allowed (PG disabled) */
+			uint32_t prevent_power_gating : 1;
+			/* Clock gating enabled */
+			uint32_t prevent_local_clock_gating : 1;
+
+			uint32_t rsvd1			: 26;
+			uint32_t _reserved_2	: 2;
+		} r;
+	} data;
+} __attribute__((packed, aligned(4)));
+
+struct ipc4_module_set_dx {
+	union {
+		uint32_t dat;
+
+		struct {
+			/* module id (must be 0 - Base FW) */
+			uint32_t module_id			: 16;
+			/* instance id (must be 0 - core 0) */
+			uint32_t instance_id		: 8;
+			/* ModuleMsg::SET_DX */
+			uint32_t type				: 5;
+			/* Msg::MSG_REQUEST */
+			uint32_t rsp				: 1;
+			/* Msg::MODULE_MSG */
+			uint32_t msg_tgt			: 1;
+			uint32_t _reserved_0		: 1;
+		} r;
+	} header;
+
+	union {
+		uint32_t dat;
+
+		struct {
+			uint32_t rsvd				: 30;
+			uint32_t _reserved_2		: 2;
+		} r;
+	} data;
+} __attribute__((packed, aligned(4)));
+
 #define IPC4_COMP_ID(x, y)	((x) << 16 | (y))
 #define IPC4_MOD_ID(x) ((x) >> 16)
 #define IPC4_INST_ID(x)	((x) & 0xffff)
