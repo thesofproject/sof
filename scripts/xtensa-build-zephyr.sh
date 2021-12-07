@@ -196,6 +196,9 @@ build_platforms()
 				;;
 			tgl-h|tgl)
 				PLAT_CONFIG='intel_adsp_cavs25'
+				if test $platform = tgl-h ; then
+				    PLAT_CONFIG="intel_adsp_cavs25_tgph"
+				fi
 				XTENSA_CORE="cavs2x_LX6HiFi3_2017_8"
 				XTENSA_TOOLS_VERSION="RG-2017.8-linux"
 				RIMAGE_KEY=modules/audio/sof/keys/otc_private_key_3k.pem
