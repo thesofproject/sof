@@ -181,6 +181,8 @@ config COMP_CROSSOVER
 config COMP_DRC
 	bool "Dynamic Range Compressor component"
 	select CORDIC_FIXED
+	select NUMBERS_NORM
+	select MATH_DECIBELS
 	default n
 	help
 	  Select for Dynamic Range Compressor (DRC) component. A DRC can be used
