@@ -58,7 +58,7 @@ platform_list = [
 	},
 	{
 		"name": "tgl-h",
-		"PLAT_CONFIG": "intel_adsp_cavs25",
+		"PLAT_CONFIG": "intel_adsp_cavs25_tgph",
 		"XTENSA_CORE": "cavs2x_LX6HiFi3_2017_8",
 		"XTENSA_TOOLS_VERSION": f"RG-2017.8{xtensa_tools_version_postfix}",
 		"RIMAGE_KEY": pathlib.Path("modules", "audio", "sof", "keys", "otc_private_key_3k.pem")
