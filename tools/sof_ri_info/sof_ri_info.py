@@ -22,6 +22,8 @@ import io
 import pathlib
 import hashlib
 
+# Required for open(pathlib)
+assert sys.version_info >= (3, 6)
 
 # To extend the DSP memory layout list scroll down to DSP_MEM_SPACE_EXT
 
