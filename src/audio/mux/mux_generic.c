@@ -167,7 +167,7 @@ static void demux_s16le(struct comp_dev *dev, struct audio_stream *sink,
 			const struct audio_stream *source, uint32_t frames,
 			struct mux_look_up *lookup)
 {
-	uint8_t i;
+	uint32_t i;
 	int16_t *src;
 	int16_t *dst;
 	uint32_t elem;
@@ -221,7 +221,7 @@ static void mux_s16le(struct comp_dev *dev, struct audio_stream *sink,
 		      const struct audio_stream **sources, uint32_t frames,
 		      struct mux_look_up *lookup)
 {
-	uint8_t i;
+	uint32_t i;
 	int16_t *src;
 	int16_t *dst;
 	uint32_t elem;
@@ -379,7 +379,7 @@ static void demux_s32le(struct comp_dev *dev, struct audio_stream *sink,
 			const struct audio_stream *source, uint32_t frames,
 			struct mux_look_up *lookup)
 {
-	uint8_t i;
+	uint32_t i;
 	int32_t *src;
 	int32_t *dst;
 	uint32_t elem;
@@ -433,7 +433,7 @@ static void mux_s32le(struct comp_dev *dev, struct audio_stream *sink,
 		      const struct audio_stream **sources, uint32_t frames,
 		      struct mux_look_up *lookup)
 {
-	uint8_t i;
+	uint32_t i;
 	int32_t *src;
 	int32_t *dst;
 	uint32_t elem;
@@ -488,10 +488,10 @@ const struct comp_func_map mux_func_map[] = {
 void mux_prepare_look_up_table(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	uint8_t i;
-	uint8_t j;
-	uint8_t k;
-	uint8_t idx = 0;
+	uint32_t i;
+	uint32_t j;
+	uint32_t k;
+	uint32_t idx = 0;
 
 	/* Prepare look up table */
 	for (i = 0; i < cd->config.num_streams; i++) {
@@ -513,10 +513,10 @@ void mux_prepare_look_up_table(struct comp_dev *dev)
 void demux_prepare_look_up_table(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	uint8_t i;
-	uint8_t j;
-	uint8_t k;
-	uint8_t idx;
+	uint32_t i;
+	uint32_t j;
+	uint32_t k;
+	uint32_t idx;
 
 	/* Prepare look up table */
 	for (i = 0; i < cd->config.num_streams; i++) {
@@ -539,7 +539,7 @@ void demux_prepare_look_up_table(struct comp_dev *dev)
 mux_func mux_get_processing_function(struct comp_dev *dev)
 {
 	struct comp_buffer *sinkb;
-	uint8_t i;
+	uint32_t i;
 
 	if (list_is_empty(&dev->bsink_list))
 		return NULL;
@@ -558,7 +558,7 @@ mux_func mux_get_processing_function(struct comp_dev *dev)
 demux_func demux_get_processing_function(struct comp_dev *dev)
 {
 	struct comp_buffer *sourceb;
-	uint8_t i;
+	uint32_t i;
 
 	if (list_is_empty(&dev->bsource_list))
 		return NULL;
