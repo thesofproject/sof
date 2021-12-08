@@ -44,7 +44,7 @@ int main(int argc, char *argv[])
 
 	memset(&image, 0, sizeof(image));
 
-	while ((opt = getopt(argc, argv, "ho:va:s:k:ri:x:f:b:ec:y:q:")) != -1) {
+	while ((opt = getopt(argc, argv, "ho:va:s:k:ri:f:b:ec:y:q:")) != -1) {
 		switch (opt) {
 		case 'o':
 			image.out_file = optarg;
