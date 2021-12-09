@@ -47,6 +47,10 @@ struct comp_buffer;
 /**< Host buffer shall be at least two times bigger than history buffer. */
 #define HOST_BUFFER_MIN_SIZE(hb) (hb * 2)
 
+/**< Convert with right shift a bytes count to samples count */
+#define KPB_BYTES_TO_S16_SAMPLES(s)	((s) >> 1)
+#define KPB_BYTES_TO_S32_SAMPLES(s)	((s) >> 2)
+
 /** All states below as well as relations between them are documented in
  * the sof-dosc in [kpbm-state-diagram]
  * Therefore any addition of new states or modification of existing ones

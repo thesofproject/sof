@@ -1327,39 +1327,20 @@ out:
 static void kpb_drain_samples(void *source, struct audio_stream *sink,
 			      size_t size, size_t sample_width)
 {
-#if CONFIG_FORMAT_S16LE || CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE
-	void *dst;
-	void *src = source;
-	size_t i;
-	size_t j = 0;
-	size_t channel;
-	size_t frames = KPB_BYTES_TO_FRAMES(size, sample_width);
-#endif
+	unsigned int samples;
 
 	switch (sample_width) {
 #if CONFIG_FORMAT_S16LE
 	case 16:
-		for (i = 0; i < frames; i++) {
-			for (channel = 0; channel < KPB_NUM_OF_CHANNELS; channel++) {
-				dst = audio_stream_write_frag_s16(sink, j);
-				*((int16_t *)dst) = *((int16_t *)src);
-				src = ((int16_t *)src) + 1;
-				j++;
-			}
-		}
+		samples = KPB_BYTES_TO_S16_SAMPLES(size);
+		audio_stream_copy_from_linear(source, 0, sink, 0, samples);
 		break;
 #endif /* CONFIG_FORMAT_S16LE */
 #if CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE
 	case 24:
 	case 32:
-		for (i = 0; i < frames; i++) {
-			for (channel = 0; channel < KPB_NUM_OF_CHANNELS; channel++) {
-				dst = audio_stream_write_frag_s32(sink, j);
-				*((int32_t *)dst) = *((int32_t *)src);
-				src = ((int32_t *)src) + 1;
-				j++;
-			}
-		}
+		samples = KPB_BYTES_TO_S32_SAMPLES(size);
+		audio_stream_copy_from_linear(source, 0, sink, 0, samples);
 		break;
 #endif /* CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE */
 	default:
