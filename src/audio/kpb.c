@@ -99,7 +99,7 @@ static void kpb_copy_samples(struct comp_buffer *sink,
 static void kpb_drain_samples(void *source, struct audio_stream *sink,
 			      size_t size, size_t sample_width);
 static void kpb_buffer_samples(const struct audio_stream *source,
-			       uint32_t start, void *sink, size_t size,
+			       int offset, void *sink, size_t size,
 			       size_t sample_width);
 static void kpb_reset_history_buffer(struct history_buffer *buff);
 static inline bool validate_host_params(struct comp_dev *dev,
@@ -1352,45 +1352,39 @@ static void kpb_drain_samples(void *source, struct audio_stream *sink,
 /**
  * \brief Buffers data samples safe, according to configuration.
  * \param[in,out] source Pointer to source buffer.
- * \param[in] start Start offset of source buffer in bytes.
+ * \param[in] offset Start offset of source buffer in bytes.
  * \param[in,out] sink Pointer to sink buffer.
  * \param[in] size Requested copy size in bytes.
  * \param[in] sample_width Sample size.
  */
 static void kpb_buffer_samples(const struct audio_stream *source,
-			       uint32_t start, void *sink, size_t size,
+			       int offset, void *sink, size_t size,
 			       size_t sample_width)
 {
-	void *src;
-	void *dst = sink;
-	size_t i;
-	size_t j = start /
-		(sample_width == 16 ? sizeof(int16_t) : sizeof(int32_t));
-	size_t channel;
-	size_t frames = KPB_BYTES_TO_FRAMES(size, sample_width);
+	unsigned int samples_count;
+	int samples_offset;
 
-	for (i = 0; i < frames; i++) {
-		for (channel = 0; channel < KPB_NUM_OF_CHANNELS; channel++) {
-			switch (sample_width) {
-			case 16:
-				src = audio_stream_read_frag_s16(source, j);
-				*((int16_t *)dst) = *((int16_t *)src);
-				dst = ((int16_t *)dst) + 1;
-				break;
+	switch (sample_width) {
+#if CONFIG_FORMAT_S16LE
+	case 16:
+		samples_count = KPB_BYTES_TO_S16_SAMPLES(size);
+		samples_offset = KPB_BYTES_TO_S16_SAMPLES(offset);
+		audio_stream_copy_to_linear((struct audio_stream *)source, samples_offset,
+					    sink, 0, samples_count);
+		break;
+#endif
 #if CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE
-			case 24:
-			case 32:
-				src = audio_stream_read_frag_s32(source, j);
-				*((int32_t *)dst) = *((int32_t *)src);
-				dst = ((int32_t *)dst) + 1;
-				break;
-#endif /* CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE*/
-			default:
-				comp_cl_err(&comp_kpb, "KPB: An attempt to copy not supported format!");
-				return;
-			}
-			j++;
-		}
+	case 24:
+	case 32:
+		samples_count = KPB_BYTES_TO_S32_SAMPLES(size);
+		samples_offset = KPB_BYTES_TO_S32_SAMPLES(offset);
+		audio_stream_copy_to_linear((struct audio_stream *)source, samples_offset,
+					    sink, 0, samples_count);
+		break;
+#endif
+	default:
+		comp_cl_err(&comp_kpb, "KPB: An attempt to copy not supported format!");
+		return;
 	}
 }
 
