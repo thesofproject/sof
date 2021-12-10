@@ -191,8 +191,18 @@ set(TPLGS
 	"sof-acp-renoir\;sof-acp"
 )
 
+# This empty 'production/' source subdirectory exists only to create the
+# corresponding 'production/' subdirectory in the build directory and
+# solve race https://github.com/thesofproject/sof/issues/5067 without
+# the disruption of actually moving all *.m4 sources one directory level
+# down.
+add_subdirectory(production)
+
+# "Install" all v1 production topologies two directory levels up. In the
+# future, v2 topologies will be "installed" instead in the same place so
+# users get upgraded without doing anything.
 add_custom_target(topologies1 ALL
-    COMMAND ${CMAKE_COMMAND} -E copy_directory . ${SOF_TOPOLOGY_BINARY_DIRECTORY}
+    COMMAND ${CMAKE_COMMAND} -E copy_directory production ${SOF_TOPOLOGY_BINARY_DIRECTORY}
 )
 
 foreach(tplg ${TPLGS})
@@ -209,7 +219,7 @@ foreach(tplg ${TPLGS})
 	endif()
 
 	add_custom_command(
-		OUTPUT ${output}.conf
+		OUTPUT production/${output}.conf
 		COMMAND m4 --fatal-warnings
 			${DEFINES}
 			-I ${CMAKE_CURRENT_SOURCE_DIR}/m4
@@ -219,7 +229,7 @@ foreach(tplg ${TPLGS})
 			-I ${CMAKE_CURRENT_BINARY_DIR}
 			${CMAKE_CURRENT_SOURCE_DIR}/common/abi.m4
 			${CMAKE_CURRENT_SOURCE_DIR}/${input}.m4
-			> ${output}.conf
+			> production/${output}.conf
 		MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/${input}.m4
 		DEPENDS abi_v1
 		VERBATIM
@@ -242,13 +252,13 @@ foreach(tplg ${TPLGS})
 # (accidentally?) started ignoring the verbosity level, now it's just
 # verbose or not.
 	add_custom_command(
-		OUTPUT ${output}.tplg
-		COMMAND alsatplg \$\${VERBOSE:+-v 1} -c ${CMAKE_CURRENT_BINARY_DIR}/${output}.conf -o ${output}.tplg
-		MAIN_DEPENDENCY ${output}.conf
+		OUTPUT production/${output}.tplg
+		COMMAND alsatplg \$\${VERBOSE:+-v 1} -c production/${output}.conf -o production/${output}.tplg
+		MAIN_DEPENDENCY production/${output}.conf
 		USES_TERMINAL
 	)
 
-	add_custom_target(topology1_${output} DEPENDS ${output}.tplg)
+	add_custom_target(topology1_${output} DEPENDS production/${output}.tplg)
 	add_dependencies(topologies1 topology1_${output})
 endforeach()
 
