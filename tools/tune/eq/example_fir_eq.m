@@ -170,7 +170,7 @@ eq.norm_offs_db = 0;        % Offset in dB to normalize
 
 eq.enable_fir = 1;          % By default both FIR and IIR disabled, enable one
 eq.fir_beta = 4.0;          % Use with care, low value can corrupt
-eq.fir_length = 86;         % Gives just < 292 bytes
+eq.fir_length = 250;        % Long filter (test large IPC messages)
 eq.fir_autoband = 0;        % Select manually frequency limits
 eq.fmin_fir = 100;          % Equalization starts from 100 Hz
 eq.fmax_fir = 20e3;         % Equalization ends at 20 kHz
