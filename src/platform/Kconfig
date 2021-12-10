@@ -434,7 +434,7 @@ config CAVS_USE_LPRO_IN_WAITI
 config CAVS_IMR_D3_PERSISTENT
 	bool "Intel IMR content persistent on DSP in D3"
 	depends on CAVS
-	default n
+	default y
 	help
 	  Select this if the Intel cAVS platform can keep the
 	  IMR (Isolated Memory Region) content persistent when
