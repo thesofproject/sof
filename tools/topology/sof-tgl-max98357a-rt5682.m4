@@ -24,7 +24,7 @@ DEBUG_START
 #
 # Check option conflicts
 #
-ifdef(`2_WAY_SPK', `ifdef(`4CH_PASSTHROUGH', `fatal_error(note: 2_WAY_SPK and 4CH_PASSTHROUGH are mutually exclusive)')')
+ifdef(`2CH_2WAY', `ifdef(`4CH_PASSTHROUGH', `fatal_error(note: 2CH_2WAY and 4CH_PASSTHROUGH are mutually exclusive)')')
 
 #
 # Define the demux configure
@@ -67,7 +67,7 @@ define(matrix3, `ROUTE_MATRIX(1,
 			     `BITS_TO_BYTE(0, 0, 0 ,0 ,0 ,0 ,0 ,0)')')
 
 dnl name, num_streams, route_matrix list
-ifdef(`2_WAY_SPK',
+ifdef(`2CH_2WAY',
 `MUXDEMUX_CONFIG(demux_priv_1, 1, LIST(``	'', `matrix3'))',
 `MUXDEMUX_CONFIG(demux_priv_1, 2, LIST(``	'', `matrix1,', `matrix2'))')
 
@@ -137,7 +137,7 @@ define(`ENDPOINT_NAME', `Speakers')
 PIPELINE_PCM_ADD(
 	ifdef(`WAVES', sof/pipe-waves-codec-demux-playback.m4,
 	      ifdef(`DRC_EQ', sof/pipe-drc-eq-volume-demux-playback.m4,
-		    ifdef(`2_WAY_SPK', sof/pipe-demux-eq-iir-playback.m4,
+		    ifdef(`2CH_2WAY', sof/pipe-demux-eq-iir-playback.m4,
 			  sof/pipe-volume-demux-playback.m4))),
 	1, 0, ifdef(`4CH_PASSTHROUGH', `4', `2'), s32le,
 	1000, 0, 0,
@@ -220,7 +220,7 @@ DAI_ADD(sof/pipe-dai-capture.m4,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 ',
 `
-ifdef(`2_WAY_SPK',`# No echo reference for 2-way speakers',
+ifdef(`2CH_2WAY',`# No echo reference for 2-way speakers',
 `# currently this dai is here as "virtual" capture backend
 W_DAI_IN(SSP, SPK_SSP_INDEX, SPK_SSP_NAME, FMT, 3, 0)
 
@@ -303,7 +303,7 @@ PCM_PLAYBACK_ADD(HDMI1, 2, PIPELINE_PCM_5)
 PCM_PLAYBACK_ADD(HDMI2, 3, PIPELINE_PCM_6)
 PCM_PLAYBACK_ADD(HDMI3, 4, PIPELINE_PCM_7)
 PCM_PLAYBACK_ADD(HDMI4, 5, PIPELINE_PCM_8)
-ifdef(`2_WAY_SPK',`# No echo reference for 2-way speakers',
+ifdef(`2CH_2WAY',`# No echo reference for 2-way speakers',
 `PCM_CAPTURE_ADD(EchoRef, 6, PIPELINE_PCM_9)')
 
 #
