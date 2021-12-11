@@ -239,27 +239,7 @@ foreach(tplg ${TPLGS})
 		USES_TERMINAL
 	)
 
-# This use of VERBOSE relies on original CMake behavior.
-# From the add_custom_command() manual:
-#
-#    Use of VERBATIM is recommended as it enables correct behavior.
-#    When VERBATIM is not given the behavior is platform specific because
-#    there is no protection of tool-specific special characters.
-#
-# This is fine because:
-# - We don't expect alsatplg to work on Windows any time soon.
-# - CMake is too afraid to remove the original, no-VERBATIM behavior:
-#      https://gitlab.kitware.com/cmake/cmake/issues/18849
-#
-# Also note that in alsa-utils commit v1.2.2~15-gcbabe7a3f0cc, alsatplg
-# (accidentally?) started ignoring the verbosity level, now it's just
-# verbose or not.
-	add_custom_command(
-		OUTPUT production/${output}.tplg
-		COMMAND alsatplg \$\${VERBOSE:+-v 1} -c production/${output}.conf -o production/${output}.tplg
-		MAIN_DEPENDENCY production/${output}.conf
-		USES_TERMINAL
-	)
+	add_alsatplg_command(production/${output}.conf production/${output}.tplg)
 
 	add_custom_target(topology1_${output} DEPENDS production/${output}.tplg)
 	add_dependencies(topologies1 topology1_${output})
