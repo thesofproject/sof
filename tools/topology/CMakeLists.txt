@@ -19,7 +19,9 @@ macro(add_alsatplg_command)
 	add_custom_command(
 		MAIN_DEPENDENCY ${ARGV0}
 		OUTPUT ${ARGV1}
-		COMMAND alsatplg \$\${VERBOSE:+-v 1} -c ${ARGV0} -o ${ARGV1}
+		# Use a redirection to work around hardcoded alsatplg permissions,
+		# see bug https://github.com/alsa-project/alsa-utils/issues/126
+		COMMAND alsatplg \$\${VERBOSE:+-v 1} -c ${ARGV0} -o - > ${ARGV1}
 		USES_TERMINAL
 	)
 endmacro()
