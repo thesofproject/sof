@@ -6,8 +6,7 @@
 //
 //
 
-/* Include Files */
-#include <sof/math/base2log.h>
+#include <sof/math/log.h>
 
 /* Defines Constant*/
 #define BASE2LOG_WRAP_SCHAR_BITS 0xFF

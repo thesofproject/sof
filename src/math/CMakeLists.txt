@@ -18,6 +18,14 @@ if(CONFIG_MATH_DECIBELS)
         add_local_sources(sof decibels.c)
 endif()
 
+if(CONFIG_NATURAL_LOGARITHM_FIXED)
+	 add_local_sources(sof log_e.c)
+endif()
+
+if(CONFIG_COMMON_LOGARITHM_FIXED)
+	 add_local_sources(sof log_10.c)
+endif()
+
 if(CONFIG_POWER_FIXED)
 	 add_local_sources(sof power.c)
 endif()
