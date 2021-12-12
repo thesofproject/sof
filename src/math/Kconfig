@@ -38,6 +38,20 @@ config SQRT_FIXED
 	  to  calculate square root.square function having positive number
 	  y as input and return the positive number x multiplied by itself (squared)
 
+config NATURAL_LOGARITHM_FIXED
+	bool "Natural Logarithm function"
+	default n
+	help
+	  This option builds Natural Logarithm function (loge(N)) which is the logarithm to
+	  the base e.
+
+config COMMON_LOGARITHM_FIXED
+       bool "Common Logarithm function"
+       default n
+       help
+	  This option builds common Logarithm function (log10(N)) which is the logarithm to
+	  the base 10.
+
 config NUMBERS_GCD
 	bool "Greatest common divisor"
 	default n
