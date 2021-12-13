@@ -49,6 +49,21 @@ config COMP_VOLUME_WINDOWS_FADE
 	 SOF_VOLUME_WINDOWS_FADE for the volume instance to use
 	 this ramp shape.
 
+config COMP_VOLUME_LINEAR_RAMP
+       bool "Linear ramp volume transitions support"
+	   default y
+	   depends on IPC_MAJOR_3
+       help
+         This option enables volume linear ramp shape.
+
+config COMP_PEAK_VOL
+       bool "Report peak vol data to host"
+	   default y
+	   depends on IPC_MAJOR_4
+       help
+         This option enables reporting to host peak vol regs.
+         See: struct ipc4_peak_volume_regs
+
 endif # volume
 
 config COMP_SRC
