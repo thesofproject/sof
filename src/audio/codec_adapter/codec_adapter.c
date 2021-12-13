@@ -352,14 +352,6 @@ static void generate_zeroes(struct comp_buffer *sink, uint32_t bytes)
 	comp_update_buffer_produce(sink, bytes);
 }
 
-static int get_output_bytes(struct comp_dev *dev)
-{
-	struct comp_data *cd = comp_get_drvdata(dev);
-
-	return codec_get_samples(dev) * cd->stream_params.sample_container_bytes *
-		cd->stream_params.channels;
-}
-
 int codec_adapter_copy(struct comp_dev *dev)
 {
 	int ret = 0;
@@ -404,19 +396,17 @@ int codec_adapter_copy(struct comp_dev *dev)
 		goto db_verify;
 	}
 
-	/* Process only we have enough free data in the local
-	 * buffer. If we don't have enough free space process()
-	 * will override the data in the local buffer
-	 */
-	if (local_buff->stream.free < get_output_bytes(dev))
-		goto db_verify;
-
 	buffer_stream_invalidate(source, codec_buff_size);
 	codec_adapter_copy_from_source_to_lib(&source->stream, &codec->cpd,
 					      codec_buff_size);
 	codec->cpd.avail = codec_buff_size;
 	ret = codec_process(dev);
 	if (ret) {
+		if (ret == -ENOSPC) {
+			ret = 0;
+			goto db_verify;
+		}
+
 		comp_err(dev, "codec_adapter_copy() error %x: lib processing failed",
 			 ret);
 		goto db_verify;

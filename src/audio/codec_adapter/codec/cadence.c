@@ -331,7 +331,7 @@ err:
 	return ret;
 }
 
-int cadence_codec_get_samples(struct comp_dev *dev)
+static int cadence_codec_get_samples(struct comp_dev *dev)
 {
 	struct codec_data *codec = comp_get_codec(dev);
 	uint32_t api_id = CODEC_GET_API_ID(codec->id);
@@ -489,9 +489,21 @@ err:
 
 int cadence_codec_process(struct comp_dev *dev)
 {
-	int ret;
+	struct comp_data *comp_data = comp_get_drvdata(dev);
+	struct comp_buffer *local_buff = comp_data->local_buff;
 	struct codec_data *codec = comp_get_codec(dev);
 	struct cadence_codec_data *cd = codec->private;
+	int ret;
+
+	/* do not proceed with processing if not enough free left in the local buffer */
+	if (codec->cpd.init_done) {
+		int output_bytes = cadence_codec_get_samples(dev) *
+				   comp_data->stream_params.sample_container_bytes *
+				   comp_data->stream_params.channels;
+
+		if (local_buff->stream.free < output_bytes)
+			return -ENOSPC;
+	}
 
 	comp_dbg(dev, "cadence_codec_process() start");
 
@@ -568,7 +580,6 @@ int cadence_codec_free(struct comp_dev *dev)
 static struct codec_interface cadence_interface = {
 	.init  = cadence_codec_init,
 	.prepare = cadence_codec_prepare,
-	.get_samples = cadence_codec_get_samples,
 	.init_process = cadence_codec_init_process,
 	.process = cadence_codec_process,
 	.apply_config = cadence_codec_apply_config,

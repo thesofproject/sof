@@ -280,19 +280,6 @@ out:
 	return ret;
 }
 
-int codec_get_samples(struct comp_dev *dev)
-{
-	struct comp_data *cd = comp_get_drvdata(dev);
-	struct codec_data *codec = &cd->codec;
-
-	comp_dbg(dev, "codec_get_samples()");
-
-	if (codec->ops->get_samples)
-		return codec->ops->get_samples(dev);
-
-	return 0;
-}
-
 int codec_apply_runtime_config(struct comp_dev *dev)
 {
 	int ret;
