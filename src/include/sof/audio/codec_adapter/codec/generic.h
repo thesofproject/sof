@@ -87,12 +87,6 @@ struct codec_interface {
 	 */
 	int (*prepare)(struct comp_dev *dev);
 	/**
-	 * Codec specific. Returns the number of PCM output
-	 * samples after decoding one input compressed frame.
-	 * Codecs will return 0 for don't care.
-	 */
-	int (*get_samples)(struct comp_dev *dev);
-	/**
 	 * Codec specific init processing procedure, called as a part of
 	 * codec_adapter component copy in .copy(). Typically in this
 	 * phase a processing algorithm searches for the valid header,
@@ -243,7 +237,6 @@ void *codec_allocate_memory(struct comp_dev *dev, uint32_t size,
 int codec_free_memory(struct comp_dev *dev, void *ptr);
 void codec_free_all_memory(struct comp_dev *dev);
 int codec_prepare(struct comp_dev *dev);
-int codec_get_samples(struct comp_dev *dev);
 int codec_init_process(struct comp_dev *dev);
 int codec_process(struct comp_dev *dev);
 int codec_apply_runtime_config(struct comp_dev *dev);
