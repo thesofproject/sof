@@ -653,7 +653,7 @@ int waves_codec_prepare(struct comp_dev *dev)
 	return ret;
 }
 
-int waves_codec_init_process(struct comp_dev *dev)
+static int waves_codec_init_process(struct comp_dev *dev)
 {
 	struct codec_data *codec = comp_get_codec(dev);
 
@@ -671,6 +671,9 @@ int waves_codec_process(struct comp_dev *dev)
 	int ret;
 	struct codec_data *codec = comp_get_codec(dev);
 	struct waves_codec_data *waves_codec = codec->private;
+
+	if (!codec->cpd.init_done)
+		return waves_codec_init_process(dev);
 
 	comp_dbg(dev, "waves_codec_process() start");
 
@@ -767,7 +770,6 @@ int waves_codec_free(struct comp_dev *dev)
 static struct codec_interface waves_interface = {
 	.init  = waves_codec_init,
 	.prepare = waves_codec_prepare,
-	.init_process = waves_codec_init_process,
 	.process = waves_codec_process,
 	.apply_config = waves_codec_apply_config,
 	.reset = waves_codec_reset,

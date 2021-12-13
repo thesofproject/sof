@@ -370,23 +370,6 @@ int codec_adapter_copy(struct comp_dev *dev)
 	comp_dbg(dev, "codec_adapter_copy() start: codec_buff_size: %d, local_buff free: %d source avail %d",
 		 codec_buff_size, local_buff->stream.free, source->stream.avail);
 
-	if (!codec->cpd.init_done) {
-		if (bytes_to_process < codec_buff_size)
-			goto db_verify;
-
-		buffer_stream_invalidate(source, codec_buff_size);
-		codec_adapter_copy_from_source_to_lib(&source->stream, &codec->cpd,
-						      codec_buff_size);
-		codec->cpd.avail = codec_buff_size;
-		ret = codec_init_process(dev);
-		if (ret)
-			return ret;
-
-		bytes_to_process -= codec->cpd.consumed;
-		processed += codec->cpd.consumed;
-		comp_update_buffer_consume(source, codec->cpd.consumed);
-	}
-
 	/* Proceed only if we have enough data to fill the lib buffer
 	 * completely. If you don't fill whole buffer
 	 * the lib won't process it.
@@ -394,6 +377,22 @@ int codec_adapter_copy(struct comp_dev *dev)
 	if (bytes_to_process < codec_buff_size) {
 		comp_dbg(dev, "codec_adapter_copy(): source has less data than codec buffer size - processing terminated.");
 		goto db_verify;
+	}
+
+	if (!codec->cpd.init_done) {
+		buffer_stream_invalidate(source, codec_buff_size);
+		codec_adapter_copy_from_source_to_lib(&source->stream, &codec->cpd,
+						      codec_buff_size);
+		codec->cpd.avail = codec_buff_size;
+		ret = codec_process(dev);
+		if (ret)
+			return ret;
+
+		bytes_to_process -= codec->cpd.consumed;
+		processed += codec->cpd.consumed;
+		comp_update_buffer_consume(source, codec->cpd.consumed);
+		if (bytes_to_process < codec_buff_size)
+			goto db_verify;
 	}
 
 	buffer_stream_invalidate(source, codec_buff_size);

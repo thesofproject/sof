@@ -62,6 +62,9 @@ static int passthrough_codec_process(struct comp_dev *dev)
 	struct codec_data *codec = comp_get_codec(dev);
 	struct comp_data *cd = comp_get_drvdata(dev);
 
+	if (!codec->cpd.init_done)
+		return passthrough_codec_init_process(dev);
+
 	comp_dbg(dev, "passthrough_codec_process()");
 
 	memcpy_s(codec->cpd.out_buff, codec->cpd.out_buff_size,
@@ -103,7 +106,6 @@ static int passthrough_codec_free(struct comp_dev *dev)
 static struct codec_interface passthrough_interface = {
 	.init  = passthrough_codec_init,
 	.prepare = passthrough_codec_prepare,
-	.init_process = passthrough_codec_init_process,
 	.process = passthrough_codec_process,
 	.apply_config = passthrough_codec_apply_config,
 	.reset = passthrough_codec_reset,

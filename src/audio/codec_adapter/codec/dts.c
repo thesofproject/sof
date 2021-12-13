@@ -189,7 +189,7 @@ int dts_codec_prepare(struct comp_dev *dev)
 	return ret;
 }
 
-int dts_codec_init_process(struct comp_dev *dev)
+static int dts_codec_init_process(struct comp_dev *dev)
 {
 	int ret;
 	struct codec_data *codec = comp_get_codec(dev);
@@ -218,6 +218,9 @@ int dts_codec_process(struct comp_dev *dev)
 	struct codec_data *codec = comp_get_codec(dev);
 	DtsSofInterfaceResult dts_result;
 	unsigned int bytes_processed = 0;
+
+	if (!codec->cpd.init_done)
+		return dts_codec_init_process(dev);
 
 	comp_dbg(dev, "dts_codec_process() start");
 
@@ -353,7 +356,6 @@ int dts_codec_free(struct comp_dev *dev)
 static struct codec_interface dts_interface = {
 	.init  = dts_codec_init,
 	.prepare = dts_codec_prepare,
-	.init_process = dts_codec_init_process,
 	.process = dts_codec_process,
 	.apply_config = dts_codec_apply_config,
 	.reset = dts_codec_reset,
