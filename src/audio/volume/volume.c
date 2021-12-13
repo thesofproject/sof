@@ -185,30 +185,6 @@ const struct comp_zc_func_map zc_func_map[] = {
 };
 
 /**
- * \brief Synchronize host mmap() volume with real value.
- *
- * \param[in] num_channels Update channels 0 to num_channels -1.
- */
-static void vol_sync_host(struct comp_dev *dev, unsigned int num_channels)
-{
-	struct vol_data *cd = comp_get_drvdata(dev);
-	int n;
-
-	if (!cd->hvol) {
-		comp_dbg(dev, "vol_sync_host() Warning: null hvol, no update");
-		return;
-	}
-
-	if (num_channels < SOF_IPC_MAX_CHANNELS) {
-		for (n = 0; n < num_channels; n++)
-			cd->hvol[n].value = cd->volume[n];
-	} else {
-		comp_err(dev, "vol_sync_host(): channels count %d exceeds SOF_IPC_MAX_CHANNELS",
-			 num_channels);
-	}
-}
-
-/**
  * \brief Calculate linear ramp function
  * \param[in,out] dev Component data: ramp start gain, actual gain
  * \param[in] ramp_time Time spent since ramp start as milliseconds Q29.3
@@ -259,7 +235,6 @@ static void volume_ramp(struct comp_dev *dev)
 		for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
 			cd->volume[i] = cd->tvolume[i];
 
-		vol_sync_host(dev, PLATFORM_MAX_CHANNELS);
 		cd->ramp_finished = true;
 		return;
 	}
@@ -322,9 +297,6 @@ static void volume_ramp(struct comp_dev *dev)
 		cd->ramp_finished = true;
 		cd->vol_ramp_active = false;
 	}
-
-	/* sync host with new value */
-	vol_sync_host(dev, cd->channels);
 }
 
 /**
@@ -903,8 +875,6 @@ static int volume_prepare(struct comp_dev *dev)
 		ret = -EINVAL;
 		goto err;
 	}
-
-	vol_sync_host(dev, PLATFORM_MAX_CHANNELS);
 
 	/* Set current volume to min to ensure ramp starts from minimum
 	 * to previous volume request. Copy() checks for ramp finished
