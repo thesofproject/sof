@@ -353,7 +353,7 @@ static int cadence_codec_get_samples(struct comp_dev *dev)
 	return 0;
 }
 
-int cadence_codec_init_process(struct comp_dev *dev)
+static int cadence_codec_init_process(struct comp_dev *dev)
 {
 	int ret;
 	struct codec_data *codec = comp_get_codec(dev);
@@ -503,6 +503,8 @@ int cadence_codec_process(struct comp_dev *dev)
 
 		if (local_buff->stream.free < output_bytes)
 			return -ENOSPC;
+	} else {
+		return cadence_codec_init_process(dev);
 	}
 
 	comp_dbg(dev, "cadence_codec_process() start");
@@ -580,7 +582,6 @@ int cadence_codec_free(struct comp_dev *dev)
 static struct codec_interface cadence_interface = {
 	.init  = cadence_codec_init,
 	.prepare = cadence_codec_prepare,
-	.init_process = cadence_codec_init_process,
 	.process = cadence_codec_process,
 	.apply_config = cadence_codec_apply_config,
 	.reset = cadence_codec_reset,

@@ -97,7 +97,7 @@ int codec_init(struct comp_dev *dev, struct codec_interface *interface)
 			 codec_id);
 		ret = -EIO;
 		goto out;
-	} else if (!interface->init || !interface->prepare || !interface->init_process ||
+	} else if (!interface->init || !interface->prepare ||
 		   !interface->process || !interface->apply_config ||
 		   !interface->reset || !interface->free) {
 		comp_err(dev, "codec_init(): codec %x is missing mandatory interfaces",
@@ -230,25 +230,6 @@ int codec_prepare(struct comp_dev *dev)
 	codec->state = CODEC_IDLE;
 	comp_dbg(dev, "codec_prepare() done");
 end:
-	return ret;
-}
-
-int codec_init_process(struct comp_dev *dev)
-{
-	int ret;
-	struct comp_data *cd = comp_get_drvdata(dev);
-	struct codec_data *codec = &cd->codec;
-
-	comp_dbg(dev, "codec_init_process() start");
-
-	ret = codec->ops->init_process(dev);
-	if (ret) {
-		comp_err(dev, "codec_init_process() error %x", ret);
-		goto out;
-	}
-
-	comp_dbg(dev, "codec_init_process() done");
-out:
 	return ret;
 }
 

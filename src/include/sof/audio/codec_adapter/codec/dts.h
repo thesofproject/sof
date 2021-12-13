@@ -10,7 +10,6 @@
 
 int dts_codec_init(struct comp_dev *dev);
 int dts_codec_prepare(struct comp_dev *dev);
-int dts_codec_init_process(struct comp_dev *dev);
 int dts_codec_process(struct comp_dev *dev);
 int dts_codec_apply_config(struct comp_dev *dev);
 int dts_codec_reset(struct comp_dev *dev);
