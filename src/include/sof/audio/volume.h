@@ -100,7 +100,6 @@ typedef int32_t (*vol_ramp_func)(struct comp_dev *dev, int32_t ramp_time, int ch
  * Gain amplitude value is between 0 (mute) ... 2^16 (0dB) ... 2^24 (~+48dB).
  */
 struct vol_data {
-	struct sof_ipc_ctrl_value_chan *hvol;	/**< host volume readback */
 	int32_t volume[SOF_IPC_MAX_CHANNELS];	/**< current volume */
 	int32_t tvolume[SOF_IPC_MAX_CHANNELS];	/**< target volume */
 	int32_t mvolume[SOF_IPC_MAX_CHANNELS];	/**< mute volume */
