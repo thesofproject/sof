@@ -37,8 +37,7 @@
  */
 static inline int32_t vol_mult_s24_to_s24(int32_t x, int32_t vol)
 {
-	return q_multsr_sat_32x32_24(sign_extend_s24(x), vol,
-				     Q_SHIFT_BITS_64(23, 16, 23));
+	return q_multsr_sat_32x32_24(sign_extend_s24(x), vol, Q_SHIFT_BITS_64(23, VOL_QXY_Y, 23));
 }
 
 /**
@@ -61,6 +60,9 @@ static void vol_s24_to_s24(struct comp_dev *dev, struct audio_stream *sink,
 	int nmax, n, i, j;
 	const int nch = source->channels;
 	int remaining_samples = frames * nch;
+#if CONFIG_COMP_PEAK_VOL
+	int32_t tmp = INT_MIN(32);
+#endif
 
 	x = source->r_ptr;
 	y = sink->w_ptr;
@@ -75,14 +77,23 @@ static void vol_s24_to_s24(struct comp_dev *dev, struct audio_stream *sink,
 			vol = cd->volume[j];
 			for (i = 0; i < n; i += nch) {
 				*y0 = vol_mult_s24_to_s24(*x0, vol);
+#if CONFIG_COMP_PEAK_VOL
+				tmp = MAX(*y0, tmp);
+#endif
+
 				x0 += nch;
 				y0 += nch;
 			}
+#if CONFIG_COMP_PEAK_VOL
+			cd->peak_regs.peak_meter_[j] = tmp;
+#endif
 		}
 		remaining_samples -= n;
 		x = audio_stream_wrap(source, x + n);
 		y = audio_stream_wrap(sink, y + n);
 	}
+	/* update peak vol */
+	peak_vol_update(cd);
 }
 #endif /* CONFIG_FORMAT_S24LE */
 
@@ -107,6 +118,9 @@ static void vol_s32_to_s32(struct comp_dev *dev, struct audio_stream *sink,
 	int nmax, n, i, j;
 	const int nch = source->channels;
 	int remaining_samples = frames * nch;
+#if CONFIG_COMP_PEAK_VOL
+	int32_t tmp = INT_MIN(32);
+#endif
 
 	x = source->r_ptr;
 	y = sink->w_ptr;
@@ -123,15 +137,26 @@ static void vol_s32_to_s32(struct comp_dev *dev, struct audio_stream *sink,
 			y0 = y + j;
 			vol = cd->volume[j];
 			for (i = 0; i < n; i += nch) {
-				*y0 = q_multsr_sat_32x32(*x0, vol, Q_SHIFT_BITS_64(31, 16, 31));
+				*y0 = q_multsr_sat_32x32(*x0, vol,
+							 Q_SHIFT_BITS_64(31, VOL_QXY_Y, 31));
+#if CONFIG_COMP_PEAK_VOL
+				tmp = MAX(*y0, tmp);
+#endif
+
 				x0 += nch;
 				y0 += nch;
 			}
+#if CONFIG_COMP_PEAK_VOL
+			cd->peak_regs.peak_meter_[j] = tmp;
+#endif
 		}
 		remaining_samples -= n;
 		x = audio_stream_wrap(source, x + n);
 		y = audio_stream_wrap(sink, y + n);
 	}
+
+	/* update peak vol */
+	peak_vol_update(cd);
 }
 #endif /* CONFIG_FORMAT_S32LE */
 
@@ -156,6 +181,9 @@ static void vol_s16_to_s16(struct comp_dev *dev, struct audio_stream *sink,
 	int nmax, n, i, j;
 	const int nch = source->channels;
 	int remaining_samples = frames * nch;
+#if CONFIG_COMP_PEAK_VOL
+	int16_t tmp = INT_MIN(16);
+#endif
 
 	x = source->r_ptr;
 	y = sink->w_ptr;
@@ -169,15 +197,25 @@ static void vol_s16_to_s16(struct comp_dev *dev, struct audio_stream *sink,
 			y0 = y + j;
 			vol = cd->volume[j];
 			for (i = 0; i < n; i += nch) {
-				*y0 = q_multsr_sat_32x32_16(*x0, vol, Q_SHIFT_BITS_32(15, 16, 15));
+				*y0 = q_multsr_sat_32x32_16(*x0, vol,
+							    Q_SHIFT_BITS_32(15, VOL_QXY_Y, 15));
+#if CONFIG_COMP_PEAK_VOL
+				tmp = MAX(*y0, tmp);
+#endif
 				x0 += nch;
 				y0 += nch;
 			}
+#if CONFIG_COMP_PEAK_VOL
+			cd->peak_regs.peak_meter_[j] = tmp;
+#endif
 		}
 		remaining_samples -= n;
 		x = audio_stream_wrap(source, x + n);
 		y = audio_stream_wrap(sink, y + n);
 	}
+
+	/* update peak vol */
+	peak_vol_update(cd);
 }
 #endif /* CONFIG_FORMAT_S16LE */
 
