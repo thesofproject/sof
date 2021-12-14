@@ -139,4 +139,5 @@ add_local_sources(hal
 	interrupts.c
 	memcopy.S
 	windowspill_asm.S
+	atomics.c
 )
