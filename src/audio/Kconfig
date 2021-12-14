@@ -145,6 +145,16 @@ config COMP_GOOGLE_HOTWORD_DETECT
 	  be set using the byte control 'Hotword Model' before running the
 	  detector.
 
+config COMP_GOOGLE_RTC_AUDIO_PROCESSING
+	bool "Google Real Time Communication Audio processing"
+	default n
+	help
+	  Select for Google real-time communication audio processing. It
+	  uses the Google real-time audio processing library to perform
+	  echo-cancelling and other processing.
+	  This component takes raw microphones input and playback reference
+	  and outputs an echo-free microphone signal.
+
 config COMP_SEL
 	bool "Channel selector component"
 	default y
