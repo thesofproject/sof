@@ -293,27 +293,6 @@ static int mixer_trigger_common(struct comp_dev *dev, int cmd)
 	int dir = dev->pipeline->source_comp->direction;
 	int ret;
 
-	/*
-	 * This works around an unclear and apparently needlessly complicated
-	 * mixer state machine.
-	 */
-	if (dir == SOF_IPC_STREAM_PLAYBACK) {
-		switch (cmd) {
-		case COMP_TRIGGER_PRE_RELEASE:
-			/* Mixer and everything downstream is active */
-			dev->state = COMP_STATE_PRE_ACTIVE;
-			break;
-		case COMP_TRIGGER_RELEASE:
-			/* Mixer and everything downstream is active */
-			dev->state = COMP_STATE_ACTIVE;
-			break;
-		default:
-			break;
-		}
-
-		comp_writeback(dev);
-	}
-
 	ret = comp_set_state(dev, cmd);
 	if (ret < 0)
 		return ret;
@@ -550,6 +529,27 @@ static int mixer_trigger(struct comp_dev *dev, int cmd)
 		if (mixer_source_status_count(dev, COMP_STATE_ACTIVE) ||
 		    mixer_source_status_count(dev, COMP_STATE_PAUSED))
 			return PPL_STATUS_PATH_STOP;
+
+	/*
+	 * This works around an unclear and apparently needlessly complicated
+	 * mixer state machine.
+	 */
+	if (dir == SOF_IPC_STREAM_PLAYBACK) {
+		switch (cmd) {
+		case COMP_TRIGGER_PRE_RELEASE:
+			/* Mixer and everything downstream is active */
+			dev->state = COMP_STATE_PRE_ACTIVE;
+			break;
+		case COMP_TRIGGER_RELEASE:
+			/* Mixer and everything downstream is active */
+			dev->state = COMP_STATE_ACTIVE;
+			break;
+		default:
+			break;
+		}
+
+		comp_writeback(dev);
+	}
 
 	ret = mixer_trigger_common(dev, cmd);
 	if (ret < 0)
