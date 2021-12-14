@@ -105,6 +105,16 @@ static void zephyr_ll_task_insert_unlocked(struct zephyr_ll *sch, struct task *t
 		list_item_append(&task->list, &sch->tasks);
 }
 
+static void zephyr_ll_task_insert_before_unlocked(struct task *task, struct task *before)
+{
+	list_item_append(&task->list, &before->list);
+}
+
+static void zephyr_ll_task_insert_after_unlocked(struct task *task, struct task *after)
+{
+	list_item_prepend(&task->list, &after->list);
+}
+
 /* perf measurement windows size 2^x */
 #define CYCLES_WINDOW_SIZE	10
 
@@ -260,10 +270,10 @@ static void zephyr_ll_run(void *data)
  * equal to a multiple of the scheduler tick time. Ignoring start will eliminate
  * the use of task::start and ll_schedule_domain::next in this scheduler.
  */
-static int zephyr_ll_task_schedule(void *data, struct task *task, uint64_t start,
-				   uint64_t period)
+static int zephyr_ll_task_schedule_common(struct zephyr_ll *sch, struct task *task,
+					  uint64_t start, uint64_t period,
+					  struct task *reference, bool before)
 {
-	struct zephyr_ll *sch = data;
 	struct zephyr_ll_pdata *pdata;
 	struct task *task_iter;
 	struct list_item *list;
@@ -322,7 +332,12 @@ static int zephyr_ll_task_schedule(void *data, struct task *task, uint64_t start
 		return 0;
 	}
 
-	zephyr_ll_task_insert_unlocked(sch, task);
+	if (!reference)
+		zephyr_ll_task_insert_unlocked(sch, task);
+	else if (before)
+		zephyr_ll_task_insert_before_unlocked(task, reference);
+	else
+		zephyr_ll_task_insert_after_unlocked(task, reference);
 
 	sch->n_tasks++;
 
@@ -334,6 +349,30 @@ static int zephyr_ll_task_schedule(void *data, struct task *task, uint64_t start
 		       ret);
 
 	return 0;
+}
+
+static int zephyr_ll_task_schedule(void *data, struct task *task, uint64_t start,
+				   uint64_t period)
+{
+	struct zephyr_ll *sch = data;
+
+	return zephyr_ll_task_schedule_common(sch, task, start, period, NULL, false);
+}
+
+static int zephyr_ll_task_schedule_before(void *data, struct task *task, uint64_t start,
+					  uint64_t period, struct task *before)
+{
+	struct zephyr_ll *sch = data;
+
+	return zephyr_ll_task_schedule_common(sch, task, start, period, before, true);
+}
+
+static int zephyr_ll_task_schedule_after(void *data, struct task *task, uint64_t start,
+					 uint64_t period, struct task *after)
+{
+	struct zephyr_ll *sch = data;
+
+	return zephyr_ll_task_schedule_common(sch, task, start, period, after, false);
 }
 
 /*
@@ -403,7 +442,7 @@ static int zephyr_ll_task_free(void *data, struct task *task)
 	return 0;
 }
 
-/* This seems to be asynchronous? */
+/* This is asynchronous */
 static int zephyr_ll_task_cancel(void *data, struct task *task)
 {
 	struct zephyr_ll *sch = data;
@@ -440,6 +479,8 @@ static void zephyr_ll_scheduler_free(void *data, uint32_t flags)
 
 static const struct scheduler_ops zephyr_ll_ops = {
 	.schedule_task		= zephyr_ll_task_schedule,
+	.schedule_task_before	= zephyr_ll_task_schedule_before,
+	.schedule_task_after	= zephyr_ll_task_schedule_after,
 	.schedule_task_free	= zephyr_ll_task_free,
 	.schedule_task_cancel	= zephyr_ll_task_cancel,
 	.scheduler_free		= zephyr_ll_scheduler_free,
