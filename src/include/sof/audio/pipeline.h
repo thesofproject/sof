@@ -30,6 +30,9 @@ struct ipc_msg;
 /* Pipeline status to stop execution of current path */
 #define PPL_STATUS_PATH_STOP	1
 
+/* Pipeline scheduled in another thread other than ipc thread */
+#define PPL_STATUS_SCHEDULED	2
+
 /* pipeline connection directions */
 #define PPL_CONN_DIR_COMP_TO_BUFFER	0
 #define PPL_CONN_DIR_BUFFER_TO_COMP	1

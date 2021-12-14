@@ -40,7 +40,7 @@
 struct ipc4_msg_data {
 	uint32_t msg_in[2]; /* local copy of current message from host header */
 	uint32_t msg_out[2]; /* local copy of current message to host header */
-	bool delayed_reply;
+	int delayed_reply;
 	uint32_t delayed_error;
 };
 
@@ -181,7 +181,7 @@ error:
  *     ERROR Stop       EOS       |______\ SAVE
  *                                      /
  */
-static int set_pipeline_state(uint32_t id, uint32_t cmd)
+static int set_pipeline_state(uint32_t id, uint32_t cmd, bool *delayed)
 {
 	struct ipc_comp_dev *pcm_dev;
 	struct ipc_comp_dev *host;
@@ -258,6 +258,8 @@ static int set_pipeline_state(uint32_t id, uint32_t cmd)
 				tr_err(&ipc_tr, "ipc: comp %d trigger 0x%x failed %d",
 				       id, cmd, ret);
 				return IPC4_PIPELINE_STATE_NOT_SET;
+			} else if (ret == PPL_STATUS_SCHEDULED) {
+				*delayed = true;
 			}
 		}
 
@@ -297,10 +299,65 @@ static int set_pipeline_state(uint32_t id, uint32_t cmd)
 	if (ret < 0) {
 		tr_err(&ipc_tr, "ipc: comp %d trigger 0x%x failed %d", id, cmd, ret);
 		ret = IPC4_PIPELINE_STATE_NOT_SET;
-	} else if (ret > 0) {
-		msg_data.delayed_reply = true;
-		msg_data.delayed_error = IPC4_PIPELINE_STATE_NOT_SET;
+	} else if (ret == PPL_STATUS_SCHEDULED) {
+		*delayed = true;
 		ret = 0;
+	}
+
+	return ret;
+}
+
+static void ipc_compound_pre_start(int msg_id)
+{
+	/* ipc thread will wait for all scheduled ipc messages to be complete
+	 * Use a reference count to check status of these ipc messages.
+	 */
+	msg_data.delayed_reply++;
+}
+
+static void ipc_compound_post_start(uint32_t msg_id, int ret, bool delayed)
+{
+	if (ret) {
+		tr_err(&ipc_tr, "failed to process msg %d status %d", msg_id, ret);
+		msg_data.delayed_reply--;
+		return;
+	}
+
+	/* decrease counter if it is not scheduled by another thread */
+	if (!delayed)
+		msg_data.delayed_reply--;
+}
+
+static void ipc_compound_msg_done(uint32_t msg_id, int error)
+{
+	if (!msg_data.delayed_reply || !msg_reply.tx_size) {
+		tr_err(&ipc_tr, "unexpected delayed reply");
+		return;
+	}
+
+	msg_data.delayed_reply--;
+
+	/* error reported in delayed pipeline task */
+	if (error < 0) {
+		if (msg_id == SOF_IPC4_GLB_SET_PIPELINE_STATE)
+			msg_data.delayed_error = IPC4_PIPELINE_STATE_NOT_SET;
+	}
+}
+
+static int ipc_wait_for_compound_msg(void)
+{
+	int try_count = 10;
+	int ret = 0;
+
+	while (msg_data.delayed_reply) {
+		/* TODO: update to yield(tmeout) for Zephyr */
+		wait_delay(10000);
+
+		if (!try_count--) {
+			ret = IPC4_FAILURE;
+			tr_err(&ipc_tr, "failed to wait schedule thread");
+			break;
+		}
 	}
 
 	return ret;
@@ -332,13 +389,14 @@ static int ipc4_set_pipeline_state(union ipc4_message_header *ipc4)
 	}
 
 	for (i = 0; i < ppl_count; i++) {
-		ret = set_pipeline_state(ppl_id[i], cmd);
+		bool delayed = false;
+
+		ipc_compound_pre_start(state.header.r.type);
+		ret = set_pipeline_state(ppl_id[i], cmd, &delayed);
+		ipc_compound_post_start(state.header.r.type, ret, delayed);
+
 		if (ret < 0)
 			break;
-
-		/* wait for pre-scheduled pipeline set complete */
-		while (msg_data.delayed_reply)
-			wait_delay(10000);
 	}
 
 	return ret;
@@ -736,41 +794,10 @@ void ipc_boot_complete_msg(ipc_cmd_hdr *header, uint32_t *data)
 
 void ipc_msg_reply(struct sof_ipc_reply *reply)
 {
-	struct ipc4_message_reply reply_msg;
-	struct ipc *ipc = ipc_get();
-	bool skip_first_entry;
-	uint32_t flags;
-	int error = 0;
+	union ipc4_message_header in;
 
-	/* error reported in delayed pipeline task */
-	if (reply->error < 0)
-		error = msg_data.delayed_error;
-	else
-		error = reply->error;
-
-	/*
-	 * IPC commands can be completed synchronously from the IPC task
-	 * completion method, or asynchronously: either from the pipeline task
-	 * thread or from another core. In the asynchronous case the order of
-	 * the two events is unknown. It is important that the latter of them
-	 * completes the IPC to avoid the host sending the next IPC too early.
-	 * .delayed_response is used for this in such asynchronous cases.
-	 */
-	spin_lock_irq(&ipc->lock, flags);
-	skip_first_entry = msg_data.delayed_reply;
-	msg_data.delayed_reply = false;
-	spin_unlock_irq(&ipc->lock, flags);
-
-	if (!skip_first_entry) {
-		char *data = ipc_get()->comp_data;
-
-		/* set error status */
-		reply_msg.header.dat = msg_reply.header;
-		reply_msg.header.r.status = error;
-		msg_reply.header = reply_msg.header.dat;
-
-		ipc_msg_send(&msg_reply, data, true);
-	}
+	in.dat = msg_data.msg_in[0];
+	ipc_compound_msg_done(in.r.type, reply->error);
 }
 
 void ipc_cmd(ipc_cmd_hdr *_hdr)
@@ -783,7 +810,9 @@ void ipc_cmd(ipc_cmd_hdr *_hdr)
 	if (!in)
 		return;
 
-	msg_data.delayed_reply = false;
+	/* no process on scheduled thread */
+	msg_data.delayed_reply = 0;
+	msg_data.delayed_error = 0;
 
 	/* Common reply msg only sends back ipc extension register */
 	msg_reply.tx_size = sizeof(uint32_t);
@@ -814,16 +843,21 @@ void ipc_cmd(ipc_cmd_hdr *_hdr)
 
 	/* FW sends a ipc message to host if request bit is set*/
 	if (in->r.rsp == SOF_IPC4_MESSAGE_DIR_MSG_REQUEST) {
+		char *data = ipc_get()->comp_data;
 		struct ipc4_message_reply reply;
-		struct sof_ipc_reply rep;
+
+		err = ipc_wait_for_compound_msg();
 
 		/* copy contents of message received */
 		reply.header.r.rsp = SOF_IPC4_MESSAGE_DIR_MSG_REPLY;
 		reply.header.r.msg_tgt = in->r.msg_tgt;
 		reply.header.r.type = in->r.type;
-		msg_reply.header = reply.header.dat;
-		rep.error = err;
+		if (msg_data.delayed_error)
+			reply.header.r.status = err;
+		else
+			reply.header.r.status = err;
 
-		ipc_msg_reply(&rep);
+		msg_reply.header = reply.header.dat;
+		ipc_msg_send(&msg_reply, data, true);
 	}
 }
