@@ -227,11 +227,17 @@ static int set_pipeline_state(uint32_t id, uint32_t cmd)
 			return IPC4_INVALID_REQUEST;
 		}
 
-		cmd = COMP_TRIGGER_PRE_START;
+		/* init params when pipeline is complete or reset */
+		if (status == COMP_STATE_READY) {
+			cmd = COMP_TRIGGER_PRE_START;
 
-		ret = ipc4_pcm_params(host);
-		if (ret < 0)
-			return IPC4_INVALID_REQUEST;
+			ret = ipc4_pcm_params(host);
+			if (ret < 0)
+				return IPC4_INVALID_REQUEST;
+		} else {
+			cmd = COMP_TRIGGER_PRE_RELEASE;
+		}
+
 		break;
 	case SOF_IPC4_PIPELINE_STATE_RESET:
 		if (status == COMP_STATE_INIT) {
