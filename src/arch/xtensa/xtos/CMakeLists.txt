@@ -88,6 +88,9 @@ add_local_sources(xtos
 	user-vector.S
 	xea1/window-vectors.S
 	xea2/window-vectors.S
+	stub.c
 )
+sof_append_relative_path_definitions(xtos)
 target_link_libraries(xtos sof_options)
 target_compile_definitions(xtos PRIVATE ${VECTOR_DEFS})
+
