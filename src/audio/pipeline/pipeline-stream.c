@@ -284,7 +284,7 @@ int pipeline_trigger(struct pipeline *p, struct comp_dev *host, int cmd)
 		if (ret < 0)
 			return ret;
 		/* IPC response will be sent from the task, unless it was paused */
-		return 1;
+		return PPL_STATUS_SCHEDULED;
 	}
 
 	return 0;
