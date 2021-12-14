@@ -162,15 +162,20 @@ static void zephyr_ll_run(void *data)
 {
 	struct zephyr_ll *sch = data;
 	struct task *task;
-	struct list_item *list, *tmp, head;
+	struct list_item *list;
 	uint32_t flags;
-
-	list_init(&head);
 
 	zephyr_ll_lock(sch, &flags);
 
-	/* Move all pending tasks to a temporary local list */
-	list_for_item_safe(list, tmp, &sch->tasks) {
+	/*
+	 * We have to traverse the list manually, because we drop the lock while
+	 * executing tasks, at that time tasks can be removed from or added to
+	 * the list.
+	 */
+	list = sch->tasks.next;
+
+	while (list != &sch->tasks) {
+		enum task_state state;
 		struct comp_dev *sched_comp;
 		struct zephyr_ll_pdata *pdata;
 
@@ -178,61 +183,42 @@ static void zephyr_ll_run(void *data)
 		pdata = task->priv_data;
 
 		if (task->state == SOF_TASK_STATE_CANCEL) {
+			list = list->next;
 			zephyr_ll_task_done(sch, task);
 			continue;
 		}
 
 		/* To be removed together with .start and .next_tick */
-		if (!domain_is_pending(sch->ll_domain, task, &sched_comp))
+		if (!domain_is_pending(sch->ll_domain, task, &sched_comp)) {
+			list = list->next;
 			continue;
+		}
 
-		/*
-		 * Do not adjust .n_tasks, it's only decremented if the task is
-		 * removed via zephyr_ll_task_done()
-		 */
-		list_item_del(&task->list);
-		list_item_append(&task->list, &head);
 		pdata->run = true;
-
 		task->state = SOF_TASK_STATE_RUNNING;
-	}
 
-	zephyr_ll_unlock(sch, &flags);
-
-	/*
-	 * Execute tasks on the temporary list. We are racing against
-	 * zephyr_ll_task_free(), see comments there for details.
-	 */
-	list_for_item_safe(list, tmp, &head) {
-		enum task_state state;
-		struct zephyr_ll_pdata *pdata;
-
-		task = container_of(list, struct task, list);
+		zephyr_ll_unlock(sch, &flags);
 
 		/*
-		 * While the lock is not held, the task can be cancelled, we
-		 * deal with it after the task completion.
+		 * task's .run() should only return either
+		 * SOF_TASK_STATE_COMPLETED or SOF_TASK_STATE_RESCHEDULE
 		 */
-		if (task->state == SOF_TASK_STATE_RUNNING) {
-			/*
-			 * task's .run() should only return either
-			 * SOF_TASK_STATE_COMPLETED or SOF_TASK_STATE_RESCHEDULE
-			 */
-			state = do_task_run(task);
-			if (state != SOF_TASK_STATE_COMPLETED &&
-			    state != SOF_TASK_STATE_RESCHEDULE) {
-				tr_err(&ll_tr,
-				       "zephyr_ll_run: invalid return state %u",
-				       state);
-				state = SOF_TASK_STATE_RESCHEDULE;
-			}
-		} else {
-			state = SOF_TASK_STATE_COMPLETED;
+		state = do_task_run(task);
+		if (state != SOF_TASK_STATE_COMPLETED &&
+		    state != SOF_TASK_STATE_RESCHEDULE) {
+			tr_err(&ll_tr,
+			       "zephyr_ll_run: invalid return state %u",
+			       state);
+			state = SOF_TASK_STATE_RESCHEDULE;
 		}
 
 		zephyr_ll_lock(sch, &flags);
 
-		pdata = task->priv_data;
+		/*
+		 * The .next pointer could've been changed while the lock wasn't
+		 * held
+		 */
+		list = list->next;
 
 		if (pdata->freeing) {
 			/*
@@ -255,16 +241,12 @@ static void zephyr_ll_run(void *data)
 				break;
 			default:
 				/* reschedule */
-				list_item_del(&task->list);
-
-				zephyr_ll_task_insert_unlocked(sch, task);
-
 				task->start = sch->ll_domain->next_tick;
 			}
 		}
-
-		zephyr_ll_unlock(sch, &flags);
 	}
+
+	zephyr_ll_unlock(sch, &flags);
 
 	notifier_event(sch, NOTIFIER_ID_LL_POST_RUN,
 		       NOTIFIER_TARGET_CORE_LOCAL, NULL, 0);
