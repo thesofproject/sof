@@ -197,7 +197,7 @@ static int selector_verify_params(struct comp_dev *dev,
 		return -EINVAL;
 	}
 
-	if (cd->config.sel_channel > (SEL_SOURCE_4CH - 1)) {
+	if (cd->config.sel_channel > (params->channels - 1)) {
 		comp_err(dev, "selector_verify_params(): ch_idx = %u"
 			 , cd->config.sel_channel);
 		return -EINVAL;
