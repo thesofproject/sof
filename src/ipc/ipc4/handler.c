@@ -402,6 +402,35 @@ static int ipc4_set_pipeline_state(union ipc4_message_header *ipc4)
 	return ret;
 }
 
+static int ipc4_process_chain_dma(union ipc4_message_header *ipc4)
+{
+	struct ipc4_chain_dma cdma;
+	struct ipc *ipc = ipc_get();
+	int ret;
+
+	memcpy_s(&cdma, sizeof(cdma), ipc4, sizeof(cdma));
+
+	if (cdma.header.r.allocate && cdma.data.r.fifo_size) {
+		ret = ipc4_create_chain_dma(ipc, &cdma);
+		if (ret)
+			tr_err(&ipc_tr, "failed to create chain dma %d", ret);
+
+		return ret;
+	}
+
+	msg_data.delayed_reply = 1;
+	ret = ipc4_trigger_chain_dma(ipc, &cdma);
+	/* it is not scheduled in another thread */
+	if (ret != PPL_STATUS_SCHEDULED) {
+		msg_data.delayed_reply = 0;
+		msg_data.delayed_error = 0;
+	} else {
+		ret = 0;
+	}
+
+	return ret;
+}
+
 static int ipc4_process_glb_message(union ipc4_message_header *ipc4)
 {
 	uint32_t type;
@@ -414,11 +443,14 @@ static int ipc4_process_glb_message(union ipc4_message_header *ipc4)
 	case SOF_IPC4_GLB_ROM_CONTROL:
 	case SOF_IPC4_GLB_IPCGATEWAY_CMD:
 	case SOF_IPC4_GLB_PERF_MEASUREMENTS_CMD:
-	case SOF_IPC4_GLB_CHAIN_DMA:
 	case SOF_IPC4_GLB_LOAD_MULTIPLE_MODULES:
 	case SOF_IPC4_GLB_UNLOAD_MULTIPLE_MODULES:
 		tr_err(&ipc_tr, "not implemented ipc message type %d", type);
 		ret = IPC4_UNAVAILABLE;
+		break;
+
+	case SOF_IPC4_GLB_CHAIN_DMA:
+		ret = ipc4_process_chain_dma(ipc4);
 		break;
 
 	/* pipeline settings */
