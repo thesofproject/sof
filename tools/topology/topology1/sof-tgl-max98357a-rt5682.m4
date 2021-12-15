@@ -103,7 +103,7 @@ define(`SPK_REF_DAI_NAME', concat(concat(`SSP', SPK_SSP_INDEX),`.IN'))
 # define channel
 define(CHANNELS, `4')
 # define kfbm with volume
-define(KFBM_TYPE, `vol-kfbm')
+define(KFBM_TYPE, `eq-iir-kfbm')
 # define pcm, pipeline and dai id
 define(DMIC_PCM_48k_ID, `99')
 define(DMIC_PIPELINE_48k_ID, `10')
