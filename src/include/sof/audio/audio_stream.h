@@ -591,6 +591,64 @@ static inline int audio_stream_copy(const struct audio_stream *source,
 }
 
 /**
+ * Copies data from linear source buffer to circular sink buffer.
+ * @param linear_source Source buffer.
+ * @param ioffset Offset (in samples) in source buffer to start reading from.
+ * @param sink Sink buffer.
+ * @param ooffset Offset (in samples) in sink buffer to start writing to.
+ * @param samples Number of samples to copy.
+ */
+static inline void audio_stream_copy_from_linear(void *linear_source, int ioffset,
+						 struct audio_stream *sink, int ooffset,
+						 unsigned int samples)
+{
+	int ssize = audio_stream_sample_bytes(sink); /* src fmt == sink fmt */
+	uint8_t *src = (uint8_t *)linear_source + ioffset * ssize;
+	uint8_t *snk = audio_stream_wrap(sink, (uint8_t *)sink->w_ptr + ooffset * ssize);
+	size_t bytes = samples * ssize;
+	size_t bytes_snk;
+	size_t bytes_copied;
+
+	while (bytes) {
+		bytes_snk = audio_stream_bytes_without_wrap(sink, snk);
+		bytes_copied = MIN(bytes, bytes_snk);
+		memcpy(snk, src, bytes_copied);
+		bytes -= bytes_copied;
+		src += bytes_copied;
+		snk = audio_stream_wrap(sink, snk + bytes_copied);
+	}
+}
+
+/**
+ * Copies data from circular source buffer to linear sink buffer.
+ * @param source Source buffer.
+ * @param ioffset Offset (in samples) in source buffer to start reading from.
+ * @param linear_sink Sink buffer.
+ * @param ooffset Offset (in samples) in sink buffer to start writing to.
+ * @param samples Number of samples to copy.
+ */
+static inline void audio_stream_copy_to_linear(struct audio_stream *source, int ioffset,
+					       void *linear_sink, int ooffset,
+					       unsigned int samples)
+{
+	int ssize = audio_stream_sample_bytes(source); /* src fmt == sink fmt */
+	uint8_t *src = audio_stream_wrap(source, (uint8_t *)source->r_ptr + ioffset * ssize);
+	uint8_t *snk = (uint8_t *)linear_sink + ooffset * ssize;
+	size_t bytes = samples * ssize;
+	size_t bytes_src;
+	size_t bytes_copied;
+
+	while (bytes) {
+		bytes_src = audio_stream_bytes_without_wrap(source, src);
+		bytes_copied = MIN(bytes, bytes_src);
+		memcpy(snk, src, bytes_copied);
+		bytes -= bytes_copied;
+		src = audio_stream_wrap(source, src + bytes_copied);
+		snk += bytes_copied;
+	}
+}
+
+/**
  * Writes zeros in range [w_ptr, w_ptr+bytes], with rollover if necessary.
  * @param buffer Buffer.
  * @param bytes Size of the fragment to write zero.
