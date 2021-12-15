@@ -265,10 +265,6 @@ void trace_log_filtered(bool send_atomic, const void *log_entry, const struct tr
 {
 	struct trace *trace = trace_get();
 
-#if CONFIG_TRACE_FILTERING_ADAPTIVE
-	uint64_t current_ts;
-#endif /* CONFIG_TRACE_FILTERING_ADAPTIVE */
-
 	if (!trace->enable) {
 		return;
 	}
@@ -280,7 +276,7 @@ void trace_log_filtered(bool send_atomic, const void *log_entry, const struct tr
 
 #if CONFIG_TRACE_FILTERING_ADAPTIVE
 	if (!trace->user_filter_override) {
-		current_ts = platform_safe_get_time(timer_get());
+		const uint64_t current_ts = platform_safe_get_time(timer_get());
 
 		emit_recent_entries(current_ts);
 
