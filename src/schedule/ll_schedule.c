@@ -76,10 +76,14 @@ struct ll_schedule_data {
 
 static const struct scheduler_ops schedule_ll_ops;
 
-#define perf_ll_sched_trace(pcd, ll_sched)			\
-	tr_info(&ll_tr, "perf ll_work peak plat %u cpu %u",	\
-		(uint32_t)((pcd)->plat_delta_peak),		\
-		(uint32_t)((pcd)->cpu_delta_peak))
+#if CONFIG_PERFORMANCE_COUNTERS
+static void perf_ll_sched_trace(struct perf_cnt_data *pcd, int ignored)
+{
+	tr_info(&ll_tr, "perf ll_work peak plat %u cpu %u",
+		(uint32_t)((pcd)->plat_delta_peak),
+		(uint32_t)((pcd)->cpu_delta_peak));
+}
+#endif
 
 static bool schedule_ll_is_pending(struct ll_schedule_data *sch)
 {
@@ -265,7 +269,7 @@ static void schedule_ll_tasks_run(void *data)
 	notifier_event(sch, NOTIFIER_ID_LL_POST_RUN,
 		       NOTIFIER_TARGET_CORE_LOCAL, NULL, 0);
 
-	perf_cnt_stamp(&sch->pcd, perf_ll_sched_trace, sch);
+	perf_cnt_stamp(&sch->pcd, perf_ll_sched_trace, 0 /* ignored */);
 
 	spin_lock(&domain->lock);
 

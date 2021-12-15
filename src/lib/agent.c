@@ -44,14 +44,18 @@ DECLARE_SOF_UUID("sa", sa_uuid, 0x5276b491, 0x5b64, 0x464e,
 
 DECLARE_TR_CTX(sa_tr, SOF_UUID(sa_uuid), LOG_LEVEL_INFO);
 
-#define perf_sa_trace(pcd, sa)					\
-	tr_info(&sa_tr, "perf sys_load peak plat %u cpu %u",	\
-		(uint32_t)((pcd)->plat_delta_peak),		\
-		(uint32_t)((pcd)->cpu_delta_peak))
-
 /* c63c4e75-8f61-4420-9319-1395932efa9e */
 DECLARE_SOF_UUID("agent-work", agent_work_task_uuid, 0xc63c4e75, 0x8f61, 0x4420,
 		 0x93, 0x19, 0x13, 0x95, 0x93, 0x2e, 0xfa, 0x9e);
+
+#if CONFIG_PERFORMANCE_COUNTERS
+static void perf_sa_trace(struct perf_cnt_data *pcd, int ignored)
+{
+	tr_info(&sa_tr, "perf sys_load peak plat %u cpu %u",
+		(uint32_t)((pcd)->plat_delta_peak),
+		(uint32_t)((pcd)->cpu_delta_peak));
+}
+#endif
 
 static enum task_state validate(void *data)
 {
@@ -62,7 +66,7 @@ static enum task_state validate(void *data)
 	current = platform_timer_get(timer_get());
 	delta = current - sa->last_check;
 
-	perf_cnt_stamp(&sa->pcd, perf_sa_trace, sa);
+	perf_cnt_stamp(&sa->pcd, perf_sa_trace, 0 /* ignored */);
 
 #if CONFIG_AGENT_PANIC_ON_DELAY
 	/* panic timeout */
