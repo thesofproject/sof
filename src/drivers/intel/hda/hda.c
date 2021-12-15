@@ -32,6 +32,10 @@ static int hda_set_config(struct dai *dai,  struct ipc_config_dai *common_config
 	struct sof_ipc_dai_config *dai_config = spec_config;
 	struct sof_ipc_dai_hda_params *params = &dai_config->hda;
 
+	/* no params in blob which only includes lp mode setting */
+	if (common_config->is_config_blob)
+		return 0;
+
 	dai_info(dai, "hda_set_config(): channels %u rate %u", params->channels,
 		 params->rate);
 
