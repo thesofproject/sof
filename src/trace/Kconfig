@@ -61,14 +61,14 @@ config TRACE_FILTERING_ADAPTIVE
 		this filtering.
 
 config TRACE_RECENT_ENTRIES_COUNT
-	int "Amount of entries considered recent"
+	int "How many recent log messages are stored"
 	depends on TRACE_FILTERING_ADAPTIVE
 	default 5
 	help
-		Recent entries are used to determine whether currently processed message was sent in the
-		past. Size of that filtering window affects effectiveness and performance. More recent
-		entries allow to better filter repetitive messeges out, but also slightly decrease
-		performance due to increased number of comparisions necessary.
+		The most recent log messages are stored to match the currently processed
+		message. The size of that window affects effectiveness and performance. More recent
+		entries allow to better filter repetitive messages out, but also slightly decrease
+		performance due to the increased number of comparisons necessary.
 
 config TRACE_RECENT_TIME_THRESHOLD
 	int "Period of time considered recent (microseconds)"
@@ -77,6 +77,7 @@ config TRACE_RECENT_TIME_THRESHOLD
 	range 1 TRACE_RECENT_MAX_TIME
 	help
 		Period of time during which entries are tracked and will be suppressed if reported again.
+		Entries expire after this time.
 
 config TRACE_RECENT_MAX_TIME
 	int "Maximum period of time that message can be suppressed (microseconds)"

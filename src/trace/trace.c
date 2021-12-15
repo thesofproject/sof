@@ -129,7 +129,8 @@ static inline bool trace_filter_verbosity(uint32_t lvl, const struct tr_ctx *ctx
 #endif /* CONFIG_TRACE_FILTERING_VERBOSITY */
 
 #if CONFIG_TRACE_FILTERING_ADAPTIVE
-static void emit_recent_entry(struct recent_log_entry *entry)
+/** Report how many times an entry was suppressed and clear it. */
+static void emit_suppressed_entry(struct recent_log_entry *entry)
 {
 	_log_message(trace_log_unfiltered, false, LOG_LEVEL_INFO, _TRACE_INV_CLASS, &dt_tr,
 		     _TRACE_INV_ID, _TRACE_INV_ID, "Suppressed %u similar messages: %pQ",
@@ -139,6 +140,9 @@ static void emit_recent_entry(struct recent_log_entry *entry)
 	memset(entry, 0, sizeof(*entry));
 }
 
+/** Flush entries that have not been seen again in the last
+ * CONFIG_TRACE_RECENT_TIME_THRESHOLD microseconds before current_ts.
+ */
 static void emit_recent_entries(uint64_t current_ts)
 {
 	struct trace *trace = trace_get();
@@ -152,7 +156,7 @@ static void emit_recent_entries(uint64_t current_ts)
 			if (current_ts - recent_entries[i].message_ts >
 			    CONFIG_TRACE_RECENT_TIME_THRESHOLD) {
 				if (recent_entries[i].trigger_count > CONFIG_TRACE_BURST_COUNT)
-					emit_recent_entry(&recent_entries[i]);
+					emit_suppressed_entry(&recent_entries[i]);
 				else
 					memset(&recent_entries[i], 0, sizeof(recent_entries[i]));
 			}
@@ -166,7 +170,7 @@ static void emit_recent_entries(uint64_t current_ts)
  * \param log_level log verbosity level
  * \param entry ID of log entry
  * \param message_ts message timestamp
- * \return false when trace is filtered out, true otherwise
+ * \return true when the message must be printed by the caller because it was not filtered
  */
 static bool trace_filter_flood(uint32_t log_level, uint32_t entry, uint64_t message_ts)
 {
@@ -175,7 +179,6 @@ static bool trace_filter_flood(uint32_t log_level, uint32_t entry, uint64_t mess
 		trace->trace_core_context[cpu_get_id()].recent_entries;
 	struct recent_log_entry *oldest_entry = recent_entries;
 	int i;
-	bool ret;
 
 	/* don't attempt to suppress debug messages using this method, it would be uneffective */
 	if (log_level >= LOG_LEVEL_DEBUG)
@@ -183,36 +186,43 @@ static bool trace_filter_flood(uint32_t log_level, uint32_t entry, uint64_t mess
 
 	/* check if same log entry was sent recently */
 	for (i = 0; i < CONFIG_TRACE_RECENT_ENTRIES_COUNT; i++) {
-		/* in the meantime identify the oldest or an empty entry, for reuse later */
+		/* Identify the oldest (or empty) entry to evict if we have no match  */
 		if (oldest_entry->first_suppression_ts > recent_entries[i].first_suppression_ts)
 			oldest_entry = &recent_entries[i];
 
 		if (recent_entries[i].entry_id == entry) {
+			/* We have a match but include this message in this burst only if the
+			 * burst:
+			   - 1. hasn't lasted for too long;
+			   - 2. hasn't been quiet for too long.
+			 */
 			if (message_ts - recent_entries[i].first_suppression_ts <
 			    CONFIG_TRACE_RECENT_MAX_TIME &&
 			    message_ts - recent_entries[i].message_ts <
 			    CONFIG_TRACE_RECENT_TIME_THRESHOLD) {
 				recent_entries[i].trigger_count++;
-				/* refresh suppression timer */
+				/* Refresh last seen time */
 				recent_entries[i].message_ts = message_ts;
 
-				ret = recent_entries[i].trigger_count <= CONFIG_TRACE_BURST_COUNT;
-
-				return ret;
+				/* Allow the start of a burst to be printed normally */
+				return recent_entries[i].trigger_count <= CONFIG_TRACE_BURST_COUNT;
 			}
 
+			/* Emit and clear this burst */
 			if (recent_entries[i].trigger_count > CONFIG_TRACE_BURST_COUNT)
-				emit_recent_entry(&recent_entries[i]);
+				emit_suppressed_entry(&recent_entries[i]);
 			else
 				memset(&recent_entries[i], 0, sizeof(recent_entries[i]));
+
 			return true;
 		}
 	}
 
 	/* Make room for tracking new entry, by emitting the oldest one in the filter */
 	if (oldest_entry->entry_id && oldest_entry->trigger_count > CONFIG_TRACE_BURST_COUNT)
-		emit_recent_entry(oldest_entry);
+		emit_suppressed_entry(oldest_entry);
 
+	/* Start a new burst */
 	oldest_entry->entry_id = entry;
 	oldest_entry->message_ts = message_ts;
 	oldest_entry->first_suppression_ts = message_ts;
