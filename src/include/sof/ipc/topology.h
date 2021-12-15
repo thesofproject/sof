@@ -50,6 +50,8 @@ const struct comp_driver *ipc4_get_comp_drv(int module_id);
 struct comp_dev *ipc4_get_comp_dev(uint32_t comp_id);
 int ipc4_add_comp_dev(struct comp_dev *dev);
 const struct comp_driver *ipc4_get_drv(uint8_t *uuid);
+int ipc4_create_chain_dma(struct ipc *ipc, struct ipc4_chain_dma *cdma);
+int ipc4_trigger_chain_dma(struct ipc *ipc, struct ipc4_chain_dma *cdma);
 #else
 #error "No or invalid IPC MAJOR version selected."
 #endif
