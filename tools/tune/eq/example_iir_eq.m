@@ -154,8 +154,8 @@ eq_pack_export(bm, blob_fn, alsa_fn, tplg_fn, priv, comment)
 
 blob_fn = ''; % Don't create
 fs_list = [16e3 48e3];
-fc_list = [20 30 40 50];
-g_list = [0 20];
+fc_list = [20 30 40 50 60 70 80 90 100 150 200];
+g_list = [0 10 20];
 for i = 1:length(fs_list)
 	for j = 1:length(fc_list);
 		for k = 1:length(g_list);
