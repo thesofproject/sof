@@ -420,7 +420,10 @@ int trace_filter_update(const struct trace_filter *filter)
 #if CONFIG_TRACE_FILTERING_ADAPTIVE
 	struct trace *trace = trace_get();
 
-	trace->user_filter_override = true;
+	if (!trace->user_filter_override) {
+		trace->user_filter_override = true;
+		tr_info(&ipc_tr, "Adaptive filtering disabled by user");
+	}
 #endif /* CONFIG_TRACE_FILTERING_ADAPTIVE */
 
 	/* validate log level, LOG_LEVEL_CRITICAL has low value, LOG_LEVEL_VERBOSE high */
