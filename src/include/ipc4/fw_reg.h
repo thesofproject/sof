@@ -127,8 +127,8 @@ struct ipc4_fw_registers {
 	uint32_t rsvd0;
 	union ipc4_rom_info rom_info;
 	uint32_t rsvd1[5];
-	uint32_t dbg_log_wp[MAX_CORE_COUNT];
-	uint32_t rsvd2[4 - MAX_CORE_COUNT];
+	uint32_t dbg_log_wp[CONFIG_MAX_CORE_COUNT];
+	uint32_t rsvd2[4 - CONFIG_MAX_CORE_COUNT];
 
 	struct ipc4_pipeline_registers pipeline_regs[PLATFORM_MAX_DMA_CHAN];
 	struct ipc4_peak_volume_regs peak_vol_regs[10];
