@@ -950,9 +950,6 @@ void *rballoc_align(uint32_t flags, uint32_t caps, size_t bytes,
 
 	ptr = _balloc_unlocked(flags, caps, bytes, alignment);
 
-	if (ptr)
-		bzero(ptr, bytes);
-
 	spin_unlock_irq(&memmap->lock, lock_flags);
 
 	DEBUG_TRACE_PTR(ptr, bytes, SOF_MEM_ZONE_BUFFER, caps, flags);
