@@ -135,7 +135,7 @@ static void register_exceptions(void)
 	_xtos_set_exception_handler(
 		EXCCAUSE_DIVIDE_BY_ZERO, (void *)&exception);
 	_xtos_set_exception_handler(
-		EXCCAUSE_SPECULATION, (void *)&exception);
+		EXCCAUSE_PC_ERROR, (void *)&exception);
 	_xtos_set_exception_handler(
 		EXCCAUSE_PRIVILEGED, (void *)&exception);
 	_xtos_set_exception_handler(

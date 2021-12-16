@@ -25,7 +25,7 @@
 #include <sof/drivers/cache_attr.h>
 #endif
 
-#define SRAM_UNCACHED_ALIAS	0x20000000
+#define SRAM_UNCACHED_ALIAS	0x60000000
 
 #ifdef CONFIG_IMX
 
