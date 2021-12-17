@@ -555,32 +555,8 @@ audio_stream_frames_without_wrap(const struct audio_stream *source,
  * @param samples Number of samples to copy.
  * @return number of processed samples.
  */
-static inline int audio_stream_copy(const struct audio_stream *source,
-				     uint32_t ioffset,
-				     struct audio_stream *sink,
-				     uint32_t ooffset, uint32_t samples)
-{
-	int ssize = audio_stream_sample_bytes(source); /* src fmt == sink fmt */
-	uint8_t *src = audio_stream_wrap(source, (uint8_t *)source->r_ptr + ioffset * ssize);
-	uint8_t *snk = audio_stream_wrap(sink, (uint8_t *)sink->w_ptr + ooffset * ssize);
-	size_t bytes = samples * ssize;
-	size_t bytes_src;
-	size_t bytes_snk;
-	size_t bytes_copied;
-
-	while (bytes) {
-		bytes_src = audio_stream_bytes_without_wrap(source, src);
-		bytes_snk = audio_stream_bytes_without_wrap(sink, snk);
-		bytes_copied = MIN(bytes_src, bytes_snk);
-		bytes_copied = MIN(bytes, bytes_copied);
-		memcpy(snk, src, bytes_copied);
-		bytes -= bytes_copied;
-		src = audio_stream_wrap(source, src + bytes_copied);
-		snk = audio_stream_wrap(sink, snk + bytes_copied);
-	}
-
-	return samples;
-}
+int audio_stream_copy(const struct audio_stream *source, uint32_t ioffset,
+		      struct audio_stream *sink, uint32_t ooffset, uint32_t samples);
 
 /**
  * Copies data from linear source buffer to circular sink buffer.
@@ -590,26 +566,8 @@ static inline int audio_stream_copy(const struct audio_stream *source,
  * @param ooffset Offset (in samples) in sink buffer to start writing to.
  * @param samples Number of samples to copy.
  */
-static inline void audio_stream_copy_from_linear(void *linear_source, int ioffset,
-						 struct audio_stream *sink, int ooffset,
-						 unsigned int samples)
-{
-	int ssize = audio_stream_sample_bytes(sink); /* src fmt == sink fmt */
-	uint8_t *src = (uint8_t *)linear_source + ioffset * ssize;
-	uint8_t *snk = audio_stream_wrap(sink, (uint8_t *)sink->w_ptr + ooffset * ssize);
-	size_t bytes = samples * ssize;
-	size_t bytes_snk;
-	size_t bytes_copied;
-
-	while (bytes) {
-		bytes_snk = audio_stream_bytes_without_wrap(sink, snk);
-		bytes_copied = MIN(bytes, bytes_snk);
-		memcpy(snk, src, bytes_copied);
-		bytes -= bytes_copied;
-		src += bytes_copied;
-		snk = audio_stream_wrap(sink, snk + bytes_copied);
-	}
-}
+void audio_stream_copy_from_linear(void *linear_source, int ioffset,
+				   struct audio_stream *sink, int ooffset, unsigned int samples);
 
 /**
  * Copies data from circular source buffer to linear sink buffer.
@@ -619,26 +577,8 @@ static inline void audio_stream_copy_from_linear(void *linear_source, int ioffse
  * @param ooffset Offset (in samples) in sink buffer to start writing to.
  * @param samples Number of samples to copy.
  */
-static inline void audio_stream_copy_to_linear(struct audio_stream *source, int ioffset,
-					       void *linear_sink, int ooffset,
-					       unsigned int samples)
-{
-	int ssize = audio_stream_sample_bytes(source); /* src fmt == sink fmt */
-	uint8_t *src = audio_stream_wrap(source, (uint8_t *)source->r_ptr + ioffset * ssize);
-	uint8_t *snk = (uint8_t *)linear_sink + ooffset * ssize;
-	size_t bytes = samples * ssize;
-	size_t bytes_src;
-	size_t bytes_copied;
-
-	while (bytes) {
-		bytes_src = audio_stream_bytes_without_wrap(source, src);
-		bytes_copied = MIN(bytes, bytes_src);
-		memcpy(snk, src, bytes_copied);
-		bytes -= bytes_copied;
-		src = audio_stream_wrap(source, src + bytes_copied);
-		snk += bytes_copied;
-	}
-}
+void audio_stream_copy_to_linear(struct audio_stream *source, int ioffset,
+				 void *linear_sink, int ooffset, unsigned int samples);
 
 /**
  * Writes zeros in range [w_ptr, w_ptr+bytes], with rollover if necessary.
