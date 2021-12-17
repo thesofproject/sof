@@ -699,14 +699,30 @@ void comp_unregister(struct comp_driver_info *drv);
 int comp_set_state(struct comp_dev *dev, int cmd);
 
 /* \brief Set component period frames */
-static inline void component_set_period_frames(struct comp_dev *current,
-					       uint32_t rate)
+static inline void component_set_nearest_period_frames(struct comp_dev *current,
+						       uint32_t rate)
 {
-	/* Samplerate is in Hz and period in microseconds.
+	/* Sample rate is in Hz and period in microseconds.
 	 * As we don't have floats use scale divider 1000000.
 	 * Also integer round up the result.
+	 * dma buffer size should align with 32bytes which can't be
+	 * compatible with current 45K adjustment. 48K is a suitable
+	 * adjustment.
 	 */
-	current->frames = ceil_divide(rate * current->period, 1000000);
+	switch (rate) {
+	case 44100:
+		current->frames = 48000 * current->period / 1000000;
+		break;
+	case 88200:
+		current->frames = 96000 * current->period / 1000000;
+		break;
+	case 176400:
+		current->frames = 192000 * current->period / 1000000;
+		break;
+	default:
+		current->frames = ceil_divide(rate * current->period, 1000000);
+		break;
+	}
 }
 
 /** \name XRUN handling.
