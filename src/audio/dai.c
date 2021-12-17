@@ -306,7 +306,7 @@ static int dai_verify_params(struct comp_dev *dev,
 	}
 
 	/* set component period frames */
-	component_set_period_frames(dev, params->rate);
+	component_set_nearest_period_frames(dev, params->rate);
 
 	return 0;
 }

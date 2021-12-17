@@ -163,7 +163,7 @@ static int selector_verify_params(struct comp_dev *dev,
 	buffer_set_params(buffer, params, BUFFER_UPDATE_FORCE);
 
 	/* set component period frames */
-	component_set_period_frames(dev, sinkb->stream.rate);
+	component_set_nearest_period_frames(dev, sinkb->stream.rate);
 
 	buffer_release_irq(buffer);
 

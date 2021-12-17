@@ -144,7 +144,7 @@ int comp_verify_params(struct comp_dev *dev, uint32_t flag,
 		buffer_set_params(buf, params, BUFFER_UPDATE_FORCE);
 
 		/* set component period frames */
-		component_set_period_frames(dev, buf->stream.rate);
+		component_set_nearest_period_frames(dev, buf->stream.rate);
 
 		buf = buffer_release_irq(buf);
 	} else {
@@ -169,7 +169,7 @@ int comp_verify_params(struct comp_dev *dev, uint32_t flag,
 					source_list);
 
 		sinkb = buffer_acquire_irq(sinkb);
-		component_set_period_frames(dev, sinkb->stream.rate);
+		component_set_nearest_period_frames(dev, sinkb->stream.rate);
 		sinkb = buffer_release_irq(sinkb);
 	}
 
