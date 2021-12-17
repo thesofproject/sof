@@ -337,9 +337,7 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V20)
 	set_source_files_properties(${SOF_PLATFORM_PATH}/intel/cavs/lps_pic_restore_vector.S PROPERTIES COMPILE_FLAGS -DASSEMBLY)
 
 	set(PLATFORM "icelake")
-	target_include_directories(SOF INTERFACE ../zephyr/include/cavs20)
 	zephyr_include_directories(${SOF_PLATFORM_PATH}/intel/cavs/include)
-	zephyr_include_directories(../../../../zephyr/soc/xtensa/intel_adsp/common/include)
 endif()
 
 # Intel TGL and CAVS 2.5 platforms
@@ -408,9 +406,7 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V25)
 	set_source_files_properties(${SOF_PLATFORM_PATH}/intel/cavs/lps_pic_restore_vector.S PROPERTIES COMPILE_FLAGS -DASSEMBLY)
 
 	set(PLATFORM "tigerlake")
-	target_include_directories(SOF INTERFACE ../zephyr/include/cavs25)
 	zephyr_include_directories(${SOF_PLATFORM_PATH}/intel/cavs/include)
-	zephyr_include_directories(../../../../zephyr/soc/xtensa/intel_adsp/common/include)
 endif()
 
 # NXP IMX8 platforms
