@@ -561,30 +561,22 @@ static inline int audio_stream_copy(const struct audio_stream *source,
 				     uint32_t ooffset, uint32_t samples)
 {
 	int ssize = audio_stream_sample_bytes(source); /* src fmt == sink fmt */
-	void *src = audio_stream_wrap(source,
-				      (char *)source->r_ptr + ioffset * ssize);
-	void *snk = audio_stream_wrap(sink,
-				      (char *)sink->w_ptr + ooffset * ssize);
-	uint32_t bytes = samples * ssize;
-	uint32_t bytes_src;
-	uint32_t bytes_snk;
-	uint32_t bytes_copied;
-	int ret;
+	uint8_t *src = audio_stream_wrap(source, (uint8_t *)source->r_ptr + ioffset * ssize);
+	uint8_t *snk = audio_stream_wrap(sink, (uint8_t *)sink->w_ptr + ooffset * ssize);
+	size_t bytes = samples * ssize;
+	size_t bytes_src;
+	size_t bytes_snk;
+	size_t bytes_copied;
 
 	while (bytes) {
 		bytes_src = audio_stream_bytes_without_wrap(source, src);
 		bytes_snk = audio_stream_bytes_without_wrap(sink, snk);
-		bytes_copied = MIN(bytes, MIN(bytes_src, bytes_snk));
-
-		ret = memcpy_s(snk, bytes_snk, src, bytes_copied);
-		assert(!ret);
-
+		bytes_copied = MIN(bytes_src, bytes_snk);
+		bytes_copied = MIN(bytes, bytes_copied);
+		memcpy(snk, src, bytes_copied);
 		bytes -= bytes_copied;
-		src = (char *)src + bytes_copied;
-		snk = (char *)snk + bytes_copied;
-
-		src = audio_stream_wrap(source, src);
-		snk = audio_stream_wrap(sink, snk);
+		src = audio_stream_wrap(source, src + bytes_copied);
+		snk = audio_stream_wrap(sink, snk + bytes_copied);
 	}
 
 	return samples;
