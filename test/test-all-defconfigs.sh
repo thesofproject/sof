@@ -2,8 +2,10 @@
 
 set -e
 
+# Absolute
 SOFTOP=$(cd "$(dirname "$0")"/.. && pwd)
 
+# Relative
 BUILDTOP=build_ut_defs
 
 rebuild_config()
@@ -11,8 +13,9 @@ rebuild_config()
     local conf="$1"
     mkdir -p "$BUILDTOP"
     ( set -x
-     cmake  -DINIT_CONFIG="$conf" -B "$BUILDTOP"/"$conf" -DBUILD_UNIT_TESTS=ON \
-           -DBUILD_UNIT_TESTS_HOST=ON
+     cmake  -DINIT_CONFIG="$conf" -S "$SOFTOP" -B "$BUILDTOP"/"$conf" \
+            -DBUILD_UNIT_TESTS=ON           \
+            -DBUILD_UNIT_TESTS_HOST=ON
 
      cmake --build "$BUILDTOP"/"$conf" -- -j"$(nproc)"
     )
