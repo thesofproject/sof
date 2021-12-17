@@ -260,6 +260,31 @@ static int dma_trace_buffer_init(struct dma_trace_data *d)
 
 	k_spin_unlock(&d->lock, key);
 
+#ifdef __ZEPHYR__
+#define ZEPHYR_VER_OPT " zephyr:" META_QUOTE(BUILD_VERSION)
+#else
+#define ZEPHYR_VER_OPT
+#endif
+
+	/* META_QUOTE(SOF_SRC_HASH) is part of the format string so it
+	 * goes to the .ldc file and does not go to the firmware
+	 * binary. It will be different from SOF_SRC_HASH in case of
+	 * mismatch.
+	 */
+#define SOF_BANNER_COMMON  \
+	"FW ABI 0x%x DBG ABI 0x%x tags SOF:" SOF_GIT_TAG  ZEPHYR_VER_OPT  \
+	" src hash 0x%08x (ldc hash " META_QUOTE(SOF_SRC_HASH) ")"
+
+	/* It should be the very first sent log for easy identification. */
+	mtrace_printf(LOG_LEVEL_INFO,
+		      "SHM: " SOF_BANNER_COMMON,
+		      SOF_ABI_VERSION, SOF_ABI_DBG_VERSION, SOF_SRC_HASH);
+
+	/* Use a different, DMA: prefix to ease identification of log files */
+	tr_info(&dt_tr,
+		"DMA: " SOF_BANNER_COMMON,
+		SOF_ABI_VERSION, SOF_ABI_DBG_VERSION, SOF_SRC_HASH);
+
 	return 0;
 }
 
@@ -420,38 +445,10 @@ int dma_trace_enable(struct dma_trace_data *d)
 {
 	int err;
 
-	/* initialize dma trace buffer */
+	/* Allocate and initialize the dma trace buffer */
 	err = dma_trace_buffer_init(d);
-
-	if (err < 0) {
-		mtrace_printf(LOG_LEVEL_ERROR, "dma_trace_enable: buffer_init failed");
+	if (err < 0)
 		return err;
-	}
-
-#ifdef __ZEPHYR__
-#define ZEPHYR_VER_OPT " zephyr:" META_QUOTE(BUILD_VERSION)
-#else
-#define ZEPHYR_VER_OPT
-#endif
-
-	/* META_QUOTE(SOF_SRC_HASH) is part of the format string so it
-	 * goes to the .ldc file and does not go to the firmware
-	 * binary. It will be different from SOF_SRC_HASH in case of
-	 * mismatch.
-	 */
-#define SOF_BANNER_COMMON  \
-	"FW ABI 0x%x DBG ABI 0x%x tags SOF:" SOF_GIT_TAG  ZEPHYR_VER_OPT  \
-	" src hash 0x%08x (ldc hash " META_QUOTE(SOF_SRC_HASH) ")"
-
-	/* It should be the very first sent log for easy identification. */
-	mtrace_printf(LOG_LEVEL_INFO,
-		      "SHM: " SOF_BANNER_COMMON,
-		      SOF_ABI_VERSION, SOF_ABI_DBG_VERSION, SOF_SRC_HASH);
-
-	/* Use a different, DMA: prefix to ease identification of log files */
-	tr_info(&dt_tr,
-		"DMA: " SOF_BANNER_COMMON,
-		SOF_ABI_VERSION, SOF_ABI_DBG_VERSION, SOF_SRC_HASH);
 
 #if CONFIG_DMA_GW
 	/*
