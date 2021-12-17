@@ -20,7 +20,7 @@
 /* BOOT_WITH_DRAM ONLY */
 /* physical DSP addresses */
 #define DRAM_BASE 0x60000000
-#define DRAM_AUDIO_SHARED_SIZE 0x80000
+#define DRAM_AUDIO_SHARED_SIZE 0x280000
 #define DRAM_SIZE 0x1000000 /*DRAM Size : 16M , need to sync with Host side*/
 
 #define SRAM_TOTAL_SIZE 0x40000 /*256KB DSP SRAM*/
