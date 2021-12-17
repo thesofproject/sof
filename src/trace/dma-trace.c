@@ -59,6 +59,10 @@ static enum task_state trace_work(void *data)
 	int32_t size;
 	uint32_t overflow;
 
+	/* The host DMA channel is not available */
+	if (!d->dc.chan)
+		return SOF_TASK_STATE_RESCHEDULE;
+
 	/* make sure we don't write more than buffer */
 	if (avail > DMA_TRACE_LOCAL_SIZE) {
 		overflow = avail - DMA_TRACE_LOCAL_SIZE;
@@ -218,8 +222,26 @@ int dma_trace_host_buffer(struct dma_trace_data *d,
 }
 #endif
 
+static void dma_trace_buffer_free(struct dma_trace_data *d)
+{
+	struct dma_trace_buf *buffer = &d->dmatb;
+	k_spinlock_key_t key;
+
+	key = k_spin_lock(&d->lock);
+
+	rfree(buffer->addr);
+	memset(buffer, 0, sizeof(*buffer));
+
+	k_spin_unlock(&d->lock, key);
+}
+
 static int dma_trace_buffer_init(struct dma_trace_data *d)
 {
+#if CONFIG_DMA_GW
+	struct dma_sg_config *config = &d->gw_config;
+	uint32_t elem_size, elem_addr, elem_num;
+	int ret;
+#endif
 	struct dma_trace_buf *buffer = &d->dmatb;
 	void *buf;
 	k_spinlock_key_t key;
@@ -271,6 +293,30 @@ static int dma_trace_buffer_init(struct dma_trace_data *d)
 
 	k_spin_unlock(&d->lock, key);
 
+#if CONFIG_DMA_GW
+	/* size of every trace record */
+	elem_size = sizeof(uint64_t) * 2;
+
+	/* Initialize address of local elem */
+	elem_addr = (uint32_t)buffer->addr;
+
+	/* the number of elem list */
+	elem_num = DMA_TRACE_LOCAL_SIZE / elem_size;
+
+	config->direction = DMA_DIR_LMEM_TO_HMEM;
+	config->src_width = sizeof(uint32_t);
+	config->dest_width = sizeof(uint32_t);
+	config->cyclic = 0;
+
+	ret = dma_sg_alloc(&config->elem_array, SOF_MEM_ZONE_SYS,
+			   config->direction, elem_num, elem_size,
+			   elem_addr, 0);
+	if (ret < 0) {
+		dma_trace_buffer_free(d);
+		return ret;
+	}
+#endif
+
 #ifdef __ZEPHYR__
 #define ZEPHYR_VER_OPT " zephyr:" META_QUOTE(BUILD_VERSION)
 #else
@@ -299,25 +345,10 @@ static int dma_trace_buffer_init(struct dma_trace_data *d)
 	return 0;
 }
 
-static void dma_trace_buffer_free(struct dma_trace_data *d)
-{
-	struct dma_trace_buf *buffer = &d->dmatb;
-	k_spinlock_key_t key;
-
-	key = k_spin_lock(&d->lock);
-
-	rfree(buffer->addr);
-	memset(buffer, 0, sizeof(*buffer));
-
-	k_spin_unlock(&d->lock, key);
-}
-
 #if CONFIG_DMA_GW
 
 static int dma_trace_start(struct dma_trace_data *d)
 {
-	struct dma_sg_config config;
-	uint32_t elem_size, elem_addr, elem_num;
 	int err = 0;
 
 	/* DMA Controller initialization is platform-specific */
@@ -361,27 +392,7 @@ static int dma_trace_start(struct dma_trace_data *d)
 
 	d->active_stream_tag = d->stream_tag;
 
-	/* size of every trace record */
-	elem_size = sizeof(uint64_t) * 2;
-
-	/* Initialize address of local elem */
-	elem_addr = (uint32_t)d->dmatb.addr;
-
-	/* the number of elem list */
-	elem_num = DMA_TRACE_LOCAL_SIZE / elem_size;
-
-	config.direction = DMA_DIR_LMEM_TO_HMEM;
-	config.src_width = sizeof(uint32_t);
-	config.dest_width = sizeof(uint32_t);
-	config.cyclic = 0;
-
-	err = dma_sg_alloc(&config.elem_array, SOF_MEM_ZONE_SYS,
-			   config.direction,
-			   elem_num, elem_size, elem_addr, 0);
-	if (err < 0)
-		goto error;
-
-	err = dma_set_config(d->dc.chan, &config);
+	err = dma_set_config(d->dc.chan, &d->gw_config);
 	if (err < 0) {
 		mtrace_printf(LOG_LEVEL_ERROR, "dma_set_config() failed: %d", err);
 		goto error;
@@ -500,9 +511,6 @@ void dma_trace_disable(struct dma_trace_data *d)
 		dma_channel_put(d->dc.chan);
 		d->dc.chan = NULL;
 	}
-
-	/* free trace buffer */
-	dma_trace_buffer_free(d);
 
 #if (CONFIG_HOST_PTABLE)
 	/* Free up the host SG if it is set */
