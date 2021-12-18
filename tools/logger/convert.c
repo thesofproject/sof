@@ -959,9 +959,6 @@ static int verify_ldc_checksum(const uint32_t ldc_sum)
 	struct sof_ipc_fw_version ver;
 	int count;
 
-	if (!global_config->version_fw) /* -n option */
-		return 0;
-
 	/* here fw verification should be exploited */
 	count = fread(&ver, sizeof(ver), 1, global_config->version_fd);
 	if (!count) {
@@ -997,8 +994,16 @@ static int dump_ldc_info(void)
 		SOF_ABI_VERSION_MAJOR(global_config->logs_header->version.abi_version),
 		SOF_ABI_VERSION_MINOR(global_config->logs_header->version.abi_version),
 		SOF_ABI_VERSION_PATCH(global_config->logs_header->version.abi_version));
-	fprintf(out_fd, "ldc_file src checksum\t0x%08x\n",
+	fprintf(out_fd, "ldc_file src checksum\t\t0x%08x\n",
 		global_config->logs_header->version.src_hash);
+
+	if (global_config->version_fd) {
+		struct sof_ipc_fw_version ver;
+
+		if (fread(&ver, sizeof(ver), 1, global_config->version_fd))
+			fprintf(out_fd, "Loaded FW expects checksum\t0x%08x\n",
+				ver.src_hash);
+	}
 
 	fprintf(out_fd, "\n");
 	fprintf(out_fd, "Components uuid dictionary size:\t%zd bytes\n",
@@ -1050,9 +1055,12 @@ int convert(struct convert_config *config)
 		return -EINVAL;
 	}
 
-	ret = verify_ldc_checksum(global_config->logs_header->version.src_hash);
-	if (ret)
-		return ret;
+	if (global_config->version_fw && /* -n option */
+	    !global_config->dump_ldc) {
+		ret = verify_ldc_checksum(global_config->logs_header->version.src_hash);
+		if (ret)
+			return ret;
+	}
 
 	/* default logger and ldc_file abi verification */
 	if (SOF_ABI_VERSION_INCOMPATIBLE(SOF_ABI_DBG_VERSION,
