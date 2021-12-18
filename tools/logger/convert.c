@@ -950,13 +950,16 @@ static int logger_read(void)
 	return ret;
 }
 
-/* fw verification */
-static int verify_fw_ver(void)
+/** Compare the dictionary checksum in the firmware image (through
+ * /sys/kernel/debug/sof/fw_version) with the checksum in the .ldc file.
+ * @return 0 when the checksums match
+ */
+static int verify_ldc_checksum(const uint32_t ldc_sum)
 {
 	struct sof_ipc_fw_version ver;
 	int count;
 
-	if (!global_config->version_fd)
+	if (!global_config->version_fw) /* -n option */
 		return 0;
 
 	/* here fw verification should be exploited */
@@ -967,9 +970,9 @@ static int verify_fw_ver(void)
 	}
 
 	/* compare source hash value from version file and ldc file */
-	if (ver.src_hash != global_config->logs_header->version.src_hash) {
+	if (ver.src_hash != ldc_sum) {
 		log_err("src hash value from version file (0x%x) differ from src hash version saved in dictionary (0x%x).\n",
-			ver.src_hash, global_config->logs_header->version.src_hash);
+			ver.src_hash, ldc_sum);
 		return -EINVAL;
 	}
 	return 0;
@@ -1043,7 +1046,7 @@ int convert(struct convert_config *config)
 		return -EINVAL;
 	}
 
-	ret = verify_fw_ver();
+	ret = verify_ldc_checksum(global_config->logs_header->version.src_hash);
 	if (ret)
 		return ret;
 
