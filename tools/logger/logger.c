@@ -270,7 +270,6 @@ int main(int argc, char *argv[])
 				usage();
 			}
 			config.dump_ldc = 1;
-			config.version_fw = 0;
 			config.ldc_file = optarg;
 			break;
 		case 'F':
@@ -307,7 +306,7 @@ int main(int argc, char *argv[])
 
 	if (config.version_fw) {
 		config.version_fd = fopen(config.version_file, "rb");
-		if (!config.version_fd) {
+		if (!config.version_fd && !config.dump_ldc) {
 			ret = errno;
 			fprintf(stderr,
 				"error: Unable to open version file %s: %s\n",
