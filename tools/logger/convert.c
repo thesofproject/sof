@@ -992,10 +992,14 @@ static int dump_ldc_info(void)
 		SOF_ABI_VERSION_MAJOR(SOF_ABI_DBG_VERSION),
 		SOF_ABI_VERSION_MINOR(SOF_ABI_DBG_VERSION),
 		SOF_ABI_VERSION_PATCH(SOF_ABI_DBG_VERSION));
+
 	fprintf(out_fd, "ldc_file ABI Version is\t%d:%d:%d\n",
 		SOF_ABI_VERSION_MAJOR(global_config->logs_header->version.abi_version),
 		SOF_ABI_VERSION_MINOR(global_config->logs_header->version.abi_version),
 		SOF_ABI_VERSION_PATCH(global_config->logs_header->version.abi_version));
+	fprintf(out_fd, "ldc_file src checksum\t0x%08x\n",
+		global_config->logs_header->version.src_hash);
+
 	fprintf(out_fd, "\n");
 	fprintf(out_fd, "Components uuid dictionary size:\t%zd bytes\n",
 		remaining);
