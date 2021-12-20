@@ -665,15 +665,13 @@ static void scheduler_free_ll(void *data, uint32_t flags)
 	struct ll_schedule_data *sch = data;
 	uint32_t irq_flags;
 
-	if (flags & SOF_SCHEDULER_FREE_IRQ_ONLY)
-		return;
-
 	irq_local_disable(irq_flags);
 
 	domain_unregister(sch->domain, NULL, 0);
 
-	notifier_unregister(sch, NULL,
-			    NOTIFIER_CLK_CHANGE_ID(sch->domain->clk));
+	if (!(flags & SOF_SCHEDULER_FREE_IRQ_ONLY))
+		notifier_unregister(sch, NULL,
+				    NOTIFIER_CLK_CHANGE_ID(sch->domain->clk));
 
 	irq_local_enable(irq_flags);
 }
