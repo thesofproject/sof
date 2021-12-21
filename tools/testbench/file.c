@@ -31,289 +31,388 @@ DECLARE_TR_CTX(file_tr, SOF_UUID(file_uuid), LOG_LEVEL_INFO);
 static const struct comp_driver comp_file_dai;
 static const struct comp_driver comp_file_host;
 
-static inline void buffer_check_wrap_32(int32_t **ptr, int32_t *end,
-					size_t size)
-{
-	if (*ptr >= end)
-		*ptr = (int32_t *)((size_t)*ptr - size);
-}
-
-static inline void buffer_check_wrap_16(int16_t **ptr, int16_t *end,
-					size_t size)
-{
-	if (*ptr >= end)
-		*ptr = (int16_t *)((size_t)*ptr - size);
-}
-
 /*
- * Read 32-bit samples from file
- * currently only supports txt files
+ * Helpers for s24_4le data. To avoid an overflown 24 bit to be taken as valid 32 bit
+ * sample mask in file read the 8 most signing bits to zeros. In file write similarly
+ * shift the 24 bit word to MSB and possibly overflow it, then shift it back to LSB
+ * side to create sign extension.
  */
-static int read_samples_32(struct file_comp_data *cd,
-			   const struct audio_stream *sink,
-			   int n, int fmt, int nch)
+
+static void mask_sink_s24(const struct audio_stream *sink, int samples)
 {
-	int32_t *dest = (int32_t *)sink->w_ptr;
-	int32_t sample;
-	int n_wrap;
-	int n_min;
+	int32_t *snk = (int32_t *)sink->w_ptr;
+	size_t bytes = samples * sizeof(int32_t);
+	size_t bytes_snk;
+	int samples_avail;
 	int i;
-	int n_samples = 0;
-	int ret = 0;
 
-	while (n > 0) {
-		n_wrap = (int32_t *)sink->end_addr - dest;
+	while (bytes) {
+		bytes_snk = audio_stream_bytes_without_wrap(sink, snk);
+		samples_avail = FILE_BYTES_TO_S32_SAMPLES(MIN(bytes, bytes_snk));
+		for (i = 0; i < samples_avail; i++)
+			*snk++ &= 0x00ffffff;
 
-		/* check for buffer wrap and copy to the end of the buffer */
-		n_min = (n < n_wrap) ? n : n_wrap;
-		while (n_min > 0) {
-			n -= nch;
-			n_min -= nch;
-
-			/* copy sample per channel */
-			for (i = 0; i < nch; i++) {
-				/* read sample from file */
-				switch (cd->fs.f_format) {
-				/* text input file */
-				case FILE_TEXT:
-					if (fmt == SOF_IPC_FRAME_S32_LE)
-						ret = fscanf(cd->fs.rfh, "%d",
-							     dest);
-
-					/* mask bits if 24-bit samples */
-					if (fmt == SOF_IPC_FRAME_S24_4LE) {
-						ret = fscanf(cd->fs.rfh, "%d",
-							     &sample);
-						*dest = sample & 0x00ffffff;
-					}
-					/* quit if eof is reached */
-					if (ret == EOF) {
-						cd->fs.reached_eof = 1;
-						goto quit;
-					}
-					break;
-
-				/* raw input file */
-				default:
-					if (fmt == SOF_IPC_FRAME_S32_LE)
-						ret = fread(dest,
-							    sizeof(int32_t),
-							    1, cd->fs.rfh);
-
-					/* mask bits if 24-bit samples */
-					if (fmt == SOF_IPC_FRAME_S24_4LE) {
-						ret = fread(&sample,
-							    sizeof(int32_t),
-							    1, cd->fs.rfh);
-						*dest = sample & 0x00ffffff;
-					}
-					/* quit if eof is reached */
-					if (ret != 1) {
-						cd->fs.reached_eof = 1;
-						goto quit;
-					}
-					break;
-				}
-				dest++;
-				n_samples++;
-			}
-		}
-		/* check for buffer wrap and update pointer */
-		buffer_check_wrap_32(&dest, sink->end_addr,
-				     sink->size);
+		bytes -= samples * sizeof(int32_t);
+		snk = audio_stream_wrap(sink, snk);
 	}
-quit:
-	return n_samples;
 }
 
-/*
- * Read 16-bit samples from file
- * currently only supports txt files
- */
-static int read_samples_16(struct file_comp_data *cd,
-			   const struct audio_stream *sink,
-			   int n, int nch)
+static void sign_extend_source_s24(const struct audio_stream *source, int samples)
 {
-	int16_t *dest = (int16_t *)sink->w_ptr;
-	int i, n_wrap, n_min, ret;
-	int n_samples = 0;
+	int32_t tmp;
+	int32_t *src = (int32_t *)source->r_ptr;
+	size_t bytes = samples * sizeof(int32_t);
+	size_t bytes_src;
+	int samples_avail;
+	int i;
 
-	/* copy samples */
-	while (n > 0) {
-		n_wrap = (int16_t *)sink->end_addr - dest;
-
-		/* check for buffer wrap and copy to the end of the buffer */
-		n_min = (n < n_wrap) ? n : n_wrap;
-		while (n_min > 0) {
-			n -= nch;
-			n_min -= nch;
-
-			/* copy sample per channel */
-			for (i = 0; i < nch; i++) {
-				switch (cd->fs.f_format) {
-				/* text input file */
-				case FILE_TEXT:
-					ret = fscanf(cd->fs.rfh, "%hd", dest);
-					if (ret == EOF) {
-						cd->fs.reached_eof = 1;
-						goto quit;
-					}
-					break;
-
-				/* rw pcm input file */
-				default:
-					ret = fread(dest, sizeof(int16_t), 1,
-						    cd->fs.rfh);
-					if (ret != 1) {
-						cd->fs.reached_eof = 1;
-						goto quit;
-					}
-					break;
-				}
-
-				dest++;
-				n_samples++;
-			}
+	while (bytes) {
+		bytes_src = audio_stream_bytes_without_wrap(source, src);
+		samples_avail = FILE_BYTES_TO_S32_SAMPLES(MIN(bytes, bytes_src));
+		for (i = 0; i < samples_avail; i++) {
+			tmp = *src << 8;
+			*src++ = tmp >> 8;
 		}
-		/* check for buffer wrap and update pointer */
-		buffer_check_wrap_16(&dest, sink->end_addr,
-				     sink->size);
-	}
 
-quit:
-	return n_samples;
+		bytes -= samples * sizeof(int32_t);
+		src = audio_stream_wrap(source, src);
+	}
 }
 
 /*
- * Write 16-bit samples from file
- * currently only supports txt files
+ * Read 32-bit samples from binary file
  */
-static int write_samples_16(struct file_comp_data *cd, struct audio_stream *source,
-			    int n, int nch)
+static int read_binary_s32(struct file_comp_data *cd, const struct audio_stream *sink, int samples)
 {
-	int16_t *src = (int16_t *)source->r_ptr;
-	int i, n_wrap, n_min, ret;
-	int n_samples = 0;
+	int32_t *snk = (int32_t *)sink->w_ptr;
+	size_t samples_avail;
+	size_t bytes_snk;
+	size_t bytes = samples * sizeof(int32_t);
+	int ret;
+	int samples_copied = 0;
 
-	/* copy samples */
-	while (n > 0) {
-		n_wrap = (int16_t *)source->end_addr - src;
-
-		/* check for buffer wrap and copy to the end of the buffer */
-		n_min = (n < n_wrap) ? n : n_wrap;
-		while (n_min > 0) {
-			n -= nch;
-			n_min -= nch;
-
-			/* copy sample per channel */
-			for (i = 0; i < nch; i++) {
-				switch (cd->fs.f_format) {
-				/* text output file */
-				case FILE_TEXT:
-					ret = fprintf(cd->fs.wfh,
-						      "%d\n", *src);
-					if (ret < 0)
-						goto quit;
-					break;
-
-				/* raw pcm output file */
-				default:
-					ret = fwrite(src,
-						     sizeof(int16_t),
-						     1, cd->fs.wfh);
-					if (ret != 1)
-						goto quit;
-					break;
-				}
-
-				src++;
-				n_samples++;
-			}
+	while (bytes) {
+		bytes_snk = audio_stream_bytes_without_wrap(sink, snk);
+		samples_avail = FILE_BYTES_TO_S32_SAMPLES(MIN(bytes, bytes_snk));
+		ret = fread(snk, sizeof(int32_t), samples_avail, cd->fs.rfh);
+		if (!ret) {
+			cd->fs.reached_eof = 1;
+			return samples_copied;
 		}
-		/* check for buffer wrap and update pointer */
-		buffer_check_wrap_16(&src, source->end_addr,
-				     source->size);
+
+		samples_copied += ret;
+		bytes -= ret * sizeof(int32_t);
+		snk = audio_stream_wrap(sink, snk + ret);
 	}
-quit:
-	return n_samples;
+
+	return samples_copied;
 }
 
 /*
- * Write 32-bit samples from file
- * currently only supports txt files
+ * Write 32-bit samples to binary file
  */
-static int write_samples_32(struct file_comp_data *cd, struct audio_stream *source,
-			    int n, int fmt, int nch)
+static int write_binary_s32(struct file_comp_data *cd, const struct audio_stream *source,
+			    int samples)
 {
 	int32_t *src = (int32_t *)source->r_ptr;
-	int i, n_wrap, n_min, ret;
-	int n_samples = 0;
-	int32_t sample;
+	size_t samples_avail;
+	size_t bytes_src;
+	size_t bytes = samples * sizeof(int32_t);
+	int ret;
+	int samples_copied = 0;
 
-	/* copy samples */
-	while (n > 0) {
-		n_wrap = (int32_t *)source->end_addr - src;
-
-		/* check for buffer wrap and copy to the end of the buffer */
-		n_min = (n < n_wrap) ? n : n_wrap;
-		while (n_min > 0) {
-			n -= nch;
-			n_min -= nch;
-
-			/* copy sample per channel */
-			for (i = 0; i < nch; i++) {
-				switch (cd->fs.f_format) {
-				/* text output file */
-				case FILE_TEXT:
-					if (fmt == SOF_IPC_FRAME_S32_LE)
-						ret = fprintf(cd->fs.wfh,
-							      "%d\n", *src);
-					if (fmt == SOF_IPC_FRAME_S24_4LE) {
-						sample = *src << 8;
-						ret = fprintf(cd->fs.wfh,
-							      "%d\n",
-							      sample >> 8);
-					}
-					if (ret < 0)
-						goto quit;
-					break;
-
-				/* raw pcm output file */
-				default:
-					if (fmt == SOF_IPC_FRAME_S32_LE)
-						ret = fwrite(src,
-							     sizeof(int32_t),
-							     1, cd->fs.wfh);
-					if (fmt == SOF_IPC_FRAME_S24_4LE) {
-						sample = *src << 8;
-						sample >>= 8;
-						ret = fwrite(&sample,
-							     sizeof(int32_t),
-							     1, cd->fs.wfh);
-					}
-					if (ret != 1)
-						goto quit;
-					break;
-				}
-
-				/* increment read pointer */
-				src++;
-
-				/* increment number of samples written */
-				n_samples++;
-			}
+	while (bytes) {
+		bytes_src = audio_stream_bytes_without_wrap(source, src);
+		samples_avail = FILE_BYTES_TO_S32_SAMPLES(MIN(bytes, bytes_src));
+		ret = fwrite(src, sizeof(int32_t), samples_avail, cd->fs.wfh);
+		if (ret == 0) {
+			cd->fs.write_failed = true;
+			return samples_copied;
 		}
-		/* check for buffer wrap and update pointer */
-		buffer_check_wrap_32(&src, source->end_addr,
-				     source->size);
+		samples_copied += ret;
+		bytes -= ret * sizeof(int32_t);
+		src = audio_stream_wrap(source, src + ret);
 	}
-quit:
+
+	return samples_copied;
+}
+
+/*
+ * Read 32-bit samples from text file
+ */
+static int read_text_s32(struct file_comp_data *cd, const struct audio_stream *sink, int samples)
+{
+	int32_t *snk = (int32_t *)sink->w_ptr;
+	size_t bytes = samples * sizeof(int32_t);
+	size_t bytes_snk;
+	int ret;
+	int i;
+	int samples_copied = 0;
+
+	while (bytes) {
+		bytes_snk = audio_stream_bytes_without_wrap(sink, snk);
+		samples = FILE_BYTES_TO_S32_SAMPLES(MIN(bytes, bytes_snk));
+		for (i = 0; i < samples; i++) {
+			ret = fscanf(cd->fs.rfh, "%d", snk++);
+			if (ret == EOF) {
+				cd->fs.reached_eof = 1;
+				return samples_copied;
+			}
+			samples_copied++;
+			bytes -= sizeof(int32_t);
+		}
+		snk = audio_stream_wrap(sink, snk);
+	}
+
+	return samples_copied;
+}
+
+/*
+ * Write 32-bit samples to text file
+ */
+static int write_text_s32(struct file_comp_data *cd, const struct audio_stream *source, int samples)
+{
+	int32_t *src = (int32_t *)source->r_ptr;
+	size_t bytes = samples * sizeof(int32_t);
+	size_t bytes_src;
+	int ret;
+	int i;
+	int samples_copied = 0;
+
+	while (bytes) {
+		bytes_src = audio_stream_bytes_without_wrap(source, src);
+		samples = FILE_BYTES_TO_S32_SAMPLES(MIN(bytes, bytes_src));
+		for (i = 0; i < samples; i++) {
+			ret = fprintf(cd->fs.wfh, "%d\n", *src++);
+			if (ret < 1) {
+				cd->fs.write_failed = true;
+				return samples_copied;
+			}
+			samples_copied++;
+			bytes -= sizeof(int32_t);
+		}
+		src = audio_stream_wrap(source, src);
+	}
+
+	return samples_copied;
+}
+
+static int read_samples_s32(struct file_comp_data *cd, const struct audio_stream *sink,
+			    int samples, int fmt)
+{
+	int n_samples = 0;
+
+	switch (cd->fs.f_format) {
+	case FILE_RAW:
+		/* raw input file */
+		n_samples = read_binary_s32(cd, sink, samples);
+		break;
+	case FILE_TEXT:
+		/* text input file */
+		n_samples = read_text_s32(cd, sink, samples);
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	if (fmt == SOF_IPC_FRAME_S24_4LE)
+		mask_sink_s24(sink, samples);
+
 	return n_samples;
+}
+
+/*
+ * Write 32-bit samples to file
+ */
+static int write_samples_s32(struct file_comp_data *cd, struct audio_stream *source, int samples,
+			     int fmt)
+{
+	int samples_written;
+
+	if (fmt == SOF_IPC_FRAME_S24_4LE)
+		sign_extend_source_s24(source, samples);
+
+	switch (cd->fs.f_format) {
+	case FILE_RAW:
+		/* raw input file */
+		samples_written = write_binary_s32(cd, source, samples);
+		break;
+	case FILE_TEXT:
+		/* text input file */
+		samples_written = write_text_s32(cd, source, samples);
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	return samples_written;
+}
+
+/*
+ * Read 16-bit samples from binary file
+ */
+static int read_binary_s16(struct file_comp_data *cd, const struct audio_stream *sink, int samples)
+{
+	int16_t *snk = (int16_t *)sink->w_ptr;
+	size_t samples_avail;
+	size_t bytes_snk;
+	size_t bytes = samples * sizeof(int16_t);
+	int ret;
+	int samples_copied = 0;
+
+	while (bytes) {
+		bytes_snk = audio_stream_bytes_without_wrap(sink, snk);
+		samples_avail = FILE_BYTES_TO_S16_SAMPLES(MIN(bytes, bytes_snk));
+		ret = fread(snk, sizeof(int16_t), samples_avail, cd->fs.rfh);
+		if (!ret) {
+			cd->fs.reached_eof = 1;
+			return samples_copied;
+		}
+
+		samples_copied += ret;
+		bytes -= ret * sizeof(int16_t);
+		snk = audio_stream_wrap(sink, snk + ret);
+	}
+
+	return samples_copied;
+}
+
+/*
+ * Write 16-bit samples to binary file
+ */
+static int write_binary_s16(struct file_comp_data *cd, const struct audio_stream *source,
+			    int samples)
+{
+	int16_t *src = (int16_t *)source->r_ptr;
+	size_t samples_avail;
+	size_t bytes_src;
+	size_t bytes = samples * sizeof(int16_t);
+	int ret;
+	int samples_copied = 0;
+
+	while (bytes) {
+		bytes_src = audio_stream_bytes_without_wrap(source, src);
+		samples_avail = FILE_BYTES_TO_S16_SAMPLES(MIN(bytes, bytes_src));
+		ret = fwrite(src, sizeof(int16_t), samples_avail, cd->fs.wfh);
+		if (!ret) {
+			cd->fs.write_failed = true;
+			return samples_copied;
+		}
+
+		samples_copied += ret;
+		bytes -= ret * sizeof(int16_t);
+		src = audio_stream_wrap(source, src + ret);
+	}
+
+	return samples_copied;
+}
+
+/*
+ * Read 16-bit samples from text file
+ */
+static int read_text_s16(struct file_comp_data *cd, const struct audio_stream *sink, int samples)
+{
+	int16_t *snk = (int16_t *)sink->w_ptr;
+	size_t bytes = samples * sizeof(int16_t);
+	size_t bytes_snk;
+	int ret;
+	int i;
+	int samples_copied = 0;
+
+	while (bytes) {
+		bytes_snk = audio_stream_bytes_without_wrap(sink, snk);
+		samples = FILE_BYTES_TO_S16_SAMPLES(MIN(bytes, bytes_snk));
+		for (i = 0; i < samples; i++) {
+			ret = fscanf(cd->fs.rfh, "%hd", snk++);
+			if (ret == EOF) {
+				cd->fs.reached_eof = true;
+				return samples_copied;
+			}
+			samples_copied++;
+			bytes -= sizeof(int16_t);
+		}
+		snk = audio_stream_wrap(sink, snk);
+	}
+
+	return samples_copied;
+}
+
+/*
+ * Write 16-bit samples to text file
+ */
+static int write_text_s16(struct file_comp_data *cd, const struct audio_stream *source, int samples)
+{
+	int16_t *src = (int16_t *)source->r_ptr;
+	size_t bytes = samples * sizeof(int16_t);
+	size_t bytes_src;
+	int ret;
+	int i;
+	int samples_copied = 0;
+
+	while (bytes) {
+		bytes_src = audio_stream_bytes_without_wrap(source, src);
+		samples = FILE_BYTES_TO_S16_SAMPLES(MIN(bytes, bytes_src));
+		for (i = 0; i < samples; i++) {
+			ret = fprintf(cd->fs.wfh, "%hd\n", *src++);
+			if (ret < 1) {
+				cd->fs.write_failed = true;
+				return samples_copied;
+			}
+			samples_copied++;
+			bytes -= sizeof(int16_t);
+		}
+		src = audio_stream_wrap(source, src);
+	}
+
+	return samples_copied;
+}
+
+static int read_samples_s16(struct file_comp_data *cd, const struct audio_stream *sink, int samples)
+{
+	int n_samples = 0;
+
+	switch (cd->fs.f_format) {
+	case FILE_RAW:
+		/* raw input file */
+		n_samples = read_binary_s16(cd, sink, samples);
+		break;
+	case FILE_TEXT:
+		/* text input file */
+		n_samples = read_text_s16(cd, sink, samples);
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	return n_samples;
+}
+
+/*
+ * Write 16-bit samples to file
+ */
+static int write_samples_s16(struct file_comp_data *cd, struct audio_stream *source, int samples)
+{
+	int samples_written;
+
+	switch (cd->fs.f_format) {
+	case FILE_RAW:
+		/* raw input file */
+		samples_written = write_binary_s16(cd, source, samples);
+		break;
+	case FILE_TEXT:
+		/* text input file */
+		samples_written = write_text_s16(cd, source, samples);
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	return samples_written;
 }
 
 /* function for processing 32-bit samples */
-static int file_s32_default(struct comp_dev *dev, struct audio_stream *sink,
-			    struct audio_stream *source, uint32_t frames)
+static int file_s32(struct comp_dev *dev, struct audio_stream *sink,
+		    struct audio_stream *source, uint32_t frames)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
 	struct file_comp_data *cd = comp_get_drvdata(dd->dai);
@@ -324,18 +423,17 @@ static int file_s32_default(struct comp_dev *dev, struct audio_stream *sink,
 	case FILE_READ:
 		/* read samples */
 		nch = sink->channels;
-		n_samples = read_samples_32(cd, sink, frames * nch,
-					    SOF_IPC_FRAME_S32_LE, nch);
+		n_samples = read_samples_s32(cd, sink, frames * nch, SOF_IPC_FRAME_S32_LE);
 		break;
 	case FILE_WRITE:
 		/* write samples */
 		nch = source->channels;
-		n_samples = write_samples_32(cd, source, frames * nch,
-					     SOF_IPC_FRAME_S32_LE, nch);
+		n_samples = write_samples_s32(cd, source, frames * nch, SOF_IPC_FRAME_S32_LE);
 		break;
 	default:
 		/* TODO: duplex mode */
-		break;
+		fprintf(stderr, "Error: Unknown file mode %d\n", cd->fs.mode);
+		return -EINVAL;
 	}
 
 	cd->fs.n += n_samples;
@@ -349,22 +447,23 @@ static int file_s16(struct comp_dev *dev, struct audio_stream *sink,
 	struct dai_data *dd = comp_get_drvdata(dev);
 	struct file_comp_data *cd = comp_get_drvdata(dd->dai);
 	int nch;
-	int n_samples = 0;
+	int n_samples;
 
 	switch (cd->fs.mode) {
 	case FILE_READ:
 		/* read samples */
 		nch = sink->channels;
-		n_samples = read_samples_16(cd, sink, frames * nch, nch);
+		n_samples = read_samples_s16(cd, sink, frames * nch);
 		break;
 	case FILE_WRITE:
 		/* write samples */
 		nch = source->channels;
-		n_samples = write_samples_16(cd, source, frames * nch, nch);
+		n_samples = write_samples_s16(cd, source, frames * nch);
 		break;
 	default:
 		/* TODO: duplex mode */
-		break;
+		fprintf(stderr, "Error: Unknown file mode %d\n", cd->fs.mode);
+		return -EINVAL;
 	}
 
 	cd->fs.n += n_samples;
@@ -384,18 +483,17 @@ static int file_s24(struct comp_dev *dev, struct audio_stream *sink,
 	case FILE_READ:
 		/* read samples */
 		nch = sink->channels;
-		n_samples = read_samples_32(cd, sink, frames * nch,
-					    SOF_IPC_FRAME_S24_4LE, nch);
+		n_samples = read_samples_s32(cd, sink, frames * nch, SOF_IPC_FRAME_S24_4LE);
 		break;
 	case FILE_WRITE:
 		/* write samples */
 		nch = source->channels;
-		n_samples = write_samples_32(cd, source, frames * nch,
-					     SOF_IPC_FRAME_S24_4LE, nch);
+		n_samples = write_samples_s32(cd, source, frames * nch, SOF_IPC_FRAME_S24_4LE);
 		break;
 	default:
 		/* TODO: duplex mode */
-		break;
+		fprintf(stderr, "Error: Unknown file mode %d\n", cd->fs.mode);
+		return -EINVAL;
 	}
 
 	cd->fs.n += n_samples;
@@ -456,7 +554,7 @@ static struct comp_dev *file_new(const struct comp_driver *drv,
 	comp_set_drvdata(dd->dai, cd);
 
 	/* default function for processing samples */
-	cd->file_func = file_s32_default;
+	cd->file_func = file_s32;
 
 	/* get filename from IPC and open file */
 	cd->fs.fn = strdup(ipc_file->fn);
@@ -491,10 +589,12 @@ static struct comp_dev *file_new(const struct comp_driver *drv,
 		break;
 	default:
 		/* TODO: duplex mode */
-		break;
+		fprintf(stderr, "Error: Unknown file mode %d\n", cd->fs.mode);
+		goto error;
 	}
 
-	cd->fs.reached_eof = 0;
+	cd->fs.reached_eof = false;
+	cd->fs.write_failed = false;
 	cd->fs.n = 0;
 	dev->state = COMP_STATE_READY;
 	return dev;
