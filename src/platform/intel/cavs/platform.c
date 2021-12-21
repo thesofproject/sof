@@ -154,7 +154,7 @@ const struct ext_man_windows xsram_window
 };
 #endif
 
-#if CONFIG_CANNONLAKE || CONFIG_ICELAKE || CONFIG_TIGERLAKE
+#if CONFIG_CANNONLAKE || CONFIG_ICELAKE || CONFIG_TIGERLAKE || CONFIG_SOF_ZEPHYR
 #if CONFIG_CAVS_LPRO_ONLY
 #define CAVS_DEFAULT_RO		SHIM_CLKCTL_RLROSCC
 #define CAVS_DEFAULT_RO_FOR_MEM	SHIM_CLKCTL_OCS_LP_RING
@@ -303,7 +303,7 @@ int platform_boot_complete(uint32_t boot_message)
 	ipc_cmd_hdr header;
 	uint32_t data;
 
-#if CONFIG_TIGERLAKE && !CONFIG_CAVS_LPRO_ONLY
+#if (CONFIG_TIGERLAKE || CONFIG_SOF_ZEPHYR) && !CONFIG_CAVS_LPRO_ONLY
 	/* TGL specific HW recommended flow */
 	pm_runtime_get(PM_RUNTIME_DSP, PWRD_BY_HPRO | (CONFIG_CORE_COUNT - 1));
 #endif
@@ -375,7 +375,7 @@ int platform_init(struct sof *sof)
 	 */
 	pm_runtime_disable(PM_RUNTIME_DSP, 0);
 
-#if CONFIG_CANNONLAKE || CONFIG_ICELAKE || CONFIG_SUECREEK || CONFIG_TIGERLAKE
+#if CONFIG_CANNONLAKE || CONFIG_ICELAKE || CONFIG_SUECREEK || CONFIG_TIGERLAKE || CONFIG_SOF_ZEPHYR
 	trace_point(TRACE_BOOT_PLATFORM_ENTRY);
 	platform_init_hw();
 #endif
@@ -430,7 +430,7 @@ int platform_init(struct sof *sof)
 
 	shim_write(SHIM_LPSCTL, shim_read(SHIM_LPSCTL));
 
-#elif CONFIG_CANNONLAKE || CONFIG_ICELAKE || CONFIG_TIGERLAKE
+#elif CONFIG_CANNONLAKE || CONFIG_ICELAKE || CONFIG_TIGERLAKE || CONFIG_SOF_ZEPHYR
 
 	/* initialize PM for boot */
 

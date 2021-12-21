@@ -171,7 +171,7 @@ static inline void cavs_pm_runtime_en_ssp_clk_gating(uint32_t index)
 
 static inline void cavs_pm_runtime_en_ssp_power(uint32_t index)
 {
-#if CONFIG_TIGERLAKE
+#if CONFIG_TIGERLAKE || CONFIG_SOF_ZEPHYR
 	uint32_t reg;
 
 	tr_info(&power_tr, "en_ssp_power index %d", index);
@@ -189,7 +189,7 @@ static inline void cavs_pm_runtime_en_ssp_power(uint32_t index)
 
 static inline void cavs_pm_runtime_dis_ssp_power(uint32_t index)
 {
-#if CONFIG_TIGERLAKE
+#if CONFIG_TIGERLAKE || CONFIG_SOF_ZEPHYR
 	uint32_t reg;
 
 	tr_info(&power_tr, "dis_ssp_power index %d", index);
@@ -220,7 +220,7 @@ static inline void cavs_pm_runtime_dis_dmic_clk_gating(uint32_t index)
 	tr_info(&power_tr, "dis-dmic-clk-gating index %d CLKCTL %08x", index,
 		shim_reg);
 #endif
-#if CONFIG_CANNONLAKE || CONFIG_ICELAKE || CONFIG_SUECREEK || CONFIG_TIGERLAKE
+#if CONFIG_CANNONLAKE || CONFIG_ICELAKE || CONFIG_SUECREEK || CONFIG_TIGERLAKE || CONFIG_SOF_ZEPHYR
 	/* Disable DMIC clock gating */
 	io_reg_write(DMICLCTL,
 		    (io_reg_read(DMICLCTL) | DMIC_DCGD));
@@ -240,7 +240,7 @@ static inline void cavs_pm_runtime_en_dmic_clk_gating(uint32_t index)
 	tr_info(&power_tr, "en-dmic-clk-gating index %d CLKCTL %08x",
 		index, shim_reg);
 #endif
-#if CONFIG_CANNONLAKE || CONFIG_ICELAKE || CONFIG_SUECREEK || CONFIG_TIGERLAKE
+#if CONFIG_CANNONLAKE || CONFIG_ICELAKE || CONFIG_SUECREEK || CONFIG_TIGERLAKE || CONFIG_SOF_ZEPHYR
 	/* Enable DMIC clock gating */
 	io_reg_write(DMICLCTL,
 		    (io_reg_read(DMICLCTL) & ~DMIC_DCGD));
@@ -249,7 +249,7 @@ static inline void cavs_pm_runtime_en_dmic_clk_gating(uint32_t index)
 static inline void cavs_pm_runtime_en_dmic_power(uint32_t index)
 {
 	(void) index;
-#if CONFIG_CANNONLAKE || CONFIG_ICELAKE || CONFIG_SUECREEK || CONFIG_TIGERLAKE
+#if CONFIG_CANNONLAKE || CONFIG_ICELAKE || CONFIG_SUECREEK || CONFIG_TIGERLAKE || CONFIG_SOF_ZEPHYR
 	/* Enable DMIC power */
 	io_reg_write(DMICLCTL,
 		    (io_reg_read(DMICLCTL) | DMICLCTL_SPA));
@@ -258,7 +258,7 @@ static inline void cavs_pm_runtime_en_dmic_power(uint32_t index)
 static inline void cavs_pm_runtime_dis_dmic_power(uint32_t index)
 {
 	(void) index;
-#if CONFIG_CANNONLAKE || CONFIG_ICELAKE || CONFIG_SUECREEK || CONFIG_TIGERLAKE
+#if CONFIG_CANNONLAKE || CONFIG_ICELAKE || CONFIG_SUECREEK || CONFIG_TIGERLAKE || CONFIG_SOF_ZEPHYR
 	/* Disable DMIC power */
 	io_reg_write(DMICLCTL,
 		    (io_reg_read(DMICLCTL) & (~DMICLCTL_SPA)));

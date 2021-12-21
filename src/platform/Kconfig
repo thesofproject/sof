@@ -159,6 +159,28 @@ config TIGERLAKE
 	help
 	  Select if your target platform is Tigerlake-compatible
 
+# a pure Zephyr application mode, all platform-specific details are handled by Zephyr
+config SOF_ZEPHYR
+	bool "Build a Zephyr application"
+	select XT_BOOT_LOADER
+	select XT_IRQ_MAP
+	select DMA_GW
+	select DW
+	select DW_DMA
+	select MEM_WND
+	select DMA_HW_LLI
+	select DW_DMA_AGGREGATED_IRQ
+	select DMA_FIFO_PARTITION
+	select CAVS
+	select CAVS_VERSION_2_5
+	select XT_WAITI_DELAY
+	select NO_SECONDARY_CORE_ROM if BOARD_INTEL_ADSP_CAVS25
+	select CAVS_USE_LPRO_IN_WAITI
+	help
+	  Select to build a Zephyr application. Currently only usable for cAVS 2.5
+	  platforms and newer. To build a different architecture with Zephyr, select
+	  that architecture's respective option.
+
 config LIBRARY
 	bool "Build Library"
 	help
@@ -264,7 +286,7 @@ endchoice
 config MAX_CORE_COUNT
 	int
 	default 2 if APOLLOLAKE
-	default 4 if ICELAKE || CANNONLAKE || SUECREEK || TIGERLAKE
+	default 4 if ICELAKE || CANNONLAKE || SUECREEK || TIGERLAKE || SOF_ZEPHYR
 	default 1
 	help
 	  Maximum number of cores per configuration
@@ -454,7 +476,7 @@ config RIMAGE_SIGNING_SCHEMA
 	default "cnl" if CANNONLAKE
 	default "sue" if SUECREEK
 	default "icl" if ICELAKE
-	default "tgl" if TIGERLAKE
+	default "tgl" if TIGERLAKE || SOF_ZEPHYR
 	default "imx8" if IMX8
 	default "imx8x" if IMX8X
 	default "imx8m" if IMX8M

@@ -16,7 +16,7 @@ struct comp_buffer;
 
 /* KPB internal defines */
 
-#ifdef CONFIG_TIGERLAKE
+#if CONFIG_TIGERLAKE || CONFIG_SOF_ZEPHYR
 #define KPB_MAX_BUFF_TIME 3000 /**< time of buffering in miliseconds */
 #define HOST_WAKEUP_TIME 1000 /* aprox. time of host DMA wakup from suspend [ms] */
 #else

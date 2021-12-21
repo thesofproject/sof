@@ -26,7 +26,7 @@
 #include <soc.h>
 #include <kernel.h>
 
-#ifndef CONFIG_KERNEL_COHERENCE
+#if !CONFIG_KERNEL_COHERENCE
 #include <arch/xtensa/cache.h>
 #endif
 
