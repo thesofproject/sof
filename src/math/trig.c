@@ -40,7 +40,7 @@ const int32_t cord_arcsincos_q28fl  = Q_CONVERT_FLOAT(1.4142135605216026 / 2, 28
 /* 1073741824, deg = 57.2957795130823229 or round(1*2^30)*/
 const int32_t cord_arcsincos_q30fl  = Q_CONVERT_FLOAT(1.0000000000000000, 30);
 /**
- * \CORDIC-based approximation of sine, cosine and complex exponential
+ * CORDIC-based approximation of sine, cosine and complex exponential
  */
 void cordic_approx(int32_t th_rad_fxp, int32_t a_idx, int32_t *sign, int32_t *b_yn, int32_t *xn,
 		   int32_t *th_cdc_fxp)
@@ -101,7 +101,7 @@ void cordic_approx(int32_t th_rad_fxp, int32_t a_idx, int32_t *sign, int32_t *b_
 }
 
 /**
- * \CORDIC-based approximation for inverse cosine
+ * CORDIC-based approximation for inverse cosine
  * Arguments	: int32_t cosvalue
  *		  int16_t numiters
  * Return Type	: int32_t
@@ -181,7 +181,7 @@ int32_t is_scalar_cordic_acos(int32_t cosvalue, int16_t numiters)
 }
 
 /**
- * \CORDIC-based approximation for inverse sine
+ * CORDIC-based approximation for inverse sine
  * Arguments	: int32_t sinvalue
  *		  int16_t numiters
  * Return Type	: int32_t
