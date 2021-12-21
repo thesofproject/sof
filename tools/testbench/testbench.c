@@ -376,7 +376,7 @@ int main(int argc, char **argv)
 
 	tic = clock();
 
-	while (frcd->fs.reached_eof == 0) {
+	while ((!frcd->fs.reached_eof) && (!fwcd->fs.write_failed)) {
 		/*
 		 * Schedule copy for all pipelines which have the same schedule
 		 * component as the working one.

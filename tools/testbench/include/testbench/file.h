@@ -11,6 +11,10 @@
 #ifndef _FILE_H
 #define _FILE_H
 
+/**< Convert with right shift a bytes count to samples count */
+#define FILE_BYTES_TO_S16_SAMPLES(s)	((s) >> 1)
+#define FILE_BYTES_TO_S32_SAMPLES(s)	((s) >> 2)
+
 /* file component modes */
 enum file_mode {
 	FILE_READ = 0,
@@ -27,7 +31,8 @@ enum file_format {
 struct file_state {
 	char *fn;
 	FILE *rfh, *wfh; /* read/write file handle */
-	int reached_eof;
+	bool reached_eof;
+	bool write_failed;
 	int n;
 	enum file_mode mode;
 	enum file_format f_format;
