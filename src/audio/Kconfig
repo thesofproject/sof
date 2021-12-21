@@ -155,6 +155,15 @@ config COMP_GOOGLE_RTC_AUDIO_PROCESSING
 	  This component takes raw microphones input and playback reference
 	  and outputs an echo-free microphone signal.
 
+config GOOGLE_RTC_AUDIO_PROCESSING_MOCK
+	bool "Google Real Time Communication Audio processing mock"
+	default n
+	depends on COMP_GOOGLE_RTC_AUDIO_PROCESSING
+	help
+	  Mock Google real-time communication audio processing.
+	  It allows for compilation check and basic audio flow checking.
+
+
 config COMP_SEL
 	bool "Channel selector component"
 	default y
