@@ -72,15 +72,24 @@ if(NOT CONFIG_LIBRARY)
 	endif()
 
 	if(CONFIG_COMP_GOOGLE_RTC_AUDIO_PROCESSING)
-		add_local_sources(sof
-		        google_rtc_audio_processing.c
+	  target_include_directories(sof PRIVATE ${CMAKE_SOURCE_DIR}/third_party/include)
+	  add_local_sources(sof
+		google_rtc_audio_processing.c
 		)
+	  if(CONFIG_GOOGLE_RTC_AUDIO_PROCESSING_MOCK)
+		add_local_sources(sof
+		  google_rtc_audio_processing_mock.c
+		  )
+	  else()
+		message(INFO "Link with google_rtc_audio_processing")
+	    target_link_directories(sof PRIVATE ${CMAKE_SOURCE_DIR}/third_party/lib)
 		target_link_libraries(sof PRIVATE google_rtc_audio_processing)
 		target_link_libraries(sof PRIVATE google_rtc_audio_processing_tuning)
 		target_link_libraries(sof PRIVATE c++)
 		target_link_libraries(sof PRIVATE c++abi)
 		target_link_libraries(sof PRIVATE m)
 		target_link_libraries(sof PRIVATE c)
+	  endif()
 	endif()
 
 	if(CONFIG_COMP_SEL)
