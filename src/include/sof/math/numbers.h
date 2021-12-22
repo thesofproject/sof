@@ -54,6 +54,32 @@ static inline int ceil_divide(int a, int b)
 	return c;
 }
 
+/**
+ * \brief Cross product function
+ *
+ * Calculate cross product for vectors AB(a, b, c) and AC(d, e, f), where A, B, and C
+ * are points of a triangle in 3D space. Cross product is used in computational
+ * geometry. Cross product AB x AC is (b * f - c * e, c * d - a * f, a * e - b * d)
+ *
+ * \param[out]	px	x-axis component of cross product vector
+ * \param[out]	py	y-axis component of cross product vector
+ * \param[out]	pz	z-axis component of cross product vector
+ * \param[in]	a	x-axis component of vector AB
+ * \param[in]	b	y-axis component of vector AB
+ * \param[in]	c	z-axis component of vector AB
+ * \param[in]	d	x-axis component of vector AC
+ * \param[in]	e	y-axis component of vector AC
+ * \param[in]	f	z-axis component of vector AC
+ */
+static inline void cross_product_s16(int32_t *px, int32_t *py, int32_t *pz,
+				     int16_t a, int16_t b, int16_t c,
+				     int16_t d, int16_t e, int16_t f)
+{
+	*px = (int32_t)b * f - (int32_t)c * e;
+	*py = (int32_t)c * d - (int32_t)a * f;
+	*pz = (int32_t)a * e - (int32_t)b * d;
+}
+
 /* Find indices of equal values in a vector of integer values */
 int find_equal_int16(int16_t idx[], int16_t vec[], int n, int vec_length,
 	int max_results);
