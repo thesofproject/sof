@@ -9,7 +9,6 @@
 #include <math.h>
 #include <setjmp.h>
 #include <stdint.h>
-#include <malloc.h>
 #include <cmocka.h>
 #include <sof/list.h>
 #include <sof/ipc/driver.h>
@@ -20,6 +19,12 @@
 #include <sof/audio/component.h>
 #include <sof/audio/format.h>
 #include <sof/audio/mixer.h>
+
+#ifdef HAVE_MALLOC_H
+#include <malloc.h>
+#else
+#include <stdlib.h>
+#endif
 
 #include "comp_mock.h"
 

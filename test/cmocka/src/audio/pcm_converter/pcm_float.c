@@ -16,9 +16,14 @@
 #include <stddef.h>
 #include <setjmp.h>
 #include <math.h>
-#include <malloc.h>
 #include <stdint.h>
 #include <cmocka.h>
+
+#ifdef HAVE_MALLOC_H
+#include <malloc.h>
+#else
+#include <stdlib.h>
+#endif
 
 #include "../../util.h"
 

@@ -14,8 +14,13 @@
 #include <stdarg.h>
 #include <stddef.h>
 #include <setjmp.h>
-#include <malloc.h>
 #include <cmocka.h>
+
+#ifdef HAVE_MALLOC_H
+#include <malloc.h>
+#else
+#include <stdlib.h>
+#endif
 
 /* mock free() - dont free as we inspect contents */
 void rfree(void *ptr)

@@ -6,10 +6,15 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include <malloc.h>
 #include <sof/list.h>
 #include <sof/audio/stream.h>
 #include <sof/audio/component.h>
+
+#ifdef HAVE_MALLOC_H
+#include <malloc.h>
+#else
+#include <stdlib.h>
+#endif
 
 #include "comp_mock.h"
 

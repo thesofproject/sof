@@ -11,8 +11,13 @@
 #include <setjmp.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <malloc.h>
 #include <cmocka.h>
+
+#ifdef HAVE_MALLOC_H
+#include <malloc.h>
+#else
+#include <stdlib.h>
+#endif
 
 #include <test_group_generator.h>
 
