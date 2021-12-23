@@ -12,8 +12,13 @@
 #include <stddef.h>
 #include <setjmp.h>
 #include <stdint.h>
-#include <malloc.h>
 #include <cmocka.h>
+
+#ifdef HAVE_MALLOC_H
+#include <malloc.h>
+#else
+#include <stdlib.h>
+#endif
 
 #define PIPELINE_ID_SAME 3
 #define PIPELINE_ID_DIFFERENT 4

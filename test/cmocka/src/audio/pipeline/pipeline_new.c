@@ -12,8 +12,13 @@
 #include <stdarg.h>
 #include <stddef.h>
 #include <setjmp.h>
-#include <malloc.h>
 #include <cmocka.h>
+
+#ifdef HAVE_MALLOC_H
+#include <malloc.h>
+#else
+#include <stdlib.h>
+#endif
 
 static int setup(void **state)
 {

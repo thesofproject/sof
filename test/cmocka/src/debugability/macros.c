@@ -10,8 +10,13 @@
 #include <stdarg.h>
 #include <setjmp.h>
 #include <stdint.h>
-#include <malloc.h>
 #include <cmocka.h>
+
+#ifdef HAVE_MALLOC_H
+#include <malloc.h>
+#else
+#include <stdlib.h>
+#endif
 
 #include <sof/trace/preproc.h>
 #include <sof/sof.h>
@@ -46,7 +51,7 @@ static void test_debugability_macros_declare_log_entry(void **state)
 			"1"
 			"0"
 			"1"
-			"31"
+			"36"
 			"sizeof(\"" RELATIVE_FILE "\")"
 			"sizeof(\"Message\")"
 			"\"" RELATIVE_FILE "\""
