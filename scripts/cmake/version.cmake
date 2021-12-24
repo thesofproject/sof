@@ -110,13 +110,14 @@ if(EXISTS ${SOF_ROOT_SOURCE_DIRECTORY}/.git/)
 	message(STATUS "Source content hash: ${SOF_SRC_HASH}. \
 Note: by design, source hash is broken by config changes. See #3890.")
 else() # Zephyr, tarball,...
-	if("${GIT_LOG_HASH}")
+	if(NOT "${GIT_LOG_HASH}" STREQUAL "")
 		string(SUBSTRING "${GIT_LOG_HASH}" 0 8 SOF_SRC_HASH)
 	else()
-		set(SOF_SRC_HASH "0")
+		set(SOF_SRC_HASH "baadf00d")
 	endif()
 	message(WARNING "${SOF_ROOT_SOURCE_DIRECTORY}/.git not found, \
-source content hash cannot computed. Using GIT_LOG_HASH for .ldc instead.")
+source content hash cannot computed for the .ldc. Using SOF_SRC_HASH=${SOF_SRC_HASH} \
+from GIT_LOG_HASH instead")
 endif()
 
 # for SOF_BUILD
