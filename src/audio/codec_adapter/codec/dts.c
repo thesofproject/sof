@@ -104,7 +104,9 @@ static int dts_effect_populate_buffer_configuration(struct comp_dev *dev,
 	buffer_config->bufferFormat = buffer_format;
 	buffer_config->sampleRate = stream->rate;
 	buffer_config->numChannels = stream->channels;
-	buffer_config->totalBufferLengthInBytes = cd->period_bytes;
+	buffer_config->periodInFrames = dev->frames;
+	/* totalBufferLengthInBytes will be populated in dtsSofInterfacePrepare */
+	buffer_config->totalBufferLengthInBytes = 0;
 
 	comp_dbg(dev, "dts_effect_populate_buffer_configuration() done");
 
@@ -327,7 +329,7 @@ int dts_codec_reset(struct comp_dev *dev)
 	ret = dts_effect_convert_sof_interface_result(dev, dts_result);
 
 	if (ret)
-		comp_err(dev, "dts_codec_process() failed %d %d", ret, dts_result);
+		comp_err(dev, "dts_codec_reset() failed %d %d", ret, dts_result);
 
 	comp_dbg(dev, "dts_codec_reset() done");
 
@@ -346,7 +348,7 @@ int dts_codec_free(struct comp_dev *dev)
 	ret = dts_effect_convert_sof_interface_result(dev, dts_result);
 
 	if (ret)
-		comp_err(dev, "dts_codec_process() failed %d %d", ret, dts_result);
+		comp_err(dev, "dts_codec_free() failed %d %d", ret, dts_result);
 
 	comp_dbg(dev, "dts_codec_free() done");
 
