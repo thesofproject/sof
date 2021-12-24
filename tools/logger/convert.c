@@ -893,6 +893,7 @@ static int logger_read(void)
 			if (global_config->trace && ldc_address_OK) {
 				log_err("log_entry_address %#10x is not in dictionary range!\n",
 					dma_log.log_entry_address);
+				return 42;
 				fprintf(global_config->out_fd,
 					"warn: Seeking forward 4 bytes at a time until re-synchronize.\n");
 			}
