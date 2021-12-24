@@ -53,6 +53,7 @@ typedef struct DtsSofInterfaceBufferConfiguration
 	DtsSofInterfaceBufferFormat bufferFormat;
 	unsigned int                sampleRate;
 	unsigned int                numChannels;
+	unsigned int                periodInFrames;
 	unsigned int                totalBufferLengthInBytes;
 } DtsSofInterfaceBufferConfiguration;
 
