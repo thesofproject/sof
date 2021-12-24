@@ -39,7 +39,7 @@ dnl     time_domain, sched_comp)
 PIPELINE_PCM_ADD(
 	ifdef(`DTS', sof/pipe-eq-iir-dts-codec-playback.m4, sof/pipe-passthrough-playback.m4),
 	1, 16, 2, s16le,
-	ifdef(`DTS', 1000, 10000), 0, 0,
+	10000, 0, 0,
 	48000, 48000, 48000)
 
 # Low Latency playback pipeline 2 on PCM 16 using max 2 channels of s16le
@@ -47,7 +47,7 @@ PIPELINE_PCM_ADD(
 PIPELINE_PCM_ADD(
 	ifdef(`DTS', sof/pipe-eq-iir-dts-codec-playback.m4, sof/pipe-passthrough-playback.m4),
 	2, 17, 2, s16le,
-	ifdef(`DTS', 1000, 10000), 0, 0,
+	10000, 0, 0,
 	48000, 48000, 48000)
 
 # Low Latency capture pipeline 3 on PCM 16 using max 2 channels of s16le
@@ -79,14 +79,14 @@ dnl     deadline, priority, core)
 DAI_ADD(sof/pipe-dai-playback.m4,
 	1, AFE, 0, AFE_SOF_DL2,
 	PIPELINE_SOURCE_1, 2, s16le,
-	ifdef(`DTS', 1000, 10000), 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
+	10000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # playback DAI is AFE using 2 periods
 # Buffers use s16le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
 	2, AFE, 1, AFE_SOF_DL3,
 	PIPELINE_SOURCE_2, 2, s16le,
-	ifdef(`DTS', 1000, 10000), 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
+	10000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # capture DAI is AFE using 2 periods
 # Buffers use s16le format, with 48 frame per 1000us on core 0 with priority 0
