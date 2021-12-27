@@ -435,5 +435,9 @@ do
 done # for platform in ...
 
 # list all the images
-ls -l build_*/*.ri build_*/src/arch/xtensa/rom*.bin || true
-ls -l build_*/sof
+if [[ "x$BUILD_ROM" == "xyes" ]]
+then
+	ls -l build_*/src/arch/xtensa/rom*.bin || true
+fi
+
+ls -l build_*/*.ri build_*/sof
