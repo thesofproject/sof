@@ -534,6 +534,8 @@ struct comp_dev {
 	struct comp_ipc_config ipc_config;	/**< Component IPC configuration */
 	struct tr_ctx tctx;		/**< trace settings */
 
+	int cmd_override;		/**< trigger command override */
+
 	/* common runtime configuration for downstream/upstream */
 	enum sof_ipc_stream_direction direction;
 
@@ -919,6 +921,8 @@ void comp_data_blob_handler_free(struct comp_data_blob_handler *blob_handler);
  */
 int comp_verify_params(struct comp_dev *dev, uint32_t flag,
 		       struct sof_ipc_stream_params *params);
+
+int fork_state_matrix(struct comp_dev *dev, int cmd);
 
 /** @}*/
 

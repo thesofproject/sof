@@ -6,6 +6,7 @@ if(NOT CONFIG_LIBRARY)
 		component.c
 		buffer.c
 		channel_map.c
+		fork_trigger.c
 	)
 	if(CONFIG_COMP_VOLUME)
 		add_subdirectory(volume)

@@ -287,47 +287,6 @@ static int mixer_params(struct comp_dev *dev,
 	return 0;
 }
 
-/* used to pass standard and bespoke commands (with data) to component */
-static int mixer_trigger_common(struct comp_dev *dev, int cmd)
-{
-	int dir = dev->pipeline->source_comp->direction;
-	int ret;
-
-	/*
-	 * This works around an unclear and apparently needlessly complicated
-	 * mixer state machine.
-	 */
-	if (dir == SOF_IPC_STREAM_PLAYBACK) {
-		switch (cmd) {
-		case COMP_TRIGGER_PRE_RELEASE:
-			/* Mixer and everything downstream is active */
-			dev->state = COMP_STATE_PRE_ACTIVE;
-			break;
-		case COMP_TRIGGER_RELEASE:
-			/* Mixer and everything downstream is active */
-			dev->state = COMP_STATE_ACTIVE;
-			break;
-		default:
-			break;
-		}
-
-		comp_writeback(dev);
-	}
-
-	ret = comp_set_state(dev, cmd);
-	if (ret < 0)
-		return ret;
-
-	if (ret == COMP_STATUS_STATE_ALREADY_SET)
-		return PPL_STATUS_PATH_STOP;
-
-	/* nothing else to check for capture streams */
-	if (dir == SOF_IPC_STREAM_CAPTURE)
-		return ret;
-
-	return ret;
-}
-
 /*
  * Mix N source PCM streams to one sink PCM stream. Frames copied is constant.
  */
@@ -468,7 +427,11 @@ static int mixer_prepare_common(struct comp_dev *dev)
 			       source_list);
 
 	/* does mixer already have active source streams ? */
-	if (dev->state != COMP_STATE_ACTIVE) {
+	switch (dev->state) {
+	case COMP_STATE_ACTIVE:
+	case COMP_STATE_PAUSED:
+		return PPL_STATUS_PATH_STOP;
+	default:
 		/* currently inactive so setup mixer */
 		switch (sink->stream.frame_fmt) {
 #if CONFIG_FORMAT_S16LE
@@ -522,49 +485,13 @@ static int mixer_prepare_common(struct comp_dev *dev)
  * triggered second time.
  */
 #if CONFIG_IPC_MAJOR_3
-static int mixer_source_status_count(struct comp_dev *mixer, uint32_t status)
-{
-	struct comp_buffer *source;
-	struct list_item *blist;
-	int count = 0;
-
-	/* count source with state == status */
-	list_for_item(blist, &mixer->bsource_list) {
-		source = container_of(blist, struct comp_buffer, sink_list);
-		if (source->source->state == status)
-			count++;
-	}
-
-	return count;
-}
-
 static int mixer_trigger(struct comp_dev *dev, int cmd)
 {
-	int dir = dev->pipeline->source_comp->direction;
-	int ret;
+	int state = dev->state;
+	int ret = fork_state_matrix(dev, cmd);
 
-	comp_dbg(dev, "mixer_trigger()");
-
-	if (dir == SOF_IPC_STREAM_PLAYBACK && cmd == COMP_TRIGGER_PRE_START)
-		/* Mixer and downstream components might or might not be active */
-		if (mixer_source_status_count(dev, COMP_STATE_ACTIVE) ||
-		    mixer_source_status_count(dev, COMP_STATE_PAUSED))
-			return PPL_STATUS_PATH_STOP;
-
-	ret = mixer_trigger_common(dev, cmd);
-	if (ret < 0)
-		return ret;
-
-	/* don't stop mixer on pause or if at least one source is active/paused */
-	if (cmd == COMP_TRIGGER_PAUSE ||
-	    (cmd == COMP_TRIGGER_STOP &&
-	     (mixer_source_status_count(dev, COMP_STATE_ACTIVE) ||
-	     mixer_source_status_count(dev, COMP_STATE_PAUSED)))) {
-		dev->state = COMP_STATE_ACTIVE;
-		comp_writeback(dev);
-		ret = PPL_STATUS_PATH_STOP;
-	}
-
+	comp_dbg(dev, "mixer: cmd 0x%x, state %u -> %u, ret %d", cmd,
+		 state, dev->state, ret);
 	return ret;
 }
 
@@ -745,6 +672,37 @@ static int mixin_bind(struct comp_dev *dev, void *data)
 	}
 
 	return 0;
+}
+
+/* used to pass standard and bespoke commands (with data) to component */
+static int mixer_trigger_common(struct comp_dev *dev, int cmd)
+{
+	int dir = dev->pipeline->source_comp->direction;
+	int ret;
+
+	/*
+	 * This works around an unclear and apparently needlessly complicated
+	 * mixer state machine.
+	 */
+	if (dir == SOF_IPC_STREAM_PLAYBACK) {
+		switch (cmd) {
+		case COMP_TRIGGER_PRE_RELEASE:
+			/* Mixer and everything downstream is active */
+			dev->state = COMP_STATE_PRE_ACTIVE;
+			break;
+		case COMP_TRIGGER_RELEASE:
+			/* Mixer and everything downstream is active */
+			dev->state = COMP_STATE_ACTIVE;
+		}
+
+		comp_writeback(dev);
+	}
+
+	ret = comp_set_state(dev, cmd);
+	if (ret == COMP_STATUS_STATE_ALREADY_SET)
+		return PPL_STATUS_PATH_STOP;
+
+	return ret;
 }
 
 static const struct comp_driver comp_mixin = {

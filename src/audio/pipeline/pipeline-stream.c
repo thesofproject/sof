@@ -298,7 +298,7 @@ static int pipeline_comp_trigger(struct comp_dev *current,
 	struct pipeline_data *ppl_data = ctx->comp_data;
 	bool is_single_ppl = comp_is_single_pipeline(current, ppl_data->start);
 	bool is_same_sched;
-	int err;
+	int err, cmd = -EINVAL;
 
 	pipe_dbg(current->pipeline,
 		 "pipeline_comp_trigger(), current->comp.id = %u, dir = %u",
@@ -348,6 +348,11 @@ static int pipeline_comp_trigger(struct comp_dev *current,
 		return err;
 	}
 
+	if (current->cmd_override >= 0) {
+		cmd = ppl_data->cmd;
+		ppl_data->cmd = current->cmd_override;
+	}
+
 	switch (ppl_data->cmd) {
 	case COMP_TRIGGER_PAUSE:
 	case COMP_TRIGGER_STOP:
@@ -362,7 +367,11 @@ static int pipeline_comp_trigger(struct comp_dev *current,
 	if (!pipeline_is_timer_driven(current->pipeline))
 		pipeline_comp_trigger_sched_comp(current->pipeline, current, ctx);
 
-	return pipeline_for_each_comp(current, ctx, dir);
+	err = pipeline_for_each_comp(current, ctx, dir);
+	if (cmd >= 0)
+		ppl_data->cmd = cmd;
+
+	return err;
 }
 
 /* actually execute pipeline trigger, including components: either in IPC or in task context */

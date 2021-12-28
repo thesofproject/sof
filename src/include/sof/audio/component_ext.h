@@ -140,6 +140,8 @@ static inline int comp_trigger(struct comp_dev *dev, int cmd)
 {
 	assert(dev->drv->ops.trigger);
 
+	dev->cmd_override = -EINVAL;
+
 	return (dev->is_shared && !cpu_is_me(dev->ipc_config.core)) ?
 		comp_trigger_remote(dev, cmd) : dev->drv->ops.trigger(dev, cmd);
 }

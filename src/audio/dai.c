@@ -477,14 +477,14 @@ static int dai_params(struct comp_dev *dev,
 						   struct comp_buffer,
 						   source_list);
 
-	/* check if already configured */
-	if (dev->state == COMP_STATE_PREPARE) {
+	switch (dev->state) {
+	case COMP_STATE_PREPARE:
+	case COMP_STATE_PAUSED:
 		comp_info(dev, "dai_params() component has been already configured.");
 		return 0;
-	}
-
-	/* can set params on only init state */
-	if (dev->state != COMP_STATE_READY) {
+	case COMP_STATE_READY:
+		break;
+	default:
 		comp_err(dev, "dai_params(): Component is in state %d, expected COMP_STATE_READY.",
 			 dev->state);
 		return -EINVAL;

@@ -10,6 +10,7 @@ cmocka_test(mixer
 	${PROJECT_SOURCE_DIR}/src/ipc/ipc-common.c
 	${PROJECT_SOURCE_DIR}/src/ipc/ipc-helper.c
 	${PROJECT_SOURCE_DIR}/src/audio/buffer.c
+	${PROJECT_SOURCE_DIR}/src/audio/fork_trigger.c
 	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-graph.c
 	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-params.c
 	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-schedule.c
