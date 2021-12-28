@@ -193,6 +193,7 @@ static int ipc_stream_pcm_params(uint32_t stream)
 	struct sof_ipc_pcm_params pcm_params;
 	struct sof_ipc_pcm_params_reply reply;
 	struct ipc_comp_dev *pcm_dev;
+	struct sof_ipc_stream_posn posn;
 	int err, reset_err;
 
 	/* copy message with ABI safe method */
@@ -299,6 +300,11 @@ pipe_params:
 	reply.rhdr.error = 0;
 	reply.comp_id = pcm_params.comp_id;
 	reply.posn_offset = pcm_dev->cd->pipeline->posn_offset;
+
+	/* reset position value before send ipc */
+	memset(&posn, 0, sizeof(posn));
+	mailbox_stream_write(reply.posn_offset, &posn, sizeof(posn));
+
 	mailbox_hostbox_write(0, &reply, sizeof(reply));
 	return 1;
 
