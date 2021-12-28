@@ -507,35 +507,35 @@ struct comp_ipc_config {
 struct comp_dev {
 
 	/* runtime */
-	uint16_t state;		   /**< COMP_STATE_ */
-	uint64_t position;	   /**< component rendering position */
-	uint32_t frames;	   /**< number of frames we copy to sink */
-	struct pipeline *pipeline; /**< pipeline we belong to */
+	int state;			/**< COMP_STATE_ */
+	uint64_t position;		/**< component rendering position */
+	unsigned int frames;		/**< number of frames we copy to sink */
+	struct pipeline *pipeline;	/**< pipeline we belong to */
 
-	uint32_t min_sink_bytes;   /**< min free sink buffer size measured in
-				     *  bytes required to run component's
-				     *  processing
-				     */
-	uint32_t min_source_bytes; /**< amount of data measured in bytes
-				     *  available at source buffer required
-				     *  to run component's processing
-				     */
+	size_t min_sink_bytes;		/**< min free sink buffer size measured in
+					  *  bytes required to run component's
+					  *  processing
+					  */
+	size_t min_source_bytes;	/**< amount of data measured in bytes
+					  *  available at source buffer required
+					  *  to run component's processing
+					  */
 
-	struct task *task;	/**< component's processing task used only
-				  *  for components running on different core
-				  *  than the rest of the pipeline
-				  */
-	uint32_t size;		/**< component's allocated size */
-	uint32_t period;	/**< component's processing period */
-	uint32_t priority;	/**< component's processing priority */
-	bool is_shared;		/**< indicates whether component is shared
-				  *  across cores
-				  */
+	struct task *task;		/**< component's processing task used only
+					  *  for components running on different core
+					  *  than the rest of the pipeline
+					  */
+	size_t size;			/**< component's allocated size */
+	uint32_t period;		/**< component's processing period */
+	unsigned int priority;		/**< component's processing priority */
+	bool is_shared;			/**< indicates whether component is shared
+					  *  across cores
+					  */
 	struct comp_ipc_config ipc_config;	/**< Component IPC configuration */
-	struct tr_ctx tctx;	/**< trace settings */
+	struct tr_ctx tctx;		/**< trace settings */
 
 	/* common runtime configuration for downstream/upstream */
-	uint32_t direction;	/**< enum sof_ipc_stream_direction */
+	enum sof_ipc_stream_direction direction;
 
 	const struct comp_driver *drv;	/**< driver */
 
