@@ -76,6 +76,7 @@ struct host_data {
 	uint32_t host_period_bytes;
 	uint16_t stream_tag;
 	uint16_t no_stream_position; /**< 1 means don't send stream position */
+	uint8_t cont_update_posn; /**< 1 means continuous update stream position */
 
 	/* host component attributes */
 	enum comp_copy_type copy_type;	/**< Current host copy type */
@@ -350,6 +351,14 @@ static void host_update_position(struct comp_dev *dev, uint32_t bytes)
 	if (!hd->no_stream_position) {
 		hd->report_pos += bytes;
 
+		/* update position every period to support host query to
+		 * get the latest value if cont_update_posn == 1.
+		 */
+		if (hd->cont_update_posn == 1) {
+			pipeline_get_timestamp(dev->pipeline, dev, &hd->posn);
+			mailbox_stream_write(dev->pipeline->posn_offset,
+					     &hd->posn, sizeof(hd->posn));
+		}
 		/* host_period_bytes is set to zero to disable position update
 		 * by IPC for FW version before 3.11, so send IPC message to
 		 * driver according to this condition and report_pos.
@@ -761,6 +770,7 @@ static int host_params(struct comp_dev *dev,
 	hd->stream_tag = params->stream_tag;
 	hd->no_stream_position = params->no_stream_position;
 	hd->host_period_bytes = params->host_period_bytes;
+	hd->cont_update_posn = params->cont_update_posn;
 
 	/* retrieve DMA buffer address alignment */
 	err = dma_get_attribute(hd->dma, DMA_ATTR_BUFFER_ADDRESS_ALIGNMENT,
