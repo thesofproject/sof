@@ -809,7 +809,9 @@ static int ssp_set_config_blob(struct dai *dai, struct ipc_config_dai *common_co
 	ssrsa = blob->i2s_driver_config.i2s_config.ssrsa;
 
 	ssp_write(dai, SSCR0, ssc0);
+	ssp_write(dai, SSCR2, (blob->i2s_driver_config.i2s_config.ssc2 & (~(BIT(20))))  );	//hardware specific flow
 	ssp_write(dai, SSCR1, blob->i2s_driver_config.i2s_config.ssc1);
+	ssp_write(dai, SSCR2, (blob->i2s_driver_config.i2s_config.ssc2 | (BIT(20)))  );		//hardware specific flow
 	ssp_write(dai, SSCR2, blob->i2s_driver_config.i2s_config.ssc2);
 	ssp_write(dai, SSCR3, blob->i2s_driver_config.i2s_config.ssc3);
 	ssp_write(dai, SSPSP, blob->i2s_driver_config.i2s_config.sspsp);
