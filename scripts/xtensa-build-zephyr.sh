@@ -74,6 +74,8 @@ usage: $0 [options] [ platform(s) ] [ -- cmake arguments ]
           sof/ and zephyr-project/ directories are not nested in one
           another.
 
+       -v Verbose Makefile log
+
 This script supports XtensaTools but only when installed in a specific
 directory structure, example:
 
@@ -244,6 +246,9 @@ build_platforms()
 			 # show a confusing error.
 			/bin/pwd
 
+			local verbose
+			[ -z "$BUILD_VERBOSE" ] || verbose=-v
+
 			if test -e  "$bdir/build.ninja" || test -e  "$bdir/Makefile"; then
 			    test -z "${CMAKE_ARGS+defined}" ||
 				die 'Cannot re-define CMAKE_ARGS, you must delete %s first\n' \
@@ -252,10 +257,10 @@ build_platforms()
 			    # CMAKE_ARGS this _not_ does force CMake to re-run and passing
 			    # a different board by mistake is very nicely caught by west.
 			    set -x
-			    west build --build-dir "$bdir" --board "$PLAT_CONFIG"
+			    west $verbose build --build-dir "$bdir" --board "$PLAT_CONFIG"
 			else
 			    set -x
-			    west build --build-dir "$bdir" --board "$PLAT_CONFIG" \
+			    west $verbose build --build-dir "$bdir" --board "$PLAT_CONFIG" \
 				zephyr/samples/subsys/audio/sof \
 				-- "${CMAKE_ARGS[@]}"
 			fi
@@ -301,7 +306,7 @@ parse_args()
 	local OPTIND=1
 
 	# Parse -options
-	while getopts "acz:j:k:p:" OPTION; do
+	while getopts "acz:j:k:p:v" OPTION; do
 		case "$OPTION" in
 			a) PLATFORMS=("${DEFAULT_PLATFORMS[@]}") ;;
 			c) DO_CLONE=yes ;;
@@ -309,6 +314,7 @@ parse_args()
 			j) BUILD_JOBS="$OPTARG" ;;
 			k) RIMAGE_KEY_OPT="$OPTARG" ;;
 			p) zeproj="$OPTARG" ;;
+			v) BUILD_VERBOSE=true ;;
 			*) print_usage; exit 1 ;;
 		esac
 	done
