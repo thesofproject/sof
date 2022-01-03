@@ -323,7 +323,7 @@ parse_args()
 	#   build-zephyr.sh -c -k somekey -- apl imx -- -DEXTRA_CFLAGS='-Werror'
 	shift $((OPTIND-1))
 
-	if [ -n "$zeproj" ] && [ x"$DO_CLONE" = xyes ]; then
+	if [ -n "$zeproj" ] && [ "$DO_CLONE" = yes ]; then
 	    die 'Cannot use -p with -c, -c supports %s only' "${SOF_TOP}/zephyrproject"
 	fi
 
@@ -348,13 +348,13 @@ parse_args()
 		local arg="$1"
 
 		# '--' ends platforms
-		if [ x"$arg" = x-- ]; then
+		if [ "$arg" = '--' ]; then
 		    shift || true; break
 		fi
 
 		platform=none
 		for i in "${SUPPORTED_PLATFORMS[@]}"; do
-			if [ x"$i" = x"$arg" ]; then
+			if [ "$i" = "$arg" ]; then
 				PLATFORMS=("${PLATFORMS[@]}" "$i")
 				platform="$i"
 				shift || true
@@ -390,7 +390,7 @@ main()
 	    die "Install west and a west toolchain, \
 see https://docs.zephyrproject.org/latest/getting_started/index.html"
 
-	if [ "x$DO_CLONE" == "xyes" ]; then
+	if [ "$DO_CLONE" == "yes" ]; then
 		 # Supposedly no Zephyr yet
 		test -z "$WEST_TOP" ||
 		    die 'Cannot use -p with -c, -c supports %s only' "${SOF_TOP}/zephyrproject"
