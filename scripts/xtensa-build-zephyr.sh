@@ -284,7 +284,7 @@ build_platforms()
 		# A bit of a hack but it's very simple and saves a lot of duplication
 		grep -q "UNSIGNED_RI.*${platform}" "${SOF_TOP}"/src/arch/xtensa/CMakeLists.txt ||
 		    # This could use a -q(uiet) option...
-		    ${SOF_TOP}/tools/sof_ri_info/sof_ri_info.py \
+		    "${SOF_TOP}"/tools/sof_ri_info/sof_ri_info.py \
 			--no_headers --no_modules --no_memory \
 			--erase_vars "$bdir"/zephyr/reproducible.ri "$bdir"/zephyr/zephyr.ri
 
