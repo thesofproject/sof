@@ -1061,7 +1061,9 @@ static void ssp_stop(struct dai *dai, int direction)
 	/* disable SSP port if no users */
 	if (ssp->state[SOF_IPC_STREAM_CAPTURE] == COMP_STATE_PREPARE &&
 	    ssp->state[SOF_IPC_STREAM_PLAYBACK] == COMP_STATE_PREPARE) {
+#if !CONFIG_METEORLAKE_BETA
 		if (!(ssp->clk_active & SSP_CLK_BCLK_ES_REQ)) {
+#endif // !CONFIG_METEORLAKE_BETA
 			/* clear TRSE/RSRE before SSE */
 			ssp_update_bits(dai, SSCR1,
 					SSCR1_TSRE | SSCR1_RSRE,
@@ -1069,7 +1071,9 @@ static void ssp_stop(struct dai *dai, int direction)
 
 			ssp_update_bits(dai, SSCR0, SSCR0_SSE, 0);
 			dai_info(dai, "ssp_stop(): SSE clear SSP%d", dai->index);
+#if !CONFIG_METEORLAKE_BETA
 		}
+#endif // !CONFIG_METEORLAKE_BETA
 	}
 
 	ssp_post_stop(dai);
