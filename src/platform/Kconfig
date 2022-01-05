@@ -401,4 +401,13 @@ config AGENT_PANIC_ON_DELAY
 	  If scheduler timing verification fails, SA will
 	  call a DSP panic.
 
+config SOF_STACK_SIZE
+	int "Primary core SOF stack size"
+	default 4096
+	help
+	  Size of the primary core stack. This is the stack used by all
+	  IPC calls. Increasing it allows deeper call stack on those IPC
+	  and might be useful when creating more complex audio processing
+	  components.
+
 endmenu
