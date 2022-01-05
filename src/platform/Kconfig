@@ -508,4 +508,13 @@ config FORCE_DMA_COPY_WHOLE_BLOCK
 	  The host component forces DMA to copy the block size to avoid
 	  copying byte jitter between the components of the same pipeline.
 
+config SOF_STACK_SIZE
+	int "Primary core SOF stack size"
+	default 4096
+	help
+	  Size of the primary core stack. This is the stack used by all
+	  IPC calls. Increasing it allows deeper call stack on those IPC
+	  and might be useful when creating more complex audio processing
+	  components.
+
 endmenu
