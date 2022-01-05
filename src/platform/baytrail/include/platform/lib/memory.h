@@ -173,7 +173,7 @@ static inline void *platform_rfree_prepare(void *ptr)
 #define PLATFORM_HEAP_BUFFER		1
 
 /* Stack configuration */
-#define SOF_STACK_SIZE		0x1000
+#define SOF_STACK_SIZE		(CONFIG_SOF_STACK_SIZE)
 #define SOF_STACK_TOTAL_SIZE	SOF_STACK_SIZE
 #define SOF_STACK_BASE		(DRAM0_BASE + DRAM0_SIZE)
 #define SOF_STACK_END		(SOF_STACK_BASE - SOF_STACK_TOTAL_SIZE)
