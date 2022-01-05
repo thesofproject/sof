@@ -232,6 +232,7 @@ static struct comp_dev *create_dai(struct comp_dev *parent_dev, struct copier_da
 		break;
 	case ipc4_i2s_link_output_class:
 	case ipc4_i2s_link_input_class:
+		dai.dai_index = (dai.dai_index >> 4) & 0xF;
 		dai.type = SOF_DAI_INTEL_SSP;
 		dai.is_config_blob = true;
 		break;
