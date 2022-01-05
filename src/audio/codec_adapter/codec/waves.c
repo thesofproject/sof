@@ -20,11 +20,28 @@
 
 #define MAX_CONFIG_SIZE_BYTES (8192)
 #define NUM_IO_STREAMS (1)
+#define NUM_CODEC_CHANNELS (2)
 
 /* d944281a-afe9-4695-a043-d7f62b89538e*/
 DECLARE_SOF_RT_UUID("waves_codec", waves_uuid, 0xd944281a, 0xafe9, 0x4695,
 		    0xa0, 0x43, 0xd7, 0xf6, 0x2b, 0x89, 0x53, 0x8e);
 DECLARE_TR_CTX(waves_tr, SOF_UUID(waves_uuid), LOG_LEVEL_INFO);
+
+/* Enumeration of codec layout types:
+ *   CODEC_LAYOUT_STEREO:  in[2]{ L, R} --> Waves --> out[2]{ L, R}
+ *
+ *   CODEC_LAYOUT_WOOFER:  in[4]{WL,WR, --> Waves --> out[4]{WL,WR,
+ *                               TL,TR} ------------>        TL,TR}
+ *
+ *   CODEC_LAYOUT_TWEETER: in[4]{WL,WR, ------------> out[4]{WL,WR,
+ *                               TL,TR} --> Waves -->        TL,TR}
+ */
+enum waves_codec_layout_type {
+	CODEC_LAYOUT_STEREO = 0,
+	CODEC_LAYOUT_WOOFER = 1,
+	CODEC_LAYOUT_TWEETER = 2,
+	CODEC_LAYOUT_MAX = CODEC_LAYOUT_TWEETER /* Max value of this enum. */
+};
 
 struct waves_codec_data {
 	uint32_t                sample_rate;
@@ -35,6 +52,7 @@ struct waves_codec_data {
 
 	MaxxEffect_t            *effect;
 	uint32_t                effect_size;
+	uint32_t                codec_layout_type;
 	MaxxStreamFormat_t      i_format;
 	MaxxStreamFormat_t      o_format;
 	MaxxStream_t            i_stream;
@@ -49,7 +67,8 @@ struct waves_codec_data {
 enum waves_codec_params {
 	PARAM_NOP = 0,
 	PARAM_MESSAGE = 1,
-	PARAM_REVISION = 2
+	PARAM_REVISION = 2,
+	PARAM_CODEC_LAYOUT_TYPE = 3
 };
 
 /* convert MaxxBuffer_Format_t to number of bytes it requires */
@@ -268,7 +287,12 @@ static int waves_effect_check(struct comp_dev *dev)
 		return -EINVAL;
 	}
 
-	if (src_fmt->channels != 2) {
+	/* Note: "channels" of the audio stream format seems to be dominant by "PIPELINE_CHANNELS"
+	 *       which was set via topology. For example, "channels" is still unchanged for the
+	 *       output stream of the "DEMUX" which duplicated 2-ch interleaved input data into 4-ch
+	 *       interleaved. (It senses more like TDM forming.)
+	 */
+	if (src_fmt->channels != NUM_CODEC_CHANNELS) {
 		comp_err(dev, "waves_effect_check() channels %d not supported", src_fmt->channels);
 		return -EINVAL;
 	}
@@ -322,8 +346,10 @@ static int waves_effect_init(struct comp_dev *dev)
 	waves_codec->i_buffer = 0;
 	waves_codec->o_buffer = 0;
 
+	waves_codec->codec_layout_type = CODEC_LAYOUT_STEREO;
+
 	waves_codec->i_format.sampleRate = src_fmt->rate;
-	waves_codec->i_format.numChannels = src_fmt->channels;
+	waves_codec->i_format.numChannels = NUM_CODEC_CHANNELS;
 	waves_codec->i_format.samplesFormat = sample_format;
 	waves_codec->i_format.samplesLayout = buffer_format;
 
@@ -361,7 +387,12 @@ static int waves_effect_buffers(struct comp_dev *dev)
 	struct waves_codec_data *waves_codec = codec->private;
 	MaxxStatus_t status;
 	int ret;
-	void *i_buffer = NULL, *o_buffer = NULL, *response = NULL;
+
+	/* "i(o)_codec_buffer" will be allocated and attached to Waves codec API. */
+	void *i_codec_buffer = NULL, *o_codec_buffer = NULL;
+	/* "i(o)_cpd_buffer" will be allocated and attached to "codec_processing_data" of CA API. */
+	void *i_cpd_buffer = NULL, *o_cpd_buffer = NULL;
+	void *response = NULL;
 
 	comp_dbg(dev, "waves_effect_buffers() start");
 
@@ -383,28 +414,46 @@ static int waves_effect_buffers(struct comp_dev *dev)
 		goto err;
 	}
 
-	i_buffer = codec_allocate_memory(dev, waves_codec->buffer_bytes, 16);
-	if (!i_buffer) {
-		comp_err(dev, "waves_effect_buffers() failed to allocate %d bytes for i_buffer",
+	i_codec_buffer = codec_allocate_memory(dev, waves_codec->buffer_bytes, 16);
+	if (!i_codec_buffer) {
+		comp_err(dev,
+			 "waves_effect_buffers() failed to allocate %d bytes for i_codec_buffer",
 			 waves_codec->buffer_bytes);
 		ret = -ENOMEM;
 		goto err;
 	}
 
-	o_buffer = codec_allocate_memory(dev, waves_codec->buffer_bytes, 16);
-	if (!o_buffer) {
-		comp_err(dev, "waves_effect_buffers() failed to allocate %d bytes for o_buffer",
+	i_cpd_buffer = codec_allocate_memory(dev, waves_codec->buffer_bytes, 16);
+	if (!i_cpd_buffer) {
+		comp_err(dev, "waves_effect_buffers() failed to allocate %d bytes for i_cpd_buffer",
 			 waves_codec->buffer_bytes);
 		ret = -ENOMEM;
 		goto err;
 	}
 
-	waves_codec->i_buffer = i_buffer;
-	waves_codec->o_buffer = o_buffer;
+	o_codec_buffer = codec_allocate_memory(dev, waves_codec->buffer_bytes, 16);
+	if (!o_codec_buffer) {
+		comp_err(dev,
+			 "waves_effect_buffers() failed to allocate %d bytes for o_codec_buffer",
+			 waves_codec->buffer_bytes);
+		ret = -ENOMEM;
+		goto err;
+	}
+
+	o_cpd_buffer = codec_allocate_memory(dev, waves_codec->buffer_bytes, 16);
+	if (!o_cpd_buffer) {
+		comp_err(dev, "waves_effect_buffers() failed to allocate %d bytes for o_cpd_buffer",
+			 waves_codec->buffer_bytes);
+		ret = -ENOMEM;
+		goto err;
+	}
+
+	waves_codec->i_buffer = i_codec_buffer;
+	waves_codec->o_buffer = o_codec_buffer;
 	waves_codec->response = response;
-	codec->cpd.in_buff = waves_codec->i_buffer;
+	codec->cpd.in_buff = i_cpd_buffer;
 	codec->cpd.in_buff_size = waves_codec->buffer_bytes;
-	codec->cpd.out_buff = waves_codec->o_buffer;
+	codec->cpd.out_buff = o_cpd_buffer;
 	codec->cpd.out_buff_size = waves_codec->buffer_bytes;
 
 	comp_info(dev, "waves_effect_buffers() size response %d, i_buffer %d, o_buffer %d",
@@ -415,10 +464,14 @@ static int waves_effect_buffers(struct comp_dev *dev)
 	return 0;
 
 err:
-	if (i_buffer)
-		codec_free_memory(dev, i_buffer);
-	if (o_buffer)
-		codec_free_memory(dev, o_buffer);
+	if (i_codec_buffer)
+		codec_free_memory(dev, i_codec_buffer);
+	if (i_cpd_buffer)
+		codec_free_memory(dev, i_cpd_buffer);
+	if (o_codec_buffer)
+		codec_free_memory(dev, o_codec_buffer);
+	if (o_cpd_buffer)
+		codec_free_memory(dev, o_cpd_buffer);
 	if (response)
 		codec_free_memory(dev, response);
 	return ret;
@@ -507,6 +560,24 @@ static int waves_effect_message(struct comp_dev *dev, void *data, uint32_t size)
 	return 0;
 }
 
+static int waves_apply_codec_layout_type(struct comp_dev *dev, void *data)
+{
+	struct codec_data *codec = comp_get_codec(dev);
+	struct waves_codec_data *waves_codec = codec->private;
+
+	uint32_t layout_type = *(uint32_t *)data;
+
+	comp_info(dev, "waves_apply_layout_type() update layout to %u", layout_type);
+
+	if (layout_type > CODEC_LAYOUT_MAX) {
+		comp_err(dev, "waves_apply_layout_type() unsupported type %u", layout_type);
+		return -EINVAL;
+	}
+
+	waves_codec->codec_layout_type = layout_type;
+	return 0;
+}
+
 /* apply codec config */
 static int waves_effect_config(struct comp_dev *dev, enum codec_cfg_type type)
 {
@@ -557,6 +628,9 @@ static int waves_effect_config(struct comp_dev *dev, enum codec_cfg_type type)
 			break;
 		case PARAM_REVISION:
 			ret = waves_effect_revision(dev);
+			break;
+		case PARAM_CODEC_LAYOUT_TYPE:
+			ret = waves_apply_codec_layout_type(dev, param->data);
 			break;
 		default:
 			ret = -EINVAL;
@@ -668,7 +742,8 @@ static int waves_codec_init_process(struct comp_dev *dev)
 
 int waves_codec_process(struct comp_dev *dev)
 {
-	int ret;
+	int ret, i;
+	uint32_t processed_bytes;
 	struct codec_data *codec = comp_get_codec(dev);
 	struct waves_codec_data *waves_codec = codec->private;
 
@@ -680,7 +755,10 @@ int waves_codec_process(struct comp_dev *dev)
 	MaxxStream_t *i_streams[NUM_IO_STREAMS] = { &waves_codec->i_stream };
 	MaxxStream_t *o_streams[NUM_IO_STREAMS] = { &waves_codec->o_stream };
 	MaxxStatus_t status;
-	uint32_t num_input_samples = waves_codec->buffer_samples;
+	uint32_t max_num_samples = waves_codec->buffer_samples;
+	uint32_t num_input_samples = max_num_samples;
+
+	int16_t *i_buffer_ptr, *o_buffer_ptr, *cpd_buffer_ptr;
 
 	/* here input buffer should always be filled up as requested
 	 * since no one updates it`s size except code in prepare.
@@ -693,32 +771,95 @@ int waves_codec_process(struct comp_dev *dev)
 			(waves_codec->sample_size_in_bytes * waves_codec->i_format.numChannels);
 	}
 
+	if (waves_codec->codec_layout_type == CODEC_LAYOUT_STEREO) {
+		ret = memcpy_s(waves_codec->i_buffer, codec->cpd.avail, codec->cpd.in_buff,
+			       codec->cpd.avail);
+		if (ret) {
+			comp_err(dev, "waves_codec_process() memcpy_s in_buff error: %d", ret);
+			return ret;
+		}
+	} else {
+		/* For cases of CODEC_LAYOUT_WOOFER and CODEC_LAYOUT_TWEETER, extract data on the
+		 * required channels only from input CPD buffer to codec buffer.
+		 */
+		max_num_samples >>= 1;
+		num_input_samples >>= 1;
+		cpd_buffer_ptr = codec->cpd.in_buff;
+		i_buffer_ptr = waves_codec->i_buffer;
+		if (waves_codec->codec_layout_type == CODEC_LAYOUT_WOOFER) {
+			for (i = 0; i < num_input_samples; i++) {
+				*i_buffer_ptr++ = *cpd_buffer_ptr++; /* Woofer L */
+				*i_buffer_ptr++ = *cpd_buffer_ptr++; /* Woofer R */
+				cpd_buffer_ptr += 2; /* Skip Tweeter channels */
+			}
+		} else { /* CODEC_LAYOUT_TWEETER */
+			for (i = 0; i < num_input_samples; i++) {
+				cpd_buffer_ptr += 2; /* Skip Woofer channels */
+				*i_buffer_ptr++ = *cpd_buffer_ptr++; /* Tweeter L */
+				*i_buffer_ptr++ = *cpd_buffer_ptr++; /* Tweeter R */
+			}
+		}
+	}
+
 	waves_codec->i_stream.buffersArray = &waves_codec->i_buffer;
 	waves_codec->i_stream.numAvailableSamples = num_input_samples;
 	waves_codec->i_stream.numProcessedSamples = 0;
-	waves_codec->i_stream.maxNumSamples = waves_codec->buffer_samples;
+	waves_codec->i_stream.maxNumSamples = max_num_samples;
 
 	waves_codec->o_stream.buffersArray = &waves_codec->o_buffer;
 	waves_codec->o_stream.numAvailableSamples = 0;
 	waves_codec->o_stream.numProcessedSamples = 0;
-	waves_codec->o_stream.maxNumSamples = waves_codec->buffer_samples;
+	waves_codec->o_stream.maxNumSamples = max_num_samples;
 
 	status = MaxxEffect_Process(waves_codec->effect, i_streams, o_streams);
 	if (status) {
 		comp_err(dev, "waves_codec_process() MaxxEffect_Process returned %d", status);
-		ret = -EINVAL;
-	} else {
-		codec->cpd.produced = waves_codec->o_stream.numAvailableSamples *
-			waves_codec->o_format.numChannels * waves_codec->sample_size_in_bytes;
-		codec->cpd.consumed = codec->cpd.produced;
-		ret = 0;
+		comp_err(dev, "waves_codec_process() failed");
+		return -EINVAL;
 	}
 
-	if (ret)
-		comp_err(dev, "waves_codec_process() failed %d", ret);
+	processed_bytes = waves_codec->o_stream.numAvailableSamples *
+		waves_codec->o_format.numChannels * waves_codec->sample_size_in_bytes;
+
+	if (waves_codec->codec_layout_type == CODEC_LAYOUT_STEREO) {
+		ret = memcpy_s(codec->cpd.out_buff, processed_bytes, waves_codec->o_buffer,
+			       processed_bytes);
+		if (ret) {
+			comp_err(dev, "waves_codec_process() memcpy_s error: %d", ret);
+			return ret;
+		}
+		codec->cpd.produced = processed_bytes;
+	} else {
+		/* For cases of CODEC_LAYOUT_WOOFER and CODEC_LAYOUT_TWEETER, merge data on the
+		 * required channels from output codec buffer, and other channels from input CPD
+		 * buffer.
+		 */
+		i_buffer_ptr = codec->cpd.in_buff;
+		o_buffer_ptr = waves_codec->o_buffer;
+		cpd_buffer_ptr = codec->cpd.out_buff;
+		if (waves_codec->codec_layout_type == CODEC_LAYOUT_WOOFER) {
+			for (i = 0; i < waves_codec->o_stream.numAvailableSamples; i++) {
+				*cpd_buffer_ptr++ = *o_buffer_ptr++; /* Woofer L */
+				*cpd_buffer_ptr++ = *o_buffer_ptr++; /* Woofer R */
+				i_buffer_ptr += 2; /* Skip Woofer channels */
+				*cpd_buffer_ptr++ = *i_buffer_ptr++; /* Tweeter L */
+				*cpd_buffer_ptr++ = *i_buffer_ptr++; /* Tweeter R */
+			}
+		} else { /* CODEC_LAYOUT_TWEETER */
+			for (i = 0; i < waves_codec->o_stream.numAvailableSamples; i++) {
+				*cpd_buffer_ptr++ = *i_buffer_ptr++; /* Woofer L */
+				*cpd_buffer_ptr++ = *i_buffer_ptr++; /* Woofer R */
+				i_buffer_ptr += 2; /* Skip Tweeter channels */
+				*cpd_buffer_ptr++ = *o_buffer_ptr++; /* Tweeter L */
+				*cpd_buffer_ptr++ = *o_buffer_ptr++; /* Tweeter R */
+			}
+		}
+		codec->cpd.produced = processed_bytes << 1;
+	}
+	codec->cpd.consumed = codec->cpd.produced;
 
 	comp_dbg(dev, "waves_codec_process() done");
-	return ret;
+	return 0;
 }
 
 int waves_codec_apply_config(struct comp_dev *dev)
