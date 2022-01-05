@@ -28,8 +28,19 @@ macro(add_alsatplg_command)
 	)
 endmacro()
 
+macro(add_alsatplg2_command)
+	add_custom_command(
+		MAIN_DEPENDENCY ${ARGV0}
+		OUTPUT ${ARGV1}
+		# -p to pre-process Topology2.0 conf file
+		COMMAND alsatplg \$\${VERBOSE:+-v 1} -I ${ARGV2} -D ${ARGV3} -p -c ${ARGV0} -o ${ARGV1}
+		USES_TERMINAL
+	)
+endmacro()
+
 
 add_custom_target(topologies ALL)
 add_dependencies(topologies topologies1)
 
 add_subdirectory(topology1)
+add_subdirectory(topology2)

@@ -5,6 +5,9 @@
 # fail immediately on any errors
 set -e
 
+SOF_TOP=$(cd "$(dirname "$0")/.." && pwd)
+export ALSA_CONFIG_DIR="${SOF_TOP}"/tools/topology/topology2
+
 print_usage()
 {
         cat <<EOFUSAGE
