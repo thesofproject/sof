@@ -325,7 +325,7 @@
 	HEAP_SYS_RUNTIME_S_SIZE))
 
 /* Stack configuration */
-#define SOF_STACK_SIZE		0x1000
+#define SOF_STACK_SIZE		(CONFIG_SOF_STACK_SIZE)
 #define SOF_STACK_TOTAL_SIZE	(CONFIG_CORE_COUNT * SOF_STACK_SIZE)
 
 /* SOF Core S configuration */
