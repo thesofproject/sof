@@ -11,6 +11,7 @@
  */
 
 #include <cavs/mem_window.h>
+#include <sof/lib/memory.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/io.h>
 #include <sof/lib/shim.h>
