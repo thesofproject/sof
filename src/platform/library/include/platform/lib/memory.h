@@ -18,7 +18,7 @@ struct sof;
 #define PLATFORM_DCACHE_ALIGN	sizeof(void *)
 
 #define HEAP_BUFFER_SIZE	(1024 * 128)
-#define SOF_STACK_SIZE		0x1000
+#define SOF_STACK_SIZE		(CONFIG_SOF_STACK_SIZE)
 
 uint8_t *get_library_mailbox(void);
 
