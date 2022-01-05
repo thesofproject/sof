@@ -11,6 +11,7 @@
 #include <sof/common.h>
 #include <sof/platform.h>
 #include <sof/drivers/interrupt.h>
+#include <sof/lib/memory.h>
 #include <sof/lib/pm_runtime.h>
 #include <sof/lib/shim.h>
 #include <sof/schedule/task.h>
@@ -18,8 +19,6 @@
 #include <stdint.h>
 
 #ifdef __ZEPHYR__
-#include <cavs/lib/memory.h>
-#include <platform/lib/memory.h>
 /* TODO: declare local copy to avoid naming collisions with Zephyr and SOF */
 /* headers until common functions can be separated out */
 int memcpy_s(void *dest, size_t dest_size, const void *src, size_t src_size);
