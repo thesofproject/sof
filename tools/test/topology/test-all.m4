@@ -86,7 +86,7 @@ PCM_DUPLEX_ADD(Passthrough, 0, PIPELINE_PCM_1, PIPELINE_PCM_2)
 # using TEST_SSP_PHY_BITS bit sample container on SSP TEST_DAI_PORT
 #
 DAI_CONFIG(TEST_DAI_TYPE, TEST_DAI_PORT,
-	   ifelse(index(TEST_DAI_LINK_NAME, NoCodec), -1, 0 ,TEST_DAI_PORT),
+	   ifelse(index(TEST_DAI_LINK_NAME, NoCodec), -1, 0, TEST_DAI_PORT),
 	   TEST_DAI_LINK_NAME,
 	   SSP_CONFIG(TEST_SSP_MODE,
 		      SSP_CLOCK(mclk, TEST_SSP_MCLK, codec_mclk_in),
