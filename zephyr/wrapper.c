@@ -424,6 +424,8 @@ uint64_t platform_timer_get(struct timer *timer)
 out:
 
 	return time;
+#elif CONFIG_SOF_ZEPHYR
+	return k_cycle_get_64();
 #else
 	/* CAVS versions */
 	return shim_read64(SHIM_DSPWC);
