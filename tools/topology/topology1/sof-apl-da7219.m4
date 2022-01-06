@@ -160,16 +160,16 @@ PCM_PLAYBACK_ADD(HDMI3, 7, PIPELINE_PCM_7)
 #SSP 5 (ID: 0) with 19.2 MHz mclk with MCLK_ID 0 (unused), 1.536 MHz blck
 DAI_CONFIG(SSP, 5, 0, SSP5-Codec,
 	SSP_CONFIG(I2S, SSP_CLOCK(mclk, 19200000, codec_mclk_in),
-		SSP_CLOCK(bclk, 1536000, codec_slave),
-		SSP_CLOCK(fsync, 48000, codec_slave),
+		SSP_CLOCK(bclk, 1536000, codec_consumer),
+		SSP_CLOCK(fsync, 48000, codec_consumer),
 		SSP_TDM(2, 16, 3, 3),
 		SSP_CONFIG_DATA(SSP, 5, 16, 0)))
 
 #SSP 1 (ID: 1) with 19.2 MHz mclk with MCLK_ID 0, 1.92 MHz bclk
 DAI_CONFIG(SSP, 1, 1, SSP1-Codec,
 	SSP_CONFIG(I2S, SSP_CLOCK(mclk, 19200000, codec_mclk_in),
-		SSP_CLOCK(bclk, 1920000, codec_slave),
-		SSP_CLOCK(fsync, 48000, codec_slave),
+		SSP_CLOCK(bclk, 1920000, codec_consumer),
+		SSP_CLOCK(fsync, 48000, codec_consumer),
 		SSP_TDM(2, 20, 3, 3),
 		SSP_CONFIG_DATA(SSP, 1, 16, 0)))
 

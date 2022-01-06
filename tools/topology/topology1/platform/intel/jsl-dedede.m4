@@ -12,7 +12,7 @@ define(`SPK_DATA_FORMAT', `s24le')
 
 define(`SET_SSP_CONFIG',
                 `SSP_CONFIG(I2S, SSP_CLOCK(mclk, 24000000, codec_mclk_in),
-                        SSP_CLOCK(bclk, 2304000, codec_slave),
-                        SSP_CLOCK(fsync, 48000, codec_slave),
+                        SSP_CLOCK(bclk, 2304000, codec_consumer),
+                        SSP_CLOCK(fsync, 48000, codec_consumer),
                         SSP_TDM(2, 24, 3, 3),
                         SSP_CONFIG_DATA(SSP, SPK_INDEX, 24, 0))')
