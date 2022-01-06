@@ -96,6 +96,31 @@ struct trace_filter {
 	int32_t log_level;	/**< new log level value */
 };
 
+/** The start of this linker output MUST match the 'ldc_entry_header'
+ *  struct defined in the logger program running in user space.
+ */
+#define _DECLARE_LOG_ENTRY(lvl, format, comp_class, n_params)	\
+	__section(".static_log." #lvl)				\
+	static const struct {					\
+		uint32_t level;					\
+		uint32_t component_class;			\
+		uint32_t params_num;				\
+		uint32_t line_idx;				\
+		uint32_t file_name_len;				\
+		uint32_t text_len;				\
+		const char file_name[sizeof(RELATIVE_FILE)];	\
+		const char text[sizeof(format)];		\
+	} log_entry = {						\
+		lvl,						\
+		comp_class,					\
+		n_params,					\
+		__LINE__,					\
+		sizeof(RELATIVE_FILE),				\
+		sizeof(format),					\
+		RELATIVE_FILE,					\
+		format						\
+	}
+
 #if CONFIG_TRACE
 
 #include <stdarg.h>
@@ -179,31 +204,6 @@ void mtrace_dict_entry(bool atomic_context, uint32_t log_entry_pointer, int n_ar
 
 /** Posts a fully prepared log header + log entry */
 void mtrace_event(const char *complete_packet, uint32_t length);
-
-/** The start of this linker output MUST match the 'ldc_entry_header'
- *  struct defined in the logger program running in user space.
- */
-#define _DECLARE_LOG_ENTRY(lvl, format, comp_class, n_params)	\
-	__section(".static_log." #lvl)				\
-	static const struct {					\
-		uint32_t level;					\
-		uint32_t component_class;			\
-		uint32_t params_num;				\
-		uint32_t line_idx;				\
-		uint32_t file_name_len;				\
-		uint32_t text_len;				\
-		const char file_name[sizeof(RELATIVE_FILE)];	\
-		const char text[sizeof(format)];		\
-	} log_entry = {						\
-		lvl,						\
-		comp_class,					\
-		n_params,						\
-		__LINE__,					\
-		sizeof(RELATIVE_FILE),				\
-		sizeof(format),					\
-		RELATIVE_FILE,					\
-		format						\
-	}
 
 #ifdef CONFIG_TRACEM /* Send everything to shared memory too */
 #  ifdef __ZEPHYR__
