@@ -231,15 +231,15 @@ SectionGraph."pipe-sof-PLATFORM-keyword-detect" {
 
 DAI_CONFIG(SSP, 1, 0, SSP1-Codec,
         SSP_CONFIG(I2S, SSP_CLOCK(mclk, SSP_MCLK_RATE, codec_mclk_in),
-                SSP_CLOCK(bclk, SSP1_BCLK, codec_slave),
-                SSP_CLOCK(fsync, SSP_FSYNC, codec_slave),
+                SSP_CLOCK(bclk, SSP1_BCLK, codec_consumer),
+                SSP_CLOCK(fsync, SSP_FSYNC, codec_consumer),
                 SSP_TDM(2, SSP1_VALID_BITS, 3, 3),
                 SSP_CONFIG_DATA(SSP, 1, SSP1_VALID_BITS, MCLK_ID)))
 
 DAI_CONFIG(SSP, SSP_INDEX, 1, SSP_NAME,
         SSP_CONFIG(I2S, SSP_CLOCK(mclk, SSP_MCLK_RATE, codec_mclk_in),
-                SSP_CLOCK(bclk, SSP_BCLK, codec_slave),
-                SSP_CLOCK(fsync, SSP_FSYNC, codec_slave),
+                SSP_CLOCK(bclk, SSP_BCLK, codec_consumer),
+                SSP_CLOCK(fsync, SSP_FSYNC, codec_consumer),
                 SSP_TDM(2, SSP_BITS_WIDTH, 3, 3),
                 SSP_CONFIG_DATA(SSP, SSP_INDEX, SSP_VALID_BITS, MCLK_ID)))
 

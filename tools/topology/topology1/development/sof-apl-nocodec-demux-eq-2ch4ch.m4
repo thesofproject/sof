@@ -106,8 +106,8 @@ dnl DAI_CONFIG(type, dai_index, link_id, name, ssp_config/dmic_config)
 DAI_CONFIG(SSP, 0, 0, NoCodec-0,
 	   dnl SSP_CONFIG(format, mclk, bclk, fsync, tdm, ssp_config_data)
 	   SSP_CONFIG(I2S, SSP_CLOCK(mclk, 24576000, codec_mclk_in),
-		      SSP_CLOCK(bclk, 6144000, codec_slave),
-		      SSP_CLOCK(fsync, 48000, codec_slave),
+		      SSP_CLOCK(bclk, 6144000, codec_consumer),
+		      SSP_CLOCK(fsync, 48000, codec_consumer),
 		      SSP_TDM(4, 32, 15, 15),
 		      dnl SSP_CONFIG_DATA(type, dai_index, valid bits, mclk_id, quirks)
 		      SSP_CONFIG_DATA(SSP, 0, 32, 0, SSP_QUIRK_LBM)))

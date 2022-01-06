@@ -322,7 +322,7 @@ PCM_CAPTURE_ADD(EchoRef, 6, PIPELINE_PCM_9)')')
 #
 dnl DAI_CONFIG(type, dai_index, link_id, name, ssp_config/dmic_config)
 dnl SSP_CONFIG(format, mclk, bclk, fsync, tdm, ssp_config_data)
-dnl SSP_CLOCK(clock, freq, codec_master, polarity)
+dnl SSP_CLOCK(clock, freq, codec_provider, polarity)
 dnl SSP_CONFIG_DATA(type, idx, valid bits, mclk_id)
 dnl mclk_id is optional
 dnl ssp1-maxmspk
@@ -330,8 +330,8 @@ dnl ssp1-maxmspk
 #SSP 0 (ID: 0)
 DAI_CONFIG(SSP, 0, 0, SSP0-Codec,
         SSP_CONFIG(I2S, SSP_CLOCK(mclk, SSP_MCLK, codec_mclk_in),
-                      SSP_CLOCK(bclk, 3072000, codec_slave),
-                      SSP_CLOCK(fsync, 48000, codec_slave),
+                      SSP_CLOCK(bclk, 3072000, codec_consumer),
+                      SSP_CLOCK(fsync, 48000, codec_consumer),
                       SSP_TDM(2, 32, 3, 3),
                       SSP_CONFIG_DATA(SSP, 0, 32, 0, 0, 0, SSP_CC_BCLK_ES)))
 
@@ -350,8 +350,8 @@ ifdef(`SMART_AMP',,`
 `# SSP' SPK_SSP_INDEX `(ID: 7)'
 DAI_CONFIG(SSP, SPK_SSP_INDEX, SPK_BE_ID, SPK_SSP_NAME,
         SSP_CONFIG(I2S, SSP_CLOCK(mclk, SSP_MCLK, codec_mclk_in),
-                SSP_CLOCK(bclk, 1536000, codec_slave),
-                SSP_CLOCK(fsync, 48000, codec_slave),
+                SSP_CLOCK(bclk, 1536000, codec_consumer),
+                SSP_CLOCK(fsync, 48000, codec_consumer),
                 SSP_TDM(2, 16, 3, 3),
                 SSP_CONFIG_DATA(SSP, SPK_SSP_INDEX, 16)))')')
 

@@ -2,7 +2,7 @@ divert(-1)
 
 dnl ACPSP related macros
 
-dnl ACP_CLOCK(clock, freq, codec_master, polarity)
+dnl ACP_CLOCK(clock, freq, codec_provider, polarity)
 dnl polarity is optional
 define(`ACP_CLOCK',
         $1              STR($3)
