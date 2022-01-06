@@ -528,12 +528,11 @@ static int codec_adapter_set_params(struct comp_dev *dev, struct sof_ipc_ctrl_da
 		switch (type) {
 		case MODULE_CFG_SETUP:
 			ret = load_setup_config(dev, md->runtime_params, size);
-			if (ret) {
+			if (ret)
 				comp_err(dev, "codec_adapter_set_params(): error %d: load of setup config failed.",
 					 ret);
-			} else {
+			else
 				comp_dbg(dev, "codec_adapter_set_params() load of setup config done.");
-			}
 
 			break;
 		case MODULE_CFG_RUNTIME:
@@ -551,12 +550,11 @@ static int codec_adapter_set_params(struct comp_dev *dev, struct sof_ipc_ctrl_da
 				 * config right away.
 				 */
 				ret = module_apply_runtime_config(dev);
-				if (ret) {
+				if (ret)
 					comp_err(dev, "codec_adapter_set_params() error %x: codec runtime config apply failed",
 						 ret);
-				}  else {
+				else
 					comp_dbg(dev, "codec_adapter_set_params() apply of runtime config done.");
-				}
 			} else {
 				mod->priv.r_cfg.avail = true;
 			}
