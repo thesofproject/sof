@@ -34,4 +34,4 @@ docker run -i -v "${SOF_TOP}":/home/sof/work/sof.git \
 	--env https_proxy="$https_proxy" \
 	--user "$(id -u)" \
 	$SOF_DOCKER_RUN \
-	sof "$@"
+	thesofproject/sof "$@"
