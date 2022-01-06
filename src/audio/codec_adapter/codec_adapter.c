@@ -461,8 +461,7 @@ end:
 	return ret;
 }
 
-static int codec_adapter_set_params(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata,
-				    enum module_cfg_type type)
+static int codec_adapter_set_params(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata)
 {
 	int ret;
 	char *dst, *src;
@@ -470,6 +469,7 @@ static int codec_adapter_set_params(struct comp_dev *dev, struct sof_ipc_ctrl_da
 	uint32_t offset;
 	struct processing_module *mod = comp_get_drvdata(dev);
 	struct module_data *md = &mod->priv;
+	enum module_cfg_type type = cdata->data->type;
 
 	comp_dbg(dev, "codec_adapter_set_params(): start: num_of_elem %d, elem remain %d msg_index %u",
 		 cdata->num_elems, cdata->elems_remaining, cdata->msg_index);
@@ -588,7 +588,7 @@ static int ca_set_binary_data(struct comp_dev *dev,
 	switch (cdata->data->type) {
 	case MODULE_CFG_SETUP:
 	case MODULE_CFG_RUNTIME:
-		ret = codec_adapter_set_params(dev, cdata, cdata->data->type);
+		ret = codec_adapter_set_params(dev, cdata);
 		break;
 	default:
 		comp_err(dev, "ca_set_binary_data() error: unknown binary data type");
