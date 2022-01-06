@@ -480,38 +480,38 @@ static int codec_adapter_set_params(struct comp_dev *dev, struct sof_ipc_ctrl_da
 		/* Check that there is no work-in-progress on previous request */
 		if (md->runtime_params) {
 			comp_err(dev, "codec_adapter_set_params() error: busy with previous request");
-			ret = -EBUSY;
-			goto end;
-		} else if (!size) {
+			return -EBUSY;
+		}
+
+		if (!size) {
 			comp_err(dev, "codec_adapter_set_params() error: no configuration size %d",
 				 size);
 			/* TODO: return -EINVAL. This is temporary until driver fixes its issue */
-			ret = 0;
-			goto end;
-		} else if (size > MAX_BLOB_SIZE) {
+			return 0;
+		}
+
+		if (size > MAX_BLOB_SIZE) {
 			comp_err(dev, "codec_adapter_set_params() error: blob size is too big cfg size %d, allowed %d",
 				 size, MAX_BLOB_SIZE);
-			ret = -EINVAL;
-			goto end;
-		} else if (type != MODULE_CFG_SETUP && type != MODULE_CFG_RUNTIME) {
+			return -EINVAL;
+		}
+
+		if (type != MODULE_CFG_SETUP && type != MODULE_CFG_RUNTIME) {
 			comp_err(dev, "codec_adapter_set_params() error: unknown config type");
-			ret = -EINVAL;
-			goto end;
+			return -EINVAL;
 		}
 
 		/* Allocate buffer for new params */
 		md->runtime_params = rballoc(0, SOF_MEM_CAPS_RAM, size);
 		if (!md->runtime_params) {
 			comp_err(dev, "codec_adapter_set_params(): space allocation for new params failed");
-			ret = -ENOMEM;
-			goto end;
+			return -ENOMEM;
 		}
 
 		memset(md->runtime_params, 0, size);
 	} else if (!md->runtime_params) {
 		comp_err(dev, "codec_adapter_set_params() error: no memory available for runtime params in consecutive load");
-		ret = -EIO;
-		goto end;
+		return -EIO;
 	}
 
 	offset = size - (cdata->num_elems + cdata->elems_remaining);
@@ -541,10 +541,10 @@ static int codec_adapter_set_params(struct comp_dev *dev, struct sof_ipc_ctrl_da
 			if (ret) {
 				comp_err(dev, "codec_adapter_set_params() error %d: load of runtime config failed.",
 					 ret);
-				goto done;
-			} else {
-				comp_dbg(dev, "codec_adapter_set_params() load of runtime config done.");
+				break;
 			}
+
+			comp_dbg(dev, "codec_adapter_set_params() load of runtime config done.");
 
 			if (md->state >= MODULE_INITIALIZED) {
 				/* We are already prepared so we can apply runtime
@@ -566,15 +566,13 @@ static int codec_adapter_set_params(struct comp_dev *dev, struct sof_ipc_ctrl_da
 			comp_err(dev, "codec_adapter_set_params(): error: unknown config type.");
 			break;
 		}
-	} else
-		goto end;
+	} else {
+		return 0;
+	}
 
-done:
 	if (md->runtime_params)
 		rfree(md->runtime_params);
 	md->runtime_params = NULL;
-	return ret;
-end:
 	return ret;
 }
 
