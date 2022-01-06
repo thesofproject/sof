@@ -521,51 +521,45 @@ static int codec_adapter_set_params(struct comp_dev *dev, struct sof_ipc_ctrl_da
 	ret = memcpy_s(dst, size - offset, src, cdata->num_elems);
 	assert(!ret);
 
-	/* Config has been copied now we can load & apply it depending on
-	 * codec state.
-	 */
-	if (!cdata->elems_remaining) {
-		switch (type) {
-		case MODULE_CFG_SETUP:
-			ret = load_setup_config(dev, md->runtime_params, size);
-			if (ret)
-				comp_err(dev, "codec_adapter_set_params(): error %d: load of setup config failed.",
-					 ret);
-			else
-				comp_dbg(dev, "codec_adapter_set_params() load of setup config done.");
+	/* return as more fragments of config data expected */
+	if (cdata->elems_remaining)
+		return 0;
 
-			break;
-		case MODULE_CFG_RUNTIME:
-			ret = module_load_config(dev, md->runtime_params, size, MODULE_CFG_RUNTIME);
-			if (ret) {
-				comp_err(dev, "codec_adapter_set_params() error %d: load of runtime config failed.",
-					 ret);
-				break;
-			}
-
-			comp_dbg(dev, "codec_adapter_set_params() load of runtime config done.");
-
-			if (md->state >= MODULE_INITIALIZED) {
-				/* We are already prepared so we can apply runtime
-				 * config right away.
-				 */
-				ret = module_apply_runtime_config(dev);
-				if (ret)
-					comp_err(dev, "codec_adapter_set_params() error %x: codec runtime config apply failed",
-						 ret);
-				else
-					comp_dbg(dev, "codec_adapter_set_params() apply of runtime config done.");
-			} else {
-				mod->priv.r_cfg.avail = true;
-			}
-
-			break;
-		default:
-			comp_err(dev, "codec_adapter_set_params(): error: unknown config type.");
+	/* config fully copied, now load it */
+	switch (type) {
+	case MODULE_CFG_SETUP:
+		ret = load_setup_config(dev, md->runtime_params, size);
+		if (ret)
+			comp_err(dev, "codec_adapter_set_params(): error %d: load of setup config failed.",
+				 ret);
+		else
+			comp_dbg(dev, "codec_adapter_set_params() load of setup config done.");
+		break;
+	case MODULE_CFG_RUNTIME:
+		ret = module_load_config(dev, md->runtime_params, size, MODULE_CFG_RUNTIME);
+		if (ret) {
+			comp_err(dev, "codec_adapter_set_params() error %d: load of runtime config failed.",
+				 ret);
 			break;
 		}
-	} else {
-		return 0;
+
+		comp_dbg(dev, "codec_adapter_set_params() load of runtime config done.");
+
+		/* And apply it right away if codec is already prepared */
+		if (md->state >= MODULE_INITIALIZED) {
+			ret = module_apply_runtime_config(dev);
+			if (ret)
+				comp_err(dev, "codec_adapter_set_params() error %x: codec runtime config apply failed",
+					 ret);
+			else
+				comp_dbg(dev, "codec_adapter_set_params() apply of runtime config done.");
+		} else {
+			mod->priv.r_cfg.avail = true;
+		}
+		break;
+	default:
+		comp_err(dev, "codec_adapter_set_params(): error: unknown config type.");
+		break;
 	}
 
 	if (md->runtime_params)
