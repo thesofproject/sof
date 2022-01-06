@@ -135,7 +135,8 @@ dnl     frames, deadline, priority, core)
 # Schedule 48 frames per 1000us deadline with priority 0 on core 0
 define(`ENDPOINT_NAME', `Speakers')
 PIPELINE_PCM_ADD(
-	ifdef(`WAVES', sof/pipe-waves-codec-demux-playback.m4,
+	ifdef(`WAVES', ifdef(`2CH_2WAY', sof/pipe-waves-codec-2way-playback.m4,
+			     sof/pipe-waves-codec-demux-playback.m4),
 	      ifdef(`DRC_EQ', sof/pipe-drc-eq-volume-demux-playback.m4,
 		    ifdef(`2CH_2WAY', sof/pipe-demux-eq-iir-playback.m4,
 			  sof/pipe-volume-demux-playback.m4))),
