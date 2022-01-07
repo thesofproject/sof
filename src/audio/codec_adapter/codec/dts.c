@@ -60,19 +60,19 @@ static int dts_effect_convert_sof_interface_result(struct comp_dev *dev,
 static int dts_effect_populate_buffer_configuration(struct comp_dev *dev,
 	DtsSofInterfaceBufferConfiguration *buffer_config)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_get_drvdata(dev);
 	const struct audio_stream *stream;
 	DtsSofInterfaceBufferLayout buffer_layout;
 	DtsSofInterfaceBufferFormat buffer_format;
 
 	comp_dbg(dev, "dts_effect_populate_buffer_configuration() start");
 
-	if (!cd->ca_source)
+	if (!mod->ca_source)
 		return -EINVAL;
 
-	stream = &cd->ca_source->stream;
+	stream = &mod->ca_source->stream;
 
-	switch (cd->ca_source->buffer_fmt) {
+	switch (mod->ca_source->buffer_fmt) {
 	case SOF_IPC_BUFFER_INTERLEAVED:
 		buffer_layout = DTS_SOF_INTERFACE_BUFFER_LAYOUT_INTERLEAVED;
 		break;
