@@ -122,14 +122,14 @@ enum codec_cfg_type {
 };
 
 /**
- * \enum codec_state
- * \brief Codec specific states
+ * \enum module_state
+ * \brief Module-specific states
  */
-enum codec_state {
-	CODEC_DISABLED, /**< Codec isn't initialized yet or has been freed.*/
-	CODEC_INITIALIZED, /**< Codec initialized or reset. */
-	CODEC_IDLE, /**< Codec is idle now. */
-	CODEC_PROCESSING, /**< Codec is processing samples now. */
+enum module_state {
+	MODULE_DISABLED, /**< Module isn't initialized yet or has been freed.*/
+	MODULE_INITIALIZED, /**< Module initialized or reset. */
+	MODULE_IDLE, /**< Module is idle now. */
+	MODULE_PROCESSING, /**< Module is processing samples now. */
 };
 
 /** codec adapter setup config parameters */
@@ -196,7 +196,7 @@ struct codec_processing_data {
 /** private, runtime module data */
 struct module_data {
 	uint32_t id;
-	enum codec_state state;
+	enum module_state state;
 	void *private; /**< self object, memory tables etc here */
 	void *runtime_params;
 	struct codec_config s_cfg; /**< setup config */
