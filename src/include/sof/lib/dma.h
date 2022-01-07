@@ -173,9 +173,6 @@ struct dma_ops {
 	int (*set_config)(struct dma_chan_data *channel,
 			  struct dma_sg_config *config);
 
-	int (*pm_context_restore)(struct dma *dma);
-	int (*pm_context_store)(struct dma *dma);
-
 	int (*probe)(struct dma *dma);
 	int (*remove)(struct dma *dma);
 
@@ -372,16 +369,6 @@ static inline int dma_set_config(struct dma_chan_data *channel,
 				 struct dma_sg_config *config)
 {
 	return channel->dma->ops->set_config(channel, config);
-}
-
-static inline int dma_pm_context_restore(struct dma *dma)
-{
-	return dma->ops->pm_context_restore(dma);
-}
-
-static inline int dma_pm_context_store(struct dma *dma)
-{
-	return dma->ops->pm_context_store(dma);
 }
 
 static inline int dma_probe(struct dma *dma)
