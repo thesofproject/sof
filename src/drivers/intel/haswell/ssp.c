@@ -480,10 +480,6 @@ static int ssp_trigger(struct dai *dai, int cmd, int direction)
 
 	switch (cmd) {
 	case COMP_TRIGGER_START:
-		if (ssp->state[direction] == COMP_STATE_PREPARE ||
-		    ssp->state[direction] == COMP_STATE_PAUSED)
-			ssp_start(dai, direction);
-		break;
 	case COMP_TRIGGER_RELEASE:
 		if (ssp->state[direction] == COMP_STATE_PAUSED ||
 		    ssp->state[direction] == COMP_STATE_PREPARE)
