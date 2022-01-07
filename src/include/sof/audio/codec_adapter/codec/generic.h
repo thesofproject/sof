@@ -160,10 +160,10 @@ struct codec_param {
 };
 
 /**
- * \struct codec_config
- * \brief Codec config container, used for both config types.
+ * \struct module_config
+ * \brief Module config container, used for both config types.
  */
-struct codec_config {
+struct module_config {
 	size_t size; /**< Specifies the size of whole config */
 	bool avail; /**< Marks config as available to use.*/
 	void *data; /**< tlv config, a pointer to memory where config is stored. */
@@ -199,8 +199,8 @@ struct module_data {
 	enum module_state state;
 	void *private; /**< self object, memory tables etc here */
 	void *runtime_params;
-	struct codec_config s_cfg; /**< setup config */
-	struct codec_config r_cfg; /**< runtime config */
+	struct module_config s_cfg; /**< setup config */
+	struct module_config r_cfg; /**< runtime config */
 	struct module_interface *ops; /**< module specific operations */
 	struct codec_memory memory; /**< memory allocated by codec */
 	struct codec_processing_data cpd; /**< shared data comp <-> codec */

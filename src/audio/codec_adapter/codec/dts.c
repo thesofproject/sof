@@ -244,7 +244,7 @@ int dts_codec_apply_config(struct comp_dev *dev)
 {
 	int ret = 0;
 	struct module_data *codec = comp_get_codec(dev);
-	struct codec_config *config;
+	struct module_config *config;
 	struct codec_param *param;
 	uint32_t config_header_size;
 	uint32_t config_data_size;

@@ -16,14 +16,14 @@
 /*****************************************************************************/
 /* Local helper functions						     */
 /*****************************************************************************/
-static int validate_config(struct codec_config *cfg);
+static int validate_config(struct module_config *cfg);
 
 int
 codec_load_config(struct comp_dev *dev, void *cfg, size_t size,
 		  enum codec_cfg_type type)
 {
 	int ret;
-	struct codec_config *dst;
+	struct module_config *dst;
 	struct processing_module *mod = comp_get_drvdata(dev);
 	struct module_data *md = &mod->priv;
 
@@ -189,7 +189,7 @@ int codec_free_memory(struct comp_dev *dev, void *ptr)
 	return -EINVAL;
 }
 
-static int validate_config(struct codec_config *cfg)
+static int validate_config(struct module_config *cfg)
 {
 	/* TODO: validation of codec specific setup config */
 	return 0;
