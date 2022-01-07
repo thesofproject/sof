@@ -24,8 +24,8 @@ codec_load_config(struct comp_dev *dev, void *cfg, size_t size,
 {
 	int ret;
 	struct codec_config *dst;
-	struct comp_data *cd = comp_get_drvdata(dev);
-	struct codec_data *codec = &cd->codec;
+	struct processing_module *mod = comp_get_drvdata(dev);
+	struct codec_data *codec = &mod->codec;
 
 	comp_dbg(dev, "codec_load_config() start");
 
@@ -79,15 +79,15 @@ err:
 int codec_init(struct comp_dev *dev, struct module_interface *interface)
 {
 	int ret;
-	struct comp_data *cd = comp_get_drvdata(dev);
-	uint32_t codec_id = cd->ca_config.codec_id;
-	struct codec_data *codec = &cd->codec;
+	struct processing_module *mod = comp_get_drvdata(dev);
+	uint32_t codec_id = mod->ca_config.codec_id;
+	struct codec_data *codec = &mod->codec;
 
 	comp_info(dev, "codec_init() start");
 
-	if (cd->codec.state == CODEC_INITIALIZED)
+	if (mod->codec.state == CODEC_INITIALIZED)
 		return 0;
-	if (cd->codec.state > CODEC_INITIALIZED)
+	if (mod->codec.state > CODEC_INITIALIZED)
 		return -EPERM;
 
 	codec->id = codec_id;
@@ -129,7 +129,7 @@ void *codec_allocate_memory(struct comp_dev *dev, uint32_t size,
 {
 	struct codec_memory *container;
 	void *ptr;
-	struct comp_data *cd = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_get_drvdata(dev);
 
 	if (!size) {
 		comp_err(dev, "codec_allocate_memory: requested allocation of 0 bytes.");
@@ -152,19 +152,19 @@ void *codec_allocate_memory(struct comp_dev *dev, uint32_t size,
 
 	if (!ptr) {
 		comp_err(dev, "codec_allocate_memory: failed to allocate memory for codec %x.",
-			 cd->ca_config.codec_id);
+			 mod->ca_config.codec_id);
 		return NULL;
 	}
 	/* Store reference to allocated memory */
 	container->ptr = ptr;
-	list_item_prepend(&container->mem_list, &cd->codec.memory.mem_list);
+	list_item_prepend(&container->mem_list, &mod->codec.memory.mem_list);
 
 	return ptr;
 }
 
 int codec_free_memory(struct comp_dev *dev, void *ptr)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_get_drvdata(dev);
 	struct codec_memory *mem;
 	struct list_item *mem_list;
 	struct list_item *_mem_list;
@@ -173,7 +173,7 @@ int codec_free_memory(struct comp_dev *dev, void *ptr)
 		return 0;
 
 	/* Find which container keeps this memory */
-	list_for_item_safe(mem_list, _mem_list, &cd->codec.memory.mem_list) {
+	list_for_item_safe(mem_list, _mem_list, &mod->codec.memory.mem_list) {
 		mem = container_of(mem_list, struct codec_memory, mem_list);
 		if (mem->ptr == ptr) {
 			rfree(mem->ptr);
@@ -198,15 +198,15 @@ static int validate_config(struct codec_config *cfg)
 int codec_prepare(struct comp_dev *dev)
 {
 	int ret;
-	struct comp_data *cd = comp_get_drvdata(dev);
-	uint32_t codec_id = cd->ca_config.codec_id;
-	struct codec_data *codec = &cd->codec;
+	struct processing_module *mod = comp_get_drvdata(dev);
+	uint32_t codec_id = mod->ca_config.codec_id;
+	struct codec_data *codec = &mod->codec;
 
 	comp_dbg(dev, "codec_prepare() start");
 
-	if (cd->codec.state == CODEC_IDLE)
+	if (mod->codec.state == CODEC_IDLE)
 		return 0;
-	if (cd->codec.state < CODEC_INITIALIZED)
+	if (mod->codec.state < CODEC_INITIALIZED)
 		return -EPERM;
 
 	ret = codec->ops->prepare(dev);
@@ -236,15 +236,15 @@ end:
 int codec_process(struct comp_dev *dev)
 {
 	int ret;
-	struct comp_data *cd = comp_get_drvdata(dev);
-	uint32_t codec_id = cd->ca_config.codec_id;
-	struct codec_data *codec = &cd->codec;
+	struct processing_module *mod = comp_get_drvdata(dev);
+	uint32_t codec_id = mod->ca_config.codec_id;
+	struct codec_data *codec = &mod->codec;
 
 	comp_dbg(dev, "codec_process() start");
 
-	if (cd->codec.state != CODEC_IDLE) {
+	if (mod->codec.state != CODEC_IDLE) {
 		comp_err(dev, "codec_process(): wrong state of codec %x, state %d",
-			 cd->ca_config.codec_id, codec->state);
+			 mod->ca_config.codec_id, codec->state);
 		return -EPERM;
 	}
 
@@ -264,9 +264,9 @@ out:
 int codec_apply_runtime_config(struct comp_dev *dev)
 {
 	int ret;
-	struct comp_data *cd = comp_get_drvdata(dev);
-	uint32_t codec_id = cd->ca_config.codec_id;
-	struct codec_data *codec = &cd->codec;
+	struct processing_module *mod = comp_get_drvdata(dev);
+	uint32_t codec_id = mod->ca_config.codec_id;
+	struct codec_data *codec = &mod->codec;
 
 	comp_dbg(dev, "codec_apply_config() start");
 
@@ -277,7 +277,7 @@ int codec_apply_runtime_config(struct comp_dev *dev)
 		goto out;
 	}
 
-	cd->codec.r_cfg.avail = false;
+	mod->codec.r_cfg.avail = false;
 	/* Configuration had been applied, we can free it now. */
 	rfree(codec->r_cfg.data);
 	codec->r_cfg.data = NULL;
@@ -290,13 +290,13 @@ out:
 int codec_reset(struct comp_dev *dev)
 {
 	int ret;
-	struct comp_data *cd = comp_get_drvdata(dev);
-	struct codec_data *codec = &cd->codec;
+	struct processing_module *mod = comp_get_drvdata(dev);
+	struct codec_data *codec = &mod->codec;
 
 	ret = codec->ops->reset(dev);
 	if (ret) {
 		comp_err(dev, "codec_apply_config() error %d: codec specific .reset() failed for codec_id %x",
-			 ret, cd->ca_config.codec_id);
+			 ret, mod->ca_config.codec_id);
 		return ret;
 	}
 
@@ -314,13 +314,13 @@ int codec_reset(struct comp_dev *dev)
 
 void codec_free_all_memory(struct comp_dev *dev)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_get_drvdata(dev);
 	struct codec_memory *mem;
 	struct list_item *mem_list;
 	struct list_item *_mem_list;
 
 	/* Find which container keeps this memory */
-	list_for_item_safe(mem_list, _mem_list, &cd->codec.memory.mem_list) {
+	list_for_item_safe(mem_list, _mem_list, &mod->codec.memory.mem_list) {
 		mem = container_of(mem_list, struct codec_memory, mem_list);
 		rfree(mem->ptr);
 		list_item_del(&mem->mem_list);
@@ -331,13 +331,13 @@ void codec_free_all_memory(struct comp_dev *dev)
 int codec_free(struct comp_dev *dev)
 {
 	int ret;
-	struct comp_data *cd = comp_get_drvdata(dev);
-	struct codec_data *codec = &cd->codec;
+	struct processing_module *mod = comp_get_drvdata(dev);
+	struct codec_data *codec = &mod->codec;
 
 	ret = codec->ops->free(dev);
 	if (ret) {
 		comp_warn(dev, "codec_apply_config() error %d: codec specific .free() failed for codec_id %x",
-			  ret, cd->ca_config.codec_id);
+			  ret, mod->ca_config.codec_id);
 	}
 	/* Free all memory requested by codec */
 	codec_free_all_memory(dev);

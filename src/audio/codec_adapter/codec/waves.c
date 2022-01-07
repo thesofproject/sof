@@ -218,7 +218,7 @@ static int waves_effect_allocate(struct comp_dev *dev)
 /* checks if sink/source parameters fit MaxxEffect */
 static int waves_effect_check(struct comp_dev *dev)
 {
-	struct comp_data *component = comp_get_drvdata(dev);
+	struct processing_module *component = comp_get_drvdata(dev);
 	const struct audio_stream *src_fmt = &component->ca_source->stream;
 	const struct audio_stream *snk_fmt = &component->ca_sink->stream;
 
@@ -282,7 +282,7 @@ static int waves_effect_init(struct comp_dev *dev)
 {
 	struct codec_data *codec = comp_get_codec(dev);
 	struct waves_codec_data *waves_codec = codec->private;
-	struct comp_data *component = comp_get_drvdata(dev);
+	struct processing_module *component = comp_get_drvdata(dev);
 
 	const struct audio_stream *src_fmt = &component->ca_source->stream;
 

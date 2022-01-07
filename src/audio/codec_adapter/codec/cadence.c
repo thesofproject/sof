@@ -489,8 +489,8 @@ err:
 
 int cadence_codec_process(struct comp_dev *dev)
 {
-	struct comp_data *comp_data = comp_get_drvdata(dev);
-	struct comp_buffer *local_buff = comp_data->local_buff;
+	struct processing_module *mod = comp_get_drvdata(dev);
+	struct comp_buffer *local_buff = mod->local_buff;
 	struct codec_data *codec = comp_get_codec(dev);
 	struct cadence_codec_data *cd = codec->private;
 	int ret;
@@ -498,8 +498,8 @@ int cadence_codec_process(struct comp_dev *dev)
 	/* do not proceed with processing if not enough free left in the local buffer */
 	if (codec->cpd.init_done) {
 		int output_bytes = cadence_codec_get_samples(dev) *
-				   comp_data->stream_params.sample_container_bytes *
-				   comp_data->stream_params.channels;
+				   mod->stream_params.sample_container_bytes *
+				   mod->stream_params.channels;
 
 		if (local_buff->stream.free < output_bytes)
 			return -ENOSPC;
