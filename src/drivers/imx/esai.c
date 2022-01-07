@@ -374,10 +374,6 @@ static int esai_trigger(struct dai *dai, int cmd, int direction)
 	case COMP_TRIGGER_PAUSE:
 		esai_stop(dai, direction);
 		break;
-	/* Remaining triggers are no-ops */
-	case COMP_TRIGGER_SUSPEND:
-	case COMP_TRIGGER_RESUME:
-		break;
 	default:
 		dai_err(dai, "ESAI: invalid trigger cmd %d", cmd);
 		return -EINVAL;

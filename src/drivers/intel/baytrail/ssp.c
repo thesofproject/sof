@@ -599,14 +599,6 @@ static int ssp_trigger(struct dai *dai, int cmd, int direction)
 	case COMP_TRIGGER_PAUSE:
 		ssp_pause(dai, direction);
 		break;
-	case COMP_TRIGGER_RESUME:
-		ssp_context_restore(dai);
-		break;
-	case COMP_TRIGGER_SUSPEND:
-		ssp_context_store(dai);
-		break;
-	default:
-		break;
 	}
 
 	return 0;
