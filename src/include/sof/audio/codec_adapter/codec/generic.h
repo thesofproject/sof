@@ -142,7 +142,7 @@ struct ca_config {
 };
 
 /**
- * \struct codec_config
+ * \struct codec_param
  * \brief Codec TLV parameters container - used for both config types.
  * For example if one want to set the sample_rate to 16 [kHz] and this
  * parameter was assigned to id 0x01, its max size is four bytes then the
