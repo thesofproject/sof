@@ -217,15 +217,15 @@ int codec_adapter_prepare(struct comp_dev *dev)
 	 * generate output once started (same situation happens for compress streams
 	 * as well).
 	 */
-	if (md->cpd.in_buff_size != mod->period_bytes) {
-		if (md->cpd.in_buff_size > mod->period_bytes) {
-			buff_periods = (md->cpd.in_buff_size % mod->period_bytes) ?
-				       (md->cpd.in_buff_size / mod->period_bytes) + 2 :
-				       (md->cpd.in_buff_size / mod->period_bytes) + 1;
+	if (md->mpd.in_buff_size != mod->period_bytes) {
+		if (md->mpd.in_buff_size > mod->period_bytes) {
+			buff_periods = (md->mpd.in_buff_size % mod->period_bytes) ?
+				       (md->mpd.in_buff_size / mod->period_bytes) + 2 :
+				       (md->mpd.in_buff_size / mod->period_bytes) + 1;
 		} else {
-			buff_periods = (mod->period_bytes % md->cpd.in_buff_size) ?
-				       (mod->period_bytes / md->cpd.in_buff_size) + 2 :
-				       (mod->period_bytes / md->cpd.in_buff_size) + 1;
+			buff_periods = (mod->period_bytes % md->mpd.in_buff_size) ?
+				       (mod->period_bytes / md->mpd.in_buff_size) + 2 :
+				       (mod->period_bytes / md->mpd.in_buff_size) + 1;
 		}
 
 		mod->deep_buff_bytes = mod->period_bytes * buff_periods;
@@ -234,7 +234,7 @@ int codec_adapter_prepare(struct comp_dev *dev)
 	}
 
 	/* Allocate local buffer */
-	buff_size = MAX(mod->period_bytes, md->cpd.out_buff_size) * buff_periods;
+	buff_size = MAX(mod->period_bytes, md->mpd.out_buff_size) * buff_periods;
 	if (mod->local_buff) {
 		ret = buffer_set_size(mod->local_buff, buff_size);
 		if (ret < 0) {
@@ -282,7 +282,7 @@ int codec_adapter_params(struct comp_dev *dev,
 
 static void
 codec_adapter_copy_from_source_to_lib(const struct audio_stream *source,
-				      const struct codec_processing_data *cpd,
+				      const struct module_processing_data *mpd,
 				      size_t bytes)
 {
 	/* head_size - available data until end of local buffer */
@@ -293,17 +293,17 @@ codec_adapter_copy_from_source_to_lib(const struct audio_stream *source,
 	 */
 	uint32_t tail_size = bytes - head_size;
 	/* copy head_size to lib buffer */
-	memcpy_s(cpd->in_buff, cpd->in_buff_size, source->r_ptr, head_size);
+	memcpy_s(mpd->in_buff, mpd->in_buff_size, source->r_ptr, head_size);
 	if (tail_size)
 	/* copy reset of the samples after wrap-up */
-		memcpy_s((char *)cpd->in_buff + head_size, cpd->in_buff_size,
+		memcpy_s((char *)mpd->in_buff + head_size, mpd->in_buff_size,
 			 audio_stream_wrap(source,
 					   (char *)source->r_ptr + head_size),
 					   tail_size);
 }
 
 static void
-codec_adapter_copy_from_lib_to_sink(const struct codec_processing_data *cpd,
+codec_adapter_copy_from_lib_to_sink(const struct module_processing_data *mpd,
 				    const struct audio_stream *sink,
 				    size_t bytes)
 {
@@ -317,13 +317,13 @@ codec_adapter_copy_from_lib_to_sink(const struct codec_processing_data *cpd,
 	uint32_t tail_size = bytes - head_size;
 
 	/* copy head_size to sink buffer */
-	memcpy_s(sink->w_ptr, sink->size, cpd->out_buff, head_size);
+	memcpy_s(sink->w_ptr, sink->size, mpd->out_buff, head_size);
 	if (tail_size)
 	/* copy reset of the samples after wrap-up */
 		memcpy_s(audio_stream_wrap(sink,
 					   (char *)sink->w_ptr + head_size),
 			 sink->size,
-			 (char *)cpd->out_buff + head_size, tail_size);
+			 (char *)mpd->out_buff + head_size, tail_size);
 }
 
 /**
@@ -357,7 +357,7 @@ int codec_adapter_copy(struct comp_dev *dev)
 	struct module_data *md = &mod->priv;
 	struct comp_buffer *source = mod->ca_source;
 	struct comp_buffer *sink = mod->ca_sink;
-	uint32_t codec_buff_size = md->cpd.in_buff_size;
+	uint32_t codec_buff_size = md->mpd.in_buff_size;
 	struct comp_buffer *local_buff = mod->local_buff;
 	struct comp_copy_limits cl;
 
@@ -376,26 +376,26 @@ int codec_adapter_copy(struct comp_dev *dev)
 		goto db_verify;
 	}
 
-	if (!md->cpd.init_done) {
+	if (!md->mpd.init_done) {
 		buffer_stream_invalidate(source, codec_buff_size);
-		codec_adapter_copy_from_source_to_lib(&source->stream, &md->cpd,
+		codec_adapter_copy_from_source_to_lib(&source->stream, &md->mpd,
 						      codec_buff_size);
-		md->cpd.avail = codec_buff_size;
+		md->mpd.avail = codec_buff_size;
 		ret = codec_process(dev);
 		if (ret)
 			return ret;
 
-		bytes_to_process -= md->cpd.consumed;
-		processed += md->cpd.consumed;
-		comp_update_buffer_consume(source, md->cpd.consumed);
+		bytes_to_process -= md->mpd.consumed;
+		processed += md->mpd.consumed;
+		comp_update_buffer_consume(source, md->mpd.consumed);
 		if (bytes_to_process < codec_buff_size)
 			goto db_verify;
 	}
 
 	buffer_stream_invalidate(source, codec_buff_size);
-	codec_adapter_copy_from_source_to_lib(&source->stream, &md->cpd,
+	codec_adapter_copy_from_source_to_lib(&source->stream, &md->mpd,
 					      codec_buff_size);
-	md->cpd.avail = codec_buff_size;
+	md->mpd.avail = codec_buff_size;
 	ret = codec_process(dev);
 	if (ret) {
 		if (ret == -ENOSPC) {
@@ -406,21 +406,21 @@ int codec_adapter_copy(struct comp_dev *dev)
 		comp_err(dev, "codec_adapter_copy() error %x: lib processing failed",
 			 ret);
 		goto db_verify;
-	} else if (md->cpd.produced == 0) {
+	} else if (md->mpd.produced == 0) {
 		/* skipping as lib has not produced anything */
 		comp_err(dev, "codec_adapter_copy() error %x: lib hasn't processed anything",
 			 ret);
 		goto db_verify;
 	}
-	codec_adapter_copy_from_lib_to_sink(&md->cpd, &local_buff->stream,
-					    md->cpd.produced);
+	codec_adapter_copy_from_lib_to_sink(&md->mpd, &local_buff->stream,
+					    md->mpd.produced);
 
-	bytes_to_process -= md->cpd.consumed;
-	processed += md->cpd.consumed;
-	produced += md->cpd.produced;
+	bytes_to_process -= md->mpd.consumed;
+	processed += md->mpd.consumed;
+	produced += md->mpd.produced;
 
-	audio_stream_produce(&local_buff->stream, md->cpd.produced);
-	comp_update_buffer_consume(source, md->cpd.consumed);
+	audio_stream_produce(&local_buff->stream, md->mpd.produced);
+	comp_update_buffer_consume(source, md->mpd.consumed);
 
 db_verify:
 	if (!produced && !mod->deep_buff_bytes) {

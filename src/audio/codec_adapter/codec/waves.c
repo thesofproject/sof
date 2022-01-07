@@ -402,10 +402,10 @@ static int waves_effect_buffers(struct comp_dev *dev)
 	waves_codec->i_buffer = i_buffer;
 	waves_codec->o_buffer = o_buffer;
 	waves_codec->response = response;
-	codec->cpd.in_buff = waves_codec->i_buffer;
-	codec->cpd.in_buff_size = waves_codec->buffer_bytes;
-	codec->cpd.out_buff = waves_codec->o_buffer;
-	codec->cpd.out_buff_size = waves_codec->buffer_bytes;
+	codec->mpd.in_buff = waves_codec->i_buffer;
+	codec->mpd.in_buff_size = waves_codec->buffer_bytes;
+	codec->mpd.out_buff = waves_codec->o_buffer;
+	codec->mpd.out_buff_size = waves_codec->buffer_bytes;
 
 	comp_info(dev, "waves_effect_buffers() size response %d, i_buffer %d, o_buffer %d",
 		  waves_codec->response_max_bytes, waves_codec->buffer_bytes,
@@ -659,9 +659,9 @@ static int waves_codec_init_process(struct comp_dev *dev)
 
 	comp_dbg(dev, "waves_codec_init_process()");
 
-	codec->cpd.produced = 0;
-	codec->cpd.consumed = 0;
-	codec->cpd.init_done = 1;
+	codec->mpd.produced = 0;
+	codec->mpd.consumed = 0;
+	codec->mpd.init_done = 1;
 
 	return 0;
 }
@@ -672,7 +672,7 @@ int waves_codec_process(struct comp_dev *dev)
 	struct module_data *codec = comp_get_codec(dev);
 	struct waves_codec_data *waves_codec = codec->private;
 
-	if (!codec->cpd.init_done)
+	if (!codec->mpd.init_done)
 		return waves_codec_init_process(dev);
 
 	comp_dbg(dev, "waves_codec_process() start");
@@ -684,12 +684,12 @@ int waves_codec_process(struct comp_dev *dev)
 
 	/* here input buffer should always be filled up as requested
 	 * since no one updates it`s size except code in prepare.
-	 * on the other hand there is available/produced counters in cpd, check them anyways
+	 * on the other hand there is available/produced counters in mpd, check them anyways
 	 */
-	if (codec->cpd.avail != waves_codec->buffer_bytes) {
+	if (codec->mpd.avail != waves_codec->buffer_bytes) {
 		comp_warn(dev, "waves_codec_process() input buffer %d is not full %d",
-			  codec->cpd.avail, waves_codec->buffer_bytes);
-		num_input_samples = codec->cpd.avail /
+			  codec->mpd.avail, waves_codec->buffer_bytes);
+		num_input_samples = codec->mpd.avail /
 			(waves_codec->sample_size_in_bytes * waves_codec->i_format.numChannels);
 	}
 
@@ -708,9 +708,9 @@ int waves_codec_process(struct comp_dev *dev)
 		comp_err(dev, "waves_codec_process() MaxxEffect_Process returned %d", status);
 		ret = -EINVAL;
 	} else {
-		codec->cpd.produced = waves_codec->o_stream.numAvailableSamples *
+		codec->mpd.produced = waves_codec->o_stream.numAvailableSamples *
 			waves_codec->o_format.numChannels * waves_codec->sample_size_in_bytes;
-		codec->cpd.consumed = codec->cpd.produced;
+		codec->mpd.consumed = codec->mpd.produced;
 		ret = 0;
 	}
 

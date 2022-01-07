@@ -26,20 +26,20 @@ static int passthrough_codec_prepare(struct comp_dev *dev)
 
 	comp_info(dev, "passthrough_codec_prepare()");
 
-	codec->cpd.in_buff = rballoc(0, SOF_MEM_CAPS_RAM, mod->period_bytes);
-	if (!codec->cpd.in_buff) {
+	codec->mpd.in_buff = rballoc(0, SOF_MEM_CAPS_RAM, mod->period_bytes);
+	if (!codec->mpd.in_buff) {
 		comp_err(dev, "passthrough_codec_prepare(): Failed to alloc in_buff");
 		return -ENOMEM;
 	}
-	codec->cpd.in_buff_size = mod->period_bytes;
+	codec->mpd.in_buff_size = mod->period_bytes;
 
-	codec->cpd.out_buff = rballoc(0, SOF_MEM_CAPS_RAM, mod->period_bytes);
-	if (!codec->cpd.out_buff) {
+	codec->mpd.out_buff = rballoc(0, SOF_MEM_CAPS_RAM, mod->period_bytes);
+	if (!codec->mpd.out_buff) {
 		comp_err(dev, "passthrough_codec_prepare(): Failed to alloc out_buff");
-		rfree(codec->cpd.in_buff);
+		rfree(codec->mpd.in_buff);
 		return -ENOMEM;
 	}
-	codec->cpd.out_buff_size = mod->period_bytes;
+	codec->mpd.out_buff_size = mod->period_bytes;
 
 	return 0;
 }
@@ -50,9 +50,9 @@ static int passthrough_codec_init_process(struct comp_dev *dev)
 
 	comp_dbg(dev, "passthrough_codec_init_process()");
 
-	codec->cpd.produced = 0;
-	codec->cpd.consumed = 0;
-	codec->cpd.init_done = 1;
+	codec->mpd.produced = 0;
+	codec->mpd.consumed = 0;
+	codec->mpd.init_done = 1;
 
 	return 0;
 }
@@ -62,15 +62,15 @@ static int passthrough_codec_process(struct comp_dev *dev)
 	struct module_data *codec = comp_get_codec(dev);
 	struct processing_module *mod = comp_get_drvdata(dev);
 
-	if (!codec->cpd.init_done)
+	if (!codec->mpd.init_done)
 		return passthrough_codec_init_process(dev);
 
 	comp_dbg(dev, "passthrough_codec_process()");
 
-	memcpy_s(codec->cpd.out_buff, codec->cpd.out_buff_size,
-		 codec->cpd.in_buff, codec->cpd.in_buff_size);
-	codec->cpd.produced = mod->period_bytes;
-	codec->cpd.consumed = mod->period_bytes;
+	memcpy_s(codec->mpd.out_buff, codec->mpd.out_buff_size,
+		 codec->mpd.in_buff, codec->mpd.in_buff_size);
+	codec->mpd.produced = mod->period_bytes;
+	codec->mpd.consumed = mod->period_bytes;
 
 	return 0;
 }
@@ -97,8 +97,8 @@ static int passthrough_codec_free(struct comp_dev *dev)
 
 	comp_info(dev, "passthrough_codec_free()");
 
-	rfree(codec->cpd.in_buff);
-	rfree(codec->cpd.out_buff);
+	rfree(codec->mpd.in_buff);
+	rfree(codec->mpd.out_buff);
 
 	return 0;
 }

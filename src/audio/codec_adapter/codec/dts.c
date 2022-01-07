@@ -177,10 +177,10 @@ int dts_codec_prepare(struct comp_dev *dev)
 	dts_result = dtsSofInterfacePrepare(
 		(DtsSofInterfaceInst *)codec->private,
 		&buffer_configuration,
-		&codec->cpd.in_buff,
-		&codec->cpd.in_buff_size,
-		&codec->cpd.out_buff,
-		&codec->cpd.out_buff_size);
+		&codec->mpd.in_buff,
+		&codec->mpd.in_buff_size,
+		&codec->mpd.out_buff,
+		&codec->mpd.out_buff_size);
 	ret = dts_effect_convert_sof_interface_result(dev, dts_result);
 
 	if (ret)
@@ -202,9 +202,9 @@ static int dts_codec_init_process(struct comp_dev *dev)
 	dts_result = dtsSofInterfaceInitProcess(codec->private);
 	ret = dts_effect_convert_sof_interface_result(dev, dts_result);
 
-	codec->cpd.produced = 0;
-	codec->cpd.consumed = 0;
-	codec->cpd.init_done = 1;
+	codec->mpd.produced = 0;
+	codec->mpd.consumed = 0;
+	codec->mpd.init_done = 1;
 
 	if (ret)
 		comp_err(dev, "dts_codec_init_process() failed %d %d", ret, dts_result);
@@ -221,7 +221,7 @@ int dts_codec_process(struct comp_dev *dev)
 	DtsSofInterfaceResult dts_result;
 	unsigned int bytes_processed = 0;
 
-	if (!codec->cpd.init_done)
+	if (!codec->mpd.init_done)
 		return dts_codec_init_process(dev);
 
 	comp_dbg(dev, "dts_codec_process() start");
@@ -229,8 +229,8 @@ int dts_codec_process(struct comp_dev *dev)
 	dts_result = dtsSofInterfaceProcess(codec->private, &bytes_processed);
 	ret = dts_effect_convert_sof_interface_result(dev, dts_result);
 
-	codec->cpd.consumed = !ret ? bytes_processed : 0;
-	codec->cpd.produced = !ret ? bytes_processed : 0;
+	codec->mpd.consumed = !ret ? bytes_processed : 0;
+	codec->mpd.produced = !ret ? bytes_processed : 0;
 
 	if (ret)
 		comp_err(dev, "dts_codec_process() failed %d %d", ret, dts_result);
