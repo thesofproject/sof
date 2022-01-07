@@ -535,20 +535,6 @@ static int memif_set_config(struct dma_chan_data *channel, struct dma_sg_config 
 	return 0;
 }
 
-/* restore DMA context after leaving D3 */
-static int memif_pm_context_restore(struct dma *dma)
-{
-	/* External to the DSP, won't lose power */
-	return 0;
-}
-
-/* store DMA context after leaving D3 */
-static int memif_pm_context_store(struct dma *dma)
-{
-	/* External to the DSP, won't lose power */
-	return 0;
-}
-
 static int memif_probe(struct dma *dma)
 {
 	int channel;
@@ -719,8 +705,6 @@ const struct dma_ops memif_ops = {
 	.copy = memif_copy,
 	.status = memif_status,
 	.set_config = memif_set_config,
-	.pm_context_restore = memif_pm_context_restore,
-	.pm_context_store = memif_pm_context_store,
 	.probe = memif_probe,
 	.remove = memif_remove,
 	.interrupt = memif_interrupt,

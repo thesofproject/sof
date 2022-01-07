@@ -368,20 +368,6 @@ out:
 	return ret;
 }
 
-/* restore DMA context after leaving D3 */
-static int dummy_dma_pm_context_restore(struct dma *dma)
-{
-	/* Virtual device, no hardware registers */
-	return 0;
-}
-
-/* store DMA context after leaving D3 */
-static int dummy_dma_pm_context_store(struct dma *dma)
-{
-	/* Virtual device, no hardware registers */
-	return 0;
-}
-
 /**
  * \brief Perform the DMA copy itself
  * \param[in] channel The channel to do the copying
@@ -555,8 +541,6 @@ const struct dma_ops dummy_dma_ops = {
 	.copy		= dummy_dma_copy,
 	.status		= dummy_dma_status,
 	.set_config	= dummy_dma_set_config,
-	.pm_context_restore		= dummy_dma_pm_context_restore,
-	.pm_context_store		= dummy_dma_pm_context_store,
 	.probe		= dummy_dma_probe,
 	.remove		= dummy_dma_remove,
 	.get_data_size	= dummy_dma_get_data_size,

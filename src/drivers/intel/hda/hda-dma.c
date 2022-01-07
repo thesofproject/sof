@@ -861,18 +861,6 @@ out:
 	return ret;
 }
 
-/* restore DMA conext after leaving D3 */
-static int hda_dma_pm_context_restore(struct dma *dma)
-{
-	return 0;
-}
-
-/* store DMA conext after leaving D3 */
-static int hda_dma_pm_context_store(struct dma *dma)
-{
-	return 0;
-}
-
 static int hda_dma_probe(struct dma *dma)
 {
 	struct hda_chan_data *hda_chan;
@@ -1077,8 +1065,6 @@ const struct dma_ops hda_host_dma_ops = {
 	.copy			= hda_dma_host_copy,
 	.status			= hda_dma_status,
 	.set_config		= hda_dma_set_config,
-	.pm_context_restore	= hda_dma_pm_context_restore,
-	.pm_context_store	= hda_dma_pm_context_store,
 	.probe			= hda_dma_probe,
 	.remove			= hda_dma_remove,
 	.get_data_size		= hda_dma_data_size,
@@ -1097,8 +1083,6 @@ const struct dma_ops hda_link_dma_ops = {
 	.release		= hda_dma_release,
 	.status			= hda_dma_status,
 	.set_config		= hda_dma_set_config,
-	.pm_context_restore	= hda_dma_pm_context_restore,
-	.pm_context_store	= hda_dma_pm_context_store,
 	.probe			= hda_dma_probe,
 	.remove			= hda_dma_remove,
 	.get_data_size		= hda_dma_data_size,
