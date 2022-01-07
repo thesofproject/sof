@@ -502,14 +502,6 @@ static int dmic_trigger(struct dai *dai, int cmd, int direction)
 		dmic->state = COMP_STATE_PAUSED;
 		dmic_stop(dai, true);
 		break;
-	case COMP_TRIGGER_RESUME:
-		dmic_context_restore(dai);
-		break;
-	case COMP_TRIGGER_SUSPEND:
-		dmic_context_store(dai);
-		break;
-	default:
-		break;
 	}
 
 
