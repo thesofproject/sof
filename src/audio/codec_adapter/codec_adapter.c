@@ -108,7 +108,7 @@ int validate_setup_config(struct ca_config *cfg)
  * The setup config comprises of two parts - one contains essential data
  * for the initialization of codec_adapter and follows struct ca_config.
  * Second contains codec specific data needed to setup the codec itself.
- * The latter is send in a TLV format organized by struct codec_param.
+ * The latter is send in a TLV format organized by struct module_param.
  *
  * \return integer representing either:
  *	0 -> success

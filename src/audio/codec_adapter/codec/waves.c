@@ -512,7 +512,7 @@ static int waves_effect_config(struct comp_dev *dev, enum module_cfg_type type)
 {
 	struct module_config *cfg;
 	struct module_data *codec = comp_get_codec(dev);
-	struct codec_param *param;
+	struct module_param *param;
 	uint32_t index;
 	uint32_t param_number = 0;
 	int ret = 0;
@@ -536,13 +536,13 @@ static int waves_effect_config(struct comp_dev *dev, enum module_cfg_type type)
 		return -EINVAL;
 	}
 
-	/* incoming data in cfg->data is arranged according to struct codec_param
-	 * there migh be more than one struct codec_param inside cfg->data, glued back to back
+	/* incoming data in cfg->data is arranged according to struct module_param
+	 * there migh be more than one struct module_param inside cfg->data, glued back to back
 	 */
 	for (index = 0; index < cfg->size && (!ret); param_number++) {
 		uint32_t param_data_size;
 
-		param = (struct codec_param *)((char *)cfg->data + index);
+		param = (struct module_param *)((char *)cfg->data + index);
 		param_data_size = param->size - sizeof(param->size) - sizeof(param->id);
 
 		comp_info(dev, "waves_codec_configure() param num %d id %d size %d",

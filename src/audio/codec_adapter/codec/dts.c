@@ -245,7 +245,7 @@ int dts_codec_apply_config(struct comp_dev *dev)
 	int ret = 0;
 	struct module_data *codec = comp_get_codec(dev);
 	struct module_config *config;
-	struct codec_param *param;
+	struct module_param *param;
 	uint32_t config_header_size;
 	uint32_t config_data_size;
 	uint32_t param_header_size;
@@ -278,10 +278,10 @@ int dts_codec_apply_config(struct comp_dev *dev)
 		return -EINVAL;
 	}
 
-	/* Allow for multiple codec_params to be packed into the data pointed to by config
+	/* Allow for multiple module_params to be packed into the data pointed to by config
 	 */
 	for (i = 0; i < config_data_size; param_number++) {
-		param = (struct codec_param *)((char *)config->data + i);
+		param = (struct module_param *)((char *)config->data + i);
 		param_header_size = sizeof(param->id) + sizeof(param->size);
 
 		/* If param->size is less than param_header_size, then this param is not valid */
@@ -308,7 +308,7 @@ int dts_codec_apply_config(struct comp_dev *dev)
 			}
 		}
 
-		/* Advance to the next codec_param */
+		/* Advance to the next module_param */
 		i += param->size;
 	}
 

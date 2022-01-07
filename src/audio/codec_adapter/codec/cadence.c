@@ -178,7 +178,7 @@ static int apply_config(struct comp_dev *dev, enum module_cfg_type type)
 	int size;
 	struct module_config *cfg;
 	void *data;
-	struct codec_param *param;
+	struct module_param *param;
 	struct module_data *codec = comp_get_codec(dev);
 	struct cadence_codec_data *cd = codec->private;
 
