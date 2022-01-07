@@ -85,9 +85,9 @@ int codec_init(struct comp_dev *dev, struct module_interface *interface)
 
 	comp_info(dev, "codec_init() start");
 
-	if (mod->priv.state == CODEC_INITIALIZED)
+	if (mod->priv.state == MODULE_INITIALIZED)
 		return 0;
-	if (mod->priv.state > CODEC_INITIALIZED)
+	if (mod->priv.state > MODULE_INITIALIZED)
 		return -EPERM;
 
 	md->id = codec_id;
@@ -119,7 +119,7 @@ int codec_init(struct comp_dev *dev, struct module_interface *interface)
 	}
 
 	comp_info(dev, "codec_init() done");
-	md->state = CODEC_INITIALIZED;
+	md->state = MODULE_INITIALIZED;
 out:
 	return ret;
 }
@@ -204,9 +204,9 @@ int codec_prepare(struct comp_dev *dev)
 
 	comp_dbg(dev, "codec_prepare() start");
 
-	if (mod->priv.state == CODEC_IDLE)
+	if (mod->priv.state == MODULE_IDLE)
 		return 0;
-	if (mod->priv.state < CODEC_INITIALIZED)
+	if (mod->priv.state < MODULE_INITIALIZED)
 		return -EPERM;
 
 	ret = md->ops->prepare(dev);
@@ -227,7 +227,7 @@ int codec_prepare(struct comp_dev *dev)
 	md->r_cfg.avail = false;
 	md->r_cfg.data = NULL;
 
-	md->state = CODEC_IDLE;
+	md->state = MODULE_IDLE;
 	comp_dbg(dev, "codec_prepare() done");
 end:
 	return ret;
@@ -243,7 +243,7 @@ int codec_process(struct comp_dev *dev)
 
 	comp_dbg(dev, "codec_process() start");
 
-	if (mod->priv.state != CODEC_IDLE) {
+	if (mod->priv.state != MODULE_IDLE) {
 		comp_err(dev, "codec_process(): wrong state of codec %x, state %d",
 			 mod->ca_config.codec_id, md->state);
 		return -EPERM;
@@ -258,7 +258,7 @@ int codec_process(struct comp_dev *dev)
 
 	comp_dbg(dev, "codec_process() done");
 out:
-	md->state = CODEC_IDLE;
+	md->state = MODULE_IDLE;
 	return ret;
 }
 
@@ -308,7 +308,7 @@ int codec_reset(struct comp_dev *dev)
 	/* Codec reset itself to the initial condition after prepare()
 	 * so let's change its state to reflect that.
 	 */
-	md->state = CODEC_IDLE;
+	md->state = MODULE_IDLE;
 
 	return 0;
 }
@@ -352,7 +352,7 @@ int codec_free(struct comp_dev *dev)
 	if (md->runtime_params)
 		rfree(md->runtime_params);
 
-	md->state = CODEC_DISABLED;
+	md->state = MODULE_DISABLED;
 
 	return ret;
 }
