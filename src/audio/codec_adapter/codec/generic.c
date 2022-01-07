@@ -127,7 +127,7 @@ out:
 void *codec_allocate_memory(struct comp_dev *dev, uint32_t size,
 			    uint32_t alignment)
 {
-	struct codec_memory *container;
+	struct module_memory *container;
 	void *ptr;
 	struct processing_module *mod = comp_get_drvdata(dev);
 
@@ -138,7 +138,7 @@ void *codec_allocate_memory(struct comp_dev *dev, uint32_t size,
 
 	/* Allocate memory container */
 	container = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
-			    sizeof(struct codec_memory));
+			    sizeof(struct module_memory));
 	if (!container) {
 		comp_err(dev, "codec_allocate_memory: failed to allocate memory container.");
 		return NULL;
@@ -165,7 +165,7 @@ void *codec_allocate_memory(struct comp_dev *dev, uint32_t size,
 int codec_free_memory(struct comp_dev *dev, void *ptr)
 {
 	struct processing_module *mod = comp_get_drvdata(dev);
-	struct codec_memory *mem;
+	struct module_memory *mem;
 	struct list_item *mem_list;
 	struct list_item *_mem_list;
 
@@ -174,7 +174,7 @@ int codec_free_memory(struct comp_dev *dev, void *ptr)
 
 	/* Find which container keeps this memory */
 	list_for_item_safe(mem_list, _mem_list, &mod->priv.memory.mem_list) {
-		mem = container_of(mem_list, struct codec_memory, mem_list);
+		mem = container_of(mem_list, struct module_memory, mem_list);
 		if (mem->ptr == ptr) {
 			rfree(mem->ptr);
 			list_item_del(&mem->mem_list);
@@ -316,13 +316,13 @@ int codec_reset(struct comp_dev *dev)
 void codec_free_all_memory(struct comp_dev *dev)
 {
 	struct processing_module *mod = comp_get_drvdata(dev);
-	struct codec_memory *mem;
+	struct module_memory *mem;
 	struct list_item *mem_list;
 	struct list_item *_mem_list;
 
 	/* Find which container keeps this memory */
 	list_for_item_safe(mem_list, _mem_list, &mod->priv.memory.mem_list) {
-		mem = container_of(mem_list, struct codec_memory, mem_list);
+		mem = container_of(mem_list, struct module_memory, mem_list);
 		rfree(mem->ptr);
 		list_item_del(&mem->mem_list);
 		rfree(mem);
