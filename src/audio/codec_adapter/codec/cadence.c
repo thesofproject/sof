@@ -111,7 +111,7 @@ int cadence_codec_init(struct comp_dev *dev)
 	}
 
 	codec->private = cd;
-	codec->cpd.init_done = 0;
+	codec->mpd.init_done = 0;
 	cd->self = NULL;
 	cd->mem_tabs = NULL;
 	cd->api = NULL;
@@ -300,12 +300,12 @@ static int init_memory_tables(struct comp_dev *dev)
 			persistent = ptr;
 			break;
 		case XA_MEMTYPE_INPUT:
-			codec->cpd.in_buff = ptr;
-			codec->cpd.in_buff_size = mem_size;
+			codec->mpd.in_buff = ptr;
+			codec->mpd.in_buff_size = mem_size;
 			break;
 		case XA_MEMTYPE_OUTPUT:
-			codec->cpd.out_buff = ptr;
-			codec->cpd.out_buff_size = mem_size;
+			codec->mpd.out_buff = ptr;
+			codec->mpd.out_buff_size = mem_size;
 			break;
 		default:
 			comp_err(dev, "init_memory_tables() error %x: unrecognized memory type!",
@@ -324,10 +324,10 @@ err:
 		codec_free_memory(dev, scratch);
 	if (persistent)
 		codec_free_memory(dev, persistent);
-	if (codec->cpd.in_buff)
-		codec_free_memory(dev, codec->cpd.in_buff);
-	if (codec->cpd.out_buff)
-		codec_free_memory(dev, codec->cpd.out_buff);
+	if (codec->mpd.in_buff)
+		codec_free_memory(dev, codec->mpd.in_buff);
+	if (codec->mpd.out_buff)
+		codec_free_memory(dev, codec->mpd.out_buff);
 	return ret;
 }
 
@@ -359,7 +359,7 @@ static int cadence_codec_init_process(struct comp_dev *dev)
 	struct module_data *codec = comp_get_codec(dev);
 	struct cadence_codec_data *cd = codec->private;
 
-	API_CALL(cd, XA_API_CMD_SET_INPUT_BYTES, 0, &codec->cpd.avail, ret);
+	API_CALL(cd, XA_API_CMD_SET_INPUT_BYTES, 0, &codec->mpd.avail, ret);
 	if (ret != LIB_NO_ERROR) {
 		comp_err(dev, "cadence_codec_init_process() error %x: failed to set size of input data",
 			 ret);
@@ -374,14 +374,14 @@ static int cadence_codec_init_process(struct comp_dev *dev)
 	}
 
 	API_CALL(cd, XA_API_CMD_INIT, XA_CMD_TYPE_INIT_DONE_QUERY,
-		 &codec->cpd.init_done, ret);
+		 &codec->mpd.init_done, ret);
 	if (ret != LIB_NO_ERROR) {
 		comp_err(dev, "cadence_codec_init_process() error %x: failed to get lib init status",
 			 ret);
 		return ret;
 	}
 
-	API_CALL(cd, XA_API_CMD_GET_CURIDX_INPUT_BUF, 0, &codec->cpd.consumed, ret);
+	API_CALL(cd, XA_API_CMD_GET_CURIDX_INPUT_BUF, 0, &codec->mpd.consumed, ret);
 	if (ret != LIB_NO_ERROR) {
 		comp_err(dev, "cadence_codec_init_process() error %x: could not get consumed bytes",
 			 ret);
@@ -472,7 +472,7 @@ int cadence_codec_prepare(struct comp_dev *dev)
 	 * in codec_adapter_copy().
 	 */
 	API_CALL(cd, XA_API_CMD_INIT, XA_CMD_TYPE_INIT_DONE_QUERY,
-		 &codec->cpd.init_done, ret);
+		 &codec->mpd.init_done, ret);
 	if (ret != LIB_NO_ERROR) {
 		comp_err(dev, "cadence_codec_init_process() error %x: failed to get lib init status",
 			 ret);
@@ -496,7 +496,7 @@ int cadence_codec_process(struct comp_dev *dev)
 	int ret;
 
 	/* do not proceed with processing if not enough free left in the local buffer */
-	if (codec->cpd.init_done) {
+	if (codec->mpd.init_done) {
 		int output_bytes = cadence_codec_get_samples(dev) *
 				   mod->stream_params.sample_container_bytes *
 				   mod->stream_params.channels;
@@ -509,7 +509,7 @@ int cadence_codec_process(struct comp_dev *dev)
 
 	comp_dbg(dev, "cadence_codec_process() start");
 
-	API_CALL(cd, XA_API_CMD_SET_INPUT_BYTES, 0, &codec->cpd.avail, ret);
+	API_CALL(cd, XA_API_CMD_SET_INPUT_BYTES, 0, &codec->mpd.avail, ret);
 	if (ret != LIB_NO_ERROR) {
 		comp_err(dev, "cadence_codec_process() error %x: failed to set size of input data",
 			 ret);
@@ -523,14 +523,14 @@ int cadence_codec_process(struct comp_dev *dev)
 		goto err;
 	}
 
-	API_CALL(cd, XA_API_CMD_GET_OUTPUT_BYTES, 0, &codec->cpd.produced, ret);
+	API_CALL(cd, XA_API_CMD_GET_OUTPUT_BYTES, 0, &codec->mpd.produced, ret);
 	if (ret != LIB_NO_ERROR) {
 		comp_err(dev, "cadence_codec_process() error %x: could not get produced bytes",
 			 ret);
 		goto err;
 	}
 
-	API_CALL(cd, XA_API_CMD_GET_CURIDX_INPUT_BUF, 0, &codec->cpd.consumed, ret);
+	API_CALL(cd, XA_API_CMD_GET_CURIDX_INPUT_BUF, 0, &codec->mpd.consumed, ret);
 	if (ret != LIB_NO_ERROR) {
 		comp_err(dev, "cadence_codec_process() error %x: could not get consumed bytes",
 			 ret);

@@ -179,18 +179,18 @@ struct module_memory {
 };
 
 /**
- * \struct codec_processing_data
- * \brief Processing data shared between particular codec & codec_adapter
+ * \struct module_processing_data
+ * \brief Processing data shared between particular module & codec_adapter
  */
-struct codec_processing_data {
-	uint32_t in_buff_size; /**< Specifies the size of codec input buffer. */
-	uint32_t out_buff_size; /**< Specifies the size of codec output buffer.*/
-	uint32_t avail; /**< Specifies how much data is available for codec to process.*/
-	uint32_t produced; /**< Specifies how much data the codec produced in its last task.*/
-	uint32_t consumed; /**< Specified how much data the codec consumed in its last task */
-	uint32_t init_done; /**< Specifies if the codec initialization is finished */
-	void *in_buff; /**< A pointer to codec input buffer. */
-	void *out_buff; /**< A pointer to codec output buffer. */
+struct module_processing_data {
+	uint32_t in_buff_size; /**< Specifies the size of module input buffer. */
+	uint32_t out_buff_size; /**< Specifies the size of module output buffer.*/
+	uint32_t avail; /**< Specifies how much data is available for module to process.*/
+	uint32_t produced; /**< Specifies how much data the module produced in its last task.*/
+	uint32_t consumed; /**< Specified how much data the module consumed in its last task */
+	uint32_t init_done; /**< Specifies if the module initialization is finished */
+	void *in_buff; /**< A pointer to module input buffer. */
+	void *out_buff; /**< A pointer to module output buffer. */
 };
 
 /** private, runtime module data */
@@ -203,7 +203,7 @@ struct module_data {
 	struct module_config r_cfg; /**< runtime config */
 	struct module_interface *ops; /**< module specific operations */
 	struct module_memory memory; /**< memory allocated by module */
-	struct codec_processing_data cpd; /**< shared data comp <-> codec */
+	struct module_processing_data mpd; /**< shared data comp <-> module */
 };
 
 /* codec_adapter private, runtime data */
