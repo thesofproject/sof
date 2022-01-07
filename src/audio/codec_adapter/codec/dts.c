@@ -67,7 +67,7 @@ static int dts_effect_populate_buffer_configuration(struct comp_dev *dev,
 
 	comp_dbg(dev, "dts_effect_populate_buffer_configuration() start");
 
-	if (cd->ca_source == NULL)
+	if (!cd->ca_source)
 		return -EINVAL;
 
 	stream = &cd->ca_source->stream;
