@@ -767,7 +767,7 @@ int waves_codec_free(struct comp_dev *dev)
 	return 0;
 }
 
-static struct codec_interface waves_interface = {
+static struct module_interface waves_interface = {
 	.init  = waves_codec_init,
 	.prepare = waves_codec_prepare,
 	.process = waves_codec_process,

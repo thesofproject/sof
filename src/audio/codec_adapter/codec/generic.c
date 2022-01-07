@@ -76,7 +76,7 @@ err:
 	return ret;
 }
 
-int codec_init(struct comp_dev *dev, struct codec_interface *interface)
+int codec_init(struct comp_dev *dev, struct module_interface *interface)
 {
 	int ret;
 	struct comp_data *cd = comp_get_drvdata(dev);

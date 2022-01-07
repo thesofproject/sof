@@ -355,7 +355,7 @@ int dts_codec_free(struct comp_dev *dev)
 	return ret;
 }
 
-static struct codec_interface dts_interface = {
+static struct module_interface dts_interface = {
 	.init  = dts_codec_init,
 	.prepare = dts_codec_prepare,
 	.process = dts_codec_process,

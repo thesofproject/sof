@@ -67,47 +67,47 @@ DECLARE_MODULE(sys_comp_codec_##adapter_init)
 /* Codec generic data types						     */
 /*****************************************************************************/
 /**
- * \struct codec_interface
- * \brief Codec specific interfaces
+ * \struct module_interface
+ * \brief 3rd party processing module interface
  */
-struct codec_interface {
+struct module_interface {
 	/**
-	 * The unique ID for a codec, used for initialization as well as
+	 * The unique ID for a module, used for initialization as well as
 	 * parameters loading.
 	 */
 	uint32_t id;
 	/**
-	 * Codec specific initialization procedure, called as part of
+	 * Module specific initialization procedure, called as part of
 	 * codec_adapter component creation in .new()
 	 */
 	int (*init)(struct comp_dev *dev);
 	/**
-	 * Codec specific prepare procedure, called as part of codec_adapter
+	 * Module specific prepare procedure, called as part of codec_adapter
 	 * component preparation in .prepare()
 	 */
 	int (*prepare)(struct comp_dev *dev);
 	/**
-	 * Codec specific processing procedure, called as part of codec_adapter
+	 * Module specific processing procedure, called as part of codec_adapter
 	 * component copy in .copy(). This procedure is responsible to consume
 	 * samples provided by the codec_adapter and produce/output the processed
 	 * ones back to codec_adapter.
 	 */
 	int (*process)(struct comp_dev *dev);
 	/**
-	 * Codec specific apply config procedure, called by codec_adapter every time
+	 * Module specific apply config procedure, called by codec_adapter every time
 	 * a new RUNTIME configuration has been sent if the adapter has been
 	 * prepared. This will not be called for SETUP cfg.
 	 */
 	int (*apply_config)(struct comp_dev *dev);
 	/**
-	 * Codec specific reset procedure, called as part of codec_adapter component
+	 * Module specific reset procedure, called as part of codec_adapter component
 	 * reset in .reset(). This should reset all parameters to their initial stage
 	 * but leave allocated memory intact.
 	 */
 	int (*reset)(struct comp_dev *dev);
 	/**
-	 * Codec specific free procedure, called as part of codec_adapter component
-	 * free in .free(). This should free all memory allocated by codec.
+	 * Module specific free procedure, called as part of codec_adapter component
+	 * free in .free(). This should free all memory allocated by module.
 	 */
 	int (*free)(struct comp_dev *dev);
 };
@@ -201,7 +201,7 @@ struct codec_data {
 	void *runtime_params;
 	struct codec_config s_cfg; /**< setup config */
 	struct codec_config r_cfg; /**< runtime config */
-	struct codec_interface *ops; /**< codec specific operations */
+	struct module_interface *ops; /**< module specific operations */
 	struct codec_memory memory; /**< memory allocated by codec */
 	struct codec_processing_data cpd; /**< shared data comp <-> codec */
 };
@@ -223,7 +223,7 @@ struct comp_data {
 /*****************************************************************************/
 int codec_load_config(struct comp_dev *dev, void *cfg, size_t size,
 		      enum codec_cfg_type type);
-int codec_init(struct comp_dev *dev, struct codec_interface *interface);
+int codec_init(struct comp_dev *dev, struct module_interface *interface);
 void *codec_allocate_memory(struct comp_dev *dev, uint32_t size,
 			    uint32_t alignment);
 int codec_free_memory(struct comp_dev *dev, void *ptr);
@@ -236,7 +236,7 @@ int codec_free(struct comp_dev *dev);
 
 struct comp_dev *codec_adapter_new(const struct comp_driver *drv,
 				   struct comp_ipc_config *config,
-				   struct codec_interface *interface,
+				   struct module_interface *interface,
 				   void *spec);
 int codec_adapter_prepare(struct comp_dev *dev);
 int codec_adapter_params(struct comp_dev *dev, struct sof_ipc_stream_params *params);
