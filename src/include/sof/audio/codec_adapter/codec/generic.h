@@ -64,7 +64,7 @@ UT_STATIC void sys_comp_codec_##adapter_init(void) \
 DECLARE_MODULE(sys_comp_codec_##adapter_init)
 
 /*****************************************************************************/
-/* Codec generic data types						     */
+/* Module generic data types						     */
 /*****************************************************************************/
 /**
  * \struct module_interface
@@ -142,14 +142,14 @@ struct ca_config {
 };
 
 /**
- * \struct codec_param
- * \brief Codec TLV parameters container - used for both config types.
+ * \struct module_param
+ * \brief Module TLV parameters container - used for both config types.
  * For example if one want to set the sample_rate to 16 [kHz] and this
  * parameter was assigned to id 0x01, its max size is four bytes then the
  * configuration filed should look like this (note little-endian format):
  * 0x01 0x00 0x00 0x00, 0x0C 0x00 0x00 0x00, 0x10 0x00 0x00 0x00.
  */
-struct codec_param {
+struct module_param {
 	/**
 	 * Specifies the unique id of a parameter. For example the parameter
 	 * sample_rate may have an id of 0x01.
