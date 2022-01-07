@@ -94,20 +94,6 @@ static int alh_get_hw_params(struct dai *dai,
 	return 0;
 }
 
-static int alh_context_store(struct dai *dai)
-{
-	dai_info(dai, "alh_context_store()");
-
-	return 0;
-}
-
-static int alh_context_restore(struct dai *dai)
-{
-	dai_info(dai, "alh_context_restore()");
-
-	return 0;
-}
-
 static int alh_probe(struct dai *dai)
 {
 	struct alh_pdata *alh;
@@ -166,8 +152,6 @@ const struct dai_driver alh_driver = {
 	.ops = {
 		.trigger		= alh_trigger,
 		.set_config		= alh_set_config,
-		.pm_context_store	= alh_context_store,
-		.pm_context_restore	= alh_context_restore,
 		.get_hw_params		= alh_get_hw_params,
 		.get_handshake		= alh_get_handshake,
 		.get_fifo		= alh_get_fifo,

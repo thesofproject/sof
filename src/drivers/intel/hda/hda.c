@@ -91,11 +91,6 @@ static int hda_remove(struct dai *dai)
 	return 0;
 }
 
-static int hda_dummy(struct dai *dai)
-{
-	return 0;
-}
-
 static int hda_get_handshake(struct dai *dai, int direction, int stream_id)
 {
 	return 0;
@@ -115,8 +110,6 @@ const struct dai_driver hda_driver = {
 	.ops = {
 		.trigger		= hda_trigger,
 		.set_config		= hda_set_config,
-		.pm_context_store	= hda_dummy,
-		.pm_context_restore	= hda_dummy,
 		.get_hw_params		= hda_get_hw_params,
 		.get_handshake		= hda_get_handshake,
 		.get_fifo		= hda_get_fifo,
