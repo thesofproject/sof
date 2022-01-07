@@ -103,7 +103,7 @@ static int passthrough_codec_free(struct comp_dev *dev)
 	return 0;
 }
 
-static struct codec_interface passthrough_interface = {
+static struct module_interface passthrough_interface = {
 	.init  = passthrough_codec_init,
 	.prepare = passthrough_codec_prepare,
 	.process = passthrough_codec_process,

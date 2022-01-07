@@ -35,7 +35,7 @@ int validate_setup_config(struct ca_config *cfg);
  */
 struct comp_dev *codec_adapter_new(const struct comp_driver *drv,
 				   struct comp_ipc_config *config,
-				   struct codec_interface *interface,
+				   struct module_interface *interface,
 				   void *spec)
 {
 	int ret;

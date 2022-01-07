@@ -579,7 +579,7 @@ int cadence_codec_free(struct comp_dev *dev)
 	return 0;
 }
 
-static struct codec_interface cadence_interface = {
+static struct module_interface cadence_interface = {
 	.init  = cadence_codec_init,
 	.prepare = cadence_codec_prepare,
 	.process = cadence_codec_process,
