@@ -170,12 +170,12 @@ struct module_config {
 };
 
 /**
- * \struct codec_memory
- * \brief codec memory block - used for every memory allocated by codec
+ * \struct module_memory
+ * \brief module memory block - used for every memory allocated by module
  */
-struct codec_memory {
+struct module_memory {
 	void *ptr; /**< A pointr to particular memory block */
-	struct list_item mem_list; /**< list of memory allocated by codec */
+	struct list_item mem_list; /**< list of memory allocated by module */
 };
 
 /**
@@ -202,7 +202,7 @@ struct module_data {
 	struct module_config s_cfg; /**< setup config */
 	struct module_config r_cfg; /**< runtime config */
 	struct module_interface *ops; /**< module specific operations */
-	struct codec_memory memory; /**< memory allocated by codec */
+	struct module_memory memory; /**< memory allocated by module */
 	struct codec_processing_data cpd; /**< shared data comp <-> codec */
 };
 
