@@ -43,33 +43,6 @@ static void ssp_empty_rx_fifo(struct dai *dai)
 	}
 }
 
-/* save SSP context prior to entering D3 */
-static int ssp_context_store(struct dai *dai)
-{
-	struct ssp_pdata *ssp = dai_get_drvdata(dai);
-
-	ssp->sscr0 = ssp_read(dai, SSCR0);
-	ssp->sscr1 = ssp_read(dai, SSCR1);
-
-	/* FIXME: need to store sscr2,3,4,5 */
-	ssp->psp = ssp_read(dai, SSPSP);
-
-	return 0;
-}
-
-/* restore SSP context after leaving D3 */
-static int ssp_context_restore(struct dai *dai)
-{
-	struct ssp_pdata *ssp = dai_get_drvdata(dai);
-
-	ssp_write(dai, SSCR0, ssp->sscr0);
-	ssp_write(dai, SSCR1, ssp->sscr1);
-	/* FIXME: need to restore sscr2,3,4,5 */
-	ssp_write(dai, SSPSP, ssp->psp);
-
-	return 0;
-}
-
 /* Digital Audio interface formatting */
 static int ssp_set_config(struct dai *dai, struct ipc_config_dai *common_config,
 			  void *spec_config)
@@ -636,8 +609,6 @@ const struct dai_driver ssp_driver = {
 	.ops = {
 		.trigger		= ssp_trigger,
 		.set_config		= ssp_set_config,
-		.pm_context_store	= ssp_context_store,
-		.pm_context_restore	= ssp_context_restore,
 		.get_hw_params		= ssp_get_hw_params,
 		.get_handshake		= ssp_get_handshake,
 		.get_fifo		= ssp_get_fifo,

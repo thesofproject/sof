@@ -77,8 +77,6 @@ struct dai_ops {
 	int (*set_config)(struct dai *dai, struct ipc_config_dai *config,
 			  void *spec_config);
 	int (*trigger)(struct dai *dai, int cmd, int direction);
-	int (*pm_context_restore)(struct dai *dai);
-	int (*pm_context_store)(struct dai *dai);
 	int (*get_hw_params)(struct dai *dai,
 			     struct sof_ipc_stream_params *params, int dir);
 	int (*hw_params)(struct dai *dai, struct sof_ipc_stream_params *params);
@@ -381,22 +379,6 @@ static inline int dai_set_config(struct dai *dai, struct ipc_config_dai *config,
 static inline int dai_trigger(struct dai *dai, int cmd, int direction)
 {
 	return dai->drv->ops.trigger(dai, cmd, direction);
-}
-
-/**
- * \brief Digital Audio interface PM context store
- */
-static inline int dai_pm_context_store(struct dai *dai)
-{
-	return dai->drv->ops.pm_context_store(dai);
-}
-
-/**
- * \brief Digital Audio interface PM context restore
- */
-static inline int dai_pm_context_restore(struct dai *dai)
-{
-	return dai->drv->ops.pm_context_restore(dai);
 }
 
 /**
