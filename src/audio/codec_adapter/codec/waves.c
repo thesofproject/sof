@@ -508,7 +508,7 @@ static int waves_effect_message(struct comp_dev *dev, void *data, uint32_t size)
 }
 
 /* apply codec config */
-static int waves_effect_config(struct comp_dev *dev, enum codec_cfg_type type)
+static int waves_effect_config(struct comp_dev *dev, enum module_cfg_type type)
 {
 	struct module_config *cfg;
 	struct module_data *codec = comp_get_codec(dev);
@@ -519,7 +519,7 @@ static int waves_effect_config(struct comp_dev *dev, enum codec_cfg_type type)
 
 	comp_info(dev, "waves_codec_configure() start type %d", type);
 
-	cfg = (type == CODEC_CFG_SETUP) ? &codec->s_cfg : &codec->r_cfg;
+	cfg = (type == MODULE_CFG_SETUP) ? &codec->s_cfg : &codec->r_cfg;
 
 	comp_info(dev, "waves_codec_configure() config %p, size %d, avail %d",
 		  cfg->data, cfg->size, cfg->avail);
@@ -591,7 +591,7 @@ static int waves_effect_setup_config(struct comp_dev *dev)
 		codec->s_cfg.avail = true;
 	}
 
-	ret = waves_effect_config(dev, CODEC_CFG_SETUP);
+	ret = waves_effect_config(dev, MODULE_CFG_SETUP);
 	codec->s_cfg.avail = false;
 
 	comp_dbg(dev, "waves_effect_setup_config() done");
@@ -726,7 +726,7 @@ int waves_codec_apply_config(struct comp_dev *dev)
 	int ret;
 
 	comp_dbg(dev, "waves_codec_apply_config() start");
-	ret =  waves_effect_config(dev, CODEC_CFG_RUNTIME);
+	ret =  waves_effect_config(dev, MODULE_CFG_RUNTIME);
 
 	if (ret)
 		comp_err(dev, "waves_codec_apply_config() failed %d", ret);

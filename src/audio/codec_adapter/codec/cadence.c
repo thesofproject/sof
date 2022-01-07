@@ -172,7 +172,7 @@ out:
 	return ret;
 }
 
-static int apply_config(struct comp_dev *dev, enum codec_cfg_type type)
+static int apply_config(struct comp_dev *dev, enum module_cfg_type type)
 {
 	int ret = 0;
 	int size;
@@ -184,7 +184,7 @@ static int apply_config(struct comp_dev *dev, enum codec_cfg_type type)
 
 	comp_dbg(dev, "apply_config() start");
 
-	cfg = (type == CODEC_CFG_SETUP) ? &codec->s_cfg :
+	cfg = (type == MODULE_CFG_SETUP) ? &codec->s_cfg :
 					  &codec->r_cfg;
 	data = cfg->data;
 	size = cfg->size;
@@ -407,7 +407,7 @@ int cadence_codec_prepare(struct comp_dev *dev)
 		comp_warn(dev, "cadence_codec_prepare(): no new setup configuration available, using the old one");
 		codec->s_cfg.avail = true;
 	}
-	ret = apply_config(dev, CODEC_CFG_SETUP);
+	ret = apply_config(dev, MODULE_CFG_SETUP);
 	if (ret) {
 		comp_err(dev, "cadence_codec_prepare() error %x: failed to applay setup config",
 			 ret);
@@ -420,7 +420,7 @@ int cadence_codec_prepare(struct comp_dev *dev)
 
 	/* Runtime config */
 	if (codec->r_cfg.avail) {
-		ret = apply_config(dev, CODEC_CFG_RUNTIME);
+		ret = apply_config(dev, MODULE_CFG_RUNTIME);
 		if (ret) {
 			comp_err(dev, "cadence_codec_prepare() error %x: failed to applay runtime config",
 				 ret);
@@ -546,7 +546,7 @@ err:
 
 int cadence_codec_apply_config(struct comp_dev *dev)
 {
-	return apply_config(dev, CODEC_CFG_RUNTIME);
+	return apply_config(dev, MODULE_CFG_RUNTIME);
 }
 
 int cadence_codec_reset(struct comp_dev *dev)

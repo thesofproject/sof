@@ -146,7 +146,7 @@ int load_setup_config(struct comp_dev *dev, void *cfg, uint32_t size)
 	lib_cfg_size = size - sizeof(struct ca_config);
 	if (lib_cfg_size) {
 		lib_cfg = (char *)cfg + sizeof(struct ca_config);
-		ret = codec_load_config(dev, lib_cfg, lib_cfg_size, CODEC_CFG_SETUP);
+		ret = codec_load_config(dev, lib_cfg, lib_cfg_size, MODULE_CFG_SETUP);
 		if (ret) {
 			comp_err(dev, "load_setup_config(): %d: failed to load setup config for codec id %x",
 				 ret, mod->ca_config.codec_id);
@@ -462,7 +462,7 @@ end:
 }
 
 static int codec_adapter_set_params(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata,
-				    enum codec_cfg_type type)
+				    enum module_cfg_type type)
 {
 	int ret;
 	char *dst, *src;
@@ -493,7 +493,7 @@ static int codec_adapter_set_params(struct comp_dev *dev, struct sof_ipc_ctrl_da
 				 size, MAX_BLOB_SIZE);
 			ret = -EINVAL;
 			goto end;
-		} else if (type != CODEC_CFG_SETUP && type != CODEC_CFG_RUNTIME) {
+		} else if (type != MODULE_CFG_SETUP && type != MODULE_CFG_RUNTIME) {
 			comp_err(dev, "codec_adapter_set_params() error: unknown config type");
 			ret = -EINVAL;
 			goto end;
@@ -526,7 +526,7 @@ static int codec_adapter_set_params(struct comp_dev *dev, struct sof_ipc_ctrl_da
 	 */
 	if (!cdata->elems_remaining) {
 		switch (type) {
-		case CODEC_CFG_SETUP:
+		case MODULE_CFG_SETUP:
 			ret = load_setup_config(dev, md->runtime_params, size);
 			if (ret) {
 				comp_err(dev, "codec_adapter_set_params(): error %d: load of setup config failed.",
@@ -536,9 +536,9 @@ static int codec_adapter_set_params(struct comp_dev *dev, struct sof_ipc_ctrl_da
 			}
 
 			break;
-		case CODEC_CFG_RUNTIME:
+		case MODULE_CFG_RUNTIME:
 			ret = codec_load_config(dev, md->runtime_params, size,
-						CODEC_CFG_RUNTIME);
+						MODULE_CFG_RUNTIME);
 			if (ret) {
 				comp_err(dev, "codec_adapter_set_params() error %d: load of runtime config failed.",
 					 ret);
@@ -587,8 +587,8 @@ static int ca_set_binary_data(struct comp_dev *dev,
 	comp_dbg(dev, "ca_set_binary_data() start, data type %d", cdata->data->type);
 
 	switch (cdata->data->type) {
-	case CODEC_CFG_SETUP:
-	case CODEC_CFG_RUNTIME:
+	case MODULE_CFG_SETUP:
+	case MODULE_CFG_RUNTIME:
 		ret = codec_adapter_set_params(dev, cdata, cdata->data->type);
 		break;
 	default:
