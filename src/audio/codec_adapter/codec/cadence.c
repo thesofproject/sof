@@ -95,7 +95,7 @@ static struct cadence_api cadence_api_table[] = {
 int cadence_codec_init(struct comp_dev *dev)
 {
 	int ret;
-	struct codec_data *codec = comp_get_codec(dev);
+	struct module_data *codec = comp_get_codec(dev);
 	struct cadence_codec_data *cd = NULL;
 	uint32_t obj_size;
 	uint32_t no_of_api = ARRAY_SIZE(cadence_api_table);
@@ -179,7 +179,7 @@ static int apply_config(struct comp_dev *dev, enum codec_cfg_type type)
 	struct codec_config *cfg;
 	void *data;
 	struct codec_param *param;
-	struct codec_data *codec = comp_get_codec(dev);
+	struct module_data *codec = comp_get_codec(dev);
 	struct cadence_codec_data *cd = codec->private;
 
 	comp_dbg(dev, "apply_config() start");
@@ -228,7 +228,7 @@ static int init_memory_tables(struct comp_dev *dev)
 {
 	int ret, no_mem_tables, i, mem_type, mem_size, mem_alignment;
 	void *ptr, *scratch, *persistent;
-	struct codec_data *codec = comp_get_codec(dev);
+	struct module_data *codec = comp_get_codec(dev);
 	struct cadence_codec_data *cd = codec->private;
 
 	scratch = NULL;
@@ -333,7 +333,7 @@ err:
 
 static int cadence_codec_get_samples(struct comp_dev *dev)
 {
-	struct codec_data *codec = comp_get_codec(dev);
+	struct module_data *codec = comp_get_codec(dev);
 	uint32_t api_id = CODEC_GET_API_ID(codec->id);
 
 	comp_dbg(dev, "cadence_codec_get_samples() start");
@@ -356,7 +356,7 @@ static int cadence_codec_get_samples(struct comp_dev *dev)
 static int cadence_codec_init_process(struct comp_dev *dev)
 {
 	int ret;
-	struct codec_data *codec = comp_get_codec(dev);
+	struct module_data *codec = comp_get_codec(dev);
 	struct cadence_codec_data *cd = codec->private;
 
 	API_CALL(cd, XA_API_CMD_SET_INPUT_BYTES, 0, &codec->cpd.avail, ret);
@@ -393,7 +393,7 @@ static int cadence_codec_init_process(struct comp_dev *dev)
 int cadence_codec_prepare(struct comp_dev *dev)
 {
 	int ret = 0, mem_tabs_size;
-	struct codec_data *codec = comp_get_codec(dev);
+	struct module_data *codec = comp_get_codec(dev);
 	struct cadence_codec_data *cd = codec->private;
 
 	comp_dbg(dev, "cadence_codec_prepare() start");
@@ -491,7 +491,7 @@ int cadence_codec_process(struct comp_dev *dev)
 {
 	struct processing_module *mod = comp_get_drvdata(dev);
 	struct comp_buffer *local_buff = mod->local_buff;
-	struct codec_data *codec = comp_get_codec(dev);
+	struct module_data *codec = comp_get_codec(dev);
 	struct cadence_codec_data *cd = codec->private;
 	int ret;
 
