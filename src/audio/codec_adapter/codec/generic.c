@@ -20,7 +20,7 @@ static int validate_config(struct module_config *cfg);
 
 int
 codec_load_config(struct comp_dev *dev, void *cfg, size_t size,
-		  enum codec_cfg_type type)
+		  enum module_cfg_type type)
 {
 	int ret;
 	struct module_config *dst;
@@ -35,7 +35,7 @@ codec_load_config(struct comp_dev *dev, void *cfg, size_t size,
 		return -EINVAL;
 	}
 
-	dst = (type == CODEC_CFG_SETUP) ? &md->s_cfg :
+	dst = (type == MODULE_CFG_SETUP) ? &md->s_cfg :
 					  &md->r_cfg;
 
 	if (!dst->data) {
@@ -70,7 +70,7 @@ codec_load_config(struct comp_dev *dev, void *cfg, size_t size,
 	comp_dbg(dev, "codec_load_config() done");
 	return ret;
 err:
-	if (dst->data && type == CODEC_CFG_RUNTIME)
+	if (dst->data && type == MODULE_CFG_RUNTIME)
 		rfree(dst->data);
 	dst->data = NULL;
 	return ret;

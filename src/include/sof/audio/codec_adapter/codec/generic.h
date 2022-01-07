@@ -113,12 +113,12 @@ struct module_interface {
 };
 
 /**
- * \enum codec_cfg_type
+ * \enum module_cfg_type
  * \brief Specific configuration types which can be either:
  */
-enum codec_cfg_type {
-	CODEC_CFG_SETUP, /**< Used to pass setup parameters */
-	CODEC_CFG_RUNTIME /**< Used every time runtime parameters has been loaded. */
+enum module_cfg_type {
+	MODULE_CFG_SETUP, /**< Used to pass setup parameters */
+	MODULE_CFG_RUNTIME /**< Used every time runtime parameters has been loaded. */
 };
 
 /**
@@ -222,7 +222,7 @@ struct processing_module {
 /* Codec generic interfaces						     */
 /*****************************************************************************/
 int codec_load_config(struct comp_dev *dev, void *cfg, size_t size,
-		      enum codec_cfg_type type);
+		      enum module_cfg_type type);
 int codec_init(struct comp_dev *dev, struct module_interface *interface);
 void *codec_allocate_memory(struct comp_dev *dev, uint32_t size,
 			    uint32_t alignment);
