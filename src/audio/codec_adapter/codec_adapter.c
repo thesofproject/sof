@@ -171,7 +171,7 @@ int codec_adapter_prepare(struct comp_dev *dev)
 {
 	int ret;
 	struct processing_module *mod = comp_get_drvdata(dev);
-	struct codec_data *codec = &mod->codec;
+	struct module_data *md = &mod->priv;
 	uint32_t buff_periods = 2; /* default periods of local buffer,
 				    * may change if case of deep buffering
 				    */
@@ -217,15 +217,15 @@ int codec_adapter_prepare(struct comp_dev *dev)
 	 * generate output once started (same situation happens for compress streams
 	 * as well).
 	 */
-	if (codec->cpd.in_buff_size != mod->period_bytes) {
-		if (codec->cpd.in_buff_size > mod->period_bytes) {
-			buff_periods = (codec->cpd.in_buff_size % mod->period_bytes) ?
-				       (codec->cpd.in_buff_size / mod->period_bytes) + 2 :
-				       (codec->cpd.in_buff_size / mod->period_bytes) + 1;
+	if (md->cpd.in_buff_size != mod->period_bytes) {
+		if (md->cpd.in_buff_size > mod->period_bytes) {
+			buff_periods = (md->cpd.in_buff_size % mod->period_bytes) ?
+				       (md->cpd.in_buff_size / mod->period_bytes) + 2 :
+				       (md->cpd.in_buff_size / mod->period_bytes) + 1;
 		} else {
-			buff_periods = (mod->period_bytes % codec->cpd.in_buff_size) ?
-				       (mod->period_bytes / codec->cpd.in_buff_size) + 2 :
-				       (mod->period_bytes / codec->cpd.in_buff_size) + 1;
+			buff_periods = (mod->period_bytes % md->cpd.in_buff_size) ?
+				       (mod->period_bytes / md->cpd.in_buff_size) + 2 :
+				       (mod->period_bytes / md->cpd.in_buff_size) + 1;
 		}
 
 		mod->deep_buff_bytes = mod->period_bytes * buff_periods;
@@ -234,7 +234,7 @@ int codec_adapter_prepare(struct comp_dev *dev)
 	}
 
 	/* Allocate local buffer */
-	buff_size = MAX(mod->period_bytes, codec->cpd.out_buff_size) * buff_periods;
+	buff_size = MAX(mod->period_bytes, md->cpd.out_buff_size) * buff_periods;
 	if (mod->local_buff) {
 		ret = buffer_set_size(mod->local_buff, buff_size);
 		if (ret < 0) {
@@ -354,10 +354,10 @@ int codec_adapter_copy(struct comp_dev *dev)
 	int ret = 0;
 	uint32_t bytes_to_process, copy_bytes, processed = 0, produced = 0;
 	struct processing_module *mod = comp_get_drvdata(dev);
-	struct codec_data *codec = &mod->codec;
+	struct module_data *md = &mod->priv;
 	struct comp_buffer *source = mod->ca_source;
 	struct comp_buffer *sink = mod->ca_sink;
-	uint32_t codec_buff_size = codec->cpd.in_buff_size;
+	uint32_t codec_buff_size = md->cpd.in_buff_size;
 	struct comp_buffer *local_buff = mod->local_buff;
 	struct comp_copy_limits cl;
 
@@ -376,26 +376,26 @@ int codec_adapter_copy(struct comp_dev *dev)
 		goto db_verify;
 	}
 
-	if (!codec->cpd.init_done) {
+	if (!md->cpd.init_done) {
 		buffer_stream_invalidate(source, codec_buff_size);
-		codec_adapter_copy_from_source_to_lib(&source->stream, &codec->cpd,
+		codec_adapter_copy_from_source_to_lib(&source->stream, &md->cpd,
 						      codec_buff_size);
-		codec->cpd.avail = codec_buff_size;
+		md->cpd.avail = codec_buff_size;
 		ret = codec_process(dev);
 		if (ret)
 			return ret;
 
-		bytes_to_process -= codec->cpd.consumed;
-		processed += codec->cpd.consumed;
-		comp_update_buffer_consume(source, codec->cpd.consumed);
+		bytes_to_process -= md->cpd.consumed;
+		processed += md->cpd.consumed;
+		comp_update_buffer_consume(source, md->cpd.consumed);
 		if (bytes_to_process < codec_buff_size)
 			goto db_verify;
 	}
 
 	buffer_stream_invalidate(source, codec_buff_size);
-	codec_adapter_copy_from_source_to_lib(&source->stream, &codec->cpd,
+	codec_adapter_copy_from_source_to_lib(&source->stream, &md->cpd,
 					      codec_buff_size);
-	codec->cpd.avail = codec_buff_size;
+	md->cpd.avail = codec_buff_size;
 	ret = codec_process(dev);
 	if (ret) {
 		if (ret == -ENOSPC) {
@@ -406,21 +406,21 @@ int codec_adapter_copy(struct comp_dev *dev)
 		comp_err(dev, "codec_adapter_copy() error %x: lib processing failed",
 			 ret);
 		goto db_verify;
-	} else if (codec->cpd.produced == 0) {
+	} else if (md->cpd.produced == 0) {
 		/* skipping as lib has not produced anything */
 		comp_err(dev, "codec_adapter_copy() error %x: lib hasn't processed anything",
 			 ret);
 		goto db_verify;
 	}
-	codec_adapter_copy_from_lib_to_sink(&codec->cpd, &local_buff->stream,
-					    codec->cpd.produced);
+	codec_adapter_copy_from_lib_to_sink(&md->cpd, &local_buff->stream,
+					    md->cpd.produced);
 
-	bytes_to_process -= codec->cpd.consumed;
-	processed += codec->cpd.consumed;
-	produced += codec->cpd.produced;
+	bytes_to_process -= md->cpd.consumed;
+	processed += md->cpd.consumed;
+	produced += md->cpd.produced;
 
-	audio_stream_produce(&local_buff->stream, codec->cpd.produced);
-	comp_update_buffer_consume(source, codec->cpd.consumed);
+	audio_stream_produce(&local_buff->stream, md->cpd.produced);
+	comp_update_buffer_consume(source, md->cpd.consumed);
 
 db_verify:
 	if (!produced && !mod->deep_buff_bytes) {
@@ -469,7 +469,7 @@ static int codec_adapter_set_params(struct comp_dev *dev, struct sof_ipc_ctrl_da
 	static uint32_t size;
 	uint32_t offset;
 	struct processing_module *mod = comp_get_drvdata(dev);
-	struct codec_data *codec = &mod->codec;
+	struct module_data *md = &mod->priv;
 
 	comp_dbg(dev, "codec_adapter_set_params(): start: num_of_elem %d, elem remain %d msg_index %u",
 		 cdata->num_elems, cdata->elems_remaining, cdata->msg_index);
@@ -478,7 +478,7 @@ static int codec_adapter_set_params(struct comp_dev *dev, struct sof_ipc_ctrl_da
 	if (cdata->msg_index == 0) {
 		size = cdata->num_elems + cdata->elems_remaining;
 		/* Check that there is no work-in-progress on previous request */
-		if (codec->runtime_params) {
+		if (md->runtime_params) {
 			comp_err(dev, "codec_adapter_set_params() error: busy with previous request");
 			ret = -EBUSY;
 			goto end;
@@ -500,22 +500,22 @@ static int codec_adapter_set_params(struct comp_dev *dev, struct sof_ipc_ctrl_da
 		}
 
 		/* Allocate buffer for new params */
-		codec->runtime_params = rballoc(0, SOF_MEM_CAPS_RAM, size);
-		if (!codec->runtime_params) {
+		md->runtime_params = rballoc(0, SOF_MEM_CAPS_RAM, size);
+		if (!md->runtime_params) {
 			comp_err(dev, "codec_adapter_set_params(): space allocation for new params failed");
 			ret = -ENOMEM;
 			goto end;
 		}
 
-		memset(codec->runtime_params, 0, size);
-	} else if (!codec->runtime_params) {
+		memset(md->runtime_params, 0, size);
+	} else if (!md->runtime_params) {
 		comp_err(dev, "codec_adapter_set_params() error: no memory available for runtime params in consecutive load");
 		ret = -EIO;
 		goto end;
 	}
 
 	offset = size - (cdata->num_elems + cdata->elems_remaining);
-	dst = (char *)codec->runtime_params + offset;
+	dst = (char *)md->runtime_params + offset;
 	src = (char *)cdata->data->data;
 
 	ret = memcpy_s(dst, size - offset, src, cdata->num_elems);
@@ -527,7 +527,7 @@ static int codec_adapter_set_params(struct comp_dev *dev, struct sof_ipc_ctrl_da
 	if (!cdata->elems_remaining) {
 		switch (type) {
 		case CODEC_CFG_SETUP:
-			ret = load_setup_config(dev, codec->runtime_params, size);
+			ret = load_setup_config(dev, md->runtime_params, size);
 			if (ret) {
 				comp_err(dev, "codec_adapter_set_params(): error %d: load of setup config failed.",
 					 ret);
@@ -537,7 +537,7 @@ static int codec_adapter_set_params(struct comp_dev *dev, struct sof_ipc_ctrl_da
 
 			break;
 		case CODEC_CFG_RUNTIME:
-			ret = codec_load_config(dev, codec->runtime_params, size,
+			ret = codec_load_config(dev, md->runtime_params, size,
 						CODEC_CFG_RUNTIME);
 			if (ret) {
 				comp_err(dev, "codec_adapter_set_params() error %d: load of runtime config failed.",
@@ -547,7 +547,7 @@ static int codec_adapter_set_params(struct comp_dev *dev, struct sof_ipc_ctrl_da
 				comp_dbg(dev, "codec_adapter_set_params() load of runtime config done.");
 			}
 
-			if (codec->state >= CODEC_INITIALIZED) {
+			if (md->state >= CODEC_INITIALIZED) {
 				/* We are already prepared so we can apply runtime
 				 * config right away.
 				 */
@@ -559,7 +559,7 @@ static int codec_adapter_set_params(struct comp_dev *dev, struct sof_ipc_ctrl_da
 					comp_dbg(dev, "codec_adapter_set_params() apply of runtime config done.");
 				}
 			} else {
-				mod->codec.r_cfg.avail = true;
+				mod->priv.r_cfg.avail = true;
 			}
 
 			break;
@@ -571,9 +571,9 @@ static int codec_adapter_set_params(struct comp_dev *dev, struct sof_ipc_ctrl_da
 		goto end;
 
 done:
-	if (codec->runtime_params)
-		rfree(codec->runtime_params);
-	codec->runtime_params = NULL;
+	if (md->runtime_params)
+		rfree(md->runtime_params);
+	md->runtime_params = NULL;
 	return ret;
 end:
 	return ret;
@@ -607,7 +607,7 @@ static int codec_adapter_ctrl_set_data(struct comp_dev *dev,
 	struct processing_module *mod = comp_get_drvdata(dev);
 
 	comp_dbg(dev, "codec_adapter_ctrl_set_data() start, state %d, cmd %d",
-		 mod->codec.state, cdata->cmd);
+		 mod->priv.state, cdata->cmd);
 
 	/* Check version from ABI header */
 	if (SOF_ABI_VERSION_INCOMPATIBLE(SOF_ABI_VERSION, cdata->data->abi)) {

@@ -16,7 +16,7 @@
 #include <sof/ut.h>
 #include <sof/lib/memory.h>
 
-#define comp_get_codec(d) (&(((struct processing_module *)((d)->priv_data))->codec))
+#define comp_get_codec(d) (&(((struct processing_module *)((d)->priv_data))->priv))
 #define CODEC_GET_INTERFACE_ID(id) ((id) >> 0x8)
 #define CODEC_GET_API_ID(id) ((id) & 0xFF)
 #define API_CALL(cd, cmd, sub_cmd, value, ret) \
@@ -193,8 +193,8 @@ struct codec_processing_data {
 	void *out_buff; /**< A pointer to codec output buffer. */
 };
 
-/** private, runtime codec data */
-struct codec_data {
+/** private, runtime module data */
+struct module_data {
 	uint32_t id;
 	enum codec_state state;
 	void *private; /**< self object, memory tables etc here */
@@ -209,7 +209,7 @@ struct codec_data {
 /* codec_adapter private, runtime data */
 struct processing_module {
 	struct ca_config ca_config;
-	struct codec_data codec; /**< codec private data */
+	struct module_data priv; /**< module private data */
 	struct comp_buffer *ca_sink;
 	struct comp_buffer *ca_source;
 	struct comp_buffer *local_buff;

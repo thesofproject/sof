@@ -21,7 +21,7 @@ static int passthrough_codec_init(struct comp_dev *dev)
 
 static int passthrough_codec_prepare(struct comp_dev *dev)
 {
-	struct codec_data *codec = comp_get_codec(dev);
+	struct module_data *codec = comp_get_codec(dev);
 	struct processing_module *mod = comp_get_drvdata(dev);
 
 	comp_info(dev, "passthrough_codec_prepare()");
@@ -46,7 +46,7 @@ static int passthrough_codec_prepare(struct comp_dev *dev)
 
 static int passthrough_codec_init_process(struct comp_dev *dev)
 {
-	struct codec_data *codec = comp_get_codec(dev);
+	struct module_data *codec = comp_get_codec(dev);
 
 	comp_dbg(dev, "passthrough_codec_init_process()");
 
@@ -59,7 +59,7 @@ static int passthrough_codec_init_process(struct comp_dev *dev)
 
 static int passthrough_codec_process(struct comp_dev *dev)
 {
-	struct codec_data *codec = comp_get_codec(dev);
+	struct module_data *codec = comp_get_codec(dev);
 	struct processing_module *mod = comp_get_drvdata(dev);
 
 	if (!codec->cpd.init_done)
@@ -93,7 +93,7 @@ static int passthrough_codec_reset(struct comp_dev *dev)
 
 static int passthrough_codec_free(struct comp_dev *dev)
 {
-	struct codec_data *codec = comp_get_codec(dev);
+	struct module_data *codec = comp_get_codec(dev);
 
 	comp_info(dev, "passthrough_codec_free()");
 
