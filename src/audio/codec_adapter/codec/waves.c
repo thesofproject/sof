@@ -510,7 +510,7 @@ static int waves_effect_message(struct comp_dev *dev, void *data, uint32_t size)
 /* apply codec config */
 static int waves_effect_config(struct comp_dev *dev, enum codec_cfg_type type)
 {
-	struct codec_config *cfg;
+	struct module_config *cfg;
 	struct module_data *codec = comp_get_codec(dev);
 	struct codec_param *param;
 	uint32_t index;

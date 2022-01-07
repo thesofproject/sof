@@ -176,7 +176,7 @@ static int apply_config(struct comp_dev *dev, enum codec_cfg_type type)
 {
 	int ret = 0;
 	int size;
-	struct codec_config *cfg;
+	struct module_config *cfg;
 	void *data;
 	struct codec_param *param;
 	struct module_data *codec = comp_get_codec(dev);
