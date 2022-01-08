@@ -557,7 +557,7 @@ int cadence_codec_reset(struct comp_dev *dev)
 	 * runtime parameters therefore we need to free all the resources
 	 * and start over.
 	 */
-	codec_free_all_memory(dev);
+	module_free_all_memory(dev);
 	ret = cadence_codec_init(dev);
 	if (ret) {
 		comp_err(dev, "cadence_codec_reset() error %x: could not re-initialize codec after reset",
@@ -575,7 +575,7 @@ int cadence_codec_reset(struct comp_dev *dev)
 
 int cadence_codec_free(struct comp_dev *dev)
 {
-	codec_free_all_memory(dev);
+	module_free_all_memory(dev);
 	return 0;
 }
 

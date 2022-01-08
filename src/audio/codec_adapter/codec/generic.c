@@ -310,7 +310,7 @@ int module_reset(struct comp_dev *dev)
 	return 0;
 }
 
-void codec_free_all_memory(struct comp_dev *dev)
+void module_free_all_memory(struct comp_dev *dev)
 {
 	struct processing_module *mod = comp_get_drvdata(dev);
 	struct module_memory *mem;
@@ -338,7 +338,7 @@ int module_free(struct comp_dev *dev)
 			  ret, mod->ca_config.codec_id);
 
 	/* Free all memory requested by module */
-	codec_free_all_memory(dev);
+	module_free_all_memory(dev);
 	/* Free all memory shared by codec_adapter & module */
 	md->s_cfg.avail = false;
 	md->s_cfg.size = 0;
