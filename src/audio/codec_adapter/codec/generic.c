@@ -76,14 +76,14 @@ err:
 	return ret;
 }
 
-int codec_init(struct comp_dev *dev, struct module_interface *interface)
+int module_init(struct comp_dev *dev, struct module_interface *interface)
 {
 	int ret;
 	struct processing_module *mod = comp_get_drvdata(dev);
 	uint32_t codec_id = mod->ca_config.codec_id;
 	struct module_data *md = &mod->priv;
 
-	comp_info(dev, "codec_init() start");
+	comp_info(dev, "module_init() start");
 
 	if (mod->priv.state == MODULE_INITIALIZED)
 		return 0;
@@ -93,14 +93,14 @@ int codec_init(struct comp_dev *dev, struct module_interface *interface)
 	md->id = codec_id;
 
 	if (!interface) {
-		comp_err(dev, "codec_init(): could not find codec interface for codec id %x",
+		comp_err(dev, "module_init(): could not find module interface for codec id %x",
 			 codec_id);
 		ret = -EIO;
 		goto out;
 	} else if (!interface->init || !interface->prepare ||
 		   !interface->process || !interface->apply_config ||
 		   !interface->reset || !interface->free) {
-		comp_err(dev, "codec_init(): codec %x is missing mandatory interfaces",
+		comp_err(dev, "module_init(): module %x is missing mandatory interfaces",
 			 codec_id);
 		ret = -EIO;
 		goto out;
@@ -110,15 +110,15 @@ int codec_init(struct comp_dev *dev, struct module_interface *interface)
 	/* Init memory list */
 	list_init(&md->memory.mem_list);
 
-	/* Now we can proceed with codec specific initialization */
+	/* Now we can proceed with module specific initialization */
 	ret = md->ops->init(dev);
 	if (ret) {
-		comp_err(dev, "codec_init() error %d: codec specific init failed, codec_id %x",
+		comp_err(dev, "module_init() error %d: module specific init failed, codec_id %x",
 			 ret, codec_id);
 		goto out;
 	}
 
-	comp_info(dev, "codec_init() done");
+	comp_info(dev, "module_init() done");
 	md->state = MODULE_INITIALIZED;
 out:
 	return ret;
