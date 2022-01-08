@@ -329,20 +329,20 @@ void codec_free_all_memory(struct comp_dev *dev)
 	}
 }
 
-int codec_free(struct comp_dev *dev)
+int module_free(struct comp_dev *dev)
 {
 	int ret;
 	struct processing_module *mod = comp_get_drvdata(dev);
 	struct module_data *md = &mod->priv;
 
 	ret = md->ops->free(dev);
-	if (ret) {
-		comp_warn(dev, "codec_apply_config() error %d: codec specific .free() failed for codec_id %x",
+	if (ret)
+		comp_warn(dev, "module_free(): error: %d for codec_id %x",
 			  ret, mod->ca_config.codec_id);
-	}
-	/* Free all memory requested by codec */
+
+	/* Free all memory requested by module */
 	codec_free_all_memory(dev);
-	/* Free all memory shared by codec_adapter & codec */
+	/* Free all memory shared by codec_adapter & module */
 	md->s_cfg.avail = false;
 	md->s_cfg.size = 0;
 	md->r_cfg.avail = false;
