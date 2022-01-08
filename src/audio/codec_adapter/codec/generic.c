@@ -233,7 +233,7 @@ end:
 	return ret;
 }
 
-int codec_process(struct comp_dev *dev)
+int module_process(struct comp_dev *dev)
 {
 	int ret;
 
@@ -241,22 +241,22 @@ int codec_process(struct comp_dev *dev)
 	uint32_t codec_id = mod->ca_config.codec_id;
 	struct module_data *md = &mod->priv;
 
-	comp_dbg(dev, "codec_process() start");
+	comp_dbg(dev, "module_process() start");
 
 	if (mod->priv.state != MODULE_IDLE) {
-		comp_err(dev, "codec_process(): wrong state of codec %x, state %d",
+		comp_err(dev, "module_process(): wrong state of module %x, state %d",
 			 mod->ca_config.codec_id, md->state);
 		return -EPERM;
 	}
 
 	ret = md->ops->process(dev);
 	if (ret) {
-		comp_err(dev, "codec_process() error %d: codec process failed for codec_id %x",
+		comp_err(dev, "module_process() error %d: for codec_id %x",
 			 ret, codec_id);
 		goto out;
 	}
 
-	comp_dbg(dev, "codec_process() done");
+	comp_dbg(dev, "module_process() done");
 out:
 	md->state = MODULE_IDLE;
 	return ret;

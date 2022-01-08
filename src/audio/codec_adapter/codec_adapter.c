@@ -381,7 +381,7 @@ int codec_adapter_copy(struct comp_dev *dev)
 		codec_adapter_copy_from_source_to_lib(&source->stream, &md->mpd,
 						      codec_buff_size);
 		md->mpd.avail = codec_buff_size;
-		ret = codec_process(dev);
+		ret = module_process(dev);
 		if (ret)
 			return ret;
 
@@ -396,7 +396,7 @@ int codec_adapter_copy(struct comp_dev *dev)
 	codec_adapter_copy_from_source_to_lib(&source->stream, &md->mpd,
 					      codec_buff_size);
 	md->mpd.avail = codec_buff_size;
-	ret = codec_process(dev);
+	ret = module_process(dev);
 	if (ret) {
 		if (ret == -ENOSPC) {
 			ret = 0;

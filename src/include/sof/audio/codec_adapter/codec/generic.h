@@ -229,7 +229,7 @@ void *codec_allocate_memory(struct comp_dev *dev, uint32_t size,
 int codec_free_memory(struct comp_dev *dev, void *ptr);
 void codec_free_all_memory(struct comp_dev *dev);
 int module_prepare(struct comp_dev *dev);
-int codec_process(struct comp_dev *dev);
+int module_process(struct comp_dev *dev);
 int module_apply_runtime_config(struct comp_dev *dev);
 int module_reset(struct comp_dev *dev);
 int module_free(struct comp_dev *dev);
