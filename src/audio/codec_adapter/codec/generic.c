@@ -122,15 +122,14 @@ out:
 	return ret;
 }
 
-void *codec_allocate_memory(struct comp_dev *dev, uint32_t size,
-			    uint32_t alignment)
+void *module_allocate_memory(struct comp_dev *dev, uint32_t size, uint32_t alignment)
 {
 	struct module_memory *container;
 	void *ptr;
 	struct processing_module *mod = comp_get_drvdata(dev);
 
 	if (!size) {
-		comp_err(dev, "codec_allocate_memory: requested allocation of 0 bytes.");
+		comp_err(dev, "module_allocate_memory: requested allocation of 0 bytes.");
 		return NULL;
 	}
 
@@ -138,18 +137,18 @@ void *codec_allocate_memory(struct comp_dev *dev, uint32_t size,
 	container = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
 			    sizeof(struct module_memory));
 	if (!container) {
-		comp_err(dev, "codec_allocate_memory: failed to allocate memory container.");
+		comp_err(dev, "module_allocate_memory: failed to allocate memory container.");
 		return NULL;
 	}
 
-	/* Allocate memory for codec */
+	/* Allocate memory for module */
 	if (alignment)
 		ptr = rballoc_align(0, SOF_MEM_CAPS_RAM, size, alignment);
 	else
 		ptr = rballoc(0, SOF_MEM_CAPS_RAM, size);
 
 	if (!ptr) {
-		comp_err(dev, "codec_allocate_memory: failed to allocate memory for codec %x.",
+		comp_err(dev, "module_allocate_memory: failed to allocate memory for module %x.",
 			 mod->ca_config.codec_id);
 		return NULL;
 	}
@@ -160,7 +159,7 @@ void *codec_allocate_memory(struct comp_dev *dev, uint32_t size,
 	return ptr;
 }
 
-int codec_free_memory(struct comp_dev *dev, void *ptr)
+int module_free_memory(struct comp_dev *dev, void *ptr)
 {
 	struct processing_module *mod = comp_get_drvdata(dev);
 	struct module_memory *mem;
@@ -181,7 +180,7 @@ int codec_free_memory(struct comp_dev *dev, void *ptr)
 		}
 	}
 
-	comp_err(dev, "codec_free_memory: error: could not find memory pointed by %p",
+	comp_err(dev, "module_free_memory: error: could not find memory pointed by %p",
 		 (uint32_t)ptr);
 
 	return -EINVAL;

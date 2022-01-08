@@ -223,9 +223,8 @@ struct processing_module {
 /*****************************************************************************/
 int module_load_config(struct comp_dev *dev, void *cfg, size_t size, enum module_cfg_type type);
 int module_init(struct comp_dev *dev, struct module_interface *interface);
-void *codec_allocate_memory(struct comp_dev *dev, uint32_t size,
-			    uint32_t alignment);
-int codec_free_memory(struct comp_dev *dev, void *ptr);
+void *module_allocate_memory(struct comp_dev *dev, uint32_t size, uint32_t alignment);
+int module_free_memory(struct comp_dev *dev, void *ptr);
 void codec_free_all_memory(struct comp_dev *dev);
 int module_prepare(struct comp_dev *dev);
 int module_process(struct comp_dev *dev);

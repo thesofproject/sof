@@ -104,7 +104,7 @@ int cadence_codec_init(struct comp_dev *dev)
 
 	comp_dbg(dev, "cadence_codec_init() start");
 
-	cd = codec_allocate_memory(dev, sizeof(struct cadence_codec_data), 0);
+	cd = module_allocate_memory(dev, sizeof(struct cadence_codec_data), 0);
 	if (!cd) {
 		comp_err(dev, "cadence_codec_init(): failed to allocate memory for cadence codec data");
 		return -ENOMEM;
@@ -137,7 +137,7 @@ int cadence_codec_init(struct comp_dev *dev)
 	if (ret != LIB_NO_ERROR) {
 		comp_err(dev, "cadence_codec_init() error %x: failed to get lib name",
 			 ret);
-		codec_free_memory(dev, cd);
+		module_free_memory(dev, cd);
 		goto out;
 	}
 	/* Get codec object size */
@@ -145,14 +145,14 @@ int cadence_codec_init(struct comp_dev *dev)
 	if (ret != LIB_NO_ERROR) {
 		comp_err(dev, "cadence_codec_init() error %x: failed to get lib object size",
 			 ret);
-		codec_free_memory(dev, cd);
+		module_free_memory(dev, cd);
 		goto out;
 	}
 	/* Allocate space for codec object */
-	cd->self = codec_allocate_memory(dev, obj_size, 0);
+	cd->self = module_allocate_memory(dev, obj_size, 0);
 	if (!cd->self) {
 		comp_err(dev, "cadence_codec_init(): failed to allocate space for lib object");
-		codec_free_memory(dev, cd);
+		module_free_memory(dev, cd);
 		goto out;
 	} else {
 		comp_dbg(dev, "cadence_codec_init(): allocated %d bytes for lib object",
@@ -277,7 +277,7 @@ static int init_memory_tables(struct comp_dev *dev)
 			goto err;
 		}
 		/* Allocate memory for this type, taking alignment into account */
-		ptr = codec_allocate_memory(dev, mem_size, mem_alignment);
+		ptr = module_allocate_memory(dev, mem_size, mem_alignment);
 		if (!ptr) {
 			comp_err(dev, "init_memory_tables() error %x: failed to allocate memory for %d",
 				 ret, mem_type);
@@ -321,13 +321,13 @@ static int init_memory_tables(struct comp_dev *dev)
 	return 0;
 err:
 	if (scratch)
-		codec_free_memory(dev, scratch);
+		module_free_memory(dev, scratch);
 	if (persistent)
-		codec_free_memory(dev, persistent);
+		module_free_memory(dev, persistent);
 	if (codec->mpd.in_buff)
-		codec_free_memory(dev, codec->mpd.in_buff);
+		module_free_memory(dev, codec->mpd.in_buff);
 	if (codec->mpd.out_buff)
-		codec_free_memory(dev, codec->mpd.out_buff);
+		module_free_memory(dev, codec->mpd.out_buff);
 	return ret;
 }
 
@@ -436,7 +436,7 @@ int cadence_codec_prepare(struct comp_dev *dev)
 		goto err;
 	}
 
-	cd->mem_tabs = codec_allocate_memory(dev, mem_tabs_size, 4);
+	cd->mem_tabs = module_allocate_memory(dev, mem_tabs_size, 4);
 	if (!cd->mem_tabs) {
 		comp_err(dev, "cadence_codec_prepare() error: failed to allocate space for memtabs");
 		ret = -ENOMEM;
@@ -482,7 +482,7 @@ int cadence_codec_prepare(struct comp_dev *dev)
 	comp_dbg(dev, "cadence_codec_prepare() done");
 	return 0;
 free:
-	codec_free_memory(dev, cd->mem_tabs);
+	module_free_memory(dev, cd->mem_tabs);
 err:
 	return ret;
 }
