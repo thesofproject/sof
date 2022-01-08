@@ -262,18 +262,18 @@ out:
 	return ret;
 }
 
-int codec_apply_runtime_config(struct comp_dev *dev)
+int module_apply_runtime_config(struct comp_dev *dev)
 {
 	int ret;
 	struct processing_module *mod = comp_get_drvdata(dev);
 	uint32_t codec_id = mod->ca_config.codec_id;
 	struct module_data *md = &mod->priv;
 
-	comp_dbg(dev, "codec_apply_config() start");
+	comp_dbg(dev, "module_apply_config() start");
 
 	ret = md->ops->apply_config(dev);
 	if (ret) {
-		comp_err(dev, "codec_apply_config() error %d: codec process failed for codec_id %x",
+		comp_err(dev, "module_apply_config() error %d: for codec_id %x",
 			 ret, codec_id);
 		goto out;
 	}
@@ -283,7 +283,7 @@ int codec_apply_runtime_config(struct comp_dev *dev)
 	rfree(md->r_cfg.data);
 	md->r_cfg.data = NULL;
 
-	comp_dbg(dev, "codec_apply_config() end");
+	comp_dbg(dev, "module_apply_config() end");
 out:
 	return ret;
 }
