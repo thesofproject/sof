@@ -288,7 +288,7 @@ out:
 	return ret;
 }
 
-int codec_reset(struct comp_dev *dev)
+int module_reset(struct comp_dev *dev)
 {
 	int ret;
 	struct processing_module *mod = comp_get_drvdata(dev);
@@ -296,7 +296,7 @@ int codec_reset(struct comp_dev *dev)
 
 	ret = md->ops->reset(dev);
 	if (ret) {
-		comp_err(dev, "codec_apply_config() error %d: codec specific .reset() failed for codec_id %x",
+		comp_err(dev, "module_reset() error %d: module specific reset() failed for codec_id %x",
 			 ret, mod->ca_config.codec_id);
 		return ret;
 	}
@@ -305,7 +305,7 @@ int codec_reset(struct comp_dev *dev)
 	md->r_cfg.size = 0;
 	rfree(md->r_cfg.data);
 
-	/* Codec reset itself to the initial condition after prepare()
+	/* module resets itself to the initial condition after prepare()
 	 * so let's change its state to reflect that.
 	 */
 	md->state = MODULE_IDLE;

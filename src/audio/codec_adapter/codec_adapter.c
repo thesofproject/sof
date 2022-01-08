@@ -673,7 +673,7 @@ int codec_adapter_reset(struct comp_dev *dev)
 
 	comp_dbg(dev, "codec_adapter_reset(): resetting");
 
-	ret = codec_reset(dev);
+	ret = module_reset(dev);
 	if (ret) {
 		comp_err(dev, "codec_adapter_reset(): error %d, codec reset has failed",
 			 ret);
