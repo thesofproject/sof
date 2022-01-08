@@ -202,7 +202,7 @@ int codec_adapter_prepare(struct comp_dev *dev)
 	}
 
 	/* Prepare codec */
-	ret = codec_prepare(dev);
+	ret = module_prepare(dev);
 	if (ret) {
 		comp_err(dev, "codec_adapter_prepare() error %x: codec prepare failed",
 			 ret);
