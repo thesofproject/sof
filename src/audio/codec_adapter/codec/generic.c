@@ -78,7 +78,7 @@ int module_init(struct comp_dev *dev, struct module_interface *interface)
 {
 	int ret;
 	struct processing_module *mod = comp_get_drvdata(dev);
-	uint32_t codec_id = mod->ca_config.codec_id;
+	uint32_t module_id = mod->ca_config.module_id;
 	struct module_data *md = &mod->priv;
 
 	comp_info(dev, "module_init() start");
@@ -88,18 +88,18 @@ int module_init(struct comp_dev *dev, struct module_interface *interface)
 	if (mod->priv.state > MODULE_INITIALIZED)
 		return -EPERM;
 
-	md->id = codec_id;
+	md->id = module_id;
 
 	if (!interface) {
-		comp_err(dev, "module_init(): could not find module interface for codec id %x",
-			 codec_id);
+		comp_err(dev, "module_init(): could not find module interface for module id %x",
+			 module_id);
 		ret = -EIO;
 		goto out;
 	} else if (!interface->init || !interface->prepare ||
 		   !interface->process || !interface->apply_config ||
 		   !interface->reset || !interface->free) {
 		comp_err(dev, "module_init(): module %x is missing mandatory interfaces",
-			 codec_id);
+			 module_id);
 		ret = -EIO;
 		goto out;
 	}
@@ -111,8 +111,8 @@ int module_init(struct comp_dev *dev, struct module_interface *interface)
 	/* Now we can proceed with module specific initialization */
 	ret = md->ops->init(dev);
 	if (ret) {
-		comp_err(dev, "module_init() error %d: module specific init failed, codec_id %x",
-			 ret, codec_id);
+		comp_err(dev, "module_init() error %d: module specific init failed, module_id %x",
+			 ret, module_id);
 		goto out;
 	}
 
@@ -149,7 +149,7 @@ void *module_allocate_memory(struct comp_dev *dev, uint32_t size, uint32_t align
 
 	if (!ptr) {
 		comp_err(dev, "module_allocate_memory: failed to allocate memory for module %x.",
-			 mod->ca_config.codec_id);
+			 mod->ca_config.module_id);
 		return NULL;
 	}
 	/* Store reference to allocated memory */
@@ -196,7 +196,7 @@ int module_prepare(struct comp_dev *dev)
 {
 	int ret;
 	struct processing_module *mod = comp_get_drvdata(dev);
-	uint32_t codec_id = mod->ca_config.codec_id;
+	uint32_t module_id = mod->ca_config.module_id;
 	struct module_data *md = &mod->priv;
 
 	comp_dbg(dev, "module_prepare() start");
@@ -208,8 +208,8 @@ int module_prepare(struct comp_dev *dev)
 
 	ret = md->ops->prepare(dev);
 	if (ret) {
-		comp_err(dev, "module_prepare() error %d: module specific prepare failed, codec_id 0x%x",
-			 ret, codec_id);
+		comp_err(dev, "module_prepare() error %d: module specific prepare failed, module_id 0x%x",
+			 ret, module_id);
 		goto end;
 	}
 
@@ -235,21 +235,21 @@ int module_process(struct comp_dev *dev)
 	int ret;
 
 	struct processing_module *mod = comp_get_drvdata(dev);
-	uint32_t codec_id = mod->ca_config.codec_id;
+	uint32_t module_id = mod->ca_config.module_id;
 	struct module_data *md = &mod->priv;
 
 	comp_dbg(dev, "module_process() start");
 
 	if (mod->priv.state != MODULE_IDLE) {
 		comp_err(dev, "module_process(): wrong state of module %x, state %d",
-			 mod->ca_config.codec_id, md->state);
+			 mod->ca_config.module_id, md->state);
 		return -EPERM;
 	}
 
 	ret = md->ops->process(dev);
 	if (ret) {
-		comp_err(dev, "module_process() error %d: for codec_id %x",
-			 ret, codec_id);
+		comp_err(dev, "module_process() error %d: for module_id %x",
+			 ret, module_id);
 		goto out;
 	}
 
@@ -263,15 +263,15 @@ int module_apply_runtime_config(struct comp_dev *dev)
 {
 	int ret;
 	struct processing_module *mod = comp_get_drvdata(dev);
-	uint32_t codec_id = mod->ca_config.codec_id;
+	uint32_t module_id = mod->ca_config.module_id;
 	struct module_data *md = &mod->priv;
 
 	comp_dbg(dev, "module_apply_config() start");
 
 	ret = md->ops->apply_config(dev);
 	if (ret) {
-		comp_err(dev, "module_apply_config() error %d: for codec_id %x",
-			 ret, codec_id);
+		comp_err(dev, "module_apply_config() error %d: for module_id %x",
+			 ret, module_id);
 		goto out;
 	}
 
@@ -293,8 +293,8 @@ int module_reset(struct comp_dev *dev)
 
 	ret = md->ops->reset(dev);
 	if (ret) {
-		comp_err(dev, "module_reset() error %d: module specific reset() failed for codec_id %x",
-			 ret, mod->ca_config.codec_id);
+		comp_err(dev, "module_reset() error %d: module specific reset() failed for module_id %x",
+			 ret, mod->ca_config.module_id);
 		return ret;
 	}
 
@@ -334,8 +334,8 @@ int module_free(struct comp_dev *dev)
 
 	ret = md->ops->free(dev);
 	if (ret)
-		comp_warn(dev, "module_free(): error: %d for codec_id %x",
-			  ret, mod->ca_config.codec_id);
+		comp_warn(dev, "module_free(): error: %d for module_id %x",
+			  ret, mod->ca_config.module_id);
 
 	/* Free all memory requested by module */
 	module_free_all_memory(dev);

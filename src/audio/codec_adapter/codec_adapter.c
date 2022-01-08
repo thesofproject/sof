@@ -149,7 +149,7 @@ int load_setup_config(struct comp_dev *dev, void *cfg, uint32_t size)
 		ret = module_load_config(dev, lib_cfg, lib_cfg_size, MODULE_CFG_SETUP);
 		if (ret) {
 			comp_err(dev, "load_setup_config(): %d: failed to load setup config for codec id %x",
-				 ret, mod->ca_config.codec_id);
+				 ret, mod->ca_config.module_id);
 			goto end;
 		}
 	}
