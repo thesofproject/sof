@@ -18,19 +18,17 @@
 /*****************************************************************************/
 static int validate_config(struct module_config *cfg);
 
-int
-codec_load_config(struct comp_dev *dev, void *cfg, size_t size,
-		  enum module_cfg_type type)
+int module_load_config(struct comp_dev *dev, void *cfg, size_t size, enum module_cfg_type type)
 {
 	int ret;
 	struct module_config *dst;
 	struct processing_module *mod = comp_get_drvdata(dev);
 	struct module_data *md = &mod->priv;
 
-	comp_dbg(dev, "codec_load_config() start");
+	comp_dbg(dev, "module_load_config() start");
 
 	if (!cfg || !size) {
-		comp_err(dev, "codec_load_config(): wrong input params! dev %x, cfg %x size %d",
+		comp_err(dev, "module_load_config(): wrong input params! dev %x, cfg %x size %d",
 			 (uint32_t)dev, (uint32_t)cfg, size);
 		return -EINVAL;
 	}
@@ -49,7 +47,7 @@ codec_load_config(struct comp_dev *dev, void *cfg, size_t size,
 		dst->data = rballoc(0, SOF_MEM_CAPS_RAM, size);
 	}
 	if (!dst->data) {
-		comp_err(dev, "codec_load_config(): failed to allocate space for setup config.");
+		comp_err(dev, "module_load_config(): failed to allocate space for setup config.");
 		ret = -ENOMEM;
 		goto err;
 	}
@@ -58,7 +56,7 @@ codec_load_config(struct comp_dev *dev, void *cfg, size_t size,
 	assert(!ret);
 	ret = validate_config(dst->data);
 	if (ret) {
-		comp_err(dev, "codec_load_config(): validation of config failed!");
+		comp_err(dev, "module_load_config(): validation of config failed!");
 		ret = -EINVAL;
 		goto err;
 	}
@@ -67,7 +65,7 @@ codec_load_config(struct comp_dev *dev, void *cfg, size_t size,
 	dst->size = size;
 	dst->avail = true;
 
-	comp_dbg(dev, "codec_load_config() done");
+	comp_dbg(dev, "module_load_config() done");
 	return ret;
 err:
 	if (dst->data && type == MODULE_CFG_RUNTIME)

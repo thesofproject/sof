@@ -221,8 +221,7 @@ struct processing_module {
 /*****************************************************************************/
 /* Codec generic interfaces						     */
 /*****************************************************************************/
-int codec_load_config(struct comp_dev *dev, void *cfg, size_t size,
-		      enum module_cfg_type type);
+int module_load_config(struct comp_dev *dev, void *cfg, size_t size, enum module_cfg_type type);
 int module_init(struct comp_dev *dev, struct module_interface *interface);
 void *codec_allocate_memory(struct comp_dev *dev, uint32_t size,
 			    uint32_t alignment);

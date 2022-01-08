@@ -146,7 +146,7 @@ int load_setup_config(struct comp_dev *dev, void *cfg, uint32_t size)
 	lib_cfg_size = size - sizeof(struct ca_config);
 	if (lib_cfg_size) {
 		lib_cfg = (char *)cfg + sizeof(struct ca_config);
-		ret = codec_load_config(dev, lib_cfg, lib_cfg_size, MODULE_CFG_SETUP);
+		ret = module_load_config(dev, lib_cfg, lib_cfg_size, MODULE_CFG_SETUP);
 		if (ret) {
 			comp_err(dev, "load_setup_config(): %d: failed to load setup config for codec id %x",
 				 ret, mod->ca_config.codec_id);
@@ -537,8 +537,7 @@ static int codec_adapter_set_params(struct comp_dev *dev, struct sof_ipc_ctrl_da
 
 			break;
 		case MODULE_CFG_RUNTIME:
-			ret = codec_load_config(dev, md->runtime_params, size,
-						MODULE_CFG_RUNTIME);
+			ret = module_load_config(dev, md->runtime_params, size, MODULE_CFG_RUNTIME);
 			if (ret) {
 				comp_err(dev, "codec_adapter_set_params() error %d: load of runtime config failed.",
 					 ret);
