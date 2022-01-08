@@ -231,7 +231,7 @@ void codec_free_all_memory(struct comp_dev *dev);
 int codec_prepare(struct comp_dev *dev);
 int codec_process(struct comp_dev *dev);
 int codec_apply_runtime_config(struct comp_dev *dev);
-int codec_reset(struct comp_dev *dev);
+int module_reset(struct comp_dev *dev);
 int module_free(struct comp_dev *dev);
 
 struct comp_dev *codec_adapter_new(const struct comp_driver *drv,
