@@ -551,7 +551,7 @@ static int codec_adapter_set_params(struct comp_dev *dev, struct sof_ipc_ctrl_da
 				/* We are already prepared so we can apply runtime
 				 * config right away.
 				 */
-				ret = codec_apply_runtime_config(dev);
+				ret = module_apply_runtime_config(dev);
 				if (ret) {
 					comp_err(dev, "codec_adapter_set_params() error %x: codec runtime config apply failed",
 						 ret);
