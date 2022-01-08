@@ -134,7 +134,7 @@ enum module_state {
 
 /** codec adapter setup config parameters */
 struct ca_config {
-	uint32_t codec_id;
+	uint32_t module_id;
 	uint32_t reserved;
 	uint32_t sample_rate;
 	uint32_t sample_width;
