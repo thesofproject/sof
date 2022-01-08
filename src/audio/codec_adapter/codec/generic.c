@@ -195,14 +195,14 @@ static int validate_config(struct module_config *cfg)
 	return 0;
 }
 
-int codec_prepare(struct comp_dev *dev)
+int module_prepare(struct comp_dev *dev)
 {
 	int ret;
 	struct processing_module *mod = comp_get_drvdata(dev);
 	uint32_t codec_id = mod->ca_config.codec_id;
 	struct module_data *md = &mod->priv;
 
-	comp_dbg(dev, "codec_prepare() start");
+	comp_dbg(dev, "module_prepare() start");
 
 	if (mod->priv.state == MODULE_IDLE)
 		return 0;
@@ -211,7 +211,7 @@ int codec_prepare(struct comp_dev *dev)
 
 	ret = md->ops->prepare(dev);
 	if (ret) {
-		comp_err(dev, "codec_prepare() error %d: codec specific prepare failed, codec_id 0x%x",
+		comp_err(dev, "module_prepare() error %d: module specific prepare failed, codec_id 0x%x",
 			 ret, codec_id);
 		goto end;
 	}
@@ -228,7 +228,7 @@ int codec_prepare(struct comp_dev *dev)
 	md->r_cfg.data = NULL;
 
 	md->state = MODULE_IDLE;
-	comp_dbg(dev, "codec_prepare() done");
+	comp_dbg(dev, "module_prepare() done");
 end:
 	return ret;
 }
