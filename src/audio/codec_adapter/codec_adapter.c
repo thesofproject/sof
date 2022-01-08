@@ -692,7 +692,7 @@ void codec_adapter_free(struct comp_dev *dev)
 
 	comp_dbg(dev, "codec_adapter_free(): start");
 
-	ret = codec_free(dev);
+	ret = module_free(dev);
 	if (ret) {
 		comp_err(dev, "codec_adapter_free(): error %d, codec reset has failed",
 			 ret);
