@@ -133,7 +133,7 @@ west_init_update()
 	# fetching of (full 40-digits) SHAs; even SHAs not in origin but
 	# in forks!
 
-	# zephyr_fetch_and_switch    origin   pull/38374/head
+	zephyr_fetch_and_switch    origin   pull/41661/head
 	# zephyr_fetch_and_switch    origin   19d5448ec117fde8076bec4d0e61da53147f3315
 
 	# SECURITY WARNING for reviewers: never allow unknown code from
