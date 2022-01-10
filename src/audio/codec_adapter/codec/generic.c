@@ -73,11 +73,11 @@ err:
 	return ret;
 }
 
-int module_init(struct comp_dev *dev, struct module_interface *interface)
+int module_init(struct processing_module *mod, struct module_interface *interface)
 {
 	int ret;
-	struct processing_module *mod = comp_get_drvdata(dev);
 	struct module_data *md = &mod->priv;
+	struct comp_dev *dev = mod->dev;
 
 	comp_info(dev, "module_init() start");
 
@@ -87,7 +87,7 @@ int module_init(struct comp_dev *dev, struct module_interface *interface)
 		return -EPERM;
 
 	if (!interface) {
-		comp_err(dev, "module_init(): could not find module interface for comp %d",
+		comp_err(dev, "module_init(): could not find module interface for comp id %d",
 			 dev_comp_id(dev));
 		return -EIO;
 	}
@@ -105,9 +105,9 @@ int module_init(struct comp_dev *dev, struct module_interface *interface)
 	list_init(&md->memory.mem_list);
 
 	/* Now we can proceed with module specific initialization */
-	ret = md->ops->init(dev);
+	ret = md->ops->init(mod);
 	if (ret) {
-		comp_err(dev, "module_init() error %d: module specific init failed, comp %d",
+		comp_err(dev, "module_init() error %d: module specific init failed, comp id %d",
 			 ret, dev_comp_id(dev));
 		return ret;
 	}

@@ -596,8 +596,9 @@ static int waves_effect_setup_config(struct comp_dev *dev)
 	return 0;
 }
 
-static int waves_codec_init(struct comp_dev *dev)
+static int waves_codec_init(struct processing_module *mod)
 {
+	struct comp_dev *dev = mod->dev;
 	struct module_data *codec = comp_get_module_data(dev);
 	struct waves_codec_data *waves_codec;
 	int ret = 0;

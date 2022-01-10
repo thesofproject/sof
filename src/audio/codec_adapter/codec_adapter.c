@@ -78,7 +78,7 @@ struct comp_dev *codec_adapter_new(const struct comp_driver *drv,
 	}
 
 	/* Init processing codec */
-	ret = module_init(dev, interface);
+	ret = module_init(mod, interface);
 	if (ret) {
 		comp_err(dev, "codec_adapter_new() %d: codec initialization failed",
 			 ret);
