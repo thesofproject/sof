@@ -157,9 +157,10 @@ static int dts_codec_init(struct processing_module *mod)
 	return ret;
 }
 
-static int dts_codec_prepare(struct comp_dev *dev)
+static int dts_codec_prepare(struct processing_module *mod)
 {
 	int ret;
+	struct comp_dev *dev = mod->dev;
 	struct module_data *codec = comp_get_module_data(dev);
 	DtsSofInterfaceBufferConfiguration buffer_configuration;
 	DtsSofInterfaceResult dts_result;

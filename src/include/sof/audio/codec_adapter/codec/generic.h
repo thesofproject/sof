@@ -81,7 +81,7 @@ struct module_interface {
 	 * Module specific prepare procedure, called as part of codec_adapter
 	 * component preparation in .prepare()
 	 */
-	int (*prepare)(struct comp_dev *dev);
+	int (*prepare)(struct processing_module *mod);
 	/**
 	 * Module specific processing procedure, called as part of codec_adapter
 	 * component copy in .copy(). This procedure is responsible to consume
@@ -206,7 +206,7 @@ int module_init(struct processing_module *mod, struct module_interface *interfac
 void *module_allocate_memory(struct comp_dev *dev, uint32_t size, uint32_t alignment);
 int module_free_memory(struct comp_dev *dev, void *ptr);
 void module_free_all_memory(struct comp_dev *dev);
-int module_prepare(struct comp_dev *dev);
+int module_prepare(struct processing_module *mod);
 int module_process(struct comp_dev *dev);
 int module_apply_runtime_config(struct comp_dev *dev);
 int module_reset(struct comp_dev *dev);
