@@ -425,9 +425,10 @@ static int cadence_codec_init_process(struct comp_dev *dev)
 	return 0;
 }
 
-static int cadence_codec_prepare(struct comp_dev *dev)
+static int cadence_codec_prepare(struct processing_module *mod)
 {
 	int ret = 0, mem_tabs_size;
+	struct comp_dev *dev = mod->dev;
 	struct module_data *codec = comp_get_module_data(dev);
 	struct cadence_codec_data *cd = codec->private;
 
