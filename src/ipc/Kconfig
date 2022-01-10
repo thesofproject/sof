@@ -23,4 +23,12 @@ config IPC_MAJOR_4
 
 endchoice
 
+config STOP_FOR_PAUSE
+	bool
+	default y
+	help
+	  When selected, this option handles PAUSE and RELEASE streaming
+	  triggers just like STOP and START.
+	  If unsure say N.
+
 endmenu
