@@ -119,39 +119,39 @@ struct ext_man_fw_version {
 	/* use sof_ipc struct because of code re-use */
 	struct sof_ipc_fw_version version;
 	uint32_t flags;
-} __attribute__((packed, aligned(4)));
+} __attribute__((packed, aligned(16)));
 
 /* windows info */
 struct ext_man_windows {
 	struct ext_man_elem_header hdr;
 	/* use sof_ipc struct because of code re-use */
 	struct sof_ipc_window window;
-} __attribute__((packed, aligned(4)));
+} __attribute__((packed, aligned(16)));
 
 /* Used C compiler description */
 struct ext_man_cc_version {
 	struct ext_man_elem_header hdr;
 	/* use sof_ipc struct because of code re-use */
 	struct sof_ipc_cc_version cc_version;
-} __attribute__((packed, aligned(4)));
+} __attribute__((packed, aligned(16)));
 
 struct ext_man_probe_support {
 	struct ext_man_elem_header hdr;
 	/* use sof_ipc struct because of code re-use */
 	struct sof_ipc_probe_support probe;
-} __attribute__((packed, aligned(4)));
+} __attribute__((packed, aligned(16)));
 
 struct ext_man_dbg_abi {
 	struct ext_man_elem_header hdr;
 	/* use sof_ipc struct because of code re-use */
 	struct sof_ipc_user_abi_version dbg_abi;
-} __attribute__((packed, aligned(4)));
+} __attribute__((packed, aligned(16)));
 
 /** EXT_MAN_ELEM_CONFIG_DATA elements (ABI3.17) */
 struct ext_man_config_data {
 	struct ext_man_elem_header hdr;
 
 	struct config_elem elems[];
-} __attribute__((packed, aligned(4)));
+} __attribute__((packed, aligned(16)));
 
 #endif /* __KERNEL_EXT_MANIFEST_H__ */
