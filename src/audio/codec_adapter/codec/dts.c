@@ -112,9 +112,10 @@ static int dts_effect_populate_buffer_configuration(struct comp_dev *dev,
 	return 0;
 }
 
-static int dts_codec_init(struct comp_dev *dev)
+static int dts_codec_init(struct processing_module *mod)
 {
 	int ret;
+	struct comp_dev *dev = mod->dev;
 	struct module_data *codec = comp_get_module_data(dev);
 	DtsSofInterfaceResult dts_result;
 	DtsSofInterfaceVersionInfo interface_version;
