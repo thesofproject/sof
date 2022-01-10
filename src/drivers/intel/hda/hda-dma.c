@@ -223,8 +223,6 @@ struct hda_chan_data {
 #endif
 };
 
-static int hda_dma_stop_common(struct dma_chan_data *channel);
-
 static inline void hda_dma_inc_fp(struct dma_chan_data *chan,
 				  uint32_t value)
 {
@@ -435,7 +433,7 @@ static int hda_dma_host_start(struct dma_chan_data *channel)
 	return ret;
 }
 
-static void hda_dma_host_stop(struct dma_chan_data *channel)
+static void hda_dma_host_stop_delayed(struct dma_chan_data *channel)
 {
 	struct hda_chan_data *hda_chan = dma_chan_get_data(channel);
 
@@ -657,7 +655,7 @@ static int hda_dma_stop_common(struct dma_chan_data *channel)
 	/* disable the channel */
 	if (channel->direction == DMA_DIR_HMEM_TO_LMEM ||
 	    channel->direction == DMA_DIR_LMEM_TO_HMEM) {
-		hda_dma_host_stop(channel);
+		hda_dma_host_stop_delayed(channel);
 
 		dma_chan_reg_update_bits(channel, DGCS, DGCS_FIFORDY | DGCS_GEN, 0);
 	} else {
@@ -682,6 +680,16 @@ static int hda_dma_stop_common(struct dma_chan_data *channel)
 	hda_dma_ptr_trace(channel, "stop", HDA_DBG_BOTH);
 
 	irq_local_enable(flags);
+	return 0;
+}
+
+static int hda_dma_host_stop(struct dma_chan_data *channel)
+{
+	hda_dma_host_stop_delayed(channel);
+	dma_chan_reg_update_bits(channel, DGCS, DGCS_FIFORDY | DGCS_GEN, 0);
+
+	channel->status = COMP_STATE_PREPARE;
+
 	return 0;
 }
 
@@ -1068,6 +1076,7 @@ const struct dma_ops hda_host_dma_ops = {
 	.channel_get		= hda_dma_channel_get,
 	.channel_put		= hda_dma_channel_put,
 	.start			= hda_dma_start,
+	.stop			= hda_dma_host_stop,
 	.stop_delayed		= hda_dma_stop_delayed,
 	.copy			= hda_dma_host_copy,
 	.status			= hda_dma_status,
