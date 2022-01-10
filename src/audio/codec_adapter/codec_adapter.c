@@ -118,7 +118,9 @@ int codec_adapter_prepare(struct comp_dev *dev)
 	if (!mod->ca_source) {
 		comp_err(dev, "codec_adapter_prepare(): source buffer not found");
 		return -EINVAL;
-	} else if (!mod->ca_sink) {
+	}
+
+	if (!mod->ca_sink) {
 		comp_err(dev, "codec_adapter_prepare(): sink buffer not found");
 		return -EINVAL;
 	}
@@ -362,19 +364,19 @@ db_verify:
 		 */
 		if (audio_stream_get_avail_bytes(&local_buff->stream) >= mod->period_bytes)
 			goto copy_period;
-		else
-			goto end;
+
+		goto end;
 	}
 
 	if (mod->deep_buff_bytes) {
 		if (mod->deep_buff_bytes >= audio_stream_get_avail_bytes(&local_buff->stream)) {
 			generate_zeroes(sink, mod->period_bytes);
 			goto end;
-		} else {
-			comp_dbg(dev, "codec_adapter_copy(): deep buffering has ended after gathering %d bytes of processed data",
-				 audio_stream_get_avail_bytes(&local_buff->stream));
-			mod->deep_buff_bytes = 0;
 		}
+
+		comp_dbg(dev, "codec_adapter_copy(): deep buffering has ended after gathering %d bytes of processed data",
+			 audio_stream_get_avail_bytes(&local_buff->stream));
+		mod->deep_buff_bytes = 0;
 	}
 
 copy_period:
