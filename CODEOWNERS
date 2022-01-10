@@ -11,6 +11,7 @@
 # include files
 src/include/sof/drivers/dmic.h		@singalsu
 src/include/ipc/**			@thesofproject/steering-committee
+src/include/ipc/**			@randerwang
 src/include/kernel/**			@thesofproject/steering-committee
 src/include/user/**			@thesofproject/steering-committee
 src/include/sof/debug/gdb/*		@mrajwa
