@@ -112,46 +112,47 @@ static int dts_effect_populate_buffer_configuration(struct comp_dev *dev,
 	return 0;
 }
 
-static int dts_codec_init(struct comp_dev *dev)
+static int dts_codec_init(struct processing_module *mod)
 {
 	int ret;
-	struct module_data *codec = comp_get_module_data(dev);
+	struct module_data *codec = comp_get_module_data(mod->dev);
 	DtsSofInterfaceResult dts_result;
 	DtsSofInterfaceVersionInfo interface_version;
 	DtsSofInterfaceVersionInfo sdk_version;
 
-	comp_dbg(dev, "dts_codec_init() start");
+	comp_dbg(mod->dev, "dts_codec_init() start");
 
 	dts_result = dtsSofInterfaceInit((DtsSofInterfaceInst **)&(codec->private),
-		dts_effect_allocate_codec_memory, dev);
-	ret = dts_effect_convert_sof_interface_result(dev, dts_result);
+		dts_effect_allocate_codec_memory, mod->dev);
+	ret = dts_effect_convert_sof_interface_result(mod->dev, dts_result);
 
 	if (ret)
-		comp_err(dev, "dts_codec_init() dtsSofInterfaceInit failed %d %d", ret, dts_result);
+		comp_err(mod->dev, "dts_codec_init() dtsSofInterfaceInit failed %d %d",
+			 ret, dts_result);
 
 	/* Obtain the current versions of DTS interface and SDK */
 	dts_result = dtsSofInterfaceGetVersion(&interface_version, &sdk_version);
 
 	/* Not necessary to fail initialisation if only get version failed */
 	if (dts_result == DTS_SOF_INTERFACE_RESULT_SUCCESS) {
-		comp_info(dev,
-			"dts_codec_init() DTS SOF Interface version %d.%d.%d.%d",
-			interface_version.major,
-			interface_version.minor,
-			interface_version.patch,
-			interface_version.build);
-		comp_info(dev,
-			"dts_codec_init() DTS SDK version %d.%d.%d.%d",
-			sdk_version.major,
-			sdk_version.minor,
-			sdk_version.patch,
-			sdk_version.build);
+		comp_info(mod->dev,
+			  "dts_codec_init() DTS SOF Interface version %d.%d.%d.%d",
+			  interface_version.major,
+			  interface_version.minor,
+			  interface_version.patch,
+			  interface_version.build);
+		comp_info(mod->dev,
+			  "dts_codec_init() DTS SDK version %d.%d.%d.%d",
+			  sdk_version.major,
+			  sdk_version.minor,
+			  sdk_version.patch,
+			  sdk_version.build);
 	}
 
 	if (ret)
-		comp_err(dev, "dts_codec_init() failed %d %d", ret, dts_result);
+		comp_err(mod->dev, "dts_codec_init() failed %d %d", ret, dts_result);
 
-	comp_dbg(dev, "dts_codec_init() done");
+	comp_dbg(mod->dev, "dts_codec_init() done");
 
 	return ret;
 }

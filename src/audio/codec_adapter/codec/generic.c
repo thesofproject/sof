@@ -73,13 +73,12 @@ err:
 	return ret;
 }
 
-int module_init(struct comp_dev *dev, struct module_interface *interface)
+int module_init(struct processing_module *mod, struct module_interface *interface)
 {
 	int ret;
-	struct processing_module *mod = comp_get_drvdata(dev);
 	struct module_data *md = &mod->priv;
 
-	comp_info(dev, "module_init() start");
+	comp_info(mod->dev, "module_init() start");
 
 	if (mod->priv.state == MODULE_INITIALIZED)
 		return 0;
@@ -87,15 +86,15 @@ int module_init(struct comp_dev *dev, struct module_interface *interface)
 		return -EPERM;
 
 	if (!interface) {
-		comp_err(dev, "module_init(): could not find module interface for comp %d",
-			 dev_comp_id(dev));
+		comp_err(mod->dev, "module_init(): could not find module interface for comp id %d",
+			 dev_comp_id(mod->dev));
 		return -EIO;
 	}
 
 	if (!interface->init || !interface->prepare || !interface->process ||
 	    !interface->apply_config || !interface->reset || !interface->free) {
-		comp_err(dev, "module_init(): comp %d is missing mandatory interfaces",
-			 dev_comp_id(dev));
+		comp_err(mod->dev, "module_init(): comp %x is missing mandatory interfaces",
+			 dev_comp_id(mod->dev));
 		return -EIO;
 	}
 
@@ -105,14 +104,14 @@ int module_init(struct comp_dev *dev, struct module_interface *interface)
 	list_init(&md->memory.mem_list);
 
 	/* Now we can proceed with module specific initialization */
-	ret = md->ops->init(dev);
+	ret = md->ops->init(mod);
 	if (ret) {
-		comp_err(dev, "module_init() error %d: module specific init failed, comp %d",
-			 ret, dev_comp_id(dev));
+		comp_err(mod->dev, "module_init() error %d: module specific init failed, comp_id %d",
+			 ret, dev_comp_id(mod->dev));
 		return ret;
 	}
 
-	comp_info(dev, "module_init() done");
+	comp_info(mod->dev, "module_init() done");
 	md->state = MODULE_INITIALIZED;
 
 	return ret;

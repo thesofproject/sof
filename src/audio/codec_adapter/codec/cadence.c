@@ -94,21 +94,21 @@ static struct cadence_api cadence_api_table[] = {
 #endif
 };
 
-static int cadence_codec_init(struct comp_dev *dev)
+static int cadence_codec_init(struct processing_module *mod)
 {
 	int ret;
-	struct module_data *codec = comp_get_module_data(dev);
+	struct module_data *codec = comp_get_module_data(mod->dev);
 	struct cadence_codec_data *cd = NULL;
 	uint32_t obj_size;
 	uint32_t no_of_api = ARRAY_SIZE(cadence_api_table);
 	uint32_t api_id = CODEC_GET_API_ID(DEFAULT_CODEC_ID);
 	uint32_t i;
 
-	comp_dbg(dev, "cadence_codec_init() start");
+	comp_dbg(mod->dev, "cadence_codec_init() start");
 
 	cd = rballoc(0, SOF_MEM_CAPS_RAM, sizeof(struct cadence_codec_data));
 	if (!cd) {
-		comp_err(dev, "cadence_codec_init(): failed to allocate memory for cadence codec data");
+		comp_err(mod->dev, "cadence_codec_init(): failed to allocate memory for cadence codec data");
 		return -ENOMEM;
 	}
 
@@ -131,7 +131,7 @@ static int cadence_codec_init(struct comp_dev *dev)
 
 	/* Verify API assignment */
 	if (!cd->api) {
-		comp_err(dev, "cadence_codec_init(): could not find API function for id %x",
+		comp_err(mod->dev, "cadence_codec_init(): could not find API function for id %x",
 			 api_id);
 		ret = -EINVAL;
 		goto free;
@@ -164,26 +164,26 @@ static int cadence_codec_init(struct comp_dev *dev)
 	API_CALL(cd, XA_API_CMD_GET_LIB_ID_STRINGS,
 		 XA_CMD_TYPE_LIB_NAME, cd->name, ret);
 	if (ret != LIB_NO_ERROR) {
-		comp_err(dev, "cadence_codec_init() error %x: failed to get lib name",
+		comp_err(mod->dev, "cadence_codec_init() error %x: failed to get lib name",
 			 ret);
 		goto free;
 	}
 	/* Get codec object size */
 	API_CALL(cd, XA_API_CMD_GET_API_SIZE, 0, &obj_size, ret);
 	if (ret != LIB_NO_ERROR) {
-		comp_err(dev, "cadence_codec_init() error %x: failed to get lib object size",
+		comp_err(mod->dev, "cadence_codec_init() error %x: failed to get lib object size",
 			 ret);
 		goto free;
 	}
 	/* Allocate space for codec object */
 	cd->self = rballoc(0, SOF_MEM_CAPS_RAM, obj_size);
 	if (!cd->self) {
-		comp_err(dev, "cadence_codec_init(): failed to allocate space for lib object");
+		comp_err(mod->dev, "cadence_codec_init(): failed to allocate space for lib object");
 		ret = -ENOMEM;
 		goto free;
 	}
 
-	comp_dbg(dev, "cadence_codec_init(): allocated %d bytes for lib object", obj_size);
+	comp_dbg(mod->dev, "cadence_codec_init(): allocated %d bytes for lib object", obj_size);
 
 	/* Set all params to their default values */
 	API_CALL(cd, XA_API_CMD_INIT, XA_CMD_TYPE_INIT_API_PRE_CONFIG_PARAMS,
@@ -193,7 +193,7 @@ static int cadence_codec_init(struct comp_dev *dev)
 		goto free;
 	}
 
-	comp_dbg(dev, "cadence_codec_init() done");
+	comp_dbg(mod->dev, "cadence_codec_init() done");
 
 	return 0;
 free:

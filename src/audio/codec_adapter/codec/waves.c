@@ -596,32 +596,32 @@ static int waves_effect_setup_config(struct comp_dev *dev)
 	return 0;
 }
 
-static int waves_codec_init(struct comp_dev *dev)
+static int waves_codec_init(struct processing_module *mod)
 {
-	struct module_data *codec = comp_get_module_data(dev);
+	struct module_data *codec = comp_get_module_data(mod->dev);
 	struct waves_codec_data *waves_codec;
 	int ret = 0;
 
-	comp_dbg(dev, "waves_codec_init() start");
+	comp_dbg(mod->dev, "waves_codec_init() start");
 
-	waves_codec = module_allocate_memory(dev, sizeof(struct waves_codec_data), 16);
+	waves_codec = module_allocate_memory(mod->dev, sizeof(struct waves_codec_data), 16);
 	if (!waves_codec) {
-		comp_err(dev, "waves_codec_init() failed to allocate %d bytes for waves_codec_data",
+		comp_err(mod->dev, "waves_codec_init() failed to allocate %d bytes for waves_codec_data",
 			 sizeof(struct waves_codec_data));
 		ret = -ENOMEM;
 	} else {
 		memset(waves_codec, 0, sizeof(struct waves_codec_data));
 		codec->private = waves_codec;
 
-		ret = waves_effect_allocate(dev);
+		ret = waves_effect_allocate(mod->dev);
 		if (ret) {
-			module_free_memory(dev, waves_codec);
+			module_free_memory(mod->dev, waves_codec);
 			codec->private = NULL;
 		}
 	}
 
 	if (ret)
-		comp_err(dev, "waves_codec_init() failed %d", ret);
+		comp_err(mod->dev, "waves_codec_init() failed %d", ret);
 
 	waves_codec->setup_cfg.avail = false;
 
