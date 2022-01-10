@@ -63,6 +63,8 @@ struct comp_dev *codec_adapter_new(const struct comp_driver *drv,
 		return NULL;
 	}
 
+	mod->dev = dev;
+
 	comp_set_drvdata(dev, mod);
 
 	/* Copy initial config */
