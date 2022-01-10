@@ -94,9 +94,10 @@ static struct cadence_api cadence_api_table[] = {
 #endif
 };
 
-static int cadence_codec_init(struct comp_dev *dev)
+static int cadence_codec_init(struct processing_module *mod)
 {
 	int ret;
+	struct comp_dev *dev = mod->dev;
 	struct module_data *codec = comp_get_module_data(dev);
 	struct cadence_codec_data *cd = NULL;
 	uint32_t obj_size;

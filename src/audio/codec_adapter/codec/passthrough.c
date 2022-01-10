@@ -13,9 +13,9 @@ DECLARE_SOF_RT_UUID("passthrough_codec", passthrough_uuid, 0x376b5e44, 0x9c82, 0
 		    0xbc, 0x83, 0x10, 0xea, 0x10, 0x1a, 0xf8, 0x8f);
 DECLARE_TR_CTX(passthrough_tr, SOF_UUID(passthrough_uuid), LOG_LEVEL_INFO);
 
-static int passthrough_codec_init(struct comp_dev *dev)
+static int passthrough_codec_init(struct processing_module *mod)
 {
-	comp_info(dev, "passthrough_codec_init() start");
+	comp_info(mod->dev, "passthrough_codec_init() start");
 	return 0;
 }
 

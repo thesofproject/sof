@@ -62,6 +62,8 @@ UT_STATIC void sys_comp_codec_##adapter_init(void) \
 \
 DECLARE_MODULE(sys_comp_codec_##adapter_init)
 
+struct processing_module;
+
 /*****************************************************************************/
 /* Module generic data types						     */
 /*****************************************************************************/
@@ -74,7 +76,7 @@ struct module_interface {
 	 * Module specific initialization procedure, called as part of
 	 * codec_adapter component creation in .new()
 	 */
-	int (*init)(struct comp_dev *dev);
+	int (*init)(struct processing_module *mod);
 	/**
 	 * Module specific prepare procedure, called as part of codec_adapter
 	 * component preparation in .prepare()
@@ -200,7 +202,7 @@ struct processing_module {
 /* Module generic interfaces						     */
 /*****************************************************************************/
 int module_load_config(struct comp_dev *dev, void *cfg, size_t size);
-int module_init(struct comp_dev *dev, struct module_interface *interface);
+int module_init(struct processing_module *mod, struct module_interface *interface);
 void *module_allocate_memory(struct comp_dev *dev, uint32_t size, uint32_t alignment);
 int module_free_memory(struct comp_dev *dev, void *ptr);
 void module_free_all_memory(struct comp_dev *dev);
