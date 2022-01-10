@@ -33,6 +33,24 @@ int module_load_config(struct comp_dev *dev, void *cfg, size_t size, enum module
 		return -EINVAL;
 	}
 
+	/*
+	 * Setup config comprises of two parts: 1. Essential data needed for initialization of
+	 * codec_adapter and follows struct ca_config. 2: Module specific data needed to setup the
+	 * module. Copy the codec_adapter data first.
+	 */
+	if (type == MODULE_CFG_SETUP) {
+		ret = memcpy_s(&mod->ca_config, sizeof(mod->ca_config), cfg,
+			       sizeof(struct ca_config));
+		assert(!ret);
+
+		/* And then copy the module-specific data */
+		cfg = (char *)cfg + sizeof(struct ca_config);
+		size -= sizeof(struct ca_config);
+
+		if (!size)
+			return 0;
+	}
+
 	dst = (type == MODULE_CFG_SETUP) ? &md->s_cfg :
 					  &md->r_cfg;
 

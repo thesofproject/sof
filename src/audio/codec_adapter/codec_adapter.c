@@ -23,7 +23,6 @@
 #include <sof/platform.h>
 #include <sof/ut.h>
 
-int load_setup_config(struct comp_dev *dev, void *cfg, uint32_t size);
 int validate_setup_config(struct ca_config *cfg);
 
 /**
@@ -69,7 +68,8 @@ struct comp_dev *codec_adapter_new(const struct comp_driver *drv,
 	comp_set_drvdata(dev, mod);
 
 	/* Copy setup config */
-	ret = load_setup_config(dev, ipc_codec_adapter->data, ipc_codec_adapter->size);
+	ret = module_load_config(dev, ipc_codec_adapter->data, ipc_codec_adapter->size,
+				 MODULE_CFG_SETUP);
 	if (ret) {
 		comp_err(dev, "codec_adapter_new() error %d: config loading has failed.",
 			 ret);
@@ -97,66 +97,6 @@ int validate_setup_config(struct ca_config *cfg)
 {
 	/* TODO: validate codec_adapter setup parameters */
 	return 0;
-}
-
-/**
- * \brief Load setup config for both codec adapter and codec library.
- * \param[in] dev - codec adapter component device pointer.
- * \param[in] cfg - pointer to the configuration data.
- * \param[in] size - size of config.
- *
- * The setup config comprises of two parts - one contains essential data
- * for the initialization of codec_adapter and follows struct ca_config.
- * Second contains codec specific data needed to setup the codec itself.
- * The latter is send in a TLV format organized by struct module_param.
- *
- * \return integer representing either:
- *	0 -> success
- *	negative value -> failure.
- */
-int load_setup_config(struct comp_dev *dev, void *cfg, uint32_t size)
-{
-	int ret;
-	void *lib_cfg;
-	size_t lib_cfg_size;
-	struct processing_module *mod = comp_get_drvdata(dev);
-
-	comp_dbg(dev, "load_setup_config() start.");
-
-	if (!cfg || !size) {
-		comp_err(dev, "load_setup_config(): no config available cfg: %x, size: %d",
-			 (uintptr_t)cfg, size);
-		ret = -EINVAL;
-		goto end;
-	} else if (size < sizeof(struct ca_config)) {
-		comp_err(dev, "load_setup_config(): no codec config available, size %d", size);
-		ret = -EIO;
-		goto end;
-	}
-	/* Copy codec_adapter part */
-	ret = memcpy_s(&mod->ca_config, sizeof(mod->ca_config), cfg,
-		       sizeof(struct ca_config));
-	assert(!ret);
-	ret = validate_setup_config(&mod->ca_config);
-	if (ret) {
-		comp_err(dev, "load_setup_config(): validation of setup config for codec_adapter failed.");
-		goto end;
-	}
-	/* Copy codec specific part */
-	lib_cfg_size = size - sizeof(struct ca_config);
-	if (lib_cfg_size) {
-		lib_cfg = (char *)cfg + sizeof(struct ca_config);
-		ret = module_load_config(dev, lib_cfg, lib_cfg_size, MODULE_CFG_SETUP);
-		if (ret) {
-			comp_err(dev, "load_setup_config(): %d: failed to load setup config for codec id %x",
-				 ret, mod->ca_config.module_id);
-			goto end;
-		}
-	}
-
-	comp_dbg(dev, "load_setup_config() done.");
-end:
-	return ret;
 }
 
 /*
@@ -526,26 +466,14 @@ static int codec_adapter_set_params(struct comp_dev *dev, struct sof_ipc_ctrl_da
 		return 0;
 
 	/* config fully copied, now load it */
-	switch (type) {
-	case MODULE_CFG_SETUP:
-		ret = load_setup_config(dev, md->runtime_params, size);
-		if (ret)
-			comp_err(dev, "codec_adapter_set_params(): error %d: load of setup config failed.",
-				 ret);
-		else
-			comp_dbg(dev, "codec_adapter_set_params() load of setup config done.");
-		break;
-	case MODULE_CFG_RUNTIME:
-		ret = module_load_config(dev, md->runtime_params, size, MODULE_CFG_RUNTIME);
-		if (ret) {
-			comp_err(dev, "codec_adapter_set_params() error %d: load of runtime config failed.",
-				 ret);
-			break;
-		}
+	ret = module_load_config(dev, md->runtime_params, size, type);
+	if (ret)
+		goto end;
 
-		comp_dbg(dev, "codec_adapter_set_params() load of runtime config done.");
+	comp_dbg(dev, "codec_adapter_set_params(): config load successful");
 
-		/* And apply it right away if codec is already prepared */
+	/* And apply runtime config right away if codec is already prepared */
+	if (type == MODULE_CFG_RUNTIME) {
 		if (md->state >= MODULE_INITIALIZED) {
 			ret = module_apply_runtime_config(dev);
 			if (ret)
@@ -556,12 +484,9 @@ static int codec_adapter_set_params(struct comp_dev *dev, struct sof_ipc_ctrl_da
 		} else {
 			mod->priv.r_cfg.avail = true;
 		}
-		break;
-	default:
-		comp_err(dev, "codec_adapter_set_params(): error: unknown config type.");
-		break;
 	}
 
+end:
 	if (md->runtime_params)
 		rfree(md->runtime_params);
 	md->runtime_params = NULL;
