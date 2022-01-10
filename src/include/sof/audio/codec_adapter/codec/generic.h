@@ -187,6 +187,11 @@ struct processing_module {
 	struct comp_buffer *ca_source;
 	struct comp_buffer *local_buff;
 	struct sof_ipc_stream_params stream_params;
+	/*
+	 * This is a temporary change in order to support the trace messages in the modules. This
+	 * will be removed once the trace API is updated.
+	 */
+	struct comp_dev *dev;
 	uint32_t period_bytes; /** pipeline period bytes */
 	uint32_t deep_buff_bytes; /**< copy start threshold */
 };
