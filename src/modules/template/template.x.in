@@ -1,0 +1,200 @@
+/*
+ * Linker Script for Cannonlake.
+ *
+ * This script is run through the GNU C preprocessor to align the memory
+ * offsets with headers.
+ *
+ * Use spaces for formatting as cpp ignore tab sizes.
+ */
+
+
+#include <sof/lib/memory.h>
+#include <xtensa/config/core-isa.h>
+
+OUTPUT_ARCH(xtensa)
+
+MEMORY
+{
+  sof_fw :
+        org = SOF_MODULE_BASE,
+        len = SOF_MODULE_MAX_SIZE
+}
+
+PHDRS
+{
+  sof_fw_phdr PT_LOAD;
+}
+
+_EXT_MAN_ALIGN_ = 16;
+
+SECTIONS
+{
+  .text : ALIGN(PLATFORM_DCACHE_ALIGN)
+  {
+    _stext = .;
+    _text_start = ABSOLUTE(.);
+    *(.entry.text)
+    *(.init.literal)
+    KEEP(*(.init))
+    *(.literal .text .literal.* .text.* .stub .gnu.warning .gnu.linkonce.literal.* .gnu.linkonce.t.*.literal .gnu.linkonce.t.*)
+    *(.fini.literal)
+    KEEP(*(.fini))
+    *(.gnu.version)
+    _text_end = ABSOLUTE(.);
+    _etext = .;
+  } >sof_fw :sof_fw_phdr
+
+  .rodata : ALIGN(PLATFORM_DCACHE_ALIGN)
+  {
+    _rodata_start = ABSOLUTE(.);
+    *(.rodata)
+    *(.rodata.*)
+    *(.gnu.linkonce.r.*)
+    *(.rodata1)
+    __XT_EXCEPTION_TABLE__ = ABSOLUTE(.);
+    KEEP (*(.xt_except_table))
+    KEEP (*(.gcc_except_table))
+    *(.gnu.linkonce.e.*)
+    *(.gnu.version_r)
+    KEEP (*(.eh_frame))
+    /*  C++ constructor and destructor tables, properly ordered:  */
+    KEEP (*crtbegin.o(.ctors))
+    KEEP (*(EXCLUDE_FILE (*crtend.o) .ctors))
+    KEEP (*(SORT(.ctors.*)))
+    KEEP (*(.ctors))
+    KEEP (*crtbegin.o(.dtors))
+    KEEP (*(EXCLUDE_FILE (*crtend.o) .dtors))
+    KEEP (*(SORT(.dtors.*)))
+    KEEP (*(.dtors))
+    /*  C++ exception handlers table:  */
+    __XT_EXCEPTION_DESCS__ = ABSOLUTE(.);
+    *(.xt_except_desc)
+    *(.gnu.linkonce.h.*)
+    __XT_EXCEPTION_DESCS_END__ = ABSOLUTE(.);
+    *(.xt_except_desc_end)
+    *(.dynamic)
+    *(.gnu.version_d)
+    . = ALIGN(4);		/* this table MUST be 4-byte aligned */
+    _bss_table_start = ABSOLUTE(.);
+    LONG(_bss_start)
+    LONG(_bss_end)
+    _bss_table_end = ABSOLUTE(.);
+   . = ALIGN(4);
+    _symbol_strings_start = ABSOLUTE(.);
+    LONG(_symbol_strings_start)
+    *(._symbol_strings)
+    LONG(_symbol_strings_end)
+    _symbol_strings_end = ABSOLUTE(.);
+    _symbol_table_start = ABSOLUTE(.);
+    LONG(_symbol_table_start)
+    *(._symbol_table)
+    LONG(_symbol_table_end)
+    _symbol_table_end = ABSOLUTE(.);
+    _rodata_end = ABSOLUTE(.);
+  } >sof_fw :sof_fw_phdr
+
+  .shared_data : ALIGN(PLATFORM_DCACHE_ALIGN)
+  {
+    _shared_data_start = ABSOLUTE(.);
+    *(*.shared_data)
+    _shared_data_end = ABSOLUTE(.);
+    . = ALIGN(PLATFORM_DCACHE_ALIGN);
+  } >sof_fw :sof_fw_phdr
+
+  .data : ALIGN(PLATFORM_DCACHE_ALIGN)
+  {
+    _data_start = ABSOLUTE(.);
+    *(.data)
+    *(.data.*)
+    *(.gnu.linkonce.d.*)
+    KEEP(*(.gnu.linkonce.d.*personality*))
+    *(.data1)
+    *(.sdata)
+    *(.sdata.*)
+    *(.gnu.linkonce.s.*)
+    *(.sdata2)
+    *(.sdata2.*)
+    *(.gnu.linkonce.s2.*)
+    KEEP(*(.jcr))
+    _trace_ctx_start = ABSOLUTE(.);
+    *(.trace_ctx)
+    _trace_ctx_end = ABSOLUTE(.);
+    _data_end = ABSOLUTE(.);
+  } >sof_fw :sof_fw_phdr
+
+  .lit4 : ALIGN(PLATFORM_DCACHE_ALIGN)
+  {
+    _lit4_start = ABSOLUTE(.);
+    *(*.lit4)
+    *(.lit4.*)
+    *(.gnu.linkonce.lit4.*)
+    _lit4_end = ABSOLUTE(.);
+  } >sof_fw :sof_fw_phdr
+
+  .fw_ready : ALIGN(4)
+  {
+    KEEP (*(.fw_ready))
+    KEEP (*(.fw_ready_metadata))
+  } >sof_fw :sof_fw_phdr
+
+  .bss (NOLOAD) : ALIGN(PLATFORM_DCACHE_ALIGN)
+  {
+    . = ALIGN (8);
+    _bss_start = ABSOLUTE(.);
+    *(.dynsbss)
+    *(.sbss)
+    *(.sbss.*)
+    *(.gnu.linkonce.sb.*)
+    *(.scommon)
+    *(.sbss2)
+    *(.sbss2.*)
+    *(.gnu.linkonce.sb2.*)
+    *(.dynbss)
+    *(.bss)
+    *(.bss.*)
+    *(.gnu.linkonce.b.*)
+    *(COMMON)
+    _bss_end = ABSOLUTE(.);
+  } >sof_fw :sof_fw_phdr
+
+  .debug  0 :  { *(.debug) }
+  .line  0 :  { *(.line) }
+  .debug_srcinfo  0 :  { *(.debug_srcinfo) }
+  .debug_sfnames  0 :  { *(.debug_sfnames) }
+  .debug_aranges  0 :  { *(.debug_aranges) }
+  .debug_pubnames  0 :  { *(.debug_pubnames) }
+  .debug_info  0 :  { *(.debug_info) }
+  .debug_abbrev  0 :  { *(.debug_abbrev) }
+  .debug_line  0 :  { *(.debug_line) }
+  .debug_frame  0 :  { *(.debug_frame) }
+  .debug_str  0 :  { *(.debug_str) }
+  .debug_loc  0 :  { *(.debug_loc) }
+  .debug_macinfo  0 :  { *(.debug_macinfo) }
+  .debug_weaknames  0 :  { *(.debug_weaknames) }
+  .debug_funcnames  0 :  { *(.debug_funcnames) }
+  .debug_typenames  0 :  { *(.debug_typenames) }
+  .debug_varnames  0 :  { *(.debug_varnames) }
+
+  .module (COPY) : ALIGN(1024)
+  {
+   KEEP (*(.module))
+    . = ALIGN(_EXT_MAN_ALIGN_);
+  } >sof_fw :sof_fw_phdr
+ 
+  .static_uuid_entries (COPY) : ALIGN(1024)
+  {
+    *(*.static_uuids)
+  } > sof_fw :sof_fw_phdr
+
+  .static_log_entries (COPY) : ALIGN(1024)
+  {
+    *(*.static_log*)
+  } > sof_fw :sof_fw_phdr
+ 
+  .fw_metadata (COPY) : ALIGN(1024)
+  {
+    KEEP (*(.fw_metadata))
+    . = ALIGN(_EXT_MAN_ALIGN_);
+  } >sof_fw :sof_fw_phdr
+
+}
