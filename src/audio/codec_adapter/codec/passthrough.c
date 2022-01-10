@@ -19,23 +19,22 @@ static int passthrough_codec_init(struct processing_module *mod)
 	return 0;
 }
 
-static int passthrough_codec_prepare(struct comp_dev *dev)
+static int passthrough_codec_prepare(struct processing_module *mod)
 {
-	struct module_data *codec = comp_get_module_data(dev);
-	struct processing_module *mod = comp_get_drvdata(dev);
+	struct module_data *codec = comp_get_module_data(mod->dev);
 
-	comp_info(dev, "passthrough_codec_prepare()");
+	comp_info(mod->dev, "passthrough_codec_prepare()");
 
 	codec->mpd.in_buff = rballoc(0, SOF_MEM_CAPS_RAM, mod->period_bytes);
 	if (!codec->mpd.in_buff) {
-		comp_err(dev, "passthrough_codec_prepare(): Failed to alloc in_buff");
+		comp_err(mod->dev, "passthrough_codec_prepare(): Failed to alloc in_buff");
 		return -ENOMEM;
 	}
 	codec->mpd.in_buff_size = mod->period_bytes;
 
 	codec->mpd.out_buff = rballoc(0, SOF_MEM_CAPS_RAM, mod->period_bytes);
 	if (!codec->mpd.out_buff) {
-		comp_err(dev, "passthrough_codec_prepare(): Failed to alloc out_buff");
+		comp_err(mod->dev, "passthrough_codec_prepare(): Failed to alloc out_buff");
 		rfree(codec->mpd.in_buff);
 		return -ENOMEM;
 	}

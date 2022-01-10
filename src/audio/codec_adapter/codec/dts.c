@@ -157,20 +157,19 @@ static int dts_codec_init(struct processing_module *mod)
 	return ret;
 }
 
-static int dts_codec_prepare(struct comp_dev *dev)
+static int dts_codec_prepare(struct processing_module *mod)
 {
 	int ret;
-	struct module_data *codec = comp_get_module_data(dev);
+	struct module_data *codec = comp_get_module_data(mod->dev);
 	DtsSofInterfaceBufferConfiguration buffer_configuration;
 	DtsSofInterfaceResult dts_result;
 
-	comp_dbg(dev, "dts_codec_prepare() start");
+	comp_dbg(mod->dev, "dts_codec_prepare() start");
 
-	ret = dts_effect_populate_buffer_configuration(dev, &buffer_configuration);
+	ret = dts_effect_populate_buffer_configuration(mod->dev, &buffer_configuration);
 	if (ret) {
-		comp_err(dev,
-			"dts_codec_prepare() dts_effect_populate_buffer_configuration failed %d",
-			ret);
+		comp_err(mod->dev, "dts_codec_prepare() dts_effect_populate_buffer_configuration failed %d",
+			 ret);
 		return ret;
 	}
 
@@ -181,12 +180,12 @@ static int dts_codec_prepare(struct comp_dev *dev)
 		&codec->mpd.in_buff_size,
 		&codec->mpd.out_buff,
 		&codec->mpd.out_buff_size);
-	ret = dts_effect_convert_sof_interface_result(dev, dts_result);
+	ret = dts_effect_convert_sof_interface_result(mod->dev, dts_result);
 
 	if (ret)
-		comp_err(dev, "dts_codec_prepare() failed %d", ret);
+		comp_err(mod->dev, "dts_codec_prepare() failed %d", ret);
 
-	comp_dbg(dev, "dts_codec_prepare() done");
+	comp_dbg(mod->dev, "dts_codec_prepare() done");
 
 	return ret;
 }

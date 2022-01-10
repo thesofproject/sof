@@ -187,23 +187,22 @@ static int validate_config(struct module_config *cfg)
 	return 0;
 }
 
-int module_prepare(struct comp_dev *dev)
+int module_prepare(struct processing_module *mod)
 {
 	int ret;
-	struct processing_module *mod = comp_get_drvdata(dev);
 	struct module_data *md = &mod->priv;
 
-	comp_dbg(dev, "module_prepare() start");
+	comp_dbg(mod->dev, "module_prepare() start");
 
 	if (mod->priv.state == MODULE_IDLE)
 		return 0;
 	if (mod->priv.state < MODULE_INITIALIZED)
 		return -EPERM;
 
-	ret = md->ops->prepare(dev);
+	ret = md->ops->prepare(mod);
 	if (ret) {
-		comp_err(dev, "module_prepare() error %d: module specific prepare failed, comp_id %d",
-			 ret, dev_comp_id(dev));
+		comp_err(mod->dev, "module_prepare() error %d: module specific prepare failed, comp_id %d",
+			 ret, dev_comp_id(mod->dev));
 		return ret;
 	}
 
@@ -218,7 +217,7 @@ int module_prepare(struct comp_dev *dev)
 	md->cfg.data = NULL;
 
 	md->state = MODULE_IDLE;
-	comp_dbg(dev, "module_prepare() done");
+	comp_dbg(mod->dev, "module_prepare() done");
 
 	return ret;
 }

@@ -421,17 +421,17 @@ static int cadence_codec_init_process(struct comp_dev *dev)
 	return 0;
 }
 
-static int cadence_codec_prepare(struct comp_dev *dev)
+static int cadence_codec_prepare(struct processing_module *mod)
 {
 	int ret = 0, mem_tabs_size;
-	struct module_data *codec = comp_get_module_data(dev);
+	struct module_data *codec = comp_get_module_data(mod->dev);
 	struct cadence_codec_data *cd = codec->private;
 
-	comp_dbg(dev, "cadence_codec_prepare() start");
+	comp_dbg(mod->dev, "cadence_codec_prepare() start");
 
-	ret = cadence_codec_apply_config(dev);
+	ret = cadence_codec_apply_config(mod->dev);
 	if (ret) {
-		comp_err(dev, "cadence_codec_prepare() error %x: failed to apply config",
+		comp_err(mod->dev, "cadence_codec_prepare() error %x: failed to apply setup config",
 			 ret);
 		return ret;
 	}
@@ -439,29 +439,30 @@ static int cadence_codec_prepare(struct comp_dev *dev)
 	/* Allocate memory for the codec */
 	API_CALL(cd, XA_API_CMD_GET_MEMTABS_SIZE, 0, &mem_tabs_size, ret);
 	if (ret != LIB_NO_ERROR) {
-		comp_err(dev, "cadence_codec_prepare() error %x: failed to get memtabs size",
+		comp_err(mod->dev, "cadence_codec_prepare() error %x: failed to get memtabs size",
 			 ret);
 		return ret;
 	}
 
-	cd->mem_tabs = module_allocate_memory(dev, mem_tabs_size, 4);
+	cd->mem_tabs = module_allocate_memory(mod->dev, mem_tabs_size, 4);
 	if (!cd->mem_tabs) {
-		comp_err(dev, "cadence_codec_prepare() error: failed to allocate space for memtabs");
+		comp_err(mod->dev, "cadence_codec_prepare() error: failed to allocate space for memtabs");
 		return -ENOMEM;
 	}
 
-	comp_dbg(dev, "cadence_codec_prepare(): allocated %d bytes for memtabs", mem_tabs_size);
+	comp_dbg(mod->dev, "cadence_codec_prepare(): allocated %d bytes for memtabs",
+		 mem_tabs_size);
 
 	API_CALL(cd, XA_API_CMD_SET_MEMTABS_PTR, 0, cd->mem_tabs, ret);
 	if (ret != LIB_NO_ERROR) {
-		comp_err(dev, "cadence_codec_prepare() error %x: failed to set memtabs",
+		comp_err(mod->dev, "cadence_codec_prepare() error %x: failed to set memtabs",
 			 ret);
 		goto free;
 	}
 
-	ret = init_memory_tables(dev);
+	ret = init_memory_tables(mod->dev);
 	if (ret != LIB_NO_ERROR) {
-		comp_err(dev, "cadence_codec_prepare() error %x: failed to init memory tables",
+		comp_err(mod->dev, "cadence_codec_prepare() error %x: failed to init memory tables",
 			 ret);
 		goto free;
 	}
@@ -480,15 +481,15 @@ static int cadence_codec_prepare(struct comp_dev *dev)
 	API_CALL(cd, XA_API_CMD_INIT, XA_CMD_TYPE_INIT_DONE_QUERY,
 		 &codec->mpd.init_done, ret);
 	if (ret != LIB_NO_ERROR) {
-		comp_err(dev, "cadence_codec_init_process() error %x: failed to get lib init status",
+		comp_err(mod->dev, "cadence_codec_init_process() error %x: failed to get lib init status",
 			 ret);
 		return ret;
 	}
 #endif
-	comp_dbg(dev, "cadence_codec_prepare() done");
+	comp_dbg(mod->dev, "cadence_codec_prepare() done");
 	return 0;
 free:
-	module_free_memory(dev, cd->mem_tabs);
+	module_free_memory(mod, cd->mem_tabs);
 	return ret;
 }
 

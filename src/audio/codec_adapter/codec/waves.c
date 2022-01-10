@@ -652,27 +652,27 @@ static int waves_codec_init(struct processing_module *mod)
 	return ret;
 }
 
-static int waves_codec_prepare(struct comp_dev *dev)
+static int waves_codec_prepare(struct processing_module *mod)
 {
 	int ret;
 
-	comp_dbg(dev, "waves_codec_prepare() start");
+	comp_dbg(mod->dev, "waves_codec_prepare() start");
 
-	ret = waves_effect_check(dev);
-
-	if (!ret)
-		ret = waves_effect_init(dev);
+	ret = waves_effect_check(mod->dev);
 
 	if (!ret)
-		ret = waves_effect_buffers(dev);
+		ret = waves_effect_init(mod->dev);
 
 	if (!ret)
-		ret = waves_effect_setup_config(dev);
+		ret = waves_effect_buffers(mod->dev);
+
+	if (!ret)
+		ret = waves_effect_setup_config(mod->dev);
 
 	if (ret)
-		comp_err(dev, "waves_codec_prepare() failed %d", ret);
+		comp_err(mod->dev, "waves_codec_prepare() failed %d", ret);
 
-	comp_dbg(dev, "waves_codec_prepare() done");
+	comp_dbg(mod->dev, "waves_codec_prepare() done");
 	return ret;
 }
 
