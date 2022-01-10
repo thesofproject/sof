@@ -228,7 +228,7 @@ int module_prepare(struct comp_dev *dev)
 	if (ret) {
 		comp_err(dev, "module_prepare() error %d: module specific prepare failed, module_id 0x%x",
 			 ret, module_id);
-		goto end;
+		return ret;
 	}
 
 	/* After prepare is done we no longer need runtime configuration
@@ -244,7 +244,7 @@ int module_prepare(struct comp_dev *dev)
 
 	md->state = MODULE_IDLE;
 	comp_dbg(dev, "module_prepare() done");
-end:
+
 	return ret;
 }
 
@@ -290,7 +290,7 @@ int module_apply_runtime_config(struct comp_dev *dev)
 	if (ret) {
 		comp_err(dev, "module_apply_config() error %d: for module_id %x",
 			 ret, module_id);
-		goto out;
+		return ret;
 	}
 
 	mod->priv.r_cfg.avail = false;
@@ -299,7 +299,7 @@ int module_apply_runtime_config(struct comp_dev *dev)
 	md->r_cfg.data = NULL;
 
 	comp_dbg(dev, "module_apply_config() end");
-out:
+
 	return ret;
 }
 
