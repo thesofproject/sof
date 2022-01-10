@@ -601,10 +601,9 @@ void codec_adapter_free(struct comp_dev *dev)
 	comp_dbg(dev, "codec_adapter_free(): start");
 
 	ret = module_free(dev);
-	if (ret) {
-		comp_err(dev, "codec_adapter_free(): error %d, codec reset has failed",
-			 ret);
-	}
+	if (ret)
+		comp_err(dev, "codec_adapter_free(): error %d, codec free failed", ret);
+
 	buffer_free(mod->local_buff);
 	rfree(mod);
 	rfree(dev);
