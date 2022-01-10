@@ -23,8 +23,6 @@
 #include <sof/platform.h>
 #include <sof/ut.h>
 
-int validate_setup_config(struct ca_config *cfg);
-
 /**
  * \brief Create a codec adapter component.
  * \param[in] drv - component driver pointer.
@@ -91,12 +89,6 @@ err:
 	rfree(mod);
 	rfree(dev);
 	return NULL;
-}
-
-int validate_setup_config(struct ca_config *cfg)
-{
-	/* TODO: validate codec_adapter setup parameters */
-	return 0;
 }
 
 /*
