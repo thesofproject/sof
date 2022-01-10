@@ -258,21 +258,23 @@ int module_process(struct comp_dev *dev)
 
 	comp_dbg(dev, "module_process() start");
 
-	if (mod->priv.state != MODULE_IDLE) {
+	if (md->state != MODULE_IDLE) {
 		comp_err(dev, "module_process(): wrong state of module %x, state %d",
 			 mod->ca_config.module_id, md->state);
 		return -EPERM;
 	}
 
+	/* set state to processing */
+	md->state = MODULE_PROCESSING;
+
 	ret = md->ops->process(dev);
-	if (ret) {
+	if (ret)
 		comp_err(dev, "module_process() error %d: for module_id %x",
 			 ret, module_id);
-		goto out;
-	}
+	else
+		comp_dbg(dev, "module_process() done");
 
-	comp_dbg(dev, "module_process() done");
-out:
+	/* reset state to idle */
 	md->state = MODULE_IDLE;
 	return ret;
 }
