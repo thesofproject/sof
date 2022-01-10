@@ -19,10 +19,10 @@ static int passthrough_codec_init(struct processing_module *mod)
 	return 0;
 }
 
-static int passthrough_codec_prepare(struct comp_dev *dev)
+static int passthrough_codec_prepare(struct processing_module *mod)
 {
+	struct comp_dev *dev = mod->dev;
 	struct module_data *codec = comp_get_module_data(dev);
-	struct processing_module *mod = comp_get_drvdata(dev);
 
 	comp_info(dev, "passthrough_codec_prepare()");
 

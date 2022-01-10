@@ -653,8 +653,9 @@ static int waves_codec_init(struct processing_module *mod)
 	return ret;
 }
 
-static int waves_codec_prepare(struct comp_dev *dev)
+static int waves_codec_prepare(struct processing_module *mod)
 {
+	struct comp_dev *dev = mod->dev;
 	int ret;
 
 	comp_dbg(dev, "waves_codec_prepare() start");
