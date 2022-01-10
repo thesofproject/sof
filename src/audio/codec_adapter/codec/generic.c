@@ -111,16 +111,16 @@ int module_init(struct comp_dev *dev, struct module_interface *interface)
 	if (!interface) {
 		comp_err(dev, "module_init(): could not find module interface for module id %x",
 			 module_id);
-		ret = -EIO;
-		goto out;
-	} else if (!interface->init || !interface->prepare ||
-		   !interface->process || !interface->apply_config ||
-		   !interface->reset || !interface->free) {
+		return -EIO;
+	}
+
+	if (!interface->init || !interface->prepare || !interface->process ||
+	    !interface->apply_config || !interface->reset || !interface->free) {
 		comp_err(dev, "module_init(): module %x is missing mandatory interfaces",
 			 module_id);
-		ret = -EIO;
-		goto out;
+		return -EIO;
 	}
+
 	/* Assign interface */
 	md->ops = interface;
 	/* Init memory list */
@@ -131,12 +131,12 @@ int module_init(struct comp_dev *dev, struct module_interface *interface)
 	if (ret) {
 		comp_err(dev, "module_init() error %d: module specific init failed, module_id %x",
 			 ret, module_id);
-		goto out;
+		return ret;
 	}
 
 	comp_info(dev, "module_init() done");
 	md->state = MODULE_INITIALIZED;
-out:
+
 	return ret;
 }
 
