@@ -117,14 +117,13 @@ int module_init(struct processing_module *mod, struct module_interface *interfac
 	return ret;
 }
 
-void *module_allocate_memory(struct comp_dev *dev, uint32_t size, uint32_t alignment)
+void *module_allocate_memory(struct processing_module *mod, uint32_t size, uint32_t alignment)
 {
 	struct module_memory *container;
 	void *ptr;
-	struct processing_module *mod = comp_get_drvdata(dev);
 
 	if (!size) {
-		comp_err(dev, "module_allocate_memory: requested allocation of 0 bytes.");
+		comp_err(mod->dev, "module_allocate_memory: requested allocation of 0 bytes.");
 		return NULL;
 	}
 
@@ -132,7 +131,7 @@ void *module_allocate_memory(struct comp_dev *dev, uint32_t size, uint32_t align
 	container = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
 			    sizeof(struct module_memory));
 	if (!container) {
-		comp_err(dev, "module_allocate_memory: failed to allocate memory container.");
+		comp_err(mod->dev, "module_allocate_memory: failed to allocate memory container.");
 		return NULL;
 	}
 
@@ -143,8 +142,8 @@ void *module_allocate_memory(struct comp_dev *dev, uint32_t size, uint32_t align
 		ptr = rballoc(0, SOF_MEM_CAPS_RAM, size);
 
 	if (!ptr) {
-		comp_err(dev, "module_allocate_memory: failed to allocate memory for comp %x.",
-			 dev_comp_id(dev));
+		comp_err(mod->dev, "module_allocate_memory: failed to allocate memory for comp %d",
+			 dev_comp_id(mod->dev));
 		return NULL;
 	}
 	/* Store reference to allocated memory */

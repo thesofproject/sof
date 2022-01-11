@@ -23,7 +23,7 @@ static void *dts_effect_allocate_codec_memory(void *mod_void, unsigned int lengt
 
 	comp_dbg(mod->dev, "dts_effect_allocate_codec_memory() start");
 
-	pMem = module_allocate_memory(mod->dev, (uint32_t)length, (uint32_t)alignment);
+	pMem = module_allocate_memory(mod, (uint32_t)length, (uint32_t)alignment);
 
 	if (pMem == NULL)
 		comp_err(mod->dev,
