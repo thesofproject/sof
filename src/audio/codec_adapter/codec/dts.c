@@ -113,7 +113,7 @@ static int dts_effect_populate_buffer_configuration(struct comp_dev *dev,
 	return 0;
 }
 
-int dts_codec_init(struct comp_dev *dev)
+static int dts_codec_init(struct comp_dev *dev)
 {
 	int ret;
 	struct module_data *codec = comp_get_module_data(dev);
@@ -157,7 +157,7 @@ int dts_codec_init(struct comp_dev *dev)
 	return ret;
 }
 
-int dts_codec_prepare(struct comp_dev *dev)
+static int dts_codec_prepare(struct comp_dev *dev)
 {
 	int ret;
 	struct module_data *codec = comp_get_module_data(dev);
@@ -214,7 +214,7 @@ static int dts_codec_init_process(struct comp_dev *dev)
 	return ret;
 }
 
-int dts_codec_process(struct comp_dev *dev)
+static int dts_codec_process(struct comp_dev *dev)
 {
 	int ret;
 	struct module_data *codec = comp_get_module_data(dev);
@@ -240,7 +240,7 @@ int dts_codec_process(struct comp_dev *dev)
 	return ret;
 }
 
-int dts_codec_apply_config(struct comp_dev *dev)
+static int dts_codec_apply_config(struct comp_dev *dev)
 {
 	int ret = 0;
 	struct module_data *codec = comp_get_module_data(dev);
@@ -317,7 +317,7 @@ int dts_codec_apply_config(struct comp_dev *dev)
 	return ret;
 }
 
-int dts_codec_reset(struct comp_dev *dev)
+static int dts_codec_reset(struct comp_dev *dev)
 {
 	int ret;
 	struct module_data *codec = comp_get_module_data(dev);
@@ -336,7 +336,7 @@ int dts_codec_reset(struct comp_dev *dev)
 	return ret;
 }
 
-int dts_codec_free(struct comp_dev *dev)
+static int dts_codec_free(struct comp_dev *dev)
 {
 	int ret;
 	struct module_data *codec = comp_get_module_data(dev);
