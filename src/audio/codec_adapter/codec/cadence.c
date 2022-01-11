@@ -552,8 +552,9 @@ static int cadence_codec_process(struct comp_dev *dev)
 	return 0;
 }
 
-static int cadence_codec_reset(struct comp_dev *dev)
+static int cadence_codec_reset(struct processing_module *mod)
 {
+	struct comp_dev *dev = mod->dev;
 	struct module_data *codec = comp_get_module_data(dev);
 	struct cadence_codec_data *cd = codec->private;
 	int ret;
@@ -572,7 +573,7 @@ static int cadence_codec_reset(struct comp_dev *dev)
 
 	codec->mpd.init_done = 0;
 
-	ret = cadence_codec_prepare(dev);
+	ret = cadence_codec_prepare(mod);
 	if (ret) {
 		comp_err(dev, "cadence_codec_reset() error %x: could not re-prepare codec after reset",
 			ret);
