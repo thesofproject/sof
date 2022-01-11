@@ -146,8 +146,7 @@ static int cadence_codec_init(struct processing_module *mod)
 		setup_cfg->data = rballoc(0, SOF_MEM_CAPS_RAM, codec->cfg.size);
 		if (!setup_cfg->data) {
 			comp_err(dev, "cadence_codec_init(): failed to alloc setup config");
-			module_free_memory(dev, cd);
-			return -ENOMEM;
+			goto free;
 		}
 
 		/* copy the setup config */
@@ -155,8 +154,7 @@ static int cadence_codec_init(struct processing_module *mod)
 		ret = memcpy_s(setup_cfg->data, setup_cfg->size, codec->cfg.data, setup_cfg->size);
 		if (ret) {
 			comp_err(dev, "cadence_codec_init(): failed to copy setup config %d", ret);
-			module_free_memory(dev, cd);
-			return ret;
+			goto free;
 		}
 		setup_cfg->avail = true;
 	}
@@ -353,13 +351,13 @@ static int init_memory_tables(struct processing_module *mod)
 	return 0;
 err:
 	if (scratch)
-		module_free_memory(dev, scratch);
+		module_free_memory(mod, scratch);
 	if (persistent)
-		module_free_memory(dev, persistent);
+		module_free_memory(mod, persistent);
 	if (codec->mpd.in_buff)
-		module_free_memory(dev, codec->mpd.in_buff);
+		module_free_memory(mod, codec->mpd.in_buff);
 	if (codec->mpd.out_buff)
-		module_free_memory(dev, codec->mpd.out_buff);
+		module_free_memory(mod, codec->mpd.out_buff);
 	return ret;
 }
 
@@ -491,7 +489,7 @@ static int cadence_codec_prepare(struct processing_module *mod)
 	comp_dbg(dev, "cadence_codec_prepare() done");
 	return 0;
 free:
-	module_free_memory(dev, cd->mem_tabs);
+	module_free_memory(mod, cd->mem_tabs);
 	return ret;
 }
 
