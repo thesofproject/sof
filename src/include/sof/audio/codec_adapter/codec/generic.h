@@ -110,6 +110,37 @@ struct module_interface {
 	 * prepared. This will not be called for SETUP cfg.
 	 */
 	int (*apply_config)(struct comp_dev *dev);
+
+	/**
+	 * Set module configuration for the given configuration ID
+	 *
+	 * If the complete configuration message is greater than MAX_BLOB_SIZE bytes, the
+	 * transmission will be split into several smaller fragments.
+	 * In this case the ADSP System will perform multiple calls to SetConfiguration() until
+	 * completion of the configuration message sending.
+	 * \note config_id indicates ID of the configuration message only on the first fragment
+	 * sending, otherwise it is set to 0.
+	 */
+	int (*set_configuration)(struct processing_module *mod,
+				 uint32_t config_id,
+				 enum module_cfg_fragment_position pos, uint32_t data_offset_size,
+				 const uint8_t *fragment, size_t fragment_size, uint8_t *response,
+				 size_t response_size);
+
+	/**
+	 * Get module runtime configuration for the given configuration ID
+	 *
+	 * If the complete configuration message is greater than MAX_BLOB_SIZE bytes, the
+	 * transmission will be split into several smaller fragments.
+	 * In this case the ADSP System will perform multiple calls to GetConfiguration() until
+	 * completion of the configuration message retrieval.
+	 * \note config_id indicates ID of the configuration message only on the first fragment
+	 * retrieval, otherwise it is set to 0.
+	 */
+	int (*get_configuration)(struct processing_module *mod,
+				 uint32_t config_id, uint32_t data_offset_size,
+				 const uint8_t *fragment, size_t fragment_size);
+
 	/**
 	 * Module specific reset procedure, called as part of codec_adapter component
 	 * reset in .reset(). This should reset all parameters to their initial stage
