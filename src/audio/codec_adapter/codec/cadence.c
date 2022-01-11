@@ -255,10 +255,11 @@ static int cadence_codec_apply_config(struct comp_dev *dev)
 	return 0;
 }
 
-static int init_memory_tables(struct comp_dev *dev)
+static int init_memory_tables(struct processing_module *mod)
 {
 	int ret, no_mem_tables, i, mem_type, mem_size, mem_alignment;
 	void *ptr, *scratch, *persistent;
+	struct comp_dev *dev = mod->dev;
 	struct module_data *codec = comp_get_module_data(dev);
 	struct cadence_codec_data *cd = codec->private;
 
@@ -461,7 +462,7 @@ static int cadence_codec_prepare(struct processing_module *mod)
 		goto free;
 	}
 
-	ret = init_memory_tables(dev);
+	ret = init_memory_tables(mod);
 	if (ret != LIB_NO_ERROR) {
 		comp_err(dev, "cadence_codec_prepare() error %x: failed to init memory tables",
 			 ret);
