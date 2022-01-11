@@ -74,6 +74,19 @@ enum ipc4_channel_config {
 	IPC4_CHANNEL_CONFIG_INVALID
 };
 
+enum ipc4_channel_index {
+	CHANNEL_LEFT            = 0,
+	CHANNEL_CENTER          = 1,
+	CHANNEL_RIGHT           = 2,
+	CHANNEL_LEFT_SURROUND   = 3,
+	CHANNEL_CENTER_SURROUND = 3,
+	CHANNEL_RIGHT_SURROUND  = 4,
+	CHANNEL_LEFT_SIDE       = 5,
+	CHANNEL_RIGHT_SIDE      = 6,
+	CHANNEL_LFE             = 7,
+	CHANNEL_INVALID         = 0xF,
+};
+
 enum ipc4_interleaved_style {
 	IPC4_CHANNELS_INTERLEAVED = 0,
 	IPC4_CHANNELS_NONINTERLEAVED = 1,
