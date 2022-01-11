@@ -200,7 +200,7 @@ static int waves_effect_allocate(struct processing_module *mod)
 		return -EINVAL;
 	}
 
-	waves_codec->effect = (MaxxEffect_t *)module_allocate_memory(dev,
+	waves_codec->effect = (MaxxEffect_t *)module_allocate_memory(mod,
 		waves_codec->effect_size, 16);
 
 	if (!waves_codec->effect) {
@@ -377,7 +377,7 @@ static int waves_effect_buffers(struct processing_module *mod)
 		goto err;
 	}
 
-	response = module_allocate_memory(dev, waves_codec->response_max_bytes, 16);
+	response = module_allocate_memory(mod, waves_codec->response_max_bytes, 16);
 	if (!response) {
 		comp_err(dev, "waves_effect_buffers() failed to allocate %d bytes for response",
 			 waves_codec->response_max_bytes);
@@ -385,7 +385,7 @@ static int waves_effect_buffers(struct processing_module *mod)
 		goto err;
 	}
 
-	i_buffer = module_allocate_memory(dev, waves_codec->buffer_bytes, 16);
+	i_buffer = module_allocate_memory(mod, waves_codec->buffer_bytes, 16);
 	if (!i_buffer) {
 		comp_err(dev, "waves_effect_buffers() failed to allocate %d bytes for i_buffer",
 			 waves_codec->buffer_bytes);
@@ -393,7 +393,7 @@ static int waves_effect_buffers(struct processing_module *mod)
 		goto err;
 	}
 
-	o_buffer = module_allocate_memory(dev, waves_codec->buffer_bytes, 16);
+	o_buffer = module_allocate_memory(mod, waves_codec->buffer_bytes, 16);
 	if (!o_buffer) {
 		comp_err(dev, "waves_effect_buffers() failed to allocate %d bytes for o_buffer",
 			 waves_codec->buffer_bytes);
@@ -607,7 +607,7 @@ static int waves_codec_init(struct processing_module *mod)
 
 	comp_dbg(dev, "waves_codec_init() start");
 
-	waves_codec = module_allocate_memory(dev, sizeof(struct waves_codec_data), 16);
+	waves_codec = module_allocate_memory(mod, sizeof(struct waves_codec_data), 16);
 	if (!waves_codec) {
 		comp_err(dev, "waves_codec_init() failed to allocate %d bytes for waves_codec_data",
 			 sizeof(struct waves_codec_data));
