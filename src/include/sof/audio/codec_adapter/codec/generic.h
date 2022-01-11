@@ -100,7 +100,7 @@ struct module_interface {
 	 * reset in .reset(). This should reset all parameters to their initial stage
 	 * but leave allocated memory intact.
 	 */
-	int (*reset)(struct comp_dev *dev);
+	int (*reset)(struct processing_module *mod);
 	/**
 	 * Module specific free procedure, called as part of codec_adapter component
 	 * free in .free(). This should free all memory allocated by module.
@@ -209,7 +209,7 @@ void module_free_all_memory(struct comp_dev *dev);
 int module_prepare(struct processing_module *mod);
 int module_process(struct comp_dev *dev);
 int module_apply_runtime_config(struct comp_dev *dev);
-int module_reset(struct comp_dev *dev);
+int module_reset(struct processing_module *mod);
 int module_free(struct comp_dev *dev);
 
 struct comp_dev *codec_adapter_new(const struct comp_driver *drv,

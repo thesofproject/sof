@@ -83,9 +83,9 @@ static int passthrough_codec_apply_config(struct comp_dev *dev)
 	return 0;
 }
 
-static int passthrough_codec_reset(struct comp_dev *dev)
+static int passthrough_codec_reset(struct processing_module *mod)
 {
-	comp_info(dev, "passthrough_codec_reset()");
+	comp_info(mod->dev, "passthrough_codec_reset()");
 
 	/* nothing to do */
 	return 0;

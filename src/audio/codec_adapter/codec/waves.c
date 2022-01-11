@@ -760,10 +760,11 @@ static int waves_codec_apply_config(struct comp_dev *dev)
 	return ret;
 }
 
-static int waves_codec_reset(struct comp_dev *dev)
+static int waves_codec_reset(struct processing_module *mod)
 {
 	MaxxStatus_t status;
 	int ret = 0;
+	struct comp_dev *dev = mod->dev;
 	struct module_data *codec = comp_get_module_data(dev);
 	struct waves_codec_data *waves_codec = codec->private;
 
