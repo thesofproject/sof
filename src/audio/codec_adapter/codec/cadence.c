@@ -309,7 +309,7 @@ static int init_memory_tables(struct processing_module *mod)
 			goto err;
 		}
 		/* Allocate memory for this type, taking alignment into account */
-		ptr = module_allocate_memory(dev, mem_size, mem_alignment);
+		ptr = module_allocate_memory(mod, mem_size, mem_alignment);
 		if (!ptr) {
 			comp_err(dev, "init_memory_tables() error %x: failed to allocate memory for %d",
 				 ret, mem_type);
@@ -447,7 +447,7 @@ static int cadence_codec_prepare(struct processing_module *mod)
 		return ret;
 	}
 
-	cd->mem_tabs = module_allocate_memory(dev, mem_tabs_size, 4);
+	cd->mem_tabs = module_allocate_memory(mod, mem_tabs_size, 4);
 	if (!cd->mem_tabs) {
 		comp_err(dev, "cadence_codec_prepare() error: failed to allocate space for memtabs");
 		return -ENOMEM;
