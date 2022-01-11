@@ -25,6 +25,8 @@ set(TPLGS
 "cavs-nocodec\;cavs-cnl-nocodec\;MCLK=24000000"
 "cavs-nocodec\;cavs-glk-nocodec\;MCLK=19200000"
 "cavs-nocodec\;cavs-apl-nocodec\;MCLK=19200000"
+# CAVS SSP topology with passthrough pipelines for RT5682 and RT1019
+"cavs-rt5682-rt1019\;cavs-rt5682-rt1019"
 )
 
 # This will override the topology1 binaries with topology2 binaries
