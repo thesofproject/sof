@@ -758,25 +758,25 @@ static int waves_codec_apply_config(struct comp_dev *dev)
 	return ret;
 }
 
-static int waves_codec_reset(struct comp_dev *dev)
+static int waves_codec_reset(struct processing_module *mod)
 {
 	MaxxStatus_t status;
 	int ret = 0;
-	struct module_data *codec = comp_get_module_data(dev);
+	struct module_data *codec = comp_get_module_data(mod->dev);
 	struct waves_codec_data *waves_codec = codec->private;
 
-	comp_dbg(dev, "waves_codec_reset() start");
+	comp_dbg(mod->dev, "waves_codec_reset() start");
 
 	status = MaxxEffect_Reset(waves_codec->effect);
 	if (status) {
-		comp_err(dev, "waves_codec_reset() MaxxEffect_Reset returned %d", status);
+		comp_err(mod->dev, "waves_codec_reset() MaxxEffect_Reset returned %d", status);
 		ret = -EINVAL;
 	}
 
 	if (ret)
-		comp_err(dev, "waves_codec_reset() failed %d", ret);
+		comp_err(mod->dev, "waves_codec_reset() failed %d", ret);
 
-	comp_dbg(dev, "waves_codec_reset() done");
+	comp_dbg(mod->dev, "waves_codec_reset() done");
 	return ret;
 }
 

@@ -548,9 +548,9 @@ static int cadence_codec_process(struct comp_dev *dev)
 	return 0;
 }
 
-static int cadence_codec_reset(struct comp_dev *dev)
+static int cadence_codec_reset(struct processing_module *mod)
 {
-	struct module_data *codec = comp_get_module_data(dev);
+	struct module_data *codec = comp_get_module_data(mod->dev);
 	struct cadence_codec_data *cd = codec->private;
 	int ret;
 
@@ -559,17 +559,17 @@ static int cadence_codec_reset(struct comp_dev *dev)
 	 * So, free all memory associated with runtime params. These will be reallocated during
 	 * prepare.
 	 */
-	module_free_all_memory(dev);
+	module_free_all_memory(mod->dev);
 
 	/* reset to default params */
 	API_CALL(cd, XA_API_CMD_INIT, XA_CMD_TYPE_INIT_API_PRE_CONFIG_PARAMS, NULL, ret);
 	if (ret != LIB_NO_ERROR)
 		return ret;
 
-	ret = cadence_codec_prepare(dev);
+	ret = cadence_codec_prepare(mod);
 	if (ret) {
-		comp_err(dev, "cadence_codec_reset() error %x: could not re-prepare codec after reset",
-			ret);
+		comp_err(mod->dev, "cadence_codec_reset() error %x: could not re-prepare codec after reset",
+			 ret);
 	}
 
 	return ret;
