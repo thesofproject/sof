@@ -70,7 +70,6 @@
  * +---------------------+----------------+-----------------------------------+
  */
 
-/* Mailbox configuration */
 #define SRAM_OUTBOX_BASE	MAILBOX_BASE
 #define SRAM_OUTBOX_SIZE	0x1000
 #define SRAM_OUTBOX_OFFSET	0
