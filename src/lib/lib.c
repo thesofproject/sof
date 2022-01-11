@@ -4,6 +4,7 @@
 //
 // Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
 
+#include <sof/common.h>
 #include <sof/string.h>
 #include <sof/compiler_info.h>
 
@@ -25,9 +26,26 @@ void *memset(void *s, int c, size_t n)
 {
 	uint8_t *d8 = s;
 	uint8_t v = c;
+	uint32_t v32 = (uint32_t)v | ((uint32_t)v << 8) |
+		((uint32_t)v << 16) | ((uint32_t)v << 24);
+	uint32_t *d32 = (void *)ALIGN_UP((uintptr_t)s, sizeof(uint32_t));
+	/* Don't bother with 32-bit copies for up to 7 bytes */
+	size_t prefix_sz = n > 2 * sizeof(v32) - 1 ? (uint8_t *)d32 - d8 : n;
 	int i;
 
-	for (i = 0; i <	n; i++)
+	for (i = 0; i < prefix_sz; i++)
+		d8[i] = v;
+
+	/* This won't be executed if n <= 7 */
+	for (i = 0; i < (n - prefix_sz) >> 2; i++)
+		d32[i] = v32;
+
+	/*
+	 * The starting point now is the prefix plus the number of 32-bit copies
+	 * from the loop above, multiplied by 4.
+	 * This won't be executed if n <= 7
+	 */
+	for (i = prefix_sz + (i << 2); i < n; i++)
 		d8[i] = v;
 
 	return s;
