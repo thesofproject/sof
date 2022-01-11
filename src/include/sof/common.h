@@ -25,7 +25,14 @@
 
 #define ALIGN_UP_INTERNAL(val, align) (((val) + (align) - 1) & ~((align) - 1))
 
+#if !defined(__ASSEMBLER__) && defined(__XTENSA__)
+
+#include <ipc/trace.h>
+#include <sof/debug/panic.h>
 #define VERIFY_ALIGN
+
+#endif
+
 #ifdef VERIFY_ALIGN
 
 /* Using this when 'alignment' is a constant and when compiling with gcc
@@ -78,7 +85,7 @@
 
 #endif /* not __XCC__ */
 
-#else /* not RUNTIME_ALIGN_CHECK */
+#else /* not VERIFY_ALIGN */
 
 #define ALIGN_UP(size, alignment) ALIGN_UP_INTERNAL(size, alignment)
 #define ALIGN_UP_COMPILE ALIGN_UP
