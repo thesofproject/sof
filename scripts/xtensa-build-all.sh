@@ -8,7 +8,7 @@ set -e
 # Platforms with a toolchain available in the latest Docker image and
 # built by the -a option.
 DEFAULT_PLATFORMS=(  byt cht bdw hsw apl skl kbl cnl sue icl jsl \
-                    imx8 imx8x imx8m imx8ulp tgl tgl-h rn mt8195 )
+                    imx8 imx8x imx8m imx8ulp tgl tgl-h rn mt8186 mt8195 )
 
 # Work in progress can be added to this "staging area" without breaking
 # the -a option for everyone.
@@ -335,6 +335,12 @@ do
 			HOST="xtensa-rn-elf"
 			XTENSA_TOOLS_VERSION="RF-2016.4-linux"
 			;;
+                mt8186)
+                        PLATFORM="mt8186"
+                        XTENSA_CORE="hifi5_7stg_I64D128"
+                        HOST="xtensa-mt8186-elf"
+                        XTENSA_TOOLS_VERSION="RI-2020.5-linux"
+                        ;;
 		mt8195)
 			PLATFORM="mt8195"
 			XTENSA_CORE="hifi4_8195_PROD"
