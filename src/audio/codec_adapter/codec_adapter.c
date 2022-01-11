@@ -401,80 +401,40 @@ end:
 
 static int codec_adapter_set_params(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata)
 {
-	int ret;
-	char *dst, *src;
-	static uint32_t size;
-	uint32_t offset;
 	struct processing_module *mod = comp_get_drvdata(dev);
 	struct module_data *md = &mod->priv;
+	enum module_cfg_fragment_position pos;
+	uint32_t data_offset_size;
+	static uint32_t size;
 
-	comp_dbg(dev, "codec_adapter_set_params(): start: num_of_elem %d, elem remain %d msg_index %u",
+	comp_dbg(dev, "codec_adapter_set_params(): num_of_elem %d, elem remain %d msg_index %u",
 		 cdata->num_elems, cdata->elems_remaining, cdata->msg_index);
 
-	/* Stage 1 verify input params & allocate memory for the config blob */
-	if (cdata->msg_index == 0) {
+	/* set the fragment position, data offset and config data size */
+	if (!cdata->msg_index) {
 		size = cdata->num_elems + cdata->elems_remaining;
-		if (!size)
-			return 0;
-
-		if (size > MAX_BLOB_SIZE) {
-			comp_err(dev, "codec_adapter_set_params() error: blob size is too big cfg size %d, allowed %d",
-				 size, MAX_BLOB_SIZE);
-			return -EINVAL;
-		}
-
-		/* Check that there is no work-in-progress on previous request */
-		if (md->runtime_params) {
-			comp_err(dev, "codec_adapter_set_params() error: busy with previous request");
-			return -EBUSY;
-		}
-
-		/* Allocate buffer for new params */
-		md->runtime_params = rballoc(0, SOF_MEM_CAPS_RAM, size);
-		if (!md->runtime_params) {
-			comp_err(dev, "codec_adapter_set_params(): space allocation for new params failed");
-			return -ENOMEM;
-		}
-
-		memset(md->runtime_params, 0, size);
-	} else if (!md->runtime_params) {
-		comp_err(dev, "codec_adapter_set_params() error: no memory available for runtime params in consecutive load");
-		return -EIO;
-	}
-
-	offset = size - (cdata->num_elems + cdata->elems_remaining);
-	dst = (char *)md->runtime_params + offset;
-	src = (char *)cdata->data->data;
-
-	ret = memcpy_s(dst, size - offset, src, cdata->num_elems);
-	assert(!ret);
-
-	/* return as more fragments of config data expected */
-	if (cdata->elems_remaining)
-		return 0;
-
-	/* config fully copied, now load it */
-	ret = module_load_config(dev, md->runtime_params, size);
-	if (ret)
-		goto end;
-
-	comp_dbg(dev, "codec_adapter_set_params(): config load successful");
-
-	/* And apply runtime config right away if codec is already prepared */
-	if (md->state >= MODULE_INITIALIZED) {
-		ret = module_apply_runtime_config(dev);
-		if (ret)
-			comp_err(dev, "codec_adapter_set_params() error %x: codec runtime config apply failed",
-				 ret);
+		data_offset_size = size;
+		if (cdata->elems_remaining)
+			pos = MODULE_CFG_FRAGMENT_FIRST;
 		else
-			comp_dbg(dev, "codec_adapter_set_params() apply of runtime config done.");
+			pos = MODULE_CFG_FRAGMENT_SINGLE;
+	} else {
+		data_offset_size = size - (cdata->num_elems + cdata->elems_remaining);
+		if (cdata->elems_remaining)
+			pos = MODULE_CFG_FRAGMENT_MIDDLE;
+		else
+			pos = MODULE_CFG_FRAGMENT_LAST;
 	}
 
-end:
-	if (md->runtime_params)
-		rfree(md->runtime_params);
-	md->runtime_params = NULL;
-	return ret;
+	/* IPC3 does not use config_id, so pass 0 for config ID as it will be ignored anyway */
+	if (md->ops->set_configuration)
+		return md->ops->set_configuration(mod, 0, pos, data_offset_size,
+						  (const uint8_t *)cdata->data->data,
+						  cdata->num_elems, NULL, 0);
+
+	comp_warn(dev, "codec_adapter_set_params(): no set_configuration op set for %d",
+		  dev_comp_id(dev));
+	return 0;
 }
 
 static int codec_adapter_ctrl_set_data(struct comp_dev *dev,
