@@ -90,11 +90,11 @@ static int passthrough_codec_reset(struct processing_module *mod)
 	return 0;
 }
 
-static int passthrough_codec_free(struct comp_dev *dev)
+static int passthrough_codec_free(struct processing_module *mod)
 {
-	struct module_data *codec = comp_get_module_data(dev);
+	struct module_data *codec = comp_get_module_data(mod->dev);
 
-	comp_info(dev, "passthrough_codec_free()");
+	comp_info(mod->dev, "passthrough_codec_free()");
 
 	rfree(codec->mpd.in_buff);
 	rfree(codec->mpd.out_buff);

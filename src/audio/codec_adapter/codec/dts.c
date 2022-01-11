@@ -335,21 +335,21 @@ static int dts_codec_reset(struct processing_module *mod)
 	return ret;
 }
 
-static int dts_codec_free(struct comp_dev *dev)
+static int dts_codec_free(struct processing_module *mod)
 {
 	int ret;
-	struct module_data *codec = comp_get_module_data(dev);
+	struct module_data *codec = comp_get_module_data(mod->dev);
 	DtsSofInterfaceResult dts_result;
 
-	comp_dbg(dev, "dts_codec_free() start");
+	comp_dbg(mod->dev, "dts_codec_free() start");
 
 	dts_result = dtsSofInterfaceFree(codec->private);
-	ret = dts_effect_convert_sof_interface_result(dev, dts_result);
+	ret = dts_effect_convert_sof_interface_result(mod->dev, dts_result);
 
 	if (ret)
-		comp_err(dev, "dts_codec_free() failed %d %d", ret, dts_result);
+		comp_err(mod->dev, "dts_codec_free() failed %d %d", ret, dts_result);
 
-	comp_dbg(dev, "dts_codec_free() done");
+	comp_dbg(mod->dev, "dts_codec_free() done");
 
 	return ret;
 }

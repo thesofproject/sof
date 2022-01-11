@@ -307,9 +307,8 @@ int module_reset(struct processing_module *mod)
 	return 0;
 }
 
-void module_free_all_memory(struct comp_dev *dev)
+void module_free_all_memory(struct processing_module *mod)
 {
-	struct processing_module *mod = comp_get_drvdata(dev);
 	struct module_memory *mem;
 	struct list_item *mem_list;
 	struct list_item *_mem_list;
@@ -323,19 +322,18 @@ void module_free_all_memory(struct comp_dev *dev)
 	}
 }
 
-int module_free(struct comp_dev *dev)
+int module_free(struct processing_module *mod)
 {
 	int ret;
-	struct processing_module *mod = comp_get_drvdata(dev);
 	struct module_data *md = &mod->priv;
 
-	ret = md->ops->free(dev);
+	ret = md->ops->free(mod);
 	if (ret)
-		comp_warn(dev, "module_free(): error: %d for %d",
-			  ret, dev_comp_id(dev));
+		comp_warn(mod->dev, "module_free(): error: %d for %d",
+			  ret, dev_comp_id(mod->dev));
 
 	/* Free all memory requested by module */
-	module_free_all_memory(dev);
+	module_free_all_memory(mod);
 	/* Free all memory shared by codec_adapter & module */
 	md->cfg.avail = false;
 	md->cfg.size = 0;
