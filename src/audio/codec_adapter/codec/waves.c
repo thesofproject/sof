@@ -184,8 +184,9 @@ static bool rate_is_supported(uint32_t rate)
 }
 
 /* allocate memory for MaxxEffect object */
-static int waves_effect_allocate(struct comp_dev *dev)
+static int waves_effect_allocate(struct processing_module *mod)
 {
+	struct comp_dev *dev = mod->dev;
 	struct module_data *codec = comp_get_module_data(dev);
 	struct waves_codec_data *waves_codec = codec->private;
 	MaxxStatus_t status;
@@ -355,8 +356,9 @@ static int waves_effect_init(struct comp_dev *dev)
 }
 
 /* allocate additional buffers for MaxxEffect */
-static int waves_effect_buffers(struct comp_dev *dev)
+static int waves_effect_buffers(struct processing_module *mod)
 {
+	struct comp_dev *dev = mod->dev;
 	struct module_data *codec = comp_get_module_data(dev);
 	struct waves_codec_data *waves_codec = codec->private;
 	MaxxStatus_t status;
@@ -614,7 +616,7 @@ static int waves_codec_init(struct processing_module *mod)
 		memset(waves_codec, 0, sizeof(struct waves_codec_data));
 		codec->private = waves_codec;
 
-		ret = waves_effect_allocate(dev);
+		ret = waves_effect_allocate(mod);
 		if (ret) {
 			module_free_memory(dev, waves_codec);
 			codec->private = NULL;
@@ -666,7 +668,7 @@ static int waves_codec_prepare(struct processing_module *mod)
 		ret = waves_effect_init(dev);
 
 	if (!ret)
-		ret = waves_effect_buffers(dev);
+		ret = waves_effect_buffers(mod);
 
 	if (!ret)
 		ret = waves_effect_setup_config(dev);
