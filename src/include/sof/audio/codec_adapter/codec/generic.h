@@ -72,11 +72,6 @@ DECLARE_MODULE(sys_comp_codec_##adapter_init)
  */
 struct module_interface {
 	/**
-	 * The unique ID for a module, used for initialization as well as
-	 * parameters loading.
-	 */
-	uint32_t id;
-	/**
 	 * Module specific initialization procedure, called as part of
 	 * codec_adapter component creation in .new()
 	 */
