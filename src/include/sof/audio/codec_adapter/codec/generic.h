@@ -204,7 +204,7 @@ struct processing_module {
 int module_load_config(struct comp_dev *dev, void *cfg, size_t size);
 int module_init(struct processing_module *mod, struct module_interface *interface);
 void *module_allocate_memory(struct processing_module *mod, uint32_t size, uint32_t alignment);
-int module_free_memory(struct comp_dev *dev, void *ptr);
+int module_free_memory(struct processing_module *mod, void *ptr);
 void module_free_all_memory(struct processing_module *mod);
 int module_prepare(struct processing_module *mod);
 int module_process(struct comp_dev *dev);
