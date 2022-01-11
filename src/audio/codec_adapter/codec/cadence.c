@@ -564,7 +564,7 @@ static int cadence_codec_reset(struct processing_module *mod)
 	 * So, free all memory associated with runtime params. These will be reallocated during
 	 * prepare.
 	 */
-	module_free_all_memory(dev);
+	module_free_all_memory(mod);
 
 	/* reset to default params */
 	API_CALL(cd, XA_API_CMD_INIT, XA_CMD_TYPE_INIT_API_PRE_CONFIG_PARAMS, NULL, ret);
@@ -582,13 +582,13 @@ static int cadence_codec_reset(struct processing_module *mod)
 	return ret;
 }
 
-static int cadence_codec_free(struct comp_dev *dev)
+static int cadence_codec_free(struct processing_module *mod)
 {
-	struct module_data *codec = comp_get_module_data(dev);
+	struct module_data *codec = comp_get_module_data(mod->dev);
 	struct cadence_codec_data *cd = codec->private;
 
 	rfree(cd->setup_cfg.data);
-	module_free_all_memory(dev);
+	module_free_all_memory(mod);
 	rfree(cd->self);
 	rfree(cd);
 	return 0;
