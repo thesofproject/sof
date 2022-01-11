@@ -254,11 +254,11 @@ static int cadence_codec_apply_config(struct comp_dev *dev)
 	return 0;
 }
 
-static int init_memory_tables(struct comp_dev *dev)
+static int init_memory_tables(struct processing_module *mod)
 {
 	int ret, no_mem_tables, i, mem_type, mem_size, mem_alignment;
 	void *ptr, *scratch, *persistent;
-	struct module_data *codec = comp_get_module_data(dev);
+	struct module_data *codec = comp_get_module_data(mod->dev);
 	struct cadence_codec_data *cd = codec->private;
 
 	scratch = NULL;
@@ -268,7 +268,7 @@ static int init_memory_tables(struct comp_dev *dev)
 	API_CALL(cd, XA_API_CMD_INIT, XA_CMD_TYPE_INIT_API_POST_CONFIG_PARAMS,
 		 NULL, ret);
 	if (ret != LIB_NO_ERROR) {
-		comp_err(dev, "init_memory_tables() error %x: failed to calculate memory blocks size",
+		comp_err(mod->dev, "init_memory_tables() error %x: failed to calculate memory blocks size",
 			 ret);
 		return ret;
 	}
@@ -276,7 +276,7 @@ static int init_memory_tables(struct comp_dev *dev)
 	/* Get number of memory tables */
 	API_CALL(cd, XA_API_CMD_GET_N_MEMTABS, 0, &no_mem_tables, ret);
 	if (ret != LIB_NO_ERROR) {
-		comp_err(dev, "init_memory_tables() error %x: failed to get number of memory tables",
+		comp_err(mod->dev, "init_memory_tables() error %x: failed to get number of memory tables",
 			 ret);
 		return ret;
 	}
@@ -286,7 +286,7 @@ static int init_memory_tables(struct comp_dev *dev)
 		/* Get type of memory - it specifies how the memory will be used */
 		API_CALL(cd, XA_API_CMD_GET_MEM_INFO_TYPE, i, &mem_type, ret);
 		if (ret != LIB_NO_ERROR) {
-			comp_err(dev, "init_memory_tables() error %x: failed to get mem. type info of id %d out of %d",
+			comp_err(mod->dev, "init_memory_tables() error %x: failed to get mem. type info of id %d out of %d",
 				 ret, i, no_mem_tables);
 			goto err;
 		}
@@ -295,21 +295,21 @@ static int init_memory_tables(struct comp_dev *dev)
 		 */
 		API_CALL(cd, XA_API_CMD_GET_MEM_INFO_SIZE, i, &mem_size, ret);
 		if (ret != LIB_NO_ERROR) {
-			comp_err(dev, "init_memory_tables() error %x: failed to get mem. size for mem. type %d",
+			comp_err(mod->dev, "init_memory_tables() error %x: failed to get mem. size for mem. type %d",
 				 ret, mem_type);
 			goto err;
 		}
 		/* Get alignment constrains */
 		API_CALL(cd, XA_API_CMD_GET_MEM_INFO_ALIGNMENT, i, &mem_alignment, ret);
 		if (ret != LIB_NO_ERROR) {
-			comp_err(dev, "init_memory_tables() error %x: failed to get mem. alignment of mem. type %d",
+			comp_err(mod->dev, "init_memory_tables() error %x: failed to get mem. alignment of mem. type %d",
 				 ret, mem_type);
 			goto err;
 		}
 		/* Allocate memory for this type, taking alignment into account */
-		ptr = module_allocate_memory(dev, mem_size, mem_alignment);
+		ptr = module_allocate_memory(mod->dev, mem_size, mem_alignment);
 		if (!ptr) {
-			comp_err(dev, "init_memory_tables() error %x: failed to allocate memory for %d",
+			comp_err(mod->dev, "init_memory_tables() error %x: failed to allocate memory for %d",
 				 ret, mem_type);
 			ret = -EINVAL;
 			goto err;
@@ -317,7 +317,7 @@ static int init_memory_tables(struct comp_dev *dev)
 		/* Finally, provide this memory for codec */
 		API_CALL(cd, XA_API_CMD_SET_MEM_PTR, i, ptr, ret);
 		if (ret != LIB_NO_ERROR) {
-			comp_err(dev, "init_memory_tables() error %x: failed to set memory pointer for %d",
+			comp_err(mod->dev, "init_memory_tables() error %x: failed to set memory pointer for %d",
 				 ret, mem_type);
 			goto err;
 		}
@@ -338,26 +338,26 @@ static int init_memory_tables(struct comp_dev *dev)
 			codec->mpd.out_buff_size = mem_size;
 			break;
 		default:
-			comp_err(dev, "init_memory_tables() error %x: unrecognized memory type!",
+			comp_err(mod->dev, "init_memory_tables() error %x: unrecognized memory type!",
 				 mem_type);
 			ret = -EINVAL;
 			goto err;
 		}
 
-		comp_dbg(dev, "init_memory_tables: allocated memory of %d bytes and alignment %d for mem. type %d",
+		comp_dbg(mod->dev, "init_memory_tables: allocated memory of %d bytes and alignment %d for mem. type %d",
 			 mem_size, mem_alignment, mem_type);
 	}
 
 	return 0;
 err:
 	if (scratch)
-		module_free_memory(dev, scratch);
+		module_free_memory(mod->dev, scratch);
 	if (persistent)
-		module_free_memory(dev, persistent);
+		module_free_memory(mod->dev, persistent);
 	if (codec->mpd.in_buff)
-		module_free_memory(dev, codec->mpd.in_buff);
+		module_free_memory(mod->dev, codec->mpd.in_buff);
 	if (codec->mpd.out_buff)
-		module_free_memory(dev, codec->mpd.out_buff);
+		module_free_memory(mod->dev, codec->mpd.out_buff);
 	return ret;
 }
 
@@ -460,7 +460,7 @@ static int cadence_codec_prepare(struct processing_module *mod)
 		goto free;
 	}
 
-	ret = init_memory_tables(mod->dev);
+	ret = init_memory_tables(mod);
 	if (ret != LIB_NO_ERROR) {
 		comp_err(mod->dev, "cadence_codec_prepare() error %x: failed to init memory tables",
 			 ret);
