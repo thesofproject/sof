@@ -279,7 +279,6 @@ int module_set_configuration(struct processing_module *mod,
 			     enum module_cfg_fragment_position pos, size_t data_offset_size,
 			     const uint8_t *fragment, size_t fragment_size, uint8_t *response,
 			     size_t response_size);
-
 struct comp_dev *codec_adapter_new(const struct comp_driver *drv,
 				   struct comp_ipc_config *config,
 				   struct module_interface *interface,
