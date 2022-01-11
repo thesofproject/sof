@@ -118,11 +118,11 @@ int module_init(struct processing_module *mod, struct module_interface *interfac
 	return ret;
 }
 
-void *module_allocate_memory(struct comp_dev *dev, uint32_t size, uint32_t alignment)
+void *module_allocate_memory(struct processing_module *mod, uint32_t size, uint32_t alignment)
 {
+	struct comp_dev *dev = mod->dev;
 	struct module_memory *container;
 	void *ptr;
-	struct processing_module *mod = comp_get_drvdata(dev);
 
 	if (!size) {
 		comp_err(dev, "module_allocate_memory: requested allocation of 0 bytes.");
