@@ -96,7 +96,6 @@ int module_init(struct comp_dev *dev, struct module_interface *interface)
 {
 	int ret;
 	struct processing_module *mod = comp_get_drvdata(dev);
-	uint32_t module_id = mod->ca_config.module_id;
 	struct module_data *md = &mod->priv;
 
 	comp_info(dev, "module_init() start");
@@ -106,18 +105,16 @@ int module_init(struct comp_dev *dev, struct module_interface *interface)
 	if (mod->priv.state > MODULE_INITIALIZED)
 		return -EPERM;
 
-	md->id = module_id;
-
 	if (!interface) {
-		comp_err(dev, "module_init(): could not find module interface for module id %x",
-			 module_id);
+		comp_err(dev, "module_init(): could not find module interface for comp %d",
+			 dev_comp_id(dev));
 		return -EIO;
 	}
 
 	if (!interface->init || !interface->prepare || !interface->process ||
 	    !interface->apply_config || !interface->reset || !interface->free) {
-		comp_err(dev, "module_init(): module %x is missing mandatory interfaces",
-			 module_id);
+		comp_err(dev, "module_init(): comp %d is missing mandatory interfaces",
+			 dev_comp_id(dev));
 		return -EIO;
 	}
 
@@ -129,8 +126,8 @@ int module_init(struct comp_dev *dev, struct module_interface *interface)
 	/* Now we can proceed with module specific initialization */
 	ret = md->ops->init(dev);
 	if (ret) {
-		comp_err(dev, "module_init() error %d: module specific init failed, module_id %x",
-			 ret, module_id);
+		comp_err(dev, "module_init() error %d: module specific init failed, comp %d",
+			 ret, dev_comp_id(dev));
 		return ret;
 	}
 
@@ -166,8 +163,8 @@ void *module_allocate_memory(struct comp_dev *dev, uint32_t size, uint32_t align
 		ptr = rballoc(0, SOF_MEM_CAPS_RAM, size);
 
 	if (!ptr) {
-		comp_err(dev, "module_allocate_memory: failed to allocate memory for module %x.",
-			 mod->ca_config.module_id);
+		comp_err(dev, "module_allocate_memory: failed to allocate memory for comp %x.",
+			 dev_comp_id(dev));
 		return NULL;
 	}
 	/* Store reference to allocated memory */
@@ -214,7 +211,6 @@ int module_prepare(struct comp_dev *dev)
 {
 	int ret;
 	struct processing_module *mod = comp_get_drvdata(dev);
-	uint32_t module_id = mod->ca_config.module_id;
 	struct module_data *md = &mod->priv;
 
 	comp_dbg(dev, "module_prepare() start");
@@ -226,8 +222,8 @@ int module_prepare(struct comp_dev *dev)
 
 	ret = md->ops->prepare(dev);
 	if (ret) {
-		comp_err(dev, "module_prepare() error %d: module specific prepare failed, module_id 0x%x",
-			 ret, module_id);
+		comp_err(dev, "module_prepare() error %d: module specific prepare failed, comp_id %d",
+			 ret, dev_comp_id(dev));
 		return ret;
 	}
 
@@ -253,14 +249,13 @@ int module_process(struct comp_dev *dev)
 	int ret;
 
 	struct processing_module *mod = comp_get_drvdata(dev);
-	uint32_t module_id = mod->ca_config.module_id;
 	struct module_data *md = &mod->priv;
 
 	comp_dbg(dev, "module_process() start");
 
 	if (md->state != MODULE_IDLE) {
-		comp_err(dev, "module_process(): wrong state of module %x, state %d",
-			 mod->ca_config.module_id, md->state);
+		comp_err(dev, "module_process(): wrong state of comp_id %x, state %d",
+			 dev_comp_id(dev), md->state);
 		return -EPERM;
 	}
 
@@ -269,8 +264,8 @@ int module_process(struct comp_dev *dev)
 
 	ret = md->ops->process(dev);
 	if (ret)
-		comp_err(dev, "module_process() error %d: for module_id %x",
-			 ret, module_id);
+		comp_err(dev, "module_process() error %d: for comp %d",
+			 ret, dev_comp_id(dev));
 	else
 		comp_dbg(dev, "module_process() done");
 
@@ -283,15 +278,14 @@ int module_apply_runtime_config(struct comp_dev *dev)
 {
 	int ret;
 	struct processing_module *mod = comp_get_drvdata(dev);
-	uint32_t module_id = mod->ca_config.module_id;
 	struct module_data *md = &mod->priv;
 
 	comp_dbg(dev, "module_apply_config() start");
 
 	ret = md->ops->apply_config(dev);
 	if (ret) {
-		comp_err(dev, "module_apply_config() error %d: for module_id %x",
-			 ret, module_id);
+		comp_err(dev, "module_apply_config() error %d: for comp %x",
+			 ret, dev_comp_id(dev));
 		return ret;
 	}
 
@@ -313,8 +307,8 @@ int module_reset(struct comp_dev *dev)
 
 	ret = md->ops->reset(dev);
 	if (ret) {
-		comp_err(dev, "module_reset() error %d: module specific reset() failed for module_id %x",
-			 ret, mod->ca_config.module_id);
+		comp_err(dev, "module_reset() error %d: module specific reset() failed for comp %d",
+			 ret, dev_comp_id(dev));
 		return ret;
 	}
 
@@ -354,8 +348,8 @@ int module_free(struct comp_dev *dev)
 
 	ret = md->ops->free(dev);
 	if (ret)
-		comp_warn(dev, "module_free(): error: %d for module_id %x",
-			  ret, mod->ca_config.module_id);
+		comp_warn(dev, "module_free(): error: %d for %d",
+			  ret, dev_comp_id(dev));
 
 	/* Free all memory requested by module */
 	module_free_all_memory(dev);
