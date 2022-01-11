@@ -11,7 +11,7 @@
  *
  */
 
-#include <sof/audio/codec_adapter/codec/generic.h>
+#include <sof/audio/codec_adapter/codec_adapter.h>
 
 /*****************************************************************************/
 /* Local helper functions						     */
@@ -340,6 +340,99 @@ int module_free(struct processing_module *mod)
 		rfree(md->runtime_params);
 
 	md->state = MODULE_DISABLED;
+
+	return ret;
+}
+
+/**
+ * \brief Set module configuration - Common method to assemble large configuration message
+ * \param[in] mod - struct processing_module pointer
+ * \param[in] config_id - Configuration ID
+ * \param[in] pos - position of the fragment in the large message
+ * \param[in] data_offset_size: size of the whole configuration if it is the first fragment or the
+ *				 only fragment. Otherwise, it is the offset of the fragment in the
+ *				 whole configuration.
+ * \param[in] fragment: configuration fragment buffer
+ * \param[in] fragment_size: size of @fragment
+ * \params[in] response: optional response buffer to fill
+ * \params[in] response_size: size of @response
+ *
+ * \return: 0 upon success or error upon failure
+ */
+int module_set_configuration(struct processing_module *mod,
+			     uint32_t config_id,
+			     enum module_cfg_fragment_position pos, uint32_t data_offset_size,
+			     const uint8_t *fragment, size_t fragment_size, uint8_t *response,
+			     size_t response_size)
+{
+	struct module_data *md = &mod->priv;
+	static uint32_t size;
+	uint32_t offset = 0;
+	char *dst;
+	int ret;
+
+	/*
+	 * verify input params & allocate memory for the config blob when the first fragment
+	 * arrives
+	 */
+	if (pos == MODULE_CFG_FRAGMENT_FIRST || pos == MODULE_CFG_FRAGMENT_SINGLE) {
+		size = data_offset_size;
+
+		/* Check that there is no previous request in progress */
+		if (md->runtime_params) {
+			comp_err(mod->dev, "module_set_configuration(): error: busy with previous request");
+			return -EBUSY;
+		}
+
+		if (!size) {
+			comp_err(mod->dev, "module_set_configuration(): error: no configuration size %d",
+				 size);
+			return -EINVAL;
+		}
+
+		if (size > MAX_BLOB_SIZE) {
+			comp_err(mod->dev, "module_set_configuration(): error: blob size is too big cfg size %d, allowed %d",
+				 size, MAX_BLOB_SIZE);
+			return -EINVAL;
+		}
+
+		/* Allocate buffer for new params */
+		md->runtime_params = rballoc(0, SOF_MEM_CAPS_RAM, size);
+		if (!md->runtime_params) {
+			comp_err(mod->dev, "module_set_configuration(): space allocation for new params failed");
+			return -ENOMEM;
+		}
+
+		memset(md->runtime_params, 0, size);
+	} else if (!md->runtime_params) {
+		comp_err(mod->dev, "module_set_configuration(): error: no memory available for runtime params in consecutive load",
+			 ret);
+		return -EIO;
+	}
+
+	/* set offset for intermediate and last fragments */
+	if (pos == MODULE_CFG_FRAGMENT_MIDDLE || pos == MODULE_CFG_FRAGMENT_LAST)
+		offset = data_offset_size;
+
+	dst = (char *)md->runtime_params + offset;
+
+	ret = memcpy_s(dst, size - offset, fragment, fragment_size);
+	assert(!ret);
+
+	/* return as more fragments of config data expected */
+	if (pos == MODULE_CFG_FRAGMENT_MIDDLE || pos == MODULE_CFG_FRAGMENT_FIRST)
+		return 0;
+
+	/* config fully copied, now load it */
+	ret = module_load_config(mod->dev, md->runtime_params, size);
+	if (ret)
+		comp_err(mod->dev, "module_set_configuration(): error %d: config failed", ret);
+	else
+		comp_dbg(mod->dev, "module_set_configuration(): config load successful");
+
+	if (md->runtime_params)
+		rfree(md->runtime_params);
+	md->runtime_params = NULL;
 
 	return ret;
 }

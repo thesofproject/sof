@@ -257,6 +257,11 @@ int module_process(struct comp_dev *dev);
 int module_apply_runtime_config(struct comp_dev *dev);
 int module_reset(struct processing_module *mod);
 int module_free(struct processing_module *mod);
+int module_set_configuration(struct processing_module *mod,
+			     uint32_t config_id,
+			     enum module_cfg_fragment_position pos, uint32_t data_offset_size,
+			     const uint8_t *fragment, size_t fragment_size, uint8_t *response,
+			     size_t response_size);
 
 struct comp_dev *codec_adapter_new(const struct comp_driver *drv,
 				   struct comp_ipc_config *config,
