@@ -15,21 +15,21 @@ DECLARE_TR_CTX(dts_tr, SOF_UUID(dts_uuid), LOG_LEVEL_INFO);
 
 #define MAX_EXPECTED_DTS_CONFIG_DATA_SIZE 8192
 
-static void *dts_effect_allocate_codec_memory(void *dev_void, unsigned int length,
-	unsigned int alignment)
+static void *dts_effect_allocate_codec_memory(void *mod_void, unsigned int length,
+					      unsigned int alignment)
 {
-	struct comp_dev *dev = dev_void;
+	struct processing_module *mod = mod_void;
 	void *pMem;
 
-	comp_dbg(dev, "dts_effect_allocate_codec_memory() start");
+	comp_dbg(mod->dev, "dts_effect_allocate_codec_memory() start");
 
-	pMem = module_allocate_memory(dev, (uint32_t)length, (uint32_t)alignment);
+	pMem = module_allocate_memory(mod->dev, (uint32_t)length, (uint32_t)alignment);
 
 	if (pMem == NULL)
-		comp_err(dev,
-			"dts_effect_allocate_codec_memory() failed to allocate %d bytes", length);
+		comp_err(mod->dev,
+			 "dts_effect_allocate_codec_memory() failed to allocate %d bytes", length);
 
-	comp_dbg(dev, "dts_effect_allocate_codec_memory() done");
+	comp_dbg(mod->dev, "dts_effect_allocate_codec_memory() done");
 	return pMem;
 }
 
@@ -123,7 +123,7 @@ static int dts_codec_init(struct processing_module *mod)
 	comp_dbg(mod->dev, "dts_codec_init() start");
 
 	dts_result = dtsSofInterfaceInit((DtsSofInterfaceInst **)&(codec->private),
-		dts_effect_allocate_codec_memory, mod->dev);
+		dts_effect_allocate_codec_memory, mod);
 	ret = dts_effect_convert_sof_interface_result(mod->dev, dts_result);
 
 	if (ret)
