@@ -92,6 +92,27 @@ enum module_processing_mode {
 	MODULE_PROCESSING_BYPASS,
 };
 
+/**
+ * \struct input_stream_buffer
+ * \brief Input stream buffer
+ */
+struct input_stream_buffer {
+	void *data; /* data stream buffer */
+	size_t size; /* size of data in the buffer */
+
+	/* Indicates end of stream condition has occurred on the input stream */
+	bool end_of_stream;
+};
+
+/**
+ * \struct output_stream_buffer
+ * \brief Output stream buffer
+ */
+struct output_stream_buffer {
+	void *data; /* data stream buffer */
+	size_t size; /* size of data in the buffer */
+};
+
 /*****************************************************************************/
 /* Module generic data types						     */
 /*****************************************************************************/
