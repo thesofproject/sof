@@ -590,11 +590,45 @@ static int cadence_codec_free(struct processing_module *mod)
 	return 0;
 }
 
+static int
+cadence_codec_set_configuration(struct processing_module *mod, uint32_t config_id,
+				enum module_cfg_fragment_position pos, uint32_t data_offset_size,
+				const uint8_t *fragment, size_t fragment_size, uint8_t *response,
+				size_t response_size)
+{
+	struct module_data *md = &mod->priv;
+	struct comp_dev *dev = mod->dev;
+	int ret;
+
+	ret = module_set_configuration(mod, config_id, pos, data_offset_size, fragment,
+				       fragment_size, response, response_size);
+	if (ret < 0)
+		return ret;
+
+	/* return if more fragments are expected or if the module is not prepared */
+	if ((pos != MODULE_CFG_FRAGMENT_LAST && pos != MODULE_CFG_FRAGMENT_SINGLE) ||
+	    md->state < MODULE_INITIALIZED)
+		return 0;
+
+	/* whole configuration received, apply it now */
+	ret = cadence_codec_apply_config(dev);
+	if (ret) {
+		comp_err(dev, "cadence_codec_set_configuration(): error %x: runtime config apply failed",
+			 ret);
+		return ret;
+	}
+
+	comp_dbg(dev, "cadence_codec_set_configuration(): config applied");
+
+	return 0;
+}
+
 static struct module_interface cadence_interface = {
 	.init  = cadence_codec_init,
 	.prepare = cadence_codec_prepare,
 	.process = cadence_codec_process,
 	.apply_config = cadence_codec_apply_config,
+	.set_configuration = cadence_codec_set_configuration,
 	.reset = cadence_codec_reset,
 	.free = cadence_codec_free
 };
