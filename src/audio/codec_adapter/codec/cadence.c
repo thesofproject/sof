@@ -623,7 +623,6 @@ static struct module_interface cadence_interface = {
 	.init  = cadence_codec_init,
 	.prepare = cadence_codec_prepare,
 	.process = cadence_codec_process,
-	.apply_config = cadence_codec_apply_config,
 	.set_configuration = cadence_codec_set_configuration,
 	.reset = cadence_codec_reset,
 	.free = cadence_codec_free

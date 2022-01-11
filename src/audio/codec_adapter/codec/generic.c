@@ -92,8 +92,8 @@ int module_init(struct processing_module *mod, struct module_interface *interfac
 	}
 
 	if (!interface->init || !interface->prepare || !interface->process ||
-	    !interface->apply_config || !interface->reset || !interface->free) {
-		comp_err(mod->dev, "module_init(): comp %x is missing mandatory interfaces",
+	    !interface->reset || !interface->free) {
+		comp_err(mod->dev, "module_init(): comp %d is missing mandatory interfaces",
 			 dev_comp_id(mod->dev));
 		return -EIO;
 	}
@@ -249,31 +249,6 @@ int module_process(struct comp_dev *dev)
 
 	/* reset state to idle */
 	md->state = MODULE_IDLE;
-	return ret;
-}
-
-int module_apply_runtime_config(struct comp_dev *dev)
-{
-	int ret;
-	struct processing_module *mod = comp_get_drvdata(dev);
-	struct module_data *md = &mod->priv;
-
-	comp_dbg(dev, "module_apply_config() start");
-
-	ret = md->ops->apply_config(dev);
-	if (ret) {
-		comp_err(dev, "module_apply_config() error %d: for comp %x",
-			 ret, dev_comp_id(dev));
-		return ret;
-	}
-
-	md->cfg.avail = false;
-	/* Configuration had been applied, we can free it now. */
-	rfree(md->cfg.data);
-	md->cfg.data = NULL;
-
-	comp_dbg(dev, "module_apply_config() end");
-
 	return ret;
 }
 

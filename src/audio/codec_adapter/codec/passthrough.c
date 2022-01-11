@@ -74,14 +74,6 @@ static int passthrough_codec_process(struct comp_dev *dev)
 	return 0;
 }
 
-static int passthrough_codec_apply_config(struct comp_dev *dev)
-{
-	comp_info(dev, "passthrough_codec_apply_config()");
-
-	/* nothing to do */
-	return 0;
-}
-
 static int passthrough_codec_reset(struct processing_module *mod)
 {
 	comp_info(mod->dev, "passthrough_codec_reset()");
@@ -106,7 +98,6 @@ static struct module_interface passthrough_interface = {
 	.init  = passthrough_codec_init,
 	.prepare = passthrough_codec_prepare,
 	.process = passthrough_codec_process,
-	.apply_config = passthrough_codec_apply_config,
 	.reset = passthrough_codec_reset,
 	.free = passthrough_codec_free
 };

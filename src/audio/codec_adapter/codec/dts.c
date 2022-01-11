@@ -390,7 +390,6 @@ static struct module_interface dts_interface = {
 	.init  = dts_codec_init,
 	.prepare = dts_codec_prepare,
 	.process = dts_codec_process,
-	.apply_config = dts_codec_apply_config,
 	.set_configuration = dts_codec_set_configuration,
 	.reset = dts_codec_reset,
 	.free = dts_codec_free
