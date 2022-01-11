@@ -351,13 +351,13 @@ static int init_memory_tables(struct processing_module *mod)
 	return 0;
 err:
 	if (scratch)
-		module_free_memory(mod->dev, scratch);
+		module_free_memory(mod, scratch);
 	if (persistent)
-		module_free_memory(mod->dev, persistent);
+		module_free_memory(mod, persistent);
 	if (codec->mpd.in_buff)
-		module_free_memory(mod->dev, codec->mpd.in_buff);
+		module_free_memory(mod, codec->mpd.in_buff);
 	if (codec->mpd.out_buff)
-		module_free_memory(mod->dev, codec->mpd.out_buff);
+		module_free_memory(mod, codec->mpd.out_buff);
 	return ret;
 }
 

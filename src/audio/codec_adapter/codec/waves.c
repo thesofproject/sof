@@ -416,11 +416,11 @@ static int waves_effect_buffers(struct processing_module *mod)
 
 err:
 	if (i_buffer)
-		module_free_memory(mod->dev, i_buffer);
+		module_free_memory(mod, i_buffer);
 	if (o_buffer)
-		module_free_memory(mod->dev, o_buffer);
+		module_free_memory(mod, o_buffer);
 	if (response)
-		module_free_memory(mod->dev, response);
+		module_free_memory(mod, response);
 	return ret;
 }
 
@@ -615,7 +615,7 @@ static int waves_codec_init(struct processing_module *mod)
 
 		ret = waves_effect_allocate(mod);
 		if (ret) {
-			module_free_memory(mod->dev, waves_codec);
+			module_free_memory(mod, waves_codec);
 			codec->private = NULL;
 		}
 	}

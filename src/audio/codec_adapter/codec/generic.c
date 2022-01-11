@@ -153,9 +153,8 @@ void *module_allocate_memory(struct processing_module *mod, uint32_t size, uint3
 	return ptr;
 }
 
-int module_free_memory(struct comp_dev *dev, void *ptr)
+int module_free_memory(struct processing_module *mod, void *ptr)
 {
-	struct processing_module *mod = comp_get_drvdata(dev);
 	struct module_memory *mem;
 	struct list_item *mem_list;
 	struct list_item *_mem_list;
@@ -174,7 +173,7 @@ int module_free_memory(struct comp_dev *dev, void *ptr)
 		}
 	}
 
-	comp_err(dev, "module_free_memory: error: could not find memory pointed by %p",
+	comp_err(mod->dev, "module_free_memory: error: could not find memory pointed by %p",
 		 (uint32_t)ptr);
 
 	return -EINVAL;
