@@ -795,11 +795,45 @@ static int waves_codec_free(struct processing_module *mod)
 	return 0;
 }
 
+static int
+waves_codec_set_configuration(struct processing_module *mod, uint32_t config_id,
+			      enum module_cfg_fragment_position pos, uint32_t data_offset_size,
+			      const uint8_t *fragment, size_t fragment_size, uint8_t *response,
+			      size_t response_size)
+{
+	struct module_data *md = &mod->priv;
+	struct comp_dev *dev = mod->dev;
+	int ret;
+
+	ret = module_set_configuration(mod, config_id, pos, data_offset_size, fragment,
+				       fragment_size, response, response_size);
+	if (ret < 0)
+		return ret;
+
+	/* return if more fragments are expected or if the module is not prepared */
+	if ((pos != MODULE_CFG_FRAGMENT_LAST && pos != MODULE_CFG_FRAGMENT_SINGLE) ||
+	    md->state < MODULE_INITIALIZED)
+		return 0;
+
+	/* whole configuration received, apply it now */
+	ret = waves_codec_apply_config(dev);
+	if (ret) {
+		comp_err(dev, "waves_codec_set_configuration(): error %x: runtime config apply failed",
+			 ret);
+		return ret;
+	}
+
+	comp_dbg(dev, "waves_codec_set_configuration(): config applied");
+
+	return 0;
+}
+
 static struct module_interface waves_interface = {
 	.init  = waves_codec_init,
 	.prepare = waves_codec_prepare,
 	.process = waves_codec_process,
 	.apply_config = waves_codec_apply_config,
+	.set_configuration = waves_codec_set_configuration,
 	.reset = waves_codec_reset,
 	.free = waves_codec_free
 };
