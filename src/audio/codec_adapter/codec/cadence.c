@@ -92,7 +92,7 @@ static struct cadence_api cadence_api_table[] = {
 #endif
 };
 
-int cadence_codec_init(struct comp_dev *dev)
+static int cadence_codec_init(struct comp_dev *dev)
 {
 	int ret;
 	struct module_data *codec = comp_get_module_data(dev);
@@ -390,7 +390,8 @@ static int cadence_codec_init_process(struct comp_dev *dev)
 
 	return 0;
 }
-int cadence_codec_prepare(struct comp_dev *dev)
+
+static int cadence_codec_prepare(struct comp_dev *dev)
 {
 	int ret = 0, mem_tabs_size;
 	struct module_data *codec = comp_get_module_data(dev);
@@ -487,7 +488,7 @@ err:
 	return ret;
 }
 
-int cadence_codec_process(struct comp_dev *dev)
+static int cadence_codec_process(struct comp_dev *dev)
 {
 	struct processing_module *mod = comp_get_drvdata(dev);
 	struct comp_buffer *local_buff = mod->local_buff;
@@ -544,12 +545,12 @@ err:
 	return ret;
 }
 
-int cadence_codec_apply_config(struct comp_dev *dev)
+static int cadence_codec_apply_config(struct comp_dev *dev)
 {
 	return apply_config(dev, MODULE_CFG_RUNTIME);
 }
 
-int cadence_codec_reset(struct comp_dev *dev)
+static int cadence_codec_reset(struct comp_dev *dev)
 {
 	int ret;
 
@@ -573,7 +574,7 @@ int cadence_codec_reset(struct comp_dev *dev)
 	return ret;
 }
 
-int cadence_codec_free(struct comp_dev *dev)
+static int cadence_codec_free(struct comp_dev *dev)
 {
 	module_free_all_memory(dev);
 	return 0;
