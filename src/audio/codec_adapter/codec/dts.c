@@ -318,9 +318,10 @@ static int dts_codec_apply_config(struct comp_dev *dev)
 	return ret;
 }
 
-static int dts_codec_reset(struct comp_dev *dev)
+static int dts_codec_reset(struct processing_module *mod)
 {
 	int ret;
+	struct comp_dev *dev = mod->dev;
 	struct module_data *codec = comp_get_module_data(dev);
 	DtsSofInterfaceResult dts_result;
 
