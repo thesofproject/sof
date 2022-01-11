@@ -129,7 +129,6 @@ enum module_state {
 
 /** codec adapter setup config parameters */
 struct ca_config {
-	uint32_t module_id;
 	uint32_t reserved;
 	uint32_t sample_rate;
 	uint32_t sample_width;
@@ -190,7 +189,6 @@ struct module_processing_data {
 
 /** private, runtime module data */
 struct module_data {
-	uint32_t id;
 	enum module_state state;
 	void *private; /**< self object, memory tables etc here */
 	void *runtime_params;
