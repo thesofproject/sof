@@ -11,7 +11,7 @@
 # include files
 src/include/sof/drivers/dmic.h		@singalsu
 src/include/ipc/**			@thesofproject/steering-committee
-src/include/ipc/**			@randerwang
+src/include/ipc/**			@randerwang @marcinszkudlinski
 src/include/kernel/**			@thesofproject/steering-committee
 src/include/user/**			@thesofproject/steering-committee
 src/include/sof/debug/gdb/*		@mrajwa
@@ -56,7 +56,7 @@ src/drivers/mediatek/mt8195/*		@yaochunhung @kuanhsuncheng
 
 # other libs
 src/math/*				@singalsu
-src/ipc/*				@bardliao
+src/ipc/*				@bardliao @marcinszkudlinski
 src/drivers/intel/cavs/sue-ipc.c	@lyakh
 src/lib/*				@libinyang
 src/debug/gdb/*				@mrajwa
