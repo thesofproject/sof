@@ -104,12 +104,6 @@ struct module_interface {
 	 * ones back to codec_adapter.
 	 */
 	int (*process)(struct comp_dev *dev);
-	/**
-	 * Module specific apply config procedure, called by codec_adapter every time
-	 * a new RUNTIME configuration has been sent if the adapter has been
-	 * prepared. This will not be called for SETUP cfg.
-	 */
-	int (*apply_config)(struct comp_dev *dev);
 
 	/**
 	 * Set module configuration for the given configuration ID
@@ -254,7 +248,6 @@ int module_free_memory(struct processing_module *mod, void *ptr);
 void module_free_all_memory(struct processing_module *mod);
 int module_prepare(struct processing_module *mod);
 int module_process(struct comp_dev *dev);
-int module_apply_runtime_config(struct comp_dev *dev);
 int module_reset(struct processing_module *mod);
 int module_free(struct processing_module *mod);
 int module_set_configuration(struct processing_module *mod,
