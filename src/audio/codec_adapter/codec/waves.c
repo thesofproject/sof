@@ -832,7 +832,6 @@ static struct module_interface waves_interface = {
 	.init  = waves_codec_init,
 	.prepare = waves_codec_prepare,
 	.process = waves_codec_process,
-	.apply_config = waves_codec_apply_config,
 	.set_configuration = waves_codec_set_configuration,
 	.reset = waves_codec_reset,
 	.free = waves_codec_free
