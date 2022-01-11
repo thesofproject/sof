@@ -64,6 +64,21 @@ DECLARE_MODULE(sys_comp_codec_##adapter_init)
 
 struct processing_module;
 
+/**
+ * \enum module_cfg_fragment_position
+ * \brief Fragment position in config
+ * MODULE_CFG_FRAGMENT_FIRST: first fragment of the large configuration
+ * MODULE_CFG_FRAGMENT_SINGLE: only fragment of the configuration
+ * MODULE_CFG_FRAGMENT_LAST: last fragment of the configuration
+ * MODULE_CFG_FRAGMENT_MIDDLE: intermediate fragment of the large configuration
+ */
+enum module_cfg_fragment_position {
+	MODULE_CFG_FRAGMENT_MIDDLE,
+	MODULE_CFG_FRAGMENT_FIRST,
+	MODULE_CFG_FRAGMENT_LAST,
+	MODULE_CFG_FRAGMENT_SINGLE,
+};
+
 /*****************************************************************************/
 /* Module generic data types						     */
 /*****************************************************************************/
