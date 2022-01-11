@@ -15,10 +15,11 @@ DECLARE_TR_CTX(dts_tr, SOF_UUID(dts_uuid), LOG_LEVEL_INFO);
 
 #define MAX_EXPECTED_DTS_CONFIG_DATA_SIZE 8192
 
-static void *dts_effect_allocate_codec_memory(void *dev_void, unsigned int length,
-	unsigned int alignment)
+static void *dts_effect_allocate_codec_memory(void *mod_void, unsigned int length,
+					      unsigned int alignment)
 {
-	struct comp_dev *dev = dev_void;
+	struct processing_module *mod = mod_void;
+	struct comp_dev *dev = mod->dev;
 	void *pMem;
 
 	comp_dbg(dev, "dts_effect_allocate_codec_memory() start");
@@ -124,7 +125,7 @@ static int dts_codec_init(struct processing_module *mod)
 	comp_dbg(dev, "dts_codec_init() start");
 
 	dts_result = dtsSofInterfaceInit((DtsSofInterfaceInst **)&(codec->private),
-		dts_effect_allocate_codec_memory, dev);
+		dts_effect_allocate_codec_memory, mod);
 	ret = dts_effect_convert_sof_interface_result(dev, dts_result);
 
 	if (ret)
