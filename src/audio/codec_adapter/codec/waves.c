@@ -418,11 +418,11 @@ static int waves_effect_buffers(struct processing_module *mod)
 
 err:
 	if (i_buffer)
-		module_free_memory(dev, i_buffer);
+		module_free_memory(mod, i_buffer);
 	if (o_buffer)
-		module_free_memory(dev, o_buffer);
+		module_free_memory(mod, o_buffer);
 	if (response)
-		module_free_memory(dev, response);
+		module_free_memory(mod, response);
 	return ret;
 }
 
@@ -618,7 +618,7 @@ static int waves_codec_init(struct processing_module *mod)
 
 		ret = waves_effect_allocate(mod);
 		if (ret) {
-			module_free_memory(dev, waves_codec);
+			module_free_memory(mod, waves_codec);
 			codec->private = NULL;
 		}
 	}
@@ -636,7 +636,7 @@ static int waves_codec_init(struct processing_module *mod)
 		setup_cfg->data = rballoc(0, SOF_MEM_CAPS_RAM, codec->cfg.size);
 		if (!setup_cfg->data) {
 			comp_err(dev, "cadence_codec_init(): failed to alloc setup config");
-			module_free_memory(dev, waves_codec);
+			module_free_memory(mod, waves_codec);
 			return -ENOMEM;
 		}
 
@@ -645,7 +645,7 @@ static int waves_codec_init(struct processing_module *mod)
 		ret = memcpy_s(setup_cfg->data, setup_cfg->size, codec->cfg.data, setup_cfg->size);
 		if (ret) {
 			comp_err(dev, "cadence_codec_init(): failed to copy setup config %d", ret);
-			module_free_memory(dev, waves_codec);
+			module_free_memory(mod, waves_codec);
 			return ret;
 		}
 		setup_cfg->avail = true;
