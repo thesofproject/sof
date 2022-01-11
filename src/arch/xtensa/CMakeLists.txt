@@ -28,6 +28,8 @@ elseif(CONFIG_IMX8M)
 	set(platform_folder imx8m)
 elseif(CONFIG_IMX8ULP)
 	set(platform_folder imx8ulp)
+elseif(CONFIG_MT8186)
+        set(platform_folder mt8186)
 elseif(CONFIG_MT8195)
 	set(platform_folder mt8195)
 endif()
@@ -542,7 +544,7 @@ list(APPEND UNSIGNED_RI imx8 imx8x imx8m imx8ulp)
 # AMD
 list(APPEND UNSIGNED_RI rn)
 # Mediatek
-list(APPEND UNSIGNED_RI mt8195)
+list(APPEND UNSIGNED_RI mt8186 mt8195)
 
 # Signed and non-deterministic but sof_ri_info.py is not compatible with
 # manifest v1.5?  "CSE manifest magic number not found"
