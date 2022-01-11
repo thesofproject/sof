@@ -105,7 +105,7 @@ struct module_interface {
 	 * Module specific free procedure, called as part of codec_adapter component
 	 * free in .free(). This should free all memory allocated by module.
 	 */
-	int (*free)(struct comp_dev *dev);
+	int (*free)(struct processing_module *mod);
 };
 
 /**
@@ -205,12 +205,12 @@ int module_load_config(struct comp_dev *dev, void *cfg, size_t size);
 int module_init(struct processing_module *mod, struct module_interface *interface);
 void *module_allocate_memory(struct comp_dev *dev, uint32_t size, uint32_t alignment);
 int module_free_memory(struct comp_dev *dev, void *ptr);
-void module_free_all_memory(struct comp_dev *dev);
+void module_free_all_memory(struct processing_module *mod);
 int module_prepare(struct processing_module *mod);
 int module_process(struct comp_dev *dev);
 int module_apply_runtime_config(struct comp_dev *dev);
 int module_reset(struct processing_module *mod);
-int module_free(struct comp_dev *dev);
+int module_free(struct processing_module *mod);
 
 struct comp_dev *codec_adapter_new(const struct comp_driver *drv,
 				   struct comp_ipc_config *config,
