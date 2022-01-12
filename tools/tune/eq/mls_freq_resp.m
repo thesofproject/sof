@@ -118,7 +118,7 @@ for i=1:play_cfg.nch
 		remote_capture(recfn, rec_cfg, tcap);
 		pause(1);
 		remote_play(mixfn, play_cfg);
-		pause(3);
+		pause(5);
 		r = get_recording(recfn, rec_cfg);
 	end
     [d, nt] = find_test_signal(r(:,1), fnd);
