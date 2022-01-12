@@ -250,7 +250,7 @@ function remote_capture(fn, cfg, t)
 end
 
 function play = meas_remote_play_config()
-	source mls_play_config.txt;
+	play = get_config('mls_play_config.txt', 'play');
 	fprintf('\nThe setttings for remote playback are\n');
 	fprintf('Use ssh   : %d\n', play.ssh);
 	fprintf('User      : %s\n', play.user);
@@ -260,7 +260,7 @@ function play = meas_remote_play_config()
 end
 
 function rec = meas_remote_rec_config(fs, fmt)
-	source mls_rec_config.txt;
+	rec = get_config('mls_rec_config.txt', 'rec');
 	rec.fmt = sprintf('-t wav -c %d -f %s -r %d', ...
 			     rec.nch, fmt, fs);
 
@@ -399,4 +399,11 @@ function [cal_f, cal_m_db] = apply_mic_calibration(f, m_db, rec)
 		cal_f = f;
 	end
 
+end
+
+function ret = get_config(fn, var)
+    s = fileread(fn);
+    eval(s);
+    cmd = sprintf('ret = %s;', var);
+    eval(cmd);
 end
