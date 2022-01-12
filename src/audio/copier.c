@@ -584,18 +584,15 @@ static int do_conversion_copy(struct comp_dev *dev,
 			      uint32_t *src_copy_bytes)
 {
 	struct comp_copy_limits c;
-	uint32_t sink_bytes;
-	uint32_t src_bytes;
 	int i;
 	int ret;
 
 	comp_get_copy_limits_with_lock(src, sink, &c);
-	src_bytes = c.frames * c.source_frame_bytes;
-	*src_copy_bytes = src_bytes;
-	sink_bytes = c.frames * c.sink_frame_bytes;
+	*src_copy_bytes = c.source_bytes;
 
 	i = IPC4_SINK_QUEUE_ID(sink->id);
-	buffer_stream_invalidate(src, src_bytes);
+	buffer_stream_invalidate(src, c.source_bytes);
+
 	cd->converter[i](&src->stream, 0, &sink->stream, 0, c.frames * sink->stream.channels);
 	if (cd->attenuation) {
 		ret = apply_attenuation(dev, cd, sink, c.frames);
@@ -603,8 +600,8 @@ static int do_conversion_copy(struct comp_dev *dev,
 			return ret;
 	}
 
-	buffer_stream_writeback(sink, sink_bytes);
-	comp_update_buffer_produce(sink, sink_bytes);
+	buffer_stream_writeback(sink, c.sink_bytes);
+	comp_update_buffer_produce(sink, c.sink_bytes);
 
 	return 0;
 }
