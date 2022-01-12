@@ -74,7 +74,7 @@ audiowrite(mlsfn, mls, fs);
 [x2, m2] = sync_chirp(fs, 'down');
 fnd.fs = fs; % Sample rate
 fnd.sm = 5; % Max seek from start
-fnd.em = 3; % Max seek from end
+fnd.em = 5; % Max seek from end
 fnd.idle_t = 2; % max idle in start or end
 fnd.mark_t = m1.t; % Marker length
 fnd.nf = 1; % One signal (amplitude)
@@ -121,20 +121,25 @@ for i=1:play_cfg.nch
 		pause(3);
 		r = get_recording(recfn, rec_cfg);
 	end
-	[d, nt] = find_test_signal(r(:,1), fnd);
+    [d, nt] = find_test_signal(r(:,1), fnd);
+    figure;
+    sr = size(r);
+    ts = (0:sr(1)-1)/fs;
+    plot(ts, r(:,1));
+    grid on;
+    xlabel('Time (s)');
+    ylabel('Sample value');
 	if isempty(d)
-		figure;
-		sr = size(r);
-		ts = (0:sr(1)-1)/fs;
-		plot(ts, r(:,1));
-		grid on;
-		xlabel('Time (s)');
-		ylabel('Sample value');
 		title('Captured audio test waveform');
 		fprintf(1, 'Error: check the plot for skew in capture/playback.\n');
 		f = [];
 		m_db = [];
 		return
+    else
+        si = d:d + nt;
+        hold on
+        plot(ts(si), r(si), 'g');
+        hold off
 	end
 	for j = 1:rec_cfg.nch
 		y(:, rec_cfg.nch*(i-1) + j) = r(d:d + nt -1, j);
