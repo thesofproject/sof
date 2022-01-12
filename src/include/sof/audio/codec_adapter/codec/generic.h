@@ -149,6 +149,17 @@ struct module_interface {
 				 const uint8_t *fragment, size_t fragment_size);
 
 	/**
+	 * Set processing mode for the module
+	 */
+	int (*set_processing_mode)(struct processing_module *mod,
+				   enum module_processing_mode mode);
+
+	/**
+	 * Get the current processing mode for the module
+	 */
+	enum module_processing_mode (*get_processing_mode)(struct processing_module *mod);
+
+	/**
 	 * Module specific reset procedure, called as part of codec_adapter component
 	 * reset in .reset(). This should reset all parameters to their initial stage
 	 * but leave allocated memory intact.
