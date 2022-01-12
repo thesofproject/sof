@@ -68,7 +68,7 @@ static uint32_t crc32(uint8_t *input, int size, uint32_t poly, uint32_t init,
 	if (rev_out) {
 		t32 = 0;
 		for (i = 0; i < 32; i++) {
-			if (crc & (1 << i))
+			if (crc & (1U << i))
 				t32 |= (uint32_t)(1 << (31 - i));
 		}
 		crc = t32;
