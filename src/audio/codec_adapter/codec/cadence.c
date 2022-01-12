@@ -32,6 +32,8 @@ enum cadence_api_id {
 	CADENCE_CODEC_SRC_PP_ID		= 0x09,
 };
 
+#define DEFAULT_CODEC_ID CADENCE_CODEC_WRAPPER_ID
+
 /*****************************************************************************/
 /* Cadence API functions array						     */
 /*****************************************************************************/
@@ -99,7 +101,7 @@ static int cadence_codec_init(struct comp_dev *dev)
 	struct cadence_codec_data *cd = NULL;
 	uint32_t obj_size;
 	uint32_t no_of_api = ARRAY_SIZE(cadence_api_table);
-	uint32_t api_id = CODEC_GET_API_ID(codec->id);
+	uint32_t api_id = CODEC_GET_API_ID(DEFAULT_CODEC_ID);
 	uint32_t i;
 
 	comp_dbg(dev, "cadence_codec_init() start");
@@ -123,6 +125,9 @@ static int cadence_codec_init(struct comp_dev *dev)
 			break;
 		}
 	}
+
+	cd->api_id = api_id;
+
 	/* Verify API assignment */
 	if (!cd->api) {
 		comp_err(dev, "cadence_codec_init(): could not find API function for id %x",
@@ -334,11 +339,11 @@ err:
 static int cadence_codec_get_samples(struct comp_dev *dev)
 {
 	struct module_data *codec = comp_get_module_data(dev);
-	uint32_t api_id = CODEC_GET_API_ID(codec->id);
+	struct cadence_codec_data *cd = codec->private;
 
 	comp_dbg(dev, "cadence_codec_get_samples() start");
 
-	switch (api_id) {
+	switch (cd->api_id) {
 	case CADENCE_CODEC_WRAPPER_ID:
 		return 0;
 	case CADENCE_CODEC_MP3_DEC_ID:
