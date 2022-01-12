@@ -219,10 +219,20 @@ static int waves_effect_allocate(struct processing_module *mod)
 static int waves_effect_check(struct comp_dev *dev)
 {
 	struct processing_module *component = comp_get_drvdata(dev);
-	const struct audio_stream *src_fmt = &component->ca_source->stream;
-	const struct audio_stream *snk_fmt = &component->ca_sink->stream;
+	struct comp_buffer *sink = list_first_item(&dev->bsink_list, struct comp_buffer,
+						    source_list);
+	struct comp_buffer *source = list_first_item(&dev->bsource_list, struct comp_buffer,
+						     sink_list);
+	const struct audio_stream *src_fmt = &source->stream;
+	const struct audio_stream *snk_fmt = &sink->stream;
 
+	/* Init sink & source buffers */
 	comp_dbg(dev, "waves_effect_check() start");
+
+	if (!source || !sink) {
+		comp_err(dev, "waves_effect_check() source/sink buffer not found");
+		return -EINVAL;
+	}
 
 	/* todo use fallback to comp_verify_params when ready */
 
@@ -248,7 +258,7 @@ static int waves_effect_check(struct comp_dev *dev)
 	}
 
 	/* different interleaving is not supported */
-	if (component->ca_source->buffer_fmt != component->ca_sink->buffer_fmt) {
+	if (source->buffer_fmt != sink->buffer_fmt) {
 		comp_err(dev, "waves_effect_check() source %d sink %d buffer format mismatch");
 		return -EINVAL;
 	}
@@ -258,7 +268,7 @@ static int waves_effect_check(struct comp_dev *dev)
 		return -EINVAL;
 	}
 
-	if (!layout_is_supported(component->ca_source->buffer_fmt)) {
+	if (!layout_is_supported(source->buffer_fmt)) {
 		comp_err(dev, "waves_effect_check() non interleaved format not supported");
 		return -EINVAL;
 	}
@@ -280,11 +290,13 @@ static int waves_effect_check(struct comp_dev *dev)
 /* initializes MaxxEffect based on stream parameters */
 static int waves_effect_init(struct comp_dev *dev)
 {
+	struct comp_buffer *source = list_first_item(&dev->bsource_list, struct comp_buffer,
+						     sink_list);
 	struct module_data *codec = comp_get_module_data(dev);
 	struct waves_codec_data *waves_codec = codec->private;
 	struct processing_module *component = comp_get_drvdata(dev);
 
-	const struct audio_stream *src_fmt = &component->ca_source->stream;
+	const struct audio_stream *src_fmt = &source->stream;
 
 	MaxxStatus_t status;
 	MaxxBuffer_Format_t sample_format;
@@ -302,10 +314,10 @@ static int waves_effect_init(struct comp_dev *dev)
 		return -EINVAL;
 	}
 
-	buffer_format = layout_convert_sof_to_me(component->ca_source->buffer_fmt);
+	buffer_format = layout_convert_sof_to_me(source->buffer_fmt);
 	if (buffer_format < 0) {
 		comp_err(dev, "waves_effect_init() sof buffer format %d not supported",
-			 component->ca_source->buffer_fmt);
+			 source->buffer_fmt);
 		return -EINVAL;
 	}
 
