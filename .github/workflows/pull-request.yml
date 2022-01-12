@@ -114,11 +114,13 @@ jobs:
 
     strategy:
       matrix:
-        # Compiler-based grouping, see HOST= in xtensa-build-all.sh The
-        # only reason for grouping is to avoid the matrix swarming the
-        # user interface and burying other checks.
+        # Compiler-based groups, see HOST= compilers in
+        # xtensa-build-all.sh.  Pay attention to commas and whitespace.
+        # The main reason for these groups is to avoid the matrix
+        # swarming the Github web interface and burying other checks.
         platform: [imx8 imx8x imx8m,
-                   byt cht, bdw hsw, apl skl kbl, cnl icl]
+                   byt cht, bdw hsw, apl skl kbl, cnl icl,
+        ]
 
     steps:
 
