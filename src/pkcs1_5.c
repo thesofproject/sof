@@ -123,13 +123,14 @@ static int rimage_check_key(EVP_PKEY *privkey)
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
 static void rimage_set_modexp(EVP_PKEY *privkey, unsigned char *mod, unsigned char *exp)
 {
+	RSA *priv_rsa = NULL;
 	const BIGNUM *n;
 	const BIGNUM *e;
-	const BIGNUM *d;
 
-	*n = r->n;
-	*e = r->e;
-	*d = r->d;
+	priv_rsa = EVP_PKEY_get1_RSA(privkey);
+
+	n = priv_rsa->n;
+	e = priv_rsa->e;
 
 	BN_bn2bin(n, mod);
 	BN_bn2bin(e, exp);
