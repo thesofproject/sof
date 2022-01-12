@@ -324,7 +324,6 @@ do
 			;;
 		rn)
 			PLATFORM="renoir"
-			ARCH="xtensa"
 			XTENSA_CORE="ACP_3_1_001_PROD"
 			HOST="xtensa-rn-elf"
 			XTENSA_TOOLS_VERSION="RF-2016.4-linux"
