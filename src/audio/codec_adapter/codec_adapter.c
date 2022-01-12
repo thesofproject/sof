@@ -113,20 +113,6 @@ int codec_adapter_prepare(struct comp_dev *dev)
 
 	comp_dbg(dev, "codec_adapter_prepare() start");
 
-	/* Init sink & source buffers */
-	mod->ca_sink = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
-	mod->ca_source = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
-
-	if (!mod->ca_source) {
-		comp_err(dev, "codec_adapter_prepare(): source buffer not found");
-		return -EINVAL;
-	}
-
-	if (!mod->ca_sink) {
-		comp_err(dev, "codec_adapter_prepare(): sink buffer not found");
-		return -EINVAL;
-	}
-
 	/* Are we already prepared? */
 	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
 	if (ret < 0)
@@ -311,13 +297,20 @@ int codec_adapter_copy(struct comp_dev *dev)
 {
 	int ret = 0;
 	uint32_t bytes_to_process, copy_bytes, processed = 0, produced = 0;
+	struct comp_buffer *source = list_first_item(&dev->bsource_list, struct comp_buffer,
+						     sink_list);
+	struct comp_buffer *sink = list_first_item(&dev->bsink_list, struct comp_buffer,
+						    source_list);
 	struct processing_module *mod = comp_get_drvdata(dev);
 	struct module_data *md = &mod->priv;
-	struct comp_buffer *source = mod->ca_source;
-	struct comp_buffer *sink = mod->ca_sink;
 	uint32_t codec_buff_size = md->mpd.in_buff_size;
 	struct comp_buffer *local_buff = mod->local_buff;
 	struct comp_copy_limits cl;
+
+	if (!source || !sink) {
+		comp_err(dev, "codec_adapter_copy(): source/sink buffer not found");
+		return -EINVAL;
+	}
 
 	comp_get_copy_limits_with_lock(source, local_buff, &cl);
 	bytes_to_process = cl.frames * cl.source_frame_bytes;
