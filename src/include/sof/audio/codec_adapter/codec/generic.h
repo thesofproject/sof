@@ -79,6 +79,19 @@ enum module_cfg_fragment_position {
 	MODULE_CFG_FRAGMENT_SINGLE,
 };
 
+/**
+ * \enum module_processing_mode
+ * MODULE_PROCESSING_NORMAL: Indicates that module is expected to apply its custom processing on
+ *			      the input signal
+ * MODULE_PROCESSING_BYPASS: Indicates that module is expected to skip custom processing on
+ *			      the input signal and act as a passthrough component
+ */
+
+enum module_processing_mode {
+	MODULE_PROCESSING_NORMAL,
+	MODULE_PROCESSING_BYPASS,
+};
+
 /*****************************************************************************/
 /* Module generic data types						     */
 /*****************************************************************************/
