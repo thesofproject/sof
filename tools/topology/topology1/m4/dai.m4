@@ -271,6 +271,7 @@ define(`DAI_ADD',
 `define(`DAI_CHANNELS', $13)'
 `define(`DAI_RATE', $14)'
 `define(`DYNAMIC_PIPE', $15)'
+`define(`PIPELINE_FORMAT', $8)'
 `include($1)'
 `DEBUG_DAI($3, $4)'
 `undefine(`PIPELINE_ID')'
@@ -287,6 +288,7 @@ define(`DAI_ADD',
 `undefine(`DAI_CHANNELS')'
 `undefine(`DAI_RATE')'
 `undefine(`DYNAMIC_PIPE')'
+`undefine(`PIPELINE_FORMAT')'
 )
 
 # DAI_ADD_SCHED can be used for adding a DAI with sched_comp
