@@ -369,7 +369,7 @@ static int ipc4_set_pipeline_state(union ipc4_message_header *ipc4)
 	struct ipc4_pipeline_set_state state;
 	uint32_t cmd, ppl_count;
 	uint32_t *ppl_id, id;
-	int ret;
+	int ret = 0;
 	int i;
 
 	state.header.dat = ipc4[0].dat;
