@@ -460,6 +460,9 @@ const struct pcm_func_map pcm_func_map[] = {
 #if CONFIG_PCM_CONVERTER_FORMAT_S24LE
 	{ SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S24_4LE, audio_stream_copy },
 #endif /* CONFIG_PCM_CONVERTER_FORMAT_S24LE */
+#if CONFIG_PCM_CONVERTER_FORMAT_S24_3LE
+	{ SOF_IPC_FRAME_S24_3LE, SOF_IPC_FRAME_S24_3LE, audio_stream_copy },
+#endif /* CONFIG_PCM_CONVERTER_FORMAT_S24_3LE */
 #if  CONFIG_PCM_CONVERTER_FORMAT_S24LE && CONFIG_PCM_CONVERTER_FORMAT_S16LE
 	{ SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S24_4LE, pcm_convert_s16_to_s24 },
 	{ SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S16_LE, pcm_convert_s24_to_s16 },
@@ -671,6 +674,114 @@ static int pcm_convert_s24_c32_to_s16_c32(const struct audio_stream *source,
 	return samples;
 }
 #endif
+
+#if CONFIG_PCM_CONVERTER_FORMAT_S24_C24_AND_S24_C32
+static int pcm_convert_s24_c24_to_s24_c32(const struct audio_stream *source,
+					  uint32_t ioffset, struct audio_stream *sink,
+					  uint32_t ooffset, uint32_t samples)
+{
+	uint8_t *src = source->r_ptr;
+	int32_t *dst = sink->w_ptr;
+	int processed;
+	int nmax, i, n;
+
+	src += ioffset * 3;
+	dst += ooffset;
+	for (processed = 0; processed < samples; processed += n) {
+		src = audio_stream_wrap(source, src);
+		dst = audio_stream_wrap(sink, dst);
+		n = samples - processed;
+		nmax = audio_stream_bytes_without_wrap(source, src) / 3;
+		n = MIN(n, nmax);
+		nmax = audio_stream_bytes_without_wrap(sink, dst) >> BYTES_TO_S32_SAMPLES;
+		n = MIN(n, nmax);
+		for (i = 0; i < n; i += 1) {
+			*dst = (*(src + 2) << 24) | (*(src + 1) << 16) | (*(src + 0) << 8);
+			*dst >>= 8;
+			dst++;
+			src += 3;
+		}
+	}
+
+	return samples;
+}
+
+static int pcm_convert_s24_c32_to_s24_c24(const struct audio_stream *source,
+					  uint32_t ioffset, struct audio_stream *sink,
+					  uint32_t ooffset, uint32_t samples)
+{
+	int32_t *src = source->r_ptr;
+	uint8_t *dst = sink->w_ptr;
+	int processed;
+	int nmax, i, n;
+
+	src += ioffset;
+	dst += ooffset * 3;
+	for (processed = 0; processed < samples; processed += n) {
+		src = audio_stream_wrap(source, src);
+		dst = audio_stream_wrap(sink, dst);
+		n = samples - processed;
+		nmax = audio_stream_bytes_without_wrap(source, src) >> BYTES_TO_S32_SAMPLES;
+		n = MIN(n, nmax);
+		nmax = audio_stream_bytes_without_wrap(sink, dst) / 3;
+		n = MIN(n, nmax);
+		for (i = 0; i < n; i += 1) {
+			*dst = *src & 0xFF;
+			dst++;
+			*dst = (*src >> 8) & 0xFF;
+			dst++;
+			*dst = (*src >> 16) & 0xFF;
+			dst++;
+			src++;
+		}
+	}
+
+	return samples;
+}
+
+/* 2x24bit samples are packed into 3x16bit samples for hda link dma */
+static int pcm_convert_s24_c32_to_s24_c24_link_gtw(const struct audio_stream *source,
+						   uint32_t ioffset, struct audio_stream *sink,
+						   uint32_t ooffset, uint32_t samples)
+{
+	int32_t *src = source->r_ptr;
+	uint16_t *dst = sink->w_ptr;
+	int processed;
+	int nmax, i, n;
+
+	src += ioffset;
+	assert(ooffset == 0);
+	for (processed = 0; processed < samples; processed += n) {
+		src = audio_stream_wrap(source, src);
+		dst = audio_stream_wrap(sink, dst);
+		n = samples - processed;
+		nmax = audio_stream_bytes_without_wrap(source, src) >> BYTES_TO_S32_SAMPLES;
+		n = MIN(n, nmax);
+		nmax = audio_stream_bytes_without_wrap(sink, dst) / 3;
+		n = MIN(n, nmax);
+		for (i = 0; i < n; i += 2) {
+			*dst = (*src >> 8) & 0xFFFF;
+			dst++;
+			*dst = (*src & 0xFF << 8) | ((*(src + 1) >> 16) & 0xFF);
+			dst++;
+			*dst = *(src + 1) & 0xFFFF;
+			dst++;
+			src += 2;
+		}
+	}
+
+	/* odd n */
+	if (i > n) {
+		*dst = (*src >> 8) & 0xFFFF;
+		dst++;
+		*dst = (*src & 0xFF << 8);
+	}
+
+	return samples;
+}
+
+#endif
+
 const struct pcm_func_vc_map pcm_func_vc_map[] = {
 #if CONFIG_PCM_CONVERTER_FORMAT_S16_C16_AND_S16_C32
 	{ SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S16_LE,
@@ -706,6 +817,15 @@ const struct pcm_func_vc_map pcm_func_vc_map[] = {
 		SOF_IPC_FRAME_S24_4LE, ipc4_gtw_link | ipc4_gtw_alh, pcm_convert_s16_to_s32 },
 	{ SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S16_LE,
 		SOF_IPC_FRAME_S16_LE, ipc4_gtw_all, pcm_convert_s24_to_s16 },
+#endif
+#if CONFIG_PCM_CONVERTER_FORMAT_S24_C24_AND_S24_C32
+	{ SOF_IPC_FRAME_S24_3LE, SOF_IPC_FRAME_S24_3LE, SOF_IPC_FRAME_S32_LE,
+		SOF_IPC_FRAME_S24_4LE, ipc4_gtw_all, pcm_convert_s24_c24_to_s24_c32 },
+	{ SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S24_3LE,
+		SOF_IPC_FRAME_S24_3LE, ipc4_gtw_all & ~ipc4_gtw_link,
+		pcm_convert_s24_c32_to_s24_c24 },
+	{ SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S24_3LE,
+		SOF_IPC_FRAME_S24_3LE, ipc4_gtw_link, pcm_convert_s24_c32_to_s24_c24_link_gtw },
 #endif
 };
 

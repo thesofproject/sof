@@ -842,11 +842,14 @@ static int hda_dma_set_config(struct dma_chan_data *channel,
 	/* firmware control buffer */
 	dgcs = DGCS_FWCB;
 
-	/* set DGCS.SCS bit to 1 for 16bit(2B) container */
+	/* set DGCS.SCS bit to 1 for 16bit(2B) container
+	 * S24_3LE stream is treated as 16bit or 8bit
+	 * stream in host side
+	 */
 	if ((config->direction & (DMA_DIR_HMEM_TO_LMEM | DMA_DIR_DEV_TO_MEM) &&
-	     config->dest_width <= 2) ||
+	     config->dest_width <= 3) ||
 	    (config->direction & (DMA_DIR_LMEM_TO_HMEM | DMA_DIR_MEM_TO_DEV) &&
-	     config->src_width <= 2))
+	     config->src_width <= 3))
 		dgcs |= DGCS_SCS;
 
 	/* set DGCS.FIFORDY for input/output host DMA only. It is not relevant for link DMA's */

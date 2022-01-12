@@ -467,6 +467,12 @@ config PCM_CONVERTER_FORMAT_S24LE
 	help
 	  Support 24 bit processing data format with sign and in little endian format
 
+config PCM_CONVERTER_FORMAT_S24_3LE
+	bool "Support S24_3LE"
+	default n
+	help
+	  Support packed 24 bit processing data format with sign and in little endian format
+
 config PCM_CONVERTER_FORMAT_S32LE
 	bool "Support S32LE"
 	default y
@@ -499,6 +505,20 @@ config PCM_CONVERTER_FORMAT_S16_C32_AND_S24_C32
 	help
 	  Support conversion between 16 bit valid sample size in 32 bit container
 	  and 24 bit valid sample size in 32 bit container
+
+config PCM_CONVERTER_FORMAT_S24_C24_AND_S24_C32
+	bool "Support S24C24 <-> S24C32"
+	default n
+	help
+	  Support conversion between 24 bit valid sample size in 24 bit container
+	  and 24 bit valid sample size in 32 bit container
+
+config PCM_CONVERTER_FORMAT_S24_C32_AND_S24_C24
+	bool "Support S24C32 <-> S24C24"
+	default n
+	help
+	  Support conversion between 24 bit valid sample size in 32 bit container
+	  and 24 bit valid sample size in 24 bit container
 
 config PCM_CONVERTER_FORMAT_CONVERT_HIFI3
 	bool "HIFI3 optimized conversion"
