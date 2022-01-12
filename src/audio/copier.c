@@ -654,7 +654,7 @@ static int copier_copy(struct comp_dev *dev)
 		struct comp_buffer *src;
 		struct comp_buffer *sink;
 		struct list_item *sink_list;
-		uint32_t src_bytes;
+		uint32_t src_bytes = 0;
 
 		src = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
 		/* do format conversion for each sink buffer */
