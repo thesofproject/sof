@@ -249,8 +249,6 @@ struct module_data {
 /* codec_adapter private, runtime data */
 struct processing_module {
 	struct module_data priv; /**< module private data */
-	struct comp_buffer *ca_sink;
-	struct comp_buffer *ca_source;
 	struct comp_buffer *local_buff;
 	struct sof_ipc_stream_params stream_params;
 	/*
