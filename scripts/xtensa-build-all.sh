@@ -5,8 +5,15 @@
 # stop on most errors
 set -e
 
-SUPPORTED_PLATFORMS=(byt cht bdw hsw apl skl kbl cnl sue icl jsl \
-                    imx8 imx8x imx8m imx8ulp tgl tgl-h rn mt8195)
+# Platforms with a toolchain available in the latest Docker image and
+# built by the -a option.
+DEFAULT_PLATFORMS=(  byt cht bdw hsw apl skl kbl cnl sue icl jsl \
+                    imx8 imx8x imx8m imx8ulp tgl tgl-h rn mt8195 )
+
+# Work in progress can be added to this "staging area" without breaking
+# the -a option for everyone.
+SUPPORTED_PLATFORMS=( "${DEFAULT_PLATFORMS[@]}" )
+
 BUILD_ROM=no
 BUILD_DEBUG=no
 BUILD_FORCE_UP=no
@@ -51,8 +58,8 @@ https://thesofproject.github.io/latest/developer_guides/firmware/cmake.html
 usage: $0 [options] platform(s)
 
        -r Build rom if available (gcc only)
-       -a Build all platforms
-       -u Force UP ARCH
+       -a Build all platforms which have a toolchain in the latest Docker image
+       -u Force CONFIG_MULTICORE=n
        -d Enable debug build
        -c Interactive menuconfig
        -o arg, copies src/arch/xtensa/configs/override/<arg>.config
@@ -108,7 +115,7 @@ while getopts "rudj:ckvao:m:" OPTION; do
 		k) USE_PRIVATE_KEY=yes ;;
 		o) OVERRIDE_CONFIG=$OPTARG ;;
 		v) BUILD_VERBOSE='VERBOSE=1' ;;
-		a) PLATFORMS=("${SUPPORTED_PLATFORMS[@]}") ;;
+		a) PLATFORMS=("${DEFAULT_PLATFORMS[@]}") ;;
 		m) MEU_TOOL_PATH=$OPTARG ;;
 		*) print_usage; exit 1 ;;
         esac
@@ -416,7 +423,6 @@ do
 		echo "CONFIG_BUILD_VM_ROM=y" >> override.config
 	fi
 
-	# override default ARCH if BUILD_FORCE_UP is set
 	if [ "x$BUILD_FORCE_UP" == "xyes" ]
 	then
 		echo "Force building UP(xtensa)..."
