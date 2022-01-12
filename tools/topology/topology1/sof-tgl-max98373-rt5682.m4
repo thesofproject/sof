@@ -221,7 +221,7 @@ PCM_PLAYBACK_ADD(HDMI4, 5, PIPELINE_PCM_8)
 #
 dnl DAI_CONFIG(type, dai_index, link_id, name, ssp_config/dmic_config)
 dnl SSP_CONFIG(format, mclk, bclk, fsync, tdm, ssp_config_data)
-dnl SSP_CLOCK(clock, freq, codec_provider, polarity)
+dnl SSP_CLOCK(clock, freq, codec_master, polarity)
 dnl SSP_CONFIG_DATA(type, idx, valid bits, mclk_id)
 dnl mclk_id is optional
 dnl ssp1-maxmspk, ssp0-RTHeadset
@@ -229,8 +229,8 @@ dnl ssp1-maxmspk, ssp0-RTHeadset
 #SSP 0 (ID: 0)
 DAI_CONFIG(SSP, 0, 0, SSP0-Codec,
         SSP_CONFIG(I2S, SSP_CLOCK(mclk, SSP_MCLK, codec_mclk_in),
-                      SSP_CLOCK(bclk, 3072000, codec_consumer),
-                      SSP_CLOCK(fsync, 48000, codec_consumer),
+                      SSP_CLOCK(bclk, 3072000, codec_slave),
+                      SSP_CLOCK(fsync, 48000, codec_slave),
                       SSP_TDM(2, 32, 3, 3),
                       SSP_CONFIG_DATA(SSP, 0, 32)))
 

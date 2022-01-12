@@ -33,8 +33,8 @@ DAI_ADD(sof/pipe-dai-playback.m4,
 
 DAI_CONFIG(ACPSP, 0, 0, acp-headset-codec,
 	ACPSP_CONFIG(I2S, ACP_CLOCK(mclk, 49152000, codec_mclk_in),
-		ACP_CLOCK(bclk, 3072000, codec_consumer),
-		ACP_CLOCK(fsync, 48000, codec_consumer),
+		ACP_CLOCK(bclk, 3072000, codec_slave),
+		ACP_CLOCK(fsync, 48000, codec_slave),
 		ACP_TDM(2, 32, 3, 3),
 		ACPSP_CONFIG_DATA(ACPSP, 0, 48000, 2)))
 

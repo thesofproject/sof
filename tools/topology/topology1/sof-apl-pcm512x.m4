@@ -179,8 +179,8 @@ ifdef(`CODEC_MASTER',
 `
 DAI_CONFIG(SSP, 5, 0, SSP5-Codec,
 	SSP_CONFIG(I2S, SSP_CLOCK(mclk, 24576000, codec_mclk_in),
-		SSP_CLOCK(bclk, eval(FSYNC * 64), codec_provider),
-		SSP_CLOCK(fsync, FSYNC, codec_provider),
+		SSP_CLOCK(bclk, eval(FSYNC * 64), codec_master),
+		SSP_CLOCK(fsync, FSYNC, codec_master),
 		SSP_TDM(2, 32, 3, 3),
 		SSP_CONFIG_DATA(SSP, 5, 24)))
 '
@@ -188,8 +188,8 @@ DAI_CONFIG(SSP, 5, 0, SSP5-Codec,
 `
 DAI_CONFIG(SSP, 5, 0, SSP5-Codec,
 	SSP_CONFIG(I2S, SSP_CLOCK(mclk, 24576000, codec_mclk_in),
-		SSP_CLOCK(bclk, 3072000, codec_consumer),
-		SSP_CLOCK(fsync, 48000, codec_consumer),
+		SSP_CLOCK(bclk, 3072000, codec_slave),
+		SSP_CLOCK(fsync, 48000, codec_slave),
 		SSP_TDM(2, 32, 3, 3),
 		SSP_CONFIG_DATA(SSP, 5, 24)))
 '
