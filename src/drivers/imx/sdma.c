@@ -504,7 +504,7 @@ static int sdma_release(struct dma_chan_data *channel)
 	if (channel->status != COMP_STATE_PAUSED)
 		return -EINVAL;
 
-	channel->status = COMP_STATE_ACTIVE;
+	channel->status = COMP_STATE_PREPARE;
 
 	/* No pointer realignment is necessary for release, context points
 	 * correctly to beginning of the following BD.
