@@ -86,7 +86,10 @@ jobs:
 
     strategy:
       matrix:
-        platform: [sue jsl tgl]
+        platform: [imx8ulp,
+                   sue jsl tgl,
+                   rn,
+        ]
 
     steps:
 
