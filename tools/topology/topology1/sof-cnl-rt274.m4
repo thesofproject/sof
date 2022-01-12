@@ -77,8 +77,8 @@ PCM_DUPLEX_ADD(Passthrough, 0, PIPELINE_PCM_1, PIPELINE_PCM_2)
 #
 DAI_CONFIG(SSP, 0, 1, SSP0-Codec,
 	   SSP_CONFIG(DSP_B, SSP_CLOCK(mclk, 24000000, codec_mclk_in),
-		      SSP_CLOCK(bclk, 4800000, codec_consumer),
-		      SSP_CLOCK(fsync, 48000, codec_consumer),
+		      SSP_CLOCK(bclk, 4800000, codec_slave),
+		      SSP_CLOCK(fsync, 48000, codec_slave),
 		      SSP_TDM(4, 25, 3, 3),
 		      SSP_CONFIG_DATA(SSP, 0, 24)))
 

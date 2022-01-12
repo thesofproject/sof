@@ -2,7 +2,7 @@ divert(-1)
 
 dnl SSP related macros
 
-dnl SSP_CLOCK(clock, freq, codec_provider, polarity)
+dnl SSP_CLOCK(clock, freq, codec_master, polarity)
 dnl polarity is optional
 define(`SSP_CLOCK',
 	$1		STR($3)

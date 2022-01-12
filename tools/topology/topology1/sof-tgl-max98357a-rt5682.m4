@@ -352,7 +352,7 @@ ifdef(`2CH_2WAY',`# No echo reference for 2-way speakers',
 #
 dnl DAI_CONFIG(type, dai_index, link_id, name, ssp_config/dmic_config)
 dnl SSP_CONFIG(format, mclk, bclk, fsync, tdm, ssp_config_data)
-dnl SSP_CLOCK(clock, freq, codec_provider, polarity)
+dnl SSP_CLOCK(clock, freq, codec_master, polarity)
 dnl SSP_CONFIG_DATA(type, idx, valid bits, mclk_id)
 dnl mclk_id is optional
 dnl ssp1-maxmspk
@@ -363,32 +363,32 @@ DAI_CONFIG(SSP, SPK_SSP_INDEX, SPK_BE_ID, SPK_SSP_NAME,
 ifelse(
 	CODEC, `MAX98357A', `
 	SSP_CONFIG(I2S, SSP_CLOCK(mclk, 19200000, codec_mclk_in),
-		SSP_CLOCK(bclk, 1536000, codec_consumer),
-		SSP_CLOCK(fsync, 48000, codec_consumer),
+		SSP_CLOCK(bclk, 1536000, codec_slave),
+		SSP_CLOCK(fsync, 48000, codec_slave),
 		SSP_TDM(2, 16, 3, 3),
 		SSP_CONFIG_DATA(SSP, SPK_SSP_INDEX, 16)))',
 	CODEC, `MAX98360A', `
 	SSP_CONFIG(I2S, SSP_CLOCK(mclk, 19200000, codec_mclk_in),
-		SSP_CLOCK(bclk, 3072000, codec_consumer),
-		SSP_CLOCK(fsync, 48000, codec_consumer),
+		SSP_CLOCK(bclk, 3072000, codec_slave),
+		SSP_CLOCK(fsync, 48000, codec_slave),
 		SSP_TDM(2, 32, 3, 3),
 		SSP_CONFIG_DATA(SSP, SPK_SSP_INDEX, 32)))',
 	CODEC, `MAX98360A_TDM', `
 	SSP_CONFIG(DSP_A, SSP_CLOCK(mclk, 19200000, codec_mclk_in),
-		SSP_CLOCK(bclk, 12288000, codec_consumer),
-		SSP_CLOCK(fsync, 48000, codec_consumer),
+		SSP_CLOCK(bclk, 12288000, codec_slave),
+		SSP_CLOCK(fsync, 48000, codec_slave),
 		SSP_TDM(8, 32, 15, 15),
 		SSP_CONFIG_DATA(SSP, SPK_SSP_INDEX, 32)))',
 	CODEC, `RT1011', `
 	SSP_CONFIG(DSP_A, SSP_CLOCK(mclk, 19200000, codec_mclk_in),
-		SSP_CLOCK(bclk, 4800000, codec_consumer),
-		SSP_CLOCK(fsync, 48000, codec_consumer),
+		SSP_CLOCK(bclk, 4800000, codec_slave),
+		SSP_CLOCK(fsync, 48000, codec_slave),
 		SSP_TDM(4, 25, 3, 15),
 		SSP_CONFIG_DATA(SSP, SPK_SSP_INDEX, 24)))',
 	CODEC, `MAX98390', `
 	SSP_CONFIG(DSP_B, SSP_CLOCK(mclk, 19200000, codec_mclk_in),
-		SSP_CLOCK(bclk, 6144000, codec_consumer),
-		SSP_CLOCK(fsync, 48000, codec_consumer),
+		SSP_CLOCK(bclk, 6144000, codec_slave),
+		SSP_CLOCK(fsync, 48000, codec_slave),
 		SSP_TDM(4, 32, 3, 15),
 	SSP_CONFIG_DATA(SSP, SPK_SSP_INDEX, 32)))',
 	)')
@@ -396,8 +396,8 @@ ifelse(
 # SSP 0 (ID: 0)
 DAI_CONFIG(SSP, 0, 0, SSP0-Codec,
 	SSP_CONFIG(I2S, SSP_CLOCK(mclk, 19200000, codec_mclk_in),
-		SSP_CLOCK(bclk, 2400000, codec_consumer),
-		SSP_CLOCK(fsync, 48000, codec_consumer),
+		SSP_CLOCK(bclk, 2400000, codec_slave),
+		SSP_CLOCK(fsync, 48000, codec_slave),
 		SSP_TDM(2, 25, 3, 3),
 		SSP_CONFIG_DATA(SSP, 0, 24, 0, 0, 0, SSP_CC_BCLK_ES)))
 
