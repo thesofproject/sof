@@ -329,13 +329,13 @@ static int sai_trigger(struct dai *dai, int cmd, int direction)
 
 	switch (cmd) {
 	case COMP_TRIGGER_START:
+	case COMP_TRIGGER_RELEASE:
 		sai_start(dai, direction);
 		break;
 	case COMP_TRIGGER_STOP:
 	case COMP_TRIGGER_PAUSE:
 		sai_stop(dai, direction);
 		break;
-	case COMP_TRIGGER_RELEASE:
 	case COMP_TRIGGER_PRE_START:
 	case COMP_TRIGGER_PRE_RELEASE:
 		break;
