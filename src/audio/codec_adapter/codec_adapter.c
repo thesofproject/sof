@@ -224,22 +224,29 @@ int codec_adapter_params(struct comp_dev *dev,
 	return 0;
 }
 
+/**
+ * Function to copy from source buffer to the module buffer
+ * @source: source audio buffer stream
+ * @buff: pointer to the module input buffer
+ * @buff_size: size of the module input buffer
+ * @bytes: number of bytes available in the source buffer
+ */
 static void
-ca_copy_from_source_to_module(const struct audio_stream *source,
-			      const struct module_processing_data *mpd, size_t bytes)
+ca_copy_from_source_to_module(const struct audio_stream *source, void *buff, uint32_t buff_size,
+			      size_t bytes)
 {
-	/* head_size - available data until end of local buffer */
+	/* head_size - available data until end of source buffer */
 	const int without_wrap = audio_stream_bytes_without_wrap(source, source->r_ptr);
 	uint32_t head_size = MIN(bytes, without_wrap);
-	/* tail_size - residue data to be copied starting from the beginning
-	 * of the buffer
-	 */
+	/* tail_size - residual data to be copied starting from the beginning of the buffer */
 	uint32_t tail_size = bytes - head_size;
-	/* copy head_size to lib buffer */
-	memcpy_s(mpd->in_buff, mpd->in_buff_size, source->r_ptr, head_size);
+
+	/* copy head_size to module buffer */
+	memcpy_s(buff, buff_size, source->r_ptr, head_size);
+
+	/* copy residual samples after wrap */
 	if (tail_size)
-	/* copy reset of the samples after wrap-up */
-		memcpy_s((char *)mpd->in_buff + head_size, mpd->in_buff_size,
+		memcpy_s((char *)buff + head_size, buff_size,
 			 audio_stream_wrap(source,
 					   (char *)source->r_ptr + head_size),
 					   tail_size);
@@ -328,7 +335,8 @@ int codec_adapter_copy(struct comp_dev *dev)
 
 	if (!md->mpd.init_done) {
 		buffer_stream_invalidate(source, codec_buff_size);
-		ca_copy_from_source_to_module(&source->stream, &md->mpd, codec_buff_size);
+		ca_copy_from_source_to_module(&source->stream, md->mpd.in_buff,
+					      md->mpd.in_buff_size, codec_buff_size);
 		md->mpd.avail = codec_buff_size;
 		ret = module_process(dev);
 		if (ret)
@@ -342,7 +350,8 @@ int codec_adapter_copy(struct comp_dev *dev)
 	}
 
 	buffer_stream_invalidate(source, codec_buff_size);
-	ca_copy_from_source_to_module(&source->stream, &md->mpd, codec_buff_size);
+	ca_copy_from_source_to_module(&source->stream, md->mpd.in_buff,
+				      md->mpd.in_buff_size, codec_buff_size);
 	md->mpd.avail = codec_buff_size;
 	ret = module_process(dev);
 	if (ret) {
