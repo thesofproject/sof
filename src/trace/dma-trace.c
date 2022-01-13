@@ -26,7 +26,7 @@
 #include <ipc/trace.h>
 #include <kernel/abi.h>
 #include <user/abi_dbg.h>
-#include <version.h>
+#include <sof_versions.h>
 
 #include <errno.h>
 #include <stddef.h>
