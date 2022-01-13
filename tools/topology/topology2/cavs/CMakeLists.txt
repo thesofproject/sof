@@ -12,6 +12,8 @@ set(TPLGS
 "cavs-gain-hdmi\;cavs-gain-hda\;HDA_CONFIG=gain"
 # CAVS HDA topology with mixer-based pipelines
 "cavs-passthrough-hdmi\;cavs-mixin-mixout-hda\;HDA_CONFIG=mix"
+# CAVS SDW topology with passthrough pipelines
+"cavs-sdw\;cavs-sdw"
 )
 
 # This will override the topology1 binaries with topology2 binaries
