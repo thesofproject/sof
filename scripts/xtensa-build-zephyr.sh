@@ -7,20 +7,18 @@ set -e
 
 SOF_TOP=$(cd "$(dirname "$0")" && cd .. && pwd)
 
-SUPPORTED_PLATFORMS=()
+# Platforms built by the -a option.
+DEFAULT_PLATFORMS=()
 
 # Intel
-SUPPORTED_PLATFORMS+=(apl cnl icl tgl-h tgl)
+DEFAULT_PLATFORMS+=(apl cnl icl tgl-h tgl)
 
 # NXP
-SUPPORTED_PLATFORMS+=(imx8 imx8x imx8m)
+DEFAULT_PLATFORMS+=(imx8 imx8x imx8m)
 
-# -a
-DEFAULT_PLATFORMS=("${SUPPORTED_PLATFORMS[@]}")
-
-# How to exclude one platform from the default builds while leaving it
-# possible to build individually:
-# unset DEFAULT_PLATFORMS[2]
+# Add any new and "experimental" platform here. It will be usable but
+# not included in -a
+SUPPORTED_PLATFORMS=( "${DEFAULT_PLATFORMS[@]}" )
 
 BUILD_JOBS=$(nproc --all)
 PLATFORMS=()
