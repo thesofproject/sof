@@ -127,8 +127,6 @@ struct fw_image_manifest_v2_5 {
 	struct sof_man_fw_desc desc;	/* at offset MAN_DESC_OFFSET */
 } __attribute__((packed));
 
-extern struct fw_image_manifest_v2_5 tgl_manifest;
-
 /*
  * Firmware manifest header V1.8 used on APL onwards
  */
@@ -151,9 +149,6 @@ struct fw_image_manifest_v1_8 {
 	struct sof_man_fw_desc desc;	/* at offset MAN_DESC_OFFSET */
 } __attribute__((packed));
 
-extern struct fw_image_manifest_v1_8 apl_manifest;
-extern struct fw_image_manifest_v1_8 cnl_manifest;
-
 /*
  * Firmware manifest header V1.5 used on SKL and KBL
  */
@@ -165,14 +160,6 @@ struct fw_image_manifest_v1_5 {
 struct fw_image_manifest_v1_5_sue {
     struct sof_man_fw_desc desc;
 } __attribute__((packed));
-
-/*
- * TODO: verify if we need platform specific manifest, or just
- * define manifest_v1_5 and manifest_v1_8.
- */
-extern struct fw_image_manifest_v1_5 skl_manifest;
-extern struct fw_image_manifest_v1_5 kbl_manifest;
-extern struct fw_image_manifest_v1_5_sue sue_manifest;
 
 struct image;
 int simple_write_firmware(struct image *image);
