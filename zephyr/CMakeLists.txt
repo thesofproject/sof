@@ -716,7 +716,7 @@ set(GENERATED_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 file(MAKE_DIRECTORY ${GENERATED_DIRECTORY}/include)
 
 # generated files
-set(VERSION_H_PATH ${GENERATED_DIRECTORY}/include/version.h)
+set(VERSION_H_PATH ${GENERATED_DIRECTORY}/include/sof_versions.h)
 set(DOT_CONFIG_PATH ${GENERATED_DIRECTORY}/.config)
 
 if(${CMAKE_VERSION} VERSION_LESS "3.12.0")
@@ -738,9 +738,6 @@ add_definitions(-DXCC_TOOLS_VERSION="${ZEPHYR_TOOLCHAIN_VARIANT}" -DCC_OPTIMIZE_
 
 # create version information
 include(../scripts/cmake/version.cmake)
-add_definitions(-DSOF_MICRO=${SOF_MICRO} -DSOF_MINOR=${SOF_MINOR})
-add_definitions(-DSOF_MAJOR=${SOF_MAJOR} -DSOF_TAG="${SOF_TAG}")
-add_definitions(-DSOF_SRC_HASH=0x${SOF_SRC_HASH} -DSOF_GIT_TAG="${SOF_GIT_TAG}")
 
 # Create Trace realtive file paths
 sof_append_relative_path_definitions(modules_sof)

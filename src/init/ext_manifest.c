@@ -12,7 +12,7 @@
 #include <kernel/abi.h>
 #include <kernel/ext_manifest.h>
 #include <user/abi_dbg.h>
-#include <version.h>
+#include <sof_versions.h>
 
 const struct ext_man_fw_version ext_man_fw_ver
 	__aligned(EXT_MAN_ALIGN) __section(".fw_metadata") = {

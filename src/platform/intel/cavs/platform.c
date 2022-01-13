@@ -45,7 +45,7 @@
 #include <kernel/abi.h>
 #include <kernel/ext_manifest.h>
 
-#include <version.h>
+#include <sof_versions.h>
 #include <errno.h>
 #include <stdint.h>
 

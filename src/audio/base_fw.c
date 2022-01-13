@@ -6,7 +6,7 @@
 #include <sof/ut.h>
 #include <ipc4/base_fw.h>
 #include <ipc4/pipeline.h>
-#include <version.h>
+#include <sof_versions.h>
 
 /* 0e398c32-5ade-ba4b-93b1-c50432280ee4 */
 DECLARE_SOF_RT_UUID("basefw", basefw_comp_uuid, 0xe398c32, 0x5ade, 0xba4b,

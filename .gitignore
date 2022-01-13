@@ -72,5 +72,3 @@ doc/Makefile
 cscope.*
 ncscope.*
 
-# zephyr files
-zephyr/include/version.h
