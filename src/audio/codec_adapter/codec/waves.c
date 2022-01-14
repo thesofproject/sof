@@ -5,7 +5,6 @@
 // Author: Oleksandr Strelchenko <oleksandr.strelchenko@waves.com>
 //
 #include <sof/audio/codec_adapter/codec/generic.h>
-#include <sof/audio/codec_adapter/codec/waves.h>
 #include <sof/debug/debug.h>
 #include <sof/compiler_attributes.h>
 
