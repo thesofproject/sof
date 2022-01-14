@@ -90,7 +90,7 @@ if(EXISTS ${SOF_ROOT_SOURCE_DIRECTORY}/.git/)
 	set(SOURCE_HASH_DIR "${SOF_ROOT_BINARY_DIRECTORY}/source_hash")
 	file(MAKE_DIRECTORY ${SOURCE_HASH_DIR})
 	# list tracked files from src directory
-	execute_process(COMMAND git ls-files src
+	execute_process(COMMAND git ls-files src/ scripts/ zephyr/
 			WORKING_DIRECTORY ${SOF_ROOT_SOURCE_DIRECTORY}
 			OUTPUT_FILE "${SOURCE_HASH_DIR}/tracked_file_list"
 		)
