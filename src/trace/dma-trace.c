@@ -415,13 +415,19 @@ int dma_trace_enable(struct dma_trace_data *d)
 		goto out;
 	}
 
+#ifdef __ZEPHYR__
+#define ZEPHYR_VER_OPT " zephyr:" META_QUOTE(BUILD_VERSION)
+#else
+#define ZEPHYR_VER_OPT
+#endif
+
 	/* META_QUOTE(SOF_SRC_HASH) is part of the format string so it
 	 * goes to the .ldc file and does not go to the firmware
 	 * binary. It will be different from SOF_SRC_HASH in case of
 	 * mismatch.
 	 */
 #define SOF_BANNER_COMMON  \
-	"FW ABI 0x%x DBG ABI 0x%x tag " SOF_GIT_TAG \
+	"FW ABI 0x%x DBG ABI 0x%x tags SOF:" SOF_GIT_TAG  ZEPHYR_VER_OPT  \
 	" src hash 0x%08x (ldc hash " META_QUOTE(SOF_SRC_HASH) ")"
 
 	/* It should be the very first sent log for easy identification. */
