@@ -42,14 +42,14 @@ execute_process(
 # the same name auto-generated in the top _build_ directory by "make
 # dist", see dist.cmake
 set(TARBALL_VERSION_FILE_NAME ".tarball-version")
-# in Zephyr this is sof/zephyr/.tarball-version
+
 set(TARBALL_VERSION_SOURCE_PATH "${SOF_ROOT_SOURCE_DIRECTORY}/${TARBALL_VERSION_FILE_NAME}")
 
 if(EXISTS ${TARBALL_VERSION_SOURCE_PATH})
 	file(STRINGS ${TARBALL_VERSION_SOURCE_PATH} lines ENCODING "UTF-8")
 	list(GET lines 0 GIT_TAG)
 	list(GET lines 1 GIT_LOG_HASH)
-	message(STATUS "Found ${TARBALL_VERSION_FILE_NAME}")
+	message(STATUS "Found ${TARBALL_VERSION_SOURCE_PATH}")
 else()
 	# execute_process() errors are not fatal by default!
 	execute_process(

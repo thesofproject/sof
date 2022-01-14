@@ -672,7 +672,7 @@ zephyr_library_link_libraries(SOF)
 target_link_libraries(SOF INTERFACE zephyr_interface)
 
 # Setup SOF directories
-set(SOF_ROOT_SOURCE_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+set(SOF_ROOT_SOURCE_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/..)
 set(SOF_ROOT_BINARY_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 
 # This generated/ directory is shared with Zephyr.
