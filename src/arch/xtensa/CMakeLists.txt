@@ -108,7 +108,7 @@ else()
 endif()
 
 # C & ASM flags
-target_compile_options(sof_options INTERFACE ${stdlib_flag} -fno-inline-functions ${XTENSA_C_ASM_FLAGS})
+target_compile_options(sof_options INTERFACE ${stdlib_flag} ${XTENSA_C_ASM_FLAGS})
 
 # C flags
 # TODO: Generator expressions are supported only with Make and Ninja,

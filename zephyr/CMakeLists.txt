@@ -694,7 +694,7 @@ find_package(Python3 COMPONENTS Interpreter)
 set(PYTHON3 "${Python3_EXECUTABLE}")
 
 # SOF uses GNU C99 extensions. TODO other flags required ?
-target_compile_options(SOF INTERFACE -std=gnu99 -fno-inline-functions)
+target_compile_options(SOF INTERFACE -std=gnu99)
 
 # Toolchain info
 add_definitions(-DXCC_TOOLS_VERSION="${ZEPHYR_TOOLCHAIN_VARIANT}" -DCC_OPTIMIZE_FLAGS="${OPTIMIZATION_FLAG}")
