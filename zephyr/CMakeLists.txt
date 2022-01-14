@@ -712,12 +712,12 @@ target_link_libraries(SOF INTERFACE zephyr_interface)
 # Setup SOF directories
 set(SOF_ROOT_SOURCE_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 set(SOF_ROOT_BINARY_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-set(GENERATED_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-file(MAKE_DIRECTORY ${GENERATED_DIRECTORY}/include)
 
-# generated files
-set(VERSION_H_PATH ${GENERATED_DIRECTORY}/include/sof_versions.h)
-set(DOT_CONFIG_PATH ${GENERATED_DIRECTORY}/.config)
+# This generated/ directory is shared with Zephyr.
+# PROJECT_BINARY_DIR is build/zephyr/
+set(GENERATED_DIRECTORY ${PROJECT_BINARY_DIR}/include/generated)
+
+set(VERSION_H_PATH ${GENERATED_DIRECTORY}/sof_versions.h)
 
 if(${CMAKE_VERSION} VERSION_LESS "3.12.0")
 	# FindPythonInterp is bugged and may sometimes be unable to find
