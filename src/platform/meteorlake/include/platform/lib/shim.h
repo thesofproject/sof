@@ -307,10 +307,18 @@
 #define DMWBA_READONLY		BIT(1)
 
 /* DMIC power ON bit */
-#define DMICLCTL_SPA	((uint32_t) BIT(0))
-
+#define DMICLCTL_SPA		BIT(0)
+/* DMIC Owner Select */
+#define DMICLCTL_OSEL(x)	SET_BITS(25, 24, x)
 /* DMIC disable clock gating */
-#define DMIC_DCGD	((uint32_t) BIT(30))
+#define DMIC_DCGD			BIT(30)
+
+/* DMIC Command Sync */
+#define DMICSYNC_CMDSYNC	BIT(16)
+/* DMIC Sync Go */
+#define DMICSYNC_SYNCGO		BIT(24)
+/* DMIC Sync Period */
+#define DMICSYNC_SYNCPRD(x)	SET_BITS(14, 0, x)
 
 #endif /* __PLATFORM_LIB_SHIM_H__ */
 

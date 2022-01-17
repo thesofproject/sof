@@ -23,9 +23,13 @@
 #define SHIM_SIZE               0x00000100
 
 /* Digital Mic Shim Registers */
-#define DMIC_SHIM_BASE  0x00071E80
-#define DMICLCTL_OFFSET 0x04
-#define DMICLCTL        (DMIC_SHIM_BASE + DMICLCTL_OFFSET)
+#define DMIC_SHIM_BASE         0x0000C000
+#define DMICLCTL_OFFSET        0x04
+#define DMICIPPTR_OFFSET       0x08
+#define DMICSYNC_OFFSET        0x0C
+#define DMICLCTL               (DMIC_SHIM_BASE + DMICLCTL_OFFSET)
+#define DMICIPPTR              (DMIC_SHIM_BASE + DMICIPPTR_OFFSET)
+#define DMICSYNC               (DMIC_SHIM_BASE + DMICSYNC_OFFSET)
 
 /* cmd IO to audio codecs */
 #define CMD_BASE                0x00001100
