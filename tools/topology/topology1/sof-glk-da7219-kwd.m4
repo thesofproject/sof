@@ -203,16 +203,16 @@ ifelse(CODEC, `MAX98390',`
 PCM_CAPTURE_ADD(EchoRef, 4, PIPELINE_PCM_10)')
 
 # keyword detector pipe
-dnl PIPELINE_ADD(pipeline,
-dnl     pipe id, max channels, format,
+dnl PIPELINE_PCM_ADD(pipeline,
+dnl     pipe id, pcm, max channels, format,
 dnl     period, priority, core,
-dnl     sched_comp, time_domain,
-dnl     pcm_min_rate, pcm_max_rate, pipeline_rate)
-PIPELINE_ADD(sof/pipe-detect.m4,
-	     9, 2, DMIC1_FMT,
+dnl     pcm_min_rate, pcm_max_rate, pipeline_rate,
+dnl     time_domain, sched_comp, dynamic)
+PIPELINE_PCM_ADD(sof/pipe-detect.m4,
+	     9, 0, DMIC_PCM_NUM, DMIC1_FMT,
 	     KWD_PIPE_SCH_DEADLINE_US, 1, 0,
-	     PIPELINE_SCHED_COMP_8, SCHEDULE_TIME_DOMAIN_TIMER,
-	     16000, 16000, 16000)
+	     16000, 16000, 16000,
+		 SCHEDULE_TIME_DOMAIN_TIMER, PIPELINE_SCHED_COMP_8)
 
 # Connect pipelines together
 SectionGraph."pipe-sof-PLATFORM-keyword-detect" {

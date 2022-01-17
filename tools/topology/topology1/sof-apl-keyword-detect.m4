@@ -66,12 +66,12 @@ dnl     pipe id, max channels, format,
 dnl     period, priority, core,
 dnl     sched_comp, time_domain,
 dnl     pcm_min_rate, pcm_max_rate, pipeline_rate)
-PIPELINE_ADD(sof/pipe-detect.m4,
-	2, 2, s16le,
+PIPELINE_PCM_ADD(sof/pipe-detect.m4,
+	2, 0, 2, s16le,
 	KWD_PIPE_SCH_DEADLINE_US, 1, 0,
+	16000, 16000, 16000,
 	PIPELINE_SCHED_COMP_1,
-	SCHEDULE_TIME_DOMAIN_TIMER,
-	16000, 16000, 16000)
+	SCHEDULE_TIME_DOMAIN_TIMER)
 
 # Connect pipelines together
 SectionGraph."pipe-sof-apl-keyword-detect" {

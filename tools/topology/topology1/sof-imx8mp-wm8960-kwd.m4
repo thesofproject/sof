@@ -59,17 +59,17 @@ DAI_ADD(sof/pipe-dai-capture.m4,
         0, 0, SCHEDULE_TIME_DOMAIN_DMA)
 
 # keyword detector pipe
-dnl PIPELINE_ADD(pipeline,
-dnl     pipe id, max channels, format,
+dnl PIPELINE_PCM_ADD(pipeline,
+dnl     pipe id, pcm, max channels, format,
 dnl     period, priority, core,
-dnl     sched_comp, time_domain,
-dnl     pcm_min_rate, pcm_max_rate, pipeline_rate)
-PIPELINE_ADD(sof/pipe-detect.m4,
-	2, 2, s16le,
+dnl     pcm_min_rate, pcm_max_rate, pipeline_rate,
+dnl     time_domain, sched_comp, dynamic)
+PIPELINE_PCM_ADD(sof/pipe-detect.m4,
+	2, 0, 2, s16le,
 	KWD_PIPE_SCH_DEADLINE_US, 1, 0,
-	PIPELINE_SCHED_COMP_1,
+	16000, 16000, 16000,
 	SCHEDULE_TIME_DOMAIN_TIMER,
-	16000, 16000, 16000)
+	PIPELINE_SCHED_COMP_1)
 
 # Connect pipelines together
 SectionGraph."pipe-sof-apl-keyword-detect" {
