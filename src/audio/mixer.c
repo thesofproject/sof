@@ -630,7 +630,6 @@ static struct comp_dev *mixinout_new(const struct comp_driver *drv,
 		return NULL;
 	}
 
-	dcache_invalidate_region(spec, sizeof(md->base_cfg));
 	memcpy_s(&md->base_cfg, sizeof(md->base_cfg), spec, sizeof(md->base_cfg));
 	comp_set_drvdata(dev, md);
 
