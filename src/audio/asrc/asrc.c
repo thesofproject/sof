@@ -28,6 +28,11 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#if CONFIG_IPC_MAJOR_4
+#include <ipc4/base-config.h>
+#include <ipc4/asrc.h>
+#endif
+
 /* Simple count value to prevent first delta timestamp
  * from being input to low-pass filter.
  */
@@ -50,16 +55,23 @@ static const struct comp_driver comp_asrc;
 
 /* c8ec72f6-8526-4faf-9d39-a23d0b541de2 */
 DECLARE_SOF_RT_UUID("asrc", asrc_uuid, 0xc8ec72f6, 0x8526, 0x4faf,
-		 0x9d, 0x39, 0xa2, 0x3d, 0x0b, 0x54, 0x1d, 0xe2);
+		    0x9d, 0x39, 0xa2, 0x3d, 0x0b, 0x54, 0x1d, 0xe2);
 
 DECLARE_TR_CTX(asrc_tr, SOF_UUID(asrc_uuid), LOG_LEVEL_INFO);
 
 /* asrc component private data */
 struct comp_data {
+#if CONFIG_IPC_MAJOR_4
+	/* Must be the 1st field, function ipc4_create_buffer casts components private data as
+	 * ipc4_base_module_cfg!
+	 */
+	struct ipc4_asrc_module_cfg ipc_config;
+#else
+	struct ipc_config_asrc ipc_config;
+#endif
 	struct asrc_farrow *asrc_obj;	/* ASRC core data */
 	struct comp_dev *dai_dev;	/* Associated DAI component */
 	enum asrc_operation_mode mode;  /* Control for push or pull mode */
-	struct ipc_config_asrc ipc_config;
 	uint64_t ts;
 	uint32_t sink_rate;	/* Sample rate in Hz */
 	uint32_t source_rate;	/* Sample rate in Hz */
@@ -248,6 +260,7 @@ static void src_copy_s16(struct comp_dev *dev,
 	*n_written = out_frames;
 }
 
+#ifndef CONFIG_IPC_MAJOR_4
 static struct comp_dev *asrc_new(const struct comp_driver *drv,
 				 struct comp_ipc_config *config,
 				 void *spec)
@@ -298,6 +311,61 @@ static struct comp_dev *asrc_new(const struct comp_driver *drv,
 	dev->state = COMP_STATE_READY;
 	return dev;
 }
+#else
+static struct comp_dev *asrc_new(const struct comp_driver *drv,
+				 struct comp_ipc_config *config,
+				 void *spec)
+{
+	struct comp_dev *dev;
+	struct ipc4_asrc_module_cfg *asrc_cfg = spec;
+	struct comp_data *cd;
+
+	comp_cl_info(&comp_asrc, "asrc_new()");
+
+	comp_cl_info(&comp_asrc, "asrc_new(), source_rate=%d, sink_rate=%d, operation_mode=%d",
+		     asrc_cfg->base.audio_fmt.sampling_frequency, asrc_cfg->out_freq,
+		     asrc_cfg->asrc_mode);
+
+	/* validate init data - either SRC sink or source rate must be set */
+	if (asrc_cfg->base.audio_fmt.sampling_frequency == 0 && asrc_cfg->out_freq == 0) {
+		comp_cl_err(&comp_asrc, "asrc_new(), sink and source rates are not set");
+		return NULL;
+	}
+
+	dev = comp_alloc(drv, sizeof(*dev));
+	if (!dev)
+		return NULL;
+	dev->ipc_config = *config;
+
+	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
+	if (!cd) {
+		rfree(dev);
+		return NULL;
+	}
+
+	comp_set_drvdata(dev, cd);
+	cd->ipc_config = *asrc_cfg;
+
+	/* Get operation mode:
+	 * With OM_PUSH (0) use fixed input frames count, variable output.
+	 * With OM_PULL (1) use fixed output frames count, variable input.
+	 */
+	if (asrc_cfg->asrc_mode & (1 << IPC4_MOD_ASRC_PUSH_MODE))
+		cd->mode = ASRC_OM_PUSH;
+	else
+		cd->mode = ASRC_OM_PULL;
+
+	/* Use skew tracking for DAI if it was requested. The skew
+	 * is initialized here to zero. It is set later in prepare() to
+	 * to 1.0 if there is no filtered skew factor from previous run.
+	 */
+	cd->track_drift = false;
+	cd->skew = 0;
+
+	dev->state = COMP_STATE_READY;
+	return dev;
+}
+#endif
 
 static int asrc_initialise_buffers(struct asrc_farrow *src_obj)
 {
@@ -416,6 +484,7 @@ static int asrc_verify_params(struct comp_dev *dev,
 	 * during creating src component in asrc_new().
 	 * src->source/sink_rate = 0 means that source/sink rate can vary.
 	 */
+#ifndef CONFIG_IPC_MAJOR_4
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
 		if (cd->ipc_config.source_rate && (params->rate != cd->ipc_config.source_rate)) {
 			comp_err(dev, "asrc_verify_params(): runtime stream pcm rate %u does not match rate %u fetched from ipc.",
@@ -429,6 +498,21 @@ static int asrc_verify_params(struct comp_dev *dev,
 			return -EINVAL;
 		}
 	}
+#else
+	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
+		if (params->rate != cd->ipc_config.base.audio_fmt.sampling_frequency) {
+			comp_err(dev, "asrc_verify_params(): runtime stream pcm rate %u does not match rate %u fetched from ipc.",
+				 params->rate, cd->ipc_config.base.audio_fmt.sampling_frequency);
+			return -EINVAL;
+		}
+	} else {
+		if (params->rate != cd->ipc_config.out_freq) {
+			comp_err(dev, "asrc_verify_params(): runtime stream pcm rate %u does not match rate %u fetched from ipc.",
+				 params->rate, cd->ipc_config.out_freq);
+			return -EINVAL;
+		}
+	}
+#endif
 
 	/* update downstream (playback) or upstream (capture) buffer parameters
 	 */
@@ -463,6 +547,10 @@ static int asrc_params(struct comp_dev *dev,
 	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
 				source_list);
 
+#if CONFIG_IPC_MAJOR_4
+	sinkb->stream.rate = cd->ipc_config.out_freq;
+#endif
+
 	/* set source/sink_frames/rate */
 	cd->source_rate = sourceb->stream.rate;
 	cd->sink_rate = sinkb->stream.rate;
@@ -471,6 +559,9 @@ static int asrc_params(struct comp_dev *dev,
 		return -EINVAL;
 	}
 
+#if CONFIG_IPC_MAJOR_4
+	component_set_period_frames(dev, cd->sink_rate);
+#endif
 	cd->sink_frames = dev->frames;
 	cd->source_frames = ceil_divide(dev->frames * cd->source_rate,
 					cd->sink_rate);
