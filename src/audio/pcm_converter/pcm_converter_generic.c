@@ -494,8 +494,6 @@ const struct pcm_func_map pcm_func_map[] = {
 
 const size_t pcm_func_count = ARRAY_SIZE(pcm_func_map);
 
-#endif
-
 #if CONFIG_PCM_CONVERTER_FORMAT_S16_C16_AND_S16_C32
 static int pcm_convert_s16_c16_to_s16_c32(const struct audio_stream *source,
 					  uint32_t ioffset, struct audio_stream *sink,
@@ -695,3 +693,5 @@ const struct pcm_func_vc_map pcm_func_vc_map[] = {
 };
 
 const size_t pcm_func_vc_count = ARRAY_SIZE(pcm_func_vc_map);
+
+#endif
