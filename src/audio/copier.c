@@ -64,7 +64,8 @@ struct copier_data {
 };
 
 static pcm_converter_func get_converter_func(struct ipc4_audio_format *in_fmt,
-					     struct ipc4_audio_format *out_fmt);
+					     struct ipc4_audio_format *out_fmt,
+					     enum ipc4_gateway_type type);
 
 static void create_endpoint_buffer(struct comp_dev *parent_dev,
 				   struct copier_data *cd,
@@ -145,8 +146,6 @@ static void create_endpoint_buffer(struct comp_dev *parent_dev,
 
 	for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
 		cd->endpoint_buffer->chmap[i] = (copier_cfg->base.audio_fmt.ch_map >> i * 4) & 0xf;
-
-	cd->converter[0] = get_converter_func(&copier_cfg->base.audio_fmt, &copier_cfg->out_fmt);
 }
 
 /* if copier is linked to host gateway, it will manage host dma.
@@ -192,6 +191,9 @@ static struct comp_dev *create_host(struct comp_dev *parent_dev, struct copier_d
 		cd->bsource_buffer = true;
 	}
 
+	cd->converter[0] = get_converter_func(&copier_cfg->base.audio_fmt, &copier_cfg->out_fmt,
+					      ipc4_gtw_host);
+
 	return dev;
 }
 
@@ -207,6 +209,7 @@ static struct comp_dev *create_dai(struct comp_dev *parent_dev, struct copier_da
 {
 	struct sof_uuid id = {0xc2b00d27, 0xffbc, 0x4150, {0xa5, 0x1a, 0x24,
 				0x5c, 0x79, 0xc5, 0xe5, 0x4b}};
+	enum ipc4_gateway_type type;
 	const struct comp_driver *drv;
 	struct ipc_config_dai dai;
 	struct comp_dev *dev;
@@ -229,22 +232,26 @@ static struct comp_dev *create_dai(struct comp_dev *parent_dev, struct copier_da
 	case ipc4_hda_link_input_class:
 		dai.type = SOF_DAI_INTEL_HDA;
 		dai.is_config_blob = true;
+		type = ipc4_gtw_link;
 		break;
 	case ipc4_i2s_link_output_class:
 	case ipc4_i2s_link_input_class:
 		dai.dai_index = (dai.dai_index >> 4) & 0xF;
 		dai.type = SOF_DAI_INTEL_SSP;
 		dai.is_config_blob = true;
+		type = ipc4_gtw_ssp;
 		break;
 	case ipc4_alh_link_output_class:
 	case ipc4_alh_link_input_class:
 		dai.type = SOF_DAI_INTEL_ALH;
 		dai.is_config_blob = true;
+		type = ipc4_gtw_alh;
 		dai.dai_index -= IPC4_ALH_DAI_INDEX_OFFSET;
 		break;
 	case ipc4_dmic_link_input_class:
 		dai.type = SOF_DAI_INTEL_DMIC;
 		dai.is_config_blob = true;
+		type = ipc4_gtw_dmic;
 		break;
 	default:
 		return NULL;
@@ -277,6 +284,8 @@ static struct comp_dev *create_dai(struct comp_dev *parent_dev, struct copier_da
 				    PPL_CONN_DIR_COMP_TO_BUFFER);
 		cd->bsource_buffer = false;
 	}
+
+	cd->converter[0] = get_converter_func(&copier->base.audio_fmt, &copier->out_fmt, type);
 
 	return dev;
 }
@@ -441,7 +450,8 @@ static bool use_no_container_convert_function(enum sof_ipc_frame in,
 }
 
 static pcm_converter_func get_converter_func(struct ipc4_audio_format *in_fmt,
-					     struct ipc4_audio_format *out_fmt)
+					     struct ipc4_audio_format *out_fmt,
+					     enum ipc4_gateway_type type)
 {
 	enum sof_ipc_frame in, in_valid, out, out_valid;
 
@@ -454,7 +464,7 @@ static pcm_converter_func get_converter_func(struct ipc4_audio_format *in_fmt,
 	if (use_no_container_convert_function(in, in_valid, out, out_valid))
 		return pcm_get_conversion_function(in, out);
 	else
-		return pcm_get_conversion_vc_function(in, in_valid, out, out_valid);
+		return pcm_get_conversion_vc_function(in, in_valid, out, out_valid, type);
 }
 
 static int copier_prepare(struct comp_dev *dev)
@@ -482,7 +492,7 @@ static int copier_prepare(struct comp_dev *dev)
 	} else {
 		/* set up format conversion function */
 		cd->converter[0] = get_converter_func(&cd->config.base.audio_fmt,
-						      &cd->config.out_fmt);
+						      &cd->config.out_fmt, ipc4_gtw_none);
 		if (!cd->converter[0]) {
 			comp_err(dev, "can't support for in format %d, out format %d",
 				 cd->config.base.audio_fmt.depth,  cd->config.out_fmt.depth);
@@ -799,9 +809,14 @@ static int copier_set_sink_fmt(struct comp_dev *dev, void *data,
 		return -EINVAL;
 	}
 
+	if (cd->endpoint) {
+		comp_err(dev, "can't change gateway format");
+		return -EINVAL;
+	}
+
 	cd->out_fmt[sink_fmt->sink_id] = sink_fmt->sink_fmt;
 	cd->converter[sink_fmt->sink_id] = get_converter_func(&sink_fmt->source_fmt,
-							      &sink_fmt->sink_fmt);
+							      &sink_fmt->sink_fmt, ipc4_gtw_none);
 
 	return 0;
 }

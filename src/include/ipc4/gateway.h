@@ -25,6 +25,7 @@
 #define __SOF_IPC4_GATEWAY_H__
 
 #include <stdint.h>
+#include <sof/bit.h>
 
 /**< Type of the gateway. */
 enum ipc4_connector_node_id_type {
@@ -185,5 +186,15 @@ struct ipc4_gateway_config_blob {
 	 */
 	uint32_t threshold_low;
 } __attribute__((packed, aligned(4)));
+
+enum ipc4_gateway_type {
+	ipc4_gtw_none	= BIT(0),
+	ipc4_gtw_host	= BIT(1),
+	ipc4_gtw_dmic	= BIT(2),
+	ipc4_gtw_link	= BIT(3),
+	ipc4_gtw_alh	= BIT(4),
+	ipc4_gtw_ssp	= BIT(5),
+	ipc4_gtw_all	= BIT(6) - 1
+};
 
 #endif
