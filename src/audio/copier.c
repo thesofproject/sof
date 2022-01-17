@@ -318,8 +318,6 @@ static struct comp_dev *copier_new(const struct comp_driver *drv,
 	if (!dev)
 		return NULL;
 
-	dcache_invalidate_region(spec, sizeof(*copier));
-
 	dev->ipc_config = *config;
 
 	config_size = copier->gtw_cfg.config_length * sizeof(uint32_t);
