@@ -290,7 +290,7 @@ static void mt8195_afe_sinegen_enable(uint32_t sgen_id, uint32_t rate, int enabl
 			loopback_mode = MT8195_SGEN_DL3;
 			break;
 		default:
-			tr_err(ctx, fmt, ...)(&memif_tr, "invalid sgen_id", sgen_id);
+			tr_err(&memif_tr, "invalid sgen_id %d", sgen_id);
 			return;
 		}
 		/* enable sinegen clock*/
