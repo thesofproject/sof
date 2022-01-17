@@ -52,21 +52,25 @@ static void vol_s24_to_s24_s32(struct comp_dev *dev, struct audio_stream *sink,
 	size_t channel;
 	int i;
 	int shift = 8;
-	ae_int32 *in = (ae_int32 *)source->r_ptr;
-	ae_int32 *out = (ae_int32 *)sink->w_ptr;
+	const int inc = sizeof(ae_int32) * sink->channels;
 
-	/* Main processing loop */
-	for (i = 0; i < frames; i++) {
-		/* Processing per channel */
-		for (channel = 0; channel < sink->channels; channel++) {
+	/* Processing per channel */
+	for (channel = 0; channel < sink->channels; channel++) {
+		/* Load volume */
+		volume = (ae_f32x2)cd->volume[channel];
+
+		/* setting start address of sample load */
+		ae_int32 *in = (ae_int32 *)source->r_ptr + channel;
+
+		/* setting start address of sample store */
+		ae_int32 *out = (ae_int32 *)sink->w_ptr + channel;
+		/* Main processing loop */
+		for (i = 0; i < frames; i++) {
 			/* Set source as circular buffer */
 			vol_setup_circular(source);
 
 			/* Load the input sample */
-			AE_L32_XC(in_sample, in, sizeof(ae_int32));
-
-			/* Load volume */
-			volume = (ae_f32x2)cd->volume[channel];
+			AE_L32_XC(in_sample, in, inc);
 
 			/* Multiply the input sample */
 			mult = AE_MULF32S_LL(volume, AE_SLAA32(in_sample, 8));
@@ -87,7 +91,7 @@ static void vol_s24_to_s24_s32(struct comp_dev *dev, struct audio_stream *sink,
 			vol_setup_circular(sink);
 
 			/* Store the output sample */
-			AE_S32_L_XC(out_sample, out, sizeof(ae_int32));
+			AE_S32_L_XC(out_sample, out, inc);
 		}
 	}
 }
@@ -113,21 +117,21 @@ static void vol_s32_to_s24_s32(struct comp_dev *dev, struct audio_stream *sink,
 	size_t channel;
 	int shift = 0;
 	int i;
-	ae_int32 *in = (ae_int32 *)source->r_ptr;
-	ae_int32 *out = (ae_int32 *)sink->w_ptr;
+	const int inc = sizeof(ae_int32) * sink->channels;
 
-	/* Main processing loop */
-	for (i = 0; i < frames; i++) {
-		/* Processing per channel */
-		for (channel = 0; channel < sink->channels; channel++) {
+	/* Processing per channel */
+	for (channel = 0; channel < sink->channels; channel++) {
+		ae_int32 *in = (ae_int32 *)source->r_ptr + channel;
+		ae_int32 *out = (ae_int32 *)sink->w_ptr + channel;
+		/* Load volume */
+		volume = (ae_f32x2)cd->volume[channel];
+		/* Main processing loop */
+		for (i = 0; i < frames; i++) {
 			/* Set source as circular buffer */
 			vol_setup_circular(source);
 
 			/* Load the input sample */
-			AE_L32_XC(in_sample, in, sizeof(ae_int32));
-
-			/* Load volume */
-			volume = (ae_f32x2)cd->volume[channel];
+			AE_L32_XC(in_sample, in, inc);
 
 			/* Multiply the input sample */
 			mult = AE_MULF32S_LL(volume, in_sample);
@@ -148,7 +152,7 @@ static void vol_s32_to_s24_s32(struct comp_dev *dev, struct audio_stream *sink,
 			vol_setup_circular(sink);
 
 			/* Store the output sample */
-			AE_S32_L_XC(out_sample, out, sizeof(ae_int32));
+			AE_S32_L_XC(out_sample, out, inc);
 		}
 	}
 }
@@ -172,21 +176,20 @@ static void vol_s16_to_s16(struct comp_dev *dev, struct audio_stream *sink,
 	ae_f16x4 in_sample = AE_ZERO16();
 	size_t channel;
 	int i;
-	ae_int16 *in = (ae_int16 *)source->r_ptr;
-	ae_int16 *out = (ae_int16 *)sink->w_ptr;
+	const int inc = sizeof(ae_int16) * sink->channels;
 
-	/* Main processing loop */
-	for (i = 0; i < frames; i++) {
-		/* Processing per channel */
-		for (channel = 0; channel < sink->channels; channel++) {
+	/* Processing per channel */
+	for (channel = 0; channel < sink->channels; channel++) {
+		ae_int16 *in = (ae_int16 *)source->r_ptr + channel;
+		ae_int16 *out = (ae_int16 *)sink->w_ptr + channel;
+		/* Load volume */
+		volume = (ae_f32x2)cd->volume[channel];
+		for (i = 0; i < frames; i++) {
 			/* Set source as circular buffer */
 			vol_setup_circular(source);
 
 			/* Load the input sample */
-			AE_L16_XC(in_sample, in, sizeof(ae_int16));
-
-			/* Load volume */
-			volume = (ae_f32x2)cd->volume[channel];
+			AE_L16_XC(in_sample, in, inc);
 
 			/* Multiply the input sample */
 			mult = AE_MULF32X16_L0(volume, in_sample);
@@ -202,7 +205,7 @@ static void vol_s16_to_s16(struct comp_dev *dev, struct audio_stream *sink,
 
 			/* Round to Q1.15 and store the output sample */
 			AE_S16_0_XC(AE_ROUND16X4F32SSYM(out_sample, out_sample),
-				    out, sizeof(ae_int16));
+						out, inc);
 		}
 	}
 }
