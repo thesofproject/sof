@@ -67,9 +67,10 @@ define(matrix3, `ROUTE_MATRIX(1,
 			     `BITS_TO_BYTE(0, 0, 0 ,0 ,0 ,0 ,0 ,0)')')
 
 dnl name, num_streams, route_matrix list
+ifdef(`NO_AMP',`',`
 ifdef(`2CH_2WAY',
 `MUXDEMUX_CONFIG(demux_priv_1, 1, LIST_NONEWLINE(`', `matrix3'))',
-`MUXDEMUX_CONFIG(demux_priv_1, 2, LIST_NONEWLINE(`', `matrix1,', `matrix2'))')
+`MUXDEMUX_CONFIG(demux_priv_1, 2, LIST_NONEWLINE(`', `matrix1,', `matrix2'))')')
 
 #
 # Define the pipelines
@@ -86,6 +87,7 @@ ifdef(`2CH_2WAY',
 # PCM99 <---- volume <---- DMIC01 (dmic 48k capture)
 # PCM100 <---- kpb <---- DMIC16K (dmic 16k capture)
 
+ifdef(`NO_AMP',`',`
 # Define pipeline id for sof-tgl-CODEC-rt5682.m4
 ifdef(`AMP_SSP',`',`fatal_error(note: Define AMP_SSP for speaker amp SSP Index)')
 # Speaker related
@@ -98,7 +100,8 @@ define(`SPK_SSP_NAME', concat(concat(`SSP', SPK_SSP_INDEX),`-Codec'))
 define(`SPK_BE_ID', 7)
 # Ref capture related
 # Ref capture BE dai_name
-define(`SPK_REF_DAI_NAME', concat(concat(`SSP', SPK_SSP_INDEX),`.IN'))
+define(`SPK_REF_DAI_NAME', concat(concat(`SSP', SPK_SSP_INDEX),`.IN'))')
+
 # to generate dmic setting with kwd when we have dmic
 # define channel
 define(CHANNELS, `4')
@@ -131,6 +134,7 @@ dnl PIPELINE_PCM_ADD(pipeline,
 dnl     pipe id, pcm, max channels, format,
 dnl     frames, deadline, priority, core)
 
+ifdef(`NO_AMP',`',`
 `# Low Latency playback pipeline 1 on PCM 0 using max 'ifdef(`4CH_PASSTHROUGH', `4', `2')` channels of s24le.'
 # Schedule 48 frames per 1000us deadline with priority 0 on core 0
 define(`ENDPOINT_NAME', `Speakers')
@@ -142,7 +146,7 @@ PIPELINE_PCM_ADD(
 	1, 0, ifdef(`4CH_PASSTHROUGH', `4', `2'), s32le,
 	1000, 0, 0,
 	48000, 48000, 48000)
-undefine(`ENDPOINT_NAME')
+undefine(`ENDPOINT_NAME')')
 
 # Low Latency playback pipeline 2 on PCM 1 using max 2 channels of s24le.
 # Schedule 48 frames per 1000us deadline with priority 0 on core 0
@@ -197,6 +201,7 @@ dnl     pipe id, dai type, dai_index, dai_be,
 dnl     buffer, periods, format,
 dnl     frames, deadline, priority, core)
 
+ifdef(`NO_AMP',`',`
 # playback DAI is SSP1 using 2 periods
 # Buffers use s16le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
@@ -251,7 +256,7 @@ SectionGraph."PIPE_CAP_VIRT" {
 		dapm(ECHO REF 9, SPK_REF_DAI_NAME)
 	]
 }
-')')
+')')')
 
 # playback DAI is SSP0 using 2 periods
 # Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
@@ -297,14 +302,16 @@ DAI_ADD(sof/pipe-dai-playback.m4,
 
 # PCM Low Latency, id 0
 dnl PCM_PLAYBACK_ADD(name, pcm_id, playback)
-PCM_PLAYBACK_ADD(Speakers, 0, PIPELINE_PCM_1)
+ifdef(`NO_AMP',`',`
+PCM_PLAYBACK_ADD(Speakers, 0, PIPELINE_PCM_1)')
 PCM_DUPLEX_ADD(Headset, 1, PIPELINE_PCM_2, PIPELINE_PCM_3)
 PCM_PLAYBACK_ADD(HDMI1, 2, PIPELINE_PCM_5)
 PCM_PLAYBACK_ADD(HDMI2, 3, PIPELINE_PCM_6)
 PCM_PLAYBACK_ADD(HDMI3, 4, PIPELINE_PCM_7)
 PCM_PLAYBACK_ADD(HDMI4, 5, PIPELINE_PCM_8)
+ifdef(`NO_AMP',`',`
 ifdef(`2CH_2WAY',`# No echo reference for 2-way speakers',
-`PCM_CAPTURE_ADD(EchoRef, 6, PIPELINE_PCM_9)')
+`PCM_CAPTURE_ADD(EchoRef, 6, PIPELINE_PCM_9)')')
 
 #
 # BE conf2igurations - overrides config in ACPI if present
@@ -316,6 +323,7 @@ dnl SSP_CONFIG_DATA(type, idx, valid bits, mclk_id)
 dnl mclk_id is optional
 dnl ssp1-maxmspk
 
+ifdef(`NO_AMP',`',`
 # SSP SPK_SSP_INDEX (ID: SPK_BE_ID)
 DAI_CONFIG(SSP, SPK_SSP_INDEX, SPK_BE_ID, SPK_SSP_NAME,
 ifelse(
@@ -349,7 +357,7 @@ ifelse(
 		SSP_CLOCK(fsync, 48000, codec_consumer),
 		SSP_TDM(4, 32, 3, 15),
 	SSP_CONFIG_DATA(SSP, SPK_SSP_INDEX, 32)))',
-	)
+	)')
 
 # SSP 0 (ID: 0)
 DAI_CONFIG(SSP, 0, 0, SSP0-Codec,
