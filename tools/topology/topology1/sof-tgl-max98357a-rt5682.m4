@@ -66,11 +66,26 @@ define(matrix3, `ROUTE_MATRIX(1,
 			     `BITS_TO_BYTE(0, 0, 0 ,0 ,0 ,0 ,0 ,0)',
 			     `BITS_TO_BYTE(0, 0, 0 ,0 ,0 ,0 ,0 ,0)')')
 
+define(matrix4, `ROUTE_MATRIX(10,
+			     `BITS_TO_BYTE(1, 0, 0 ,0 ,0 ,0 ,0 ,0)',
+			     `BITS_TO_BYTE(0, 1, 0 ,0 ,0 ,0 ,0 ,0)',
+			     `BITS_TO_BYTE(0, 0, 1 ,0 ,0 ,0 ,0 ,0)',
+			     `BITS_TO_BYTE(0, 0, 0 ,1 ,0 ,0 ,0 ,0)',
+			     `BITS_TO_BYTE(0, 0, 0 ,0 ,1 ,0 ,0 ,0)',
+			     `BITS_TO_BYTE(0, 0, 0 ,0 ,0 ,1 ,0 ,0)',
+			     `BITS_TO_BYTE(0, 0, 0 ,0 ,0 ,0 ,1 ,0)',
+			     `BITS_TO_BYTE(0, 0, 0 ,0 ,0 ,0 ,0 ,1)')')
+
 dnl name, num_streams, route_matrix list
 ifdef(`NO_AMP',`',`
-ifdef(`2CH_2WAY',
-`MUXDEMUX_CONFIG(demux_priv_1, 1, LIST_NONEWLINE(`', `matrix3'))',
-`MUXDEMUX_CONFIG(demux_priv_1, 2, LIST_NONEWLINE(`', `matrix1,', `matrix2'))')')
+ifdef(`GOOGLE_RTC_AUDIO_PROCESSING',
+	`ifdef(`2CH_2WAY',
+	`MUXDEMUX_CONFIG(demux_priv_1, 2, LIST_NONEWLINE(`', `matrix3,', `matrix4'))',
+	`MUXDEMUX_CONFIG(demux_priv_1, 3, LIST_NONEWLINE(`', `matrix1,', `matrix2,', `matrix4'))')',
+	`ifdef(`2CH_2WAY',
+	`MUXDEMUX_CONFIG(demux_priv_1, 1, LIST_NONEWLINE(`', `matrix3'))',
+	`MUXDEMUX_CONFIG(demux_priv_1, 2, LIST_NONEWLINE(`', `matrix1,', `matrix2'))')'
+)')
 
 #
 # Define the pipelines
@@ -86,6 +101,8 @@ ifdef(`2CH_2WAY',
 # PCM5 ----> volume -----> iDisp4
 # PCM99 <---- volume <---- DMIC01 (dmic 48k capture)
 # PCM100 <---- kpb <---- DMIC16K (dmic 16k capture)
+
+ifdef(`GOOGLE_RTC_AUDIO_PROCESSING', define(`SPK_MIC_PERIOD_US', 10000), define(`SPK_MIC_PERIOD_US', 1000))
 
 ifdef(`NO_AMP',`',`
 # Define pipeline id for sof-tgl-CODEC-rt5682.m4
@@ -115,6 +132,8 @@ define(DMIC_PCM_16k_ID, `100')
 define(DMIC_PIPELINE_16k_ID, `11')
 define(DMIC_PIPELINE_KWD_ID, `12')
 define(DMIC_DAI_LINK_16k_ID, `2')
+define(DMIC_PIPELINE_48k_CORE_ID, `1')
+
 # define pcm, pipeline and dai id
 define(KWD_PIPE_SCH_DEADLINE_US, 5000)
 
@@ -144,7 +163,7 @@ PIPELINE_PCM_ADD(
 		    ifdef(`2CH_2WAY', sof/pipe-demux-eq-iir-playback.m4,
 			  sof/pipe-volume-demux-playback.m4))),
 	1, 0, ifdef(`4CH_PASSTHROUGH', `4', `2'), s32le,
-	1000, 0, 0,
+	SPK_MIC_PERIOD_US, 0, 0,
 	48000, 48000, 48000)
 undefine(`ENDPOINT_NAME')')
 
@@ -207,7 +226,7 @@ ifdef(`NO_AMP',`',`
 DAI_ADD(sof/pipe-dai-playback.m4,
 	1, SSP, SPK_SSP_INDEX, SPK_SSP_NAME,
 	PIPELINE_SOURCE_1, 2, FMT,
-	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
+	SPK_MIC_PERIOD_US, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 ifelse(CODEC, `MAX98390', `
 # Low Latency capture pipeline 9 on PCM 6 using max 4 channels of s32le.
@@ -257,6 +276,19 @@ SectionGraph."PIPE_CAP_VIRT" {
 	]
 }
 ')')')
+
+dnl if using Google AEC
+ifdef(`GOOGLE_RTC_AUDIO_PROCESSING',
+`# Connect demux to capture'
+`SectionGraph."PIPE_GOOGLE_RTC_AUDIO_PROCESSING_REF_AEC" {'
+`        index "0"'
+`        lines ['
+`                # mux to capture'
+`                dapm(N_AEC_REF_BUF, PIPELINE_DEMUX_1)'
+`       ]'
+`}'
+dnl else
+, `')
 
 # playback DAI is SSP0 using 2 periods
 # Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
