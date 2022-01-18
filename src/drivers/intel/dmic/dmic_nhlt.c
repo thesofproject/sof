@@ -217,7 +217,7 @@ int dmic_set_config_nhlt(struct dai *dai, void *spec_config)
 	int fir_decimation, fir_shift, fir_length;
 	int bf1, bf2, bf3, bf4, bf5, bf6, bf7, bf8;
 #if defined DMIC_IPM_VER2
-	int bf9, bf10, bf11, bf12;
+	int bf9, bf10, bf11, bf12, bf13;
 #endif
 	int bfth;
 	int ret;
@@ -279,12 +279,15 @@ int dmic_set_config_nhlt(struct dai *dai, void *spec_config)
 		bf10 = OUTCONTROL0_IPM_SOURCE_2_GET(val);
 		bf11 = OUTCONTROL0_IPM_SOURCE_3_GET(val);
 		bf12 = OUTCONTROL0_IPM_SOURCE_4_GET(val);
+		bf13 = OUTCONTROL0_IPM_SOURCE_MODE_GET(val);
 		dai_info(dai, "  ipms1=%d, ipms2=%d, ipms3=%d, ipms4=%d", bf9, bf10, bf11, bf12);
+		dai_info(dai, "  ipms_mode=%d", bf13);
 		ref = OUTCONTROL0_TIE(bf1) | OUTCONTROL0_SIP(bf2) | OUTCONTROL0_FINIT(bf3) |
 			OUTCONTROL0_FCI(bf4) | OUTCONTROL0_BFTH(bf5) | OUTCONTROL0_OF(bf6) |
 			OUTCONTROL0_IPM(bf7) | OUTCONTROL0_IPM_SOURCE_1(bf9) |
 			OUTCONTROL0_IPM_SOURCE_2(bf10) | OUTCONTROL0_IPM_SOURCE_3(bf11) |
-			OUTCONTROL0_IPM_SOURCE_4(bf12) | OUTCONTROL0_TH(bf8);
+			OUTCONTROL0_IPM_SOURCE_4(bf12) | OUTCONTROL0_TH(bf8) |
+			OUTCONTROL0_IPM_SOURCE_MODE(bf13);
 #endif
 		if (ref != val) {
 			dai_err(dai, "dmic_set_config_nhlt(): illegal OUTCONTROL%d = 0x%08x",
