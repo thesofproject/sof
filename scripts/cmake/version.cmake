@@ -24,14 +24,17 @@ string(TIMESTAMP build_start_time UTC)
 message(STATUS "SOF version.cmake starting at ${build_start_time} UTC")
 
 # Most CI engines test a temporary merge of the pull request with a
-# moving target: the latest target branch. In that case the SHA version
-# gathered by git describe is disposable hence useless. Only the
-# --parents SHA are useful.
+# moving target: the latest target branch. In that case the HEAD SHA is
+# very volatile and the --parents are much more relevant and useful.
+#
+# --no-abbrev-commit because some git servers like github allow fetching
+# by full length SHA (others forbid this entirely, see last page of
+# `git help fetch-pack`)
 message(STATUS "Building SOF git commit with parent(s):")
 # Note execute_process() failures are ignored by default (missing git...)
 execute_process(
 	COMMAND git -C "${CMAKE_CURRENT_SOURCE_DIR}"
-		log --parents --oneline --decorate -n 1 HEAD
+		log --parents --no-abbrev-commit --decorate -n 1 HEAD
 	)
 
 
