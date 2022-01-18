@@ -690,6 +690,23 @@ const struct pcm_func_vc_map pcm_func_vc_map[] = {
 	{ SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S16_LE,
 		ipc4_gtw_all, pcm_convert_s24_c32_to_s16_c32 },
 #endif
+#if CONFIG_PCM_CONVERTER_FORMAT_S32LE && CONFIG_PCM_CONVERTER_FORMAT_S24LE
+	{ SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S24_4LE,
+		ipc4_gtw_all & ~(ipc4_gtw_link | ipc4_gtw_alh | ipc4_gtw_host), audio_stream_copy },
+	{ SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S24_4LE,
+		ipc4_gtw_link | ipc4_gtw_alh, pcm_convert_s24_to_s32 },
+	{ SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S24_4LE,
+		ipc4_gtw_host, pcm_convert_s32_to_s24 },
+#endif
+#if CONFIG_PCM_CONVERTER_FORMAT_S24LE && CONFIG_PCM_CONVERTER_FORMAT_S16LE
+	{ SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S32_LE,
+		SOF_IPC_FRAME_S24_4LE, ipc4_gtw_all & ~(ipc4_gtw_link | ipc4_gtw_alh),
+		pcm_convert_s16_to_s24 },
+	{ SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S32_LE,
+		SOF_IPC_FRAME_S24_4LE, ipc4_gtw_link | ipc4_gtw_alh, pcm_convert_s16_to_s32 },
+	{ SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S16_LE,
+		SOF_IPC_FRAME_S16_LE, ipc4_gtw_all, pcm_convert_s24_to_s16 },
+#endif
 };
 
 const size_t pcm_func_vc_count = ARRAY_SIZE(pcm_func_vc_map);
