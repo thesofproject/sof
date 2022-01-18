@@ -46,11 +46,18 @@ ifdef(`DMIC_DAI_LINK_16k_NAME',`',define(DMIC_DAI_LINK_16k_NAME, `dmic16k'))
 
 # DMICPROC is set by makefile, available type: passthrough/eq-iir-volume
 ifdef(`IGO',
-`define(DMICPROC, igonr)',
-`ifdef(`DMICPROC', , `define(DMICPROC, passthrough)')')
+`define(`DMICPROC', igonr)',
+`ifdef(`GOOGLE_RTC_AUDIO_PROCESSING',
+`define(`DMICPROC', google-rtc-audio-processing)', `define(`DMICPROC', passthrough)')')
 
 # Prolong period to 16ms for igo_nr process
-ifdef(`IGO', `define(`INTEL_GENERIC_DMIC_KWD_PERIOD', 16000)', `define(`INTEL_GENERIC_DMIC_KWD_PERIOD', 1000)')
+ifdef(`IGO',
+  `define(`INTEL_GENERIC_DMIC_KWD_PERIOD', 16000)',
+  `ifdef(`GOOGLE_RTC_AUDIO_PROCESSING',
+    `define(`INTEL_GENERIC_DMIC_KWD_PERIOD', 10000)',
+	`define(`INTEL_GENERIC_DMIC_KWD_PERIOD', 1000)'
+  )'
+)
 
 # define(DMIC_DAI_LINK_16k_PDM, `STEREO_PDM0') define the PDM port, default is STEREO_PDM0
 ifdef(`DMIC_DAI_LINK_16k_PDM',`',`define(DMIC_DAI_LINK_16k_PDM, `STEREO_PDM0')')
@@ -78,7 +85,6 @@ define(`PGA_NAME', Dmic0)
 PIPELINE_PCM_ADD(sof/pipe-`DMICPROC'-capture.m4,
         DMIC_PIPELINE_48k_ID, DMIC_PCM_48k_ID, CHANNELS, s32le,
         INTEL_GENERIC_DMIC_KWD_PERIOD, 0, DMIC_PIPELINE_48k_CORE_ID, 48000, 48000, 48000)
-
 undefine(`PGA_NAME')
 undefine(`PIPELINE_FILTER1')
 undefine(`PIPELINE_FILTER2')

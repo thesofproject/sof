@@ -51,8 +51,20 @@ define(matrix2, `ROUTE_MATRIX(9,
 			     `BITS_TO_BYTE(0, 0, 0 ,0 ,0 ,0 ,1 ,0)',
 			     `BITS_TO_BYTE(0, 0, 0 ,0 ,0 ,0 ,0 ,1)')')
 
+define(matrix3, `ROUTE_MATRIX(10,
+			     `BITS_TO_BYTE(1, 0, 0 ,0 ,0 ,0 ,0 ,0)',
+			     `BITS_TO_BYTE(0, 1, 0 ,0 ,0 ,0 ,0 ,0)',
+			     `BITS_TO_BYTE(0, 0, 1 ,0 ,0 ,0 ,0 ,0)',
+			     `BITS_TO_BYTE(0, 0, 0 ,1 ,0 ,0 ,0 ,0)',
+			     `BITS_TO_BYTE(0, 0, 0 ,0 ,1 ,0 ,0 ,0)',
+			     `BITS_TO_BYTE(0, 0, 0 ,0 ,0 ,1 ,0 ,0)',
+			     `BITS_TO_BYTE(0, 0, 0 ,0 ,0 ,0 ,1 ,0)',
+			     `BITS_TO_BYTE(0, 0, 0 ,0 ,0 ,0 ,0 ,1)')')
+
 dnl name, num_streams, route_matrix list
-MUXDEMUX_CONFIG(demux_priv_1, 2, LIST_NONEWLINE(`', `matrix1,', `matrix2'))
+ifdef(`GOOGLE_RTC_AUDIO_PROCESSING',
+	`MUXDEMUX_CONFIG(demux_priv_1, 3, LIST_NONEWLINE(`', `matrix1,', `matrix2,', `matrix3'))',
+	`MUXDEMUX_CONFIG(demux_priv_1, 2, LIST_NONEWLINE(`', `matrix1,', `matrix2'))')
 
 #
 # Define the pipelines
@@ -69,6 +81,8 @@ MUXDEMUX_CONFIG(demux_priv_1, 2, LIST_NONEWLINE(`', `matrix1,', `matrix2'))
 # PCM99 <---- volume <---- DMIC01 (dmic 48k capture)
 # PCM100 <---- kpb <---- DMIC16K (dmic 16k capture)
 
+ifdef(`GOOGLE_RTC_AUDIO_PROCESSING', define(`SPK_MIC_PERIOD_US', 10000), define(`SPK_MIC_PERIOD_US', 1000))
+
 # Define pipeline id for sof-tgl-CODEC-rt5682.m4
 # to generate dmic setting with kwd when we have dmic
 # define channel
@@ -83,6 +97,8 @@ define(DMIC_PCM_16k_ID, `100')
 define(DMIC_PIPELINE_16k_ID, `11')
 define(DMIC_PIPELINE_KWD_ID, `12')
 define(DMIC_DAI_LINK_16k_ID, `2')
+define(DMIC_PIPELINE_48k_CORE_ID, `1')
+
 # define pcm, pipeline and dai id
 define(KWD_PIPE_SCH_DEADLINE_US, 5000)
 # include the generic dmic with kwd
@@ -98,7 +114,7 @@ define(ENDPOINT_NAME, `Speakers')
 PIPELINE_PCM_ADD(
 	ifdef(`WAVES', sof/pipe-waves-codec-demux-playback.m4, sof/pipe-volume-demux-playback.m4),
 	1, 0, 2, s32le,
-	1000, 0, 0,
+	SPK_MIC_PERIOD_US, 0, 0,
 	48000, 48000, 48000)
 undefine(ENDPOINT_NAME)
 
@@ -160,7 +176,7 @@ dnl     frames, deadline, priority, core)
 DAI_ADD(sof/pipe-dai-playback.m4,
 	1, SSP, 1, SSP1-Codec,
 	PIPELINE_SOURCE_1, 2, FMT,
-	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
+	SPK_MIC_PERIOD_US, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # currently this dai is here as "virtual" capture backend
 W_DAI_IN(SSP, 1, SSP1-Codec, FMT, 3, 0)
@@ -192,6 +208,19 @@ SectionGraph."PIPE_CAP_VIRT" {
 		dapm(ECHO REF 9, SSP1.IN)
 	]
 }
+
+dnl if using Google AEC
+ifdef(`GOOGLE_RTC_AUDIO_PROCESSING',
+`# Connect demux to capture'
+`SectionGraph."PIPE_GOOGLE_RTC_AUDIO_PROCESSING_REF_AEC" {'
+`        index "0"'
+`        lines ['
+`                # mux to capture'
+`                dapm(N_AEC_REF_BUF, PIPELINE_DEMUX_1)'
+`       ]'
+`}'
+dnl else
+, `')
 
 # playback DAI is SSP0 using 2 periods
 # Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
