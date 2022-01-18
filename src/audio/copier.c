@@ -46,6 +46,9 @@ DECLARE_SOF_RT_UUID("copier", copier_comp_uuid, 0x9ba00c83, 0xca12, 0x4a83,
 DECLARE_TR_CTX(copier_comp_tr, SOF_UUID(copier_comp_uuid), LOG_LEVEL_INFO);
 
 struct copier_data {
+	/* Must be the 1st field, function ipc4_create_buffer casts components private data
+	 * as ipc4_base_module_cfg!
+	 */
 	struct ipc4_copier_module_cfg config;
 	struct comp_dev *endpoint;
 	struct comp_buffer *endpoint_buffer;
