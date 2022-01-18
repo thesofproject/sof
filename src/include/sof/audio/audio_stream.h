@@ -228,6 +228,8 @@ static inline void *audio_stream_wrap(const struct audio_stream *buffer,
 		ptr = (char *)buffer->addr +
 			((char *)ptr - (char *)buffer->end_addr);
 
+	assert((intptr_t)ptr <= (intptr_t)buffer->end_addr);
+
 	return ptr;
 }
 
@@ -525,6 +527,7 @@ static inline int
 audio_stream_bytes_without_wrap(const struct audio_stream *source,
 				const void *ptr)
 {
+	assert((intptr_t)source->end_addr >= (intptr_t)ptr);
 	int to_end = (intptr_t)source->end_addr - (intptr_t)ptr;
 	return to_end;
 }
