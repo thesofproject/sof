@@ -120,7 +120,7 @@ static int basefw_hw_config(uint32_t *data_offset, char *data)
 	set_tuple_uint32(tuple, IPC4_CAVS_VER_HW_CFG, CAVS_VERSION);
 
 	tuple = next_tuple(tuple);
-	set_tuple_uint32(tuple, IPC4_DSP_CORES_HW_CFG, MAX_CORE_COUNT);
+	set_tuple_uint32(tuple, IPC4_DSP_CORES_HW_CFG, CONFIG_CORE_COUNT);
 
 	tuple = next_tuple(tuple);
 	set_tuple_uint32(tuple, IPC4_MEM_PAGE_BYTES_HW_CFG, HOST_PAGE_SIZE);
