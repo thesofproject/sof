@@ -44,6 +44,7 @@ struct cadence_codec_data {
 	xa_codec_func_t *api;
 	void *mem_tabs;
 	uint32_t api_id;
+	struct module_config setup_cfg;
 };
 
 #endif /* __SOF_AUDIO_CADENCE_CODEC__ */

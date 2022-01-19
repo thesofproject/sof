@@ -117,6 +117,7 @@ static int cadence_codec_init(struct comp_dev *dev)
 	cd->self = NULL;
 	cd->mem_tabs = NULL;
 	cd->api = NULL;
+	cd->setup_cfg.avail = false;
 
 	/* Find and assign API function */
 	for (i = 0; i < no_of_api; i++) {
@@ -134,6 +135,29 @@ static int cadence_codec_init(struct comp_dev *dev)
 			 api_id);
 		ret = -EINVAL;
 		goto free;
+	}
+
+	/* copy the setup config only for the first init */
+	if (codec->state == MODULE_DISABLED && codec->cfg.avail) {
+		struct module_config *setup_cfg = &cd->setup_cfg;
+
+		/* allocate memory for set up config */
+		setup_cfg->data = rballoc(0, SOF_MEM_CAPS_RAM, codec->cfg.size);
+		if (!setup_cfg->data) {
+			comp_err(dev, "cadence_codec_init(): failed to alloc setup config");
+			module_free_memory(dev, cd);
+			return -ENOMEM;
+		}
+
+		/* copy the setup config */
+		setup_cfg->size = codec->cfg.size;
+		ret = memcpy_s(setup_cfg->data, setup_cfg->size, codec->cfg.data, setup_cfg->size);
+		if (ret) {
+			comp_err(dev, "cadence_codec_init(): failed to copy setup config %d", ret);
+			module_free_memory(dev, cd);
+			return ret;
+		}
+		setup_cfg->avail = true;
 	}
 
 	/* Obtain codec name */
@@ -175,7 +199,7 @@ free:
 	return ret;
 }
 
-static int apply_config(struct comp_dev *dev, enum module_cfg_type type)
+static int cadence_codec_apply_config(struct comp_dev *dev)
 {
 	int ret = 0;
 	int size;
@@ -185,16 +209,19 @@ static int apply_config(struct comp_dev *dev, enum module_cfg_type type)
 	struct module_data *codec = comp_get_module_data(dev);
 	struct cadence_codec_data *cd = codec->private;
 
-	comp_dbg(dev, "apply_config() start");
+	comp_dbg(dev, "cadence_codec_apply_config() start");
 
-	cfg = (type == MODULE_CFG_SETUP) ? &codec->s_cfg :
-					  &codec->r_cfg;
+	cfg = &codec->cfg;
+
+	/* use setup config if no runtime config available. This will be true during reset */
+	if (!cfg->avail)
+		cfg = &cd->setup_cfg;
+
 	data = cfg->data;
 	size = cfg->size;
 
 	if (!cfg->avail || !size) {
-		comp_err(dev, "apply_config() error: no config available, requested conf. type %d",
-			 type);
+		comp_err(dev, "cadence_codec_apply_config() error: no config available");
 		return -EIO;
 	}
 
@@ -204,13 +231,13 @@ static int apply_config(struct comp_dev *dev, enum module_cfg_type type)
 	 */
 	while (size > 0) {
 		param = data;
-		comp_dbg(dev, "apply_config() applying param %d value %d",
+		comp_dbg(dev, "cadence_codec_apply_config() applying param %d value %d",
 			 param->id, param->data[0]);
 		/* Set read parameter */
 		API_CALL(cd, XA_API_CMD_SET_CONFIG_PARAM, param->id,
 			 param->data, ret);
 		if (ret != LIB_NO_ERROR) {
-			comp_err(dev, "apply_config() error %x: failed to apply parameter %d value %d",
+			comp_err(dev, "cadence_codec_apply_config() error %x: failed to apply parameter %d value %d",
 				 ret, param->id, *(int32_t *)param->data);
 			if (LIB_IS_FATAL_ERROR(ret))
 				return ret;
@@ -220,7 +247,7 @@ static int apply_config(struct comp_dev *dev, enum module_cfg_type type)
 		size -= param->size;
 	}
 
-	comp_dbg(dev, "apply_config() done");
+	comp_dbg(dev, "cadence_codec_apply_config() done");
 
 	return 0;
 }
@@ -400,34 +427,11 @@ static int cadence_codec_prepare(struct comp_dev *dev)
 
 	comp_dbg(dev, "cadence_codec_prepare() start");
 
-	/* Setup config */
-	if (!codec->s_cfg.avail && !codec->s_cfg.size) {
-		comp_err(dev, "cadence_codec_prepare() no setup configuration available!");
-		ret = -EIO;
-		goto err;
-	} else if (!codec->s_cfg.avail) {
-		comp_warn(dev, "cadence_codec_prepare(): no new setup configuration available, using the old one");
-		codec->s_cfg.avail = true;
-	}
-	ret = apply_config(dev, MODULE_CFG_SETUP);
+	ret = cadence_codec_apply_config(dev);
 	if (ret) {
-		comp_err(dev, "cadence_codec_prepare() error %x: failed to applay setup config",
+		comp_err(dev, "cadence_codec_prepare() error %x: failed to apply config",
 			 ret);
-		goto err;
-	}
-	/* Do not reset nor free codec setup config "size" so we can use it
-	 * later on in case there is no new one upon reset.
-	 */
-	codec->s_cfg.avail = false;
-
-	/* Runtime config */
-	if (codec->r_cfg.avail) {
-		ret = apply_config(dev, MODULE_CFG_RUNTIME);
-		if (ret) {
-			comp_err(dev, "cadence_codec_prepare() error %x: failed to applay runtime config",
-				 ret);
-			goto err;
-		}
+		return ret;
 	}
 
 	/* Allocate memory for the codec */
@@ -541,11 +545,6 @@ static int cadence_codec_process(struct comp_dev *dev)
 	return 0;
 }
 
-static int cadence_codec_apply_config(struct comp_dev *dev)
-{
-	return apply_config(dev, MODULE_CFG_RUNTIME);
-}
-
 static int cadence_codec_reset(struct comp_dev *dev)
 {
 	int ret;
@@ -572,6 +571,10 @@ static int cadence_codec_reset(struct comp_dev *dev)
 
 static int cadence_codec_free(struct comp_dev *dev)
 {
+	struct module_data *codec = comp_get_module_data(dev);
+	struct cadence_codec_data *cd = codec->private;
+
+	rfree(cd->setup_cfg.data);
 	module_free_all_memory(dev);
 	return 0;
 }

@@ -18,7 +18,7 @@
 /*****************************************************************************/
 static int validate_config(struct module_config *cfg);
 
-int module_load_config(struct comp_dev *dev, void *cfg, size_t size, enum module_cfg_type type)
+int module_load_config(struct comp_dev *dev, void *cfg, size_t size)
 {
 	int ret;
 	struct module_config *dst;
@@ -33,26 +33,7 @@ int module_load_config(struct comp_dev *dev, void *cfg, size_t size, enum module
 		return -EINVAL;
 	}
 
-	/*
-	 * Setup config comprises of two parts: 1. Essential data needed for initialization of
-	 * codec_adapter and follows struct ca_config. 2: Module specific data needed to setup the
-	 * module. Copy the codec_adapter data first.
-	 */
-	if (type == MODULE_CFG_SETUP) {
-		ret = memcpy_s(&mod->ca_config, sizeof(mod->ca_config), cfg,
-			       sizeof(struct ca_config));
-		assert(!ret);
-
-		/* And then copy the module-specific data */
-		cfg = (char *)cfg + sizeof(struct ca_config);
-		size -= sizeof(struct ca_config);
-
-		if (!size)
-			return 0;
-	}
-
-	dst = (type == MODULE_CFG_SETUP) ? &md->s_cfg :
-					  &md->r_cfg;
+	dst = &md->cfg;
 
 	if (!dst->data) {
 		/* No space for config available yet, allocate now */
@@ -86,7 +67,7 @@ int module_load_config(struct comp_dev *dev, void *cfg, size_t size, enum module
 	comp_dbg(dev, "module_load_config() done");
 	return ret;
 err:
-	if (dst->data && type == MODULE_CFG_RUNTIME)
+	if (dst->data)
 		rfree(dst->data);
 	dst->data = NULL;
 	return ret;
@@ -231,12 +212,11 @@ int module_prepare(struct comp_dev *dev)
 	 * as it has been applied during the procedure - it is safe to
 	 * free it.
 	 */
-	if (md->r_cfg.data)
-		rfree(md->r_cfg.data);
+	if (md->cfg.data)
+		rfree(md->cfg.data);
 
-	md->s_cfg.avail = false;
-	md->r_cfg.avail = false;
-	md->r_cfg.data = NULL;
+	md->cfg.avail = false;
+	md->cfg.data = NULL;
 
 	md->state = MODULE_IDLE;
 	comp_dbg(dev, "module_prepare() done");
@@ -291,10 +271,10 @@ int module_apply_runtime_config(struct comp_dev *dev)
 		return ret;
 	}
 
-	mod->priv.r_cfg.avail = false;
+	md->cfg.avail = false;
 	/* Configuration had been applied, we can free it now. */
-	rfree(md->r_cfg.data);
-	md->r_cfg.data = NULL;
+	rfree(md->cfg.data);
+	md->cfg.data = NULL;
 
 	comp_dbg(dev, "module_apply_config() end");
 
@@ -318,9 +298,9 @@ int module_reset(struct comp_dev *dev)
 		return ret;
 	}
 
-	md->r_cfg.avail = false;
-	md->r_cfg.size = 0;
-	rfree(md->r_cfg.data);
+	md->cfg.avail = false;
+	md->cfg.size = 0;
+	rfree(md->cfg.data);
 
 	/* module resets itself to the initial condition after prepare()
 	 * so let's change its state to reflect that.
@@ -360,12 +340,9 @@ int module_free(struct comp_dev *dev)
 	/* Free all memory requested by module */
 	module_free_all_memory(dev);
 	/* Free all memory shared by codec_adapter & module */
-	md->s_cfg.avail = false;
-	md->s_cfg.size = 0;
-	md->r_cfg.avail = false;
-	md->r_cfg.size = 0;
-	rfree(md->r_cfg.data);
-	rfree(md->s_cfg.data);
+	md->cfg.avail = false;
+	md->cfg.size = 0;
+	rfree(md->cfg.data);
 	if (md->runtime_params)
 		rfree(md->runtime_params);
 
