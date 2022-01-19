@@ -46,7 +46,7 @@ enum pm_runtime_context {
 
 /** \brief Runtime power management data. */
 struct pm_runtime_data {
-	spinlock_t lock;	/**< lock mechanism */
+	struct k_spinlock lock;	/**< lock mechanism */
 	void *platform_data;	/**< platform specific data */
 #if CONFIG_DSP_RESIDENCY_COUNTERS
 	struct r_counters_data *r_counters; /**< diagnostic DSP residency counters */

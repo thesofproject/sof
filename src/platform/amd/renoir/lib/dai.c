@@ -107,14 +107,14 @@ int dai_init(struct sof *sof)
 	int i;
 	/* initialize spin locks early to enable ref counting */
 	for (i = 0; i < ARRAY_SIZE(acp_dmic_dai); i++)
-		spinlock_init(&acp_dmic_dai[i].lock);
+		k_spinlock_init(&acp_dmic_dai[i].lock);
 	/* initialize spin locks early to enable ref counting */
 	for (i = 0; i < ARRAY_SIZE(spdai); i++)
-		spinlock_init(&spdai[i].lock);
+		k_spinlock_init(&spdai[i].lock);
 #ifdef ACP_BT_ENABLE
 	/* initialize spin locks early to enable ref counting */
 	for (i = 0; i < ARRAY_SIZE(btdai); i++)
-		spinlock_init(&btdai[i].lock);
+		k_spinlock_init(&btdai[i].lock);
 #endif
 	sof->dai_info = &lib_dai;
 	return 0;

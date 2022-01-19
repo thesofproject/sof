@@ -118,6 +118,5 @@ void platform_clock_init(struct sof *sof)
 	sof->clocks = platform_clocks_info;
 
 	for (i = 0; i < NUM_CLOCKS; i++)
-		spinlock_init(&sof->clocks[i].lock);
-
+		k_spinlock_init(&sof->clocks[i].lock);
 }

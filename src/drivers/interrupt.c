@@ -53,14 +53,14 @@ int interrupt_cascade_register(const struct irq_cascade_tmpl *tmpl)
 {
 	struct cascade_root *root = cascade_root_get();
 	struct irq_cascade_desc **cascade;
-	unsigned long flags;
+	k_spinlock_key_t key;
 	unsigned int i;
 	int ret;
 
 	if (!tmpl->name || !tmpl->ops)
 		return -EINVAL;
 
-	spin_lock_irq(&root->lock, flags);
+	key = k_spin_lock(&root->lock);
 
 	for (cascade = &root->list; *cascade;
 	     cascade = &(*cascade)->next) {
@@ -74,7 +74,7 @@ int interrupt_cascade_register(const struct irq_cascade_tmpl *tmpl)
 
 	*cascade = rzalloc(SOF_MEM_ZONE_SYS_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(**cascade));
 
-	spinlock_init(&(*cascade)->lock);
+	k_spinlock_init(&(*cascade)->lock);
 
 	for (i = 0; i < PLATFORM_IRQ_CHILDREN; i++)
 		list_init(&(*cascade)->child[i].list);
@@ -95,7 +95,7 @@ int interrupt_cascade_register(const struct irq_cascade_tmpl *tmpl)
 
 unlock:
 
-	spin_unlock_irq(&root->lock, flags);
+	k_spin_unlock(&root->lock, key);
 
 	return ret;
 }
@@ -104,8 +104,8 @@ int interrupt_get_irq(unsigned int irq, const char *name)
 {
 	struct cascade_root *root = cascade_root_get();
 	struct irq_cascade_desc *cascade;
-	unsigned long flags;
 	int ret = -ENODEV;
+	k_spinlock_key_t key;
 
 	if (!name || name[0] == '\0')
 		return irq;
@@ -117,7 +117,7 @@ int interrupt_get_irq(unsigned int irq, const char *name)
 		return -EINVAL;
 	}
 
-	spin_lock_irq(&root->lock, flags);
+	key = k_spin_lock(&root->lock);
 
 	for (cascade = root->list; cascade; cascade = cascade->next) {
 		/* .name is non-volatile */
@@ -129,7 +129,7 @@ int interrupt_get_irq(unsigned int irq, const char *name)
 	}
 
 
-	spin_unlock_irq(&root->lock, flags);
+	k_spin_unlock(&root->lock, key);
 
 	return ret;
 }
@@ -138,12 +138,12 @@ struct irq_cascade_desc *interrupt_get_parent(uint32_t irq)
 {
 	struct cascade_root *root = cascade_root_get();
 	struct irq_cascade_desc *cascade, *c = NULL;
-	unsigned long flags;
+	k_spinlock_key_t key;
 
 	if (irq < PLATFORM_IRQ_HW_NUM)
 		return NULL;
 
-	spin_lock_irq(&root->lock, flags);
+	key = k_spin_lock(&root->lock);
 
 	for (cascade = root->list; cascade; cascade = cascade->next) {
 		if (irq >= cascade->irq_base &&
@@ -155,7 +155,7 @@ struct irq_cascade_desc *interrupt_get_parent(uint32_t irq)
 	}
 
 
-	spin_unlock_irq(&root->lock, flags);
+	k_spin_unlock(&root->lock, key);
 
 	return c;
 }
@@ -166,7 +166,7 @@ void interrupt_init(struct sof *sof)
 						sizeof(cascade_root));
 
 	sof->cascade_root->last_irq = PLATFORM_IRQ_FIRST_CHILD - 1;
-	spinlock_init(&sof->cascade_root->lock);
+	k_spinlock_init(&sof->cascade_root->lock);
 }
 
 static int irq_register_child(struct irq_cascade_desc *cascade, int irq,
@@ -277,14 +277,14 @@ static uint32_t irq_enable_child(struct irq_cascade_desc *cascade, int irq,
 	struct irq_child *child;
 	unsigned int child_idx;
 	struct list_item *list;
-	unsigned long flags;
+	k_spinlock_key_t key;
 
 	/*
 	 * Locking is child to parent: when called recursively we are already
 	 * holding the child's lock and then also taking the parent's lock. The
 	 * same holds for the interrupt_(un)register() paths.
 	 */
-	spin_lock_irq(&cascade->lock, flags);
+	key = k_spin_lock(&cascade->lock);
 
 	child = cascade->child + hw_irq;
 	child_idx = cascade->global_mask ? 0 : core;
@@ -311,7 +311,7 @@ static uint32_t irq_enable_child(struct irq_cascade_desc *cascade, int irq,
 	}
 
 
-	spin_unlock_irq(&cascade->lock, flags);
+	k_spin_unlock(&cascade->lock, key);
 
 	return 0;
 }
@@ -324,9 +324,9 @@ static uint32_t irq_disable_child(struct irq_cascade_desc *cascade, int irq,
 	struct irq_child *child;
 	unsigned int child_idx;
 	struct list_item *list;
-	unsigned long flags;
+	k_spinlock_key_t key;
 
-	spin_lock_irq(&cascade->lock, flags);
+	key = k_spin_lock(&cascade->lock);
 
 	child = cascade->child + hw_irq;
 	child_idx = cascade->global_mask ? 0 : core;
@@ -356,7 +356,7 @@ static uint32_t irq_disable_child(struct irq_cascade_desc *cascade, int irq,
 	}
 
 
-	spin_unlock_irq(&cascade->lock, flags);
+	k_spin_unlock(&cascade->lock, key);
 
 	return 0;
 }
@@ -370,8 +370,7 @@ static int interrupt_register_internal(uint32_t irq, void (*handler)(void *arg),
 				       void *arg, struct irq_desc *desc)
 {
 	struct irq_cascade_desc *cascade;
-	/* Avoid a bogus compiler warning */
-	unsigned long flags = 0;
+	k_spinlock_key_t key;
 	int ret;
 
 	/* no parent means we are registering DSP internal IRQ */
@@ -389,9 +388,9 @@ static int interrupt_register_internal(uint32_t irq, void (*handler)(void *arg),
 #endif
 	}
 
-	spin_lock_irq(&cascade->lock, flags);
+	key = k_spin_lock(&cascade->lock);
 	ret = irq_register_child(cascade, irq, handler, arg, desc);
-	spin_unlock_irq(&cascade->lock, flags);
+	k_spin_unlock(&cascade->lock, key);
 
 	return ret;
 }
@@ -405,8 +404,7 @@ static void interrupt_unregister_internal(uint32_t irq, const void *arg,
 					  struct irq_desc *desc)
 {
 	struct irq_cascade_desc *cascade;
-	/* Avoid a bogus compiler warning */
-	unsigned long flags = 0;
+	k_spinlock_key_t key;
 
 	/* no parent means we are unregistering DSP internal IRQ */
 	cascade = interrupt_get_parent(irq);
@@ -424,9 +422,9 @@ static void interrupt_unregister_internal(uint32_t irq, const void *arg,
 		return;
 	}
 
-	spin_lock_irq(&cascade->lock, flags);
+	key = k_spin_lock(&cascade->lock);
 	irq_unregister_child(cascade, irq, arg, desc);
-	spin_unlock_irq(&cascade->lock, flags);
+	k_spin_unlock(&cascade->lock, key);
 }
 
 uint32_t interrupt_enable(uint32_t irq, void *arg)

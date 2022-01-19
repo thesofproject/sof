@@ -36,7 +36,7 @@ DECLARE_TR_CTX(pipe_tr, SOF_UUID(pipe_uuid), LOG_LEVEL_INFO);
 /* lookup table to determine busy/free pipeline metadata objects */
 struct pipeline_posn {
 	bool posn_offset[PPL_POSN_OFFSETS];	/**< available offsets */
-	spinlock_t lock;			/**< lock mechanism */
+	struct k_spinlock lock;			/**< lock mechanism */
 };
 /* the pipeline position lookup table */
 static SHARED_DATA struct pipeline_posn pipeline_posn;
@@ -60,8 +60,9 @@ static inline int pipeline_posn_offset_get(uint32_t *posn_offset)
 	struct pipeline_posn *pipeline_posn = pipeline_posn_get();
 	int ret = -EINVAL;
 	uint32_t i;
+	k_spinlock_key_t key;
 
-	spin_lock(&pipeline_posn->lock);
+	key = k_spin_lock(&pipeline_posn->lock);
 
 	for (i = 0; i < PPL_POSN_OFFSETS; ++i) {
 		if (!pipeline_posn->posn_offset[i]) {
@@ -73,7 +74,7 @@ static inline int pipeline_posn_offset_get(uint32_t *posn_offset)
 	}
 
 
-	spin_unlock(&pipeline_posn->lock);
+	k_spin_unlock(&pipeline_posn->lock, key);
 
 	return ret;
 }
@@ -86,20 +87,20 @@ static inline void pipeline_posn_offset_put(uint32_t posn_offset)
 {
 	struct pipeline_posn *pipeline_posn = pipeline_posn_get();
 	int i = posn_offset / sizeof(struct sof_ipc_stream_posn);
+	k_spinlock_key_t key;
 
-	spin_lock(&pipeline_posn->lock);
+	key = k_spin_lock(&pipeline_posn->lock);
 
 	pipeline_posn->posn_offset[i] = false;
 
-
-	spin_unlock(&pipeline_posn->lock);
+	k_spin_unlock(&pipeline_posn->lock, key);
 }
 
 void pipeline_posn_init(struct sof *sof)
 {
 	sof->pipeline_posn = platform_shared_get(&pipeline_posn,
 						 sizeof(pipeline_posn));
-	spinlock_init(&sof->pipeline_posn->lock);
+	k_spinlock_init(&sof->pipeline_posn->lock);
 }
 
 /* create new pipeline - returns pipeline id or negative error */

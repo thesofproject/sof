@@ -66,7 +66,7 @@ extern struct tr_ctx ipc_tr;
 #define IPC_TASK_SECONDARY_CORE	BIT(2)
 
 struct ipc {
-	spinlock_t lock;	/* locking mechanism */
+	struct k_spinlock lock;	/* locking mechanism */
 	void *comp_data;
 
 	/* PM */

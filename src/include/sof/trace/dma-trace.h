@@ -44,7 +44,7 @@ struct dma_trace_data {
 				   *  copied by dma connected to host
 				   */
 	uint32_t dropped_entries; /* amount of dropped entries */
-	spinlock_t lock; /* dma trace lock */
+	struct k_spinlock lock; /* dma trace lock */
 };
 
 int dma_trace_init_early(struct sof *sof);

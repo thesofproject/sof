@@ -68,7 +68,7 @@ int dai_init(struct sof *sof)
 
 	/* initialize spin locks early to enable ref counting */
 	for (i = 0; i < ARRAY_SIZE(ssp); i++)
-		spinlock_init(&ssp[i].lock);
+		k_spinlock_init(&ssp[i].lock);
 
 	sof->dai_info = &lib_dai;
 

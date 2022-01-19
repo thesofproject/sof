@@ -78,7 +78,7 @@ struct mm {
 
 	struct mm_info total;
 	uint32_t heap_trace_updated;	/* updates that can be presented */
-	spinlock_t lock;	/* all allocs and frees are atomic */
+	struct k_spinlock lock;	/* all allocs and frees are atomic */
 };
 
 /* Heap save/restore contents and context for PM D0/D3 events */

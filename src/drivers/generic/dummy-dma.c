@@ -223,10 +223,10 @@ static ssize_t dummy_dma_do_copies(struct dma_chan_pdata *pdata, int bytes)
 static struct dma_chan_data *dummy_dma_channel_get(struct dma *dma,
 						   unsigned int req_chan)
 {
-	uint32_t flags;
+	k_spinlock_key_t key;
 	int i;
 
-	spin_lock_irq(&dma->lock, flags);
+	key = k_spin_lock(&dma->lock);
 	for (i = 0; i < dma->plat_data.channels; i++) {
 		/* use channel if it's free */
 		if (dma->chan[i].status == COMP_STATE_INIT) {
@@ -235,11 +235,11 @@ static struct dma_chan_data *dummy_dma_channel_get(struct dma *dma,
 			atomic_add(&dma->num_channels_busy, 1);
 
 			/* return channel */
-			spin_unlock_irq(&dma->lock, flags);
+			k_spin_unlock(&dma->lock, key);
 			return &dma->chan[i];
 		}
 	}
-	spin_unlock_irq(&dma->lock, flags);
+	k_spin_unlock(&dma->lock, key);
 	tr_err(&ddma_tr, "dummy-dmac: %d no free channel",
 	       dma->plat_data.id);
 	return NULL;
@@ -272,11 +272,11 @@ static void dummy_dma_channel_put_unlocked(struct dma_chan_data *channel)
  */
 static void dummy_dma_channel_put(struct dma_chan_data *channel)
 {
-	uint32_t flags;
+	k_spinlock_key_t key;
 
-	spin_lock_irq(&channel->dma->lock, flags);
+	key = k_spin_lock(&channel->dma->lock);
 	dummy_dma_channel_put_unlocked(channel);
-	spin_unlock_irq(&channel->dma->lock, flags);
+	k_spin_unlock(&channel->dma->lock, key);
 }
 
 /* Since copies are synchronous, the triggers do nothing */
@@ -332,10 +332,10 @@ static int dummy_dma_set_config(struct dma_chan_data *channel,
 				struct dma_sg_config *config)
 {
 	struct dma_chan_pdata *ch = dma_chan_get_data(channel);
-	uint32_t flags;
+	k_spinlock_key_t key;
 	int ret = 0;
 
-	spin_lock_irq(&channel->dma->lock, flags);
+	key = k_spin_lock(&channel->dma->lock);
 
 	if (!config->elem_array.count) {
 		tr_err(&ddma_tr, "dummy-dmac: %d channel %d no DMA descriptors",
@@ -364,7 +364,7 @@ static int dummy_dma_set_config(struct dma_chan_data *channel,
 
 	channel->status = COMP_STATE_PREPARE;
 out:
-	spin_unlock_irq(&channel->dma->lock, flags);
+	k_spin_unlock(&channel->dma->lock, key);
 	return ret;
 }
 
