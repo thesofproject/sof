@@ -8,6 +8,7 @@
 #include <sof/audio/component.h>
 #include <sof/audio/format.h>
 #include <sof/audio/kpb.h>
+#include <sof/audio/ipc-config.h>
 #include <sof/common.h>
 #include <sof/debug/panic.h>
 #include <sof/ipc/msg.h>
@@ -84,25 +85,21 @@ static void notify_kpb(const struct comp_dev *dev)
 }
 
 static struct comp_dev *ghd_create(const struct comp_driver *drv,
-				   struct sof_ipc_comp *comp_template)
+				   struct comp_ipc_config *config,
+				   void *spec)
 {
 	struct comp_dev *dev;
 	struct comp_data *cd;
-	struct sof_ipc_comp_process *comp;
-	int ret;
 
 	comp_cl_info(drv, "ghd_create()");
 
 	/* Create component device with an effect processing component */
-	dev = comp_alloc(drv, COMP_SIZE(struct sof_ipc_comp_process));
+	dev = comp_alloc(drv, sizeof(*dev));
 	if (!dev)
 		return NULL;
 
-	comp = COMP_GET_IPC(dev, sof_ipc_comp_process);
-	ret = memcpy_s(comp, sizeof(*comp), comp_template,
-		       sizeof(struct sof_ipc_comp_process));
-	if (ret)
-		goto fail;
+	dev->drv = drv;
+	dev->ipc_config = *config;
 
 	/* Create private component data */
 	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
@@ -112,7 +109,7 @@ static struct comp_dev *ghd_create(const struct comp_driver *drv,
 	comp_set_drvdata(dev, cd);
 
 	/* Build component event */
-	ipc_build_comp_event(&cd->event, comp->comp.type, comp->comp.id);
+	ipc_build_comp_event(&cd->event, dev->ipc_config.type, dev->ipc_config.id);
 	cd->event.event_type = SOF_CTRL_EVENT_KD;
 	cd->event.num_elems = 0;
 
