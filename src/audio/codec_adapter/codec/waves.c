@@ -43,6 +43,7 @@ struct waves_codec_data {
 	uint32_t                response_max_bytes;
 	uint32_t                request_max_bytes;
 	void                    *response;
+	struct module_config setup_cfg;
 };
 
 enum waves_codec_params {
@@ -507,25 +508,30 @@ static int waves_effect_message(struct comp_dev *dev, void *data, uint32_t size)
 }
 
 /* apply codec config */
-static int waves_effect_config(struct comp_dev *dev, enum module_cfg_type type)
+static int waves_effect_config(struct comp_dev *dev)
 {
 	struct module_config *cfg;
 	struct module_data *codec = comp_get_module_data(dev);
+	struct waves_codec_data *waves_codec = codec->private;
 	struct module_param *param;
 	uint32_t index;
 	uint32_t param_number = 0;
 	int ret = 0;
 
-	comp_info(dev, "waves_codec_configure() start type %d", type);
+	comp_info(dev, "waves_codec_configure() start");
 
-	cfg = (type == MODULE_CFG_SETUP) ? &codec->s_cfg : &codec->r_cfg;
+	cfg = &codec->cfg;
+
+	/* use setup config if no runtime config available */
+	if (!cfg->avail)
+		cfg = &waves_codec->setup_cfg;
 
 	comp_info(dev, "waves_codec_configure() config %p, size %d, avail %d",
 		  cfg->data, cfg->size, cfg->avail);
 
 	if (!cfg->avail || !cfg->size) {
-		comp_err(dev, "waves_codec_configure() no config for type %d, avail %d, size %d",
-			 type, cfg->avail, cfg->size);
+		comp_err(dev, "waves_codec_configure() no config, avail %d, size %d",
+			 cfg->avail, cfg->size);
 		return -EINVAL;
 	}
 
@@ -580,21 +586,14 @@ static int waves_effect_setup_config(struct comp_dev *dev)
 
 	comp_dbg(dev, "waves_effect_setup_config() start");
 
-	if (!codec->s_cfg.avail && !codec->s_cfg.size) {
-		comp_err(dev, "waves_effect_startup_config() setup config is not provided");
-		return -EINVAL;
+	ret = waves_effect_config(dev);
+	if (ret < 0) {
+		comp_err(dev, "waves_effect_setup_config(): fail to apply config");
+		return ret;
 	}
-
-	if (!codec->s_cfg.avail) {
-		comp_warn(dev, "waves_effect_startup_config() using old setup config");
-		codec->s_cfg.avail = true;
-	}
-
-	ret = waves_effect_config(dev, MODULE_CFG_SETUP);
-	codec->s_cfg.avail = false;
 
 	comp_dbg(dev, "waves_effect_setup_config() done");
-	return ret;
+	return 0;
 }
 
 static int waves_codec_init(struct comp_dev *dev)
@@ -623,6 +622,31 @@ static int waves_codec_init(struct comp_dev *dev)
 
 	if (ret)
 		comp_err(dev, "waves_codec_init() failed %d", ret);
+
+	waves_codec->setup_cfg.avail = false;
+
+	/* copy the setup config only for the first init */
+	if (codec->state == MODULE_DISABLED && codec->cfg.avail) {
+		struct module_config *setup_cfg = &waves_codec->setup_cfg;
+
+		/* allocate memory for set up config */
+		setup_cfg->data = rballoc(0, SOF_MEM_CAPS_RAM, codec->cfg.size);
+		if (!setup_cfg->data) {
+			comp_err(dev, "cadence_codec_init(): failed to alloc setup config");
+			module_free_memory(dev, waves_codec);
+			return -ENOMEM;
+		}
+
+		/* copy the setup config */
+		setup_cfg->size = codec->cfg.size;
+		ret = memcpy_s(setup_cfg->data, setup_cfg->size, codec->cfg.data, setup_cfg->size);
+		if (ret) {
+			comp_err(dev, "cadence_codec_init(): failed to copy setup config %d", ret);
+			module_free_memory(dev, waves_codec);
+			return ret;
+		}
+		setup_cfg->avail = true;
+	}
 
 	comp_dbg(dev, "waves_codec_init() done");
 	return ret;
@@ -725,7 +749,7 @@ static int waves_codec_apply_config(struct comp_dev *dev)
 	int ret;
 
 	comp_dbg(dev, "waves_codec_apply_config() start");
-	ret =  waves_effect_config(dev, MODULE_CFG_RUNTIME);
+	ret =  waves_effect_config(dev);
 
 	if (ret)
 		comp_err(dev, "waves_codec_apply_config() failed %d", ret);
