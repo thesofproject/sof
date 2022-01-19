@@ -287,13 +287,14 @@ static inline void handle_irq_batch(struct irq_cascade_desc *cascade,
 	struct irq_desc *child = NULL;
 	int bit;
 	bool handled;
+	k_spinlock_key_t key;
 
 	while (status) {
 		bit = get_first_irq(status);
 		handled = false;
 		status &= ~(1ull << bit); /* Release interrupt */
 
-		spin_lock(&cascade->lock);
+		key = k_spin_lock(&cascade->lock);
 
 		/* Get child if any and run handler */
 		list_for_item(clist, &cascade->child[bit].list) {
@@ -301,16 +302,16 @@ static inline void handle_irq_batch(struct irq_cascade_desc *cascade,
 
 			if (child->handler && (child->cpu_mask & 1 << core)) {
 				/* run handler in non atomic context */
-				spin_unlock(&cascade->lock);
+				k_spin_unlock(&cascade->lock, key);
 				child->handler(child->handler_arg);
-				spin_lock(&cascade->lock);
+				k_spin_lock(&cascade->lock);
 
 				handled = true;
 			}
 
 		}
 
-		spin_unlock(&cascade->lock);
+		k_spin_unlock(&cascade->lock, key);
 
 		if (!handled) {
 			tr_err(&irq_i_tr, "irq_handler(): nobody cared, bit %d",

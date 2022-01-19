@@ -13,21 +13,21 @@
 #include <stdint.h>
 #include <xtensa/config/core-isa.h>
 
-typedef struct {
+struct k_spinlock {
 	volatile uint32_t lock;
 #if CONFIG_DEBUG_LOCKS
 	uint32_t user;
 #endif
-} spinlock_t;
+};
 
-static inline void arch_spinlock_init(spinlock_t *lock)
+static inline void arch_spinlock_init(struct k_spinlock *lock)
 {
 	lock->lock = 0;
 }
 
 #if XCHAL_HAVE_EXCLUSIVE && CONFIG_XTENSA_EXCLUSIVE && __XCC__
 
-static inline void arch_spin_lock(spinlock_t *lock)
+static inline void arch_spin_lock(struct k_spinlock *lock)
 {
 	uint32_t result;
 
@@ -43,27 +43,9 @@ static inline void arch_spin_lock(spinlock_t *lock)
 		: "memory");
 }
 
-static inline int arch_try_lock(spinlock_t *lock)
-{
-	uint32_t result;
-
-	__asm__ __volatile__(
-		"       movi %0, 0\n"
-		"       l32ex %0, %1\n"
-		"       movi %0, 1\n"
-		"       s32ex %0, %1\n"
-		"       getex %0\n"
-		: "=&a" (result)
-		: "a" (&lock->lock)
-		: "memory");
-
-	/* return 0 for failed lock, 1 otherwise */
-	return result ? 0 : 1;
-}
-
 #elif XCHAL_HAVE_S32C1I
 
-static inline void arch_spin_lock(spinlock_t *lock)
+static inline void arch_spin_lock(struct k_spinlock *lock)
 {
 	uint32_t result;
 
@@ -82,23 +64,6 @@ static inline void arch_spin_lock(spinlock_t *lock)
 		: "memory");
 }
 
-static inline int arch_try_lock(spinlock_t *lock)
-{
-	uint32_t result;
-
-	__asm__ __volatile__(
-		"       movi    %0, 0\n"
-		"       wsr     %0, scompare1\n"
-		"       movi    %0, 1\n"
-		"       s32c1i  %0, %1, 0\n"
-		: "=&a" (result)
-		: "a" (&lock->lock)
-		: "memory");
-
-	/* return 0 for failed lock, 1 otherwise */
-	return result ? 0 : 1;
-}
-
 #else
 
 #if CONFIG_CORE_COUNT > 1
@@ -111,7 +76,7 @@ static inline int arch_try_lock(spinlock_t *lock)
  * The ISA has no atomic operations so use integer arithmetic on uniprocessor systems.
  * This helps support GCC and qemu emulation of certain targets.
  */
-static inline void arch_spin_lock(spinlock_t *lock)
+static inline void arch_spin_lock(struct k_spinlock *lock)
 {
 	uint32_t result;
 
@@ -123,24 +88,11 @@ static inline void arch_spin_lock(spinlock_t *lock)
 	} while (!result);
 }
 
-static inline int arch_try_lock(spinlock_t *lock)
-{
-	uint32_t result;
-
-	if (lock->lock == 0) {
-		lock->lock = 1;
-		result = 1;
-	}
-
-	/* return 0 for failed lock, 1 otherwise */
-	return result ? 0 : 1;
-}
-
 #endif /* XCHAL_HAVE_EXCLUSIVE && CONFIG_XTENSA_EXCLUSIVE && __XCC__ */
 
 #if XCHAL_HAVE_EXCLUSIVE || XCHAL_HAVE_S32C1I
 
-static inline void arch_spin_unlock(spinlock_t *lock)
+static inline void arch_spin_unlock(struct k_spinlock *lock)
 {
 	uint32_t result;
 
@@ -164,7 +116,7 @@ static inline void arch_spin_unlock(spinlock_t *lock)
  * The ISA has no atomic operations so use integer arithmetic on uniprocessor systems.
  * This helps support GCC and qemu emulation of certain targets.
  */
-static inline void arch_spin_unlock(spinlock_t *lock)
+static inline void arch_spin_unlock(struct k_spinlock *lock)
 {
 	uint32_t result;
 

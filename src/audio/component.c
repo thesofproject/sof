@@ -32,10 +32,11 @@ DECLARE_TR_CTX(comp_tr, SOF_UUID(comp_uuid), LOG_LEVEL_INFO);
 int comp_register(struct comp_driver_info *drv)
 {
 	struct comp_driver_list *drivers = comp_drivers_get();
+	k_spinlock_key_t key;
 
-	spin_lock(&drivers->lock);
+	key = k_spin_lock(&drivers->lock);
 	list_item_prepend(&drv->list, &drivers->list);
-	spin_unlock(&drivers->lock);
+	k_spin_unlock(&drivers->lock, key);
 
 	return 0;
 }
@@ -43,10 +44,11 @@ int comp_register(struct comp_driver_info *drv)
 void comp_unregister(struct comp_driver_info *drv)
 {
 	struct comp_driver_list *drivers = comp_drivers_get();
+	k_spinlock_key_t key;
 
-	spin_lock(&drivers->lock);
+	key = k_spin_lock(&drivers->lock);
 	list_item_del(&drv->list);
-	spin_unlock(&drivers->lock);
+	k_spin_unlock(&drivers->lock, key);
 }
 
 /* NOTE: Keep the component state diagram up to date:
@@ -141,7 +143,7 @@ void sys_comp_init(struct sof *sof)
 	sof->comp_drivers = platform_shared_get(&cd, sizeof(cd));
 
 	list_init(&sof->comp_drivers->list);
-	spinlock_init(&sof->comp_drivers->lock);
+	k_spinlock_init(&sof->comp_drivers->lock);
 }
 
 void comp_get_copy_limits(struct comp_buffer *source, struct comp_buffer *sink,

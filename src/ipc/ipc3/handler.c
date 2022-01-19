@@ -456,17 +456,17 @@ static int ipc_stream_trigger(uint32_t header)
 	 * synchronously.
 	 */
 	if (pipeline_is_timer_driven(pcm_dev->cd->pipeline)) {
-		uint32_t flags;
+		k_spinlock_key_t key;
 
-		spin_lock_irq(&ipc->lock, flags);
+		key = k_spin_lock(&ipc->lock);
 		ipc->task_mask |= IPC_TASK_IN_THREAD;
-		spin_unlock_irq(&ipc->lock, flags);
+		k_spin_unlock(&ipc->lock, key);
 
 		ret = pipeline_trigger(pcm_dev->cd->pipeline, pcm_dev->cd, cmd);
 		if (ret <= 0) {
-			spin_lock_irq(&ipc->lock, flags);
+			key = k_spin_lock(&ipc->lock);
 			ipc->task_mask &= ~IPC_TASK_IN_THREAD;
-			spin_unlock_irq(&ipc->lock, flags);
+			k_spin_unlock(&ipc->lock, key);
 		}
 	} else {
 		ret = pipeline_trigger_run(pcm_dev->cd->pipeline, pcm_dev->cd, cmd);

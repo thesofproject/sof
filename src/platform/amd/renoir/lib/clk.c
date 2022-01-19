@@ -134,7 +134,7 @@ void platform_clock_init(struct sof *sof)
 			.notification_mask = NOTIFIER_TARGET_CORE_MASK(i),
 			.set_freq = NULL,
 		};
-		spinlock_init(&sof->clocks[i].lock);
+		k_spinlock_init(&sof->clocks[i].lock);
 	}
 	acp_change_clock_notify(600000000);
 }

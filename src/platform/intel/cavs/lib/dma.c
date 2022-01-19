@@ -255,7 +255,7 @@ int dmac_init(struct sof *sof)
 
 	/* early lock initialization for ref counting */
 	for (i = 0; i < sof->dma_info->num_dmas; i++)
-		spinlock_init(&sof->dma_info->dma_array[i].lock);
+		k_spinlock_init(&sof->dma_info->dma_array[i].lock);
 
 	return 0;
 }

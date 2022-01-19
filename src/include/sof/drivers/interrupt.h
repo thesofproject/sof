@@ -81,7 +81,7 @@ struct irq_cascade_desc {
 							  * cannot mask input
 							  * interrupts per core
 							  */
-	spinlock_t lock;				/**< protect child
+	struct k_spinlock lock;				/**< protect child
 							  * lists, enable and
 							  * child counters
 							  */
@@ -109,7 +109,7 @@ struct irq_cascade_tmpl {
  * \brief Cascading interrupt controller root.
  */
 struct cascade_root {
-	spinlock_t lock;		/**< locking mechanism */
+	struct k_spinlock lock;		/**< locking mechanism */
 	struct irq_cascade_desc *list;	/**< list of child cascade irqs */
 	int last_irq;			/**< last registered cascade irq */
 };

@@ -79,12 +79,12 @@ static inline void select_cpu_clock_hw(int freq_idx, bool release_unused)
 static inline void select_cpu_clock(int freq_idx, bool release_unused)
 {
 	struct clock_info *clk_info = clocks_get();
-	int flags[CONFIG_CORE_COUNT];
+	k_spinlock_key_t key[CONFIG_CORE_COUNT];
 	int i;
 
 	/* lock clock for all cores */
 	for (i = 0; i < CONFIG_CORE_COUNT; i++)
-		spin_lock_irq(&clk_info[CLK_CPU(i)].lock, flags[i]);
+		key[i] = k_spin_lock(&clk_info[CLK_CPU(i)].lock);
 
 	/* change clock */
 	select_cpu_clock_hw(freq_idx, release_unused);
@@ -93,7 +93,7 @@ static inline void select_cpu_clock(int freq_idx, bool release_unused)
 
 	/* unlock clock for all cores */
 	for (i = CONFIG_CORE_COUNT - 1; i >= 0; i--)
-		spin_unlock_irq(&clk_info[CLK_CPU(i)].lock, flags[i]);
+		k_spin_unlock(&clk_info[CLK_CPU(i)].lock, key[i]);
 }
 
 /* LPRO_ONLY mode */
@@ -178,13 +178,13 @@ static void platform_clock_low_power_mode(int clock, bool enable)
 void platform_clock_on_waiti(void)
 {
 	struct pm_runtime_data *prd = pm_runtime_data_get();
-	uint32_t flags;
+	k_spinlock_key_t key;
 	int freq_idx;
 	int lowest_freq_idx;
 	bool pm_is_active;
 
 	/* hold the prd->lock for possible active_freq_idx switching */
-	spin_lock_irq(&prd->lock, flags);
+	key = k_spin_lock(&prd->lock);
 
 	freq_idx = *cache_to_uncache(&active_freq_idx);
 	lowest_freq_idx = get_lowest_freq_idx(CLK_CPU(cpu_get_id()));
@@ -200,7 +200,7 @@ void platform_clock_on_waiti(void)
 			set_cpu_current_freq_idx(lowest_freq_idx, true);
 	}
 
-	spin_unlock_irq(&prd->lock, flags);
+	k_spin_unlock(&prd->lock, key);
 
 	/* check if waiti HPRO->LPRO switching is needed */
 	pm_runtime_put(CORE_HP_CLK, cpu_get_id());
@@ -253,13 +253,13 @@ static void platform_clock_low_power_mode(int clock, bool enable)
 void platform_clock_on_waiti(void)
 {
 	struct pm_runtime_data *prd = pm_runtime_data_get();
-	uint32_t flags;
+	k_spinlock_key_t key;
 	int freq_idx;
 	int lowest_freq_idx;
 	bool pm_is_active;
 
 	/* hold the prd->lock for possible active_freq_idx switching */
-	spin_lock_irq(&prd->lock, flags);
+	key = k_spin_lock(&prd->lock);
 
 	freq_idx = *cache_to_uncache(&active_freq_idx);
 	lowest_freq_idx = get_lowest_freq_idx(CLK_CPU(cpu_get_id()));
@@ -275,18 +275,18 @@ void platform_clock_on_waiti(void)
 			set_cpu_current_freq_idx(lowest_freq_idx, true);
 	}
 
-	spin_unlock_irq(&prd->lock, flags);
+	k_spin_unlock(&prd->lock, key);
 }
 
 void platform_clock_on_wakeup(void)
 {
 	struct pm_runtime_data *prd = pm_runtime_data_get();
-	uint32_t flags;
+	k_spinlock_key_t key;
 	int current_idx;
 	int target_idx;
 
 	/* hold the prd->lock for possible active_freq_idx switching */
-	spin_lock_irq(&prd->lock, flags);
+	key = k_spin_lock(&prd->lock);
 
 	current_idx = get_current_freq_idx(CLK_CPU(cpu_get_id()));
 	target_idx = *cache_to_uncache(&active_freq_idx);
@@ -295,7 +295,7 @@ void platform_clock_on_wakeup(void)
 	if (current_idx != target_idx)
 		set_cpu_current_freq_idx(target_idx, true);
 
-	spin_unlock_irq(&prd->lock, flags);
+	k_spin_unlock(&prd->lock, key);
 }
 
 #endif
@@ -340,7 +340,7 @@ void platform_clock_init(struct sof *sof)
 			.low_power_mode = platform_clock_low_power_mode,
 		};
 
-		spinlock_init(&sof->clocks[i].lock);
+		k_spinlock_init(&sof->clocks[i].lock);
 	}
 
 	sof->clocks[CLK_SSP] = (struct clock_info) {
@@ -353,6 +353,5 @@ void platform_clock_init(struct sof *sof)
 		.set_freq = NULL,
 	};
 
-	spinlock_init(&sof->clocks[CLK_SSP].lock);
-
+	k_spinlock_init(&sof->clocks[CLK_SSP].lock);
 }

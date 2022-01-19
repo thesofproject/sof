@@ -44,8 +44,9 @@ static int ssp_set_config(struct dai *dai, struct ipc_config_dai *common_config,
 	uint32_t format;
 	bool inverted_frame = false;
 	int ret = 0;
+	k_spinlock_key_t key;
 
-	spin_lock(&dai->lock);
+	key = k_spin_lock(&dai->lock);
 
 	/* is playback/capture already running */
 	if (ssp->state[DAI_DIR_PLAYBACK] == COMP_STATE_ACTIVE ||
@@ -356,7 +357,7 @@ static int ssp_set_config(struct dai *dai, struct ipc_config_dai *common_config,
 	dai_info(dai, "ssp_set_config(), done");
 
 out:
-	spin_unlock(&dai->lock);
+	k_spin_unlock(&dai->lock, key);
 
 	return ret;
 }
@@ -397,8 +398,9 @@ static int ssp_get_hw_params(struct dai *dai,
 static void ssp_start(struct dai *dai, int direction)
 {
 	struct ssp_pdata *ssp = dai_get_drvdata(dai);
+	k_spinlock_key_t key;
 
-	spin_lock(&dai->lock);
+	key = k_spin_lock(&dai->lock);
 
 	dai_info(dai, "ssp_start()");
 
@@ -420,15 +422,16 @@ static void ssp_start(struct dai *dai, int direction)
 	/* enable port */
 	ssp->state[direction] = COMP_STATE_ACTIVE;
 
-	spin_unlock(&dai->lock);
+	k_spin_unlock(&dai->lock, key);
 }
 
 /* stop the SSP for either playback or capture */
 static void ssp_stop(struct dai *dai, int direction)
 {
 	struct ssp_pdata *ssp = dai_get_drvdata(dai);
+	k_spinlock_key_t key;
 
-	spin_lock(&dai->lock);
+	key = k_spin_lock(&dai->lock);
 
 	/* stop Rx if neeed */
 	if (direction == DAI_DIR_CAPTURE &&
@@ -457,7 +460,7 @@ static void ssp_stop(struct dai *dai, int direction)
 		dai_info(dai, "ssp_stop(), SSP port disabled");
 	}
 
-	spin_unlock(&dai->lock);
+	k_spin_unlock(&dai->lock, key);
 }
 
 static void ssp_pause(struct dai *dai, int direction)

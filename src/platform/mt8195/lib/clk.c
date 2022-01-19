@@ -191,7 +191,7 @@ void platform_clock_init(struct sof *sof)
 			.set_freq = clock_platform_set_cpu_freq,
 		};
 
-		spinlock_init(&sof->clocks[i].lock);
+		k_spinlock_init(&sof->clocks[i].lock);
 	}
 
 	adsp_clock = 0;

@@ -41,7 +41,6 @@ void platform_clock_init(struct sof *sof)
 			.set_freq = NULL,
 		};
 
-		spinlock_init(&sof->clocks[i].lock);
+		k_spinlock_init(&sof->clocks[i].lock);
 	}
-
 }

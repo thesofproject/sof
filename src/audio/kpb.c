@@ -62,7 +62,7 @@ DECLARE_SOF_UUID("kpb-task", kpb_task_uuid, 0xe50057a5, 0x8b27, 0x4db4,
 struct comp_data {
 	enum kpb_state state; /**< current state of KPB component */
 	uint32_t state_log; /**< keeps record of KPB recent states */
-	spinlock_t lock; /**< locking mechanism for read pointer calculations */
+	struct k_spinlock lock; /**< locking mechanism for read pointer calculations */
 	struct sof_kpb_config config;   /**< component configuration data */
 	struct history_data hd; /** data related to history buffer */
 	struct task draining_task;
@@ -1024,7 +1024,7 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 			      (KPB_SAMPLE_CONTAINER_SIZE(sample_width) / 8) *
 			      kpb->config.channels;
 	size_t period_bytes_limit;
-	uint32_t flags;
+	k_spinlock_key_t key;
 
 	comp_info(dev, "kpb_init_draining(): requested draining of %d [ms] from history buffer",
 		  cli->drain_req);
@@ -1045,7 +1045,7 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 		 * in the history buffer. All we have to do now is to calculate
 		 * read pointer from which we will start draining.
 		 */
-		spin_lock_irq(&kpb->lock, flags);
+		key = k_spin_lock(&kpb->lock);
 
 		kpb_change_state(kpb, KPB_STATE_INIT_DRAINING);
 
@@ -1103,7 +1103,7 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 
 		} while (buff != first_buff);
 
-		spin_unlock_irq(&kpb->lock, flags);
+		k_spin_unlock(&kpb->lock, key);
 
 		/* Should we drain in synchronized mode (sync_draining_mode)?
 		 * Note! We have already verified host params during
@@ -1190,7 +1190,7 @@ static enum task_state kpb_draining_task(void *arg)
 	struct comp_data *kpb = comp_get_drvdata(draining_data->dev);
 	bool sync_mode_on = draining_data->sync_mode_on;
 	bool pm_is_active;
-	uint32_t flags;
+	k_spinlock_key_t key;
 
 	comp_cl_info(&comp_kpb, "kpb_draining_task(), start.");
 
@@ -1280,7 +1280,7 @@ static enum task_state kpb_draining_task(void *arg)
 		 */
 			comp_cl_info(&comp_kpb, "kpb: update drain_req by %d",
 				     *rt_stream_update);
-			spin_lock_irq(&kpb->lock, flags);
+			key = k_spin_lock(&kpb->lock);
 			drain_req += *rt_stream_update;
 			*rt_stream_update = 0;
 			if (!drain_req && kpb->state == KPB_STATE_DRAINING) {
@@ -1292,7 +1292,7 @@ static enum task_state kpb_draining_task(void *arg)
 			 */
 				kpb_change_state(kpb, KPB_STATE_HOST_COPY);
 			}
-			spin_unlock_irq(&kpb->lock, flags);
+			k_spin_unlock(&kpb->lock, key);
 		}
 	}
 

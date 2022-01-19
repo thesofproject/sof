@@ -41,7 +41,7 @@ struct clock_info {
 	uint32_t lowest_freq_idx;	/* lowest possible clock */
 	uint32_t notification_id;
 	uint32_t notification_mask;
-	spinlock_t lock;
+	struct k_spinlock lock;
 
 	/* persistent change clock value in active state */
 	int (*set_freq)(int clock, int freq_idx);
