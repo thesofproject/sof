@@ -369,7 +369,7 @@ static int ipc4_set_pipeline_state(union ipc4_message_header *ipc4)
 	struct ipc4_pipeline_set_state state;
 	uint32_t cmd, ppl_count;
 	uint32_t *ppl_id, id;
-	int ret;
+	int ret = 0;
 	int i;
 
 	state.header.dat = ipc4[0].dat;
@@ -837,7 +837,7 @@ void ipc_cmd(ipc_cmd_hdr *_hdr)
 	union ipc4_message_header *in = ipc_from_hdr(_hdr);
 	uint32_t *data = ipc_get()->comp_data;
 	enum ipc4_message_target target;
-	int err = -EINVAL;
+	int err;
 
 	if (!in)
 		return;
@@ -868,6 +868,7 @@ void ipc_cmd(ipc_cmd_hdr *_hdr)
 		/* should not reach here as we only have 2 message types */
 		tr_err(&ipc_tr, "ipc4: invalid target %d", target);
 		err = IPC4_UNKNOWN_MESSAGE_TYPE;
+		break;
 	}
 
 	if (err)
