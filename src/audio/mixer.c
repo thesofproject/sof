@@ -47,6 +47,7 @@ DECLARE_SOF_RT_UUID("mix_in", mixin_uuid, 0x39656eb2, 0x3b71, 0x4049,
 #endif
 
 DECLARE_TR_CTX(mixer_tr, SOF_UUID(mixer_uuid), LOG_LEVEL_INFO);
+DECLARE_TR_CTX(mixin_tr, SOF_UUID(mixin_uuid), LOG_LEVEL_INFO);
 
 /* mixer component private data */
 struct mixer_data {
@@ -716,8 +717,8 @@ static int mixin_bind(struct comp_dev *dev, void *data)
 {
 	struct ipc4_module_bind_unbind *bu;
 	struct comp_buffer *source_buf;
-	struct comp_buffer *sink_buf;
-	struct comp_dev *sink;
+	struct comp_buffer *sink_buf = NULL;
+	struct comp_dev *sink = NULL;
 	int src_id, sink_id;
 
 	bu = (struct ipc4_module_bind_unbind *)data;
@@ -735,6 +736,11 @@ static int mixin_bind(struct comp_dev *dev, void *data)
 				pipeline_disconnect(sink, sink_buf, PPL_CONN_DIR_BUFFER_TO_COMP);
 				break;
 			}
+		}
+
+		if (!sink_buf) {
+			comp_err(dev, "mixin_bind: no sink buffer found");
+			return -EINVAL;
 		}
 
 		source_buf = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
