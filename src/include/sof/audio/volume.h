@@ -105,6 +105,8 @@ struct vol_data {
 	int32_t mvolume[SOF_IPC_MAX_CHANNELS];	/**< mute volume */
 	int32_t rvolume[SOF_IPC_MAX_CHANNELS];	/**< ramp start volume */
 	int32_t ramp_coef[SOF_IPC_MAX_CHANNELS]; /**< parameter for slope */
+	/**< store current volume 4 times for scale_vol function */
+	int32_t *vol;
 	struct ipc_config_volume ipc_config;
 	int32_t vol_min;			/**< minimum volume */
 	int32_t vol_max;			/**< maximum volume */
