@@ -207,13 +207,12 @@ int ipc_pipeline_free(struct ipc *ipc, uint32_t comp_id)
 static struct comp_buffer *ipc4_create_buffer(struct comp_dev *src, struct comp_dev *sink,
 					      uint32_t src_queue, uint32_t dst_queue)
 {
-	struct ipc4_base_module_cfg *src_cfg, *sink_cfg;
+	struct ipc4_base_module_cfg *src_cfg;
 	struct comp_buffer *buffer = NULL;
 	struct sof_ipc_buffer ipc_buf;
 	int buf_size;
 
 	src_cfg = (struct ipc4_base_module_cfg *)comp_get_drvdata(src);
-	sink_cfg = (struct ipc4_base_module_cfg *)comp_get_drvdata(sink);
 
 	/* double it since obs is single buffer size */
 	buf_size = src_cfg->obs * 2;
@@ -622,7 +621,7 @@ int ipc4_trigger_chain_dma(struct ipc *ipc, struct ipc4_chain_dma *cdma)
 {
 	struct ipc_comp_dev *ipc_pipe;
 	uint32_t pipeline_id;
-	int ret;
+	int ret = -EINVAL;
 
 	pipeline_id = IPC4_COMP_ID(cdma->header.r.host_dma_id + IPC4_MAX_MODULE_COUNT,
 				   cdma->header.r.link_dma_id);
