@@ -290,7 +290,6 @@ static void volume_ramp(struct comp_dev *dev)
 				}
 			}
 		}
-
 	}
 
 	if (ramp_finished) {
@@ -331,6 +330,7 @@ static struct comp_dev *volume_new(const struct comp_driver *drv,
 	struct comp_dev *dev;
 	struct ipc_config_volume *vol = spec;
 	struct vol_data *cd;
+	const size_t vol_size = sizeof(int32_t) * SOF_IPC_MAX_CHANNELS * 4;
 	int i;
 
 	comp_cl_dbg(&comp_volume, "volume_new()");
@@ -343,6 +343,13 @@ static struct comp_dev *volume_new(const struct comp_driver *drv,
 	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
 	if (!cd)
 		goto fail;
+
+	/* malloc memory to store current volume 4 times to ensure the address
+	 * is 8-byte aligned for multi-way xtensa intrinsic operations.
+	 */
+	cd->vol = rballoc_align(0, SOF_MEM_CAPS_RAM, vol_size, 8);
+	if (!cd->vol)
+		goto cd_fail;
 
 	comp_set_drvdata(dev, cd);
 	cd->ipc_config = *vol;
@@ -414,6 +421,7 @@ static struct comp_dev *volume_new(const struct comp_driver *drv,
 	return dev;
 
 cd_fail:
+	rfree(cd->vol);
 	rfree(cd);
 fail:
 	rfree(dev);
@@ -430,6 +438,7 @@ static void volume_free(struct comp_dev *dev)
 
 	comp_dbg(dev, "volume_free()");
 
+	rfree(cd->vol);
 	rfree(cd);
 	rfree(dev);
 }
@@ -750,6 +759,8 @@ static int volume_copy(struct comp_dev *dev)
 
 	/* Get source, sink, number of frames etc. to process. */
 	comp_get_copy_limits_with_lock(source, sink, &c);
+	/* limit frames to be divided by 4 for alignment of 8-byte */
+	c.frames &= ~0x03;
 
 	comp_dbg(dev, "volume_copy(), source_bytes = 0x%x, sink_bytes = 0x%x",
 		 c.source_bytes, c.sink_bytes);
