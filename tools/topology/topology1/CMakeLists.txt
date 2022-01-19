@@ -207,6 +207,7 @@ set(TPLGS
 	"sof-imx8mp-wm8960-mixer\;sof-imx8mp-wm8960-mixer"
 	"sof-imx8mp-wm8960-kwd\;sof-imx8mp-wm8960-kwd"
 	"sof-imx8ulp-btsco\;sof-imx8ulp-btsco"
+	"sof-imx8ulp-9x9-btsco\;sof-imx8ulp-9x9-btsco"
 	"sof-imx8mp-wm8960\;sof-imx8mp-wm8960\;-DPPROC=volume"
 	"sof-imx8mp-wm8960\;sof-imx8mp-eq-iir-wm8960\;-DPPROC=eq-iir-volume"
 	"sof-imx8mp-wm8960\;sof-imx8mp-eq-fir-wm8960\;-DPPROC=eq-fir-volume"
