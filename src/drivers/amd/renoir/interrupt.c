@@ -98,13 +98,14 @@ static inline void acp_handle_irq(struct irq_cascade_desc *cascade,
 	struct irq_desc *child = NULL;
 	int bit;
 	bool handled;
+	k_spinlock_key_t key;
 
 	while (status) {
 		bit = get_first_irq(status);
 		handled = false;
 		status &= ~(1ull << bit);
 
-		spin_lock(&cascade->lock);
+		key = k_spin_lock(&cascade->lock);
 
 		list_for_item(clist, &cascade->child[bit].list) {
 			child = container_of(clist, struct irq_desc, irq_list);
@@ -115,7 +116,7 @@ static inline void acp_handle_irq(struct irq_cascade_desc *cascade,
 			}
 		}
 
-		spin_unlock(&cascade->lock);
+		k_spin_unlock(&cascade->lock, key);
 
 		if (!handled) {
 			tr_err(&acp_irq_tr, "irq_handler(): not handled, bit %d",

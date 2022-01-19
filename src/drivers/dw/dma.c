@@ -185,13 +185,13 @@ static inline void dw_dma_chan_reload_lli_cb(void *arg, enum notify_id type,
 static struct dma_chan_data *dw_dma_channel_get(struct dma *dma,
 						unsigned int req_chan)
 {
-	uint32_t flags;
+	k_spinlock_key_t key;
 	int i;
 
 	tr_info(&dwdma_tr, "dw_dma_channel_get(): dma %d request channel %d",
 		dma->plat_data.id, req_chan);
 
-	spin_lock_irq(&dma->lock, flags);
+	key = k_spin_lock_irq(&dma->lock);
 
 	/* find first free non draining channel */
 	for (i = 0; i < dma->plat_data.channels; i++) {
@@ -209,12 +209,12 @@ static struct dma_chan_data *dw_dma_channel_get(struct dma *dma,
 #endif
 
 		/* return channel */
-		spin_unlock_irq(&dma->lock, flags);
+		k_spin_unlock_irq(&dma->lock, key);
 		return &dma->chan[i];
 	}
 
 	/* DMA controller has no free channels */
-	spin_unlock_irq(&dma->lock, flags);
+	k_spin_unlock_irq(&dma->lock, key);
 	tr_err(&dwdma_tr, "dw_dma_channel_get(): dma %d no free channels",
 	       dma->plat_data.id);
 
@@ -249,14 +249,14 @@ static void dw_dma_channel_put_unlocked(struct dma_chan_data *channel)
 /* channel must not be running when this is called */
 static void dw_dma_channel_put(struct dma_chan_data *channel)
 {
-	uint32_t flags;
+	k_spinlock_key_t key;
 
 	tr_info(&dwdma_tr, "dw_dma_channel_put(): dma %d channel %d put",
 		channel->dma->plat_data.id, channel->index);
 
-	spin_lock_irq(&channel->dma->lock, flags);
+	key = k_spin_lock_irq(&channel->dma->lock);
 	dw_dma_channel_put_unlocked(channel);
-	spin_unlock_irq(&channel->dma->lock, flags);
+	k_spin_unlock_irq(&channel->dma->lock, key);
 }
 
 static int dw_dma_start(struct dma_chan_data *channel)
@@ -860,7 +860,7 @@ static int dw_dma_copy(struct dma_chan_data *channel, int bytes,
 		.elem = { .size = bytes },
 		.status = DMA_CB_STATUS_END,
 	};
-	uint32_t irq_flags;
+	k_spinlock_key_t key;
 
 	tr_dbg(&dwdma_tr, "dw_dma_copy(): dma %d channel %d copy",
 	       channel->dma->plat_data.id, channel->index);
@@ -890,9 +890,9 @@ static int dw_dma_copy(struct dma_chan_data *channel, int bytes,
 	dw_dma_verify_transfer(channel, &next);
 
 	/* increment current pointer */
-	spin_lock_irq(&channel->dma->lock, irq_flags);
+	key = k_spin_lock_irq(&channel->dma->lock);
 	dw_dma_increment_pointer(dw_chan, bytes);
-	spin_unlock_irq(&channel->dma->lock, irq_flags);
+	k_spin_unlock_irq(&channel->dma->lock, key);
 
 	return ret;
 }
@@ -1103,13 +1103,13 @@ static int dw_dma_get_data_size(struct dma_chan_data *channel,
 				uint32_t *avail, uint32_t *free)
 {
 	struct dw_dma_chan_data *dw_chan = dma_chan_get_data(channel);
-	uint32_t flags;
+	k_spinlock_key_t key;
 	int ret = 0;
 
 	tr_dbg(&dwdma_tr, "dw_dma_get_data_size(): dma %d channel %d get data size",
 	       channel->dma->plat_data.id, channel->index);
 
-	spin_lock_irq(&channel->dma->lock, flags);
+	key = k_spin_lock_irq(&channel->dma->lock);
 
 	if (channel->direction == DMA_DIR_HMEM_TO_LMEM ||
 	    channel->direction == DMA_DIR_DEV_TO_MEM) {
@@ -1120,7 +1120,7 @@ static int dw_dma_get_data_size(struct dma_chan_data *channel,
 		*avail = dw_chan->ptr_data.buffer_bytes - *free;
 	}
 
-	spin_unlock_irq(&channel->dma->lock, flags);
+	k_spin_unlock_irq(&channel->dma->lock, key);
 
 #if CONFIG_DMA_HW_LLI
 	if (!(dma_reg_read(channel->dma, DW_DMA_CHAN_EN) &

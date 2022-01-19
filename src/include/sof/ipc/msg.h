@@ -72,15 +72,15 @@ static inline void ipc_msg_free(struct ipc_msg *msg)
 		return;
 
 	struct ipc *ipc = ipc_get();
-	uint32_t flags;
+	k_spinlock_key_t key;
 
-	spin_lock_irq(&ipc->lock, flags);
+	key = k_spin_lock_irq(&ipc->lock);
 
 	list_item_del(&msg->list);
 	rfree(msg->tx_data);
 	rfree(msg);
 
-	spin_unlock_irq(&ipc->lock, flags);
+	k_spin_unlock_irq(&ipc->lock, key);
 }
 
 /**

@@ -96,28 +96,28 @@ static int edma_encode_tcd_attr(int src_width, int dest_width)
 static struct dma_chan_data *edma_channel_get(struct dma *dma,
 					      unsigned int req_chan)
 {
-	uint32_t flags;
+	k_spinlock_key_t key;
 	struct dma_chan_data *channel;
 
 	tr_dbg(&edma_tr, "EDMA: channel_get(%d)", req_chan);
 
-	spin_lock_irq(&dma->lock, flags);
+	key = k_spin_lock_irq(&dma->lock);
 	if (req_chan >= dma->plat_data.channels) {
-		spin_unlock_irq(&dma->lock, flags);
+		k_spin_unlock_irq(&dma->lock, key);
 		tr_err(&edma_tr, "EDMA: Channel %d out of range", req_chan);
 		return NULL;
 	}
 
 	channel = &dma->chan[req_chan];
 	if (channel->status != COMP_STATE_INIT) {
-		spin_unlock_irq(&dma->lock, flags);
+		k_spin_unlock_irq(&dma->lock, key);
 		tr_err(&edma_tr, "EDMA: Cannot reuse channel %d", req_chan);
 		return NULL;
 	}
 
 	atomic_add(&dma->num_channels_busy, 1);
 	channel->status = COMP_STATE_READY;
-	spin_unlock_irq(&dma->lock, flags);
+	k_spin_unlock_irq(&dma->lock, key);
 
 	return channel;
 }
@@ -125,7 +125,7 @@ static struct dma_chan_data *edma_channel_get(struct dma *dma,
 /* channel must not be running when this is called */
 static void edma_channel_put(struct dma_chan_data *channel)
 {
-	uint32_t flags;
+	k_spinlock_key_t key;
 
 	/* Assuming channel is stopped, we thus don't need hardware to
 	 * do anything right now
@@ -134,10 +134,10 @@ static void edma_channel_put(struct dma_chan_data *channel)
 
 	notifier_unregister_all(NULL, channel);
 
-	spin_lock_irq(&channel->dma->lock, flags);
+	key = k_spin_lock_irq(&channel->dma->lock);
 	channel->status = COMP_STATE_INIT;
 	atomic_sub(&channel->dma->num_channels_busy, 1);
-	spin_unlock_irq(&channel->dma->lock, flags);
+	k_spin_unlock_irq(&channel->dma->lock, key);
 }
 
 static int edma_start(struct dma_chan_data *channel)

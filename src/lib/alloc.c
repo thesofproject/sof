@@ -751,14 +751,14 @@ static void *_malloc_unlocked(enum mem_zone zone, uint32_t flags, uint32_t caps,
 void *rmalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
 {
 	struct mm *memmap = memmap_get();
-	uint32_t lock_flags;
+	k_spinlock_key_t key;
 	void *ptr = NULL;
 
-	spin_lock_irq(&memmap->lock, lock_flags);
+	key = k_spin_lock_irq(&memmap->lock);
 
 	ptr = _malloc_unlocked(zone, flags, caps, bytes);
 
-	spin_unlock_irq(&memmap->lock, lock_flags);
+	k_spin_unlock_irq(&memmap->lock, key);
 
 	DEBUG_TRACE_PTR(ptr, bytes, zone, caps, flags);
 	return ptr;
@@ -779,16 +779,16 @@ void *rzalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
 void *rzalloc_core_sys(int core, size_t bytes)
 {
 	struct mm *memmap = memmap_get();
-	uint32_t flags;
+	k_spinlock_key_t key;
 	void *ptr = NULL;
 
-	spin_lock_irq(&memmap->lock, flags);
+	key = k_spin_lock_irq(&memmap->lock);
 
 	ptr = rmalloc_sys(memmap->system + core, 0, 0, bytes);
 	if (ptr)
 		bzero(ptr, bytes);
 
-	spin_unlock_irq(&memmap->lock, flags);
+	k_spin_unlock_irq(&memmap->lock, key);
 	return ptr;
 }
 
@@ -944,13 +944,13 @@ void *rballoc_align(uint32_t flags, uint32_t caps, size_t bytes,
 {
 	struct mm *memmap = memmap_get();
 	void *ptr = NULL;
-	uint32_t lock_flags;
+	k_spinlock_key_t key;
 
-	spin_lock_irq(&memmap->lock, lock_flags);
+	key = k_spin_lock_irq(&memmap->lock);
 
 	ptr = _balloc_unlocked(flags, caps, bytes, alignment);
 
-	spin_unlock_irq(&memmap->lock, lock_flags);
+	k_spin_unlock_irq(&memmap->lock, key);
 
 	DEBUG_TRACE_PTR(ptr, bytes, SOF_MEM_ZONE_BUFFER, caps, flags);
 	return ptr;
@@ -995,11 +995,11 @@ static void _rfree_unlocked(void *ptr)
 void rfree(void *ptr)
 {
 	struct mm *memmap = memmap_get();
-	uint32_t flags;
+	k_spinlock_key_t key;
 
-	spin_lock_irq(&memmap->lock, flags);
+	key = k_spin_lock_irq(&memmap->lock);
 	_rfree_unlocked(ptr);
-	spin_unlock_irq(&memmap->lock, flags);
+	k_spin_unlock_irq(&memmap->lock, key);
 }
 
 void *rbrealloc_align(void *ptr, uint32_t flags, uint32_t caps, size_t bytes,
@@ -1007,13 +1007,13 @@ void *rbrealloc_align(void *ptr, uint32_t flags, uint32_t caps, size_t bytes,
 {
 	struct mm *memmap = memmap_get();
 	void *new_ptr = NULL;
-	uint32_t lock_flags;
+	k_spinlock_key_t key;
 	size_t copy_bytes = MIN(bytes, old_bytes);
 
 	if (!bytes)
 		return new_ptr;
 
-	spin_lock_irq(&memmap->lock, lock_flags);
+	key = k_spin_lock_irq(&memmap->lock);
 
 	new_ptr = _balloc_unlocked(flags, caps, bytes, alignment);
 
@@ -1023,7 +1023,7 @@ void *rbrealloc_align(void *ptr, uint32_t flags, uint32_t caps, size_t bytes,
 	if (new_ptr)
 		_rfree_unlocked(ptr);
 
-	spin_unlock_irq(&memmap->lock, lock_flags);
+	k_spin_unlock_irq(&memmap->lock, key);
 
 	DEBUG_TRACE_PTR(ptr, bytes, SOF_MEM_ZONE_BUFFER, caps, flags);
 	return new_ptr;
@@ -1094,6 +1094,7 @@ int heap_info(enum mem_zone zone, int index, struct mm_info *out)
 {
 	struct mm *memmap = memmap_get();
 	struct mm_heap *heap;
+	k_spinlock_key_t key;
 
 	if (!out)
 		goto error;
@@ -1135,9 +1136,9 @@ int heap_info(enum mem_zone zone, int index, struct mm_info *out)
 		goto error;
 	}
 
-	spin_lock(&memmap->lock);
+	key = k_spin_lock(&memmap->lock);
 	*out = heap->info;
-	spin_unlock(&memmap->lock);
+	k_spin_unlock(&memmap->lock, key);
 	return 0;
 error:
 	tr_err(&mem_tr, "heap_info(): failed for zone 0x%x index %d out ptr 0x%x", zone, index,

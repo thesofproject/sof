@@ -173,7 +173,7 @@ static void zephyr_ll_run(void *data)
 	struct zephyr_ll *sch = data;
 	struct task *task;
 	struct list_item *list;
-	uint32_t flags;
+	k_spinlock_key_t key;
 
 	zephyr_ll_lock(sch, &flags);
 
@@ -278,7 +278,7 @@ static int zephyr_ll_task_schedule_common(struct zephyr_ll *sch, struct task *ta
 	struct task *task_iter;
 	struct list_item *list;
 	uint64_t delay = period ? period : start;
-	uint32_t flags;
+	k_spinlock_key_t key;
 	int ret;
 
 	zephyr_ll_assert_core(sch);
@@ -382,7 +382,7 @@ static int zephyr_ll_task_schedule_after(void *data, struct task *task, uint64_t
 static int zephyr_ll_task_free(void *data, struct task *task)
 {
 	struct zephyr_ll *sch = data;
-	uint32_t flags;
+	k_spinlock_key_t key;
 	struct zephyr_ll_pdata *pdata = task->priv_data;
 	bool must_wait, on_list = true;
 
@@ -446,7 +446,7 @@ static int zephyr_ll_task_free(void *data, struct task *task)
 static int zephyr_ll_task_cancel(void *data, struct task *task)
 {
 	struct zephyr_ll *sch = data;
-	uint32_t flags;
+	k_spinlock_key_t key;
 
 	zephyr_ll_assert_core(sch);
 

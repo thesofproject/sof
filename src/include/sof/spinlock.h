@@ -19,6 +19,8 @@
 
 #include <stdint.h>
 
+typedef uint32_t k_spinlock_key_t;
+
 /*
  * Lock debugging provides a simple interface to debug deadlocks. The rmbox
  * trace output will show an output :-
@@ -38,7 +40,7 @@
  *     src/drivers/dw-dma.c:840:	spinlock_init(&dma->lock);
  *
  * grep -rn lock --include *.c | grep 439
- *     src/lib/alloc.c:439:	spin_lock_irq(&memmap.lock, flags);
+ *     src/lib/alloc.c:439:	k_spin_lock_irq(&memmap.lock, flags);
  *
  * Every lock entry and exit shows LcE and LcX in trace alongside the lock
  * line numbers in hex. e.g.
@@ -160,7 +162,7 @@ static inline void _spinlock_init(spinlock_t *lock, int line)
 #define spinlock_init(lock) _spinlock_init(lock, __LINE__)
 
 /* does nothing on UP systems */
-static inline void _spin_lock(spinlock_t *lock, int line)
+static inline k_spinlock_key_t _spin_lock(spinlock_t *lock, int line)
 {
 	spin_lock_dbg(line);
 #if CONFIG_DEBUG_LOCKS
@@ -171,16 +173,22 @@ static inline void _spin_lock(spinlock_t *lock, int line)
 #endif
 
 	/* spinlock has to be in a shared memory */
+	return 0;
 }
 
-#define spin_lock(lock) _spin_lock(lock, __LINE__)
+//#define spin_lock(lock) _spin_lock(lock, __LINE__)
+
+#define k_spin_lock(lock) _spin_lock(lock, __LINE__)
 
 /* disables all IRQ sources and takes lock - enter atomic context */
-uint32_t _spin_lock_irq(spinlock_t *lock);
+k_spinlock_key_t _k_spin_lock_irq(spinlock_t *lock);
 
-#define spin_lock_irq(lock, flags) (flags = _spin_lock_irq(lock))
+//#define k_spin_lock_irq(lock) _k_spin_lock_irq(lock)
 
-static inline void _spin_unlock(spinlock_t *lock, int line)
+#define k_spin_lock_irq(lock) _k_spin_lock_irq(lock)
+
+static inline void _spin_unlock(spinlock_t *lock, int line,
+				__attribute__((unused)) k_spinlock_key_t key)
 {
 	arch_spin_unlock(lock);
 #if CONFIG_DEBUG_LOCKS
@@ -190,11 +198,15 @@ static inline void _spin_unlock(spinlock_t *lock, int line)
 	/* spinlock has to be in a shared memory */
 }
 
-#define spin_unlock(lock) _spin_unlock(lock, __LINE__)
+//#define spin_unlock(lock) _spin_unlock(lock, __LINE__)
+
+#define k_spin_unlock(lock, key) _spin_unlock(lock, __LINE__, key)
 
 /* re-enables current IRQ sources and releases lock - leave atomic context */
-void _spin_unlock_irq(spinlock_t *lock, uint32_t flags, int line);
+void _k_spin_unlock_irq(spinlock_t *lock, k_spinlock_key_t key, int line);
 
-#define spin_unlock_irq(lock, flags) _spin_unlock_irq(lock, flags, __LINE__)
+//#define spin_unlock_irq(lock, flags) _k_spin_unlock_irq(lock, flags, __LINE__)
+
+#define k_spin_unlock_irq(lock, key) _k_spin_unlock_irq(lock, key, __LINE__)
 
 #endif /* __SOF_SPINLOCK_H__ */

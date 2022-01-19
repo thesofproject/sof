@@ -54,13 +54,13 @@ static void cavs_pm_runtime_host_dma_l1_get(void)
 {
 	struct pm_runtime_data *prd = pm_runtime_data_get();
 	struct cavs_pm_runtime_data *pprd = prd->platform_data;
-	uint32_t flags;
+	k_spinlock_key_t key;
 
-	spin_lock_irq(&prd->lock, flags);
+	key = k_spin_lock_irq(&prd->lock);
 
 	pprd->host_dma_l1_sref++;
 
-	spin_unlock_irq(&prd->lock, flags);
+	k_spin_unlock_irq(&prd->lock, key);
 }
 
 /**
@@ -71,9 +71,9 @@ static inline void cavs_pm_runtime_host_dma_l1_put(void)
 {
 	struct pm_runtime_data *prd = pm_runtime_data_get();
 	struct cavs_pm_runtime_data *pprd = prd->platform_data;
-	uint32_t flags;
+	k_spinlock_key_t key;
 
-	spin_lock_irq(&prd->lock, flags);
+	key = k_spin_lock_irq(&prd->lock);
 
 	if (!--pprd->host_dma_l1_sref) {
 		shim_write(SHIM_SVCFG,
@@ -85,7 +85,7 @@ static inline void cavs_pm_runtime_host_dma_l1_put(void)
 			   shim_read(SHIM_SVCFG) & ~(SHIM_SVCFG_FORCE_L1_EXIT));
 	}
 
-	spin_unlock_irq(&prd->lock, flags);
+	k_spin_unlock_irq(&prd->lock, key);
 }
 
 static inline void cavs_pm_runtime_enable_dsp(bool enable)
@@ -369,9 +369,9 @@ static inline void cavs_pm_runtime_core_dis_hp_clk(uint32_t index)
 	int enabled_cores = cpu_enabled_cores();
 	struct pm_runtime_data *prd = pm_runtime_data_get();
 	struct cavs_pm_runtime_data *pprd = prd->platform_data;
-	uint32_t flags;
+	k_spinlock_key_t key;
 
-	spin_lock_irq(&prd->lock, flags);
+	key = k_spin_lock_irq(&prd->lock);
 
 	pprd->sleep_core_mask |= BIT(index);
 
@@ -381,21 +381,21 @@ static inline void cavs_pm_runtime_core_dis_hp_clk(uint32_t index)
 	if (all_active_cores_sleep)
 		clock_low_power_mode(CLK_CPU(index), true);
 
-	spin_unlock_irq(&prd->lock, flags);
+	k_spin_unlock_irq(&prd->lock, key);
 }
 
 static inline void cavs_pm_runtime_core_en_hp_clk(uint32_t index)
 {
 	struct pm_runtime_data *prd = pm_runtime_data_get();
 	struct cavs_pm_runtime_data *pprd = prd->platform_data;
-	uint32_t flags;
+	k_spinlock_key_t key;
 
-	spin_lock_irq(&prd->lock, flags);
+	key = k_spin_lock_irq(&prd->lock);
 
 	pprd->sleep_core_mask &= ~BIT(index);
 	clock_low_power_mode(CLK_CPU(index), false);
 
-	spin_unlock_irq(&prd->lock, flags);
+	k_spin_unlock_irq(&prd->lock, key);
 }
 
 static inline void cavs_pm_runtime_dis_dsp_pg(uint32_t index)
@@ -574,26 +574,26 @@ void platform_pm_runtime_prepare_d0ix_en(uint32_t index)
 {
 	struct pm_runtime_data *prd = pm_runtime_data_get();
 	struct cavs_pm_runtime_data *pprd = prd->platform_data;
-	uint32_t flags;
+	k_spinlock_key_t key;
 
-	spin_lock_irq(&prd->lock, flags);
+	key = k_spin_lock_irq(&prd->lock);
 
 	pprd->prepare_d0ix_core_mask |= BIT(index);
 
-	spin_unlock_irq(&prd->lock, flags);
+	k_spin_unlock_irq(&prd->lock, key);
 }
 
 void platform_pm_runtime_prepare_d0ix_dis(uint32_t index)
 {
 	struct pm_runtime_data *prd = pm_runtime_data_get();
 	struct cavs_pm_runtime_data *pprd = prd->platform_data;
-	uint32_t flags;
+	k_spinlock_key_t key;
 
-	spin_lock_irq(&prd->lock, flags);
+	key = k_spin_lock_irq(&prd->lock);
 
 	pprd->prepare_d0ix_core_mask &= ~BIT(index);
 
-	spin_unlock_irq(&prd->lock, flags);
+	k_spin_unlock_irq(&prd->lock, key);
 }
 
 int platform_pm_runtime_prepare_d0ix_is_req(uint32_t index)

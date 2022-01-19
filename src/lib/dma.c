@@ -32,7 +32,7 @@ struct dma *dma_get(uint32_t dir, uint32_t cap, uint32_t dev, uint32_t flags)
 	int users, ret;
 	int min_users = INT32_MAX;
 	struct dma *d = NULL, *dmin = NULL;
-	unsigned int flags_irq;
+	k_spinlock_key_t key;
 
 	if (!info->num_dmas) {
 		tr_err(&dma_tr, "dma_get(): No DMACs installed");
@@ -103,7 +103,7 @@ struct dma *dma_get(uint32_t dir, uint32_t cap, uint32_t dev, uint32_t flags)
 	 * may be requested many times, let the probe()
 	 * do on-first-use initialization.
 	 */
-	spin_lock_irq(&dmin->lock, flags_irq);
+	key = k_spin_lock_irq(&dmin->lock);
 
 	ret = 0;
 	if (!dmin->sref) {
@@ -120,16 +120,16 @@ struct dma *dma_get(uint32_t dir, uint32_t cap, uint32_t dev, uint32_t flags)
 		dmin->plat_data.id, dmin->sref,
 		atomic_read(&dmin->num_channels_busy));
 
-	spin_unlock_irq(&dmin->lock, flags_irq);
+	k_spin_unlock_irq(&dmin->lock, key);
 	return !ret ? dmin : NULL;
 }
 
 void dma_put(struct dma *dma)
 {
-	unsigned int flags_irq;
+	k_spinlock_key_t key;
 	int ret;
 
-	spin_lock_irq(&dma->lock, flags_irq);
+	key = k_spin_lock_irq(&dma->lock);
 	if (--dma->sref == 0) {
 		ret = dma_remove(dma);
 		if (ret < 0) {
@@ -139,7 +139,7 @@ void dma_put(struct dma *dma)
 	}
 	tr_info(&dma_tr, "dma_put(), dma = %p, sref = %d",
 		dma, dma->sref);
-	spin_unlock_irq(&dma->lock, flags_irq);
+	k_spin_unlock_irq(&dma->lock, key);
 }
 
 int dma_sg_alloc(struct dma_sg_elem_array *elem_array,

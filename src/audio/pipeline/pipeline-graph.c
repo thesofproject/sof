@@ -60,8 +60,9 @@ static inline int pipeline_posn_offset_get(uint32_t *posn_offset)
 	struct pipeline_posn *pipeline_posn = pipeline_posn_get();
 	int ret = -EINVAL;
 	uint32_t i;
+	k_spinlock_key_t key;
 
-	spin_lock(&pipeline_posn->lock);
+	key = k_spin_lock(&pipeline_posn->lock);
 
 	for (i = 0; i < PPL_POSN_OFFSETS; ++i) {
 		if (!pipeline_posn->posn_offset[i]) {
@@ -73,7 +74,7 @@ static inline int pipeline_posn_offset_get(uint32_t *posn_offset)
 	}
 
 
-	spin_unlock(&pipeline_posn->lock);
+	k_spin_unlock(&pipeline_posn->lock, key);
 
 	return ret;
 }
@@ -86,13 +87,13 @@ static inline void pipeline_posn_offset_put(uint32_t posn_offset)
 {
 	struct pipeline_posn *pipeline_posn = pipeline_posn_get();
 	int i = posn_offset / sizeof(struct sof_ipc_stream_posn);
+	k_spinlock_key_t key;
 
-	spin_lock(&pipeline_posn->lock);
+	key = k_spin_lock(&pipeline_posn->lock);
 
 	pipeline_posn->posn_offset[i] = false;
 
-
-	spin_unlock(&pipeline_posn->lock);
+	k_spin_unlock(&pipeline_posn->lock, key);
 }
 
 void pipeline_posn_init(struct sof *sof)

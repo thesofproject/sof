@@ -53,7 +53,7 @@ void clock_set_freq(int clock, uint32_t hz)
 {
 	struct clock_info *clk_info = clocks_get() + clock;
 	uint32_t idx;
-	uint32_t flags;
+	k_spinlock_key_t key;
 
 	clk_notify_data.old_freq =
 		clk_info->freqs[clk_info->current_freq_idx].freq;
@@ -61,7 +61,7 @@ void clock_set_freq(int clock, uint32_t hz)
 		clk_info->freqs[clk_info->current_freq_idx].ticks_per_msec;
 
 	/* atomic context for changing clocks */
-	spin_lock_irq(&clk_info->lock, flags);
+	key = k_spin_lock_irq(&clk_info->lock);
 
 	/* get nearest frequency that is >= requested Hz */
 	idx = clock_get_nearest_freq_idx(clk_info->freqs, clk_info->freqs_num,
@@ -88,7 +88,7 @@ void clock_set_freq(int clock, uint32_t hz)
 		       clk_info->notification_mask, &clk_notify_data,
 		       sizeof(clk_notify_data));
 
-	spin_unlock_irq(&clk_info->lock, flags);
+	k_spin_unlock_irq(&clk_info->lock, key);
 }
 
 void clock_low_power_mode(int clock, bool enable)

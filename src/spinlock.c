@@ -22,15 +22,15 @@ DECLARE_TR_CTX(sl_tr, SOF_UUID(spinlock_uuid), LOG_LEVEL_INFO);
 
 #endif
 
-uint32_t _spin_lock_irq(spinlock_t *lock)
+k_spinlock_key_t _k_spin_lock_irq(spinlock_t *lock)
 {
-	uint32_t flags;
+	k_spinlock_key_t flags;
 
 	flags = interrupt_global_disable();
 #if CONFIG_DEBUG_LOCKS
 	lock_dbg_atomic++;
 #endif
-	spin_lock(lock);
+	k_spin_lock(lock);
 #if CONFIG_DEBUG_LOCKS
 	if (lock_dbg_atomic < DBG_LOCK_USERS)
 		lock_dbg_user[lock_dbg_atomic - 1] = (lock)->user;
@@ -38,9 +38,9 @@ uint32_t _spin_lock_irq(spinlock_t *lock)
 	return flags;
 }
 
-void _spin_unlock_irq(spinlock_t *lock, uint32_t flags, int line)
+void _k_spin_unlock_irq(spinlock_t *lock, uint32_t flags, int line)
 {
-	_spin_unlock(lock, line);
+	_spin_unlock(lock, line, 0);
 #if CONFIG_DEBUG_LOCKS
 	lock_dbg_atomic--;
 #endif

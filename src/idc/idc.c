@@ -323,15 +323,15 @@ static void idc_complete(void *data)
 	struct ipc *ipc = ipc_get();
 	struct idc *idc = data;
 	uint32_t type = iTS(idc->received_msg.header);
-	uint32_t flags;
+	k_spinlock_key_t key;
 
 	switch (type) {
 	case iTS(IDC_MSG_IPC):
 		/* Signal the host */
-		spin_lock_irq(&ipc->lock, flags);
+		key = k_spin_lock_irq(&ipc->lock);
 		ipc->task_mask &= ~IPC_TASK_SECONDARY_CORE;
 		ipc_complete_cmd(ipc);
-		spin_unlock_irq(&ipc->lock, flags);
+		k_spin_unlock_irq(&ipc->lock, key);
 	}
 }
 #endif

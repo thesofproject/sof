@@ -59,12 +59,12 @@ int ipc_process_on_core(uint32_t core, bool blocking)
 	 * will also reply to the host
 	 */
 	if (!blocking) {
-		uint32_t flags;
+		k_spinlock_key_t key;
 
 		ipc->core = core;
-		spin_lock_irq(&ipc->lock, flags);
+		key = k_spin_lock_irq(&ipc->lock);
 		ipc->task_mask |= IPC_TASK_SECONDARY_CORE;
-		spin_unlock_irq(&ipc->lock, flags);
+		k_spin_unlock_irq(&ipc->lock, key);
 	}
 
 	/* send IDC message */
@@ -176,9 +176,9 @@ void ipc_send_queued_msg(void)
 {
 	struct ipc *ipc = ipc_get();
 	struct ipc_msg *msg;
-	uint32_t flags;
+	k_spinlock_key_t key;
 
-	spin_lock_irq(&ipc->lock, flags);
+	key = k_spin_lock_irq(&ipc->lock);
 
 	/* any messages to send ? */
 	if (list_is_empty(&ipc->msg_list))
@@ -190,16 +190,16 @@ void ipc_send_queued_msg(void)
 	ipc_platform_send_msg(msg);
 
 out:
-	spin_unlock_irq(&ipc->lock, flags);
+	k_spin_unlock_irq(&ipc->lock, key);
 }
 
 void ipc_msg_send(struct ipc_msg *msg, void *data, bool high_priority)
 {
 	struct ipc *ipc = ipc_get();
-	uint32_t flags;
+	k_spinlock_key_t key;
 	int ret;
 
-	spin_lock_irq(&ipc->lock, flags);
+	key = k_spin_lock_irq(&ipc->lock);
 
 	/* copy mailbox data to message */
 	if (msg->tx_size > 0 && msg->tx_size < SOF_IPC_MSG_MAX_SIZE) {
@@ -223,7 +223,7 @@ void ipc_msg_send(struct ipc_msg *msg, void *data, bool high_priority)
 	}
 
 out:
-	spin_unlock_irq(&ipc->lock, flags);
+	k_spin_unlock_irq(&ipc->lock, key);
 }
 
 void ipc_schedule_process(struct ipc *ipc)
@@ -271,12 +271,12 @@ void ipc_complete_cmd(struct ipc *ipc)
 static void ipc_complete_task(void *data)
 {
 	struct ipc *ipc = data;
-	uint32_t flags;
+	k_spinlock_key_t key;
 
-	spin_lock_irq(&ipc->lock, flags);
+	key = k_spin_lock_irq(&ipc->lock);
 	ipc->task_mask &= ~IPC_TASK_INLINE;
 	ipc_complete_cmd(ipc);
-	spin_unlock_irq(&ipc->lock, flags);
+	k_spin_unlock_irq(&ipc->lock, key);
 }
 
 static enum task_state ipc_do_cmd(void *data)

@@ -54,7 +54,7 @@ static enum task_state trace_work(void *data)
 	struct dma_trace_data *d = data;
 	struct dma_trace_buf *buffer = &d->dmatb;
 	struct dma_sg_config *config = &d->config;
-	unsigned long flags;
+	k_spinlock_key_t key;
 	uint32_t avail = buffer->avail;
 	int32_t size;
 	uint32_t overflow;
@@ -103,7 +103,7 @@ static enum task_state trace_work(void *data)
 	ipc_msg_send(d->msg, &d->posn, false);
 
 out:
-	spin_lock_irq(&d->lock, flags);
+	key = k_spin_lock_irq(&d->lock);
 
 	/* disregard any old messages and don't resend them if we overflow */
 	if (size > 0) {
@@ -116,7 +116,7 @@ out:
 	/* DMA trace copying is done, allow reschedule */
 	d->copy_in_progress = 0;
 
-	spin_unlock_irq(&d->lock, flags);
+	k_spin_unlock_irq(&d->lock, key);
 
 	/* reschedule the trace copying work */
 	return SOF_TASK_STATE_RESCHEDULE;
@@ -222,7 +222,7 @@ static int dma_trace_buffer_init(struct dma_trace_data *d)
 {
 	struct dma_trace_buf *buffer = &d->dmatb;
 	void *buf;
-	unsigned int flags;
+	k_spinlock_key_t key;
 
 	/* allocate new buffer */
 	buf = rballoc(0, SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_DMA,
@@ -236,7 +236,7 @@ static int dma_trace_buffer_init(struct dma_trace_data *d)
 	dcache_writeback_region(buf, DMA_TRACE_LOCAL_SIZE);
 
 	/* initialise the DMA buffer, whole sequence in section */
-	spin_lock_irq(&d->lock, flags);
+	key = k_spin_lock_irq(&d->lock);
 
 	buffer->addr  = buf;
 	buffer->size = DMA_TRACE_LOCAL_SIZE;
@@ -245,7 +245,7 @@ static int dma_trace_buffer_init(struct dma_trace_data *d)
 	buffer->end_addr = (char *)buffer->addr + buffer->size;
 	buffer->avail = 0;
 
-	spin_unlock_irq(&d->lock, flags);
+	k_spin_unlock_irq(&d->lock, key);
 
 	return 0;
 }
@@ -253,14 +253,14 @@ static int dma_trace_buffer_init(struct dma_trace_data *d)
 static void dma_trace_buffer_free(struct dma_trace_data *d)
 {
 	struct dma_trace_buf *buffer = &d->dmatb;
-	unsigned int flags;
+	k_spinlock_key_t key;
 
-	spin_lock_irq(&d->lock, flags);
+	key = k_spin_lock_irq(&d->lock);
 
 	rfree(buffer->addr);
 	memset(buffer, 0, sizeof(*buffer));
 
-	spin_unlock_irq(&d->lock, flags);
+	k_spin_unlock_irq(&d->lock, key);
 }
 
 #if CONFIG_DMA_GW
@@ -657,7 +657,7 @@ void dtrace_event(const char *e, uint32_t length)
 {
 	struct dma_trace_data *trace_data = dma_trace_data_get();
 	struct dma_trace_buf *buffer = NULL;
-	unsigned long flags;
+	k_spinlock_key_t key;
 
 	if (!dma_trace_initialized(trace_data) ||
 	    length > DMA_TRACE_LOCAL_SIZE / 8 || length == 0) {
@@ -666,7 +666,7 @@ void dtrace_event(const char *e, uint32_t length)
 
 	buffer = &trace_data->dmatb;
 
-	spin_lock_irq(&trace_data->lock, flags);
+	key = k_spin_lock_irq(&trace_data->lock);
 	dtrace_add_event(e, length);
 
 	/* if DMA trace copying is working or secondary core
@@ -674,11 +674,11 @@ void dtrace_event(const char *e, uint32_t length)
 	 */
 	if (trace_data->copy_in_progress ||
 	    cpu_get_id() != PLATFORM_PRIMARY_CORE_ID) {
-		spin_unlock_irq(&trace_data->lock, flags);
+		k_spin_unlock_irq(&trace_data->lock, key);
 		return;
 	}
 
-	spin_unlock_irq(&trace_data->lock, flags);
+	k_spin_unlock_irq(&trace_data->lock, key);
 
 	/* schedule copy now if buffer > 50% full */
 	if (trace_data->enabled &&

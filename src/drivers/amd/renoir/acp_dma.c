@@ -174,24 +174,24 @@ static void dma_reconfig(struct dma_chan_data *channel, uint32_t bytes)
 static struct dma_chan_data *acp_dma_channel_get(struct dma *dma,
 						unsigned int req_chan)
 {
-	uint32_t flags;
+	k_spinlock_key_t key;
 	struct dma_chan_data *channel;
 
-	spin_lock_irq(&dma->lock, flags);
+	key = k_spin_lock_irq(&dma->lock);
 	if (req_chan >= dma->plat_data.channels) {
-		spin_unlock_irq(&dma->lock, flags);
+		k_spin_unlock_irq(&dma->lock, key);
 		tr_err(&acpdma_tr, "DMA: Channel %d not in range", req_chan);
 		return NULL;
 	}
 	channel = &dma->chan[req_chan];
 	if (channel->status != COMP_STATE_INIT) {
-		spin_unlock_irq(&dma->lock, flags);
+		k_spin_unlock_irq(&dma->lock, key);
 		tr_err(&acpdma_tr, "DMA: channel already in use %d", req_chan);
 		return NULL;
 	}
 	atomic_add(&dma->num_channels_busy, 1);
 	channel->status = COMP_STATE_READY;
-	spin_unlock_irq(&dma->lock, flags);
+	k_spin_unlock_irq(&dma->lock, key);
 	/* reset read and write pointers */
 	struct acp_dma_chan_data *acp_dma_chan = dma_chan_get_data(channel);
 
@@ -202,12 +202,12 @@ static struct dma_chan_data *acp_dma_channel_get(struct dma *dma,
 
 static void acp_dma_channel_put(struct dma_chan_data *channel)
 {
-	uint32_t flags;
+	k_spinlock_key_t key;
 
-	spin_lock_irq(&channel->dma->lock, flags);
+	key = k_spin_lock_irq(&channel->dma->lock);
 	channel->status = COMP_STATE_INIT;
 	atomic_sub(&channel->dma->num_channels_busy, 1);
-	spin_unlock_irq(&channel->dma->lock, flags);
+	k_spin_unlock_irq(&channel->dma->lock, key);
 	/* reset read and write pointer */
 	struct acp_dma_chan_data *acp_dma_chan = dma_chan_get_data(channel);
 
