@@ -29,14 +29,39 @@ static SHARED_DATA struct dai sai[] = {
 			.depth		= 16,  /* in 4 bytes words */
 			.watermark      = 8,
 			.handshake	= EDMA_HANDSHAKE(IMX8ULP_EDMA2_CHAN0_IRQ,
-							 IMX8ULP_EDMA2_CHAN0),
+							 IMX8ULP_EDMA2_CHAN0,
+							 IMX8ULP_DMAMUX2_SAI5_TX),
 		},
 		.fifo[SOF_IPC_STREAM_CAPTURE] = {
 			.offset		= SAI_5_BASE + REG_SAI_RDR3,
 			.depth		= 16,  /* in 4 bytes words */
 			.watermark      = 8,
 			.handshake	= EDMA_HANDSHAKE(IMX8ULP_EDMA2_CHAN1_IRQ,
-							 IMX8ULP_EDMA2_CHAN1),
+							 IMX8ULP_EDMA2_CHAN1,
+							 IMX8ULP_DMAMUX2_SAI5_RX),
+		},
+	},
+	.drv = &sai_driver,
+},
+{
+	.index = 6,
+	.plat_data = {
+		.base = SAI_6_BASE,
+		.fifo[SOF_IPC_STREAM_PLAYBACK] = {
+			.offset		= SAI_6_BASE + REG_SAI_TDR2,
+			.depth		= 16,  /* in 4 bytes words */
+			.watermark      = 8,
+			.handshake	= EDMA_HANDSHAKE(IMX8ULP_EDMA2_CHAN0_IRQ,
+							 IMX8ULP_EDMA2_CHAN0,
+							 IMX8ULP_DMAMUX2_SAI6_TX),
+		},
+		.fifo[SOF_IPC_STREAM_CAPTURE] = {
+			.offset		= SAI_6_BASE + REG_SAI_RDR0,
+			.depth		= 16,  /* in 4 bytes words */
+			.watermark      = 8,
+			.handshake	= EDMA_HANDSHAKE(IMX8ULP_EDMA2_CHAN1_IRQ,
+							 IMX8ULP_EDMA2_CHAN1,
+							 IMX8ULP_DMAMUX2_SAI6_RX),
 		},
 	},
 	.drv = &sai_driver,
