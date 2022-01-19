@@ -33,6 +33,9 @@ static void sai_start(struct dai *dai, int direction)
 
 	int chan_idx = 0;
 	uint32_t xcsr = 0U;
+#ifdef CONFIG_IMX8ULP
+	int fifo_offset = 0;
+#endif
 
 	if (direction == DAI_DIR_CAPTURE) {
 		/* Software Reset */
@@ -92,8 +95,13 @@ static void sai_start(struct dai *dai, int direction)
 	chan_idx = BIT(0);
 	/* RX3 supports capture on imx8ulp */
 #ifdef CONFIG_IMX8ULP
-	if (direction == DAI_DIR_CAPTURE)
-		chan_idx = BIT(3);
+	if (direction == DAI_DIR_CAPTURE) {
+		fifo_offset = (dai_fifo(dai, DAI_DIR_CAPTURE) - dai_base(dai) - REG_SAI_RDR0) >> 2;
+		chan_idx = BIT(fifo_offset);
+	} else {
+		fifo_offset = (dai_fifo(dai, DAI_DIR_PLAYBACK) - dai_base(dai) - REG_SAI_TDR0) >> 2;
+		chan_idx = BIT(fifo_offset);
+	}
 #endif
 
 	/* transmit/receive data channel enable */
