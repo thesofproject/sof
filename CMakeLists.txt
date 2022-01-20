@@ -24,11 +24,17 @@ add_executable(rimage
 	tomlc99/toml.c
 )
 
+set_property(TARGET rimage PROPERTY C_STANDARD 99)
+
 target_compile_options(rimage PRIVATE
 	-Wall -Werror -Wmissing-prototypes -Wimplicit-fallthrough
 )
 
-target_link_libraries(rimage PRIVATE "-lcrypto")
+if(CMAKE_C_COMPILER_VERSION VERSION_GREATER 9.1)
+	target_compile_options(rimage PRIVATE -Wno-char-subscripts)
+endif()
+
+target_link_libraries(rimage PRIVATE crypto)
 
 target_include_directories(rimage PRIVATE
 	src/include/
