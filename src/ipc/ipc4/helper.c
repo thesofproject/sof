@@ -630,30 +630,6 @@ int ipc4_trigger_chain_dma(struct ipc *ipc, struct ipc4_chain_dma *cdma)
 	if (!ipc_pipe)
 		return IPC4_INVALID_RESOURCE_ID;
 
-	if (cdma->header.r.enable && !cdma->header.r.allocate) {
-		tr_err(&ipc_tr, "can't enable chain dma %d", ret);
-		return IPC4_INVALID_REQUEST;
-	}
-
-	if (cdma->header.r.enable && cdma->header.r.allocate) {
-		if (ipc_pipe->pipeline->status == COMP_STATE_PAUSED) {
-			ret = pipeline_trigger(ipc_pipe->pipeline, ipc_pipe->pipeline->sink_comp,
-					       COMP_TRIGGER_PRE_RELEASE);
-			if (ret < 0) {
-				tr_err(&ipc_tr, "failed to resume chain dma %d", ret);
-				return IPC4_BAD_STATE;
-			}
-		} else if (ipc_pipe->pipeline->status == COMP_STATE_READY ||
-			ipc_pipe->pipeline->status == COMP_STATE_PREPARE) {
-			ret = pipeline_trigger(ipc_pipe->pipeline, ipc_pipe->pipeline->sink_comp,
-					       COMP_TRIGGER_PRE_START);
-			if (ret < 0) {
-				tr_err(&ipc_tr, "failed to start chain dma %d", ret);
-				ret = IPC4_BAD_STATE;
-			}
-		}
-	}
-
 	/* pause or release chain dma */
 	if (!cdma->header.r.enable) {
 		if (ipc_pipe->pipeline->status == COMP_STATE_ACTIVE) {
@@ -679,9 +655,35 @@ int ipc4_trigger_chain_dma(struct ipc *ipc, struct ipc4_chain_dma *cdma)
 				return IPC4_BAD_STATE;
 			}
 		}
+
+		return IPC4_SUCCESS;
 	}
 
-	return ret;
+	if (!cdma->header.r.allocate) {
+		tr_err(&ipc_tr, "can't enable chain dma %d", ret);
+		return IPC4_INVALID_REQUEST;
+	}
+
+	switch (ipc_pipe->pipeline->status) {
+	case COMP_STATE_PAUSED:
+		ret = pipeline_trigger(ipc_pipe->pipeline, ipc_pipe->pipeline->sink_comp,
+				       COMP_TRIGGER_PRE_RELEASE);
+		if (ret < 0) {
+			tr_err(&ipc_tr, "failed to resume chain dma %d", ret);
+			return IPC4_BAD_STATE;
+		}
+		break;
+	case COMP_STATE_READY:
+	case COMP_STATE_PREPARE:
+		ret = pipeline_trigger(ipc_pipe->pipeline, ipc_pipe->pipeline->sink_comp,
+				       COMP_TRIGGER_PRE_START);
+		if (ret < 0) {
+			tr_err(&ipc_tr, "failed to start chain dma %d", ret);
+			return IPC4_BAD_STATE;
+		}
+	}
+
+	return IPC4_SUCCESS;
 }
 
 const struct comp_driver *ipc4_get_drv(uint8_t *uuid)
