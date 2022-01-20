@@ -155,6 +155,7 @@ struct adsp {
 	int (*write_firmware)(struct image *image);
 	int (*write_firmware_meu)(struct image *image);
 	int (*verify_firmware)(struct image *image);
+	struct fw_image_manifest_ace_v1_5 *man_ace_v1_5;
 	struct fw_image_manifest_v2_5 *man_v2_5;
 	struct fw_image_manifest_v1_8 *man_v1_8;
 	struct fw_image_manifest_v1_5 *man_v1_5;
@@ -170,6 +171,8 @@ void module_sha_complete(struct image *image, uint8_t *hash);
 int ri_manifest_sign_v1_5(struct image *image);
 int ri_manifest_sign_v1_8(struct image *image);
 int ri_manifest_sign_v2_5(struct image *image);
+int ri_manifest_sign_ace_v1_5(struct image *image);
+
 void ri_sha256(struct image *image, unsigned int offset, unsigned int size,
 	       uint8_t *hash);
 void ri_sha384(struct image *image, unsigned int offset, unsigned int size,
@@ -184,6 +187,10 @@ int pkcs_v1_5_sign_man_v1_8(struct image *image,
 			    unsigned int size2);
 int pkcs_v1_5_sign_man_v2_5(struct image *image,
 			    struct fw_image_manifest_v2_5 *man,
+			    void *ptr1, unsigned int size1, void *ptr2,
+			    unsigned int size2);
+int pkcs_v1_5_sign_man_ace_v1_5(struct image *image,
+			    struct fw_image_manifest_ace_v1_5 *man,
 			    void *ptr1, unsigned int size1, void *ptr2,
 			    unsigned int size2);
 

@@ -75,3 +75,20 @@ void ri_plat_ext_data_create_v2_5(struct image *image)
 	desc->header.preload_page_count = size / MAN_PAGE_SIZE;
 	ext->size = image->image_end;
 }
+
+void ri_plat_ext_data_create_ace_v1_5(struct image *image)
+{
+	struct sof_man_adsp_meta_file_ext_v2_5 *meta =
+		image->fw_image + MAN_META_EXT_OFFSET_ACE_V1_5;
+	struct sof_man_fw_desc *desc = image->fw_image + MAN_DESC_OFFSET_V1_8;
+	struct info_ext_0x16 *ext = image->fw_image + MAN_PART_INFO_OFFSET_ACE_V1_5;
+	uint32_t size;
+
+	fprintf(stdout, " auth: completing authentication manifest\n");
+
+	size = meta->comp_desc[0].limit_offset - MAN_DESC_OFFSET_V1_8;
+	size += MAN_PAGE_SIZE - (size % MAN_PAGE_SIZE);
+
+	desc->header.preload_page_count = size / MAN_PAGE_SIZE;
+	ext->size = image->image_end;
+}

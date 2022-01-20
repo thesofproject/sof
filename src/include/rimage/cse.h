@@ -42,5 +42,6 @@ struct CsePartitionDirEntry {
 
 void ri_cse_create(struct image *image);
 void ri_cse_create_v2_5(struct image *image);
+void ri_cse_create_ace_v1_5(struct image *image);
 
 #endif

@@ -170,6 +170,9 @@ int main(int argc, char *argv[])
 	if (image.adsp->man_v2_5)
 		image.adsp->man_v2_5->adsp_file_ext.imr_type = imr_type;
 
+	if (image.adsp->man_ace_v1_5)
+		image.adsp->man_ace_v1_5->adsp_file_ext.imr_type = imr_type;
+
 	/* parse input ELF files */
 	image.num_modules = argc - first_non_opt;
 

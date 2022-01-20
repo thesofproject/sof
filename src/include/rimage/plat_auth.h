@@ -18,6 +18,8 @@ struct image;
 #define SIGN_PKG_EXT_TYPE		15
 #define SIGN_PKG_NUM_MODULE		1
 
+#define SIGN_PKG_EXT_TYPE_ACE_V1_5	0x23
+
 struct signed_pkg_info_module {
 	uint8_t name[PLAT_AUTH_NAME_LEN]; /* must be padded with 0 */
 	uint8_t type;
@@ -68,6 +70,33 @@ struct signed_pkg_info_ext_v2_5 {
 	struct signed_pkg_info_module_v2_5 module[SIGN_PKG_NUM_MODULE];
 } __attribute__((packed));
 
+struct signed_pkg_info_module_ace_v1_5 {
+	uint8_t name[PLAT_AUTH_NAME_LEN]; /* must be padded with 0 */
+	uint8_t type;
+	uint8_t hash_algo;
+	uint8_t reserved[2];
+	uint32_t meta_size;
+	uint8_t hash[PLAT_AUTH_SHA384_LEN];
+} __attribute__((packed));
+
+struct signed_pkg_info_ext_ace_v1_5 {
+	uint32_t ext_type;
+	uint32_t ext_len;
+
+	uint8_t name[4];
+	uint32_t vcn; /* 0 */
+	uint32_t svn;
+	uint8_t partition_usage;
+	uint8_t reserved0;
+	uint8_t fw_type;
+	uint8_t fw_sub_type;
+	uint8_t number_of_modules;
+	uint8_t boot_strap_svn;
+	uint8_t reserved[14];	/* must be 0 */
+
+	/* variable length of modules */
+	struct signed_pkg_info_module_ace_v1_5 module[SIGN_PKG_NUM_MODULE];
+} __attribute__((packed));
 
 #define PART_INFO_EXT_TYPE		3
 #define PART_INFO_NUM_MODULE		1
@@ -121,5 +150,6 @@ void ri_adsp_meta_data_create_v2_5(struct image *image, int meta_start_offset,
 				   int meta_end_offset);
 void ri_plat_ext_data_create(struct image *image);
 void ri_plat_ext_data_create_v2_5(struct image *image);
+void ri_plat_ext_data_create_ace_v1_5(struct image *image);
 
 #endif

@@ -106,3 +106,33 @@ void ri_cse_create_v2_5(struct image *image)
 
 	fprintf(stdout, " cse: cse checksum %x\n", cse_hdr->checksum);
 }
+
+void ri_cse_create_ace_v1_5(struct image *image)
+{
+	struct CsePartitionDirHeader_v2_5 *cse_hdr = image->fw_image;
+	struct sof_man_adsp_meta_file_ext_v2_5 *meta = image->fw_image +
+		MAN_META_EXT_OFFSET_ACE_V1_5;
+	struct CsePartitionDirEntry *cse_entry =
+		image->fw_image + sizeof(*cse_hdr);
+	uint8_t *val = image->fw_image;
+	int size;
+
+	fprintf(stdout, " cse: completing CSE V2.5 manifest\n");
+
+	cse_entry[2].length = meta->comp_desc[0].limit_offset -
+		MAN_DESC_OFFSET_V1_8;
+
+	/*
+	 * calculate checksum using crc-32/iso-hdlc
+	 *
+	 * polynomial: 0x04c11db7
+	 * initial value: 0xffffffff
+	 * reverse input: true
+	 * reverse output: true
+	 * xor output: 0xffffffff
+	 */
+	size = (sizeof(*cse_hdr) + (sizeof(*cse_entry) * MAN_CSE_PARTS));
+	cse_hdr->checksum = crc32(val, size, 0x04c11db7, 0xffffffff, true, true, 0xffffffff);
+
+	fprintf(stdout, " cse: cse checksum %x\n", cse_hdr->checksum);
+}

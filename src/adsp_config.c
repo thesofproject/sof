@@ -1265,6 +1265,129 @@ static int parse_signed_pkg_v2_5(const toml_table_t *toml, struct parse_ctx *pct
 	return 0;
 }
 
+static void dump_signed_pkg_ace_v1_5(const struct signed_pkg_info_ext_ace_v1_5 *signed_pkg)
+{
+	int i;
+
+	DUMP("\nsigned_pkg");
+	DUMP_KEY("name", "'%s'", signed_pkg->name);
+	DUMP_KEY("vcn", "%d", signed_pkg->vcn);
+	DUMP_KEY("svn", "%d", signed_pkg->svn);
+	DUMP_KEY("fw_type", "%d", signed_pkg->fw_type);
+	DUMP_KEY("fw_sub_type", "%d", signed_pkg->fw_sub_type);
+	for (i = 0; i < ARRAY_SIZE(signed_pkg->module); ++i) {
+		DUMP_KEY("meta.name", "'%s'", signed_pkg->module[i].name);
+		DUMP_KEY("meta.type", "0x%x", signed_pkg->module[i].type);
+	}
+}
+
+static int parse_signed_pkg_ace_v1_5(const toml_table_t *toml, struct parse_ctx *pctx,
+			    struct signed_pkg_info_ext_ace_v1_5 *out, bool verbose)
+{
+	struct signed_pkg_info_module_ace_v1_5 *mod;
+	toml_array_t *module_array;
+	toml_table_t *signed_pkg;
+	struct parse_ctx ctx;
+	toml_table_t *module;
+	int ret;
+	int i;
+
+	/* look for subtable in toml, increment pctx parsed table cnt and initialize local ctx */
+	signed_pkg = toml_table_in(toml, "signed_pkg");
+	if (!signed_pkg)
+		return err_key_not_found("signed_pkg");
+	++pctx->table_cnt;
+	parse_ctx_init(&ctx);
+
+	/* non-configurable fields */
+	out->ext_type = SIGN_PKG_EXT_TYPE_ACE_V1_5;
+	out->ext_len = sizeof(struct signed_pkg_info_ext_ace_v1_5);
+
+	/* configurable fields */
+	parse_str_key(signed_pkg, &ctx, "name", (char *)out->name, sizeof(out->name), &ret);
+	if (ret < 0)
+		return ret;
+
+	out->vcn = parse_uint32_key(signed_pkg, &ctx, "vcn", 0, &ret);
+	if (ret < 0)
+		return ret;
+
+	out->svn = parse_uint32_key(signed_pkg, &ctx, "svn", 0, &ret);
+	if (ret < 0)
+		return ret;
+
+	out->fw_type = parse_uint32_hex_key(signed_pkg, &ctx, "fw_type", 0, &ret);
+	if (ret < 0)
+		return ret;
+
+	out->fw_sub_type = parse_uint32_hex_key(signed_pkg, &ctx, "fw_sub_type", 0, &ret);
+	if (ret < 0)
+		return ret;
+
+	out->partition_usage = parse_uint32_hex_key(signed_pkg, &ctx, "partition_usage", 0, &ret);
+	if (ret < 0)
+		return ret;
+
+	/* check everything parsed, expect 1 more array */
+	ctx.array_cnt += 1;
+	ret = assert_everything_parsed(signed_pkg, &ctx);
+	if (ret < 0)
+		return ret;
+
+	/* modules array */
+	module_array = toml_array_in(signed_pkg, "module");
+	if (!module_array)
+		return err_key_not_found("module");
+	if (toml_array_kind(module_array) != 't' ||
+	    toml_array_nelem(module_array) != ARRAY_SIZE(out->module))
+		return err_key_parse("module", "wrong array type or length != %d",
+				     ARRAY_SIZE(out->module));
+
+	/* parse modules array elements */
+	for (i = 0; i < toml_array_nelem(module_array); ++i) {
+		module = toml_table_at(module_array, i);
+		if (!module)
+			return err_key_parse("module", NULL);
+		mod = &out->module[i];
+
+		/* initialize parse context for each array element */
+		parse_ctx_init(&ctx);
+
+		/* non-configurable fields */
+
+		/* configurable fields */
+		parse_str_key(module, &ctx, "name", (char *)mod->name, sizeof(mod->name), &ret);
+		if (ret < 0)
+			return err_key_parse("module", NULL);
+
+		mod->type = parse_uint32_hex_key(module, &ctx, "type", 0x03, &ret);
+		if (ret < 0)
+			return err_key_parse("module", NULL);
+
+		mod->hash_algo = parse_uint32_hex_key(module, &ctx, "hash_algo", 0x00, &ret);
+		if (ret < 0)
+			return err_key_parse("module", NULL);
+
+		mod->meta_size = parse_uint32_key(module, &ctx, "meta_size", 112, &ret);
+		if (ret < 0)
+			return err_key_parse("module", NULL);
+
+		/* check everything parsed */
+		ret = assert_everything_parsed(module, &ctx);
+		if (ret < 0)
+			return ret;
+	}
+
+	if (verbose)
+		dump_signed_pkg_ace_v1_5(out);
+
+	/*
+	 * values set in other places in code:
+	 * - module.hash
+	 */
+
+	return 0;
+}
 
 static void dump_partition_info_ext(const struct partition_info_ext *part_info)
 {
@@ -1664,7 +1787,7 @@ static void dump_fw_desc(const struct sof_man_fw_desc *fw_desc)
 	DUMP_KEY("preload_page_count", "%d", fw_desc->header.preload_page_count);
 	DUMP_KEY("fw_image_flags", "0x%x", fw_desc->header.fw_image_flags);
 	DUMP_KEY("feature_mask", "0x%x", fw_desc->header.feature_mask);
-	DUMP_KEY("hw_buf_base_addr", "0x%x", fw_desc->header.hw_buf_base_addr);
+	DUMP_KEY("hw_buf_base_addr", "0x%x", fw_desc->header.fw_compat);
 	DUMP_KEY("hw_buf_length", "0x%x", fw_desc->header.hw_buf_length);
 	DUMP_KEY("load_offset", "0x%x", fw_desc->header.load_offset);
 }
@@ -1723,7 +1846,7 @@ static int parse_fw_desc(const toml_table_t *toml, struct parse_ctx *pctx,
 	if (ret < 0)
 		return err_key_parse("header", NULL);
 
-	out->header.hw_buf_base_addr =
+	out->header.fw_compat =
 		parse_uint32_hex_key(header, &ctx, "hw_buf_base_addr", 0, &ret);
 	if (ret < 0)
 		return err_key_parse("header", NULL);
@@ -2342,6 +2465,70 @@ static int parse_adsp_config_v2_5(const toml_table_t *toml, struct adsp *out,
 	return 0;
 }
 
+static int parse_adsp_config_ace_v1_5(const toml_table_t *toml, struct adsp *out,
+				  bool verbose)
+{
+	struct parse_ctx ctx;
+	int ret;
+
+	out->man_ace_v1_5 = malloc(sizeof(struct fw_image_manifest_ace_v1_5));
+	if (!out->man_ace_v1_5)
+		return err_malloc("man_ace_v1_5");
+
+	/* clear memory */
+	memset(out->man_ace_v1_5, 0, sizeof(*out->man_ace_v1_5));
+
+	/* assign correct write functions */
+	out->write_firmware = man_write_fw_ace_v1_5;
+	out->write_firmware_meu = man_write_fw_meu_v2_5;
+	out->verify_firmware = ri_manifest_verify_v2_5;
+
+	/* version array has already been parsed, so increment ctx.array_cnt */
+	parse_ctx_init(&ctx);
+	++ctx.array_cnt;
+
+	/* parse each toml subtable */
+	ret = parse_adsp(toml, &ctx, out, verbose);
+	if (ret < 0)
+		return err_key_parse("adsp", NULL);
+
+	ret = parse_cse_v2_5(toml, &ctx, &out->man_ace_v1_5->cse_partition_dir_header,
+			out->man_ace_v1_5->cse_partition_dir_entry, 3, verbose);
+	if (ret < 0)
+		return err_key_parse("cse", NULL);
+
+	ret = parse_css_v2_5(toml, &ctx, &out->man_ace_v1_5->css, verbose);
+	if (ret < 0)
+		return err_key_parse("css", NULL);
+
+	ret = parse_signed_pkg_ace_v1_5(toml, &ctx, &out->man_ace_v1_5->signed_pkg, verbose);
+	if (ret < 0)
+		return err_key_parse("signed_pkg", NULL);
+
+	ret = parse_info_ext_0x16(toml, &ctx, &out->man_ace_v1_5->info_0x16, verbose);
+	if (ret < 0)
+		return err_key_parse("partition_info", NULL);
+
+	ret = parse_adsp_file_ext_v2_5(toml, &ctx, &out->man_ace_v1_5->adsp_file_ext, verbose);
+	if (ret < 0)
+		return err_key_parse("adsp_file", NULL);
+
+	ret = parse_fw_desc(toml, &ctx, &out->man_ace_v1_5->desc, verbose);
+	if (ret < 0)
+		return err_key_parse("fw_desc", NULL);
+
+	ret = parse_module(toml, &ctx, out, verbose);
+	if (ret < 0)
+		return err_key_parse("module", NULL);
+
+	/* check everything parsed */
+	ret = assert_everything_parsed(toml, &ctx);
+	if (ret < 0)
+		return ret;
+
+	return 0;
+}
+
 /** version is stored as toml array with integer number, something like:
  *   "version = [1, 8]"
  */
@@ -2386,6 +2573,7 @@ static const struct config_parser *find_config_parser(int64_t version[2])
 		{1, 5, parse_adsp_config_v1_5},
 		{1, 8, parse_adsp_config_v1_8},
 		{2, 5, parse_adsp_config_v2_5},
+		{3, 0, parse_adsp_config_ace_v1_5},
 	};
 	int i;
 

@@ -137,7 +137,7 @@ struct sof_man_fw_header {
 	uint16_t hotfix_version;
 	uint16_t build_version;
 	uint32_t num_module_entries;
-	uint32_t hw_buf_base_addr;
+	uint32_t fw_compat;
 	uint32_t hw_buf_length;
 	/* target address for binary loading as offset in IMR - must be == base offset */
 	uint32_t load_offset;
