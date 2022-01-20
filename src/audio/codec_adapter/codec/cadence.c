@@ -106,7 +106,7 @@ static int cadence_codec_init(struct comp_dev *dev)
 
 	comp_dbg(dev, "cadence_codec_init() start");
 
-	cd = module_allocate_memory(dev, sizeof(struct cadence_codec_data), 0);
+	cd = rballoc(0, SOF_MEM_CAPS_RAM, sizeof(struct cadence_codec_data));
 	if (!cd) {
 		comp_err(dev, "cadence_codec_init(): failed to allocate memory for cadence codec data");
 		return -ENOMEM;
@@ -176,7 +176,7 @@ static int cadence_codec_init(struct comp_dev *dev)
 		goto free;
 	}
 	/* Allocate space for codec object */
-	cd->self = module_allocate_memory(dev, obj_size, 0);
+	cd->self = rballoc(0, SOF_MEM_CAPS_RAM, obj_size);
 	if (!cd->self) {
 		comp_err(dev, "cadence_codec_init(): failed to allocate space for lib object");
 		ret = -ENOMEM;
@@ -188,14 +188,16 @@ static int cadence_codec_init(struct comp_dev *dev)
 	/* Set all params to their default values */
 	API_CALL(cd, XA_API_CMD_INIT, XA_CMD_TYPE_INIT_API_PRE_CONFIG_PARAMS,
 		 NULL, ret);
-	if (ret != LIB_NO_ERROR)
+	if (ret != LIB_NO_ERROR) {
+		rfree(cd->self);
 		goto free;
+	}
 
 	comp_dbg(dev, "cadence_codec_init() done");
 
 	return 0;
 free:
-	module_free_memory(dev, cd);
+	rfree(cd);
 	return ret;
 }
 
@@ -547,18 +549,21 @@ static int cadence_codec_process(struct comp_dev *dev)
 
 static int cadence_codec_reset(struct comp_dev *dev)
 {
+	struct module_data *codec = comp_get_module_data(dev);
+	struct cadence_codec_data *cd = codec->private;
 	int ret;
 
-	/* Current CADENCE API doesn't support reset of codec's
-	 * runtime parameters therefore we need to free all the resources
-	 * and start over.
+	/*
+	 * Current CADENCE API doesn't support reset of codec's runtime parameters.
+	 * So, free all memory associated with runtime params. These will be reallocated during
+	 * prepare.
 	 */
 	module_free_all_memory(dev);
-	ret = cadence_codec_init(dev);
-	if (ret) {
-		comp_err(dev, "cadence_codec_reset() error %x: could not re-initialize codec after reset",
-			ret);
-	}
+
+	/* reset to default params */
+	API_CALL(cd, XA_API_CMD_INIT, XA_CMD_TYPE_INIT_API_PRE_CONFIG_PARAMS, NULL, ret);
+	if (ret != LIB_NO_ERROR)
+		return ret;
 
 	ret = cadence_codec_prepare(dev);
 	if (ret) {
@@ -576,6 +581,8 @@ static int cadence_codec_free(struct comp_dev *dev)
 
 	rfree(cd->setup_cfg.data);
 	module_free_all_memory(dev);
+	rfree(cd->self);
+	rfree(cd);
 	return 0;
 }
 
