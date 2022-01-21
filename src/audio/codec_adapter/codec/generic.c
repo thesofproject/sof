@@ -307,10 +307,6 @@ int module_reset(struct comp_dev *dev)
 	struct processing_module *mod = comp_get_drvdata(dev);
 	struct module_data *md = &mod->priv;
 
-	/* if the module was never prepared, no need to reset */
-	if (md->state < MODULE_IDLE)
-		return 0;
-
 	ret = md->ops->reset(dev);
 	if (ret) {
 		comp_err(dev, "module_reset() error %d: module specific reset() failed for comp %d",

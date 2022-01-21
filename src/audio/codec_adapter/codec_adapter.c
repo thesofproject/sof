@@ -584,10 +584,7 @@ int codec_adapter_reset(struct comp_dev *dev)
 		comp_err(dev, "codec_adapter_reset(): error %d, codec reset has failed",
 			 ret);
 	}
-
-	/* if module is not prepared, local_buffer won't be allocated */
-	if (mod->local_buff)
-		buffer_zero(mod->local_buff);
+	buffer_zero(mod->local_buff);
 
 	comp_dbg(dev, "codec_adapter_reset(): done");
 
