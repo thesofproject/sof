@@ -65,16 +65,14 @@ struct comp_dev *codec_adapter_new(const struct comp_driver *drv,
 
 	comp_set_drvdata(dev, mod);
 
-	/* Copy initial config */
-	if (ipc_codec_adapter->size) {
-		ret = module_load_config(dev, ipc_codec_adapter->data, ipc_codec_adapter->size);
-		if (ret) {
-			comp_err(dev, "codec_adapter_new() error %d: config loading has failed.",
-				 ret);
-			goto err;
-		}
+	/* Copy setup config */
+	ret = module_load_config(dev, ipc_codec_adapter->data, ipc_codec_adapter->size,
+				 MODULE_CFG_SETUP);
+	if (ret) {
+		comp_err(dev, "codec_adapter_new() error %d: config loading has failed.",
+			 ret);
+		goto err;
 	}
-
 	/* Init processing codec */
 	ret = module_init(dev, interface);
 	if (ret) {
@@ -405,6 +403,7 @@ static int codec_adapter_set_params(struct comp_dev *dev, struct sof_ipc_ctrl_da
 	uint32_t offset;
 	struct processing_module *mod = comp_get_drvdata(dev);
 	struct module_data *md = &mod->priv;
+	enum module_cfg_type type = cdata->data->type;
 
 	comp_dbg(dev, "codec_adapter_set_params(): start: num_of_elem %d, elem remain %d msg_index %u",
 		 cdata->num_elems, cdata->elems_remaining, cdata->msg_index);
@@ -412,8 +411,18 @@ static int codec_adapter_set_params(struct comp_dev *dev, struct sof_ipc_ctrl_da
 	/* Stage 1 verify input params & allocate memory for the config blob */
 	if (cdata->msg_index == 0) {
 		size = cdata->num_elems + cdata->elems_remaining;
-		if (!size)
+		/* Check that there is no work-in-progress on previous request */
+		if (md->runtime_params) {
+			comp_err(dev, "codec_adapter_set_params() error: busy with previous request");
+			return -EBUSY;
+		}
+
+		if (!size) {
+			comp_err(dev, "codec_adapter_set_params() error: no configuration size %d",
+				 size);
+			/* TODO: return -EINVAL. This is temporary until driver fixes its issue */
 			return 0;
+		}
 
 		if (size > MAX_BLOB_SIZE) {
 			comp_err(dev, "codec_adapter_set_params() error: blob size is too big cfg size %d, allowed %d",
@@ -421,10 +430,9 @@ static int codec_adapter_set_params(struct comp_dev *dev, struct sof_ipc_ctrl_da
 			return -EINVAL;
 		}
 
-		/* Check that there is no work-in-progress on previous request */
-		if (md->runtime_params) {
-			comp_err(dev, "codec_adapter_set_params() error: busy with previous request");
-			return -EBUSY;
+		if (type != MODULE_CFG_SETUP && type != MODULE_CFG_RUNTIME) {
+			comp_err(dev, "codec_adapter_set_params() error: unknown config type");
+			return -EINVAL;
 		}
 
 		/* Allocate buffer for new params */
@@ -452,26 +460,49 @@ static int codec_adapter_set_params(struct comp_dev *dev, struct sof_ipc_ctrl_da
 		return 0;
 
 	/* config fully copied, now load it */
-	ret = module_load_config(dev, md->runtime_params, size);
+	ret = module_load_config(dev, md->runtime_params, size, type);
 	if (ret)
 		goto end;
 
 	comp_dbg(dev, "codec_adapter_set_params(): config load successful");
 
 	/* And apply runtime config right away if codec is already prepared */
-	if (md->state >= MODULE_INITIALIZED) {
-		ret = module_apply_runtime_config(dev);
-		if (ret)
-			comp_err(dev, "codec_adapter_set_params() error %x: codec runtime config apply failed",
-				 ret);
-		else
-			comp_dbg(dev, "codec_adapter_set_params() apply of runtime config done.");
+	if (type == MODULE_CFG_RUNTIME) {
+		if (md->state >= MODULE_INITIALIZED) {
+			ret = module_apply_runtime_config(dev);
+			if (ret)
+				comp_err(dev, "codec_adapter_set_params() error %x: codec runtime config apply failed",
+					 ret);
+			else
+				comp_dbg(dev, "codec_adapter_set_params() apply of runtime config done.");
+		}
 	}
 
 end:
 	if (md->runtime_params)
 		rfree(md->runtime_params);
 	md->runtime_params = NULL;
+	return ret;
+}
+
+static int ca_set_binary_data(struct comp_dev *dev,
+			      struct sof_ipc_ctrl_data *cdata)
+{
+	int ret;
+
+	comp_dbg(dev, "ca_set_binary_data() start, data type %d", cdata->data->type);
+
+	switch (cdata->data->type) {
+	case MODULE_CFG_SETUP:
+	case MODULE_CFG_RUNTIME:
+		ret = codec_adapter_set_params(dev, cdata);
+		break;
+	default:
+		comp_err(dev, "ca_set_binary_data() error: unknown binary data type");
+		ret = -EINVAL;
+		break;
+	}
+
 	return ret;
 }
 
@@ -496,7 +527,7 @@ static int codec_adapter_ctrl_set_data(struct comp_dev *dev,
 		ret = -EIO;
 		break;
 	case SOF_CTRL_CMD_BINARY:
-		ret = codec_adapter_set_params(dev, cdata);
+		ret = ca_set_binary_data(dev, cdata);
 		break;
 	default:
 		comp_err(dev, "codec_adapter_ctrl_set_data error: unknown set data command");

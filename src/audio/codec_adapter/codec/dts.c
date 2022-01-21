@@ -255,7 +255,7 @@ static int dts_codec_apply_config(struct comp_dev *dev)
 
 	comp_dbg(dev, "dts_codec_apply_config() start");
 
-	config = &codec->cfg;
+	config = &codec->r_cfg;
 
 	/* Check that config->data isn't invalid and has size greater than 0 */
 	config_header_size = sizeof(config->size) + sizeof(config->avail);

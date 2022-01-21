@@ -107,6 +107,15 @@ struct module_interface {
 };
 
 /**
+ * \enum module_cfg_type
+ * \brief Specific configuration types which can be either:
+ */
+enum module_cfg_type {
+	MODULE_CFG_SETUP, /**< Used to pass setup parameters */
+	MODULE_CFG_RUNTIME /**< Used every time runtime parameters has been loaded. */
+};
+
+/**
  * \enum module_state
  * \brief Module-specific states
  */
@@ -115,6 +124,14 @@ enum module_state {
 	MODULE_INITIALIZED, /**< Module initialized or reset. */
 	MODULE_IDLE, /**< Module is idle now. */
 	MODULE_PROCESSING, /**< Module is processing samples now. */
+};
+
+/** codec adapter setup config parameters */
+struct ca_config {
+	uint32_t reserved;
+	uint32_t sample_rate;
+	uint32_t sample_width;
+	uint32_t channels;
 };
 
 /**
@@ -174,7 +191,8 @@ struct module_data {
 	enum module_state state;
 	void *private; /**< self object, memory tables etc here */
 	void *runtime_params;
-	struct module_config cfg; /**< module configuration data */
+	struct module_config s_cfg; /**< setup config */
+	struct module_config r_cfg; /**< runtime config */
 	struct module_interface *ops; /**< module specific operations */
 	struct module_memory memory; /**< memory allocated by module */
 	struct module_processing_data mpd; /**< shared data comp <-> module */
@@ -182,6 +200,7 @@ struct module_data {
 
 /* codec_adapter private, runtime data */
 struct processing_module {
+	struct ca_config ca_config;
 	struct module_data priv; /**< module private data */
 	struct comp_buffer *ca_sink;
 	struct comp_buffer *ca_source;
@@ -194,7 +213,7 @@ struct processing_module {
 /*****************************************************************************/
 /* Module generic interfaces						     */
 /*****************************************************************************/
-int module_load_config(struct comp_dev *dev, void *cfg, size_t size);
+int module_load_config(struct comp_dev *dev, void *cfg, size_t size, enum module_cfg_type type);
 int module_init(struct comp_dev *dev, struct module_interface *interface);
 void *module_allocate_memory(struct comp_dev *dev, uint32_t size, uint32_t alignment);
 int module_free_memory(struct comp_dev *dev, void *ptr);
