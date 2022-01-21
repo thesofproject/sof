@@ -699,8 +699,8 @@ static int copier_params(struct comp_dev *dev, struct sof_ipc_stream_params *par
 	struct comp_buffer *sink;
 	struct comp_buffer *source;
 	struct list_item *sink_list;
-	struct list_item *src_list;
 	int ret = 0;
+	int i;
 
 	comp_dbg(dev, "copier_params()");
 
@@ -719,7 +719,7 @@ static int copier_params(struct comp_dev *dev, struct sof_ipc_stream_params *par
 
 	/* update each sink format */
 	list_for_item(sink_list, &dev->bsink_list) {
-		int  i, j;
+		int j;
 
 		sink = container_of(sink_list, struct comp_buffer, source_list);
 		j = IPC4_SINK_QUEUE_ID(sink->id);
@@ -739,33 +739,31 @@ static int copier_params(struct comp_dev *dev, struct sof_ipc_stream_params *par
 		sink->hw_params_configured = true;
 	}
 
-	/* update each source format
+	/* update the source format
 	 * used only for rare cases where two pipelines are connected by a shared
 	 * buffer and 2 copiers, this will set source format only for shared buffers
 	 * for a short time when the second pipeline already started
 	 * and the first one is not ready yet along with sink buffers params
 	 */
-	list_for_item(src_list, &dev->bsource_list) {
-		int  i, j;
+	source = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
+	if (!source->hw_params_configured) {
+		struct ipc4_audio_format in_fmt;
 
-		source = container_of(src_list, struct comp_buffer, sink_list);
-		if (source->hw_params_configured == false) {
-			j = IPC4_SRC_QUEUE_ID(source->id);
-			source->stream.channels = cd->out_fmt[j].channels_count;
-			source->stream.rate = cd->out_fmt[j].sampling_frequency;
-			audio_stream_fmt_conversion(cd->out_fmt[j].depth,
-						    cd->out_fmt[j].valid_bit_depth,
-						    &source->stream.frame_fmt,
-						    &source->stream.valid_sample_fmt,
-						    cd->out_fmt[j].s_type);
+		in_fmt = cd->config.base.audio_fmt;
+		source->stream.channels = in_fmt.channels_count;
+		source->stream.rate = in_fmt.sampling_frequency;
+		audio_stream_fmt_conversion(in_fmt.depth,
+					    in_fmt.valid_bit_depth,
+					    &source->stream.frame_fmt,
+					    &source->stream.valid_sample_fmt,
+					    in_fmt.s_type);
 
-			source->buffer_fmt = cd->out_fmt[j].interleaving_style;
+		source->buffer_fmt = in_fmt.interleaving_style;
 
-			for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
-				source->chmap[i] = (cd->out_fmt[j].ch_map >> i * 4) & 0xf;
+		for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
+			source->chmap[i] = (in_fmt.ch_map >> i * 4) & 0xf;
 
-			source->hw_params_configured = true;
-		}
+		source->hw_params_configured = true;
 	}
 
 	if (cd->endpoint) {
