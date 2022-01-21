@@ -216,16 +216,9 @@ static int cadence_codec_init(struct comp_dev *dev)
 		setup_cfg->avail = true;
 	}
 
-	ret = cadence_codec_post_init(dev);
-	if (ret < 0)
-		goto free;
-
 	comp_dbg(dev, "cadence_codec_init() done");
 
 	return 0;
-free:
-	rfree(cd);
-	return ret;
 }
 
 static int cadence_codec_apply_config(struct comp_dev *dev)
@@ -455,6 +448,13 @@ static int cadence_codec_prepare(struct comp_dev *dev)
 	struct cadence_codec_data *cd = codec->private;
 
 	comp_dbg(dev, "cadence_codec_prepare() start");
+
+	ret = cadence_codec_post_init(dev);
+	if (ret < 0) {
+		comp_err(dev, "cadence_codec_prepare() error %x: failed post init",
+			 ret);
+		return ret;
+	}
 
 	ret = cadence_codec_apply_config(dev);
 	if (ret) {
