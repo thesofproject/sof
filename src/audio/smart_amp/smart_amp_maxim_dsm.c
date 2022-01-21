@@ -212,7 +212,7 @@ int maxim_dsm_set_param(struct smart_amp_mod_struct_t *hspk,
 	/* Model database */
 	int32_t *db = (int32_t *)caldata->data;
 	/* Payload buffer */
-	int *wparam = ASSUME_ALIGNED(cdata->data->data, 4);
+	uint32_t *wparam = (uint32_t *)ASSUME_ALIGNED(cdata->data->data, 4);
 	/* number of parameters to read */
 	int num_param = (cdata->num_elems >> 2);
 	int idx, id, ch;
