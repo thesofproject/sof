@@ -25,7 +25,15 @@
 #define __section(x) __attribute__((section(x)))
 #endif
 
-#if defined(__clang__) || !defined(__XCC__)
+/* The fallthrough attribute is supported since GCC 7.0
+ * and Clang 10.0.0.
+ *
+ * Note that Clang sets __GNUC__ == 4 so the GCC version
+ * test will not be true here, and must go through
+ * the Clang version test.
+ */
+#if (defined(__GNUC__) && (__GNUC__ >= 7)) || \
+	(defined(__clang__) && (__clang_major__ >= 10))
 
 #define COMPILER_FALLTHROUGH __attribute__((fallthrough))
 
