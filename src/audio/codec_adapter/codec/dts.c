@@ -5,6 +5,7 @@
 // Author: Mark Barton <mark.barton@xperi.com>
 
 #include "sof/audio/codec_adapter/codec/generic.h"
+#include "sof/audio/codec_adapter/codec/dts.h"
 
 #include "DtsSofInterface.h"
 
