@@ -263,13 +263,11 @@ int module_process(struct comp_dev *dev)
 	md->state = MODULE_PROCESSING;
 
 	ret = md->ops->process(dev);
-	if (ret && ret != -ENOSPC) {
+	if (ret)
 		comp_err(dev, "module_process() error %d: for comp %d",
 			 ret, dev_comp_id(dev));
-		return ret;
-	}
-
-	comp_dbg(dev, "module_process() done");
+	else
+		comp_dbg(dev, "module_process() done");
 
 	/* reset state to idle */
 	md->state = MODULE_IDLE;
