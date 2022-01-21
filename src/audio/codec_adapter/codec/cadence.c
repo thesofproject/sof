@@ -94,6 +94,34 @@ static struct cadence_api cadence_api_table[] = {
 #endif
 };
 
+static int cadence_codec_resolve_api(struct comp_dev *dev, uint32_t api_id)
+{
+	struct module_data *codec = comp_get_module_data(dev);
+	uint32_t no_of_api = ARRAY_SIZE(cadence_api_table);
+	struct cadence_codec_data *cd = codec->private;
+	int i;
+
+	/* Find and assign API function */
+	for (i = 0; i < no_of_api; i++) {
+		if (cadence_api_table[i].id == api_id) {
+			cd->api = cadence_api_table[i].api;
+			break;
+		}
+	}
+
+	cd->api_id = api_id;
+
+	/* Verify API assignment */
+	if (!cd->api) {
+		comp_err(dev, "cadence_codec_init(): could not find API function for id %x",
+			api_id);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+
 static int cadence_codec_post_init(struct comp_dev *dev)
 {
 	struct module_data *codec = comp_get_module_data(dev);
@@ -144,9 +172,7 @@ static int cadence_codec_init(struct comp_dev *dev)
 	int ret;
 	struct module_data *codec = comp_get_module_data(dev);
 	struct cadence_codec_data *cd = NULL;
-	uint32_t no_of_api = ARRAY_SIZE(cadence_api_table);
 	uint32_t api_id = CODEC_GET_API_ID(DEFAULT_CODEC_ID);
-	uint32_t i;
 
 	comp_dbg(dev, "cadence_codec_init() start");
 
@@ -163,23 +189,9 @@ static int cadence_codec_init(struct comp_dev *dev)
 	cd->api = NULL;
 	cd->setup_cfg.avail = false;
 
-	/* Find and assign API function */
-	for (i = 0; i < no_of_api; i++) {
-		if (cadence_api_table[i].id == api_id) {
-			cd->api = cadence_api_table[i].api;
-			break;
-		}
-	}
-
-	cd->api_id = api_id;
-
-	/* Verify API assignment */
-	if (!cd->api) {
-		comp_err(dev, "cadence_codec_init(): could not find API function for id %x",
-			 api_id);
-		ret = -EINVAL;
+	ret = cadence_codec_resolve_api(dev, api_id);
+	if (ret < 0)
 		goto free;
-	}
 
 	/* copy the setup config only for the first init */
 	if (codec->state == MODULE_DISABLED && codec->cfg.avail) {
