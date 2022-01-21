@@ -475,6 +475,8 @@ static int codec_adapter_set_params(struct comp_dev *dev, struct sof_ipc_ctrl_da
 					 ret);
 			else
 				comp_dbg(dev, "codec_adapter_set_params() apply of runtime config done.");
+		} else {
+			mod->priv.r_cfg.avail = true;
 		}
 	}
 
