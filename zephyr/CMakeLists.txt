@@ -548,10 +548,6 @@ zephyr_library_sources(
 	${SOF_IPC_PATH}/dma-copy.c
 	${SOF_IPC_PATH}/ipc-common.c
 	${SOF_IPC_PATH}/ipc-helper.c
-	${SOF_IPC_PATH}/ipc3/handler.c
-	${SOF_IPC_PATH}/ipc3/helper.c
-	${SOF_IPC_PATH}/ipc3/dai.c
-	${SOF_IPC_PATH}/ipc3/host-page-table.c
 	${SOF_SRC_PATH}/spinlock.c
 
 	# SOF math utilities
@@ -596,6 +592,19 @@ zephyr_library_sources(
 	wrapper.c
 	edf_schedule.c
 	schedule.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_IPC_MAJOR_3
+	${SOF_IPC_PATH}/ipc3/handler.c
+	${SOF_IPC_PATH}/ipc3/helper.c
+	${SOF_IPC_PATH}/ipc3/dai.c
+	${SOF_IPC_PATH}/ipc3/host-page-table.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_IPC_MAJOR_4
+	${SOF_IPC_PATH}/ipc4/handler.c
+	${SOF_IPC_PATH}/ipc4/helper.c
+	${SOF_IPC_PATH}/ipc4/dai.c
 )
 
 zephyr_library_sources_ifdef(CONFIG_TRACE
