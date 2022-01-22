@@ -145,8 +145,8 @@ static int cadence_codec_init(struct comp_dev *dev)
 		setup_cfg->data = rballoc(0, SOF_MEM_CAPS_RAM, codec->cfg.size);
 		if (!setup_cfg->data) {
 			comp_err(dev, "cadence_codec_init(): failed to alloc setup config");
-			module_free_memory(dev, cd);
-			return -ENOMEM;
+			ret = -ENOMEM;
+			goto free;
 		}
 
 		/* copy the setup config */
@@ -154,8 +154,7 @@ static int cadence_codec_init(struct comp_dev *dev)
 		ret = memcpy_s(setup_cfg->data, setup_cfg->size, codec->cfg.data, setup_cfg->size);
 		if (ret) {
 			comp_err(dev, "cadence_codec_init(): failed to copy setup config %d", ret);
-			module_free_memory(dev, cd);
-			return ret;
+			goto free;
 		}
 		setup_cfg->avail = true;
 	}
