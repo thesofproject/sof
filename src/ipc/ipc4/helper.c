@@ -660,7 +660,7 @@ int ipc4_trigger_chain_dma(struct ipc *ipc, struct ipc4_chain_dma *cdma)
 	}
 
 	if (!cdma->header.r.allocate) {
-		tr_err(&ipc_tr, "can't enable chain dma %d", ret);
+		tr_err(&ipc_tr, "can't enable chain dma");
 		return IPC4_INVALID_REQUEST;
 	}
 
