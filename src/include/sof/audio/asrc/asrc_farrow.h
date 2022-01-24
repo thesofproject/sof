@@ -51,7 +51,6 @@
  * max 256 samples long.
  */
 #define ASRC_MAX_FILTER_LENGTH	128
-#define ASRC_MAX_BUFFER_LENGTH	256
 
 /*
  * @brief Define whether the input and output buffers shall be
@@ -576,6 +575,7 @@ enum asrc_error_code asrc_update_fs_ratio(struct comp_dev *dev,
  *
  * Configures the src for given sampling rates.
  * Shouldn't be called on the fly because the buffers get flushed when called.
+ * Release buffers BEFORE call this function and allocate them again after function returns.
  *
  * Available sample rates [Hz] are:
  * 8000, 11025, 12000, 16000, 22050, 24000, 32000, 44100, 48000.

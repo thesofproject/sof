@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 //
-// Copyright(c) 2019 Intel Corporation. All rights reserved.
+// Copyright(c) 2019-2022 Intel Corporation. All rights reserved.
 
 #include <sof/audio/asrc/asrc_farrow.h>
 #include <sof/audio/buffer.h>
@@ -363,6 +363,76 @@ static struct comp_dev *asrc_new(const struct comp_driver *drv,
 	return dev;
 }
 
+static int asrc_initialize_buffers(struct asrc_farrow *src_obj)
+{
+	int32_t *buf_32;
+	int16_t *buf_16;
+	int ch;
+	size_t buffer_size;
+
+	/* Set buffer_length to filter_length * 2 to compensate for
+	 * missing element wise wrap around while loading but allowing
+	 * aligned loads.
+	 */
+	src_obj->buffer_length = src_obj->filter_length * 2;
+	src_obj->buffer_write_position = src_obj->filter_length;
+
+	if (src_obj->bit_depth == 32) {
+		buffer_size = src_obj->buffer_length * sizeof(int32_t);
+
+		for (ch = 0; ch < src_obj->num_channels; ch++) {
+			buf_32 = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, buffer_size);
+
+			if (!buf_32)
+				return -ENOMEM;
+
+			src_obj->ring_buffers32[ch] = buf_32;
+		}
+	} else {
+		buffer_size = src_obj->buffer_length * sizeof(int16_t);
+
+		for (ch = 0; ch < src_obj->num_channels; ch++) {
+			buf_16 = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, buffer_size);
+
+			if (!buf_16)
+				return -ENOMEM;
+
+			src_obj->ring_buffers16[ch] = buf_16;
+		}
+	}
+
+	return 0;
+}
+
+static void asrc_release_buffers(struct asrc_farrow *src_obj)
+{
+	int32_t *buf_32;
+	int16_t *buf_16;
+	int ch;
+
+	if (!src_obj)
+		return;
+
+	if (src_obj->bit_depth == 32)
+		for (ch = 0; ch < src_obj->num_channels; ch++) {
+			buf_32 = src_obj->ring_buffers32[ch];
+
+			if (buf_32) {
+				rfree(buf_32);
+				src_obj->ring_buffers32[ch] = NULL;
+			}
+		}
+	else
+		for (ch = 0; ch < src_obj->num_channels; ch++) {
+			buf_16 = src_obj->ring_buffers16[ch];
+
+			if (buf_16) {
+				rfree(buf_16);
+				src_obj->ring_buffers16[ch] = NULL;
+			}
+		}
+}
+
 static void asrc_free(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
@@ -370,6 +440,7 @@ static void asrc_free(struct comp_dev *dev)
 	comp_info(dev, "asrc_free()");
 
 	rfree(cd->buf);
+	asrc_release_buffers(cd->asrc_obj);
 	rfree(cd->asrc_obj);
 	rfree(cd);
 	rfree(dev);
@@ -699,9 +770,7 @@ static int asrc_prepare(struct comp_dev *dev)
 		return -EINVAL;
 	}
 
-	/*
-	 * Allocate input and output data buffer for ASRC processing
-	 */
+	/* Allocate input and output data buffer for ASRC processing */
 	frame_bytes = audio_stream_frame_bytes(&sourceb->stream);
 	cd->buf_size = (cd->source_frames_max + cd->sink_frames_max) *
 		frame_bytes;
@@ -722,9 +791,7 @@ static int asrc_prepare(struct comp_dev *dev)
 		cd->obuf[i] = cd->ibuf[i] + cd->source_frames_max * frame_bytes;
 	}
 
-	/*
-	 * Get required size and allocate memory for ASRC
-	 */
+	/* Get required size and allocate memory for ASRC */
 	sample_bits = sample_bytes * 8;
 	ret = asrc_get_required_size(dev, &cd->asrc_size,
 				     sourceb->stream.channels,
@@ -744,9 +811,7 @@ static int asrc_prepare(struct comp_dev *dev)
 		goto err_free_buf;
 	}
 
-	/*
-	 * Initialize ASRC
-	 */
+	/* Initialize ASRC */
 	if (cd->mode == ASRC_OM_PUSH) {
 		fs_prim = cd->source_rate;
 		fs_sec = cd->sink_rate;
@@ -762,6 +827,15 @@ static int asrc_prepare(struct comp_dev *dev)
 			      ASRC_CM_FEEDBACK, cd->mode);
 	if (ret) {
 		comp_err(dev, "initialise_asrc(), error %d", ret);
+		goto err_free_asrc;
+	}
+
+	/* Allocate ring buffers */
+	ret = asrc_initialize_buffers(cd->asrc_obj);
+
+	/* check for errors */
+	if (ret) {
+		comp_err(dev, "asrc_initialize_buffers(), failed buffer initialize, error %d", ret);
 		goto err_free_asrc;
 	}
 
@@ -785,6 +859,7 @@ static int asrc_prepare(struct comp_dev *dev)
 	return 0;
 
 err_free_asrc:
+	asrc_release_buffers(cd->asrc_obj);
 	rfree(cd->asrc_obj);
 	cd->asrc_obj = NULL;
 
@@ -964,6 +1039,7 @@ static int asrc_reset(struct comp_dev *dev)
 		asrc_dai_stop_timestamp(cd);
 
 	/* Free the allocations those were done in prepare() */
+	asrc_release_buffers(cd->asrc_obj);
 	rfree(cd->asrc_obj);
 	rfree(cd->buf);
 	cd->asrc_obj = NULL;

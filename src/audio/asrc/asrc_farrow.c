@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 //
-// Copyright(c) 2012-2019 Intel Corporation. All rights reserved.
+// Copyright(c) 2012-2022 Intel Corporation. All rights reserved.
 
 /* @brief    Implementation of the sample rate converter. */
 
@@ -191,12 +191,6 @@ static const struct asrc_filter_params c_filter_params[CR_NUM] = {
  */
 
 /*
- * Initialises the pointers to the buffers and zeroes their content
- */
-static enum asrc_error_code initialise_buffer(struct comp_dev *dev,
-					      struct asrc_farrow *src_obj);
-
-/*
  * Initialise the pointers to the filters, set the number of filters
  * and their length
  */
@@ -218,18 +212,11 @@ static enum asrc_error_code initialise_filter(struct comp_dev *dev,
  * &impulse_response[0] +        |int_x *buffer_pointer[num_channels]  |
  * filter_length                 |                                     |
  * ------------------------------|-------------------------------------|
- * &buffer_pointer[0] +          | int_x ring_buffer[num_channels *    |
- * + num_channels*sizeof(int_x *)|               *buffer_size]         |
- * ------------------------------|-------------------------------------|
  *
  * Info:
  *
  * buffer_pointer[num_channels]:
- * Pointers to each channels data stored internally. ring_buffers_x points to
- * the first of these pointers.
- *
- * int_x ring_buffer[num_channels * buffer_size]:
- * This is where the actual input data is buffered.
+ * Pointers to each channels data. Buffers are allocated externally.
  */
 
 enum asrc_error_code asrc_get_required_size(struct comp_dev *dev,
@@ -277,9 +264,6 @@ enum asrc_error_code asrc_get_required_size(struct comp_dev *dev,
 
 	/* size of pointers to the buffers */
 	size += sizeof(int32_t *) * num_channels;
-
-	/* size of the ring buffers */
-	size += ASRC_MAX_BUFFER_LENGTH * num_channels * (bit_depth / 8);
 
 	*required_size = size;
 	return ASRC_EC_OK;
@@ -400,15 +384,6 @@ enum asrc_error_code asrc_initialise(struct comp_dev *dev,
 			src_obj->filter_length);
 	}
 
-	/* set the channel pointers and fill buffers with zeros */
-	error_code = initialise_buffer(dev, src_obj);
-
-	/* check for errors */
-	if (error_code != ASRC_EC_OK) {
-		comp_err(dev, "asrc_initialise(), failed buffer initialise");
-		return error_code;
-	}
-
 	/* return ok, if everything worked out */
 	src_obj->is_initialised = true;
 	return ASRC_EC_OK;
@@ -473,24 +448,18 @@ enum asrc_error_code asrc_set_fs_ratio(struct comp_dev *dev,
 		return error_code;
 	}
 
-	/* Set the channel pointers and zero the buffers */
-	error_code = initialise_buffer(dev, src_obj);
-	/* check for errors */
-	if (error_code != ASRC_EC_OK) {
-		comp_err(dev, "asrc_set_fs_ratio(), failed buffer initialise");
-		return error_code;
-	}
-
-	/* Set the pointer for the impulse response */
+	/* The pointer to the internal ring buffer pointers is
+	 * after impulse_response. Only one of the buffers is initialised,
+	 * depending on the specified bit depth.
+	 */
 	if (src_obj->bit_depth == 32) {
-		src_obj->impulse_response =
-			(int32_t *)(src_obj->ring_buffers32 +
-			src_obj->num_channels * (1 + src_obj->buffer_length));
+		src_obj->ring_buffers16 = NULL;
+		src_obj->ring_buffers32 = (int32_t **)(src_obj->impulse_response +
+			src_obj->filter_length);
 	} else if (src_obj->bit_depth == 16) {
-		src_obj->impulse_response =
-			(int32_t *)(src_obj->ring_buffers16 +
-				    src_obj->num_channels *
-				    (1 + src_obj->buffer_length / 2));
+		src_obj->ring_buffers32 = NULL;
+		src_obj->ring_buffers16 = (int16_t **)(src_obj->impulse_response +
+			src_obj->filter_length);
 	}
 
 	return ASRC_EC_OK;
@@ -536,58 +505,6 @@ enum asrc_error_code asrc_set_output_format(struct comp_dev *dev,
 	return ASRC_EC_OK;
 }
 
-/*
- * BUFFER FUNCTIONS
- */
-static enum asrc_error_code initialise_buffer(struct comp_dev *dev,
-					      struct asrc_farrow *src_obj)
-{
-	int32_t *start_32;
-	int16_t *start_16;
-	int ch;
-
-	/*
-	 * Set buffer_length to filter_length * 2 to compensate for
-	 * missing element wise wrap around while loading but allowing
-	 * aligned loads.
-	 */
-	src_obj->buffer_length = src_obj->filter_length * 2;
-	if (src_obj->buffer_length > ASRC_MAX_BUFFER_LENGTH) {
-		comp_err(dev, "initialise_buffer(), buffer_length %d exceeds max.",
-			 src_obj->buffer_length);
-		return ASRC_EC_INVALID_BUFFER_LENGTH;
-	}
-
-	src_obj->buffer_write_position = src_obj->filter_length;
-
-	/*
-	 * Initialize the dynamically allocated 2D array and clear the
-	 * buffers to zero.
-	 */
-	if (src_obj->bit_depth == 32) {
-		start_32 = (int32_t *)(src_obj->ring_buffers32 +
-			src_obj->num_channels);
-		for (ch = 0; ch < src_obj->num_channels; ch++)
-			src_obj->ring_buffers32[ch] = start_32 +
-				ch * src_obj->buffer_length;
-
-		/* initialise to zero */
-		memset(start_32, 0, src_obj->num_channels *
-			src_obj->buffer_length * sizeof(int32_t));
-	} else {
-		start_16 = (int16_t *)(src_obj->ring_buffers16 +
-			src_obj->num_channels);
-		for (ch = 0; ch < src_obj->num_channels; ch++)
-			src_obj->ring_buffers16[ch] = start_16 +
-				ch * src_obj->buffer_length;
-
-		/* initialise to zero */
-		memset(start_16, 0, src_obj->num_channels *
-			src_obj->buffer_length * sizeof(int16_t));
-	}
-
-	return ASRC_EC_OK;
-}
 
 /*
  * FILTER FUNCTIONS
