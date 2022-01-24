@@ -730,6 +730,11 @@ static int mixin_bind(struct comp_dev *dev, void *data)
 		struct list_item *blist;
 
 		sink = ipc4_get_comp_dev(sink_id);
+		if (!sink) {
+			comp_err(dev, "mixin_bind: no sink with ID %d found", sink_id);
+			return -EINVAL;
+		}
+
 		list_for_item(blist, &sink->bsource_list) {
 			sink_buf = container_of(blist, struct comp_buffer, sink_list);
 			if (sink_buf->source == dev) {
