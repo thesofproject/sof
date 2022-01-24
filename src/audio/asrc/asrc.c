@@ -28,6 +28,11 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#if CONFIG_IPC_MAJOR_4
+#include <ipc4/base-config.h>
+#include <ipc4/asrc.h>
+#endif
+
 /* Simple count value to prevent first delta timestamp
  * from being input to low-pass filter.
  */
@@ -48,18 +53,31 @@ typedef void (*asrc_proc_func)(struct comp_dev *dev,
 
 static const struct comp_driver comp_asrc;
 
+#ifndef CONFIG_IPC_MAJOR_4
 /* c8ec72f6-8526-4faf-9d39-a23d0b541de2 */
 DECLARE_SOF_RT_UUID("asrc", asrc_uuid, 0xc8ec72f6, 0x8526, 0x4faf,
-		 0x9d, 0x39, 0xa2, 0x3d, 0x0b, 0x54, 0x1d, 0xe2);
+		    0x9d, 0x39, 0xa2, 0x3d, 0x0b, 0x54, 0x1d, 0xe2);
+#else
+/* 66b4402d-b468-42f2-81a7-b37121863dd4 */
+DECLARE_SOF_RT_UUID("asrc", asrc_uuid, 0x66b4402d, 0xb468, 0x42f2,
+		    0x81, 0xa7, 0xb3, 0x71, 0x21, 0x86, 0x3d, 0xd4);
+#endif
 
 DECLARE_TR_CTX(asrc_tr, SOF_UUID(asrc_uuid), LOG_LEVEL_INFO);
 
 /* asrc component private data */
 struct comp_data {
+#if CONFIG_IPC_MAJOR_4
+	/* Must be the 1st field, function ipc4_create_buffer casts components private data as
+	 * ipc4_base_module_cfg!
+	 */
+	struct ipc4_asrc_module_cfg ipc_config;
+#else
+	struct ipc_config_asrc ipc_config;
+#endif
 	struct asrc_farrow *asrc_obj;	/* ASRC core data */
 	struct comp_dev *dai_dev;	/* Associated DAI component */
 	enum asrc_operation_mode mode;  /* Control for push or pull mode */
-	struct ipc_config_asrc ipc_config;
 	uint64_t ts;
 	uint32_t sink_rate;	/* Sample rate in Hz */
 	uint32_t source_rate;	/* Sample rate in Hz */
@@ -248,22 +266,68 @@ static void src_copy_s16(struct comp_dev *dev,
 	*n_written = out_frames;
 }
 
+#ifndef CONFIG_IPC_MAJOR_4
+static inline uint32_t asrc_get_source_rate(const struct ipc_config_asrc *ipc_asrc)
+{
+	return ipc_asrc->source_rate;
+}
+
+static inline uint32_t asrc_get_sink_rate(const struct ipc_config_asrc *ipc_asrc)
+{
+	return ipc_asrc->sink_rate;
+}
+
+static inline uint32_t asrc_get_operation_mode(const struct ipc_config_asrc *ipc_asrc)
+{
+	return ipc_asrc->operation_mode;
+}
+
+static inline bool asrc_get_asynchronous_mode(const struct ipc_config_asrc *ipc_asrc)
+{
+	return ipc_asrc->asynchronous_mode;
+}
+#else
+static inline uint32_t asrc_get_source_rate(const struct ipc4_asrc_module_cfg *ipc_asrc)
+{
+	return ipc_asrc->base.audio_fmt.sampling_frequency;
+}
+
+static inline uint32_t asrc_get_sink_rate(const struct ipc4_asrc_module_cfg *ipc_asrc)
+{
+	return ipc_asrc->out_freq;
+}
+
+static inline uint32_t asrc_get_operation_mode(const struct ipc4_asrc_module_cfg *ipc_asrc)
+{
+	return ipc_asrc->asrc_mode & (1 << IPC4_MOD_ASRC_PUSH_MODE) ? ASRC_OM_PUSH : ASRC_OM_PULL;
+}
+
+static inline bool asrc_get_asynchronous_mode(const struct ipc4_asrc_module_cfg *ipc_asrc)
+{
+	return false;
+}
+#endif
+
 static struct comp_dev *asrc_new(const struct comp_driver *drv,
 				 struct comp_ipc_config *config,
 				 void *spec)
 {
 	struct comp_dev *dev;
+#ifndef CONFIG_IPC_MAJOR_4
 	struct ipc_config_asrc *ipc_asrc = spec;
+#else
+	struct ipc4_asrc_module_cfg *ipc_asrc = spec;
+#endif
 	struct comp_data *cd;
 
 	comp_cl_info(&comp_asrc, "asrc_new()");
 
 	comp_cl_info(&comp_asrc, "asrc_new(), source_rate=%d, sink_rate=%d, asynchronous_mode=%d, operation_mode=%d",
-		     ipc_asrc->source_rate, ipc_asrc->sink_rate,
-		     ipc_asrc->asynchronous_mode, ipc_asrc->operation_mode);
+		     asrc_get_source_rate(ipc_asrc), asrc_get_sink_rate(ipc_asrc),
+		     asrc_get_asynchronous_mode(ipc_asrc), asrc_get_operation_mode(ipc_asrc));
 
 	/* validate init data - either SRC sink or source rate must be set */
-	if (ipc_asrc->source_rate == 0 && ipc_asrc->sink_rate == 0) {
+	if (asrc_get_source_rate(ipc_asrc) == 0 && asrc_get_sink_rate(ipc_asrc) == 0) {
 		comp_cl_err(&comp_asrc, "asrc_new(), sink and source rates are not set");
 		return NULL;
 	}
@@ -286,13 +350,13 @@ static struct comp_dev *asrc_new(const struct comp_driver *drv,
 	 * With OM_PUSH (0) use fixed input frames count, variable output.
 	 * With OM_PULL (1) use fixed output frames count, variable input.
 	 */
-	cd->mode = ipc_asrc->operation_mode;
+	cd->mode = asrc_get_operation_mode(ipc_asrc);
 
 	/* Use skew tracking for DAI if it was requested. The skew
 	 * is initialized here to zero. It is set later in prepare() to
 	 * to 1.0 if there is no filtered skew factor from previous run.
 	 */
-	cd->track_drift = ipc_asrc->asynchronous_mode;
+	cd->track_drift = asrc_get_asynchronous_mode(ipc_asrc);
 	cd->skew = 0;
 
 	dev->state = COMP_STATE_READY;
@@ -346,15 +410,17 @@ static int asrc_verify_params(struct comp_dev *dev,
 	 * src->source/sink_rate = 0 means that source/sink rate can vary.
 	 */
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
-		if (cd->ipc_config.source_rate && (params->rate != cd->ipc_config.source_rate)) {
+		if (asrc_get_source_rate(&cd->ipc_config) &&
+		    params->rate != asrc_get_source_rate(&cd->ipc_config)) {
 			comp_err(dev, "asrc_verify_params(): runtime stream pcm rate %u does not match rate %u fetched from ipc.",
-				 params->rate, cd->ipc_config.source_rate);
+				 params->rate, asrc_get_source_rate(&cd->ipc_config));
 			return -EINVAL;
 		}
 	} else {
-		if (cd->ipc_config.sink_rate && (params->rate != cd->ipc_config.sink_rate)) {
+		if (asrc_get_sink_rate(&cd->ipc_config) &&
+		    params->rate != asrc_get_sink_rate(&cd->ipc_config)) {
 			comp_err(dev, "asrc_verify_params(): runtime stream pcm rate %u does not match rate %u fetched from ipc.",
-				 params->rate, cd->ipc_config.sink_rate);
+				 params->rate, asrc_get_sink_rate(&cd->ipc_config));
 			return -EINVAL;
 		}
 	}
@@ -370,6 +436,7 @@ static int asrc_verify_params(struct comp_dev *dev,
 	return 0;
 }
 
+/* set component audio stream parameters */
 /* set component audio stream parameters */
 static int asrc_params(struct comp_dev *dev,
 		       struct sof_ipc_stream_params *pcm_params)
@@ -392,6 +459,8 @@ static int asrc_params(struct comp_dev *dev,
 	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
 				source_list);
 
+	sinkb->stream.rate = asrc_get_sink_rate(&cd->ipc_config);
+
 	/* set source/sink_frames/rate */
 	cd->source_rate = sourceb->stream.rate;
 	cd->sink_rate = sinkb->stream.rate;
@@ -400,6 +469,7 @@ static int asrc_params(struct comp_dev *dev,
 		return -EINVAL;
 	}
 
+	component_set_nearest_period_frames(dev, cd->sink_rate);
 	cd->sink_frames = dev->frames;
 	cd->source_frames = ceil_divide(dev->frames * cd->source_rate,
 					cd->sink_rate);
