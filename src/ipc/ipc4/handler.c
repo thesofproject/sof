@@ -210,8 +210,7 @@ static int set_pipeline_state(uint32_t id, uint32_t cmd, bool *delayed)
 
 		host = ipc_get_comp_by_id(ipc, host_id);
 		if (!host) {
-			tr_err(&ipc_tr, "ipc: comp host not found",
-			       pcm_dev->pipeline->source_comp->ipc_config.id);
+			tr_err(&ipc_tr, "ipc: comp host with ID %d not found", host_id);
 			return IPC4_INVALID_RESOURCE_ID;
 		}
 
@@ -631,7 +630,7 @@ static int ipc4_set_large_config_module_instance(union ipc4_message_header *ipc4
 	int ret;
 
 	memcpy_s(&config, sizeof(config), ipc4, sizeof(config));
-	tr_dbg(&ipc_tr, "ipc4_set_large_config_module_instance %x : %x with %x : %x",
+	tr_dbg(&ipc_tr, "ipc4_set_large_config_module_instance %x : %x",
 	       (uint32_t)config.header.r.module_id, (uint32_t)config.header.r.instance_id);
 
 	drv = ipc4_get_comp_drv(config.header.r.module_id);
@@ -654,7 +653,7 @@ static int ipc4_set_large_config_module_instance(union ipc4_message_header *ipc4
 					config.data.r.final_block, config.data.r.data_off_size,
 					(char *)MAILBOX_HOSTBOX_BASE);
 	if (ret < 0) {
-		tr_err(&ipc_tr, "failed to set large_config_module_instance %x : %x with %x : %x",
+		tr_err(&ipc_tr, "failed to set large_config_module_instance %x : %x",
 		       (uint32_t)config.header.r.module_id, (uint32_t)config.header.r.instance_id);
 		ret = IPC4_INVALID_RESOURCE_ID;
 	}
