@@ -41,7 +41,7 @@ foreach(tplg ${TPLGS})
 	file(READ ${CMAKE_CURRENT_SOURCE_DIR}/${input}.conf CONTENTS)
 	file(APPEND ${CMAKE_CURRENT_BINARY_DIR}/${output}.conf "${CONTENTS}")
 
-	add_alsatplg2_command(${output}.conf ${output}.tplg ${CMAKE_CURRENT_SOURCE_DIR} ${defines})
+	add_alsatplg2_command("${output}.conf" "${output}.tplg" "${CMAKE_CURRENT_SOURCE_DIR}" "${defines}")
 	add_custom_target(topology2_${output} DEPENDS ${output}.tplg)
 	add_dependencies(topology2_cavs topology2_${output})
 endforeach()
