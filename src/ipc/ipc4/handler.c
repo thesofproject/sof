@@ -837,7 +837,7 @@ void ipc_cmd(ipc_cmd_hdr *_hdr)
 	union ipc4_message_header *in = ipc_from_hdr(_hdr);
 	uint32_t *data = ipc_get()->comp_data;
 	enum ipc4_message_target target;
-	int err = -EINVAL;
+	int err;
 
 	if (!in)
 		return;
