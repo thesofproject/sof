@@ -734,7 +734,7 @@ static int file_copy(struct comp_dev *dev)
 					 source_list);
 
 		/* test sink has enough free frames */
-		snk_frames = audio_stream_get_free_frames(&buffer->stream);
+		snk_frames = MIN(audio_stream_get_free_frames(&buffer->stream), dev->frames);
 		if (snk_frames > 0 && !cd->fs.reached_eof) {
 			/* read PCM samples from file */
 			ret = cd->file_func(dev, &buffer->stream, NULL,
