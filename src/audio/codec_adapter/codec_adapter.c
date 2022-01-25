@@ -151,8 +151,7 @@ int codec_adapter_prepare(struct comp_dev *dev)
 				       (mod->period_bytes / md->mpd.in_buff_size) + 2 :
 				       (mod->period_bytes / md->mpd.in_buff_size) + 1;
 		}
-
-		mod->deep_buff_bytes = mod->period_bytes * buff_periods;
+		mod->deep_buff_bytes = MIN(md->mpd.in_buff_size, mod->period_bytes) * buff_periods;
 	} else {
 		mod->deep_buff_bytes = 0;
 	}
