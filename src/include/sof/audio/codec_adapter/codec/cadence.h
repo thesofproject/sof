@@ -45,6 +45,8 @@ struct cadence_codec_data {
 	void *mem_tabs;
 	uint32_t api_id;
 	struct module_config setup_cfg;
+	size_t in_buff_size;
+	size_t out_buff_size;
 };
 
 #endif /* __SOF_AUDIO_CADENCE_CODEC__ */

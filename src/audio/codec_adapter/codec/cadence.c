@@ -334,10 +334,12 @@ static int init_memory_tables(struct processing_module *mod)
 		case XA_MEMTYPE_INPUT:
 			codec->mpd.in_buff = ptr;
 			codec->mpd.in_buff_size = mem_size;
+			cd->in_buff_size = mem_size;
 			break;
 		case XA_MEMTYPE_OUTPUT:
 			codec->mpd.out_buff = ptr;
 			codec->mpd.out_buff_size = mem_size;
+			cd->out_buff_size = mem_size;
 			break;
 		default:
 			comp_err(dev, "init_memory_tables() error %x: unrecognized memory type!",
@@ -511,7 +513,7 @@ static int cadence_codec_process(struct comp_dev *dev)
 	}
 
 	/* Proceed only if we have enough data to fill the input buffer completely */
-	if (codec->mpd.avail < codec->mpd.in_buff_size) {
+	if (codec->mpd.avail < cd->in_buff_size) {
 		comp_dbg(dev, "cadence_codec_process(): not enough data to start processing");
 		return 0;
 	}
