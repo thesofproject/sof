@@ -410,6 +410,13 @@ static int write_samples_s16(struct file_comp_data *cd, struct audio_stream *sou
 	return samples_written;
 }
 
+/* Default file copy function, just return error if called */
+static int file_default(struct comp_dev *dev, struct audio_stream *sink,
+			struct audio_stream *source, uint32_t frames)
+{
+	return -EINVAL;
+}
+
 /* function for processing 32-bit samples */
 static int file_s32(struct comp_dev *dev, struct audio_stream *sink,
 		    struct audio_stream *source, uint32_t frames)
@@ -554,7 +561,7 @@ static struct comp_dev *file_new(const struct comp_driver *drv,
 	comp_set_drvdata(dd->dai, cd);
 
 	/* default function for processing samples */
-	cd->file_func = file_s32;
+	cd->file_func = file_default;
 
 	/* get filename from IPC and open file */
 	cd->fs.fn = strdup(ipc_file->fn);
@@ -783,38 +790,19 @@ static int file_prepare(struct comp_dev *dev)
 	if (ret == COMP_STATUS_STATE_ALREADY_SET)
 		return PPL_STATUS_PATH_STOP;
 
-	/* file component source or sink buffer */
-	if (cd->fs.mode == FILE_WRITE) {
-		stream = &list_first_item(&dev->bsource_list,
-					 struct comp_buffer, sink_list)->stream;
-	} else {
-		stream = &list_first_item(&dev->bsink_list, struct comp_buffer,
-					 source_list)->stream;
-	}
-
-	if (stream->frame_fmt == SOF_IPC_FRAME_S16_LE)
-		cd->sample_container_bytes = 2;
-	else
-		cd->sample_container_bytes = 4;
-
-	/* calculate period size based on config */
-	cd->period_bytes = dev->frames * cd->sample_container_bytes *
-		stream->channels;
-
 	/* file component sink/source buffer period count */
 	switch (cd->fs.mode) {
 	case FILE_READ:
-		buffer = list_first_item(&dev->bsink_list, struct comp_buffer,
-					 source_list);
+		buffer = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
 		periods = dev->ipc_config.periods_sink;
 		break;
 	case FILE_WRITE:
-		buffer = list_first_item(&dev->bsource_list,
-					 struct comp_buffer, sink_list);
+		buffer = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
 		periods = dev->ipc_config.periods_source;
 		break;
 	default:
 		/* TODO: duplex mode */
+		fprintf(stderr, "Error: Unknown file mode %d\n", cd->fs.mode);
 		break;
 	}
 
@@ -824,46 +812,47 @@ static int file_prepare(struct comp_dev *dev)
 	}
 
 	/* set downstream buffer size */
-	switch (dev->ipc_config.frame_fmt) {
-	case(SOF_IPC_FRAME_S16_LE):
-		ret = buffer_set_size(buffer, dev->frames * 2 *
-			periods * buffer->stream.channels);
+	stream = &buffer->stream;
+	switch (stream->frame_fmt) {
+	case SOF_IPC_FRAME_S16_LE:
+		ret = buffer_set_size(buffer, 2 * dev->frames * periods * stream->channels);
 		if (ret < 0) {
 			fprintf(stderr, "error: file buffer size set\n");
 			return ret;
 		}
-		buffer_reset_pos(buffer, NULL);
 
 		/* set file function */
 		cd->file_func = file_s16;
 		break;
-	case(SOF_IPC_FRAME_S24_4LE):
-		ret = buffer_set_size(buffer, dev->frames * 4 *
-			periods * buffer->stream.channels);
+	case SOF_IPC_FRAME_S24_4LE:
+		ret = buffer_set_size(buffer, 4 * dev->frames * periods * stream->channels);
 		if (ret < 0) {
 			fprintf(stderr, "error: file buffer size set\n");
 			return ret;
 		}
-		buffer_reset_pos(buffer, NULL);
 
 		/* set file function */
 		cd->file_func = file_s24;
 		break;
-	case(SOF_IPC_FRAME_S32_LE):
-		ret = buffer_set_size(buffer, dev->frames * 4 *
-			periods * buffer->stream.channels);
+	case SOF_IPC_FRAME_S32_LE:
+		ret = buffer_set_size(buffer, 4 * dev->frames * periods * stream->channels);
 		if (ret < 0) {
 			fprintf(stderr, "error: file buffer size set\n");
 			return ret;
 		}
-		buffer_reset_pos(buffer, NULL);
+
+		/* set file function */
+		cd->file_func = file_s32;
 		break;
 	default:
+		fprintf(stderr, "Warning: Unknown file sample format %d\n",
+			dev->ipc_config.frame_fmt);
 		return -EINVAL;
 	}
 
+	cd->sample_container_bytes = get_sample_bytes(stream->frame_fmt);
+	buffer_reset_pos(buffer, NULL);
 	dev->state = COMP_STATE_PREPARE;
-
 	return ret;
 }
 

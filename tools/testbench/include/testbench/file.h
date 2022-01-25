@@ -40,13 +40,11 @@ struct file_state {
 
 /* file comp data */
 struct file_comp_data {
-	uint32_t period_bytes;
-	uint32_t channels;
-	uint32_t frame_bytes;
-	uint32_t rate;
 	struct file_state fs;
-	int sample_container_bytes;
 	enum sof_ipc_frame frame_fmt;
+	uint32_t channels;
+	uint32_t rate;
+	int sample_container_bytes;
 	int (*file_func)(struct comp_dev *dev, struct audio_stream *sink,
 			 struct audio_stream *source, uint32_t frames);
 
