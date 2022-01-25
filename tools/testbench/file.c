@@ -685,6 +685,7 @@ static int file_params(struct comp_dev *dev,
 
 static int fr_cmd(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata)
 {
+	fprintf(stderr, "Warning: Set data is not implemented\n");
 	return -EINVAL;
 }
 
@@ -707,7 +708,8 @@ static int file_cmd(struct comp_dev *dev, int cmd, void *data,
 		ret = fr_cmd(dev, cdata);
 		break;
 	default:
-		break;
+		fprintf(stderr, "Warning: Unknown file command %d\n", cmd);
+		return -EINVAL;
 	}
 
 	return ret;
@@ -766,6 +768,7 @@ static int file_copy(struct comp_dev *dev)
 		break;
 	default:
 		/* TODO: duplex mode */
+		ret = -EINVAL;
 		break;
 	}
 
