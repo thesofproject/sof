@@ -670,6 +670,8 @@ static int waves_codec_init(struct processing_module *mod)
 static int waves_codec_prepare(struct processing_module *mod)
 {
 	struct comp_dev *dev = mod->dev;
+	struct module_data *codec = mod->priv;
+	struct waves_codec_data *waves_codec = codec->private;
 	int ret;
 
 	comp_dbg(dev, "waves_codec_prepare() start");
@@ -685,8 +687,16 @@ static int waves_codec_prepare(struct processing_module *mod)
 	if (!ret)
 		ret = waves_effect_setup_config(dev);
 
-	if (ret)
+	if (ret) {
 		comp_err(dev, "waves_codec_prepare() failed %d", ret);
+		return ret;
+	}
+
+	/* prepare module local buffer */
+	ret = module_buffer_prepare(mod, waves_codec_data->buffer_bytes,
+				    waves_codec_data->buffer_bytes);
+	if (ret < 0)
+		return ret;
 
 	comp_dbg(dev, "waves_codec_prepare() done");
 	return ret;

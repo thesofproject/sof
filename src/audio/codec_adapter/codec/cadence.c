@@ -491,6 +491,12 @@ static int cadence_codec_prepare(struct processing_module *mod)
 	}
 #endif
 	comp_dbg(dev, "cadence_codec_prepare() done");
+
+	/* prepare module local buffer */
+	ret = module_buffer_prepare(mod, cd->in_buff_size, cd->out_buff_size);
+	if (ret < 0)
+		return ret;
+
 	return 0;
 free:
 	module_free_memory(mod, cd->mem_tabs);

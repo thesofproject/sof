@@ -174,7 +174,6 @@ int codec_adapter_prepare(struct comp_dev *dev)
 {
 	int ret;
 	struct processing_module *mod = comp_get_drvdata(dev);
-	struct module_data *md = &mod->priv;
 
 	comp_dbg(dev, "codec_adapter_prepare() start");
 
@@ -188,6 +187,9 @@ int codec_adapter_prepare(struct comp_dev *dev)
 		return PPL_STATUS_PATH_STOP;
 	}
 
+	/* reset deep_buff_bytes */
+	mod->deep_buff_bytes = 0;
+
 	/* Prepare codec */
 	ret = module_prepare(mod);
 	if (ret) {
@@ -196,14 +198,6 @@ int codec_adapter_prepare(struct comp_dev *dev)
 
 		return -EIO;
 	}
-
-	/* reset deep_buff_bytes */
-	mod->deep_buff_bytes = 0;
-
-	/* allocate module buffer */
-	ret = module_buffer_prepare(mod, md->mpd.in_buff_size, md->mpd.out_buff_size);
-	if (ret < 0)
-		return ret;
 
 	comp_dbg(dev, "codec_adapter_prepare() done");
 

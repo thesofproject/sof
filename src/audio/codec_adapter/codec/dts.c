@@ -186,8 +186,15 @@ static int dts_codec_prepare(struct processing_module *mod)
 		&codec->mpd.out_buff_size);
 	ret = dts_effect_convert_sof_interface_result(dev, dts_result);
 
-	if (ret)
+	if (ret) {
 		comp_err(dev, "dts_codec_prepare() failed %d", ret);
+		return ret;
+	}
+
+	/* prepare module local buffer */
+	ret = module_buffer_prepare(mod, codec->mpd.in_buff_size, codec->mpd.out_buff_size);
+	if (ret < 0)
+		return ret;
 
 	comp_dbg(dev, "dts_codec_prepare() done");
 
