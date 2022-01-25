@@ -51,7 +51,8 @@ struct shared_lib_table lib_table[NUM_WIDGETS_SUPPORTED] = {
 	{"crossover", "libsof_crossover.so", SOF_COMP_NONE, SOF_TB_UUID(crossover_uuid), 0, NULL},
 	{"tdfb", "libsof_tdfb.so", SOF_COMP_NONE, SOF_TB_UUID(tdfb_uuid), 0, NULL},
 	{"drc", "libsof_drc.so", SOF_COMP_NONE, SOF_TB_UUID(drc_uuid), 0, NULL},
-	{"multiband_drc", "libsof_multiband_drc.so", SOF_COMP_NONE, SOF_TB_UUID(multiband_drc_uuid), 0, NULL},
+	{"multiband_drc", "libsof_multiband_drc.so", SOF_COMP_NONE,
+		SOF_TB_UUID(multiband_drc_uuid), 0, NULL},
 };
 
 /* compatible variables, not used */
