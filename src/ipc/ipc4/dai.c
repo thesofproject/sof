@@ -153,7 +153,11 @@ static void get_llp_reg_info(struct dai_data *dd, uint32_t *node_id, uint32_t *o
 		*offset = 0;
 		*node_id = 0;
 	case SOF_DAI_INTEL_ALH:
-		id -= IPC4_ALH_DAI_INDEX_OFFSET;
+		/* id = group id << 4 + codec id + IPC4_ALH_DAI_INDEX_OFFSET
+		 * memory location = group id * 4 + codec id
+		 */
+		id =  ((id >> 4) & 0xF) * DAI_NUM_ALH_BI_DIR_LINKS_GROUP +
+			(id & 0xF) - IPC4_ALH_DAI_INDEX_OFFSET;
 		*offset = offsetof(struct ipc4_fw_registers, llp_sndw_reading_slots);
 		*offset += id * sizeof(struct ipc4_llp_reading_slot);
 		break;

@@ -62,7 +62,8 @@ static int alh_set_config_blob(struct dai *dai, struct ipc_config_dai *common_co
 
 	alh->params.channels = 2;
 	alh->params.rate = 48000;
-	alh->params.stream_id = alh_cfg->mapping[0].alh_id & 0xf;
+	/* the LSB 8bits are for stream id */
+	alh->params.stream_id = alh_cfg->mapping[0].alh_id & 0xff;
 
 	return 0;
 }

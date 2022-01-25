@@ -246,7 +246,11 @@ static struct comp_dev *create_dai(struct comp_dev *parent_dev, struct copier_da
 		dai.type = SOF_DAI_INTEL_ALH;
 		dai.is_config_blob = true;
 		type = ipc4_gtw_alh;
-		dai.dai_index -= IPC4_ALH_DAI_INDEX_OFFSET;
+		/* copier id = (group id << 4) + codec id + IPC4_ALH_DAI_INDEX_OFFSET
+		 * dai_index = (group id << 8) + codec id;
+		 */
+		dai.dai_index = ((dai.dai_index & 0xF0) << DAI_NUM_ALH_BI_DIR_LINKS_GROUP) +
+			(dai.dai_index & 0xF) - IPC4_ALH_DAI_INDEX_OFFSET;
 		break;
 	case ipc4_dmic_link_input_class:
 		dai.type = SOF_DAI_INTEL_DMIC;
