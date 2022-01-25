@@ -728,16 +728,8 @@ set(GENERATED_DIRECTORY ${PROJECT_BINARY_DIR}/include/generated)
 
 set(VERSION_H_PATH ${GENERATED_DIRECTORY}/sof_versions.h)
 
-if(${CMAKE_VERSION} VERSION_LESS "3.12.0")
-	# FindPythonInterp is bugged and may sometimes be unable to find
-	# Python 3 when both Python 2 & 3 are in PATH,
-	# so it's always better to use CMake 3.12+
-	find_package(PythonInterp 3.0)
-	set(PYTHON3 "${PYTHON_EXECUTABLE}")
-else()
-	find_package(Python3 COMPONENTS Interpreter)
-	set(PYTHON3 "${Python3_EXECUTABLE}")
-endif()
+find_package(Python3 COMPONENTS Interpreter)
+set(PYTHON3 "${Python3_EXECUTABLE}")
 
 # SOF uses GNU C99 extensions. TODO other flags required ?
 target_compile_options(SOF INTERFACE -std=gnu99 -fno-inline-functions)
