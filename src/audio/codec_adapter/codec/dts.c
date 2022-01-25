@@ -224,8 +224,11 @@ static int dts_codec_process(struct comp_dev *dev)
 	DtsSofInterfaceResult dts_result;
 	unsigned int bytes_processed = 0;
 
-	if (!codec->mpd.init_done)
-		return dts_codec_init_process(dev);
+	if (!codec->mpd.init_done) {
+		ret = dts_codec_init_process(dev);
+		if (ret < 0)
+			return ret;
+	}
 
 	comp_dbg(dev, "dts_codec_process() start");
 
