@@ -134,6 +134,9 @@ int codec_adapter_prepare(struct comp_dev *dev)
 		return -EIO;
 	}
 
+	/* reset deep_buff_bytes */
+	mod->deep_buff_bytes = 0;
+
 	/* Codec is prepared, now we need to configure processing settings.
 	 * If codec internal buffer is not equal to natural multiple of pipeline
 	 * buffer we have a situation where CA have to deep buffer certain amount
@@ -152,8 +155,6 @@ int codec_adapter_prepare(struct comp_dev *dev)
 				       (mod->period_bytes / md->mpd.in_buff_size) + 1;
 		}
 		mod->deep_buff_bytes = MIN(md->mpd.in_buff_size, mod->period_bytes) * buff_periods;
-	} else {
-		mod->deep_buff_bytes = 0;
 	}
 
 	/* set the size of the local buffer */
