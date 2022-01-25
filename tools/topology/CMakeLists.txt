@@ -30,32 +30,20 @@ endmacro()
 
 macro(add_alsatplg2_command input_file output_file include_path)
 	# command line definitions are optional
-	set (defines "")
-	set (optional_args ${ARGN})
-
 	# Set defines if there is an optional argument
-	list(LENGTH optional_args optional_args_count)
-	if (${optional_args_count} GREATER 0)
-		list(GET optional_args 0 defines)
+	if (${ARGC} GREATER 3)
+		set (defines ${ARGV3})
+	else()
+		set (defines "")
 	endif()
 
-	if (defines STREQUAL "")
-		add_custom_command(
-			MAIN_DEPENDENCY ${input_file}
-			OUTPUT ${output_file}
-			# -p to pre-process Topology2.0 conf file
-			COMMAND alsatplg \$\${VERBOSE:+-v 1} -I ${include_path} -p -c ${input_file} -o ${output_file}
-			USES_TERMINAL
+	add_custom_command(
+		MAIN_DEPENDENCY ${input_file}
+		OUTPUT ${output_file}
+		# -p to pre-process Topology2.0 conf file
+		COMMAND alsatplg \$\${VERBOSE:+-v 1} -I ${include_path} -D "'${defines}'" -p -c ${input_file} -o ${output_file}
+		USES_TERMINAL
 		)
-	else()
-		add_custom_command(
-			MAIN_DEPENDENCY ${input_file}
-			OUTPUT ${output_file}
-			# -p to pre-process Topology2.0 conf file
-			COMMAND alsatplg \$\${VERBOSE:+-v 1} -I ${include_path} -D ${defines} -p -c ${input_file} -o ${output_file}
-			USES_TERMINAL
-		)
-	endif()
 endmacro()
 
 
