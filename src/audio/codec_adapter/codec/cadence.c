@@ -512,6 +512,12 @@ static int cadence_codec_process(struct comp_dev *dev)
 			return ret;
 	}
 
+	/* Proceed only if we have enough data to fill the input buffer completely */
+	if (codec->mpd.avail < codec->mpd.in_buff_size) {
+		comp_dbg(dev, "cadence_codec_process(): not enough data to start processing");
+		return 0;
+	}
+
 	output_bytes = cadence_codec_get_samples(dev) * mod->stream_params.sample_container_bytes *
 		       mod->stream_params.channels;
 

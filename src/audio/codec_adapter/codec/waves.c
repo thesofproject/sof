@@ -717,6 +717,12 @@ static int waves_codec_process(struct comp_dev *dev)
 			return ret;
 	}
 
+	/* Proceed only if we have enough data to fill the input buffer completely */
+	if (codec->mpd.avail < waves_codec->buffer_bytes) {
+		comp_dbg(dev, "waves_codec_process(): not enough data to start processing");
+		return 0;
+	}
+
 	comp_dbg(dev, "waves_codec_process() start");
 
 	MaxxStream_t *i_streams[NUM_IO_STREAMS] = { &waves_codec->i_stream };
