@@ -95,6 +95,73 @@ err:
 	return NULL;
 }
 
+int module_buffer_prepare(struct processing_module *mod, size_t in_buff_size, size_t out_buff_size)
+{
+	struct module_data *md = &mod->priv;
+	/* default periods of local buffer, may change in case of deep buffering */
+	uint32_t buff_periods = 2;
+	uint32_t buff_size; /* size of local buffer */
+	int ret;
+
+	/*
+	 * Codec is prepared, now configure processing settings.
+	 * If codec internal buffer is not equal to natural multiple of pipeline
+	 * buffer we have a situation where CA have to deep buffer certain amount
+	 * of samples on its start (typically few periods) in order to regularly
+	 * generate output once started (same situation happens for compress streams
+	 * as well).
+	 */
+	if (in_buff_size != mod->period_bytes) {
+		if (in_buff_size > mod->period_bytes) {
+			buff_periods = (in_buff_size % mod->period_bytes) ?
+				       (in_buff_size / mod->period_bytes) + 2 :
+				       (in_buff_size / mod->period_bytes) + 1;
+		} else {
+			buff_periods = (mod->period_bytes % in_buff_size) ?
+				       (mod->period_bytes / in_buff_size) + 2 :
+				       (mod->period_bytes / in_buff_size) + 1;
+		}
+		mod->deep_buff_bytes = MIN(md->mpd.in_buff_size, mod->period_bytes) * buff_periods;
+	}
+
+	/* set the size of the local buffer */
+	if (out_buff_size != mod->period_bytes) {
+		if (out_buff_size > mod->period_bytes) {
+			buff_periods = (out_buff_size % mod->period_bytes) ?
+				       (out_buff_size / mod->period_bytes) + 2 :
+				       (out_buff_size / mod->period_bytes) + 1;
+		} else {
+			buff_periods = (mod->period_bytes % out_buff_size) ?
+				       (mod->period_bytes / out_buff_size) + 2 :
+				       (mod->period_bytes / out_buff_size) + 1;
+		}
+	}
+
+	buff_size = MAX(mod->period_bytes, out_buff_size) * buff_periods;
+
+	/* re-alloc module buffer */
+	if (mod->local_buff) {
+		ret = buffer_set_size(mod->local_buff, buff_size);
+		if (ret < 0) {
+			comp_err(mod->dev, "codec_adapter_prepare(): buffer_set_size() failed, buff_size = %u",
+				 buff_size);
+			return ret;
+		}
+	} else {
+		/* allocate module buffer */
+		mod->local_buff = buffer_alloc(buff_size, SOF_MEM_CAPS_RAM, PLATFORM_DCACHE_ALIGN);
+		if (!mod->local_buff) {
+			comp_err(mod->dev, "codec_adapter_prepare(): failed to allocate local buffer");
+			return -ENOMEM;
+		}
+	}
+
+	buffer_set_params(mod->local_buff, &mod->stream_params, BUFFER_UPDATE_FORCE);
+	buffer_reset_pos(mod->local_buff, NULL);
+
+	return 0;
+}
+
 /*
  * \brief Prepare a codec adapter component.
  * \param[in] dev - component device pointer.
@@ -108,10 +175,6 @@ int codec_adapter_prepare(struct comp_dev *dev)
 	int ret;
 	struct processing_module *mod = comp_get_drvdata(dev);
 	struct module_data *md = &mod->priv;
-	uint32_t buff_periods = 2; /* default periods of local buffer,
-				    * may change if case of deep buffering
-				    */
-	uint32_t buff_size; /* size of local buffer */
 
 	comp_dbg(dev, "codec_adapter_prepare() start");
 
@@ -137,60 +200,10 @@ int codec_adapter_prepare(struct comp_dev *dev)
 	/* reset deep_buff_bytes */
 	mod->deep_buff_bytes = 0;
 
-	/* Codec is prepared, now we need to configure processing settings.
-	 * If codec internal buffer is not equal to natural multiple of pipeline
-	 * buffer we have a situation where CA have to deep buffer certain amount
-	 * of samples on its start (typically few periods) in order to regularly
-	 * generate output once started (same situation happens for compress streams
-	 * as well).
-	 */
-	if (md->mpd.in_buff_size != mod->period_bytes) {
-		if (md->mpd.in_buff_size > mod->period_bytes) {
-			buff_periods = (md->mpd.in_buff_size % mod->period_bytes) ?
-				       (md->mpd.in_buff_size / mod->period_bytes) + 2 :
-				       (md->mpd.in_buff_size / mod->period_bytes) + 1;
-		} else {
-			buff_periods = (mod->period_bytes % md->mpd.in_buff_size) ?
-				       (mod->period_bytes / md->mpd.in_buff_size) + 2 :
-				       (mod->period_bytes / md->mpd.in_buff_size) + 1;
-		}
-		mod->deep_buff_bytes = MIN(md->mpd.in_buff_size, mod->period_bytes) * buff_periods;
-	}
-
-	/* set the size of the local buffer */
-	if (md->mpd.out_buff_size != mod->period_bytes) {
-		if (md->mpd.out_buff_size > mod->period_bytes) {
-			buff_periods = (md->mpd.out_buff_size % mod->period_bytes) ?
-				       (md->mpd.out_buff_size / mod->period_bytes) + 2 :
-				       (md->mpd.out_buff_size / mod->period_bytes) + 1;
-		} else {
-			buff_periods = (mod->period_bytes % md->mpd.out_buff_size) ?
-				       (mod->period_bytes / md->mpd.out_buff_size) + 2 :
-				       (mod->period_bytes / md->mpd.out_buff_size) + 1;
-		}
-	}
-
-	buff_size = MAX(mod->period_bytes, md->mpd.out_buff_size) * buff_periods;
-
-	/* Allocate local buffer */
-	if (mod->local_buff) {
-		ret = buffer_set_size(mod->local_buff, buff_size);
-		if (ret < 0) {
-			comp_err(dev, "codec_adapter_prepare(): buffer_set_size() failed, buff_size = %u",
-				 buff_size);
-			return ret;
-		}
-	} else {
-		mod->local_buff = buffer_alloc(buff_size, SOF_MEM_CAPS_RAM, PLATFORM_DCACHE_ALIGN);
-		if (!mod->local_buff) {
-			comp_err(dev, "codec_adapter_prepare(): failed to allocate local buffer");
-			return -ENOMEM;
-		}
-
-	}
-	buffer_set_params(mod->local_buff, &mod->stream_params,
-			  BUFFER_UPDATE_FORCE);
-	buffer_reset_pos(mod->local_buff, NULL);
+	/* allocate module buffer */
+	ret = module_buffer_prepare(mod, md->mpd.in_buff_size, md->mpd.out_buff_size);
+	if (ret < 0)
+		return ret;
 
 	comp_dbg(dev, "codec_adapter_prepare() done");
 
