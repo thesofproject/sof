@@ -61,9 +61,13 @@ static int passthrough_codec_process(struct comp_dev *dev)
 {
 	struct module_data *codec = comp_get_module_data(dev);
 	struct processing_module *mod = comp_get_drvdata(dev);
+	int ret;
 
-	if (!codec->mpd.init_done)
-		return passthrough_codec_init_process(dev);
+	if (!codec->mpd.init_done) {
+		ret = passthrough_codec_init_process(dev);
+		if (ret < 0)
+			return ret;
+	}
 
 	comp_dbg(dev, "passthrough_codec_process()");
 

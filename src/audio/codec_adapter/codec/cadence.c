@@ -501,19 +501,21 @@ static int cadence_codec_process(struct comp_dev *dev)
 	struct comp_buffer *local_buff = mod->local_buff;
 	struct module_data *codec = comp_get_module_data(dev);
 	struct cadence_codec_data *cd = codec->private;
-	int ret;
+	int output_bytes, ret;
+
+	/* initialize codec */
+	if (!codec->mpd.init_done) {
+		ret = cadence_codec_init_process(dev);
+		if (ret < 0)
+			return ret;
+	}
+
+	output_bytes = cadence_codec_get_samples(dev) * mod->stream_params.sample_container_bytes *
+		       mod->stream_params.channels;
 
 	/* do not proceed with processing if not enough free left in the local buffer */
-	if (codec->mpd.init_done) {
-		int output_bytes = cadence_codec_get_samples(dev) *
-				   mod->stream_params.sample_container_bytes *
-				   mod->stream_params.channels;
-
-		if (local_buff->stream.free < output_bytes)
-			return -ENOSPC;
-	} else {
-		return cadence_codec_init_process(dev);
-	}
+	if (local_buff->stream.free < output_bytes)
+		return -ENOSPC;
 
 	comp_dbg(dev, "cadence_codec_process() start");
 

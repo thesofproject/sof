@@ -302,22 +302,6 @@ int codec_adapter_copy(struct comp_dev *dev)
 		goto db_verify;
 	}
 
-	if (!md->mpd.init_done) {
-		buffer_stream_invalidate(source, codec_buff_size);
-		ca_copy_from_source_to_module(&source->stream, md->mpd.in_buff,
-					      md->mpd.in_buff_size, codec_buff_size);
-		md->mpd.avail = codec_buff_size;
-		ret = module_process(dev);
-		if (ret)
-			return ret;
-
-		bytes_to_process -= md->mpd.consumed;
-		processed += md->mpd.consumed;
-		comp_update_buffer_consume(source, md->mpd.consumed);
-		if (bytes_to_process < codec_buff_size)
-			goto db_verify;
-	}
-
 	buffer_stream_invalidate(source, codec_buff_size);
 	ca_copy_from_source_to_module(&source->stream, md->mpd.in_buff,
 				      md->mpd.in_buff_size, codec_buff_size);
