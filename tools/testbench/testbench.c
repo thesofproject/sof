@@ -107,7 +107,6 @@ static int parse_libraries(char *libs)
 	int index;
 
 	while (token) {
-
 		/* get component type */
 		char *token1 = strtok_r(token, "=", &comp_token);
 
@@ -402,6 +401,12 @@ int main(int argc, char **argv)
 		}
 	}
 
+	if (fwcd->fs.write_failed) {
+		fprintf(stderr, "Error: File write failed.\n");
+		ret = EXIT_FAILURE;
+		goto err;
+	}
+
 	if (!frcd->fs.reached_eof && !tp.copy_check)
 		printf("warning: possible pipeline xrun\n");
 
@@ -412,7 +417,8 @@ int main(int argc, char **argv)
 	ret = pipeline_reset(p, cd);
 	if (ret < 0) {
 		fprintf(stderr, "error: pipeline reset\n");
-		exit(EXIT_FAILURE);
+		ret = EXIT_FAILURE;
+		goto err;
 	}
 
 	n_in = frcd->fs.n;
@@ -437,7 +443,9 @@ int main(int argc, char **argv)
 	printf("Output sample count: %d\n", n_out);
 	printf("Total execution time: %.2f us, %.2f x realtime\n",
 	       1e3 * t_exec, c_realtime);
+	ret = EXIT_SUCCESS;
 
+err:
 	/* free all components/buffers in pipeline */
 	free_comps();
 
@@ -457,5 +465,5 @@ int main(int argc, char **argv)
 			dlclose(lib_table[i].handle);
 	}
 
-	return EXIT_SUCCESS;
+	return ret;
 }
