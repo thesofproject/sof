@@ -278,7 +278,6 @@ int codec_adapter_copy(struct comp_dev *dev)
 						    source_list);
 	struct processing_module *mod = comp_get_drvdata(dev);
 	struct module_data *md = &mod->priv;
-	uint32_t codec_buff_size = md->mpd.in_buff_size;
 	struct comp_buffer *local_buff = mod->local_buff;
 	struct comp_copy_limits cl;
 
@@ -290,22 +289,13 @@ int codec_adapter_copy(struct comp_dev *dev)
 	comp_get_copy_limits_with_lock(source, local_buff, &cl);
 	bytes_to_process = cl.frames * cl.source_frame_bytes;
 
-	comp_dbg(dev, "codec_adapter_copy() start: codec_buff_size: %d, local_buff free: %d source avail %d",
-		 codec_buff_size, local_buff->stream.free, source->stream.avail);
+	comp_dbg(dev, "codec_adapter_copy() start: bytes_to_process: %d, local_buff free: %d source avail %d",
+		 bytes_to_process, local_buff->stream.free, source->stream.avail);
 
-	/* Proceed only if we have enough data to fill the lib buffer
-	 * completely. If you don't fill whole buffer
-	 * the lib won't process it.
-	 */
-	if (bytes_to_process < codec_buff_size) {
-		comp_dbg(dev, "codec_adapter_copy(): source has less data than codec buffer size - processing terminated.");
-		goto db_verify;
-	}
-
-	buffer_stream_invalidate(source, codec_buff_size);
+	buffer_stream_invalidate(source, bytes_to_process);
 	ca_copy_from_source_to_module(&source->stream, md->mpd.in_buff,
-				      md->mpd.in_buff_size, codec_buff_size);
-	md->mpd.avail = codec_buff_size;
+				      md->mpd.in_buff_size, bytes_to_process);
+	md->mpd.avail = bytes_to_process;
 	ret = module_process(dev);
 	if (ret) {
 		if (ret == -ENOSPC) {
