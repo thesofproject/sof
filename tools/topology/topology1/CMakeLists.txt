@@ -133,6 +133,7 @@ set(TPLGS
 	"sof-ehl-rt5660\;sof-ehl-rt5660-nohdmi"
 	"sof-tgl-max98357a-rt5682\;sof-tgl-max98357a-rt5682\;-DCODEC=MAX98357A\;-DFMT=s16le\;-DPLATFORM=tgl\;-DAMP_SSP=1"
 	"sof-tgl-max98357a-rt5682\;sof-adl-max98357a-rt5682\;-DCODEC=MAX98357A\;-DFMT=s16le\;-DPLATFORM=adl\;-DAMP_SSP=2"
+	"sof-tgl-max98357a-rt5682\;sof-adl-max98357a-rt5682-waves-2way\;-DCODEC=MAX98360A_TDM\;-DFMT=s32le\;-DPLATFORM=adl\;-DAMP_SSP=2\;-DWAVES\;-D2CH_2WAY"
 	"sof-tgl-max98357a-rt5682\;sof-adl-max98357a-rt5682-rtnr\;-DCODEC=MAX98357A\;-DFMT=s16le\;-DPLATFORM=adl\;-DAMP_SSP=2\;-DCHANNELS=2\;-DRTNR"
 	"sof-tgl-max98357a-rt5682\;sof-adl-max98357a-rt5682-4ch\;-DCODEC=MAX98360A_TDM\;-DFMT=s32le\;-DPLATFORM=adl\;-DAMP_SSP=2\;-D4CH_PASSTHROUGH"
 	"sof-tgl-max98357a-rt5682\;sof-adl-max98360a-rt5682\;-DCODEC=MAX98360A\;-DFMT=s32le\;-DPLATFORM=adl\;-DAMP_SSP=1"

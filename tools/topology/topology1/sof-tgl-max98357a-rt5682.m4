@@ -66,18 +66,47 @@ define(matrix3, `ROUTE_MATRIX(1,
 			     `BITS_TO_BYTE(0, 0, 0 ,0 ,0 ,0 ,0 ,0)',
 			     `BITS_TO_BYTE(0, 0, 0 ,0 ,0 ,0 ,0 ,0)')')
 
+define(matrix4, `ROUTE_MATRIX(1,
+			     `BITS_TO_BYTE(0, 0, 1 ,0 ,0 ,0 ,0 ,0)',
+			     `BITS_TO_BYTE(0, 0, 0 ,1 ,0 ,0 ,0 ,0)',
+			     `BITS_TO_BYTE(0, 0, 0 ,0 ,0 ,0 ,0 ,0)',
+			     `BITS_TO_BYTE(0, 0, 0 ,0 ,0 ,0 ,0 ,0)',
+			     `BITS_TO_BYTE(0, 0, 0 ,0 ,0 ,0 ,0 ,0)',
+			     `BITS_TO_BYTE(0, 0, 0 ,0 ,0 ,0 ,0 ,0)',
+			     `BITS_TO_BYTE(0, 0, 0 ,0 ,0 ,0 ,0 ,0)',
+			     `BITS_TO_BYTE(0, 0, 0 ,0 ,0 ,0 ,0 ,0)')')
+
+define(matrix5, `ROUTE_MATRIX(9,
+			     `BITS_TO_BYTE(1, 0, 0 ,0 ,0 ,0 ,0 ,0)',
+			     `BITS_TO_BYTE(0, 1, 0 ,0 ,0 ,0 ,0 ,0)',
+			     `BITS_TO_BYTE(0, 0, 0 ,0 ,0 ,0 ,0 ,0)',
+			     `BITS_TO_BYTE(0, 0, 0 ,0 ,0 ,0 ,0 ,0)',
+			     `BITS_TO_BYTE(0, 0, 0 ,0 ,0 ,0 ,0 ,0)',
+			     `BITS_TO_BYTE(0, 0, 0 ,0 ,0 ,0 ,0 ,0)',
+			     `BITS_TO_BYTE(0, 0, 0 ,0 ,0 ,0 ,0 ,0)',
+			     `BITS_TO_BYTE(0, 0, 0 ,0 ,0 ,0 ,0 ,0)')')
+
 dnl name, num_streams, route_matrix list
 ifdef(`NO_AMP',`',`
-ifdef(`2CH_2WAY',
-`MUXDEMUX_CONFIG(demux_priv_1, 1, LIST_NONEWLINE(`', `matrix3'))',
-`MUXDEMUX_CONFIG(demux_priv_1, 2, LIST_NONEWLINE(`', `matrix1,', `matrix2'))')')
+ifdef(`2CH_2WAY', `
+ifdef(`WAVES',
+`MUXDEMUX_CONFIG(demux_priv_9, 2, LIST(`       ', `matrix1,', `matrix2'))
+MUXDEMUX_CONFIG(mux_priv_1, 2, LIST(`  ', `matrix4,', `matrix5'))',
+`MUXDEMUX_CONFIG(demux_priv_1, 1, LIST(``	'', `matrix3'))')',
+`MUXDEMUX_CONFIG(demux_priv_1, 2, LIST(``	'', `matrix1,', `matrix2'))')')
 
 #
 # Define the pipelines
 #
-# PCM0 --> volume --> demux --> SSP$AMP_SSP (Speaker - CODEC)
+ifdef(`2CH_2WAY', `
+ifdef(`WAVES',
+`# PCM0 --> waves --> demux --> waves -----+
+#                       |                 |
+#                       +----> waves --> mux --> SSP$AMP_SSP (Speaker - CODEC)',
+`# PCM0 --> volume --> demux --> eq_iir --> SSP$AMP_SSP (Speaker - CODEC)')',
+`# PCM0 --> volume --> demux --> SSP$AMP_SSP (Speaker - CODEC)
 #                       |
-# PCM6 <----------------+
+# PCM6 <----------------+')
 # PCM1 <---> volume <----> SSP0  (Headset - ALC5682)
 # PCM99 <---- volume <----- DMIC01 (dmic0 capture)
 # PCM2 ----> volume -----> iDisp1
@@ -135,17 +164,32 @@ dnl     pipe id, pcm, max channels, format,
 dnl     frames, deadline, priority, core)
 
 ifdef(`NO_AMP',`',`
-`# Low Latency playback pipeline 1 on PCM 0 using max 'ifdef(`4CH_PASSTHROUGH', `4', `2')` channels of s24le.'
-# Schedule 48 frames per 1000us deadline with priority 0 on core 0
 define(`ENDPOINT_NAME', `Speakers')
+ifdef(`2CH_2WAY', `
+ifdef(`WAVES',
+`# Low Latency playback pipeline 1 without PCM using max 2 channels of s32le.
+# Schedule 48 frames per 1000us deadline with priority 1 on core 0
+# The pipeline on PCM 0 will be declared later and connect to this one.
+PIPELINE_ADD(sof/pipe-waves-mux-playback.m4,
+	1, 2, s32le,
+	1000, 1, 0,
+	`unused', SCHEDULE_TIME_DOMAIN_TIMER,
+	48000, 48000, 48000)',
+`# Low Latency playback pipeline 1 on PCM 0 using max 2 channels of s32le.
+# Schedule 48 frames per 1000us deadline with priority 0 on core 0
+PIPELINE_PCM_ADD(sof/pipe-demux-eq-iir-playback.m4,
+        1, 0, 2, s32le,
+        1000, 0, 0,
+        48000, 48000, 48000)')',
+`# Low Latency playback pipeline 1 on PCM 0 using max 'ifdef(`4CH_PASSTHROUGH', `4', `2')` channels of s32le.
+# Schedule 48 frames per 1000us deadline with priority 0 on core 0
 PIPELINE_PCM_ADD(
 	ifdef(`WAVES', sof/pipe-waves-codec-demux-playback.m4,
 	      ifdef(`DRC_EQ', sof/pipe-drc-eq-volume-demux-playback.m4,
-		    ifdef(`2CH_2WAY', sof/pipe-demux-eq-iir-playback.m4,
-			  sof/pipe-volume-demux-playback.m4))),
+		    sof/pipe-volume-demux-playback.m4)),
 	1, 0, ifdef(`4CH_PASSTHROUGH', `4', `2'), s32le,
 	1000, 0, 0,
-	48000, 48000, 48000)
+	48000, 48000, 48000)')
 undefine(`ENDPOINT_NAME')')
 
 # Low Latency playback pipeline 2 on PCM 1 using max 2 channels of s24le.
@@ -225,7 +269,29 @@ DAI_ADD(sof/pipe-dai-capture.m4,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 ',
 `
-ifdef(`2CH_2WAY',`# No echo reference for 2-way speakers',
+ifdef(`2CH_2WAY', `# No echo reference for 2-way speakers
+ifdef(`WAVES',
+`# Low Latency playback pipeline 9 on PCM 0 using max 2 channels of s32le.
+# Schedule 48 frames per 1000us deadline with priority 0 on core 0
+define(`ENDPOINT_NAME', `Speakers')
+PIPELINE_PCM_ADD(sof/pipe-waves-demux-waves-playback-sched.m4,
+       9, 0, 2, s32le,
+       1000, 0, 0,
+       48000, 48000, 48000,
+       SCHEDULE_TIME_DOMAIN_TIMER, PIPELINE_PLAYBACK_SCHED_COMP_1)
+undefine(`ENDPOINT_NAME')
+
+# Connect pipeline 1 and 9 together through mux and demux
+SectionGraph."PIPE_PLAYBACK_SCHED" {
+       index "0"
+
+       lines [
+               # mux to playback
+               dapm(PIPELINE_SINK_1, PIPELINE_DEMUX_9)
+               dapm(PIPELINE_MUX_1, PIPELINE_SOURCE_9)
+       ]
+}
+')',
 `# currently this dai is here as "virtual" capture backend
 W_DAI_IN(SSP, SPK_SSP_INDEX, SPK_SSP_NAME, FMT, 3, 0)
 
@@ -303,7 +369,11 @@ DAI_ADD(sof/pipe-dai-playback.m4,
 # PCM Low Latency, id 0
 dnl PCM_PLAYBACK_ADD(name, pcm_id, playback)
 ifdef(`NO_AMP',`',`
-PCM_PLAYBACK_ADD(Speakers, 0, PIPELINE_PCM_1)')
+ifdef(`2CH_2WAY', `
+ifdef(`WAVES',
+`PCM_PLAYBACK_ADD(Speakers, 0, PIPELINE_PCM_9)',
+`PCM_PLAYBACK_ADD(Speakers, 0, PIPELINE_PCM_1)')',
+`PCM_PLAYBACK_ADD(Speakers, 0, PIPELINE_PCM_1)')')
 PCM_DUPLEX_ADD(Headset, 1, PIPELINE_PCM_2, PIPELINE_PCM_3)
 PCM_PLAYBACK_ADD(HDMI1, 2, PIPELINE_PCM_5)
 PCM_PLAYBACK_ADD(HDMI2, 3, PIPELINE_PCM_6)
