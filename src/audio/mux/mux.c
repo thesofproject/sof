@@ -10,6 +10,7 @@
 #if CONFIG_COMP_MUX
 
 #include <sof/audio/component.h>
+#include <sof/audio/component_ext.h>
 #include <sof/audio/mux.h>
 #include <sof/audio/ipc-config.h>
 #include <sof/common.h>
@@ -254,6 +255,57 @@ static int mux_verify_params(struct comp_dev *dev,
 	return 0;
 }
 
+static int mux_update_buffer_channels_by_lookup_tables(struct comp_dev *dev,
+						       uint16_t src_channels)
+{
+	int dir = dev->direction;
+	uint32_t flags = 0;
+	uint16_t effective_channels;
+	int i;
+
+	struct comp_data *cd = comp_get_drvdata(dev);
+	struct list_item *buffer_list = comp_buffer_list(dev, dir);
+	struct list_item *clist;
+	struct comp_buffer *buf;
+	struct mux_look_up *lookup;
+
+	list_for_item(clist, buffer_list) {
+		buf = buffer_from_list(clist, struct comp_buffer, dir);
+
+		if (dev->comp.type == SOF_COMP_MUX)
+			lookup = &cd->lookup[0];
+		else
+			lookup = get_lookup_table(cd, buf->pipeline_id);
+
+		if (!lookup)
+			return -EINVAL;
+
+		/* The effective channels is obtained by the total count of
+		 * valid copy_elem in the lookup table of the corresponding
+		 * pipeline id. Assuming that the output stream doesn't have
+		 * mixing channel (mapped to multiple input streams or channels)
+		 * or empty channel (mapped to zero).
+		 */
+		effective_channels = 0;
+		for (i = 0; i < lookup->num_elems; i++) {
+			if (lookup->copy_elem[i].in_ch < src_channels &&
+			    lookup->copy_elem[i].out_ch < buf->stream.channels)
+				effective_channels++;
+		}
+
+		buffer_lock(buf, &flags);
+
+		/* Update buffer channels as the effective channels. */
+		comp_info(dev, "mux_params(): updated buf %u on pipe %u from %u to %u channels",
+			  buf->id, buf->pipeline_id, buf->stream.channels, effective_channels);
+		buf->stream.channels = effective_channels;
+
+		buffer_unlock(buf, flags);
+	}
+
+	return 0;
+}
+
 /* set component audio stream parameters */
 static int mux_params(struct comp_dev *dev,
 		      struct sof_ipc_stream_params *params)
@@ -261,6 +313,12 @@ static int mux_params(struct comp_dev *dev,
 	int err;
 
 	comp_info(dev, "mux_params()");
+
+	err = mux_update_buffer_channels_by_lookup_tables(dev, params->channels);
+	if (err < 0) {
+		comp_err(dev, "mux_params(): update buffer channels failed.");
+		return -EINVAL;
+	}
 
 	err = mux_verify_params(dev, params);
 	if (err < 0) {
