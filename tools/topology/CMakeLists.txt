@@ -41,7 +41,8 @@ macro(add_alsatplg2_command input_file output_file include_path)
 		MAIN_DEPENDENCY ${input_file}
 		OUTPUT ${output_file}
 		# -p to pre-process Topology2.0 conf file
-		COMMAND alsatplg \$\${VERBOSE:+-v 1} -I ${include_path} -D "'${defines}'" -p -c ${input_file} -o ${output_file}
+		COMMAND ALSA_CONFIG_DIR=${CMAKE_SOURCE_DIR}/topology/topology2 alsatplg \$\${VERBOSE:+-v 1}
+		        -I ${include_path} -D "'${defines}'" -p -c ${input_file} -o ${output_file}
 		USES_TERMINAL
 		)
 endmacro()

@@ -37,6 +37,9 @@ foreach(tplg ${TPLGS})
 	endif()
 
 	# copy ABI and input conf file contents
+	#
+	# BUG: move this from CMake configuration time to build time to
+	# fix incremental builds
 	configure_file(${CMAKE_CURRENT_BINARY_DIR}/../abi.conf ${CMAKE_CURRENT_BINARY_DIR}/${output}.conf)
 	file(READ ${CMAKE_CURRENT_SOURCE_DIR}/${input}.conf CONTENTS)
 	file(APPEND ${CMAKE_CURRENT_BINARY_DIR}/${output}.conf "${CONTENTS}")
