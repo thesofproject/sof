@@ -223,11 +223,12 @@ int module_prepare(struct processing_module *mod)
 	return ret;
 }
 
-int module_process(struct comp_dev *dev)
+int module_process(struct processing_module *mod, struct input_stream_buffer *input_buffers,
+		   int num_input_buffers)
 {
+	struct comp_dev *dev = mod->dev;
 	int ret;
 
-	struct processing_module *mod = comp_get_drvdata(dev);
 	struct module_data *md = &mod->priv;
 
 	comp_dbg(dev, "module_process() start");
@@ -241,7 +242,7 @@ int module_process(struct comp_dev *dev)
 	/* set state to processing */
 	md->state = MODULE_PROCESSING;
 
-	ret = md->ops->process(dev);
+	ret = md->ops->process(mod, input_buffers, num_input_buffers);
 	if (ret && ret != -ENOSPC) {
 		comp_err(dev, "module_process() error %d: for comp %d",
 			 ret, dev_comp_id(dev));

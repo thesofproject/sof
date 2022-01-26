@@ -57,10 +57,12 @@ static int passthrough_codec_init_process(struct comp_dev *dev)
 	return 0;
 }
 
-static int passthrough_codec_process(struct comp_dev *dev)
+static int
+passthrough_codec_process(struct processing_module *mod, struct input_stream_buffer *input_buffers,
+			  int num_input_buffers)
 {
-	struct module_data *codec = comp_get_module_data(dev);
-	struct processing_module *mod = comp_get_drvdata(dev);
+	struct comp_dev *dev = mod->dev;
+	struct module_data *codec = &mod->priv;
 	int ret;
 
 	if (!codec->mpd.init_done) {

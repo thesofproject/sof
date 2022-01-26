@@ -715,11 +715,14 @@ static int waves_codec_init_process(struct comp_dev *dev)
 	return 0;
 }
 
-static int waves_codec_process(struct comp_dev *dev)
+static int
+waves_codec_process(struct processing_module *mod, struct input_stream_buffer *input_buffers,
+		    int num_input_buffers)
 {
 	int ret;
 	struct module_data *codec = comp_get_module_data(dev);
 	struct waves_codec_data *waves_codec = codec->private;
+	struct comp_dev *dev = mod->dev;
 
 	if (!codec->mpd.init_done) {
 		ret = waves_codec_init_process(dev);

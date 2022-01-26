@@ -300,24 +300,65 @@ int codec_adapter_copy(struct comp_dev *dev)
 	struct processing_module *mod = comp_get_drvdata(dev);
 	struct module_data *md = &mod->priv;
 	struct comp_buffer *local_buff = mod->local_buff;
+	struct input_stream_buffer *input_buffers;
 	struct comp_copy_limits cl;
+	struct list_item *blist;
+	uint32_t num_input_buffers = 0;
+	int i = 0;
 
 	if (!source || !sink) {
 		comp_err(dev, "codec_adapter_copy(): source/sink buffer not found");
 		return -EINVAL;
 	}
 
-	comp_get_copy_limits_with_lock(source, local_buff, &cl);
-	bytes_to_process = cl.frames * cl.source_frame_bytes;
-
 	comp_dbg(dev, "codec_adapter_copy() start: bytes_to_process: %d, local_buff free: %d source avail %d",
 		 bytes_to_process, local_buff->stream.free, source->stream.avail);
+
+	/* compute number of input buffers */
+	list_for_item(blist, &dev->bsource_list)
+		num_input_buffers++;
 
 	buffer_stream_invalidate(source, bytes_to_process);
 	ca_copy_from_source_to_module(&source->stream, md->mpd.in_buff,
 				      md->mpd.in_buff_size, bytes_to_process);
+
+	/* allocate memory for input buffers */
+	input_buffers = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+				sizeof(*input_buffers) * num_input_buffers);
+	if (!input_buffers) {
+		comp_err(dev, "codec_adapter_copy(): failed to alloc input buffers");
+		return -ENOMEM;
+	}
+
+	/* allocate memory for input buffer data and copy source samples */
+	list_for_item(blist, &dev->bsource_list) {
+		int frames, source_frame_bytes;
+
+		source = container_of(blist, struct comp_buffer, sink_list);
+
+		source = buffer_acquire_irq(source);
+		frames = audio_stream_avail_frames(&source->stream, &sink->stream);
+		source_frame_bytes = audio_stream_frame_bytes(&source->stream);
+		source = buffer_release_irq(source);
+
+		bytes_to_process = frames * source_frame_bytes;
+
+		buffer_stream_invalidate(source, bytes_to_process);
+		input_buffers[i].data = rballoc(0, SOF_MEM_CAPS_RAM, bytes_to_process);
+		if (!input_buffers[i].data) {
+			comp_err(mod->dev, "codec_adapter_copy(): Failed to alloc input buffer data");
+			ret = -ENOMEM;
+			goto free;
+		}
+
+		input_buffers[i].size = bytes_to_process;
+		ca_copy_from_source_to_module(&source->stream, input_buffers[i].data,
+					      input_buffers[i].size, bytes_to_process);
+		i++;
+	}
+
 	md->mpd.avail = bytes_to_process;
-	ret = module_process(dev);
+	ret = module_process(mod, input_buffers, num_input_buffers);
 	if (ret) {
 		if (ret == -ENOSPC) {
 			ret = 0;
@@ -378,7 +419,14 @@ copy_period:
 end:
 	comp_dbg(dev, "codec_adapter_copy(): processed %d in this call %d bytes left for next period",
 		 processed, bytes_to_process);
+
+free:
+	for (i = 0; i < num_input_buffers; i++)
+		rfree(input_buffers[i].data);
+	rfree(input_buffers);
+
 	return ret;
+
 }
 
 static int codec_adapter_set_params(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata)
