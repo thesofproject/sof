@@ -20,11 +20,33 @@
 #include <string.h>
 #include <stdio.h>
 #include <errno.h>
+#include <ctype.h>
 
 /* macros used to dump values after parsing */
 #define DUMP_KEY_FMT "   %20s: "
 #define DUMP(fmt, ...) fprintf(stdout, fmt "\n", ##__VA_ARGS__)
 #define DUMP_KEY(key, fmt, ...) DUMP(DUMP_KEY_FMT fmt, key, ##__VA_ARGS__)
+
+static void print_bytes(FILE *out, const uint8_t *arr, size_t len)
+{
+	for (const uint8_t *pos = arr; pos < arr + len; pos++) {
+		char c = *pos;
+
+		if (isprint(c))
+			fputc(c, out);
+		else
+			fprintf(out, "\\x%.2x", c);
+	}
+}
+
+#define DUMP_PRINTABLE_BYTES(name, var) _dump_printable_bytes(name, var, sizeof(var))
+
+static void _dump_printable_bytes(const char *name, const uint8_t *arr, size_t len)
+{
+	printf(DUMP_KEY_FMT, name);
+	print_bytes(stdout, arr, len);
+	printf("\n");
+}
 
 /** parser counter, used to assert nothing left unparsed in toml data */
 struct parse_ctx {
@@ -206,16 +228,20 @@ static uint32_t parse_uint32_key(const toml_table_t *table, struct parse_ctx *ct
 }
 
 /**
- * Parse string value from key in given toml table
+ * Parse string value from key in given toml table to uint8_t array. The
+ * destination is NOT a string because it is padded with zeros if and
+ * only if there is some capacity left. For string destinations use
+ * parse_str_key().
+ *
  * @param table toml table where key is specified
  * @param ctx parsing context, key counter will be incremented after successful key parse
  * @param key field name
- * @param dst target buffer for string
- * @param capacity dst buffer size
+ * @param dst uint8_t[] destination
+ * @param capacity dst array size
  * @param error code, 0 when success
  */
-static void parse_str_key(const toml_table_t *table, struct parse_ctx *ctx, const char *key,
-			  char *dst, int capacity, int *error)
+static void parse_printable_key(const toml_table_t *table, struct parse_ctx *ctx, const char *key,
+				uint8_t *dst, int capacity, int *error)
 {
 	toml_raw_t raw;
 	char *temp_s;
@@ -237,17 +263,48 @@ static void parse_str_key(const toml_table_t *table, struct parse_ctx *ctx, cons
 
 	len = strlen(temp_s);
 	if (len > capacity) {
-		*error = log_err(-EINVAL, "Too long input for key '%s' (%d > %d)\n", key, len,
-				 capacity);
+		if (len > 20) {
+			static const char ellipsis[] = "...";
+			const size_t el_len = sizeof(ellipsis);
+
+			strncpy(temp_s + 20 - el_len, ellipsis, el_len);
+		}
+
+		*error = log_err(-EINVAL, "Too long input '%s' for key '%s' (%d > %d) characters\n",
+				 temp_s, key, len, capacity);
 		free(temp_s);
 		return;
 	}
 
-	/* copy string to dst, free allocated memory and update parsing context */
-	strncpy(dst, temp_s, capacity);
+	/* copy string to dst, pad with zeros the space left if any */
+	strncpy((char *)dst, temp_s, capacity);
 	free(temp_s);
+	/* update parsing context */
 	++ctx->key_cnt;
 	*error = 0;
+}
+
+/**
+ * Parse string value from key in given toml table to given
+ * char[]. Destination is padded with zeros. As the only difference with
+ * parse_printable_key(), dst is guaranteed to be null-terminated when
+ * there is no error because the last destination byte is reserved for
+ * that.
+ *
+ * @param table toml table where key is specified
+ * @param ctx parsing context, key counter will be incremented after successful key parse
+ * @param key field name
+ * @param dst char[] destination
+ * @param capacity dst array size including null termination.
+ * @param error code, 0 when success
+ */
+static void parse_str_key(const toml_table_t *table, struct parse_ctx *ctx, const char *key,
+			  char *dst, int capacity, int *error)
+{
+	parse_printable_key(table, ctx, key, (uint8_t *)dst, capacity - 1, error);
+	if (*error) /* return immediately to help forensics */
+		return;
+	dst[capacity - 1] = 0;
 }
 
 /* map memory zone string name to enum value */
@@ -380,7 +437,7 @@ static int parse_adsp(const toml_table_t *toml, struct parse_ctx *pctx, struct a
 
 		zone_idx = zone_name_to_idx(zone_name);
 		if (zone_idx < 0)
-			return err_key_parse("mem_zone.name", "unknown zone");
+			return err_key_parse("mem_zone.name", "unknown zone '%s'", zone_name);
 
 		zone = &out->mem_zones[zone_idx];
 		zone->base = parse_uint32_hex_key(mem_zone, &ctx, "base", -1, &ret);
@@ -421,12 +478,12 @@ static void dump_cse(const struct CsePartitionDirHeader *cse_header,
 	int i;
 
 	DUMP("\ncse");
-	DUMP_KEY("partition_name", "'%s'", cse_header->partition_name);
+	DUMP_PRINTABLE_BYTES("partition_name", cse_header->partition_name);
 	DUMP_KEY("header_version", "%d", cse_header->header_version);
 	DUMP_KEY("entry_version", "%d", cse_header->entry_version);
 	DUMP_KEY("nb_entries", "%d", cse_header->nb_entries);
 	for (i = 0; i < cse_header->nb_entries; ++i) {
-		DUMP_KEY("entry.name", "'%s'", cse_entry[i].entry_name);
+		DUMP_PRINTABLE_BYTES("entry.name", cse_entry[i].entry_name);
 		DUMP_KEY("entry.offset", "0x%x", cse_entry[i].offset);
 		DUMP_KEY("entry.length", "0x%x", cse_entry[i].length);
 	}
@@ -463,8 +520,8 @@ static int parse_cse(const toml_table_t *toml, struct parse_ctx *pctx,
 	if (ret < 0)
 		return ret;
 
-	parse_str_key(cse, &ctx, "partition_name", (char *)hdr->partition_name,
-		      sizeof(hdr->partition_name), &ret);
+	parse_printable_key(cse, &ctx, "partition_name", hdr->partition_name,
+			    sizeof(hdr->partition_name), &ret);
 	if (ret < 0)
 		return ret;
 
@@ -494,8 +551,8 @@ static int parse_cse(const toml_table_t *toml, struct parse_ctx *pctx,
 		/* non-configurable fields */
 
 		/* configurable fields */
-		parse_str_key(cse_entry, &ctx, "name", (char *)out[i].entry_name,
-			      sizeof(out[i].entry_name), &ret);
+		parse_printable_key(cse_entry, &ctx, "name", out[i].entry_name,
+				    sizeof(out[i].entry_name), &ret);
 		if (ret < 0)
 			return err_key_parse("entry", NULL);
 
@@ -532,12 +589,12 @@ static void dump_cse_v2_5(const struct CsePartitionDirHeader_v2_5 *cse_header,
 	int i;
 
 	DUMP("\ncse");
-	DUMP_KEY("partition_name", "'%s'", cse_header->partition_name);
+	DUMP_PRINTABLE_BYTES("partition_name", cse_header->partition_name);
 	DUMP_KEY("header_version", "%d", cse_header->header_version);
 	DUMP_KEY("entry_version", "%d", cse_header->entry_version);
 	DUMP_KEY("nb_entries", "%d", cse_header->nb_entries);
 	for (i = 0; i < cse_header->nb_entries; ++i) {
-		DUMP_KEY("entry.name", "'%s'", cse_entry[i].entry_name);
+		DUMP_PRINTABLE_BYTES("entry.name", cse_entry[i].entry_name);
 		DUMP_KEY("entry.offset", "0x%x", cse_entry[i].offset);
 		DUMP_KEY("entry.length", "0x%x", cse_entry[i].length);
 	}
@@ -575,8 +632,8 @@ static int parse_cse_v2_5(const toml_table_t *toml, struct parse_ctx *pctx,
 	if (ret < 0)
 		return ret;
 
-	parse_str_key(cse, &ctx, "partition_name", (char *)hdr->partition_name,
-		      sizeof(hdr->partition_name), &ret);
+	parse_printable_key(cse, &ctx, "partition_name", hdr->partition_name,
+			    sizeof(hdr->partition_name), &ret);
 	if (ret < 0)
 		return ret;
 
@@ -606,8 +663,8 @@ static int parse_cse_v2_5(const toml_table_t *toml, struct parse_ctx *pctx,
 		/* non-configurable fields */
 
 		/* configurable fields */
-		parse_str_key(cse_entry, &ctx, "name", (char *)out[i].entry_name,
-			      sizeof(out[i].entry_name), &ret);
+		parse_printable_key(cse_entry, &ctx, "name", out[i].entry_name,
+				    sizeof(out[i].entry_name), &ret);
 		if (ret < 0)
 			return err_key_parse("entry", NULL);
 
@@ -901,7 +958,7 @@ static void dump_signed_pkg(const struct signed_pkg_info_ext *signed_pkg)
 	int i;
 
 	DUMP("\nsigned_pkg");
-	DUMP_KEY("name", "'%s'", signed_pkg->name);
+	DUMP_PRINTABLE_BYTES("name", signed_pkg->name);
 	DUMP_KEY("vcn", "%d", signed_pkg->vcn);
 	DUMP_KEY("svn", "%d", signed_pkg->svn);
 	DUMP_KEY("fw_type", "%d", signed_pkg->fw_type);
@@ -909,7 +966,7 @@ static void dump_signed_pkg(const struct signed_pkg_info_ext *signed_pkg)
 	for (i = 0; i < ARRAY_SIZE(signed_pkg->bitmap); ++i)
 		DUMP_KEY("bitmap", "%d", signed_pkg->bitmap[i]);
 	for (i = 0; i < ARRAY_SIZE(signed_pkg->module); ++i) {
-		DUMP_KEY("meta.name", "'%s'", signed_pkg->module[i].name);
+		DUMP_PRINTABLE_BYTES("meta.name", signed_pkg->module[i].name);
 		DUMP_KEY("meta.type", "0x%x", signed_pkg->module[i].type);
 		DUMP_KEY("meta.hash_algo", "0x%x", signed_pkg->module[i].hash_algo);
 		DUMP_KEY("meta.hash_size", "0x%x", signed_pkg->module[i].hash_size);
@@ -943,7 +1000,7 @@ static int parse_signed_pkg(const toml_table_t *toml, struct parse_ctx *pctx,
 	out->ext_len = sizeof(struct signed_pkg_info_ext);
 
 	/* configurable fields */
-	parse_str_key(signed_pkg, &ctx, "name", (char *)out->name, sizeof(out->name), &ret);
+	parse_printable_key(signed_pkg, &ctx, "name", out->name, sizeof(out->name), &ret);
 	if (ret < 0)
 		return ret;
 
@@ -1015,7 +1072,7 @@ static int parse_signed_pkg(const toml_table_t *toml, struct parse_ctx *pctx,
 		/* non-configurable fields */
 
 		/* configurable fields */
-		parse_str_key(module, &ctx, "name", (char *)mod->name, sizeof(mod->name), &ret);
+		parse_printable_key(module, &ctx, "name", mod->name, sizeof(mod->name), &ret);
 		if (ret < 0)
 			return err_key_parse("module", NULL);
 
@@ -1057,7 +1114,7 @@ static void dump_signed_pkg_v2_5(const struct signed_pkg_info_ext_v2_5 *signed_p
 	int i;
 
 	DUMP("\nsigned_pkg");
-	DUMP_KEY("name", "'%s'", signed_pkg->name);
+	DUMP_PRINTABLE_BYTES("name", signed_pkg->name);
 	DUMP_KEY("vcn", "%d", signed_pkg->vcn);
 	DUMP_KEY("svn", "%d", signed_pkg->svn);
 	DUMP_KEY("fw_type", "%d", signed_pkg->fw_type);
@@ -1065,7 +1122,7 @@ static void dump_signed_pkg_v2_5(const struct signed_pkg_info_ext_v2_5 *signed_p
 	for (i = 0; i < ARRAY_SIZE(signed_pkg->bitmap); ++i)
 		DUMP_KEY("bitmap", "%d", signed_pkg->bitmap[i]);
 	for (i = 0; i < ARRAY_SIZE(signed_pkg->module); ++i) {
-		DUMP_KEY("meta.name", "'%s'", signed_pkg->module[i].name);
+		DUMP_PRINTABLE_BYTES("meta.name", signed_pkg->module[i].name);
 		DUMP_KEY("meta.type", "0x%x", signed_pkg->module[i].type);
 		DUMP_KEY("meta.hash_algo", "0x%x", signed_pkg->module[i].hash_algo);
 		DUMP_KEY("meta.hash_size", "0x%x", signed_pkg->module[i].hash_size);
@@ -1099,7 +1156,7 @@ static int parse_signed_pkg_v2_5(const toml_table_t *toml, struct parse_ctx *pct
 	out->ext_len = sizeof(struct signed_pkg_info_ext_v2_5);
 
 	/* configurable fields */
-	parse_str_key(signed_pkg, &ctx, "name", (char *)out->name, sizeof(out->name), &ret);
+	parse_printable_key(signed_pkg, &ctx, "name", out->name, sizeof(out->name), &ret);
 	if (ret < 0)
 		return ret;
 
@@ -1171,7 +1228,7 @@ static int parse_signed_pkg_v2_5(const toml_table_t *toml, struct parse_ctx *pct
 		/* non-configurable fields */
 
 		/* configurable fields */
-		parse_str_key(module, &ctx, "name", (char *)mod->name, sizeof(mod->name), &ret);
+		parse_printable_key(module, &ctx, "name", mod->name, sizeof(mod->name), &ret);
 		if (ret < 0)
 			return err_key_parse("module", NULL);
 
@@ -1214,11 +1271,11 @@ static void dump_partition_info_ext(const struct partition_info_ext *part_info)
 	int i;
 
 	DUMP("\npartition_info");
-	DUMP_KEY("name", "'%s'", part_info->name);
+	DUMP_PRINTABLE_BYTES("name", part_info->name);
 	DUMP_KEY("part_version", "0x%x", part_info->part_version);
 	DUMP_KEY("instance_id", "%d", part_info->instance_id);
 	for (i = 0; i < ARRAY_SIZE(part_info->module); ++i) {
-		DUMP_KEY("module.name", "'%s'", part_info->module[i].name);
+		DUMP_PRINTABLE_BYTES("module.name", part_info->module[i].name);
 		DUMP_KEY("module.meta_size", "0x%x", part_info->module[i].meta_size);
 		DUMP_KEY("module.type", "0x%x", part_info->module[i].type);
 	}
@@ -1249,7 +1306,7 @@ static int parse_partition_info_ext(const toml_table_t *toml, struct parse_ctx *
 	memset(out->reserved, 0xff, sizeof(out->reserved));
 
 	/* configurable fields */
-	parse_str_key(partition_info, &ctx, "name", (char *)out->name, sizeof(out->name), &ret);
+	parse_printable_key(partition_info, &ctx, "name", out->name, sizeof(out->name), &ret);
 	if (ret < 0)
 		return ret;
 
@@ -1307,7 +1364,7 @@ static int parse_partition_info_ext(const toml_table_t *toml, struct parse_ctx *
 		memcpy(mod->reserved, module_reserved, sizeof(mod->reserved));
 
 		/* configurable fields */
-		parse_str_key(module, &ctx, "name", (char *)mod->name, sizeof(mod->name), &ret);
+		parse_printable_key(module, &ctx, "name", mod->name, sizeof(mod->name), &ret);
 		if (ret < 0)
 			return err_key_parse("module", NULL);
 
@@ -1603,7 +1660,7 @@ static void dump_fw_desc(const struct sof_man_fw_desc *fw_desc)
 	DUMP_KEY("header_id", "'%c%c%c%c'", fw_desc->header.header_id[0],
 		 fw_desc->header.header_id[1], fw_desc->header.header_id[2],
 		 fw_desc->header.header_id[3]);
-	DUMP_KEY("name", "'%s'", fw_desc->header.name);
+	DUMP_PRINTABLE_BYTES("name", fw_desc->header.name);
 	DUMP_KEY("preload_page_count", "%d", fw_desc->header.preload_page_count);
 	DUMP_KEY("fw_image_flags", "0x%x", fw_desc->header.fw_image_flags);
 	DUMP_KEY("feature_mask", "0x%x", fw_desc->header.feature_mask);
@@ -1646,8 +1703,8 @@ static int parse_fw_desc(const toml_table_t *toml, struct parse_ctx *pctx,
 	out->header.header_len = sizeof(struct sof_man_fw_header);
 
 	/* configurable fields */
-	parse_str_key(header, &ctx, "name", (char *)out->header.name, SOF_MAN_FW_HDR_FW_NAME_LEN,
-		      &ret);
+	parse_printable_key(header, &ctx, "name", out->header.name, sizeof(out->header.name),
+			    &ret);
 	if (ret < 0)
 		return err_key_parse("header", NULL);
 
@@ -1892,7 +1949,7 @@ static void dump_module(struct fw_image_manifest_module *man_cavs)
 	DUMP_KEY("module config count", "%d", man_cavs->mod_cfg_count);
 
 	for (i = 0; i < man_cavs->mod_man_count; i++) {
-		DUMP_KEY("module name", "%s", man_cavs->mod_man[i].name);
+		DUMP_PRINTABLE_BYTES("module name", man_cavs->mod_man[i].name);
 		DUMP_KEY("load type", "%d", man_cavs->mod_man[i].type.load_type);
 		DUMP_KEY("domain ll", "%d", man_cavs->mod_man[i].type.domain_ll);
 		DUMP_KEY("domain dp", "%d", man_cavs->mod_man[i].type.domain_dp);
@@ -1971,12 +2028,13 @@ static int parse_module(const toml_table_t *toml, struct parse_ctx *pctx,
 		memcpy(mod_man->struct_id, "$AME", 4);
 
 		/* configurable fields */
-		parse_str_key(mod_entry, &ctx_entry, "name", (char *)mod_man->name,
-			      SOF_MAN_MOD_NAME_LEN, &ret);
+		parse_printable_key(mod_entry, &ctx_entry, "name", mod_man->name,
+				    sizeof(mod_man->name), &ret);
 		if (ret < 0)
 			return err_key_parse("name", NULL);
 
-		parse_str_key(mod_entry, &ctx_entry, "uuid", buf, 48, &ret);
+		parse_str_key(mod_entry, &ctx_entry, "uuid", buf, sizeof(buf),
+			      &ret);
 		if (ret < 0)
 			return err_key_parse("uuid", NULL);
 
