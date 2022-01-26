@@ -334,11 +334,13 @@ static int init_memory_tables(struct processing_module *mod)
 		case XA_MEMTYPE_INPUT:
 			codec->mpd.in_buff = ptr;
 			codec->mpd.in_buff_size = mem_size;
+			cd->in_buff = ptr;
 			cd->in_buff_size = mem_size;
 			break;
 		case XA_MEMTYPE_OUTPUT:
 			codec->mpd.out_buff = ptr;
 			codec->mpd.out_buff_size = mem_size;
+			cd->out_buff = ptr;
 			cd->out_buff_size = mem_size;
 			break;
 		default:
@@ -512,6 +514,8 @@ cadence_codec_process(struct processing_module *mod, struct input_stream_buffer 
 	struct comp_buffer *local_buff = mod->local_buff;
 	struct module_data *codec = comp_get_module_data(dev);
 	struct cadence_codec_data *cd = codec->private;
+	struct output_stream_buffer *output;
+	struct input_stream_buffer *input;
 	int output_bytes, ret;
 
 	/* initialize codec */
@@ -521,10 +525,22 @@ cadence_codec_process(struct processing_module *mod, struct input_stream_buffer 
 			return ret;
 	}
 
+	/* cadence codecs expect only 1 input and output stream */
+	input = &input_buffers[0];
+	output = &output_buffers[0];
+
 	/* Proceed only if we have enough data to fill the input buffer completely */
-	if (codec->mpd.avail < cd->in_buff_size) {
+	if (input->size < cd->in_buff_size) {
 		comp_dbg(dev, "cadence_codec_process(): not enough data to start processing");
 		return 0;
+	}
+
+	/* copy the input samples */
+	ret = memcpy_s(cd->in_buff, cd->in_buff_size, input->data, cd->in_buff_size);
+	if (ret < 0) {
+		comp_err(dev, "cadence_codec_process() error %d: failed to copy input samples",
+			 ret);
+		return ret;
 	}
 
 	output_bytes = cadence_codec_get_samples(dev) * mod->stream_params.sample_container_bytes *
@@ -536,7 +552,7 @@ cadence_codec_process(struct processing_module *mod, struct input_stream_buffer 
 
 	comp_dbg(dev, "cadence_codec_process() start");
 
-	API_CALL(cd, XA_API_CMD_SET_INPUT_BYTES, 0, &codec->mpd.avail, ret);
+	API_CALL(cd, XA_API_CMD_SET_INPUT_BYTES, 0, &input->size, ret);
 	if (ret != LIB_NO_ERROR) {
 		comp_err(dev, "cadence_codec_process() error %x: failed to set size of input data",
 			 ret);
@@ -556,6 +572,21 @@ cadence_codec_process(struct processing_module *mod, struct input_stream_buffer 
 			 ret);
 		return ret;
 	}
+
+	/* allocate memory for produced samples */
+	output->data = rballoc(0, SOF_MEM_CAPS_RAM, codec->mpd.produced);
+	if (!output->data) {
+		comp_err(mod->dev, "cadence_codec_process(): Failed to alloc output buffer data");
+		return -ENOMEM;
+	}
+
+	ret = memcpy_s(output->data, codec->mpd.produced, cd->out_buff, codec->mpd.produced);
+	if (ret < 0) {
+		comp_err(dev, "cadence_codec_process() error %d: failed to copy input samples",
+			 ret);
+		return ret;
+	}
+	output->size = codec->mpd.produced;
 
 	API_CALL(cd, XA_API_CMD_GET_CURIDX_INPUT_BUF, 0, &codec->mpd.consumed, ret);
 	if (ret != LIB_NO_ERROR) {
