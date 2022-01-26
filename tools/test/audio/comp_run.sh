@@ -99,10 +99,17 @@ parse_args ()
     fi
 }
 
+delete_file_check ()
+{
+    if [ -f "$1" ]; then
+	rm -f "$1"
+    fi
+}
+
 run_testbench ()
 {
-    rm -f "$FN_OUT"
-    rm -f "$FN_TRACE"
+    delete_file_check "$FN_OUT"
+    delete_file_check "$FN_TRACE"
     if [ -z "$FN_TRACE" ]; then
 	# shellcheck disable=SC2086
 	$VALGRIND_CMD $CMD
