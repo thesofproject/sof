@@ -627,7 +627,7 @@ static int parse_cse_v2_5(const toml_table_t *toml, struct parse_ctx *pctx,
 
 	hdr->nb_entries = toml_array_nelem(cse_entry_array);
 
-	if (1 || verbose)
+	if (verbose)
 		dump_cse_v2_5(hdr, out);
 
 	/*
