@@ -224,7 +224,8 @@ int module_prepare(struct processing_module *mod)
 }
 
 int module_process(struct processing_module *mod, struct input_stream_buffer *input_buffers,
-		   int num_input_buffers)
+		   int num_input_buffers, struct output_stream_buffer *output_buffers,
+		   int num_output_buffers)
 {
 	struct comp_dev *dev = mod->dev;
 	int ret;
@@ -242,7 +243,8 @@ int module_process(struct processing_module *mod, struct input_stream_buffer *in
 	/* set state to processing */
 	md->state = MODULE_PROCESSING;
 
-	ret = md->ops->process(mod, input_buffers, num_input_buffers);
+	ret = md->ops->process(mod, input_buffers, num_input_buffers, output_buffers,
+			       num_output_buffers);
 	if (ret && ret != -ENOSPC) {
 		comp_err(dev, "module_process() error %d: for comp %d",
 			 ret, dev_comp_id(dev));

@@ -505,7 +505,8 @@ free:
 
 static int
 cadence_codec_process(struct processing_module *mod, struct input_stream_buffer *input_buffers,
-		      int num_input_buffers)
+		      int num_input_buffers, struct output_stream_buffer *output_buffers,
+		      int num_output_buffers)
 {
 	struct comp_dev *dev = mod->dev;
 	struct comp_buffer *local_buff = mod->local_buff;

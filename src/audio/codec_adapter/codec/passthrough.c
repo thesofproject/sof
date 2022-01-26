@@ -59,7 +59,8 @@ static int passthrough_codec_init_process(struct comp_dev *dev)
 
 static int
 passthrough_codec_process(struct processing_module *mod, struct input_stream_buffer *input_buffers,
-			  int num_input_buffers)
+			  int num_input_buffers, struct output_stream_buffer *output_buffers,
+			  int num_output_buffers)
 {
 	struct comp_dev *dev = mod->dev;
 	struct module_data *codec = &mod->priv;

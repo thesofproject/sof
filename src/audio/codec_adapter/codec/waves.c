@@ -717,7 +717,8 @@ static int waves_codec_init_process(struct comp_dev *dev)
 
 static int
 waves_codec_process(struct processing_module *mod, struct input_stream_buffer *input_buffers,
-		    int num_input_buffers)
+		    int num_input_buffers, struct output_stream_buffer *output_buffers,
+		    int num_output_buffers)
 {
 	int ret;
 	struct module_data *codec = comp_get_module_data(dev);

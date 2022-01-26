@@ -301,9 +301,11 @@ int codec_adapter_copy(struct comp_dev *dev)
 	struct module_data *md = &mod->priv;
 	struct comp_buffer *local_buff = mod->local_buff;
 	struct input_stream_buffer *input_buffers;
+	struct output_stream_buffer *output_buffers;
 	struct comp_copy_limits cl;
 	struct list_item *blist;
 	uint32_t num_input_buffers = 0;
+	uint32_t num_output_buffers = 0;
 	int i = 0;
 
 	if (!source || !sink) {
@@ -317,6 +319,10 @@ int codec_adapter_copy(struct comp_dev *dev)
 	/* compute number of input buffers */
 	list_for_item(blist, &dev->bsource_list)
 		num_input_buffers++;
+
+	/* compute number of output buffers */
+	list_for_item(blist, &dev->bsink_list)
+		num_output_buffers++;
 
 	buffer_stream_invalidate(source, bytes_to_process);
 	ca_copy_from_source_to_module(&source->stream, md->mpd.in_buff,
@@ -357,8 +363,17 @@ int codec_adapter_copy(struct comp_dev *dev)
 		i++;
 	}
 
+	/* allocate memory for output buffers */
+	output_buffers = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+				 sizeof(*output_buffers) * num_output_buffers);
+	if (!output_buffers) {
+		comp_err(dev, "codec_adapter_copy(): failed to alloc output buffers");
+		goto free;
+	}
+
 	md->mpd.avail = bytes_to_process;
-	ret = module_process(mod, input_buffers, num_input_buffers);
+	ret = module_process(mod, input_buffers, num_input_buffers, output_buffers,
+			     num_output_buffers);
 	if (ret) {
 		if (ret == -ENOSPC) {
 			ret = 0;
@@ -419,6 +434,11 @@ copy_period:
 end:
 	comp_dbg(dev, "codec_adapter_copy(): processed %d in this call %d bytes left for next period",
 		 processed, bytes_to_process);
+
+	for (i = 0; i < num_output_buffers; i++)
+		rfree(output_buffers[i].data);
+
+	rfree(output_buffers);
 
 free:
 	for (i = 0; i < num_input_buffers; i++)
