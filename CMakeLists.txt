@@ -34,6 +34,27 @@ if(CMAKE_C_COMPILER_VERSION VERSION_GREATER 9.1)
 	target_compile_options(rimage PRIVATE -Wno-char-subscripts)
 endif()
 
+# Windows builds use MSYS2 https://www.msys2.org/ to get linux tools and headers.
+# MSYS_INSTALL_DIR variable points to MSYS2 installation directory.
+# You may pass it as environmental or cmake configure variable.
+if(${CMAKE_HOST_WIN32})
+	cmake_minimum_required(VERSION 3.20)
+	if(DEFINED ENV{MSYS_INSTALL_DIR} AND NOT MSYS_INSTALL_DIR)
+		set(MSYS_INSTALL_DIR $ENV{MSYS_INSTALL_DIR})
+	endif()
+
+	if(MSYS_INSTALL_DIR)
+		cmake_path(IS_ABSOLUTE MSYS_INSTALL_DIR IS_MSYS_INSTALL_DIR_ABSOLUTE)
+		if(NOT IS_MSYS_INSTALL_DIR_ABSOLUTE)
+			message(FATAL_ERROR "Please provide absolute path to MSYS2 installation
+				setting MSYS_INSTALL_DIR env variable")
+		endif()
+		# Include standard posix headers. Requires pacman openssl-devel package.
+		cmake_path(APPEND MSYS_INSTALL_DIR "usr" "include" OUTPUT_VARIABLE MSYS_SYSTEM_INCLUDE_PATH)
+		target_include_directories(rimage PRIVATE "${MSYS_SYSTEM_INCLUDE_PATH}")
+	endif()
+endif()
+
 target_link_libraries(rimage PRIVATE crypto)
 
 target_include_directories(rimage PRIVATE
