@@ -3,7 +3,7 @@
 # Copyright(c) 2018 Intel Corporation. All rights reserved.
 set -e
 
-SUPPORTED_PLATFORMS=(byt cht bdw hsw apl icl skl kbl cnl imx8 imx8x imx8m)
+SUPPORTED_PLATFORMS=(byt cht bdw hsw apl icl skl kbl cnl imx8 imx8x imx8m mt8195)
 
 SOF_DIR=$(cd "$(dirname "$0")" && cd .. && pwd)
 
@@ -151,6 +151,11 @@ do
 		imx8 | imx8x | imx8m)
 			READY_IPC="00 00 00 00 00 00 04 c0"
 			SHM_IPC_REG=qemu-bridge-mu-io
+			SHM_MBOX=qemu-bridge-mbox-io
+			;;
+		mt8195)
+			READY_IPC="01 00 00 00"
+			SHM_IPC_REG=qemu-bridge-mb1-io
 			SHM_MBOX=qemu-bridge-mbox-io
 			;;
 	esac
