@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 //
-// Copyright(c) 2018 Intel Corporation. All rights reserved.
+// Copyright(c) 2018-2022 Intel Corporation. All rights reserved.
 //
 // Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
 //         Keyon Jie <yang.jie@linux.intel.com>
@@ -1480,7 +1480,7 @@ int resign_image(struct image *image)
 	/* read file into buffer */
 	read = fread(buffer, 1, size, in_file);
 	if (read != size) {
-		fprintf(stderr, "error: unable to read %ld bytes from %s err %d\n",
+		fprintf(stderr, "error: unable to read %zu bytes from %s err %d\n",
 					size, image->in_file, errno);
 		ret = errno;
 		goto out;
