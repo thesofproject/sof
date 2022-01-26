@@ -85,7 +85,7 @@ if isfield(test, 'trace')
 end
 
 % Override defaults in comp_run.sh
-fprintf(fh, 'VALGRIND=no\n', test.fs_in);
+fprintf(fh, 'VALGRIND=false\n', test.fs_in);
 fclose(fh);
 
 arg = sprintf('-t %s', fn_config);
