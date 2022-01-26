@@ -213,6 +213,7 @@ set(TPLGS
 	"sof-imx8mp-wm8960\;sof-imx8mp-drc-wm8960\;-DPPROC=drc"
 
 	"sof-mt8195-mt6359-rt1019-rt5682\;sof-mt8195-mt6359-rt1019-rt5682"
+	"sof-mt8195-mt6359-rt1019-rt5682\;sof-mt8195-mt6359-rt1019-rt5682-dts\;-DDTS=`DTS'"
 
 	"sof-acp-renoir\;sof-acp"
 	"sof-rn-rt5682-rt1019\;sof-rn-rt5682-rt1019"
