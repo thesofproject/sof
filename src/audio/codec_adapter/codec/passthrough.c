@@ -64,6 +64,8 @@ passthrough_codec_process(struct processing_module *mod, struct input_stream_buf
 {
 	struct comp_dev *dev = mod->dev;
 	struct module_data *codec = &mod->priv;
+	struct output_stream_buffer *output;
+	struct input_stream_buffer *input;
 	int ret;
 
 	if (!codec->mpd.init_done) {
@@ -72,10 +74,29 @@ passthrough_codec_process(struct processing_module *mod, struct input_stream_buf
 			return ret;
 	}
 
+	input = &input_buffers[0];
+	output = &output_buffers[0];
+
+	/* allocate memory for produced samples */
+	output->data = rballoc(0, SOF_MEM_CAPS_RAM, mod->period_bytes);
+	if (!output->data) {
+		comp_err(mod->dev, "passthrough_codec_process(): Failed to alloc output buffer data");
+		return -ENOMEM;
+	}
+	output->size = mod->period_bytes;
+
 	comp_dbg(dev, "passthrough_codec_process()");
 
-	memcpy_s(codec->mpd.out_buff, codec->mpd.out_buff_size,
-		 codec->mpd.in_buff, codec->mpd.in_buff_size);
+	/* copy input samples to the output buffer */
+	ret = memcpy_s(output->data, output->size, input->data, input->size);
+	if (ret < 0) {
+		comp_err(mod->dev, "passthrough_codec_process(): Failed to copy produces samples");
+		return ret;
+	}
+
+	/* TODO: remove this */
+	memcpy_s(codec->mpd.out_buff, codec->mpd.out_buff_size, input->data, input->size);
+
 	codec->mpd.produced = mod->period_bytes;
 	codec->mpd.consumed = mod->period_bytes;
 
