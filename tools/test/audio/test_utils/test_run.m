@@ -82,6 +82,8 @@ end
 
 if isfield(test, 'trace')
 	fprintf(fh, 'FN_TRACE=\"%s\"\n', test.trace);
+else
+	fprintf(fh, 'FN_TRACE=\"/dev/null"\n');
 end
 
 % Override defaults in comp_run.sh
