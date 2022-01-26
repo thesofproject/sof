@@ -723,6 +723,8 @@ waves_codec_process(struct processing_module *mod, struct input_stream_buffer *i
 	int ret;
 	struct module_data *codec = comp_get_module_data(dev);
 	struct waves_codec_data *waves_codec = codec->private;
+	struct output_stream_buffer *output;
+	struct input_stream_buffer *input;
 	struct comp_dev *dev = mod->dev;
 
 	if (!codec->mpd.init_done) {
@@ -731,8 +733,12 @@ waves_codec_process(struct processing_module *mod, struct input_stream_buffer *i
 			return ret;
 	}
 
+	/* waves codec expects only 1 input and output stream currently */
+	input = &input_buffers[0];
+	output = &output_buffers[0];
+
 	/* Proceed only if we have enough data to fill the input buffer completely */
-	if (codec->mpd.avail < waves_codec->buffer_bytes) {
+	if (input->size < waves_codec->buffer_bytes) {
 		comp_dbg(dev, "waves_codec_process(): not enough data to start processing");
 		return 0;
 	}
@@ -744,14 +750,22 @@ waves_codec_process(struct processing_module *mod, struct input_stream_buffer *i
 	MaxxStatus_t status;
 	uint32_t num_input_samples = waves_codec->buffer_samples;
 
+	/* copy the input samples */
+	ret = memcpy_s(waves_codec->i_buffer, waves_codec->buffer_bytes, input->data, input->size);
+	if (ret < 0) {
+		comp_err(dev, "waves_codec_process() error %d: failed to copy input samples",
+			 ret);
+		return ret;
+	}
+
 	/* here input buffer should always be filled up as requested
 	 * since no one updates it`s size except code in prepare.
 	 * on the other hand there is available/produced counters in mpd, check them anyways
 	 */
-	if (codec->mpd.avail != waves_codec->buffer_bytes) {
+	if (input->size != waves_codec->buffer_bytes) {
 		comp_warn(dev, "waves_codec_process() input buffer %d is not full %d",
-			  codec->mpd.avail, waves_codec->buffer_bytes);
-		num_input_samples = codec->mpd.avail /
+			  input->size, waves_codec->buffer_bytes);
+		num_input_samples = input->size /
 			(waves_codec->sample_size_in_bytes * waves_codec->i_format.numChannels);
 	}
 
@@ -767,17 +781,31 @@ waves_codec_process(struct processing_module *mod, struct input_stream_buffer *i
 
 	status = MaxxEffect_Process(waves_codec->effect, i_streams, o_streams);
 	if (status) {
-		comp_err(dev, "waves_codec_process() MaxxEffect_Process returned %d", status);
-		ret = -EINVAL;
-	} else {
-		codec->mpd.produced = waves_codec->o_stream.numAvailableSamples *
-			waves_codec->o_format.numChannels * waves_codec->sample_size_in_bytes;
-		codec->mpd.consumed = codec->mpd.produced;
-		ret = 0;
+		comp_err(dev, "waves_codec_process() MaxxEffect_Process failed %d", status);
+		return -EINVAL;
 	}
 
-	if (ret)
-		comp_err(dev, "waves_codec_process() failed %d", ret);
+	codec->mpd.produced = waves_codec->o_stream.numAvailableSamples *
+				waves_codec->o_format.numChannels *
+				waves_codec->sample_size_in_bytes;
+	codec->mpd.consumed = codec->mpd.produced;
+
+	/* allocate memory for produced samples */
+	output->data = rballoc(0, SOF_MEM_CAPS_RAM, waves_codec->buffer_bytes);
+	if (!output->data) {
+		comp_err(mod->dev, "waves_codec_process(): Failed to alloc output buffer data");
+		return -ENOMEM;
+	}
+
+	/* copy produced samples */
+	ret = memcpy_s(output->data, waves_codec->buffer_bytes, waves_codec->o_buffer,
+		       codec->mpd.produced);
+	if (ret < 0) {
+		comp_err(dev, "waves_codec_process() error %d: failed to copy produced samples",
+			 ret);
+		return ret;
+	}
+	output->size = codec->mpd.produced;
 
 	comp_dbg(dev, "waves_codec_process() done");
 	return ret;
