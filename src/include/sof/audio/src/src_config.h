@@ -29,6 +29,12 @@
 #if defined __XCC__
 #include <xtensa/config/core-isa.h>
 #define SRC_GENERIC	0
+#if XCHAL_HAVE_HIFI4 == 1
+#define SRC_HIFI4	1
+#define SRC_HIFI3	0
+#define SRC_HIFIEP	0
+#else
+#define SRC_HIFI4	0
 #if XCHAL_HAVE_HIFI2EP == 1
 #define SRC_HIFIEP	1
 #define SRC_HIFI3	0
@@ -36,6 +42,7 @@
 #if XCHAL_HAVE_HIFI3 == 1
 #define SRC_HIFI3	1
 #define SRC_HIFIEP	0
+#endif
 #endif
 #else
 /* GCC */
