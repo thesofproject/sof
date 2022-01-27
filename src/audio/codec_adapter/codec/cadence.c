@@ -238,10 +238,14 @@ static int cadence_codec_apply_config(struct comp_dev *dev)
 		API_CALL(cd, XA_API_CMD_SET_CONFIG_PARAM, param->id,
 			 param->data, ret);
 		if (ret != LIB_NO_ERROR) {
-			comp_err(dev, "cadence_codec_apply_config() error %x: failed to apply parameter %d value %d",
-				 ret, param->id, *(int32_t *)param->data);
-			if (LIB_IS_FATAL_ERROR(ret))
+			if (LIB_IS_FATAL_ERROR(ret)) {
+				comp_err(dev, "cadence_codec_apply_config(): failed to apply parameter: %d value: %d error: %#x",
+					 param->id, *(int32_t *)param->data, ret);
+
 				return ret;
+			}
+			comp_warn(dev, "cadence_codec_apply_config(): applied parameter %d value %d with return code: %#x",
+				  param->id, *(int32_t *)param->data, ret);
 		}
 		/* Obtain next parameter, it starts right after the preceding one */
 		data = (char *)data + param->size;
