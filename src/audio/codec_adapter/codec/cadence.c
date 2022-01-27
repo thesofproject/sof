@@ -564,6 +564,8 @@ static int cadence_codec_reset(struct comp_dev *dev)
 	if (ret != LIB_NO_ERROR)
 		return ret;
 
+	codec->mpd.init_done = 0;
+
 	ret = cadence_codec_prepare(dev);
 	if (ret) {
 		comp_err(dev, "cadence_codec_reset() error %x: could not re-prepare codec after reset",
