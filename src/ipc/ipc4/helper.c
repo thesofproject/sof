@@ -52,11 +52,51 @@ void ipc_build_trace_posn(struct sof_ipc_dma_trace_posn *posn)
 {
 }
 
+static int ipc4_add_comp_dev(struct comp_dev *dev)
+{
+	struct ipc_core_ctx *ctx = *arch_ipc_get();
+	struct ipc *ipc = ipc_get();
+	struct ipc_comp_dev *icd;
+
+	/* allocate the IPC component container */
+	icd = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM,
+		      sizeof(struct ipc_comp_dev));
+	if (!icd) {
+		tr_err(&ipc_tr, "ipc_comp_new(): alloc failed");
+		ctx->error = IPC4_OUT_OF_MEMORY;
+		return -ENOMEM;
+	}
+
+	icd->cd = dev;
+	icd->type = COMP_TYPE_COMPONENT;
+	icd->core = dev->ipc_config.core;
+	icd->id = dev->ipc_config.id;
+
+	tr_dbg(&ipc_tr, "ipc4_add_comp_dev add comp %x", icd->id);
+	/* add new component to the list */
+	list_item_append(&icd->list, &ipc->comp_list);
+
+	return 0;
+};
+
+static void ipc4_free_comp_dev(struct comp_dev *dev)
+{
+	struct ipc *ipc = ipc_get();
+	struct ipc_comp_dev *icd = ipc_get_comp_by_id(ipc, dev->ipc_config.id);
+
+	if (!icd)
+		return;
+
+	list_item_del(&icd->list);
+	rfree(icd);
+}
+
 struct comp_dev *comp_new(struct sof_ipc_comp *comp)
 {
 	struct comp_ipc_config ipc_config;
 	const struct comp_driver *drv;
 	struct comp_dev *dev;
+	int ret;
 
 	drv = ipc4_get_comp_drv(IPC4_MOD_ID(comp->id));
 	if (!drv)
@@ -80,14 +120,20 @@ struct comp_dev *comp_new(struct sof_ipc_comp *comp)
 	dcache_invalidate_region((void *)(MAILBOX_HOSTBOX_BASE),
 				 MAILBOX_HOSTBOX_SIZE);
 
+	/* Also copies ipc_config to dev->ipc_config */
 	dev = drv->ops.create(drv, &ipc_config, (void *)MAILBOX_HOSTBOX_BASE);
 	if (!dev)
 		return NULL;
 
+	/* ipc4_add_comp_dev() sets IPC4 error */
+	ret = ipc4_add_comp_dev(dev);
+	if (ret < 0) {
+		drv->ops.free(dev);
+		return NULL;
+	}
+
 	list_init(&dev->bsource_list);
 	list_init(&dev->bsink_list);
-
-	ipc4_add_comp_dev(dev);
 
 	return dev;
 }
@@ -95,6 +141,7 @@ struct comp_dev *comp_new(struct sof_ipc_comp *comp)
 static int ipc4_create_pipeline(struct ipc *ipc, uint32_t pipeline_id, uint32_t priority,
 				uint32_t memory_size)
 {
+	struct ipc_core_ctx *ctx = *arch_ipc_get();
 	struct ipc_comp_dev *ipc_pipe;
 	struct pipeline *pipe;
 
@@ -104,14 +151,16 @@ static int ipc4_create_pipeline(struct ipc *ipc, uint32_t pipeline_id, uint32_t 
 	if (ipc_pipe) {
 		tr_err(&ipc_tr, "ipc: pipeline id is already taken, pipe_desc->instance_id = %u",
 		       pipeline_id);
-		return IPC4_INVALID_RESOURCE_ID;
+		ctx->error = IPC4_INVALID_RESOURCE_ID;
+		return -EBUSY;
 	}
 
-	/* create the pipeline */
+	/* create the pipeline. FIXME: is a component ID of 0 really suitable? */
 	pipe = pipeline_new(pipeline_id, priority, 0);
 	if (!pipe) {
 		tr_err(&ipc_tr, "ipc: pipeline_new() failed");
-		return IPC4_OUT_OF_MEMORY;
+		ctx->error = IPC4_OUT_OF_MEMORY;
+		return -ENOMEM;
 	}
 
 	pipe->time_domain = SOF_TIME_DOMAIN_TIMER;
@@ -129,7 +178,8 @@ static int ipc4_create_pipeline(struct ipc *ipc, uint32_t pipeline_id, uint32_t 
 			   sizeof(struct ipc_comp_dev));
 	if (!ipc_pipe) {
 		pipeline_free(pipe);
-		return IPC4_OUT_OF_MEMORY;
+		ctx->error = IPC4_OUT_OF_MEMORY;
+		return -ENOMEM;
 	}
 
 	ipc_pipe->pipeline = pipe;
@@ -148,6 +198,7 @@ int ipc_pipeline_new(struct ipc *ipc, ipc_pipe_new *_pipe_desc)
 
 	tr_dbg(&ipc_tr, "ipc: pipeline id = %u", (uint32_t)pipe_desc->header.r.instance_id);
 
+	/* ipc4_create_pipeline() sets IPC4 error */
 	return ipc4_create_pipeline(ipc, pipe_desc->header.r.instance_id,
 		pipe_desc->header.r.ppl_priority, pipe_desc->header.r.ppl_mem_size);
 }
@@ -158,35 +209,41 @@ static int ipc_pipeline_module_free(uint32_t pipeline_id)
 	struct ipc_comp_dev *icd;
 	int ret;
 
-	icd = ipc_get_comp_by_ppl_id(ipc, COMP_TYPE_COMPONENT, pipeline_id);
-	while (icd) {
+	/* Find all components on the pipeline and free them */
+	while ((icd = ipc_get_comp_by_ppl_id(ipc, COMP_TYPE_COMPONENT, pipeline_id))) {
 		ret = ipc_comp_free(ipc, icd->id);
 		if (ret)
 			return ret;
-
-		icd = ipc_get_comp_by_ppl_id(ipc, COMP_TYPE_COMPONENT, pipeline_id);
 	}
 
-	return IPC4_SUCCESS;
+	return 0;
 }
 
 int ipc_pipeline_free(struct ipc *ipc, uint32_t comp_id)
 {
+	struct ipc_core_ctx *ctx = *arch_ipc_get();
 	struct ipc_comp_dev *ipc_pipe;
 	int ret;
 
 	/* check whether pipeline exists */
 	ipc_pipe = ipc_get_comp_by_id(ipc, comp_id);
-	if (!ipc_pipe)
+	if (!ipc_pipe) {
+		ctx->error = IPC4_INVALID_RESOURCE_ID;
 		return -ENODEV;
+	}
 
 	/* check core */
-	if (!cpu_is_me(ipc_pipe->core))
-		return ipc_process_on_core(ipc_pipe->core, false);
+	if (!cpu_is_me(ipc_pipe->core)) {
+		ret = ipc_process_on_core(ipc_pipe->core, false);
+		if (ret < 0)
+			ctx->error = IPC4_INVALID_CORE_ID;
+		return ret;
+	}
 
 	ret = ipc_pipeline_module_free(ipc_pipe->pipeline->pipeline_id);
 	if (ret) {
 		tr_err(&ipc_tr, "ipc_pipeline_free(): module free () failed");
+		ctx->error = IPC4_INVALID_RESOURCE_STATE;
 		return ret;
 	}
 
@@ -194,26 +251,24 @@ int ipc_pipeline_free(struct ipc *ipc, uint32_t comp_id)
 	ret = pipeline_free(ipc_pipe->pipeline);
 	if (ret < 0) {
 		tr_err(&ipc_tr, "ipc_pipeline_free(): pipeline_free() failed");
-		return IPC4_INVALID_RESOURCE_STATE;
+		ctx->error = IPC4_INVALID_RESOURCE_STATE;
+		return ret;
 	}
 
-	ipc_pipe->pipeline = NULL;
 	list_item_del(&ipc_pipe->list);
 	rfree(ipc_pipe);
 
-	return IPC4_SUCCESS;
+	return 0;
 }
 
 static struct comp_buffer *ipc4_create_buffer(struct comp_dev *src, struct comp_dev *sink,
 					      uint32_t src_queue, uint32_t dst_queue)
 {
-	struct ipc4_base_module_cfg *src_cfg, *sink_cfg;
-	struct comp_buffer *buffer = NULL;
+	struct ipc4_base_module_cfg *src_cfg;
 	struct sof_ipc_buffer ipc_buf;
 	int buf_size;
 
 	src_cfg = (struct ipc4_base_module_cfg *)comp_get_drvdata(src);
-	sink_cfg = (struct ipc4_base_module_cfg *)comp_get_drvdata(sink);
 
 	/* double it since obs is single buffer size */
 	buf_size = src_cfg->obs * 2;
@@ -222,13 +277,13 @@ static struct comp_buffer *ipc4_create_buffer(struct comp_dev *src, struct comp_
 	ipc_buf.comp.id = IPC4_COMP_ID(src_queue, dst_queue);
 	ipc_buf.comp.pipeline_id = src->ipc_config.pipeline_id;
 	ipc_buf.comp.core = src->ipc_config.core;
-	buffer = buffer_new(&ipc_buf);
 
-	return buffer;
+	return buffer_new(&ipc_buf);
 }
 
 int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 {
+	struct ipc_core_ctx *ctx = *arch_ipc_get();
 	struct ipc4_module_bind_unbind *bu;
 	struct comp_buffer *buffer = NULL;
 	struct comp_dev *source;
@@ -244,14 +299,16 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 
 	if (!source || !sink) {
 		tr_err(&ipc_tr, "failed to find src %x, or dst %x", src_id, sink_id);
-		return IPC4_INVALID_RESOURCE_ID;
+		ctx->error = IPC4_INVALID_RESOURCE_ID;
+		return -ENODEV;
 	}
 
 	buffer = ipc4_create_buffer(source, sink, bu->data.r.src_queue,
 				    bu->data.r.dst_queue);
 	if (!buffer) {
 		tr_err(&ipc_tr, "failed to allocate buffer to bind %d to %d", src_id, sink_id);
-		return IPC4_OUT_OF_MEMORY;
+		ctx->error = IPC4_OUT_OF_MEMORY;
+		return -ENOMEM;
 	}
 
 	ret = comp_buffer_connect(source, source->ipc_config.core, buffer,
@@ -268,19 +325,26 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 		goto err;
 	}
 
+	/*
+	 * FIXME: is the buffer not freed for these errors because it is already
+	 * connected and will be freed normally during tear-down?
+	 */
 	ret = comp_bind(source, bu);
-	if (ret < 0)
-		return IPC4_INVALID_RESOURCE_ID;
+	if (ret < 0) {
+		ctx->error = IPC4_INVALID_RESOURCE_ID;
+		return ret;
+	}
 
 	ret = comp_bind(sink, bu);
 	if (ret < 0)
-		return IPC4_INVALID_RESOURCE_ID;
+		ctx->error = IPC4_INVALID_RESOURCE_ID;
 
-	return 0;
+	return ret;
 
 err:
 	buffer_free(buffer);
-	return IPC4_INVALID_RESOURCE_STATE;
+	ctx->error = IPC4_INVALID_RESOURCE_STATE;
+	return ret;
 }
 
 /* when both module instances are parts of the same pipeline Unbind IPC would
@@ -290,6 +354,7 @@ err:
  */
 int ipc_comp_disconnect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 {
+	struct ipc_core_ctx *ctx = *arch_ipc_get();
 	struct ipc4_module_bind_unbind *bu;
 	struct comp_buffer *buffer = NULL;
 	struct comp_dev *src, *sink;
@@ -305,11 +370,14 @@ int ipc_comp_disconnect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	sink = ipc4_get_comp_dev(sink_id);
 	if (!src || !sink) {
 		tr_err(&ipc_tr, "failed to find src %x, or dst %x", src_id, sink_id);
-		return IPC4_INVALID_RESOURCE_ID;
+		ctx->error = IPC4_INVALID_RESOURCE_ID;
+		return -ENODEV;
 	}
 
-	if (src->pipeline == sink->pipeline)
-		return IPC4_INVALID_REQUEST;
+	if (src->pipeline == sink->pipeline) {
+		ctx->error = IPC4_INVALID_REQUEST;
+		return -EINVAL;
+	}
 
 	buffer_id = IPC4_COMP_ID(bu->data.r.src_queue, bu->data.r.dst_queue);
 	list_for_item(sink_list, &src->bsink_list) {
@@ -322,8 +390,10 @@ int ipc_comp_disconnect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 		}
 	}
 
-	if (!buffer)
-		return IPC4_INVALID_RESOURCE_ID;
+	if (!buffer) {
+		ctx->error = IPC4_INVALID_RESOURCE_ID;
+		return -ENOENT;
+	}
 
 	irq_local_disable(flags);
 	list_item_del(buffer_comp_list(buffer, PPL_CONN_DIR_COMP_TO_BUFFER));
@@ -335,14 +405,16 @@ int ipc_comp_disconnect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	buffer_free(buffer);
 
 	ret = comp_unbind(src, bu);
-	if (ret < 0)
-		return IPC4_INVALID_RESOURCE_ID;
+	if (ret < 0) {
+		ctx->error = IPC4_INVALID_RESOURCE_ID;
+		return ret;
+	}
 
 	ret = comp_unbind(sink, bu);
 	if (ret < 0)
-		return IPC4_INVALID_RESOURCE_ID;
+		ctx->error = IPC4_INVALID_RESOURCE_ID;
 
-	return 0;
+	return ret;
 }
 
 /* dma index may be for playback or capture. Current
@@ -350,10 +422,13 @@ int ipc_comp_disconnect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
  * and the index more than this will be capture. This function
  * convert dma id to dma channel
  */
-static inline int process_dma_index(uint32_t dma_id, uint32_t *dir, uint32_t *chan)
+static int process_dma_index(uint32_t dma_id, uint32_t *dir, uint32_t *chan)
 {
+	struct ipc_core_ctx *ctx = *arch_ipc_get();
+
 	if (dma_id > DAI_NUM_HDA_OUT + DAI_NUM_HDA_IN) {
 		tr_err(&ipc_tr, "dma id %d is out of range", dma_id);
+		ctx->error = IPC4_INVALID_NODE_ID;
 		return -EINVAL;
 	}
 
@@ -381,7 +456,7 @@ static struct comp_dev *ipc4_create_host(uint32_t pipeline_id, uint32_t id, uint
 	if (!drv)
 		return NULL;
 
-	memset_s(&config, sizeof(config), 0, sizeof(config));
+	memset(&config, 0, sizeof(config));
 	config.type = SOF_COMP_HOST;
 	config.pipeline_id = pipeline_id;
 	config.core = 0;
@@ -416,7 +491,7 @@ static struct comp_dev *ipc4_create_dai(struct pipeline *pipe, uint32_t id, uint
 	if (!drv)
 		return NULL;
 
-	memset_s(&config, sizeof(config), 0, sizeof(config));
+	memset(&config, 0, sizeof(config));
 	config.type = SOF_COMP_DAI;
 	config.pipeline_id = pipe->pipeline_id;
 	config.core = 0;
@@ -438,8 +513,10 @@ static struct comp_dev *ipc4_create_dai(struct pipeline *pipe, uint32_t id, uint
 	list_init(&dev->bsink_list);
 
 	ret = comp_dai_config(dev, &dai, copier_cfg);
-	if (ret < 0)
+	if (ret < 0) {
+		drv->ops.free(dev);
 		return NULL;
+	}
 
 	return dev;
 }
@@ -493,6 +570,7 @@ static void construct_config(struct ipc4_copier_module_cfg *copier_cfg, uint32_t
 
 int ipc4_create_chain_dma(struct ipc *ipc, struct ipc4_chain_dma *cdma)
 {
+	struct ipc_core_ctx *ctx = *arch_ipc_get();
 	struct ipc4_copier_module_cfg copier_cfg;
 	struct sof_ipc_stream_params params;
 	struct ipc_comp_dev *ipc_pipe;
@@ -509,38 +587,54 @@ int ipc4_create_chain_dma(struct ipc *ipc, struct ipc4_chain_dma *cdma)
 	uint32_t dir, host_chan, link_chan;
 	int ret;
 
-	if (process_dma_index(cdma->header.r.host_dma_id, &dir, &host_chan) < 0)
-		return IPC4_INVALID_NODE_ID;
+	/* process_dma_index() sets IPC4 error */
+	ret = process_dma_index(cdma->header.r.host_dma_id, &dir, &host_chan);
+	if (ret < 0)
+		return ret;
 
-	if (process_dma_index(cdma->header.r.link_dma_id, &dir, &link_chan) < 0)
-		return IPC4_INVALID_NODE_ID;
+	ret = process_dma_index(cdma->header.r.link_dma_id, &dir, &link_chan);
+	if (ret < 0)
+		return ret;
 
 	/* build a pipeline id based on dma id */
 	pipeline_id = IPC4_COMP_ID(cdma->header.r.host_dma_id + IPC4_MAX_MODULE_COUNT,
 				   cdma->header.r.link_dma_id);
+	/* ipc4_create_pipeline() sets IPC4 error */
 	ret = ipc4_create_pipeline(ipc, pipeline_id, 0, cdma->data.r.fifo_size);
 	if (ret < 0) {
 		tr_err(&comp_tr, "failed to create pipeline for chain dma");
-		return IPC4_INVALID_NODE_ID;
+		return ret;
 	}
 
 	ipc_pipe = ipc_get_comp_by_id(ipc, pipeline_id);
+	if (!ipc_pipe) {
+		/*
+		 * We just created this pipeline. If we cannot find it again, we
+		 * either have a bug or a race. We won't be able to free it
+		 * either.
+		 */
+		ctx->error = IPC4_FAILURE;
+		return -EFAULT;
+	}
 
 	host_id = pipeline_id + 1;
 	host = ipc4_create_host(pipeline_id, host_id, dir);
 	if (!host) {
 		tr_err(&comp_tr, "failed to create host for chain dma");
-		return IPC4_INVALID_REQUEST;
+		ctx->error = IPC4_INVALID_REQUEST;
+		ret = -ENOENT;
+		goto e_pipe;
 	}
 
 	host->period = ipc_pipe->pipeline->period;
 
+	/* ipc4_add_comp_dev() sets IPC4 error */
 	ret = ipc4_add_comp_dev(host);
 	if (ret < 0)
-		return IPC4_FAILURE;
+		goto e_host_create;
 
-	memset_s(&params, sizeof(params), 0, sizeof(params));
-	memset_s(&copier_cfg, sizeof(copier_cfg), 0, sizeof(copier_cfg));
+	memset(&params, 0, sizeof(params));
+	memset(&copier_cfg, 0, sizeof(copier_cfg));
 	construct_config(&copier_cfg, cdma->data.r.fifo_size, &params);
 	params.direction = dir;
 	params.stream_tag = host_chan + 1;
@@ -549,14 +643,17 @@ int ipc4_create_chain_dma(struct ipc *ipc, struct ipc4_chain_dma *cdma)
 	dai = ipc4_create_dai(ipc_pipe->pipeline, dai_id, dir, &copier_cfg);
 	if (!dai) {
 		tr_err(&comp_tr, "failed to create dai for chain dma");
-		return IPC4_INVALID_REQUEST;
+		ctx->error = IPC4_INVALID_REQUEST;
+		ret = -ENOENT;
+		goto e_host_add;
 	}
 
 	dai->period = ipc_pipe->pipeline->period;
 
+	/* ipc4_add_comp_dev() sets IPC4 error */
 	ret = ipc4_add_comp_dev(dai);
 	if (ret < 0)
-		return IPC4_FAILURE;
+		goto e_dai_create;
 
 	buf_id = dai_id + 1;
 	if (dir == SOF_IPC_STREAM_PLAYBACK) {
@@ -575,7 +672,9 @@ int ipc4_create_chain_dma(struct ipc *ipc, struct ipc4_chain_dma *cdma)
 	buf = buffer_new(&ipc_buf);
 	if (!buf) {
 		tr_err(&comp_tr, "failed to create buffer for chain dma");
-		return IPC4_OUT_OF_MEMORY;
+		ctx->error = IPC4_OUT_OF_MEMORY;
+		ret = -ENOMEM;
+		goto e_dai_add;
 	}
 
 	comp_buffer_connect(src, src->ipc_config.core, buf, PPL_CONN_DIR_COMP_TO_BUFFER);
@@ -585,9 +684,12 @@ int ipc4_create_chain_dma(struct ipc *ipc, struct ipc4_chain_dma *cdma)
 	ipc_pipe->pipeline->source_comp = src;
 	ipc_pipe->pipeline->sink_comp = sink;
 
+	/* FIXME: shouldn't ipc_pipe->pipeline->core be set? */
 	ret = ipc_pipeline_complete(ipc, pipeline_id);
-	if (ret < 0)
-		ret = IPC4_INVALID_RESOURCE_STATE;
+	if (ret < 0) {
+		ctx->error = IPC4_INVALID_RESOURCE_STATE;
+		goto e_buf;
+	}
 
 	/* set up host & dai and start pipeline */
 	if (cdma->header.r.enable) {
@@ -599,27 +701,53 @@ int ipc4_create_chain_dma(struct ipc *ipc, struct ipc4_chain_dma *cdma)
 		ret = host->drv->ops.params(host, &params);
 		if (ret < 0) {
 			tr_err(&ipc_tr, "failed to set host params %d", ret);
-			return IPC4_ERROR_INVALID_PARAM;
+			ctx->error = IPC4_ERROR_INVALID_PARAM;
+			goto e_buf;
 		}
 
 		ret = dai->drv->ops.params(dai, &params);
 		if (ret < 0) {
 			tr_err(&ipc_tr, "failed to set dai params %d", ret);
-			return IPC4_ERROR_INVALID_PARAM;
+			ctx->error = IPC4_ERROR_INVALID_PARAM;
+			goto e_buf;
 		}
 
 		ret = pipeline_prepare(ipc_pipe->pipeline, host);
 		if (ret < 0) {
 			tr_err(&ipc_tr, "failed to prepare for chain dma %d", ret);
-			ret = IPC4_INVALID_RESOURCE_STATE;
+			ctx->error = IPC4_INVALID_RESOURCE_STATE;
+			goto e_buf;
 		}
 	}
+
+	return 0;
+
+e_buf:
+	/* undo buffer_new() */
+	buffer_free(buf);
+e_dai_add:
+	/* undo ipc4_add_comp_dev() */
+	ipc4_free_comp_dev(dai);
+e_dai_create:
+	/* undo ipc4_create_dai() */
+	dai->drv->ops.free(dai);
+e_host_add:
+	/* undo ipc4_add_comp_dev() */
+	ipc4_free_comp_dev(host);
+e_host_create:
+	/* undo ipc4_create_host() */
+	host->drv->ops.free(host);
+e_pipe:
+	/* undo ipc4_create_pipeline() */
+	ipc_pipeline_free(ipc_get(), pipeline_id);
 
 	return ret;
 }
 
+/* Can return 0, a negative error, or one of PPL_STATUS_* codes */
 int ipc4_trigger_chain_dma(struct ipc *ipc, struct ipc4_chain_dma *cdma)
 {
+	struct ipc_core_ctx *ctx = *arch_ipc_get();
 	struct ipc_comp_dev *ipc_pipe;
 	uint32_t pipeline_id;
 	int ret;
@@ -627,8 +755,12 @@ int ipc4_trigger_chain_dma(struct ipc *ipc, struct ipc4_chain_dma *cdma)
 	pipeline_id = IPC4_COMP_ID(cdma->header.r.host_dma_id + IPC4_MAX_MODULE_COUNT,
 				   cdma->header.r.link_dma_id);
 	ipc_pipe = ipc_get_comp_by_id(ipc, pipeline_id);
-	if (!ipc_pipe)
-		return IPC4_INVALID_RESOURCE_ID;
+	if (!ipc_pipe) {
+		ctx->error = IPC4_INVALID_RESOURCE_ID;
+		return -ENODEV;
+	}
+
+	/* FIXME: shouldn't this run on the pipeline core? */
 
 	/* pause or release chain dma */
 	if (!cdma->header.r.enable) {
@@ -637,7 +769,8 @@ int ipc4_trigger_chain_dma(struct ipc *ipc, struct ipc4_chain_dma *cdma)
 					       COMP_TRIGGER_PAUSE);
 			if (ret < 0) {
 				tr_err(&ipc_tr, "failed to disable chain dma %d", ret);
-				return IPC4_BAD_STATE;
+				ctx->error = IPC4_BAD_STATE;
+				return ret;
 			}
 		}
 
@@ -646,22 +779,25 @@ int ipc4_trigger_chain_dma(struct ipc *ipc, struct ipc4_chain_dma *cdma)
 			ret = pipeline_reset(ipc_pipe->pipeline, ipc_pipe->pipeline->sink_comp);
 			if (ret < 0) {
 				tr_err(&ipc_tr, "failed to reset chain dma %d", ret);
-				return IPC4_BAD_STATE;
+				ctx->error = IPC4_BAD_STATE;
+				return ret;
 			}
 
+			/* ipc_pipeline_free() sets IPC4 error */
 			ret = ipc_pipeline_free(ipc, pipeline_id);
 			if (ret < 0) {
 				tr_err(&ipc_tr, "failed to free chain dma %d", ret);
-				return IPC4_BAD_STATE;
+				return ret;
 			}
 		}
 
-		return IPC4_SUCCESS;
+		return 0;
 	}
 
 	if (!cdma->header.r.allocate) {
 		tr_err(&ipc_tr, "can't enable chain dma");
-		return IPC4_INVALID_REQUEST;
+		ctx->error = IPC4_INVALID_REQUEST;
+		return -EINVAL;
 	}
 
 	switch (ipc_pipe->pipeline->status) {
@@ -670,20 +806,21 @@ int ipc4_trigger_chain_dma(struct ipc *ipc, struct ipc4_chain_dma *cdma)
 				       COMP_TRIGGER_PRE_RELEASE);
 		if (ret < 0) {
 			tr_err(&ipc_tr, "failed to resume chain dma %d", ret);
-			return IPC4_BAD_STATE;
+			ctx->error = IPC4_BAD_STATE;
 		}
-		break;
+		return ret;
 	case COMP_STATE_READY:
 	case COMP_STATE_PREPARE:
 		ret = pipeline_trigger(ipc_pipe->pipeline, ipc_pipe->pipeline->sink_comp,
 				       COMP_TRIGGER_PRE_START);
 		if (ret < 0) {
 			tr_err(&ipc_tr, "failed to start chain dma %d", ret);
-			return IPC4_BAD_STATE;
+			ctx->error = IPC4_BAD_STATE;
 		}
+		return ret;
 	}
 
-	return IPC4_SUCCESS;
+	return 0;
 }
 
 const struct comp_driver *ipc4_get_drv(uint8_t *uuid)
@@ -724,7 +861,6 @@ out:
 const struct comp_driver *ipc4_get_comp_drv(int module_id)
 {
 	struct sof_man_fw_desc *desc = (struct sof_man_fw_desc *)IMR_BOOT_LDR_MANIFEST_BASE;
-	const struct comp_driver *drv;
 	struct sof_man_module *mod;
 	int entry_index;
 
@@ -735,9 +871,8 @@ const struct comp_driver *ipc4_get_comp_drv(int module_id)
 		entry_index = module_id;
 
 	mod = (struct sof_man_module *)((char *)desc + SOF_MAN_MODULE_OFFSET(entry_index));
-	drv = ipc4_get_drv(mod->uuid);
 
-	return drv;
+	return ipc4_get_drv(mod->uuid);
 }
 
 struct comp_dev *ipc4_get_comp_dev(uint32_t comp_id)
@@ -751,29 +886,3 @@ struct comp_dev *ipc4_get_comp_dev(uint32_t comp_id)
 
 	return icd->cd;
 }
-
-int ipc4_add_comp_dev(struct comp_dev *dev)
-{
-	struct ipc *ipc = ipc_get();
-	struct ipc_comp_dev *icd;
-
-	/* allocate the IPC component container */
-	icd = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM,
-		      sizeof(struct ipc_comp_dev));
-	if (!icd) {
-		tr_err(&ipc_tr, "ipc_comp_new(): alloc failed");
-		rfree(icd);
-		return IPC4_OUT_OF_MEMORY;
-	}
-
-	icd->cd = dev;
-	icd->type = COMP_TYPE_COMPONENT;
-	icd->core = dev->ipc_config.core;
-	icd->id = dev->ipc_config.id;
-
-	tr_dbg(&ipc_tr, "ipc4_add_comp_dev add comp %x", icd->id);
-	/* add new component to the list */
-	list_item_append(&icd->list, &ipc->comp_list);
-
-	return 0;
-};

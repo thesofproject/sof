@@ -56,6 +56,7 @@ static int ipc4_create_pipeline(union ipc4_message_header *ipc4)
 {
 	struct ipc *ipc = ipc_get();
 
+	/* ipc_pipeline_new() sets IPC4 error */
 	return ipc_pipeline_new(ipc, (ipc_pipe_new *)ipc4);
 }
 
@@ -67,6 +68,7 @@ static int ipc4_delete_pipeline(union ipc4_message_header *ipc4)
 	pipe = (struct ipc4_pipeline_delete *)ipc4;
 	tr_dbg(&ipc_tr, "ipc4 delete pipeline %x:", (uint32_t)pipe->header.r.instance_id);
 
+	/* ipc_pipeline_free() sets IPC4 error */
 	return ipc_pipeline_free(ipc, pipe->header.r.instance_id);
 }
 
@@ -180,11 +182,13 @@ error:
  *       |/_        _\|  |  /    \        _\|
  *     ERROR Stop       EOS       |______\ SAVE
  *                                      /
+ * Returns: 0, a negative error code or 1, if processed on a different core
  */
 static int set_pipeline_state(uint32_t id, uint32_t cmd, bool *delayed)
 {
+	struct ipc_core_ctx *ctx = *arch_ipc_get();
 	struct ipc_comp_dev *pcm_dev;
-	struct ipc_comp_dev *host;
+	struct ipc_comp_dev *host = NULL;
 	struct ipc *ipc = ipc_get();
 	int status;
 	int ret;
@@ -195,7 +199,8 @@ static int set_pipeline_state(uint32_t id, uint32_t cmd, bool *delayed)
 	pcm_dev = ipc_get_comp_by_ppl_id(ipc, COMP_TYPE_PIPELINE, id);
 	if (!pcm_dev) {
 		tr_err(&ipc_tr, "ipc: comp %d not found", id);
-		return IPC4_INVALID_RESOURCE_ID;
+		ctx->error = IPC4_INVALID_RESOURCE_ID;
+		return -ENODEV;
 	}
 
 	status = pcm_dev->pipeline->status;
@@ -211,19 +216,26 @@ static int set_pipeline_state(uint32_t id, uint32_t cmd, bool *delayed)
 		host = ipc_get_comp_by_id(ipc, host_id);
 		if (!host) {
 			tr_err(&ipc_tr, "ipc: comp host with ID %d not found", host_id);
-			return IPC4_INVALID_RESOURCE_ID;
+			ctx->error = IPC4_INVALID_RESOURCE_ID;
+			return -ENODEV;
 		}
 
 		/* check core */
-		if (!cpu_is_me(host->core))
-			return ipc_process_on_core(host->core, false);
+		if (!cpu_is_me(host->core)) {
+			/* FIXME: why is COMP_STATE_INIT always processed on primary core? */
+			ret = ipc_process_on_core(host->core, false);
+			if (ret < 0)
+				ctx->error = IPC4_INVALID_CORE_ID;
+			return ret;
+		}
 	}
 
 	switch (cmd) {
 	case SOF_IPC4_PIPELINE_STATE_RUNNING:
 		if (status != COMP_STATE_PAUSED && status != COMP_STATE_READY) {
 			tr_err(&ipc_tr, "ipc: current status %d", status);
-			return IPC4_INVALID_REQUEST;
+			ctx->error = IPC4_INVALID_REQUEST;
+			return -EINVAL;
 		}
 
 		/* init params when pipeline is complete or reset */
@@ -231,8 +243,10 @@ static int set_pipeline_state(uint32_t id, uint32_t cmd, bool *delayed)
 			cmd = COMP_TRIGGER_PRE_START;
 
 			ret = ipc4_pcm_params(host);
-			if (ret < 0)
-				return IPC4_INVALID_REQUEST;
+			if (ret < 0) {
+				ctx->error = IPC4_INVALID_REQUEST;
+				return ret;
+			}
 		} else {
 			cmd = COMP_TRIGGER_PRE_RELEASE;
 		}
@@ -242,7 +256,7 @@ static int set_pipeline_state(uint32_t id, uint32_t cmd, bool *delayed)
 		if (status == COMP_STATE_INIT) {
 			ret = ipc_pipeline_complete(ipc, id);
 			if (ret < 0)
-				ret = IPC4_INVALID_REQUEST;
+				ctx->error = IPC4_INVALID_REQUEST;
 
 			return ret;
 		}
@@ -256,23 +270,25 @@ static int set_pipeline_state(uint32_t id, uint32_t cmd, bool *delayed)
 			if (ret < 0) {
 				tr_err(&ipc_tr, "ipc: comp %d trigger 0x%x failed %d",
 				       id, cmd, ret);
-				return IPC4_PIPELINE_STATE_NOT_SET;
-			} else if (ret == PPL_STATUS_SCHEDULED) {
-				*delayed = true;
+				ctx->error = IPC4_PIPELINE_STATE_NOT_SET;
+				return ret;
 			}
+
+			if (ret == PPL_STATUS_SCHEDULED)
+				*delayed = true;
 		}
 
 		/* resource is not released by triggering reset which is used by current FW */
 		ret = pipeline_reset(host->cd->pipeline, host->cd);
 		if (ret < 0)
-			ret = IPC4_INVALID_REQUEST;
+			ctx->error = IPC4_INVALID_REQUEST;
 
 		return ret;
 	case SOF_IPC4_PIPELINE_STATE_PAUSED:
 		if (status == COMP_STATE_INIT) {
 			ret = ipc_pipeline_complete(ipc, id);
 			if (ret < 0)
-				ret = IPC4_INVALID_REQUEST;
+				ctx->error = IPC4_INVALID_REQUEST;
 
 			return ret;
 		}
@@ -284,23 +300,31 @@ static int set_pipeline_state(uint32_t id, uint32_t cmd, bool *delayed)
 		break;
 	/* special case- TODO */
 	case SOF_IPC4_PIPELINE_STATE_EOS:
-		if (status != COMP_STATE_ACTIVE)
-			return IPC4_INVALID_REQUEST;
+		if (status != COMP_STATE_ACTIVE) {
+			ctx->error = IPC4_INVALID_REQUEST;
+			return -EINVAL;
+		}
+		COMPILER_FALLTHROUGH;
 	case SOF_IPC4_PIPELINE_STATE_SAVED:
 	case SOF_IPC4_PIPELINE_STATE_ERROR_STOP:
 	default:
 		tr_err(&ipc_tr, "ipc: unsupported trigger cmd 0x%x", cmd);
-		return IPC4_INVALID_REQUEST;
+		ctx->error = IPC4_INVALID_REQUEST;
+		return -EOPNOTSUPP;
 	}
+
+	/*
+	 * We never get here with status == COMP_STATE_INIT, so host is always
+	 * initialized, but the compiler is still not smart enough
+	 */
 
 	/* trigger the component */
 	ret = pipeline_trigger(host->cd->pipeline, host->cd, cmd);
 	if (ret < 0) {
 		tr_err(&ipc_tr, "ipc: comp %d trigger 0x%x failed %d", id, cmd, ret);
-		ret = IPC4_PIPELINE_STATE_NOT_SET;
+		ctx->error = IPC4_PIPELINE_STATE_NOT_SET;
 	} else if (ret == PPL_STATUS_SCHEDULED) {
 		*delayed = true;
-		ret = 0;
 	}
 
 	return ret;
@@ -316,7 +340,7 @@ static void ipc_compound_pre_start(int msg_id)
 
 static void ipc_compound_post_start(uint32_t msg_id, int ret, bool delayed)
 {
-	if (ret) {
+	if (ret < 0) {
 		tr_err(&ipc_tr, "failed to process msg %d status %d", msg_id, ret);
 		msg_data.delayed_reply--;
 		return;
@@ -346,20 +370,18 @@ static void ipc_compound_msg_done(uint32_t msg_id, int error)
 static int ipc_wait_for_compound_msg(void)
 {
 	int try_count = 10;
-	int ret = 0;
 
 	while (msg_data.delayed_reply) {
-		/* TODO: update to yield(tmeout) for Zephyr */
+		/* TODO: update to yield(timeout) for Zephyr */
 		wait_delay(10000);
 
 		if (!try_count--) {
-			ret = IPC4_FAILURE;
 			tr_err(&ipc_tr, "failed to wait schedule thread");
-			break;
+			return -ETIMEDOUT;
 		}
 	}
 
-	return ret;
+	return 0;
 }
 
 static int ipc4_set_pipeline_state(union ipc4_message_header *ipc4)
@@ -368,8 +390,7 @@ static int ipc4_set_pipeline_state(union ipc4_message_header *ipc4)
 	struct ipc4_pipeline_set_state state;
 	uint32_t cmd, ppl_count;
 	uint32_t *ppl_id, id;
-	int ret = 0;
-	int i;
+	int ret, ret_all = 0, i;
 
 	state.header.dat = ipc4[0].dat;
 	state.data.dat = ipc4[1].dat;
@@ -390,15 +411,23 @@ static int ipc4_set_pipeline_state(union ipc4_message_header *ipc4)
 	for (i = 0; i < ppl_count; i++) {
 		bool delayed = false;
 
+		/*
+		 * FIXME: With IPCs, directed to multiple pipelines, if they are
+		 * assigned to different cores, it becomes unclear, which core
+		 * should send the response.
+		 */
 		ipc_compound_pre_start(state.header.r.type);
 		ret = set_pipeline_state(ppl_id[i], cmd, &delayed);
 		ipc_compound_post_start(state.header.r.type, ret, delayed);
 
 		if (ret < 0)
-			break;
+			return ret;
+
+		if (ret)
+			ret_all = ret;
 	}
 
-	return ret;
+	return ret_all;
 }
 
 static int ipc4_process_chain_dma(union ipc4_message_header *ipc4)
@@ -410,21 +439,23 @@ static int ipc4_process_chain_dma(union ipc4_message_header *ipc4)
 	memcpy_s(&cdma, sizeof(cdma), ipc4, sizeof(cdma));
 
 	if (cdma.header.r.allocate && cdma.data.r.fifo_size) {
+		/* ipc4_create_chain_dma() sets IPC4 error */
 		ret = ipc4_create_chain_dma(ipc, &cdma);
-		if (ret)
+		if (ret < 0)
 			tr_err(&ipc_tr, "failed to create chain dma %d", ret);
 
 		return ret;
 	}
 
 	msg_data.delayed_reply = 1;
+	/* ipc4_trigger_chain_dma() sets IPC4 error */
 	ret = ipc4_trigger_chain_dma(ipc, &cdma);
 	/* it is not scheduled in another thread */
-	if (ret != PPL_STATUS_SCHEDULED) {
+	if (ret == PPL_STATUS_SCHEDULED) {
+		ret = 0;
+	} else {
 		msg_data.delayed_reply = 0;
 		msg_data.delayed_error = 0;
-	} else {
-		ret = 0;
 	}
 
 	return ret;
@@ -432,65 +463,42 @@ static int ipc4_process_chain_dma(union ipc4_message_header *ipc4)
 
 static int ipc4_process_glb_message(union ipc4_message_header *ipc4)
 {
-	uint32_t type;
-	int ret;
-
-	type = ipc4->r.type;
+	struct ipc_core_ctx *ctx = *arch_ipc_get();
+	uint32_t type = ipc4->r.type;
 
 	switch (type) {
+	case SOF_IPC4_GLB_CHAIN_DMA:
+		return ipc4_process_chain_dma(ipc4);
+	/* pipeline settings */
+	case SOF_IPC4_GLB_CREATE_PIPELINE:
+		return ipc4_create_pipeline(ipc4);
+	case SOF_IPC4_GLB_DELETE_PIPELINE:
+		return ipc4_delete_pipeline(ipc4);
+	case SOF_IPC4_GLB_SET_PIPELINE_STATE:
+		return ipc4_set_pipeline_state(ipc4);
 	case SOF_IPC4_GLB_BOOT_CONFIG:
 	case SOF_IPC4_GLB_ROM_CONTROL:
 	case SOF_IPC4_GLB_IPCGATEWAY_CMD:
 	case SOF_IPC4_GLB_PERF_MEASUREMENTS_CMD:
 	case SOF_IPC4_GLB_LOAD_MULTIPLE_MODULES:
 	case SOF_IPC4_GLB_UNLOAD_MULTIPLE_MODULES:
-		tr_err(&ipc_tr, "not implemented ipc message type %d", type);
-		ret = IPC4_UNAVAILABLE;
-		break;
-
-	case SOF_IPC4_GLB_CHAIN_DMA:
-		ret = ipc4_process_chain_dma(ipc4);
-		break;
-
-	/* pipeline settings */
-	case SOF_IPC4_GLB_CREATE_PIPELINE:
-		ret = ipc4_create_pipeline(ipc4);
-		break;
-	case SOF_IPC4_GLB_DELETE_PIPELINE:
-		ret = ipc4_delete_pipeline(ipc4);
-		break;
-	case SOF_IPC4_GLB_SET_PIPELINE_STATE:
-		ret = ipc4_set_pipeline_state(ipc4);
-		break;
-
 	case SOF_IPC4_GLB_GET_PIPELINE_STATE:
 	case SOF_IPC4_GLB_GET_PIPELINE_CONTEXT_SIZE:
 	case SOF_IPC4_GLB_SAVE_PIPELINE:
 	case SOF_IPC4_GLB_RESTORE_PIPELINE:
-		tr_err(&ipc_tr, "not implemented ipc message type %d", type);
-		ret = IPC4_UNAVAILABLE;
-		break;
-
 	/* Loads library (using Code Load or HD/A Host Output DMA) */
 	case SOF_IPC4_GLB_LOAD_LIBRARY:
 	case SOF_IPC4_GLB_INTERNAL_MESSAGE:
-		tr_err(&ipc_tr, "not implemented ipc message type %d", type);
-		ret = IPC4_UNAVAILABLE;
-		break;
-
 	/* Notification (FW to SW driver) */
 	case SOF_IPC4_GLB_NOTIFICATION:
 		tr_err(&ipc_tr, "not implemented ipc message type %d", type);
-		ret = IPC4_UNAVAILABLE;
 		break;
-
 	default:
 		tr_err(&ipc_tr, "unsupported ipc message type %d", type);
-		ret = IPC4_UNAVAILABLE;
-		break;
 	}
 
-	return ret;
+	ctx->error = IPC4_UNAVAILABLE;
+	return -EOPNOTSUPP;
 }
 
 /*
@@ -503,6 +511,7 @@ static int ipc4_process_glb_message(union ipc4_message_header *ipc4)
 
 static int ipc4_init_module_instance(union ipc4_message_header *ipc4)
 {
+	struct ipc_core_ctx *ctx = *arch_ipc_get();
 	struct ipc4_module_init_instance module;
 	struct sof_ipc_comp comp;
 	struct comp_dev *dev;
@@ -520,7 +529,8 @@ static int ipc4_init_module_instance(union ipc4_message_header *ipc4)
 		tr_err(&ipc_tr, "error: failed to init module %x : %x",
 		       (uint32_t)module.header.r.module_id,
 		       (uint32_t)module.header.r.instance_id);
-		return IPC4_MOD_NOT_INITIALIZED;
+		ctx->error = IPC4_UNAVAILABLE;
+		return -EINVAL;
 	}
 
 	return 0;
@@ -536,6 +546,7 @@ static int ipc4_bind_module_instance(union ipc4_message_header *ipc4)
 	       (uint32_t)bu.header.r.module_id, (uint32_t)bu.header.r.instance_id,
 	       (uint32_t)bu.data.r.dst_module_id, (uint32_t)bu.data.r.dst_instance_id);
 
+	/* ipc_comp_connect() sets IPC4 error */
 	return ipc_comp_connect(ipc, (ipc_pipe_comp_connect *)&bu);
 }
 
@@ -549,11 +560,13 @@ static int ipc4_unbind_module_instance(union ipc4_message_header *ipc4)
 	       (uint32_t)bu.header.r.module_id, (uint32_t)bu.header.r.instance_id,
 	       (uint32_t)bu.data.r.dst_module_id, (uint32_t)bu.data.r.dst_instance_id);
 
+	/* ipc_comp_disconnect() sets IPC4 error */
 	return ipc_comp_disconnect(ipc, (ipc_pipe_comp_connect *)&bu);
 }
 
 static int ipc4_get_large_config_module_instance(union ipc4_message_header *ipc4)
 {
+	struct ipc_core_ctx *ctx = *arch_ipc_get();
 	struct ipc4_module_large_config_reply reply;
 	struct ipc4_module_large_config config;
 	char *data = ipc_get()->comp_data;
@@ -567,11 +580,15 @@ static int ipc4_get_large_config_module_instance(union ipc4_message_header *ipc4
 	       (uint32_t)config.header.r.module_id, (uint32_t)config.header.r.instance_id);
 
 	drv = ipc4_get_comp_drv(config.header.r.module_id);
-	if (!drv)
-		return IPC4_MOD_INVALID_ID;
+	if (!drv) {
+		ctx->error = IPC4_MOD_INVALID_ID;
+		return -ENODEV;
+	}
 
-	if (!drv->ops.get_large_config)
-		return IPC4_INVALID_REQUEST;
+	if (!drv->ops.get_large_config) {
+		ctx->error = IPC4_INVALID_REQUEST;
+		return -EINVAL;
+	}
 
 	/* get component dev for non-basefw since there is no
 	 * component dev for basefw
@@ -581,8 +598,10 @@ static int ipc4_get_large_config_module_instance(union ipc4_message_header *ipc4
 
 		comp_id = IPC4_COMP_ID(config.header.r.module_id, config.header.r.instance_id);
 		dev = ipc4_get_comp_dev(comp_id);
-		if (!dev)
-			return IPC4_MOD_INVALID_ID;
+		if (!dev) {
+			ctx->error = IPC4_MOD_INVALID_ID;
+			return -ENODEV;
+		}
 	}
 
 	data_offset =  config.data.r.data_off_size;
@@ -592,25 +611,24 @@ static int ipc4_get_large_config_module_instance(union ipc4_message_header *ipc4
 
 	/* set up ipc4 error code for reply data */
 	if (ret < 0)
-		ret = IPC4_MOD_INVALID_ID;
+		ctx->error = IPC4_MOD_INVALID_ID;
 
 	/* Copy host config and overwrite */
 	reply.data.dat = config.data.dat;
 	reply.data.r.data_off_size = data_offset;
 
+	*(uint32_t *)data = reply.data.dat;
+
 	/* The last block, no more data */
 	if (!config.data.r.final_block && data_offset < SOF_IPC_MSG_MAX_SIZE)
 		reply.data.r.final_block = 1;
 
-	/* Indicate last block if error occurs */
-	if (ret)
-		reply.data.r.final_block = 1;
-
-	*(uint32_t *)data = reply.data.dat;
-
 	/* no need to allocate memory for reply msg */
-	if (ret)
+	if (ctx->error != IPC4_SUCCESS) {
+		/* Indicate last block if error occurs */
+		reply.data.r.final_block = 1;
 		return ret;
+	}
 
 	msg_reply.tx_size = data_offset + sizeof(reply.data.dat);
 	msg_reply.tx_data = rballoc(0, SOF_MEM_CAPS_RAM, msg_reply.tx_size);
@@ -624,6 +642,7 @@ static int ipc4_get_large_config_module_instance(union ipc4_message_header *ipc4
 
 static int ipc4_set_large_config_module_instance(union ipc4_message_header *ipc4)
 {
+	struct ipc_core_ctx *ctx = *arch_ipc_get();
 	struct ipc4_module_large_config config;
 	struct comp_dev *dev = NULL;
 	const struct comp_driver *drv;
@@ -634,19 +653,25 @@ static int ipc4_set_large_config_module_instance(union ipc4_message_header *ipc4
 	       (uint32_t)config.header.r.module_id, (uint32_t)config.header.r.instance_id);
 
 	drv = ipc4_get_comp_drv(config.header.r.module_id);
-	if (!drv)
-		return IPC4_MOD_INVALID_ID;
+	if (!drv) {
+		ctx->error = IPC4_MOD_INVALID_ID;
+		return -ENOENT;
+	}
 
-	if (!drv->ops.set_large_config)
-		return IPC4_INVALID_REQUEST;
+	if (!drv->ops.set_large_config) {
+		ctx->error = IPC4_INVALID_REQUEST;
+		return -EOPNOTSUPP;
+	}
 
 	if (config.header.r.module_id) {
 		uint32_t comp_id;
 
 		comp_id = IPC4_COMP_ID(config.header.r.module_id, config.header.r.instance_id);
 		dev = ipc4_get_comp_dev(comp_id);
-		if (!dev)
-			return IPC4_MOD_INVALID_ID;
+		if (!dev) {
+			ctx->error = IPC4_MOD_INVALID_ID;
+			return -ENODEV;
+		}
 	}
 
 	ret = drv->ops.set_large_config(dev, config.data.r.large_param_id, config.data.r.init_block,
@@ -655,7 +680,7 @@ static int ipc4_set_large_config_module_instance(union ipc4_message_header *ipc4
 	if (ret < 0) {
 		tr_err(&ipc_tr, "failed to set large_config_module_instance %x : %x",
 		       (uint32_t)config.header.r.module_id, (uint32_t)config.header.r.instance_id);
-		ret = IPC4_INVALID_RESOURCE_ID;
+		ctx->error = IPC4_INVALID_RESOURCE_ID;
 	}
 
 	return ret;
@@ -663,6 +688,7 @@ static int ipc4_set_large_config_module_instance(union ipc4_message_header *ipc4
 
 static int ipc4_delete_module_instance(union ipc4_message_header *ipc4)
 {
+	struct ipc_core_ctx *ctx = *arch_ipc_get();
 	struct ipc4_module_delete_instance module;
 	struct ipc *ipc = ipc_get();
 	uint32_t comp_id;
@@ -678,7 +704,7 @@ static int ipc4_delete_module_instance(union ipc4_message_header *ipc4)
 		tr_err(&ipc_tr, "failed to delete module instance %x : %x",
 		       (uint32_t)module.header.r.module_id,
 		       (uint32_t)module.header.r.instance_id);
-		ret = IPC4_INVALID_RESOURCE_ID;
+		ctx->error = IPC4_INVALID_RESOURCE_ID;
 	}
 
 	return ret;
@@ -687,6 +713,7 @@ static int ipc4_delete_module_instance(union ipc4_message_header *ipc4)
 /* disable power gating on core 0 */
 static int ipc4_module_process_d0ix(union ipc4_message_header *ipc4)
 {
+	struct ipc_core_ctx *ctx = *arch_ipc_get();
 	struct ipc4_module_set_d0ix d0ix;
 	uint32_t module_id, instance_id;
 
@@ -698,7 +725,8 @@ static int ipc4_module_process_d0ix(union ipc4_message_header *ipc4)
 
 	if (d0ix.header.r.module_id || d0ix.header.r.instance_id) {
 		tr_err(&ipc_tr, "invalid resource id %x : %x", module_id, instance_id);
-		return IPC4_INVALID_RESOURCE_ID;
+		ctx->error = IPC4_INVALID_RESOURCE_ID;
+		return -EINVAL;
 	}
 
 	/* only module 0 can be used to set d0ix state */
@@ -713,6 +741,7 @@ static int ipc4_module_process_d0ix(union ipc4_message_header *ipc4)
 /* power up core 0 */
 static int ipc4_module_process_dx(union ipc4_message_header *ipc4)
 {
+	struct ipc_core_ctx *ctx = *arch_ipc_get();
 	struct ipc4_module_set_dx dx;
 	uint32_t module_id, instance_id;
 
@@ -720,12 +749,13 @@ static int ipc4_module_process_dx(union ipc4_message_header *ipc4)
 	module_id = dx.header.r.module_id;
 	instance_id = dx.header.r.instance_id;
 
-	tr_dbg(&ipc_tr, "ipc4_module_process_d0ix %x : %x", module_id, instance_id);
+	tr_dbg(&ipc_tr, "ipc4_module_process_dx %x : %x", module_id, instance_id);
 
 	/* only module 0 can be used to set dx state */
 	if (dx.header.r.module_id || dx.header.r.instance_id) {
 		tr_err(&ipc_tr, "invalid resource id %x : %x", module_id, instance_id);
-		return IPC4_INVALID_RESOURCE_ID;
+		ctx->error = IPC4_INVALID_RESOURCE_ID;
+		return -EINVAL;
 	}
 
 	/* nothing to do since core 0 is active now */
@@ -735,51 +765,36 @@ static int ipc4_module_process_dx(union ipc4_message_header *ipc4)
 
 static int ipc4_process_module_message(union ipc4_message_header *ipc4)
 {
-	uint32_t type;
-	int ret;
+	struct ipc_core_ctx *ctx = *arch_ipc_get();
 
-	type = ipc4->r.type;
-
-	switch (type) {
+	switch (ipc4->r.type) {
 	case SOF_IPC4_MOD_INIT_INSTANCE:
-		ret = ipc4_init_module_instance(ipc4);
-		break;
+		return ipc4_init_module_instance(ipc4);
+	case SOF_IPC4_MOD_LARGE_CONFIG_GET:
+		return ipc4_get_large_config_module_instance(ipc4);
+	case SOF_IPC4_MOD_LARGE_CONFIG_SET:
+		return ipc4_set_large_config_module_instance(ipc4);
+	case SOF_IPC4_MOD_BIND:
+		return ipc4_bind_module_instance(ipc4);
+	case SOF_IPC4_MOD_UNBIND:
+		return ipc4_unbind_module_instance(ipc4);
+	case SOF_IPC4_MOD_DELETE_INSTANCE:
+		return ipc4_delete_module_instance(ipc4);
+	case SOF_IPC4_MOD_SET_D0IX:
+		return ipc4_module_process_d0ix(ipc4);
+	case SOF_IPC4_MOD_SET_DX:
+		return ipc4_module_process_dx(ipc4);
 	case SOF_IPC4_MOD_CONFIG_GET:
 	case SOF_IPC4_MOD_CONFIG_SET:
-		ret = IPC4_UNAVAILABLE;
 		tr_info(&ipc_tr, "unsupported module CONFIG_GET");
-		break;
-	case SOF_IPC4_MOD_LARGE_CONFIG_GET:
-		ret = ipc4_get_large_config_module_instance(ipc4);
-		break;
-	case SOF_IPC4_MOD_LARGE_CONFIG_SET:
-		ret = ipc4_set_large_config_module_instance(ipc4);
-		break;
-	case SOF_IPC4_MOD_BIND:
-		ret = ipc4_bind_module_instance(ipc4);
-		break;
-	case SOF_IPC4_MOD_UNBIND:
-		ret = ipc4_unbind_module_instance(ipc4);
-		break;
-	case SOF_IPC4_MOD_DELETE_INSTANCE:
-		ret = ipc4_delete_module_instance(ipc4);
-		break;
-	case SOF_IPC4_MOD_SET_D0IX:
-		ret = ipc4_module_process_d0ix(ipc4);
-		break;
-	case SOF_IPC4_MOD_SET_DX:
-		ret = ipc4_module_process_dx(ipc4);
-		break;
+		COMPILER_FALLTHROUGH;
 	case SOF_IPC4_MOD_ENTER_MODULE_RESTORE:
 	case SOF_IPC4_MOD_EXIT_MODULE_RESTORE:
-		ret = IPC4_UNAVAILABLE;
-		break;
-	default:
-		ret = IPC4_UNAVAILABLE;
 		break;
 	}
 
-	return ret;
+	ctx->error = IPC4_UNAVAILABLE;
+	return -EOPNOTSUPP;
 }
 
 ipc_cmd_hdr *mailbox_validate(void)
@@ -833,6 +848,7 @@ void ipc_msg_reply(struct sof_ipc_reply *reply)
 
 void ipc_cmd(ipc_cmd_hdr *_hdr)
 {
+	struct ipc_core_ctx *ctx = *arch_ipc_get();
 	union ipc4_message_header *in = ipc_from_hdr(_hdr);
 	uint32_t *data = ipc_get()->comp_data;
 	enum ipc4_message_target target;
@@ -840,6 +856,8 @@ void ipc_cmd(ipc_cmd_hdr *_hdr)
 
 	if (!in)
 		return;
+
+	ctx->error = IPC4_SUCCESS;
 
 	/* no process on scheduled thread */
 	msg_data.delayed_reply = 0;
@@ -856,6 +874,7 @@ void ipc_cmd(ipc_cmd_hdr *_hdr)
 
 	target = in->r.msg_tgt;
 
+	/* FIXME: seems like more IPCs should be checked to run on secondary cores */
 	switch (target) {
 	case SOF_IPC4_MESSAGE_TARGET_FW_GEN_MSG:
 		err = ipc4_process_glb_message(in);
@@ -866,14 +885,15 @@ void ipc_cmd(ipc_cmd_hdr *_hdr)
 	default:
 		/* should not reach here as we only have 2 message types */
 		tr_err(&ipc_tr, "ipc4: invalid target %d", target);
-		err = IPC4_UNKNOWN_MESSAGE_TYPE;
+		ctx->error = IPC4_UNKNOWN_MESSAGE_TYPE;
+		err = -EINVAL;
 	}
 
-	if (err)
-		tr_err(&ipc_tr, "ipc4: %d failed err %d", target, err);
+	if (ctx->error != IPC4_SUCCESS)
+		tr_err(&ipc_tr, "ipc4: %d failed err %d", target, ctx->error);
 
-	/* FW sends a ipc message to host if request bit is set*/
-	if (in->r.rsp == SOF_IPC4_MESSAGE_DIR_MSG_REQUEST) {
+	/* FW sends an ipc message to host if request bit is set */
+	if (in->r.rsp == SOF_IPC4_MESSAGE_DIR_MSG_REQUEST && err <= 0) {
 		char *data = ipc_get()->comp_data;
 		struct ipc4_message_reply reply;
 
@@ -883,10 +903,11 @@ void ipc_cmd(ipc_cmd_hdr *_hdr)
 		reply.header.r.rsp = SOF_IPC4_MESSAGE_DIR_MSG_REPLY;
 		reply.header.r.msg_tgt = in->r.msg_tgt;
 		reply.header.r.type = in->r.type;
+		/* FIXME: if and else below do the same */
 		if (msg_data.delayed_error)
-			reply.header.r.status = err;
+			reply.header.r.status = ctx->error;
 		else
-			reply.header.r.status = err;
+			reply.header.r.status = ctx->error;
 
 		msg_reply.header = reply.header.dat;
 		ipc_msg_send(&msg_reply, data, true);
