@@ -303,7 +303,7 @@ parse_args()
 	local OPTIND=1
 
 	# Parse -options
-	while getopts "acz:j:k:p:v" OPTION; do
+	while getopts "acz:j:k:p:vf" OPTION; do
 		case "$OPTION" in
 			a) PLATFORMS=("${DEFAULT_PLATFORMS[@]}") ;;
 			c) DO_CLONE=yes ;;
@@ -312,6 +312,7 @@ parse_args()
 			k) RIMAGE_KEY_OPT="$OPTARG" ;;
 			p) zeproj="$OPTARG" ;;
 			v) BUILD_VERBOSE=true ;;
+			f) IPC4_BUILD=true ;;
 			*) print_usage; exit 1 ;;
 		esac
 	done
@@ -430,7 +431,9 @@ see https://docs.zephyrproject.org/latest/getting_started/index.html"
 		mkdir -p "${WEST_TOP}"/modules/audio
 		ln -s "$SOF_TOP" "${WEST_TOP}"/modules/audio/sof
 	}
-
+        if [[ $IPC4_BUILD == true ]]; then
+	  echo "CONFIG_IPC_MAJOR_4=y" >> ${SOF_TOP}/zephyrproject/zephyr/samples/subsys/audio/sof/boards/intel_adsp_cavs25.conf
+	fi
 	test "${#PLATFORMS[@]}" -eq 0 || build_platforms
 }
 
