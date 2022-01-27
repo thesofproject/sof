@@ -14,8 +14,17 @@ set(TPLGS
 "cavs-passthrough-hdmi\;cavs-mixin-mixout-hda\;HDA_CONFIG=mix"
 # CAVS SDW topology with passthrough pipelines
 "cavs-sdw\;cavs-sdw"
-# CAVS SSP topology with passthrough pipelines
-"cavs-nocodec\;cavs-nocodec"
+# CAVS SSP topology with passthrough pipelines, default SSP MCLK is 38.4MHz
+"cavs-nocodec\;cavs-adl-nocodec"
+"cavs-nocodec\;cavs-ehl-nocodec"
+"cavs-nocodec\;cavs-tgl-nocodec"
+"cavs-nocodec\;cavs-tgl-h-nocodec"
+"cavs-nocodec\;cavs-jsl-nocodec"
+"cavs-nocodec\;cavs-icl-nocodec"
+"cavs-nocodec\;cavs-cml-nocodec\;MCLK=24000000"
+"cavs-nocodec\;cavs-cnl-nocodec\;MCLK=24000000"
+"cavs-nocodec\;cavs-glk-nocodec\;MCLK=19200000"
+"cavs-nocodec\;cavs-apl-nocodec\;MCLK=19200000"
 )
 
 # This will override the topology1 binaries with topology2 binaries
