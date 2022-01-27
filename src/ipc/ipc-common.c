@@ -297,3 +297,13 @@ struct task_ops ipc_task_ops = {
 	.complete	= ipc_complete_task,
 	.get_deadline	= ipc_task_deadline,
 };
+
+int ipc_init_per_core(void)
+{
+	struct ipc_core_ctx **ctx = arch_ipc_get();
+
+	*ctx = rzalloc(SOF_MEM_ZONE_SYS, 0, SOF_MEM_CAPS_RAM,
+		       sizeof(**ctx));
+
+	return *ctx ? 0 : -ENOMEM;
+}

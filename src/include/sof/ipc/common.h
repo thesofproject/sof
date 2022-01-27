@@ -90,6 +90,13 @@ struct ipc {
 #define ipc_get_drvdata(ipc) \
 	((ipc)->private)
 
+struct ipc_core_ctx {
+	int error;
+};
+
+struct ipc_core_ctx **arch_ipc_get(void);
+int ipc_init_per_core(void);
+
 extern struct task_ops ipc_task_ops;
 
 /**

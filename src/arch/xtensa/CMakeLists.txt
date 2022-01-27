@@ -212,6 +212,7 @@ add_local_sources(sof
 	xtos/crt1-boards.S
 	xtos/_vectors.S
 	init.c
+	ipc.c
 	exc-dump.S
 )
 

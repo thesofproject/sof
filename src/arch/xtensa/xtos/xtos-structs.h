@@ -49,12 +49,15 @@ struct xtos_core_data {
 	struct thread_data *thread_data_ptr;
 };
 
+struct ipc_core_ctx;
+
 struct core_context {
 	struct thread_data td;
 	struct task *main_task;
 	struct schedulers *schedulers;
 	struct notify *notify;
 	struct idc *idc;
+	struct ipc_core_ctx *ipc;
 };
 
 #endif /* __XTOS_XTOS_STRUCTS_H__ */

@@ -481,6 +481,17 @@ unsigned int _xtos_ints_off(unsigned int mask)
 	return 0;
 }
 
+static struct ipc_core_ctx *_ipc[CONFIG_CORE_COUNT];
+
+/**
+ * Retrieves IPC context.
+ * @return Core-local IPC context.
+ */
+struct ipc_core_ctx **arch_ipc_get(void)
+{
+	return _ipc + cpu_get_id();
+}
+
 void ipc_send_queued_msg(void);
 
 static void ipc_send_queued_callback(void *private_data, enum notify_id event_type,

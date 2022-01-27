@@ -12,6 +12,7 @@
 #include <sof/debug/panic.h>
 #include <sof/drivers/interrupt.h>
 #include <sof/init.h>
+#include <sof/ipc/common.h>
 #include <sof/lib/cpu.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/mm_heap.h>
@@ -172,6 +173,10 @@ int secondary_core_init(struct sof *sof)
 	if (err < 0)
 		return err;
 
+	err = ipc_init_per_core();
+	if (err < 0)
+		return err;
+
 	trace_point(TRACE_BOOT_PLATFORM);
 
 #ifndef __ZEPHYR__
@@ -186,6 +191,8 @@ int secondary_core_init(struct sof *sof)
 
 static int primary_core_init(int argc, char *argv[], struct sof *sof)
 {
+	int err;
+
 	/* setup context */
 	sof->argc = argc;
 	sof->argv = argv;
@@ -218,6 +225,10 @@ static int primary_core_init(int argc, char *argv[], struct sof *sof)
 	/* init the platform */
 	if (platform_init(sof) < 0)
 		panic(SOF_IPC_PANIC_PLATFORM);
+
+	err = ipc_init_per_core();
+	if (err < 0)
+		return err;
 
 	trace_point(TRACE_BOOT_PLATFORM);
 
