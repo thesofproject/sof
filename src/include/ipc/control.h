@@ -136,6 +136,13 @@ struct sof_ipc_ctrl_data {
 	/* reserved for future use */
 	uint32_t reserved[6];
 
+	/* Flexible array members[] are forbidden in unions but this
+	 * does not seem to bother gcc as long as non-standard
+	 * zero-length arrays[0] are used instead.  Nesting flexible
+	 * array member declarations in arrays or structures is
+	 * forbidden too. Cleaning this up would likely require code
+	 * changes to explicitly cast intermediate steps.
+	 */
 	/* control data - add new types if needed */
 	union {
 		/* channel values can be used by volume type controls */

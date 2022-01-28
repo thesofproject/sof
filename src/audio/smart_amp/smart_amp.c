@@ -292,7 +292,7 @@ static int smart_amp_set_config(struct comp_dev *dev,
 
 	/* Copy new config, find size from header */
 	cfg = (struct sof_smart_amp_config *)
-	       ASSUME_ALIGNED(cdata->data->data, sizeof(uint32_t));
+	       ASSUME_ALIGNED(&cdata->data->data, sizeof(uint32_t));
 	bs = cfg->size;
 
 	comp_dbg(dev, "smart_amp_set_config(), actual blob size = %u, expected blob size = %u",

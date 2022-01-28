@@ -491,7 +491,7 @@ static int crossover_cmd_set_data(struct comp_dev *dev,
 		comp_info(dev, "crossover_cmd_set_data(), SOF_CTRL_CMD_BINARY");
 
 		/* Find size from header */
-		request = (struct sof_crossover_config *)ASSUME_ALIGNED(cdata->data->data, 4);
+		request = (struct sof_crossover_config *)ASSUME_ALIGNED(&cdata->data->data, 4);
 		bs = request->size;
 
 		/* Check that there is no work-in-progress previous request */

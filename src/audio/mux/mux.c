@@ -284,7 +284,7 @@ static int mux_ctrl_set_cmd(struct comp_dev *dev,
 	switch (cdata->cmd) {
 	case SOF_CTRL_CMD_BINARY:
 		cfg = (struct sof_mux_config *)
-		      ASSUME_ALIGNED(cdata->data->data, 4);
+		      ASSUME_ALIGNED(&cdata->data->data, 4);
 
 		ret = mux_set_values(dev, cd, cfg);
 		break;
