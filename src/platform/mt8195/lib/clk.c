@@ -82,11 +82,11 @@ static void clk_dsppll_enable(void)
 
 	io_reg_update_bits(AUDIODSP_CK_CG, 0x1 << RG_AUDIODSP_SW_CG, 0x0);
 	clk_setl(DSPPLL_CON4, PLL_PWR_ON);
-	wait_delay(clock_us_to_ticks(PLATFORM_DEFAULT_CLOCK, 1));
+	wait_delay_us(1);
 	clk_clrl(DSPPLL_CON4, PLL_ISO_EN);
-	wait_delay(clock_us_to_ticks(PLATFORM_DEFAULT_CLOCK, 1));
+	wait_delay_us(1);
 	clk_setl(DSPPLL_CON0, PLL_EN);
-	wait_delay(clock_us_to_ticks(PLATFORM_DEFAULT_CLOCK, 20));
+	wait_delay_us(20);
 	dsppll_enable = 1;
 }
 
@@ -95,9 +95,9 @@ static void clk_dsppll_disable(void)
 	tr_dbg(&clkdrv_tr, "clk_dsppll_disable\n");
 
 	clk_clrl(DSPPLL_CON0, PLL_EN);
-	wait_delay(clock_us_to_ticks(PLATFORM_DEFAULT_CLOCK, 1));
+	wait_delay_us(1);
 	clk_setl(DSPPLL_CON4, PLL_ISO_EN);
-	wait_delay(clock_us_to_ticks(PLATFORM_DEFAULT_CLOCK, 1));
+	wait_delay_us(1);
 	clk_clrl(DSPPLL_CON4, PLL_PWR_ON);
 	dsppll_enable = 0;
 }

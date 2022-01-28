@@ -228,6 +228,14 @@ void WEAK wait_delay(uint64_t number_of_clks)
 {
 }
 
+void WEAK wait_delay_ms(uint64_t ms)
+{
+}
+
+void WEAK wait_delay_us(uint64_t us)
+{
+}
+
 void WEAK xthal_icache_region_invalidate(void *addr, unsigned size)
 {
 }

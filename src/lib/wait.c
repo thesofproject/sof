@@ -64,3 +64,13 @@ void wait_delay(uint64_t number_of_clks)
 	while ((platform_timer_get(timer) - current) < number_of_clks)
 		idelay(PLATFORM_DEFAULT_DELAY);
 }
+
+void wait_delay_ms(uint64_t ms)
+{
+	wait_delay(clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, ms));
+}
+
+void wait_delay_us(uint64_t us)
+{
+	wait_delay(clock_us_to_ticks(PLATFORM_DEFAULT_CLOCK, us));
+}
