@@ -82,8 +82,10 @@
 #define EDMA_HS_SET_IRQ(irq) SET_BITS(8, 0, irq)
 #define EDMA_HS_GET_CHAN(hs) (((hs) & MASK(13, 9)) >> 9)
 #define EDMA_HS_SET_CHAN(chan) SET_BITS(13, 9, chan)
-#define EDMA_HANDSHAKE(irq, channel)\
-	(EDMA_HS_SET_CHAN(channel) | EDMA_HS_SET_IRQ(irq))
+#define EDMA_HS_GET_DMAMUX_CFG(hs) (((hs) & MASK(21, 14)) >> 14)
+#define EDMA_HS_SET_DMAMUX_CFG(cfg) SET_BITS(21, 14, cfg)
+#define EDMA_HANDSHAKE(irq, channel, cfg)\
+	(EDMA_HS_SET_CHAN(channel) | EDMA_HS_SET_IRQ(irq) | EDMA_HS_SET_DMAMUX_CFG(cfg))
 
 #define EDMA0_ESAI_CHAN_RX	6
 #define EDMA0_ESAI_CHAN_TX	7
