@@ -286,6 +286,10 @@ static int edma_setup_tcd(struct dma_chan_data *channel, int16_t soff,
 			  int dest_width, uint32_t burst_elems)
 {
 	int rc;
+#ifdef CONFIG_IMX8ULP
+	struct dai_data *dd = channel->dev_data;
+	int direction, handshake, dmamux_cfg;
+#endif
 	uint32_t sbase, dbase, total_size, elem_count, elem_size, size;
 
 	assert(!sg);
@@ -336,10 +340,16 @@ static int edma_setup_tcd(struct dma_chan_data *channel, int16_t soff,
 	/* Do not write EDMA_CH_MUX register when it has value,
 	 * otherwise the register will be cleared.
 	 */
+	if (channel->direction == DMA_DIR_MEM_TO_DEV)
+		direction = DAI_DIR_PLAYBACK;
+	else
+		direction = DAI_DIR_CAPTURE;
+
+	handshake = dai_get_handshake(dd->dai, direction, 0);
+	dmamux_cfg = EDMA_HS_GET_DMAMUX_CFG(handshake);
+
 	if (!dma_chan_reg_read(channel, EDMA_CH_MUX))
-		(channel->direction == DMA_DIR_MEM_TO_DEV) ?
-			dma_chan_reg_write(channel, EDMA_CH_MUX, IMX8ULP_DMAMUX2_SAI5_TX) :
-			dma_chan_reg_write(channel, EDMA_CH_MUX, IMX8ULP_DMAMUX2_SAI5_RX);
+		dma_chan_reg_write(channel, EDMA_CH_MUX, dmamux_cfg);
 #endif
 
 	chan_addr_convert(channel, &sbase, &dbase);
