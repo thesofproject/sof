@@ -179,7 +179,7 @@
  * alignment. This compiler builtin may not be available on all compilers so
  * this macro can be defined as NULL if needed.
  */
-#define ASSUME_ALIGNED(x, a) __builtin_assume_aligned(x, a)
+#define ASSUME_ALIGNED(x, a) ((typeof(x))__builtin_assume_aligned((x), a))
 #endif /* __XCC__ */
 
 #endif /* __ASSEMBLER__ */
