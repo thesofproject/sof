@@ -29,7 +29,7 @@ int iir_init_coef_df2t(struct iir_state_df2t *iir,
 {
 	iir->biquads = config->num_sections;
 	iir->biquads_in_series = config->num_sections_in_series;
-	iir->coef = ASSUME_ALIGNED(config->biquads, 4);
+	iir->coef = ASSUME_ALIGNED(&config->biquads[0], 4);
 
 	return 0;
 }

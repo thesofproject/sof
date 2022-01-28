@@ -247,7 +247,7 @@ static int selector_ctrl_set_data(struct comp_dev *dev,
 		comp_info(dev, "selector_ctrl_set_data(), SOF_CTRL_CMD_BINARY");
 
 		cfg = (struct sof_sel_config *)
-		      ASSUME_ALIGNED(cdata->data->data, 4);
+		      ASSUME_ALIGNED(&cdata->data->data, 4);
 
 		/* Just set the configuration */
 		cd->config.in_channels_count = cfg->in_channels_count;
