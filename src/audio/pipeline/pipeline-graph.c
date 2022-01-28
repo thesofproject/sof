@@ -344,6 +344,9 @@ int pipeline_reset(struct pipeline *p, struct comp_dev *host)
 	if (ret < 0) {
 		pipe_err(p, "pipeline_reset(): ret = %d, host->comp.id = %u",
 			 ret, dev_comp_id(host));
+	} else {
+		 /* pipeline is reset to default state */
+		p->status = COMP_STATE_READY;
 	}
 
 	return ret;

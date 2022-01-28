@@ -82,11 +82,6 @@ static int afe_dai_drv_remove(struct dai *dai)
 	return 0;
 }
 
-static int afe_dai_drv_dummy(struct dai *dai)
-{
-	return 0;
-}
-
 static int afe_dai_drv_get_handshake(struct dai *dai, int direction, int stream_id)
 {
 	return (int)dai->plat_data.fifo[0].handshake;
@@ -105,8 +100,6 @@ const struct dai_driver afe_dai_driver = {
 	.ops = {
 		.trigger		= afe_dai_drv_trigger,
 		.set_config		= afe_dai_drv_set_config,
-		.pm_context_store	= afe_dai_drv_dummy,
-		.pm_context_restore	= afe_dai_drv_dummy,
 		.get_hw_params		= afe_dai_drv_get_hw_params,
 		.get_handshake		= afe_dai_drv_get_handshake,
 		.get_fifo		= afe_dai_drv_get_fifo,

@@ -72,6 +72,13 @@ static int setup(void **state)
 	cd = test_malloc(sizeof(*cd));
 	comp_set_drvdata(vol_state->dev, cd);
 
+	/* malloc memory to store current volume 4 times to ensure the address
+	 * is 8-byte aligned for multi-way xtensa intrinsic operations.
+	 */
+	const size_t vol_size = sizeof(int32_t) * SOF_IPC_MAX_CHANNELS * 4;
+
+	cd->vol = test_malloc(vol_size);
+
 	list_init(&vol_state->dev->bsource_list);
 	list_init(&vol_state->dev->bsink_list);
 
@@ -108,6 +115,7 @@ static int teardown(void **state)
 	struct vol_data *cd = comp_get_drvdata(vol_state->dev);
 
 	/* free everything */
+	test_free(cd->vol);
 	test_free(cd);
 	test_free(vol_state->dev);
 	free_test_sink(vol_state->sink);

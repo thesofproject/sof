@@ -16,14 +16,16 @@ set -e
 
 SOF_TOP="$(cd "$(dirname "$0")"/.. && /bin/pwd)"
 
-# Log the container version. Especially useful when forgetting to update
-# the 'sof' shortcut.
-docker images sof
+# Log container versions
+for rep in sof thesofproject/sof; do
+    docker images --digests "$rep"
+done
 
 if tty --quiet; then
     SOF_DOCKER_RUN="$SOF_DOCKER_RUN --tty"
 fi
 
+set -x
 docker run -i -v "${SOF_TOP}":/home/sof/work/sof.git \
 	-v "${SOF_TOP}":/home/sof/work/sof-bind-mount-DO-NOT-DELETE \
 	--env CMAKE_BUILD_TYPE \
@@ -32,4 +34,4 @@ docker run -i -v "${SOF_TOP}":/home/sof/work/sof.git \
 	--env https_proxy="$https_proxy" \
 	--user "$(id -u)" \
 	$SOF_DOCKER_RUN \
-	sof "$@"
+	thesofproject/sof "$@"

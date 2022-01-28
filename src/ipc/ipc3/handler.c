@@ -633,9 +633,6 @@ static int ipc_pm_context_save(uint32_t header)
 
 	/* TODO: mask ALL platform interrupts except DMA */
 
-	/* TODO now save the context - create SG buffer config using */
-	//mm_pm_context_save(struct dma_sg_config *sg);
-
 	/* mask all DSP interrupts */
 	arch_interrupt_disable_mask(0xffffffff);
 

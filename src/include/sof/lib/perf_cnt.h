@@ -62,7 +62,8 @@ struct perf_cnt_data {
  *
  *  If current arch delta exceeds the previous peak value, trace_m is run.
  *  \param pcd Performance counters data.
- *  \param trace_m Trace macro trace_m(pcd, arg).
+ *  \param trace_m Trace function trace_m(pcd, arg) or trace macro if a
+ *         more precise line number is desired in the logs.
  *  \param arg Argument passed to trace_m as arg.
  */
 #define perf_cnt_stamp(pcd, trace_m, arg) do {				  \

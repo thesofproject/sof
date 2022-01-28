@@ -5,6 +5,8 @@
 # fail immediately on any errors
 set -e
 
+SOF_TOP=$(cd "$(dirname "$0")/.." && pwd)
+
 print_usage()
 {
         cat <<EOFUSAGE

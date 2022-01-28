@@ -416,6 +416,7 @@ end
 %%
 
 function test = test_defaults_src(t)
+test.comp = 'src';
 test.fmt = t.fmt;
 test.bits_in = t.bits_in;
 test.bits_out = t.bits_out;
@@ -442,8 +443,8 @@ test.thdnf_max = [];
 end
 
 function test = test_run_src(test, t)
-test.ex = './src_run.sh';
-test.arg = { num2str(t.bits_in), num2str(t.bits_out), num2str(t.fs1), num2str(t.fs2), test.fn_in, test.fn_out};
+test.fs_in = test.fs1;
+test.fs_out = test.fs2;
 delete_check(1, test.fn_out);
 test = test_run(test);
 end

@@ -78,20 +78,20 @@ struct timestamp_data;
  *
  *  @{
  */
-#define COMP_TRIGGER_STOP		0	/**< Stop component stream */
-#define COMP_TRIGGER_START		1	/**< Start component stream */
-#define COMP_TRIGGER_PAUSE		2	/**< Pause the component stream */
-#define COMP_TRIGGER_RELEASE		3	/**< Release paused component stream */
-#define COMP_TRIGGER_SUSPEND		4	/**< Suspend component */
-#define COMP_TRIGGER_RESUME		5	/**< Resume component */
-#define COMP_TRIGGER_RESET		6	/**< Reset component */
-#define COMP_TRIGGER_PREPARE		7	/**< Prepare component */
-#define COMP_TRIGGER_XRUN		8	/**< XRUN component */
-#define COMP_TRIGGER_PRE_START		9	/**< Prepare to start component stream */
-#define COMP_TRIGGER_PRE_RELEASE	10	/**< Prepare to release paused component stream */
-#define COMP_TRIGGER_POST_STOP		11	/**< Finalize stop component stream */
-#define COMP_TRIGGER_POST_PAUSE		12	/**< Finalize pause component stream */
-#define COMP_TRIGGER_NO_ACTION		13	/**< No action required */
+enum {
+	COMP_TRIGGER_STOP,		/**< Stop component stream */
+	COMP_TRIGGER_START,		/**< Start component stream */
+	COMP_TRIGGER_PAUSE,		/**< Pause the component stream */
+	COMP_TRIGGER_RELEASE,		/**< Release paused component stream */
+	COMP_TRIGGER_RESET,		/**< Reset component */
+	COMP_TRIGGER_PREPARE,		/**< Prepare component */
+	COMP_TRIGGER_XRUN,		/**< XRUN component */
+	COMP_TRIGGER_PRE_START,		/**< Prepare to start component stream */
+	COMP_TRIGGER_PRE_RELEASE,	/**< Prepare to release paused component stream */
+	COMP_TRIGGER_POST_STOP,		/**< Finalize stop component stream */
+	COMP_TRIGGER_POST_PAUSE,	/**< Finalize pause component stream */
+	COMP_TRIGGER_NO_ACTION,		/**< No action required */
+};
 /** @}*/
 
 /** \name Standard Component Control Commands

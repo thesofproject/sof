@@ -155,7 +155,14 @@ static inline int32_t sign_extend_s24(int32_t x)
 
 static inline uint32_t get_sample_bytes(enum sof_ipc_frame fmt)
 {
-	return fmt == SOF_IPC_FRAME_S16_LE ? 2 : 4;
+	switch (fmt) {
+	case SOF_IPC_FRAME_S16_LE:
+		return 2;
+	case SOF_IPC_FRAME_S24_3LE:
+		return 3;
+	default:
+		return 4;
+	}
 }
 
 static inline uint32_t get_frame_bytes(enum sof_ipc_frame fmt,

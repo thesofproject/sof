@@ -325,7 +325,7 @@
 	HEAP_SYS_RUNTIME_S_SIZE))
 
 /* Stack configuration */
-#define SOF_STACK_SIZE		0x1000
+#define SOF_STACK_SIZE		(CONFIG_SOF_STACK_SIZE)
 #define SOF_STACK_TOTAL_SIZE	(CONFIG_CORE_COUNT * SOF_STACK_SIZE)
 
 /* SOF Core S configuration */
@@ -347,8 +347,6 @@
  * | HEAP_LP_SYSTEM_BASE | System Heap    |  HEAP_LP_SYSTEM_SIZE              |
  * +---------------------+----------------+-----------------------------------+
  * | HEAP_LP_RUNTIME_BASE| Runtime Heap   |  HEAP_LP_RUNTIME_SIZE             |
- * +---------------------+----------------+-----------------------------------+
- * | HEAP_LP_BUFFER_BASE | Module Buffers |  HEAP_LP_BUFFER_SIZE              |
  * +---------------------+----------------+-----------------------------------+
  * | SOF_LP_STACK_END    | Stack          |  SOF_LP_STACK_SIZE                |
  * +---------------------+----------------+-----------------------------------+
@@ -381,21 +379,6 @@
 #define LPS_RESTORE_VECTOR_OFFSET 0x1000
 #define LPS_RESTORE_VECTOR_SIZE 0x800
 #define LPS_RESTORE_VECTOR_ADDR (LP_SRAM_BASE + LPS_RESTORE_VECTOR_OFFSET)
-#define HEAP_LP_BUFFER_BASE (LPS_RESTORE_VECTOR_ADDR + LPS_RESTORE_VECTOR_SIZE)
-#define HEAP_LP_BUFFER_SIZE (LP_SRAM_SIZE - LPS_RESTORE_VECTOR_SIZE -\
-			     LPS_RESTORE_VECTOR_OFFSET)
-#else
-#define HEAP_LP_BUFFER_BASE LP_SRAM_START
-#define HEAP_LP_BUFFER_SIZE (LP_SRAM_SIZE - (LP_SRAM_START - LP_SRAM_BASE))
-#endif
-
-#define HEAP_LP_BUFFER_BLOCK_SIZE		0x180
-
-#if CONFIG_LP_MEMORY_BANKS
-#define HEAP_LP_BUFFER_COUNT \
-	(HEAP_LP_BUFFER_SIZE / HEAP_LP_BUFFER_BLOCK_SIZE)
-#else
-#define	HEAP_LP_BUFFER_COUNT 0
 #endif
 
 #define PLATFORM_HEAP_SYSTEM		CONFIG_CORE_COUNT /* one per core */

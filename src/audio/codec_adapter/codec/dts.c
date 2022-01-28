@@ -5,7 +5,6 @@
 // Author: Mark Barton <mark.barton@xperi.com>
 
 #include "sof/audio/codec_adapter/codec/generic.h"
-#include "sof/audio/codec_adapter/codec/dts.h"
 
 #include "DtsSofInterface.h"
 
@@ -24,7 +23,7 @@ static void *dts_effect_allocate_codec_memory(void *dev_void, unsigned int lengt
 
 	comp_dbg(dev, "dts_effect_allocate_codec_memory() start");
 
-	pMem = codec_allocate_memory(dev, (uint32_t)length, (uint32_t)alignment);
+	pMem = module_allocate_memory(dev, (uint32_t)length, (uint32_t)alignment);
 
 	if (pMem == NULL)
 		comp_err(dev,
@@ -60,19 +59,19 @@ static int dts_effect_convert_sof_interface_result(struct comp_dev *dev,
 static int dts_effect_populate_buffer_configuration(struct comp_dev *dev,
 	DtsSofInterfaceBufferConfiguration *buffer_config)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_get_drvdata(dev);
 	const struct audio_stream *stream;
 	DtsSofInterfaceBufferLayout buffer_layout;
 	DtsSofInterfaceBufferFormat buffer_format;
 
 	comp_dbg(dev, "dts_effect_populate_buffer_configuration() start");
 
-	if (cd->ca_source == NULL)
+	if (!mod->ca_source)
 		return -EINVAL;
 
-	stream = &cd->ca_source->stream;
+	stream = &mod->ca_source->stream;
 
-	switch (cd->ca_source->buffer_fmt) {
+	switch (mod->ca_source->buffer_fmt) {
 	case SOF_IPC_BUFFER_INTERLEAVED:
 		buffer_layout = DTS_SOF_INTERFACE_BUFFER_LAYOUT_INTERLEAVED;
 		break;
@@ -113,10 +112,10 @@ static int dts_effect_populate_buffer_configuration(struct comp_dev *dev,
 	return 0;
 }
 
-int dts_codec_init(struct comp_dev *dev)
+static int dts_codec_init(struct comp_dev *dev)
 {
 	int ret;
-	struct codec_data *codec = comp_get_codec(dev);
+	struct module_data *codec = comp_get_module_data(dev);
 	DtsSofInterfaceResult dts_result;
 	DtsSofInterfaceVersionInfo interface_version;
 	DtsSofInterfaceVersionInfo sdk_version;
@@ -157,10 +156,10 @@ int dts_codec_init(struct comp_dev *dev)
 	return ret;
 }
 
-int dts_codec_prepare(struct comp_dev *dev)
+static int dts_codec_prepare(struct comp_dev *dev)
 {
 	int ret;
-	struct codec_data *codec = comp_get_codec(dev);
+	struct module_data *codec = comp_get_module_data(dev);
 	DtsSofInterfaceBufferConfiguration buffer_configuration;
 	DtsSofInterfaceResult dts_result;
 
@@ -177,10 +176,10 @@ int dts_codec_prepare(struct comp_dev *dev)
 	dts_result = dtsSofInterfacePrepare(
 		(DtsSofInterfaceInst *)codec->private,
 		&buffer_configuration,
-		&codec->cpd.in_buff,
-		&codec->cpd.in_buff_size,
-		&codec->cpd.out_buff,
-		&codec->cpd.out_buff_size);
+		&codec->mpd.in_buff,
+		&codec->mpd.in_buff_size,
+		&codec->mpd.out_buff,
+		&codec->mpd.out_buff_size);
 	ret = dts_effect_convert_sof_interface_result(dev, dts_result);
 
 	if (ret)
@@ -194,7 +193,7 @@ int dts_codec_prepare(struct comp_dev *dev)
 static int dts_codec_init_process(struct comp_dev *dev)
 {
 	int ret;
-	struct codec_data *codec = comp_get_codec(dev);
+	struct module_data *codec = comp_get_module_data(dev);
 	DtsSofInterfaceResult dts_result;
 
 	comp_dbg(dev, "dts_codec_init_process() start");
@@ -202,9 +201,9 @@ static int dts_codec_init_process(struct comp_dev *dev)
 	dts_result = dtsSofInterfaceInitProcess(codec->private);
 	ret = dts_effect_convert_sof_interface_result(dev, dts_result);
 
-	codec->cpd.produced = 0;
-	codec->cpd.consumed = 0;
-	codec->cpd.init_done = 1;
+	codec->mpd.produced = 0;
+	codec->mpd.consumed = 0;
+	codec->mpd.init_done = 1;
 
 	if (ret)
 		comp_err(dev, "dts_codec_init_process() failed %d %d", ret, dts_result);
@@ -214,14 +213,14 @@ static int dts_codec_init_process(struct comp_dev *dev)
 	return ret;
 }
 
-int dts_codec_process(struct comp_dev *dev)
+static int dts_codec_process(struct comp_dev *dev)
 {
 	int ret;
-	struct codec_data *codec = comp_get_codec(dev);
+	struct module_data *codec = comp_get_module_data(dev);
 	DtsSofInterfaceResult dts_result;
 	unsigned int bytes_processed = 0;
 
-	if (!codec->cpd.init_done)
+	if (!codec->mpd.init_done)
 		return dts_codec_init_process(dev);
 
 	comp_dbg(dev, "dts_codec_process() start");
@@ -229,8 +228,8 @@ int dts_codec_process(struct comp_dev *dev)
 	dts_result = dtsSofInterfaceProcess(codec->private, &bytes_processed);
 	ret = dts_effect_convert_sof_interface_result(dev, dts_result);
 
-	codec->cpd.consumed = !ret ? bytes_processed : 0;
-	codec->cpd.produced = !ret ? bytes_processed : 0;
+	codec->mpd.consumed = !ret ? bytes_processed : 0;
+	codec->mpd.produced = !ret ? bytes_processed : 0;
 
 	if (ret)
 		comp_err(dev, "dts_codec_process() failed %d %d", ret, dts_result);
@@ -240,12 +239,12 @@ int dts_codec_process(struct comp_dev *dev)
 	return ret;
 }
 
-int dts_codec_apply_config(struct comp_dev *dev)
+static int dts_codec_apply_config(struct comp_dev *dev)
 {
 	int ret = 0;
-	struct codec_data *codec = comp_get_codec(dev);
-	struct codec_config *config;
-	struct codec_param *param;
+	struct module_data *codec = comp_get_module_data(dev);
+	struct module_config *config;
+	struct module_param *param;
 	uint32_t config_header_size;
 	uint32_t config_data_size;
 	uint32_t param_header_size;
@@ -256,7 +255,7 @@ int dts_codec_apply_config(struct comp_dev *dev)
 
 	comp_dbg(dev, "dts_codec_apply_config() start");
 
-	config = &codec->r_cfg;
+	config = &codec->cfg;
 
 	/* Check that config->data isn't invalid and has size greater than 0 */
 	config_header_size = sizeof(config->size) + sizeof(config->avail);
@@ -278,10 +277,10 @@ int dts_codec_apply_config(struct comp_dev *dev)
 		return -EINVAL;
 	}
 
-	/* Allow for multiple codec_params to be packed into the data pointed to by config
+	/* Allow for multiple module_params to be packed into the data pointed to by config
 	 */
 	for (i = 0; i < config_data_size; param_number++) {
-		param = (struct codec_param *)((char *)config->data + i);
+		param = (struct module_param *)((char *)config->data + i);
 		param_header_size = sizeof(param->id) + sizeof(param->size);
 
 		/* If param->size is less than param_header_size, then this param is not valid */
@@ -308,7 +307,7 @@ int dts_codec_apply_config(struct comp_dev *dev)
 			}
 		}
 
-		/* Advance to the next codec_param */
+		/* Advance to the next module_param */
 		i += param->size;
 	}
 
@@ -317,10 +316,10 @@ int dts_codec_apply_config(struct comp_dev *dev)
 	return ret;
 }
 
-int dts_codec_reset(struct comp_dev *dev)
+static int dts_codec_reset(struct comp_dev *dev)
 {
 	int ret;
-	struct codec_data *codec = comp_get_codec(dev);
+	struct module_data *codec = comp_get_module_data(dev);
 	DtsSofInterfaceResult dts_result;
 
 	comp_dbg(dev, "dts_codec_reset() start");
@@ -336,10 +335,10 @@ int dts_codec_reset(struct comp_dev *dev)
 	return ret;
 }
 
-int dts_codec_free(struct comp_dev *dev)
+static int dts_codec_free(struct comp_dev *dev)
 {
 	int ret;
-	struct codec_data *codec = comp_get_codec(dev);
+	struct module_data *codec = comp_get_module_data(dev);
 	DtsSofInterfaceResult dts_result;
 
 	comp_dbg(dev, "dts_codec_free() start");
@@ -355,7 +354,7 @@ int dts_codec_free(struct comp_dev *dev)
 	return ret;
 }
 
-static struct codec_interface dts_interface = {
+static struct module_interface dts_interface = {
 	.init  = dts_codec_init,
 	.prepare = dts_codec_prepare,
 	.process = dts_codec_process,

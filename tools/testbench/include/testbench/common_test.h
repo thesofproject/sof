@@ -40,7 +40,8 @@ struct testbench_prm {
 	 */
 	uint32_t fs_in;
 	uint32_t fs_out;
-	uint32_t channels;
+	uint32_t channels_in;
+	uint32_t channels_out;
 	int fr_id;
 	int fw_id;
 	int sched_id;
@@ -48,6 +49,7 @@ struct testbench_prm {
 	enum sof_ipc_frame frame_fmt;
 	int copy_iterations;
 	bool copy_check;
+	bool quiet;
 };
 
 struct shared_lib_table {

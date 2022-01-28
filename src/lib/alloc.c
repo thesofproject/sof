@@ -1035,25 +1035,6 @@ uint32_t mm_pm_context_size(void)
 	return 0;
 }
 
-/*
- * Save the DSP memories that are in use the system and modules.
- * All pipeline and modules must be disabled before calling this functions.
- * No allocations are permitted after calling this and before calling restore.
- */
-int mm_pm_context_save(struct dma_copy *dc, struct dma_sg_config *sg)
-{
-	return -ENOTSUP;
-}
-
-/*
- * Restore the DSP memories to modules and the system.
- * This must be called immediately after booting before any pipeline work.
- */
-int mm_pm_context_restore(struct dma_copy *dc, struct dma_sg_config *sg)
-{
-	return -ENOTSUP;
-}
-
 void free_heap(enum mem_zone zone)
 {
 	struct mm *memmap = memmap_get();

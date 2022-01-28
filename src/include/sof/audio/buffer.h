@@ -65,9 +65,13 @@ extern struct tr_ctx buffer_tr;
 		       trace_buf_get_subid, buf_ptr, __e, ##__VA_ARGS__)
 
 /** \brief Trace debug message from buffer */
+#if defined(CONFIG_LIBRARY)
+#define buf_dbg(buf_ptr, __e, ...)
+#else
 #define buf_dbg(buf_ptr, __e, ...)					\
 	trace_dev_dbg(trace_buf_get_tr_ctx, trace_buf_get_id,		\
 		      trace_buf_get_subid, buf_ptr, __e, ##__VA_ARGS__)
+#endif
 
 /** @}*/
 

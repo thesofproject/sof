@@ -64,7 +64,8 @@ struct copier_data {
 };
 
 static pcm_converter_func get_converter_func(struct ipc4_audio_format *in_fmt,
-					     struct ipc4_audio_format *out_fmt);
+					     struct ipc4_audio_format *out_fmt,
+					     enum ipc4_gateway_type type);
 
 static void create_endpoint_buffer(struct comp_dev *parent_dev,
 				   struct copier_data *cd,
@@ -145,8 +146,6 @@ static void create_endpoint_buffer(struct comp_dev *parent_dev,
 
 	for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
 		cd->endpoint_buffer->chmap[i] = (copier_cfg->base.audio_fmt.ch_map >> i * 4) & 0xf;
-
-	cd->converter[0] = get_converter_func(&copier_cfg->base.audio_fmt, &copier_cfg->out_fmt);
 }
 
 /* if copier is linked to host gateway, it will manage host dma.
@@ -192,6 +191,9 @@ static struct comp_dev *create_host(struct comp_dev *parent_dev, struct copier_d
 		cd->bsource_buffer = true;
 	}
 
+	cd->converter[0] = get_converter_func(&copier_cfg->base.audio_fmt, &copier_cfg->out_fmt,
+					      ipc4_gtw_host);
+
 	return dev;
 }
 
@@ -207,6 +209,7 @@ static struct comp_dev *create_dai(struct comp_dev *parent_dev, struct copier_da
 {
 	struct sof_uuid id = {0xc2b00d27, 0xffbc, 0x4150, {0xa5, 0x1a, 0x24,
 				0x5c, 0x79, 0xc5, 0xe5, 0x4b}};
+	enum ipc4_gateway_type type;
 	const struct comp_driver *drv;
 	struct ipc_config_dai dai;
 	struct comp_dev *dev;
@@ -229,21 +232,30 @@ static struct comp_dev *create_dai(struct comp_dev *parent_dev, struct copier_da
 	case ipc4_hda_link_input_class:
 		dai.type = SOF_DAI_INTEL_HDA;
 		dai.is_config_blob = true;
+		type = ipc4_gtw_link;
 		break;
 	case ipc4_i2s_link_output_class:
 	case ipc4_i2s_link_input_class:
+		dai.dai_index = (dai.dai_index >> 4) & 0xF;
 		dai.type = SOF_DAI_INTEL_SSP;
 		dai.is_config_blob = true;
+		type = ipc4_gtw_ssp;
 		break;
 	case ipc4_alh_link_output_class:
 	case ipc4_alh_link_input_class:
 		dai.type = SOF_DAI_INTEL_ALH;
 		dai.is_config_blob = true;
-		dai.dai_index -= IPC4_ALH_DAI_INDEX_OFFSET;
+		type = ipc4_gtw_alh;
+		/* copier id = (group id << 4) + codec id + IPC4_ALH_DAI_INDEX_OFFSET
+		 * dai_index = (group id << 8) + codec id;
+		 */
+		dai.dai_index = ((dai.dai_index & 0xF0) << DAI_NUM_ALH_BI_DIR_LINKS_GROUP) +
+			(dai.dai_index & 0xF) - IPC4_ALH_DAI_INDEX_OFFSET;
 		break;
 	case ipc4_dmic_link_input_class:
 		dai.type = SOF_DAI_INTEL_DMIC;
 		dai.is_config_blob = true;
+		type = ipc4_gtw_dmic;
 		break;
 	default:
 		return NULL;
@@ -276,6 +288,8 @@ static struct comp_dev *create_dai(struct comp_dev *parent_dev, struct copier_da
 				    PPL_CONN_DIR_COMP_TO_BUFFER);
 		cd->bsource_buffer = false;
 	}
+
+	cd->converter[0] = get_converter_func(&copier->base.audio_fmt, &copier->out_fmt, type);
 
 	return dev;
 }
@@ -317,8 +331,6 @@ static struct comp_dev *copier_new(const struct comp_driver *drv,
 	dev = comp_alloc(drv, sizeof(*dev));
 	if (!dev)
 		return NULL;
-
-	dcache_invalidate_region(spec, sizeof(*copier));
 
 	dev->ipc_config = *config;
 
@@ -442,7 +454,8 @@ static bool use_no_container_convert_function(enum sof_ipc_frame in,
 }
 
 static pcm_converter_func get_converter_func(struct ipc4_audio_format *in_fmt,
-					     struct ipc4_audio_format *out_fmt)
+					     struct ipc4_audio_format *out_fmt,
+					     enum ipc4_gateway_type type)
 {
 	enum sof_ipc_frame in, in_valid, out, out_valid;
 
@@ -455,7 +468,7 @@ static pcm_converter_func get_converter_func(struct ipc4_audio_format *in_fmt,
 	if (use_no_container_convert_function(in, in_valid, out, out_valid))
 		return pcm_get_conversion_function(in, out);
 	else
-		return pcm_get_conversion_vc_function(in, in_valid, out, out_valid);
+		return pcm_get_conversion_vc_function(in, in_valid, out, out_valid, type);
 }
 
 static int copier_prepare(struct comp_dev *dev)
@@ -483,7 +496,7 @@ static int copier_prepare(struct comp_dev *dev)
 	} else {
 		/* set up format conversion function */
 		cd->converter[0] = get_converter_func(&cd->config.base.audio_fmt,
-						      &cd->config.out_fmt);
+						      &cd->config.out_fmt, ipc4_gtw_none);
 		if (!cd->converter[0]) {
 			comp_err(dev, "can't support for in format %d, out format %d",
 				 cd->config.base.audio_fmt.depth,  cd->config.out_fmt.depth);
@@ -517,7 +530,7 @@ static int copier_reset(struct comp_dev *dev)
 		mailbox_sw_regs_write(cd->pipeline_reg_offset, &pipe_reg, sizeof(pipe_reg));
 	}
 
-	memset(cd, 0, sizeof(cd));
+	memset(cd, 0, sizeof(*cd));
 	comp_set_state(dev, COMP_TRIGGER_RESET);
 
 	return ret;
@@ -585,18 +598,15 @@ static int do_conversion_copy(struct comp_dev *dev,
 			      uint32_t *src_copy_bytes)
 {
 	struct comp_copy_limits c;
-	uint32_t sink_bytes;
-	uint32_t src_bytes;
 	int i;
 	int ret;
 
 	comp_get_copy_limits_with_lock(src, sink, &c);
-	src_bytes = c.frames * c.source_frame_bytes;
-	*src_copy_bytes = src_bytes;
-	sink_bytes = c.frames * c.sink_frame_bytes;
+	*src_copy_bytes = c.source_bytes;
 
 	i = IPC4_SINK_QUEUE_ID(sink->id);
-	buffer_stream_invalidate(src, src_bytes);
+	buffer_stream_invalidate(src, c.source_bytes);
+
 	cd->converter[i](&src->stream, 0, &sink->stream, 0, c.frames * sink->stream.channels);
 	if (cd->attenuation) {
 		ret = apply_attenuation(dev, cd, sink, c.frames);
@@ -604,8 +614,8 @@ static int do_conversion_copy(struct comp_dev *dev,
 			return ret;
 	}
 
-	buffer_stream_writeback(sink, sink_bytes);
-	comp_update_buffer_produce(sink, sink_bytes);
+	buffer_stream_writeback(sink, c.sink_bytes);
+	comp_update_buffer_produce(sink, c.sink_bytes);
 
 	return 0;
 }
@@ -654,7 +664,7 @@ static int copier_copy(struct comp_dev *dev)
 		struct comp_buffer *src;
 		struct comp_buffer *sink;
 		struct list_item *sink_list;
-		uint32_t src_bytes;
+		uint32_t src_bytes = 0;
 
 		src = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
 		/* do format conversion for each sink buffer */
@@ -700,8 +710,8 @@ static int copier_params(struct comp_dev *dev, struct sof_ipc_stream_params *par
 	struct comp_buffer *sink;
 	struct comp_buffer *source;
 	struct list_item *sink_list;
-	struct list_item *src_list;
 	int ret = 0;
+	int i;
 
 	comp_dbg(dev, "copier_params()");
 
@@ -720,7 +730,7 @@ static int copier_params(struct comp_dev *dev, struct sof_ipc_stream_params *par
 
 	/* update each sink format */
 	list_for_item(sink_list, &dev->bsink_list) {
-		int  i, j;
+		int j;
 
 		sink = container_of(sink_list, struct comp_buffer, source_list);
 		j = IPC4_SINK_QUEUE_ID(sink->id);
@@ -740,33 +750,31 @@ static int copier_params(struct comp_dev *dev, struct sof_ipc_stream_params *par
 		sink->hw_params_configured = true;
 	}
 
-	/* update each source format
+	/* update the source format
 	 * used only for rare cases where two pipelines are connected by a shared
 	 * buffer and 2 copiers, this will set source format only for shared buffers
 	 * for a short time when the second pipeline already started
 	 * and the first one is not ready yet along with sink buffers params
 	 */
-	list_for_item(src_list, &dev->bsource_list) {
-		int  i, j;
+	source = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
+	if (!source->hw_params_configured) {
+		struct ipc4_audio_format in_fmt;
 
-		source = container_of(src_list, struct comp_buffer, sink_list);
-		if (source->hw_params_configured == false) {
-			j = IPC4_SRC_QUEUE_ID(source->id);
-			source->stream.channels = cd->out_fmt[j].channels_count;
-			source->stream.rate = cd->out_fmt[j].sampling_frequency;
-			audio_stream_fmt_conversion(cd->out_fmt[j].depth,
-						    cd->out_fmt[j].valid_bit_depth,
-						    &source->stream.frame_fmt,
-						    &source->stream.valid_sample_fmt,
-						    cd->out_fmt[j].s_type);
+		in_fmt = cd->config.base.audio_fmt;
+		source->stream.channels = in_fmt.channels_count;
+		source->stream.rate = in_fmt.sampling_frequency;
+		audio_stream_fmt_conversion(in_fmt.depth,
+					    in_fmt.valid_bit_depth,
+					    &source->stream.frame_fmt,
+					    &source->stream.valid_sample_fmt,
+					    in_fmt.s_type);
 
-			source->buffer_fmt = cd->out_fmt[j].interleaving_style;
+		source->buffer_fmt = in_fmt.interleaving_style;
 
-			for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
-				source->chmap[i] = (cd->out_fmt[j].ch_map >> i * 4) & 0xf;
+		for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
+			source->chmap[i] = (in_fmt.ch_map >> i * 4) & 0xf;
 
-			source->hw_params_configured = true;
-		}
+		source->hw_params_configured = true;
 	}
 
 	if (cd->endpoint) {
@@ -803,9 +811,14 @@ static int copier_set_sink_fmt(struct comp_dev *dev, void *data,
 		return -EINVAL;
 	}
 
+	if (cd->endpoint) {
+		comp_err(dev, "can't change gateway format");
+		return -EINVAL;
+	}
+
 	cd->out_fmt[sink_fmt->sink_id] = sink_fmt->sink_fmt;
 	cd->converter[sink_fmt->sink_id] = get_converter_func(&sink_fmt->source_fmt,
-							      &sink_fmt->sink_fmt);
+							      &sink_fmt->sink_fmt, ipc4_gtw_none);
 
 	return 0;
 }

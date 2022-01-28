@@ -795,21 +795,6 @@ out:
 	return ret;
 }
 
-/* restore DMA context after leaving D3 */
-static int dw_dma_pm_context_restore(struct dma *dma)
-{
-	return 0;
-}
-
-/* store DMA context before leaving D0 */
-static int dw_dma_pm_context_store(struct dma *dma)
-{
-	/* disable the DMA controller */
-	dma_reg_write(dma, DW_DMA_CFG, 0);
-
-	return 0;
-}
-
 static void dw_dma_verify_transfer(struct dma_chan_data *channel,
 				   struct dma_cb_data *next)
 {
@@ -1209,8 +1194,6 @@ const struct dma_ops dw_dma_ops = {
 	.copy			= dw_dma_copy,
 	.status			= dw_dma_status,
 	.set_config		= dw_dma_set_config,
-	.pm_context_restore	= dw_dma_pm_context_restore,
-	.pm_context_store	= dw_dma_pm_context_store,
 	.probe			= dw_dma_probe,
 	.remove			= dw_dma_remove,
 	.get_data_size		= dw_dma_get_data_size,

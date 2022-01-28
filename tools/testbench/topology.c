@@ -311,7 +311,7 @@ static int load_fileread(void *dev, int comp_id, int pipeline_id,
 
 	/* Set format from testbench command line*/
 	fileread.rate = tp->fs_in;
-	fileread.channels = tp->channels;
+	fileread.channels = tp->channels_in;
 	fileread.frame_fmt = tp->frame_fmt;
 
 	/* Set type depending on direction */
@@ -360,7 +360,7 @@ static int load_filewrite(struct sof *sof, int comp_id, int pipeline_id,
 
 	/* Set format from testbench command line*/
 	filewrite.rate = tp->fs_out;
-	filewrite.channels = tp->channels;
+	filewrite.channels = tp->channels_out;
 	filewrite.frame_fmt = tp->frame_fmt;
 
 	/* Set type depending on direction */

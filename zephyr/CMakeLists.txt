@@ -548,10 +548,6 @@ zephyr_library_sources(
 	${SOF_IPC_PATH}/dma-copy.c
 	${SOF_IPC_PATH}/ipc-common.c
 	${SOF_IPC_PATH}/ipc-helper.c
-	${SOF_IPC_PATH}/ipc3/handler.c
-	${SOF_IPC_PATH}/ipc3/helper.c
-	${SOF_IPC_PATH}/ipc3/dai.c
-	${SOF_IPC_PATH}/ipc3/host-page-table.c
 	${SOF_SRC_PATH}/spinlock.c
 
 	# SOF math utilities
@@ -596,6 +592,19 @@ zephyr_library_sources(
 	wrapper.c
 	edf_schedule.c
 	schedule.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_IPC_MAJOR_3
+	${SOF_IPC_PATH}/ipc3/handler.c
+	${SOF_IPC_PATH}/ipc3/helper.c
+	${SOF_IPC_PATH}/ipc3/dai.c
+	${SOF_IPC_PATH}/ipc3/host-page-table.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_IPC_MAJOR_4
+	${SOF_IPC_PATH}/ipc4/handler.c
+	${SOF_IPC_PATH}/ipc4/helper.c
+	${SOF_IPC_PATH}/ipc4/dai.c
 )
 
 zephyr_library_sources_ifdef(CONFIG_TRACE
@@ -712,23 +721,15 @@ target_link_libraries(SOF INTERFACE zephyr_interface)
 # Setup SOF directories
 set(SOF_ROOT_SOURCE_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 set(SOF_ROOT_BINARY_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-set(GENERATED_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-file(MAKE_DIRECTORY ${GENERATED_DIRECTORY}/include)
 
-# generated files
-set(VERSION_H_PATH ${GENERATED_DIRECTORY}/include/version.h)
-set(DOT_CONFIG_PATH ${GENERATED_DIRECTORY}/.config)
+# This generated/ directory is shared with Zephyr.
+# PROJECT_BINARY_DIR is build/zephyr/
+set(GENERATED_DIRECTORY ${PROJECT_BINARY_DIR}/include/generated)
 
-if(${CMAKE_VERSION} VERSION_LESS "3.12.0")
-	# FindPythonInterp is bugged and may sometimes be unable to find
-	# Python 3 when both Python 2 & 3 are in PATH,
-	# so it's always better to use CMake 3.12+
-	find_package(PythonInterp 3.0)
-	set(PYTHON3 "${PYTHON_EXECUTABLE}")
-else()
-	find_package(Python3 COMPONENTS Interpreter)
-	set(PYTHON3 "${Python3_EXECUTABLE}")
-endif()
+set(VERSION_H_PATH ${GENERATED_DIRECTORY}/sof_versions.h)
+
+find_package(Python3 COMPONENTS Interpreter)
+set(PYTHON3 "${Python3_EXECUTABLE}")
 
 # SOF uses GNU C99 extensions. TODO other flags required ?
 target_compile_options(SOF INTERFACE -std=gnu99 -fno-inline-functions)
@@ -738,9 +739,6 @@ add_definitions(-DXCC_TOOLS_VERSION="${ZEPHYR_TOOLCHAIN_VARIANT}" -DCC_OPTIMIZE_
 
 # create version information
 include(../scripts/cmake/version.cmake)
-add_definitions(-DSOF_MICRO=${SOF_MICRO} -DSOF_MINOR=${SOF_MINOR})
-add_definitions(-DSOF_MAJOR=${SOF_MAJOR} -DSOF_TAG="${SOF_TAG}")
-add_definitions(-DSOF_SRC_HASH=0x${SOF_SRC_HASH} -DSOF_GIT_TAG="${SOF_GIT_TAG}")
 
 # Create Trace realtive file paths
 sof_append_relative_path_definitions(modules_sof)

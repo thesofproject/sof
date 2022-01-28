@@ -181,8 +181,8 @@ PCM_PLAYBACK_ADD(HDMI3, 7, PIPELINE_PCM_7)
 #SSP 1 (ID: 0) with 19.2 MHz mclk with MCLK_ID 1 (unused), 1.536 MHz blck
 DAI_CONFIG(SSP, 1, 0, SSP1-Codec,
 	SSP_CONFIG(I2S, SSP_CLOCK(mclk, 19200000, codec_mclk_in),
-		SSP_CLOCK(bclk, 1536000, codec_slave),
-		SSP_CLOCK(fsync, 48000, codec_slave),
+		SSP_CLOCK(bclk, 1536000, codec_consumer),
+		SSP_CLOCK(fsync, 48000, codec_consumer),
 		SSP_TDM(2, 16, 3, 3),
 		SSP_CONFIG_DATA(SSP, 1, 16, 1)))
 
@@ -190,16 +190,16 @@ ifelse(HEADPHONE, `da7219', `
 #SSP 2 (ID: 1) with 19.2 MHz mclk with MCLK_ID 1, 1.92 MHz bclk
 DAI_CONFIG(SSP, 2, 1, SSP2-Codec,
 	SSP_CONFIG(I2S, SSP_CLOCK(mclk, 19200000, codec_mclk_in),
-		SSP_CLOCK(bclk, 1920000, codec_slave),
-		SSP_CLOCK(fsync, 48000, codec_slave),
+		SSP_CLOCK(bclk, 1920000, codec_consumer),
+		SSP_CLOCK(fsync, 48000, codec_consumer),
 		SSP_TDM(2, 20, 3, 3),
 		SSP_CONFIG_DATA(SSP, 2, 16, 1)))
 ', HEADPHONE, `cs42l42', `
 #SSP 2 (ID: 1) with 19.2 MHz mclk with MCLK_ID 1 (unused), 2.4 MHz bclk, no quirk, 10 ms BCLK delay
 DAI_CONFIG(SSP, 2, 1, SSP2-Codec,
 	SSP_CONFIG(I2S, SSP_CLOCK(mclk, 19200000, codec_mclk_in),
-		SSP_CLOCK(bclk, 2400000, codec_slave),
-		SSP_CLOCK(fsync, 48000, codec_slave),
+		SSP_CLOCK(bclk, 2400000, codec_consumer),
+		SSP_CLOCK(fsync, 48000, codec_consumer),
 		SSP_TDM(2, 25, 3, 3),
 		SSP_CONFIG_DATA(SSP, 2, 24, 1, 0, 0, SSP_CC_BCLK_ES)))
 ', )

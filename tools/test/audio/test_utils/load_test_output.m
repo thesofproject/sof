@@ -18,8 +18,16 @@ function [x, nx] = load_test_output(test)
 % Copyright(c) 2017 Intel Corporation. All rights reserved.
 % Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 
+if isfield(test, 'bits_out')
+	bits_out = test.bits_out;
+elseif isfield(test, 'bits');
+       bits_out = test.bits;
+else
+	bits_out = test.bits_in;
+end
+
 %% Integer type for binary files
-switch test.bits_out
+switch bits_out
 	case 16
 		bfmt = 'int16';
 	case 24
@@ -54,7 +62,7 @@ else
 end
 
 %% Exctract channels to measure
-scale = 1/2^(test.bits_out-1);
+scale = 1/2^(bits_out-1);
 lout = length(out);
 nx = floor(lout/test.nch);
 x = zeros(nx,length(test.ch));

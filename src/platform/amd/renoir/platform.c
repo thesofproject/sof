@@ -31,7 +31,7 @@
 #include <ipc/header.h>
 #include <ipc/info.h>
 #include <kernel/abi.h>
-#include <version.h>
+#include <sof_versions.h>
 #include <errno.h>
 #include <stdint.h>
 #include <platform/chip_offset_byte.h>

@@ -230,8 +230,8 @@ DAI_CONFIG(ALH, eval(SMART_ALH_INDEX + 1), eval(SMART_BE_ID + 1), SMART_ALH_CAPT
 #SSP SSP_INDEX (ID: SMART_BE_ID)
 DAI_CONFIG(SSP, SMART_SSP_INDEX, SMART_BE_ID, SMART_SSP_NAME,
 	SSP_CONFIG(DSP_B, SSP_CLOCK(mclk, SSP_MCLK, codec_mclk_in),
-		      SSP_CLOCK(bclk, 12288000, codec_slave),
-		      SSP_CLOCK(fsync, 48000, codec_slave),
+		      SSP_CLOCK(bclk, 12288000, codec_consumer),
+		      SSP_CLOCK(fsync, 48000, codec_consumer),
 		      SSP_TDM(8, 32, 15, 255),
 		      SSP_CONFIG_DATA(SSP, SMART_SSP_INDEX, 32, 0, SMART_SSP_QUIRK)))
 ')

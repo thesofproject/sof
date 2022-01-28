@@ -62,7 +62,8 @@ static int alh_set_config_blob(struct dai *dai, struct ipc_config_dai *common_co
 
 	alh->params.channels = 2;
 	alh->params.rate = 48000;
-	alh->params.stream_id = alh_cfg->mapping[0].alh_id & 0xf;
+	/* the LSB 8bits are for stream id */
+	alh->params.stream_id = alh_cfg->mapping[0].alh_id & 0xff;
 
 	return 0;
 }
@@ -90,20 +91,6 @@ static int alh_get_hw_params(struct dai *dai,
 
 	/* FIFO format is static */
 	params->frame_fmt = SOF_IPC_FRAME_S32_LE;
-
-	return 0;
-}
-
-static int alh_context_store(struct dai *dai)
-{
-	dai_info(dai, "alh_context_store()");
-
-	return 0;
-}
-
-static int alh_context_restore(struct dai *dai)
-{
-	dai_info(dai, "alh_context_restore()");
 
 	return 0;
 }
@@ -166,8 +153,6 @@ const struct dai_driver alh_driver = {
 	.ops = {
 		.trigger		= alh_trigger,
 		.set_config		= alh_set_config,
-		.pm_context_store	= alh_context_store,
-		.pm_context_restore	= alh_context_restore,
 		.get_hw_params		= alh_get_hw_params,
 		.get_handshake		= alh_get_handshake,
 		.get_fifo		= alh_get_fifo,

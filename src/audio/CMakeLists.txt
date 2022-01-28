@@ -122,7 +122,9 @@ if(NOT CONFIG_LIBRARY)
                         base_fw.c
                 )
         endif()
-
+	if(CONFIG_COMP_ARIA)
+		add_subdirectory(aria)
+	endif()
 	subdirs(pipeline)
 
 	return()

@@ -37,7 +37,7 @@ config TRACE_FILTERING
 	depends on TRACE
 	default y
 	help
-		Filtering of trace messages based on their verbosity level and frequency.
+		Filtering of trace messages based on their verbosity level and/or frequency.
 
 config TRACE_FILTERING_VERBOSITY
 	bool "Filter by verbosity"
@@ -45,25 +45,30 @@ config TRACE_FILTERING_VERBOSITY
 	default y
 	help
 		Filtering by log verbosity level, where maximum verbosity allowed is specified for each
-		context and may be adjusted in runtime.
+		context and may be adjusted in runtime. Most basic feature found in every logger.
 
 config TRACE_FILTERING_ADAPTIVE
 	bool "Adaptive rate limiting"
 	depends on TRACE_FILTERING
 	default y
 	help
-		Adaptive filtering of trace messages, tracking up to CONFIG_TRACE_RECENT_ENTRIES_COUNT,
-		suppressing all repeated messages for up to CONFIG_TRACE_RECENT_TIME_THRESHOLD cycles.
+		Adaptive filtering of repeating trace messages, tracking up to
+		CONFIG_TRACE_RECENT_ENTRIES_COUNT and suppressing messages repeated in less than
+		CONFIG_TRACE_RECENT_TIME_THRESHOLD microseconds. This filtering and suppression are
+		turned off as soon as the user makes any runtime configuration change using the
+		sof-logger -F flag. Warning: log message parameters (formatted with a conversion
+		specifier %_) are ignored when comparing repeated messages and they are dropped by
+		this filtering.
 
 config TRACE_RECENT_ENTRIES_COUNT
-	int "Amount of entries considered recent"
+	int "How many recent log messages are stored"
 	depends on TRACE_FILTERING_ADAPTIVE
 	default 5
 	help
-		Recent entries are used to determine whether currently processed message was sent in the
-		past. Size of that filtering window affects effectiveness and performance. More recent
-		entries allow to better filter repetitive messeges out, but also slightly decrease
-		performance due to increased number of comparisions necessary.
+		The most recent log messages are stored to match the currently processed
+		message. The size of that window affects effectiveness and performance. More recent
+		entries allow to better filter repetitive messages out, but also slightly decrease
+		performance due to the increased number of comparisons necessary.
 
 config TRACE_RECENT_TIME_THRESHOLD
 	int "Period of time considered recent (microseconds)"
@@ -72,6 +77,7 @@ config TRACE_RECENT_TIME_THRESHOLD
 	range 1 TRACE_RECENT_MAX_TIME
 	help
 		Period of time during which entries are tracked and will be suppressed if reported again.
+		Entries expire after this time.
 
 config TRACE_RECENT_MAX_TIME
 	int "Maximum period of time that message can be suppressed (microseconds)"

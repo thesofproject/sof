@@ -263,46 +263,6 @@ static int sdma_upload_context(struct dma_chan_data *chan)
 			   sizeof(*pdata->ctx) / 4);
 }
 
-static int sdma_upload_contexts_all(struct dma *dma)
-{
-	struct sdma_pdata *pdata = dma_get_drvdata(dma);
-
-	tr_dbg(&sdma_tr, "sdma_upload_contexts_all");
-	dcache_writeback_region(pdata->contexts, sizeof(*pdata->contexts));
-
-	 /* Division by 4 in size calculation is because count is in words and
-	  * not in bytes
-	  */
-	return sdma_run_c0(dma, SDMA_CMD_C0_SET_DM, (uint32_t)pdata->contexts,
-			   SDMA_SRAM_CONTEXTS_BASE,
-			   dma->plat_data.channels *
-				 /* https://trac.cppcheck.net/ticket/10179 */
-				 /* cppcheck-suppress divideSizeof */
-			   sizeof(*pdata->contexts) / 4);
-}
-
-static int sdma_download_contexts_all(struct dma *dma)
-{
-	struct sdma_pdata *pdata = dma_get_drvdata(dma);
-	int ret;
-
-	tr_dbg(&sdma_tr, "sdma_download_contexts_all");
-
-	 /* Division by 4 in size calculation is because count is in words and
-	  * not in bytes
-	  */
-	ret = sdma_run_c0(dma, SDMA_CMD_C0_GET_DM, (uint32_t)pdata->contexts,
-			  SDMA_SRAM_CONTEXTS_BASE,
-			  dma->plat_data.channels *
-				 /* https://trac.cppcheck.net/ticket/10179 */
-				 /* cppcheck-suppress divideSizeof */
-			  sizeof(*pdata->contexts) / 4);
-
-	dcache_invalidate_region(pdata->contexts, sizeof(*pdata->contexts));
-
-	return ret;
-}
-
 /* Below SOF related functions will be placed */
 
 static int sdma_probe(struct dma *dma)
@@ -544,7 +504,7 @@ static int sdma_release(struct dma_chan_data *channel)
 	if (channel->status != COMP_STATE_PAUSED)
 		return -EINVAL;
 
-	channel->status = COMP_STATE_ACTIVE;
+	channel->status = COMP_STATE_PREPARE;
 
 	/* No pointer realignment is necessary for release, context points
 	 * correctly to beginning of the following BD.
@@ -854,16 +814,6 @@ static int sdma_set_config(struct dma_chan_data *channel,
 	return 0;
 }
 
-static int sdma_pm_context_store(struct dma *dma)
-{
-	return sdma_download_contexts_all(dma);
-}
-
-static int sdma_pm_context_restore(struct dma *dma)
-{
-	return sdma_upload_contexts_all(dma);
-}
-
 static int sdma_interrupt(struct dma_chan_data *channel, enum dma_irq_cmd cmd)
 {
 	if (!channel->index)
@@ -967,8 +917,6 @@ const struct dma_ops sdma_ops = {
 	.copy		= sdma_copy,
 	.status		= sdma_status,
 	.set_config	= sdma_set_config,
-	.pm_context_restore	= sdma_pm_context_restore,
-	.pm_context_store	= sdma_pm_context_store,
 	.probe		= sdma_probe,
 	.remove		= sdma_remove,
 	.interrupt	= sdma_interrupt,

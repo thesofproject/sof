@@ -16,8 +16,7 @@
 #include <sof/ut.h>
 #include <sof/lib/memory.h>
 
-#define comp_get_codec(d) (&(((struct comp_data *)((d)->priv_data))->codec))
-#define CODEC_GET_INTERFACE_ID(id) ((id) >> 0x8)
+#define comp_get_module_data(d) (&(((struct processing_module *)((d)->priv_data))->priv))
 #define CODEC_GET_API_ID(id) ((id) & 0xFF)
 #define API_CALL(cd, cmd, sub_cmd, value, ret) \
 	do { \
@@ -64,92 +63,69 @@ UT_STATIC void sys_comp_codec_##adapter_init(void) \
 DECLARE_MODULE(sys_comp_codec_##adapter_init)
 
 /*****************************************************************************/
-/* Codec generic data types						     */
+/* Module generic data types						     */
 /*****************************************************************************/
 /**
- * \struct codec_interface
- * \brief Codec specific interfaces
+ * \struct module_interface
+ * \brief 3rd party processing module interface
  */
-struct codec_interface {
+struct module_interface {
 	/**
-	 * The unique ID for a codec, used for initialization as well as
-	 * parameters loading.
-	 */
-	uint32_t id;
-	/**
-	 * Codec specific initialization procedure, called as part of
+	 * Module specific initialization procedure, called as part of
 	 * codec_adapter component creation in .new()
 	 */
 	int (*init)(struct comp_dev *dev);
 	/**
-	 * Codec specific prepare procedure, called as part of codec_adapter
+	 * Module specific prepare procedure, called as part of codec_adapter
 	 * component preparation in .prepare()
 	 */
 	int (*prepare)(struct comp_dev *dev);
 	/**
-	 * Codec specific processing procedure, called as part of codec_adapter
+	 * Module specific processing procedure, called as part of codec_adapter
 	 * component copy in .copy(). This procedure is responsible to consume
 	 * samples provided by the codec_adapter and produce/output the processed
 	 * ones back to codec_adapter.
 	 */
 	int (*process)(struct comp_dev *dev);
 	/**
-	 * Codec specific apply config procedure, called by codec_adapter every time
+	 * Module specific apply config procedure, called by codec_adapter every time
 	 * a new RUNTIME configuration has been sent if the adapter has been
 	 * prepared. This will not be called for SETUP cfg.
 	 */
 	int (*apply_config)(struct comp_dev *dev);
 	/**
-	 * Codec specific reset procedure, called as part of codec_adapter component
+	 * Module specific reset procedure, called as part of codec_adapter component
 	 * reset in .reset(). This should reset all parameters to their initial stage
 	 * but leave allocated memory intact.
 	 */
 	int (*reset)(struct comp_dev *dev);
 	/**
-	 * Codec specific free procedure, called as part of codec_adapter component
-	 * free in .free(). This should free all memory allocated by codec.
+	 * Module specific free procedure, called as part of codec_adapter component
+	 * free in .free(). This should free all memory allocated by module.
 	 */
 	int (*free)(struct comp_dev *dev);
 };
 
 /**
- * \enum codec_cfg_type
- * \brief Specific configuration types which can be either:
+ * \enum module_state
+ * \brief Module-specific states
  */
-enum codec_cfg_type {
-	CODEC_CFG_SETUP, /**< Used to pass setup parameters */
-	CODEC_CFG_RUNTIME /**< Used every time runtime parameters has been loaded. */
+enum module_state {
+	MODULE_DISABLED, /**< Module isn't initialized yet or has been freed.*/
+	MODULE_INITIALIZED, /**< Module initialized or reset. */
+	MODULE_IDLE, /**< Module is idle now. */
+	MODULE_PROCESSING, /**< Module is processing samples now. */
 };
 
 /**
- * \enum codec_state
- * \brief Codec specific states
- */
-enum codec_state {
-	CODEC_DISABLED, /**< Codec isn't initialized yet or has been freed.*/
-	CODEC_INITIALIZED, /**< Codec initialized or reset. */
-	CODEC_IDLE, /**< Codec is idle now. */
-	CODEC_PROCESSING, /**< Codec is processing samples now. */
-};
-
-/** codec adapter setup config parameters */
-struct ca_config {
-	uint32_t codec_id;
-	uint32_t reserved;
-	uint32_t sample_rate;
-	uint32_t sample_width;
-	uint32_t channels;
-};
-
-/**
- * \struct codec_config
- * \brief Codec TLV parameters container - used for both config types.
+ * \struct module_param
+ * \brief Module TLV parameters container - used for both config types.
  * For example if one want to set the sample_rate to 16 [kHz] and this
  * parameter was assigned to id 0x01, its max size is four bytes then the
  * configuration filed should look like this (note little-endian format):
  * 0x01 0x00 0x00 0x00, 0x0C 0x00 0x00 0x00, 0x10 0x00 0x00 0x00.
  */
-struct codec_param {
+struct module_param {
 	/**
 	 * Specifies the unique id of a parameter. For example the parameter
 	 * sample_rate may have an id of 0x01.
@@ -160,56 +136,53 @@ struct codec_param {
 };
 
 /**
- * \struct codec_config
- * \brief Codec config container, used for both config types.
+ * \struct module_config
+ * \brief Module config container, used for both config types.
  */
-struct codec_config {
+struct module_config {
 	size_t size; /**< Specifies the size of whole config */
 	bool avail; /**< Marks config as available to use.*/
 	void *data; /**< tlv config, a pointer to memory where config is stored. */
 };
 
 /**
- * \struct codec_memory
- * \brief codec memory block - used for every memory allocated by codec
+ * \struct module_memory
+ * \brief module memory block - used for every memory allocated by module
  */
-struct codec_memory {
+struct module_memory {
 	void *ptr; /**< A pointr to particular memory block */
-	struct list_item mem_list; /**< list of memory allocated by codec */
+	struct list_item mem_list; /**< list of memory allocated by module */
 };
 
 /**
- * \struct codec_processing_data
- * \brief Processing data shared between particular codec & codec_adapter
+ * \struct module_processing_data
+ * \brief Processing data shared between particular module & codec_adapter
  */
-struct codec_processing_data {
-	uint32_t in_buff_size; /**< Specifies the size of codec input buffer. */
-	uint32_t out_buff_size; /**< Specifies the size of codec output buffer.*/
-	uint32_t avail; /**< Specifies how much data is available for codec to process.*/
-	uint32_t produced; /**< Specifies how much data the codec produced in its last task.*/
-	uint32_t consumed; /**< Specified how much data the codec consumed in its last task */
-	uint32_t init_done; /**< Specifies if the codec initialization is finished */
-	void *in_buff; /**< A pointer to codec input buffer. */
-	void *out_buff; /**< A pointer to codec output buffer. */
+struct module_processing_data {
+	uint32_t in_buff_size; /**< Specifies the size of module input buffer. */
+	uint32_t out_buff_size; /**< Specifies the size of module output buffer.*/
+	uint32_t avail; /**< Specifies how much data is available for module to process.*/
+	uint32_t produced; /**< Specifies how much data the module produced in its last task.*/
+	uint32_t consumed; /**< Specified how much data the module consumed in its last task */
+	uint32_t init_done; /**< Specifies if the module initialization is finished */
+	void *in_buff; /**< A pointer to module input buffer. */
+	void *out_buff; /**< A pointer to module output buffer. */
 };
 
-/** private, runtime codec data */
-struct codec_data {
-	uint32_t id;
-	enum codec_state state;
+/** private, runtime module data */
+struct module_data {
+	enum module_state state;
 	void *private; /**< self object, memory tables etc here */
 	void *runtime_params;
-	struct codec_config s_cfg; /**< setup config */
-	struct codec_config r_cfg; /**< runtime config */
-	struct codec_interface *ops; /**< codec specific operations */
-	struct codec_memory memory; /**< memory allocated by codec */
-	struct codec_processing_data cpd; /**< shared data comp <-> codec */
+	struct module_config cfg; /**< module configuration data */
+	struct module_interface *ops; /**< module specific operations */
+	struct module_memory memory; /**< memory allocated by module */
+	struct module_processing_data mpd; /**< shared data comp <-> module */
 };
 
 /* codec_adapter private, runtime data */
-struct comp_data {
-	struct ca_config ca_config;
-	struct codec_data codec; /**< codec private data */
+struct processing_module {
+	struct module_data priv; /**< module private data */
 	struct comp_buffer *ca_sink;
 	struct comp_buffer *ca_source;
 	struct comp_buffer *local_buff;
@@ -219,24 +192,22 @@ struct comp_data {
 };
 
 /*****************************************************************************/
-/* Codec generic interfaces						     */
+/* Module generic interfaces						     */
 /*****************************************************************************/
-int codec_load_config(struct comp_dev *dev, void *cfg, size_t size,
-		      enum codec_cfg_type type);
-int codec_init(struct comp_dev *dev, struct codec_interface *interface);
-void *codec_allocate_memory(struct comp_dev *dev, uint32_t size,
-			    uint32_t alignment);
-int codec_free_memory(struct comp_dev *dev, void *ptr);
-void codec_free_all_memory(struct comp_dev *dev);
-int codec_prepare(struct comp_dev *dev);
-int codec_process(struct comp_dev *dev);
-int codec_apply_runtime_config(struct comp_dev *dev);
-int codec_reset(struct comp_dev *dev);
-int codec_free(struct comp_dev *dev);
+int module_load_config(struct comp_dev *dev, void *cfg, size_t size);
+int module_init(struct comp_dev *dev, struct module_interface *interface);
+void *module_allocate_memory(struct comp_dev *dev, uint32_t size, uint32_t alignment);
+int module_free_memory(struct comp_dev *dev, void *ptr);
+void module_free_all_memory(struct comp_dev *dev);
+int module_prepare(struct comp_dev *dev);
+int module_process(struct comp_dev *dev);
+int module_apply_runtime_config(struct comp_dev *dev);
+int module_reset(struct comp_dev *dev);
+int module_free(struct comp_dev *dev);
 
 struct comp_dev *codec_adapter_new(const struct comp_driver *drv,
 				   struct comp_ipc_config *config,
-				   struct codec_interface *interface,
+				   struct module_interface *interface,
 				   void *spec);
 int codec_adapter_prepare(struct comp_dev *dev);
 int codec_adapter_params(struct comp_dev *dev, struct sof_ipc_stream_params *params);

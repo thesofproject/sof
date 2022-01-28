@@ -17,7 +17,7 @@
 
 # Define this empty for a plain sof/ directory and no sof -> sof-v1.2.3
 # symbolic links. This is _only_ to override the top-level directory
-# name; for version.h see version.cmake and try sof/.tarball-version
+# name; for sof_versions.h see version.cmake and try sof/.tarball-version
 # SOF_VERSION :=
 #
 # SOF_VERSION := $(shell git describe --tags )

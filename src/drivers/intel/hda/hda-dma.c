@@ -842,11 +842,14 @@ static int hda_dma_set_config(struct dma_chan_data *channel,
 	/* firmware control buffer */
 	dgcs = DGCS_FWCB;
 
-	/* set DGCS.SCS bit to 1 for 16bit(2B) container */
+	/* set DGCS.SCS bit to 1 for 16bit(2B) container
+	 * S24_3LE stream is treated as 16bit or 8bit
+	 * stream in host side
+	 */
 	if ((config->direction & (DMA_DIR_HMEM_TO_LMEM | DMA_DIR_DEV_TO_MEM) &&
-	     config->dest_width <= 2) ||
+	     config->dest_width <= 3) ||
 	    (config->direction & (DMA_DIR_LMEM_TO_HMEM | DMA_DIR_MEM_TO_DEV) &&
-	     config->src_width <= 2))
+	     config->src_width <= 3))
 		dgcs |= DGCS_SCS;
 
 	/* set DGCS.FIFORDY for input/output host DMA only. It is not relevant for link DMA's */
@@ -859,18 +862,6 @@ static int hda_dma_set_config(struct dma_chan_data *channel,
 out:
 	irq_local_enable(flags);
 	return ret;
-}
-
-/* restore DMA conext after leaving D3 */
-static int hda_dma_pm_context_restore(struct dma *dma)
-{
-	return 0;
-}
-
-/* store DMA conext after leaving D3 */
-static int hda_dma_pm_context_store(struct dma *dma)
-{
-	return 0;
 }
 
 static int hda_dma_probe(struct dma *dma)
@@ -1077,8 +1068,6 @@ const struct dma_ops hda_host_dma_ops = {
 	.copy			= hda_dma_host_copy,
 	.status			= hda_dma_status,
 	.set_config		= hda_dma_set_config,
-	.pm_context_restore	= hda_dma_pm_context_restore,
-	.pm_context_store	= hda_dma_pm_context_store,
 	.probe			= hda_dma_probe,
 	.remove			= hda_dma_remove,
 	.get_data_size		= hda_dma_data_size,
@@ -1097,8 +1086,6 @@ const struct dma_ops hda_link_dma_ops = {
 	.release		= hda_dma_release,
 	.status			= hda_dma_status,
 	.set_config		= hda_dma_set_config,
-	.pm_context_restore	= hda_dma_pm_context_restore,
-	.pm_context_store	= hda_dma_pm_context_store,
 	.probe			= hda_dma_probe,
 	.remove			= hda_dma_remove,
 	.get_data_size		= hda_dma_data_size,

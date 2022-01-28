@@ -284,7 +284,7 @@ int pipeline_trigger(struct pipeline *p, struct comp_dev *host, int cmd)
 		if (ret < 0)
 			return ret;
 		/* IPC response will be sent from the task, unless it was paused */
-		return 1;
+		return PPL_STATUS_SCHEDULED;
 	}
 
 	return 0;
@@ -459,7 +459,8 @@ static int pipeline_comp_timestamp(struct comp_dev *current,
 	struct pipeline_data *ppl_data = ctx->comp_data;
 
 	if (!comp_is_active(current)) {
-		pipe_dbg(current->pipeline, "pipeline_comp_timestamp(), current is not active");
+		comp_warn(current, "pipeline_comp_timestamp(), current in wrong state %u",
+			  current->state);
 		return 0;
 	}
 
@@ -492,7 +493,7 @@ void pipeline_get_timestamp(struct pipeline *p, struct comp_dev *host,
 
 	if (walk_ctx.comp_func(host, NULL, &walk_ctx, host->direction) !=
 	    PPL_STATUS_PATH_STOP)
-		pipe_warn(p, "pipeline_get_timestamp(): DAI position update failed");
+		pipe_dbg(p, "pipeline_get_timestamp(): DAI position update failed");
 
 	/* set timestamp resolution */
 	posn->timestamp_ns = p->period * 1000;

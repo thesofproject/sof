@@ -49,10 +49,17 @@ ifdef(`IGO',
 `define(DMICPROC, igonr)',
 `ifdef(`RTNR',
 `define(DMICPROC, rtnr)',
-`define(DMICPROC, passthrough)')')
+`ifdef(`GOOGLE_RTC_AUDIO_PROCESSING',
+`define(DMICPROC, google-rtc-audio-processing)', `define(DMICPROC, passthrough)')')')
 
 # Prolong period to 16ms for igo_nr process
-ifdef(`IGO', `define(`INTEL_GENERIC_DMIC_KWD_PERIOD', 16000)', `define(`INTEL_GENERIC_DMIC_KWD_PERIOD', 1000)')
+ifdef(`IGO',
+  `define(`INTEL_GENERIC_DMIC_KWD_PERIOD', 16000)',
+  `ifdef(`GOOGLE_RTC_AUDIO_PROCESSING',
+    `define(`INTEL_GENERIC_DMIC_KWD_PERIOD', 10000)',
+	`define(`INTEL_GENERIC_DMIC_KWD_PERIOD', 1000)'
+  )'
+)
 
 # define(DMIC_DAI_LINK_16k_PDM, `STEREO_PDM0') define the PDM port, default is STEREO_PDM0
 ifdef(`DMIC_DAI_LINK_16k_PDM',`',`define(DMIC_DAI_LINK_16k_PDM, `STEREO_PDM0')')
@@ -80,7 +87,6 @@ define(`PGA_NAME', Dmic0)
 PIPELINE_PCM_ADD(sof/pipe-`DMICPROC'-capture.m4,
         DMIC_PIPELINE_48k_ID, DMIC_PCM_48k_ID, CHANNELS, s32le,
         INTEL_GENERIC_DMIC_KWD_PERIOD, 0, DMIC_PIPELINE_48k_CORE_ID, 48000, 48000, 48000)
-
 undefine(`PGA_NAME')
 undefine(`PIPELINE_FILTER1')
 undefine(`PIPELINE_FILTER2')
@@ -127,17 +133,17 @@ dnl PCM_CAPTURE_ADD(name, pipeline, capture)
 PCM_CAPTURE_ADD(DMIC_48k_PCM_NAME, DMIC_PCM_48k_ID, concat(`PIPELINE_PCM_', DMIC_PIPELINE_48k_ID))
 
 # keyword detector pipe
-dnl PIPELINE_ADD(pipeline,
-dnl     pipe id, max channels, format,
+dnl PIPELINE_PCM_ADD(pipeline,
+dnl     pipe id, pcm, max channels, format,
 dnl     period, priority, core,
-dnl     sched_comp, time_domain,
-dnl     pcm_min_rate, pcm_max_rate, pipeline_rate)
-PIPELINE_ADD(sof/pipe-DETECTOR_TYPE.m4,
-        DMIC_PIPELINE_KWD_ID, 2, s24le,
+dnl     pcm_min_rate, pcm_max_rate, pipeline_rate,
+dnl     time_domain, sched_comp, dynamic)
+PIPELINE_PCM_ADD(sof/pipe-DETECTOR_TYPE.m4,
+        DMIC_PIPELINE_KWD_ID, DMIC_PCM_16k_ID, 2, s24le,
         KWD_PIPE_SCH_DEADLINE_US, 1, 0,
-        `PIPELINE_SCHED_COMP_'DMIC_PIPELINE_16k_ID,
-        SCHEDULE_TIME_DOMAIN_TIMER,
-        16000, 16000, 16000)
+        16000, 16000, 16000,
+		SCHEDULE_TIME_DOMAIN_TIMER,
+		`PIPELINE_SCHED_COMP_'DMIC_PIPELINE_16k_ID)
 
 # Connect pipelines together
 SectionGraph."pipe-sof-generic-keyword-detect" {

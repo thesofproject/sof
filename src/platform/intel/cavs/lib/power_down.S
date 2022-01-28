@@ -20,7 +20,7 @@
 #include <sof/lib/memory.h>
 #include <sof/lib/shim.h>
 
-#if CAVS_VERSION >= CAVS_VERSION_1_8
+#if CAVS_VERSION >= CAVS_VERSION_1_8 || CONFIG_SOF_ZEPHYR
 
 	.section .text, "ax"
 	.align 64

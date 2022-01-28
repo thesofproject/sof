@@ -28,8 +28,28 @@ macro(add_alsatplg_command)
 	)
 endmacro()
 
+macro(add_alsatplg2_command input_file output_file include_path)
+	# command line definitions are optional
+	# Set defines if there is an optional argument
+	if (${ARGC} GREATER 3)
+		set (defines ${ARGV3})
+	else()
+		set (defines "")
+	endif()
+
+	add_custom_command(
+		MAIN_DEPENDENCY ${input_file}
+		OUTPUT ${output_file}
+		# -p to pre-process Topology2.0 conf file
+		COMMAND ALSA_CONFIG_DIR=${CMAKE_SOURCE_DIR}/topology/topology2 alsatplg \$\${VERBOSE:+-v 1}
+		        -I ${include_path} -D "'${defines}'" -p -c ${input_file} -o ${output_file}
+		USES_TERMINAL
+		)
+endmacro()
+
 
 add_custom_target(topologies ALL)
 add_dependencies(topologies topologies1)
 
 add_subdirectory(topology1)
+add_subdirectory(topology2)

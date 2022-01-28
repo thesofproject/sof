@@ -452,20 +452,6 @@ static void dmic_stop(struct dai *dai, bool stop_is_pause)
 	spin_unlock(&dai->lock);
 }
 
-/* save DMIC context prior to entering D3 */
-static int dmic_context_store(struct dai *dai)
-{
-	/* Nothing stored at the moment. */
-	return 0;
-}
-
-/* restore DMIC context after leaving D3 */
-static int dmic_context_restore(struct dai *dai)
-{
-	/* Nothing restored at the moment. */
-	return 0;
-}
-
 static int dmic_trigger(struct dai *dai, int cmd, int direction)
 {
 	struct dmic_pdata *dmic = dai_get_drvdata(dai);
@@ -501,14 +487,6 @@ static int dmic_trigger(struct dai *dai, int cmd, int direction)
 	case COMP_TRIGGER_PAUSE:
 		dmic->state = COMP_STATE_PAUSED;
 		dmic_stop(dai, true);
-		break;
-	case COMP_TRIGGER_RESUME:
-		dmic_context_restore(dai);
-		break;
-	case COMP_TRIGGER_SUSPEND:
-		dmic_context_store(dai);
-		break;
-	default:
 		break;
 	}
 
@@ -648,8 +626,6 @@ const struct dai_driver dmic_driver = {
 		.trigger		= dmic_trigger,
 		.set_config		= dmic_set_config,
 		.get_hw_params		= dmic_get_hw_params,
-		.pm_context_store	= dmic_context_store,
-		.pm_context_restore	= dmic_context_restore,
 		.get_handshake		= dmic_get_handshake,
 		.get_fifo		= dmic_get_fifo,
 		.probe			= dmic_probe,

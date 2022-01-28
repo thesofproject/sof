@@ -6,7 +6,7 @@
 #include <sof/ut.h>
 #include <ipc4/base_fw.h>
 #include <ipc4/pipeline.h>
-#include <version.h>
+#include <sof_versions.h>
 
 /* 0e398c32-5ade-ba4b-93b1-c50432280ee4 */
 DECLARE_SOF_RT_UUID("basefw", basefw_comp_uuid, 0xe398c32, 0x5ade, 0xba4b,
@@ -120,7 +120,7 @@ static int basefw_hw_config(uint32_t *data_offset, char *data)
 	set_tuple_uint32(tuple, IPC4_CAVS_VER_HW_CFG, CAVS_VERSION);
 
 	tuple = next_tuple(tuple);
-	set_tuple_uint32(tuple, IPC4_DSP_CORES_HW_CFG, MAX_CORE_COUNT);
+	set_tuple_uint32(tuple, IPC4_DSP_CORES_HW_CFG, CONFIG_CORE_COUNT);
 
 	tuple = next_tuple(tuple);
 	set_tuple_uint32(tuple, IPC4_MEM_PAGE_BYTES_HW_CFG, HOST_PAGE_SIZE);
@@ -220,6 +220,42 @@ static int basefw_mem_state_info(uint32_t *data_offset, char *data)
 	return 0;
 }
 
+static int basefw_get_dsp_properties(uint32_t *data_offset, char *data)
+{
+	struct ipc4_tuple *tuple = (struct ipc4_tuple *)data;
+	uint16_t fw_version[4] = {SOF_MAJOR, SOF_MINOR, SOF_MICRO, SOF_BUILD};
+	uint32_t value;
+
+	set_tuple(tuple, IPC4_FW_VERSION, sizeof(uint16_t) * 4, &fw_version);
+
+	tuple = next_tuple(tuple);
+	set_tuple_uint32(tuple, IPC4_DSP_CORES, CONFIG_CORE_COUNT);
+
+	tuple = next_tuple(tuple);
+	set_tuple_uint32(tuple, IPC4_MEM_PAGE_SIZE, HOST_PAGE_SIZE);
+
+	tuple = next_tuple(tuple);
+	value = DIV_ROUND_UP(EBB_BANKS_IN_SEGMENT * SRAM_BANK_SIZE, HOST_PAGE_SIZE);
+	set_tuple_uint32(tuple, IPC4_TOTAL_PHYS_MEM_PAGES, value);
+
+	tuple = next_tuple(tuple);
+	set_tuple_uint32(tuple, IPC4_DL_MAILBOX_SIZE, MAILBOX_HOSTBOX_SIZE);
+
+	tuple = next_tuple(tuple);
+	set_tuple_uint32(tuple, IPC4_UL_MAILBOX_SIZE, MAILBOX_DSPBOX_SIZE);
+
+	tuple = next_tuple(tuple);
+	set_tuple_uint32(tuple, IPC4_TRACE_LOG_SIZE, DMA_TRACE_LOCAL_SIZE);
+
+	tuple = next_tuple(tuple);
+	set_tuple_uint32(tuple, IPC4_MAX_PPL_CNT, 26);
+
+	tuple = next_tuple(tuple);
+	*data_offset = (int)((char *)tuple - data);
+
+	return 0;
+}
+
 static int basefw_get_large_config(struct comp_dev *dev,
 				   uint32_t param_id,
 				   bool first_block,
@@ -243,8 +279,9 @@ static int basefw_get_large_config(struct comp_dev *dev,
 		return basefw_hw_config(data_offset, data);
 	case IPC4_MEMORY_STATE_INFO_GET:
 		return basefw_mem_state_info(data_offset, data);
-	/* TODO: add more support */
 	case IPC4_DSP_PROPERTIES:
+		return basefw_get_dsp_properties(data_offset, data);
+	/* TODO: add more support */
 	case IPC4_DSP_RESOURCE_STATE:
 	case IPC4_NOTIFICATION_MASK:
 	case IPC4_MODULES_INFO_GET:

@@ -2,7 +2,7 @@ divert(-1)
 
 dnl SAI related macros
 
-dnl SAI_CLOCK(clock, freq, codec_master, polarity)
+dnl SAI_CLOCK(clock, freq, codec_provider, polarity)
 dnl polarity is optional
 define(`SAI_CLOCK',
 	$1		STR($3)

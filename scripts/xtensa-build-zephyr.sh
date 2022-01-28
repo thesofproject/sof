@@ -7,20 +7,18 @@ set -e
 
 SOF_TOP=$(cd "$(dirname "$0")" && cd .. && pwd)
 
-SUPPORTED_PLATFORMS=()
+# Platforms built by the -a option.
+DEFAULT_PLATFORMS=()
 
 # Intel
-SUPPORTED_PLATFORMS+=(apl cnl icl tgl-h tgl)
+DEFAULT_PLATFORMS+=(apl cnl icl tgl-h tgl)
 
 # NXP
-SUPPORTED_PLATFORMS+=(imx8 imx8x imx8m)
+DEFAULT_PLATFORMS+=(imx8 imx8x imx8m)
 
-# -a
-DEFAULT_PLATFORMS=("${SUPPORTED_PLATFORMS[@]}")
-
-# How to exclude one platform from the default builds while leaving it
-# possible to build individually:
-# unset DEFAULT_PLATFORMS[2]
+# Add any new and "experimental" platform here. It will be usable but
+# not included in -a
+SUPPORTED_PLATFORMS=( "${DEFAULT_PLATFORMS[@]}" )
 
 BUILD_JOBS=$(nproc --all)
 PLATFORMS=()
@@ -250,17 +248,11 @@ build_platforms()
 			    test -z "${CMAKE_ARGS+defined}" ||
 				die 'Cannot re-define CMAKE_ARGS, you must delete %s first\n' \
 				    "$(pwd)/$bdir"
-			    # --board is cached and not required again either but unlike
-			    # CMAKE_ARGS this _not_ does force CMake to re-run and passing
-			    # a different board by mistake is very nicely caught by west.
-			    set -x
-			    west $verbose build --build-dir "$bdir" --board "$PLAT_CONFIG"
-			else
-			    set -x
-			    west $verbose build --build-dir "$bdir" --board "$PLAT_CONFIG" \
+			fi
+			set -x
+			west $verbose build --build-dir "$bdir" --board "$PLAT_CONFIG" \
 				zephyr/samples/subsys/audio/sof \
 				-- "${CMAKE_ARGS[@]}"
-			fi
 
 			# This should ideally be part of
 			# sof/zephyr/CMakeLists.txt but due to the way

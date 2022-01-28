@@ -124,7 +124,7 @@ diff_some_files()
 
           done
 
-          for f in generated/include/version.h sof.ri \
+          for f in generated/include/sof_versions.h sof.ri \
                   src/arch/xtensa/reproducible.ri; do
               diff -u --report-identical-files  \
                    {b0,b1}/build_"$p"_?cc/"$f"

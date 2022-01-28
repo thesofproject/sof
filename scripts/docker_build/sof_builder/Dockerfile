@@ -34,6 +34,7 @@ RUN apt-get -y update && \
 		autoconf \
 		bison \
 		build-essential \
+		ninja-build \
 		python3-pyelftools \
 		flex \
 		gawk \

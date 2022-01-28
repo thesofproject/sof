@@ -45,7 +45,7 @@
 #include <kernel/abi.h>
 #include <kernel/ext_manifest.h>
 
-#include <version.h>
+#include <sof_versions.h>
 #include <errno.h>
 #include <stdint.h>
 
@@ -327,7 +327,7 @@ int platform_boot_complete(uint32_t boot_message)
 
 #endif
 
-#if CAVS_VERSION >= CAVS_VERSION_1_8
+#if CAVS_VERSION >= CAVS_VERSION_1_8 || CONFIG_SOF_ZEPHYR
 /* init HW  */
 static void platform_init_hw(void)
 {
@@ -375,7 +375,7 @@ int platform_init(struct sof *sof)
 	 */
 	pm_runtime_disable(PM_RUNTIME_DSP, 0);
 
-#if CONFIG_CANNONLAKE || CONFIG_ICELAKE || CONFIG_SUECREEK || CONFIG_TIGERLAKE || CONFIG_SOF_ZEPHYR
+#if CAVS_VERSION >= CAVS_VERSION_1_8 || CONFIG_SOF_ZEPHYR
 	trace_point(TRACE_BOOT_PLATFORM_ENTRY);
 	platform_init_hw();
 #endif

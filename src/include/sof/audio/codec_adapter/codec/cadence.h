@@ -43,16 +43,8 @@ struct cadence_codec_data {
 	void *self;
 	xa_codec_func_t *api;
 	void *mem_tabs;
+	uint32_t api_id;
+	struct module_config setup_cfg;
 };
-
-/*****************************************************************************/
-/* Cadence interfaces							     */
-/*****************************************************************************/
-int cadence_codec_init(struct comp_dev *dev);
-int cadence_codec_prepare(struct comp_dev *dev);
-int cadence_codec_process(struct comp_dev *dev);
-int cadence_codec_apply_config(struct comp_dev *dev);
-int cadence_codec_reset(struct comp_dev *dev);
-int cadence_codec_free(struct comp_dev *dev);
 
 #endif /* __SOF_AUDIO_CADENCE_CODEC__ */

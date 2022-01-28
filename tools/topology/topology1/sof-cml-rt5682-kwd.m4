@@ -177,17 +177,17 @@ PCM_PLAYBACK_ADD(HDMI2, 3, PIPELINE_PCM_5)
 PCM_PLAYBACK_ADD(HDMI3, 4, PIPELINE_PCM_6)
 
 # keyword detector pipe
-dnl PIPELINE_ADD(pipeline,
-dnl     pipe id, max channels, format,
+dnl PIPELINE_PCM_ADD(pipeline,
+dnl     pipe id, pcm, max channels, format,
 dnl     period, priority, core,
-dnl     sched_comp, time_domain,
-dnl     pcm_min_rate, pcm_max_rate, pipeline_rate)
-PIPELINE_ADD(sof/pipe-detect.m4,
-	9, 2, s24le,
+dnl     pcm_min_rate, pcm_max_rate, pipeline_rate,
+dnl     time_domain, sched_comp, dynamic)
+PIPELINE_PCM_ADD(sof/pipe-detect.m4,
+	9, 1, 2, s24le,
 	KWD_PIPE_SCH_DEADLINE_US, 1, 0,
-	PIPELINE_SCHED_COMP_8,
+	16000, 16000, 16000,
 	SCHEDULE_TIME_DOMAIN_TIMER,
-	16000, 16000, 16000)
+	PIPELINE_SCHED_COMP_8)
 
 # Connect pipelines together
 SectionGraph."pipe-sof-cml-keyword-detect" {
@@ -207,8 +207,8 @@ SectionGraph."pipe-sof-cml-keyword-detect" {
 #SSP SSP_INDEX (ID: 0)
 DAI_CONFIG(SSP, SSP_INDEX, 0, SSP_NAME,
 	SSP_CONFIG(I2S, SSP_CLOCK(mclk, SSP_MCLK_RATE, codec_mclk_in),
-		      SSP_CLOCK(bclk, 2400000, codec_slave),
-		      SSP_CLOCK(fsync, 48000, codec_slave),
+		      SSP_CLOCK(bclk, 2400000, codec_consumer),
+		      SSP_CLOCK(fsync, 48000, codec_consumer),
 		      SSP_TDM(2, 25, 3, 3),
 		      SSP_CONFIG_DATA(SSP, SSP_INDEX, 24)))
 

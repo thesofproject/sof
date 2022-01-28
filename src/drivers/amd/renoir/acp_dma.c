@@ -486,18 +486,6 @@ static int acp_dma_set_config(struct dma_chan_data *channel,
 	return dma_setup(channel, &config->elem_array, dir);
 }
 
-static int acp_dma_pm_context_restore(struct dma *dma)
-{
-	/* TODO */
-	return 0;
-}
-
-static int acp_dma_pm_context_store(struct dma *dma)
-{
-	/* TODO */
-	return 0;
-}
-
 static int acp_dma_probe(struct dma *dma)
 {
 	struct acp_dma_chan_data *acp_dma_chan;
@@ -634,8 +622,6 @@ const struct dma_ops acp_dma_ops = {
 	.copy			= acp_dma_copy,
 	.status			= acp_dma_status,
 	.set_config		= acp_dma_set_config,
-	.pm_context_restore	= acp_dma_pm_context_restore,
-	.pm_context_store	= acp_dma_pm_context_store,
 	.probe			= acp_dma_probe,
 	.remove			= acp_dma_remove,
 	.interrupt		= acp_dma_interrupt,

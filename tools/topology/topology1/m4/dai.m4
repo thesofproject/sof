@@ -271,8 +271,24 @@ define(`DAI_ADD',
 `define(`DAI_CHANNELS', $13)'
 `define(`DAI_RATE', $14)'
 `define(`DYNAMIC_PIPE', $15)'
+`define(`PIPELINE_FORMAT', $8)'
 `include($1)'
 `DEBUG_DAI($3, $4)'
+`undefine(`PIPELINE_ID')'
+`undefine(`DAI_TYPE')'
+`undefine(`DAI_INDEX')'
+`undefine(`DAI_BE')'
+`undefine(`DAI_BUF')'
+`undefine(`DAI_PERIODS')'
+`undefine(`DAI_FORMAT')'
+`undefine(`SCHEDULE_PERIOD')'
+`undefine(`SCHEDULE_PRIORITY')'
+`undefine(`SCHEDULE_CORE')'
+`undefine(`SCHEDULE_TIME_DOMAIN')'
+`undefine(`DAI_CHANNELS')'
+`undefine(`DAI_RATE')'
+`undefine(`DYNAMIC_PIPE')'
+`undefine(`PIPELINE_FORMAT')'
 )
 
 # DAI_ADD_SCHED can be used for adding a DAI with sched_comp
@@ -284,5 +300,6 @@ define(`DAI_ADD_SCHED',
 `undefine(`SCHED_COMP')'
 `define(`SCHED_COMP', $13)'
 `DAI_ADD($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)'
+`undefine(`SCHED_COMP')'
 )
 divert(0)dnl

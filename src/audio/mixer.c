@@ -44,6 +44,7 @@ DECLARE_SOF_RT_UUID("mixer", mixer_uuid, 0x3c56505a, 0x24d7, 0x418f,
 /* mixin 39656eb2-3b71-4049-8d3f-f92cd5c43c09 */
 DECLARE_SOF_RT_UUID("mix_in", mixin_uuid, 0x39656eb2, 0x3b71, 0x4049,
 		    0x8d, 0x3f, 0xf9, 0x2c, 0xd5, 0xc4, 0x3c, 0x09);
+DECLARE_TR_CTX(mixin_tr, SOF_UUID(mixin_uuid), LOG_LEVEL_INFO);
 #endif
 
 DECLARE_TR_CTX(mixer_tr, SOF_UUID(mixer_uuid), LOG_LEVEL_INFO);
@@ -293,27 +294,6 @@ static int mixer_trigger_common(struct comp_dev *dev, int cmd)
 	int dir = dev->pipeline->source_comp->direction;
 	int ret;
 
-	/*
-	 * This works around an unclear and apparently needlessly complicated
-	 * mixer state machine.
-	 */
-	if (dir == SOF_IPC_STREAM_PLAYBACK) {
-		switch (cmd) {
-		case COMP_TRIGGER_PRE_RELEASE:
-			/* Mixer and everything downstream is active */
-			dev->state = COMP_STATE_PRE_ACTIVE;
-			break;
-		case COMP_TRIGGER_RELEASE:
-			/* Mixer and everything downstream is active */
-			dev->state = COMP_STATE_ACTIVE;
-			break;
-		default:
-			break;
-		}
-
-		comp_writeback(dev);
-	}
-
 	ret = comp_set_state(dev, cmd);
 	if (ret < 0)
 		return ret;
@@ -551,6 +531,27 @@ static int mixer_trigger(struct comp_dev *dev, int cmd)
 		    mixer_source_status_count(dev, COMP_STATE_PAUSED))
 			return PPL_STATUS_PATH_STOP;
 
+	/*
+	 * This works around an unclear and apparently needlessly complicated
+	 * mixer state machine.
+	 */
+	if (dir == SOF_IPC_STREAM_PLAYBACK) {
+		switch (cmd) {
+		case COMP_TRIGGER_PRE_RELEASE:
+			/* Mixer and everything downstream is active */
+			dev->state = COMP_STATE_PRE_ACTIVE;
+			break;
+		case COMP_TRIGGER_RELEASE:
+			/* Mixer and everything downstream is active */
+			dev->state = COMP_STATE_ACTIVE;
+			break;
+		default:
+			break;
+		}
+
+		comp_writeback(dev);
+	}
+
 	ret = mixer_trigger_common(dev, cmd);
 	if (ret < 0)
 		return ret;
@@ -630,7 +631,6 @@ static struct comp_dev *mixinout_new(const struct comp_driver *drv,
 		return NULL;
 	}
 
-	dcache_invalidate_region(spec, sizeof(md->base_cfg));
 	memcpy_s(&md->base_cfg, sizeof(md->base_cfg), spec, sizeof(md->base_cfg));
 	comp_set_drvdata(dev, md);
 
@@ -717,7 +717,7 @@ static int mixin_bind(struct comp_dev *dev, void *data)
 {
 	struct ipc4_module_bind_unbind *bu;
 	struct comp_buffer *source_buf;
-	struct comp_buffer *sink_buf;
+	struct comp_buffer *sink_buf = NULL;
 	struct comp_dev *sink;
 	int src_id, sink_id;
 
@@ -730,12 +730,22 @@ static int mixin_bind(struct comp_dev *dev, void *data)
 		struct list_item *blist;
 
 		sink = ipc4_get_comp_dev(sink_id);
+		if (!sink) {
+			comp_err(dev, "mixin_bind: no sink with ID %d found", sink_id);
+			return -EINVAL;
+		}
+
 		list_for_item(blist, &sink->bsource_list) {
 			sink_buf = container_of(blist, struct comp_buffer, sink_list);
 			if (sink_buf->source == dev) {
 				pipeline_disconnect(sink, sink_buf, PPL_CONN_DIR_BUFFER_TO_COMP);
 				break;
 			}
+		}
+
+		if (!sink_buf) {
+			comp_err(dev, "mixin_bind: no sink buffer found");
+			return -EINVAL;
 		}
 
 		source_buf = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);

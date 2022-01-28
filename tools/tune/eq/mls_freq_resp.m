@@ -74,7 +74,7 @@ audiowrite(mlsfn, mls, fs);
 [x2, m2] = sync_chirp(fs, 'down');
 fnd.fs = fs; % Sample rate
 fnd.sm = 5; % Max seek from start
-fnd.em = 3; % Max seek from end
+fnd.em = 5; % Max seek from end
 fnd.idle_t = 2; % max idle in start or end
 fnd.mark_t = m1.t; % Marker length
 fnd.nf = 1; % One signal (amplitude)
@@ -100,9 +100,17 @@ play_cfg = meas_remote_play_config;
 mixfn = 'mlsmix.wav';
 recfn = 'recch.wav';
 y = [];
+if selftest
+	labels = cell(play_cfg.nch * rec_cfg.nch + 1, 1);
+	labels(end) = 'Reference';
+else
+	labels = cell(play_cfg.nch * rec_cfg.nch, 1);
+end
+label_idx = 1;
 for i=1:play_cfg.nch
 	fprintf('\n');
 	fprintf('Measure playback channel %d\n', i);
+	pstr=sprintf('p%d', i);
 	if selftest
 		tz =zeros(2*fs+length(z), 1); % Pad 2s
 		tz(fs:fs+length(z)-1) = z;
@@ -118,23 +126,32 @@ for i=1:play_cfg.nch
 		remote_capture(recfn, rec_cfg, tcap);
 		pause(1);
 		remote_play(mixfn, play_cfg);
-		pause(3);
+		pause(5);
 		r = get_recording(recfn, rec_cfg);
 	end
+	for j = 1:rec_cfg.nch
+		labels(label_idx) = sprintf('p%d-r%d', i, j);
+		label_idx = label_idx + 1;
+	end
 	[d, nt] = find_test_signal(r(:,1), fnd);
+	figure;
+	sr = size(r);
+	ts = (0:sr(1)-1)/fs;
+	plot(ts, r(:,1));
+	grid on;
+	xlabel('Time (s)');
+	ylabel('Sample value');
 	if isempty(d)
-		figure;
-		sr = size(r);
-		ts = (0:sr(1)-1)/fs;
-		plot(ts, r(:,1));
-		grid on;
-		xlabel('Time (s)');
-		ylabel('Sample value');
 		title('Captured audio test waveform');
 		fprintf(1, 'Error: check the plot for skew in capture/playback.\n');
 		f = [];
 		m_db = [];
 		return
+	else
+		si = d:d + nt;
+		hold on
+		plot(ts(si), r(si), 'g');
+		hold off
 	end
 	for j = 1:rec_cfg.nch
 		y(:, rec_cfg.nch*(i-1) + j) = r(d:d + nt -1, j);
@@ -178,6 +195,11 @@ if selftest
 	hold on;
 	plot(f, ref_db_align, 'r--');
 	hold off;
+end
+
+legend(labels);
+
+if selftest
         idx = find(f < f_hi);
         idx = find(f(idx) > f_lo);
         m_lin = 10.^(m_db_align(idx)/20);
@@ -250,7 +272,7 @@ function remote_capture(fn, cfg, t)
 end
 
 function play = meas_remote_play_config()
-	source mls_play_config.txt;
+	play = get_config('mls_play_config.txt', 'play');
 	fprintf('\nThe setttings for remote playback are\n');
 	fprintf('Use ssh   : %d\n', play.ssh);
 	fprintf('User      : %s\n', play.user);
@@ -260,7 +282,7 @@ function play = meas_remote_play_config()
 end
 
 function rec = meas_remote_rec_config(fs, fmt)
-	source mls_rec_config.txt;
+	rec = get_config('mls_rec_config.txt', 'rec');
 	rec.fmt = sprintf('-t wav -c %d -f %s -r %d', ...
 			     rec.nch, fmt, fs);
 
@@ -399,4 +421,11 @@ function [cal_f, cal_m_db] = apply_mic_calibration(f, m_db, rec)
 		cal_f = f;
 	end
 
+end
+
+function ret = get_config(fn, var)
+    s = fileread(fn);
+    eval(s);
+    cmd = sprintf('ret = %s;', var);
+    eval(cmd);
 end

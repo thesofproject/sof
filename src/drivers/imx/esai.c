@@ -44,58 +44,6 @@ struct esai_pdata {
 	struct sof_ipc_dai_esai_params params;
 };
 
-static int esai_context_store(struct dai *dai)
-{
-	struct esai_pdata *pdata = dai_get_drvdata(dai);
-
-	if (!pdata)
-		return -EINVAL;
-
-	pdata->regs.ecr = dai_read(dai, REG_ESAI_ECR);
-	pdata->regs.tfcr = dai_read(dai, REG_ESAI_TFCR);
-	pdata->regs.rfcr = dai_read(dai, REG_ESAI_RFCR);
-	pdata->regs.saicr = dai_read(dai, REG_ESAI_SAICR);
-	pdata->regs.tcr = dai_read(dai, REG_ESAI_TCR);
-	pdata->regs.tccr = dai_read(dai, REG_ESAI_TCCR);
-	pdata->regs.rcr = dai_read(dai, REG_ESAI_RCR);
-	pdata->regs.rccr = dai_read(dai, REG_ESAI_RCCR);
-	pdata->regs.tsma = dai_read(dai, REG_ESAI_TSMA);
-	pdata->regs.tsmb = dai_read(dai, REG_ESAI_TSMB);
-	pdata->regs.rsma = dai_read(dai, REG_ESAI_RSMA);
-	pdata->regs.rsmb = dai_read(dai, REG_ESAI_RSMB);
-	pdata->regs.prrc = dai_read(dai, REG_ESAI_PRRC);
-	pdata->regs.pcrc = dai_read(dai, REG_ESAI_PCRC);
-
-	return 0;
-}
-
-static int esai_context_restore(struct dai *dai)
-{
-	struct esai_pdata *pdata = dai_get_drvdata(dai);
-
-	if (!pdata)
-		return -EINVAL;
-
-	dai_write(dai, REG_ESAI_ECR, ESAI_ECR_ERST);
-	dai_write(dai, REG_ESAI_ECR, ESAI_ECR_ESAIEN);
-	dai_write(dai, REG_ESAI_TFCR, pdata->regs.tfcr);
-	dai_write(dai, REG_ESAI_RFCR, pdata->regs.rfcr);
-	dai_write(dai, REG_ESAI_SAICR, pdata->regs.saicr);
-	dai_write(dai, REG_ESAI_TCCR, pdata->regs.tccr);
-	dai_write(dai, REG_ESAI_RCCR, pdata->regs.rccr);
-	dai_write(dai, REG_ESAI_TSMA, pdata->regs.tsma);
-	dai_write(dai, REG_ESAI_TSMB, pdata->regs.tsmb);
-	dai_write(dai, REG_ESAI_RSMA, pdata->regs.rsma);
-	dai_write(dai, REG_ESAI_RSMB, pdata->regs.rsmb);
-	dai_write(dai, REG_ESAI_PRRC, pdata->regs.prrc);
-	dai_write(dai, REG_ESAI_PCRC, pdata->regs.pcrc);
-	dai_write(dai, REG_ESAI_TCR, pdata->regs.tcr);
-	dai_write(dai, REG_ESAI_RCR, pdata->regs.rcr);
-	dai_write(dai, REG_ESAI_ECR, pdata->regs.ecr);
-
-	return 0;
-}
-
 static inline int esai_set_config(struct dai *dai, struct ipc_config_dai *common_config,
 				  void *spec_config)
 {
@@ -374,10 +322,6 @@ static int esai_trigger(struct dai *dai, int cmd, int direction)
 	case COMP_TRIGGER_PAUSE:
 		esai_stop(dai, direction);
 		break;
-	/* Remaining triggers are no-ops */
-	case COMP_TRIGGER_SUSPEND:
-	case COMP_TRIGGER_RESUME:
-		break;
 	default:
 		dai_err(dai, "ESAI: invalid trigger cmd %d", cmd);
 		return -EINVAL;
@@ -466,8 +410,6 @@ const struct dai_driver esai_driver = {
 	.ops = {
 		.trigger		= esai_trigger,
 		.set_config		= esai_set_config,
-		.pm_context_store	= esai_context_store,
-		.pm_context_restore	= esai_context_restore,
 		.probe			= esai_probe,
 		.get_handshake		= esai_get_handshake,
 		.get_fifo		= esai_get_fifo,

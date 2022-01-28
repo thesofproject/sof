@@ -33,7 +33,7 @@
 #include <cavs/drivers/sideband-ipc.h>
 #endif
 
-#include <version.h>
+#include <sof_versions.h>
 #include <stdint.h>
 
 #if !CONFIG_SUECREEK

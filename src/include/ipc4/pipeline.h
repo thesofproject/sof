@@ -379,4 +379,41 @@ struct ipc4_pipeline_get_context_size_reply {
 	} data;
 } __attribute__((packed, aligned(4)));
 
+struct ipc4_chain_dma {
+	union {
+		uint32_t dat;
+
+		struct {
+		uint32_t host_dma_id		: 5;
+		uint32_t rsvd4		: 3;
+		uint32_t link_dma_id		: 5;
+		uint32_t rsvd3		: 3;
+		/* allocate buffer specified by FIFO size */
+		uint32_t allocate		: 1;
+		uint32_t enable			: 1;
+		/* controls SCS bit in both Host and Link gateway */
+		uint32_t scs		: 1;
+		uint32_t rsvd2		: 5;
+		/* Global::CHAIN_DMA */
+		uint32_t type		: 5;
+		/* Msg::MSG_REQUEST */
+		uint32_t rsp		: 1;
+		/* Msg::FW_GEN_MSG */
+		uint32_t msg_tgt		: 1;
+		uint32_t _reserved_0		: 1;
+		} r;
+	} header;
+
+	union {
+		uint32_t dat;
+
+		struct {
+			/* size of FIFO (bytes) */
+			uint32_t fifo_size		: 24;
+			uint32_t rsvd1		: 6;
+			uint32_t _reserved_2		: 2;
+		} r;
+	} data;
+} __attribute__((packed, aligned(4)));
+
 #endif

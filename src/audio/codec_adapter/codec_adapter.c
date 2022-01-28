@@ -23,9 +23,6 @@
 #include <sof/platform.h>
 #include <sof/ut.h>
 
-int load_setup_config(struct comp_dev *dev, void *cfg, uint32_t size);
-int validate_setup_config(struct ca_config *cfg);
-
 /**
  * \brief Create a codec adapter component.
  * \param[in] drv - component driver pointer.
@@ -35,12 +32,12 @@ int validate_setup_config(struct ca_config *cfg);
  */
 struct comp_dev *codec_adapter_new(const struct comp_driver *drv,
 				   struct comp_ipc_config *config,
-				   struct codec_interface *interface,
+				   struct module_interface *interface,
 				   void *spec)
 {
 	int ret;
 	struct comp_dev *dev;
-	struct comp_data *cd;
+	struct processing_module *mod;
 	struct ipc_config_process *ipc_codec_adapter = spec;
 
 	comp_cl_dbg(drv, "codec_adapter_new() start");
@@ -59,24 +56,27 @@ struct comp_dev *codec_adapter_new(const struct comp_driver *drv,
 	dev->ipc_config = *config;
 	dev->drv = drv;
 
-	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
-	if (!cd) {
-		comp_err(dev, "codec_adapter_new(), failed to allocate memory for comp_data");
+	mod = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*mod));
+	if (!mod) {
+		comp_err(dev, "codec_adapter_new(), failed to allocate memory for module");
 		rfree(dev);
 		return NULL;
 	}
 
-	comp_set_drvdata(dev, cd);
+	comp_set_drvdata(dev, mod);
 
-	/* Copy setup config */
-	ret = load_setup_config(dev, ipc_codec_adapter->data, ipc_codec_adapter->size);
-	if (ret) {
-		comp_err(dev, "codec_adapter_new() error %d: config loading has failed.",
-			 ret);
-		goto err;
+	/* Copy initial config */
+	if (ipc_codec_adapter->size) {
+		ret = module_load_config(dev, ipc_codec_adapter->data, ipc_codec_adapter->size);
+		if (ret) {
+			comp_err(dev, "codec_adapter_new() error %d: config loading has failed.",
+				 ret);
+			goto err;
+		}
 	}
+
 	/* Init processing codec */
-	ret = codec_init(dev, interface);
+	ret = module_init(dev, interface);
 	if (ret) {
 		comp_err(dev, "codec_adapter_new() %d: codec initialization failed",
 			 ret);
@@ -88,75 +88,9 @@ struct comp_dev *codec_adapter_new(const struct comp_driver *drv,
 	comp_dbg(dev, "codec_adapter_new() done");
 	return dev;
 err:
-	rfree(cd);
+	rfree(mod);
 	rfree(dev);
 	return NULL;
-}
-
-int validate_setup_config(struct ca_config *cfg)
-{
-	/* TODO: validate codec_adapter setup parameters */
-	return 0;
-}
-
-/**
- * \brief Load setup config for both codec adapter and codec library.
- * \param[in] dev - codec adapter component device pointer.
- * \param[in] cfg - pointer to the configuration data.
- * \param[in] size - size of config.
- *
- * The setup config comprises of two parts - one contains essential data
- * for the initialization of codec_adapter and follows struct ca_config.
- * Second contains codec specific data needed to setup the codec itself.
- * The latter is send in a TLV format organized by struct codec_param.
- *
- * \return integer representing either:
- *	0 -> success
- *	negative value -> failure.
- */
-int load_setup_config(struct comp_dev *dev, void *cfg, uint32_t size)
-{
-	int ret;
-	void *lib_cfg;
-	size_t lib_cfg_size;
-	struct comp_data *cd = comp_get_drvdata(dev);
-
-	comp_dbg(dev, "load_setup_config() start.");
-
-	if (!cfg || !size) {
-		comp_err(dev, "load_setup_config(): no config available cfg: %x, size: %d",
-			 (uintptr_t)cfg, size);
-		ret = -EINVAL;
-		goto end;
-	} else if (size < sizeof(struct ca_config)) {
-		comp_err(dev, "load_setup_config(): no codec config available, size %d", size);
-		ret = -EIO;
-		goto end;
-	}
-	/* Copy codec_adapter part */
-	ret = memcpy_s(&cd->ca_config, sizeof(cd->ca_config), cfg,
-		       sizeof(struct ca_config));
-	assert(!ret);
-	ret = validate_setup_config(&cd->ca_config);
-	if (ret) {
-		comp_err(dev, "load_setup_config(): validation of setup config for codec_adapter failed.");
-		goto end;
-	}
-	/* Copy codec specific part */
-	lib_cfg_size = size - sizeof(struct ca_config);
-	if (lib_cfg_size) {
-		lib_cfg = (char *)cfg + sizeof(struct ca_config);
-		ret = codec_load_config(dev, lib_cfg, lib_cfg_size, CODEC_CFG_SETUP);
-		if (ret) {
-			comp_err(dev, "load_setup_config(): %d: failed to load setup config for codec id %x",
-				 ret, cd->ca_config.codec_id);
-			goto end;
-		}
-	}
-
-	comp_dbg(dev, "load_setup_config() done.");
-end:
-	return ret;
 }
 
 /*
@@ -170,8 +104,8 @@ end:
 int codec_adapter_prepare(struct comp_dev *dev)
 {
 	int ret;
-	struct comp_data *cd = comp_get_drvdata(dev);
-	struct codec_data *codec = &cd->codec;
+	struct processing_module *mod = comp_get_drvdata(dev);
+	struct module_data *md = &mod->priv;
 	uint32_t buff_periods = 2; /* default periods of local buffer,
 				    * may change if case of deep buffering
 				    */
@@ -180,15 +114,15 @@ int codec_adapter_prepare(struct comp_dev *dev)
 	comp_dbg(dev, "codec_adapter_prepare() start");
 
 	/* Init sink & source buffers */
-	cd->ca_sink = list_first_item(&dev->bsink_list, struct comp_buffer,
-				      source_list);
-	cd->ca_source = list_first_item(&dev->bsource_list, struct comp_buffer,
-					sink_list);
+	mod->ca_sink = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
+	mod->ca_source = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
 
-	if (!cd->ca_source) {
+	if (!mod->ca_source) {
 		comp_err(dev, "codec_adapter_prepare(): source buffer not found");
 		return -EINVAL;
-	} else if (!cd->ca_sink) {
+	}
+
+	if (!mod->ca_sink) {
 		comp_err(dev, "codec_adapter_prepare(): sink buffer not found");
 		return -EINVAL;
 	}
@@ -204,7 +138,7 @@ int codec_adapter_prepare(struct comp_dev *dev)
 	}
 
 	/* Prepare codec */
-	ret = codec_prepare(dev);
+	ret = module_prepare(dev);
 	if (ret) {
 		comp_err(dev, "codec_adapter_prepare() error %x: codec prepare failed",
 			 ret);
@@ -219,43 +153,42 @@ int codec_adapter_prepare(struct comp_dev *dev)
 	 * generate output once started (same situation happens for compress streams
 	 * as well).
 	 */
-	if (codec->cpd.in_buff_size != cd->period_bytes) {
-		if (codec->cpd.in_buff_size > cd->period_bytes) {
-			buff_periods = (codec->cpd.in_buff_size % cd->period_bytes) ?
-				       (codec->cpd.in_buff_size / cd->period_bytes) + 2 :
-				       (codec->cpd.in_buff_size / cd->period_bytes) + 1;
+	if (md->mpd.in_buff_size != mod->period_bytes) {
+		if (md->mpd.in_buff_size > mod->period_bytes) {
+			buff_periods = (md->mpd.in_buff_size % mod->period_bytes) ?
+				       (md->mpd.in_buff_size / mod->period_bytes) + 2 :
+				       (md->mpd.in_buff_size / mod->period_bytes) + 1;
 		} else {
-			buff_periods = (cd->period_bytes % codec->cpd.in_buff_size) ?
-				       (cd->period_bytes / codec->cpd.in_buff_size) + 2 :
-				       (cd->period_bytes / codec->cpd.in_buff_size) + 1;
+			buff_periods = (mod->period_bytes % md->mpd.in_buff_size) ?
+				       (mod->period_bytes / md->mpd.in_buff_size) + 2 :
+				       (mod->period_bytes / md->mpd.in_buff_size) + 1;
 		}
 
-		cd->deep_buff_bytes = cd->period_bytes * buff_periods;
+		mod->deep_buff_bytes = mod->period_bytes * buff_periods;
 	} else {
-		cd->deep_buff_bytes = 0;
+		mod->deep_buff_bytes = 0;
 	}
 
 	/* Allocate local buffer */
-	buff_size = MAX(cd->period_bytes, codec->cpd.out_buff_size) * buff_periods;
-	if (cd->local_buff) {
-		ret = buffer_set_size(cd->local_buff, buff_size);
+	buff_size = MAX(mod->period_bytes, md->mpd.out_buff_size) * buff_periods;
+	if (mod->local_buff) {
+		ret = buffer_set_size(mod->local_buff, buff_size);
 		if (ret < 0) {
 			comp_err(dev, "codec_adapter_prepare(): buffer_set_size() failed, buff_size = %u",
 				 buff_size);
 			return ret;
 		}
 	} else {
-		cd->local_buff = buffer_alloc(buff_size, SOF_MEM_CAPS_RAM,
-					      PLATFORM_DCACHE_ALIGN);
-		if (!cd->local_buff) {
+		mod->local_buff = buffer_alloc(buff_size, SOF_MEM_CAPS_RAM, PLATFORM_DCACHE_ALIGN);
+		if (!mod->local_buff) {
 			comp_err(dev, "codec_adapter_prepare(): failed to allocate local buffer");
 			return -ENOMEM;
 		}
 
 	}
-	buffer_set_params(cd->local_buff, &cd->stream_params,
+	buffer_set_params(mod->local_buff, &mod->stream_params,
 			  BUFFER_UPDATE_FORCE);
-	buffer_reset_pos(cd->local_buff, NULL);
+	buffer_reset_pos(mod->local_buff, NULL);
 
 	comp_dbg(dev, "codec_adapter_prepare() done");
 
@@ -266,7 +199,7 @@ int codec_adapter_params(struct comp_dev *dev,
 			 struct sof_ipc_stream_params *params)
 {
 	int ret;
-	struct comp_data *cd = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_get_drvdata(dev);
 
 	ret = comp_verify_params(dev, 0, params);
 	if (ret < 0) {
@@ -274,18 +207,18 @@ int codec_adapter_params(struct comp_dev *dev,
 		return ret;
 	}
 
-	ret = memcpy_s(&cd->stream_params, sizeof(struct sof_ipc_stream_params),
+	ret = memcpy_s(&mod->stream_params, sizeof(struct sof_ipc_stream_params),
 		       params, sizeof(struct sof_ipc_stream_params));
 	assert(!ret);
 
-	cd->period_bytes = params->sample_container_bytes *
+	mod->period_bytes = params->sample_container_bytes *
 			   params->channels * params->rate / 1000;
 	return 0;
 }
 
 static void
 codec_adapter_copy_from_source_to_lib(const struct audio_stream *source,
-				      const struct codec_processing_data *cpd,
+				      const struct module_processing_data *mpd,
 				      size_t bytes)
 {
 	/* head_size - available data until end of local buffer */
@@ -296,17 +229,17 @@ codec_adapter_copy_from_source_to_lib(const struct audio_stream *source,
 	 */
 	uint32_t tail_size = bytes - head_size;
 	/* copy head_size to lib buffer */
-	memcpy_s(cpd->in_buff, cpd->in_buff_size, source->r_ptr, head_size);
+	memcpy_s(mpd->in_buff, mpd->in_buff_size, source->r_ptr, head_size);
 	if (tail_size)
 	/* copy reset of the samples after wrap-up */
-		memcpy_s((char *)cpd->in_buff + head_size, cpd->in_buff_size,
+		memcpy_s((char *)mpd->in_buff + head_size, mpd->in_buff_size,
 			 audio_stream_wrap(source,
 					   (char *)source->r_ptr + head_size),
 					   tail_size);
 }
 
 static void
-codec_adapter_copy_from_lib_to_sink(const struct codec_processing_data *cpd,
+codec_adapter_copy_from_lib_to_sink(const struct module_processing_data *mpd,
 				    const struct audio_stream *sink,
 				    size_t bytes)
 {
@@ -320,13 +253,13 @@ codec_adapter_copy_from_lib_to_sink(const struct codec_processing_data *cpd,
 	uint32_t tail_size = bytes - head_size;
 
 	/* copy head_size to sink buffer */
-	memcpy_s(sink->w_ptr, sink->size, cpd->out_buff, head_size);
+	memcpy_s(sink->w_ptr, sink->size, mpd->out_buff, head_size);
 	if (tail_size)
 	/* copy reset of the samples after wrap-up */
 		memcpy_s(audio_stream_wrap(sink,
 					   (char *)sink->w_ptr + head_size),
 			 sink->size,
-			 (char *)cpd->out_buff + head_size, tail_size);
+			 (char *)mpd->out_buff + head_size, tail_size);
 }
 
 /**
@@ -356,12 +289,12 @@ int codec_adapter_copy(struct comp_dev *dev)
 {
 	int ret = 0;
 	uint32_t bytes_to_process, copy_bytes, processed = 0, produced = 0;
-	struct comp_data *cd = comp_get_drvdata(dev);
-	struct codec_data *codec = &cd->codec;
-	struct comp_buffer *source = cd->ca_source;
-	struct comp_buffer *sink = cd->ca_sink;
-	uint32_t codec_buff_size = codec->cpd.in_buff_size;
-	struct comp_buffer *local_buff = cd->local_buff;
+	struct processing_module *mod = comp_get_drvdata(dev);
+	struct module_data *md = &mod->priv;
+	struct comp_buffer *source = mod->ca_source;
+	struct comp_buffer *sink = mod->ca_sink;
+	uint32_t codec_buff_size = md->mpd.in_buff_size;
+	struct comp_buffer *local_buff = mod->local_buff;
 	struct comp_copy_limits cl;
 
 	comp_get_copy_limits_with_lock(source, local_buff, &cl);
@@ -379,27 +312,27 @@ int codec_adapter_copy(struct comp_dev *dev)
 		goto db_verify;
 	}
 
-	if (!codec->cpd.init_done) {
+	if (!md->mpd.init_done) {
 		buffer_stream_invalidate(source, codec_buff_size);
-		codec_adapter_copy_from_source_to_lib(&source->stream, &codec->cpd,
+		codec_adapter_copy_from_source_to_lib(&source->stream, &md->mpd,
 						      codec_buff_size);
-		codec->cpd.avail = codec_buff_size;
-		ret = codec_process(dev);
+		md->mpd.avail = codec_buff_size;
+		ret = module_process(dev);
 		if (ret)
 			return ret;
 
-		bytes_to_process -= codec->cpd.consumed;
-		processed += codec->cpd.consumed;
-		comp_update_buffer_consume(source, codec->cpd.consumed);
+		bytes_to_process -= md->mpd.consumed;
+		processed += md->mpd.consumed;
+		comp_update_buffer_consume(source, md->mpd.consumed);
 		if (bytes_to_process < codec_buff_size)
 			goto db_verify;
 	}
 
 	buffer_stream_invalidate(source, codec_buff_size);
-	codec_adapter_copy_from_source_to_lib(&source->stream, &codec->cpd,
+	codec_adapter_copy_from_source_to_lib(&source->stream, &md->mpd,
 					      codec_buff_size);
-	codec->cpd.avail = codec_buff_size;
-	ret = codec_process(dev);
+	md->mpd.avail = codec_buff_size;
+	ret = module_process(dev);
 	if (ret) {
 		if (ret == -ENOSPC) {
 			ret = 0;
@@ -409,43 +342,43 @@ int codec_adapter_copy(struct comp_dev *dev)
 		comp_err(dev, "codec_adapter_copy() error %x: lib processing failed",
 			 ret);
 		goto db_verify;
-	} else if (codec->cpd.produced == 0) {
+	} else if (md->mpd.produced == 0) {
 		/* skipping as lib has not produced anything */
 		comp_err(dev, "codec_adapter_copy() error %x: lib hasn't processed anything",
 			 ret);
 		goto db_verify;
 	}
-	codec_adapter_copy_from_lib_to_sink(&codec->cpd, &local_buff->stream,
-					    codec->cpd.produced);
+	codec_adapter_copy_from_lib_to_sink(&md->mpd, &local_buff->stream,
+					    md->mpd.produced);
 
-	bytes_to_process -= codec->cpd.consumed;
-	processed += codec->cpd.consumed;
-	produced += codec->cpd.produced;
+	bytes_to_process -= md->mpd.consumed;
+	processed += md->mpd.consumed;
+	produced += md->mpd.produced;
 
-	audio_stream_produce(&local_buff->stream, codec->cpd.produced);
-	comp_update_buffer_consume(source, codec->cpd.consumed);
+	audio_stream_produce(&local_buff->stream, md->mpd.produced);
+	comp_update_buffer_consume(source, md->mpd.consumed);
 
 db_verify:
-	if (!produced && !cd->deep_buff_bytes) {
+	if (!produced && !mod->deep_buff_bytes) {
 		comp_dbg(dev, "codec_adapter_copy(): nothing processed in this call");
 		/* we haven't produced anything in this period but we
 		 * still have data in the local buffer to copy to sink
 		 */
-		if (audio_stream_get_avail_bytes(&local_buff->stream) >= cd->period_bytes)
+		if (audio_stream_get_avail_bytes(&local_buff->stream) >= mod->period_bytes)
 			goto copy_period;
-		else
-			goto end;
+
+		goto end;
 	}
 
-	if (cd->deep_buff_bytes) {
-		if (cd->deep_buff_bytes >= audio_stream_get_avail_bytes(&local_buff->stream)) {
-			generate_zeroes(sink, cd->period_bytes);
+	if (mod->deep_buff_bytes) {
+		if (mod->deep_buff_bytes >= audio_stream_get_avail_bytes(&local_buff->stream)) {
+			generate_zeroes(sink, mod->period_bytes);
 			goto end;
-		} else {
-			comp_dbg(dev, "codec_adapter_copy(): deep buffering has ended after gathering %d bytes of processed data",
-				 audio_stream_get_avail_bytes(&local_buff->stream));
-			cd->deep_buff_bytes = 0;
 		}
+
+		comp_dbg(dev, "codec_adapter_copy(): deep buffering has ended after gathering %d bytes of processed data",
+			 audio_stream_get_avail_bytes(&local_buff->stream));
+		mod->deep_buff_bytes = 0;
 	}
 
 copy_period:
@@ -453,7 +386,7 @@ copy_period:
 	copy_bytes = cl.frames * cl.source_frame_bytes;
 	audio_stream_copy(&local_buff->stream, 0,
 			  &sink->stream, 0,
-			  copy_bytes / cd->stream_params.sample_container_bytes);
+			  copy_bytes / mod->stream_params.sample_container_bytes);
 	buffer_stream_writeback(sink, copy_bytes);
 
 	comp_update_buffer_produce(sink, copy_bytes);
@@ -464,15 +397,14 @@ end:
 	return ret;
 }
 
-static int codec_adapter_set_params(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata,
-				    enum codec_cfg_type type)
+static int codec_adapter_set_params(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata)
 {
 	int ret;
 	char *dst, *src;
 	static uint32_t size;
 	uint32_t offset;
-	struct comp_data *cd = comp_get_drvdata(dev);
-	struct codec_data *codec = &cd->codec;
+	struct processing_module *mod = comp_get_drvdata(dev);
+	struct module_data *md = &mod->priv;
 
 	comp_dbg(dev, "codec_adapter_set_params(): start: num_of_elem %d, elem remain %d msg_index %u",
 		 cdata->num_elems, cdata->elems_remaining, cdata->msg_index);
@@ -480,126 +412,66 @@ static int codec_adapter_set_params(struct comp_dev *dev, struct sof_ipc_ctrl_da
 	/* Stage 1 verify input params & allocate memory for the config blob */
 	if (cdata->msg_index == 0) {
 		size = cdata->num_elems + cdata->elems_remaining;
-		/* Check that there is no work-in-progress on previous request */
-		if (codec->runtime_params) {
-			comp_err(dev, "codec_adapter_set_params() error: busy with previous request");
-			ret = -EBUSY;
-			goto end;
-		} else if (!size) {
-			comp_err(dev, "codec_adapter_set_params() error: no configuration size %d",
-				 size);
-			/* TODO: return -EINVAL. This is temporary until driver fixes its issue */
-			ret = 0;
-			goto end;
-		} else if (size > MAX_BLOB_SIZE) {
+		if (!size)
+			return 0;
+
+		if (size > MAX_BLOB_SIZE) {
 			comp_err(dev, "codec_adapter_set_params() error: blob size is too big cfg size %d, allowed %d",
 				 size, MAX_BLOB_SIZE);
-			ret = -EINVAL;
-			goto end;
-		} else if (type != CODEC_CFG_SETUP && type != CODEC_CFG_RUNTIME) {
-			comp_err(dev, "codec_adapter_set_params() error: unknown config type");
-			ret = -EINVAL;
-			goto end;
+			return -EINVAL;
+		}
+
+		/* Check that there is no work-in-progress on previous request */
+		if (md->runtime_params) {
+			comp_err(dev, "codec_adapter_set_params() error: busy with previous request");
+			return -EBUSY;
 		}
 
 		/* Allocate buffer for new params */
-		codec->runtime_params = rballoc(0, SOF_MEM_CAPS_RAM, size);
-		if (!codec->runtime_params) {
+		md->runtime_params = rballoc(0, SOF_MEM_CAPS_RAM, size);
+		if (!md->runtime_params) {
 			comp_err(dev, "codec_adapter_set_params(): space allocation for new params failed");
-			ret = -ENOMEM;
-			goto end;
+			return -ENOMEM;
 		}
 
-		memset(codec->runtime_params, 0, size);
-	} else if (!codec->runtime_params) {
+		memset(md->runtime_params, 0, size);
+	} else if (!md->runtime_params) {
 		comp_err(dev, "codec_adapter_set_params() error: no memory available for runtime params in consecutive load");
-		ret = -EIO;
-		goto end;
+		return -EIO;
 	}
 
 	offset = size - (cdata->num_elems + cdata->elems_remaining);
-	dst = (char *)codec->runtime_params + offset;
+	dst = (char *)md->runtime_params + offset;
 	src = (char *)cdata->data->data;
 
 	ret = memcpy_s(dst, size - offset, src, cdata->num_elems);
 	assert(!ret);
 
-	/* Config has been copied now we can load & apply it depending on
-	 * codec state.
-	 */
-	if (!cdata->elems_remaining) {
-		switch (type) {
-		case CODEC_CFG_SETUP:
-			ret = load_setup_config(dev, codec->runtime_params, size);
-			if (ret) {
-				comp_err(dev, "codec_adapter_set_params(): error %d: load of setup config failed.",
-					 ret);
-			} else {
-				comp_dbg(dev, "codec_adapter_set_params() load of setup config done.");
-			}
+	/* return as more fragments of config data expected */
+	if (cdata->elems_remaining)
+		return 0;
 
-			break;
-		case CODEC_CFG_RUNTIME:
-			ret = codec_load_config(dev, codec->runtime_params, size,
-						CODEC_CFG_RUNTIME);
-			if (ret) {
-				comp_err(dev, "codec_adapter_set_params() error %d: load of runtime config failed.",
-					 ret);
-				goto done;
-			} else {
-				comp_dbg(dev, "codec_adapter_set_params() load of runtime config done.");
-			}
-
-			if (codec->state >= CODEC_INITIALIZED) {
-				/* We are already prepared so we can apply runtime
-				 * config right away.
-				 */
-				ret = codec_apply_runtime_config(dev);
-				if (ret) {
-					comp_err(dev, "codec_adapter_set_params() error %x: codec runtime config apply failed",
-						 ret);
-				}  else {
-					comp_dbg(dev, "codec_adapter_set_params() apply of runtime config done.");
-				}
-			} else {
-				cd->codec.r_cfg.avail = true;
-			}
-
-			break;
-		default:
-			comp_err(dev, "codec_adapter_set_params(): error: unknown config type.");
-			break;
-		}
-	} else
+	/* config fully copied, now load it */
+	ret = module_load_config(dev, md->runtime_params, size);
+	if (ret)
 		goto end;
 
-done:
-	if (codec->runtime_params)
-		rfree(codec->runtime_params);
-	codec->runtime_params = NULL;
-	return ret;
-end:
-	return ret;
-}
+	comp_dbg(dev, "codec_adapter_set_params(): config load successful");
 
-static int ca_set_binary_data(struct comp_dev *dev,
-			      struct sof_ipc_ctrl_data *cdata)
-{
-	int ret;
-
-	comp_dbg(dev, "ca_set_binary_data() start, data type %d", cdata->data->type);
-
-	switch (cdata->data->type) {
-	case CODEC_CFG_SETUP:
-	case CODEC_CFG_RUNTIME:
-		ret = codec_adapter_set_params(dev, cdata, cdata->data->type);
-		break;
-	default:
-		comp_err(dev, "ca_set_binary_data() error: unknown binary data type");
-		ret = -EINVAL;
-		break;
+	/* And apply runtime config right away if codec is already prepared */
+	if (md->state >= MODULE_INITIALIZED) {
+		ret = module_apply_runtime_config(dev);
+		if (ret)
+			comp_err(dev, "codec_adapter_set_params() error %x: codec runtime config apply failed",
+				 ret);
+		else
+			comp_dbg(dev, "codec_adapter_set_params() apply of runtime config done.");
 	}
 
+end:
+	if (md->runtime_params)
+		rfree(md->runtime_params);
+	md->runtime_params = NULL;
 	return ret;
 }
 
@@ -607,10 +479,10 @@ static int codec_adapter_ctrl_set_data(struct comp_dev *dev,
 				       struct sof_ipc_ctrl_data *cdata)
 {
 	int ret;
-	struct comp_data *cd = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_get_drvdata(dev);
 
 	comp_dbg(dev, "codec_adapter_ctrl_set_data() start, state %d, cmd %d",
-		 cd->codec.state, cdata->cmd);
+		 mod->priv.state, cdata->cmd);
 
 	/* Check version from ABI header */
 	if (SOF_ABI_VERSION_INCOMPATIBLE(SOF_ABI_VERSION, cdata->data->abi)) {
@@ -624,7 +496,7 @@ static int codec_adapter_ctrl_set_data(struct comp_dev *dev,
 		ret = -EIO;
 		break;
 	case SOF_CTRL_CMD_BINARY:
-		ret = ca_set_binary_data(dev, cdata);
+		ret = codec_adapter_set_params(dev, cdata);
 		break;
 	default:
 		comp_err(dev, "codec_adapter_ctrl_set_data error: unknown set data command");
@@ -672,16 +544,19 @@ int codec_adapter_trigger(struct comp_dev *dev, int cmd)
 int codec_adapter_reset(struct comp_dev *dev)
 {
 	int ret;
-	struct comp_data *cd = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_get_drvdata(dev);
 
 	comp_dbg(dev, "codec_adapter_reset(): resetting");
 
-	ret = codec_reset(dev);
+	ret = module_reset(dev);
 	if (ret) {
 		comp_err(dev, "codec_adapter_reset(): error %d, codec reset has failed",
 			 ret);
 	}
-	buffer_zero(cd->local_buff);
+
+	/* if module is not prepared, local_buffer won't be allocated */
+	if (mod->local_buff)
+		buffer_zero(mod->local_buff);
 
 	comp_dbg(dev, "codec_adapter_reset(): done");
 
@@ -691,16 +566,15 @@ int codec_adapter_reset(struct comp_dev *dev)
 void codec_adapter_free(struct comp_dev *dev)
 {
 	int ret;
-	struct comp_data *cd = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_get_drvdata(dev);
 
 	comp_dbg(dev, "codec_adapter_free(): start");
 
-	ret = codec_free(dev);
-	if (ret) {
-		comp_err(dev, "codec_adapter_free(): error %d, codec reset has failed",
-			 ret);
-	}
-	buffer_free(cd->local_buff);
-	rfree(cd);
+	ret = module_free(dev);
+	if (ret)
+		comp_err(dev, "codec_adapter_free(): error %d, codec free failed", ret);
+
+	buffer_free(mod->local_buff);
+	rfree(mod);
 	rfree(dev);
 }

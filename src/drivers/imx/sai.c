@@ -155,16 +155,6 @@ static void sai_stop(struct dai *dai, int direction)
 		dai_warn(dai, "sai: poll for register delay failed");
 }
 
-static int sai_context_store(struct dai *dai)
-{
-	return 0;
-}
-
-static int sai_context_restore(struct dai *dai)
-{
-	return 0;
-}
-
 static inline int sai_set_config(struct dai *dai, struct ipc_config_dai *common_config,
 				 void *spec_config)
 {
@@ -339,17 +329,13 @@ static int sai_trigger(struct dai *dai, int cmd, int direction)
 
 	switch (cmd) {
 	case COMP_TRIGGER_START:
+	case COMP_TRIGGER_RELEASE:
 		sai_start(dai, direction);
 		break;
 	case COMP_TRIGGER_STOP:
-		sai_stop(dai, direction);
-		break;
 	case COMP_TRIGGER_PAUSE:
 		sai_stop(dai, direction);
 		break;
-	case COMP_TRIGGER_RELEASE:
-	case COMP_TRIGGER_SUSPEND:
-	case COMP_TRIGGER_RESUME:
 	case COMP_TRIGGER_PRE_START:
 	case COMP_TRIGGER_PRE_RELEASE:
 		break;
@@ -443,8 +429,6 @@ const struct dai_driver sai_driver = {
 	.ops = {
 		.trigger		= sai_trigger,
 		.set_config		= sai_set_config,
-		.pm_context_store	= sai_context_store,
-		.pm_context_restore	= sai_context_restore,
 		.probe			= sai_probe,
 		.get_handshake		= sai_get_handshake,
 		.get_fifo		= sai_get_fifo,

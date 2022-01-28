@@ -79,7 +79,7 @@ PCM_DUPLEX_ADD(Port0, 0, PIPELINE_PCM_1, PIPELINE_PCM_2)
 dnl DAI_CONFIG(type, idx, link_id, name, sai_config)
 DAI_CONFIG(SAI, 5, 0, sai5-bt-sco-pcm-wb,
 	SAI_CONFIG(I2S, SAI_CLOCK(mclk, 12288000, codec_mclk_out),
-		SAI_CLOCK(bclk, 256000, codec_slave),
-		SAI_CLOCK(fsync, 8000, codec_slave),
+		SAI_CLOCK(bclk, 256000, codec_consumer),
+		SAI_CLOCK(fsync, 8000, codec_consumer),
 		SAI_TDM(1, 16, 1, 1),
 		SAI_CONFIG_DATA(SAI, 5, 0)))

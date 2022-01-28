@@ -27,10 +27,11 @@ message(STATUS "version.cmake starting SOF build at ${build_start_time} UTC")
 # moving target: the latest target branch. In that case the SHA version
 # gathered by git describe is disposable hence useless. Only the
 # --parents SHA are useful.
-message(STATUS "Building git commit with parent(s):")
+message(STATUS "Building SOF git commit with parent(s):")
 # Note execute_process() failures are ignored by default (missing git...)
 execute_process(
-	COMMAND git log --parents --oneline --decorate -n 1 HEAD
+	COMMAND git -C "${CMAKE_CURRENT_SOURCE_DIR}"
+		log --parents --oneline --decorate -n 1 HEAD
 	)
 
 
@@ -89,7 +90,7 @@ if(EXISTS ${SOF_ROOT_SOURCE_DIRECTORY}/.git/)
 	set(SOURCE_HASH_DIR "${SOF_ROOT_BINARY_DIRECTORY}/source_hash")
 	file(MAKE_DIRECTORY ${SOURCE_HASH_DIR})
 	# list tracked files from src directory
-	execute_process(COMMAND git ls-files src
+	execute_process(COMMAND git ls-files src/ scripts/ zephyr/
 			WORKING_DIRECTORY ${SOF_ROOT_SOURCE_DIRECTORY}
 			OUTPUT_FILE "${SOURCE_HASH_DIR}/tracked_file_list"
 		)
@@ -134,6 +135,7 @@ function(sof_check_version_h)
 		"#define SOF_SRC_HASH 0x${SOF_SRC_HASH}\n"
 	)
 
+	# Regenerating the same file would cause a full rebuild.
 	if(EXISTS "${VERSION_H_PATH}")
 		file(READ "${VERSION_H_PATH}" old_version_content)
 		if("${header_content}" STREQUAL "${old_version_content}")

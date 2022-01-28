@@ -403,20 +403,6 @@ static int edma_set_config(struct dma_chan_data *channel,
 			      config->dest_width, config->burst_elems);
 }
 
-/* restore DMA context after leaving D3 */
-static int edma_pm_context_restore(struct dma *dma)
-{
-	/* External to the DSP, won't lose power */
-	return 0;
-}
-
-/* store DMA context after leaving D3 */
-static int edma_pm_context_store(struct dma *dma)
-{
-	/* External to the DSP, won't lose power */
-	return 0;
-}
-
 static int edma_probe(struct dma *dma)
 {
 	int channel;
@@ -565,8 +551,6 @@ const struct dma_ops edma_ops = {
 	.copy		= edma_copy,
 	.status		= edma_status,
 	.set_config	= edma_set_config,
-	.pm_context_restore	= edma_pm_context_restore,
-	.pm_context_store	= edma_pm_context_store,
 	.probe		= edma_probe,
 	.remove		= edma_remove,
 	.interrupt	= edma_interrupt,

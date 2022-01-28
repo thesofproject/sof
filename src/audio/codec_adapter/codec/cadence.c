@@ -32,6 +32,8 @@ enum cadence_api_id {
 	CADENCE_CODEC_SRC_PP_ID		= 0x09,
 };
 
+#define DEFAULT_CODEC_ID CADENCE_CODEC_WRAPPER_ID
+
 /*****************************************************************************/
 /* Cadence API functions array						     */
 /*****************************************************************************/
@@ -92,29 +94,30 @@ static struct cadence_api cadence_api_table[] = {
 #endif
 };
 
-int cadence_codec_init(struct comp_dev *dev)
+static int cadence_codec_init(struct comp_dev *dev)
 {
 	int ret;
-	struct codec_data *codec = comp_get_codec(dev);
+	struct module_data *codec = comp_get_module_data(dev);
 	struct cadence_codec_data *cd = NULL;
 	uint32_t obj_size;
 	uint32_t no_of_api = ARRAY_SIZE(cadence_api_table);
-	uint32_t api_id = CODEC_GET_API_ID(codec->id);
+	uint32_t api_id = CODEC_GET_API_ID(DEFAULT_CODEC_ID);
 	uint32_t i;
 
 	comp_dbg(dev, "cadence_codec_init() start");
 
-	cd = codec_allocate_memory(dev, sizeof(struct cadence_codec_data), 0);
+	cd = rballoc(0, SOF_MEM_CAPS_RAM, sizeof(struct cadence_codec_data));
 	if (!cd) {
 		comp_err(dev, "cadence_codec_init(): failed to allocate memory for cadence codec data");
 		return -ENOMEM;
 	}
 
 	codec->private = cd;
-	codec->cpd.init_done = 0;
+	codec->mpd.init_done = 0;
 	cd->self = NULL;
 	cd->mem_tabs = NULL;
 	cd->api = NULL;
+	cd->setup_cfg.avail = false;
 
 	/* Find and assign API function */
 	for (i = 0; i < no_of_api; i++) {
@@ -123,12 +126,38 @@ int cadence_codec_init(struct comp_dev *dev)
 			break;
 		}
 	}
+
+	cd->api_id = api_id;
+
 	/* Verify API assignment */
 	if (!cd->api) {
 		comp_err(dev, "cadence_codec_init(): could not find API function for id %x",
 			 api_id);
 		ret = -EINVAL;
-		goto out;
+		goto free;
+	}
+
+	/* copy the setup config only for the first init */
+	if (codec->state == MODULE_DISABLED && codec->cfg.avail) {
+		struct module_config *setup_cfg = &cd->setup_cfg;
+
+		/* allocate memory for set up config */
+		setup_cfg->data = rballoc(0, SOF_MEM_CAPS_RAM, codec->cfg.size);
+		if (!setup_cfg->data) {
+			comp_err(dev, "cadence_codec_init(): failed to alloc setup config");
+			module_free_memory(dev, cd);
+			return -ENOMEM;
+		}
+
+		/* copy the setup config */
+		setup_cfg->size = codec->cfg.size;
+		ret = memcpy_s(setup_cfg->data, setup_cfg->size, codec->cfg.data, setup_cfg->size);
+		if (ret) {
+			comp_err(dev, "cadence_codec_init(): failed to copy setup config %d", ret);
+			module_free_memory(dev, cd);
+			return ret;
+		}
+		setup_cfg->avail = true;
 	}
 
 	/* Obtain codec name */
@@ -137,63 +166,65 @@ int cadence_codec_init(struct comp_dev *dev)
 	if (ret != LIB_NO_ERROR) {
 		comp_err(dev, "cadence_codec_init() error %x: failed to get lib name",
 			 ret);
-		codec_free_memory(dev, cd);
-		goto out;
+		goto free;
 	}
 	/* Get codec object size */
 	API_CALL(cd, XA_API_CMD_GET_API_SIZE, 0, &obj_size, ret);
 	if (ret != LIB_NO_ERROR) {
 		comp_err(dev, "cadence_codec_init() error %x: failed to get lib object size",
 			 ret);
-		codec_free_memory(dev, cd);
-		goto out;
+		goto free;
 	}
 	/* Allocate space for codec object */
-	cd->self = codec_allocate_memory(dev, obj_size, 0);
+	cd->self = rballoc(0, SOF_MEM_CAPS_RAM, obj_size);
 	if (!cd->self) {
 		comp_err(dev, "cadence_codec_init(): failed to allocate space for lib object");
-		codec_free_memory(dev, cd);
-		goto out;
-	} else {
-		comp_dbg(dev, "cadence_codec_init(): allocated %d bytes for lib object",
-			 obj_size);
+		ret = -ENOMEM;
+		goto free;
 	}
+
+	comp_dbg(dev, "cadence_codec_init(): allocated %d bytes for lib object", obj_size);
+
 	/* Set all params to their default values */
 	API_CALL(cd, XA_API_CMD_INIT, XA_CMD_TYPE_INIT_API_PRE_CONFIG_PARAMS,
 		 NULL, ret);
 	if (ret != LIB_NO_ERROR) {
-		comp_err(dev, "cadence_codec_init(): error %x: failed to set default config",
-			 ret);
-		goto out;
+		rfree(cd->self);
+		goto free;
 	}
 
 	comp_dbg(dev, "cadence_codec_init() done");
-out:
+
+	return 0;
+free:
+	rfree(cd);
 	return ret;
 }
 
-static int apply_config(struct comp_dev *dev, enum codec_cfg_type type)
+static int cadence_codec_apply_config(struct comp_dev *dev)
 {
 	int ret = 0;
 	int size;
-	struct codec_config *cfg;
+	struct module_config *cfg;
 	void *data;
-	struct codec_param *param;
-	struct codec_data *codec = comp_get_codec(dev);
+	struct module_param *param;
+	struct module_data *codec = comp_get_module_data(dev);
 	struct cadence_codec_data *cd = codec->private;
 
-	comp_dbg(dev, "apply_config() start");
+	comp_dbg(dev, "cadence_codec_apply_config() start");
 
-	cfg = (type == CODEC_CFG_SETUP) ? &codec->s_cfg :
-					  &codec->r_cfg;
+	cfg = &codec->cfg;
+
+	/* use setup config if no runtime config available. This will be true during reset */
+	if (!cfg->avail)
+		cfg = &cd->setup_cfg;
+
 	data = cfg->data;
 	size = cfg->size;
 
 	if (!cfg->avail || !size) {
-		comp_err(dev, "apply_config() error: no config available, requested conf. type %d",
-			 type);
-		ret = -EIO;
-		goto ret;
+		comp_err(dev, "cadence_codec_apply_config() error: no config available");
+		return -EIO;
 	}
 
 	/* Read parameters stored in `data` - it may keep plenty of
@@ -202,33 +233,32 @@ static int apply_config(struct comp_dev *dev, enum codec_cfg_type type)
 	 */
 	while (size > 0) {
 		param = data;
-		comp_dbg(dev, "apply_config() applying param %d value %d",
+		comp_dbg(dev, "cadence_codec_apply_config() applying param %d value %d",
 			 param->id, param->data[0]);
 		/* Set read parameter */
 		API_CALL(cd, XA_API_CMD_SET_CONFIG_PARAM, param->id,
 			 param->data, ret);
 		if (ret != LIB_NO_ERROR) {
-			comp_err(dev, "apply_config() error %x: failed to apply parameter %d value %d",
+			comp_err(dev, "cadence_codec_apply_config() error %x: failed to apply parameter %d value %d",
 				 ret, param->id, *(int32_t *)param->data);
 			if (LIB_IS_FATAL_ERROR(ret))
-				goto ret;
+				return ret;
 		}
 		/* Obtain next parameter, it starts right after the preceding one */
 		data = (char *)data + param->size;
 		size -= param->size;
 	}
 
-	comp_dbg(dev, "apply_config() done");
-	ret  = 0;
-ret:
-	return ret;
+	comp_dbg(dev, "cadence_codec_apply_config() done");
+
+	return 0;
 }
 
 static int init_memory_tables(struct comp_dev *dev)
 {
 	int ret, no_mem_tables, i, mem_type, mem_size, mem_alignment;
 	void *ptr, *scratch, *persistent;
-	struct codec_data *codec = comp_get_codec(dev);
+	struct module_data *codec = comp_get_module_data(dev);
 	struct cadence_codec_data *cd = codec->private;
 
 	scratch = NULL;
@@ -240,7 +270,7 @@ static int init_memory_tables(struct comp_dev *dev)
 	if (ret != LIB_NO_ERROR) {
 		comp_err(dev, "init_memory_tables() error %x: failed to calculate memory blocks size",
 			 ret);
-		goto err;
+		return ret;
 	}
 
 	/* Get number of memory tables */
@@ -248,7 +278,7 @@ static int init_memory_tables(struct comp_dev *dev)
 	if (ret != LIB_NO_ERROR) {
 		comp_err(dev, "init_memory_tables() error %x: failed to get number of memory tables",
 			 ret);
-		goto err;
+		return ret;
 	}
 
 	/* Initialize each memory table */
@@ -277,7 +307,7 @@ static int init_memory_tables(struct comp_dev *dev)
 			goto err;
 		}
 		/* Allocate memory for this type, taking alignment into account */
-		ptr = codec_allocate_memory(dev, mem_size, mem_alignment);
+		ptr = module_allocate_memory(dev, mem_size, mem_alignment);
 		if (!ptr) {
 			comp_err(dev, "init_memory_tables() error %x: failed to allocate memory for %d",
 				 ret, mem_type);
@@ -300,12 +330,12 @@ static int init_memory_tables(struct comp_dev *dev)
 			persistent = ptr;
 			break;
 		case XA_MEMTYPE_INPUT:
-			codec->cpd.in_buff = ptr;
-			codec->cpd.in_buff_size = mem_size;
+			codec->mpd.in_buff = ptr;
+			codec->mpd.in_buff_size = mem_size;
 			break;
 		case XA_MEMTYPE_OUTPUT:
-			codec->cpd.out_buff = ptr;
-			codec->cpd.out_buff_size = mem_size;
+			codec->mpd.out_buff = ptr;
+			codec->mpd.out_buff_size = mem_size;
 			break;
 		default:
 			comp_err(dev, "init_memory_tables() error %x: unrecognized memory type!",
@@ -321,24 +351,24 @@ static int init_memory_tables(struct comp_dev *dev)
 	return 0;
 err:
 	if (scratch)
-		codec_free_memory(dev, scratch);
+		module_free_memory(dev, scratch);
 	if (persistent)
-		codec_free_memory(dev, persistent);
-	if (codec->cpd.in_buff)
-		codec_free_memory(dev, codec->cpd.in_buff);
-	if (codec->cpd.out_buff)
-		codec_free_memory(dev, codec->cpd.out_buff);
+		module_free_memory(dev, persistent);
+	if (codec->mpd.in_buff)
+		module_free_memory(dev, codec->mpd.in_buff);
+	if (codec->mpd.out_buff)
+		module_free_memory(dev, codec->mpd.out_buff);
 	return ret;
 }
 
 static int cadence_codec_get_samples(struct comp_dev *dev)
 {
-	struct codec_data *codec = comp_get_codec(dev);
-	uint32_t api_id = CODEC_GET_API_ID(codec->id);
+	struct module_data *codec = comp_get_module_data(dev);
+	struct cadence_codec_data *cd = codec->private;
 
 	comp_dbg(dev, "cadence_codec_get_samples() start");
 
-	switch (api_id) {
+	switch (cd->api_id) {
 	case CADENCE_CODEC_WRAPPER_ID:
 		return 0;
 	case CADENCE_CODEC_MP3_DEC_ID:
@@ -356,10 +386,10 @@ static int cadence_codec_get_samples(struct comp_dev *dev)
 static int cadence_codec_init_process(struct comp_dev *dev)
 {
 	int ret;
-	struct codec_data *codec = comp_get_codec(dev);
+	struct module_data *codec = comp_get_module_data(dev);
 	struct cadence_codec_data *cd = codec->private;
 
-	API_CALL(cd, XA_API_CMD_SET_INPUT_BYTES, 0, &codec->cpd.avail, ret);
+	API_CALL(cd, XA_API_CMD_SET_INPUT_BYTES, 0, &codec->mpd.avail, ret);
 	if (ret != LIB_NO_ERROR) {
 		comp_err(dev, "cadence_codec_init_process() error %x: failed to set size of input data",
 			 ret);
@@ -374,14 +404,14 @@ static int cadence_codec_init_process(struct comp_dev *dev)
 	}
 
 	API_CALL(cd, XA_API_CMD_INIT, XA_CMD_TYPE_INIT_DONE_QUERY,
-		 &codec->cpd.init_done, ret);
+		 &codec->mpd.init_done, ret);
 	if (ret != LIB_NO_ERROR) {
 		comp_err(dev, "cadence_codec_init_process() error %x: failed to get lib init status",
 			 ret);
 		return ret;
 	}
 
-	API_CALL(cd, XA_API_CMD_GET_CURIDX_INPUT_BUF, 0, &codec->cpd.consumed, ret);
+	API_CALL(cd, XA_API_CMD_GET_CURIDX_INPUT_BUF, 0, &codec->mpd.consumed, ret);
 	if (ret != LIB_NO_ERROR) {
 		comp_err(dev, "cadence_codec_init_process() error %x: could not get consumed bytes",
 			 ret);
@@ -390,42 +420,20 @@ static int cadence_codec_init_process(struct comp_dev *dev)
 
 	return 0;
 }
-int cadence_codec_prepare(struct comp_dev *dev)
+
+static int cadence_codec_prepare(struct comp_dev *dev)
 {
 	int ret = 0, mem_tabs_size;
-	struct codec_data *codec = comp_get_codec(dev);
+	struct module_data *codec = comp_get_module_data(dev);
 	struct cadence_codec_data *cd = codec->private;
 
 	comp_dbg(dev, "cadence_codec_prepare() start");
 
-	/* Setup config */
-	if (!codec->s_cfg.avail && !codec->s_cfg.size) {
-		comp_err(dev, "cadence_codec_prepare() no setup configuration available!");
-		ret = -EIO;
-		goto err;
-	} else if (!codec->s_cfg.avail) {
-		comp_warn(dev, "cadence_codec_prepare(): no new setup configuration available, using the old one");
-		codec->s_cfg.avail = true;
-	}
-	ret = apply_config(dev, CODEC_CFG_SETUP);
+	ret = cadence_codec_apply_config(dev);
 	if (ret) {
-		comp_err(dev, "cadence_codec_prepare() error %x: failed to applay setup config",
+		comp_err(dev, "cadence_codec_prepare() error %x: failed to apply config",
 			 ret);
-		goto err;
-	}
-	/* Do not reset nor free codec setup config "size" so we can use it
-	 * later on in case there is no new one upon reset.
-	 */
-	codec->s_cfg.avail = false;
-
-	/* Runtime config */
-	if (codec->r_cfg.avail) {
-		ret = apply_config(dev, CODEC_CFG_RUNTIME);
-		if (ret) {
-			comp_err(dev, "cadence_codec_prepare() error %x: failed to applay runtime config",
-				 ret);
-			goto err;
-		}
+		return ret;
 	}
 
 	/* Allocate memory for the codec */
@@ -433,18 +441,16 @@ int cadence_codec_prepare(struct comp_dev *dev)
 	if (ret != LIB_NO_ERROR) {
 		comp_err(dev, "cadence_codec_prepare() error %x: failed to get memtabs size",
 			 ret);
-		goto err;
+		return ret;
 	}
 
-	cd->mem_tabs = codec_allocate_memory(dev, mem_tabs_size, 4);
+	cd->mem_tabs = module_allocate_memory(dev, mem_tabs_size, 4);
 	if (!cd->mem_tabs) {
 		comp_err(dev, "cadence_codec_prepare() error: failed to allocate space for memtabs");
-		ret = -ENOMEM;
-		goto err;
-	} else {
-		comp_dbg(dev, "cadence_codec_prepare(): allocated %d bytes for memtabs",
-			 mem_tabs_size);
+		return -ENOMEM;
 	}
+
+	comp_dbg(dev, "cadence_codec_prepare(): allocated %d bytes for memtabs", mem_tabs_size);
 
 	API_CALL(cd, XA_API_CMD_SET_MEMTABS_PTR, 0, cd->mem_tabs, ret);
 	if (ret != LIB_NO_ERROR) {
@@ -472,7 +478,7 @@ int cadence_codec_prepare(struct comp_dev *dev)
 	 * in codec_adapter_copy().
 	 */
 	API_CALL(cd, XA_API_CMD_INIT, XA_CMD_TYPE_INIT_DONE_QUERY,
-		 &codec->cpd.init_done, ret);
+		 &codec->mpd.init_done, ret);
 	if (ret != LIB_NO_ERROR) {
 		comp_err(dev, "cadence_codec_init_process() error %x: failed to get lib init status",
 			 ret);
@@ -482,24 +488,23 @@ int cadence_codec_prepare(struct comp_dev *dev)
 	comp_dbg(dev, "cadence_codec_prepare() done");
 	return 0;
 free:
-	codec_free_memory(dev, cd->mem_tabs);
-err:
+	module_free_memory(dev, cd->mem_tabs);
 	return ret;
 }
 
-int cadence_codec_process(struct comp_dev *dev)
+static int cadence_codec_process(struct comp_dev *dev)
 {
-	struct comp_data *comp_data = comp_get_drvdata(dev);
-	struct comp_buffer *local_buff = comp_data->local_buff;
-	struct codec_data *codec = comp_get_codec(dev);
+	struct processing_module *mod = comp_get_drvdata(dev);
+	struct comp_buffer *local_buff = mod->local_buff;
+	struct module_data *codec = comp_get_module_data(dev);
 	struct cadence_codec_data *cd = codec->private;
 	int ret;
 
 	/* do not proceed with processing if not enough free left in the local buffer */
-	if (codec->cpd.init_done) {
+	if (codec->mpd.init_done) {
 		int output_bytes = cadence_codec_get_samples(dev) *
-				   comp_data->stream_params.sample_container_bytes *
-				   comp_data->stream_params.channels;
+				   mod->stream_params.sample_container_bytes *
+				   mod->stream_params.channels;
 
 		if (local_buff->stream.free < output_bytes)
 			return -ENOSPC;
@@ -509,60 +514,56 @@ int cadence_codec_process(struct comp_dev *dev)
 
 	comp_dbg(dev, "cadence_codec_process() start");
 
-	API_CALL(cd, XA_API_CMD_SET_INPUT_BYTES, 0, &codec->cpd.avail, ret);
+	API_CALL(cd, XA_API_CMD_SET_INPUT_BYTES, 0, &codec->mpd.avail, ret);
 	if (ret != LIB_NO_ERROR) {
 		comp_err(dev, "cadence_codec_process() error %x: failed to set size of input data",
 			 ret);
-		goto err;
+		return ret;
 	}
 
 	API_CALL(cd, XA_API_CMD_EXECUTE, XA_CMD_TYPE_DO_EXECUTE, NULL, ret);
 	if (ret != LIB_NO_ERROR) {
 		comp_err(dev, "cadence_codec_process() error %x: processing failed",
 			 ret);
-		goto err;
+		return ret;
 	}
 
-	API_CALL(cd, XA_API_CMD_GET_OUTPUT_BYTES, 0, &codec->cpd.produced, ret);
+	API_CALL(cd, XA_API_CMD_GET_OUTPUT_BYTES, 0, &codec->mpd.produced, ret);
 	if (ret != LIB_NO_ERROR) {
 		comp_err(dev, "cadence_codec_process() error %x: could not get produced bytes",
 			 ret);
-		goto err;
+		return ret;
 	}
 
-	API_CALL(cd, XA_API_CMD_GET_CURIDX_INPUT_BUF, 0, &codec->cpd.consumed, ret);
+	API_CALL(cd, XA_API_CMD_GET_CURIDX_INPUT_BUF, 0, &codec->mpd.consumed, ret);
 	if (ret != LIB_NO_ERROR) {
 		comp_err(dev, "cadence_codec_process() error %x: could not get consumed bytes",
 			 ret);
-		goto err;
+		return ret;
 	}
 
 	comp_dbg(dev, "cadence_codec_process() done");
 
 	return 0;
-err:
-	return ret;
 }
 
-int cadence_codec_apply_config(struct comp_dev *dev)
+static int cadence_codec_reset(struct comp_dev *dev)
 {
-	return apply_config(dev, CODEC_CFG_RUNTIME);
-}
-
-int cadence_codec_reset(struct comp_dev *dev)
-{
+	struct module_data *codec = comp_get_module_data(dev);
+	struct cadence_codec_data *cd = codec->private;
 	int ret;
 
-	/* Current CADENCE API doesn't support reset of codec's
-	 * runtime parameters therefore we need to free all the resources
-	 * and start over.
+	/*
+	 * Current CADENCE API doesn't support reset of codec's runtime parameters.
+	 * So, free all memory associated with runtime params. These will be reallocated during
+	 * prepare.
 	 */
-	codec_free_all_memory(dev);
-	ret = cadence_codec_init(dev);
-	if (ret) {
-		comp_err(dev, "cadence_codec_reset() error %x: could not re-initialize codec after reset",
-			ret);
-	}
+	module_free_all_memory(dev);
+
+	/* reset to default params */
+	API_CALL(cd, XA_API_CMD_INIT, XA_CMD_TYPE_INIT_API_PRE_CONFIG_PARAMS, NULL, ret);
+	if (ret != LIB_NO_ERROR)
+		return ret;
 
 	ret = cadence_codec_prepare(dev);
 	if (ret) {
@@ -573,13 +574,19 @@ int cadence_codec_reset(struct comp_dev *dev)
 	return ret;
 }
 
-int cadence_codec_free(struct comp_dev *dev)
+static int cadence_codec_free(struct comp_dev *dev)
 {
-	codec_free_all_memory(dev);
+	struct module_data *codec = comp_get_module_data(dev);
+	struct cadence_codec_data *cd = codec->private;
+
+	rfree(cd->setup_cfg.data);
+	module_free_all_memory(dev);
+	rfree(cd->self);
+	rfree(cd);
 	return 0;
 }
 
-static struct codec_interface cadence_interface = {
+static struct module_interface cadence_interface = {
 	.init  = cadence_codec_init,
 	.prepare = cadence_codec_prepare,
 	.process = cadence_codec_process,
