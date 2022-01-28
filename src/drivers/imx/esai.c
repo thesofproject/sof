@@ -369,7 +369,7 @@ static int esai_get_handshake(struct dai *dai, int direction, int stream_id)
 	int channel = EDMA_HS_GET_CHAN(handshake);
 	int irq = irqstr_get_sof_int(EDMA_HS_GET_IRQ(handshake));
 
-	return EDMA_HANDSHAKE(irq, channel);
+	return EDMA_HANDSHAKE(irq, channel, 0);
 }
 
 static int esai_get_fifo(struct dai *dai, int direction, int stream_id)
