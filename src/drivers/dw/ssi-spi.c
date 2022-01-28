@@ -170,9 +170,7 @@ static void spi_stop(struct spi *spi)
 
 static void delay(unsigned int ms)
 {
-	uint64_t tick = clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, ms);
-
-	wait_delay(tick);
+	wait_delay_ms(ms);
 }
 
 static int spi_trigger(struct spi *spi, int cmd, int direction)
