@@ -424,8 +424,7 @@ int pipeline_trigger_run(struct pipeline *p, struct comp_dev *host, int cmd)
 		list_init(&walk_ctx.pipelines);
 
 		if (data.delay_ms)
-			wait_delay(clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK,
-						     data.delay_ms));
+			wait_delay_ms(data.delay_ms);
 
 		ret = walk_ctx.comp_func(host, NULL, &walk_ctx, host->direction);
 		if (ret < 0)
