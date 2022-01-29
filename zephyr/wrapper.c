@@ -541,7 +541,7 @@ void sys_comp_smart_amp_init(void);
  * sof-logger. This makes smex fail. Define at least one such section to
  * fix the build when sof-logger is not used.
  */
-static const void *smex_placeholder_f(void)
+static inline const void *smex_placeholder_f(void)
 {
 	_DECLARE_LOG_ENTRY(LOG_LEVEL_DEBUG,
 			   "placeholder so .static_log.X are not all empty",
@@ -550,10 +550,10 @@ static const void *smex_placeholder_f(void)
 	return &log_entry;
 }
 
-/* Need to actually use the function and store a reference to the log entry
- * otherwise the compiler optimizes everything away.
+/* Need to actually use the function and export something otherwise the
+ * compiler optimizes everything away.
  */
-static const void *_smex_placeholder;
+const void *_smex_placeholder;
 
 int task_main_start(struct sof *sof)
 {
