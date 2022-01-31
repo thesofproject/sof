@@ -719,14 +719,22 @@ static FUNC_NORETURN void secondary_init(void *arg)
 
 int arch_cpu_enable_core(int id)
 {
-	atomic_clear(&start_flag);
-
-	/* Power up secondary core */
 	pm_runtime_get(PM_RUNTIME_DSP, PWRD_BY_TPLG | id);
 
+	return 0;
+}
+
+int z_wrapper_cpu_enable_secondary_core(int id)
+{
+	/*
+	 * This is an open-coded version of zephyr/kernel/smp.c
+	 * z_smp_start_cpu(). We do this, so we can use a customized
+	 * secondary_init() for SOF.
+	 */
+
+	atomic_clear(&start_flag);
 	arch_start_cpu(id, z_interrupt_stacks[id], CONFIG_ISR_STACK_SIZE,
 		       secondary_init, &start_flag);
-
 	atomic_set(&start_flag, 1);
 
 	return 0;
