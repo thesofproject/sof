@@ -175,8 +175,24 @@ int codec_adapter_prepare(struct comp_dev *dev)
 	if (md->mpd.in_buff_size != mod->period_bytes)
 		mod->deep_buff_bytes = MIN(mod->period_bytes, md->mpd.in_buff_size) * buff_periods;
 
-	/* Allocate local buffer */
+	if (md->mpd.out_buff_size > mod->period_bytes) {
+		buff_periods = (md->mpd.out_buff_size % mod->period_bytes) ?
+			       (md->mpd.out_buff_size / mod->period_bytes) + 2 :
+			       (md->mpd.out_buff_size / mod->period_bytes) + 1;
+	} else {
+		buff_periods = (mod->period_bytes % md->mpd.out_buff_size) ?
+			       (mod->period_bytes / md->mpd.out_buff_size) + 2 :
+			       (mod->period_bytes / md->mpd.out_buff_size) + 1;
+	}
+
+	/*
+	 * It is possible that the module process() will produce more data than period_bytes but
+	 * the DAI can consume only period_bytes every period. So, the local buffer needs to be
+	 * large enough to save the produced output samples.
+	 */
 	buff_size = MAX(mod->period_bytes, md->mpd.out_buff_size) * buff_periods;
+
+	/* Allocate local buffer */
 	if (mod->local_buff) {
 		ret = buffer_set_size(mod->local_buff, buff_size);
 		if (ret < 0) {
