@@ -163,8 +163,15 @@ int codec_adapter_prepare(struct comp_dev *dev)
 			       (mod->period_bytes / md->mpd.in_buff_size) + 1;
 	}
 
+	/*
+	 * deep_buffer_bytes is a measure of how many bytes we need to send to the DAI before
+	 * the module starts producing samples. In a normal copy() walk it might be possible that
+	 * the first period_bytes copied to input_buffer might not be enough for the processing
+	 * to begin. So, in order to prevent the DAI from starving, it needs to be fed zeroes until
+	 * the module starts processing and generating output samples.
+	 */
 	if (md->mpd.in_buff_size != mod->period_bytes)
-		mod->deep_buff_bytes = mod->period_bytes * buff_periods;
+		mod->deep_buff_bytes = MIN(mod->period_bytes, md->mpd.in_buff_size) * buff_periods;
 
 	/* Allocate local buffer */
 	buff_size = MAX(mod->period_bytes, md->mpd.out_buff_size) * buff_periods;
