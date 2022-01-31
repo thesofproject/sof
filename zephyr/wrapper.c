@@ -699,11 +699,22 @@ void platform_dai_wallclock(struct comp_dev *dai, uint64_t *wallclock)
 #if CONFIG_MULTICORE && CONFIG_SMP
 static atomic_t start_flag;
 
+/* Zephyr kernel_internal.h interface */
+void smp_timer_init(void);
+
 static FUNC_NORETURN void secondary_init(void *arg)
 {
 	struct k_thread dummy_thread;
 
+	/*
+	 * This is an open-coded version of zephyr/kernel/smp.c
+	 * smp_init_top(). We do this so that we can call SOF
+	 * secondary_core_init() for each core.
+	 */
+
 	z_smp_thread_init(arg, &dummy_thread);
+	smp_timer_init();
+
 	secondary_core_init(sof_get());
 
 #ifdef CONFIG_THREAD_STACK_INFO
