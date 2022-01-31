@@ -32,6 +32,7 @@
 
 #define ACP_TIMER                                     0x1241874
 #define ACP_TIMER_CNTL                                0x1241878
+#define ACP_AXI2DAGB_SEM_0			      0x1241880
 
 #define ACP_SRBM_CLIENT_BASE_ADDR                     0x1241BBC
 #define ACP_SRBM_Client_RDDATA                        0x1241BC0
