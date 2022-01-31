@@ -108,9 +108,7 @@ int codec_adapter_prepare(struct comp_dev *dev)
 	int ret;
 	struct processing_module *mod = comp_get_drvdata(dev);
 	struct module_data *md = &mod->priv;
-	uint32_t buff_periods = 2; /* default periods of local buffer,
-				    * may change if case of deep buffering
-				    */
+	uint32_t buff_periods;
 	uint32_t buff_size; /* size of local buffer */
 
 	comp_dbg(dev, "codec_adapter_prepare() start");
@@ -148,6 +146,8 @@ int codec_adapter_prepare(struct comp_dev *dev)
 		return -EIO;
 	}
 
+	mod->deep_buff_bytes = 0;
+
 	/* Codec is prepared, now we need to configure processing settings.
 	 * If codec internal buffer is not equal to natural multiple of pipeline
 	 * buffer we have a situation where CA have to deep buffer certain amount
@@ -155,21 +155,18 @@ int codec_adapter_prepare(struct comp_dev *dev)
 	 * generate output once started (same situation happens for compress streams
 	 * as well).
 	 */
-	if (md->mpd.in_buff_size != mod->period_bytes) {
-		if (md->mpd.in_buff_size > mod->period_bytes) {
-			buff_periods = (md->mpd.in_buff_size % mod->period_bytes) ?
-				       (md->mpd.in_buff_size / mod->period_bytes) + 2 :
-				       (md->mpd.in_buff_size / mod->period_bytes) + 1;
-		} else {
-			buff_periods = (mod->period_bytes % md->mpd.in_buff_size) ?
-				       (mod->period_bytes / md->mpd.in_buff_size) + 2 :
-				       (mod->period_bytes / md->mpd.in_buff_size) + 1;
-		}
-
-		mod->deep_buff_bytes = mod->period_bytes * buff_periods;
+	if (md->mpd.in_buff_size > mod->period_bytes) {
+		buff_periods = (md->mpd.in_buff_size % mod->period_bytes) ?
+			       (md->mpd.in_buff_size / mod->period_bytes) + 2 :
+			       (md->mpd.in_buff_size / mod->period_bytes) + 1;
 	} else {
-		mod->deep_buff_bytes = 0;
+		buff_periods = (mod->period_bytes % md->mpd.in_buff_size) ?
+			       (mod->period_bytes / md->mpd.in_buff_size) + 2 :
+			       (mod->period_bytes / md->mpd.in_buff_size) + 1;
 	}
+
+	if (md->mpd.in_buff_size != mod->period_bytes)
+		mod->deep_buff_bytes = mod->period_bytes * buff_periods;
 
 	/* Allocate local buffer */
 	buff_size = MAX(mod->period_bytes, md->mpd.out_buff_size) * buff_periods;
