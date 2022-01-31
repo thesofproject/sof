@@ -46,6 +46,13 @@ DECLARE_SOF_UUID("power", power_uuid, 0x76cc9773, 0x440c, 0x4df9,
 
 DECLARE_TR_CTX(power_tr, SOF_UUID(power_uuid), LOG_LEVEL_INFO);
 
+/*
+ * To support Zephyr, some adaptation is needed to the driver.
+ */
+#ifdef __ZEPHYR__
+extern int z_wrapper_cpu_enable_secondary_core(int id);
+#endif
+
 /**
  * \brief Registers Host DMA usage that should not trigger
  * transition to L0 via forced L1 exit.
@@ -420,10 +427,18 @@ static inline void cavs_pm_runtime_dis_dsp_pg(uint32_t index)
 		lps_ctl |= SHIM_LPSCTL_FDSPRUN;
 		shim_write(SHIM_LPSCTL, lps_ctl);
 	} else {
+#ifdef __ZEPHYR__
+		/*
+		 * In Zephyr secondary power-up needs to go via Zephyr
+		 * SMP kernel core, so we can't program PWRCTL directly here.
+		 */
+		z_wrapper_cpu_enable_secondary_core(index);
+#else
 		/* Secondary core power up */
 		shim_write16(SHIM_PWRCTL, shim_read16(SHIM_PWRCTL) |
 			     SHIM_PWRCTL_TCPDSPPG(index) |
 			     SHIM_PWRCTL_TCPCTLPG);
+#endif
 
 		/* Waiting for power up */
 		while (((shim_read16(SHIM_PWRSTS) & SHIM_PWRCTL_TCPDSPPG(index)) !=
