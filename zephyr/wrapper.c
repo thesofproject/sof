@@ -25,6 +25,7 @@
 #include <device.h>
 #include <soc.h>
 #include <kernel.h>
+#include <version.h>
 
 #if !CONFIG_KERNEL_COHERENCE
 #include <arch/xtensa/cache.h>
@@ -767,6 +768,10 @@ int z_wrapper_cpu_enable_secondary_core(int id)
 
 	if (arch_cpu_active(id))
 		return 0;
+
+#if ZEPHYR_VERSION(3, 0, 99) <= ZEPHYR_VERSION_CODE
+	z_init_cpu(id);
+#endif
 
 	atomic_clear(&start_flag);
 	atomic_clear(&ready_flag);
