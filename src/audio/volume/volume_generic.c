@@ -55,22 +55,33 @@ static void vol_s24_to_s24(struct comp_dev *dev, struct audio_stream *sink,
 			   const struct audio_stream *source, uint32_t frames)
 {
 	struct vol_data *cd = comp_get_drvdata(dev);
-	int32_t *src;
-	int32_t *dest;
-	int32_t i;
-	uint32_t channel;
-	uint32_t buff_frag = 0;
+	int32_t vol;
+	int32_t *x, *x0;
+	int32_t *y, *y0;
+	int nmax, n, i, j;
+	const int nch = source->channels;
+	int remaining_samples = frames * nch;
 
-	/* Samples are Q1.23 --> Q1.23 and volume is Q8.16 */
-	for (i = 0; i < frames; i++) {
-		for (channel = 0; channel < sink->channels; channel++) {
-			src = audio_stream_read_frag_s32(source, buff_frag);
-			dest = audio_stream_write_frag_s32(sink, buff_frag);
-
-			*dest = vol_mult_s24_to_s24(*src, cd->volume[channel]);
-
-			buff_frag++;
+	x = source->r_ptr;
+	y = sink->w_ptr;
+	while (remaining_samples) {
+		nmax = VOL_BYTES_TO_S32_SAMPLES(audio_stream_bytes_without_wrap(source, x));
+		n = MIN(remaining_samples, nmax);
+		nmax = VOL_BYTES_TO_S32_SAMPLES(audio_stream_bytes_without_wrap(sink, y));
+		n = MIN(n, nmax);
+		for (j = 0; j < nch; j++) {
+			x0 = x + j;
+			y0 = y + j;
+			vol = cd->volume[j];
+			for (i = 0; i < n; i += nch) {
+				*y0 = vol_mult_s24_to_s24(*x0, vol);
+				x0 += nch;
+				y0 += nch;
+			}
 		}
+		remaining_samples -= n;
+		x = audio_stream_wrap(source, x + n);
+		y = audio_stream_wrap(sink, y + n);
 	}
 }
 #endif /* CONFIG_FORMAT_S24LE */
@@ -90,24 +101,36 @@ static void vol_s32_to_s32(struct comp_dev *dev, struct audio_stream *sink,
 			   const struct audio_stream *source, uint32_t frames)
 {
 	struct vol_data *cd = comp_get_drvdata(dev);
-	int32_t *src;
-	int32_t *dest;
-	int32_t i;
-	uint32_t channel;
-	uint32_t buff_frag = 0;
+	int32_t vol;
+	int32_t *x, *x0;
+	int32_t *y, *y0;
+	int nmax, n, i, j;
+	const int nch = source->channels;
+	int remaining_samples = frames * nch;
 
-	/* Samples are Q1.31 --> Q1.31 and volume is Q8.16 */
-	for (i = 0; i < frames; i++) {
-		for (channel = 0; channel < sink->channels; channel++) {
-			src = audio_stream_read_frag_s32(source, buff_frag);
-			dest = audio_stream_write_frag_s32(sink, buff_frag);
-
-			*dest = q_multsr_sat_32x32
-				(*src, cd->volume[channel],
-				 Q_SHIFT_BITS_64(31, 16, 31));
-
-			buff_frag++;
+	x = source->r_ptr;
+	y = sink->w_ptr;
+	while (remaining_samples) {
+		nmax = VOL_BYTES_TO_S32_SAMPLES(audio_stream_bytes_without_wrap(source, x));
+		n = MIN(remaining_samples, nmax);
+		nmax = VOL_BYTES_TO_S32_SAMPLES(audio_stream_bytes_without_wrap(sink, y));
+		n = MIN(n, nmax);
+		/* Note: on Xtensa processing one channel volume at time performed slightly
+		 * better than simpler interleaved code version (average 19 us vs. 20 us).
+		 */
+		for (j = 0; j < nch; j++) {
+			x0 = x + j;
+			y0 = y + j;
+			vol = cd->volume[j];
+			for (i = 0; i < n; i += nch) {
+				*y0 = q_multsr_sat_32x32(*x0, vol, Q_SHIFT_BITS_64(31, 16, 31));
+				x0 += nch;
+				y0 += nch;
+			}
 		}
+		remaining_samples -= n;
+		x = audio_stream_wrap(source, x + n);
+		y = audio_stream_wrap(sink, y + n);
 	}
 }
 #endif /* CONFIG_FORMAT_S32LE */
@@ -127,24 +150,33 @@ static void vol_s16_to_s16(struct comp_dev *dev, struct audio_stream *sink,
 			   const struct audio_stream *source, uint32_t frames)
 {
 	struct vol_data *cd = comp_get_drvdata(dev);
-	int16_t *src;
-	int16_t *dest;
-	int32_t i;
-	uint32_t channel;
-	uint32_t buff_frag = 0;
+	int32_t vol;
+	int16_t *x, *x0;
+	int16_t *y, *y0;
+	int nmax, n, i, j;
+	const int nch = source->channels;
+	int remaining_samples = frames * nch;
 
-	/* Samples are Q1.15 --> Q1.15 and volume is Q8.16 */
-	for (i = 0; i < frames; i++) {
-		for (channel = 0; channel < sink->channels; channel++) {
-			src = audio_stream_read_frag_s16(source, buff_frag);
-			dest = audio_stream_write_frag_s16(sink, buff_frag);
-
-			*dest = q_multsr_sat_32x32_16
-				(*src, cd->volume[channel],
-				 Q_SHIFT_BITS_32(15, 16, 15));
-
-			buff_frag++;
+	x = source->r_ptr;
+	y = sink->w_ptr;
+	while (remaining_samples) {
+		nmax = VOL_BYTES_TO_S16_SAMPLES(audio_stream_bytes_without_wrap(source, x));
+		n = MIN(remaining_samples, nmax);
+		nmax = VOL_BYTES_TO_S16_SAMPLES(audio_stream_bytes_without_wrap(sink, y));
+		n = MIN(n, nmax);
+		for (j = 0; j < nch; j++) {
+			x0 = x + j;
+			y0 = y + j;
+			vol = cd->volume[j];
+			for (i = 0; i < n; i += nch) {
+				*y0 = q_multsr_sat_32x32_16(*x0, vol, Q_SHIFT_BITS_32(15, 16, 15));
+				x0 += nch;
+				y0 += nch;
+			}
 		}
+		remaining_samples -= n;
+		x = audio_stream_wrap(source, x + n);
+		y = audio_stream_wrap(sink, y + n);
 	}
 }
 #endif /* CONFIG_FORMAT_S16LE */
