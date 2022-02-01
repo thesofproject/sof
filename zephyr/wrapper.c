@@ -746,7 +746,12 @@ int arch_cpu_secondary_cores_prepare_d0ix(void)
 
 void arch_cpu_disable_core(int id)
 {
-	/* TODO: call Zephyr API */
+	/*
+	 * As long as DSP core reference count is handled
+	 * with SOF runtime-PM driver, we need to disable
+	 * a core via RPM.
+	 */
+	pm_runtime_put(PM_RUNTIME_DSP, PWRD_BY_TPLG | id);
 }
 
 int arch_cpu_is_core_enabled(int id)
