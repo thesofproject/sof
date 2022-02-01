@@ -75,6 +75,10 @@ struct sof_ipc_ctrl_value_chan;
 /** \brief Volume minimum value. */
 #define VOL_MIN		0
 
+/** \brief Macros to convert without division bytes count to samples count */
+#define VOL_BYTES_TO_S16_SAMPLES(b)	((b) >> 1)
+#define VOL_BYTES_TO_S32_SAMPLES(b)	((b) >> 2)
+
 /**
  * \brief volume processing function interface
  */
