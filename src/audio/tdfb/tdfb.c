@@ -4,6 +4,11 @@
 //
 // Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 
+/* Note: The script tools/tune/tdfb/example_all.sh can be used to re-calculate
+ * all the beamformer topology data files if need. It also creates the additional
+ * data files for simulated tests with testbench. Matlab or Octave is needed.
+ */
+
 #include <ipc/control.h>
 #include <ipc/stream.h>
 #include <ipc/topology.h>
