@@ -212,6 +212,7 @@ set(TPLGS
 	"sof-imx8mp-wm8960\;sof-imx8mp-eq-iir-wm8960\;-DPPROC=eq-iir-volume"
 	"sof-imx8mp-wm8960\;sof-imx8mp-eq-fir-wm8960\;-DPPROC=eq-fir-volume"
 	"sof-imx8mp-wm8960\;sof-imx8mp-drc-wm8960\;-DPPROC=drc"
+	"sof-imx8mp-wm8904\;sof-imx8mp-wm8904\;-DPPROC=volume"
 
 	"sof-mt8195-mt6359-rt1019-rt5682\;sof-mt8195-mt6359-rt1019-rt5682"
 	"sof-mt8195-mt6359-rt1019-rt5682\;sof-mt8195-mt6359-rt1019-rt5682-dts\;-DDTS=`DTS'"
