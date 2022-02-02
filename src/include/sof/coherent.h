@@ -171,41 +171,41 @@ static inline struct coherent *coherent_release_irq(struct coherent *c, const si
 	return cache_to_uncache(c);
 }
 
-#define coherent_init(object, member)			\
-	do {	\
+#define coherent_init(object, member)						\
+	do {									\
 		/* assert if someone passes a cache/local address in here. */	\
 		ADDR_IS_COHERENT(object);					\
 		/* TODO static assert if we are not cache aligned */		\
 		spinlock_init(&object->member.lock);				\
-		object->member.shared = false;				\
+		object->member.shared = false;					\
 		object->member.core = cpu_get_id();				\
 		list_init(&object->member.list);				\
 		/* inv local data to coherent object */				\
 		dcache_invalidate_region(uncache_to_cache(object), sizeof(*object)); \
 	} while (0)
 
-#define coherent_free(object, member)			\
-	do { \
-		/* assert if someone passes a cache address in here. */	\
+#define coherent_free(object, member)						\
+	do {									\
+		/* assert if someone passes a cache address in here. */		\
 		ADDR_IS_COHERENT(object);					\
 		/* wtb and inv local data to coherent object */			\
 		dcache_writeback_invalidate_region(uncache_to_cache(object), sizeof(*object)); \
 	} while (0)
 
 /* set the object to shared mode with coherency managed by SW */
-#define coherent_shared(object, member)					\
-	do { \
+#define coherent_shared(object, member)						\
+	do {									\
 		/* assert if someone passes a cache/local address in here. */	\
 		ADDR_IS_COHERENT(object);					\
 		spin_lock(&(object)->member.lock);				\
 		(object)->member.shared = true;					\
 		dcache_invalidate_region(object, sizeof(*object));		\
-		spin_unlock(&(object)->member.lock); \
+		spin_unlock(&(object)->member.lock);				\
 	} while (0)
 
 /* set the object to shared mode with coherency managed by SW */
-#define coherent_shared_irq(object, member)				\
-	do { \
+#define coherent_shared_irq(object, member)					\
+	do {									\
 		/* assert if someone passes a cache/local address in here. */	\
 		ADDR_IS_COHERENT(object);					\
 		spin_lock_irq(&(object)->member.lock, &(object)->member.flags);	\
@@ -267,8 +267,8 @@ static inline struct coherent *coherent_release_irq(struct coherent *c, const si
 	return c;
 }
 
-#define coherent_init(object, member)					\
-	do { \
+#define coherent_init(object, member)						\
+	do {									\
 		/* TODO static assert if we are not cache aligned */		\
 		spinlock_init(&object->member.lock);				\
 		object->member.shared = 0;					\
