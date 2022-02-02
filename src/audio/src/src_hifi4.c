@@ -10,6 +10,7 @@
 
 #if SRC_HIFI4
 
+#include <sof/math/numbers.h>
 #include <sof/audio/src/src.h>
 #include <xtensa/config/defs.h>
 #include <xtensa/tie/xt_hifi4.h>
