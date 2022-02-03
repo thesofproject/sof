@@ -186,18 +186,33 @@ static int parse_libraries(char *libs)
 /* print usage for testbench */
 static void print_usage(char *executable)
 {
-	printf("Usage: %s -i <input_file> ", executable);
-	printf("-o <output_file1,output_file2,...> ");
-	printf("-t <tplg_file> -b <input_format> -c <channels>");
-	printf("-a <comp1=comp1_library,comp2=comp2_library>\n");
-	printf("   input_format should be S16_LE, S32_LE, S24_LE or FLOAT_LE\n\n");
+	printf("Usage: %s <options> -i <input_file> ", executable);
+	printf("-o <output_file1,output_file2,...>\n\n");
+	printf("Options for processing:\n");
+	printf("  -t <topology file>\n");
+	printf("  -a <comp1=comp1_library,comp2=comp2_library>, override default library\n\n");
+	printf("Options to control test:\n");
+	printf("  -d Run in debug mode\n");
+	printf("  -q Run in quiet mode, suppress traces output\n");
+	printf("  -p <pipeline1,pipeline2,...>\n");
+	printf("  -s Use real time priorities for threads (needs sudo)\n");
+	printf("  -C <number of copy() iterations>\n");
+	printf("  -D <pipeline duration in ms>\n");
+	printf("  -P <number of dynamic pipeline iterations>\n");
+	printf("  -T <microseconds for tick, 0 for batch mode>\n");
+	printf("  -V <number of virtual cores>\n\n");
+	printf("Options for input and output format override:\n");
+	printf("  -b <input_format>, S16_LE, S24_LE, or S32_LE\n");
+	printf("  -c <input channels>\n");
+	printf("  -n <output channels>\n");
+	printf("  -r <input rate>\n");
+	printf("  -R <output rate>\n\n");
+	printf("Help:\n");
+	printf("  -h\n\n");
 	printf("Example Usage:\n");
 	printf("%s -i in.txt -o out.txt -t test.tplg ", executable);
 	printf("-r 48000 -R 96000 -c 2 ");
 	printf("-b S16_LE -a volume=libsof_volume.so\n");
-	printf("-C number of copy() iterations\n");
-	printf("-P number of dynamic pipeline iterations\n");
-	printf("-s Use real time priorities for threads (needs sudo)\n");
 }
 
 /* free components */
@@ -411,7 +426,7 @@ static int parse_input_args(int argc, char **argv, struct testbench_prm *tp)
 			ret = parse_pipelines(optarg, tp);
 			break;
 
-		/* ticks per millisec, 0 = realtime (tickless) */
+		/* Microseconds for tick, 0 = batch (tickless) */
 		case 'T':
 			tp->tick_period_us = atoi(optarg);
 			break;
@@ -428,7 +443,7 @@ static int parse_input_args(int argc, char **argv, struct testbench_prm *tp)
 			__attribute__ ((fallthrough));
 		case 'h':
 			print_usage(argv[0]);
-			return ret;
+			exit(EXIT_SUCCESS);
 		}
 
 		if (ret < 0)
