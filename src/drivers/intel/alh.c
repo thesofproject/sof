@@ -26,6 +26,20 @@ DECLARE_SOF_UUID("alh-dai", alh_uuid, 0xa8e4218c, 0xe863, 0x4c93,
 
 DECLARE_TR_CTX(alh_tr, SOF_UUID(alh_uuid), LOG_LEVEL_INFO);
 
+#if CONFIG_ACE
+static void alh_claim_ownership(void)
+{
+	io_reg_write(ALHASCTL, io_reg_read(ALHASCTL) | ALHASCTL_OSEL(0x3));
+	io_reg_write(ALHCSCTL, io_reg_read(ALHCSCTL) | ALHCSCTL_OSEL(0x3));
+}
+
+static void alh_release_ownership(void)
+{
+	io_reg_write(ALHASCTL, io_reg_read(ALHASCTL) | ALHASCTL_OSEL(0));
+	io_reg_write(ALHCSCTL, io_reg_read(ALHCSCTL) | ALHCSCTL_OSEL(0));
+}
+#endif /* CONFIG_ACE */
+
 static int alh_trigger(struct dai *dai, int cmd, int direction)
 {
 	dai_info(dai, "alh_trigger() cmd %d", cmd);
@@ -76,6 +90,9 @@ static int alh_set_config_blob(struct dai *dai, struct ipc_config_dai *common_co
 		}
 	}
 
+#if CONFIG_ACE
+	alh_claim_ownership();
+#endif
 	return 0;
 }
 
@@ -128,6 +145,9 @@ static int alh_probe(struct dai *dai)
 static int alh_remove(struct dai *dai)
 {
 	dai_info(dai, "alh_remove()");
+#if CONFIG_ACE
+	alh_release_ownership();
+#endif
 
 	rfree(dai_get_drvdata(dai));
 	dai_set_drvdata(dai, NULL);
