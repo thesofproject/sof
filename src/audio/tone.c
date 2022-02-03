@@ -440,8 +440,8 @@ static int tone_params(struct comp_dev *dev,
 	if (dev->ipc_config.frame_fmt != SOF_IPC_FRAME_S32_LE)
 		return -EINVAL;
 
-	sourceb = buffer_acquire_irq(sourceb);
-	sinkb = buffer_acquire_irq(sinkb);
+	sourceb = buffer_acquire(sourceb);
+	sinkb = buffer_acquire(sinkb);
 
 	sourceb->stream.frame_fmt = dev->ipc_config.frame_fmt;
 	sinkb->stream.frame_fmt = dev->ipc_config.frame_fmt;
@@ -450,8 +450,8 @@ static int tone_params(struct comp_dev *dev,
 	cd->period_bytes = dev->frames *
 			   audio_stream_frame_bytes(&sourceb->stream);
 
-	sinkb = buffer_release_irq(sinkb);
-	sourceb = buffer_release_irq(sourceb);
+	sinkb = buffer_release(sinkb);
+	sourceb = buffer_release(sourceb);
 
 	return 0;
 }
@@ -639,9 +639,9 @@ static int tone_copy(struct comp_dev *dev)
 	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
 			       source_list);
 
-	sink = buffer_acquire_irq(sink);
+	sink = buffer_acquire(sink);
 	free = audio_stream_get_free_bytes(&sink->stream);
-	sink = buffer_release_irq(sink);
+	sink = buffer_release(sink);
 
 	/* Test that sink has enough free frames. Then run once to maintain
 	 * low latency and steady load for tones.

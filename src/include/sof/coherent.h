@@ -35,16 +35,15 @@
  * as that memory was never accessed by other cores, except by using this API.
  * The first call must be coherent_init(), which initializes the header. If the
  * object will be used by multiple cores, next coherent_shared() must be called.
- * After that to use that memory, coherent_acquire_irq() or coherent_acquire()
- * must be called, which acquires ownership of the object and returns a cached
- * address of the memory. After that the user can perform cached access to the
- * memory. To release the memory, one of coherent_release_irq() or
- * coherent_release() must be called. The only time when the memory is accessed
- * using cache is between those two calls, so only when releasing the memory we
- * have to write back and invalidate caches to make sure, that next time we
- * acquire this memory, our uncached header access will not be overwritten! When
- * memory is not needed any more, typically before freeing the memory,
- * coherent_free() should be called.
+ * After that to use that memory, coherent_acquire() must be called, which
+ * acquires ownership of the object and returns a cached address of the memory.
+ * After that the user can perform cached access to the memory. To release the
+ * memory,  coherent_release() must be called. The only time when the memory is
+ * accessed using cache is between those two calls, so only when releasing the
+ * memory we have to write back and invalidate caches to make sure, that next
+ * time we acquire this memory, our uncached header access will not be
+ * overwritten! When memory is not needed any more, typically before freeing the
+ * memory, coherent_free() should be called.
  *
  * This structure needs to be embedded at the start of any container to ensure
  * container object cache alignment and to minimise non cache access when
@@ -77,13 +76,6 @@ struct coherent {
 #define CHECK_COHERENT_CORE(_c)
 #endif
 
-/* debug usage in IRQ contexts - check non IRQ being used in IRQ context TODO */
-#ifdef COHERENT_CHECK_IN_IRQ
-#define CHECK_COHERENT_IRQ(_c) assert(1)
-#else
-#define CHECK_COHERENT_IRQ(_c)
-#endif
-
 #if CONFIG_INCOHERENT
 /* When coherent_acquire() is called, we are sure not to have cache for this memory */
 __must_check static inline struct coherent *coherent_acquire(struct coherent *c,
@@ -91,9 +83,6 @@ __must_check static inline struct coherent *coherent_acquire(struct coherent *c,
 {
 	/* assert if someone passes a cache/local address in here. */
 	ADDR_IS_COHERENT(c);
-
-	/* this flavour should not be used in IRQ context */
-	CHECK_COHERENT_IRQ(c);
 
 	/* access the shared coherent object */
 	if (c->shared) {
@@ -110,48 +99,6 @@ __must_check static inline struct coherent *coherent_acquire(struct coherent *c,
 }
 
 static inline struct coherent *coherent_release(struct coherent *c, const size_t size)
-{
-	/* assert if someone passes a coherent address in here. */
-	ADDR_IS_INCOHERENT(c);
-
-	/* this flavour should not be used in IRQ context */
-	CHECK_COHERENT_IRQ(c);
-
-	/* access the local copy of object */
-	if (c->shared) {
-		CHECK_COHERENT_CORE(c);
-
-		/* wtb and inv local data to coherent object */
-		dcache_writeback_invalidate_region(c, size);
-
-		/* unlock on uncache alias */
-		k_spin_unlock(&cache_to_uncache(c)->lock, cache_to_uncache(c)->key);
-	}
-
-	return cache_to_uncache(c);
-}
-
-__must_check static inline struct coherent *coherent_acquire_irq(struct coherent *c,
-								 const size_t size)
-{
-	/* assert if someone passes a cache/local address in here. */
-	ADDR_IS_COHERENT(c);
-
-	/* access the shared coherent object */
-	if (c->shared) {
-		CHECK_COHERENT_CORE(c);
-
-		c->key = k_spin_lock(&c->lock);
-
-		/* invalidate local copy */
-		dcache_invalidate_region(uncache_to_cache(c), size);
-	}
-
-	/* client can now use cached object safely */
-	return uncache_to_cache(c);
-}
-
-static inline struct coherent *coherent_release_irq(struct coherent *c, const size_t size)
 {
 	/* assert if someone passes a coherent address in here. */
 	ADDR_IS_INCOHERENT(c);
@@ -201,17 +148,6 @@ static inline struct coherent *coherent_release_irq(struct coherent *c, const si
 		dcache_invalidate_region(object, sizeof(*object));		\
 		k_spin_unlock(&(object)->member.lock, (object)->member.key);	\
 	} while (0)
-
-/* set the object to shared mode with coherency managed by SW */
-#define coherent_shared_irq(object, member)					\
-	do {									\
-		/* assert if someone passes a cache/local address in here. */	\
-		ADDR_IS_COHERENT(object);					\
-		(object)->member.key = k_spin_lock(&(object)->member.lock);	\
-		(object)->member.shared = true;					\
-		dcache_invalidate_region(object, sizeof(*object));		\
-		k_spin_unlock(&(object)->member.lock, &(object)->member.key);	\
-	} while (0)
 #else
 
 /*
@@ -241,31 +177,6 @@ static inline struct coherent *coherent_release(struct coherent *c, const size_t
 	return c;
 }
 
-__must_check static inline struct coherent *coherent_acquire_irq(struct coherent *c,
-								 const size_t size)
-{
-	if (c->shared) {
-		c->key = k_spin_lock(&c->lock);
-
-		/* invalidate local copy */
-		dcache_invalidate_region(uncache_to_cache(c), size);
-	}
-
-	return c;
-}
-
-static inline struct coherent *coherent_release_irq(struct coherent *c, const size_t size)
-{
-	if (c->shared) {
-		/* wtb and inv local data to coherent object */
-		dcache_writeback_invalidate_region(uncache_to_cache(c), size);
-
-		k_spin_unlock(&c->lock, c->key);
-	}
-
-	return c;
-}
-
 #define coherent_init(object, member)						\
 	do {									\
 		/* TODO static assert if we are not cache aligned */		\
@@ -279,7 +190,6 @@ static inline struct coherent *coherent_release_irq(struct coherent *c, const si
 
 /* no function on cache coherent architectures */
 #define coherent_shared(object, member) ((object)->member.shared = true)
-#define coherent_shared_irq(object, member) ((object)->member.shared = true)
 
 #endif /* CONFIG_CAVS && CONFIG_CORE_COUNT > 1 */
 

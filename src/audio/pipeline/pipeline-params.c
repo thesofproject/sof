@@ -56,11 +56,11 @@ static int pipeline_comp_params_neg(struct comp_dev *current,
 	 * should explicitly configure the channels of the branched buffers.
 	 */
 	if (calling_buf) {
-		calling_buf = buffer_acquire_irq(calling_buf);
+		calling_buf = buffer_acquire(calling_buf);
 		err = buffer_set_params(calling_buf,
 					&ppl_data->params->params,
 					BUFFER_UPDATE_FORCE);
-		calling_buf = buffer_release_irq(calling_buf);
+		calling_buf = buffer_release(calling_buf);
 	}
 
 	return err;
@@ -170,10 +170,10 @@ static int pipeline_comp_hw_params(struct comp_dev *current,
 
 	/* set buffer parameters */
 	if (calling_buf) {
-		calling_buf = buffer_acquire_irq(calling_buf);
+		calling_buf = buffer_acquire(calling_buf);
 		ret = buffer_set_params(calling_buf, &ppl_data->params->params,
 					BUFFER_UPDATE_IF_UNSET);
-		calling_buf = buffer_release_irq(calling_buf);
+		calling_buf = buffer_release(calling_buf);
 		if (ret < 0)
 			pipe_err(current->pipeline,
 				 "pipeline_comp_hw_params(): buffer_set_params(): %d", ret);

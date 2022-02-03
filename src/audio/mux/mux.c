@@ -438,7 +438,7 @@ static int demux_copy(struct comp_dev *dev)
 	// align sink streams with their respective configurations
 	list_for_item(clist, &dev->bsink_list) {
 		sink = container_of(clist, struct comp_buffer, source_list);
-		sink = buffer_acquire_irq(sink);
+		sink = buffer_acquire(sink);
 		if (sink->sink->state == dev->state) {
 			num_sinks++;
 			i = get_stream_index(cd, sink->pipeline_id);
@@ -449,7 +449,7 @@ static int demux_copy(struct comp_dev *dev)
 			sinks[i] = sink;
 			look_ups[i] = look_up;
 		}
-		sink = buffer_release_irq(sink);
+		sink = buffer_release(sink);
 	}
 
 	/* if there are no sinks active */
@@ -459,25 +459,25 @@ static int demux_copy(struct comp_dev *dev)
 	source = list_first_item(&dev->bsource_list, struct comp_buffer,
 				 sink_list);
 
-	source = buffer_acquire_irq(source);
+	source = buffer_acquire(source);
 
 	/* check if source is active */
 	if (source->source->state != dev->state) {
-		source = buffer_release_irq(source);
+		source = buffer_release(source);
 		return 0;
 	}
 
 	for (i = 0; i < MUX_MAX_STREAMS; i++) {
 		if (!sinks[i])
 			continue;
-		sinks[i] = buffer_acquire_irq(sinks[i]);
+		sinks[i] = buffer_acquire(sinks[i]);
 		avail = audio_stream_avail_frames(&source->stream,
 						  &sinks[i]->stream);
 		frames = MIN(frames, avail);
-		buffer_release_irq(sinks[i]);
+		buffer_release(sinks[i]);
 	}
 
-	source = buffer_release_irq(source);
+	source = buffer_release(source);
 
 	source_bytes = frames * audio_stream_frame_bytes(&source->stream);
 	for (i = 0; i < MUX_MAX_STREAMS; i++) {
@@ -537,7 +537,7 @@ static int mux_copy(struct comp_dev *dev)
 	/* align source streams with their respective configurations */
 	list_for_item(clist, &dev->bsource_list) {
 		source = container_of(clist, struct comp_buffer, sink_list);
-		source = buffer_acquire_irq(source);
+		source = buffer_acquire(source);
 		if (source->source->state == dev->state) {
 			num_sources++;
 			i = get_stream_index(cd, source->pipeline_id);
@@ -547,7 +547,7 @@ static int mux_copy(struct comp_dev *dev)
 			sources[i] = source;
 			sources_stream[i] = &source->stream;
 		} else {
-			source = buffer_release_irq(source);
+			source = buffer_release(source);
 		}
 	}
 
@@ -558,17 +558,17 @@ static int mux_copy(struct comp_dev *dev)
 	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
 			       source_list);
 
-	sink = buffer_acquire_irq(sink);
+	sink = buffer_acquire(sink);
 
 	/* check if sink is active */
 	if (sink->sink->state != dev->state) {
 		for (i = 0; i < MUX_MAX_STREAMS; i++) {
 			if (!sources[i])
 				continue;
-			buffer_release_irq(sources[i]);
+			buffer_release(sources[i]);
 		}
 
-		sink = buffer_release_irq(sink);
+		sink = buffer_release(sink);
 		return 0;
 	}
 
@@ -579,10 +579,10 @@ static int mux_copy(struct comp_dev *dev)
 		avail_frames = audio_stream_avail_frames(sources_stream[i],
 							 &sink->stream);
 		frames = MIN(frames, avail_frames);
-		sources[i] = buffer_release_irq(sources[i]);
+		sources[i] = buffer_release(sources[i]);
 	}
 
-	sink = buffer_release_irq(sink);
+	sink = buffer_release(sink);
 
 	for (i = 0; i < MUX_MAX_STREAMS; i++) {
 		if (!sources[i])

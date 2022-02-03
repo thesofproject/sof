@@ -795,13 +795,13 @@ void comp_get_copy_limits_with_lock(struct comp_buffer *source,
 				    struct comp_buffer *sink,
 				    struct comp_copy_limits *cl)
 {
-	source = buffer_acquire_irq(source);
-	sink = buffer_acquire_irq(sink);
+	source = buffer_acquire(source);
+	sink = buffer_acquire(sink);
 
 	comp_get_copy_limits(source, sink, cl);
 
-	source = buffer_release_irq(source);
-	sink = buffer_release_irq(sink);
+	source = buffer_release(source);
+	sink = buffer_release(sink);
 }
 
 /**

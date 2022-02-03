@@ -671,11 +671,11 @@ static int crossover_copy(struct comp_dev *dev)
 	else
 		num_sinks = num_assigned_sinks;
 
-	source = buffer_acquire_irq(source);
+	source = buffer_acquire(source);
 
 	/* Check if source is active */
 	if (source->source->state != dev->state) {
-		source = buffer_release_irq(source);
+		source = buffer_release(source);
 		return -EINVAL;
 	}
 
@@ -683,14 +683,14 @@ static int crossover_copy(struct comp_dev *dev)
 	for (i = 0; i < num_sinks; i++) {
 		if (!sinks[i])
 			continue;
-		sinks[i] = buffer_acquire_irq(sinks[i]);
+		sinks[i] = buffer_acquire(sinks[i]);
 		avail = audio_stream_avail_frames(&source->stream,
 						  &sinks[i]->stream);
 		frames = MIN(frames, avail);
-		buffer_release_irq(sinks[i]);
+		buffer_release(sinks[i]);
 	}
 
-	source = buffer_release_irq(source);
+	source = buffer_release(source);
 
 	source_bytes = frames * audio_stream_frame_bytes(&source->stream);
 
