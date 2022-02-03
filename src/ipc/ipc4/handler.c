@@ -554,7 +554,6 @@ static int ipc4_log_enable(union ipc4_message_header *ipc4)
 #endif
 	struct dma_trace_data *dmat = dma_trace_data_get();
 	struct sof_ipc_dma_trace_params_ext params;
-	struct timer *timer = timer_get();
 	int err = 0;
 
 	if (!dmat) {
@@ -583,7 +582,7 @@ static int ipc4_log_enable(union ipc4_message_header *ipc4)
 	 *else
 	 *timer->delta = 0;
 	 */
-		platform_timer_set_delta(timer, params.timestamp_ns);
+	dmat->time_delta = k_ns_to_cyc_near64(params.timestamp_ns) - sof_cycle_get_64();
 
 #if CONFIG_HOST_PTABLE
 	err = ipc_process_host_buffer(ipc, &params.buffer,

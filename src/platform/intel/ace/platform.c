@@ -267,6 +267,7 @@ const int n_iomux = ARRAY_SIZE(iomux_data);
 
 #endif /* CONFIG_DW_GPIO */
 
+#ifndef __ZEPHYR__
 static SHARED_DATA struct timer timer = {
 	.id = TIMER3, /* external timer */
 	.irq = IRQ_EXT_TSTAMP0_LVL2,
@@ -274,6 +275,7 @@ static SHARED_DATA struct timer timer = {
 };
 
 static SHARED_DATA struct timer arch_timers[CONFIG_CORE_COUNT];
+#endif
 
 #if CONFIG_DW_SPI
 
@@ -339,6 +341,7 @@ int platform_init(struct sof *sof)
 	struct spi *spi_dev;
 #endif /* CONFIG_DW_SPI */
 	int ret;
+#ifndef __ZEPHYR__
 	int i;
 
 	sof->platform_timer = cache_to_uncache(&timer);
@@ -349,6 +352,7 @@ int platform_init(struct sof *sof)
 			.id = TIMER1, /* internal timer */
 			.irq = IRQ_NUM_TIMER2,
 		};
+#endif
 
 	/* Turn off memory for all unused cores */
 	// TODO: to be enabled for MTL

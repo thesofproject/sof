@@ -3,9 +3,12 @@
 add_local_sources(sof
 	interrupt.c
 	ipc.c
-	timer.c
 	timestamp.c
 )
+
+if(NOT CONFIG_ZEPHYR_SOF_MODULE)
+	add_local_sources(sof timer.c)
+endif()
 
 if(CONFIG_MULTICORE)
 	add_local_sources(sof idc.c)
