@@ -99,6 +99,8 @@ define(DMIC_PIPELINE_KWD_ID, `12')
 define(DMIC_DAI_LINK_16k_ID, `2')
 define(DMIC_PIPELINE_48k_CORE_ID, `1')
 
+ifdef(`GOOGLE_RTC_AUDIO_PROCESSING', `define(`SPK_PLAYBACK_CORE', DMIC_PIPELINE_48k_CORE_ID)', `define(`SPK_PLAYBACK_CORE', `0')')
+
 # define pcm, pipeline and dai id
 define(KWD_PIPE_SCH_DEADLINE_US, 5000)
 # include the generic dmic with kwd
@@ -114,7 +116,7 @@ define(ENDPOINT_NAME, `Speakers')
 PIPELINE_PCM_ADD(
 	ifdef(`WAVES', sof/pipe-waves-codec-demux-playback.m4, sof/pipe-volume-demux-playback.m4),
 	1, 0, 2, s32le,
-	SPK_MIC_PERIOD_US, 0, 0,
+	SPK_MIC_PERIOD_US, 0, SPK_PLAYBACK_CORE,
 	48000, 48000, 48000)
 undefine(ENDPOINT_NAME)
 
@@ -176,7 +178,7 @@ dnl     frames, deadline, priority, core)
 DAI_ADD(sof/pipe-dai-playback.m4,
 	1, SSP, 1, SSP1-Codec,
 	PIPELINE_SOURCE_1, 2, FMT,
-	SPK_MIC_PERIOD_US, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
+	SPK_MIC_PERIOD_US, 0, SPK_PLAYBACK_CORE, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # currently this dai is here as "virtual" capture backend
 W_DAI_IN(SSP, 1, SSP1-Codec, FMT, 3, 0)
@@ -184,7 +186,7 @@ W_DAI_IN(SSP, 1, SSP1-Codec, FMT, 3, 0)
 # Capture pipeline 9 from demux on PCM 6 using max 2 channels of s32le.
 PIPELINE_PCM_ADD(sof/pipe-passthrough-capture-sched.m4,
 	9, 6, 2, s32le,
-	1000, 1, 0,
+	SPK_MIC_PERIOD_US, 1, SPK_PLAYBACK_CORE,
 	48000, 48000, 48000,
 	SCHEDULE_TIME_DOMAIN_TIMER,
 	PIPELINE_PLAYBACK_SCHED_COMP_1)
