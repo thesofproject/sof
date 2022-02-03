@@ -38,6 +38,26 @@ struct ll_vcore {
 
 static int tick_period_us;
 
+/**
+ * Implement an override of how cores defined in SOF topology
+ * are mapped to host cores.
+ *
+ * Returns the host core number to which SOF DSP core0 should
+ * be mapped to.
+ */
+static unsigned int sof_host_core_base(void)
+{
+	const char *host_core_env = getenv("SOF_HOST_CORE0");
+	unsigned int host_core = 0;
+
+	if (host_core_env) {
+		host_core = atoi(host_core_env);
+		tr_dbg(&ll_tr, "Mapping topology core ids to host cores %d...coreN\n", host_core);
+	}
+
+	return host_core;
+}
+
 static void *ll_thread(void *data)
 {
 	struct ll_vcore *vc = data;
@@ -285,7 +305,7 @@ int schedule_task_init_ll(struct task *task,
 int scheduler_init_ll(struct ll_schedule_domain *domain)
 {
 	struct ll_vcore *vcore;
-	int i;
+	unsigned int i, core_zero;
 
 	tr_info(&ll_tr, "ll_scheduler_init()");
 	tick_period_us = domain->next_tick;
@@ -294,9 +314,11 @@ int scheduler_init_ll(struct ll_schedule_domain *domain)
 	if (!vcore)
 		return -ENOMEM;
 
+	core_zero = sof_host_core_base();
+
 	for (i = 0; i < CONFIG_CORE_COUNT; i++) {
 		list_init(&vcore[i].list);
-		vcore[i].core_id = i;
+		vcore[i].core_id = core_zero + i;
 	}
 
 	scheduler_init(SOF_SCHEDULE_LL_TIMER, &schedule_ll_ops, vcore);
