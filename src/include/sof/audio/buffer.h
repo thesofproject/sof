@@ -205,14 +205,14 @@ static inline void buffer_stream_writeback(struct comp_buffer *buffer, uint32_t 
 
 __must_check static inline struct comp_buffer *buffer_acquire(struct comp_buffer *buffer)
 {
-	struct coherent *c = coherent_acquire(&buffer->c, sizeof(*buffer));
+	struct coherent *c = coherent_acquire_thread(&buffer->c, sizeof(*buffer));
 
 	return container_of(c, struct comp_buffer, c);
 }
 
 static inline struct comp_buffer *buffer_release(struct comp_buffer *buffer)
 {
-	struct coherent *c = coherent_release(&buffer->c, sizeof(*buffer));
+	struct coherent *c = coherent_release_thread(&buffer->c, sizeof(*buffer));
 
 	return container_of(c, struct comp_buffer, c);
 }
