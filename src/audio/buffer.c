@@ -190,7 +190,7 @@ void comp_update_buffer_produce(struct comp_buffer *buffer, uint32_t bytes)
 		return;
 	}
 
-	buffer = buffer_acquire_irq(buffer);
+	buffer = buffer_acquire(buffer);
 
 	audio_stream_produce(&buffer->stream, bytes);
 
@@ -205,7 +205,7 @@ void comp_update_buffer_produce(struct comp_buffer *buffer, uint32_t bytes)
 		((char *)buffer->stream.r_ptr - (char *)buffer->stream.addr) << 16 |
 		((char *)buffer->stream.w_ptr - (char *)buffer->stream.addr));
 
-	buffer = buffer_release_irq(buffer);
+	buffer = buffer_release(buffer);
 }
 
 void comp_update_buffer_consume(struct comp_buffer *buffer, uint32_t bytes)
@@ -226,7 +226,7 @@ void comp_update_buffer_consume(struct comp_buffer *buffer, uint32_t bytes)
 		return;
 	}
 
-	buffer = buffer_acquire_irq(buffer);
+	buffer = buffer_acquire(buffer);
 
 	audio_stream_consume(&buffer->stream, bytes);
 
@@ -240,5 +240,5 @@ void comp_update_buffer_consume(struct comp_buffer *buffer, uint32_t bytes)
 		((char *)buffer->stream.r_ptr - (char *)buffer->stream.addr) << 16 |
 		((char *)buffer->stream.w_ptr - (char *)buffer->stream.addr));
 
-	buffer = buffer_release_irq(buffer);
+	buffer = buffer_release(buffer);
 }

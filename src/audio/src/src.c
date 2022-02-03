@@ -873,8 +873,8 @@ static int src_copy(struct comp_dev *dev)
 	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
 			       source_list);
 
-	source = buffer_acquire_irq(source);
-	sink = buffer_acquire_irq(sink);
+	source = buffer_acquire(source);
+	sink = buffer_acquire(sink);
 
 	/* Get from buffers and SRC conversion specific block constraints
 	 * how many frames can be processed. If sufficient number of samples
@@ -882,8 +882,8 @@ static int src_copy(struct comp_dev *dev)
 	 */
 	ret = src_get_copy_limits(cd, source, sink);
 
-	buffer_release_irq(sink);
-	buffer_release_irq(source);
+	buffer_release(sink);
+	buffer_release(source);
 
 	if (ret) {
 		comp_info(dev, "No data to process.");

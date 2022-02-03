@@ -396,9 +396,9 @@ static int ghd_copy(struct comp_dev *dev)
 				 struct comp_buffer, sink_list);
 	stream = &source->stream;
 
-	source = buffer_acquire_irq(source);
+	source = buffer_acquire(source);
 	bytes = audio_stream_get_avail_bytes(&source->stream);
-	source = buffer_release_irq(source);
+	source = buffer_release(source);
 
 	comp_dbg(dev, "ghd_copy() avail_bytes %u", bytes);
 	comp_dbg(dev, "buffer begin/r_ptr/end [0x%x 0x%x 0x%x]",

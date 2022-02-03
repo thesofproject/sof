@@ -126,7 +126,7 @@ static int selector_verify_params(struct comp_dev *dev,
 		}
 		in_channels = cd->config.in_channels_count;
 
-		buffer = buffer_acquire_irq(buffer);
+		buffer = buffer_acquire(buffer);
 
 		/* if cd->config.out_channels_count are equal to 0
 		 * (it can vary), we set params->channels to sink buffer
@@ -147,7 +147,7 @@ static int selector_verify_params(struct comp_dev *dev,
 		}
 		out_channels = cd->config.out_channels_count;
 
-		buffer = buffer_acquire_irq(buffer);
+		buffer = buffer_acquire(buffer);
 
 		/* if cd->config.in_channels_count are equal to 0
 		 * (it can vary), we set params->channels to source buffer
@@ -165,7 +165,7 @@ static int selector_verify_params(struct comp_dev *dev,
 	/* set component period frames */
 	component_set_nearest_period_frames(dev, sinkb->stream.rate);
 
-	buffer_release_irq(buffer);
+	buffer_release(buffer);
 
 	/* verify input channels */
 	switch (in_channels) {
@@ -389,15 +389,15 @@ static int selector_copy(struct comp_dev *dev)
 	if (!source->stream.avail)
 		return PPL_STATUS_PATH_STOP;
 
-	source = buffer_acquire_irq(source);
-	sink = buffer_acquire_irq(sink);
+	source = buffer_acquire(source);
+	sink = buffer_acquire(sink);
 
 	frames = audio_stream_avail_frames(&source->stream, &sink->stream);
 	source_bytes = frames * audio_stream_frame_bytes(&source->stream);
 	sink_bytes = frames * audio_stream_frame_bytes(&sink->stream);
 
-	sink = buffer_release_irq(sink);
-	source = buffer_release_irq(source);
+	sink = buffer_release(sink);
+	source = buffer_release(source);
 
 	comp_dbg(dev, "selector_copy(), source_bytes = 0x%x, sink_bytes = 0x%x",
 		 source_bytes, sink_bytes);

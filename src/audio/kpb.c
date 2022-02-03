@@ -640,17 +640,17 @@ static int kpb_copy(struct comp_dev *dev)
 		goto out;
 	}
 
-	source = buffer_acquire_irq(source);
+	source = buffer_acquire(source);
 
 	/* Validate source */
 	if (!source->stream.r_ptr) {
 		comp_err(dev, "kpb_copy(): invalid source pointers.");
 		ret = -EINVAL;
-		source = buffer_release_irq(source);
+		source = buffer_release(source);
 		goto out;
 	}
 
-	source = buffer_release_irq(source);
+	source = buffer_release(source);
 
 	switch (kpb->state) {
 	case KPB_STATE_RUN:
@@ -664,17 +664,17 @@ static int kpb_copy(struct comp_dev *dev)
 			goto out;
 		}
 
-		sink = buffer_acquire_irq(sink);
+		sink = buffer_acquire(sink);
 
 		/* Validate sink */
 		if (!sink->stream.w_ptr) {
 			comp_err(dev, "kpb_copy(): invalid selector sink pointers.");
 			ret = -EINVAL;
-			sink = buffer_release_irq(sink);
+			sink = buffer_release(sink);
 			goto out;
 		}
 
-		sink = buffer_release_irq(sink);
+		sink = buffer_release(sink);
 
 		copy_bytes = audio_stream_get_copy_bytes(&source->stream, &sink->stream);
 		if (!copy_bytes) {
@@ -723,17 +723,17 @@ static int kpb_copy(struct comp_dev *dev)
 			goto out;
 		}
 
-		sink = buffer_acquire_irq(sink);
+		sink = buffer_acquire(sink);
 
 		/* Validate sink */
 		if (!sink->stream.w_ptr) {
 			comp_err(dev, "kpb_copy(): invalid host sink pointers.");
 			ret = -EINVAL;
-			sink = buffer_release_irq(sink);
+			sink = buffer_release(sink);
 			goto out;
 		}
 
-		sink = buffer_release_irq(sink);
+		sink = buffer_release(sink);
 
 		copy_bytes = audio_stream_get_copy_bytes(&source->stream, &sink->stream);
 		if (!copy_bytes) {

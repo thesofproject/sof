@@ -385,15 +385,15 @@ int pipeline_for_each_comp(struct comp_dev *current,
 
 		/* continue further */
 		if (ctx->comp_func) {
-			buffer = buffer_acquire_irq(buffer);
+			buffer = buffer_acquire(buffer);
 			buffer->walking = true;
-			buffer = buffer_release_irq(buffer);
+			buffer = buffer_release(buffer);
 
 			int err = ctx->comp_func(buffer_comp, buffer,
 						 ctx, dir);
-			buffer = buffer_acquire_irq(buffer);
+			buffer = buffer_acquire(buffer);
 			buffer->walking = false;
-			buffer = buffer_release_irq(buffer);
+			buffer = buffer_release(buffer);
 			if (err < 0 || err == PPL_STATUS_PATH_STOP)
 				return err;
 		}
