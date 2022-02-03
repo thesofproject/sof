@@ -54,7 +54,7 @@ struct comp_buffer *buffer_alloc(uint32_t size, uint32_t caps, uint32_t align)
 	}
 
 	buffer_init(buffer, size, caps);
-	coherent_init(buffer, c);
+	coherent_init_thread(buffer, c);
 	list_init(&buffer->source_list);
 	list_init(&buffer->sink_list);
 
@@ -167,7 +167,7 @@ void buffer_free(struct comp_buffer *buffer)
 	/* In case some listeners didn't unregister from buffer's callbacks */
 	notifier_unregister_all(NULL, buffer);
 
-	coherent_free(buffer, c);
+	coherent_free_thread(buffer, c);
 	rfree(buffer->stream.addr);
 	rfree(buffer);
 }
