@@ -156,6 +156,7 @@ config TIGERLAKE
 	select XT_WAITI_DELAY
 	select NO_SECONDARY_CORE_ROM
 	select CAVS_USE_LPRO_IN_WAITI
+	select INCOHERENT
 	help
 	  Select if your target platform is Tigerlake-compatible
 
