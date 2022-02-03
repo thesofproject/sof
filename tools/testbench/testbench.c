@@ -208,6 +208,8 @@ static void print_usage(char *executable)
 	printf("  -n <output channels>\n");
 	printf("  -r <input rate>\n");
 	printf("  -R <output rate>\n\n");
+	printf("Environment variables\n");
+	printf("  SOF_HOST_CORE0=<i> - Map DSP core 0..N to host i..i+N\n");
 	printf("Help:\n");
 	printf("  -h\n\n");
 	printf("Example Usage:\n");
