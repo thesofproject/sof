@@ -134,6 +134,8 @@ define(DMIC_PIPELINE_KWD_ID, `12')
 define(DMIC_DAI_LINK_16k_ID, `2')
 define(DMIC_PIPELINE_48k_CORE_ID, `1')
 
+ifdef(`GOOGLE_RTC_AUDIO_PROCESSING', `define(`SPK_PLAYBACK_CORE', DMIC_PIPELINE_48k_CORE_ID)', `define(`SPK_PLAYBACK_CORE', `0')')
+
 # define pcm, pipeline and dai id
 define(KWD_PIPE_SCH_DEADLINE_US, 5000)
 
@@ -163,7 +165,7 @@ PIPELINE_PCM_ADD(
 		    ifdef(`2CH_2WAY', sof/pipe-demux-eq-iir-playback.m4,
 			  sof/pipe-volume-demux-playback.m4))),
 	1, 0, ifdef(`4CH_PASSTHROUGH', `4', `2'), s32le,
-	SPK_MIC_PERIOD_US, 0, 0,
+	SPK_MIC_PERIOD_US, 0, SPK_PLAYBACK_CORE,
 	48000, 48000, 48000)
 undefine(`ENDPOINT_NAME')')
 
@@ -226,14 +228,14 @@ ifdef(`NO_AMP',`',`
 DAI_ADD(sof/pipe-dai-playback.m4,
 	1, SSP, SPK_SSP_INDEX, SPK_SSP_NAME,
 	PIPELINE_SOURCE_1, 2, FMT,
-	SPK_MIC_PERIOD_US, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
+	SPK_MIC_PERIOD_US, 0, SPK_PLAYBACK_CORE, SCHEDULE_TIME_DOMAIN_TIMER)
 
 ifelse(CODEC, `MAX98390', `
 # Low Latency capture pipeline 9 on PCM 6 using max 4 channels of s32le.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-passthrough-capture.m4,
 	9, 6, 4, s32le,
-	1000, 0, 0,
+	SPK_MIC_PERIOD_US, 0, SPK_PLAYBACK_CORE,
 	48000, 48000, 48000)
 
 # capture DAI is SSP1 using 2 periods
@@ -241,7 +243,7 @@ PIPELINE_PCM_ADD(sof/pipe-passthrough-capture.m4,
 DAI_ADD(sof/pipe-dai-capture.m4,
 	9, SSP, SPK_SSP_INDEX, SPK_SSP_NAME,
 	PIPELINE_SINK_9, 2, FMT,
-	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
+	SPK_MIC_PERIOD_US, 0, SPK_PLAYBACK_CORE, SCHEDULE_TIME_DOMAIN_TIMER)
 ',
 `
 ifdef(`2CH_2WAY',`# No echo reference for 2-way speakers',
@@ -251,7 +253,7 @@ W_DAI_IN(SSP, SPK_SSP_INDEX, SPK_SSP_NAME, FMT, 3, 0)
 `# Capture pipeline 9 from demux on PCM 6 using max 'ifdef(`4CH_PASSTHROUGH', `4', `2')` channels of s32le.'
 PIPELINE_PCM_ADD(sof/pipe-passthrough-capture-sched.m4,
 	9, 6, ifdef(`4CH_PASSTHROUGH', `4', `2'), s32le,
-	1000, 1, 0,
+	SPK_MIC_PERIOD_US, 1, SPK_PLAYBACK_CORE,
 	48000, 48000, 48000,
 	SCHEDULE_TIME_DOMAIN_TIMER,
 	PIPELINE_PLAYBACK_SCHED_COMP_1)
