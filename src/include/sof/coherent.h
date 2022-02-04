@@ -89,10 +89,10 @@ __must_check static inline struct coherent *coherent_acquire(struct coherent *c,
 		CHECK_COHERENT_CORE(c);
 
 		c->key = k_spin_lock(&c->lock);
-
-		/* invalidate local copy */
-		dcache_invalidate_region(uncache_to_cache(c), size);
 	}
+
+	/* invalidate local copy */
+	dcache_invalidate_region(uncache_to_cache(c), size);
 
 	/* client can now use cached object safely */
 	return uncache_to_cache(c);
@@ -103,12 +103,12 @@ static inline struct coherent *coherent_release(struct coherent *c, const size_t
 	/* assert if someone passes a coherent address in here. */
 	ADDR_IS_INCOHERENT(c);
 
+	/* wtb and inv local data to coherent object */
+	dcache_writeback_invalidate_region(c, size);
+
 	/* access the local copy of object */
 	if (c->shared) {
 		CHECK_COHERENT_CORE(c);
-
-		/* wtb and inv local data to coherent object */
-		dcache_writeback_invalidate_region(c, size);
 
 		/* unlock on uncache alias */
 		k_spin_unlock(&cache_to_uncache(c)->lock, cache_to_uncache(c)->key);
@@ -155,24 +155,16 @@ static inline struct coherent *coherent_release(struct coherent *c, const size_t
  */
 __must_check static inline struct coherent *coherent_acquire(struct coherent *c, const size_t size)
 {
-	if (c->shared) {
+	if (c->shared)
 		c->key = k_spin_lock(&c->lock);
-
-		/* invalidate local copy */
-		dcache_invalidate_region(uncache_to_cache(c), size);
-	}
 
 	return c;
 }
 
 static inline struct coherent *coherent_release(struct coherent *c, const size_t size)
 {
-	if (c->shared) {
-		/* wtb and inv local data to coherent object */
-		dcache_writeback_invalidate_region(uncache_to_cache(c), size);
-
+	if (c->shared)
 		k_spin_unlock(&c->lock, c->key);
-	}
 
 	return c;
 }
