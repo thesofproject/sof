@@ -78,6 +78,7 @@ struct shared_lib_table lib_table[NUM_WIDGETS_SUPPORTED] = {
 	{"drc", "libsof_drc.so", SOF_COMP_NONE, SOF_TB_UUID(drc_uuid), 0, NULL},
 	{"multiband_drc", "libsof_multiband_drc.so", SOF_COMP_NONE,
 		SOF_TB_UUID(multiband_drc_uuid), 0, NULL},
+	{"mixer", "libsof_mixer.so", SOF_COMP_MIXER, NULL, 0, NULL},
 };
 
 /* compatible variables, not used */
