@@ -726,9 +726,10 @@ static void *pipline_test(void *data)
 	return NULL;
 }
 
+static struct testbench_prm tp;
+
 int main(int argc, char **argv)
 {
-	struct testbench_prm tp;
 	struct pipeline_thread_data ptdata[CONFIG_CORE_COUNT];
 	int i, err;
 
