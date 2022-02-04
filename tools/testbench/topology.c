@@ -684,6 +684,7 @@ int load_process(struct tplg_context *ctx)
 int load_mixer(struct tplg_context *ctx)
 {
 	struct sof_ipc_comp_mixer mixer = {0};
+	struct sof *sof = ctx->sof;
 	FILE *file = ctx->file;
 	int ret = 0;
 
@@ -693,6 +694,13 @@ int load_mixer(struct tplg_context *ctx)
 
 	if (tplg_load_controls(ctx->widget->num_kcontrols, file) < 0) {
 		fprintf(stderr, "error: loading controls\n");
+		return -EINVAL;
+	}
+
+	/* load mixer component */
+	register_comp(mixer.comp.type, NULL);
+	if (ipc_comp_new(sof->ipc, ipc_to_comp_new(&mixer)) < 0) {
+		fprintf(stderr, "error: new mixer comp\n");
 		return -EINVAL;
 	}
 

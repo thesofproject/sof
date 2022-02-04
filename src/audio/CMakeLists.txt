@@ -173,10 +173,11 @@ check_optimization(fma -mfma -ftree-vectorize -DOPS_FMA)
 check_optimization(hifi2ep -mhifi2ep "" -DOPS_HIFI2EP)
 check_optimization(hifi3 -mhifi3 "" -DOPS_HIFI3)
 
-set(sof_audio_modules volume src asrc eq-fir eq-iir dcblock crossover tdfb drc multiband_drc)
+set(sof_audio_modules volume mixer src asrc eq-fir eq-iir dcblock crossover tdfb drc multiband_drc)
 
 # sources for each module
 set(volume_sources volume/volume.c volume/volume_generic.c)
+set(mixer_sources mixer.c)
 set(src_sources src/src.c src/src_generic.c)
 set(asrc_sources asrc/asrc.c asrc/asrc_farrow.c asrc/asrc_farrow_generic.c)
 set(eq-fir_sources eq_fir/eq_fir.c eq_fir/eq_fir_generic.c)
