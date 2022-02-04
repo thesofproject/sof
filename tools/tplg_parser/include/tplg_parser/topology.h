@@ -36,6 +36,11 @@ struct frame_types {
 struct sof;
 struct fuzz;
 
+/*
+ * Per topology data.
+ *
+ * TODO: Some refactoring still required to move pipeline specific data.
+ */
 struct tplg_context {
 	/* info array */
 	struct comp_info *info;		/* comp info array */
@@ -53,6 +58,18 @@ struct tplg_context {
 	size_t widget_size;
 	int dev_type;
 	int sched_id;
+
+	/*
+	 * input and output sample rate parameters
+	 * By default, these are calculated from pipeline frames_per_sched
+	 * and period but they can also be overridden via input arguments
+	 * to the testbench.
+	 */
+	uint32_t fs_in;
+	uint32_t fs_out;
+	uint32_t channels_in;
+	uint32_t channels_out;
+	enum sof_ipc_frame frame_fmt;
 
 	/* global data */
 	FILE *file;

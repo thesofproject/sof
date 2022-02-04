@@ -369,7 +369,7 @@ static int parse_input_args(int argc, char **argv, struct testbench_prm *tp)
 		/* input samples bit format */
 		case 'b':
 			tp->bits_in = strdup(optarg);
-			tp->frame_fmt = find_format(tp->bits_in);
+			tp->cmd_frame_fmt = find_format(tp->bits_in);
 			break;
 
 		/* override default libraries */
@@ -379,22 +379,22 @@ static int parse_input_args(int argc, char **argv, struct testbench_prm *tp)
 
 		/* input sample rate */
 		case 'r':
-			tp->fs_in = atoi(optarg);
+			tp->cmd_fs_in = atoi(optarg);
 			break;
 
 		/* output sample rate */
 		case 'R':
-			tp->fs_out = atoi(optarg);
+			tp->cmd_fs_out = atoi(optarg);
 			break;
 
 		/* input/output channels */
 		case 'c':
-			tp->channels_in = atoi(optarg);
+			tp->cmd_channels_in = atoi(optarg);
 			break;
 
 		/* output channels */
 		case 'n':
-			tp->channels_out = atoi(optarg);
+			tp->cmd_channels_out = atoi(optarg);
 			break;
 
 			/* enable debug prints */
@@ -457,27 +457,25 @@ static int parse_input_args(int argc, char **argv, struct testbench_prm *tp)
 static int test_pipeline_stop(struct pipeline_thread_data *ptdata,
 			      struct tplg_context *ctx)
 {
-	struct testbench_prm *tp = ptdata->tp;
 	struct ipc_comp_dev *pcm_dev;
 	struct pipeline *p;
 
-	pcm_dev = ipc_get_comp_by_id(sof_get()->ipc, tp->sched_id);
+	pcm_dev = ipc_get_comp_by_id(sof_get()->ipc, ctx->sched_id);
 	p = pcm_dev->cd->pipeline;
 
-	return tb_pipeline_stop(sof_get()->ipc, p, tp);
+	return tb_pipeline_stop(sof_get()->ipc, p, ctx);
 }
 
 static int test_pipeline_reset(struct pipeline_thread_data *ptdata,
 			       struct tplg_context *ctx)
 {
-	struct testbench_prm *tp = ptdata->tp;
 	struct ipc_comp_dev *pcm_dev;
 	struct pipeline *p;
 
-	pcm_dev = ipc_get_comp_by_id(sof_get()->ipc, tp->sched_id);
+	pcm_dev = ipc_get_comp_by_id(sof_get()->ipc, ctx->sched_id);
 	p = pcm_dev->cd->pipeline;
 
-	return tb_pipeline_reset(sof_get()->ipc, p, tp);
+	return tb_pipeline_reset(sof_get()->ipc, p, ctx);
 }
 
 static int test_pipeline_start(struct pipeline_thread_data *ptdata,
@@ -488,27 +486,28 @@ static int test_pipeline_start(struct pipeline_thread_data *ptdata,
 	struct pipeline *p;
 
 	/* Run pipeline until EOF from fileread */
-	pcm_dev = ipc_get_comp_by_id(sof_get()->ipc, tp->sched_id);
+	pcm_dev = ipc_get_comp_by_id(sof_get()->ipc, ctx->sched_id);
 	if (!pcm_dev) {
-		fprintf(stderr, "error: pipeline has no scheduling component\n");
+		fprintf(stderr, "error: pipeline has no scheduling component %d\n",
+			ctx->sched_id);
 		return -EINVAL;
 	}
 
 	p = pcm_dev->cd->pipeline;
 
 	/* input and output sample rate */
-	if (!tp->fs_in)
-		tp->fs_in = p->period * p->frames_per_sched;
+	if (!ctx->fs_in)
+		ctx->fs_in = p->period * p->frames_per_sched;
 
-	if (!tp->fs_out)
-		tp->fs_out = p->period * p->frames_per_sched;
+	if (!ctx->fs_out)
+		ctx->fs_out = p->period * p->frames_per_sched;
 
 	/* do we need to apply copy count limit ? */
 	if (tp->copy_check)
 		test_pipeline_set_test_limits(ctx->pipeline_id, tp->copy_iterations, 0);
 
 	/* set pipeline params and trigger start */
-	if (tb_pipeline_start(sof_get()->ipc, p, tp) < 0) {
+	if (tb_pipeline_start(sof_get()->ipc, p, ctx) < 0) {
 		fprintf(stderr, "error: pipeline params\n");
 		return -EINVAL;
 	}
@@ -519,12 +518,11 @@ static int test_pipeline_start(struct pipeline_thread_data *ptdata,
 static int test_pipeline_get_state(struct pipeline_thread_data *ptdata,
 				   struct tplg_context *ctx)
 {
-	struct testbench_prm *tp = ptdata->tp;
 	struct ipc_comp_dev *pcm_dev;
 	struct pipeline *p;
 
 	/* Run pipeline until EOF from fileread */
-	pcm_dev = ipc_get_comp_by_id(sof_get()->ipc, tp->sched_id);
+	pcm_dev = ipc_get_comp_by_id(sof_get()->ipc, ctx->sched_id);
 	p = pcm_dev->cd->pipeline;
 	return p->pipe_task->state;
 }
@@ -544,6 +542,11 @@ static int test_pipeline_load(struct pipeline_thread_data *ptdata,
 	ctx->tp = tp;
 	ctx->tplg_file = tp->tplg_file;
 	ctx->pipeline_id = pipeline_id;
+	ctx->fs_in = tp->cmd_fs_in;
+	ctx->fs_out = tp->cmd_fs_out;
+	ctx->channels_in = tp->cmd_channels_in;
+	ctx->channels_out = tp->cmd_channels_out;
+	ctx->frame_fmt = tp->cmd_frame_fmt;
 
 	/* parse topology file and create pipeline */
 	ret = parse_topology(ctx);
@@ -595,15 +598,15 @@ static void test_pipeline_stats(struct pipeline_thread_data *ptdata,
 	frcd = comp_get_drvdata(dd->dai);
 
 	/* Run pipeline until EOF from fileread */
-	icd = ipc_get_comp_by_id(sof_get()->ipc, tp->sched_id);
+	icd = ipc_get_comp_by_id(sof_get()->ipc, ctx->sched_id);
 	p = icd->cd->pipeline;
 
 	/* input and output sample rate */
-	if (!tp->fs_in)
-		tp->fs_in = p->period * p->frames_per_sched;
+	if (!ctx->fs_in)
+		ctx->fs_in = p->period * p->frames_per_sched;
 
-	if (!tp->fs_out)
-		tp->fs_out = p->period * p->frames_per_sched;
+	if (!ctx->fs_out)
+		ctx->fs_out = p->period * p->frames_per_sched;
 
 	n_in = frcd->fs.n;
 	n_out = fwcd->fs.n;
@@ -617,16 +620,16 @@ static void test_pipeline_stats(struct pipeline_thread_data *ptdata,
 	test_pipeline_get_file_stats(ctx->pipeline_id);
 
 	printf("Input bit format: %s\n", tp->bits_in);
-	printf("Input sample rate: %d\n", tp->fs_in);
-	printf("Output sample rate: %d\n", tp->fs_out);
+	printf("Input sample rate: %d\n", ctx->fs_in);
+	printf("Output sample rate: %d\n", ctx->fs_out);
 	for (i = 0; i < tp->output_file_num; i++) {
 		printf("Output[%d] written to file: \"%s\"\n",
 		       i, tp->output_file[i]);
 	}
-	printf("Input sample (frame) count: %d (%d)\n", n_in, n_in / tp->channels_in);
-	printf("Output sample (frame) count: %d (%d)\n", n_out, n_out / tp->channels_out);
+	printf("Input sample (frame) count: %d (%d)\n", n_in, n_in / ctx->channels_in);
+	printf("Output sample (frame) count: %d (%d)\n", n_out, n_out / ctx->channels_out);
 	printf("Total execution time: %zu us, %.2f x realtime\n\n",
-	       delta, (double)((double)n_out / tp->channels_out / tp->fs_out) * 1000000 / delta);
+	       delta, (double)((double)n_out / ctx->channels_out / ctx->fs_out) * 1000000 / delta);
 }
 
 /*
@@ -740,8 +743,8 @@ int main(int argc, char **argv)
 
 	/* initialize input and output sample rates, files, etc. */
 	debug = 0;
-	tp.fs_in = 0;
-	tp.fs_out = 0;
+	tp.cmd_fs_in = 0;
+	tp.cmd_fs_out = 0;
 	tp.bits_in = 0;
 	tp.input_file = NULL;
 	tp.tplg_file = NULL;
@@ -749,8 +752,8 @@ int main(int argc, char **argv)
 	for (i = 0; i < MAX_OUTPUT_FILE_NUM; i++)
 		tp.output_file[i] = NULL;
 
-	tp.channels_in = TESTBENCH_NCH;
-	tp.channels_out = 0;
+	tp.cmd_channels_in = TESTBENCH_NCH;
+	tp.cmd_channels_out = 0;
 	tp.max_pipeline_id = 0;
 	tp.copy_check = false;
 	tp.quiet = 0;
@@ -768,8 +771,8 @@ int main(int argc, char **argv)
 	if (err < 0)
 		goto out;
 
-	if (!tp.channels_out)
-		tp.channels_out = tp.channels_in;
+	if (!tp.cmd_channels_out)
+		tp.cmd_channels_out = tp.cmd_channels_in;
 
 	/* check mandatory args */
 	if (!tp.tplg_file) {

@@ -308,12 +308,12 @@ static int load_fileread(struct tplg_context *ctx, int dir)
 
 	/* use fileread comp as scheduling comp */
 	tp->fr_id = ctx->comp_id;
-	tp->sched_id = ctx->comp_id;
+	ctx->sched_id = ctx->comp_id;
 
 	/* Set format from testbench command line*/
-	fileread.rate = tp->fs_in;
-	fileread.channels = tp->channels_in;
-	fileread.frame_fmt = tp->frame_fmt;
+	fileread.rate = ctx->fs_in;
+	fileread.channels = ctx->channels_in;
+	fileread.frame_fmt = ctx->frame_fmt;
 
 	/* Set type depending on direction */
 	fileread.comp.type = (dir == SOF_IPC_STREAM_PLAYBACK) ?
@@ -360,9 +360,9 @@ static int load_filewrite(struct tplg_context *ctx, int dir)
 	tp->output_file_index++;
 
 	/* Set format from testbench command line*/
-	filewrite.rate = tp->fs_out;
-	filewrite.channels = tp->channels_out;
-	filewrite.frame_fmt = tp->frame_fmt;
+	filewrite.rate = ctx->fs_out;
+	filewrite.channels = ctx->channels_out;
+	filewrite.frame_fmt = ctx->frame_fmt;
 
 	/* Set type depending on direction */
 	filewrite.comp.type = (dir == SOF_IPC_STREAM_PLAYBACK) ?
@@ -490,7 +490,6 @@ int load_src(struct tplg_context *ctx)
 	struct sof *sof = ctx->sof;
 	struct sof_ipc_comp_src src = {0};
 	FILE *file = ctx->file;
-	struct testbench_prm *tp = ctx->tp;
 	int ret = 0;
 
 	ret = tplg_load_src(ctx, &src);
@@ -503,15 +502,15 @@ int load_src(struct tplg_context *ctx)
 	}
 
 	/* set testbench input and output sample rate from topology */
-	if (!tp->fs_out) {
-		tp->fs_out = src.sink_rate;
+	if (!ctx->fs_out) {
+		ctx->fs_out = src.sink_rate;
 
-		if (!tp->fs_in)
-			tp->fs_in = src.source_rate;
+		if (!ctx->fs_in)
+			ctx->fs_in = src.source_rate;
 		else
-			src.source_rate = tp->fs_in;
+			src.source_rate = ctx->fs_in;
 	} else {
-		src.sink_rate = tp->fs_out;
+		src.sink_rate = ctx->fs_out;
 	}
 
 	/* load src component */
@@ -530,7 +529,6 @@ int load_asrc(struct tplg_context *ctx)
 	struct snd_soc_tplg_dapm_widget *widget = ctx->widget;
 	struct sof *sof = ctx->sof;
 	struct sof_ipc_comp_asrc asrc = {0};
-	struct testbench_prm *tp = ctx->tp;
 	int ret = 0;
 
 	ret = tplg_load_asrc(ctx, &asrc);
@@ -543,15 +541,15 @@ int load_asrc(struct tplg_context *ctx)
 	}
 
 	/* set testbench input and output sample rate from topology */
-	if (!tp->fs_out) {
-		tp->fs_out = asrc.sink_rate;
+	if (!ctx->fs_out) {
+		ctx->fs_out = asrc.sink_rate;
 
-		if (!tp->fs_in)
-			tp->fs_in = asrc.source_rate;
+		if (!ctx->fs_in)
+			ctx->fs_in = asrc.source_rate;
 		else
-			asrc.source_rate = tp->fs_in;
+			asrc.source_rate = ctx->fs_in;
 	} else {
-		asrc.sink_rate = tp->fs_out;
+		asrc.sink_rate = ctx->fs_out;
 	}
 
 	/* load asrc component */

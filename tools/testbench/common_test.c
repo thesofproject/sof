@@ -99,14 +99,14 @@ void tb_free(struct sof *sof)
 
 /* set up pcm params, prepare and trigger pipeline */
 int tb_pipeline_start(struct ipc *ipc, struct pipeline *p,
-		      struct testbench_prm *tp)
+		      struct tplg_context *ctx)
 {
 	struct ipc_comp_dev *pcm_dev;
 	struct comp_dev *cd;
 	int ret;
 
 	/* set up pipeline params */
-	ret = tb_pipeline_params(ipc, p, tp);
+	ret = tb_pipeline_params(ipc, p, ctx);
 	if (ret < 0) {
 		fprintf(stderr, "error: pipeline params failed: %s\n",
 			strerror(ret));
@@ -145,7 +145,7 @@ int tb_pipeline_start(struct ipc *ipc, struct pipeline *p,
 
 /* set up pcm params, prepare and trigger pipeline */
 int tb_pipeline_stop(struct ipc *ipc, struct pipeline *p,
-		     struct testbench_prm *tp)
+		     struct tplg_context *ctx)
 {
 	struct ipc_comp_dev *pcm_dev;
 	struct comp_dev *cd;
@@ -172,7 +172,7 @@ int tb_pipeline_stop(struct ipc *ipc, struct pipeline *p,
 
 /* set up pcm params, prepare and trigger pipeline */
 int tb_pipeline_reset(struct ipc *ipc, struct pipeline *p,
-		      struct testbench_prm *tp)
+		      struct tplg_context *ctx)
 {
 	struct ipc_comp_dev *pcm_dev;
 	struct comp_dev *cd;
@@ -197,7 +197,7 @@ int tb_pipeline_reset(struct ipc *ipc, struct pipeline *p,
 
 /* pipeline pcm params */
 int tb_pipeline_params(struct ipc *ipc, struct pipeline *p,
-		       struct testbench_prm *tp)
+		       struct tplg_context *ctx)
 {
 	struct ipc_comp_dev *pcm_dev;
 	struct comp_dev *cd;
@@ -215,17 +215,17 @@ int tb_pipeline_params(struct ipc *ipc, struct pipeline *p,
 	period = p->period;
 
 	/* Compute period from sample rates */
-	fs_period = (int)(0.9999 + tp->fs_in * period / 1e6);
+	fs_period = (int)(0.9999 + ctx->fs_in * period / 1e6);
 	sprintf(message, "period sample count %d\n", fs_period);
 	debug_print(message);
 
 	/* set pcm params */
 	params.comp_id = p->comp_id;
 	params.params.buffer_fmt = SOF_IPC_BUFFER_INTERLEAVED;
-	params.params.frame_fmt = tp->frame_fmt;
+	params.params.frame_fmt = ctx->frame_fmt;
 	params.params.direction = SOF_IPC_STREAM_PLAYBACK;
-	params.params.rate = tp->fs_in;
-	params.params.channels = tp->channels_in;
+	params.params.rate = ctx->fs_in;
+	params.params.channels = ctx->channels_in;
 
 	switch (params.params.frame_fmt) {
 	case SOF_IPC_FRAME_S16_LE:

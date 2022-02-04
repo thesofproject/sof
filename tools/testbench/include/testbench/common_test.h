@@ -28,6 +28,12 @@
 
 struct tplg_context;
 
+/*
+ * Global testbench data.
+ *
+ * TODO: some items are topology and pipeline specific and need moved out
+ * into per pipeline data and per topology data structures.
+ */
 struct testbench_prm {
 	char *tplg_file; /* topology file to use */
 	char *input_file; /* input file name */
@@ -36,21 +42,11 @@ struct testbench_prm {
 	char *bits_in; /* input bit format */
 	int pipelines[MAX_OUTPUT_FILE_NUM]; /* output file names */
 	int pipeline_num;
-	/*
-	 * input and output sample rate parameters
-	 * By default, these are calculated from pipeline frames_per_sched
-	 * and period but they can also be overridden via input arguments
-	 * to the testbench.
-	 */
-	uint32_t fs_in;
-	uint32_t fs_out;
-	uint32_t channels_in;
-	uint32_t channels_out;
+
 	int fr_id;
 	int fw_id;
-	int sched_id;
+
 	int max_pipeline_id;
-	enum sof_ipc_frame frame_fmt;
 	int copy_iterations;
 	bool copy_check;
 	bool quiet;
@@ -62,6 +58,13 @@ struct testbench_prm {
 	FILE *file;
 	char *pipeline_string;
 	int output_file_index;
+
+	/* global cmd line args that can override topology */
+	enum sof_ipc_frame cmd_frame_fmt;
+	uint32_t cmd_fs_in;
+	uint32_t cmd_fs_out;
+	uint32_t cmd_channels_in;
+	uint32_t cmd_channels_out;
 };
 
 struct shared_lib_table {
@@ -87,16 +90,16 @@ int tb_setup(struct sof *sof, struct testbench_prm *tp);
 void tb_free(struct sof *sof);
 
 int tb_pipeline_start(struct ipc *ipc, struct pipeline *p,
-		      struct testbench_prm *tp);
+		      struct tplg_context *ctx);
 
 int tb_pipeline_params(struct ipc *ipc, struct pipeline *p,
-		       struct testbench_prm *tp);
+		       struct tplg_context *ctx);
 
 int tb_pipeline_stop(struct ipc *ipc, struct pipeline *p,
-		     struct testbench_prm *tp);
+		     struct tplg_context *ctx);
 
 int tb_pipeline_reset(struct ipc *ipc, struct pipeline *p,
-		      struct testbench_prm *tp);
+		      struct tplg_context *ctx);
 
 void debug_print(char *message);
 
