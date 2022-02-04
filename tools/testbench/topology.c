@@ -322,7 +322,7 @@ static int load_fileread(struct tplg_context *ctx, int dir)
 	/* create fileread component */
 	register_comp(fileread.comp.type, NULL);
 	if (ipc_comp_new(sof->ipc, ipc_to_comp_new(&fileread)) < 0) {
-		fprintf(stderr, "error: comp register\n");
+		fprintf(stderr, "error: file read\n");
 		return -EINVAL;
 	}
 
@@ -371,7 +371,7 @@ static int load_filewrite(struct tplg_context *ctx, int dir)
 	/* create filewrite component */
 	register_comp(filewrite.comp.type, NULL);
 	if (ipc_comp_new(sof->ipc, ipc_to_comp_new(&filewrite)) < 0) {
-		fprintf(stderr, "error: comp register\n");
+		fprintf(stderr, "error: new file write\n");
 		return -EINVAL;
 	}
 
@@ -449,7 +449,7 @@ int load_pga(struct tplg_context *ctx)
 	/* load volume component */
 	register_comp(volume.comp.type, NULL);
 	if (ipc_comp_new(sof->ipc, ipc_to_comp_new(&volume)) < 0) {
-		fprintf(stderr, "error: comp register\n");
+		fprintf(stderr, "error: new pga comp\n");
 		return -EINVAL;
 	}
 
