@@ -877,7 +877,10 @@ void ipc_cmd(ipc_cmd_hdr *_hdr)
 		char *data = ipc_get()->comp_data;
 		struct ipc4_message_reply reply;
 
-		err = ipc_wait_for_compound_msg();
+		if (ipc_wait_for_compound_msg() != 0) {
+			tr_err(&ipc_tr, "ipc4: failed to send delayed reply");
+			err = IPC4_FAILURE;
+		}
 
 		/* copy contents of message received */
 		reply.header.r.rsp = SOF_IPC4_MESSAGE_DIR_MSG_REPLY;
