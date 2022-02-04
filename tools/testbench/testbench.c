@@ -489,6 +489,11 @@ static int test_pipeline_start(struct pipeline_thread_data *ptdata,
 
 	/* Run pipeline until EOF from fileread */
 	pcm_dev = ipc_get_comp_by_id(sof_get()->ipc, tp->sched_id);
+	if (!pcm_dev) {
+		fprintf(stderr, "error: pipeline has no scheduling component\n");
+		return -EINVAL;
+	}
+
 	p = pcm_dev->cd->pipeline;
 
 	/* input and output sample rate */
