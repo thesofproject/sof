@@ -550,10 +550,8 @@ static int test_pipeline_load(struct pipeline_thread_data *ptdata,
 
 	/* parse topology file and create pipeline */
 	ret = parse_topology(ctx);
-	if (ret < 0) {
+	if (ret < 0)
 		fprintf(stderr, "error: parsing topology\n");
-		exit(EXIT_FAILURE);
-	}
 
 	return ret;
 }
