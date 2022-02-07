@@ -106,12 +106,13 @@ static inline void mtk_handle_group_pending_irq(struct irq_cascade_desc *cascade
 	uint32_t idx;
 	uint32_t next_status;
 	bool handled;
+	k_spinlock_key_t key;
 
 	idx = mtk_get_pending_index(status, &next_status);
 	while (idx < PENDING_IRQ_INDEX_MAX) {
 		handled = false;
 
-		spin_lock(&cascade->lock);
+		key = k_spin_lock(&cascade->lock);
 		list_for_item(clist, &cascade->child[idx].list) {
 			child = container_of(clist, struct irq_desc, irq_list);
 
@@ -120,7 +121,7 @@ static inline void mtk_handle_group_pending_irq(struct irq_cascade_desc *cascade
 				handled = true;
 			}
 		}
-		spin_unlock(&cascade->lock);
+		k_spin_unlock(&cascade->lock, key);
 
 		if (!handled) {
 			tr_err(&int_tr, "Not handle irq %u in group %u",
