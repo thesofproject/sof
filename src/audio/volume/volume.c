@@ -73,28 +73,36 @@ DECLARE_TR_CTX(volume_tr, SOF_UUID(volume_uuid), LOG_LEVEL_INFO);
 static uint32_t vol_zc_get_s16(const struct audio_stream *source,
 			       uint32_t frames, int64_t *prev_sum)
 {
-	uint32_t buff_frag = frames * source->channels - 1;
 	uint32_t curr_frames = frames;
-	uint32_t channel;
-	int16_t *src;
 	int32_t sum;
-	uint32_t i;
+	int16_t *x = source->r_ptr;
+	int bytes;
+	int nmax;
+	int i, j, n;
+	const int nch = source->channels;
+	int remaining_samples = frames * nch;
 
-	for (i = 0; i < frames; i++) {
-		sum = 0;
+	x = audio_stream_wrap(source, x + remaining_samples - 1); /* Go to last channel */
+	while (remaining_samples) {
+		bytes = audio_stream_rewind_bytes_without_wrap(source, x);
+		nmax = VOL_BYTES_TO_S16_SAMPLES(bytes) + 1;
+		n = MIN(nmax, remaining_samples);
+		for (i = 0; i < n; i += nch) {
+			sum = 0;
+			for (j = 0; j < nch; j++) {
+				sum += *x;
+				x--;
+			}
 
-		for (channel = 0; channel < source->channels; channel++) {
-			src = audio_stream_read_frag_s16(source, buff_frag);
-			sum += *src;
-			buff_frag--;
+			/* first sign change */
+			if ((sum ^ *prev_sum) < 0)
+				return curr_frames;
+
+			*prev_sum = sum;
+			curr_frames--;
 		}
-
-		/* first sign change */
-		if ((sum ^ *prev_sum) < 0)
-			return curr_frames;
-
-		*prev_sum = sum;
-		curr_frames--;
+		remaining_samples -= n;
+		x = audio_stream_rewind_wrap(source, x);
 	}
 
 	/* sign change not detected, process all samples */
@@ -113,28 +121,36 @@ static uint32_t vol_zc_get_s16(const struct audio_stream *source,
 static uint32_t vol_zc_get_s24(const struct audio_stream *source,
 			       uint32_t frames, int64_t *prev_sum)
 {
-	uint32_t buff_frag = frames * source->channels - 1;
-	uint32_t curr_frames = frames;
-	uint32_t channel;
-	int32_t *src;
 	int64_t sum;
-	uint32_t i;
+	uint32_t curr_frames = frames;
+	int32_t *x = source->r_ptr;
+	int bytes;
+	int nmax;
+	int i, j, n;
+	const int nch = source->channels;
+	int remaining_samples = frames * nch;
 
-	for (i = 0; i < frames; i++) {
-		sum = 0;
+	x = audio_stream_wrap(source, x + remaining_samples - 1); /* Go to last channel */
+	while (remaining_samples) {
+		bytes = audio_stream_rewind_bytes_without_wrap(source, x);
+		nmax = VOL_BYTES_TO_S32_SAMPLES(bytes) + 1;
+		n = MIN(nmax, remaining_samples);
+		for (i = 0; i < n; i += nch) {
+			sum = 0;
+			for (j = 0; j < nch; j++) {
+				sum += sign_extend_s24(*x);
+				x--;
+			}
 
-		for (channel = 0; channel < source->channels; channel++) {
-			src = audio_stream_read_frag_s32(source, buff_frag);
-			sum += sign_extend_s24(*src);
-			buff_frag--;
+			/* first sign change */
+			if ((sum ^ *prev_sum) < 0)
+				return curr_frames;
+
+			*prev_sum = sum;
+			curr_frames--;
 		}
-
-		/* first sign change */
-		if ((sum ^ *prev_sum) < 0)
-			return curr_frames;
-
-		*prev_sum = sum;
-		curr_frames--;
+		remaining_samples -= n;
+		x = audio_stream_rewind_wrap(source, x);
 	}
 
 	/* sign change not detected, process all samples */
@@ -153,28 +169,36 @@ static uint32_t vol_zc_get_s24(const struct audio_stream *source,
 static uint32_t vol_zc_get_s32(const struct audio_stream *source,
 			       uint32_t frames, int64_t *prev_sum)
 {
-	uint32_t buff_frag = frames * source->channels - 1;
-	uint32_t curr_frames = frames;
-	uint32_t channel;
-	int32_t *src;
 	int64_t sum;
-	uint32_t i;
+	uint32_t curr_frames = frames;
+	int32_t *x = source->r_ptr;
+	int bytes;
+	int nmax;
+	int i, j, n;
+	const int nch = source->channels;
+	int remaining_samples = frames * nch;
 
-	for (i = 0; i < frames; i++) {
-		sum = 0;
+	x = audio_stream_wrap(source, x + remaining_samples - 1); /* Go to last channel */
+	while (remaining_samples) {
+		bytes = audio_stream_rewind_bytes_without_wrap(source, x);
+		nmax = VOL_BYTES_TO_S32_SAMPLES(bytes) + 1;
+		n = MIN(nmax, remaining_samples);
+		for (i = 0; i < n; i += nch) {
+			sum = 0;
+			for (j = 0; j < nch; j++) {
+				sum += *x;
+				x--;
+			}
 
-		for (channel = 0; channel < source->channels; channel++) {
-			src = audio_stream_read_frag_s32(source, buff_frag);
-			sum += *src;
-			buff_frag--;
+			/* first sign change */
+			if ((sum ^ *prev_sum) < 0)
+				return curr_frames;
+
+			*prev_sum = sum;
+			curr_frames--;
 		}
-
-		/* first sign change */
-		if ((sum ^ *prev_sum) < 0)
-			return curr_frames;
-
-		*prev_sum = sum;
-		curr_frames--;
+		remaining_samples -= n;
+		x = audio_stream_rewind_wrap(source, x);
 	}
 
 	/* sign change not detected, process all samples */
