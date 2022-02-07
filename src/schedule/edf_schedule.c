@@ -22,7 +22,7 @@
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
-
+#if CONFIG_XT_INTERRUPT_LEVEL_2
 /* 77de2074-828c-4044-a40b-420b72749e8b */
 DECLARE_SOF_UUID("edf-schedule", edf_sched_uuid, 0x77de2074, 0x828c, 0x4044,
 		 0xa4, 0x0b, 0x42, 0x0b, 0x72, 0x74, 0x9e, 0x8b);
@@ -336,3 +336,4 @@ static const struct scheduler_ops schedule_edf_ops = {
 	.scheduler_free		= scheduler_free_edf,
 	.scheduler_restore	= scheduler_restore_edf,
 };
+#endif // CONFIG_XT_INTERRUPT_LEVEL_2
