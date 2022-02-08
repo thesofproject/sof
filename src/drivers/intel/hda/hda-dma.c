@@ -818,9 +818,17 @@ static int hda_dma_set_config(struct dma_chan_data *channel,
 
 	/* buffer size must be multiple of hda dma burst size */
 	if (buffer_bytes % HDA_DMA_BUFFER_ALIGNMENT) {
-		tr_err(&hdma_tr, "hda-dmac: %d chan %d - buffer not DMA aligned 0x%x",
+		tr_err(&hdma_tr, "hda-dmac: %d chan %d - buffer size not DMA aligned 0x%x",
 		       dma->plat_data.id,
 		       channel->index, buffer_bytes);
+		ret = -EINVAL;
+		goto out;
+	}
+	/* buffer base address must be correctly aligned */
+	if (buffer_addr % HDA_DMA_BUFFER_ADDRESS_ALIGNMENT) {
+		tr_err(&hdma_tr, "hda-dmac: %d chan %d - buffer address not DMA aligned 0x%x",
+		       dma->plat_data.id,
+		       channel->index, buffer_addr);
 		ret = -EINVAL;
 		goto out;
 	}
