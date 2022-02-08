@@ -83,10 +83,10 @@ static enum task_state trace_work(void *data)
 	d->copy_in_progress = 1;
 
 	/* copy this section to host */
-	size = dma_copy_to_host_nowait(&d->dc, config, d->posn.host_offset,
-				       buffer->r_ptr, size);
+	size = dma_copy_to_host(&d->dc, config, d->posn.host_offset,
+				buffer->r_ptr, size);
 	if (size < 0) {
-		tr_err(&dt_tr, "trace_work(): dma_copy_to_host_nowait() failed");
+		tr_err(&dt_tr, "trace_work(): dma_copy_to_host() failed");
 		goto out;
 	}
 
