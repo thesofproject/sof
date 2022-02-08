@@ -3,7 +3,7 @@ function test = fr_test_measure(test)
 %% t = fr_test_measure(t)
 %
 % Measure frequency response from captured frequency sweep created by
-% fr_test_input() that sets most of the input struct fiels. The output
+% fr_test_input() that sets most of the input struct fields. The output
 % is read from file t.fn_out.
 %
 % The test criteria is defined with first three or four latter input

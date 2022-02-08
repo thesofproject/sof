@@ -11,7 +11,7 @@ function [n_fail, n_pass, n_na] = src_test(bits_in, bits_out, fs_in_list, fs_out
 % fs_out   - vector of rates out
 %
 % A default in-out matrix with 32 bits data is tested if the
-% paremeters are omitted.
+% parameters are omitted.
 %
 
 % SPDX-License-Identifier: BSD-3-Clause
@@ -386,7 +386,7 @@ end
 %  in the plot as additional freqiencies than main linear up sweep. The aliasing
 %  can be a line, few lines, or lattice pattern depending the SRC conversion
 %  to test. The main sweep line should be steady level and extend from near
-%  zero freqeuncy to near Nyquist (Fs/2).
+%  zero frequency to near Nyquist (Fs/2).
 
 function fail = chirp_test(t)
 
