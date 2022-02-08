@@ -49,7 +49,8 @@ void mailbox_dspbox_write(size_t offset, const void *src, size_t bytes)
 			   MAILBOX_DSPBOX_SIZE - offset, src, bytes);
 
 	assert(!ret);
-	dcache_writeback_region((void *)(MAILBOX_DSPBOX_BASE + offset), bytes);
+	dcache_writeback_region((__sparse_force void __sparse_cache *)(MAILBOX_DSPBOX_BASE +
+								       offset), bytes);
 }
 
 static inline
@@ -58,8 +59,8 @@ void mailbox_dspbox_read(void *dest, size_t dest_size,
 {
 	int ret;
 
-	dcache_invalidate_region((void *)(MAILBOX_DSPBOX_BASE + offset),
-				 bytes);
+	dcache_invalidate_region((__sparse_force void __sparse_cache *)(MAILBOX_DSPBOX_BASE +
+									offset), bytes);
 	ret = memcpy_s(dest, dest_size,
 		       (void *)(MAILBOX_DSPBOX_BASE + offset), bytes);
 	assert(!ret);
@@ -80,7 +81,8 @@ void mailbox_hostbox_write(size_t offset, const void *src, size_t bytes)
 			   MAILBOX_HOSTBOX_SIZE - offset, src, bytes);
 
 	assert(!ret);
-	dcache_writeback_region((void *)(MAILBOX_HOSTBOX_BASE + offset), bytes);
+	dcache_writeback_region((__sparse_force void __sparse_cache *)(MAILBOX_HOSTBOX_BASE +
+								       offset), bytes);
 }
 
 #endif
@@ -91,8 +93,8 @@ void mailbox_hostbox_read(void *dest, size_t dest_size,
 {
 	int ret;
 
-	dcache_invalidate_region((void *)(MAILBOX_HOSTBOX_BASE + offset),
-				 bytes);
+	dcache_invalidate_region((__sparse_force void __sparse_cache *)(MAILBOX_HOSTBOX_BASE +
+									offset), bytes);
 	ret = memcpy_s(dest, dest_size,
 		       (void *)(MAILBOX_HOSTBOX_BASE + offset), bytes);
 	assert(!ret);
@@ -105,8 +107,8 @@ void mailbox_stream_write(size_t offset, const void *src, size_t bytes)
 			   MAILBOX_STREAM_SIZE - offset, src, bytes);
 
 	assert(!ret);
-	dcache_writeback_region((void *)(MAILBOX_STREAM_BASE + offset),
-				bytes);
+	dcache_writeback_region((__sparse_force void __sparse_cache *)(MAILBOX_STREAM_BASE +
+								       offset), bytes);
 }
 
 #endif /* __SOF_LIB_MAILBOX_H__ */

@@ -445,7 +445,7 @@ static int dw_dma_stop(struct dma_chan_data *channel)
 	}
 
 #ifndef __ZEPHYR__
-	dcache_writeback_region(dw_chan->lli,
+	dcache_writeback_region((__sparse_force void __sparse_cache *)dw_chan->lli,
 				sizeof(struct dw_lli) * channel->desc_count);
 #endif
 #endif
@@ -780,7 +780,7 @@ static int dw_dma_set_config(struct dma_chan_data *channel,
 
 	/* write back descriptors so DMA engine can read them directly */
 #ifndef __ZEPHYR__
-	dcache_writeback_region(dw_chan->lli,
+	dcache_writeback_region((__sparse_force void __sparse_cache *)dw_chan->lli,
 				sizeof(struct dw_lli) * channel->desc_count);
 #endif
 

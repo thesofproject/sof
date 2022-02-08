@@ -53,7 +53,7 @@ int ipc_process_on_core(uint32_t core, bool blocking)
 	}
 
 	/* The other core will write there its response */
-	dcache_invalidate_region((void *)MAILBOX_HOSTBOX_BASE,
+	dcache_invalidate_region((__sparse_force void __sparse_cache *)MAILBOX_HOSTBOX_BASE,
 				 ((struct sof_ipc_cmd_hdr *)ipc->comp_data)->size);
 
 	/*

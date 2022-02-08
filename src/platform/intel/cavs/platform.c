@@ -610,10 +610,12 @@ static void imr_layout_update(void *vector)
 	 * configuration, no symmetric task need to done in any
 	 * platform_resume() to clear the configuration.
 	 */
-	dcache_invalidate_region(imr_layout, sizeof(*imr_layout));
+	dcache_invalidate_region((__sparse_force void __sparse_cache *)imr_layout,
+				 sizeof(*imr_layout));
 	imr_layout->imr_state.header.adsp_imr_magic = ADSP_IMR_MAGIC_VALUE;
 	imr_layout->imr_state.header.imr_restore_vector = vector;
-	dcache_writeback_region(imr_layout, sizeof(*imr_layout));
+	dcache_writeback_region((__sparse_force void __sparse_cache *)imr_layout,
+				sizeof(*imr_layout));
 }
 #endif
 

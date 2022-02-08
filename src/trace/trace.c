@@ -104,13 +104,14 @@ void mtrace_event(const char *data, uint32_t length)
 
 	if (available < length) { /* wrap */
 		memset(t + trace->pos, 0xff, available);
-		dcache_writeback_region(t + trace->pos, available);
+		dcache_writeback_region((__sparse_force char __sparse_cache *)t + trace->pos,
+					available);
 		trace->pos = 0;
 	}
 
 	memcpy_s(t + trace->pos, MAILBOX_TRACE_SIZE - trace->pos,
 		 data, length);
-	dcache_writeback_region(t + trace->pos, length);
+	dcache_writeback_region((__sparse_force char __sparse_cache *)t + trace->pos, length);
 	trace->pos += length;
 }
 #endif /* __ZEPHYR__ */
@@ -512,7 +513,7 @@ void trace_init(struct sof *sof)
 	 * Don't touch.
 	 */
 	bzero((void *)MAILBOX_TRACE_BASE, MAILBOX_TRACE_SIZE);
-	dcache_writeback_invalidate_region((void *)MAILBOX_TRACE_BASE,
+	dcache_writeback_invalidate_region((__sparse_force void __sparse_cache *)MAILBOX_TRACE_BASE,
 					   MAILBOX_TRACE_SIZE);
 #endif
 

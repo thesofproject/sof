@@ -17,6 +17,7 @@
 #if !defined(__ASSEMBLER__) && !defined(LINKER)
 
 #include <xtensa/hal.h>
+#include <sof/compiler_attributes.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -89,11 +90,11 @@ extern uint32_t _memmap_cacheattr_reset;
 #define is_cached(address) (!!((uintptr_t)(address) & SRAM_UNCACHED_ALIAS))
 #endif
 
-static inline void dcache_writeback_region(void *addr, size_t size)
+static inline void dcache_writeback_region(void __sparse_cache *addr, size_t size)
 {
 #if XCHAL_DCACHE_SIZE > 0
 	if (is_cached(addr))
-		xthal_dcache_region_writeback(addr, size);
+		xthal_dcache_region_writeback((__sparse_force void *)addr, size);
 #endif
 }
 
@@ -104,11 +105,11 @@ static inline void dcache_writeback_all(void)
 #endif
 }
 
-static inline void dcache_invalidate_region(void *addr, size_t size)
+static inline void dcache_invalidate_region(void __sparse_cache *addr, size_t size)
 {
 #if XCHAL_DCACHE_SIZE > 0
 	if (is_cached(addr))
-		xthal_dcache_region_invalidate(addr, size);
+		xthal_dcache_region_invalidate((__sparse_force void *)addr, size);
 #endif
 }
 
@@ -133,11 +134,11 @@ static inline void icache_invalidate_all(void)
 #endif
 }
 
-static inline void dcache_writeback_invalidate_region(void *addr, size_t size)
+static inline void dcache_writeback_invalidate_region(void __sparse_cache *addr, size_t size)
 {
 #if XCHAL_DCACHE_SIZE > 0
 	if (is_cached(addr))
-		xthal_dcache_region_writeback_inv(addr, size);
+		xthal_dcache_region_writeback_inv((__sparse_force void *)addr, size);
 #endif
 }
 

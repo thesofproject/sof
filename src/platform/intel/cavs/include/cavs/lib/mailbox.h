@@ -111,7 +111,8 @@ static inline void mailbox_sw_regs_write(size_t offset, const void *src, size_t 
 			   MAILBOX_SW_REG_SIZE - offset, src, bytes);
 
 	assert(!ret);
-	dcache_writeback_region((void *)(MAILBOX_SW_REG_BASE + offset), bytes);
+	dcache_writeback_region((__sparse_force void __sparse_cache *)(MAILBOX_SW_REG_BASE +
+								       offset), bytes);
 }
 
 #endif /* __CAVS_LIB_MAILBOX_H__ */

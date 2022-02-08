@@ -56,7 +56,7 @@ static inline void arch_dump_regs(void *dump_buf, uintptr_t stack_ptr,
 {
 	fill_core_dump(dump_buf, stack_ptr, epc1);
 
-	dcache_writeback_region(dump_buf, ARCH_OOPS_SIZE);
+	dcache_writeback_region((__sparse_force void __sparse_cache *)dump_buf, ARCH_OOPS_SIZE);
 }
 
 #endif /* __ARCH_DEBUG_PANIC_H__ */

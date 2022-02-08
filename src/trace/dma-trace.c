@@ -288,7 +288,7 @@ static int dma_trace_buffer_init(struct dma_trace_data *d)
 	}
 
 	bzero(buf, DMA_TRACE_LOCAL_SIZE);
-	dcache_writeback_region(buf, DMA_TRACE_LOCAL_SIZE);
+	dcache_writeback_region((__sparse_force void __sparse_cache *)buf, DMA_TRACE_LOCAL_SIZE);
 
 	/* initialise the DMA buffer, whole sequence in section */
 	key = k_spin_lock(&d->lock);
@@ -551,7 +551,7 @@ void dma_trace_flush(void *t)
 	size = MIN(size, MAILBOX_TRACE_SIZE);
 
 	/* invalidate trace data */
-	dcache_invalidate_region((void *)t, size);
+	dcache_invalidate_region((__sparse_force void __sparse_cache *)t, size);
 
 	/* check for buffer wrap */
 	if ((char *)buffer->w_ptr - size < (char *)buffer->addr) {
@@ -569,7 +569,7 @@ void dma_trace_flush(void *t)
 	}
 
 	/* writeback trace data */
-	dcache_writeback_region((void *)t, size);
+	dcache_writeback_region((__sparse_force void __sparse_cache *)t, size);
 
 }
 
@@ -662,25 +662,29 @@ static void dtrace_add_event(const char *e, uint32_t length)
 		/* check for buffer wrap */
 		if (margin > length) {
 			/* no wrap */
-			dcache_invalidate_region(buffer->w_ptr, length);
+			dcache_invalidate_region((__sparse_force void __sparse_cache *)buffer->w_ptr,
+						 length);
 			ret = memcpy_s(buffer->w_ptr, length, e, length);
 			assert(!ret);
-			dcache_writeback_region(buffer->w_ptr, length);
+			dcache_writeback_region((__sparse_force void __sparse_cache *)buffer->w_ptr,
+						length);
 			buffer->w_ptr = (char *)buffer->w_ptr + length;
 		} else {
 			/* data is bigger than remaining margin so we wrap */
-			dcache_invalidate_region(buffer->w_ptr, margin);
+			dcache_invalidate_region((__sparse_force void __sparse_cache *)buffer->w_ptr,
+						 margin);
 			ret = memcpy_s(buffer->w_ptr, margin, e, margin);
 			assert(!ret);
-			dcache_writeback_region(buffer->w_ptr, margin);
+			dcache_writeback_region((__sparse_force void __sparse_cache *)buffer->w_ptr,
+						margin);
 			buffer->w_ptr = buffer->addr;
 
-			dcache_invalidate_region(buffer->w_ptr,
+			dcache_invalidate_region((__sparse_force void __sparse_cache *)buffer->w_ptr,
 						 length - margin);
 			ret = memcpy_s(buffer->w_ptr, length - margin,
 				       e + margin, length - margin);
 			assert(!ret);
-			dcache_writeback_region(buffer->w_ptr,
+			dcache_writeback_region((__sparse_force void __sparse_cache *)buffer->w_ptr,
 						length - margin);
 			buffer->w_ptr = (char *)buffer->w_ptr + length - margin;
 		}

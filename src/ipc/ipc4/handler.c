@@ -449,11 +449,12 @@ static int ipc4_set_pipeline_state(union ipc4_message_header *ipc4)
 	cmd = state.header.r.ppl_state;
 
 	ppl_data = (struct ipc4_pipeline_set_state_data *)MAILBOX_HOSTBOX_BASE;
-	dcache_invalidate_region(ppl_data, sizeof(*ppl_data));
+	dcache_invalidate_region((__sparse_force void __sparse_cache *)ppl_data, sizeof(*ppl_data));
 	if (state.data.r.multi_ppl) {
 		ppl_count = ppl_data->pipelines_count;
 		ppl_id = ppl_data->ppl_id;
-		dcache_invalidate_region(ppl_id, sizeof(int) * ppl_count);
+		dcache_invalidate_region((__sparse_force void __sparse_cache *)ppl_id,
+					 sizeof(int) * ppl_count);
 	} else {
 		ppl_count = 1;
 		id = state.header.r.ppl_id;

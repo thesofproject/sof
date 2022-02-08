@@ -303,7 +303,8 @@ static enum task_state spi_completion_work(void *data)
 	case IPC_READ:
 		hdr = (struct sof_ipc_hdr *)spi->rx_buffer;
 
-		dcache_invalidate_region(spi->rx_buffer, SPI_BUFFER_SIZE);
+		dcache_invalidate_region((__sparse_force void __sparse_cache *)spi->rx_buffer,
+					 SPI_BUFFER_SIZE);
 		mailbox_hostbox_write(0, spi->rx_buffer, hdr->size);
 
 		ipc_schedule_process(ipc_get());
@@ -356,7 +357,7 @@ int spi_push(struct spi *spi, const void *data, size_t size)
 	ret = memcpy_s(config->src_buf, config->buffer_size, data, size);
 	assert(!ret);
 
-	dcache_writeback_region(config->src_buf, size);
+	dcache_writeback_region((__sparse_force void __sparse_cache *)config->src_buf, size);
 
 	ret = spi_trigger(spi, SPI_TRIGGER_START, SPI_DIR_TX);
 	if (ret < 0)
@@ -394,7 +395,7 @@ static int spi_slave_init(struct spi *spi)
 	if (ret < 0)
 		return ret;
 
-	dcache_invalidate_region(spi->rx_buffer, SPI_BUFFER_SIZE);
+	dcache_invalidate_region((__sparse_force void __sparse_cache *)spi->rx_buffer, SPI_BUFFER_SIZE);
 	ret = spi_trigger(spi, SPI_TRIGGER_START, SPI_DIR_RX);
 	if (ret < 0)
 		return ret;

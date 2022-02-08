@@ -76,8 +76,8 @@ static void platform_pg_task(void)
 	 */
 	memcpy_s((void *)LPS_RESTORE_VECTOR_ADDR, LPS_RESTORE_VECTOR_SIZE,
 		 &lps_pic_restore_vector_literals, vector_size);
-	dcache_writeback_invalidate_region((void *)LPS_RESTORE_VECTOR_ADDR,
-					   vector_size);
+	dcache_writeback_invalidate_region((__sparse_force void __sparse_cache *)
+					   LPS_RESTORE_VECTOR_ADDR, vector_size);
 
 	/* set magic and vector in LPSRAM */
 	lpsram_hdr->adsp_lpsram_magic = LPSRAM_MAGIC_VALUE;

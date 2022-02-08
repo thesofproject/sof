@@ -64,7 +64,7 @@ static inline void lp_sram_unpack(void)
 		size = *ptr++;
 
 		memcpy_s(dst, size, src, size);
-		dcache_writeback_region(dst, size);
+		dcache_writeback_region((__sparse_force void __sparse_cache *)dst, size);
 	}
 }
 #endif

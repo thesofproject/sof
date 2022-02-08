@@ -120,7 +120,7 @@ struct sof;
 static inline void *platform_shared_get(void *ptr, int bytes)
 {
 #if CONFIG_CORE_COUNT > 1 && !defined __ZEPHYR__
-	dcache_invalidate_region(ptr, bytes);
+	dcache_invalidate_region((__sparse_force void __sparse_cache *)ptr, bytes);
 	return cache_to_uncache(ptr);
 #else
 	return ptr;
