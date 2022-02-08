@@ -323,7 +323,7 @@ enum DSM_API_MESSAGE dsm_api_set_params(void *ipmodulehandler,
  *             -----+-------------+------------------------------
  *            Total: M parameters of N channels
  *
- *               Exeption: the parameter sizes of the commands
+ *               Exception: the parameter sizes of the commands
  *		 DSM_API_GET_FIRMWARE_BUILD_TIME      = 88, //C string
  *		 DSM_API_GET_FIRMWARE_BUILD_DATE      = 89, //C string
  *		 DSM_API_GET_FIRMWARE_VERSION         = 90, //C string

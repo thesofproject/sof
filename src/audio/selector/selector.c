@@ -130,7 +130,7 @@ static int selector_verify_params(struct comp_dev *dev,
 
 		/* if cd->config.out_channels_count are equal to 0
 		 * (it can vary), we set params->channels to sink buffer
-		 * channels, which were previosly set in
+		 * channels, which were previously set in
 		 * pipeline_comp_hw_params()
 		 */
 		out_channels = cd->config.out_channels_count ?
@@ -151,7 +151,7 @@ static int selector_verify_params(struct comp_dev *dev,
 
 		/* if cd->config.in_channels_count are equal to 0
 		 * (it can vary), we set params->channels to source buffer
-		 * channels, which were previosly set in
+		 * channels, which were previously set in
 		 * pipeline_comp_hw_params()
 		 */
 		in_channels = cd->config.in_channels_count ?

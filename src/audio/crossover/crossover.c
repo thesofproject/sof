@@ -268,7 +268,7 @@ static int crossover_init_coef(struct comp_data *cd, int nch)
 		return -EINVAL;
 	}
 
-	comp_cl_info(&comp_crossover, "crossover_init_coef(), initiliazing %i-way crossover",
+	comp_cl_info(&comp_crossover, "crossover_init_coef(), initializing %i-way crossover",
 		     config->num_sinks);
 
 	/* Collect the coef array and assign it to every channel */
@@ -409,7 +409,7 @@ static int crossover_validate_config(struct comp_dev *dev,
 		return -EINVAL;
 	}
 
-	/* Align the crossover's sinks, to their respective configuation in
+	/* Align the crossover's sinks, to their respective configuration in
 	 * the config.
 	 */
 	list_for_item(sink_list, &dev->bsink_list) {

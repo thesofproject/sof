@@ -10,7 +10,7 @@
 
 /**
  * \file
- * \brief Processing compoent aimed to work with external codec libraries
+ * \brief Processing component aimed to work with external codec libraries
  * \author Marcin Rajwa <marcin.rajwa@linux.intel.com>
  */
 
