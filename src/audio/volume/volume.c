@@ -585,7 +585,7 @@ static inline int volume_set_chan(struct comp_dev *dev, int chan,
 	int32_t coef;
 
 	/* Limit received volume gain to MIN..MAX range before applying it.
-	 * MAX is needed for now for the generic C gain arithmetics to prevent
+	 * MAX is needed for now for the generic C gain arithmetic to prevent
 	 * multiplication overflow with the 32 bit value. Non-zero MIN option
 	 * can be useful to prevent totally muted small volume gain.
 	 */

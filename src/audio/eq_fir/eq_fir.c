@@ -192,7 +192,7 @@ static int eq_fir_init_coef(struct sof_eq_fir_config *config,
 		return -EINVAL;
 	}
 
-	/* Collect index of respose start positions in all_coefficients[]  */
+	/* Collect index of response start positions in all_coefficients[]  */
 	j = 0;
 	assign_response = ASSUME_ALIGNED(&config->data[0], 4);
 	coef_data = ASSUME_ALIGNED(&config->data[config->channels_in_config],

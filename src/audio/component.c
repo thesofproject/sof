@@ -235,7 +235,7 @@ bool comp_is_new_data_blob_available(struct comp_data_blob_handler
 	comp_dbg(blob_handler->dev, "comp_is_new_data_blob_available()");
 
 	/* New data blob is available when new data blob is allocated (data_new
-	 * is not NULL) nd component received all required chunks of data
+	 * is not NULL), and the component has received all required chunks of data
 	 * (data_ready is set to TRUE)
 	 */
 	if (blob_handler->data_new && blob_handler->data_ready)

@@ -449,7 +449,7 @@ void drc_compress_output(struct drc_state *state,
 
 #endif /* DRC_GENERIC */
 
-/* After one complete divison of samples have been received (and one divison of
+/* After one complete division of samples have been received (and one division of
  * samples have been output), we calculate shaped power average
  * (detector_average) from the input division, update envelope parameters from
  * detector_average, then prepare the next output division by applying the
