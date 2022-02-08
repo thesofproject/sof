@@ -82,7 +82,7 @@ r21 = l02/m01;
 fs3 = [r11 r12 r21 r22].*fs1;
 
 
-if fs1 > fs2 % Decrease sample rate, dont go below output rate
+if fs1 > fs2 % Decrease sample rate, don't go below output rate
         idx = find(fs3 >= fs2);
         if length(idx) < 1
                 error('Cant factorise interpolations');
@@ -150,6 +150,3 @@ else
 end
 b = c/a;
 end
-
-
-

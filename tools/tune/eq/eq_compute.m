@@ -455,7 +455,7 @@ else
         tf42 = conv(tf32, tf33);
         tf   = conv(tf41, tf42);
 
-        % Ensure the tf coefficents are real if rounding issues
+        % Ensure the tf coefficients are real if rounding issues
         tf = real(tf);
 end
 

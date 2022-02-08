@@ -273,7 +273,7 @@ end
 
 function play = meas_remote_play_config()
 	play = get_config('mls_play_config.txt', 'play');
-	fprintf('\nThe setttings for remote playback are\n');
+	fprintf('\nThe settings for remote playback are\n');
 	fprintf('Use ssh   : %d\n', play.ssh);
 	fprintf('User      : %s\n', play.user);
 	fprintf('Directory : %s\n', play.dir);
@@ -286,7 +286,7 @@ function rec = meas_remote_rec_config(fs, fmt)
 	rec.fmt = sprintf('-t wav -c %d -f %s -r %d', ...
 			     rec.nch, fmt, fs);
 
-	fprintf('\nThe setttings for remote capture are\n');
+	fprintf('\nThe settings for remote capture are\n');
 	fprintf('Use ssh          : %d\n', rec.ssh);
 	fprintf('User             : %s\n', rec.user);
 	fprintf('Directory        : %s\n', rec.dir);
