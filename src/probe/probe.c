@@ -91,7 +91,7 @@ static int probe_dma_buffer_init(struct probe_dma_buf *buffer, uint32_t size,
 	}
 
 	bzero((void *)buffer->addr, size);
-	dcache_writeback_region((void *)buffer->addr, size);
+	dcache_writeback_region((__sparse_force void __sparse_cache *)buffer->addr, size);
 
 	/* initialise the DMA buffer */
 	buffer->size = size;
@@ -518,7 +518,7 @@ static int copy_to_pbuffer(struct probe_dma_buf *pbuf, void *data,
 		tr_err(&pr_tr, "copy_to_pbuffer(): memcpy_s() failed");
 		return -EINVAL;
 	}
-	dcache_writeback_region((void *)pbuf->w_ptr, head);
+	dcache_writeback_region((__sparse_force void __sparse_cache *)pbuf->w_ptr, head);
 
 	/* buffer ended so needs to do a second copy */
 	if (tail) {
@@ -528,7 +528,7 @@ static int copy_to_pbuffer(struct probe_dma_buf *pbuf, void *data,
 			tr_err(&pr_tr, "copy_to_pbuffer(): memcpy_s() failed");
 			return -EINVAL;
 		}
-		dcache_writeback_region((void *)pbuf->w_ptr, tail);
+		dcache_writeback_region((__sparse_force void __sparse_cache *)pbuf->w_ptr, tail);
 		pbuf->w_ptr = pbuf->w_ptr + tail;
 	} else {
 		pbuf->w_ptr = pbuf->w_ptr + head;
@@ -570,7 +570,7 @@ static int copy_from_pbuffer(struct probe_dma_buf *pbuf, void *data,
 	}
 
 	/* data from DMA so invalidate it */
-	dcache_invalidate_region((void *)pbuf->r_ptr, head);
+	dcache_invalidate_region((__sparse_force void __sparse_cache *)pbuf->r_ptr, head);
 	if (memcpy_s(data, bytes, (void *)pbuf->r_ptr, head)) {
 		tr_err(&pr_tr, "copy_from_pbuffer(): memcpy_s() failed");
 		return -EINVAL;
@@ -580,7 +580,7 @@ static int copy_from_pbuffer(struct probe_dma_buf *pbuf, void *data,
 	if (tail) {
 		/* starting from the beginning of the buffer */
 		pbuf->r_ptr = pbuf->addr;
-		dcache_invalidate_region((void *)pbuf->r_ptr, tail);
+		dcache_invalidate_region((__sparse_force void __sparse_cache *)pbuf->r_ptr, tail);
 		if (memcpy_s((char *)data + head, tail, (void *)pbuf->r_ptr, tail)) {
 			tr_err(&pr_tr, "copy_from_pbuffer(): memcpy_s() failed");
 			return -EINVAL;
@@ -627,7 +627,7 @@ static int probe_gen_header(struct comp_buffer *buffer, uint32_t size,
 	crc = crc32(0, header, sizeof(*header));
 	header->checksum = crc;
 
-	dcache_writeback_region(header, sizeof(*header));
+	dcache_writeback_region((__sparse_force void __sparse_cache *)header, sizeof(*header));
 
 	return copy_to_pbuffer(&_probe->ext_dma.dmapb, header,
 			       sizeof(struct probe_data_packet));

@@ -342,7 +342,8 @@ static struct comp_dev *copier_new(const struct comp_driver *drv,
 	dev->ipc_config = *config;
 
 	config_size = copier->gtw_cfg.config_length * sizeof(uint32_t);
-	dcache_invalidate_region((char *)spec + sizeof(*copier), config_size);
+	dcache_invalidate_region((__sparse_force char __sparse_cache *)spec + sizeof(*copier),
+				 config_size);
 
 	size = sizeof(*cd);
 	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, size);
@@ -866,7 +867,7 @@ static int copier_set_sink_fmt(struct comp_dev *dev, void *data,
 	struct copier_data *cd = comp_get_drvdata(dev);
 
 	sink_fmt = (struct ipc4_copier_config_set_sink_format *)data;
-	dcache_invalidate_region(sink_fmt, sizeof(*sink_fmt));
+	dcache_invalidate_region((__sparse_force void __sparse_cache *)sink_fmt, sizeof(*sink_fmt));
 
 	if (max_data_size < sizeof(*sink_fmt)) {
 		comp_err(dev, "error: max_data_size %d should be bigger than %d", max_data_size,
@@ -911,7 +912,7 @@ static int set_attenuation(struct comp_dev *dev, uint32_t data_offset, char *dat
 		return -EINVAL;
 	}
 
-	dcache_invalidate_region(data, sizeof(uint32_t));
+	dcache_invalidate_region((__sparse_force void __sparse_cache *)data, sizeof(uint32_t));
 	attenuation = *(uint32_t *)data;
 	if (attenuation > 31) {
 		comp_err(dev, "attenuation %d is out of range", attenuation);

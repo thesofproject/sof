@@ -168,7 +168,7 @@ struct comp_dev *comp_make_shared(struct comp_dev *dev)
 	int dir;
 
 	/* flush cache to share */
-	dcache_writeback_region(dev, dev->size);
+	dcache_writeback_region((__sparse_force void __sparse_cache *)dev, dev->size);
 
 	dev = platform_shared_get(dev, dev->size);
 

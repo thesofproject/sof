@@ -148,7 +148,7 @@ void notifier_notify_remote(void)
 	struct notify_data *notify_data = notify_data_get() + cpu_get_id();
 
 	if (!list_is_empty(&notify->list[notify_data->type])) {
-		dcache_invalidate_region(notify_data->data,
+		dcache_invalidate_region((__sparse_force void __sparse_cache *)notify_data->data,
 					 notify_data->data_size);
 		notifier_notify(notify_data->caller, notify_data->type,
 				notify_data->data);
@@ -180,8 +180,8 @@ void notifier_event(const void *caller, enum notify_id type, uint32_t core_mask,
 				notify_data->data = data;
 				notify_data->data_size = data_size;
 
-				dcache_writeback_region(notify_data->data,
-							data_size);
+				dcache_writeback_region((__sparse_force void __sparse_cache *)
+							notify_data->data, data_size);
 
 				idc_send_msg(&notify_msg, IDC_NON_BLOCKING);
 			}

@@ -87,7 +87,7 @@ struct comp_dev *comp_new(struct sof_ipc_comp *comp)
 	ipc_config.pipeline_id = comp->pipeline_id;
 	ipc_config.core = comp->core;
 
-	dcache_invalidate_region((void *)(MAILBOX_HOSTBOX_BASE),
+	dcache_invalidate_region((__sparse_force void __sparse_cache *)(MAILBOX_HOSTBOX_BASE),
 				 MAILBOX_HOSTBOX_SIZE);
 
 	dev = drv->ops.create(drv, &ipc_config, (void *)MAILBOX_HOSTBOX_BASE);

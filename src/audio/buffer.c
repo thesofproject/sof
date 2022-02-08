@@ -69,7 +69,7 @@ void buffer_zero(struct comp_buffer *buffer)
 
 	bzero(buffer->stream.addr, buffer->stream.size);
 	if (buffer->caps & SOF_MEM_CAPS_DMA)
-		dcache_writeback_region(buffer->stream.addr,
+		dcache_writeback_region((__sparse_force void __sparse_cache *)buffer->stream.addr,
 					buffer->stream.size);
 }
 

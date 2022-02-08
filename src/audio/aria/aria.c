@@ -133,7 +133,7 @@ static int init_aria(struct comp_dev *dev, struct comp_ipc_config *config,
 	list_init(&dev->bsource_list);
 	list_init(&dev->bsink_list);
 
-	dcache_invalidate_region(spec, sizeof(*aria));
+	dcache_invalidate_region((__sparse_force void __sparse_cache *)spec, sizeof(*aria));
 	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
 	if (!cd) {
 		comp_free(dev);
@@ -302,12 +302,14 @@ static int aria_copy(struct comp_dev *dev)
 			frag++;
 		}
 	}
-	dcache_writeback_region(cd->buf_in, c.frames * sink->stream.channels * sizeof(int32_t));
+	dcache_writeback_region((__sparse_force void __sparse_cache *)cd->buf_in,
+				c.frames * sink->stream.channels * sizeof(int32_t));
 
 	aria_process_data(dev, cd->buf_out, sink_bytes / sizeof(uint32_t),
 			  cd->buf_in, source_bytes / sizeof(uint32_t));
 
-	dcache_writeback_region(cd->buf_out, c.frames * sink->stream.channels * sizeof(int32_t));
+	dcache_writeback_region((__sparse_force void __sparse_cache *)cd->buf_out,
+				c.frames * sink->stream.channels * sizeof(int32_t));
 	frag = 0;
 	for (i = 0; i < c.frames; i++) {
 		for (channel = 0; channel < sink->stream.channels; channel++) {

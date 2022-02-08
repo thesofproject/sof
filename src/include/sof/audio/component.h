@@ -837,7 +837,8 @@ void comp_get_copy_limits_with_lock(struct comp_buffer *source,
 static inline void comp_invalidate(struct comp_dev *dev)
 {
 	if (!dev->is_shared)
-		dcache_invalidate_region(dev, sizeof(struct comp_dev));
+		dcache_invalidate_region((__sparse_force void __sparse_cache *)dev,
+					 sizeof(struct comp_dev));
 }
 
 /**
@@ -847,7 +848,8 @@ static inline void comp_invalidate(struct comp_dev *dev)
 static inline void comp_writeback(struct comp_dev *dev)
 {
 	if (!dev->is_shared)
-		dcache_writeback_region(dev, sizeof(struct comp_dev));
+		dcache_writeback_region((__sparse_force void __sparse_cache *)dev,
+					sizeof(struct comp_dev));
 }
 
 /**

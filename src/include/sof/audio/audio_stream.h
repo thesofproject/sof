@@ -505,9 +505,10 @@ static inline void audio_stream_invalidate(struct audio_stream *buffer,
 		tail_size = bytes - head_size;
 	}
 
-	dcache_invalidate_region(buffer->r_ptr, head_size);
+	dcache_invalidate_region((__sparse_force void __sparse_cache *)buffer->r_ptr, head_size);
 	if (tail_size)
-		dcache_invalidate_region(buffer->addr, tail_size);
+		dcache_invalidate_region((__sparse_force void __sparse_cache *)buffer->addr,
+					 tail_size);
 }
 
 /**
@@ -528,9 +529,10 @@ static inline void audio_stream_writeback(struct audio_stream *buffer,
 		tail_size = bytes - head_size;
 	}
 
-	dcache_writeback_region(buffer->w_ptr, head_size);
+	dcache_writeback_region((__sparse_force void __sparse_cache *)buffer->w_ptr, head_size);
 	if (tail_size)
-		dcache_writeback_region(buffer->addr, tail_size);
+		dcache_writeback_region((__sparse_force void __sparse_cache *)buffer->addr,
+					tail_size);
 }
 
 /**
