@@ -32,11 +32,14 @@ C_CONTROLMIXER(Master Capture Volume, PIPELINE_ID,
 # Volume configuration
 #
 
-W_VENDORTUPLES(playback_pga_tokens, sof_volume_tokens,
+define(DEF_PGA_TOKENS, concat(`pga_tokens_', PIPELINE_ID))
+define(DEF_PGA_CONF, concat(`pga_conf_', PIPELINE_ID))
+
+W_VENDORTUPLES(DEF_PGA_TOKENS, sof_volume_tokens,
 LIST(`		', `SOF_TKN_VOLUME_RAMP_STEP_TYPE	"0"'
      `		', `SOF_TKN_VOLUME_RAMP_STEP_MS		"250"'))
 
-W_DATA(playback_pga_conf, playback_pga_tokens)
+W_DATA(DEF_PGA_CONF, DEF_PGA_TOKENS)
 
 #
 # Components and Buffers
@@ -47,7 +50,7 @@ W_DATA(playback_pga_conf, playback_pga_tokens)
 W_PCM_CAPTURE(PCM_ID, Passthrough Capture, 0, 2, SCHEDULE_CORE)
 
 # "Volume" has x source and 2 sink periods
-W_PGA(0, PIPELINE_FORMAT, 2, DAI_PERIODS, playback_pga_conf, SCHEDULE_CORE,
+W_PGA(0, PIPELINE_FORMAT, 2, DAI_PERIODS, DEF_PGA_CONF, SCHEDULE_CORE,
 	LIST(`		', "PIPELINE_ID Master Capture Volume"))
 
 # Capture Buffers
@@ -82,3 +85,6 @@ indir(`define', concat(`PIPELINE_PCM_', PIPELINE_ID), Passthrough Capture PCM_ID
 PCM_CAPABILITIES(Passthrough Capture PCM_ID, CAPABILITY_FORMAT_NAME(PIPELINE_FORMAT),
 	16000, 16000, PIPELINE_CHANNELS, PIPELINE_CHANNELS,
 	2, 16, 192, 16384, 65536, 65536)
+
+undefine(`DEF_PGA_TOKENS')
+undefine(`DEF_PGA_CONF')
