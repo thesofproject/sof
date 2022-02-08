@@ -59,13 +59,13 @@ static struct dma_sg_elem *sg_get_elem_at(struct dma_sg_config *host_sg,
  */
 #if CONFIG_DMA_GW
 
-int dma_copy_to_host_nowait(struct dma_copy *dc, struct dma_sg_config *host_sg,
-			    int32_t host_offset, void *local_ptr, int32_t size)
+int dma_copy_to_host(struct dma_copy *dc, struct dma_sg_config *host_sg,
+		     int32_t host_offset, void *local_ptr, int32_t size)
 {
 	int ret;
 
 	/* tell gateway to copy */
-	ret = dma_copy(dc->chan, size, 0);
+	ret = dma_copy(dc->chan, size, DMA_COPY_BLOCKING);
 	if (ret < 0)
 		return ret;
 
@@ -75,8 +75,8 @@ int dma_copy_to_host_nowait(struct dma_copy *dc, struct dma_sg_config *host_sg,
 
 #else /* CONFIG_DMA_GW */
 
-int dma_copy_to_host_nowait(struct dma_copy *dc, struct dma_sg_config *host_sg,
-			    int32_t host_offset, void *local_ptr, int32_t size)
+int dma_copy_to_host(struct dma_copy *dc, struct dma_sg_config *host_sg,
+		     int32_t host_offset, void *local_ptr, int32_t size)
 {
 	struct dma_sg_config config;
 	struct dma_sg_elem *host_sg_elem;

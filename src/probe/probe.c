@@ -201,15 +201,15 @@ static enum task_state probe_task(void *data)
 	int err;
 
 	if (_probe->ext_dma.dmapb.avail > 0)
-		err = dma_copy_to_host_nowait(&_probe->ext_dma.dc,
-					      &_probe->ext_dma.config, 0,
-					       (void *)_probe->ext_dma.dmapb.r_ptr,
-					       _probe->ext_dma.dmapb.avail);
+		err = dma_copy_to_host(&_probe->ext_dma.dc,
+				       &_probe->ext_dma.config, 0,
+				       (void *)_probe->ext_dma.dmapb.r_ptr,
+				       _probe->ext_dma.dmapb.avail);
 	else
 		return SOF_TASK_STATE_RESCHEDULE;
 
 	if (err < 0) {
-		tr_err(&pr_tr, "probe_task(): dma_copy_to_host_nowait() failed.");
+		tr_err(&pr_tr, "probe_task(): dma_copy_to_host() failed.");
 		return err;
 	}
 

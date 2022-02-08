@@ -541,8 +541,8 @@ int dma_copy_from_host_nowait(struct dma_copy *dc,
 			      int32_t size);
 
 /* DMA copy data from DSP to host */
-int dma_copy_to_host_nowait(struct dma_copy *dc, struct dma_sg_config *host_sg,
-	int32_t host_offset, void *local_ptr, int32_t size);
+int dma_copy_to_host(struct dma_copy *dc, struct dma_sg_config *host_sg,
+		     int32_t host_offset, void *local_ptr, int32_t size);
 
 int dma_copy_set_stream_tag(struct dma_copy *dc, uint32_t stream_tag);
 
