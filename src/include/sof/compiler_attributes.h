@@ -5,7 +5,15 @@
  * Author: Karol Trzcinski <karolx.trzcinski@linux.intel.com>
  */
 
-#ifndef __ZEPHYR__
+#ifdef __ZEPHYR__
+
+/* Get __sparse_cache and __sparse_force definitions if __CHECKER__ is defined */
+#include <debug/sparse.h>
+
+#else
+
+#define __sparse_cache
+#define __sparse_force
 
 #ifndef __packed
 #define __packed __attribute__((packed))
