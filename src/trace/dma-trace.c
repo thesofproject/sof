@@ -223,10 +223,23 @@ static int dma_trace_buffer_init(struct dma_trace_data *d)
 	struct dma_trace_buf *buffer = &d->dmatb;
 	void *buf;
 	k_spinlock_key_t key;
+	uint32_t addr_align;
+	int err;
 
-	/* allocate new buffer */
-	buf = rballoc(0, SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_DMA,
-		      DMA_TRACE_LOCAL_SIZE);
+	if (!d || !d->dc.dmac) {
+		mtrace_printf(LOG_LEVEL_ERROR,
+			      "%s failed: no DMAC!", __func__);
+		return -ENODEV;
+	}
+
+	err = dma_get_attribute(d->dc.dmac, DMA_ATTR_BUFFER_ADDRESS_ALIGNMENT,
+				&addr_align);
+	if (err < 0)
+		return err;
+
+	/* For DMA to work properly the buffer must be correctly aligned */
+	buf = rballoc_align(0, SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_DMA,
+			    DMA_TRACE_LOCAL_SIZE, addr_align);
 	if (!buf) {
 		tr_err(&dt_tr, "dma_trace_buffer_init(): alloc failed");
 		return -ENOMEM;
