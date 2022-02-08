@@ -40,11 +40,14 @@ W_DATA(media_src_conf, media_src_tokens)
 # Volume Configuration
 #
 
-W_VENDORTUPLES(playback_pga_tokens, sof_volume_tokens,
+define(DEF_PGA_TOKENS, concat(`pga_tokens_', PIPELINE_ID))
+define(DEF_PGA_CONF, concat(`pga_conf_', PIPELINE_ID))
+
+W_VENDORTUPLES(DEF_PGA_TOKENS, sof_volume_tokens,
 LIST(`		', `SOF_TKN_VOLUME_RAMP_STEP_TYPE	"0"'
      `		', `SOF_TKN_VOLUME_RAMP_STEP_MS		"250"'))
 
-W_DATA(playback_pga_conf, playback_pga_tokens)
+W_DATA(DEF_PGA_CONF, DEF_PGA_TOKENS)
 
 #
 # Components and Buffers
@@ -55,7 +58,7 @@ W_DATA(playback_pga_conf, playback_pga_tokens)
 W_PCM_PLAYBACK(PCM_ID, Media Playback, 2, 0, SCHEDULE_CORE)
 
 # "Playback Volume" has 3 sink period and 2 source periods for host ping-pong
-W_PGA(0, PIPELINE_FORMAT, 3, 2, playback_pga_conf, SCHEDULE_CORE,
+W_PGA(0, PIPELINE_FORMAT, 3, 2, DEF_PGA_CONF, SCHEDULE_CORE,
 	LIST(`		', "PIPELINE_ID PCM PCM_ID Playback Volume"))
 
 # "SRC 0" has 3 sink and source periods.
@@ -127,3 +130,6 @@ SectionPCM.STR(Media Playback PCM_ID) {
 		capabilities STR(Media Playback PCM_ID)
 	}
 }
+
+undefine(`DEF_PGA_TOKENS')
+undefine(`DEF_PGA_CONF')

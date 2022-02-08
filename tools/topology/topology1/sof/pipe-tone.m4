@@ -41,11 +41,14 @@ C_CONTROLMIXER(Tone Switch, PIPELINE_ID,
 # Volume configuration
 #
 
-W_VENDORTUPLES(playback_pga_tokens, sof_volume_tokens,
+define(DEF_PGA_TOKENS, concat(`pga_tokens_', PIPELINE_ID))
+define(DEF_PGA_CONF, concat(`pga_conf_', PIPELINE_ID))
+
+W_VENDORTUPLES(DEF_PGA_TOKENS, sof_volume_tokens,
 LIST(`		', `SOF_TKN_VOLUME_RAMP_STEP_TYPE	"0"'
      `		', `SOF_TKN_VOLUME_RAMP_STEP_MS		"250"'))
 
-W_DATA(playback_pga_conf, playback_pga_tokens)
+W_DATA(DEF_PGA_CONF, DEF_PGA_TOKENS)
 
 #
 # Components and Buffers
@@ -56,7 +59,7 @@ W_TONE(0, PIPELINE_FORMAT, 2, 0, SCHEDULE_CORE,
 	LIST(`		', "PIPELINE_ID Tone Switch"))
 
 # "Tone Volume" has 2 sink period and 2 source periods
-W_PGA(0, PIPELINE_FORMAT, 2, 2, playback_pga_conf, SCHEDULE_CORE,
+W_PGA(0, PIPELINE_FORMAT, 2, 2, DEF_PGA_CONF, SCHEDULE_CORE,
 	LIST(`		', "PIPELINE_ID Tone Volume"))
 
 # Low Latency Buffers
@@ -90,3 +93,6 @@ indir(`define', concat(`PIPELINE_SOURCE_', PIPELINE_ID), N_BUFFER(1))
 #
 
 W_PIPELINE(N_TONE(0), SCHEDULE_PERIOD, SCHEDULE_PRIORITY, SCHEDULE_CORE, SCHEDULE_TIME_DOMAIN, pipe_tone_schedule_plat)
+
+undefine(`DEF_PGA_TOKENS')
+undefine(`DEF_PGA_CONF')
