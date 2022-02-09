@@ -521,11 +521,6 @@ int dai_assign_group(struct comp_dev *dev, uint32_t group_id);
 int dai_position(struct comp_dev *dev, struct sof_ipc_stream_posn *posn);
 
 /**
- * \brief init dai dma position for host driver.
- */
-void dai_dma_position_init(struct dai_data *dd);
-
-/**
  * \brief update dai dma position for host driver.
  */
 void dai_dma_position_update(struct comp_dev *dev);

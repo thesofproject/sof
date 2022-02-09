@@ -605,8 +605,6 @@ static int dai_config_prepare(struct comp_dev *dev)
 	comp_info(dev, "dai_config_prepare(): new configured dma channel index %d",
 		  dd->chan->index);
 
-	dai_dma_position_init(dd);
-
 	/* setup callback */
 	notifier_register(dev, dd->chan, NOTIFIER_ID_DMA_COPY,
 			  dai_dma_cb, 0);
