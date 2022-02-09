@@ -4,7 +4,7 @@ function eq = eq_iir_blob_decode(ublob, resp_n)
 %
 % eq = eq_fir_decode_blob(blobfn, resp_n)
 %
-% blobfn  - file name of EQ setup blob
+% blob    - EQ setup blob 32 bit data vector
 % resp_n  - index of response to decode
 % fs      - sample rate, optional
 % do_plot - set to 1 for frequency response plot, optional
@@ -15,6 +15,10 @@ function eq = eq_iir_blob_decode(ublob, resp_n)
 % channels_in_config - numbers of channels in blob
 % assign response    - vector of EQ indexes assigned to channels
 %
+% To decode a IIR blob, try iirst
+% eq_blob_plot('../../topology/topology1/m4/eq_iir_coef_loudness.m4', 'iir');
+% eq_blob_plot('../../ctl/eq_iir_loudness.bin', 'iir');
+% eq_blob_plot('../../ctl/eq_iir_loudness.txt', 'iir');
 
 % SPDX-License-Identifier: BSD-3-Clause
 %

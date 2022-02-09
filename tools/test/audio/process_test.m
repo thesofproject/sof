@@ -281,10 +281,10 @@ end
 function test = g_spec(test, prm)
 
 switch lower(test.comp)
-	case 'eqiir'
+	case 'eq-iir'
 		blob = fullfile(prm.blobpath, prm.iirblob);
 		h = eq_blob_plot(blob, 'iir', test.fs, test.f, 0);
-	case 'eqfir'
+	case 'eq-fir'
 		blob = fullfile(prm.blobpath, prm.firblob);
 		h = eq_blob_plot(blob, 'fir', test.fs, test.f, 0);
 	otherwise
@@ -298,10 +298,10 @@ end
 function test = fr_mask(test, prm)
 
 switch lower(test.comp)
-	case 'eqiir'
+	case 'eq-iir'
 		blob = fullfile(prm.blobpath, prm.iirblob);
 		h = eq_blob_plot(blob, 'iir', test.fs, test.f, 0);
-	case 'eqfir'
+	case 'eq-fir'
 		blob = fullfile(prm.blobpath, prm.firblob);
 		h = eq_blob_plot(blob, 'fir', test.fs, test.f, 0);
 	otherwise
