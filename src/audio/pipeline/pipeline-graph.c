@@ -401,3 +401,44 @@ int pipeline_for_each_comp(struct comp_dev *current,
 
 	return 0;
 }
+
+/* visit connected  pipeline to find the dai comp and latency */
+struct comp_dev *pipeline_get_dai_comp(uint32_t pipeline_id, uint32_t *latency)
+{
+	struct ipc_comp_dev *sink;
+	struct ipc *ipc = ipc_get();
+
+	*latency = 0;
+
+	sink = ipc_get_ppl_sink_comp(ipc, pipeline_id);
+	if (!sink)
+		return NULL;
+
+	while (sink) {
+		struct comp_dev *buff_comp;
+		struct comp_buffer *buffer;
+
+		*latency += sink->cd->pipeline->period;
+		/* dai is found */
+		if (list_is_empty(&sink->cd->bsink_list)) {
+			struct list_item *list;
+
+			list = comp_buffer_list(sink->cd, PPL_DIR_UPSTREAM);
+			buffer = buffer_from_list(list->next, struct comp_buffer, PPL_DIR_UPSTREAM);
+			break;
+		}
+
+		buffer = buffer_from_list(comp_buffer_list(sink->cd, PPL_DIR_DOWNSTREAM)->next,
+					  struct comp_buffer, PPL_DIR_DOWNSTREAM);
+		buff_comp = buffer_get_comp(buffer, PPL_DIR_DOWNSTREAM);
+		sink = ipc_get_ppl_sink_comp(ipc, buff_comp->pipeline->pipeline_id);
+
+		if (!sink)
+			return NULL;
+	}
+
+	/* convert it to ms */
+	*latency /= 1000;
+
+	return sink->cd;
+}
