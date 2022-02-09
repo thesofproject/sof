@@ -216,14 +216,15 @@ static inline void buffer_stream_writeback(struct comp_buffer *buffer, uint32_t 
 	audio_stream_writeback(&buffer->stream, bytes);
 }
 
-__must_check static inline struct comp_buffer *buffer_acquire(struct comp_buffer *buffer)
+__must_check static inline struct comp_buffer __sparse_cache *buffer_acquire(
+	struct comp_buffer *buffer)
 {
-	struct coherent *c = coherent_acquire_thread(&buffer->c, sizeof(*buffer));
+	struct coherent __sparse_cache *c = coherent_acquire_thread(&buffer->c, sizeof(*buffer));
 
 	return container_of(c, struct comp_buffer, c);
 }
 
-static inline struct comp_buffer *buffer_release(struct comp_buffer *buffer)
+static inline struct comp_buffer *buffer_release(struct comp_buffer __sparse_cache *buffer)
 {
 	struct coherent *c = coherent_release_thread(&buffer->c, sizeof(*buffer));
 
@@ -232,15 +233,15 @@ static inline struct comp_buffer *buffer_release(struct comp_buffer *buffer)
 
 static inline void buffer_reset_pos(struct comp_buffer *buffer, void *data)
 {
-	buffer = buffer_acquire(buffer);
+	struct comp_buffer __sparse_cache *buffer_c = buffer_acquire(buffer);
 
 	/* reset rw pointers and avail/free bytes counters */
-	audio_stream_reset(&buffer->stream);
+	audio_stream_reset(&buffer_c->stream);
 
 	/* clear buffer contents */
-	buffer_zero(buffer);
+	buffer_zero(buffer_c);
 
-	buffer = buffer_release(buffer);
+	buffer_release(buffer_c);
 }
 
 static inline void buffer_init(struct comp_buffer *buffer, uint32_t size, uint32_t caps)
@@ -253,11 +254,11 @@ static inline void buffer_init(struct comp_buffer *buffer, uint32_t size, uint32
 
 static inline void buffer_reset_params(struct comp_buffer *buffer, void *data)
 {
-	buffer = buffer_acquire(buffer);
+	struct comp_buffer __sparse_cache *buffer_c = buffer_acquire(buffer);
 
-	buffer->hw_params_configured = false;
+	buffer_c->hw_params_configured = false;
 
-	buffer = buffer_release(buffer);
+	buffer_release(buffer_c);
 }
 
 #endif /* __SOF_AUDIO_BUFFER_H__ */
