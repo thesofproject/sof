@@ -21,23 +21,32 @@ void eq_fir_s16(struct fir_state_32x16 fir[], const struct audio_stream *source,
 		struct audio_stream *sink, int frames, int nch)
 {
 	struct fir_state_32x16 *filter;
-	int16_t *x;
-	int16_t *y;
 	int32_t z;
-	int idx;
-	int ch;
-	int i;
+	int16_t *x0, *y0;
+	int16_t *x = source->r_ptr;
+	int16_t *y = sink->w_ptr;
+	int nmax, n, i, j;
+	int remaining_samples = frames * nch;
 
-	for (ch = 0; ch < nch; ch++) {
-		filter = &fir[ch];
-		idx = ch;
-		for (i = 0; i < frames; i++) {
-			x = audio_stream_read_frag_s16(source, idx);
-			y = audio_stream_write_frag_s16(sink, idx);
-			z = fir_32x16(filter, *x << 16);
-			*y = sat_int16(Q_SHIFT_RND(z, 31, 15));
-			idx += nch;
+	while (remaining_samples) {
+		nmax = EQ_FIR_BYTES_TO_S16_SAMPLES(audio_stream_bytes_without_wrap(source, x));
+		n = MIN(remaining_samples, nmax);
+		nmax = EQ_FIR_BYTES_TO_S16_SAMPLES(audio_stream_bytes_without_wrap(sink, y));
+		n = MIN(n, nmax);
+		for (j = 0; j < nch; j++) {
+			x0 = x + j;
+			y0 = y + j;
+			filter = &fir[j];
+			for (i = 0; i < n; i += nch) {
+				z = fir_32x16(filter, *x0 << 16);
+				*y0 = sat_int16(Q_SHIFT_RND(z, 31, 15));
+				x0 += nch;
+				y0 += nch;
+			}
 		}
+		remaining_samples -= n;
+		x = audio_stream_wrap(source, x + n);
+		y = audio_stream_wrap(sink, y + n);
 	}
 }
 #endif /* CONFIG_FORMAT_S16LE */
@@ -47,23 +56,32 @@ void eq_fir_s24(struct fir_state_32x16 fir[], const struct audio_stream *source,
 		struct audio_stream *sink, int frames, int nch)
 {
 	struct fir_state_32x16 *filter;
-	int32_t *x;
-	int32_t *y;
 	int32_t z;
-	int idx;
-	int ch;
-	int i;
+	int32_t *x0, *y0;
+	int32_t *x = source->r_ptr;
+	int32_t *y = sink->w_ptr;
+	int nmax, n, i, j;
+	int remaining_samples = frames * nch;
 
-	for (ch = 0; ch < nch; ch++) {
-		filter = &fir[ch];
-		idx = ch;
-		for (i = 0; i < frames; i++) {
-			x = audio_stream_read_frag_s32(source, idx);
-			y = audio_stream_write_frag_s32(sink, idx);
-			z = fir_32x16(filter, *x << 8);
-			*y = sat_int24(Q_SHIFT_RND(z, 31, 23));
-			idx += nch;
+	while (remaining_samples) {
+		nmax = EQ_FIR_BYTES_TO_S32_SAMPLES(audio_stream_bytes_without_wrap(source, x));
+		n = MIN(remaining_samples, nmax);
+		nmax = EQ_FIR_BYTES_TO_S32_SAMPLES(audio_stream_bytes_without_wrap(sink, y));
+		n = MIN(n, nmax);
+		for (j = 0; j < nch; j++) {
+			x0 = x + j;
+			y0 = y + j;
+			filter = &fir[j];
+			for (i = 0; i < n; i += nch) {
+				z = fir_32x16(filter, *x0 << 8);
+				*y0 = sat_int24(Q_SHIFT_RND(z, 31, 23));
+				x0 += nch;
+				y0 += nch;
+			}
 		}
+		remaining_samples -= n;
+		x = audio_stream_wrap(source, x + n);
+		y = audio_stream_wrap(sink, y + n);
 	}
 }
 #endif /* CONFIG_FORMAT_S24LE */
@@ -73,21 +91,30 @@ void eq_fir_s32(struct fir_state_32x16 fir[], const struct audio_stream *source,
 		struct audio_stream *sink, int frames, int nch)
 {
 	struct fir_state_32x16 *filter;
-	int32_t *x;
-	int32_t *y;
-	int idx;
-	int ch;
-	int i;
+	int32_t *x0, *y0;
+	int32_t *x = source->r_ptr;
+	int32_t *y = sink->w_ptr;
+	int nmax, n, i, j;
+	int remaining_samples = frames * nch;
 
-	for (ch = 0; ch < nch; ch++) {
-		filter = &fir[ch];
-		idx = ch;
-		for (i = 0; i < frames; i++) {
-			x = audio_stream_read_frag_s32(source, idx);
-			y = audio_stream_write_frag_s32(sink, idx);
-			*y = fir_32x16(filter, *x);
-			idx += nch;
+	while (remaining_samples) {
+		nmax = EQ_FIR_BYTES_TO_S32_SAMPLES(audio_stream_bytes_without_wrap(source, x));
+		n = MIN(remaining_samples, nmax);
+		nmax = EQ_FIR_BYTES_TO_S32_SAMPLES(audio_stream_bytes_without_wrap(sink, y));
+		n = MIN(n, nmax);
+		for (j = 0; j < nch; j++) {
+			x0 = x + j;
+			y0 = y + j;
+			filter = &fir[j];
+			for (i = 0; i < n; i += nch) {
+				*y0 = fir_32x16(filter, *x0);
+				x0 += nch;
+				y0 += nch;
+			}
 		}
+		remaining_samples -= n;
+		x = audio_stream_wrap(source, x + n);
+		y = audio_stream_wrap(sink, y + n);
 	}
 }
 #endif /* CONFIG_FORMAT_S32LE */
