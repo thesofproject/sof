@@ -279,18 +279,9 @@ int dai_position(struct comp_dev *dev, struct sof_ipc_stream_posn *posn)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
 	struct dma_chan_status status;
-	uint32_t frame_size;
 
-	/* calculate frame size */
-	frame_size = get_frame_bytes(dev->ipc_config.frame_fmt,
-				     dd->local_buffer->stream.channels);
-	if (!frame_size) {
-		comp_err(dev, "invalid frame size 0");
-		return -EINVAL;
-	}
-
-	/* sample count */
-	posn->dai_posn = dev->position / frame_size;
+	/* total processed bytes count */
+	posn->dai_posn = dev->position;
 
 	/* set stream start wallclock */
 	posn->wallclock = dd->wallclock;
