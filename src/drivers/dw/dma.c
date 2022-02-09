@@ -228,6 +228,9 @@ static void dw_dma_channel_put_unlocked(struct dma_chan_data *channel)
 
 	dw_dma_interrupt_mask(channel);
 
+	/* disable linear link position */
+	platform_dw_dma_llp_disable(channel->dma, channel);
+
 	/* free the lli allocated by set_config*/
 	if (dw_chan->lli) {
 		rfree(dw_chan->lli);
@@ -442,9 +445,6 @@ static int dw_dma_stop(struct dma_chan_data *channel)
 	dcache_writeback_region(dw_chan->lli,
 				sizeof(struct dw_lli) * channel->desc_count);
 #endif
-
-	/* disable linear link position */
-	platform_dw_dma_llp_disable(dma, channel);
 
 	channel->status = COMP_STATE_PREPARE;
 
