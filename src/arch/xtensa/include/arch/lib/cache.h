@@ -20,6 +20,33 @@
 #include <stddef.h>
 #include <stdint.h>
 
+/*
+ * Debug Header struct for coherent objects - needs to be 3 words.
+ *
+ * This takes up the extra cache line size space in struct coherent so that
+ * low level cache INV/WB code can check for existence this debug header.
+ *
+ * The debug header will track the last successful core and PC but importantly
+ * will.
+ *
+ * 1) Checksum the uncache region during an INV and store in hdr->csum
+ *
+ * 2) Checksum the uncache region during a WB and assert if csum != hdr->csum
+ *
+ * This will allow for detection of uncache region clobbering and for users
+ * not using the coherent API to make INV/WB ops.
+ */
+struct cache_debug {
+	uint16_t magic;		/* magic to check if we have a coherent object */
+				/* not foolproof but good enough */
+	uint8_t inv_core;
+	uint8_t wb_core;
+	uint32_t csum;		/* really simple sum - needs to be good enough */
+	void *last_user;	/* PC (a1) of successful last user */
+} __attribute__((packed, aligned(DCACHE_LINE_SIZE)));
+
+#define CACHE_DEBUG_MAGIC	0x5555
+
 #ifdef CONFIG_COMPILER_WORKAROUND_CACHE_ATTR
 #include <sof/drivers/cache_attr.h>
 #endif
@@ -91,6 +118,16 @@ extern uint32_t _memmap_cacheattr_reset;
 
 static inline void dcache_writeback_region(void *addr, size_t size)
 {
+#if 1 /* CONFIG_DEBUG_CACHE */
+	struct cache_debug *debug = addr;
+
+	/* check if we have a cache coherent object */
+	if (debug.magic == CACHE_DEBUG_MAGIC) {
+		1) assert (!lock)  and dump debug data/PC
+		2) compare csum of uncache data and assert
+		3) write this user and core
+	}
+#endif
 #if XCHAL_DCACHE_SIZE > 0
 	if (is_cached(addr))
 		xthal_dcache_region_writeback(addr, size);
@@ -106,6 +143,16 @@ static inline void dcache_writeback_all(void)
 
 static inline void dcache_invalidate_region(void *addr, size_t size)
 {
+#if 1
+	struct cache_debug *debug = addr;
+
+	/* check if we have a cache coherent object */
+	if (debug.magic == CACHE_DEBUG_MAGIC) {
+		1) assert (!lock) and dump debug data/PC
+		2) csum the uncache region and store
+		3) write this user PC and core ID
+	}
+#endif
 #if XCHAL_DCACHE_SIZE > 0
 	if (is_cached(addr))
 		xthal_dcache_region_invalidate(addr, size);

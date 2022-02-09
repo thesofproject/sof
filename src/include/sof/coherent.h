@@ -53,6 +53,9 @@
  * The shared flag is only set at coherent init and thereafter it's RO.
  */
 struct coherent {
+#if 1
+	struct cache_debug debug;
+#endif
 	struct k_spinlock lock;	/* locking mechanism */
 	k_spinlock_key_t key;	/* lock flags */
 	uint16_t shared;	/* shared on other non coherent cores */
