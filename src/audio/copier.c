@@ -731,6 +731,9 @@ static int copier_params(struct comp_dev *dev, struct sof_ipc_stream_params *par
 	params->buffer_fmt = cd->config.base.audio_fmt.interleaving_style;
 	params->buffer.size = cd->config.base.ibs;
 
+	/* disable ipc3 stream position */
+	params->no_stream_position = 1;
+
 	/* update each sink format */
 	list_for_item(sink_list, &dev->bsink_list) {
 		int j;
