@@ -199,6 +199,21 @@ void dai_dma_release(struct comp_dev *dev)
 	}
 }
 
+static void dai_dma_position_init(struct dai_data *dd)
+{
+	struct ipc4_llp_reading_slot slot;
+	uint32_t llp_reg_offset;
+	uint32_t node_id;
+
+	get_llp_reg_info(dd, &node_id, &llp_reg_offset);
+	if (!node_id)
+		return;
+
+	memset_s(&slot, sizeof(slot), 0, sizeof(slot));
+	slot.node_id = node_id;
+	mailbox_sw_regs_write(llp_reg_offset, &slot, sizeof(slot));
+}
+
 int dai_config(struct comp_dev *dev, struct ipc_config_dai *common_config,
 	       void *spec_config)
 {
@@ -255,6 +270,8 @@ int dai_config(struct comp_dev *dev, struct ipc_config_dai *common_config,
 		}
 	}
 
+	dai_dma_position_init(dd);
+
 	return dai_set_config(dd->dai, common_config, copier_cfg->gtw_cfg.config_data);
 }
 
@@ -282,21 +299,6 @@ int dai_position(struct comp_dev *dev, struct sof_ipc_stream_posn *posn)
 	dma_status(dd->chan, &status, dev->direction);
 
 	return 0;
-}
-
-void dai_dma_position_init(struct dai_data *dd)
-{
-	struct ipc4_llp_reading_slot slot;
-	uint32_t llp_reg_offset;
-	uint32_t node_id;
-
-	get_llp_reg_info(dd, &node_id, &llp_reg_offset);
-	if (!node_id)
-		return;
-
-	memset_s(&slot, sizeof(slot), 0, sizeof(slot));
-	slot.node_id = node_id;
-	mailbox_sw_regs_write(llp_reg_offset, &slot, sizeof(slot));
 }
 
 void dai_dma_position_update(struct comp_dev *dev)
