@@ -550,6 +550,9 @@ static int copier_comp_trigger(struct comp_dev *dev, int cmd)
 	if (ret < 0)
 		return ret;
 
+	if (ret == COMP_STATUS_STATE_ALREADY_SET)
+		return PPL_STATUS_PATH_STOP;
+
 	if (cd->endpoint)
 		ret = cd->endpoint->drv->ops.trigger(cd->endpoint, cmd);
 
