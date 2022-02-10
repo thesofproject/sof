@@ -153,6 +153,30 @@ error:
 	return err;
 }
 
+static int propagate_state_to_ppl_comp(struct ipc *ipc, uint32_t ppl_id, int cmd)
+{
+	int ret = IPC4_INVALID_RESOURCE_ID;
+	struct ipc_comp_dev *icd;
+	struct list_item *clist;
+
+	list_for_item(clist, &ipc->comp_list) {
+		icd = container_of(clist, struct ipc_comp_dev, list);
+		if (icd->type != COMP_TYPE_COMPONENT)
+			continue;
+
+		if (!cpu_is_me(icd->core))
+			continue;
+
+		if (ipc_comp_pipe_id(icd) == ppl_id) {
+			ret = comp_set_state(icd->cd, cmd);
+			if (ret != 0)
+				return IPC4_INVALID_REQUEST;
+		}
+	}
+
+	return ret;
+}
+
 /* Ipc4 pipeline message <------> ipc3 pipeline message
  * RUNNING     <-------> TRIGGER START
  * INIT + PAUSED  <-------> PIPELINE COMPLETE
@@ -262,9 +286,13 @@ static int set_pipeline_state(uint32_t id, uint32_t cmd, bool *delayed)
 			}
 		}
 
+		ret = propagate_state_to_ppl_comp(ipc, id, COMP_TRIGGER_RESET);
+		if (ret != 0)
+			return ret;
+
 		/* resource is not released by triggering reset which is used by current FW */
 		ret = pipeline_reset(host->cd->pipeline, host->cd);
-		if (ret < 0)
+		if (ret != 0)
 			ret = IPC4_INVALID_REQUEST;
 
 		return ret;
