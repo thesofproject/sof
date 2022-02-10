@@ -888,13 +888,14 @@ static int logger_read(void)
 		    global_config->logs_header->data_length) {
 			/* Finding uninitialized and incomplete log statements in the
 			 * mailbox ring buffer is routine. Take note in both cases but
-			 * report errors only for the DMA trace.
+			 * fail only for the DMA trace.
+			 * ldc_address_OK means we had started processing a valid trace.
 			 */
 			if (global_config->trace && ldc_address_OK) {
-				log_err("log_entry_address %#10x is not in dictionary range!\n",
+				log_err("log_entry_address %#10x is not in dict. range! Aborting\n",
 					dma_log.log_entry_address);
-				fprintf(global_config->out_fd,
-					"warn: Seeking forward 4 bytes at a time until re-synchronize.\n");
+				ret = -EPROTO;
+				break;
 			}
 			ldc_address_OK = false;
 			/* When the address is not correct, move forward by one DWORD (not
