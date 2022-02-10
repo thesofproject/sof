@@ -530,7 +530,9 @@ static int asrc_params(struct comp_dev *dev,
 	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
 				source_list);
 
-	sinkb->stream.rate = asrc_get_sink_rate(&cd->ipc_config);
+	/* Don't change sink rate if value from IPC is 0 (auto detect) */
+	if (asrc_get_sink_rate(&cd->ipc_config))
+		sinkb->stream.rate = asrc_get_sink_rate(&cd->ipc_config);
 
 	/* set source/sink_frames/rate */
 	cd->source_rate = sourceb->stream.rate;
