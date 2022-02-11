@@ -25,7 +25,7 @@
 #include <sof/lib/memory.h>
 #include <sof/lib/shim.h>
 
-#if CAVS_VERSION >= CAVS_VERSION_1_8 || CONFIG_SOF_ZEPHYR
+#if CAVS_VERSION >= CAVS_VERSION_1_8
 /**
  * Macro powers down entire HPSRAM. On entry literals and code for section from
  * where this code is executed need to be placed in memory which is not

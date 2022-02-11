@@ -33,7 +33,7 @@ static inline void select_cpu_clock_hw(int freq_idx, bool release_unused)
 	uint32_t enc = cpu_freq_enc[freq_idx];
 	uint32_t status_mask = cpu_freq_status_mask[freq_idx];
 
-#if CONFIG_TIGERLAKE || CONFIG_SOF_ZEPHYR
+#if CONFIG_TIGERLAKE
 	/* TGL specific HW recommended flow */
 	if (freq_idx == CPU_HPRO_FREQ_IDX)
 		pm_runtime_get(PM_RUNTIME_DSP, PWRD_BY_HPRO | (CONFIG_CORE_COUNT - 1));
@@ -59,7 +59,7 @@ static inline void select_cpu_clock_hw(int freq_idx, bool release_unused)
 			      ~SHIM_CLKCTL_OSC_REQUEST_MASK) | enc);
 	}
 
-#if CONFIG_TIGERLAKE || CONFIG_SOF_ZEPHYR
+#if CONFIG_TIGERLAKE
 	/* TGL specific HW recommended flow */
 	if (freq_idx != CPU_HPRO_FREQ_IDX)
 		pm_runtime_put(PM_RUNTIME_DSP, PWRD_BY_HPRO | (CONFIG_CORE_COUNT - 1));
