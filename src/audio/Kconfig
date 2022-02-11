@@ -78,6 +78,14 @@ config COMP_PEAK_VOL
          This option enables reporting to host peak vol regs.
          See: struct ipc4_peak_volume_regs
 
+config COMP_GAIN
+	bool "GAIN component"
+	default y
+	depends on IPC_MAJOR_4
+	help
+	  This option enables gain to change volume. It works
+	  as peak volume without updating peak vol to host
+
 endif # volume
 
 config COMP_SRC
