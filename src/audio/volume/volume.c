@@ -457,6 +457,26 @@ static inline uint32_t convert_volume_ipc3_to_ipc4(uint32_t volume)
 	return sat_int32(Q_SHIFT_LEFT((int64_t)volume, 23, 31));
 }
 
+static inline void init_ramp(struct vol_data *cd, uint32_t curve_duration, uint32_t target_volume)
+{
+	/* In IPC4 driver sends curve_duration in hundred of ns - it should be
+	 * converted into ms value required by firmware
+	 */
+	cd->initial_ramp = Q_MULTSR_32X32(curve_duration,
+					  Q_CONVERT_FLOAT(1.0 / 10000, 31), 0, 31, 0);
+
+	if (!cd->initial_ramp) {
+		/* In case when initial ramp time is equal to zero, vol_min and
+		 * vol_max variables should be set to target_volume value
+		 */
+		cd->vol_min = target_volume;
+		cd->vol_max = target_volume;
+	} else {
+		cd->vol_min = VOL_MIN;
+		cd->vol_max = VOL_MAX;
+	}
+}
+
 static int init_volume(struct comp_dev *dev, struct comp_ipc_config *config, void *spec)
 {
 	struct ipc4_peak_volume_module_cfg *vol = spec;
@@ -484,22 +504,7 @@ static int init_volume(struct comp_dev *dev, struct comp_ipc_config *config, voi
 				vol->config[channel_cfg].curve_duration);
 	}
 
-	/* In IPC4 driver sends curve_duration in hundred of ns - it should be
-	 * converted into ms value required by firmware
-	 */
-	cd->initial_ramp  = Q_MULTSR_32X32(vol->config[0].curve_duration,
-					   Q_CONVERT_FLOAT(1.0 / 10000, 31), 0, 31, 0);
-
-	if (!cd->initial_ramp) {
-		/* In case when initial ramp time is equal to zero, vol_min and
-		 * vol_max variables should be set to target_volume value
-		 */
-		cd->vol_min = vol->config[0].target_volume;
-		cd->vol_max = vol->config[0].target_volume;
-	} else {
-		cd->vol_min = VOL_MIN;
-		cd->vol_max = VOL_MAX;
-	}
+	init_ramp(cd, vol->config[0].curve_duration, vol->config[0].target_volume);
 
 	cd->mailbox_offset = offsetof(struct ipc4_fw_registers, peak_vol_regs);
 	cd->mailbox_offset += IPC4_INST_ID(config->id) * sizeof(struct ipc4_peak_volume_regs);
@@ -509,6 +514,35 @@ static int init_volume(struct comp_dev *dev, struct comp_ipc_config *config, voi
 	return 0;
 }
 #endif /* CONFIG_IPC_MAJOR_4 */
+
+static inline void prepare_ramp(struct comp_dev *dev, struct vol_data *cd)
+{
+	int ramp_update_us;
+
+	/* Determine ramp update rate depending on requested ramp length. To
+	 * ensure evenly updated gain envelope with limited fraction resolution
+	 * four presets are used.
+	 */
+	if (cd->initial_ramp < VOL_RAMP_UPDATE_THRESHOLD_FASTEST_MS)
+		ramp_update_us = VOL_RAMP_UPDATE_FASTEST_US;
+	else if (cd->initial_ramp < VOL_RAMP_UPDATE_THRESHOLD_FAST_MS)
+		ramp_update_us = VOL_RAMP_UPDATE_FAST_US;
+	else if (cd->initial_ramp < VOL_RAMP_UPDATE_THRESHOLD_SLOW_MS)
+		ramp_update_us = VOL_RAMP_UPDATE_SLOW_US;
+	else
+		ramp_update_us = VOL_RAMP_UPDATE_SLOWEST_US;
+
+	/* The volume ramp is updated at least once per copy(). If the ramp update
+	 * period is larger than schedule period the frames count for update is set
+	 * to copy schedule equivalent number of frames. This also prevents a divide
+	 * by zero to happen with a combinations of topology parameters for the volume
+	 * component and the pipeline.
+	 */
+	if (ramp_update_us > dev->period)
+		cd->vol_ramp_frames = dev->frames;
+	else
+		cd->vol_ramp_frames = dev->frames / (dev->period / ramp_update_us);
+}
 
 /**
  * \brief Creates volume component.
@@ -912,6 +946,93 @@ static int volume_cmd(struct comp_dev *dev, int cmd, void *data,
 
 	return 0;
 }
+
+static int volume_set_large_config(struct comp_dev *dev, uint32_t param_id,
+				   bool first_block,
+				   bool last_block,
+				   uint32_t data_offset,
+				   char *data)
+{
+	struct vol_data *cd = comp_get_drvdata(dev);
+	struct ipc4_peak_volume_config *cdata;
+	int i;
+
+	comp_dbg(dev, "volume_set_large_config()");
+
+	cdata = (struct ipc4_peak_volume_config *)ASSUME_ALIGNED(data, 8);
+	dcache_invalidate_region(cdata, sizeof(*cdata));
+	cdata->target_volume = convert_volume_ipc4_to_ipc3(dev, cdata->target_volume);
+
+	init_ramp(cd, cdata->curve_duration, cdata->target_volume);
+	cd->ramp_finished = true;
+
+	switch (param_id) {
+	case IPC4_VOLUME:
+		if (cdata->channel_id == IPC4_ALL_CHANNELS_MASK) {
+			for (i = 0; i < cd->channels; i++) {
+				set_volume_ipc4(cd, i, cdata->target_volume,
+						cdata->curve_type,
+						cdata->curve_duration);
+
+				cd->volume[i] = cd->vol_min;
+				volume_set_chan(dev, i, cd->tvolume[i], true);
+				if (cd->volume[i] != cd->tvolume[i])
+					cd->ramp_finished = false;
+			}
+		} else {
+			set_volume_ipc4(cd, cdata->channel_id, cdata->target_volume,
+					cdata->curve_type,
+					cdata->curve_duration);
+
+			cd->volume[cdata->channel_id] = cd->vol_min;
+			volume_set_chan(dev, cdata->channel_id, cd->tvolume[cdata->channel_id],
+					true);
+			if (cd->volume[cdata->channel_id] != cd->tvolume[cdata->channel_id])
+				cd->ramp_finished = false;
+		}
+
+		prepare_ramp(dev, cd);
+		break;
+
+	default:
+		comp_err(dev, "unsupported param %d", param_id);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int volume_get_large_config(struct comp_dev *dev, uint32_t param_id,
+				   bool first_block,
+				   bool last_block,
+				   uint32_t *data_offset,
+				   char *data)
+{
+	struct vol_data *cd = comp_get_drvdata(dev);
+	struct ipc4_peak_volume_config *cdata;
+	int i;
+
+	comp_dbg(dev, "volume_get_large_config()");
+
+	cdata = (struct ipc4_peak_volume_config *)ASSUME_ALIGNED(data, 8);
+
+	switch (param_id) {
+	case IPC4_VOLUME:
+		for (i = 0; i < cd->channels; i++) {
+			uint32_t volume = cd->peak_regs.target_volume_[i];
+
+			cdata[i].channel_id = i;
+			cdata[i].target_volume = convert_volume_ipc3_to_ipc4(volume);
+		}
+		*data_offset = sizeof(*cdata) * cd->channels;
+		break;
+	default:
+		comp_err(dev, "unsupported param %d", param_id);
+		return -EINVAL;
+	}
+
+	return 0;
+}
 #endif /* CONFIG_IPC_MAJOR_4 */
 
 /**
@@ -1045,7 +1166,6 @@ static int volume_prepare(struct comp_dev *dev)
 	struct vol_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *sinkb;
 	uint32_t sink_period_bytes;
-	int ramp_update_us;
 	int ret;
 	int i;
 
@@ -1110,29 +1230,7 @@ static int volume_prepare(struct comp_dev *dev)
 			cd->ramp_finished = false;
 	}
 
-	/* Determine ramp update rate depending on requested ramp length. To
-	 * ensure evenly updated gain envelope with limited fraction resolution
-	 * four presets are used.
-	 */
-	if (cd->initial_ramp < VOL_RAMP_UPDATE_THRESHOLD_FASTEST_MS)
-		ramp_update_us = VOL_RAMP_UPDATE_FASTEST_US;
-	else if (cd->initial_ramp < VOL_RAMP_UPDATE_THRESHOLD_FAST_MS)
-		ramp_update_us = VOL_RAMP_UPDATE_FAST_US;
-	else if (cd->initial_ramp < VOL_RAMP_UPDATE_THRESHOLD_SLOW_MS)
-		ramp_update_us = VOL_RAMP_UPDATE_SLOW_US;
-	else
-		ramp_update_us = VOL_RAMP_UPDATE_SLOWEST_US;
-
-	/* The volume ramp is updated at least once per copy(). If the ramp update
-	 * period is larger than schedule period the frames count for update is set
-	 * to copy schedule equivalent number of frames. This also prevents a divide
-	 * by zero to happen with a combinations of topology parameters for the volume
-	 * component and the pipeline.
-	 */
-	if (ramp_update_us > dev->period)
-		cd->vol_ramp_frames = dev->frames;
-	else
-		cd->vol_ramp_frames = dev->frames / (dev->period / ramp_update_us);
+	prepare_ramp(dev, cd);
 
 	return 0;
 
@@ -1169,6 +1267,10 @@ static const struct comp_driver comp_volume = {
 		.copy		= volume_copy,
 		.prepare	= volume_prepare,
 		.reset		= volume_reset,
+#if CONFIG_IPC_MAJOR_4
+		.set_large_config = volume_set_large_config,
+		.get_large_config = volume_get_large_config,
+#endif
 	},
 };
 
