@@ -7,8 +7,8 @@ set -e
 
 # Platforms with a toolchain available in the latest Docker image and
 # built by the -a option.
-DEFAULT_PLATFORMS=(  byt cht bdw hsw apl skl kbl cnl sue icl jsl \
-                    imx8 imx8x imx8m imx8ulp tgl tgl-h rn mt8186 mt8195 )
+DEFAULT_PLATFORMS=(  byt cht bdw hsw tgl tgl-h apl skl kbl cnl sue icl jsl \
+                    imx8 imx8x imx8m imx8ulp rn mt8186 mt8195 )
 
 # Work in progress can be added to this "staging area" without breaking
 # the -a option for everyone.
@@ -185,6 +185,7 @@ for platform in "${PLATFORMS[@]}"
 do
 	HAVE_ROM='no'
 	DEFCONFIG_PATCH=''
+	PLATFORM_PRIVATE_KEY=''
 
 	case $platform in
 		byt)
@@ -281,10 +282,7 @@ do
 			XTENSA_TOOLS_VERSION="RG-2017.8-linux"
 			HAVE_ROM='yes'
 			# default key for TGL
-			if [ -z "$PRIVATE_KEY_OPTION" ]
-			then
-	PRIVATE_KEY_OPTION="-D${SIGNING_TOOL}_PRIVATE_KEY=$SOF_TOP/keys/otc_private_key_3k.pem"
-			fi
+	PLATFORM_PRIVATE_KEY="-D${SIGNING_TOOL}_PRIVATE_KEY=$SOF_TOP/keys/otc_private_key_3k.pem"
 			;;
 		tgl-h)
 			PLATFORM="tgph"
@@ -293,10 +291,7 @@ do
 			XTENSA_TOOLS_VERSION="RG-2017.8-linux"
 			HAVE_ROM='yes'
 			# default key for TGL
-			if [ -z "$PRIVATE_KEY_OPTION" ]
-			then
-	PRIVATE_KEY_OPTION="-D${SIGNING_TOOL}_PRIVATE_KEY=$SOF_TOP/keys/otc_private_key_3k.pem"
-			fi
+	PLATFORM_PRIVATE_KEY="-D${SIGNING_TOOL}_PRIVATE_KEY=$SOF_TOP/keys/otc_private_key_3k.pem"
 			;;
 		jsl)
 			PLATFORM="jasperlake"
@@ -349,6 +344,8 @@ do
 			;;
 
 	esac
+
+	test -z "${PRIVATE_KEY_OPTION}" || PLATFORM_PRIVATE_KEY="${PRIVATE_KEY_OPTION}"
 
 	if [ -n "$XTENSA_TOOLS_ROOT" ]
 	then
@@ -403,7 +400,7 @@ do
 		-DROOT_DIR="$ROOT" \
 		-DMEU_OPENSSL="${MEU_OPENSSL}" \
 		"${MEU_PATH_OPTION}" \
-		"${PRIVATE_KEY_OPTION}" \
+		"${PLATFORM_PRIVATE_KEY}" \
 		-DINIT_CONFIG=${PLATFORM}${DEFCONFIG_PATCH}_defconfig \
 		-DEXTRA_CFLAGS="${EXTRA_CFLAGS}" \
 		"$SOF_TOP"
