@@ -685,6 +685,14 @@ zephyr_library_sources_ifdef(CONFIG_COMP_SRC
 	${SOF_AUDIO_PATH}/src/src.c
 )
 
+zephyr_library_sources_ifdef(CONFIG_COMP_BASEFW_IPC4
+	${SOF_AUDIO_PATH}/base_fw.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_COMP_COPIER
+	${SOF_AUDIO_PATH}/copier.c
+)
+
 zephyr_library_sources_ifdef(CONFIG_SAMPLE_SMART_AMP
 	${SOF_SAMPLES_PATH}/audio/smart_amp_test.c
 )

@@ -535,6 +535,8 @@ void sys_comp_dcblock_init(void);
 void sys_comp_eq_iir_init(void);
 void sys_comp_kpb_init(void);
 void sys_comp_smart_amp_init(void);
+void sys_comp_basefw_init(void);
+void sys_comp_copier_init(void);
 
 /* Zephyr redefines log_message() and mtrace_printf() which leaves
  * totally empty the .static_log_entries ELF sections for the
@@ -628,6 +630,14 @@ int task_main_start(struct sof *sof)
 
 	if (IS_ENABLED(CONFIG_COMP_MUX)) {
 		sys_comp_mux_init();
+	}
+
+	if (IS_ENABLED(CONFIG_COMP_BASEFW_IPC4)) {
+		sys_comp_basefw_init();
+	}
+
+	if (IS_ENABLED(CONFIG_COMP_COPIER)) {
+		sys_comp_copier_init();
 	}
 
 	/* init pipeline position offsets */
