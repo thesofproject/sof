@@ -152,6 +152,7 @@ enum sof_volume_ramp {
 	SOF_VOLUME_LINEAR_ZC,
 	SOF_VOLUME_LOG_ZC,
 	SOF_VOLUME_WINDOWS_FADE,
+	SOF_VOLUME_WINDOWS_NO_FADE,
 };
 
 /* generic volume component */

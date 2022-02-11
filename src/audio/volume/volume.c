@@ -428,6 +428,8 @@ static int set_volume_ipc4(struct vol_data *cd, uint32_t const channel,
 	if (curve_type == IPC4_AUDIO_CURVE_TYPE_WINDOWS_FADE) {
 		cd->ramp_type = SOF_VOLUME_WINDOWS_FADE;
 		cd->ramp_func =  &volume_windows_fade_ramp;
+	} else {
+		cd->ramp_type = SOF_VOLUME_WINDOWS_NO_FADE;
 	}
 #endif
 	return 0;
