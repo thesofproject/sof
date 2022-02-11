@@ -321,7 +321,7 @@ static void reset_state(struct vol_data *cd)
 	}
 
 	cd->channels = 0;
-	cd->ramp_finished = false;
+	cd->ramp_finished = true;
 	cd->vol_ramp_active = false;
 	cd->vol_ramp_frames = 0;
 	cd->vol_ramp_elapsed_frames = 0;
