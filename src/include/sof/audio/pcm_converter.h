@@ -28,7 +28,11 @@ struct audio_stream;
 
 #ifndef UNIT_TEST
 #if __XCC__ && XCHAL_HAVE_HIFI3 && CONFIG_FORMAT_CONVERT_HIFI3
+#if __ZEPHYR__ && CONFIG_IPC_MAJOR_4
+#define PCM_CONVERTER_GENERIC
+#else
 #define PCM_CONVERTER_HIFI3
+#endif
 #else
 #define PCM_CONVERTER_GENERIC
 #endif
