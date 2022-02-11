@@ -869,10 +869,10 @@ static void probe_cb_produce(void *arg, enum notify_id type, void *data)
 
 		/* check if copy_bytes is still valid for dma copy */
 		if (copy_bytes > 0) {
-			ret = dma_copy_to_host_nowait(&dma->dc,
-						      &dma->config, 0,
-						      (void *)dma->dmapb.r_ptr,
-						      copy_bytes);
+			ret = dma_copy_to_host(&dma->dc,
+					       &dma->config, 0,
+					       (void *)dma->dmapb.r_ptr,
+					       copy_bytes);
 			if (ret < 0)
 				goto err;
 
