@@ -1070,7 +1070,7 @@ static int volume_prepare(struct comp_dev *dev)
 		goto err;
 	}
 
-	if (!cd->ramp_func) {
+	if (cd->initial_ramp && !cd->ramp_func) {
 		comp_err(dev, "volume_prepare(): invalid cd->ramp_func");
 		ret = -EINVAL;
 		goto err;
