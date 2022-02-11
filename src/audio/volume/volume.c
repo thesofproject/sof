@@ -433,6 +433,28 @@ static int set_volume_ipc4(struct vol_data *cd, uint32_t const channel,
 	return 0;
 }
 
+/* In IPC4 driver sends volume in Q1.31 format. It is converted
+ * into Q1.23 format to be processed by firmware.
+ */
+static inline uint32_t convert_volume_ipc4_to_ipc3(struct comp_dev *dev, uint32_t volume)
+{
+	/* Limit received volume gain to MIN..MAX range before applying it.
+	 * MAX is needed for now for the generic C gain arithmetics to prevent
+	 * multiplication overflow with the 32 bit value. Non-zero MIN option
+	 * can be useful to prevent totally muted small volume gain.
+	 */
+
+	return sat_int24(Q_SHIFT_RND(volume, 31, 23));
+}
+
+static inline uint32_t convert_volume_ipc3_to_ipc4(uint32_t volume)
+{
+	/* In IPC4 volume is converted into Q1.23 format to be processed by firmware.
+	 * Now convert it back to Q1.31
+	 */
+	return sat_int32(Q_SHIFT_LEFT((int64_t)volume, 23, 31));
+}
+
 static int init_volume(struct comp_dev *dev, struct comp_ipc_config *config, void *spec)
 {
 	struct ipc4_peak_volume_module_cfg *vol = spec;
@@ -451,11 +473,8 @@ static int init_volume(struct comp_dev *dev, struct comp_ipc_config *config, voi
 		else
 			channel_cfg = channel;
 
-		/* In IPC4 driver sends volume in Q1.31 format. It is converted
-		 * into Q1.23 format to be processed by firmware.
-		 */
-		vol->config[channel].target_volume = Q_SHIFT_RND(vol->config[channel].target_volume,
-								 31, 23);
+		vol->config[channel].target_volume =
+			convert_volume_ipc4_to_ipc3(dev, vol->config[channel].target_volume);
 
 		set_volume_ipc4(cd, channel,
 				vol->config[channel_cfg].target_volume,
@@ -864,16 +883,13 @@ static int volume_cmd(struct comp_dev *dev, int cmd, void *data,
 
 	comp_dbg(dev, "volume_cmd()");
 
-	/* In IPC4 driver sends volume in Q1.31 format. It is converted
-	 * into Q1.23 format to be processed by firmware.
-	 */
-	cdata->target_volume = Q_SHIFT_RND(cdata->target_volume, 31, 23);
+	cdata->target_volume = convert_volume_ipc4_to_ipc3(dev, cdata->target_volume);
 
 	/* In IPC4 driver sends curve_duration in hundred of ns - it should be
 	 * converted into ms value required by firmware
 	 */
-	cd->initial_ramp  = Q_MULTSR_32X32(cdata->curve_duration, Q_CONVERT_FLOAT(1.0 / 10000, 31),
-					   0, 31, 0);
+	cd->initial_ramp = Q_MULTSR_32X32(cdata->curve_duration, Q_CONVERT_FLOAT(1.0 / 10000, 31),
+					  0, 31, 0);
 
 	switch (cmd) {
 	case IPC4_VOLUME:
