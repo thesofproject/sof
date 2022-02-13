@@ -29,12 +29,12 @@ ls -ld /opt/toolchains/zephyr-sdk-*
 ln -s  /opt/toolchains/zephyr-sdk-*  ~/
 
 if test -e zephyrproject; then
-    ./scripts/xtensa-build-zephyr.sh -a "$@"
+    ./scripts/xtensa-build-zephyr.py -a "$@"
 else
     # Matches docker.io/zephyrprojectrtos/zephyr-build:latest gid
     ls -ln | head
     stat .
     sudo chgrp -R 1000 .
     sudo chmod -R g+rwX .
-    ./scripts/xtensa-build-zephyr.sh -a -c "$@"
+    ./scripts/xtensa-build-zephyr.py -a -c "$@"
 fi

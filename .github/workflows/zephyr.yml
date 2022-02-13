@@ -20,4 +20,4 @@ jobs:
       - name: build
         run: docker run -v "$(pwd)":/workdir
              docker.io/zephyrprojectrtos/zephyr-build:latest
-             ./zephyr/docker-build.sh -- -DEXTRA_CFLAGS='-Werror'
+             ./zephyr/docker-build.sh -C "EXTRA_CFLAGS='-Werror'"
