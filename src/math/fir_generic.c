@@ -70,6 +70,9 @@ int32_t fir_32x16(struct fir_state_32x16 *fir, int32_t x)
 	int n1;
 	int n2;
 	int n;
+	const int length = fir->length;
+	const int taps = fir->taps;
+	const int shift = 15 + fir->out_shift;
 
 	/* Bypass is set with length set to zero. */
 	if (!fir->length)
@@ -82,23 +85,11 @@ int32_t fir_32x16(struct fir_state_32x16 *fir, int32_t x)
 	 * to process before circular wrap.
 	 */
 	n1 = ++fir->rwi;
-	if (fir->rwi == fir->length)
+	if (fir->rwi == length)
 		fir->rwi = 0;
 
-	/* Check if no need to un-wrap FIR data. */
-	if (n1 > fir->length) {
-		/* Data is Q1.31, coef is Q1.15, product is Q2.46 */
-		for (n = 0; n < fir->length; n++) {
-			y += (int64_t)(*coef) * (*data);
-			coef++;
-			data--;
-		}
-
-		/* Q2.46 -> Q2.31, saturate to Q1.31 */
-		return sat_int32(y >> (15 + fir->out_shift));
-	}
-
 	/* Part 1, loop n1 times */
+	n1 = MIN(n1, taps);
 	for (n = 0; n < n1; n++) {
 		y += (int64_t)(*coef) * (*data);
 		coef++;
@@ -106,8 +97,8 @@ int32_t fir_32x16(struct fir_state_32x16 *fir, int32_t x)
 	}
 
 	/* Part 2, un-wrap data, continue n2 times */
-	n2 = fir->length - n1;
-	data = &fir->delay[fir->length - 1];
+	n2 = taps - n1;
+	data = &fir->delay[length - 1];
 	for (n = 0; n < n2; n++) {
 		y += (int64_t)(*coef) * (*data);
 		coef++;
@@ -115,7 +106,7 @@ int32_t fir_32x16(struct fir_state_32x16 *fir, int32_t x)
 	}
 
 	/* Q2.46 -> Q2.31, saturate to Q1.31 */
-	return sat_int32(y >> (15 + fir->out_shift));
+	return sat_int32(y >> shift);
 }
 
 #endif
