@@ -1,6 +1,11 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
-add_local_sources(sof dmic.c)
+if(CONFIG_ACE)
+    add_local_sources(sof ace_dmic.c)
+else()
+    add_local_sources(sof dmic.c)
+endif()
+
 if(CONFIG_INTEL_DMIC_TPLG_PARAMS)
     add_local_sources(sof dmic_computed.c)
 endif()
