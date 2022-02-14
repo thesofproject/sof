@@ -142,7 +142,7 @@
 /* OUTCONTROLx IPM bit fields style */
 #if DMIC_HW_VERSION == 1 || (DMIC_HW_VERSION == 2 && DMIC_HW_CONTROLLERS <= 2)
 #define DMIC_IPM_VER1
-#elif DMIC_HW_VERSION == 2 && DMIC_HW_CONTROLLERS > 2
+#elif (DMIC_HW_VERSION == 2 && DMIC_HW_CONTROLLERS > 2) || DMIC_HW_VERSION == 3
 #define DMIC_IPM_VER2
 #else
 #error Not supported HW version

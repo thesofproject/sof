@@ -263,6 +263,18 @@ out:
 	return ret;
 }
 
+static inline void dmic_claim_ownership(void)
+{
+	/* DMIC Owner Select to DSP */
+	io_reg_write(DMICLCTL, io_reg_read(DMICLCTL) | DMICLCTL_OSEL(0x3));
+}
+
+static inline void dmic_release_ownership(void)
+{
+	/* DMIC Owner Select back to Host CPU + DSP */
+	io_reg_write(DMICLCTL, io_reg_read(DMICLCTL) & ~DMICLCTL_OSEL(0x0));
+}
+
 /* start the DMIC for capture */
 static void dmic_start(struct dai *dai)
 {
@@ -569,6 +581,10 @@ static int dmic_probe(struct dai *dai)
 
 	/* Disable dynamic clock gating for dmic before touching any reg */
 	pm_runtime_get_sync(DMIC_CLK, dai->index);
+
+	/* DMIC Owner Select to DSP */
+	dmic_claim_ownership();
+
 	interrupt_enable(dmic->irq, dai);
 	return 0;
 }
@@ -599,6 +615,10 @@ static int dmic_remove(struct dai *dai)
 	/* Disable DMIC clock and power */
 	pm_runtime_put_sync(DMIC_CLK, dai->index);
 	pm_runtime_put_sync(DMIC_POW, dai->index);
+
+	/* DMIC Owner Select back to Host CPU + DSP */
+	dmic_release_ownership();
+
 	return 0;
 }
 
