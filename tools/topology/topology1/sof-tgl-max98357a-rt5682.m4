@@ -162,7 +162,7 @@ define(`ENDPOINT_NAME', `Speakers')
 PIPELINE_PCM_ADD(
 	ifdef(`WAVES', sof/pipe-waves-codec-demux-playback.m4,
 	      ifdef(`DRC_EQ', sof/pipe-drc-eq-volume-demux-playback.m4,
-		    ifdef(`2CH_2WAY', sof/pipe-demux-eq-iir-playback.m4,
+		    ifdef(`2CH_2WAY', sof/pipe-demux-eq-iir-drc-playback.m4,
 			  sof/pipe-volume-demux-playback.m4))),
 	1, 0, ifdef(`4CH_PASSTHROUGH', `4', `2'), s32le,
 	SPK_MIC_PERIOD_US, 0, SPK_PLAYBACK_CORE,
