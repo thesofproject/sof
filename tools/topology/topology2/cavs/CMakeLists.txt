@@ -4,12 +4,6 @@
 set(TPLGS
 # CAVS HDMI only topology with passthrough pipelines
 "cavs-passthrough-hdmi\;cavs-passthrough-hdmi"
-# CAVS HDA topology with passthrough pipelines
-"cavs-passthrough-hdmi\;cavs-passthrough-hda\;HDA_CONFIG=passthrough"
-# CAVS HDMI only topology with gain-based pipelines
-"cavs-gain-hdmi\;cavs-gain-hdmi"
-# CAVS HDA topology with gain-based pipelines
-"cavs-gain-hdmi\;cavs-gain-hda\;HDA_CONFIG=gain"
 # CAVS HDA topology with mixer-based pipelines for HDA and passthrough pipelines for HDMI
 "cavs-passthrough-hdmi\;cavs-mixin-mixout-hda\;HDA_CONFIG=mix"
 # CAVS SDW topology with passthrough pipelines
