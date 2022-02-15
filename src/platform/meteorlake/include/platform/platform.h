@@ -119,6 +119,13 @@ struct timer;
 #define PLATFORM_PM_RUNTIME_DSP_TRIES 32
 #define PLATFORM_PM_RUNTIME_DSP_DELAY 256
 
+/* 0x12BF magic number id from:
+ * DMIC_HW_IOCLK / CONFIG_DMIC_SYNC_PERIOD_VALUE.
+ * From spec: E.g. for 19.2 MHz XTAL oscillator clock, 4 KHz sync period,
+ * the value to be programmed is 12BFh.
+ */
+#define PLATFORM_DMIC_SYNC_PERIOD	0x12BF
+
 union DxINTIPPTR {
 		uint32_t full;
 		struct {

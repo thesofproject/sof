@@ -275,6 +275,42 @@ static inline void dmic_release_ownership(void)
 	io_reg_write(DMICLCTL, io_reg_read(DMICLCTL) & ~DMICLCTL_OSEL(0x0));
 }
 
+static inline void dmic_set_sync_period(uint32_t period)
+{
+	/* DMIC Change sync period */
+	io_reg_write(DMICSYNC,
+				io_reg_read(DMICSYNC) | DMICSYNC_SYNCPRD(period));
+	io_reg_write(DMICSYNC,
+				io_reg_read(DMICSYNC) | DMICSYNC_CMDSYNC);
+}
+
+static inline void dmic_clear_sync_period(void)
+{
+	/* DMIC Clean sync period */
+	io_reg_write(DMICSYNC,
+				io_reg_read(DMICSYNC) & ~DMICSYNC_SYNCPRD(0x0000));
+	io_reg_write(DMICSYNC,
+				io_reg_read(DMICSYNC) & ~DMICSYNC_CMDSYNC);
+}
+
+/* Preparing for command synchronization on multiple link segments */
+static inline void dmic_sync_prepare(void)
+{
+	io_reg_write(DMICSYNC, io_reg_read(DMICSYNC) | DMICSYNC_CMDSYNC);
+}
+
+/* Trigering synchronization of command execution */
+static void dmic_sync_trigger(void)
+{
+	if ((io_reg_read(DMICSYNC) & DMICSYNC_CMDSYNC) == 0)
+		assert(false); /* You shouldn't be here! */
+
+	io_reg_write(DMICSYNC, io_reg_read(DMICSYNC) | DMICSYNC_SYNCGO);
+	/* waiting for CMDSYNC bit clearing */
+	while (io_reg_read(DMICSYNC) & DMICSYNC_CMDSYNC)
+		idelay(PLATFORM_DEFAULT_DELAY);
+}
+
 /* start the DMIC for capture */
 static void dmic_start(struct dai *dai)
 {
@@ -302,6 +338,8 @@ static void dmic_start(struct dai *dai)
 
 	/* Initial gain value, convert Q12.20 to Q2.30 */
 	dmic->gain = Q_SHIFT_LEFT(db2lin_fixed(LOGRAMP_START_DB), 20, 30);
+
+	dmic_sync_prepare();
 
 	switch (dai->index) {
 	case 0:
@@ -394,6 +432,7 @@ static void dmic_start(struct dai *dai)
 
 	dmic->state = COMP_STATE_ACTIVE;
 	k_spin_unlock(&dai->lock, key);
+	dmic_sync_trigger();
 
 	dai_info(dai, "dmic_start(), dmic_active_fifos_mask = 0x%x",
 		 dmic->global->active_fifos_mask);
@@ -582,6 +621,9 @@ static int dmic_probe(struct dai *dai)
 	/* Disable dynamic clock gating for dmic before touching any reg */
 	pm_runtime_get_sync(DMIC_CLK, dai->index);
 
+	/* DMIC Change sync period */
+	dmic_set_sync_period(PLATFORM_DMIC_SYNC_PERIOD);
+
 	/* DMIC Owner Select to DSP */
 	dmic_claim_ownership();
 
@@ -615,6 +657,9 @@ static int dmic_remove(struct dai *dai)
 	/* Disable DMIC clock and power */
 	pm_runtime_put_sync(DMIC_CLK, dai->index);
 	pm_runtime_put_sync(DMIC_POW, dai->index);
+
+	/* DMIC Clean sync period */
+	dmic_clear_sync_period();
 
 	/* DMIC Owner Select back to Host CPU + DSP */
 	dmic_release_ownership();
