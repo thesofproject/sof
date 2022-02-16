@@ -380,10 +380,11 @@ def build_platforms():
 		shutil.copy2(str(fw_file_to_copy), str(fw_file_installed))
 
 	# Install sof-logger
-	sof_logger_executable_to_copy = pathlib.Path(west_top, platform_build_dir_name, "zephyr",
-		"sof-logger_ep", "build", "logger", "sof-logger")
+	sof_logger_dir = pathlib.Path(west_top, platform_build_dir_name, "zephyr",
+		"sof-logger_ep", "build", "logger")
+	sof_logger_executable_to_copy = pathlib.Path(shutil.which("sof-logger", path=sof_logger_dir))
 	tools_output_dir = pathlib.Path(STAGING_DIR, "tools")
-	sof_logger_installed_file = pathlib.Path(tools_output_dir, "sof-logger").resolve()
+	sof_logger_installed_file = pathlib.Path(tools_output_dir, sof_logger_executable_to_copy.name).resolve()
 	os.makedirs(os.path.dirname(sof_logger_installed_file), exist_ok=True)
 	# looses file owner and group - file is commonly accessible
 	shutil.copy2(str(sof_logger_executable_to_copy), str(sof_logger_installed_file))
