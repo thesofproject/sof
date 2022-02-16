@@ -49,7 +49,9 @@ static void igo_nr_lib_process(struct comp_data *cd)
 	 * 1) It's not enabled, or
 	 * 2) hw parameter is not valid.
 	 */
-	if (!cd->process_enable[cd->config.active_channel_idx] || cd->invalid_param) {
+	if (!cd->process_enable[cd->config.active_channel_idx] ||
+	    cd->invalid_param ||
+	    cd->config.igo_params.nr_bypass == 1) {
 		memcpy_s(cd->out, IGO_FRAME_SIZE * sizeof(int16_t),
 			 cd->in, IGO_FRAME_SIZE * sizeof(int16_t));
 	} else {
