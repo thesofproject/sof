@@ -275,23 +275,14 @@ do
 			XTENSA_TOOLS_VERSION="RG-2017.8-linux"
 			HAVE_ROM='yes'
 			;;
-		tgl)
+		tgl|tgl-h)
 			PLATFORM="tgplp"
 			XTENSA_CORE="cavs2x_LX6HiFi3_2017_8"
 			HOST="xtensa-cnl-elf"
 			XTENSA_TOOLS_VERSION="RG-2017.8-linux"
 			HAVE_ROM='yes'
 			# default key for TGL
-	PLATFORM_PRIVATE_KEY="-D${SIGNING_TOOL}_PRIVATE_KEY=$SOF_TOP/keys/otc_private_key_3k.pem"
-			;;
-		tgl-h)
-			PLATFORM="tgph"
-			XTENSA_CORE="cavs2x_LX6HiFi3_2017_8"
-			HOST="xtensa-cnl-elf"
-			XTENSA_TOOLS_VERSION="RG-2017.8-linux"
-			HAVE_ROM='yes'
-			# default key for TGL
-	PLATFORM_PRIVATE_KEY="-D${SIGNING_TOOL}_PRIVATE_KEY=$SOF_TOP/keys/otc_private_key_3k.pem"
+			PLATFORM_PRIVATE_KEY="-D${SIGNING_TOOL}_PRIVATE_KEY=$SOF_TOP/keys/otc_private_key_3k.pem"
 			;;
 		jsl)
 			PLATFORM="jasperlake"
@@ -330,12 +321,12 @@ do
 			HOST="xtensa-rn-elf"
 			XTENSA_TOOLS_VERSION="RF-2016.4-linux"
 			;;
-                mt8186)
-                        PLATFORM="mt8186"
-                        XTENSA_CORE="hifi5_7stg_I64D128"
-                        HOST="xtensa-mt8186-elf"
-                        XTENSA_TOOLS_VERSION="RI-2020.5-linux"
-                        ;;
+		mt8186)
+			PLATFORM="mt8186"
+			XTENSA_CORE="hifi5_7stg_I64D128"
+			HOST="xtensa-mt8186-elf"
+			XTENSA_TOOLS_VERSION="RI-2020.5-linux"
+			;;
 		mt8195)
 			PLATFORM="mt8195"
 			XTENSA_CORE="hifi4_8195_PROD"
