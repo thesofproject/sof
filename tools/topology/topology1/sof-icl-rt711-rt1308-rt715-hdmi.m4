@@ -71,13 +71,13 @@ MUXDEMUX_CONFIG(demux_priv_3, 2, LIST_NONEWLINE(`', `matrix1,', `matrix2'))
 #
 ifdef(`NOJACK', `',
 `
-# PCM0 ---> volume ----> mixer --->ALH 2 BE dailink 0
-# PCM1 <--- volume <---- ALH 3 BE dailink 1
+# PCM0 ---> volume ----> mixer --->ALH 2 BE UAJ_LINK
+# PCM1 <--- volume <---- ALH 3 BE UAJ_LINK
 ')
-# PCM2 ---> volume ----> ALH 2 BE dailink 2
+# PCM2 ---> volume ----> ALH 2 BE AMP_1_LINK
 ifdef(`MONO', `',
-`# PCM40 ---> volume ----> ALH 2 BE dailink 3')
-# PCM4 <--- volume <---- ALH 2 BE dailink 4
+`# PCM40 ---> volume ----> ALH 2 BE AMP_2_LINK')
+# PCM4 <--- volume <---- ALH 2 BE MIC_LINK
 # PCM5 ---> volume ----> iDisp1
 # PCM6 ---> volume ----> iDisp2
 # PCM7 ---> volume ----> iDisp3
@@ -162,7 +162,7 @@ dnl     deadline, priority, core, time_domain)
 
 ifdef(`NOJACK', `',
 `
-# playback DAI is ALH(SDW0 PIN2) using 2 periods
+# playback DAI is ALH(UAJ_LINK PIN2) using 2 periods
 # Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
 # The NOT_USED_IGNORED is due to dependencies and is adjusted later with an explicit dapm line.
 
@@ -171,7 +171,7 @@ DAI_ADD(sof/pipe-mixer-volume-dai-playback.m4,
 	NOT_USE_IGNORED, 2, s24le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER, 2, 48000)
 
-# capture DAI is ALH(SDW0 PIN2) using 2 periods
+# capture DAI is ALH(UAJ_LINK PIN3) using 2 periods
 # Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
 	2, ALH, eval(UAJ_LINK * 256 + 3), `SDW'eval(UAJ_LINK)`-Capture',
@@ -199,7 +199,7 @@ SectionGraph."mixer-host" {
 '
 )
 
-# playback DAI is ALH(SDW1 PIN2) using 2 periods
+# playback DAI is ALH(AMP_1_LINK PIN2/AMP_2_LINK PIN2) using 2 periods
 # Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
 	3, ALH, eval(AMP_1_LINK * 256 + 2), `SDW'eval(AMP_1_LINK)`-Playback',
@@ -224,7 +224,7 @@ SectionGraph."PIPE_DEMUX" {
 }
 ')
 
-# capture DAI is ALH(SDW3 PIN2) using 2 periods
+# capture DAI is ALH(MIC_LINK PIN2) using 2 periods
 # Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
 	5, ALH, eval(MIC_LINK * 256 + 2), `SDW'eval(MIC_LINK)`-Capture',
@@ -274,20 +274,20 @@ PCM_PLAYBACK_ADD(HDMI 3, 7, PIPELINE_PCM_8)
 ifdef(`NOJACK', `',
 `
 #ALH dai index = ((link_id << 8) | PDI id)
-#ALH SDW0 Pin2 (ID: 0)
+#ALH UAJ_LINK Pin2 (ID: 0)
 DAI_CONFIG(ALH, eval(UAJ_LINK * 256 + 2), 0, `SDW'eval(UAJ_LINK)`-Playback',
 	ALH_CONFIG(ALH_CONFIG_DATA(ALH, eval(UAJ_LINK * 256 + 2), 48000, 2)))
 
-#ALH SDW0 Pin3 (ID: 1)
+#ALH UAJ_LINK Pin3 (ID: 1)
 DAI_CONFIG(ALH, eval(UAJ_LINK * 256 + 3), 1, `SDW'eval(UAJ_LINK)`-Capture',
 	ALH_CONFIG(ALH_CONFIG_DATA(ALH, eval(UAJ_LINK * 256 + 3), 48000, 2)))
 ')
 
-#ALH SDW1 Pin2 (ID: 2)
+#ALH AMP_1_LINK Pin2 (ID: 2)
 DAI_CONFIG(ALH, eval(AMP_1_LINK * 256 + 2), 2, `SDW'eval(AMP_1_LINK)`-Playback',
 	ALH_CONFIG(ALH_CONFIG_DATA(ALH, eval(AMP_1_LINK * 256 + 2), 48000, 2)))
 
-#ALH SDW3 Pin2 (ID: 4)
+#ALH MIC_LINK Pin2 (ID: 4)
 DAI_CONFIG(ALH, eval(MIC_LINK * 256 + 2), 4, `SDW'eval(MIC_LINK)`-Capture',
 	ALH_CONFIG(ALH_CONFIG_DATA(ALH, eval(MIC_LINK * 256 + 2), 48000, 2)))
 
