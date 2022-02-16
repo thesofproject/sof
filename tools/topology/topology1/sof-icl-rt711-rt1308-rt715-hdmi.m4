@@ -31,6 +31,33 @@ ifdef(`AMP_2_LINK',`',
 ifdef(`MIC_LINK',`',
 `define(MIC_LINK, `3')')
 
+# UAJ ID: 0, 1
+# AMP ID: 2, 3 (if EXT_AMP_REF defined)
+# DMIC ID: 4
+# HDMI ID calculated based on the configuraiton
+define(HDMI_BE_ID_BASE, `0')
+
+ifdef(`NO_JACK', `',
+	`undefine(`HDMI_BE_ID_BASE')
+	 define(HDMI_BE_ID_BASE, `2')'
+)
+
+ifdef(`NOAMP', `',
+	`undefine(`HDMI_BE_ID_BASE')
+	 define(HDMI_BE_ID_BASE, `3')'
+)
+
+ifdef(`EXT_AMP_REF',
+	`undefine(`HDMI_BE_ID_BASE')
+	 define(HDMI_BE_ID_BASE, `4')',
+	`'
+)
+
+ifdef(`NO_LOCAL_MIC', `',
+	`undefine(`HDMI_BE_ID_BASE')
+	 define(HDMI_BE_ID_BASE, `5')'
+)
+
 DEBUG_START
 
 dnl Configure demux
@@ -40,6 +67,8 @@ dnl copied to corresponding output channels in all output streams.
 dnl I.e. row index is the input channel, 1 means it is copied to
 dnl corresponding output channel (column index), 0 means it is discarded.
 dnl There's a separate matrix for all outputs.
+ifdef(`NOAMP', `',
+`
 ifdef(`MONO', `',
 `
 define(matrix1, `ROUTE_MATRIX(3,
@@ -65,6 +94,7 @@ define(matrix2, `ROUTE_MATRIX(4,
 dnl name, num_streams, route_matrix list
 MUXDEMUX_CONFIG(demux_priv_3, 2, LIST_NONEWLINE(`', `matrix1,', `matrix2'))
 ')
+')
 
 #
 # Define the pipelines
@@ -74,10 +104,14 @@ ifdef(`NOJACK', `',
 # PCM0 ---> volume ----> mixer --->ALH 2 BE UAJ_LINK
 # PCM1 <--- volume <---- ALH 3 BE UAJ_LINK
 ')
+ifdef(`NOAMP', `',
+`
 # PCM2 ---> volume ----> ALH 2 BE AMP_1_LINK
 ifdef(`MONO', `',
 `# PCM40 ---> volume ----> ALH 2 BE AMP_2_LINK')
-# PCM4 <--- volume <---- ALH 2 BE MIC_LINK
+')
+ifdef(`NO_LOCAL_MIC', `',
+`# PCM4 <--- volume <---- ALH 2 BE MIC_LINK')
 # PCM5 ---> volume ----> iDisp1
 # PCM6 ---> volume ----> iDisp2
 # PCM7 ---> volume ----> iDisp3
@@ -98,6 +132,8 @@ PIPELINE_PCM_ADD(sof/pipe-volume-switch-capture.m4,
 	48000, 48000, 48000)
 ')
 
+ifdef(`NOAMP', `',
+`
 ifdef(`MONO',
 `
 # Low Latency playback pipeline 3 on PCM 2 using max 2 channels of s32le.
@@ -122,13 +158,17 @@ PIPELINE_PCM_ADD(sof/pipe-dai-endpoint.m4,
 	1000, 0, 0,
 	48000, 48000, 48000)
 ')
+')
 
+ifdef(`NO_LOCAL_MIC', `',
+`
 # Low Latency capture pipeline 5 on PCM 4 using max 2 channels of s32le.
 # Schedule 48 frames per 1000us deadline with priority 0 on core 0
 PIPELINE_PCM_ADD(sof/pipe-highpass-switch-capture.m4,
 	5, 4, 2, s32le,
 	1000, 0, 0,
 	48000, 48000, 48000)
+')
 
 # Low Latency playback pipeline 6 on PCM 5 using max 2 channels of s32le.
 # Schedule 48 frames per 1000us deadline with priority 0 on core 0
@@ -199,6 +239,8 @@ SectionGraph."mixer-host" {
 '
 )
 
+ifdef(`NOAMP', `',
+`
 # playback DAI is ALH(AMP_1_LINK PIN2/AMP_2_LINK PIN2) using 2 periods
 # Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
@@ -223,13 +265,17 @@ SectionGraph."PIPE_DEMUX" {
 	]
 }
 ')
+')
 
+ifdef(`NO_LOCAL_MIC', `',
+`
 # capture DAI is ALH(MIC_LINK PIN2) using 2 periods
 # Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
 	5, ALH, eval(MIC_LINK * 256 + 2), `SDW'eval(MIC_LINK)`-Capture',
 	PIPELINE_SINK_5, 2, s24le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
+')
 
 # playback DAI is iDisp1 using 2 periods
 # # Buffers use s32le format, 1000us deadline with priority 0 on core 0
@@ -260,9 +306,11 @@ ifdef(`NOJACK', `',
 PCM_PLAYBACK_ADD(Jack Out, 0, PIPELINE_PCM_30)
 PCM_CAPTURE_ADD(Jack In, 1, PIPELINE_PCM_2)
 ')
-
+ifdef(`NOAMP', `',
+`
 PCM_PLAYBACK_ADD(Speaker, 2, PIPELINE_PCM_3)
-PCM_CAPTURE_ADD(Microphone, 4, PIPELINE_PCM_5)
+')
+ifdef(`NO_LOCAL_MIC', `', `PCM_CAPTURE_ADD(Microphone, 4, PIPELINE_PCM_5)')
 PCM_PLAYBACK_ADD(HDMI 1, 5, PIPELINE_PCM_6)
 PCM_PLAYBACK_ADD(HDMI 2, 6, PIPELINE_PCM_7)
 PCM_PLAYBACK_ADD(HDMI 3, 7, PIPELINE_PCM_8)
@@ -283,20 +331,26 @@ DAI_CONFIG(ALH, eval(UAJ_LINK * 256 + 3), 1, `SDW'eval(UAJ_LINK)`-Capture',
 	ALH_CONFIG(ALH_CONFIG_DATA(ALH, eval(UAJ_LINK * 256 + 3), 48000, 2)))
 ')
 
+ifdef(`NOAMP', `',
+`
 #ALH AMP_1_LINK Pin2 (ID: 2)
 DAI_CONFIG(ALH, eval(AMP_1_LINK * 256 + 2), 2, `SDW'eval(AMP_1_LINK)`-Playback',
 	ALH_CONFIG(ALH_CONFIG_DATA(ALH, eval(AMP_1_LINK * 256 + 2), 48000, 2)))
+')
 
+ifdef(`NO_LOCAL_MIC', `',
+`
 #ALH MIC_LINK Pin2 (ID: 4)
 DAI_CONFIG(ALH, eval(MIC_LINK * 256 + 2), 4, `SDW'eval(MIC_LINK)`-Capture',
 	ALH_CONFIG(ALH_CONFIG_DATA(ALH, eval(MIC_LINK * 256 + 2), 48000, 2)))
+')
 
-# 3 HDMI/DP outputs (ID: 5,6,7)
-DAI_CONFIG(HDA, 0, 5, iDisp1,
+# 3 HDMI/DP outputs (ID: from HDMI_BE_ID_BASE)
+DAI_CONFIG(HDA, 0, HDMI_BE_ID_BASE, iDisp1,
 	HDA_CONFIG(HDA_CONFIG_DATA(HDA, 0, 48000, 2)))
-DAI_CONFIG(HDA, 1, 6, iDisp2,
+DAI_CONFIG(HDA, 1, eval(HDMI_BE_ID_BASE + 1), iDisp2,
 	HDA_CONFIG(HDA_CONFIG_DATA(HDA, 1, 48000, 2)))
-DAI_CONFIG(HDA, 2, 7, iDisp3,
+DAI_CONFIG(HDA, 2, eval(HDMI_BE_ID_BASE + 2), iDisp3,
 	HDA_CONFIG(HDA_CONFIG_DATA(HDA, 2, 48000, 2)))
 
 DEBUG_END
