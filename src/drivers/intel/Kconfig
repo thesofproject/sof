@@ -2,7 +2,7 @@
 
 config INTEL_HDA
 	bool "Intel HDA driver"
-	depends on CAVS
+	depends on CAVS || ACE
 	default n
 	help
 	  Select this to enable Intel HDA driver. The HDA driver provides
@@ -10,21 +10,22 @@ config INTEL_HDA
 
 config INTEL_MN
 	bool
-	depends on CAVS
+	depends on CAVS || ACE
+	select NUMBERS_GCD
 	default n
 	help
 	  Select this if the platform supports M/N dividers.
 
 config INTEL_MCLK
 	bool
-	depends on CAVS
+	depends on CAVS || ACE
 	default n
 	help
 	  Select this to enable driver for Intel MCLK and M/N dividers.
 
 config INTEL_SSP
 	bool "Intel SSP driver"
-	depends on CAVS
+	depends on CAVS || ACE
 	select INTEL_MCLK
 	default n
 	help
@@ -32,7 +33,7 @@ config INTEL_SSP
 
 config INTEL_ALH
 	bool "Intel ALH driver"
-	depends on CAVS
+	depends on CAVS || ACE
 	default n
 	help
 	  Select this to enable Intel ALH driver.
@@ -41,7 +42,8 @@ config INTEL_ALH
 
 config INTEL_DMIC
 	bool "Intel DMIC driver"
-	depends on CAVS
+	depends on CAVS || ACE
+	select NUMBERS_GCD
 	select NUMBERS_NORM
 	select NUMBERS_VECTOR_FIND
 	select MATH_DECIBELS

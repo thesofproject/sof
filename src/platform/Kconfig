@@ -159,6 +159,25 @@ config TIGERLAKE
 	help
 	  Select if your target platform is Tigerlake-compatible
 
+
+config METEORLAKE
+	bool "Build for Meteorlake"
+	select XT_BOOT_LOADER
+	select XT_IRQ_MAP
+	select DMA_GW
+	select DW
+	select DW_DMA
+	select MEM_WND
+	select DMA_HW_LLI
+	select DW_DMA_AGGREGATED_IRQ
+	select DMA_FIFO_PARTITION
+	select ACE
+	select ACE_VERSION_1_0
+	select XT_WAITI_DELAY
+	select NO_SECONDARY_CORE_ROM
+	help
+	  Select for testing SoF on meteorlake platform.
+
 config LIBRARY
 	bool "Build Library"
 	help
@@ -290,7 +309,7 @@ endchoice
 config MAX_CORE_COUNT
 	int
 	default 2 if APOLLOLAKE
-	default 4 if ICELAKE || CANNONLAKE || SUECREEK || TIGERLAKE
+	default 4 if ICELAKE || CANNONLAKE || SUECREEK || TIGERLAKE || METEORLAKE
 	default 1
 	help
 	  Maximum number of cores per configuration
@@ -374,6 +393,22 @@ config CAVS_VERSION_2_5
 	help
 	  Select for CAVS version 2.5
 
+config ACE
+	bool
+	default n
+	select INTEL
+	select XT_INTERRUPT_LEVEL_2
+	select XT_INTERRUPT_LEVEL_5
+	select INTEL_HDA
+	select INTEL_MN
+	select SCHEDULE_DMA_SINGLE_CHANNEL
+
+config ACE_VERSION_1_0
+	depends on ACE
+	bool
+	help
+	  Select for ACE version 1.0
+
 config CONFIG_CHERRYTRAIL_EXTRA_DW_DMA
 	bool "Support Cherrytrail 3rd DMAC"
 	default n if !CHERRYTRAIL
@@ -384,7 +419,7 @@ config CONFIG_CHERRYTRAIL_EXTRA_DW_DMA
 
 config HP_MEMORY_BANKS
 	int "HP memory banks count"
-	depends on CAVS
+	depends on CAVS || ACE
 	default 8
 	help
 	  Available memory banks count for High Performance memory
