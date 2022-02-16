@@ -5,6 +5,12 @@
 // Author: Keyon Jie <yang.jie@linux.intel.com>
 //         Liam Girdwood <liam.r.girdwood@linux.intel.com>
 
+#if CONFIG_CAVS
+#include <cavs/version.h>
+#elif CONFIG_ACE
+#include <ace/version.h>
+#endif
+
 #include <sof/common.h>
 #include <sof/drivers/interrupt.h>
 #include <sof/lib/alloc.h>
@@ -19,6 +25,7 @@
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <sof/platform.h>
 
 LOG_MODULE_REGISTER(irq, CONFIG_SOF_LOG_LEVEL);
 
@@ -86,6 +93,9 @@ int interrupt_cascade_register(const struct irq_cascade_tmpl *tmpl)
 	(*cascade)->global_mask = tmpl->global_mask;
 	(*cascade)->irq_base = root->last_irq + 1;
 	(*cascade)->desc.irq = tmpl->irq;
+#if (ACE_VERSION >= ACE_VERSION_1_0)
+	(*cascade)->desc.lvl = tmpl->lvl;
+#endif
 	(*cascade)->desc.handler = tmpl->handler;
 	(*cascade)->desc.handler_arg = &(*cascade)->desc;
 	(*cascade)->desc.cpu_mask = 1 << cpu_get_id();
@@ -141,17 +151,37 @@ struct irq_cascade_desc *interrupt_get_parent(uint32_t irq)
 	struct cascade_root *root = cascade_root_get();
 	struct irq_cascade_desc *cascade, *c = NULL;
 	k_spinlock_key_t key;
+#if (ACE_VERSION >= ACE_VERSION_1_0)
+{
+	uint8_t lvl;
 
+	if (IS_IRQ_LVL(irq, LVL1))
+		lvl = LVL1;
+	else if (IS_IRQ_LVL(irq, LVL2))
+		lvl = LVL2;
+	else if (IS_IRQ_LVL(irq, LVL3))
+		lvl = LVL3;
+	else
+		return NULL;
+#else
 	if (irq < PLATFORM_IRQ_HW_NUM)
 		return NULL;
+#endif
 
 	key = k_spin_lock(&root->lock);
 
 	for (cascade = root->list; cascade; cascade = cascade->next) {
+#if (ACE_VERSION >= ACE_VERSION_1_0)
+		if (lvl == cascade->desc.lvl) {
+			c = cascade;
+			break;
+		}
+#else
 		if (irq >= cascade->irq_base &&
 		    irq < cascade->irq_base + PLATFORM_IRQ_CHILDREN) {
 			c = cascade;
 			break;
+#endif
 		}
 
 	}
@@ -180,12 +210,15 @@ static int irq_register_child(struct irq_cascade_desc *cascade, int irq,
 	struct list_item *list, *head;
 	int hw_irq, ret = 0;
 
+#if (ACE_VERSION >= ACE_VERSION_1_0)
+	hw_irq = IRQ_VIRTUAL_TO_PHYSICAL(irq, cascade->desc.lvl);
+#else
 	hw_irq = irq - cascade->irq_base;
-
 	if (hw_irq < 0 || cascade->irq_base + PLATFORM_IRQ_CHILDREN <= irq) {
 		ret = -EINVAL;
 		goto out;
 	}
+#endif
 
 	head = &cascade->child[hw_irq].list;
 
@@ -215,6 +248,9 @@ static int irq_register_child(struct irq_cascade_desc *cascade, int irq,
 
 		child->handler = handler;
 		child->handler_arg = arg;
+#if (ACE_VERSION >= ACE_VERSION_1_0)
+	child->lvl = cascade->desc.lvl;
+#endif
 		child->irq = irq;
 	} else {
 		child = desc;
@@ -446,6 +482,9 @@ uint32_t interrupt_enable(uint32_t irq, void *arg)
 
 	return interrupt_enable(irq, arg);
 #else
+#if CONFIG_XT_INTERRUPT_LEVEL_3
+	arch_interrupt_enable_mask(IRQ_MASK_EXT_LEVEL3);
+#endif
 	return arch_interrupt_enable_mask(1 << irq);
 #endif
 }

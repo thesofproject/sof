@@ -35,6 +35,7 @@ struct irq_child {
  * \brief interrupt client descriptor
  */
 struct irq_desc {
+	int lvl;			/**< level of this interrupt */
 	int irq;			/**< virtual IRQ number */
 	void (*handler)(void *arg);	/**< interrupt handler function */
 	void *handler_arg;		/**< interrupt handler argument */
@@ -101,6 +102,7 @@ struct irq_cascade_tmpl {
 	const char *name;
 	const struct irq_cascade_ops *ops;
 	int irq;
+	int lvl;
 	void (*handler)(void *arg);
 	bool global_mask;
 };

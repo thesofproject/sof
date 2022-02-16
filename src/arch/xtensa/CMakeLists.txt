@@ -419,7 +419,7 @@ ExternalProject_Add(rimage_ep
 )
 
 if(NOT DEFINED RIMAGE_PRIVATE_KEY)
-	set(RIMAGE_PRIVATE_KEY ${PROJECT_SOURCE_DIR}/keys/otc_private_key.pem)
+	set(RIMAGE_PRIVATE_KEY ${PROJECT_SOURCE_DIR}/keys/otc_private_key_3k.pem)
 endif()
 
 if(NOT DEFINED RIMAGE_IMR_TYPE)
