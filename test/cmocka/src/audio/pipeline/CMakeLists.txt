@@ -1,8 +1,11 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 if(CONFIG_MULTICORE AND NOT BUILD_UNIT_TESTS_HOST)
+if(CONFIG_CAVS)
 	SET(arch_src ${PROJECT_SOURCE_DIR}/src/drivers/intel/cavs/idc.c)
-
+elseif(CONFIG_ACE)
+	SET(arch_src ${PROJECT_SOURCE_DIR}/src/drivers/intel/ace/idc.c)
+endif()
 	# make small lib for stripping so we don't have to care
 	# about unused missing references
 
