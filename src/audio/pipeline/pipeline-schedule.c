@@ -81,15 +81,7 @@ static enum task_state pipeline_task_cmd(struct pipeline *p,
 
 		if (err == PPL_STATUS_PATH_STOP) {
 			/* comp_trigger() interrupted trigger propagation or an xrun occurred */
-			err = SOF_TASK_STATE_COMPLETED;
-		} else if (p->trigger.cmd != cmd) {
-			/* PRE stage completed */
-			if (p->trigger.delay)
-				return SOF_TASK_STATE_RESCHEDULE;
-			/* No delay: the final stage has already run too */
-			err = SOF_TASK_STATE_RESCHEDULE;
-		} else if (p->status == COMP_STATE_PAUSED) {
-			if (p->trigger.aborted) {
+			if (p->trigger.aborted && p->status == COMP_STATE_PAUSED) {
 				p->status = COMP_STATE_ACTIVE;
 				/*
 				 * the pipeline aborted a STOP or a PAUSE
@@ -99,6 +91,14 @@ static enum task_state pipeline_task_cmd(struct pipeline *p,
 			} else {
 				err = SOF_TASK_STATE_COMPLETED;
 			}
+		} else if (p->trigger.cmd != cmd) {
+			/* PRE stage completed */
+			if (p->trigger.delay)
+				return SOF_TASK_STATE_RESCHEDULE;
+			/* No delay: the final stage has already run too */
+			err = SOF_TASK_STATE_RESCHEDULE;
+		} else if (p->status == COMP_STATE_PAUSED) {
+			err = SOF_TASK_STATE_COMPLETED;
 		} else {
 			p->status = COMP_STATE_ACTIVE;
 			err = SOF_TASK_STATE_RESCHEDULE;
