@@ -25,7 +25,7 @@ struct sof_eq_fir_coef_data;
 struct fir_state_32x16 {
 	int rwi; /* Circular read and write index */
 	int taps; /* Number of FIR taps */
-	int length; /* Number of FIR taps */
+	int length; /* Number of FIR taps plus input length (even) */
 	int out_shift; /* Amount of right shifts at output */
 	int16_t *coef; /* Pointer to FIR coefficients */
 	int32_t *delay; /* Pointer to FIR delay line */
@@ -41,6 +41,8 @@ int fir_init_coef(struct fir_state_32x16 *fir,
 void fir_init_delay(struct fir_state_32x16 *fir, int32_t **data);
 
 int32_t fir_32x16(struct fir_state_32x16 *fir, int32_t x);
+
+void fir_32x16_2x(struct fir_state_32x16 *fir, int32_t x0, int32_t x1, int32_t *y0, int32_t *y1);
 
 #endif
 #endif /* __SOF_MATH_FIR_GENERIC_H__ */

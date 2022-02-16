@@ -36,21 +36,26 @@ void fir_reset(struct fir_state_32x16 *fir)
 
 int fir_delay_size(struct sof_fir_coef_data *config)
 {
-	/* Check for sane FIR length. The generic version does not
-	 * have other constraints.
-	 */
-	if (config->length > SOF_FIR_MAX_LENGTH || config->length < 1)
+	/* Check FIR tap count for implementation specific constraints */
+	if (config->length > SOF_FIR_MAX_LENGTH || config->length < 4)
 		return -EINVAL;
 
-	return config->length * sizeof(int32_t);
+	/* The optimization requires the tap count to be multiple of four */
+	if (config->length & 0x3)
+		return -EINVAL;
+
+	/* The dual sample version needs one more delay entry. To preserve
+	 * align for 64 bits need to add two.
+	 */
+	return (config->length + 4) * sizeof(int32_t);
 }
 
 int fir_init_coef(struct fir_state_32x16 *fir,
 		  struct sof_fir_coef_data *config)
 {
 	fir->rwi = 0;
-	fir->length = (int)config->length;
-	fir->taps = fir->length; /* The same for generic C version */
+	fir->taps = (int)config->length;
+	fir->length = (int)fir->taps + 2;
 	fir->out_shift = (int)config->out_shift;
 	fir->coef = ASSUME_ALIGNED(&config->coef[0], 4);
 	return 0;
@@ -107,6 +112,72 @@ int32_t fir_32x16(struct fir_state_32x16 *fir, int32_t x)
 
 	/* Q2.46 -> Q2.31, saturate to Q1.31 */
 	return sat_int32(y >> shift);
+}
+
+void fir_32x16_2x(struct fir_state_32x16 *fir, int32_t x0, int32_t x1, int32_t *y0, int32_t *y1)
+{
+	int64_t a0 = 0;
+	int64_t a1 = 0;
+	int32_t sample0;
+	int32_t sample1;
+	int16_t tap;
+	int32_t *data = &fir->delay[fir->rwi];
+	int16_t *coef = &fir->coef[0];
+	int n1;
+	int n2;
+	int i;
+	const int length = fir->length;
+	const int taps = fir->taps;
+	const int shift = 15 + fir->out_shift;
+
+	/* Bypass is set with length set to zero. */
+	if (!fir->taps) {
+		*y0 = x0;
+		*y1 = x1;
+		return;
+	}
+
+	/* Write samples to delay */
+	*data = x0;
+	*(data + 1) = x1;
+
+	/* Advance write pointer and calculate into n1 max. number of taps
+	 * to process before circular wrap.
+	 */
+	n1 = fir->rwi + 1;
+	fir->rwi += 2;
+	if (fir->rwi >= length)
+		fir->rwi -= length;
+
+	/* Part 1, loop n1 times */
+	sample1 = x1;
+	n1 = MIN(n1, taps);
+	for (i = 0; i < n1; i++) {
+		tap = *coef;
+		coef++;
+		sample0 = *data;
+		data--;
+		a1 += (int64_t)tap * sample1;
+		a0 += (int64_t)tap * sample0;
+		sample1 = sample0;
+	}
+
+	/* Part 2, un-wrap data, continue n2 times */
+	n2 = taps - n1;
+	data = &fir->delay[length - 1];
+	for (i = 0; i < n2; i++) {
+		tap = *coef;
+		coef++;
+		sample0 = *data;
+		data--;
+		a1 += (int64_t)tap * sample1;
+		a0 += (int64_t)tap * sample0;
+		sample1 = sample0;
+	}
+
+	/* Q2.46 -> Q2.31, saturate to Q1.31 */
+	*y0 = sat_int32(a0 >> shift);
+	*y1 = sat_int32(a1 >> shift);
 }
 
 #endif
