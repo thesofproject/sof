@@ -958,6 +958,9 @@ static int dw_dma_probe(struct dma *dma)
 	/* disable dynamic clock gating */
 	pm_runtime_get_sync(DW_DMAC_CLK, dma->plat_data.id);
 
+	/* DW DMA Owner Select to DSP */
+	pm_runtime_get_sync(DW_DMAC_OWNER, dma->plat_data.id);
+
 	/* allocate dma channels */
 	dma->chan = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM,
 			    sizeof(struct dma_chan_data) * dma->plat_data.channels);
@@ -1027,6 +1030,7 @@ static int dw_dma_remove(struct dma *dma)
 	tr_dbg(&dwdma_tr, "dw_dma_remove(): dma %d remove", dma->plat_data.id);
 
 	pm_runtime_put_sync(DW_DMAC_CLK, dma->plat_data.id);
+	pm_runtime_put_sync(DW_DMAC_OWNER, dma->plat_data.id);
 
 	for (i = 0; i < dma->plat_data.channels; i++)
 		rfree(dma_chan_get_data(&dma->chan[i]));
