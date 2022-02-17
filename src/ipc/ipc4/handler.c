@@ -562,6 +562,11 @@ static int ipc4_log_enable(union ipc4_message_header *ipc4)
 			      "ipc_dma_trace_config failed: dmat not initialized");
 		return -ENOMEM;
 	}
+
+	/* Logs already enabled. */
+	if (dmat->enabled)
+		return 0;
+
 	mailbox_hostbox_read(&params, sizeof(params), 0, sizeof(params));
 
 	/* TODO: header will change in release version.
