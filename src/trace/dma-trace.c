@@ -261,7 +261,7 @@ static int dma_trace_buffer_init(struct dma_trace_data *d)
 
 	if (!d || !d->dc.dmac) {
 		mtrace_printf(LOG_LEVEL_ERROR,
-			      "%s failed: no DMAC!", __func__);
+			      "dma_trace_buffer_init() failed, no DMAC! d=%p", d);
 		return -ENODEV;
 	}
 
