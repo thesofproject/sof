@@ -155,9 +155,15 @@ pass any platform or cmake argument.""",
 verbosity lvl 1: shows underlying build system commands,
 verbosity lvl 2: lvl 1 + prints commands invoked by this script.""",
 	)
-	parser.add_argument("-C", "--cmake-args", required=False,
-			    help="""Cmake arguments passed to cmake configure step without
-'-D' prefix. Eg. CMAKE_GENERATOR='Ninja'. Preserves internal quotes.""",
+	# Cannot use a standard -- delimiter because argparse deletes it.
+	parser.add_argument("-C", "--cmake-args", action='append', default=[],
+			    help="""Cmake arguments passed as is to cmake configure step.
+Can be passed multiple times; whitespace is preserved Example:
+
+     -C=--warn-uninitialized  -C '-DEXTRA_FLAGS=-Werror -g0'
+
+Note '-C --warn-uninitialized' is not supported by argparse, an equal
+sign must be used (https://bugs.python.org/issue9334)""",
 	)
 
 	args = parser.parse_args()
@@ -180,17 +186,6 @@ verbosity lvl 2: lvl 1 + prints commands invoked by this script.""",
 	elif not args.clone_mode:	# if neather -p nor -c provided, use -p
 		args.west_path = west_top
 
-	if args.verbose >= 1:
-		if not args.cmake_args:
-			args.cmake_args = "CMAKE_VERBOSE_MAKEFILE=ON"
-		else:
-			args.cmake_args = "CMAKE_VERBOSE_MAKEFILE=ON " + args.cmake_args
-
-	# split arguments by whitespaces and append -D prefix to match expected CMake format
-	if args.cmake_args:
-		arg_list = shlex.split(args.cmake_args)
-		arg_list = ["-D" + arg for arg in arg_list]
-		args.cmake_args = " ".join(arg_list)
 
 def execute_command(command_args, stdin=None, input=None, stdout=None, stderr=None,
 	capture_output=False, shell=False, cwd=None, timeout=None, check=False, encoding=None,
@@ -333,6 +328,17 @@ def build_platforms():
 			print(f"XTENSA_SYSTEM={XTENSA_SYSTEM}")
 
 		platform_build_dir_name = f"build-{platform}"
+
+		# https://docs.zephyrproject.org/latest/guides/west/build-flash-debug.html#one-time-cmake-arguments
+		# https://github.com/zephyrproject-rtos/zephyr/pull/40431#issuecomment-975992951
+		abs_build_dir = pathlib.Path(west_top, platform_build_dir_name)
+		if (pathlib.Path(abs_build_dir, "build.ninja").is_file()
+		    or pathlib.Path(abs_build_dir, "Makefile").is_file()):
+			if args.cmake_args:
+				print(args.cmake_args)
+				raise RuntimeError("Some CMake arguments are ignored in incremental builds, "
+						   + f"you must delete {abs_build_dir} first")
+
 		PLAT_CONFIG = platform_dict["PLAT_CONFIG"]
 		build_cmd = ["west"]
 		if args.verbose > 0:
@@ -340,8 +346,13 @@ def build_platforms():
 		build_cmd += ["build", "--build-dir", platform_build_dir_name]
 		source_dir = pathlib.Path(west_top, "zephyr", "samples", "subsys", "audio", "sof")
 		build_cmd += ["--board", PLAT_CONFIG, str(source_dir)]
+
+		build_cmd.append('--')
 		if args.cmake_args:
-			build_cmd += ["--", args.cmake_args]
+			build_cmd += args.cmake_args
+		if args.verbose >= 1:
+			build_cmd.append("-DCMAKE_VERBOSE_MAKEFILE=ON")
+
 		# Build
 		execute_command(build_cmd, check=True, cwd=west_top)
 		smex_executable = pathlib.Path(west_top, platform_build_dir_name, "zephyr", "smex_ep",
