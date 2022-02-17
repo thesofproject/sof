@@ -824,7 +824,7 @@ static int ipc_dma_trace_config(uint32_t header)
 				      &elem_array,
 				      &ring_size);
 	if (err < 0)
-		goto error;
+		goto processing_error;
 
 	err = dma_trace_host_buffer(dmat, &elem_array, ring_size);
 	if (err < 0) {
@@ -849,6 +849,12 @@ static int ipc_dma_trace_config(uint32_t header)
 	return 0;
 
 error:
+#if CONFIG_HOST_PTABLE
+	dma_sg_free(&elem_array);
+
+processing_error:
+#endif
+
 	return err;
 }
 #endif /* CONFIG_SUECREEK */
