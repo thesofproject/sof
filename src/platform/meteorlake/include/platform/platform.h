@@ -13,9 +13,9 @@
 #ifndef __PLATFORM_PLATFORM_H__
 #define __PLATFORM_PLATFORM_H__
 
-#ifdef __ZEPHYR__
-#include <ace.h>
-#endif /* __ZEPHYR__ */
+#ifdef CONFIG_SOC_SERIES_INTEL_ACE1X
+#include <ace_v1x-regs.h>
+#endif /* CONFIG_SOC_SERIES_INTEL_ACE1X */
 
 #define PLATFORM_RESET_MHE_AT_BOOT	1
 
@@ -59,19 +59,19 @@ struct timer;
 #define LVL5 5
 
 /* IDC Interrupt */
-#ifdef __ZEPHYR__
-#define PLATFORM_IDC_INTERRUPT		ACE_IRQ_TO_ZEPHYR(ACE_INTL_IDCA)
+#ifdef CONFIG_SOC_SERIES_INTEL_ACE1X
+#define PLATFORM_IDC_INTERRUPT		MTL_IRQ_TO_ZEPHYR(MTL_INTL_IDCA)
 #else
 #define PLATFORM_IDC_INTERRUPT		IRQ_EXT_IDC_LVL2
-#endif /* __ZEPHYR__ */
+#endif /* CONFIG_SOC_SERIES_INTEL_ACE1X */
 #define PLATFORM_IDC_INTERRUPT_NAME	irq_name_level2
 
 /* IPC Interrupt */
-#ifdef __ZEPHYR__
-#define PLATFORM_IPC_INTERRUPT		ACE_IRQ_TO_ZEPHYR(ACE_INTL_HIPC)
+#ifdef CONFIG_SOC_SERIES_INTEL_ACE1X
+#define PLATFORM_IPC_INTERRUPT		MTL_IRQ_TO_ZEPHYR(MTL_INTL_HIPC)
 #else
 #define PLATFORM_IPC_INTERRUPT		IRQ_GET_ID(IRQ_EXT_IPC_LVL2, LVL2)
-#endif /* __ZEPHYR__ */
+#endif /* CONFIG_SOC_SERIES_INTEL_ACE1X */
 #define PLATFORM_IPC_INTERRUPT_NAME	irq_name_level2
 /* Platform timer Interrupt */
 #define PLATFORM_TIMER_IRQ                10

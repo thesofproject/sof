@@ -461,8 +461,8 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V25)
 	zephyr_include_directories(${SOF_PLATFORM_PATH}/intel/cavs/include)
 endif()
 
-# Intel CAVS 2.5 and newer platforms
-if (CONFIG_SOF_ZEPHYR)
+# Intel ACE 1.5 and newer platforms
+if (CONFIG_SOC_SERIES_INTEL_ACE1X)
 
 	# Driver sources
 	zephyr_library_sources(
