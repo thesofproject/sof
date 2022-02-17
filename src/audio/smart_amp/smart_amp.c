@@ -226,6 +226,8 @@ static struct comp_dev *smart_amp_new(const struct comp_driver *drv,
 	if (!dev)
 		return NULL;
 
+	dev->ipc_config = *config;
+
 	sad = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*sad));
 	if (!sad) {
 		rfree(dev);
