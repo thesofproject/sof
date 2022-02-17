@@ -150,8 +150,11 @@ static struct comp_dev *google_rtc_audio_processing_create(
 
 	/* Create component device with an effect processing component */
 	dev = comp_alloc(drv, sizeof(*dev));
+
 	if (!dev)
 		return NULL;
+
+	dev->ipc_config = *config;
 
 	/* Create private component data */
 	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
