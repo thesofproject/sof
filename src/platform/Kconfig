@@ -316,7 +316,6 @@ config MAX_CORE_COUNT
 
 config CORE_COUNT
 	int "Number of cores"
-	default MP_NUM_CPUS if KERNEL_BIN_NAME = "zephyr"
 	default MAX_CORE_COUNT
 	range 1 MAX_CORE_COUNT
 	help
@@ -430,7 +429,7 @@ config HP_MEMORY_BANKS
 
 config LP_MEMORY_BANKS
 	int "LP memory banks count"
-	depends on CAVS
+	depends on CAVS || ACE
 	default 0
 	help
 	  Available memory banks count for Low Power memory.
