@@ -54,13 +54,13 @@ static SHARED_DATA struct comp_driver_info comp_codec_adapter_info = { \
 	.drv = &comp_codec_adapter, \
 }; \
 \
-UT_STATIC void sys_comp_codec_##adapter_init(void) \
+UT_STATIC void sys_comp_codec_##adapter##_init(void) \
 { \
 	comp_register(platform_shared_get(&comp_codec_adapter_info, \
 					  sizeof(comp_codec_adapter_info))); \
 } \
 \
-DECLARE_MODULE(sys_comp_codec_##adapter_init)
+DECLARE_MODULE(sys_comp_codec_##adapter##_init)
 
 struct processing_module;
 
