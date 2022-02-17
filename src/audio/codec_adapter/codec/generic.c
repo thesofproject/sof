@@ -176,7 +176,7 @@ int module_free_memory(struct processing_module *mod, void *ptr)
 	}
 
 	comp_err(mod->dev, "module_free_memory: error: could not find memory pointed by %p",
-		 (uint32_t)ptr);
+		 ptr);
 
 	return -EINVAL;
 }
@@ -398,7 +398,7 @@ int module_set_configuration(struct processing_module *mod,
 
 	ret = memcpy_s(dst, size - offset, fragment, fragment_size);
 	if (ret < 0) {
-		comp_err(dev, "module_set_configuration(): error: failed to copy fragment",
+		comp_err(dev, "module_set_configuration(): error: %d failed to copy fragment",
 			 ret);
 		return ret;
 	}
