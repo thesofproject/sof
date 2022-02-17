@@ -93,7 +93,7 @@ class validate_platforms_arguments(argparse.Action):
 def parse_args():
 	global args
 	global west_top
-	parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
+	parser = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter,
 			epilog=("This script supports XtensaTools but only when installed in a specific\n" +
 				"directory structure, example:\n" +
 				"myXtensa/\n" +
@@ -130,31 +130,35 @@ def parse_args():
 						help="URL to clone Zephyr from")
 	mode_group = parser.add_mutually_exclusive_group()
 	mode_group.add_argument("-p", "--west_path", required=False, type=pathlib.Path,
-						help="Points to existing Zephyr project directory. Incompatible with -c."
-						" Uses by default path used by -c mode: SOF_TOP/zephyrproject. "
-						" If zephyr-project/modules/audio/sof is missing then a"
-						" symbolic link pointing to SOF_TOP directory will automatically be"
-						" created and west will recognize it as its new sof module."
-						" If zephyr-project/modules/audio/sof already exists and is a"
-						" different copy than where this script is run from, then the"
-						" behavior is undefined."
-						" This -p option is always required_if the real (not symbolic)"
-						" sof/ and zephyr-project/ directories are not nested in one"
-						" another.")
+				help="""Points to existing Zephyr project directory. Incompatible with -c.
+Uses by default path used by -c mode: SOF_TOP/zephyrproject.
+If zephyr-project/modules/audio/sof is missing then a
+symbolic link pointing to SOF_TOP directory will automatically be
+created and west will recognize it as its new sof module.
+If zephyr-project/modules/audio/sof already exists and is a
+different copy than where this script is run from, then the
+behavior is undefined.
+This -p option is always required_if the real (not symbolic)
+sof/ and zephyr-project/ directories are not nested in one
+another.""",
+	)
 	mode_group.add_argument("-c", "--clone_mode", required=False, action="store_true",
-						help="Using west, downloads inside this sof clone a new Zephyr"
-						" project with the required git repos. Creates a"
-						" sof/zephyrproject/modules/audio/sof symbolic link pointing"
-						" back at this sof clone."
-						" Incompatible with -p. To stop after downloading Zephyr, do not"
-						" pass any platform or cmake argument.")
+				help="""Using west, downloads inside this sof clone a new Zephyr
+project with the required git repos. Creates a
+sof/zephyrproject/modules/audio/sof symbolic link pointing
+back at this sof clone.
+Incompatible with -p. To stop after downloading Zephyr, do not
+pass any platform or cmake argument.""",
+	)
 	parser.add_argument('-v', '--verbose', default=0, action='count',
-						help="Verbosity level. Repetition of the flag increases verbosity."
-						" verbosity lvl 1: shows underlying build system commands,"
-						" verbosity lvl 2: lvl 1 + prints commands invoked by this script.")
+			    help="""Verbosity level. Repetition of the flag increases verbosity.
+verbosity lvl 1: shows underlying build system commands,
+verbosity lvl 2: lvl 1 + prints commands invoked by this script.""",
+	)
 	parser.add_argument("-C", "--cmake-args", required=False,
-						help="Cmake arguments passed to cmake configure step without"
-						" '-D' prefix. Eg. CMAKE_GENERATOR='Ninja'. Preserves internal quotes.")
+			    help="""Cmake arguments passed to cmake configure step without
+'-D' prefix. Eg. CMAKE_GENERATOR='Ninja'. Preserves internal quotes.""",
+	)
 
 	args = parser.parse_args()
 
