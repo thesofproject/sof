@@ -214,7 +214,7 @@ void ipc_platform_complete_cmd(struct ipc *ipc)
 	ipc_write(IPC_DIPCCTL, ipc_read(IPC_DIPCCTL) | IPC_DIPCCTL_IPCTBIE);
 }
 
-int ipc_platform_send_msg(struct ipc_msg *msg)
+int ipc_platform_send_msg(const struct ipc_msg *msg)
 {
 	struct ipc *ipc = ipc_get();
 	ipc_cmd_hdr *hdr;
@@ -231,7 +231,6 @@ int ipc_platform_send_msg(struct ipc_msg *msg)
 		goto out;
 	}
 
-	list_item_del(&msg->list);
 	tr_dbg(&ipc_tr, "ipc: msg tx -> 0x%x", msg->header);
 
 	ipc->is_notification_pending = true;

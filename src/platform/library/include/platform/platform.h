@@ -68,7 +68,7 @@ static inline void platform_wait_for_interrupt(int level)
 	arch_wait_for_interrupt(level);
 }
 
-static inline int ipc_platform_send_msg(struct ipc_msg *msg) { return 0; }
+static inline int ipc_platform_send_msg(const struct ipc_msg *msg) { return 0; }
 
 #endif /* __PLATFORM_PLATFORM_H__ */
 

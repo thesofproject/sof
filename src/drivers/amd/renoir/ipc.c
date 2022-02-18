@@ -166,7 +166,7 @@ void ipc_platform_complete_cmd(struct ipc *ipc)
 	}
 }
 
-int ipc_platform_send_msg(struct ipc_msg *msg)
+int ipc_platform_send_msg(const struct ipc_msg *msg)
 {
 	int ret = 0;
 	acp_sw_intr_trig_t  sw_intr_trig;
@@ -198,7 +198,7 @@ int ipc_platform_send_msg(struct ipc_msg *msg)
 		goto out;
 	/* Write new message in the mailbox */
 	mailbox_dspbox_write(0, msg->tx_data, msg->tx_size);
-	list_item_del(&msg->list);
+
 	/* Need to set DSP message flag */
 	sof_ipc_dsp_msg_set();
 	/* now interrupt host to tell it we have sent a message */

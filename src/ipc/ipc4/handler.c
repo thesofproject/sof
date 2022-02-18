@@ -828,7 +828,7 @@ ipc_cmd_hdr *ipc_compact_read_msg(void)
 	return ipc_to_hdr(msg_data.msg_in);
 }
 
-ipc_cmd_hdr *ipc_prepare_to_send(struct ipc_msg *msg)
+ipc_cmd_hdr *ipc_prepare_to_send(const struct ipc_msg *msg)
 {
 	uint32_t size;
 

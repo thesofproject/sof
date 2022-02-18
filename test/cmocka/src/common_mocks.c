@@ -219,7 +219,7 @@ void WEAK ipc_platform_complete_cmd(struct ipc *ipc)
 }
 
 #if !CONFIG_LIBRARY
-int WEAK ipc_platform_send_msg(struct ipc_msg *msg)
+int WEAK ipc_platform_send_msg(const struct ipc_msg *msg)
 {
 	return 0;
 }
