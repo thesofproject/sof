@@ -1538,7 +1538,7 @@ ipc_cmd_hdr *ipc_compact_read_msg(void)
 #endif
 
 /* prepare the message using ABI major layout */
-ipc_cmd_hdr *ipc_prepare_to_send(struct ipc_msg *msg)
+ipc_cmd_hdr *ipc_prepare_to_send(const struct ipc_msg *msg)
 {
 	static uint32_t hdr[2];
 

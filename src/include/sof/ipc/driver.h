@@ -50,7 +50,7 @@ void ipc_platform_complete_cmd(struct ipc *ipc);
  * @param msg The IPC message to send to host.
  * @return 0 on success.
  */
-int ipc_platform_send_msg(struct ipc_msg *msg);
+int ipc_platform_send_msg(const struct ipc_msg *msg);
 
 /**
  * \brief Retrieves the ipc_data_host_buffer allocated by the platform ipc.

@@ -187,8 +187,9 @@ void ipc_send_queued_msg(void)
 	msg = list_first_item(&ipc->msg_list, struct ipc_msg,
 			      list);
 
-	ipc_platform_send_msg(msg);
-
+	if (ipc_platform_send_msg(msg) == 0)
+		/* Remove the message from the list if it has been successfully sent. */
+		list_item_del(&msg->list);
 out:
 	k_spin_unlock(&ipc->lock, key);
 }

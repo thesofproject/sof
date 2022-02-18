@@ -178,7 +178,7 @@ int ipc_compact_write_msg(ipc_cmd_hdr *hdr);
  * @param[in] msg The ipc msg.
  * @return pointer to raw header or NULL.
  */
-ipc_cmd_hdr *ipc_prepare_to_send(struct ipc_msg *msg);
+ipc_cmd_hdr *ipc_prepare_to_send(const struct ipc_msg *msg);
 
 /**
  * \brief Validate mailbox contents for valid IPC header.
