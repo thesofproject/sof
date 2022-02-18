@@ -830,16 +830,18 @@ ipc_cmd_hdr *ipc_compact_read_msg(void)
 
 ipc_cmd_hdr *ipc_prepare_to_send(struct ipc_msg *msg)
 {
+	uint32_t size;
+
 	msg_data.msg_out[0] = msg->header;
 	msg_data.msg_out[1] = *(uint32_t *)msg->tx_data;
 
 	/* the first uint of msg data is sent by ipc data register for ipc4 */
-	msg->tx_size -= sizeof(uint32_t);
-	if (msg->tx_size)
-		mailbox_dspbox_write(0, (uint32_t *)msg->tx_data + 1, msg->tx_size);
+	size = msg->tx_size - sizeof(uint32_t);
+	if (size)
+		mailbox_dspbox_write(0, (uint32_t *)msg->tx_data + 1, size);
 
 	/* free memory for get config function */
-	if (msg_reply.tx_size)
+	if (msg == &msg_reply && msg_reply.tx_size > sizeof(uint32_t))
 		rfree(msg_reply.tx_data);
 
 	return ipc_to_hdr(msg_data.msg_out);
