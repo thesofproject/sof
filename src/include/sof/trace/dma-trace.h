@@ -36,7 +36,6 @@ struct dma_trace_data {
 	struct dma_copy dc;
 	struct sof_ipc_dma_trace_posn posn;
 	struct ipc_msg *msg;
-	uint32_t old_host_offset; /**< Last posn.offset sent to host */
 	uint32_t host_size;
 	struct task dmat_work;
 	uint32_t enabled;

@@ -387,7 +387,6 @@ static int dma_trace_start(struct dma_trace_data *d)
 		return err;
 
 	/* Reset host buffer information as host is re-configuring dtrace */
-	d->old_host_offset = 0;
 	d->posn.host_offset = 0;
 
 	d->active_stream_tag = d->stream_tag;
@@ -413,17 +412,6 @@ static int dma_trace_get_avail_data(struct dma_trace_data *d,
 				    struct dma_trace_buf *buffer,
 				    int avail)
 {
-	/* there isn't DMA completion callback in GW DMA copying.
-	 * so we send previous position always before the next copying
-	 * for guaranteeing previous DMA copying is finished.
-	 * This function will be called once every 500ms at least even
-	 * if no new trace is filled.
-	 */
-	if (d->old_host_offset != d->posn.host_offset) {
-		ipc_msg_send(d->msg, &d->posn, false);
-		d->old_host_offset = d->posn.host_offset;
-	}
-
 	/* align data to HD-DMA burst size */
 	return ALIGN_DOWN(avail, d->dma_copy_align);
 }
