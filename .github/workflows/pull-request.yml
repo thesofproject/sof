@@ -85,7 +85,11 @@ jobs:
     runs-on: ubuntu-20.04
 
     strategy:
+      fail-fast: false
       matrix:
+        # Use groups to avoid spamming the web interface.
+        # Don't use a single big group so a single failure does not block
+        # all other builds.
         platform: [imx8ulp,
                    sue jsl tgl,
                    rn,
@@ -116,6 +120,7 @@ jobs:
     runs-on: ubuntu-20.04
 
     strategy:
+      fail-fast: false
       matrix:
         # Compiler-based groups, see HOST= compilers in
         # xtensa-build-all.sh.  Pay attention to commas and whitespace.
