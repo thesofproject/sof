@@ -89,7 +89,7 @@ RUN cd /home/sof && \
 	mkdir -p /home/sof/work/ && \
 	cd crosstool-ng && \
 	./bootstrap && ./configure --prefix=`pwd` && make && make install && \
-	for arch in byt hsw apl cnl imx imx8m imx8ulp rn; do \
+	for arch in byt hsw apl cnl imx imx8m imx8ulp rn mt8186 mt8195; do \
 		cp config-${arch}-gcc10.2-gdb9 .config && \
 # replace the build dist to save space
 		sed -i 's#${CT_TOP_DIR}\/builds#\/home\/sof\/work#g' .config && \
@@ -107,12 +107,14 @@ ENV PATH="/home/sof/work/xtensa-rn-elf/bin:${PATH}"
 ENV PATH="/home/sof/work/xtensa-imx-elf/bin:${PATH}"
 ENV PATH="/home/sof/work/xtensa-imx8m-elf/bin:${PATH}"
 ENV PATH="/home/sof/work/xtensa-imx8ulp-elf/bin:${PATH}"
+ENV PATH="/home/sof/work/xtensa-mt8186-elf/bin:${PATH}"
+ENV PATH="/home/sof/work/xtensa-mt8195-elf/bin:${PATH}"
 
 ARG NEWLIB_REPO=https://github.com/jcmvbkbc/newlib-xtensa.git
 RUN cd /home/sof && \
 	git clone $CLONE_DEFAULTS --branch xtensa $NEWLIB_REPO && \
 	cd newlib-xtensa && \
-	for arch in byt hsw apl cnl imx imx8m imx8ulp rn; do \
+	for arch in byt hsw apl cnl imx imx8m imx8ulp rn mt8186 mt8195; do \
 		./configure --target=xtensa-${arch}-elf \
 		--prefix=/home/sof/work/xtensa-root && \
 		make && \
