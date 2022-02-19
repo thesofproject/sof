@@ -132,7 +132,9 @@ west_init_update()
 	# in forks!
 
 	# zephyr_fetch_and_switch    origin   pull/38374/head
-	# zephyr_fetch_and_switch    origin   19d5448ec117fde8076bec4d0e61da53147f3315
+
+	# https://github.com/zephyrproject-rtos/zephyr/pull/42993
+	zephyr_fetch_and_switch    origin   2e2086e1ab7e52a1f70faac88225173a654dd3b6
 
 	# SECURITY WARNING for reviewers: never allow unknown code from
 	# unknown submitters on any CI system.
