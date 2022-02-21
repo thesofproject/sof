@@ -114,13 +114,11 @@ void ipc_platform_complete_cmd(struct ipc *ipc)
 int ipc_platform_send_msg(const struct ipc_msg *msg)
 {
 	struct ipc *ipc = ipc_get();
-	int ret = 0;
 
 	/* can't send notification when one is in progress */
 	if (ipc->is_notification_pending ||
 	    shim_read(SHIM_IPCDH) & (SHIM_IPCDH_BUSY | SHIM_IPCDH_DONE)) {
-		ret = -EBUSY;
-		goto out;
+		return -EBUSY;
 	}
 
 	/* now send the message */
@@ -133,10 +131,7 @@ int ipc_platform_send_msg(const struct ipc_msg *msg)
 	/* now interrupt host to tell it we have message sent */
 	shim_write(SHIM_IPCDL, msg->header);
 	shim_write(SHIM_IPCDH, SHIM_IPCDH_BUSY);
-
-out:
-
-	return ret;
+	return 0;
 }
 
 struct ipc_data_host_buffer *ipc_platform_get_host_buffer(struct ipc *ipc)

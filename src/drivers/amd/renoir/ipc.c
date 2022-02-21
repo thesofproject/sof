@@ -168,7 +168,6 @@ void ipc_platform_complete_cmd(struct ipc *ipc)
 
 int ipc_platform_send_msg(const struct ipc_msg *msg)
 {
-	int ret = 0;
 	acp_sw_intr_trig_t  sw_intr_trig;
 	acp_dsp_sw_intr_stat_t sw_intr_stat;
 	uint32_t status;
@@ -182,20 +181,17 @@ int ipc_platform_send_msg(const struct ipc_msg *msg)
 		sw_intr_stat = (acp_dsp_sw_intr_stat_t)
 				io_reg_read(PU_REGISTER_BASE + ACP_DSP_SW_INTR_STAT);
 		status =  sw_intr_stat.bits.dsp0_to_host_intr_stat;
-		ret = -EBUSY;
-		goto out;
+		return -EBUSY;
 	}
 	lock = io_reg_read(PU_REGISTER_BASE + ACP_AXI2DAGB_SEM_0);
 	while (lock) {
 		lock = io_reg_read(PU_REGISTER_BASE + ACP_AXI2DAGB_SEM_0);
-		if (!delay_cnt) {
-			ret = -EBUSY;
-			break;
-		}
+		if (!delay_cnt)
+			return -EBUSY;
+
 		delay_cnt--;
 	}
-	if (ret)
-		goto out;
+
 	/* Write new message in the mailbox */
 	mailbox_dspbox_write(0, msg->tx_data, msg->tx_size);
 
@@ -208,8 +204,7 @@ int ipc_platform_send_msg(const struct ipc_msg *msg)
 	sw_intr_trig.bits.trig_dsp0_to_host_intr = INTERRUPT_DISABLE;
 	io_reg_write((PU_REGISTER_BASE + ACP_SW_INTR_TRIG), sw_intr_trig.u32all);
 	io_reg_write((PU_REGISTER_BASE + ACP_AXI2DAGB_SEM_0), lock);
-out:
-	return ret;
+	return 0;
 }
 
 int platform_ipc_init(struct ipc *ipc)
