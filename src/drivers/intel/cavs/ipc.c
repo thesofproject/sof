@@ -218,7 +218,6 @@ int ipc_platform_send_msg(const struct ipc_msg *msg)
 {
 	struct ipc *ipc = ipc_get();
 	ipc_cmd_hdr *hdr;
-	int ret = 0;
 
 	if (ipc->is_notification_pending ||
 #if CAVS_VERSION == CAVS_VERSION_1_5
@@ -227,8 +226,7 @@ int ipc_platform_send_msg(const struct ipc_msg *msg)
 	    ipc_read(IPC_DIPCIDR) & IPC_DIPCIDR_BUSY ||
 	    ipc_read(IPC_DIPCIDA) & IPC_DIPCIDA_DONE) {
 #endif
-		ret = -EBUSY;
-		goto out;
+		return -EBUSY;
 	}
 
 	tr_dbg(&ipc_tr, "ipc: msg tx -> 0x%x", msg->header);
@@ -247,8 +245,7 @@ int ipc_platform_send_msg(const struct ipc_msg *msg)
 	ipc_write(IPC_DIPCIDR, IPC_DIPCIDR_BUSY | hdr[0]);
 #endif
 
-out:
-	return ret;
+	return 0;
 }
 
 int platform_ipc_init(struct ipc *ipc)
