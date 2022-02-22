@@ -742,6 +742,7 @@ static int ipc4_module_process_d0ix(union ipc4_message_header *ipc4)
 static int ipc4_module_process_dx(union ipc4_message_header *ipc4)
 {
 	struct ipc4_module_set_dx dx;
+	struct ipc4_dx_state_info dx_info;
 	uint32_t module_id, instance_id;
 
 	memcpy_s(&dx, sizeof(dx), ipc4, sizeof(dx));
@@ -752,6 +753,23 @@ static int ipc4_module_process_dx(union ipc4_message_header *ipc4)
 	if (module_id || instance_id) {
 		tr_err(&ipc_tr, "invalid resource id %x : %x", module_id, instance_id);
 		return IPC4_INVALID_RESOURCE_ID;
+	}
+
+	memcpy_s(&dx_info, sizeof(dx_info), (const void *)MAILBOX_HOSTBOX_BASE, sizeof(dx_info));
+
+	/* check if core enable mask is valid */
+	if (dx_info.core_mask > MASK(CONFIG_CORE_COUNT - 1, 0)) {
+		tr_err(&ipc_tr, "ipc4_module_process_dx: CONFIG_CORE_COUNT: %d < core enable mask: %d",
+		       CONFIG_CORE_COUNT, dx_info.core_mask);
+		return IPC4_ERROR_INVALID_PARAM;
+	}
+
+	/* check primary core first */
+	if ((dx_info.core_mask & BIT(PLATFORM_PRIMARY_CORE_ID)) &&
+	    (dx_info.dx_mask & BIT(PLATFORM_PRIMARY_CORE_ID))) {
+		/* core0 can't be activated more, it's already active since we got here */
+		tr_err(&ipc_tr, "Core0 is already active");
+		return IPC4_BAD_STATE;
 	}
 
 	/* nothing to do since core 0 is active now */
