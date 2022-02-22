@@ -200,11 +200,13 @@
 /** \brief LP RING Oscillator Clock Status */
 #define SHIM_CLKSTS_LROSCCS	BIT(29)
 
-#define SHIM_PWRCTL		0x90
+#define SHIM_PM_BASE		0x71B00
+
+#define SHIM_PWRCTL		(SHIM_PM_BASE + 0x90)
 #define SHIM_PWRCTL_TCPDSPPG(x)	BIT(x)
 #define SHIM_PWRCTL_TCPCTLPG	BIT(4)
 
-#define SHIM_PWRSTS		0x92
+#define SHIM_PWRSTS		(SHIM_PM_BASE + 0x92)
 
 #define SHIM_LPSCTL		0x94
 #define SHIM_LPSCTL_BID		BIT(7)
