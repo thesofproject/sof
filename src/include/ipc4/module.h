@@ -334,6 +334,16 @@ struct ipc4_module_set_d0ix {
 	} data;
 } __attribute__((packed, aligned(4)));
 
+struct ipc4_dx_state_info {
+	/* Indicates which cores are subject to change the power state */
+	uint32_t core_mask;
+	/* Indicates core state.
+	 * bit[core_id] = 0 -> put core_id to D3
+	 * bit[core_id] = 1 -> put core_id to D0
+	 */
+	uint32_t dx_mask;
+} __packed __aligned(4);
+
 struct ipc4_module_set_dx {
 	union {
 		uint32_t dat;
