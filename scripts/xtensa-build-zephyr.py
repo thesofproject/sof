@@ -152,8 +152,8 @@ pass any platform or cmake argument.""",
 	)
 	parser.add_argument('-v', '--verbose', default=0, action='count',
 			    help="""Verbosity level. Repetition of the flag increases verbosity.
-verbosity lvl 1: shows underlying build system commands,
-verbosity lvl 2: lvl 1 + prints commands invoked by this script.""",
+The same number of '-v' is passed to "west".
+""",
 	)
 	# Cannot use a standard -- delimiter because argparse deletes it.
 	parser.add_argument("-C", "--cmake-args", action='append', default=[],
@@ -192,10 +192,10 @@ def execute_command(command_args, stdin=None, input=None, stdout=None, stderr=No
 	errors=None, text=None, env=None, universal_newlines=None):
 	"""[summary] Provides wrapper for subprocess.run (matches its signature) that prints
 	command executed when 'more verbose' verbosity level is set."""
-	if args.verbose==2:
-		print_args = " ".join(command_args) if isinstance(command_args, list) else command_args
-		print_cwd = f"in: {cwd}" if cwd else f"in: {os.getcwd()}"
-		print(f"Running command: {print_args} {print_cwd}")
+	if args.verbose >= 0:
+		print_cwd = f"In dir: {cwd}" if cwd else f"in current dir: {os.getcwd()}"
+		print_args = shlex.join(command_args) if isinstance(command_args, list) else command_args
+		print(f"{print_cwd}; running command: {print_args}", flush=True)
 	return subprocess.run(args=command_args, stdin=stdin, input=input, stdout=stdout,
 		stderr=stderr, capture_output=capture_output, shell=shell, cwd=cwd, timeout=timeout,
 		check=check, encoding=encoding, errors=errors, text=text, env=env,
@@ -341,8 +341,7 @@ def build_platforms():
 
 		PLAT_CONFIG = platform_dict["PLAT_CONFIG"]
 		build_cmd = ["west"]
-		if args.verbose > 0:
-			build_cmd.append("-v")
+		build_cmd += ["-v"] * args.verbose
 		build_cmd += ["build", "--build-dir", platform_build_dir_name]
 		source_dir = pathlib.Path(west_top, "zephyr", "samples", "subsys", "audio", "sof")
 		build_cmd += ["--board", PLAT_CONFIG, str(source_dir)]
@@ -350,8 +349,6 @@ def build_platforms():
 		build_cmd.append('--')
 		if args.cmake_args:
 			build_cmd += args.cmake_args
-		if args.verbose >= 1:
-			build_cmd.append("-DCMAKE_VERBOSE_MAKEFILE=ON")
 
 		# Build
 		execute_command(build_cmd, check=True, cwd=west_top)
@@ -376,7 +373,9 @@ def build_platforms():
 		# Sign firmware
 		rimage_executable = shutil.which("rimage", path=pathlib.Path(west_top, rimage_dir_name))
 		rimage_config = pathlib.Path(sof_mirror_dir, "rimage", "config")
-		sign_cmd = ["west", "sign", "--build-dir", platform_build_dir_name, "--tool", "rimage"]
+		sign_cmd = ["west"]
+		sign_cmd += ["-v"] * args.verbose
+		sign_cmd += ["sign", "--build-dir", platform_build_dir_name, "--tool", "rimage"]
 		sign_cmd += ["--tool-path", rimage_executable]
 		signing_key = ""
 		if args.key:
