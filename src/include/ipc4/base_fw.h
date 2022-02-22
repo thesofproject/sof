@@ -63,10 +63,7 @@ enum ipc4_basefw_params {
 
 	IPC4_DSP_RESOURCE_STATE = 1,
 
-	/* Use LARGE_CONFIG_SET to prepare core(s) for new DX state.
-	 * Ipc mailbox must contain properly built DxStateInfo struct
-	 */
-	IPC4_DX_STATE = 2,
+	IPC4_RESERVED = 2,
 
 	/* Driver sends this request to enable/disable notifications. This message
 	 * should be used by the driver in debug mode to avoid flooding host with
@@ -438,26 +435,6 @@ struct ipc4_phys_mem_pages {
 	uint32_t mem_type;
 	/* Number of pages */
 	uint32_t pages;
-} __attribute__((packed, aligned(4)));
-
-/*TODO: how do we enter D0i3 */
-enum ipc4_dx_states {
-	/*D0 state means that dsp in this state is powered up and ready for processing */
-	IPC4_D0_STATE = 0,
-	/* D3 state means that dsp in this state is powered down or not yet
-	 * ready for processing. No idc/ipc should be send to core in this state.
-	 */
-	IPC4_D3_STATE = 3,
-};
-
-struct ipc4_dx_state_info {
-	/* Indicates which cores are subject to change the power state */
-	uint32_t core_mask;
-	/* Indicates core state.
-	 * bit[core_id] = 0 -> put core_id to D3
-	 * bit[core_id] = 1 -> put core_id to D0
-	 */
-	uint32_t dx_mask;
 } __attribute__((packed, aligned(4)));
 
 #define IPC4_UNDERRUN_AT_GATEWAY_NOTIFICATION_MASK_IDX	0
