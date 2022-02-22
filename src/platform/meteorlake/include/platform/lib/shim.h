@@ -250,17 +250,18 @@
 #define HSRMCTL0		0x71D14
 #define HSPGISTS0		0x71D18
 
-#define SHIM_HSPGCTL(x)		(HSPGCTL0 + 0x10 * (x))
-#define SHIM_HSRMCTL(x)		(HSRMCTL0 + 0x10 * (x))
-#define SHIM_HSPGISTS(x)	(HSPGISTS0 + 0x10 * (x))
+#define L2HSBPM(x)		(0x17A800 + 0x0008 * (x))
+#define SHIM_HSPGCTL(x)		(L2HSBPM(x) + 0x0000)
+#define SHIM_HSRMCTL(x)		(L2HSBPM(x) + 0x0001)
+#define SHIM_HSPGISTS(x)	(L2HSBPM(x) + 0x0004)
 
 #define HSPGCTL1		0x71D20
 #define HSRMCTL1		0x71D24
 #define HSPGISTS1		0x71D28
 
-#define LSPGCTL			0x71D50
-#define LSRMCTL			0x71D54
-#define LSPGISTS		0x71D58
+#define LSPGCTL			0x71D80
+#define LSRMCTL			0x71D81
+#define LSPGISTS		0x71D84
 
 #define SHIM_L2_MECS		(SHIM_BASE + 0xd0)
 
