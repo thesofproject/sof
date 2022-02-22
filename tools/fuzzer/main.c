@@ -349,7 +349,7 @@ int main(int argc, char *argv[])
 	ctx.tplg_file = topology_file;
 
 	/* load topology */
-	ret = parse_topology(&ctx);
+	ret = fuzzer_parse_topology(&ctx);
 	if (ret < 0)
 		exit(EXIT_FAILURE);
 

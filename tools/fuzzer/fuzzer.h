@@ -36,6 +36,7 @@
 
 struct fuzz;
 struct fuzz_platform;
+struct tplg_context;
 
 /* platform memory regions */
 struct fuzzer_mem_desc {
@@ -113,6 +114,8 @@ struct fuzz {
 
 	void *platform_data; /* core does not touch this */
 };
+
+int fuzzer_parse_topology(struct tplg_context *ctx);
 
 /* called by platform when it receives IPC message */
 void fuzzer_ipc_msg_rx(struct fuzz *fuzzer, struct mailbox *mailbox);
