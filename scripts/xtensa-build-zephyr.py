@@ -425,8 +425,6 @@ def run_clone_mode():
 	if args.platforms:
 		build_platforms()
 		show_installed_files()
-	else:
-		git_submodules_update()
 
 def run_point_mode():
 	global west_top, SOF_TOP
