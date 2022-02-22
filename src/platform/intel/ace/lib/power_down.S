@@ -94,7 +94,7 @@ _PD_DISABLE_HPSRAM:
  * WAIT_300NS();
  */
 	movi temp_reg0, SHIM_LDOCTL_HPSRAM_LDO_ON
-	m_cavs_set_hpldo_state temp_reg0, temp_reg1, temp_reg2
+	m_ace_set_hpldo_state temp_reg0, temp_reg1, temp_reg2
 	movi temp_reg0, 128
 1 :
 	addi temp_reg0, temp_reg0, -1
@@ -132,7 +132,7 @@ _PD_DISABLE_HPSRAM:
 	bnez temp_reg0, 1b
 
 	movi temp_reg0, SHIM_LDOCTL_HPSRAM_LDO_OFF
-	m_cavs_set_hpldo_state temp_reg0, temp_reg1, temp_reg2
+	m_ace_set_hpldo_state temp_reg0, temp_reg1, temp_reg2
 
 _PD_SEND_IPC:
 /* Send IPC to host informing of PD completion - Clear BUSY

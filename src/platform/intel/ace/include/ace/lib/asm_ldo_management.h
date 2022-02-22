@@ -20,8 +20,8 @@
 
 #include <sof/lib/shim.h>
 
-.macro m_cavs_set_ldo_state state, ax
-movi \ax, (SHIM_BASE + SHIM_LDOCTL)
+.macro m_ace_set_ldo_state state, ax
+movi \ax, (SHIM_PM_BASE + SHIM_LDOCTL)
 s32i \state, \ax, 0
 memw
 // wait loop > 300ns (min 100ns required)
@@ -32,30 +32,30 @@ nop
 bnez \ax, 1b
 .endm
 
-.macro m_cavs_set_hpldo_state state, ax, ay
-movi \ax, (SHIM_BASE + SHIM_LDOCTL)
+.macro m_ace_set_hpldo_state state, ax, ay
+movi \ax, (SHIM_PM_BASE + SHIM_LDOCTL)
 l32i \ay, \ax, 0
 
 movi \ax, ~(SHIM_LDOCTL_HPSRAM_MASK)
 and \ay, \ax, \ay
 or \state, \ay, \state
 
-m_cavs_set_ldo_state \state, \ax
+m_ace_set_ldo_state \state, \ax
 .endm
 
-.macro m_cavs_set_lpldo_state state, ax, ay
-movi \ax, (SHIM_BASE + SHIM_LDOCTL)
+.macro m_ace_set_lpldo_state state, ax, ay
+movi \ax, (SHIM_PM_BASE + SHIM_LDOCTL)
 l32i \ay, \ax, 0
 // LP SRAM mask
 movi \ax, ~(SHIM_LDOCTL_LPSRAM_MASK)
 and \ay, \ax, \ay
 or \state, \ay, \state
 
-m_cavs_set_ldo_state \state, \ax
+m_ace_set_ldo_state \state, \ax
 .endm
 
-.macro m_cavs_set_ldo_on_state ax, ay, az
-movi \ay, (SHIM_BASE + SHIM_LDOCTL)
+.macro m_ace_set_ldo_on_state ax, ay, az
+movi \ay, (SHIM_PM_BASE + SHIM_LDOCTL)
 l32i \az, \ay, 0
 
 movi \ax, ~(SHIM_LDOCTL_HPSRAM_MASK | SHIM_LDOCTL_LPSRAM_MASK)
@@ -63,17 +63,17 @@ and \az, \ax, \az
 movi \ax, (SHIM_LDOCTL_HPSRAM_LDO_ON | SHIM_LDOCTL_LPSRAM_LDO_ON)
 or \ax, \az, \ax
 
-m_cavs_set_ldo_state \ax, \ay
+m_ace_set_ldo_state \ax, \ay
 .endm
 
-.macro m_cavs_set_ldo_off_state ax, ay, az
+.macro m_ace_set_ldo_off_state ax, ay, az
 // wait loop > 300ns (min 100ns required)
 movi \ax, 128
 1 :
 		addi \ax, \ax, -1
 		nop
 		bnez \ax, 1b
-movi \ay, (SHIM_BASE + SHIM_LDOCTL)
+movi \ay, (SHIM_PM_BASE + SHIM_LDOCTL)
 l32i \az, \ay, 0
 
 movi \ax, ~(SHIM_LDOCTL_HPSRAM_MASK | SHIM_LDOCTL_LPSRAM_MASK)
@@ -86,14 +86,14 @@ s32i \ax, \ay, 0
 l32i \ax, \ay, 0
 .endm
 
-.macro m_cavs_set_ldo_bypass_state ax, ay, az
+.macro m_ace_set_ldo_bypass_state ax, ay, az
 // wait loop > 300ns (min 100ns required)
 movi \ax, 128
 1 :
 		addi \ax, \ax, -1
 		nop
 		bnez \ax, 1b
-movi \ay, (SHIM_BASE + SHIM_LDOCTL)
+movi \ay, (SHIM_PM_BASE + SHIM_LDOCTL)
 l32i \az, \ay, 0
 
 movi \ax, ~(SHIM_LDOCTL_HPSRAM_MASK | SHIM_LDOCTL_LPSRAM_MASK)
