@@ -74,13 +74,13 @@ power_down:
 _PD_DISABLE_LPSRAM:
 /* effectively executes:
  * if (b_enable_lpsram){
- *  cavs_lpsram_power_down_entire();
+ *  ace_lpsram_power_down_entire();
  * }
  */
 	movi host_base, IPC_HOST_BASE
 
 	beqz b_enable_lpsram, _PD_DISABLE_HPSRAM
-	m_cavs_lpsram_power_down_entire temp_reg0, temp_reg1, temp_reg2,\
+	m_ace_lpsram_power_down_entire temp_reg0, temp_reg1, temp_reg2,\
 					sram_dis_loop_cnt
 	j _PD_DISABLE_HPSRAM
 
@@ -112,7 +112,7 @@ _PD_DISABLE_HPSRAM:
 	.set seg_index, MAX_MEMORY_SEGMENTS - 1
 	.rept MAX_MEMORY_SEGMENTS
 	l32i temp_reg0, pu32_hpsram_mask, 4 * seg_index
-	m_cavs_hpsram_power_change\
+	m_ace_hpsram_power_change\
 	/*segment_index=*/	seg_index,\
 	/*mask=*/	temp_reg0,\
 	temp_reg1,\

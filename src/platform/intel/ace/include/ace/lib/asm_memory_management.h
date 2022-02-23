@@ -31,7 +31,7 @@
  * HPSRAM (in case when this code is located in HPSRAM, lock memory in L1$ or
  * L1 SRAM)
  */
-.macro m_cavs_hpsram_power_down_entire ax, ay, az
+.macro m_ace_hpsram_power_down_entire ax, ay, az
 	// SEGMENT #0
 	movi \az, SHIM_HSPGCTL(0)
 	movi \ax, SHIM_HSPGISTS(0)
@@ -53,7 +53,7 @@
 	bne \ax, \ay, 1b
 .endm
 
-.macro m_cavs_hpsram_power_change segment_index, mask, ax, ay, az
+.macro m_ace_hpsram_power_change segment_index, mask, ax, ay, az
 	movi \ax, SHIM_HSPGCTL(\segment_index)
 	movi \ay, SHIM_HSPGISTS(\segment_index)
 	s32i \mask, \ax, 0
@@ -64,7 +64,7 @@
 	bne \ax, \mask, 1b
 .endm
 
-.macro m_cavs_lpsram_power_down_entire ax, ay, az, loop_cnt_addr
+.macro m_ace_lpsram_power_down_entire ax, ay, az, loop_cnt_addr
 	movi \az, LSPGISTS
 	movi \ax, LSPGCTL
 	movi \ay, LPSRAM_MASK()
