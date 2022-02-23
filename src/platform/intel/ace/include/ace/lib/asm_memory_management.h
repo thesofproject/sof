@@ -7,8 +7,7 @@
 
 /**
  * \file
- * \brief Macros for power gating memory banks specific for cAVS 1.8
- * \(CannonLake) and cAVS 2.0 (IceLake)
+ * \brief Macros for power gating memory banks specific for ACE 1.0
  * \author Lech Betlej <lech.betlej@linux.intel.com>
  */
 
@@ -53,29 +52,60 @@
 	bne \ax, \ay, 1b
 .endm
 
-.macro m_ace_hpsram_power_change segment_index, mask, ax, ay, az
-	movi \ax, SHIM_HSPGCTL(\segment_index)
-	movi \ay, SHIM_HSPGISTS(\segment_index)
-	s32i \mask, \ax, 0
+.macro m_ace_hpsram_power_change segment_index, mask, ax, ay, az, au, aw
+	.if \segment_index == 0
+		.if EBB_SEGMENT_SIZE > PLATFORM_HPSRAM_EBB_COUNT
+			.set i_end, PLATFORM_HPSRAM_EBB_COUNT
+		.else
+			.set i_end, EBB_SEGMENT_SIZE
+		.endif
+	.elseif PLATFORM_HPSRAM_EBB_COUNT >= EBB_SEGMENT_SIZE
+		.set i_end, PLATFORM_HPSRAM_EBB_COUNT - EBB_SEGMENT_SIZE
+	.else
+		.err
+	.endif
+	.set ebb_index, \segment_index << 5
+	.set i, 0               /* i = bank bit in segment */
+
+	rsr.sar \aw             /* store old sar value */
+
+	movi \az, SHIM_HSPGCTL(ebb_index)
+	movi \au, i_end - 1     /* au = banks count in segment */
+2 :
+	/* au = current bank in segment */
+	mov \ax, \mask          /* ax = mask */
+	ssr \au
+	srl \ax, \ax            /* ax >>= current bank */
+	extui \ax, \ax, 0, 1    /* ax &= BIT(1) */
+	s8i \ax, \az, 0         /* HSxPGCTL.l2lmpge = ax */
 	memw
-	// assumed that HDA shared dma buffer will be in LPSRAM
-1 :
-	l32i \ax, \ay, 0
-	bne \ax, \mask, 1b
+	1 :
+		l8ui \ay, \az, 4    /* ax=HSxPGISTS.l2lmpgis */
+		bne \ax, \ay, 1b    /* wait till status==request */
+
+	addi \az, \az, 8
+	addi \au, \au, -1
+	bnez \au, 2b
+
+	wsr.sar \aw
 .endm
 
-.macro m_ace_lpsram_power_down_entire ax, ay, az, loop_cnt_addr
-	movi \az, LSPGISTS
-	movi \ax, LSPGCTL
-	movi \ay, LPSRAM_MASK()
-	s32i \ay, \ax, 0
+.macro m_ace_lpsram_power_down_entire ax, ay, az, au
+	movi \au, 8
+	movi \az, LSPGCTL
+
+	movi \ay, 1
+2 :
+	s8i \ay, \az, 0
 	memw
-  // assumed that HDA shared dma buffer will be in LPSRAM
-	movi \ax, \loop_cnt_addr
-	l32i \ax, \ax, 0
+
 1 :
-	addi \ax, \ax, -1
-	bnez \ax, 1b
+	l8ui \ax, \az, 4
+	bne \ax, \ay, 1b
+
+	addi \az, \az, 8
+	addi \au, \au, -1
+	bnez \au, 2b
 .endm
 
 #endif /* __ACE_LIB_ASM_MEMORY_MANAGEMENT_H__ */
