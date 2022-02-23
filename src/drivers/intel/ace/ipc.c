@@ -168,20 +168,17 @@ void ipc_platform_complete_cmd(struct ipc *ipc)
 	ipc_write(IPC_DIPCCTL, ipc_read(IPC_DIPCCTL) | IPC_DIPCCTL_IPCTBIE);
 }
 
-int ipc_platform_send_msg(struct ipc_msg *msg)
+int ipc_platform_send_msg(const struct ipc_msg *msg)
 {
 	struct ipc *ipc = ipc_get();
 	ipc_cmd_hdr *hdr;
-	int ret = 0;
 
 	if (ipc->is_notification_pending ||
 	    ipc_read(IPC_DIPCIDR) & IPC_DIPCIDR_BUSY ||
 	    ipc_read(IPC_DIPCIDA) & IPC_DIPCIDA_DONE) {
-		ret = -EBUSY;
-		goto out;
+		return -EBUSY;
 	}
 
-	list_item_del(&msg->list);
 	tr_dbg(&ipc_tr, "ipc: msg tx -> 0x%x", msg->header);
 
 	ipc->is_notification_pending = true;
@@ -196,8 +193,7 @@ int ipc_platform_send_msg(struct ipc_msg *msg)
 	/* Clear request */
 	ipc_write(IPC_DIPCTDR, ipc_read(IPC_DIPCTDR) | IPC_DIPCTDR_BUSY);
 	ipc_write(IPC_DIPCTDA, ipc_read(IPC_DIPCTDA) & ~IPC_DIPCTDA_DONE);
-out:
-	return ret;
+	return 0;
 }
 
 /*
