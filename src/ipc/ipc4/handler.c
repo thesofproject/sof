@@ -748,10 +748,8 @@ static int ipc4_module_process_dx(union ipc4_message_header *ipc4)
 	module_id = dx.header.r.module_id;
 	instance_id = dx.header.r.instance_id;
 
-	tr_dbg(&ipc_tr, "ipc4_module_process_d0ix %x : %x", module_id, instance_id);
-
 	/* only module 0 can be used to set dx state */
-	if (dx.header.r.module_id || dx.header.r.instance_id) {
+	if (module_id || instance_id) {
 		tr_err(&ipc_tr, "invalid resource id %x : %x", module_id, instance_id);
 		return IPC4_INVALID_RESOURCE_ID;
 	}
