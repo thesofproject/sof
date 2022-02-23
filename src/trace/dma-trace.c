@@ -28,6 +28,10 @@
 #include <user/abi_dbg.h>
 #include <sof_versions.h>
 
+#ifdef __ZEPHYR__
+#include <version.h>
+#endif
+
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
