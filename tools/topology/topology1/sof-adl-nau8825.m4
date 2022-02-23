@@ -272,8 +272,13 @@ DAI_ADD(sof/pipe-dai-playback.m4,
         1, SSP, SPK_SSP_INDEX, SPK_SSP_NAME,
         PIPELINE_SOURCE_1, 2, s16le,
         1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
-# currently this dai is here as "virtual" capture backend
-W_DAI_IN(SSP, SPK_SSP_INDEX, SPK_SSP_NAME, s16le, 3, 0)
+
+# The echo refenrence pipeline has no connections in it,
+# it is used for the capture DAI widget to dock.
+DAI_ADD(sof/pipe-echo-ref-dai-capture.m4,
+	29, SSP, SPK_SSP_INDEX, SPK_SSP_NAME,
+	PIPELINE_SINK_29, 3, s16le,
+	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # Capture pipeline 9 from demux on PCM 6 using max 2 channels of s32le.
 PIPELINE_PCM_ADD(sof/pipe-passthrough-capture-sched.m4,
