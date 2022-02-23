@@ -253,9 +253,8 @@ ca_copy_from_source_to_module(const struct audio_stream *source, void *buff, uin
 }
 
 static void
-codec_adapter_copy_from_lib_to_sink(const struct module_processing_data *mpd,
-				    const struct audio_stream *sink,
-				    size_t bytes)
+ca_copy_from_module_to_sink(const struct module_processing_data *mpd,
+			    const struct audio_stream *sink, size_t bytes)
 {
 	/* head_size - free space until end of local buffer */
 	const int without_wrap =
@@ -369,8 +368,7 @@ int codec_adapter_copy(struct comp_dev *dev)
 			 ret);
 		goto db_verify;
 	}
-	codec_adapter_copy_from_lib_to_sink(&md->mpd, &local_buff->stream,
-					    md->mpd.produced);
+	ca_copy_from_module_to_sink(&md->mpd, &local_buff->stream, md->mpd.produced);
 
 	bytes_to_process -= md->mpd.consumed;
 	processed += md->mpd.consumed;
