@@ -185,7 +185,7 @@ sign must be used (https://bugs.python.org/issue9334)""",
 	if args.clone_mode and not args.z:
 		args.z = "main"		# set default name for -z if -c specified
 
-	if args.west_path:			# allow user override path to zephyr project
+	if args.west_path: # let the user provide an already existing zephyrproject/ anywhere
 		west_top = pathlib.Path(args.west_path)
 	elif not args.clone_mode:	# if neather -p nor -c provided, use -p
 		args.west_path = west_top
@@ -422,9 +422,6 @@ def run_clone_mode():
 	create_zephyr_directory()
 	west_init_update()
 	git_submodules_update()
-	if args.platforms:
-		build_platforms()
-		show_installed_files()
 
 def run_point_mode():
 	global west_top, SOF_TOP
@@ -436,9 +433,6 @@ def run_point_mode():
 		raise FileNotFoundError("West topdir returned {} as workspace but it"
 			" does not exist".format(west_workspace_path))
 	create_zephyr_sof_symlink()
-	if args.platforms:
-		build_platforms()
-		show_installed_files()
 
 def main():
 	parse_args()
@@ -448,11 +442,17 @@ def main():
 	else:
 		print("Building platforms: {}".format(" ".join(args.platforms)))
 
-	# Two mutually exclusive working modes are supported
+	# we made two modes mutually exclusive with argparse
 	if args.west_path:
+		# check west_path input + create symlink if needed
 		run_point_mode()
 	if args.clone_mode:
+		# Initialize zephyr project with west
 		run_clone_mode()
+
+	if args.platforms:
+		build_platforms()
+		show_installed_files()
 
 if __name__ == "__main__":
 	main()
