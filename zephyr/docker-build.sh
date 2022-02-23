@@ -13,10 +13,7 @@ set -x
 unset ZEPHYR_BASE
 
 # Make sure we're in the right place; chgrp -R below.
-test -e ./scripts/xtensa-build-zephyr.sh
-
-sudo apt-get update
-sudo apt-get -y install tree
+test -e ./scripts/xtensa-build-zephyr.py
 
 # As of container version 0.18.4,
 # https://github.com/zephyrproject-rtos/docker-image/blob/master/Dockerfile
@@ -29,12 +26,12 @@ ls -ld /opt/toolchains/zephyr-sdk-*
 ln -s  /opt/toolchains/zephyr-sdk-*  ~/
 
 if test -e zephyrproject; then
-    ./scripts/xtensa-build-zephyr.sh -a "$@"
-else
+    ./scripts/xtensa-build-zephyr.py  "$@"
+else # -c(lone) with west init etc.
     # Matches docker.io/zephyrprojectrtos/zephyr-build:latest gid
     ls -ln | head
     stat .
     sudo chgrp -R 1000 .
     sudo chmod -R g+rwX .
-    ./scripts/xtensa-build-zephyr.sh -a -c "$@"
+    ./scripts/xtensa-build-zephyr.py -c "$@"
 fi
