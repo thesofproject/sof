@@ -225,9 +225,8 @@ int codec_adapter_params(struct comp_dev *dev,
 }
 
 static void
-codec_adapter_copy_from_source_to_lib(const struct audio_stream *source,
-				      const struct module_processing_data *mpd,
-				      size_t bytes)
+ca_copy_from_source_to_module(const struct audio_stream *source,
+			      const struct module_processing_data *mpd, size_t bytes)
 {
 	/* head_size - available data until end of local buffer */
 	const int without_wrap = audio_stream_bytes_without_wrap(source, source->r_ptr);
@@ -329,8 +328,7 @@ int codec_adapter_copy(struct comp_dev *dev)
 
 	if (!md->mpd.init_done) {
 		buffer_stream_invalidate(source, codec_buff_size);
-		codec_adapter_copy_from_source_to_lib(&source->stream, &md->mpd,
-						      codec_buff_size);
+		ca_copy_from_source_to_module(&source->stream, &md->mpd, codec_buff_size);
 		md->mpd.avail = codec_buff_size;
 		ret = module_process(dev);
 		if (ret)
@@ -344,8 +342,7 @@ int codec_adapter_copy(struct comp_dev *dev)
 	}
 
 	buffer_stream_invalidate(source, codec_buff_size);
-	codec_adapter_copy_from_source_to_lib(&source->stream, &md->mpd,
-					      codec_buff_size);
+	ca_copy_from_source_to_module(&source->stream, &md->mpd, codec_buff_size);
 	md->mpd.avail = codec_buff_size;
 	ret = module_process(dev);
 	if (ret) {
