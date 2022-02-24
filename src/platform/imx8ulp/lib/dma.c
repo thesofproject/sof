@@ -55,7 +55,7 @@ int dmac_init(struct sof *sof)
 
 	/* early lock initialization for ref counting */
 	for (i = 0; i < ARRAY_SIZE(dma); i++)
-		spinlock_init(&dma[i].lock);
+		k_spinlock_init(&dma[i].lock);
 
 	platform_shared_commit(dma, sizeof(*dma));
 

@@ -25,6 +25,10 @@
 #include <user/trace.h>
 #include <stddef.h>
 #include <stdint.h>
+#if CONFIG_IPC_MAJOR_4
+#include <ipc4/peak_volume.h>
+#include <ipc4/fw_reg.h>
+#endif
 
 struct comp_buffer;
 struct sof_ipc_ctrl_value_chan;
@@ -40,11 +44,33 @@ struct sof_ipc_ctrl_value_chan;
 
 #endif
 
+/**
+ * \brief In IPC3 volume is in Q8.16 format, in IPC4 in Q1.31, but is converted
+ * by firmware to Q1.23 format.
+ */
+#if CONFIG_IPC_MAJOR_3
+
+//** \brief Volume gain Qx.y */
+#define COMP_VOLUME_Q8_16 1
+
 //** \brief Volume gain Qx.y integer x number of bits including sign bit. */
 #define VOL_QXY_X 8
 
 //** \brief Volume gain Qx.y fractional y number of bits. */
 #define VOL_QXY_Y 16
+
+#else
+
+//** \brief Volume gain Qx.y */
+#define COMP_VOLUME_Q1_23 1
+
+//** \brief Volume gain Qx.y integer x number of bits including sign bit. */
+#define VOL_QXY_X 1
+
+//** \brief Volume gain Qx.y fractional y number of bits. */
+#define VOL_QXY_Y 23
+
+#endif
 
 /**
  * \brief Volume ramp update rate in microseconds.
@@ -75,6 +101,10 @@ struct sof_ipc_ctrl_value_chan;
 /** \brief Volume minimum value. */
 #define VOL_MIN		0
 
+/** \brief Macros to convert without division bytes count to samples count */
+#define VOL_BYTES_TO_S16_SAMPLES(b)	((b) >> 1)
+#define VOL_BYTES_TO_S32_SAMPLES(b)	((b) >> 2)
+
 /**
  * \brief volume processing function interface
  */
@@ -94,12 +124,14 @@ typedef uint32_t (*vol_zc_func)(const struct audio_stream *source,
 
 typedef int32_t (*vol_ramp_func)(struct comp_dev *dev, int32_t ramp_time, int channel);
 
-/**
- * \brief Volume component private data.
- *
- * Gain amplitude value is between 0 (mute) ... 2^16 (0dB) ... 2^24 (~+48dB).
- */
 struct vol_data {
+#if CONFIG_IPC_MAJOR_4
+	struct ipc4_base_module_cfg base;	/**< module config */
+	uint32_t mailbox_offset;		/**< store peak volume in mailbox */
+
+	/**< these values will be stored to mailbox for host (IPC4) */
+	struct ipc4_peak_volume_regs peak_regs;
+#endif
 	int32_t volume[SOF_IPC_MAX_CHANNELS];	/**< current volume */
 	int32_t tvolume[SOF_IPC_MAX_CHANNELS];	/**< target volume */
 	int32_t mvolume[SOF_IPC_MAX_CHANNELS];	/**< mute volume */
@@ -107,7 +139,8 @@ struct vol_data {
 	int32_t ramp_coef[SOF_IPC_MAX_CHANNELS]; /**< parameter for slope */
 	/**< store current volume 4 times for scale_vol function */
 	int32_t *vol;
-	struct ipc_config_volume ipc_config;
+	uint32_t initial_ramp;			/**< ramp space in ms */
+	uint32_t ramp_type;			/**< SOF_VOLUME_ */
 	int32_t vol_min;			/**< minimum volume */
 	int32_t vol_max;			/**< maximum volume */
 	int32_t	vol_ramp_range;			/**< max ramp transition */
@@ -142,6 +175,7 @@ struct comp_zc_func_map {
 	vol_zc_func func;	/**< volume zc function */
 };
 
+#if CONFIG_IPC_MAJOR_3
 /**
  * \brief Retrievies volume processing function.
  * \param[in,out] dev Volume base component device.
@@ -163,6 +197,35 @@ static inline vol_scale_func vol_get_processing_function(struct comp_dev *dev)
 	}
 
 	return NULL;
+}
+#else
+/**
+ * \brief Retrievies volume processing function.
+ * \param[in,out] dev Volume base component device.
+ */
+static inline vol_scale_func vol_get_processing_function(struct comp_dev *dev)
+{
+	struct vol_data *cd = comp_get_drvdata(dev);
+
+	switch (cd->base.audio_fmt.depth) {
+	case IPC4_DEPTH_16BIT:
+		return func_map[0].func;
+	case IPC4_DEPTH_32BIT:
+		return func_map[2].func;
+	default:
+		comp_err(dev, "vol_get_processing_function(): unsupported depth %d",
+			 cd->base.audio_fmt.depth);
+		return NULL;
+	}
+}
+#endif
+
+static inline void peak_vol_update(struct vol_data *cd)
+{
+#if CONFIG_COMP_PEAK_VOL
+	/* update peakvol in mailbox */
+	mailbox_sw_regs_write(cd->mailbox_offset, &cd->peak_regs, sizeof(cd->peak_regs));
+#endif
 }
 
 #ifdef UNIT_TEST

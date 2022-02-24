@@ -111,16 +111,14 @@ static int load_graph(void *dev, struct comp_info *temp_comp_list,
 }
 
 /* load buffer DAPM widget */
-int load_buffer(void *dev, int comp_id, int pipeline_id,
-		struct snd_soc_tplg_dapm_widget *widget)
+int load_buffer(struct tplg_context *ctx)
 {
 	struct sof_ipc_buffer buffer;
-	struct fuzz *fuzzer = (struct fuzz *)dev;
+	struct fuzz *fuzzer = ctx->fuzzer;
 	struct sof_ipc_comp_reply r;
 	int ret;
 
-	ret = tplg_load_buffer(comp_id, pipeline_id, widget->priv.size, &buffer,
-			       fuzzer->tplg_file);
+	ret = tplg_load_buffer(ctx, &buffer);
 	if (ret < 0)
 		return ret;
 
@@ -139,15 +137,14 @@ int load_buffer(void *dev, int comp_id, int pipeline_id,
 }
 
 /* load pcm component */
-static int load_pcm(void *dev, int comp_id, int pipeline_id, int size, int dir)
+static int load_pcm(struct tplg_context *ctx, int dir)
 {
-	struct fuzz *fuzzer = (struct fuzz *)dev;
+	struct fuzz *fuzzer = ctx->fuzzer;
 	struct sof_ipc_comp_host host;
 	struct sof_ipc_comp_reply r;
 	int ret;
 
-	ret = tplg_load_pcm(comp_id, pipeline_id, size, dir, &host,
-			    fuzzer->tplg_file);
+	ret = tplg_load_pcm(ctx, dir, &host);
 	if (ret < 0)
 		return ret;
 
@@ -164,22 +161,20 @@ static int load_pcm(void *dev, int comp_id, int pipeline_id, int size, int dir)
 	return 0;
 }
 
-int load_aif_in_out(void *dev, int comp_id, int pipeline_id,
-		    struct snd_soc_tplg_dapm_widget *widget, int dir, void *tp)
+int load_aif_in_out(struct tplg_context *ctx, int dir)
 {
-	return load_pcm(dev, comp_id, pipeline_id, widget->priv.size, dir);
+	return load_pcm(ctx, dir);
 }
 
 /* load dai component */
-static int load_dai(struct fuzz *fuzzer, int comp_id, int pipeline_id,
-		    int size)
+static int load_dai(struct tplg_context *ctx)
 {
+	struct fuzz *fuzzer = ctx->fuzzer;
 	struct sof_ipc_comp_dai comp_dai;
 	struct sof_ipc_comp_reply r;
 	int ret;
 
-	ret = tplg_load_dai(comp_id, pipeline_id, size, &comp_dai,
-			    fuzzer->tplg_file);
+	ret = tplg_load_dai(ctx, &comp_dai);
 	if (ret < 0)
 		return ret;
 
@@ -197,23 +192,20 @@ static int load_dai(struct fuzz *fuzzer, int comp_id, int pipeline_id,
 	return 0;
 }
 
-int load_dai_in_out(void *dev, int comp_id, int pipeline_id,
-		    struct snd_soc_tplg_dapm_widget *widget, int dir, void *tp)
+int load_dai_in_out(struct tplg_context *ctx, int dir)
 {
-	return load_dai(dev, comp_id, pipeline_id, widget->priv.size);
+	return load_dai(ctx);
 }
 
 /* load pda dapm widget */
-int load_pga(void *dev, int comp_id, int pipeline_id,
-	     struct snd_soc_tplg_dapm_widget *widget)
+int load_pga(struct tplg_context *ctx)
 {
-	struct fuzz *fuzzer = (struct fuzz *)dev;
+	struct fuzz *fuzzer = ctx->fuzzer;
 	struct sof_ipc_comp_volume volume;
 	struct sof_ipc_comp_reply r;
 	int ret = 0;
 
-	ret = tplg_load_pga(comp_id, pipeline_id, widget->priv.size, &volume,
-			    fuzzer->tplg_file);
+	ret = tplg_load_pga(ctx, &volume);
 	if (ret < 0)
 		return ret;
 
@@ -231,20 +223,18 @@ int load_pga(void *dev, int comp_id, int pipeline_id,
 }
 
 /* load scheduler dapm widget */
-int load_pipeline(void *dev, int comp_id, int pipeline_id,
-		  struct snd_soc_tplg_dapm_widget *widget, int sched_id)
+int load_pipeline(struct tplg_context *ctx)
 {
 	struct sof_ipc_pipe_new pipeline;
-	struct fuzz *fuzzer = (struct fuzz *)dev;
+	struct fuzz *fuzzer = ctx->fuzzer;
 	struct sof_ipc_comp_reply r;
 	int ret;
 
-	ret = tplg_load_pipeline(comp_id, pipeline_id, widget->priv.size,
-				 &pipeline, fuzzer->tplg_file);
+	ret = tplg_load_pipeline(ctx, &pipeline);
 	if (ret < 0)
 		return ret;
 
-	pipeline.sched_id = sched_id;
+	pipeline.sched_id = ctx->sched_id;
 
 	/* configure fuzzer msg */
 	fuzzer->msg.header = pipeline.hdr.cmd;
@@ -261,16 +251,14 @@ int load_pipeline(void *dev, int comp_id, int pipeline_id,
 }
 
 /* load src dapm widget */
-int load_src(void *dev, int comp_id, int pipeline_id,
-	     struct snd_soc_tplg_dapm_widget *widget, void *params)
+int load_src(struct tplg_context *ctx)
 {
-	struct fuzz *fuzzer = (struct fuzz *)dev;
+	struct fuzz *fuzzer = ctx->fuzzer;
 	struct sof_ipc_comp_src src = {0};
 	struct sof_ipc_comp_reply r;
 	int ret = 0;
 
-	ret = tplg_load_src(comp_id, pipeline_id, widget->priv.size, &src,
-			    fuzzer->tplg_file);
+	ret = tplg_load_src(ctx, &src);
 	if (ret < 0)
 		return ret;
 
@@ -289,16 +277,14 @@ int load_src(void *dev, int comp_id, int pipeline_id,
 }
 
 /* load asrc dapm widget */
-int load_asrc(void *dev, int comp_id, int pipeline_id,
-	      struct snd_soc_tplg_dapm_widget *widget, void *params)
+int load_asrc(struct tplg_context *ctx)
 {
-	struct fuzz *fuzzer = (struct fuzz *)dev;
+	struct fuzz *fuzzer = ctx->fuzzer;
 	struct sof_ipc_comp_asrc asrc = {0};
 	struct sof_ipc_comp_reply r;
 	int ret = 0;
 
-	ret = tplg_load_asrc(comp_id, pipeline_id, widget->priv.size, &asrc,
-			     fuzzer->tplg_file);
+	ret = tplg_load_asrc(ctx, &asrc);
 	if (ret < 0)
 		return ret;
 
@@ -317,16 +303,14 @@ int load_asrc(void *dev, int comp_id, int pipeline_id,
 }
 
 /* load mixer dapm widget */
-int load_mixer(void *dev, int comp_id, int pipeline_id,
-	       struct snd_soc_tplg_dapm_widget *widget)
+int load_mixer(struct tplg_context *ctx)
 {
-	struct fuzz *fuzzer = (struct fuzz *)dev;
+	struct fuzz *fuzzer = ctx->fuzzer;
 	struct sof_ipc_comp_mixer mixer = {0};
 	struct sof_ipc_comp_reply r;
 	int ret = 0;
 
-	ret = tplg_load_mixer(comp_id, pipeline_id, widget->priv.size, &mixer,
-			      fuzzer->tplg_file);
+	ret = tplg_load_mixer(ctx, &mixer);
 	if (ret < 0)
 		return ret;
 
@@ -345,18 +329,17 @@ int load_mixer(void *dev, int comp_id, int pipeline_id,
 }
 
 /* load effect dapm widget */
-int load_process(void *dev, int comp_id, int pipeline_id,
-		 struct snd_soc_tplg_dapm_widget *widget)
+int load_process(struct tplg_context *ctx)
 {
 	return -EINVAL; /* Not implemented */
 }
 
 /* parse topology file and set up pipeline */
-int parse_tplg(struct fuzz *fuzzer, char *tplg_filename)
+int parse_topology(struct tplg_context *ctx)
 {
 	struct snd_soc_tplg_hdr *hdr;
-
-	struct comp_info *temp_comp_list = NULL;
+	struct fuzz *fuzzer = ctx->fuzzer;
+	struct comp_info *comp_list_realloc = NULL;
 	char message[DEBUG_MSG_LEN];
 	int next_comp_id = 0, num_comps = 0;
 	int i, ret = 0;
@@ -364,17 +347,25 @@ int parse_tplg(struct fuzz *fuzzer, char *tplg_filename)
 	int sched_id;
 
 	/* open topology file */
-	fuzzer->tplg_file = fopen(tplg_filename, "rb");
-	if (!fuzzer->tplg_file) {
-		fprintf(stderr, "error: opening topology file %s\n",
-			tplg_filename);
+	ctx->file = fopen(ctx->tplg_file, "rb");
+	if (!ctx->file) {
+		fprintf(stderr, "error: opening file %s\n", ctx->tplg_file);
 		return -errno;
 	}
+	fuzzer->tplg_file = ctx->file;
 
 	/* file size */
-	fseek(fuzzer->tplg_file, 0, SEEK_END);
-	file_size = ftell(fuzzer->tplg_file);
-	fseek(fuzzer->tplg_file, 0, SEEK_SET);
+	if (fseek(ctx->file, 0, SEEK_END)) {
+		fprintf(stderr, "error: seek to end of topology\n");
+		fclose(ctx->file);
+		return -errno;
+	}
+	file_size = ftell(ctx->file);
+	if (fseek(ctx->file, 0, SEEK_SET)) {
+		fprintf(stderr, "error: seek to beginning of topology\n");
+		fclose(ctx->file);
+		return -errno;
+	}
 
 	/* allocate memory */
 	size = sizeof(struct snd_soc_tplg_hdr);
@@ -405,26 +396,35 @@ int parse_tplg(struct fuzz *fuzzer, char *tplg_filename)
 				hdr->count);
 			fprintf(stdout, "debug %s\n", message);
 
-			num_comps += hdr->count;
-			size = sizeof(struct comp_info) * num_comps;
-			temp_comp_list = (struct comp_info *)
-					 realloc(temp_comp_list, size);
+			ctx->info_elems += hdr->count;
+			size = sizeof(struct comp_info) * ctx->info_elems;
+			comp_list_realloc = (struct comp_info *)
+					 realloc(ctx->info, size);
 
-			for (i = (num_comps - hdr->count); i < num_comps; i++)
-				ret = load_widget(fuzzer, FUZZER_DEV,
-						  temp_comp_list,
-						  next_comp_id++, i,
-						  hdr->index, NULL, &sched_id,
-						  fuzzer->tplg_file);
+			if (!comp_list_realloc && size) {
+				fprintf(stderr, "error: mem realloc\n");
+				return -ENOMEM;
+			}
+			ctx->info = comp_list_realloc;
+
+			for (i = (ctx->info_elems - hdr->count); i < ctx->info_elems; i++)
+				ctx->info[i].name = NULL;
+
+			for (ctx->info_index = (ctx->info_elems - hdr->count);
+			     ctx->info_index < ctx->info_elems;
+			     ctx->info_index++) {
+				ret = load_widget(ctx);
 				if (ret < 0) {
-					fprintf(stderr, "error: loading widget\n");
+					printf("error: loading widget\n");
 					goto finish;
-				}
+				} else if (ret > 0)
+					ctx->comp_id++;
+			}
 			break;
 
 		/* set up component connections from pipeline graph */
 		case SND_SOC_TPLG_TYPE_DAPM_GRAPH:
-			if (load_graph(fuzzer, temp_comp_list, hdr->count,
+			if (load_graph(fuzzer, comp_list_realloc, hdr->count,
 				       num_comps, hdr->index) < 0) {
 				fprintf(stderr, "error: pipeline graph\n");
 				return -EINVAL;
@@ -442,8 +442,8 @@ int parse_tplg(struct fuzz *fuzzer, char *tplg_filename)
 finish:
 	/* pipeline complete after pipeline connections are established */
 	for (i = 0; i < num_comps; i++)
-		if (temp_comp_list[i].type == SND_SOC_TPLG_DAPM_SCHEDULER)
-			complete_pipeline(fuzzer, temp_comp_list[i].id);
+		if (comp_list_realloc[i].type == SND_SOC_TPLG_DAPM_SCHEDULER)
+			complete_pipeline(fuzzer, comp_list_realloc[i].id);
 
 	fprintf(stdout, "debug: %s", "topology parsing end\n");
 
@@ -451,9 +451,9 @@ finish:
 	free(hdr);
 
 	for (i = 0; i < num_comps; i++)
-		free(temp_comp_list[i].name);
+		free(comp_list_realloc[i].name);
 
-	free(temp_comp_list);
+	free(comp_list_realloc);
 	fclose(fuzzer->tplg_file);
 	return 0;
 }

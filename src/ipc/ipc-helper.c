@@ -131,7 +131,7 @@ int comp_verify_params(struct comp_dev *dev, uint32_t flag,
 					      struct comp_buffer,
 					      source_list);
 
-		buf = buffer_acquire_irq(buf);
+		buf = buffer_acquire(buf);
 
 		/* update specific pcm parameter with buffer parameter if
 		 * specific flag is set.
@@ -146,7 +146,7 @@ int comp_verify_params(struct comp_dev *dev, uint32_t flag,
 		/* set component period frames */
 		component_set_nearest_period_frames(dev, buf->stream.rate);
 
-		buf = buffer_release_irq(buf);
+		buf = buffer_release(buf);
 	} else {
 		/* for other components we iterate over all downstream buffers
 		 * (for playback) or upstream buffers (for capture).
@@ -157,20 +157,20 @@ int comp_verify_params(struct comp_dev *dev, uint32_t flag,
 		while (clist != buffer_list) {
 			curr = clist;
 			buf = buffer_from_list(curr, struct comp_buffer, dir);
-			buf = buffer_acquire_irq(buf);
+			buf = buffer_acquire(buf);
 			clist = clist->next;
 			comp_update_params(flag, params, buf);
 			buffer_set_params(buf, params, BUFFER_UPDATE_FORCE);
-			buf = buffer_release_irq(buf);
+			buf = buffer_release(buf);
 		}
 
 		/* fetch sink buffer in order to calculate period frames */
 		sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
 					source_list);
 
-		sinkb = buffer_acquire_irq(sinkb);
+		sinkb = buffer_acquire(sinkb);
 		component_set_nearest_period_frames(dev, sinkb->stream.rate);
-		sinkb = buffer_release_irq(sinkb);
+		sinkb = buffer_release(sinkb);
 	}
 
 	return 0;
@@ -267,8 +267,11 @@ int ipc_comp_free(struct ipc *ipc, uint32_t comp_id)
 
 	/* check whether component exists */
 	icd = ipc_get_comp_by_id(ipc, comp_id);
-	if (!icd)
+	if (!icd) {
+		tr_err(&ipc_tr, "ipc_comp_free(): comp id: %d is not found",
+		       comp_id);
 		return -ENODEV;
+	}
 
 	/* check type */
 	if (icd->type != COMP_TYPE_COMPONENT) {
@@ -282,8 +285,11 @@ int ipc_comp_free(struct ipc *ipc, uint32_t comp_id)
 		return ipc_process_on_core(icd->core, false);
 
 	/* check state */
-	if (icd->cd->state != COMP_STATE_READY)
+	if (icd->cd->state != COMP_STATE_READY) {
+		tr_err(&ipc_tr, "ipc_comp_free(): comp id: %d state is %d cannot be freed",
+		       comp_id, icd->cd->state);
 		return -EINVAL;
+	}
 
 	/* free component and remove from list */
 	comp_free(icd->cd);

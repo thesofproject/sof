@@ -8,7 +8,7 @@ function x = multitone( fs, f, amp, tlength )
 % fs     - Sample rate
 % f      - Frequency (Hz)
 % a      - Amplitude (lin)
-% t      - Lenght in seconds
+% t      - Length in seconds
 %
 % Example:
 % x = multitone(48000, [997 1997], 10.^([-26 -46]/20), 1.0);

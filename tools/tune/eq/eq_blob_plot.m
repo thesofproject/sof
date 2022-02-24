@@ -11,6 +11,11 @@ function eq = eq_blob_plot(blobfn, eqtype, fs, f, doplot)
 % fs     - sample rate, defaults to 48 kHz if omitted
 % f      - frequency vector
 % dpplot
+%
+% Examples
+% eq_blob_plot('../../topology/topology1/m4/eq_iir_coef_loudness.m4', 'iir');
+% eq_blob_plot('../../ctl/eq_fir_mid.bin', 'fir');
+% eq_blob_plot('../../ctl/eq_iir_bassboost.txt', 'iir');
 
 % SPDX-License-Identifier: BSD-3-Clause
 %

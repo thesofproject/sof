@@ -38,11 +38,8 @@ define(`upcase', `translit(`$*', `a-z', `A-Z')')
 # TEST_PIPE_AMOUNT - Total amount of pipelines e.g. 1, 2, 3, 4
 #
 
-# Apply a non-trivial filter blob IIR and FIR tests. TODO: Note that the
-# PIPELINE_FILTERx notation will be updated in future for better flexibility.
-ifelse(TEST_PIPE_NAME, `eq-iir', `define(PIPELINE_FILTER1, `eq_iir_coef_loudness.m4')')
-ifelse(TEST_PIPE_NAME, `eq-fir', `define(PIPELINE_FILTER2, `eq_fir_coef_loudness.m4')')
-ifelse(TEST_PIPE_NAME, `tdfb',  `define(PIPELINE_FILTER1, `tdfb/coef_line2_50mm_pm90deg_48khz.m4')')
+# Define the algorithm configurations blobs to apply such as filter coefficients
+include(`test_pipeline_filters.m4')
 
 # Define TEST_HAS_PIPEn flags according to TEST_PIPE_AMOUNT. Those flags will be
 # used to determine whether PIPELINE_n should be added.
@@ -218,8 +215,8 @@ PCM_PLAYBACK_ADD(Passthrough, 0, PIPELINE_PCM_1)
 DAI_CONFIG(TEST_DAI_TYPE, TEST_DAI_PORT, 0, TEST_DAI_LINK_NAME,
 	   SSP_CONFIG(TEST_SSP_MODE,
 		      SSP_CLOCK(mclk, TEST_SSP_MCLK, codec_mclk_in),
-		      SSP_CLOCK(bclk, TEST_SSP_BCLK, codec_consumer),
-		      SSP_CLOCK(fsync, 48000, codec_consumer),
+		      SSP_CLOCK(bclk, TEST_SSP_BCLK, codec_slave),
+		      SSP_CLOCK(fsync, 48000, codec_slave),
 		      SSP_TDM(2, TEST_SSP_PHY_BITS, 3, 3),
 		      SSP_CONFIG_DATA(TEST_DAI_TYPE, TEST_DAI_PORT,
 				      TEST_SSP_DATA_BITS, TEST_SSP_MCLK_ID)))
@@ -229,8 +226,8 @@ ifdef(`TEST_HAS_PIPE2',
 DAI_CONFIG(TEST_DAI_TYPE, TEST_DAI2_PORT, 1, TEST_DAI2_LINK_NAME,
 	   SSP_CONFIG(TEST_SSP_MODE,
 		      SSP_CLOCK(mclk, TEST_SSP_MCLK, codec_mclk_in),
-		      SSP_CLOCK(bclk, TEST_SSP_BCLK, codec_consumer),
-		      SSP_CLOCK(fsync, 48000, codec_consumer),
+		      SSP_CLOCK(bclk, TEST_SSP_BCLK, codec_slave),
+		      SSP_CLOCK(fsync, 48000, codec_slave),
 		      SSP_TDM(2, TEST_SSP_PHY_BITS, 3, 3),
 		      SSP_CONFIG_DATA(TEST_DAI_TYPE, TEST_DAI2_PORT,
 				      TEST_SSP_DATA_BITS, TEST_SSP_MCLK_ID)))
@@ -241,8 +238,8 @@ ifdef(`TEST_HAS_PIPE3',
 DAI_CONFIG(TEST_DAI_TYPE, TEST_DAI3_PORT, 2, TEST_DAI3_LINK_NAME,
 	   SSP_CONFIG(TEST_SSP_MODE,
 		      SSP_CLOCK(mclk, TEST_SSP_MCLK, codec_mclk_in),
-		      SSP_CLOCK(bclk, TEST_SSP_BCLK, codec_consumer),
-		      SSP_CLOCK(fsync, 48000, codec_consumer),
+		      SSP_CLOCK(bclk, TEST_SSP_BCLK, codec_slave),
+		      SSP_CLOCK(fsync, 48000, codec_slave),
 		      SSP_TDM(2, TEST_SSP_PHY_BITS, 3, 3),
 		      SSP_CONFIG_DATA(TEST_DAI_TYPE, TEST_DAI3_PORT,
 				      TEST_SSP_DATA_BITS, TEST_SSP_MCLK_ID)))
@@ -253,8 +250,8 @@ ifdef(`TEST_HAS_PIPE4',
 DAI_CONFIG(TEST_DAI_TYPE, TEST_DAI4_PORT, 3, TEST_DAI4_LINK_NAME,
 	   SSP_CONFIG(TEST_SSP_MODE,
 		      SSP_CLOCK(mclk, TEST_SSP_MCLK, codec_mclk_in),
-		      SSP_CLOCK(bclk, TEST_SSP_BCLK, codec_consumer),
-		      SSP_CLOCK(fsync, 48000, codec_consumer),
+		      SSP_CLOCK(bclk, TEST_SSP_BCLK, codec_slave),
+		      SSP_CLOCK(fsync, 48000, codec_slave),
 		      SSP_TDM(2, TEST_SSP_PHY_BITS, 3, 3),
 		      SSP_CONFIG_DATA(TEST_DAI_TYPE, TEST_DAI4_PORT,
 				      TEST_SSP_DATA_BITS, TEST_SSP_MCLK_ID)))

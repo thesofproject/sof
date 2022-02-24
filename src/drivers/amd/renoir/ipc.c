@@ -83,6 +83,9 @@ static void irq_handler(void *arg)
 {
 	struct ipc *ipc = arg;
 	uint32_t status;
+	uint32_t lock;
+	uint32_t delay_cnt = 10000;
+	bool lock_fail = false;
 	acp_dsp_sw_intr_stat_t swintrstat;
 	acp_sw_intr_trig_t  swintrtrig;
 
@@ -91,6 +94,19 @@ static void irq_handler(void *arg)
 	if (status) {
 		/* Interrupt source */
 		if (sof_ipc_host_status()) {
+			lock = io_reg_read(PU_REGISTER_BASE + ACP_AXI2DAGB_SEM_0);
+			while (lock) {
+				lock = io_reg_read(PU_REGISTER_BASE + ACP_AXI2DAGB_SEM_0);
+				if (!delay_cnt) {
+					lock_fail = true;
+					break;
+				}
+				delay_cnt--;
+			}
+			if (lock_fail) {
+				tr_err(&ipc_tr, "ACP fail to acquire the lock");
+				return;
+			}
 			/* Check if it is response from host */
 			if (sof_ipc_host_ack_flag()) {
 				/* Clear the ACK from host  */
@@ -113,6 +129,7 @@ static void irq_handler(void *arg)
 				acp_ack_intr_from_host();
 				ipc_schedule_process(ipc);
 			}
+			io_reg_write((PU_REGISTER_BASE + ACP_AXI2DAGB_SEM_0), lock);
 		} else {
 			tr_err(&ipc_tr, "IPC:interrupt without setting flags host status 0x%x",
 			       sof_ipc_host_status());
@@ -149,12 +166,13 @@ void ipc_platform_complete_cmd(struct ipc *ipc)
 	}
 }
 
-int ipc_platform_send_msg(struct ipc_msg *msg)
+int ipc_platform_send_msg(const struct ipc_msg *msg)
 {
-	int ret = 0;
 	acp_sw_intr_trig_t  sw_intr_trig;
 	acp_dsp_sw_intr_stat_t sw_intr_stat;
 	uint32_t status;
+	uint32_t lock;
+	uint32_t delay_cnt = 10000;
 	/* Check if host cleared the status for previous messages */
 	sw_intr_stat = (acp_dsp_sw_intr_stat_t)
 		io_reg_read(PU_REGISTER_BASE + ACP_DSP_SW_INTR_STAT);
@@ -163,21 +181,30 @@ int ipc_platform_send_msg(struct ipc_msg *msg)
 		sw_intr_stat = (acp_dsp_sw_intr_stat_t)
 				io_reg_read(PU_REGISTER_BASE + ACP_DSP_SW_INTR_STAT);
 		status =  sw_intr_stat.bits.dsp0_to_host_intr_stat;
-		return ret;
+		return -EBUSY;
 	}
+	lock = io_reg_read(PU_REGISTER_BASE + ACP_AXI2DAGB_SEM_0);
+	while (lock) {
+		lock = io_reg_read(PU_REGISTER_BASE + ACP_AXI2DAGB_SEM_0);
+		if (!delay_cnt)
+			return -EBUSY;
+
+		delay_cnt--;
+	}
+
 	/* Write new message in the mailbox */
 	mailbox_dspbox_write(0, msg->tx_data, msg->tx_size);
-	list_item_del(&msg->list);
+
 	/* Need to set DSP message flag */
 	sof_ipc_dsp_msg_set();
 	/* now interrupt host to tell it we have sent a message */
 	acp_dsp_to_host_Intr_trig();
 	/* Disable the trigger bit in ACP_DSP_SW_INTR_TRIG register */
 	sw_intr_trig = (acp_sw_intr_trig_t)io_reg_read(PU_REGISTER_BASE + ACP_SW_INTR_TRIG);
-	sw_intr_trig.bits.trig_host_to_dsp0_intr1 = INTERRUPT_DISABLE;
 	sw_intr_trig.bits.trig_dsp0_to_host_intr = INTERRUPT_DISABLE;
 	io_reg_write((PU_REGISTER_BASE + ACP_SW_INTR_TRIG), sw_intr_trig.u32all);
-	return ret;
+	io_reg_write((PU_REGISTER_BASE + ACP_AXI2DAGB_SEM_0), lock);
+	return 0;
 }
 
 int platform_ipc_init(struct ipc *ipc)

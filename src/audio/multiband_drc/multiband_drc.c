@@ -132,7 +132,7 @@ static int multiband_drc_init_coef(struct multiband_drc_comp_data *cd, int16_t n
 	}
 
 	comp_cl_info(&comp_multiband_drc,
-		     "multiband_drc_init_coef(), initiliazing %i-way crossover",
+		     "multiband_drc_init_coef(), initializing %i-way crossover",
 		     config->num_bands);
 
 	/* Crossover: collect the coef array and assign it to every channel */
@@ -149,7 +149,7 @@ static int multiband_drc_init_coef(struct multiband_drc_comp_data *cd, int16_t n
 		}
 	}
 
-	comp_cl_info(&comp_multiband_drc, "multiband_drc_init_coef(), initiliazing emphasis_eq");
+	comp_cl_info(&comp_multiband_drc, "multiband_drc_init_coef(), initializing emphasis_eq");
 
 	/* Emphasis: collect the coef array and assign it to every channel */
 	emphasis = config->emp_coef;
@@ -164,7 +164,7 @@ static int multiband_drc_init_coef(struct multiband_drc_comp_data *cd, int16_t n
 		}
 	}
 
-	comp_cl_info(&comp_multiband_drc, "multiband_drc_init_coef(), initiliazing deemphasis_eq");
+	comp_cl_info(&comp_multiband_drc, "multiband_drc_init_coef(), initializing deemphasis_eq");
 
 	/* Deemphasis: collect the coef array and assign it to every channel */
 	deemphasis = config->deemp_coef;
@@ -182,7 +182,7 @@ static int multiband_drc_init_coef(struct multiband_drc_comp_data *cd, int16_t n
 	/* Allocate all DRC pre-delay buffers and set delay time with band number */
 	for (i = 0; i < num_bands; i++) {
 		comp_cl_info(&comp_multiband_drc,
-			     "multiband_drc_init_coef(), initiliazing drc band %d", i);
+			     "multiband_drc_init_coef(), initializing drc band %d", i);
 
 		ret = drc_init_pre_delay_buffers(&state->drc[i], (size_t)sample_bytes, (int)nch);
 		if (ret < 0) {

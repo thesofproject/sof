@@ -11,7 +11,7 @@
  *
  */
 
-#include <sof/audio/codec_adapter/codec/generic.h>
+#include <sof/audio/codec_adapter/codec_adapter.h>
 
 /*****************************************************************************/
 /* Local helper functions						     */
@@ -73,11 +73,11 @@ err:
 	return ret;
 }
 
-int module_init(struct comp_dev *dev, struct module_interface *interface)
+int module_init(struct processing_module *mod, struct module_interface *interface)
 {
 	int ret;
-	struct processing_module *mod = comp_get_drvdata(dev);
 	struct module_data *md = &mod->priv;
+	struct comp_dev *dev = mod->dev;
 
 	comp_info(dev, "module_init() start");
 
@@ -87,13 +87,13 @@ int module_init(struct comp_dev *dev, struct module_interface *interface)
 		return -EPERM;
 
 	if (!interface) {
-		comp_err(dev, "module_init(): could not find module interface for comp %d",
+		comp_err(dev, "module_init(): could not find module interface for comp id %d",
 			 dev_comp_id(dev));
 		return -EIO;
 	}
 
 	if (!interface->init || !interface->prepare || !interface->process ||
-	    !interface->apply_config || !interface->reset || !interface->free) {
+	    !interface->reset || !interface->free) {
 		comp_err(dev, "module_init(): comp %d is missing mandatory interfaces",
 			 dev_comp_id(dev));
 		return -EIO;
@@ -105,9 +105,9 @@ int module_init(struct comp_dev *dev, struct module_interface *interface)
 	list_init(&md->memory.mem_list);
 
 	/* Now we can proceed with module specific initialization */
-	ret = md->ops->init(dev);
+	ret = md->ops->init(mod);
 	if (ret) {
-		comp_err(dev, "module_init() error %d: module specific init failed, comp %d",
+		comp_err(dev, "module_init() error %d: module specific init failed, comp id %d",
 			 ret, dev_comp_id(dev));
 		return ret;
 	}
@@ -118,11 +118,11 @@ int module_init(struct comp_dev *dev, struct module_interface *interface)
 	return ret;
 }
 
-void *module_allocate_memory(struct comp_dev *dev, uint32_t size, uint32_t alignment)
+void *module_allocate_memory(struct processing_module *mod, uint32_t size, uint32_t alignment)
 {
+	struct comp_dev *dev = mod->dev;
 	struct module_memory *container;
 	void *ptr;
-	struct processing_module *mod = comp_get_drvdata(dev);
 
 	if (!size) {
 		comp_err(dev, "module_allocate_memory: requested allocation of 0 bytes.");
@@ -155,9 +155,8 @@ void *module_allocate_memory(struct comp_dev *dev, uint32_t size, uint32_t align
 	return ptr;
 }
 
-int module_free_memory(struct comp_dev *dev, void *ptr)
+int module_free_memory(struct processing_module *mod, void *ptr)
 {
-	struct processing_module *mod = comp_get_drvdata(dev);
 	struct module_memory *mem;
 	struct list_item *mem_list;
 	struct list_item *_mem_list;
@@ -176,8 +175,8 @@ int module_free_memory(struct comp_dev *dev, void *ptr)
 		}
 	}
 
-	comp_err(dev, "module_free_memory: error: could not find memory pointed by %p",
-		 (uint32_t)ptr);
+	comp_err(mod->dev, "module_free_memory: error: could not find memory pointed by %p",
+		 ptr);
 
 	return -EINVAL;
 }
@@ -188,11 +187,11 @@ static int validate_config(struct module_config *cfg)
 	return 0;
 }
 
-int module_prepare(struct comp_dev *dev)
+int module_prepare(struct processing_module *mod)
 {
 	int ret;
-	struct processing_module *mod = comp_get_drvdata(dev);
 	struct module_data *md = &mod->priv;
+	struct comp_dev *dev = mod->dev;
 
 	comp_dbg(dev, "module_prepare() start");
 
@@ -201,7 +200,7 @@ int module_prepare(struct comp_dev *dev)
 	if (mod->priv.state < MODULE_INITIALIZED)
 		return -EPERM;
 
-	ret = md->ops->prepare(dev);
+	ret = md->ops->prepare(mod);
 	if (ret) {
 		comp_err(dev, "module_prepare() error %d: module specific prepare failed, comp_id %d",
 			 ret, dev_comp_id(dev));
@@ -256,45 +255,19 @@ int module_process(struct comp_dev *dev)
 	return ret;
 }
 
-int module_apply_runtime_config(struct comp_dev *dev)
+int module_reset(struct processing_module *mod)
 {
 	int ret;
-	struct processing_module *mod = comp_get_drvdata(dev);
-	struct module_data *md = &mod->priv;
-
-	comp_dbg(dev, "module_apply_config() start");
-
-	ret = md->ops->apply_config(dev);
-	if (ret) {
-		comp_err(dev, "module_apply_config() error %d: for comp %x",
-			 ret, dev_comp_id(dev));
-		return ret;
-	}
-
-	md->cfg.avail = false;
-	/* Configuration had been applied, we can free it now. */
-	rfree(md->cfg.data);
-	md->cfg.data = NULL;
-
-	comp_dbg(dev, "module_apply_config() end");
-
-	return ret;
-}
-
-int module_reset(struct comp_dev *dev)
-{
-	int ret;
-	struct processing_module *mod = comp_get_drvdata(dev);
 	struct module_data *md = &mod->priv;
 
 	/* if the module was never prepared, no need to reset */
 	if (md->state < MODULE_IDLE)
 		return 0;
 
-	ret = md->ops->reset(dev);
+	ret = md->ops->reset(mod);
 	if (ret) {
-		comp_err(dev, "module_reset() error %d: module specific reset() failed for comp %d",
-			 ret, dev_comp_id(dev));
+		comp_err(mod->dev, "module_reset() error %d: module specific reset() failed for comp %d",
+			 ret, dev_comp_id(mod->dev));
 		return ret;
 	}
 
@@ -310,9 +283,8 @@ int module_reset(struct comp_dev *dev)
 	return 0;
 }
 
-void module_free_all_memory(struct comp_dev *dev)
+void module_free_all_memory(struct processing_module *mod)
 {
-	struct processing_module *mod = comp_get_drvdata(dev);
 	struct module_memory *mem;
 	struct list_item *mem_list;
 	struct list_item *_mem_list;
@@ -326,19 +298,18 @@ void module_free_all_memory(struct comp_dev *dev)
 	}
 }
 
-int module_free(struct comp_dev *dev)
+int module_free(struct processing_module *mod)
 {
 	int ret;
-	struct processing_module *mod = comp_get_drvdata(dev);
 	struct module_data *md = &mod->priv;
 
-	ret = md->ops->free(dev);
+	ret = md->ops->free(mod);
 	if (ret)
-		comp_warn(dev, "module_free(): error: %d for %d",
-			  ret, dev_comp_id(dev));
+		comp_warn(mod->dev, "module_free(): error: %d for %d",
+			  ret, dev_comp_id(mod->dev));
 
 	/* Free all memory requested by module */
-	module_free_all_memory(dev);
+	module_free_all_memory(mod);
 	/* Free all memory shared by codec_adapter & module */
 	md->cfg.avail = false;
 	md->cfg.size = 0;
@@ -347,6 +318,105 @@ int module_free(struct comp_dev *dev)
 		rfree(md->runtime_params);
 
 	md->state = MODULE_DISABLED;
+
+	return ret;
+}
+
+/**
+ * \brief Set module configuration - Common method to assemble large configuration message
+ * \param[in] mod - struct processing_module pointer
+ * \param[in] config_id - Configuration ID
+ * \param[in] pos - position of the fragment in the large message
+ * \param[in] data_offset_size: size of the whole configuration if it is the first fragment or the
+ *				 only fragment. Otherwise, it is the offset of the fragment in the
+ *				 whole configuration.
+ * \param[in] fragment: configuration fragment buffer
+ * \param[in] fragment_size: size of @fragment
+ * \params[in] response: optional response buffer to fill
+ * \params[in] response_size: size of @response
+ *
+ * \return: 0 upon success or error upon failure
+ */
+int module_set_configuration(struct processing_module *mod,
+			     uint32_t config_id,
+			     enum module_cfg_fragment_position pos, size_t data_offset_size,
+			     const uint8_t *fragment, size_t fragment_size, uint8_t *response,
+			     size_t response_size)
+{
+	struct module_data *md = &mod->priv;
+	struct comp_dev *dev = mod->dev;
+	static size_t size;
+	size_t offset = 0;
+	uint8_t *dst;
+	int ret;
+
+	switch (pos) {
+	case MODULE_CFG_FRAGMENT_FIRST:
+	case MODULE_CFG_FRAGMENT_SINGLE:
+		/*
+		 * verify input params & allocate memory for the config blob when the first
+		 * fragment arrives
+		 */
+		size = data_offset_size;
+
+		/* Check that there is no previous request in progress */
+		if (md->runtime_params) {
+			comp_err(dev, "module_set_configuration(): error: busy with previous request");
+			return -EBUSY;
+		}
+
+		if (!size)
+			return 0;
+
+		if (size > MAX_BLOB_SIZE) {
+			comp_err(dev, "module_set_configuration(): error: blob size is too big cfg size %d, allowed %d",
+				 size, MAX_BLOB_SIZE);
+			return -EINVAL;
+		}
+
+		/* Allocate buffer for new params */
+		md->runtime_params = rballoc(0, SOF_MEM_CAPS_RAM, size);
+		if (!md->runtime_params) {
+			comp_err(dev, "module_set_configuration(): space allocation for new params failed");
+			return -ENOMEM;
+		}
+
+		memset(md->runtime_params, 0, size);
+		break;
+	default:
+		if (!md->runtime_params) {
+			comp_err(dev, "module_set_configuration(): error: no memory available for runtime params in consecutive load");
+			return -EIO;
+		}
+
+		/* set offset for intermediate and last fragments */
+		offset = data_offset_size;
+		break;
+	}
+
+	dst = (uint8_t *)md->runtime_params + offset;
+
+	ret = memcpy_s(dst, size - offset, fragment, fragment_size);
+	if (ret < 0) {
+		comp_err(dev, "module_set_configuration(): error: %d failed to copy fragment",
+			 ret);
+		return ret;
+	}
+
+	/* return as more fragments of config data expected */
+	if (pos == MODULE_CFG_FRAGMENT_MIDDLE || pos == MODULE_CFG_FRAGMENT_FIRST)
+		return 0;
+
+	/* config fully copied, now load it */
+	ret = module_load_config(dev, md->runtime_params, size);
+	if (ret)
+		comp_err(dev, "module_set_configuration(): error %d: config failed", ret);
+	else
+		comp_dbg(dev, "module_set_configuration(): config load successful");
+
+	if (md->runtime_params)
+		rfree(md->runtime_params);
+	md->runtime_params = NULL;
 
 	return ret;
 }

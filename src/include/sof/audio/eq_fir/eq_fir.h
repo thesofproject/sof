@@ -23,6 +23,10 @@
 #include <user/fir.h>
 #include <stdint.h>
 
+/** \brief Macros to convert without division bytes count to samples count */
+#define EQ_FIR_BYTES_TO_S16_SAMPLES(b)	((b) >> 1)
+#define EQ_FIR_BYTES_TO_S32_SAMPLES(b)	((b) >> 2)
+
 #if CONFIG_FORMAT_S16LE
 void eq_fir_s16(struct fir_state_32x16 *fir, const struct audio_stream *source,
 		struct audio_stream *sink, int frames, int nch);

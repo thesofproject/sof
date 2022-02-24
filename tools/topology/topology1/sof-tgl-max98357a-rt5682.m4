@@ -134,6 +134,8 @@ define(DMIC_PIPELINE_KWD_ID, `12')
 define(DMIC_DAI_LINK_16k_ID, `2')
 define(DMIC_PIPELINE_48k_CORE_ID, `1')
 
+ifdef(`GOOGLE_RTC_AUDIO_PROCESSING', `define(`SPK_PLAYBACK_CORE', DMIC_PIPELINE_48k_CORE_ID)', `define(`SPK_PLAYBACK_CORE', `0')')
+
 # define pcm, pipeline and dai id
 define(KWD_PIPE_SCH_DEADLINE_US, 5000)
 
@@ -163,7 +165,7 @@ PIPELINE_PCM_ADD(
 		    ifdef(`2CH_2WAY', sof/pipe-demux-eq-iir-playback.m4,
 			  sof/pipe-volume-demux-playback.m4))),
 	1, 0, ifdef(`4CH_PASSTHROUGH', `4', `2'), s32le,
-	SPK_MIC_PERIOD_US, 0, 0,
+	SPK_MIC_PERIOD_US, 0, SPK_PLAYBACK_CORE,
 	48000, 48000, 48000)
 undefine(`ENDPOINT_NAME')')
 
@@ -226,14 +228,14 @@ ifdef(`NO_AMP',`',`
 DAI_ADD(sof/pipe-dai-playback.m4,
 	1, SSP, SPK_SSP_INDEX, SPK_SSP_NAME,
 	PIPELINE_SOURCE_1, 2, FMT,
-	SPK_MIC_PERIOD_US, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
+	SPK_MIC_PERIOD_US, 0, SPK_PLAYBACK_CORE, SCHEDULE_TIME_DOMAIN_TIMER)
 
 ifelse(CODEC, `MAX98390', `
 # Low Latency capture pipeline 9 on PCM 6 using max 4 channels of s32le.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-passthrough-capture.m4,
 	9, 6, 4, s32le,
-	1000, 0, 0,
+	SPK_MIC_PERIOD_US, 0, SPK_PLAYBACK_CORE,
 	48000, 48000, 48000)
 
 # capture DAI is SSP1 using 2 periods
@@ -241,7 +243,7 @@ PIPELINE_PCM_ADD(sof/pipe-passthrough-capture.m4,
 DAI_ADD(sof/pipe-dai-capture.m4,
 	9, SSP, SPK_SSP_INDEX, SPK_SSP_NAME,
 	PIPELINE_SINK_9, 2, FMT,
-	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
+	SPK_MIC_PERIOD_US, 0, SPK_PLAYBACK_CORE, SCHEDULE_TIME_DOMAIN_TIMER)
 ',
 `
 ifdef(`2CH_2WAY',`# No echo reference for 2-way speakers',
@@ -251,7 +253,7 @@ W_DAI_IN(SSP, SPK_SSP_INDEX, SPK_SSP_NAME, FMT, 3, 0)
 `# Capture pipeline 9 from demux on PCM 6 using max 'ifdef(`4CH_PASSTHROUGH', `4', `2')` channels of s32le.'
 PIPELINE_PCM_ADD(sof/pipe-passthrough-capture-sched.m4,
 	9, 6, ifdef(`4CH_PASSTHROUGH', `4', `2'), s32le,
-	1000, 1, 0,
+	SPK_MIC_PERIOD_US, 1, SPK_PLAYBACK_CORE,
 	48000, 48000, 48000,
 	SCHEDULE_TIME_DOMAIN_TIMER,
 	PIPELINE_PLAYBACK_SCHED_COMP_1)
@@ -350,7 +352,7 @@ ifdef(`2CH_2WAY',`# No echo reference for 2-way speakers',
 #
 dnl DAI_CONFIG(type, dai_index, link_id, name, ssp_config/dmic_config)
 dnl SSP_CONFIG(format, mclk, bclk, fsync, tdm, ssp_config_data)
-dnl SSP_CLOCK(clock, freq, codec_provider, polarity)
+dnl SSP_CLOCK(clock, freq, codec_master, polarity)
 dnl SSP_CONFIG_DATA(type, idx, valid bits, mclk_id)
 dnl mclk_id is optional
 dnl ssp1-maxmspk
@@ -361,32 +363,32 @@ DAI_CONFIG(SSP, SPK_SSP_INDEX, SPK_BE_ID, SPK_SSP_NAME,
 ifelse(
 	CODEC, `MAX98357A', `
 	SSP_CONFIG(I2S, SSP_CLOCK(mclk, 19200000, codec_mclk_in),
-		SSP_CLOCK(bclk, 1536000, codec_consumer),
-		SSP_CLOCK(fsync, 48000, codec_consumer),
+		SSP_CLOCK(bclk, 1536000, codec_slave),
+		SSP_CLOCK(fsync, 48000, codec_slave),
 		SSP_TDM(2, 16, 3, 3),
 		SSP_CONFIG_DATA(SSP, SPK_SSP_INDEX, 16)))',
 	CODEC, `MAX98360A', `
 	SSP_CONFIG(I2S, SSP_CLOCK(mclk, 19200000, codec_mclk_in),
-		SSP_CLOCK(bclk, 3072000, codec_consumer),
-		SSP_CLOCK(fsync, 48000, codec_consumer),
+		SSP_CLOCK(bclk, 3072000, codec_slave),
+		SSP_CLOCK(fsync, 48000, codec_slave),
 		SSP_TDM(2, 32, 3, 3),
 		SSP_CONFIG_DATA(SSP, SPK_SSP_INDEX, 32)))',
 	CODEC, `MAX98360A_TDM', `
 	SSP_CONFIG(DSP_A, SSP_CLOCK(mclk, 19200000, codec_mclk_in),
-		SSP_CLOCK(bclk, 12288000, codec_consumer),
-		SSP_CLOCK(fsync, 48000, codec_consumer),
+		SSP_CLOCK(bclk, 12288000, codec_slave),
+		SSP_CLOCK(fsync, 48000, codec_slave),
 		SSP_TDM(8, 32, 15, 15),
 		SSP_CONFIG_DATA(SSP, SPK_SSP_INDEX, 32)))',
 	CODEC, `RT1011', `
 	SSP_CONFIG(DSP_A, SSP_CLOCK(mclk, 19200000, codec_mclk_in),
-		SSP_CLOCK(bclk, 4800000, codec_consumer),
-		SSP_CLOCK(fsync, 48000, codec_consumer),
+		SSP_CLOCK(bclk, 4800000, codec_slave),
+		SSP_CLOCK(fsync, 48000, codec_slave),
 		SSP_TDM(4, 25, 3, 15),
 		SSP_CONFIG_DATA(SSP, SPK_SSP_INDEX, 24)))',
 	CODEC, `MAX98390', `
 	SSP_CONFIG(DSP_B, SSP_CLOCK(mclk, 19200000, codec_mclk_in),
-		SSP_CLOCK(bclk, 6144000, codec_consumer),
-		SSP_CLOCK(fsync, 48000, codec_consumer),
+		SSP_CLOCK(bclk, 6144000, codec_slave),
+		SSP_CLOCK(fsync, 48000, codec_slave),
 		SSP_TDM(4, 32, 3, 15),
 	SSP_CONFIG_DATA(SSP, SPK_SSP_INDEX, 32)))',
 	)')
@@ -394,8 +396,8 @@ ifelse(
 # SSP 0 (ID: 0)
 DAI_CONFIG(SSP, 0, 0, SSP0-Codec,
 	SSP_CONFIG(I2S, SSP_CLOCK(mclk, 19200000, codec_mclk_in),
-		SSP_CLOCK(bclk, 2400000, codec_consumer),
-		SSP_CLOCK(fsync, 48000, codec_consumer),
+		SSP_CLOCK(bclk, 2400000, codec_slave),
+		SSP_CLOCK(fsync, 48000, codec_slave),
 		SSP_TDM(2, 25, 3, 3),
 		SSP_CONFIG_DATA(SSP, 0, 24, 0, 0, 0, SSP_CC_BCLK_ES)))
 

@@ -61,18 +61,14 @@ static enum task_state dmic_work(void *data)
 {
 	struct dai *dai = (struct dai *)data;
 	struct dmic_pdata *dmic = dai_get_drvdata(dai);
+	k_spinlock_key_t key;
 	int32_t gval;
 	uint32_t val;
 	int i;
-	int ret;
 
 	dai_dbg(dai, "dmic_work()");
 
-	ret = spin_try_lock(&dai->lock);
-	if (!ret) {
-		dai_dbg(dai, "dmic_work(): spin_try_lock(dai->lock, ret) failed: RESCHEDULE");
-		return SOF_TASK_STATE_RESCHEDULE;
-	}
+	key = k_spin_lock(&dai->lock);
 
 	/* Increment gain with logarithmic step.
 	 * Gain is Q2.30 and gain modifier is Q12.20.
@@ -128,7 +124,7 @@ static enum task_state dmic_work(void *data)
 	}
 
 
-	spin_unlock(&dai->lock);
+	k_spin_unlock(&dai->lock, key);
 
 	return gval ? SOF_TASK_STATE_RESCHEDULE : SOF_TASK_STATE_COMPLETED;
 }
@@ -155,6 +151,7 @@ static int dmic_set_config(struct dai *dai, struct ipc_config_dai *common_config
 	int32_t step_db;
 	int ret = 0;
 	int di = dai->index;
+	k_spinlock_key_t key;
 #if CONFIG_INTEL_DMIC_TPLG_PARAMS
 	struct sof_ipc_dai_config *config = spec_config;
 	int i;
@@ -174,7 +171,7 @@ static int dmic_set_config(struct dai *dai, struct ipc_config_dai *common_config
 	}
 
 	assert(dmic);
-	spin_lock(&dai->lock);
+	key = k_spin_lock(&dai->lock);
 
 #if CONFIG_INTEL_DMIC_TPLG_PARAMS
 	/*
@@ -255,7 +252,7 @@ static int dmic_set_config(struct dai *dai, struct ipc_config_dai *common_config
 	dmic->state = COMP_STATE_PREPARE;
 
 out:
-	spin_unlock(&dai->lock);
+	k_spin_unlock(&dai->lock, key);
 	return ret;
 }
 
@@ -263,6 +260,7 @@ out:
 static void dmic_start(struct dai *dai)
 {
 	struct dmic_pdata *dmic = dai_get_drvdata(dai);
+	k_spinlock_key_t key;
 	int i;
 	int mic_a;
 	int mic_b;
@@ -270,7 +268,7 @@ static void dmic_start(struct dai *dai)
 	int fir_b;
 
 	/* enable port */
-	spin_lock(&dai->lock);
+	key = k_spin_lock(&dai->lock);
 	dai_dbg(dai, "dmic_start()");
 	dmic->startcount = 0;
 
@@ -367,7 +365,7 @@ static void dmic_start(struct dai *dai)
 	dmic->global->pause_mask &= ~BIT(dai->index);
 
 	dmic->state = COMP_STATE_ACTIVE;
-	spin_unlock(&dai->lock);
+	k_spin_unlock(&dai->lock, key);
 
 	/* Currently there's no DMIC HW internal mutings and wait times
 	 * applied into this start sequence. It can be implemented here if
@@ -404,10 +402,11 @@ static void dmic_stop_fifo_packers(struct dai *dai, int fifo_index)
 static void dmic_stop(struct dai *dai, bool stop_is_pause)
 {
 	struct dmic_pdata *dmic = dai_get_drvdata(dai);
+	k_spinlock_key_t key;
 	int i;
 
 	dai_dbg(dai, "dmic_stop()");
-	spin_lock(&dai->lock);
+	key = k_spin_lock(&dai->lock);
 
 	dmic_stop_fifo_packers(dai, dai->index);
 
@@ -449,7 +448,7 @@ static void dmic_stop(struct dai *dai, bool stop_is_pause)
 	}
 
 	schedule_task_cancel(&dmic->dmicwork);
-	spin_unlock(&dai->lock);
+	k_spin_unlock(&dai->lock, key);
 }
 
 static int dmic_trigger(struct dai *dai, int cmd, int direction)

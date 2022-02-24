@@ -17,7 +17,7 @@ if nargin < 2
 	endian = 'little';
 end
 
-%% Endiannes of blob
+%% Endianness of blob
 switch lower(endian)
         case 'little'
                 sh16 = [0 -8];
@@ -26,7 +26,7 @@ switch lower(endian)
                 sh16 = [-8 0];
                 sh32 = [-24 -16 -8 0];
         otherwise
-                error('Unknown endiannes');
+                error('Unknown endianness');
 end
 
 %% Channels count must be even
@@ -34,7 +34,7 @@ if mod(bs.channels_in_config, 2) > 0
 	error("Channels # must be even");
 end
 
-%% Channels cound and assign vector length must be the same
+%% Channels count and assign vector length must be the same
 if bs.channels_in_config ~= length( bs.assign_response)
 	bs
 	error("Channels # and response assign length must match");

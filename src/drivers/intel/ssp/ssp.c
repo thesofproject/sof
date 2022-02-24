@@ -232,6 +232,7 @@ static int ssp_set_config_tplg(struct dai *dai, struct ipc_config_dai *common_co
 	uint32_t active_tx_slots = 2;
 	uint32_t active_rx_slots = 2;
 	uint32_t sample_width = 2;
+	k_spinlock_key_t key;
 
 	bool inverted_bclk = false;
 	bool inverted_frame = false;
@@ -240,13 +241,22 @@ static int ssp_set_config_tplg(struct dai *dai, struct ipc_config_dai *common_co
 
 	int ret = 0;
 
-	spin_lock(&dai->lock);
+	key = k_spin_lock(&dai->lock);
 
 	/* ignore config if SSP is already configured */
 	if (ssp->state[DAI_DIR_PLAYBACK] > COMP_STATE_READY ||
 	    ssp->state[DAI_DIR_CAPTURE] > COMP_STATE_READY) {
-		dai_info(dai, "ssp_set_config(): Already configured. Ignore config");
-		goto clk;
+		if (!memcmp(&ssp->params, &config->ssp, sizeof(ssp->params))) {
+			dai_info(dai, "ssp_set_config(): Already configured. Ignore config");
+			goto clk;
+		}
+
+		if (ssp->clk_active & (SSP_CLK_MCLK_ACTIVE | SSP_CLK_BCLK_ACTIVE)) {
+			dai_warn(dai, "ssp_set_config(): SSP active, cannot change config");
+			goto clk;
+		}
+
+		/* safe to proceed and change HW config */
 	}
 
 	dai_info(dai, "ssp_set_config(), config->format = 0x%4x",
@@ -765,7 +775,7 @@ clk:
 	}
 out:
 
-	spin_unlock(&dai->lock);
+	k_spin_unlock(&dai->lock, key);
 
 	return ret;
 }
@@ -934,8 +944,9 @@ static int ssp_get_hw_params(struct dai *dai,
 static void ssp_early_start(struct dai *dai, int direction)
 {
 	struct ssp_pdata *ssp = dai_get_drvdata(dai);
+	k_spinlock_key_t key;
 
-	spin_lock(&dai->lock);
+	key = k_spin_lock(&dai->lock);
 
 	/* request mclk/bclk */
 	ssp_pre_start(dai);
@@ -952,15 +963,16 @@ static void ssp_early_start(struct dai *dai, int direction)
 	}
 
 
-	spin_unlock(&dai->lock);
+	k_spin_unlock(&dai->lock, key);
 }
 
 /* start the SSP for either playback or capture */
 static void ssp_start(struct dai *dai, int direction)
 {
 	struct ssp_pdata *ssp = dai_get_drvdata(dai);
+	k_spinlock_key_t key;
 
-	spin_lock(&dai->lock);
+	key = k_spin_lock(&dai->lock);
 
 	dai_info(dai, "ssp_start()");
 
@@ -986,15 +998,16 @@ static void ssp_start(struct dai *dai, int direction)
 		break;
 	}
 
-	spin_unlock(&dai->lock);
+	k_spin_unlock(&dai->lock, key);
 }
 
 /* stop the SSP for either playback or capture */
 static void ssp_stop(struct dai *dai, int direction)
 {
 	struct ssp_pdata *ssp = dai_get_drvdata(dai);
+	k_spinlock_key_t key;
 
-	spin_lock(&dai->lock);
+	key = k_spin_lock(&dai->lock);
 
 	/*
 	 * Wait to get valid fifo status in clock consumer mode. TODO it's
@@ -1044,7 +1057,7 @@ static void ssp_stop(struct dai *dai, int direction)
 
 	ssp_post_stop(dai);
 
-	spin_unlock(&dai->lock);
+	k_spin_unlock(&dai->lock, key);
 }
 
 static void ssp_pause(struct dai *dai, int direction)

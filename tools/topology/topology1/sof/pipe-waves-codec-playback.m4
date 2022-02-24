@@ -24,10 +24,6 @@ define(`CA_SETUP_CONTROLBYTES',
 define(`CA_SETUP_CONTROLBYTES_MAX', 8192)
 define(`CA_SETUP_CONTROLBYTES_NAME', `Waves' `ENDPOINT_NAME' `Setup ')
 
-# use default runtime config but change max size
-define(`CA_RUNTIME_CONTROLBYTES_MAX', 8192)
-define(`CA_RUNTIME_CONTROLBYTES_NAME', `Waves' `ENDPOINT_NAME' `Runtime ')
-
 define(`CA_SCHEDULE_CORE', 0)
 
 DECLARE_SOF_RT_UUID("Waves codec", waves_codec_uuid, 0xd944281a, 0xafe9,

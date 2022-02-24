@@ -20,11 +20,8 @@ include(`platform/intel/bxt.m4')
 
 DEBUG_START
 
-# Apply a non-trivial filter blob IIR and FIR tests. TODO: Note that the
-# PIPELINE_FILTERx notation will be updated in future for better flexibility.
-ifelse(TEST_PIPE_NAME, `eq-iir', `define(PIPELINE_FILTER1, `eq_iir_coef_loudness.m4')')
-ifelse(TEST_PIPE_NAME, `eq-fir', `define(PIPELINE_FILTER2, `eq_fir_coef_loudness.m4')')
-ifelse(TEST_PIPE_NAME, `tdfb',  `define(PIPELINE_FILTER1, `tdfb/coef_line2_50mm_pm90deg_48khz.m4')')
+# Define the algorithm configurations blobs to apply such as filter coefficients
+include(`test_pipeline_filters.m4')
 
 #
 # Machine Specific Config - !! MUST BE SET TO MATCH TEST MACHINE DRIVER !!
@@ -81,8 +78,8 @@ DAI_CONFIG(TEST_DAI_TYPE, TEST_DAI_PORT, 0, TEST_DAI_LINK_NAME,
 	   ifelse(TEST_DAI_TYPE, `SSP',
 		  SSP_CONFIG(TEST_SSP_MODE,
 			     SSP_CLOCK(mclk, TEST_SSP_MCLK, codec_mclk_in),
-			     SSP_CLOCK(bclk, TEST_SSP_BCLK, codec_consumer),
-			     SSP_CLOCK(fsync, 48000, codec_consumer),
+			     SSP_CLOCK(bclk, TEST_SSP_BCLK, codec_slave),
+			     SSP_CLOCK(fsync, 48000, codec_slave),
 			     SSP_TDM(2, TEST_SSP_PHY_BITS, 3, 3),
 			     SSP_CONFIG_DATA(TEST_DAI_TYPE, TEST_DAI_PORT,
 					     TEST_SSP_DATA_BITS, TEST_SSP_MCLK_ID)),

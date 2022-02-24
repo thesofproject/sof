@@ -409,75 +409,6 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V25)
 	zephyr_include_directories(${SOF_PLATFORM_PATH}/intel/cavs/include)
 endif()
 
-# Intel CAVS 2.5 and newer platforms
-if (CONFIG_SOF_ZEPHYR)
-
-	# Driver sources
-	zephyr_library_sources(
-		${SOF_DRIVERS_PATH}/intel/cavs/ipc.c
-		${SOF_DRIVERS_PATH}/intel/cavs/timestamp.c
-	)
-
-	zephyr_library_sources_ifdef(CONFIG_INTEL_HDA
-		${SOF_DRIVERS_PATH}/intel/hda/hda-dma.c
-		${SOF_DRIVERS_PATH}/intel/hda/hda.c
-	)
-
-	zephyr_library_sources_ifdef(CONFIG_INTEL_MN
-		${SOF_DRIVERS_PATH}/intel/ssp/mn.c
-	)
-
-	zephyr_library_sources_ifdef(CONFIG_INTEL_SSP
-		${SOF_DRIVERS_PATH}/intel/ssp/ssp.c
-	)
-
-	zephyr_library_sources_ifdef(CONFIG_INTEL_ALH
-		${SOF_DRIVERS_PATH}/intel/alh.c
-	)
-
-	zephyr_library_sources_ifdef(CONFIG_INTEL_DMIC
-		${SOF_DRIVERS_PATH}/intel/dmic/dmic.c
-	)
-
-	zephyr_library_sources_ifdef(CONFIG_INTEL_DMIC_TPLG_PARAMS
-		${SOF_DRIVERS_PATH}/intel/dmic/dmic_computed.c
-	)
-
-	zephyr_library_sources_ifdef(CONFIG_INTEL_DMIC_NHLT
-		${SOF_DRIVERS_PATH}/intel/dmic/dmic_nhlt.c
-	)
-
-
-	# Platform sources
-	zephyr_library_sources(
-		${SOF_PLATFORM_PATH}/intel/cavs/platform.c
-		${SOF_PLATFORM_PATH}/intel/cavs/lib/mem_window.c
-		${SOF_PLATFORM_PATH}/tigerlake/lib/clk.c
-		${SOF_PLATFORM_PATH}/intel/cavs/lib/power_down.S
-		${SOF_PLATFORM_PATH}/intel/cavs/lib/pm_runtime.c
-		${SOF_PLATFORM_PATH}/intel/cavs/lib/pm_memory.c
-		${SOF_PLATFORM_PATH}/intel/cavs/lib/clk.c
-		${SOF_PLATFORM_PATH}/intel/cavs/lib/dai.c
-		${SOF_PLATFORM_PATH}/intel/cavs/lib/dma.c
-		#${SOF_PLATFORM_PATH}/intel/cavs/lps_pic_restore_vector.S
-	)
-
-	# SOF core infrastructure - runs on top of Zephyr
-	zephyr_library_sources(
-		${SOF_SRC_PATH}/schedule/zephyr_ll.c
-	)
-
-	zephyr_library_sources_ifdef(CONFIG_CAVS_LPS
-		${SOF_PLATFORM_PATH}/intel/cavs/lps_wait.c
-	)
-
-	set_source_files_properties(${SOF_PLATFORM_PATH}/intel/cavs/lib/power_down.S PROPERTIES COMPILE_FLAGS -DASSEMBLY)
-	set_source_files_properties(${SOF_PLATFORM_PATH}/intel/cavs/lps_pic_restore_vector.S PROPERTIES COMPILE_FLAGS -DASSEMBLY)
-
-	set(PLATFORM "zephyr")
-	zephyr_include_directories(${SOF_PLATFORM_PATH}/intel/cavs/include)
-endif()
-
 # NXP IMX8 platforms
 if (CONFIG_SOC_SERIES_NXP_IMX8)
 	zephyr_library_sources(
@@ -627,7 +558,7 @@ zephyr_library_sources_ifdef(CONFIG_COMP_FIR
 zephyr_library_sources_ifdef(CONFIG_COMP_IIR
 	${SOF_MATH_PATH}/iir_df2t_generic.c
 	${SOF_MATH_PATH}/iir_df2t_hifi3.c
-	${SOF_AUDIO_PATH}/eq_iir/iir.c
+	${SOF_MATH_PATH}/iir.c
 	${SOF_AUDIO_PATH}/eq_iir/eq_iir.c
 )
 
@@ -678,11 +609,33 @@ zephyr_library_sources_ifdef(CONFIG_COMP_VOLUME
 	${SOF_AUDIO_PATH}/volume/volume.c
 )
 
+zephyr_library_sources_ifdef(CONFIG_COMP_CODEC_ADAPTER
+	${SOF_AUDIO_PATH}/codec_adapter/codec_adapter.c
+	${SOF_AUDIO_PATH}/codec_adapter/codec/generic.c
+)
+
+if (CONFIG_COMP_CODEC_ADAPTER)
+zephyr_library_sources_ifdef(CONFIG_CADENCE_CODEC
+	${SOF_AUDIO_PATH}/codec_adapter/codec/cadence.c
+)
+zephyr_library_sources_ifdef(CONFIG_PASSTHROUGH_CODEC
+	${SOF_AUDIO_PATH}/codec_adapter/codec/passthrough.c
+)
+endif()
+
 zephyr_library_sources_ifdef(CONFIG_COMP_SRC
 	${SOF_AUDIO_PATH}/src/src_hifi2ep.c
 	${SOF_AUDIO_PATH}/src/src_generic.c
 	${SOF_AUDIO_PATH}/src/src_hifi3.c
 	${SOF_AUDIO_PATH}/src/src.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_COMP_BASEFW_IPC4
+	${SOF_AUDIO_PATH}/base_fw.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_COMP_COPIER
+	${SOF_AUDIO_PATH}/copier.c
 )
 
 zephyr_library_sources_ifdef(CONFIG_SAMPLE_SMART_AMP

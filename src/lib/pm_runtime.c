@@ -29,10 +29,9 @@ DECLARE_TR_CTX(pm_tr, SOF_UUID(pm_runtime_uuid), LOG_LEVEL_INFO);
 void pm_runtime_init(struct sof *sof)
 {
 	sof->prd = rzalloc(SOF_MEM_ZONE_SYS_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*sof->prd));
-	spinlock_init(&sof->prd->lock);
+	k_spinlock_init(&sof->prd->lock);
 
 	platform_pm_runtime_init(sof->prd);
-
 }
 
 /* Warning: the terms in this API (enable, active,... ) apply sometimes

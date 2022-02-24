@@ -153,6 +153,30 @@ error:
 	return err;
 }
 
+static int propagate_state_to_ppl_comp(struct ipc *ipc, uint32_t ppl_id, int cmd)
+{
+	int ret = IPC4_INVALID_RESOURCE_ID;
+	struct ipc_comp_dev *icd;
+	struct list_item *clist;
+
+	list_for_item(clist, &ipc->comp_list) {
+		icd = container_of(clist, struct ipc_comp_dev, list);
+		if (icd->type != COMP_TYPE_COMPONENT)
+			continue;
+
+		if (!cpu_is_me(icd->core))
+			continue;
+
+		if (ipc_comp_pipe_id(icd) == ppl_id) {
+			ret = comp_set_state(icd->cd, cmd);
+			if (ret != 0)
+				return IPC4_INVALID_REQUEST;
+		}
+	}
+
+	return ret;
+}
+
 /* Ipc4 pipeline message <------> ipc3 pipeline message
  * RUNNING     <-------> TRIGGER START
  * INIT + PAUSED  <-------> PIPELINE COMPLETE
@@ -262,9 +286,13 @@ static int set_pipeline_state(uint32_t id, uint32_t cmd, bool *delayed)
 			}
 		}
 
+		ret = propagate_state_to_ppl_comp(ipc, id, COMP_TRIGGER_RESET);
+		if (ret != 0)
+			return ret;
+
 		/* resource is not released by triggering reset which is used by current FW */
 		ret = pipeline_reset(host->cd->pipeline, host->cd);
-		if (ret < 0)
+		if (ret != 0)
 			ret = IPC4_INVALID_REQUEST;
 
 		return ret;
@@ -800,18 +828,20 @@ ipc_cmd_hdr *ipc_compact_read_msg(void)
 	return ipc_to_hdr(msg_data.msg_in);
 }
 
-ipc_cmd_hdr *ipc_prepare_to_send(struct ipc_msg *msg)
+ipc_cmd_hdr *ipc_prepare_to_send(const struct ipc_msg *msg)
 {
+	uint32_t size;
+
 	msg_data.msg_out[0] = msg->header;
 	msg_data.msg_out[1] = *(uint32_t *)msg->tx_data;
 
 	/* the first uint of msg data is sent by ipc data register for ipc4 */
-	msg->tx_size -= sizeof(uint32_t);
-	if (msg->tx_size)
-		mailbox_dspbox_write(0, (uint32_t *)msg->tx_data + 1, msg->tx_size);
+	size = msg->tx_size - sizeof(uint32_t);
+	if (size)
+		mailbox_dspbox_write(0, (uint32_t *)msg->tx_data + 1, size);
 
 	/* free memory for get config function */
-	if (msg_reply.tx_size)
+	if (msg == &msg_reply && msg_reply.tx_size > sizeof(uint32_t))
 		rfree(msg_reply.tx_data);
 
 	return ipc_to_hdr(msg_data.msg_out);
@@ -877,7 +907,10 @@ void ipc_cmd(ipc_cmd_hdr *_hdr)
 		char *data = ipc_get()->comp_data;
 		struct ipc4_message_reply reply;
 
-		err = ipc_wait_for_compound_msg();
+		if (ipc_wait_for_compound_msg() != 0) {
+			tr_err(&ipc_tr, "ipc4: failed to send delayed reply");
+			err = IPC4_FAILURE;
+		}
 
 		/* copy contents of message received */
 		reply.header.r.rsp = SOF_IPC4_MESSAGE_DIR_MSG_REPLY;

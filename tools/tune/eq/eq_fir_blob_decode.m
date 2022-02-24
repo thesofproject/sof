@@ -2,9 +2,9 @@ function eq = eq_fir_blob_decode(blob, resp_n)
 
 %% Decode a FIR EQ binary blob
 %
-% eq = eq_fir_blob_decode(blobfn, resp_n, fs, do_plot)
+% eq = eq_fir_blob_decode(blob, resp_n, fs, do_plot)
 %
-% blobfn  - file name of EQ setup blob
+% blob    - EQ setup blob 16 bit data vector
 % resp_n  - index of response to decode
 % fs      - sample rate, optional
 % do_plot - set to 1 for frequency response plot, optional
@@ -15,6 +15,11 @@ function eq = eq_fir_blob_decode(blob, resp_n)
 % channels_in_config - numbers of channels in blob
 % assign_response    - vector of EQ indexes assigned to channels
 % size               - length in bytes
+%
+% To decode a FIR blob, try first
+% eq_blob_plot('../../topology/topology1/m4/eq_fir_coef_loudness.m4', 'fir');
+% eq_blob_plot('../../ctl/eq_fir_loudness.bin', 'fir');
+% eq_blob_plot('../../ctl/eq_fir_loudness.txt', 'fir');
 
 % SPDX-License-Identifier: BSD-3-Clause
 %

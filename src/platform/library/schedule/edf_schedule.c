@@ -24,8 +24,6 @@ struct edf_schedule_data {
 	uint32_t clock;
 };
 
-static struct scheduler_ops schedule_edf_ops;
-
 static struct edf_schedule_data *sch;
 
 static int schedule_edf_task_complete(struct task *task)
@@ -49,38 +47,6 @@ static int schedule_edf_task(void *data, struct task *task, uint64_t start,
 		task->ops.run(task->data);
 
 	schedule_edf_task_complete(task);
-
-	return 0;
-}
-
-int schedule_task_init_edf(struct task *task, const struct sof_uuid_entry *uid,
-			   const struct task_ops *ops, void *data,
-			   uint16_t core, uint32_t flags)
-{
-	struct edf_task_pdata *edf_pdata;
-	int ret = 0;
-
-	ret = schedule_task_init(task, uid, SOF_SCHEDULE_EDF, 0, ops->run,
-				 data, core, flags);
-	if (ret < 0)
-		return ret;
-
-	edf_pdata = malloc(sizeof(*edf_pdata));
-	edf_sch_set_pdata(task, edf_pdata);
-
-	task->ops.complete = ops->complete;
-
-	return 0;
-}
-
-/* initialize scheduler */
-int scheduler_init_edf(void)
-{
-	tr_info(&edf_tr, "edf_scheduler_init()");
-	sch = malloc(sizeof(*sch));
-	list_init(&sch->list);
-
-	scheduler_init(SOF_SCHEDULE_EDF, &schedule_edf_ops, sch);
 
 	return 0;
 }
@@ -122,3 +88,35 @@ static struct scheduler_ops schedule_edf_ops = {
 	.schedule_task_free	= schedule_edf_task_free,
 	.scheduler_free		= edf_scheduler_free,
 };
+
+int schedule_task_init_edf(struct task *task, const struct sof_uuid_entry *uid,
+			   const struct task_ops *ops, void *data,
+			   uint16_t core, uint32_t flags)
+{
+	struct edf_task_pdata *edf_pdata;
+	int ret = 0;
+
+	ret = schedule_task_init(task, uid, SOF_SCHEDULE_EDF, 0, ops->run,
+				 data, core, flags);
+	if (ret < 0)
+		return ret;
+
+	edf_pdata = malloc(sizeof(*edf_pdata));
+	edf_sch_set_pdata(task, edf_pdata);
+
+	task->ops.complete = ops->complete;
+
+	return 0;
+}
+
+/* initialize scheduler */
+int scheduler_init_edf(void)
+{
+	tr_info(&edf_tr, "edf_scheduler_init()");
+	sch = malloc(sizeof(*sch));
+	list_init(&sch->list);
+
+	scheduler_init(SOF_SCHEDULE_EDF, &schedule_edf_ops, sch);
+
+	return 0;
+}

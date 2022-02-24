@@ -52,22 +52,9 @@ ifdef(`CA_SETUP_CONTROLBYTES',`', `define(`CA_SETUP_CONTROLBYTES',
 )')
 ifdef(`CA_SETUP_CONTROLBYTES_MAX',`', `define(`CA_SETUP_CONTROLBYTES_MAX', 176)')
 
-# Codec Adapter runtime param control bytes (little endian)
-#  : bytes "abi_header, [codec_param_0, codec_param_1...]"
-#  - 32 bytes abi_header: you could get by command "sof-ctl -t 1 -g <payload_size> -b"
-ifdef(`CA_RUNTIME_CONTROLBYTES',`', `define(`CA_RUNTIME_CONTROLBYTES',
-``	bytes "0x53,0x4f,0x46,0x00,0x01,0x00,0x00,0x00,'
-`	0x00,0x00,0x00,0x00,0x00,0x10,0x00,0x03,'
-`	0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,'
-`	0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00"''
-)')
-ifdef(`CA_RUNTIME_CONTROLBYTES_MAX',`', `define(`CA_RUNTIME_CONTROLBYTES_MAX', 157)')
-
 # For codec developers, rename bytes control names if necessary.
 ifdef(`CA_SETUP_CONTROLBYTES_NAME',`',
 	`define(`CA_SETUP_CONTROLBYTES_NAME', `CA Setup Config')')
-ifdef(`CA_RUNTIME_CONTROLBYTES_NAME',`',
-	`define(`CA_RUNTIME_CONTROLBYTES_NAME', `CA Runtime Params')')
 
 define(CA_SETUP_CONFIG, concat(`ca_setup_config_', PIPELINE_ID))
 define(CA_SETUP_CONTROLBYTES_NAME_PIPE, concat(CA_SETUP_CONTROLBYTES_NAME, PIPELINE_ID))
@@ -84,21 +71,6 @@ C_CONTROLBYTES(CA_SETUP_CONTROLBYTES_NAME_PIPE, PIPELINE_ID,
 	,
 	CA_SETUP_CONFIG)
 
-define(CA_RUNTIME_PARAMS, concat(`ca_runtime_params_', PIPELINE_ID))
-define(CA_RUNTIME_CONTROLBYTES_NAME_PIPE, concat(CA_RUNTIME_CONTROLBYTES_NAME, PIPELINE_ID))
-
-# Codec adapter runtime params
-CONTROLBYTES_PRIV(CA_RUNTIME_PARAMS, CA_RUNTIME_CONTROLBYTES)
-
-# Codec adapter Bytes control for runtime config
-C_CONTROLBYTES(CA_RUNTIME_CONTROLBYTES_NAME_PIPE, PIPELINE_ID,
-        CONTROLBYTES_OPS(bytes),
-        CONTROLBYTES_EXTOPS(void, 258, 258),
-        , , ,
-        CONTROLBYTES_MAX(void, CA_RUNTIME_CONTROLBYTES_MAX),
-        ,
-        CA_RUNTIME_PARAMS)
-
 #
 # Components and Buffers
 #
@@ -112,7 +84,7 @@ ifdef(`CA_SCHEDULE_CORE',`', `define(`CA_SCHEDULE_CORE', `SCHEDULE_CORE')')
 W_PCM_CAPTURE(PCM_ID, Passthrough Capture, 0, DAI_PERIODS, SCHEDULE_CORE)
 
 W_CODEC_ADAPTER(0, PIPELINE_FORMAT, DAI_PERIODS, DAI_PERIODS, CA_SCHEDULE_CORE,
-        LIST(`          ', "CA_SETUP_CONTROLBYTES_NAME_PIPE", "CA_RUNTIME_CONTROLBYTES_NAME_PIPE"))
+        LIST(`          ', "CA_SETUP_CONTROLBYTES_NAME_PIPE"))
 
 # Capture Buffers
 W_BUFFER(0, COMP_BUFFER_SIZE(DAI_PERIODS,
@@ -144,15 +116,10 @@ indir(`define', concat(`PIPELINE_PCM_', PIPELINE_ID), Passthrough Capture PCM_ID
 
 PCM_CAPABILITIES(Passthrough Capture PCM_ID, CAPABILITY_FORMAT_NAME(PIPELINE_FORMAT), PCM_MIN_RATE, PCM_MAX_RATE, 2, PIPELINE_CHANNELS, 2, 16, 192, 16384, 65536, 65536)
 
-undefine(`CA_RUNTIME_CONTROLBYTES_NAME_PIPE')
-undefine(`CA_RUNTIME_PARAMS')
 undefine(`CA_SETUP_CONTROLBYTES_NAME_PIPE')
 undefine(`CA_SETUP_PARAMS')
 
 undefine(`CA_SCHEDULE_CORE')
-undefine(`CA_RUNTIME_CONTROLBYTES_NAME')
 undefine(`CA_SETUP_CONTROLBYTES_NAME')
-undefine(`CA_RUNTIME_CONTROLBYTES_MAX')
-undefine(`CA_RUNTIME_CONTROLBYTES')
 undefine(`CA_SETUP_CONTROLBYTES_MAX')
 undefine(`CA_SETUP_CONTROLBYTES')

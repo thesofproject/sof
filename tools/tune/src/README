@@ -33,4 +33,4 @@ coefficients need to be copied to directory
 sof.git/src/include/sof/audio/coefficients/src.
 
 The default quality of SRC is defined in module src_param.m. The
-quality impacts the complexity and coefficents tables size of SRC.
+quality impacts the complexity and coefficients tables size of SRC.

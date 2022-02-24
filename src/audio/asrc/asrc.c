@@ -530,7 +530,9 @@ static int asrc_params(struct comp_dev *dev,
 	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
 				source_list);
 
-	sinkb->stream.rate = asrc_get_sink_rate(&cd->ipc_config);
+	/* Don't change sink rate if value from IPC is 0 (auto detect) */
+	if (asrc_get_sink_rate(&cd->ipc_config))
+		sinkb->stream.rate = asrc_get_sink_rate(&cd->ipc_config);
 
 	/* set source/sink_frames/rate */
 	cd->source_rate = sourceb->stream.rate;
@@ -987,14 +989,14 @@ static int asrc_copy(struct comp_dev *dev)
 	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
 			       source_list);
 
-	source = buffer_acquire_irq(source);
-	sink = buffer_acquire_irq(sink);
+	source = buffer_acquire(source);
+	sink = buffer_acquire(sink);
 
 	frames_src = audio_stream_get_avail_frames(&source->stream);
 	frames_snk = audio_stream_get_free_frames(&sink->stream);
 
-	buffer_release_irq(sink);
-	buffer_release_irq(source);
+	buffer_release(sink);
+	buffer_release(source);
 
 	if (cd->mode == ASRC_OM_PULL) {
 		/* Let ASRC access max number of source frames in pull mode.

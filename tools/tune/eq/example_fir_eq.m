@@ -174,7 +174,7 @@ eq.fir_length = 250;        % Long filter (test large IPC messages)
 eq.fir_autoband = 0;        % Select manually frequency limits
 eq.fmin_fir = 100;          % Equalization starts from 100 Hz
 eq.fmax_fir = 20e3;         % Equalization ends at 20 kHz
-eq.fir_minph = 1;           % Check result carefully if 1 is used, 0 is safe
+eq.fir_minph = 0;           % Check result carefully if 1 is used, 0 is safe
 eq = eq_compute(eq);
 
 %% Plot

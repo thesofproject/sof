@@ -30,10 +30,12 @@ struct dma_trace_buf {
 struct dma_trace_data {
 	struct dma_sg_config config;
 	struct dma_trace_buf dmatb;
+#if CONFIG_DMA_GW
+	struct dma_sg_config gw_config;
+#endif
 	struct dma_copy dc;
 	struct sof_ipc_dma_trace_posn posn;
 	struct ipc_msg *msg;
-	uint32_t old_host_offset; /**< Last posn.offset sent to host */
 	uint32_t host_size;
 	struct task dmat_work;
 	uint32_t enabled;
@@ -44,7 +46,7 @@ struct dma_trace_data {
 				   *  copied by dma connected to host
 				   */
 	uint32_t dropped_entries; /* amount of dropped entries */
-	spinlock_t lock; /* dma trace lock */
+	struct k_spinlock lock; /* dma trace lock */
 };
 
 int dma_trace_init_early(struct sof *sof);

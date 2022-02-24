@@ -39,7 +39,7 @@ enum notify_id {
 
 struct notify {
 	struct list_item list[NOTIFIER_ID_COUNT]; /* list of callback handles */
-	spinlock_t lock;	/* list lock */
+	struct k_spinlock lock;	/* list lock */
 };
 
 struct notify_data {

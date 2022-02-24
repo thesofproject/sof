@@ -58,9 +58,9 @@ static void ipc_irq_handler(void *arg)
 {
 	struct ipc *ipc = arg;
 	uint32_t dipcctl;
-	uint32_t flags;
+	k_spinlock_key_t key;
 
-	spin_lock_irq(&ipc->lock, flags);
+	key = k_spin_lock(&ipc->lock);
 
 #if CAVS_VERSION == CAVS_VERSION_1_5
 	uint32_t dipct;
@@ -128,7 +128,7 @@ static void ipc_irq_handler(void *arg)
 			  ipc_read(IPC_DIPCCTL) | IPC_DIPCCTL_IPCIDIE);
 	}
 
-	spin_unlock_irq(&ipc->lock, flags);
+	k_spin_unlock(&ipc->lock, key);
 }
 
 #if CAVS_VERSION >= CAVS_VERSION_1_8
@@ -214,11 +214,10 @@ void ipc_platform_complete_cmd(struct ipc *ipc)
 	ipc_write(IPC_DIPCCTL, ipc_read(IPC_DIPCCTL) | IPC_DIPCCTL_IPCTBIE);
 }
 
-int ipc_platform_send_msg(struct ipc_msg *msg)
+int ipc_platform_send_msg(const struct ipc_msg *msg)
 {
 	struct ipc *ipc = ipc_get();
 	ipc_cmd_hdr *hdr;
-	int ret = 0;
 
 	if (ipc->is_notification_pending ||
 #if CAVS_VERSION == CAVS_VERSION_1_5
@@ -227,11 +226,9 @@ int ipc_platform_send_msg(struct ipc_msg *msg)
 	    ipc_read(IPC_DIPCIDR) & IPC_DIPCIDR_BUSY ||
 	    ipc_read(IPC_DIPCIDA) & IPC_DIPCIDA_DONE) {
 #endif
-		ret = -EBUSY;
-		goto out;
+		return -EBUSY;
 	}
 
-	list_item_del(&msg->list);
 	tr_dbg(&ipc_tr, "ipc: msg tx -> 0x%x", msg->header);
 
 	ipc->is_notification_pending = true;
@@ -248,8 +245,7 @@ int ipc_platform_send_msg(struct ipc_msg *msg)
 	ipc_write(IPC_DIPCIDR, IPC_DIPCIDR_BUSY | hdr[0]);
 #endif
 
-out:
-	return ret;
+	return 0;
 }
 
 int platform_ipc_init(struct ipc *ipc)

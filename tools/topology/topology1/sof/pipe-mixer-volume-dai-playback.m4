@@ -36,17 +36,20 @@ C_CONTROLMIXER(Master Playback Volume, PIPELINE_ID,
 # Volume configuration
 #
 
-W_VENDORTUPLES(playback_pga_tokens, sof_volume_tokens,
-LIST(`		', `SOF_TKN_VOLUME_RAMP_STEP_TYPE	"0"'
-     `		', `SOF_TKN_VOLUME_RAMP_STEP_MS		"250"'))
+define(DEF_PGA_TOKENS, concat(`pga_tokens_', PIPELINE_ID))
+define(DEF_PGA_CONF, concat(`pga_conf_', PIPELINE_ID))
 
-W_DATA(playback_pga_conf, playback_pga_tokens)
+W_VENDORTUPLES(DEF_PGA_TOKENS, sof_volume_tokens,
+LIST(`		', `SOF_TKN_VOLUME_RAMP_STEP_TYPE	"0"'
+     `		', `SOF_TKN_VOLUME_RAMP_STEP_MS		"20"'))
+
+W_DATA(DEF_PGA_CONF, DEF_PGA_TOKENS)
 
 # Mixer 0 has 2 sink and source periods.
 W_MIXER(0, PIPELINE_FORMAT, 2, 2, SCHEDULE_CORE)
 
 # "Master Playback Volume" has 2 source and x sink periods for DAI ping-pong
-W_PGA(0, PIPELINE_FORMAT, DAI_PERIODS, 2, playback_pga_conf, SCHEDULE_CORE,
+W_PGA(0, PIPELINE_FORMAT, DAI_PERIODS, 2, DEF_PGA_CONF, SCHEDULE_CORE,
 	LIST(`		', "PIPELINE_ID Master Playback Volume"))
 
 #
@@ -81,3 +84,5 @@ P_GRAPH(DAI_NAME, PIPELINE_ID,
 indir(`define', concat(`PIPELINE_PLAYBACK_SCHED_COMP_', PIPELINE_ID), N_DAI_OUT)
 indir(`define', concat(`PIPELINE_MIXER_', PIPELINE_ID), N_MIXER(0))
 
+undefine(`DEF_PGA_TOKENS')
+undefine(`DEF_PGA_CONF')

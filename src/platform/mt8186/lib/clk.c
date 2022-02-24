@@ -99,7 +99,7 @@ void platform_clock_init(struct sof *sof)
 			.set_freq = clock_platform_set_dsp_freq,
 		};
 
-		spinlock_init(&sof->clocks[i].lock);
+		k_spinlock_init(&sof->clocks[i].lock);
 	}
 
 	/* DSP bus clock */

@@ -23,7 +23,7 @@
 #define DMAC_HOST_OUT_CHANNELS_COUNT 6
 #define DMAC_LINK_IN_CHANNELS_COUNT 7
 #define DMAC_LINK_OUT_CHANNELS_COUNT 6
-#elif CONFIG_CANNONLAKE || CONFIG_ICELAKE || CONFIG_TIGERLAKE || CONFIG_SOF_ZEPHYR
+#elif CONFIG_CANNONLAKE || CONFIG_ICELAKE || CONFIG_TIGERLAKE
 #define DMAC0_CLASS 6
 #define DMAC1_CLASS 7
 #define DMAC_HOST_IN_CHANNELS_COUNT 7
@@ -255,7 +255,7 @@ int dmac_init(struct sof *sof)
 
 	/* early lock initialization for ref counting */
 	for (i = 0; i < sof->dma_info->num_dmas; i++)
-		spinlock_init(&sof->dma_info->dma_array[i].lock);
+		k_spinlock_init(&sof->dma_info->dma_array[i].lock);
 
 	return 0;
 }

@@ -83,7 +83,7 @@ void log_err(const char *fmt, ...)
 /* trim whitespaces from string begin */
 char *ltrim(char *s)
 {
-	while (isspace(*s))
+	while (isspace((int)*s))
 		s++;
 	return s;
 }
@@ -93,7 +93,7 @@ char *rtrim(char *s)
 {
 	char *ptr = s + strlen(s) - 1;
 
-	while (ptr >= s && isspace(*ptr)) {
+	while (ptr >= s && isspace((int)*ptr)) {
 		*ptr = '\0';
 		--ptr;
 	}

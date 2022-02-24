@@ -123,31 +123,26 @@ void ipc_platform_complete_cmd(struct ipc *ipc)
 	}
 }
 
-int ipc_platform_send_msg(struct ipc_msg *msg)
+int ipc_platform_send_msg(const struct ipc_msg *msg)
 {
 	struct ipc *ipc = ipc_get();
-	int ret = 0;
 
 	/* can't send notification when one is in progress */
 	if (ipc->is_notification_pending ||
 	    imx_mu_read(IMX_MU_xCR(IMX_MU_VERSION, IMX_MU_GCR)) & IMX_MU_xCR_GIRn(IMX_MU_VERSION, 1)) {
-		ret = -EBUSY;
-		goto out;
+		return -EBUSY;
 	}
 
 	/* now send the message */
 	mailbox_dspbox_write(0, msg->tx_data, msg->tx_size);
-	list_item_del(&msg->list);
+
 	tr_dbg(&ipc_tr, "ipc: msg tx -> 0x%x", msg->header);
 
 	ipc->is_notification_pending = true;
 
 	/* now interrupt host to tell it we have sent a message */
 	imx_mu_xcr_rmw(IMX_MU_VERSION, IMX_MU_GCR, IMX_MU_xCR_GIRn(IMX_MU_VERSION, 1), 0);
-
-out:
-
-	return ret;
+	return 0;
 }
 
 #if CONFIG_HOST_PTABLE

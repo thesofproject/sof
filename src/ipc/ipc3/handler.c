@@ -456,17 +456,17 @@ static int ipc_stream_trigger(uint32_t header)
 	 * synchronously.
 	 */
 	if (pipeline_is_timer_driven(pcm_dev->cd->pipeline)) {
-		uint32_t flags;
+		k_spinlock_key_t key;
 
-		spin_lock_irq(&ipc->lock, flags);
+		key = k_spin_lock(&ipc->lock);
 		ipc->task_mask |= IPC_TASK_IN_THREAD;
-		spin_unlock_irq(&ipc->lock, flags);
+		k_spin_unlock(&ipc->lock, key);
 
 		ret = pipeline_trigger(pcm_dev->cd->pipeline, pcm_dev->cd, cmd);
 		if (ret <= 0) {
-			spin_lock_irq(&ipc->lock, flags);
+			key = k_spin_lock(&ipc->lock);
 			ipc->task_mask &= ~IPC_TASK_IN_THREAD;
-			spin_unlock_irq(&ipc->lock, flags);
+			k_spin_unlock(&ipc->lock, key);
 		}
 	} else {
 		ret = pipeline_trigger_run(pcm_dev->cd->pipeline, pcm_dev->cd, cmd);
@@ -824,7 +824,7 @@ static int ipc_dma_trace_config(uint32_t header)
 				      &elem_array,
 				      &ring_size);
 	if (err < 0)
-		goto error;
+		goto processing_error;
 
 	err = dma_trace_host_buffer(dmat, &elem_array, ring_size);
 	if (err < 0) {
@@ -849,6 +849,12 @@ static int ipc_dma_trace_config(uint32_t header)
 	return 0;
 
 error:
+#if CONFIG_HOST_PTABLE
+	dma_sg_free(&elem_array);
+
+processing_error:
+#endif
+
 	return err;
 }
 #endif /* CONFIG_SUECREEK */
@@ -1532,7 +1538,7 @@ ipc_cmd_hdr *ipc_compact_read_msg(void)
 #endif
 
 /* prepare the message using ABI major layout */
-ipc_cmd_hdr *ipc_prepare_to_send(struct ipc_msg *msg)
+ipc_cmd_hdr *ipc_prepare_to_send(const struct ipc_msg *msg)
 {
 	static uint32_t hdr[2];
 

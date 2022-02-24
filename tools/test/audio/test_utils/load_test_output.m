@@ -61,7 +61,7 @@ else
 	out = [];
 end
 
-%% Exctract channels to measure
+%% Extract channels to measure
 scale = 1/2^(bits_out-1);
 lout = length(out);
 nx = floor(lout/test.nch);

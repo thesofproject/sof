@@ -12,8 +12,8 @@ define(`SPK_DATA_FORMAT', `s16le')
 
 define(`SET_SSP_CONFIG',
                 `SSP_CONFIG(DSP_B, SSP_CLOCK(mclk, 24000000, codec_mclk_in),
-                        SSP_CLOCK(bclk, 4800000, codec_consumer),
-                        SSP_CLOCK(fsync, 48000, codec_consumer),
+                        SSP_CLOCK(bclk, 4800000, codec_slave),
+                        SSP_CLOCK(fsync, 48000, codec_slave),
                         SSP_TDM(4, 25, 3, 240),
                         SSP_CONFIG_DATA(SSP, SPK_INDEX, 16))'
       )

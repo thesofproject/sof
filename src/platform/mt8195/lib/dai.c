@@ -43,7 +43,7 @@ int dai_init(struct sof *sof)
 
 	/* initialize spin locks early to enable ref counting */
 	for (i = 0; i < ARRAY_SIZE(afe_dai); i++) {
-		spinlock_init(&afe_dai[i].lock);
+		k_spinlock_init(&afe_dai[i].lock);
 		afe_dai[i].index = AFE_HS_GET_DAI(afe_dai_handshake[i]);
 		afe_dai[i].drv = &afe_dai_driver;
 		/* TODO, fifo[0] change to target playback or capture */

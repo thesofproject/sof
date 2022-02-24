@@ -3,7 +3,7 @@ function [y, mark]= sync_chirp(fs, direction)
 %% [y, mark]= sync_chirp(fs, direction)
 %
 % Returns a chirp signal that can be used to mark end and beginning of audio
-% tests to syncronize input and captured output accurately.
+% tests to synchronize input and captured output accurately.
 %
 % Input
 % fs - sample rate

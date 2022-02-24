@@ -147,7 +147,7 @@ int dai_init(struct sof *sof)
 		dai[i].plat_data.fifo[SOF_IPC_STREAM_CAPTURE].handshake =
 			DMA_HANDSHAKE_SSP0_RX + 2 * i;
 		/* initialize spin locks early to enable ref counting */
-		spinlock_init(&dai[i].lock);
+		k_spinlock_init(&dai[i].lock);
 	}
 
 #endif
@@ -162,7 +162,7 @@ int dai_init(struct sof *sof)
 	for (i = 0; i < ARRAY_SIZE(hda); i++) {
 		dai[i].index = i;
 		dai[i].drv = &hda_driver;
-		spinlock_init(&dai[i].lock);
+		k_spinlock_init(&dai[i].lock);
 	}
 
 #if (CONFIG_INTEL_DMIC)
@@ -170,8 +170,7 @@ int dai_init(struct sof *sof)
 
 	/* init dmic */
 	for (i = 0; i < ARRAY_SIZE(dmic); i++)
-		spinlock_init(&dai[i].lock);
-
+		k_spinlock_init(&dai[i].lock);
 #endif
 
 #if CONFIG_INTEL_ALH
@@ -189,7 +188,7 @@ int dai_init(struct sof *sof)
 			ALH_GPDMA_BURST_LENGTH;
 		dai[i].plat_data.fifo[SOF_IPC_STREAM_CAPTURE].depth =
 			ALH_GPDMA_BURST_LENGTH;
-		spinlock_init(&dai[i].lock);
+		k_spinlock_init(&dai[i].lock);
 	}
 
 #endif

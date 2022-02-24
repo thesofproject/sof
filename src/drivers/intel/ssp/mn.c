@@ -59,7 +59,7 @@ struct mn {
 	int bclk_source_mn_clock;
 #endif
 
-	spinlock_t lock; /**< lock mechanism */
+	struct k_spinlock lock; /**< lock mechanism */
 };
 
 static SHARED_DATA struct mn mn;
@@ -83,8 +83,7 @@ void mn_init(struct sof *sof)
 		sof->mn->bclk_sources[i] = MN_BCLK_SOURCE_NONE;
 #endif
 
-	spinlock_init(&sof->mn->lock);
-
+	k_spinlock_init(&sof->mn->lock);
 }
 
 /**
@@ -237,6 +236,7 @@ static inline int set_mclk_divider(uint16_t mclk_id, uint32_t mdivr_val)
 int mn_set_mclk(uint16_t mclk_id, uint32_t mclk_rate)
 {
 	struct mn *mn = mn_get();
+	k_spinlock_key_t key;
 	int ret = 0;
 
 	if (mclk_id >= DAI_NUM_SSP_MCLK) {
@@ -244,7 +244,7 @@ int mn_set_mclk(uint16_t mclk_id, uint32_t mclk_rate)
 		return -EINVAL;
 	}
 
-	spin_lock(&mn->lock);
+	key = k_spin_lock(&mn->lock);
 
 	if (is_mclk_source_in_use())
 		ret = check_current_mclk_source(mclk_id, mclk_rate);
@@ -265,7 +265,7 @@ int mn_set_mclk(uint16_t mclk_id, uint32_t mclk_rate)
 
 out:
 
-	spin_unlock(&mn->lock);
+	k_spin_unlock(&mn->lock, key);
 
 	return ret;
 }
@@ -282,8 +282,9 @@ void mn_release_mclk(uint32_t mclk_id)
 {
 	struct mn *mn = mn_get();
 	uint32_t mdivc;
+	k_spinlock_key_t key;
 
-	spin_lock(&mn->lock);
+	key = k_spin_lock(&mn->lock);
 
 	mn->mclk_sources_ref[mclk_id]--;
 
@@ -306,7 +307,7 @@ void mn_release_mclk(uint32_t mclk_id)
 
 		mn->mclk_source_clock = 0;
 	}
-	spin_unlock(&mn->lock);
+	k_spin_unlock(&mn->lock, key);
 }
 
 #if CONFIG_INTEL_MN
@@ -596,8 +597,9 @@ int mn_set_bclk(uint32_t dai_index, uint32_t bclk_rate,
 	uint32_t n = 1;
 	int ret = 0;
 	bool mn_in_use;
+	k_spinlock_key_t key;
 
-	spin_lock(&mn->lock);
+	key = k_spin_lock(&mn->lock);
 
 	mn->bclk_sources[dai_index] = MN_BCLK_SOURCE_NONE;
 
@@ -630,7 +632,7 @@ int mn_set_bclk(uint32_t dai_index, uint32_t bclk_rate,
 
 out:
 
-	spin_unlock(&mn->lock);
+	k_spin_unlock(&mn->lock, key);
 
 	return ret;
 }
@@ -639,25 +641,27 @@ void mn_release_bclk(uint32_t dai_index)
 {
 	struct mn *mn = mn_get();
 	bool mn_in_use;
+	k_spinlock_key_t key;
 
-	spin_lock(&mn->lock);
+	key = k_spin_lock(&mn->lock);
 	mn->bclk_sources[dai_index] = MN_BCLK_SOURCE_NONE;
 
 	mn_in_use = is_bclk_source_in_use(MN_BCLK_SOURCE_MN);
 	/* release the M/N clock source if not used */
 	if (!mn_in_use)
 		reset_bclk_mn_source();
-	spin_unlock(&mn->lock);
+	k_spin_unlock(&mn->lock, key);
 }
 
 void mn_reset_bclk_divider(uint32_t dai_index)
 {
 	struct mn *mn = mn_get();
+	k_spinlock_key_t key;
 
-	spin_lock(&mn->lock);
+	key = k_spin_lock(&mn->lock);
 	mn_reg_write(MN_MDIV_M_VAL(dai_index), dai_index, 1);
 	mn_reg_write(MN_MDIV_N_VAL(dai_index), dai_index, 1);
-	spin_unlock(&mn->lock);
+	k_spin_unlock(&mn->lock, key);
 }
 
 #endif

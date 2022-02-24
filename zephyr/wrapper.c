@@ -535,13 +535,17 @@ void sys_comp_dcblock_init(void);
 void sys_comp_eq_iir_init(void);
 void sys_comp_kpb_init(void);
 void sys_comp_smart_amp_init(void);
+void sys_comp_basefw_init(void);
+void sys_comp_copier_init(void);
+void sys_comp_codec_cadence_interface_init(void);
+void sys_comp_codec_passthrough_interface_init(void);
 
 /* Zephyr redefines log_message() and mtrace_printf() which leaves
  * totally empty the .static_log_entries ELF sections for the
  * sof-logger. This makes smex fail. Define at least one such section to
  * fix the build when sof-logger is not used.
  */
-static const void *smex_placeholder_f(void)
+static inline const void *smex_placeholder_f(void)
 {
 	_DECLARE_LOG_ENTRY(LOG_LEVEL_DEBUG,
 			   "placeholder so .static_log.X are not all empty",
@@ -550,10 +554,10 @@ static const void *smex_placeholder_f(void)
 	return &log_entry;
 }
 
-/* Need to actually use the function and store a reference to the log entry
- * otherwise the compiler optimizes everything away.
+/* Need to actually use the function and export something otherwise the
+ * compiler optimizes everything away.
  */
-static const void *_smex_placeholder;
+const void *_smex_placeholder;
 
 int task_main_start(struct sof *sof)
 {
@@ -630,6 +634,22 @@ int task_main_start(struct sof *sof)
 		sys_comp_mux_init();
 	}
 
+	if (IS_ENABLED(CONFIG_COMP_BASEFW_IPC4)) {
+		sys_comp_basefw_init();
+	}
+
+	if (IS_ENABLED(CONFIG_COMP_COPIER)) {
+		sys_comp_copier_init();
+	}
+
+	if (IS_ENABLED(CONFIG_CADENCE_CODEC)) {
+		sys_comp_codec_cadence_interface_init();
+	}
+
+	if (IS_ENABLED(CONFIG_PASSTHROUGH_CODEC)) {
+		sys_comp_codec_passthrough_interface_init();
+	}
+
 	/* init pipeline position offsets */
 	pipeline_posn_init(sof);
 
@@ -699,11 +719,22 @@ void platform_dai_wallclock(struct comp_dev *dai, uint64_t *wallclock)
 #if CONFIG_MULTICORE && CONFIG_SMP
 static atomic_t start_flag;
 
+/* Zephyr kernel_internal.h interface */
+void smp_timer_init(void);
+
 static FUNC_NORETURN void secondary_init(void *arg)
 {
 	struct k_thread dummy_thread;
 
+	/*
+	 * This is an open-coded version of zephyr/kernel/smp.c
+	 * smp_init_top(). We do this so that we can call SOF
+	 * secondary_core_init() for each core.
+	 */
+
 	z_smp_thread_init(arg, &dummy_thread);
+	smp_timer_init();
+
 	secondary_core_init(sof_get());
 
 #ifdef CONFIG_THREAD_STACK_INFO
@@ -719,14 +750,22 @@ static FUNC_NORETURN void secondary_init(void *arg)
 
 int arch_cpu_enable_core(int id)
 {
-	atomic_clear(&start_flag);
-
-	/* Power up secondary core */
 	pm_runtime_get(PM_RUNTIME_DSP, PWRD_BY_TPLG | id);
 
+	return 0;
+}
+
+int z_wrapper_cpu_enable_secondary_core(int id)
+{
+	/*
+	 * This is an open-coded version of zephyr/kernel/smp.c
+	 * z_smp_start_cpu(). We do this, so we can use a customized
+	 * secondary_init() for SOF.
+	 */
+
+	atomic_clear(&start_flag);
 	arch_start_cpu(id, z_interrupt_stacks[id], CONFIG_ISR_STACK_SIZE,
 		       secondary_init, &start_flag);
-
 	atomic_set(&start_flag, 1);
 
 	return 0;

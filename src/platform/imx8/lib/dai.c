@@ -24,13 +24,15 @@ static SHARED_DATA struct dai esai[] = {
 			.offset		= ESAI_BASE + REG_ESAI_ETDR,
 			.depth		= 96,  /* in 4 bytes words */
 			.handshake	= EDMA_HANDSHAKE(EDMA_ESAI_IRQ,
-							 EDMA_ESAI_TX_CHAN),
+							 EDMA_ESAI_TX_CHAN,
+							 0),
 		},
 		.fifo[SOF_IPC_STREAM_CAPTURE] = {
 			.offset		= ESAI_BASE + REG_ESAI_ERDR,
 			.depth		= 96,  /* in 4 bytes words */
 			.handshake	= EDMA_HANDSHAKE(EDMA_ESAI_IRQ,
-							 EDMA_ESAI_RX_CHAN),
+							 EDMA_ESAI_RX_CHAN,
+							 0),
 		},
 	},
 	.drv = &esai_driver,
@@ -52,14 +54,16 @@ static SHARED_DATA struct dai sai[] = {
 			.depth		= 64,  /* in 4 bytes words */
 			.watermark	= 32, /* half the depth */
 			.handshake	= EDMA_HANDSHAKE(EDMA0_SAI_CHAN_TX_IRQ,
-							 EDMA0_SAI_CHAN_TX),
+							 EDMA0_SAI_CHAN_TX,
+							 0),
 		},
 		.fifo[SOF_IPC_STREAM_CAPTURE] = {
 			.offset		= SAI_1_BASE + REG_SAI_RDR0,
 			.depth		= 64,  /* in 4 bytes words */
 			.watermark	= 32, /* half the depth */
 			.handshake	= EDMA_HANDSHAKE(EDMA0_SAI_CHAN_RX_IRQ,
-							 EDMA0_SAI_CHAN_RX),
+							 EDMA0_SAI_CHAN_RX,
+							 0),
 		},
 	},
 	.drv = &sai_driver,
@@ -90,10 +94,10 @@ int dai_init(struct sof *sof)
 
 	 /* initialize spin locks early to enable ref counting */
 	for (i = 0; i < ARRAY_SIZE(esai); i++)
-		spinlock_init(&esai[i].lock);
+		k_spinlock_init(&esai[i].lock);
 
 	for (i = 0; i < ARRAY_SIZE(sai); i++)
-		spinlock_init(&sai[i].lock);
+		k_spinlock_init(&sai[i].lock);
 
 	sof->dai_info = &lib_dai;
 

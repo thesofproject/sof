@@ -29,11 +29,14 @@ C_CONTROLMIXER(Playback Volume, PIPELINE_ID,
 # Volume configuration
 #
 
-W_VENDORTUPLES(playback_pga_tokens, sof_volume_tokens,
-LIST(`		', `SOF_TKN_VOLUME_RAMP_STEP_TYPE	"0"'
-     `		', `SOF_TKN_VOLUME_RAMP_STEP_MS		"250"'))
+define(DEF_PGA_TOKENS, concat(`pga_tokens_', PIPELINE_ID))
+define(DEF_PGA_CONF, concat(`pga_conf_', PIPELINE_ID))
 
-W_DATA(playback_pga_conf, playback_pga_tokens)
+W_VENDORTUPLES(DEF_PGA_TOKENS, sof_volume_tokens,
+LIST(`		', `SOF_TKN_VOLUME_RAMP_STEP_TYPE	"0"'
+     `		', `SOF_TKN_VOLUME_RAMP_STEP_MS		"20"'))
+
+W_DATA(DEF_PGA_CONF, DEF_PGA_TOKENS)
 
 #
 # Components and Buffers
@@ -44,7 +47,7 @@ W_DATA(playback_pga_conf, playback_pga_tokens)
 W_PCM_PLAYBACK(PCM_ID, Playback, 2, 0, SCHEDULE_CORE)
 
 # "Volume" has 2 source and x sink periods
-W_PGA(0, PIPELINE_FORMAT, DAI_PERIODS, 2, playback_pga_conf, SCHEDULE_CORE,
+W_PGA(0, PIPELINE_FORMAT, DAI_PERIODS, 2, DEF_PGA_CONF, SCHEDULE_CORE,
 	LIST(`		', "PIPELINE_ID Playback Volume"))
 
 # Playback Buffers
@@ -84,3 +87,5 @@ W_PIPELINE(SCHED_COMP, SCHEDULE_PERIOD, SCHEDULE_PRIORITY, SCHEDULE_CORE, SCHEDU
 #
 PCM_CAPABILITIES(Playback PCM_ID, CAPABILITY_FORMAT_NAME(PIPELINE_FORMAT), PCM_MIN_RATE, PCM_MAX_RATE, 2, PIPELINE_CHANNELS, 2, 16, 192, 16384, 65536, 65536)
 
+undefine(`DEF_PGA_TOKENS')
+undefine(`DEF_PGA_CONF')

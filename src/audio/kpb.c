@@ -62,7 +62,12 @@ DECLARE_SOF_UUID("kpb-task", kpb_task_uuid, 0xe50057a5, 0x8b27, 0x4db4,
 struct comp_data {
 	enum kpb_state state; /**< current state of KPB component */
 	uint32_t state_log; /**< keeps record of KPB recent states */
-	spinlock_t lock; /**< locking mechanism for read pointer calculations */
+#ifndef __ZEPHYR__
+	struct k_spinlock lock; /**< locking mechanism for read pointer calculations */
+	k_spinlock_key_t key;
+#else
+	struct k_mutex lock;
+#endif
 	struct sof_kpb_config config;   /**< component configuration data */
 	struct history_data hd; /** data related to history buffer */
 	struct task draining_task;
@@ -113,6 +118,42 @@ static uint64_t kpb_task_deadline(void *data)
 {
 	return SOF_TASK_DEADLINE_ALMOST_IDLE;
 }
+
+#ifdef __ZEPHYR__
+
+static void kpb_lock(struct comp_data *kpb)
+{
+	k_mutex_lock(&kpb->lock, K_FOREVER);
+}
+
+static void kpb_unlock(struct comp_data *kpb)
+{
+	k_mutex_unlock(&kpb->lock);
+}
+
+static void kpb_lock_init(struct comp_data *kpb)
+{
+	k_mutex_init(&kpb->lock);
+}
+
+#else /* __ZEPHYR__ */
+
+static void kpb_lock(struct comp_data *kpb)
+{
+	kpb->key = k_spin_lock(&kpb->lock);
+}
+
+static void kpb_unlock(struct comp_data *kpb)
+{
+	k_spin_unlock(&kpb->lock, kpb->key);
+}
+
+static void kpb_lock_init(struct comp_data *kpb)
+{
+	k_spinlock_init(&kpb->lock);
+}
+
+#endif /* __ZEPHYR__ */
 
 /**
  * \brief Create a key phrase buffer component.
@@ -176,6 +217,8 @@ static struct comp_dev *kpb_new(const struct comp_driver *drv,
 		rfree(dev);
 		return NULL;
 	}
+
+	kpb_lock_init(kpb);
 
 	/* Initialize draining task */
 	schedule_task_init_edf(&kpb->draining_task, /* task structure */
@@ -640,17 +683,17 @@ static int kpb_copy(struct comp_dev *dev)
 		goto out;
 	}
 
-	source = buffer_acquire_irq(source);
+	source = buffer_acquire(source);
 
 	/* Validate source */
 	if (!source->stream.r_ptr) {
 		comp_err(dev, "kpb_copy(): invalid source pointers.");
 		ret = -EINVAL;
-		source = buffer_release_irq(source);
+		source = buffer_release(source);
 		goto out;
 	}
 
-	source = buffer_release_irq(source);
+	source = buffer_release(source);
 
 	switch (kpb->state) {
 	case KPB_STATE_RUN:
@@ -664,17 +707,17 @@ static int kpb_copy(struct comp_dev *dev)
 			goto out;
 		}
 
-		sink = buffer_acquire_irq(sink);
+		sink = buffer_acquire(sink);
 
 		/* Validate sink */
 		if (!sink->stream.w_ptr) {
 			comp_err(dev, "kpb_copy(): invalid selector sink pointers.");
 			ret = -EINVAL;
-			sink = buffer_release_irq(sink);
+			sink = buffer_release(sink);
 			goto out;
 		}
 
-		sink = buffer_release_irq(sink);
+		sink = buffer_release(sink);
 
 		copy_bytes = audio_stream_get_copy_bytes(&source->stream, &sink->stream);
 		if (!copy_bytes) {
@@ -723,17 +766,17 @@ static int kpb_copy(struct comp_dev *dev)
 			goto out;
 		}
 
-		sink = buffer_acquire_irq(sink);
+		sink = buffer_acquire(sink);
 
 		/* Validate sink */
 		if (!sink->stream.w_ptr) {
 			comp_err(dev, "kpb_copy(): invalid host sink pointers.");
 			ret = -EINVAL;
-			sink = buffer_release_irq(sink);
+			sink = buffer_release(sink);
 			goto out;
 		}
 
-		sink = buffer_release_irq(sink);
+		sink = buffer_release(sink);
 
 		copy_bytes = audio_stream_get_copy_bytes(&source->stream, &sink->stream);
 		if (!copy_bytes) {
@@ -1024,7 +1067,6 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 			      (KPB_SAMPLE_CONTAINER_SIZE(sample_width) / 8) *
 			      kpb->config.channels;
 	size_t period_bytes_limit;
-	uint32_t flags;
 
 	comp_info(dev, "kpb_init_draining(): requested draining of %d [ms] from history buffer",
 		  cli->drain_req);
@@ -1045,7 +1087,7 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 		 * in the history buffer. All we have to do now is to calculate
 		 * read pointer from which we will start draining.
 		 */
-		spin_lock_irq(&kpb->lock, flags);
+		kpb_lock(kpb);
 
 		kpb_change_state(kpb, KPB_STATE_INIT_DRAINING);
 
@@ -1103,7 +1145,7 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 
 		} while (buff != first_buff);
 
-		spin_unlock_irq(&kpb->lock, flags);
+		kpb_unlock(kpb);
 
 		/* Should we drain in synchronized mode (sync_draining_mode)?
 		 * Note! We have already verified host params during
@@ -1190,7 +1232,6 @@ static enum task_state kpb_draining_task(void *arg)
 	struct comp_data *kpb = comp_get_drvdata(draining_data->dev);
 	bool sync_mode_on = draining_data->sync_mode_on;
 	bool pm_is_active;
-	uint32_t flags;
 
 	comp_cl_info(&comp_kpb, "kpb_draining_task(), start.");
 
@@ -1280,7 +1321,7 @@ static enum task_state kpb_draining_task(void *arg)
 		 */
 			comp_cl_info(&comp_kpb, "kpb: update drain_req by %d",
 				     *rt_stream_update);
-			spin_lock_irq(&kpb->lock, flags);
+			kpb_lock(kpb);
 			drain_req += *rt_stream_update;
 			*rt_stream_update = 0;
 			if (!drain_req && kpb->state == KPB_STATE_DRAINING) {
@@ -1292,7 +1333,7 @@ static enum task_state kpb_draining_task(void *arg)
 			 */
 				kpb_change_state(kpb, KPB_STATE_HOST_COPY);
 			}
-			spin_unlock_irq(&kpb->lock, flags);
+			kpb_unlock(kpb);
 		}
 	}
 

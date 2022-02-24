@@ -635,9 +635,9 @@ static int test_keyword_copy(struct comp_dev *dev)
 	if (!source->stream.avail)
 		return PPL_STATUS_PATH_STOP;
 
-	source = buffer_acquire_irq(source);
+	source = buffer_acquire(source);
 	frames = audio_stream_get_avail_frames(&source->stream);
-	source = buffer_release_irq(source);
+	source = buffer_release(source);
 
 	/* copy and perform detection */
 	buffer_stream_invalidate(source, audio_stream_get_avail_bytes(&source->stream));

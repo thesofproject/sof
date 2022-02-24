@@ -41,11 +41,12 @@ int notifier_register(void *receiver, void *caller, enum notify_id type,
 {
 	struct notify *notify = *arch_notify_get();
 	struct callback_handle *handle;
+	k_spinlock_key_t key;
 	int ret = 0;
 
 	assert(type >= NOTIFIER_ID_CPU_FREQ && type < NOTIFIER_ID_COUNT);
 
-	spin_lock(&notify->lock);
+	key = k_spin_lock(&notify->lock);
 
 	/* Find already registered event of this type */
 	if (flags & NOTIFIER_FLAG_AGGREGATE &&
@@ -74,7 +75,7 @@ int notifier_register(void *receiver, void *caller, enum notify_id type,
 	list_item_prepend(&handle->list, &notify->list[type]);
 
 out:
-	spin_unlock(&notify->lock);
+	k_spin_unlock(&notify->lock, key);
 	return ret;
 }
 
@@ -84,10 +85,11 @@ void notifier_unregister(void *receiver, void *caller, enum notify_id type)
 	struct list_item *wlist;
 	struct list_item *tlist;
 	struct callback_handle *handle;
+	k_spinlock_key_t key;
 
 	assert(type >= NOTIFIER_ID_CPU_FREQ && type < NOTIFIER_ID_COUNT);
 
-	spin_lock(&notify->lock);
+	key = k_spin_lock(&notify->lock);
 
 	/*
 	 * Unregister all matching callbacks
@@ -110,7 +112,7 @@ void notifier_unregister(void *receiver, void *caller, enum notify_id type)
 		}
 	}
 
-	spin_unlock(&notify->lock);
+	k_spin_unlock(&notify->lock, key);
 }
 
 void notifier_unregister_all(void *receiver, void *caller)
@@ -192,7 +194,7 @@ void init_system_notify(struct sof *sof)
 	*notify = rzalloc(SOF_MEM_ZONE_SYS, 0, SOF_MEM_CAPS_RAM,
 			  sizeof(**notify));
 
-	spinlock_init(&(*notify)->lock);
+	k_spinlock_init(&(*notify)->lock);
 	for (i = NOTIFIER_ID_CPU_FREQ; i < NOTIFIER_ID_COUNT; i++)
 		list_init(&(*notify)->list[i]);
 

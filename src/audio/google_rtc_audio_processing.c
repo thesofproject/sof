@@ -150,8 +150,11 @@ static struct comp_dev *google_rtc_audio_processing_create(
 
 	/* Create component device with an effect processing component */
 	dev = comp_alloc(drv, sizeof(*dev));
+
 	if (!dev)
 		return NULL;
+
+	dev->ipc_config = *config;
 
 	/* Create private component data */
 	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
@@ -248,12 +251,12 @@ static int google_rtc_audio_processing_prepare(struct comp_dev *dev)
 	list_for_item(source_buffer_list_item, &dev->bsource_list) {
 		source_buffer = container_of(source_buffer_list_item, struct comp_buffer,
 						 sink_list);
-		source_buffer = buffer_acquire_irq(source_buffer);
+		source_buffer = buffer_acquire(source_buffer);
 		if (source_buffer->source->ipc_config.type == SOF_COMP_DEMUX)
 			cd->aec_reference = source_buffer;
 		else if (source_buffer->source->ipc_config.type == SOF_COMP_DAI)
 			cd->raw_microphone = source_buffer;
-		source_buffer = buffer_release_irq(source_buffer);
+		source_buffer = buffer_release(source_buffer);
 	}
 
 	cd->output = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
@@ -297,10 +300,10 @@ static int google_rtc_audio_processing_copy(struct comp_dev *dev)
 	uint32_t num_aec_reference_frames;
 	uint32_t num_aec_reference_bytes;
 
-	cd->aec_reference = buffer_acquire_irq(cd->aec_reference);
+	cd->aec_reference = buffer_acquire(cd->aec_reference);
 	num_aec_reference_frames = audio_stream_get_avail_frames(&cd->aec_reference->stream);
 	num_aec_reference_bytes = audio_stream_get_avail_bytes(&cd->aec_reference->stream);
-	cd->aec_reference = buffer_release_irq(cd->aec_reference);
+	cd->aec_reference = buffer_release(cd->aec_reference);
 
 	buffer_stream_invalidate(cd->aec_reference, num_aec_reference_bytes);
 

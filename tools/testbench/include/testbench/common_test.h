@@ -18,38 +18,53 @@
 
 #include <sof/lib/uuid.h>
 
-#define DEBUG_MSG_LEN		256
-#define MAX_LIB_NAME_LEN	256
+#define DEBUG_MSG_LEN		1024
+#define MAX_LIB_NAME_LEN	1024
 
-#define MAX_OUTPUT_FILE_NUM	4
+#define MAX_OUTPUT_FILE_NUM	16
 
 /* number of widgets types supported in testbench */
-#define NUM_WIDGETS_SUPPORTED	11
+#define NUM_WIDGETS_SUPPORTED	12
 
+struct tplg_context;
+
+/*
+ * Global testbench data.
+ *
+ * TODO: some items are topology and pipeline specific and need moved out
+ * into per pipeline data and per topology data structures.
+ */
 struct testbench_prm {
 	char *tplg_file; /* topology file to use */
 	char *input_file; /* input file name */
 	char *output_file[MAX_OUTPUT_FILE_NUM]; /* output file names */
 	int output_file_num; /* number of output files */
 	char *bits_in; /* input bit format */
-	/*
-	 * input and output sample rate parameters
-	 * By default, these are calculated from pipeline frames_per_sched
-	 * and period but they can also be overridden via input arguments
-	 * to the testbench.
-	 */
-	uint32_t fs_in;
-	uint32_t fs_out;
-	uint32_t channels_in;
-	uint32_t channels_out;
+	int pipelines[MAX_OUTPUT_FILE_NUM]; /* output file names */
+	int pipeline_num;
+
 	int fr_id;
 	int fw_id;
-	int sched_id;
+
 	int max_pipeline_id;
-	enum sof_ipc_frame frame_fmt;
 	int copy_iterations;
 	bool copy_check;
 	bool quiet;
+	int dynamic_pipeline_iterations;
+	int num_vcores;
+	int tick_period_us;
+	int pipeline_duration_ms;
+	int real_time;
+	FILE *file;
+	char *pipeline_string;
+	int output_file_index;
+
+	/* global cmd line args that can override topology */
+	enum sof_ipc_frame cmd_frame_fmt;
+	uint32_t cmd_fs_in;
+	uint32_t cmd_fs_out;
+	uint32_t cmd_channels_in;
+	uint32_t cmd_channels_out;
 };
 
 struct shared_lib_table {
@@ -71,14 +86,20 @@ void sys_comp_file_init(void);
 
 void sys_comp_filewrite_init(void);
 
-int tb_pipeline_setup(struct sof *sof);
-void tb_pipeline_free(struct sof *sof);
+int tb_setup(struct sof *sof, struct testbench_prm *tp);
+void tb_free(struct sof *sof);
 
 int tb_pipeline_start(struct ipc *ipc, struct pipeline *p,
-		      struct testbench_prm *tp);
+		      struct tplg_context *ctx);
 
 int tb_pipeline_params(struct ipc *ipc, struct pipeline *p,
-		       struct testbench_prm *tp);
+		       struct tplg_context *ctx);
+
+int tb_pipeline_stop(struct ipc *ipc, struct pipeline *p,
+		     struct tplg_context *ctx);
+
+int tb_pipeline_reset(struct ipc *ipc, struct pipeline *p,
+		      struct tplg_context *ctx);
 
 void debug_print(char *message);
 
@@ -90,7 +111,4 @@ int get_index_by_type(uint32_t comp_type,
 
 int get_index_by_uuid(struct sof_ipc_comp_ext *comp_ext,
 		      struct shared_lib_table *lib_table);
-
-int parse_topology(struct sof *sof,
-		   struct testbench_prm *tp, char *pipeline_msg);
 #endif

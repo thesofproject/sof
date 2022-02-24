@@ -46,6 +46,13 @@ DECLARE_SOF_UUID("power", power_uuid, 0x76cc9773, 0x440c, 0x4df9,
 
 DECLARE_TR_CTX(power_tr, SOF_UUID(power_uuid), LOG_LEVEL_INFO);
 
+/*
+ * To support Zephyr, some adaptation is needed to the driver.
+ */
+#ifdef __ZEPHYR__
+extern int z_wrapper_cpu_enable_secondary_core(int id);
+#endif
+
 /**
  * \brief Registers Host DMA usage that should not trigger
  * transition to L0 via forced L1 exit.
@@ -54,13 +61,13 @@ static void cavs_pm_runtime_host_dma_l1_get(void)
 {
 	struct pm_runtime_data *prd = pm_runtime_data_get();
 	struct cavs_pm_runtime_data *pprd = prd->platform_data;
-	uint32_t flags;
+	k_spinlock_key_t key;
 
-	spin_lock_irq(&prd->lock, flags);
+	key = k_spin_lock(&prd->lock);
 
 	pprd->host_dma_l1_sref++;
 
-	spin_unlock_irq(&prd->lock, flags);
+	k_spin_unlock(&prd->lock, key);
 }
 
 /**
@@ -71,9 +78,9 @@ static inline void cavs_pm_runtime_host_dma_l1_put(void)
 {
 	struct pm_runtime_data *prd = pm_runtime_data_get();
 	struct cavs_pm_runtime_data *pprd = prd->platform_data;
-	uint32_t flags;
+	k_spinlock_key_t key;
 
-	spin_lock_irq(&prd->lock, flags);
+	key = k_spin_lock(&prd->lock);
 
 	if (!--pprd->host_dma_l1_sref) {
 		shim_write(SHIM_SVCFG,
@@ -85,7 +92,7 @@ static inline void cavs_pm_runtime_host_dma_l1_put(void)
 			   shim_read(SHIM_SVCFG) & ~(SHIM_SVCFG_FORCE_L1_EXIT));
 	}
 
-	spin_unlock_irq(&prd->lock, flags);
+	k_spin_unlock(&prd->lock, key);
 }
 
 static inline void cavs_pm_runtime_enable_dsp(bool enable)
@@ -171,7 +178,7 @@ static inline void cavs_pm_runtime_en_ssp_clk_gating(uint32_t index)
 
 static inline void cavs_pm_runtime_en_ssp_power(uint32_t index)
 {
-#if CONFIG_TIGERLAKE || CONFIG_SOF_ZEPHYR
+#if CONFIG_TIGERLAKE
 	uint32_t reg;
 
 	tr_info(&power_tr, "en_ssp_power index %d", index);
@@ -189,7 +196,7 @@ static inline void cavs_pm_runtime_en_ssp_power(uint32_t index)
 
 static inline void cavs_pm_runtime_dis_ssp_power(uint32_t index)
 {
-#if CONFIG_TIGERLAKE || CONFIG_SOF_ZEPHYR
+#if CONFIG_TIGERLAKE
 	uint32_t reg;
 
 	tr_info(&power_tr, "dis_ssp_power index %d", index);
@@ -220,7 +227,7 @@ static inline void cavs_pm_runtime_dis_dmic_clk_gating(uint32_t index)
 	tr_info(&power_tr, "dis-dmic-clk-gating index %d CLKCTL %08x", index,
 		shim_reg);
 #endif
-#if CONFIG_CANNONLAKE || CONFIG_ICELAKE || CONFIG_SUECREEK || CONFIG_TIGERLAKE || CONFIG_SOF_ZEPHYR
+#if CONFIG_CANNONLAKE || CONFIG_ICELAKE || CONFIG_SUECREEK || CONFIG_TIGERLAKE
 	/* Disable DMIC clock gating */
 	io_reg_write(DMICLCTL,
 		    (io_reg_read(DMICLCTL) | DMIC_DCGD));
@@ -240,7 +247,7 @@ static inline void cavs_pm_runtime_en_dmic_clk_gating(uint32_t index)
 	tr_info(&power_tr, "en-dmic-clk-gating index %d CLKCTL %08x",
 		index, shim_reg);
 #endif
-#if CONFIG_CANNONLAKE || CONFIG_ICELAKE || CONFIG_SUECREEK || CONFIG_TIGERLAKE || CONFIG_SOF_ZEPHYR
+#if CONFIG_CANNONLAKE || CONFIG_ICELAKE || CONFIG_SUECREEK || CONFIG_TIGERLAKE
 	/* Enable DMIC clock gating */
 	io_reg_write(DMICLCTL,
 		    (io_reg_read(DMICLCTL) & ~DMIC_DCGD));
@@ -249,7 +256,7 @@ static inline void cavs_pm_runtime_en_dmic_clk_gating(uint32_t index)
 static inline void cavs_pm_runtime_en_dmic_power(uint32_t index)
 {
 	(void) index;
-#if CONFIG_CANNONLAKE || CONFIG_ICELAKE || CONFIG_SUECREEK || CONFIG_TIGERLAKE || CONFIG_SOF_ZEPHYR
+#if CONFIG_CANNONLAKE || CONFIG_ICELAKE || CONFIG_SUECREEK || CONFIG_TIGERLAKE
 	/* Enable DMIC power */
 	io_reg_write(DMICLCTL,
 		    (io_reg_read(DMICLCTL) | DMICLCTL_SPA));
@@ -258,7 +265,7 @@ static inline void cavs_pm_runtime_en_dmic_power(uint32_t index)
 static inline void cavs_pm_runtime_dis_dmic_power(uint32_t index)
 {
 	(void) index;
-#if CONFIG_CANNONLAKE || CONFIG_ICELAKE || CONFIG_SUECREEK || CONFIG_TIGERLAKE || CONFIG_SOF_ZEPHYR
+#if CONFIG_CANNONLAKE || CONFIG_ICELAKE || CONFIG_SUECREEK || CONFIG_TIGERLAKE
 	/* Disable DMIC power */
 	io_reg_write(DMICLCTL,
 		    (io_reg_read(DMICLCTL) & (~DMICLCTL_SPA)));
@@ -369,9 +376,9 @@ static inline void cavs_pm_runtime_core_dis_hp_clk(uint32_t index)
 	int enabled_cores = cpu_enabled_cores();
 	struct pm_runtime_data *prd = pm_runtime_data_get();
 	struct cavs_pm_runtime_data *pprd = prd->platform_data;
-	uint32_t flags;
+	k_spinlock_key_t key;
 
-	spin_lock_irq(&prd->lock, flags);
+	key = k_spin_lock(&prd->lock);
 
 	pprd->sleep_core_mask |= BIT(index);
 
@@ -381,21 +388,21 @@ static inline void cavs_pm_runtime_core_dis_hp_clk(uint32_t index)
 	if (all_active_cores_sleep)
 		clock_low_power_mode(CLK_CPU(index), true);
 
-	spin_unlock_irq(&prd->lock, flags);
+	k_spin_unlock(&prd->lock, key);
 }
 
 static inline void cavs_pm_runtime_core_en_hp_clk(uint32_t index)
 {
 	struct pm_runtime_data *prd = pm_runtime_data_get();
 	struct cavs_pm_runtime_data *pprd = prd->platform_data;
-	uint32_t flags;
+	k_spinlock_key_t key;
 
-	spin_lock_irq(&prd->lock, flags);
+	key = k_spin_lock(&prd->lock);
 
 	pprd->sleep_core_mask &= ~BIT(index);
 	clock_low_power_mode(CLK_CPU(index), false);
 
-	spin_unlock_irq(&prd->lock, flags);
+	k_spin_unlock(&prd->lock, key);
 }
 
 static inline void cavs_pm_runtime_dis_dsp_pg(uint32_t index)
@@ -420,10 +427,18 @@ static inline void cavs_pm_runtime_dis_dsp_pg(uint32_t index)
 		lps_ctl |= SHIM_LPSCTL_FDSPRUN;
 		shim_write(SHIM_LPSCTL, lps_ctl);
 	} else {
+#ifdef __ZEPHYR__
+		/*
+		 * In Zephyr secondary power-up needs to go via Zephyr
+		 * SMP kernel core, so we can't program PWRCTL directly here.
+		 */
+		z_wrapper_cpu_enable_secondary_core(index);
+#else
 		/* Secondary core power up */
 		shim_write16(SHIM_PWRCTL, shim_read16(SHIM_PWRCTL) |
 			     SHIM_PWRCTL_TCPDSPPG(index) |
 			     SHIM_PWRCTL_TCPCTLPG);
+#endif
 
 		/* Waiting for power up */
 		while (((shim_read16(SHIM_PWRSTS) & SHIM_PWRCTL_TCPDSPPG(index)) !=
@@ -574,26 +589,26 @@ void platform_pm_runtime_prepare_d0ix_en(uint32_t index)
 {
 	struct pm_runtime_data *prd = pm_runtime_data_get();
 	struct cavs_pm_runtime_data *pprd = prd->platform_data;
-	uint32_t flags;
+	k_spinlock_key_t key;
 
-	spin_lock_irq(&prd->lock, flags);
+	key = k_spin_lock(&prd->lock);
 
 	pprd->prepare_d0ix_core_mask |= BIT(index);
 
-	spin_unlock_irq(&prd->lock, flags);
+	k_spin_unlock(&prd->lock, key);
 }
 
 void platform_pm_runtime_prepare_d0ix_dis(uint32_t index)
 {
 	struct pm_runtime_data *prd = pm_runtime_data_get();
 	struct cavs_pm_runtime_data *pprd = prd->platform_data;
-	uint32_t flags;
+	k_spinlock_key_t key;
 
-	spin_lock_irq(&prd->lock, flags);
+	key = k_spin_lock(&prd->lock);
 
 	pprd->prepare_d0ix_core_mask &= ~BIT(index);
 
-	spin_unlock_irq(&prd->lock, flags);
+	k_spin_unlock(&prd->lock, key);
 }
 
 int platform_pm_runtime_prepare_d0ix_is_req(uint32_t index)

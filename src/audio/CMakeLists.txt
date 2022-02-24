@@ -125,6 +125,9 @@ if(NOT CONFIG_LIBRARY)
 	if(CONFIG_COMP_ARIA)
 		add_subdirectory(aria)
 	endif()
+	if(CONFIG_COMP_UP_DOWN_MIXER)
+		add_subdirectory(up_down_mixer)
+	endif()
 	subdirs(pipeline)
 
 	return()
@@ -155,33 +158,36 @@ include(CheckCCompilerFlag)
 set(available_optimizations)
 
 # checks if flag is supported by compiler and sets needed flags
-macro(check_optimization opt_name flag extra_define)
+# note: to debug vectorisation please add "-fopt-info-vec-note" option after
+# the enable command below.
+macro(check_optimization opt_name flag enable_cmd extra_define)
 	check_c_compiler_flag(${flag} compiles_flag_${opt_name})
 	if(compiles_flag_${opt_name})
 		list(APPEND available_optimizations ${opt_name})
-		set(${opt_name}_flags ${flag} ${extra_define} -ffast-math)
+		set(${opt_name}_flags ${flag} ${extra_define} ${enable_cmd} -ffast-math)
 	endif()
 endmacro()
 
 # modules will be compiled only for flags supported by compiler
-check_optimization(sse42 -msse4.2 -DOPS_SSE42)
-check_optimization(avx -mavx -DOPS_AVX)
-check_optimization(avx2 -mavx2 -DOPS_AVX2)
-check_optimization(fma -mfma -DOPS_FMA)
-check_optimization(hifi2ep -mhifi2ep -DOPS_HIFI2EP)
-check_optimization(hifi3 -mhifi3 -DOPS_HIFI3)
+check_optimization(sse42 -msse4.2 -ftree-vectorize -DOPS_SSE42)
+check_optimization(avx -mavx -ftree-vectorize -DOPS_AVX)
+check_optimization(avx2 -mavx2 -ftree-vectorize -DOPS_AVX2)
+check_optimization(fma -mfma -ftree-vectorize -DOPS_FMA)
+check_optimization(hifi2ep -mhifi2ep "" -DOPS_HIFI2EP)
+check_optimization(hifi3 -mhifi3 "" -DOPS_HIFI3)
 
-set(sof_audio_modules volume src asrc eq-fir eq-iir dcblock crossover tdfb drc multiband_drc)
+set(sof_audio_modules volume mixer src asrc eq-fir eq-iir dcblock crossover tdfb drc multiband_drc)
 
 # sources for each module
 set(volume_sources volume/volume.c volume/volume_generic.c)
+set(mixer_sources mixer.c)
 set(src_sources src/src.c src/src_generic.c)
 set(asrc_sources asrc/asrc.c asrc/asrc_farrow.c asrc/asrc_farrow_generic.c)
 set(eq-fir_sources eq_fir/eq_fir.c eq_fir/eq_fir_generic.c)
-set(eq-iir_sources eq_iir/eq_iir.c eq_iir/iir.c)
+set(eq-iir_sources eq_iir/eq_iir.c)
 set(dcblock_sources dcblock/dcblock.c dcblock/dcblock_generic.c)
 set(crossover_sources crossover/crossover.c crossover/crossover_generic.c)
-set(tdfb_sources tdfb/tdfb.c tdfb/tdfb_generic.c)
+set(tdfb_sources tdfb/tdfb.c tdfb/tdfb_generic.c tdfb/tdfb_direction.c)
 set(drc_sources drc/drc.c drc/drc_generic.c drc/drc_math_generic.c)
 set(multiband_drc_sources multiband_drc/multiband_drc.c multiband_drc/multiband_drc_generic.c crossover/crossover.c crossover/crossover_generic.c drc/drc.c drc/drc_generic.c drc/drc_math_generic.c)
 

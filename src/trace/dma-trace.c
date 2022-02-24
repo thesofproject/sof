@@ -54,10 +54,14 @@ static enum task_state trace_work(void *data)
 	struct dma_trace_data *d = data;
 	struct dma_trace_buf *buffer = &d->dmatb;
 	struct dma_sg_config *config = &d->config;
-	unsigned long flags;
+	k_spinlock_key_t key;
 	uint32_t avail = buffer->avail;
 	int32_t size;
 	uint32_t overflow;
+
+	/* The host DMA channel is not available */
+	if (!d->dc.chan)
+		return SOF_TASK_STATE_RESCHEDULE;
 
 	/* make sure we don't write more than buffer */
 	if (avail > DMA_TRACE_LOCAL_SIZE) {
@@ -83,10 +87,10 @@ static enum task_state trace_work(void *data)
 	d->copy_in_progress = 1;
 
 	/* copy this section to host */
-	size = dma_copy_to_host_nowait(&d->dc, config, d->posn.host_offset,
-				       buffer->r_ptr, size);
+	size = dma_copy_to_host(&d->dc, config, d->posn.host_offset,
+				buffer->r_ptr, size);
 	if (size < 0) {
-		tr_err(&dt_tr, "trace_work(): dma_copy_to_host_nowait() failed");
+		tr_err(&dt_tr, "trace_work(): dma_copy_to_host() failed");
 		goto out;
 	}
 
@@ -103,7 +107,7 @@ static enum task_state trace_work(void *data)
 	ipc_msg_send(d->msg, &d->posn, false);
 
 out:
-	spin_lock_irq(&d->lock, flags);
+	key = k_spin_lock(&d->lock);
 
 	/* disregard any old messages and don't resend them if we overflow */
 	if (size > 0) {
@@ -116,7 +120,7 @@ out:
 	/* DMA trace copying is done, allow reschedule */
 	d->copy_in_progress = 0;
 
-	spin_unlock_irq(&d->lock, flags);
+	k_spin_unlock(&d->lock, key);
 
 	/* reschedule the trace copying work */
 	return SOF_TASK_STATE_RESCHEDULE;
@@ -142,7 +146,7 @@ int dma_trace_init_early(struct sof *sof)
 	sof->dmat = rzalloc(SOF_MEM_ZONE_SYS_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*sof->dmat));
 
 	dma_sg_init(&sof->dmat->config.elem_array);
-	spinlock_init(&sof->dmat->lock);
+	k_spinlock_init(&sof->dmat->lock);
 
 	ipc_build_trace_posn(&sof->dmat->posn);
 	sof->dmat->msg = ipc_msg_init(sof->dmat->posn.rhdr.hdr.cmd,
@@ -218,17 +222,59 @@ int dma_trace_host_buffer(struct dma_trace_data *d,
 }
 #endif
 
-static int dma_trace_buffer_init(struct dma_trace_data *d)
+static void dma_trace_buffer_free(struct dma_trace_data *d)
 {
 	struct dma_trace_buf *buffer = &d->dmatb;
-	void *buf;
-	unsigned int flags;
+	k_spinlock_key_t key;
 
-	/* allocate new buffer */
-	buf = rballoc(0, SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_DMA,
-		      DMA_TRACE_LOCAL_SIZE);
+	key = k_spin_lock(&d->lock);
+
+	rfree(buffer->addr);
+	memset(buffer, 0, sizeof(*buffer));
+
+	k_spin_unlock(&d->lock, key);
+}
+
+static int dma_trace_buffer_init(struct dma_trace_data *d)
+{
+#if CONFIG_DMA_GW
+	struct dma_sg_config *config = &d->gw_config;
+	uint32_t elem_size, elem_addr, elem_num;
+	int ret;
+#endif
+	struct dma_trace_buf *buffer = &d->dmatb;
+	void *buf;
+	k_spinlock_key_t key;
+	uint32_t addr_align;
+	int err;
+
+	/*
+	 * Keep the existing dtrace buffer to avoid memory leak, unlikely to
+	 * happen if host correctly using the dma_trace_disable().
+	 *
+	 * The buffer can not be freed up here as it is likely in use.
+	 * The (re-)initialization will happen in dma_trace_start() when it is
+	 * safe to do (the DMA is stopped)
+	 */
+	if (dma_trace_initialized(d))
+		return 0;
+
+	if (!d || !d->dc.dmac) {
+		mtrace_printf(LOG_LEVEL_ERROR,
+			      "dma_trace_buffer_init() failed, no DMAC! d=%p", d);
+		return -ENODEV;
+	}
+
+	err = dma_get_attribute(d->dc.dmac, DMA_ATTR_BUFFER_ADDRESS_ALIGNMENT,
+				&addr_align);
+	if (err < 0)
+		return err;
+
+	/* For DMA to work properly the buffer must be correctly aligned */
+	buf = rballoc_align(0, SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_DMA,
+			    DMA_TRACE_LOCAL_SIZE, addr_align);
 	if (!buf) {
-		tr_err(&dt_tr, "dma_trace_buffer_init(): alloc failed");
+		mtrace_printf(LOG_LEVEL_ERROR, "dma_trace_buffer_init(): alloc failed");
 		return -ENOMEM;
 	}
 
@@ -236,7 +282,7 @@ static int dma_trace_buffer_init(struct dma_trace_data *d)
 	dcache_writeback_region(buf, DMA_TRACE_LOCAL_SIZE);
 
 	/* initialise the DMA buffer, whole sequence in section */
-	spin_lock_irq(&d->lock, flags);
+	key = k_spin_lock(&d->lock);
 
 	buffer->addr  = buf;
 	buffer->size = DMA_TRACE_LOCAL_SIZE;
@@ -245,30 +291,64 @@ static int dma_trace_buffer_init(struct dma_trace_data *d)
 	buffer->end_addr = (char *)buffer->addr + buffer->size;
 	buffer->avail = 0;
 
-	spin_unlock_irq(&d->lock, flags);
+	k_spin_unlock(&d->lock, key);
+
+#if CONFIG_DMA_GW
+	/* size of every trace record */
+	elem_size = sizeof(uint64_t) * 2;
+
+	/* Initialize address of local elem */
+	elem_addr = (uint32_t)buffer->addr;
+
+	/* the number of elem list */
+	elem_num = DMA_TRACE_LOCAL_SIZE / elem_size;
+
+	config->direction = DMA_DIR_LMEM_TO_HMEM;
+	config->src_width = sizeof(uint32_t);
+	config->dest_width = sizeof(uint32_t);
+	config->cyclic = 0;
+
+	ret = dma_sg_alloc(&config->elem_array, SOF_MEM_ZONE_SYS,
+			   config->direction, elem_num, elem_size,
+			   elem_addr, 0);
+	if (ret < 0) {
+		dma_trace_buffer_free(d);
+		return ret;
+	}
+#endif
+
+#ifdef __ZEPHYR__
+#define ZEPHYR_VER_OPT " zephyr:" META_QUOTE(BUILD_VERSION)
+#else
+#define ZEPHYR_VER_OPT
+#endif
+
+	/* META_QUOTE(SOF_SRC_HASH) is part of the format string so it
+	 * goes to the .ldc file and does not go to the firmware
+	 * binary. It will be different from SOF_SRC_HASH in case of
+	 * mismatch.
+	 */
+#define SOF_BANNER_COMMON  \
+	"FW ABI 0x%x DBG ABI 0x%x tags SOF:" SOF_GIT_TAG  ZEPHYR_VER_OPT  \
+	" src hash 0x%08x (ldc hash " META_QUOTE(SOF_SRC_HASH) ")"
+
+	/* It should be the very first sent log for easy identification. */
+	mtrace_printf(LOG_LEVEL_INFO,
+		      "SHM: " SOF_BANNER_COMMON,
+		      SOF_ABI_VERSION, SOF_ABI_DBG_VERSION, SOF_SRC_HASH);
+
+	/* Use a different, DMA: prefix to ease identification of log files */
+	tr_info(&dt_tr,
+		"DMA: " SOF_BANNER_COMMON,
+		SOF_ABI_VERSION, SOF_ABI_DBG_VERSION, SOF_SRC_HASH);
 
 	return 0;
-}
-
-static void dma_trace_buffer_free(struct dma_trace_data *d)
-{
-	struct dma_trace_buf *buffer = &d->dmatb;
-	unsigned int flags;
-
-	spin_lock_irq(&d->lock, flags);
-
-	rfree(buffer->addr);
-	memset(buffer, 0, sizeof(*buffer));
-
-	spin_unlock_irq(&d->lock, flags);
 }
 
 #if CONFIG_DMA_GW
 
 static int dma_trace_start(struct dma_trace_data *d)
 {
-	struct dma_sg_config config;
-	uint32_t elem_size, elem_addr, elem_num;
 	int err = 0;
 
 	/* DMA Controller initialization is platform-specific */
@@ -284,6 +364,7 @@ static int dma_trace_start(struct dma_trace_data *d)
 			      "dma_trace_start(): DMA reconfiguration (active stream_tag: %u)",
 			      d->active_stream_tag);
 
+		schedule_task_cancel(&d->dmat_work);
 		err = dma_stop(d->dc.chan);
 		if (err < 0) {
 			mtrace_printf(LOG_LEVEL_ERROR,
@@ -305,42 +386,22 @@ static int dma_trace_start(struct dma_trace_data *d)
 	if (err < 0)
 		return err;
 
+	/* Reset host buffer information as host is re-configuring dtrace */
+	d->posn.host_offset = 0;
+
 	d->active_stream_tag = d->stream_tag;
 
-	/* size of every trace record */
-	elem_size = sizeof(uint64_t) * 2;
-
-	/* Initialize address of local elem */
-	elem_addr = (uint32_t)d->dmatb.addr;
-
-	/* the number of elem list */
-	elem_num = DMA_TRACE_LOCAL_SIZE / elem_size;
-
-	config.direction = DMA_DIR_LMEM_TO_HMEM;
-	config.src_width = sizeof(uint32_t);
-	config.dest_width = sizeof(uint32_t);
-	config.cyclic = 0;
-
-	err = dma_sg_alloc(&config.elem_array, SOF_MEM_ZONE_SYS,
-			   config.direction,
-			   elem_num, elem_size, elem_addr, 0);
-	if (err < 0)
-		goto err_alloc;
-
-	err = dma_set_config(d->dc.chan, &config);
+	err = dma_set_config(d->dc.chan, &d->gw_config);
 	if (err < 0) {
 		mtrace_printf(LOG_LEVEL_ERROR, "dma_set_config() failed: %d", err);
-		goto err_config;
+		goto error;
 	}
 
 	err = dma_start(d->dc.chan);
 	if (err == 0)
 		return 0;
 
-err_config:
-	dma_sg_free(&config.elem_array);
-
-err_alloc:
+error:
 	dma_channel_put(d->dc.chan);
 	d->dc.chan = NULL;
 
@@ -351,17 +412,6 @@ static int dma_trace_get_avail_data(struct dma_trace_data *d,
 				    struct dma_trace_buf *buffer,
 				    int avail)
 {
-	/* there isn't DMA completion callback in GW DMA copying.
-	 * so we send previous position always before the next copying
-	 * for guaranteeing previous DMA copying is finished.
-	 * This function will be called once every 500ms at least even
-	 * if no new trace is filled.
-	 */
-	if (d->old_host_offset != d->posn.host_offset) {
-		ipc_msg_send(d->msg, &d->posn, false);
-		d->old_host_offset = d->posn.host_offset;
-	}
-
 	/* align data to HD-DMA burst size */
 	return ALIGN_DOWN(avail, d->dma_copy_align);
 }
@@ -407,38 +457,10 @@ int dma_trace_enable(struct dma_trace_data *d)
 {
 	int err;
 
-	/* initialize dma trace buffer */
+	/* Allocate and initialize the dma trace buffer if needed */
 	err = dma_trace_buffer_init(d);
-
-	if (err < 0) {
-		mtrace_printf(LOG_LEVEL_ERROR, "dma_trace_enable: buffer_init failed");
-		goto out;
-	}
-
-#ifdef __ZEPHYR__
-#define ZEPHYR_VER_OPT " zephyr:" META_QUOTE(BUILD_VERSION)
-#else
-#define ZEPHYR_VER_OPT
-#endif
-
-	/* META_QUOTE(SOF_SRC_HASH) is part of the format string so it
-	 * goes to the .ldc file and does not go to the firmware
-	 * binary. It will be different from SOF_SRC_HASH in case of
-	 * mismatch.
-	 */
-#define SOF_BANNER_COMMON  \
-	"FW ABI 0x%x DBG ABI 0x%x tags SOF:" SOF_GIT_TAG  ZEPHYR_VER_OPT  \
-	" src hash 0x%08x (ldc hash " META_QUOTE(SOF_SRC_HASH) ")"
-
-	/* It should be the very first sent log for easy identification. */
-	mtrace_printf(LOG_LEVEL_INFO,
-		      "SHM: " SOF_BANNER_COMMON,
-		      SOF_ABI_VERSION, SOF_ABI_DBG_VERSION, SOF_SRC_HASH);
-
-	/* Use a different, DMA: prefix to ease identification of log files */
-	tr_info(&dt_tr,
-		"DMA: " SOF_BANNER_COMMON,
-		SOF_ABI_VERSION, SOF_ABI_DBG_VERSION, SOF_SRC_HASH);
+	if (err < 0)
+		return err;
 
 #if CONFIG_DMA_GW
 	/*
@@ -469,6 +491,8 @@ out:
 
 void dma_trace_disable(struct dma_trace_data *d)
 {
+	struct dma_trace_buf *buffer = &d->dmatb;
+
 	/* cancel trace work */
 	schedule_task_cancel(&d->dmat_work);
 
@@ -478,8 +502,21 @@ void dma_trace_disable(struct dma_trace_data *d)
 		d->dc.chan = NULL;
 	}
 
-	/* free trace buffer */
-	dma_trace_buffer_free(d);
+#if (CONFIG_HOST_PTABLE)
+	/* Free up the host SG if it is set */
+	if (d->host_size) {
+		dma_sg_free(&d->config.elem_array);
+		d->host_size = 0;
+	}
+#endif
+
+	/*
+	 * Reset the local read and write pointers to preserve the captured logs
+	 * while the dtrace is disabed
+	 */
+	buffer->w_ptr = buffer->addr;
+	buffer->r_ptr = buffer->addr;
+	buffer->avail = 0;
 }
 
 /** Sends all pending DMA messages to mailbox (for emergencies) */
@@ -663,7 +700,7 @@ void dtrace_event(const char *e, uint32_t length)
 {
 	struct dma_trace_data *trace_data = dma_trace_data_get();
 	struct dma_trace_buf *buffer = NULL;
-	unsigned long flags;
+	k_spinlock_key_t key;
 
 	if (!dma_trace_initialized(trace_data) ||
 	    length > DMA_TRACE_LOCAL_SIZE / 8 || length == 0) {
@@ -672,7 +709,7 @@ void dtrace_event(const char *e, uint32_t length)
 
 	buffer = &trace_data->dmatb;
 
-	spin_lock_irq(&trace_data->lock, flags);
+	key = k_spin_lock(&trace_data->lock);
 	dtrace_add_event(e, length);
 
 	/* if DMA trace copying is working or secondary core
@@ -680,11 +717,11 @@ void dtrace_event(const char *e, uint32_t length)
 	 */
 	if (trace_data->copy_in_progress ||
 	    cpu_get_id() != PLATFORM_PRIMARY_CORE_ID) {
-		spin_unlock_irq(&trace_data->lock, flags);
+		k_spin_unlock(&trace_data->lock, key);
 		return;
 	}
 
-	spin_unlock_irq(&trace_data->lock, flags);
+	k_spin_unlock(&trace_data->lock, key);
 
 	/* schedule copy now if buffer > 50% full */
 	if (trace_data->enabled &&

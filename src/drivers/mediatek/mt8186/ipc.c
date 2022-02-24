@@ -89,7 +89,7 @@ void ipc_platform_complete_cmd(struct ipc *ipc)
 		wait_for_interrupt(0);
 }
 
-int ipc_platform_send_msg(struct ipc_msg *msg)
+int ipc_platform_send_msg(const struct ipc_msg *msg)
 {
 	struct ipc *ipc = ipc_get();
 
@@ -98,7 +98,7 @@ int ipc_platform_send_msg(struct ipc_msg *msg)
 
 	/* now send the message */
 	mailbox_dspbox_write(0, msg->tx_data, msg->tx_size);
-	list_item_del(&msg->list);
+
 	ipc->is_notification_pending = true;
 
 	/* now interrupt host to tell it we have sent a message */

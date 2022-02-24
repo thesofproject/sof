@@ -7,15 +7,23 @@
 
 #ifndef __ZEPHYR__
 
+#ifndef __packed
 #define __packed __attribute__((packed))
+#endif
 
+#ifndef __unused
 #define __unused __attribute__((unused))
+#endif
 
 #endif
 
+#ifndef __aligned
 #define __aligned(x) __attribute__((__aligned__(x)))
+#endif
 
+#ifndef __section
 #define __section(x) __attribute__((section(x)))
+#endif
 
 #if defined(__clang__) || !defined(__XCC__)
 

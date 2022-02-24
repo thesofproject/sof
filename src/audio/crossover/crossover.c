@@ -11,13 +11,13 @@
 #include <sof/audio/ipc-config.h>
 #include <sof/audio/crossover/crossover.h>
 #include <sof/audio/crossover/crossover_algorithm.h>
-#include <sof/audio/eq_iir/iir.h>
 #include <sof/common.h>
 #include <sof/debug/panic.h>
 #include <sof/ipc/msg.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/uuid.h>
+#include <sof/math/iir_df2t.h>
 #include <sof/list.h>
 #include <sof/platform.h>
 #include <sof/string.h>
@@ -268,7 +268,7 @@ static int crossover_init_coef(struct comp_data *cd, int nch)
 		return -EINVAL;
 	}
 
-	comp_cl_info(&comp_crossover, "crossover_init_coef(), initiliazing %i-way crossover",
+	comp_cl_info(&comp_crossover, "crossover_init_coef(), initializing %i-way crossover",
 		     config->num_sinks);
 
 	/* Collect the coef array and assign it to every channel */
@@ -409,7 +409,7 @@ static int crossover_validate_config(struct comp_dev *dev,
 		return -EINVAL;
 	}
 
-	/* Align the crossover's sinks, to their respective configuation in
+	/* Align the crossover's sinks, to their respective configuration in
 	 * the config.
 	 */
 	list_for_item(sink_list, &dev->bsink_list) {
@@ -491,7 +491,7 @@ static int crossover_cmd_set_data(struct comp_dev *dev,
 		comp_info(dev, "crossover_cmd_set_data(), SOF_CTRL_CMD_BINARY");
 
 		/* Find size from header */
-		request = (struct sof_crossover_config *)ASSUME_ALIGNED(cdata->data->data, 4);
+		request = (struct sof_crossover_config *)ASSUME_ALIGNED(&cdata->data->data, 4);
 		bs = request->size;
 
 		/* Check that there is no work-in-progress previous request */
@@ -671,11 +671,11 @@ static int crossover_copy(struct comp_dev *dev)
 	else
 		num_sinks = num_assigned_sinks;
 
-	source = buffer_acquire_irq(source);
+	source = buffer_acquire(source);
 
 	/* Check if source is active */
 	if (source->source->state != dev->state) {
-		source = buffer_release_irq(source);
+		source = buffer_release(source);
 		return -EINVAL;
 	}
 
@@ -683,14 +683,14 @@ static int crossover_copy(struct comp_dev *dev)
 	for (i = 0; i < num_sinks; i++) {
 		if (!sinks[i])
 			continue;
-		sinks[i] = buffer_acquire_irq(sinks[i]);
+		sinks[i] = buffer_acquire(sinks[i]);
 		avail = audio_stream_avail_frames(&source->stream,
 						  &sinks[i]->stream);
 		frames = MIN(frames, avail);
-		buffer_release_irq(sinks[i]);
+		buffer_release(sinks[i]);
 	}
 
-	source = buffer_release_irq(source);
+	source = buffer_release(source);
 
 	source_bytes = frames * audio_stream_frame_bytes(&source->stream);
 

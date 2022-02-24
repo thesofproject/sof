@@ -13,7 +13,7 @@
 #include <cmocka.h>
 #include <string.h>
 
-#include <sof/math/base2log.h>
+#include <sof/math/log.h>
 #include <sof/audio/format.h>
 #include <sof/string.h>
 #include <sof/common.h>

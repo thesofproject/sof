@@ -96,28 +96,28 @@ static int edma_encode_tcd_attr(int src_width, int dest_width)
 static struct dma_chan_data *edma_channel_get(struct dma *dma,
 					      unsigned int req_chan)
 {
-	uint32_t flags;
+	k_spinlock_key_t key;
 	struct dma_chan_data *channel;
 
 	tr_dbg(&edma_tr, "EDMA: channel_get(%d)", req_chan);
 
-	spin_lock_irq(&dma->lock, flags);
+	key = k_spin_lock(&dma->lock);
 	if (req_chan >= dma->plat_data.channels) {
-		spin_unlock_irq(&dma->lock, flags);
+		k_spin_unlock(&dma->lock, key);
 		tr_err(&edma_tr, "EDMA: Channel %d out of range", req_chan);
 		return NULL;
 	}
 
 	channel = &dma->chan[req_chan];
 	if (channel->status != COMP_STATE_INIT) {
-		spin_unlock_irq(&dma->lock, flags);
+		k_spin_unlock(&dma->lock, key);
 		tr_err(&edma_tr, "EDMA: Cannot reuse channel %d", req_chan);
 		return NULL;
 	}
 
 	atomic_add(&dma->num_channels_busy, 1);
 	channel->status = COMP_STATE_READY;
-	spin_unlock_irq(&dma->lock, flags);
+	k_spin_unlock(&dma->lock, key);
 
 	return channel;
 }
@@ -125,7 +125,7 @@ static struct dma_chan_data *edma_channel_get(struct dma *dma,
 /* channel must not be running when this is called */
 static void edma_channel_put(struct dma_chan_data *channel)
 {
-	uint32_t flags;
+	k_spinlock_key_t key;
 
 	/* Assuming channel is stopped, we thus don't need hardware to
 	 * do anything right now
@@ -134,10 +134,10 @@ static void edma_channel_put(struct dma_chan_data *channel)
 
 	notifier_unregister_all(NULL, channel);
 
-	spin_lock_irq(&channel->dma->lock, flags);
+	key = k_spin_lock(&channel->dma->lock);
 	channel->status = COMP_STATE_INIT;
 	atomic_sub(&channel->dma->num_channels_busy, 1);
-	spin_unlock_irq(&channel->dma->lock, flags);
+	k_spin_unlock(&channel->dma->lock, key);
 }
 
 static int edma_start(struct dma_chan_data *channel)
@@ -286,6 +286,10 @@ static int edma_setup_tcd(struct dma_chan_data *channel, int16_t soff,
 			  int dest_width, uint32_t burst_elems)
 {
 	int rc;
+#ifdef CONFIG_IMX8ULP
+	struct dai_data *dd = channel->dev_data;
+	int direction, handshake, dmamux_cfg;
+#endif
 	uint32_t sbase, dbase, total_size, elem_count, elem_size, size;
 
 	assert(!sg);
@@ -336,10 +340,16 @@ static int edma_setup_tcd(struct dma_chan_data *channel, int16_t soff,
 	/* Do not write EDMA_CH_MUX register when it has value,
 	 * otherwise the register will be cleared.
 	 */
+	if (channel->direction == DMA_DIR_MEM_TO_DEV)
+		direction = DAI_DIR_PLAYBACK;
+	else
+		direction = DAI_DIR_CAPTURE;
+
+	handshake = dai_get_handshake(dd->dai, direction, 0);
+	dmamux_cfg = EDMA_HS_GET_DMAMUX_CFG(handshake);
+
 	if (!dma_chan_reg_read(channel, EDMA_CH_MUX))
-		(channel->direction == DMA_DIR_MEM_TO_DEV) ?
-			dma_chan_reg_write(channel, EDMA_CH_MUX, IMX8ULP_DMAMUX2_SAI5_TX) :
-			dma_chan_reg_write(channel, EDMA_CH_MUX, IMX8ULP_DMAMUX2_SAI5_RX);
+		dma_chan_reg_write(channel, EDMA_CH_MUX, dmamux_cfg);
 #endif
 
 	chan_addr_convert(channel, &sbase, &dbase);

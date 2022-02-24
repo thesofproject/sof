@@ -13,41 +13,8 @@ copied from SOF to Zephyr).
 Building SOF on Zephyr
 ======================
 
-Zephyr support is still WiP and moving fast so it's best to use the latest
-code. Some familiarity of SOF and Zephyr is also needed here.
-
-SOF
----
-
-repo: git@github.com:thesofproject/sof.git
-
-branch: lrg/topic/zephyr-app on the SOF repo
-
-
-Zephyr
-------
-
-repo: git@github.com:thesofproject/zephyr.git
-
-branch: intel_adsp_soc_family
-
-Building
-========
-
-SOF on Zephyr only using the UP^2 platform atm, but it should be possible to
-add others platforms as the features are validated on UP^2.
-
-Please checkout the SOF repo to zephyrproject/modules/audio/sof
-
-Then from zephyr directory.
-
-% source zephyr.sh
-
-This will setup the Zephyr environment, code can then be built
-
-% west build -p always  -b up_squared_adsp samples/basic/minimal
-% west sign -t rimage -- -k ../../sof/sof/rimage/keys/otc_private_key.pem
-
+Section promoted to
+https://thesofproject.github.io/latest/getting_started/build-guide/build-with-zephyr.html
 
 Testing on Qemu
 ===============

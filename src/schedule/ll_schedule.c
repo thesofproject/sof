@@ -92,8 +92,9 @@ static bool schedule_ll_is_pending(struct ll_schedule_data *sch)
 	struct task *task;
 	uint32_t pending_count = 0;
 	struct comp_dev *sched_comp;
+	k_spinlock_key_t key;
 
-	spin_lock(&domain->lock);
+	key = k_spin_lock(&domain->lock);
 
 	do {
 		sched_comp = NULL;
@@ -117,7 +118,7 @@ static bool schedule_ll_is_pending(struct ll_schedule_data *sch)
 		}
 	} while (sched_comp);
 
-	spin_unlock(&domain->lock);
+	k_spin_unlock(&domain->lock, key);
 
 	return pending_count > 0;
 }
@@ -154,6 +155,7 @@ static void schedule_ll_tasks_execute(struct ll_schedule_data *sch)
 	struct ll_schedule_domain *domain = sch->domain;
 	struct list_item *wlist;
 	struct task *task;
+	k_spinlock_key_t key;
 
 	/* check each task in the list for pending */
 	wlist = sch->tasks.next;
@@ -183,7 +185,7 @@ static void schedule_ll_tasks_execute(struct ll_schedule_data *sch)
 
 		wlist = task->list.next;
 
-		spin_lock(&domain->lock);
+		key = k_spin_lock(&domain->lock);
 
 		/* do we need to reschedule this task */
 		if (task->state == SOF_TASK_STATE_COMPLETED) {
@@ -196,7 +198,7 @@ static void schedule_ll_tasks_execute(struct ll_schedule_data *sch)
 			       (uint32_t)domain->next_tick);
 		}
 
-		spin_unlock(&domain->lock);
+		k_spin_unlock(&domain->lock, key);
 	}
 }
 
@@ -239,6 +241,7 @@ static void schedule_ll_tasks_run(void *data)
 {
 	struct ll_schedule_data *sch = data;
 	struct ll_schedule_domain *domain = sch->domain;
+	k_spinlock_key_t key;
 	uint32_t flags;
 	uint32_t core = cpu_get_id();
 
@@ -248,7 +251,7 @@ static void schedule_ll_tasks_run(void *data)
 	       (unsigned int)domain->next_tick);
 
 	irq_local_disable(flags);
-	spin_lock(&domain->lock);
+	key = k_spin_lock(&domain->lock);
 
 	/* disable domain on current core until tasks are finished */
 	domain_disable(domain, core);
@@ -258,7 +261,7 @@ static void schedule_ll_tasks_run(void *data)
 		domain_clear(domain);
 	}
 
-	spin_unlock(&domain->lock);
+	k_spin_unlock(&domain->lock, key);
 
 	perf_cnt_init(&sch->pcd);
 
@@ -271,7 +274,7 @@ static void schedule_ll_tasks_run(void *data)
 
 	perf_cnt_stamp(&sch->pcd, perf_ll_sched_trace, 0 /* ignored */);
 
-	spin_lock(&domain->lock);
+	key = k_spin_lock(&domain->lock);
 
 	/* reset the new_target_tick for the first core */
 	if (domain->new_target_tick < platform_timer_get_atomic(timer_get()))
@@ -291,7 +294,7 @@ static void schedule_ll_tasks_run(void *data)
 	if (atomic_read(&sch->num_tasks))
 		domain_enable(domain, core);
 
-	spin_unlock(&domain->lock);
+	k_spin_unlock(&domain->lock, key);
 
 	irq_local_enable(flags);
 }
@@ -306,9 +309,10 @@ static int schedule_ll_domain_set(struct ll_schedule_data *sch,
 	uint64_t task_start_ticks;
 	uint64_t task_start;
 	uint64_t offset;
+	k_spinlock_key_t key;
 	int ret;
 
-	spin_lock(&domain->lock);
+	key = k_spin_lock(&domain->lock);
 
 	ret = domain_register(domain, task, &schedule_ll_tasks_run, sch);
 	if (ret < 0) {
@@ -364,7 +368,7 @@ static int schedule_ll_domain_set(struct ll_schedule_data *sch,
 		atomic_read(&domain->total_num_tasks));
 
 done:
-	spin_unlock(&domain->lock);
+	k_spin_unlock(&domain->lock, key);
 
 	return ret;
 }
@@ -373,8 +377,9 @@ static void schedule_ll_domain_clear(struct ll_schedule_data *sch,
 				     struct task *task)
 {
 	struct ll_schedule_domain *domain = sch->domain;
+	k_spinlock_key_t key;
 
-	spin_lock(&domain->lock);
+	key = k_spin_lock(&domain->lock);
 
 	/*
 	 * Decrement the number of tasks on the core.
@@ -390,7 +395,7 @@ static void schedule_ll_domain_clear(struct ll_schedule_data *sch,
 		atomic_read(&sch->num_tasks),
 		atomic_read(&domain->total_num_tasks));
 
-	spin_unlock(&domain->lock);
+	k_spin_unlock(&domain->lock, key);
 }
 
 static void schedule_ll_task_insert(struct task *task, struct list_item *tasks)

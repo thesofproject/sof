@@ -534,7 +534,7 @@ static int hda_dma_host_copy(struct dma_chan_data *channel, int bytes,
 static struct dma_chan_data *hda_dma_channel_get(struct dma *dma,
 						 unsigned int channel)
 {
-	uint32_t flags;
+	k_spinlock_key_t key;
 
 	if (channel >= dma->plat_data.channels) {
 		tr_err(&hdma_tr, "hda-dmac: %d invalid channel %d",
@@ -542,7 +542,7 @@ static struct dma_chan_data *hda_dma_channel_get(struct dma *dma,
 		return NULL;
 	}
 
-	spin_lock_irq(&dma->lock, flags);
+	key = k_spin_lock(&dma->lock);
 
 	tr_dbg(&hdma_tr, "hda-dmac: %d channel %d -> get", dma->plat_data.id, channel);
 
@@ -553,12 +553,12 @@ static struct dma_chan_data *hda_dma_channel_get(struct dma *dma,
 		atomic_add(&dma->num_channels_busy, 1);
 
 		/* return channel */
-		spin_unlock_irq(&dma->lock, flags);
+		k_spin_unlock(&dma->lock, key);
 		return &dma->chan[channel];
 	}
 
 	/* DMAC has no free channels */
-	spin_unlock_irq(&dma->lock, flags);
+	k_spin_unlock(&dma->lock, key);
 	tr_err(&hdma_tr, "hda-dmac: %d no free channel %d", dma->plat_data.id,
 	       channel);
 	return NULL;
@@ -583,11 +583,11 @@ static void hda_dma_channel_put_unlocked(struct dma_chan_data *channel)
 static void hda_dma_channel_put(struct dma_chan_data *channel)
 {
 	struct dma *dma = channel->dma;
-	uint32_t flags;
+	k_spinlock_key_t key;
 
-	spin_lock_irq(&dma->lock, flags);
+	key = k_spin_lock(&dma->lock);
 	hda_dma_channel_put_unlocked(channel);
-	spin_unlock_irq(&dma->lock, flags);
+	k_spin_unlock(&dma->lock, key);
 
 	atomic_sub(&dma->num_channels_busy, 1);
 }
@@ -818,9 +818,17 @@ static int hda_dma_set_config(struct dma_chan_data *channel,
 
 	/* buffer size must be multiple of hda dma burst size */
 	if (buffer_bytes % HDA_DMA_BUFFER_ALIGNMENT) {
-		tr_err(&hdma_tr, "hda-dmac: %d chan %d - buffer not DMA aligned 0x%x",
+		tr_err(&hdma_tr, "hda-dmac: %d chan %d - buffer size not DMA aligned 0x%x",
 		       dma->plat_data.id,
 		       channel->index, buffer_bytes);
+		ret = -EINVAL;
+		goto out;
+	}
+	/* buffer base address must be correctly aligned */
+	if (buffer_addr % HDA_DMA_BUFFER_ADDRESS_ALIGNMENT) {
+		tr_err(&hdma_tr, "hda-dmac: %d chan %d - buffer address not DMA aligned 0x%x",
+		       dma->plat_data.id,
+		       channel->index, buffer_addr);
 		ret = -EINVAL;
 		goto out;
 	}

@@ -228,6 +228,25 @@ static inline void *audio_stream_wrap(const struct audio_stream *buffer,
 		ptr = (char *)buffer->addr +
 			((char *)ptr - (char *)buffer->end_addr);
 
+	assert((intptr_t)ptr <= (intptr_t)buffer->end_addr);
+
+	return ptr;
+}
+
+/**
+ * Verifies the pointer and performs rollover when reached the end of
+ * the buffer.
+ * @param buffer Buffer accessed by the pointer.
+ * @param ptr Pointer
+ * @return Pointer, adjusted if necessary.
+ */
+static inline void *audio_stream_rewind_wrap(const struct audio_stream *buffer, void *ptr)
+{
+	if (ptr < buffer->addr)
+		ptr = (char *)buffer->end_addr - ((char *)buffer->addr - (char *)ptr);
+
+	assert((intptr_t)ptr >= (intptr_t)buffer->addr);
+
 	return ptr;
 }
 
@@ -525,8 +544,25 @@ static inline int
 audio_stream_bytes_without_wrap(const struct audio_stream *source,
 				const void *ptr)
 {
+	assert((intptr_t)source->end_addr >= (intptr_t)ptr);
 	int to_end = (intptr_t)source->end_addr - (intptr_t)ptr;
 	return to_end;
+}
+
+/**
+ * @brief Calculates numbers of bytes to buffer wrap when reading stream
+ *	  backwards from current sample pointed by ptr towards begin.
+ * @param source Stream to get information from.
+ * @param ptr Read or write pointer from source
+ * @return Number of bytes to buffer wrap. For number of samples calculate
+ *	   need to add size of sample to returned bytes count.
+ */
+static inline int
+audio_stream_rewind_bytes_without_wrap(const struct audio_stream *source, const void *ptr)
+{
+	assert((intptr_t)ptr >= (intptr_t)source->addr);
+	int to_begin = (intptr_t)ptr - (intptr_t)source->addr;
+	return to_begin;
 }
 
 /**

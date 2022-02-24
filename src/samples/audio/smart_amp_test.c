@@ -92,7 +92,7 @@ static int smart_amp_set_config(struct comp_dev *dev,
 
 	/* Copy new config, find size from header */
 	cfg = (struct sof_smart_amp_config *)
-	       ASSUME_ALIGNED(cdata->data->data, sizeof(uint32_t));
+	       ASSUME_ALIGNED(&cdata->data->data, sizeof(uint32_t));
 	bs = cfg->size;
 
 	comp_dbg(dev, "smart_amp_set_config(), actual blob size = %u, expected blob size = %u",
@@ -420,23 +420,23 @@ static int smart_amp_copy(struct comp_dev *dev)
 
 	comp_dbg(dev, "smart_amp_copy()");
 
-	source_buf = buffer_release_irq(source_buf);
-	sink_buf = buffer_release_irq(sink_buf);
+	source_buf = buffer_release(source_buf);
+	sink_buf = buffer_release(sink_buf);
 
 	/* available bytes and samples calculation */
 	avail_passthrough_frames =
 		audio_stream_avail_frames(&sad->source_buf->stream,
 					  &sad->sink_buf->stream);
 
-	source_buf = buffer_release_irq(source_buf);
-	sink_buf = buffer_release_irq(sink_buf);
+	source_buf = buffer_release(source_buf);
+	sink_buf = buffer_release(sink_buf);
 
 	avail_frames = avail_passthrough_frames;
 
 	if (sad->feedback_buf) {
 		struct comp_buffer *buf = sad->feedback_buf;
 
-		buf = buffer_acquire_irq(buf);
+		buf = buffer_acquire(buf);
 		if (comp_get_state(dev, sad->feedback_buf->source) == dev->state) {
 			/* feedback */
 			avail_feedback_frames =
@@ -448,7 +448,7 @@ static int smart_amp_copy(struct comp_dev *dev)
 			feedback_bytes = avail_frames *
 				audio_stream_frame_bytes(&sad->feedback_buf->stream);
 
-			buffer_release_irq(buf);
+			buffer_release(buf);
 
 			comp_dbg(dev, "smart_amp_copy(): processing %d feedback frames (avail_passthrough_frames: %d)",
 				 avail_frames, avail_passthrough_frames);
@@ -461,20 +461,20 @@ static int smart_amp_copy(struct comp_dev *dev)
 
 			comp_update_buffer_consume(sad->feedback_buf, feedback_bytes);
 		} else {
-			buffer_release_irq(buf);
+			buffer_release(buf);
 		}
 	}
 
 	/* bytes calculation */
-	source_buf = buffer_acquire_irq(source_buf);
+	source_buf = buffer_acquire(source_buf);
 	source_bytes = avail_frames *
 		audio_stream_frame_bytes(&sad->source_buf->stream);
-	source_buf = buffer_release_irq(source_buf);
+	source_buf = buffer_release(source_buf);
 
-	sink_buf = buffer_acquire_irq(sink_buf);
+	sink_buf = buffer_acquire(sink_buf);
 	sink_bytes = avail_frames *
 		audio_stream_frame_bytes(&sad->sink_buf->stream);
-	sink_buf = buffer_release_irq(sink_buf);
+	sink_buf = buffer_release(sink_buf);
 
 	/* process data */
 	buffer_stream_invalidate(sad->source_buf, source_bytes);
@@ -518,12 +518,12 @@ static int smart_amp_prepare(struct comp_dev *dev)
 	list_for_item(blist, &dev->bsource_list) {
 		source_buffer = container_of(blist, struct comp_buffer,
 					     sink_list);
-		source_buffer = buffer_acquire_irq(source_buffer);
+		source_buffer = buffer_acquire(source_buffer);
 		if (source_buffer->source->ipc_config.type == SOF_COMP_DEMUX)
 			sad->feedback_buf = source_buffer;
 		else
 			sad->source_buf = source_buffer;
-		source_buffer = buffer_release_irq(source_buffer);
+		source_buffer = buffer_release(source_buffer);
 	}
 
 	sad->sink_buf = list_first_item(&dev->bsink_list, struct comp_buffer,
@@ -535,10 +535,10 @@ static int smart_amp_prepare(struct comp_dev *dev)
 	if (sad->feedback_buf) {
 		struct comp_buffer *buf = sad->feedback_buf;
 
-		buf = buffer_acquire_irq(buf);
+		buf = buffer_acquire(buf);
 		sad->feedback_buf->stream.channels = sad->config.feedback_channels;
 		sad->feedback_buf->stream.rate = sad->source_buf->stream.rate;
-		buf = buffer_release_irq(buf);
+		buf = buffer_release(buf);
 	}
 
 	sad->process = get_smart_amp_process(dev);

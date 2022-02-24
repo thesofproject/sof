@@ -13,16 +13,16 @@ DECLARE_SOF_RT_UUID("passthrough_codec", passthrough_uuid, 0x376b5e44, 0x9c82, 0
 		    0xbc, 0x83, 0x10, 0xea, 0x10, 0x1a, 0xf8, 0x8f);
 DECLARE_TR_CTX(passthrough_tr, SOF_UUID(passthrough_uuid), LOG_LEVEL_INFO);
 
-static int passthrough_codec_init(struct comp_dev *dev)
+static int passthrough_codec_init(struct processing_module *mod)
 {
-	comp_info(dev, "passthrough_codec_init() start");
+	comp_info(mod->dev, "passthrough_codec_init() start");
 	return 0;
 }
 
-static int passthrough_codec_prepare(struct comp_dev *dev)
+static int passthrough_codec_prepare(struct processing_module *mod)
 {
+	struct comp_dev *dev = mod->dev;
 	struct module_data *codec = comp_get_module_data(dev);
-	struct processing_module *mod = comp_get_drvdata(dev);
 
 	comp_info(dev, "passthrough_codec_prepare()");
 
@@ -75,24 +75,17 @@ static int passthrough_codec_process(struct comp_dev *dev)
 	return 0;
 }
 
-static int passthrough_codec_apply_config(struct comp_dev *dev)
+static int passthrough_codec_reset(struct processing_module *mod)
 {
-	comp_info(dev, "passthrough_codec_apply_config()");
+	comp_info(mod->dev, "passthrough_codec_reset()");
 
 	/* nothing to do */
 	return 0;
 }
 
-static int passthrough_codec_reset(struct comp_dev *dev)
+static int passthrough_codec_free(struct processing_module *mod)
 {
-	comp_info(dev, "passthrough_codec_reset()");
-
-	/* nothing to do */
-	return 0;
-}
-
-static int passthrough_codec_free(struct comp_dev *dev)
-{
+	struct comp_dev *dev = mod->dev;
 	struct module_data *codec = comp_get_module_data(dev);
 
 	comp_info(dev, "passthrough_codec_free()");
@@ -107,7 +100,6 @@ static struct module_interface passthrough_interface = {
 	.init  = passthrough_codec_init,
 	.prepare = passthrough_codec_prepare,
 	.process = passthrough_codec_process,
-	.apply_config = passthrough_codec_apply_config,
 	.reset = passthrough_codec_reset,
 	.free = passthrough_codec_free
 };

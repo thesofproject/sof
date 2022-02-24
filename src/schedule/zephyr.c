@@ -59,7 +59,7 @@ static void idc_handler(struct k_p4wq_work *work)
 	struct ipc *ipc = ipc_get();
 	struct idc_msg *msg = &zmsg->msg;
 	int payload = -1;
-	uint32_t flags;
+	k_spinlock_key_t key;
 
 	SOC_DCACHE_INVALIDATE(msg, sizeof(*msg));
 
@@ -81,10 +81,10 @@ static void idc_handler(struct k_p4wq_work *work)
 	case IDC_MSG_IPC:
 		idc_cmd(&idc->received_msg);
 		/* Signal the host */
-		spin_lock_irq(&ipc->lock, flags);
+		key = k_spin_lock(&ipc->lock);
 		ipc->task_mask &= ~IPC_TASK_SECONDARY_CORE;
 		ipc_complete_cmd(ipc);
-		spin_unlock_irq(&ipc->lock, flags);
+		k_spin_unlock(&ipc->lock, key);
 	}
 }
 

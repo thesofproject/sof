@@ -80,8 +80,11 @@ static inline void platform_dw_dma_llp_config(struct dma *dma,
 static inline void platform_dw_dma_llp_enable(struct dma *dma,
 					      struct dma_chan_data *chan)
 {
-	shim_write(DW_CHLLPC(dma, chan),
-		   shim_read(DW_CHLLPC(dma, chan)) | SHIM_GPDMA_CHLLPC_EN);
+	uint32_t val;
+
+	val = shim_read(DW_CHLLPC(dma, chan));
+	if (!(val & SHIM_GPDMA_CHLLPC_EN))
+		shim_write(DW_CHLLPC(dma, chan), val | SHIM_GPDMA_CHLLPC_EN);
 }
 
 static inline void platform_dw_dma_llp_disable(struct dma *dma,

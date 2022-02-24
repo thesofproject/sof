@@ -9,7 +9,6 @@
 #include <sof/audio/component.h>
 #include <sof/audio/buffer.h>
 #include <sof/audio/eq_iir/eq_iir.h>
-#include <sof/audio/eq_iir/iir.h>
 #include <sof/audio/format.h>
 #include <sof/audio/pipeline.h>
 #include <sof/audio/ipc-config.h>
@@ -298,15 +297,26 @@ static void eq_iir_s32_s16_pass(const struct comp_dev *dev,
 				struct audio_stream *sink,
 				uint32_t frames)
 {
-	int32_t *x;
-	int16_t *y;
+	int32_t *x = source->r_ptr;
+	int16_t *y = sink->w_ptr;
+	int nmax;
+	int n;
 	int i;
-	int n = frames * source->channels;
+	int remaining_samples = frames * source->channels;
 
-	for (i = 0; i < n; i++) {
-		x = audio_stream_read_frag_s32(source, i);
-		y = audio_stream_write_frag_s16(sink, i);
-		*y = sat_int16(Q_SHIFT_RND(*x, 31, 15));
+	while (remaining_samples) {
+		nmax = EQ_IIR_BYTES_TO_S32_SAMPLES(audio_stream_bytes_without_wrap(source, x));
+		n = MIN(remaining_samples, nmax);
+		nmax = EQ_IIR_BYTES_TO_S16_SAMPLES(audio_stream_bytes_without_wrap(sink, y));
+		n = MIN(n, nmax);
+		for (i = 0; i < n; i++) {
+			*y = sat_int16(Q_SHIFT_RND(*x, 31, 15));
+			x++;
+			y++;
+		}
+		remaining_samples -= n;
+		x = audio_stream_wrap(source, x);
+		y = audio_stream_wrap(sink, y);
 	}
 }
 #endif /* CONFIG_FORMAT_S16LE && CONFIG_FORMAT_S32LE */
@@ -317,15 +327,26 @@ static void eq_iir_s32_s24_pass(const struct comp_dev *dev,
 				struct audio_stream *sink,
 				uint32_t frames)
 {
-	int32_t *x;
-	int32_t *y;
+	int32_t *x = source->r_ptr;
+	int32_t *y = sink->w_ptr;
+	int nmax;
+	int n;
 	int i;
-	int n = frames * source->channels;
+	int remaining_samples = frames * source->channels;
 
-	for (i = 0; i < n; i++) {
-		x = audio_stream_read_frag_s32(source, i);
-		y = audio_stream_write_frag_s16(sink, i);
-		*y = sat_int24(Q_SHIFT_RND(*x, 31, 23));
+	while (remaining_samples) {
+		nmax = EQ_IIR_BYTES_TO_S32_SAMPLES(audio_stream_bytes_without_wrap(source, x));
+		n = MIN(remaining_samples, nmax);
+		nmax = EQ_IIR_BYTES_TO_S32_SAMPLES(audio_stream_bytes_without_wrap(sink, y));
+		n = MIN(n, nmax);
+		for (i = 0; i < n; i++) {
+			*y = sat_int24(Q_SHIFT_RND(*x, 31, 23));
+			x++;
+			y++;
+		}
+		remaining_samples -= n;
+		x = audio_stream_wrap(source, x);
+		y = audio_stream_wrap(sink, y);
 	}
 }
 #endif /* CONFIG_FORMAT_S24LE && CONFIG_FORMAT_S32LE */

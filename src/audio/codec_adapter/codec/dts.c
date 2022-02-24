@@ -15,15 +15,16 @@ DECLARE_TR_CTX(dts_tr, SOF_UUID(dts_uuid), LOG_LEVEL_INFO);
 
 #define MAX_EXPECTED_DTS_CONFIG_DATA_SIZE 8192
 
-static void *dts_effect_allocate_codec_memory(void *dev_void, unsigned int length,
-	unsigned int alignment)
+static void *dts_effect_allocate_codec_memory(void *mod_void, unsigned int length,
+					      unsigned int alignment)
 {
-	struct comp_dev *dev = dev_void;
+	struct processing_module *mod = mod_void;
+	struct comp_dev *dev = mod->dev;
 	void *pMem;
 
 	comp_dbg(dev, "dts_effect_allocate_codec_memory() start");
 
-	pMem = module_allocate_memory(dev, (uint32_t)length, (uint32_t)alignment);
+	pMem = module_allocate_memory(mod, (uint32_t)length, (uint32_t)alignment);
 
 	if (pMem == NULL)
 		comp_err(dev,
@@ -112,9 +113,10 @@ static int dts_effect_populate_buffer_configuration(struct comp_dev *dev,
 	return 0;
 }
 
-static int dts_codec_init(struct comp_dev *dev)
+static int dts_codec_init(struct processing_module *mod)
 {
 	int ret;
+	struct comp_dev *dev = mod->dev;
 	struct module_data *codec = comp_get_module_data(dev);
 	DtsSofInterfaceResult dts_result;
 	DtsSofInterfaceVersionInfo interface_version;
@@ -123,7 +125,7 @@ static int dts_codec_init(struct comp_dev *dev)
 	comp_dbg(dev, "dts_codec_init() start");
 
 	dts_result = dtsSofInterfaceInit((DtsSofInterfaceInst **)&(codec->private),
-		dts_effect_allocate_codec_memory, dev);
+		dts_effect_allocate_codec_memory, mod);
 	ret = dts_effect_convert_sof_interface_result(dev, dts_result);
 
 	if (ret)
@@ -156,9 +158,10 @@ static int dts_codec_init(struct comp_dev *dev)
 	return ret;
 }
 
-static int dts_codec_prepare(struct comp_dev *dev)
+static int dts_codec_prepare(struct processing_module *mod)
 {
 	int ret;
+	struct comp_dev *dev = mod->dev;
 	struct module_data *codec = comp_get_module_data(dev);
 	DtsSofInterfaceBufferConfiguration buffer_configuration;
 	DtsSofInterfaceResult dts_result;
@@ -316,9 +319,10 @@ static int dts_codec_apply_config(struct comp_dev *dev)
 	return ret;
 }
 
-static int dts_codec_reset(struct comp_dev *dev)
+static int dts_codec_reset(struct processing_module *mod)
 {
 	int ret;
+	struct comp_dev *dev = mod->dev;
 	struct module_data *codec = comp_get_module_data(dev);
 	DtsSofInterfaceResult dts_result;
 
@@ -335,9 +339,10 @@ static int dts_codec_reset(struct comp_dev *dev)
 	return ret;
 }
 
-static int dts_codec_free(struct comp_dev *dev)
+static int dts_codec_free(struct processing_module *mod)
 {
 	int ret;
+	struct comp_dev *dev = mod->dev;
 	struct module_data *codec = comp_get_module_data(dev);
 	DtsSofInterfaceResult dts_result;
 
@@ -354,11 +359,44 @@ static int dts_codec_free(struct comp_dev *dev)
 	return ret;
 }
 
+static int
+dts_codec_set_configuration(struct processing_module *mod, uint32_t config_id,
+			    enum module_cfg_fragment_position pos, uint32_t data_offset_size,
+			    const uint8_t *fragment, size_t fragment_size, uint8_t *response,
+			    size_t response_size)
+{
+	struct module_data *md = &mod->priv;
+	struct comp_dev *dev = mod->dev;
+	int ret;
+
+	ret = module_set_configuration(mod, config_id, pos, data_offset_size, fragment,
+				       fragment_size, response, response_size);
+	if (ret < 0)
+		return ret;
+
+	/* return if more fragments are expected or if the module is not prepared */
+	if ((pos != MODULE_CFG_FRAGMENT_LAST && pos != MODULE_CFG_FRAGMENT_SINGLE) ||
+	    md->state < MODULE_INITIALIZED)
+		return 0;
+
+	/* whole configuration received, apply it now */
+	ret = dts_codec_apply_config(dev);
+	if (ret) {
+		comp_err(dev, "dts_codec_set_configuration(): error %x: runtime config apply failed",
+			 ret);
+		return ret;
+	}
+
+	comp_dbg(dev, "dts_codec_set_configuration(): config applied");
+
+	return 0;
+}
+
 static struct module_interface dts_interface = {
 	.init  = dts_codec_init,
 	.prepare = dts_codec_prepare,
 	.process = dts_codec_process,
-	.apply_config = dts_codec_apply_config,
+	.set_configuration = dts_codec_set_configuration,
 	.reset = dts_codec_reset,
 	.free = dts_codec_free
 };

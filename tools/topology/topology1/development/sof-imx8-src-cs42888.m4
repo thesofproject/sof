@@ -76,7 +76,7 @@ PCM_DUPLEX_ADD(Port0, 0, PIPELINE_PCM_1, PIPELINE_PCM_2)
 dnl DAI_CONFIG(type, idx, link_id, name, esai_config)
 DAI_CONFIG(ESAI, 0, 0, esai0-cs42888,
 	ESAI_CONFIG(I2S, ESAI_CLOCK(mclk, 49152000, codec_mclk_in),
-		ESAI_CLOCK(bclk, 3072000, codec_consumer),
-		ESAI_CLOCK(fsync, 48000, codec_consumer),
+		ESAI_CLOCK(bclk, 3072000, codec_slave),
+		ESAI_CLOCK(fsync, 48000, codec_slave),
 		ESAI_TDM(2, 32, 3, 3),
 		ESAI_CONFIG_DATA(ESAI, 0, 0)))

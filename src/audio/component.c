@@ -32,10 +32,11 @@ DECLARE_TR_CTX(comp_tr, SOF_UUID(comp_uuid), LOG_LEVEL_INFO);
 int comp_register(struct comp_driver_info *drv)
 {
 	struct comp_driver_list *drivers = comp_drivers_get();
+	k_spinlock_key_t key;
 
-	spin_lock(&drivers->lock);
+	key = k_spin_lock(&drivers->lock);
 	list_item_prepend(&drv->list, &drivers->list);
-	spin_unlock(&drivers->lock);
+	k_spin_unlock(&drivers->lock, key);
 
 	return 0;
 }
@@ -43,10 +44,11 @@ int comp_register(struct comp_driver_info *drv)
 void comp_unregister(struct comp_driver_info *drv)
 {
 	struct comp_driver_list *drivers = comp_drivers_get();
+	k_spinlock_key_t key;
 
-	spin_lock(&drivers->lock);
+	key = k_spin_lock(&drivers->lock);
 	list_item_del(&drv->list);
-	spin_unlock(&drivers->lock);
+	k_spin_unlock(&drivers->lock, key);
 }
 
 /* NOTE: Keep the component state diagram up to date:
@@ -141,7 +143,7 @@ void sys_comp_init(struct sof *sof)
 	sof->comp_drivers = platform_shared_get(&cd, sizeof(cd));
 
 	list_init(&sof->comp_drivers->list);
-	spinlock_init(&sof->comp_drivers->lock);
+	k_spinlock_init(&sof->comp_drivers->lock);
 }
 
 void comp_get_copy_limits(struct comp_buffer *source, struct comp_buffer *sink,
@@ -233,7 +235,7 @@ bool comp_is_new_data_blob_available(struct comp_data_blob_handler
 	comp_dbg(blob_handler->dev, "comp_is_new_data_blob_available()");
 
 	/* New data blob is available when new data blob is allocated (data_new
-	 * is not NULL) nd component received all required chunks of data
+	 * is not NULL), and the component has received all required chunks of data
 	 * (data_ready is set to TRUE)
 	 */
 	if (blob_handler->data_new && blob_handler->data_ready)
@@ -456,6 +458,9 @@ struct comp_dev *comp_make_shared(struct comp_dev *dev)
 {
 	struct list_item *old_bsource_list = &dev->bsource_list;
 	struct list_item *old_bsink_list = &dev->bsink_list;
+	struct list_item *buffer_list, *clist;
+	struct comp_buffer *buffer;
+	int dir;
 
 	/* flush cache to share */
 	dcache_writeback_region(dev, dev->size);
@@ -468,6 +473,22 @@ struct comp_dev *comp_make_shared(struct comp_dev *dev)
 	list_relink(&dev->bsource_list, old_bsource_list);
 	list_relink(&dev->bsink_list, old_bsink_list);
 	dev->is_shared = true;
+
+	/* re-link all buffers which are already connected to this
+	 * component
+	 */
+	for (dir = 0; dir <= PPL_CONN_DIR_BUFFER_TO_COMP; dir++) {
+		buffer_list = comp_buffer_list(dev, dir);
+
+		if (list_is_empty(buffer_list))
+			continue;
+
+		list_for_item(clist, buffer_list) {
+			buffer = buffer_from_list(clist, struct comp_buffer, dir);
+
+			buffer_set_comp(buffer, dev, dir);
+		}
+	}
 
 	return dev;
 }

@@ -62,6 +62,7 @@ static inline void irq_lvl2_handler(void *data, int level, uint32_t ilxsd,
 	struct list_item *clist;
 	uint32_t status;
 	uint32_t tries = LVL2_MAX_TRIES;
+	k_spinlock_key_t key;
 
 	/* read active interrupt status */
 	status = irq_read(ilxsd);
@@ -75,7 +76,7 @@ static inline void irq_lvl2_handler(void *data, int level, uint32_t ilxsd,
 
 		status &= ~(1 << bit);
 
-		spin_lock(&cascade->lock);
+		key = k_spin_lock(&cascade->lock);
 
 		/* get child if any and run handler */
 		list_for_item(clist, &cascade->child[bit].list) {
@@ -83,16 +84,15 @@ static inline void irq_lvl2_handler(void *data, int level, uint32_t ilxsd,
 
 			if (child->handler && (child->cpu_mask & 1 << core)) {
 				/* run handler in non atomic context */
-				spin_unlock(&cascade->lock);
+				k_spin_unlock(&cascade->lock, key);
 				child->handler(child->handler_arg);
-				spin_lock(&cascade->lock);
+				k_spin_lock(&cascade->lock);
 
 				handled = true;
 			}
-
 		}
 
-		spin_unlock(&cascade->lock);
+		k_spin_unlock(&cascade->lock, key);
 
 		if (!handled) {
 			/* nobody cared ? */

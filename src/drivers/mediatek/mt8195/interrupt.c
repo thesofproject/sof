@@ -121,6 +121,7 @@ static inline void mtk_handle_irq(struct irq_cascade_desc *cascade,
 	int core = cpu_get_id();
 	struct list_item *clist;
 	struct irq_desc *child = NULL;
+	k_spinlock_key_t key;
 	int bit;
 	bool handled;
 
@@ -129,7 +130,7 @@ static inline void mtk_handle_irq(struct irq_cascade_desc *cascade,
 		handled = false;
 		status &= ~(1ull << bit);
 
-		spin_lock(&cascade->lock);
+		key = k_spin_lock(&cascade->lock);
 
 		list_for_item(clist, &cascade->child[bit].list) {
 			child = container_of(clist, struct irq_desc, irq_list);
@@ -140,7 +141,7 @@ static inline void mtk_handle_irq(struct irq_cascade_desc *cascade,
 			}
 		}
 
-		spin_unlock(&cascade->lock);
+		k_spin_unlock(&cascade->lock, key);
 
 		if (!handled) {
 			tr_err(&int_tr, "irq_handler(): not handled, bit %d", bit);

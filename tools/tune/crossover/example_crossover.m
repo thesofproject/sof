@@ -18,7 +18,7 @@ fc_high = 3000;
 num_sinks = 4;
 % This array is an example on how to assign a buffer from pipeline 1 to output 0,
 % buffer from pipeline 2 to output 1, etc...
-% Refer to sof/src/inlude/user/crossover.h for more information on assigning
+% Refer to sof/src/include/user/crossover.h for more information on assigning
 % buffers to outputs.
 assign_sinks = zeros(1, 4);
 assign_sinks(1) = 1; % sink[0]

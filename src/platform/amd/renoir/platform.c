@@ -117,11 +117,16 @@ int platform_init(struct sof *sof)
 
 int platform_boot_complete(uint32_t boot_message)
 {
+	acp_sw_intr_trig_t  swintrtrig;
 	volatile acp_scratch_mem_config_t *pscratch_mem_cfg =
 		(volatile acp_scratch_mem_config_t *)(PU_REGISTER_BASE + SCRATCH_REG_OFFSET);
 	mailbox_dspbox_write(0, &ready, sizeof(ready));
 	pscratch_mem_cfg->acp_dsp_msg_write = 1;
 	acp_dsp_to_host_Intr_trig();
+	/* Configures the trigger bit in ACP_DSP_SW_INTR_TRIG register */
+	swintrtrig = (acp_sw_intr_trig_t)io_reg_read(PU_REGISTER_BASE + ACP_SW_INTR_TRIG);
+	swintrtrig.bits.trig_dsp0_to_host_intr  = INTERRUPT_DISABLE;
+	io_reg_write((PU_REGISTER_BASE + ACP_SW_INTR_TRIG), swintrtrig.u32all);
 	clock_set_freq(CLK_CPU(cpu_get_id()), CLK_DEFAULT_CPU_HZ);
 	return 0;
 }

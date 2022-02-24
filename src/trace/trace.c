@@ -49,7 +49,7 @@ struct trace {
 #if CONFIG_TRACE_FILTERING_ADAPTIVE
 	bool user_filter_override;	/* whether filtering was overridden by user or not */
 #endif /* CONFIG_TRACE_FILTERING_ADAPTIVE */
-	spinlock_t lock; /* locking mechanism */
+	struct k_spinlock lock; /* locking mechanism */
 
 #if CONFIG_TRACE_FILTERING_ADAPTIVE
 	struct recent_trace_context trace_core_context[CONFIG_CORE_COUNT];
@@ -456,9 +456,9 @@ void trace_flush_dma_to_mbox(void)
 {
 	struct trace *trace = trace_get();
 	volatile uint64_t *t;
-	uint32_t flags;
+	k_spinlock_key_t key;
 
-	spin_lock_irq(&trace->lock, flags);
+	key = k_spin_lock(&trace->lock);
 
 	/* get mailbox position */
 	t = (volatile uint64_t *)(MAILBOX_TRACE_BASE + trace->pos);
@@ -466,33 +466,33 @@ void trace_flush_dma_to_mbox(void)
 	/* flush dma trace messages */
 	dma_trace_flush((void *)t);
 
-	spin_unlock_irq(&trace->lock, flags);
+	k_spin_unlock(&trace->lock, key);
 }
 
 void trace_on(void)
 {
 	struct trace *trace = trace_get();
-	uint32_t flags;
+	k_spinlock_key_t key;
 
-	spin_lock_irq(&trace->lock, flags);
+	key = k_spin_lock(&trace->lock);
 
 	trace->enable = 1;
 	dma_trace_on();
 
-	spin_unlock_irq(&trace->lock, flags);
+	k_spin_unlock(&trace->lock, key);
 }
 
 void trace_off(void)
 {
 	struct trace *trace = trace_get();
-	uint32_t flags;
+	k_spinlock_key_t key;
 
-	spin_lock_irq(&trace->lock, flags);
+	key = k_spin_lock(&trace->lock);
 
 	trace->enable = 0;
 	dma_trace_off();
 
-	spin_unlock_irq(&trace->lock, flags);
+	k_spin_unlock(&trace->lock, key);
 }
 
 void trace_init(struct sof *sof)
@@ -503,7 +503,7 @@ void trace_init(struct sof *sof)
 #if CONFIG_TRACE_FILTERING_ADAPTIVE
 	sof->trace->user_filter_override = false;
 #endif /* CONFIG_TRACE_FILTERING_ADAPTIVE */
-	spinlock_init(&sof->trace->lock);
+	k_spinlock_init(&sof->trace->lock);
 
 #ifndef __ZEPHYR__
 	/* Zephyr owns and has already initialized this buffer (and
@@ -536,11 +536,11 @@ static void mtrace_dict_entry_vl(bool atomic_context, uint32_t dict_entry_addres
 		mtrace_event(packet, MESSAGE_SIZE(n_args));
 	} else {
 		struct trace * const trace = trace_get();
-		uint32_t saved_flags;
+		k_spinlock_key_t key;
 
-		spin_lock_irq(&trace->lock, saved_flags);
+		key = k_spin_lock(&trace->lock);
 		mtrace_event(packet, MESSAGE_SIZE(n_args));
-		spin_unlock_irq(&trace->lock, saved_flags);
+		k_spin_unlock(&trace->lock, key);
 	}
 }
 

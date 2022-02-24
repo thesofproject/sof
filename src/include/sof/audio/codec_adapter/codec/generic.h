@@ -54,13 +54,43 @@ static SHARED_DATA struct comp_driver_info comp_codec_adapter_info = { \
 	.drv = &comp_codec_adapter, \
 }; \
 \
-UT_STATIC void sys_comp_codec_##adapter_init(void) \
+UT_STATIC void sys_comp_codec_##adapter##_init(void) \
 { \
 	comp_register(platform_shared_get(&comp_codec_adapter_info, \
 					  sizeof(comp_codec_adapter_info))); \
 } \
 \
-DECLARE_MODULE(sys_comp_codec_##adapter_init)
+DECLARE_MODULE(sys_comp_codec_##adapter##_init)
+
+struct processing_module;
+
+/**
+ * \enum module_cfg_fragment_position
+ * \brief Fragment position in config
+ * MODULE_CFG_FRAGMENT_FIRST: first fragment of the large configuration
+ * MODULE_CFG_FRAGMENT_SINGLE: only fragment of the configuration
+ * MODULE_CFG_FRAGMENT_LAST: last fragment of the configuration
+ * MODULE_CFG_FRAGMENT_MIDDLE: intermediate fragment of the large configuration
+ */
+enum module_cfg_fragment_position {
+	MODULE_CFG_FRAGMENT_MIDDLE,
+	MODULE_CFG_FRAGMENT_FIRST,
+	MODULE_CFG_FRAGMENT_LAST,
+	MODULE_CFG_FRAGMENT_SINGLE,
+};
+
+/**
+ * \enum module_processing_mode
+ * MODULE_PROCESSING_NORMAL: Indicates that module is expected to apply its custom processing on
+ *			      the input signal
+ * MODULE_PROCESSING_BYPASS: Indicates that module is expected to skip custom processing on
+ *			      the input signal and act as a passthrough component
+ */
+
+enum module_processing_mode {
+	MODULE_PROCESSING_NORMAL,
+	MODULE_PROCESSING_BYPASS,
+};
 
 /*****************************************************************************/
 /* Module generic data types						     */
@@ -74,12 +104,12 @@ struct module_interface {
 	 * Module specific initialization procedure, called as part of
 	 * codec_adapter component creation in .new()
 	 */
-	int (*init)(struct comp_dev *dev);
+	int (*init)(struct processing_module *mod);
 	/**
 	 * Module specific prepare procedure, called as part of codec_adapter
 	 * component preparation in .prepare()
 	 */
-	int (*prepare)(struct comp_dev *dev);
+	int (*prepare)(struct processing_module *mod);
 	/**
 	 * Module specific processing procedure, called as part of codec_adapter
 	 * component copy in .copy(). This procedure is responsible to consume
@@ -87,23 +117,59 @@ struct module_interface {
 	 * ones back to codec_adapter.
 	 */
 	int (*process)(struct comp_dev *dev);
+
 	/**
-	 * Module specific apply config procedure, called by codec_adapter every time
-	 * a new RUNTIME configuration has been sent if the adapter has been
-	 * prepared. This will not be called for SETUP cfg.
+	 * Set module configuration for the given configuration ID
+	 *
+	 * If the complete configuration message is greater than MAX_BLOB_SIZE bytes, the
+	 * transmission will be split into several smaller fragments.
+	 * In this case the ADSP System will perform multiple calls to SetConfiguration() until
+	 * completion of the configuration message sending.
+	 * \note config_id indicates ID of the configuration message only on the first fragment
+	 * sending, otherwise it is set to 0.
 	 */
-	int (*apply_config)(struct comp_dev *dev);
+	int (*set_configuration)(struct processing_module *mod,
+				 uint32_t config_id,
+				 enum module_cfg_fragment_position pos, uint32_t data_offset_size,
+				 const uint8_t *fragment, size_t fragment_size, uint8_t *response,
+				 size_t response_size);
+
+	/**
+	 * Get module runtime configuration for the given configuration ID
+	 *
+	 * If the complete configuration message is greater than MAX_BLOB_SIZE bytes, the
+	 * transmission will be split into several smaller fragments.
+	 * In this case the ADSP System will perform multiple calls to GetConfiguration() until
+	 * completion of the configuration message retrieval.
+	 * \note config_id indicates ID of the configuration message only on the first fragment
+	 * retrieval, otherwise it is set to 0.
+	 */
+	int (*get_configuration)(struct processing_module *mod,
+				 uint32_t config_id, uint32_t data_offset_size,
+				 const uint8_t *fragment, size_t fragment_size);
+
+	/**
+	 * Set processing mode for the module
+	 */
+	int (*set_processing_mode)(struct processing_module *mod,
+				   enum module_processing_mode mode);
+
+	/**
+	 * Get the current processing mode for the module
+	 */
+	enum module_processing_mode (*get_processing_mode)(struct processing_module *mod);
+
 	/**
 	 * Module specific reset procedure, called as part of codec_adapter component
 	 * reset in .reset(). This should reset all parameters to their initial stage
 	 * but leave allocated memory intact.
 	 */
-	int (*reset)(struct comp_dev *dev);
+	int (*reset)(struct processing_module *mod);
 	/**
 	 * Module specific free procedure, called as part of codec_adapter component
 	 * free in .free(). This should free all memory allocated by module.
 	 */
-	int (*free)(struct comp_dev *dev);
+	int (*free)(struct processing_module *mod);
 };
 
 /**
@@ -187,6 +253,11 @@ struct processing_module {
 	struct comp_buffer *ca_source;
 	struct comp_buffer *local_buff;
 	struct sof_ipc_stream_params stream_params;
+	/*
+	 * This is a temporary change in order to support the trace messages in the modules. This
+	 * will be removed once the trace API is updated.
+	 */
+	struct comp_dev *dev;
 	uint32_t period_bytes; /** pipeline period bytes */
 	uint32_t deep_buff_bytes; /**< copy start threshold */
 };
@@ -195,15 +266,19 @@ struct processing_module {
 /* Module generic interfaces						     */
 /*****************************************************************************/
 int module_load_config(struct comp_dev *dev, void *cfg, size_t size);
-int module_init(struct comp_dev *dev, struct module_interface *interface);
-void *module_allocate_memory(struct comp_dev *dev, uint32_t size, uint32_t alignment);
-int module_free_memory(struct comp_dev *dev, void *ptr);
-void module_free_all_memory(struct comp_dev *dev);
-int module_prepare(struct comp_dev *dev);
+int module_init(struct processing_module *mod, struct module_interface *interface);
+void *module_allocate_memory(struct processing_module *mod, uint32_t size, uint32_t alignment);
+int module_free_memory(struct processing_module *mod, void *ptr);
+void module_free_all_memory(struct processing_module *mod);
+int module_prepare(struct processing_module *mod);
 int module_process(struct comp_dev *dev);
-int module_apply_runtime_config(struct comp_dev *dev);
-int module_reset(struct comp_dev *dev);
-int module_free(struct comp_dev *dev);
+int module_reset(struct processing_module *mod);
+int module_free(struct processing_module *mod);
+int module_set_configuration(struct processing_module *mod,
+			     uint32_t config_id,
+			     enum module_cfg_fragment_position pos, size_t data_offset_size,
+			     const uint8_t *fragment, size_t fragment_size, uint8_t *response,
+			     size_t response_size);
 
 struct comp_dev *codec_adapter_new(const struct comp_driver *drv,
 				   struct comp_ipc_config *config,

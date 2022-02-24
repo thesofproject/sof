@@ -29,6 +29,9 @@ include(`common/tlv.m4')
 # Include Token library
 include(`sof/tokens.m4')
 
+# define(`SSP_MCLK', )
+ifelse(PLATFORM, `cml', `define(`SSP_MCLK', 24000000)', `define(`SSP_MCLK', 19200000)')
+
 # Define pipeline id for intel-generic-dmic.m4
 # to generate dmic setting
 
@@ -154,10 +157,10 @@ PCM_PLAYBACK_ADD(HDMI 3, 7, PIPELINE_PCM_7)
 # BE configurations - overrides config in ACPI if present
 
 DAI_CONFIG(SSP, SSP_NUM, 0, `SSP'SSP_NUM`-Codec',
-	SSP_CONFIG(I2S, SSP_CLOCK(mclk, 19200000, codec_mclk_in),
-		SSP_CLOCK(bclk, 4800000, codec_consumer),
-		SSP_CLOCK(fsync, 48000, codec_consumer),
-		SSP_TDM(2, 32, 3, 3),
+	SSP_CONFIG(I2S, SSP_CLOCK(mclk, SSP_MCLK, codec_mclk_in),
+		SSP_CLOCK(bclk, 2400000, codec_slave),
+		SSP_CLOCK(fsync, 48000, codec_slave),
+		SSP_TDM(2, 25, 3, 3),
 		SSP_CONFIG_DATA(SSP, SSP_NUM, 24, 1)))
 
 

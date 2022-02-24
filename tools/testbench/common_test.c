@@ -19,6 +19,8 @@
 #include <sof/lib/dai.h>
 #include <sof/lib/dma.h>
 #include <sof/schedule/edf_schedule.h>
+#include <sof/schedule/ll_schedule.h>
+#include <sof/schedule/ll_schedule_domain.h>
 #include <sof/schedule/schedule.h>
 #include <sof/lib/wait.h>
 #include <sof/audio/pipeline.h>
@@ -28,16 +30,18 @@
 
 /* testbench helper functions for pipeline setup and trigger */
 
-int tb_pipeline_setup(struct sof *sof)
+int tb_setup(struct sof *sof, struct testbench_prm *tp)
 {
+	struct ll_schedule_domain domain = {0};
+
+	domain.next_tick = tp->tick_period_us;
+
 	/* init components */
 	sys_comp_init(sof);
 
 	/* other necessary initializations, todo: follow better SOF init */
 	pipeline_posn_init(sof);
 	init_system_notify(sof);
-	scheduler_init_edf();
-	sa_init(sof, CONFIG_SYSTICK_PERIOD);
 
 	/* init IPC */
 	if (ipc_init(sof) < 0) {
@@ -45,7 +49,13 @@ int tb_pipeline_setup(struct sof *sof)
 		return -EINVAL;
 	}
 
-	/* init scheduler */
+	/* init LL scheduler */
+	if (scheduler_init_ll(&domain) < 0) {
+		fprintf(stderr, "error: edf scheduler init\n");
+		return -EINVAL;
+	}
+
+	/* init EDF scheduler */
 	if (scheduler_init_edf() < 0) {
 		fprintf(stderr, "error: edf scheduler init\n");
 		return -EINVAL;
@@ -60,7 +70,7 @@ struct ipc_data {
 	struct ipc_data_host_buffer dh_buffer;
 };
 
-void tb_pipeline_free(struct sof *sof)
+void tb_free(struct sof *sof)
 {
 	struct schedule_data *sch;
 	struct schedulers **schedulers;
@@ -68,7 +78,6 @@ void tb_pipeline_free(struct sof *sof)
 	struct notify **notify = arch_notify_get();
 	struct ipc_data *iipc;
 
-	free(sof->sa);
 	free(*notify);
 
 	/* free all scheduler data */
@@ -90,24 +99,26 @@ void tb_pipeline_free(struct sof *sof)
 
 /* set up pcm params, prepare and trigger pipeline */
 int tb_pipeline_start(struct ipc *ipc, struct pipeline *p,
-		      struct testbench_prm *tp)
+		      struct tplg_context *ctx)
 {
 	struct ipc_comp_dev *pcm_dev;
 	struct comp_dev *cd;
 	int ret;
 
 	/* set up pipeline params */
-	ret = tb_pipeline_params(ipc, p, tp);
+	ret = tb_pipeline_params(ipc, p, ctx);
 	if (ret < 0) {
-		fprintf(stderr, "error: pipeline params\n");
-		return -EINVAL;
+		fprintf(stderr, "error: pipeline params failed: %s\n",
+			strerror(ret));
+		return ret;
 	}
 
 	/* Get IPC component device for pipeline */
 	pcm_dev = ipc_get_comp_by_id(ipc, p->sched_id);
 	if (!pcm_dev) {
-		fprintf(stderr, "error: ipc get comp\n");
-		return -EINVAL;
+		fprintf(stderr, "error: ipc get comp failed: %s\n",
+			strerror(ret));
+		return ret;
 	}
 
 	/* Point to pipeline component device */
@@ -115,22 +126,78 @@ int tb_pipeline_start(struct ipc *ipc, struct pipeline *p,
 
 	/* Component prepare */
 	ret = pipeline_prepare(p, cd);
-	if (ret < 0)
-		printf("Warning: Failed prepare pipeline command.\n");
+	if (ret < 0) {
+		fprintf(stderr, "error: Failed prepare pipeline command: %s\n",
+			strerror(ret));
+		return ret;
+	}
 
-	/* Prepare and start the pipeline */
+	/* Start the pipeline */
 	ret = pipeline_trigger(p, cd, COMP_TRIGGER_PRE_START);
-	if (ret >= 0)
-		ret = pipeline_copy(p);
+	if (ret < 0) {
+		fprintf(stderr, "error: Failed to start pipeline command: %s\n",
+			strerror(ret));
+		return ret;
+	}
+
+	return ret;
+}
+
+/* set up pcm params, prepare and trigger pipeline */
+int tb_pipeline_stop(struct ipc *ipc, struct pipeline *p,
+		     struct tplg_context *ctx)
+{
+	struct ipc_comp_dev *pcm_dev;
+	struct comp_dev *cd;
+	int ret;
+
+	/* Get IPC component device for pipeline */
+	pcm_dev = ipc_get_comp_by_id(ipc, p->sched_id);
+	if (!pcm_dev) {
+		fprintf(stderr, "error: ipc get comp failed\n");
+		return -EINVAL;
+	}
+
+	/* Point to pipeline component device */
+	cd = pcm_dev->cd;
+
+	ret = pipeline_trigger(p, cd, COMP_TRIGGER_STOP);
+	if (ret < 0) {
+		fprintf(stderr, "error: Failed to stop pipeline command: %s\n",
+			strerror(ret));
+	}
+
+	return ret;
+}
+
+/* set up pcm params, prepare and trigger pipeline */
+int tb_pipeline_reset(struct ipc *ipc, struct pipeline *p,
+		      struct tplg_context *ctx)
+{
+	struct ipc_comp_dev *pcm_dev;
+	struct comp_dev *cd;
+	int ret;
+
+	/* Get IPC component device for pipeline */
+	pcm_dev = ipc_get_comp_by_id(ipc, p->sched_id);
+	if (!pcm_dev) {
+		fprintf(stderr, "error: ipc get comp failed\n");
+		return -EINVAL;
+	}
+
+	/* Point to pipeline component device */
+	cd = pcm_dev->cd;
+
+	ret = pipeline_reset(p, cd);
 	if (ret < 0)
-		printf("Warning: Failed start pipeline command.\n");
+		fprintf(stderr, "error: pipeline reset\n");
 
 	return ret;
 }
 
 /* pipeline pcm params */
 int tb_pipeline_params(struct ipc *ipc, struct pipeline *p,
-		       struct testbench_prm *tp)
+		       struct tplg_context *ctx)
 {
 	struct ipc_comp_dev *pcm_dev;
 	struct comp_dev *cd;
@@ -148,17 +215,17 @@ int tb_pipeline_params(struct ipc *ipc, struct pipeline *p,
 	period = p->period;
 
 	/* Compute period from sample rates */
-	fs_period = (int)(0.9999 + tp->fs_in * period / 1e6);
+	fs_period = (int)(0.9999 + ctx->fs_in * period / 1e6);
 	sprintf(message, "period sample count %d\n", fs_period);
 	debug_print(message);
 
 	/* set pcm params */
 	params.comp_id = p->comp_id;
 	params.params.buffer_fmt = SOF_IPC_BUFFER_INTERLEAVED;
-	params.params.frame_fmt = tp->frame_fmt;
+	params.params.frame_fmt = ctx->frame_fmt;
 	params.params.direction = SOF_IPC_STREAM_PLAYBACK;
-	params.params.rate = tp->fs_in;
-	params.params.channels = tp->channels_in;
+	params.params.rate = ctx->fs_in;
+	params.params.channels = ctx->channels_in;
 
 	switch (params.params.frame_fmt) {
 	case SOF_IPC_FRAME_S16_LE:

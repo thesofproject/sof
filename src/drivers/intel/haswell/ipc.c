@@ -113,21 +113,19 @@ void ipc_platform_complete_cmd(struct ipc *ipc)
 
 }
 
-int ipc_platform_send_msg(struct ipc_msg *msg)
+int ipc_platform_send_msg(const struct ipc_msg *msg)
 {
 	struct ipc *ipc = ipc_get();
-	int ret = 0;
 
 	/* can't send nofication when one is in progress */
 	if (ipc->is_notification_pending ||
 	    shim_read(SHIM_IPCD) & (SHIM_IPCD_BUSY | SHIM_IPCD_DONE)) {
-		ret = -EBUSY;
-		goto out;
+		return -EBUSY;
 	}
 
 	/* now send the message */
 	mailbox_dspbox_write(0, msg->tx_data, msg->tx_size);
-	list_item_del(&msg->list);
+
 	tr_dbg(&ipc_tr, "ipc: msg tx -> 0x%x", msg->header);
 
 	ipc->is_notification_pending = true;
@@ -135,9 +133,7 @@ int ipc_platform_send_msg(struct ipc_msg *msg)
 	/* now interrupt host to tell it we have message sent */
 	shim_write(SHIM_IPCD, SHIM_IPCD_BUSY);
 
-out:
-
-	return ret;
+	return 0;
 }
 
 struct ipc_data_host_buffer *ipc_platform_get_host_buffer(struct ipc *ipc)

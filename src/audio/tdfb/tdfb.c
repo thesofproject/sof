@@ -4,6 +4,11 @@
 //
 // Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 
+/* Note: The script tools/tune/tdfb/example_all.sh can be used to re-calculate
+ * all the beamformer topology data files if need. It also creates the additional
+ * data files for simulated tests with testbench. Matlab or Octave is needed.
+ */
+
 #include <ipc/control.h>
 #include <ipc/stream.h>
 #include <ipc/topology.h>
@@ -179,6 +184,17 @@ static int16_t *tdfb_filter_seek(struct sof_tdfb_config *config, int num_filters
 	return coefp;
 }
 
+static int wrap_180(int a)
+{
+	if (a > 180)
+		return ((a + 180) % 360) - 180;
+
+	if (a < -180)
+		return 180 - ((180 - a) % 360);
+
+	return a;
+}
+
 static int tdfb_init_coef(struct tdfb_comp_data *cd, int source_nch,
 			  int sink_nch)
 {
@@ -275,15 +291,10 @@ static int tdfb_init_coef(struct tdfb_comp_data *cd, int source_nch,
 	/* Skip to requested coefficient set */
 	min_delta = 360;
 	min_delta_idx = 0;
-	target_az = cd->az_value * config->angle_enum_mult + config->angle_enum_offs;
-	if (target_az > 180)
-		target_az -= 360;
-
-	if (target_az < -180)
-		target_az += 360;
+	target_az = wrap_180(cd->az_value * config->angle_enum_mult + config->angle_enum_offs);
 
 	for (i = 0; i < config->num_angles; i++) {
-		delta = ABS(target_az - cd->filter_angles[i].azimuth);
+		delta = ABS(target_az - wrap_180(cd->filter_angles[i].azimuth));
 		if (delta < min_delta) {
 			min_delta = delta;
 			min_delta_idx = i;
@@ -479,7 +490,7 @@ static void tdfb_free(struct comp_dev *dev)
 	ipc_msg_free(cd->msg);
 	tdfb_free_delaylines(cd);
 	comp_data_blob_handler_free(cd->model_handler);
-
+	tdfb_direction_free(cd);
 	rfree(cd->ctrl_data);
 	rfree(cd);
 	rfree(dev);
@@ -653,11 +664,6 @@ static int tdfb_cmd(struct comp_dev *dev, int cmd, void *data,
 	return -EINVAL;
 }
 
-/* Placeholder function for sound direction estimate */
-static void update_direction_of_arrival(struct tdfb_comp_data *cd)
-{
-}
-
 static void tdfb_process(struct comp_dev *dev, struct comp_buffer *source,
 			 struct comp_buffer *sink, int frames,
 			 uint32_t source_bytes, uint32_t sink_bytes)
@@ -673,6 +679,11 @@ static void tdfb_process(struct comp_dev *dev, struct comp_buffer *source,
 	/* calc new free and available */
 	comp_update_buffer_consume(source, source_bytes);
 	comp_update_buffer_produce(sink, sink_bytes);
+
+	/* Update sound direction estimate */
+	tdfb_direction_estimate(cd, frames, source->stream.channels);
+	comp_dbg(dev, "tdfb_dint %u %d %d %d", cd->direction.trigger, cd->direction.level,
+		 (int32_t)(cd->direction.level_ambient >> 32), cd->direction.az_slow);
 }
 
 /* copy and process stream data from source to sink buffers */
@@ -720,6 +731,7 @@ static int tdfb_copy(struct comp_dev *dev)
 	 * optimized filter function loads the successive input samples from
 	 * internal delay line with a 64 bit load operation.
 	 */
+	cl.frames = MIN(cl.frames, cd->max_frames);
 	if (cl.frames >= 2) {
 		n = (cl.frames >> 1) << 1;
 
@@ -729,10 +741,11 @@ static int tdfb_copy(struct comp_dev *dev)
 			     n * cl.sink_frame_bytes);
 	}
 
-	/* TODO: Update direction of arrival estimate */
-	update_direction_of_arrival(cd);
-	if (cd->direction_updates && cd->direction_change)
+	if (cd->direction_updates && cd->direction_change) {
 		send_get_ctl_ipc(dev);
+		cd->direction_change = false;
+		comp_dbg(dev, "tdfb_dupd %d %d", cd->az_value_estimate, cd->direction.az_slow);
+	}
 
 	return 0;
 }
@@ -761,19 +774,40 @@ static int tdfb_prepare(struct comp_dev *dev)
 
 	/* Initialize filter */
 	cd->config = comp_get_data_blob(cd->model_handler, NULL, NULL);
-	if (cd->config) {
-		ret = tdfb_setup(cd, sourceb->stream.channels, sinkb->stream.channels);
-		if (ret < 0) {
-			comp_err(dev, "tdfb_prepare() error: tdfb_setup failed.");
-			goto err;
-		}
+	if (!cd->config) {
+		ret = -EINVAL;
+		goto err;
+	}
 
-		/* Clear in/out buffers */
-		memset(cd->in, 0, TDFB_IN_BUF_LENGTH * sizeof(int32_t));
-		memset(cd->out, 0, TDFB_IN_BUF_LENGTH * sizeof(int32_t));
+	ret = tdfb_setup(cd, sourceb->stream.channels, sinkb->stream.channels);
+	if (ret < 0) {
+		comp_err(dev, "tdfb_prepare() error: tdfb_setup failed.");
+		goto err;
+	}
 
-		ret = set_func(dev);
-		return ret;
+	/* Clear in/out buffers */
+	memset(cd->in, 0, TDFB_IN_BUF_LENGTH * sizeof(int32_t));
+	memset(cd->out, 0, TDFB_IN_BUF_LENGTH * sizeof(int32_t));
+
+	ret = set_func(dev);
+	if (ret)
+		goto err;
+
+	/* The max. amount of processing need to be limited for sound direction
+	 * processing. Max frames is used in tdfb_direction_init() and copy().
+	 */
+	cd->max_frames = Q_MULTSR_32X32(dev->frames, TDFB_MAX_FRAMES_MULT_Q14, 0, 14, 0);
+	comp_info(dev, "dev_frames = %d, max_frames = %d", dev->frames, cd->max_frames);
+
+	/* Initialize tracking */
+	ret = tdfb_direction_init(cd, sourceb->stream.rate, sourceb->stream.channels);
+	if (!ret) {
+		comp_info(dev, "max_lag = %d, xcorr_size = %d",
+			  cd->direction.max_lag, cd->direction.d_size);
+		comp_info(dev, "line_array = %d, a_step = %d, a_offs = %d",
+			  (int)cd->direction.line_array, cd->config->angle_enum_mult,
+			  cd->config->angle_enum_offs);
+		return 0;
 	}
 
 err:

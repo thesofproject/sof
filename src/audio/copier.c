@@ -46,6 +46,9 @@ DECLARE_SOF_RT_UUID("copier", copier_comp_uuid, 0x9ba00c83, 0xca12, 0x4a83,
 DECLARE_TR_CTX(copier_comp_tr, SOF_UUID(copier_comp_uuid), LOG_LEVEL_INFO);
 
 struct copier_data {
+	/* Must be the 1st field, function ipc4_create_buffer casts components private data
+	 * as ipc4_base_module_cfg!
+	 */
 	struct ipc4_copier_module_cfg config;
 	struct comp_dev *endpoint;
 	struct comp_buffer *endpoint_buffer;
@@ -539,6 +542,11 @@ static int copier_reset(struct comp_dev *dev)
 static int copier_comp_trigger(struct comp_dev *dev, int cmd)
 {
 	struct copier_data *cd = comp_get_drvdata(dev);
+	struct sof_ipc_stream_posn posn;
+	struct comp_dev *dai_copier;
+	struct copier_data *dai_cd;
+	struct comp_buffer *buffer;
+	uint32_t latency;
 	int ret;
 
 	comp_dbg(dev, "copier_comp_trigger()");
@@ -547,19 +555,73 @@ static int copier_comp_trigger(struct comp_dev *dev, int cmd)
 	if (ret < 0)
 		return ret;
 
+	if (ret == COMP_STATUS_STATE_ALREADY_SET)
+		return PPL_STATUS_PATH_STOP;
+
 	if (cd->endpoint)
 		ret = cd->endpoint->drv->ops.trigger(cd->endpoint, cmd);
 
 	if (ret < 0 || !cd->endpoint || !cd->pipeline_reg_offset)
 		return ret;
 
-	/* update stream start addr for running message in host copier*/
-	if (dev->state != COMP_STATE_ACTIVE && cmd == COMP_TRIGGER_START) {
+	dai_copier = pipeline_get_dai_comp(dev->pipeline->pipeline_id, &latency);
+	if (!dai_copier) {
+		comp_err(dev, "failed to find dai comp");
+		return ret;
+	}
+	dai_cd = comp_get_drvdata(dai_copier);
+	comp_position(dai_cd->endpoint, &posn);
+
+	/* update stream start and end offset for running message in host copier
+	 * host driver uses DMA link counter to calculate stream position, but it is
+	 * not fit for the following 3 cases:
+	 * (1) dai is enabled before host since they are in different pipelines
+	 * (2) multiple stream are mixed into one dai
+	 * (3) one stream is paused but the dai is still working with other stream
+	 *
+	 * host uses stream_start_offset & stream_end_offset to deal with such cases:
+	 * if (stream_start_offset) {
+	 *	position = DMA counter - stream_start_offset
+	 *	if (stream_stop_offset)
+	 *		position = stream_stop_offset -stream_start_offset;
+	 * } else {
+	 *	position = 0;
+	 * }
+	 * When host component is started  stream_start_offset is set to DMA counter
+	 * plus the latency from host to dai since the accurate DMA counter should be
+	 * used when the data arrives dai from host.
+	 *
+	 * When pipeline is paused, stream_end_offset will save current DMA counter
+	 * for resume case
+	 *
+	 * When pipeline is resumed, calculate stream_start_offset based on current
+	 * DMA counter and stream_end_offset
+	 */
+	if (cmd == COMP_TRIGGER_START) {
 		struct ipc4_pipeline_registers pipe_reg;
 
-		pipe_reg.stream_start_offset = 0;
+		buffer = list_first_item(&dai_copier->bsource_list, struct comp_buffer, sink_list);
+		pipe_reg.stream_start_offset = posn.dai_posn + latency * buffer->stream.size;
 		pipe_reg.stream_end_offset = 0;
 		mailbox_sw_regs_write(cd->pipeline_reg_offset, &pipe_reg, sizeof(pipe_reg));
+	} else if (cmd == COMP_TRIGGER_PAUSE) {
+		uint64_t stream_end_offset;
+
+		stream_end_offset = posn.dai_posn;
+		mailbox_sw_regs_write(cd->pipeline_reg_offset + sizeof(uint64_t),
+				      &stream_end_offset, sizeof(stream_end_offset));
+	} else if (cmd == COMP_TRIGGER_RELEASE) {
+		struct ipc4_pipeline_registers pipe_reg;
+
+		pipe_reg.stream_start_offset = mailbox_sw_reg_read64(cd->pipeline_reg_offset);
+		pipe_reg.stream_end_offset = mailbox_sw_reg_read64(cd->pipeline_reg_offset +
+			sizeof(pipe_reg.stream_start_offset));
+		pipe_reg.stream_start_offset += posn.dai_posn - pipe_reg.stream_end_offset;
+
+		buffer = list_first_item(&dai_copier->bsource_list, struct comp_buffer, sink_list);
+		pipe_reg.stream_start_offset += latency * buffer->stream.size;
+		mailbox_sw_regs_write(cd->pipeline_reg_offset, &pipe_reg.stream_start_offset,
+				      sizeof(pipe_reg.stream_start_offset));
 	}
 
 	return ret;
@@ -624,8 +686,6 @@ static int do_conversion_copy(struct comp_dev *dev,
 static int copier_copy(struct comp_dev *dev)
 {
 	struct copier_data *cd = comp_get_drvdata(dev);
-	struct ipc4_pipeline_registers pipe_reg;
-	struct sof_ipc_stream_posn posn;
 	int ret;
 
 	comp_dbg(dev, "copier_copy()");
@@ -682,15 +742,6 @@ static int copier_copy(struct comp_dev *dev)
 		ret = 0;
 	}
 
-	if (ret < 0 || !cd->endpoint || !cd->pipeline_reg_offset)
-		return ret;
-
-	comp_position(cd->endpoint, &posn);
-	cd->host_position += posn.host_posn;
-	pipe_reg.stream_start_offset = cd->host_position;
-	pipe_reg.stream_end_offset = 0;
-	mailbox_sw_regs_write(cd->pipeline_reg_offset, &pipe_reg, sizeof(pipe_reg));
-
 	return ret;
 }
 
@@ -727,6 +778,9 @@ static int copier_params(struct comp_dev *dev, struct sof_ipc_stream_params *par
 	params->frame_fmt = dev->ipc_config.frame_fmt;
 	params->buffer_fmt = cd->config.base.audio_fmt.interleaving_style;
 	params->buffer.size = cd->config.base.ibs;
+
+	/* disable ipc3 stream position */
+	params->no_stream_position = 1;
 
 	/* update each sink format */
 	list_for_item(sink_list, &dev->bsink_list) {

@@ -308,8 +308,10 @@ int ipc_comp_disconnect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 		return IPC4_INVALID_RESOURCE_ID;
 	}
 
-	if (src->pipeline == sink->pipeline)
-		return IPC4_INVALID_REQUEST;
+	if (src->pipeline == sink->pipeline) {
+		tr_warn(&ipc_tr, "ignoring unbinding of src %x and dst %x", src_id, sink_id);
+		return 0;
+	}
 
 	buffer_id = IPC4_COMP_ID(bu->data.r.src_queue, bu->data.r.dst_queue);
 	list_for_item(sink_list, &src->bsink_list) {

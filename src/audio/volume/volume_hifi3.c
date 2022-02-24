@@ -16,6 +16,7 @@
 
 #include <sof/audio/buffer.h>
 #include <sof/audio/component.h>
+#include <sof/audio/volume.h>
 #include <sof/common.h>
 #include <ipc/stream.h>
 #include <xtensa/tie/xt_hifi3.h>
@@ -49,6 +50,13 @@ static void vol_store_gain(struct vol_data *cd, const int channels_count)
 		cd->vol[i + channels_count * 2] = cd->volume[i];
 		cd->vol[i + channels_count * 3] = cd->volume[i];
 	}
+}
+
+static inline void peak_vol_calc(struct vol_data *cd, ae_f32x2 out_sample, size_t channel)
+{
+#if CONFIG_COMP_PEAK_VOL
+	cd->peak_regs.peak_meter_[channel] = AE_MAX32(out_sample, cd->peak_regs.peak_meter_[channel]);
+#endif
 }
 
 #if CONFIG_FORMAT_S24LE
@@ -110,11 +118,17 @@ static void vol_s24_to_s24_s32(struct comp_dev *dev, struct audio_stream *sink,
 		AE_LA32X2_IC(in_sample, inu, in);
 
 		/* Multiply the input sample */
-		out_sample = AE_MULFP32X2RS(AE_SLAA32S(volume, 7), AE_SLAA32(in_sample, 8));
+#if COMP_VOLUME_Q8_16
+		out_sample = AE_MULFP32X2RS(AE_SLAI32S(volume, 7), AE_SLAI32(in_sample, 8));
+#elif COMP_VOLUME_Q1_23
+		out_sample = AE_MULFP32X2RS(volume, AE_SLAI32(in_sample, 8));
+#else
+#error "Need CONFIG_COMP_VOLUME_Qx_y"
+#endif
 
 		/* Shift for S24_LE */
-		out_sample = AE_SLAA32S(out_sample, 8);
-		out_sample = AE_SRAA32(out_sample, 8);
+		out_sample = AE_SLAI32S(out_sample, 8);
+		out_sample = AE_SRAI32(out_sample, 8);
 
 		/* Set sink as circular buffer */
 		vol_setup_circular(sink);
@@ -122,7 +136,14 @@ static void vol_s24_to_s24_s32(struct comp_dev *dev, struct audio_stream *sink,
 		/* Store the output sample */
 		AE_SA32X2_IC(out_sample, outu, out);
 
+		/* calc peak vol
+		 * TODO: fix channel value
+		 */
+		peak_vol_calc(cd, out_sample, 0);
 	}
+
+	/* update peak vol */
+	peak_vol_update(cd);
 }
 #endif /* CONFIG_FORMAT_S24LE */
 
@@ -186,16 +207,32 @@ static void vol_s32_to_s24_s32(struct comp_dev *dev, struct audio_stream *sink,
 		/* Load the input sample */
 		AE_LA32X2_IC(in_sample, inu, in);
 
-		mult0 = AE_MULF32S_HH(volume, in_sample);
-		mult0 = AE_SRAI64(mult0, 1);
+#if COMP_VOLUME_Q8_16
+		mult0 = AE_MULF32S_HH(volume, in_sample);	/* Q8.16 x Q1.31 << 1 -> Q9.48 */
+		mult0 = AE_SRAI64(mult0, 1);			/* Q9.47 */
 		mult1 = AE_MULF32S_LL(volume, in_sample);
 		mult1 = AE_SRAI64(mult1, 1);
-		out_sample = AE_ROUND32X2F48SSYM(mult0, mult1);
-
+		out_sample = AE_ROUND32X2F48SSYM(mult0, mult1);	/* Q9.47 -> Q1.31 */
+#elif COMP_VOLUME_Q1_23
+		mult0 = AE_MULF32S_HH(volume, in_sample);	/* Q1.23 x Q1.31 << 1 -> Q2.55 */
+		mult0 = AE_SRAI64(mult0, 8);			/* Q2.47 */
+		mult1 = AE_MULF32S_LL(volume, in_sample);
+		mult1 = AE_SRAI64(mult1, 8);
+		out_sample = AE_ROUND32X2F48SSYM(mult0, mult1);	/* Q2.47 -> Q1.31 */
+#else
+#error "Need CONFIG_COMP_VOLUME_Qx_y"
+#endif
 		vol_setup_circular(sink);
 		AE_SA32X2_IC(out_sample, outu, out);
+
+		/* calc peak vol
+		 * TODO: fix channel value
+		 */
+		peak_vol_calc(cd, out_sample, 0);
 	}
 
+	/* update peak vol */
+	peak_vol_update(cd);
 }
 #endif /* CONFIG_FORMAT_S32LE */
 
@@ -254,9 +291,16 @@ static void vol_s16_to_s16(struct comp_dev *dev, struct audio_stream *sink,
 		/* load second two volume gain */
 		AE_L32X2_XC(volume1, vol, inc);
 
+#if COMP_VOLUME_Q8_16
 		/* Q8.16 to Q9.23 */
-		volume0 = AE_SLAA32(volume0, 7);
-		volume1 = AE_SLAA32(volume1, 7);
+		volume0 = AE_SLAI32S(volume0, 7);
+		volume1 = AE_SLAI32S(volume1, 7);
+#elif COMP_VOLUME_Q1_23
+		/* No need to shift, Q1.23 is OK as such */
+#else
+#error "Need CONFIG_COMP_VOLUME_Qx_y"
+#endif
+
 		/* Set source as circular buffer */
 		vol_setup_circular(source);
 
@@ -268,8 +312,8 @@ static void vol_s16_to_s16(struct comp_dev *dev, struct audio_stream *sink,
 		out_sample1 = AE_MULFP32X16X2RS_L(volume1, in_sample);
 
 		/* Q9.23 to Q1.31 */
-		out_sample0 = AE_SLAA32S(out_sample0, 8);
-		out_sample1 = AE_SLAA32S(out_sample1, 8);
+		out_sample0 = AE_SLAI32S(out_sample0, 8);
+		out_sample1 = AE_SLAI32S(out_sample1, 8);
 
 		/* Set sink as circular buffer */
 		vol_setup_circular(sink);
@@ -278,7 +322,13 @@ static void vol_s16_to_s16(struct comp_dev *dev, struct audio_stream *sink,
 		out_sample = AE_ROUND16X4F32SSYM(out_sample0, out_sample1);
 		AE_SA16X4_IC(out_sample, outu, out);
 
+		/* calc peak vol
+		 * TODO: fix channel value
+		 */
+		peak_vol_calc(cd, out_sample0, 0);
 	}
+	/* update peak vol */
+	peak_vol_update(cd);
 }
 #endif /* CONFIG_FORMAT_S16LE */
 

@@ -15,6 +15,7 @@
  */
 
 #include <sof/audio/coefficients/volume/windows_fade.h>
+#include <sof/audio/component_ext.h>
 #include <sof/audio/component.h>
 #include <sof/audio/format.h>
 #include <sof/audio/pipeline.h>
@@ -45,9 +46,20 @@
 
 static const struct comp_driver comp_volume;
 
+#if CONFIG_IPC_MAJOR_3
 /* b77e677e-5ff4-4188-af14-fba8bdbf8682 */
 DECLARE_SOF_RT_UUID("pga", volume_uuid, 0xb77e677e, 0x5ff4, 0x4188,
 		    0xaf, 0x14, 0xfb, 0xa8, 0xbd, 0xbf, 0x86, 0x82);
+#else
+/* these ids aligns windows driver requirement to support windows driver */
+/* 8a171323-94a3-4e1d-afe9-fe5dbaa4c393 */
+DECLARE_SOF_RT_UUID("pga", volume_uuid, 0x8a171323, 0x94a3, 0x4e1d,
+		    0xaf, 0xe9, 0xfe, 0x5d, 0xba, 0xa4, 0xc3, 0x93);
+
+/* 61bca9a8-18d0-4a18-8e7b-2639219804b7 */
+DECLARE_SOF_RT_UUID("gain", gain_uuid, 0x61bca9a8, 0x18d0, 0x4a18,
+		    0x8e, 0x7b, 0x26, 0x39, 0x21, 0x98, 0x04, 0xb7);
+#endif
 
 DECLARE_TR_CTX(volume_tr, SOF_UUID(volume_uuid), LOG_LEVEL_INFO);
 
@@ -61,28 +73,36 @@ DECLARE_TR_CTX(volume_tr, SOF_UUID(volume_uuid), LOG_LEVEL_INFO);
 static uint32_t vol_zc_get_s16(const struct audio_stream *source,
 			       uint32_t frames, int64_t *prev_sum)
 {
-	uint32_t buff_frag = frames * source->channels - 1;
 	uint32_t curr_frames = frames;
-	uint32_t channel;
-	int16_t *src;
 	int32_t sum;
-	uint32_t i;
+	int16_t *x = source->r_ptr;
+	int bytes;
+	int nmax;
+	int i, j, n;
+	const int nch = source->channels;
+	int remaining_samples = frames * nch;
 
-	for (i = 0; i < frames; i++) {
-		sum = 0;
+	x = audio_stream_wrap(source, x + remaining_samples - 1); /* Go to last channel */
+	while (remaining_samples) {
+		bytes = audio_stream_rewind_bytes_without_wrap(source, x);
+		nmax = VOL_BYTES_TO_S16_SAMPLES(bytes) + 1;
+		n = MIN(nmax, remaining_samples);
+		for (i = 0; i < n; i += nch) {
+			sum = 0;
+			for (j = 0; j < nch; j++) {
+				sum += *x;
+				x--;
+			}
 
-		for (channel = 0; channel < source->channels; channel++) {
-			src = audio_stream_read_frag_s16(source, buff_frag);
-			sum += *src;
-			buff_frag--;
+			/* first sign change */
+			if ((sum ^ *prev_sum) < 0)
+				return curr_frames;
+
+			*prev_sum = sum;
+			curr_frames--;
 		}
-
-		/* first sign change */
-		if ((sum ^ *prev_sum) < 0)
-			return curr_frames;
-
-		*prev_sum = sum;
-		curr_frames--;
+		remaining_samples -= n;
+		x = audio_stream_rewind_wrap(source, x);
 	}
 
 	/* sign change not detected, process all samples */
@@ -101,28 +121,36 @@ static uint32_t vol_zc_get_s16(const struct audio_stream *source,
 static uint32_t vol_zc_get_s24(const struct audio_stream *source,
 			       uint32_t frames, int64_t *prev_sum)
 {
-	uint32_t buff_frag = frames * source->channels - 1;
-	uint32_t curr_frames = frames;
-	uint32_t channel;
-	int32_t *src;
 	int64_t sum;
-	uint32_t i;
+	uint32_t curr_frames = frames;
+	int32_t *x = source->r_ptr;
+	int bytes;
+	int nmax;
+	int i, j, n;
+	const int nch = source->channels;
+	int remaining_samples = frames * nch;
 
-	for (i = 0; i < frames; i++) {
-		sum = 0;
+	x = audio_stream_wrap(source, x + remaining_samples - 1); /* Go to last channel */
+	while (remaining_samples) {
+		bytes = audio_stream_rewind_bytes_without_wrap(source, x);
+		nmax = VOL_BYTES_TO_S32_SAMPLES(bytes) + 1;
+		n = MIN(nmax, remaining_samples);
+		for (i = 0; i < n; i += nch) {
+			sum = 0;
+			for (j = 0; j < nch; j++) {
+				sum += sign_extend_s24(*x);
+				x--;
+			}
 
-		for (channel = 0; channel < source->channels; channel++) {
-			src = audio_stream_read_frag_s32(source, buff_frag);
-			sum += sign_extend_s24(*src);
-			buff_frag--;
+			/* first sign change */
+			if ((sum ^ *prev_sum) < 0)
+				return curr_frames;
+
+			*prev_sum = sum;
+			curr_frames--;
 		}
-
-		/* first sign change */
-		if ((sum ^ *prev_sum) < 0)
-			return curr_frames;
-
-		*prev_sum = sum;
-		curr_frames--;
+		remaining_samples -= n;
+		x = audio_stream_rewind_wrap(source, x);
 	}
 
 	/* sign change not detected, process all samples */
@@ -141,28 +169,36 @@ static uint32_t vol_zc_get_s24(const struct audio_stream *source,
 static uint32_t vol_zc_get_s32(const struct audio_stream *source,
 			       uint32_t frames, int64_t *prev_sum)
 {
-	uint32_t buff_frag = frames * source->channels - 1;
-	uint32_t curr_frames = frames;
-	uint32_t channel;
-	int32_t *src;
 	int64_t sum;
-	uint32_t i;
+	uint32_t curr_frames = frames;
+	int32_t *x = source->r_ptr;
+	int bytes;
+	int nmax;
+	int i, j, n;
+	const int nch = source->channels;
+	int remaining_samples = frames * nch;
 
-	for (i = 0; i < frames; i++) {
-		sum = 0;
+	x = audio_stream_wrap(source, x + remaining_samples - 1); /* Go to last channel */
+	while (remaining_samples) {
+		bytes = audio_stream_rewind_bytes_without_wrap(source, x);
+		nmax = VOL_BYTES_TO_S32_SAMPLES(bytes) + 1;
+		n = MIN(nmax, remaining_samples);
+		for (i = 0; i < n; i += nch) {
+			sum = 0;
+			for (j = 0; j < nch; j++) {
+				sum += *x;
+				x--;
+			}
 
-		for (channel = 0; channel < source->channels; channel++) {
-			src = audio_stream_read_frag_s32(source, buff_frag);
-			sum += *src;
-			buff_frag--;
+			/* first sign change */
+			if ((sum ^ *prev_sum) < 0)
+				return curr_frames;
+
+			*prev_sum = sum;
+			curr_frames--;
 		}
-
-		/* first sign change */
-		if ((sum ^ *prev_sum) < 0)
-			return curr_frames;
-
-		*prev_sum = sum;
-		curr_frames--;
+		remaining_samples -= n;
+		x = audio_stream_rewind_wrap(source, x);
 	}
 
 	/* sign change not detected, process all samples */
@@ -184,6 +220,7 @@ const struct comp_zc_func_map zc_func_map[] = {
 #endif /* CONFIG_FORMAT_S32LE */
 };
 
+#if CONFIG_COMP_VOLUME_LINEAR_RAMP
 /**
  * \brief Calculate linear ramp function
  * \param[in,out] dev Component data: ramp start gain, actual gain
@@ -196,6 +233,7 @@ static int32_t volume_linear_ramp(struct comp_dev *dev, int32_t ramp_time, int c
 
 	return cd->rvolume[channel] + ramp_time * cd->ramp_coef[channel];
 }
+#endif
 
 #if CONFIG_COMP_VOLUME_WINDOWS_FADE
 /**
@@ -212,7 +250,7 @@ static int32_t volume_windows_fade_ramp(struct comp_dev *dev, int32_t ramp_time,
 	int32_t pow_value; /* Q2.30 */
 	int32_t volume_delta = cd->tvolume[channel] - cd->rvolume[channel]; /* Q16.16 */
 
-	time_ratio = (((int64_t)ramp_time) << 30) / (cd->ipc_config.initial_ramp << 3);
+	time_ratio = (((int64_t)ramp_time) << 30) / (cd->initial_ramp << 3);
 	pow_value = volume_pow_175(time_ratio);
 	return cd->rvolume[channel] + Q_MULTSR_32X32((int64_t)volume_delta, pow_value, 16, 30, 16);
 }
@@ -311,48 +349,19 @@ static void reset_state(struct vol_data *cd)
 	}
 
 	cd->channels = 0;
-	cd->ramp_finished = false;
+	cd->ramp_finished = true;
 	cd->vol_ramp_active = false;
 	cd->vol_ramp_frames = 0;
 	cd->vol_ramp_elapsed_frames = 0;
 	cd->sample_rate = 0;
 }
 
-/**
- * \brief Creates volume component.
- *
- * \return Pointer to volume base component device.
- */
-static struct comp_dev *volume_new(const struct comp_driver *drv,
-				   struct comp_ipc_config *config,
-				   void *spec)
+#if CONFIG_IPC_MAJOR_3
+static int init_volume(struct comp_dev *dev, struct comp_ipc_config *config, void *spec)
 {
-	struct comp_dev *dev;
 	struct ipc_config_volume *vol = spec;
-	struct vol_data *cd;
-	const size_t vol_size = sizeof(int32_t) * SOF_IPC_MAX_CHANNELS * 4;
+	struct vol_data *cd = comp_get_drvdata(dev);
 	int i;
-
-	comp_cl_dbg(&comp_volume, "volume_new()");
-
-	dev = comp_alloc(drv, sizeof(*dev));
-	if (!dev)
-		return NULL;
-
-	dev->ipc_config = *config;
-	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
-	if (!cd)
-		goto fail;
-
-	/* malloc memory to store current volume 4 times to ensure the address
-	 * is 8-byte aligned for multi-way xtensa intrinsic operations.
-	 */
-	cd->vol = rballoc_align(0, SOF_MEM_CAPS_RAM, vol_size, 8);
-	if (!cd->vol)
-		goto cd_fail;
-
-	comp_set_drvdata(dev, cd);
-	cd->ipc_config = *vol;
 
 	/* Set the default volumes. If IPC sets min_value or max_value to
 	 * not-zero, use them. Otherwise set to internal limits and notify
@@ -397,11 +406,16 @@ static struct comp_dev *volume_new(const struct comp_driver *drv,
 		cd->muted[i] = false;
 	}
 
-	switch (vol->ramp) {
+	cd->ramp_type = vol->ramp;
+	cd->initial_ramp = vol->initial_ramp;
+
+	switch (cd->ramp_type) {
+#if CONFIG_COMP_VOLUME_LINEAR_RAMP
 	case SOF_VOLUME_LINEAR:
 	case SOF_VOLUME_LINEAR_ZC:
 		cd->ramp_func = &volume_linear_ramp;
 		break;
+#endif
 #if CONFIG_COMP_VOLUME_WINDOWS_FADE
 	case SOF_VOLUME_WINDOWS_FADE:
 		cd->ramp_func = &volume_windows_fade_ramp;
@@ -409,13 +423,198 @@ static struct comp_dev *volume_new(const struct comp_driver *drv,
 #endif
 	default:
 		comp_err(dev, "volume_new(): invalid ramp type %d", vol->ramp);
-		goto cd_fail;
+		return -EINVAL;
 	}
 
 	reset_state(cd);
-	comp_info(dev, "vol->initial_ramp = %d, vol->ramp = %d, vol->min_value = %d, vol->max_value = %d",
-		  vol->initial_ramp, vol->ramp,
-		  vol->min_value, vol->max_value);
+
+	return 0;
+}
+
+/* CONFIG_IPC_MAJOR_3 */
+#elif CONFIG_IPC_MAJOR_4
+static int set_volume_ipc4(struct vol_data *cd, uint32_t const channel,
+			   uint32_t const target_volume,
+			   uint32_t const curve_type,
+			   uint64_t const curve_duration)
+{
+	/* update target volume in peak_regs */
+	cd->peak_regs.target_volume_[channel] = target_volume;
+	/* update peak meter in peak_regs */
+	cd->peak_regs.peak_meter_[channel] = 0;
+
+	/* init target volume */
+	cd->tvolume[channel] = target_volume;
+	/* init ramp start volume*/
+	cd->rvolume[channel] = 0;
+	/* init muted volume */
+	cd->mvolume[channel] = 0;
+	/* set muted as false*/
+	cd->muted[channel] = false;
+#if CONFIG_COMP_VOLUME_WINDOWS_FADE
+	/* ATM there is support for the same ramp for all channels */
+	if (curve_type == IPC4_AUDIO_CURVE_TYPE_WINDOWS_FADE) {
+		cd->ramp_type = SOF_VOLUME_WINDOWS_FADE;
+		cd->ramp_func =  &volume_windows_fade_ramp;
+	} else {
+		cd->ramp_type = SOF_VOLUME_WINDOWS_NO_FADE;
+	}
+#endif
+	return 0;
+}
+
+/* In IPC4 driver sends volume in Q1.31 format. It is converted
+ * into Q1.23 format to be processed by firmware.
+ */
+static inline uint32_t convert_volume_ipc4_to_ipc3(struct comp_dev *dev, uint32_t volume)
+{
+	/* Limit received volume gain to MIN..MAX range before applying it.
+	 * MAX is needed for now for the generic C gain arithmetics to prevent
+	 * multiplication overflow with the 32 bit value. Non-zero MIN option
+	 * can be useful to prevent totally muted small volume gain.
+	 */
+
+	return sat_int24(Q_SHIFT_RND(volume, 31, 23));
+}
+
+static inline uint32_t convert_volume_ipc3_to_ipc4(uint32_t volume)
+{
+	/* In IPC4 volume is converted into Q1.23 format to be processed by firmware.
+	 * Now convert it back to Q1.31
+	 */
+	return sat_int32(Q_SHIFT_LEFT((int64_t)volume, 23, 31));
+}
+
+static inline void init_ramp(struct vol_data *cd, uint32_t curve_duration, uint32_t target_volume)
+{
+	/* In IPC4 driver sends curve_duration in hundred of ns - it should be
+	 * converted into ms value required by firmware
+	 */
+	cd->initial_ramp = Q_MULTSR_32X32(curve_duration,
+					  Q_CONVERT_FLOAT(1.0 / 10000, 31), 0, 31, 0);
+
+	if (!cd->initial_ramp) {
+		/* In case when initial ramp time is equal to zero, vol_min and
+		 * vol_max variables should be set to target_volume value
+		 */
+		cd->vol_min = target_volume;
+		cd->vol_max = target_volume;
+	} else {
+		cd->vol_min = VOL_MIN;
+		cd->vol_max = VOL_MAX;
+	}
+}
+
+static int init_volume(struct comp_dev *dev, struct comp_ipc_config *config, void *spec)
+{
+	struct ipc4_peak_volume_module_cfg *vol = spec;
+	struct vol_data *cd = comp_get_drvdata(dev);
+	uint32_t channels_count;
+	uint8_t channel_cfg;
+	uint8_t channel;
+
+	mailbox_hostbox_read(&cd->base, sizeof(cd->base), 0, sizeof(cd->base));
+
+	channels_count = cd->base.audio_fmt.channels_count;
+
+	for (channel = 0; channel < channels_count ; channel++) {
+		if (vol->config[0].channel_id == IPC4_ALL_CHANNELS_MASK)
+			channel_cfg = 0;
+		else
+			channel_cfg = channel;
+
+		vol->config[channel].target_volume =
+			convert_volume_ipc4_to_ipc3(dev, vol->config[channel].target_volume);
+
+		set_volume_ipc4(cd, channel,
+				vol->config[channel_cfg].target_volume,
+				vol->config[channel_cfg].curve_type,
+				vol->config[channel_cfg].curve_duration);
+	}
+
+	init_ramp(cd, vol->config[0].curve_duration, vol->config[0].target_volume);
+
+	cd->mailbox_offset = offsetof(struct ipc4_fw_registers, peak_vol_regs);
+	cd->mailbox_offset += IPC4_INST_ID(config->id) * sizeof(struct ipc4_peak_volume_regs);
+
+	reset_state(cd);
+
+	return 0;
+}
+#endif /* CONFIG_IPC_MAJOR_4 */
+
+static inline void prepare_ramp(struct comp_dev *dev, struct vol_data *cd)
+{
+	int ramp_update_us;
+
+	/* Determine ramp update rate depending on requested ramp length. To
+	 * ensure evenly updated gain envelope with limited fraction resolution
+	 * four presets are used.
+	 */
+	if (cd->initial_ramp < VOL_RAMP_UPDATE_THRESHOLD_FASTEST_MS)
+		ramp_update_us = VOL_RAMP_UPDATE_FASTEST_US;
+	else if (cd->initial_ramp < VOL_RAMP_UPDATE_THRESHOLD_FAST_MS)
+		ramp_update_us = VOL_RAMP_UPDATE_FAST_US;
+	else if (cd->initial_ramp < VOL_RAMP_UPDATE_THRESHOLD_SLOW_MS)
+		ramp_update_us = VOL_RAMP_UPDATE_SLOW_US;
+	else
+		ramp_update_us = VOL_RAMP_UPDATE_SLOWEST_US;
+
+	/* The volume ramp is updated at least once per copy(). If the ramp update
+	 * period is larger than schedule period the frames count for update is set
+	 * to copy schedule equivalent number of frames. This also prevents a divide
+	 * by zero to happen with a combinations of topology parameters for the volume
+	 * component and the pipeline.
+	 */
+	if (ramp_update_us > dev->period)
+		cd->vol_ramp_frames = dev->frames;
+	else
+		cd->vol_ramp_frames = dev->frames / (dev->period / ramp_update_us);
+}
+
+/**
+ * \brief Creates volume component.
+ *
+ * \return Pointer to volume base component device.
+ */
+static struct comp_dev *volume_new(const struct comp_driver *drv,
+				   struct comp_ipc_config *config,
+				   void *spec)
+{
+	struct comp_dev *dev;
+	struct vol_data *cd;
+	const size_t vol_size = sizeof(int32_t) * SOF_IPC_MAX_CHANNELS * 4;
+	int ret;
+
+	comp_cl_dbg(&comp_volume, "volume_new()");
+
+	dev = comp_alloc(drv, sizeof(*dev));
+	if (!dev)
+		return NULL;
+
+	dev->ipc_config = *config;
+	list_init(&dev->bsource_list);
+	list_init(&dev->bsink_list);
+
+	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+		     sizeof(struct vol_data));
+	if (!cd)
+		goto fail;
+
+	/* malloc memory to store current volume 4 times to ensure the address
+	 * is 8-byte aligned for multi-way xtensa intrinsic operations.
+	 */
+	cd->vol = rballoc_align(0, SOF_MEM_CAPS_RAM, vol_size, 8);
+	if (!cd->vol) {
+		comp_err(dev, "volume_new(): Failed to allocate %d", vol_size);
+		goto cd_fail;
+	}
+
+	comp_set_drvdata(dev, cd);
+
+	ret = init_volume(dev, config, spec);
+	if (ret < 0)
+		goto cd_fail;
 
 	dev->state = COMP_STATE_READY;
 	return dev;
@@ -435,6 +634,13 @@ fail:
 static void volume_free(struct comp_dev *dev)
 {
 	struct vol_data *cd = comp_get_drvdata(dev);
+#if CONFIG_IPC_MAJOR_4
+	struct ipc4_peak_volume_regs regs;
+
+	/* clear mailbox */
+	memset_s(&regs, sizeof(regs), 0, sizeof(regs));
+	mailbox_sw_regs_write(cd->mailbox_offset, &regs, sizeof(regs));
+#endif
 
 	comp_dbg(dev, "volume_free()");
 
@@ -462,7 +668,7 @@ static inline int volume_set_chan(struct comp_dev *dev, int chan,
 	int32_t coef;
 
 	/* Limit received volume gain to MIN..MAX range before applying it.
-	 * MAX is needed for now for the generic C gain arithmetics to prevent
+	 * MAX is needed for now for the generic C gain arithmetic to prevent
 	 * multiplication overflow with the 32 bit value. Non-zero MIN option
 	 * can be useful to prevent totally muted small volume gain.
 	 */
@@ -485,8 +691,8 @@ static inline int volume_set_chan(struct comp_dev *dev, int chan,
 	cd->vol_ramp_elapsed_frames = 0;
 
 	/* Check ramp type */
-	if (cd->ipc_config.ramp == SOF_VOLUME_LINEAR ||
-	    cd->ipc_config.ramp == SOF_VOLUME_LINEAR_ZC) {
+	if (cd->ramp_type == SOF_VOLUME_LINEAR ||
+	    cd->ramp_type == SOF_VOLUME_LINEAR_ZC) {
 		/* Get volume transition delta and absolute value */
 		delta = cd->tvolume[chan] - cd->volume[chan];
 		delta_abs = ABS(delta);
@@ -500,7 +706,7 @@ static inline int volume_set_chan(struct comp_dev *dev, int chan,
 		 * Note also the legacy mode without known vol_ramp_range where
 		 * the volume transition always uses the topology defined time.
 		 */
-		if (cd->ipc_config.initial_ramp > 0) {
+		if (cd->initial_ramp > 0) {
 			if (constant_rate_ramp && cd->vol_ramp_range > 0)
 				coef = cd->vol_ramp_range;
 			else
@@ -510,7 +716,7 @@ static inline int volume_set_chan(struct comp_dev *dev, int chan,
 			 * be some accumulated error in ramp time the longer
 			 * the ramp and the smaller the transition is.
 			 */
-			coef = (2 * coef / cd->ipc_config.initial_ramp + 1) >> 1;
+			coef = (2 * coef / cd->initial_ramp + 1) >> 1;
 		} else {
 			coef = delta_abs;
 		}
@@ -565,6 +771,7 @@ static inline void volume_set_chan_unmute(struct comp_dev *dev, int chan)
 	}
 }
 
+#if CONFIG_IPC_MAJOR_3
 /**
  * \brief Sets volume control command.
  * \param[in,out] dev Volume base component device.
@@ -721,6 +928,141 @@ static int volume_cmd(struct comp_dev *dev, int cmd, void *data,
 	}
 }
 
+/* CONFIG_IPC_MAJOR_3 */
+#elif CONFIG_IPC_MAJOR_4
+/**
+ * \brief Used to pass standard and bespoke commands (with data) to component.
+ * \param[in,out] dev Volume base component device.
+ * \param[in] cmd Command type.
+ * \param[in,out] data Control command data.
+ * \return Error code.
+ */
+static int volume_cmd(struct comp_dev *dev, int cmd, void *data,
+		      int max_data_size)
+{
+	struct ipc4_peak_volume_config *cdata = ASSUME_ALIGNED(data, 8);
+	struct vol_data *cd = comp_get_drvdata(dev);
+	uint32_t channels_count = cd->base.audio_fmt.channels_count;
+	int i;
+
+	comp_dbg(dev, "volume_cmd()");
+
+	cdata->target_volume = convert_volume_ipc4_to_ipc3(dev, cdata->target_volume);
+
+	/* In IPC4 driver sends curve_duration in hundred of ns - it should be
+	 * converted into ms value required by firmware
+	 */
+	cd->initial_ramp = Q_MULTSR_32X32(cdata->curve_duration, Q_CONVERT_FLOAT(1.0 / 10000, 31),
+					  0, 31, 0);
+
+	switch (cmd) {
+	case IPC4_VOLUME:
+		if (cdata->channel_id == IPC4_ALL_CHANNELS_MASK) {
+			for (i = 0; i < channels_count; i++)
+				set_volume_ipc4(cd, i, cdata->target_volume,
+						cdata->curve_type,
+						cdata->curve_duration);
+		} else {
+			set_volume_ipc4(cd, cdata->channel_id,
+					cdata->target_volume, cdata->curve_type,
+					cdata->curve_duration);
+		}
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int volume_set_large_config(struct comp_dev *dev, uint32_t param_id,
+				   bool first_block,
+				   bool last_block,
+				   uint32_t data_offset,
+				   char *data)
+{
+	struct vol_data *cd = comp_get_drvdata(dev);
+	struct ipc4_peak_volume_config *cdata;
+	int i;
+
+	comp_dbg(dev, "volume_set_large_config()");
+
+	cdata = (struct ipc4_peak_volume_config *)ASSUME_ALIGNED(data, 8);
+	dcache_invalidate_region(cdata, sizeof(*cdata));
+	cdata->target_volume = convert_volume_ipc4_to_ipc3(dev, cdata->target_volume);
+
+	init_ramp(cd, cdata->curve_duration, cdata->target_volume);
+	cd->ramp_finished = true;
+
+	switch (param_id) {
+	case IPC4_VOLUME:
+		if (cdata->channel_id == IPC4_ALL_CHANNELS_MASK) {
+			for (i = 0; i < cd->channels; i++) {
+				set_volume_ipc4(cd, i, cdata->target_volume,
+						cdata->curve_type,
+						cdata->curve_duration);
+
+				cd->volume[i] = cd->vol_min;
+				volume_set_chan(dev, i, cd->tvolume[i], true);
+				if (cd->volume[i] != cd->tvolume[i])
+					cd->ramp_finished = false;
+			}
+		} else {
+			set_volume_ipc4(cd, cdata->channel_id, cdata->target_volume,
+					cdata->curve_type,
+					cdata->curve_duration);
+
+			cd->volume[cdata->channel_id] = cd->vol_min;
+			volume_set_chan(dev, cdata->channel_id, cd->tvolume[cdata->channel_id],
+					true);
+			if (cd->volume[cdata->channel_id] != cd->tvolume[cdata->channel_id])
+				cd->ramp_finished = false;
+		}
+
+		prepare_ramp(dev, cd);
+		break;
+
+	default:
+		comp_err(dev, "unsupported param %d", param_id);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int volume_get_large_config(struct comp_dev *dev, uint32_t param_id,
+				   bool first_block,
+				   bool last_block,
+				   uint32_t *data_offset,
+				   char *data)
+{
+	struct vol_data *cd = comp_get_drvdata(dev);
+	struct ipc4_peak_volume_config *cdata;
+	int i;
+
+	comp_dbg(dev, "volume_get_large_config()");
+
+	cdata = (struct ipc4_peak_volume_config *)ASSUME_ALIGNED(data, 8);
+
+	switch (param_id) {
+	case IPC4_VOLUME:
+		for (i = 0; i < cd->channels; i++) {
+			uint32_t volume = cd->peak_regs.target_volume_[i];
+
+			cdata[i].channel_id = i;
+			cdata[i].target_volume = convert_volume_ipc3_to_ipc4(volume);
+		}
+		*data_offset = sizeof(*cdata) * cd->channels;
+		break;
+	default:
+		comp_err(dev, "unsupported param %d", param_id);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+#endif /* CONFIG_IPC_MAJOR_4 */
+
 /**
  * \brief Sets volume component state.
  * \param[in,out] dev Volume base component device.
@@ -732,6 +1074,18 @@ static int volume_trigger(struct comp_dev *dev, int cmd)
 	comp_dbg(dev, "volume_trigger()");
 
 	return comp_set_state(dev, cmd);
+}
+
+static void volume_update_current_vol_ipc4(struct vol_data *cd)
+{
+#if CONFIG_IPC_MAJOR_4
+	int i;
+
+	assert(cd);
+
+	for (i = 0; i < cd->channels; i++)
+		cd->peak_regs.current_volume_[i] = cd->volume[i];
+#endif
 }
 
 /**
@@ -766,10 +1120,12 @@ static int volume_copy(struct comp_dev *dev)
 		 c.source_bytes, c.sink_bytes);
 
 	while (c.frames) {
+		volume_update_current_vol_ipc4(cd);
+
 		if (cd->ramp_finished || cd->vol_ramp_frames > c.frames) {
 			/* without ramping process all at once */
 			frames = c.frames;
-		} else if (cd->ipc_config.ramp == SOF_VOLUME_LINEAR_ZC) {
+		} else if (cd->ramp_type == SOF_VOLUME_LINEAR_ZC) {
 			/* with ZC ramping look for next ZC offset */
 			frames = cd->zc_get(&source->stream,
 					    cd->vol_ramp_frames, &prev_sum);
@@ -838,7 +1194,6 @@ static int volume_prepare(struct comp_dev *dev)
 	struct vol_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *sinkb;
 	uint32_t sink_period_bytes;
-	int ramp_update_us;
 	int ret;
 	int i;
 
@@ -881,7 +1236,7 @@ static int volume_prepare(struct comp_dev *dev)
 		goto err;
 	}
 
-	if (!cd->ramp_func) {
+	if (cd->initial_ramp && !cd->ramp_func) {
 		comp_err(dev, "volume_prepare(): invalid cd->ramp_func");
 		ret = -EINVAL;
 		goto err;
@@ -903,29 +1258,7 @@ static int volume_prepare(struct comp_dev *dev)
 			cd->ramp_finished = false;
 	}
 
-	/* Determine ramp update rate depending on requested ramp length. To
-	 * ensure evenly updated gain envelope with limited fraction resolution
-	 * four presets are used.
-	 */
-	if (cd->ipc_config.initial_ramp < VOL_RAMP_UPDATE_THRESHOLD_FASTEST_MS)
-		ramp_update_us = VOL_RAMP_UPDATE_FASTEST_US;
-	else if (cd->ipc_config.initial_ramp < VOL_RAMP_UPDATE_THRESHOLD_FAST_MS)
-		ramp_update_us = VOL_RAMP_UPDATE_FAST_US;
-	else if (cd->ipc_config.initial_ramp < VOL_RAMP_UPDATE_THRESHOLD_SLOW_MS)
-		ramp_update_us = VOL_RAMP_UPDATE_SLOW_US;
-	else
-		ramp_update_us = VOL_RAMP_UPDATE_SLOWEST_US;
-
-	/* The volume ramp is updated at least once per copy(). If the ramp update
-	 * period is larger than schedule period the frames count for update is set
-	 * to copy schedule equivalent number of frames. This also prevents a divide
-	 * by zero to happen with a combinations of topology parameters for the volume
-	 * component and the pipeline.
-	 */
-	if (ramp_update_us > dev->period)
-		cd->vol_ramp_frames = dev->frames;
-	else
-		cd->vol_ramp_frames = dev->frames / (dev->period / ramp_update_us);
+	prepare_ramp(dev, cd);
 
 	return 0;
 
@@ -962,6 +1295,10 @@ static const struct comp_driver comp_volume = {
 		.copy		= volume_copy,
 		.prepare	= volume_prepare,
 		.reset		= volume_reset,
+#if CONFIG_IPC_MAJOR_4
+		.set_large_config = volume_set_large_config,
+		.get_large_config = volume_get_large_config,
+#endif
 	},
 };
 
@@ -979,3 +1316,38 @@ UT_STATIC void sys_comp_volume_init(void)
 }
 
 DECLARE_MODULE(sys_comp_volume_init);
+
+#if CONFIG_COMP_GAIN
+/** \brief gain component definition. */
+static const struct comp_driver comp_gain = {
+	.type	= SOF_COMP_VOLUME,
+	.uid	= SOF_RT_UUID(gain_uuid),
+	.tctx	= &volume_tr,
+	.ops	= {
+		.create		= volume_new,
+		.free		= volume_free,
+		.cmd		= volume_cmd,
+		.trigger	= volume_trigger,
+		.copy		= volume_copy,
+		.prepare	= volume_prepare,
+		.reset		= volume_reset,
+		.set_large_config = volume_set_large_config,
+		.get_large_config = volume_get_large_config,
+	},
+};
+
+static SHARED_DATA struct comp_driver_info comp_gain_info = {
+	.drv = &comp_gain,
+};
+
+/**
+ * \brief Initializes gain component.
+ */
+UT_STATIC void sys_comp_gain_init(void)
+{
+	comp_register(platform_shared_get(&comp_gain_info,
+					  sizeof(comp_gain_info)));
+}
+
+DECLARE_MODULE(sys_comp_gain_init);
+#endif

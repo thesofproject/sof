@@ -6,7 +6,7 @@ C_CONTROLBYTES(DEF_TDFB_BYTES, PIPELINE_ID,
 	CONTROLBYTES_EXTOPS(258 binds the mixer control to bytes get/put handlers,
 		258, 258),
 	, , ,
-	CONTROLBYTES_MAX(, 4096),
+	CONTROLBYTES_MAX(, 8192),
 	,
 	DEF_TDFB_PRIV)
 
@@ -35,7 +35,7 @@ undefine(`CONTROL_NAME')
 
 # TDFB enum list
 CONTROLENUM_LIST(DEF_TDFB_AZIMUTH_VALUES,
-	LIST(`	', `"0"', `"30"', `"60"', `"90"', `"120"', `"150"', `"180"', `"210"', `"240"', `"270"', `"300"', `"330"'))
+	LIST(`	', `"-90"', `"-75"', `"-60"', `"-45"', `"-30"', `"-15"', `"0"', `"15"', `"30"', `"45"', `"60"', `"75"', `"90"'))
 
 # TDFB enum control
 C_CONTROLENUM(DEF_TDFB_AZIMUTH, PIPELINE_ID,
