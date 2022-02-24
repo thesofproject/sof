@@ -145,7 +145,7 @@ set(TPLGS
 	"sof-tgl-max98357a-rt5682\;sof-tgl-max98357a-rt5682-rtnr\;-DCODEC=MAX98357A\;-DFMT=s16le\;-DPLATFORM=tgl\;-DAMP_SSP=1\;-DCHANNELS=2\;-DRTNR"
 	"sof-tgl-max98357a-rt5682\;sof-adl-max98390-rt5682\;-DCODEC=MAX98390\;-DFMT=s32le\;-DPLATFORM=adl\;-DAMP_SSP=1\;-DBT_OFFLOAD"
 	"sof-tgl-max98357a-rt5682\;sof-adl-max98390-rt5682-google-aec\;-DCODEC=MAX98390\;-DFMT=s32le\;-DPLATFORM=adl\;-DAMP_SSP=1\;-DBT_OFFLOAD\;-DGOOGLE_RTC_AUDIO_PROCESSING"
-	"sof-tgl-max98357a-rt5682\;sof-adl-max98390-rt5682-rtnr\;-DCODEC=MAX98390\;-DFMT=s32le\;-DPLATFORM=adl\;-DAMP_SSP=1\;-DBT_OFFLOAD\;-DCHANNELS=2\;-DRTNR"
+	"sof-tgl-max98357a-rt5682\;sof-adl-max98390-rt5682-rtnr\;-DCODEC=MAX98390\;-DFMT=s32le\;-DPLATFORM=adl\;-DAMP_SSP=1\;-DBT_OFFLOAD\;-DCHANNELS=2\;-DRTNR\;-DNOHOTWORD\;-DDMICPROC=rtnr\;-DNO16KDMIC"
 	"sof-tgl-max98357a-rt5682\;sof-adl-max98390-ssp2-rt5682-ssp0\;-DCODEC=MAX98390\;-DFMT=s32le\;-DPLATFORM=adl\;-DAMP_SSP=2"
 	"sof-tgl-max98357a-rt5682\;sof-adl-rt5682\;-DNO_AMP\;-DPLATFORM=adl"
 	"sof-tgl-max98373-rt5682\;sof-tgl-max98373-rt5682\;-DAMP_SSP=1"

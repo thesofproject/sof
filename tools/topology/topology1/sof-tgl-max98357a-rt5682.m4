@@ -140,7 +140,11 @@ ifdef(`GOOGLE_RTC_AUDIO_PROCESSING', `define(`SPK_PLAYBACK_CORE', DMIC_PIPELINE_
 define(KWD_PIPE_SCH_DEADLINE_US, 5000)
 
 # include the generic dmic with kwd
-include(`platform/intel/intel-generic-dmic-kwd.m4')
+ifdef(`NOHOTWORD',
+`
+define(NO16KDMIC)
+include(`platform/intel/intel-generic-dmic.m4')',
+`include(`platform/intel/intel-generic-dmic-kwd.m4')')
 
 ifdef(`BT_OFFLOAD', `
 # BT offload support
