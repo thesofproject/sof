@@ -465,255 +465,253 @@ static void drc_process_one_division(struct drc_state *state,
 	drc_compress_output(state, p, nbyte, nch);
 }
 
-#if CONFIG_FORMAT_S16LE
-static void drc_s16_default_pass(const struct comp_dev *dev,
-				 const struct audio_stream *source,
-				 struct audio_stream *sink,
-				 uint32_t frames)
+void drc_default_pass(const struct comp_dev *dev, const struct audio_stream *source,
+		      struct audio_stream *sink, uint32_t frames)
 {
-	int16_t *x;
-	int16_t *y;
-	int i;
-	int n = source->channels * frames;
-
-	for (i = 0; i < n; i++) {
-		x = audio_stream_read_frag_s16(source, i);
-		y = audio_stream_write_frag_s16(sink, i);
-		*y = *x;
-	}
+	audio_stream_copy(source, 0, sink, 0, frames * source->channels);
 }
-#endif /* CONFIG_FORMAT_S16LE */
 
-#if CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE
-static void drc_s32_default_pass(const struct comp_dev *dev,
-				 const struct audio_stream *source,
-				 struct audio_stream *sink,
-				 uint32_t frames)
+static inline void drc_pre_delay_index_inc(int *idx, int increment)
 {
-	int32_t *x;
-	int32_t *y;
-	int i;
-	int n = source->channels * frames;
-
-	for (i = 0; i < n; i++) {
-		x = audio_stream_read_frag_s32(source, i);
-		y = audio_stream_write_frag_s32(sink, i);
-		*y = *x;
-	}
+	*idx = (*idx + increment) & DRC_MAX_PRE_DELAY_FRAMES_MASK;
 }
-#endif /* CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE */
 
 #if CONFIG_FORMAT_S16LE
+static void drc_delay_input_sample_s16(struct drc_state *state, const struct audio_stream *source,
+				       struct audio_stream *sink, int16_t **x, int16_t **y,
+				       int samples)
+{
+	int16_t *x1;
+	int16_t *y1;
+	int16_t *pd;
+	int pd_write_index, pd_read_index;
+	int nbuf, npcm, nfrm;
+	int ch;
+	int i;
+	int16_t *x0 = *x;
+	int16_t *y0 = *y;
+	int remaining_samples = samples;
+	int nch = source->channels;
+
+	while (remaining_samples) {
+		nbuf = audio_stream_samples_without_wrap_s16(source, x0);
+		npcm = MIN(remaining_samples, nbuf);
+		nbuf = audio_stream_samples_without_wrap_s16(sink, y0);
+		npcm = MIN(npcm, nbuf);
+		nfrm = npcm / nch;
+		for (ch = 0; ch < nch; ++ch) {
+			pd = (int16_t *)state->pre_delay_buffers[ch];
+			x1 = x0 + ch;
+			y1 = y0 + ch;
+			pd_write_index = state->pre_delay_write_index;
+			pd_read_index = state->pre_delay_read_index;
+			for (i = 0; i < nfrm; i++) {
+				*(pd + pd_write_index) = *x1;
+				*y1 = *(pd + pd_read_index);
+				drc_pre_delay_index_inc(&pd_write_index, 1);
+				drc_pre_delay_index_inc(&pd_read_index, 1);
+				x1 += nch;
+				y1 += nch;
+			}
+		}
+		remaining_samples -= npcm;
+		x0 = audio_stream_wrap(source, x0 + npcm);
+		y0 = audio_stream_wrap(sink, y0 + npcm);
+		drc_pre_delay_index_inc(&state->pre_delay_write_index, nfrm);
+		drc_pre_delay_index_inc(&state->pre_delay_read_index, nfrm);
+	}
+
+	*x = x0;
+	*y = y0;
+}
+
 static void drc_s16_default(const struct comp_dev *dev,
 			    const struct audio_stream *source,
 			    struct audio_stream *sink,
 			    uint32_t frames)
 {
-	int16_t *x;
-	int16_t *y;
-	int16_t *pd_write;
-	int16_t *pd_read;
-	int offset;
-	int i = 0;
-	int ch;
-	int idx;
-	int f;
-	int fragment;
-	int pd_write_index;
-	int pd_read_index;
+	int16_t *x = source->r_ptr;
+	int16_t *y = sink->w_ptr;
 	int nch = source->channels;
-
+	int samples = frames * nch;
 	struct drc_comp_data *cd = comp_get_drvdata(dev);
 	struct drc_state *state = &cd->state;
 	const struct sof_drc_params *p = &cd->config->params; /* Read-only */
+	int fragment_samples;
+	int fragment;
 
 	if (!p->enabled) {
 		/* Delay the input sample only and don't do other processing. This is used when the
 		 * DRC is disabled. We want to do this to match the processing delay of other bands
 		 * in multi-band DRC kernel case.
 		 */
-		for (ch = 0; ch < nch; ++ch) {
-			pd_write_index = state->pre_delay_write_index;
-			pd_read_index = state->pre_delay_read_index;
-			pd_write = (int16_t *)state->pre_delay_buffers[ch] + pd_write_index;
-			pd_read = (int16_t *)state->pre_delay_buffers[ch] + pd_read_index;
-			idx = ch;
-			for (i = 0; i < frames; ++i) {
-				x = audio_stream_read_frag_s16(source, idx);
-				y = audio_stream_write_frag_s16(sink, idx);
-				*pd_write = *x;
-				*y = *pd_read;
-				if (++pd_write_index == CONFIG_DRC_MAX_PRE_DELAY_FRAMES) {
-					pd_write_index = 0;
-					pd_write = (int16_t *)state->pre_delay_buffers[ch];
-				} else {
-					pd_write++;
-				}
-				if (++pd_read_index == CONFIG_DRC_MAX_PRE_DELAY_FRAMES) {
-					pd_read_index = 0;
-					pd_read = (int16_t *)state->pre_delay_buffers[ch];
-				} else {
-					pd_read++;
-				}
-				idx += nch;
-			}
-		}
-
-		state->pre_delay_write_index += frames;
-		state->pre_delay_write_index &= DRC_MAX_PRE_DELAY_FRAMES_MASK;
-		state->pre_delay_read_index += frames;
-		state->pre_delay_read_index &= DRC_MAX_PRE_DELAY_FRAMES_MASK;
+		drc_delay_input_sample_s16(state, source, sink, &x, &y, samples);
 		return;
 	}
 
 	if (!state->processed) {
 		drc_update_envelope(state, p);
-		drc_compress_output(state, p, 2, nch);
+		drc_compress_output(state, p, sizeof(int16_t), nch);
 		state->processed = 1;
 	}
 
-	offset = state->pre_delay_write_index & DRC_DIVISION_FRAMES_MASK;
-	while (i < frames) {
-		/* Copy fragment data from source to pre-delay buffers, and copy the output fragment
-		 * to sink.
-		 */
-		fragment = MIN(DRC_DIVISION_FRAMES - offset, frames - i);
-		pd_write_index = state->pre_delay_write_index;
-		pd_read_index = state->pre_delay_read_index;
-		for (ch = 0; ch < nch; ++ch) {
-			pd_write = (int16_t *)state->pre_delay_buffers[ch] + pd_write_index;
-			pd_read = (int16_t *)state->pre_delay_buffers[ch] + pd_read_index;
-			idx = i * nch + ch;
-			for (f = 0; f < fragment; ++f) {
-				x = audio_stream_read_frag_s16(source, idx);
-				y = audio_stream_write_frag_s16(sink, idx);
-				*pd_write = *x;
-				*y = *pd_read;
-				pd_write++;
-				pd_read++;
-				idx += nch;
-			}
-		}
-		state->pre_delay_write_index =
-			(pd_write_index + fragment) & DRC_MAX_PRE_DELAY_FRAMES_MASK;
-		state->pre_delay_read_index =
-			(pd_read_index + fragment) & DRC_MAX_PRE_DELAY_FRAMES_MASK;
-
-		i += fragment;
-		offset = (offset + fragment) & DRC_DIVISION_FRAMES_MASK;
+	while (samples) {
+		fragment = DRC_DIVISION_FRAMES -
+			(state->pre_delay_write_index & DRC_DIVISION_FRAMES_MASK);
+		fragment_samples = fragment * nch;
+		fragment_samples = MIN(samples, fragment_samples);
+		drc_delay_input_sample_s16(state, source, sink, &x, &y, fragment_samples);
+		samples -= fragment_samples;
 
 		/* Process the input division (32 frames). */
-		if (offset == 0)
-			drc_process_one_division(state, p, 2, nch);
+		if ((state->pre_delay_write_index & DRC_DIVISION_FRAMES_MASK) == 0)
+			drc_process_one_division(state, p, sizeof(int16_t), nch);
 	}
 }
 #endif /* CONFIG_FORMAT_S16LE */
 
+#if CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE
+static void drc_delay_input_sample_s32(struct drc_state *state, const struct audio_stream *source,
+				       struct audio_stream *sink, int32_t **x, int32_t **y,
+				       int samples)
+{
+	int32_t *x1;
+	int32_t *y1;
+	int32_t *pd;
+	int pd_write_index, pd_read_index;
+	int nbuf, npcm, nfrm;
+	int ch;
+	int i;
+	int32_t *x0 = *x;
+	int32_t *y0 = *y;
+	int remaining_samples = samples;
+	int nch = source->channels;
+
+	while (remaining_samples) {
+		nbuf = audio_stream_samples_without_wrap_s32(source, x0);
+		npcm = MIN(remaining_samples, nbuf);
+		nbuf = audio_stream_samples_without_wrap_s32(sink, y0);
+		npcm = MIN(npcm, nbuf);
+		nfrm = npcm / nch;
+		for (ch = 0; ch < nch; ++ch) {
+			pd = (int32_t *)state->pre_delay_buffers[ch];
+			x1 = x0 + ch;
+			y1 = y0 + ch;
+			pd_write_index = state->pre_delay_write_index;
+			pd_read_index = state->pre_delay_read_index;
+			for (i = 0; i < nfrm; i++) {
+				*(pd + pd_write_index) = *x1;
+				*y1 = *(pd + pd_read_index);
+				drc_pre_delay_index_inc(&pd_write_index, 1);
+				drc_pre_delay_index_inc(&pd_read_index, 1);
+				x1 += nch;
+				y1 += nch;
+			}
+		}
+		remaining_samples -= npcm;
+		x0 = audio_stream_wrap(source, x0 + npcm);
+		y0 = audio_stream_wrap(sink, y0 + npcm);
+		drc_pre_delay_index_inc(&state->pre_delay_write_index, nfrm);
+		drc_pre_delay_index_inc(&state->pre_delay_read_index, nfrm);
+	}
+
+	*x = x0;
+	*y = y0;
+}
+#endif
+
 #if CONFIG_FORMAT_S24LE
+static void drc_delay_input_sample_s24(struct drc_state *state, const struct audio_stream *source,
+				       struct audio_stream *sink, int32_t **x, int32_t **y,
+				       int samples)
+{
+	int32_t *x1;
+	int32_t *y1;
+	int32_t *pd;
+	int pd_write_index, pd_read_index;
+	int nbuf, npcm, nfrm;
+	int ch;
+	int i;
+	int32_t *x0 = *x;
+	int32_t *y0 = *y;
+	int remaining_samples = samples;
+	int nch = source->channels;
+
+	while (remaining_samples) {
+		nbuf = audio_stream_samples_without_wrap_s24(source, x0);
+		npcm = MIN(remaining_samples, nbuf);
+		nbuf = audio_stream_samples_without_wrap_s24(sink, y0);
+		npcm = MIN(npcm, nbuf);
+		nfrm = npcm / nch;
+		for (ch = 0; ch < nch; ++ch) {
+			pd = (int32_t *)state->pre_delay_buffers[ch];
+			x1 = x0 + ch;
+			y1 = y0 + ch;
+			pd_write_index = state->pre_delay_write_index;
+			pd_read_index = state->pre_delay_read_index;
+			for (i = 0; i < nfrm; i++) {
+				*(pd + pd_write_index) = *x1 << 8;
+				*y1 = sat_int24(Q_SHIFT_RND(*(pd + pd_read_index), 31, 23));
+				drc_pre_delay_index_inc(&pd_write_index, 1);
+				drc_pre_delay_index_inc(&pd_read_index, 1);
+				x1 += nch;
+				y1 += nch;
+			}
+		}
+		remaining_samples -= npcm;
+		x0 = audio_stream_wrap(source, x0 + npcm);
+		y0 = audio_stream_wrap(sink, y0 + npcm);
+		drc_pre_delay_index_inc(&state->pre_delay_write_index, nfrm);
+		drc_pre_delay_index_inc(&state->pre_delay_read_index, nfrm);
+	}
+
+	*x = x0;
+	*y = y0;
+}
+
 static void drc_s24_default(const struct comp_dev *dev,
 			    const struct audio_stream *source,
 			    struct audio_stream *sink,
 			    uint32_t frames)
 {
-	int32_t *x;
-	int32_t *y;
-	int32_t *pd_write;
-	int32_t *pd_read;
-	int offset;
-	int i = 0;
-	int ch;
-	int idx;
-	int f;
-	int fragment;
-	int pd_write_index;
-	int pd_read_index;
+	int32_t *x = source->r_ptr;
+	int32_t *y = sink->w_ptr;
 	int nch = source->channels;
-
+	int samples = frames * nch;
 	struct drc_comp_data *cd = comp_get_drvdata(dev);
 	struct drc_state *state = &cd->state;
 	const struct sof_drc_params *p = &cd->config->params; /* Read-only */
+	int fragment_samples;
+	int fragment;
 
 	if (!p->enabled) {
 		/* Delay the input sample only and don't do other processing. This is used when the
 		 * DRC is disabled. We want to do this to match the processing delay of other bands
-		 * in multi-band DRC kernel case.
+		 * in multi-band DRC kernel case. Note: use 32 bit delay function.
 		 */
-		for (ch = 0; ch < nch; ++ch) {
-			pd_write_index = state->pre_delay_write_index;
-			pd_read_index = state->pre_delay_read_index;
-			pd_write = (int32_t *)state->pre_delay_buffers[ch] + pd_write_index;
-			pd_read = (int32_t *)state->pre_delay_buffers[ch] + pd_read_index;
-			idx = ch;
-			for (i = 0; i < frames; ++i) {
-				x = audio_stream_read_frag_s32(source, idx);
-				y = audio_stream_write_frag_s32(sink, idx);
-				*pd_write = *x;
-				*y = *pd_read;
-				if (++pd_write_index == CONFIG_DRC_MAX_PRE_DELAY_FRAMES) {
-					pd_write_index = 0;
-					pd_write = (int32_t *)state->pre_delay_buffers[ch];
-				} else {
-					pd_write++;
-				}
-				if (++pd_read_index == CONFIG_DRC_MAX_PRE_DELAY_FRAMES) {
-					pd_read_index = 0;
-					pd_read = (int32_t *)state->pre_delay_buffers[ch];
-				} else {
-					pd_read++;
-				}
-				idx += nch;
-			}
-		}
-
-		state->pre_delay_write_index += frames;
-		state->pre_delay_write_index &= DRC_MAX_PRE_DELAY_FRAMES_MASK;
-		state->pre_delay_read_index += frames;
-		state->pre_delay_read_index &= DRC_MAX_PRE_DELAY_FRAMES_MASK;
+		drc_delay_input_sample_s32(state, source, sink, &x, &y, samples);
 		return;
 	}
 
 	if (!state->processed) {
 		drc_update_envelope(state, p);
-		drc_compress_output(state, p, 4, nch);
+		drc_compress_output(state, p, sizeof(int32_t), nch);
 		state->processed = 1;
 	}
 
-	offset = state->pre_delay_write_index & DRC_DIVISION_FRAMES_MASK;
-	while (i < frames) {
-		/* Copy fragment data from source to pre-delay buffers, and copy the output fragment
-		 * to sink.
-		 */
-		fragment = MIN(DRC_DIVISION_FRAMES - offset, frames - i);
-		pd_write_index = state->pre_delay_write_index;
-		pd_read_index = state->pre_delay_read_index;
-		for (ch = 0; ch < nch; ++ch) {
-			pd_write = (int32_t *)state->pre_delay_buffers[ch] + pd_write_index;
-			pd_read = (int32_t *)state->pre_delay_buffers[ch] + pd_read_index;
-			idx = i * nch + ch;
-			for (f = 0; f < fragment; ++f) {
-				x = audio_stream_read_frag_s32(source, idx);
-				y = audio_stream_write_frag_s32(sink, idx);
+	while (samples) {
+		fragment = DRC_DIVISION_FRAMES -
+			(state->pre_delay_write_index & DRC_DIVISION_FRAMES_MASK);
+		fragment_samples = fragment * nch;
+		fragment_samples = MIN(samples, fragment_samples);
 
-				/* Write/Read pre_delay_buffer as s32 format */
-				*pd_write = *x << 8;
-				*y = sat_int24(Q_SHIFT_RND(*pd_read, 31, 23));
-
-				pd_write++;
-				pd_read++;
-				idx += nch;
-			}
-		}
-		state->pre_delay_write_index =
-			(pd_write_index + fragment) & DRC_MAX_PRE_DELAY_FRAMES_MASK;
-		state->pre_delay_read_index =
-			(pd_read_index + fragment) & DRC_MAX_PRE_DELAY_FRAMES_MASK;
-
-		i += fragment;
-		offset = (offset + fragment) & DRC_DIVISION_FRAMES_MASK;
+		/* Use 24 bit delay function */
+		drc_delay_input_sample_s24(state, source, sink, &x, &y, fragment_samples);
+		samples -= fragment_samples;
 
 		/* Process the input division (32 frames). */
-		if (offset == 0)
-			drc_process_one_division(state, p, 4, nch);
+		if ((state->pre_delay_write_index & DRC_DIVISION_FRAMES_MASK) == 0)
+			drc_process_one_division(state, p, sizeof(int32_t), nch);
 	}
 }
 #endif /* CONFIG_FORMAT_S24LE */
@@ -724,102 +722,42 @@ static void drc_s32_default(const struct comp_dev *dev,
 			    struct audio_stream *sink,
 			    uint32_t frames)
 {
-	int32_t *x;
-	int32_t *y;
-	int32_t *pd_write;
-	int32_t *pd_read;
-	int offset;
-	int i = 0;
-	int ch;
-	int idx;
-	int f;
-	int fragment;
-	int pd_write_index;
-	int pd_read_index;
+	int32_t *x = source->r_ptr;
+	int32_t *y = sink->w_ptr;
 	int nch = source->channels;
-
+	int samples = frames * nch;
 	struct drc_comp_data *cd = comp_get_drvdata(dev);
 	struct drc_state *state = &cd->state;
 	const struct sof_drc_params *p = &cd->config->params; /* Read-only */
+	int fragment_samples;
+	int fragment;
 
 	if (!p->enabled) {
 		/* Delay the input sample only and don't do other processing. This is used when the
 		 * DRC is disabled. We want to do this to match the processing delay of other bands
 		 * in multi-band DRC kernel case.
 		 */
-		for (ch = 0; ch < nch; ++ch) {
-			pd_write_index = state->pre_delay_write_index;
-			pd_read_index = state->pre_delay_read_index;
-			pd_write = (int32_t *)state->pre_delay_buffers[ch] + pd_write_index;
-			pd_read = (int32_t *)state->pre_delay_buffers[ch] + pd_read_index;
-			idx = ch;
-			for (i = 0; i < frames; ++i) {
-				x = audio_stream_read_frag_s32(source, idx);
-				y = audio_stream_write_frag_s32(sink, idx);
-				*pd_write = *x;
-				*y = *pd_read;
-				if (++pd_write_index == CONFIG_DRC_MAX_PRE_DELAY_FRAMES) {
-					pd_write_index = 0;
-					pd_write = (int32_t *)state->pre_delay_buffers[ch];
-				} else {
-					pd_write++;
-				}
-				if (++pd_read_index == CONFIG_DRC_MAX_PRE_DELAY_FRAMES) {
-					pd_read_index = 0;
-					pd_read = (int32_t *)state->pre_delay_buffers[ch];
-				} else {
-					pd_read++;
-				}
-				idx += nch;
-			}
-		}
-
-		state->pre_delay_write_index += frames;
-		state->pre_delay_write_index &= DRC_MAX_PRE_DELAY_FRAMES_MASK;
-		state->pre_delay_read_index += frames;
-		state->pre_delay_read_index &= DRC_MAX_PRE_DELAY_FRAMES_MASK;
+		drc_delay_input_sample_s32(state, source, sink, &x, &y, samples);
 		return;
 	}
 
 	if (!state->processed) {
 		drc_update_envelope(state, p);
-		drc_compress_output(state, p, 4, nch);
+		drc_compress_output(state, p, sizeof(int32_t), nch);
 		state->processed = 1;
 	}
 
-	offset = state->pre_delay_write_index & DRC_DIVISION_FRAMES_MASK;
-	while (i < frames) {
-		/* Copy fragment data from source to pre-delay buffers, and copy the output fragment
-		 * to sink.
-		 */
-		fragment = MIN(DRC_DIVISION_FRAMES - offset, frames - i);
-		pd_write_index = state->pre_delay_write_index;
-		pd_read_index = state->pre_delay_read_index;
-		for (ch = 0; ch < nch; ++ch) {
-			pd_write = (int32_t *)state->pre_delay_buffers[ch] + pd_write_index;
-			pd_read = (int32_t *)state->pre_delay_buffers[ch] + pd_read_index;
-			idx = i * nch + ch;
-			for (f = 0; f < fragment; ++f) {
-				x = audio_stream_read_frag_s32(source, idx);
-				y = audio_stream_write_frag_s32(sink, idx);
-				*pd_write = *x;
-				*y = *pd_read;
-				pd_write++;
-				pd_read++;
-				idx += nch;
-			}
-		}
-		state->pre_delay_write_index =
-			(pd_write_index + fragment) & DRC_MAX_PRE_DELAY_FRAMES_MASK;
-		state->pre_delay_read_index =
-			(pd_read_index + fragment) & DRC_MAX_PRE_DELAY_FRAMES_MASK;
-
-		i += fragment;
-		offset = (offset + fragment) & DRC_DIVISION_FRAMES_MASK;
+	while (samples) {
+		fragment = DRC_DIVISION_FRAMES -
+			(state->pre_delay_write_index & DRC_DIVISION_FRAMES_MASK);
+		fragment_samples = fragment * nch;
+		fragment_samples = MIN(samples, fragment_samples);
+		drc_delay_input_sample_s32(state, source, sink, &x, &y, fragment_samples);
+		samples -= fragment_samples;
 
 		/* Process the input division (32 frames). */
-		if (offset == 0)
-			drc_process_one_division(state, p, 4, nch);
+		if ((state->pre_delay_write_index & DRC_DIVISION_FRAMES_MASK) == 0)
+			drc_process_one_division(state, p, sizeof(int32_t), nch);
 	}
 }
 #endif /* CONFIG_FORMAT_S32LE */
@@ -836,21 +774,6 @@ const struct drc_proc_fnmap drc_proc_fnmap[] = {
 
 #if CONFIG_FORMAT_S32LE
 	{ SOF_IPC_FRAME_S32_LE, drc_s32_default },
-#endif /* CONFIG_FORMAT_S32LE */
-};
-
-const struct drc_proc_fnmap drc_proc_fnmap_pass[] = {
-/* { SOURCE_FORMAT , PROCESSING FUNCTION } */
-#if CONFIG_FORMAT_S16LE
-	{ SOF_IPC_FRAME_S16_LE, drc_s16_default_pass },
-#endif /* CONFIG_FORMAT_S16LE */
-
-#if CONFIG_FORMAT_S24LE
-	{ SOF_IPC_FRAME_S24_4LE, drc_s32_default_pass },
-#endif /* CONFIG_FORMAT_S24LE */
-
-#if CONFIG_FORMAT_S32LE
-	{ SOF_IPC_FRAME_S32_LE, drc_s32_default_pass },
 #endif /* CONFIG_FORMAT_S32LE */
 };
 
