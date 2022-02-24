@@ -738,7 +738,7 @@ static int ipc4_module_process_d0ix(union ipc4_message_header *ipc4)
 	return 0;
 }
 
-/* power up core 0 */
+/* enable/disable cores according to the state mask */
 static int ipc4_module_process_dx(union ipc4_message_header *ipc4)
 {
 	struct ipc4_module_set_dx dx;
