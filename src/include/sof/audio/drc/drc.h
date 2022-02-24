@@ -78,8 +78,10 @@ struct drc_proc_fnmap {
 };
 
 extern const struct drc_proc_fnmap drc_proc_fnmap[];
-extern const struct drc_proc_fnmap drc_proc_fnmap_pass[];
 extern const size_t drc_proc_fncount;
+
+void drc_default_pass(const struct comp_dev *dev, const struct audio_stream *source,
+		      struct audio_stream *sink, uint32_t frames);
 
 /**
  * \brief Returns DRC processing function.
@@ -92,21 +94,6 @@ static inline drc_func drc_find_proc_func(enum sof_ipc_frame src_fmt)
 	for (i = 0; i < drc_proc_fncount; i++)
 		if (src_fmt == drc_proc_fnmap[i].frame_fmt)
 			return drc_proc_fnmap[i].drc_proc_func;
-
-	return NULL;
-}
-
-/**
- * \brief Returns DRC passthrough functions.
- */
-static inline drc_func drc_find_proc_func_pass(enum sof_ipc_frame src_fmt)
-{
-	int i;
-
-	/* Find suitable processing function from map */
-	for (i = 0; i < drc_proc_fncount; i++)
-		if (src_fmt == drc_proc_fnmap_pass[i].frame_fmt)
-			return drc_proc_fnmap_pass[i].drc_proc_func;
 
 	return NULL;
 }

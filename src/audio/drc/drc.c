@@ -401,12 +401,8 @@ static int drc_prepare(struct comp_dev *dev)
 			goto err;
 		}
 	} else {
-		cd->drc_func = drc_find_proc_func_pass(cd->source_format);
-		if (!cd->drc_func) {
-			comp_err(dev, "drc_prepare(), No proc func passthrough");
-			ret = -EINVAL;
-			goto err;
-		}
+		/* Generic function for all formats */
+		cd->drc_func = drc_default_pass;
 	}
 	comp_info(dev, "drc_prepare(), DRC is configured.");
 
