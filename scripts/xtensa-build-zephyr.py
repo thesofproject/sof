@@ -50,6 +50,8 @@ platform_list = [
 	{
 		"name": "tgl",
 		"PLAT_CONFIG": "intel_adsp_cavs25",
+		"IPC4_CONFIG_OVERLAY": "tgl_ipc4_overlay.conf",
+		"IPC4_RIMAGE_DESC": "tgl-cavs.toml",
 		"XTENSA_CORE": "cavs2x_LX6HiFi3_2017_8",
 		"XTENSA_TOOLS_VERSION": f"RG-2017.8{xtensa_tools_version_postfix}",
 		"RIMAGE_KEY": pathlib.Path("modules", "audio", "sof", "keys", "otc_private_key_3k.pem")
@@ -116,6 +118,8 @@ def parse_args():
 						help="Build all currently supported platforms")
 	parser.add_argument("platforms", nargs="*", action=validate_platforms_arguments,
 						help="List of platforms to build")
+	parser.add_argument("-i", "--ipc", required=False, choices=["IPC3", "IPC4"],
+						default="IPC3", help="IPC major version")
 	parser.add_argument("-j", "--jobs", required=False, type=int,
 						default=multiprocessing.cpu_count(),
 						help="Set number of make build jobs for rimage."
@@ -350,6 +354,10 @@ def build_platforms():
 		if args.cmake_args:
 			build_cmd += args.cmake_args
 
+		if args.ipc == "IPC4":
+			overlay = pathlib.Path(SOF_TOP, "platforms", platform, platform_dict["IPC4_CONFIG_OVERLAY"])
+			build_cmd.append(f"-DOVERLAY_CONFIG={overlay}")
+
 		# Build
 		execute_command(build_cmd, check=True, cwd=west_top)
 		smex_executable = pathlib.Path(west_top, platform_build_dir_name, "zephyr", "smex_ep",
@@ -385,6 +393,11 @@ def build_platforms():
 		else:
 			signing_key = default_rimage_key
 		sign_cmd += ["--tool-data", str(rimage_config), "--", "-k", str(signing_key)]
+
+		if args.ipc == "IPC4":
+			rimage_desc = pathlib.Path(SOF_TOP, "rimage", "config", platform_dict["IPC4_RIMAGE_DESC"])
+			sign_cmd += ["-c", rimage_desc]
+
 		execute_command(sign_cmd, check=True, cwd=west_top)
 		# Install by copy
 		fw_file_to_copy = pathlib.Path(west_top, platform_build_dir_name, "zephyr", "zephyr.ri")
