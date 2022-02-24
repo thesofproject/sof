@@ -248,16 +248,9 @@ static int dma_trace_buffer_init(struct dma_trace_data *d)
 	uint32_t addr_align;
 	int err;
 
-	/*
-	 * Keep the existing dtrace buffer to avoid memory leak, unlikely to
-	 * happen if host correctly using the dma_trace_disable().
-	 *
-	 * The buffer can not be freed up here as it is likely in use.
-	 * The (re-)initialization will happen in dma_trace_start() when it is
-	 * safe to do (the DMA is stopped)
-	 */
+	/* Keep the existing dtrace buffer to avoid memory leak */
 	if (dma_trace_initialized(d))
-		return 0;
+		goto print_banners;
 
 	if (!d || !d->dc.dmac) {
 		mtrace_printf(LOG_LEVEL_ERROR,
@@ -317,6 +310,7 @@ static int dma_trace_buffer_init(struct dma_trace_data *d)
 	}
 #endif
 
+print_banners:
 #ifdef __ZEPHYR__
 #define ZEPHYR_VER_OPT " zephyr:" META_QUOTE(BUILD_VERSION)
 #else
