@@ -419,6 +419,18 @@ static int esai_probe(struct dai *dai)
 	return 0;
 }
 
+static int esai_remove(struct dai *dai)
+{
+	struct esai_pdata *pdata = dai_get_drvdata(dai);
+
+	dai_info(dai, "esai_remove()");
+
+	rfree(pdata);
+	dai_set_drvdata(dai, NULL);
+
+	return 0;
+}
+
 static int esai_get_handshake(struct dai *dai, int direction, int stream_id)
 {
 	int handshake = dai->plat_data.fifo[direction].handshake;
@@ -469,6 +481,7 @@ const struct dai_driver esai_driver = {
 		.pm_context_store	= esai_context_store,
 		.pm_context_restore	= esai_context_restore,
 		.probe			= esai_probe,
+		.remove			= esai_remove,
 		.get_handshake		= esai_get_handshake,
 		.get_fifo		= esai_get_fifo,
 		.get_hw_params		= esai_get_hw_params,
