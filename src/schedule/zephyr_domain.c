@@ -47,7 +47,6 @@ struct zephyr_domain_thread {
 
 struct zephyr_domain {
 	struct k_timer timer;
-	struct timer *ll_timer;
 	struct zephyr_domain_thread domain_thread[CONFIG_CORE_COUNT];
 	struct ll_schedule_domain *ll_domain;
 };
@@ -229,7 +228,7 @@ static const struct ll_schedule_domain_ops zephyr_domain_ops = {
 	.domain_is_pending	= zephyr_domain_is_pending
 };
 
-struct ll_schedule_domain *zephyr_domain_init(struct timer *timer, int clk)
+struct ll_schedule_domain *zephyr_domain_init(int clk)
 {
 	struct ll_schedule_domain *domain;
 	struct zephyr_domain *zephyr_domain;
@@ -240,7 +239,6 @@ struct ll_schedule_domain *zephyr_domain_init(struct timer *timer, int clk)
 	zephyr_domain = rzalloc(SOF_MEM_ZONE_SYS_SHARED, 0, SOF_MEM_CAPS_RAM,
 				sizeof(*zephyr_domain));
 
-	zephyr_domain->ll_timer = timer;
 	zephyr_domain->ll_domain = domain;
 
 	ll_sch_domain_set_pdata(domain, zephyr_domain);
