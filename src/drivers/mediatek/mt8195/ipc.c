@@ -84,8 +84,10 @@ enum task_state ipc_platform_do_cmd(struct ipc *ipc)
 void ipc_platform_complete_cmd(struct ipc *ipc)
 {
 	trigger_irq_to_host_rsp();
-	while (ipc->pm_prepare_D3)
-		wait_for_interrupt(0);
+	while (ipc->pm_prepare_D3) {
+		clock_set_freq(CLK_CPU(cpu_get_id()), CLK_SUSPEND_CPU_HZ);
+		asm volatile("waiti 15");
+	}
 }
 
 int ipc_platform_send_msg(struct ipc_msg *msg)

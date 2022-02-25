@@ -19,6 +19,7 @@ struct sof;
 
 #define CLK_DEFAULT_CPU_HZ 720000000
 #define CLK_MAX_CPU_HZ 720000000
+#define CLK_SUSPEND_CPU_HZ 26000000
 
 #define NUM_CLOCKS 1
 
