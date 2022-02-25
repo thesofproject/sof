@@ -161,6 +161,9 @@ void buffer_free(struct comp_buffer *buffer)
 
 	buf_dbg(buffer, "buffer_free()");
 
+	if (!buffer)
+		return;
+
 	notifier_event(buffer, NOTIFIER_ID_BUFFER_FREE,
 		       NOTIFIER_TARGET_CORE_LOCAL, &cb_data, sizeof(cb_data));
 
