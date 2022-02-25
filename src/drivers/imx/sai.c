@@ -407,6 +407,18 @@ static int sai_probe(struct dai *dai)
 	return 0;
 }
 
+static int sai_remove(struct dai *dai)
+{
+	struct sai_pdata *sai = dai_get_drvdata(dai);
+
+	dai_info(dai, "sai_remove()");
+
+	rfree(sai);
+	dai_set_drvdata(dai, NULL);
+
+	return 0;
+}
+
 static int sai_get_handshake(struct dai *dai, int direction, int stream_id)
 {
 	return dai->plat_data.fifo[direction].handshake;
@@ -454,6 +466,7 @@ const struct dai_driver sai_driver = {
 		.pm_context_store	= sai_context_store,
 		.pm_context_restore	= sai_context_restore,
 		.probe			= sai_probe,
+		.remove			= sai_remove,
 		.get_handshake		= sai_get_handshake,
 		.get_fifo		= sai_get_fifo,
 		.get_hw_params		= sai_get_hw_params,
