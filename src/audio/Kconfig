@@ -176,7 +176,7 @@ config COMP_MUX
 
 config COMP_SWITCH
 	bool "Switch component"
-	default y
+	default n
 	help
 	  Select for Switch component
 
