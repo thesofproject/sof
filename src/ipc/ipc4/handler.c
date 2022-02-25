@@ -774,37 +774,32 @@ static int ipc4_module_process_dx(union ipc4_message_header *ipc4)
 		return IPC4_BAD_STATE;
 	}
 
-	/* Activate/deactivate requested cores.
-	 * Start from highest id cores so in case of request to deactivate all active cores
-	 * the core 0 will have a chance to be disabled as the last one.
-	 */
-
-	for (core_id = CONFIG_CORE_COUNT - 1; core_id >= 0; core_id--) {
+	/* Activate/deactivate requested cores */
+	for (core_id = 1; core_id < CONFIG_CORE_COUNT; core_id++) {
 		if ((dx_info.core_mask & BIT(core_id)) == 0)
 			continue;
 
 		if (dx_info.dx_mask & BIT(core_id)) {
 			ret = cpu_enable_core(core_id);
 			if (ret != 0) {
-				tr_err(&ipc_tr, "Failed to enable core %d", core_id);
+				tr_err(&ipc_tr, "failed to enable core %d", core_id);
 				return IPC4_FAILURE;
 			}
 		} else {
-			if (core_id == PLATFORM_PRIMARY_CORE_ID) {
-				if (cpu_enabled_cores() & ~BIT(PLATFORM_PRIMARY_CORE_ID)) {
-					/* primary core can't be deactivated */
-					tr_err(&ipc_tr, "Secondary cores 0x%x still active",
-					       cpu_enabled_cores());
-					return IPC4_BUSY;
-				}
-
-				ipc_get()->pm_prepare_D3 = 1;
-				/* TODO: prepare for D3 */
-				return IPC4_SUCCESS;
-			}
-
 			cpu_disable_core(core_id);
 		}
+	}
+
+	/* Deactivating primary core if requested.  */
+	if (dx_info.core_mask & BIT(PLATFORM_PRIMARY_CORE_ID)) {
+		if (cpu_enabled_cores() & ~BIT(PLATFORM_PRIMARY_CORE_ID)) {
+			tr_err(&ipc_tr, "secondary cores 0x%x still active",
+			       cpu_enabled_cores());
+			return IPC4_BUSY;
+		}
+
+		ipc_get()->pm_prepare_D3 = 1;
+		/* TODO: prepare for D3 */
 	}
 
 	return IPC4_SUCCESS;
