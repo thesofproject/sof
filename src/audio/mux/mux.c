@@ -238,37 +238,19 @@ static struct mux_look_up *get_lookup_table(struct comp_data *cd,
 	return 0;
 }
 
-static int mux_verify_params(struct comp_dev *dev,
-			     struct sof_ipc_stream_params *params)
-{
-	int ret;
-
-	comp_dbg(dev, "mux_verify_params()");
-
-	ret = comp_verify_params(dev, BUFF_PARAMS_CHANNELS, params);
-	if (ret < 0) {
-		comp_err(dev, "mux_verify_params(): comp_verify_params() failed.");
-		return ret;
-	}
-
-	return 0;
-}
-
 /* set component audio stream parameters */
 static int mux_params(struct comp_dev *dev,
 		      struct sof_ipc_stream_params *params)
 {
-	int err;
+	int ret;
 
 	comp_info(dev, "mux_params()");
 
-	err = mux_verify_params(dev, params);
-	if (err < 0) {
-		comp_err(dev, "mux_fir_params(): pcm params verification failed.");
-		return -EINVAL;
-	}
+	ret = comp_verify_params(dev, BUFF_PARAMS_CHANNELS, params);
+	if (ret < 0)
+		comp_err(dev, "mux_params(): comp_verify_params() failed.");
 
-	return 0;
+	return ret;
 }
 
 static int mux_ctrl_set_cmd(struct comp_dev *dev,
