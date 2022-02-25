@@ -25,8 +25,9 @@ PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt.bin"
 
 # CAVS SDW topology with passthrough pipelines
 "cavs-sdw\;cavs-sdw"
-# CAVS SSP topology with passthrough pipelines
-"cavs-nocodec\;cavs-tgl-nocodec"
+# CAVS SSP topology for TGL
+"cavs-nocodec\;cavs-tgl-nocodec\;NUM_DMICS=2,\
+PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-cavs-tgl-nocodec.bin"
 )
 
 # This will override the topology1 binaries with topology2 binaries
