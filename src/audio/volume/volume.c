@@ -604,7 +604,7 @@ static struct comp_dev *volume_new(const struct comp_driver *drv,
 	/* malloc memory to store current volume 4 times to ensure the address
 	 * is 8-byte aligned for multi-way xtensa intrinsic operations.
 	 */
-	cd->vol = rballoc_align(0, SOF_MEM_CAPS_RAM, vol_size, 8);
+	cd->vol = rmalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, vol_size);
 	if (!cd->vol) {
 		comp_err(dev, "volume_new(): Failed to allocate %d", vol_size);
 		goto cd_fail;
