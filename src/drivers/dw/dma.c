@@ -442,8 +442,10 @@ static int dw_dma_stop(struct dma_chan_data *channel)
 		lli++;
 	}
 
+#ifndef __ZEPHYR__
 	dcache_writeback_region(dw_chan->lli,
 				sizeof(struct dw_lli) * channel->desc_count);
+#endif
 #endif
 
 	channel->status = COMP_STATE_PREPARE;
@@ -564,7 +566,7 @@ static int dw_dma_set_config(struct dma_chan_data *channel,
 		if (dw_chan->lli)
 			rfree(dw_chan->lli);
 
-		dw_chan->lli = rballoc(SOF_MEM_FLAG_COHERENT,
+		dw_chan->lli = rmalloc(SOF_MEM_ZONE_RUNTIME, SOF_MEM_FLAG_COHERENT,
 				       SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_DMA,
 				       sizeof(struct dw_lli) * channel->desc_count);
 		if (!dw_chan->lli) {
@@ -775,8 +777,10 @@ static int dw_dma_set_config(struct dma_chan_data *channel,
 	}
 
 	/* write back descriptors so DMA engine can read them directly */
+#ifndef __ZEPHYR__
 	dcache_writeback_region(dw_chan->lli,
 				sizeof(struct dw_lli) * channel->desc_count);
+#endif
 
 	channel->status = COMP_STATE_PREPARE;
 	dw_chan->lli_current = dw_chan->lli;
@@ -816,14 +820,8 @@ static void dw_dma_verify_transfer(struct dma_chan_data *channel,
 	 * sure the cache is coherent between DSP and DMAC.
 	 */
 #if defined __ZEPHYR__
-		dcache_invalidate_region(dw_chan->lli,
-					 sizeof(struct dw_lli) * channel->desc_count);
-
 		for (i = 0; i < channel->desc_count; i++)
 			dw_chan->lli[i].ctrl_hi &= ~DW_CTLH_DONE(1);
-
-		dcache_writeback_region(dw_chan->lli,
-					sizeof(struct dw_lli) * channel->desc_count);
 #else
 		while (lli->ctrl_hi & DW_CTLH_DONE(1)) {
 			lli->ctrl_hi &= ~DW_CTLH_DONE(1);

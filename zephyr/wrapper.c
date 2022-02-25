@@ -167,7 +167,7 @@ void *rmalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
 {
 	void *ptr;
 
-	if (zone_is_cached(zone)) {
+	if (zone_is_cached(zone) && !(flags & SOF_MEM_FLAG_COHERENT)) {
 		ptr = heap_alloc_aligned_cached(&sof_heap, 0, bytes);
 	} else {
 		/*
