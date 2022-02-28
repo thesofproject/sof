@@ -177,6 +177,23 @@ static int propagate_state_to_ppl_comp(struct ipc *ipc, uint32_t ppl_id, int cmd
 	return ret;
 }
 
+static bool is_any_ppl_active(void)
+{
+	struct ipc_comp_dev *icd;
+	struct list_item *clist;
+
+	list_for_item(clist, &ipc_get()->comp_list) {
+		icd = container_of(clist, struct ipc_comp_dev, list);
+		if (icd->type != COMP_TYPE_PIPELINE)
+			continue;
+
+		if (icd->pipeline->status == COMP_STATE_ACTIVE)
+			return true;
+	}
+
+	return false;
+}
+
 /* Ipc4 pipeline message <------> ipc3 pipeline message
  * RUNNING     <-------> TRIGGER START
  * INIT + PAUSED  <-------> PIPELINE COMPLETE
@@ -795,6 +812,11 @@ static int ipc4_module_process_dx(union ipc4_message_header *ipc4)
 		if (cpu_enabled_cores() & ~BIT(PLATFORM_PRIMARY_CORE_ID)) {
 			tr_err(&ipc_tr, "secondary cores 0x%x still active",
 			       cpu_enabled_cores());
+			return IPC4_BUSY;
+		}
+
+		if (is_any_ppl_active()) {
+			tr_err(&ipc_tr, "some pipelines are still active");
 			return IPC4_BUSY;
 		}
 
