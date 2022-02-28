@@ -138,7 +138,9 @@ struct module_interface {
 	 * samples provided by the codec_adapter and produce/output the processed
 	 * ones back to codec_adapter.
 	 */
-	int (*process)(struct comp_dev *dev);
+	int (*process)(struct processing_module *mod, struct input_stream_buffer *input_buffers,
+		       int num_input_buffers, struct output_stream_buffer *output_buffers,
+		       int num_output_buffers);
 
 	/**
 	 * Set module configuration for the given configuration ID
@@ -280,6 +282,8 @@ struct processing_module {
 	struct comp_dev *dev;
 	uint32_t period_bytes; /** pipeline period bytes */
 	uint32_t deep_buff_bytes; /**< copy start threshold */
+	uint32_t num_input_buffers; /**< number of input buffers */
+	uint32_t num_output_buffers; /**< number of output buffers */
 };
 
 /*****************************************************************************/
@@ -291,7 +295,9 @@ void *module_allocate_memory(struct processing_module *mod, uint32_t size, uint3
 int module_free_memory(struct processing_module *mod, void *ptr);
 void module_free_all_memory(struct processing_module *mod);
 int module_prepare(struct processing_module *mod);
-int module_process(struct comp_dev *dev);
+int module_process(struct processing_module *mod, struct input_stream_buffer *input_buffers,
+		   int num_input_buffers, struct output_stream_buffer *output_buffers,
+		   int num_output_buffers);
 int module_reset(struct processing_module *mod);
 int module_free(struct processing_module *mod);
 int module_set_configuration(struct processing_module *mod,
