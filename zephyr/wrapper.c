@@ -539,6 +539,8 @@ void sys_comp_basefw_init(void);
 void sys_comp_copier_init(void);
 void sys_comp_codec_cadence_interface_init(void);
 void sys_comp_codec_passthrough_interface_init(void);
+void sys_comp_gain_init(void);
+void sys_comp_mixin_init(void);
 
 /* Zephyr redefines log_message() and mtrace_printf() which leaves
  * totally empty the .static_log_entries ELF sections for the
@@ -576,10 +578,16 @@ int task_main_start(struct sof *sof)
 
 	if (IS_ENABLED(CONFIG_COMP_VOLUME)) {
 		sys_comp_volume_init();
+
+		if (IS_ENABLED(CONFIG_IPC_MAJOR_4))
+			sys_comp_gain_init();
 	}
 
 	if (IS_ENABLED(CONFIG_COMP_MIXER)) {
 		sys_comp_mixer_init();
+
+		if (IS_ENABLED(CONFIG_IPC_MAJOR_4))
+			sys_comp_mixin_init();
 	}
 
 	if (IS_ENABLED(CONFIG_COMP_DAI)) {
