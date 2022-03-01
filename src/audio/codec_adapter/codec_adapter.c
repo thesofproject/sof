@@ -66,6 +66,7 @@ struct comp_dev *codec_adapter_new(const struct comp_driver *drv,
 	mod->dev = dev;
 
 	comp_set_drvdata(dev, mod);
+	list_init(&mod->sink_buffer_list);
 
 	/* Copy initial config */
 	if (ipc_codec_adapter->size) {
@@ -108,7 +109,7 @@ int codec_adapter_prepare(struct comp_dev *dev)
 	int ret;
 	struct processing_module *mod = comp_get_drvdata(dev);
 	struct module_data *md = &mod->priv;
-	struct list_item *blist;
+	struct list_item *blist, *_blist;
 	uint32_t buff_periods;
 	uint32_t buff_size; /* size of local buffer */
 	int i = 0;
@@ -236,20 +237,50 @@ int codec_adapter_prepare(struct comp_dev *dev)
 		i++;
 	}
 
+	/* allocate buffer for all sinks */
+	if (list_is_empty(&mod->sink_buffer_list)) {
+		for (i = 0; i < mod->num_output_buffers; i++) {
+			struct comp_buffer *buffer = buffer_alloc(buff_size, SOF_MEM_CAPS_RAM,
+								  PLATFORM_DCACHE_ALIGN);
+			if (!buffer) {
+				comp_err(dev, "codec_adapter_prepare(): failed to allocate local buffer");
+				ret = -ENOMEM;
+				goto free;
+			}
+			list_item_append(&buffer->sink_list, &mod->sink_buffer_list);
+			buffer_set_params(buffer, &mod->stream_params, BUFFER_UPDATE_FORCE);
+			buffer_reset_pos(buffer, NULL);
+		}
+	} else {
+		list_for_item(blist, &mod->sink_buffer_list) {
+			struct comp_buffer *buffer = container_of(blist, struct comp_buffer,
+								  sink_list);
+
+			ret = buffer_set_size(buffer, buff_size);
+			if (ret < 0) {
+				comp_err(dev, "codec_adapter_prepare(): buffer_set_size() failed, buff_size = %u",
+					 buff_size);
+				goto free;
+			}
+			buffer_set_params(buffer, &mod->stream_params, BUFFER_UPDATE_FORCE);
+			buffer_reset_pos(buffer, NULL);
+		}
+	}
+
 	/* Allocate local buffer */
 	if (mod->local_buff) {
 		ret = buffer_set_size(mod->local_buff, buff_size);
 		if (ret < 0) {
 			comp_err(dev, "codec_adapter_prepare(): buffer_set_size() failed, buff_size = %u",
 				 buff_size);
-			goto out_free;
+			goto free;
 		}
 	} else {
 		mod->local_buff = buffer_alloc(buff_size, SOF_MEM_CAPS_RAM, PLATFORM_DCACHE_ALIGN);
 		if (!mod->local_buff) {
 			comp_err(dev, "codec_adapter_prepare(): failed to allocate local buffer");
 			ret = -ENOMEM;
-			goto out_free;
+			goto free;
 		}
 
 	}
@@ -261,6 +292,14 @@ int codec_adapter_prepare(struct comp_dev *dev)
 
 	return 0;
 
+free:
+	list_for_item_safe(blist, _blist, &mod->sink_buffer_list) {
+		struct comp_buffer *buffer = container_of(blist, struct comp_buffer,
+							  sink_list);
+
+		list_item_del(&buffer->sink_list);
+		buffer_free(buffer);
+	}
 out_free:
 	for (i = 0; i < mod->num_output_buffers; i++)
 		rfree(mod->output_buffers[i].data);
@@ -272,6 +311,7 @@ in_free:
 		rfree(mod->input_buffers[i].data);
 
 	rfree(mod->input_buffers);
+
 	return ret;
 }
 
@@ -477,6 +517,19 @@ int codec_adapter_copy(struct comp_dev *dev)
 	}
 	ca_copy_from_module_to_sink(&local_buff->stream, md->mpd.out_buff, md->mpd.produced);
 
+	/* copy all produced output samples */
+	i = 0;
+	list_for_item(blist, &mod->sink_buffer_list) {
+		struct comp_buffer *buffer = container_of(blist, struct comp_buffer, sink_list);
+
+		if (mod->output_buffers[i].size > 0) {
+			ca_copy_from_module_to_sink(&buffer->stream, mod->output_buffers[i].data,
+						    mod->output_buffers[i].size);
+			audio_stream_produce(&buffer->stream, mod->output_buffers[i].size);
+		}
+		i++;
+	}
+
 	bytes_to_process -= md->mpd.consumed;
 	processed += md->mpd.consumed;
 	produced += md->mpd.produced;
@@ -642,6 +695,7 @@ int codec_adapter_reset(struct comp_dev *dev)
 {
 	int ret, i;
 	struct processing_module *mod = comp_get_drvdata(dev);
+	struct list_item *blist;
 
 	comp_dbg(dev, "codec_adapter_reset(): resetting");
 
@@ -668,6 +722,13 @@ int codec_adapter_reset(struct comp_dev *dev)
 	mod->num_input_buffers = 0;
 	mod->num_output_buffers = 0;
 
+	list_for_item(blist, &mod->sink_buffer_list) {
+		struct comp_buffer *buffer = container_of(blist, struct comp_buffer,
+							  sink_list);
+
+		buffer_zero(buffer);
+	}
+
 	comp_dbg(dev, "codec_adapter_reset(): done");
 
 	return comp_set_state(dev, COMP_TRIGGER_RESET);
@@ -677,6 +738,7 @@ void codec_adapter_free(struct comp_dev *dev)
 {
 	int ret;
 	struct processing_module *mod = comp_get_drvdata(dev);
+	struct list_item *blist, *_blist;
 
 	comp_dbg(dev, "codec_adapter_free(): start");
 
@@ -685,6 +747,15 @@ void codec_adapter_free(struct comp_dev *dev)
 		comp_err(dev, "codec_adapter_free(): error %d, codec free failed", ret);
 
 	buffer_free(mod->local_buff);
+
+	list_for_item_safe(blist, _blist, &mod->sink_buffer_list) {
+		struct comp_buffer *buffer = container_of(blist, struct comp_buffer,
+							  sink_list);
+
+		list_item_del(&buffer->sink_list);
+		buffer_free(buffer);
+	}
+
 	rfree(mod);
 	rfree(dev);
 }
