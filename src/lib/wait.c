@@ -31,7 +31,7 @@ DECLARE_TR_CTX(wait_tr, SOF_UUID(wait_uuid), LOG_LEVEL_INFO);
 int poll_for_register_delay(uint32_t reg, uint32_t mask,
 			    uint32_t val, uint64_t us)
 {
-	uint64_t tick = clock_us_to_ticks(PLATFORM_DEFAULT_CLOCK, us);
+	uint64_t tick = k_us_to_cyc_ceil64(us);
 	uint32_t tries = DEFAULT_TRY_TIMES;
 	uint64_t delta = tick / tries;
 
@@ -58,19 +58,18 @@ int poll_for_register_delay(uint32_t reg, uint32_t mask,
 
 void wait_delay(uint64_t number_of_clks)
 {
-	struct timer *timer = timer_get();
-	uint64_t current = platform_timer_get(timer);
+	uint64_t timeout = k_cycle_get_64() + number_of_clks;
 
-	while ((platform_timer_get(timer) - current) < number_of_clks)
+	while (k_cycle_get_64() < timeout)
 		idelay(PLATFORM_DEFAULT_DELAY);
 }
 
 void wait_delay_ms(uint64_t ms)
 {
-	wait_delay(clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, ms));
+	wait_delay(k_ms_to_cyc_ceil64(ms));
 }
 
 void wait_delay_us(uint64_t us)
 {
-	wait_delay(clock_us_to_ticks(PLATFORM_DEFAULT_CLOCK, us));
+	wait_delay(k_us_to_cyc_ceil64(us));
 }

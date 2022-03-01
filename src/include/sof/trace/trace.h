@@ -286,11 +286,11 @@ do {											\
 /* Just like XTOS, only the most urgent messages go to limited
  * shared memory.
  */
-#define _log_nodict(atomic, arg_count, lvl, format, ...) \
-do {							      \
-	if ((lvl) <= MTRACE_DUPLICATION_LEVEL)			      \
-		printk("%llu " format "\n", platform_timer_get(NULL), \
-		       ##__VA_ARGS__); \
+#define _log_nodict(atomic, arg_count, lvl, format, ...)		\
+do {									\
+	if ((lvl) <= MTRACE_DUPLICATION_LEVEL)				\
+		printk("%llu " format "\n", k_cycle_get_64(),		\
+		       ##__VA_ARGS__);					\
 } while (0)
 #else
 #define _log_nodict(atomic, n_args, lvl, format, ...)

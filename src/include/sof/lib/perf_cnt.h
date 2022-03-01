@@ -39,8 +39,8 @@ struct perf_cnt_data {
 
 /** \brief Initializes timestamps with current timer values. */
 #define perf_cnt_init(pcd) do {						\
-		(pcd)->plat_ts = platform_timer_get(timer_get());	\
-		(pcd)->cpu_ts = timer_get_system(cpu_timer_get());	\
+		(pcd)->plat_ts = k_cycle_get_64();			\
+		(pcd)->cpu_ts = k_cycle_get_64();			\
 	} while (0)
 
 /* Trace macros that can be used as trace_m argument of the perf_cnt_stamp()
@@ -66,23 +66,23 @@ struct perf_cnt_data {
  *         more precise line number is desired in the logs.
  *  \param arg Argument passed to trace_m as arg.
  */
-#define perf_cnt_stamp(pcd, trace_m, arg) do {				  \
-		uint32_t plat_ts =					  \
-			(uint32_t) platform_timer_get(timer_get());	  \
-		uint32_t cpu_ts =					  \
-			(uint32_t) arch_timer_get_system(cpu_timer_get());\
-		if ((pcd)->plat_ts) {					  \
-			(pcd)->plat_delta_last = plat_ts - (pcd)->plat_ts;\
-			(pcd)->cpu_delta_last = cpu_ts - (pcd)->cpu_ts;   \
-		}							  \
-		(pcd)->plat_ts = plat_ts;				  \
-		(pcd)->cpu_ts = cpu_ts;					  \
-		if ((pcd)->plat_delta_last > (pcd)->plat_delta_peak)	  \
-			(pcd)->plat_delta_peak = (pcd)->plat_delta_last;  \
-		if ((pcd)->cpu_delta_last > (pcd)->cpu_delta_peak) {	  \
-			(pcd)->cpu_delta_peak = (pcd)->cpu_delta_last;	  \
-			trace_m(pcd, arg);				  \
-		}							  \
+#define perf_cnt_stamp(pcd, trace_m, arg) do {					\
+		uint32_t plat_ts =						\
+			(uint32_t)k_cycle_get_64();				\
+		uint32_t cpu_ts =						\
+			(uint32_t)k_cycle_get_64();				\
+		if ((pcd)->plat_ts) {						\
+			(pcd)->plat_delta_last = plat_ts - (pcd)->plat_ts;	\
+			(pcd)->cpu_delta_last = cpu_ts - (pcd)->cpu_ts;		\
+		}								\
+		(pcd)->plat_ts = plat_ts;					\
+		(pcd)->cpu_ts = cpu_ts;						\
+		if ((pcd)->plat_delta_last > (pcd)->plat_delta_peak)		\
+			(pcd)->plat_delta_peak = (pcd)->plat_delta_last;	\
+		if ((pcd)->cpu_delta_last > (pcd)->cpu_delta_peak) {		\
+			(pcd)->cpu_delta_peak = (pcd)->cpu_delta_last;		\
+			trace_m(pcd, arg);					\
+		}								\
 	} while (0)
 
 /**

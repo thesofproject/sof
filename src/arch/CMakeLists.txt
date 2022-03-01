@@ -2,4 +2,6 @@
 
 add_subdirectory(${ARCH})
 
-add_subdirectory("xtos-wrapper")
+if(NOT CONFIG_ZEPHYR_SOF_MODULE)
+	add_subdirectory("xtos-wrapper")
+endif()

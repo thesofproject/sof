@@ -143,6 +143,7 @@ const struct ext_man_windows xsram_window
 	},
 };
 
+#ifndef __ZEPHYR__
 static SHARED_DATA struct timer timer = {
 	.id = TIMER3, /* external timer */
 	.irq = IRQ_NUM_EXT_TIMER,
@@ -152,6 +153,7 @@ static SHARED_DATA struct timer arch_timer = {
 	.id = TIMER1, /* internal timer */
 	.irq = IRQ_NUM_TIMER1,
 };
+#endif /* __ZEPHYR__ */
 
 int platform_boot_complete(uint32_t boot_message)
 {
@@ -190,8 +192,10 @@ int platform_init(struct sof *sof)
 #endif
 	int ret;
 
+#ifndef __ZEPHYR__
 	sof->platform_timer = &timer;
 	sof->cpu_timers = &arch_timer;
+#endif /* __ZEPHYR__ */
 
 	/* clear mailbox for early trace and debug */
 	trace_point(TRACE_BOOT_PLATFORM_MBOX);

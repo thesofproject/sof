@@ -20,6 +20,7 @@
 /** \brief Minimum number of timer recovery cycles in case of delay. */
 #define TIMER_MIN_RECOVER_CYCLES	240	/* ~10us at 24.576MHz */
 
+#ifndef __ZEPHYR__
 void platform_timer_start(struct timer *timer)
 {
 	/* run timer */
@@ -112,6 +113,7 @@ uint64_t platform_timer_get_atomic(struct timer *timer)
 
 	return ticks_now;
 }
+#endif /* __ZEPHYR__ */
 
 /* get timestamp for host stream DMA position */
 void platform_host_timestamp(struct comp_dev *host,
@@ -137,7 +139,7 @@ void platform_dai_timestamp(struct comp_dev *dai,
 		posn->flags |= SOF_TIME_DAI_VALID;
 
 	/* get SSP wallclock - DAI sets this to stream start value */
-	posn->wallclock = shim_read64(SHIM_DSPWC) - posn->wallclock;
+	posn->wallclock = k_cycle_get_64() - posn->wallclock;
 	posn->wallclock_hz = clock_get_freq(PLATFORM_DEFAULT_CLOCK);
 	posn->flags |= SOF_TIME_WALL_VALID;
 }
@@ -145,9 +147,10 @@ void platform_dai_timestamp(struct comp_dev *dai,
 /* get current wallclock for componnent */
 void platform_dai_wallclock(struct comp_dev *dai, uint64_t *wallclock)
 {
-	*wallclock = shim_read64(SHIM_DSPWC);
+	*wallclock = k_cycle_get_64();
 }
 
+#ifndef __ZEPHYR__
 static int platform_timer_register(struct timer *timer,
 				   void (*handler)(void *arg), void *arg)
 {
@@ -248,3 +251,4 @@ void timer_disable(struct timer *timer, void *arg, int core)
 	}
 
 }
+#endif /* __ZEPHYR__ */

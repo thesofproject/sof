@@ -802,7 +802,6 @@ static int ipc_dma_trace_config(uint32_t header)
 	struct dma_trace_data *dmat = dma_trace_data_get();
 	struct ipc *ipc = ipc_get();
 	struct sof_ipc_dma_trace_params_ext params;
-	struct timer *timer = timer_get();
 	int err;
 
 	if (!dmat) {
@@ -820,8 +819,7 @@ static int ipc_dma_trace_config(uint32_t header)
 		 *  "SOF_IPC_TRACE_DMA_PARAMS_EXT" in your particular
 		 *  kernel version.
 		 */
-		dmat->time_delta = clock_ns_to_ticks(PLATFORM_DEFAULT_CLOCK, params.timestamp_ns) -
-				   platform_timer_get(timer);
+		dmat->time_delta = k_ns_to_cyc_near64(params.timestamp_ns) - k_cycle_get_64();
 	else
 		dmat->time_delta = 0;
 

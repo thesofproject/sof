@@ -247,7 +247,7 @@ static void schedule_ll_tasks_run(void *data)
 
 	tr_dbg(&ll_tr, "timer interrupt on core %d, at %u, previous next_tick %u",
 	       core,
-	       (unsigned int)platform_timer_get_atomic(timer_get()),
+	       (unsigned int)k_cycle_get_64_atomic(),
 	       (unsigned int)domain->next_tick);
 
 	irq_local_disable(flags);
@@ -277,7 +277,7 @@ static void schedule_ll_tasks_run(void *data)
 	key = k_spin_lock(&domain->lock);
 
 	/* reset the new_target_tick for the first core */
-	if (domain->new_target_tick < platform_timer_get_atomic(timer_get()))
+	if (domain->new_target_tick < k_cycle_get_64_atomic())
 		domain->new_target_tick = UINT64_MAX;
 
 	/* update the new_target_tick according to tasks on current core */
@@ -327,7 +327,7 @@ static int schedule_ll_domain_set(struct ll_schedule_data *sch,
 
 	task_start_us = period ? period : start;
 	task_start_ticks = domain->ticks_per_ms * task_start_us / 1000;
-	task_start = task_start_ticks + platform_timer_get_atomic(timer_get());
+	task_start = task_start_ticks + k_cycle_get_64_atomic();
 
 	if (reference) {
 		task->start = reference->start;
@@ -362,7 +362,7 @@ static int schedule_ll_domain_set(struct ll_schedule_data *sch,
 
 	tr_info(&ll_tr, "new added task->start %u at %u",
 		(unsigned int)task->start,
-		(unsigned int)platform_timer_get_atomic(timer_get()));
+		(unsigned int)k_cycle_get_64_atomic());
 	tr_info(&ll_tr, "num_tasks %ld total_num_tasks %ld",
 		atomic_read(&sch->num_tasks),
 		atomic_read(&domain->total_num_tasks));
@@ -645,7 +645,7 @@ static int reschedule_ll_task(void *data, struct task *task, uint64_t start)
 
 	time = sch->domain->ticks_per_ms * start / 1000;
 
-	time += platform_timer_get_atomic(timer_get());
+	time += k_cycle_get_64_atomic();
 
 	irq_local_disable(flags);
 
@@ -688,7 +688,7 @@ static void scheduler_free_ll(void *data, uint32_t flags)
 static void ll_scheduler_recalculate_tasks(struct ll_schedule_data *sch,
 					   struct clock_notify_data *clk_data)
 {
-	uint64_t current = platform_timer_get_atomic(timer_get());
+	uint64_t current = k_cycle_get_64_atomic();
 	struct list_item *tlist;
 	struct task *task;
 	uint64_t delta_ms;
@@ -714,8 +714,7 @@ static void ll_scheduler_notify(void *arg, enum notify_id type, void *data)
 
 	/* we need to recalculate tasks when clock frequency changes */
 	if (clk_data->message == CLOCK_NOTIFY_POST) {
-		sch->domain->ticks_per_ms = clock_ms_to_ticks(sch->domain->clk,
-							      1);
+		sch->domain->ticks_per_ms = k_ms_to_cyc_ceil64(1);
 		ll_scheduler_recalculate_tasks(sch, clk_data);
 	}
 

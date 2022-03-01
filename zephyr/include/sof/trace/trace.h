@@ -32,10 +32,10 @@ uint64_t platform_timer_get(struct timer *timer);
 #undef mtrace_printf
 
 #if USE_PRINTK
-#define mtrace_printf(level, format, ...)				\
-	do {								        \
-		if ((level) <= SOF_ZEPHYR_TRACE_LEVEL)                          \
-			printk("%llu: " format "\n", platform_timer_get(NULL),	\
+#define mtrace_printf(level, format, ...)					\
+	do {									\
+		if ((level) <= SOF_ZEPHYR_TRACE_LEVEL)				\
+			printk("%llu: " format "\n", k_cycle_get_64(),		\
 				##__VA_ARGS__);					\
 	} while (0)
 #else

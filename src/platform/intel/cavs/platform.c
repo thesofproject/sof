@@ -268,6 +268,7 @@ const int n_iomux = ARRAY_SIZE(iomux_data);
 
 #endif
 
+#ifndef __ZEPHYR__
 static SHARED_DATA struct timer timer = {
 	.id = TIMER3, /* external timer */
 	.irq = IRQ_EXT_TSTAMP0_LVL2,
@@ -275,6 +276,7 @@ static SHARED_DATA struct timer timer = {
 };
 
 static SHARED_DATA struct timer arch_timers[CONFIG_CORE_COUNT];
+#endif
 
 #if CONFIG_DW_SPI
 
@@ -356,6 +358,7 @@ int platform_init(struct sof *sof)
 	int ret;
 	int i;
 
+#ifndef __ZEPHYR__
 	sof->platform_timer = cache_to_uncache(&timer);
 	sof->cpu_timers = (struct timer *)cache_to_uncache(&arch_timers);
 
@@ -364,6 +367,7 @@ int platform_init(struct sof *sof)
 			.id = TIMER1, /* internal timer */
 			.irq = IRQ_NUM_TIMER2,
 		};
+#endif
 
 	/* Turn off memory for all unused cores */
 	for (i = 0; i < CONFIG_CORE_COUNT; i++)
@@ -401,8 +405,7 @@ int platform_init(struct sof *sof)
 	scheduler_init_edf();
 
 	/* init low latency timer domain and scheduler */
-	sof->platform_timer_domain =
-		timer_domain_init(sof->platform_timer, PLATFORM_DEFAULT_CLOCK);
+	sof->platform_timer_domain = timer_domain_init(sof->platform_timer, PLATFORM_DEFAULT_CLOCK);
 	scheduler_init_ll(sof->platform_timer_domain);
 
 	/* init the system agent */

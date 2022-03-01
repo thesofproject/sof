@@ -13,7 +13,9 @@
 #include <sof/lib/mailbox.h>
 #include <sof/lib/dai.h>
 
+#ifndef __ZEPHYR__
 static SHARED_DATA struct timer timer = {};
+#endif /* __ZEPHYR__ */
 
 static uint8_t mailbox[MAILBOX_DSPBOX_SIZE +
 		       MAILBOX_HOSTBOX_SIZE +
@@ -36,8 +38,10 @@ int dmac_init(struct sof *sof)
 
 int platform_init(struct sof *sof)
 {
+#ifndef __ZEPHYR__
 	sof->platform_timer = &timer;
 	sof->cpu_timers = &timer;
+#endif
 
 	platform_clock_init(sof);
 

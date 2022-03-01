@@ -243,8 +243,7 @@ static void dma_trace_log(bool send_atomic, uint32_t log_entry, const struct tr_
 	int i;
 
 	/* fill log content. arg_count is in the dictionary. */
-	put_header(data, ctx->uuid_p, id_1, id_2, log_entry,
-		   platform_safe_get_time(timer_get()));
+	put_header(data, ctx->uuid_p, id_1, id_2, log_entry, k_cycle_get_64_safe());
 
 	for (i = 0; i < arg_count; ++i)
 		data[PAYLOAD_OFFSET(i)] = va_arg(vargs, uint32_t);
@@ -285,7 +284,7 @@ void trace_log_filtered(bool send_atomic, const void *log_entry, const struct tr
 
 #if CONFIG_TRACE_FILTERING_ADAPTIVE
 	if (!trace->user_filter_override) {
-		const uint64_t current_ts = platform_safe_get_time(timer_get());
+		const uint64_t current_ts = k_cycle_get_64_safe();
 
 		emit_recent_entries(current_ts);
 
@@ -523,7 +522,7 @@ static void mtrace_dict_entry_vl(bool atomic_context, uint32_t dict_entry_addres
 	int i;
 	char packet[MESSAGE_SIZE(_TRACE_EVENT_MAX_ARGUMENT_COUNT)];
 	uint32_t *args = (uint32_t *)&packet[MESSAGE_SIZE(0)];
-	const uint64_t tstamp = platform_safe_get_time(timer_get());
+	const uint64_t tstamp = k_cycle_get_64_safe();
 
 	put_header(packet, dt_tr.uuid_p, _TRACE_INV_ID, _TRACE_INV_ID,
 		   dict_entry_address, tstamp);

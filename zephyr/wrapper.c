@@ -364,92 +364,6 @@ void platform_interrupt_clear(uint32_t irq, uint32_t mask)
 #endif
 
 /*
- * Timers.
- *
- * Mostly mapped. TODO: align with 64bit Zephyr timers when they are upstream.
- */
-
-#if !CONFIG_LIBRARY
-uint64_t arch_timer_get_system(struct timer *timer)
-{
-	return platform_timer_get(timer);
-}
-#endif
-
-uint64_t platform_timer_get(struct timer *timer)
-{
-#if CONFIG_SOC_SERIES_INTEL_ADSP_BAYTRAIL
-	uint32_t low;
-	uint32_t high;
-	uint64_t time;
-
-	do {
-		/* TODO: check and see whether 32bit IRQ is pending for timer */
-		high = timer->hitime;
-		/* read low 32 bits */
-		low = shim_read(SHIM_EXT_TIMER_STAT);
-	} while (high != timer->hitime);
-
-	time = ((uint64_t)high << 32) | low;
-
-	return time;
-#elif CONFIG_SOC_SERIES_INTEL_ADSP_BROADWELL || CONFIG_LIBRARY
-	// FIXME!
-	return 0;
-#elif CONFIG_IMX
-	/* For i.MX use Xtensa timer, as we do now with SOF */
-	uint64_t time = 0;
-	uint32_t low;
-	uint32_t high;
-	uint32_t ccompare;
-
-	if (!timer || timer->id >= ARCH_TIMER_COUNT)
-		goto out;
-
-	ccompare = xthal_get_ccompare(timer->id);
-
-	/* read low 32 bits */
-	low = xthal_get_ccount();
-
-	/* check and see whether 32bit IRQ is pending for timer */
-	if (arch_interrupt_get_status() & (1 << timer->irq) && ccompare == 1) {
-		/* yes, overflow has occurred but handler has not run */
-		high = timer->hitime + 1;
-	} else {
-		/* no overflow */
-		high = timer->hitime;
-	}
-
-	time = ((uint64_t)high << 32) | low;
-
-out:
-
-	return time;
-#elif CONFIG_SOF_ZEPHYR
-	return k_cycle_get_64();
-#else
-	/* CAVS versions */
-	return shim_read64(SHIM_DSPWC);
-#endif
-}
-
-void platform_timer_stop(struct timer *timer)
-{
-}
-
-uint64_t platform_timer_get_atomic(struct timer *timer)
-{
-	uint32_t flags;
-	uint64_t ticks_now;
-
-	irq_local_disable(flags);
-	ticks_now = platform_timer_get(timer);
-	irq_local_enable(flags);
-
-	return ticks_now;
-}
-
-/*
  * Notifier.
  *
  * Use SOF inter component messaging today. Zephyr has similar APIs that will
@@ -709,7 +623,7 @@ void platform_dai_timestamp(struct comp_dev *dai,
 		posn->flags |= SOF_TIME_DAI_VALID;
 
 	/* get SSP wallclock - DAI sets this to stream start value */
-	posn->wallclock = platform_timer_get(NULL) - posn->wallclock;
+	posn->wallclock = k_cycle_get_64() - posn->wallclock;
 	posn->wallclock_hz = clock_get_freq(PLATFORM_DEFAULT_CLOCK);
 	posn->flags |= SOF_TIME_WALL_VALID;
 }
@@ -717,7 +631,7 @@ void platform_dai_timestamp(struct comp_dev *dai,
 /* get current wallclock for componnent */
 void platform_dai_wallclock(struct comp_dev *dai, uint64_t *wallclock)
 {
-	*wallclock = platform_timer_get(NULL);
+	*wallclock = k_cycle_get_64();
 }
 
 /*

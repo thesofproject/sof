@@ -56,11 +56,13 @@ void clock_set_freq(int clock, uint32_t hz);
 
 void clock_low_power_mode(int clock, bool enable);
 
+#ifndef __ZEPHYR__
 uint64_t clock_ms_to_ticks(int clock, uint64_t ms);
 
 uint64_t clock_us_to_ticks(int clock, uint64_t us);
 
 uint64_t clock_ns_to_ticks(int clock, uint64_t ns);
+#endif /* __ZEPHYR__ */
 
 uint64_t clock_ticks_per_sample(int clock, uint32_t sample_rate);
 

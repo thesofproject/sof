@@ -62,7 +62,6 @@ void kwd_nn_detect_test(struct comp_dev *dev,
 		if (test_keyword_get_input_size(dev) > one_sec_samples) {
 			uint64_t time_start;
 			uint64_t time_stop;
-			struct timer *timer = timer_get();
 			int result;
 			int i, j;
 
@@ -78,15 +77,14 @@ void kwd_nn_detect_test(struct comp_dev *dev,
 				 test_keyword_get_input_byte(dev, 6),
 				 test_keyword_get_input_byte(dev, 7)
 			);
-			time_start = platform_timer_get(timer);
+			time_start = k_cycle_get_64();
 			kwd_nn_preprocess_1s(test_keyword_get_input(dev), preprocessed_data);
 			kwd_nn_process_data(preprocessed_data, confidences);
 			result = kwd_nn_detect_postprocess(confidences);
-			time_stop = platform_timer_get(timer);
+			time_stop = k_cycle_get_64();
 			comp_dbg(dev,
 				 "KWD: kwd_nn_detect_test_copy() inference done in %u ms",
-				 (unsigned int)((time_stop - time_start)
-				 / clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1)));
+				 (unsigned int)k_cyc_to_ms_near64(time_stop - time_start));
 			switch (result) {
 			case KWD_NN_YES_KEYWORD:
 			case KWD_NN_NO_KEYWORD:
