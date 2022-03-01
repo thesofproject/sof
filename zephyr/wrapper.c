@@ -22,6 +22,7 @@
 #include <sof/trace/trace.h>
 
 /* Zephyr includes */
+#include <sys/multi_heap.h>
 #include <device.h>
 #include <soc.h>
 #include <kernel.h>
@@ -54,6 +55,10 @@ DECLARE_TR_CTX(zephyr_tr, SOF_UUID(zephyr_uuid), LOG_LEVEL_INFO);
 #define HEAP_SYSTEM_SIZE	0
 #endif
 
+/* multi heap - an aggregator for all heaps */
+static struct sys_multi_heap multi_heap;
+struct k_spinlock multi_heap_lock;
+
 /* The Zephyr heap */
 
 #ifdef CONFIG_IMX
@@ -73,108 +78,87 @@ extern uint8_t _end, _heap_sentry;
 
 #endif
 
-static struct k_heap sof_heap;
+static struct sys_heap sof_heap;
 
-static int statics_init(const struct device *unused)
-{
-	ARG_UNUSED(unused);
+/**
+ * description of all memory capabilities.
+ * TODO: currently we do have a single heap for all zones.
+ * move it to per-platform configuration and set all capabilities
+ */
+static const uint32_t sof_mem_zone_capabilities[SOF_MEM_ZONE_SIZE] = {
+	SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_CACHE, /* SOF_MEM_ZONE_SYS */
+	SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_CACHE, /* SOF_MEM_ZONE_SYS_RUNTIME */
+	SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_CACHE, /* SOF_MEM_ZONE_RUNTIME */
+	SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_CACHE, /* SOF_MEM_ZONE_BUFFER */
+	SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_CACHE, /* SOF_MEM_ZONE_RUNTIME_SHARED */
+	SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_CACHE  /* SOF_MEM_ZONE_SYS_SHARED */
+};
 
-	sys_heap_init(&sof_heap.heap, heapmem, HEAPMEM_SIZE);
+struct sof_multiheap_params {
+	enum mem_zone zone;
+	uint32_t caps;
+	uint32_t flags;
+};
 
-	return 0;
-}
-
-SYS_INIT(statics_init, PRE_KERNEL_1, CONFIG_KERNEL_INIT_PRIORITY_OBJECTS);
-
-static void *heap_alloc_aligned(struct k_heap *h, size_t min_align, size_t bytes)
-{
-	k_spinlock_key_t key;
-	void *ret;
-
-	key = k_spin_lock(&h->lock);
-	ret = sys_heap_aligned_alloc(&h->heap, min_align, bytes);
-	k_spin_unlock(&h->lock, key);
-
-	return ret;
-}
-
-static void *heap_alloc_aligned_cached(struct k_heap *h, size_t min_align, size_t bytes)
+void *sof_mutliheap_allocate(struct sys_multi_heap *mheap, void *cfg,
+							size_t align, size_t size)
 {
 	void *ptr;
+	struct sof_multiheap_params *params = (struct sof_multiheap_params *) cfg;
 
-	/*
-	 * Zephyr sys_heap stores metadata at start of each
-	 * heap allocation. To ensure no allocated cached buffer
-	 * overlaps the same cacheline with the metadata chunk,
-	 * align both allocation start and size of allocation
-	 * to cacheline. As cached and non-cached allocations are
-	 * mixed, same rules need to be followed for both type of
-	 * allocations.
+	/* currently we do have only one heap for all zones
+	 * TODO: add other memory zones, like HPSRAM with TLB mappings, IMR etc.
+	 */
+
+	/* is the memory zone cacheable? If yes, all blocks must be aligned to the cacheline size
+	 * in both size and length, no matter if we're going to use cached or uncached alias
 	 */
 #ifdef CONFIG_SOF_ZEPHYR_HEAP_CACHED
-	min_align = MAX(PLATFORM_DCACHE_ALIGN, min_align);
-	bytes = ALIGN_UP(bytes, min_align);
+	if (sof_mem_zone_capabilities[params->zone] & SOF_MEM_CAPS_CACHE) {
+		align = MAX(PLATFORM_DCACHE_ALIGN, align);
+		size = ALIGN_UP(size, PLATFORM_DCACHE_ALIGN);
+	}
 #endif
 
-	ptr = heap_alloc_aligned(h, min_align, bytes);
+	/* get the memory */
+	ptr = sys_heap_aligned_alloc(&sof_heap, align, size);
 
+	/* if a cached memory is required, get a cached alias of the allocated pointer */
 #ifdef CONFIG_SOF_ZEPHYR_HEAP_CACHED
-	if (ptr)
+	if (ptr && (params->flags & SOF_MEM_CAPS_CACHE) && !(params->flags & SOF_MEM_FLAG_COHERENT))
 		ptr = z_soc_cached_ptr(ptr);
 #endif
 
 	return ptr;
 }
 
-static void heap_free(struct k_heap *h, void *mem)
+static int statics_init(const struct device *unused)
 {
-	k_spinlock_key_t key = k_spin_lock(&h->lock);
-#ifdef CONFIG_SOF_ZEPHYR_HEAP_CACHED
-	void *mem_uncached;
+	ARG_UNUSED(unused);
 
-	if (is_cached(mem)) {
-		mem_uncached = z_soc_uncached_ptr(mem);
-		z_xtensa_cache_flush_inv(mem, sys_heap_usable_size(&h->heap, mem_uncached));
-
-		mem = mem_uncached;
-	}
-#endif
-
-	sys_heap_free(&h->heap, mem);
-
-	k_spin_unlock(&h->lock, key);
+	sys_multi_heap_init(&multi_heap, &sof_mutliheap_allocate);
+	sys_heap_init(&sof_heap, heapmem, HEAPMEM_SIZE);
+	sys_multi_heap_add_heap(&multi_heap, &sof_heap, &sof_mem_zone_capabilities[0]);
+	return 0;
 }
 
-static inline bool zone_is_cached(enum mem_zone zone)
-{
-#ifdef CONFIG_SOF_ZEPHYR_HEAP_CACHED
-	switch (zone) {
-	case SOF_MEM_ZONE_SYS:
-	case SOF_MEM_ZONE_SYS_RUNTIME:
-	case SOF_MEM_ZONE_RUNTIME:
-	case SOF_MEM_ZONE_BUFFER:
-		return true;
-	default:
-		break;
-	}
-#endif
+SYS_INIT(statics_init, PRE_KERNEL_1, CONFIG_KERNEL_INIT_PRIORITY_OBJECTS);
 
-	return false;
-}
+
 
 void *rmalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
 {
 	void *ptr;
+	struct sof_multiheap_params params;
 
-	if (zone_is_cached(zone)) {
-		ptr = heap_alloc_aligned_cached(&sof_heap, 0, bytes);
-	} else {
-		/*
-		 * XTOS alloc implementation has used dcache alignment,
-		 * so SOF application code is expecting this behaviour.
-		 */
-		ptr = heap_alloc_aligned(&sof_heap, PLATFORM_DCACHE_ALIGN, bytes);
-	}
+	params.flags = flags;
+	params.caps = caps;
+	params.zone = zone;
+
+	k_spinlock_key_t key = k_spin_lock(&multi_heap_lock);
+
+	ptr = sys_multi_heap_alloc(&multi_heap, &params, bytes);
+	k_spin_unlock(&multi_heap_lock, key);
 
 	if (!ptr && zone == SOF_MEM_ZONE_SYS)
 		k_panic();
@@ -242,7 +226,19 @@ void *rzalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
 void *rballoc_align(uint32_t flags, uint32_t caps, size_t bytes,
 		    uint32_t alignment)
 {
-	return heap_alloc_aligned_cached(&sof_heap, alignment, bytes);
+	void *ptr;
+	struct sof_multiheap_params params;
+
+	params.flags = flags;
+	params.caps = caps;
+	params.zone = SOF_MEM_ZONE_BUFFER;
+
+	k_spinlock_key_t key = k_spin_lock(&multi_heap_lock);
+
+	ptr = sys_multi_heap_aligned_alloc(&multi_heap, &params, alignment, bytes);
+	k_spin_unlock(&multi_heap_lock, key);
+
+	return ptr;
 }
 
 /*
@@ -250,10 +246,34 @@ void *rballoc_align(uint32_t flags, uint32_t caps, size_t bytes,
  */
 void rfree(void *ptr)
 {
+	struct sys_heap_ext *heap;
+	void *ptr_uncached = ptr;
 	if (!ptr)
 		return;
 
-	heap_free(&sof_heap, ptr);
+#ifdef CONFIG_SOF_ZEPHYR_HEAP_CACHED
+	if (is_cached(ptr))
+		ptr_uncached = z_soc_uncached_ptr(ptr);
+#endif
+
+	/* get heap and metadata from the multiheap, always provide uncached alias */
+	k_spinlock_key_t key = k_spin_lock(&multi_heap_lock);
+
+	heap = sys_multi_heap_get_heap(&multi_heap, ptr_uncached);
+
+#ifdef CONFIG_SOF_ZEPHYR_HEAP_CACHED
+	uint32_t heap_caps = *(uint32_t *)(heap->metadata);
+
+	if (heap_caps & SOF_MEM_CAPS_CACHE)
+	/* if the memory region has cache capabilities, invalidate the cache, no writeback */
+		z_xtensa_cache_flush_inv(ptr, sys_heap_usable_size(heap, ptr_uncached));
+#endif
+
+	/* release memory block */
+	sys_heap_free(heap->heap, ptr_uncached);
+	k_spin_unlock(&multi_heap_lock, key);
+
+	/* TODO: do other operations, like powering off memory banks, unmapping TLB etc. */
 }
 
 /* debug only - only needed for linking */

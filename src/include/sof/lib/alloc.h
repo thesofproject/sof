@@ -59,6 +59,7 @@ enum mem_zone {
 	SOF_MEM_ZONE_BUFFER,		/**< Buffer zone */
 	SOF_MEM_ZONE_RUNTIME_SHARED,	/**< Runtime shared zone */
 	SOF_MEM_ZONE_SYS_SHARED,	/**< System shared zone */
+	SOF_MEM_ZONE_SIZE           /**< Size of the mem zone capabilities table */
 };
 
 /** \name Heap zone flags
