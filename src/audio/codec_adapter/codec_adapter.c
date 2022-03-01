@@ -489,7 +489,13 @@ int codec_adapter_copy(struct comp_dev *dev)
 
 		bytes_to_process -= md->mpd.consumed;
 		processed += md->mpd.consumed;
-		comp_update_buffer_consume(source, md->mpd.consumed);
+
+		i = 0;
+		list_for_item(blist, &dev->bsource_list) {
+			source = container_of(blist, struct comp_buffer, sink_list);
+			comp_update_buffer_consume(source, mod->input_buffers[i].consumed);
+			i++;
+		}
 		if (bytes_to_process < codec_buff_size)
 			goto db_verify;
 	}
@@ -530,12 +536,19 @@ int codec_adapter_copy(struct comp_dev *dev)
 		i++;
 	}
 
+	/* consume data from all source buffers */
+	i = 0;
+	list_for_item(blist, &dev->bsource_list) {
+		source = container_of(blist, struct comp_buffer, sink_list);
+		comp_update_buffer_consume(source, mod->input_buffers[i].consumed);
+		i++;
+	}
+
 	bytes_to_process -= md->mpd.consumed;
 	processed += md->mpd.consumed;
 	produced += md->mpd.produced;
 
 	audio_stream_produce(&local_buff->stream, md->mpd.produced);
-	comp_update_buffer_consume(source, md->mpd.consumed);
 
 db_verify:
 	if (!produced && !mod->deep_buff_bytes) {
