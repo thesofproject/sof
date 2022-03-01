@@ -718,6 +718,7 @@ void platform_dai_wallclock(struct comp_dev *dai, uint64_t *wallclock)
  */
 #if CONFIG_MULTICORE && CONFIG_SMP
 static atomic_t start_flag;
+static atomic_t ready_flag;
 
 /* Zephyr kernel_internal.h interface */
 void smp_timer_init(void);
@@ -732,6 +733,7 @@ static FUNC_NORETURN void secondary_init(void *arg)
 	 * secondary_core_init() for each core.
 	 */
 
+	atomic_set(&ready_flag, 1);
 	z_smp_thread_init(arg, &dummy_thread);
 	smp_timer_init();
 
@@ -763,9 +765,18 @@ int z_wrapper_cpu_enable_secondary_core(int id)
 	 * secondary_init() for SOF.
 	 */
 
+	if (arch_cpu_active(id))
+		return 0;
+
 	atomic_clear(&start_flag);
+	atomic_clear(&ready_flag);
+
 	arch_start_cpu(id, z_interrupt_stacks[id], CONFIG_ISR_STACK_SIZE,
 		       secondary_init, &start_flag);
+
+	while (!atomic_get(&ready_flag))
+		k_busy_wait(100);
+
 	atomic_set(&start_flag, 1);
 
 	return 0;
