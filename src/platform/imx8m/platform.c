@@ -127,10 +127,12 @@ const struct ext_man_windows xsram_window
 	},
 };
 
+#ifndef __ZEPHYR__
 static SHARED_DATA struct timer timer = {
 	.id = TIMER0, /* internal timer */
 	.irq = IRQ_NUM_TIMER0,
 };
+#endif
 
 int platform_boot_complete(uint32_t boot_message)
 {
@@ -152,8 +154,10 @@ int platform_init(struct sof *sof)
 {
 	int ret;
 
+#ifndef __ZEPHYR__
 	sof->platform_timer = &timer;
 	sof->cpu_timers = &timer;
+#endif
 
 #ifdef __ZEPHYR__
 	/* initialize cascade interrupts before any usage */

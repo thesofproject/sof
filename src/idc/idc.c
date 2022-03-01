@@ -90,18 +90,14 @@ int idc_msg_status_get(uint32_t core)
  */
 int idc_wait_in_blocking_mode(uint32_t target_core, bool (*cond)(int))
 {
-	struct timer *timer = timer_get();
-	uint64_t deadline;
-
-	deadline = platform_timer_get(timer) +
-		clock_us_to_ticks(PLATFORM_DEFAULT_CLOCK, IDC_TIMEOUT);
+	uint64_t deadline = k_cycle_get_64() + k_us_to_cyc_ceil64(IDC_TIMEOUT);
 
 	while (!cond(target_core)) {
 
 		/* spin here so other core can access IO and timers freely */
 		idelay(8192);
 
-		if (deadline < platform_timer_get(timer))
+		if (deadline < k_cycle_get_64())
 			break;
 	}
 

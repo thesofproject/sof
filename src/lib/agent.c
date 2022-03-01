@@ -63,7 +63,7 @@ static enum task_state validate(void *data)
 	uint64_t current;
 	uint64_t delta;
 
-	current = platform_timer_get(timer_get());
+	current = k_cycle_get_64();
 	delta = current - sa->last_check;
 
 	perf_cnt_stamp(&sa->pcd, perf_sa_trace, 0 /* ignored */);
@@ -101,11 +101,7 @@ void sa_init(struct sof *sof, uint64_t timeout)
 	sof->sa = rzalloc(SOF_MEM_ZONE_SYS_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*sof->sa));
 
 	/* set default timeouts */
-#ifdef __ZEPHYR__
 	ticks = k_us_to_cyc_ceil64(timeout);
-#else
-	ticks = clock_us_to_ticks(PLATFORM_DEFAULT_CLOCK, timeout);
-#endif
 
 	/* TODO: change values after minimal drifts will be assured */
 	sof->sa->panic_timeout = 2 * ticks;	/* 100% delay */
@@ -131,7 +127,7 @@ void sa_init(struct sof *sof, uint64_t timeout)
 	schedule_task(&sof->sa->work, 0, timeout);
 
 	/* set last check time to now to give time for boot completion */
-	sof->sa->last_check = platform_timer_get(timer_get());
+	sof->sa->last_check = k_cycle_get_64();
 
 }
 

@@ -57,11 +57,13 @@ struct sof {
 	/* platform clock information */
 	struct clock_info *clocks;
 
+#ifndef __ZEPHYR__
 	/* default platform timer */
 	struct timer *platform_timer;
 
 	/* cpu (arch) timers - 1 per core */
 	struct timer *cpu_timers;
+#endif
 
 	/* timer domain for driving timer LL scheduler */
 	struct ll_schedule_domain *platform_timer_domain;

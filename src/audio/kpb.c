@@ -856,7 +856,6 @@ static int kpb_buffer_data(struct comp_dev *dev,
 	uint64_t current_time;
 	enum kpb_state state_preserved = kpb->state;
 	size_t sample_width = kpb->config.sampling_width;
-	struct timer *timer = timer_get();
 
 	comp_dbg(dev, "kpb_buffer_data()");
 
@@ -874,8 +873,7 @@ static int kpb_buffer_data(struct comp_dev *dev,
 
 	kpb_change_state(kpb, KPB_STATE_BUFFERING);
 
-	timeout = platform_timer_get(timer) +
-		  clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1);
+	timeout = k_cycle_get_64() + k_ms_to_cyc_ceil64(1);
 	/* Let's store audio stream data in internal history buffer */
 	while (size_to_copy) {
 		/* Reset was requested, it's time to stop buffering and finish
@@ -888,12 +886,13 @@ static int kpb_buffer_data(struct comp_dev *dev,
 		}
 
 		/* Are we stuck in buffering? */
-		current_time = platform_timer_get(timer);
+		current_time = k_cycle_get_64();
 		if (timeout < current_time) {
-			if (current_time - timeout <= UINT_MAX)
+			timeout = k_cyc_to_ms_near64(current_time - timeout);
+			if (timeout <= UINT_MAX)
 				comp_err(dev,
 					 "kpb_buffer_data(): timeout of %u [ms] (current state %d, state log %x)",
-					 (unsigned int)(current_time - timeout), kpb->state,
+					 (unsigned int)(timeout), kpb->state,
 					 kpb->state_log);
 			else
 				comp_err(dev,
@@ -1156,13 +1155,11 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 			 * shall take place. This time will be used to
 			 * synchronize us with application interrupts.
 			 */
-			drain_interval = clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK,
-							   host_period_size / bytes_per_ms) /
+			drain_interval = k_ms_to_cyc_ceil64(host_period_size / bytes_per_ms) /
 					 KPB_DRAIN_NUM_OF_PPL_PERIODS_AT_ONCE;
 			period_bytes_limit = host_period_size;
 			comp_info(dev, "kpb_init_draining(): sync_draining_mode selected with interval %u [uS].",
-				  (unsigned int)(drain_interval * 1000 /
-						 clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1)));
+				  (unsigned int)k_cyc_to_us_near64(drain_interval));
 		} else {
 			/* Unlimited draining */
 			drain_interval = 0;
@@ -1225,8 +1222,7 @@ static enum task_state kpb_draining_task(void *arg)
 	uint64_t current_time;
 	size_t period_bytes = 0;
 	size_t period_bytes_limit = draining_data->pb_limit;
-	struct timer *timer = timer_get();
-	size_t period_copy_start = platform_timer_get(timer);
+	size_t period_copy_start = k_cycle_get_64();
 	size_t time_taken;
 	size_t *rt_stream_update = &draining_data->buffered_while_draining;
 	struct comp_data *kpb = comp_get_drvdata(draining_data->dev);
@@ -1243,7 +1239,7 @@ static enum task_state kpb_draining_task(void *arg)
 	/* Change KPB internal state to DRAINING */
 	kpb_change_state(kpb, KPB_STATE_DRAINING);
 
-	draining_time_start = platform_timer_get(timer);
+	draining_time_start = k_cycle_get_64();
 
 	while (drain_req > 0) {
 		/* Have we received reset request? */
@@ -1256,12 +1252,12 @@ static enum task_state kpb_draining_task(void *arg)
 		 * to read the data already provided?
 		 */
 		if (sync_mode_on &&
-		    next_copy_time > platform_timer_get(timer)) {
+		    next_copy_time > k_cycle_get_64()) {
 			period_bytes = 0;
-			period_copy_start = platform_timer_get(timer);
+			period_copy_start = k_cycle_get_64();
 			continue;
 		} else if (next_copy_time == 0) {
-			period_copy_start = platform_timer_get(timer);
+			period_copy_start = k_cycle_get_64();
 		}
 
 		size_to_read = (uintptr_t)buff->end_addr - (uintptr_t)buff->r_ptr;
@@ -1308,7 +1304,7 @@ static enum task_state kpb_draining_task(void *arg)
 		}
 
 		if (sync_mode_on && period_bytes >= period_bytes_limit) {
-			current_time = platform_timer_get(timer);
+			current_time = k_cycle_get_64();
 			time_taken = current_time - period_copy_start;
 			next_copy_time = current_time + drain_interval -
 					 time_taken;
@@ -1338,14 +1334,13 @@ static enum task_state kpb_draining_task(void *arg)
 	}
 
 out:
-	draining_time_end = platform_timer_get(timer);
+	draining_time_end = k_cycle_get_64();
 
 	/* Reset host-sink copy mode back to its pre-draining value */
 	comp_set_attribute(kpb->host_sink->sink, COMP_ATTR_COPY_TYPE,
 			   &kpb->draining_task_data.copy_type);
 
-	draining_time_ms = (draining_time_end - draining_time_start)
-		/ clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1);
+	draining_time_ms = k_cyc_to_ms_near64(draining_time_end - draining_time_start);
 	if (draining_time_ms <= UINT_MAX)
 		comp_cl_info(&comp_kpb, "KPB: kpb_draining_task(), done. %u drained in %u ms",
 			     drained, (unsigned int)draining_time_ms);

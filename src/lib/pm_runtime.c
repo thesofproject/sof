@@ -144,7 +144,7 @@ void init_dsp_r_state(enum dsp_r_state r_state)
 	r_counters = rzalloc(SOF_MEM_ZONE_SYS_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*r_counters));
 	prd->r_counters = r_counters;
 
-	r_counters->ts = platform_timer_get(timer_get());
+	r_counters->ts = k_cycle_get_64();
 	r_counters->cur_r_state = r_state;
 }
 
@@ -159,7 +159,7 @@ void report_dsp_r_state(enum dsp_r_state r_state)
 	if (!r_counters || r_counters->cur_r_state == r_state)
 		return;
 
-	ts = platform_timer_get(timer_get());
+	ts = k_cycle_get_64();
 	delta = ts - r_counters->ts;
 
 	delta += mailbox_sw_reg_read64(SRAM_REG_R_STATE_TRACE_BASE +

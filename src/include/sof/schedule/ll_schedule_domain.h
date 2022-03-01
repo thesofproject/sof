@@ -84,7 +84,11 @@ static inline struct ll_schedule_domain *domain_init
 	domain->clk = clk;
 	domain->synchronous = synchronous;
 	domain->full_sync = false;
+#ifdef __ZEPHYR__
+	domain->ticks_per_ms = k_ms_to_cyc_ceil64(1);
+#else
 	domain->ticks_per_ms = clock_ms_to_ticks(clk, 1);
+#endif
 	domain->ops = ops;
 	/* maximum value means no tick has been set to timer */
 	domain->next_tick = UINT64_MAX;
