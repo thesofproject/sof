@@ -50,7 +50,7 @@ platform_list = [
 	{
 		"name": "tgl",
 		"PLAT_CONFIG": "intel_adsp_cavs25",
-		"IPC4_CONFIG_OVERLAY": "tgl_ipc4_overlay.conf",
+		"IPC4_CONFIG_OVERLAY": "ipc4_overlay.conf",
 		"IPC4_RIMAGE_DESC": "tgl-cavs.toml",
 		"XTENSA_CORE": "cavs2x_LX6HiFi3_2017_8",
 		"XTENSA_TOOLS_VERSION": f"RG-2017.8{xtensa_tools_version_postfix}",
