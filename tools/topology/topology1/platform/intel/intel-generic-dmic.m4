@@ -46,7 +46,7 @@ dnl Unless explicitly specified, dmic period at 48k is 1ms
 ifdef(`DMIC_48k_PERIOD_US', `', `define(DMIC_48k_PERIOD_US, 1000)')
 
 ## Prolong period to 4ms for RTNR
-ifdef(`RTNR', `define(`INTEL_GENERIC_DMIC_PERIOD', 4000)', `define(`INTEL_GENERIC_DMIC_PERIOD', 1000)')
+ifdef(`RTNR', `define(`INTEL_GENERIC_DMIC_PERIOD', 10000)', `define(`INTEL_GENERIC_DMIC_PERIOD', 1000)')
 ifdef(`RTNR', `define(`INTEL_GENERIC_DMIC_PERIOD_INV', 250)', `define(`INTEL_GENERIC_DMIC_PERIOD_INV', 1000)')
 
 ifelse(CHANNELS, 1, `define(`VOLUME_CHANNEL_MAP', LIST(`	', KCONTROL_CHANNEL(FL, 1, 0)))')
