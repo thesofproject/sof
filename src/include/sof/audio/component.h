@@ -844,6 +844,21 @@ static inline int comp_get_state(struct comp_dev *req_dev, struct comp_dev *dev)
 struct comp_data_blob_handler;
 
 /**
+ * Parameter init for component on other core.
+ * @param dev Component device.
+ * @param params Parameters to be set.
+ * @return 0 if succeeded, error code otherwise.
+ */
+static inline int comp_params_remote(struct comp_dev *dev,
+				     struct sof_ipc_stream_params *params)
+{
+	struct idc_msg msg = { IDC_MSG_PARAMS, IDC_MSG_PARAMS_EXT(dev->ipc_config.id),
+		dev->ipc_config.core, sizeof(*params), params, };
+
+	return idc_send_msg(&msg, IDC_BLOCKING);
+}
+
+/**
  * Returns data blob. In case when new data blob is available it returns new
  * one. Function returns also data blob size in case when size pointer is given.
  *
@@ -919,6 +934,12 @@ void comp_data_blob_handler_free(struct comp_data_blob_handler *blob_handler);
  */
 int comp_verify_params(struct comp_dev *dev, uint32_t flag,
 		       struct sof_ipc_stream_params *params);
+
+int comp_params(struct comp_dev *dev, struct sof_ipc_stream_params *params);
+
+int comp_cmd(struct comp_dev *dev, int cmd, void *data, int max_data_size);
+
+int comp_copy(struct comp_dev *dev);
 
 /** @}*/
 

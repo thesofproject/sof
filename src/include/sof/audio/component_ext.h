@@ -55,43 +55,6 @@ static inline void comp_free(struct comp_dev *dev)
 	dev->drv->ops.free(dev);
 }
 
-/**
- * Parameter init for component on other core.
- * @param dev Component device.
- * @param params Parameters to be set.
- * @return 0 if succeeded, error code otherwise.
- */
-static inline int comp_params_remote(struct comp_dev *dev,
-				     struct sof_ipc_stream_params *params)
-{
-	struct idc_msg msg = { IDC_MSG_PARAMS, IDC_MSG_PARAMS_EXT(dev->ipc_config.id),
-		dev->ipc_config.core, sizeof(*params), params, };
-
-	return idc_send_msg(&msg, IDC_BLOCKING);
-}
-
-/** See comp_ops::params */
-static inline int comp_params(struct comp_dev *dev,
-			      struct sof_ipc_stream_params *params)
-{
-	int ret = 0;
-
-	if (dev->is_shared && !cpu_is_me(dev->ipc_config.core)) {
-		ret = comp_params_remote(dev, params);
-	} else {
-		if (dev->drv->ops.params) {
-			ret = dev->drv->ops.params(dev, params);
-		} else {
-			/* not defined, run the default handler */
-			ret = comp_verify_params(dev, 0, params);
-			if (ret < 0)
-				comp_err(dev, "pcm params verification failed");
-		}
-	}
-
-	return ret;
-}
-
 /** See comp_ops::dai_get_hw_params */
 static inline int comp_dai_get_hw_params(struct comp_dev *dev,
 					 struct sof_ipc_stream_params *params,
@@ -99,26 +62,6 @@ static inline int comp_dai_get_hw_params(struct comp_dev *dev,
 {
 	if (dev->drv->ops.dai_get_hw_params)
 		return dev->drv->ops.dai_get_hw_params(dev, params, dir);
-
-	return -EINVAL;
-}
-
-/** See comp_ops::cmd */
-static inline int comp_cmd(struct comp_dev *dev, int cmd, void *data,
-			   int max_data_size)
-{
-	struct sof_ipc_ctrl_data *cdata = ASSUME_ALIGNED(data, 4);
-
-	if (cmd == COMP_CMD_SET_DATA &&
-	    (cdata->data->magic != SOF_ABI_MAGIC ||
-	     SOF_ABI_VERSION_INCOMPATIBLE(SOF_ABI_VERSION, cdata->data->abi))) {
-		comp_err(dev, "comp_cmd(): invalid version, data->magic = %u, data->abi = %u",
-			 cdata->data->magic, cdata->data->abi);
-		return -EINVAL;
-	}
-
-	if (dev->drv->ops.cmd)
-		return dev->drv->ops.cmd(dev, cmd, data, max_data_size);
 
 	return -EINVAL;
 }
@@ -161,23 +104,6 @@ static inline int comp_prepare(struct comp_dev *dev)
 			comp_prepare_remote(dev) : dev->drv->ops.prepare(dev);
 
 	return 0;
-}
-
-/** See comp_ops::copy */
-static inline int comp_copy(struct comp_dev *dev)
-{
-	int ret = 0;
-
-	assert(dev->drv->ops.copy);
-
-	/* copy only if we are the owner of the component */
-	if (cpu_is_me(dev->ipc_config.core)) {
-		perf_cnt_init(&dev->pcd);
-		ret = dev->drv->ops.copy(dev);
-		perf_cnt_stamp(&dev->pcd, comp_perf_info, dev);
-	}
-
-	return ret;
 }
 
 /** See comp_ops::get_attribute */
