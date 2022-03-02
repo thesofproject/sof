@@ -246,7 +246,9 @@ void *rballoc_align(uint32_t flags, uint32_t caps, size_t bytes,
  */
 void rfree(void *ptr)
 {
-	struct sys_heap_ext *heap;
+	struct sys_multi_heap_rec heap;
+	int ret;
+
 	void *ptr_uncached = ptr;
 	if (!ptr)
 		return;
@@ -259,7 +261,12 @@ void rfree(void *ptr)
 	/* get heap and metadata from the multiheap, always provide uncached alias */
 	k_spinlock_key_t key = k_spin_lock(&multi_heap_lock);
 
-	heap = sys_multi_heap_get_heap(&multi_heap, ptr_uncached);
+	ret = sys_multi_heap_get_heap(&multi_heap, ptr_uncached, &heap);
+	/* exception in case memory block does not belong to any of the heaps.
+	 * very unlikely and would trigger an exception in sys_heap_free anyway
+	 */
+	assert(ret == 0);
+
 
 #ifdef CONFIG_SOF_ZEPHYR_HEAP_CACHED
 	uint32_t heap_caps = *(uint32_t *)(heap->metadata);
