@@ -134,7 +134,7 @@ define(`SPK_REF_DAI_NAME', concat(concat(`SSP', SPK_SSP_INDEX),`.IN'))')
 
 # to generate dmic setting with kwd when we have dmic
 # define channel
-define(CHANNELS, `4')
+ifdef(`CHANNELS', `', `define(`CHANNELS', 4)')
 # define kfbm with volume
 define(KFBM_TYPE, `vol-kfbm')
 # define pcm, pipeline and dai id
