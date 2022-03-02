@@ -396,7 +396,7 @@ def build_platforms():
 
 		if args.ipc == "IPC4":
 			rimage_desc = pathlib.Path(SOF_TOP, "rimage", "config", platform_dict["IPC4_RIMAGE_DESC"])
-			sign_cmd += ["-c", rimage_desc]
+			sign_cmd += ["-c", str(rimage_desc)]
 
 		execute_command(sign_cmd, check=True, cwd=west_top)
 		# Install by copy
