@@ -550,14 +550,32 @@ int codec_adapter_copy(struct comp_dev *dev)
 			comp_update_buffer_consume(source, mod->input_buffers[i].consumed);
 			i++;
 		}
-		if (bytes_to_process < codec_buff_size)
-			goto db_verify;
 	}
 
-	buffer_stream_invalidate(source, codec_buff_size);
-	ca_copy_from_source_to_module(&source->stream, md->mpd.in_buff,
-				      md->mpd.in_buff_size, codec_buff_size);
-	md->mpd.avail = codec_buff_size;
+	/* process remaining data */
+	i = 0;
+	list_for_item(blist, &dev->bsource_list) {
+		uint32_t remaining = mod->input_buffers[i].size - mod->input_buffers[i].consumed;
+
+		source = container_of(blist, struct comp_buffer, sink_list);
+
+		mod->input_buffers[i].size = remaining;
+		mod->input_buffers[i].consumed = 0;
+
+		if (!remaining)
+			continue;
+
+		buffer_stream_invalidate(source, remaining);
+		ca_copy_from_source_to_module(&source->stream, mod->input_buffers[i].data,
+					      size, remaining);
+		if (i == 0) {
+			ca_copy_from_source_to_module(&source->stream, md->mpd.in_buff,
+						      md->mpd.in_buff_size, remaining);
+			md->mpd.avail = remaining;
+		}
+		i++;
+	}
+
 	ret = module_process(mod, mod->input_buffers, mod->num_input_buffers,
 			     mod->output_buffers, mod->num_output_buffers);
 	if (ret) {
